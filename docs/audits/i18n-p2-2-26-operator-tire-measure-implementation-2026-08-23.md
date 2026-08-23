@@ -80,10 +80,17 @@
 ## Validation
 
 - `npm run i18n:check` — PASS
-- `operator-tire-measure-localization.test.tsx` — PASS
+- `operator-tire-measure-localization.test.tsx` — PASS (full-flow locale-switch state preservation)
 - `operatorTireMeasure.utils.test.ts` — PASS
 - `npm run build` — PASS
 - P226 = 0; P225–P216 = 0
+
+## Micro-correction (2026-08-23)
+
+- Removed `locale` from context-initialization effect dependencies in `OperatorTireMeasureFlow.tsx`.
+- Handover note prefix still seeds correctly on initial mount / action identity change using locale at seed time.
+- Same-mount locale switch now preserves operator-edited context (`measuredAt`, `odometerKm`, `source`, `workshopName`, `note`) and tread values.
+- Added EN↔DE full-flow preservation regression tests.
 
 ## Verdict
 

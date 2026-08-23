@@ -79,6 +79,7 @@ import inventory from '../../i18n/hardcoded-copy-inventory.json';
 import {
   OPERATOR_TIRE_MEASURE_WHEELS,
   OPERATOR_TIRE_POSITION_KEYS,
+  operatorTireMeasureHandoverNotePrefix,
   operatorTireMeasurePlausibilityMessage,
   operatorTireMeasurePositionLong,
   operatorTireMeasurePositionShort,
@@ -158,14 +159,118 @@ function setInputValue(input: HTMLInputElement, value: string) {
   input.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
+function setTextareaValue(textarea: HTMLTextAreaElement, value: string) {
+  const textareaSetter = Object.getOwnPropertyDescriptor(
+    window.HTMLTextAreaElement.prototype,
+    'value',
+  )?.set;
+  textareaSetter?.call(textarea, value);
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  textarea.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
 async function advanceToStep(container: HTMLElement, targetStep: (typeof OPERATOR_TIRE_MEASURE_STEPS)[number]) {
   const targetIdx = OPERATOR_TIRE_MEASURE_STEPS.indexOf(targetStep);
   for (let i = 0; i < targetIdx; i += 1) {
+    const currentStep = OPERATOR_TIRE_MEASURE_STEPS[i];
+    if (currentStep === 'tread') {
+      const treadInputs = container.querySelectorAll('input');
+      if (treadInputs.length > 0) {
+        await act(async () => {
+          setInputValue(treadInputs[0] as HTMLInputElement, '5.0');
+        });
+      }
+    }
     const continueBtn = findContinueButton(container);
     await act(async () => {
       continueBtn?.click();
     });
   }
+}
+
+function LocaleSwitchButton({ target }: { target: 'de' | 'en' }) {
+  const { setLocale } = useLanguage();
+  return createElement(
+    'button',
+    {
+      type: 'button',
+      'data-testid': `switch-locale-${target}`,
+      onClick: () => setLocale(target),
+    },
+    target.toUpperCase(),
+  );
+}
+
+function renderFlowWithLocaleSwitch(initialLocale: 'de' | 'en', action = baseAction) {
+  const switchTarget = initialLocale === 'en' ? 'de' : 'en';
+  return renderWithLocale(
+    initialLocale,
+    createElement(
+      'div',
+      null,
+      createElement(LocaleSwitchButton, { target: switchTarget }),
+      createElement(OperatorTireMeasureFlow, { action }),
+    ),
+  );
+}
+
+function findNoteTextarea(container: HTMLElement): HTMLTextAreaElement {
+  const textarea = container.querySelector('textarea');
+  if (!textarea) throw new Error('note textarea not found');
+  return textarea;
+}
+
+function findMeasuredAtInput(container: HTMLElement): HTMLInputElement {
+  const input = container.querySelector('input[type="datetime-local"]');
+  if (!input) throw new Error('measuredAt input not found');
+  return input as HTMLInputElement;
+}
+
+function findOdometerInput(container: HTMLElement): HTMLInputElement {
+  const input = container.querySelector('input[inputmode="decimal"]');
+  if (!input) throw new Error('odometer input not found');
+  return input as HTMLInputElement;
+}
+
+function findWorkshopSourceButton(container: HTMLElement): HTMLButtonElement {
+  const button = Array.from(container.querySelectorAll('button')).find(
+    (btn) =>
+      btn.textContent?.includes(en['operator.tireMeasure.sources.workshop']) ||
+      btn.textContent?.includes(de['operator.tireMeasure.sources.workshop']),
+  );
+  if (!button) throw new Error('workshop source button not found');
+  return button as HTMLButtonElement;
+}
+
+function findWorkshopNameInput(container: HTMLElement): HTMLInputElement {
+  const inputs = Array.from(container.querySelectorAll('input[type="text"]')).filter(
+    (el) => el.getAttribute('inputmode') !== 'decimal',
+  );
+  const input = inputs[0];
+  if (!input) throw new Error('workshop name input not found');
+  return input as HTMLInputElement;
+}
+
+async function populateContextStep(container: HTMLElement) {
+  await act(async () => {
+    setInputValue(findMeasuredAtInput(container), '2026-08-23T10:00');
+    setInputValue(findOdometerInput(container), '52100');
+    findWorkshopSourceButton(container).click();
+  });
+  await act(async () => {
+    setInputValue(findWorkshopNameInput(container), 'Werkstatt Nord');
+    setTextareaValue(findNoteTextarea(container), 'Operator note 42 — manually edited');
+  });
+}
+
+async function populateTreadStep(container: HTMLElement) {
+  const treadInputs = container.querySelectorAll('input');
+  await act(async () => {
+    setInputValue(treadInputs[0] as HTMLInputElement, '5.1');
+    setInputValue(treadInputs[1] as HTMLInputElement, '4.9');
+    setInputValue(treadInputs[2] as HTMLInputElement, '3,8');
+    setInputValue(treadInputs[3] as HTMLInputElement, '3.7');
+  });
 }
 
 describe('operator Tire Measure localization (P2.2.26)', () => {
@@ -324,6 +429,157 @@ describe('operator Tire Measure localization (P2.2.26)', () => {
       const inputs = view.container.querySelectorAll('input');
       expect((inputs[0] as HTMLInputElement).value).toBe('5.2');
       expect((inputs[1] as HTMLInputElement).value).toBe('4,1');
+    });
+
+    it.each([
+      ['en', 'de'] as const,
+      ['de', 'en'] as const,
+    ])('preserves full-flow context state on same-mount %s → %s', async (from, to) => {
+      const view = renderFlowWithLocaleSwitch(from);
+      cleanup = view.cleanup;
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await advanceToStep(view.container, 'tread');
+      await populateTreadStep(view.container);
+      await act(async () => {
+        findContinueButton(view.container)?.click();
+      });
+      await populateContextStep(view.container);
+
+      const before = {
+        measuredAt: findMeasuredAtInput(view.container).value,
+        odometerKm: findOdometerInput(view.container).value,
+        workshopName: findWorkshopNameInput(view.container).value,
+        note: findNoteTextarea(view.container).value,
+      };
+
+      expect(before.note).toBe('Operator note 42 — manually edited');
+      expect(view.container.textContent).toContain(
+        from === 'en' ? en['operator.tireMeasure.steps.context'] : de['operator.tireMeasure.steps.context'],
+      );
+
+      const switchBtn = document.querySelector(
+        `[data-testid="switch-locale-${to}"]`,
+      ) as HTMLButtonElement;
+      await act(async () => {
+        switchBtn.click();
+      });
+
+      expect(view.container.textContent).toContain(
+        to === 'en' ? en['operator.tireMeasure.steps.context'] : de['operator.tireMeasure.steps.context'],
+      );
+      expect(findMeasuredAtInput(view.container).value).toBe(before.measuredAt);
+      expect(findOdometerInput(view.container).value).toBe(before.odometerKm);
+      expect(findWorkshopNameInput(view.container).value).toBe(before.workshopName);
+      expect(findNoteTextarea(view.container).value).toBe(before.note);
+      expect(findWorkshopNameInput(view.container)).toBeTruthy();
+
+      const backBtn = Array.from(view.container.querySelectorAll('button')).find(
+        (btn) =>
+          btn.textContent?.includes(en['operator.tireMeasure.actions.back']) ||
+          btn.textContent?.includes(de['operator.tireMeasure.actions.back']),
+      );
+      await act(async () => {
+        backBtn?.click();
+      });
+      const treadInputs = view.container.querySelectorAll('input');
+      expect((treadInputs[0] as HTMLInputElement).value).toBe('5.1');
+      expect((treadInputs[1] as HTMLInputElement).value).toBe('4.9');
+      expect((treadInputs[2] as HTMLInputElement).value).toBe('3,8');
+      expect((treadInputs[3] as HTMLInputElement).value).toBe('3.7');
+    });
+
+    it('preserves tread values when switching locale on tread step', async () => {
+      const view = renderFlowWithLocaleSwitch('en');
+      cleanup = view.cleanup;
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await advanceToStep(view.container, 'tread');
+      const treadInputs = view.container.querySelectorAll('input');
+      await populateTreadStep(view.container);
+
+      const before = Array.from(treadInputs).map((el) => (el as HTMLInputElement).value);
+      const switchBtn = document.querySelector('[data-testid="switch-locale-de"]') as HTMLButtonElement;
+      await act(async () => {
+        switchBtn.click();
+      });
+
+      const afterInputs = view.container.querySelectorAll('input');
+      expect(Array.from(afterInputs).map((el) => (el as HTMLInputElement).value)).toEqual(before);
+      expect(view.container.textContent).toContain('Vorne links');
+    });
+  });
+
+  describe('initial handover note seed', () => {
+    it('seeds EN handover note prefix on initial EN mount', async () => {
+      const view = renderFlow('en');
+      cleanup = view.cleanup;
+      await act(async () => {
+        await Promise.resolve();
+      });
+      await advanceToStep(view.container, 'context');
+      const expected = operatorTireMeasureHandoverNotePrefix('en', baseAction.bookingId);
+      expect(findNoteTextarea(view.container).value).toBe(expected);
+      expect(expected).toContain('Handover booking');
+    });
+
+    it('seeds DE handover note prefix on initial DE mount', async () => {
+      const view = renderFlow('de');
+      cleanup = view.cleanup;
+      await act(async () => {
+        await Promise.resolve();
+      });
+      await advanceToStep(view.container, 'context');
+      const expected = operatorTireMeasureHandoverNotePrefix('de', baseAction.bookingId);
+      expect(findNoteTextarea(view.container).value).toBe(expected);
+      expect(expected).toContain('Handover Buchung');
+    });
+  });
+
+  describe('action identity reinitialization', () => {
+    it('reinitializes note when bookingId changes', async () => {
+      function StatefulFlowHost() {
+        const [bookingId, setBookingId] = useState('bk-2026-0042');
+        return createElement(
+          'div',
+          null,
+          createElement(
+            'button',
+            {
+              type: 'button',
+              'data-testid': 'change-booking',
+              onClick: () => setBookingId('bk-3099-0042'),
+            },
+            'change booking',
+          ),
+          createElement(OperatorTireMeasureFlow, {
+            action: { ...baseAction, bookingId },
+          }),
+        );
+      }
+
+      const view = renderWithLocale('en', createElement(StatefulFlowHost));
+      cleanup = view.cleanup;
+      await act(async () => {
+        await Promise.resolve();
+      });
+      await advanceToStep(view.container, 'context');
+      const firstNote = findNoteTextarea(view.container).value;
+
+      await act(async () => {
+        (document.querySelector('[data-testid="change-booking"]') as HTMLButtonElement).click();
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+      await advanceToStep(view.container, 'context');
+
+      expect(findNoteTextarea(view.container).value).not.toBe(firstNote);
+      expect(findNoteTextarea(view.container).value).toContain('bk-3099-');
     });
   });
 

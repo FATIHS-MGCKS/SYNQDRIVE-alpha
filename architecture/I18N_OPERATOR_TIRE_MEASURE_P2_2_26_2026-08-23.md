@@ -19,6 +19,8 @@
 
 `useLanguage().{t,locale}` → `OperatorActionSheets` (`tire-measure`) → `OperatorTireMeasureFlow`; `operator-tire-measure-i18n.ts` maps stable tire position IDs (`fl`/`fr`/`rl`/`rr`), step IDs, sources, and validation/plausibility codes to localized labels.
 
+Context initialization is keyed to action identity (vehicle/booking/prefill), **not** `locale`. Handover note prefix seeds once per action open; locale switches update presentation only.
+
 Reuses `common.close`.
 
 ## Machine freeze
@@ -43,7 +45,7 @@ PR **#1196** was superseded by clean recovery branch `cursor/p2226-operator-tire
 
 ## Tests
 
-`operator-tire-measure-localization.test.tsx`; `operatorTireMeasure.utils.test.ts`.
+`operator-tire-measure-localization.test.tsx` (EN/DE full-flow context + tread preservation on same-mount locale switch); `operatorTireMeasure.utils.test.ts`.
 
 ## Semantics
 

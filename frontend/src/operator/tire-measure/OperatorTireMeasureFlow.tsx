@@ -101,6 +101,8 @@ export function OperatorTireMeasureFlow({ action }: Props) {
         ? operatorTireMeasureHandoverNotePrefix(locale, action.bookingId)
         : '',
     }));
+    // `locale` is intentionally omitted: handover note seeds once per action identity.
+    // Locale switches must not reinitialize operator-editable context state.
   }, [
     action.vehicleId,
     action.prefilledTread,
@@ -108,7 +110,6 @@ export function OperatorTireMeasureFlow({ action }: Props) {
     action.sourceHint,
     action.bookingId,
     data.odometerKm,
-    locale,
   ]);
 
   useEffect(() => {
