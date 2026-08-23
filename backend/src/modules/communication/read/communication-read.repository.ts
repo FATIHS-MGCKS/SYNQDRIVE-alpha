@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   CommunicationChannel,
   CommunicationConversationStatus,
@@ -33,6 +33,9 @@ import {
   resolveCommunicationAttentionPreviewLimit,
 } from './communication-read.attention-preview';
 import type { CommunicationConversationListQueryDto } from './dto/communication-read-shared.dto';
+
+/** Hard cap for voice filter native ID resolution — prevents unbounded IN clauses. */
+export const COMMUNICATION_VOICE_FILTER_NATIVE_ID_LIMIT = 2_500;
 
 export interface CommunicationConversationSummaryCounts {
   totalUnreadMessages: number;
@@ -511,7 +514,16 @@ export class CommunicationReadRepository {
     const rows = await this.prisma.voiceConversation.findMany({
       where: voiceWhere,
       select: { id: true },
+      take: COMMUNICATION_VOICE_FILTER_NATIVE_ID_LIMIT + 1,
+      orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
     });
+
+    if (rows.length > COMMUNICATION_VOICE_FILTER_NATIVE_ID_LIMIT) {
+      throw new BadRequestException(
+        'Voice call filter matches too many calls; narrow direction, outcome, date range, or transcript filters.',
+      );
+    }
+
     return rows.map((row) => row.id);
   }
 }

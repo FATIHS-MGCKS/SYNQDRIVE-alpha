@@ -7,6 +7,8 @@ import type { UseCommunicationVoiceCallResult } from '../../../lib/communication
 interface CommunicationVoiceCallCardProps {
   voiceCall: UseCommunicationVoiceCallResult;
   conversationId: string;
+  canCreateTask?: boolean;
+  onOpenCreateTask?: () => void;
   onOpenAiActivity?: () => void;
 }
 
@@ -33,6 +35,8 @@ function speakerLabelKey(speaker: string) {
 export function CommunicationVoiceCallCard({
   voiceCall,
   conversationId,
+  canCreateTask = false,
+  onOpenCreateTask,
   onOpenAiActivity,
 }: CommunicationVoiceCallCardProps) {
   const { t } = useLanguage();
@@ -106,8 +110,10 @@ export function CommunicationVoiceCallCard({
             </p>
           ) : null}
 
-          {detail.errorMessage ? (
-            <p className="text-[10px] text-destructive">{detail.errorMessage}</p>
+          {detail.failureState ? (
+            <p role="alert" className="text-[10px] text-destructive">
+              {t('communication.voice.failureState.CALL_FAILED')}
+            </p>
           ) : null}
         </div>
 
@@ -124,33 +130,20 @@ export function CommunicationVoiceCallCard({
               {t('communication.voice.aiActivity')}
             </Button>
           ) : null}
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-7 px-2 text-[10px]"
-            disabled={voiceCall.creatingTask}
-            aria-busy={voiceCall.creatingTask}
-            onClick={() => void voiceCall.createTask()}
-            data-testid="communication-voice-create-task"
-          >
-            {voiceCall.creatingTask
-              ? t('communication.voice.createTaskLoading')
-              : t('communication.voice.createTask')}
-          </Button>
+          {canCreateTask && onOpenCreateTask ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-[10px]"
+              onClick={onOpenCreateTask}
+              data-testid="communication-voice-create-task"
+            >
+              {t('communication.voice.createTask')}
+            </Button>
+          ) : null}
         </div>
       </div>
-
-      {voiceCall.taskError ? (
-        <p role="alert" className="mt-2 text-[10px] text-destructive">
-          {t('communication.voice.createTaskError')}
-        </p>
-      ) : null}
-      {voiceCall.createdTaskId ? (
-        <p className="mt-2 text-[10px] text-emerald-700 dark:text-emerald-300">
-          {t('communication.voice.createTaskSuccess')}
-        </p>
-      ) : null}
 
       <div className="mt-2">
         <button
@@ -174,7 +167,7 @@ export function CommunicationVoiceCallCard({
         {voiceCall.transcriptExpanded ? (
           <div
             id={`communication-voice-transcript-${conversationId}`}
-            className="mt-2 max-h-56 overflow-y-auto rounded-md border border-border/50 bg-background/80 p-2"
+            className="mt-2 max-h-56 overflow-y-auto overflow-x-hidden rounded-md border border-border/50 bg-background/80 p-2"
             data-testid="communication-voice-transcript-panel"
           >
             {voiceCall.transcriptLoading ? (
@@ -190,7 +183,7 @@ export function CommunicationVoiceCallCard({
             ) : (
               <ul className="space-y-2">
                 {voiceCall.transcript?.segments.map((segment) => (
-                  <li key={segment.id} className="text-[10px] leading-relaxed">
+                  <li key={segment.id} className="text-[10px] leading-relaxed break-words">
                     <span
                       className={cn(
                         'mr-1.5 inline-flex rounded px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide',

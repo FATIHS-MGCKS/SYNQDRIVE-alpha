@@ -11,6 +11,8 @@ export type CommunicationVoiceCallOutcome =
   | 'FAILED'
   | 'ABANDONED';
 
+export type CommunicationVoiceCallFailureState = 'CALL_FAILED';
+
 export interface CommunicationVoiceCallDetailDto {
   callId: string;
   conversationId: string;
@@ -26,7 +28,7 @@ export interface CommunicationVoiceCallDetailDto {
   escalated: boolean;
   hasTranscript: boolean;
   transcriptAvailability: 'AVAILABLE' | 'TRANSCRIPT_UNAVAILABLE';
-  errorMessage?: string | null;
+  failureState?: CommunicationVoiceCallFailureState | null;
   maskedCallerNumber?: string | null;
   linkedTaskId?: string | null;
 }
@@ -35,9 +37,4 @@ export interface CommunicationVoiceCallTranscriptDto {
   callId: string;
   availability: 'AVAILABLE' | 'TRANSCRIPT_UNAVAILABLE';
   segments: CommunicationVoiceTranscriptSegment[];
-}
-
-export interface CommunicationVoiceCreateTaskResultDto {
-  taskId: string;
-  deduped: boolean;
 }

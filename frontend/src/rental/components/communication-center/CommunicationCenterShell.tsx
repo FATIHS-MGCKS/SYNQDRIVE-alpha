@@ -79,6 +79,7 @@ export function CommunicationCenterShell({
   const currentUserId = getStoredUser()?.id ?? null;
   const orgMembers = useCommunicationOrgMembers(orgId);
   const [inboxRefreshNonce, setInboxRefreshNonce] = useState(0);
+  const [aiActivityConversationId, setAiActivityConversationId] = useState<string | null>(null);
   const [state, setState] = useState<CommunicationCenterUrlState>(() =>
     mergeCommunicationCenterState({
       ...readCommunicationCenterStateFromUrl(
@@ -185,7 +186,12 @@ export function CommunicationCenterShell({
   }, [patchState]);
 
   const handlePrimaryTabChange = useCallback(
-    (primaryTab: CommunicationPrimaryTab) => {
+    (primaryTab: CommunicationPrimaryTab, options?: { aiActivityConversationId?: string | null }) => {
+      if (primaryTab === 'ai-activity') {
+        setAiActivityConversationId(options?.aiActivityConversationId ?? null);
+      } else {
+        setAiActivityConversationId(null);
+      }
       setState((current) => {
         const next = applyCommunicationPrimaryTabChange(current, primaryTab);
         syncCommunicationCenterStateToUrl(next);
@@ -420,6 +426,7 @@ export function CommunicationCenterShell({
           <CommunicationAiActivityPane
             orgId={orgId}
             enabled={aiActivityActive}
+            conversationId={aiActivityConversationId}
             onOpenConversation={handleOpenConversationFromAiActivity}
           />
         </div>
@@ -479,7 +486,9 @@ export function CommunicationCenterShell({
               hasContext={hasContext}
               onBack={() => handleMobilePane('inbox')}
               onOpenContext={handleOpenContext}
-              onOpenAiActivity={() => handlePrimaryTabChange('ai-activity')}
+              onOpenAiActivity={(conversationId) =>
+                handlePrimaryTabChange('ai-activity', { aiActivityConversationId: conversationId })
+              }
               onClearInvalidSelection={handleClearInvalidSelection}
             />
           </div>

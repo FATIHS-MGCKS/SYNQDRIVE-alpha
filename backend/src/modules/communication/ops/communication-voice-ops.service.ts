@@ -10,8 +10,6 @@ import {
   VoiceConversationStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { TasksService } from '@modules/tasks/tasks.service';
-import { TaskPermissionService } from '@modules/tasks/task-permission.service';
 import {
   extractConversationLinks,
   hasConversationTranscript,
@@ -21,14 +19,12 @@ import {
 import { CommunicationReadRepository } from '../read/communication-read.repository';
 import { CommunicationWriteScopeService } from '../write/communication-write-scope.service';
 import { CommunicationReplyError } from '../reply/communication-reply.errors';
-import type { CommunicationReplyActor } from '../reply/communication-reply.service';
 import { parseVoiceTranscript } from './communication-voice-transcript.util';
 import type {
   CommunicationVoiceCallDetailDto,
+  CommunicationVoiceCallFailureState,
   CommunicationVoiceCallTranscriptDto,
-  CommunicationVoiceCreateTaskResultDto,
 } from './communication-voice-ops.types';
-import type { CommunicationVoiceCreateTaskDto } from './dto/communication-voice-create-task.dto';
 
 @Injectable()
 export class CommunicationVoiceOpsService {
@@ -36,8 +32,6 @@ export class CommunicationVoiceOpsService {
     private readonly prisma: PrismaService,
     private readonly readRepository: CommunicationReadRepository,
     private readonly scope: CommunicationWriteScopeService,
-    private readonly tasks: TasksService,
-    private readonly taskPermissions: TaskPermissionService,
   ) {}
 
   async getVoiceCallDetail(
@@ -69,83 +63,6 @@ export class CommunicationVoiceOpsService {
       callId: native.id,
       availability: parsed.availability,
       segments: parsed.segments,
-    };
-  }
-
-  async createTaskFromCall(
-    organizationId: string,
-    conversationId: string,
-    actor: CommunicationReplyActor,
-    body: CommunicationVoiceCreateTaskDto,
-  ): Promise<CommunicationVoiceCreateTaskResultDto> {
-    const { canonical, native } = await this.requireScopedVoiceCall(
-      organizationId,
-      conversationId,
-      actor.userId,
-    );
-
-    await this.taskPermissions.assert({ id: actor.userId }, organizationId, 'tasks.create');
-
-    const links = extractConversationLinks(native.metadata);
-    const summary = native.summary?.trim() || null;
-    const startedLabel = native.startedAt.toLocaleDateString('de-DE');
-    const title =
-      body.title?.trim()
-      || `Follow-up: Sprachanruf ${startedLabel}`;
-    const descriptionParts = [
-      summary ? `Zusammenfassung: ${summary}` : null,
-      native.escalationReason ? `Eskalation: ${native.escalationReason}` : null,
-      `Kommunikation: ${canonical.id}`,
-    ].filter(Boolean);
-
-    const description =
-      body.description?.trim()
-      || descriptionParts.join('\n\n');
-
-    const dedupKey = body.idempotencyKey
-      ? `voice:cc-manual:${native.id}:${body.idempotencyKey}`
-      : undefined;
-
-    const existing = dedupKey
-      ? await this.prisma.orgTask.findFirst({
-          where: {
-            organizationId,
-            dedupKey,
-            status: { notIn: ['DONE', 'CANCELLED'] },
-          },
-          select: { id: true },
-        })
-      : null;
-
-    if (existing) {
-      return { taskId: existing.id, deduped: true };
-    }
-
-    const task = await this.tasks.createManualTask(
-      organizationId,
-      {
-        title,
-        description,
-        type: 'CUSTOMER_FOLLOWUP',
-        sourceType: 'MANUAL',
-        source: 'MANUAL',
-        priority: isConversationEscalated(native) ? 'HIGH' : 'NORMAL',
-        customerId: canonical.customerId ?? links.linkedCustomerId ?? undefined,
-        bookingId: canonical.bookingId ?? links.linkedBookingId ?? undefined,
-        vehicleId: canonical.vehicleId ?? links.linkedVehicleId ?? undefined,
-        dedupKey,
-        metadata: {
-          voiceConversationId: native.id,
-          communicationConversationId: canonical.id,
-          outcome: native.outcome,
-        },
-      },
-      actor.userId,
-    );
-
-    return {
-      taskId: (task as { id: string }).id,
-      deduped: false,
     };
   }
 
@@ -194,6 +111,16 @@ export class CommunicationVoiceOpsService {
     return row.nativeConversationId;
   }
 
+  private resolveFailureState(native: {
+    status: VoiceConversationStatus;
+    outcome: VoiceConversationOutcome;
+    errorMessage: string | null;
+  }): CommunicationVoiceCallFailureState | null {
+    if (native.errorMessage?.trim()) return 'CALL_FAILED';
+    if (native.status === 'FAILED' || native.outcome === 'FAILED') return 'CALL_FAILED';
+    return null;
+  }
+
   private mapVoiceCallDetail(
     conversationId: string,
     native: {
@@ -231,7 +158,7 @@ export class CommunicationVoiceOpsService {
       escalated: isConversationEscalated(native),
       hasTranscript,
       transcriptAvailability: transcriptParsed.availability,
-      errorMessage: native.errorMessage,
+      failureState: this.resolveFailureState(native),
       maskedCallerNumber: maskCallerNumber(native.callerNumber),
       linkedTaskId: links.taskId,
     };

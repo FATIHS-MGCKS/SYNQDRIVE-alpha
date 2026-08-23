@@ -3729,6 +3729,11 @@ export const de: Record<TranslationKey, string> = {
   'communication.voice.filters.hasTranscript': 'Mit Transkript',
   'communication.voice.filters.dateFrom': 'Von Datum',
   'communication.voice.filters.dateTo': 'Bis Datum',
+  'communication.voice.failureState.CALL_FAILED': 'Dieser Anruf ist fehlgeschlagen. Details sind nicht verfügbar.',
+  'communication.voice.taskPrefill.title': 'Sprachanruf-Nachverfolgung — {date}',
+  'communication.voice.taskPrefill.summaryLabel': 'Zusammenfassung',
+  'communication.voice.taskPrefill.escalationLabel': 'Eskalation',
+  'communication.voice.taskPrefill.communicationLabel': 'Kommunikation',
   'communication.channels.email.transactionalHint':
     'Transaktionale E-Mails sind in V1 nicht Teil des einheitlichen Gesprächsposteingangs.',
   'communication.channels.email.openSettings': 'E-Mail-Einstellungen öffnen',

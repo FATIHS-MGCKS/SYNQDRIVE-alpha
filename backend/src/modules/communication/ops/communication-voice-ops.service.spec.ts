@@ -1,28 +1,23 @@
 import { Test } from '@nestjs/testing';
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { CommunicationChannel } from '@prisma/client';
 import { CommunicationVoiceOpsService } from './communication-voice-ops.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CommunicationReadRepository } from '../read/communication-read.repository';
 import { CommunicationWriteScopeService } from '../write/communication-write-scope.service';
-import { TasksService } from '@modules/tasks/tasks.service';
-import { TaskPermissionService } from '@modules/tasks/task-permission.service';
 
 describe('CommunicationVoiceOpsService (C9.2)', () => {
   const orgId = 'org-1';
   const canonicalId = 'conv-canonical';
   const nativeId = 'voice-native';
-  const actor = { userId: 'user-1', displayName: 'Operator' };
+  const actorUserId = 'user-1';
 
   const prisma = {
     voiceConversation: { findFirst: jest.fn() },
     communicationConversation: { findFirst: jest.fn() },
-    orgTask: { findFirst: jest.fn() },
   };
   const readRepository = { findConversationById: jest.fn() };
   const scope = { assertConversationReadable: jest.fn() };
-  const tasks = { createManualTask: jest.fn() };
-  const taskPermissions = { assert: jest.fn() };
 
   let service: CommunicationVoiceOpsService;
 
@@ -56,9 +51,6 @@ describe('CommunicationVoiceOpsService (C9.2)', () => {
       metadata: {},
     });
     scope.assertConversationReadable.mockResolvedValue(undefined);
-    taskPermissions.assert.mockResolvedValue(undefined);
-    prisma.orgTask.findFirst.mockResolvedValue(null);
-    tasks.createManualTask.mockResolvedValue({ id: 'task-1' });
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -66,25 +58,49 @@ describe('CommunicationVoiceOpsService (C9.2)', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: CommunicationReadRepository, useValue: readRepository },
         { provide: CommunicationWriteScopeService, useValue: scope },
-        { provide: TasksService, useValue: tasks },
-        { provide: TaskPermissionService, useValue: taskPermissions },
       ],
     }).compile();
 
     service = moduleRef.get(CommunicationVoiceOpsService);
   });
 
-  it('returns normalized voice call detail without raw transcript', async () => {
-    const detail = await service.getVoiceCallDetail(orgId, canonicalId, actor.userId);
+  it('returns normalized voice call detail without raw transcript or provider error text', async () => {
+    const detail = await service.getVoiceCallDetail(orgId, canonicalId, actorUserId);
     expect(detail.callId).toBe(nativeId);
     expect(detail.summary).toBe('Customer booked pickup.');
     expect(detail.hasTranscript).toBe(true);
     expect(detail.maskedCallerNumber).toContain('***');
     expect(detail).not.toHaveProperty('transcript');
+    expect(detail).not.toHaveProperty('errorMessage');
+    expect(detail.failureState).toBeNull();
+  });
+
+  it('returns safe failure state instead of raw provider error text', async () => {
+    prisma.voiceConversation.findFirst.mockResolvedValue({
+      id: nativeId,
+      organizationId: orgId,
+      direction: 'INBOUND',
+      status: 'FAILED',
+      outcome: 'FAILED',
+      startedAt: new Date('2026-08-23T10:00:00.000Z'),
+      endedAt: null,
+      durationSeconds: null,
+      summary: null,
+      escalationReason: null,
+      transcript: null,
+      errorMessage: 'ElevenLabs stack trace with secret token',
+      callerNumber: null,
+      metadata: {},
+    });
+
+    const detail = await service.getVoiceCallDetail(orgId, canonicalId, actorUserId);
+    expect(detail.failureState).toBe('CALL_FAILED');
+    expect(detail).not.toHaveProperty('errorMessage');
+    expect(JSON.stringify(detail)).not.toContain('ElevenLabs');
   });
 
   it('returns normalized transcript segments', async () => {
-    const transcript = await service.getVoiceCallTranscript(orgId, canonicalId, actor.userId);
+    const transcript = await service.getVoiceCallTranscript(orgId, canonicalId, actorUserId);
     expect(transcript.availability).toBe('AVAILABLE');
     expect(transcript.segments[0]).toMatchObject({
       speaker: 'CUSTOMER',
@@ -99,45 +115,7 @@ describe('CommunicationVoiceOpsService (C9.2)', () => {
       channel: CommunicationChannel.WHATSAPP,
     });
     await expect(
-      service.getVoiceCallDetail(orgId, canonicalId, actor.userId),
+      service.getVoiceCallDetail(orgId, canonicalId, actorUserId),
     ).rejects.toBeInstanceOf(BadRequestException);
-  });
-
-  it('createTaskFromCall requires tasks.create permission', async () => {
-    taskPermissions.assert.mockRejectedValue(new ForbiddenException());
-    await expect(
-      service.createTaskFromCall(orgId, canonicalId, actor, {}),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(tasks.createManualTask).not.toHaveBeenCalled();
-  });
-
-  it('createTaskFromCall dedupes by idempotency key', async () => {
-    prisma.orgTask.findFirst.mockResolvedValue({ id: 'task-existing' });
-    const result = await service.createTaskFromCall(orgId, canonicalId, actor, {
-      idempotencyKey: 'idem-1',
-    });
-    expect(result).toEqual({ taskId: 'task-existing', deduped: true });
-    expect(tasks.createManualTask).not.toHaveBeenCalled();
-  });
-
-  it('createTaskFromCall creates manual task with communication provenance', async () => {
-    const result = await service.createTaskFromCall(orgId, canonicalId, actor, {
-      idempotencyKey: 'idem-2',
-      title: 'Call follow-up',
-    });
-    expect(result).toEqual({ taskId: 'task-1', deduped: false });
-    expect(tasks.createManualTask).toHaveBeenCalledWith(
-      orgId,
-      expect.objectContaining({
-        title: 'Call follow-up',
-        type: 'CUSTOMER_FOLLOWUP',
-        metadata: expect.objectContaining({
-          voiceConversationId: nativeId,
-          communicationConversationId: canonicalId,
-        }),
-        dedupKey: `voice:cc-manual:${nativeId}:idem-2`,
-      }),
-      actor.userId,
-    );
   });
 });

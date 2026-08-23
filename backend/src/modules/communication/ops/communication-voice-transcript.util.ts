@@ -40,6 +40,9 @@ const SPEAKER_ALIASES: Record<string, CommunicationVoiceTranscriptSpeaker> = {
 const REDACTED_FIELD_PATTERN =
   /(?:prompt|reasoning|tool|argument|payload|secret|token|authorization|api[_-]?key|signed[_-]?url|recording[_-]?url)/i;
 
+const STRUCTURED_PROVIDER_KEY_PATTERN =
+  /"(?:system_prompt|tool_arguments|tool_calls|raw_payload|signed_url|recording_url|authorization|api_key)"/i;
+
 export function normalizeVoiceTranscriptSpeaker(
   raw: unknown,
 ): CommunicationVoiceTranscriptSpeaker {
@@ -60,6 +63,28 @@ function sanitizeSegmentText(value: unknown): string | null {
     return `${trimmed.slice(0, 8_000)}…`;
   }
   return trimmed;
+}
+
+export function normalizeTranscriptTimestamp(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  const parsed = new Date(value.trim());
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  return parsed.toISOString();
+}
+
+function looksLikeStructuredProviderPayload(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return false;
+  if (STRUCTURED_PROVIDER_KEY_PATTERN.test(trimmed)) return true;
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      JSON.parse(trimmed);
+      return true;
+    } catch {
+      return true;
+    }
+  }
+  return false;
 }
 
 function segmentId(index: number): string {
@@ -96,10 +121,10 @@ function parseTranscriptObjectArray(
           : null;
     if (callStartedAt && timeInCall != null && Number.isFinite(timeInCall)) {
       occurredAt = new Date(callStartedAt.getTime() + timeInCall * 1000).toISOString();
-    } else if (typeof record.timestamp === 'string') {
-      occurredAt = record.timestamp;
-    } else if (typeof record.occurredAt === 'string') {
-      occurredAt = record.occurredAt;
+    } else {
+      occurredAt =
+        normalizeTranscriptTimestamp(record.timestamp)
+        ?? normalizeTranscriptTimestamp(record.occurredAt);
     }
 
     segments.push({
@@ -165,6 +190,7 @@ export function parseVoiceTranscript(
         if (segments.length > 0) {
           return { callId, availability: 'AVAILABLE', segments };
         }
+        return { callId, availability: 'TRANSCRIPT_UNAVAILABLE', segments: [] };
       }
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         const record = parsed as Record<string, unknown>;
@@ -176,14 +202,21 @@ export function parseVoiceTranscript(
           }
         }
       }
+      return { callId, availability: 'TRANSCRIPT_UNAVAILABLE', segments: [] };
     } catch {
-      // fall through to plain-text parsing
+      if (looksLikeStructuredProviderPayload(trimmed)) {
+        return { callId, availability: 'TRANSCRIPT_UNAVAILABLE', segments: [] };
+      }
     }
   }
 
   const lineSegments = parsePlainTranscriptLines(trimmed);
   if (lineSegments.length > 0) {
     return { callId, availability: 'AVAILABLE', segments: lineSegments };
+  }
+
+  if (looksLikeStructuredProviderPayload(trimmed)) {
+    return { callId, availability: 'TRANSCRIPT_UNAVAILABLE', segments: [] };
   }
 
   const fallback = sanitizeSegmentText(trimmed);

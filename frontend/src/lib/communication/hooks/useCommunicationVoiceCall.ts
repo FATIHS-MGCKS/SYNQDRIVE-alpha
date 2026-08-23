@@ -18,14 +18,10 @@ export interface UseCommunicationVoiceCallResult {
   detailLoading: boolean;
   transcriptLoading: boolean;
   transcriptExpanded: boolean;
-  creatingTask: boolean;
   detailError: string | null;
   transcriptError: string | null;
-  taskError: string | null;
-  createdTaskId: string | null;
   setTranscriptExpanded: (expanded: boolean) => void;
   loadTranscript: () => Promise<void>;
-  createTask: () => Promise<string | null>;
 }
 
 export function useCommunicationVoiceCall({
@@ -38,13 +34,9 @@ export function useCommunicationVoiceCall({
   const [detailLoading, setDetailLoading] = useState(false);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
   const [transcriptExpanded, setTranscriptExpanded] = useState(false);
-  const [creatingTask, setCreatingTask] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [transcriptError, setTranscriptError] = useState<string | null>(null);
-  const [taskError, setTaskError] = useState<string | null>(null);
-  const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
 
-  const idempotencyKeyRef = useRef<string | null>(null);
   const signature = communicationConversationSignature(orgId, conversationId);
 
   useEffect(() => {
@@ -53,9 +45,6 @@ export function useCommunicationVoiceCall({
     setTranscriptExpanded(false);
     setDetailError(null);
     setTranscriptError(null);
-    setTaskError(null);
-    setCreatedTaskId(null);
-    idempotencyKeyRef.current = null;
   }, [signature]);
 
   useEffect(() => {
@@ -122,51 +111,15 @@ export function useCommunicationVoiceCall({
     void loadTranscript();
   }, [loadTranscript, transcript, transcriptExpanded, transcriptLoading]);
 
-  const createTask = useCallback(async (): Promise<string | null> => {
-    if (!orgId || !conversationId || creatingTask) return null;
-    if (!idempotencyKeyRef.current) {
-      idempotencyKeyRef.current = crypto.randomUUID();
-    }
-    const requestSignature = signature;
-    setCreatingTask(true);
-    setTaskError(null);
-    try {
-      const result = await communicationClient.createVoiceCallTask(orgId, conversationId, {
-        idempotencyKey: idempotencyKeyRef.current,
-        title: callDetail?.summary
-          ? `Follow-up: ${callDetail.summary.slice(0, 80)}`
-          : undefined,
-      });
-      if (requestSignature !== communicationConversationSignature(orgId, conversationId)) {
-        return result.taskId;
-      }
-      setCreatedTaskId(result.taskId);
-      return result.taskId;
-    } catch {
-      if (requestSignature === communicationConversationSignature(orgId, conversationId)) {
-        setTaskError('create_failed');
-      }
-      return null;
-    } finally {
-      if (requestSignature === communicationConversationSignature(orgId, conversationId)) {
-        setCreatingTask(false);
-      }
-    }
-  }, [callDetail?.summary, conversationId, creatingTask, orgId, signature]);
-
   return {
     callDetail,
     transcript,
     detailLoading,
     transcriptLoading,
     transcriptExpanded,
-    creatingTask,
     detailError,
     transcriptError,
-    taskError,
-    createdTaskId,
     setTranscriptExpanded,
     loadTranscript,
-    createTask,
   };
 }

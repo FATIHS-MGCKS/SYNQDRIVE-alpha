@@ -10,20 +10,9 @@ import { pl } from '../../i18n/translations/pl';
 import { cs } from '../../i18n/translations/cs';
 import type { Locale } from '../../i18n/LanguageContext';
 
-const C92_VOICE_KEYS = [
-  'communication.voice.callCardLabel',
-  'communication.voice.showTranscript',
-  'communication.voice.hideTranscript',
-  'communication.voice.transcriptUnavailable',
-  'communication.voice.createTask',
-  'communication.voice.aiActivity',
-  'communication.voice.direction.inbound',
-  'communication.voice.direction.outbound',
-  'communication.voice.filters.directionAll',
-  'communication.voice.filters.outcomeAll',
-  'communication.voice.filters.escalatedOnly',
-  'communication.voice.filters.hasTranscript',
-] as const satisfies readonly TranslationKey[];
+const C92_VOICE_KEYS = Object.keys(en).filter((key) =>
+  key.startsWith('communication.voice.'),
+) as TranslationKey[];
 
 const LOCALES: Record<Locale, Record<TranslationKey, string>> = {
   en,
@@ -36,8 +25,15 @@ const LOCALES: Record<Locale, Record<TranslationKey, string>> = {
   cs,
 };
 
+const NON_ENGLISH_PLACEHOLDER_LOCALES: Locale[] = ['fr', 'nl', 'es', 'it', 'pl', 'cs'];
+
+function englishPlaceholderMatches(locale: Locale, key: TranslationKey): boolean {
+  return LOCALES[locale][key] === en[key];
+}
+
 describe('communication center C9.2 voice i18n', () => {
   it('defines every C9.2 voice key in English baseline', () => {
+    expect(C92_VOICE_KEYS.length).toBeGreaterThan(30);
     for (const key of C92_VOICE_KEYS) {
       expect(en[key]).toBeTruthy();
     }
@@ -48,6 +44,15 @@ describe('communication center C9.2 voice i18n', () => {
       for (const key of C92_VOICE_KEYS) {
         expect(table[key]).toBeTruthy();
       }
+    });
+  }
+
+  for (const locale of NON_ENGLISH_PLACEHOLDER_LOCALES) {
+    it(`does not keep wholesale English placeholder blocks for ${locale}`, () => {
+      const englishMatches = C92_VOICE_KEYS.filter((key) => englishPlaceholderMatches(locale, key));
+      const matchRatio = englishMatches.length / C92_VOICE_KEYS.length;
+      expect(matchRatio).toBeLessThan(0.5);
+      expect(englishMatches).not.toEqual(C92_VOICE_KEYS);
     });
   }
 });

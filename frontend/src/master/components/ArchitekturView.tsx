@@ -1169,7 +1169,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
     apis: [
       { label: 'Voice call detail', detail: 'GET .../communication/conversations/:id/voice-call — metadata + summary, scoped via native VoiceConversation' },
       { label: 'Transcript', detail: 'GET .../voice-call/transcript — normalized segments CUSTOMER|AI_AGENT|HUMAN_OPERATOR; TRANSCRIPT_UNAVAILABLE when purged' },
-      { label: 'Task from call', detail: 'POST .../voice-call/create-task — TasksService.createManualTask + tasks.create + idempotencyKey dedupe' },
+      { label: 'Task from call', detail: 'TasksNewTaskDialog prefill → POST /tasks (tasks.create) after operator review; metadata voiceConversationId + communicationConversationId' },
       { label: 'Voice filters', detail: 'GET conversations?callDirection&callOutcome&callHasTranscript&callEscalatedOnly — VoiceConversation join' },
       { label: 'Sync policy', detail: 'No manual sync in CC; legacy sync remains Channels/Voice troubleshooting only' },
     ],

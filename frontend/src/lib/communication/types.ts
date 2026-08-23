@@ -319,7 +319,7 @@ export interface CommunicationVoiceCallDetail {
   escalated: boolean;
   hasTranscript: boolean;
   transcriptAvailability: 'AVAILABLE' | 'TRANSCRIPT_UNAVAILABLE';
-  errorMessage?: string | null;
+  failureState?: 'CALL_FAILED' | null;
   maskedCallerNumber?: string | null;
   linkedTaskId?: string | null;
 }
@@ -330,7 +330,3 @@ export interface CommunicationVoiceCallTranscript {
   segments: CommunicationVoiceTranscriptSegment[];
 }
 
-export interface CommunicationVoiceCreateTaskResult {
-  taskId: string;
-  deduped: boolean;
-}

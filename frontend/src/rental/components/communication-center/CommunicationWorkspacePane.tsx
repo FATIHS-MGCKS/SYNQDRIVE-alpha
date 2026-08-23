@@ -1,5 +1,5 @@
 import { ArrowLeft, MoreHorizontal, PanelRightOpen } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../../../components/ui/button';
 import {
   DropdownMenu,
@@ -23,6 +23,12 @@ import { useCommunicationAiSuggestion } from '../../../lib/communication/hooks/u
 import { useCommunicationQuickActions } from '../../../lib/communication/hooks/useCommunicationQuickActions';
 import { useCommunicationSendableTemplates } from '../../../lib/communication/hooks/useCommunicationSendableTemplates';
 import { useCommunicationVoiceCall } from '../../../lib/communication/hooks/useCommunicationVoiceCall';
+import { buildCommunicationVoiceTaskPrefill } from '../../../lib/communication/communication-voice-task-prefill';
+import { api, type CreateTaskPayload, type Station } from '../../../lib/api';
+import { useFleetVehicles } from '../../FleetContext';
+import { useRentalOrg } from '../../RentalContext';
+import type { ManualTaskFormState } from '../../lib/task-create-form.utils';
+import { TasksNewTaskDialog } from '../tasks/TasksNewTaskDialog';
 import { CommunicationAssigneeControl } from './CommunicationAssigneeControl';
 import { resolveCommunicationConversationActions } from '../../../lib/communication/communication-actions';
 import type { CommunicationClientErrorCode } from '../../../lib/communication/communication-client';
@@ -53,7 +59,7 @@ interface CommunicationWorkspacePaneProps {
   hasContext?: boolean;
   onBack?: () => void;
   onOpenContext?: () => void;
-  onOpenAiActivity?: () => void;
+  onOpenAiActivity?: (conversationId: string) => void;
   onClearInvalidSelection?: () => void;
 }
 
@@ -140,7 +146,15 @@ export function CommunicationWorkspacePane({
   onOpenAiActivity,
   onClearInvalidSelection,
 }: CommunicationWorkspacePaneProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
+  const { hasPermission } = useRentalOrg();
+  const { fleetVehicles } = useFleetVehicles();
+  const canCreateTasks = hasPermission('tasks', 'write');
+  const [voiceTaskDialogOpen, setVoiceTaskDialogOpen] = useState(false);
+  const [voiceTaskPrefillKey, setVoiceTaskPrefillKey] = useState<string | null>(null);
+  const [voiceTaskInitialForm, setVoiceTaskInitialForm] = useState<Partial<ManualTaskFormState>>({});
+  const [voiceTaskPayloadExtras, setVoiceTaskPayloadExtras] = useState<Partial<CreateTaskPayload>>({});
+  const [orgStations, setOrgStations] = useState<Station[]>([]);
   const hasSelection = Boolean(selectedConversationId);
   const conversation = conversationState?.conversation ?? null;
   const detailLoading = conversationState?.detailLoading ?? false;
@@ -269,6 +283,59 @@ export function CommunicationWorkspacePane({
     conversationId: selectedConversationId,
     enabled: conversation?.channel === 'VOICE',
   });
+
+  useEffect(() => {
+    if (!orgId || !voiceTaskDialogOpen) return;
+    let cancelled = false;
+    void api.stations
+      .list(orgId)
+      .then((stations) => {
+        if (!cancelled) setOrgStations(stations);
+      })
+      .catch(() => {
+        if (!cancelled) setOrgStations([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, voiceTaskDialogOpen]);
+
+  const localeTag = useMemo(() => {
+    switch (locale) {
+      case 'de':
+        return 'de-DE';
+      case 'fr':
+        return 'fr-FR';
+      case 'nl':
+        return 'nl-NL';
+      case 'es':
+        return 'es-ES';
+      case 'it':
+        return 'it-IT';
+      case 'pl':
+        return 'pl-PL';
+      case 'cs':
+        return 'cs-CZ';
+      default:
+        return 'en-US';
+    }
+  }, [locale]);
+
+  const openVoiceTaskDialog = () => {
+    if (!conversation || !voiceCall.callDetail || !canCreateTasks) return;
+    const prefill = buildCommunicationVoiceTaskPrefill(
+      {
+        callDetail: voiceCall.callDetail,
+        conversation,
+        t: (key, params) => t(key as Parameters<typeof t>[0], params),
+      },
+      localeTag,
+    );
+    setVoiceTaskInitialForm(prefill.initialForm);
+    setVoiceTaskPayloadExtras(prefill.payloadExtras);
+    setVoiceTaskPrefillKey(prefill.prefillKey);
+    setVoiceTaskDialogOpen(true);
+  };
 
   return (
     <div
@@ -453,7 +520,11 @@ export function CommunicationWorkspacePane({
               <CommunicationVoiceCallCard
                 voiceCall={voiceCall}
                 conversationId={conversation.id}
-                onOpenAiActivity={onOpenAiActivity}
+                canCreateTask={canCreateTasks}
+                onOpenCreateTask={openVoiceTaskDialog}
+                onOpenAiActivity={
+                  onOpenAiActivity ? () => onOpenAiActivity(conversation.id) : undefined
+                }
               />
             ) : null}
             <div className="min-h-0 flex-1 overflow-hidden">
@@ -540,6 +611,24 @@ export function CommunicationWorkspacePane({
           onRemoveAttachment={attachmentDraftState?.removeAttachment}
         />
       ) : null}
+
+      <TasksNewTaskDialog
+        open={voiceTaskDialogOpen}
+        onOpenChange={setVoiceTaskDialogOpen}
+        orgId={orgId}
+        fleetVehicles={fleetVehicles}
+        orgMembers={(orgMembers?.members ?? []).map((member) => ({
+          id: member.id,
+          name: member.displayName,
+        }))}
+        orgStations={orgStations}
+        initialForm={voiceTaskInitialForm}
+        taskPayloadExtras={voiceTaskPayloadExtras}
+        prefillKey={voiceTaskPrefillKey ?? undefined}
+        onCreated={() => {
+          setVoiceTaskDialogOpen(false);
+        }}
+      />
     </div>
   );
 }

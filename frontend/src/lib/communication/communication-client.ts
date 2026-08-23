@@ -168,12 +168,4 @@ export const communicationClient = {
   getVoiceCallTranscript(orgId: string, conversationId: string) {
     return wrap(() => api.communication.getVoiceCallTranscript(orgId, conversationId));
   },
-
-  createVoiceCallTask(
-    orgId: string,
-    conversationId: string,
-    body?: { title?: string; description?: string; idempotencyKey?: string },
-  ) {
-    return wrap(() => api.communication.createVoiceCallTask(orgId, conversationId, body));
-  },
 };

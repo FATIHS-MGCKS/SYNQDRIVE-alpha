@@ -38,12 +38,14 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
     id: 'communication-center-c9-2-voice-ops-2026-08-23',
     version: '4.9.941',
-    title: 'Communication Center C9.2 — Voice operations parity',
+    title: 'Communication Center C9.2 — Voice operations parity (final hardening)',
     summary: [
       'Canonical voice call card: summary, direction, duration, escalation, lazy transcript expansion.',
-      'Voice ops API: GET voice-call, GET voice-call/transcript, POST voice-call/create-task (TasksService + idempotency).',
-      'Server-side Voice inbox filters: callDirection, callOutcome, callHasTranscript, callEscalatedOnly, call-date range.',
-      'No manual ElevenLabs sync in CC — classified SUPERSEDED; webhook/background reconciliation remains authority.',
+      'Voice ops API: GET voice-call, GET voice-call/transcript; safe failureState; transcript redaction.',
+      'Reviewed task-from-call via TasksNewTaskDialog → canonical POST /tasks (tasks.create).',
+      'Server-side Voice inbox filters with 2500-ID bound; PostgreSQL integration tests.',
+      'All governed locales: native communication.voice.* translations.',
+      'No manual ElevenLabs sync in CC — classified SUPERSEDED.',
     ],
     reason: 'Close remaining C9 Voice operational gaps (transcript, summary, filters, task-from-call) without absorbing C10 specialized Voice surfaces.',
     previousBehavior:

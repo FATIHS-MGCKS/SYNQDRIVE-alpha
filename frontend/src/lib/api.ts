@@ -4367,15 +4367,6 @@ export const api = {
       get<import('./communication/types').CommunicationVoiceCallTranscript>(
         `/organizations/${orgId}/communication/conversations/${conversationId}/voice-call/transcript`,
       ),
-    createVoiceCallTask: (
-      orgId: string,
-      conversationId: string,
-      body?: { title?: string; description?: string; idempotencyKey?: string },
-    ) =>
-      post<import('./communication/types').CommunicationVoiceCreateTaskResult>(
-        `/organizations/${orgId}/communication/conversations/${conversationId}/voice-call/create-task`,
-        body ?? {},
-      ),
     uploadAttachment: async (orgId: string, conversationId: string, file: File) => {
       const form = new FormData();
       form.append('file', file);

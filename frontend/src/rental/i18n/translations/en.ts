@@ -3732,6 +3732,11 @@ export const en = {
   'communication.voice.filters.hasTranscript': 'Has transcript',
   'communication.voice.filters.dateFrom': 'From date',
   'communication.voice.filters.dateTo': 'To date',
+  'communication.voice.failureState.CALL_FAILED': 'This call failed. Details are not available.',
+  'communication.voice.taskPrefill.title': 'Voice follow-up — {date}',
+  'communication.voice.taskPrefill.summaryLabel': 'Summary',
+  'communication.voice.taskPrefill.escalationLabel': 'Escalation',
+  'communication.voice.taskPrefill.communicationLabel': 'Communication',
   'communication.channels.email.transactionalHint':
     'Transactional email is not part of the unified conversations inbox in V1.',
   'communication.channels.email.openSettings': 'Open email settings',

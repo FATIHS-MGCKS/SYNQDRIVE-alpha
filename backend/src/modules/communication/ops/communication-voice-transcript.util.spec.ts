@@ -1,5 +1,6 @@
 import {
   assertTranscriptRedaction,
+  normalizeTranscriptTimestamp,
   normalizeVoiceTranscriptSpeaker,
   parseVoiceTranscript,
 } from './communication-voice-transcript.util';
@@ -58,5 +59,30 @@ describe('communication-voice-transcript.util', () => {
       { id: 'seg-1', speaker: 'CUSTOMER', text: 'Hello' },
       { id: 'seg-2', speaker: 'AI_AGENT', text: 'Hi there' },
     ]);
+  });
+
+  it('rejects malformed provider JSON instead of echoing raw payload', () => {
+    const raw = '{"system_prompt":"secret","tool_arguments":{"token":"x"},"message":"leak"}';
+    const result = parseVoiceTranscript('call-1', raw);
+    expect(result.availability).toBe('TRANSCRIPT_UNAVAILABLE');
+    expect(result.segments).toEqual([]);
+    expect(JSON.stringify(result)).not.toContain('system_prompt');
+  });
+
+  it('omits invalid transcript timestamps', () => {
+    const raw = JSON.stringify([
+      { role: 'user', message: 'Hello', timestamp: 'not-a-date' },
+      { role: 'agent', message: 'Hi', occurredAt: '2026-08-23T10:00:05.000Z' },
+    ]);
+    const result = parseVoiceTranscript('call-1', raw);
+    expect(result.segments[0]?.occurredAt).toBeUndefined();
+    expect(result.segments[1]?.occurredAt).toBe('2026-08-23T10:00:05.000Z');
+  });
+
+  it('normalizes valid ISO timestamps only', () => {
+    expect(normalizeTranscriptTimestamp('2026-08-23T10:00:00.000Z')).toBe(
+      '2026-08-23T10:00:00.000Z',
+    );
+    expect(normalizeTranscriptTimestamp('garbage')).toBeUndefined();
   });
 });
