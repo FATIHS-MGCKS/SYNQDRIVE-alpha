@@ -59,7 +59,7 @@ export const DASHBOARD_LAYOUT = {
   /** Shared outer surface for Control Center header + embedded KPI strip. */
   controlCenterCard: 'surface-premium !rounded-[16px] overflow-hidden',
   controlCenterCardPadding: 'px-4 py-4 sm:p-5 lg:p-6',
-  controlCenterKpiSection: 'mt-4 border-t border-border/35 pt-4 sm:mt-5 sm:pt-5',
+  controlCenterKpiSection: 'mt-3 sm:mt-3.5',
 } as const;
 
 export type DashboardPanelTier = 'primary' | 'secondary' | 'tertiary';
