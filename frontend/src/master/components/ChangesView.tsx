@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-final-gate-recheck-post-c13-0-2026-08-23',
+    version: '4.9.944',
+    title: 'Communication Center — C9–C12 final gate OPEN (post-#1225)',
+    summary: [
+      'Tiny gate recheck on main @ 894004a2 after merged PR #1225.',
+      'link_vehicle UNSAFE_DUPLICATE_AUTHORITY resolved via CommunicationContextLinkService.',
+      'C11 PASS; Final C9–C12 authority PASS; C13 entry gate OPEN.',
+      'PR #1223 historical BLOCKED verdict preserved; gate status superseded only.',
+    ],
+    reason: 'Confirm sole blocking defect from final C9–C12 re-signoff is fixed before C13.1+.',
+    previousBehavior: 'C13 entry gate BLOCKED pending link_vehicle canonical authority hotfix.',
+    details: 'architecture/COMMUNICATION_CENTER_FINAL_C9_C12_GATE_RECHECK_2026_08.md',
+    affectsArchitecture: true,
+    module: 'Communication',
+    createdAt: '2026-08-23T22:55:00.000Z',
+  },
+  {
     id: 'communication-center-c13-0-link-vehicle-authority-2026-08-23',
     version: '4.9.943',
     title: 'Communication Center C13.0 — link_vehicle canonical authority hotfix',

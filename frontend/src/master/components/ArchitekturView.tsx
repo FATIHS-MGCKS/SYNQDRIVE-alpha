@@ -1163,13 +1163,24 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center C9–C12 Final Gate (V4.9.944)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-positive)]',
+    apis: [
+      { label: 'C13 gate', detail: 'OPEN — post-#1225 tiny recheck; link_vehicle authority resolved' },
+      { label: 'Historical', detail: 'PR #1223 pre-hotfix audit BLOCKED on link_vehicle (correct at time)' },
+      { label: 'C9–C12', detail: 'PASS — C11 gap closed by CommunicationContextLinkService (#1225)' },
+      { label: 'Doc', detail: 'architecture/COMMUNICATION_CENTER_FINAL_C9_C12_GATE_RECHECK_2026_08.md' },
+    ],
+  },
+  {
     name: 'Communication Center C13.0 — link_vehicle authority (V4.9.943)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-positive)]',
     apis: [
       { label: 'Hotfix', detail: 'link_vehicle → CommunicationContextLinkService — canonical CommunicationConversation.vehicleId + native WhatsApp convergence in one transaction' },
       { label: 'Authority', detail: 'Booking-derived vehicleId; tenant validation; conflict if canonical already linked to different vehicle; idempotent replay' },
-      { label: 'Gate', detail: 'Resolves C9–C12 re-signoff blocker (PR #1223); pending tiny gate re-check after merge' },
+      { label: 'Gate', detail: 'Merged #1225 — blocker resolved; gate OPEN per V4.9.944 recheck' },
       { label: 'Doc', detail: 'architecture/COMMUNICATION_CENTER_C13_0_LINK_VEHICLE_AUTHORITY_HOTFIX.md' },
     ],
   },
