@@ -1201,16 +1201,16 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
-    name: 'Communication Center C9–C12 Parity Sign-Off (V4.9.938)',
+    name: 'Communication Center Final C9–C12 Re-Signoff (V4.9.942)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-watch)]',
     apis: [
-      { label: 'C13 gate', detail: 'MULTIPLE PARITY GAPS — C9 WhatsApp/Voice ops + C10 Channels/Email/Automations not complete' },
-      { label: 'C11/C12', detail: 'PASS — C11.1–C11.5 merged; C12 satisfied by C8.5 CommunicationDashboardWidget' },
-      { label: 'C9 gaps', detail: 'Legacy WA inbox: AI composer, templates, quick actions, intent filters; Legacy Voice: transcript, summary, sync, task-from-call' },
-      { label: 'C10 gaps', detail: 'No CC Channels IA; Email + Automations lack deep-links; WA templates + Voice analytics/onboarding legacy-only' },
-      { label: 'SMS', detail: 'Structural PASS — read-only config, outbound blocked until sent.dm credentials' },
-      { label: 'Doc', detail: 'architecture/COMMUNICATION_CENTER_C9_C12_PARITY_SIGNOFF_2026_08.md' },
+      { label: 'C13 gate', detail: 'BLOCKED — link_vehicle quick action writes native WhatsAppConversation.vehicleId without updating CommunicationConversation (UNSAFE_DUPLICATE_AUTHORITY)' },
+      { label: 'C9/C10/C12', detail: 'PASS post #1217 C9.1, #1220 C9.2, #1214 C10 — operational + channels + dashboard parity' },
+      { label: 'C11', detail: 'GAP — single authority defect on link_vehicle; ReplyCommand/idempotency/handoff otherwise PASS' },
+      { label: 'Legacy nav', detail: 'whatsapp-business / ai-voice-assistant retained — OPERATIONAL_SUPERSEDED; no canonical CTA routes to legacy inbox' },
+      { label: 'Voice recording', detail: 'SPECIALIZED_RETAINED — deferred; sync SUPERSEDED for CC correctness' },
+      { label: 'Doc', detail: 'architecture/COMMUNICATION_CENTER_FINAL_C9_C12_RESIGNOFF_2026_08.md' },
     ],
   },
   {
