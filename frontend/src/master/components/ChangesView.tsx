@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-final-c9-c12-resignoff-2026-08-23',
+    version: '4.9.942',
+    title: 'Communication Center — Final C9–C12 authority re-signoff (pre-C13 gate)',
+    summary: [
+      'Independent audit on main @ 9e42a590 after #1214 C10, #1217 C9.1, #1220 C9.2.',
+      'C9 WhatsApp/Voice, C10 Channels, C12 Dashboard: PASS.',
+      'C11 GAP: link_vehicle quick action unsafe native write (vehicleId drift).',
+      'C13 entry gate BLOCKED until link_vehicle routes through canonical context authority.',
+      'Legacy whatsapp-business / ai-voice-assistant classified OPERATIONAL_SUPERSEDED — no essential fallback.',
+    ],
+    reason: 'Pre-C13 release gate: verify authority/parity after C9.1/C9.2; document remaining gaps without product changes.',
+    previousBehavior:
+      'Prior sign-off (V4.9.938) predated C9.1/C9.2 and marked C9/C10 as GAP.',
+    details: 'architecture/COMMUNICATION_CENTER_FINAL_C9_C12_RESIGNOFF_2026_08.md',
+    affectsArchitecture: true,
+    module: 'Communication',
+    createdAt: '2026-08-23T22:05:00.000Z',
+  },
+  {
     id: 'communication-center-c9-2-voice-ops-2026-08-23',
     version: '4.9.941',
     title: 'Communication Center C9.2 — Voice operations parity (final hardening)',
