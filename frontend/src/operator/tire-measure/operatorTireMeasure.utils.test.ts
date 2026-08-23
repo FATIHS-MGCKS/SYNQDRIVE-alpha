@@ -23,14 +23,15 @@ describe('operator tire measurement utils', () => {
     const warnings = deriveTirePlausibilityWarnings({ fl: '6', fr: '3', rl: '', rr: '' });
     expect(warnings.some((w) => w.id === 'front-axle-diff')).toBe(true);
     const diffWarning = warnings.find((w) => w.id === 'front-axle-diff');
-    expect(diffWarning?.message).toContain('3.0 mm');
+    expect(diffWarning?.code).toBe('FRONT_AXLE_DIFF');
+    expect(diffWarning?.params.diff).toBe(3);
     expect(AXLE_DIFF_WARN_MM).toBe(2);
   });
 
   it('requires at least one tread value on tread step', () => {
-    expect(validateTireMeasureStep('tread', { fl: '', fr: '', rl: '', rr: '' }, { measuredAt: '', odometerKm: '' })).toContain(
-      'Profiltiefe',
-    );
+    expect(
+      validateTireMeasureStep('tread', { fl: '', fr: '', rl: '', rr: '' }, { measuredAt: '', odometerKm: '' }),
+    ).toBe('TREAD_REQUIRED');
     expect(
       validateTireMeasureStep('tread', { fl: '4', fr: '', rl: '', rr: '' }, { measuredAt: '', odometerKm: '' }),
     ).toBeNull();

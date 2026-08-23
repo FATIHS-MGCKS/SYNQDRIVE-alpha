@@ -352,6 +352,15 @@ const P225_ENFORCE_CLEAN_EXACT = [
   'operator/verification/operatorPickupCheckPayload.ts',
 ];
 
+const P226_ENFORCE_CLEAN_EXACT = [
+  'operator/tire-measure/OperatorTireMeasureFlow.tsx',
+  'operator/tire-measure/OperatorTireMeasureTreadGrid.tsx',
+  'operator/tire-measure/operatorTireMeasure.utils.ts',
+  'operator/tire-measure/operatorTireMeasurePayload.ts',
+  'operator/tire-measure/useOperatorTireMeasureData.ts',
+  'operator/lib/operator-tire-measure-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -450,6 +459,10 @@ function isP224EnforceCleanPath(relPath: string): boolean {
 
 function isP225EnforceCleanPath(relPath: string): boolean {
   return P225_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP226EnforceCleanPath(relPath: string): boolean {
+  return P226_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -703,6 +716,25 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP225EnforceCleanPath(finding.file),
     );
     expect(p225Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.26 enforce-clean findings to Operator Tire Measure only', () => {
+    const p226Debt = inventory.findings.filter((finding) =>
+      isP226EnforceCleanPath(finding.file),
+    );
+    expect(p226Debt).toHaveLength(0);
+  });
+
+  it('keeps operator-tire-measure-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/lib/operator-tire-measure-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('operatorTireMeasurePositionShort');
+    expect(source).not.toMatch(/'Profiltiefe'/);
+    expect(source).not.toMatch(/locale === 'de'/);
+    expect(source).not.toMatch(/de-DE/);
   });
 
   it('keeps operator-pickup-check-i18n.ts on canonical translation keys', () => {

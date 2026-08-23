@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, Sparkles, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  formatOperatorTireOdometer,
+  operatorTireMeasureHandoverNotePrefix,
+  operatorTireMeasureSeasonLabel,
+  operatorTireMeasureSourceLabel,
+  operatorTireMeasureStepLabel,
+  operatorTireMeasureValidationMessage,
+  OPERATOR_TIRE_MEASURE_SOURCE_OPTIONS,
+  OPERATOR_TIRE_MEASURE_WHEELS,
+  operatorTireMeasurePlausibilityMessage,
+  operatorTireMeasurePositionShort,
+} from '../lib/operator-tire-measure-i18n';
 import type { OperatorSheetAction } from '../lib/operatorTypes';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useFleetVehicles } from '../../rental/FleetContext';
@@ -16,34 +29,19 @@ import {
 import {
   OPERATOR_TIRE_MEASURE_STEPS,
   type OperatorTireContextForm,
-  type OperatorTireMeasureSource,
   type OperatorTireMeasureStep,
+  type OperatorTireMeasureValidationCode,
   type OperatorTireTreadForm,
 } from './operatorTireMeasure.types';
 import {
   defaultMeasuredAtLocal,
   deriveTirePlausibilityWarnings,
   formatTreadInput,
-  SEASON_LABELS,
   validateTireMeasureStep,
 } from './operatorTireMeasure.utils';
 import { useOperatorTireMeasureData } from './useOperatorTireMeasureData';
 
 type TireMeasureAction = Extract<OperatorSheetAction, { type: 'tire-measure' }>;
-
-const STEP_LABELS: Record<OperatorTireMeasureStep, string> = {
-  vehicle: 'Fahrzeug',
-  set: 'Reifenset',
-  tread: 'Profil',
-  context: 'Kontext',
-  review: 'Prüfen',
-};
-
-const SOURCE_OPTIONS: { value: OperatorTireMeasureSource; label: string }[] = [
-  { value: 'manual', label: 'Manuell' },
-  { value: 'workshop', label: 'Werkstattbericht' },
-  { value: 'ai_confirmed', label: 'AI Upload / Dokument' },
-];
 
 function stepIndex(step: OperatorTireMeasureStep): number {
   return OPERATOR_TIRE_MEASURE_STEPS.indexOf(step);
@@ -54,11 +52,12 @@ interface Props {
 }
 
 export function OperatorTireMeasureFlow({ action }: Props) {
+  const { t, locale } = useLanguage();
   const isTablet = useOperatorTabletLayout();
   const { closeSheet, openSheet, triggerRefresh } = useOperatorShell();
   const { orgId } = useRentalOrg();
   const { reloadHealth } = useFleetVehicles();
-  const data = useOperatorTireMeasureData(action.vehicleId);
+  const data = useOperatorTireMeasureData(action.vehicleId, locale);
 
   const [step, setStep] = useState<OperatorTireMeasureStep>('vehicle');
   const [selectedSetupId, setSelectedSetupId] = useState<string>('__unknown__');
@@ -70,7 +69,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
     workshopName: '',
     note: '',
   });
-  const [stepError, setStepError] = useState<string | null>(null);
+  const [stepError, setStepError] = useState<OperatorTireMeasureValidationCode | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -98,7 +97,9 @@ export function OperatorTireMeasureFlow({ action }: Props) {
             : '',
       source: action.sourceHint ?? 'manual',
       workshopName: '',
-      note: action.bookingId ? `Handover Buchung ${action.bookingId.slice(0, 8)}…` : '',
+      note: action.bookingId
+        ? operatorTireMeasureHandoverNotePrefix(locale, action.bookingId)
+        : '',
     }));
   }, [
     action.vehicleId,
@@ -107,6 +108,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
     action.sourceHint,
     action.bookingId,
     data.odometerKm,
+    locale,
   ]);
 
   useEffect(() => {
@@ -118,8 +120,8 @@ export function OperatorTireMeasureFlow({ action }: Props) {
   const vehicleLabel = useMemo(() => {
     const v = data.vehicle;
     if (!v) return action.vehicleLabel;
-    return `${v.model ?? 'Fahrzeug'} · ${v.license ?? '—'}`;
-  }, [data.vehicle, action.vehicleLabel]);
+    return `${v.model ?? t('operator.tireMeasure.fallback.vehicle')} · ${v.license ?? '—'}`;
+  }, [data.vehicle, action.vehicleLabel, t]);
 
   const plate = data.vehicle?.license ?? action.vehicleLabel.split('·').pop()?.trim() ?? '—';
 
@@ -167,15 +169,14 @@ export function OperatorTireMeasureFlow({ action }: Props) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const setupId =
-        selectedSetupId === '__unknown__' ? null : selectedSetupId;
+      const setupId = selectedSetupId === '__unknown__' ? null : selectedSetupId;
       await submitOperatorTireMeasurement({
         vehicleId: action.vehicleId,
         tireSetupId: setupId,
         tread,
         context,
       });
-      toast.success('Reifenprofilmessung gespeichert');
+      toast.success(t('operator.tireMeasure.toast.success'));
       dispatchTireMeasurementSaved(action.vehicleId, action.bookingId);
       triggerRefresh();
       if (orgId) {
@@ -187,7 +188,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
       action.onSuccess?.();
       closeSheet();
     } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+      setSubmitError(e instanceof Error ? e.message : t('operator.tireMeasure.toast.saveError'));
     } finally {
       setSubmitting(false);
     }
@@ -195,8 +196,9 @@ export function OperatorTireMeasureFlow({ action }: Props) {
 
   const progress = ((stepIndex(step) + 1) / OPERATOR_TIRE_MEASURE_STEPS.length) * 100;
   const isReview = step === 'review';
-
   const selectedSetup = data.setupOptions.find((o) => o.id === selectedSetupId);
+  const stepLabel = operatorTireMeasureStepLabel(locale, step);
+  const stepErrorText = stepError ? operatorTireMeasureValidationMessage(locale, stepError) : null;
 
   return (
     <div
@@ -213,7 +215,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Reifenprofil messen
+              {t('operator.tireMeasure.eyebrow')}
             </p>
             <h2 id="operator-tire-measure-title" className="truncate text-base font-bold text-foreground">
               {vehicleLabel}
@@ -223,7 +225,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
             type="button"
             onClick={closeSheet}
             className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
-            aria-label="Schließen"
+            aria-label={t('common.close')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -231,7 +233,11 @@ export function OperatorTireMeasureFlow({ action }: Props) {
         <div className="mt-3">
           <div className="mb-1 flex justify-between text-[10px] font-semibold uppercase text-muted-foreground">
             <span>
-              Schritt {stepIndex(step) + 1}/{OPERATOR_TIRE_MEASURE_STEPS.length} — {STEP_LABELS[step]}
+              {t('operator.tireMeasure.stepProgress', {
+                current: stepIndex(step) + 1,
+                total: OPERATOR_TIRE_MEASURE_STEPS.length,
+                step: stepLabel,
+              })}
             </span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -258,59 +264,69 @@ export function OperatorTireMeasureFlow({ action }: Props) {
               <div className="space-y-4">
                 <div className="rounded-2xl border border-border surface-premium p-4 space-y-3">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase text-muted-foreground">Kennzeichen</p>
+                    <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                      {t('operator.tireMeasure.fields.plate')}
+                    </p>
                     <p className="text-2xl font-bold tracking-wide text-foreground">{plate}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold uppercase text-muted-foreground">Fahrzeug</p>
+                    <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                      {t('operator.tireMeasure.fields.vehicle')}
+                    </p>
                     <p className="text-sm font-medium text-foreground">
                       {data.vehicle?.model ?? action.vehicleLabel}
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">Kilometerstand</p>
+                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                        {t('operator.tireMeasure.fields.odometer')}
+                      </p>
                       <p className="font-semibold tabular-nums">
-                        {data.odometerKm != null ? `${Math.round(data.odometerKm).toLocaleString('de-DE')} km` : '—'}
+                        {formatOperatorTireOdometer(locale, data.odometerKm)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">Reifenset</p>
+                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                        {t('operator.tireMeasure.fields.tireSet')}
+                      </p>
                       <p className="font-semibold">
                         {selectedSetup?.label ??
                           (data.activeSetup
-                            ? String((data.activeSetup as Record<string, unknown>).name ?? 'Aktiv')
-                            : 'Unbekannt')}
+                            ? String(
+                                (data.activeSetup as Record<string, unknown>).name ??
+                                  t('operator.tireMeasure.fallback.active'),
+                              )
+                            : t('operator.tireMeasure.fallback.unknown'))}
                       </p>
                     </div>
                   </div>
                   {data.tireSummary && (
                     <div className="rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-xs">
                       <p className="text-muted-foreground">
-                        Letzte Messung:{' '}
+                        {t('operator.tireMeasure.vehicle.lastMeasurement')}{' '}
                         <span className="font-semibold text-foreground">
-                          {data.tireSummary.lastMeasurementAt ?? data.tireSummary.latestMeasurementAt ?? '—'}
+                          {data.tireSummary.lastMeasurementAt ??
+                            data.tireSummary.latestMeasurementAt ??
+                            '—'}
                         </span>
                       </p>
                     </div>
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Messung wird als Evidence in die kanonische Tire-Health-Pipeline geschrieben — keine separate
-                  Berechnung im Operator.
+                  {t('operator.tireMeasure.vehicle.pipelineHint')}
                 </p>
               </div>
             )}
 
             {step === 'set' && (
               <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Welches Reifenset wurde gemessen? Standard ist das aktuell montierte Set.
-                </p>
+                <p className="text-sm text-muted-foreground">{t('operator.tireMeasure.set.hint')}</p>
                 <div className="space-y-2">
                   {data.setupOptions.map((opt) => {
                     const active = selectedSetupId === opt.id;
-                    const seasonLabel = opt.season ? (SEASON_LABELS[opt.season] ?? opt.season) : 'Unbekannt';
+                    const seasonLabel = operatorTireMeasureSeasonLabel(locale, opt.season);
                     return (
                       <button
                         key={opt.id}
@@ -342,7 +358,9 @@ export function OperatorTireMeasureFlow({ action }: Props) {
             {step === 'context' && (
               <div className="space-y-4">
                 <label className="block">
-                  <span className="text-[10px] font-semibold uppercase text-muted-foreground">Messdatum</span>
+                  <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    {t('operator.tireMeasure.fields.measuredAt')}
+                  </span>
                   <input
                     type="datetime-local"
                     className="mt-1 h-12 w-full rounded-xl border border-border surface-premium px-3 text-sm"
@@ -351,20 +369,24 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                   />
                 </label>
                 <label className="block">
-                  <span className="text-[10px] font-semibold uppercase text-muted-foreground">Kilometerstand</span>
+                  <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    {t('operator.tireMeasure.fields.odometerKm')}
+                  </span>
                   <input
                     type="text"
                     inputMode="decimal"
                     className="mt-1 h-12 w-full rounded-xl border border-border surface-premium px-3 text-base tabular-nums"
                     value={context.odometerKm}
                     onChange={(e) => setContext((c) => ({ ...c, odometerKm: e.target.value }))}
-                    placeholder="Optional"
+                    placeholder={t('operator.tireMeasure.placeholders.optional')}
                   />
                 </label>
                 <div>
-                  <p className="mb-2 text-[10px] font-semibold uppercase text-muted-foreground">Messmethode</p>
+                  <p className="mb-2 text-[10px] font-semibold uppercase text-muted-foreground">
+                    {t('operator.tireMeasure.fields.method')}
+                  </p>
                   <div className="flex flex-wrap gap-2">
-                    {SOURCE_OPTIONS.map((opt) => (
+                    {OPERATOR_TIRE_MEASURE_SOURCE_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
                         type="button"
@@ -375,30 +397,34 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                             : 'border-border surface-premium'
                         }`}
                       >
-                        {opt.label}
+                        {operatorTireMeasureSourceLabel(locale, opt.value)}
                       </button>
                     ))}
                   </div>
                 </div>
                 {context.source === 'workshop' && (
                   <label className="block">
-                    <span className="text-[10px] font-semibold uppercase text-muted-foreground">Werkstatt</span>
+                    <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+                      {t('operator.tireMeasure.fields.workshop')}
+                    </span>
                     <input
                       type="text"
                       className="mt-1 h-12 w-full rounded-xl border border-border surface-premium px-3 text-base"
                       value={context.workshopName}
                       onChange={(e) => setContext((c) => ({ ...c, workshopName: e.target.value }))}
-                      placeholder="Name der Werkstatt"
+                      placeholder={t('operator.tireMeasure.placeholders.workshopName')}
                     />
                   </label>
                 )}
                 <label className="block">
-                  <span className="text-[10px] font-semibold uppercase text-muted-foreground">Notiz</span>
+                  <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    {t('operator.tireMeasure.fields.note')}
+                  </span>
                   <textarea
                     className="mt-1 min-h-[80px] w-full rounded-xl border border-border surface-premium px-3 py-2 text-sm"
                     value={context.note}
                     onChange={(e) => setContext((c) => ({ ...c, note: e.target.value }))}
-                    placeholder="Optional — nur lokal im Review, nicht in Tire-Health-API"
+                    placeholder={t('operator.tireMeasure.placeholders.note')}
                   />
                 </label>
                 <button
@@ -408,9 +434,11 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                 >
                   <Sparkles className="h-5 w-5 shrink-0 text-[color:var(--brand-ink)]" />
                   <span>
-                    <span className="block text-sm font-semibold">Reifenbericht per AI Upload auslesen</span>
+                    <span className="block text-sm font-semibold">
+                      {t('operator.tireMeasure.context.aiUploadTitle')}
+                    </span>
                     <span className="text-[11px] text-muted-foreground">
-                      Extrahierte Werte erst nach Bestätigung übernehmen
+                      {t('operator.tireMeasure.context.aiUploadHint')}
                     </span>
                   </span>
                 </button>
@@ -421,57 +449,64 @@ export function OperatorTireMeasureFlow({ action }: Props) {
               <div className="space-y-4">
                 <div className="rounded-2xl border border-border surface-premium p-4 space-y-2 text-sm">
                   <p>
-                    <span className="text-muted-foreground">Fahrzeug:</span>{' '}
+                    <span className="text-muted-foreground">{t('operator.tireMeasure.review.vehicle')}</span>{' '}
                     <span className="font-semibold">{vehicleLabel}</span>
                   </p>
                   <p>
-                    <span className="text-muted-foreground">Reifenset:</span>{' '}
-                    <span className="font-semibold">{selectedSetup?.label ?? 'Unbekannt'}</span>
+                    <span className="text-muted-foreground">{t('operator.tireMeasure.review.tireSet')}</span>{' '}
+                    <span className="font-semibold">
+                      {selectedSetup?.label ?? t('operator.tireMeasure.fallback.unknown')}
+                    </span>
                   </p>
                   <div className="grid grid-cols-2 gap-2 pt-2">
-                    {(['fl', 'fr', 'rl', 'rr'] as const).map((k) => {
-                      const labels = { fl: 'VL', fr: 'VR', rl: 'HL', rr: 'HR' };
-                      return (
-                        <div key={k} className="rounded-xl border border-border/50 px-3 py-2">
-                          <p className="text-[10px] uppercase text-muted-foreground">{labels[k]}</p>
-                          <p className="text-lg font-bold tabular-nums">{tread[k] || '—'} mm</p>
-                        </div>
-                      );
-                    })}
+                    {OPERATOR_TIRE_MEASURE_WHEELS.map(({ key, position }) => (
+                      <div key={key} className="rounded-xl border border-border/50 px-3 py-2">
+                        <p className="text-[10px] uppercase text-muted-foreground">
+                          {operatorTireMeasurePositionShort(locale, position)}
+                        </p>
+                        <p className="text-lg font-bold tabular-nums">
+                          {tread[key] || '—'} {t('operator.tireMeasure.tread.unitMm')}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                   <p>
-                    <span className="text-muted-foreground">Datum:</span>{' '}
-                    <span className="font-semibold">{context.measuredAt || 'Jetzt'}</span>
+                    <span className="text-muted-foreground">{t('operator.tireMeasure.review.date')}</span>{' '}
+                    <span className="font-semibold">
+                      {context.measuredAt || t('operator.tireMeasure.review.now')}
+                    </span>
                   </p>
                   <p>
-                    <span className="text-muted-foreground">Km:</span>{' '}
+                    <span className="text-muted-foreground">{t('operator.tireMeasure.review.km')}</span>{' '}
                     <span className="font-semibold">{context.odometerKm || '—'}</span>
                   </p>
                   <p>
-                    <span className="text-muted-foreground">Methode:</span>{' '}
+                    <span className="text-muted-foreground">{t('operator.tireMeasure.review.method')}</span>{' '}
                     <span className="font-semibold">
-                      {SOURCE_OPTIONS.find((s) => s.value === context.source)?.label}
+                      {operatorTireMeasureSourceLabel(locale, context.source)}
                     </span>
                   </p>
                   {context.note.trim() && (
                     <p>
-                      <span className="text-muted-foreground">Notiz:</span> {context.note}
+                      <span className="text-muted-foreground">{t('operator.tireMeasure.review.note')}</span>{' '}
+                      {context.note}
                     </p>
                   )}
                 </div>
                 {plausibilityWarnings.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase text-muted-foreground">Hinweise (nur UI)</p>
+                    <p className="text-xs font-semibold uppercase text-muted-foreground">
+                      {t('operator.tireMeasure.review.uiWarnings')}
+                    </p>
                     {plausibilityWarnings.map((w) => (
                       <p key={w.id} className="text-xs text-[color:var(--status-watch)]">
-                        {w.message}
+                        {operatorTireMeasurePlausibilityMessage(locale, w)}
                       </p>
                     ))}
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Nach Speichern lädt Tire Health / Rental Health neu — Status und Rest-km kommen ausschließlich vom
-                  Backend.
+                  {t('operator.tireMeasure.review.backendHint')}
                 </p>
                 {submitError && (
                   <p className="text-sm text-[color:var(--status-critical)]">{submitError}</p>
@@ -479,7 +514,9 @@ export function OperatorTireMeasureFlow({ action }: Props) {
               </div>
             )}
 
-            {stepError && <p className="mt-2 text-sm text-[color:var(--status-critical)]">{stepError}</p>}
+            {stepErrorText && (
+              <p className="mt-2 text-sm text-[color:var(--status-critical)]">{stepErrorText}</p>
+            )}
           </>
         )}
       </div>
@@ -493,7 +530,9 @@ export function OperatorTireMeasureFlow({ action }: Props) {
             className="sq-press flex min-h-[52px] flex-1 items-center justify-center gap-1 rounded-2xl border border-border text-sm font-semibold disabled:opacity-50"
           >
             <ChevronLeft className="h-4 w-4" />
-            {stepIndex(step) === 0 ? 'Abbrechen' : 'Zurück'}
+            {stepIndex(step) === 0
+              ? t('operator.tireMeasure.actions.cancel')
+              : t('operator.tireMeasure.actions.back')}
           </button>
           {isReview ? (
             <button
@@ -502,7 +541,11 @@ export function OperatorTireMeasureFlow({ action }: Props) {
               onClick={() => void handleSave()}
               className="sq-press flex min-h-[52px] flex-[2] items-center justify-center gap-2 rounded-2xl bg-[color:var(--brand)] text-sm font-bold text-white disabled:opacity-60"
             >
-              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Messung speichern'}
+              {submitting ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                t('operator.tireMeasure.actions.save')
+              )}
             </button>
           ) : (
             <button
@@ -510,7 +553,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
               onClick={goNext}
               className="sq-press flex min-h-[52px] flex-[2] items-center justify-center gap-1 rounded-2xl bg-[color:var(--brand)] text-sm font-bold text-white"
             >
-              Weiter
+              {t('operator.tireMeasure.actions.continue')}
               <ChevronRight className="h-4 w-4" />
             </button>
           )}
