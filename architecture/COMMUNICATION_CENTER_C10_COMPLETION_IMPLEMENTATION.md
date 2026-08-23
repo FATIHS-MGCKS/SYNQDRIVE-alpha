@@ -19,8 +19,8 @@ Implements canonical Communication Center IA for **Channels** and **Automations*
 - Channels → SMS: reuse read-only `SmsSettingsPanel`
 - Channels → Email: canonical deep-link to Administration → Email settings
 - Automations: thin landing + deep-link to `WorkflowAutomationView`
-- Voice deep-link URL contract (`voiceOpsTab`, `voiceWizardStep`)
-- RBAC, org-scoped loading, responsive layout, i18n (en/de)
+- Voice deep-link URL contract (`voiceOpsTab`, `voiceSettingsSection`, `voiceWizardStep`)
+- RBAC, org-scoped loading, responsive layout, i18n (all governed locales: en, de, fr, nl, es, it, pl, cs)
 
 **Out of scope**
 
@@ -36,7 +36,7 @@ Implements canonical Communication Center IA for **Channels** and **Automations*
 | No CC Channels IA | **Channels** primary tab + landing + per-channel sections |
 | WhatsApp templates legacy-only | Reused `WhatsAppTemplateManager` under Channels → WhatsApp |
 | WhatsApp channel stats legacy-only | Reused `WhatsAppOverviewTab` components (readiness + KPI cards) |
-| Voice specialized surfaces unreachable from CC | Deep-links via `voiceOpsTab` / `voiceWizardStep` |
+| Voice specialized surfaces unreachable from CC | Deep-links via `voiceOpsTab` / `voiceSettingsSection` / `voiceWizardStep` |
 | Email config only under Administration | Channels → Email → open `settings/email-versand` |
 | Automations not linked from CC | **Automations** tab → `workflow-automation` view |
 | Settings held all channel config | Settings retained for org-wide/provider admin; Channels is canonical entry |
@@ -79,7 +79,7 @@ Specialized surfaces open in `VoiceAssistantView` via deep-link:
 | Configure agent / telephony | `voiceOpsTab=settings` |
 | Analytics | `voiceOpsTab=analytics` |
 | Voice automations | `voiceOpsTab=automations` |
-| Test assistant | `voiceWizardStep=tests` (wizard) or settings |
+| Test assistant | `voiceSettingsSection=test` (configured) or `voiceWizardStep=tests` (onboarding wizard) |
 | Conversations | CC Inbox `channel=voice` — **not** legacy conversations tab |
 
 Master-admin control plane remains outside rental CC.
@@ -112,7 +112,8 @@ Settings tab retains C8.4 provider panels for users with `communication.manage` 
 |--------|-----------|
 | CC Conversations + channel | `communicationTab=inbox` + `communicationChannel=` |
 | Voice Assistant ops tab | `view=ai-voice-assistant&voiceOpsTab=` |
-| Voice onboarding test step | `voiceWizardStep=tests` |
+| Voice settings subview (configured) | `voiceSettingsSection=test|builder|telephony` |
+| Voice onboarding test step | `voiceWizardStep=tests` (only while wizard active) |
 | Email settings | App navigation → `settings` + `email-versand` session tab |
 | Workflow automation | App navigation → `workflow-automation` |
 
@@ -145,23 +146,33 @@ Settings tab retains C8.4 provider panels for users with `communication.manage` 
 
 ## 15. i18n
 
-- New keys in `en.ts` and `de.ts` under `communication.channels.*` and `communication.automations.*`
-- Other locales fall back to English via `LanguageContext`
+- C10 keys under `communication.primary.channels`, `communication.primary.automations`, `communication.channels.*`, and `communication.automations.*` are defined in **all governed locales**: `en`, `de`, `fr`, `nl`, `es`, `it`, `pl`, `cs`
+- Parity enforced by `communication-center-c10.i18n.test.ts` (missing keys, non-English copy in non-en locales, no duplicate keys)
 
-## 16. Tests
+## 16. Voice Test Center deep-link
+
+| Assistant state | URL contract | Surface |
+|-----------------|--------------|---------|
+| Onboarding (`showWizard=true`) | `voiceWizardStep=tests` | `VoiceOnboardingWizard` tests step |
+| Configured (`showWizard=false`) | `voiceOpsTab=settings&voiceSettingsSection=test` | Reused `VoiceTestCenter` in `VoiceAssistantView` settings path |
+
+`resolveVoiceTestNavigationIntent()` in `voice-assistant-navigation.ts` migrates legacy `voiceWizardStep=tests` links to the configured test surface when onboarding is complete. Unknown URL params fall back safely.
+
+## 17. Tests
 
 - `communication-center-navigation.test.ts` — channels/automations URL state
 - `communication-channels-permissions.test.ts` — RBAC
-- `voice-assistant-navigation.test.ts` — voice deep-link contract
+- `voice-assistant-navigation.test.ts` — voice deep-link contract + test intent resolution
+- `communication-center-c10.i18n.test.ts` — all-locale C10 key parity
 - `communication-center-shell.test.tsx` — channels tab rendering
 - Frontend build (`tsc -b`, `vite build`) PASS
 
-## 17. Remaining C9 gaps (unchanged)
+## 18. Remaining C9 gaps (unchanged)
 
 **WhatsApp:** AI composer/suggestion, quick actions, intent filters, template send from thread  
 **Voice:** transcript/summary in canonical timeline, task-from-call, ElevenLabs sync, rich filters
 
-## 18. C10 sign-off
+## 19. C10 sign-off
 
 **PASS** — canonical channel configuration entry points and deep-links implemented without UI duplication.
 

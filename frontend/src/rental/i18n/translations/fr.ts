@@ -852,4 +852,63 @@ export const fr: Record<TranslationKey, string> = {
   'dashboardTasksOverview.noDueDate': 'Sans echeance',
   'dashboardTasksOverview.priorityCritical': 'Critique',
   'dashboardTasksOverview.priorityHigh': 'Elevee',
+  'communication.channels.filterGroup': 'Filtres de canal de la boite de reception',
+  'communication.channels.all': 'Tous',
+  'communication.channels.whatsapp': 'WhatsApp',
+  'communication.channels.voice': 'Voice',
+  'communication.channels.sms': 'SMS',
+  'communication.primary.channels': 'Canaux',
+  'communication.primary.automations': 'Automatisations',
+  'communication.channels.title': 'Canaux',
+  'communication.channels.description':
+    'Configurez et surveillez les canaux de communication. Les conversations operationnelles restent dans la boite de reception.',
+  'communication.channels.navLabel': 'Canaux de communication',
+  'communication.channels.nav.overview': 'Vue d\'ensemble',
+  'communication.channels.email': 'E-mail',
+  'communication.channels.whatsapp.description':
+    'Connexion WhatsApp Business, modeles et etat du canal.',
+  'communication.channels.voice.description':
+    'Configuration de l\'agent vocal, telephonie et analyses.',
+  'communication.channels.sms.description':
+    'Etat du fournisseur SMS via sent.dm (configuration en attente).',
+  'communication.channels.email.description':
+    'E-mails transactionnels sortants via Resend.',
+  'communication.channels.providerLabel': 'Fournisseur',
+  'communication.channels.configure': 'Configurer le canal',
+  'communication.channels.accessRestricted':
+    'Vous n\'avez pas l\'autorisation de gerer ce canal.',
+  'communication.channels.accessDenied.title': 'Canal indisponible',
+  'communication.channels.accessDenied.description':
+    'Vous n\'avez pas l\'autorisation de voir cette configuration de canal.',
+  'communication.channels.openConversations': 'Ouvrir les conversations',
+  'communication.channels.openConversationsVoice': 'Ouvrir les conversations vocales',
+  'communication.channels.whatsapp.subview.overview': 'Vue d\'ensemble',
+  'communication.channels.whatsapp.subview.configuration': 'Parametrage',
+  'communication.channels.whatsapp.subview.templates': 'Modeles',
+  'communication.channels.voice.specializedHint':
+    'Les controles vocaux avances s\'ouvrent dans l\'Assistant vocal IA. Les conversations restent dans le Centre de communication.',
+  'communication.channels.voice.configureAgent': 'Configurer l\'agent',
+  'communication.channels.voice.configureAgentHint': 'Invite, voix, outils et activation',
+  'communication.channels.voice.analytics': 'Analyses',
+  'communication.channels.voice.analyticsHint': 'Utilisation, resultats et metriques d\'appels',
+  'communication.channels.voice.telephony': 'Telephonie',
+  'communication.channels.voice.telephonyHint': 'Numeros de telephone et routage entrant',
+  'communication.channels.voice.testAssistant': 'Tester l\'assistant',
+  'communication.channels.voice.testAssistantHint':
+    'Executer des tests vocaux avant la mise en production',
+  'communication.channels.voice.automations': 'Automatisations vocales',
+  'communication.channels.voice.automationsHint':
+    'Autorisations d\'outils et hooks d\'automatisation',
+  'communication.channels.email.transactionalHint':
+    'L\'e-mail transactionnel ne fait pas partie de la boite de reception unifiee en V1.',
+  'communication.channels.email.openSettings': 'Ouvrir les parametres e-mail',
+  'communication.channels.email.loadError': 'Impossible de charger la configuration e-mail.',
+  'communication.channels.email.restricted':
+    'La configuration e-mail est disponible pour les administrateurs de l\'organisation.',
+  'communication.automations.title': 'Automatisations',
+  'communication.automations.description':
+    'L\'automatisation des workflows pour les taches liees a la communication utilise le moteur d\'automatisation existant.',
+  'communication.automations.open': 'Ouvrir l\'automatisation des workflows',
+  'communication.automations.accessDenied':
+    'Vous n\'avez pas l\'autorisation d\'ouvrir l\'automatisation des workflows.',
 };

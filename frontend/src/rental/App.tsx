@@ -289,6 +289,7 @@ function RentalAppContent() {
   const openVoiceAssistantFromCommunication = useCallback(
     (options: {
       opsTab: 'overview' | 'settings' | 'analytics' | 'automations';
+      settingsSection?: 'test' | null;
       wizardStep?: 'tests' | null;
     }) => {
       syncVoiceAssistantStateToUrl(mergeVoiceAssistantState(options));

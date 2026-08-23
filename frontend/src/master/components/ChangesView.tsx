@@ -42,7 +42,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Channels primary tab: landing cards for WhatsApp, Voice, SMS, Email with provider metadata and readiness.',
       'WhatsApp channel reuses settings, templates (WhatsAppTemplateManager), and channel stats/readiness — no duplicate inbox.',
-      'Voice channel deep-links to VoiceAssistantView via voiceOpsTab/voiceWizardStep URL contract.',
+      'Voice channel deep-links via voiceOpsTab, voiceSettingsSection=test (configured), and voiceWizardStep=tests (onboarding).',
+      'C10 i18n keys in all governed locales (en, de, fr, nl, es, it, pl, cs); parity test communication-center-c10.i18n.test.ts.',
       'SMS channel reuses read-only SmsSettingsPanel; Email channel deep-links to settings/email-versand.',
       'Automations tab: thin landing + deep-link to WorkflowAutomationView (workflow-automation.read).',
       'Legacy whatsapp-business and ai-voice-assistant nav preserved for C9 operational fallback.',

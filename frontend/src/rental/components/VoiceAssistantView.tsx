@@ -21,6 +21,7 @@ import { VoiceConversationsPanel } from './voice-assistant/VoiceConversationsPan
 import { VoicePermissionGroupsPanel } from './voice-assistant/VoicePermissionGroupsPanel';
 import { VoiceUsageAnalyticsPanel } from './voice-assistant/VoiceUsageAnalyticsPanel';
 import { VoiceAgentSettings } from './voice-assistant/VoiceAgentSettings';
+import { VoiceTestCenter } from './voice-assistant/VoiceTestCenter';
 import type { VoiceToolCapabilityKey, VoicePermissionMode } from './voice-assistant/voice-assistant-permissions.ops';
 import {
   answerRatePercent,
@@ -38,7 +39,10 @@ import {
 import {
   mergeVoiceAssistantState,
   readVoiceAssistantStateFromUrl,
+  resolveVoiceTestNavigationIntent,
   syncVoiceAssistantStateToUrl,
+  type VoiceAssistantUrlState,
+  type VoiceSettingsSection,
 } from './voice-assistant/voice-assistant-navigation';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -53,12 +57,14 @@ type VoiceBoolField = Exclude<{
 export function VoiceAssistantView({ isDarkMode }: Props) {
   const { t } = useLanguage();
   const { orgId } = useRentalOrg();
-  const [opsTab, setOpsTabState] = useState<VoiceOpsTab>(() =>
-    mergeVoiceAssistantState(
-      readVoiceAssistantStateFromUrl(
-        typeof window !== 'undefined' ? window.location.search : '',
-      ),
-    ).opsTab,
+  const initialUrlState = mergeVoiceAssistantState(
+    readVoiceAssistantStateFromUrl(
+      typeof window !== 'undefined' ? window.location.search : '',
+    ),
+  );
+  const [opsTab, setOpsTabState] = useState<VoiceOpsTab>(() => initialUrlState.opsTab);
+  const [settingsSection, setSettingsSectionState] = useState<VoiceSettingsSection | null>(
+    () => initialUrlState.settingsSection,
   );
   const [assistant, setAssistant] = useState<VoiceAssistantData | null>(null);
   const [readiness, setReadiness] = useState<VoiceAssistantReadiness | null>(null);
@@ -77,16 +83,45 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
   const [testPassed, setTestPassed] = useState(false);
   const operationLock = useRef(false);
 
-  const setOpsTab = useCallback((tab: VoiceOpsTab) => {
-    setOpsTabState(tab);
-    syncVoiceAssistantStateToUrl(mergeVoiceAssistantState({ opsTab: tab }), { replace: true });
+  const applyVoiceUrlState = useCallback((partial: Partial<VoiceAssistantUrlState>) => {
+    const next = mergeVoiceAssistantState(partial);
+    setOpsTabState(next.opsTab);
+    setSettingsSectionState(next.settingsSection);
+    syncVoiceAssistantStateToUrl(next, { replace: true });
   }, []);
+
+  const setOpsTab = useCallback(
+    (tab: VoiceOpsTab) => {
+      applyVoiceUrlState({
+        opsTab: tab,
+        settingsSection: tab === 'settings' ? settingsSection : null,
+        wizardStep: null,
+      });
+    },
+    [applyVoiceUrlState, settingsSection],
+  );
+
+  const openVoiceTestCenter = useCallback(() => {
+    applyVoiceUrlState({
+      opsTab: 'settings',
+      settingsSection: 'test',
+      wizardStep: null,
+    });
+  }, [applyVoiceUrlState]);
+
+  const openVoiceSettingsBuilder = useCallback(() => {
+    applyVoiceUrlState({
+      opsTab: 'settings',
+      settingsSection: null,
+      wizardStep: null,
+    });
+  }, [applyVoiceUrlState]);
 
   useEffect(() => {
     const onPopState = () => {
-      setOpsTabState(
-        mergeVoiceAssistantState(readVoiceAssistantStateFromUrl(window.location.search)).opsTab,
-      );
+      const next = mergeVoiceAssistantState(readVoiceAssistantStateFromUrl(window.location.search));
+      setOpsTabState(next.opsTab);
+      setSettingsSectionState(next.settingsSection);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -159,6 +194,24 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
 
   const isActive = assistant?.status === 'ACTIVE';
   const showWizard = assistant ? shouldShowOnboardingWizard(assistant) : false;
+
+  useEffect(() => {
+    if (!assistant || loading) return;
+    const resolved = resolveVoiceTestNavigationIntent(
+      readVoiceAssistantStateFromUrl(window.location.search),
+      showWizard,
+    );
+    setOpsTabState(resolved.opsTab);
+    setSettingsSectionState(resolved.settingsSection);
+    const current = mergeVoiceAssistantState(readVoiceAssistantStateFromUrl(window.location.search));
+    if (
+      resolved.opsTab !== current.opsTab ||
+      resolved.settingsSection !== current.settingsSection ||
+      resolved.wizardStep !== current.wizardStep
+    ) {
+      syncVoiceAssistantStateToUrl(resolved, { replace: true });
+    }
+  }, [assistant, loading, showWizard]);
 
   useEffect(() => {
     if (showWizard) void loadVoices();
@@ -403,7 +456,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
         isActive={isActive}
         hasDraft={hasDraft}
         onActivate={() => void toggleActive()}
-        onTest={() => setOpsTab('settings')}
+        onTest={() => openVoiceTestCenter()}
         onSync={() => {
           setOpsTab('conversations');
           void syncLogs();
@@ -468,7 +521,41 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
           />
         )}
 
-        {opsTab === 'settings' && <VoiceAgentSettings enabled={opsTab === 'settings'} />}
+        {opsTab === 'settings' && settingsSection === 'test' && (
+          <VoiceTestCenter
+            orgId={orgId}
+            assistant={assistant}
+            readiness={readiness}
+            onTestPassed={() => setTestPassed(true)}
+            onNavigateTab={(tab) => {
+              if (tab === 'analytics') {
+                setOpsTab('analytics');
+                return;
+              }
+              if (tab === 'overview') {
+                setOpsTab('overview');
+                return;
+              }
+              if (tab === 'permissions') {
+                setOpsTab('automations');
+                return;
+              }
+              if (tab === 'telephony') {
+                applyVoiceUrlState({
+                  opsTab: 'settings',
+                  settingsSection: 'telephony',
+                  wizardStep: null,
+                });
+                return;
+              }
+              openVoiceSettingsBuilder();
+            }}
+          />
+        )}
+
+        {opsTab === 'settings' && settingsSection !== 'test' && (
+          <VoiceAgentSettings enabled={opsTab === 'settings'} />
+        )}
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ interface CommunicationChannelVoicePaneProps {
   onOpenConversations: () => void;
   onOpenVoiceAssistant: (options: {
     opsTab: 'overview' | 'settings' | 'analytics' | 'automations';
+    settingsSection?: 'test' | null;
     wizardStep?: 'tests' | null;
   }) => void;
 }
@@ -119,7 +120,7 @@ export function CommunicationChannelVoicePane({
           variant="outline"
           className="h-auto justify-start px-3 py-3 text-left"
           data-testid="communication-voice-link-test"
-          onClick={() => onOpenVoiceAssistant({ opsTab: 'settings', wizardStep: 'tests' })}
+          onClick={() => onOpenVoiceAssistant({ opsTab: 'settings', settingsSection: 'test' })}
         >
           <span className="block text-[11px] font-semibold">
             {t('communication.channels.voice.testAssistant')}

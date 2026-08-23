@@ -1169,7 +1169,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
     apis: [
       { label: 'Channels IA', detail: 'CC primary tab Channels → overview / WhatsApp / Voice / SMS / Email' },
       { label: 'WhatsApp', detail: 'Reuse WhatsAppBusinessSettings + WhatsAppTemplateManager + stats/readiness; Open conversations → CC Inbox' },
-      { label: 'Voice deep-link', detail: 'voiceOpsTab + voiceWizardStep URL contract → VoiceAssistantView specialized surfaces' },
+      { label: 'Voice deep-link', detail: 'voiceOpsTab + voiceSettingsSection (configured test) + voiceWizardStep (onboarding) → VoiceAssistantView / VoiceTestCenter' },
       { label: 'Email', detail: 'Channels → Email → settings/email-versand (org admin)' },
       { label: 'Automations', detail: 'CC Automations landing → WorkflowAutomationView (workflow-automation.read)' },
       { label: 'C9 fallback', detail: 'Legacy whatsapp-business / ai-voice-assistant operational nav retained' },

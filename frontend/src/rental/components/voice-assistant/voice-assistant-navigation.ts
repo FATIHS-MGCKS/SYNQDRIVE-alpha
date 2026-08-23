@@ -7,6 +7,7 @@ import {
 export const VOICE_ASSISTANT_VIEW = 'ai-voice-assistant';
 export const VOICE_OPS_TAB_PARAM = 'voiceOpsTab';
 export const VOICE_WIZARD_STEP_PARAM = 'voiceWizardStep';
+export const VOICE_SETTINGS_SECTION_PARAM = 'voiceSettingsSection';
 
 const OPS_TABS = new Set<string>([
   'overview',
@@ -16,14 +17,19 @@ const OPS_TABS = new Set<string>([
   'settings',
 ]);
 
+export const VOICE_SETTINGS_SECTIONS = ['builder', 'telephony', 'test'] as const;
+export type VoiceSettingsSection = (typeof VOICE_SETTINGS_SECTIONS)[number];
+
 export interface VoiceAssistantUrlState {
   opsTab: VoiceOpsTab;
   wizardStep: VoiceWizardStep | null;
+  settingsSection: VoiceSettingsSection | null;
 }
 
 export const DEFAULT_VOICE_ASSISTANT_URL_STATE: VoiceAssistantUrlState = {
   opsTab: 'overview',
   wizardStep: null,
+  settingsSection: null,
 };
 
 function parseSearch(search = ''): URLSearchParams {
@@ -48,6 +54,15 @@ export function normalizeVoiceWizardStep(
   return null;
 }
 
+export function normalizeVoiceSettingsSection(
+  section: VoiceSettingsSection | string | null | undefined,
+): VoiceSettingsSection | null {
+  if (section && (VOICE_SETTINGS_SECTIONS as readonly string[]).includes(section)) {
+    return section as VoiceSettingsSection;
+  }
+  return null;
+}
+
 export function readVoiceAssistantStateFromUrl(
   search = '',
 ): Partial<VoiceAssistantUrlState> {
@@ -64,6 +79,11 @@ export function readVoiceAssistantStateFromUrl(
     next.wizardStep = normalizeVoiceWizardStep(wizardStep);
   }
 
+  const settingsSection = params.get(VOICE_SETTINGS_SECTION_PARAM);
+  if (settingsSection) {
+    next.settingsSection = normalizeVoiceSettingsSection(settingsSection);
+  }
+
   return next;
 }
 
@@ -75,6 +95,39 @@ export function mergeVoiceAssistantState(
     ...partial,
     opsTab: normalizeVoiceOpsTab(partial?.opsTab),
     wizardStep: normalizeVoiceWizardStep(partial?.wizardStep),
+    settingsSection: normalizeVoiceSettingsSection(partial?.settingsSection),
+  };
+}
+
+export function wantsVoiceTestCenter(state: VoiceAssistantUrlState): boolean {
+  return state.settingsSection === 'test' || state.wizardStep === 'tests';
+}
+
+/**
+ * Resolves test-center deep links for onboarding vs configured assistants.
+ * Wizard step applies only while onboarding is active; configured assistants use settings/test.
+ */
+export function resolveVoiceTestNavigationIntent(
+  partial: Partial<VoiceAssistantUrlState> | undefined,
+  showWizard: boolean,
+): VoiceAssistantUrlState {
+  const merged = mergeVoiceAssistantState(partial);
+  if (!wantsVoiceTestCenter(merged)) {
+    return merged;
+  }
+
+  if (showWizard) {
+    return {
+      ...merged,
+      wizardStep: 'tests',
+      settingsSection: null,
+    };
+  }
+
+  return {
+    opsTab: 'settings',
+    settingsSection: 'test',
+    wizardStep: null,
   };
 }
 
@@ -91,6 +144,7 @@ export function syncVoiceAssistantStateToUrl(
   const entries: Array<[string, string | null]> = [
     [VOICE_OPS_TAB_PARAM, normalized.opsTab === 'overview' ? null : normalized.opsTab],
     [VOICE_WIZARD_STEP_PARAM, normalized.wizardStep],
+    [VOICE_SETTINGS_SECTION_PARAM, normalized.settingsSection],
   ];
 
   for (const [key, value] of entries) {
@@ -109,10 +163,13 @@ export function syncVoiceAssistantStateToUrl(
   }
 }
 
-export function buildVoiceAssistantSearchParams(options: {
-  opsTab?: VoiceOpsTab;
-  wizardStep?: VoiceWizardStep | null;
-} = {}): URLSearchParams {
+export function buildVoiceAssistantSearchParams(
+  options: {
+    opsTab?: VoiceOpsTab;
+    wizardStep?: VoiceWizardStep | null;
+    settingsSection?: VoiceSettingsSection | null;
+  } = {},
+): URLSearchParams {
   const state = mergeVoiceAssistantState(options);
   const params = new URLSearchParams();
   params.set('view', VOICE_ASSISTANT_VIEW);
@@ -122,6 +179,9 @@ export function buildVoiceAssistantSearchParams(options: {
   if (state.wizardStep) {
     params.set(VOICE_WIZARD_STEP_PARAM, state.wizardStep);
   }
+  if (state.settingsSection) {
+    params.set(VOICE_SETTINGS_SECTION_PARAM, state.settingsSection);
+  }
   return params;
 }
 
@@ -129,6 +189,7 @@ export function buildVoiceAssistantUrl(
   options: {
     opsTab?: VoiceOpsTab;
     wizardStep?: VoiceWizardStep | null;
+    settingsSection?: VoiceSettingsSection | null;
   } = {},
   pathname = '/rental',
 ): string {
