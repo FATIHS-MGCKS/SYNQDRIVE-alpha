@@ -1,6 +1,7 @@
 import type {
   OperatorTireContextForm,
   OperatorTireMeasureStep,
+  OperatorTireMeasureValidationCode,
   OperatorTirePlausibilityWarning,
   OperatorTireTreadForm,
 } from './operatorTireMeasure.types';
@@ -12,15 +13,6 @@ export const LEGAL_MIN_MM = 1.6;
 export const WARN_LOW_MM = 2.5;
 export const WARN_HIGH_MM = 10;
 export const AXLE_DIFF_WARN_MM = 2;
-
-export const SEASON_LABELS: Record<string, string> = {
-  SUMMER: 'Sommerreifen',
-  WINTER: 'Winterreifen',
-  ALL_SEASON: 'Ganzjahresreifen',
-  TRACK: 'Track',
-  OTHER: 'Sonstiges',
-  UNKNOWN: 'Unbekannt',
-};
 
 export function parseTreadMm(value: string): number | undefined {
   const trimmed = value.trim().replace(',', '.');
@@ -42,38 +34,54 @@ export function deriveTirePlausibilityWarnings(form: OperatorTireTreadForm): Ope
   const rl = parseTreadMm(form.rl);
   const rr = parseTreadMm(form.rr);
 
-  const checkWheel = (mm: number | undefined, label: string, id: string) => {
+  const checkWheel = (mm: number | undefined, position: 'fl' | 'fr' | 'rl' | 'rr', id: string) => {
     if (mm == null) return;
     if (mm < TREAD_MIN_MM || mm > TREAD_MAX_MM) {
-      warnings.push({ id: `${id}-range`, message: `${label}: Wert außerhalb ${TREAD_MIN_MM}–${TREAD_MAX_MM} mm.` });
+      warnings.push({
+        id: `${id}-range`,
+        code: 'RANGE',
+        params: { position, min: TREAD_MIN_MM, max: TREAD_MAX_MM },
+      });
     } else if (mm <= LEGAL_MIN_MM) {
-      warnings.push({ id: `${id}-legal`, message: `${label}: Nahe gesetzlicher Mindestprofiltiefe (${mm} mm).` });
+      warnings.push({
+        id: `${id}-legal`,
+        code: 'LEGAL_MIN',
+        params: { position, mm },
+      });
     } else if (mm <= WARN_LOW_MM) {
-      warnings.push({ id: `${id}-low`, message: `${label}: Profil sehr niedrig (${mm} mm).` });
+      warnings.push({
+        id: `${id}-low`,
+        code: 'LOW',
+        params: { position, mm },
+      });
     } else if (mm >= WARN_HIGH_MM) {
-      warnings.push({ id: `${id}-high`, message: `${label}: Ungewöhnlich hoher Wert (${mm} mm) — bitte prüfen.` });
+      warnings.push({
+        id: `${id}-high`,
+        code: 'HIGH',
+        params: { position, mm },
+      });
     }
   };
 
-  checkWheel(fl, 'VL', 'fl');
-  checkWheel(fr, 'VR', 'fr');
-  checkWheel(rl, 'HL', 'rl');
-  checkWheel(rr, 'HR', 'rr');
+  checkWheel(fl, 'fl', 'fl');
+  checkWheel(fr, 'fr', 'fr');
+  checkWheel(rl, 'rl', 'rl');
+  checkWheel(rr, 'rr', 'rr');
 
-  const frontDiff =
-    fl != null && fr != null ? Math.abs(fl - fr) : null;
-  const rearDiff =
-    rl != null && rr != null ? Math.abs(rl - rr) : null;
+  const frontDiff = fl != null && fr != null ? Math.abs(fl - fr) : null;
+  const rearDiff = rl != null && rr != null ? Math.abs(rl - rr) : null;
   if (frontDiff != null && frontDiff >= AXLE_DIFF_WARN_MM) {
     warnings.push({
       id: 'front-axle-diff',
-      message: `Vorderachse: Unterschied VL/VR auffällig (${frontDiff.toFixed(1)} mm).`,
+      code: 'FRONT_AXLE_DIFF',
+      params: { diff: Number(frontDiff.toFixed(1)) },
     });
   }
   if (rearDiff != null && rearDiff >= AXLE_DIFF_WARN_MM) {
     warnings.push({
       id: 'rear-axle-diff',
-      message: `Hinterachse: Unterschied HL/HR auffällig (${rearDiff.toFixed(1)} mm).`,
+      code: 'REAR_AXLE_DIFF',
+      params: { diff: Number(rearDiff.toFixed(1)) },
     });
   }
 
@@ -84,19 +92,19 @@ export function validateTireMeasureStep(
   step: OperatorTireMeasureStep,
   tread: OperatorTireTreadForm,
   context: OperatorTireContextForm,
-): string | null {
+): OperatorTireMeasureValidationCode | null {
   if (step === 'tread') {
     const hasAny = [tread.fl, tread.fr, tread.rl, tread.rr].some((v) => v.trim());
-    if (!hasAny) return 'Mindestens eine Profiltiefe eingeben.';
+    if (!hasAny) return 'TREAD_REQUIRED';
   }
   if (step === 'context') {
     if (context.measuredAt) {
       const d = new Date(context.measuredAt);
-      if (Number.isNaN(d.getTime())) return 'Messdatum ungültig.';
+      if (Number.isNaN(d.getTime())) return 'MEASURED_AT_INVALID';
     }
     if (context.odometerKm.trim()) {
       const odo = parseFloat(context.odometerKm.replace(',', '.'));
-      if (!Number.isFinite(odo) || odo < 0) return 'Kilometerstand ungültig.';
+      if (!Number.isFinite(odo) || odo < 0) return 'ODOMETER_INVALID';
     }
   }
   return null;

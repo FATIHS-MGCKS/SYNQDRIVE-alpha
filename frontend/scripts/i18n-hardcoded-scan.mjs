@@ -339,6 +339,15 @@ const P225_ENFORCE_CLEAN_EXACT = new Set([
   'operator/verification/operatorPickupCheckPayload.ts',
 ]);
 
+const P226_ENFORCE_CLEAN_EXACT = new Set([
+  'operator/tire-measure/OperatorTireMeasureFlow.tsx',
+  'operator/tire-measure/OperatorTireMeasureTreadGrid.tsx',
+  'operator/tire-measure/operatorTireMeasure.utils.ts',
+  'operator/tire-measure/operatorTireMeasurePayload.ts',
+  'operator/tire-measure/useOperatorTireMeasureData.ts',
+  'operator/lib/operator-tire-measure-i18n.ts',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -662,6 +671,10 @@ function isP225EnforceCleanPath(relPath) {
   return P225_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP226EnforceCleanPath(relPath) {
+  return P226_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -711,6 +724,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (isP223EnforceCleanPath(relPath)) return true;
   if (isP224EnforceCleanPath(relPath)) return true;
   if (isP225EnforceCleanPath(relPath)) return true;
+  if (isP226EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -741,6 +755,7 @@ function migrationPhaseFor(relPath, surface) {
   if (isP223EnforceCleanPath(relPath)) return 'P2.2.23';
   if (isP224EnforceCleanPath(relPath)) return 'P2.2.24';
   if (isP225EnforceCleanPath(relPath)) return 'P2.2.25';
+  if (isP226EnforceCleanPath(relPath)) return 'P2.2.26';
   if (isP210EnforceCleanPath(relPath)) return 'P2.2.10';
   if (isP29EnforceCleanPath(relPath)) return 'P2.2.9';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';
