@@ -13,6 +13,8 @@ interface UtilizationMonthCalendarProps {
   weekdayLabels: readonly string[];
   dayAriaLabel: (dateLabel: string, utilizationPercent: number | null) => string;
   className?: string;
+  /** Stretch day cells to fill the available panel height (desktop side column). */
+  fillHeight?: boolean;
 }
 
 function mondayFirstOffset(year: number, month: number): number {
@@ -27,6 +29,7 @@ export function UtilizationMonthCalendar({
   weekdayLabels,
   dayAriaLabel,
   className,
+  fillHeight = false,
 }: UtilizationMonthCalendarProps) {
   const dayMap = useMemo(() => new Map(days.map((day) => [day.date, day])), [days]);
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -40,8 +43,12 @@ export function UtilizationMonthCalendar({
   }
 
   return (
-    <div className={cn('min-w-0', className)}>
-      <div className="mb-1 grid grid-cols-7 gap-0.5 lg:mb-0.5 lg:gap-px">
+    <div className={cn('min-w-0', fillHeight && 'flex h-full min-h-0 flex-col', className)}>
+      <div
+        className={cn(
+          'mb-1 grid shrink-0 grid-cols-7 gap-0.5 lg:mb-0.5 lg:gap-px',
+        )}
+      >
         {weekdayLabels.map((label) => (
           <div
             key={label}
@@ -51,10 +58,24 @@ export function UtilizationMonthCalendar({
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-0.5 lg:gap-px" role="grid" aria-readonly="true">
+      <div
+        className={cn(
+          'grid grid-cols-7 gap-0.5 lg:gap-px',
+          fillHeight && 'min-h-0 flex-1 auto-rows-fr',
+        )}
+        role="grid"
+        aria-readonly="true"
+      >
         {cells.map((cell, index) => {
           if (!cell) {
-            return <div key={`empty-${index}`} role="gridcell" aria-hidden />;
+            return (
+              <div
+                key={`empty-${index}`}
+                role="gridcell"
+                aria-hidden
+                className={cn(fillHeight && 'min-h-0')}
+              />
+            );
           }
           const entry = dayMap.get(cell.date);
           const percent = entry?.utilizationPercent ?? null;
@@ -73,8 +94,10 @@ export function UtilizationMonthCalendar({
               tabIndex={0}
               aria-label={dayAriaLabel(dateLabel, percent)}
               className={cn(
-                'flex aspect-square min-h-[1.75rem] min-w-0 items-center justify-center rounded-md text-[10px] font-semibold tabular-nums transition-colors motion-reduce:transition-none',
-                'lg:aspect-auto lg:h-[1.125rem] lg:max-h-[1.125rem] lg:min-h-[1.125rem] lg:rounded-sm lg:text-[8px]',
+                'flex min-w-0 items-center justify-center rounded-md text-[10px] font-semibold tabular-nums transition-colors motion-reduce:transition-none',
+                fillHeight
+                  ? 'h-full min-h-[1.25rem] rounded-sm text-[8px] lg:min-h-0'
+                  : 'aspect-square min-h-[1.75rem] lg:aspect-auto lg:h-[1.125rem] lg:max-h-[1.125rem] lg:min-h-[1.125rem] lg:rounded-sm lg:text-[8px]',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
                 utilizationHeatmapCellClass(tone),
               )}

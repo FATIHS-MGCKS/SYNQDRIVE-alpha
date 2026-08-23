@@ -8,8 +8,6 @@ import { NOTIFICATION_PANEL_TYPO } from '../notifications/notificationPanelTypog
 import { UtilizationHeatmapLegend } from './UtilizationHeatmapLegend';
 import { UtilizationKpiRow } from './UtilizationKpiRow';
 import { UtilizationMonthCalendar } from './UtilizationMonthCalendar';
-import { UtilizationMonthNav } from './UtilizationMonthNav';
-import { UtilizationProgressBar } from './UtilizationProgressBar';
 import { useDashboardUtilization } from './useDashboardUtilization';
 
 interface DashboardUtilizationPanelProps {
@@ -18,18 +16,9 @@ interface DashboardUtilizationPanelProps {
 }
 
 export function DashboardUtilizationPanel({ vm, className }: DashboardUtilizationPanelProps) {
-  const { t, locale } = useLanguage();
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
-  const { month, phase, data, error, goToPreviousMonth, goToNextMonth } = useDashboardUtilization(
-    orgId,
-    vm.selectedStationId,
-  );
-
-  const monthLabel = new Date(Date.UTC(month.year, month.month - 1, 1)).toLocaleDateString(locale, {
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
+  const { month, phase, data, error } = useDashboardUtilization(orgId, vm.selectedStationId);
 
   const weekdayLabels = [
     t('bookings.planner.weekdayMon'),
@@ -66,72 +55,74 @@ export function DashboardUtilizationPanel({ vm, className }: DashboardUtilizatio
       data-testid="dashboard-utilization-panel"
       className={cn(
         panelShellClass('tertiary'),
-        'flex min-h-[172px] min-w-0 flex-col overflow-hidden px-3 py-3.5 lg:px-3 lg:py-2.5',
+        'flex min-h-[172px] min-w-0 flex-col overflow-hidden px-3 py-3.5 lg:h-full lg:px-3 lg:py-2.5',
         className,
       )}
       aria-label={t('dashboard.utilization.title')}
     >
-      <div className="mb-3 flex shrink-0 items-start justify-between gap-2 lg:mb-1.5">
-        <h2 className={NOTIFICATION_PANEL_TYPO.boxTitle}>
-          {t('dashboard.utilization.title')}
-        </h2>
-        <UtilizationMonthNav
-          label={monthLabel}
-          onPrevious={goToPreviousMonth}
-          onNext={goToNextMonth}
-          previousLabel={t('dashboard.utilization.prevMonth')}
-          nextLabel={t('dashboard.utilization.nextMonth')}
-          className="lg:scale-[0.92] lg:origin-right"
-        />
-      </div>
-
       {loading ? (
-        <div className="space-y-3" aria-busy="true">
-          <div className="grid grid-cols-2 gap-3">
+        <div
+          className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-2"
+          aria-busy="true"
+        >
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-5 w-24 rounded-md" />
             <Skeleton className="h-12 rounded-lg" />
             <Skeleton className="h-12 rounded-lg" />
           </div>
-          <Skeleton className="h-2 rounded-full" />
-          <Skeleton className="h-28 rounded-xl" />
+          <Skeleton className="min-h-[140px] rounded-xl lg:min-h-0 lg:h-full" />
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-3 lg:gap-1.5">
-          {hasError ? (
-            <p className="text-[10px] text-muted-foreground">{t('dashboard.utilization.loadingError')}</p>
-          ) : null}
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-stretch lg:gap-2">
+          <div className="flex min-h-0 min-w-0 flex-col gap-3 lg:gap-2.5">
+            <h2 className={cn(NOTIFICATION_PANEL_TYPO.boxTitle, 'shrink-0')}>
+              {t('dashboard.utilization.title')}
+            </h2>
 
-          <UtilizationKpiRow
-            utilizationLabel={t('dashboard.utilization.monthUtilization')}
-            bookingsLabel={t('dashboard.utilization.monthBookings')}
-            vsPreviousMonthLabel={t('dashboard.utilization.vsPreviousMonth')}
-            utilizationPercent={metrics.utilizationPercent}
-            utilizationDeltaPp={metrics.utilizationDeltaPp}
-            bookingCount={metrics.bookingCount}
-            bookingDeltaPercent={metrics.bookingDeltaPercent}
-          />
+            {hasError ? (
+              <p className="text-[10px] text-muted-foreground">{t('dashboard.utilization.loadingError')}</p>
+            ) : null}
 
-          <UtilizationProgressBar
-            label={t('dashboard.utilization.progressLabel')}
-            percent={metrics.utilizationPercent}
-          />
+            <UtilizationKpiRow
+              layout="stack"
+              utilizationLabel={t('dashboard.utilization.monthUtilization')}
+              bookingsLabel={t('dashboard.utilization.monthBookings')}
+              vsPreviousMonthLabel={t('dashboard.utilization.vsPreviousMonth')}
+              utilizationPercent={metrics.utilizationPercent}
+              utilizationDeltaPp={metrics.utilizationDeltaPp}
+              bookingCount={metrics.bookingCount}
+              bookingDeltaPercent={metrics.bookingDeltaPercent}
+            />
 
-          <UtilizationMonthCalendar
-            year={month.year}
-            month={month.month}
-            days={days}
-            weekdayLabels={weekdayLabels}
-            dayAriaLabel={(dateLabel, utilizationPercent) =>
-              t('dashboard.utilization.dayAriaLabel', {
-                date: dateLabel,
-                percent:
-                  utilizationPercent === null
-                    ? t('dashboard.utilization.noData')
-                    : String(Math.round(utilizationPercent)),
-              })
-            }
-          />
+            <UtilizationHeatmapLegend
+              className="mt-auto hidden lg:block"
+              label={t('dashboard.utilization.legendLabel')}
+              ticks={['0%', '20%', '40%', '60%', '80%', '100%']}
+            />
+          </div>
+
+          <div className="flex min-h-[140px] min-w-0 lg:min-h-0 lg:h-full">
+            <UtilizationMonthCalendar
+              fillHeight
+              className="h-full w-full"
+              year={month.year}
+              month={month.month}
+              days={days}
+              weekdayLabels={weekdayLabels}
+              dayAriaLabel={(dateLabel, utilizationPercent) =>
+                t('dashboard.utilization.dayAriaLabel', {
+                  date: dateLabel,
+                  percent:
+                    utilizationPercent === null
+                      ? t('dashboard.utilization.noData')
+                      : String(Math.round(utilizationPercent)),
+                })
+              }
+            />
+          </div>
 
           <UtilizationHeatmapLegend
+            className="lg:hidden"
             label={t('dashboard.utilization.legendLabel')}
             ticks={['0%', '20%', '40%', '60%', '80%', '100%']}
           />
