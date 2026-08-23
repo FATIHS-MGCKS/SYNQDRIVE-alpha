@@ -18,6 +18,7 @@ import { invoicesDocumentsDe } from './invoices.documents.de';
 import { operatorDamageCaptureDe } from './operator.damageCapture.de';
 import { operatorPickupCheckDe } from './operator.pickupCheck.de';
 import { operatorTireMeasureDe } from './operator.tireMeasure.de';
+import { operatorVehicleQuickViewHeaderDe } from './operator.vehicleQuickView.header.de';
 import { operatorVehicleQuickViewTasksDe } from './operator.vehicleQuickView.tasks.de';
 import { vendorsDirectoryDe } from './vendors.directory.de';
 import { supportOpsDe } from './support.ops.de';
@@ -5590,6 +5591,7 @@ export const de: Record<TranslationKey, string> = {
   ...operatorDamageCaptureDe,
   ...operatorPickupCheckDe,
   ...operatorTireMeasureDe,
+  ...operatorVehicleQuickViewHeaderDe,
   ...operatorVehicleQuickViewTasksDe,
   ...vendorsDirectoryDe,
 } satisfies CompleteTranslationDictionary;

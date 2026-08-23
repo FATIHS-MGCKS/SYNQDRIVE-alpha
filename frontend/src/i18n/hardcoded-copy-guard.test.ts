@@ -366,6 +366,11 @@ const P227_ENFORCE_CLEAN_EXACT = [
   'operator/lib/operator-vehicle-quick-view-i18n.ts',
 ];
 
+const P228_ENFORCE_CLEAN_EXACT = [
+  'operator/components/OperatorVehicleQuickViewHeader.tsx',
+  'operator/lib/operator-vehicle-quick-view-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -472,6 +477,10 @@ function isP226EnforceCleanPath(relPath: string): boolean {
 
 function isP227EnforceCleanPath(relPath: string): boolean {
   return P227_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP228EnforceCleanPath(relPath: string): boolean {
+  return P228_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -741,6 +750,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(p227Debt).toHaveLength(0);
   });
 
+  it('scopes P2.2.28 enforce-clean findings to Operator Vehicle Quick View Header & Primary Status only', () => {
+    const p228Debt = inventory.findings.filter((finding) =>
+      isP228EnforceCleanPath(finding.file),
+    );
+    expect(p228Debt).toHaveLength(0);
+  });
+
   it('keeps operator-vehicle-quick-view-i18n.ts on canonical translation keys', () => {
     const source = readFileSync(
       join(__dirname, '../operator/lib/operator-vehicle-quick-view-i18n.ts'),
@@ -748,9 +764,23 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     );
     expect(source).toContain('TranslationKey');
     expect(source).toContain('operatorVehicleQuickViewTaskStatusLabel');
+    expect(source).toContain('operatorVehicleQuickViewPrimaryStatusLabel');
     expect(source).not.toMatch(/'Überfällig'/);
     expect(source).not.toMatch(/locale === 'de'/);
     expect(source).not.toMatch(/de-DE/);
+  });
+
+  it('keeps OperatorVehicleQuickViewHeader.tsx free of hardcoded header presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/components/OperatorVehicleQuickViewHeader.tsx'),
+      'utf8',
+    );
+    expect(source).toContain('operatorVehicleQuickViewHeaderReleaseQuestion');
+    expect(source).toContain('resolveOperatorVehicleQuickViewOperationalDisplayLocale');
+    expect(source).not.toMatch(/locale:\s*'de'/);
+    expect(source).not.toMatch(/locale="de"/);
+    expect(source).not.toMatch(/'Darf raus\?'/);
+    expect(source).not.toMatch(/'Fahrzeug nicht gefunden'/);
   });
 
   it('keeps OperatorVehicleQuickViewTasks.tsx free of hardcoded open-tasks presentation literals', () => {
