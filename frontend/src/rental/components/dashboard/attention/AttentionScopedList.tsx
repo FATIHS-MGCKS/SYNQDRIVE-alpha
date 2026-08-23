@@ -26,6 +26,7 @@ import { NOTIFICATION_PANEL_TYPO } from '../notifications/notificationPanelTypog
 import type { NotificationEmptyVariant } from '../notifications/notificationPanelTypes';
 import { isOverdueHandoverNotification, resolveHandoverCustomerId } from '../notifications/notification-handover-copy';
 import { countAtomicActions } from '../actionQueueGrouping';
+import { ATTENTION_SCOPED_LIST_SCROLL_MAX_HEIGHT_CLASS } from './attentionScopedListLayout';
 
 export interface AttentionScopedListHandlers {
   onOpenVehicleById?: (vehicleId: string) => void;
@@ -52,6 +53,7 @@ interface AttentionScopedListProps {
   onLoadMore?: () => Promise<void>;
   hasMore?: boolean;
   listClassName?: string;
+  scrollClassName?: string;
 }
 
 function runItemCta(
@@ -153,6 +155,7 @@ export function AttentionScopedList({
   onLoadMore,
   hasMore = false,
   listClassName,
+  scrollClassName,
 }: AttentionScopedListProps) {
   const { orgId } = useRentalOrg();
   const rentalNav = useRentalEntityNavigation();
@@ -241,7 +244,10 @@ export function AttentionScopedList({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {errorBanner ? <NotificationPanelErrorBanner message={errorBanner} /> : null}
 
-      <DashboardPanelScrollBlur className={listClassName}>
+      <DashboardPanelScrollBlur
+        className={cn('min-h-0 flex-1', listClassName)}
+        scrollClassName={cn(ATTENTION_SCOPED_LIST_SCROLL_MAX_HEIGHT_CLASS, scrollClassName)}
+      >
         {loading ? (
           <NotificationCardSkeleton rows={3} />
         ) : showEmpty ? (
