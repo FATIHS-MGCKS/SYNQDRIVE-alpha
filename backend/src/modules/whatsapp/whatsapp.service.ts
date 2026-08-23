@@ -294,6 +294,17 @@ export class WhatsAppService {
         },
       });
       if (existing) {
+        if (existing.messageType === 'image' || existing.messageType === 'document') {
+          return this.resumeOrReturnExistingMediaMessage(
+            orgId,
+            conversationId,
+            convo,
+            config,
+            existing,
+            input,
+            options,
+          );
+        }
         return this.resumeOrReturnExistingMessage(orgId, conversationId, convo, existing, options);
       }
     }
@@ -472,6 +483,77 @@ export class WhatsAppService {
     });
 
     return this.mapMessage(updated);
+  }
+
+  private async resumeOrReturnExistingMediaMessage(
+    orgId: string,
+    conversationId: string,
+    convo: Awaited<ReturnType<typeof this.requireConversation>>,
+    config: Awaited<ReturnType<typeof this.requireConfig>>,
+    existing: {
+      id: string;
+      status: WhatsAppMessageDeliveryStatus;
+      providerMessageId: string | null;
+      failureReason: string | null;
+      providerDispatchStartedAt: Date | null;
+      providerMediaId: string | null;
+      messageType: string;
+      content: string;
+    },
+    input: {
+      mediaKind: 'image' | 'document';
+      caption?: string;
+      fileName: string;
+      mimeType: string;
+      buffer: Buffer;
+      attachmentId: string;
+    },
+    options?: { skipCanonicalProjection?: boolean; idempotencyKey?: string },
+  ) {
+    if (existing.status === WhatsAppMessageDeliveryStatus.SENT) {
+      const full = await this.prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: existing.id } });
+      return this.mapMessage(full);
+    }
+
+    if (existing.status === WhatsAppMessageDeliveryStatus.FAILED) {
+      const full = await this.prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: existing.id } });
+      return this.mapMessage(full);
+    }
+
+    if (existing.providerMessageId || existing.providerDispatchStartedAt) {
+      throw new WhatsAppSendAmbiguousException();
+    }
+
+    let providerMediaId = existing.providerMediaId;
+    if (!providerMediaId) {
+      const upload = await this.provider.uploadMedia(config, {
+        buffer: input.buffer,
+        mimeType: input.mimeType,
+        fileName: input.fileName,
+      });
+      providerMediaId = upload.mediaId;
+      await this.prisma.whatsAppMessage.update({
+        where: { id: existing.id },
+        data: { providerMediaId },
+      });
+    }
+
+    const full = await this.prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: existing.id } });
+    return this.dispatchOutboundMediaMessage(
+      orgId,
+      conversationId,
+      convo,
+      config,
+      { ...full, providerMediaId },
+      {
+        mediaKind: input.mediaKind,
+        caption: input.caption,
+        fileName: input.fileName,
+        mimeType: input.mimeType,
+        mediaId: providerMediaId!,
+      },
+      options,
+    );
   }
 
   private async resumeOrReturnExistingMessage(

@@ -14774,7 +14774,7 @@ model CommunicationReplyCommand {
   text                 String                      @default("")
   contentType          CommunicationReplyContentType @default(TEXT) @map("content_type")
   attachmentId         String?                     @map("attachment_id")
-  payloadHash          String                      @map("payload_hash")
+  payloadHash          String?                     @map("payload_hash")
   channel              CommunicationChannel
   sendState            CommunicationReplySendState @default(PENDING) @map("send_state")
   nativeMessageId      String?                     @map("native_message_id")
@@ -14807,6 +14807,7 @@ model CommunicationAttachment {
   objectKey       String                         @map("object_key")
   storageProvider String                         @map("storage_provider")
   uploaderUserId  String?                        @map("uploader_user_id")
+  reservedCommandId String?                      @map("reserved_command_id")
   nativeMessageId String?                        @map("native_message_id")
   sealedAt        DateTime?                      @map("sealed_at")
   createdAt       DateTime                       @default(now()) @map("created_at")

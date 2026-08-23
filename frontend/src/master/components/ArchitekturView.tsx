@@ -1169,7 +1169,8 @@ const INTEGRATIONS: IntegrationEntry[] = [
     apis: [
       { label: 'Upload', detail: 'POST .../conversations/:id/attachments — communication.write; MIME magic-byte validation; conversation-bound' },
       { label: 'Download', detail: 'GET .../attachments/:id/content — communication.read; nosniff; no public bucket URLs' },
-      { label: 'Reply', detail: 'POST .../reply — attachmentId + contentType; payloadHash idempotency; one attachment V1' },
+      { label: 'Reply', detail: 'POST .../reply — attachmentId + contentType; buildReplyPayloadHash sole authority; legacy null-hash TEXT replay; one attachment V1' },
+      { label: 'Reservation', detail: 'reservedCommandId atomic on command create — one upload = one send; replay passes commandId' },
       { label: 'WhatsApp', detail: 'Meta uploadMedia + sendMediaMessage; providerMediaId reuse; dispatch marker before customer send' },
       { label: 'Inbound', detail: 'Webhook image/document → backend Meta download → CommunicationAttachment → canonical MESSAGE_RECEIVED' },
       { label: 'Frontend', detail: 'useCommunicationAttachmentDraft + CommunicationMediaContent timeline rendering' },

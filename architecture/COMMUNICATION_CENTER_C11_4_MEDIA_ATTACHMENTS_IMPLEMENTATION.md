@@ -1,7 +1,7 @@
 # Communication Center C11.4 — Media Attachments Implementation
 
 **Phase:** C11.4  
-**Status:** Implemented (draft PR)  
+**Status:** Implemented (draft PR #1200)  
 **Depends on:** C11.2 send safety, C11.3 ownership, C7/C7.2 canonical content, C8.3 timeline
 
 ## 1. Scope
@@ -16,17 +16,51 @@ V1 outbound media for **WhatsApp IMAGE + DOCUMENT** only (one attachment per rep
 
 **Out of scope:** SMS MMS, voice media, multi-attachment batching, AI/OCR, virus scanning architecture, sticker picker, email attachments.
 
-## 2. Existing media audit (pre-C11.4)
+## 2. Canonical payload hash authority
 
-| Area | Finding |
-|------|---------|
-| Inbound WhatsApp | Webhook parsed **text only**; image/document dropped |
-| Outbound WhatsApp | `sendTextMessage` only; no Meta media upload |
-| Canonical content | C7.2 supports IMAGE/DOCUMENT types + `hasAttachments`; no binary identity |
-| Storage | `DocumentStoragePort` / `DOCUMENTS_STORAGE` (private object storage) |
-| Frontend timeline | Semantic labels only ("Image", "Document"); no secure retrieval |
+**Single authority:** `buildReplyPayloadHash()` in `communication-reply-payload.ts` using `JSON.stringify({ contentType, text, attachmentId })` + SHA-256.
 
-## 3. Supported media matrix
+- No SQL-side hash backfill
+- No duplicate serializers in frontend or provider adapters
+- All **new** C11.4 `CommunicationReplyCommand` rows MUST have non-null `payloadHash` at insert
+
+## 3. Legacy C11.2 migration compatibility
+
+Migration `20260823120000_communication_center_c11_4_media_attachments`:
+
+- Adds nullable `payload_hash` column (no SQL `json_build_object` backfill)
+- Pre-C11.4 rows may have `payloadHash = null`
+
+**Replay semantics** (`matchesReplyCommandPayload`):
+
+| Stored state | Request match rule |
+|--------------|-------------------|
+| `payloadHash` present | Exact hash equality |
+| `payloadHash` null (legacy TEXT) | `contentType=TEXT`, `attachmentId=null`, `text` equality |
+
+On successful legacy replay, `shouldBackfillLegacyPayloadHash` lazily persists canonical hash via runtime helper.
+
+**Migration evidence:** `backend/scripts/test/communication-center-c11-4-migration-test.sh` seeds ACCEPTED/FAILED/PENDING legacy rows with NULL hash after full deploy.
+
+## 4. Attachment immutability invariant
+
+`CommunicationAttachment` bytes are immutable from upload:
+
+- `contentHash` + `objectKey` set at READY
+- `sealedAt` + `nativeMessageId` set after send or inbound ingest
+- **V1 identity for idempotency:** `attachmentId` is sufficient (no separate content-hash fingerprint in command payload)
+
+## 5. Attachment send reservation (one attachment → one send)
+
+`reservedCommandId` on `CommunicationAttachment`:
+
+- Set atomically in same transaction as `CommunicationReplyCommand` create via conditional `updateMany` (`READY`, `sealedAt=null`, `reservedCommandId` null or same command)
+- Second idempotency key reusing same attachment → `ATTACHMENT_NOT_ALLOWED` before provider call
+- Replay/resume of owning command passes `commandId` into `requireReadyAttachmentForReply`
+
+**Product semantics (V1):** one uploaded attachment record = one logical outbound customer message.
+
+## 6. Supported media matrix
 
 | Channel | Outbound TEXT | Outbound IMAGE | Outbound DOCUMENT | Inbound IMAGE/DOCUMENT |
 |---------|---------------|----------------|-------------------|------------------------|
@@ -34,61 +68,24 @@ V1 outbound media for **WhatsApp IMAGE + DOCUMENT** only (one attachment per rep
 | SMS | Yes (if configured) | No | No | N/A |
 | Voice | No | No | No | N/A |
 
-## 4. Storage authority
+## 7. Storage authority
 
 Reuses **`DocumentStoragePort`** (`DOCUMENTS_STORAGE`) with document type `COMMUNICATION_MEDIA`.
 
 - Org-scoped object keys (generated; never user filename)
 - Conversation-bound `CommunicationAttachment` records
+- **MIME consistency:** persisted `mimeType` uses validated upload input, not storage adapter return metadata
 - No public bucket URLs; no Meta media URLs in frontend DTOs
 
-## 5. Canonical attachment model
-
-`CommunicationAttachment` (Prisma):
-
-- `organizationId`, `conversationId` (required at creation)
-- `mediaType`: IMAGE | DOCUMENT
-- `state`: UPLOADING | READY | FAILED
-- `fileName`, `mimeType`, `sizeBytes`, `contentHash`, `objectKey`
-- `nativeMessageId`, `sealedAt` (immutable after send / inbound ingest)
-- `uploaderUserId` optional (outbound operator uploads; inbound null)
-
-## 6. Attachment lifecycle
-
-| State | Meaning |
-|-------|---------|
-| UPLOADING | Reserved for future streaming upload (outbound creates READY directly after validation) |
-| READY | Validated bytes stored; eligible for reply reference |
-| FAILED | Upload/validation failure |
-
-Provider send state remains on `CommunicationReplyCommand` / native `WhatsAppMessage` — not conflated with storage state.
-
-## 7. Upload API
-
-`POST /organizations/:orgId/communication/conversations/:conversationId/attachments`
-
-- `multipart/form-data` field `file`
-- RBAC: `communication.write` + conversation mutable (C11.3)
-- Response: safe `CommunicationAttachmentDto` (no storage keys / provider IDs)
-
-## 8. Validation / security
-
-- Allowlist MIME: JPEG, PNG, WebP, PDF
-- Magic-byte validation (`assertBufferMatchesMime`)
-- Max size: **5 MB** images, **16 MB** documents
-- Filename sanitized via `sanitizeAttachmentFileName` (strip path/control chars)
-- No SVG/HTML outbound
-- Download: `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store`
-
-## 9. Download / access model
+## 8. Download / access model
 
 `GET /organizations/:orgId/communication/attachments/:attachmentId/content`
 
 - RBAC: `communication.read` + conversation readable + station scope
-- Streams via authenticated proxy (not permanent public URL)
-- Images: `Content-Disposition: inline` when safe; documents: attachment
+- `Content-Disposition` via `buildCommunicationAttachmentContentDisposition()` — sanitized filename, `filename*` UTF-8, no CRLF injection
+- `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store`
 
-## 10. Reply DTO extension
+## 9. Reply DTO extension
 
 ```json
 {
@@ -99,53 +96,45 @@ Provider send state remains on `CommunicationReplyCommand` / native `WhatsAppMes
 }
 ```
 
-V1: **one attachment** OR text-only. Caption allowed when provider supports (WhatsApp image/document).
-
-## 11. Idempotency payload
-
-`payloadHash = SHA-256(JSON.stringify({ contentType, text, attachmentId }))`
-
-Same key + different hash → `IDEMPOTENCY_CONFLICT`. Same key + same hash → replay prior result.
-
-## 12. WhatsApp provider media
+## 10. WhatsApp provider media
 
 1. Upload bytes to Meta → `providerMediaId` (persisted on native message)
 2. Atomic `providerDispatchStartedAt` claim
 3. Send customer message referencing media ID
-4. Reuse `providerMediaId` on retry when present
+4. **Retry reuses `providerMediaId`** when present (`resumeOrReturnExistingMediaMessage`)
 
-Media upload failure before dispatch claim: safe retry with new logical attempt. Dispatch ambiguity after claim: `SEND_UNKNOWN` (C11.2 invariant).
+## 11. Inbound media dedupe
 
-## 13. Inbound media
+Webhook path (`handleInboundMessage`):
 
-Webhook parses `image` / `document` types → downloads via Meta Graph (backend-only token) → stores attachment linked to canonical conversation → projects canonical MESSAGE_RECEIVED with media content type.
+1. `whatsAppMessage.findUnique({ providerMessageId })` **before** Meta media download
+2. `whatsAppWebhookEvent.externalEventId` idempotency at entry level
+3. Duplicate delivery → no second native message, attachment, or MESSAGE_RECEIVED projection
 
-Storage failure: message still projected; timeline shows unavailable attachment fallback.
+Unit evidence: `whatsapp-webhook.service.spec.ts` — `skips duplicate provider message`.
 
-## 14. Read API
+## 12. PostgreSQL test evidence
 
-`CommunicationMessageContentDto.attachments[]` — safe summaries only (`id`, `fileName`, `mimeType`, `sizeBytes`, `mediaType`), resolved by `nativeMessageId` batch lookup.
+| Suite | Coverage |
+|-------|----------|
+| `communication-reply-media.postgres.integration.spec.ts` | Legacy null-hash replay/conflict/special chars; same-key media replay; attachment/caption conflicts; parallel same-key; two-key same-attachment; dispatch crash; cross-org/conv; legacy FAILED/PENDING |
+| `communication-reply.postgres.integration.spec.ts` | C11.2 text idempotency regression |
+| `whatsapp-dispatch.postgres.integration.spec.ts` | Provider media ID reuse on retry |
+| `communication-center-c11-4-migration-test.sh` | Post-migrate legacy NULL payload_hash rows |
 
-## 15. Frontend
+Run (fresh DB):
 
-- `useCommunicationAttachmentDraft` — org/conversation signature guards
-- `CommunicationComposer` — paperclip, preview tile, send disabled while uploading
-- `CommunicationMediaContent` — timeline image preview / document download tile
-- `communicationClient.uploadAttachment` + `attachmentContentUrl`
+```bash
+DATABASE_URL=postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_comm_c11_4_test?schema=public \
+  npx jest communication-reply-media.postgres.integration.spec.ts communication-reply.postgres.integration.spec.ts --runInBand
+```
 
-## 16. Tests
+## 13. Known limitations
 
-- Backend: validation, payload hash, reply service idempotency, Meta webhook parse (image/document)
-- Frontend: attachment draft race + ready state
-- PostgreSQL: existing C11.2 reply suite extended with attachment service wiring
+- Storage orphan if DB insert fails after `putObject` (documented operational gap; no partial READY returned)
+- No orphan upload cleanup worker
+- No EXIF stripping / malware scanning (MIME allowlist + magic bytes only)
 
-## 17. Known limitations
+## 14. Human takeover fix (C11.4 hardening)
 
-- No orphan upload cleanup worker (documented; READY unattached attachments may persist until future TTL job)
-- No EXIF stripping (metadata may remain in stored images)
-- No malware scanning (MIME allowlist + magic bytes only)
-- Audio/video/sticker outbound not in V1 scope
-
-## 18. Next phase readiness
-
-**READY** for: inbound audio/video rendering (if product priority), orphan cleanup job, thumbnail generation via existing storage hooks, MMS if sent.dm runtime audited.
+Same assigned operator may reply again from `WAITING_CUSTOMER` (post-send transition) without `ALREADY_CLAIMED` — required so attachment reservation conflicts surface correctly on subsequent sends.

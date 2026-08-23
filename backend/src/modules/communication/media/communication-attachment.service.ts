@@ -54,6 +54,7 @@ export class CommunicationAttachmentService {
 
     const safeName = sanitizeAttachmentFileName(input.originalName);
     const contentHash = sha256Hex(input.buffer);
+    const validatedMimeType = input.mimeType;
 
     const stored = await this.storage.putObject({
       organizationId,
@@ -61,7 +62,7 @@ export class CommunicationAttachmentService {
       documentType: COMMUNICATION_ATTACHMENT_STORAGE_DOCUMENT_TYPE,
       originalName: safeName,
       buffer: input.buffer,
-      mimeType: input.mimeType,
+      mimeType: validatedMimeType,
     });
 
     const attachment = await this.prisma.communicationAttachment.create({
@@ -74,7 +75,7 @@ export class CommunicationAttachmentService {
             : CommunicationAttachmentMediaType.DOCUMENT,
         state: CommunicationAttachmentState.READY,
         fileName: safeName,
-        mimeType: stored.mimeType,
+        mimeType: validatedMimeType,
         sizeBytes: stored.sizeBytes,
         contentHash,
         objectKey: stored.objectKey,
@@ -86,7 +87,7 @@ export class CommunicationAttachmentService {
     return this.mapAttachment(attachment);
   }
 
-  async requireReadyAttachmentForReply(
+  async assertAttachmentAvailableForReply(
     tx: Prisma.TransactionClient,
     organizationId: string,
     conversationId: string,
@@ -105,6 +106,86 @@ export class CommunicationAttachmentService {
       throw CommunicationAttachmentError.notReady();
     }
     if (attachment.sealedAt) {
+      throw CommunicationAttachmentError.sealed();
+    }
+    if (attachment.reservedCommandId) {
+      throw CommunicationAttachmentError.sealed();
+    }
+    return attachment;
+  }
+
+  async reserveAttachmentForReply(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    conversationId: string,
+    attachmentId: string,
+    commandId: string,
+  ) {
+    const attachment = await tx.communicationAttachment.findFirst({
+      where: { id: attachmentId, organizationId },
+    });
+    if (!attachment) {
+      throw CommunicationAttachmentError.notFound();
+    }
+    if (attachment.conversationId !== conversationId) {
+      throw CommunicationAttachmentError.conversationMismatch();
+    }
+    if (attachment.state !== CommunicationAttachmentState.READY) {
+      throw CommunicationAttachmentError.notReady();
+    }
+    if (attachment.sealedAt) {
+      throw CommunicationAttachmentError.sealed();
+    }
+    if (attachment.reservedCommandId && attachment.reservedCommandId !== commandId) {
+      throw CommunicationAttachmentError.sealed();
+    }
+
+    const reserved = await tx.communicationAttachment.updateMany({
+      where: {
+        id: attachmentId,
+        organizationId,
+        conversationId,
+        state: CommunicationAttachmentState.READY,
+        sealedAt: null,
+        OR: [{ reservedCommandId: null }, { reservedCommandId: commandId }],
+      },
+      data: { reservedCommandId: commandId },
+    });
+
+    if (reserved.count === 0) {
+      throw CommunicationAttachmentError.sealed();
+    }
+
+    return attachment;
+  }
+
+  async requireReadyAttachmentForReply(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    conversationId: string,
+    attachmentId: string,
+    commandId?: string,
+  ) {
+    const attachment = await tx.communicationAttachment.findFirst({
+      where: { id: attachmentId, organizationId },
+    });
+    if (!attachment) {
+      throw CommunicationAttachmentError.notFound();
+    }
+    if (attachment.conversationId !== conversationId) {
+      throw CommunicationAttachmentError.conversationMismatch();
+    }
+    if (attachment.state !== CommunicationAttachmentState.READY) {
+      throw CommunicationAttachmentError.notReady();
+    }
+    if (attachment.sealedAt) {
+      throw CommunicationAttachmentError.sealed();
+    }
+    if (
+      attachment.reservedCommandId
+      && commandId
+      && attachment.reservedCommandId !== commandId
+    ) {
       throw CommunicationAttachmentError.sealed();
     }
     return attachment;
@@ -178,6 +259,7 @@ export class CommunicationAttachmentService {
 
     const safeName = sanitizeAttachmentFileName(input.originalName);
     const contentHash = sha256Hex(input.buffer);
+    const validatedMimeType = input.mimeType;
 
     const stored = await this.storage.putObject({
       organizationId: input.organizationId,
@@ -185,7 +267,7 @@ export class CommunicationAttachmentService {
       documentType: COMMUNICATION_ATTACHMENT_STORAGE_DOCUMENT_TYPE,
       originalName: safeName,
       buffer: input.buffer,
-      mimeType: input.mimeType,
+      mimeType: validatedMimeType,
     });
 
     const attachment = await this.prisma.communicationAttachment.create({
@@ -198,7 +280,7 @@ export class CommunicationAttachmentService {
             : CommunicationAttachmentMediaType.DOCUMENT,
         state: CommunicationAttachmentState.READY,
         fileName: safeName,
-        mimeType: stored.mimeType,
+        mimeType: validatedMimeType,
         sizeBytes: stored.sizeBytes,
         contentHash,
         objectKey: stored.objectKey,

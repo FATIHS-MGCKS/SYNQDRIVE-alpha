@@ -9,24 +9,9 @@ ALTER TABLE "communication_reply_commands"
   ADD COLUMN "attachment_id" TEXT,
   ADD COLUMN "payload_hash" TEXT;
 
-UPDATE "communication_reply_commands"
-SET "payload_hash" = encode(
-  sha256(
-    convert_to(
-      json_build_object(
-        'contentType', 'TEXT',
-        'text', "text",
-        'attachmentId', NULL
-      )::text,
-      'UTF8'
-    )
-  ),
-  'hex'
-)
-WHERE "payload_hash" IS NULL;
+-- Legacy C11.2 rows keep payload_hash NULL; runtime backfills via buildReplyPayloadHash on replay.
 
 ALTER TABLE "communication_reply_commands"
-  ALTER COLUMN "payload_hash" SET NOT NULL,
   ALTER COLUMN "text" SET DEFAULT '';
 
 ALTER TABLE "whatsapp_messages"
@@ -46,6 +31,7 @@ CREATE TABLE "communication_attachments" (
   "object_key" TEXT NOT NULL,
   "storage_provider" TEXT NOT NULL,
   "uploader_user_id" TEXT,
+  "reserved_command_id" TEXT,
   "native_message_id" TEXT,
   "sealed_at" TIMESTAMP(3),
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

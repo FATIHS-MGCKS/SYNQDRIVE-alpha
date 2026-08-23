@@ -18,6 +18,7 @@ import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { RequireCommunicationPermission } from '@shared/decorators/require-communication-permission.decorator';
 import { CommunicationAttachmentService } from './communication-attachment.service';
 import { CommunicationAttachmentError } from './communication-attachment.errors';
+import { buildCommunicationAttachmentContentDisposition } from './communication-attachment-content-disposition.util';
 
 interface AuthUser {
   id: string;
@@ -66,10 +67,8 @@ export class CommunicationAttachmentController {
       String(user.id),
     );
 
-    const disposition =
-      attachment.mediaType === 'IMAGE' && attachment.mimeType.startsWith('image/')
-        ? 'inline'
-        : 'attachment';
+    const inline =
+      attachment.mediaType === 'IMAGE' && attachment.mimeType.startsWith('image/');
 
     res.setHeader('Content-Type', attachment.mimeType);
     res.setHeader('Content-Length', String(attachment.sizeBytes));
@@ -77,7 +76,7 @@ export class CommunicationAttachmentController {
     res.setHeader('Cache-Control', 'private, no-store');
     res.setHeader(
       'Content-Disposition',
-      `${disposition}; filename="${encodeURIComponent(attachment.fileName)}"`,
+      buildCommunicationAttachmentContentDisposition(attachment.fileName, inline),
     );
 
     stream.pipe(res);

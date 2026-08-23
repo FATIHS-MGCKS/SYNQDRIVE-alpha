@@ -43,6 +43,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Conversation-bound CommunicationAttachment model on DocumentStoragePort (IMAGE + PDF V1).',
       'POST .../conversations/:id/attachments upload + GET .../attachments/:id/content authenticated proxy.',
       'Extended reply DTO (attachmentId, contentType, caption) with payloadHash idempotency beyond text-only.',
+      'Legacy C11.2 rows: nullable payloadHash + runtime matchesReplyCommandPayload (no SQL hash backfill).',
+      'Attachment reservedCommandId atomic reservation — one upload = one outbound send (V1).',
       'WhatsApp outbound: Meta media upload + sendMediaMessage with C11.2 providerDispatchStartedAt safety.',
       'WhatsApp inbound image/document webhook parse, Meta download, secure storage, canonical projection.',
       'Composer paperclip + attachment draft hook; timeline CommunicationMediaContent rendering.',

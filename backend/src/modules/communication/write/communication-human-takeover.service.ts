@@ -56,7 +56,7 @@ export class CommunicationHumanTakeoverService {
       };
     }
 
-    if (input.row.assignedUserId) {
+    if (input.row.assignedUserId && input.row.assignedUserId !== input.actorUserId) {
       throw CommunicationWriteError.alreadyClaimed();
     }
 
@@ -68,7 +68,7 @@ export class CommunicationHumanTakeoverService {
       where: {
         id: input.conversationId,
         organizationId: input.organizationId,
-        assignedUserId: null,
+        assignedUserId: input.row.assignedUserId ?? null,
         status: previousStatus,
         updatedAt: input.row.updatedAt,
       },

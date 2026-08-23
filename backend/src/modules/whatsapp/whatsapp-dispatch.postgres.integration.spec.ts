@@ -11,6 +11,8 @@ describePg('WhatsApp outbound dispatch postgres', () => {
   let prisma: PrismaClient;
   let service: WhatsAppService;
   let sendTextMessage: jest.Mock;
+  let uploadMedia: jest.Mock;
+  let sendMediaMessage: jest.Mock;
   let orgId: string;
   let conversationId: string;
 
@@ -27,6 +29,11 @@ describePg('WhatsApp outbound dispatch postgres', () => {
     sendTextMessage = jest.fn().mockResolvedValue({
       status: 'SENT',
       providerMessageId: 'wamid.test.1',
+    });
+    uploadMedia = jest.fn().mockResolvedValue({ mediaId: 'meta-media-1' });
+    sendMediaMessage = jest.fn().mockResolvedValue({
+      status: 'SENT',
+      providerMessageId: 'wamid.media.1',
     });
 
     const ts = Date.now();
@@ -61,6 +68,8 @@ describePg('WhatsApp outbound dispatch postgres', () => {
     const provider = {
       isConfigured: jest.fn().mockReturnValue(true),
       sendTextMessage: (...args: unknown[]) => sendTextMessage(...args),
+      uploadMedia: (...args: unknown[]) => uploadMedia(...args),
+      sendMediaMessage: (...args: unknown[]) => sendMediaMessage(...args),
     };
 
     service = new WhatsAppService(
@@ -281,5 +290,47 @@ describePg('WhatsApp outbound dispatch postgres', () => {
     expect(row.failureReason).toBe('DISPATCH_UNCERTAIN');
     expect(row.providerMessageId).toBeNull();
     expect(sendTextMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('reuses persisted providerMediaId on media retry without re-upload', async () => {
+    const key = scopedKey('media-provider-reuse');
+    const attachmentId = 'att-reuse-1';
+    await prisma.whatsAppMessage.create({
+      data: {
+        organizationId: orgId,
+        conversationId,
+        direction: 'outgoing',
+        senderType: 'human',
+        content: 'caption',
+        messageType: 'image',
+        status: WhatsAppMessageDeliveryStatus.QUEUED,
+        idempotencyKey: key,
+        mediaAttachmentId: attachmentId,
+        providerMediaId: 'meta-media-persisted',
+      },
+    });
+
+    await service.sendMediaMessage(
+      orgId,
+      conversationId,
+      {
+        mediaKind: 'image',
+        caption: 'caption',
+        fileName: 'photo.jpg',
+        mimeType: 'image/jpeg',
+        buffer: Buffer.from('jpeg'),
+        attachmentId,
+      },
+      'Op',
+      { idempotencyKey: key },
+    );
+
+    expect(uploadMedia).not.toHaveBeenCalled();
+    expect(sendMediaMessage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ mediaId: 'meta-media-persisted' }),
+      expect.anything(),
+    );
   });
 });

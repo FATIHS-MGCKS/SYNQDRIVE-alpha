@@ -41,7 +41,11 @@ import {
   throwReplyErrorForFailureCode,
   CommunicationReplyOutcomeClass,
 } from './communication-reply-outcome';
-import { buildReplyPayloadHash } from './communication-reply-payload';
+import {
+  buildReplyPayloadHash,
+  matchesReplyCommandPayload,
+  shouldBackfillLegacyPayloadHash,
+} from './communication-reply-payload';
 import { CommunicationAttachmentService } from '../media/communication-attachment.service';
 
 export interface CommunicationReplyActor {
@@ -264,8 +268,14 @@ export class CommunicationReplyService {
         });
 
         if (existing) {
-          if (existing.payloadHash !== payload.payloadHash) {
+          if (!matchesReplyCommandPayload(existing, payload)) {
             throw CommunicationReplyError.idempotencyConflict();
+          }
+          if (shouldBackfillLegacyPayloadHash(existing, payload)) {
+            await tx.communicationReplyCommand.update({
+              where: { id: existing.id },
+              data: { payloadHash: payload.payloadHash },
+            });
           }
           const row = await this.requireConversationRow(tx, organizationId, conversationId);
           if (existing.sendState === CommunicationReplySendState.PENDING) {
@@ -284,7 +294,7 @@ export class CommunicationReplyService {
         await this.prepareOwnership(tx, organizationId, conversationId, row, actor.userId);
 
         if (payload.attachmentId) {
-          await this.attachments.requireReadyAttachmentForReply(
+          await this.attachments.assertAttachmentAvailableForReply(
             tx,
             organizationId,
             conversationId,
@@ -309,6 +319,16 @@ export class CommunicationReplyService {
           },
         });
 
+        if (payload.attachmentId) {
+          await this.attachments.reserveAttachmentForReply(
+            tx,
+            organizationId,
+            conversationId,
+            payload.attachmentId,
+            command.id,
+          );
+        }
+
         return buildPrepared(command.id, refreshed, 'execute');
       });
     } catch (error) {
@@ -326,8 +346,14 @@ export class CommunicationReplyService {
           },
         });
         if (!existing) throw error;
-        if (existing.payloadHash !== payload.payloadHash) {
+        if (!matchesReplyCommandPayload(existing, payload)) {
           throw CommunicationReplyError.idempotencyConflict();
+        }
+        if (shouldBackfillLegacyPayloadHash(existing, payload)) {
+          await this.prisma.communicationReplyCommand.update({
+            where: { id: existing.id },
+            data: { payloadHash: payload.payloadHash },
+          });
         }
         const row = await this.requireConversationRow(
           this.prisma,
