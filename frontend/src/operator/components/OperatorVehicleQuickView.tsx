@@ -1,9 +1,3 @@
-import {
-  Disc3,
-  ListTodo,
-  ShieldAlert,
-  Sparkles,
-} from 'lucide-react';
 import { SkeletonRows, StatusChip } from '../../components/patterns';
 import { formatDamageType } from '../../rental/lib/damage.types';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
@@ -26,6 +20,7 @@ import { OperatorGlassCard } from './OperatorGlassCard';
 import { OperatorVehicleQuickViewHeader } from './OperatorVehicleQuickViewHeader';
 import { OperatorVehicleQuickViewQuickActions } from './OperatorVehicleQuickViewQuickActions';
 import { OperatorVehicleQuickViewTasks } from './OperatorVehicleQuickViewTasks';
+import { OperatorVehicleQuickViewToolActions } from './OperatorVehicleQuickViewToolActions';
 import { useOperatorShell } from '../context/OperatorShellContext';
 
 interface OperatorVehicleQuickViewProps {
@@ -314,65 +309,43 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
         </SectionCard>
       )}
 
-      {/* Tool actions */}
-      <div className="grid gap-2">
-        <ActionButton
-          icon={<ShieldAlert className="h-4 w-4" />}
-          title="Schaden aufnehmen"
-          subtitle="Foto, Typ & Position"
-          highlight
-          onClick={() =>
-            openDamageCapture({
-              vehicleId,
-              vehicleName: vehicle.model,
-              plate: vehicle.license,
-              bookingId: data.bookingContext?.bookingId ?? undefined,
-              skipVehicleConfirm: true,
-            })
-          }
-        />
-        <ActionButton
-          icon={<Sparkles className="h-4 w-4" />}
-          title="AI Upload"
-          subtitle="Dokument scannen & bestätigen"
-          onClick={() =>
-            openSheet({
-              type: 'ai-upload',
-              vehicleId,
-              vehicleLabel: label,
-              bookingId: data.bookingContext?.bookingId ?? undefined,
-              contextMode: 'vehicle',
-            })
-          }
-        />
-        <ActionButton
-          icon={<Disc3 className="h-4 w-4" />}
-          title="Reifenprofil messen"
-          subtitle="Profiltiefe erfassen"
-          onClick={() =>
-            openSheet({
-              type: 'tire-measure',
-              vehicleId,
-              vehicleLabel: label,
-              onSuccess: () => void data.reloadDetails(),
-            })
-          }
-        />
-        <ActionButton
-          icon={<ListTodo className="h-4 w-4" />}
-          title="Aufgabe erstellen"
-          subtitle="Operative Aufgabe am Fahrzeug"
-          onClick={() =>
-            openSheet({
-              type: 'task-create',
-              vehicleId,
-              vehicleLabel: label,
-              bookingId: data.bookingContext?.bookingId ?? undefined,
-              onSuccess: () => void data.reloadDetails(),
-            })
-          }
-        />
-      </div>
+      <OperatorVehicleQuickViewToolActions
+        onDamageCapture={() =>
+          openDamageCapture({
+            vehicleId,
+            vehicleName: vehicle.model,
+            plate: vehicle.license,
+            bookingId: data.bookingContext?.bookingId ?? undefined,
+            skipVehicleConfirm: true,
+          })
+        }
+        onAiUpload={() =>
+          openSheet({
+            type: 'ai-upload',
+            vehicleId,
+            vehicleLabel: label,
+            bookingId: data.bookingContext?.bookingId ?? undefined,
+            contextMode: 'vehicle',
+          })
+        }
+        onTireMeasure={() =>
+          openSheet({
+            type: 'tire-measure',
+            vehicleId,
+            vehicleLabel: label,
+            onSuccess: () => void data.reloadDetails(),
+          })
+        }
+        onTaskCreate={() =>
+          openSheet({
+            type: 'task-create',
+            vehicleId,
+            vehicleLabel: label,
+            bookingId: data.bookingContext?.bookingId ?? undefined,
+            onSuccess: () => void data.reloadDetails(),
+          })
+        }
+      />
     </div>
   );
 }
@@ -386,42 +359,3 @@ function InfoTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ActionButton({
-  icon,
-  title,
-  subtitle,
-  onClick,
-  highlight,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  onClick: () => void;
-  highlight?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`sq-press flex min-h-[48px] items-center gap-3 rounded-xl border px-4 text-left ${
-        highlight
-          ? 'border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)]/50'
-          : 'border-border/60 surface-premium'
-      }`}
-    >
-      <span
-        className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-          highlight
-            ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-            : 'bg-muted text-muted-foreground'
-        }`}
-      >
-        {icon}
-      </span>
-      <span>
-        <span className="block text-sm font-semibold text-foreground">{title}</span>
-        <span className="text-[11px] text-muted-foreground">{subtitle}</span>
-      </span>
-    </button>
-  );
-}

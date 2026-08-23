@@ -19,6 +19,7 @@ import { operatorTireMeasureEn } from './operator.tireMeasure.en';
 import { operatorVehicleQuickViewHeaderEn } from './operator.vehicleQuickView.header.en';
 import { operatorVehicleQuickViewTasksEn } from './operator.vehicleQuickView.tasks.en';
 import { operatorVehicleQuickViewQuickActionsEn } from './operator.vehicleQuickView.quickActions.en';
+import { operatorVehicleQuickViewToolActionsEn } from './operator.vehicleQuickView.toolActions.en';
 import { vendorsDirectoryEn } from './vendors.directory.en';
 import { supportOpsEn } from './support.ops.en';
 import { whatsappEn } from './whatsapp.en';
@@ -5589,6 +5590,7 @@ export const en = {
   ...operatorVehicleQuickViewHeaderEn,
   ...operatorVehicleQuickViewTasksEn,
   ...operatorVehicleQuickViewQuickActionsEn,
+  ...operatorVehicleQuickViewToolActionsEn,
   ...vendorsDirectoryEn,
 } as const;
 

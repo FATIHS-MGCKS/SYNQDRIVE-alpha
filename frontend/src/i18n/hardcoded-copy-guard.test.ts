@@ -376,6 +376,11 @@ const P229_ENFORCE_CLEAN_EXACT = [
   'operator/lib/operator-vehicle-quick-view-i18n.ts',
 ];
 
+const P230_ENFORCE_CLEAN_EXACT = [
+  'operator/components/OperatorVehicleQuickViewToolActions.tsx',
+  'operator/lib/operator-vehicle-quick-view-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -490,6 +495,10 @@ function isP228EnforceCleanPath(relPath: string): boolean {
 
 function isP229EnforceCleanPath(relPath: string): boolean {
   return P229_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP230EnforceCleanPath(relPath: string): boolean {
+  return P230_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -771,6 +780,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP229EnforceCleanPath(finding.file),
     );
     expect(p229Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.30 enforce-clean findings to Operator Vehicle Quick View Tool Actions only', () => {
+    const p230Debt = inventory.findings.filter((finding) =>
+      isP230EnforceCleanPath(finding.file),
+    );
+    expect(p230Debt).toHaveLength(0);
   });
 
   it('keeps operator-vehicle-quick-view-i18n.ts on canonical translation keys', () => {
