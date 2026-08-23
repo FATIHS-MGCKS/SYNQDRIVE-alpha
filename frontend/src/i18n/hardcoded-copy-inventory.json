@@ -111,10 +111,10 @@
     }
   },
   "summary": {
-    "total": 1594,
+    "total": 1590,
     "bySurface": {
       "MASTER": 1049,
-      "OPERATOR": 147,
+      "OPERATOR": 143,
       "RENTAL": 372,
       "SHARED": 1,
       "SHELL": 25
@@ -122,9 +122,9 @@
     "byCategory": {
       "ARIA": 56,
       "TITLE": 245,
-      "TEXT": 1126,
+      "TEXT": 1123,
       "LABEL": 85,
-      "PLACEHOLDER": 74,
+      "PLACEHOLDER": 73,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
@@ -16037,20 +16037,6 @@
       ]
     },
     {
-      "file": "operator/verification/OperatorPickupCheckSheet.tsx",
-      "line": 92,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Manuelle Prüfung",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/verification/OperatorPickupCheckSheet.tsx"
-      ]
-    },
-    {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
       "line": 422,
       "surface": "OPERATOR",
@@ -16346,20 +16332,6 @@
       ]
     },
     {
-      "file": "operator/verification/OperatorPickupCheckSheet.tsx",
-      "line": 145,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "PLACEHOLDER",
-      "sample": "Optionale Anmerkungen zur Pickup-Prüfung…",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/verification/OperatorPickupCheckSheet.tsx"
-      ]
-    },
-    {
       "file": "operator/components/OperatorAccessGuard.tsx",
       "line": 73,
       "surface": "OPERATOR",
@@ -16498,20 +16470,6 @@
       "occurrences": 1,
       "files": [
         "operator/views/OperatorMoreView.tsx"
-      ]
-    },
-    {
-      "file": "operator/verification/OperatorPickupCheckSheet.tsx",
-      "line": 95,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Prüfung beim Pickup",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/verification/OperatorPickupCheckSheet.tsx"
       ]
     },
     {
@@ -16679,14 +16637,13 @@
       "sample": "Schließen",
       "severity": "debt",
       "migrationPhase": "P2.3",
-      "occurrences": 6,
+      "occurrences": 5,
       "files": [
         "operator/ai-upload/OperatorAiUploadFlow.tsx",
         "operator/bookings/operatorBookingSheetShell.tsx",
         "operator/components/OperatorBookingDetailSheet.tsx",
         "operator/components/OperatorVehicleQuickView.tsx",
-        "operator/tire-measure/OperatorTireMeasureFlow.tsx",
-        "operator/verification/OperatorPickupCheckSheet.tsx"
+        "operator/tire-measure/OperatorTireMeasureFlow.tsx"
       ]
     },
     {
@@ -16702,20 +16659,6 @@
       "files": [
         "operator/components/OperatorEntryModal.tsx",
         "operator/views/OperatorTasksView.tsx"
-      ]
-    },
-    {
-      "file": "operator/verification/OperatorPickupCheckSheet.tsx",
-      "line": 159,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Speichern…",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/verification/OperatorPickupCheckSheet.tsx"
       ]
     },
     {

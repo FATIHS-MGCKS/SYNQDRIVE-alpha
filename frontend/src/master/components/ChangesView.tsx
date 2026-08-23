@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-pickup-verification-p2-2-25-2026-08-23',
+    version: '4.9.952',
+    title: 'Platform i18n — P2.2.25 Operator Pickup Verification Sheet localization',
+    summary: [
+      'Localized Operator pickup manual verification sheet via `useLanguage().{t,locale}` and `operator-pickup-check-i18n.ts` presentation adapter.',
+      'P225 enforce-clean exact scope (3 paths) reports 0 findings; +18 EN+DE keys under `operator.pickupCheck.*` (8335→8353); reuses `common.cancel`, `common.close`, `common.saving`.',
+      'Presentation-only — `ManualPickupCheckDto` boolean keys, defaults, payload builder, and `pickup-verification` action unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.25 post-P224 pre-flight (PR #1191) selected Operator Pickup Verification Sheet as the next bounded Operator campaign slice.',
+    previousBehavior:
+      'OperatorPickupCheckSheet mixed hardcoded German copy across header, checklist labels, notes, actions, and toast messages.',
+    details:
+      'operator/verification/OperatorPickupCheckSheet.tsx; operator/lib/operator-pickup-check-i18n.ts; operator/verification/operatorPickupCheckPayload.ts; i18n/translations/operator.pickupCheck.{en,de}.ts; operator-pickup-check-localization.test.tsx; P225_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_PICKUP_VERIFICATION_P2_2_25_2026-08-23.md; docs/audits/i18n-p2-2-25-operator-pickup-verification-implementation-2026-08-23.md.',
+    affectsArchitecture: true,
+    module: 'Operator',
+    createdAt: '2026-08-23T00:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-damage-capture-p2-2-24-2026-08-22',
     version: '4.9.951',
     title: 'Platform i18n — P2.2.24 Operator Damage Capture localization',
