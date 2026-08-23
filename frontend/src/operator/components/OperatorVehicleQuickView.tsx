@@ -5,12 +5,11 @@ import {
   Disc3,
   ListTodo,
   Loader2,
-  Plus,
   ShieldAlert,
   Sparkles,
   X,
 } from 'lucide-react';
-import { PriorityBadge, SkeletonRows, StatusChip } from '../../components/patterns';
+import { SkeletonRows, StatusChip } from '../../components/patterns';
 import { formatDamageType } from '../../rental/lib/damage.types';
 import { resolveFleetVehicleDisplayState } from '../../rental/lib/fleetVehicleDisplay';
 import { VehicleOperationalStatusCallout } from '../../rental/components/fleet/VehicleOperationalStatusCallout';
@@ -33,9 +32,8 @@ import {
 } from '../../rental/lib/tire-health-detail-ui';
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import { OperatorGlassCard } from './OperatorGlassCard';
+import { OperatorVehicleQuickViewTasks } from './OperatorVehicleQuickViewTasks';
 import { useOperatorShell } from '../context/OperatorShellContext';
-import type { ApiTask } from '../../lib/api';
-import { taskStatusLabelDe, taskStatusTone } from '../../rental/lib/task-detail.utils';
 
 interface OperatorVehicleQuickViewProps {
   vehicleId: string;
@@ -357,51 +355,27 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
         )}
       </SectionCard>
 
-      {/* Tasks */}
-      <SectionCard
-        title="Offene Aufgaben"
-        action={
-          <button
-            type="button"
-            onClick={() =>
-              openSheet({
-                type: 'task-create',
-                vehicleId,
-                vehicleLabel: label,
-                bookingId: data.bookingContext?.bookingId ?? undefined,
-                onSuccess: () => void data.reloadDetails(),
-              })
-            }
-            className="sq-press inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2 text-[10px] font-semibold"
-          >
-            <Plus className="h-3 w-3" />
-            Neu
-          </button>
+      <OperatorVehicleQuickViewTasks
+        tasks={data.allOpenTasks}
+        loading={data.extraTasksLoading}
+        onCreateTask={() =>
+          openSheet({
+            type: 'task-create',
+            vehicleId,
+            vehicleLabel: label,
+            bookingId: data.bookingContext?.bookingId ?? undefined,
+            onSuccess: () => void data.reloadDetails(),
+          })
         }
-      >
-        {data.extraTasksLoading && data.allOpenTasks.length === 0 ? (
-          <SkeletonRows rows={2} />
-        ) : data.allOpenTasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Keine offenen Aufgaben.</p>
-        ) : (
-          <div className="space-y-2">
-            {data.allOpenTasks.slice(0, 6).map((t) => (
-              <OperatorTaskQuickRow
-                key={t.id}
-                task={t}
-                onOpen={() =>
-                  openSheet({
-                    type: 'task-detail',
-                    taskId: t.id,
-                    task: t,
-                    onUpdated: () => void data.reloadDetails(),
-                  })
-                }
-              />
-            ))}
-          </div>
-        )}
-      </SectionCard>
+        onOpenTask={(task) =>
+          openSheet({
+            type: 'task-detail',
+            taskId: task.id,
+            task,
+            onUpdated: () => void data.reloadDetails(),
+          })
+        }
+      />
 
       {/* Tire */}
       <SectionCard
@@ -547,24 +521,6 @@ function InfoTile({ label, value }: { label: string; value: string }) {
       <p className="text-[10px] font-semibold uppercase text-muted-foreground">{label}</p>
       <p className="mt-0.5 font-medium text-foreground">{value}</p>
     </div>
-  );
-}
-
-function OperatorTaskQuickRow({ task, onOpen }: { task: ApiTask; onOpen: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="sq-press w-full rounded-xl border border-border/50 px-3 py-2 text-left"
-    >
-      <p className="text-sm font-semibold text-foreground">{task.title}</p>
-      <div className="mt-1 flex flex-wrap gap-1.5">
-        <StatusChip tone={taskStatusTone(task.status, task.isOverdue)} dot>
-          {task.isOverdue ? 'Überfällig' : taskStatusLabelDe(task.status)}
-        </StatusChip>
-        <PriorityBadge priority={task.priority} />
-      </div>
-    </button>
   );
 }
 

@@ -361,6 +361,11 @@ const P226_ENFORCE_CLEAN_EXACT = [
   'operator/lib/operator-tire-measure-i18n.ts',
 ];
 
+const P227_ENFORCE_CLEAN_EXACT = [
+  'operator/components/OperatorVehicleQuickViewTasks.tsx',
+  'operator/lib/operator-vehicle-quick-view-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -463,6 +468,10 @@ function isP225EnforceCleanPath(relPath: string): boolean {
 
 function isP226EnforceCleanPath(relPath: string): boolean {
   return P226_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP227EnforceCleanPath(relPath: string): boolean {
+  return P227_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -723,6 +732,37 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP226EnforceCleanPath(finding.file),
     );
     expect(p226Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.27 enforce-clean findings to Operator Vehicle Quick View Open Tasks only', () => {
+    const p227Debt = inventory.findings.filter((finding) =>
+      isP227EnforceCleanPath(finding.file),
+    );
+    expect(p227Debt).toHaveLength(0);
+  });
+
+  it('keeps operator-vehicle-quick-view-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/lib/operator-vehicle-quick-view-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('operatorVehicleQuickViewTaskStatusLabel');
+    expect(source).not.toMatch(/'Überfällig'/);
+    expect(source).not.toMatch(/locale === 'de'/);
+    expect(source).not.toMatch(/de-DE/);
+  });
+
+  it('keeps OperatorVehicleQuickViewTasks.tsx free of hardcoded open-tasks presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/components/OperatorVehicleQuickViewTasks.tsx'),
+      'utf8',
+    );
+    expect(source).toContain('operatorVehicleQuickViewTasksSectionTitle');
+    expect(source).not.toMatch(/'Offene Aufgaben'/);
+    expect(source).not.toMatch(/'Keine offenen Aufgaben'/);
+    expect(source).not.toMatch(/'Überfällig'/);
+    expect(source).not.toMatch(/taskStatusLabelDe/);
   });
 
   it('keeps operator-tire-measure-i18n.ts on canonical translation keys', () => {

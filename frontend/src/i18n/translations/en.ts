@@ -16,6 +16,7 @@ import { invoicesDocumentsEn } from './invoices.documents.en';
 import { operatorDamageCaptureEn } from './operator.damageCapture.en';
 import { operatorPickupCheckEn } from './operator.pickupCheck.en';
 import { operatorTireMeasureEn } from './operator.tireMeasure.en';
+import { operatorVehicleQuickViewTasksEn } from './operator.vehicleQuickView.tasks.en';
 import { vendorsDirectoryEn } from './vendors.directory.en';
 import { supportOpsEn } from './support.ops.en';
 import { whatsappEn } from './whatsapp.en';
@@ -5583,6 +5584,7 @@ export const en = {
   ...operatorDamageCaptureEn,
   ...operatorPickupCheckEn,
   ...operatorTireMeasureEn,
+  ...operatorVehicleQuickViewTasksEn,
   ...vendorsDirectoryEn,
 } as const;
 
