@@ -10,6 +10,8 @@ import { ConflictException } from '@nestjs/common';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CommunicationReadRepository } from '../read/communication-read.repository';
+import { CommunicationEventRepository } from '../communication-event.repository';
+import { CommunicationHumanTakeoverService } from '../write/communication-human-takeover.service';
 import { CommunicationWriteScopeService } from '../write/communication-write-scope.service';
 import { CommunicationReplyChannelCapabilityService } from './communication-reply-channel-capability.service';
 import { CommunicationReplyService } from './communication-reply.service';
@@ -40,6 +42,8 @@ describePg('Communication reply postgres', () => {
       providers: [
         PrismaService,
         CommunicationReadRepository,
+        CommunicationEventRepository,
+        CommunicationHumanTakeoverService,
         {
           provide: CommunicationWriteScopeService,
           useValue: { assertConversationMutable: jest.fn().mockResolvedValue(undefined) },

@@ -114,6 +114,21 @@ describe('CommunicationWorkspacePane actions', () => {
     );
   });
 
+  it('shows take over for unassigned AI_ACTIVE', () => {
+    renderPane({
+      conversationState: baseConversationState({
+        conversation: {
+          ...baseConversationState().conversation!,
+          status: 'AI_ACTIVE',
+          assignedUser: null,
+        },
+      }),
+    });
+    expect(container.querySelector('[data-testid="communication-ownership-takeover"]')?.textContent).toContain(
+      'Take over',
+    );
+  });
+
   it('shows resolve for HUMAN_ACTIVE', () => {
     renderPane({
       conversationState: baseConversationState({

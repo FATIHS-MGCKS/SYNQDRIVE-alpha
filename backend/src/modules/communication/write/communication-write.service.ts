@@ -22,12 +22,14 @@ import type { CommunicationMutationResponseDto } from './dto/communication-write
 import {
   assertOperatorStatusTransition,
   isClaimEligibleStatus,
+  isHumanTakeoverEligibleStatus,
   isResolveEligibleStatus,
   resolveReopenTargetStatus,
   resolveUnassignTargetStatus,
 } from './communication-conversation-state-machine';
 import { CommunicationWriteError } from './communication-write.errors';
 import { CommunicationWriteScopeService } from './communication-write-scope.service';
+import { CommunicationHumanTakeoverService } from './communication-human-takeover.service';
 
 export interface CommunicationWriteActor {
   userId: string;
@@ -58,6 +60,7 @@ export class CommunicationWriteService {
     private readonly events: CommunicationEventRepository,
     private readonly scope: CommunicationWriteScopeService,
     private readonly audit: AuditService,
+    private readonly humanTakeover: CommunicationHumanTakeoverService,
   ) {}
 
   async claimConversation(
@@ -79,6 +82,25 @@ export class CommunicationWriteService {
         && row.status === CommunicationConversationStatus.HUMAN_ACTIVE
       ) {
         return this.noOpResult(row);
+      }
+
+      if (isHumanTakeoverEligibleStatus(row.status) && !row.assignedUserId) {
+        const takeover = await this.humanTakeover.performHumanTakeover(tx, {
+          organizationId,
+          conversationId,
+          actorUserId: actor.userId,
+          row,
+          lifecycleEventKey: this.lifecycleEventKey.bind(this),
+        });
+        const updated = await this.requireConversationRow(tx, organizationId, conversationId);
+        return {
+          conversation: mapConversationDetail(updated),
+          changed: takeover.changed,
+          auditAction: takeover.changed ? 'communication.takeover' : undefined,
+          previousStatus: takeover.previousStatus,
+          newStatus: takeover.newStatus,
+          assigneeUserId: actor.userId,
+        } satisfies MutationResult;
       }
 
       if (!isClaimEligibleStatus(row.status)) {

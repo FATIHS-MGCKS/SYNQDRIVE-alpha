@@ -3501,6 +3501,8 @@ export const en = {
   'communication.ownership.searchMembers': 'Search team members',
   'communication.ownership.loadingMembers': 'Loading team members…',
   'communication.ownership.membersLoadFailed': 'Could not load team members.',
+  'communication.ownership.membersPermissionDenied':
+    'You do not have permission to browse team members for assignment.',
   'communication.ownership.noMatchingMembers': 'No matching team members.',
   'communication.ownership.you': 'you',
   'communication.ownership.controlLabel': 'Assignment: {name}',

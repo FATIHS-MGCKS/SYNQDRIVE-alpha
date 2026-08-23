@@ -3497,6 +3497,8 @@ export const de: Record<TranslationKey, string> = {
   'communication.ownership.searchMembers': 'Teammitglieder suchen',
   'communication.ownership.loadingMembers': 'Teammitglieder werden geladen…',
   'communication.ownership.membersLoadFailed': 'Teammitglieder konnten nicht geladen werden.',
+  'communication.ownership.membersPermissionDenied':
+    'Sie haben keine Berechtigung, Teammitglieder für Zuweisungen anzuzeigen.',
   'communication.ownership.noMatchingMembers': 'Keine passenden Teammitglieder.',
   'communication.ownership.you': 'Sie',
   'communication.ownership.controlLabel': 'Zuweisung: {name}',

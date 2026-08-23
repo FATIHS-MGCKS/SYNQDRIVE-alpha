@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../api';
+import {
+  mapOrgUserToCommunicationMember,
+  type OrgUserListRecord,
+} from '../org-member-display';
 
 export interface CommunicationOrgMember {
   id: string;
@@ -7,69 +11,72 @@ export interface CommunicationOrgMember {
   isActive: boolean;
 }
 
-function mapOrgMember(user: {
-  id: string;
-  name?: string;
-  displayName?: string;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  status?: string;
-  membershipStatus?: string;
-}): CommunicationOrgMember {
-  const displayName =
-    user.displayName
-    || user.name
-    || `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
-    || user.email
-    || user.id;
-  const isActive = user.status === 'Active' && user.membershipStatus === 'ACTIVE';
-  return { id: user.id, displayName, isActive };
-}
+export type CommunicationOrgMembersLoadError = 'permission_denied' | 'network' | 'unknown' | null;
 
 export function useCommunicationOrgMembers(orgId: string | null | undefined) {
   const [members, setMembers] = useState<CommunicationOrgMember[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState<CommunicationOrgMembersLoadError>(null);
+  const activeOrgRef = useRef<string | null>(orgId ?? null);
   const loadedOrgRef = useRef<string | null>(null);
-  const inflightOrgRef = useRef<string | null>(null);
+  const requestGenerationRef = useRef(0);
 
   useEffect(() => {
-    if (orgId !== loadedOrgRef.current) {
-      setMembers([]);
-      setLoadError(false);
-      loadedOrgRef.current = null;
-    }
+    activeOrgRef.current = orgId ?? null;
+    requestGenerationRef.current += 1;
+    setMembers([]);
+    setLoadError(null);
+    loadedOrgRef.current = null;
+    setLoading(false);
   }, [orgId]);
 
   const ensureLoaded = useCallback(async () => {
-    if (!orgId) return;
-    if (loadedOrgRef.current === orgId) return;
-    if (inflightOrgRef.current === orgId) return;
+    const requestOrgId = activeOrgRef.current;
+    if (!requestOrgId) return;
+    if (loadedOrgRef.current === requestOrgId) return;
 
-    const requestOrgId = orgId;
-    inflightOrgRef.current = requestOrgId;
+    const requestGeneration = requestGenerationRef.current;
     setLoading(true);
-    setLoadError(false);
+    setLoadError(null);
 
     try {
       const response = await api.users.listByOrg(requestOrgId);
-      if (inflightOrgRef.current !== requestOrgId) return;
-      const list = Array.isArray(response) ? response : [];
-      setMembers(list.map(mapOrgMember));
-      loadedOrgRef.current = requestOrgId;
-    } catch {
-      if (inflightOrgRef.current === requestOrgId) {
-        setLoadError(true);
-        setMembers([]);
+      if (
+        requestGenerationRef.current !== requestGeneration
+        || activeOrgRef.current !== requestOrgId
+      ) {
+        return;
       }
+      const list = Array.isArray(response) ? response : [];
+      setMembers(list.map((user) => mapOrgUserToCommunicationMember(user as OrgUserListRecord)));
+      loadedOrgRef.current = requestOrgId;
+    } catch (err: unknown) {
+      if (
+        requestGenerationRef.current !== requestGeneration
+        || activeOrgRef.current !== requestOrgId
+      ) {
+        return;
+      }
+      const status = (err as { status?: number })?.status;
+      const message = err instanceof Error ? err.message : '';
+      if (status === 403 || status === 401 || message.includes('403')) {
+        setLoadError('permission_denied');
+      } else if (message.includes('API error 5') || message.toLowerCase().includes('network')) {
+        setLoadError('network');
+      } else {
+        setLoadError('unknown');
+      }
+      setMembers([]);
+      loadedOrgRef.current = null;
     } finally {
-      if (inflightOrgRef.current === requestOrgId) {
-        inflightOrgRef.current = null;
+      if (
+        requestGenerationRef.current === requestGeneration
+        && activeOrgRef.current === requestOrgId
+      ) {
         setLoading(false);
       }
     }
-  }, [orgId]);
+  }, []);
 
   const eligibleMembers = members.filter((member) => member.isActive);
 
@@ -80,6 +87,7 @@ export function useCommunicationOrgMembers(orgId: string | null | undefined) {
     loadError,
     ensureLoaded,
     isLoaded: loadedOrgRef.current === orgId,
+    canLoadDirectory: loadError !== 'permission_denied',
   };
 }
 

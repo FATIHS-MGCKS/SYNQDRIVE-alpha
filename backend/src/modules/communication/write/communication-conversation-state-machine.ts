@@ -15,11 +15,13 @@ const OPERATOR_STATUS_TRANSITIONS: Record<
   [CommunicationConversationStatus.AI_ACTIVE]: [
     CommunicationConversationStatus.WAITING_CUSTOMER,
     CommunicationConversationStatus.HUMAN_REQUIRED,
+    CommunicationConversationStatus.HUMAN_ACTIVE,
     CommunicationConversationStatus.RESOLVED,
   ],
   [CommunicationConversationStatus.WAITING_CUSTOMER]: [
     CommunicationConversationStatus.AI_ACTIVE,
     CommunicationConversationStatus.HUMAN_REQUIRED,
+    CommunicationConversationStatus.HUMAN_ACTIVE,
     CommunicationConversationStatus.RESOLVED,
   ],
   [CommunicationConversationStatus.HUMAN_REQUIRED]: [
@@ -29,6 +31,7 @@ const OPERATOR_STATUS_TRANSITIONS: Record<
   [CommunicationConversationStatus.HUMAN_ACTIVE]: [
     CommunicationConversationStatus.WAITING_CUSTOMER,
     CommunicationConversationStatus.AI_ACTIVE,
+    CommunicationConversationStatus.HUMAN_REQUIRED,
     CommunicationConversationStatus.RESOLVED,
   ],
   [CommunicationConversationStatus.RESOLVED]: [
@@ -58,6 +61,14 @@ export function isTerminalStatus(status: CommunicationConversationStatus): boole
 /** Statuses from which an operator may claim an unassigned thread. */
 export function isClaimEligibleStatus(status: CommunicationConversationStatus): boolean {
   return status === CommunicationConversationStatus.HUMAN_REQUIRED;
+}
+
+/** Statuses from which explicit human takeover converges to HUMAN_ACTIVE. */
+export function isHumanTakeoverEligibleStatus(status: CommunicationConversationStatus): boolean {
+  return (
+    status === CommunicationConversationStatus.AI_ACTIVE
+    || status === CommunicationConversationStatus.WAITING_CUSTOMER
+  );
 }
 
 /** Statuses from which resolve is permitted. */

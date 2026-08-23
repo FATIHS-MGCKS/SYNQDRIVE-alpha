@@ -50,6 +50,8 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
   const { orgId, hasPermission, userRole } = useRentalOrg();
   const canWrite = hasCommunicationPermission(hasPermission, 'write', userRole);
   const canManage = hasCommunicationPermission(hasPermission, 'manage', userRole);
+  const canReadUsers = hasPermission('users-roles', 'read');
+  const membersDirectoryAvailable = !canManage || canReadUsers;
   const currentUserId = getStoredUser()?.id ?? null;
   const orgMembers = useCommunicationOrgMembers(orgId);
   const [inboxRefreshNonce, setInboxRefreshNonce] = useState(0);
@@ -304,6 +306,7 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
               inboxFilters={state.inboxFilters}
               selectedConversationId={state.selectedConversationId}
               refreshNonce={inboxRefreshNonce}
+              currentUserId={currentUserId}
               onChannelChange={handleChannelChange}
               onInboxFiltersChange={handleInboxFiltersChange}
               onSelectConversation={handleSelectConversation}
@@ -327,6 +330,7 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
               canWrite={canWrite}
               canManage={canManage}
               currentUserId={currentUserId}
+              membersDirectoryAvailable={membersDirectoryAvailable}
               showBack={isMobile}
               showContextAction={hasConversation && (isMobile || isTablet)}
               hasContext={hasContext}

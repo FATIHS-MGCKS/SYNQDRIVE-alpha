@@ -15,6 +15,7 @@ export interface CommunicationHumanActions {
   canClaim: boolean;
   canTakeOverSelf: boolean;
   canOpenMemberPicker: boolean;
+  canLoadMemberDirectory: boolean;
   canUnassign: boolean;
   canResolve: boolean;
   canReopen: boolean;
@@ -34,6 +35,7 @@ export function resolveCommunicationHumanActions(input: {
   canWrite: boolean;
   canManage: boolean;
   currentUserId: string | null;
+  membersDirectoryAvailable?: boolean;
 }): CommunicationHumanActions {
   const empty: CommunicationHumanActions = {
     ownershipKind: 'unassigned',
@@ -41,6 +43,7 @@ export function resolveCommunicationHumanActions(input: {
     canClaim: false,
     canTakeOverSelf: false,
     canOpenMemberPicker: false,
+    canLoadMemberDirectory: false,
     canUnassign: false,
     canResolve: false,
     canReopen: false,
@@ -78,7 +81,9 @@ export function resolveCommunicationHumanActions(input: {
   const canOpenMemberPicker =
     canManage
     && !isTerminal
-    && ACTIVE_ASSIGNMENT_STATUSES.has(status);
+    && ACTIVE_ASSIGNMENT_STATUSES.has(status)
+    && input.membersDirectoryAvailable !== false;
+  const canLoadMemberDirectory = canManage && input.membersDirectoryAvailable !== false;
   const canUnassign =
     !isTerminal
     && Boolean(assignedUserId)
@@ -90,6 +95,7 @@ export function resolveCommunicationHumanActions(input: {
     canClaim,
     canTakeOverSelf,
     canOpenMemberPicker,
+    canLoadMemberDirectory,
     canUnassign,
     canResolve: lifecycleActions.includes('resolve'),
     canReopen: lifecycleActions.includes('reopen'),

@@ -34,6 +34,7 @@ interface CommunicationWorkspacePaneProps {
   canWrite?: boolean;
   canManage?: boolean;
   currentUserId?: string | null;
+  membersDirectoryAvailable?: boolean;
   showBack?: boolean;
   showContextAction?: boolean;
   hasContext?: boolean;
@@ -113,6 +114,7 @@ export function CommunicationWorkspacePane({
   canWrite = false,
   canManage = false,
   currentUserId = null,
+  membersDirectoryAvailable = true,
   showBack,
   showContextAction,
   hasContext,
@@ -132,6 +134,7 @@ export function CommunicationWorkspacePane({
     canWrite,
     canManage,
     currentUserId,
+    membersDirectoryAvailable,
   });
 
   const lifecycleActions = resolveCommunicationConversationActions({
@@ -263,15 +266,11 @@ export function CommunicationWorkspacePane({
             disabled={pendingAction != null}
             members={orgMembers?.members ?? []}
             membersLoading={orgMembers?.loading ?? false}
-            membersLoadError={orgMembers?.loadError ?? false}
+            membersLoadError={orgMembers?.loadError ?? null}
             selectedUserId={conversation.assignedUser?.id ?? null}
             onEnsureMembersLoaded={() => void orgMembers?.ensureLoaded()}
             onClaim={() => void conversationActions.claim()}
-            onTakeOverSelf={() => {
-              if (currentUserId) {
-                void conversationActions.takeOverSelf(currentUserId);
-              }
-            }}
+            onTakeOverSelf={() => void conversationActions.takeOverSelf()}
             onAssign={(userId) => void conversationActions.assign(userId)}
             onUnassign={() => void conversationActions.unassign()}
           />

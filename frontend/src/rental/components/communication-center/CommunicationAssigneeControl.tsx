@@ -28,7 +28,7 @@ interface CommunicationAssigneeControlProps {
   disabled?: boolean;
   members: CommunicationOrgMember[];
   membersLoading: boolean;
-  membersLoadError: boolean;
+  membersLoadError: 'permission_denied' | 'network' | 'unknown' | null;
   selectedUserId: string | null;
   onEnsureMembersLoaded: () => void;
   onClaim: () => void;
@@ -82,11 +82,7 @@ export function CommunicationAssigneeControl({
     || humanActions.ownershipKind === 'assigned_to_other';
 
   const handleTakeOver = () => {
-    if (humanActions.canClaim) {
-      onClaim();
-      return;
-    }
-    if (humanActions.canTakeOverSelf) {
+    if (humanActions.canClaim || humanActions.canTakeOverSelf) {
       onTakeOverSelf();
     }
   };
@@ -101,6 +97,7 @@ export function CommunicationAssigneeControl({
   };
 
   const openPicker = () => {
+    if (!humanActions.canOpenMemberPicker) return;
     onEnsureMembersLoaded();
     setPickerOpen(true);
   };

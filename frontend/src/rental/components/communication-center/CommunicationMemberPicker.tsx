@@ -10,13 +10,16 @@ import {
 } from '../../../components/ui/command';
 import { cn } from '../../../components/ui/utils';
 import { useLanguage } from '../../i18n/LanguageContext';
-import type { CommunicationOrgMember } from '../../../lib/communication/hooks/useCommunicationOrgMembers';
+import type {
+  CommunicationOrgMember,
+  CommunicationOrgMembersLoadError,
+} from '../../../lib/communication/hooks/useCommunicationOrgMembers';
 import { AssigneeAvatar } from '../tasks/task-display';
 
 interface CommunicationMemberPickerProps {
   members: CommunicationOrgMember[];
   loading?: boolean;
-  loadError?: boolean;
+  loadError?: CommunicationOrgMembersLoadError;
   currentUserId: string | null;
   selectedUserId: string | null;
   onSelect: (userId: string) => void;
@@ -55,6 +58,10 @@ export function CommunicationMemberPicker({
         {loading ? (
           <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">
             {t('communication.ownership.loadingMembers')}
+          </div>
+        ) : loadError === 'permission_denied' ? (
+          <div className="px-3 py-4 text-center text-[12px] text-muted-foreground" role="alert">
+            {t('communication.ownership.membersPermissionDenied')}
           </div>
         ) : loadError ? (
           <div className="px-3 py-4 text-center text-[12px] text-destructive" role="alert">

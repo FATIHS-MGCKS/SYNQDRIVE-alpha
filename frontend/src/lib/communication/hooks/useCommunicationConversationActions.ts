@@ -30,7 +30,7 @@ export interface UseCommunicationConversationActionsResult {
   claim: () => Promise<CommunicationConversationDetail | null>;
   assign: (assignedUserId: string) => Promise<CommunicationConversationDetail | null>;
   unassign: () => Promise<CommunicationConversationDetail | null>;
-  takeOverSelf: (currentUserId: string) => Promise<CommunicationConversationDetail | null>;
+  takeOverSelf: () => Promise<CommunicationConversationDetail | null>;
   resolve: () => Promise<CommunicationConversationDetail | null>;
   reopen: () => Promise<CommunicationConversationDetail | null>;
   markRead: () => Promise<CommunicationConversationDetail | null>;
@@ -134,8 +134,8 @@ export function useCommunicationConversationActions({
   );
 
   const takeOverSelf = useCallback(
-    (currentUserId: string) => assign(currentUserId),
-    [assign],
+    () => runMutation('claim', () => communicationClient.claimConversation(orgId!, conversationId!)),
+    [conversationId, orgId, runMutation],
   );
 
   const claim = useCallback(

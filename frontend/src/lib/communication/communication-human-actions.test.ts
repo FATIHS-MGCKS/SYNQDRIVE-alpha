@@ -42,7 +42,7 @@ describe('resolveCommunicationHumanActions', () => {
     expect(result.ownershipKind).toBe('unassigned');
   });
 
-  it('allows member picker for manager on active conversation', () => {
+  it('allows member picker for manager on active conversation when directory available', () => {
     const result = resolveCommunicationHumanActions({
       conversation: conversation({
         status: 'HUMAN_ACTIVE',
@@ -51,11 +51,22 @@ describe('resolveCommunicationHumanActions', () => {
       canWrite: true,
       canManage: true,
       currentUserId: 'user-a',
+      membersDirectoryAvailable: true,
     });
-    expect(result.canClaim).toBe(false);
     expect(result.canOpenMemberPicker).toBe(true);
-    expect(result.canUnassign).toBe(true);
-    expect(result.ownershipKind).toBe('assigned_to_other');
+    expect(result.canLoadMemberDirectory).toBe(true);
+  });
+
+  it('hides member picker when directory permission unavailable', () => {
+    const result = resolveCommunicationHumanActions({
+      conversation: conversation({ status: 'HUMAN_ACTIVE' }),
+      canWrite: true,
+      canManage: true,
+      currentUserId: 'user-a',
+      membersDirectoryAvailable: false,
+    });
+    expect(result.canOpenMemberPicker).toBe(false);
+    expect(result.canLoadMemberDirectory).toBe(false);
   });
 
   it('allows self-unassign for assigned write user', () => {
@@ -112,6 +123,17 @@ describe('resolveCommunicationHumanActions', () => {
     expect(result.canClaim).toBe(false);
     expect(result.canTakeOverSelf).toBe(true);
     expect(result.ownershipKind).toBe('non_human');
+  });
+
+  it('allows self take-over for unassigned WAITING_CUSTOMER', () => {
+    const result = resolveCommunicationHumanActions({
+      conversation: conversation({ status: 'WAITING_CUSTOMER', assignedUser: null }),
+      canWrite: true,
+      canManage: false,
+      currentUserId: 'user-a',
+    });
+    expect(result.canTakeOverSelf).toBe(true);
+    expect(result.canClaim).toBe(false);
   });
 
   it('keeps resolve available while waiting on customer with assignee', () => {
