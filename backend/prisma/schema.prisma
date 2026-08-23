@@ -1726,6 +1726,7 @@ model Organization {
   notificationReceipts                   NotificationReceipt[]
   notificationDeliveryOutbox             NotificationDeliveryOutbox[]
   notificationRetentionPurgeRuns         NotificationRetentionPurgeRun[]
+  communicationRetentionPurgeRuns        CommunicationRetentionPurgeRun[]
   notificationAuditEvents              NotificationAuditEvent[]
   taskAutomationOutbox                   TaskAutomationOutbox[]
   taskAutomationRuleOverrides            OrgTaskAutomationRuleOverride[]
@@ -11473,6 +11474,7 @@ model WhatsAppMessage {
   providerDispatchStartedAt DateTime?             @map("provider_dispatch_started_at")
   providerMediaId           String?               @map("provider_media_id")
   mediaAttachmentId       String?               @map("media_attachment_id")
+  contentPurgedAt   DateTime?                     @map("content_purged_at")
   createdAt         DateTime                      @default(now()) @map("created_at")
   updatedAt         DateTime                      @updatedAt @map("updated_at")
 
@@ -14730,6 +14732,7 @@ model CommunicationMessageContent {
   attachmentCount      Int                             @default(0) @map("attachment_count")
   occurredAt           DateTime                        @map("occurred_at")
   idempotencyKey       String                          @map("idempotency_key")
+  contentPurgedAt      DateTime?                       @map("content_purged_at")
   createdAt            DateTime                        @default(now()) @map("created_at")
 
   organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -14739,6 +14742,7 @@ model CommunicationMessageContent {
   @@unique([organizationId, idempotencyKey], name: "communication_message_contents_org_idempotency")
   @@index([organizationId, conversationId, occurredAt])
   @@index([organizationId, channel, nativeMessageId])
+  @@index([organizationId, occurredAt, contentPurgedAt])
   @@map("communication_message_contents")
 }
 
@@ -14760,6 +14764,7 @@ enum CommunicationAttachmentState {
   UPLOADING
   READY
   FAILED
+  PURGED
 }
 
 enum CommunicationAttachmentMediaType {
@@ -14786,6 +14791,7 @@ model CommunicationReplyCommand {
   failureCode          String?                     @map("failure_code")
   actorUserId          String                      @map("actor_user_id")
   processingLeaseExpiresAt DateTime?             @map("processing_lease_expires_at")
+  contentPurgedAt      DateTime?                   @map("content_purged_at")
   createdAt            DateTime                    @default(now()) @map("created_at")
   updatedAt            DateTime                    @updatedAt @map("updated_at")
 
@@ -14794,6 +14800,7 @@ model CommunicationReplyCommand {
 
   @@unique([organizationId, conversationId, clientIdempotencyKey], name: "communication_reply_commands_org_conversation_key")
   @@index([organizationId, conversationId, createdAt])
+  @@index([organizationId, sendState, createdAt])
   @@map("communication_reply_commands")
 }
 
@@ -14814,6 +14821,7 @@ model CommunicationAttachment {
   reservedCommandId String?                      @map("reserved_command_id")
   nativeMessageId String?                        @map("native_message_id")
   sealedAt        DateTime?                      @map("sealed_at")
+  purgedAt        DateTime?                      @map("purged_at")
   createdAt       DateTime                       @default(now()) @map("created_at")
   updatedAt       DateTime                       @updatedAt @map("updated_at")
 
@@ -14823,5 +14831,24 @@ model CommunicationAttachment {
   @@index([organizationId, conversationId, createdAt])
   @@index([organizationId, conversationId, state])
   @@index([organizationId, nativeMessageId])
+  @@index([organizationId, state, createdAt])
   @@map("communication_attachments")
+}
+
+/// Durable audit trail for Communication Center retention purge runs (C13.1).
+model CommunicationRetentionPurgeRun {
+  id             String    @id @default(uuid())
+  organizationId String?   @map("organization_id")
+  trigger        String
+  dryRun         Boolean   @default(true) @map("dry_run")
+  status         String
+  correlationId  String?   @map("correlation_id")
+  report         Json      @default("{}")
+  startedAt      DateTime  @default(now()) @map("started_at")
+  completedAt    DateTime? @map("completed_at")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, startedAt])
+  @@map("communication_retention_purge_runs")
 }

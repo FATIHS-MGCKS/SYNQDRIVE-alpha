@@ -173,6 +173,7 @@ export interface CommunicationMessageContent {
   hasAttachments: boolean;
   attachmentCount: number;
   attachments?: CommunicationAttachmentSummary[];
+  contentAvailability?: 'AVAILABLE' | 'PURGED' | 'UNAVAILABLE';
 }
 
 export interface CommunicationEvent {

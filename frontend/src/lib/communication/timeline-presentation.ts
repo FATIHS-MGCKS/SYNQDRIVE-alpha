@@ -19,6 +19,8 @@ export interface TimelineDateSeparatorItem {
   occurredAt: string;
 }
 
+export type TimelineMessageContentAvailability = 'AVAILABLE' | 'PURGED' | 'UNAVAILABLE';
+
 export interface TimelineMessageItem {
   kind: 'message';
   id: string;
@@ -26,6 +28,7 @@ export interface TimelineMessageItem {
   direction: MessageDirection;
   channel: CommunicationApiChannel;
   contentType: CommunicationApiMessageContentType | 'UNAVAILABLE';
+  contentAvailability: TimelineMessageContentAvailability;
   text: string | null;
   truncated: boolean;
   hasAttachments: boolean;
@@ -120,7 +123,17 @@ function mapContentType(
   content: CommunicationMessageContent | null | undefined,
 ): CommunicationApiMessageContentType | 'UNAVAILABLE' {
   if (!content) return 'UNAVAILABLE';
+  if (content.contentAvailability === 'PURGED' || content.contentAvailability === 'UNAVAILABLE') {
+    return 'UNAVAILABLE';
+  }
   return content.contentType;
+}
+
+function mapContentAvailability(
+  content: CommunicationMessageContent | null | undefined,
+): TimelineMessageContentAvailability {
+  if (!content) return 'UNAVAILABLE';
+  return content.contentAvailability ?? (content.text == null ? 'UNAVAILABLE' : 'AVAILABLE');
 }
 
 /** Map a canonical event to a presentation item. Returns null for unknown types. */
@@ -130,6 +143,7 @@ export function mapEventToPresentation(
 ): TimelinePresentationItem | null {
   if (MESSAGE_EVENT_TYPES.has(event.eventType)) {
     const content = event.content;
+    const contentAvailability = mapContentAvailability(content);
     return {
       kind: 'message',
       id: event.id,
@@ -137,7 +151,8 @@ export function mapEventToPresentation(
       direction: resolveMessageDirection(event),
       channel,
       contentType: mapContentType(content),
-      text: content?.text ?? null,
+      contentAvailability,
+      text: contentAvailability === 'AVAILABLE' ? (content?.text ?? null) : null,
       truncated: content?.truncated ?? false,
       hasAttachments: content?.hasAttachments ?? false,
       attachmentCount: content?.attachmentCount ?? 0,
@@ -230,7 +245,11 @@ export function buildTimelineWithDateSeparators(
 
 export function contentTypeLabelKey(
   contentType: CommunicationApiMessageContentType | 'UNAVAILABLE',
+  contentAvailability: TimelineMessageContentAvailability = 'AVAILABLE',
 ): TranslationKey {
+  if (contentAvailability === 'PURGED') {
+    return 'communication.timeline.messagePurged';
+  }
   switch (contentType) {
     case 'TEXT':
       return 'communication.timeline.text';

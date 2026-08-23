@@ -1163,6 +1163,18 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center C13.1 — Retention & Data Lifecycle (V4.9.945)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-positive)]',
+    apis: [
+      { label: 'Service', detail: 'CommunicationRetentionService — phased purge with dry-run, batching, purge-run audit' },
+      { label: 'Policy', detail: 'ENABLED=false, DRY_RUN=true default; message/attachment/reply days=0 (NO_POLICY)' },
+      { label: 'Voice', detail: 'Delegates to VoiceRetentionService — 90d transcript/summary EXISTING_POLICY' },
+      { label: 'Read model', detail: 'contentAvailability AVAILABLE|PURGED|UNAVAILABLE on message content DTO' },
+      { label: 'Doc', detail: 'architecture/COMMUNICATION_CENTER_C13_1_RETENTION_DATA_LIFECYCLE.md' },
+    ],
+  },
+  {
     name: 'Communication Center C9–C12 Final Gate (V4.9.944)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-positive)]',

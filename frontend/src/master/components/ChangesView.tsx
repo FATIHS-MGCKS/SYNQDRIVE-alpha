@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c13-1-retention-lifecycle-2026-08-23',
+    version: '4.9.945',
+    title: 'Communication Center C13.1 — retention & data lifecycle',
+    summary: [
+      'Canonical CommunicationRetentionService + scheduler + purge-run audit table.',
+      'Voice retention harmonized via existing VoiceRetentionService delegation (90d transcript/summary).',
+      'Message/attachment/reply destructive purge disabled by default (NO_POLICY days=0).',
+      'Read model contentAvailability PURGED + timeline i18n; 11 PostgreSQL retention tests PASS.',
+    ],
+    reason: 'C13.1 establishes retention inventory, safe two-stage content purge framework, and rollout controls.',
+    previousBehavior: 'No Communication-specific retention; voice-only VoiceRetentionScheduler.',
+    details: 'architecture/COMMUNICATION_CENTER_C13_1_RETENTION_DATA_LIFECYCLE.md',
+    affectsArchitecture: true,
+    module: 'Communication',
+    createdAt: '2026-08-23T22:00:00.000Z',
+  },
+  {
     id: 'communication-center-final-gate-recheck-post-c13-0-2026-08-23',
     version: '4.9.944',
     title: 'Communication Center — C9–C12 final gate OPEN (post-#1225)',
