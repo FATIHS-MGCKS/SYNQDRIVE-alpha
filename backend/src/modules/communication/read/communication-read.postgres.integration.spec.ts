@@ -14,6 +14,7 @@ import { CommunicationReadService } from './communication-read.service';
 import { CommunicationAttachmentService } from '../media/communication-attachment.service';
 import { CommunicationWriteScopeService } from '../write/communication-write-scope.service';
 import { DOCUMENTS_STORAGE } from '@modules/documents/storage/document-storage.interface';
+import { createDocumentStoragePortMock } from '@modules/documents/storage/testing/document-storage-port.mock';
 import {
   collectForbiddenPublicKeys,
   projectSafeReadMetadata,
@@ -43,7 +44,7 @@ describePg('Communication read API postgres', () => {
           provide: CommunicationWriteScopeService,
           useValue: { assertConversationReadable: jest.fn() },
         },
-        { provide: DOCUMENTS_STORAGE, useValue: { putObject: jest.fn(), getObject: jest.fn(), getObjectStream: jest.fn() } },
+        { provide: DOCUMENTS_STORAGE, useValue: createDocumentStoragePortMock() },
         CommunicationReadService,
       ],
     })
@@ -522,7 +523,7 @@ describePg('Communication read API postgres', () => {
       loggingPrisma as unknown as PrismaService,
       loggingRepo,
       { assertConversationReadable: jest.fn() } as unknown as CommunicationWriteScopeService,
-      { putObject: jest.fn(), getObject: jest.fn(), getObjectStream: jest.fn() },
+      createDocumentStoragePortMock(),
     );
     const loggingService = new CommunicationReadService(loggingRepo, loggingAttachments);
     await loggingService.listConversations(orgA, { limit: 25 });

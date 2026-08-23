@@ -26,6 +26,10 @@ import { CommunicationContentRepository } from './communication-content.reposito
 import { CommunicationContentService } from './communication-content.service';
 import { CommunicationReadRepository } from '../read/communication-read.repository';
 import { CommunicationReadService } from '../read/communication-read.service';
+import { CommunicationAttachmentService } from '../media/communication-attachment.service';
+import { CommunicationWriteScopeService } from '../write/communication-write-scope.service';
+import { createDocumentStoragePortMock } from '@modules/documents/storage/testing/document-storage-port.mock';
+import { DOCUMENTS_STORAGE } from '@modules/documents/storage/document-storage.interface';
 import { CANONICAL_MESSAGE_TEXT_MAX_LENGTH } from './communication-content.constants';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -65,6 +69,12 @@ describePg('Communication canonical content postgres (C7.2)', () => {
         SentDmSmsCommunicationAdapter,
         SmsCommunicationProjectionIntegration,
         CommunicationReadRepository,
+        CommunicationAttachmentService,
+        {
+          provide: CommunicationWriteScopeService,
+          useValue: { assertConversationReadable: jest.fn() },
+        },
+        { provide: DOCUMENTS_STORAGE, useValue: createDocumentStoragePortMock() },
         CommunicationReadService,
       ],
     })
@@ -1004,7 +1014,13 @@ describePg('Communication canonical content postgres (C7.2)', () => {
     await loggingPrisma.$connect();
 
     const loggingRepo = new CommunicationReadRepository(loggingPrisma as unknown as PrismaService);
-    const loggingService = new CommunicationReadService(loggingRepo);
+    const loggingAttachments = new CommunicationAttachmentService(
+      loggingPrisma as unknown as PrismaService,
+      loggingRepo,
+      { assertConversationReadable: jest.fn() } as unknown as CommunicationWriteScopeService,
+      createDocumentStoragePortMock(),
+    );
+    const loggingService = new CommunicationReadService(loggingRepo, loggingAttachments);
     await loggingService.listConversationEvents(orgA, canonical!.id, { limit: 50 });
 
     const eventQueries = queryLog.filter((q) => q.includes('communication_events'));

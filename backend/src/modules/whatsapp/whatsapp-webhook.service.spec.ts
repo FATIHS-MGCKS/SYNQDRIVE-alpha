@@ -53,6 +53,15 @@ describe('WhatsAppWebhookService idempotency', () => {
     projectStatusUpdate: jest.fn().mockResolvedValue(undefined),
   };
 
+  const communicationConversations = {
+    ensureConversationEnvelope: jest.fn().mockResolvedValue({
+      conversation: { id: 'canonical-convo-1' },
+    }),
+  };
+  const communicationAttachments = {
+    ingestInboundProviderMedia: jest.fn(),
+  };
+
   let service: WhatsAppWebhookService;
 
   const inboundEntry = {
@@ -93,6 +102,8 @@ describe('WhatsAppWebhookService idempotency', () => {
       audit as any,
       whatsAppService as any,
       communicationProjection as any,
+      communicationConversations as any,
+      communicationAttachments as any,
     );
   });
 
