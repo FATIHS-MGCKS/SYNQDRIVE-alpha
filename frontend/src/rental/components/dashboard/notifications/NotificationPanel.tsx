@@ -47,6 +47,7 @@ interface NotificationPanelHandlers {
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
   onOpenSettingsTab?: (tab: string) => void;
   onOpenPriceTariffs?: () => void;
+  onOpenCommunicationCenter?: (options?: import('../dashboardTypes').DashboardOpenCommunicationCenterOptions) => void;
 }
 
 function emptyVariantForTab(tab: NotificationPrimaryTab, hasDomainFilter: boolean): NotificationEmptyVariant {
@@ -70,6 +71,7 @@ function runItemCta(
       ...rentalNav,
       onOpenRentalView: handlers.onOpenRentalView,
       onOpenSettingsTab: handlers.onOpenSettingsTab,
+      onOpenCommunicationCenter: handlers.onOpenCommunicationCenter,
       onStartHandoverPickup: (bookingId) => {
         const pickup = vm.pickupItems.find((p) => p.bookingId === bookingId);
         if (pickup) vm.handleConfirmPickup(pickup);

@@ -216,6 +216,7 @@ enum NotificationActionType {
   OPEN_STATION
   OPEN_BILLING
   OPEN_RENTAL
+  OPEN_COMMUNICATION
 }
 
 enum NotificationSourceType {

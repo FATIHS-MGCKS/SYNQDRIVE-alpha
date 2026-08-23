@@ -14,7 +14,10 @@ describe('WhatsAppAiRouterService', () => {
   const tools = { runTools: jest.fn() };
   const policy = new WhatsAppMessagePolicyService();
   const audit = { record: jest.fn() };
-  const communicationProjection = { projectHumanRequired: jest.fn() };
+  const communicationProjection = {
+    projectHumanRequired: jest.fn(),
+    projectAiIntentDetected: jest.fn(),
+  };
 
   let router: WhatsAppAiRouterService;
 

@@ -5,6 +5,7 @@ import { CommunicationProjectionService } from '@modules/communication/communica
 import { CommunicationProjectionFeatureService } from '@modules/communication/communication-projection-feature.service';
 import { MetaWhatsAppCommunicationAdapter } from '@modules/communication/adapters/whatsapp/meta-whatsapp-communication.adapter';
 import { WhatsAppCommunicationProjectionIntegration } from '@modules/communication/adapters/whatsapp/whatsapp-communication-projection.integration';
+import { createCommunicationHandoffNotificationMock } from '@modules/communication/testing/communication-handoff-notification.mock';
 
 describe('WhatsAppService canonical outbound projection', () => {
   const orgId = 'org-1';
@@ -111,11 +112,14 @@ describe('WhatsAppService canonical outbound projection', () => {
       projectWhatsAppMessage: jest.fn().mockResolvedValue({ contentId: 'c-1', created: true, skipped: false }),
     } as unknown as import('../communication/content/communication-content.service').CommunicationContentService;
 
+    const handoffNotifications = createCommunicationHandoffNotificationMock();
+
     integration = new WhatsAppCommunicationProjectionIntegration(
       featureFlags,
       new MetaWhatsAppCommunicationAdapter(),
       projection,
       contentService,
+      handoffNotifications as any,
     );
 
     service = new WhatsAppService(
@@ -209,11 +213,14 @@ describe('WhatsAppCommunicationProjectionIntegration safety', () => {
       projectWhatsAppMessage: jest.fn(),
     } as unknown as import('../communication/content/communication-content.service').CommunicationContentService;
 
+    const handoffNotifications = createCommunicationHandoffNotificationMock();
+
     const integration = new WhatsAppCommunicationProjectionIntegration(
       featureFlags,
       adapter,
       projection,
       contentService,
+      handoffNotifications as any,
     );
 
     const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);

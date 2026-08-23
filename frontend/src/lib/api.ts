@@ -4248,6 +4248,24 @@ export const api = {
         `/organizations/${orgId}/communication/conversations/${conversationId}/events${qs ? `?${qs}` : ''}`,
       );
     },
+    listAiActivity: (
+      orgId: string,
+      query?: import('./communication/types').CommunicationAiActivityListQuery,
+    ) => {
+      const q = new URLSearchParams();
+      if (query?.channel) q.set('channel', query.channel);
+      if (query?.category && query.category !== 'all') q.set('category', query.category);
+      if (query?.conversationId) q.set('conversationId', query.conversationId);
+      if (query?.stationId) q.set('stationId', query.stationId);
+      if (query?.dateFrom) q.set('dateFrom', query.dateFrom);
+      if (query?.dateTo) q.set('dateTo', query.dateTo);
+      if (query?.cursor) q.set('cursor', query.cursor);
+      if (query?.limit != null) q.set('limit', String(query.limit));
+      const qs = q.toString();
+      return get<import('./communication/types').CommunicationAiActivityListResponse>(
+        `/organizations/${orgId}/communication/ai-activity${qs ? `?${qs}` : ''}`,
+      );
+    },
     claimConversation: (orgId: string, conversationId: string) =>
       post<import('./communication/types').CommunicationMutationResponse>(
         `/organizations/${orgId}/communication/conversations/${conversationId}/claim`,

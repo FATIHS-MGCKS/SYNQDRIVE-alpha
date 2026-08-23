@@ -101,6 +101,8 @@ export function validateRegistryCandidate(candidate: NotificationCandidate): Not
     || (def.eventType === 'ACTIVE_DTC'
       && candidate.conditionCode.startsWith(`${def.conditionCode}:`))
     || (def.eventType === 'VEHICLE_DAMAGE_BLOCKING'
+      && candidate.conditionCode.startsWith(`${def.conditionCode}:`))
+    || (def.eventType === 'COMMUNICATION_HANDOFF_REQUIRED'
       && candidate.conditionCode.startsWith(`${def.conditionCode}:`));
   if (!conditionMatches) {
     throw new NotificationRegistryValidationError(

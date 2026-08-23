@@ -51,7 +51,8 @@ export type NotificationActionType =
   | 'open-handover-return'
   | 'open-station'
   | 'open-billing'
-  | 'open-rental';
+  | 'open-rental'
+  | 'open-communication';
 
 export interface NotificationActionTarget {
   type: NotificationActionType;
@@ -63,6 +64,8 @@ export interface NotificationActionTarget {
   tripId?: string;
   observationId?: string;
   taskId?: string;
+  conversationId?: string;
+  channel?: string;
   module?: string;
 }
 

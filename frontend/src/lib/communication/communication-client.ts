@@ -86,6 +86,13 @@ export const communicationClient = {
     return wrap(() => api.communication.listConversationEvents(orgId, conversationId, query));
   },
 
+  listAiActivity(
+    orgId: string,
+    query?: import('./types').CommunicationAiActivityListQuery,
+  ): Promise<import('./types').CommunicationAiActivityListResponse> {
+    return wrap(() => api.communication.listAiActivity(orgId, query));
+  },
+
   claimConversation(orgId: string, conversationId: string) {
     return wrap(() => api.communication.claimConversation(orgId, conversationId));
   },

@@ -150,6 +150,14 @@ export class WhatsAppAiRouterService {
       humanReason,
     });
 
+    void this.communicationProjection.projectAiIntentDetected({
+      conversation: convo,
+      occurredAt: new Date(),
+      suggestionId,
+      intentCode: intent,
+      confidence,
+    });
+
     const updated = await this.prisma.whatsAppConversation.update({
       where: { id: conversationId },
       data: {

@@ -19,6 +19,9 @@ export function isOrgWideNotification(row: Pick<NotificationScopeRow, 'eventType
   if (ORG_WIDE_EVENT_TYPES.has(row.eventType)) {
     return true;
   }
+  if (row.eventType === 'COMMUNICATION_HANDOFF_REQUIRED') {
+    return false;
+  }
   if (row.entityType === NotificationEntityType.ORGANIZATION) {
     return true;
   }

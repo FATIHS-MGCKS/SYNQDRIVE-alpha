@@ -1163,6 +1163,18 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center AI Activity — C11.5 (V4.9.937)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-info)]',
+    apis: [
+      { label: 'AI Activity', detail: 'GET .../communication/ai-activity — CommunicationEvent projection; cursor pagination; station scope' },
+      { label: 'UI', detail: 'AI Activity tab — handoffs/tools/errors filters; deep-link Open conversation' },
+      { label: 'WhatsApp AI', detail: 'AI_INTENT_DETECTED projection from WhatsAppAiRouterService suggestions' },
+      { label: 'Handoff alerts', detail: 'COMMUNICATION_HANDOFF_REQUIRED notification on HUMAN_REQUIRED; dedupe per event id' },
+      { label: 'OrgTask', detail: 'Deferred — notification-only V1 policy' },
+    ],
+  },
+  {
     name: 'Communication Center Media Attachments — C11.4 (V4.9.936)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-info)]',

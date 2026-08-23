@@ -104,6 +104,15 @@ export function legalDocumentsSettingsTarget(
   };
 }
 
+export function communicationTarget(ctx: NotificationActionTargetContext): NotificationActionTarget {
+  return {
+    type: NotificationActionType.OPEN_COMMUNICATION,
+    conversationId: ctx.conversationId ?? ctx.entityId,
+    stationId: ctx.stationId,
+    channel: ctx.channel,
+  };
+}
+
 export function resolveEntityType(
   ctx: NotificationActionTargetContext,
   expected: NotificationEntityType,

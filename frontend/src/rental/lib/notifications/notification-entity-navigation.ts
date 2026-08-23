@@ -5,6 +5,8 @@ import type {
   NotificationEntityType,
 } from '../../components/dashboard/notificationQueueModel';
 import type { RentalEntityNavigationValue } from '../../context/RentalEntityNavigationContext';
+import type { DashboardOpenCommunicationCenterOptions } from '../../components/dashboard/dashboardTypes';
+import type { CommunicationChannel } from '../../components/communication-center/communication-center.types';
 
 export type NotificationNavigationKind =
   | 'vehicle'
@@ -19,6 +21,7 @@ export type NotificationNavigationKind =
   | 'task'
   | 'trip'
   | 'settings'
+  | 'communication'
   | 'rental-fallback'
   | 'unavailable';
 
@@ -46,6 +49,7 @@ export type NotificationNavigationOutcome =
 export type NotificationNavigationHandlers = Partial<RentalEntityNavigationValue> & {
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
   onOpenSettingsTab?: (tab: string) => void;
+  onOpenCommunicationCenter?: (options?: DashboardOpenCommunicationCenterOptions) => void;
   onStartHandoverPickup?: (bookingId: string) => void;
   onStartHandoverReturn?: (bookingId: string) => void;
   onEntityUnavailable?: (intent: NotificationNavigationIntent) => void;
@@ -69,6 +73,7 @@ function resolveHandlers(handlers: NotificationNavigationHandlers) {
     openServiceCaseById: handlers.openServiceCaseById,
     onOpenRentalView: handlers.onOpenRentalView,
     onOpenSettingsTab: handlers.onOpenSettingsTab,
+    onOpenCommunicationCenter: handlers.onOpenCommunicationCenter,
     onStartHandoverPickup: handlers.onStartHandoverPickup,
     onStartHandoverReturn: handlers.onStartHandoverReturn,
     onEntityUnavailable: handlers.onEntityUnavailable,
@@ -134,6 +139,19 @@ export function buildNotificationNavigationContext(
   };
 }
 
+function normalizeCommunicationChannel(value: string | undefined): CommunicationChannel | undefined {
+  switch (value?.trim().toUpperCase()) {
+    case 'WHATSAPP':
+      return 'whatsapp';
+    case 'VOICE':
+      return 'voice';
+    case 'SMS':
+      return 'sms';
+    default:
+      return undefined;
+  }
+}
+
 function kindFromAction(
   actionType: NotificationActionType,
   target: NotificationActionTarget,
@@ -154,6 +172,8 @@ function kindFromAction(
       return 'handover-return';
     case 'open-station':
       return 'station';
+    case 'open-communication':
+      return 'communication';
     case 'open-billing':
       return target.invoiceId ? 'invoice' : 'rental-fallback';
     default:
@@ -296,6 +316,16 @@ export function executeNotificationNavigation(
       }
       break;
     }
+    case 'communication':
+      if (target.conversationId && h.onOpenCommunicationCenter) {
+        h.onOpenCommunicationCenter({
+          conversationId: target.conversationId,
+          channel: normalizeCommunicationChannel(target.channel),
+          mobilePane: 'conversation',
+        });
+        return 'navigated';
+      }
+      break;
     case 'rental-fallback':
     default:
       if (h.onOpenRentalView) {

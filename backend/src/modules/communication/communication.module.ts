@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import communicationProjectionConfig from '@config/communication-projection.config';
 import { DocumentsModule } from '@modules/documents/documents.module';
+import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { StationsModule } from '@modules/stations/stations.module';
 import { WhatsAppModule } from '@modules/whatsapp/whatsapp.module';
 import { PrismaModule } from '@shared/database/prisma.module';
@@ -40,6 +41,10 @@ import { SmsCommunicationOutboundAdapter } from './reply/adapters/sms-communicat
 import { CommunicationContentBackfillService } from './content/communication-content-backfill.service';
 import { CommunicationContentRepository } from './content/communication-content.repository';
 import { CommunicationContentService } from './content/communication-content.service';
+import { CommunicationAiActivityRepository } from './ai-activity/communication-ai-activity.repository';
+import { CommunicationAiActivityService } from './ai-activity/communication-ai-activity.service';
+import { CommunicationAiActivityController } from './ai-activity/communication-ai-activity.controller';
+import { CommunicationHandoffNotificationService } from './handoff/communication-handoff-notification.service';
 
 /**
  * Canonical Communication Center persistence + normalization foundation (C1–C7.2).
@@ -49,6 +54,7 @@ import { CommunicationContentService } from './content/communication-content.ser
     PrismaModule,
     StationsModule,
     DocumentsModule,
+    NotificationsModule,
     forwardRef(() => WhatsAppModule),
     ConfigModule.forFeature(communicationProjectionConfig),
   ],
@@ -85,12 +91,16 @@ import { CommunicationContentService } from './content/communication-content.ser
     CommunicationAttachmentService,
     WhatsAppCommunicationOutboundAdapter,
     SmsCommunicationOutboundAdapter,
+    CommunicationAiActivityRepository,
+    CommunicationAiActivityService,
+    CommunicationHandoffNotificationService,
   ],
   controllers: [
     CommunicationReadController,
     CommunicationWriteController,
     CommunicationReplyController,
     CommunicationAttachmentController,
+    CommunicationAiActivityController,
   ],
   exports: [
     CommunicationTenantContextValidation,
@@ -120,6 +130,8 @@ import { CommunicationContentService } from './content/communication-content.ser
     CommunicationReplyService,
     CommunicationAttachmentService,
     CommunicationConversationRepository,
+    CommunicationAiActivityService,
+    CommunicationHandoffNotificationService,
   ],
 })
 export class CommunicationModule {}

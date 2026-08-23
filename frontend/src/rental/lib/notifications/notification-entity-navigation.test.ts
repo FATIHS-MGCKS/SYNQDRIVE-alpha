@@ -179,4 +179,29 @@ describe('notification-entity-navigation', () => {
     const ctx = buildNotificationNavigationContext(item(), ORG_B);
     expect(ctx.organizationId).toBe(ORG_B);
   });
+
+  it('navigates OPEN_COMMUNICATION to Communication Center conversation', () => {
+    const openCommunication = vi.fn();
+    const communicationItem = item({
+      queue: baseQueue({
+        entityType: 'organization',
+        entityId: 'conv-1',
+        actionType: 'open-communication',
+        actionTarget: {
+          type: 'open-communication',
+          conversationId: 'conv-1',
+          channel: 'WHATSAPP',
+          stationId: 'station-1',
+        },
+      }),
+    });
+    const intent = resolveNotificationNavigationIntent(communicationItem, ORG_A);
+    expect(intent.kind).toBe('communication');
+    executeNotificationNavigation(intent, { onOpenCommunicationCenter: openCommunication });
+    expect(openCommunication).toHaveBeenCalledWith({
+      conversationId: 'conv-1',
+      channel: 'whatsapp',
+      mobilePane: 'conversation',
+    });
+  });
 });

@@ -1,4 +1,4 @@
-export type CommunicationPrimaryTab = 'inbox' | 'settings';
+export type CommunicationPrimaryTab = 'inbox' | 'ai-activity' | 'settings';
 
 export type CommunicationSettingsSection = 'overview' | 'whatsapp' | 'voice' | 'sms';
 

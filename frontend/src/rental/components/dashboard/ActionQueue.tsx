@@ -52,6 +52,7 @@ interface ActionQueueHandlers {
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
   onOpenSettingsTab?: (tab: string) => void;
   onOpenPriceTariffs?: () => void;
+  onOpenCommunicationCenter?: (options?: import('./dashboardTypes').DashboardOpenCommunicationCenterOptions) => void;
 }
 
 interface ActionQueueProps {
@@ -63,6 +64,7 @@ interface ActionQueueProps {
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
   onOpenSettingsTab?: (tab: string) => void;
   onOpenPriceTariffs?: () => void;
+  onOpenCommunicationCenter?: (options?: import('./dashboardTypes').DashboardOpenCommunicationCenterOptions) => void;
   layout?: NotificationPanelLayout;
 }
 
@@ -619,6 +621,7 @@ export function ActionQueue({
   onOpenRentalView,
   onOpenSettingsTab,
   onOpenPriceTariffs,
+  onOpenCommunicationCenter,
   layout = 'default',
 }: ActionQueueProps) {
   const {
@@ -718,6 +721,7 @@ export function ActionQueue({
     onOpenRentalView,
     onOpenSettingsTab,
     onOpenPriceTariffs,
+    onOpenCommunicationCenter,
   };
   const hasItems = atomicCount > 0;
   const showEmpty = !actionQueueLoading && !hasItems;

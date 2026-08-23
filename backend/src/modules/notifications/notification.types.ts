@@ -102,6 +102,9 @@ export interface NotificationActionTarget {
   /** Service task deep link (when supported by producer). */
   taskId?: string;
   module?: string;
+  /** Canonical Communication Center conversation deep link. */
+  conversationId?: string;
+  channel?: string;
 }
 
 // ─── Candidate (ingest contract) ───────────────────────────────────

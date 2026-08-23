@@ -14,6 +14,7 @@ import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.
 import { VehicleReadinessNotificationAdapter } from './vehicle-readiness-notification.adapter';
 import { VehicleReadinessEvaluabilityNotificationAdapter } from './vehicle-readiness-evaluability-notification.adapter';
 import { VehicleDamageNotificationAdapter } from './vehicle-damage-notification.adapter';
+import { CommunicationHandoffNotificationAdapter } from './communication-handoff-notification.adapter';
 import {
   VEHICLE_HEALTH_NOTIFICATION_EVENT_TYPES,
   vehicleHealthSourceFingerprint,
@@ -55,6 +56,7 @@ import type {
   VehicleReadinessNotificationAdapterSource,
   VehicleReadinessEvaluabilityNotificationAdapterSource,
   VehicleDamageNotificationAdapterSource,
+  CommunicationHandoffAdapterSource,
 } from './notification-adapter.types';
 import {
   buildTechnicalObservationConditionCode,
@@ -153,6 +155,7 @@ export class NotificationProducerIngestService {
     private readonly vehicleReadinessAdapter: VehicleReadinessNotificationAdapter,
     private readonly vehicleReadinessEvaluabilityAdapter: VehicleReadinessEvaluabilityNotificationAdapter,
     private readonly vehicleDamageAdapter: VehicleDamageNotificationAdapter,
+    private readonly communicationHandoffAdapter: CommunicationHandoffNotificationAdapter,
     private readonly core: NotificationCoreService,
   ) {}
 

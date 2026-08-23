@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c11-5-ai-activity-handoff-alerts-2026-08-23',
+    version: '4.9.937',
+    title: 'Communication Center C11.5 — AI Activity + handoff alerts',
+    summary: [
+      'GET .../communication/ai-activity — federated read projection from canonical CommunicationEvent AI/handoff types.',
+      'AI Activity tab in Communication Center (audit surface, not second inbox); filters handoffs/tools/errors.',
+      'WhatsApp AI_INTENT_DETECTED projection after router suggestions; Voice tool/handoff events already projected.',
+      'COMMUNICATION_HANDOFF_REQUIRED notification on new HUMAN_REQUIRED canonical events (deduped per event id).',
+      'C11.5 hardening: TASKS preference category, awaited notification ingest, chronological handoff resolution, station-scoped recipient filtering, shared notification test factories.',
+      'OPEN_COMMUNICATION notification action deep-links to canonical conversation.',
+      'Station scope + communication.read RBAC on AI Activity list.',
+    ],
+    reason:
+      'Operators need visibility into external AI behavior, escalations, and tool outcomes with actionable handoff alerts.',
+    previousBehavior:
+      'No AI Activity surface; handoffs visible only via inbox status/dashboard attention without notification alerts.',
+    details:
+      'communication-ai-activity.*, CommunicationAiActivityPane, CommunicationHandoffNotificationAdapter, architecture/COMMUNICATION_CENTER_C11_5_AI_ACTIVITY_HANDOFF_ALERTS_IMPLEMENTATION.md.',
+    affectsArchitecture: true,
+    module: 'Communication Center',
+    createdAt: '2026-08-23T12:30:00.000Z',
+  },
+  {
     id: 'communication-center-c11-4-media-attachments-2026-08-23',
     version: '4.9.936',
     title: 'Communication Center C11.4 — Secure media attachments',

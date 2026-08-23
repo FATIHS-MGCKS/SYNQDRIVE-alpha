@@ -54,6 +54,7 @@ export function DashboardView({
     onOpenRentalView,
     onOpenInvoiceById,
     onOpenPriceTariffs,
+    onOpenCommunicationCenter,
   };
   const leftColumnRef = useRef<HTMLDivElement>(null);
   const utilizationMaxHeight = useDashboardLeftColumnHeight(leftColumnRef, [

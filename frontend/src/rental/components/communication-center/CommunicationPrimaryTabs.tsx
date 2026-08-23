@@ -37,6 +37,21 @@ export function CommunicationPrimaryTabs({
       >
         {t('communication.primary.inbox')}
       </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={activeTab === 'ai-activity'}
+        data-testid="communication-primary-tab-ai-activity"
+        className={cn(
+          'sq-press border-b-2 px-3 py-2 text-[11px] font-semibold transition-colors',
+          activeTab === 'ai-activity'
+            ? 'border-[color:var(--brand)] text-foreground'
+            : 'border-transparent text-muted-foreground hover:text-foreground',
+        )}
+        onClick={() => onChange('ai-activity')}
+      >
+        {t('communication.primary.aiActivity')}
+      </button>
       {showSettings && (
         <button
           type="button"

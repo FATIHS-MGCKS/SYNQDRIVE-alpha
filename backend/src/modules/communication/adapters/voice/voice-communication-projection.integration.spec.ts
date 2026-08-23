@@ -1,6 +1,7 @@
 import { CommunicationProviderIdentity } from '@prisma/client';
 import { CommunicationProjectionService } from '../../communication-projection.service';
 import { CommunicationProjectionFeatureService } from '../../communication-projection-feature.service';
+import { createCommunicationHandoffNotificationMock } from '../../testing/communication-handoff-notification.mock';
 import { TwilioVoiceCommunicationAdapter } from './twilio-voice-communication.adapter';
 import { ElevenLabsVoiceCommunicationAdapter } from './elevenlabs-voice-communication.adapter';
 import { VoiceCommunicationProjectionIntegration } from './voice-communication-projection.integration';
@@ -15,6 +16,7 @@ describe('VoiceCommunicationProjectionIntegration', () => {
   const projection = {
     projectNormalizedInput: jest.fn(),
   } as unknown as jest.Mocked<CommunicationProjectionService>;
+  const handoffNotifications = createCommunicationHandoffNotificationMock();
 
   let integration: VoiceCommunicationProjectionIntegration;
   let warnSpy: jest.SpyInstance;
@@ -39,6 +41,7 @@ describe('VoiceCommunicationProjectionIntegration', () => {
       twilioAdapter,
       elevenLabsAdapter,
       projection,
+      handoffNotifications as any,
     );
     warnSpy = jest.spyOn(integration['logger'], 'warn').mockImplementation(() => undefined);
   });
@@ -68,6 +71,7 @@ describe('VoiceCommunicationProjectionIntegration', () => {
       throwingTwilio,
       elevenLabsAdapter,
       projection,
+      handoffNotifications as any,
     );
     const unsafeWarn = jest.spyOn(unsafe['logger'], 'warn').mockImplementation(() => undefined);
     featureFlags.isVoiceProjectionEnabled.mockReturnValue(true);
@@ -96,6 +100,7 @@ describe('VoiceCommunicationProjectionIntegration', () => {
       twilioAdapter,
       throwingElevenLabs,
       projection,
+      handoffNotifications as any,
     );
     const unsafeWarn = jest.spyOn(unsafe['logger'], 'warn').mockImplementation(() => undefined);
     featureFlags.isVoiceProjectionEnabled.mockReturnValue(true);
@@ -149,6 +154,7 @@ describe('VoiceCommunicationProjectionIntegration', () => {
     );
     expect(eventTypes.filter((t) => t === 'CALL_STARTED')).toHaveLength(1);
     expect(eventTypes).toContain('CALL_CONNECTED');
+    expect(handoffNotifications.notifyHandoffRequired).not.toHaveBeenCalled();
   });
 
   it('does not fabricate AI_INTENT_DETECTED from active ElevenLabs session alone', async () => {
@@ -170,5 +176,46 @@ describe('VoiceCommunicationProjectionIntegration', () => {
     });
 
     expect(projection.projectNormalizedInput).not.toHaveBeenCalled();
+    expect(handoffNotifications.notifyHandoffRequired).not.toHaveBeenCalled();
+  });
+
+  it('notifies once when HUMAN_REQUIRED is newly created', async () => {
+    featureFlags.isVoiceProjectionEnabled.mockReturnValue(true);
+    projection.projectNormalizedInput.mockResolvedValue({
+      conversationId: 'cc-1',
+      eventId: 'evt-handoff-1',
+      conversationCreated: false,
+      eventCreated: true,
+    });
+
+    await integration.projectHumanRequired({
+      conversation,
+      providerEventId: 'voice-human:1',
+      providerIdentity: 'ELEVENLABS',
+      handoffReasonCode: 'ESCALATION',
+      occurredAt: new Date(),
+    });
+
+    expect(handoffNotifications.notifyHandoffRequired).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not notify on HUMAN_REQUIRED replay (eventCreated=false)', async () => {
+    featureFlags.isVoiceProjectionEnabled.mockReturnValue(true);
+    projection.projectNormalizedInput.mockResolvedValue({
+      conversationId: 'cc-1',
+      eventId: 'evt-handoff-1',
+      conversationCreated: false,
+      eventCreated: false,
+    });
+
+    await integration.projectHumanRequired({
+      conversation,
+      providerEventId: 'voice-human:1',
+      providerIdentity: 'ELEVENLABS',
+      handoffReasonCode: 'ESCALATION',
+      occurredAt: new Date(),
+    });
+
+    expect(handoffNotifications.notifyHandoffRequired).not.toHaveBeenCalled();
   });
 });
