@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-vehicle-quick-view-header-primary-status-p2-2-28-2026-08-23',
+    version: '4.9.955',
+    title: 'Platform i18n — P2.2.28 Operator Vehicle Quick View Header & Primary Status localization',
+    summary: [
+      'Localized Operator Vehicle Quick View header/hero via extracted `OperatorVehicleQuickViewHeader.tsx` and extended `operator-vehicle-quick-view-i18n.ts`.',
+      'P228 enforce-clean exact scope (2 paths) reports 0 findings; +11 EN+DE keys under `operator.vehicleQuickView.header.*` (8434→8445); reuses `dashboard.label.*`, `health.state.*`, `common.close`, `dashboard.fleet.cleaningPending`.',
+      'Presentation-only — vehicle identity, machine status/readiness values, badge tones, release decisions, callbacks, and dynamic business data unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.28 post-P227 pre-flight topology recovery (PR #1209) selected Header & Primary Status as the next bounded Vehicle Quick View slice.',
+    previousBehavior:
+      'Quick View hero used fixed `locale: "de"` for fleet display and unreliable callout; primary/release labels came from German snapshot strings in utils.',
+    details:
+      'operator/components/OperatorVehicleQuickViewHeader.tsx; operator/lib/operator-vehicle-quick-view-i18n.ts; OperatorVehicleQuickView.tsx (wiring); i18n/translations/operator.vehicleQuickView.header.{en,de}.ts; operator-vehicle-quick-view-header-localization.test.tsx; P228_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_HEADER_PRIMARY_STATUS_P2_2_28_2026-08-23.md; docs/audits/i18n-p2-2-28-operator-vehicle-quick-view-header-primary-status-implementation-2026-08-23.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-23T00:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-vehicle-quick-view-open-tasks-p2-2-27-2026-08-23',
     version: '4.9.954',
     title: 'Platform i18n — P2.2.27 Operator Vehicle Quick View Open Tasks localization',

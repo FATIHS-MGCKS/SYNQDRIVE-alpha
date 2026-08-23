@@ -1,8 +1,8 @@
 /**
- * Operator Vehicle Quick View — Open Tasks presentation adapter (P2.2.27 QV-G).
- * Machine task status/priority/overdue values stay unchanged.
+ * Operator Vehicle Quick View presentation adapter (P2.2.27 QV-G tasks + P2.2.28 header).
+ * Machine status/task values stay unchanged; presentation maps to TranslationKey only.
  */
-import type { ApiTaskPriority, ApiTaskStatus } from '../../lib/api';
+import type { ApiTaskPriority, ApiTaskStatus, RentalHealthState } from '../../lib/api';
 import {
   DEFAULT_PRODUCT_LOCALE,
   isSupportedLocale,
@@ -14,11 +14,22 @@ import {
   serviceTaskPriorityLabel,
   serviceTaskStatusLabel,
 } from '../../lib/tasks/service-task-presentation-i18n';
+import type { VehicleOperationalDisplayLocale } from '../../rental/lib/vehicle-operational-state';
+import type {
+  OperatorPrimaryStatus,
+  OperatorReleaseDecision,
+} from './operatorVehicleQuickView.utils';
 
 export function resolveOperatorVehicleQuickViewLocale(
   locale: string | null | undefined,
 ): SupportedLocale {
   return isSupportedLocale(locale) ? locale : DEFAULT_PRODUCT_LOCALE;
+}
+
+export function resolveOperatorVehicleQuickViewOperationalDisplayLocale(
+  locale: string | null | undefined,
+): VehicleOperationalDisplayLocale {
+  return resolveOperatorVehicleQuickViewLocale(locale) === 'de' ? 'de' : 'en';
 }
 
 export function ovqt(
@@ -27,6 +38,71 @@ export function ovqt(
   vars?: Record<string, string | number>,
 ): string {
   return translateKey(resolveOperatorVehicleQuickViewLocale(locale), key, vars).text;
+}
+
+const PRIMARY_STATUS_KEYS: Record<OperatorPrimaryStatus, TranslationKey> = {
+  ready: 'dashboard.label.ready',
+  blocked: 'dashboard.label.blocked',
+  rented: 'operator.vehicleQuickView.header.primaryStatus.rented',
+  in_service: 'operator.vehicleQuickView.header.primaryStatus.inService',
+  out_of_service: 'operator.vehicleQuickView.header.primaryStatus.outOfService',
+  review_required: 'operator.vehicleQuickView.header.primaryStatus.reviewRequired',
+};
+
+const RELEASE_DECISION_KEYS: Record<OperatorReleaseDecision, TranslationKey> = {
+  yes: 'operator.vehicleQuickView.header.release.yes',
+  no: 'operator.vehicleQuickView.header.release.no',
+  review: 'operator.vehicleQuickView.header.release.review',
+  unavailable: 'operator.vehicleQuickView.header.release.unavailable',
+};
+
+const RENTAL_HEALTH_STATE_KEYS: Record<RentalHealthState, TranslationKey> = {
+  good: 'health.state.good',
+  warning: 'health.state.warning',
+  critical: 'health.state.critical',
+  unknown: 'health.state.unknown',
+  n_a: 'health.state.na',
+};
+
+export function operatorVehicleQuickViewHeaderNotFound(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.header.notFound');
+}
+
+export function operatorVehicleQuickViewHeaderCloseAriaLabel(locale: string): string {
+  return ovqt(locale, 'common.close');
+}
+
+export function operatorVehicleQuickViewHeaderCleaningPendingLabel(locale: string): string {
+  return ovqt(locale, 'dashboard.fleet.cleaningPending');
+}
+
+export function operatorVehicleQuickViewHeaderReleaseQuestion(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.header.releaseQuestion');
+}
+
+export function operatorVehicleQuickViewHeaderRentalHealthPrefix(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.header.rentalHealthPrefix');
+}
+
+export function operatorVehicleQuickViewPrimaryStatusLabel(
+  locale: string,
+  status: OperatorPrimaryStatus,
+): string {
+  return ovqt(locale, PRIMARY_STATUS_KEYS[status]);
+}
+
+export function operatorVehicleQuickViewReleaseLabel(
+  locale: string,
+  decision: OperatorReleaseDecision,
+): string {
+  return ovqt(locale, RELEASE_DECISION_KEYS[decision]);
+}
+
+export function operatorVehicleQuickViewRentalHealthStateLabel(
+  locale: string,
+  state: RentalHealthState,
+): string {
+  return ovqt(locale, RENTAL_HEALTH_STATE_KEYS[state]);
 }
 
 export function operatorVehicleQuickViewTasksSectionTitle(locale: string): string {

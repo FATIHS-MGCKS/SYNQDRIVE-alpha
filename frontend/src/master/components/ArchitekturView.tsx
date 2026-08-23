@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Vehicle Quick View Header & Primary Status (P2.2.28 — V4.9.955)', icon: Globe,
+    endpoint: 'OperatorVehicleQuickView → `OperatorVehicleQuickViewHeader` (hero, primary status, release block).',
+    service: '**Locale flow:** `useLanguage().locale` → extracted header sub-surface; `operator-vehicle-quick-view-i18n.ts` primary status/release/health maps (reuses `dashboard.label.*`, `health.state.*`). **Keys:** +11 EN+DE `operator.vehicleQuickView.header.*` (8434→8445); reuses `common.close`, `dashboard.fleet.cleaningPending`. **Machine values:** primaryStatus, releaseDecision, overall_state, cleaningStatus predicate, badge tones, close/reload callbacks frozen. **Guardrails:** P2.2.28 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-vehicle-quick-view-header-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-28-operator-vehicle-quick-view-header-primary-status-implementation-2026-08-23.md; architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_HEADER_PRIMARY_STATUS_P2_2_28_2026-08-23.md' },
   { name: 'Platform i18n Operator Vehicle Quick View Open Tasks (P2.2.27 — V4.9.954)', icon: Globe,
     endpoint: 'OperatorVehicleQuickView → `OperatorVehicleQuickViewTasks` (open tasks list + task row).',
     service: '**Locale flow:** `useLanguage().locale` → extracted QV-G tasks sub-surface; `operator-vehicle-quick-view-i18n.ts` section chrome + status/priority/overdue maps (reuses `service-task-presentation-i18n`). **Keys:** +4 EN+DE `operator.vehicleQuickView.tasks.*` (8430→8434); reuses `tasks.filter.status.*`, `tasks.filter.priority.*`, `status.overdue`. **Machine values:** task IDs, status/priority/isOverdue, sort order, `openSheet` callbacks frozen. **Guardrails:** P2.2.27 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-vehicle-quick-view-tasks-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

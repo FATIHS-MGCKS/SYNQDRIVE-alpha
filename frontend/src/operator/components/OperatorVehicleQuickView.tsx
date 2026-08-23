@@ -4,15 +4,11 @@ import {
   CalendarPlus,
   Disc3,
   ListTodo,
-  Loader2,
   ShieldAlert,
   Sparkles,
-  X,
 } from 'lucide-react';
 import { SkeletonRows, StatusChip } from '../../components/patterns';
 import { formatDamageType } from '../../rental/lib/damage.types';
-import { resolveFleetVehicleDisplayState } from '../../rental/lib/fleetVehicleDisplay';
-import { VehicleOperationalStatusCallout } from '../../rental/components/fleet/VehicleOperationalStatusCallout';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { resolveHandoverGateReason } from '../../rental/components/handover/handover-i18n';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
@@ -32,6 +28,7 @@ import {
 } from '../../rental/lib/tire-health-detail-ui';
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import { OperatorGlassCard } from './OperatorGlassCard';
+import { OperatorVehicleQuickViewHeader } from './OperatorVehicleQuickViewHeader';
 import { OperatorVehicleQuickViewTasks } from './OperatorVehicleQuickViewTasks';
 import { useOperatorShell } from '../context/OperatorShellContext';
 
@@ -68,19 +65,11 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
   const data = useOperatorVehicleQuickViewData(vehicleId);
 
   if (!data.vehicle) {
-    return (
-      <OperatorGlassCard className="p-4">
-        <p className="text-sm text-muted-foreground">Fahrzeug nicht gefunden.</p>
-      </OperatorGlassCard>
-    );
+    return <OperatorVehicleQuickViewHeader vehicle={null} snapshot={null} health={null} healthLoading={false} onReloadDetails={() => {}} />;
   }
 
   const vehicle = data.vehicle;
   const label = [vehicle.model, vehicle.license].filter(Boolean).join(' · ');
-  const fleetDisplay = resolveFleetVehicleDisplayState(vehicle, {
-    rentalHealth: data.health,
-    locale: 'de',
-  });
   const snapshot = data.statusSnapshot;
   const pickupItem = data.toPickupHandoverItem();
   const returnItem = data.toReturnHandoverItem();
@@ -105,92 +94,14 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
 
   return (
     <div className="space-y-4 pb-4">
-      {/* Hero */}
-      <OperatorGlassCard className="overflow-hidden p-0">
-        <div className="bg-gradient-to-br from-[color:var(--brand-soft)]/80 to-card p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="font-display text-2xl font-bold tracking-tight text-foreground">
-                {vehicle.license || '—'}
-              </p>
-              <p className="mt-0.5 truncate text-sm text-muted-foreground">{vehicle.model}</p>
-              {vehicle.station && (
-                <p className="mt-1 truncate text-xs text-muted-foreground">{vehicle.station}</p>
-              )}
-            </div>
-            {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="sq-press flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-background/80"
-                aria-label="Schließen"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {snapshot && (
-              <StatusChip tone={snapshot.primaryTone} dot>
-                {snapshot.primaryLabel}
-              </StatusChip>
-            )}
-            <StatusChip tone={fleetDisplay.statusBadge.tone}>
-              {fleetDisplay.statusBadge.label}
-            </StatusChip>
-            {vehicle.cleaningStatus === 'Needs Cleaning' && (
-              <StatusChip tone="watch">Reinigung offen</StatusChip>
-            )}
-          </div>
-
-          {fleetDisplay.statusBadge.showUnreliableCallout ? (
-            <div className="mt-3">
-              <VehicleOperationalStatusCallout
-                vehicle={vehicle}
-                statusBadge={fleetDisplay.statusBadge}
-                locale="de"
-                onRefresh={() => void data.reloadDetails()}
-                compact
-              />
-            </div>
-          ) : null}
-
-          <div className="mt-4 rounded-2xl border border-border/60 bg-background/70 px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Darf raus?
-            </p>
-            <div className="mt-1 flex items-baseline gap-2">
-              {data.healthLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              ) : fleetDisplay.statusBadge.showUnreliableCallout ? (
-                <span className="text-sm font-semibold text-muted-foreground">
-                  {snapshot?.releaseLabel ?? 'Status nicht verfügbar'}
-                </span>
-              ) : (
-                <>
-                  <span
-                    className={`text-xl font-bold ${
-                      snapshot?.releaseTone === 'success'
-                        ? 'text-[color:var(--status-success)]'
-                        : snapshot?.releaseTone === 'critical'
-                          ? 'text-[color:var(--status-critical)]'
-                          : 'text-foreground'
-                    }`}
-                  >
-                    {snapshot?.releaseLabel ?? '—'}
-                  </span>
-                  {data.health?.overall_state && (
-                    <span className="text-xs text-muted-foreground">
-                      Rental Health: {RENTAL_HEALTH_STATE_LABELS[data.health.overall_state]}
-                    </span>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </OperatorGlassCard>
+      <OperatorVehicleQuickViewHeader
+        vehicle={vehicle}
+        snapshot={snapshot}
+        health={data.health}
+        healthLoading={data.healthLoading}
+        onClose={onClose}
+        onReloadDetails={() => void data.reloadDetails()}
+      />
 
       {/* Quick actions */}
       <div className="grid gap-2">
