@@ -14,6 +14,7 @@ import { StationAccessService } from '@shared/stations/station-access.service';
 import { CommunicationEventRepository } from '../communication-event.repository';
 import { CommunicationReadRepository } from '../read/communication-read.repository';
 import { CommunicationWriteScopeService } from './communication-write-scope.service';
+import { CommunicationHumanTakeoverService } from './communication-human-takeover.service';
 import {
   CommunicationWriteService,
   MAX_OPTIMISTIC_MUTATION_RETRIES,
@@ -48,6 +49,7 @@ describePg('Communication write API postgres', () => {
         CommunicationEventRepository,
         StationAccessService,
         CommunicationWriteScopeService,
+        CommunicationHumanTakeoverService,
         CommunicationWriteService,
         { provide: AuditService, useValue: { record: auditRecord } },
       ],
@@ -194,6 +196,74 @@ describePg('Communication write API postgres', () => {
     await expect(
       service.claimConversation(orgA, convo.id, { userId: operatorB }),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('human takeover from AI_ACTIVE converges to HUMAN_ACTIVE with assignee', async () => {
+    const convo = await seedConversation({
+      orgId: orgA,
+      suffix: 'takeover-ai',
+      status: CommunicationConversationStatus.AI_ACTIVE,
+    });
+
+    const result = await service.claimConversation(orgA, convo.id, { userId: operatorA });
+    expect(result.conversation.status).toBe(CommunicationConversationStatus.HUMAN_ACTIVE);
+    expect(result.conversation.assignedUser?.id).toBe(operatorA);
+
+    const events = await prisma.communicationEvent.findMany({
+      where: { organizationId: orgA, conversationId: convo.id },
+    });
+    expect(events).toHaveLength(1);
+    expect(events[0]?.eventType).toBe(CommunicationEventType.HUMAN_ASSIGNED);
+    expect(auditRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: ActivityAction.UPDATE,
+        entityId: convo.id,
+      }),
+    );
+  });
+
+  it('human takeover from WAITING_CUSTOMER converges to HUMAN_ACTIVE with assignee', async () => {
+    const convo = await seedConversation({
+      orgId: orgA,
+      suffix: 'takeover-waiting',
+      status: CommunicationConversationStatus.WAITING_CUSTOMER,
+    });
+
+    const result = await service.claimConversation(orgA, convo.id, { userId: operatorA });
+    expect(result.conversation.status).toBe(CommunicationConversationStatus.HUMAN_ACTIVE);
+    expect(result.conversation.assignedUser?.id).toBe(operatorA);
+  });
+
+  it('concurrent AI_ACTIVE takeover allows exactly one winner', async () => {
+    const convo = await seedConversation({
+      orgId: orgA,
+      suffix: 'takeover-race',
+      status: CommunicationConversationStatus.AI_ACTIVE,
+    });
+
+    const results = await Promise.allSettled([
+      service.claimConversation(orgA, convo.id, { userId: operatorA }),
+      service.claimConversation(orgA, convo.id, { userId: operatorB }),
+    ]);
+
+    const fulfilled = results.filter((r) => r.status === 'fulfilled');
+    const rejected = results.filter((r) => r.status === 'rejected');
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+
+    const final = await prisma.communicationConversation.findUnique({ where: { id: convo.id } });
+    expect(final?.status).toBe(CommunicationConversationStatus.HUMAN_ACTIVE);
+    expect(final?.assignedUserId).toBeTruthy();
+    expect([operatorA, operatorB]).toContain(final?.assignedUserId);
+
+    const events = await prisma.communicationEvent.findMany({
+      where: {
+        organizationId: orgA,
+        conversationId: convo.id,
+        eventType: CommunicationEventType.HUMAN_ASSIGNED,
+      },
+    });
+    expect(events).toHaveLength(1);
   });
 
   it('concurrent claim allows exactly one winner', async () => {

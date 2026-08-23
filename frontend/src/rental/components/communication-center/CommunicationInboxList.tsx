@@ -28,6 +28,7 @@ interface CommunicationInboxListProps {
   onLoadMore: () => void;
   onRetryLoadMore: () => void;
   onClearFilters: () => void;
+  currentUserId?: string | null;
 }
 
 function mapInboxErrorDescription(
@@ -63,6 +64,7 @@ export function CommunicationInboxList({
   onLoadMore,
   onRetryLoadMore,
   onClearFilters,
+  currentUserId,
 }: CommunicationInboxListProps) {
   const { t } = useLanguage();
 
@@ -145,6 +147,7 @@ export function CommunicationInboxList({
               conversation={conversation}
               selected={conversation.id === selectedConversationId}
               locale={locale}
+              currentUserId={currentUserId}
               onSelect={onSelect}
             />
           </li>

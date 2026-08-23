@@ -10,8 +10,11 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import type { UseCommunicationConversationResult } from '../../../lib/communication/hooks/useCommunicationConversation';
 import type { UseCommunicationConversationActionsResult } from '../../../lib/communication/hooks/useCommunicationConversationActions';
 import type { UseCommunicationReplyResult } from '../../../lib/communication/hooks/useCommunicationReply';
+import type { UseCommunicationOrgMembersResult } from '../../../lib/communication/hooks/useCommunicationOrgMembers';
 import { resolveCommunicationComposerState } from '../../../lib/communication/communication-composer-capability';
+import { resolveCommunicationHumanActions } from '../../../lib/communication/communication-human-actions';
 import { CommunicationComposer } from './CommunicationComposer';
+import { CommunicationAssigneeControl } from './CommunicationAssigneeControl';
 import { resolveCommunicationConversationActions } from '../../../lib/communication/communication-actions';
 import type { CommunicationClientErrorCode } from '../../../lib/communication/communication-client';
 import { resolveConversationTitle } from './communication-inbox-display';
@@ -27,7 +30,11 @@ interface CommunicationWorkspacePaneProps {
   conversationState: UseCommunicationConversationResult | null;
   conversationActions?: UseCommunicationConversationActionsResult | null;
   replyState?: UseCommunicationReplyResult | null;
+  orgMembers?: UseCommunicationOrgMembersResult | null;
   canWrite?: boolean;
+  canManage?: boolean;
+  currentUserId?: string | null;
+  membersDirectoryAvailable?: boolean;
   showBack?: boolean;
   showContextAction?: boolean;
   hasContext?: boolean;
@@ -83,10 +90,18 @@ function resolveActionErrorMessage(
   code: CommunicationClientErrorCode,
   t: ReturnType<typeof useLanguage>['t'],
 ): string {
-  if (code === 'already_claimed') {
-    return t('communication.actions.errorAlreadyClaimed');
+  switch (code) {
+    case 'already_claimed':
+      return t('communication.actions.errorAlreadyClaimed');
+    case 'stale_state':
+      return t('communication.actions.errorStaleState');
+    case 'permission_denied':
+      return t('communication.actions.errorForbidden');
+    case 'invalid_query':
+      return t('communication.actions.errorInvalidTransition');
+    default:
+      return t('communication.actions.errorUpdateFailed');
   }
-  return t('communication.actions.errorUpdateFailed');
 }
 
 export function CommunicationWorkspacePane({
@@ -95,7 +110,11 @@ export function CommunicationWorkspacePane({
   conversationState,
   conversationActions,
   replyState,
+  orgMembers,
   canWrite = false,
+  canManage = false,
+  currentUserId = null,
+  membersDirectoryAvailable = true,
   showBack,
   showContextAction,
   hasContext,
@@ -110,12 +129,20 @@ export function CommunicationWorkspacePane({
   const detailNotFound = conversationState?.detailNotFound ?? false;
   const detailError = conversationState?.detailError ?? null;
 
-  const availableActions = resolveCommunicationConversationActions({
+  const humanActions = resolveCommunicationHumanActions({
+    conversation,
+    canWrite,
+    canManage,
+    currentUserId,
+    membersDirectoryAvailable,
+  });
+
+  const lifecycleActions = resolveCommunicationConversationActions({
     conversation,
     canWrite,
   });
-  const primaryAction = availableActions[0] ?? null;
-  const secondaryActions = availableActions.slice(1);
+  const primaryLifecycleAction = lifecycleActions.find((action) => action === 'resolve' || action === 'reopen') ?? null;
+  const overflowActions = lifecycleActions.filter((action) => action !== primaryLifecycleAction);
   const pendingAction = conversationActions?.pendingAction ?? null;
   const actionError = conversationActions?.actionError ?? null;
 
@@ -128,12 +155,9 @@ export function CommunicationWorkspacePane({
   const channel = conversation?.channel;
   const status = conversation?.status;
 
-  const runAction = (action: typeof primaryAction) => {
-    if (!action || !conversationActions) return;
+  const runLifecycleAction = (action: 'resolve' | 'reopen' | 'markRead') => {
+    if (!conversationActions) return;
     switch (action) {
-      case 'claim':
-        void conversationActions.claim();
-        break;
       case 'resolve':
         void conversationActions.resolve();
         break;
@@ -148,10 +172,8 @@ export function CommunicationWorkspacePane({
     }
   };
 
-  const actionLabel = (action: NonNullable<typeof primaryAction>, loading: boolean) => {
+  const lifecycleActionLabel = (action: 'resolve' | 'reopen' | 'markRead', loading: boolean) => {
     switch (action) {
-      case 'claim':
-        return loading ? t('communication.actions.claiming') : t('communication.actions.claim');
       case 'resolve':
         return loading ? t('communication.actions.resolving') : t('communication.actions.resolve');
       case 'reopen':
@@ -166,6 +188,7 @@ export function CommunicationWorkspacePane({
   const composerState = resolveCommunicationComposerState({
     canWrite,
     conversation,
+    currentUserId,
   });
 
   return (
@@ -234,19 +257,39 @@ export function CommunicationWorkspacePane({
             </>
           )}
         </div>
-        {canWrite && primaryAction && conversationActions && (
+
+        {canWrite && conversation && conversationActions && (
+          <CommunicationAssigneeControl
+            humanActions={humanActions}
+            currentUserId={currentUserId}
+            pendingAction={pendingAction}
+            disabled={pendingAction != null}
+            members={orgMembers?.members ?? []}
+            membersLoading={orgMembers?.loading ?? false}
+            membersLoadError={orgMembers?.loadError ?? null}
+            selectedUserId={conversation.assignedUser?.id ?? null}
+            onEnsureMembersLoaded={() => void orgMembers?.ensureLoaded()}
+            onClaim={() => void conversationActions.claim()}
+            onTakeOverSelf={() => void conversationActions.takeOverSelf()}
+            onAssign={(userId) => void conversationActions.assign(userId)}
+            onUnassign={() => void conversationActions.unassign()}
+          />
+        )}
+
+        {canWrite && primaryLifecycleAction && conversationActions && (
           <div className="flex shrink-0 items-center gap-1" data-testid="communication-header-actions">
             <Button
               type="button"
               size="sm"
+              variant={primaryLifecycleAction === 'reopen' ? 'outline' : 'default'}
               className="h-8"
               disabled={pendingAction != null}
-              aria-busy={pendingAction === primaryAction}
-              onClick={() => runAction(primaryAction)}
+              aria-busy={pendingAction === primaryLifecycleAction}
+              onClick={() => runLifecycleAction(primaryLifecycleAction)}
             >
-              {actionLabel(primaryAction, pendingAction === primaryAction)}
+              {lifecycleActionLabel(primaryLifecycleAction, pendingAction === primaryLifecycleAction)}
             </Button>
-            {secondaryActions.length > 0 && (
+            {overflowActions.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -261,13 +304,13 @@ export function CommunicationWorkspacePane({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {secondaryActions.map((action) => (
+                  {overflowActions.map((action) => (
                     <DropdownMenuItem
                       key={action}
-                      onSelect={() => runAction(action)}
+                      onSelect={() => runLifecycleAction(action)}
                       disabled={pendingAction != null}
                     >
-                      {actionLabel(action, pendingAction === action)}
+                      {lifecycleActionLabel(action, pendingAction === action)}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -275,6 +318,7 @@ export function CommunicationWorkspacePane({
             )}
           </div>
         )}
+
         {showContextAction && hasSelection && hasContext && (
           <Button
             type="button"

@@ -1163,6 +1163,18 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center Human Operations — C11.3 (V4.9.935)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-info)]',
+    apis: [
+      { label: 'Authority', detail: 'C11.1 claim/assign/unassign/resolve/reopen; claim extended for AI_ACTIVE/WAITING_CUSTOMER human takeover' },
+      { label: 'Takeover', detail: 'CommunicationHumanTakeoverService — HUMAN_ACTIVE + assignee, one HUMAN_ASSIGNED event, conditional concurrency' },
+      { label: 'Ownership', detail: 'CommunicationAssigneeControl + resolveCommunicationHumanActions; takeOverSelf → POST claim' },
+      { label: 'Assignment', detail: 'Lazy api.users.listByOrg; activeOrgRef + requestGeneration race authority; users-roles.read required for picker' },
+      { label: 'Convergence', detail: 'Composer currentUserId from Shell; inbox assignee indicator; timeline/inbox refresh on mutation' },
+    ],
+  },
+  {
     name: 'Communication Center Reply / Composer — C11.2 (V4.9.934)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-info)]',

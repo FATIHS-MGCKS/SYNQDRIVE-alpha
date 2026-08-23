@@ -7,6 +7,7 @@ import {
 import { AuditService } from '@modules/activity-log/audit.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CommunicationReadRepository } from '../read/communication-read.repository';
+import { CommunicationHumanTakeoverService } from '../write/communication-human-takeover.service';
 import { CommunicationWriteScopeService } from '../write/communication-write-scope.service';
 import { CommunicationReplyChannelCapabilityService } from './communication-reply-channel-capability.service';
 import { SmsCommunicationOutboundAdapter } from './adapters/sms-communication-outbound.adapter';
@@ -126,6 +127,10 @@ describe('CommunicationReplyService', () => {
         { provide: CommunicationReadRepository, useValue: readRepository },
         { provide: CommunicationWriteScopeService, useValue: scope },
         { provide: CommunicationReplyChannelCapabilityService, useValue: channelCapability },
+        {
+          provide: CommunicationHumanTakeoverService,
+          useValue: { performHumanTakeover: jest.fn().mockResolvedValue({ changed: true }) },
+        },
         { provide: AuditService, useValue: { record: jest.fn() } },
         { provide: WhatsAppCommunicationOutboundAdapter, useValue: whatsappAdapter },
         { provide: SmsCommunicationOutboundAdapter, useValue: { sendTextReply: jest.fn() } },

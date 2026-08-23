@@ -20,6 +20,7 @@ interface CommunicationInboxPaneProps {
   inboxFilters: CommunicationInboxFilters;
   selectedConversationId: string | null;
   refreshNonce?: number;
+  currentUserId?: string | null;
   onChannelChange: (channel: CommunicationChannel) => void;
   onInboxFiltersChange: (partial: Partial<CommunicationInboxFilters>) => void;
   onSelectConversation: (conversationId: string) => void;
@@ -32,6 +33,7 @@ export function CommunicationInboxPane({
   inboxFilters,
   selectedConversationId,
   refreshNonce = 0,
+  currentUserId = null,
   onChannelChange,
   onInboxFiltersChange,
   onSelectConversation,
@@ -107,6 +109,7 @@ export function CommunicationInboxPane({
         onLoadMore={() => void inbox.loadMore()}
         onRetryLoadMore={() => void inbox.retryLoadMore()}
         onClearFilters={onClearInboxFilters}
+        currentUserId={currentUserId}
       />
     </div>
   );

@@ -54,6 +54,9 @@ function baseActions(
     pendingAction: null,
     actionError: null,
     claim: vi.fn(),
+    assign: vi.fn(),
+    unassign: vi.fn(),
+    takeOverSelf: vi.fn(),
     resolve: vi.fn(),
     reopen: vi.fn(),
     markRead: vi.fn(),
@@ -90,6 +93,7 @@ describe('CommunicationWorkspacePane actions', () => {
             conversationState: baseConversationState(),
             conversationActions: baseActions(),
             canWrite: true,
+            currentUserId: 'user-a',
             ...props,
           }),
         ),
@@ -100,12 +104,28 @@ describe('CommunicationWorkspacePane actions', () => {
   it('hides actions for read-only users', () => {
     renderPane({ canWrite: false });
     expect(container.querySelector('[data-testid="communication-header-actions"]')).toBeNull();
+    expect(container.querySelector('[data-testid="communication-ownership-takeover"]')).toBeNull();
   });
 
-  it('shows claim for HUMAN_REQUIRED unassigned', () => {
+  it('shows take over for HUMAN_REQUIRED unassigned', () => {
     renderPane();
-    expect(container.querySelector('[data-testid="communication-header-actions"]')?.textContent).toContain(
-      'Claim',
+    expect(container.querySelector('[data-testid="communication-ownership-takeover"]')?.textContent).toContain(
+      'Take over',
+    );
+  });
+
+  it('shows take over for unassigned AI_ACTIVE', () => {
+    renderPane({
+      conversationState: baseConversationState({
+        conversation: {
+          ...baseConversationState().conversation!,
+          status: 'AI_ACTIVE',
+          assignedUser: null,
+        },
+      }),
+    });
+    expect(container.querySelector('[data-testid="communication-ownership-takeover"]')?.textContent).toContain(
+      'Take over',
     );
   });
 
@@ -115,6 +135,7 @@ describe('CommunicationWorkspacePane actions', () => {
         conversation: {
           ...baseConversationState().conversation!,
           status: 'HUMAN_ACTIVE',
+          assignedUser: { id: 'user-a', displayName: 'Me' },
         },
       }),
     });
@@ -126,7 +147,16 @@ describe('CommunicationWorkspacePane actions', () => {
       conversationActions: baseActions({ actionError: 'already_claimed' }),
     });
     expect(container.querySelector('[data-testid="communication-action-error"]')?.textContent).toContain(
-      'claimed by another user',
+      'already taken',
+    );
+  });
+
+  it('renders stale-state error message', () => {
+    renderPane({
+      conversationActions: baseActions({ actionError: 'stale_state' }),
+    });
+    expect(container.querySelector('[data-testid="communication-action-error"]')?.textContent).toContain(
+      'changed',
     );
   });
 });

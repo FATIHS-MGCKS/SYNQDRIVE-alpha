@@ -28,13 +28,13 @@ describe('resolveCommunicationConversationActions', () => {
     ).toEqual([]);
   });
 
-  it('shows claim for HUMAN_REQUIRED unassigned', () => {
-    expect(
-      resolveCommunicationConversationActions({
-        conversation: conversation({ status: 'HUMAN_REQUIRED', assignedUser: null }),
-        canWrite: true,
-      }),
-    ).toContain('claim');
+  it('shows resolve for HUMAN_REQUIRED unassigned', () => {
+    const actions = resolveCommunicationConversationActions({
+      conversation: conversation({ status: 'HUMAN_REQUIRED', assignedUser: null }),
+      canWrite: true,
+    });
+    expect(actions).toContain('resolve');
+    expect(actions).not.toContain('claim' as never);
   });
 
   it('shows resolve for HUMAN_ACTIVE', () => {

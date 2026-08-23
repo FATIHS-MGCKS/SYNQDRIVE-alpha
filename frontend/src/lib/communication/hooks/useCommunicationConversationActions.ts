@@ -9,6 +9,8 @@ import type { CommunicationConversationDetail } from '../types';
 
 export type CommunicationConversationMutation =
   | 'claim'
+  | 'assign'
+  | 'unassign'
   | 'resolve'
   | 'reopen'
   | 'markRead';
@@ -26,6 +28,9 @@ export interface UseCommunicationConversationActionsResult {
   pendingAction: CommunicationConversationMutation | null;
   actionError: CommunicationClientErrorCode | null;
   claim: () => Promise<CommunicationConversationDetail | null>;
+  assign: (assignedUserId: string) => Promise<CommunicationConversationDetail | null>;
+  unassign: () => Promise<CommunicationConversationDetail | null>;
+  takeOverSelf: () => Promise<CommunicationConversationDetail | null>;
   resolve: () => Promise<CommunicationConversationDetail | null>;
   reopen: () => Promise<CommunicationConversationDetail | null>;
   markRead: () => Promise<CommunicationConversationDetail | null>;
@@ -73,7 +78,7 @@ export function useCommunicationConversationActions({
           return null;
         }
         onConversationUpdated?.(response.conversation);
-        if (action === 'claim' || action === 'resolve' || action === 'reopen') {
+        if (action === 'claim' || action === 'assign' || action === 'unassign' || action === 'resolve' || action === 'reopen') {
           await onTimelineRefresh?.();
         }
         await onInboxRefresh?.();
@@ -112,6 +117,27 @@ export function useCommunicationConversationActions({
     ],
   );
 
+  const assign = useCallback(
+    (assignedUserId: string) =>
+      runMutation('assign', () =>
+        communicationClient.assignConversation(orgId!, conversationId!, assignedUserId),
+      ),
+    [conversationId, orgId, runMutation],
+  );
+
+  const unassign = useCallback(
+    () =>
+      runMutation('unassign', () =>
+        communicationClient.assignConversation(orgId!, conversationId!, null),
+      ),
+    [conversationId, orgId, runMutation],
+  );
+
+  const takeOverSelf = useCallback(
+    () => runMutation('claim', () => communicationClient.claimConversation(orgId!, conversationId!)),
+    [conversationId, orgId, runMutation],
+  );
+
   const claim = useCallback(
     () => runMutation('claim', () => communicationClient.claimConversation(orgId!, conversationId!)),
     [conversationId, orgId, runMutation],
@@ -136,6 +162,9 @@ export function useCommunicationConversationActions({
     pendingAction,
     actionError,
     claim,
+    assign,
+    unassign,
+    takeOverSelf,
     resolve,
     reopen,
     markRead,

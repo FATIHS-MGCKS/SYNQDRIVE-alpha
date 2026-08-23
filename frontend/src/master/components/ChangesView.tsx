@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c11-3-human-operations-2026-08-23',
+    version: '4.9.935',
+    title: 'Communication Center C11.3 — Human operations UX',
+    summary: [
+      'Ownership control (CommunicationAssigneeControl): take over, assign/reassign, unassign via canonical C11.1 mutations.',
+      'Human takeover from AI_ACTIVE/WAITING_CUSTOMER via extended POST claim → HUMAN_ACTIVE (CommunicationHumanTakeoverService).',
+      'Member directory org/request generation authority; safe display names; users-roles.read permission UX.',
+      'Permission-aware resolveCommunicationHumanActions resolver; lazy org member picker for communication.manage.',
+      'Header hierarchy: ownership primary, resolve/reopen secondary; inbox assignee avatar indicator.',
+      'Composer currentUserId wiring for OWNED_BY_OTHER; conflict UX for ALREADY_CLAIMED and STALE_STATE.',
+    ],
+    reason:
+      'C11.3 completes human operator workflow with tenant-safe member loading and canonical human takeover semantics.',
+    previousBehavior:
+      'C11.1 mutations existed but only minimal claim/resolve header buttons; no assignment picker or ownership display.',
+    details:
+      'CommunicationAssigneeControl, CommunicationMemberPicker, CommunicationHumanTakeoverService, communication-human-actions.ts, useCommunicationOrgMembers, org-member-display.ts, architecture/COMMUNICATION_CENTER_C11_3_HUMAN_OPERATIONS_IMPLEMENTATION.md.',
+    affectsArchitecture: true,
+    module: 'Communication Center',
+    createdAt: '2026-08-23T10:00:00.000Z',
+  },
+  {
     id: 'communication-center-c11-2-reply-composer-2026-08-22',
     version: '4.9.934',
     title: 'Communication Center C11.2 — Canonical reply composer',

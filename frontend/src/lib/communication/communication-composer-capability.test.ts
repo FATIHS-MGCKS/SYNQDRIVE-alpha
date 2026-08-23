@@ -54,4 +54,31 @@ describe('resolveCommunicationComposerState', () => {
       resolveCommunicationComposerState({ canWrite: true, conversation: baseConversation }),
     ).toEqual({ mode: 'enabled' });
   });
+
+  it('enables composer after human takeover assigns current user', () => {
+    expect(
+      resolveCommunicationComposerState({
+        canWrite: true,
+        currentUserId: 'user-a',
+        conversation: {
+          ...baseConversation,
+          status: 'HUMAN_ACTIVE',
+          assignedUser: { id: 'user-a', displayName: 'Me' },
+        },
+      }),
+    ).toEqual({ mode: 'enabled' });
+  });
+
+  it('blocks composer when another operator owns the thread', () => {
+    expect(
+      resolveCommunicationComposerState({
+        canWrite: true,
+        currentUserId: 'user-a',
+        conversation: {
+          ...baseConversation,
+          assignedUser: { id: 'user-b', displayName: 'Other' },
+        },
+      }),
+    ).toEqual({ mode: 'blocked', reason: 'OWNED_BY_OTHER' });
+  });
 });

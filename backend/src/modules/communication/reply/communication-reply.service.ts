@@ -18,9 +18,11 @@ import { CommunicationReadRepository } from '../read/communication-read.reposito
 import {
   assertOperatorStatusTransition,
   isClaimEligibleStatus,
+  isHumanTakeoverEligibleStatus,
   isTerminalStatus,
 } from '../write/communication-conversation-state-machine';
 import { CommunicationWriteScopeService } from '../write/communication-write-scope.service';
+import { CommunicationHumanTakeoverService } from '../write/communication-human-takeover.service';
 import {
   COMMUNICATION_REPLY_PROCESSING_LEASE_MS,
   COMMUNICATION_REPLY_TEXT_MAX_LENGTH,
@@ -64,6 +66,7 @@ export class CommunicationReplyService {
     private readonly scope: CommunicationWriteScopeService,
     private readonly audit: AuditService,
     private readonly channelCapability: CommunicationReplyChannelCapabilityService,
+    private readonly humanTakeover: CommunicationHumanTakeoverService,
     whatsappAdapter: WhatsAppCommunicationOutboundAdapter,
     smsAdapter: SmsCommunicationOutboundAdapter,
   ) {
@@ -421,23 +424,17 @@ export class CommunicationReplyService {
       row.status === CommunicationConversationStatus.AI_ACTIVE
       || row.status === CommunicationConversationStatus.WAITING_CUSTOMER
     ) {
-      const targetStatus = CommunicationConversationStatus.HUMAN_ACTIVE;
-      assertOperatorStatusTransition(row.status, targetStatus);
-      const updated = await tx.communicationConversation.updateMany({
-        where: {
-          id: conversationId,
-          organizationId,
-          status: row.status,
-          updatedAt: row.updatedAt,
-        },
-        data: {
-          assignedUserId: actorUserId,
-          status: targetStatus,
-        },
-      });
-      if (updated.count === 0) {
-        throw CommunicationReplyError.staleState();
+      if (row.assignedUserId && row.assignedUserId !== actorUserId) {
+        throw CommunicationReplyError.alreadyClaimed();
       }
+      await this.humanTakeover.performHumanTakeover(tx, {
+        organizationId,
+        conversationId,
+        actorUserId,
+        row,
+        lifecycleEventKey: (action, convId, updatedAt) =>
+          `comm:${action}:${convId}:${updatedAt.toISOString()}`,
+      });
     }
   }
 

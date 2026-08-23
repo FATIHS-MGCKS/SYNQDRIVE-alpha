@@ -28,6 +28,7 @@ import { CommunicationReadService } from './read/communication-read.service';
 import { CommunicationWriteController } from './write/communication-write.controller';
 import { CommunicationWriteScopeService } from './write/communication-write-scope.service';
 import { CommunicationWriteService } from './write/communication-write.service';
+import { CommunicationHumanTakeoverService } from './write/communication-human-takeover.service';
 import { CommunicationReplyController } from './reply/communication-reply.controller';
 import { CommunicationReplyService } from './reply/communication-reply.service';
 import { CommunicationReplyChannelCapabilityService } from './reply/communication-reply-channel-capability.service';
@@ -74,6 +75,7 @@ import { CommunicationContentService } from './content/communication-content.ser
     CommunicationReadService,
     CommunicationWriteScopeService,
     CommunicationWriteService,
+    CommunicationHumanTakeoverService,
     CommunicationReplyService,
     CommunicationReplyChannelCapabilityService,
     WhatsAppCommunicationOutboundAdapter,

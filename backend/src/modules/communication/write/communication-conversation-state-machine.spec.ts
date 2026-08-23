@@ -2,6 +2,7 @@ import { CommunicationConversationStatus } from '@prisma/client';
 import {
   assertOperatorStatusTransition,
   isClaimEligibleStatus,
+  isHumanTakeoverEligibleStatus,
   isResolveEligibleStatus,
   resolveReopenTargetStatus,
   resolveUnassignTargetStatus,
@@ -40,6 +41,32 @@ describe('CommunicationConversationStateMachine', () => {
   it('freezes claim eligibility to HUMAN_REQUIRED', () => {
     expect(isClaimEligibleStatus(CommunicationConversationStatus.HUMAN_REQUIRED)).toBe(true);
     expect(isClaimEligibleStatus(CommunicationConversationStatus.HUMAN_ACTIVE)).toBe(false);
+    expect(isClaimEligibleStatus(CommunicationConversationStatus.AI_ACTIVE)).toBe(false);
+  });
+
+  it('allows human takeover from AI_ACTIVE and WAITING_CUSTOMER', () => {
+    expect(isHumanTakeoverEligibleStatus(CommunicationConversationStatus.AI_ACTIVE)).toBe(true);
+    expect(isHumanTakeoverEligibleStatus(CommunicationConversationStatus.WAITING_CUSTOMER)).toBe(true);
+    expect(isHumanTakeoverEligibleStatus(CommunicationConversationStatus.HUMAN_REQUIRED)).toBe(false);
+
+    expect(() =>
+      assertOperatorStatusTransition(
+        CommunicationConversationStatus.AI_ACTIVE,
+        CommunicationConversationStatus.HUMAN_ACTIVE,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertOperatorStatusTransition(
+        CommunicationConversationStatus.WAITING_CUSTOMER,
+        CommunicationConversationStatus.HUMAN_ACTIVE,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertOperatorStatusTransition(
+        CommunicationConversationStatus.HUMAN_ACTIVE,
+        CommunicationConversationStatus.HUMAN_REQUIRED,
+      ),
+    ).not.toThrow();
   });
 
   it('freezes resolve eligibility', () => {

@@ -5,6 +5,7 @@ import { buildConversationContextLabel } from '../../../lib/communication/contex
 import { formatCommunicationTimestamp } from '../../../lib/communication/format';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { CommunicationConversationListItem } from '../../../lib/communication/types';
+import { AssigneeAvatar } from '../tasks/task-display';
 import {
   resolveConversationPreview,
   resolveConversationTitle,
@@ -14,6 +15,7 @@ interface CommunicationConversationRowProps {
   conversation: CommunicationConversationListItem;
   selected: boolean;
   locale: string;
+  currentUserId?: string | null;
   onSelect: (conversationId: string) => void;
 }
 
@@ -48,6 +50,7 @@ export function CommunicationConversationRow({
   conversation,
   selected,
   locale,
+  currentUserId,
   onSelect,
 }: CommunicationConversationRowProps) {
   const { t } = useLanguage();
@@ -57,6 +60,8 @@ export function CommunicationConversationRow({
   const contextLabel = buildConversationContextLabel(conversation);
   const timestamp = formatCommunicationTimestamp(conversation.lastActivityAt, locale, t);
   const channelLabel = t(channelLabelKey(conversation.channel));
+  const assignedToMe =
+    Boolean(currentUserId && conversation.assignedUser?.id === currentUserId);
 
   return (
     <button
@@ -112,10 +117,15 @@ export function CommunicationConversationRow({
               </span>
             )}
             {conversation.assignedUser ? (
-              <span className="text-[10px] text-muted-foreground">
-                {t('communication.inbox.assignedTo', {
-                  name: conversation.assignedUser.displayName,
-                })}
+              <span className="inline-flex max-w-full items-center gap-1 text-[10px] text-muted-foreground">
+                <AssigneeAvatar name={conversation.assignedUser.displayName} />
+                <span className="truncate">
+                  {assignedToMe
+                    ? t('communication.inbox.assignedToYou')
+                    : t('communication.inbox.assignedTo', {
+                        name: conversation.assignedUser.displayName,
+                      })}
+                </span>
               </span>
             ) : (
               <span className="rounded-md bg-muted/50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
