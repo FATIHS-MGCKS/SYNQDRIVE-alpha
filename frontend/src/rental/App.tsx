@@ -253,6 +253,7 @@ function RentalAppContent() {
   const [helpCenterAttempted, setHelpCenterAttempted] = useState(
     () => typeof sessionStorage !== 'undefined' && sessionStorage.getItem('support_help_center_attempted') === '1',
   );
+  const [voiceAssistantMountKey, setVoiceAssistantMountKey] = useState(0);
 
   useEffect(() => {
     if (currentView !== 'support' || !helpCenterAttempted) return;
@@ -293,6 +294,7 @@ function RentalAppContent() {
       wizardStep?: 'tests' | null;
     }) => {
       syncVoiceAssistantStateToUrl(mergeVoiceAssistantState(options));
+      setVoiceAssistantMountKey((key) => key + 1);
       setCurrentView('ai-voice-assistant');
       try {
         sessionStorage.removeItem(RENTAL_SETTINGS_VIEW_KEY);
@@ -1293,7 +1295,7 @@ function RentalAppContent() {
             if (v) { setSelectedVehicle(v); setCurrentView('documents'); }
           }} />
         ) : currentView === 'ai-voice-assistant' ? (
-          <VoiceAssistantView isDarkMode={isDarkMode} />
+          <VoiceAssistantView key={voiceAssistantMountKey} isDarkMode={isDarkMode} />
         ) : currentView === 'help-center' ? (
           <HelpCenterView
             isDarkMode={isDarkMode}

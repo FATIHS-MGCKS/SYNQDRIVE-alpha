@@ -132,6 +132,13 @@ describe('CommunicationCenterShell', () => {
     expect(container.querySelector('[data-testid="communication-primary-tabs"]')).not.toBeNull();
   });
 
+  it.each([390, 1024, 1440])('renders primary shell at %ipx viewport', (width) => {
+    mockMatchMedia(width);
+    renderShell();
+    expect(container.querySelector('[data-testid="communication-center-view"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="communication-primary-tabs"]')).not.toBeNull();
+  });
+
   it('renders settings shell when settings tab is active', () => {
     window.history.replaceState(
       {},
