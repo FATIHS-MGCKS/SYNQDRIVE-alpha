@@ -101,4 +101,61 @@ export const nl: Record<TranslationKey, string> = {
   'dashboardTasksOverview.noDueDate': 'Geen vervaldatum',
   'dashboardTasksOverview.priorityCritical': 'Kritiek',
   'dashboardTasksOverview.priorityHigh': 'Hoog',
+  'communication.channels.filterGroup': 'Inbox-kanaalfilters',
+  'communication.channels.all': 'Alle',
+  'communication.channels.whatsapp': 'WhatsApp',
+  'communication.channels.voice': 'Voice',
+  'communication.channels.sms': 'SMS',
+  'communication.primary.channels': 'Kanalen',
+  'communication.primary.automations': 'Automatiseringen',
+  'communication.channels.title': 'Kanalen',
+  'communication.channels.description':
+    'Configureer en bewaak communicatiekanalen. Operationele gesprekken blijven in de inbox.',
+  'communication.channels.navLabel': 'Communicatiekanalen',
+  'communication.channels.nav.overview': 'Overzicht',
+  'communication.channels.email': 'E-mail',
+  'communication.channels.whatsapp.description':
+    'WhatsApp Business-verbinding, sjablonen en kanaalstatus.',
+  'communication.channels.voice.description':
+    'Voice-agentconfiguratie, telefonie en analyses.',
+  'communication.channels.sms.description':
+    'SMS-providerstatus via sent.dm (configuratie in afwachting).',
+  'communication.channels.email.description':
+    'Transactionele uitgaande e-mail via Resend.',
+  'communication.channels.providerLabel': 'Aanbieder',
+  'communication.channels.configure': 'Kanaal configureren',
+  'communication.channels.accessRestricted':
+    'U heeft geen toestemming om dit kanaal te beheren.',
+  'communication.channels.accessDenied.title': 'Kanaal niet beschikbaar',
+  'communication.channels.accessDenied.description':
+    'U heeft geen toestemming om deze kanaalconfiguratie te bekijken.',
+  'communication.channels.openConversations': 'Gesprekken openen',
+  'communication.channels.openConversationsVoice': 'Spraakgesprekken openen',
+  'communication.channels.whatsapp.subview.overview': 'Overzicht',
+  'communication.channels.whatsapp.subview.configuration': 'Configuratie',
+  'communication.channels.whatsapp.subview.templates': 'Sjablonen',
+  'communication.channels.voice.specializedHint':
+    'Geavanceerde voice-functies openen in de AI-spraakassistent. Gesprekken blijven in het Communication Center.',
+  'communication.channels.voice.configureAgent': 'Agent configureren',
+  'communication.channels.voice.configureAgentHint': 'Prompt, stem, tools en activering',
+  'communication.channels.voice.analytics': 'Analyses',
+  'communication.channels.voice.analyticsHint': 'Gebruik, resultaten en gespreksstatistieken',
+  'communication.channels.voice.telephony': 'Telefonie',
+  'communication.channels.voice.telephonyHint': 'Telefoonnummers en inkomende routering',
+  'communication.channels.voice.testAssistant': 'Assistent testen',
+  'communication.channels.voice.testAssistantHint': 'Voer spraaktests uit voordat u live gaat',
+  'communication.channels.voice.automations': 'Voice-automatiseringen',
+  'communication.channels.voice.automationsHint': 'Toolmachtigingen en automatiseringshooks',
+  'communication.channels.email.transactionalHint':
+    'Transactionele e-mail maakt geen deel uit van de uniforme gespreksinbox in V1.',
+  'communication.channels.email.openSettings': 'E-mailinstellingen openen',
+  'communication.channels.email.loadError': 'E-mailconfiguratie kon niet worden geladen.',
+  'communication.channels.email.restricted':
+    'E-mailconfiguratie is beschikbaar voor organisatiebeheerders.',
+  'communication.automations.title': 'Automatiseringen',
+  'communication.automations.description':
+    'Workflowautomatisering voor communicatiegerelateerde taken gebruikt de bestaande automatiseringsengine.',
+  'communication.automations.open': 'Workflowautomatisering openen',
+  'communication.automations.accessDenied':
+    'U heeft geen toestemming om workflowautomatisering te openen.',
 };

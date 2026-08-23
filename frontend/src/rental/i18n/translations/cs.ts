@@ -82,4 +82,61 @@ export const cs: Record<TranslationKey, string> = {
   'dashboardAttention.fleetSummary.unevaluable': '{count} nevyhodnotitelnych',
   'dashboardAttention.fleetSummary.unknown': '{count} neznamych',
   'dashboardAttention.loadMore': 'Nacist vice ({count} zobrazeno)',
+  'communication.channels.filterGroup': 'Filtry kanalu dorucene',
+  'communication.channels.all': 'Vse',
+  'communication.channels.whatsapp': 'WhatsApp',
+  'communication.channels.voice': 'Voice',
+  'communication.channels.sms': 'SMS',
+  'communication.primary.channels': 'Kanaly',
+  'communication.primary.automations': 'Automatizace',
+  'communication.channels.title': 'Kanaly',
+  'communication.channels.description':
+    'Konfigurujte a sledujte komunikacni kanaly. Operativni konverzace zustavaji v dorucene.',
+  'communication.channels.navLabel': 'Komunikacni kanaly',
+  'communication.channels.nav.overview': 'Prehled',
+  'communication.channels.email': 'E-mail',
+  'communication.channels.whatsapp.description':
+    'Pripojeni WhatsApp Business, sablony a stav kanalu.',
+  'communication.channels.voice.description':
+    'Konfigurace hlasoveho agenta, telefonie a analytiky.',
+  'communication.channels.sms.description':
+    'Stav poskytovatele SMS pres sent.dm (konfigurace ceka).',
+  'communication.channels.email.description':
+    'Transakcni odchozi e-mail pres Resend.',
+  'communication.channels.providerLabel': 'Poskytovatel',
+  'communication.channels.configure': 'Konfigurovat kanal',
+  'communication.channels.accessRestricted':
+    'Nemate opravneni spravovat tento kanal.',
+  'communication.channels.accessDenied.title': 'Kanal nedostupny',
+  'communication.channels.accessDenied.description':
+    'Nemate opravneni zobrazit tuto konfiguraci kanalu.',
+  'communication.channels.openConversations': 'Otevrit konverzace',
+  'communication.channels.openConversationsVoice': 'Otevrit hlasove konverzace',
+  'communication.channels.whatsapp.subview.overview': 'Prehled',
+  'communication.channels.whatsapp.subview.configuration': 'Konfigurace',
+  'communication.channels.whatsapp.subview.templates': 'Sablony',
+  'communication.channels.voice.specializedHint':
+    'Pokrocile hlasove funkce se oteviraji v AI hlasovem asistentovi. Konverzace zustavaji v Komunikacnim centru.',
+  'communication.channels.voice.configureAgent': 'Konfigurovat agenta',
+  'communication.channels.voice.configureAgentHint': 'Prompt, hlas, nastroje a aktivace',
+  'communication.channels.voice.analytics': 'Analytika',
+  'communication.channels.voice.analyticsHint': 'Vyuziti, vysledky a metriky hovoru',
+  'communication.channels.voice.telephony': 'Telefonie',
+  'communication.channels.voice.telephonyHint': 'Telefonni cisla a prichozi smerovani',
+  'communication.channels.voice.testAssistant': 'Otestovat asistenta',
+  'communication.channels.voice.testAssistantHint': 'Spustte hlasove testy pred spustenim do provozu',
+  'communication.channels.voice.automations': 'Hlasove automatizace',
+  'communication.channels.voice.automationsHint': 'Opravneni nastroju a automatizacni hooky',
+  'communication.channels.email.transactionalHint':
+    'Transakcni e-mail neni v ramci V1 soucasti jednotne konverzacni schranky.',
+  'communication.channels.email.openSettings': 'Otevrit nastaveni e-mailu',
+  'communication.channels.email.loadError': 'Konfiguraci e-mailu se nepodarilo nacist.',
+  'communication.channels.email.restricted':
+    'Konfigurace e-mailu je dostupna pro administratory organizace.',
+  'communication.automations.title': 'Automatizace',
+  'communication.automations.description':
+    'Automatizace pracovnich toku pro komunikacni ukoly vyuziva existujici automatizacni engine.',
+  'communication.automations.open': 'Otevrit automatizaci pracovnich toku',
+  'communication.automations.accessDenied':
+    'Nemate opravneni otevrit automatizaci pracovnich toku.',
 };

@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c10-completion-2026-08-23',
+    version: '4.9.939',
+    title: 'Communication Center C10 — Channels & Automations navigation',
+    summary: [
+      'Channels primary tab: landing cards for WhatsApp, Voice, SMS, Email with provider metadata and readiness.',
+      'WhatsApp channel reuses settings, templates (WhatsAppTemplateManager), and channel stats/readiness — no duplicate inbox.',
+      'Voice channel deep-links via voiceOpsTab, voiceSettingsSection=test (configured), and voiceWizardStep=tests (onboarding).',
+      'C10 i18n keys in all governed locales (en, de, fr, nl, es, it, pl, cs); parity test communication-center-c10.i18n.test.ts.',
+      'SMS channel reuses read-only SmsSettingsPanel; Email channel deep-links to settings/email-versand.',
+      'Automations tab: thin landing + deep-link to WorkflowAutomationView (workflow-automation.read).',
+      'Legacy whatsapp-business and ai-voice-assistant nav preserved for C9 operational fallback.',
+    ],
+    reason:
+      'C10 channel configuration migration — canonical entry points for all communication channels per parity audit PR #1212.',
+    previousBehavior:
+      'Channel configuration lived under CC Settings only; no Channels/Automations IA; Email and Workflow Automation lacked CC paths.',
+    details:
+      'CommunicationChannelsPane, CommunicationAutomationsPane, voice-assistant-navigation.ts, architecture/COMMUNICATION_CENTER_C10_COMPLETION_IMPLEMENTATION.md.',
+    affectsArchitecture: true,
+    module: 'Communication Center',
+    createdAt: '2026-08-23T15:10:00.000Z',
+  },
+  {
     id: 'communication-center-c9-c12-parity-signoff-2026-08-23',
     version: '4.9.938',
     title: 'Communication Center C9–C12 parity sign-off audit',

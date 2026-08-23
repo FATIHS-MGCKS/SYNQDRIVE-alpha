@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   applyCommunicationChannelChange,
+  applyCommunicationChannelsSectionChange,
+  applyCommunicationOpenConversations,
   applyCommunicationPrimaryTabChange,
   applyCommunicationSettingsSectionChange,
   DEFAULT_COMMUNICATION_CENTER_URL_STATE,
   mergeCommunicationCenterState,
+  normalizeCommunicationChannelsSection,
   normalizeCommunicationPrimaryTab,
   normalizeCommunicationSettingsSection,
   parseCommunicationCenterViewFromUrl,
@@ -21,7 +24,14 @@ describe('communication-center-navigation', () => {
 
   it('preserves settings tab after C8.4', () => {
     expect(normalizeCommunicationPrimaryTab('settings')).toBe('settings');
+    expect(normalizeCommunicationPrimaryTab('channels')).toBe('channels');
+    expect(normalizeCommunicationPrimaryTab('automations')).toBe('automations');
     expect(normalizeCommunicationPrimaryTab('inbox')).toBe('inbox');
+  });
+
+  it('normalizes invalid channels section to overview', () => {
+    expect(normalizeCommunicationChannelsSection('foo')).toBe('overview');
+    expect(normalizeCommunicationChannelsSection('email')).toBe('email');
   });
 
   it('normalizes invalid settings section to overview', () => {
@@ -29,14 +39,14 @@ describe('communication-center-navigation', () => {
     expect(normalizeCommunicationSettingsSection('voice')).toBe('voice');
   });
 
-  it('parses channel, conversation, settings, and mobile pane params', () => {
+  it('parses channel, conversation, settings, channels, and mobile pane params', () => {
     expect(
       readCommunicationCenterStateFromUrl(
-        '?communicationTab=settings&communicationSettings=voice&communicationChannel=whatsapp&conversationId=conv-1&communicationPane=context',
+        '?communicationTab=channels&communicationChannels=whatsapp&communicationChannel=whatsapp&conversationId=conv-1&communicationPane=context',
       ),
     ).toEqual({
-      primaryTab: 'settings',
-      settingsSection: 'voice',
+      primaryTab: 'channels',
+      channelsSection: 'whatsapp',
       channel: 'whatsapp',
       selectedConversationId: 'conv-1',
       mobilePane: 'context',
@@ -69,6 +79,7 @@ describe('communication-center-navigation', () => {
     expect(next).toEqual({
       primaryTab: 'inbox',
       settingsSection: 'overview',
+      channelsSection: 'overview',
       channel: 'sms',
       selectedConversationId: null,
       mobilePane: 'inbox',
@@ -100,5 +111,31 @@ describe('communication-center-navigation', () => {
       primaryTab: 'settings',
       settingsSection: 'whatsapp',
     });
+  });
+
+  it('switches channels section and forces channels tab', () => {
+    const next = applyCommunicationChannelsSectionChange(
+      DEFAULT_COMMUNICATION_CENTER_URL_STATE,
+      'voice',
+    );
+    expect(next).toEqual({
+      ...DEFAULT_COMMUNICATION_CENTER_URL_STATE,
+      primaryTab: 'channels',
+      channelsSection: 'voice',
+    });
+  });
+
+  it('opens conversations with channel filter from channels context', () => {
+    const next = applyCommunicationOpenConversations(
+      {
+        ...DEFAULT_COMMUNICATION_CENTER_URL_STATE,
+        primaryTab: 'channels',
+        channelsSection: 'voice',
+      },
+      'voice',
+    );
+    expect(next.primaryTab).toBe('inbox');
+    expect(next.channel).toBe('voice');
+    expect(next.selectedConversationId).toBeNull();
   });
 });

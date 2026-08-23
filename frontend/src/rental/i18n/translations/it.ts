@@ -100,4 +100,61 @@ export const it: Record<TranslationKey, string> = {
   'dashboardTasksOverview.noDueDate': 'Nessuna scadenza',
   'dashboardTasksOverview.priorityCritical': 'Critica',
   'dashboardTasksOverview.priorityHigh': 'Alta',
+  'communication.channels.filterGroup': 'Filtri canale posta in arrivo',
+  'communication.channels.all': 'Tutti',
+  'communication.channels.whatsapp': 'WhatsApp',
+  'communication.channels.voice': 'Voice',
+  'communication.channels.sms': 'SMS',
+  'communication.primary.channels': 'Canali',
+  'communication.primary.automations': 'Automazioni',
+  'communication.channels.title': 'Canali',
+  'communication.channels.description':
+    'Configura e monitora i canali di comunicazione. Le conversazioni operative restano nella posta in arrivo.',
+  'communication.channels.navLabel': 'Canali di comunicazione',
+  'communication.channels.nav.overview': 'Panoramica',
+  'communication.channels.email': 'Posta elettronica',
+  'communication.channels.whatsapp.description':
+    'Connessione WhatsApp Business, modelli e stato del canale.',
+  'communication.channels.voice.description':
+    'Configurazione agente vocale, telefonia e analisi.',
+  'communication.channels.sms.description':
+    'Stato provider SMS via sent.dm (configurazione in sospeso).',
+  'communication.channels.email.description':
+    'Email transazionale in uscita tramite Resend.',
+  'communication.channels.providerLabel': 'Fornitore',
+  'communication.channels.configure': 'Configura canale',
+  'communication.channels.accessRestricted':
+    'Non hai l\'autorizzazione per gestire questo canale.',
+  'communication.channels.accessDenied.title': 'Canale non disponibile',
+  'communication.channels.accessDenied.description':
+    'Non hai l\'autorizzazione per visualizzare questa configurazione del canale.',
+  'communication.channels.openConversations': 'Apri conversazioni',
+  'communication.channels.openConversationsVoice': 'Apri conversazioni vocali',
+  'communication.channels.whatsapp.subview.overview': 'Panoramica',
+  'communication.channels.whatsapp.subview.configuration': 'Configurazione',
+  'communication.channels.whatsapp.subview.templates': 'Modelli',
+  'communication.channels.voice.specializedHint':
+    'I controlli vocali avanzati si aprono nell\'Assistente vocale IA. Le conversazioni restano nel Centro comunicazioni.',
+  'communication.channels.voice.configureAgent': 'Configura agente',
+  'communication.channels.voice.configureAgentHint': 'Prompt, voce, strumenti e attivazione',
+  'communication.channels.voice.analytics': 'Analisi',
+  'communication.channels.voice.analyticsHint': 'Utilizzo, risultati e metriche delle chiamate',
+  'communication.channels.voice.telephony': 'Telefonia',
+  'communication.channels.voice.telephonyHint': 'Numeri di telefono e instradamento in entrata',
+  'communication.channels.voice.testAssistant': 'Testa assistente',
+  'communication.channels.voice.testAssistantHint': 'Esegui test vocali prima della messa in produzione',
+  'communication.channels.voice.automations': 'Automazioni vocali',
+  'communication.channels.voice.automationsHint': 'Permessi strumenti e hook di automazione',
+  'communication.channels.email.transactionalHint':
+    'L\'email transazionale non fa parte della posta in arrivo unificata in V1.',
+  'communication.channels.email.openSettings': 'Apri impostazioni email',
+  'communication.channels.email.loadError': 'Impossibile caricare la configurazione email.',
+  'communication.channels.email.restricted':
+    'La configurazione email e disponibile per gli amministratori dell\'organizzazione.',
+  'communication.automations.title': 'Automazioni',
+  'communication.automations.description':
+    'L\'automazione dei flussi di lavoro per attivita di comunicazione usa il motore di automazione esistente.',
+  'communication.automations.open': 'Apri automazione flussi di lavoro',
+  'communication.automations.accessDenied':
+    'Non hai l\'autorizzazione per aprire l\'automazione dei flussi di lavoro.',
 };

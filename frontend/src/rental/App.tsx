@@ -90,6 +90,10 @@ import {
   COMMUNICATION_CENTER_VIEW,
 } from './components/communication-center/communication-center-navigation';
 import { buildCommunicationCenterState } from './components/communication-center/communication-center-url';
+import {
+  mergeVoiceAssistantState,
+  syncVoiceAssistantStateToUrl,
+} from './components/voice-assistant/voice-assistant-navigation';
 import { AppErrorBoundary } from '../components/AppErrorBoundary';
 import { AppShell } from '../components/shell';
 import {
@@ -249,6 +253,7 @@ function RentalAppContent() {
   const [helpCenterAttempted, setHelpCenterAttempted] = useState(
     () => typeof sessionStorage !== 'undefined' && sessionStorage.getItem('support_help_center_attempted') === '1',
   );
+  const [voiceAssistantMountKey, setVoiceAssistantMountKey] = useState(0);
 
   useEffect(() => {
     if (currentView !== 'support' || !helpCenterAttempted) return;
@@ -281,6 +286,44 @@ function RentalAppContent() {
     },
     [openFleetConnectivity],
   );
+
+  const openVoiceAssistantFromCommunication = useCallback(
+    (options: {
+      opsTab: 'overview' | 'settings' | 'analytics' | 'automations';
+      settingsSection?: 'test' | null;
+      wizardStep?: 'tests' | null;
+    }) => {
+      syncVoiceAssistantStateToUrl(mergeVoiceAssistantState(options));
+      setVoiceAssistantMountKey((key) => key + 1);
+      setCurrentView('ai-voice-assistant');
+      try {
+        sessionStorage.removeItem(RENTAL_SETTINGS_VIEW_KEY);
+      } catch {
+        /* ignore */
+      }
+    },
+    [],
+  );
+
+  const openEmailSettingsFromCommunication = useCallback(() => {
+    applySettingsTab('email-versand');
+    setCurrentView('settings');
+    try {
+      sessionStorage.setItem(RENTAL_SETTINGS_VIEW_KEY, '1');
+      sessionStorage.setItem(RENTAL_SETTINGS_TAB_KEY, 'email-versand');
+    } catch {
+      /* ignore */
+    }
+  }, [applySettingsTab]);
+
+  const openWorkflowAutomationFromCommunication = useCallback(() => {
+    setCurrentView('workflow-automation');
+    try {
+      sessionStorage.removeItem(RENTAL_SETTINGS_VIEW_KEY);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     if (!consumeFleetConnectivityRedirectFlag()) return;
@@ -1191,7 +1234,11 @@ function RentalAppContent() {
             onHighlightConsumed={() => setHighlightedTaskId(null)}
           />
         ) : currentView === 'communication-center' ? (
-          <CommunicationCenterView />
+          <CommunicationCenterView
+            onOpenVoiceAssistant={openVoiceAssistantFromCommunication}
+            onOpenEmailSettings={openEmailSettingsFromCommunication}
+            onOpenWorkflowAutomation={openWorkflowAutomationFromCommunication}
+          />
         ) : currentView === 'document-upload' ? (
           <DocumentUploadView
             isDarkMode={isDarkMode}
@@ -1248,7 +1295,7 @@ function RentalAppContent() {
             if (v) { setSelectedVehicle(v); setCurrentView('documents'); }
           }} />
         ) : currentView === 'ai-voice-assistant' ? (
-          <VoiceAssistantView isDarkMode={isDarkMode} />
+          <VoiceAssistantView key={voiceAssistantMountKey} isDarkMode={isDarkMode} />
         ) : currentView === 'help-center' ? (
           <HelpCenterView
             isDarkMode={isDarkMode}

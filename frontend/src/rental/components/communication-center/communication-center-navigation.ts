@@ -1,5 +1,6 @@
 import type {
   CommunicationChannel,
+  CommunicationChannelsSection,
   CommunicationMobilePane,
   CommunicationPrimaryTab,
   CommunicationSettingsSection,
@@ -24,17 +25,20 @@ export const COMMUNICATION_CENTER_VIEW = 'communication-center';
 export const COMMUNICATION_VIEW_PARAM = 'view';
 export const COMMUNICATION_TAB_PARAM = 'communicationTab';
 export const COMMUNICATION_SETTINGS_PARAM = 'communicationSettings';
+export const COMMUNICATION_CHANNELS_PARAM = 'communicationChannels';
 export const COMMUNICATION_CHANNEL_PARAM = 'communicationChannel';
 export const COMMUNICATION_CONVERSATION_PARAM = 'conversationId';
 export const COMMUNICATION_MOBILE_PANE_PARAM = 'communicationPane';
 
-const CHANNELS = new Set<string>(['all', 'whatsapp', 'voice', 'sms']);
+const INBOX_CHANNELS = new Set<string>(['all', 'whatsapp', 'voice', 'sms']);
 const MOBILE_PANES = new Set<string>(['inbox', 'conversation', 'context']);
 const SETTINGS_SECTIONS = new Set<string>(['overview', 'whatsapp', 'voice', 'sms']);
+const CHANNELS_SECTIONS = new Set<string>(['overview', 'whatsapp', 'voice', 'sms', 'email']);
 
 export interface CommunicationCenterUrlState {
   primaryTab: CommunicationPrimaryTab;
   settingsSection: CommunicationSettingsSection;
+  channelsSection: CommunicationChannelsSection;
   channel: CommunicationChannel;
   selectedConversationId: string | null;
   mobilePane: CommunicationMobilePane;
@@ -44,6 +48,7 @@ export interface CommunicationCenterUrlState {
 export const DEFAULT_COMMUNICATION_CENTER_URL_STATE: CommunicationCenterUrlState = {
   primaryTab: 'inbox',
   settingsSection: 'overview',
+  channelsSection: 'overview',
   channel: 'all',
   selectedConversationId: null,
   mobilePane: 'inbox',
@@ -66,8 +71,19 @@ export function normalizeCommunicationPrimaryTab(
   tab: CommunicationPrimaryTab | string | null | undefined,
 ): CommunicationPrimaryTab {
   if (tab === 'settings') return 'settings';
+  if (tab === 'channels') return 'channels';
+  if (tab === 'automations') return 'automations';
   if (tab === 'ai-activity') return 'ai-activity';
   return 'inbox';
+}
+
+export function normalizeCommunicationChannelsSection(
+  section: CommunicationChannelsSection | string | null | undefined,
+): CommunicationChannelsSection {
+  if (section && CHANNELS_SECTIONS.has(section)) {
+    return section as CommunicationChannelsSection;
+  }
+  return 'overview';
 }
 
 export function normalizeCommunicationSettingsSection(
@@ -95,8 +111,13 @@ export function readCommunicationCenterStateFromUrl(
     next.settingsSection = normalizeCommunicationSettingsSection(settingsSection);
   }
 
+  const channelsSection = params.get(COMMUNICATION_CHANNELS_PARAM);
+  if (channelsSection) {
+    next.channelsSection = normalizeCommunicationChannelsSection(channelsSection);
+  }
+
   const channel = params.get(COMMUNICATION_CHANNEL_PARAM);
-  if (channel && CHANNELS.has(channel)) {
+  if (channel && INBOX_CHANNELS.has(channel)) {
     next.channel = channel as CommunicationChannel;
   }
 
@@ -128,6 +149,7 @@ export function mergeCommunicationCenterState(
     ...merged,
     primaryTab: normalizeCommunicationPrimaryTab(merged.primaryTab),
     settingsSection: normalizeCommunicationSettingsSection(merged.settingsSection),
+    channelsSection: normalizeCommunicationChannelsSection(merged.channelsSection),
     inboxFilters: mergeCommunicationInboxFilters(merged.inboxFilters),
   };
 }
@@ -154,6 +176,33 @@ export function applyCommunicationPrimaryTabChange(
     ...current,
     primaryTab,
     settingsSection: primaryTab === 'settings' ? current.settingsSection : 'overview',
+    channelsSection: primaryTab === 'channels' ? current.channelsSection : 'overview',
+  };
+}
+
+export function applyCommunicationChannelsSectionChange(
+  current: CommunicationCenterUrlState,
+  channelsSection: CommunicationChannelsSection,
+): CommunicationCenterUrlState {
+  const normalized = normalizeCommunicationChannelsSection(channelsSection);
+  if (current.channelsSection === normalized && current.primaryTab === 'channels') return current;
+  return {
+    ...current,
+    primaryTab: 'channels',
+    channelsSection: normalized,
+  };
+}
+
+export function applyCommunicationOpenConversations(
+  current: CommunicationCenterUrlState,
+  channel: CommunicationChannel,
+): CommunicationCenterUrlState {
+  return {
+    ...current,
+    primaryTab: 'inbox',
+    channel,
+    selectedConversationId: null,
+    mobilePane: 'inbox',
   };
 }
 
@@ -187,6 +236,14 @@ export function syncCommunicationCenterStateToUrl(
       COMMUNICATION_SETTINGS_PARAM,
       normalized.primaryTab === 'settings' ? normalized.settingsSection : null,
     ],
+    [
+      COMMUNICATION_CHANNELS_PARAM,
+      normalized.primaryTab === 'channels' && normalized.channelsSection !== 'overview'
+        ? normalized.channelsSection
+        : normalized.primaryTab === 'channels'
+          ? 'overview'
+          : null,
+    ],
     [COMMUNICATION_CHANNEL_PARAM, normalized.channel !== 'all' ? normalized.channel : null],
     [COMMUNICATION_CONVERSATION_PARAM, normalized.selectedConversationId],
     [
@@ -215,6 +272,7 @@ export function clearCommunicationCenterUrlParams(search = ''): string {
   const params = parseSearch(search);
   params.delete(COMMUNICATION_TAB_PARAM);
   params.delete(COMMUNICATION_SETTINGS_PARAM);
+  params.delete(COMMUNICATION_CHANNELS_PARAM);
   params.delete(COMMUNICATION_CHANNEL_PARAM);
   params.delete(COMMUNICATION_CONVERSATION_PARAM);
   params.delete(COMMUNICATION_MOBILE_PANE_PARAM);

@@ -3591,8 +3591,60 @@ export const de: Record<TranslationKey, string> = {
 
   'communication.primary.tabsLabel': 'Communication Center Bereiche',
   'communication.primary.inbox': 'Posteingang',
+  'communication.primary.channels': 'Kanäle',
   'communication.primary.aiActivity': 'KI-Aktivität',
+  'communication.primary.automations': 'Automationen',
   'communication.primary.settings': 'Einstellungen',
+  'communication.channels.title': 'Kanäle',
+  'communication.channels.description':
+    'Kommunikationskanäle konfigurieren und überwachen. Operative Gespräche bleiben im Posteingang.',
+  'communication.channels.navLabel': 'Kommunikationskanäle',
+  'communication.channels.nav.overview': 'Übersicht',
+  'communication.channels.email': 'E-Mail',
+  'communication.channels.whatsapp.description':
+    'WhatsApp Business Verbindung, Vorlagen und Kanalstatus.',
+  'communication.channels.voice.description':
+    'Voice-Agent-Konfiguration, Telefonie und Analysen.',
+  'communication.channels.sms.description':
+    'SMS-Anbieterstatus über sent.dm (Konfiguration ausstehend).',
+  'communication.channels.email.description':
+    'Transaktionale ausgehende E-Mails über Resend.',
+  'communication.channels.providerLabel': 'Anbieter',
+  'communication.channels.configure': 'Kanal konfigurieren',
+  'communication.channels.accessRestricted':
+    'Sie haben keine Berechtigung, diesen Kanal zu verwalten.',
+  'communication.channels.accessDenied.title': 'Kanal nicht verfügbar',
+  'communication.channels.accessDenied.description':
+    'Sie haben keine Berechtigung, diese Kanalkonfiguration anzuzeigen.',
+  'communication.channels.openConversations': 'Gespräche öffnen',
+  'communication.channels.openConversationsVoice': 'Sprachgespräche öffnen',
+  'communication.channels.whatsapp.subview.overview': 'Übersicht',
+  'communication.channels.whatsapp.subview.configuration': 'Konfiguration',
+  'communication.channels.whatsapp.subview.templates': 'Vorlagen',
+  'communication.channels.voice.specializedHint':
+    'Erweiterte Voice-Funktionen öffnen im KI-Sprachassistenten. Gespräche bleiben im Communication Center.',
+  'communication.channels.voice.configureAgent': 'Agent konfigurieren',
+  'communication.channels.voice.configureAgentHint': 'Prompt, Stimme, Tools und Aktivierung',
+  'communication.channels.voice.analytics': 'Analysen',
+  'communication.channels.voice.analyticsHint': 'Nutzung, Ergebnisse und Anrufmetriken',
+  'communication.channels.voice.telephony': 'Telefonie',
+  'communication.channels.voice.telephonyHint': 'Telefonnummern und eingehende Weiterleitung',
+  'communication.channels.voice.testAssistant': 'Assistent testen',
+  'communication.channels.voice.testAssistantHint': 'Voice-Tests vor dem Live-Gang ausführen',
+  'communication.channels.voice.automations': 'Voice-Automationen',
+  'communication.channels.voice.automationsHint': 'Tool-Berechtigungen und Automations-Hooks',
+  'communication.channels.email.transactionalHint':
+    'Transaktionale E-Mails sind in V1 nicht Teil des einheitlichen Gesprächsposteingangs.',
+  'communication.channels.email.openSettings': 'E-Mail-Einstellungen öffnen',
+  'communication.channels.email.loadError': 'E-Mail-Konfiguration konnte nicht geladen werden.',
+  'communication.channels.email.restricted':
+    'E-Mail-Konfiguration ist für Organisationsadministratoren verfügbar.',
+  'communication.automations.title': 'Automationen',
+  'communication.automations.description':
+    'Workflow-Automationen für kommunikationsbezogene Aufgaben nutzen die bestehende Automations-Engine.',
+  'communication.automations.open': 'Workflow-Automation öffnen',
+  'communication.automations.accessDenied':
+    'Sie haben keine Berechtigung, Workflow-Automation zu öffnen.',
   'communication.aiActivity.title': 'KI-Aktivität',
   'communication.aiActivity.filtersLabel': 'KI-Aktivitätsfilter',
   'communication.aiActivity.listLabel': 'KI-Kommunikationsaktivität',

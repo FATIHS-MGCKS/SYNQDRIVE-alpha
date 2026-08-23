@@ -3595,8 +3595,59 @@ export const en = {
 
   'communication.primary.tabsLabel': 'Communication Center sections',
   'communication.primary.inbox': 'Inbox',
+  'communication.primary.channels': 'Channels',
   'communication.primary.aiActivity': 'AI Activity',
+  'communication.primary.automations': 'Automations',
   'communication.primary.settings': 'Settings',
+  'communication.channels.title': 'Channels',
+  'communication.channels.description':
+    'Configure and monitor communication channels. Operational conversations stay in the Inbox.',
+  'communication.channels.navLabel': 'Communication channels',
+  'communication.channels.nav.overview': 'Overview',
+  'communication.channels.email': 'Email',
+  'communication.channels.whatsapp.description':
+    'WhatsApp Business connection, templates, and channel health.',
+  'communication.channels.voice.description':
+    'Voice agent configuration, telephony, and analytics.',
+  'communication.channels.sms.description':
+    'SMS provider status via sent.dm (configuration pending).',
+  'communication.channels.email.description':
+    'Transactional outbound email via Resend.',
+  'communication.channels.providerLabel': 'Provider',
+  'communication.channels.configure': 'Configure channel',
+  'communication.channels.accessRestricted': 'You do not have permission to manage this channel.',
+  'communication.channels.accessDenied.title': 'Channel unavailable',
+  'communication.channels.accessDenied.description':
+    'You do not have permission to view this channel configuration.',
+  'communication.channels.openConversations': 'Open conversations',
+  'communication.channels.openConversationsVoice': 'Open voice conversations',
+  'communication.channels.whatsapp.subview.overview': 'Overview',
+  'communication.channels.whatsapp.subview.configuration': 'Configuration',
+  'communication.channels.whatsapp.subview.templates': 'Templates',
+  'communication.channels.voice.specializedHint':
+    'Advanced voice controls open in the AI Voice Assistant. Conversations remain in Communication Center.',
+  'communication.channels.voice.configureAgent': 'Configure agent',
+  'communication.channels.voice.configureAgentHint': 'Prompt, voice, tools, and activation',
+  'communication.channels.voice.analytics': 'Analytics',
+  'communication.channels.voice.analyticsHint': 'Usage, outcomes, and call metrics',
+  'communication.channels.voice.telephony': 'Telephony',
+  'communication.channels.voice.telephonyHint': 'Phone numbers and inbound routing',
+  'communication.channels.voice.testAssistant': 'Test assistant',
+  'communication.channels.voice.testAssistantHint': 'Run voice tests before going live',
+  'communication.channels.voice.automations': 'Voice automations',
+  'communication.channels.voice.automationsHint': 'Tool permissions and automation hooks',
+  'communication.channels.email.transactionalHint':
+    'Transactional email is not part of the unified conversations inbox in V1.',
+  'communication.channels.email.openSettings': 'Open email settings',
+  'communication.channels.email.loadError': 'Could not load email configuration.',
+  'communication.channels.email.restricted':
+    'Email configuration is available to organization administrators.',
+  'communication.automations.title': 'Automations',
+  'communication.automations.description':
+    'Workflow automation for communication-related tasks uses the existing automation engine.',
+  'communication.automations.open': 'Open workflow automation',
+  'communication.automations.accessDenied':
+    'You do not have permission to open workflow automation.',
   'communication.aiActivity.title': 'AI Activity',
   'communication.aiActivity.filtersLabel': 'AI activity filters',
   'communication.aiActivity.listLabel': 'AI communication activity',

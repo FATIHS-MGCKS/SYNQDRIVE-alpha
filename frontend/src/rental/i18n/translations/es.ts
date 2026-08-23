@@ -100,4 +100,61 @@ export const es: Record<TranslationKey, string> = {
   'dashboardTasksOverview.noDueDate': 'Sin fecha',
   'dashboardTasksOverview.priorityCritical': 'Critica',
   'dashboardTasksOverview.priorityHigh': 'Alta',
+  'communication.channels.filterGroup': 'Filtros de canal del buzon',
+  'communication.channels.all': 'Todos',
+  'communication.channels.whatsapp': 'WhatsApp',
+  'communication.channels.voice': 'Voice',
+  'communication.channels.sms': 'SMS',
+  'communication.primary.channels': 'Canales',
+  'communication.primary.automations': 'Automatizaciones',
+  'communication.channels.title': 'Canales',
+  'communication.channels.description':
+    'Configure y supervise los canales de comunicacion. Las conversaciones operativas permanecen en el buzon.',
+  'communication.channels.navLabel': 'Canales de comunicacion',
+  'communication.channels.nav.overview': 'Resumen',
+  'communication.channels.email': 'Correo electronico',
+  'communication.channels.whatsapp.description':
+    'Conexion de WhatsApp Business, plantillas y estado del canal.',
+  'communication.channels.voice.description':
+    'Configuracion del agente de voz, telefonia y analiticas.',
+  'communication.channels.sms.description':
+    'Estado del proveedor SMS via sent.dm (configuracion pendiente).',
+  'communication.channels.email.description':
+    'Correo electronico transaccional saliente via Resend.',
+  'communication.channels.providerLabel': 'Proveedor',
+  'communication.channels.configure': 'Configurar canal',
+  'communication.channels.accessRestricted':
+    'No tiene permiso para administrar este canal.',
+  'communication.channels.accessDenied.title': 'Canal no disponible',
+  'communication.channels.accessDenied.description':
+    'No tiene permiso para ver esta configuracion de canal.',
+  'communication.channels.openConversations': 'Abrir conversaciones',
+  'communication.channels.openConversationsVoice': 'Abrir conversaciones de voz',
+  'communication.channels.whatsapp.subview.overview': 'Resumen',
+  'communication.channels.whatsapp.subview.configuration': 'Configuracion',
+  'communication.channels.whatsapp.subview.templates': 'Plantillas',
+  'communication.channels.voice.specializedHint':
+    'Los controles avanzados de voz se abren en el Asistente de voz IA. Las conversaciones permanecen en el Centro de comunicacion.',
+  'communication.channels.voice.configureAgent': 'Configurar agente',
+  'communication.channels.voice.configureAgentHint': 'Prompt, voz, herramientas y activacion',
+  'communication.channels.voice.analytics': 'Analiticas',
+  'communication.channels.voice.analyticsHint': 'Uso, resultados y metricas de llamadas',
+  'communication.channels.voice.telephony': 'Telefonia',
+  'communication.channels.voice.telephonyHint': 'Numeros de telefono y enrutamiento entrante',
+  'communication.channels.voice.testAssistant': 'Probar asistente',
+  'communication.channels.voice.testAssistantHint': 'Ejecute pruebas de voz antes de publicar',
+  'communication.channels.voice.automations': 'Automatizaciones de voz',
+  'communication.channels.voice.automationsHint': 'Permisos de herramientas y ganchos de automatizacion',
+  'communication.channels.email.transactionalHint':
+    'El correo transaccional no forma parte del buzon unificado de conversaciones en V1.',
+  'communication.channels.email.openSettings': 'Abrir configuracion de correo',
+  'communication.channels.email.loadError': 'No se pudo cargar la configuracion de correo.',
+  'communication.channels.email.restricted':
+    'La configuracion de correo esta disponible para administradores de la organizacion.',
+  'communication.automations.title': 'Automatizaciones',
+  'communication.automations.description':
+    'La automatizacion de flujos de trabajo para tareas de comunicacion usa el motor de automatizacion existente.',
+  'communication.automations.open': 'Abrir automatizacion de flujos',
+  'communication.automations.accessDenied':
+    'No tiene permiso para abrir la automatizacion de flujos.',
 };
