@@ -6,6 +6,10 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
+  HANDOFF_RESOLUTION_EVENT_TYPES,
+  buildHandoffResolutionMap,
+} from './communication-ai-activity-handoff-resolution.util';
+import {
   resolveCommunicationListLimit,
   type CommunicationCursorPageResult,
 } from '../read/communication-read.cursor.util';
@@ -105,6 +109,38 @@ export class CommunicationAiActivityRepository {
       items: page as CommunicationAiActivityEventRow[],
       meta: { limit, nextCursor, hasMore },
     };
+  }
+
+  async loadHandoffResolutionMap(
+    organizationId: string,
+    handoffRequests: Array<{ id: string; conversationId: string; occurredAt: Date }>,
+  ): Promise<Map<string, boolean>> {
+    if (handoffRequests.length === 0) {
+      return new Map();
+    }
+
+    const conversationIds = [...new Set(handoffRequests.map((row) => row.conversationId))];
+    const minOccurredAt = handoffRequests.reduce(
+      (min, row) => (row.occurredAt < min ? row.occurredAt : min),
+      handoffRequests[0]!.occurredAt,
+    );
+
+    const resolutionEvents = await this.prisma.communicationEvent.findMany({
+      where: {
+        organizationId,
+        conversationId: { in: conversationIds },
+        eventType: { in: HANDOFF_RESOLUTION_EVENT_TYPES },
+        occurredAt: { gte: minOccurredAt },
+      },
+      select: {
+        id: true,
+        conversationId: true,
+        occurredAt: true,
+      },
+      orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
+    });
+
+    return buildHandoffResolutionMap(handoffRequests, resolutionEvents);
   }
 
   private resolveEventTypes(

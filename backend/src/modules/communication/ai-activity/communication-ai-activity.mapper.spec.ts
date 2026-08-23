@@ -68,16 +68,39 @@ describe('communication-ai-activity.mapper', () => {
     expect(summary.toLowerCase()).not.toContain('prompt');
   });
 
-  it('marks handoff resolved when conversation is human active', () => {
+  it('marks handoff resolved when subsequent takeover exists chronologically', () => {
     const handoff = buildHandoffDto(
       CommunicationEventType.HUMAN_REQUIRED,
       { handoffReasonCode: 'CUSTOMER_REQUEST' },
       {
         ...conversation,
-        status: CommunicationConversationStatus.HUMAN_ACTIVE,
-        assignedUser: { id: 'u1', name: 'Alex Operator', firstName: null, lastName: null },
+        status: CommunicationConversationStatus.HUMAN_REQUIRED,
       },
+      { handoffResolved: true },
     );
     expect(handoff?.resolved).toBe(true);
+  });
+
+  it('keeps older handoff resolved even when conversation re-enters HUMAN_REQUIRED', () => {
+    const handoff = buildHandoffDto(
+      CommunicationEventType.HUMAN_REQUIRED,
+      { handoffReasonCode: 'CUSTOMER_REQUEST' },
+      {
+        ...conversation,
+        status: CommunicationConversationStatus.HUMAN_REQUIRED,
+      },
+      { handoffResolved: true },
+    );
+    expect(handoff?.resolved).toBe(true);
+  });
+
+  it('marks latest open handoff unresolved without subsequent takeover', () => {
+    const handoff = buildHandoffDto(
+      CommunicationEventType.HUMAN_REQUIRED,
+      { handoffReasonCode: 'LOW_CONFIDENCE' },
+      conversation,
+      { handoffResolved: false },
+    );
+    expect(handoff?.resolved).toBe(false);
   });
 });

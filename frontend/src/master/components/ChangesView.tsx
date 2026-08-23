@@ -44,6 +44,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'AI Activity tab in Communication Center (audit surface, not second inbox); filters handoffs/tools/errors.',
       'WhatsApp AI_INTENT_DETECTED projection after router suggestions; Voice tool/handoff events already projected.',
       'COMMUNICATION_HANDOFF_REQUIRED notification on new HUMAN_REQUIRED canonical events (deduped per event id).',
+      'C11.5 hardening: TASKS preference category, awaited notification ingest, chronological handoff resolution, station-scoped recipient filtering, shared notification test factories.',
       'OPEN_COMMUNICATION notification action deep-links to canonical conversation.',
       'Station scope + communication.read RBAC on AI Activity list.',
     ],

@@ -19,6 +19,7 @@ const API_TO_QUEUE_ACTION: Record<ApiNotificationActionType, NotificationActionT
   OPEN_STATION: 'open-station',
   OPEN_BILLING: 'open-billing',
   OPEN_RENTAL: 'open-rental',
+  OPEN_COMMUNICATION: 'open-communication',
 };
 
 const API_TO_LEGACY_CTA: Record<ApiNotificationActionType, ActionQueueCta> = {
@@ -30,6 +31,7 @@ const API_TO_LEGACY_CTA: Record<ApiNotificationActionType, ActionQueueCta> = {
   OPEN_STATION: 'open-stations',
   OPEN_BILLING: 'open-rental',
   OPEN_RENTAL: 'open-rental',
+  OPEN_COMMUNICATION: 'open-rental',
 };
 
 export function mapApiActionType(type: ApiNotificationActionType | string): NotificationActionType {
@@ -55,6 +57,8 @@ export function mapApiActionTarget(
     tripId: target.tripId,
     observationId: target.observationId,
     taskId: target.taskId,
+    conversationId: target.conversationId,
+    channel: target.channel,
     module: target.module,
   };
 }

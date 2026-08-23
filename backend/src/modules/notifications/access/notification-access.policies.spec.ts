@@ -30,6 +30,17 @@ describe('Notification access policies', () => {
         }),
       ).toBe(true);
     });
+
+    it('does not treat communication handoff as org-wide despite organization entity type', () => {
+      expect(
+        isOrgWideNotification({
+          eventType: 'COMMUNICATION_HANDOFF_REQUIRED',
+          domain: 'OPERATIONS',
+          severity: NotificationSeverity.WARNING,
+          entityType: 'ORGANIZATION',
+        }),
+      ).toBe(false);
+    });
   });
 
   describe('isMandatoryNotification', () => {

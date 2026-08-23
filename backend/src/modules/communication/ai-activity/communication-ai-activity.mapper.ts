@@ -1,6 +1,5 @@
 import {
   CommunicationChannel,
-  CommunicationConversationStatus,
   CommunicationEventType,
   CommunicationProviderIdentity,
 } from '@prisma/client';
@@ -117,6 +116,7 @@ export function buildHandoffDto(
   eventType: CommunicationEventType,
   metadata: CanonicalCommunicationMetadata,
   conversation: CommunicationConversationListRow,
+  options?: { handoffResolved?: boolean },
 ): CommunicationAiActivityHandoffDto | undefined {
   if (
     eventType !== CommunicationEventType.HUMAN_REQUIRED
@@ -127,9 +127,9 @@ export function buildHandoffDto(
   }
 
   const resolved =
-    conversation.status === CommunicationConversationStatus.HUMAN_ACTIVE
-    || conversation.status === CommunicationConversationStatus.WAITING_CUSTOMER
-    || conversation.status === CommunicationConversationStatus.RESOLVED;
+    eventType !== CommunicationEventType.HUMAN_REQUIRED
+      ? true
+      : options?.handoffResolved === true;
 
   const acceptedBy =
     conversation.assignedUser
@@ -139,7 +139,7 @@ export function buildHandoffDto(
   return {
     requested: eventType === CommunicationEventType.HUMAN_REQUIRED,
     reason: metadataString(metadata.handoffReasonCode),
-    resolved: eventType !== CommunicationEventType.HUMAN_REQUIRED ? true : resolved,
+    resolved,
     acceptedBy: eventType === CommunicationEventType.HUMAN_REQUIRED ? null : acceptedBy,
   };
 }
@@ -163,7 +163,10 @@ export function buildToolDto(
   };
 }
 
-export function mapAiActivityEventRow(row: CommunicationAiActivityEventRow): CommunicationAiActivityItemDto {
+export function mapAiActivityEventRow(
+  row: CommunicationAiActivityEventRow,
+  options?: { handoffResolved?: boolean },
+): CommunicationAiActivityItemDto {
   const metadata = (row.metadata ?? {}) as CanonicalCommunicationMetadata;
   const activityType = mapAiActivityType(row.eventType);
   const agentKind =
@@ -205,6 +208,6 @@ export function mapAiActivityEventRow(row: CommunicationAiActivityEventRow): Com
         }
       : undefined,
     tool: buildToolDto(row.eventType, metadata),
-    handoff: buildHandoffDto(row.eventType, metadata, row.conversation),
+    handoff: buildHandoffDto(row.eventType, metadata, row.conversation, options),
   };
 }

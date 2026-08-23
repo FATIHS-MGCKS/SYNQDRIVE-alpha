@@ -17,7 +17,8 @@ import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.
 import { VehicleReadinessNotificationAdapter } from './vehicle-readiness-notification.adapter';
 import { VehicleReadinessEvaluabilityNotificationAdapter } from './vehicle-readiness-evaluability-notification.adapter';
 import { VehicleDamageNotificationAdapter } from './vehicle-damage-notification.adapter';
-import { NotificationProducerRouter } from './notification-producer.router';
+import { createNotificationProducerRouter } from '../testing/notification-producer-router.factory';
+import { createNotificationProducerIngestService } from '../testing/notification-producer-ingest.factory';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
 import {
   projectVehicleAlertNotifications,
@@ -235,35 +236,12 @@ describe('VehicleAlertsNotificationAdapter + lifecycle (P2.2B)', () => {
       recordCandidate: jest.fn(),
       recordCandidateRejected: jest.fn(),
     };
-    const router = new NotificationProducerRouter(
+    const router = createNotificationProducerRouter(
       core,
       engineConfig,
       ingestObservability as any,
-      new DrivingAssessmentNotificationAdapter(),
-      new TechnicalObservationNotificationAdapter(),
-      new StationShortageNotificationAdapter(),
-      new VehicleHealthNotificationAdapter(),
-      new ServiceComplianceNotificationAdapter(),
-      new VehicleAlertsNotificationAdapter(),
-      new VehicleReadinessNotificationAdapter(),
-      new VehicleReadinessEvaluabilityNotificationAdapter(),
-      new VehicleDamageNotificationAdapter(),
     );
-    ingest = new NotificationProducerIngestService(
-      router,
-      repository,
-      new DrivingAssessmentNotificationAdapter(),
-      new TechnicalObservationNotificationAdapter(),
-      new StationShortageNotificationAdapter(),
-      new LowUtilizationNotificationAdapter(),
-      new VehicleHealthNotificationAdapter(),
-      new ServiceComplianceNotificationAdapter(),
-      new VehicleAlertsNotificationAdapter(),
-      new VehicleReadinessNotificationAdapter(),
-      new VehicleReadinessEvaluabilityNotificationAdapter(),
-      new VehicleDamageNotificationAdapter(),
-      core,
-    );
+    ingest = createNotificationProducerIngestService(router, repository, core);
   });
 
   function openNotifications(orgId = ORG_A) {

@@ -169,7 +169,7 @@ export class VoiceCommunicationProjectionIntegration {
           this.elevenLabsAdapter.fromHumanRequired({ ...source, providerEventId }),
         );
         if (result.eventCreated && result.eventId) {
-          void this.handoffNotifications.notifyHandoffRequired({
+          await this.handoffNotifications.notifyHandoffRequired({
             organizationId: source.conversation.organizationId,
             conversationId: result.conversationId,
             communicationEventId: result.eventId,

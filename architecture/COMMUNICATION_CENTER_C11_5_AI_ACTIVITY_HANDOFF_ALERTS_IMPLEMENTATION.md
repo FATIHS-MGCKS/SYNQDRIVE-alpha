@@ -60,7 +60,12 @@ Normalized DTO: `CommunicationAiActivityItemDto` (summary, agent, tool, handoff,
 
 ## 10–11. AI → human lifecycle
 
-`HUMAN_REQUIRED` on conversation is authority. AI Activity derives handoff resolution from current conversation status (`HUMAN_ACTIVE`, `WAITING_CUSTOMER`, `RESOLVED`) without mutating historical events.
+`HUMAN_REQUIRED` on conversation is authority. AI Activity handoff resolution is derived from subsequent canonical `HUMAN_ASSIGNED` / `HUMAN_TAKEOVER` events (chronological), not from current conversation status alone.
+
+## 63–65. Handoff resolution semantics (hardened)
+
+- Handoff A → human takeover → later AI again → Handoff B: Handoff A remains historically resolved
+- Latest open handoff without subsequent takeover remains unresolved
 
 **Human → AI return:** not implemented in V1 (no automatic hand-back).
 
@@ -88,9 +93,13 @@ Normalized DTO: `CommunicationAiActivityItemDto` (summary, agent, tool, handoff,
 | AI reply / tool success | No | No |
 
 - Registry slug: `communication-handoff-required`
-- Action: `OPEN_COMMUNICATION` with `conversationId` + `stationId`
+- Action: `OPEN_COMMUNICATION` with `conversationId` + `stationId` + optional `channel`
+- Preference category: `TASKS` (operational handoff alerts — not `SECURITY`)
 - Dedupe: fingerprint `conditionCodeVariant = communicationEventId` (per occurrence, not per conversation)
-- Recipients: operational roles via Notification V2 delivery + station scope on `actionTarget.stationId`
+- Recipients: Notification V2 role targeting via `supportedRoles = OPS_ROLES` (`ORG_ADMIN`, `SUB_ADMIN`, `WORKER`). Notification V2 does **not** support permission-based (`communication.write`) recipient targeting today.
+- Station scope: `NotificationStationScopeService.isNotificationInScope` filters inbox visibility using `actionTarget.stationId` (not navigation-only metadata).
+- Ingest durability: projection awaits `CommunicationHandoffNotificationService.notifyHandoffRequired()` after canonical commit; ingest failures are caught/logged and do **not** roll back `HUMAN_REQUIRED`.
+- OrgTask: **deferred** — V1 = notification-only for handoff alerts.
 
 ## 24–26. Dashboard & timeline
 
@@ -105,9 +114,13 @@ No message bodies, phones, transcripts, or provider debug JSON in AI Activity or
 
 ## 30. Tests
 
-- Mapper unit tests
-- Handoff notification adapter unit test
-- Frontend navigation test for `ai-activity` tab
+- Mapper unit tests (including historical handoff resolution)
+- AI Activity service + HTTP security integration tests
+- Cursor stability tests (`occurredAt` + `id`)
+- Handoff notification adapter + ingest dedupe tests
+- Recipient station scope tests (`NotificationStationScopeService`)
+- Voice/WhatsApp projection handoff notification invoke/replay tests
+- Frontend `OPEN_COMMUNICATION` navigation + Communication Center deep link tests
 
 ## 31. Known limitations
 

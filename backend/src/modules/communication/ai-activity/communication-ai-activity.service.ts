@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { CommunicationEventType, Prisma } from '@prisma/client';
 import { StationAccessService } from '@shared/stations/station-access.service';
 import { mapAiActivityEventRow } from './communication-ai-activity.mapper';
 import { CommunicationAiActivityRepository } from './communication-ai-activity.repository';
@@ -23,6 +23,17 @@ export class CommunicationAiActivityService {
     const started = Date.now();
     const stationScope = await this.buildStationScope(actorUserId, organizationId);
     const page = await this.repository.listAiActivity(organizationId, query, stationScope);
+    const handoffRequests = page.items
+      .filter((row) => row.eventType === CommunicationEventType.HUMAN_REQUIRED)
+      .map((row) => ({
+        id: row.id,
+        conversationId: row.conversation.id,
+        occurredAt: row.occurredAt,
+      }));
+    const handoffResolution = await this.repository.loadHandoffResolutionMap(
+      organizationId,
+      handoffRequests,
+    );
 
     this.logger.log(
       JSON.stringify({
@@ -37,7 +48,11 @@ export class CommunicationAiActivityService {
     );
 
     return {
-      items: page.items.map(mapAiActivityEventRow),
+      items: page.items.map((row) =>
+        mapAiActivityEventRow(row, {
+          handoffResolved: handoffResolution.get(row.id),
+        }),
+      ),
       nextCursor: page.meta.nextCursor,
       hasMore: page.meta.hasMore,
     };

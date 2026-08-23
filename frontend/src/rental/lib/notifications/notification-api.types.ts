@@ -33,7 +33,8 @@ export type ApiNotificationActionType =
   | 'OPEN_HANDOVER_RETURN'
   | 'OPEN_STATION'
   | 'OPEN_BILLING'
-  | 'OPEN_RENTAL';
+  | 'OPEN_RENTAL'
+  | 'OPEN_COMMUNICATION';
 
 export type ApiNotificationAvailableAction =
   | 'read'
@@ -55,6 +56,8 @@ export interface ApiNotificationActionTarget {
   tripId?: string;
   observationId?: string;
   taskId?: string;
+  conversationId?: string;
+  channel?: string;
   module?: string;
 }
 

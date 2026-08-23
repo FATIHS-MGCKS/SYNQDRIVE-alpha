@@ -149,7 +149,7 @@ export class WhatsAppCommunicationProjectionIntegration {
         }
         const result = await this.projection.projectNormalizedInput(this.adapter.fromHumanRequired(source));
         if (result.eventCreated && result.eventId) {
-          void this.handoffNotifications.notifyHandoffRequired({
+          await this.handoffNotifications.notifyHandoffRequired({
             organizationId: source.conversation.organizationId,
             conversationId: result.conversationId,
             communicationEventId: result.eventId,

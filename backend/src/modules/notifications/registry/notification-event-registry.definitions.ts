@@ -1351,7 +1351,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
     resolutionPolicy: EVENT_RESOLUTION,
     expiryPolicy: SHORT_EVENT_EXPIRY,
     deliveryPolicy: DEFAULT_CRITICAL_DELIVERY,
-    preferenceCategory: NotificationCategory.SECURITY,
+    preferenceCategory: NotificationCategory.TASKS,
     supportedRoles: OPS_ROLES,
     requiresNavigation: true,
     shadowModeEnabled: false,

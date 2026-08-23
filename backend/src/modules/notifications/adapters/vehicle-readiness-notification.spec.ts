@@ -16,7 +16,8 @@ import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.
 import { VehicleReadinessNotificationAdapter } from './vehicle-readiness-notification.adapter';
 import { VehicleReadinessEvaluabilityNotificationAdapter } from './vehicle-readiness-evaluability-notification.adapter';
 import { VehicleDamageNotificationAdapter } from './vehicle-damage-notification.adapter';
-import { NotificationProducerRouter } from './notification-producer.router';
+import { createNotificationProducerRouter } from '../testing/notification-producer-router.factory';
+import { createNotificationProducerIngestService } from '../testing/notification-producer-ingest.factory';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
 import {
   projectVehicleReadinessAggregate,
@@ -123,7 +124,7 @@ describe('VehicleReadinessNotificationAdapter + lifecycle (P2.3)', () => {
   const activeByFingerprint = new Map<string, string>();
   let idSeq = 0;
   let ingest: NotificationProducerIngestService;
-  let router: NotificationProducerRouter;
+  let router: ReturnType<typeof createNotificationProducerRouter>;
 
   const engineConfig = {
     isV2Enabled: () => v2Enabled,
@@ -219,35 +220,12 @@ describe('VehicleReadinessNotificationAdapter + lifecycle (P2.3)', () => {
       recordCandidate: jest.fn(),
       recordCandidateRejected: jest.fn(),
     };
-    router = new NotificationProducerRouter(
+    router = createNotificationProducerRouter(
       core,
       engineConfig,
       ingestObservability as any,
-      new DrivingAssessmentNotificationAdapter(),
-      new TechnicalObservationNotificationAdapter(),
-      new StationShortageNotificationAdapter(),
-      new VehicleHealthNotificationAdapter(),
-      new ServiceComplianceNotificationAdapter(),
-      new VehicleAlertsNotificationAdapter(),
-      new VehicleReadinessNotificationAdapter(),
-      new VehicleReadinessEvaluabilityNotificationAdapter(),
-      new VehicleDamageNotificationAdapter(),
     );
-    ingest = new NotificationProducerIngestService(
-      router,
-      repository,
-      new DrivingAssessmentNotificationAdapter(),
-      new TechnicalObservationNotificationAdapter(),
-      new StationShortageNotificationAdapter(),
-      new LowUtilizationNotificationAdapter(),
-      new VehicleHealthNotificationAdapter(),
-      new ServiceComplianceNotificationAdapter(),
-      new VehicleAlertsNotificationAdapter(),
-      new VehicleReadinessNotificationAdapter(),
-      new VehicleReadinessEvaluabilityNotificationAdapter(),
-      new VehicleDamageNotificationAdapter(),
-      core,
-    );
+    ingest = createNotificationProducerIngestService(router, repository, core);
   });
 
   function seedLegacyRow(
