@@ -362,7 +362,7 @@ export class CommunicationReplyService {
       throwReplyErrorForFailureCode(nativeMessage.failureReason);
     }
 
-    if (nativeMessage.providerMessageId) {
+    if (nativeMessage.providerDispatchStartedAt || nativeMessage.providerMessageId) {
       await this.prisma.communicationReplyCommand.update({
         where: { id: commandId },
         data: { sendState: CommunicationReplySendState.UNKNOWN, processingLeaseExpiresAt: null },

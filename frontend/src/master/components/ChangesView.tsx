@@ -44,6 +44,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'WhatsApp adapter reuses WhatsAppService.sendMessage + existing MESSAGE_SENT projection.',
       'SMS CHANNEL_NOT_CONFIGURED; Voice CHANNEL_NOT_REPLYABLE; claim-before-send ownership.',
       'CommunicationComposer UI with IME-safe Enter/Shift+Enter, draft isolation, timeline/inbox convergence.',
+      'C11.2 hardening: definitive vs UNKNOWN outcome classification, native WhatsApp idempotency correlation, processing lease recovery, channel preflight before ownership, PostgreSQL integration proof.',
+      'C11.2 dispatch hardening: durable providerDispatchStartedAt marker, atomic dispatch claim before Meta HTTP, no automatic resend after ambiguous dispatch, Meta remote idempotency NOT SUPPORTED.',
     ],
     reason:
       'C11.2 enables operator text replies from Communication Center without direct provider calls from the UI.',

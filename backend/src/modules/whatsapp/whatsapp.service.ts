@@ -267,6 +267,8 @@ export class WhatsAppService {
       status: WhatsAppMessageDeliveryStatus;
       providerMessageId: string | null;
       failureReason: string | null;
+      providerDispatchStartedAt: Date | null;
+      idempotencyKey: string | null;
     },
     options?: { skipCanonicalProjection?: boolean; idempotencyKey?: string },
   ) {
@@ -280,13 +282,91 @@ export class WhatsAppService {
       return this.mapMessage(full);
     }
 
+    const isCanonicalReply = Boolean(
+      existing.idempotencyKey?.startsWith('comm-reply:')
+      || options?.idempotencyKey?.startsWith('comm-reply:'),
+    );
+
     if (existing.providerMessageId) {
       throw new WhatsAppSendAmbiguousException();
+    }
+
+    if (existing.providerDispatchStartedAt) {
+      throw new WhatsAppSendAmbiguousException();
+    }
+
+    if (isCanonicalReply) {
+      const config = await this.requireConfig(orgId);
+      const full = await this.prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: existing.id } });
+      return this.dispatchOutboundMessage(orgId, conversationId, convo, config, full, full.content, options);
     }
 
     const config = await this.requireConfig(orgId);
     const full = await this.prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: existing.id } });
     return this.dispatchOutboundMessage(orgId, conversationId, convo, config, full, full.content, options);
+  }
+
+  /**
+   * Reconcile a dispatched outbound message once provider evidence is known (webhook/recovery).
+   * Does not perform another provider send.
+   */
+  async reconcileOutboundProviderResult(
+    organizationId: string,
+    messageId: string,
+    input: {
+      providerMessageId: string;
+      status: 'SENT' | 'FAILED';
+      failureReason?: string | null;
+    },
+    options?: { skipCanonicalProjection?: boolean },
+  ) {
+    const msg = await this.prisma.whatsAppMessage.findFirst({
+      where: { id: messageId, organizationId },
+      include: { conversation: true },
+    });
+    if (!msg) {
+      throw new NotFoundException('WhatsApp message not found');
+    }
+
+    const updated = await this.prisma.whatsAppMessage.update({
+      where: { id: messageId },
+      data: {
+        providerMessageId: input.providerMessageId,
+        status:
+          input.status === 'SENT'
+            ? WhatsAppMessageDeliveryStatus.SENT
+            : WhatsAppMessageDeliveryStatus.FAILED,
+        failureReason: input.failureReason ?? msg.failureReason,
+      },
+    });
+
+    if (!options?.skipCanonicalProjection) {
+      if (input.status === 'SENT') {
+        void this.communicationProjection.projectOutboundAccepted({
+          conversation: msg.conversation,
+          message: updated,
+        });
+      } else {
+        void this.communicationProjection.projectOutboundFailed({
+          conversation: msg.conversation,
+          message: updated,
+        });
+      }
+    }
+
+    return this.mapMessage(updated);
+  }
+
+  private async claimProviderDispatch(messageId: string): Promise<boolean> {
+    const result = await this.prisma.whatsAppMessage.updateMany({
+      where: {
+        id: messageId,
+        status: WhatsAppMessageDeliveryStatus.QUEUED,
+        providerDispatchStartedAt: null,
+      },
+      data: { providerDispatchStartedAt: new Date() },
+    });
+    return result.count === 1;
   }
 
   private async dispatchOutboundMessage(
@@ -317,6 +397,11 @@ export class WhatsAppService {
       throw new WhatsAppProviderNotConfiguredException();
     }
 
+    const claimed = await this.claimProviderDispatch(msg.id);
+    if (!claimed) {
+      throw new WhatsAppSendAmbiguousException();
+    }
+
     let result;
     try {
       result = await this.provider.sendTextMessage(config, convo.contactPhone, content, {
@@ -328,12 +413,20 @@ export class WhatsAppService {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown provider error';
       if (/timeout|timed out|econnreset|econnrefused|socket hang up|network|aborted|fetch failed|gateway timeout/i.test(message)) {
+        await this.prisma.whatsAppMessage.update({
+          where: { id: msg.id },
+          data: { failureReason: 'DISPATCH_UNCERTAIN' },
+        }).catch(() => undefined);
         throw new WhatsAppSendAmbiguousException();
       }
       throw err;
     }
 
     if (result.status === 'UNKNOWN') {
+      await this.prisma.whatsAppMessage.update({
+        where: { id: msg.id },
+        data: { failureReason: 'DISPATCH_UNCERTAIN' },
+      }).catch(() => undefined);
       throw new WhatsAppSendAmbiguousException();
     }
 

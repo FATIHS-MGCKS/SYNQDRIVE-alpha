@@ -1170,6 +1170,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'Reply', detail: 'POST .../reply — text + client idempotencyKey; CommunicationReplyCommand durable dedupe' },
       { label: 'Routing', detail: 'WhatsApp → WhatsAppService.sendMessage; SMS not configured; Voice not replyable' },
       { label: 'Ownership', detail: 'Claim/takeover before provider call; WAITING_CUSTOMER after successful human reply' },
+      { label: 'Dispatch safety', detail: 'providerDispatchStartedAt atomic claim before Meta HTTP; lease expiry ≠ resend authority; SEND_UNKNOWN after ambiguous dispatch' },
       { label: 'Frontend', detail: 'CommunicationComposer + useCommunicationReply; no direct provider calls' },
     ],
   },

@@ -107,14 +107,74 @@ Provider call occurs **outside** interactive transaction after `PENDING` command
 
 Ambiguous outcomes **never** persist as `FAILED`.
 
-## 9b. Crash recovery windows
+## 9b. Provider dispatch marker vs command processing lease
 
-| Window | Recovery |
-|--------|----------|
-| A: Command `PENDING`, no native message | Expired lease → resume send |
-| B: Native `QUEUED`, no `providerMessageId` | Reuse native message, retry provider on same row |
-| C: Native `SENT`, command still `PENDING` | Reconcile command → `ACCEPTED`, no provider call |
-| D: Native `QUEUED` + `providerMessageId` | `UNKNOWN` until webhook/reconciliation |
+Two independent crash-recovery authorities:
+
+| Authority | Field | Scope |
+|-----------|-------|-------|
+| **Command processing lease** | `CommunicationReplyCommand.processingLeaseExpiresAt` | SynqDrive worker/request orphan detection for canonical reply command |
+| **Provider dispatch marker** | `WhatsAppMessage.providerDispatchStartedAt` | Proof that external Meta HTTP dispatch **may have started** |
+
+**Critical rule:** lease expiry alone does **not** authorize provider resend. After `providerDispatchStartedAt` is set, automatic provider redispatch is forbidden until definitive provider evidence reconciles the native row.
+
+### Dispatch sequence (WhatsApp native outbound)
+
+1. Create/reuse native `WhatsAppMessage` (`QUEUED`)
+2. **Atomic dispatch claim:** conditional `updateMany` sets `providerDispatchStartedAt` only when `status=QUEUED` and marker is null
+3. **Only after durable DB commit:** call `MetaWhatsAppCloudProvider.sendTextMessage`
+4. Definitive provider accept → `SENT` + `providerMessageId`
+5. Definitive provider reject → `FAILED`
+6. Ambiguous transport / crash before local persist → retain marker + `failureReason=DISPATCH_UNCERTAIN`, throw `WhatsAppSendAmbiguousException` → canonical `SEND_UNKNOWN`
+
+### Safe / unsafe retry matrix (native WhatsApp)
+
+| Native state | `providerDispatchStartedAt` | `providerMessageId` | Automatic provider resend? |
+|--------------|----------------------------|---------------------|----------------------------|
+| `QUEUED` | null | null | **Yes** — claim dispatch, then send once |
+| `QUEUED` | set | null | **No** — `SEND_UNKNOWN` / `WhatsAppSendAmbiguousException` |
+| `QUEUED` | set | set | **No** — ambiguous until reconciled |
+| `SENT` | any | set | **No** — return existing accepted message |
+| `FAILED` (definitive) | any | any | **No** — return definitive failure |
+
+### Canonical command recovery (with native correlation)
+
+| Case | Recovery |
+|------|----------|
+| A: Command `PENDING`, expired lease, no native message | Safe to resume creating native message |
+| B: Command `PENDING`, expired lease, native `QUEUED`, dispatch **never** started | Safe to claim dispatch and send |
+| C: Command `PENDING`, expired lease, native dispatch **started** | Reconcile as `UNKNOWN` — **no provider resend** |
+| D: Command `PENDING`, native `SENT` | Reconcile command → `ACCEPTED`, no provider call |
+| E: Command `UNKNOWN`, native dispatch started | Replay → `SEND_UNKNOWN` (key preserved) |
+
+**Legacy rows:** historical `QUEUED` messages without `comm-reply:` idempotency key and without dispatch marker may still follow legacy resume behavior. C11.2-correlated rows (`comm-reply:{orgId}:{conversationId}:{clientKey}`) always respect dispatch marker semantics.
+
+## 9b-1. Meta remote idempotency audit
+
+`WhatsAppSendMetadata.idempotencyKey` is passed to the provider layer for **internal correlation/logging only**.
+
+`MetaWhatsAppCloudProvider.sendTextMessage` does **not** transmit this value to Meta (no HTTP header, no Graph API field). Meta Cloud API provides **no server-side idempotency guarantee** for outbound text sends in this integration.
+
+**SynqDrive delivery guarantees (precise terminology):**
+
+- One canonical `CommunicationReplyCommand` per client idempotency key
+- One native `WhatsAppMessage` per logical C11.2 reply
+- **At-most-one automatic provider dispatch** after durable dispatch claim
+- No automatic resend after ambiguous dispatch
+- Exactly-once canonical `MESSAGE_SENT` projection per native message
+- Explicit `UNKNOWN` / `SEND_UNKNOWN` instead of duplicate-risk retry
+
+Strict distributed "exactly-once remote delivery" is **not** mathematically guaranteed across every provider/network failure without provider-side deduplication.
+
+## 9b-2. Webhook reconciliation
+
+`WhatsAppWebhookService.handleStatusUpdate` correlates outbound status webhooks by **durable `providerMessageId` only** (no phone+text+time inference).
+
+When native row already has `providerMessageId` and transitions to `SENT`, `projectOutboundAccepted` fires (one canonical `MESSAGE_SENT`).
+
+When dispatch was ambiguous and provider evidence arrives later, `WhatsAppService.reconcileOutboundProviderResult` (or webhook once `providerMessageId` is known) converges native row to `SENT`/`FAILED` without another send. Canonical reply replay then returns `ACCEPTED`.
+
+**Limitation:** if process crashes after Meta accepts but before `providerMessageId` is persisted locally, webhook correlation requires later evidence that links the `wamid` to the native row (manual/ops reconciliation path). Automatic unsafe resend is still forbidden.
 
 ## 9c. Channel preflight (before ownership mutation)
 
@@ -173,6 +233,15 @@ Integration tests (`communication-reply.postgres.integration.spec.ts`) verify:
 - UNKNOWN persists as UNKNOWN not FAILED
 - Crash-after-acceptance reconciliation
 - Claim+send concurrency race
+
+Integration tests (`whatsapp-dispatch.postgres.integration.spec.ts`) verify dispatch crash window:
+
+- Conditional dispatch claim (`updateMany` count=1) — parallel recovery → one provider call
+- No redispatch after `providerDispatchStartedAt` without definitive provider result
+- Safe resume before dispatch marker (crash before claim)
+- Crash after provider accept before local persist → no redispatch on retry
+- Reconcile to `SENT` after provider evidence → no second dispatch
+- Ambiguous transport sets `DISPATCH_UNCERTAIN` after dispatch claim
 
 ## 19. Known limitations
 
