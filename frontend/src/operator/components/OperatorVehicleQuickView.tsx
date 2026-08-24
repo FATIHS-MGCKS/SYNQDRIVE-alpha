@@ -3,12 +3,7 @@ import { formatDamageType } from '../../rental/lib/damage.types';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
 import { useOperatorDamageCapture } from '../damages/OperatorDamageCaptureProvider';
 import { useOperatorVehicleQuickViewData } from '../hooks/useOperatorVehicleQuickViewData';
-import {
-  formatModuleRow,
-  formatOperatorDateTime,
-  HEALTH_MODULE_LABELS,
-  RENTAL_HEALTH_STATE_LABELS,
-} from '../lib/operatorVehicleQuickView.utils';
+import { formatOperatorDateTime } from '../lib/operatorVehicleQuickView.utils';
 import {
   tireDefaultAssumptionWarning,
   tireLowestTreadLabel,
@@ -17,6 +12,7 @@ import {
 } from '../../rental/lib/tire-health-detail-ui';
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import { OperatorVehicleQuickViewBookingContext } from './OperatorVehicleQuickViewBookingContext';
+import { OperatorVehicleQuickViewRentalHealth } from './OperatorVehicleQuickViewRentalHealth';
 import { OperatorGlassCard } from './OperatorGlassCard';
 import { OperatorVehicleQuickViewHeader } from './OperatorVehicleQuickViewHeader';
 import { OperatorVehicleQuickViewQuickActions } from './OperatorVehicleQuickViewQuickActions';
@@ -146,40 +142,10 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
         </SectionCard>
       )}
 
-      {/* Rental health modules */}
-      <SectionCard title="Rental Health">
-        {data.healthLoading ? (
-          <SkeletonRows rows={4} />
-        ) : !data.health ? (
-          <p className="text-sm text-muted-foreground">Status nicht verfügbar.</p>
-        ) : (
-          <div className="space-y-2">
-            {(Object.keys(HEALTH_MODULE_LABELS) as Array<keyof typeof HEALTH_MODULE_LABELS>).map(
-              (key) => {
-                const mod = data.health!.modules[key];
-                const row = formatModuleRow(mod);
-                return (
-                  <div
-                    key={key}
-                    className="flex items-start justify-between gap-2 rounded-xl border border-border/40 bg-muted/20 px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-foreground">
-                        {HEALTH_MODULE_LABELS[key]}
-                      </p>
-                      <p className="truncate text-[11px] text-muted-foreground">{row.reason}</p>
-                    </div>
-                    <StatusChip tone={row.tone} className="shrink-0">
-                      {row.stateLabel}
-                      {row.stale ? ' · stale' : ''}
-                    </StatusChip>
-                  </div>
-                );
-              },
-            )}
-          </div>
-        )}
-      </SectionCard>
+      <OperatorVehicleQuickViewRentalHealth
+        health={data.health}
+        healthLoading={data.healthLoading}
+      />
 
       {/* Damages */}
       <SectionCard title="Aktive Schäden">

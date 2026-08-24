@@ -386,6 +386,11 @@ const P231_ENFORCE_CLEAN_EXACT = [
   'operator/lib/operator-vehicle-quick-view-i18n.ts',
 ];
 
+const P232_ENFORCE_CLEAN_EXACT = [
+  'operator/components/OperatorVehicleQuickViewRentalHealth.tsx',
+  'operator/lib/operator-vehicle-quick-view-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -508,6 +513,10 @@ function isP230EnforceCleanPath(relPath: string): boolean {
 
 function isP231EnforceCleanPath(relPath: string): boolean {
   return P231_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP232EnforceCleanPath(relPath: string): boolean {
+  return P232_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -805,6 +814,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(p231Debt).toHaveLength(0);
   });
 
+  it('scopes P2.2.32 enforce-clean findings to Operator Vehicle Quick View Rental Health Modules only', () => {
+    const p232Debt = inventory.findings.filter((finding) =>
+      isP232EnforceCleanPath(finding.file),
+    );
+    expect(p232Debt).toHaveLength(0);
+  });
+
   it('keeps operator-vehicle-quick-view-i18n.ts on canonical translation keys', () => {
     const source = readFileSync(
       join(__dirname, '../operator/lib/operator-vehicle-quick-view-i18n.ts'),
@@ -871,6 +887,23 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(source).not.toMatch(/'Rückgabe heute'/);
     expect(source).not.toMatch(/'Aktive Buchung'/);
     expect(source).not.toMatch(/'Nächste Reservierung'/);
+    expect(source).not.toMatch(/locale:\s*'de'/);
+    expect(source).not.toMatch(/de-DE/);
+  });
+
+  it('keeps OperatorVehicleQuickViewRentalHealth.tsx free of hardcoded rental health presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/components/OperatorVehicleQuickViewRentalHealth.tsx'),
+      'utf8',
+    );
+    expect(source).toContain('operatorVehicleQuickViewRentalHealthSectionTitle');
+    expect(source).toContain('operatorVehicleQuickViewRentalHealthModuleLabel');
+    expect(source).toContain('operatorVehicleQuickViewRentalHealthModulePresentation');
+    expect(source).not.toMatch(/'Rental Health'/);
+    expect(source).not.toMatch(/'Status nicht verfügbar'/);
+    expect(source).not.toMatch(/'Keine Daten'/);
+    expect(source).not.toMatch(/'Batterie'/);
+    expect(source).not.toMatch(/' · stale'/);
     expect(source).not.toMatch(/locale:\s*'de'/);
     expect(source).not.toMatch(/de-DE/);
   });
