@@ -1,17 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExternalLink, FileText, Loader2, RefreshCw } from 'lucide-react';
 import { StatusChip } from '../../components/patterns';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { api } from '../../lib/api';
 import { resolveDocumentPreviewUrl } from '../../rental/components/customer-detail/customerDetailUtils';
 import type { CustomerDocumentRecord } from '../../rental/components/CustomerDocumentUploadBox';
 import { OperatorGlassCard } from '../components/OperatorGlassCard';
 import {
-  buildOperatorDocumentSlots,
   formatOperatorDocumentMeta,
+  operatorBookingDocumentAvailabilityLabel,
+  operatorBookingDocumentSlotLabel,
+  operatorBookingDocumentsAiUploadSubtitle,
+  operatorBookingDocumentsAiUploadTitle,
+  operatorBookingDocumentsBundleStatusLabel,
+  operatorBookingDocumentsEmptyLabel,
+  operatorBookingDocumentsGroupLabel,
+  operatorBookingDocumentsLoadErrorLabel,
+  operatorBookingDocumentsLoadingLabel,
+  operatorBookingDocumentsMoreGroupLabel,
+  operatorBookingDocumentsOpenLabel,
+  operatorBookingDocumentsReloadLabel,
+  operatorBookingDocumentsSectionTitle,
+  operatorCustomerDocumentTypeLabel,
+} from '../lib/operator-booking-documents-i18n';
+import {
+  buildOperatorDocumentSlots,
   OPERATOR_BOOKING_DOCUMENT_GROUPS,
-  OPERATOR_CUSTOMER_DOCUMENT_LABELS,
-  OPERATOR_DOCUMENT_AVAILABILITY_LABELS,
-  OPERATOR_DOCUMENT_TYPE_LABELS,
   type OperatorDocumentAvailability,
 } from './operatorBookingDocuments.utils';
 import { useOperatorBookingDocuments } from './useOperatorBookingDocuments';
@@ -33,6 +47,7 @@ interface Props {
 }
 
 function useOperatorCustomerDocuments(orgId: string | undefined, customerId: string | undefined) {
+  const { locale } = useLanguage();
   const [documents, setDocuments] = useState<CustomerDocumentRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,12 +63,16 @@ function useOperatorCustomerDocuments(orgId: string | undefined, customerId: str
       const rows = await api.customers.customerDocuments.list(orgId, customerId);
       setDocuments(Array.isArray(rows) ? (rows as unknown as CustomerDocumentRecord[]) : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kundendokumente konnten nicht geladen werden');
+      setError(
+        e instanceof Error
+          ? e.message
+          : operatorBookingDocumentsLoadErrorLabel(locale, 'Kundendokumente konnten nicht geladen werden', 'customer'),
+      );
       setDocuments([]);
     } finally {
       setLoading(false);
     }
-  }, [orgId, customerId]);
+  }, [customerId, locale, orgId]);
 
   useEffect(() => {
     void reload();
@@ -69,6 +88,7 @@ export function OperatorBookingDocumentsPanel({
   onAiUpload,
   compact,
 }: Props) {
+  const { locale } = useLanguage();
   const { view, loading, error, reload } = useOperatorBookingDocuments(orgId, bookingId);
   const customerDocs = useOperatorCustomerDocuments(orgId, customerId);
 
@@ -87,10 +107,15 @@ export function OperatorBookingDocumentsPanel({
     (s) => !OPERATOR_BOOKING_DOCUMENT_GROUPS.some((g) => g.types.includes(s.documentType)),
   );
 
+  const bookingError = operatorBookingDocumentsLoadErrorLabel(locale, error, 'booking');
+  const customerError = operatorBookingDocumentsLoadErrorLabel(locale, customerDocs.error, 'customer');
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase text-muted-foreground">Buchungsdokumente</p>
+        <p className="text-[11px] font-semibold uppercase text-muted-foreground">
+          {operatorBookingDocumentsSectionTitle(locale, 'booking')}
+        </p>
         <button
           type="button"
           disabled={loading || customerDocs.loading || !bookingId}
@@ -102,35 +127,36 @@ export function OperatorBookingDocumentsPanel({
           ) : (
             <RefreshCw className="h-3.5 w-3.5" />
           )}
-          Neu laden
+          {operatorBookingDocumentsReloadLabel(locale)}
         </button>
       </div>
 
       {view?.bundle?.status && (
         <p className="text-xs text-muted-foreground">
-          Paket-Status: <span className="font-semibold text-foreground">{view.bundle.status}</span>
+          {operatorBookingDocumentsBundleStatusLabel(locale)}{' '}
+          <span className="font-semibold text-foreground">{view.bundle.status}</span>
           {view.bundle.lastError && (
             <span className="block text-[color:var(--status-critical)]">{view.bundle.lastError}</span>
           )}
         </p>
       )}
 
-      {error && (
+      {bookingError && (
         <p className="rounded-xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] px-3 py-2 text-xs text-[color:var(--status-critical)]">
-          {error}
+          {bookingError}
         </p>
       )}
 
       {loading && !view && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Dokumente laden…
+          {operatorBookingDocumentsLoadingLabel(locale, 'booking')}
         </div>
       )}
 
       {!loading && slots.length === 0 && !error && (
         <p className="text-sm text-muted-foreground">
-          Keine Buchungsdokumente im Bundle.
+          {operatorBookingDocumentsEmptyLabel(locale, 'booking')}
           {/* Server-side handover protocol document generation runs on handover complete — no frontend PDF. */}
         </p>
       )}
@@ -141,17 +167,18 @@ export function OperatorBookingDocumentsPanel({
           .filter((s): s is NonNullable<typeof s> => Boolean(s));
         if (groupSlots.length === 0) return null;
         return (
-          <div key={group.groupLabel} className="space-y-2">
+          <div key={group.groupKey} className="space-y-2">
             {!compact && (
               <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                {group.groupLabel}
+                {operatorBookingDocumentsGroupLabel(locale, group.groupKey)}
               </p>
             )}
             {groupSlots.map((slot) => (
               <DocumentCard
                 key={slot.documentType}
-                label={OPERATOR_DOCUMENT_TYPE_LABELS[slot.documentType] ?? slot.label}
-                meta={slot.doc ? formatOperatorDocumentMeta(slot.doc) : undefined}
+                locale={locale}
+                label={operatorBookingDocumentSlotLabel(locale, slot.documentType, slot.dynamicTitle)}
+                meta={slot.doc ? formatOperatorDocumentMeta(locale, slot.doc) : undefined}
                 availability={slot.availability}
                 onOpen={slot.doc && orgId ? () => void api.documents.open(orgId, slot.doc!.id) : undefined}
               />
@@ -162,12 +189,15 @@ export function OperatorBookingDocumentsPanel({
 
       {extraSlots.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Weitere</p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            {operatorBookingDocumentsMoreGroupLabel(locale)}
+          </p>
           {extraSlots.map((slot) => (
             <DocumentCard
               key={slot.documentType}
-              label={slot.label}
-              meta={slot.doc ? formatOperatorDocumentMeta(slot.doc) : undefined}
+              locale={locale}
+              label={operatorBookingDocumentSlotLabel(locale, slot.documentType, slot.dynamicTitle)}
+              meta={slot.doc ? formatOperatorDocumentMeta(locale, slot.doc) : undefined}
               availability={slot.availability}
               onOpen={slot.doc && orgId ? () => void api.documents.open(orgId, slot.doc!.id) : undefined}
             />
@@ -178,27 +208,30 @@ export function OperatorBookingDocumentsPanel({
       {customerId && (
         <div className="space-y-2 border-t border-border/50 pt-3">
           <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-            Kundendokumente
+            {operatorBookingDocumentsSectionTitle(locale, 'customer')}
           </p>
-          {customerDocs.error && (
-            <p className="text-xs text-[color:var(--status-critical)]">{customerDocs.error}</p>
+          {customerError && (
+            <p className="text-xs text-[color:var(--status-critical)]">{customerError}</p>
           )}
           {customerDocs.loading && customerDocs.documents.length === 0 && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Kundendokumente laden…
+              {operatorBookingDocumentsLoadingLabel(locale, 'customer')}
             </div>
           )}
           {!customerDocs.loading && customerDocs.documents.length === 0 && !customerDocs.error && (
-            <p className="text-sm text-muted-foreground">Keine Kundendokumente hinterlegt.</p>
+            <p className="text-sm text-muted-foreground">
+              {operatorBookingDocumentsEmptyLabel(locale, 'customer')}
+            </p>
           )}
           {customerDocs.documents.map((doc) => {
             const url = resolveDocumentPreviewUrl(doc.fileKey);
-            const label = OPERATOR_CUSTOMER_DOCUMENT_LABELS[doc.type] ?? doc.type;
+            const label = operatorCustomerDocumentTypeLabel(locale, doc.type);
             const availability: OperatorDocumentAvailability = url ? 'available' : 'missing';
             return (
               <DocumentCard
                 key={doc.id}
+                locale={locale}
                 label={label}
                 meta={doc.status}
                 availability={availability}
@@ -223,9 +256,11 @@ export function OperatorBookingDocumentsPanel({
         >
           <FileText className="h-5 w-5 shrink-0 text-[color:var(--brand-ink)]" />
           <span>
-            <span className="block text-sm font-semibold">Dokument/Beleg per AI Upload hochladen</span>
+            <span className="block text-sm font-semibold">
+              {operatorBookingDocumentsAiUploadTitle(locale)}
+            </span>
             <span className="text-[11px] text-muted-foreground">
-              Extraktion & Übernahme erst nach Bestätigung
+              {operatorBookingDocumentsAiUploadSubtitle(locale)}
             </span>
           </span>
         </button>
@@ -235,11 +270,13 @@ export function OperatorBookingDocumentsPanel({
 }
 
 function DocumentCard({
+  locale,
   label,
   meta,
   availability,
   onOpen,
 }: {
+  locale: string;
   label: string;
   meta?: string;
   availability: OperatorDocumentAvailability;
@@ -252,7 +289,7 @@ function DocumentCard({
         <p className="text-sm font-semibold text-foreground">{label}</p>
         {meta && <p className="truncate text-[11px] text-muted-foreground">{meta}</p>}
         <StatusChip tone={availabilityTone(availability)} className="mt-1.5">
-          {OPERATOR_DOCUMENT_AVAILABILITY_LABELS[availability]}
+          {operatorBookingDocumentAvailabilityLabel(locale, availability)}
         </StatusChip>
       </div>
       {onOpen ? (
@@ -262,7 +299,7 @@ function DocumentCard({
           className="sq-press flex min-h-[44px] min-w-[72px] flex-col items-center justify-center rounded-xl border border-border bg-popover px-2 text-[10px] font-semibold"
         >
           <ExternalLink className="mb-0.5 h-4 w-4" />
-          Öffnen
+          {operatorBookingDocumentsOpenLabel(locale)}
         </button>
       ) : null}
     </OperatorGlassCard>
