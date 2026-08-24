@@ -1,5 +1,5 @@
 /**
- * Operator Vehicle Quick View presentation adapter (P2.2.27 QV-G tasks + P2.2.28 header + P2.2.29 quick actions + P2.2.30 tool actions + P2.2.31 booking context + P2.2.32 rental health modules + P2.2.33 active damages).
+ * Operator Vehicle Quick View presentation adapter (P2.2.27 QV-G tasks + P2.2.28 header + P2.2.29 quick actions + P2.2.30 tool actions + P2.2.31 booking context + P2.2.32 rental health modules + P2.2.33 active damages + P2.2.34 tire profile).
  * Machine status/task values stay unchanged; presentation maps to TranslationKey only.
  */
 import type {
@@ -7,8 +7,15 @@ import type {
   ApiTaskStatus,
   RentalHealthModule,
   RentalHealthState,
+  TireHealthSummaryResponse,
   VehicleHealthResponse,
 } from '../../lib/api';
+import {
+  tireLowestTreadLabel,
+  tireRemainingKmLabel,
+  tireUiStatusLabel,
+  type TireUiLocale,
+} from '../../rental/lib/tire-health-detail-ui';
 import type { DamageRentalImpact, DamageResponse } from '../../rental/lib/damage.types';
 import {
   operatorDamageCaptureDamageTypeLabel,
@@ -363,4 +370,95 @@ export function operatorVehicleQuickViewActiveDamagesRowTitle(
     operatorVehicleQuickViewActiveDamagesTypeLabel(locale, damage.damageType),
     operatorVehicleQuickViewActiveDamagesSeverityLabel(locale, damage.severity),
   ].join(operatorVehicleQuickViewActiveDamagesRowSeparator(locale));
+}
+
+const TIRE_DISPLAY_MODE_KEYS = {
+  MEASURED: 'operator.vehicleQuickView.tire.displayMode.MEASURED',
+  ESTIMATED: 'operator.vehicleQuickView.tire.displayMode.ESTIMATED',
+  UNKNOWN: 'operator.vehicleQuickView.tire.displayMode.UNKNOWN',
+} as const satisfies Record<string, TranslationKey>;
+
+const TIRE_MEASUREMENT_STATE_KEYS = {
+  measured: 'operator.vehicleQuickView.tire.measurementState.measured',
+  estimated: 'operator.vehicleQuickView.tire.measurementState.estimated',
+  mixed: 'operator.vehicleQuickView.tire.measurementState.mixed',
+} as const satisfies Record<string, TranslationKey>;
+
+function operatorVehicleQuickViewTireUiLocale(locale: string): TireUiLocale {
+  return resolveOperatorVehicleQuickViewOperationalDisplayLocale(locale);
+}
+
+export function operatorVehicleQuickViewTireProfileSectionTitle(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.tire.sectionTitle');
+}
+
+export function operatorVehicleQuickViewTireProfileMeasureActionLabel(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.tire.measureAction');
+}
+
+export function operatorVehicleQuickViewTireProfileEmptyLabel(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.tire.empty');
+}
+
+export function operatorVehicleQuickViewTireProfileLabel(
+  locale: string,
+  field:
+    | 'lastMeasurement'
+    | 'minTread'
+    | 'status'
+    | 'remaining'
+    | 'mode',
+): string {
+  return ovqt(locale, `operator.vehicleQuickView.tire.label.${field}`);
+}
+
+export function operatorVehicleQuickViewTireProfileLastMeasurementLabel(
+  locale: string,
+  tireSummary: TireHealthSummaryResponse,
+): string {
+  return formatOperatorVehicleQuickViewDateTime(
+    locale,
+    tireSummary.lastMeasurementAt ?? tireSummary.latestMeasurementAt,
+  );
+}
+
+export function operatorVehicleQuickViewTireProfileMinTreadLabel(
+  locale: string,
+  tireSummary: TireHealthSummaryResponse,
+): string {
+  return tireLowestTreadLabel(tireSummary, operatorVehicleQuickViewTireUiLocale(locale));
+}
+
+export function operatorVehicleQuickViewTireProfileStatusLabel(
+  locale: string,
+  tireSummary: TireHealthSummaryResponse,
+): string {
+  return tireUiStatusLabel(tireSummary, operatorVehicleQuickViewTireUiLocale(locale));
+}
+
+export function operatorVehicleQuickViewTireProfileRemainingLabel(
+  locale: string,
+  tireSummary: TireHealthSummaryResponse,
+): string {
+  return tireRemainingKmLabel(tireSummary, operatorVehicleQuickViewTireUiLocale(locale));
+}
+
+export function operatorVehicleQuickViewTireProfileModeLabel(
+  locale: string,
+  tireSummary: TireHealthSummaryResponse,
+): string {
+  const displayMode = tireSummary.displayMode;
+  if (displayMode && displayMode in TIRE_DISPLAY_MODE_KEYS) {
+    return ovqt(locale, TIRE_DISPLAY_MODE_KEYS[displayMode as keyof typeof TIRE_DISPLAY_MODE_KEYS]);
+  }
+
+  const measurementState = tireSummary.measurementState;
+  if (measurementState && measurementState in TIRE_MEASUREMENT_STATE_KEYS) {
+    return ovqt(
+      locale,
+      TIRE_MEASUREMENT_STATE_KEYS[measurementState as keyof typeof TIRE_MEASUREMENT_STATE_KEYS],
+    );
+  }
+
+  return '—';
 }

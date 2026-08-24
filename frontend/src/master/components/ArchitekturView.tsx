@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Vehicle Quick View Tire Profile (P2.2.34 — V4.9.961)', icon: Globe,
+    endpoint: 'Operator Vehicle Quick View — Tire Profile presentation slice',
+    service: '**Locale flow:** `useLanguage().locale` → extracted Tire Profile sub-surface; `operator-vehicle-quick-view-i18n.ts` section/labels/mode maps + `formatOperatorVehicleQuickViewDateTime`; threads locale into `tire-health-detail-ui` for status/tread/remaining. **Keys:** +14 EN+DE `operator.vehicleQuickView.tire.*` (8475→8489). **Machine values:** displayMode/measurementState codes, tread mm, position IDs, pressure semantics frozen; `onMeasure` callback frozen. **Guardrails:** P2.2.34 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-vehicle-quick-view-tire-profile-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_TIRE_PROFILE_P2_2_34_2026-08-24.md' },
   { name: 'Platform i18n Operator Vehicle Quick View Active Damages (P2.2.33 — V4.9.960)', icon: Globe,
     endpoint: 'OperatorVehicleQuickView → `OperatorVehicleQuickViewActiveDamages` (section title, damage rows, impact chips).',
     service: '**Locale flow:** `useLanguage().locale` → extracted Active Damages sub-surface; `operator-vehicle-quick-view-i18n.ts` section/empty/separator + reuse `operator.damageCapture.*` for type/severity/impact. **Keys:** +3 EN+DE `operator.vehicleQuickView.damages.*` (8472→8475). **Machine values:** damage IDs, severity/impact codes, `locationLabel`, slice order frozen; no callbacks. **Guardrails:** P2.2.33 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-vehicle-quick-view-active-damages-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

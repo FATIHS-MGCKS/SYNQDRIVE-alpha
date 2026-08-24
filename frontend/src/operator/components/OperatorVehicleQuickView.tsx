@@ -3,16 +3,11 @@ import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
 import { useOperatorDamageCapture } from '../damages/OperatorDamageCaptureProvider';
 import { useOperatorVehicleQuickViewData } from '../hooks/useOperatorVehicleQuickViewData';
 import { formatOperatorDateTime } from '../lib/operatorVehicleQuickView.utils';
-import {
-  tireDefaultAssumptionWarning,
-  tireLowestTreadLabel,
-  tireRemainingKmLabel,
-  tireUiStatusLabel,
-} from '../../rental/lib/tire-health-detail-ui';
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import { OperatorVehicleQuickViewBookingContext } from './OperatorVehicleQuickViewBookingContext';
 import { OperatorVehicleQuickViewActiveDamages } from './OperatorVehicleQuickViewActiveDamages';
 import { OperatorVehicleQuickViewRentalHealth } from './OperatorVehicleQuickViewRentalHealth';
+import { OperatorVehicleQuickViewTireProfile } from './OperatorVehicleQuickViewTireProfile';
 import { OperatorGlassCard } from './OperatorGlassCard';
 import { OperatorVehicleQuickViewHeader } from './OperatorVehicleQuickViewHeader';
 import { OperatorVehicleQuickViewQuickActions } from './OperatorVehicleQuickViewQuickActions';
@@ -174,58 +169,19 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
         }
       />
 
-      {/* Tire */}
-      <SectionCard
-        title="Reifenprofil"
-        action={
-          <button
-            type="button"
-            onClick={() =>
-              openSheet({
-                type: 'tire-measure',
-                vehicleId,
-                vehicleLabel: label,
-                bookingId: data.bookingContext?.bookingId ?? undefined,
-                onSuccess: () => void data.reloadDetails(),
-              })
-            }
-            className="text-xs font-semibold text-[color:var(--brand-ink)]"
-          >
-            Messung eintragen
-          </button>
+      <OperatorVehicleQuickViewTireProfile
+        tireSummary={data.tireSummary}
+        tireLoading={data.tireLoading}
+        onMeasure={() =>
+          openSheet({
+            type: 'tire-measure',
+            vehicleId,
+            vehicleLabel: label,
+            bookingId: data.bookingContext?.bookingId ?? undefined,
+            onSuccess: () => void data.reloadDetails(),
+          })
         }
-      >
-        {data.tireLoading ? (
-          <SkeletonRows rows={1} />
-        ) : !data.tireSummary ? (
-          <p className="text-sm text-muted-foreground">Keine Reifendaten.</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <InfoTile
-              label="Letzte Messung"
-              value={formatOperatorDateTime(
-                data.tireSummary.lastMeasurementAt ?? data.tireSummary.latestMeasurementAt,
-              )}
-            />
-            <InfoTile
-              label="Profil (min.)"
-              value={tireLowestTreadLabel(data.tireSummary)}
-            />
-            <InfoTile
-              label="Status"
-              value={tireUiStatusLabel(data.tireSummary)}
-            />
-            <InfoTile
-              label="Restlaufzeit"
-              value={tireRemainingKmLabel(data.tireSummary)}
-            />
-            <InfoTile
-              label="Modus"
-              value={data.tireSummary.displayMode ?? data.tireSummary.measurementState ?? '—'}
-            />
-          </div>
-        )}
-      </SectionCard>
+      />
 
       {/* Documents */}
       {(data.documentsLoading || data.documents.length > 0) && (
@@ -286,15 +242,6 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
           })
         }
       />
-    </div>
-  );
-}
-
-function InfoTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-border/50 bg-muted/20 px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{label}</p>
-      <p className="mt-0.5 font-medium text-foreground">{value}</p>
     </div>
   );
 }
