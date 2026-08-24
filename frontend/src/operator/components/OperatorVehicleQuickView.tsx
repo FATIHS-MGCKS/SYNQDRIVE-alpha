@@ -1,5 +1,4 @@
-import { SkeletonRows, StatusChip } from '../../components/patterns';
-import { formatDamageType } from '../../rental/lib/damage.types';
+import { SkeletonRows } from '../../components/patterns';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
 import { useOperatorDamageCapture } from '../damages/OperatorDamageCaptureProvider';
 import { useOperatorVehicleQuickViewData } from '../hooks/useOperatorVehicleQuickViewData';
@@ -12,6 +11,7 @@ import {
 } from '../../rental/lib/tire-health-detail-ui';
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import { OperatorVehicleQuickViewBookingContext } from './OperatorVehicleQuickViewBookingContext';
+import { OperatorVehicleQuickViewActiveDamages } from './OperatorVehicleQuickViewActiveDamages';
 import { OperatorVehicleQuickViewRentalHealth } from './OperatorVehicleQuickViewRentalHealth';
 import { OperatorGlassCard } from './OperatorGlassCard';
 import { OperatorVehicleQuickViewHeader } from './OperatorVehicleQuickViewHeader';
@@ -147,32 +147,10 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
         healthLoading={data.healthLoading}
       />
 
-      {/* Damages */}
-      <SectionCard title="Aktive Schäden">
-        {data.damagesLoading ? (
-          <SkeletonRows rows={2} />
-        ) : data.damages.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Keine aktiven Schäden.</p>
-        ) : (
-          <div className="space-y-2">
-            {data.damages.slice(0, 5).map((d) => (
-              <div key={d.id} className="rounded-xl border border-border/50 px-3 py-2">
-                <p className="text-sm font-semibold">
-                  {formatDamageType(d.damageType)} · {d.severity}
-                </p>
-                {d.locationLabel && (
-                  <p className="text-xs text-muted-foreground">{d.locationLabel}</p>
-                )}
-                {d.rentalImpact && d.rentalImpact !== 'NONE' && (
-                  <StatusChip tone="watch" className="mt-1">
-                    {d.rentalImpact}
-                  </StatusChip>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </SectionCard>
+      <OperatorVehicleQuickViewActiveDamages
+        damages={data.damages}
+        damagesLoading={data.damagesLoading}
+      />
 
       <OperatorVehicleQuickViewTasks
         tasks={data.allOpenTasks}

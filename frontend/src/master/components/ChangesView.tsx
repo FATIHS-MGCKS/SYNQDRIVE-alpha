@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-vehicle-quick-view-active-damages-p2-2-33-2026-08-24',
+    version: '4.9.960',
+    title: 'Platform i18n — P2.2.33 Operator Vehicle Quick View Active Damages localization',
+    summary: [
+      'Localized Operator Vehicle Quick View active damages via extracted `OperatorVehicleQuickViewActiveDamages.tsx` and extended `operator-vehicle-quick-view-i18n.ts`.',
+      'P233 enforce-clean exact scope (2 paths) reports 0 findings; +3 EN+DE keys under `operator.vehicleQuickView.damages.*` (8472→8475); reuses `operator.damageCapture.*` for type/severity/impact.',
+      'Presentation-only — damage IDs, machine severity/impact codes, `locationLabel`, order, slice limit unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.33 post-P232 pre-flight (PR #1241) selected Active Damages as the next bounded Vehicle Quick View slice.',
+    previousBehavior:
+      'Active damages section used fixed German title/empty strings and raw `formatDamageType`/severity/impact codes inline in `OperatorVehicleQuickView.tsx`.',
+    details:
+      'operator/components/OperatorVehicleQuickViewActiveDamages.tsx; operator/lib/operator-vehicle-quick-view-i18n.ts; OperatorVehicleQuickView.tsx (wiring); i18n/translations/operator.vehicleQuickView.damages.{en,de}.ts; operator-vehicle-quick-view-active-damages-localization.test.tsx; P233_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_ACTIVE_DAMAGES_P2_2_33_2026-08-24.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-24T15:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-vehicle-quick-view-rental-health-modules-p2-2-32-2026-08-24',
     version: '4.9.959',
     title: 'Platform i18n — P2.2.32 Operator Vehicle Quick View Rental Health Modules localization',

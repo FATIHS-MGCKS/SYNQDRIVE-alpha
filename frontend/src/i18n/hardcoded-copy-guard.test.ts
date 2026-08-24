@@ -391,6 +391,11 @@ const P232_ENFORCE_CLEAN_EXACT = [
   'operator/lib/operator-vehicle-quick-view-i18n.ts',
 ];
 
+const P233_ENFORCE_CLEAN_EXACT = [
+  'operator/components/OperatorVehicleQuickViewActiveDamages.tsx',
+  'operator/lib/operator-vehicle-quick-view-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -517,6 +522,10 @@ function isP231EnforceCleanPath(relPath: string): boolean {
 
 function isP232EnforceCleanPath(relPath: string): boolean {
   return P232_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP233EnforceCleanPath(relPath: string): boolean {
+  return P233_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -821,6 +830,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(p232Debt).toHaveLength(0);
   });
 
+  it('scopes P2.2.33 enforce-clean findings to Operator Vehicle Quick View Active Damages only', () => {
+    const p233Debt = inventory.findings.filter((finding) =>
+      isP233EnforceCleanPath(finding.file),
+    );
+    expect(p233Debt).toHaveLength(0);
+  });
+
   it('keeps operator-vehicle-quick-view-i18n.ts on canonical translation keys', () => {
     const source = readFileSync(
       join(__dirname, '../operator/lib/operator-vehicle-quick-view-i18n.ts'),
@@ -904,6 +920,21 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(source).not.toMatch(/'Keine Daten'/);
     expect(source).not.toMatch(/'Batterie'/);
     expect(source).not.toMatch(/' · stale'/);
+    expect(source).not.toMatch(/locale:\s*'de'/);
+    expect(source).not.toMatch(/de-DE/);
+  });
+
+  it('keeps OperatorVehicleQuickViewActiveDamages.tsx free of hardcoded active damages presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/components/OperatorVehicleQuickViewActiveDamages.tsx'),
+      'utf8',
+    );
+    expect(source).toContain('operatorVehicleQuickViewActiveDamagesSectionTitle');
+    expect(source).toContain('operatorVehicleQuickViewActiveDamagesRowTitle');
+    expect(source).toContain('operatorVehicleQuickViewActiveDamagesImpactLabel');
+    expect(source).not.toMatch(/'Aktive Schäden'/);
+    expect(source).not.toMatch(/'Keine aktiven Schäden'/);
+    expect(source).not.toMatch(/formatDamageType/);
     expect(source).not.toMatch(/locale:\s*'de'/);
     expect(source).not.toMatch(/de-DE/);
   });
