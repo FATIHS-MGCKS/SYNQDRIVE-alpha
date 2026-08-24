@@ -9897,6 +9897,8 @@ export interface FleetDeviceConnectionDto {
   openUnpluggedEpisode: boolean;
   openUnpluggedSince: string | null;
   openUnpluggedDurationMs: number | null;
+  interruptionKnowledge?: 'known_none' | 'active' | 'unknown';
+  interruptionKnowledgeReason?: string;
   severity: DeviceConnectionSeverity | null;
   rentalRelevant: boolean;
   duringActiveBooking: boolean;
@@ -9955,6 +9957,9 @@ export interface DeviceConnectionSummary {
   pluggedCount24h: number;
   pluggedCount7d: number;
   recentEvents: DeviceConnectionEventView[];
+  /** Epistemic interruption state — additive; do not infer from `!openUnpluggedEpisode` alone. */
+  interruptionKnowledge?: 'known_none' | 'active' | 'unknown';
+  interruptionKnowledgeReason?: string;
   rawEvents?: unknown[];
   connectivityRuntime?: VehicleConnectivityRuntimeState;
 }

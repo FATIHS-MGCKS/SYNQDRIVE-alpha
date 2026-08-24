@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-operational-state-p01-provenance-2026-08-24',
+    version: '4.9.951',
+    title: 'Vehicle Operational State P0.1 — provenance & episode lifecycle verification',
+    summary: [
+      'Production episode table empty root cause classified HISTORICAL_ONLY: pre-episode unplug events + intentional no-backfill policy; 0 lifecycle audits.',
+      'Normative provenance contract for configuredOperationalStatus, telemetryFreshness, providerLinkState, interruptionKnowledge, healthAggregate, rentalReadiness.',
+      'Additive interruptionKnowledge (known_none | active | unknown) on device-connection read model — null open episode no longer implies known none.',
+      'Fleet health display: legacy Vehicle.healthStatus fallback contained when rentalHealth present.',
+      'Regression tests lock separation of operational status vs telemetry freshness, provider link vs connectivity, webhook config vs device connection.',
+    ],
+    reason: 'Establish canonical provenance boundaries before P0.2 effective availability projection; verify production episode lifecycle without changing operator semantics.',
+    previousBehavior: 'openUnpluggedEpisode=false rendered as “Keine offene Unterbrechung”; fleet health could fall back to stale Vehicle.healthStatus when rentalHealth present.',
+    details: 'docs/audits/vehicle-operational-state-p01-provenance-2026-08.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-24T22:30:00.000Z',
+  },
+  {
     id: 'communication-center-c13-6-final-production-cutover-proof-2026-08-24',
     version: '4.9.950',
     title: 'Communication Center C13.6 — final production cutover proof',

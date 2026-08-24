@@ -4,6 +4,17 @@ import {
   WebhookConfigurationStateEnum,
   type DeviceConnectionWebhookConfigurationView,
 } from './device-connection-webhook-configuration/device-connection-webhook-configuration.types';
+import {
+  deriveInterruptionKnowledge,
+  type InterruptionKnowledge,
+  type InterruptionKnowledgeReason,
+} from './interruption-knowledge';
+
+export type {
+  InterruptionKnowledge,
+  InterruptionKnowledgeReason,
+} from './interruption-knowledge';
+export { deriveInterruptionKnowledge } from './interruption-knowledge';
 
 /** Short plug webhooks after unplug are often contact flutter — ignore unless DIMO confirms reconnect. */
 export const DEVICE_CONNECTION_PLUG_IMPULSE_WINDOW_MS = 120_000;
@@ -206,6 +217,9 @@ export interface DeviceConnectionSummary {
   pluggedCount24h: number;
   pluggedCount7d: number;
   recentEvents: DeviceConnectionEventView[];
+  /** Epistemic interruption state — do not infer from `!openUnpluggedEpisode` alone. */
+  interruptionKnowledge: InterruptionKnowledge;
+  interruptionKnowledgeReason: InterruptionKnowledgeReason;
 }
 
 export interface BuildDeviceConnectionSummaryInput {
@@ -440,6 +454,19 @@ export function buildDeviceConnectionSummary(
       ? true
       : recentEvents.some((e) => e.rentalRelevant);
 
+  const hasUnplugEvents = sorted.some(
+    (e) => e.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+  );
+  const obdSnapshotUnplugged = connectivityIndicatesUnplugged(connectivityAnchor);
+  const interruption = deriveInterruptionKnowledge({
+    lteR1Capable: isLteR1Hardware(hardwareType),
+    dimoLinked,
+    usePersistedEpisodeScope: usePersistedEpisode,
+    openUnpluggedEpisode,
+    hasUnplugEvents,
+    obdSnapshotUnplugged,
+  });
+
   return {
     lteR1Capable: isLteR1Hardware(hardwareType),
     dimoLinked,
@@ -460,6 +487,8 @@ export function buildDeviceConnectionSummary(
     pluggedCount24h,
     pluggedCount7d,
     recentEvents,
+    interruptionKnowledge: interruption.knowledge,
+    interruptionKnowledgeReason: interruption.reason,
   };
 }
 
@@ -534,6 +563,8 @@ export function buildFleetDeviceConnectionFields(
   openUnpluggedEpisode: boolean;
   openUnpluggedSince: string | null;
   openUnpluggedDurationMs: number | null;
+  interruptionKnowledge: InterruptionKnowledge;
+  interruptionKnowledgeReason: InterruptionKnowledgeReason;
   severity: DeviceConnectionSeverity | null;
   rentalRelevant: boolean;
   duringActiveBooking: boolean;
@@ -551,6 +582,8 @@ export function buildFleetDeviceConnectionFields(
     openUnpluggedEpisode: summary.openUnpluggedEpisode,
     openUnpluggedSince: summary.openUnpluggedSince,
     openUnpluggedDurationMs: summary.openUnpluggedDurationMs,
+    interruptionKnowledge: summary.interruptionKnowledge,
+    interruptionKnowledgeReason: summary.interruptionKnowledgeReason,
     severity: summary.severity,
     rentalRelevant: summary.rentalRelevant,
     duringActiveBooking:
