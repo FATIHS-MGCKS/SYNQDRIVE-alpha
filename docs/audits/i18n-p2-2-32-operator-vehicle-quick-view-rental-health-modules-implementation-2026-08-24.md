@@ -1,7 +1,7 @@
 # P2.2.32 — Operator Vehicle Quick View Rental Health Modules Implementation Audit
 
-**Date:** 2026-08-24  
-**Authoritative baseline:** `73cfb5a40db747ca2650a2f9221341e2778ef600`  
+**Date:** 2026-08-24
+**Authoritative baseline:** `73cfb5a40db747ca2650a2f9221341e2778ef600`
 **Pre-flight:** PR #1237 (A — GO)
 
 ## Topology
@@ -48,7 +48,7 @@ Not in scope:
 
 ## Adapter strategy
 
-EXTEND EXISTING ADAPTER — `operator-vehicle-quick-view-i18n.ts`  
+EXTEND EXISTING ADAPTER — `operator-vehicle-quick-view-i18n.ts`
 Classification: CANONICAL (presentation maps only; `moduleTone` imported for tone passthrough)
 
 ## Category E

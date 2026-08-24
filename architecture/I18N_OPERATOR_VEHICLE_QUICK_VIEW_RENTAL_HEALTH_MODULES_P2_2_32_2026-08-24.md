@@ -1,7 +1,7 @@
 # P2.2.32 — Operator Vehicle Quick View Rental Health Modules Localization
 
-**Date:** 2026-08-24  
-**Baseline:** `73cfb5a40db747ca2650a2f9221341e2778ef600` (PR #1234 / P2.2.31)  
+**Date:** 2026-08-24
+**Baseline:** `73cfb5a40db747ca2650a2f9221341e2778ef600` (PR #1234 / P2.2.31)
 **Pre-flight:** PR #1237 (verdict A)
 
 ## Scope (Rental Health Modules only)
