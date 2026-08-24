@@ -1163,6 +1163,18 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center — Production Activation Runbook (V4.9.951)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-warning)]',
+    apis: [
+      { label: 'Gate', detail: 'Post-C13.6 activation: env verify + controlled smoke + retention acceptance → PRODUCTION_VERIFIED' },
+      { label: 'Prod evidence', detail: '2026-08-24 VPS: health/DB/Redis/Swagger PASS; WA NOT_CONFIGURED (simulate); manual smoke REQUIRED' },
+      { label: 'Telemetry', detail: 'Deprecated HTTP OBSERVED_ZERO (nginx sample); OBSERVATION_STARTED 2026-08-24' },
+      { label: 'Verdict', detail: 'PRODUCTION ACTIVATION — CONDITIONAL GO; PRODUCTION_VERIFIED=NO until operator checklist complete' },
+      { label: 'Doc', detail: 'architecture/COMMUNICATION_CENTER_PRODUCTION_ACTIVATION_RUNBOOK_2026_08.md' },
+    ],
+  },
+  {
     name: 'Communication Center C13.6 — Final Production Cutover Proof (V4.9.950)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-positive)]',
