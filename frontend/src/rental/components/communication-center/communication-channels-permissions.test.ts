@@ -20,6 +20,13 @@ describe('communication-channels-permissions', () => {
     expect(canAccessCommunicationChannels(readOnly)).toBe(true);
   });
 
+  it('allows voice-assistant.read users to access channels landing', () => {
+    const voiceReadOnly = (module: string, action: string) =>
+      module === 'voice-assistant' && action === 'read';
+    expect(canAccessCommunicationChannels(voiceReadOnly)).toBe(true);
+    expect(canAccessCommunicationChannelsSection('voice', voiceReadOnly)).toBe(false);
+  });
+
   it('restricts whatsapp channel section to manage permission', () => {
     expect(canAccessCommunicationChannelsSection('whatsapp', readOnly)).toBe(false);
     expect(canAccessCommunicationChannelsSection('whatsapp', manageAll)).toBe(true);

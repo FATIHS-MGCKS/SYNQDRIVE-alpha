@@ -109,18 +109,34 @@ Historical default for bare `/ai-voice-assistant` is **overview** (configuration
 
 ## 7. Query / filter mapping
 
-Allowlisted legacy params:
+**Runtime enforcement (C13.3 hardening):**
+
+1. `resolveLegacyCommunicationRoute` parses only **allowlisted** legacy params via `sanitizeLegacyCommunicationParams` before mapping.
+2. `applyResolvedLegacyCommunicationRoute` writes canonical URLs with `syncCommunicationCenterStateToUrl(..., { resetQuery: true })`, rebuilding the query from resolver output only — **no merge** with the legacy query string.
+3. URL **hash** is cleared on legacy redirect (rental SPA does not use hash routing for Communication views).
+
+Allowlisted legacy params (input only):
 
 - WhatsApp: `view`, `tab`, `whatsappTab`, `conversationId`, `search`, `filter`
 - Voice: `view`, `voiceOpsTab`, `voiceWizardStep`, `voiceSettingsSection`, `conversationId`
 
-Dropped: provider tokens, phone numbers, debug payloads, unknown keys.
+Stripped from final canonical URL (never forwarded):
+
+- Legacy keys: `tab`, `whatsappTab`, `filter`, `search`, `voiceOpsTab`, `voiceWizardStep`, `voiceSettingsSection`
+- Sensitive/unknown: `token`, `accessToken`, `providerToken`, `phone`, `email`, `debug`, `payload`, `webhook`, `secret`, `code`, `state`
+- Unrelated app params on legacy URLs (e.g. `settingsTab`) are **not** preserved — legacy Communication redirects are a clean canonical rewrite.
+
+Mapped to canonical inbox filters: `filter=unread` → `communicationUnread=true`, `search` → `communicationSearch`, etc.
 
 ---
 
 ## 8. RBAC
 
-Redirects do not bypass permissions. Users without `communication.read` hitting legacy operational routes land on CC and receive existing unauthorized UX. Specialized Voice manage routes remain gated by embedded `VoiceAssistantView` / channel permissions.
+Redirects do not bypass permissions. Users without `communication.read` or `voice-assistant.read` hitting legacy operational routes land on CC access-denied UX.
+
+**Navigation visibility (C13.3 hardening):** Sidebar Communication Center entry is shown when `communication.read` **or** `voice-assistant.read` (matches former `hasVoiceNavigationAccess` specialized admins). Channels tab access uses the same union at the Channels gate; per-section manage permissions unchanged (Voice section still requires `voice-assistant.write`).
+
+**UUID deep links:** Syntax validation (`isUuidLike`) does **not** prove tenant ownership. Canonical conversation detail API remains authoritative and returns not-found/forbidden for cross-tenant UUIDs (C9/C11 regression coverage).
 
 ---
 
@@ -139,7 +155,7 @@ Redirects use active org from `RentalContext`; no stale org IDs encoded in URLs.
 
 ## 11. Mobile / desktop nav
 
-- Single **Communication Center** nav item (`nav.communicationCenter`) when `communication.read`.
+- Single **Communication Center** nav item (`nav.communicationCenter`) when `communication.read` **or** `voice-assistant.read`.
 - Legacy WhatsApp/Voice top-level nav buttons removed from expanded and collapsed sidebars.
 - Mobile hamburger uses same `renderNavigationContent` — no duplicate operational entries.
 
@@ -151,7 +167,7 @@ Redirects use active org from `RentalContext`; no stale org IDs encoded in URLs.
 
 - `resolveLegacyCommunicationRoute(search)` — pure mapping
 - `redirectLegacyCommunicationRoute(search, { replace })` — apply + return
-- `applyResolvedLegacyCommunicationRoute(resolved, { replace })` — URL write
+- `applyResolvedLegacyCommunicationRoute(resolved, { replace })` — canonical URL write with `resetQuery: true`
 
 **App wiring:** `frontend/src/rental/App.tsx`
 
@@ -195,7 +211,7 @@ Legacy `view=whatsapp-business` and `view=ai-voice-assistant` remain parseable t
 
 | Test file | Coverage |
 |-----------|----------|
-| `legacy-communication-navigation.test.ts` | WhatsApp/Voice matrix, UUID policy, allowlist, replaceState |
+| `legacy-communication-navigation.test.ts` | WhatsApp/Voice matrix, UUID policy, **runtime redirect sanitization** (sensitive params), replaceState, wizard metadata |
 | `communication-center-navigation.test.ts` | New URL params |
 | Existing notification/dashboard tests | Regression (pre-canonical) |
 

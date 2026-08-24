@@ -73,4 +73,18 @@ describe('CommunicationCenterView RBAC', () => {
 
     expect(container.querySelector('[data-testid="communication-center-view"]')).not.toBeNull();
   });
+
+  it('renders shell for voice-assistant.read without communication.read', () => {
+    mockUseRentalOrg.mockReturnValue({
+      orgId: 'org-1',
+      hasPermission: (module: string, level: string) =>
+        module === 'voice-assistant' && level === 'read',
+      userRole: 'ORG_ADMIN',
+      loading: false,
+    });
+
+    renderView();
+
+    expect(container.querySelector('[data-testid="communication-center-view"]')).not.toBeNull();
+  });
 });

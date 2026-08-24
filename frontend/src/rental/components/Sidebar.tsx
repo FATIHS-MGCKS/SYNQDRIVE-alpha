@@ -16,6 +16,7 @@ import {
 import { SynqDriveBrandLogo } from '../../components/brand/SynqDriveBrandLogo';
 import {
   hasCommunicationPermission,
+  hasVoiceAssistantAdminPermission,
 } from '../lib/communication-permissions';
 
 function SynqLogo({ className }: { className?: string }) {
@@ -44,7 +45,9 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
   const canCustomerPayments = hasPermission('payments-connect', 'read');
   const canBillingSubscription = hasPermission('billing', 'read');
   const canRentalRules = hasPermission('rental-rules', 'read');
-  const canCommunication = hasCommunicationPermission(hasPermission, 'read', userRole);
+  const canCommunication =
+    hasCommunicationPermission(hasPermission, 'read', userRole) ||
+    hasVoiceAssistantAdminPermission(hasPermission, 'read', userRole);
   const isFleetActive =
     currentView === 'fleet' ||
     currentView === 'fleet-condition-detail' ||

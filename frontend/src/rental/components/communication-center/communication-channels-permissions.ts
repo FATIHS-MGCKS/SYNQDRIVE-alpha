@@ -1,6 +1,7 @@
 import type { CommunicationChannelsSection } from './communication-center.types';
 import {
   hasCommunicationPermission,
+  hasVoiceAssistantAdminPermission,
 } from '../../lib/communication-permissions';
 import {
   canAccessCommunicationSettings,
@@ -20,7 +21,10 @@ export function canAccessCommunicationChannels(
   hasPermission: HasPermissionFn,
   membershipRole?: string | null,
 ): boolean {
-  return hasCommunicationPermission(hasPermission, 'read', membershipRole);
+  return (
+    hasCommunicationPermission(hasPermission, 'read', membershipRole) ||
+    hasVoiceAssistantAdminPermission(hasPermission, 'read', membershipRole)
+  );
 }
 
 export function canAccessEmailChannelSettings(

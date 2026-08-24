@@ -108,6 +108,7 @@ describe('communication-center-navigation', () => {
       inboxFilters: mergeCommunicationInboxFilters(),
       whatsappChannelSubview: 'overview',
       voiceIntent: null,
+      voiceWizardStep: null,
     });
   });
 

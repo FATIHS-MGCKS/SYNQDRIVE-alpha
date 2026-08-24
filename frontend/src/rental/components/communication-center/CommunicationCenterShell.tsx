@@ -222,6 +222,18 @@ export function CommunicationCenterShell({
     patchState({ whatsappChannelSubview, primaryTab: 'channels', channelsSection: 'whatsapp' });
   }, [patchState]);
 
+  const handleVoiceCanonicalStateChange = useCallback(
+    (partial: Pick<CommunicationCenterUrlState, 'voiceIntent' | 'voiceWizardStep'>) => {
+      patchState({
+        ...partial,
+        primaryTab: 'channels',
+        channelsSection: 'voice',
+        channel: 'voice',
+      });
+    },
+    [patchState],
+  );
+
   const handleOpenConversations = useCallback(
     (channel: 'whatsapp' | 'voice' | 'sms') => {
       setState((current) => {
@@ -416,8 +428,10 @@ export function CommunicationCenterShell({
             enabled={channelsActive}
             whatsappChannelSubview={state.whatsappChannelSubview}
             voiceIntent={state.voiceIntent}
+            voiceWizardStep={state.voiceWizardStep}
             onSectionChange={handleChannelsSectionChange}
             onWhatsappSubviewChange={handleWhatsappSubviewChange}
+            onVoiceCanonicalStateChange={handleVoiceCanonicalStateChange}
             onOpenConversations={handleOpenConversations}
             onOpenVoiceAssistant={(options) => onOpenVoiceAssistant?.(options)}
             onOpenEmailSettings={() => onOpenEmailSettings?.()}

@@ -11,8 +11,12 @@ import { WhatsAppReadinessStrip } from '../whatsapp/WhatsAppReadinessStrip';
 import { buildReadinessChecks } from '../whatsapp/whatsapp.ops';
 import { useWhatsAppBusinessSettings } from '../whatsapp/useWhatsAppBusinessSettings';
 import type { CommunicationChannelsSection, CommunicationVoiceIntent, CommunicationWhatsAppChannelSubview } from './communication-center.types';
+import type { CommunicationCenterUrlState } from './communication-center-navigation';
 import { VoiceAssistantView } from '../VoiceAssistantView';
-import { mapVoiceIntentToAssistantState } from './legacy-communication-navigation';
+import {
+  mapVoiceAssistantStateToCanonicalVoiceIntent,
+  mapVoiceIntentToAssistantState,
+} from './legacy-communication-navigation';
 import { CommunicationChannelsNav } from './CommunicationChannelsNav';
 import { CommunicationChannelsLanding } from './CommunicationChannelsLanding';
 import { CommunicationChannelVoicePane } from './CommunicationChannelVoicePane';
@@ -31,8 +35,12 @@ interface CommunicationChannelsPaneProps {
   enabled?: boolean;
   whatsappChannelSubview?: CommunicationWhatsAppChannelSubview;
   voiceIntent?: CommunicationVoiceIntent | null;
+  voiceWizardStep?: 'tests' | null;
   onSectionChange: (section: CommunicationChannelsSection) => void;
   onWhatsappSubviewChange?: (subview: CommunicationWhatsAppChannelSubview) => void;
+  onVoiceCanonicalStateChange?: (
+    state: Pick<CommunicationCenterUrlState, 'voiceIntent' | 'voiceWizardStep'>,
+  ) => void;
   onOpenConversations: (channel: 'whatsapp' | 'voice' | 'sms') => void;
   onOpenVoiceAssistant: (options: { opsTab: 'overview' | 'settings' | 'analytics' | 'automations'; wizardStep?: 'tests' | null }) => void;
   onOpenEmailSettings: () => void;
@@ -43,8 +51,10 @@ export function CommunicationChannelsPane({
   enabled = true,
   whatsappChannelSubview = 'overview',
   voiceIntent = null,
+  voiceWizardStep = null,
   onSectionChange,
   onWhatsappSubviewChange,
+  onVoiceCanonicalStateChange,
   onOpenConversations,
   onOpenVoiceAssistant,
   onOpenEmailSettings,
@@ -194,7 +204,12 @@ export function CommunicationChannelsPane({
               <VoiceAssistantView
                 isDarkMode={isDarkMode}
                 suppressLegacyUrlSync
-                initialVoiceState={mapVoiceIntentToAssistantState(voiceIntent!)}
+                initialVoiceState={mapVoiceIntentToAssistantState(voiceIntent!, {
+                  wizardStep: voiceWizardStep,
+                })}
+                onCanonicalVoiceStateChange={(next) => {
+                  onVoiceCanonicalStateChange?.(mapVoiceAssistantStateToCanonicalVoiceIntent(next));
+                }}
               />
             </div>
           ) : (

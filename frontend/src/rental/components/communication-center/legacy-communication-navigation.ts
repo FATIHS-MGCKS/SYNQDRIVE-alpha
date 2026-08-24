@@ -69,6 +69,28 @@ const SAFE_VOICE_PARAMS = new Set([
   'conversationId',
 ]);
 
+/** Params stripped from final canonical URLs after legacy redirect. */
+export const LEGACY_COMMUNICATION_QUERY_PARAM_KEYS = [
+  'tab',
+  'whatsappTab',
+  'filter',
+  'search',
+  VOICE_OPS_TAB_PARAM,
+  VOICE_WIZARD_STEP_PARAM,
+  VOICE_SETTINGS_SECTION_PARAM,
+  'token',
+  'accessToken',
+  'providerToken',
+  'phone',
+  'email',
+  'debug',
+  'payload',
+  'webhook',
+  'secret',
+  'code',
+  'state',
+] as const;
+
 function parseSearch(search = ''): URLSearchParams {
   return new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
 }
@@ -164,6 +186,14 @@ function mapVoiceIntentFromLegacy(
   settingsSection: string | null,
   wizardStep: string | null,
 ): CommunicationVoiceIntent {
+  if (
+    wizardStep === 'tests' &&
+    opsTab !== 'analytics' &&
+    opsTab !== 'automations' &&
+    opsTab !== 'conversations'
+  ) {
+    return 'test';
+  }
   if (opsTab === 'conversations') return 'conversations';
   if (opsTab === 'analytics') return 'analytics';
   if (opsTab === 'automations') return 'automations';
@@ -176,6 +206,10 @@ function mapVoiceIntentFromLegacy(
   return 'overview';
 }
 
+function isVoiceSpecializedOpsTab(opsTab: string): boolean {
+  return opsTab === 'analytics' || opsTab === 'automations' || opsTab === 'settings';
+}
+
 function resolveVoiceLegacyRoute(params: URLSearchParams): ResolvedLegacyCommunicationRoute {
   const voiceState = readVoiceAssistantStateFromUrl(`?${params.toString()}`);
   const opsTab = voiceState.opsTab ?? 'overview';
@@ -185,8 +219,14 @@ function resolveVoiceLegacyRoute(params: URLSearchParams): ResolvedLegacyCommuni
     voiceState.wizardStep ?? null,
   );
   const conversationId = params.get('conversationId');
+  const hasExplicitSpecializedTab =
+    isVoiceSpecializedOpsTab(opsTab) ||
+    (opsTab === 'settings' && Boolean(voiceState.settingsSection || voiceState.wizardStep));
 
-  if (intent === 'conversations' || (isUuidLike(conversationId) && opsTab === 'conversations')) {
+  if (
+    intent === 'conversations' ||
+    (isUuidLike(conversationId) && !hasExplicitSpecializedTab)
+  ) {
     return {
       view: COMMUNICATION_CENTER_VIEW,
       routeFamily: 'voice',
@@ -214,6 +254,11 @@ function resolveVoiceLegacyRoute(params: URLSearchParams): ResolvedLegacyCommuni
     };
   }
 
+  const voiceWizardStep =
+    intent === 'test' && voiceState.wizardStep === 'tests' && voiceState.settingsSection !== 'test'
+      ? 'tests'
+      : null;
+
   return {
     view: COMMUNICATION_CENTER_VIEW,
     routeFamily: 'voice',
@@ -223,6 +268,7 @@ function resolveVoiceLegacyRoute(params: URLSearchParams): ResolvedLegacyCommuni
       primaryTab: 'channels',
       channelsSection: 'voice',
       voiceIntent: intent,
+      voiceWizardStep,
       channel: 'voice',
     },
   };
@@ -232,12 +278,30 @@ export function isLegacyCommunicationView(view: string | null | undefined): bool
   return view === LEGACY_WHATSAPP_VIEW || view === LEGACY_VOICE_VIEW;
 }
 
+export function sanitizeLegacyCommunicationParams(
+  routeFamily: LegacyCommunicationRouteFamily,
+  params: URLSearchParams,
+): URLSearchParams {
+  const allowlist = routeFamily === 'whatsapp' ? SAFE_WHATSAPP_PARAMS : SAFE_VOICE_PARAMS;
+  const sanitized = new URLSearchParams();
+  for (const key of allowlist) {
+    const value = params.get(key);
+    if (value != null && value !== '') sanitized.set(key, value);
+  }
+  return sanitized;
+}
+
 export function resolveLegacyCommunicationRoute(
   search = '',
 ): ResolvedLegacyCommunicationRoute | null {
-  const params = parseSearch(search);
-  const view = params.get(COMMUNICATION_VIEW_PARAM);
+  const rawParams = parseSearch(search);
+  const view = rawParams.get(COMMUNICATION_VIEW_PARAM);
   if (!isLegacyCommunicationView(view)) return null;
+
+  const routeFamily: LegacyCommunicationRouteFamily =
+    view === LEGACY_WHATSAPP_VIEW ? 'whatsapp' : 'voice';
+  const params = sanitizeLegacyCommunicationParams(routeFamily, rawParams);
+
   if (view === LEGACY_WHATSAPP_VIEW) return resolveWhatsAppLegacyRoute(params);
   return resolveVoiceLegacyRoute(params);
 }
@@ -251,14 +315,16 @@ export function applyResolvedLegacyCommunicationRoute(
   if (resolved.view === COMMUNICATION_CENTER_VIEW && resolved.communicationCenterState) {
     syncCommunicationCenterStateToUrl(
       mergeCommunicationCenterState(resolved.communicationCenterState),
-      { replace: options?.replace ?? true },
+      { replace: options?.replace ?? true, resetQuery: true },
     );
     return;
   }
 
   const url = new URL(window.location.href);
+  url.search = '';
+  url.hash = '';
   url.searchParams.set(COMMUNICATION_VIEW_PARAM, resolved.view);
-  const next = `${url.pathname}${url.search}${url.hash}`;
+  const next = `${url.pathname}${url.search}`;
   if (options?.replace ?? true) {
     window.history.replaceState({}, '', next);
   } else {
@@ -276,24 +342,17 @@ export function redirectLegacyCommunicationRoute(
   return resolved;
 }
 
-export function sanitizeLegacyCommunicationParams(
-  routeFamily: LegacyCommunicationRouteFamily,
-  params: URLSearchParams,
-): URLSearchParams {
-  const allowlist = routeFamily === 'whatsapp' ? SAFE_WHATSAPP_PARAMS : SAFE_VOICE_PARAMS;
-  const sanitized = new URLSearchParams();
-  for (const key of allowlist) {
-    const value = params.get(key);
-    if (value != null && value !== '') sanitized.set(key, value);
-  }
-  return sanitized;
-}
-
-export function mapVoiceIntentToAssistantState(intent: CommunicationVoiceIntent): {
+export function mapVoiceIntentToAssistantState(
+  intent: CommunicationVoiceIntent,
+  options?: { wizardStep?: 'tests' | null },
+): {
   opsTab: 'overview' | 'settings' | 'analytics' | 'automations' | 'conversations';
   settingsSection?: 'builder' | 'telephony' | 'test' | null;
   wizardStep?: 'tests' | null;
 } {
+  if (intent === 'test' && options?.wizardStep === 'tests') {
+    return { opsTab: 'settings', wizardStep: 'tests', settingsSection: null };
+  }
   switch (intent) {
     case 'conversations':
       return { opsTab: 'conversations' };
@@ -314,6 +373,26 @@ export function mapVoiceIntentToAssistantState(intent: CommunicationVoiceIntent)
   }
 }
 
+export function mapVoiceAssistantStateToCanonicalVoiceIntent(
+  state: {
+    opsTab?: 'overview' | 'settings' | 'analytics' | 'automations' | 'conversations';
+    settingsSection?: 'builder' | 'telephony' | 'test' | null;
+    wizardStep?: string | null;
+  },
+): Pick<CommunicationCenterUrlState, 'voiceIntent' | 'voiceWizardStep'> {
+  const wizardStep = state.wizardStep === 'tests' ? 'tests' : null;
+  const intent = mapVoiceIntentFromLegacy(
+    state.opsTab ?? 'overview',
+    state.settingsSection ?? null,
+    wizardStep,
+  );
+  const voiceWizardStep =
+    intent === 'test' && wizardStep === 'tests' && state.settingsSection !== 'test'
+      ? 'tests'
+      : null;
+  return { voiceIntent: intent, voiceWizardStep };
+}
+
 export function buildCommunicationCenterStateForVoiceIntent(
   options: {
     opsTab: 'overview' | 'settings' | 'analytics' | 'automations' | 'conversations';
@@ -332,10 +411,15 @@ export function buildCommunicationCenterStateForVoiceIntent(
   if (intent === 'conversations') {
     return { primaryTab: 'inbox', channel: 'voice' };
   }
+  const voiceWizardStep =
+    intent === 'test' && options.wizardStep === 'tests' && options.settingsSection !== 'test'
+      ? 'tests'
+      : null;
   return {
     primaryTab: 'channels',
     channelsSection: 'voice',
     voiceIntent: intent,
+    voiceWizardStep,
     channel: 'voice',
   };
 }

@@ -2,7 +2,7 @@ import { Shield } from 'lucide-react';
 import { EmptyState } from '../../../components/patterns';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
-import { hasCommunicationPermission } from '../../lib/communication-permissions';
+import { hasCommunicationPermission, hasVoiceAssistantAdminPermission } from '../../lib/communication-permissions';
 import { CommunicationCenterShell } from './CommunicationCenterShell';
 import type { CommunicationCenterUrlState } from './communication-center-navigation';
 
@@ -24,7 +24,9 @@ export function CommunicationCenterView({
 }: CommunicationCenterViewProps) {
   const { t } = useLanguage();
   const { hasPermission, userRole, loading } = useRentalOrg();
-  const canRead = hasCommunicationPermission(hasPermission, 'read', userRole);
+  const canRead =
+    hasCommunicationPermission(hasPermission, 'read', userRole) ||
+    hasVoiceAssistantAdminPermission(hasPermission, 'read', userRole);
 
   if (loading) {
     return null;
