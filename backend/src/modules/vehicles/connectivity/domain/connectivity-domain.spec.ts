@@ -96,9 +96,10 @@ describe('connectivity domain types', () => {
         'LINK_ACTIVE',
         'STATE_CONFLICT',
         'MANUAL_REVIEW_REQUIRED',
+        'DEVICE_CHECK_REQUIRED',
       ]),
     );
-    expect(CONNECTIVITY_REASON_CODES).toHaveLength(22);
+    expect(CONNECTIVITY_REASON_CODES).toHaveLength(23);
   });
 
   it('stores machine codes only — no user-facing label fields on runtime state', () => {

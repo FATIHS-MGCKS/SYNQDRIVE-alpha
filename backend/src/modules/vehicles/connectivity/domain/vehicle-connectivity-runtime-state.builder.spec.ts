@@ -538,6 +538,11 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
 
   it('explicit plug webhook → PLUGGED_CONFIRMED', () => {
     const state = build({
+      telemetry: {
+        lastTelemetryAt: hoursAgo(4),
+        lastProviderObservedAt: hoursAgo(4),
+        lastReceivedAt: hoursAgo(4),
+      },
       episode: {
         activeEpisodeId: null,
         openUnpluggedEpisode: false,

@@ -3,6 +3,7 @@
  *
  * Rule: persist evidence, derive current state — newest trustworthy evidence wins.
  * - Valid telemetry snapshot = positive connected / communicating evidence
+ * - OBD_DEVICE_PLUGGED_IN event = positive explicit reconnect evidence
  * - OBD_DEVICE_UNPLUGGED event = explicit physical disconnect evidence
  */
 import { classifyTelemetryFreshness, type TelemetryFreshness } from '../../vehicle-state-interpreter';
@@ -12,11 +13,16 @@ import {
   type PhysicalDeviceState as PhysicalDeviceStateType,
 } from './connectivity-domain.types';
 
-export type PhysicalDeviceWinningEvidence = 'snapshot' | 'unplug_event' | 'none';
+export type PhysicalDeviceWinningEvidence =
+  | 'snapshot'
+  | 'plug_event'
+  | 'unplug_event'
+  | 'none';
 
 export interface PhysicalDeviceEvidenceInput {
   latestValidSnapshotAt: Date | string | null;
   latestAcceptedUnplugEventAt: Date | string | null;
+  latestAcceptedPlugEventAt?: Date | string | null;
   /** When false, physical OBD semantics do not apply. */
   physicalObdApplicable: boolean;
   nowMs: number;
@@ -29,6 +35,13 @@ export interface PhysicalDeviceEvidenceResult {
   latestValidSnapshotAt: string | null;
   latestExplicitUnplugAt: string | null;
   telemetryFreshness: TelemetryFreshness;
+}
+
+type EvidenceKind = 'positive_snapshot' | 'positive_plug' | 'negative_unplug';
+
+interface EvidenceCandidate {
+  at: Date;
+  kind: EvidenceKind;
 }
 
 function parseEvidenceAt(value: Date | string | null | undefined): Date | null {
@@ -44,8 +57,26 @@ function toIso(value: Date | null): string | null {
   return value ? value.toISOString() : null;
 }
 
+const EVIDENCE_KIND_PRIORITY: Record<EvidenceKind, number> = {
+  positive_plug: 3,
+  negative_unplug: 2,
+  positive_snapshot: 1,
+};
+
+function newestEvidence(candidates: EvidenceCandidate[]): EvidenceCandidate | null {
+  if (candidates.length === 0) return null;
+  return candidates.reduce((latest, candidate) => {
+    const deltaMs = candidate.at.getTime() - latest.at.getTime();
+    if (deltaMs > 0) return candidate;
+    if (deltaMs < 0) return latest;
+    return EVIDENCE_KIND_PRIORITY[candidate.kind] > EVIDENCE_KIND_PRIORITY[latest.kind]
+      ? candidate
+      : latest;
+  });
+}
+
 /**
- * Derive physical device state from ordered snapshot vs unplug evidence.
+ * Derive physical device state from ordered snapshot, plug, and unplug evidence.
  */
 export function derivePhysicalDeviceEvidence(
   input: PhysicalDeviceEvidenceInput,
@@ -53,6 +84,7 @@ export function derivePhysicalDeviceEvidence(
   const reasonCodes: ConnectivityReasonCode[] = [];
   const snapshotAt = parseEvidenceAt(input.latestValidSnapshotAt);
   const unplugAt = parseEvidenceAt(input.latestAcceptedUnplugEventAt);
+  const plugAt = parseEvidenceAt(input.latestAcceptedPlugEventAt);
   const telemetryFreshness = classifyTelemetryFreshness(snapshotAt, input.nowMs);
 
   if (!input.physicalObdApplicable) {
@@ -66,40 +98,53 @@ export function derivePhysicalDeviceEvidence(
     };
   }
 
-  if (snapshotAt && unplugAt) {
-    if (snapshotAt.getTime() > unplugAt.getTime()) {
-      reasonCodes.push(ConnectivityReasonCode.DEVICE_RECONNECTED_SNAPSHOT);
-      return {
-        physicalDeviceState: PhysicalDeviceState.PLUGGED_INFERRED,
-        reasonCodes,
-        winningEvidence: 'snapshot',
-        latestValidSnapshotAt: toIso(snapshotAt),
-        latestExplicitUnplugAt: toIso(unplugAt),
-        telemetryFreshness,
-      };
-    }
-
-    reasonCodes.push(ConnectivityReasonCode.DEVICE_UNPLUG_WEBHOOK);
-    return {
-      physicalDeviceState: PhysicalDeviceState.UNPLUGGED_CONFIRMED,
-      reasonCodes,
-      winningEvidence: 'unplug_event',
-      latestValidSnapshotAt: toIso(snapshotAt),
-      latestExplicitUnplugAt: toIso(unplugAt),
-      telemetryFreshness,
-    };
+  const candidates: EvidenceCandidate[] = [];
+  const snapshotIsPositive =
+    snapshotAt != null &&
+    (unplugAt != null ||
+      (telemetryFreshness !== 'offline' && telemetryFreshness !== 'no_signal'));
+  if (snapshotAt && snapshotIsPositive) {
+    candidates.push({ at: snapshotAt, kind: 'positive_snapshot' });
   }
+  if (plugAt) candidates.push({ at: plugAt, kind: 'positive_plug' });
+  if (unplugAt) candidates.push({ at: unplugAt, kind: 'negative_unplug' });
 
-  if (unplugAt) {
-    reasonCodes.push(ConnectivityReasonCode.DEVICE_UNPLUG_WEBHOOK);
-    return {
-      physicalDeviceState: PhysicalDeviceState.UNPLUGGED_CONFIRMED,
-      reasonCodes,
-      winningEvidence: 'unplug_event',
-      latestValidSnapshotAt: toIso(snapshotAt),
-      latestExplicitUnplugAt: toIso(unplugAt),
-      telemetryFreshness,
-    };
+  const newest = newestEvidence(candidates);
+  if (newest) {
+    switch (newest.kind) {
+      case 'positive_snapshot':
+        reasonCodes.push(ConnectivityReasonCode.DEVICE_RECONNECTED_SNAPSHOT);
+        return {
+          physicalDeviceState: PhysicalDeviceState.PLUGGED_INFERRED,
+          reasonCodes,
+          winningEvidence: 'snapshot',
+          latestValidSnapshotAt: toIso(snapshotAt),
+          latestExplicitUnplugAt: toIso(unplugAt),
+          telemetryFreshness,
+        };
+      case 'positive_plug':
+        reasonCodes.push(ConnectivityReasonCode.DEVICE_RECONNECTED_EXPLICIT);
+        return {
+          physicalDeviceState: PhysicalDeviceState.PLUGGED_CONFIRMED,
+          reasonCodes,
+          winningEvidence: 'plug_event',
+          latestValidSnapshotAt: toIso(snapshotAt),
+          latestExplicitUnplugAt: toIso(unplugAt),
+          telemetryFreshness,
+        };
+      case 'negative_unplug':
+        reasonCodes.push(ConnectivityReasonCode.DEVICE_UNPLUG_WEBHOOK);
+        return {
+          physicalDeviceState: PhysicalDeviceState.UNPLUGGED_CONFIRMED,
+          reasonCodes,
+          winningEvidence: 'unplug_event',
+          latestValidSnapshotAt: toIso(snapshotAt),
+          latestExplicitUnplugAt: toIso(unplugAt),
+          telemetryFreshness,
+        };
+      default:
+        break;
+    }
   }
 
   if (snapshotAt) {

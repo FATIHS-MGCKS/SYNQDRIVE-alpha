@@ -54,6 +54,17 @@ describe('derivePhysicalDeviceEvidence', () => {
     expect(result.physicalDeviceState).toBe(PhysicalDeviceState.PLUGGED_INFERRED);
   });
 
+  it('explicit plug event newer than unplug resolves connected', () => {
+    const result = derivePhysicalDeviceEvidence({
+      ...base,
+      latestAcceptedUnplugEventAt: new Date('2026-07-11T18:39:45.000Z'),
+      latestAcceptedPlugEventAt: new Date('2026-07-11T19:00:00.000Z'),
+    });
+    expect(result.physicalDeviceState).toBe(PhysicalDeviceState.PLUGGED_CONFIRMED);
+    expect(result.winningEvidence).toBe('plug_event');
+    expect(physicalDeviceStateToConnectionStatus(result.physicalDeviceState)).toBe('plugged');
+  });
+
   it('returns NOT_APPLICABLE when physical OBD does not apply', () => {
     const result = derivePhysicalDeviceEvidence({
       ...base,

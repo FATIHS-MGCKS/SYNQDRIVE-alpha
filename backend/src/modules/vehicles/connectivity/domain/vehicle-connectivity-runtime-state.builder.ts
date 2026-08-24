@@ -349,21 +349,10 @@ function resolvePhysicalDeviceState(
   const explicitPlugAt = parseIso(input.episode.lastExplicitPlugWebhookAt);
   const telemetryRecoveryAt = parseIso(input.episode.lastTelemetryRecoveryAt);
 
-  if (
-    explicitPlugAt &&
-    unplugAt &&
-    explicitPlugAt.getTime() > unplugAt.getTime()
-  ) {
-    reasonCodes.push(ConnectivityReasonCode.DEVICE_RECONNECTED_EXPLICIT);
-    return {
-      physicalDeviceState: PhysicalDeviceState.PLUGGED_CONFIRMED,
-      recoveryConflict: false,
-    };
-  }
-
   const evidence = derivePhysicalDeviceEvidence({
     latestValidSnapshotAt: latestSnapshotAt,
     latestAcceptedUnplugEventAt: unplugAt,
+    latestAcceptedPlugEventAt: explicitPlugAt,
     physicalObdApplicable,
     nowMs,
   });

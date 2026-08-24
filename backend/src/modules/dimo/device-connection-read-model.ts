@@ -385,6 +385,7 @@ export function buildDeviceConnectionSummary(
   const physicalEvidence = derivePhysicalDeviceEvidence({
     latestValidSnapshotAt: input.latestValidSnapshotAt ?? null,
     latestAcceptedUnplugEventAt: latestUnplugAt,
+    latestAcceptedPlugEventAt: lastPlug?.observedAt ?? null,
     physicalObdApplicable: isLteR1Hardware(hardwareType) && dimoLinked,
     nowMs,
   });
