@@ -1,5 +1,5 @@
 /**
- * Operator Vehicle Quick View presentation adapter (P2.2.27 QV-G tasks + P2.2.28 header + P2.2.29 quick actions + P2.2.30 tool actions + P2.2.31 booking context + P2.2.32 rental health modules).
+ * Operator Vehicle Quick View presentation adapter (P2.2.27 QV-G tasks + P2.2.28 header + P2.2.29 quick actions + P2.2.30 tool actions + P2.2.31 booking context + P2.2.32 rental health modules + P2.2.33 active damages).
  * Machine status/task values stay unchanged; presentation maps to TranslationKey only.
  */
 import type {
@@ -9,6 +9,12 @@ import type {
   RentalHealthState,
   VehicleHealthResponse,
 } from '../../lib/api';
+import type { DamageRentalImpact, DamageResponse } from '../../rental/lib/damage.types';
+import {
+  operatorDamageCaptureDamageTypeLabel,
+  operatorDamageCaptureRentalImpactLabel,
+  operatorDamageCaptureSeverityLabel,
+} from './operator-damage-capture-i18n';
 import type { StatusTone } from '../../components/patterns';
 import {
   DEFAULT_PRODUCT_LOCALE,
@@ -314,4 +320,47 @@ export function operatorVehicleQuickViewRentalHealthModulePresentation(
     tone: moduleTone(module.state),
     stale: module.data_stale,
   };
+}
+
+export function operatorVehicleQuickViewActiveDamagesSectionTitle(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.damages.sectionTitle');
+}
+
+export function operatorVehicleQuickViewActiveDamagesEmptyLabel(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.damages.empty');
+}
+
+export function operatorVehicleQuickViewActiveDamagesRowSeparator(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.damages.rowSeparator');
+}
+
+export function operatorVehicleQuickViewActiveDamagesTypeLabel(
+  locale: string,
+  damageType: string,
+): string {
+  return operatorDamageCaptureDamageTypeLabel(locale, damageType);
+}
+
+export function operatorVehicleQuickViewActiveDamagesSeverityLabel(
+  locale: string,
+  severity: DamageResponse['severity'],
+): string {
+  return operatorDamageCaptureSeverityLabel(locale, severity);
+}
+
+export function operatorVehicleQuickViewActiveDamagesImpactLabel(
+  locale: string,
+  rentalImpact: DamageRentalImpact,
+): string {
+  return operatorDamageCaptureRentalImpactLabel(locale, rentalImpact);
+}
+
+export function operatorVehicleQuickViewActiveDamagesRowTitle(
+  locale: string,
+  damage: Pick<DamageResponse, 'damageType' | 'severity'>,
+): string {
+  return [
+    operatorVehicleQuickViewActiveDamagesTypeLabel(locale, damage.damageType),
+    operatorVehicleQuickViewActiveDamagesSeverityLabel(locale, damage.severity),
+  ].join(operatorVehicleQuickViewActiveDamagesRowSeparator(locale));
 }

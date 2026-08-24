@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Vehicle Quick View Active Damages (P2.2.33 — V4.9.960)', icon: Globe,
+    endpoint: 'OperatorVehicleQuickView → `OperatorVehicleQuickViewActiveDamages` (section title, damage rows, impact chips).',
+    service: '**Locale flow:** `useLanguage().locale` → extracted Active Damages sub-surface; `operator-vehicle-quick-view-i18n.ts` section/empty/separator + reuse `operator.damageCapture.*` for type/severity/impact. **Keys:** +3 EN+DE `operator.vehicleQuickView.damages.*` (8472→8475). **Machine values:** damage IDs, severity/impact codes, `locationLabel`, slice order frozen; no callbacks. **Guardrails:** P2.2.33 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-vehicle-quick-view-active-damages-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_ACTIVE_DAMAGES_P2_2_33_2026-08-24.md' },
   { name: 'Platform i18n Operator Vehicle Quick View Rental Health Modules (P2.2.32 — V4.9.959)', icon: Globe,
     endpoint: 'OperatorVehicleQuickView → `OperatorVehicleQuickViewRentalHealth` (section title, 7 module labels, state chips, empty/no-data/stale).',
     service: '**Locale flow:** `useLanguage().locale` → extracted Rental Health sub-surface; `operator-vehicle-quick-view-i18n.ts` module/state maps (reuses `health.state.*`). **Keys:** +12 EN+DE `operator.vehicleQuickView.health.*` (8460→8472). **Machine values:** module keys, `RentalHealthState`, `module.reason`, `data_stale`, tones frozen; no callbacks. **Guardrails:** P2.2.32 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-vehicle-quick-view-rental-health-modules-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
