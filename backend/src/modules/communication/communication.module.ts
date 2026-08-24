@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import communicationProjectionConfig from '@config/communication-projection.config';
 import communicationRetentionConfig from '@config/communication-retention.config';
+import voiceRetentionConfig from '@config/voice-retention.config';
 import { DocumentsModule } from '@modules/documents/documents.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
@@ -75,6 +76,7 @@ import { CommunicationRetentionMetrics } from './retention/communication-retenti
     forwardRef(() => WhatsAppModule),
     ConfigModule.forFeature(communicationProjectionConfig),
     ConfigModule.forFeature(communicationRetentionConfig),
+    ConfigModule.forFeature(voiceRetentionConfig),
   ],
   providers: [
     CommunicationTenantContextValidation,

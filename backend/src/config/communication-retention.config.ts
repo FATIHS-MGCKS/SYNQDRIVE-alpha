@@ -22,13 +22,10 @@ export default registerAs('communicationRetention', () => ({
   batchSize: intEnv('COMMUNICATION_RETENTION_BATCH_SIZE', 200),
   policyVersion: process.env.COMMUNICATION_RETENTION_POLICY_VERSION || '2026-08-23',
   days: {
+    /** Canonical customer message content — correlated WhatsApp native body follows the same cutoff. */
     messageContent: intEnv(
       'COMMUNICATION_RETENTION_MESSAGE_CONTENT_DAYS',
       COMMUNICATION_RETENTION_DAYS_DEFAULTS.messageContent,
-    ),
-    nativeWhatsAppContent: intEnv(
-      'COMMUNICATION_RETENTION_NATIVE_WHATSAPP_CONTENT_DAYS',
-      COMMUNICATION_RETENTION_DAYS_DEFAULTS.nativeWhatsAppContent,
     ),
     attachment: intEnv(
       'COMMUNICATION_RETENTION_ATTACHMENT_DAYS',
@@ -45,18 +42,6 @@ export default registerAs('communicationRetention', () => ({
     structuralRecord: intEnv(
       'COMMUNICATION_RETENTION_STRUCTURAL_RECORD_DAYS',
       COMMUNICATION_RETENTION_DAYS_DEFAULTS.structuralRecord,
-    ),
-    voiceTranscript: intEnv(
-      'COMMUNICATION_RETENTION_VOICE_TRANSCRIPT_DAYS',
-      COMMUNICATION_RETENTION_DAYS_DEFAULTS.voiceTranscript,
-    ),
-    voiceSummary: intEnv(
-      'COMMUNICATION_RETENTION_VOICE_SUMMARY_DAYS',
-      COMMUNICATION_RETENTION_DAYS_DEFAULTS.voiceSummary,
-    ),
-    voiceProviderPayload: intEnv(
-      'COMMUNICATION_RETENTION_VOICE_PROVIDER_PAYLOAD_DAYS',
-      COMMUNICATION_RETENTION_DAYS_DEFAULTS.voiceProviderPayload,
     ),
   },
 }));

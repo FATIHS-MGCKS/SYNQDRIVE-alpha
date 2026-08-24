@@ -201,6 +201,8 @@ export const nl: Record<TranslationKey, string> = {
   'communication.automations.open': 'Workflowautomatisering openen',
   'communication.automations.accessDenied':
     'U heeft geen toestemming om workflowautomatisering te openen.',
+  'communication.timeline.messagePurged':
+    'Berichtinhoud verwijderd omdat de bewaartermijn is verstreken',
   'communication.filters.intentLabel': 'Intentiefilter',
   'communication.filters.intentAll': 'Alle intenties',
   'communication.filters.intentAiSuggested': 'AI-suggestie',

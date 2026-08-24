@@ -14847,7 +14847,7 @@ model CommunicationRetentionPurgeRun {
   startedAt      DateTime  @default(now()) @map("started_at")
   completedAt    DateTime? @map("completed_at")
 
-  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, startedAt])
   @@map("communication_retention_purge_runs")

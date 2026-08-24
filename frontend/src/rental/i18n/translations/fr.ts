@@ -954,6 +954,8 @@ export const fr: Record<TranslationKey, string> = {
   'communication.automations.open': 'Ouvrir l\'automatisation des workflows',
   'communication.automations.accessDenied':
     'Vous n\'avez pas l\'autorisation d\'ouvrir l\'automatisation des workflows.',
+  'communication.timeline.messagePurged':
+    'Contenu du message supprime car la periode de conservation est expiree',
   'communication.filters.intentLabel': 'Filtre d\'intention',
   'communication.filters.intentAll': 'Toutes les intentions',
   'communication.filters.intentAiSuggested': 'Suggestion IA',

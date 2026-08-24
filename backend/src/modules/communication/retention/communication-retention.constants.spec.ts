@@ -12,12 +12,6 @@ describe('communication-retention.constants', () => {
     expect(isRetentionPolicyEnabled(COMMUNICATION_RETENTION_DAYS_DEFAULTS.replyCommandSettled)).toBe(false);
   });
 
-  it('enables voice retention defaults from existing VoiceRetentionService policy', () => {
-    expect(isRetentionPolicyEnabled(COMMUNICATION_RETENTION_DAYS_DEFAULTS.voiceTranscript)).toBe(true);
-    expect(COMMUNICATION_RETENTION_DAYS_DEFAULTS.voiceTranscript).toBe(90);
-    expect(COMMUNICATION_RETENTION_DAYS_DEFAULTS.voiceProviderPayload).toBe(30);
-  });
-
   it('computes UTC cutoffs deterministically', () => {
     const now = new Date('2026-08-23T12:00:00.000Z');
     const cutoff = computeRetentionCutoffUtc(now, 30);
@@ -25,9 +19,8 @@ describe('communication-retention.constants', () => {
     expect(computeRetentionCutoffUtc(now, 0)).toBeNull();
   });
 
-  it('documents NO_POLICY defaults for message content classes', () => {
+  it('documents NO_POLICY defaults for customer message content', () => {
     expect(COMMUNICATION_RETENTION_DAYS_DEFAULTS.messageContent).toBe(0);
-    expect(COMMUNICATION_RETENTION_DAYS_DEFAULTS.nativeWhatsAppContent).toBe(0);
     expect(COMMUNICATION_RETENTION_POLICY_SOURCE.NO_POLICY).toBe('NO_POLICY');
   });
 });

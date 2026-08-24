@@ -200,6 +200,8 @@ export const es: Record<TranslationKey, string> = {
   'communication.automations.open': 'Abrir automatizacion de flujos',
   'communication.automations.accessDenied':
     'No tiene permiso para abrir la automatizacion de flujos.',
+  'communication.timeline.messagePurged':
+    'Contenido del mensaje eliminado porque expiro el periodo de conservacion',
   'communication.filters.intentLabel': 'Filtro de intencion',
   'communication.filters.intentAll': 'Todas las intenciones',
   'communication.filters.intentAiSuggested': 'Sugerencia de IA',

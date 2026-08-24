@@ -803,6 +803,7 @@ export class CommunicationReplyService {
               hasAttachments: true,
               attachmentCount: true,
               nativeMessageId: true,
+              contentPurgedAt: true,
             },
           },
         },

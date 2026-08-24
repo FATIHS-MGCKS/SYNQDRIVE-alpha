@@ -44,20 +44,30 @@ export const COMMUNICATION_RETENTION_VOICE_DEFAULTS = {
  */
 export const COMMUNICATION_RETENTION_DAYS_DEFAULTS = {
   messageContent: 0,
-  nativeWhatsAppContent: 0,
   attachment: 0,
   replyCommandSettled: 0,
   aiContent: 0,
   structuralRecord: 0,
-  voiceTranscript: COMMUNICATION_RETENTION_VOICE_DEFAULTS.transcriptDays,
-  voiceSummary: COMMUNICATION_RETENTION_VOICE_DEFAULTS.summaryDays,
-  voiceProviderPayload: COMMUNICATION_RETENTION_VOICE_DEFAULTS.providerPayloadDays,
 } as const;
+
+export const COMMUNICATION_RETENTION_GLOBAL_LOCK_KEY = 'communication:retention:global';
+export const COMMUNICATION_RETENTION_GLOBAL_LOCK_TTL_MS = 30 * 60 * 1000;
 
 export const COMMUNICATION_RETENTION_PURGE_RUN_STATUS = {
   RUNNING: 'RUNNING',
   COMPLETED: 'COMPLETED',
   FAILED: 'FAILED',
+  SKIPPED: 'SKIPPED',
+} as const;
+
+export const COMMUNICATION_RETENTION_RUN_SKIP_REASON = {
+  LOCK_CONTENTED: 'lock_contended',
+  IN_PROCESS_GUARD: 'in_process_guard',
+  DISABLED: 'disabled',
+} as const;
+
+export const COMMUNICATION_RETENTION_PURGE_RUN_ERROR_CODE = {
+  RUN_FAILED: 'RETENTION_RUN_FAILED',
 } as const;
 
 export const COMMUNICATION_RETENTION_SKIP_REASON = {
@@ -69,6 +79,7 @@ export const COMMUNICATION_RETENTION_SKIP_REASON = {
   LEGAL_HOLD: 'legal_hold',
   DRY_RUN: 'dry_run',
   STORAGE_DELETE_FAILED: 'storage_delete_failed',
+  LOCK_CONTENTED: 'lock_contended',
 } as const;
 
 export type CommunicationRetentionSkipReason =
@@ -92,7 +103,7 @@ export const COMMUNICATION_RETENTION_PURGED_PREVIEW = '[content removed]';
 export const COMMUNICATION_RETENTION_PHASE = {
   VOICE_DELEGATED: 'voice_delegated',
   MESSAGE_CONTENT: 'message_content',
-  NATIVE_WHATSAPP_CONTENT: 'native_whatsapp_content',
+  LEGACY_NATIVE_WHATSAPP_CONTENT: 'legacy_native_whatsapp_content',
   ATTACHMENT_BINARY: 'attachment_binary',
   REPLY_COMMAND_CONTENT: 'reply_command_content',
 } as const;

@@ -3602,7 +3602,7 @@ export const en = {
   'communication.timeline.unknownContact': 'Unknown contact',
   'communication.timeline.unassigned': 'Unassigned',
   'communication.timeline.messageUnavailable': 'Message content unavailable',
-  'communication.timeline.messagePurged': 'Message content removed due to retention policy',
+  'communication.timeline.messagePurged': 'Message content removed because its retention period expired',
   'communication.timeline.unsupportedMessage': 'Unsupported message type',
   'communication.timeline.text': 'Text',
   'communication.timeline.image': 'Image',

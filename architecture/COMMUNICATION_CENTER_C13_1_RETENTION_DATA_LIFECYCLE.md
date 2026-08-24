@@ -1,7 +1,7 @@
 # Communication Center C13.1 — Retention & Data Lifecycle
 
-**Status:** PARTIAL — policy scaffolding + safe purge framework  
-**Date:** 2026-08-23  
+**Status:** PARTIAL — policy scaffolding + safe purge framework (hardened 2026-08-24)
+**Date:** 2026-08-23 (updated 2026-08-24)
 **Repository:** FATIHS-MGCKS/SYNQDRIVE-alpha  
 **Base:** `main` after merged PR #1229 (C9–C12 gate OPEN)  
 **Branch:** `feature/communication-center-c13-1-retention-lifecycle`
@@ -78,8 +78,9 @@ C13.1 establishes the canonical Communication Center retention/data-lifecycle po
 | IAM data retention | `iam-data-retention.*` | Product policy | Separate authority |
 | Document extraction | `document-retention.service` | Configurable | Separate authority |
 | Telemetry tables | `retention.config.ts` | Product tables default 0 | Separate authority |
-| **Communication message content** | None before C13.1 | **NO_POLICY** (days=0) | Scaffolding only until env configured |
-| **WhatsApp native content** | None | **NO_POLICY** (days=0) | Scaffolding only |
+| **Communication message content** | None before C13.1 | **NO_POLICY** (days=0) | `COMMUNICATION_RETENTION_MESSAGE_CONTENT_DAYS` — correlated WhatsApp native body follows same cutoff |
+| **WhatsApp native content (projected)** | None | Follows message-content policy | Purged in same DB transaction as canonical `CommunicationMessageContent` |
+| **WhatsApp native content (legacy-only)** | None | Follows message-content policy when no canonical row | Separate `legacy_native_whatsapp_content` phase; skips active canonical conversations |
 | **Communication attachments** | None | **NO_POLICY** (days=0) | Scaffolding only |
 | **Reply command content** | None | **NO_POLICY** (days=0) | Scaffolding; UNKNOWN/PENDING always protected |
 
@@ -89,13 +90,15 @@ C13.1 establishes the canonical Communication Center retention/data-lifecycle po
 
 | Class | Source | Destructive purge in C13.1 |
 |-------|--------|---------------------------|
-| Voice transcript/summary/payload | EXISTING_POLICY | Yes (via delegation) when `COMMUNICATION_RETENTION_ENABLED=true` |
-| Message content | NO_POLICY | **Blocked** until `COMMUNICATION_RETENTION_MESSAGE_CONTENT_DAYS > 0` |
-| Native WhatsApp | NO_POLICY | **Blocked** until `COMMUNICATION_RETENTION_NATIVE_WHATSAPP_CONTENT_DAYS > 0` |
+| Voice transcript/summary/payload | EXISTING_POLICY (`VoiceRetentionService` sole authority) | Yes (via delegation) when `VOICE_RETENTION_ENABLED=true` and `COMMUNICATION_RETENTION_ENABLED=true` |
+| Message content (+ correlated WhatsApp native) | NO_POLICY | **Blocked** until `COMMUNICATION_RETENTION_MESSAGE_CONTENT_DAYS > 0` |
+| Legacy native-only WhatsApp | NO_POLICY (same days as message content) | **Blocked** until message-content days configured |
 | Attachments | NO_POLICY | **Blocked** until `COMMUNICATION_RETENTION_ATTACHMENT_DAYS > 0` |
 | Reply command content | NO_POLICY | **Blocked** until `COMMUNICATION_RETENTION_REPLY_COMMAND_SETTLED_DAYS > 0` |
 | Structural records | NO_POLICY | **Not implemented** in C13.1 |
 | AI Activity metadata | NO_POLICY | **Not implemented** in C13.1 |
+
+**Removed:** independent `COMMUNICATION_RETENTION_NATIVE_WHATSAPP_CONTENT_DAYS` and Communication-level voice day env vars (misleading duplicates).
 
 ---
 
@@ -108,13 +111,11 @@ C13.1 establishes the canonical Communication Center retention/data-lifecycle po
 | `COMMUNICATION_RETENTION_ENABLED` | `false` | Master switch |
 | `COMMUNICATION_RETENTION_DRY_RUN` | `true` | Count-only default |
 | `COMMUNICATION_RETENTION_BATCH_SIZE` | `200` | Per-phase batch |
-| `COMMUNICATION_RETENTION_MESSAGE_CONTENT_DAYS` | `0` | NO_POLICY |
-| `COMMUNICATION_RETENTION_NATIVE_WHATSAPP_CONTENT_DAYS` | `0` | NO_POLICY |
+| `COMMUNICATION_RETENTION_MESSAGE_CONTENT_DAYS` | `0` | NO_POLICY — also governs correlated + legacy native WhatsApp customer body |
 | `COMMUNICATION_RETENTION_ATTACHMENT_DAYS` | `0` | NO_POLICY |
 | `COMMUNICATION_RETENTION_REPLY_COMMAND_SETTLED_DAYS` | `0` | NO_POLICY |
-| `COMMUNICATION_RETENTION_VOICE_TRANSCRIPT_DAYS` | `90` | Mirrors VoiceRetentionService |
-| `COMMUNICATION_RETENTION_VOICE_SUMMARY_DAYS` | `90` | Mirrors VoiceRetentionService |
-| `COMMUNICATION_RETENTION_VOICE_PROVIDER_PAYLOAD_DAYS` | `30` | Mirrors VoiceRetentionService |
+
+Voice retention durations are **not** configured via Communication env vars. Authority remains `VoiceRetentionService` + `VOICE_RETENTION_ENABLED` + per-org `voiceAgentDeployment.configSnapshot.privacyRetention`.
 
 **Org-level DB policy model:** Not added in C13.1 — no existing Communication retention org settings found. Voice org overrides continue via `voiceAgentDeployment.configSnapshot.privacyRetention`.
 
@@ -137,12 +138,14 @@ C13.1 establishes the canonical Communication Center retention/data-lifecycle po
 
 ### Message content (Stage 1)
 - Redact `CommunicationMessageContent.text`, set `contentPurgedAt`
+- For `WHATSAPP` channel: redact correlated `WhatsAppMessage.content` in the **same DB transaction** (atomic per message)
 - Update `lastMessagePreview` to `[content removed]` when referencing purged content
 - Event row and provider IDs retained
+- Active canonical conversation statuses skip purge for both canonical and native copies
 
 ### WhatsApp native parity
-- When native phase enabled: redact `WhatsAppMessage.content` + `contentPurgedAt`
-- Defaults disabled — prevents canonical-only purge without native phase configuration
+- **Projected messages:** native body follows canonical eligibility via `nativeMessageId` — no independent retention window
+- **Legacy native-only rows:** separate phase when no `CommunicationMessageContent` exists; same `MESSAGE_CONTENT_DAYS` policy; skips conversations with active canonical status
 
 ### Voice
 - Delegates to `VoiceRetentionService.purgeOrganization`
@@ -175,19 +178,23 @@ C13.1 establishes the canonical Communication Center retention/data-lifecycle po
 ## 16. Purge order
 
 Per organization, per run:
-1. Voice delegated (transcript, summary, provider payload)
-2. Canonical message content redaction
-3. Native WhatsApp content redaction
+1. Voice delegated (transcript, summary, provider payload) — `VoiceRetentionService`
+2. Canonical message content redaction (+ correlated WhatsApp native in same transaction)
+3. Legacy native-only WhatsApp content redaction
 4. Attachment binary deletion
 5. Reply command content redaction
+
+All phases honor `COMMUNICATION_RETENTION_BATCH_SIZE` for both global and org-scoped runs.
 
 ---
 
 ## 17–19. Scheduler / batching / multi-instance
 
 - `CommunicationRetentionScheduler` — cron `30 3 * * *`
-- In-process `running` guard (same pattern as notification/voice schedulers)
-- Bounded `batchSize` per phase; subsequent runs continue cursor via `occurredAt`/`createdAt` ordering
+- In-process `running` guard (secondary protection only)
+- **Global runs:** Redis distributed lock (`RedisDistributedLockService`, key `communication:retention:global`, 30m TTL)
+- Lock contention → safe skip (`skipReason: lock_contended`), no FAILED purge-run row
+- **Org-scoped manual runs:** no global lock (operational dry-runs allowed under contention)
 - Existing `VoiceRetentionScheduler` retained for backward compatibility
 
 ---
@@ -225,18 +232,29 @@ Purge runs persisted in `CommunicationRetentionPurgeRun.report` JSON.
 
 ## 25. PostgreSQL evidence
 
-`communication-retention.postgres.integration.spec.ts` — **11/11 PASS**:
-- Tenant isolation (Org A / Org B)
-- Age threshold (before/after)
-- Active conversation skip
-- Content redaction + timeline read model
-- Native WhatsApp parity
-- Voice transcript purge + metadata retained
-- Reply command UNKNOWN preserved / settled redacted
-- Attachment binary idempotency + storage failure safety
-- Batch continuation
-- Concurrent run idempotency
-- Dry run
+`communication-retention.postgres.integration.spec.ts` — **14/14 PASS**
+`communication-retention.distributed-lock.spec.ts` — **2/2 PASS**
+`communication-retention.constants.spec.ts` — **3/3 PASS**
+
+Coverage includes: tenant isolation, age boundary, active canonical+native WA preservation, correlated purge, transaction rollback on native failure, voice org override dry-run parity, UNKNOWN/PENDING reply reporting, attachment PURGED read path, bounded targeted runs, dry run.
+
+---
+
+## Purge-run audit FK
+
+`CommunicationRetentionPurgeRun.organization` uses `onDelete: SetNull` (IAM audit pattern) — retention run history preserved when organization row is deleted.
+
+---
+
+## Purge-run error reporting
+
+Failed runs persist `{ errorCode: "RETENTION_RUN_FAILED" }` only — no raw exception messages in purge-run JSON.
+
+---
+
+## Attachment metadata after binary purge
+
+`state=PURGED`, `purgedAt` set. `fileName`, `mimeType`, `contentHash` retained as operational metadata (no additional redaction in C13.1). Read/download paths reject PURGED attachments (no signed URL generation).
 
 ---
 

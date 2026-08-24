@@ -36,6 +36,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c13-1-retention-hardening-2026-08-24',
+    version: '4.9.945',
+    title: 'Communication Center C13.1 — retention safety hardening',
+    summary: [
+      'Unified WhatsApp customer-content policy: MESSAGE_CONTENT_DAYS drives canonical + native correlated purge in one transaction.',
+      'Redis distributed lock for global scheduled runs; VoiceRetentionService sole voice policy authority.',
+      'messagePurged i18n in all governed locales; PURGED attachment read path blocked.',
+    ],
+    reason: 'Close C13.1 lifecycle/safety gaps before final review.',
+    previousBehavior: 'Independent native/voice env vars; in-process-only scheduler guard; possible canonical/native divergence.',
+    details: 'architecture/COMMUNICATION_CENTER_C13_1_RETENTION_DATA_LIFECYCLE.md',
+    affectsArchitecture: true,
+    module: 'Communication',
+    createdAt: '2026-08-24T08:55:00.000Z',
+  },
+  {
     id: 'communication-center-c13-1-retention-lifecycle-2026-08-23',
     version: '4.9.945',
     title: 'Communication Center C13.1 — retention & data lifecycle',

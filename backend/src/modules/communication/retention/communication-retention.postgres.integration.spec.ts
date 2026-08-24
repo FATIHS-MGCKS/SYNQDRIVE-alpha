@@ -13,7 +13,9 @@ import {
   WhatsAppConversationStatus,
 } from '@prisma/client';
 import communicationRetentionConfig from '@config/communication-retention.config';
+import voiceRetentionConfig from '@config/voice-retention.config';
 import { PrismaService } from '@shared/database/prisma.service';
+import { RedisDistributedLockService } from '@shared/redis/redis-distributed-lock.service';
 import { createDocumentStoragePortMock } from '@modules/documents/storage/testing/document-storage-port.mock';
 import { DOCUMENTS_STORAGE } from '@modules/documents/storage/document-storage.interface';
 import { VoiceRetentionService } from '@modules/voice-assistant/security/voice-retention.service';
@@ -22,6 +24,7 @@ import { CommunicationRetentionMetrics } from './communication-retention.metrics
 import { CommunicationReadRepository } from '../read/communication-read.repository';
 import { CommunicationReadService } from '../read/communication-read.service';
 import { CommunicationAttachmentService } from '../media/communication-attachment.service';
+import { CommunicationAttachmentError } from '../media/communication-attachment.errors';
 import { CommunicationWriteScopeService } from '../write/communication-write-scope.service';
 import { COMMUNICATION_RETENTION_SKIP_REASON } from './communication-retention.constants';
 
@@ -32,6 +35,7 @@ describePg('Communication retention postgres (C13.1)', () => {
   let prisma: PrismaClient;
   let retention: CommunicationRetentionService;
   let readService: CommunicationReadService;
+  let attachmentService: CommunicationAttachmentService;
   let storageMock: ReturnType<typeof createDocumentStoragePortMock>;
   let orgA = '';
   let orgB = '';
@@ -40,8 +44,20 @@ describePg('Communication retention postgres (C13.1)', () => {
 
   async function createModule() {
     storageMock = createDocumentStoragePortMock();
+    const lockMock = {
+      acquire: jest.fn().mockResolvedValue({
+        acquired: true,
+        handle: { key: 'test-lock', token: 'token', acquiredAt: new Date() },
+      }),
+      release: jest.fn().mockResolvedValue(true),
+    };
     const moduleRef = await Test.createTestingModule({
-      imports: [ConfigModule.forRoot({ isGlobal: true, load: [communicationRetentionConfig] })],
+      imports: [
+        ConfigModule.forRoot({
+          isGlobal: true,
+          load: [communicationRetentionConfig, voiceRetentionConfig],
+        }),
+      ],
       providers: [
         PrismaService,
         VoiceRetentionService,
@@ -51,9 +67,10 @@ describePg('Communication retention postgres (C13.1)', () => {
         CommunicationAttachmentService,
         {
           provide: CommunicationWriteScopeService,
-          useValue: { assertConversationReadable: jest.fn() },
+          useValue: { assertConversationReadable: jest.fn(), assertConversationMutable: jest.fn() },
         },
         { provide: DOCUMENTS_STORAGE, useValue: storageMock },
+        { provide: RedisDistributedLockService, useValue: lockMock },
         CommunicationReadService,
       ],
     })
@@ -63,6 +80,7 @@ describePg('Communication retention postgres (C13.1)', () => {
 
     retention = moduleRef.get(CommunicationRetentionService);
     readService = moduleRef.get(CommunicationReadService);
+    attachmentService = moduleRef.get(CommunicationAttachmentService);
   }
 
   beforeAll(async () => {
@@ -74,10 +92,10 @@ describePg('Communication retention postgres (C13.1)', () => {
     process.env.COMMUNICATION_RETENTION_ENABLED = 'true';
     process.env.COMMUNICATION_RETENTION_DRY_RUN = 'false';
     process.env.COMMUNICATION_RETENTION_MESSAGE_CONTENT_DAYS = '30';
-    process.env.COMMUNICATION_RETENTION_NATIVE_WHATSAPP_CONTENT_DAYS = '30';
     process.env.COMMUNICATION_RETENTION_ATTACHMENT_DAYS = '30';
     process.env.COMMUNICATION_RETENTION_REPLY_COMMAND_SETTLED_DAYS = '30';
     process.env.COMMUNICATION_RETENTION_BATCH_SIZE = '2';
+    process.env.VOICE_RETENTION_ENABLED = 'true';
 
     await createModule();
 
@@ -106,15 +124,17 @@ describePg('Communication retention postgres (C13.1)', () => {
       await prisma.whatsAppConversation.deleteMany({ where: { organizationId: orgId } });
       await prisma.voiceProviderWebhookEvent.deleteMany({ where: { organizationId: orgId } });
       await prisma.voiceConversation.deleteMany({ where: { organizationId: orgId } });
+      await prisma.voiceAgentDeployment.deleteMany({ where: { organizationId: orgId } });
+      await prisma.voiceAssistant.deleteMany({ where: { organizationId: orgId } });
       await prisma.organization.deleteMany({ where: { id: orgId } });
     }
     delete process.env.COMMUNICATION_RETENTION_ENABLED;
     delete process.env.COMMUNICATION_RETENTION_DRY_RUN;
     delete process.env.COMMUNICATION_RETENTION_MESSAGE_CONTENT_DAYS;
-    delete process.env.COMMUNICATION_RETENTION_NATIVE_WHATSAPP_CONTENT_DAYS;
     delete process.env.COMMUNICATION_RETENTION_ATTACHMENT_DAYS;
     delete process.env.COMMUNICATION_RETENTION_REPLY_COMMAND_SETTLED_DAYS;
     delete process.env.COMMUNICATION_RETENTION_BATCH_SIZE;
+    delete process.env.VOICE_RETENTION_ENABLED;
     jest.clearAllMocks();
   });
 
@@ -221,20 +241,35 @@ describePg('Communication retention postgres (C13.1)', () => {
     expect(content?.text).toBe('Recent message');
   });
 
-  it('skips active conversation content even when message age exceeds threshold', async () => {
+  it('skips active conversation canonical and native WhatsApp content until resolved', async () => {
     const oldDate = new Date('2026-06-01T10:00:00.000Z');
     const seed = await seedResolvedWhatsAppConversation(orgA, {
       messageText: 'Active secret',
       occurredAt: oldDate,
+      nativeContent: 'Active native secret',
       status: CommunicationConversationStatus.HUMAN_REQUIRED,
     });
 
     const report = await retention.runOnce({ organizationId: orgA, now: frozenNow, dryRun: false });
     const content = await prisma.communicationMessageContent.findUnique({ where: { id: seed.content.id } });
+    const waMsg = await prisma.whatsAppMessage.findUnique({ where: { id: seed.waMsg.id } });
 
     expect(content?.text).toBe('Active secret');
-    const phase = report.phases.find((p) => p.phase === 'message_content');
-    expect(phase?.affected).toBe(0);
+    expect(waMsg?.content).toBe('Active native secret');
+    expect(report.phases.find((p) => p.phase === 'message_content')?.affected).toBe(0);
+
+    await prisma.communicationConversation.update({
+      where: { id: seed.conv.id },
+      data: { status: CommunicationConversationStatus.RESOLVED },
+    });
+    await retention.runOnce({ organizationId: orgA, now: frozenNow, dryRun: false });
+
+    const contentAfter = await prisma.communicationMessageContent.findUnique({ where: { id: seed.content.id } });
+    const waMsgAfter = await prisma.whatsAppMessage.findUnique({ where: { id: seed.waMsg.id } });
+    expect(contentAfter?.text).toBeNull();
+    expect(contentAfter?.contentPurgedAt).not.toBeNull();
+    expect(waMsgAfter?.content).toBe('');
+    expect(waMsgAfter?.contentPurgedAt).not.toBeNull();
   });
 
   it('redacts canonical message content while timeline remains loadable', async () => {
@@ -253,7 +288,7 @@ describePg('Communication retention postgres (C13.1)', () => {
     expect(JSON.stringify(events)).not.toContain('PII body text');
   });
 
-  it('purges native WhatsApp content in parity with canonical purge phase', async () => {
+  it('purges correlated canonical and native WhatsApp bodies from one message-content policy', async () => {
     const oldDate = new Date('2026-06-01T10:00:00.000Z');
     const seed = await seedResolvedWhatsAppConversation(orgA, {
       messageText: 'Canonical only',
@@ -386,12 +421,24 @@ describePg('Communication retention postgres (C13.1)', () => {
       deleteObject: jest.fn().mockRejectedValue(new Error('storage down')),
     });
     const failModule = await Test.createTestingModule({
-      imports: [ConfigModule.forRoot({ isGlobal: true, load: [communicationRetentionConfig] })],
+      imports: [
+        ConfigModule.forRoot({
+          isGlobal: true,
+          load: [communicationRetentionConfig, voiceRetentionConfig],
+        }),
+      ],
       providers: [
         PrismaService,
         VoiceRetentionService,
         CommunicationRetentionMetrics,
         CommunicationRetentionService,
+        {
+          provide: RedisDistributedLockService,
+          useValue: {
+            acquire: jest.fn().mockResolvedValue({ acquired: true, handle: { key: 'k', token: 't', acquiredAt: new Date() } }),
+            release: jest.fn().mockResolvedValue(true),
+          },
+        },
         { provide: DOCUMENTS_STORAGE, useValue: failingStorage },
       ],
     })
@@ -443,27 +490,167 @@ describePg('Communication retention postgres (C13.1)', () => {
     expect(remaining).toBe(0);
   });
 
-  it('overlapping runs are idempotent-safe via in-process guard', async () => {
-    const oldDate = new Date('2026-05-01T10:00:00.000Z');
-    await seedResolvedWhatsAppConversation(orgA, {
-      messageText: 'Concurrent test',
+  it('rolls back canonical purge when correlated native WhatsApp update fails', async () => {
+    const oldDate = new Date('2026-06-01T10:00:00.000Z');
+    const seed = await seedResolvedWhatsAppConversation(orgA, {
+      messageText: 'Rollback body',
       occurredAt: oldDate,
+      nativeContent: 'Rollback native',
     });
 
-    const [first, second] = await Promise.all([
-      retention.runOnce({ organizationId: orgA, now: frozenNow, dryRun: false }),
-      retention.runOnce({ organizationId: orgA, now: frozenNow, dryRun: false }),
-    ]);
-
-    const totalAffected =
-      first.totals.affected
-      + second.totals.affected;
-    expect(totalAffected).toBeGreaterThanOrEqual(1);
-
-    const purgedCount = await prisma.communicationMessageContent.count({
-      where: { organizationId: orgA, contentPurgedAt: { not: null } },
+    const originalTransaction = prisma.$transaction.bind(prisma);
+    const transactionSpy = jest.spyOn(prisma, '$transaction').mockImplementation(async (fn) => {
+      return originalTransaction(async (tx) => {
+        const proxied = new Proxy(tx, {
+          get(target, prop, receiver) {
+            if (prop === 'whatsAppMessage') {
+              return new Proxy(target.whatsAppMessage, {
+                get(inner, method) {
+                  if (method === 'updateMany') {
+                    return () => Promise.reject(new Error('native update failed'));
+                  }
+                  return Reflect.get(inner, method, inner);
+                },
+              });
+            }
+            return Reflect.get(target, prop, receiver);
+          },
+        });
+        return fn(proxied as typeof tx);
+      });
     });
-    expect(purgedCount).toBe(1);
+
+    const report = await retention.runOnce({ organizationId: orgA, now: frozenNow, dryRun: false });
+    transactionSpy.mockRestore();
+
+    const content = await prisma.communicationMessageContent.findUnique({ where: { id: seed.content.id } });
+    const waMsg = await prisma.whatsAppMessage.findUnique({ where: { id: seed.waMsg.id } });
+    expect(content?.text).toBe('Rollback body');
+    expect(content?.contentPurgedAt).toBeNull();
+    expect(waMsg?.content).toBe('Rollback native');
+    expect(report.phases.find((p) => p.phase === 'message_content')?.failed).toBe(1);
+  });
+
+  it('reports UNKNOWN and PENDING reply command skip reasons separately', async () => {
+    const conv = await prisma.communicationConversation.create({
+      data: {
+        organizationId: orgA,
+        channel: CommunicationChannel.WHATSAPP,
+        nativeConversationId: 'reply-report-native',
+        status: CommunicationConversationStatus.RESOLVED,
+      },
+    });
+    const oldDate = new Date('2026-05-01T10:00:00.000Z');
+    await prisma.communicationReplyCommand.createMany({
+      data: [
+        {
+          organizationId: orgA,
+          conversationId: conv.id,
+          clientIdempotencyKey: 'unknown-report',
+          text: 'unknown',
+          channel: CommunicationChannel.WHATSAPP,
+          sendState: CommunicationReplySendState.UNKNOWN,
+          actorUserId: 'user-1',
+          createdAt: oldDate,
+        },
+        {
+          organizationId: orgA,
+          conversationId: conv.id,
+          clientIdempotencyKey: 'pending-report',
+          text: 'pending',
+          channel: CommunicationChannel.WHATSAPP,
+          sendState: CommunicationReplySendState.PENDING,
+          actorUserId: 'user-1',
+          createdAt: oldDate,
+        },
+      ],
+    });
+
+    const report = await retention.runOnce({ organizationId: orgA, now: frozenNow, dryRun: true });
+    const phase = report.phases.find((p) => p.phase === 'reply_command_content');
+    expect(phase?.skipReasons[COMMUNICATION_RETENTION_SKIP_REASON.UNKNOWN_SEND_STATE]).toBe(1);
+    expect(phase?.skipReasons[COMMUNICATION_RETENTION_SKIP_REASON.PENDING_SEND_STATE]).toBe(1);
+  });
+
+  it('voice dry-run candidate counts honor per-org VoiceRetentionService policy', async () => {
+    const voiceAssistantA = await prisma.voiceAssistant.create({
+      data: { organizationId: orgA, name: 'VA A' },
+    });
+    await prisma.voiceAgentDeployment.create({
+      data: {
+        organizationId: orgA,
+        voiceAssistantId: voiceAssistantA.id,
+        provider: 'ELEVENLABS',
+        status: 'ACTIVE',
+        activatedVersion: 1,
+        configSnapshot: {
+          privacyRetention: { retentionTranscriptDays: 30, retentionSummaryDays: 30, retentionProviderPayloadDays: 30 },
+        },
+      },
+    });
+    const voiceAssistantB = await prisma.voiceAssistant.create({
+      data: { organizationId: orgB, name: 'VA B' },
+    });
+    await prisma.voiceAgentDeployment.create({
+      data: {
+        organizationId: orgB,
+        voiceAssistantId: voiceAssistantB.id,
+        provider: 'ELEVENLABS',
+        status: 'ACTIVE',
+        activatedVersion: 1,
+        configSnapshot: {
+          privacyRetention: { retentionTranscriptDays: 90, retentionSummaryDays: 90, retentionProviderPayloadDays: 30 },
+        },
+      },
+    });
+
+    const borderlineDate = new Date('2026-07-15T10:00:00.000Z');
+    await prisma.voiceConversation.create({
+      data: { organizationId: orgA, transcript: 'Org A transcript', startedAt: borderlineDate },
+    });
+    await prisma.voiceConversation.create({
+      data: { organizationId: orgB, transcript: 'Org B transcript', startedAt: borderlineDate },
+    });
+
+    const reportA = await retention.runOnce({ organizationId: orgA, now: frozenNow, dryRun: true });
+    const reportB = await retention.runOnce({ organizationId: orgB, now: frozenNow, dryRun: true });
+    const phaseA = reportA.phases.find((p) => p.phase === 'voice_delegated');
+    const phaseB = reportB.phases.find((p) => p.phase === 'voice_delegated');
+    expect(phaseA?.candidates).toBe(1);
+    expect(phaseB?.candidates).toBe(0);
+  });
+
+  it('does not expose purged attachment via read/download path', async () => {
+    const conv = await prisma.communicationConversation.create({
+      data: {
+        organizationId: orgA,
+        channel: CommunicationChannel.WHATSAPP,
+        nativeConversationId: 'attach-read-native',
+        status: CommunicationConversationStatus.RESOLVED,
+      },
+    });
+    const oldDate = new Date('2026-05-01T10:00:00.000Z');
+    const attachment = await prisma.communicationAttachment.create({
+      data: {
+        organizationId: orgA,
+        conversationId: conv.id,
+        mediaType: CommunicationAttachmentMediaType.IMAGE,
+        state: CommunicationAttachmentState.READY,
+        fileName: 'photo.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 100,
+        contentHash: 'abc',
+        objectKey: 'org-a/read-photo.jpg',
+        storageProvider: 'test',
+        createdAt: oldDate,
+      },
+    });
+
+    await retention.runOnce({ organizationId: orgA, now: frozenNow, dryRun: false });
+    await expect(
+      attachmentService.streamAttachmentContent(orgA, attachment.id, 'user-1'),
+    ).rejects.toMatchObject({ response: { code: 'ATTACHMENT_NOT_FOUND' } });
+    expect(storageMock.getObjectStream).not.toHaveBeenCalled();
   });
 
   it('dry run reports candidates without destructive writes', async () => {
