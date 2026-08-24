@@ -4,6 +4,8 @@ import type {
   CommunicationMobilePane,
   CommunicationPrimaryTab,
   CommunicationSettingsSection,
+  CommunicationVoiceIntent,
+  CommunicationWhatsAppChannelSubview,
 } from './communication-center.types';
 import {
   readCommunicationInboxFiltersFromUrl,
@@ -29,11 +31,25 @@ export const COMMUNICATION_CHANNELS_PARAM = 'communicationChannels';
 export const COMMUNICATION_CHANNEL_PARAM = 'communicationChannel';
 export const COMMUNICATION_CONVERSATION_PARAM = 'conversationId';
 export const COMMUNICATION_MOBILE_PANE_PARAM = 'communicationPane';
+export const COMMUNICATION_WHATSAPP_SUBVIEW_PARAM = 'communicationWhatsAppSubview';
+export const COMMUNICATION_VOICE_INTENT_PARAM = 'communicationVoiceIntent';
+export const COMMUNICATION_VOICE_WIZARD_STEP_PARAM = 'communicationVoiceWizardStep';
 
 const INBOX_CHANNELS = new Set<string>(['all', 'whatsapp', 'voice', 'sms']);
 const MOBILE_PANES = new Set<string>(['inbox', 'conversation', 'context']);
 const SETTINGS_SECTIONS = new Set<string>(['overview', 'whatsapp', 'voice', 'sms']);
 const CHANNELS_SECTIONS = new Set<string>(['overview', 'whatsapp', 'voice', 'sms', 'email']);
+const WHATSAPP_SUBVIEWS = new Set<string>(['overview', 'configuration', 'templates']);
+const VOICE_INTENTS = new Set<string>([
+  'overview',
+  'settings',
+  'analytics',
+  'telephony',
+  'test',
+  'automations',
+  'builder',
+  'conversations',
+]);
 
 export interface CommunicationCenterUrlState {
   primaryTab: CommunicationPrimaryTab;
@@ -43,6 +59,9 @@ export interface CommunicationCenterUrlState {
   selectedConversationId: string | null;
   mobilePane: CommunicationMobilePane;
   inboxFilters: CommunicationInboxFilters;
+  whatsappChannelSubview: CommunicationWhatsAppChannelSubview;
+  voiceIntent: CommunicationVoiceIntent | null;
+  voiceWizardStep: 'tests' | null;
 }
 
 export const DEFAULT_COMMUNICATION_CENTER_URL_STATE: CommunicationCenterUrlState = {
@@ -53,6 +72,9 @@ export const DEFAULT_COMMUNICATION_CENTER_URL_STATE: CommunicationCenterUrlState
   selectedConversationId: null,
   mobilePane: 'inbox',
   inboxFilters: mergeCommunicationInboxFilters(),
+  whatsappChannelSubview: 'overview',
+  voiceIntent: null,
+  voiceWizardStep: null,
 };
 
 function parseSearch(search = ''): URLSearchParams {
@@ -95,6 +117,24 @@ export function normalizeCommunicationSettingsSection(
   return 'overview';
 }
 
+export function normalizeCommunicationWhatsAppChannelSubview(
+  subview: CommunicationWhatsAppChannelSubview | string | null | undefined,
+): CommunicationWhatsAppChannelSubview {
+  if (subview && WHATSAPP_SUBVIEWS.has(subview)) {
+    return subview as CommunicationWhatsAppChannelSubview;
+  }
+  return 'overview';
+}
+
+export function normalizeCommunicationVoiceIntent(
+  intent: CommunicationVoiceIntent | string | null | undefined,
+): CommunicationVoiceIntent | null {
+  if (intent && VOICE_INTENTS.has(intent)) {
+    return intent as CommunicationVoiceIntent;
+  }
+  return null;
+}
+
 export function readCommunicationCenterStateFromUrl(
   search = '',
 ): Partial<CommunicationCenterUrlState> {
@@ -135,6 +175,21 @@ export function readCommunicationCenterStateFromUrl(
 
   next.inboxFilters = mergeCommunicationInboxFilters(readCommunicationInboxFiltersFromUrl(search));
 
+  const whatsappSubview = params.get(COMMUNICATION_WHATSAPP_SUBVIEW_PARAM);
+  if (whatsappSubview) {
+    next.whatsappChannelSubview = normalizeCommunicationWhatsAppChannelSubview(whatsappSubview);
+  }
+
+  const voiceIntent = params.get(COMMUNICATION_VOICE_INTENT_PARAM);
+  if (voiceIntent) {
+    next.voiceIntent = normalizeCommunicationVoiceIntent(voiceIntent);
+  }
+
+  const voiceWizardStep = params.get(COMMUNICATION_VOICE_WIZARD_STEP_PARAM);
+  if (voiceWizardStep === 'tests') {
+    next.voiceWizardStep = 'tests';
+  }
+
   return next;
 }
 
@@ -150,6 +205,9 @@ export function mergeCommunicationCenterState(
     primaryTab: normalizeCommunicationPrimaryTab(merged.primaryTab),
     settingsSection: normalizeCommunicationSettingsSection(merged.settingsSection),
     channelsSection: normalizeCommunicationChannelsSection(merged.channelsSection),
+    whatsappChannelSubview: normalizeCommunicationWhatsAppChannelSubview(merged.whatsappChannelSubview),
+    voiceIntent: normalizeCommunicationVoiceIntent(merged.voiceIntent),
+    voiceWizardStep: merged.voiceWizardStep === 'tests' ? 'tests' : null,
     inboxFilters: mergeCommunicationInboxFilters(merged.inboxFilters),
   };
 }
@@ -219,16 +277,13 @@ export function applyCommunicationSettingsSectionChange(
   };
 }
 
-export function syncCommunicationCenterStateToUrl(
+export function buildCommunicationCenterSearchParamsFromState(
   state: CommunicationCenterUrlState,
-  options?: { replace?: boolean },
-): void {
-  if (typeof window === 'undefined') return;
-
+): URLSearchParams {
   const normalized = mergeCommunicationCenterState(state);
-  const url = new URL(window.location.href);
-  url.searchParams.set(COMMUNICATION_VIEW_PARAM, COMMUNICATION_CENTER_VIEW);
-  applyCommunicationInboxFiltersToSearchParams(url.searchParams, normalized.inboxFilters);
+  const params = new URLSearchParams();
+  params.set(COMMUNICATION_VIEW_PARAM, COMMUNICATION_CENTER_VIEW);
+  applyCommunicationInboxFiltersToSearchParams(params, normalized.inboxFilters);
 
   const entries: Array<[string, string | null]> = [
     [COMMUNICATION_TAB_PARAM, normalized.primaryTab === 'inbox' ? null : normalized.primaryTab],
@@ -249,6 +304,117 @@ export function syncCommunicationCenterStateToUrl(
     [
       COMMUNICATION_MOBILE_PANE_PARAM,
       normalized.mobilePane !== 'inbox' ? normalized.mobilePane : null,
+    ],
+    [
+      COMMUNICATION_WHATSAPP_SUBVIEW_PARAM,
+      normalized.primaryTab === 'channels' &&
+      normalized.channelsSection === 'whatsapp' &&
+      normalized.whatsappChannelSubview !== 'overview'
+        ? normalized.whatsappChannelSubview
+        : null,
+    ],
+    [
+      COMMUNICATION_VOICE_INTENT_PARAM,
+      normalized.primaryTab === 'channels' &&
+      normalized.channelsSection === 'voice' &&
+      normalized.voiceIntent
+        ? normalized.voiceIntent
+        : normalized.primaryTab === 'automations' && normalized.voiceIntent === 'automations'
+          ? 'automations'
+          : null,
+    ],
+    [
+      COMMUNICATION_VOICE_WIZARD_STEP_PARAM,
+      normalized.primaryTab === 'channels' &&
+      normalized.channelsSection === 'voice' &&
+      normalized.voiceWizardStep === 'tests'
+        ? 'tests'
+        : null,
+    ],
+  ];
+
+  for (const [key, value] of entries) {
+    if (value) params.set(key, value);
+  }
+
+  return params;
+}
+
+export function syncCommunicationCenterStateToUrl(
+  state: CommunicationCenterUrlState,
+  options?: { replace?: boolean; resetQuery?: boolean },
+): void {
+  if (typeof window === 'undefined') return;
+
+  const params = buildCommunicationCenterSearchParamsFromState(state);
+  const url = new URL(window.location.href);
+
+  if (options?.resetQuery) {
+    const next = params.toString()
+      ? `${url.pathname}?${params.toString()}`
+      : url.pathname;
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (next === current) return;
+    if (options.replace ?? true) {
+      window.history.replaceState({}, '', next);
+    } else {
+      window.history.pushState({}, '', next);
+    }
+    return;
+  }
+
+  url.searchParams.set(COMMUNICATION_VIEW_PARAM, COMMUNICATION_CENTER_VIEW);
+  applyCommunicationInboxFiltersToSearchParams(
+    url.searchParams,
+    mergeCommunicationCenterState(state).inboxFilters,
+  );
+
+  const normalized = mergeCommunicationCenterState(state);
+  const entries: Array<[string, string | null]> = [
+    [COMMUNICATION_TAB_PARAM, normalized.primaryTab === 'inbox' ? null : normalized.primaryTab],
+    [
+      COMMUNICATION_SETTINGS_PARAM,
+      normalized.primaryTab === 'settings' ? normalized.settingsSection : null,
+    ],
+    [
+      COMMUNICATION_CHANNELS_PARAM,
+      normalized.primaryTab === 'channels' && normalized.channelsSection !== 'overview'
+        ? normalized.channelsSection
+        : normalized.primaryTab === 'channels'
+          ? 'overview'
+          : null,
+    ],
+    [COMMUNICATION_CHANNEL_PARAM, normalized.channel !== 'all' ? normalized.channel : null],
+    [COMMUNICATION_CONVERSATION_PARAM, normalized.selectedConversationId],
+    [
+      COMMUNICATION_MOBILE_PANE_PARAM,
+      normalized.mobilePane !== 'inbox' ? normalized.mobilePane : null,
+    ],
+    [
+      COMMUNICATION_WHATSAPP_SUBVIEW_PARAM,
+      normalized.primaryTab === 'channels' &&
+      normalized.channelsSection === 'whatsapp' &&
+      normalized.whatsappChannelSubview !== 'overview'
+        ? normalized.whatsappChannelSubview
+        : null,
+    ],
+    [
+      COMMUNICATION_VOICE_INTENT_PARAM,
+      normalized.primaryTab === 'channels' &&
+      normalized.channelsSection === 'voice' &&
+      normalized.voiceIntent
+        ? normalized.voiceIntent
+        : normalized.primaryTab === 'automations' && normalized.voiceIntent === 'automations'
+          ? 'automations'
+          : null,
+    ],
+    [
+      COMMUNICATION_VOICE_WIZARD_STEP_PARAM,
+      normalized.primaryTab === 'channels' &&
+      normalized.channelsSection === 'voice' &&
+      normalized.voiceWizardStep === 'tests'
+        ? 'tests'
+        : null,
     ],
   ];
 
@@ -276,6 +442,9 @@ export function clearCommunicationCenterUrlParams(search = ''): string {
   params.delete(COMMUNICATION_CHANNEL_PARAM);
   params.delete(COMMUNICATION_CONVERSATION_PARAM);
   params.delete(COMMUNICATION_MOBILE_PANE_PARAM);
+  params.delete(COMMUNICATION_WHATSAPP_SUBVIEW_PARAM);
+  params.delete(COMMUNICATION_VOICE_INTENT_PARAM);
+  params.delete(COMMUNICATION_VOICE_WIZARD_STEP_PARAM);
   params.delete('communicationSearch');
   params.delete('communicationUnread');
   params.delete('communicationStatus');

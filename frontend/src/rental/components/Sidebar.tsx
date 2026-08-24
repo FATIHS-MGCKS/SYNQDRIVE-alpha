@@ -16,7 +16,7 @@ import {
 import { SynqDriveBrandLogo } from '../../components/brand/SynqDriveBrandLogo';
 import {
   hasCommunicationPermission,
-  hasVoiceNavigationAccess,
+  hasVoiceAssistantAdminPermission,
 } from '../lib/communication-permissions';
 
 function SynqLogo({ className }: { className?: string }) {
@@ -45,8 +45,9 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
   const canCustomerPayments = hasPermission('payments-connect', 'read');
   const canBillingSubscription = hasPermission('billing', 'read');
   const canRentalRules = hasPermission('rental-rules', 'read');
-  const canCommunication = hasCommunicationPermission(hasPermission, 'read', userRole);
-  const canVoiceAssistant = hasVoiceNavigationAccess(hasPermission, userRole);
+  const canCommunication =
+    hasCommunicationPermission(hasPermission, 'read', userRole) ||
+    hasVoiceAssistantAdminPermission(hasPermission, 'read', userRole);
   const isFleetActive =
     currentView === 'fleet' ||
     currentView === 'fleet-condition-detail' ||
@@ -54,7 +55,7 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
 
   const sectionForView = (view?: string): string | null => {
     if (view === 'financial-insights' || view === 'invoices' || view === 'price-tariffs' || view === 'customer-payments') return 'finance';
-    if (view === 'workflow-automation' || view === 'ai-voice-assistant' || view === 'whatsapp-business') return 'automation';
+    if (view === 'workflow-automation') return 'automation';
     if (view === 'insurances' || view === 'parts-accessories') return 'integrations';
     if (view === 'settings') return 'administration';
     return null;
@@ -200,16 +201,6 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
           {canWorkflowAutomation && (
           <button onClick={() => handleViewChange('workflow-automation')} className={subNavBtnClass(currentView === 'workflow-automation')}>
             <Zap className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.workflowAutomation')}</span>
-          </button>
-          )}
-          {canVoiceAssistant && (
-          <button onClick={() => handleViewChange('ai-voice-assistant')} className={subNavBtnClass(currentView === 'ai-voice-assistant')}>
-            <MessageSquare className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.aiVoiceAssistant')}</span>
-          </button>
-          )}
-          {canCommunication && (
-          <button onClick={() => handleViewChange('whatsapp-business')} className={subNavBtnClass(currentView === 'whatsapp-business')}>
-            <Phone className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.whatsappBusiness')}</span>
           </button>
           )}
         </nav>

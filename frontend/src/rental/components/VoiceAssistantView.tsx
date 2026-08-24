@@ -48,20 +48,29 @@ import { useLanguage } from '../i18n/LanguageContext';
 
 interface Props {
   isDarkMode: boolean;
+  suppressLegacyUrlSync?: boolean;
+  initialVoiceState?: Partial<VoiceAssistantUrlState>;
+  onCanonicalVoiceStateChange?: (state: Partial<VoiceAssistantUrlState>) => void;
 }
 
 type VoiceBoolField = Exclude<{
   [K in keyof VoiceAssistantUpdatePayload]: VoiceAssistantUpdatePayload[K] extends boolean | undefined ? K : never;
 }[keyof VoiceAssistantUpdatePayload], undefined>;
 
-export function VoiceAssistantView({ isDarkMode }: Props) {
+export function VoiceAssistantView({
+  isDarkMode,
+  suppressLegacyUrlSync = false,
+  initialVoiceState,
+  onCanonicalVoiceStateChange,
+}: Props) {
   const { t } = useLanguage();
   const { orgId } = useRentalOrg();
-  const initialUrlState = mergeVoiceAssistantState(
-    readVoiceAssistantStateFromUrl(
+  const initialUrlState = mergeVoiceAssistantState({
+    ...readVoiceAssistantStateFromUrl(
       typeof window !== 'undefined' ? window.location.search : '',
     ),
-  );
+    ...initialVoiceState,
+  });
   const [opsTab, setOpsTabState] = useState<VoiceOpsTab>(() => initialUrlState.opsTab);
   const [settingsSection, setSettingsSectionState] = useState<VoiceSettingsSection | null>(
     () => initialUrlState.settingsSection,
@@ -87,8 +96,12 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
     const next = mergeVoiceAssistantState(partial);
     setOpsTabState(next.opsTab);
     setSettingsSectionState(next.settingsSection);
+    if (suppressLegacyUrlSync) {
+      onCanonicalVoiceStateChange?.(next);
+      return;
+    }
     syncVoiceAssistantStateToUrl(next, { replace: true });
-  }, []);
+  }, [onCanonicalVoiceStateChange, suppressLegacyUrlSync]);
 
   const setOpsTab = useCallback(
     (tab: VoiceOpsTab) => {
@@ -118,6 +131,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
   }, [applyVoiceUrlState]);
 
   useEffect(() => {
+    if (suppressLegacyUrlSync) return;
     const onPopState = () => {
       const next = mergeVoiceAssistantState(readVoiceAssistantStateFromUrl(window.location.search));
       setOpsTabState(next.opsTab);
@@ -125,7 +139,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, []);
+  }, [suppressLegacyUrlSync]);
 
   const isBusy = saving || activating || syncing;
   const card = 'surface-premium rounded-2xl shadow-[var(--shadow-1)]';
@@ -196,7 +210,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
   const showWizard = assistant ? shouldShowOnboardingWizard(assistant) : false;
 
   useEffect(() => {
-    if (!assistant || loading) return;
+    if (!assistant || loading || suppressLegacyUrlSync) return;
     const resolved = resolveVoiceTestNavigationIntent(
       readVoiceAssistantStateFromUrl(window.location.search),
       showWizard,
@@ -205,13 +219,14 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
     setSettingsSectionState(resolved.settingsSection);
     const current = mergeVoiceAssistantState(readVoiceAssistantStateFromUrl(window.location.search));
     if (
-      resolved.opsTab !== current.opsTab ||
-      resolved.settingsSection !== current.settingsSection ||
-      resolved.wizardStep !== current.wizardStep
+      !suppressLegacyUrlSync &&
+      (resolved.opsTab !== current.opsTab ||
+        resolved.settingsSection !== current.settingsSection ||
+        resolved.wizardStep !== current.wizardStep)
     ) {
       syncVoiceAssistantStateToUrl(resolved, { replace: true });
     }
-  }, [assistant, loading, showWizard]);
+  }, [assistant, loading, showWizard, suppressLegacyUrlSync]);
 
   useEffect(() => {
     if (showWizard) void loadVoices();

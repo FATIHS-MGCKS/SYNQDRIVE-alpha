@@ -1163,6 +1163,19 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center C13.3 — Legacy Navigation Redirects (V4.9.947)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-positive)]',
+    apis: [
+      { label: 'Resolver', detail: 'resolveLegacyCommunicationRoute — whatsapp-business / ai-voice-assistant → CC Inbox or Channels subviews' },
+      { label: 'App', detail: 'replaceState redirect on load + handleViewChange; legacy top-level mounts removed' },
+      { label: 'Nav', detail: 'Single Communication Center sidebar entry; no duplicate WhatsApp/Voice ops nav' },
+      { label: 'URL state', detail: 'communicationWhatsAppSubview + communicationVoiceIntent; VoiceAssistantView embedded with suppressLegacyUrlSync' },
+      { label: 'Deep links', detail: 'UUID conversationId only; native WA ids → channel inbox fallback' },
+      { label: 'Doc', detail: 'architecture/COMMUNICATION_CENTER_C13_3_LEGACY_NAVIGATION_REDIRECTS.md' },
+    ],
+  },
+  {
     name: 'Communication Center C13.2 — Observability & Reconciliation Health (V4.9.946)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-positive)]',
@@ -1246,7 +1259,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'Voice deep-link', detail: 'voiceOpsTab + voiceSettingsSection (configured test) + voiceWizardStep (onboarding) → VoiceAssistantView / VoiceTestCenter' },
       { label: 'Email', detail: 'Channels → Email → settings/email-versand (org admin)' },
       { label: 'Automations', detail: 'CC Automations landing → WorkflowAutomationView (workflow-automation.read)' },
-      { label: 'C9 fallback', detail: 'Legacy whatsapp-business / ai-voice-assistant operational nav retained' },
+      { label: 'C13.3 redirect', detail: 'Legacy whatsapp-business / ai-voice-assistant → CC; specialized C10 surfaces via Channels' },
     ],
   },
   {

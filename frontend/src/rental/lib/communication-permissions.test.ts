@@ -21,6 +21,13 @@ describe('communication-permissions (frontend nav helpers)', () => {
     expect(hasVoiceNavigationAccess(denyAll, 'WORKER')).toBe(true);
   });
 
+  it('grants Communication Center entry for voice-assistant.read without communication.read', () => {
+    const hasPermission: HasPermissionFn = (module, level) =>
+      module === 'voice-assistant' && level === 'read';
+    expect(hasCommunicationPermission(hasPermission, 'read')).toBe(false);
+    expect(hasVoiceNavigationAccess(hasPermission, 'ORG_ADMIN')).toBe(true);
+  });
+
   it('denies Voice nav for DRIVER', () => {
     expect(hasVoiceOperationalLegacyAccess('DRIVER')).toBe(false);
     expect(hasVoiceNavigationAccess(denyAll, 'DRIVER')).toBe(false);

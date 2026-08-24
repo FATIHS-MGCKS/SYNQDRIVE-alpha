@@ -77,10 +77,8 @@ import { SupportView } from './components/SupportView';
 import { HelpCenterView } from './components/HelpCenterView';
 import { DataAnalyseView } from './components/DataAnalyseView';
 import { WorkflowAutomationView } from './components/WorkflowAutomationView';
-import { WhatsAppBusinessView } from './components/WhatsAppBusinessView';
 import { PartsAccessoriesView } from './components/PartsAccessoriesView';
 import { InsurancesView } from './components/InsurancesView';
-import { VoiceAssistantView } from './components/VoiceAssistantView';
 import { CommunicationCenterView } from './components/communication-center/CommunicationCenterView';
 import {
   parseCommunicationCenterViewFromUrl,
@@ -91,9 +89,11 @@ import {
 } from './components/communication-center/communication-center-navigation';
 import { buildCommunicationCenterState } from './components/communication-center/communication-center-url';
 import {
-  mergeVoiceAssistantState,
-  syncVoiceAssistantStateToUrl,
-} from './components/voice-assistant/voice-assistant-navigation';
+  buildCommunicationCenterStateForVoiceIntent,
+  isLegacyCommunicationView,
+  redirectLegacyCommunicationRoute,
+  resolveLegacyCommunicationRoute,
+} from './components/communication-center/legacy-communication-navigation';
 import { AppErrorBoundary } from '../components/AppErrorBoundary';
 import { AppShell } from '../components/shell';
 import {
@@ -231,8 +231,14 @@ function RentalAppContent() {
   const [vehicleStatus, setVehicleStatus] = useState<'Available' | 'Manual Block' | 'Maintenance'>('Available');
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
   const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'customer-payments' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant' | 'communication-center'>(() => {
-    if (typeof window !== 'undefined' && parseCommunicationCenterViewFromUrl(window.location.search)) {
-      return COMMUNICATION_CENTER_VIEW;
+    if (typeof window !== 'undefined') {
+      const legacy = resolveLegacyCommunicationRoute(window.location.search);
+      if (legacy) {
+        return legacy.view === 'workflow-automation' ? 'workflow-automation' : COMMUNICATION_CENTER_VIEW;
+      }
+      if (parseCommunicationCenterViewFromUrl(window.location.search)) {
+        return COMMUNICATION_CENTER_VIEW;
+      }
     }
     const financeView = typeof window !== 'undefined' ? parseFinanceViewFromUrl(window.location.search) : null;
     if (financeView) return financeView;
@@ -253,7 +259,25 @@ function RentalAppContent() {
   const [helpCenterAttempted, setHelpCenterAttempted] = useState(
     () => typeof sessionStorage !== 'undefined' && sessionStorage.getItem('support_help_center_attempted') === '1',
   );
-  const [voiceAssistantMountKey, setVoiceAssistantMountKey] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const resolved = redirectLegacyCommunicationRoute(window.location.search, { replace: true });
+    if (resolved) {
+      setCurrentView(resolved.view as typeof currentView);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isLegacyCommunicationView(currentView)) return;
+    const resolved = redirectLegacyCommunicationRoute(
+      window.location.search || `?view=${currentView}`,
+      { replace: true },
+    );
+    if (resolved) {
+      setCurrentView(resolved.view as typeof currentView);
+    }
+  }, [currentView]);
 
   useEffect(() => {
     if (currentView !== 'support' || !helpCenterAttempted) return;
@@ -290,12 +314,12 @@ function RentalAppContent() {
   const openVoiceAssistantFromCommunication = useCallback(
     (options: {
       opsTab: 'overview' | 'settings' | 'analytics' | 'automations';
-      settingsSection?: 'test' | null;
+      settingsSection?: 'test' | 'telephony' | 'builder' | null;
       wizardStep?: 'tests' | null;
     }) => {
-      syncVoiceAssistantStateToUrl(mergeVoiceAssistantState(options));
-      setVoiceAssistantMountKey((key) => key + 1);
-      setCurrentView('ai-voice-assistant');
+      const ccState = buildCommunicationCenterStateForVoiceIntent(options);
+      syncCommunicationCenterStateToUrl(mergeCommunicationCenterState(ccState), { replace: true });
+      setCurrentView(COMMUNICATION_CENTER_VIEW);
       try {
         sessionStorage.removeItem(RENTAL_SETTINGS_VIEW_KEY);
       } catch {
@@ -734,6 +758,13 @@ function RentalAppContent() {
   );
 
   const handleViewChange = (view: string) => {
+    if (isLegacyCommunicationView(view)) {
+      const resolved = redirectLegacyCommunicationRoute(`?view=${view}`, { replace: true });
+      if (resolved) {
+        setCurrentView(resolved.view as typeof currentView);
+        return;
+      }
+    }
     if (view === 'fleet-condition') {
       setCurrentView('fleet');
       setFleetTabNormalized('health');
@@ -1285,8 +1316,6 @@ function RentalAppContent() {
             canRead={hasPermission('workflow-automation', 'read')}
             canWrite={hasPermission('workflow-automation', 'write')}
           />
-        ) : currentView === 'whatsapp-business' ? (
-          <WhatsAppBusinessView isDarkMode={isDarkMode} />
         ) : currentView === 'parts-accessories' ? (
           <PartsAccessoriesView isDarkMode={isDarkMode} />
         ) : currentView === 'insurances' ? (
@@ -1294,8 +1323,6 @@ function RentalAppContent() {
             const v = fleetVehicles.find((fv: any) => fv.id === vehicleId);
             if (v) { setSelectedVehicle(v); setCurrentView('documents'); }
           }} />
-        ) : currentView === 'ai-voice-assistant' ? (
-          <VoiceAssistantView key={voiceAssistantMountKey} isDarkMode={isDarkMode} />
         ) : currentView === 'help-center' ? (
           <HelpCenterView
             isDarkMode={isDarkMode}

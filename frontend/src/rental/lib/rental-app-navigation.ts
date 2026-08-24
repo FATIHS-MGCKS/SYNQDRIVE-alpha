@@ -1,8 +1,12 @@
-import { COMMUNICATION_CENTER_VIEW } from '../components/communication-center/communication-center-navigation';
 import {
-  buildVoiceAssistantSearchParams,
-  type VoiceAssistantUrlState,
-} from '../components/voice-assistant/voice-assistant-navigation';
+  COMMUNICATION_CENTER_VIEW,
+  COMMUNICATION_CHANNELS_PARAM,
+  COMMUNICATION_TAB_PARAM,
+  COMMUNICATION_VOICE_INTENT_PARAM,
+  mergeCommunicationCenterState,
+} from '../components/communication-center/communication-center-navigation';
+import { buildCommunicationCenterStateForVoiceIntent } from '../components/communication-center/legacy-communication-navigation';
+import type { VoiceAssistantUrlState } from '../components/voice-assistant/voice-assistant-navigation';
 
 export const RENTAL_VIEW_PARAM = 'view';
 export const RENTAL_SETTINGS_TAB_PARAM = 'settingsTab';
@@ -34,10 +38,26 @@ export function buildRentalViewSearchParams(
     params.set(RENTAL_SETTINGS_TAB_PARAM, options.settingsTab);
   }
 
-  if (view === 'ai-voice-assistant' && options?.voice) {
-    const voiceParams = buildVoiceAssistantSearchParams(options.voice);
-    voiceParams.delete(RENTAL_VIEW_PARAM);
-    voiceParams.forEach((value, key) => params.set(key, value));
+  if (options?.voice) {
+    const wizardStep =
+      options.voice.wizardStep === 'tests' ? 'tests' : null;
+    const ccState = mergeCommunicationCenterState(
+      buildCommunicationCenterStateForVoiceIntent({
+        opsTab: options.voice.opsTab ?? 'overview',
+        settingsSection: options.voice.settingsSection ?? null,
+        wizardStep,
+      }),
+    );
+    params.set(RENTAL_VIEW_PARAM, COMMUNICATION_CENTER_VIEW);
+    if (ccState.primaryTab !== 'inbox') {
+      params.set(COMMUNICATION_TAB_PARAM, ccState.primaryTab);
+    }
+    if (ccState.primaryTab === 'channels' && ccState.channelsSection !== 'overview') {
+      params.set(COMMUNICATION_CHANNELS_PARAM, ccState.channelsSection);
+    }
+    if (ccState.voiceIntent) {
+      params.set(COMMUNICATION_VOICE_INTENT_PARAM, ccState.voiceIntent);
+    }
   }
 
   return params;
