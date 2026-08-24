@@ -24,6 +24,7 @@ import { operatorVehicleQuickViewBookingEn } from './operator.vehicleQuickView.b
 import { operatorVehicleQuickViewHealthEn } from './operator.vehicleQuickView.health.en';
 import { operatorVehicleQuickViewDamagesEn } from './operator.vehicleQuickView.damages.en';
 import { operatorVehicleQuickViewTireEn } from './operator.vehicleQuickView.tire.en';
+import { operatorVehicleQuickViewDocumentsEn } from './operator.vehicleQuickView.documents.en';
 import { vendorsDirectoryEn } from './vendors.directory.en';
 import { supportOpsEn } from './support.ops.en';
 import { whatsappEn } from './whatsapp.en';
@@ -4153,6 +4154,7 @@ export const en = {
   'documentExtraction.status.READY_FOR_REVIEW': 'Ready for review',
   'documentExtraction.status.CONFIRMED': 'Confirmed',
   'documentExtraction.status.APPLIED': 'Applied',
+  'documentExtraction.status.PARTIALLY_APPLIED': 'Partially applied',
   'documentExtraction.status.FAILED': 'Failed',
   'documentExtraction.status.REJECTED': 'Rejected',
   'documentExtraction.status.CANCELLED': 'Cancelled',
@@ -5599,6 +5601,7 @@ export const en = {
   ...operatorVehicleQuickViewHealthEn,
   ...operatorVehicleQuickViewDamagesEn,
   ...operatorVehicleQuickViewTireEn,
+  ...operatorVehicleQuickViewDocumentsEn,
   ...vendorsDirectoryEn,
 } as const;
 

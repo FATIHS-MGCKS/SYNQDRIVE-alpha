@@ -2,12 +2,12 @@ import { SkeletonRows } from '../../components/patterns';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
 import { useOperatorDamageCapture } from '../damages/OperatorDamageCaptureProvider';
 import { useOperatorVehicleQuickViewData } from '../hooks/useOperatorVehicleQuickViewData';
-import { formatOperatorDateTime } from '../lib/operatorVehicleQuickView.utils';
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import { OperatorVehicleQuickViewBookingContext } from './OperatorVehicleQuickViewBookingContext';
 import { OperatorVehicleQuickViewActiveDamages } from './OperatorVehicleQuickViewActiveDamages';
 import { OperatorVehicleQuickViewRentalHealth } from './OperatorVehicleQuickViewRentalHealth';
 import { OperatorVehicleQuickViewTireProfile } from './OperatorVehicleQuickViewTireProfile';
+import { OperatorVehicleQuickViewDocuments } from './OperatorVehicleQuickViewDocuments';
 import { OperatorGlassCard } from './OperatorGlassCard';
 import { OperatorVehicleQuickViewHeader } from './OperatorVehicleQuickViewHeader';
 import { OperatorVehicleQuickViewQuickActions } from './OperatorVehicleQuickViewQuickActions';
@@ -183,26 +183,11 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
         }
       />
 
-      {/* Documents */}
       {(data.documentsLoading || data.documents.length > 0) && (
-        <SectionCard title="AI Uploads / Dokumente">
-          {data.documentsLoading ? (
-            <SkeletonRows rows={2} />
-          ) : (
-            <div className="space-y-2">
-              {data.documents.map((doc) => (
-                <div key={doc.id} className="rounded-xl border border-border/50 px-3 py-2 text-xs">
-                  <p className="font-semibold text-foreground">
-                    {doc.documentType} · {doc.status}
-                  </p>
-                  <p className="text-muted-foreground">
-                    {doc.sourceFileName ?? '—'} · {formatOperatorDateTime(doc.createdAt)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionCard>
+        <OperatorVehicleQuickViewDocuments
+          documents={data.documents}
+          documentsLoading={data.documentsLoading}
+        />
       )}
 
       <OperatorVehicleQuickViewToolActions
