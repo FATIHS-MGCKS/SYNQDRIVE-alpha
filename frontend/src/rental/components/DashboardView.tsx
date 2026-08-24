@@ -5,6 +5,7 @@ import {
   ControlKpiStrip,
   DashboardAttentionStack,
   DashboardControlHeader,
+  DashboardContextHeader,
   DashboardDrilldownDrawer,
   DashboardTasksOverviewPanel,
   DashboardUtilizationPanel,
@@ -83,7 +84,7 @@ export function DashboardView({
     return (
       <>
         <div className={`${DASHBOARD_LAYOUT.focusShell} animate-fade-up`}>
-          <DashboardControlHeader vm={vm} />
+          <DashboardContextHeader vm={vm} />
 
           <div className={DASHBOARD_LAYOUT.focusStack}>
             <FocusDataFreshnessBanner vm={vm} />
@@ -124,10 +125,12 @@ export function DashboardView({
   return (
     <>
       <div className={DASHBOARD_LAYOUT.shell}>
+        <DashboardContextHeader vm={vm} />
+
         <div className={`${DASHBOARD_LAYOUT.controlFinanceGrid} animate-fade-up`} style={{ animationDelay: '0ms' }}>
           <div ref={leftColumnRef} className={DASHBOARD_LAYOUT.controlLeftColumn}>
             <div className={DASHBOARD_LAYOUT.controlKpiSlot}>
-              <DashboardControlHeader vm={vm}>
+              <DashboardControlHeader>
                 <div className="space-y-3 sm:space-y-3.5">
                   <ControlKpiStrip
                     dashboardRuntime={vm.dashboardRuntime}

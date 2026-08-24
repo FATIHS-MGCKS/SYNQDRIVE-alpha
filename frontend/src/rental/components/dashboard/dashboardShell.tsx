@@ -52,6 +52,8 @@ export const DASHBOARD_LAYOUT = {
   /** Shared outer surface for Control Center header + embedded KPI strip. */
   controlCenterCard: 'surface-premium overflow-hidden',
   controlCenterCardPadding: 'px-4 py-4 sm:p-5 lg:p-6',
+  /** Compact page-context strip above the dashboard card grid (no card surface). */
+  contextHeader: 'relative min-w-0 pb-1 sm:pb-2',
   controlCenterKpiSection: 'mt-3 sm:mt-3.5',
 } as const;
 

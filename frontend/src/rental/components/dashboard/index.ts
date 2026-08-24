@@ -21,6 +21,7 @@ export { STATION_FILTER_STORAGE_KEY, OPERATOR_FOCUS_MODE_STORAGE_KEY } from './d
 export { useDashboardViewModel } from './useDashboardViewModel';
 export { useDashboardLeftColumnHeight } from './useDashboardLeftColumnHeight';
 export { DashboardControlHeader } from './DashboardControlHeader';
+export { DashboardContextHeader } from './DashboardContextHeader';
 export { DashboardDrilldownDrawer } from './DashboardDrilldownDrawer';
 export { ControlKpiStrip } from './ControlKpiStrip';
 export { FinanceKpiStrip } from './FinanceKpiStrip';

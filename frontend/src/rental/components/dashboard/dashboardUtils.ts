@@ -420,6 +420,39 @@ export function deriveDataSyncStatus(
   return 'live';
 }
 
+/** True while dashboard runtime status must not show a resolved Live/Offline/etc. badge. */
+export function isDashboardSyncStatusPending(
+  freshness: DataFreshnessSummary,
+  options: { orgLoading: boolean; orgActive: boolean },
+): boolean {
+  if (options.orgLoading) return true;
+  if (!options.orgActive) return false;
+  if (freshness.insightsError || freshness.todayBookingsError) return false;
+  return (
+    freshness.fleetLoading ||
+    freshness.insightsLoading ||
+    !freshness.todayBookingsLoaded ||
+    !freshness.invoicesLoaded
+  );
+}
+
+export type DashboardSyncBadge =
+  | { phase: 'loading' }
+  | { phase: 'resolved'; status: DataSyncStatus };
+
+export function resolveDashboardSyncBadge(
+  freshness: DataFreshnessSummary,
+  options: { orgLoading: boolean; orgActive: boolean },
+): DashboardSyncBadge {
+  if (isDashboardSyncStatusPending(freshness, options)) {
+    return { phase: 'loading' };
+  }
+  return {
+    phase: 'resolved',
+    status: deriveDataSyncStatus(freshness, options.orgActive),
+  };
+}
+
 export function formatLastSyncLabel(
   insightsGeneratedAt: string | null,
   manualSyncAt: string | null,
@@ -564,6 +597,20 @@ export function syncStatusTone(status: DataSyncStatus): StatusTone {
   return 'critical';
 }
 
+export const SYNC_STATUS_I18N_KEYS = {
+  live: 'dashboard.syncStatus.live',
+  partial: 'dashboard.syncStatus.partial',
+  stale: 'dashboard.syncStatus.stale',
+  offline: 'dashboard.syncStatus.offline',
+} as const;
+
+export function syncStatusTranslationKey(
+  status: DataSyncStatus,
+): (typeof SYNC_STATUS_I18N_KEYS)[keyof typeof SYNC_STATUS_I18N_KEYS] {
+  return SYNC_STATUS_I18N_KEYS[status];
+}
+
+/** @deprecated Prefer `syncStatusTranslationKey` + `t()` in UI. Kept for non-React builders. */
 export function syncStatusLabel(status: DataSyncStatus, locale: string): string {
   const map: Record<DataSyncStatus, { en: string; de: string }> = {
     live: { en: 'Live', de: 'Live' },

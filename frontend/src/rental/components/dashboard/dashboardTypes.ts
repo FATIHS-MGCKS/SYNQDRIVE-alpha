@@ -719,6 +719,7 @@ export interface DashboardViewModel {
   locale: Locale;
   t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
   dateLabel: string;
+  dateLabelShort: string;
 
   controlCenterStatus: ControlCenterStatus;
   openSliceDrilldown: (sliceId: DashboardSliceId, groupId?: TodaysOperationsDrilldownGroupId) => void;
