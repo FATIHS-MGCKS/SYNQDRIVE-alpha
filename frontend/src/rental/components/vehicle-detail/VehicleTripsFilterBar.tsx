@@ -45,7 +45,7 @@ export function VehicleTripsFilterBar({
   return (
     <div className="mb-2 min-w-0 max-w-full">
       <div
-        className={`rounded-lg border border-border surface-premium px-2.5 py-1 shadow-sm shrink-0 ${VEHICLE_DETAIL_SCROLL_ROW_CLASS}`}
+        className={`rounded-lg surface-premium px-2.5 py-1 shrink-0 ${VEHICLE_DETAIL_SCROLL_ROW_CLASS}`}
         role="toolbar"
         aria-label="Trip filters"
       >

@@ -61,7 +61,7 @@ export function RolesAccessTab({ orgId, roles, loading }: RolesAccessTabProps) {
         )}
       </div>
 
-      <div className="rounded-2xl border border-border p-5 min-h-[320px]">
+      <div className="rounded-lg border border-border p-5 min-h-[320px]">
         {!selectedId ? (
           <div className="text-[13px] text-muted-foreground">Select a role</div>
         ) : detailLoading || !detail ? (

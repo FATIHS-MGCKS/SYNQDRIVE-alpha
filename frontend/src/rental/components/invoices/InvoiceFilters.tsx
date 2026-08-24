@@ -126,7 +126,7 @@ export function InvoiceFilters({
   }, [filters, onPatchFilters, onSearchTermChange, searchTerm, stationLabel]);
 
   return (
-    <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
+    <div className="surface-premium p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <Icon name="filter" className="h-4 w-4 text-muted-foreground" />

@@ -34,7 +34,7 @@ export function InvoiceListMobileCards({ items, onSelect, className }: InvoiceLi
             data-testid={`invoice-list-item-${item.invoiceNumber}`}
             onClick={() => onSelect(item)}
             className={cn(
-              'surface-premium w-full rounded-xl p-3.5 text-left shadow-[var(--shadow-1)] transition-colors',
+              'surface-premium w-full p-3.5 text-left transition-colors',
               'hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               item.isOverdue && 'border-l-2 border-l-status-critical',
             )}

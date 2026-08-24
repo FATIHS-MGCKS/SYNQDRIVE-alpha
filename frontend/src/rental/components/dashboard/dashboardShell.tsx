@@ -42,22 +42,15 @@ export const DASHBOARD_LAYOUT = {
   /** @deprecated Tagesplan panel removed from standard dashboard. */
   dayPlanSlot: 'min-w-0 w-full',
   financeZone: 'border-t border-border/50 pt-7',
-  /** Standalone dashboard panels (Auslastung, Meldungen, Aufgaben) — matches control center shell. */
-  dashboardPanelRadius: '!rounded-[16px]',
-  /**
-   * Embedded Control Center KPI modules — `!` overrides `.surface-premium` /
-   * `.surface-elevated` which hardcode `border-radius: calc(var(--radius) + 2px)`.
-   */
-  controlCenterRadius: '!rounded-[12px]',
   /** Primary finance KPIs embedded under operational twin cards in the control center. */
   controlFinanceKpiGrid: 'grid grid-cols-2 items-stretch gap-2 sm:grid-cols-4 sm:gap-2.5 lg:gap-3',
-  controlFinanceKpiCard: 'min-h-[72px] !rounded-[12px] px-2.5 py-2.5 sm:min-h-[74px] lg:px-3 lg:py-2.5',
+  controlFinanceKpiCard: 'min-h-[72px] px-2.5 py-2.5 sm:min-h-[74px] lg:px-3 lg:py-2.5',
   /** Four finance KPI cards in one row inside the legacy Finanzen panel. */
   financeKpiGrid: 'grid w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2',
   financeKpiCard:
-    'min-h-[72px] rounded-xl px-2.5 py-2 sm:min-h-[76px] sm:rounded-2xl sm:px-2.5 sm:py-2.5',
+    'min-h-[72px] rounded-md px-2.5 py-2 sm:min-h-[76px] sm:px-2.5 sm:py-2.5',
   /** Shared outer surface for Control Center header + embedded KPI strip. */
-  controlCenterCard: 'surface-premium !rounded-[16px] overflow-hidden',
+  controlCenterCard: 'surface-premium overflow-hidden',
   controlCenterCardPadding: 'px-4 py-4 sm:p-5 lg:p-6',
   controlCenterKpiSection: 'mt-3 sm:mt-3.5',
 } as const;
@@ -67,7 +60,6 @@ export type DashboardPanelTier = 'primary' | 'secondary' | 'tertiary';
 export function panelShellClass(tier: DashboardPanelTier, className?: string): string {
   return cn(
     'flex flex-col overflow-hidden',
-    DASHBOARD_LAYOUT.dashboardPanelRadius,
     tier === 'primary' && 'surface-premium',
     tier === 'secondary' && 'surface-premium',
     tier === 'tertiary' && 'surface-premium',

@@ -44,7 +44,7 @@ export function DiditConsentNotice({ onConfirm, onCancel, busy }: DiditConsentNo
         <button
           type="button"
           onClick={onCancel}
-          className="px-3 py-2 rounded-lg text-xs font-medium border border-border surface-premium"
+          className="px-3 py-2 rounded-lg text-xs font-medium surface-premium"
         >
           Abbrechen
         </button>

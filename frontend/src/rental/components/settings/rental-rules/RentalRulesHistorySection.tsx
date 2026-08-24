@@ -72,7 +72,7 @@ export function RentalRulesHistorySection({ orgId }: RentalRulesHistorySectionPr
         description={t('rentalRules.workflow.history.description')}
       />
 
-      <div className="surface-premium rounded-2xl border border-border/70 p-3 sm:p-4">
+      <div className="surface-premium border border-border/70 p-3 sm:p-4">
         {loading ? <SkeletonRows rows={4} /> : null}
         {!loading && error ? (
           <ErrorState compact title={t('rentalRules.ui.history.errorTitle')} description={error} onRetry={() => void load()} />

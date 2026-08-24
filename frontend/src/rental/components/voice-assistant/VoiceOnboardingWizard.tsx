@@ -204,7 +204,7 @@ export function VoiceOnboardingWizard({
 
   return (
     <div className="space-y-4">
-      <div className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+      <div className="surface-premium border border-border/40 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
@@ -320,7 +320,7 @@ export function VoiceOnboardingWizard({
         )}
 
         {step === 'availability' && (
-          <div className="surface-premium space-y-4 rounded-2xl border border-border/40 p-5 shadow-[var(--shadow-1)]">
+          <div className="surface-premium space-y-4 border border-border/40 p-5">
             <div>
               <h3 className="text-sm font-bold text-foreground">{t('voice.availability.title')}</h3>
               <p className="mt-1 text-[11px] text-muted-foreground">{t('voice.availability.description')}</p>
@@ -431,7 +431,7 @@ export function VoiceOnboardingWizard({
               }}
             />
 
-            <div className="surface-premium rounded-2xl border border-border/40 p-5 shadow-[var(--shadow-1)]">
+            <div className="surface-premium border border-border/40 p-5">
               <h3 className="text-sm font-bold text-foreground">{t('voice.activation.budgetTitle')}</h3>
               <p className="mt-1 text-[11px] text-muted-foreground">{t('voice.activation.budgetDesc')}</p>
               <div className="mt-3 flex flex-wrap gap-2">

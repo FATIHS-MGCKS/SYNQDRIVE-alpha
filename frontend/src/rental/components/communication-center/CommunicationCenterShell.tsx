@@ -414,7 +414,7 @@ export function CommunicationCenterShell({
       />
 
       {settingsActive ? (
-        <div className="surface-premium min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)] lg:min-h-[480px] lg:p-5">
+        <div className="surface-premium min-h-0 flex-1 overflow-hidden border border-border/40 p-4 lg:min-h-[480px] lg:p-5">
           <CommunicationSettingsPane
             activeSection={settingsSection}
             enabled={settingsActive}
@@ -422,7 +422,7 @@ export function CommunicationCenterShell({
           />
         </div>
       ) : channelsActive ? (
-        <div className="surface-premium min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)] lg:min-h-[480px] lg:p-5">
+        <div className="surface-premium min-h-0 flex-1 overflow-hidden border border-border/40 p-4 lg:min-h-[480px] lg:p-5">
           <CommunicationChannelsPane
             activeSection={channelsSection}
             enabled={channelsActive}
@@ -438,13 +438,13 @@ export function CommunicationCenterShell({
           />
         </div>
       ) : automationsActive ? (
-        <div className="surface-premium min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)] lg:min-h-[480px] lg:p-5">
+        <div className="surface-premium min-h-0 flex-1 overflow-hidden border border-border/40 p-4 lg:min-h-[480px] lg:p-5">
           <CommunicationAutomationsPane
             onOpenWorkflowAutomation={() => onOpenWorkflowAutomation?.()}
           />
         </div>
       ) : aiActivityActive ? (
-        <div className="surface-premium min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/40 shadow-[var(--shadow-1)] lg:min-h-[480px]">
+        <div className="surface-premium min-h-0 flex-1 overflow-hidden border border-border/40 lg:min-h-[480px]">
           <CommunicationAiActivityPane
             orgId={orgId}
             enabled={aiActivityActive}
@@ -456,7 +456,7 @@ export function CommunicationCenterShell({
         <div
           data-testid="communication-inbox-workspace"
           className={cn(
-            'surface-premium grid min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/40 shadow-[var(--shadow-1)]',
+            'surface-premium grid min-h-0 flex-1 overflow-hidden border border-border/40',
             'max-lg:h-[min(70dvh,720px)] lg:h-[min(72vh,820px)] lg:min-h-[480px]',
             'lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]',
             hasConversation &&

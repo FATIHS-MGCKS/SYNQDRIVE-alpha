@@ -49,7 +49,7 @@ export function EvaluationsSectionShell<T>({
   const { t } = useLanguage();
   return (
     <section
-      className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 flex flex-col gap-3"
+      className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 flex flex-col gap-3"
       aria-labelledby={`${testId ?? titleKey}-heading`}
       data-testid={testId}
     >

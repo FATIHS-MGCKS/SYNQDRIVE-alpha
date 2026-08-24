@@ -23,7 +23,7 @@ interface Props {
 }
 
 const CARD = (_d: boolean) =>
-  'rounded-2xl shadow-sm border overflow-hidden surface-solid border-border';
+  'overflow-hidden surface-solid border-border';
 const BADGE = (color: string) =>
   `inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${color}`;
 

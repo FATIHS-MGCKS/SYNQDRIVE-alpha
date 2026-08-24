@@ -53,7 +53,7 @@ export function DocumentArchivePanel({
     setSearchDraft(filters.q);
   }, [filters.q]);
 
-  const glass = 'surface-solid border border-border';
+  const glass = 'surface-solid';
 
   const statusOptions = useMemo(
     () => ['', 'READY_FOR_REVIEW', 'APPLIED', 'PARTIALLY_APPLIED', 'FAILED', 'AWAITING_DOCUMENT_TYPE'],

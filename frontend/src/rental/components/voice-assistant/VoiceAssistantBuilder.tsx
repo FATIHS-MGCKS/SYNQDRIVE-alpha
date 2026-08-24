@@ -144,7 +144,7 @@ export function VoiceAssistantBuilder({
           <DataCard
             title="Identity"
             description="How callers experience your assistant — name, voice, and first impression."
-            className="rounded-2xl shadow-[var(--shadow-1)]"
+            className="rounded-lg shadow-[var(--shadow-1)]"
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <BuilderField
@@ -236,7 +236,7 @@ export function VoiceAssistantBuilder({
           <DataCard
             title="Company knowledge"
             description="Background information the assistant can reference. Live fleet data integrations are shown below."
-            className="rounded-2xl shadow-[var(--shadow-1)]"
+            className="rounded-lg shadow-[var(--shadow-1)]"
           >
             <BuilderField
               label="Company context"
@@ -277,7 +277,7 @@ export function VoiceAssistantBuilder({
           <DataCard
             title="Behavior rules"
             description="Policies the assistant must follow during every conversation."
-            className="rounded-2xl shadow-[var(--shadow-1)]"
+            className="rounded-lg shadow-[var(--shadow-1)]"
           >
             <BuilderField
               label="Business rules"
@@ -386,7 +386,7 @@ export function VoiceAssistantBuilder({
           <DataCard
             title="System prompt"
             description="Advanced: override the auto-assembled instructions sent to ElevenLabs. Leave empty to use generated content from the sections above."
-            className="rounded-2xl shadow-[var(--shadow-1)]"
+            className="rounded-lg shadow-[var(--shadow-1)]"
             actions={
               hasManualOverride ? (
                 <StatusChip tone="watch" className="text-[9px]">Manual override active</StatusChip>
@@ -414,7 +414,7 @@ export function VoiceAssistantBuilder({
           <DataCard
             title="Knowledge snippets"
             description="Short FAQ blocks for frequent caller questions — parking, fuel policy, insurance, etc."
-            className="rounded-2xl shadow-[var(--shadow-1)]"
+            className="rounded-lg shadow-[var(--shadow-1)]"
           >
             <BuilderField
               label="FAQ & knowledge blocks"
@@ -436,7 +436,7 @@ export function VoiceAssistantBuilder({
           <DataCard
             title="Prompt preview"
             description="Structured summary of what your assistant knows. Not the exact provider payload."
-            className="rounded-2xl shadow-[var(--shadow-1)]"
+            className="rounded-lg shadow-[var(--shadow-1)]"
             footer={
               hasManualOverride
                 ? 'A manual system prompt override is active and takes precedence on activate.'

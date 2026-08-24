@@ -162,7 +162,7 @@ export function DocumentClassificationResultPanel({
               return (
                 <li
                   key={`${alt.category}-${alt.subtype}-${alt.legacyDocumentType}`}
-                  className={`text-xs rounded-md px-2 py-1.5 break-words surface-solid text-foreground border border-border`}
+                  className={`text-xs rounded-md px-2 py-1.5 break-words surface-solid text-foreground`}
                 >
                   <span className="font-medium">{altLabel}</span>
                   {altConfidence ? <span className="opacity-80"> · {altConfidence}</span> : null}
@@ -186,7 +186,7 @@ export function DocumentClassificationResultPanel({
               type="button"
               onClick={() => setShowTypeChange(true)}
               disabled={disabled}
-              className={`inline-flex items-center gap-1.5 min-h-9 px-3 py-1.5 rounded-lg text-xs font-semibold surface-solid border border-border text-foreground hover:bg-muted ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`inline-flex items-center gap-1.5 min-h-9 px-3 py-1.5 rounded-lg text-xs font-semibold surface-solid text-foreground hover:bg-muted ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Icon name="pencil" className="w-3.5 h-3.5" />
               {t('docUpload.changeDocumentType')}

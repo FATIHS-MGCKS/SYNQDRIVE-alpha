@@ -55,7 +55,7 @@ export function CommunicationChannelsLanding({
             data-testid={`communication-channels-card-${channel.key}`}
             disabled={!channel.accessible}
             className={cn(
-              'surface-premium rounded-2xl border border-border/40 p-4 text-left shadow-[var(--shadow-1)] transition-colors',
+              'surface-premium border border-border/40 p-4 text-left transition-colors',
               channel.accessible
                 ? 'sq-press hover:border-[color:var(--brand)]/30'
                 : 'cursor-not-allowed opacity-70',

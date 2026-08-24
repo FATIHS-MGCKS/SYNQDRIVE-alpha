@@ -335,7 +335,7 @@ export function OperatorTodayView() {
         <OperatorTabletFrame
           list={mainContent}
           detail={
-            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/10 p-8 text-center">
+            <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border/60 bg-muted/10 p-8 text-center">
               <p className="text-sm text-muted-foreground">
                 Aufgaben und Buchungen öffnen sich als Vollbild-Sheets auf dem Gerät.
               </p>

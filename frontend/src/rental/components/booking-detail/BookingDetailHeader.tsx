@@ -120,7 +120,7 @@ export function BookingDetailHeader({
           <div className="relative group">
             <button
               type="button"
-              className="sq-press px-3 py-2 rounded-lg text-xs font-semibold border border-border surface-premium hover:bg-muted"
+              className="sq-press px-3 py-2 rounded-lg text-xs font-semibold surface-premium hover:bg-muted"
             >
               Aktionen
               <Icon name="chevron-down" className="w-3.5 h-3.5 inline ml-1" />

@@ -256,7 +256,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
           <>
             {step === 'vehicle' && (
               <div className="space-y-4">
-                <div className="rounded-2xl border border-border surface-premium p-4 space-y-3">
+                <div className=" surface-premium p-4 space-y-3">
                   <div>
                     <p className="text-[10px] font-semibold uppercase text-muted-foreground">Kennzeichen</p>
                     <p className="text-2xl font-bold tracking-wide text-foreground">{plate}</p>
@@ -316,7 +316,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                         key={opt.id}
                         type="button"
                         onClick={() => setSelectedSetupId(opt.id)}
-                        className={`sq-press w-full rounded-2xl border px-4 py-3 text-left ${
+                        className={`sq-press w-full rounded-md border px-4 py-3 text-left ${
                           active
                             ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)]'
                             : 'border-border surface-premium'
@@ -345,7 +345,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                   <span className="text-[10px] font-semibold uppercase text-muted-foreground">Messdatum</span>
                   <input
                     type="datetime-local"
-                    className="mt-1 h-12 w-full rounded-xl border border-border surface-premium px-3 text-sm"
+                    className="mt-1 h-12 w-full surface-premium px-3 text-sm"
                     value={context.measuredAt}
                     onChange={(e) => setContext((c) => ({ ...c, measuredAt: e.target.value }))}
                   />
@@ -355,7 +355,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                   <input
                     type="text"
                     inputMode="decimal"
-                    className="mt-1 h-12 w-full rounded-xl border border-border surface-premium px-3 text-base tabular-nums"
+                    className="mt-1 h-12 w-full surface-premium px-3 text-base tabular-nums"
                     value={context.odometerKm}
                     onChange={(e) => setContext((c) => ({ ...c, odometerKm: e.target.value }))}
                     placeholder="Optional"
@@ -385,7 +385,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                     <span className="text-[10px] font-semibold uppercase text-muted-foreground">Werkstatt</span>
                     <input
                       type="text"
-                      className="mt-1 h-12 w-full rounded-xl border border-border surface-premium px-3 text-base"
+                      className="mt-1 h-12 w-full surface-premium px-3 text-base"
                       value={context.workshopName}
                       onChange={(e) => setContext((c) => ({ ...c, workshopName: e.target.value }))}
                       placeholder="Name der Werkstatt"
@@ -395,7 +395,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                 <label className="block">
                   <span className="text-[10px] font-semibold uppercase text-muted-foreground">Notiz</span>
                   <textarea
-                    className="mt-1 min-h-[80px] w-full rounded-xl border border-border surface-premium px-3 py-2 text-sm"
+                    className="mt-1 min-h-[80px] w-full surface-premium px-3 py-2 text-sm"
                     value={context.note}
                     onChange={(e) => setContext((c) => ({ ...c, note: e.target.value }))}
                     placeholder="Optional — nur lokal im Review, nicht in Tire-Health-API"
@@ -419,7 +419,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
 
             {step === 'review' && (
               <div className="space-y-4">
-                <div className="rounded-2xl border border-border surface-premium p-4 space-y-2 text-sm">
+                <div className=" surface-premium p-4 space-y-2 text-sm">
                   <p>
                     <span className="text-muted-foreground">Fahrzeug:</span>{' '}
                     <span className="font-semibold">{vehicleLabel}</span>
@@ -490,7 +490,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
             type="button"
             onClick={goBack}
             disabled={submitting}
-            className="sq-press flex min-h-[52px] flex-1 items-center justify-center gap-1 rounded-2xl border border-border text-sm font-semibold disabled:opacity-50"
+            className="sq-press flex min-h-[52px] flex-1 items-center justify-center gap-1 rounded-lg border border-border text-sm font-semibold disabled:opacity-50"
           >
             <ChevronLeft className="h-4 w-4" />
             {stepIndex(step) === 0 ? 'Abbrechen' : 'Zurück'}
@@ -500,7 +500,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
               type="button"
               disabled={submitting}
               onClick={() => void handleSave()}
-              className="sq-press flex min-h-[52px] flex-[2] items-center justify-center gap-2 rounded-2xl bg-[color:var(--brand)] text-sm font-bold text-white disabled:opacity-60"
+              className="sq-press flex min-h-[52px] flex-[2] items-center justify-center gap-2 rounded-lg bg-[color:var(--brand)] text-sm font-bold text-white disabled:opacity-60"
             >
               {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Messung speichern'}
             </button>
@@ -508,7 +508,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
             <button
               type="button"
               onClick={goNext}
-              className="sq-press flex min-h-[52px] flex-[2] items-center justify-center gap-1 rounded-2xl bg-[color:var(--brand)] text-sm font-bold text-white"
+              className="sq-press flex min-h-[52px] flex-[2] items-center justify-center gap-1 rounded-lg bg-[color:var(--brand)] text-sm font-bold text-white"
             >
               Weiter
               <ChevronRight className="h-4 w-4" />

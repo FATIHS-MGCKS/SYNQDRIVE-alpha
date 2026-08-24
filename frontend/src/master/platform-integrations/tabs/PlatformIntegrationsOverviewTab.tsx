@@ -48,7 +48,7 @@ export function PlatformIntegrationsOverviewTab({
       </div>
 
       {attention && attention.topItems.length > 0 && (
-        <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)]">
+        <div className="surface-premium p-5">
           <div className="flex items-center justify-between gap-3 mb-3">
             <h3 className="font-semibold">Aufmerksamkeit erforderlich</h3>
             <button
@@ -76,7 +76,7 @@ export function PlatformIntegrationsOverviewTab({
         </div>
       )}
 
-      <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)]">
+      <div className="surface-premium p-5">
         <h3 className="font-semibold mb-3">Integrations-Health</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {entries.map((entry) => (

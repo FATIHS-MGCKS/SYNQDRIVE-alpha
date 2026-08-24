@@ -34,7 +34,7 @@ export function TenantBillingProblemPanel({
 
   return (
     <div
-      className="rounded-2xl border border-border/60 px-4 py-4 sq-tone-critical space-y-3"
+      className="rounded-lg border border-border/60 px-4 py-4 sq-tone-critical space-y-3"
       data-testid="tenant-billing-problem-panel"
     >
       <div>

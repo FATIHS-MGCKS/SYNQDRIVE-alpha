@@ -83,7 +83,7 @@ function MatrixMobileCard({
   const incomplete = isCategoryRulesIncomplete(category);
 
   return (
-    <article className="surface-premium rounded-2xl border border-border/60 p-3">
+    <article className="surface-premium border border-border/60 p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className={ROW_TITLE_CLASS}>{category.name}</p>

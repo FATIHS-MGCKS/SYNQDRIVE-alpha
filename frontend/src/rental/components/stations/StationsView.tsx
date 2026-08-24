@@ -411,7 +411,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
             />
           </div>
 
-          <div className="surface-premium rounded-xl p-4 space-y-3">
+          <div className="surface-premium p-4 space-y-3">
             <div className="flex flex-col sm:flex-row gap-2">
               <input
                 value={search}
@@ -598,7 +598,7 @@ function StationCard({
         <MoreHorizontal className="w-4 h-4" />
       </button>
       {menuOpen && (
-        <div className="absolute right-0 top-full mt-1 z-20 min-w-[180px] surface-premium rounded-lg border border-border shadow-lg py-1 text-sm">
+        <div className="absolute right-0 top-full mt-1 z-20 min-w-[180px] surface-premium rounded-lg py-1 text-sm">
           <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onOpen}>{t('stations.action.open')}</button>
           <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onEdit}>{t('stations.action.edit')}</button>
           <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onAssign}>{t('stations.action.assignVehicle')}</button>
@@ -617,7 +617,7 @@ function StationCard({
 
   if (viewMode === 'list') {
     return (
-      <div className="surface-premium rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="surface-premium p-3 flex flex-col sm:flex-row sm:items-center gap-3">
         <button type="button" onClick={onOpen} className="flex-1 text-left min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold text-sm truncate">{station.name}</span>
@@ -637,7 +637,7 @@ function StationCard({
   }
 
   return (
-    <div className="surface-premium rounded-xl p-4 flex flex-col h-full">
+    <div className="surface-premium p-4 flex flex-col h-full">
       <div className="flex items-start justify-between gap-2">
         <button type="button" onClick={onOpen} className="text-left min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">

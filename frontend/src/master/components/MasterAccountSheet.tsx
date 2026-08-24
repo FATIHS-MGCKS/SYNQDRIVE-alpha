@@ -26,7 +26,7 @@ export function MasterAccountSheet({ open, onOpenChange, onOpenSettings, onOpenO
         onClick={() => onOpenChange(false)}
       />
       <div
-        className="relative w-full max-w-sm rounded-t-2xl sm:rounded-2xl border border-border bg-card p-5 shadow-lg animate-fade-up motion-reduce:animate-none pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]"
+        className="relative w-full max-w-sm rounded-t-dialog sm:rounded-dialog border border-border bg-card p-5 shadow-lg animate-fade-up motion-reduce:animate-none pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="master-account-sheet-title"

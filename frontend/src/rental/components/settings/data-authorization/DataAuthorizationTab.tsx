@@ -396,7 +396,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
         </div>
       )}
 
-      <div className="surface-premium rounded-2xl border border-border/70 p-4 space-y-3">
+      <div className="surface-premium border border-border/70 p-4 space-y-3">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <p className="text-[13px] font-semibold text-foreground">Filter & Suche</p>
@@ -589,7 +589,7 @@ function AuthorizationCard({
     <button
       type="button"
       onClick={onClick}
-      className="surface-premium w-full text-left rounded-2xl border border-border/70 p-4 hover:shadow-[var(--shadow-2)] transition-shadow"
+      className="surface-premium w-full text-left border border-border/70 p-4 hover: transition-shadow"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">

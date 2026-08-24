@@ -41,7 +41,7 @@ export function chromeTabTriggerClass(active: boolean, className?: string): stri
 /** Section nav chrome (Voice/WhatsApp operator surfaces). */
 export function chromeSectionNavClass(className?: string): string {
   return cn(
-    'surface-frosted rounded-2xl p-2',
+    'surface-frosted rounded-lg p-2',
     className,
   );
 }

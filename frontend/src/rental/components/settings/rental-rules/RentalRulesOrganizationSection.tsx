@@ -55,7 +55,7 @@ export function RentalRulesOrganizationSection({
         }
       />
 
-      <div className="surface-premium rounded-2xl border border-border/70 p-3 sm:p-4">
+      <div className="surface-premium border border-border/70 p-3 sm:p-4">
         <RentalRulesSectionIntro
           title={t('rentalRules.ui.organization.defaultsTitle')}
           description={t('rentalRules.ui.organization.defaultsDescription')}
@@ -105,7 +105,7 @@ export function RentalRulesOrganizationSection({
       </div>
 
       {defaults?.hasUnpublishedDraft && defaults.draftRevision ? (
-        <div className="surface-premium rounded-2xl border border-border/70 p-3 sm:p-4">
+        <div className="surface-premium border border-border/70 p-3 sm:p-4">
           <RentalRulePublishImpactPanel
             orgId={orgId}
             scope="defaults"

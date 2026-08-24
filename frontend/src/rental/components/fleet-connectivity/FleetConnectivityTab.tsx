@@ -85,7 +85,7 @@ function ConnectivityListCard({
     <button
       type="button"
       onClick={onOpen}
-      className="surface-premium w-full rounded-2xl p-3 text-left shadow-[var(--shadow-xs)] transition-shadow hover:shadow-[var(--shadow-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+      className="surface-premium w-full p-3 text-left transition-colors hover:border-[color:var(--brand)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
       aria-label={`${item.vehicle.licensePlate ?? item.vehicle.make} — ${actionLabel}`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -275,7 +275,7 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
       <div className="mx-auto max-w-[1600px] space-y-4">
         {contextHeader}
         <SkeletonMetricGrid count={4} />
-        <SkeletonRows rows={8} className="surface-premium rounded-2xl p-4" />
+        <SkeletonRows rows={8} className="surface-premium p-4" />
       </div>
     );
   }

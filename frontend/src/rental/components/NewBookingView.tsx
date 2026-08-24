@@ -1485,7 +1485,7 @@ export function NewBookingView({
             <button
               onClick={() => void handleLeaveWizard()}
               aria-label="Back"
-              className="shrink-0 rounded-lg border p-2.5 transition-all duration-200 hover:shadow-md surface-premium border-border text-muted-foreground hover:bg-muted"
+              className="shrink-0 rounded-lg border p-2.5 transition-all duration-200 hover: surface-premium border-border text-muted-foreground hover:bg-muted"
             >
               <Icon name="arrow-left" className="h-5 w-5" />
             </button>

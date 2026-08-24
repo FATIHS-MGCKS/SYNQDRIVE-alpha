@@ -422,7 +422,7 @@ export function ExteriorImagesEditor({
     }
   };
 
-  const cardClass = 'rounded-xl border surface-premium border-border';
+  const cardClass = ' border surface-premium border-border';
 
   return (
     <div className="space-y-3">

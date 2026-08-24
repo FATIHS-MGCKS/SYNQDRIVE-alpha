@@ -72,7 +72,7 @@ export function CommunicationChannelEmailPane({
   if (loading) {
     return (
       <div data-testid="communication-channel-email-loading">
-        <Skeleton className="h-28 w-full rounded-2xl" />
+        <Skeleton className="h-28 w-full rounded-lg" />
       </div>
     );
   }

@@ -39,7 +39,7 @@ export function OperatorVehiclesView() {
         placeholder="Kennzeichen oder Fahrzeugname…"
         value={localSearch}
         onChange={(e) => setLocalSearch(e.target.value)}
-        className="h-11 w-full shrink-0 rounded-xl border border-border surface-premium px-3 text-sm"
+        className="h-11 w-full shrink-0 surface-premium px-3 text-sm"
       />
       <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         {OPERATOR_VEHICLE_FILTERS.map((f) => (
@@ -89,7 +89,7 @@ export function OperatorVehiclesView() {
   const detail = selectedVehicleId ? (
     <OperatorVehicleQuickView vehicleId={selectedVehicleId} onClose={() => setSelectedVehicleId(null)} />
   ) : (
-    <div className="flex h-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/60 p-8 text-center">
+    <div className="flex h-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border/60 p-8 text-center">
       <Car className="h-8 w-8 text-muted-foreground" />
       <p className="text-sm text-muted-foreground">Fahrzeug für Quick View wählen</p>
     </div>

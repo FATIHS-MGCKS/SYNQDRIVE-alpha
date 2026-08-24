@@ -44,7 +44,7 @@ export function TripTimelineEmptyState({
   return (
     <div className="trips-empty-card py-10 sm:py-12 px-5 text-center">
       <div
-        className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border ${
+        className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border ${
           isError
             ? 'border-destructive/25 bg-destructive/5 text-destructive'
             : 'border-border/50 bg-muted/30 text-muted-foreground'

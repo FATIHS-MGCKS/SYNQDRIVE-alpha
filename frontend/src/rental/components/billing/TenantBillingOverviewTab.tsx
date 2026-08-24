@@ -52,13 +52,13 @@ export function TenantBillingOverviewTab({
   if (loading && !overview) {
     return (
       <div className="space-y-3" data-testid="tenant-overview-loading">
-        <SkeletonCard className="h-24 rounded-2xl" />
+        <SkeletonCard className="h-24" />
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           <SkeletonCard className="h-20 rounded-xl" />
           <SkeletonCard className="h-20 rounded-xl" />
           <SkeletonCard className="h-20 rounded-xl" />
         </div>
-        <SkeletonCard className="h-56 rounded-2xl" />
+        <SkeletonCard className="h-56" />
       </div>
     );
   }
@@ -112,7 +112,7 @@ export function TenantBillingOverviewTab({
         />
       </div>
 
-      <div className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5 space-y-4">
+      <div className="surface-premium border border-border/60 p-4 sm:p-5 space-y-4">
         <h3 className="text-sm font-semibold">Kostenaufschlüsselung</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
           <div className="flex justify-between gap-3 border-b border-border/40 pb-2">
@@ -181,7 +181,7 @@ export function TenantBillingOverviewTab({
         </div>
       ) : null}
 
-      <div className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5 space-y-2">
+      <div className="surface-premium border border-border/60 p-4 sm:p-5 space-y-2">
         <h3 className="text-sm font-semibold">Zuletzt bezahlte Rechnung</h3>
         {lastPaidInvoiceLoading ? (
           <p className="text-xs text-muted-foreground">Lade Rechnungsdaten…</p>

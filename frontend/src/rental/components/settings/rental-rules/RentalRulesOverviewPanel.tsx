@@ -140,7 +140,7 @@ export function RentalRulesOverviewPanel({
 
   return (
     <div className="space-y-4">
-      <section className="surface-premium rounded-2xl border border-border/70 p-3 sm:p-4">
+      <section className="surface-premium border border-border/70 p-3 sm:p-4">
         <RuleInheritanceSteps
           steps={RULE_HIERARCHY_STEPS}
           activeStep="effective"

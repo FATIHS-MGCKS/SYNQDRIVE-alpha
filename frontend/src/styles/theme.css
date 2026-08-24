@@ -201,16 +201,18 @@
     inset 0 -1px 0 rgba(15, 23, 42, 0.06);
   --map-glass-vehicle-shadow: 0 2px 8px rgba(15, 23, 42, 0.12), 0 1px 2px rgba(15, 23, 42, 0.08);
 
-  /* ── L1 surface-premium tokens — see LIQUID_GLASS_SYSTEM.md ── */
+  /* ── L1 surface-premium tokens — see LIQUID_GLASS_SYSTEM.md ──
+     V4.9.200 cutover: flattened L1 — border-led hierarchy, no glossy inset stack. */
   --surface-premium-bg-start: #FFFFFF;
   --surface-premium-bg-end: #FFFFFF;
   --surface-premium-border: rgba(17, 24, 39, 0.085);
-  --surface-premium-highlight: rgba(255, 255, 255, 0.42);
-  --surface-premium-catch: rgba(17, 24, 39, 0.025);
-  --surface-premium-shadow: 0 4px 16px rgba(17, 24, 39, 0.045), 0 1px 2px rgba(17, 24, 39, 0.03);
+  --surface-premium-highlight: transparent;
+  --surface-premium-catch: transparent;
+  --surface-premium-shadow: var(--shadow-sm);
 
   /* ── Radius system ── */
   --radius: 0.5rem;  /* 8px base */
+  --radius-dialog: calc(var(--radius) + 4px);  /* 12px — dialogs, sheets, modal shells */
 
   /* ── Motion tokens ── */
   --ease-out-soft:    cubic-bezier(0.16, 1, 0.3, 1);       /* primary */
@@ -360,13 +362,13 @@
     inset 0 -1px 0 rgba(0, 0, 0, 0.28);
   --map-glass-vehicle-shadow: 0 2px 10px rgba(0, 0, 0, 0.36), 0 1px 3px rgba(0, 0, 0, 0.24);
 
-  /* ── L1 surface-premium tokens (dark) ── */
+  /* ── L1 surface-premium tokens (dark) — flattened V4.9.200 ── */
   --surface-premium-bg-start: rgba(28, 29, 32, 0.98);
   --surface-premium-bg-end: rgba(18, 18, 20, 0.96);
   --surface-premium-border: rgba(255, 255, 255, 0.09);
-  --surface-premium-highlight: rgba(255, 255, 255, 0.08);
-  --surface-premium-catch: rgba(0, 0, 0, 0.38);
-  --surface-premium-shadow: 0 8px 24px rgba(0, 0, 0, 0.38), 0 1px 2px rgba(0, 0, 0, 0.22);
+  --surface-premium-highlight: transparent;
+  --surface-premium-catch: transparent;
+  --surface-premium-shadow: var(--shadow-sm);
 
   /* ── Sidebar — dark (charcoal chrome, neutral hairlines) ── */
   --sidebar: #09090B;
@@ -444,6 +446,7 @@
   --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 6px);
   --radius-2xl: calc(var(--radius) + 12px);
+  --radius-dialog: calc(var(--radius) + 4px);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -619,7 +622,7 @@
     var(--shadow-xs);
 }
 
-/* ── L1 surface-premium — high-quality opaque SaaS card (opt-in) ── */
+/* ── L1 surface-premium — opt-in elevated card (flattened V4.9.200) ── */
 .surface-premium,
 .sq-card-premium {
   background: linear-gradient(
@@ -629,13 +632,10 @@
   );
   border: 1px solid var(--surface-premium-border);
   border-radius: calc(var(--radius) + 2px);
-  box-shadow:
-    inset 0 1px 0 var(--surface-premium-highlight),
-    inset 0 -1px 0 var(--surface-premium-catch),
-    var(--surface-premium-shadow);
+  box-shadow: var(--surface-premium-shadow);
 }
 
-/* ── L1 surface-elevated — premium solid + interaction (canonical) ── */
+/* ── L1 surface-elevated — premium + restrained interaction (canonical) ── */
 .surface-elevated {
   background: linear-gradient(
     180deg,
@@ -644,32 +644,17 @@
   );
   border: 1px solid var(--surface-premium-border);
   border-radius: calc(var(--radius) + 2px);
-  box-shadow:
-    inset 0 1px 0 var(--surface-premium-highlight),
-    inset 0 -1px 0 var(--surface-premium-catch),
-    var(--shadow-sm);
-  transition:
-    box-shadow var(--dur-base) var(--ease-out-soft),
-    transform var(--dur-base) var(--ease-out-soft),
-    border-color var(--dur-base) var(--ease-out-soft);
+  box-shadow: var(--surface-premium-shadow);
+  transition: border-color var(--dur-base) var(--ease-out-soft);
 }
 .surface-elevated:hover {
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--surface-premium-highlight) 92%, white 8%),
-    inset 0 -1px 0 var(--surface-premium-catch),
-    var(--shadow-hover);
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--border) 72%, var(--foreground) 28%);
+  border-color: color-mix(in srgb, var(--surface-premium-border) 55%, var(--foreground) 45%);
 }
 .surface-elevated:active {
-  transform: translateY(0);
-  box-shadow:
-    inset 0 1px 0 var(--surface-premium-highlight),
-    inset 0 -1px 0 var(--surface-premium-catch),
-    var(--shadow-xs);
+  border-color: var(--surface-premium-border);
 }
 
-/* ── L1 legacy elevated — solid base (backward compatible; not premium gradient) ── */
+/* ── L1 legacy elevated — solid base (backward compatible) ── */
 .sq-card-elevated {
   background: var(--card);
   border: 1px solid var(--border);
@@ -677,23 +662,21 @@
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--card) 88%, white 12%),
     var(--shadow-sm);
-  transition:
-    box-shadow var(--dur-base) var(--ease-out-soft),
-    transform var(--dur-base) var(--ease-out-soft),
-    border-color var(--dur-base) var(--ease-out-soft);
+  transition: border-color var(--dur-base) var(--ease-out-soft);
 }
 .sq-card-elevated:hover {
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--card) 90%, white 10%),
-    var(--shadow-hover);
-  transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--border) 72%, var(--foreground) 28%);
 }
 .sq-card-elevated:active {
-  transform: translateY(0);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--card) 88%, white 12%),
-    var(--shadow-sm);
+  border-color: var(--border);
+}
+
+/* ── Dialog / sheet panel radius (12px) ── */
+.sq-dialog-panel,
+.surface-solid.sq-dialog-panel,
+.surface-premium.sq-dialog-panel,
+.surface-elevated.sq-dialog-panel {
+  border-radius: var(--radius-dialog);
 }
 
 /* ── L2 surface-frosted — frosted glass (no liquid shine stack) ── */

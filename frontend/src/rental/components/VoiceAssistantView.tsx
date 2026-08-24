@@ -135,7 +135,7 @@ export function VoiceAssistantView({
   }, [suppressLegacyUrlSync]);
 
   const isBusy = saving || activating || syncing;
-  const card = 'surface-premium rounded-2xl shadow-[var(--shadow-1)]';
+  const card = 'surface-premium';
 
   const refreshReadiness = useCallback(async (targetOrgId: string) => {
     const r = await api.voiceAssistant.readiness(targetOrgId);
@@ -359,7 +359,7 @@ export function VoiceAssistantView({
   if (loading) {
     return (
       <div className="mx-auto flex h-[60vh] max-w-[1600px] items-center justify-center">
-        <div className="surface-premium flex items-center gap-3 rounded-2xl px-5 py-4 shadow-[var(--shadow-1)]">
+        <div className="surface-premium flex items-center gap-3 px-5 py-4">
           <Icon name="loader-2" className="h-5 w-5 animate-spin text-muted-foreground" />
           <span className="text-xs font-semibold text-muted-foreground">{t('voice.common.loading')}</span>
         </div>
@@ -370,7 +370,7 @@ export function VoiceAssistantView({
   if (loadError && !assistant) {
     return (
       <div className="mx-auto flex h-[60vh] max-w-[1600px] items-center justify-center">
-        <div className="surface-premium max-w-md rounded-2xl p-6 text-center shadow-[var(--shadow-1)]">
+        <div className="surface-premium max-w-md p-6 text-center">
           <p className="text-sm font-semibold text-foreground">{t('voice.common.loadError')}</p>
           <p className="mt-2 text-xs text-muted-foreground">{loadError}</p>
           <button
@@ -457,7 +457,7 @@ export function VoiceAssistantView({
           compact
           title={t('voice.common.actionFailed')}
           error={actionError}
-          className="surface-premium rounded-2xl border border-[color:var(--status-critical)]/20"
+          className="surface-premium border border-[color:var(--status-critical)]/20"
         />
       )}
 

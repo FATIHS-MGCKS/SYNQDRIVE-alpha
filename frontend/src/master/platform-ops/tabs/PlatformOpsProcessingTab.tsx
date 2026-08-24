@@ -32,7 +32,7 @@ export function PlatformOpsProcessingTabView({
 }) {
   return (
     <div className="space-y-4">
-      <div className="sq-tab-bar flex gap-1 p-1 rounded-2xl overflow-x-auto w-fit max-w-full" role="tablist">
+      <div className="sq-tab-bar flex gap-1 p-1 rounded-md overflow-x-auto w-fit max-w-full" role="tablist">
         {PROCESSING_TABS.map((t) => (
           <button
             key={t.id}

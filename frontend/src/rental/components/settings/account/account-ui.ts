@@ -14,7 +14,7 @@ export function accountKpiCardClass(tone: AccountKpiTone = 'neutral'): string {
   return cn(
     'sq-press relative overflow-hidden border text-left transition-colors duration-200',
     'hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
-    'min-h-[88px] rounded-2xl bg-background/40 px-3 py-2.5 border-border/45 h-full w-full',
+    'min-h-[88px] rounded-lg bg-background/40 px-3 py-2.5 border-border/45 h-full w-full',
     tone === 'success' &&
       'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
     tone === 'watch' && 'border-[color:var(--status-watch)]/30',

@@ -208,7 +208,7 @@ export function DataAuthorizationDetailDrawer({
     >
       <div className="space-y-6">
         <DetailSection title="Überblick">
-          <div className="surface-premium rounded-xl border border-border/70 p-3 space-y-2">
+          <div className="surface-premium border border-border/70 p-3 space-y-2">
             <DetailRow label="Quelle" value={labelSourceType(auth.sourceType)} />
             <DetailRow label="Verarbeiter" value={labelProcessor(auth)} />
             <DetailRow label="Scope" value={labelScope(auth.scopeKey)} />

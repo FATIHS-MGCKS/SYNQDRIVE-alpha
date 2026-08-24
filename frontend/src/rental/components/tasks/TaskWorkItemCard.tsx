@@ -54,7 +54,7 @@ export function TaskWorkItemCard({
         onClick={onClick}
         ref={rowRef}
         data-testid="task-work-item-card"
-        className={`surface-premium sq-press min-w-0 flex-1 rounded-2xl border p-3 text-left shadow-[var(--shadow-1)] transition-all md:p-3.5 ${cardTone}`}
+        className={`surface-premium sq-press min-w-0 flex-1 border p-3 text-left transition-all md:p-3.5 ${cardTone}`}
       >
       <div className="flex items-stretch gap-3">
         <div

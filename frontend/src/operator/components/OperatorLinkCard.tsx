@@ -35,7 +35,7 @@ export function OperatorLinkCard({ className = '' }: OperatorLinkCardProps) {
         Link auf dem Smartphone/Tablet öffnen. QR-Code-Generator folgt später — im MVP nur
         <code className="mx-1 rounded surface-premium px-1">/operator</code> kopieren.
       </p>
-      <p className="break-all rounded-lg surface-premium px-3 py-2 font-mono text-xs text-foreground border border-border">
+      <p className="break-all rounded-lg surface-premium px-3 py-2 font-mono text-xs text-foreground">
         {url}
       </p>
       <button

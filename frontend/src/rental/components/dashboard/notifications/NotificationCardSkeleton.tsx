@@ -6,7 +6,7 @@ export function NotificationCardSkeleton({ rows = 3 }: { rows?: number }) {
       {Array.from({ length: rows }).map((_, index) => (
         <div
           key={index}
-          className="flex gap-2.5 rounded-xl border border-border/25 px-3 py-2.5"
+          className="flex gap-2.5 rounded-md border border-border/25 px-3 py-2.5"
         >
           <div className={cnSkeleton(NOTIFICATION_PANEL_TYPO.iconWrap, 'rounded-lg')} />
           <div className="min-w-0 flex-1 space-y-2">

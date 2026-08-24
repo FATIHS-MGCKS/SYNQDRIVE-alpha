@@ -375,7 +375,7 @@ export function VehiclePickerStep({
               <button
                 type="button"
                 onClick={onResetFilters}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border surface-premium px-3 py-2 text-xs text-muted-foreground hover:border-[color:var(--status-critical)] hover:text-[color:var(--status-critical)]"
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg surface-premium px-3 py-2 text-xs text-muted-foreground hover:border-[color:var(--status-critical)] hover:text-[color:var(--status-critical)]"
               >
                 <Icon name="x" className="h-3.5 w-3.5 shrink-0" />
                 Filter zurücksetzen
@@ -410,7 +410,7 @@ export function VehiclePickerStep({
           <button
             type="button"
             onClick={onResetFilters}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border surface-premium px-3 py-2 text-xs text-muted-foreground hover:border-[color:var(--status-critical)] hover:text-[color:var(--status-critical)]"
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg surface-premium px-3 py-2 text-xs text-muted-foreground hover:border-[color:var(--status-critical)] hover:text-[color:var(--status-critical)]"
           >
             <Icon name="x" className="h-3.5 w-3.5 shrink-0" />
             Filter zurücksetzen

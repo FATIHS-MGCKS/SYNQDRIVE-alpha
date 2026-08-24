@@ -58,7 +58,7 @@ export function ConnectedVehiclesOverviewView({
     <div className="space-y-5" data-testid="cv-overview">
       {overview.platformDimoDegraded ? (
         <div
-          className="surface-premium rounded-2xl border border-[color:var(--status-critical)]/30 p-4 flex flex-col sm:flex-row sm:items-center gap-3"
+          className="surface-premium border border-[color:var(--status-critical)]/30 p-4 flex flex-col sm:flex-row sm:items-center gap-3"
           role="alert"
         >
           <div className="flex items-start gap-3 min-w-0">
@@ -95,7 +95,7 @@ export function ConnectedVehiclesOverviewView({
         <MetricCard label="DIMO verknüpft" value={String(overview.counts.dimoLinked)} valueSize="compact" />
       </div>
 
-      <div className="surface-premium rounded-2xl p-5 space-y-4">
+      <div className="surface-premium p-5 space-y-4">
         <h3 className="text-sm font-semibold text-foreground">Telemetrie-Verteilung</h3>
         <div className="flex flex-wrap gap-2">
           {TELEMETRY_ORDER.map((key) => (
@@ -114,7 +114,7 @@ export function ConnectedVehiclesOverviewView({
         </div>
       </div>
 
-      <div className="surface-premium rounded-2xl p-5 space-y-3">
+      <div className="surface-premium p-5 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-foreground">Attention Queue</h3>
           <Button type="button" variant="ghost" size="sm" onClick={() => onGoVehicles({ cvAttention: 'true' })}>

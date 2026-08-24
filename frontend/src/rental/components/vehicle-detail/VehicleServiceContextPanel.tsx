@@ -148,7 +148,7 @@ export function VehicleServiceContextPanel({
   }
 
   return (
-    <section className="rounded-xl border border-border surface-premium p-3 shadow-sm space-y-3 text-foreground">
+    <section className=" surface-premium p-3 space-y-3 text-foreground">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">

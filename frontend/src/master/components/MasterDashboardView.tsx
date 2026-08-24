@@ -78,7 +78,7 @@ function StatusHero({
   return (
     <section
       aria-labelledby="dashboard-status-hero"
-      className={`rounded-2xl border bg-muted/20 p-4 sm:p-5 ${
+      className={`rounded-lg border bg-muted/20 p-4 sm:p-5 ${
         overallStatus === 'critical'
           ? 'border-[color:var(--status-critical)]/40'
           : overallStatus === 'warning'

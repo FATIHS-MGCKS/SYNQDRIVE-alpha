@@ -197,7 +197,7 @@ export function InvitesTab({
         ))}
       </div>
 
-      <div className="surface-premium rounded-2xl shadow-[var(--shadow-1)] overflow-hidden">
+      <div className="surface-premium overflow-hidden">
         {error && !invites.length ? (
           <ErrorState title="Einladungen nicht verfügbar" error={error} onRetry={() => void load()} />
         ) : loading ? (

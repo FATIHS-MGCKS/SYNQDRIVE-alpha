@@ -21,7 +21,7 @@ export function OperatorGlassCard({
 }: OperatorGlassCardProps) {
   const surface = variant === 'chrome' ? 'surface-frosted' : 'surface-premium';
   const base = cn(
-    `${surface} rounded-2xl border border-border/60 shadow-[var(--shadow-1)]`,
+    `${surface} rounded-lg border border-border/60 shadow-[var(--shadow-1)]`,
     onClick && !disabled && 'sq-press cursor-pointer active:scale-[0.99]',
     disabled && 'opacity-60 pointer-events-none',
     className,

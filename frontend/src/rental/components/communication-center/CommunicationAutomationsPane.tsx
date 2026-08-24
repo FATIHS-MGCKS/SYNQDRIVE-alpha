@@ -17,7 +17,7 @@ export function CommunicationAutomationsPane({
 
   return (
     <div
-      className="surface-premium mx-auto flex max-w-2xl flex-col gap-4 rounded-2xl border border-border/40 p-5 shadow-[var(--shadow-1)]"
+      className="surface-premium mx-auto flex max-w-2xl flex-col gap-4 border border-border/40 p-5"
       data-testid="communication-automations-pane"
     >
       <div className="flex items-start gap-3">

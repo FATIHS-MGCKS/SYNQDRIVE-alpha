@@ -32,7 +32,7 @@ export function CommunicationChannelVoicePane({
   if (voice.loading) {
     return (
       <div className="space-y-3" data-testid="communication-channel-voice-loading">
-        <Skeleton className="h-28 w-full rounded-2xl" />
+        <Skeleton className="h-28 w-full rounded-lg" />
       </div>
     );
   }

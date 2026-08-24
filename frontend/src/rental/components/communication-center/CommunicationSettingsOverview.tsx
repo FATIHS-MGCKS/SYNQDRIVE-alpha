@@ -59,7 +59,7 @@ export function CommunicationSettingsOverview({
             type="button"
             data-testid={`communication-settings-overview-${channel.key}`}
             className={cn(
-              'surface-premium sq-press flex w-full items-start justify-between gap-3 rounded-2xl border border-border/40 p-4 text-left shadow-[var(--shadow-1)]',
+              'surface-premium sq-press flex w-full items-start justify-between gap-3 border border-border/40 p-4 text-left',
               'hover:border-border/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/30',
             )}
             onClick={() => onNavigate(channel.key)}

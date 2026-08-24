@@ -57,7 +57,7 @@ export function MfaEnrollmentPanel({ onEnrolled }: MfaEnrollmentPanelProps) {
   };
 
   return (
-    <div className="mx-auto max-w-lg rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+    <div className="mx-auto max-w-lg rounded-lg border border-border/60 bg-card p-6 shadow-sm">
       <div className="mb-4 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <ShieldCheck className="h-5 w-5" />

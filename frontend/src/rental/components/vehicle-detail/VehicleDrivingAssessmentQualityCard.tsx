@@ -50,7 +50,7 @@ export function VehicleDrivingAssessmentQualityOverviewCard({
   if (loading || !showWarning || !data?.applicable) return null;
 
   return (
-    <div className="surface-premium rounded-2xl border border-[color:var(--status-watch)]/25 bg-[color:var(--status-watch)]/5 p-4">
+    <div className="surface-premium border border-[color:var(--status-watch)]/25 bg-[color:var(--status-watch)]/5 p-4">
       <div className="flex items-start gap-3">
         <AlertTriangle
           className={`mt-0.5 h-4 w-4 shrink-0 ${isRecovering ? 'text-[color:var(--status-info)]' : 'text-[color:var(--status-watch)]'}`}

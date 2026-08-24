@@ -117,7 +117,7 @@ export function VehicleAssignmentsTab({ catalog, onReload }: VehicleAssignmentsT
           id={filterId}
           value={filter}
           onChange={(e) => setFilter(e.target.value as typeof filter)}
-          className="min-h-11 rounded-xl border border-border surface-premium px-3 py-2 text-xs"
+          className="min-h-11 surface-premium px-3 py-2 text-xs"
         >
           <option value="all">{t('priceTariffs.assignments.filterAll')}</option>
           <option value="assigned">{t('priceTariffs.assignments.filterAssigned')}</option>
@@ -130,7 +130,7 @@ export function VehicleAssignmentsTab({ catalog, onReload }: VehicleAssignmentsT
           id={groupFilterId}
           value={groupFilter}
           onChange={(e) => setGroupFilter(e.target.value)}
-          className="min-h-11 rounded-xl border border-border surface-premium px-3 py-2 text-xs"
+          className="min-h-11 surface-premium px-3 py-2 text-xs"
         >
           <option value="all">{t('priceTariffs.assignments.filterGroup')}</option>
           {catalog.groups.map((g) => (
@@ -150,7 +150,7 @@ export function VehicleAssignmentsTab({ catalog, onReload }: VehicleAssignmentsT
             value={bulkGroupId}
             onChange={(e) => setBulkGroupId(e.target.value)}
             aria-label={t('priceTariffs.assignments.chooseGroup')}
-            className="min-h-11 rounded-lg border border-border surface-premium px-2 py-1.5 text-xs"
+            className="min-h-11 rounded-lg surface-premium px-2 py-1.5 text-xs"
           >
             <option value="">{t('priceTariffs.assignments.chooseGroup')}</option>
             {catalog.groups.map((g) => (
@@ -178,7 +178,7 @@ export function VehicleAssignmentsTab({ catalog, onReload }: VehicleAssignmentsT
             <article
               key={r.id}
               role="listitem"
-              className="surface-premium rounded-xl border border-border/50 p-3"
+              className="surface-premium border border-border/50 p-3"
             >
               <div className="flex items-start gap-3">
                 <input
@@ -219,7 +219,7 @@ export function VehicleAssignmentsTab({ catalog, onReload }: VehicleAssignmentsT
         })}
       </div>
 
-      <div className="surface-premium hidden overflow-hidden rounded-2xl border border-border/50 md:block">
+      <div className="surface-premium hidden overflow-hidden border border-border/50 md:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-xs">
             <thead>

@@ -85,7 +85,7 @@ function Skeleton({ className, dk }: { className?: string; dk: boolean }) {
 function CardSkeleton({ dk }: { dk: boolean }) {
   return (
     <div className={cls(
-      'rounded-2xl border p-5 space-y-3',
+      'rounded-lg border p-5 space-y-3',
       dk ? 'bg-white/[0.03] border-white/[0.06]' : 'surface-solid/70 border-border/60',
     )}>
       <Skeleton dk={dk} className="h-36 w-full" />
@@ -131,8 +131,8 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
 
   // ── Glass card class ─────────────────────────────────
   const card = dk
-    ? 'bg-white/[0.03] border border-white/[0.06] rounded-2xl'
-    : 'surface-solid border border-border rounded-2xl';
+    ? 'bg-white/[0.03] border border-white/[0.06] rounded-lg'
+    : 'surface-solid';
 
   // ── Vehicle search filtering ─────────────────────────
   const filteredVehicles = useMemo(() => {
@@ -360,7 +360,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
       {fleetLoading ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} dk={dk} className="h-24 w-full rounded-2xl" />
+            <Skeleton key={i} dk={dk} className="h-24 w-full rounded-lg" />
           ))}
         </div>
       ) : filteredVehicles.length === 0 ? (
@@ -468,7 +468,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
       {providersLoading ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} dk={dk} className="h-36 w-full rounded-2xl" />
+            <Skeleton key={i} dk={dk} className="h-36 w-full rounded-lg" />
           ))}
         </div>
       ) : filteredProviders.length === 0 ? (
@@ -724,7 +724,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 onChange={(e) => handleSort(e.target.value as SortOption)}
                 className={cls(
                   'text-sm rounded-lg px-3 py-1.5 outline-none appearance-none pr-7 cursor-pointer',
-                  dk ? 'bg-white/[0.06] text-white border border-white/[0.08]' : 'surface-solid text-foreground border border-border',
+                  dk ? 'bg-white/[0.06] text-white border border-white/[0.08]' : 'surface-solid text-foreground',
                 )}
               >
                 <option value="relevance">Relevance</option>
@@ -883,7 +883,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
             <div className="p-6 space-y-5">
               {/* Image */}
               {(detailProduct.images?.length ?? 0) > 0 ? (
-                <div className="rounded-2xl overflow-hidden">
+                <div className="rounded-lg overflow-hidden">
                   <img
                     src={detailProduct.images![0]}
                     alt={detailProduct.title}
@@ -891,12 +891,12 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   />
                 </div>
               ) : detailProduct.imageUrl ? (
-                <div className="rounded-2xl overflow-hidden">
+                <div className="rounded-lg overflow-hidden">
                   <img src={detailProduct.imageUrl} alt={detailProduct.title} className="w-full h-64 object-cover" />
                 </div>
               ) : (
                 <div className={cls(
-                  'h-56 rounded-2xl flex items-center justify-center',
+                  'h-56 rounded-lg flex items-center justify-center',
                   dk ? 'bg-white/[0.04]' : 'bg-muted',
                 )}>
                   <Icon name="package" className={cls('w-16 h-16', dk ? 'text-white/10' : 'text-foreground')} />

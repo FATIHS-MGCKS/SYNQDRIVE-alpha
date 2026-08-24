@@ -190,7 +190,7 @@ export function TeamTab({
             <button
               key={row.membershipId ?? row.userSummary.email}
               type="button"
-              className="w-full rounded-2xl border border-border p-4 text-left bg-card"
+              className="w-full rounded-lg border border-border p-4 text-left bg-card"
               onClick={() => {
                 if (!row.membershipId) return;
                 setDrawerMembershipId(row.membershipId);
@@ -214,7 +214,7 @@ export function TeamTab({
       </div>
 
       {invites.length > 0 && (
-        <section aria-labelledby="iam-invites-heading" className="rounded-2xl border border-border p-4 space-y-3">
+        <section aria-labelledby="iam-invites-heading" className="rounded-lg border border-border p-4 space-y-3">
           <h3 id="iam-invites-heading" className="text-[14px] font-semibold flex items-center gap-2">
             <Mail className="h-4 w-4" />
             {t('iam.invite.section')}

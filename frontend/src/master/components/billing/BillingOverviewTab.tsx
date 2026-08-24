@@ -96,7 +96,7 @@ export function BillingOverviewTab({
         ))}
       </div>
 
-      <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)]">
+      <div className="surface-premium p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
             <h3 className="text-[15px] font-semibold text-foreground">Aufmerksamkeit erforderlich</h3>

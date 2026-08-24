@@ -116,7 +116,7 @@ function CoveragePill({ coverage }: { coverage: HmSignalCoverage }) {
 // ── Card helpers ────────────────────────────────────────────────────────────
 
 function card(isDark: boolean): string {
-  return `rounded-xl border ${isDark ? 'surface-premium border-border' : 'surface-premium border-border'}`;
+  return ` border ${isDark ? 'surface-premium border-border' : 'surface-premium border-border'}`;
 }
 
 function cardHeader(title: string, subtitle: string | null, icon: typeof ShieldCheck, accent: string) {
@@ -688,7 +688,7 @@ export function HighMobilityCompatibilityView({ isDarkMode }: Props) {
     <div className="flex flex-col h-full min-h-0 px-4 sm:px-6 py-5 space-y-5">
       {/* Header */}
       <div className="flex items-start gap-3 flex-wrap">
-        <div className={`p-2 rounded-xl ${isDarkMode ? 'surface-premium' : 'bg-status-info-soft'}`}>
+        <div className={`p-2 ${isDarkMode ? 'surface-premium' : 'bg-status-info-soft'}`}>
           <ShieldCheck className={`w-5 h-5 ${isDarkMode ? 'text-status-info' : 'text-status-info'}`} />
         </div>
         <div className="flex-1">
@@ -742,7 +742,7 @@ export function HighMobilityCompatibilityView({ isDarkMode }: Props) {
         )}
 
         {resultLoading && (
-          <div className={`rounded-xl border px-6 py-10 text-center text-sm text-muted-foreground ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'surface-premium border-border'}`}>
+          <div className={` border px-6 py-10 text-center text-sm text-muted-foreground ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'surface-premium border-border'}`}>
             <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
             Running compatibility check…
           </div>

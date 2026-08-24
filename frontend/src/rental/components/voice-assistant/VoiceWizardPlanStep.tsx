@@ -76,7 +76,7 @@ export function VoiceWizardPlanStep({
 
   if (error && plans.length === 0) {
     return (
-      <div className="surface-premium rounded-2xl border border-[color:var(--status-critical)]/20 p-5 text-center">
+      <div className="surface-premium border border-[color:var(--status-critical)]/20 p-5 text-center">
         <p className="text-sm font-semibold text-foreground">{t('voice.plan.loadError')}</p>
         <p className="mt-2 text-xs text-muted-foreground">{error}</p>
         <button type="button" onClick={() => void load()} className="mt-4 rounded-lg border px-4 py-2 text-xs font-semibold">
@@ -114,7 +114,7 @@ export function VoiceWizardPlanStep({
               disabled={Boolean(busy)}
               onClick={() => void handleSelect(plan.code)}
               className={cn(
-                'surface-premium sq-press rounded-2xl border p-4 text-left shadow-[var(--shadow-1)] transition-colors',
+                'surface-premium sq-press border p-4 text-left transition-colors',
                 selected
                   ? 'border-[color:var(--brand)]/40 ring-1 ring-[color:var(--brand)]/15'
                   : 'border-border/40 hover:border-[color:var(--brand)]/25',

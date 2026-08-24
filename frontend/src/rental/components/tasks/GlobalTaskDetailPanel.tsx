@@ -224,7 +224,7 @@ export function GlobalTaskDetailPanel({
             value={assignDraft}
             onChange={(e) => setAssignDraft(e.target.value)}
             disabled={mutating}
-            className="mt-1.5 w-full rounded-lg border border-border surface-premium px-3 py-2 text-[12px]"
+            className="mt-1.5 w-full rounded-lg surface-premium px-3 py-2 text-[12px]"
           >
             <option value="">Nicht zugewiesen</option>
             {orgMembers.map((m) => (

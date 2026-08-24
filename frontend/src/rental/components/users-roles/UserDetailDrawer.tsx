@@ -231,7 +231,7 @@ export function UserDetailDrawer({
     >
       <div className="space-y-5">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center text-sm font-bold">
+          <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-sm font-bold">
             {user.avatar || getInitials(user.name, user.email)}
           </div>
           <div>
@@ -280,7 +280,7 @@ export function UserDetailDrawer({
                     setFieldAgentAccess(role.fieldAgentAccessDefault);
                   }
                 }}
-                className="w-full px-3 py-2 rounded-xl border border-border surface-premium text-[13px]"
+                className="w-full px-3 py-2 surface-premium text-[13px]"
               >
                 <option value="">— Keine Vorlage —</option>
                 {roles.map((r) => (

@@ -60,7 +60,7 @@ export function TripBehaviorEmptyState({
                 : undefined;
 
   return (
-    <div className="surface-solid rounded-xl border border-border/45 px-4 py-3.5">
+    <div className="surface-solid border border-border/45 px-4 py-3.5">
       <div className="flex items-start gap-3">
         {isLoading ? (
           <Icon

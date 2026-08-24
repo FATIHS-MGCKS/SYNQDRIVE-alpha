@@ -89,7 +89,7 @@ export function BookingsTimelineView({
 
   if (narrow) {
     return (
-      <div className="surface-premium rounded-2xl shadow-[var(--shadow-1)] divide-y divide-border/40">
+      <div className="surface-premium divide-y divide-border/40">
         {agendaRows.length === 0 ? (
           <p className="text-xs text-muted-foreground p-6 text-center">{t('bookings.planner.emptyTimeline')}</p>
         ) : (
@@ -130,7 +130,7 @@ export function BookingsTimelineView({
   }
 
   return (
-    <div className="surface-premium rounded-2xl shadow-[var(--shadow-1)] overflow-hidden">
+    <div className="surface-premium overflow-hidden">
       <div className="overflow-x-auto">
         <div className="min-w-0 sm:min-w-[640px] lg:min-w-[900px]">
           <div className="grid grid-cols-[200px_1fr] border-b border-border/60 bg-muted/30">

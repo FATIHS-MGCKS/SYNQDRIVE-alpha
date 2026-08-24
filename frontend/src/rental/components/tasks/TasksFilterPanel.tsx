@@ -193,7 +193,7 @@ export function TasksFilterPanel({
       </div>
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto rounded-t-2xl px-4 pb-6 pt-4">
+        <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto rounded-t-dialog px-4 pb-6 pt-4">
           <SheetTitle className="mb-4 text-base font-semibold">Filter</SheetTitle>
           <FilterFields
             filters={filters}

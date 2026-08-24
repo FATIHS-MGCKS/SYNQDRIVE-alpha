@@ -61,7 +61,7 @@ function ViewTab({
       className={cn(
         'sq-press shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-colors sm:text-[13px]',
         active
-          ? 'surface-premium text-foreground shadow-[var(--shadow-1)]'
+          ? 'surface-premium text-foreground'
           : 'text-muted-foreground hover:text-foreground',
       )}
     >

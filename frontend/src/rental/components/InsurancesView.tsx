@@ -398,7 +398,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
           ))}
         </div>
 
-        <DataCard className="mb-4 rounded-2xl shadow-[var(--shadow-1)]" bodyClassName="p-4">
+        <DataCard className="mb-4" bodyClassName="p-4">
           <div className="relative flex-1 min-w-[200px]">
             <Icon name="search" className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
             <input
@@ -454,7 +454,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
           </button>
         </DataCard>
 
-        <DataCard flush className="overflow-hidden rounded-2xl shadow-[var(--shadow-1)]">
+        <DataCard flush className="overflow-hidden">
           {filteredVehicles.length === 0 ? (
             <EmptyState
               compact
@@ -540,7 +540,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
   // ═══════════════════════════════════════════════════════════
 
   const renderStepper = () => (
-    <div className={`surface-premium border border-border rounded-xl p-5 mb-6 overflow-x-auto`}>
+    <div className={`surface-premium p-5 mb-6 overflow-x-auto`}>
       <div className="flex items-center justify-between min-w-[640px]">
         {STEP_LABELS.map((label, i) => {
           const done = i < step;
@@ -873,7 +873,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
     );
 
     const SectionCard = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
-      <div className={`surface-premium border border-border rounded-xl p-4`}>
+      <div className={`surface-premium p-4`}>
         <div className={`flex items-center gap-2 mb-3 text-sm font-semibold text-foreground`}>{icon}{title}</div>
         {children}
       </div>
@@ -1050,7 +1050,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
   const renderInquiry = () => (
     <>
       {renderStepper()}
-      <div className={`surface-premium border border-border rounded-xl p-6`}>
+      <div className={`surface-premium p-6`}>
         {renderCurrentStep()}
       </div>
       {step < 7 && (
@@ -1153,7 +1153,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
           ) : (
             <div className="space-y-2">
               {detailInquiries.slice(0, 5).map((inq: { id: string; inquiryType?: string; createdAt?: string; status?: string }) => (
-                <div key={inq.id} className="flex items-center justify-between rounded-lg border border-border surface-premium p-2.5">
+                <div key={inq.id} className="flex items-center justify-between rounded-lg surface-premium p-2.5">
                   <div>
                     <div className="text-sm font-medium text-foreground">{inq.inquiryType?.replace(/_/g, ' ')}</div>
                     <div className="text-xs text-muted-foreground">{fmtDate(inq.createdAt ?? null)}</div>
@@ -1171,7 +1171,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
           ) : (
             <div className="space-y-2">
               {detailLiveSharing.map((ls: { id: string; insurer?: { displayName?: string }; status?: string; validFrom?: string; reportingFrequency?: string }) => (
-                <div key={ls.id} className="rounded-lg border border-border surface-premium p-2.5">
+                <div key={ls.id} className="rounded-lg surface-premium p-2.5">
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-medium text-foreground">{ls.insurer?.displayName ?? '—'}</div>
                     <StatusChip tone={ls.status === 'active' ? 'success' : 'neutral'}>{ls.status}</StatusChip>
@@ -1211,7 +1211,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
         <button onClick={() => setMainView('overview')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             mainView === 'overview'
-              ? `${'surface-premium text-foreground shadow-[var(--shadow-1)]'}`
+              ? `${'surface-premium text-foreground'}`
               : 'text-muted-foreground hover:text-foreground'
           }`}>
           <span className="flex items-center gap-2"><Icon name="shield" className="w-4 h-4" /> Overview</span>
@@ -1219,7 +1219,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
         <button onClick={() => startInquiry()}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             mainView === 'inquiry'
-              ? `${'surface-premium text-foreground shadow-[var(--shadow-1)]'}`
+              ? `${'surface-premium text-foreground'}`
               : 'text-muted-foreground hover:text-foreground'
           }`}>
           <span className="flex items-center gap-2"><Icon name="send" className="w-4 h-4" /> New Inquiry</span>

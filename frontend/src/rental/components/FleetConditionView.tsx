@@ -570,7 +570,7 @@ export function FleetConditionView({
           description={healthError}
           onRetry={() => reloadHealth()}
           retryLabel="Retry"
-          className="surface-premium rounded-2xl shadow-[var(--shadow-1)]"
+          className="surface-premium"
         />
       )}
 
@@ -598,7 +598,7 @@ export function FleetConditionView({
         </div>
       ) : null}
 
-      <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)]">
+      <div className="surface-premium p-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-[200px] flex-1">
             <Icon
@@ -766,7 +766,7 @@ export function FleetConditionView({
           compact
           icon={<Icon name="search" className="h-5 w-5" />}
           title={uiLocale === 'de' ? 'Keine Fahrzeuge für diesen Filter.' : 'No vehicles found for this filter.'}
-          className="surface-premium rounded-2xl shadow-[var(--shadow-1)]"
+          className="surface-premium"
         />
       ) : (
         <div className="space-y-2.5">
@@ -778,7 +778,7 @@ export function FleetConditionView({
               return (
                 <section
                   key={group.key}
-                  className="surface-premium rounded-2xl overflow-hidden shadow-[var(--shadow-1)]"
+                  className="surface-premium overflow-hidden"
                 >
                   <button
                     type="button"
@@ -857,7 +857,7 @@ export function FleetConditionView({
         </div>
 
         {selectedVehicle && (
-          <div className="hidden lg:flex w-[min(440px,36vw)] xl:w-[480px] shrink-0 sticky top-4 max-h-[calc(100vh-5rem)] rounded-2xl border border-border overflow-hidden shadow-[var(--shadow-1)]">
+          <div className="hidden lg:flex w-[min(440px,36vw)] xl:w-[480px] shrink-0 sticky top-4 max-h-[calc(100vh-5rem)] rounded-lg border border-border overflow-hidden shadow-[var(--shadow-1)]">
             <HealthVehicleDetailPanel
               vehicle={selectedVehicle}
               health={selectedHealth}

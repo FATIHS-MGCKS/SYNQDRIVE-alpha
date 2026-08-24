@@ -41,7 +41,7 @@ const INPUT =
   'w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 text-sm text-foreground transition-colors outline-none focus:border-[color:var(--brand)] placeholder:text-muted-foreground';
 const LABEL = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
 const HEAD = 'text-xs font-semibold uppercase tracking-wider text-muted-foreground';
-const TAB_BAR = 'sq-tab-bar flex gap-1 p-1 rounded-2xl overflow-x-auto w-fit';
+const TAB_BAR = 'sq-tab-bar flex gap-1 p-1 rounded-md overflow-x-auto w-fit';
 const TAB_ACTIVE = 'sq-tab-active flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap';
 const TAB_IDLE = 'sq-tab flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap text-muted-foreground hover:text-foreground';
 
@@ -273,7 +273,7 @@ function TokenAuthHealthPanel({ tokenHealth,
               />
             ))}
             {vehicleEntries.length === 0 && (
-              <div className={`rounded-xl border p-4 flex items-center justify-center surface-premium`}>
+              <div className={` border p-4 flex items-center justify-center surface-premium`}>
                 <p className={`text-xs text-muted-foreground`}>No vehicle JWTs acquired yet</p>
               </div>
             )}
@@ -593,9 +593,9 @@ export function SystemMonitoringView({
         actions={
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
-              <input type="datetime-local" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rounded-2xl border px-4 py-2.5 text-sm font-bold border-border" />
+              <input type="datetime-local" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rounded-md border px-4 py-2.5 text-sm font-bold border-border" />
               <span className="text-muted-foreground">–</span>
-              <input type="datetime-local" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rounded-2xl border px-4 py-2.5 text-sm font-bold border-border" />
+              <input type="datetime-local" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rounded-md border px-4 py-2.5 text-sm font-bold border-border" />
             </div>
             <label className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
               <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} className="rounded border-border w-4 h-4" />
@@ -604,7 +604,7 @@ export function SystemMonitoringView({
             <button
               onClick={() => { loadAll(); loadPollLogs(); }}
               disabled={loading}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-bold transition-all shadow-sm sq-cta disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-bold transition-all shadow-sm sq-cta disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh

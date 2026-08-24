@@ -43,21 +43,21 @@ export function PlatformIntegrationsSettingsTab({
       {category === 'communication' && <PlatformEmailSettingsSection />}
 
       {category === 'billing' && (
-        <div className="surface-premium rounded-2xl p-5 text-sm text-muted-foreground">
+        <div className="surface-premium p-5 text-sm text-muted-foreground">
           Stripe-Konfiguration und Abgleich werden im Master-Abrechnungszentrum verwaltet. Die
           Integrations-Übersicht zeigt TEST/LIVE und Webhook-Health.
         </div>
       )}
 
       {category === 'vehicles' && (
-        <div className="surface-premium rounded-2xl p-5 text-sm text-muted-foreground">
+        <div className="surface-premium p-5 text-sm text-muted-foreground">
           DIMO-Plattform-Health und Fahrzeug-Konnektivität werden unter Verbundene Fahrzeuge und
           Plattform & Betrieb verwaltet — nicht hier dupliziert.
         </div>
       )}
 
       {category === 'flags' && (
-        <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)] space-y-3">
+        <div className="surface-premium p-5 space-y-3">
           <h3 className="font-semibold">Plattform-Flags (nur Lesen)</h3>
           <p className="text-sm text-muted-foreground">
             Änderungen erfolgen über Deployment/ENV — kein Bearbeiten in der UI.
@@ -75,7 +75,7 @@ export function PlatformIntegrationsSettingsTab({
       )}
 
       {category === 'operations' && (
-        <div className="surface-premium rounded-2xl p-5 text-sm text-muted-foreground">
+        <div className="surface-premium p-5 text-sm text-muted-foreground">
           Infrastruktur, Worker und Alerts: Plattform & Betrieb (`platform-ops`).
         </div>
       )}

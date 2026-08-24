@@ -18,7 +18,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 export function TenantTariffSummarySection({ tariff }: TenantTariffSummarySectionProps) {
   if (!tariff) {
     return (
-      <div className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5">
+      <div className="surface-premium border border-border/60 p-4 sm:p-5">
         <p className="text-sm text-muted-foreground">Kein aktiver Tarif hinterlegt.</p>
       </div>
     );
@@ -26,7 +26,7 @@ export function TenantTariffSummarySection({ tariff }: TenantTariffSummarySectio
 
   return (
     <div
-      className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5"
+      className="surface-premium border border-border/60 p-4 sm:p-5"
       data-testid="tenant-tariff-summary"
     >
       <h3 className="text-sm font-semibold mb-3">Tarif</h3>

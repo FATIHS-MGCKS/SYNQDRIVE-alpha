@@ -14,8 +14,8 @@ import { usePaymentsConnectData } from './usePaymentsConnectData';
 function CustomerPaymentsSkeleton() {
   return (
     <div className="space-y-4">
-      <SkeletonCard className="h-32 rounded-2xl" />
-      <SkeletonCard className="h-48 rounded-2xl" />
+      <SkeletonCard className="h-32" />
+      <SkeletonCard className="h-48" />
     </div>
   );
 }
@@ -162,7 +162,7 @@ export function CustomerPaymentsTab() {
 
   return (
     <div className="space-y-4" data-testid="customer-payments-tab">
-      <div className="surface-premium rounded-2xl p-4 sm:p-5 shadow-[var(--shadow-1)]">
+      <div className="surface-premium p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
           <div>
             <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">

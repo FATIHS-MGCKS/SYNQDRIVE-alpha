@@ -11,12 +11,12 @@ import { buildTechnicalMetadata as buildSharedTechnicalMetadata } from '../../..
 /** Shared UI tokens for Rental → Support Center. */
 export const sp = {
   shell: 'space-y-5 max-w-[1400px] mx-auto',
-  glassPanel: 'surface-premium rounded-2xl overflow-hidden',
-  inboxPanel: 'surface-premium rounded-2xl min-w-0 overflow-hidden',
+  glassPanel: 'surface-premium overflow-hidden',
+  inboxPanel: 'surface-premium min-w-0 overflow-hidden',
   detailPanel:
-    'surface-premium rounded-2xl flex flex-col min-h-0 overflow-hidden',
+    'surface-premium flex flex-col min-h-0 overflow-hidden',
   quickCard:
-    'group surface-elevated rounded-xl p-3.5 text-left transition-all duration-200 hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+    'group surface-elevated p-3.5 text-left transition-all duration-200 hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
   ticketRow:
     'w-full text-left px-4 py-3.5 flex gap-3 transition-colors border-b border-border/30 last:border-b-0 hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--brand)]',
   ticketRowActive: 'bg-[color:var(--brand-soft)] ring-1 ring-inset ring-[color:color-mix(in_srgb,var(--brand)_20%,transparent)]',

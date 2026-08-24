@@ -142,7 +142,7 @@ export const CustomerListFilters = memo(function CustomerListFilters({
     searchDraft.trim().length > 0;
 
   return (
-    <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)] sm:p-4">
+    <div className="surface-premium p-3 sm:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <h2 className="text-[12px] font-semibold text-foreground">Filter</h2>

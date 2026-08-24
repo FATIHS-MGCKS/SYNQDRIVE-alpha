@@ -49,7 +49,7 @@ export function MfaStepUpDialog({ open, action, onClose, onSuccess }: MfaStepUpD
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-dialog sq-dialog-panel border border-border bg-card p-6 shadow-xl">
         <div className="mb-4 flex items-center gap-3">
           <ShieldAlert className="h-5 w-5 text-amber-500" />
           <div>

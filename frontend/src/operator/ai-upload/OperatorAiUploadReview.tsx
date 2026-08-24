@@ -42,7 +42,7 @@ export function OperatorAiUploadReview({
       showEntityResolution={false}
       headerSlot={
         <div className="space-y-3">
-          <div className="rounded-2xl border border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)]/40 px-4 py-3">
+          <div className="rounded-md border border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)]/40 px-4 py-3">
             <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
               Bestätigung erforderlich
             </p>
@@ -53,7 +53,7 @@ export function OperatorAiUploadReview({
               Zielmodul: <span className="font-semibold text-foreground">{targetModule}</span>
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-xl border border-border surface-premium px-3 py-2.5">
+          <div className="flex items-center gap-2 surface-premium px-3 py-2.5">
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{uploadedFileName || 'Dokument'}</span>
             <span className="text-xs font-semibold text-primary">{docTypeLabel(confirmedDocType)}</span>
           </div>

@@ -269,16 +269,16 @@ export function StationDetailView({
         actions={(
           <div className="flex flex-wrap gap-2">
             {station.status === 'ARCHIVED' ? (
-              <button type="button" onClick={() => void handleRestore()} className="sq-press px-3 py-2 rounded-xl text-[10px] font-semibold border border-border surface-premium">
+              <button type="button" onClick={() => void handleRestore()} className="sq-press px-3 py-2 text-[10px] font-semibold surface-premium">
                 {t('stations.action.restore')}
               </button>
             ) : (
               <>
-            <button type="button" onClick={() => setAssignOpen(true)} className="sq-press px-3 py-2 rounded-xl text-[10px] font-semibold border border-border surface-premium">
+            <button type="button" onClick={() => setAssignOpen(true)} className="sq-press px-3 py-2 text-[10px] font-semibold surface-premium">
               {t('stations.action.assignVehicle')}
             </button>
             {!station.isPrimary && (
-              <button type="button" onClick={() => void handleSetPrimary()} className="sq-press px-3 py-2 rounded-xl text-[10px] font-semibold border border-border surface-premium">
+              <button type="button" onClick={() => void handleSetPrimary()} className="sq-press px-3 py-2 text-[10px] font-semibold surface-premium">
                 {t('stations.action.setPrimary')}
               </button>
             )}

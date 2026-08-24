@@ -118,7 +118,7 @@ export function VehicleRequirementsTab({
 
   return (
     <div className="mb-4 min-w-0 max-w-full animate-fade-up space-y-3 overflow-x-clip" data-testid="vehicle-requirements-view">
-      <section className="surface-premium rounded-xl border border-border/70 surface-premium p-3 sm:p-4">
+      <section className="surface-premium border border-border/70 surface-premium p-3 sm:p-4">
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-1.5">
             <p className="sq-section-label">Mietvoraussetzungen</p>
@@ -191,7 +191,7 @@ export function VehicleRequirementsTab({
       )}
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] lg:items-start">
-        <section className="surface-elevated rounded-xl border border-border/70 surface-premium p-3 sm:p-4">
+        <section className="surface-elevated border border-border/70 surface-premium p-3 sm:p-4">
           <div className="mb-2.5">
             <h3 className="text-[13px] font-semibold text-foreground">Gültige Mietvoraussetzungen</h3>
             <p className="mt-0.5 text-[11px] text-muted-foreground">

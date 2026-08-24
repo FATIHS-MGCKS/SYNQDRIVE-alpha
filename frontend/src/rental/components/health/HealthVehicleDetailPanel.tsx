@@ -178,7 +178,7 @@ export function HealthVehicleDetailPanel({
                           ? 'oem_alerts'
                           : (chip.key as HealthDetailTab),
                   )}
-                  className="sq-press surface-premium rounded-xl px-3 py-2.5 text-left flex items-center justify-between gap-2"
+                  className="sq-press surface-premium px-3 py-2.5 text-left flex items-center justify-between gap-2"
                 >
                   <div className="min-w-0">
                     <div className="text-[12px] font-semibold text-foreground">{chip.label}</div>
@@ -548,7 +548,7 @@ export function HealthVehicleDetailPanel({
           {Object.entries(health.modules).map(([key, mod]) => {
             const fresh = formatRelativeTime(mod.last_updated_at);
             return (
-              <div key={key} className="surface-premium rounded-xl px-3 py-2.5 text-[12px]">
+              <div key={key} className="surface-premium px-3 py-2.5 text-[12px]">
                 <div className="font-semibold text-foreground">
                   {RENTAL_HEALTH_MODULE_LABELS[key] ?? key}
                 </div>

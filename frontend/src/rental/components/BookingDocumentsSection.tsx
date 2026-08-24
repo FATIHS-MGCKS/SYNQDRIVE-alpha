@@ -185,7 +185,7 @@ export function BookingDocumentsSection({
     setSendOpen(true);
   };
 
-  const cardClass = `rounded-lg p-8 border shadow-sm surface-solid border-border`;
+  const cardClass = `rounded-lg p-8 border surface-solid border-border`;
   const subtle = 'text-muted-foreground';
   const bundleStatus = (view?.bundle.status ?? 'PENDING') as DocumentBundleStatus;
   const badge = BUNDLE_BADGE[bundleStatus] ?? BUNDLE_BADGE.PENDING;

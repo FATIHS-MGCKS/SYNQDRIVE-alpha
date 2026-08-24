@@ -28,7 +28,7 @@ export function OperatorTireMeasureTreadGrid({ tread, onChange, warnings }: Prop
       <div className="relative mx-auto max-w-md rounded-3xl border border-border/60 bg-muted/20 px-4 py-6">
         <div className="pointer-events-none absolute inset-x-8 top-1/2 h-px -translate-y-1/2 bg-border/40" />
         <div className="pointer-events-none absolute left-1/2 top-6 bottom-6 w-px -translate-x-1/2 bg-border/40" />
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-28 -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-dashed border-border/50 bg-background/40" />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-28 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-dashed border-border/50 bg-background/40" />
 
         <div className="relative grid grid-cols-2 gap-x-6 gap-y-10">
           {WHEELS.map(({ key, short, long }) => (
@@ -40,7 +40,7 @@ export function OperatorTireMeasureTreadGrid({ tread, onChange, warnings }: Prop
               <input
                 type="text"
                 inputMode="decimal"
-                className="h-14 w-full rounded-2xl border border-border surface-premium px-4 text-center text-xl font-semibold tabular-nums shadow-sm"
+                className="h-14 w-full surface-premium px-4 text-center text-xl font-semibold tabular-nums"
                 value={tread[key]}
                 onChange={(e) => set(key, e.target.value)}
                 placeholder="—"

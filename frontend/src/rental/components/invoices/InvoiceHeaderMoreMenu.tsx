@@ -66,7 +66,7 @@ export function InvoiceHeaderMoreMenu({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="sq-press inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-border surface-premium px-3 py-2 text-xs font-semibold hover:bg-muted"
+          className="sq-press inline-flex min-h-9 items-center gap-1.5 rounded-lg surface-premium px-3 py-2 text-xs font-semibold hover:bg-muted"
         >
           <Icon name="more-horizontal" className="h-3.5 w-3.5" />
           <span>Mehr</span>

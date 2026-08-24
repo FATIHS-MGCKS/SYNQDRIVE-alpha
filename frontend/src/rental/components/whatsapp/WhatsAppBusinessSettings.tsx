@@ -23,8 +23,8 @@ export function WhatsAppBusinessSettings({ enabled = true }: WhatsAppBusinessSet
   if (settings.loading) {
     return (
       <div className="space-y-3" data-testid="whatsapp-settings-loading">
-        <Skeleton className="h-28 w-full rounded-2xl" />
-        <Skeleton className="h-40 w-full rounded-2xl" />
+        <Skeleton className="h-28 w-full rounded-lg" />
+        <Skeleton className="h-40 w-full rounded-lg" />
       </div>
     );
   }
@@ -60,7 +60,7 @@ export function WhatsAppBusinessSettings({ enabled = true }: WhatsAppBusinessSet
 
       {settings.simModal && isSandboxEnvironment() && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="surface-premium w-full max-w-md rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+          <div className="surface-premium w-full max-w-md border border-border/40 p-4">
             <h3 className="text-sm font-semibold text-foreground">Simulate incoming message</h3>
             <div className="mt-3 space-y-2">
               <input

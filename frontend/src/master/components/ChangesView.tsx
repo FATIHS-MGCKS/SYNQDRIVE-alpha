@@ -14667,7 +14667,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     version: '4.9.179',
     title: 'V4.9.179 — Business Pulse: Clean SaaS UI an Control Center angeglichen',
     summary: [
-      'Business Pulse nutzt dieselbe KPI-Card-Sprache wie Control Center (rounded-2xl, shared Typography, Status-Akzente, Icon-Chip).',
+      'Business Pulse nutzt dieselbe KPI-Card-Sprache wie Control Center (rounded-lg, shared Typography, Status-Akzente, Icon-Chip).',
       'Header wie Notifications-Panel: Dot + Titel „Finanzen“, Link-CTA „Rechnungen öffnen →“, kein Subtext.',
       '4 Haupt-KPIs im gleichmäßigen Grid; optionale Metriken als dezente Chips darunter.',
       'Desktop: signalsGrid 2-spaltig neben Notifications; beide Panels `h-full` gestretcht.',
@@ -17657,7 +17657,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     version: '4.9.39',
     title: 'V4.9.39 — Service-&-Wartung-Box im Overview bereinigt (ruhiger, redundanzfrei, fokussiert)',
     summary: [
-      'Die Service-&-Wartung-Box wurde typografisch/strukturell an die Vehicle Health Box angelehnt: ruhige Card-Hierarchie (`rounded-xl border surface-premium p-3 shadow-sm`), Header „Service & Wartung" + optionales kompaktes Status-Badge (Überfällig / Kritisch / Vermietung blockiert), Subline (Fahrzeug), darunter Actions, darunter Task-Rows.',
+      'Die Service-&-Wartung-Box wurde typografisch/strukturell an die Vehicle Health Box angelehnt: ruhige Card-Hierarchie (` border surface-premium p-3`), Header „Service & Wartung" + optionales kompaktes Status-Badge (Überfällig / Kritisch / Vermietung blockiert), Subline (Fahrzeug), darunter Actions, darunter Task-Rows.',
       'Redundanzen entfernt: der separate Alert-Banner und der Text-Link „Im Service Center anzeigen" entfallen (eine klare CTA „Service Center" bleibt); die Summary-Zeile „x offen · y überfällig" entfällt, da die Tasks direkt darunter sichtbar sind.',
       'Doppelte „Überfällig"-Anzeige behoben: in `MaintenanceTaskRow` lieferte `vehicleTaskStatusLabel` bereits „Überfällig" und zusätzlich wurde ein separates Überfällig-Badge gerendert. Das zweite Badge ist entfernt; „Kritisch" (Priority) bleibt nur bei high/critical sichtbar.',
       'Due-Date fachlich korrigiert: neuer Helper `formatVehicleMaintenanceDueLabel(task)` → „Fällig bis DD.MM.YY" für nicht überfällige, „Fällig seit DD.MM.YY" für überfällige Tasks.',
@@ -23075,12 +23075,12 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     summary: [
       'Die vier Fleet-Condition-KPI-Boxen nutzen jetzt dieselbe Card-Komposition wie die KPI-Reihe in `FinancialInsightsView`: `rounded-xl p-3`, tonale Fläche, Icon links oben in `bg-current/10`, Wert in `text-[16px] font-bold`, Label darunter als uppercase Microcopy.',
       'Die Meta-Information (`vehicles monitored`, `50% · 3 with limited data`, `2 need review`, `1 act now`) sitzt nun wie bei Financial Insights als dezente Bottom-Zeile mit `border-t border-current/15` und kleinem Arrow-Indikator.',
-      'Die bisherige `surface-premium rounded-2xl shadow`-Optik der KPI-Karten wurde entfernt, damit Titel + KPI-Bereich denselben optischen Rhythmus wie Financial Insights bekommen.',
+      'Die bisherige `surface-premium shadow`-Optik der KPI-Karten wurde entfernt, damit Titel + KPI-Bereich denselben optischen Rhythmus wie Financial Insights bekommen.',
     ],
     reason:
       'User-Feedback (2026-05-02): „header bereich aus titel und die vier boxen bitte optisch und abstandstechnisch an die seite financial insights anpassen.\"',
     previousBehavior:
-      'Fleet Condition hatte zwar den Header-Font bereits angeglichen, aber die KPI-Karten waren noch im eigenen `surface-premium rounded-2xl shadow`-Stil mit großem 20px-Wert und Label oben links.',
+      'Fleet Condition hatte zwar den Header-Font bereits angeglichen, aber die KPI-Karten waren noch im eigenen `surface-premium shadow`-Stil mit großem 20px-Wert und Label oben links.',
     details:
       '**Datei**: `frontend/src/rental/components/FleetConditionView.tsx`. Reine UI-/Spacing-Anpassung der Summary-Cards. Keine Datenfluss-/Architekturänderung. Lints clean.',
     affectsArchitecture: false,
@@ -23495,7 +23495,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     version: '4.7.14',
     title: 'V4.7.14 Operations → Vehicle-Detail → Vehicle Insights Card — visueller Rebuild auf das gleiche Card-Pattern wie Vehicle Health (Header-Pille + 3-Tile-Statusstrip + ruhige Forecast-Liste + Next-Action-CTA)',
     summary: [
-      '`VehicleInsightsCard` (`frontend/src/rental/components/VehicleInsightsCard.tsx`) wurde von einer flachen 5-Block-Liste zu einer hierarchisch klaren Box umgebaut, die das gleiche Vokabular wie `VehicleHealthBoxWired` und `OverviewLiveMapCard` spricht. Outer-Wrapper bleibt das Standard-Card-Pattern (`rounded-xl border surface-premium shadow-sm transition-shadow hover:shadow-md`), Hover-Translate gibt es weiterhin nicht.',
+      '`VehicleInsightsCard` (`frontend/src/rental/components/VehicleInsightsCard.tsx`) wurde von einer flachen 5-Block-Liste zu einer hierarchisch klaren Box umgebaut, die das gleiche Vokabular wie `VehicleHealthBoxWired` und `OverviewLiveMapCard` spricht. Outer-Wrapper bleibt das Standard-Card-Pattern (` border surface-premium transition-shadow hover:`), Hover-Translate gibt es weiterhin nicht.',
       'Header: Sparkles-Icon-Chip + Titel + Readiness-Pille (Ready / Monitor / Limited / Action Needed) als ringed Tone-Pille rechts vom Titel — analog zur Coverage-Pille der Vehicle-Health-Box. Refresh-Timestamp bleibt als tabular-nums rechts, das `Loading…`-Wort ist durch einen dezenten `Loader2`-Spinner ersetzt.',
       '3-Tile-Statusstrip ersetzt die alte Spalten-Zeile: Readiness / Cost Outlook / Downtime werden über eine gemeinsame `Tone`-Skala (`good / watch / limited / critical / neutral`) auf eine konsistente Tile-Surface gemappt (Border + Tinted-Background + Tone-Dot + Bold-Wert). Die Logik in `vehicle-insights-logic.ts` (deriveInsights, ReadinessLevel, CostOutlookLevel, DowntimeRiskLevel) ist unverändert, nur die Color-Helper werden nicht mehr direkt im JSX gemischt.',
       'Planning Horizon: Liste sitzt jetzt in einer eingerahmten, leicht getönten Surface (`rounded-[10px] border bg-muted/60` bzw. dark `bg-white/[0.025]`). Jedes Item zeigt einen kleinen Urgency-Dot in der Borderfarbe (overdue/due/soon/normal), das Eventlabel und rechts in monospaced tabular-nums die Distanz und/oder Restzeit. Kein gestapelter `border-l-2`-Akzent mehr, der den Text einrückt.',
@@ -23505,7 +23505,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     reason:
       'Produkt-Feedback (User, 2026-04-28, ~20:14 Europe/Berlin): „genau das gleiche mit dieser Box, die ist nicht gut und schlecht UI UX Technisch. bitte mach diese mit einen von unseren skills visuell super". Die alte Box hatte fünf Sektionen ohne klare Top-Aussage, ein Status-Strip ohne Tile-Surface und keine konsistente Farbsprache zur Vehicle-Health-Box direkt darüber.',
     previousBehavior:
-      'V4.7.13-Stand: Outer-Wrapper war bereits korrekt (`rounded-xl border border-border surface-premium shadow-sm transition-shadow hover:shadow-md`), aber die Innenstruktur bestand aus Header (Titel + Timestamp), Verdict (3 Renderpfade je nach Readiness), `StatusCol`-Reihe ohne Tile-Surface, `Divider`, Planning-Horizon-Liste mit `border-l-2`-Urgency-Akzent, weiterer `Divider`, `Next`-Label-Zeile und `Confidence`-Note — alles innerhalb eines `transition-opacity duration-300 ${loading ? "opacity-50" : "opacity-100"}` Wrappers, der bei jedem Vehicle-Wechsel die ganze Card kurz transparent gemacht hat.',
+      'V4.7.13-Stand: Outer-Wrapper war bereits korrekt (` surface-premium transition-shadow hover:`), aber die Innenstruktur bestand aus Header (Titel + Timestamp), Verdict (3 Renderpfade je nach Readiness), `StatusCol`-Reihe ohne Tile-Surface, `Divider`, Planning-Horizon-Liste mit `border-l-2`-Urgency-Akzent, weiterer `Divider`, `Next`-Label-Zeile und `Confidence`-Note — alles innerhalb eines `transition-opacity duration-300 ${loading ? "opacity-50" : "opacity-100"}` Wrappers, der bei jedem Vehicle-Wechsel die ganze Card kurz transparent gemacht hat.',
     details: [
       '**Datei**: `frontend/src/rental/components/VehicleInsightsCard.tsx`, ein eigenständiger Komponenten-File. Reine Präsentations-Refactor — keine Änderung an `vehicle-insights-logic.ts` (`deriveInsights`, Readiness/Cost/Downtime-Levels, Forecast-Engine), kein neuer API-Call, keine neue Prop. `useEffect` mit den sechs `vehicleIntelligence`-Endpoints (tireHealthSummary, brakeHealthSummary, batteryHealthSummary, serviceInfoStatus, dtcActive, oilChangeStatus) bleibt unverändert.',
       '**Tone-System**: Neue private Helper `readinessTone`, `costOutlookTone`, `downtimeRiskTone` mappen die Logik-Levels auf eine 5er-Tone-Skala. Surface-Helper `toneTile` (Mini-Tile-Surface), `toneRing` (Header-Pille) und `toneDot` (Dot-Color) liefern alle Tailwind-Classes pro Tone & Darkmode. Damit ist die Box visuell ein direkter Geschwister-Block der Vehicle-Health-Box (gleiche Darkmode-Opazitäten, gleiche Pill-Treatments).',
@@ -23522,7 +23522,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     version: '4.7.13',
     title: 'V4.7.13 Operations → Vehicle-Detail → Vehicle Health Box — Header auf 3-Stufen-Status reduziert (Good Health / Warning / Critical), Hover wieder konsistent zum Standard-Card-Pattern',
     summary: [
-      '`VehicleHealthBoxWired` (`frontend/src/rental/App.tsx`) hat den prozentualen Aggregat-Score und die mehrschichtige Gradient-Bezel-Surface verloren. Die Box nutzt jetzt das gleiche Standard-Pattern wie alle anderen Dashboard-Karten (`rounded-xl p-3 border border-border surface-premium shadow-sm transition-shadow hover:shadow-md`) — kein Translate-Y mehr beim Hover, nur eine sanfte Shadow-Verstärkung',
+      '`VehicleHealthBoxWired` (`frontend/src/rental/App.tsx`) hat den prozentualen Aggregat-Score und die mehrschichtige Gradient-Bezel-Surface verloren. Die Box nutzt jetzt das gleiche Standard-Pattern wie alle anderen Dashboard-Karten (` p-3 surface-premium transition-shadow hover:`) — kein Translate-Y mehr beim Hover, nur eine sanfte Shadow-Verstärkung',
       'Der Header zeigt jetzt nur noch drei Operativ-Stufen + einen Disabled-Zustand: `Good Health` / `Warning` / `Critical` / `Insufficient Data`. Die neue `overallState`-Aggregation kommt direkt aus den bereits existierenden Sub-Health-Detektionen (criticalCount, dueSoonCount, dtcCount, trackedCount) — Brakes/Tires/Battery-Status, Daten-API und Health-Detail-Navigation sind unverändert',
       'Aufgeräumt: Score-Hero, Gradient-Progressbar, Corner-Glow und der Caption-Strip „Diagnostics · Wear trends · Service status" sind raus. Coverage steht jetzt als ruhige `x/3 tracked`-Pille rechts neben dem Titel statt in einem eigenen Block',
     ],
@@ -23533,7 +23533,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     details: [
       '**Datei**: `frontend/src/rental/App.tsx`, Komponente `VehicleHealthBoxWired`. JSX-/Klassen-Refactor und Status-Logik-Konsolidierung; keine API-, Store-, Routing-, Selector- oder Berechnungs-Änderung. Der existierende `getStatus`/`getBatteryStatus`-Flow für die einzelnen Dimensionen bleibt komplett unangetastet, ebenso `useEffect` mit den sechs `vehicleIntelligence`-Calls und der Telemetry-Bridge `VehicleHealthBoxTelemetryBridge`.',
       '**Logik**: Neuer `overallState: \'insufficient\' | \'good\' | \'warning\' | \'critical\'`-Computed: `insufficient` wenn `trackedCount === 0`, `critical` wenn `criticalCount > 0` ODER `dtcCount > 0`, `warning` wenn `dueSoonCount > 0`, sonst `good`. Damit ist die Top-Pille semantisch zu den Sub-Pillen konsistent (z.B. `attention`-Battery → Box auf `Critical`).',
-      '**Surface**: Outer Wrapper jetzt `rounded-xl p-3 border surface-premium shadow-sm transition-shadow hover:shadow-md` — exakt das Pattern der `OverviewLiveMapCard`, der `BusinessInsightsBox` und der Dashboard-Tile-Cards. Hover ist nicht mehr layout-shifting.',
+      '**Surface**: Outer Wrapper jetzt ` p-3 border surface-premium transition-shadow hover:` — exakt das Pattern der `OverviewLiveMapCard`, der `BusinessInsightsBox` und der Dashboard-Tile-Cards. Hover ist nicht mehr layout-shifting.',
       '**Risiko-Profil**: Niedrig — scoped auf eine React-Komponente, keine externe API berührt. `ReadLints` clean.',
     ],
     affectsArchitecture: false,
@@ -23575,7 +23575,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     reason:
       'Produkt-Feedback (User, 2026-04-27, ~23:56 Europe/Berlin): Die Vehicle-Health-Box soll den Inhalt klarer und hochwertiger darstellen, mit Fortschrittsbalken und einem cleanen Premium-Look. Die alte Box zeigte zwar alle Daten, wirkte auf der schmalen Spalte aber visuell gedrängt: Herzgrafik, Statusleiste, Hinweistext und Einzel-Progressbars hatten keine klare Blickführung. V4.7.11 legt den Fokus auf drei Ebenen: Gesamtzustand, operative Warnzahlen, einzelne Health-Dimensionen.',
     previousBehavior:
-      'V4.7.10-Stand: einfache `rounded-xl p-3 border surface-premium shadow-sm`-Card, Header mit kleinem Titel + animierter Herz/ECG-Grafik, darunter eine horizontale Statusleiste mit drei Icon/Text-Segmenten. Die einzelnen Health-Dimensionen lagen als flache Rows mit 1.5px-Progressbars direkt auf der Card-Fläche. Funktional korrekt, aber optisch weniger hochwertig und auf der schmalen rechten Overview-Spalte nicht optimal priorisiert.',
+      'V4.7.10-Stand: einfache ` p-3 border surface-premium`-Card, Header mit kleinem Titel + animierter Herz/ECG-Grafik, darunter eine horizontale Statusleiste mit drei Icon/Text-Segmenten. Die einzelnen Health-Dimensionen lagen als flache Rows mit 1.5px-Progressbars direkt auf der Card-Fläche. Funktional korrekt, aber optisch weniger hochwertig und auf der schmalen rechten Overview-Spalte nicht optimal priorisiert.',
     details: [
       '**Datei**: `frontend/src/rental/App.tsx`, Komponente `VehicleHealthBoxWired`. Rein visuelle JSX-/ClassName-Verfeinerung; keine API-, Store-, Routing-, State- oder Berechnungslogik geändert.',
       '**Neu berechnete UI-Hilfswerte**: `trackedCount`, `healthProgress`, `overallStatusLabel`, `overallAccent`, `overallProgress`, `overallBadge`. Diese Werte leiten sich ausschließlich aus den bereits vorhandenen Health-Werten ab und verändern keine fachliche Semantik.',
@@ -24017,7 +24017,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     title: 'V4.6.86 UI/UX — Premium-Refinement-Pass (Taste-Skill + Redesign-Skill + Soft-Skill): Typografie, Surfaces, Motion, Fleet-/Dashboard-/Vehicle-Detail-Polish',
     summary: [
       'Workflow: Taste-Skill wurde global installiert (`npx skills add Leonxlnx/taste-skill`). Danach wurde der Redesign-Skill als Primär-Workflow (Audit → Plan → Refactor, nie From-Scratch) und der Soft-Skill als Visual-Direction (ruhig, premium, mit gemessenem Weißraum, subtilem Glas- und Neumorphismus) über die gesamte SynqDrive-Produkt-Oberfläche angewendet. Keine Logik-, Routing- oder Daten-Binding-Änderung — alle Refactors waren chirurgisch visueller Natur.',
-      'Foundations (Typo + Tokens + Motion): `frontend/src/styles/fonts.css` wechselt von Inter + Manrope auf **Geist + Geist Mono** (Google Fonts, 400/500/600/700). `frontend/src/styles/theme.css` definiert einen kohärenten Design-Token-Satz — Typographie-Scale, Radius-System (`--radius-sm/-md/-lg/-xl`), Shadow-Scale (`--shadow-xs/-sm/-md/-lg/-hover/-overlay` + numerische Aliases `--shadow-1..4`), Automotive-Slate-Blue-Brand (`--brand`, `--brand-soft`, `--brand-glow`), Status-Farben (`--status-positive/-attention/-critical/-info` inkl. `-soft`-Varianten), und neue Motion-Tokens (`--ease-out-soft`, `--dur-fast/base/slow`). Grundklassen: `.surface-premium`, `.sq-overlay`, `.sq-tab-bar`, `.sq-section-label`, `.sq-press`, `.sq-neo-press`, `.sq-cta`, `.sq-chip[-info/-success/-warning/-critical/-neutral]`, `.sq-tone-*`, `.animate-fade-up`.',
+      'Foundations (Typo + Tokens + Motion): `frontend/src/styles/fonts.css` wechselt von Inter + Manrope auf **Geist + Geist Mono** (Google Fonts, 400/500/600/700). `frontend/src/styles/theme.css` definiert einen kohärenten Design-Token-Satz — Typographie-Scale, Radius-System (`--radius-sm/-md/-lg/-xl`), Shadow-Scale (`--/-sm/-md/-lg/-hover/-overlay` + numerische Aliases `--shadow-1..4`), Automotive-Slate-Blue-Brand (`--brand`, `--brand-soft`, `--brand-glow`), Status-Farben (`--status-positive/-attention/-critical/-info` inkl. `-soft`-Varianten), und neue Motion-Tokens (`--ease-out-soft`, `--dur-fast/base/slow`). Grundklassen: `.surface-premium`, `.sq-overlay`, `.sq-tab-bar`, `.sq-section-label`, `.sq-press`, `.sq-neo-press`, `.sq-cta`, `.sq-chip[-info/-success/-warning/-critical/-neutral]`, `.sq-tone-*`, `.animate-fade-up`.',
       'App Shell: `frontend/src/rental/App.tsx` nutzt großzügigere Gutter (`px-5 sm:px-7 lg:px-10`) mit `max-w-[1440px]`, sowie rhythmischere vertikale Spacings (`pt-4 lg:pt-6 pb-8`). Das lässt Dashboards, Tabellen und Side-Panels „atmen", reduziert das bulky Gefühl, und balanciert die fixe Right-Sidebar.',
       'TopBar (`frontend/src/rental/components/TopBar.tsx`): entfernt Emoji-Flaggen zugunsten ISO-Sprachkürzel, ersetzt Gradient-Avatar durch ruhige `sq-tone-brand`-Variante, verdrahtet die Notification-Bell an die echten DashboardInsights-Counts (`unreadInsightCount` + `hasCriticalInsight`-Badge-Tönung), konsolidiert Such-Ergebnis-Typkürzel über `sq-tone-*`, und nutzt `sq-overlay` für Dropdown-Panels (Sprachauswahl, Search-Results).',
       'Left Sidebar (`Sidebar.tsx`): Active-State via Brand-Rail (`.sq-nav-rail`) + `brand-soft`-Hintergrund, konsistente Typografie (kein gemischtes `font-semibold`/`font-bold` mehr), `sq-section-label` für „OPERATIONS"/„INSIGHTS"/„INTEGRATIONS"-Header, Coming-Soon-Badges als `sq-chip sq-chip-neutral`, Collapsed-Tooltips auf `sq-overlay`. Quick-Actions-Block: „New Booking" nutzt `sq-cta` (Primär-Brand-CTA), „New Task"/„Upload Document"/„AI Fleet Assistant" nutzen `sq-press`/`sq-neo-press` mit semantischen `sq-tone-*`-Icon-Tiles — keine rohen Gradient-Kacheln mehr.',
@@ -27548,7 +27548,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
   const [architectureOnly, setArchitectureOnly] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, Partial<Record<SectionKey, boolean>>>>({});
 
-  const card = `rounded-xl shadow-sm border surface-solid border-border`;
+  const card = ` border surface-solid border-border`;
   const field = `px-4 py-3 rounded-xl border text-sm font-bold bg-muted border-border text-foreground`;
   const expandBtn = `flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold border-border bg-muted/80 text-foreground hover:bg-muted`;
 
@@ -27612,7 +27612,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
 
       <div className={`${card} p-4`}>
         <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
-          <div className="flex min-w-[200px] flex-1 items-center gap-2 rounded-2xl border px-4 py-3 border-border/50 bg-muted/50">
+          <div className="flex min-w-[200px] flex-1 items-center gap-2 rounded-md border px-4 py-3 border-border/50 bg-muted/50">
             <Filter className={`h-5 w-5 shrink-0 ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
             <span className={`text-sm font-bold ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Module</span>
             <select value={moduleFilter} onChange={(e) => setModuleFilter(e.target.value)} className={`${field} ml-auto min-w-[160px] flex-1 cursor-pointer appearance-none lg:ml-0 lg:flex-none`} aria-label="Filter by module">
@@ -27623,7 +27623,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
               ))}
             </select>
           </div>
-          <label className={`inline-flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-bold ${architectureOnly ? (d ? 'border-amber-500/40 bg-amber-500/10 text-amber-200' : 'border-amber-300 bg-amber-50 text-amber-900') : field}`}>
+          <label className={`inline-flex cursor-pointer items-center gap-3 rounded-md border px-4 py-3 text-sm font-bold ${architectureOnly ? (d ? 'border-amber-500/40 bg-amber-500/10 text-amber-200' : 'border-amber-300 bg-amber-50 text-amber-900') : field}`}>
             <Layers className="h-4 w-4 shrink-0 opacity-80" />
             <span className="select-none">Architecture-affecting only</span>
             <input type="checkbox" className="sr-only" checked={architectureOnly} onChange={() => setArchitectureOnly((v) => !v)} />
@@ -27631,7 +27631,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
               <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow ${architectureOnly ? 'left-5' : 'left-0.5'}`} />
             </span>
           </label>
-          <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-bold disabled:opacity-50 border-border/50 bg-muted/50 text-foreground hover:bg-muted">
+          <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-md border px-4 py-3 text-sm font-bold disabled:opacity-50 border-border/50 bg-muted/50 text-foreground hover:bg-muted">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
@@ -27644,7 +27644,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
       </div>
 
       {error && (
-        <div className={`rounded-2xl border px-4 py-3 text-sm font-medium ${d ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-red-200 bg-red-50 text-red-800'}`}>{error}</div>
+        <div className={`rounded-md border px-4 py-3 text-sm font-medium ${d ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-red-200 bg-red-50 text-red-800'}`}>{error}</div>
       )}
 
       {loading ? (

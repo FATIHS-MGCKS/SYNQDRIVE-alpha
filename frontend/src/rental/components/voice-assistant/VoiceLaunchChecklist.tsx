@@ -13,7 +13,7 @@ export function VoiceLaunchChecklist({ items, onNavigate }: VoiceLaunchChecklist
   const complete = required.filter(i => i.ok).length;
 
   return (
-    <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)] sm:p-5">
+    <section className="surface-premium border border-border/40 p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-bold tracking-[-0.02em] text-foreground">Launch checklist</h2>

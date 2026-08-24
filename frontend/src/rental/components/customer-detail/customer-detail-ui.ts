@@ -9,7 +9,7 @@ import {
 /** Layout tokens for the full CustomerDetailView page. */
 export const cdv = {
   page: 'mx-auto max-w-[1400px] space-y-3 pb-[max(1rem,env(safe-area-inset-bottom))]',
-  headerCard: 'surface-premium overflow-hidden rounded-2xl',
+  headerCard: 'surface-premium overflow-hidden',
   headerInner: 'px-4 py-3.5 sm:px-5 sm:py-4',
   backLink:
     'inline-flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground',
@@ -91,7 +91,7 @@ export const cdv = {
     'border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground',
   tabBarShell:
     'sticky top-0 z-20 -mx-1 border-b border-border/60 surface-frosted px-1 py-1 shadow-[0_1px_0_0_color-mix(in_srgb,var(--border)_70%,transparent)] sm:mx-0 sm:px-0',
-  tabBarRail: 'flex w-full min-w-0 items-center rounded-2xl p-1',
+  tabBarRail: 'flex w-full min-w-0 items-center rounded-lg p-1',
   tabBarScroller:
     'flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto scroll-smooth px-1 snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
   tabButton:
@@ -109,7 +109,7 @@ export const cdv = {
   documentsStatusTitle: 'text-[13px] font-semibold text-foreground',
   documentsStatusMeta: 'text-[11px] leading-snug text-muted-foreground',
   documentsStatusActions: 'flex flex-wrap gap-1.5 pt-1',
-  documentsUploadSection: 'surface-premium p-4 space-y-3 rounded-2xl overflow-hidden',
+  documentsUploadSection: 'surface-premium p-4 space-y-3 overflow-hidden',
   documentsUploadGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2',
   documentsEmptySuccess: 'text-[12px] text-muted-foreground',
   timelineToolbar: 'space-y-2',
@@ -124,7 +124,7 @@ export const cdv = {
   timelineFilterButtonIdle:
     'text-muted-foreground hover:bg-background/60 hover:text-foreground',
   timelineAddNoteButton: 'w-full shrink-0 sm:w-auto',
-  timelineList: 'surface-premium overflow-hidden rounded-2xl px-1 py-2 sm:px-2',
+  timelineList: 'surface-premium overflow-hidden px-1 py-2 sm:px-2',
   timelineEntryList: 'relative space-y-0 px-2 sm:px-3',
   timelineEntryRow: 'relative flex gap-3 pb-4 last:pb-0',
   timelineEntryRail: 'relative flex flex-col items-center',
@@ -152,7 +152,7 @@ export const cdm = {
   body: 'flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 sm:px-5 sm:py-4 pb-[max(1rem,env(safe-area-inset-bottom))]',
   sectionGrid: 'grid grid-cols-1 gap-3 lg:grid-cols-2',
   summaryGrid: 'grid grid-cols-2 items-start gap-1 sm:gap-1.5 lg:grid-cols-4',
-  identityCard: 'surface-premium flex gap-3 p-3 sm:p-3.5 rounded-xl overflow-hidden',
+  identityCard: 'surface-premium flex gap-3 p-3 sm:p-3.5 overflow-hidden',
   avatar:
     'flex size-11 shrink-0 items-center justify-center rounded-xl text-[12px] font-bold uppercase tracking-tight',
   badgeRow: 'flex flex-wrap items-center gap-1.5',
