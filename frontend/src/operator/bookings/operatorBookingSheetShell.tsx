@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface OperatorBookingSheetShellProps {
   title: string;
@@ -14,6 +15,8 @@ export function OperatorBookingSheetShell({
   onClose,
   children,
 }: OperatorBookingSheetShellProps) {
+  const { t } = useLanguage();
+
   return (
     <div
       className="fixed inset-0 z-[130] flex flex-col bg-background"
@@ -33,7 +36,7 @@ export function OperatorBookingSheetShell({
           type="button"
           onClick={onClose}
           className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
-          aria-label="Schließen"
+          aria-label={t('common.close')}
         >
           <X className="h-4 w-4" />
         </button>

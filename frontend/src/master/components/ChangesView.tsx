@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-booking-cancel-noshow-p2-2-37-2026-08-25',
+    version: '4.9.964',
+    title: 'Platform i18n — P2.2.37 Operator Booking Cancel & No-Show Sheets localization',
+    summary: [
+      'Localized Operator Booking Cancel and No-Show sheets via `operator-booking-cancel-noshow-i18n.ts` and `operator.bookings.cancelNoShow.*` keys.',
+      'P237 enforce-clean exact scope (4 paths) reports 0 findings; +26 EN+DE keys (8526→8552); reuses `bookings.customer`, `bookings.vehicle`, `bookings.period`, `bookings.detail.noShowReasonPlaceholder`, `common.cancel`, `common.close`.',
+      'Presentation-only — booking IDs, customer/vehicle names, status transitions, mutation payloads, gate predicates, freeform reason text, and callbacks unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.37 post-P236 pre-flight (PR #1261) selected Operator Booking Cancel & No-Show Sheets as the next bounded Operator booking presentation slice.',
+    previousBehavior:
+      'OperatorBookingCancelSheet and OperatorBookingNoShowSheet used fixed German titles, warnings, labels, gate copy, and sheet-shell close aria inline.',
+    details:
+      'operator/bookings/OperatorBookingCancelSheet.tsx; operator/bookings/OperatorBookingNoShowSheet.tsx; operator/bookings/operatorBookingSheetShell.tsx; operator/lib/operator-booking-cancel-noshow-i18n.ts; i18n/translations/operator.bookings.cancelNoShow.{en,de}.ts; operator-booking-cancel-noshow-localization.test.tsx; P237_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_BOOKING_CANCEL_NOSHOW_P2_2_37_2026-08-25.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-25T00:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-booking-form-sheet-p2-2-36-2026-08-24',
     version: '4.9.963',
     title: 'Platform i18n — P2.2.36 Operator Booking Form Sheet localization',

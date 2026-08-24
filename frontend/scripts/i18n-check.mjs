@@ -54,6 +54,7 @@ const testFiles = [
   'src/operator/verification/operator-pickup-check-localization.test.tsx',
   'src/operator/tire-measure/operator-tire-measure-localization.test.tsx',
   'src/operator/bookings/operator-booking-form-localization.test.tsx',
+  'src/operator/bookings/operator-booking-cancel-noshow-localization.test.tsx',
 ];
 
 const result = spawnSync('npx', ['vitest', 'run', ...testFiles], {

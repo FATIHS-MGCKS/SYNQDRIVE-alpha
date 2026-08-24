@@ -4,11 +4,18 @@ import { api, type BookingDetailDto } from '../../lib/api';
 import { getBookingActionMatrix } from '../../rental/components/booking-detail/bookingActionRules';
 import { bookingStatusLabel, normalizeBookingStatus } from '../../rental/components/bookings/bookingStatus';
 import { useRentalOrg } from '../../rental/RentalContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { StatusChip } from '../../components/patterns';
 import { OperatorGlassCard } from '../components/OperatorGlassCard';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useOperatorBookingMutations } from '../hooks/useOperatorBookingMutations';
 import type { OperatorSheetAction } from '../lib/operatorTypes';
+import {
+  obcn,
+  operatorBookingCancelMatrixReasonLabel,
+  operatorBookingCancelSheetTitle,
+  operatorBookingCancelSuccessToast,
+} from '../lib/operator-booking-cancel-noshow-i18n';
 import { OperatorBookingSheetShell } from './operatorBookingSheetShell';
 import { toLocalDateTimeInput } from './operatorBooking.utils';
 
@@ -17,6 +24,7 @@ interface OperatorBookingCancelSheetProps {
 }
 
 export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelSheetProps) {
+  const { locale, t } = useLanguage();
   const { orgId } = useRentalOrg();
   const { closeSheet } = useOperatorShell();
   const { mutating, error, clearError, cancelBooking } = useOperatorBookingMutations();
@@ -30,7 +38,7 @@ export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelShee
   useEffect(() => {
     if (!orgId || !bookingId) {
       setLoading(false);
-      setLoadError('Buchung nicht angegeben');
+      setLoadError(obcn(locale, 'operator.bookings.cancelNoShow.error.bookingNotSpecified'));
       return;
     }
     let cancelled = false;
@@ -41,7 +49,13 @@ export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelShee
         if (!cancelled) setDetail(d);
       })
       .catch((e) => {
-        if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Details nicht verfügbar');
+        if (!cancelled) {
+          setLoadError(
+            e instanceof Error
+              ? e.message
+              : obcn(locale, 'operator.bookings.form.error.detailsUnavailable'),
+          );
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -49,7 +63,7 @@ export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelShee
     return () => {
       cancelled = true;
     };
-  }, [orgId, bookingId]);
+  }, [orgId, bookingId, locale]);
 
   const matrix = detail ? getBookingActionMatrix(detail) : null;
   const cancelAllowed = matrix?.cancel.allowed ?? false;
@@ -61,40 +75,53 @@ export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelShee
   const handleCancel = async () => {
     if (!bookingId || !cancelAllowed) return;
     clearError();
-    await cancelBooking(bookingId, detail?.vehicle.vehicleId, () => {
-      action.onSuccess?.();
-      closeSheet();
-    });
+    await cancelBooking(
+      bookingId,
+      detail?.vehicle.vehicleId,
+      () => {
+        action.onSuccess?.();
+        closeSheet();
+      },
+      operatorBookingCancelSuccessToast(locale),
+    );
   };
 
   return (
-    <OperatorBookingSheetShell title="Buchung stornieren" onClose={closeSheet}>
+    <OperatorBookingSheetShell title={operatorBookingCancelSheetTitle(locale)} onClose={closeSheet}>
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : loadError || !detail ? (
-        <p className="text-sm text-[color:var(--status-critical)]">{loadError ?? 'Buchung nicht gefunden'}</p>
+        <p className="text-sm text-[color:var(--status-critical)]">
+          {loadError ?? obcn(locale, 'operator.bookings.cancelNoShow.error.bookingNotFound')}
+        </p>
       ) : (
         <div className="space-y-4 pb-4">
           <OperatorGlassCard className="space-y-3 p-4">
             <div className="flex flex-wrap gap-2">
               <StatusChip tone="neutral">{detail.core.bookingNumber}</StatusChip>
-              {status && <StatusChip tone="info">{bookingStatusLabel(status)}</StatusChip>}
+              {status && <StatusChip tone="info">{bookingStatusLabel(status, locale)}</StatusChip>}
             </div>
             <dl className="grid gap-2 text-sm">
               <div>
-                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Kunde</dt>
+                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">
+                  {t('bookings.customer')}
+                </dt>
                 <dd className="font-medium">{detail.customer.fullName}</dd>
               </div>
               <div>
-                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Fahrzeug</dt>
+                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">
+                  {t('bookings.vehicle')}
+                </dt>
                 <dd>
                   {detail.vehicle.displayName} · {detail.vehicle.licensePlate}
                 </dd>
               </div>
               <div>
-                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Zeitraum</dt>
+                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">
+                  {t('bookings.period')}
+                </dt>
                 <dd>
                   {toLocalDateTimeInput(detail.core.startDate).replace('T', ' ')} →{' '}
                   {toLocalDateTimeInput(detail.core.endDate).replace('T', ' ')}
@@ -106,10 +133,11 @@ export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelShee
           <OperatorGlassCard className="flex gap-3 border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.06] p-4">
             <AlertTriangle className="h-5 w-5 shrink-0 text-[color:var(--status-watch)]" />
             <div className="text-sm">
-              <p className="font-semibold text-foreground">Stornierung ≠ No-Show</p>
+              <p className="font-semibold text-foreground">
+                {obcn(locale, 'operator.bookings.cancelNoShow.cancel.warningTitle')}
+              </p>
               <p className="mt-1 text-muted-foreground">
-                Stornieren bedeutet, die Buchung vorab abzusagen. Wenn der Kunde nicht erschienen ist,
-                nutze stattdessen „No-Show markieren“.
+                {obcn(locale, 'operator.bookings.cancelNoShow.cancel.warningBody')}
               </p>
             </div>
           </OperatorGlassCard>
@@ -117,10 +145,10 @@ export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelShee
           {!cancelAllowed && (
             <OperatorGlassCard className="border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] p-4">
               <p className="text-sm font-semibold text-[color:var(--status-critical)]">
-                Stornierung nicht möglich
+                {obcn(locale, 'operator.bookings.cancelNoShow.cancel.deniedTitle')}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {cancelReason ?? 'Dieser Status erlaubt keine Stornierung.'}
+                {operatorBookingCancelMatrixReasonLabel(locale, cancelReason)}
               </p>
             </OperatorGlassCard>
           )}
@@ -128,21 +156,22 @@ export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelShee
           {cancelAllowed && (
             <label className="block">
               <span className="text-xs font-medium text-muted-foreground">
-                Interner Hinweis (optional, wird nicht an die API gesendet)
+                {obcn(locale, 'operator.bookings.cancelNoShow.cancel.internalNoteLabel')}
               </span>
               <textarea
                 value={reasonNote}
                 onChange={(e) => setReasonNote(e.target.value)}
                 rows={3}
-                placeholder="z. B. Kunde hat telefonisch abgesagt…"
+                placeholder={obcn(
+                  locale,
+                  'operator.bookings.cancelNoShow.cancel.internalNotePlaceholder',
+                )}
                 className="mt-1 min-h-[80px] w-full rounded-xl border border-border surface-premium px-3 py-3 text-sm resize-none"
               />
             </label>
           )}
 
-          {(error) && (
-            <p className="text-sm text-[color:var(--status-critical)]">{error}</p>
-          )}
+          {error && <p className="text-sm text-[color:var(--status-critical)]">{error}</p>}
 
           <div className="grid gap-2 pt-2">
             <button
@@ -151,14 +180,16 @@ export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelShee
               onClick={() => void handleCancel()}
               className="sq-3d-btn sq-3d-btn--destructive min-h-[48px] font-semibold disabled:opacity-45"
             >
-              {mutating ? 'Storniere…' : 'Buchung stornieren'}
+              {mutating
+                ? obcn(locale, 'operator.bookings.cancelNoShow.cancel.submitting')
+                : obcn(locale, 'operator.bookings.cancelNoShow.cancel.submit')}
             </button>
             <button
               type="button"
               onClick={closeSheet}
               className="sq-3d-btn sq-3d-btn--neutral min-h-[48px] font-semibold"
             >
-              Abbrechen
+              {t('common.cancel')}
             </button>
           </div>
         </div>

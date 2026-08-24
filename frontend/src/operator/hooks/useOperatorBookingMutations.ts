@@ -111,10 +111,15 @@ export function useOperatorBookingMutations() {
   );
 
   const cancelBooking = useCallback(
-    (bookingId: string, vehicleId: string | null | undefined, onSuccess?: () => void) =>
+    (
+      bookingId: string,
+      vehicleId: string | null | undefined,
+      onSuccess?: () => void,
+      successToast = 'Buchung storniert',
+    ) =>
       run(
         () => api.bookings.cancel(orgId!, bookingId),
-        'Buchung storniert',
+        successToast,
         onSuccess,
         () => {
           void invalidateVehicleOperationalAfterBookingChange({
@@ -128,10 +133,16 @@ export function useOperatorBookingMutations() {
   );
 
   const markNoShow = useCallback(
-    (bookingId: string, vehicleId: string | null | undefined, reason?: string, onSuccess?: () => void) =>
+    (
+      bookingId: string,
+      vehicleId: string | null | undefined,
+      reason?: string,
+      onSuccess?: () => void,
+      successToast = 'Als No-Show markiert',
+    ) =>
       run(
         () => api.bookings.markNoShow(orgId!, bookingId, reason ?? null),
-        'Als No-Show markiert',
+        successToast,
         onSuccess,
         () => {
           void invalidateVehicleOperationalAfterBookingChange({
