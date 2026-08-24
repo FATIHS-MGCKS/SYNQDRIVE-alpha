@@ -1,5 +1,9 @@
 import { registerAs } from '@nestjs/config';
-import { COMMUNICATION_RETENTION_DAYS_DEFAULTS } from '../modules/communication/retention/communication-retention.constants';
+import {
+  COMMUNICATION_RETENTION_DAYS_DEFAULTS,
+  COMMUNICATION_RETENTION_GLOBAL_LOCK_HEARTBEAT_MS,
+  COMMUNICATION_RETENTION_GLOBAL_LOCK_TTL_MS,
+} from '../modules/communication/retention/communication-retention.constants';
 
 const intEnv = (key: string, def: number): number => {
   const raw = process.env[key];
@@ -20,6 +24,14 @@ export default registerAs('communicationRetention', () => ({
   /** Dry-run default true — counts eligible rows without destructive writes. */
   dryRun: boolEnv('COMMUNICATION_RETENTION_DRY_RUN', true),
   batchSize: intEnv('COMMUNICATION_RETENTION_BATCH_SIZE', 200),
+  globalLockTtlMs: intEnv(
+    'COMMUNICATION_RETENTION_GLOBAL_LOCK_TTL_MS',
+    COMMUNICATION_RETENTION_GLOBAL_LOCK_TTL_MS,
+  ),
+  globalLockHeartbeatMs: intEnv(
+    'COMMUNICATION_RETENTION_GLOBAL_LOCK_HEARTBEAT_MS',
+    COMMUNICATION_RETENTION_GLOBAL_LOCK_HEARTBEAT_MS,
+  ),
   policyVersion: process.env.COMMUNICATION_RETENTION_POLICY_VERSION || '2026-08-23',
   days: {
     /** Canonical customer message content — correlated WhatsApp native body follows the same cutoff. */

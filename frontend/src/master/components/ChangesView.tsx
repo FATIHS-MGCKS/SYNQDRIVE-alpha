@@ -36,6 +36,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c13-1-lock-scale-hardening-2026-08-24',
+    version: '4.9.945',
+    title: 'Communication Center C13.1 — lock lease + legacy-native scale hardening',
+    summary: [
+      'Global retention runs renew Redis lock lease every TTL/3; lost-lock abort before next org/phase.',
+      'Legacy native WhatsApp phase uses bounded pagination + per-page correlation (no org-history NOT IN arrays).',
+    ],
+    reason: 'Close final production-safety issues for long global runs and large WhatsApp history.',
+    previousBehavior: 'Fixed 30m lock TTL without renewal; legacy-native phase materialized all projected/active IDs.',
+    details: 'architecture/COMMUNICATION_CENTER_C13_1_RETENTION_DATA_LIFECYCLE.md',
+    affectsArchitecture: true,
+    module: 'Communication',
+    createdAt: '2026-08-24T10:05:00.000Z',
+  },
+  {
     id: 'communication-center-c13-1-retention-hardening-2026-08-24',
     version: '4.9.945',
     title: 'Communication Center C13.1 — retention safety hardening',

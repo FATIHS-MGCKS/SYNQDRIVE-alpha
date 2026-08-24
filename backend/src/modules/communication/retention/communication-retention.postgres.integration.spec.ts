@@ -50,6 +50,7 @@ describePg('Communication retention postgres (C13.1)', () => {
         handle: { key: 'test-lock', token: 'token', acquiredAt: new Date() },
       }),
       release: jest.fn().mockResolvedValue(true),
+      extend: jest.fn().mockResolvedValue(true),
     };
     const moduleRef = await Test.createTestingModule({
       imports: [
@@ -203,6 +204,31 @@ describePg('Communication retention postgres (C13.1)', () => {
       },
     });
     return { conv, event, content, waMsg, waConv };
+  }
+
+  async function seedLegacyNativeOnly(
+    organizationId: string,
+    input: { content: string; occurredAt: Date },
+  ) {
+    const waConv = await prisma.whatsAppConversation.create({
+      data: {
+        organizationId,
+        contactPhone: `+4915${Math.floor(Math.random() * 1e8)}`,
+        contactPhoneNormalized: `4915${Math.floor(Math.random() * 1e8)}`,
+        status: WhatsAppConversationStatus.OPEN,
+      },
+    });
+    const waMsg = await prisma.whatsAppMessage.create({
+      data: {
+        organizationId,
+        conversationId: waConv.id,
+        direction: 'INBOUND',
+        senderType: 'CUSTOMER',
+        content: input.content,
+        createdAt: input.occurredAt,
+      },
+    });
+    return { waConv, waMsg };
   }
 
   it('does not purge Org B when purging Org A (tenant isolation)', async () => {
@@ -651,6 +677,60 @@ describePg('Communication retention postgres (C13.1)', () => {
       attachmentService.streamAttachmentContent(orgA, attachment.id, 'user-1'),
     ).rejects.toMatchObject({ response: { code: 'ATTACHMENT_NOT_FOUND' } });
     expect(storageMock.getObjectStream).not.toHaveBeenCalled();
+  });
+
+  it('purges legacy native-only WhatsApp rows in bounded batches without loading full org history', async () => {
+    const oldDate = new Date('2026-06-01T10:00:00.000Z');
+    const recentDate = new Date('2026-08-10T10:00:00.000Z');
+    const projected = await seedResolvedWhatsAppConversation(orgA, {
+      messageText: 'Projected body',
+      occurredAt: recentDate,
+      nativeContent: 'Projected native',
+    });
+
+    const legacyMessages = [];
+    for (let i = 0; i < 6; i += 1) {
+      legacyMessages.push(
+        await seedLegacyNativeOnly(orgA, {
+          content: `Legacy secret ${i}`,
+          occurredAt: new Date(oldDate.getTime() + i * 1000),
+        }),
+      );
+    }
+
+    const contentFindMany = jest.spyOn(prisma.communicationMessageContent, 'findMany');
+
+    const report1 = await retention.runOnce({ organizationId: orgA, now: frozenNow, dryRun: false });
+    const legacyPhase1 = report1.phases.find((p) => p.phase === 'legacy_native_whatsapp_content');
+    expect(legacyPhase1?.affected).toBeLessThanOrEqual(2);
+    expect(legacyPhase1?.affected).toBeGreaterThan(0);
+
+    const correlationCalls = contentFindMany.mock.calls
+      .map((call) => {
+        const where = call[0]?.where as { nativeMessageId?: { in?: string[] } } | undefined;
+        return where?.nativeMessageId?.in;
+      })
+      .filter(Array.isArray);
+    expect(correlationCalls.length).toBeGreaterThan(0);
+    for (const ids of correlationCalls) {
+      expect(ids.length).toBeLessThanOrEqual(10);
+    }
+
+    const projectedNative = await prisma.whatsAppMessage.findUnique({ where: { id: projected.waMsg.id } });
+    expect(projectedNative?.content).toBe('Projected native');
+
+    await retention.runOnce({ organizationId: orgA, now: frozenNow, dryRun: false });
+
+    const purgedLegacyCount = await prisma.whatsAppMessage.count({
+      where: {
+        organizationId: orgA,
+        id: { in: legacyMessages.map((message) => message.waMsg.id) },
+        contentPurgedAt: { not: null },
+      },
+    });
+    expect(purgedLegacyCount).toBeGreaterThan(legacyPhase1?.affected ?? 0);
+
+    contentFindMany.mockRestore();
   });
 
   it('dry run reports candidates without destructive writes', async () => {

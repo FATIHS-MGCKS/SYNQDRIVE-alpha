@@ -37,6 +37,8 @@ export interface CommunicationRetentionReport {
   };
   skipped?: boolean;
   skipReason?: string;
+  aborted?: boolean;
+  errorCode?: string;
 }
 
 export interface CommunicationRetentionMetricsSnapshot {

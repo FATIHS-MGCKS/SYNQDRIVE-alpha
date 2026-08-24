@@ -191,11 +191,25 @@ All phases honor `COMMUNICATION_RETENTION_BATCH_SIZE` for both global and org-sc
 ## 17–19. Scheduler / batching / multi-instance
 
 - `CommunicationRetentionScheduler` — cron `30 3 * * *`
-- In-process `running` guard (secondary protection only)
+- In-process `running` guard (secondary protection only — **not** multi-instance safe alone)
 - **Global runs:** Redis distributed lock (`RedisDistributedLockService`, key `communication:retention:global`, 30m TTL)
-- Lock contention → safe skip (`skipReason: lock_contended`), no FAILED purge-run row
+- **Lease renewal:** heartbeat extends lock every TTL/3 (default 10m) via `RedisDistributedLockService.extend()`
+- **Lost lock:** if `extend()` returns false, run aborts before next org/phase, persists `ABORTED` + `errorCode: RETENTION_LOCK_LOST` (no raw Redis details)
+- Lock contention on acquire → safe skip (`skipReason: lock_contended`), no FAILED purge-run row
 - **Org-scoped manual runs:** no global lock (operational dry-runs allowed under contention)
 - Existing `VoiceRetentionScheduler` retained for backward compatibility
+
+### Legacy native WhatsApp candidate selection
+
+`legacy_native_whatsapp_content` uses bounded pagination:
+
+1. Fetch at most `batchSize × 5` oldest native `WhatsAppMessage` candidates per page
+2. For only those candidate IDs, query canonical `CommunicationMessageContent` correlation (`nativeMessageId IN (...)`)
+3. Exclude correlated (projected) rows — projected purge remains in `message_content` phase
+4. For only relevant native conversation IDs, check active canonical conversation mapping
+5. Purge up to `batchSize` eligible legacy-native rows per run
+
+No organization-history-sized `NOT IN` arrays or full-table `nativeMessageId` materialization.
 
 ---
 
@@ -232,11 +246,11 @@ Purge runs persisted in `CommunicationRetentionPurgeRun.report` JSON.
 
 ## 25. PostgreSQL evidence
 
-`communication-retention.postgres.integration.spec.ts` — **14/14 PASS**
-`communication-retention.distributed-lock.spec.ts` — **2/2 PASS**
+`communication-retention.postgres.integration.spec.ts` — **15/15 PASS**
+`communication-retention.distributed-lock.spec.ts` — **4/4 PASS**
 `communication-retention.constants.spec.ts` — **3/3 PASS**
 
-Coverage includes: tenant isolation, age boundary, active canonical+native WA preservation, correlated purge, transaction rollback on native failure, voice org override dry-run parity, UNKNOWN/PENDING reply reporting, attachment PURGED read path, bounded targeted runs, dry run.
+Coverage includes: tenant isolation, age boundary, active canonical+native WA preservation, correlated purge, transaction rollback on native failure, voice org override dry-run parity, UNKNOWN/PENDING reply reporting, attachment PURGED read path, bounded targeted runs, bounded legacy-native candidate selection, dry run.
 
 ---
 
@@ -271,12 +285,11 @@ Failed runs persist `{ errorCode: "RETENTION_RUN_FAILED" }` only — no raw exce
 
 ## 27. Remaining policy gaps
 
-1. Message content retention days — **PRODUCT_POLICY REQUIRED**
-2. Native WhatsApp content days — **PRODUCT_POLICY REQUIRED** (must align with canonical)
-3. Attachment retention days — **PRODUCT_POLICY REQUIRED**
-4. Reply command settled retention days — **PRODUCT_POLICY REQUIRED**
-5. AI Activity metadata redaction — **UNDECIDED**
-6. Structural conversation/event deletion — **UNDECIDED** (FK risk)
+1. Message content retention days — **PRODUCT_POLICY REQUIRED** (single authority for canonical + correlated/legacy native WhatsApp customer body)
+2. Attachment retention days — **PRODUCT_POLICY REQUIRED**
+3. Reply command settled retention days — **PRODUCT_POLICY REQUIRED**
+4. AI Activity metadata redaction — **UNDECIDED**
+5. Structural conversation/event deletion — **UNDECIDED** (FK risk)
 7. SMS native `SmsMessage` content parity — **UNDECIDED**
 8. Org-level Communication retention DB policy — **UNDECIDED**
 9. Legal hold integration for Communication content — **UNSUPPORTED**

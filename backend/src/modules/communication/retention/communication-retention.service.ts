@@ -18,7 +18,7 @@ import { RedisDistributedLockService } from '@shared/redis/redis-distributed-loc
 import {
   COMMUNICATION_ACTIVE_CONVERSATION_STATUSES,
   COMMUNICATION_RETENTION_GLOBAL_LOCK_KEY,
-  COMMUNICATION_RETENTION_GLOBAL_LOCK_TTL_MS,
+  COMMUNICATION_RETENTION_LEGACY_NATIVE_PAGE_MULTIPLIER,
   COMMUNICATION_RETENTION_PHASE,
   type CommunicationRetentionPhase,
   COMMUNICATION_RETENTION_PURGED_PREVIEW,
@@ -29,6 +29,7 @@ import {
   computeRetentionCutoffUtc,
   isRetentionPolicyEnabled,
 } from './communication-retention.constants';
+import type { DistributedLockHandle } from '@shared/redis/redis-distributed-lock.service';
 import { CommunicationRetentionMetrics } from './communication-retention.metrics';
 import type {
   CommunicationRetentionPhaseResult,
@@ -40,6 +41,9 @@ import type {
 export class CommunicationRetentionService {
   private readonly logger = new Logger(CommunicationRetentionService.name);
   private running = false;
+  private globalLockHandle?: DistributedLockHandle;
+  private globalLockHeartbeat: NodeJS.Timeout | null = null;
+  private globalLockLost = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -72,7 +76,7 @@ export class CommunicationRetentionService {
     if (isGlobalRun) {
       lockHandle = await this.lockService.acquire(
         COMMUNICATION_RETENTION_GLOBAL_LOCK_KEY,
-        COMMUNICATION_RETENTION_GLOBAL_LOCK_TTL_MS,
+        this.config.globalLockTtlMs,
       );
       if (!lockHandle.acquired) {
         this.logger.warn(
@@ -80,10 +84,12 @@ export class CommunicationRetentionService {
         );
         return this.skippedReport(trigger, dryRun, startedAtMs, COMMUNICATION_RETENTION_RUN_SKIP_REASON.LOCK_CONTENTED);
       }
+      this.startGlobalLockHeartbeat(lockHandle.handle);
     }
 
     this.running = true;
     let runId: string | undefined;
+    this.globalLockLost = false;
 
     try {
       const run = await this.prisma.communicationRetentionPurgeRun.create({
@@ -101,13 +107,26 @@ export class CommunicationRetentionService {
       const orgIds = await this.resolveOrganizationIds(options.organizationId);
       const phases: CommunicationRetentionPhaseResult[] = [];
       const batchSize = this.config.batchSize;
+      let organizationsProcessed = 0;
 
       for (const organizationId of orgIds) {
+        if (!(await this.assertGlobalLockHeld())) break;
+
         phases.push(await this.phaseVoiceDelegated(organizationId, dryRun, now));
+        if (!(await this.assertGlobalLockHeld())) break;
+
         phases.push(await this.phaseMessageContent(organizationId, dryRun, now, batchSize));
+        if (!(await this.assertGlobalLockHeld())) break;
+
         phases.push(await this.phaseLegacyNativeWhatsAppContent(organizationId, dryRun, now, batchSize));
+        if (!(await this.assertGlobalLockHeld())) break;
+
         phases.push(await this.phaseAttachmentBinary(organizationId, dryRun, now, batchSize));
+        if (!(await this.assertGlobalLockHeld())) break;
+
         phases.push(await this.phaseReplyCommandContent(organizationId, dryRun, now, batchSize));
+        organizationsProcessed += 1;
+        if (!(await this.assertGlobalLockHeld())) break;
       }
 
       const totals = phases.reduce(
@@ -120,23 +139,41 @@ export class CommunicationRetentionService {
         { candidates: 0, affected: 0, skipped: 0, failed: 0 },
       );
 
+      const completedAt = new Date();
       const report: CommunicationRetentionReport = {
         runId,
         trigger,
         dryRun,
         startedAt: new Date(startedAtMs).toISOString(),
-        completedAt: new Date().toISOString(),
-        durationMs: Date.now() - startedAtMs,
-        organizationsProcessed: orgIds.length,
+        completedAt: completedAt.toISOString(),
+        durationMs: completedAt.getTime() - startedAtMs,
+        organizationsProcessed,
         phases,
         totals,
       };
+
+      if (this.globalLockLost) {
+        report.aborted = true;
+        report.errorCode = COMMUNICATION_RETENTION_PURGE_RUN_ERROR_CODE.LOCK_LOST;
+        await this.prisma.communicationRetentionPurgeRun.update({
+          where: { id: runId },
+          data: {
+            status: COMMUNICATION_RETENTION_PURGE_RUN_STATUS.ABORTED,
+            completedAt,
+            report: report as unknown as Prisma.InputJsonValue,
+          },
+        });
+        this.logger.warn(
+          `Communication retention ${trigger} aborted after lock loss orgs=${organizationsProcessed} totals=${JSON.stringify(totals)}`,
+        );
+        return report;
+      }
 
       await this.prisma.communicationRetentionPurgeRun.update({
         where: { id: runId },
         data: {
           status: COMMUNICATION_RETENTION_PURGE_RUN_STATUS.COMPLETED,
-          completedAt: new Date(),
+          completedAt,
           report: report as unknown as Prisma.InputJsonValue,
         },
       });
@@ -145,11 +182,11 @@ export class CommunicationRetentionService {
         durationMs: report.durationMs,
         affected: totals.affected,
         failed: totals.failed,
-        completedAt: new Date(report.completedAt),
+        completedAt,
       });
 
       this.logger.log(
-        `Communication retention ${trigger} dryRun=${dryRun} orgs=${orgIds.length} totals=${JSON.stringify(totals)}`,
+        `Communication retention ${trigger} dryRun=${dryRun} orgs=${organizationsProcessed} totals=${JSON.stringify(totals)}`,
       );
       return report;
     } catch (err) {
@@ -169,10 +206,52 @@ export class CommunicationRetentionService {
       throw err;
     } finally {
       this.running = false;
+      this.stopGlobalLockHeartbeat();
       if (lockHandle?.acquired) {
         await this.lockService.release(lockHandle.handle);
       }
     }
+  }
+
+  private startGlobalLockHeartbeat(handle: DistributedLockHandle): void {
+    this.stopGlobalLockHeartbeat();
+    this.globalLockHandle = handle;
+    this.globalLockHeartbeat = setInterval(() => {
+      void this.renewGlobalLockHeartbeat();
+    }, this.config.globalLockHeartbeatMs);
+    this.globalLockHeartbeat.unref?.();
+  }
+
+  private stopGlobalLockHeartbeat(): void {
+    if (this.globalLockHeartbeat) {
+      clearInterval(this.globalLockHeartbeat);
+      this.globalLockHeartbeat = null;
+    }
+    this.globalLockHandle = undefined;
+  }
+
+  private async renewGlobalLockHeartbeat(): Promise<void> {
+    if (!this.globalLockHandle || this.globalLockLost) return;
+    const extended = await this.lockService.extend(this.globalLockHandle, this.config.globalLockTtlMs);
+    if (!extended) {
+      this.globalLockLost = true;
+      this.logger.warn('Communication retention global lock lost during heartbeat — aborting run.');
+      this.stopGlobalLockHeartbeat();
+    }
+  }
+
+  /** Renew lease before each org/phase boundary; abort if ownership is lost. */
+  private async assertGlobalLockHeld(): Promise<boolean> {
+    if (!this.globalLockHandle) return true;
+    if (this.globalLockLost) return false;
+    const extended = await this.lockService.extend(this.globalLockHandle, this.config.globalLockTtlMs);
+    if (!extended) {
+      this.globalLockLost = true;
+      this.logger.warn('Communication retention global lock lost — aborting before next phase.');
+      this.stopGlobalLockHeartbeat();
+      return false;
+    }
+    return true;
   }
 
   private async resolveOrganizationIds(organizationId?: string): Promise<string[]> {
@@ -305,51 +384,94 @@ export class CommunicationRetentionService {
     }
 
     const cutoff = computeRetentionCutoffUtc(now, this.config.days.messageContent)!;
-    const projectedNativeIds = (
-      await this.prisma.communicationMessageContent.findMany({
-        where: { organizationId, channel: CommunicationChannel.WHATSAPP },
-        select: { nativeMessageId: true },
-      })
-    ).map((row) => row.nativeMessageId);
+    const pageSize = Math.max(
+      batchSize * COMMUNICATION_RETENTION_LEGACY_NATIVE_PAGE_MULTIPLIER,
+      batchSize,
+    );
+    const eligible: { id: string; createdAt: Date }[] = [];
+    let scanCursor: { createdAt: Date; id: string } | undefined;
 
-    const activeNativeConversationIds = (
-      await this.prisma.communicationConversation.findMany({
+    while (eligible.length < batchSize) {
+      const candidates = await this.prisma.whatsAppMessage.findMany({
         where: {
           organizationId,
-          channel: CommunicationChannel.WHATSAPP,
-          status: { in: COMMUNICATION_ACTIVE_CONVERSATION_STATUSES },
+          createdAt: { lt: cutoff },
+          contentPurgedAt: null,
+          NOT: { content: '' },
+          ...(scanCursor
+            ? {
+                OR: [
+                  { createdAt: { gt: scanCursor.createdAt } },
+                  { createdAt: scanCursor.createdAt, id: { gt: scanCursor.id } },
+                ],
+              }
+            : {}),
         },
-        select: { nativeConversationId: true },
-      })
-    ).map((row) => row.nativeConversationId);
+        select: { id: true, conversationId: true, createdAt: true },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        take: pageSize,
+      });
 
-    const rows = await this.prisma.whatsAppMessage.findMany({
-      where: {
-        organizationId,
-        createdAt: { lt: cutoff },
-        contentPurgedAt: null,
-        NOT: { content: '' },
-        ...(projectedNativeIds.length > 0 ? { id: { notIn: projectedNativeIds } } : {}),
-        ...(activeNativeConversationIds.length > 0
-          ? { conversationId: { notIn: activeNativeConversationIds } }
-          : {}),
-      },
-      select: { id: true, createdAt: true },
-      orderBy: { createdAt: 'asc' },
-      take: batchSize,
-    });
+      if (candidates.length === 0) break;
 
-    result.candidates = rows.length;
-    if (rows.length === 0) return result;
+      const candidateIds = candidates.map((row) => row.id);
+      const projectedRows =
+        candidateIds.length > 0
+          ? await this.prisma.communicationMessageContent.findMany({
+              where: {
+                organizationId,
+                channel: CommunicationChannel.WHATSAPP,
+                nativeMessageId: { in: candidateIds },
+              },
+              select: { nativeMessageId: true },
+            })
+          : [];
+      const projectedNativeIds = new Set(projectedRows.map((row) => row.nativeMessageId));
+
+      const legacyInPage = candidates.filter((row) => !projectedNativeIds.has(row.id));
+      const conversationIds = [...new Set(legacyInPage.map((row) => row.conversationId))];
+      const activeNativeConversationIds = new Set<string>();
+      if (conversationIds.length > 0) {
+        const activeRows = await this.prisma.communicationConversation.findMany({
+          where: {
+            organizationId,
+            channel: CommunicationChannel.WHATSAPP,
+            status: { in: COMMUNICATION_ACTIVE_CONVERSATION_STATUSES },
+            nativeConversationId: { in: conversationIds },
+          },
+          select: { nativeConversationId: true },
+        });
+        for (const row of activeRows) {
+          activeNativeConversationIds.add(row.nativeConversationId);
+        }
+      }
+
+      for (const row of legacyInPage) {
+        if (activeNativeConversationIds.has(row.conversationId)) continue;
+        eligible.push({ id: row.id, createdAt: row.createdAt });
+        if (eligible.length >= batchSize) break;
+      }
+
+      const lastCandidate = candidates[candidates.length - 1];
+      scanCursor = { createdAt: lastCandidate.createdAt, id: lastCandidate.id };
+      if (candidates.length < pageSize) break;
+    }
+
+    result.candidates = eligible.length;
+    if (eligible.length === 0) return result;
+
+    result.oldestEligibleAgeDays = Math.floor(
+      (now.getTime() - eligible[0].createdAt.getTime()) / (24 * 60 * 60 * 1000),
+    );
 
     if (dryRun) {
-      result.skipped = rows.length;
-      result.skipReasons[COMMUNICATION_RETENTION_SKIP_REASON.DRY_RUN] = rows.length;
+      result.skipped = eligible.length;
+      result.skipReasons[COMMUNICATION_RETENTION_SKIP_REASON.DRY_RUN] = eligible.length;
       return result;
     }
 
     const updated = await this.prisma.whatsAppMessage.updateMany({
-      where: { id: { in: rows.map((row) => row.id) }, organizationId },
+      where: { id: { in: eligible.map((row) => row.id) }, organizationId },
       data: { content: '', contentPurgedAt: now },
     });
     result.affected = updated.count;

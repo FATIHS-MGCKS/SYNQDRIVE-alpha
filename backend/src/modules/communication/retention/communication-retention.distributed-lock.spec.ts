@@ -10,11 +10,24 @@ import { DOCUMENTS_STORAGE } from '@modules/documents/storage/document-storage.i
 import { VoiceRetentionService } from '@modules/voice-assistant/security/voice-retention.service';
 import { CommunicationRetentionService } from './communication-retention.service';
 import { CommunicationRetentionMetrics } from './communication-retention.metrics';
-import { COMMUNICATION_RETENTION_GLOBAL_LOCK_KEY, COMMUNICATION_RETENTION_RUN_SKIP_REASON } from './communication-retention.constants';
+import {
+  COMMUNICATION_RETENTION_GLOBAL_LOCK_KEY,
+  COMMUNICATION_RETENTION_PURGE_RUN_ERROR_CODE,
+  COMMUNICATION_RETENTION_PURGE_RUN_STATUS,
+  COMMUNICATION_RETENTION_RUN_SKIP_REASON,
+} from './communication-retention.constants';
 
 const RELEASE_SCRIPT = `
 if redis.call("get", KEYS[1]) == ARGV[1] then
   return redis.call("del", KEYS[1])
+else
+  return 0
+end
+`;
+
+const EXTEND_SCRIPT = `
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("pexpire", KEYS[1], ARGV[2])
 else
   return 0
 end
@@ -46,7 +59,21 @@ class MemoryRedisLock {
       }
       return 0;
     }
+    if (script === EXTEND_SCRIPT) {
+      const token = args[0];
+      const ttlMs = parseInt(args[1] ?? '0', 10);
+      const row = this.store.get(key);
+      if (row?.value === token) {
+        row.expiresAt = Date.now() + ttlMs;
+        return 1;
+      }
+      return 0;
+    }
     return 0;
+  }
+
+  expireLock(key: string): void {
+    this.store.delete(key);
   }
 }
 
@@ -90,6 +117,9 @@ describe('CommunicationRetentionService distributed lock (C13.1)', () => {
   beforeEach(() => {
     redis['store'].clear();
     jest.clearAllMocks();
+    jest.useRealTimers();
+    delete process.env.COMMUNICATION_RETENTION_GLOBAL_LOCK_TTL_MS;
+    delete process.env.COMMUNICATION_RETENTION_GLOBAL_LOCK_HEARTBEAT_MS;
     (prisma.communicationRetentionPurgeRun.create as jest.Mock).mockResolvedValue({ id: 'run-1' });
     (prisma.communicationRetentionPurgeRun.update as jest.Mock).mockResolvedValue({});
   });
@@ -97,6 +127,9 @@ describe('CommunicationRetentionService distributed lock (C13.1)', () => {
   afterEach(() => {
     delete process.env.COMMUNICATION_RETENTION_ENABLED;
     delete process.env.COMMUNICATION_RETENTION_DRY_RUN;
+    delete process.env.COMMUNICATION_RETENTION_GLOBAL_LOCK_TTL_MS;
+    delete process.env.COMMUNICATION_RETENTION_GLOBAL_LOCK_HEARTBEAT_MS;
+    jest.useRealTimers();
   });
 
   it('allows only one global destructive run when two service instances compete for the lock', async () => {
@@ -131,5 +164,66 @@ describe('CommunicationRetentionService distributed lock (C13.1)', () => {
     });
     expect(orgRun.skipped).toBeFalsy();
     expect(prisma.communicationRetentionPurgeRun.create).toHaveBeenCalled();
+  });
+
+  it('extends global lock heartbeat so a second instance stays blocked past the original TTL', async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+    process.env.COMMUNICATION_RETENTION_GLOBAL_LOCK_TTL_MS = '300';
+    process.env.COMMUNICATION_RETENTION_GLOBAL_LOCK_HEARTBEAT_MS = '100';
+
+    const serviceA = await createService();
+    const serviceB = await createService();
+    const extendSpy = jest.spyOn(lockService, 'extend');
+
+    let resolveFindMany!: (value: { id: string }[]) => void;
+    const findManyPromise = new Promise<{ id: string }[]>((resolve) => {
+      resolveFindMany = resolve;
+    });
+    (prisma.organization.findMany as jest.Mock).mockReturnValue(findManyPromise);
+
+    const runPromise = serviceA.runOnce({ trigger: 'cron', dryRun: true });
+    await jest.advanceTimersByTimeAsync(0);
+    await jest.advanceTimersByTimeAsync(350);
+
+    const blocked = await serviceB.runOnce({ trigger: 'cron', dryRun: true });
+    expect(blocked.skipped).toBe(true);
+    expect(blocked.skipReason).toBe(COMMUNICATION_RETENTION_RUN_SKIP_REASON.LOCK_CONTENTED);
+    expect(extendSpy.mock.calls.length).toBeGreaterThan(0);
+
+    resolveFindMany([{ id: 'org-1' }]);
+    await jest.advanceTimersByTimeAsync(0);
+    const report = await runPromise;
+    expect(report.skipped).toBeFalsy();
+  }, 15_000);
+
+  it('aborts safely when global lock extension fails during a multi-organization run', async () => {
+    const service = await createService();
+    (prisma.organization.findMany as jest.Mock).mockResolvedValue([{ id: 'org-1' }, { id: 'org-2' }]);
+
+    let extendCount = 0;
+    const extendSpy = jest.spyOn(lockService, 'extend');
+    extendSpy.mockImplementation(async () => {
+      extendCount += 1;
+      if (extendCount >= 7) return false;
+      return true;
+    });
+
+    const report = await service.runOnce({ trigger: 'cron', dryRun: true });
+
+    expect(report.aborted).toBe(true);
+    expect(report.errorCode).toBe(COMMUNICATION_RETENTION_PURGE_RUN_ERROR_CODE.LOCK_LOST);
+    expect(report.organizationsProcessed).toBeLessThan(2);
+    expect(prisma.communicationRetentionPurgeRun.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: COMMUNICATION_RETENTION_PURGE_RUN_STATUS.ABORTED,
+        }),
+      }),
+    );
+    const persistedReport = (prisma.communicationRetentionPurgeRun.update as jest.Mock).mock.calls.find(
+      (call) => call[0]?.data?.status === COMMUNICATION_RETENTION_PURGE_RUN_STATUS.ABORTED,
+    )?.[0]?.data?.report;
+    expect(persistedReport?.errorCode).toBe(COMMUNICATION_RETENTION_PURGE_RUN_ERROR_CODE.LOCK_LOST);
+    expect(JSON.stringify(persistedReport)).not.toMatch(/redis|Redis/i);
   });
 });

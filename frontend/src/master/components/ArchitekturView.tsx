@@ -1170,7 +1170,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'Service', detail: 'CommunicationRetentionService — phased purge with dry-run, batching, purge-run audit' },
       { label: 'Policy', detail: 'ENABLED=false, DRY_RUN=true default; MESSAGE_CONTENT_DAYS is sole customer-content authority (canonical + correlated/legacy native WhatsApp)' },
       { label: 'WhatsApp', detail: 'Correlated canonical+native purge in one DB transaction; active conversation protection applies to both copies' },
-      { label: 'Scheduler', detail: 'Redis distributed lock for global runs; in-process guard secondary only; org-scoped runs bypass global lock' },
+      { label: 'Scheduler', detail: 'Redis distributed lock + TTL/3 heartbeat extend; lost-lock abort; in-process guard secondary only' },
       { label: 'Voice', detail: 'VoiceRetentionService sole duration authority (org privacyRetention override); Communication delegates + dry-run parity' },
       { label: 'Read model', detail: 'contentAvailability AVAILABLE|PURGED|UNAVAILABLE; PURGED attachments reject signed URL/download' },
       { label: 'Doc', detail: 'architecture/COMMUNICATION_CENTER_C13_1_RETENTION_DATA_LIFECYCLE.md' },
