@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-vehicle-quick-view-booking-customer-context-p2-2-31-2026-08-24',
+    version: '4.9.958',
+    title: 'Platform i18n — P2.2.31 Operator Vehicle Quick View Booking & Customer Context localization',
+    summary: [
+      'Localized Operator Vehicle Quick View booking/customer context via extracted `OperatorVehicleQuickViewBookingContext.tsx` and extended `operator-vehicle-quick-view-i18n.ts`.',
+      'P231 enforce-clean exact scope (2 paths) reports 0 findings; +6 EN+DE keys under `operator.vehicleQuickView.booking.*` (8454→8460).',
+      'Presentation-only — `bookingContext.kind` machine values, bookingId/customerName/when/station/status, callbacks unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.31 post-P230 pre-flight (PR #1233) selected Booking & Customer Context as the next bounded Vehicle Quick View slice.',
+    previousBehavior:
+      'Booking context card used fixed German section title/kind labels in hook + parent; datetime used fixed `de-DE` formatting.',
+    details:
+      'operator/components/OperatorVehicleQuickViewBookingContext.tsx; operator/lib/operator-vehicle-quick-view-i18n.ts; operator/hooks/useOperatorVehicleQuickViewData.ts; OperatorVehicleQuickView.tsx (wiring); i18n/translations/operator.vehicleQuickView.booking.{en,de}.ts; operator-vehicle-quick-view-booking-context-localization.test.tsx; P231_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_BOOKING_CUSTOMER_CONTEXT_P2_2_31_2026-08-24.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-24T10:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-vehicle-quick-view-tool-footer-actions-p2-2-30-2026-08-23',
     version: '4.9.957',
     title: 'Platform i18n — P2.2.30 Operator Vehicle Quick View Tool & Footer Actions localization',

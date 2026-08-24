@@ -381,6 +381,11 @@ const P230_ENFORCE_CLEAN_EXACT = [
   'operator/lib/operator-vehicle-quick-view-i18n.ts',
 ];
 
+const P231_ENFORCE_CLEAN_EXACT = [
+  'operator/components/OperatorVehicleQuickViewBookingContext.tsx',
+  'operator/lib/operator-vehicle-quick-view-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -499,6 +504,10 @@ function isP229EnforceCleanPath(relPath: string): boolean {
 
 function isP230EnforceCleanPath(relPath: string): boolean {
   return P230_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP231EnforceCleanPath(relPath: string): boolean {
+  return P231_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -789,6 +798,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(p230Debt).toHaveLength(0);
   });
 
+  it('scopes P2.2.31 enforce-clean findings to Operator Vehicle Quick View Booking Context only', () => {
+    const p231Debt = inventory.findings.filter((finding) =>
+      isP231EnforceCleanPath(finding.file),
+    );
+    expect(p231Debt).toHaveLength(0);
+  });
+
   it('keeps operator-vehicle-quick-view-i18n.ts on canonical translation keys', () => {
     const source = readFileSync(
       join(__dirname, '../operator/lib/operator-vehicle-quick-view-i18n.ts'),
@@ -838,6 +854,23 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(source).not.toMatch(/'Pickup starten'/);
     expect(source).not.toMatch(/'Return starten'/);
     expect(source).not.toMatch(/'Buchung für dieses Fahrzeug'/);
+    expect(source).not.toMatch(/locale:\s*'de'/);
+    expect(source).not.toMatch(/de-DE/);
+  });
+
+  it('keeps OperatorVehicleQuickViewBookingContext.tsx free of hardcoded booking presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/components/OperatorVehicleQuickViewBookingContext.tsx'),
+      'utf8',
+    );
+    expect(source).toContain('operatorVehicleQuickViewBookingSectionTitle');
+    expect(source).toContain('operatorVehicleQuickViewBookingKindLabel');
+    expect(source).toContain('formatOperatorVehicleQuickViewDateTime');
+    expect(source).not.toMatch(/'Buchung'/);
+    expect(source).not.toMatch(/'Abholung heute'/);
+    expect(source).not.toMatch(/'Rückgabe heute'/);
+    expect(source).not.toMatch(/'Aktive Buchung'/);
+    expect(source).not.toMatch(/'Nächste Reservierung'/);
     expect(source).not.toMatch(/locale:\s*'de'/);
     expect(source).not.toMatch(/de-DE/);
   });

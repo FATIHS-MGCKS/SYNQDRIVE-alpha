@@ -20,6 +20,7 @@ import { operatorVehicleQuickViewHeaderEn } from './operator.vehicleQuickView.he
 import { operatorVehicleQuickViewTasksEn } from './operator.vehicleQuickView.tasks.en';
 import { operatorVehicleQuickViewQuickActionsEn } from './operator.vehicleQuickView.quickActions.en';
 import { operatorVehicleQuickViewToolActionsEn } from './operator.vehicleQuickView.toolActions.en';
+import { operatorVehicleQuickViewBookingEn } from './operator.vehicleQuickView.booking.en';
 import { vendorsDirectoryEn } from './vendors.directory.en';
 import { supportOpsEn } from './support.ops.en';
 import { whatsappEn } from './whatsapp.en';
@@ -5591,6 +5592,7 @@ export const en = {
   ...operatorVehicleQuickViewTasksEn,
   ...operatorVehicleQuickViewQuickActionsEn,
   ...operatorVehicleQuickViewToolActionsEn,
+  ...operatorVehicleQuickViewBookingEn,
   ...vendorsDirectoryEn,
 } as const;
 

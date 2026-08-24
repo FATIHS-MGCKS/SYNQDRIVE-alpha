@@ -16,6 +16,7 @@ import {
   tireUiStatusLabel,
 } from '../../rental/lib/tire-health-detail-ui';
 import { toHandoverBookingSeed } from '../lib/operatorData';
+import { OperatorVehicleQuickViewBookingContext } from './OperatorVehicleQuickViewBookingContext';
 import { OperatorGlassCard } from './OperatorGlassCard';
 import { OperatorVehicleQuickViewHeader } from './OperatorVehicleQuickViewHeader';
 import { OperatorVehicleQuickViewQuickActions } from './OperatorVehicleQuickViewQuickActions';
@@ -113,18 +114,13 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
         }
       />
 
-      {/* Booking */}
       {data.bookingContext && (
-        <SectionCard title="Buchung">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-foreground">{data.bookingContext.label}</p>
-            <p className="text-sm text-foreground">{data.bookingContext.customerName}</p>
-            <p className="text-xs text-muted-foreground">
-              {formatOperatorDateTime(data.bookingContext.when)}
-              {data.bookingContext.station ? ` · ${data.bookingContext.station}` : ''}
-            </p>
-          </div>
-        </SectionCard>
+        <OperatorVehicleQuickViewBookingContext
+          kind={data.bookingContext.kind}
+          customerName={data.bookingContext.customerName}
+          when={data.bookingContext.when}
+          station={data.bookingContext.station}
+        />
       )}
 
       {/* Blockers */}

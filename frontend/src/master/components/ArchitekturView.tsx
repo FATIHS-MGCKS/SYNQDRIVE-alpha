@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Vehicle Quick View Booking & Customer Context (P2.2.31 — V4.9.958)', icon: Globe,
+    endpoint: 'OperatorVehicleQuickView → `OperatorVehicleQuickViewBookingContext` (section title, kind label, customer name, datetime/station).',
+    service: '**Locale flow:** `useLanguage().locale` → extracted Booking Context sub-surface; `operator-vehicle-quick-view-i18n.ts` section/kind maps + `formatOperatorVehicleQuickViewDateTime`. **Keys:** +6 EN+DE `operator.vehicleQuickView.booking.*` (8454→8460). **Machine values:** `bookingContext.kind`, bookingId, customerName, when, station, status frozen; parent callbacks unchanged. **Guardrails:** P2.2.31 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-vehicle-quick-view-booking-context-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_BOOKING_CUSTOMER_CONTEXT_P2_2_31_2026-08-24.md' },
   { name: 'Platform i18n Operator Vehicle Quick View Tool & Footer Actions (P2.2.30 — V4.9.957)', icon: Globe,
     endpoint: 'OperatorVehicleQuickView → `OperatorVehicleQuickViewToolActions` (damage-capture, ai-upload, tire-measure, task-create footer grid).',
     service: '**Locale flow:** `useLanguage().locale` → extracted Tool/Footer sub-surface; `operator-vehicle-quick-view-i18n.ts` title/subtitle maps per action. **Keys:** +8 EN+DE `operator.vehicleQuickView.toolActions.*` (8446→8454). **Machine values:** sheet types, `openDamageCapture` args, action order, highlight flag, parent-owned callbacks frozen. **Guardrails:** P2.2.30 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-vehicle-quick-view-tool-actions-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
