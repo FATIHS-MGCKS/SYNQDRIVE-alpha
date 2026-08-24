@@ -12,7 +12,7 @@
 
 | Mode | Direction | Principles |
 |------|-----------|------------|
-| **Light** | Neutral Vero-style surfaces | Neutral canvas (`#F6F6F6`), opaque white cards/sidebar, flat L1 premium panels, soft brand blue `#4F86E8`, graphite foreground `#111827` |
+| **Light** | Neutral Vero-style surfaces | Neutral canvas (`#F6F6F6`), opaque white cards/sidebar, neutral ink (`#171717`) + muted gray (`#737373`), soft brand blue `#4F86E8` |
 | **Dark** | Premium Graphite / Charcoal | Near-black canvas (`#0B0B0D`), neutral dark cards (`#121214`), no navy/blue base surfaces, sparse high-quality accents (light gray brand, not blue canvas) |
 
 **Rules**
@@ -20,31 +20,31 @@
 1. **Brand Blue** (`#4F86E8`) is used softly in Light Mode — CTAs, focus rings, nav rail — not as large canvas fills. Info status uses neutral blue-gray (`#5B6B7F`).
 2. **Dark Mode** must not use blue/navy canvas or card bases; brand shifts to neutral light gray (`#E5E7EB`) for primary CTAs.
 3. **Status colors** stay semantic (`--status-positive`, `--status-warning`, etc.) — never decorative rainbow UI.
-4. **No large hardcoded Tailwind `blue-*` / `slate-*` surfaces** in feature code; prefer `bg-card`, `bg-muted`, `text-foreground`, `sq-tone-*`, `sq-chip-*`.
+4. **No large hardcoded Tailwind `blue-*` / `slate-*` text or surfaces** in feature code; prefer `text-foreground`, `text-muted-foreground`, `bg-card`, `bg-muted`, `sq-tone-*`, `sq-chip-*`.
 5. **Token names are stable** — do not rename `--brand`, `--background`, shadcn aliases, or `@theme` mappings without a migration pass.
 
 ---
 
-## Light theme tokens (`:root`) — V4.9.196
+## Light theme tokens (`:root`) — V4.9.197
 
 ### Core shadcn semantic palette
 
 | Token | Value | Role |
 |-------|-------|------|
 | `--background` | `#F6F6F6` | Neutral main app canvas |
-| `--foreground` | `#111827` | Graphite text |
+| `--foreground` | `#171717` | Neutral primary ink |
 | `--card` | `#FFFFFF` | Opaque white card |
-| `--card-foreground` | `#111827` | Card text |
+| `--card-foreground` | `#171717` | Card text |
 | `--popover` | `rgba(255, 255, 255, 0.92)` | Dropdowns, menus |
-| `--popover-foreground` | `#111827` | Popover text |
-| `--primary` | `#111827` | Default primary (dark ink) |
+| `--popover-foreground` | `#171717` | Popover text |
+| `--primary` | `#171717` | Default primary ink (CTA fills, checked controls) |
 | `--primary-foreground` | `#ffffff` | On primary |
 | `--secondary` | `#EAEDF1` | Secondary fill (soft grey) |
-| `--secondary-foreground` | `#111827` | On secondary |
+| `--secondary-foreground` | `#171717` | On secondary |
 | `--muted` | `#EAEDF1` | Inset / subtle backgrounds |
-| `--muted-foreground` | `#7C8490` | Muted text |
+| `--muted-foreground` | `#737373` | Muted / secondary text |
 | `--accent` | `#EEF3FA` | Soft blue-grey hover surface |
-| `--accent-foreground` | `#111827` | On accent |
+| `--accent-foreground` | `#171717` | On accent |
 | `--destructive` | `#EF4444` | Destructive actions |
 | `--destructive-foreground` | `#ffffff` | On destructive |
 | `--border` | `rgba(17, 24, 39, 0.075)` | Subtle hairline |
@@ -141,11 +141,11 @@ Opaque white L1 panels with subtle border/elevation — no cool-white gradient f
 | Token | Value |
 |-------|-------|
 | `--sidebar` | `#FFFFFF` |
-| `--sidebar-foreground` | `#111827` |
+| `--sidebar-foreground` | `#171717` |
 | `--sidebar-primary` | `var(--brand)` |
 | `--sidebar-primary-foreground` | `#ffffff` |
 | `--sidebar-accent` | `#EEF3FA` |
-| `--sidebar-accent-foreground` | `#111827` |
+| `--sidebar-accent-foreground` | `#171717` |
 | `--sidebar-border` | `rgba(17, 24, 39, 0.075)` |
 | `--sidebar-ring` | `rgba(79, 134, 232, 0.22)` |
 
@@ -350,7 +350,8 @@ Reduced transparency + `@supports` fallbacks: all L2/L3/L4 classes in `theme.css
 
 ### Light theme — acceptable blue/slate usage
 
-- Foreground `#111827` (graphite ink) — correct for enterprise readability.
+- Foreground `#171717` (neutral ink) — general UI typography.
+- Muted foreground `#737373` — secondary/meta copy (not status semantics).
 - `--accent`, `--brand-soft`, `--sidebar-accent` blue tints — intentional soft accents.
 - Shadow graphite hue — supports subtle card separation on neutral canvas.
 
@@ -371,6 +372,13 @@ Reduced transparency + `@supports` fallbacks: all L2/L3/L4 classes in `theme.css
 - Dark palette confirmed/formalized; added missing `--input-background`
 - Body ambient: neutral graphite triple-vignette (no blue)
 - Legacy navy `#0B1220`/`#111A2E` removed from active tokens (changelog history only)
+
+### V4.9.197 Light Theme V3.1 — Neutral text grayscale (applied)
+
+- Primary ink `#111827` → `#171717` (`--foreground`, `--card-foreground`, `--popover-foreground`, `--secondary-foreground`, `--accent-foreground`, `--sidebar-foreground`, `--sidebar-accent-foreground`)
+- Muted text `#7C8490` → `#737373` (`--muted-foreground`)
+- Primary fill ink `#111827` → `#171717` (`--primary` for checked controls, tooltips, selection)
+- Status, brand, map-glass, and dark mode unchanged
 
 ### V4.9.196 Light Theme V3 — Neutral Vero-style surfaces (applied)
 

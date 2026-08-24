@@ -40,7 +40,7 @@ export function SignaturePad({
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
   const hasStrokesRef = useRef(false);
 
-  const ink = isDarkMode ? '#f9fafb' : '#111827';
+  const ink = isDarkMode ? '#f9fafb' : '#171717';
 
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -159,7 +159,7 @@ export function SignaturePad({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <label className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <label className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-foreground'}`}>
           {label}
           {required && <span className="text-red-500 ml-0.5">*</span>}
         </label>
@@ -250,7 +250,7 @@ export function SignaturePad({
       )}
 
       {helperText && (
-        <p className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>{helperText}</p>
+        <p className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{helperText}</p>
       )}
     </div>
   );

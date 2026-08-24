@@ -183,7 +183,7 @@ export function createFleetMarkerEl(
     cap.style.overflow = 'hidden';
     cap.style.textOverflow = 'ellipsis';
     cap.style.background = isDark ? 'rgba(23,23,23,0.92)' : 'rgba(255,255,255,0.95)';
-    cap.style.color = isDark ? '#f5f5f5' : '#111827';
+    cap.style.color = isDark ? '#f5f5f5' : '#171717';
     cap.style.border = isDark
       ? `1px solid rgba(64,64,64,0.8)`
       : `1px solid rgba(0,0,0,0.08)`;

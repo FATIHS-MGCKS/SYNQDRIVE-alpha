@@ -276,8 +276,8 @@ export function HandoverProtocolDialog({
     kind === 'PICKUP' ? 'Pickup bestätigen & Buchung aktivieren' : 'Rückgabe bestätigen & abschließen';
   const primaryColor = kind === 'PICKUP' ? 'blue' : 'emerald';
 
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textMuted = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
+  const textPrimary = isDarkMode ? 'text-white' : 'text-foreground';
+  const textMuted = 'text-muted-foreground';
   const textTertiary = isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground';
   const bg = isDarkMode ? 'surface-premium' : 'bg-white';
   const borderColor = isDarkMode ? 'border-border' : 'border-gray-200';

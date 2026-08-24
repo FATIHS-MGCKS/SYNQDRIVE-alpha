@@ -2,11 +2,12 @@
 
 /* ═══════════════════════════════════════════════════════
    SynqDrive Design System — Token Layer
-   V4.9.196 — Light Theme V3: Neutral Vero-style surfaces
+   V4.9.197 — Light Theme V3.1: Neutral text grayscale
 
    Font stack:  Manrope (body/UI/display) + Geist Mono (numeric/data)
    Accent:      Soft Brand Blue #4F86E8 (calm, readable, never loud)
    Surfaces:    Neutral canvas (#F6F6F6), opaque white cards/sidebar
+   Typography:  Neutral ink (#171717) + muted gray (#737373)
    ═══════════════════════════════════════════════════════ */
 
 :root {
@@ -65,21 +66,21 @@
   --space-4xl: 64px;
 
   /* ── Semantic palette — light V3 (Neutral Vero-style surfaces) ──
-     Canvas:  #F6F6F6  ·  Card: opaque white  ·  Graphite foreground */
+     Canvas:  #F6F6F6  ·  Card: opaque white  ·  Neutral ink foreground */
   --background: #F6F6F6;
-  --foreground: #111827;
+  --foreground: #171717;
   --card: #FFFFFF;
-  --card-foreground: #111827;
+  --card-foreground: #171717;
   --popover: rgba(255, 255, 255, 0.92);
-  --popover-foreground: #111827;
-  --primary: #111827;
+  --popover-foreground: #171717;
+  --primary: #171717;
   --primary-foreground: #ffffff;
   --secondary: #EAEDF1;
-  --secondary-foreground: #111827;
+  --secondary-foreground: #171717;
   --muted: #EAEDF1;
-  --muted-foreground: #7C8490;
+  --muted-foreground: #737373;
   --accent: #EEF3FA;
-  --accent-foreground: #111827;
+  --accent-foreground: #171717;
   --destructive: #EF4444;
   --destructive-foreground: #ffffff;
   --border: rgba(17, 24, 39, 0.075);
@@ -228,11 +229,11 @@
 
   /* ── Sidebar — light V3 (opaque white chrome) ── */
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #111827;
+  --sidebar-foreground: #171717;
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #EEF3FA;
-  --sidebar-accent-foreground: #111827;
+  --sidebar-accent-foreground: #171717;
   --sidebar-border: rgba(17, 24, 39, 0.075);
   --sidebar-ring: rgba(79, 134, 232, 0.22);
 }

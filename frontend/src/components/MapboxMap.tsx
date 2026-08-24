@@ -538,7 +538,7 @@ export const MapboxMap = forwardRef<MapboxMapHandle, MapboxMapProps>(
             'text-allow-overlap': false,
           },
           paint: {
-            'text-color': isDarkMode ? '#e2e8f0' : '#111827',
+            'text-color': isDarkMode ? '#e2e8f0' : '#171717',
             'text-halo-color': isDarkMode ? '#0f172a' : '#ffffff',
             'text-halo-width': 1.2,
             'text-opacity': DIMMED_LABEL_OPACITY,
