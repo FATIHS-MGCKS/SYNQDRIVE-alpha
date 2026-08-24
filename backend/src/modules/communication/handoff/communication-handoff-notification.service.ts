@@ -1,6 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { CommunicationChannel } from '@prisma/client';
 import { NotificationProducerRouter } from '@modules/notifications/adapters/notification-producer.router';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import { recordCommunicationHandoff } from '../observability/communication-prometheus.metrics';
 import { CommunicationHandoffNotificationAdapter } from '@modules/notifications/adapters/communication-handoff-notification.adapter';
 import { CommunicationReadRepository } from '../read/communication-read.repository';
 import { mapContactDisplay } from '../ai-activity/communication-ai-activity.mapper';
@@ -22,6 +24,7 @@ export class CommunicationHandoffNotificationService {
     private readonly router: NotificationProducerRouter,
     private readonly adapter: CommunicationHandoffNotificationAdapter,
     private readonly readRepository: CommunicationReadRepository,
+    @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {}
 
   async notifyHandoffRequired(input: CommunicationHandoffNotificationInput): Promise<void> {
@@ -51,7 +54,19 @@ export class CommunicationHandoffNotificationService {
           runId: input.communicationEventId,
         },
       );
+      if (this.tripMetrics) {
+        recordCommunicationHandoff(this.tripMetrics, {
+          channel: input.channel,
+          result: 'success',
+        });
+      }
     } catch (error) {
+      if (this.tripMetrics) {
+        recordCommunicationHandoff(this.tripMetrics, {
+          channel: input.channel,
+          result: 'failed',
+        });
+      }
       this.logger.warn(
         `Communication handoff notification ingest failed for ${input.conversationId}: ${(error as Error).message}`,
       );

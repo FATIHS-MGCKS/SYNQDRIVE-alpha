@@ -15,6 +15,8 @@ import {
 import { VoiceRetentionService } from '@modules/voice-assistant/security/voice-retention.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RedisDistributedLockService } from '@shared/redis/redis-distributed-lock.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import { recordCommunicationRetentionRun } from '../observability/communication-prometheus.metrics';
 import {
   COMMUNICATION_ACTIVE_CONVERSATION_STATUSES,
   COMMUNICATION_RETENTION_GLOBAL_LOCK_KEY,
@@ -55,6 +57,7 @@ export class CommunicationRetentionService {
     private readonly lockService: RedisDistributedLockService,
     @Optional() private readonly voiceRetention?: VoiceRetentionService,
     @Optional() private readonly metrics?: CommunicationRetentionMetrics,
+    @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {}
 
   async runOnce(options: CommunicationRetentionRunOptions = {}): Promise<CommunicationRetentionReport> {
@@ -163,6 +166,14 @@ export class CommunicationRetentionService {
             report: report as unknown as Prisma.InputJsonValue,
           },
         });
+        if (this.tripMetrics) {
+          recordCommunicationRetentionRun(this.tripMetrics, {
+            dryRun,
+            status: COMMUNICATION_RETENTION_PURGE_RUN_STATUS.ABORTED,
+            affected: totals.affected,
+            failed: totals.failed,
+          });
+        }
         this.logger.warn(
           `Communication retention ${trigger} aborted after lock loss orgs=${organizationsProcessed} totals=${JSON.stringify(totals)}`,
         );
@@ -184,6 +195,14 @@ export class CommunicationRetentionService {
         failed: totals.failed,
         completedAt,
       });
+      if (this.tripMetrics) {
+        recordCommunicationRetentionRun(this.tripMetrics, {
+          dryRun,
+          status: COMMUNICATION_RETENTION_PURGE_RUN_STATUS.COMPLETED,
+          affected: totals.affected,
+          failed: totals.failed,
+        });
+      }
 
       this.logger.log(
         `Communication retention ${trigger} dryRun=${dryRun} orgs=${organizationsProcessed} totals=${JSON.stringify(totals)}`,

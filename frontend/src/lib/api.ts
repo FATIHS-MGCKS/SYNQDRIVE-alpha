@@ -3527,6 +3527,14 @@ export const api = {
       resilience: () => get<import('../master/platform-ops/types').PlatformOpsResilienceDto>('/admin/ops/resilience'),
       tools: () => get<any>('/admin/ops/tools'),
     },
+    communication: {
+      operationalHealth: (organizationId?: string) => {
+        const q = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : '';
+        return get<import('../master/platform-ops/types').CommunicationOperationalHealthDto>(
+          `/admin/communication/operational-health${q}`,
+        );
+      },
+    },
     email: {
       getSettings: () => get<PlatformEmailSettingsAdminDto>('/admin/email/settings'),
       updateSettings: (payload: {

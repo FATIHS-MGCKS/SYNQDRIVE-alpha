@@ -162,6 +162,19 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryRetentionRunsTotal: Counter<string>;
   readonly batteryRetentionRowsDeletedTotal: Counter<string>;
   readonly batteryRetentionRowsAggregatedTotal: Counter<string>;
+  readonly communicationProjectionTotal: Counter<string>;
+  readonly communicationProjectionFailuresTotal: Counter<string>;
+  readonly communicationProjectionLagSeconds: Histogram<string>;
+  readonly communicationSendTotal: Counter<string>;
+  readonly communicationSendUnknownTotal: Counter<string>;
+  readonly communicationSendDurationSeconds: Histogram<string>;
+  readonly communicationReconciliationTotal: Counter<string>;
+  readonly communicationHandoffTotal: Counter<string>;
+  readonly communicationAiOperationTotal: Counter<string>;
+  readonly communicationAiOperationDurationSeconds: Histogram<string>;
+  readonly communicationRetentionRunsTotal: Counter<string>;
+  readonly communicationRetentionRowsAffectedTotal: Counter<string>;
+  readonly communicationRetentionRunFailuresTotal: Counter<string>;
   readonly batteryMeasurementDuplicateSkipTotal: Counter<string>;
   readonly batteryV2JobsEnqueueTotal: Counter<string>;
   readonly batteryV2JobsEnqueueSuppressedTotal: Counter<string>;
@@ -207,6 +220,10 @@ export class TripMetricsService implements OnModuleInit {
   readonly queueFailedJobs: Gauge<string>;
   readonly notificationQueueBacklog: Gauge<string>;
   readonly notificationOutboxPending: Gauge<string>;
+  readonly communicationSendUnknownCurrent: Gauge<string>;
+  readonly communicationSendUnknownOldestSeconds: Gauge<string>;
+  readonly communicationRetentionLastSuccessTimestamp: Gauge<string>;
+  readonly communicationReconciliationLastSuccessTimestamp: Gauge<string>;
   readonly taskAutomationOutboxBacklog: Gauge<string>;
   readonly batteryV2DeadLetterBacklog: Gauge<string>;
   readonly batteryV2VehiclesWithoutPublication: Gauge<string>;
@@ -902,6 +919,33 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
+    this.communicationSendUnknownCurrent = new Gauge({
+      name: 'synqdrive_communication_send_unknown_current',
+      help: 'Current unresolved UNKNOWN reply commands (bounded sample)',
+      labelNames: ['channel'],
+      registers: [this.registry],
+    });
+
+    this.communicationSendUnknownOldestSeconds = new Gauge({
+      name: 'synqdrive_communication_send_unknown_oldest_seconds',
+      help: 'Age of oldest unresolved UNKNOWN reply command',
+      labelNames: ['channel'],
+      registers: [this.registry],
+    });
+
+    this.communicationRetentionLastSuccessTimestamp = new Gauge({
+      name: 'synqdrive_communication_retention_last_success_timestamp',
+      help: 'Unix timestamp of last successful Communication retention run',
+      registers: [this.registry],
+    });
+
+    this.communicationReconciliationLastSuccessTimestamp = new Gauge({
+      name: 'synqdrive_communication_reconciliation_last_success_timestamp',
+      help: 'Unix timestamp of last successful Communication reconciliation by channel',
+      labelNames: ['channel'],
+      registers: [this.registry],
+    });
+
     this.taskAutomationOutboxEnqueued = new Counter({
       name: 'synqdrive_task_automation_outbox_enqueued_total',
       help: 'Task automation outbox rows enqueued',
@@ -1288,6 +1332,98 @@ export class TripMetricsService implements OnModuleInit {
     this.batteryRetentionRowsAggregatedTotal = new Counter({
       name: 'synqdrive_battery_retention_rows_aggregated_total',
       help: 'Battery V2 retention aggregates created',
+      registers: [this.registry],
+    });
+
+    this.communicationProjectionTotal = new Counter({
+      name: 'synqdrive_communication_projection_total',
+      help: 'Canonical Communication projection attempts',
+      labelNames: ['channel', 'event_type', 'result'],
+      registers: [this.registry],
+    });
+
+    this.communicationProjectionFailuresTotal = new Counter({
+      name: 'synqdrive_communication_projection_failures_total',
+      help: 'Canonical Communication projection failures',
+      labelNames: ['channel', 'event_type', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.communicationProjectionLagSeconds = new Histogram({
+      name: 'synqdrive_communication_projection_lag_seconds',
+      help: 'Inbound-to-canonical projection lag when measurable',
+      labelNames: ['channel', 'event_type'],
+      buckets: [0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600],
+      registers: [this.registry],
+    });
+
+    this.communicationSendTotal = new Counter({
+      name: 'synqdrive_communication_send_total',
+      help: 'Canonical outbound send state transitions',
+      labelNames: ['channel', 'result'],
+      registers: [this.registry],
+    });
+
+    this.communicationSendUnknownTotal = new Counter({
+      name: 'synqdrive_communication_send_unknown_total',
+      help: 'Canonical outbound sends entering UNKNOWN',
+      labelNames: ['channel', 'reason'],
+      registers: [this.registry],
+    });
+
+    this.communicationSendDurationSeconds = new Histogram({
+      name: 'synqdrive_communication_send_duration_seconds',
+      help: 'Canonical outbound dispatch duration when measurable',
+      labelNames: ['channel'],
+      buckets: [0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60],
+      registers: [this.registry],
+    });
+
+    this.communicationReconciliationTotal = new Counter({
+      name: 'synqdrive_communication_reconciliation_total',
+      help: 'Canonical outbound/native reconciliation attempts',
+      labelNames: ['channel', 'result'],
+      registers: [this.registry],
+    });
+
+    this.communicationHandoffTotal = new Counter({
+      name: 'synqdrive_communication_handoff_total',
+      help: 'Communication handoff notification ingest attempts',
+      labelNames: ['channel', 'result'],
+      registers: [this.registry],
+    });
+
+    this.communicationAiOperationTotal = new Counter({
+      name: 'synqdrive_communication_ai_operation_total',
+      help: 'Communication AI operational requests',
+      labelNames: ['operation', 'result'],
+      registers: [this.registry],
+    });
+
+    this.communicationAiOperationDurationSeconds = new Histogram({
+      name: 'synqdrive_communication_ai_operation_duration_seconds',
+      help: 'Communication AI operational request duration',
+      labelNames: ['operation'],
+      buckets: [0.25, 0.5, 1, 2, 5, 10, 30, 60, 120],
+      registers: [this.registry],
+    });
+
+    this.communicationRetentionRunsTotal = new Counter({
+      name: 'synqdrive_communication_retention_runs_total',
+      help: 'Communication retention runs completed',
+      labelNames: ['dry_run', 'status'],
+      registers: [this.registry],
+    });
+
+    this.communicationRetentionRowsAffectedTotal = new Counter({
+      name: 'synqdrive_communication_retention_rows_affected_total',
+      help: 'Communication retention rows affected across runs',
+      registers: [this.registry],
+    });
+
+    this.communicationRetentionRunFailuresTotal = new Counter({
+      name: 'synqdrive_communication_retention_run_failures_total',
+      help: 'Communication retention per-row failures across runs',
       registers: [this.registry],
     });
 

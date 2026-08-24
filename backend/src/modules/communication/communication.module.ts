@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import communicationProjectionConfig from '@config/communication-projection.config';
 import communicationRetentionConfig from '@config/communication-retention.config';
+import communicationOperationalHealthConfig from '@config/communication-operational-health.config';
 import voiceRetentionConfig from '@config/voice-retention.config';
 import { DocumentsModule } from '@modules/documents/documents.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
@@ -60,6 +61,10 @@ import { CommunicationQuickActionResolverService } from './ops/communication-qui
 import { CommunicationRetentionService } from './retention/communication-retention.service';
 import { CommunicationRetentionScheduler } from './retention/communication-retention.scheduler';
 import { CommunicationRetentionMetrics } from './retention/communication-retention.metrics';
+import { CommunicationOperationalHealthRepository } from './observability/communication-operational-health.repository';
+import { CommunicationOperationalHealthService } from './observability/communication-operational-health.service';
+import { CommunicationOperationalHealthController } from './observability/communication-operational-health.controller';
+import { CommunicationMetricsRefreshService } from './observability/communication-metrics-refresh.service';
 
 /**
  * Canonical Communication Center persistence + normalization foundation (C1–C7.2).
@@ -76,6 +81,7 @@ import { CommunicationRetentionMetrics } from './retention/communication-retenti
     forwardRef(() => WhatsAppModule),
     ConfigModule.forFeature(communicationProjectionConfig),
     ConfigModule.forFeature(communicationRetentionConfig),
+    ConfigModule.forFeature(communicationOperationalHealthConfig),
     ConfigModule.forFeature(voiceRetentionConfig),
   ],
   providers: [
@@ -122,6 +128,9 @@ import { CommunicationRetentionMetrics } from './retention/communication-retenti
     CommunicationRetentionService,
     CommunicationRetentionScheduler,
     CommunicationRetentionMetrics,
+    CommunicationOperationalHealthRepository,
+    CommunicationOperationalHealthService,
+    CommunicationMetricsRefreshService,
   ],
   controllers: [
     CommunicationReadController,
@@ -131,6 +140,7 @@ import { CommunicationRetentionMetrics } from './retention/communication-retenti
     CommunicationAiActivityController,
     CommunicationWhatsAppOpsController,
     CommunicationVoiceOpsController,
+    CommunicationOperationalHealthController,
   ],
   exports: [
     CommunicationTenantContextValidation,
@@ -163,6 +173,7 @@ import { CommunicationRetentionMetrics } from './retention/communication-retenti
     CommunicationAiActivityService,
     CommunicationHandoffNotificationService,
     CommunicationRetentionService,
+    CommunicationOperationalHealthService,
   ],
 })
 export class CommunicationModule {}
