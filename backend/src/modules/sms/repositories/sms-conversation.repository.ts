@@ -121,4 +121,49 @@ export class SmsConversationRepository {
       throw new BadRequestException('SMS conversation not found in organization');
     }
   }
+
+  async recordOutboundActivity(input: {
+    conversationId: string;
+    organizationId: string;
+    preview: string;
+    occurredAt: Date;
+  }) {
+    const preview = input.preview.slice(0, 120);
+    const epoch = new Date(0);
+    await this.prisma.$executeRaw`
+      UPDATE sms_conversations
+      SET
+        last_message_at = GREATEST(COALESCE(last_message_at, ${epoch}), ${input.occurredAt}),
+        last_message_preview = CASE
+          WHEN ${input.occurredAt} >= COALESCE(last_message_at, ${epoch})
+          THEN ${preview}
+          ELSE last_message_preview
+        END
+      WHERE id = ${input.conversationId} AND organization_id = ${input.organizationId}
+    `;
+  }
+
+  async recordInboundActivity(input: {
+    conversationId: string;
+    organizationId: string;
+    preview: string;
+    occurredAt: Date;
+    unreadDelta: number;
+  }) {
+    const preview = input.preview.slice(0, 120);
+    const epoch = new Date(0);
+    await this.prisma.$executeRaw`
+      UPDATE sms_conversations
+      SET
+        last_message_at = GREATEST(COALESCE(last_message_at, ${epoch}), ${input.occurredAt}),
+        last_customer_message_at = GREATEST(COALESCE(last_customer_message_at, ${epoch}), ${input.occurredAt}),
+        last_message_preview = CASE
+          WHEN ${input.occurredAt} >= COALESCE(last_message_at, ${epoch})
+          THEN ${preview}
+          ELSE last_message_preview
+        END,
+        unread_count = unread_count + ${input.unreadDelta}
+      WHERE id = ${input.conversationId} AND organization_id = ${input.organizationId}
+    `;
+  }
 }

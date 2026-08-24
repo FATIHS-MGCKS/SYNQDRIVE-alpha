@@ -228,7 +228,9 @@ describePg('SMS persistence postgres (C5.1)', () => {
       messages.createInboundMessage(input),
       messages.createInboundMessage(input),
     ]);
-    expect(a?.id).toBe(b?.id);
+    expect(a.message.id).toBe(b.message.id);
+    expect(a.created || b.created).toBe(true);
+    expect(a.created && b.created).toBe(false);
     expect(await prisma.smsMessage.count({ where: { providerMessageId } })).toBe(1);
   });
 

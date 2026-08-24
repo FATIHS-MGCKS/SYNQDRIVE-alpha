@@ -34,7 +34,8 @@ export function parseSentDmWebhookEvent(body: unknown): ParsedSentDmWebhookEvent
   if (!field || !event) {
     return null;
   }
-  return { field, event, payload };
+  const timestamp = typeof record.timestamp === 'string' ? record.timestamp : undefined;
+  return { field, event, payload, timestamp };
 }
 
 export function isTerminalDeliveryEvent(eventName: string): boolean {
