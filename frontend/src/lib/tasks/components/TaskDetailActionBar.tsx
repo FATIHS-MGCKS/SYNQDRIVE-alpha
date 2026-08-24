@@ -160,7 +160,7 @@ function ActionButton({
         title={item.disabledReason ?? undefined}
         onClick={onClick}
         className={cn(
-          'sq-press rounded-2xl text-sm font-semibold disabled:opacity-50',
+          'sq-press rounded-lg text-sm font-semibold disabled:opacity-50',
           primary
             ? 'bg-[color:var(--status-success)] font-bold text-white'
             : 'border border-border text-foreground',

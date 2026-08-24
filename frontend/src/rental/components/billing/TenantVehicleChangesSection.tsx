@@ -48,7 +48,7 @@ export function TenantVehicleChangesSection({
       </div>
 
       {loading && changes.length === 0 ? (
-        <div className="h-28 rounded-2xl border border-border/60 bg-muted/10" />
+        <div className="h-28 rounded-lg border border-border/60 bg-muted/10" />
       ) : changes.length === 0 ? (
         <EmptyState compact title="Noch keine Fahrzeugänderungen" />
       ) : (

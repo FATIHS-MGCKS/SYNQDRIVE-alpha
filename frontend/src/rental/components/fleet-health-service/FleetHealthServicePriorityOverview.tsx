@@ -459,7 +459,7 @@ export function FleetHealthServicePriorityOverview({
                 return next;
               });
             }}
-            className="rounded-xl border border-border/45 surface-elevated"
+            className=" border border-border/45 surface-elevated"
           >
             <CollapsibleTrigger
               aria-expanded={isOpen}

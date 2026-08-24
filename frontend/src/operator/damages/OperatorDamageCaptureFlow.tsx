@@ -215,7 +215,7 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
         {step === 'vehicle' && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Fahrzeug für die Schadenerfassung bestätigen.</p>
-            <div className="rounded-2xl border border-border surface-premium p-4 space-y-3">
+            <div className=" surface-premium p-4 space-y-3">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Fahrzeug
@@ -284,7 +284,7 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
               type="button"
               disabled={submitting}
               onClick={() => void handleSave()}
-              className="sq-press min-h-[52px] flex-1 rounded-2xl bg-[color:var(--brand)] text-sm font-bold text-white disabled:opacity-50"
+              className="sq-press min-h-[52px] flex-1 rounded-lg bg-[color:var(--brand)] text-sm font-bold text-white disabled:opacity-50"
             >
               {submitting ? (
                 <Loader2 className="mx-auto h-5 w-5 animate-spin" />
@@ -296,7 +296,7 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
             <button
               type="button"
               onClick={advance}
-              className="sq-press min-h-[52px] flex-1 rounded-2xl bg-[color:var(--brand)] text-sm font-bold text-white"
+              className="sq-press min-h-[52px] flex-1 rounded-lg bg-[color:var(--brand)] text-sm font-bold text-white"
             >
               <span className="inline-flex items-center justify-center gap-1">
                 Weiter

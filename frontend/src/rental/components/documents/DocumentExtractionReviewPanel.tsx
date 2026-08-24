@@ -248,13 +248,13 @@ export function DocumentExtractionReviewPanel({
                       value={field.value}
                       rows={3}
                       onChange={(e) => onFieldChange(index, e.target.value)}
-                      className="w-full min-w-0 sm:flex-1 rounded-md border border-border surface-premium px-2 py-1 text-[11px] text-foreground"
+                      className="w-full min-w-0 sm:flex-1 rounded-md surface-premium px-2 py-1 text-[11px] text-foreground"
                     />
                   ) : (
                     <input
                       value={field.value}
                       onChange={(e) => onFieldChange(index, e.target.value)}
-                      className="w-full min-w-0 sm:flex-1 rounded-md border border-border surface-premium px-2 py-1 text-[11px] text-foreground"
+                      className="w-full min-w-0 sm:flex-1 rounded-md surface-premium px-2 py-1 text-[11px] text-foreground"
                     />
                   )
                 ) : (

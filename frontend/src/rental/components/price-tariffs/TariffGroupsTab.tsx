@@ -76,7 +76,7 @@ export function TariffGroupsTab({ catalog, onSelectGroup }: TariffGroupsTabProps
             type="button"
             onClick={() => onSelectGroup(row.group)}
             aria-label={`${t('priceTariffs.configureTariff')}: ${row.group.name}`}
-            className="group w-full rounded-2xl border border-border/50 surface-premium p-4 text-left shadow-[var(--shadow-1)] transition-colors hover:border-border hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-ring"
+            className="group w-full border border-border/50 surface-premium p-4 text-left transition-colors hover:border-border hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-ring"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">

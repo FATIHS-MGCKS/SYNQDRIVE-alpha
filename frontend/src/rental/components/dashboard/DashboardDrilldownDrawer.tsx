@@ -316,7 +316,7 @@ function BookingDrawerRowCard({
   const vehicleReasonBadge = resolveHandoverVehicleReasonBadge(row, vehicle, health, locale);
 
   return (
-    <article className="rounded-lg border border-border/45 surface-premium/45 px-2.5 py-2 shadow-sm shadow-black/[0.02] transition-colors hover:border-border/65 hover:bg-muted/10">
+    <article className="rounded-lg border border-border/45 surface-premium/45 px-2.5 py-2 shadow-black/[0.02] transition-colors hover:border-border/65 hover:bg-muted/10">
       <div className="mb-1 flex items-center justify-between gap-2">
         <h3 className="shrink-0 text-[12px] font-semibold tracking-[-0.01em] text-foreground">
           {display.title}
@@ -522,7 +522,7 @@ function BusinessRowCard({
   const canOpen = Boolean(row.invoiceId && onOpenInvoice) || Boolean(onOpenBilling);
 
   return (
-    <article className="rounded-xl border border-border/50 surface-premium/55 p-3 shadow-sm shadow-black/[0.025] transition-colors hover:border-border/70">
+    <article className=" border border-border/50 surface-premium/55 p-3 shadow-black/[0.025] transition-colors hover:border-border/70">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-1.5">

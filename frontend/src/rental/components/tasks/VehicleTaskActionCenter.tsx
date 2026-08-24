@@ -29,7 +29,7 @@ export function VehicleTaskActionCenter({
   canCreate,
 }: VehicleTaskActionCenterProps) {
   return (
-    <div className="surface-premium rounded-xl p-3 sm:p-4 shadow-[var(--shadow-1)]">
+    <div className="surface-premium p-3 sm:p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch lg:gap-4">
         {/* Next best action — primary focus */}
         <div className="min-w-0 flex-1 rounded-lg border border-border/80 bg-muted/20 px-3 py-2.5">
@@ -119,7 +119,7 @@ export function VehicleTaskActionCenter({
             onClick={onCreateTask}
             disabled={!canCreate}
             title={canCreate ? 'Neue Aufgabe für dieses Fahrzeug anlegen' : 'Fahrzeugkontext fehlt'}
-            className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border surface-premium px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed sq-press"
+            className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg surface-premium px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed sq-press"
           >
             <Icon name="plus" className="w-3.5 h-3.5" />
             Neue Aufgabe

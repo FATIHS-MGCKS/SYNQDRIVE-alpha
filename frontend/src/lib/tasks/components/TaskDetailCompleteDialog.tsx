@@ -70,7 +70,7 @@ export function TaskDetailCompleteDialog({
               value={form.resolutionCode}
               onChange={(event) => patch({ resolutionCode: event.target.value })}
               disabled={loading}
-              className="mt-1.5 w-full rounded-lg border border-border surface-premium px-3 py-2 text-xs"
+              className="mt-1.5 w-full rounded-lg surface-premium px-3 py-2 text-xs"
             >
               <option value="">Bitte wählen …</option>
               {model.resolutionCodeOptions.map((option) => (
@@ -94,7 +94,7 @@ export function TaskDetailCompleteDialog({
             onChange={(event) => patch({ resolutionNote: event.target.value })}
             disabled={loading}
             rows={4}
-            className="mt-1.5 w-full resize-y rounded-lg border border-border surface-premium px-3 py-2 text-xs"
+            className="mt-1.5 w-full resize-y rounded-lg surface-premium px-3 py-2 text-xs"
             placeholder="Ergebnis / durchgeführte Maßnahmen dokumentieren"
           />
         </label>
@@ -113,7 +113,7 @@ export function TaskDetailCompleteDialog({
               value={form.actualCostEuros}
               onChange={(event) => patch({ actualCostEuros: event.target.value })}
               disabled={loading}
-              className="mt-1.5 w-full rounded-lg border border-border surface-premium px-3 py-2 text-xs"
+              className="mt-1.5 w-full rounded-lg surface-premium px-3 py-2 text-xs"
               placeholder="z. B. 149,00"
             />
           </label>
@@ -142,7 +142,7 @@ export function TaskDetailCompleteDialog({
                 onChange={(event) => patch({ overrideReason: event.target.value })}
                 disabled={loading}
                 rows={3}
-                className="mt-2 w-full resize-y rounded-lg border border-border surface-premium px-3 py-2 text-xs"
+                className="mt-2 w-full resize-y rounded-lg surface-premium px-3 py-2 text-xs"
                 placeholder="Begründung für den Override"
               />
             )}

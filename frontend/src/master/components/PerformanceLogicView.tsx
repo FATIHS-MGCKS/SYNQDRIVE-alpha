@@ -19,7 +19,7 @@ interface Props {
 }
 
 const CARD = (_d: boolean) =>
-  'rounded-2xl shadow-sm border overflow-hidden surface-solid border-border';
+  'overflow-hidden surface-solid border-border';
 const BADGE = (color: string) =>
   `inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${color}`;
 
@@ -577,7 +577,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                   </div>
                 ))}
               </div>
-              <div className={`mt-4 p-3 rounded-xl text-[11px] ${d ? 'surface-premium text-muted-foreground' : 'bg-muted text-muted-foreground'}`}>
+              <div className={`mt-4 p-3 text-[11px] ${d ? 'surface-premium text-muted-foreground' : 'bg-muted text-muted-foreground'}`}>
                 <strong>Abuse Score (abuseScore, 0–100):</strong> Deterministic weighted sum of abuse events.
                 Each event type has a base weight (POSSIBLE_IMPACT=20, ENGINE_SHUTDOWN=15, OVERHEATING=10, FULL_BRAKING=8, LAUNCH_LIKE_START=6, COLD_ENGINE_*=5, HIGH_RPM_CONSTANT=4, ENGINE_REV_IN_IDLE=3, KICKDOWN=3, LONG_IDLE=2).
                 Severity multipliers: WARNING=1.0×, SEVERE=1.5×, CRITICAL=2.0×. Score is capped at 100.
@@ -718,7 +718,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                     fields: ['citySharePct → usage multiplier (city=1.35, highway=1.0)', 'stopGoStressScore → stop density factor', 'highSpeedStressScore → high-speed braking factor', 'p95DecelMs2 → hard braking factor', 'meanBrakeEnergyKjPerKm → full-braking factor', 'thermalBrakeStressScore → thermal wear factor'],
                   },
                 ].map(c => (
-                  <div key={c.title} className={`rounded-xl p-4 ${d ? 'surface-premium' : 'bg-muted'}`}>
+                  <div key={c.title} className={` p-4 ${d ? 'surface-premium' : 'bg-muted'}`}>
                     <p className={`text-sm font-bold mb-2 ${c.color}`}>{c.title}</p>
                     <ul className="space-y-1">
                       {c.fields.map(f => <li key={f} className={`text-[11px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>• {f}</li>)}

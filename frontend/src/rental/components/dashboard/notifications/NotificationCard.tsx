@@ -71,7 +71,7 @@ export const NotificationCard = memo(function NotificationCard({
   return (
     <article
       className={cn(
-        'group relative rounded-xl border transition-colors motion-reduce:transition-none',
+        'group relative rounded-md border transition-colors motion-reduce:transition-none',
         compact ? 'border-border/25 bg-muted/[0.04] px-2.5 py-2' : 'px-3 py-2.5',
         !compact && severitySurface(card.severity, card.resolved),
         compact && severitySurface(card.severity, card.resolved),

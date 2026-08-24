@@ -2,9 +2,9 @@
 export const tv = {
   page: 'max-w-[1600px] mx-auto px-0.5 sm:px-0',
   grid: 'grid grid-cols-1 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)] gap-3 sm:gap-4 xl:gap-5 items-start',
-  panel: 'surface-premium rounded-2xl p-3.5 sm:p-4 min-w-0',
+  panel: 'surface-premium p-3.5 sm:p-4 min-w-0',
   mapPanel:
-    'surface-premium rounded-2xl p-3.5 sm:p-4 flex flex-col min-w-0 xl:sticky xl:top-2 xl:self-start xl:h-[calc(100vh-128px)] xl:min-h-[520px]',
+    'surface-premium p-3.5 sm:p-4 flex flex-col min-w-0 xl:sticky xl:top-2 xl:self-start xl:h-[calc(100vh-128px)] xl:min-h-[520px]',
   mapFrame:
     'relative w-full h-[min(42vh,360px)] sm:h-[min(44vh,400px)] xl:h-auto xl:flex-1 xl:min-h-[340px] rounded-xl overflow-hidden border border-border/50',
   overlay:
@@ -15,7 +15,7 @@ export const tv = {
   toggleBtn:
     'flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-all border',
   actionBtn:
-    'inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-[11px] font-semibold border border-border/60 surface-premium hover:bg-muted/50 active:scale-[0.98] transition-all disabled:opacity-50',
+    'inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-[11px] font-semibold border border-border/60 surface-premium hover:bg-muted/50 active:scale-[0.98] transition-all disabled:opacity-50',
   actionBtnPrimary:
     'inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-[11px] font-semibold border border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] hover:bg-[color:color-mix(in_srgb,var(--brand)_12%,transparent)] active:scale-[0.98] transition-all disabled:opacity-50',
   focusRing:

@@ -6,17 +6,17 @@
 
 export const rs = {
   /** L1 — primary content card / panel shell */
-  card: 'surface-premium rounded-2xl overflow-hidden',
-  cardMd: 'surface-premium rounded-xl overflow-hidden',
+  card: 'surface-premium overflow-hidden',
+  cardMd: 'surface-premium overflow-hidden',
   cardSm: 'surface-premium rounded-lg overflow-hidden',
-  cardPadding: 'surface-premium rounded-2xl p-4 sm:p-5 overflow-hidden',
+  cardPadding: 'surface-premium p-4 sm:p-5 overflow-hidden',
 
   /** L1 elevated — interactive list rows / clickable cards */
-  cardInteractive: 'surface-elevated rounded-xl overflow-hidden cursor-pointer',
+  cardInteractive: 'surface-elevated overflow-hidden cursor-pointer',
 
   /** L0 — dense tables, flush containers, nested structural shells */
-  panel: 'surface-solid rounded-xl overflow-hidden',
-  panelLg: 'surface-solid rounded-2xl overflow-hidden',
+  panel: 'surface-solid overflow-hidden',
+  panelLg: 'surface-solid overflow-hidden',
 
   /** L2 — sticky chrome only (prefer chrome-tab-bar.ts for tab bars) */
   chrome: 'surface-frosted',

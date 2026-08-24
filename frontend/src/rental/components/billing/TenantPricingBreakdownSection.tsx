@@ -14,12 +14,12 @@ export function TenantPricingBreakdownSection({
   error = null,
 }: TenantPricingBreakdownSectionProps) {
   if (loading && !pricing) {
-    return <div className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5 h-48 animate-pulse bg-muted/20" />;
+    return <div className="surface-premium border border-border/60 p-4 sm:p-5 h-48 animate-pulse bg-muted/20" />;
   }
 
   if (error) {
     return (
-      <div className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5">
+      <div className="surface-premium border border-border/60 p-4 sm:p-5">
         <p className="text-sm font-semibold">Preisaufschlüsselung</p>
         <p className="text-xs mt-2 sq-tone-warning px-2 py-1 rounded">{error}</p>
       </div>
@@ -28,7 +28,7 @@ export function TenantPricingBreakdownSection({
 
   if (!pricing) {
     return (
-      <div className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5">
+      <div className="surface-premium border border-border/60 p-4 sm:p-5">
         <p className="text-sm text-muted-foreground">Preisaufschlüsselung noch nicht verfügbar.</p>
       </div>
     );
@@ -40,7 +40,7 @@ export function TenantPricingBreakdownSection({
 
   return (
     <div
-      className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5 space-y-4"
+      className="surface-premium border border-border/60 p-4 sm:p-5 space-y-4"
       data-testid="tenant-pricing-breakdown"
     >
       <div>

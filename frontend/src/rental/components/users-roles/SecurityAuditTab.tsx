@@ -43,7 +43,7 @@ export function SecurityAuditTab({ security, loading }: SecurityAuditTabProps) {
         <MetricCard label={t('iam.security.audit')} value={security.iamAudit.length} />
       </div>
 
-      <section className="rounded-2xl border border-border p-4 space-y-3">
+      <section className="rounded-lg border border-border p-4 space-y-3">
         <h3 className="text-[14px] font-semibold">{t('iam.security.mfaSummary')}</h3>
         <div className="flex flex-wrap gap-2">
           {MFA_STATES.map((state) => (
@@ -55,7 +55,7 @@ export function SecurityAuditTab({ security, loading }: SecurityAuditTabProps) {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border p-4 space-y-3">
+      <section className="rounded-lg border border-border p-4 space-y-3">
         <h3 className="text-[14px] font-semibold">{t('iam.security.privileged')}</h3>
         <ul className="space-y-2">
           {security.privilegedMembers.map((m) => (
@@ -73,7 +73,7 @@ export function SecurityAuditTab({ security, loading }: SecurityAuditTabProps) {
         </ul>
       </section>
 
-      <section className="rounded-2xl border border-border p-4 space-y-3">
+      <section className="rounded-lg border border-border p-4 space-y-3">
         <h3 className="text-[14px] font-semibold">{t('iam.security.audit')}</h3>
         <ul className="space-y-2 max-h-[360px] overflow-y-auto">
           {security.iamAudit.map((row) => (

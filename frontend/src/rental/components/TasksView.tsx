@@ -438,7 +438,7 @@ export function TasksView({
         counts={viewCounts}
       />
 
-      <div className="surface-premium rounded-2xl border border-border/50 p-3 shadow-[var(--shadow-1)] md:p-4">
+      <div className="surface-premium border border-border/50 p-3 md:p-4">
         <TasksFilterPanel
           filters={filters}
           searchDraft={searchDraft}
@@ -463,12 +463,12 @@ export function TasksView({
           title="Aufgaben konnten nicht geladen werden"
           error={tasksError}
           onRetry={() => void reloadTasks()}
-          className="surface-premium rounded-2xl py-12"
+          className="surface-premium py-12"
         />
       ) : tasksLoading && !tasks.length ? (
         <div className="space-y-2" data-testid="tasks-loading">
           {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="surface-premium h-20 animate-pulse rounded-2xl md:h-[4.5rem]" />
+            <div key={index} className="surface-premium h-20 animate-pulse md:h-[4.5rem]" />
           ))}
         </div>
       ) : sortedTasks.length === 0 ? (

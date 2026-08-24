@@ -78,7 +78,7 @@ export function TasksBulkActionBar({
   return (
     <>
       <div
-        className="sticky bottom-3 z-30 mx-auto flex max-w-[1800px] flex-wrap items-center justify-between gap-3 rounded-2xl border border-[color:var(--brand)]/30 bg-background/95 px-4 py-3 shadow-[var(--shadow-2)] backdrop-blur-md"
+        className="sticky bottom-3 z-30 mx-auto flex max-w-[1800px] flex-wrap items-center justify-between gap-3 rounded-md border border-[color:var(--brand)]/30 bg-background/95 px-4 py-3 shadow-[var(--shadow-2)] backdrop-blur-md"
         data-testid="tasks-bulk-action-bar"
       >
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -123,7 +123,7 @@ export function TasksBulkActionBar({
       </div>
 
       <Sheet open={dialog === 'assign'} onOpenChange={(open) => !open && setDialog(null)}>
-        <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-6 pt-4">
+        <SheetContent side="bottom" className="rounded-t-dialog px-4 pb-6 pt-4">
           <SheetTitle className="mb-4 text-base font-semibold">Zuweisen</SheetTitle>
           <label className="block space-y-1">
             <span className="text-[11px] font-semibold text-muted-foreground">Verantwortlicher</span>
@@ -159,7 +159,7 @@ export function TasksBulkActionBar({
       </Sheet>
 
       <Sheet open={dialog === 'priority'} onOpenChange={(open) => !open && setDialog(null)}>
-        <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-6 pt-4">
+        <SheetContent side="bottom" className="rounded-t-dialog px-4 pb-6 pt-4">
           <SheetTitle className="mb-4 text-base font-semibold">Priorität ändern</SheetTitle>
           <select
             value={priority}
@@ -189,7 +189,7 @@ export function TasksBulkActionBar({
       </Sheet>
 
       <Sheet open={dialog === 'dueDate'} onOpenChange={(open) => !open && setDialog(null)}>
-        <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-6 pt-4">
+        <SheetContent side="bottom" className="rounded-t-dialog px-4 pb-6 pt-4">
           <SheetTitle className="mb-4 text-base font-semibold">Fälligkeit verschieben</SheetTitle>
           <div className="space-y-3">
             <div className="flex gap-2">
@@ -256,7 +256,7 @@ export function TasksBulkActionBar({
       </Sheet>
 
       <Sheet open={dialog === 'cancel'} onOpenChange={(open) => !open && setDialog(null)}>
-        <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-6 pt-4">
+        <SheetContent side="bottom" className="rounded-t-dialog px-4 pb-6 pt-4">
           <SheetTitle className="mb-4 flex items-center gap-2 text-base font-semibold text-[color:var(--status-critical)]">
             <Icon name="alert-triangle" className="h-4 w-4" />
             {count === 1 ? '1 Aufgabe abbrechen?' : `${count} Aufgaben abbrechen?`}

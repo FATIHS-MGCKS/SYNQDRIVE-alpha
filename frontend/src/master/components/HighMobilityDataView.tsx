@@ -23,7 +23,7 @@ const INPUT =
   'w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 text-sm text-foreground transition-colors outline-none focus:border-[color:var(--brand)] placeholder:text-muted-foreground';
 const LABEL = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
 const HEAD = 'text-xs font-semibold uppercase tracking-wider text-muted-foreground';
-const TAB_BAR = 'sq-tab-bar flex gap-1 p-1 rounded-2xl overflow-x-auto w-fit';
+const TAB_BAR = 'sq-tab-bar flex gap-1 p-1 rounded-md overflow-x-auto w-fit';
 const TAB_ACTIVE = 'sq-tab-active flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap';
 const TAB_IDLE = 'sq-tab flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap text-muted-foreground hover:text-foreground';
 
@@ -400,7 +400,7 @@ function AddVehicleModal({ onClose,
   };
 
   const overlay = 'overlay-scrim fixed inset-0 z-50 flex items-center justify-center p-4';
-  const CARD = `w-full max-w-md rounded-xl border shadow-2xl p-6 surface-premium`;const LABEL = 'block text-xs font-medium mb-1.5 text-muted-foreground';
+  const CARD = `w-full max-w-md border p-6 surface-premium`;const LABEL = 'block text-xs font-medium mb-1.5 text-muted-foreground';
 
   return (
     <div className={overlay} onClick={onClose}>
@@ -485,7 +485,7 @@ function HistoryModal({
   }, [vehicle.id]);
 
   const overlay = 'overlay-scrim fixed inset-0 z-50 flex items-center justify-center p-4';
-  const CARD = `w-full max-w-lg rounded-xl border shadow-2xl surface-premium`;
+  const CARD = `w-full max-w-lg border surface-premium`;
 
   return (
     <div className={overlay} onClick={onClose}>
@@ -560,7 +560,7 @@ function EligibilityTab({ onAddToList,
   };
 
   const INPUT = `px-3 py-2 rounded-lg border text-sm border-border focus:outline-none focus:ring-2 focus:ring-blue-500/30`;
-  const cardCls = `rounded-xl border surface-premium`;
+  const cardCls = ` border surface-premium`;
 
   return (
     <div className="space-y-5">
@@ -897,7 +897,7 @@ function DualAppStreamingTab() {
   const [loading, setLoading] = useState(true);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
-  const cardCls = `rounded-xl border surface-premium`;
+  const cardCls = ` border surface-premium`;
   const mutedFg = 'text-muted-foreground';
 
   const load = useCallback(async () => {
@@ -1048,7 +1048,7 @@ function StreamingTab() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterVin, setFilterVin] = useState('');
 
-  const cardCls = `rounded-xl border surface-premium`;
+  const cardCls = ` border surface-premium`;
   const mutedFg = 'text-muted-foreground';
   const LABEL = `text-xs font-medium ${mutedFg}`;
 

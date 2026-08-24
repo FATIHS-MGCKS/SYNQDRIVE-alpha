@@ -107,7 +107,7 @@ export function VoiceCommandHeader({
   ];
 
   return (
-    <header className="surface-premium surface-premium animate-fade-up overflow-hidden rounded-2xl border border-border/40 shadow-[var(--shadow-1)]">
+    <header className="surface-premium surface-premium animate-fade-up overflow-hidden border border-border/40">
       <div className="border-b border-border/40 px-4 py-4 sm:px-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 space-y-3">
@@ -193,7 +193,7 @@ export function VoiceCommandHeader({
           type="button"
           onClick={onTest}
           disabled={isBusy || !assistant.elevenLabsAgentId}
-          className="sq-press inline-flex min-h-9 items-center gap-2 rounded-xl border border-border/60 surface-premium px-3.5 py-2 text-[11px] font-semibold text-foreground transition-all hover:bg-muted disabled:opacity-60"
+          className="sq-press inline-flex min-h-9 items-center gap-2 border border-border/60 surface-premium px-3.5 py-2 text-[11px] font-semibold text-foreground transition-all hover:bg-muted disabled:opacity-60"
         >
           <Icon name={testLoading ? 'loader-2' : 'mic'} className={cn('h-3.5 w-3.5', testLoading && 'animate-spin')} />
           Test call
@@ -203,7 +203,7 @@ export function VoiceCommandHeader({
           type="button"
           onClick={onSync}
           disabled={isBusy}
-          className="sq-press inline-flex min-h-9 items-center gap-2 rounded-xl border border-border/60 surface-premium px-3.5 py-2 text-[11px] font-semibold text-foreground transition-all hover:bg-muted disabled:opacity-60"
+          className="sq-press inline-flex min-h-9 items-center gap-2 border border-border/60 surface-premium px-3.5 py-2 text-[11px] font-semibold text-foreground transition-all hover:bg-muted disabled:opacity-60"
         >
           <Icon name={syncing ? 'loader-2' : 'refresh-cw'} className={cn('h-3.5 w-3.5', syncing && 'animate-spin')} />
           Sync

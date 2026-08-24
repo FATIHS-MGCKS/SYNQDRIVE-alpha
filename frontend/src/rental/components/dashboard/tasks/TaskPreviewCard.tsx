@@ -32,7 +32,7 @@ export const TaskPreviewCard = memo(function TaskPreviewCard({
   return (
     <article
       className={cn(
-        'overflow-hidden rounded-xl border transition-colors motion-reduce:transition-none',
+        'overflow-hidden rounded-md border transition-colors motion-reduce:transition-none',
         taskPreviewCardSurfaceClass(priority),
         expanded && 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_12%,transparent)]',
       )}

@@ -526,7 +526,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   const labelClass = `block text-xs font-semibold mb-1 text-muted-foreground`;
   const aiTag = <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md ml-1 ${isDarkMode ? 'bg-purple-500/15 text-purple-400' : 'bg-purple-50 text-purple-600'}`}><Sparkles className="w-2.5 h-2.5" />AI</span>;
   const sectionHeader = (id: string, num: string, title: string, icon?: React.ReactNode) => (
-    <button onClick={() => toggleSection(id)} className={`w-full flex items-center gap-3 py-3 px-1 rounded-xl transition-colors ${isDarkMode ? 'hover:surface-premium' : 'hover:bg-muted'}`}>
+    <button onClick={() => toggleSection(id)} className={`w-full flex items-center gap-3 py-3 px-1 transition-colors ${isDarkMode ? 'hover:surface-premium' : 'hover:bg-muted'}`}>
       <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0 ${isDarkMode ? 'bg-status-info-soft text-status-info' : 'bg-status-info-soft text-status-info'}`}>{num}</span>
       {icon}
       <span className={`text-sm font-semibold flex-1 text-left text-foreground`}>{title}</span>
@@ -602,7 +602,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
 
   return (
     <div className="overlay-scrim fixed inset-0 flex items-start justify-center z-[100] pt-6 pb-6 overflow-y-auto">
-      <div className={`w-full max-w-3xl mx-4 rounded-xl shadow-2xl border surface-solid border-border`}>
+      <div className={`w-full max-w-3xl mx-4 border surface-solid border-border`}>
 
         {/* ── Header ── */}
         <div className={`flex items-center justify-between px-8 py-5 border-b ${isDarkMode ? 'border-neutral-800' : 'border-border'}`}>
@@ -617,7 +617,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
               </p>
             </div>
           </div>
-          <button onClick={onClose} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-muted text-muted-foreground'}`}><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className={`p-2 transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-muted text-muted-foreground'}`}><X className="w-5 h-5" /></button>
         </div>
 
         {/* ── AI Agent — prominent status panel + Fetch AI button ── */}
@@ -730,7 +730,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
 
           {/* ── Pipeline steps (visible when steps exist) ── */}
           {aiSteps.length > 0 && (
-            <div className={`mt-3 rounded-xl border overflow-hidden ${isDarkMode ? 'surface-premium/30 border-neutral-700/40' : 'bg-white/50 border-border/40'}`}>
+            <div className={`mt-3 border overflow-hidden ${isDarkMode ? 'surface-premium/30 border-neutral-700/40' : 'bg-white/50 border-border/40'}`}>
               {aiSteps.map((s, i) => (
                 <div key={i} className={`flex items-center gap-2.5 px-3 py-1.5 ${i > 0 ? (isDarkMode ? 'border-t border-neutral-700/30' : 'border-t border-border') : ''}`}>
                   {s.status === 'done' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />}
@@ -775,7 +775,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
           {/* ═══════════════════════════════════════════════
               SECTION 0 — Vehicle Identity (read-only)
              ═══════════════════════════════════════════════ */}
-          <div className={`p-4 rounded-2xl border mb-4 ${isDarkMode ? 'surface-premium/30 border-neutral-700/40' : 'bg-muted/80 border-border/40'}`}>
+          <div className={`p-4 border mb-4 ${isDarkMode ? 'surface-premium/30 border-neutral-700/40' : 'bg-muted/80 border-border/40'}`}>
             <div className="flex items-center gap-2 mb-3">
               <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-bold bg-muted text-muted-foreground`}>ID</span>
               <span className={`text-sm font-semibold text-foreground`}>Vehicle Identity</span>
@@ -967,7 +967,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
               </div>
 
               {/* ── AI Tire Spec Agent ── */}
-              <div className={`rounded-2xl border p-4 ${
+              <div className={`rounded-lg border p-4 ${
                 tireAiLoading
                   ? (isDarkMode ? 'bg-cyan-950/30 border-cyan-800/40' : 'bg-gradient-to-r from-cyan-50 to-teal-50 border-cyan-200/40')
                   : tireAiResult
@@ -1018,7 +1018,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                       </span>
                     </div>
                     {tireAiSteps.length > 0 && (
-                      <div className={`rounded-xl border overflow-hidden ${isDarkMode ? 'surface-premium/20 border-neutral-700/30' : 'bg-white/40 border-border/40'}`}>
+                      <div className={` border overflow-hidden ${isDarkMode ? 'surface-premium/20 border-neutral-700/30' : 'bg-white/40 border-border/40'}`}>
                         {tireAiSteps.map((s, i) => (
                           <div key={i} className={`flex items-center gap-2 px-3 py-1 ${i > 0 ? (isDarkMode ? 'border-t border-neutral-700/20' : 'border-t border-border') : ''}`}>
                             {s.status === 'done' && <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />}
@@ -1059,7 +1059,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                       {tireAiResultExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                     </button>
                     {tireAiResultExpanded && (
-                      <div className={`rounded-xl border overflow-hidden ${isDarkMode ? 'surface-premium/20 border-neutral-700/30' : 'bg-white/60 border-border/40'}`}>
+                      <div className={` border overflow-hidden ${isDarkMode ? 'surface-premium/20 border-neutral-700/30' : 'bg-white/60 border-border/40'}`}>
                         <div className="max-h-64 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
                           <table className="w-full text-xs">
                             <tbody>
@@ -1176,7 +1176,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
             <div className="pl-1 pb-3 space-y-3">
               {/* Loading state */}
               {hmAvailabilityLoading && (
-                <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs surface-solid border-border text-muted-foreground`}>
+                <div className={`flex items-center gap-2 px-3 py-2.5 border text-xs surface-solid border-border text-muted-foreground`}>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   Checking HM Health availability for this VIN…
                 </div>
@@ -1191,7 +1191,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
 
               {/* HM not available for this VIN */}
               {!hmAvailabilityLoading && hmAvailability && !hmAvailability.available && (
-                <div className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl border text-xs surface-solid border-border text-muted-foreground`}>
+                <div className={`flex items-start gap-2.5 px-3 py-2.5 border text-xs surface-solid border-border text-muted-foreground`}>
                   <Radio className="w-3.5 h-3.5 mt-0.5 shrink-0 opacity-40" />
                   <div>
                     <div className="font-medium">High Mobility Health not available</div>
@@ -1322,7 +1322,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
             {isEditMode ? 'Editing registered vehicle' : 'Creating new registered vehicle'}{organizationId ? ` · ${orgName}` : ''}
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={onClose} className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all surface-solid text-foreground hover:bg-muted border border-border`}>Cancel</button>
+            <button onClick={onClose} className={`px-5 py-2.5 text-sm font-semibold transition-all surface-solid text-foreground hover:bg-muted`}>Cancel</button>
             <button
               onClick={() => void handleSubmit()}
               disabled={!organizationId || submitting}

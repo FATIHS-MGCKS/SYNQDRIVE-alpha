@@ -389,7 +389,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:items-stretch">
         <div
           ref={mapRef}
-          className="surface-premium rounded-2xl overflow-hidden relative h-[280px] lg:h-[640px] animate-fade-up synq-map-hud-surface"
+          className="surface-premium overflow-hidden relative h-[280px] lg:h-[640px] animate-fade-up synq-map-hud-surface"
         >
           <MapSafetyBoundary isDarkMode={systemDark}>
             <MapboxMap
@@ -430,7 +430,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
           />
           {filteredVehicles.length === 0 && !loading && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[5]">
-              <div className="sq-map-liquid-empty px-5 py-4 rounded-2xl max-w-[280px] text-center">
+              <div className="sq-map-liquid-empty px-5 py-4 rounded-lg max-w-[280px] text-center">
                 <p className="text-[12px] font-semibold text-foreground">No vehicles in filter</p>
                 <p className="text-[11px] mt-1 text-muted-foreground">
                   Adjust the station filter or check fleet assignments
@@ -441,7 +441,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
         </div>
 
         {loading && vehicles.length === 0 ? (
-          <div className="surface-premium rounded-2xl overflow-hidden p-4 lg:h-[640px] space-y-2">
+          <div className="surface-premium overflow-hidden p-4 lg:h-[640px] space-y-2">
             <SkeletonCard />
             <SkeletonCard />
             <SkeletonCard />

@@ -40,7 +40,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
   const [testEmail, setTestEmail] = useState('');
   const [busyDomainId, setBusyDomainId] = useState<string | null>(null);
 
-  const card = `rounded-xl border p-5 surface-solid border-border`;
+  const card = ` border p-5 surface-solid border-border`;
   const subtle = 'text-muted-foreground';
 
   const load = useCallback(async () => {

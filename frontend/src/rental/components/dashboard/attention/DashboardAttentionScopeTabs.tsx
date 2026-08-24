@@ -54,7 +54,7 @@ export function DashboardAttentionScopeTabs({
               'inline-flex min-h-11 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-[calc(var(--radius-md)-2px)] px-2 py-2 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               NOTIFICATION_PANEL_TYPO.tab,
               isActive
-                ? 'surface-premium text-foreground shadow-[var(--shadow-1)]'
+                ? 'surface-premium text-foreground'
                 : 'text-muted-foreground hover:bg-background/60 hover:text-foreground',
             )}
           >

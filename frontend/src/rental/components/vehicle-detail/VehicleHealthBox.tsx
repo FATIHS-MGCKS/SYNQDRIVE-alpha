@@ -70,7 +70,7 @@ function HealthModuleRows({
             className={`min-w-0 rounded-[13px] border border-border bg-muted/40 px-2 py-2 transition-colors ${item.isUntracked ? 'opacity-70' : ''}`}
           >
             <div className="flex min-w-0 flex-col items-center gap-1.5 text-center">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] border border-border surface-premium">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] surface-premium">
                 {moduleIcon(item.key, isDarkMode)}
               </div>
               <span className="max-w-full truncate text-[10px] font-bold tracking-[-0.01em] text-foreground">
@@ -301,7 +301,7 @@ export function VehicleHealthBox({
   const compactOverview = !showDataBasis;
 
   return (
-    <div className="surface-premium group relative flex h-full flex-col rounded-xl p-3 text-foreground">
+    <div className="surface-premium group relative flex h-full flex-col p-3 text-foreground">
       <div className="mb-2.5 flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <h3 className="text-[11px] font-bold tracking-[-0.01em] text-foreground">Vehicle Health</h3>

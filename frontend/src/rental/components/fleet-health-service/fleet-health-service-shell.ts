@@ -21,7 +21,7 @@ export const fhs = {
   meta: META_TEXT_CLASS,
   interactiveRow: cn(
     INTERACTIVE_ROW_CLASS,
-    'flex flex-col gap-2.5 rounded-xl border border-border/45 surface-elevated px-3 py-2.5 hover:bg-muted/20 sm:flex-row sm:items-start',
+    'flex flex-col gap-2.5 border border-border/45 surface-elevated px-3 py-2.5 hover:bg-muted/20 sm:flex-row sm:items-start',
   ),
   touchTarget:
     'min-h-11 min-w-11 inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
@@ -41,6 +41,6 @@ export const fhs = {
   kpiCardWarning: 'border-[color:var(--status-watch)]/28 bg-[color:var(--status-watch)]/[0.025]',
   kpiCardSuccess:
     'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
-  filterBar: 'surface-premium rounded-2xl p-3 shadow-[var(--shadow-xs)]',
+  filterBar: 'surface-premium p-3',
   sourceTag: 'text-[10px] text-muted-foreground/80',
 } as const;

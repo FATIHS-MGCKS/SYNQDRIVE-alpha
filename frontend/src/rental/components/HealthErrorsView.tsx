@@ -1335,7 +1335,7 @@ export function HealthErrorsView({
   // and warning lights now live in the dedicated "Tacho Warnleuchten" box.
   const serviceComplianceModule = healthTabSummary?.moduleStates?.service_compliance;
 
-  const cardClass = 'surface-premium rounded-xl p-2.5 overflow-hidden';
+  const cardClass = 'surface-premium p-2.5 overflow-hidden';
   const quickCardClass = `${cardClass} flex flex-col cursor-pointer transition-all duration-300 ease-out hover:-translate-y-0.5 relative overflow-hidden group`;
   const quickCardHeaderClass = 'flex items-center justify-between mb-1 relative z-10';
   const quickCardTitleClass = 'text-[10px] font-bold tracking-tight text-foreground';
@@ -1404,7 +1404,7 @@ export function HealthErrorsView({
                 )}
                 {dtcStatus === 'stale' && (
                   <>
-                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center mb-2 shadow-sm ${'sq-tone-watch ring-1 ring-border'}`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 shadow-sm ${'sq-tone-watch ring-1 ring-border'}`}>
                       <Icon name="alert-triangle" className={`w-4 h-4 ${'text-[color:var(--status-watch)]'}`} />
                     </div>
                     <p className={`text-[10px] font-semibold text-center ${'text-[color:var(--status-watch)]'}`}>Datenstand verzögert / Abruf fehlgeschlagen</p>
@@ -1806,7 +1806,7 @@ export function HealthErrorsView({
       {showErrorCodes && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowErrorCodes)}>
           <div className="absolute inset-0 overlay-scrim transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
-          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl rounded-xl p-5 shadow-lg transition-all duration-500 ease-out max-h-[85vh] overflow-y-auto pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))] surface-premium border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
+          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl p-5 transition-all duration-500 ease-out max-h-[85vh] overflow-y-auto pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))] surface-premium`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
             <button onClick={() => closeModal(setShowErrorCodes)} className={`absolute top-6 right-6 p-1.5 rounded-full transition-colors ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
 
             {/* Modal header — title + single last-check meta only */}
@@ -2020,7 +2020,7 @@ export function HealthErrorsView({
       {showBattery && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowBattery)}>
           <div className="absolute inset-0 overlay-scrim transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
-          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))] surface-premium border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
+          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto p-5 transition-all duration-500 ease-out pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))] surface-premium`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
             <button onClick={() => closeModal(setShowBattery)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
 
             {/* Header + condition badge */}
@@ -2079,8 +2079,8 @@ export function HealthErrorsView({
                   12V-Ruhespannung Verlauf
                 </p>
                 <div className={`inline-flex rounded-full p-0.5 ${'bg-muted'}`}>
-                  <button type="button" onClick={() => setBatteryChartTab('woche')} className={`px-4 py-1 rounded-full text-[10px] font-semibold transition-all ${batteryChartTab === 'woche' ? 'surface-premium text-foreground shadow-sm' : 'text-muted-foreground'}`}>Woche</button>
-                  <button type="button" onClick={() => setBatteryChartTab('monat')} className={`px-4 py-1 rounded-full text-[10px] font-medium transition-all ${batteryChartTab === 'monat' ? 'surface-premium text-foreground shadow-sm' : 'text-muted-foreground'}`}>Monat</button>
+                  <button type="button" onClick={() => setBatteryChartTab('woche')} className={`px-4 py-1 rounded-full text-[10px] font-semibold transition-all ${batteryChartTab === 'woche' ? 'surface-premium text-foreground' : 'text-muted-foreground'}`}>Woche</button>
+                  <button type="button" onClick={() => setBatteryChartTab('monat')} className={`px-4 py-1 rounded-full text-[10px] font-medium transition-all ${batteryChartTab === 'monat' ? 'surface-premium text-foreground' : 'text-muted-foreground'}`}>Monat</button>
                 </div>
               </div>
               {batteryChartData.length >= 2 ? (
@@ -2264,7 +2264,7 @@ export function HealthErrorsView({
       {showService && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowService)}>
           <div className="absolute inset-0 overlay-scrim transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
-          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out surface-premium border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
+          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto p-5 transition-all duration-500 ease-out surface-premium`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
             <button onClick={() => closeModal(setShowService)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
             <h2 className={`text-sm font-semibold tracking-tight mb-5 text-foreground`}>Service & Compliance</h2>
 
@@ -2387,7 +2387,7 @@ export function HealthErrorsView({
       {showBrakes && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { if (!showBrakeEntry) closeModal(setShowBrakes); }}>
           <div className="absolute inset-0 overlay-scrim transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
-          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out surface-premium border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
+          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto p-5 transition-all duration-500 ease-out surface-premium`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
             <button onClick={() => closeModal(setShowBrakes)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
 
             {(() => {
@@ -2551,7 +2551,7 @@ export function HealthErrorsView({
                   <div className="mb-4">
                     <h3 className={hSec}>Brake History</h3>
                     {(bhd?.history ?? []).length > 0 ? (
-                      <div className={`rounded-xl overflow-hidden 'surface-premium'`}>
+                      <div className={` overflow-hidden 'surface-premium'`}>
                         {(bhd?.history ?? []).map((item: any, i: number, arr: any[]) => (
                           <div key={item.id} className={`flex items-center px-4 py-3 ${i < arr.length - 1 ? 'border-b border-border' : ''}`}>
                             <div className={`w-7 h-7 rounded-full flex items-center justify-center mr-3 shrink-0 'sq-tone-success'`}>
@@ -2568,7 +2568,7 @@ export function HealthErrorsView({
                         ))}
                       </div>
                     ) : (
-                      <div className={`rounded-xl p-5 text-center 'surface-premium'`}>
+                      <div className={` p-5 text-center 'surface-premium'`}>
                         <p className={`text-xs text-muted-foreground`}>No brake service events recorded yet.</p>
                       </div>
                     )}
@@ -2710,7 +2710,7 @@ export function HealthErrorsView({
       {showTires && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { if (!showMeasurement && !showRotation && !showTireChange && !showEditSetup) closeModal(setShowTires); }}>
           <div className="absolute inset-0 overlay-scrim transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
-          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))] surface-premium border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
+          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-5xl max-h-[90vh] overflow-y-auto p-5 transition-all duration-500 ease-out pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))] surface-premium`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
             <button onClick={() => closeModal(setShowTires)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
 
             {/* Header */}
@@ -2877,7 +2877,7 @@ export function HealthErrorsView({
             {/* Tab navigation */}
             <div className={`flex gap-1 mb-5 p-1 rounded-xl ${'bg-muted/60'}`}>
               {(['overview', 'history', 'factors'] as const).map(tab => (
-                <button key={tab} onClick={() => setTireModalTab(tab)} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tireModalTab === tab ? 'surface-premium text-foreground shadow-sm' : ('text-muted-foreground hover:text-foreground')}`}>
+                <button key={tab} onClick={() => setTireModalTab(tab)} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tireModalTab === tab ? 'surface-premium text-foreground' : ('text-muted-foreground hover:text-foreground')}`}>
                   {tab === 'overview' ? 'Overview' : tab === 'history' ? 'Rotation History' : 'Wear Factors'}
                 </button>
               ))}
@@ -3328,7 +3328,7 @@ export function HealthErrorsView({
 
                 {/* Rotation Dialog */}
                 {showRotation && (
-                  <div className={`rounded-lg p-5 mb-5 border-2 ${'surface-premium border border-border'}`}>
+                  <div className={`rounded-lg p-5 mb-5 border-2 ${'surface-premium'}`}>
                     <h3 className={`text-xs font-semibold uppercase tracking-wider mb-4 ${'text-[color:var(--status-info)]'}`}>Rotate Tires</h3>
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       {[
@@ -3356,7 +3356,7 @@ export function HealthErrorsView({
 
                 {/* Tire Change Dialog */}
                 {showTireChange && (
-                  <div className={`rounded-lg p-5 mb-5 border-2 ${'surface-premium border border-border'}`}>
+                  <div className={`rounded-lg p-5 mb-5 border-2 ${'surface-premium'}`}>
                     <h3 className={`text-xs font-semibold uppercase tracking-wider mb-4 ${'text-[color:var(--status-critical)]'}`}>Tire Replacement & Stored Sets</h3>
 
                     <div className="grid grid-cols-3 gap-2 mb-4">
@@ -3723,7 +3723,7 @@ export function HealthErrorsView({
       {showHvBattery && isEv && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6" onClick={() => closeModal(setShowHvBattery)}>
           <div className="absolute inset-0 overlay-scrim" />
-          <div onClick={e => e.stopPropagation()} className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl shadow-lg border surface-premium border-border`}>
+          <div onClick={e => e.stopPropagation()} className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto border surface-premium border-border`}>
             <div className={`sticky top-0 z-10 px-5 py-4 rounded-t-xl border-b bg-popover border-border`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">

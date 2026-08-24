@@ -24,7 +24,7 @@ export function LegalDocumentCategoryCards({ categories, loading, onSelectCatego
         aria-label={t('legalDocuments.categories.loading')}
       >
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="surface-premium h-44 animate-pulse rounded-xl border border-border/60" />
+          <div key={i} className="surface-premium h-44 animate-pulse border border-border/60" />
         ))}
       </div>
     );

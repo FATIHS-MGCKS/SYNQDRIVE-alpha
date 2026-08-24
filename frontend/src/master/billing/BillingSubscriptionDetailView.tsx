@@ -135,7 +135,7 @@ export function BillingSubscriptionDetailView({
         ) : null}
       </div>
 
-      <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)] space-y-4">
+      <div className="surface-premium p-5 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-foreground">{detail.companyName}</h2>
@@ -163,7 +163,7 @@ export function BillingSubscriptionDetailView({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <section className="surface-premium rounded-2xl p-5 space-y-3">
+        <section className="surface-premium p-5 space-y-3">
           <SectionHeader title="Lifecycle" />
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <dt className="text-muted-foreground">Status</dt>
@@ -181,7 +181,7 @@ export function BillingSubscriptionDetailView({
           </dl>
         </section>
 
-        <section className="surface-premium rounded-2xl p-5 space-y-3">
+        <section className="surface-premium p-5 space-y-3">
           <SectionHeader title="Abrechnungsgesundheit" />
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <dt className="text-muted-foreground">Zahlungsmethode</dt>
@@ -195,7 +195,7 @@ export function BillingSubscriptionDetailView({
           </dl>
         </section>
 
-        <section className="surface-premium rounded-2xl p-5 space-y-3">
+        <section className="surface-premium p-5 space-y-3">
           <SectionHeader title="Kommerziell" />
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <dt className="text-muted-foreground">Plan</dt>
@@ -213,7 +213,7 @@ export function BillingSubscriptionDetailView({
           </dl>
         </section>
 
-        <section className="surface-premium rounded-2xl p-5 space-y-3">
+        <section className="surface-premium p-5 space-y-3">
           <SectionHeader title="Technische Details" description="Nur für Ops — keine Source of Truth" />
           <dl className="grid grid-cols-1 gap-y-2 text-xs font-mono text-muted-foreground break-all">
             <div>Stripe Customer: {detail.stripeCustomerId ?? '—'}</div>

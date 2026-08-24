@@ -46,6 +46,7 @@ export function AppDialog({
         <DialogPrimitive.Content
           className={cn(
             surfaceClassName(surface),
+            'sq-dialog-panel',
             'fixed top-[50%] left-[50%] z-[80] flex max-h-[min(90vh,100dvh)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden p-0 text-foreground outline-none',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',

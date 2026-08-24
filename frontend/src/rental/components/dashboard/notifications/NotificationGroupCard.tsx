@@ -48,7 +48,7 @@ export const NotificationGroupCard = memo(function NotificationGroupCard({
   return (
     <article
       className={cn(
-        'overflow-hidden rounded-xl border transition-colors motion-reduce:transition-none',
+        'overflow-hidden rounded-md border transition-colors motion-reduce:transition-none',
         groupSeveritySurface(group.severity),
         summary.unread && 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_18%,transparent)]',
         expanded && 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_12%,transparent)]',

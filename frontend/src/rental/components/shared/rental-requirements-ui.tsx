@@ -398,7 +398,7 @@ export function RuleSourcePanel({
   const de = locale === 'de';
 
   return (
-    <aside className="surface-elevated flex flex-col rounded-xl border border-border/70 surface-premium p-3 sm:p-3.5">
+    <aside className="surface-elevated flex flex-col border border-border/70 surface-premium p-3 sm:p-3.5">
       <p className="sq-section-label">{de ? 'Regelquelle' : 'Rule source'}</p>
       <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
         {de

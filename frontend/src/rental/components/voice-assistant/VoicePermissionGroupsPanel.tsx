@@ -52,7 +52,7 @@ export function VoicePermissionGroupsPanel({
 
   return (
     <div className="space-y-4">
-      <div className={cn('surface-premium rounded-2xl border border-border/40 shadow-[var(--shadow-1)]', compact ? 'p-4' : 'p-5')}>
+      <div className={cn('surface-premium border border-border/40', compact ? 'p-4' : 'p-5')}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 className="text-sm font-bold tracking-[-0.02em] text-foreground">

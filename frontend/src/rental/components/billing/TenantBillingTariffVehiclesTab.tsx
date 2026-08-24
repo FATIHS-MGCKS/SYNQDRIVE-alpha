@@ -37,8 +37,8 @@ export function TenantBillingTariffVehiclesTab({ data }: TenantBillingTariffVehi
   if (tariffLoading && !tariff) {
     return (
       <div className="space-y-4" data-testid="tenant-tariff-vehicles-tab">
-        <SkeletonCard className="h-56 rounded-2xl" />
-        <SkeletonCard className="h-72 rounded-2xl" />
+        <SkeletonCard className="h-56" />
+        <SkeletonCard className="h-72" />
       </div>
     );
   }
@@ -89,7 +89,7 @@ export function TenantBillingTariffVehiclesTab({ data }: TenantBillingTariffVehi
         />
       ) : null}
 
-      <div className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5">
+      <div className="surface-premium border border-border/60 p-4 sm:p-5">
         <TenantBillableVehiclesTable
           vehicles={vehicles}
           meta={vehiclesMeta}
@@ -101,7 +101,7 @@ export function TenantBillingTariffVehiclesTab({ data }: TenantBillingTariffVehi
         />
       </div>
 
-      <div className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5">
+      <div className="surface-premium border border-border/60 p-4 sm:p-5">
         <TenantVehicleChangesSection
           changes={changes}
           meta={changesMeta}

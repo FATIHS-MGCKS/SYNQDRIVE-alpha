@@ -147,7 +147,7 @@ export function BookingDossier({
           <Icon name="arrow-left" className="w-4 h-4" />
           Zurück
         </button>
-        <div className="rounded-lg border border-border surface-premium p-6 text-center space-y-3">
+        <div className="rounded-lg surface-premium p-6 text-center space-y-3">
           <p className="text-sm text-foreground">{error ?? 'Buchung nicht gefunden'}</p>
           <button type="button" onClick={refresh} className="text-xs font-semibold sq-tone-brand px-4 py-2 rounded-lg">
             Erneut laden

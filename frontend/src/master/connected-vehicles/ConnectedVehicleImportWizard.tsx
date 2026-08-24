@@ -94,7 +94,7 @@ export function ConnectedVehicleImportWizard({
 
   return (
     <div className="space-y-6 max-w-2xl" data-testid="cv-import-wizard">
-      <div className="surface-premium rounded-2xl p-5 space-y-4">
+      <div className="surface-premium p-5 space-y-4">
         <h3 className="text-sm font-semibold text-foreground">1. Zielorganisation</h3>
         <select
           className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
@@ -111,7 +111,7 @@ export function ConnectedVehicleImportWizard({
         </select>
       </div>
 
-      <div className="surface-premium rounded-2xl p-5 space-y-4">
+      <div className="surface-premium p-5 space-y-4">
         <h3 className="text-sm font-semibold text-foreground">2. DIMO-Fahrzeug (nicht zugeordnet)</h3>
         {candidatesLoading ? (
           <p className="text-sm text-muted-foreground flex items-center gap-2">
@@ -136,7 +136,7 @@ export function ConnectedVehicleImportWizard({
       </div>
 
       {organizationId && selectedDimoId ? (
-        <div className="surface-premium rounded-2xl p-5 space-y-4">
+        <div className="surface-premium p-5 space-y-4">
           <h3 className="text-sm font-semibold text-foreground">3. Preflight</h3>
           {preflightLoading ? (
             <p className="text-sm text-muted-foreground flex items-center gap-2">

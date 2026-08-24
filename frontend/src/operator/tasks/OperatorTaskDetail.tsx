@@ -144,7 +144,7 @@ export function OperatorTaskDetail({
 
   if (loadError || !task) {
     return (
-      <div className="rounded-2xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] px-4 py-3 text-sm">
+      <div className="rounded-md border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] px-4 py-3 text-sm">
         {loadError ?? 'Aufgabe nicht gefunden'}
       </div>
     );

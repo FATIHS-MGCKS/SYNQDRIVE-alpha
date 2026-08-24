@@ -297,7 +297,7 @@ function MessageBubble({ message }: { message: SupportTicketMessage }) {
         </div>
         <div
           className={cn(
-            'rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed',
+            'rounded-lg px-3.5 py-2.5 text-xs leading-relaxed',
             isUser
               ? 'rounded-br-md bg-[color:var(--brand)] text-white'
               : 'rounded-bl-md border border-border/50 bg-muted/30 text-foreground',

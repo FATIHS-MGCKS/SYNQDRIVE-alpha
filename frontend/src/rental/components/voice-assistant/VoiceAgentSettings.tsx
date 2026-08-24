@@ -20,8 +20,8 @@ export function VoiceAgentSettings({ enabled = true }: VoiceAgentSettingsProps) 
   if (settings.loading) {
     return (
       <div className="space-y-3" data-testid="voice-settings-loading">
-        <Skeleton className="h-28 w-full rounded-2xl" />
-        <Skeleton className="h-40 w-full rounded-2xl" />
+        <Skeleton className="h-28 w-full rounded-lg" />
+        <Skeleton className="h-40 w-full rounded-lg" />
       </div>
     );
   }

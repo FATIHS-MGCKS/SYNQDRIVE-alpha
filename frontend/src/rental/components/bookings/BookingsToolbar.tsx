@@ -50,7 +50,7 @@ export function BookingsToolbar({
   ];
 
   return (
-    <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)] space-y-3">
+    <div className="surface-premium p-3 space-y-3">
       <div className="flex flex-wrap items-center gap-2 justify-between">
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -92,7 +92,7 @@ export function BookingsToolbar({
         <select
           value={filters.status}
           onChange={(e) => onFiltersChange({ status: e.target.value as BookingStatusFilter })}
-          className="text-[10px] font-medium px-2 py-1.5 rounded-lg border border-border surface-premium"
+          className="text-[10px] font-medium px-2 py-1.5 rounded-lg surface-premium"
         >
           {STATUS_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -103,7 +103,7 @@ export function BookingsToolbar({
         <select
           value={filters.vehicleId ?? ''}
           onChange={(e) => onFiltersChange({ vehicleId: e.target.value || null })}
-          className="text-[10px] font-medium px-2 py-1.5 rounded-lg border border-border surface-premium max-w-[160px]"
+          className="text-[10px] font-medium px-2 py-1.5 rounded-lg surface-premium max-w-[160px]"
         >
           <option value="">{t('bookings.planner.allVehicles')}</option>
           {vehicles.map((v) => (
@@ -115,7 +115,7 @@ export function BookingsToolbar({
         <select
           value={filters.stationId ?? ''}
           onChange={(e) => onFiltersChange({ stationId: e.target.value || null })}
-          className="text-[10px] font-medium px-2 py-1.5 rounded-lg border border-border surface-premium max-w-[160px]"
+          className="text-[10px] font-medium px-2 py-1.5 rounded-lg surface-premium max-w-[160px]"
         >
           <option value="">{t('bookings.planner.allStations')}</option>
           {stations.map((s) => (
@@ -128,21 +128,21 @@ export function BookingsToolbar({
           type="date"
           value={filters.dateFrom ?? ''}
           onChange={(e) => onFiltersChange({ dateFrom: e.target.value || null })}
-          className="text-[10px] px-2 py-1.5 rounded-lg border border-border surface-premium"
+          className="text-[10px] px-2 py-1.5 rounded-lg surface-premium"
           title={t('bookings.planner.dateFrom')}
         />
         <input
           type="date"
           value={filters.dateTo ?? ''}
           onChange={(e) => onFiltersChange({ dateTo: e.target.value || null })}
-          className="text-[10px] px-2 py-1.5 rounded-lg border border-border surface-premium"
+          className="text-[10px] px-2 py-1.5 rounded-lg surface-premium"
           title={t('bookings.planner.dateTo')}
         />
         {view === 'timeline' && (
           <select
             value={timelineRange}
             onChange={(e) => onTimelineRangeChange(e.target.value as 'week' | 'month')}
-            className="text-[10px] font-medium px-2 py-1.5 rounded-lg border border-border surface-premium"
+            className="text-[10px] font-medium px-2 py-1.5 rounded-lg surface-premium"
           >
             <option value="week">{t('bookings.planner.rangeWeek')}</option>
             <option value="month">{t('bookings.planner.rangeMonth')}</option>

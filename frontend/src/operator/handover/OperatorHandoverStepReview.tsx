@@ -56,7 +56,7 @@ export function OperatorHandoverStepReview({ kind, booking, form, issues }: Prop
         {kind === 'PICKUP' ? 'CONFIRMED → ACTIVE' : 'ACTIVE → COMPLETED'}).
       </p>
 
-      <div className="rounded-2xl border border-border/60 surface-premium divide-y divide-border/40">
+      <div className=" border border-border/60 surface-premium divide-y divide-border/40">
         {rows.map((row) => (
           <div key={row.label} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
             <span className="text-muted-foreground">{row.label}</span>
@@ -66,7 +66,7 @@ export function OperatorHandoverStepReview({ kind, booking, form, issues }: Prop
       </div>
 
       {observationPayload.length > 0 && (
-        <div className="rounded-2xl border border-border/60 surface-premium p-4 space-y-2">
+        <div className=" border border-border/60 surface-premium p-4 space-y-2">
           <p className="text-sm font-semibold">Technische Beobachtungen</p>
           <ul className="space-y-2">
             {observationPayload.map((obs, idx) => (
@@ -101,7 +101,7 @@ export function OperatorHandoverStepReview({ kind, booking, form, issues }: Prop
       )}
 
       {issues.length > 0 && (
-        <div className="rounded-2xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] p-4">
+        <div className="rounded-lg border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] p-4">
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-[color:var(--status-critical)]">
             <AlertTriangle className="h-4 w-4" />
             Noch offen

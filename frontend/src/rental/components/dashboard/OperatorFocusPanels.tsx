@@ -67,7 +67,7 @@ function HandoverRow({
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={cn(
-        'flex w-full min-h-11 items-center gap-3 rounded-xl border border-border/50 surface-premium px-3 py-2.5 text-left',
+        'flex w-full min-h-11 items-center gap-3 border border-border/50 surface-premium px-3 py-2.5 text-left',
         onClick &&
           'sq-press transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
       )}

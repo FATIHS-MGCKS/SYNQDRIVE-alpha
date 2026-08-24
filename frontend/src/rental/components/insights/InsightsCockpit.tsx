@@ -123,7 +123,7 @@ function InsightCard({ insight, isDarkMode }: { insight: DashboardInsight; isDar
 
   return (
     <article
-      className={`rounded-xl border p-3 surface-solid border-border`}
+      className={` border p-3 surface-solid border-border`}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <h4 className="text-xs font-semibold text-foreground leading-snug">{insight.title}</h4>
@@ -216,7 +216,7 @@ function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: 
   }, [orgId]);
 
   return (
-    <section className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
+    <section className="surface-premium p-4">
       <div className="flex items-center gap-2 mb-3">
         <ShieldAlert className="w-4 h-4 text-[color:var(--status-watch)]" />
         <h3 className="text-[12px] font-semibold text-foreground">Nutzungsauffälligkeiten</h3>
@@ -336,7 +336,7 @@ export function InsightsCockpit({
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <section className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <section className="surface-premium p-4">
           <h3 className="text-[12px] font-semibold mb-3 text-foreground">Geschäftsrisiken</h3>
           {loading ? (
             <p className="text-xs text-muted-foreground">Lade…</p>
@@ -351,7 +351,7 @@ export function InsightsCockpit({
           )}
         </section>
 
-        <section className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <section className="surface-premium p-4">
           <h3 className="text-[12px] font-semibold mb-3 text-foreground">Umsatzverlust / Umsatzrisiken</h3>
           {loading ? (
             <p className="text-xs text-muted-foreground">Lade…</p>
@@ -369,7 +369,7 @@ export function InsightsCockpit({
 
       {orgId && <MisuseAbuseSection key={orgId} orgId={orgId} isDarkMode={isDarkMode} />}
 
-      <section className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
+      <section className="surface-premium p-4">
         <h3 className="text-[12px] font-semibold mb-3 text-foreground">Empfohlene Maßnahmen</h3>
         {recommended.length === 0 ? (
           <p className="text-xs text-muted-foreground">Keine dringenden Empfehlungen — weiter beobachten.</p>

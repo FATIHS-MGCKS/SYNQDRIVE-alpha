@@ -86,7 +86,7 @@ export function DataAuthorizationCreateDialog({
       role="presentation"
     >
       <div
-        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border surface-premium shadow-[var(--shadow-3)]"
+        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto surface-premium"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
       >

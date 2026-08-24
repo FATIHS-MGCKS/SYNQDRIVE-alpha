@@ -36,7 +36,7 @@ export function HeaderActionButton({
           'sq-press inline-flex min-h-9 max-w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors',
           variant === 'primary'
             ? 'bg-brand text-brand-foreground hover:bg-brand-hover disabled:opacity-50'
-            : 'border border-border surface-premium hover:bg-muted disabled:opacity-50',
+            : ' surface-premium hover:bg-muted disabled:opacity-50',
           (disabled || loading) && 'cursor-not-allowed',
         )}
       >

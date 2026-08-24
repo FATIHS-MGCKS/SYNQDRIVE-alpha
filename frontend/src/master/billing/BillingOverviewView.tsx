@@ -67,7 +67,7 @@ export function BillingOverviewView({
 
   return (
     <div className="space-y-5" data-testid="master-billing-overview">
-      <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)] space-y-3">
+      <div className="surface-premium p-5 space-y-3">
         <div className="flex flex-wrap items-center gap-3 justify-between">
           <StatusChip tone={platformBillingHealthTone(overview.billingHealth)} dot className="text-sm">
             {overview.billingHealthLabel}
@@ -113,7 +113,7 @@ export function BillingOverviewView({
         </div>
       )}
 
-      <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)]">
+      <div className="surface-premium p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
             <h3 className="text-sm font-semibold text-foreground">Aufmerksamkeit</h3>

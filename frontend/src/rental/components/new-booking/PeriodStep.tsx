@@ -315,7 +315,7 @@ export function PeriodStep({
               className={`flex-1 rounded-lg px-3 py-2 text-center text-xs transition-all ${
                 calendarSelectMode === 'pickup'
                   ? 'sq-tone-brand border border-border'
-                  : 'border border-border surface-premium text-muted-foreground'
+                  : ' surface-premium text-muted-foreground'
               }`}
             >
               <Icon name="calendar" className="mx-auto mb-1 h-3.5 w-3.5" />
@@ -327,7 +327,7 @@ export function PeriodStep({
               className={`flex-1 rounded-lg px-3 py-2 text-center text-xs transition-all ${
                 calendarSelectMode === 'return'
                   ? 'sq-tone-success border border-border'
-                  : 'border border-border surface-premium text-muted-foreground'
+                  : ' surface-premium text-muted-foreground'
               }`}
             >
               <Icon name="calendar" className="mx-auto mb-1 h-3.5 w-3.5" />

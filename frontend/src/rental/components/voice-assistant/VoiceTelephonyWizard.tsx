@@ -32,7 +32,7 @@ function WizardStep({ step, title, description, status, children }: WizardStepPr
   return (
     <section
       className={cn(
-        'surface-premium rounded-2xl border p-4 shadow-[var(--shadow-1)] transition-colors',
+        'surface-premium border p-4 transition-colors',
         status === 'current' && 'border-[color:var(--brand)]/30 ring-1 ring-[color:var(--brand)]/10',
       )}
     >
@@ -207,7 +207,7 @@ export function VoiceTelephonyWizard({
 
   return (
     <div className="space-y-4">
-      <div className="surface-premium flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+      <div className="surface-premium flex flex-wrap items-center justify-between gap-3 border border-border/40 p-4">
         <div>
           <h3 className="text-sm font-bold text-foreground">Telephony setup</h3>
           <p className="mt-1 text-[11px] text-muted-foreground">

@@ -216,7 +216,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5">
         {showCapture && (
           <div className="space-y-4">
-            <div className="rounded-2xl border border-border surface-premium p-4 space-y-1">
+            <div className=" surface-premium p-4 space-y-1">
               {contextLines.map((line) => (
                 <p key={line} className="text-xs text-muted-foreground">
                   {line}
@@ -271,7 +271,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
               <img
                 src={pendingPreview}
                 alt="Vorschau"
-                className="max-h-48 w-full rounded-2xl border border-border object-cover"
+                className="max-h-48 w-full rounded-lg border border-border object-cover"
               />
             )}
             {pendingFile && !pendingPreview && (
@@ -284,7 +284,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
               <button
                 type="button"
                 onClick={() => cameraRef.current?.click()}
-                className="sq-press flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)]/40"
+                className="sq-press flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)]/40"
               >
                 <Camera className="h-8 w-8 text-[color:var(--brand)]" />
                 <span className="text-sm font-semibold">Kamera</span>
@@ -292,7 +292,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
               <button
                 type="button"
                 onClick={() => galleryRef.current?.click()}
-                className="sq-press flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/70 surface-premium"
+                className="sq-press flex min-h-[120px] flex-col items-center justify-center gap-2 border-2 border-dashed border-border/70 surface-premium"
               >
                 <FileUp className="h-8 w-8 text-muted-foreground" />
                 <span className="text-sm font-semibold">Datei</span>

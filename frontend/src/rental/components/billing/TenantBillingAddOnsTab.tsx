@@ -15,7 +15,7 @@ export function TenantBillingAddOnsTab({
   error,
   onRetry,
 }: TenantBillingAddOnsTabProps) {
-  if (loading && !overview) return <SkeletonCard className="h-48 rounded-2xl" />;
+  if (loading && !overview) return <SkeletonCard className="h-48" />;
   if (error) {
     return (
       <ErrorState
@@ -45,7 +45,7 @@ export function TenantBillingAddOnsTab({
       {activeAddOns.map((addon) => (
         <div
           key={addon.key}
-          className="surface-premium rounded-xl border border-border/60 px-4 py-3 flex items-center justify-between gap-3"
+          className="surface-premium border border-border/60 px-4 py-3 flex items-center justify-between gap-3"
         >
           <div>
             <p className="text-sm font-semibold">{addon.name}</p>

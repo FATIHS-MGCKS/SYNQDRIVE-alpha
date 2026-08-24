@@ -96,13 +96,13 @@ function FieldRow({
               value={field.value}
               rows={3}
               onChange={(e) => onFieldChange(field.key, e.target.value)}
-              className="w-full min-w-0 rounded-md border border-border surface-premium px-2 py-1 text-[11px] text-foreground"
+              className="w-full min-w-0 rounded-md surface-premium px-2 py-1 text-[11px] text-foreground"
             />
           ) : field.enumValues?.length ? (
             <select
               value={field.value}
               onChange={(e) => onFieldChange(field.key, e.target.value)}
-              className="w-full min-w-0 rounded-md border border-border surface-premium px-2 py-1 text-[11px] text-foreground"
+              className="w-full min-w-0 rounded-md surface-premium px-2 py-1 text-[11px] text-foreground"
             >
               <option value="">—</option>
               {field.enumValues.map((option) => (
@@ -116,7 +116,7 @@ function FieldRow({
               <input
                 value={field.value}
                 onChange={(e) => onFieldChange(field.key, e.target.value)}
-                className="w-full min-w-0 flex-1 rounded-md border border-border surface-premium px-2 py-1 text-[11px] text-foreground"
+                className="w-full min-w-0 flex-1 rounded-md surface-premium px-2 py-1 text-[11px] text-foreground"
               />
               {field.unit ? (
                 <span className="shrink-0 text-[10px] text-muted-foreground">{field.unit}</span>

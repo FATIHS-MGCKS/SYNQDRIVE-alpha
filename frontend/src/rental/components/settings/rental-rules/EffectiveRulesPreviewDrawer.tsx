@@ -108,7 +108,7 @@ export function EffectiveRulesPreviewDrawer({
             {rows.map((row) => (
               <div
                 key={row.key}
-                className={`rounded-xl border border-border/60 surface-premium px-3 py-2.5 transition-colors hover:bg-muted/10 ${
+                className={` border border-border/60 surface-premium px-3 py-2.5 transition-colors hover:bg-muted/10 ${
                   row.sourceKey === 'VEHICLE_OVERRIDE' ? 'border-l-[3px] border-l-[color:var(--brand)]/40' : ''
                 }`}
               >

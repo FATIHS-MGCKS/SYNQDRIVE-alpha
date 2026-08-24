@@ -370,7 +370,7 @@ export function ScheduleBox({ isDarkMode: _isDarkMode, onOpenBookingById, statio
                   onClick={() => setViewMode(tab.key)}
                   className={`px-2.5 py-1 rounded-[calc(var(--radius-md)-2px)] text-[11.5px] leading-[16.1px] font-semibold tracking-[-0.003em] whitespace-nowrap transition-all duration-200 ${
                     isActive
-                      ? 'surface-premium text-foreground shadow-[var(--shadow-1)] ring-1 ring-[color:color-mix(in_srgb,var(--brand)_12%,transparent)]'
+                      ? 'surface-premium text-foreground ring-1 ring-[color:color-mix(in_srgb,var(--brand)_12%,transparent)]'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >

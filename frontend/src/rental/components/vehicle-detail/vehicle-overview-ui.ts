@@ -20,11 +20,11 @@ export const vo = {
   freshnessHint:
     'text-center text-[10px] leading-relaxed text-muted-foreground/70 pt-1 px-2 tabular-nums border-t border-border/30',
   readiness:
-    'surface-premium rounded-2xl px-4 py-3.5 sm:px-5 sm:py-4 min-h-[44px] overflow-hidden',
+    'surface-premium px-4 py-3.5 sm:px-5 sm:py-4 min-h-[44px] overflow-hidden',
   cardScroll:
     'flex gap-2 sm:gap-2.5 overflow-x-auto overscroll-x-contain pb-0.5 pt-0.5 snap-x snap-mandatory scrollbar-thin md:grid md:grid-cols-3 md:overflow-visible xl:grid-cols-6 min-w-0 max-w-full',
   card:
-    'group relative surface-elevated rounded-xl text-left w-[10.75rem] sm:w-full min-h-[4.75rem] snap-start shrink-0 sm:shrink border-l-[3px] overflow-hidden',
+    'group relative surface-elevated text-left w-[10.75rem] sm:w-full min-h-[4.75rem] snap-start shrink-0 sm:shrink border-l-[3px] overflow-hidden',
   cardInner: 'flex flex-col gap-1.5 p-3 sm:p-3.5 h-full min-h-[4.75rem]',
   cardTopRow: 'flex items-center justify-between gap-2',
   cardLabel: 'text-[10px] font-semibold uppercase tracking-[0.07em] text-muted-foreground/90',

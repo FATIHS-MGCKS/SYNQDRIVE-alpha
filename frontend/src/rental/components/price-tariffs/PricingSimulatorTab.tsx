@@ -76,7 +76,7 @@ export function PricingSimulatorTab() {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-      <div className="surface-premium space-y-3 rounded-2xl border border-border/50 p-4 sm:p-5">
+      <div className="surface-premium space-y-3 border border-border/50 p-4 sm:p-5">
         <h3 className="text-sm font-bold">{t('priceTariffs.simulator.inputs')}</h3>
         <label className="block text-xs">
           {t('priceTariffs.simulator.vehicle')}
@@ -152,7 +152,7 @@ export function PricingSimulatorTab() {
       </div>
 
       <div className="space-y-4">
-        <div className="surface-premium rounded-2xl border border-border/50 p-4 sm:p-5 xl:sticky xl:top-4">
+        <div className="surface-premium border border-border/50 p-4 sm:p-5 xl:sticky xl:top-4">
           <h3 className="text-sm font-bold">{t('priceTariffs.simulator.usedTariff')}</h3>
           {!pricingContext ? (
             <p className="mt-3 text-xs text-muted-foreground">{t('priceTariffs.simulator.noContext')}</p>
@@ -193,7 +193,7 @@ export function PricingSimulatorTab() {
           ) : null}
         </div>
 
-        <div className="surface-premium rounded-2xl border border-border/50 p-4 sm:p-5">
+        <div className="surface-premium border border-border/50 p-4 sm:p-5">
           <h3 className="text-sm font-bold">{t('priceTariffs.simulator.result')}</h3>
           {loading ? <p className="mt-4 text-xs text-muted-foreground">{t('priceTariffs.simulator.calculating')}</p> : null}
           {error ? <p role="alert" className="mt-4 text-xs text-[color:var(--status-critical)]">{error}</p> : null}

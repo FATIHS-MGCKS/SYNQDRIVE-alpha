@@ -43,7 +43,7 @@ export const NotificationEntryCard = memo(function NotificationEntryCard({
   return (
     <article
       className={cn(
-        'overflow-hidden rounded-xl border transition-colors motion-reduce:transition-none',
+        'overflow-hidden rounded-md border transition-colors motion-reduce:transition-none',
         notificationEntrySurface(summary.resolved, summary.severity),
         summary.unread && 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_18%,transparent)]',
         expanded && 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_12%,transparent)]',

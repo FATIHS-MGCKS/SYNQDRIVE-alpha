@@ -74,7 +74,7 @@ export function TenantInvoicesSection({
   }, [invoices.length, meta?.total]);
 
   if (loading && invoices.length === 0) {
-    return <SkeletonCard className="h-56 rounded-2xl" />;
+    return <SkeletonCard className="h-56" />;
   }
 
   if (error) {
@@ -90,7 +90,7 @@ export function TenantInvoicesSection({
 
   return (
     <>
-      <div className="surface-premium rounded-2xl p-4 sm:p-5 shadow-[var(--shadow-1)]">
+      <div className="surface-premium p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
           <div>
             <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">

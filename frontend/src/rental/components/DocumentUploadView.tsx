@@ -134,7 +134,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
     enabled: followUpEnabled,
   });
 
-  const glass = 'surface-solid border border-border shadow-sm';
+  const glass = 'surface-solid';
 
   const stepConfig = [
     { key: 'upload' as const, label: t('docUpload.step1'), icon: Upload },
@@ -321,7 +321,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
         ) : null}
 
           {showMainIdle && (
-            <div className="rounded-lg p-4 min-w-0 surface-solid border border-border">
+            <div className="rounded-lg p-4 min-w-0 surface-solid">
               <DocumentIntakeUploadZone
                 acceptAttr={page.acceptAttr}
                 supportedFormatsLabel={page.supportedFormatsLabel}

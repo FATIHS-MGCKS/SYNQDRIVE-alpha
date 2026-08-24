@@ -436,7 +436,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
   };
 
   return (
-    <div className={`mt-0.5 rounded-2xl border p-5 ${borderColor} surface-solid`}>
+    <div className={`mt-0.5 border p-5 ${borderColor} surface-solid`}>
       {/* Available */}
       {activePopup === VEHICLE_OPERATIONAL_STATUS.AVAILABLE && (() => {
         const vehicles = fleetVehicles.filter((v) => selectIsCurrentlyAvailable(v));

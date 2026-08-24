@@ -462,7 +462,7 @@ export function OrganizationDetailView({
           {billingLoading && <MasterLoadingState variant="card" />}
           {billingError && <MasterErrorState title="Abrechnung" error={billingError} />}
           {!billingLoading && !billingError && billing && (
-            <div className="space-y-4 surface-premium p-5 rounded-xl">
+            <div className="space-y-4 surface-premium p-5">
               <div className="grid sm:grid-cols-2 gap-4 text-sm">
                 <div><span className="text-muted-foreground">Tarif</span><p className="font-semibold">{billing.tariffLabel ?? '—'}</p></div>
                 <div><span className="text-muted-foreground">Abo-Status</span><p className="font-semibold">{billing.subscription?.status ?? 'NONE'}</p></div>
@@ -503,7 +503,7 @@ export function OrganizationDetailView({
             <EmptyState title="Keine Integrationen" description="Für diese Organisation sind keine Integrationen registriert." />
           ) : (
             detail.integrations.map((i) => (
-              <div key={i.slug} className="surface-premium rounded-xl p-4 space-y-3">
+              <div key={i.slug} className="surface-premium p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold">{i.name}</h3>
                   <StatusChip

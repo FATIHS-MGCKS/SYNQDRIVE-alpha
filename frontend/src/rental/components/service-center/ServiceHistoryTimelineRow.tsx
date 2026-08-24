@@ -38,7 +38,7 @@ export function ServiceHistoryTimelineRow({
       <span className="absolute left-0 top-1.5 h-3 w-3 rounded-full border-2 border-[color:var(--brand)] bg-popover" />
       <span className="absolute left-[5px] top-4 bottom-0 w-px bg-border/60 last:hidden" aria-hidden />
 
-      <div className="rounded-xl border border-border/40 surface-premium p-3 space-y-2">
+      <div className=" border border-border/40 surface-premium p-3 space-y-2">
         <div className="flex items-start gap-2">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted/50">
             <Icon className="w-3.5 h-3.5 text-muted-foreground" />

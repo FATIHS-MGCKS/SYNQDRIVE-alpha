@@ -70,7 +70,7 @@ export function DocumentReviewInboxPanel({
   const [reasonFilter, setReasonFilter] = useState<DocumentReviewReasonFilter>('all');
   const inbox = useDocumentReviewInbox(orgId, reasonFilter);
 
-  const glass = 'surface-solid border border-border';
+  const glass = 'surface-solid';
 
   const showDetail = Boolean(activeExtractionId && children);
 

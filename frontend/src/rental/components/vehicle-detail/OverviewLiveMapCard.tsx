@@ -111,7 +111,7 @@ export function OverviewLiveMapCard({
   const odometerCompact = odometerValue.length > 6;
 
   return (
-    <div className="surface-premium rounded-xl p-3">
+    <div className="surface-premium p-3">
       <div className="group relative h-[340px] rounded-lg overflow-hidden transition-all duration-300 synq-map-hud-surface">
         <LiveMapOverview
           key={vehicleId ?? 'no-vehicle'}

@@ -167,7 +167,7 @@ export function StationsTab() {
   const [backfillError, setBackfillError] = useState<string | null>(null);
 
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ styling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const cardClass = 'surface-premium rounded-xl p-4 shadow-[var(--shadow-1)]';
+  const cardClass = 'surface-premium p-4';
   const textPrimary = 'text-foreground';
   const textSecondary = 'text-muted-foreground';
   const inputClass =
@@ -588,7 +588,7 @@ export function StationsTab() {
           )}
           <button
             onClick={openCreate}
-            className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 surface-premium text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
+            className="sq-press flex items-center gap-2 px-3 py-2 border border-border/60 surface-premium text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
           >
             <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" /> Standort hinzufÃ¼gen
           </button>
@@ -738,7 +738,7 @@ export function StationsTab() {
           </p>
           <button
             onClick={openCreate}
-            className="sq-press mt-4 flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 surface-premium text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
+            className="sq-press mt-4 flex items-center gap-2 px-3 py-2 border border-border/60 surface-premium text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
           >
             <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" /> Standort hinzufÃ¼gen
           </button>
@@ -771,8 +771,8 @@ export function StationsTab() {
           onClick={closeModal}
         >
           <div
-            className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl ${
-              'surface-premium border border-border'
+            className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-dialog sq-dialog-panel shadow-2xl ${
+              'surface-premium'
             }`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1253,8 +1253,8 @@ export function StationsTab() {
           onClick={() => !deleting && setDeletingId(null)}
         >
           <div
-            className={`w-full max-w-md rounded-2xl shadow-2xl p-5 ${
-              'surface-premium border border-border'
+            className={`w-full max-w-md rounded-dialog sq-dialog-panel shadow-2xl p-5 ${
+              'surface-premium'
             }`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1313,8 +1313,8 @@ export function StationsTab() {
           onClick={closeAssign}
         >
           <div
-            className={`w-full max-w-3xl max-h-[88vh] flex flex-col rounded-2xl shadow-2xl ${
-              'surface-premium border border-border'
+            className={`w-full max-w-3xl max-h-[88vh] flex flex-col rounded-dialog sq-dialog-panel shadow-2xl ${
+              'surface-premium'
             }`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1641,7 +1641,7 @@ function StationCard({
     .join(', ');
 
   return (
-    <div className="rounded-xl p-4 border border-border/60 surface-premium hover:bg-muted/40 hover:border-border transition-all duration-200">
+    <div className=" p-4 border border-border/60 surface-premium hover:bg-muted/40 hover:border-border transition-all duration-200">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         {/* Left: identity */}
         <div className="flex items-start gap-3 min-w-0 flex-1">

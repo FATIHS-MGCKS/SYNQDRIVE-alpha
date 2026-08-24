@@ -19,7 +19,7 @@ export function SmsSettingsPanel({ enabled = true }: SmsSettingsPanelProps) {
   if (loading) {
     return (
       <div className="space-y-3" data-testid="sms-settings-loading">
-        <Skeleton className="h-28 w-full rounded-2xl" />
+        <Skeleton className="h-28 w-full rounded-lg" />
       </div>
     );
   }
@@ -37,7 +37,7 @@ export function SmsSettingsPanel({ enabled = true }: SmsSettingsPanelProps) {
 
   return (
     <div className="space-y-4" data-testid="sms-settings-panel">
-      <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+      <section className="surface-premium border border-border/40 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 className="text-[13px] font-semibold text-foreground">

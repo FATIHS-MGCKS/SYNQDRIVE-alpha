@@ -430,7 +430,7 @@ export function HandoverProtocolDialog({
       />
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative w-full max-w-3xl max-h-[92vh] flex flex-col rounded-2xl border shadow-2xl transition-all duration-300 ease-out ${bg} ${borderColor}`}
+        className={`relative w-full max-w-3xl max-h-[92vh] flex flex-col rounded-dialog sq-dialog-panel border shadow-2xl transition-all duration-300 ease-out ${bg} ${borderColor}`}
         style={{
           transform: animating ? 'scale(1) translateY(0)' : 'scale(0.96) translateY(18px)',
           opacity: animating ? 1 : 0,
@@ -729,7 +729,7 @@ export function HandoverProtocolDialog({
               <button
                 type="button"
                 onClick={() => setNewDamageOpen((v) => !v)}
-                className="text-[11px] font-semibold inline-flex items-center gap-1 px-2.5 py-1 rounded-md transition-colors surface-solid text-foreground border border-border hover:bg-muted"
+                className="text-[11px] font-semibold inline-flex items-center gap-1 px-2.5 py-1 rounded-md transition-colors surface-solid text-foreground hover:bg-muted"
               >
                 <Icon name="plus" className="w-3 h-3" />
                 Neuen Schaden erfassen

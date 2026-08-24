@@ -21,7 +21,7 @@ const INPUT =
   'w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 text-sm text-foreground transition-colors outline-none focus:border-[color:var(--brand)] placeholder:text-muted-foreground';
 const LABEL = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
 const HEAD = 'text-xs font-semibold uppercase tracking-wider text-muted-foreground';
-const TAB_BAR = 'sq-tab-bar flex gap-1 p-1 rounded-2xl overflow-x-auto w-fit';
+const TAB_BAR = 'sq-tab-bar flex gap-1 p-1 rounded-md overflow-x-auto w-fit';
 
 function mapPinToneClass(priority: ProspectPriority): string {
   if (priority === 'High') return 'text-[color:var(--status-critical)] fill-[color:var(--status-critical)]';
@@ -197,7 +197,7 @@ export function ProspectsView() {
         icon={<Building2 className="w-4 h-4" />}
         actions={
           <div className="flex items-center gap-3 flex-wrap">
-            <button onClick={() => { setShowImportModal(true); setImportStep('upload'); setImportFile(null); }} className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-bold border border-border transition-all"><Upload className="w-5 h-5" />Import CSV</button>
+            <button onClick={() => { setShowImportModal(true); setImportStep('upload'); setImportFile(null); }} className="flex items-center gap-2 px-5 py-2.5 rounded-dialog sq-dialog-panel text-sm font-bold border border-border transition-all"><Upload className="w-5 h-5" />Import CSV</button>
             <button onClick={handleAiEnrich} className="flex items-center gap-2 px-5 py-2.5 sq-cta text-sm font-bold"><Sparkles className="w-5 h-5" />AI Enrich</button>
             <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-5 py-2.5 sq-cta text-sm font-bold"><Plus className="w-5 h-5" />New Prospect</button>
           </div>
@@ -221,16 +221,16 @@ export function ProspectsView() {
       <div className={`${CARD} p-4`}>
         <div className="flex flex-col lg:flex-row gap-4 justify-between">
           <div className="flex flex-wrap gap-3 flex-1">
-            <div className={`flex items-center gap-2 flex-1 min-w-[200px] px-4 py-3 rounded-2xl border border-border`}>
+            <div className={`flex items-center gap-2 flex-1 min-w-[200px] px-4 py-3 rounded-md border border-border`}>
               <Search className={`w-5 h-5 shrink-0 text-muted-foreground`} />
               <input type="text" placeholder="Search prospects..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={`flex-1 bg-transparent outline-none text-sm font-medium bg-muted/50`} />
             </div>
-            <select value={filterType} onChange={e => setFilterType(e.target.value)} className={`px-4 py-3 rounded-2xl border text-sm font-bold appearance-none cursor-pointer border-border`}><option value="all">All Types</option>{uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}</select>
-            <select value={filterCity} onChange={e => setFilterCity(e.target.value)} className={`px-4 py-3 rounded-2xl border text-sm font-bold appearance-none cursor-pointer border-border`}><option value="all">All Cities</option>{uniqueCities.map(c => <option key={c} value={c}>{c}</option>)}</select>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={`px-4 py-3 rounded-2xl border text-sm font-bold appearance-none cursor-pointer border-border`}><option value="all">All Status</option>{(['New','Enriched','Ready to Contact','Contacted','Replied','Qualified','Not Interested','Converted'] as ProspectStatus[]).map(s => <option key={s} value={s}>{s}</option>)}</select>
-            <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)} className={`px-4 py-3 rounded-2xl border text-sm font-bold appearance-none cursor-pointer border-border`}><option value="all">All Priority</option><option>Low</option><option>Medium</option><option>High</option></select>
+            <select value={filterType} onChange={e => setFilterType(e.target.value)} className={`px-4 py-3 rounded-md border text-sm font-bold appearance-none cursor-pointer border-border`}><option value="all">All Types</option>{uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}</select>
+            <select value={filterCity} onChange={e => setFilterCity(e.target.value)} className={`px-4 py-3 rounded-md border text-sm font-bold appearance-none cursor-pointer border-border`}><option value="all">All Cities</option>{uniqueCities.map(c => <option key={c} value={c}>{c}</option>)}</select>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={`px-4 py-3 rounded-md border text-sm font-bold appearance-none cursor-pointer border-border`}><option value="all">All Status</option>{(['New','Enriched','Ready to Contact','Contacted','Replied','Qualified','Not Interested','Converted'] as ProspectStatus[]).map(s => <option key={s} value={s}>{s}</option>)}</select>
+            <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)} className={`px-4 py-3 rounded-md border text-sm font-bold appearance-none cursor-pointer border-border`}><option value="all">All Priority</option><option>Low</option><option>Medium</option><option>High</option></select>
           </div>
-          <div className={`flex gap-1 p-1.5 rounded-2xl shrink-0 bg-muted`}>
+          <div className={`flex gap-1 p-1.5 rounded-lg shrink-0 bg-muted`}>
             <button onClick={() => setViewMode('table')} className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'table' ? ('bg-CARD text-foreground shadow-sm ring-1 ring-border') : ('text-muted-foreground hover:text-foreground')}`}><Table2 className="w-4 h-4" />Table</button>
             <button onClick={() => setViewMode('map')} className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'map' ? ('bg-CARD text-foreground shadow-sm ring-1 ring-border') : ('text-muted-foreground hover:text-foreground')}`}><Map className="w-4 h-4" />Map</button>
           </div>
@@ -286,12 +286,12 @@ export function ProspectsView() {
       {/* MAP VIEW */}
       {viewMode === 'map' && (
         <div className={`${CARD} p-4`}>
-          <div className={`relative w-full h-[500px] rounded-2xl overflow-hidden bg-muted`}>
+          <div className={`relative w-full h-[500px] rounded-lg overflow-hidden bg-muted`}>
             {/* Simplified map representation */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="relative w-full h-full">
                 {/* Germany outline placeholder */}
-                <div className={`absolute inset-4 rounded-2xl border-2 border-dashed border-border`} />
+                <div className={`absolute inset-4 rounded-lg border-2 border-dashed border-border`} />
                 {/* City pins */}
                 {filtered.map(p => {
                   const x = ((p.lng - 6) / 8) * 80 + 10;
@@ -389,7 +389,7 @@ export function ProspectsView() {
       >
         {selectedProspect && (
           <>
-              <div className={`mb-4 space-y-2.5 rounded-2xl border border-border bg-muted/50 p-4`}>
+              <div className={`mb-4 space-y-2.5 rounded-lg border border-border bg-muted/50 p-4`}>
                 <div className="flex items-center gap-2"><Mail className={`w-3.5 h-3.5 text-muted-foreground`} /><span className={`text-sm text-foreground`}>{selectedProspect.email}</span></div>
                 <div className="flex items-center gap-2"><Phone className={`w-3.5 h-3.5 text-muted-foreground`} /><span className={`text-sm text-foreground`}>{selectedProspect.phone}</span></div>
                 <div className="flex items-center gap-2">
@@ -417,7 +417,7 @@ export function ProspectsView() {
               )}
 
               {/* AI Summary */}
-              <div className="sq-tone-ai mb-4 rounded-2xl border border-border p-4">
+              <div className="sq-tone-ai mb-4 rounded-lg border border-border p-4">
                 <div className="mb-3 flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-[color:var(--status-ai)]" />
                   <h4 className="text-sm font-bold text-foreground">AI Summary</h4>
@@ -524,7 +524,7 @@ export function ProspectsView() {
                   onDragLeave={() => setImportDragOver(false)}
                   onDrop={e => { e.preventDefault(); setImportDragOver(false); setImportFile('prospects_batch_13.csv'); }}
                   onClick={() => setImportFile('prospects_batch_13.csv')}
-                  className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all ${importDragOver ? 'border-[color:var(--brand)] bg-[color:var(--brand-soft)]' : 'text-muted-foreground border-border'}`}
+                  className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-all ${importDragOver ? 'border-[color:var(--brand)] bg-[color:var(--brand-soft)]' : 'text-muted-foreground border-border'}`}
                 >
                   <Upload className={`w-10 h-10 mx-auto mb-3 text-muted-foreground`} />
                   <p className={`text-sm font-medium text-muted-foreground`}>Drop CSV file here or click to browse</p>
@@ -546,7 +546,7 @@ export function ProspectsView() {
             {importStep === 'mapping' && (
               <>
                 <p className={`text-sm mb-4 text-muted-foreground`}>Field mapping preview for <span className="font-semibold">{importFile}</span></p>
-                <div className={`rounded-2xl border overflow-hidden mb-4 border-border`}>
+                <div className={`rounded-lg border overflow-hidden mb-4 border-border`}>
                   <table className="w-full text-sm">
                     <thead><tr className={`bg-muted/50`}><th className={`text-left px-4 py-2 text-xs font-semibold text-muted-foreground`}>CSV Column</th><th className={`text-left px-4 py-2 text-xs font-semibold text-muted-foreground`}>Maps To</th><th className={`text-left px-4 py-2 text-xs font-semibold text-muted-foreground`}>Preview</th></tr></thead>
                     <tbody>

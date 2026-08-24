@@ -105,7 +105,7 @@ export function OperatorTaskCreateForm({
           <button
             type="button"
             onClick={onCancel}
-            className="sq-press min-h-[52px] flex-1 rounded-2xl border border-border text-sm font-semibold"
+            className="sq-press min-h-[52px] flex-1 rounded-lg border border-border text-sm font-semibold"
           >
             Abbrechen
           </button>
@@ -114,7 +114,7 @@ export function OperatorTaskCreateForm({
           type="button"
           disabled={submitting}
           onClick={() => void handleSubmit()}
-          className="sq-press min-h-[52px] flex-[2] rounded-2xl bg-[color:var(--brand)] text-sm font-bold text-white disabled:opacity-50"
+          className="sq-press min-h-[52px] flex-[2] rounded-lg bg-[color:var(--brand)] text-sm font-bold text-white disabled:opacity-50"
         >
           {submitting ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : 'Aufgabe anlegen'}
         </button>

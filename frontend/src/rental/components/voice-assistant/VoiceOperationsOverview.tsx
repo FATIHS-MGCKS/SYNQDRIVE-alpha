@@ -93,7 +93,7 @@ export function VoiceOperationsOverview({
         ].map(kpi => (
           <div
             key={kpi.label}
-            className="surface-premium rounded-2xl border border-border/40 px-4 py-3 shadow-[var(--shadow-1)]"
+            className="surface-premium border border-border/40 px-4 py-3"
           >
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               {kpi.label}
@@ -111,7 +111,7 @@ export function VoiceOperationsOverview({
         <DataCard
           title={t('voice.ops.minutesTitle')}
           description={t('voice.ops.minutesDesc')}
-          className="rounded-2xl shadow-[var(--shadow-1)]"
+          className="rounded-lg shadow-[var(--shadow-1)]"
         >
           {minutesLoading ? (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -146,7 +146,7 @@ export function VoiceOperationsOverview({
         <DataCard
           title={t('voice.ops.problemsTitle')}
           description={t('voice.ops.problemsDesc')}
-          className="rounded-2xl shadow-[var(--shadow-1)]"
+          className="rounded-lg shadow-[var(--shadow-1)]"
         >
           {problems.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t('voice.ops.noProblems')}</p>
@@ -179,7 +179,7 @@ export function VoiceOperationsOverview({
       <DataCard
         title={t('voice.ops.inboxHandoffTitle')}
         description={t('voice.ops.inboxHandoffDesc')}
-        className="rounded-2xl shadow-[var(--shadow-1)]"
+        className="rounded-lg shadow-[var(--shadow-1)]"
         actions={
           <button
             type="button"

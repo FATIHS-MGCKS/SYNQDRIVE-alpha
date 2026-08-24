@@ -27,7 +27,7 @@ export function MasterPageSection({
 }: MasterPageSectionProps) {
   const surfaceClass =
     variant === 'card'
-      ? 'surface-premium rounded-xl border border-border p-4 sm:p-5'
+      ? 'surface-premium p-4 sm:p-5'
       : variant === 'status'
         ? 'rounded-xl border border-border bg-muted/30 p-4 sm:p-5'
         : '';

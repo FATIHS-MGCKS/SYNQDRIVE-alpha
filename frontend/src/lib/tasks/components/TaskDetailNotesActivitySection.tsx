@@ -185,7 +185,7 @@ function TaskDetailNotesPanel({
             placeholder="Notiz hinzufügen …"
             aria-label="Neue Notiz"
             className={cn(
-              'w-full resize-y rounded-lg border border-border surface-premium px-3 py-2',
+              'w-full resize-y rounded-lg surface-premium px-3 py-2',
               mobile ? 'min-h-[72px] text-sm' : 'min-h-[56px] text-[12px]',
             )}
           />

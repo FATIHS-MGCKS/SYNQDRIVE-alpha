@@ -45,7 +45,7 @@ export function TenantPaymentMethodsSection({
 
   return (
     <div className="space-y-4" data-testid="tenant-payment-methods-section">
-      <div className="surface-premium rounded-2xl p-4 sm:p-5 shadow-[var(--shadow-1)]">
+      <div className="surface-premium p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
             <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">

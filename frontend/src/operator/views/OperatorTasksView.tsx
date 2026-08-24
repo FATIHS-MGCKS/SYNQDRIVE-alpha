@@ -182,7 +182,7 @@ export function OperatorTasksView() {
         )}
       </div>
       {filters.bookingId && (
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-border surface-premium px-3 py-2">
+        <div className="flex items-center justify-between gap-2 surface-premium px-3 py-2">
           <p className="text-xs text-foreground">
             Buchung <span className="font-mono">{bookingRef(filters.bookingId)}</span>
           </p>
@@ -243,7 +243,7 @@ export function OperatorTasksView() {
         ))}
       </div>
       {vehiclePickerOpen && vehicleOptions.length > 0 && (
-        <div className="flex flex-wrap gap-2 rounded-xl border border-border surface-premium p-2">
+        <div className="flex flex-wrap gap-2 surface-premium p-2">
           {vehicleOptions.map((v) => (
             <button
               key={v.id}
@@ -316,7 +316,7 @@ export function OperatorTasksView() {
       }}
     />
   ) : (
-    <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">
+    <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">
       Aufgabe für Details wählen
     </div>
   );

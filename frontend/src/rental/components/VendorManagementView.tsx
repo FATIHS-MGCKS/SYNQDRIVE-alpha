@@ -403,7 +403,7 @@ export function VendorManagementView({
               key={metric.label}
               type="button"
               onClick={metric.action}
-              className={`group surface-premium sq-press rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all ${
+              className={`group surface-premium sq-press p-4 text-left transition-all ${
                 metric.active ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_22%,transparent)]' : 'hover:bg-muted/35'
               }`}
             >
@@ -426,7 +426,7 @@ export function VendorManagementView({
       )}
 
       {/* Search + Filter */}
-      <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
+      <div className="surface-premium p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <Icon name="filter" className="h-4 w-4 text-muted-foreground" />
@@ -674,12 +674,12 @@ export function VendorManagementView({
       {/* Vendor list */}
       {loading ? (
         <div className="space-y-2">
-          <SkeletonCard className="rounded-2xl shadow-[var(--shadow-1)]" />
-          <SkeletonCard className="rounded-2xl shadow-[var(--shadow-1)]" />
-          <SkeletonCard className="rounded-2xl shadow-[var(--shadow-1)]" />
+          <SkeletonCard className="shadow-[var(--shadow-1)]" />
+          <SkeletonCard className="shadow-[var(--shadow-1)]" />
+          <SkeletonCard className="shadow-[var(--shadow-1)]" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="surface-premium rounded-2xl shadow-[var(--shadow-1)]">
+        <div className="surface-premium">
           <EmptyState
             icon={<Icon name="store" className="h-5 w-5" />}
             title={vendors.length === 0 ? 'No service partners yet' : 'No matching vendors'}

@@ -89,7 +89,7 @@ export function PlatformEmailSettingsSection({ onSaved }: PlatformEmailSettingsS
   if (!draft) return null;
 
   return (
-    <div className="surface-premium rounded-2xl p-6 shadow-[var(--shadow-1)] space-y-5" data-testid="platform-email-settings">
+    <div className="surface-premium p-6 space-y-5" data-testid="platform-email-settings">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">

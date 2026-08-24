@@ -84,7 +84,7 @@ export function BillingTab() {
     return (
       <div className="max-w-[1200px] mx-auto space-y-4 p-1 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <SkeletonCard className="h-10 w-56" />
-        <SkeletonCard className="h-64 rounded-2xl" />
+        <SkeletonCard className="h-64" />
       </div>
     );
   }

@@ -72,7 +72,7 @@ export function TenantBillableVehiclesTable({
       </div>
 
       {loading && vehicles.length === 0 ? (
-        <div className="h-40 rounded-2xl border border-border/60 bg-muted/10" />
+        <div className="h-40 rounded-lg border border-border/60 bg-muted/10" />
       ) : vehicles.length === 0 ? (
         <EmptyState
           compact

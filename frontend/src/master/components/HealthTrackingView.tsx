@@ -19,7 +19,7 @@ interface HealthTrackingViewProps {
 }
 
 const CARD = (_d: boolean) =>
-  'rounded-2xl shadow-sm border overflow-hidden surface-solid border-border';
+  'overflow-hidden surface-solid border-border';
 
 const BADGE = (color: string) =>
   `inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${color}`;
@@ -54,7 +54,7 @@ function BatterySection({ d }: { d: boolean }) {
   const body = `text-xs leading-relaxed ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`;
 
   const FlowStep = ({ label, sub }: { label: string; sub: string }) => (
-    <div className={`flex-1 min-w-0 rounded-xl p-3 text-center ${d ? 'surface-premium' : 'bg-muted'}`}>
+    <div className={`flex-1 min-w-0 p-3 text-center ${d ? 'surface-premium' : 'bg-muted'}`}>
       <div className={`text-[11px] font-semibold ${d ? 'text-foreground' : 'text-foreground'}`}>{label}</div>
       <div className={`text-[10px] mt-0.5 ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{sub}</div>
     </div>
@@ -130,7 +130,7 @@ function BatterySection({ d }: { d: boolean }) {
           </li>
           <li>After any capture, re-score SOC / SOH / confidence / badge and write a {code('BatteryHealthSnapshot')} record.</li>
         </ol>
-        <div className={`mt-3 p-3 rounded-xl text-[11px] ${d ? 'surface-premium text-muted-foreground' : 'bg-amber-50 text-amber-700'}`}>
+        <div className={`mt-3 p-3 text-[11px] ${d ? 'surface-premium text-muted-foreground' : 'bg-amber-50 text-amber-700'}`}>
           <AlertTriangle size={12} className="inline mr-1" />
           Voltage plausibility guard: only values between 9.0 V and 16.0 V are accepted. Implausible readings are silently ignored.
         </div>
@@ -196,7 +196,7 @@ function BatterySection({ d }: { d: boolean }) {
             { label: '5 s recovery', weight: '20 %', color: 'text-emerald-400', detail: 'vRecovery5s / vPreCrank ratio' },
             { label: 'ΔV stability', weight: '10 %', color: 'text-violet-400', detail: 'vOff6h − vOff60m (small = good)' },
           ].map((c) => (
-            <div key={c.label} className={`rounded-xl p-3 ${d ? 'surface-premium' : 'bg-muted'}`}>
+            <div key={c.label} className={` p-3 ${d ? 'surface-premium' : 'bg-muted'}`}>
               <div className={`text-lg font-bold ${c.color}`}>{c.weight}</div>
               <div className={`text-[11px] font-semibold mt-0.5 ${d ? 'text-foreground' : 'text-foreground'}`}>{c.label}</div>
               <div className={`text-[10px] mt-1 ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{c.detail}</div>
@@ -307,7 +307,7 @@ function ErrorCodesSection({ d }: { d: boolean }) {
   const body = `text-xs leading-relaxed ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`;
 
   const FlowStep = ({ label, sub }: { label: string; sub: string }) => (
-    <div className={`flex-1 min-w-0 rounded-xl p-3 text-center ${d ? 'surface-premium' : 'bg-muted'}`}>
+    <div className={`flex-1 min-w-0 p-3 text-center ${d ? 'surface-premium' : 'bg-muted'}`}>
       <div className={`text-[11px] font-semibold ${d ? 'text-foreground' : 'text-foreground'}`}>{label}</div>
       <div className={`text-[10px] mt-0.5 ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{sub}</div>
     </div>
@@ -368,11 +368,11 @@ function ErrorCodesSection({ d }: { d: boolean }) {
       <div className={`${CARD(d)} p-5`}>
         <h3 className={h2}>Current vs Historical State</h3>
         <div className="grid grid-cols-2 gap-4">
-          <div className={`rounded-xl p-4 ${d ? 'surface-premium' : 'bg-muted'}`}>
+          <div className={` p-4 ${d ? 'surface-premium' : 'bg-muted'}`}>
             <div className={`text-[11px] font-bold uppercase tracking-wider mb-2 ${d ? 'text-red-400' : 'text-red-500'}`}>Active</div>
             <p className={body}>{code('isActive = true')} — code is present in the latest successful poll. Updated on every tick where the code appears.</p>
           </div>
-          <div className={`rounded-xl p-4 ${d ? 'surface-premium' : 'bg-muted'}`}>
+          <div className={` p-4 ${d ? 'surface-premium' : 'bg-muted'}`}>
             <div className={`text-[11px] font-bold uppercase tracking-wider mb-2 ${d ? 'text-green-400' : 'text-green-600'}`}>Cleared</div>
             <p className={body}>{code('isActive = false')} + {code('clearedAt')} set. Code was active in a previous poll but absent from the current one. Permanently stored in history.</p>
           </div>
@@ -393,7 +393,7 @@ function ErrorCodesSection({ d }: { d: boolean }) {
             { status: 'stale', desc: 'Last success > 6h ago', color: d ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600' },
             { status: 'unavailable', desc: 'No check yet', color: d ? 'surface-premium text-muted-foreground' : 'bg-muted text-muted-foreground' },
           ].map((s) => (
-            <div key={s.status} className={`rounded-xl p-3 ${d ? 'surface-premium' : 'bg-muted'}`}>
+            <div key={s.status} className={` p-3 ${d ? 'surface-premium' : 'bg-muted'}`}>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.color}`}>{s.status}</span>
               <p className={`${body} mt-2`}>{s.desc}</p>
             </div>
@@ -419,7 +419,7 @@ function ErrorCodesSection({ d }: { d: boolean }) {
             { prefix: 'C', cat: 'Chassis' },
             { prefix: 'U', cat: 'Network' },
           ].map((c) => (
-            <div key={c.prefix} className={`rounded-xl p-3 text-center ${d ? 'surface-premium' : 'bg-muted'}`}>
+            <div key={c.prefix} className={` p-3 text-center ${d ? 'surface-premium' : 'bg-muted'}`}>
               <div className={`text-lg font-bold font-mono mb-1 ${d ? 'text-violet-400' : 'text-violet-600'}`}>{c.prefix}xxxx</div>
               <div className={`text-[11px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{c.cat}</div>
             </div>
@@ -435,7 +435,7 @@ function ErrorCodesSection({ d }: { d: boolean }) {
       <div className={`${CARD(d)} p-5`}>
         <h3 className={h2}>Storage Model</h3>
         <div className="space-y-3">
-          <div className={`rounded-xl p-4 ${d ? 'surface-premium' : 'bg-muted'}`}>
+          <div className={` p-4 ${d ? 'surface-premium' : 'bg-muted'}`}>
             <div className={`text-[11px] font-bold mb-2 ${d ? 'text-muted-foreground' : 'text-foreground'}`}>{code('vehicle_latest_states')} — per-vehicle DTC poll state</div>
             <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
               {[
@@ -452,7 +452,7 @@ function ErrorCodesSection({ d }: { d: boolean }) {
               ))}
             </div>
           </div>
-          <div className={`rounded-xl p-4 ${d ? 'surface-premium' : 'bg-muted'}`}>
+          <div className={` p-4 ${d ? 'surface-premium' : 'bg-muted'}`}>
             <div className={`text-[11px] font-bold mb-2 ${d ? 'text-muted-foreground' : 'text-foreground'}`}>{code('vehicle_dtc_events')} — persistent per-code history</div>
             <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
               {[

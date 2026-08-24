@@ -47,7 +47,7 @@ function HintRow({ item }: { item: KnowledgeLinkStatus }) {
 
 export function KnowledgeIntegrationHints({ title, description, items }: KnowledgeIntegrationHintsProps) {
   return (
-    <DataCard title={title} description={description} className="rounded-2xl shadow-[var(--shadow-1)]">
+    <DataCard title={title} description={description} className="shadow-[var(--shadow-1)]">
       <div className="space-y-2">
         {items.map(item => (
           <HintRow key={item.label} item={item} />

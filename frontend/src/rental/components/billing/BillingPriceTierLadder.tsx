@@ -19,7 +19,7 @@ export function BillingPriceTierLadder({
 }: BillingPriceTierLadderProps) {
   if (!tiers.length) {
     return (
-      <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)]">
+      <div className="surface-premium p-5">
         <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground mb-3">
           Preisstaffel
         </h3>
@@ -36,7 +36,7 @@ export function BillingPriceTierLadder({
   const sorted = [...tiers].sort((a, b) => a.sortOrder - b.sortOrder || a.minVehicles - b.minVehicles);
 
   return (
-    <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)]">
+    <div className="surface-premium p-5">
       <div className="mb-4">
         <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">Preisstaffel</h3>
         <p className="text-[11px] mt-0.5 text-muted-foreground">

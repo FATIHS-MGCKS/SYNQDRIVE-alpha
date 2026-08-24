@@ -49,7 +49,7 @@ export function RentalRulesOverridesSection({
         description={t('rentalRules.workflow.overrides.description')}
       />
 
-      <div className="surface-premium overflow-hidden rounded-2xl border border-border/70">
+      <div className="surface-premium overflow-hidden border border-border/70">
         {rows.length === 0 ? (
           <div className="p-3 sm:p-4">
             <EmptyState

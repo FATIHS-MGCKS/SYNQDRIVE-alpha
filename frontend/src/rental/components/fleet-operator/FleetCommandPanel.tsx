@@ -150,7 +150,7 @@ export function FleetCommandPanel({
   );
 
   return (
-    <div className="surface-premium rounded-2xl overflow-hidden flex flex-col lg:h-[640px] animate-fade-up">
+    <div className="surface-premium overflow-hidden flex flex-col lg:h-[640px] animate-fade-up">
       <div className="p-3 pb-0 border-b border-border/40">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-[12px] font-semibold tracking-[-0.005em] text-foreground shrink-0">

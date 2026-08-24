@@ -278,7 +278,7 @@ export function BillingAdminInvoiceDrawer({
 
       {manualOpen ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-          <div className="surface-premium rounded-2xl p-5 w-full max-w-md shadow-[var(--shadow-2)] space-y-4">
+          <div className="surface-premium p-5 w-full max-w-md space-y-4">
             <h3 className="text-[15px] font-semibold">Manuelle Zahlung erfassen</h3>
             <input
               value={manualAmount}

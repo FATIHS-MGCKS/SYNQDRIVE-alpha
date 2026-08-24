@@ -764,7 +764,7 @@ export function HelpCenterView({
   const textPrimary = 'text-foreground';
   const textSecondary = 'text-muted-foreground';
   const textMuted = 'text-muted-foreground';
-  const cardClass = `rounded-xl shadow-sm border surface-solid border-border`;
+  const cardClass = ` border surface-solid border-border`;
   const dividerColor = isDarkMode ? 'border-border/40' : 'border-border/60';
 
   const filteredSections = useMemo(() => {

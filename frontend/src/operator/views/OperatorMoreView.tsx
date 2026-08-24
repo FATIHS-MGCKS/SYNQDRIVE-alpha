@@ -77,7 +77,7 @@ export function OperatorMoreView() {
       </section>
 
       {pickerOpen && (
-        <section className="rounded-2xl border border-border surface-premium p-4">
+        <section className=" surface-premium p-4">
           <p className="mb-3 text-sm font-semibold">Fahrzeug wählen</p>
           <div className="max-h-48 space-y-2 overflow-y-auto">
             {allVehicles.map((v) => {
@@ -145,7 +145,7 @@ export function OperatorMoreView() {
         <h2 className="sq-section-label mb-2 px-0.5">SynqDrive</h2>
         <Link
           to="/rental"
-          className="sq-press flex min-h-[48px] items-center justify-between rounded-2xl border border-border/60 surface-premium p-4"
+          className="sq-press flex min-h-[48px] items-center justify-between border border-border/60 surface-premium p-4"
         >
           <span className="text-sm font-semibold">Zur Web-App</span>
           <ExternalLink className="h-4 w-4 text-muted-foreground" />

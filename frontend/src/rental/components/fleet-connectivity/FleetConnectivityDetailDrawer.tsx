@@ -141,7 +141,7 @@ export function FleetConnectivityDetailDrawer({
           </div>
 
           <DetailSection title={t('fleetConnectivity.detail.section.currentState')}>
-            <div className="surface-premium rounded-xl p-3 space-y-2.5">
+            <div className="surface-premium p-3 space-y-2.5">
               <DetailRow
                 label={t('fleetConnectivity.detail.overallState')}
                 value={<OverallStateChip state={detail.overallState} t={t} />}
@@ -179,7 +179,7 @@ export function FleetConnectivityDetailDrawer({
                 {detail.timeline.map((event) => (
                   <li
                     key={event.id}
-                    className="surface-premium rounded-xl px-3 py-2.5 text-[12px]"
+                    className="surface-premium px-3 py-2.5 text-[12px]"
                   >
                     <p className="font-medium text-foreground">
                       {timelineEventLabel(event.type, t)}
@@ -213,7 +213,7 @@ export function FleetConnectivityDetailDrawer({
           ) : null}
 
           <DetailSection title={t('fleetConnectivity.detail.section.dataAvailability')}>
-            <div className="surface-premium rounded-xl p-3 space-y-3">
+            <div className="surface-premium p-3 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <StatusChip tone={coverageStateTone(detail.dataCoverageState)}>
                   {coverageStateLabel(detail.dataCoverageState, t)}
@@ -246,7 +246,7 @@ export function FleetConnectivityDetailDrawer({
           </DetailSection>
 
           <DetailSection title={t('fleetConnectivity.detail.section.integration')}>
-            <div className="surface-premium rounded-xl p-3 space-y-2.5">
+            <div className="surface-premium p-3 space-y-2.5">
               <DetailRow
                 label={t('fleetConnectivity.detail.provider')}
                 value={providerSummaryLabel(detail.provider.providerLabel, t)}

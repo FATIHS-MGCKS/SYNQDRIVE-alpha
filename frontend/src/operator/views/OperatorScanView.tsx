@@ -103,11 +103,11 @@ export function OperatorScanView() {
               setScanQuery(e.target.value);
               setFocusedBookingId(null);
             }}
-            className="h-14 w-full rounded-2xl border border-border/70 surface-premium pl-12 pr-4 text-lg shadow-[var(--shadow-1)] outline-none focus:border-[color:var(--brand)]/40"
+            className="h-14 w-full border border-border/70 surface-premium pl-12 pr-4 text-lg outline-none focus:border-[color:var(--brand)]/40"
           />
         </div>
 
-        <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-center">
+        <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-center">
           <ScanLine className="mx-auto h-6 w-6 text-muted-foreground" />
           <p className="mt-2 text-sm font-semibold text-foreground">Kennzeichen eingeben</p>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -185,7 +185,7 @@ export function OperatorScanView() {
       onClose={() => setSelectedVehicleId(null)}
     />
   ) : (
-    <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">
+    <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">
       Fahrzeug aus der Suche wählen
     </div>
   );

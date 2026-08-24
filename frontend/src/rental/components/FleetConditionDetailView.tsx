@@ -128,7 +128,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
     finally { setAiLoading(false); }
   };
 
-  const cardClass = `rounded-2xl border shadow-sm ${isDark ? 'surface-premium border-border' : 'surface-solid border-border'}`;
+  const cardClass = ` border ${isDark ? 'surface-premium border-border' : 'surface-solid border-border'}`;
   const textPrimary = isDark ? 'text-white' : 'text-foreground';
   const textSecondary = isDark ? 'text-muted-foreground' : 'text-muted-foreground';
   const textMuted = isDark ? 'text-muted-foreground' : 'text-muted-foreground';
@@ -204,7 +204,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
             </div>
 
             {aiResult && (
-              <div className="mt-1 rounded-xl p-4 space-y-4 surface-premium border border-border/40">
+              <div className="mt-1 p-4 space-y-4 surface-premium border border-border/40">
                 {/* Overall */}
                 <div className="flex items-center gap-3">
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -451,7 +451,7 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
           <h3 className={`text-sm font-semibold mb-4 ${p.textPrimary}`}>Per-Wheel Condition</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {detail.wheels.map(w => (
-              <div key={w.position} className="p-3 rounded-xl border surface-solid border-border">
+              <div key={w.position} className="p-3 border surface-solid border-border">
                 <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${p.textMuted}`}>{w.position}</p>
                 <div className={`h-2 rounded-full overflow-hidden mb-2 ${getProgressTrack(isDark)}`}>
                   <div className={`h-full rounded-full ${getProgressColor(w.wearPercent)}`} style={{ width: `${Math.min(w.wearPercent, 100)}%` }} />

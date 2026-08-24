@@ -65,7 +65,7 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
   };
 
   return (
-    <div className="space-y-3 rounded-2xl border border-border/60 surface-premium p-4">
+    <div className="space-y-3 border border-border/60 surface-premium p-4">
       <div>
         <p className="text-sm font-semibold">Technische Beobachtungen</p>
         <p className="text-[11px] text-muted-foreground">
@@ -156,7 +156,7 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
           <button
             type="button"
             onClick={() => setActivePicker((p) => (p === 'category' ? null : 'category'))}
-            className="sq-press min-h-[48px] rounded-xl border border-border surface-premium px-3 text-left text-sm"
+            className="sq-press min-h-[48px] surface-premium px-3 text-left text-sm"
           >
             <span className="block text-[10px] font-semibold uppercase text-muted-foreground">
               Kategorie
@@ -166,7 +166,7 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
           <button
             type="button"
             onClick={() => setActivePicker((p) => (p === 'area' ? null : 'area'))}
-            className="sq-press min-h-[48px] rounded-xl border border-border surface-premium px-3 text-left text-sm"
+            className="sq-press min-h-[48px] surface-premium px-3 text-left text-sm"
           >
             <span className="block text-[10px] font-semibold uppercase text-muted-foreground">
               Bereich
@@ -207,7 +207,7 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
                 setEditor((prev) => ({ ...prev, affectedArea: undefined }));
                 setActivePicker(null);
               }}
-              className="sq-press min-h-[44px] rounded-lg border border-border surface-premium px-2 text-xs font-semibold"
+              className="sq-press min-h-[44px] rounded-lg surface-premium px-2 text-xs font-semibold"
             >
               Kein Bereich
             </button>

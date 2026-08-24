@@ -50,7 +50,7 @@ export function ExtrasInsuranceTab({ catalog, onEditGroup }: ExtrasInsuranceTabP
           <select
             value={groupId}
             onChange={(e) => setGroupId(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-border surface-premium px-3 py-2 text-xs"
+            className="mt-1 w-full surface-premium px-3 py-2 text-xs"
           >
             {catalog.groups.map((g) => (
               <option key={g.id} value={g.id}>
@@ -72,7 +72,7 @@ export function ExtrasInsuranceTab({ catalog, onEditGroup }: ExtrasInsuranceTabP
       </p>
 
       {!displayVersion ? (
-        <div className="surface-premium rounded-2xl border border-dashed border-border/60 p-8 text-center">
+        <div className="surface-premium border border-dashed border-border/60 p-8 text-center">
           <p className="text-sm font-semibold text-foreground">{t('priceTariffs.extras.noVersionTitle')}</p>
           <p className="mt-2 text-xs text-muted-foreground">{t('priceTariffs.extras.noVersionDescription')}</p>
           <Button type="button" variant="secondary" size="sm" className="mt-4" onClick={() => onEditGroup(group)}>
@@ -147,7 +147,7 @@ function OptionBlock({
   emptyLabel: string;
 }) {
   return (
-    <div className="surface-premium rounded-2xl border border-border/50 p-4">
+    <div className="surface-premium border border-border/50 p-4">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</h3>
         <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">

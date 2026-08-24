@@ -227,7 +227,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
     [messages, handleSend],
   );
 
-  const glass = 'surface-solid border border-border';
+  const glass = 'surface-solid';
 
   const messageCount = messages.filter((m) => m.role === 'user').length;
 
@@ -329,7 +329,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
       {/* Main chat column — single scroll region for messages */}
       <div
         data-testid="ai-chat-compose"
-        className={`flex-1 flex flex-col min-h-0 min-w-0 rounded-2xl overflow-hidden ${glass}`}
+        className={`flex-1 flex flex-col min-h-0 min-w-0 rounded-lg overflow-hidden ${glass}`}
       >
         <div
           className="shrink-0 px-3 py-2.5 border-b flex items-center gap-2 sm:gap-3 min-w-0 border-border/60"

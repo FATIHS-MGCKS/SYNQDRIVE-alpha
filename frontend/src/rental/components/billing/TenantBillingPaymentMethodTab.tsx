@@ -36,7 +36,7 @@ export function TenantBillingPaymentMethodTab({
   const actions = useBillingPaymentMethodActions(orgId, canWrite);
 
   if (loading && paymentMethods.length === 0 && !error) {
-    return <SkeletonCard className="h-72 rounded-2xl" />;
+    return <SkeletonCard className="h-72" />;
   }
   if (error) {
     return (

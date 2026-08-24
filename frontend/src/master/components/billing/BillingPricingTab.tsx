@@ -422,7 +422,7 @@ export function BillingPricingTab({
   };
 
   const renderBookPicker = () => (
-    <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)] space-y-2">
+    <div className="surface-premium p-4 space-y-2">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold">Pricebooks</h3>
         <button
@@ -461,7 +461,7 @@ export function BillingPricingTab({
   const renderProductsTab = () => (
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_260px] gap-4">
       <div className="space-y-4">
-        <section className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)] space-y-4">
+        <section className="surface-premium p-5 space-y-4">
           <div>
             <h3 className="text-sm font-semibold">Grundtarife</h3>
             <p className="text-[11px] text-muted-foreground mt-1">
@@ -497,7 +497,7 @@ export function BillingPricingTab({
           </div>
         </section>
 
-        <section className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)] space-y-4">
+        <section className="surface-premium p-5 space-y-4">
           <div>
             <h3 className="text-sm font-semibold">Add-ons (vorbereitet)</h3>
             <p className="text-[11px] text-muted-foreground mt-1">
@@ -546,7 +546,7 @@ export function BillingPricingTab({
   const renderVersionsTab = () => (
     <div className="grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)] gap-4">
       {renderBookPicker()}
-      <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)] space-y-4">
+      <div className="surface-premium p-5 space-y-4">
         {detailLoading || !detail ? (
           <SkeletonCard className="h-80" />
         ) : (
@@ -652,7 +652,7 @@ export function BillingPricingTab({
   const renderTiersTab = () => (
     <div className="grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)] gap-4">
       {renderBookPicker()}
-      <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)] space-y-4">
+      <div className="surface-premium p-5 space-y-4">
         {detailLoading || !detail ? (
           <SkeletonCard className="h-80" />
         ) : (
@@ -849,7 +849,7 @@ export function BillingPricingTab({
   const renderSimulationTab = () => (
     <div className="grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)] gap-4">
       {renderBookPicker()}
-      <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)] space-y-4">
+      <div className="surface-premium p-5 space-y-4">
         <div className="flex flex-wrap gap-2">
           {versions.map((version) => (
             <button
@@ -1029,7 +1029,7 @@ export function BillingPricingTab({
   const renderStripeTab = () => (
     <div className="grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)] gap-4">
       {renderBookPicker()}
-      <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)] space-y-4">
+      <div className="surface-premium p-5 space-y-4">
         <div className="flex flex-wrap gap-2">
           {versions.map((version) => (
             <button
@@ -1143,7 +1143,7 @@ export function BillingPricingTab({
 
       {createOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="surface-premium rounded-2xl p-5 w-full max-w-md shadow-[var(--shadow-2)] space-y-4">
+          <div className="surface-premium p-5 w-full max-w-md space-y-4">
             <h3 className="text-[15px] font-semibold">Pricebook erstellen</h3>
             <input
               value={newBookName}

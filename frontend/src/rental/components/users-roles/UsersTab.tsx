@@ -378,7 +378,7 @@ export function UsersTab({
         </div>
       )}
 
-      <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)] space-y-3">
+      <div className="surface-premium p-4 space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 justify-between">
           <div className="relative flex-1 max-w-xl">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -421,7 +421,7 @@ export function UsersTab({
         </div>
       </div>
 
-      <div className="surface-premium rounded-2xl shadow-[var(--shadow-1)] overflow-hidden">
+      <div className="surface-premium overflow-hidden">
         {loading ? (
           <SkeletonRows rows={6} />
         ) : filtered.length === 0 ? (
@@ -564,7 +564,7 @@ export function UsersTab({
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             placeholder="Neues Passwort"
-            className="w-full mt-3 px-3 py-2.5 rounded-xl border border-border/70 surface-premium text-[13px]"
+            className="w-full mt-3 px-3 py-2.5 border border-border/70 surface-premium text-[13px]"
           />
         </ConfirmDialog>
       )}
@@ -589,7 +589,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 rounded-xl border border-border/70 surface-premium text-[12px]"
+        className="w-full px-3 py-2 border border-border/70 surface-premium text-[12px]"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -642,7 +642,7 @@ function ConfirmDialog({
 }) {
   return (
     <div className="fixed inset-0 z-[80] overlay-scrim flex items-center justify-center p-4" onClick={onCancel}>
-      <div className="surface-premium max-w-md w-full p-5 rounded-2xl shadow-[var(--shadow-2)]" onClick={(e) => e.stopPropagation()}>
+      <div className="surface-premium max-w-md w-full p-5" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-[15px] font-semibold text-foreground">{title}</h3>
         <p className="text-[13px] text-muted-foreground mt-2">{description}</p>
         {children}
