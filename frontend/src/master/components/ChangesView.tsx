@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c13-5-dead-artifact-cleanup-2026-08-24',
+    version: '4.9.949',
+    title: 'Communication Center C13.5 — dead artifact cleanup',
+    summary: [
+      'Removed 8 legacy api.whatsapp operational client methods and api.voiceAssistant.conversations (0 production callers after C13.4).',
+      'Deleted 9 legacy HTTP routes: 8 WhatsApp operational conversation endpoints + GET voice-assistant/conversations.',
+      'Trimmed dead helpers in whatsapp.ops, voice-assistant.ops, voice-conversation.utils; removed voice.ops.tab.conversations i18n keys.',
+      'Retained provider/domain services, canonical api.communication.*, C10 control plane, C13.3 redirect compatibility, Voice sync troubleshooting.',
+    ],
+    reason: 'Remove provably dead API/HTTP/helper surface after C13.4 UI removal without touching provider authority or canonical CC transport.',
+    previousBehavior: 'Legacy WhatsApp and Voice HTTP/client methods remained although C13.4 removed all production frontend callers.',
+    details: 'architecture/COMMUNICATION_CENTER_C13_5_DEAD_ARTIFACT_CLEANUP.md',
+    affectsArchitecture: true,
+    module: 'Communication',
+    createdAt: '2026-08-24T16:45:00.000Z',
+  },
+  {
     id: 'communication-center-c13-4-legacy-operational-ui-removal-2026-08-24',
     version: '4.9.948',
     title: 'Communication Center C13.4 — legacy operational UI removal',

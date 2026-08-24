@@ -6,16 +6,11 @@ import { RequirePermission } from '@shared/decorators/require-permission.decorat
 import { RequireCommunicationPermission } from '@shared/decorators/require-communication-permission.decorator';
 import { WhatsAppService } from './whatsapp.service';
 import { WhatsAppTemplateService } from './whatsapp-template.service';
-import { WhatsAppConversationContextService } from './whatsapp-conversation-context.service';
-import { WhatsAppQuickActionsService } from './whatsapp-quick-actions.service';
 import { WhatsAppBookingReminderService } from './whatsapp-booking-reminder.service';
 import { UpdateWhatsAppConfigDto } from './dto/update-whatsapp-config.dto';
 import { ConnectWhatsAppDto } from './dto/connect-whatsapp.dto';
-import { SendWhatsAppMessageDto } from './dto/send-whatsapp-message.dto';
 import { SimulateIncomingDto } from './dto/simulate-incoming.dto';
 import { CreateWhatsAppTemplateDto } from './dto/create-whatsapp-template.dto';
-import { WhatsAppQuickActionDto, WHATSAPP_QUICK_ACTION_IDS } from './dto/whatsapp-quick-action.dto';
-import type { WhatsAppQuickActionId } from './whatsapp-conversation-context.types';
 
 @Controller('organizations/:orgId/whatsapp')
 @UseGuards(OrgScopingGuard, PermissionsGuard, RolesGuard)
@@ -25,8 +20,6 @@ export class WhatsAppController {
   constructor(
     private readonly whatsAppService: WhatsAppService,
     private readonly templateService: WhatsAppTemplateService,
-    private readonly contextService: WhatsAppConversationContextService,
-    private readonly quickActions: WhatsAppQuickActionsService,
     private readonly reminders: WhatsAppBookingReminderService,
   ) {}
 
@@ -52,35 +45,6 @@ export class WhatsAppController {
   @RequirePermission('data-authorization', 'manage')
   async disconnect(@Param('orgId') orgId: string) {
     return this.whatsAppService.disconnect(orgId);
-  }
-
-  @Get('conversations')
-  @RequireCommunicationPermission('read')
-  async getConversations(@Param('orgId') orgId: string) {
-    return this.whatsAppService.getConversations(orgId);
-  }
-
-  @Get('conversations/:conversationId/context')
-  @RequireCommunicationPermission('read')
-  async getConversationContext(
-    @Param('orgId') orgId: string,
-    @Param('conversationId') conversationId: string,
-  ) {
-    return this.contextService.getContext(orgId, conversationId);
-  }
-
-  @Post('conversations/:conversationId/actions/:actionId')
-  @RequireCommunicationPermission('write')
-  async executeQuickAction(
-    @Param('orgId') orgId: string,
-    @Param('conversationId') conversationId: string,
-    @Param('actionId') actionId: string,
-    @Body() body: WhatsAppQuickActionDto,
-  ) {
-    if (!WHATSAPP_QUICK_ACTION_IDS.includes(actionId as WhatsAppQuickActionId)) {
-      throw new BadRequestException(`Unknown quick action: ${actionId}`);
-    }
-    return this.quickActions.execute(orgId, conversationId, actionId as WhatsAppQuickActionId, body);
   }
 
   @Post('reminders/bookings/:bookingId/confirmation')
@@ -129,64 +93,6 @@ export class WhatsAppController {
   @RequirePermission('fleet-condition', 'write')
   async sendDamageFollowup(@Param('orgId') orgId: string, @Param('damageId') damageId: string) {
     return this.reminders.sendDamageFollowupWhatsApp(orgId, damageId);
-  }
-
-  @Get('conversations/:conversationId/messages')
-  @RequireCommunicationPermission('read')
-  async getMessages(
-    @Param('orgId') orgId: string,
-    @Param('conversationId') conversationId: string,
-  ) {
-    return this.whatsAppService.getMessages(orgId, conversationId);
-  }
-
-  @Post('conversations/:conversationId/messages')
-  @RequireCommunicationPermission('write')
-  async sendMessage(
-    @Param('orgId') orgId: string,
-    @Param('conversationId') conversationId: string,
-    @Body() body: SendWhatsAppMessageDto,
-  ) {
-    if (!body.content?.trim()) {
-      throw new BadRequestException('Message content is required');
-    }
-    return this.whatsAppService.sendMessage(orgId, conversationId, body.content.trim(), body.senderName);
-  }
-
-  @Post('conversations/:conversationId/ai-suggestion')
-  @RequireCommunicationPermission('write')
-  async getAiSuggestion(
-    @Param('orgId') orgId: string,
-    @Param('conversationId') conversationId: string,
-  ) {
-    return this.whatsAppService.getAiSuggestion(orgId, conversationId);
-  }
-
-  @Post('conversations/:conversationId/human-review')
-  @RequireCommunicationPermission('write')
-  async requestHumanReview(
-    @Param('orgId') orgId: string,
-    @Param('conversationId') conversationId: string,
-    @Body() body: { reason?: string },
-  ) {
-    return this.whatsAppService.requestHumanReview(
-      orgId,
-      conversationId,
-      body.reason ?? 'Manual human review requested from WhatsApp Operations Center',
-    );
-  }
-
-  @Post('conversations/:conversationId/ai-reply')
-  @RequireCommunicationPermission('write')
-  async sendAiReply(
-    @Param('orgId') orgId: string,
-    @Param('conversationId') conversationId: string,
-    @Body() body: SendWhatsAppMessageDto,
-  ) {
-    if (!body.content?.trim()) {
-      throw new BadRequestException('Content is required');
-    }
-    return this.whatsAppService.sendAiReply(orgId, conversationId, body.content.trim(), body.suggestionId);
   }
 
   @Post('simulate-incoming')

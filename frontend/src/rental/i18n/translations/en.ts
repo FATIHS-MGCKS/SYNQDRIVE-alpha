@@ -2921,7 +2921,6 @@ export const en = {
 
   'voice.ops.navLabel': 'Voice assistant sections',
   'voice.ops.tab.overview': 'Overview',
-  'voice.ops.tab.conversations': 'Conversations',
   'voice.ops.tab.automations': 'Automations',
   'voice.ops.tab.analytics': 'Analytics & usage',
   'voice.ops.tab.settings': 'Settings',

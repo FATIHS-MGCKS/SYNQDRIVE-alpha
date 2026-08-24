@@ -13,10 +13,15 @@ describe('WhatsApp org scoping', () => {
     const prisma = {
       orgWhatsAppConfig: { findUnique: jest.fn() },
       whatsAppConversation: { findFirst: jest.fn() },
-      whatsAppMessage: { findMany: jest.fn() },
+      whatsAppMessage: { findFirst: jest.fn(), create: jest.fn() },
     };
 
-    it('getMessages rejects conversation from another org', async () => {
+    it('sendMessage rejects conversation from another org', async () => {
+      prisma.orgWhatsAppConfig.findUnique.mockResolvedValue({
+        organizationId: orgB,
+        isConnected: true,
+        isActive: true,
+      });
       prisma.whatsAppConversation.findFirst.mockResolvedValue(null);
       const service = new WhatsAppService(
         prisma as any,
@@ -31,7 +36,7 @@ describe('WhatsApp org scoping', () => {
         { sendTemplateMessage: jest.fn() } as any,
       );
 
-      await expect(service.getMessages(orgB, convoId)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.sendMessage(orgB, convoId, 'Hello')).rejects.toBeInstanceOf(NotFoundException);
       expect(prisma.whatsAppConversation.findFirst).toHaveBeenCalledWith({
         where: { id: convoId, organizationId: orgB },
       });

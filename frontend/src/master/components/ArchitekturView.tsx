@@ -1163,6 +1163,19 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center C13.5 — Dead Artifact Cleanup (V4.9.949)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-positive)]',
+    apis: [
+      { label: 'Frontend API', detail: 'Removed api.whatsapp operational methods + api.voiceAssistant.conversations; canonical api.communication.* unchanged' },
+      { label: 'Backend HTTP', detail: 'Removed 8 WhatsApp legacy conversation routes + GET voice-assistant/conversations; retained sync/analytics/config/webhooks' },
+      { label: 'Services', detail: 'Removed WhatsAppService.getConversations/getMessages; retained sendMessage/AI/quick-action domain + VoiceAssistantService.listConversations for Master Admin' },
+      { label: 'Helpers/i18n', detail: 'Trimmed whatsapp.ops, voice-assistant.ops, voice-conversation.utils; removed voice.ops.tab.conversations' },
+      { label: 'Compatibility', detail: 'C13.3 redirect parsers retained; no Prisma changes' },
+      { label: 'Doc', detail: 'architecture/COMMUNICATION_CENTER_C13_5_DEAD_ARTIFACT_CLEANUP.md' },
+    ],
+  },
+  {
     name: 'Communication Center C13.4 — Legacy Operational UI Removal (V4.9.948)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-positive)]',

@@ -2920,7 +2920,6 @@ export const de: Record<TranslationKey, string> = {
 
   'voice.ops.navLabel': 'Sprachassistent-Bereiche',
   'voice.ops.tab.overview': 'Übersicht',
-  'voice.ops.tab.conversations': 'Gespräche',
   'voice.ops.tab.automations': 'Automationen',
   'voice.ops.tab.analytics': 'Analyse & Verbrauch',
   'voice.ops.tab.settings': 'Einstellungen',

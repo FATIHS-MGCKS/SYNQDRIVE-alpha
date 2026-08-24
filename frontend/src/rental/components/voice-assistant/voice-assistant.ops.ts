@@ -2,7 +2,6 @@ import type {
   VoiceAssistantData,
   VoiceAssistantReadiness,
   VoiceConnectionStatus,
-  VoiceConversationEntry,
 } from '../../../lib/api';
 
 export type VoiceTab =
@@ -31,12 +30,6 @@ export interface LaunchChecklistItem {
   ok: boolean;
   tab: VoiceTab;
   optional?: boolean;
-}
-
-function isToday(iso: string): boolean {
-  const d = new Date(iso);
-  const now = new Date();
-  return d.toDateString() === now.toDateString();
 }
 
 export function resolveOperatorStatus(
@@ -109,30 +102,6 @@ export function readinessPercent(readiness: VoiceAssistantReadiness | null): num
   return Math.round((ok / pool.length) * 100);
 }
 
-export function callsTodayFromConversations(
-  conversations: VoiceConversationEntry[],
-  loaded: boolean,
-): number | null {
-  if (!loaded) return null;
-  return conversations.filter(c => isToday(c.startedAt)).length;
-}
-
-export function hasConversationHistory(conversations: VoiceConversationEntry[]): boolean {
-  return conversations.length > 0;
-}
-
-export function lastCallLabel(
-  conversations: VoiceConversationEntry[],
-  conversationsLoaded: boolean,
-): string {
-  if (!conversationsLoaded) return 'Not available';
-  if (!conversations.length) return 'No calls yet';
-  const latest = [...conversations].sort(
-    (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-  )[0];
-  return new Date(latest.startedAt).toLocaleString();
-}
-
 export function answerRatePercent(assistant: VoiceAssistantData | null): number | null {
   if (!assistant || assistant.totalCalls === 0) return null;
   return Math.round((assistant.answeredCalls / assistant.totalCalls) * 100);
@@ -141,11 +110,6 @@ export function answerRatePercent(assistant: VoiceAssistantData | null): number 
 export function lastSyncedLabel(assistant: VoiceAssistantData | null): string {
   if (!assistant?.lastSyncedAt) return 'Not synced yet';
   return new Date(assistant.lastSyncedAt).toLocaleString();
-}
-
-export function openEscalationsCount(conversations: VoiceConversationEntry[], loaded: boolean): number | null {
-  if (!loaded) return null;
-  return conversations.filter(c => c.escalated || c.outcome === 'ESCALATED').length;
 }
 
 export function buildLaunchChecklist(
