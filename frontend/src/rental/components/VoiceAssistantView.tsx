@@ -9,7 +9,6 @@ import type {
   VoiceAssistantData,
   VoiceAssistantReadiness,
   VoiceAssistantUpdatePayload,
-  VoiceConversationEntry,
   VoiceOption,
 } from '../../lib/api';
 import type { VoiceTextField } from './voice-assistant/voice-assistant-builder.types';
@@ -17,19 +16,11 @@ import { VoiceCommandHeader } from './voice-assistant/VoiceCommandHeader';
 import { VoiceOnboardingWizard } from './voice-assistant/VoiceOnboardingWizard';
 import { VoiceOpsSectionNav } from './voice-assistant/VoiceOpsSectionNav';
 import { VoiceOperationsOverview } from './voice-assistant/VoiceOperationsOverview';
-import { VoiceConversationsPanel } from './voice-assistant/VoiceConversationsPanel';
 import { VoicePermissionGroupsPanel } from './voice-assistant/VoicePermissionGroupsPanel';
 import { VoiceUsageAnalyticsPanel } from './voice-assistant/VoiceUsageAnalyticsPanel';
 import { VoiceAgentSettings } from './voice-assistant/VoiceAgentSettings';
 import { VoiceTestCenter } from './voice-assistant/VoiceTestCenter';
 import type { VoiceToolCapabilityKey, VoicePermissionMode } from './voice-assistant/voice-assistant-permissions.ops';
-import {
-  answerRatePercent,
-  callsTodayFromConversations,
-  lastCallLabel,
-  openEscalationsCount,
-  readinessPercent,
-} from './voice-assistant/voice-assistant.ops';
 import {
   clearWizardProgress,
   loadWizardStep,
@@ -51,6 +42,8 @@ interface Props {
   suppressLegacyUrlSync?: boolean;
   initialVoiceState?: Partial<VoiceAssistantUrlState>;
   onCanonicalVoiceStateChange?: (state: Partial<VoiceAssistantUrlState>) => void;
+  /** Canonical CC Inbox handoff when operational conversations are requested. */
+  onOpenConversations: () => void;
 }
 
 type VoiceBoolField = Exclude<{
@@ -62,6 +55,7 @@ export function VoiceAssistantView({
   suppressLegacyUrlSync = false,
   initialVoiceState,
   onCanonicalVoiceStateChange,
+  onOpenConversations,
 }: Props) {
   const { t } = useLanguage();
   const { orgId } = useRentalOrg();
@@ -78,7 +72,6 @@ export function VoiceAssistantView({
   const [assistant, setAssistant] = useState<VoiceAssistantData | null>(null);
   const [readiness, setReadiness] = useState<VoiceAssistantReadiness | null>(null);
   const [voices, setVoices] = useState<VoiceOption[]>([]);
-  const [conversations, setConversations] = useState<VoiceConversationEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -88,9 +81,9 @@ export function VoiceAssistantView({
   const [voicesLoading, setVoicesLoading] = useState(false);
   const [voicesError, setVoicesError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const [testPassed, setTestPassed] = useState(false);
   const operationLock = useRef(false);
+  const conversationsHandoffRef = useRef(false);
 
   const applyVoiceUrlState = useCallback((partial: Partial<VoiceAssistantUrlState>) => {
     const next = mergeVoiceAssistantState(partial);
@@ -195,17 +188,6 @@ export function VoiceAssistantView({
     }
   }, [orgId, voicesLoading]);
 
-  const loadConversations = useCallback(async () => {
-    if (!orgId) return;
-    try {
-      const result = await api.voiceAssistant.conversations(orgId, { limit: 50 });
-      setConversations(result.items);
-      setConversationsLoaded(true);
-    } catch (err) {
-      toast.error(t('voice.ops.conversationsError'), { description: getErrorMessage(err) });
-    }
-  }, [orgId, t]);
-
   const isActive = assistant?.status === 'ACTIVE';
   const showWizard = assistant ? shouldShowOnboardingWizard(assistant) : false;
 
@@ -233,10 +215,15 @@ export function VoiceAssistantView({
   }, [showWizard, loadVoices]);
 
   useEffect(() => {
-    if (!showWizard && (opsTab === 'overview' || opsTab === 'conversations')) {
-      void loadConversations();
+    if (opsTab !== 'conversations') {
+      conversationsHandoffRef.current = false;
+      return;
     }
-  }, [showWizard, opsTab, loadConversations]);
+    if (conversationsHandoffRef.current) return;
+    conversationsHandoffRef.current = true;
+    onOpenConversations();
+    applyVoiceUrlState({ opsTab: 'overview', settingsSection: null, wizardStep: null });
+  }, [opsTab, onOpenConversations, applyVoiceUrlState]);
 
   useEffect(() => {
     if (!showWizard && opsTab === 'settings') void loadVoices();
@@ -307,11 +294,8 @@ export function VoiceAssistantView({
     setActionError(null);
     try {
       const result = await api.voiceAssistant.syncConversations(orgId);
-      await loadConversations();
-      if (assistant) {
-        const refreshed = await api.voiceAssistant.get(orgId);
-        setAssistant(refreshed);
-      }
+      const refreshed = await api.voiceAssistant.get(orgId);
+      setAssistant(refreshed);
       toast.success(t('voice.ops.synced'), {
         description: result.message ?? `${result.synced}`,
       });
@@ -363,11 +347,6 @@ export function VoiceAssistantView({
 
   const hasDraft = Object.keys(draft).length > 0;
   const canActivate = Boolean(readiness?.ready) || isActive;
-  const callsToday = callsTodayFromConversations(conversations, conversationsLoaded);
-  const openEscalations = openEscalationsCount(conversations, conversationsLoaded);
-  const answerRate = answerRatePercent(assistant);
-  const readinessPct = readinessPercent(readiness);
-  const lastCall = lastCallLabel(conversations, conversationsLoaded);
 
   const providerWarning = useMemo(() => {
     const el = readiness?.checks.find(c => c.key === 'elevenlabs');
@@ -457,11 +436,6 @@ export function VoiceAssistantView({
       <VoiceCommandHeader
         assistant={assistant}
         readiness={readiness}
-        callsToday={callsToday}
-        conversationsLoaded={conversationsLoaded}
-        conversationsCount={conversations.length}
-        lastCall={lastCall}
-        openEscalations={openEscalations}
         isBusy={isBusy}
         activating={activating}
         saving={saving}
@@ -473,7 +447,6 @@ export function VoiceAssistantView({
         onActivate={() => void toggleActive()}
         onTest={() => openVoiceTestCenter()}
         onSync={() => {
-          setOpsTab('conversations');
           void syncLogs();
         }}
         onSave={() => void save()}
@@ -496,23 +469,9 @@ export function VoiceAssistantView({
             orgId={orgId}
             assistant={assistant}
             readiness={readiness}
-            conversations={conversations}
-            conversationsLoaded={conversationsLoaded}
             providerWarning={providerWarning}
-            onOpenConversations={() => setOpsTab('conversations')}
+            onOpenConversations={onOpenConversations}
             onOpenAnalytics={() => setOpsTab('analytics')}
-          />
-        )}
-
-        {opsTab === 'conversations' && (
-          <VoiceConversationsPanel
-            orgId={orgId}
-            isDarkMode={isDarkMode}
-            cardClassName={card}
-            onConversationsChange={items => {
-              setConversations(items);
-              setConversationsLoaded(true);
-            }}
           />
         )}
 

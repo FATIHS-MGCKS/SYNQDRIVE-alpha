@@ -210,6 +210,7 @@ export function CommunicationChannelsPane({
                 onCanonicalVoiceStateChange={(next) => {
                   onVoiceCanonicalStateChange?.(mapVoiceAssistantStateToCanonicalVoiceIntent(next));
                 }}
+                onOpenConversations={() => onOpenConversations('voice')}
               />
             </div>
           ) : (

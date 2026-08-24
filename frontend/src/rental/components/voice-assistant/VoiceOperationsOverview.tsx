@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DataCard } from '../../../components/patterns/data-card';
 import { StatusChip } from '../../../components/patterns';
 import { EmptyState } from '../../../components/patterns/states';
@@ -7,24 +7,15 @@ import { api, getErrorMessage } from '../../../lib/api';
 import type {
   VoiceAssistantData,
   VoiceAssistantReadiness,
-  VoiceConversationEntry,
   VoiceRemainingMinutes,
 } from '../../../lib/api';
 import { useLanguage } from '../../i18n/LanguageContext';
-import {
-  callsTodayFromConversations,
-  lastCallLabel,
-  openEscalationsCount,
-  operatorStatusLabel,
-  resolveOperatorStatus,
-} from './voice-assistant.ops';
+import { answerRatePercent, operatorStatusLabel, resolveOperatorStatus } from './voice-assistant.ops';
 
 interface VoiceOperationsOverviewProps {
   orgId: string;
   assistant: VoiceAssistantData;
   readiness: VoiceAssistantReadiness | null;
-  conversations: VoiceConversationEntry[];
-  conversationsLoaded: boolean;
   providerWarning: string | null;
   onOpenConversations: () => void;
   onOpenAnalytics: () => void;
@@ -34,8 +25,6 @@ export function VoiceOperationsOverview({
   orgId,
   assistant,
   readiness,
-  conversations,
-  conversationsLoaded,
   providerWarning,
   onOpenConversations,
   onOpenAnalytics,
@@ -66,31 +55,7 @@ export function VoiceOperationsOverview({
   }, [orgId]);
 
   const operatorStatus = resolveOperatorStatus(assistant, readiness);
-  const callsToday = callsTodayFromConversations(conversations, conversationsLoaded);
-  const escalations = openEscalationsCount(conversations, conversationsLoaded);
-  const aiResolved = useMemo(() => {
-    if (!conversationsLoaded) return null;
-    const today = conversations.filter(c => {
-      const d = new Date(c.startedAt);
-      return d.toDateString() === new Date().toDateString();
-    });
-    return today.filter(c => !c.escalated && c.outcome !== 'ESCALATED').length;
-  }, [conversations, conversationsLoaded]);
-  const forwarded = useMemo(() => {
-    if (!conversationsLoaded) return null;
-    const today = conversations.filter(c => {
-      const d = new Date(c.startedAt);
-      return d.toDateString() === new Date().toDateString();
-    });
-    return today.filter(c => c.escalated || c.outcome === 'ESCALATED').length;
-  }, [conversations, conversationsLoaded]);
-
-  const recentCalls = useMemo(() => {
-    if (!conversationsLoaded) return [];
-    return [...conversations]
-      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
-      .slice(0, 5);
-  }, [conversations, conversationsLoaded]);
+  const answerRate = answerRatePercent(assistant);
 
   const problems: string[] = [];
   if (providerWarning) problems.push(providerWarning);
@@ -111,18 +76,18 @@ export function VoiceOperationsOverview({
             tone: operatorStatus === 'active' ? 'success' : 'watch',
           },
           {
-            label: t('voice.ops.kpi.callsToday'),
-            value: callsToday == null ? '—' : String(callsToday),
+            label: t('voice.ops.kpi.totalCalls'),
+            value: String(assistant.totalCalls),
             tone: 'neutral',
           },
           {
-            label: t('voice.ops.kpi.aiResolved'),
-            value: aiResolved == null ? '—' : String(aiResolved),
+            label: t('voice.ops.kpi.answered'),
+            value: String(assistant.answeredCalls),
             tone: 'info',
           },
           {
-            label: t('voice.ops.kpi.forwarded'),
-            value: forwarded == null ? '—' : String(forwarded),
+            label: t('voice.ops.kpi.escalated'),
+            value: String(assistant.escalatedCalls),
             tone: 'watch',
           },
         ].map(kpi => (
@@ -198,21 +163,27 @@ export function VoiceOperationsOverview({
               ))}
             </ul>
           )}
-          {escalations != null && escalations > 0 && (
+          {assistant.escalatedCalls > 0 && (
             <p className="mt-3 text-[11px] text-muted-foreground">
-              {t('voice.ops.openEscalations', { count: escalations })}
+              {t('voice.ops.openEscalations', { count: assistant.escalatedCalls })}
+            </p>
+          )}
+          {answerRate != null && (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {t('voice.ops.answerRate', { rate: answerRate })}
             </p>
           )}
         </DataCard>
       </div>
 
       <DataCard
-        title={t('voice.ops.recentCalls')}
-        description={lastCallLabel(conversations, conversationsLoaded)}
+        title={t('voice.ops.inboxHandoffTitle')}
+        description={t('voice.ops.inboxHandoffDesc')}
         className="rounded-2xl shadow-[var(--shadow-1)]"
         actions={
           <button
             type="button"
+            data-testid="voice-ops-open-conversations"
             onClick={onOpenConversations}
             className="sq-press rounded-lg border border-border/60 px-3 py-1.5 text-[10px] font-semibold"
           >
@@ -220,32 +191,7 @@ export function VoiceOperationsOverview({
           </button>
         }
       >
-        {!conversationsLoaded ? (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Icon name="loader-2" className="h-4 w-4 animate-spin" />
-            {t('voice.common.loading')}
-          </div>
-        ) : recentCalls.length === 0 ? (
-          <EmptyState compact title={t('voice.ops.noCalls')} />
-        ) : (
-          <ul className="divide-y divide-border/40">
-            {recentCalls.map(call => (
-              <li key={call.id} className="flex items-center justify-between gap-3 py-2.5">
-                <div className="min-w-0">
-                  <p className="truncate text-[11px] font-semibold text-foreground">
-                    {call.callerNumber ?? t('voice.ops.unknownCaller')}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {new Date(call.startedAt).toLocaleString()}
-                  </p>
-                </div>
-                <StatusChip tone={call.escalated ? 'watch' : 'success'} className="text-[9px]">
-                  {call.escalated ? t('voice.ops.forwarded') : t('voice.ops.resolved')}
-                </StatusChip>
-              </li>
-            ))}
-          </ul>
-        )}
+        <p className="text-xs text-muted-foreground">{t('voice.ops.inboxHandoffBody')}</p>
       </DataCard>
     </div>
   );

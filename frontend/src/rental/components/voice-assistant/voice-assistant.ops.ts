@@ -138,6 +138,11 @@ export function answerRatePercent(assistant: VoiceAssistantData | null): number 
   return Math.round((assistant.answeredCalls / assistant.totalCalls) * 100);
 }
 
+export function lastSyncedLabel(assistant: VoiceAssistantData | null): string {
+  if (!assistant?.lastSyncedAt) return 'Not synced yet';
+  return new Date(assistant.lastSyncedAt).toLocaleString();
+}
+
 export function openEscalationsCount(conversations: VoiceConversationEntry[], loaded: boolean): number | null {
   if (!loaded) return null;
   return conversations.filter(c => c.escalated || c.outcome === 'ESCALATED').length;

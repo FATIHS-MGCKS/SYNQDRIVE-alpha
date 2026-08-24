@@ -1163,6 +1163,19 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center C13.4 — Legacy Operational UI Removal (V4.9.948)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-positive)]',
+    apis: [
+      { label: 'WhatsApp ops removed', detail: 'WhatsAppBusinessView + inbox/chat/context/composer subtree deleted; CC Channels retains config/templates/KPIs' },
+      { label: 'Voice ops removed', detail: 'VoiceConversationsPanel deleted; Conversations tab removed from VoiceAssistantView; onOpenConversations → CC Inbox' },
+      { label: 'Voice control plane', detail: 'VoiceAssistantView embedded in CC Channels — overview, analytics, builder, telephony, test, automations, onboarding' },
+      { label: 'Compatibility', detail: 'C13.3 resolveLegacyCommunicationRoute unchanged; voiceOpsTab=conversations redirect-only' },
+      { label: 'Deferred', detail: 'Backend APIs, conversation-list fetch for KPIs, i18n keys — C13.5 candidate inventory' },
+      { label: 'Doc', detail: 'architecture/COMMUNICATION_CENTER_C13_4_LEGACY_OPERATIONAL_UI_REMOVAL.md' },
+    ],
+  },
+  {
     name: 'Communication Center C13.3 — Legacy Navigation Redirects (V4.9.947)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-positive)]',

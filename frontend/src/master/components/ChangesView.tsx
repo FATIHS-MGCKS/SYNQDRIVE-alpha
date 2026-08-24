@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c13-4-legacy-operational-ui-removal-2026-08-24',
+    version: '4.9.948',
+    title: 'Communication Center C13.4 — legacy operational UI removal',
+    summary: [
+      'Deleted orphaned WhatsAppBusinessView monolith and 10 operational inbox/chat components (zero production importers after C13.3).',
+      'Removed VoiceConversationsPanel and Conversations tab from VoiceAssistantView control-plane shell.',
+      'Voice overview KPIs use VoiceAssistantData aggregates; conversation-list fetch removed from control plane.',
+      'onOpenConversations is required on VoiceAssistantView; legacy opsTab=conversations hands off to CC Inbox once.',
+      'Voice sync/overview CTAs hand off to canonical CC Inbox via onOpenConversations; C13.3 redirect compatibility preserved.',
+      'Retained C10 surfaces: WhatsApp config/templates, Voice analytics/builder/telephony/test/onboarding.',
+    ],
+    reason: 'Remove duplicated operational presentation now that canonical Communication Center owns inbox/conversations.',
+    previousBehavior: 'Legacy WhatsApp and Voice components still contained superseded operational inbox/conversation UI despite C13.3 redirects.',
+    details: 'architecture/COMMUNICATION_CENTER_C13_4_LEGACY_OPERATIONAL_UI_REMOVAL.md',
+    affectsArchitecture: true,
+    module: 'Communication',
+    createdAt: '2026-08-24T15:40:00.000Z',
+  },
+  {
     id: 'communication-center-c13-3-legacy-navigation-redirects-2026-08-24',
     version: '4.9.947',
     title: 'Communication Center C13.3 — legacy navigation redirects',
