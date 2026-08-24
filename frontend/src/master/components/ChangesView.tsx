@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-production-activation-runbook-2026-08-24',
+    version: '4.9.951',
+    title: 'Communication Center — production activation gate & smoke runbook',
+    summary: [
+      'Operational gate after C13.6 CONDITIONAL GO: documents production inventory, env verification, and controlled smoke checklist.',
+      'VPS evidence 2026-08-24: health/DB/Redis/Swagger PASS; deployed ab2c363 (STALE vs main docs-only #1252); WA org NOT_CONFIGURED (simulate on).',
+      'Deprecated HTTP nginx sample: OBSERVED_ZERO (5000 lines); OBSERVATION_STARTED 2026-08-24.',
+      'Retention safe 0-day defaults confirmed in code + prod env unset; owner acceptance REQUIRED.',
+      'Verdict: PRODUCTION ACTIVATION — CONDITIONAL GO; PRODUCTION_VERIFIED=NO until manual smoke + owner sign-off.',
+    ],
+    reason: 'Convert C13.6 conditional cutover into truthful production activation evidence without inferring prod state from code alone.',
+    previousBehavior: 'C13.6 proved code/security/isolation READY but left environment verification and controlled smoke as activation conditions.',
+    details: 'architecture/COMMUNICATION_CENTER_PRODUCTION_ACTIVATION_RUNBOOK_2026_08.md',
+    affectsArchitecture: true,
+    module: 'Communication',
+    createdAt: '2026-08-24T18:55:00.000Z',
+  },
+  {
     id: 'communication-center-c13-6-final-production-cutover-proof-2026-08-24',
     version: '4.9.950',
     title: 'Communication Center C13.6 — final production cutover proof',
