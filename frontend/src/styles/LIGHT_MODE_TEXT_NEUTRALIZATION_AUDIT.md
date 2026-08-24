@@ -1,8 +1,8 @@
 # SynqDrive — Light Mode Text Color Neutralization Audit (V4.9.197 + V4.9.198)
 
-> **Status:** V4.9.197 deployed; V4.9.198 feature cleanup applied (pending deploy)  
+> **Status:** V4.9.197 + V4.9.198 deployed  
 > **Release (V4.9.197):** `20260824155357_v4994` (`940eddef`)  
-> **Release (V4.9.198):** pending commit  
+> **Release (V4.9.198):** `20260824163904_v4994` (`9dec5ff9`)  
 > **Scope:** Light-mode typography tokens only — no surface, layout, dark-mode, or status-color changes  
 > **Canonical tokens:** `frontend/src/styles/theme.css`  
 > **Contract:** `frontend/src/styles/THEME_COLOR_CONTRACT.md`  
@@ -322,7 +322,7 @@ frontend/src/rental/lib/ai-chat/safe-markdown.tsx
 |---------|--------|--------|
 | V4.9.196 | `3964210b` | Surface cutover: `#F6F6F6` canvas, white cards/sidebar, flat L1 — siehe `LIGHT_MODE_SURFACE_CUTOVER_AUDIT.md` |
 | V4.9.197 | `940eddef` | Text neutralization: `#171717` ink, `#737373` muted — siehe `LIGHT_MODE_TEXT_NEUTRALIZATION_AUDIT.md` |
-| V4.9.198 | pending | Feature hardcode cleanup: 43 files `text-gray-*` → semantic tokens — siehe §11 |
+| V4.9.198 | `9dec5ff9` | Feature hardcode cleanup: 42 files `text-gray-*` → semantic tokens — siehe §11 |
 
 ---
 
@@ -373,6 +373,9 @@ Systematische Migration der in §5.4 / Anhang A (V4.9.197) dokumentierten Legacy
 |-------|----------|
 | `npm run build` | ✅ Erfolgreich |
 | `npm run check:surface` | ✅ Erfolgreich |
+| Push `origin/main` | ✅ `9dec5ff9` |
+| Production deploy | ✅ `20260824163904_v4994` |
+| Health | ✅ `https://app.synqdrive.eu/api/v1/health` |
 | `npm test -- --run` | ⚠️ 6 pre-existing failures (unrelated to text migration) |
 
 ---
