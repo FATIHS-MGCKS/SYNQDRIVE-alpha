@@ -46,7 +46,7 @@ export function renderSafeMarkdown(
         <div key={`table-${elements.length}`} className="my-3 overflow-x-auto">
           <table className="w-full text-xs text-foreground">
             <thead>
-              <tr className={isDarkMode ? 'border-b border-neutral-700' : 'border-b border-gray-200'}>
+              <tr className={isDarkMode ? 'border-b border-neutral-700' : 'border-b border-border'}>
                 {tableHeaders.map((h, i) => (
                   <th
                     key={i}
@@ -61,7 +61,7 @@ export function renderSafeMarkdown(
               {tableRows.map((row, ri) => (
                 <tr
                   key={ri}
-                  className={isDarkMode ? 'border-b border-neutral-800' : 'border-b border-gray-100'}
+                  className={isDarkMode ? 'border-b border-neutral-800' : 'border-b border-border'}
                 >
                   {row.map((cell, ci) => (
                     <td key={ci} className="px-3 py-2 text-xs">

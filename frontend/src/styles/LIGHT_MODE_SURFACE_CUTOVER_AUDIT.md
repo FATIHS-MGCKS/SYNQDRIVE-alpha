@@ -1,8 +1,9 @@
-# SynqDrive — Light Mode Surface Color Cutover Audit (V4.9.196)
+# SynqDrive — Light Mode Surface Color Cutover Audit (V4.9.196 + V4.9.199)
 
-> **Status:** Applied and deployed  
-> **Release:** `20260824151022_v4994` (includes `3964210b` surface cutover + deploy boot hotfix)  
-> **Scope:** Light-mode surface/background tokens only — no layout, typography (later V4.9.197), dark mode, or map-glass redesign  
+> **Status:** V4.9.196 deployed; V4.9.199 feature surface cleanup on branch (not deployed)  
+> **Release (V4.9.196):** `20260824151022_v4994` (includes `3964210b` surface cutover + deploy boot hotfix)  
+> **Release (V4.9.199):** pending — branch `feat/theme-v4999-surface-hardcode-cleanup`  
+> **Scope:** Light-mode surface/background tokens only — no layout, typography, dark mode, or map-glass redesign  
 > **Canonical tokens:** `frontend/src/styles/theme.css`  
 > **Contract:** `frontend/src/styles/THEME_COLOR_CONTRACT.md`  
 > **Surface system:** `frontend/src/styles/LIQUID_GLASS_SYSTEM.md`  
@@ -186,24 +187,20 @@ rgba(247, 249, 252, 0.96)
 
 **Keine aktiven Light-Mode Canvas/Card/Sidebar-Umgehungen** über die alten transluzenten Token-Werte in Feature-Styles.
 
-### 5.3 Paralleles `bg-white` in Feature-Code (Follow-up, nicht Teil V4.9.196)
+### 5.3 ~~Paralleles `bg-white` in Feature-Code (Follow-up)~~ → Migriert in V4.9.199
 
-Viele Legacy-Views nutzen noch `isDarkMode ? … : 'bg-white'` statt `bg-card` / `surface-solid`. Visuell oft identisch mit `#FFFFFF`, aber **umgeht das Token-System** für Borders/Shadows.
+**Vor V4.9.199:** ~44 Dateien mit `bg-white` / `bg-gray-*` Surface-Bypässen.
 
-**~44 Dateien** mit `bg-white` in `frontend/src` (Stand 2026-08-24). Höchste Treffer:
+**Nach V4.9.199:** 49 Feature-Dateien migriert; verbleibende Treffer sind dokumentierte Ausnahmen (siehe §12 und Anhang A).
 
-| Datei | `bg-white` Treffer |
-|-------|-------------------|
-| `PartsAccessoriesView.tsx` | 26 |
-| `WorkflowAutomationView.tsx` | 24 |
-| `DocumentArchivePanel.tsx` | 7 |
-| `VehicleRegistrationModal.tsx` | 7 |
-| `ChangesView.tsx` | 11 |
-| `DocumentClassificationResultPanel.tsx` | 3 |
-| `HandoverProtocolDialog.tsx` | 3 |
-| `invoiceTheme.ts` | 1 (`bg-white border-gray-200` für Invoice cards) |
-
-**Empfehlung separater Pass:** Light-Zweig → `bg-card` oder `surface-solid` / `surface-premium`; keine neuen Hex-Hardcodes.
+| Cluster | Surface-Level | Migration |
+|---------|---------------|-----------|
+| Document Intake / Archive | L0 `surface-solid`, nested `bg-muted` | Vollständig |
+| Workflow Automation | L0 cards + `bg-background` inputs | Vollständig |
+| Parts / Accessories | L0 `surface-solid`, L1 panels, `bg-background` inputs | Light structural surfaces migriert; dark `bg-white/[opacity]` chrome beibehalten |
+| Master Admin Tools | L0 `surface-solid` | Health/Trip/Performance/Registration |
+| Invoices (app UI) | L0 `surface-solid` / `surface-premium` | `invoiceTheme.ts` — App-Surface, kein Print-Canvas |
+| ChangesView | L0 UI chrome | Changelog-Strings unverändert |
 
 ---
 
@@ -296,9 +293,21 @@ Popovers können minimal transluzenter wirken als Cards — **bewusst** (Overlay
 
 `rgba(255,255,255,0.72)` — Inputs sind nicht voll opaque white. Kann auf sehr hellem Monitor minimal durchscheinen; nicht Teil des Surface-Cutovers.
 
-### 10.3 Legacy `bg-white` in Feature-Views
+### 10.3 ~~Legacy `bg-white` in Feature-Views~~ → Resolved in V4.9.199
 
-Siehe §5.3 — funktional oft korrekt (`#FFFFFF`), aber nicht token-driven. Follow-up für Konsistenz bei Borders und Dark-Mode-Paired-Ternaries.
+Strukturelle Light-Mode Card/Panel/Input-Surfaces nutzen jetzt `surface-solid`, `surface-premium`, `bg-muted`, `bg-background`, `border-border`.
+
+**Verbleibende `bg-white` Treffer (bewusst):**
+
+| Kategorie | Beispiel | Grund |
+|-----------|----------|-------|
+| Signature canvas | `SignaturePad.tsx` | Technisches Weiß für Unterschrift |
+| Toggle knob | `ChangesView.tsx`, Operator handover | Physischer Switch-Thumb |
+| PDF/iframe preview | `LegalDocumentVersionDetailDrawer.tsx` | Document rendering |
+| Dark-mode overlay chrome | `PartsAccessoriesView.tsx` `bg-white/[0.0x]` | Dark glass chrome, nicht Light bypass |
+| Status tinted panels | `VehicleRegistrationModal.tsx` `bg-white/60` auf purple/cyan | Semantische AI/status tint, nicht Card |
+| Changelog strings | `ChangesView.tsx` | Historische Doku |
+| Status dots/bars | `health-tab-summary-ui.ts`, `BatteryConditionBars.tsx` | Semantik, nicht Surface |
 
 ### 10.4 L1 Inset-Highlights
 
@@ -323,7 +332,7 @@ Alle 12 geforderten Screens nicht einzeln mit Screenshots dokumentiert. Zentrale
 | 7 | Brand Blue unverändert | ✅ |
 | 8 | Dark Mode unverändert | ✅ |
 | 9 | Map Liquid Glass unverändert | ✅ |
-| 10 | Keine komponentenweisen Farb-Hacks | ✅ |
+| 10 | Keine komponentenweisen Farb-Hacks | ✅ V4.9.199 Feature cleanup |
 | 11 | Theme Contract + Surface-Docs aktualisiert | ✅ |
 | 12 | `npm run build` erfolgreich | ✅ |
 | 13 | `npm run check:surface` erfolgreich | ✅ |
@@ -331,7 +340,62 @@ Alle 12 geforderten Screens nicht einzeln mit Screenshots dokumentiert. Zentrale
 
 ---
 
-## Anhang A — Dateien mit Legacy `bg-white` (Surface Follow-up)
+## Anhang A — Verbleibende Legacy Surface-Klassen (post V4.9.199)
+
+**Migrierte Dateien (49):** siehe Git-Diff `feat/theme-v4999-surface-hardcode-cleanup` vs `main`.
+
+**Bewusste verbleibende Treffer (~15 Dateien, nicht-strukturell):**
+
+```
+frontend/src/master/components/ChangesView.tsx              # changelog + toggle knob
+frontend/src/rental/components/handover/SignaturePad.tsx  # canvas bg-white
+frontend/src/rental/components/damages/DamageEvidenceCanvas.tsx
+frontend/src/rental/components/legal-documents/LegalDocumentVersionDetailDrawer.tsx
+frontend/src/rental/components/users-roles/IamBadges.tsx
+frontend/src/rental/lib/health-tab-summary-ui.ts          # status dots
+frontend/src/rental/components/BatteryConditionBars.tsx   # bar fill semantics
+frontend/src/operator/handover/operatorHandoverUi.tsx     # toggle thumb
+frontend/src/operator/handover/OperatorHandoverTechnicalObservationsSection.tsx
+frontend/src/rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx
+frontend/src/components/figma/ImageWithFallback.tsx
+frontend/src/rental/components/PartsAccessoriesView.tsx     # dark-mode bg-white/[opacity] only
+frontend/src/master/components/VehicleRegistrationModal.tsx # status-tint overlays
+frontend/src/rental/components/WorkflowAutomationView.tsx   # hover:bg-white/5 dark chrome
+```
+
+---
+
+## 12. V4.9.199 — Feature Surface Hardcode Cleanup
+
+### 12.1 Ziel
+
+Migration der in §5.3 / Anhang A (V4.9.196) dokumentierten Legacy-Surface-Bypässe auf das SynqDrive Surface-System.
+
+### 12.2 Ergebnis
+
+| Metrik | Vorher | Nachher |
+|--------|--------|---------|
+| Dateien mit `bg-white` Surface-Bypässen | ~44 | **~15** (Ausnahmen) |
+| Migrierte Feature-Dateien | 0 | **49** |
+| Entfernte `isDarkMode ? … : 'bg-white'` Card-Ternaries | viele | vereinfacht auf `surface-solid` / `bg-muted` |
+| `border-gray-*` strukturell | viele | → `border-border` |
+| Neue Hex-Hardcodes | — | **0** |
+
+### 12.3 Invoice-Entscheidung (`invoiceTheme.ts`)
+
+`card` nutzt jetzt `surface-solid border-border` — **App-UI-Surface**, kein Print/PDF-Rendering. Inputs bereits `bg-background`.
+
+### 12.4 Build / Test
+
+| Check | Ergebnis |
+|-------|----------|
+| `npm run build` | ✅ |
+| `npm run check:surface` | ✅ |
+| `npm test` | nicht ausgeführt (optional) |
+
+---
+
+## Anhang A (V4.9.196) — Legacy `bg-white` vor Migration
 
 Stand: `rg 'bg-white' frontend/src --glob '*.{ts,tsx}'`
 
@@ -388,7 +452,9 @@ frontend/src/rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx
 | Release | Commit | Inhalt |
 |---------|--------|--------|
 | V4.9.196 | `3964210b` | Surface cutover: `#F6F6F6` canvas, white cards/sidebar, flat L1, no light body ambient |
-| V4.9.197 | `940eddef` | Text neutralization: `#171717` ink, `#737373` muted — siehe `LIGHT_MODE_TEXT_NEUTRALIZATION_AUDIT.md` |
+| V4.9.197 | `940eddef` | Text neutralization — siehe `LIGHT_MODE_TEXT_NEUTRALIZATION_AUDIT.md` |
+| V4.9.198 | `9dec5ff9` | Feature text hardcode cleanup — siehe `LIGHT_MODE_TEXT_NEUTRALIZATION_AUDIT.md` §11 |
+| V4.9.199 | pending | Feature surface hardcode cleanup — siehe §12 |
 
 ---
 

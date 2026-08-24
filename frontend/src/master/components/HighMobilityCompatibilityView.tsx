@@ -185,7 +185,7 @@ function LookupForm({
     onSelectBrand(brand);
   }, [brand, onSelectBrand]);
 
-  const inputBg = isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200';
+  const inputBg = 'surface-solid border-border';
   const labelCls = 'text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5 block';
 
   const canRun = brand.trim().length > 0 && model.trim().length > 0;
@@ -425,7 +425,7 @@ function AppCard({
             <div className="text-lg font-bold tabular-nums">
               {summary.coveredRequired} / {summary.totalRequired}
             </div>
-            <div className={`mt-1 h-1.5 w-28 rounded-full ${isDarkMode ? 'surface-premium' : 'bg-gray-100'}`}>
+            <div className={`mt-1 h-1.5 w-28 rounded-full ${isDarkMode ? 'surface-premium' : 'bg-muted'}`}>
               <div
                 className={`h-full rounded-full ${barColor}`}
                 style={{ width: `${Math.max(0, Math.min(100, ratio * 100))}%` }}
@@ -589,7 +589,7 @@ function SourceCard({
           />
         </div>
         {src.notes && (
-          <div className={`px-3 py-2.5 rounded-lg text-xs ${isDarkMode ? 'bg-neutral-900 border border-neutral-800 text-muted-foreground' : 'bg-gray-50 border border-gray-200 text-foreground'}`}>
+          <div className={`px-3 py-2.5 rounded-lg text-xs ${isDarkMode ? 'bg-neutral-900 border border-neutral-800 text-muted-foreground' : 'bg-muted border border-border text-foreground'}`}>
             {src.notes}
           </div>
         )}

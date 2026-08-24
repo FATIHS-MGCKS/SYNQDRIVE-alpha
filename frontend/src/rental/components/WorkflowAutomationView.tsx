@@ -322,7 +322,7 @@ function relativeTime(dateStr: string | null) {
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgClass: string; textClass: string }> = {
   ACTIVE: { label: 'Active', color: 'green', bgClass: 'bg-green-100 dark:bg-status-positive-soft', textClass: 'text-green-700 dark:text-status-positive' },
   DRAFT: { label: 'Draft', color: 'amber', bgClass: 'bg-amber-100 dark:bg-status-attention-soft', textClass: 'text-amber-700 dark:text-status-attention' },
-  DISABLED: { label: 'Disabled', color: 'gray', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-muted-foreground dark:text-muted-foreground' },
+  DISABLED: { label: 'Disabled', color: 'gray', bgClass: 'bg-muted dark:bg-muted', textClass: 'text-muted-foreground dark:text-muted-foreground' },
   INVALID: { label: 'Invalid', color: 'red', bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
   PENDING_ACTIVATION: { label: 'Pending approval', color: 'purple', bgClass: 'bg-purple-100 dark:bg-status-ai-soft', textClass: 'text-purple-700 dark:text-status-ai' },
 };
@@ -330,7 +330,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgClass: str
 const RUN_STATUS_CONFIG: Record<string, { label: string; bgClass: string; textClass: string }> = {
   SUCCESS: { label: 'Success', bgClass: 'bg-green-100 dark:bg-status-positive-soft', textClass: 'text-green-700 dark:text-status-positive' },
   FAILED: { label: 'Failed', bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
-  SKIPPED: { label: 'Skipped', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-muted-foreground dark:text-muted-foreground' },
+  SKIPPED: { label: 'Skipped', bgClass: 'bg-muted dark:bg-muted', textClass: 'text-muted-foreground dark:text-muted-foreground' },
   WAITING_APPROVAL: { label: 'Waiting approval', bgClass: 'bg-purple-100 dark:bg-status-ai-soft', textClass: 'text-purple-700 dark:text-status-ai' },
   RUNNING: { label: 'Running', bgClass: 'bg-status-info-soft', textClass: 'text-status-info' },
   PENDING: { label: 'Pending', bgClass: 'bg-amber-100 dark:bg-status-attention-soft', textClass: 'text-amber-700 dark:text-status-attention' },
@@ -348,12 +348,12 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
   const [mainTab, setMainTab] = useState<'workflows' | 'task-automations'>('workflows');
   const [saving, setSaving] = useState(false);
 
-  const cardBg = isDarkMode ? 'bg-[#1e1e2e]' : 'bg-white';
-  const cardBorder = isDarkMode ? 'border-gray-700/50' : 'border-gray-200';
+  const cardBg = 'surface-solid';
+  const cardBorder = 'border-border/50';
   const textPrimary = 'text-foreground';
   const textSecondary = 'text-muted-foreground';
-  const inputBg = isDarkMode ? 'bg-[#2a2a3e] border-gray-600 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-foreground placeholder-gray-400';
-  const hoverBg = isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50';
+  const inputBg = 'bg-background border-border text-foreground placeholder:text-muted-foreground';
+  const hoverBg = isDarkMode ? 'hover:bg-white/5' : 'hover:bg-muted';
 
   const refreshSelectedWorkflow = useCallback(async () => {
     if (!orgId || !selectedWorkflow) return;
@@ -559,7 +559,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
             className={`min-h-11 rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
               mainTab === tab.key
                 ? 'bg-brand text-brand-foreground'
-                : `${isDarkMode ? 'text-muted-foreground hover:bg-white/5 hover:text-white' : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'}`
+                : `${isDarkMode ? 'text-muted-foreground hover:bg-white/5 hover:text-white' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`
             }`}
           >
             {tab.label}
@@ -726,8 +726,8 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
   const cat = getCategoryMeta(wf.category);
   const CatIcon = cat.icon;
   const st = STATUS_CONFIG[wf.status] || STATUS_CONFIG.DRAFT;
-  const cardBg = isDarkMode ? 'bg-[#1e1e2e]' : 'bg-white';
-  const cardBorder = isDarkMode ? 'border-gray-700/50' : 'border-gray-200';
+  const cardBg = 'surface-solid';
+  const cardBorder = 'border-border/50';
   const textPrimary = 'text-foreground';
   const textSecondary = 'text-muted-foreground';
   const labelClass = `text-[10px] uppercase tracking-wider font-semibold ${textSecondary}`;
@@ -749,10 +749,10 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className={`p-1.5 rounded-lg ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-100'}`}>
+          <button onClick={onBack} className={`p-1.5 rounded-lg ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-muted'}`}>
             <Icon name="arrow-left" className={`w-4 h-4 ${textSecondary}`} />
           </button>
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center bg-muted/40`}>
             <CatIcon className={`w-5 h-5 ${catColors[cat.color]}`} />
           </div>
           <div>
@@ -771,21 +771,21 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
             <button
               onClick={handleTest}
               disabled={testing}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'} disabled:opacity-50`}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-muted'} disabled:opacity-50`}
             >
               <Icon name="play" className="w-3.5 h-3.5 text-status-info" />
               {testing ? 'Testing…' : 'Test workflow'}
             </button>
-            <button onClick={onToggle} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
+            <button onClick={onToggle} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-muted'}`}>
               {wf.status === 'ACTIVE' ? <><Icon name="pause" className="w-3.5 h-3.5 text-amber-500" /> Disable</> : <><Icon name="play" className="w-3.5 h-3.5 text-green-500" /> Enable</>}
             </button>
             <button onClick={onEdit} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-brand text-brand-foreground hover:bg-brand-hover">
               <Icon name="edit-3" className="w-3.5 h-3.5" /> Edit
             </button>
-            <button onClick={onDuplicate} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
+            <button onClick={onDuplicate} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-muted'}`}>
               <Icon name="copy" className={`w-3.5 h-3.5 ${textSecondary}`} />
             </button>
-            <button onClick={onDelete} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
+            <button onClick={onDelete} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-muted'}`}>
               <Icon name="trash-2" className="w-3.5 h-3.5 text-red-400" />
             </button>
           </div>
@@ -826,7 +826,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
           ) : (
             <div className="space-y-3">
               {changeRequests.map((request) => (
-                <div key={request.id} className={`rounded-lg border ${cardBorder} p-3 ${isDarkMode ? 'bg-white/[0.02]' : 'bg-gray-50'}`}>
+                <div key={request.id} className={`rounded-lg border ${cardBorder} p-3 bg-muted/40`}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
@@ -834,7 +834,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
                           ? 'bg-purple-100 text-purple-700 dark:bg-status-ai-soft dark:text-status-ai'
                           : request.status === 'APPROVED'
                             ? 'bg-green-100 text-green-700 dark:bg-status-positive-soft dark:text-status-positive'
-                            : 'bg-gray-100 text-muted-foreground dark:bg-muted dark:text-muted-foreground'
+                            : 'bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground'
                       }`}>
                         {request.status}
                       </span>
@@ -912,7 +912,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
         <div className={`${cardBg} border ${cardBorder} rounded-xl p-4`}>
           <p className={`text-xs font-semibold ${textPrimary} mb-3`}>Workflow Logic</p>
           {/* Trigger */}
-          <div className={`flex items-start gap-2 mb-3 p-2 rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
+          <div className={`flex items-start gap-2 mb-3 p-2 rounded-lg bg-muted/40`}>
             <Icon name="target" className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-brand' : 'text-brand'}`} />
             <div>
               <p className={labelClass}>Trigger</p>
@@ -941,7 +941,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
           {wf.actions?.map((a: ActionDef, i: number) => {
             const Icon = getActionIcon(a.type);
             return (
-              <div key={i} className={`flex items-start gap-2 mb-1.5 p-2 rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
+              <div key={i} className={`flex items-start gap-2 mb-1.5 p-2 rounded-lg bg-muted/40`}>
                 <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${a.type.startsWith('ai_') ? (isDarkMode ? 'text-purple-400' : 'text-purple-600') : (isDarkMode ? 'text-green-400' : 'text-green-600')}`} />
                 <div>
                   <p className={`text-xs font-medium ${textPrimary}`}>{getActionLabel(a.type)}</p>
@@ -972,7 +972,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
             {runs.map((run) => {
               const rs = RUN_STATUS_CONFIG[run.status] || RUN_STATUS_CONFIG.PENDING;
               return (
-                <div key={run.id} className={`p-2.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'bg-white/[0.02]' : 'bg-gray-50'}`}>
+                <div key={run.id} className={`p-2.5 rounded-lg border ${cardBorder} bg-muted/40`}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${rs.bgClass} ${rs.textClass}`}>{rs.label}</span>
@@ -1014,14 +1014,14 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
   data: Partial<Workflow>; setData: (d: Partial<Workflow> | null) => void;
   isDarkMode: boolean; saving: boolean; onSave: () => void; onCancel: () => void;
 }) {
-  const cardBg = isDarkMode ? 'bg-[#1e1e2e]' : 'bg-white';
-  const cardBorder = isDarkMode ? 'border-gray-700/50' : 'border-gray-200';
+  const cardBg = 'surface-solid';
+  const cardBorder = 'border-border/50';
   const textPrimary = 'text-foreground';
   const textSecondary = 'text-muted-foreground';
-  const inputBg = isDarkMode ? 'bg-[#2a2a3e] border-gray-600 text-white' : 'bg-white border-gray-300 text-foreground';
+  const inputBg = 'bg-background border-border text-foreground';
   const labelClass = `text-[10px] uppercase tracking-wider font-semibold ${textSecondary} mb-1 block`;
   const sectionClass = `${cardBg} border ${cardBorder} rounded-xl p-4`;
-  const hoverBg = isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50';
+  const hoverBg = isDarkMode ? 'hover:bg-white/5' : 'hover:bg-muted';
 
   const update = (patch: Partial<Workflow>) => setData({ ...data, ...patch });
 
@@ -1197,7 +1197,7 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
             ) : (
               <div className="space-y-2">
                 {((data.conditions || []) as ConditionDef[]).map((c: ConditionDef, i: number) => (
-                  <div key={i} className={`flex items-center gap-1.5 p-2 rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
+                  <div key={i} className={`flex items-center gap-1.5 p-2 rounded-lg bg-muted/40`}>
                     <select value={c.field} onChange={(e) => updateCondition(i, { field: e.target.value })} className={`flex-1 px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
                       {CONDITION_FIELDS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
                     </select>
@@ -1230,7 +1230,7 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
                 {((data.actions || []) as ActionDef[]).map((a: ActionDef, i: number) => {
                   const Icon = getActionIcon(a.type);
                   return (
-                    <div key={i} className={`p-2 rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
+                    <div key={i} className={`p-2 rounded-lg bg-muted/40`}>
                       <div className="flex items-center gap-1.5 mb-1.5">
                         <Icon className={`w-3.5 h-3.5 ${a.type.startsWith('ai_') ? 'text-purple-500' : isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
                         <select value={a.type} onChange={(e) => updateAction(i, { type: e.target.value, config: {} })} className={`flex-1 px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
@@ -1260,7 +1260,7 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
 function TriggerConfigEditor({ trigger, onChange, isDarkMode }: {
   trigger: TriggerDef; onChange: (t: TriggerDef) => void; isDarkMode: boolean;
 }) {
-  const inputBg = isDarkMode ? 'bg-[#2a2a3e] border-gray-600 text-white' : 'bg-white border-gray-300 text-foreground';
+  const inputBg = 'bg-background border-border text-foreground';
   const textSecondary = 'text-muted-foreground';
   const labelClass = `text-[10px] ${textSecondary} mb-0.5 block mt-2`;
 
@@ -1376,7 +1376,7 @@ function TriggerConfigEditor({ trigger, onChange, isDarkMode }: {
 function ActionConfigEditor({ action, onChange, isDarkMode }: {
   action: ActionDef; onChange: (a: Partial<ActionDef>) => void; isDarkMode: boolean;
 }) {
-  const inputBg = isDarkMode ? 'bg-[#2a2a3e] border-gray-600 text-white' : 'bg-white border-gray-300 text-foreground';
+  const inputBg = 'bg-background border-border text-foreground';
   const textSecondary = 'text-muted-foreground';
   const labelClass = `text-[10px] ${textSecondary} mb-0.5 block`;
 

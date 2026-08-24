@@ -164,7 +164,7 @@ export const PIN_VARIANT_CLASS: Record<PinVisualVariant, string> = {
   warning: 'bg-amber-500 border-amber-200 shadow-amber-500/25',
   in_repair: 'bg-sky-600 border-sky-200 shadow-sky-500/25',
   repaired: 'bg-emerald-600/70 border-emerald-200/80 shadow-emerald-500/20',
-  neutral: 'bg-zinc-600 border-zinc-200 shadow-zinc-500/20',
+  neutral: 'bg-zinc-600 border-border shadow-zinc-500/20',
 };
 
 export function imageSourceLabel(

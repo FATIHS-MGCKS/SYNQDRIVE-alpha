@@ -351,7 +351,7 @@ export function VehicleInsightsCard({ vehicleId, isDarkMode }: VehicleInsightsCa
           'border-status-ai/25 bg-status-ai-soft'
         }`}>
           <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${
-            dm ? 'bg-status-ai-soft text-status-ai' : 'bg-white text-brand shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+            dm ? 'bg-status-ai-soft text-status-ai' : 'surface-solid text-brand shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
           }`}>
             <Icon name="arrow-right" className="h-3 w-3" />
           </span>

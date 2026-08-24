@@ -78,7 +78,7 @@ function formatPrice(value: number | undefined, currency: string) {
 // ── Skeleton helpers ───────────────────────────────────
 function Skeleton({ className, dk }: { className?: string; dk: boolean }) {
   return (
-    <div className={cls('animate-pulse rounded-lg', dk ? 'bg-white/[0.06]' : 'bg-gray-200/80', className)} />
+    <div className={cls('animate-pulse rounded-lg', dk ? 'bg-white/[0.06]' : 'bg-muted', className)} />
   );
 }
 
@@ -86,7 +86,7 @@ function CardSkeleton({ dk }: { dk: boolean }) {
   return (
     <div className={cls(
       'rounded-2xl border p-5 space-y-3',
-      dk ? 'bg-white/[0.03] border-white/[0.06]' : 'bg-white/70 border-gray-200/60',
+      dk ? 'bg-white/[0.03] border-white/[0.06]' : 'surface-solid/70 border-border/60',
     )}>
       <Skeleton dk={dk} className="h-36 w-full" />
       <Skeleton dk={dk} className="h-4 w-3/4" />
@@ -132,7 +132,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
   // ── Glass card class ─────────────────────────────────
   const card = dk
     ? 'bg-white/[0.03] border border-white/[0.06] rounded-2xl'
-    : 'bg-white border border-gray-200 rounded-2xl';
+    : 'surface-solid border border-border rounded-2xl';
 
   // ── Vehicle search filtering ─────────────────────────
   const filteredVehicles = useMemo(() => {
@@ -282,7 +282,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
             {i > 0 && (
               <div className={cls(
                 'w-6 h-px',
-                isDone ? (dk ? 'bg-status-info' : 'bg-status-info') : dk ? 'bg-white/10' : 'bg-gray-300',
+                isDone ? (dk ? 'bg-status-info' : 'bg-status-info') : dk ? 'bg-white/10' : 'bg-muted',
               )} />
             )}
             <button
@@ -310,7 +310,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
     return (
       <div className={cls(
         'flex flex-wrap items-center gap-3 px-4 py-2 rounded-xl text-xs',
-        dk ? 'bg-white/[0.04] text-white/60' : 'bg-gray-50 text-muted-foreground',
+        dk ? 'bg-white/[0.04] text-white/60' : 'bg-muted text-muted-foreground',
       )}>
         {selectedVehicle && (
           <span className="flex items-center gap-1">
@@ -352,7 +352,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           className={cls(
             'w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition',
             dk ? 'bg-white/[0.06] text-white placeholder:text-white/30 border border-white/[0.08] focus:border-brand/50'
-               : 'bg-white text-foreground placeholder:text-muted-foreground border border-gray-200 focus:border-brand',
+               : 'bg-background text-foreground placeholder:text-muted-foreground border border-border focus:border-brand',
           )}
         />
       </div>
@@ -518,7 +518,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                       key={cat}
                       className={cls(
                         'px-2 py-0.5 rounded-full text-[10px] font-medium',
-                        dk ? 'bg-white/[0.06] text-white/50' : 'bg-gray-100 text-muted-foreground',
+                        dk ? 'bg-white/[0.06] text-white/50' : 'bg-muted text-muted-foreground',
                       )}
                     >
                       {cat}
@@ -580,7 +580,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           {disclosure && (
             <div className={cls(
               'p-4 rounded-xl text-sm leading-relaxed',
-              dk ? 'bg-white/[0.04] text-white/70' : 'bg-gray-50 text-foreground',
+              dk ? 'bg-white/[0.04] text-white/70' : 'bg-muted text-foreground',
             )}>
               <p className={cls('font-medium mb-1 text-xs uppercase tracking-wide', dk ? 'text-white/40' : 'text-muted-foreground')}>
                 Purpose
@@ -601,7 +601,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                     key={field}
                     className={cls(
                       'flex items-start gap-2 text-sm px-3 py-2 rounded-lg',
-                      dk ? 'bg-white/[0.03]' : 'bg-gray-50',
+                      dk ? 'bg-white/[0.03]' : 'bg-muted',
                     )}
                   >
                     <Icon name="info" className={cls('w-3.5 h-3.5 mt-0.5 shrink-0', dk ? 'text-status-info/60' : 'text-status-info/60')} />
@@ -623,7 +623,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           {selectedVehicle && (
             <div className={cls(
               'flex items-center gap-3 px-4 py-3 rounded-xl',
-              dk ? 'bg-white/[0.04]' : 'bg-gray-50',
+              dk ? 'bg-white/[0.04]' : 'bg-muted',
             )}>
               <Icon name="car" className={cls('w-4 h-4', dk ? 'text-white/40' : 'text-muted-foreground')} />
               <span className={cls('text-sm', dk ? 'text-white/70' : 'text-foreground')}>
@@ -650,7 +650,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 'w-5 h-5 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-colors',
                 authorized
                   ? 'bg-status-info border-brand'
-                  : dk ? 'border-white/20 bg-white/[0.04]' : 'border-gray-300 bg-white',
+                  : dk ? 'border-white/20 bg-white/[0.04]' : 'border-border surface-solid',
               )}
             >
               {authorized && <Icon name="check" className="w-3 h-3 text-white" />}
@@ -669,7 +669,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               onClick={goBack}
               className={cls(
                 'px-5 py-2.5 rounded-xl text-sm font-medium transition',
-                dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-gray-100 text-foreground hover:bg-gray-200',
+                dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-muted text-foreground hover:bg-muted/80',
               )}
             >
               Cancel
@@ -681,7 +681,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 'px-6 py-2.5 rounded-xl text-sm font-semibold transition flex items-center gap-2',
                 authorized
                   ? 'bg-brand text-brand-foreground hover:bg-brand-hover'
-                  : dk ? 'bg-white/[0.06] text-white/30 cursor-not-allowed' : 'bg-gray-200 text-muted-foreground cursor-not-allowed',
+                  : dk ? 'bg-white/[0.06] text-white/30 cursor-not-allowed' : 'bg-muted text-muted-foreground cursor-not-allowed',
               )}
             >
               {confirmLoading && <Icon name="loader-2" className="w-4 h-4 animate-spin" />}
@@ -724,7 +724,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 onChange={(e) => handleSort(e.target.value as SortOption)}
                 className={cls(
                   'text-sm rounded-lg px-3 py-1.5 outline-none appearance-none pr-7 cursor-pointer',
-                  dk ? 'bg-white/[0.06] text-white border border-white/[0.08]' : 'bg-white text-foreground border border-gray-200',
+                  dk ? 'bg-white/[0.06] text-white border border-white/[0.08]' : 'surface-solid text-foreground border border-border',
                 )}
               >
                 <option value="relevance">Relevance</option>
@@ -763,7 +763,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                     ) : (
                       <div className={cls(
                         'h-40 flex items-center justify-center',
-                        dk ? 'bg-white/[0.04]' : 'bg-gray-50',
+                        dk ? 'bg-white/[0.04]' : 'bg-muted',
                       )}>
                         <Icon name="package" className={cls('w-10 h-10', dk ? 'text-white/15' : 'text-muted-foreground')} />
                       </div>
@@ -834,7 +834,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   disabled={searchLoading}
                   className={cls(
                     'px-6 py-2.5 rounded-xl text-sm font-medium transition flex items-center gap-2',
-                    dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-gray-100 text-foreground hover:bg-gray-200',
+                    dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-muted text-foreground hover:bg-muted/80',
                   )}
                 >
                   {searchLoading ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <Icon name="chevron-down" className="w-4 h-4" />}
@@ -859,14 +859,14 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
         {/* Drawer */}
         <div className={cls(
           'relative w-full max-w-lg h-full overflow-y-auto',
-          dk ? 'bg-neutral-900' : 'bg-white',
+          'surface-solid',
         )}>
           {/* Close */}
           <button
             onClick={() => setShowDetail(false)}
             className={cls(
               'absolute top-4 right-4 p-2 rounded-xl z-10 transition',
-              dk ? 'bg-white/[0.06] text-white/60 hover:bg-white/[0.1]' : 'bg-gray-100 text-muted-foreground hover:bg-gray-200',
+              dk ? 'bg-white/[0.06] text-white/60 hover:bg-white/[0.1]' : 'bg-muted text-muted-foreground hover:bg-muted/80',
             )}
           >
             <Icon name="x" className="w-4 h-4" />
@@ -897,7 +897,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               ) : (
                 <div className={cls(
                   'h-56 rounded-2xl flex items-center justify-center',
-                  dk ? 'bg-white/[0.04]' : 'bg-gray-50',
+                  dk ? 'bg-white/[0.04]' : 'bg-muted',
                 )}>
                   <Icon name="package" className={cls('w-16 h-16', dk ? 'text-white/10' : 'text-foreground')} />
                 </div>
@@ -957,7 +957,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               {detailProduct.fitmentNotes && (
                 <div className={cls(
                   'p-3 rounded-xl text-sm',
-                  dk ? 'bg-white/[0.04] text-white/60' : 'bg-gray-50 text-muted-foreground',
+                  dk ? 'bg-white/[0.04] text-white/60' : 'bg-muted text-muted-foreground',
                 )}>
                   <p className={cls('text-[10px] uppercase tracking-wider font-semibold mb-1', dk ? 'text-white/30' : 'text-muted-foreground')}>
                     Fitment Notes
@@ -1022,7 +1022,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 ) : (
                   <div className={cls(
                     'text-center py-3 rounded-xl text-sm',
-                    dk ? 'bg-white/[0.04] text-white/40' : 'bg-gray-50 text-muted-foreground',
+                    dk ? 'bg-white/[0.04] text-white/40' : 'bg-muted text-muted-foreground',
                   )}>
                     No checkout link available for this product.
                   </div>
@@ -1073,7 +1073,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
     return (
       <div className={cls(
         'flex items-center justify-between pt-4 border-t',
-        dk ? 'border-white/[0.06]' : 'border-gray-200/60',
+        dk ? 'border-white/[0.06]' : 'border-border/60',
       )}>
         <button
           onClick={goBack}
@@ -1082,7 +1082,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
             'flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-medium transition',
             step === 1
               ? dk ? 'text-white/15 cursor-not-allowed' : 'text-muted-foreground cursor-not-allowed'
-              : dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-gray-100 text-foreground hover:bg-gray-200',
+              : dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-muted text-foreground hover:bg-muted/80',
           )}
         >
           <Icon name="chevron-left" className="w-4 h-4" /> Back
@@ -1094,7 +1094,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
             'flex items-center gap-1 px-5 py-2 rounded-xl text-sm font-semibold transition',
             canContinue(step)
               ? 'bg-brand text-brand-foreground hover:bg-brand-hover'
-              : dk ? 'bg-white/[0.06] text-white/20 cursor-not-allowed' : 'bg-gray-200 text-muted-foreground cursor-not-allowed',
+              : dk ? 'bg-white/[0.06] text-white/20 cursor-not-allowed' : 'bg-muted text-muted-foreground cursor-not-allowed',
           )}
         >
           Continue <Icon name="chevron-right" className="w-4 h-4" />

@@ -23410,7 +23410,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
       'Redundanz #2 entfernt: Der „Behavior Analysis"-Summary-Block in der rechten Spalte (Clean / Moderate / High Risk + „X accel · Y brake · Z abuse") dupliziert genau das, was die `BehaviorAnalysis`-Komponente bereits prominent zeigt — er ist ersatzlos gestrichen.',
       'Redundanz #3 entfernt: Der „Outside Temperature"-Block ist weg, weil die Außentemperatur bereits in den Top-Metric-Tiles als `Temp 3°C` steht. Die einzigartigen Engine-Daten (RPM, Load, Throttle, Engine-Temp Start→End) sind jetzt in einer kompakten Inline-Zeile gebündelt.',
       'Speeding Sections sind jetzt **kollabierbar**: Header zeigt immer `Sections · Severity` Pille, Peak Over und Exposure als Zusammenfassung — die vier Summary-Tiles und die N-Detail-Section-Rows klappen erst per Klick auf. State teilt sich den existierenden `expandedSection`-State mit der BehaviorAnalysis (Key `speeding`), sodass nur ein Detail gleichzeitig offen ist.',
-      'Insights-Block: aus dem 3-Spalten-`bg-muted` ist ein sauberes 2-Spalten-Grid geworden (`grid-cols-1 md:grid-cols-2`) mit zwei tonal getönten Tiles — Road Distribution (Bar + 3 Rows) links, Engine & Consumption (RPM/Load/Throttle inline + Engine-Temp Start→End + Fuel/Energy mit Confidence-Pill) rechts. Beide Tiles nutzen das gleiche Surface-Vokabular wie die Top-Metric-Tiles (`bg-slate-50/50 border-slate-100` light, `bg-white/[0.02] border-white/[0.05]` dark).',
+      'Insights-Block: aus dem 3-Spalten-`bg-muted` ist ein sauberes 2-Spalten-Grid geworden (`grid-cols-1 md:grid-cols-2`) mit zwei tonal getönten Tiles — Road Distribution (Bar + 3 Rows) links, Engine & Consumption (RPM/Load/Throttle inline + Engine-Temp Start→End + Fuel/Energy mit Confidence-Pill) rechts. Beide Tiles nutzen das gleiche Surface-Vokabular wie die Top-Metric-Tiles (`bg-muted/50 border-border` light, `bg-white/[0.02] border-white/[0.05]` dark).',
       'Map-Match-Confidence sitzt jetzt als zentriertes 9px-Footer-Line am Ende — vorher war sie versteckt am Boden der dritten Spalte verklemmt zwischen Speeding-Detail und Behavior-Summary.',
     ],
     reason:
@@ -23436,7 +23436,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     summary: [
       '`TripsView` (`frontend/src/rental/components/TripsView.tsx`) wurde für das neue schmale linke Layout (555px) optimiert. Die einzelnen Trip-Karten hatten vorher 7 Metriken + Header + Badges in einer horizontalen Flex-Row, was zu Platzmangel und schlechter Lesbarkeit führte.',
       'Header-Zeile: Icon, Datum, Uhrzeit und alle Badges (Ongoing, Limited, Analyzing, Driver, Private) sind jetzt sauber in einer zweizeiligen Flex-Wrap-Struktur linksbündig organisiert. Der Expand-Chevron sitzt rechts in einem runden Hover-Button.',
-      'Metrik-Grid (Bento): Die 7 Metriken (Distance, Duration, Events, Style, Safety, Temp, Consumption) sind aus der horizontalen Liste in ein `grid-cols-2 sm:grid-cols-4` Raster umgezogen. Jede Metrik nutzt jetzt eine eigene `MetricTile`-Komponente mit getönter Surface (`bg-slate-50/50` bzw. dark `bg-white/[0.02]`), kleinen Icons und `tabular-nums` für perfekte Lesbarkeit.',
+      'Metrik-Grid (Bento): Die 7 Metriken (Distance, Duration, Events, Style, Safety, Temp, Consumption) sind aus der horizontalen Liste in ein `grid-cols-2 sm:grid-cols-4` Raster umgezogen. Jede Metrik nutzt jetzt eine eigene `MetricTile`-Komponente mit getönter Surface (`bg-muted/50` bzw. dark `bg-white/[0.02]`), kleinen Icons und `tabular-nums` für perfekte Lesbarkeit.',
       'Footer-Zeile: Avg/Max Speed, Road Mix und Speeding-Sections sitzen jetzt in einer eigenen `border-t`-Zeile am unteren Rand der Karte, ebenfalls mit Flex-Wrap für schmale Viewports.',
       'EnergyEventCard: Auch die kleinen Refuel/Recharge-Karten wurden an das neue Pattern angepasst (rundes Icon, Flex-Wrap für die Metriken, konsistente Abstände).',
     ],
@@ -23462,7 +23462,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
       '`VehicleInsightsCard` (`frontend/src/rental/components/VehicleInsightsCard.tsx`) wurde von einer flachen 5-Block-Liste zu einer hierarchisch klaren Box umgebaut, die das gleiche Vokabular wie `VehicleHealthBoxWired` und `OverviewLiveMapCard` spricht. Outer-Wrapper bleibt das Standard-Card-Pattern (`rounded-xl border surface-premium shadow-sm transition-shadow hover:shadow-md`), Hover-Translate gibt es weiterhin nicht.',
       'Header: Sparkles-Icon-Chip + Titel + Readiness-Pille (Ready / Monitor / Limited / Action Needed) als ringed Tone-Pille rechts vom Titel — analog zur Coverage-Pille der Vehicle-Health-Box. Refresh-Timestamp bleibt als tabular-nums rechts, das `Loading…`-Wort ist durch einen dezenten `Loader2`-Spinner ersetzt.',
       '3-Tile-Statusstrip ersetzt die alte Spalten-Zeile: Readiness / Cost Outlook / Downtime werden über eine gemeinsame `Tone`-Skala (`good / watch / limited / critical / neutral`) auf eine konsistente Tile-Surface gemappt (Border + Tinted-Background + Tone-Dot + Bold-Wert). Die Logik in `vehicle-insights-logic.ts` (deriveInsights, ReadinessLevel, CostOutlookLevel, DowntimeRiskLevel) ist unverändert, nur die Color-Helper werden nicht mehr direkt im JSX gemischt.',
-      'Planning Horizon: Liste sitzt jetzt in einer eingerahmten, leicht getönten Surface (`rounded-[10px] border bg-slate-50/60` bzw. dark `bg-white/[0.025]`). Jedes Item zeigt einen kleinen Urgency-Dot in der Borderfarbe (overdue/due/soon/normal), das Eventlabel und rechts in monospaced tabular-nums die Distanz und/oder Restzeit. Kein gestapelter `border-l-2`-Akzent mehr, der den Text einrückt.',
+      'Planning Horizon: Liste sitzt jetzt in einer eingerahmten, leicht getönten Surface (`rounded-[10px] border bg-muted/60` bzw. dark `bg-white/[0.025]`). Jedes Item zeigt einen kleinen Urgency-Dot in der Borderfarbe (overdue/due/soon/normal), das Eventlabel und rechts in monospaced tabular-nums die Distanz und/oder Restzeit. Kein gestapelter `border-l-2`-Akzent mehr, der den Text einrückt.',
       'Next Action ist jetzt ein eigener Strip mit `ArrowRight`-Icon, blau getönter Surface und Eyebrow `NEXT ACTION` über der Aktionszeile — visuell als prominente Handlungsempfehlung erkennbar, statt als anonyme Textzeile mit `NEXT`-Label.',
       'Confidence-Footer als kleine `Lock`-Icon-Zeile in muted Foreground; alle Section-Divider und das `transition-opacity duration-300 opacity-100` Loading-Wrapping sind weggefallen, weil die ruhige Card-Surface den Lade-Übergang selbst trägt.',
     ],
@@ -23474,7 +23474,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
       '**Datei**: `frontend/src/rental/components/VehicleInsightsCard.tsx`, ein eigenständiger Komponenten-File. Reine Präsentations-Refactor — keine Änderung an `vehicle-insights-logic.ts` (`deriveInsights`, Readiness/Cost/Downtime-Levels, Forecast-Engine), kein neuer API-Call, keine neue Prop. `useEffect` mit den sechs `vehicleIntelligence`-Endpoints (tireHealthSummary, brakeHealthSummary, batteryHealthSummary, serviceInfoStatus, dtcActive, oilChangeStatus) bleibt unverändert.',
       '**Tone-System**: Neue private Helper `readinessTone`, `costOutlookTone`, `downtimeRiskTone` mappen die Logik-Levels auf eine 5er-Tone-Skala. Surface-Helper `toneTile` (Mini-Tile-Surface), `toneRing` (Header-Pille) und `toneDot` (Dot-Color) liefern alle Tailwind-Classes pro Tone & Darkmode. Damit ist die Box visuell ein direkter Geschwister-Block der Vehicle-Health-Box (gleiche Darkmode-Opazitäten, gleiche Pill-Treatments).',
       '**Statusstrip**: Aus drei `StatusCol`-Spalten (Label + Dot + Wert) ist ein 3-Spalten-Grid aus `StatusTile`-Surfaces geworden. Jede Tile hat einen Eyebrow mit Tone-Dot + Bold-Wert; die Texte (`Readiness`/`Cost Outlook`/`Downtime`) sind verkürzt, der Wert (`Ready` / `Moderate Increase` / `Low` etc.) bleibt 1:1 aus der Logik.',
-      '**Planning-Liste**: Vom „Liste mit Border-Left-Akzent + Border-Bottom" zu einer eingerahmten Surface mit kleinen Trennzeilen (`border-b border-white/5` dark / `border-slate-100` light). Distanz & Zeit nutzen jetzt durchgängig `font-mono` + `tabular-nums` und liegen in einem festen Right-Slot, der bei vier Items immer noch in den verfügbaren 249px Card-Höhe passt (Forecast-Engine cappt bei `MAX_ITEMS`).',
+      '**Planning-Liste**: Vom „Liste mit Border-Left-Akzent + Border-Bottom" zu einer eingerahmten Surface mit kleinen Trennzeilen (`border-b border-white/5` dark / `border-border` light). Distanz & Zeit nutzen jetzt durchgängig `font-mono` + `tabular-nums` und liegen in einem festen Right-Slot, der bei vier Items immer noch in den verfügbaren 249px Card-Höhe passt (Forecast-Engine cappt bei `MAX_ITEMS`).',
       '**Risiko-Profil**: Niedrig — scoped auf eine einzelne Präsentations-Komponente. Datenfluss, Forecast-Engine, Color-Helper-Exports und Insights-Logic sind unangetastet. `ReadLints` clean. Bestehende `readinessColors`/`costOutlookColors`/`downtimeRiskColors`-Exports werden nicht mehr aus dieser Komponente importiert, bleiben aber für andere Konsumenten in `vehicle-insights-logic.ts` erhalten.',
     ].join('\n\n'),
     affectsArchitecture: false,
@@ -23797,7 +23797,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     version: '4.6.99',
     title: 'V4.6.99 Dashboard — Buchungsnummer-Chip („BK-XXXXXX") in den Active-/Reserved-Karten von `StatInlineDetail`, klickbar als Cross-View-Deep-Link in die Booking-Detail-Seite',
     summary: [
-      '`frontend/src/rental/components/StatInlineDetail.tsx`: Neuer Helper `bookingRefFromId(id)` — spiegelt die `BK-${id.slice(-6).toUpperCase()}`-Berechnung aus `mapApiBooking` (entityMappers.ts), damit die im Dashboard-Popup angezeigte Buchungsnummer 1:1 derjenigen in der BookingsView-Liste/Detail-Seite entspricht. In Row 2 der Active-Rented-Karte (zwischen Customer-Name und Rückgabe-Spalte) und in Row 2 der Reserved-Karte (zwischen Customer-Name und Pickup-Zeit) sitzt jetzt ein kompakter Chip `BK-XXXXXX` (text-[9.5px], font-semibold, tabular-nums, `bg-gray-100`/`bg-neutral-800/60`, hover → blue tint). Der Chip ist als eigener `<button type="button">` rendered mit `e.stopPropagation()`, sodass der äussere Container-Click weiter zum Vehicle-Overview führt während der Chip-Click den Booking-Deep-Link auslöst. Customer-Span in der Reserved-Karte wurde von `max-w-[44%]` auf `max-w-[40%]` verschmälert, damit der Chip ohne Layout-Shift Platz findet.',
+      '`frontend/src/rental/components/StatInlineDetail.tsx`: Neuer Helper `bookingRefFromId(id)` — spiegelt die `BK-${id.slice(-6).toUpperCase()}`-Berechnung aus `mapApiBooking` (entityMappers.ts), damit die im Dashboard-Popup angezeigte Buchungsnummer 1:1 derjenigen in der BookingsView-Liste/Detail-Seite entspricht. In Row 2 der Active-Rented-Karte (zwischen Customer-Name und Rückgabe-Spalte) und in Row 2 der Reserved-Karte (zwischen Customer-Name und Pickup-Zeit) sitzt jetzt ein kompakter Chip `BK-XXXXXX` (text-[9.5px], font-semibold, tabular-nums, `bg-muted`/`bg-neutral-800/60`, hover → blue tint). Der Chip ist als eigener `<button type="button">` rendered mit `e.stopPropagation()`, sodass der äussere Container-Click weiter zum Vehicle-Overview führt während der Chip-Click den Booking-Deep-Link auslöst. Customer-Span in der Reserved-Karte wurde von `max-w-[44%]` auf `max-w-[40%]` verschmälert, damit der Chip ohne Layout-Shift Platz findet.',
       '`StatInlineDetailProps`: neuer optionaler Prop `onOpenBookingById?: (bookingId: string) => void`. Aufruf-Vertrag: der Empfänger (DashboardView → App.tsx) wechselt auf `currentView=\'bookings\'` und öffnet die Booking-Detail-Seite über einen neuen Pending-Id-State.',
       '`frontend/src/rental/components/DashboardView.tsx`: neuer optionaler Prop `onOpenBookingById?: (bookingId: string) => void`, wird an beide eingebetteten `<StatInlineDetail>`-Instanzen (Fleet-Status-Tab-Card + Today-Activity-Card) durchgereicht.',
       '`frontend/src/rental/App.tsx`: neuer State `pendingBookingDetailId: string | null`. `<DashboardView onOpenBookingById={...}>` setzt beim Chip-Click `pendingBookingDetailId=bookingId` UND `setCurrentView(\'bookings\')`. `<BookingsView ...>` erhält neuerdings `initialDetailBookingId={pendingBookingDetailId}` + `onConsumeInitialDetailBookingId={() => setPendingBookingDetailId(null)}`.',
@@ -27512,9 +27512,9 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
   const [architectureOnly, setArchitectureOnly] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, Partial<Record<SectionKey, boolean>>>>({});
 
-  const card = `rounded-xl shadow-sm border ${d ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`;
-  const field = `px-4 py-3 rounded-xl border text-sm font-bold ${d ? 'bg-neutral-800 border-neutral-700 text-foreground' : 'bg-gray-50 border-gray-200 text-foreground'}`;
-  const expandBtn = `flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold ${d ? 'border-neutral-800 bg-neutral-800/40 text-foreground hover:bg-neutral-800/70' : 'border-gray-100 bg-gray-50/80 text-foreground hover:bg-gray-100'}`;
+  const card = `rounded-xl shadow-sm border surface-solid border-border`;
+  const field = `px-4 py-3 rounded-xl border text-sm font-bold bg-muted border-border text-foreground`;
+  const expandBtn = `flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold border-border bg-muted/80 text-foreground hover:bg-muted`;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -27567,7 +27567,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
         title="Changes"
         description="Internal changelog and change journal"
         status={
-          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${d ? 'bg-neutral-800 text-muted-foreground' : 'bg-gray-100 text-muted-foreground'}`}>
+          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-muted text-muted-foreground">
             <Code2 className="h-3 w-3" />
             SynqDrive Code
           </span>
@@ -27576,7 +27576,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
 
       <div className={`${card} p-4`}>
         <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
-          <div className={`flex min-w-[200px] flex-1 items-center gap-2 rounded-2xl border px-4 py-3 ${d ? 'border-neutral-700/50 bg-neutral-800/50' : 'border-gray-200/50 bg-gray-50/50'}`}>
+          <div className="flex min-w-[200px] flex-1 items-center gap-2 rounded-2xl border px-4 py-3 border-border/50 bg-muted/50">
             <Filter className={`h-5 w-5 shrink-0 ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
             <span className={`text-sm font-bold ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Module</span>
             <select value={moduleFilter} onChange={(e) => setModuleFilter(e.target.value)} className={`${field} ml-auto min-w-[160px] flex-1 cursor-pointer appearance-none lg:ml-0 lg:flex-none`} aria-label="Filter by module">
@@ -27595,7 +27595,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
               <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow ${architectureOnly ? 'left-5' : 'left-0.5'}`} />
             </span>
           </label>
-          <button type="button" onClick={() => void load()} disabled={loading} className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-bold disabled:opacity-50 ${d ? 'border-neutral-700/50 bg-neutral-800/50 text-foreground hover:bg-neutral-800' : 'border-gray-200/50 bg-gray-50/50 text-foreground hover:bg-gray-100'}`}>
+          <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-bold disabled:opacity-50 border-border/50 bg-muted/50 text-foreground hover:bg-muted">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
@@ -27622,7 +27622,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
         </div>
       ) : (
         <div className="relative space-y-4 pl-2 sm:pl-4">
-          <div className={`absolute bottom-2 left-[19px] top-2 w-px sm:left-[23px] ${d ? 'bg-neutral-800' : 'bg-gray-200'}`} aria-hidden />
+          <div className="absolute bottom-2 left-[19px] top-2 w-px sm:left-[23px] bg-muted" aria-hidden />
           {filtered.map((entry, idx) => {
             const o = openSections[entry.id] || {};
             const sections: { key: SectionKey; label: string; text: string | null }[] = [
@@ -27638,7 +27638,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
                   <div className="flex flex-wrap items-start gap-2 gap-y-2">
                     <span className="inline-flex items-center rounded-full bg-indigo-500/15 px-2.5 py-0.5 text-[11px] font-bold text-indigo-400 ring-1 ring-indigo-500/25">v{entry.version}</span>
                     {entry.module && (
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${d ? 'bg-neutral-800 text-muted-foreground' : 'bg-gray-100 text-muted-foreground'}`}>
+                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold bg-muted text-muted-foreground">
                         <Tag className="h-3 w-3" />
                         {entry.module}
                       </span>
@@ -27665,7 +27665,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
                     ))}
                   </ul>
                   {hasExpandable && (
-                    <div className={`mt-4 space-y-2 border-t pt-4 ${d ? 'border-neutral-800' : 'border-gray-100'}`}>
+                    <div className={`mt-4 space-y-2 border-t pt-4 ${d ? 'border-neutral-800' : 'border-border'}`}>
                       {sections.map(({ key, label, text }) => {
                         if (!text) return null;
                         const expanded = Boolean(o[key]);
@@ -27676,7 +27676,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
                               {expanded ? <ChevronUp className="h-4 w-4 shrink-0 opacity-70" /> : <ChevronDown className="h-4 w-4 shrink-0 opacity-70" />}
                             </button>
                             {expanded && (
-                              <p className={`mt-2 whitespace-pre-wrap rounded-xl px-3 py-2 text-sm leading-relaxed ${d ? 'bg-neutral-950/50 text-muted-foreground' : 'bg-white text-muted-foreground'}`}>{text}</p>
+                              <p className="mt-2 whitespace-pre-wrap rounded-xl px-3 py-2 text-sm leading-relaxed bg-muted text-muted-foreground">{text}</p>
                             )}
                           </div>
                         );

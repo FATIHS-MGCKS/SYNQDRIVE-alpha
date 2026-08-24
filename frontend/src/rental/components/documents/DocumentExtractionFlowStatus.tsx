@@ -173,7 +173,7 @@ export function DocumentExtractionFlowStatus({
               type="button"
               onClick={onReset}
               className={`inline-flex min-h-11 items-center justify-center rounded-lg border px-3 py-2 text-xs font-semibold ${
-                isDarkMode ? 'border-neutral-700 text-muted-foreground' : 'border-gray-200 text-muted-foreground'
+                isDarkMode ? 'border-neutral-700 text-muted-foreground' : 'border-border text-muted-foreground'
               }`}
             >
               Abbrechen
@@ -184,9 +184,7 @@ export function DocumentExtractionFlowStatus({
         <button
           type="button"
           onClick={() => void onCancel()}
-          className={`inline-flex min-h-11 items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold ${
-            isDarkMode ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-muted-foreground'
-          }`}
+          className={`inline-flex min-h-11 items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold bg-muted text-muted-foreground`}
         >
           Abbrechen
         </button>

@@ -65,7 +65,7 @@ export function InvoiceRelationRow({
     interactive
       ? isDarkMode
         ? 'cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40'
-        : 'cursor-pointer hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30'
+        : 'cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30'
       : '',
   ].join(' ');
 

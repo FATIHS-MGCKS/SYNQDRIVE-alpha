@@ -33,7 +33,7 @@ function statusTone(status: ApiTaskStatus, isDark: boolean): string {
     case 'DONE':
       return isDark ? 'bg-status-positive-soft text-status-positive border-status-positive/20' : 'bg-emerald-100 text-emerald-700 border-emerald-200';
     case 'CANCELLED':
-      return isDark ? 'bg-muted text-muted-foreground border-border' : 'bg-gray-100 text-muted-foreground border-gray-200';
+      return isDark ? 'bg-muted text-muted-foreground border-border' : 'bg-muted text-muted-foreground border-border';
     default:
       return isDark ? 'bg-status-info-soft text-status-info border-status-info/20' : 'bg-status-info-soft text-status-info border-border';
   }
@@ -98,7 +98,7 @@ export function EntityTasksSection({ isDark = false, title, emptyHint, fetchTask
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
-  const cardClass = `rounded-2xl border shadow-sm ${isDark ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
+  const cardClass = `rounded-2xl border shadow-sm ${isDark ? 'surface-premium border-border' : 'surface-solid border-border'}`;
   const textPrimary = isDark ? 'text-foreground' : 'text-foreground';
   const textSecondary = isDark ? 'text-muted-foreground' : 'text-muted-foreground';
 
@@ -128,7 +128,7 @@ export function EntityTasksSection({ isDark = false, title, emptyHint, fetchTask
                 type="button"
                 onClick={() => onOpenTask?.(t.id)}
                 className={`w-full text-left rounded-xl border p-3 transition-colors ${
-                  isDark ? 'bg-muted/30 border-border/60 hover:bg-muted/50' : 'bg-gray-50/80 border-gray-200/50 hover:bg-gray-100'
+                  isDark ? 'bg-muted/30 border-border/60 hover:bg-muted/50' : 'bg-muted/80 border-border/50 hover:bg-muted'
                 } ${onOpenTask ? 'cursor-pointer' : 'cursor-default'}`}
               >
                 <div className="flex items-start justify-between gap-3">

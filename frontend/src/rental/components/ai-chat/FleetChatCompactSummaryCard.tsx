@@ -40,8 +40,8 @@ export function FleetChatCompactSummaryCard({
     isWarningResponseType(structured.responseType) &&
     structured.responseType === 'INCONSISTENT_STATE';
 
-  const borderClass = isDarkMode ? 'border-neutral-800' : 'border-gray-200/60';
-  const surfaceClass = isDarkMode ? 'surface-premium' : 'bg-gray-50/80';
+  const borderClass = isDarkMode ? 'border-neutral-800' : 'border-border/60';
+  const surfaceClass = 'surface-solid';
 
   const headline =
     summary.headline && shouldCollapseNarrative(structured, content)

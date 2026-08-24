@@ -11,7 +11,7 @@ export function getInvoiceThemeClasses(isDarkMode: boolean): InvoiceThemeClasses
     isDarkMode,
     tp: 'text-foreground',
     ts: 'text-muted-foreground',
-    card: `rounded-xl shadow-sm border ${isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'}`,
+    card: `rounded-xl shadow-sm border surface-solid border-border`,
     inputCls: `w-full px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : 'bg-background border-border text-foreground placeholder:text-muted-foreground'} outline-none`,
   };
 }
