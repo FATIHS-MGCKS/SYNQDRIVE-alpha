@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c13-6-final-production-cutover-proof-2026-08-24',
+    version: '4.9.950',
+    title: 'Communication Center C13.6 — final production cutover proof',
+    summary: [
+      'Evidence-only audit on main after C13.5: CC is sole operational UI authority for WhatsApp and Voice; legacy mounts and nav producers = 0.',
+      'Canonical write path proven (ReplyCommand + idempotency); legacy HTTP write adapters delegate to canonical authority; POST ai-reply remains security-retired.',
+      '8 deprecated compatibility HTTP routes retained — NO_PRODUCTION_EVIDENCE for deletion; observation window POLICY_REQUIRED.',
+      'RBAC, tenant isolation, station scope, webhook security, redirects, dashboard deep links — TEST_PROVEN in focused C9–C13 suites.',
+      'Verdict: PRODUCTION CUTOVER — GO WITH NON-BLOCKING FOLLOW-UPS (manual prod smoke + config verify + telemetry follow-up).',
+    ],
+    reason: 'Prove Communication Center readiness as final production operational authority without manufacturing PASS or deleting uncertain compatibility routes.',
+    previousBehavior: 'C13.5 established deprecated HTTP wrappers and removed legacy clients; production cutover proof was deferred to C13.6.',
+    details: 'architecture/COMMUNICATION_CENTER_C13_6_FINAL_PRODUCTION_CUTOVER_PROOF.md',
+    affectsArchitecture: true,
+    module: 'Communication',
+    createdAt: '2026-08-24T17:50:00.000Z',
+  },
+  {
     id: 'communication-center-c13-5-dead-artifact-cleanup-2026-08-24',
     version: '4.9.949',
     title: 'Communication Center C13.5 — dead artifact cleanup',
