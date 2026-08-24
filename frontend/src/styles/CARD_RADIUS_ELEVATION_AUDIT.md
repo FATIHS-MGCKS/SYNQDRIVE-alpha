@@ -815,7 +815,14 @@ Key primitives: `theme.css`, `app-dialog.tsx`, `dashboardShell.tsx`, `ControlKpi
 
 ### 18.10 Final verdict
 
-**READY FOR INDEPENDENT REVIEW**
+**READY FOR INDEPENDENT REVIEW** → **DEPLOYED**
+
+| Field | Value |
+|-------|-------|
+| **Merged** | PR #1257 → `main` @ `cf55badc` (2026-08-24T19:50:17Z) |
+| **Production release** | `20260824195040_v4994` |
+| **Health** | ✅ `https://app.synqdrive.eu/api/v1/health` |
+| **PM2** | `synqdrive` online |
 
 Controlled cutover complete. Main-card radius unified at 10px via surface primitives; L1 flattened; dashboard 16px dialect removed; residual Category C = 0.
 
