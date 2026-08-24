@@ -1,9 +1,9 @@
 # P2.2.36 — Post-Baseline Merge Reconciliation
 
-**Date:** 2026-08-24  
-**Verified P236 HEAD (semantic source):** `bab7e2c5b33bc69bb5bf0017efe9ecbc5659d7af`  
-**Current main SHA:** `6af5fc58b9ceb935c74276a70a5ca5d380510f46`  
-**Reconciled branch:** `cursor/p2236-operator-booking-form-sheet-i18n-3c10`  
+**Date:** 2026-08-24
+**Verified P236 HEAD (semantic source):** `bab7e2c5b33bc69bb5bf0017efe9ecbc5659d7af`
+**Current main SHA:** `6af5fc58b9ceb935c74276a70a5ca5d380510f46`
+**Reconciled branch:** `cursor/p2236-operator-booking-form-sheet-i18n-3c10`
 **Implementation PR:** #1256
 
 ## Post-baseline merges verified on main
