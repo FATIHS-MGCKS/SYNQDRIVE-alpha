@@ -279,14 +279,10 @@ export function HandoverProtocolDialog({
   const textPrimary = 'text-foreground';
   const textMuted = 'text-muted-foreground';
   const textTertiary = 'text-muted-foreground';
-  const bg = isDarkMode ? 'surface-premium' : 'bg-white';
-  const borderColor = isDarkMode ? 'border-border' : 'border-gray-200';
-  const cardBg = isDarkMode ? 'bg-muted/50' : 'bg-gray-50/60';
-  const inputCls = `w-full px-3 py-2 rounded-lg border text-sm ${
-    isDarkMode
-      ? 'bg-neutral-900 border-neutral-700 text-foreground placeholder-gray-500'
-      : 'bg-background border-border text-foreground placeholder:text-muted-foreground'
-  } focus:outline-none focus:ring-2 focus:ring-blue-500/40`;
+  const bg = 'surface-solid';
+  const borderColor = isDarkMode ? 'border-border' : 'border-border';
+  const cardBg = 'bg-muted/50';
+  const inputCls = `w-full px-3 py-2 rounded-lg border text-sm bg-background border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/40`;
 
   const canSubmit = useMemo(() => {
     if (!booking) return false;
@@ -480,7 +476,7 @@ export function HandoverProtocolDialog({
               className={`p-1.5 rounded-lg transition-colors ${
                 isDarkMode
                   ? 'text-muted-foreground hover:text-muted-foreground hover:surface-premium'
-                  : 'text-muted-foreground hover:text-muted-foreground hover:bg-gray-100'
+                  : 'text-muted-foreground hover:text-muted-foreground hover:bg-muted'
               }`}
             >
               <Icon name="x" className="w-4 h-4" />
@@ -733,11 +729,7 @@ export function HandoverProtocolDialog({
               <button
                 type="button"
                 onClick={() => setNewDamageOpen((v) => !v)}
-                className={`text-[11px] font-semibold inline-flex items-center gap-1 px-2.5 py-1 rounded-md transition-colors ${
-                  isDarkMode
-                    ? 'bg-neutral-700 text-foreground hover:bg-neutral-600'
-                    : 'bg-white text-foreground border border-gray-200 hover:bg-gray-50'
-                }`}
+                className="text-[11px] font-semibold inline-flex items-center gap-1 px-2.5 py-1 rounded-md transition-colors surface-solid text-foreground border border-border hover:bg-muted"
               >
                 <Icon name="plus" className="w-3 h-3" />
                 Neuen Schaden erfassen
@@ -745,7 +737,7 @@ export function HandoverProtocolDialog({
             </div>
 
             {newDamageOpen && (
-              <div className={`mb-3 rounded-lg border p-3 ${borderColor} ${isDarkMode ? 'surface-premium' : 'bg-white'}`}>
+              <div className={`mb-3 rounded-lg border p-3 ${borderColor} surface-solid`}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <select
                     value={newDamage.damageType}
@@ -789,7 +781,7 @@ export function HandoverProtocolDialog({
                     type="button"
                     onClick={() => setNewDamageOpen(false)}
                     className={`text-[11px] px-3 py-1.5 rounded-md ${
-                      isDarkMode ? 'text-muted-foreground hover:bg-muted' : 'text-muted-foreground hover:bg-gray-100'
+                      isDarkMode ? 'text-muted-foreground hover:bg-muted' : 'text-muted-foreground hover:bg-muted'
                     }`}
                   >
                     Abbrechen
@@ -832,9 +824,7 @@ export function HandoverProtocolDialog({
                           ? isDarkMode
                             ? 'bg-orange-500/10 border-orange-500/40'
                             : 'bg-orange-50 border-orange-200'
-                          : isDarkMode
-                          ? 'border-neutral-700 hover:surface-premium'
-                          : 'border-gray-200 hover:bg-gray-50'
+                          : 'border-border hover:bg-muted'
                       }`}
                     >
                       <input
@@ -999,7 +989,7 @@ export function HandoverProtocolDialog({
               className={`text-xs font-semibold px-4 py-2 rounded-lg ${
                 isDarkMode
                   ? 'text-muted-foreground hover:surface-premium'
-                  : 'text-muted-foreground hover:bg-gray-100'
+                  : 'text-muted-foreground hover:bg-muted'
               }`}
             >
               Abbrechen

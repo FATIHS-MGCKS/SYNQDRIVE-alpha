@@ -59,9 +59,7 @@ function FieldRow({
 
   return (
     <div
-      className={`px-3 py-2.5 min-w-0 border-t border-border first:border-t-0 ${
-        isDarkMode ? 'bg-neutral-900/30' : 'bg-muted/10'
-      }`}
+      className="px-3 py-2.5 min-w-0 border-t border-border first:border-t-0 bg-muted/10"
     >
       <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3 min-w-0">
         <div className="sm:w-44 shrink-0 space-y-1">
@@ -223,7 +221,7 @@ export function DocumentSchemaFieldReview({
 
       {groups.map((group) => (
         <div key={group.id} className="overflow-hidden rounded-xl border border-border">
-          <div className={`border-b border-border px-3 py-2 ${isDarkMode ? 'bg-neutral-900/50' : 'bg-muted/20'}`}>
+          <div className="border-b border-border px-3 py-2 bg-muted/20">
             <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               {t(group.labelKey as TranslationKey)}
             </span>

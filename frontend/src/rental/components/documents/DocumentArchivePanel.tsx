@@ -53,9 +53,7 @@ export function DocumentArchivePanel({
     setSearchDraft(filters.q);
   }, [filters.q]);
 
-  const glass = isDarkMode
-    ? 'bg-neutral-900 border border-neutral-800'
-    : 'bg-white border border-gray-200';
+  const glass = 'surface-solid border border-border';
 
   const statusOptions = useMemo(
     () => ['', 'READY_FOR_REVIEW', 'APPLIED', 'PARTIALLY_APPLIED', 'FAILED', 'AWAITING_DOCUMENT_TYPE'],
@@ -87,7 +85,7 @@ export function DocumentArchivePanel({
 
   return (
     <div className={`rounded-lg overflow-hidden min-w-0 ${glass}`}>
-      <div className={`border-b px-3 py-3 space-y-3 ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}>
+      <div className="border-b px-3 py-3 space-y-3 border-border/60">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
           <div className="min-w-0">
             <h2 className={`text-base font-semibold text-foreground`}>
@@ -111,9 +109,7 @@ export function DocumentArchivePanel({
                   if (e.key === 'Enter') applySearch();
                 }}
                 placeholder={t('docUpload.archive.searchPlaceholder')}
-                className={`min-w-0 flex-1 rounded-lg border px-3 py-2 text-xs ${
-                  isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200'
-                }`}
+                className={`min-w-0 flex-1 rounded-lg border px-3 py-2 text-xs surface-solid border-border text-foreground`}
               />
               <button
                 type="button"
@@ -132,9 +128,7 @@ export function DocumentArchivePanel({
               setFilters((prev) => ({ ...prev, status: e.target.value }));
               setPage(1);
             }}
-            className={`rounded-lg border px-3 py-2 text-xs ${
-              isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200'
-            }`}
+            className={`rounded-lg border px-3 py-2 text-xs surface-solid border-border text-foreground`}
           >
             <option value="">{t('docUpload.archive.filter.statusAll')}</option>
             {statusOptions.filter(Boolean).map((status) => (
@@ -153,9 +147,7 @@ export function DocumentArchivePanel({
               }));
               setPage(1);
             }}
-            className={`rounded-lg border px-3 py-2 text-xs ${
-              isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200'
-            }`}
+            className={`rounded-lg border px-3 py-2 text-xs surface-solid border-border text-foreground`}
           >
             <option value="">{t('docUpload.archive.filter.followUpAll')}</option>
             {['OPEN', 'ACCEPTED', 'DISMISSED', 'MIXED'].map((status) => (
@@ -174,9 +166,7 @@ export function DocumentArchivePanel({
               }));
               setPage(1);
             }}
-            className={`rounded-lg border px-3 py-2 text-xs ${
-              isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200'
-            }`}
+            className={`rounded-lg border px-3 py-2 text-xs surface-solid border-border text-foreground`}
           >
             <option value="">{t('docUpload.archive.filter.categoryAll')}</option>
             {categoryOptions.map((option) => (
@@ -193,9 +183,7 @@ export function DocumentArchivePanel({
               setPage(1);
             }}
             disabled={categoryOptions.length > 0 && !filters.documentCategory}
-            className={`rounded-lg border px-3 py-2 text-xs ${
-              isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200'
-            }`}
+            className={`rounded-lg border px-3 py-2 text-xs surface-solid border-border text-foreground`}
           >
             <option value="">{t('docUpload.archive.filter.subtypeAll')}</option>
             {subtypeOptions.map((option) => (
@@ -214,9 +202,7 @@ export function DocumentArchivePanel({
               }));
               setPage(1);
             }}
-            className={`rounded-lg border px-3 py-2 text-xs ${
-              isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200'
-            }`}
+            className={`rounded-lg border px-3 py-2 text-xs surface-solid border-border text-foreground`}
           >
             <option value="">{t('docUpload.archive.filter.actionAll')}</option>
             {actionStatusOptions.filter(Boolean).map((status) => (
@@ -250,9 +236,7 @@ export function DocumentArchivePanel({
             {archive.items.map((item) => (
               <article
                 key={item.id}
-                className={`rounded-lg border p-3 min-w-0 ${
-                  isDarkMode ? 'border-neutral-800 hover:bg-neutral-800/40' : 'border-gray-200 hover:bg-gray-50'
-                }`}
+                className="rounded-lg border p-3 min-w-0 border-border hover:bg-muted"
               >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between min-w-0">
                   <div className="min-w-0 flex-1">
@@ -271,9 +255,7 @@ export function DocumentArchivePanel({
                         {typeLabel(`documentExtraction.status.${item.status}`, item.status)}
                       </span>
                       {item.actionSummary.summary ? (
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                          isDarkMode ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-muted-foreground'
-                        }`}>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground`}>
                           {item.actionSummary.summary}
                         </span>
                       ) : null}
@@ -296,9 +278,7 @@ export function DocumentArchivePanel({
                         {item.acceptedEntityLinks.map((link) => (
                           <span
                             key={`${link.entityType}-${link.entityId}`}
-                            className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] ${
-                              isDarkMode ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-muted-foreground'
-                            }`}
+                            className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] bg-muted text-muted-foreground`}
                           >
                             <Link2 className="w-3 h-3" />
                             {link.label || `${link.entityType}`}
@@ -311,9 +291,7 @@ export function DocumentArchivePanel({
                         {t('docUpload.archive.uploader')}: {item.uploader.displayName}
                       </p>
                     ) : null}
-                    <div className={`mt-3 rounded-lg border px-3 py-2 ${
-                      isDarkMode ? 'border-neutral-800 bg-neutral-900/50' : 'border-gray-200 bg-gray-50/80'
-                    }`}>
+                    <div className="mt-3 rounded-lg border px-3 py-2 border-border bg-muted/80">
                       <div className="flex items-center gap-1.5 mb-2">
                         <History className={`w-3.5 h-3.5 text-muted-foreground`} />
                         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -359,9 +337,7 @@ export function DocumentArchivePanel({
                       <button
                         type="button"
                         onClick={() => onDownload(item)}
-                        className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[11px] font-semibold ${
-                          isDarkMode ? 'surface-premium text-foreground' : 'bg-gray-100 text-foreground'
-                        }`}
+                        className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[11px] font-semibold bg-muted text-foreground`}
                       >
                         <Download className="w-3.5 h-3.5" />
                         {t('docUpload.archive.download')}

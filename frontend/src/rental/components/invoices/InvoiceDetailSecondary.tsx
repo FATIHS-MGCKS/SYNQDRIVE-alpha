@@ -139,10 +139,10 @@ export function InvoiceDetailSecondary({
                       task.isDone
                         ? isDarkMode
                           ? 'border-border/25 bg-muted/10 opacity-75'
-                          : 'border-gray-100 bg-gray-50/40 opacity-80'
+                          : 'border-border bg-muted/40 opacity-80'
                         : isDarkMode
                           ? 'border-border/40 bg-muted/20'
-                          : 'border-gray-100 bg-gray-50/60'
+                          : 'border-border bg-muted/60'
                     }`}
                   >
                     <Icon

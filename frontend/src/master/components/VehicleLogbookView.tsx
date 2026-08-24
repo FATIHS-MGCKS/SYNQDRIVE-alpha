@@ -39,13 +39,13 @@ export default function VehicleLogbookView({ isDarkMode: d }: Props) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
 
-  const bg = d ? 'bg-neutral-900' : 'bg-white';
-  const card = d ? 'surface-premium border-neutral-700/50' : 'bg-gray-50 border-gray-200';
+  const bg = 'surface-solid';
+  const card = d ? 'surface-premium border-neutral-700/50' : 'bg-muted border-border';
   const text1 = d ? 'text-white' : 'text-foreground';
   const text2 = d ? 'text-muted-foreground' : 'text-muted-foreground';
   const text3 = d ? 'text-muted-foreground' : 'text-muted-foreground';
-  const border = d ? 'border-neutral-700/50' : 'border-gray-200';
-  const inputBg = d ? 'surface-premium border-neutral-700 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-foreground placeholder-gray-400';
+  const border = d ? 'border-neutral-700/50' : 'border-border';
+  const inputBg = 'bg-background border-border text-foreground placeholder:text-muted-foreground';
 
   const fetchVehicles = useCallback(async () => {
     setLoading(true);
@@ -217,7 +217,7 @@ interface TabProps { d: boolean; detail: any; card: string; text1: string; text2
 
 function StatBox({ d, label, value, sub, color }: { d: boolean; label: string; value: string; sub?: string; color?: string }) {
   return (
-    <div className={`rounded-lg px-3 py-2 ${d ? 'surface-premium' : 'bg-gray-50'}`}>
+    <div className={`rounded-lg px-3 py-2 ${d ? 'surface-premium' : 'bg-muted'}`}>
       <p className={`text-[9px] uppercase tracking-wider ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{label}</p>
       <p className={`text-sm font-bold ${color || (d ? 'text-white' : 'text-foreground')}`}>{value}</p>
       {sub && <p className={`text-[9px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{sub}</p>}
@@ -236,7 +236,7 @@ function StatusBadge({ status, d }: { status: string; d: boolean }) {
     SUCCESS: d ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700',
     FAILURE: d ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700',
     TIMEOUT: d ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700',
-    SKIPPED: d ? 'bg-neutral-500/15 text-muted-foreground' : 'bg-gray-100 text-muted-foreground',
+    SKIPPED: d ? 'bg-neutral-500/15 text-muted-foreground' : 'bg-muted text-muted-foreground',
   };
   return <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${colors[status] || (d ? 'bg-neutral-700 text-muted-foreground' : 'bg-muted text-muted-foreground')}`}>{status}</span>;
 }
@@ -437,7 +437,7 @@ function TripsTab({ d, detail, card, text1, text2, text3, fmtTime, ago }: TabPro
           <h3 className={`text-xs font-semibold mb-3 ${text1}`}>Recent Trips</h3>
           <div className="space-y-1.5">
             {trips.map((t: any) => (
-              <div key={t.id} className={`rounded-lg px-3 py-2 ${d ? 'surface-premium' : 'bg-white'} border ${d ? 'border-neutral-700/30' : 'border-gray-100'}`}>
+              <div key={t.id} className={`rounded-lg px-3 py-2 surface-solid border ${d ? 'border-neutral-700/30' : 'border-border'}`}>
                 <div className="flex items-center gap-3 text-xs">
                   <span className={`font-medium ${text1}`}>{t.id.slice(0, 8)}</span>
                   <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${t.tripStatus === 'COMPLETED' ? (d ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700') : (d ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700')}`}>{t.tripStatus}</span>

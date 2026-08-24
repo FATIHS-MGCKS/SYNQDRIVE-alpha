@@ -422,9 +422,7 @@ export function ExteriorImagesEditor({
     }
   };
 
-  const cardClass = `rounded-xl border ${
-    isDarkMode ? 'surface-premium border-neutral-700' : 'bg-gray-50/60 border-gray-200'
-  }`;
+  const cardClass = 'rounded-xl border surface-premium border-border';
 
   return (
     <div className="space-y-3">
@@ -439,9 +437,7 @@ export function ExteriorImagesEditor({
         </div>
         <div className="shrink-0 flex items-center gap-2">
           {canUseModelTemplates && (
-            <div className={`inline-flex rounded-full p-0.5 border ${
-              isDarkMode ? 'bg-neutral-900/60 border-neutral-700' : 'bg-white border-gray-200'
-            }`}>
+            <div className="inline-flex rounded-full p-0.5 border surface-solid border-border">
               {(['vehicle', 'model'] as UploadTarget[]).map((target) => (
                 <button
                   key={target}
@@ -523,8 +519,8 @@ export function ExteriorImagesEditor({
                 onClick={() => triggerPick(v.key)}
                 className={`relative w-full aspect-[4/3] rounded-lg overflow-hidden border transition-all flex items-center justify-center ${
                   dataUrl
-                    ? (isDarkMode ? 'border-neutral-700' : 'border-gray-200')
-                    : `border-dashed ${isDarkMode ? 'border-neutral-700 hover:border-brand/50 bg-neutral-900/40' : 'border-gray-300 hover:border-brand bg-white'}`
+                    ? 'border-border'
+                    : 'border-dashed border-border hover:border-brand bg-muted/40'
                 } disabled:opacity-60 disabled:cursor-not-allowed`}
               >
                 {dataUrl ? (
@@ -593,11 +589,7 @@ export function ExteriorImagesEditor({
                         void applyModelTemplate(v.key, e.target.value);
                         e.currentTarget.value = '';
                       }}
-                      className={`w-full rounded-lg border px-2 py-1 text-[10px] font-semibold outline-none ${
-                        isDarkMode
-                          ? 'bg-neutral-900 border-neutral-700 text-muted-foreground'
-                          : 'bg-white border-gray-200 text-muted-foreground'
-                      } disabled:opacity-50`}
+                      className="w-full rounded-lg border px-2 py-1 text-[10px] font-semibold outline-none bg-background border-border text-muted-foreground disabled:opacity-50"
                     >
                       <option value="">Copy from model library</option>
                       {selectableTemplates.map((template) => (

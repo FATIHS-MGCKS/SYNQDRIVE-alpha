@@ -70,9 +70,7 @@ export function DocumentReviewInboxPanel({
   const [reasonFilter, setReasonFilter] = useState<DocumentReviewReasonFilter>('all');
   const inbox = useDocumentReviewInbox(orgId, reasonFilter);
 
-  const glass = isDarkMode
-    ? 'bg-neutral-900 border border-neutral-800'
-    : 'bg-white border border-gray-200';
+  const glass = 'surface-solid border border-border';
 
   const showDetail = Boolean(activeExtractionId && children);
 
@@ -84,9 +82,7 @@ export function DocumentReviewInboxPanel({
         <button
           type="button"
           onClick={onBackToList}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold ${
-            isDarkMode ? 'surface-premium text-foreground' : 'bg-gray-100 text-foreground'
-          }`}
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold bg-muted text-foreground`}
         >
           <ChevronLeft className="w-4 h-4" />
           {t('docUpload.review.backToInbox')}
@@ -98,7 +94,7 @@ export function DocumentReviewInboxPanel({
 
   return (
     <div className={`rounded-lg overflow-hidden min-w-0 ${glass}`}>
-      <div className={`border-b px-3 py-3 space-y-3 ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}>
+      <div className="border-b px-3 py-3 space-y-3 border-border/60">
         <div className="flex items-start justify-between gap-3 min-w-0">
           <div className="min-w-0">
             <h2 className={`text-base font-semibold text-foreground`}>
@@ -125,7 +121,7 @@ export function DocumentReviewInboxPanel({
                   ? 'bg-brand text-brand-foreground'
                   : isDarkMode
                     ? 'surface-premium text-muted-foreground hover:text-white'
-                    : 'bg-gray-100 text-muted-foreground hover:bg-gray-200'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >
               {t(chip.labelKey)}
@@ -159,9 +155,7 @@ export function DocumentReviewInboxPanel({
               return (
                 <article
                   key={item.id}
-                  className={`rounded-lg border p-3 min-w-0 ${
-                    isDarkMode ? 'border-neutral-800 hover:bg-neutral-800/40' : 'border-gray-200 hover:bg-gray-50'
-                  }`}
+                  className="rounded-lg border p-3 min-w-0 border-border hover:bg-muted"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between min-w-0">
                     <div className="min-w-0 flex-1">

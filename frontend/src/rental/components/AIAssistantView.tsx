@@ -227,9 +227,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
     [messages, handleSend],
   );
 
-  const glass = isDarkMode
-    ? 'bg-neutral-900 border border-neutral-800'
-    : 'bg-white border border-gray-200';
+  const glass = 'surface-solid border border-border';
 
   const messageCount = messages.filter((m) => m.role === 'user').length;
 
@@ -258,7 +256,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
         </div>
 
         <div className="px-3 pb-3">
-          <div className={`rounded-lg p-3 ${isDarkMode ? 'surface-premium' : 'bg-gray-50/80'}`}>
+          <div className={`rounded-lg p-3 surface-solid`}>
             <div className="flex items-center gap-2 mb-2">
               <div
                 className={`w-2 h-2 rounded-full ${
@@ -317,7 +315,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
             );
           })}
 
-          <div className={`mt-4 rounded-lg p-3 ${isDarkMode ? 'surface-premium' : 'bg-gray-50/60'}`}>
+          <div className={`mt-4 rounded-lg p-3 ${isDarkMode ? 'surface-premium' : 'bg-muted/60'}`}>
             <p className={`text-[10px] font-semibold mb-1 text-muted-foreground`}>
               {t('aiChat.aboutTitle')}
             </p>
@@ -334,7 +332,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
         className={`flex-1 flex flex-col min-h-0 min-w-0 rounded-2xl overflow-hidden ${glass}`}
       >
         <div
-          className={`shrink-0 px-3 py-2.5 border-b flex items-center gap-2 sm:gap-3 min-w-0 ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}
+          className="shrink-0 px-3 py-2.5 border-b flex items-center gap-2 sm:gap-3 min-w-0 border-border/60"
         >
           <div
             className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-purple-500/15' : 'bg-purple-100/80'}`}
@@ -353,7 +351,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
             <button
               onClick={handleNewChat}
               title={t('aiChat.newChat')}
-              className={`lg:hidden p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-gray-100 text-muted-foreground'}`}
+              className={`lg:hidden p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-muted text-muted-foreground'}`}
             >
               <Icon name="plus" className="w-4 h-4" />
             </button>
@@ -361,7 +359,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
               <button
                 onClick={handleNewChat}
                 title="Clear conversation"
-                className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-gray-100 text-muted-foreground'}`}
+                className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-muted text-muted-foreground'}`}
               >
                 <Icon name="trash-2" className="w-4 h-4" />
               </button>
@@ -416,7 +414,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                   return (
                     <div
                       key={cap.key}
-                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg min-w-0 ${isDarkMode ? 'surface-premium' : 'bg-gray-50/80'}`}
+                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg min-w-0 surface-solid`}
                     >
                       <CapIcon className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
                       <span className={`text-[11px] font-semibold min-w-0 break-words text-muted-foreground`}>
@@ -440,11 +438,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                       <button
                         key={s.key}
                         onClick={() => handleSend(t(s.key as any))}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all group min-w-0 ${
-                          isDarkMode
-                            ? 'surface-premium hover:surface-premium border border-neutral-800 hover:border-neutral-700'
-                            : 'bg-white hover:bg-gray-50 border border-gray-200/60 hover:border-gray-300'
-                        }`}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all group min-w-0 surface-solid hover:bg-muted border border-border/60 hover:border-border"
                       >
                         <div
                           className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-purple-500/10' : 'bg-purple-50'}`}
@@ -493,7 +487,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                               : 'bg-red-50 border border-red-100'
                             : isDarkMode
                               ? 'surface-premium'
-                              : 'bg-gray-50/80'
+                              : 'bg-muted/80'
                       }`}
                     >
                       {msg.role === 'user' ? (
@@ -532,7 +526,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                       <div className="flex items-center gap-1 mt-1.5 ml-1">
                         <button
                           onClick={() => handleCopy(msg.id, msg.content)}
-                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-gray-100 text-muted-foreground'}`}
+                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-muted text-muted-foreground'}`}
                         >
                           {copiedId === msg.id ? (
                             <Icon name="check" className="w-3 h-3 text-green-500" />
@@ -541,18 +535,18 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                           )}
                         </button>
                         <button
-                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-gray-100 text-muted-foreground'}`}
+                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-muted text-muted-foreground'}`}
                         >
                           <Icon name="thumbs-up" className="w-3 h-3" />
                         </button>
                         <button
-                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-gray-100 text-muted-foreground'}`}
+                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-muted text-muted-foreground'}`}
                         >
                           <Icon name="thumbs-down" className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => handleRetry(msg.id)}
-                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-gray-100 text-muted-foreground'}`}
+                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-muted text-muted-foreground'}`}
                         >
                           <Icon name="rotate-ccw" className="w-3 h-3" />
                         </button>
@@ -576,7 +570,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                   >
                     <Icon name="sparkles" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                   </div>
-                  <div className={`rounded-lg px-3 py-2 ${isDarkMode ? 'surface-premium' : 'bg-gray-50/80'}`}>
+                  <div className={`rounded-lg px-3 py-2 surface-solid`}>
                     <div className="flex items-center gap-2">
                       <Icon
                         name="loader-2"
@@ -596,15 +590,11 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
         </div>
 
         <div
-          className={`shrink-0 px-3 py-3 border-t pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}
+          className="shrink-0 px-3 py-3 border-t pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] border-border/60"
         >
           <div className="max-w-3xl mx-auto min-w-0">
             <div
-              className={`flex items-end gap-2 sm:gap-3 rounded-lg px-3 py-2 min-w-0 ${
-                isDarkMode
-                  ? 'surface-premium border border-neutral-700 focus-within:border-purple-500/40'
-                  : 'bg-gray-50/80 border border-gray-200 focus-within:border-purple-300'
-              } transition-colors`}
+              className="flex items-end gap-2 sm:gap-3 rounded-lg px-3 py-2 min-w-0 bg-muted/80 border border-border focus-within:border-purple-300 transition-colors"
             >
               <textarea
                 ref={inputRef}
@@ -629,9 +619,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                 className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all ${
                   input.trim() && !isTyping
                     ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-sm'
-                    : isDarkMode
-                      ? 'bg-neutral-700 text-muted-foreground'
-                      : 'bg-gray-200 text-muted-foreground'
+                    : 'bg-muted text-muted-foreground'
                 }`}
               >
                 <Icon name="send" className="w-3.5 h-3.5" />

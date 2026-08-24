@@ -78,7 +78,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
 
   const tp = 'text-foreground';
   const ts = 'text-muted-foreground';
-  const card = `rounded-xl shadow-sm border ${isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
+  const card = `rounded-xl shadow-sm border surface-solid border-border`;
   const inputCls = `w-full px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : 'bg-background border-border text-foreground placeholder:text-muted-foreground'} outline-none`;
 
   const load = useCallback(async () => {
@@ -313,16 +313,14 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
                     : 'bg-status-info-soft border-status-info/25 text-status-info'
                   : isDarkMode
                     ? 'surface-premium border-neutral-700 text-muted-foreground hover:surface-premium'
-                    : 'bg-white border-gray-200 text-foreground hover:bg-gray-50'
+                    : 'surface-solid border-border text-foreground hover:bg-muted'
               }`}
             >
               <span>{activeStatusLabel}</span>
               <Icon name="chevron-down" className={`h-3.5 w-3.5 transition-transform ${isStatusOpen ? 'rotate-180' : ''}`} />
             </button>
             {isStatusOpen && (
-              <div className={`absolute right-0 top-full z-50 mt-2 min-w-[230px] overflow-hidden rounded-lg border shadow-xl sm:left-0 sm:right-auto ${
-                isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'
-              }`}>
+              <div className={`absolute right-0 top-full z-50 mt-2 min-w-[230px] overflow-hidden rounded-lg border shadow-xl sm:left-0 sm:right-auto surface-solid border-border`}>
                 {statusOptions.map(status => (
                   <button
                     key={status}
@@ -334,7 +332,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
                     className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-xs font-medium transition-colors ${
                       status === statusFilter
                         ? isDarkMode ? 'bg-brand-soft text-brand' : 'bg-status-info-soft text-status-info'
-                        : isDarkMode ? 'text-foreground/85 hover:bg-muted' : 'text-foreground hover:bg-gray-50'
+                        : isDarkMode ? 'text-foreground/85 hover:bg-muted' : 'text-foreground hover:bg-muted'
                     }`}
                   >
                     <span>{status === 'all' ? 'Alle Status' : STATUS_MAP[status]?.label || status}</span>
@@ -373,7 +371,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
                 {filtered.map(f => {
                   const st = STATUS_MAP[f.status] || STATUS_MAP.NEW;
                   return (
-                    <tr key={f.id} onClick={() => openDetail(f)} className={`cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-muted/40' : 'hover:bg-gray-50/60'}`}>
+                    <tr key={f.id} onClick={() => openDetail(f)} className={`cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-muted/40' : 'hover:bg-muted/60'}`}>
                       <td className="px-4 py-3">
                         <p className={`text-xs font-semibold ${tp}`}>{f.title}</p>
                         <p className={`text-[10px] ${ts}`}>{f.offenseType || '—'}{f.fineNumber ? ` · #${f.fineNumber}` : ''}</p>
@@ -519,7 +517,7 @@ function CreateFineForm({ isDarkMode, orgId, vehicles, onClose, onCreated, card,
                 <button onClick={() => { setImageFile(null); setImagePreview(null); }} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center"><Icon name="x" className="w-3 h-3" /></button>
               </div>
             ) : (
-              <button onClick={() => fileRef.current?.click()} className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed text-xs font-medium transition-colors ${isDarkMode ? 'border-border text-muted-foreground' : 'border-gray-300 text-muted-foreground'}`}>
+              <button onClick={() => fileRef.current?.click()} className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed text-xs font-medium transition-colors ${isDarkMode ? 'border-border text-muted-foreground' : 'border-border text-muted-foreground'}`}>
                 <Icon name="image" className="w-4 h-4" /> Bild/Dokument anhängen
               </button>
             )}
@@ -604,13 +602,13 @@ function FineDetail({ isDarkMode, fine, orgId, onBack, onUpdate, card, tp, ts, i
             <p className={`text-xs mt-1 ${ts}`}>{fine.offenseType} · {formatAmount(fine.amountCents, fine.currency)}</p>
           </div>
           <div className="relative">
-            <button onClick={() => setShowStatusMenu(!showStatusMenu)} disabled={changingStatus} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border ${isDarkMode ? 'border-border text-foreground/85 hover:bg-muted' : 'border-gray-200 text-foreground hover:bg-gray-50'}`}>
+            <button onClick={() => setShowStatusMenu(!showStatusMenu)} disabled={changingStatus} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border ${isDarkMode ? 'border-border text-foreground/85 hover:bg-muted' : 'border-border text-foreground hover:bg-muted'}`}>
               {changingStatus ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="edit-3" className="w-3 h-3" />} Status
             </button>
             {showStatusMenu && (
-              <div className={`absolute right-0 top-full mt-1 z-20 w-48 rounded-xl border shadow-xl overflow-hidden ${isDarkMode ? 'bg-popover border-border' : 'bg-white border-gray-200'}`}>
+              <div className={`absolute right-0 top-full mt-1 z-20 w-48 rounded-xl border shadow-xl overflow-hidden ${isDarkMode ? 'bg-popover border-border' : 'surface-solid border-border'}`}>
                 {Object.entries(STATUS_MAP).map(([key, val]) => (
-                  <button key={key} onClick={() => changeStatus(key)} className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors ${isDarkMode ? 'hover:bg-muted text-foreground/85' : 'hover:bg-gray-50 text-foreground'} ${fine.status === key ? 'font-bold' : ''}`}>
+                  <button key={key} onClick={() => changeStatus(key)} className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors ${isDarkMode ? 'hover:bg-muted text-foreground/85' : 'hover:bg-muted text-foreground'} ${fine.status === key ? 'font-bold' : ''}`}>
                     {val.label}
                   </button>
                 ))}
@@ -651,7 +649,7 @@ function FineDetail({ isDarkMode, fine, orgId, onBack, onUpdate, card, tp, ts, i
             <div className={`${card} p-5`}>
               <h3 className={`text-xs font-bold ${tp} mb-3 uppercase tracking-wider`}>Verknüpfte Aufgabe</h3>
               {fine.tasks.map((t: any) => (
-                <div key={t.id} className={`flex items-center gap-3 p-3 rounded-xl border ${isDarkMode ? 'border-border/30 bg-muted/30' : 'border-gray-100 bg-gray-50/50'}`}>
+                <div key={t.id} className={`flex items-center gap-3 p-3 rounded-xl border ${isDarkMode ? 'border-border/30 bg-muted/30' : 'border-border bg-muted/50'}`}>
                   <Icon name="list-todo" className={`w-4 h-4 ${t.status === 'DONE' ? 'text-green-500' : 'text-amber-500'}`} />
                   <div className="flex-1 min-w-0">
                     <p className={`text-xs font-medium ${tp} truncate`}>{t.title}</p>

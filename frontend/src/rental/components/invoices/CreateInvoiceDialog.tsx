@@ -176,7 +176,7 @@ export function CreateInvoiceDialog({
                   set('type', opt.type);
                   setStep('details');
                 }}
-                className={`text-left p-4 rounded-xl border transition-all ${isDarkMode ? 'border-border/50 hover:border-border hover:bg-muted/40' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
+                className={`text-left p-4 rounded-xl border transition-all ${isDarkMode ? 'border-border/50 hover:border-border hover:bg-muted/40' : 'border-border hover:border-border hover:bg-muted'}`}
               >
                 <div className="flex items-center gap-3 mb-2">
                   <div
@@ -204,7 +204,7 @@ export function CreateInvoiceDialog({
                     set('templateId', t.id);
                     setStep('details');
                   }}
-                  className={`text-left p-3 rounded-xl border transition-all ${isDarkMode ? 'border-border/50 hover:border-border hover:bg-muted/40' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
+                  className={`text-left p-3 rounded-xl border transition-all ${isDarkMode ? 'border-border/50 hover:border-border hover:bg-muted/40' : 'border-border hover:border-border hover:bg-muted'}`}
                 >
                   <p className={`text-xs font-semibold ${tp}`}>{t.name}</p>
                   <p className={`text-[10px] ${ts}`}>{t.description}</p>
@@ -384,7 +384,7 @@ export function CreateInvoiceDialog({
               ) : (
                 <button
                   onClick={() => fileRef.current?.click()}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed text-xs font-medium transition-colors ${isDarkMode ? 'border-border text-muted-foreground' : 'border-gray-300 text-muted-foreground'}`}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed text-xs font-medium transition-colors ${isDarkMode ? 'border-border text-muted-foreground' : 'border-border text-muted-foreground'}`}
                 >
                   <Icon name="image" className="w-4 h-4" /> Datei anhängen
                 </button>
@@ -406,7 +406,7 @@ export function CreateInvoiceDialog({
               {lineItems.map((li, idx) => (
                 <div
                   key={idx}
-                  className={`flex gap-2 items-center p-2 rounded-lg ${isDarkMode ? 'bg-muted/30' : 'bg-gray-50/50'}`}
+                  className={`flex gap-2 items-center p-2 rounded-lg bg-muted/30`}
                 >
                   <input
                     value={li.description}

@@ -18,10 +18,8 @@ interface Props {
   isDarkMode: boolean;
 }
 
-const CARD = (d: boolean) =>
-  `rounded-2xl shadow-sm border overflow-hidden ${
-    d ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-  }`;
+const CARD = (_d: boolean) =>
+  'rounded-2xl shadow-sm border overflow-hidden surface-solid border-border';
 const BADGE = (color: string) =>
   `inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${color}`;
 
@@ -43,12 +41,12 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
   const h2 = `text-base font-bold mb-1 text-foreground`;
   const h3 = `text-sm font-semibold mb-2 ${d ? 'text-foreground' : 'text-foreground'}`;
   const body = `text-xs leading-relaxed ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`;
-  const code = `px-1 py-0.5 rounded text-[11px] font-mono ${d ? 'surface-premium text-violet-400' : 'bg-gray-100 text-violet-600'}`;
+  const code = `px-1 py-0.5 rounded text-[11px] font-mono ${d ? 'surface-premium text-violet-400' : 'bg-muted text-violet-600'}`;
   const li = `text-xs ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`;
   const sub = `text-[11px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`;
 
   return (
-    <div className={`min-h-screen ${d ? 'bg-neutral-950' : 'bg-gray-50/80'}`}>
+    <div className={`min-h-screen ${d ? 'bg-neutral-950' : 'bg-muted/80'}`}>
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
 
         {/* Header */}
@@ -111,7 +109,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                     active
                       ? d ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-100 text-orange-700'
-                      : d ? 'text-muted-foreground hover:text-foreground hover:surface-premium' : 'text-muted-foreground hover:text-foreground hover:bg-gray-100'
+                      : d ? 'text-muted-foreground hover:text-foreground hover:surface-premium' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
                   <Icon size={13} />
@@ -142,7 +140,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                   '→ Tire Health V2 / Brake Health V2',
                 ].map((s, i) => (
                   <div key={i} className="flex items-center gap-1">
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${d ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-muted-foreground'}`}>{s}</span>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${d ? 'surface-premium text-muted-foreground' : 'bg-muted text-muted-foreground'}`}>{s}</span>
                     {i < 9 && <ChevronRight size={11} className={d ? 'text-muted-foreground' : 'text-muted-foreground'} />}
                   </div>
                 ))}
@@ -295,7 +293,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                       { label: 'HARD', range: '3.5 – 5.0 m/s²', desc: 'Hard acceleration' },
                       { label: 'EXTREME', range: '≥ 5.0 m/s²', desc: 'Abuse-level event' },
                     ].map(t => (
-                      <div key={t.label} className={`flex gap-2 items-center text-xs rounded-lg px-2 py-1 ${d ? 'surface-premium' : 'bg-gray-50'}`}>
+                      <div key={t.label} className={`flex gap-2 items-center text-xs rounded-lg px-2 py-1 ${d ? 'surface-premium' : 'bg-muted'}`}>
                         <span className="font-semibold w-20 text-emerald-400">{t.label}</span>
                         <span className={`font-mono text-[11px] w-28 ${d ? 'text-muted-foreground' : 'text-foreground'}`}>{t.range}</span>
                         <span className={sub}>{t.desc}</span>
@@ -355,7 +353,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                       { label: 'HARD', range: '4.5 – 7.0 m/s²', desc: 'Hard braking event' },
                       { label: 'EXTREME', range: '≥ 7.0 m/s²', desc: 'Emergency / abuse level' },
                     ].map(t => (
-                      <div key={t.label} className={`flex gap-2 items-center text-xs rounded-lg px-2 py-1 ${d ? 'surface-premium' : 'bg-gray-50'}`}>
+                      <div key={t.label} className={`flex gap-2 items-center text-xs rounded-lg px-2 py-1 ${d ? 'surface-premium' : 'bg-muted'}`}>
                         <span className="font-semibold w-20 text-red-400">{t.label}</span>
                         <span className={`font-mono text-[11px] w-28 ${d ? 'text-muted-foreground' : 'text-foreground'}`}>{t.range}</span>
                         <span className={sub}>{t.desc}</span>
@@ -579,7 +577,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                   </div>
                 ))}
               </div>
-              <div className={`mt-4 p-3 rounded-xl text-[11px] ${d ? 'surface-premium text-muted-foreground' : 'bg-gray-50 text-muted-foreground'}`}>
+              <div className={`mt-4 p-3 rounded-xl text-[11px] ${d ? 'surface-premium text-muted-foreground' : 'bg-muted text-muted-foreground'}`}>
                 <strong>Abuse Score (abuseScore, 0–100):</strong> Deterministic weighted sum of abuse events.
                 Each event type has a base weight (POSSIBLE_IMPACT=20, ENGINE_SHUTDOWN=15, OVERHEATING=10, FULL_BRAKING=8, LAUNCH_LIKE_START=6, COLD_ENGINE_*=5, HIGH_RPM_CONSTANT=4, ENGINE_REV_IN_IDLE=3, KICKDOWN=3, LONG_IDLE=2).
                 Severity multipliers: WARNING=1.0×, SEVERE=1.5×, CRITICAL=2.0×. Score is capped at 100.
@@ -720,7 +718,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                     fields: ['citySharePct → usage multiplier (city=1.35, highway=1.0)', 'stopGoStressScore → stop density factor', 'highSpeedStressScore → high-speed braking factor', 'p95DecelMs2 → hard braking factor', 'meanBrakeEnergyKjPerKm → full-braking factor', 'thermalBrakeStressScore → thermal wear factor'],
                   },
                 ].map(c => (
-                  <div key={c.title} className={`rounded-xl p-4 ${d ? 'surface-premium' : 'bg-gray-50'}`}>
+                  <div key={c.title} className={`rounded-xl p-4 ${d ? 'surface-premium' : 'bg-muted'}`}>
                     <p className={`text-sm font-bold mb-2 ${c.color}`}>{c.title}</p>
                     <ul className="space-y-1">
                       {c.fields.map(f => <li key={f} className={`text-[11px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>• {f}</li>)}

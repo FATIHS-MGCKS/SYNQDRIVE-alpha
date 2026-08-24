@@ -50,7 +50,7 @@ function confidenceTone(
     case 'low':
       return isDarkMode ? 'bg-red-500/10 text-red-300 border-red-500/30' : 'bg-red-50 text-red-800 border-red-200';
     default:
-      return isDarkMode ? 'surface-premium text-muted-foreground border-neutral-700' : 'bg-gray-50 text-foreground border-gray-200';
+      return 'surface-solid text-foreground border-border';
   }
 }
 
@@ -98,9 +98,7 @@ export function DocumentClassificationResultPanel({
 
   return (
     <section
-      className={`rounded-lg border p-3 sm:p-4 min-w-0 space-y-3 ${
-        isDarkMode ? 'border-neutral-800 bg-neutral-900/50' : 'border-gray-200 bg-gray-50/70'
-      }`}
+      className="rounded-lg border p-3 sm:p-4 min-w-0 space-y-3 border-border bg-muted/70"
       aria-label={t('docUpload.classificationPanelAria')}
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between min-w-0">
@@ -164,9 +162,7 @@ export function DocumentClassificationResultPanel({
               return (
                 <li
                   key={`${alt.category}-${alt.subtype}-${alt.legacyDocumentType}`}
-                  className={`text-xs rounded-md px-2 py-1.5 break-words ${
-                    isDarkMode ? 'surface-premium text-muted-foreground' : 'bg-white text-foreground border border-gray-200'
-                  }`}
+                  className={`text-xs rounded-md px-2 py-1.5 break-words surface-solid text-foreground border border-border`}
                 >
                   <span className="font-medium">{altLabel}</span>
                   {altConfidence ? <span className="opacity-80"> · {altConfidence}</span> : null}
@@ -190,9 +186,7 @@ export function DocumentClassificationResultPanel({
               type="button"
               onClick={() => setShowTypeChange(true)}
               disabled={disabled}
-              className={`inline-flex items-center gap-1.5 min-h-9 px-3 py-1.5 rounded-lg text-xs font-semibold ${
-                isDarkMode ? 'surface-premium text-foreground hover:bg-neutral-800' : 'bg-white border border-gray-200 text-foreground hover:bg-gray-50'
-              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`inline-flex items-center gap-1.5 min-h-9 px-3 py-1.5 rounded-lg text-xs font-semibold surface-solid border border-border text-foreground hover:bg-muted ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Icon name="pencil" className="w-3.5 h-3.5" />
               {t('docUpload.changeDocumentType')}
@@ -209,9 +203,7 @@ export function DocumentClassificationResultPanel({
                   value={pendingTypeSelection}
                   onChange={(e) => onPendingTypeChange?.(e.target.value)}
                   disabled={disabled}
-                  className={`flex-1 min-w-0 px-3 py-2 rounded-lg text-xs border ${
-                    isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200 text-foreground'
-                  }`}
+                  className={`flex-1 min-w-0 px-3 py-2 rounded-lg text-xs border surface-solid border-border text-foreground`}
                 >
                   {manualDocTypes.map((opt) => (
                     <option key={opt.value} value={opt.value}>

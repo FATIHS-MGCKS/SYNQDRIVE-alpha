@@ -764,8 +764,8 @@ export function HelpCenterView({
   const textPrimary = 'text-foreground';
   const textSecondary = 'text-muted-foreground';
   const textMuted = 'text-muted-foreground';
-  const cardClass = `rounded-xl shadow-sm border ${isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
-  const dividerColor = isDarkMode ? 'border-border/40' : 'border-gray-200/60';
+  const cardClass = `rounded-xl shadow-sm border surface-solid border-border`;
+  const dividerColor = isDarkMode ? 'border-border/40' : 'border-border/60';
 
   const filteredSections = useMemo(() => {
     if (!searchTerm.trim()) return SECTIONS;
@@ -821,7 +821,7 @@ export function HelpCenterView({
             className={`mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-colors ${
               isDarkMode
                 ? 'border-neutral-700 text-foreground hover:surface-premium'
-                : 'border-gray-200 text-foreground hover:bg-gray-50'
+                : 'border-border text-foreground hover:bg-muted'
             }`}
           >
             <Headphones className="w-4 h-4" />
@@ -860,7 +860,7 @@ export function HelpCenterView({
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
                     expandedSection === sec.id
                       ? (isDarkMode ? 'bg-brand-soft text-brand border-brand/25' : 'bg-brand-soft text-brand border-border')
-                      : (isDarkMode ? 'text-muted-foreground border-border hover:bg-muted hover:text-foreground' : 'text-muted-foreground border-gray-200 hover:bg-gray-50 hover:text-foreground')
+                      : (isDarkMode ? 'text-muted-foreground border-border hover:bg-muted hover:text-foreground' : 'text-muted-foreground border-border hover:bg-muted hover:text-foreground')
                   }`}
                 >
                   <sec.icon className="w-3 h-3" />
@@ -888,7 +888,7 @@ export function HelpCenterView({
               {/* Section Header */}
               <button
                 onClick={() => setExpandedSection(isExpanded ? null : section.id)}
-                className={`w-full flex items-center gap-3 p-5 text-left transition-colors ${isDarkMode ? 'hover:bg-muted/30' : 'hover:bg-gray-50/40'} rounded-xl`}
+                className={`w-full flex items-center gap-3 p-5 text-left transition-colors ${isDarkMode ? 'hover:bg-muted/30' : 'hover:bg-muted/40'} rounded-xl`}
               >
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                   section.comingSoon
@@ -919,10 +919,10 @@ export function HelpCenterView({
                   {section.articles.map(article => {
                     const isArticleExpanded = expandedArticle === article.id;
                     return (
-                      <div key={article.id} className={`rounded-xl border overflow-hidden transition-all ${isDarkMode ? 'border-border/40' : 'border-gray-200/60'}`}>
+                      <div key={article.id} className={`rounded-xl border overflow-hidden transition-all ${isDarkMode ? 'border-border/40' : 'border-border/60'}`}>
                         <button
                           onClick={() => setExpandedArticle(isArticleExpanded ? null : article.id)}
-                          className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${isDarkMode ? 'hover:bg-muted/40' : 'hover:bg-gray-50/60'}`}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${isDarkMode ? 'hover:bg-muted/40' : 'hover:bg-muted/60'}`}
                         >
                           <Icon name="chevron-right" className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${textMuted} ${isArticleExpanded ? 'rotate-90' : ''}`} />
                           <span className={`text-xs font-semibold ${textPrimary}`}>{article.title}</span>
@@ -965,7 +965,7 @@ export function HelpCenterView({
 function ArticleContent({ content, isDarkMode }: { content: string; isDarkMode: boolean }) {
   const textStrong = 'text-foreground';
   const listBullet = isDarkMode ? 'text-brand' : 'text-status-info';
-  const codeBg = isDarkMode ? 'bg-muted text-foreground/85' : 'bg-gray-100 text-foreground';
+  const codeBg = isDarkMode ? 'bg-muted text-foreground/85' : 'bg-muted text-foreground';
 
   const lines = content.split('\n');
   const elements: React.ReactNode[] = [];

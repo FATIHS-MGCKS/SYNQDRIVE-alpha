@@ -134,9 +134,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
     enabled: followUpEnabled,
   });
 
-  const glass = isDarkMode
-    ? 'bg-neutral-900 border border-neutral-800 shadow-sm'
-    : 'bg-white border border-gray-200 shadow-sm';
+  const glass = 'surface-solid border border-border shadow-sm';
 
   const stepConfig = [
     { key: 'upload' as const, label: t('docUpload.step1'), icon: Upload },
@@ -163,7 +161,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
       <div className={`${iconBox} rounded-lg flex items-center justify-center transition-all duration-300 shrink-0 ${
         isDone ? 'bg-green-500/20' : isActive
           ? isDarkMode ? 'bg-brand-soft' : 'bg-brand-soft'
-          : isDarkMode ? 'surface-premium' : 'bg-gray-100'
+          : isDarkMode ? 'surface-premium' : 'bg-muted'
       }`}>
         {isDone ? (
           <Icon name="check" className={`${compact ? 'w-4 h-4' : 'w-4.5 h-4.5'} text-green-500`} />
@@ -246,9 +244,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
           <button
             type="button"
             onClick={() => onReturnToOrigin(page.intakeEntry)}
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold ${
-              isDarkMode ? 'surface-premium text-foreground' : 'bg-gray-100 text-foreground'
-            }`}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold bg-muted text-foreground`}
           >
             {t('docUpload.backToOrigin')}
           </button>
@@ -301,7 +297,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
                 <span className={stepLabelClass(i)}>{s.label}</span>
               </div>
               {i < stepConfig.length - 1 && (
-                <div className={`flex-1 min-w-2 h-px mx-2 lg:mx-4 ${i < currentIdx ? 'bg-green-500/40' : isDarkMode ? 'bg-neutral-700' : 'bg-gray-200'}`} />
+                <div className={`flex-1 min-w-2 h-px mx-2 lg:mx-4 ${i < currentIdx ? 'bg-green-500/40' : 'bg-muted'}`} />
               )}
             </div>
           ))}
@@ -318,16 +314,14 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
               page.handleReset();
               setActiveTab('review', null);
             }}
-            className={`mb-3 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold ${
-              isDarkMode ? 'surface-premium text-foreground' : 'bg-gray-100 text-foreground'
-            }`}
+            className={`mb-3 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold bg-muted text-foreground`}
           >
             {t('docUpload.review.backToInbox')}
           </button>
         ) : null}
 
           {showMainIdle && (
-            <div className={`rounded-lg p-4 min-w-0 ${isDarkMode ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200'}`}>
+            <div className="rounded-lg p-4 min-w-0 surface-solid border border-border">
               <DocumentIntakeUploadZone
                 acceptAttr={page.acceptAttr}
                 supportedFormatsLabel={page.supportedFormatsLabel}
@@ -388,11 +382,11 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
           {showReview && (
             <div className={`rounded-lg overflow-hidden min-w-0 ${glass}`}>
               {uploadContextBanner && (
-                <div className={`px-3 py-2 border-b min-w-0 ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}>
+                <div className="px-3 py-2 border-b min-w-0 border-border/60">
                   {uploadContextBannerNode(uploadContextBanner, uploadContextConflict, page.record?.uploadContext?.conflicts, isDarkMode)}
                 </div>
               )}
-              <div className={`px-3 py-3 border-b min-w-0 ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}>
+              <div className="px-3 py-3 border-b min-w-0 border-border/60">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
                   <div className="flex items-start gap-3 min-w-0">
                     <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-green-500/15' : 'bg-green-100/80'}`}>
@@ -410,7 +404,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
                     className={`flex items-center justify-center gap-1.5 self-start sm:self-auto shrink-0 min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
                       page.editingFields
                         ? isDarkMode ? 'bg-brand-soft text-brand' : 'bg-brand-soft text-brand'
-                        : isDarkMode ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-gray-100 text-muted-foreground hover:bg-gray-200'
+                        : isDarkMode ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-muted text-muted-foreground hover:bg-muted/80'
                     } ${page.flow === 'applying' ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <Icon name="pencil" className="w-3 h-3" />
@@ -419,10 +413,10 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
                 </div>
               </div>
 
-              <div className={`px-3 py-2 border-b flex flex-wrap items-center gap-2 sm:gap-3 min-w-0 ${isDarkMode ? 'border-neutral-800 bg-neutral-900/40' : 'border-gray-200/60 bg-gray-50/40'}`}>
+              <div className="px-3 py-2 border-b flex flex-wrap items-center gap-2 sm:gap-3 min-w-0 border-border/60 bg-muted/40">
                 <div className="shrink-0">{getFileIcon(page.uploadedFileName)}</div>
                 <span className={`min-w-0 flex-1 break-all text-xs font-semibold text-foreground`}>{page.uploadedFileName}</span>
-                <span className={`shrink-0 text-[10px] font-semibold px-2 py-1 rounded-full ${isDarkMode ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-muted-foreground'}`}>{page.flowStatusLabel(page.flow)}</span>
+                <span className={`shrink-0 text-[10px] font-semibold px-2 py-1 rounded-full bg-muted text-muted-foreground`}>{page.flowStatusLabel(page.flow)}</span>
                 {page.record?.allowedActions?.includes('download') && page.record.hasStoredFile && (
                   <button type="button" onClick={() => void page.handleDownload()} className="text-[10px] font-semibold text-brand underline">
                     {t('docUpload.viewFile')}
@@ -460,7 +454,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
                       <select
                         value={page.assignedVehicleId}
                         onChange={(e) => void page.handleReassignVehicle(e.target.value)}
-                        className={`w-full min-w-0 px-3 py-2 rounded-lg text-xs font-semibold border ${isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200 text-foreground'}`}
+                        className={`w-full min-w-0 px-3 py-2 rounded-lg text-xs font-semibold border surface-solid border-border text-foreground`}
                       >
                         <option value="">{t('docUpload.assignVehiclePlaceholder')}</option>
                         {page.vehicles.map((v) => (
@@ -470,7 +464,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
                         ))}
                       </select>
                     ) : (
-                      <div className={`px-3 py-2 rounded-lg text-xs font-semibold break-words ${isDarkMode ? 'surface-premium text-foreground' : 'bg-gray-100 text-foreground'}`}>
+                      <div className={`px-3 py-2 rounded-lg text-xs font-semibold break-words bg-muted text-foreground`}>
                         {page.vehicles.find((v) => v.id === page.assignedVehicleId)?.name || t('docUpload.assignVehiclePlaceholder')}
                       </div>
                     )}
@@ -538,12 +532,12 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
                     {page.flow === 'applying' ? page.flowStatusLabel('applying') : t('docUpload.confirmAndFile')}
                   </button>
                   {page.record?.allowedActions?.includes('reextract') && (
-                    <button type="button" onClick={() => void page.handleReextract()} disabled={page.flow === 'applying'} className={`w-full sm:w-auto min-h-11 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${isDarkMode ? 'surface-premium hover:bg-neutral-700 text-muted-foreground' : 'bg-gray-100 hover:bg-gray-200 text-muted-foreground'} ${page.flow === 'applying' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    <button type="button" onClick={() => void page.handleReextract()} disabled={page.flow === 'applying'} className={`w-full sm:w-auto min-h-11 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all bg-muted hover:bg-muted/80 text-muted-foreground ${page.flow === 'applying' ? 'opacity-50 cursor-not-allowed' : ''}`}>
                       <Icon name="rotate-ccw" className="w-3.5 h-3.5" />
                       {t('docUpload.reextract')}
                     </button>
                   )}
-                  <button type="button" onClick={page.handleReset} disabled={page.flow === 'applying'} className={`w-full sm:w-auto min-h-11 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${isDarkMode ? 'surface-premium hover:bg-neutral-700 text-muted-foreground' : 'bg-gray-100 hover:bg-gray-200 text-muted-foreground'} ${page.flow === 'applying' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <button type="button" onClick={page.handleReset} disabled={page.flow === 'applying'} className={`w-full sm:w-auto min-h-11 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all bg-muted hover:bg-muted/80 text-muted-foreground ${page.flow === 'applying' ? 'opacity-50 cursor-not-allowed' : ''}`}>
                     {t('docUpload.cancel')}
                   </button>
                 </div>
@@ -633,7 +627,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
 
           {page.previewUrl && (
             <div className="mt-3 min-w-0">
-              <iframe title={t('docUpload.viewFile')} src={page.previewUrl} className="w-full min-h-[320px] rounded-lg border border-gray-200" />
+              <iframe title={t('docUpload.viewFile')} src={page.previewUrl} className="w-full min-h-[320px] rounded-lg border border-border" />
             </div>
           )}
       </div>

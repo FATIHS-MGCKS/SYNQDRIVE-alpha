@@ -40,7 +40,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
   const [testEmail, setTestEmail] = useState('');
   const [busyDomainId, setBusyDomainId] = useState<string | null>(null);
 
-  const card = `rounded-xl border p-5 ${isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
+  const card = `rounded-xl border p-5 surface-solid border-border`;
   const subtle = 'text-muted-foreground';
 
   const load = useCallback(async () => {
@@ -366,7 +366,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
             domains.map((domain) => (
               <div
                 key={domain.id}
-                className={`rounded-lg border p-4 ${isDarkMode ? 'border-border/50 bg-muted/20' : 'border-gray-200 bg-gray-50/50'}`}
+                className={`rounded-lg border p-4 ${isDarkMode ? 'border-border/50 bg-muted/20' : 'border-border bg-muted/50'}`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>

@@ -100,7 +100,7 @@ function LineDesktopTable({
       <table className="w-full table-fixed">
         <caption className="sr-only">{t('invoiceLineItem.section.title')}</caption>
         <thead>
-          <tr className={isDarkMode ? 'bg-muted/50' : 'bg-gray-50/80'}>
+          <tr className={isDarkMode ? 'bg-muted/50' : 'bg-muted/80'}>
             <th scope="col" className={`text-left px-3 py-2 text-[11px] font-semibold ${ts} w-[34%]`}>
               {t('invoiceLineItem.col.description')}
             </th>
@@ -210,7 +210,7 @@ export function InvoiceLineItems({ invoice, card, tp, ts, isDarkMode }: InvoiceL
             ))
           )}
 
-          <div className={`my-2 border-t ${isDarkMode ? 'border-border/40' : 'border-gray-200'}`} />
+          <div className={`my-2 border-t ${isDarkMode ? 'border-border/40' : 'border-border'}`} />
 
           <SumRow
             label={t('invoiceLineItem.summary.gross')}

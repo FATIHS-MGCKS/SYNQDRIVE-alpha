@@ -176,7 +176,7 @@ export function VoiceAnalyticsView({
                 key={outcome}
                 className={cn(
                   'rounded-lg px-3 py-2',
-                  isDarkMode ? 'bg-neutral-900/50' : 'bg-gray-50',
+                  isDarkMode ? 'bg-neutral-900/50' : 'bg-muted',
                 )}
               >
                 <p className="text-[10px] text-muted-foreground">{outcome}</p>

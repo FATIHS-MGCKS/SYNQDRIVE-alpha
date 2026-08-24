@@ -31,18 +31,18 @@ const TAB_IDLE = 'sq-tab flex items-center gap-2 px-5 py-2 rounded-xl text-sm fo
 // ── Status badge helpers ────────────────────────────────────────────────────
 
 const CLEARANCE_CONFIG: Record<HmClearanceStatus, { label: string; color: string }> = {
-  DRAFT:             { label: 'Draft',             color: 'bg-gray-100 text-muted-foreground dark:bg-gray-800 dark:text-muted-foreground' },
+  DRAFT:             { label: 'Draft',             color: 'bg-muted text-muted-foreground dark:bg-gray-800 dark:text-muted-foreground' },
   CLEARANCE_PENDING: { label: 'Pending Clearance', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400' },
   APPROVED:          { label: 'Approved',          color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
   REJECTED:          { label: 'Rejected',          color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' },
   ERROR:             { label: 'Error',             color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' },
   REVOKING:          { label: 'Revoking',          color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400' },
-  REVOKED:           { label: 'Revoked',           color: 'bg-gray-100 text-muted-foreground dark:bg-gray-800 dark:text-muted-foreground' },
-  CANCELED:          { label: 'Canceled',          color: 'bg-gray-100 text-muted-foreground dark:bg-gray-800 dark:text-muted-foreground' },
+  REVOKED:           { label: 'Revoked',           color: 'bg-muted text-muted-foreground dark:bg-gray-800 dark:text-muted-foreground' },
+  CANCELED:          { label: 'Canceled',          color: 'bg-muted text-muted-foreground dark:bg-gray-800 dark:text-muted-foreground' },
 };
 
 const ELIGIBILITY_CONFIG: Record<HmEligibilityStatus, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  UNKNOWN:    { label: 'Unknown',     color: 'bg-gray-100 text-muted-foreground dark:bg-gray-800 dark:text-muted-foreground', icon: Clock },
+  UNKNOWN:    { label: 'Unknown',     color: 'bg-muted text-muted-foreground dark:bg-gray-800 dark:text-muted-foreground', icon: Clock },
   PENDING:    { label: 'Checking…',  color: 'bg-brand-soft text-brand dark:bg-status-info-soft dark:text-status-info', icon: Loader2 },
   ELIGIBLE:   { label: 'Eligible',   color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400', icon: CheckCircle2 },
   INELIGIBLE: { label: 'Ineligible', color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400', icon: XCircle },
@@ -89,7 +89,7 @@ function PackageBadge({ pkg }: { pkg: HmPackageType }) {
 
 // Phase 2 badges
 const REGISTRATION_STATE_CONFIG: Record<HmRegistrationState, { label: string; color: string }> = {
-  NOT_REGISTERED:      { label: 'Not Registered',    color: 'bg-gray-100 text-muted-foreground dark:surface-premium dark:text-muted-foreground' },
+  NOT_REGISTERED:      { label: 'Not Registered',    color: 'bg-muted text-muted-foreground dark:surface-premium dark:text-muted-foreground' },
   REGISTRATION_PENDING:{ label: 'Reg. Pending',       color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400' },
   REGISTERED:          { label: 'Registered',         color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
   REGISTRATION_FAILED: { label: 'Reg. Failed',        color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' },
@@ -105,7 +105,7 @@ function RegistrationStateBadge({ state }: { state: HmRegistrationState }) {
 }
 
 const STREAMING_STATE_CONFIG: Record<HmStreamingState, { label: string; color: string; icon: typeof Wifi }> = {
-  NOT_CONFIGURED: { label: 'Not Configured', color: 'bg-gray-100 text-muted-foreground dark:surface-premium dark:text-muted-foreground', icon: WifiOff },
+  NOT_CONFIGURED: { label: 'Not Configured', color: 'bg-muted text-muted-foreground dark:surface-premium dark:text-muted-foreground', icon: WifiOff },
   CONFIGURED:     { label: 'Configured',     color: 'bg-brand-soft text-brand dark:bg-status-info-soft dark:text-status-info', icon: Signal },
   CONNECTING:     { label: 'Connecting',     color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400', icon: Loader2 },
   CONNECTED:      { label: 'Streaming',      color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400', icon: Wifi },
@@ -125,7 +125,7 @@ function StreamingStateBadge({ state }: { state: HmStreamingState }) {
 }
 
 const MQTT_STATE_CONFIG: Record<HmMqttConnectionState, { label: string; color: string; icon: typeof Wifi }> = {
-  DISABLED:     { label: 'Disabled',     color: 'bg-gray-100 text-muted-foreground dark:surface-premium dark:text-muted-foreground', icon: WifiOff },
+  DISABLED:     { label: 'Disabled',     color: 'bg-muted text-muted-foreground dark:surface-premium dark:text-muted-foreground', icon: WifiOff },
   DISCONNECTED: { label: 'Disconnected', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400', icon: WifiOff },
   CONNECTING:   { label: 'Connecting',   color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400', icon: Loader2 },
   CONNECTED:    { label: 'Connected',    color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400', icon: Wifi },
@@ -269,7 +269,7 @@ function VehicleRow({
               >
                 Confirm
               </button>
-              <button onClick={() => setConfirmRemove(false)} className="px-2 py-1 rounded-lg text-[11px] font-medium bg-gray-100 text-muted-foreground hover:bg-gray-200 dark:surface-premium dark:text-muted-foreground transition-colors">
+              <button onClick={() => setConfirmRemove(false)} className="px-2 py-1 rounded-lg text-[11px] font-medium bg-muted text-muted-foreground hover:bg-muted/80 dark:surface-premium dark:text-muted-foreground transition-colors">
                 Cancel
               </button>
             </>
@@ -606,7 +606,7 @@ function EligibilityTab({ onAddToList,
         <div className={`${cardCls} overflow-hidden`}>
           {/* Header */}
           <div className={`px-5 py-4 flex items-start gap-4 border-b border-border`}>
-            <div className={`p-2 rounded-lg ${result.eligibilityStatus === 'ELIGIBLE' ? 'bg-emerald-100 dark:bg-emerald-900/30' : result.eligibilityStatus === 'INELIGIBLE' ? 'bg-red-100 dark:bg-red-900/30' : (result as any).eligibilityStatus === 'NOT_APPLICABLE' ? 'bg-violet-100 dark:bg-violet-900/30' : 'bg-gray-100 dark:surface-premium'}`}>
+            <div className={`p-2 rounded-lg ${result.eligibilityStatus === 'ELIGIBLE' ? 'bg-emerald-100 dark:bg-emerald-900/30' : result.eligibilityStatus === 'INELIGIBLE' ? 'bg-red-100 dark:bg-red-900/30' : (result as any).eligibilityStatus === 'NOT_APPLICABLE' ? 'bg-violet-100 dark:bg-violet-900/30' : 'bg-muted dark:surface-premium'}`}>
               {result.eligibilityStatus === 'ELIGIBLE'
                 ? <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 : result.eligibilityStatus === 'INELIGIBLE'
@@ -1098,7 +1098,7 @@ function StreamingTab() {
     PARSED:        'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-400',
     STORED:        'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
     FAILED:        'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
-    DEDUPLICATED:  'bg-gray-100 text-muted-foreground dark:surface-premium dark:text-muted-foreground',
+    DEDUPLICATED:  'bg-muted text-muted-foreground dark:surface-premium dark:text-muted-foreground',
   };
 
   return (
@@ -1123,7 +1123,7 @@ function StreamingTab() {
               <div><div className={`${LABEL} mb-0.5`}>Application ID</div><span className="font-mono">{consumerStatus.applicationId || '—'}</span></div>
               <div><div className={`${LABEL} mb-0.5`}>Consumer Group</div><span className="font-mono text-[11px]">{consumerStatus.consumerGroup}</span></div>
               <div><div className={`${LABEL} mb-0.5`}>MQTT Enabled</div>
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${consumerStatus.mqttEnabled ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-gray-100 text-muted-foreground dark:surface-premium dark:text-muted-foreground'}`}>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${consumerStatus.mqttEnabled ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-muted text-muted-foreground dark:surface-premium dark:text-muted-foreground'}`}>
                   {consumerStatus.mqttEnabled ? 'Yes' : 'No'}
                 </span>
               </div>
@@ -1222,7 +1222,7 @@ function StreamingTab() {
                 <span className="font-mono text-xs font-semibold">{log.vin ?? '—'}</span>
                 <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/50`}>{log.topic}</span>
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${INGEST_STATUS_COLOR[log.ingestStatus] ?? ''}`}>{log.ingestStatus}</span>
-                {log.isDuplicate && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-muted-foreground dark:surface-premium dark:text-muted-foreground">DUPE</span>}
+                {log.isDuplicate && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground dark:surface-premium dark:text-muted-foreground">DUPE</span>}
                 <span className={`ml-auto text-[10px] ${mutedFg}`}>{fmt(log.createdAt)}</span>
                 <button onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)} className={`p-1 rounded hover:bg-muted`}>
                   {expandedLog === log.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}

@@ -215,7 +215,7 @@ export function TariffGroupDrawer({
 
   const inputCls = cn(
     'w-full rounded-lg border px-3 py-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
-    isDarkMode ? 'border-border bg-muted text-foreground' : 'border-gray-200 bg-white text-foreground',
+    'w-full rounded-lg border px-3 py-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40 border-border bg-background text-foreground',
   );
 
   const requestClose = () => {
@@ -411,7 +411,7 @@ export function TariffGroupDrawer({
           side="right"
           className={cn(
             'flex h-full w-full max-w-5xl flex-col gap-0 p-0 sm:max-w-5xl [&>button]:hidden',
-            isDarkMode ? 'surface-premium' : 'bg-white',
+            'surface-solid',
           )}
           onInteractOutside={(e) => {
             if (dirty) e.preventDefault();

@@ -13,8 +13,8 @@ export function PlatformEmailSettingsPanel({ isDarkMode }: PlatformEmailSettings
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const cardClass = `rounded-3xl shadow-sm border ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`;
-  const inputClass = `w-full px-4 py-3 rounded-xl border text-sm transition-colors outline-none ${isDarkMode ? 'bg-background border-neutral-700 text-foreground focus:border-brand/50 placeholder:text-muted-foreground' : 'bg-gray-50 border-gray-200 text-foreground focus:border-brand placeholder:text-muted-foreground'}`;
+  const cardClass = `rounded-3xl shadow-sm border ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'surface-solid border-border'}`;
+  const inputClass = 'w-full px-4 py-3 rounded-xl border text-sm transition-colors outline-none bg-background border-border text-foreground focus:border-brand placeholder:text-muted-foreground';
   const labelClass = `block text-sm font-semibold mb-2 ${isDarkMode ? 'text-muted-foreground' : 'text-foreground'}`;
   const subtle = 'text-muted-foreground';
 
@@ -65,7 +65,7 @@ export function PlatformEmailSettingsPanel({ isDarkMode }: PlatformEmailSettings
   return (
     <div className={`${cardClass} p-8`}>
       <div className="flex items-start gap-4 mb-6">
-        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isDarkMode ? 'surface-premium' : 'bg-gray-100'}`}>
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isDarkMode ? 'surface-premium' : 'bg-muted'}`}>
           <Mail className="w-7 h-7 text-brand" />
         </div>
         <div>
@@ -114,7 +114,7 @@ export function PlatformEmailSettingsPanel({ isDarkMode }: PlatformEmailSettings
         </div>
       </div>
 
-      <div className={`mt-6 rounded-xl border px-4 py-3 text-sm ${isDarkMode ? 'border-neutral-800 bg-neutral-950/50 text-muted-foreground' : 'border-gray-200 bg-gray-50 text-muted-foreground'}`}>
+      <div className={`mt-6 rounded-xl border px-4 py-3 text-sm ${isDarkMode ? 'border-neutral-800 bg-neutral-950/50 text-muted-foreground' : 'border-border bg-muted text-muted-foreground'}`}>
         <div className="font-medium text-foreground mb-1">Aktiv im Versand</div>
         <div>
           {settings.effectiveFromName} &lt;{settings.effectiveFromEmail}&gt;

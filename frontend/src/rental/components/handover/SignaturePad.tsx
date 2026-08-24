@@ -153,7 +153,7 @@ export function SignaturePad({
   };
 
   const badgeBase = `px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors inline-flex items-center gap-1`;
-  const borderColor = isDarkMode ? 'border-neutral-700' : 'border-gray-200';
+  const borderColor = isDarkMode ? 'border-neutral-700' : 'border-border';
   const canvasBg = isDarkMode ? 'bg-neutral-950' : 'bg-white';
 
   return (
@@ -174,7 +174,7 @@ export function SignaturePad({
                   : 'bg-brand-soft text-brand border border-border'
                 : isDarkMode
                 ? 'surface-premium text-muted-foreground border border-neutral-700 hover:bg-neutral-700'
-                : 'bg-gray-100 text-muted-foreground border border-gray-200 hover:bg-gray-200'
+                : 'bg-muted text-muted-foreground border border-border hover:bg-muted/80'
             }`}
           >
             <Icon name="pen-tool" className="w-3 h-3" />
@@ -190,7 +190,7 @@ export function SignaturePad({
                   : 'bg-brand-soft text-brand border border-border'
                 : isDarkMode
                 ? 'surface-premium text-muted-foreground border border-neutral-700 hover:bg-neutral-700'
-                : 'bg-gray-100 text-muted-foreground border border-gray-200 hover:bg-gray-200'
+                : 'bg-muted text-muted-foreground border border-border hover:bg-muted/80'
             }`}
           >
             <Icon name="type" className="w-3 h-3" />
@@ -221,7 +221,7 @@ export function SignaturePad({
             className={`absolute top-2 right-2 p-1.5 rounded-md transition-colors ${
               isDarkMode
                 ? 'surface-premium/90 text-muted-foreground hover:text-red-400 hover:bg-neutral-700'
-                : 'bg-white/90 text-muted-foreground hover:text-red-500 hover:bg-gray-50 shadow-sm'
+                : 'bg-white/90 text-muted-foreground hover:text-red-500 hover:bg-muted shadow-sm'
             }`}
             title="Unterschrift löschen"
           >

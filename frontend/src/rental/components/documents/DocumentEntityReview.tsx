@@ -57,9 +57,7 @@ function CandidateCard({
           ? isDarkMode
             ? 'border-brand/50 bg-brand-soft/30'
             : 'border-brand/40 bg-brand-soft/20'
-          : isDarkMode
-            ? 'border-neutral-800 bg-neutral-900/40'
-            : 'border-gray-200 bg-white'
+          : 'border-border bg-muted/40'
       }`}
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between min-w-0">
@@ -219,9 +217,7 @@ function EntityReviewSectionPanel({
 
   return (
     <section
-      className={`rounded-lg border p-3 sm:p-4 min-w-0 space-y-3 ${
-        isDarkMode ? 'border-neutral-800 bg-neutral-900/40' : 'border-gray-200 bg-gray-50/60'
-      }`}
+      className="rounded-lg border p-3 sm:p-4 min-w-0 space-y-3 border-border bg-muted/60"
       aria-label={t(section.titleKey)}
     >
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between min-w-0">
@@ -348,9 +344,7 @@ function EntityReviewSectionPanel({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t('docUpload.entityReview.searchPlaceholder')}
-                  className={`flex-1 min-w-0 min-h-10 rounded-lg border px-3 py-2 text-xs ${
-                    isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200'
-                  }`}
+                  className={`flex-1 min-w-0 min-h-10 rounded-lg border px-3 py-2 text-xs surface-solid border-border text-foreground`}
                 />
                 <button
                   type="button"
@@ -369,9 +363,7 @@ function EntityReviewSectionPanel({
                         type="button"
                         onClick={() => onSearchSelect(result.id, result.label)}
                         disabled={pending}
-                        className={`w-full min-h-10 rounded-lg border px-3 py-2 text-left text-xs font-medium break-words ${
-                          isDarkMode ? 'border-neutral-800 hover:bg-neutral-800' : 'border-gray-200 hover:bg-gray-50'
-                        }`}
+                        className="w-full min-h-10 rounded-lg border px-3 py-2 text-left text-xs font-medium break-words border-border hover:bg-muted"
                       >
                         {result.label}
                       </button>

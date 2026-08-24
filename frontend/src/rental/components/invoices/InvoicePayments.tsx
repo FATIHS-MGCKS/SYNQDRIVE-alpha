@@ -159,7 +159,7 @@ function PaymentDesktopTable({
     <div className="hidden md:block overflow-x-auto">
       <table className="w-full min-w-[640px]">
         <thead>
-          <tr className={isDarkMode ? 'bg-muted/50' : 'bg-gray-50/80'}>
+          <tr className={isDarkMode ? 'bg-muted/50' : 'bg-muted/80'}>
             <th className={`text-left px-3 py-2 text-[11px] font-semibold ${ts}`}>{t('invoicePayment.col.date')}</th>
             <th className={`text-left px-3 py-2 text-[11px] font-semibold ${ts}`}>{t('invoicePayment.col.method')}</th>
             <th className={`text-right px-3 py-2 text-[11px] font-semibold ${ts}`}>{t('invoicePayment.col.amount')}</th>
