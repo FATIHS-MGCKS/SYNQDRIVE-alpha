@@ -9,7 +9,6 @@ import type { VoiceOpsTab } from './voice-wizard.ops';
 
 const OPS_TABS: { key: VoiceOpsTab; labelKey: string; icon: string }[] = [
   { key: 'overview', labelKey: 'voice.ops.tab.overview', icon: 'layout-dashboard' },
-  { key: 'conversations', labelKey: 'voice.ops.tab.conversations', icon: 'file-text' },
   { key: 'automations', labelKey: 'voice.ops.tab.automations', icon: 'workflow' },
   { key: 'analytics', labelKey: 'voice.ops.tab.analytics', icon: 'bar-chart-3' },
   { key: 'settings', labelKey: 'voice.ops.tab.settings', icon: 'settings' },

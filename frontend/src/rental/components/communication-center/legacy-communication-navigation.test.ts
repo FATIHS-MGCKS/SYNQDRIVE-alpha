@@ -51,8 +51,8 @@ describe('legacy-communication-navigation', () => {
       });
     });
 
-    it('documents bare whatsapp-business preserves WhatsAppBusinessView overview default', () => {
-      // WhatsAppBusinessView initializes tab state to 'overview' — not inbox.
+    it('documents bare whatsapp-business preserves historical overview default (CC Channels overview)', () => {
+      // Historical WhatsApp product default tab was overview — not inbox.
       const resolved = resolveLegacyCommunicationRoute('?view=whatsapp-business');
       expect(resolved?.destinationClass).toBe('communication_channels_whatsapp');
       expect(resolved?.communicationCenterState?.primaryTab).toBe('channels');

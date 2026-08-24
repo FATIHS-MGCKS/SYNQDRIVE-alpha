@@ -17,7 +17,6 @@ import { VoiceCommandHeader } from './voice-assistant/VoiceCommandHeader';
 import { VoiceOnboardingWizard } from './voice-assistant/VoiceOnboardingWizard';
 import { VoiceOpsSectionNav } from './voice-assistant/VoiceOpsSectionNav';
 import { VoiceOperationsOverview } from './voice-assistant/VoiceOperationsOverview';
-import { VoiceConversationsPanel } from './voice-assistant/VoiceConversationsPanel';
 import { VoicePermissionGroupsPanel } from './voice-assistant/VoicePermissionGroupsPanel';
 import { VoiceUsageAnalyticsPanel } from './voice-assistant/VoiceUsageAnalyticsPanel';
 import { VoiceAgentSettings } from './voice-assistant/VoiceAgentSettings';
@@ -51,6 +50,8 @@ interface Props {
   suppressLegacyUrlSync?: boolean;
   initialVoiceState?: Partial<VoiceAssistantUrlState>;
   onCanonicalVoiceStateChange?: (state: Partial<VoiceAssistantUrlState>) => void;
+  /** Canonical CC Inbox handoff when operational conversations are requested. */
+  onOpenConversations?: () => void;
 }
 
 type VoiceBoolField = Exclude<{
@@ -62,6 +63,7 @@ export function VoiceAssistantView({
   suppressLegacyUrlSync = false,
   initialVoiceState,
   onCanonicalVoiceStateChange,
+  onOpenConversations,
 }: Props) {
   const { t } = useLanguage();
   const { orgId } = useRentalOrg();
@@ -233,7 +235,17 @@ export function VoiceAssistantView({
   }, [showWizard, loadVoices]);
 
   useEffect(() => {
-    if (!showWizard && (opsTab === 'overview' || opsTab === 'conversations')) {
+    if (opsTab === 'conversations') {
+      if (onOpenConversations) {
+        onOpenConversations();
+      } else {
+        applyVoiceUrlState({ opsTab: 'overview', settingsSection: null, wizardStep: null });
+      }
+    }
+  }, [opsTab, onOpenConversations, applyVoiceUrlState]);
+
+  useEffect(() => {
+    if (!showWizard && opsTab === 'overview') {
       void loadConversations();
     }
   }, [showWizard, opsTab, loadConversations]);
@@ -473,7 +485,6 @@ export function VoiceAssistantView({
         onActivate={() => void toggleActive()}
         onTest={() => openVoiceTestCenter()}
         onSync={() => {
-          setOpsTab('conversations');
           void syncLogs();
         }}
         onSave={() => void save()}
@@ -499,20 +510,8 @@ export function VoiceAssistantView({
             conversations={conversations}
             conversationsLoaded={conversationsLoaded}
             providerWarning={providerWarning}
-            onOpenConversations={() => setOpsTab('conversations')}
+            onOpenConversations={() => onOpenConversations?.()}
             onOpenAnalytics={() => setOpsTab('analytics')}
-          />
-        )}
-
-        {opsTab === 'conversations' && (
-          <VoiceConversationsPanel
-            orgId={orgId}
-            isDarkMode={isDarkMode}
-            cardClassName={card}
-            onConversationsChange={items => {
-              setConversations(items);
-              setConversationsLoaded(true);
-            }}
           />
         )}
 

@@ -32,13 +32,12 @@ describe('voice assistant UI characterization', () => {
   });
 
   describe('post-activation operations navigation', () => {
-    it('uses five-tab operations nav after activation', () => {
+    it('uses four-tab control-plane nav after activation (conversations in canonical CC Inbox)', () => {
       expect(viewSource).toContain('<VoiceOpsSectionNav');
       expect(viewSource).toContain("opsTab === 'overview'");
+      expect(viewSource).not.toContain('VoiceConversationsPanel');
       expect(viewSource).toContain("opsTab === 'conversations'");
-      expect(viewSource).toContain("opsTab === 'automations'");
-      expect(viewSource).toContain("opsTab === 'analytics'");
-      expect(viewSource).toContain("opsTab === 'settings'");
+      expect(viewSource).toContain('onOpenConversations');
     });
 
     it('loads billing remaining minutes for overview KPIs', () => {
