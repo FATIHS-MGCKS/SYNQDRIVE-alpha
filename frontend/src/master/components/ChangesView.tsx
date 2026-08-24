@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-vehicle-quick-view-tire-profile-p2-2-34-2026-08-24',
+    version: '4.9.961',
+    title: 'Platform i18n — P2.2.34 Operator Vehicle Quick View Tire Profile localization',
+    summary: [
+      'Localized Operator Vehicle Quick View tire profile via extracted `OperatorVehicleQuickViewTireProfile.tsx` and extended `operator-vehicle-quick-view-i18n.ts`.',
+      'P234 enforce-clean exact scope (2 paths) reports 0 findings; +14 EN+DE keys under `operator.vehicleQuickView.tire.*` (8475→8489); threads locale into `tire-health-detail-ui` helpers.',
+      'Presentation-only — machine displayMode/measurementState, tread/pressure values, position codes, thresholds, callbacks unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.34 post-P233 pre-flight (PR #1245) selected Tire Profile as the next bounded Vehicle Quick View slice.',
+    previousBehavior:
+      'Tire profile section used fixed German labels, fixed de-DE datetime formatting, and raw display mode codes inline in `OperatorVehicleQuickView.tsx`.',
+    details:
+      'operator/components/OperatorVehicleQuickViewTireProfile.tsx; operator/lib/operator-vehicle-quick-view-i18n.ts; OperatorVehicleQuickView.tsx (wiring); i18n/translations/operator.vehicleQuickView.tire.{en,de}.ts; operator-vehicle-quick-view-tire-profile-localization.test.tsx; P234_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_TIRE_PROFILE_P2_2_34_2026-08-24.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-24T16:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-vehicle-quick-view-active-damages-p2-2-33-2026-08-24',
     version: '4.9.960',
     title: 'Platform i18n — P2.2.33 Operator Vehicle Quick View Active Damages localization',

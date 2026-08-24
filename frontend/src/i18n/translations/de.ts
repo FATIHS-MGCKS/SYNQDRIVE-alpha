@@ -25,6 +25,7 @@ import { operatorVehicleQuickViewToolActionsDe } from './operator.vehicleQuickVi
 import { operatorVehicleQuickViewBookingDe } from './operator.vehicleQuickView.booking.de';
 import { operatorVehicleQuickViewHealthDe } from './operator.vehicleQuickView.health.de';
 import { operatorVehicleQuickViewDamagesDe } from './operator.vehicleQuickView.damages.de';
+import { operatorVehicleQuickViewTireDe } from './operator.vehicleQuickView.tire.de';
 import { vendorsDirectoryDe } from './vendors.directory.de';
 import { supportOpsDe } from './support.ops.de';
 import { whatsappDe } from './whatsapp.de';
@@ -5603,5 +5604,6 @@ export const de: Record<TranslationKey, string> = {
   ...operatorVehicleQuickViewBookingDe,
   ...operatorVehicleQuickViewHealthDe,
   ...operatorVehicleQuickViewDamagesDe,
+  ...operatorVehicleQuickViewTireDe,
   ...vendorsDirectoryDe,
 } satisfies CompleteTranslationDictionary;

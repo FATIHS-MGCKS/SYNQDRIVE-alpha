@@ -1,0 +1,16 @@
+export const operatorVehicleQuickViewTireEn = {
+  'operator.vehicleQuickView.tire.sectionTitle': 'Tire profile',
+  'operator.vehicleQuickView.tire.measureAction': 'Enter measurement',
+  'operator.vehicleQuickView.tire.empty': 'No tire data.',
+  'operator.vehicleQuickView.tire.label.lastMeasurement': 'Last measurement',
+  'operator.vehicleQuickView.tire.label.minTread': 'Tread (min.)',
+  'operator.vehicleQuickView.tire.label.status': 'Status',
+  'operator.vehicleQuickView.tire.label.remaining': 'Remaining life',
+  'operator.vehicleQuickView.tire.label.mode': 'Mode',
+  'operator.vehicleQuickView.tire.displayMode.MEASURED': 'Measured',
+  'operator.vehicleQuickView.tire.displayMode.ESTIMATED': 'Estimated',
+  'operator.vehicleQuickView.tire.displayMode.UNKNOWN': 'Unknown',
+  'operator.vehicleQuickView.tire.measurementState.measured': 'Measured',
+  'operator.vehicleQuickView.tire.measurementState.estimated': 'Estimated',
+  'operator.vehicleQuickView.tire.measurementState.mixed': 'Mixed',
+} as const;
