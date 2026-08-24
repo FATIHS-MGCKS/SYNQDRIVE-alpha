@@ -343,7 +343,7 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
     expect(state.recommendedAction).toBe(ConnectivityRecommendedAction.CONNECT_DATA_SOURCE);
   });
 
-  it('state conflict: open episode + snapshot plugged → STATE_CONFLICT surfaced', () => {
+  it('state conflict: open episode + snapshot plugged → physical recovery preserved with STATE_CONFLICT', () => {
     const state = build({
       episode: {
         activeEpisodeId: 'ep-open',
@@ -364,10 +364,64 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
         lastReceivedAt: minutesAgo(5),
       },
     });
-    expect(state.physicalDeviceState).toBe('UNPLUGGED_CONFIRMED');
+    expect(state.physicalDeviceState).toBe('PLUGGED_INFERRED');
     expect(state.overallState).toBe('DEVICE_UNPLUGGED');
     expect(state.reasonCodes).toContain(ConnectivityReasonCode.STATE_CONFLICT);
     expect(state.recommendedAction).toBe(ConnectivityRecommendedAction.REVIEW_CONNECTIVITY);
+    expect(state.evidence.openUnpluggedEpisode).toBe(true);
+    expect(state.activeEpisodeId).toBe('ep-open');
+  });
+
+  it('Test M — OPEN episode + newer recovery snapshot keeps PLUGGED_INFERRED with conflict', () => {
+    const state = build({
+      episode: {
+        activeEpisodeId: 'ep-open',
+        openUnpluggedEpisode: true,
+        episodeBindingId: 'binding-1',
+        lastUnplugWebhookAt: hoursAgo(2),
+        lastExplicitPlugWebhookAt: null,
+        lastTelemetryRecoveryAt: null,
+      },
+      snapshotPlug: {
+        obdIsPluggedIn: true,
+        observedAt: minutesAgo(3),
+        sameBindingAsEpisode: true,
+      },
+      telemetry: {
+        lastTelemetryAt: minutesAgo(3),
+        lastProviderObservedAt: minutesAgo(3),
+        lastReceivedAt: minutesAgo(3),
+      },
+    });
+    expect(state.physicalDeviceState).toBe('PLUGGED_INFERRED');
+    expect(state.reasonCodes).toContain(ConnectivityReasonCode.STATE_CONFLICT);
+    expect(state.evidence.openUnpluggedEpisode).toBe(true);
+  });
+
+  it('Test N — OPEN episode + newer explicit plug keeps PLUGGED_CONFIRMED with conflict', () => {
+    const state = build({
+      episode: {
+        activeEpisodeId: 'ep-open',
+        openUnpluggedEpisode: true,
+        episodeBindingId: 'binding-1',
+        lastUnplugWebhookAt: hoursAgo(5),
+        lastExplicitPlugWebhookAt: hoursAgo(4),
+        lastTelemetryRecoveryAt: null,
+      },
+      telemetry: {
+        lastTelemetryAt: hoursAgo(4),
+        lastProviderObservedAt: hoursAgo(4),
+        lastReceivedAt: hoursAgo(4),
+      },
+      snapshotPlug: {
+        obdIsPluggedIn: true,
+        observedAt: hoursAgo(4),
+        sameBindingAsEpisode: true,
+      },
+    });
+    expect(state.physicalDeviceState).toBe('PLUGGED_CONFIRMED');
+    expect(state.physicalDeviceState).not.toBe('UNPLUGGED_CONFIRMED');
+    expect(state.reasonCodes).toContain(ConnectivityReasonCode.STATE_CONFLICT);
     expect(state.evidence.openUnpluggedEpisode).toBe(true);
   });
 
@@ -487,13 +541,13 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
       },
       snapshotPlug: { obdIsPluggedIn: false, observedAt: hoursAgo(1), sameBindingAsEpisode: true },
       telemetry: {
-        lastTelemetryAt: minutesAgo(5),
-        lastProviderObservedAt: minutesAgo(5),
-        lastReceivedAt: minutesAgo(5),
+        lastTelemetryAt: hoursAgo(1),
+        lastProviderObservedAt: hoursAgo(1),
+        lastReceivedAt: hoursAgo(1),
       },
     });
     expect(state.providerLinkState).toBe('REAUTH_REQUIRED');
-    expect(state.telemetryState).toBe('live');
+    expect(state.telemetryState).toBe('standby');
     expect(state.physicalDeviceState).toBe('UNPLUGGED_CONFIRMED');
     expect(state.overallState).toBe('AUTHORIZATION_REQUIRED');
   });
@@ -569,7 +623,7 @@ describe('VehicleConnectivityRuntimeStateBuilder validation integration', () => 
     expect(result.valid).toBe(true);
   });
 
-  it('state conflict snapshot is internally consistent (episode open + unplug physical)', () => {
+  it('state conflict snapshot flags validator conflict when episode open + recovered physical', () => {
     const state = build({
       episode: {
         activeEpisodeId: 'ep-conflict',
@@ -584,9 +638,16 @@ describe('VehicleConnectivityRuntimeStateBuilder validation integration', () => 
         observedAt: minutesAgo(5),
         sameBindingAsEpisode: true,
       },
+      telemetry: {
+        lastTelemetryAt: minutesAgo(5),
+        lastProviderObservedAt: minutesAgo(5),
+        lastReceivedAt: minutesAgo(5),
+      },
     });
     const result = validateConnectivityStateCombination(state);
+    expect(state.physicalDeviceState).toBe('PLUGGED_INFERRED');
     expect(state.reasonCodes).toContain(ConnectivityReasonCode.STATE_CONFLICT);
-    expect(result.valid).toBe(true);
+    expect(result.valid).toBe(false);
+    expect(result.conflicts).toContain(ConnectivityReasonCode.STATE_CONFLICT);
   });
 });

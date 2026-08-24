@@ -98,12 +98,16 @@ Compare timestamps:
 
 | Case | Result |
 |------|--------|
-| Snapshot newer than unplug | `PLUGGED_INFERRED` (recovery via telemetry) |
-| Unplug newer than snapshot | `UNPLUGGED_CONFIRMED` |
+| Snapshot newer than unplug (snapshot still fresh) | `PLUGGED_INFERRED` |
+| Snapshot newer than unplug but snapshot now offline (≥48h) | `UNKNOWN` + `DEVICE_CHECK_REQUIRED` |
+| Explicit plug newer than unplug | `PLUGGED_CONFIRMED` (does not expire with telemetry staleness) |
+| Unplug newer than snapshot/plug | `UNPLUGGED_CONFIRMED` |
 | No unplug, telemetry offline >48h | `UNKNOWN` + `DEVICE_CHECK_REQUIRED` — **not** unplugged |
 | Non-LTE_R1 / non-DIMO | `NOT_APPLICABLE` |
 
-**Physical device state and interruption lifecycle are separate dimensions.** Missing episode materialization must not erase known unplug evidence; conversely, missing episodes must not be treated as `known_none` when unplug evidence exists.
+**Two-step model:** (A) historical ordering — did positive evidence recover an older unplug? (B) current validity — is snapshot-based inference still fresh enough to claim plugged today?
+
+**Physical device state and interruption lifecycle are separate dimensions.** A stale OPEN episode must never override newer physical recovery evidence; surface `STATE_CONFLICT` instead.
 
 ### Derived fields
 
@@ -124,13 +128,13 @@ type InterruptionKnowledge = 'known_none' | 'active' | 'unknown' | 'not_applicab
 | Value | Meaning |
 |-------|---------|
 | `active` | OPEN episode exists |
-| `known_none` | Episode scope queried; no open episode; physical state is not `UNPLUGGED_CONFIRMED` |
-| `unknown` | Episode scope not queried, or unplug physical evidence exists without materialized episode |
+| `known_none` | Episode scope queried, authority reliable, no open episode, physical state is not `UNPLUGGED_CONFIRMED` |
+| `unknown` | Episode scope not queried, authority unreliable, or unplug physical evidence exists without materialized episode |
 | `not_applicable` | Non-DIMO or non-LTE_R1 — not an operator connectivity problem |
 
-**Implementation:** `backend/src/modules/dimo/interruption-knowledge.ts`
-
-**Critical invariant:** `usePersistedEpisodeScope = false` must **never** yield `known_none`.
+**Critical invariants:**
+- `usePersistedEpisodeScope = false` must **never** yield `known_none`.
+- `episodeEvidenceReliable = false` must **never** yield `known_none` (production default until pipeline verified healthy).
 
 ---
 

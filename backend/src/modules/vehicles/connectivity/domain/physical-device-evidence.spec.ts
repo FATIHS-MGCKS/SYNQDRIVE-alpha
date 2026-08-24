@@ -15,8 +15,8 @@ describe('derivePhysicalDeviceEvidence', () => {
   it('Test F — newer snapshot resolves older unplug', () => {
     const result = derivePhysicalDeviceEvidence({
       ...base,
-      latestAcceptedUnplugEventAt: new Date('2026-07-20T12:00:00.000Z'),
-      latestValidSnapshotAt: new Date('2026-07-20T12:08:00.000Z'),
+      latestAcceptedUnplugEventAt: new Date('2026-08-24T11:50:00.000Z'),
+      latestValidSnapshotAt: new Date('2026-08-24T11:55:00.000Z'),
     });
     expect(result.physicalDeviceState).toBe(PhysicalDeviceState.PLUGGED_INFERRED);
     expect(result.winningEvidence).toBe('snapshot');
@@ -45,16 +45,30 @@ describe('derivePhysicalDeviceEvidence', () => {
     expect(result.reasonCodes).toContain(ConnectivityReasonCode.DEVICE_CHECK_REQUIRED);
   });
 
-  it('historical unplug followed by later snapshots resolves connected', () => {
+  it('Test K — older unplug + newer fresh snapshot => PLUGGED_INFERRED', () => {
+    const result = derivePhysicalDeviceEvidence({
+      ...base,
+      latestAcceptedUnplugEventAt: new Date('2026-08-24T11:00:00.000Z'),
+      latestValidSnapshotAt: new Date('2026-08-24T11:30:00.000Z'),
+    });
+    expect(result.physicalDeviceState).toBe(PhysicalDeviceState.PLUGGED_INFERRED);
+    expect(result.winningEvidence).toBe('snapshot');
+  });
+
+  it('Test L — older unplug + newer but now-stale snapshot => UNKNOWN + DEVICE_CHECK_REQUIRED', () => {
     const result = derivePhysicalDeviceEvidence({
       ...base,
       latestAcceptedUnplugEventAt: new Date('2026-07-20T12:00:00.000Z'),
-      latestValidSnapshotAt: new Date('2026-07-22T08:00:00.000Z'),
+      latestValidSnapshotAt: new Date('2026-07-20T12:10:00.000Z'),
     });
-    expect(result.physicalDeviceState).toBe(PhysicalDeviceState.PLUGGED_INFERRED);
+    expect(result.telemetryFreshness).toBe('offline');
+    expect(result.physicalDeviceState).toBe(PhysicalDeviceState.UNKNOWN);
+    expect(result.physicalDeviceState).not.toBe(PhysicalDeviceState.PLUGGED_INFERRED);
+    expect(result.reasonCodes).toContain(ConnectivityReasonCode.DEVICE_CHECK_REQUIRED);
+    expect(result.reasonCodes).toContain(ConnectivityReasonCode.TELEMETRY_OFFLINE);
   });
 
-  it('explicit plug event newer than unplug resolves connected', () => {
+  it('explicit plug event newer than unplug resolves connected without telemetry freshness expiry', () => {
     const result = derivePhysicalDeviceEvidence({
       ...base,
       latestAcceptedUnplugEventAt: new Date('2026-07-11T18:39:45.000Z'),

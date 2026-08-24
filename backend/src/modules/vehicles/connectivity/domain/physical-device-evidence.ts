@@ -2,9 +2,13 @@
  * Canonical physical-device evidence ordering for connectivity runtime.
  *
  * Rule: persist evidence, derive current state — newest trustworthy evidence wins.
- * - Valid telemetry snapshot = positive connected / communicating evidence
+ * - Valid telemetry snapshot = positive connected / communicating evidence (when fresh)
  * - OBD_DEVICE_PLUGGED_IN event = positive explicit reconnect evidence
  * - OBD_DEVICE_UNPLUGGED event = explicit physical disconnect evidence
+ *
+ * Two-step model:
+ * A) Historical ordering — did later positive evidence recover an older unplug?
+ * B) Current validity — is snapshot-based inference still fresh enough to claim plugged today?
  */
 import { classifyTelemetryFreshness, type TelemetryFreshness } from '../../vehicle-state-interpreter';
 import {
@@ -75,6 +79,33 @@ function newestEvidence(candidates: EvidenceCandidate[]): EvidenceCandidate | nu
   });
 }
 
+function isSnapshotFreshEnoughForPluggedInference(
+  snapshotAt: Date | null,
+  nowMs: number,
+): boolean {
+  if (!snapshotAt) return false;
+  const freshness = classifyTelemetryFreshness(snapshotAt, nowMs);
+  return freshness !== 'offline' && freshness !== 'no_signal';
+}
+
+function unknownFromStaleTelemetry(
+  snapshotAt: Date | null,
+  unplugAt: Date | null,
+  telemetryFreshness: TelemetryFreshness,
+  reasonCodes: ConnectivityReasonCode[],
+): PhysicalDeviceEvidenceResult {
+  reasonCodes.push(ConnectivityReasonCode.TELEMETRY_OFFLINE);
+  reasonCodes.push(ConnectivityReasonCode.DEVICE_CHECK_REQUIRED);
+  return {
+    physicalDeviceState: PhysicalDeviceState.UNKNOWN,
+    reasonCodes,
+    winningEvidence: 'none',
+    latestValidSnapshotAt: toIso(snapshotAt),
+    latestExplicitUnplugAt: toIso(unplugAt),
+    telemetryFreshness,
+  };
+}
+
 /**
  * Derive physical device state from ordered snapshot, plug, and unplug evidence.
  */
@@ -99,11 +130,11 @@ export function derivePhysicalDeviceEvidence(
   }
 
   const candidates: EvidenceCandidate[] = [];
-  const snapshotIsPositive =
+  const snapshotIsHistoricallyPositive =
     snapshotAt != null &&
     (unplugAt != null ||
-      (telemetryFreshness !== 'offline' && telemetryFreshness !== 'no_signal'));
-  if (snapshotAt && snapshotIsPositive) {
+      isSnapshotFreshEnoughForPluggedInference(snapshotAt, input.nowMs));
+  if (snapshotAt && snapshotIsHistoricallyPositive) {
     candidates.push({ at: snapshotAt, kind: 'positive_snapshot' });
   }
   if (plugAt) candidates.push({ at: plugAt, kind: 'positive_plug' });
@@ -112,7 +143,10 @@ export function derivePhysicalDeviceEvidence(
   const newest = newestEvidence(candidates);
   if (newest) {
     switch (newest.kind) {
-      case 'positive_snapshot':
+      case 'positive_snapshot': {
+        if (!isSnapshotFreshEnoughForPluggedInference(snapshotAt, input.nowMs)) {
+          return unknownFromStaleTelemetry(snapshotAt, unplugAt, telemetryFreshness, reasonCodes);
+        }
         reasonCodes.push(ConnectivityReasonCode.DEVICE_RECONNECTED_SNAPSHOT);
         return {
           physicalDeviceState: PhysicalDeviceState.PLUGGED_INFERRED,
@@ -122,6 +156,7 @@ export function derivePhysicalDeviceEvidence(
           latestExplicitUnplugAt: toIso(unplugAt),
           telemetryFreshness,
         };
+      }
       case 'positive_plug':
         reasonCodes.push(ConnectivityReasonCode.DEVICE_RECONNECTED_EXPLICIT);
         return {
@@ -148,17 +183,8 @@ export function derivePhysicalDeviceEvidence(
   }
 
   if (snapshotAt) {
-    if (telemetryFreshness === 'offline' || telemetryFreshness === 'no_signal') {
-      reasonCodes.push(ConnectivityReasonCode.TELEMETRY_OFFLINE);
-      reasonCodes.push(ConnectivityReasonCode.DEVICE_CHECK_REQUIRED);
-      return {
-        physicalDeviceState: PhysicalDeviceState.UNKNOWN,
-        reasonCodes,
-        winningEvidence: 'none',
-        latestValidSnapshotAt: toIso(snapshotAt),
-        latestExplicitUnplugAt: null,
-        telemetryFreshness,
-      };
+    if (!isSnapshotFreshEnoughForPluggedInference(snapshotAt, input.nowMs)) {
+      return unknownFromStaleTelemetry(snapshotAt, null, telemetryFreshness, reasonCodes);
     }
 
     reasonCodes.push(ConnectivityReasonCode.DEVICE_RECONNECTED_SNAPSHOT);

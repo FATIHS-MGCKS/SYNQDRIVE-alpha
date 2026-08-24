@@ -6,6 +6,7 @@ describe('deriveInterruptionKnowledge', () => {
     lteR1Capable: true,
     dimoLinked: true,
     usePersistedEpisodeScope: true,
+    episodeEvidenceReliable: true,
     openUnpluggedEpisode: false,
     physicalDeviceState: PhysicalDeviceState.PLUGGED_INFERRED,
   };
@@ -16,8 +17,9 @@ describe('deriveInterruptionKnowledge', () => {
     ).toBe('active');
   });
 
-  it('returns known_none when episode scope is authoritative and no physical unplug evidence', () => {
+  it('Test O — returns known_none when episode scope is authoritative, reliable, and no physical unplug evidence', () => {
     expect(deriveInterruptionKnowledge(base).knowledge).toBe('known_none');
+    expect(deriveInterruptionKnowledge(base).reason).toBe('episode_authoritative_no_open');
   });
 
   it('Test I — episode scope not queried must not return known_none', () => {
@@ -30,7 +32,17 @@ describe('deriveInterruptionKnowledge', () => {
     expect(result.knowledge).not.toBe('known_none');
   });
 
-  it('Test J — unplug physical evidence without episode yields unknown interruption', () => {
+  it('Test P — episode scope queried but authority unreliable => unknown', () => {
+    const result = deriveInterruptionKnowledge({
+      ...base,
+      episodeEvidenceReliable: false,
+    });
+    expect(result.knowledge).toBe('unknown');
+    expect(result.reason).toBe('episode_authority_unreliable');
+    expect(result.knowledge).not.toBe('known_none');
+  });
+
+  it('Test J / Q — unplug physical evidence without episode yields unknown interruption', () => {
     const result = deriveInterruptionKnowledge({
       ...base,
       physicalDeviceState: PhysicalDeviceState.UNPLUGGED_CONFIRMED,

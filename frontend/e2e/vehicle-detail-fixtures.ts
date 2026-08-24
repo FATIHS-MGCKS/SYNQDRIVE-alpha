@@ -4,6 +4,7 @@
 import { expect, type Page } from '@playwright/test';
 
 import { assertNoHorizontalOverflow } from './document-upload-fixtures';
+import { fleetCommandPanel } from './fleet-operational-fixtures';
 
 export { assertNoHorizontalOverflow };
 
@@ -900,7 +901,7 @@ export async function navigateToFleet(page: Page) {
 }
 
 export function fleetRowByPlate(page: Page, plate: string) {
-  return page.locator('.surface-premium.rounded-2xl').filter({ hasText: 'Fleet Command' }).getByText(plate, { exact: true });
+  return fleetCommandPanel(page).getByText(plate, { exact: true });
 }
 
 export async function openVehicleFromFleet(page: Page, plate: string) {

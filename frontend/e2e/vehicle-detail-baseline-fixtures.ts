@@ -6,6 +6,7 @@ import { expect, type Page } from '@playwright/test';
 import { VEHICLE_DETAIL_TAB_KEYS } from '../src/rental/lib/vehicle-overview-navigation';
 import {
   assertNoHorizontalOverflow,
+  fleetCommandPanel,
   fleetRowByPlate,
   installFleetOperationalMocks,
   mockUser,
@@ -335,6 +336,61 @@ export async function installVehicleDetailApiMocks(page: Page) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: 'null' });
     }
 
+    if (url.includes('/dashboard/utilization') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'AVAILABLE',
+          reason: null,
+          year: 2026,
+          month: 8,
+          isPartialMonth: false,
+          stationScoped: false,
+          generatedAt: new Date().toISOString(),
+          monthMetrics: {
+            utilizationPercent: 0,
+            bookingCount: 0,
+            utilizationDeltaPp: null,
+            bookingDeltaPercent: null,
+          },
+          previousMonthMetrics: {
+            utilizationPercent: null,
+            bookingCount: 0,
+            utilizationDeltaPp: null,
+            bookingDeltaPercent: null,
+          },
+          days: [],
+        }),
+      });
+    }
+
+    if (url.includes('/communication/conversations/summary') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          totalUnreadMessages: 0,
+          unreadConversations: 0,
+          unassigned: 0,
+          requiresAttention: 0,
+          byChannel: {},
+        }),
+      });
+    }
+
+    if (url.includes('/communication/conversations/attention-preview') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ items: [] }),
+      });
+    }
+
+    if (method === 'GET' && url.includes('/api/')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    }
+
     return route.fallback();
   });
 }
@@ -364,13 +420,13 @@ export async function openVehicleDetailBaselineFleetPage(page: Page) {
   await navigateToFleetView(page);
 }
 
-function fleetCommandPanel(page: Page) {
-  return page.locator('.surface-premium.rounded-2xl').filter({ hasText: 'Fleet Command' });
+function fleetCommandPanelLocal(page: Page) {
+  return fleetCommandPanel(page);
 }
 
 export async function openVehicleDetailFromFleet(page: Page, plate: string) {
   await navigateToFleetView(page);
-  const panel = fleetCommandPanel(page);
+  const panel = fleetCommandPanelLocal(page);
   await expect(panel.getByText(plate, { exact: true })).toBeVisible({ timeout: 15_000 });
   await panel
     .getByRole('button', { name: new RegExp(plate, 'i') })

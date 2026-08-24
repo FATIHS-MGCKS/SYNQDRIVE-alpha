@@ -245,6 +245,11 @@ export interface BuildDeviceConnectionSummaryInput {
   webhookConfiguration?: DeviceConnectionWebhookConfigurationView;
   /** Last valid telemetry snapshot timestamp — positive connected evidence. */
   latestValidSnapshotAt?: Date | null;
+  /**
+   * When true, absence of an OPEN episode may yield `known_none`.
+   * Production callers should pass false until webhook/episode processing is verified healthy.
+   */
+  episodeEvidenceReliable?: boolean;
 }
 
 export interface PersistedOpenEpisodeInput {
@@ -474,6 +479,7 @@ export function buildDeviceConnectionSummary(
     lteR1Capable: isLteR1Hardware(hardwareType),
     dimoLinked,
     usePersistedEpisodeScope: usePersistedEpisode,
+    episodeEvidenceReliable: input.episodeEvidenceReliable ?? false,
     openUnpluggedEpisode,
     physicalDeviceState: physicalEvidence.physicalDeviceState,
   });

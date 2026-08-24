@@ -78,6 +78,7 @@ export class DeviceConnectionQueryService {
       latestValidSnapshotAt: vehicle.latestState?.lastSeenAt ?? null,
       persistedOpenEpisode: this.toPersistedOpenEpisode(openEpisode),
       webhookConfiguration: webhookConfig,
+      episodeEvidenceReliable: false,
     });
 
     if (opts?.includeRawPayload) {

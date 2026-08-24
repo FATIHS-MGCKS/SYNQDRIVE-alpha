@@ -109,12 +109,16 @@
 
 | Case | `physicalDeviceState` | `telemetryFreshness` | Reason |
 |------|----------------------|---------------------|--------|
-| Snapshot newer than unplug | `PLUGGED_INFERRED` | independent | `DEVICE_RECONNECTED_SNAPSHOT` |
+| Snapshot newer than unplug (snapshot still fresh) | `PLUGGED_INFERRED` | independent | `DEVICE_RECONNECTED_SNAPSHOT` |
+| Snapshot recovered unplug but snapshot now offline (≥48h) | `UNKNOWN` | `offline` | `DEVICE_CHECK_REQUIRED` |
+| Explicit plug newer than unplug | `PLUGGED_CONFIRMED` | independent | `DEVICE_RECONNECTED_EXPLICIT` |
 | Unplug newer than snapshot | `UNPLUGGED_CONFIRMED` | independent | `DEVICE_UNPLUG_WEBHOOK` |
 | No unplug, telemetry offline >48h | `UNKNOWN` | `offline` | `DEVICE_CHECK_REQUIRED` (not unplugged) |
 | Unplug evidence, no episode | `UNPLUGGED_CONFIRMED` | independent | `interruptionKnowledge=unknown` (Test J) |
 
-**Prohibited:** `events.some(e => e.type === UNPLUG)` as current-state authority.
+**Two-step model:** historical ordering (A) then current snapshot freshness validity (B). Stale recovery snapshots do not prove current plugged state.
+
+**Episode vs physical:** OPEN episode must not override newer physical recovery — surface `STATE_CONFLICT` instead.
 
 ---
 
@@ -197,9 +201,10 @@ type InterruptionKnowledge = 'known_none' | 'active' | 'unknown' | 'not_applicab
 | Scenario | `openUnpluggedEpisode` | `physicalDeviceState` | `interruptionKnowledge` |
 |----------|------------------------|----------------------|-------------------------|
 | OPEN episode in DB | true | `UNPLUGGED_CONFIRMED` | `active` |
-| Episode queried, no open, no unplug evidence | false | `PLUGGED_INFERRED` / `UNKNOWN` | `known_none` |
+| Episode queried, no open, authority reliable, no unplug evidence | false | `PLUGGED_INFERRED` / `UNKNOWN` | `known_none` |
 | Episode scope **not** queried | false | any | `unknown` (`episode_scope_not_queried`) |
-| Unplug evidence, no episode (Test J) | false | `UNPLUGGED_CONFIRMED` | `unknown` |
+| Episode authority **unreliable** (production default) | false | any | `unknown` (`episode_authority_unreliable`) |
+| Unplug evidence, no episode (Test J/Q) | false | `UNPLUGGED_CONFIRMED` | `unknown` |
 | Non-DIMO / non-LTE_R1 | — | `NOT_APPLICABLE` | `not_applicable` |
 
 **Fixed inversion:** `usePersistedEpisodeScope = false` no longer returns `known_none`.
@@ -278,6 +283,12 @@ cd frontend && npm test -- --run src/rental/lib/vehicle-operational-provenance.t
 | H: no unplug + >48h silence → `offline` + `unknown` + `device_check_required` | ✅ |
 | I: episode scope not queried → `unknown` (not `known_none`) | ✅ |
 | J: unplug evidence without episode → `unplugged` + `interruptionKnowledge=unknown` | ✅ |
+| K: fresh recovery snapshot after unplug → `PLUGGED_INFERRED` | ✅ |
+| L: stale recovery snapshot → `UNKNOWN` + `DEVICE_CHECK_REQUIRED` | ✅ |
+| M/N: OPEN episode + newer recovery → physical plugged + `STATE_CONFLICT` | ✅ |
+| O: reliable episode authority → `known_none` | ✅ |
+| P: unreliable episode authority → `unknown` | ✅ |
+| Q: unplug without episode → physical unplugged + interruption unknown | ✅ |
 
 ---
 

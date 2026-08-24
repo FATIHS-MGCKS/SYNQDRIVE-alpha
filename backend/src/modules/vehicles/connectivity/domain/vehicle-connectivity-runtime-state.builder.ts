@@ -381,7 +381,7 @@ function resolvePhysicalDeviceState(
     ) {
       reasonCodes.push(ConnectivityReasonCode.STATE_CONFLICT);
       return {
-        physicalDeviceState: PhysicalDeviceState.UNPLUGGED_CONFIRMED,
+        physicalDeviceState: evidence.physicalDeviceState,
         recoveryConflict: true,
       };
     }
