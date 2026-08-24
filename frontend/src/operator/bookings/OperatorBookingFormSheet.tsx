@@ -6,11 +6,20 @@ import { StationSelectFields } from '../../rental/components/stations/StationSel
 import { usePricingSimulation } from '../../rental/hooks/usePricingSimulation';
 import { formatMoneyCents } from '../../rental/pricing/pricingUtils';
 import { useRentalOrg } from '../../rental/RentalContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { OperatorGlassCard } from '../components/OperatorGlassCard';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useOperatorVehiclesData } from '../hooks/useOperatorVehiclesData';
 import { useOperatorBookingMutations } from '../hooks/useOperatorBookingMutations';
 import type { OperatorSheetAction } from '../lib/operatorTypes';
+import {
+  obf,
+  operatorBookingFormErrorMessage,
+  operatorBookingFormPriceQuoteTotal,
+  operatorBookingFormStatusLabel,
+  operatorBookingFormSubmitLabel,
+  operatorBookingFormTitle,
+} from '../lib/operator-booking-form-i18n';
 import { OperatorBookingSheetShell } from './operatorBookingSheetShell';
 import {
   customerDisplayName,
@@ -38,6 +47,7 @@ function SectionTitle({ children }: { children: string }) {
 }
 
 export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetProps) {
+  const { locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const { closeSheet } = useOperatorShell();
   const { allVehicles } = useOperatorVehiclesData();
@@ -141,7 +151,7 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
     if (!isEdit || !orgId || !bookingId) {
       if (isEdit && !bookingId) {
         setDetailLoading(false);
-        setDetailError('Buchungs-ID fehlt');
+        setDetailError(operatorBookingFormErrorMessage(locale, 'operator.bookings.form.error.bookingIdMissing'));
       }
       return;
     }
@@ -176,7 +186,13 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
         ]);
       })
       .catch((e) => {
-        if (!cancelled) setDetailError(e instanceof Error ? e.message : 'Details nicht verfügbar');
+        if (!cancelled) {
+          setDetailError(
+            e instanceof Error
+              ? e.message
+              : operatorBookingFormErrorMessage(locale, 'operator.bookings.form.error.detailsUnavailable'),
+          );
+        }
       })
       .finally(() => {
         if (!cancelled) setDetailLoading(false);
@@ -184,7 +200,7 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
     return () => {
       cancelled = true;
     };
-  }, [isEdit, orgId, bookingId]);
+  }, [isEdit, orgId, bookingId, locale]);
 
   useEffect(() => {
     if (isEdit || !selectedVehicle?.stationId || pickupStationId) return;
@@ -221,44 +237,56 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
     clearError();
 
     if (!orgId) {
-      setFormError('Organisation nicht geladen');
+      setFormError(operatorBookingFormErrorMessage(locale, 'operator.bookings.form.error.orgNotLoaded'));
       return;
     }
 
     const startIso = localDateTimeToIso(startLocal);
     const endIso = localDateTimeToIso(endLocal);
     if (!startIso || !endIso) {
-      setFormError('Bitte gültigen Abhol- und Rückgabezeitpunkt angeben.');
+      setFormError(
+        operatorBookingFormErrorMessage(locale, 'operator.bookings.form.error.invalidPickupReturn'),
+      );
       return;
     }
     if (new Date(endIso).getTime() <= new Date(startIso).getTime()) {
-      setFormError('Rückgabe muss nach der Abholung liegen.');
+      setFormError(
+        operatorBookingFormErrorMessage(locale, 'operator.bookings.form.error.returnAfterPickup'),
+      );
       return;
     }
 
     const effectiveReturnStationId = sameReturnStation ? pickupStationId : returnStationId;
     if (!pickupStationId || !effectiveReturnStationId) {
-      setFormError('Bitte Abhol- und Rückgabestation wählen.');
+      setFormError(
+        operatorBookingFormErrorMessage(locale, 'operator.bookings.form.error.stationsRequired'),
+      );
       return;
     }
 
     if (mode === 'create') {
       if (!customerId) {
-        setFormError('Bitte einen Kunden wählen.');
+        setFormError(
+          operatorBookingFormErrorMessage(locale, 'operator.bookings.form.error.customerRequired'),
+        );
         return;
       }
       if (!vehicleId) {
-        setFormError('Bitte ein Fahrzeug wählen.');
+        setFormError(
+          operatorBookingFormErrorMessage(locale, 'operator.bookings.form.error.vehicleRequired'),
+        );
         return;
       }
       if (priceLoading) {
-        setFormError('Preisberechnung läuft — bitte kurz warten.');
+        setFormError(
+          operatorBookingFormErrorMessage(locale, 'operator.bookings.form.error.priceCalculating'),
+        );
         return;
       }
       if (!priceSim?.quoteId) {
         setFormError(
           priceError ||
-            'Keine gültige Preisquote. Bitte Zeitraum prüfen und Preisberechnung aktualisieren.',
+            operatorBookingFormErrorMessage(locale, 'operator.bookings.form.error.noValidQuote'),
         );
         return;
       }
@@ -287,7 +315,9 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
     }
 
     if (!detail || !bookingId) {
-      setFormError('Buchungsdetails nicht geladen');
+      setFormError(
+        operatorBookingFormErrorMessage(locale, 'operator.bookings.form.error.detailsNotLoaded'),
+      );
       return;
     }
 
@@ -313,21 +343,24 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
     }
 
     if (Object.keys(patch).length === 0) {
-      setFormError('Keine Änderungen zum Speichern');
+      setFormError(operatorBookingFormErrorMessage(locale, 'operator.bookings.form.error.noChanges'));
       return;
     }
 
     await updateBooking(bookingId, patch, handleSuccess, detail.vehicle.vehicleId);
   };
 
-  const title = isEdit ? 'Buchung bearbeiten' : 'Buchung aufnehmen';
+  const title = operatorBookingFormTitle(locale, mode);
   const displayError = formError || error || detailError;
+  const sheetShellProps = {
+    title,
+    onClose: closeSheet,
+    ...(detail?.core.bookingNumber ? { subtitle: detail.core.bookingNumber } : {}),
+  };
 
   return (
     <OperatorBookingSheetShell
-      title={title}
-      subtitle={detail?.core.bookingNumber}
-      onClose={closeSheet}
+      {...sheetShellProps}
     >
       {detailLoading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">
@@ -335,9 +368,8 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
         </div>
       ) : (
         <div className="space-y-5 pb-24">
-          {/* 1. Kunde */}
           <OperatorGlassCard className="space-y-3 p-4">
-            <SectionTitle>Kunde</SectionTitle>
+            <SectionTitle>{obf(locale, 'bookings.customer')}</SectionTitle>
             {isEdit ? (
               <div>
                 <p className="text-sm font-semibold text-foreground">
@@ -353,24 +385,28 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
             ) : (
               <>
                 <label className="block">
-                  <span className="text-xs font-medium text-muted-foreground">Suchen</span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {obf(locale, 'common.search')}
+                  </span>
                   <input
                     type="search"
                     value={customerSearch}
                     onChange={(e) => setCustomerSearch(e.target.value)}
-                    placeholder="Name, E-Mail, Telefon…"
+                    placeholder={obf(locale, 'operator.bookings.form.customerSearchPlaceholder')}
                     className={operatorBookingFieldClass}
                   />
                 </label>
                 <label className="block">
-                  <span className="text-xs font-medium text-muted-foreground">Kunde *</span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {obf(locale, 'operator.bookings.form.customerRequired')}
+                  </span>
                   <select
                     value={customerId}
                     onChange={(e) => setCustomerId(e.target.value)}
                     className={operatorBookingFieldClass}
                     disabled={customersLoading}
                   >
-                    <option value="">Kunde wählen…</option>
+                    <option value="">{obf(locale, 'operator.bookings.form.customerChoose')}</option>
                     {customers.map((c) => (
                       <option key={c.id} value={c.id}>
                         {customerDisplayName(c)}
@@ -385,29 +421,32 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
             )}
           </OperatorGlassCard>
 
-          {/* 2. Fahrzeug */}
           <OperatorGlassCard className="space-y-3 p-4">
-            <SectionTitle>Fahrzeug</SectionTitle>
+            <SectionTitle>{obf(locale, 'bookings.vehicle')}</SectionTitle>
             {!isEdit && (
               <label className="block">
-                <span className="text-xs font-medium text-muted-foreground">Suchen</span>
+                <span className="text-xs font-medium text-muted-foreground">
+                  {obf(locale, 'common.search')}
+                </span>
                 <input
                   type="search"
                   value={vehicleSearch}
                   onChange={(e) => setVehicleSearch(e.target.value)}
-                  placeholder="Kennzeichen, Modell…"
+                  placeholder={obf(locale, 'operator.bookings.form.vehicleSearchPlaceholder')}
                   className={operatorBookingFieldClass}
                 />
               </label>
             )}
             <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Fahrzeug *</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {obf(locale, 'operator.bookings.form.vehicleRequired')}
+              </span>
               <select
                 value={vehicleId}
                 onChange={(e) => setVehicleId(e.target.value)}
                 className={operatorBookingFieldClass}
               >
-                <option value="">Fahrzeug wählen…</option>
+                <option value="">{obf(locale, 'operator.bookings.form.vehicleChoose')}</option>
                 {filteredVehicles.map((v) => (
                   <option key={v.id} value={v.id}>
                     {vehicleDisplayLabel(v)}
@@ -418,11 +457,12 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
             </label>
           </OperatorGlassCard>
 
-          {/* 3. Zeitraum */}
           <OperatorGlassCard className="space-y-3 p-4">
-            <SectionTitle>Zeitraum</SectionTitle>
+            <SectionTitle>{obf(locale, 'operator.bookings.form.section.period')}</SectionTitle>
             <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Abholung *</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {obf(locale, 'operator.bookings.form.pickupRequired')}
+              </span>
               <input
                 type="datetime-local"
                 value={startLocal}
@@ -431,7 +471,9 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
               />
             </label>
             <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Rückgabe *</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {obf(locale, 'operator.bookings.form.returnRequired')}
+              </span>
               <input
                 type="datetime-local"
                 value={endLocal}
@@ -441,24 +483,28 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
             </label>
             {!isEdit && (
               <label className="block">
-                <span className="text-xs font-medium text-muted-foreground">Status</span>
+                <span className="text-xs font-medium text-muted-foreground">
+                  {obf(locale, 'common.status')}
+                </span>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as 'PENDING' | 'CONFIRMED')}
                   className={operatorBookingFieldClass}
                 >
-                  <option value="PENDING">Ausstehend</option>
-                  <option value="CONFIRMED">Bestätigt</option>
+                  <option value="PENDING">{operatorBookingFormStatusLabel(locale, 'PENDING')}</option>
+                  <option value="CONFIRMED">{operatorBookingFormStatusLabel(locale, 'CONFIRMED')}</option>
                 </select>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  Bestätigung wird vom Backend anhand der Kundenfreigabe geprüft.
+                  {obf(locale, 'operator.bookings.form.statusConfirmationHint')}
                 </p>
               </label>
             )}
             {!isEdit && priceSimParams && (
               <div className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
                 {priceLoading ? (
-                  <p className="text-xs text-muted-foreground">Preis wird berechnet…</p>
+                  <p className="text-xs text-muted-foreground">
+                    {obf(locale, 'operator.bookings.form.priceCalculating')}
+                  </p>
                 ) : priceError ? (
                   <div className="space-y-2">
                     <p className="text-xs text-[color:var(--status-critical)]">{priceError}</p>
@@ -467,37 +513,40 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
                       onClick={() => void refreshPrice()}
                       className="text-xs font-medium text-primary underline-offset-2 hover:underline"
                     >
-                      Preis neu berechnen
+                      {obf(locale, 'operator.bookings.form.priceRecalculate')}
                     </button>
                   </div>
                 ) : priceSim?.quoteId ? (
                   <p className="text-xs text-muted-foreground">
-                    Gesamtpreis (Quote):{' '}
-                    <span className="font-semibold text-foreground">
-                      {formatMoneyCents(priceSim.totalGrossCents, priceSim.currency)}
-                    </span>
+                    {operatorBookingFormPriceQuoteTotal(
+                      locale,
+                      formatMoneyCents(priceSim.totalGrossCents, priceSim.currency),
+                    )}
                   </p>
                 ) : (
-                  <p className="text-xs text-muted-foreground">Preisquote ausstehend</p>
+                  <p className="text-xs text-muted-foreground">
+                    {obf(locale, 'operator.bookings.form.priceQuotePending')}
+                  </p>
                 )}
               </div>
             )}
             <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Km inklusive (optional)</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {obf(locale, 'operator.bookings.form.kmIncludedOptional')}
+              </span>
               <input
                 type="number"
                 min={0}
                 value={kmIncluded}
                 onChange={(e) => setKmIncluded(e.target.value)}
-                placeholder="z. B. 300"
+                placeholder={obf(locale, 'operator.bookings.form.kmPlaceholder')}
                 className={operatorBookingFieldClass}
               />
             </label>
           </OperatorGlassCard>
 
-          {/* 4. Stationen */}
           <OperatorGlassCard className="space-y-3 p-4">
-            <SectionTitle>Stationen</SectionTitle>
+            <SectionTitle>{obf(locale, 'operator.bookings.form.section.stations')}</SectionTitle>
             <StationSelectFields
               stations={stations}
               pickupStationId={pickupStationId}
@@ -514,16 +563,17 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
             />
           </OperatorGlassCard>
 
-          {/* 5. Hinweise */}
           <OperatorGlassCard className="space-y-3 p-4">
-            <SectionTitle>Hinweise</SectionTitle>
+            <SectionTitle>{obf(locale, 'operator.bookings.form.section.notes')}</SectionTitle>
             <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">Notizen</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {obf(locale, 'operator.bookings.form.notesLabel')}
+              </span>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={4}
-                placeholder="Interne Hinweise zur Buchung…"
+                placeholder={obf(locale, 'operator.bookings.form.notesPlaceholder')}
                 className={operatorBookingTextareaClass}
               />
             </label>
@@ -544,7 +594,7 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
               onClick={() => void handleSubmit()}
               className="sq-3d-btn sq-3d-btn--primary min-h-[48px] w-full font-semibold disabled:opacity-50"
             >
-              {mutating ? 'Speichern…' : isEdit ? 'Änderungen speichern' : 'Buchung anlegen'}
+              {operatorBookingFormSubmitLabel(locale, mode, mutating)}
             </button>
           </div>
         </div>

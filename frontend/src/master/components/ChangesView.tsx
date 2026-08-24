@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-booking-form-sheet-p2-2-36-2026-08-24',
+    version: '4.9.963',
+    title: 'Platform i18n — P2.2.36 Operator Booking Form Sheet localization',
+    summary: [
+      'Localized Operator Booking Form Sheet (create + edit) via `operator-booking-form-i18n.ts` presentation adapter and `operator.bookings.form.*` keys.',
+      'P236 enforce-clean exact scope (2 paths) reports 0 findings; +35 EN+DE keys (8491→8526); reuses `bookings.edit.*`, `bookings.customer`, `bookings.vehicle`, `bookings.planner.pending`, `bookings.confirmed`, `common.search`, `common.status`.',
+      'Presentation-only — booking/customer/vehicle IDs, dates, stations, notes, pricing amounts, status machine values, validation predicates, submit payload, and callbacks unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.36 post-P235 pre-flight (PR #1255) selected Operator Booking Form Sheet as the next bounded Operator presentation slice.',
+    previousBehavior:
+      'OperatorBookingFormSheet used fixed German labels, placeholders, helper text, validation copy, and status/price chrome inline.',
+    details:
+      'operator/bookings/OperatorBookingFormSheet.tsx; operator/lib/operator-booking-form-i18n.ts; i18n/translations/operator.bookings.form.{en,de}.ts; operator-booking-form-localization.test.tsx; P236_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_BOOKING_FORM_SHEET_P2_2_36_2026-08-24.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-24T19:30:00.000Z',
+  },
+  {
     id: 'i18n-operator-vehicle-quick-view-documents-p2-2-35-2026-08-24',
     version: '4.9.962',
     title: 'Platform i18n — P2.2.35 Operator Vehicle Quick View Documents localization',

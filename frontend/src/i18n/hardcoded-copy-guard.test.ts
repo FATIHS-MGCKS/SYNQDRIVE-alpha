@@ -406,6 +406,11 @@ const P235_ENFORCE_CLEAN_EXACT = [
   'operator/lib/operator-vehicle-quick-view-i18n.ts',
 ];
 
+const P236_ENFORCE_CLEAN_EXACT = [
+  'operator/bookings/OperatorBookingFormSheet.tsx',
+  'operator/lib/operator-booking-form-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -544,6 +549,10 @@ function isP234EnforceCleanPath(relPath: string): boolean {
 
 function isP235EnforceCleanPath(relPath: string): boolean {
   return P235_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP236EnforceCleanPath(relPath: string): boolean {
+  return P236_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -867,6 +876,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP235EnforceCleanPath(finding.file),
     );
     expect(p235Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.36 enforce-clean findings to Operator Booking Form Sheet only', () => {
+    const p236Debt = inventory.findings.filter((finding) =>
+      isP236EnforceCleanPath(finding.file),
+    );
+    expect(p236Debt).toHaveLength(0);
   });
 
   it('keeps operator-vehicle-quick-view-i18n.ts on canonical translation keys', () => {
