@@ -2,11 +2,11 @@
 
 /* ═══════════════════════════════════════════════════════
    SynqDrive Design System — Token Layer
-   V4.9.192 — Light Theme V2: Premium Soft Glass / Cool Offwhite
+   V4.9.196 — Light Theme V3: Neutral Vero-style surfaces
 
    Font stack:  Manrope (body/UI/display) + Geist Mono (numeric/data)
    Accent:      Soft Brand Blue #4F86E8 (calm, readable, never loud)
-   Surfaces:    Cool off-white canvas (#F2F3F5), translucent glass cards
+   Surfaces:    Neutral canvas (#F6F6F6), opaque white cards/sidebar
    ═══════════════════════════════════════════════════════ */
 
 :root {
@@ -64,11 +64,11 @@
   --space-3xl: 48px;
   --space-4xl: 64px;
 
-  /* ── Semantic palette — light V2 (Premium Soft Glass / Cool Offwhite) ──
-     Canvas:  #F2F3F5  ·  Card: translucent white  ·  Graphite foreground */
-  --background: #F2F3F5;
+  /* ── Semantic palette — light V3 (Neutral Vero-style surfaces) ──
+     Canvas:  #F6F6F6  ·  Card: opaque white  ·  Graphite foreground */
+  --background: #F6F6F6;
   --foreground: #111827;
-  --card: rgba(255, 255, 255, 0.86);
+  --card: #FFFFFF;
   --card-foreground: #111827;
   --popover: rgba(255, 255, 255, 0.92);
   --popover-foreground: #111827;
@@ -201,12 +201,12 @@
   --map-glass-vehicle-shadow: 0 2px 8px rgba(15, 23, 42, 0.12), 0 1px 2px rgba(15, 23, 42, 0.08);
 
   /* ── L1 surface-premium tokens — see LIQUID_GLASS_SYSTEM.md ── */
-  --surface-premium-bg-start: rgba(255, 255, 255, 0.98);
-  --surface-premium-bg-end: rgba(247, 249, 252, 0.96);
+  --surface-premium-bg-start: #FFFFFF;
+  --surface-premium-bg-end: #FFFFFF;
   --surface-premium-border: rgba(17, 24, 39, 0.085);
-  --surface-premium-highlight: rgba(255, 255, 255, 0.85);
-  --surface-premium-catch: rgba(17, 24, 39, 0.035);
-  --surface-premium-shadow: 0 8px 24px rgba(17, 24, 39, 0.055), 0 1px 2px rgba(17, 24, 39, 0.04);
+  --surface-premium-highlight: rgba(255, 255, 255, 0.42);
+  --surface-premium-catch: rgba(17, 24, 39, 0.025);
+  --surface-premium-shadow: 0 4px 16px rgba(17, 24, 39, 0.045), 0 1px 2px rgba(17, 24, 39, 0.03);
 
   /* ── Radius system ── */
   --radius: 0.5rem;  /* 8px base */
@@ -226,8 +226,8 @@
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
 
-  /* ── Sidebar — light V2 (soft glass chrome) ── */
-  --sidebar: rgba(255, 255, 255, 0.92);
+  /* ── Sidebar — light V3 (opaque white chrome) ── */
+  --sidebar: #FFFFFF;
   --sidebar-foreground: #111827;
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: #ffffff;
@@ -480,12 +480,8 @@
     line-height: 1.5;
     font-feature-settings: "ss02", "ss03";  /* Manrope stylistic alternates */
     font-variant-numeric: tabular-nums lining-nums;
-    /* Light V2 — whisper-soft glass ambient (offwhite lift + faint blue hint) */
-    background-image:
-      radial-gradient(at 78% 6%,  rgba(255, 255, 255, 0.55), transparent 58%),
-      radial-gradient(at 14% 94%, rgba(79, 134, 232, 0.016), transparent 64%),
-      radial-gradient(at 50% 48%, rgba(234, 237, 241, 0.35), transparent 72%);
-    background-attachment: fixed;
+    /* Light V3 — flat neutral canvas (no ambient gradients) */
+    background-image: none;
   }
   .dark body {
     /* V4.9.193 — neutral graphite vignette only (no blue/navy ambient) */

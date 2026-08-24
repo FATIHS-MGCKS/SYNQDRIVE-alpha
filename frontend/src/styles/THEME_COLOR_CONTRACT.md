@@ -12,7 +12,7 @@
 
 | Mode | Direction | Principles |
 |------|-----------|------------|
-| **Light** | Premium Soft Glass / Cool Offwhite | Cool canvas (`#F2F3F5`), translucent glass cards, silvery surfaces, soft brand blue `#4F86E8`, graphite foreground `#111827` |
+| **Light** | Neutral Vero-style surfaces | Neutral canvas (`#F6F6F6`), opaque white cards/sidebar, flat L1 premium panels, soft brand blue `#4F86E8`, graphite foreground `#111827` |
 | **Dark** | Premium Graphite / Charcoal | Near-black canvas (`#0B0B0D`), neutral dark cards (`#121214`), no navy/blue base surfaces, sparse high-quality accents (light gray brand, not blue canvas) |
 
 **Rules**
@@ -25,15 +25,15 @@
 
 ---
 
-## Light theme tokens (`:root`) — V4.9.192
+## Light theme tokens (`:root`) — V4.9.196
 
 ### Core shadcn semantic palette
 
 | Token | Value | Role |
 |-------|-------|------|
-| `--background` | `#F2F3F5` | Cool off-white canvas |
+| `--background` | `#F6F6F6` | Neutral main app canvas |
 | `--foreground` | `#111827` | Graphite text |
-| `--card` | `rgba(255, 255, 255, 0.86)` | Translucent glass card |
+| `--card` | `#FFFFFF` | Opaque white card |
 | `--card-foreground` | `#111827` | Card text |
 | `--popover` | `rgba(255, 255, 255, 0.92)` | Dropdowns, menus |
 | `--popover-foreground` | `#111827` | Popover text |
@@ -116,20 +116,31 @@ Legacy aliases (keep): `--accent-indigo`, `--accent-indigo-soft`, `--accent-indi
 
 ```css
 body {
-  background-image:
-    radial-gradient(at 78% 6%,  rgba(255, 255, 255, 0.55), transparent 58%),
-    radial-gradient(at 14% 94%, rgba(79, 134, 232, 0.016), transparent 64%),
-    radial-gradient(at 50% 48%, rgba(234, 237, 241, 0.35), transparent 72%);
+  background: var(--background);
+  background-image: none;
 }
 ```
 
-Whisper-soft offwhite lift with a barely perceptible blue hint — no strong SaaS-blue glow.
+Flat neutral canvas — **no** radial gradients, blue glow, or vignette in light mode.
+
+### L1 premium solid (light)
+
+| Token | Value |
+|-------|-------|
+| `--surface-premium-bg-start` | `#FFFFFF` |
+| `--surface-premium-bg-end` | `#FFFFFF` |
+| `--surface-premium-border` | `rgba(17, 24, 39, 0.085)` |
+| `--surface-premium-highlight` | `rgba(255, 255, 255, 0.42)` |
+| `--surface-premium-catch` | `rgba(17, 24, 39, 0.025)` |
+| `--surface-premium-shadow` | `0 4px 16px rgba(17, 24, 39, 0.045), 0 1px 2px rgba(17, 24, 39, 0.03)` |
+
+Opaque white L1 panels with subtle border/elevation — no cool-white gradient fill.
 
 ### Sidebar (light)
 
 | Token | Value |
 |-------|-------|
-| `--sidebar` | `rgba(255, 255, 255, 0.92)` |
+| `--sidebar` | `#FFFFFF` |
 | `--sidebar-foreground` | `#111827` |
 | `--sidebar-primary` | `var(--brand)` |
 | `--sidebar-primary-foreground` | `#ffffff` |
@@ -140,7 +151,7 @@ Whisper-soft offwhite lift with a barely perceptible blue hint — no strong Saa
 
 ### Elevation (light)
 
-Shadows use soft graphite `rgba(17, 24, 39, …)` — cards float on cool off-white without blue-tinted hover glow.
+Shadows use soft graphite `rgba(17, 24, 39, …)` — white cards separate subtly from the neutral canvas without blue-tinted glow.
 
 ---
 
@@ -334,15 +345,14 @@ Reduced transparency + `@supports` fallbacks: all L2/L3/L4 classes in `theme.css
 ### Already aligned
 
 - Dark canvas/cards are charcoal, not navy.
-- Light canvas is cool off-white with glass tokens and soft blue brand.
+- Light canvas is neutral `#F6F6F6` with opaque white cards/sidebar and soft blue brand.
 - Central token layer is single source of truth; `@theme` bridge is complete.
 
 ### Light theme — acceptable blue/slate usage
 
-- Foreground `#0F172A` (navy ink) — correct for enterprise readability.
-- `--accent`, `--brand-soft`, `--sidebar-accent` blue tints — intentional soft glass.
-- Body radial brand glow — subtle, on-brief.
-- Shadow navy hue — supports floating card aesthetic.
+- Foreground `#111827` (graphite ink) — correct for enterprise readability.
+- `--accent`, `--brand-soft`, `--sidebar-accent` blue tints — intentional soft accents.
+- Shadow graphite hue — supports subtle card separation on neutral canvas.
 
 ### Recommended central token tweaks (future, optional)
 
@@ -362,12 +372,20 @@ Reduced transparency + `@supports` fallbacks: all L2/L3/L4 classes in `theme.css
 - Body ambient: neutral graphite triple-vignette (no blue)
 - Legacy navy `#0B1220`/`#111A2E` removed from active tokens (changelog history only)
 
-### V4.9.192 Light Theme V2 (applied)
+### V4.9.196 Light Theme V3 — Neutral Vero-style surfaces (applied)
+
+- Canvas `#F2F3F5` → `#F6F6F6` (neutral flat main app background)
+- Cards/sidebar opaque white (`#FFFFFF`) — no translucent L0/L1 fills
+- L1 premium gradient flattened to white; inset highlight/shadow reduced for non-glossy depth
+- Light-mode body ambient radial gradients removed (flat canvas)
+- Dark mode, L2 frosted glass, L3 map liquid glass unchanged
+
+### V4.9.192 Light Theme V2 (historical)
 
 - Canvas shifted from `#F6F8FB` → `#F2F3F5` (cooler off-white, less blue SaaS canvas)
 - Cards/popovers translucent glass (`rgba(255,255,255,0.86/0.92)`)
 - Brand softened `#2563EB` → `#4F86E8`; body ambient blue reduced ~70%
-- Dark theme unchanged
+- Superseded by V4.9.196 for canvas/card/sidebar/L1 surfaces
 
 ### Hardcoded color debt (feature code)
 

@@ -62,7 +62,7 @@ L4 overlay-scrim     ▓▓▓▓  dimmed backdrop; content stays L0/L1
 
 | Property | Rule |
 |----------|------|
-| Background | `var(--card)` — **opaque** in practice (dark `#121214`; light may use near-solid card token) |
+| Background | `var(--card)` — **opaque** `#FFFFFF` light / `#121214` dark |
 | Blur | **None** |
 | Border / shadow | `var(--border)`, `var(--shadow-xs)` |
 | Gradient | **None** (flat fill) |
@@ -80,10 +80,10 @@ L4 overlay-scrim     ▓▓▓▓  dimmed backdrop; content stays L0/L1
 
 | Property | Rule |
 |----------|------|
-| Background | Opaque cool-white gradient (light: `rgba(255,255,255,.98)` → `rgba(247,249,252,.96)`; dark: graphite) |
+| Background | Opaque white (light: `#FFFFFF` flat fill; dark: graphite gradient) |
 | Blur | **None** |
 | Border | `rgba(17,24,39,.085)` light / fine white hairline dark — stronger than L0 `--border` |
-| Shadow | Inset top highlight + bottom catch + `0 8px 24px` ambient (V4.9.279 rescue tuning) |
+| Shadow | Inset top highlight + bottom catch + soft ambient shadow (reduced for non-glossy light mode) |
 | Pseudo-layers | **Inset box-shadow only** — no `::before` shine stack (that is L3) |
 | Interaction | Optional hover lift → use `.sq-card-elevated` or `DataCard interactive` |
 | Use for | Dashboard KPIs, customer/vehicle/booking cards, health modules, admin summary cards, fleet command rows (when card-wrapped), featured `MetricCard` / `DataCard` |
