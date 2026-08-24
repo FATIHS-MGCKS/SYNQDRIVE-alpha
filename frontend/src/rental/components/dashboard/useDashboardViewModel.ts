@@ -721,6 +721,14 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     });
   }, [intlLocale]);
 
+  const dateLabelShort = useMemo(() => {
+    return new Date().toLocaleDateString(intlLocale, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  }, [intlLocale]);
+
   const dashboardNotifications = useMemo<DashboardNotificationItem[]>(
     () =>
       buildDashboardNotificationsFromInsights(insights, {
@@ -1384,6 +1392,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     locale,
     t,
     dateLabel,
+    dateLabelShort,
     controlCenterStatus,
     openSliceDrilldown,
     openBusinessMetricDrilldown,
