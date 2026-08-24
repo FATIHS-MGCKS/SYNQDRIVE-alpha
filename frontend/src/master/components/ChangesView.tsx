@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-vehicle-quick-view-documents-p2-2-35-2026-08-24',
+    version: '4.9.962',
+    title: 'Platform i18n — P2.2.35 Operator Vehicle Quick View Documents localization',
+    summary: [
+      'Localized Operator Vehicle Quick View documents via extracted `OperatorVehicleQuickViewDocuments.tsx` and extended `operator-vehicle-quick-view-i18n.ts`.',
+      'P235 enforce-clean exact scope (2 paths) reports 0 findings; +2 EN+DE keys (section title + canonical `documentExtraction.status.PARTIALLY_APPLIED` gap fill); reuses `documentExtraction.type.*` and `documentExtraction.status.*`.',
+      'Presentation-only — document IDs, machine type/status values, filenames, sort/limit/visibility unchanged. QV presentation campaign complete; Blockers architecturally deferred. Category E=0.',
+    ],
+    reason:
+      'P2.2.35 post-P234 pre-flight (PR #1249) selected Documents as the final clean Vehicle Quick View presentation slice.',
+    previousBehavior:
+      'Documents section used fixed German title, raw documentType/status machine codes, fixed de-DE datetime formatting, and verbatim filenames inline in `OperatorVehicleQuickView.tsx`.',
+    details:
+      'operator/components/OperatorVehicleQuickViewDocuments.tsx; operator/lib/operator-vehicle-quick-view-i18n.ts; OperatorVehicleQuickView.tsx (wiring); i18n/translations/operator.vehicleQuickView.documents.{en,de}.ts; operator-vehicle-quick-view-documents-localization.test.tsx; P235_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_DOCUMENTS_P2_2_35_2026-08-24.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-24T17:30:00.000Z',
+  },
+  {
     id: 'i18n-operator-vehicle-quick-view-tire-profile-p2-2-34-2026-08-24',
     version: '4.9.961',
     title: 'Platform i18n — P2.2.34 Operator Vehicle Quick View Tire Profile localization',

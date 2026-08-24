@@ -1,5 +1,5 @@
 /**
- * Operator Vehicle Quick View presentation adapter (P2.2.27 QV-G tasks + P2.2.28 header + P2.2.29 quick actions + P2.2.30 tool actions + P2.2.31 booking context + P2.2.32 rental health modules + P2.2.33 active damages + P2.2.34 tire profile).
+ * Operator Vehicle Quick View presentation adapter (P2.2.27 QV-G tasks + P2.2.28 header + P2.2.29 quick actions + P2.2.30 tool actions + P2.2.31 booking context + P2.2.32 rental health modules + P2.2.33 active damages + P2.2.34 tire profile + P2.2.35 documents).
  * Machine status/task values stay unchanged; presentation maps to TranslationKey only.
  */
 import type {
@@ -461,4 +461,69 @@ export function operatorVehicleQuickViewTireProfileModeLabel(
   }
 
   return '—';
+}
+
+export interface OperatorVehicleQuickViewDocumentPresentationRow {
+  documentType: string;
+  status: string;
+  sourceFileName: string | null;
+  createdAt: string;
+}
+
+function operatorVehicleQuickViewCanonicalEnumLabel(
+  locale: string,
+  key: TranslationKey,
+  machineValue: string,
+): string {
+  const result = translateKey(resolveOperatorVehicleQuickViewLocale(locale), key);
+  if (result.source === 'missing-key') {
+    return machineValue;
+  }
+  return result.text;
+}
+
+export function operatorVehicleQuickViewDocumentsSectionTitle(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.documents.sectionTitle');
+}
+
+export function operatorVehicleQuickViewDocumentTypeLabel(
+  locale: string,
+  documentType: string,
+): string {
+  return operatorVehicleQuickViewCanonicalEnumLabel(
+    locale,
+    `documentExtraction.type.${documentType}` as TranslationKey,
+    documentType,
+  );
+}
+
+export function operatorVehicleQuickViewDocumentStatusLabel(
+  locale: string,
+  status: string,
+): string {
+  return operatorVehicleQuickViewCanonicalEnumLabel(
+    locale,
+    `documentExtraction.status.${status}` as TranslationKey,
+    status,
+  );
+}
+
+export function operatorVehicleQuickViewDocumentPrimaryLine(
+  locale: string,
+  doc: Pick<OperatorVehicleQuickViewDocumentPresentationRow, 'documentType' | 'status'>,
+): string {
+  return [
+    operatorVehicleQuickViewDocumentTypeLabel(locale, doc.documentType),
+    operatorVehicleQuickViewDocumentStatusLabel(locale, doc.status),
+  ].join(' · ');
+}
+
+export function operatorVehicleQuickViewDocumentSecondaryLine(
+  locale: string,
+  doc: OperatorVehicleQuickViewDocumentPresentationRow,
+): string {
+  return [
+    doc.sourceFileName ?? '—',
+    formatOperatorVehicleQuickViewDateTime(locale, doc.createdAt),
+  ].join(' · ');
 }

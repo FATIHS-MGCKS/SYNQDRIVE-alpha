@@ -26,6 +26,7 @@ import { operatorVehicleQuickViewBookingDe } from './operator.vehicleQuickView.b
 import { operatorVehicleQuickViewHealthDe } from './operator.vehicleQuickView.health.de';
 import { operatorVehicleQuickViewDamagesDe } from './operator.vehicleQuickView.damages.de';
 import { operatorVehicleQuickViewTireDe } from './operator.vehicleQuickView.tire.de';
+import { operatorVehicleQuickViewDocumentsDe } from './operator.vehicleQuickView.documents.de';
 import { vendorsDirectoryDe } from './vendors.directory.de';
 import { supportOpsDe } from './support.ops.de';
 import { whatsappDe } from './whatsapp.de';
@@ -4259,6 +4260,7 @@ export const de: Record<TranslationKey, string> = {
   'documentExtraction.status.READY_FOR_REVIEW': 'Zur Pruefung',
   'documentExtraction.status.CONFIRMED': 'Bestaetigt',
   'documentExtraction.status.APPLIED': 'Angewendet',
+  'documentExtraction.status.PARTIALLY_APPLIED': 'Teilweise angewendet',
   'documentExtraction.status.FAILED': 'Fehlgeschlagen',
   'documentExtraction.status.REJECTED': 'Abgelehnt',
   'documentExtraction.status.CANCELLED': 'Abgebrochen',
@@ -5605,5 +5607,6 @@ export const de: Record<TranslationKey, string> = {
   ...operatorVehicleQuickViewHealthDe,
   ...operatorVehicleQuickViewDamagesDe,
   ...operatorVehicleQuickViewTireDe,
+  ...operatorVehicleQuickViewDocumentsDe,
   ...vendorsDirectoryDe,
 } satisfies CompleteTranslationDictionary;
