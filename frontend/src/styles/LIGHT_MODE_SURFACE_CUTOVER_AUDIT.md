@@ -1,8 +1,8 @@
 # SynqDrive — Light Mode Surface Color Cutover Audit (V4.9.196 + V4.9.199)
 
-> **Status:** V4.9.196 deployed; V4.9.199 feature surface cleanup on branch (not deployed)  
+> **Status:** V4.9.196 + V4.9.199 deployed  
 > **Release (V4.9.196):** `20260824151022_v4994` (includes `3964210b` surface cutover + deploy boot hotfix)  
-> **Release (V4.9.199):** pending — branch `feat/theme-v4999-surface-hardcode-cleanup`  
+> **Release (V4.9.199):** `20260824173547_v4994` (`ab2c3631`) — PR #1250    
 > **Scope:** Light-mode surface/background tokens only — no layout, typography, dark mode, or map-glass redesign  
 > **Canonical tokens:** `frontend/src/styles/theme.css`  
 > **Contract:** `frontend/src/styles/THEME_COLOR_CONTRACT.md`  
@@ -389,9 +389,9 @@ Migration der in §5.3 / Anhang A (V4.9.196) dokumentierten Legacy-Surface-Bypä
 
 | Check | Ergebnis |
 |-------|----------|
-| `npm run build` | ✅ |
-| `npm run check:surface` | ✅ |
-| `npm test` | nicht ausgeführt (optional) |
+| Push `origin/main` | ✅ `ab2c3631` (PR #1250) |
+| Production deploy | ✅ `20260824173547_v4994` |
+| Health | ✅ `https://app.synqdrive.eu/api/v1/health` |
 
 ---
 
@@ -454,7 +454,7 @@ frontend/src/rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx
 | V4.9.196 | `3964210b` | Surface cutover: `#F6F6F6` canvas, white cards/sidebar, flat L1, no light body ambient |
 | V4.9.197 | `940eddef` | Text neutralization — siehe `LIGHT_MODE_TEXT_NEUTRALIZATION_AUDIT.md` |
 | V4.9.198 | `9dec5ff9` | Feature text hardcode cleanup — siehe `LIGHT_MODE_TEXT_NEUTRALIZATION_AUDIT.md` §11 |
-| V4.9.199 | pending | Feature surface hardcode cleanup — siehe §12 |
+| V4.9.199 | `ab2c3631` | Feature surface hardcode cleanup — siehe §12 |
 
 ---
 
