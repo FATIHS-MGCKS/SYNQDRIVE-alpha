@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Vehicle Quick View Rental Health Modules (P2.2.32 — V4.9.959)', icon: Globe,
+    endpoint: 'OperatorVehicleQuickView → `OperatorVehicleQuickViewRentalHealth` (section title, 7 module labels, state chips, empty/no-data/stale).',
+    service: '**Locale flow:** `useLanguage().locale` → extracted Rental Health sub-surface; `operator-vehicle-quick-view-i18n.ts` module/state maps (reuses `health.state.*`). **Keys:** +12 EN+DE `operator.vehicleQuickView.health.*` (8460→8472). **Machine values:** module keys, `RentalHealthState`, `module.reason`, `data_stale`, tones frozen; no callbacks. **Guardrails:** P2.2.32 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-vehicle-quick-view-rental-health-modules-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_RENTAL_HEALTH_MODULES_P2_2_32_2026-08-24.md' },
   { name: 'Platform i18n Operator Vehicle Quick View Booking & Customer Context (P2.2.31 — V4.9.958)', icon: Globe,
     endpoint: 'OperatorVehicleQuickView → `OperatorVehicleQuickViewBookingContext` (section title, kind label, customer name, datetime/station).',
     service: '**Locale flow:** `useLanguage().locale` → extracted Booking Context sub-surface; `operator-vehicle-quick-view-i18n.ts` section/kind maps + `formatOperatorVehicleQuickViewDateTime`. **Keys:** +6 EN+DE `operator.vehicleQuickView.booking.*` (8454→8460). **Machine values:** `bookingContext.kind`, bookingId, customerName, when, station, status frozen; parent callbacks unchanged. **Guardrails:** P2.2.31 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-vehicle-quick-view-booking-context-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

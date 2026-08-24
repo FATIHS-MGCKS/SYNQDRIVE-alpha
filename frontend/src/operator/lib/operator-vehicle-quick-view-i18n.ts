@@ -1,8 +1,15 @@
 /**
- * Operator Vehicle Quick View presentation adapter (P2.2.27 QV-G tasks + P2.2.28 header + P2.2.29 quick actions + P2.2.30 tool actions + P2.2.31 booking context).
+ * Operator Vehicle Quick View presentation adapter (P2.2.27 QV-G tasks + P2.2.28 header + P2.2.29 quick actions + P2.2.30 tool actions + P2.2.31 booking context + P2.2.32 rental health modules).
  * Machine status/task values stay unchanged; presentation maps to TranslationKey only.
  */
-import type { ApiTaskPriority, ApiTaskStatus, RentalHealthState } from '../../lib/api';
+import type {
+  ApiTaskPriority,
+  ApiTaskStatus,
+  RentalHealthModule,
+  RentalHealthState,
+  VehicleHealthResponse,
+} from '../../lib/api';
+import type { StatusTone } from '../../components/patterns';
 import {
   DEFAULT_PRODUCT_LOCALE,
   isSupportedLocale,
@@ -20,6 +27,7 @@ import type {
   OperatorPrimaryStatus,
   OperatorReleaseDecision,
 } from './operatorVehicleQuickView.utils';
+import { moduleTone } from './operatorVehicleQuickView.utils';
 
 export type OperatorVehicleQuickViewBookingKind = 'pickup' | 'return' | 'active' | 'reserved';
 
@@ -227,4 +235,83 @@ export function formatOperatorVehicleQuickViewDateTime(
     dateStyle: 'short',
     timeStyle: 'short',
   });
+}
+
+export type OperatorVehicleQuickViewRentalHealthModuleKey =
+  keyof VehicleHealthResponse['modules'];
+
+export const RENTAL_HEALTH_MODULE_KEYS = [
+  'battery',
+  'tires',
+  'brakes',
+  'error_codes',
+  'service_compliance',
+  'complaints',
+  'vehicle_alerts',
+] as const satisfies readonly OperatorVehicleQuickViewRentalHealthModuleKey[];
+
+const RENTAL_HEALTH_MODULE_KEYS_MAP: Record<
+  OperatorVehicleQuickViewRentalHealthModuleKey,
+  TranslationKey
+> = {
+  battery: 'operator.vehicleQuickView.health.module.battery',
+  tires: 'operator.vehicleQuickView.health.module.tires',
+  brakes: 'operator.vehicleQuickView.health.module.brakes',
+  error_codes: 'operator.vehicleQuickView.health.module.error_codes',
+  service_compliance: 'operator.vehicleQuickView.health.module.service_compliance',
+  complaints: 'operator.vehicleQuickView.health.module.complaints',
+  vehicle_alerts: 'operator.vehicleQuickView.health.module.vehicle_alerts',
+};
+
+export function operatorVehicleQuickViewRentalHealthSectionTitle(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.health.sectionTitle');
+}
+
+export function operatorVehicleQuickViewRentalHealthEmptyLabel(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.health.empty');
+}
+
+export function operatorVehicleQuickViewRentalHealthNoDataLabel(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.health.noData');
+}
+
+export function operatorVehicleQuickViewRentalHealthReasonFallback(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.health.reasonFallback');
+}
+
+export function operatorVehicleQuickViewRentalHealthStaleSuffix(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.health.staleSuffix');
+}
+
+export function operatorVehicleQuickViewRentalHealthModuleLabel(
+  locale: string,
+  moduleKey: OperatorVehicleQuickViewRentalHealthModuleKey,
+): string {
+  return ovqt(locale, RENTAL_HEALTH_MODULE_KEYS_MAP[moduleKey]);
+}
+
+export function operatorVehicleQuickViewRentalHealthModulePresentation(
+  locale: string,
+  module: RentalHealthModule | undefined,
+): {
+  stateLabel: string;
+  reason: string;
+  tone: StatusTone;
+  stale: boolean;
+} {
+  if (!module) {
+    return {
+      stateLabel: operatorVehicleQuickViewRentalHealthReasonFallback(locale),
+      reason: operatorVehicleQuickViewRentalHealthNoDataLabel(locale),
+      tone: 'neutral',
+      stale: false,
+    };
+  }
+
+  return {
+    stateLabel: operatorVehicleQuickViewRentalHealthStateLabel(locale, module.state),
+    reason: module.reason || operatorVehicleQuickViewRentalHealthReasonFallback(locale),
+    tone: moduleTone(module.state),
+    stale: module.data_stale,
+  };
 }

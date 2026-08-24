@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-vehicle-quick-view-rental-health-modules-p2-2-32-2026-08-24',
+    version: '4.9.959',
+    title: 'Platform i18n — P2.2.32 Operator Vehicle Quick View Rental Health Modules localization',
+    summary: [
+      'Localized Operator Vehicle Quick View rental health modules via extracted `OperatorVehicleQuickViewRentalHealth.tsx` and extended `operator-vehicle-quick-view-i18n.ts`.',
+      'P232 enforce-clean exact scope (2 paths) reports 0 findings; +12 EN+DE keys under `operator.vehicleQuickView.health.*` (8460→8472); reuses `health.state.*` for state chips.',
+      'Presentation-only — module identities/order, machine states, `module.reason`, tones, thresholds, readiness unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.32 post-P231 pre-flight (PR #1237) selected Rental Health Modules as the next bounded Vehicle Quick View slice.',
+    previousBehavior:
+      'Rental health module block used fixed German module labels and state chips inline in `OperatorVehicleQuickView.tsx`; stale suffix and empty/no-data strings were hardcoded.',
+    details:
+      'operator/components/OperatorVehicleQuickViewRentalHealth.tsx; operator/lib/operator-vehicle-quick-view-i18n.ts; OperatorVehicleQuickView.tsx (wiring); i18n/translations/operator.vehicleQuickView.health.{en,de}.ts; operator-vehicle-quick-view-rental-health-modules-localization.test.tsx; P232_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_RENTAL_HEALTH_MODULES_P2_2_32_2026-08-24.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-24T14:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-vehicle-quick-view-booking-customer-context-p2-2-31-2026-08-24',
     version: '4.9.958',
     title: 'Platform i18n — P2.2.31 Operator Vehicle Quick View Booking & Customer Context localization',
