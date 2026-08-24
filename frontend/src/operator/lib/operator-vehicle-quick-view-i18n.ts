@@ -1,5 +1,5 @@
 /**
- * Operator Vehicle Quick View presentation adapter (P2.2.27 QV-G tasks + P2.2.28 header + P2.2.29 quick actions + P2.2.30 tool actions).
+ * Operator Vehicle Quick View presentation adapter (P2.2.27 QV-G tasks + P2.2.28 header + P2.2.29 quick actions + P2.2.30 tool actions + P2.2.31 booking context).
  * Machine status/task values stay unchanged; presentation maps to TranslationKey only.
  */
 import type { ApiTaskPriority, ApiTaskStatus, RentalHealthState } from '../../lib/api';
@@ -15,10 +15,20 @@ import {
   serviceTaskStatusLabel,
 } from '../../lib/tasks/service-task-presentation-i18n';
 import type { VehicleOperationalDisplayLocale } from '../../rental/lib/vehicle-operational-state';
+import { operatorFormattingLocale } from '../handover/operator-handover-i18n';
 import type {
   OperatorPrimaryStatus,
   OperatorReleaseDecision,
 } from './operatorVehicleQuickView.utils';
+
+export type OperatorVehicleQuickViewBookingKind = 'pickup' | 'return' | 'active' | 'reserved';
+
+const BOOKING_KIND_KEYS: Record<OperatorVehicleQuickViewBookingKind, TranslationKey> = {
+  pickup: 'operator.vehicleQuickView.booking.kind.pickup',
+  return: 'operator.vehicleQuickView.booking.kind.return',
+  active: 'operator.vehicleQuickView.booking.kind.active',
+  reserved: 'operator.vehicleQuickView.booking.kind.reserved',
+};
 
 export function resolveOperatorVehicleQuickViewLocale(
   locale: string | null | undefined,
@@ -184,4 +194,37 @@ export function operatorVehicleQuickViewToolActionTaskCreateTitle(locale: string
 
 export function operatorVehicleQuickViewToolActionTaskCreateSubtitle(locale: string): string {
   return ovqt(locale, 'operator.vehicleQuickView.toolActions.taskCreate.subtitle');
+}
+
+export function operatorVehicleQuickViewBookingSectionTitle(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.booking.sectionTitle');
+}
+
+export function operatorVehicleQuickViewBookingKindLabel(
+  locale: string,
+  kind: OperatorVehicleQuickViewBookingKind,
+): string {
+  return ovqt(locale, BOOKING_KIND_KEYS[kind]);
+}
+
+export function operatorVehicleQuickViewBookingContextAriaLabel(
+  locale: string,
+  kind: OperatorVehicleQuickViewBookingKind,
+): string {
+  return ovqt(locale, 'operator.vehicleQuickView.booking.contextAria', {
+    kind: operatorVehicleQuickViewBookingKindLabel(locale, kind),
+  });
+}
+
+export function formatOperatorVehicleQuickViewDateTime(
+  locale: string,
+  iso: string | null | undefined,
+): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString(operatorFormattingLocale(locale), {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
 }

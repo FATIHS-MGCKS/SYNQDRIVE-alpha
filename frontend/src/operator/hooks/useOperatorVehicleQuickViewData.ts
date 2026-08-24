@@ -166,7 +166,6 @@ export function useOperatorVehicleQuickViewData(vehicleId: string) {
       const status = normalizeBookingStatus(pickupAction.row.statusEnum, pickupAction.row.status);
       return {
         kind: 'pickup' as const,
-        label: 'Abholung heute',
         customerName: pickupAction.row.customerName ?? '—',
         when: pickupAction.row.startDate ?? '',
         station: pickupAction.row.pickupStationName ?? pickupAction.row.station ?? '',
@@ -178,7 +177,6 @@ export function useOperatorVehicleQuickViewData(vehicleId: string) {
     if (returnAction) {
       return {
         kind: 'return' as const,
-        label: 'Rückgabe heute',
         customerName: returnAction.row.customerName ?? '—',
         when: returnAction.row.endDate ?? '',
         station: returnAction.row.returnStationName ?? returnAction.row.station ?? '',
@@ -191,7 +189,6 @@ export function useOperatorVehicleQuickViewData(vehicleId: string) {
     if (selectIsCurrentlyRented(vehicle) && activeBooking) {
       return {
         kind: 'active' as const,
-        label: 'Aktive Buchung',
         customerName: activeBooking.customerName ?? '—',
         when: activeBooking.returnAt ?? activeBooking.pickupAt ?? '',
         station: activeBooking.returnStationName ?? vehicle.station ?? '',
@@ -204,7 +201,6 @@ export function useOperatorVehicleQuickViewData(vehicleId: string) {
     if (selectIsInPickupReservationWindow(vehicle) && reservedBooking) {
       return {
         kind: 'reserved' as const,
-        label: 'Nächste Reservierung',
         customerName: reservedBooking.customerName ?? '—',
         when: reservedBooking.pickupAt ?? reservedBooking.returnAt ?? '',
         station: reservedBooking.pickupStationName ?? vehicle.station ?? '',
