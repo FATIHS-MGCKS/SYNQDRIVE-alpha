@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, Req } from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
@@ -8,6 +8,7 @@ import { RequireVoiceAssistantPermission } from '@shared/decorators/require-voic
 import { VoiceAssistantService } from './voice-assistant.service';
 import {
   UpdateVoiceAssistantDto,
+  ListVoiceConversationsQueryDto,
   AssignPhoneNumberDto,
   UpdateTelephonySettingsDto,
   InitiateTwilioOutboundCallDto,
@@ -59,6 +60,20 @@ export class VoiceAssistantController {
   @RequireVoiceAssistantPermission('write')
   async testSession(@Param('orgId') orgId: string) {
     return this.service.getTestSession(orgId);
+  }
+
+  /**
+   * @deprecated DEPRECATED_COMPATIBILITY_HTTP — use
+   * `GET /organizations/:orgId/communication/conversations?channel=voice`.
+   * Retained for C13.6 route telemetry; not canonical authority.
+   */
+  @Get('conversations')
+  @RequireCommunicationPermission('read', { voiceOperationalLegacy: true })
+  async conversations(
+    @Param('orgId') orgId: string,
+    @Query() query: ListVoiceConversationsQueryDto,
+  ) {
+    return this.service.listConversations(orgId, query);
   }
 
   @Get('analytics')

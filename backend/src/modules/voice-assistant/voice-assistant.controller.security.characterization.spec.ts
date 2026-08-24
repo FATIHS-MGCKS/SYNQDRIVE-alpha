@@ -31,6 +31,7 @@ describe('VoiceAssistantController security characterization', () => {
   });
 
   const operationalHandlers = [
+    'conversations',
     'analytics',
     'syncConversations',
     'outboundCall',

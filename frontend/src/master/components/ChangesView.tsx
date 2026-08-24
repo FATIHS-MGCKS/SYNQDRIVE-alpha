@@ -41,6 +41,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'Communication Center C13.5 — dead artifact cleanup',
     summary: [
       'Removed 8 legacy api.whatsapp operational client methods and api.voiceAssistant.conversations (0 production callers after C13.4).',
+      'Hardening: restored 8 deprecated legacy HTTP compatibility routes (reads + canonical write adapters) for C13.6 telemetry; POST ai-reply remains REMOVED_SECURITY_SUPERSEDED.',
       'Deleted 9 legacy HTTP routes: 8 WhatsApp operational conversation endpoints + GET voice-assistant/conversations.',
       'Trimmed dead helpers in whatsapp.ops, voice-assistant.ops, voice-conversation.utils; removed voice.ops.tab.conversations i18n keys.',
       'Retained provider/domain services, canonical api.communication.*, C10 control plane, C13.3 redirect compatibility, Voice sync troubleshooting.',

@@ -175,6 +175,59 @@ export class WhatsAppService {
     return this.mapConfig(config);
   }
 
+  /**
+   * @deprecated DEPRECATED_COMPATIBILITY_SERVICE — legacy HTTP only.
+   * Canonical list: `GET /organizations/:orgId/communication/conversations?channel=whatsapp`.
+   * C13.6 removal candidate after route telemetry shows zero callers.
+   */
+  async getConversations(orgId: string) {
+    const convos = await this.prisma.whatsAppConversation.findMany({
+      where: { organizationId: orgId },
+      orderBy: { lastMessageAt: 'desc' },
+      take: 100,
+    });
+    return convos.map((c) => ({
+      id: c.id,
+      contactPhone: c.contactPhone,
+      contactName: c.contactName,
+      customerId: c.customerId,
+      bookingId: c.bookingId,
+      vehicleId: c.vehicleId,
+      lastMessageAt: c.lastMessageAt?.toISOString() ?? null,
+      lastMessagePreview: c.lastMessagePreview,
+      unreadCount: c.unreadCount,
+      status: c.status,
+      assignedTo: c.assignedTo,
+      intent: c.lastDetectedIntent,
+      createdAt: c.createdAt.toISOString(),
+    }));
+  }
+
+  /**
+   * @deprecated DEPRECATED_COMPATIBILITY_SERVICE — legacy HTTP only.
+   * Canonical timeline: `GET /organizations/:orgId/communication/conversations/:id/events`.
+   * C13.6 removal candidate after route telemetry shows zero callers.
+   */
+  async getMessages(orgId: string, conversationId: string) {
+    const convo = await this.prisma.whatsAppConversation.findFirst({
+      where: { id: conversationId, organizationId: orgId },
+    });
+    if (!convo) throw new NotFoundException('Conversation not found');
+
+    const messages = await this.prisma.whatsAppMessage.findMany({
+      where: { conversationId, organizationId: orgId },
+      orderBy: { createdAt: 'asc' },
+      take: 200,
+    });
+
+    await this.prisma.whatsAppConversation.update({
+      where: { id: conversationId },
+      data: { unreadCount: 0 },
+    });
+
+    return messages.map((m) => this.mapMessage(m));
+  }
+
   async sendMessage(
     orgId: string,
     conversationId: string,

@@ -1,7 +1,7 @@
 # Communication Center C13.5 — Dead API / Service / Hook / i18n / CSS Cleanup
 
-**Status:** COMPLETE (PARTIAL backend service retention documented for C13.6)
-**Date:** 2026-08-24
+**Status:** PARTIAL — SAFE TO MERGE (frontend dead artifacts removed; uncertain legacy HTTP retained deprecated for C13.6 telemetry)
+**Date:** 2026-08-24 (hardening pass)
 **Repository:** FATIHS-MGCKS/SYNQDRIVE-alpha
 **Base:** `main` after merged PR #1244 (C13.4 legacy operational UI removal)
 **Branch:** `refactor/communication-center-c13-5-dead-artifact-cleanup`
@@ -16,8 +16,9 @@ In scope:
 - Dead frontend API client methods (legacy WhatsApp ops + Voice conversation list)
 - Dead helper exports in `whatsapp.ops.ts`, `voice-assistant.ops.ts`, `voice-conversation.utils.ts`
 - Dead frontend types exclusively tied to removed client surface
-- Dead legacy HTTP routes on `WhatsAppController` and `VoiceAssistantController`
-- Dead service list methods (`WhatsAppService.getConversations`, `getMessages`)
+- Dead legacy HTTP routes on `WhatsAppController` and `VoiceAssistantController` **only when external retirement is proven**
+- Deprecated compatibility HTTP wrappers for C13.6 telemetry when external retirement is **not** proven
+- Dead service list methods only when no compatibility wrapper needs them
 - Dead i18n keys with zero runtime consumers
 - Test updates for removed surface
 
@@ -36,14 +37,14 @@ Every candidate classified before deletion:
 
 | Class | Meaning | C13.5 action |
 |-------|---------|--------------|
-| A | DEAD_CONFIRMED | Remove |
-| B | COMPATIBILITY_REQUIRED | Keep |
-| C | RETAINED_CONTROL_PLANE | Keep |
-| D | CANONICAL_CC_DEPENDENCY | Keep |
-| E | PROVIDER_INTERNAL_REQUIRED | Keep |
-| F | TEST_ONLY | Update test or retain service |
+| A | REMOVED_PROVEN_UNUSED | Remove (repo + external evidence) |
+| B | DEPRECATED_COMPATIBILITY_HTTP | Retain deprecated HTTP wrapper through C13.6 |
+| C | REMOVED_SECURITY_SUPERSEDED | Remove — unsafe duplicate authority |
+| D | RETAINED_CONTROL_PLANE | Keep |
+| E | CANONICAL_CC_DEPENDENCY | Keep |
+| F | PROVIDER_INTERNAL_REQUIRED | Keep |
 | G | HISTORICAL_DOC_ONLY | Keep in docs |
-| H | UNKNOWN | Do not delete |
+| H | UNKNOWN / TELEMETRY_REQUIRED | Do not delete HTTP without observation |
 
 Proof: repository-wide ripgrep for production imports, backend service-to-service callers, Master Admin, Operator/mobile packages, and security characterization tests.
 
@@ -131,172 +132,113 @@ No component-exclusive CSS modules identified for removed C13.4 surfaces (compon
 
 ---
 
-## 9. Backend route inventory (audited)
+## 9. Legacy HTTP route contract table (final)
 
-### WhatsApp (`WhatsAppController`)
+Repository caller count = production frontend + in-repo HTTP consumers. **External retirement evidence:** none in repository (no gateway inventory, no route access telemetry export). UI removal (C13.4) is **not** external contract proof.
 
-| Route | Frontend callers | Internal callers | Action |
-|-------|------------------|------------------|--------|
-| `GET /conversations` | 0 | 0 | **REMOVED** |
-| `GET /conversations/:id/messages` | 0 | 0 | **REMOVED** |
-| `POST /conversations/:id/messages` | 0 | 0 | **REMOVED** |
-| `POST /conversations/:id/ai-suggestion` | 0 | 0 | **REMOVED** |
-| `POST /conversations/:id/ai-reply` | 0 | 0 | **REMOVED** |
-| `POST /conversations/:id/human-review` | 0 | 0 | **REMOVED** |
-| `GET /conversations/:id/context` | 0 | 0 | **REMOVED** |
-| `POST /conversations/:id/actions/:actionId` | 0 | 0 | **REMOVED** |
-| Config/templates/stats/reminders/simulate | C10 | domain | **RETAINED** |
+| Method | Path | Repo callers | External evidence | Classification | Current status | Canonical replacement | C13.6 action |
+|--------|------|--------------|-------------------|----------------|----------------|----------------------|--------------|
+| GET | `/organizations/:orgId/whatsapp/conversations` | 0 | None | **B — DEPRECATED_COMPATIBILITY_HTTP** | Restored `@deprecated` | `GET /communication/conversations?channel=whatsapp` | Telemetry → remove if zero |
+| GET | `/organizations/:orgId/whatsapp/conversations/:id/messages` | 0 | None | **B** | Restored `@deprecated` | `GET /communication/conversations/:id/events` | Telemetry → remove if zero |
+| GET | `/organizations/:orgId/whatsapp/conversations/:id/context` | 0 | None | **B** | Restored `@deprecated` | CC context panels / read APIs | Telemetry → remove if zero |
+| POST | `/organizations/:orgId/whatsapp/conversations/:id/messages` | 0 | None | **B** (canonical adapter) | Restored `@deprecated` | `POST /communication/conversations/:id/reply` | Telemetry → remove if zero |
+| POST | `/organizations/:orgId/whatsapp/conversations/:id/ai-suggestion` | 0 | None | **B** (canonical adapter) | Restored `@deprecated` | `POST /communication/conversations/:id/ai-suggestion` | Telemetry → remove if zero |
+| POST | `/organizations/:orgId/whatsapp/conversations/:id/human-review` | 0 | None | **B** (canonical adapter) | Restored `@deprecated` | `POST /communication/.../quick-actions/human_review` | Telemetry → remove if zero |
+| POST | `/organizations/:orgId/whatsapp/conversations/:id/actions/:actionId` | 0 | None | **B** (canonical adapter) | Restored `@deprecated` | `POST /communication/.../quick-actions/:actionId` | Telemetry → remove if zero |
+| POST | `/organizations/:orgId/whatsapp/conversations/:id/ai-reply` | 0 | None | **C — REMOVED_SECURITY_SUPERSEDED** | **Not restored** | Canonical ReplyCommand + human review flow | N/A — unsafe direct AI send |
+| GET | `/organizations/:orgId/voice-assistant/conversations` | 0 | None | **B** | Restored `@deprecated` | `GET /communication/conversations?channel=voice` | Telemetry → remove if zero |
 
-### Voice (`VoiceAssistantController`)
+### Write adapter authority (compatibility only)
 
-| Route | Frontend callers | Internal callers | Action |
-|-------|------------------|------------------|--------|
-| `GET /conversations` | 0 | Master Admin uses **service** `listConversations`, not HTTP | **REMOVED** |
-| `POST /conversations/sync` | 2 (control plane) | sync worker | **RETAINED** |
-| `GET /analytics` | control plane | — | **RETAINED** |
+| Legacy route | Adapter | Canonical authority |
+|--------------|---------|---------------------|
+| POST `.../messages` | `WhatsAppLegacyHttpCompatibilityService.sendMessage` | `CommunicationReplyService.replyConversation` (ReplyCommand + idempotency key `legacy-wa-http:*`) |
+| POST `.../ai-suggestion` | `CommunicationWhatsAppOpsService.getAiSuggestion` | Same canonical ops used by CC |
+| POST `.../human-review` | `CommunicationQuickActionExecutorService` (`human_review`) | Canonical handoff projection |
+| POST `.../actions/:actionId` | `CommunicationQuickActionExecutorService.execute` | Canonical quick-action executor |
 
----
-
-## 10. Removed route table
-
-| Method | Path | Previous purpose | Replacement | Caller proof | External contract |
-|--------|------|------------------|-------------|--------------|-------------------|
-| GET | `/organizations/:orgId/whatsapp/conversations` | Legacy WA inbox list | `GET /communication/conversations` | 0 FE / 0 BE HTTP | Retired with C13.4 UI |
-| GET | `/organizations/:orgId/whatsapp/conversations/:id/messages` | Legacy thread load | `GET /communication/conversations/:id/events` | 0 / 0 | Retired |
-| POST | `/organizations/:orgId/whatsapp/conversations/:id/messages` | Legacy human send | `POST /communication/conversations/:id/reply` | 0 / 0 | Retired |
-| POST | `/organizations/:orgId/whatsapp/conversations/:id/ai-suggestion` | Legacy AI draft | `POST /communication/conversations/:id/ai-suggestion` | 0 / 0 | Retired |
-| POST | `/organizations/:orgId/whatsapp/conversations/:id/ai-reply` | Legacy AI send | canonical reply + domain service | 0 / 0 | Retired |
-| POST | `/organizations/:orgId/whatsapp/conversations/:id/human-review` | Legacy handoff | canonical handoff / quick actions | 0 / 0 | Retired |
-| GET | `/organizations/:orgId/whatsapp/conversations/:id/context` | Legacy context drawer | canonical CC context panels | 0 / 0 | Retired |
-| POST | `/organizations/:orgId/whatsapp/conversations/:id/actions/:actionId` | Legacy quick action HTTP | `POST /communication/.../quick-actions/:id` | 0 / 0 | Retired |
-| GET | `/organizations/:orgId/voice-assistant/conversations` | Legacy voice ops list | `GET /communication/conversations?channel=voice` | 0 FE HTTP | Retired with C13.4 UI |
+**Not restored:** `POST .../ai-reply` — would bypass ReplyCommand and re-enable direct `sendAiReply` provider path.
 
 ---
 
-## 11. Backend service / DTO cleanup
+## 10. Backend service / DTO cleanup
 
-| Artifact | Action | Notes |
-|----------|--------|-------|
-| `WhatsAppService.getConversations` | **REMOVED** | Controller-only |
-| `WhatsAppService.getMessages` | **REMOVED** | Controller-only; org-scope test moved to `sendMessage` |
-| `WhatsAppService.sendMessage` / `getAiSuggestion` / etc. | **RETAINED** | Used by `communication-*` adapters |
-| `WhatsAppConversationContextService` | **RETAINED** | Quick-action resolver |
-| `WhatsAppQuickActionsService` | **RETAINED** | Domain executor; canonical uses `CommunicationQuickActionExecutorService` |
-| `VoiceAssistantService.listConversations` | **RETAINED** | Master Admin `getAdminOrgDetail` |
-| `SendWhatsAppMessageDto` | **RETAINED** | File remains; no controller reference (harmless DTO; C13.6 candidate for orphan DTO sweep) |
-
----
-
-## 12. Retained provider / native APIs
-
-- Meta webhook ingress (`WhatsAppWebhookController`)
-- WhatsApp provider dispatch, templates, config, booking reminders
-- Voice ElevenLabs sync, analytics, telephony, test session, outbound call
-- Canonical communication read/ops/write modules
+| Artifact | Classification | Action |
+|----------|----------------|--------|
+| `WhatsAppService.getConversations` | DEPRECATED_COMPATIBILITY_SERVICE | Restored for legacy HTTP reads |
+| `WhatsAppService.getMessages` | DEPRECATED_COMPATIBILITY_SERVICE | Restored for legacy HTTP reads |
+| `WhatsAppLegacyHttpCompatibilityService` | B | **ADDED** — non-authoritative adapters |
+| `WhatsAppService.sendMessage` / domain AI | E | **RETAINED** — canonical outbound adapters |
+| `SendWhatsAppMessageDto` | B | **RETAINED** — used by deprecated compatibility send route |
+| `VoiceAssistantService.listConversations` | D | **RETAINED** — Master Admin + deprecated voice HTTP |
 
 ---
 
-## 13. Retained C10 APIs
+## 11. External retirement evidence
 
-- WhatsApp: config, connect/disconnect, stats, templates, simulate-incoming
-- Voice: overview aggregates, analytics, builder, telephony, test, billing, sync
+| Source checked | Result |
+|----------------|--------|
+| Rental frontend production imports | 0 legacy operational API callers |
+| In-repo HTTP/integration tests for legacy paths | None required for product operation |
+| Operator / mobile packages | No endpoint string matches |
+| API gateway / prod access log export in repo | **Not available** |
+| Documented external-only contract retirement | **None** |
 
----
-
-## 14. Compatibility artifacts retained
-
-- `legacy-communication-navigation.ts` + tests
-- `voice-assistant-navigation.ts` conversations tab parse
-- C13.3 redirect tests unchanged
-
----
-
-## 15. External-caller assessment
-
-| Client | Legacy route usage | Result |
-|--------|-------------------|--------|
-| Rental frontend | 0 after C13.4 | Safe to remove HTTP surface |
-| Master Admin | Service-level `listConversations` only | HTTP voice list removed; admin retained |
-| Operator / mobile packages | No endpoint string matches | None found |
-| Webhooks / provider callbacks | Unaffected | Retained |
+**Conclusion:** HTTP routes without security supersession → **DEPRECATED_COMPATIBILITY_HTTP** through C13.6 observation. Do **not** claim "external contract retired with C13.4 UI."
 
 ---
 
-## 16. Master Admin / Operator audit
+## 12. C13.6 observation contract
 
-- **Master Admin:** `VoiceAssistantService.getAdminOrgDetail` → `listConversations` at service layer — **not broken** by HTTP route removal.
-- **Operator app / mobile:** No references to removed paths in repository.
+Use existing `RequestLoggingInterceptor` structured HTTP logs (`method`, `route`, `organizationId`, `statusCode`) — no new telemetry stack.
 
----
+C13.6 must prove before deleting **B** routes:
 
-## 17. Canonical CC regression proof
+1. Observation window: **POLICY_REQUIRED** (platform convention not codified in repo)
+2. Per-route request count from access logs/metrics (bounded route pattern; no message bodies / customer PII)
+3. No legitimate caller source (User-Agent / internal client inventory where safe)
+4. Canonical replacement live for equivalent operation
+5. Rollback plan: keep deprecated routes one release if needed
 
-Operational flows remain on `api.communication.*`:
-
-- List/detail/events/reply/AI suggestion/quick actions/handoff
-- Voice filters/transcript via communication voice endpoints
-- Zero production `api.whatsapp.*` operational or `api.voiceAssistant.conversations` callers post-cleanup
-
----
-
-## 18. RBAC / tenant / station
-
-- Removed routes used `@RequireCommunicationPermission`; canonical controllers enforce same module.
-- Org scoping unchanged (`OrgScopingGuard` on retained controllers).
-- `whatsapp-org-scope.spec.ts` updated for `sendMessage` cross-org rejection.
+Targets: all **B** routes in section 9.
 
 ---
 
-## 19. Tests
+## 13. Telemetry infrastructure
 
-Updated:
-- `whatsapp.ops.test.ts` — readiness/sandbox only
-- `voice-assistant.ops.characterization.test.ts` — removed conversation KPI helpers
-- `VoiceAssistantView.control-plane.test.tsx` — removed dead `conversations` mock
-- `whatsapp-org-scope.spec.ts` — `sendMessage` org scope
-- `iam-endpoint-enforcement-triage.security.spec.ts` — `simulateIncoming` permission check
-- `voice-assistant.controller.security.characterization.spec.ts` — removed `conversations` handler
-
-Retained: C13.3 redirect tests, canonical CC test suites, control-plane tests.
+- **Existing:** global `RequestLoggingInterceptor` logs matched Nest route + orgId on errors; success logs when `HTTP_LOG_SUCCESS=true` or non-production.
+- **C13.5 change:** none — compatibility routes are identifiable by path pattern for C13.6 log/metric queries.
+- **No customer IDs / message bodies** added to telemetry.
 
 ---
 
-## 20. Remaining deprecated artifacts (C13.6 candidates)
+## 14. Tests (hardening)
 
-| Artifact | Mark | Reason |
-|----------|------|--------|
-| `SendWhatsAppMessageDto` | DEPRECATE | No controller reference after route removal |
-| `ListVoiceConversationsQueryDto` | KEEP | Still used by `VoiceAssistantService.listConversations` |
-| `voice-assistant-navigation` `conversations` writer | KEEP | C13.3 compatibility through C13.6 |
-| `WhatsAppQuickActionsService` HTTP wrapper | REMOVED in C13.5 | Service retained |
-| Legacy OpenAPI audit snapshots under `docs/audits/` | G | Historical only |
+Added/updated:
+- `whatsapp-legacy-http-compatibility.service.spec.ts` — canonical write adapter + org rejection
+- `whatsapp-legacy-http-contract.characterization.spec.ts` — `ai-reply` route absent
+- `whatsapp-org-scope.spec.ts` — `getMessages` cross-org rejection restored
+- Security characterization specs — deprecated handlers remain permission-gated
 
----
-
-## 21. C13.6 telemetry candidates
-
-1. `GET /organizations/:orgId/voice-assistant/conversations` — confirm no external HTTP clients before final OpenAPI retirement annotation
-2. Legacy WhatsApp conversation HTTP paths — monitor 404 if any stale automation exists
-3. Orphan `SendWhatsAppMessageDto` OpenAPI schema cleanup
-4. `voice.ops.tab.conversations` — confirm no cached bundles reference removed key
+Frontend legacy caller proof unchanged: **0** production `api.whatsapp` operational + `api.voiceAssistant.conversations` callers.
 
 ---
 
-## 22. C13.5 sign-off
+## 15. C13.5 sign-off
 
 | Gate | Result |
 |------|--------|
-| Dead frontend API removal | PASS |
-| Dead backend HTTP removal (proven) | PASS |
-| Provider/domain service preservation | PASS |
-| C13.3 redirect compatibility | PASS (tests retained) |
+| Dead frontend API / helper / i18n removal | PASS |
+| Unsafe duplicate write (`ai-reply`) remains removed | PASS |
+| Uncertain legacy HTTP retained deprecated (not deleted) | PASS |
+| Canonical write authority on compatibility adapters | PASS |
+| C13.3 redirect compatibility | PASS |
 | Prisma/schema | NO CHANGE |
-| Canonical CC transport | PASS |
 
-**C13.5 sign-off: PASS (with documented C13.6 DTO/OpenAPI sweep candidates)**
+**C13.5 sign-off: PARTIAL — SAFE TO MERGE**
 
 ---
 
-## 23. C13.6 readiness
+## 16. C13.6 readiness
 
-**READY** — safe to proceed to final production cutover proof after merge; telemetry on removed HTTP routes recommended but not blocking.
+**READY** when merged: compatibility HTTP is explicit, `@deprecated`, non-authoritative, RBAC-secured, and observable via existing HTTP logging. Canonical CC remains independent (`api.communication.*` only in frontend).
