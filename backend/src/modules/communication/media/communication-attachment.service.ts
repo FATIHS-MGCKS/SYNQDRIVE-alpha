@@ -102,6 +102,9 @@ export class CommunicationAttachmentService {
     if (attachment.conversationId !== conversationId) {
       throw CommunicationAttachmentError.conversationMismatch();
     }
+    if (attachment.state === CommunicationAttachmentState.PURGED) {
+      throw CommunicationAttachmentError.purged();
+    }
     if (attachment.state !== CommunicationAttachmentState.READY) {
       throw CommunicationAttachmentError.notReady();
     }
@@ -129,6 +132,9 @@ export class CommunicationAttachmentService {
     }
     if (attachment.conversationId !== conversationId) {
       throw CommunicationAttachmentError.conversationMismatch();
+    }
+    if (attachment.state === CommunicationAttachmentState.PURGED) {
+      throw CommunicationAttachmentError.purged();
     }
     if (attachment.state !== CommunicationAttachmentState.READY) {
       throw CommunicationAttachmentError.notReady();
@@ -175,6 +181,9 @@ export class CommunicationAttachmentService {
     if (attachment.conversationId !== conversationId) {
       throw CommunicationAttachmentError.conversationMismatch();
     }
+    if (attachment.state === CommunicationAttachmentState.PURGED) {
+      throw CommunicationAttachmentError.purged();
+    }
     if (attachment.state !== CommunicationAttachmentState.READY) {
       throw CommunicationAttachmentError.notReady();
     }
@@ -212,6 +221,9 @@ export class CommunicationAttachmentService {
     });
     if (!attachment) {
       throw CommunicationAttachmentError.notFound();
+    }
+    if (attachment.state === CommunicationAttachmentState.PURGED) {
+      throw CommunicationAttachmentError.purged();
     }
 
     const row = await this.readRepository.findConversationById(

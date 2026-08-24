@@ -182,6 +182,8 @@ export const cs: Record<TranslationKey, string> = {
   'communication.automations.open': 'Otevrit automatizaci pracovnich toku',
   'communication.automations.accessDenied':
     'Nemate opravneni otevrit automatizaci pracovnich toku.',
+  'communication.timeline.messagePurged':
+    'Obsah zpravy byl odstranen, protoze uplynula doba uchovani',
   'communication.filters.intentLabel': 'Filtr zameru',
   'communication.filters.intentAll': 'Vsechny zameri',
   'communication.filters.intentAiSuggested': 'AI navrh',

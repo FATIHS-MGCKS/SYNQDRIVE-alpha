@@ -71,7 +71,7 @@ function renderTimelineItem(
     const isText = item.contentType === 'TEXT';
     const isRenderableMedia =
       item.contentType === 'IMAGE' || item.contentType === 'DOCUMENT';
-    const contentLabel = t(contentTypeLabelKey(item.contentType));
+    const contentLabel = t(contentTypeLabelKey(item.contentType, item.contentAvailability));
 
     if (isRenderableMedia) {
       return (

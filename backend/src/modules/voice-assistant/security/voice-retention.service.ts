@@ -83,6 +83,60 @@ export class VoiceRetentionService {
     return results;
   }
 
+  async resolveRetentionPolicy(organizationId: string): Promise<{
+    transcriptDays: number;
+    summaryDays: number;
+    providerPayloadDays: number;
+  }> {
+    return this.resolveRetentionDays(organizationId);
+  }
+
+  async countEligibleForPurge(
+    organizationId: string,
+    referenceTimeMs: number = Date.now(),
+  ): Promise<{
+    transcripts: number;
+    summaries: number;
+    webhookPayloads: number;
+  }> {
+    const retention = await this.resolveRetentionDays(organizationId);
+    const transcriptCutoff = new Date(
+      referenceTimeMs - retention.transcriptDays * 24 * 60 * 60 * 1000,
+    );
+    const summaryCutoff = new Date(
+      referenceTimeMs - retention.summaryDays * 24 * 60 * 60 * 1000,
+    );
+    const payloadCutoff = new Date(
+      referenceTimeMs - retention.providerPayloadDays * 24 * 60 * 60 * 1000,
+    );
+
+    const [transcripts, summaries, webhookPayloads] = await Promise.all([
+      this.prisma.voiceConversation.count({
+        where: {
+          organizationId,
+          startedAt: { lt: transcriptCutoff },
+          transcript: { not: null },
+        },
+      }),
+      this.prisma.voiceConversation.count({
+        where: {
+          organizationId,
+          startedAt: { lt: summaryCutoff },
+          summary: { not: null },
+        },
+      }),
+      this.prisma.voiceProviderWebhookEvent.count({
+        where: {
+          organizationId,
+          receivedAt: { lt: payloadCutoff },
+          redactedPayload: { not: Prisma.DbNull },
+        },
+      }),
+    ]);
+
+    return { transcripts, summaries, webhookPayloads };
+  }
+
   private async resolveRetentionDays(organizationId: string): Promise<{
     transcriptDays: number;
     summaryDays: number;

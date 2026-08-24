@@ -25,6 +25,10 @@ export class CommunicationAttachmentError {
     return new BadRequestException({ code: 'ATTACHMENT_NOT_READY', message: 'Attachment is not ready' });
   }
 
+  static purged(): NotFoundException {
+    return new NotFoundException({ code: 'ATTACHMENT_NOT_FOUND', message: 'Attachment not found' });
+  }
+
   static conversationMismatch(): ForbiddenException {
     return new ForbiddenException({ code: 'FORBIDDEN', message: 'Attachment does not belong to this conversation' });
   }

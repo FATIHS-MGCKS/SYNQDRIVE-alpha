@@ -1,8 +1,11 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import communicationProjectionConfig from '@config/communication-projection.config';
+import communicationRetentionConfig from '@config/communication-retention.config';
+import voiceRetentionConfig from '@config/voice-retention.config';
 import { DocumentsModule } from '@modules/documents/documents.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
 import { StationsModule } from '@modules/stations/stations.module';
 import { BookingsModule } from '@modules/bookings/bookings.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
@@ -54,6 +57,9 @@ import { CommunicationVoiceOpsService } from './ops/communication-voice-ops.serv
 import { CommunicationVoiceOpsController } from './ops/communication-voice-ops.controller';
 import { CommunicationQuickActionExecutorService } from './ops/communication-quick-action.executor';
 import { CommunicationQuickActionResolverService } from './ops/communication-quick-action.resolver';
+import { CommunicationRetentionService } from './retention/communication-retention.service';
+import { CommunicationRetentionScheduler } from './retention/communication-retention.scheduler';
+import { CommunicationRetentionMetrics } from './retention/communication-retention.metrics';
 
 /**
  * Canonical Communication Center persistence + normalization foundation (C1–C7.2).
@@ -66,8 +72,11 @@ import { CommunicationQuickActionResolverService } from './ops/communication-qui
     NotificationsModule,
     BookingsModule,
     TasksModule,
+    VoiceAssistantModule,
     forwardRef(() => WhatsAppModule),
     ConfigModule.forFeature(communicationProjectionConfig),
+    ConfigModule.forFeature(communicationRetentionConfig),
+    ConfigModule.forFeature(voiceRetentionConfig),
   ],
   providers: [
     CommunicationTenantContextValidation,
@@ -110,6 +119,9 @@ import { CommunicationQuickActionResolverService } from './ops/communication-qui
     CommunicationVoiceOpsService,
     CommunicationQuickActionExecutorService,
     CommunicationQuickActionResolverService,
+    CommunicationRetentionService,
+    CommunicationRetentionScheduler,
+    CommunicationRetentionMetrics,
   ],
   controllers: [
     CommunicationReadController,
@@ -150,6 +162,7 @@ import { CommunicationQuickActionResolverService } from './ops/communication-qui
     CommunicationConversationRepository,
     CommunicationAiActivityService,
     CommunicationHandoffNotificationService,
+    CommunicationRetentionService,
   ],
 })
 export class CommunicationModule {}

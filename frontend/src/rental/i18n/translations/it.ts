@@ -200,6 +200,8 @@ export const it: Record<TranslationKey, string> = {
   'communication.automations.open': 'Apri automazione flussi di lavoro',
   'communication.automations.accessDenied':
     'Non hai l\'autorizzazione per aprire l\'automazione dei flussi di lavoro.',
+  'communication.timeline.messagePurged':
+    'Contenuto del messaggio rimosso perche il periodo di conservazione e scaduto',
   'communication.filters.intentLabel': 'Filtro intento',
   'communication.filters.intentAll': 'Tutti gli intenti',
   'communication.filters.intentAiSuggested': 'Suggerimento IA',

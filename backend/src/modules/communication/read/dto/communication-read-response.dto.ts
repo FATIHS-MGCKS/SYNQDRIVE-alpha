@@ -53,6 +53,8 @@ export class CommunicationMessageContentDto {
   hasAttachments!: boolean;
   attachmentCount!: number;
   attachments?: CommunicationAttachmentSummaryDto[];
+  /** Distinguishes never-loaded, purged-by-retention, and available content. */
+  contentAvailability!: 'AVAILABLE' | 'PURGED' | 'UNAVAILABLE';
 }
 
 export class CommunicationEventDto {

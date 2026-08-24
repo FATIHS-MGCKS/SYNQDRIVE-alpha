@@ -200,6 +200,8 @@ export const pl: Record<TranslationKey, string> = {
   'communication.automations.open': 'Otworz automatyzacje przeplywow',
   'communication.automations.accessDenied':
     'Nie masz uprawnien do otwarcia automatyzacji przeplywow.',
+  'communication.timeline.messagePurged':
+    'Tresc wiadomosci usunieta, poniewaz uplynal okres przechowywania',
   'communication.filters.intentLabel': 'Filtr intencji',
   'communication.filters.intentAll': 'Wszystkie intencje',
   'communication.filters.intentAiSuggested': 'Sugestia AI',

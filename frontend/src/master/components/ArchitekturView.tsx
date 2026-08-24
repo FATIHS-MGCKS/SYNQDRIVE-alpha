@@ -1163,6 +1163,20 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center C13.1 — Retention & Data Lifecycle (V4.9.945)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-positive)]',
+    apis: [
+      { label: 'Service', detail: 'CommunicationRetentionService — phased purge with dry-run, batching, purge-run audit' },
+      { label: 'Policy', detail: 'ENABLED=false, DRY_RUN=true default; MESSAGE_CONTENT_DAYS is sole customer-content authority (canonical + correlated/legacy native WhatsApp)' },
+      { label: 'WhatsApp', detail: 'Correlated canonical+native purge in one DB transaction; active conversation protection applies to both copies' },
+      { label: 'Scheduler', detail: 'Redis distributed lock + TTL/3 heartbeat extend; lost-lock abort; in-process guard secondary only' },
+      { label: 'Voice', detail: 'VoiceRetentionService sole duration authority (org privacyRetention override); Communication delegates + dry-run parity' },
+      { label: 'Read model', detail: 'contentAvailability AVAILABLE|PURGED|UNAVAILABLE; PURGED attachments reject signed URL/download' },
+      { label: 'Doc', detail: 'architecture/COMMUNICATION_CENTER_C13_1_RETENTION_DATA_LIFECYCLE.md' },
+    ],
+  },
+  {
     name: 'Communication Center C9–C12 Final Gate (V4.9.944)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-positive)]',

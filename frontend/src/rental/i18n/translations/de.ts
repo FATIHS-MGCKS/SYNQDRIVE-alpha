@@ -3598,6 +3598,7 @@ export const de: Record<TranslationKey, string> = {
   'communication.timeline.unknownContact': 'Unbekannter Kontakt',
   'communication.timeline.unassigned': 'Nicht zugewiesen',
   'communication.timeline.messageUnavailable': 'Nachrichteninhalt nicht verfügbar',
+  'communication.timeline.messagePurged': 'Nachrichteninhalt entfernt, weil die Aufbewahrungsfrist abgelaufen ist',
   'communication.timeline.unsupportedMessage': 'Nicht unterstützter Nachrichtentyp',
   'communication.timeline.text': 'Text',
   'communication.timeline.image': 'Bild',

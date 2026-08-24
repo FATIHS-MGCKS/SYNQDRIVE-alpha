@@ -101,6 +101,7 @@ export const COMMUNICATION_EVENT_SELECT = {
       hasAttachments: true,
       attachmentCount: true,
       nativeMessageId: true,
+      contentPurgedAt: true,
     },
   },
 } satisfies Prisma.CommunicationEventSelect;
@@ -254,14 +255,20 @@ export function mapMessageContent(
   attachments?: import('./dto/communication-read-response.dto').CommunicationAttachmentSummaryDto[],
 ): CommunicationMessageContentDto | null {
   if (!row) return null;
+  const contentAvailability = row.contentPurgedAt
+    ? 'PURGED'
+    : row.text === null || row.text === undefined
+      ? 'UNAVAILABLE'
+      : 'AVAILABLE';
   return {
     id: row.id,
     contentType: row.contentType,
-    text: row.text,
+    text: contentAvailability === 'AVAILABLE' ? row.text : null,
     truncated: row.truncated,
     hasAttachments: row.hasAttachments,
     attachmentCount: row.attachmentCount,
     attachments,
+    contentAvailability,
   };
 }
 

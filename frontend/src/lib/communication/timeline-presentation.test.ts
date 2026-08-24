@@ -115,6 +115,7 @@ describe('timeline-presentation mapper', () => {
     expect(contentTypeLabelKey('IMAGE')).toBe('communication.timeline.image');
     expect(contentTypeLabelKey('UNSUPPORTED')).toBe('communication.timeline.unsupportedMessage');
     expect(contentTypeLabelKey('UNAVAILABLE')).toBe('communication.timeline.messageUnavailable');
+    expect(contentTypeLabelKey('UNAVAILABLE', 'PURGED')).toBe('communication.timeline.messagePurged');
   });
 
   it('lifecycle labels use i18n keys', () => {
