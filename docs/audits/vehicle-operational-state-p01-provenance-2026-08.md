@@ -5,7 +5,7 @@
 | **Audit ID** | `vehicle-operational-state-p01-provenance-2026-08` |
 | **Baseline main SHA** | `6af5fc58` (2026-08-24) |
 | **Reference audit** | `docs/audits/vehicle-connectivity-operational-state-audit-2026-08.md` (PR #1260) |
-| **Branch** | `fix/vehicle-operational-state-p01-provenance` |
+| **Branch** | `cursor/vehicle-operational-state-p01-provenance-90ec` |
 | **Mode** | Implementation-preparation slice; production read-only verification |
 | **Production modified** | **No** |
 
