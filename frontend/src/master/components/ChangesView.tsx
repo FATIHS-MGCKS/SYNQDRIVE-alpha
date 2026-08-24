@@ -42,6 +42,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Deleted orphaned WhatsAppBusinessView monolith and 10 operational inbox/chat components (zero production importers after C13.3).',
       'Removed VoiceConversationsPanel and Conversations tab from VoiceAssistantView control-plane shell.',
+      'Voice overview KPIs use VoiceAssistantData aggregates; conversation-list fetch removed from control plane.',
+      'onOpenConversations is required on VoiceAssistantView; legacy opsTab=conversations hands off to CC Inbox once.',
       'Voice sync/overview CTAs hand off to canonical CC Inbox via onOpenConversations; C13.3 redirect compatibility preserved.',
       'Retained C10 surfaces: WhatsApp config/templates, Voice analytics/builder/telephony/test/onboarding.',
     ],

@@ -205,37 +205,88 @@ All communication-center + voice navigation tests pass (528 tests in scoped run)
 | `WhatsAppConversationInbox` | 0 |
 | `WhatsAppChatPanel` | 0 |
 | `VoiceConversationsPanel` | 0 (test asserts absence) |
-| `VoiceAssistantView` | 1 (`CommunicationChannelsPane` embed) |
-| `voiceOpsTab=conversations` | Redirect resolver + URL parser only |
+| `VoiceAssistantView` | **1** (`CommunicationChannelsPane` embed) |
+| `onOpenConversations` | **required** prop on `VoiceAssistantView` |
+| `api.voiceAssistant.conversations` | **0** rental frontend callers (C13.5 dead-frontend candidate) |
+| `voiceOpsTab=conversations` | Redirect resolver + URL parser only (no active producer) |
 | `view=whatsapp-business` | Redirect resolver only |
 
 ---
 
-## 15. C13.5 candidate inventory
+## 15. C13.4 final authority hardening (PR #1244 follow-up)
+
+### VoiceAssistantView production mounts
+
+Repository-wide production import count: **1** — `CommunicationChannelsPane` only, with required `onOpenConversations={() => onOpenConversations('voice')}`.
+
+### Required canonical conversations callback
+
+`onOpenConversations: () => void` is **required** (not optional). Legacy `opsTab=conversations` state invokes the callback exactly once (reentrancy guard) and resets embedded control-plane tab to `overview`. No silent Overview fallback.
+
+### Conversation KPI data authority
+
+**REMOVED** — retained Voice control plane no longer calls `api.voiceAssistant.conversations`.
+
+| KPI / surface | Authority |
+|---------------|-----------|
+| Total / answered / escalated counts | `VoiceAssistantData` aggregate fields on assistant entity (`GET /voice-assistant`) |
+| Billing minutes | `api.voiceAssistant.billing.remainingMinutes` |
+| Detailed analytics | `api.voiceAssistant.analytics` (Analytics tab) |
+| Operational conversation rows / transcripts | Canonical CC Inbox only (CTA handoff) |
+
+### Operational content overfetch
+
+**NONE** in retained control-plane Overview/Header after hardening. No transcript, summary, caller number, or linked entity IDs loaded in overview.
+
+### Frontend API caller inventory (rental)
+
+| API | Callers | Classification |
+|-----|---------|----------------|
+| `api.voiceAssistant.conversations` | 0 | **DEAD_FRONTEND** (C13.5) |
+| `api.voiceAssistant.syncConversations` | `VoiceAssistantView.syncLogs`, `VoiceUsageAnalyticsPanel.onRequestSync` | **RETAINED_CONTROL_PLANE** (troubleshooting) |
+| `api.whatsapp.getConversations` | 0 | **DEAD_FRONTEND** |
+| `api.whatsapp.getMessages` | 0 | **DEAD_FRONTEND** |
+| `api.whatsapp.sendMessage` | 0 | **DEAD_FRONTEND** |
+| `api.whatsapp.sendAiReply` | 0 | **DEAD_FRONTEND** |
+| `api.whatsapp.getAiSuggestion` | 0 | **DEAD_FRONTEND** |
+| `api.whatsapp.requestHumanReview` | 0 | **DEAD_FRONTEND** |
+| `api.whatsapp.getConversationContext` | 0 | **DEAD_FRONTEND** |
+| `api.whatsapp.executeQuickAction` | 0 | **DEAD_FRONTEND** |
+| `api.whatsapp.getConfig` / `updateConfig` / `connect` / `disconnect` | `useWhatsAppBusinessSettings`, CC Channels | **RETAINED_CONTROL_PLANE** |
+| WhatsApp templates | `useWhatsAppChannelPane` / CC Channels | **RETAINED_CONTROL_PLANE** |
+
+Canonical CC operational WhatsApp uses `api.communication.*` (separate from legacy `api.whatsapp` conversation APIs).
+
+### RBAC — open conversations CTA
+
+`voice-assistant.read` grants CC shell + Channels access (C13.3 union). Clicking **Open conversations** navigates to canonical CC Inbox; **Inbox content requires `communication.read`** per existing CC authorization. No RBAC bypass is introduced.
+
+---
+
+## 16. C13.5 candidate inventory
 
 | Artifact | Why potentially dead | Remaining refs | C13.5 action |
 |----------|---------------------|----------------|--------------|
-| `api.voiceAssistant.conversations` (overview KPI load) | May move to dedicated stats endpoint | `VoiceAssistantView` overview | Evaluate aggregate API |
-| `filterConversations` in `whatsapp.ops.ts` | Inbox-only filtering | Unit test only | Remove if test removed |
+| `api.voiceAssistant.conversations` | No rental frontend caller after hardening | 0 rental | Remove client + prove backend dead |
+| `api.whatsapp.getConversations` + inbox ops APIs | Legacy WhatsApp ops UI removed | 0 rental | Remove client methods + backend audit |
+| `filterConversations` in `whatsapp.ops.ts` | Inbox-only filtering | Unit test only | Remove with test |
 | `countHumanReview` in `whatsapp.ops.ts` | Legacy inbox helper | 0 production | Remove |
 | `voice.ops.tab.conversations` i18n keys | Tab removed | Translation files | i18n purge |
-| `VoiceAnalyticsView` transcript browse UI | Operational transcripts in CC | Analytics panel | Verify scope |
-| Legacy `buildVoiceAssistantUrl({ opsTab: 'conversations' })` | Should not be produced | Parser compatibility | Audit writers |
-| WhatsApp operational API client methods (send, context drawer actions) | No frontend caller | Backend active | Backend audit |
-| `VoiceConversationsPanel` CSS/modules | Deleted component | 0 | N/A |
+| `callsTodayFromConversations` / `openEscalationsCount` | Conversation-list helpers | Ops characterization tests only | Prune if unused |
+| Legacy `buildVoiceAssistantUrl({ opsTab: 'conversations' })` | Redirect-only | Parser compatibility | Audit writers |
 | Feature flags for legacy mounts | C13.3 removed mounts | Audit env | Flag cleanup |
 
 ---
 
-## 16. Remaining gaps
+## 17. Remaining gaps
 
-- `VoiceAssistantView` name retained (not renamed to `CommunicationVoiceControlPlane`) to minimize churn; shell is control-plane-only in practice.
-- Overview KPIs still fetch conversation list for aggregates — backend/API cleanup deferred to C13.5.
+- `VoiceAssistantView` name retained (not renamed to `CommunicationVoiceControlPlane`) to minimize churn.
+- Lifetime assistant counters may lag until manual sync; no per-day KPI in control-plane overview (by design — today metrics belong in CC Inbox / analytics).
 - No live-provider E2E in C13.4 (same as prior phases).
 
 ---
 
-## 17. C13.4 sign-off
+## 18. C13.4 sign-off
 
 | Check | Result |
 |-------|--------|
@@ -244,7 +295,8 @@ All communication-center + voice navigation tests pass (528 tests in scoped run)
 | Canonical CC dependency on legacy operations | 0 |
 | C13.3 redirect compatibility | PASS |
 | WhatsApp templates / configuration | PASS |
-| Voice analytics / builder / telephony / test | PASS |
+| Voice control plane free of conversation-list fetch | PASS |
+| Required `onOpenConversations` callback | PASS |
 | Backend deleted | NO |
 | Legacy APIs deleted | NO |
 
@@ -252,6 +304,6 @@ All communication-center + voice navigation tests pass (528 tests in scoped run)
 
 ---
 
-## 18. C13.5 readiness
+## 19. C13.5 readiness
 
 **READY** — frontend operational components removed with explicit candidate inventory; backend and URL compatibility preserved for proof-based cleanup in C13.5.

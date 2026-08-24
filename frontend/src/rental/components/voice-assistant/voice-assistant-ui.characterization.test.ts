@@ -36,8 +36,9 @@ describe('voice assistant UI characterization', () => {
       expect(viewSource).toContain('<VoiceOpsSectionNav');
       expect(viewSource).toContain("opsTab === 'overview'");
       expect(viewSource).not.toContain('VoiceConversationsPanel');
-      expect(viewSource).toContain("opsTab === 'conversations'");
-      expect(viewSource).toContain('onOpenConversations');
+      expect(viewSource).not.toContain('voiceAssistant.conversations');
+      expect(viewSource).toContain("opsTab !== 'conversations'");
+      expect(viewSource).toContain('onOpenConversations: () => void');
     });
 
     it('loads billing remaining minutes for overview KPIs', () => {

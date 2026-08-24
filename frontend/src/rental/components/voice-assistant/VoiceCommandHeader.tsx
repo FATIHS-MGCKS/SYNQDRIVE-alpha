@@ -3,6 +3,7 @@ import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import type { VoiceAssistantData, VoiceAssistantReadiness } from '../../../lib/api';
 import {
+  lastSyncedLabel,
   operatorStatusLabel,
   providerStatusLabel,
   readinessPercent,
@@ -14,11 +15,6 @@ import {
 interface VoiceCommandHeaderProps {
   assistant: VoiceAssistantData;
   readiness: VoiceAssistantReadiness | null;
-  callsToday: number | null;
-  conversationsLoaded: boolean;
-  conversationsCount: number;
-  lastCall: string;
-  openEscalations: number | null;
   isBusy: boolean;
   activating: boolean;
   saving: boolean;
@@ -53,11 +49,6 @@ function statusTone(status: OperatorStatus): 'success' | 'watch' | 'critical' | 
 export function VoiceCommandHeader({
   assistant,
   readiness,
-  callsToday,
-  conversationsLoaded,
-  conversationsCount,
-  lastCall,
-  openEscalations,
   isBusy,
   activating,
   saving,
@@ -100,18 +91,18 @@ export function VoiceCommandHeader({
     },
     {
       icon: 'clock' as const,
-      label: 'Last call',
-      value: lastCall,
+      label: 'Last synced',
+      value: lastSyncedLabel(assistant),
     },
     {
       icon: 'phone-call' as const,
-      label: 'Calls today',
-      value: callsToday == null ? 'Not available' : String(callsToday),
+      label: 'Total calls',
+      value: String(assistant.totalCalls),
     },
     {
       icon: 'arrow-up-right' as const,
-      label: 'Escalations',
-      value: openEscalations == null ? 'Not available' : String(openEscalations),
+      label: 'Escalated',
+      value: String(assistant.escalatedCalls),
     },
   ];
 
@@ -173,9 +164,9 @@ export function VoiceCommandHeader({
               />
             </div>
             <p className="text-[10px] text-muted-foreground">
-              {conversationsLoaded
-                ? `${conversationsCount} synced conversation(s)`
-                : 'Sync conversations to load call history'}
+              {assistant.lastSyncedAt
+                ? `Provider sync ${lastSyncedLabel(assistant)}`
+                : 'Run sync after provider changes to refresh assistant counters'}
             </p>
           </div>
         </div>
