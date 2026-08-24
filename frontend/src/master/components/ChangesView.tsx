@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c13-2-observability-health-2026-08-24',
+    version: '4.9.946',
+    title: 'Communication Center C13.2 — observability & reconciliation health',
+    summary: [
+      'CommunicationOperationalHealthService with evidence-based component health states.',
+      'Prometheus synqdrive_communication_* metrics via TripMetricsService.',
+      'Master Admin GET /admin/communication/operational-health + Platform Ops Diagnostics tab.',
+      'C13.2 truthfulness hardening: NOT_MEASURABLE media/ai, per-channel UNKNOWN, voice tenant scope, bounded metric labels.',
+    ],
+    reason: 'Establish Communication-domain operational observability without parallel monitoring infrastructure.',
+    previousBehavior: 'C13.1 retention hooks only; no Communication-specific health evaluation or Prometheus families.',
+    details: 'architecture/COMMUNICATION_CENTER_C13_2_OBSERVABILITY_RECONCILIATION_HEALTH.md',
+    affectsArchitecture: true,
+    module: 'Communication',
+    createdAt: '2026-08-24T12:30:00.000Z',
+  },
+  {
     id: 'communication-center-c13-1-lock-scale-hardening-2026-08-24',
     version: '4.9.945',
     title: 'Communication Center C13.1 — lock lease + legacy-native scale hardening',

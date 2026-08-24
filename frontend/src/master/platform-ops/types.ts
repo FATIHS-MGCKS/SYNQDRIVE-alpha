@@ -10,7 +10,30 @@ export type PlatformOpsSection =
   | 'diagnostics';
 
 export type PlatformOpsProcessingTab = 'queues' | 'workers' | 'schedulers';
-export type PlatformOpsDiagnosticsTab = 'alerts' | 'poll-logs' | 'token-health' | 'tools';
+export type PlatformOpsDiagnosticsTab = 'alerts' | 'poll-logs' | 'token-health' | 'communication' | 'tools';
+
+export type CommunicationHealthState =
+  | 'HEALTHY'
+  | 'DEGRADED'
+  | 'UNHEALTHY'
+  | 'UNKNOWN'
+  | 'DISABLED'
+  | 'NOT_APPLICABLE'
+  | 'NOT_CONFIGURED';
+
+export interface CommunicationHealthComponentDto {
+  state: CommunicationHealthState;
+  diagnostics: string[];
+  checkedAt: string;
+  signals: Record<string, number | string | boolean | null>;
+}
+
+export interface CommunicationOperationalHealthDto {
+  overall: CommunicationHealthState;
+  checkedAt: string;
+  cacheExpiresAt: string | null;
+  components: Record<string, CommunicationHealthComponentDto>;
+}
 
 export interface PlatformOpsOverviewDto {
   generatedAt: string;

@@ -1,5 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { CommunicationChannel, CommunicationEventType, WhatsAppMessageDeliveryStatus } from '@prisma/client';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import { recordCommunicationProjection } from '../../observability/communication-prometheus.metrics';
 import { CommunicationProjectionFeatureService } from '../../communication-projection-feature.service';
 import { CommunicationProjectionService } from '../../communication-projection.service';
 import { CommunicationContentService } from '../../content/communication-content.service';
@@ -24,6 +26,7 @@ export class WhatsAppCommunicationProjectionIntegration {
     private readonly projection: CommunicationProjectionService,
     private readonly contentService: CommunicationContentService,
     private readonly handoffNotifications: CommunicationHandoffNotificationService,
+    @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {}
 
   isEnabled(organizationId: string): boolean {
@@ -225,11 +228,26 @@ export class WhatsAppCommunicationProjectionIntegration {
   ): Promise<void> {
     try {
       await operation();
+      if (this.tripMetrics) {
+        recordCommunicationProjection(this.tripMetrics, {
+          channel: 'WHATSAPP',
+          eventType: context.eventType,
+          result: 'success',
+        });
+      }
     } catch (error) {
       const errorCode =
         error instanceof CommunicationNormalizationError
           ? error.code
           : 'PROJECTION_FAILURE';
+      if (this.tripMetrics) {
+        recordCommunicationProjection(this.tripMetrics, {
+          channel: 'WHATSAPP',
+          eventType: context.eventType,
+          result: 'failed',
+          errorCode,
+        });
+      }
       this.logger.warn(
         JSON.stringify({
           msg: 'whatsapp_canonical_projection_failed',

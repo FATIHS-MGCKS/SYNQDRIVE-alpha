@@ -40,6 +40,8 @@ export {
   subscriptionStatusTone,
   paymentStatusTone,
   planTone,
+  communicationHealthStateTone,
+  COMMUNICATION_HEALTH_STATE_LABEL_DE,
 } from './status-utils';
 export type { StatusTone, HealthState, TaskPriority } from './status-utils';
 

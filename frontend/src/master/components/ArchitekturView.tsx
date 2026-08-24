@@ -1163,6 +1163,19 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center C13.2 — Observability & Reconciliation Health (V4.9.946)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-positive)]',
+    apis: [
+      { label: 'Health', detail: 'CommunicationOperationalHealthService — evidence-based component states; truthful UNKNOWN/NOT_MEASURABLE for uninstrumented media/ai' },
+      { label: 'Endpoint', detail: 'GET /admin/communication/operational-health — Master Admin MFA; org filter with 404 on missing org' },
+      { label: 'Metrics', detail: 'synqdrive_communication_* via TripMetricsService; per-channel UNKNOWN gauges; bounded event_type/error_code/AI operation labels' },
+      { label: 'Tenant scope', detail: 'Voice webhook backlog via VoiceProviderWebhookEvent.organizationId; per-channel UNKNOWN send attribution' },
+      { label: 'Aggregation', detail: 'Core UNHEALTHY/DEGRADED wins; optional unmeasured media/ai UNKNOWN does not block overall' },
+      { label: 'Doc', detail: 'architecture/COMMUNICATION_CENTER_C13_2_OBSERVABILITY_RECONCILIATION_HEALTH.md' },
+    ],
+  },
+  {
     name: 'Communication Center C13.1 — Retention & Data Lifecycle (V4.9.945)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-positive)]',

@@ -6,11 +6,13 @@ import {
   ErrorState,
   SectionHeader,
   StatusChip,
+  communicationHealthStateTone,
+  COMMUNICATION_HEALTH_STATE_LABEL_DE,
   type DataTableColumn,
 } from '../../../components/patterns';
 import { MasterLoadingState, MasterPageSection } from '../../shell';
 import { usePlatformOpsTabData } from '../usePlatformOps';
-import type { PlatformOpsAlertGroupDto, PlatformOpsDiagnosticsTab } from '../types';
+import type { PlatformOpsAlertGroupDto, PlatformOpsDiagnosticsTab, CommunicationOperationalHealthDto } from '../types';
 import { formatRelativeDe } from '../platform-ops.utils';
 import { api } from '../../../lib/api';
 import { SystemMonitoringView } from '../../components/SystemMonitoringView';
@@ -19,6 +21,7 @@ const DIAG_TABS = [
   { id: 'alerts', label: 'Alarme' },
   { id: 'poll-logs', label: 'Abfrage-Protokolle' },
   { id: 'token-health', label: 'Token-Status' },
+  { id: 'communication', label: 'Communication' },
   { id: 'tools', label: 'Tools' },
 ] as const;
 
@@ -47,6 +50,7 @@ export function PlatformOpsDiagnosticsTabView({
       </div>
 
       {activeTab === 'alerts' && <AlertsPanel />}
+      {activeTab === 'communication' && <CommunicationHealthPanel />}
       {(activeTab === 'poll-logs' || activeTab === 'token-health') && (
         <SystemMonitoringView embedded initialFocus={activeTab === 'token-health' ? 'tokens' : 'poll-logs'} />
       )}
@@ -174,6 +178,54 @@ function ToolsPanel() {
           <p className="text-xs text-amber-600">METRICS_BEARER_TOKEN nicht konfiguriert — Host-Metriken eingeschränkt.</p>
         )}
       </DataCard>
+    </MasterPageSection>
+  );
+}
+
+function CommunicationHealthPanel() {
+  const { data, loading, error, refresh } = usePlatformOpsTabData<CommunicationOperationalHealthDto>(
+    () => api.admin.communication.operationalHealth(),
+    [],
+  );
+
+  if (loading && !data) return <MasterLoadingState variant="table" />;
+  if (error) return <ErrorState title="Communication Health" error={error} onRetry={() => void refresh()} />;
+  if (!data) return null;
+
+  const rows = Object.entries(data.components).map(([key, component]) => ({
+    id: key,
+    component: key,
+    state: component.state,
+    diagnostics: component.diagnostics.join(', ') || '—',
+    checkedAt: component.checkedAt,
+  }));
+
+  const columns: DataTableColumn<(typeof rows)[number]>[] = [
+    { key: 'component', header: 'Komponente', cell: (row) => row.component },
+    {
+      key: 'state',
+      header: 'Status',
+      cell: (row) => (
+        <StatusChip tone={communicationHealthStateTone(row.state)}>
+          {COMMUNICATION_HEALTH_STATE_LABEL_DE[row.state] ?? row.state}
+        </StatusChip>
+      ),
+    },
+    { key: 'diagnostics', header: 'Diagnose', cell: (row) => row.diagnostics },
+    {
+      key: 'checkedAt',
+      header: 'Geprüft',
+      cell: (row) => formatRelativeDe(row.checkedAt),
+    },
+  ];
+
+  return (
+    <MasterPageSection>
+      <SectionHeader
+        title="Communication Center — Betriebsgesundheit"
+        description={`Gesamt: ${COMMUNICATION_HEALTH_STATE_LABEL_DE[data.overall] ?? data.overall} · Zuletzt geprüft ${formatRelativeDe(data.checkedAt)}`}
+      />
+      <DataTable columns={columns} rows={rows} getRowKey={(row) => row.id} card={false} />
     </MasterPageSection>
   );
 }
