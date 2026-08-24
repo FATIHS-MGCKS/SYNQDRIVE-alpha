@@ -79,7 +79,7 @@ const SEVERITY_CONFIG: Record<InsightSeverity, SeverityStyle> = {
     icon: 'info',
     label: 'Info',
     card: {
-      light: 'bg-gray-50/60 border-gray-200/40',
+      light: 'bg-muted/60 border-border/40',
       dark: 'bg-muted/40 border-border/30',
     },
     badge: {
@@ -188,7 +188,7 @@ export function BusinessInsightsBox({ isDarkMode, onOpenVehicle, onOpenView, not
   );
 
   const dm = isDarkMode;
-  const cardBase = `rounded-lg p-4 border shadow-sm ${dm ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
+  const cardBase = `rounded-lg p-4 border shadow-sm ${dm ? 'surface-premium border-border' : 'surface-solid border-border'}`;
 
   const businessCritical = businessInsights.filter((i) => i.severity === 'CRITICAL').length;
   const financialCritical = financialInsights.filter((i) => i.severity === 'CRITICAL').length;
@@ -497,7 +497,7 @@ function NotificationsList({ notifications, isDarkMode, emptyLabel }: Notificati
     return (
       <div
         className={`rounded-lg border p-6 flex flex-col items-center gap-1.5 text-center ${
-          dm ? 'bg-muted/30 border-border/30' : 'bg-gray-50/40 border-gray-200/40'
+          dm ? 'bg-muted/30 border-border/30' : 'bg-muted/40 border-border/40'
         }`}
       >
         <Icon name="bell" className={`w-4 h-4 ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
@@ -617,7 +617,7 @@ function InsightRow({ insight, isDarkMode, isExpanded, onToggle, fleetById, onOp
       {/* Summary header */}
       <div className="p-3">
         <div className="flex items-start gap-2.5">
-          <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${dm ? 'bg-muted/40' : 'bg-white'}`}>
+          <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${dm ? 'bg-muted/40' : 'surface-solid'}`}>
             <Icon name={severity.icon} className={`w-3.5 h-3.5 ${dm ? severity.icon_color.dark : severity.icon_color.light}`} />
           </div>
 
@@ -658,7 +658,7 @@ function InsightRow({ insight, isDarkMode, isExpanded, onToggle, fleetById, onOp
       {/* Expanded body */}
       {hasExpandable && isExpanded && (
         <div
-          className={`border-t px-3 py-2.5 space-y-2 ${dm ? 'border-border/40' : 'border-gray-200/60'}`}
+          className={`border-t px-3 py-2.5 space-y-2 ${dm ? 'border-border/40' : 'border-border/60'}`}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
@@ -744,7 +744,7 @@ function ExpandedVehicleList({
         return (
           <li
             key={`${entity.id}:${idx}`}
-            className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 ${dm ? 'bg-muted/40' : 'bg-white/70'}`}
+            className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 bg-muted/40`}
           >
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -781,7 +781,7 @@ function ExpandedVehicleList({
                     : 'bg-status-info-soft text-status-info hover:bg-status-info-soft/80'
                   : dm
                     ? 'bg-muted text-muted-foreground/60 cursor-not-allowed'
-                    : 'bg-gray-100 text-muted-foreground cursor-not-allowed'
+                    : 'bg-muted text-muted-foreground cursor-not-allowed'
               }`}
               title={canOpen ? 'Fahrzeug öffnen' : 'Fahrzeug nicht in Flotte gefunden'}
             >
@@ -847,13 +847,13 @@ function LoadingState({ isDarkMode }: { isDarkMode: boolean }) {
       {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className={`rounded-lg p-3 border animate-pulse ${isDarkMode ? 'bg-muted/40 border-border/30' : 'bg-gray-50/60 border-gray-200/40'}`}
+          className={`rounded-lg p-3 border animate-pulse ${isDarkMode ? 'bg-muted/40 border-border/30' : 'bg-muted/60 border-border/40'}`}
         >
           <div className="flex items-start gap-2.5">
-            <div className={`w-6 h-6 rounded-md ${isDarkMode ? 'bg-muted/60' : 'bg-gray-200/60'}`} />
+            <div className="w-6 h-6 rounded-md bg-muted/60" />
             <div className="flex-1 space-y-2">
-              <div className={`h-3 rounded w-1/3 ${isDarkMode ? 'bg-muted/60' : 'bg-gray-200/60'}`} />
-              <div className={`h-2.5 rounded w-4/5 ${isDarkMode ? 'bg-muted/40' : 'bg-gray-200/40'}`} />
+              <div className="h-3 rounded w-1/3 bg-muted/60" />
+              <div className="h-2.5 rounded w-4/5 bg-muted/40" />
             </div>
           </div>
         </div>
@@ -888,13 +888,13 @@ function FinancialEmptyState({ isDarkMode, locale }: { isDarkMode: boolean; loca
 
 function ErrorState({ isDarkMode, onRetry }: { isDarkMode: boolean; onRetry: () => void }) {
   return (
-    <div className={`rounded-lg border p-4 text-center ${isDarkMode ? 'bg-muted/30 border-border/30' : 'bg-gray-50/40 border-gray-200/40'}`}>
+    <div className={`rounded-lg border p-4 text-center ${isDarkMode ? 'bg-muted/30 border-border/30' : 'bg-muted/40 border-border/40'}`}>
       <p className={`text-xs text-muted-foreground`}>
         Could not load insights
       </p>
       <button
         onClick={onRetry}
-        className={`mt-2 text-[10px] font-medium px-2.5 py-1 rounded-md transition-colors ${isDarkMode ? 'bg-muted text-foreground/85 hover:bg-muted/80' : 'bg-gray-100 text-muted-foreground hover:bg-gray-200'}`}
+        className={`mt-2 text-[10px] font-medium px-2.5 py-1 rounded-md transition-colors ${isDarkMode ? 'bg-muted text-foreground/85 hover:bg-muted/80' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
       >
         Retry
       </button>

@@ -66,7 +66,7 @@ const LEGAL = new Set(['TERMS_AND_CONDITIONS', 'WITHDRAWAL_INFORMATION', 'PRIVAC
 const BUNDLE_BADGE: Record<DocumentBundleStatus, { label: string; cls: (d: boolean) => string }> = {
   COMPLETE: { label: 'Vollständig', cls: (d) => (d ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border-emerald-200') },
   PARTIAL: { label: 'Unvollständig', cls: (d) => (d ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200') },
-  PENDING: { label: 'Ausstehend', cls: (d) => (d ? 'bg-neutral-700/40 text-muted-foreground border-neutral-600' : 'bg-gray-100 text-muted-foreground border-gray-200') },
+  PENDING: { label: 'Ausstehend', cls: (d) => (d ? 'bg-neutral-700/40 text-muted-foreground border-neutral-600' : 'bg-muted text-muted-foreground border-border') },
   FAILED: { label: 'Fehlgeschlagen', cls: (d) => (d ? 'bg-red-500/15 text-red-400 border-red-500/30' : 'bg-red-50 text-red-700 border-red-200') },
 };
 
@@ -185,7 +185,7 @@ export function BookingDocumentsSection({
     setSendOpen(true);
   };
 
-  const cardClass = `rounded-lg p-8 border shadow-sm ${isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
+  const cardClass = `rounded-lg p-8 border shadow-sm surface-solid border-border`;
   const subtle = 'text-muted-foreground';
   const bundleStatus = (view?.bundle.status ?? 'PENDING') as DocumentBundleStatus;
   const badge = BUNDLE_BADGE[bundleStatus] ?? BUNDLE_BADGE.PENDING;
@@ -207,7 +207,7 @@ export function BookingDocumentsSection({
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${
                 isDarkMode
                   ? 'border-border text-foreground hover:bg-muted/80'
-                  : 'border-gray-200 text-foreground hover:bg-gray-50'
+                  : 'border-border text-foreground hover:bg-muted'
               }`}
             >
               <Mail className="w-3.5 h-3.5" />
@@ -220,9 +220,7 @@ export function BookingDocumentsSection({
               onClick={() => void handleGenerate()}
               disabled={generating}
               title="Buchungsdokumente generieren"
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
-                isDarkMode ? 'bg-white text-foreground hover:bg-gray-100' : 'bg-neutral-900 text-white hover:surface-premium'
-              } disabled:opacity-50`}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium sq-cta disabled:opacity-50`}
             >
               {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
               Generieren
@@ -281,12 +279,10 @@ export function BookingDocumentsSection({
                   return (
                     <div
                       key={type}
-                      className={`flex items-center justify-between px-3 py-3 rounded-lg border ${
-                        isDarkMode ? 'bg-muted/50 border-border/40' : 'bg-white border-gray-200/60'
-                      }`}
+                      className="flex items-center justify-between px-3 py-3 rounded-lg border surface-solid border-border/60"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-muted/50' : 'bg-gray-100'}`}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-muted/50' : 'bg-muted'}`}>
                           <FileText className={`w-4 h-4 ${isDarkMode ? 'text-foreground/85' : 'text-muted-foreground'}`} />
                         </div>
                         <div className="min-w-0">
@@ -336,7 +332,7 @@ export function BookingDocumentsSection({
                                 title="Neu generieren"
                                 disabled={busyType === type}
                                 onClick={() => void handleRegenerate(type)}
-                                className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-muted/80 text-muted-foreground hover:text-status-attention' : 'hover:bg-gray-100 text-muted-foreground hover:text-amber-600'} disabled:opacity-50`}
+                                className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-muted/80 text-muted-foreground hover:text-status-attention' : 'hover:bg-muted text-muted-foreground hover:text-amber-600'} disabled:opacity-50`}
                               >
                                 {busyType === type ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                               </button>
@@ -351,7 +347,7 @@ export function BookingDocumentsSection({
                                   : 'bg-amber-50 text-amber-700'
                                 : isDarkMode
                                 ? 'surface-premium text-muted-foreground'
-                                : 'bg-gray-100 text-muted-foreground'
+                                : 'bg-muted text-muted-foreground'
                             }`}
                           >
                             {isLegalMissing ? 'Fehlt' : 'Ausstehend'}
@@ -381,7 +377,7 @@ export function BookingDocumentsSection({
         }}
       />
 
-      <div className={`mt-6 pt-4 border-t ${isDarkMode ? 'border-border/50' : 'border-gray-200'}`}>
+      <div className={`mt-6 pt-4 border-t ${isDarkMode ? 'border-border/50' : 'border-border'}`}>
         <div className={`text-[11px] font-semibold uppercase tracking-wider mb-2 ${subtle}`}>
           {t('email.booking.history')}
         </div>
@@ -397,7 +393,7 @@ export function BookingDocumentsSection({
               <div
                 key={row.id}
                 className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs ${
-                  isDarkMode ? 'border-border/40 bg-muted/20' : 'border-gray-200 bg-gray-50/60'
+                  isDarkMode ? 'border-border/40 bg-muted/20' : 'border-border bg-muted/60'
                 }`}
               >
                 <div className="min-w-0">

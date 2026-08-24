@@ -22,10 +22,8 @@ interface Props {
   isDarkMode: boolean;
 }
 
-const CARD = (d: boolean) =>
-  `rounded-2xl shadow-sm border overflow-hidden ${
-    d ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-  }`;
+const CARD = (_d: boolean) =>
+  'rounded-2xl shadow-sm border overflow-hidden surface-solid border-border';
 const BADGE = (color: string) =>
   `inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${color}`;
 
@@ -47,12 +45,12 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
   const h2 = `text-base font-bold mb-1 text-foreground`;
   const h3 = `text-sm font-semibold mb-2 ${d ? 'text-foreground' : 'text-foreground'}`;
   const body = `text-xs leading-relaxed ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`;
-  const code = `px-1 py-0.5 rounded text-[11px] font-mono ${d ? 'surface-premium text-violet-400' : 'bg-gray-100 text-violet-600'}`;
+  const code = `px-1 py-0.5 rounded text-[11px] font-mono ${d ? 'surface-premium text-violet-400' : 'bg-muted text-violet-600'}`;
   const li = `text-xs ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`;
   const sub = `text-[11px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`;
 
   return (
-    <div className={`min-h-screen ${d ? 'bg-neutral-950' : 'bg-gray-50/80'}`}>
+    <div className={`min-h-screen ${d ? 'bg-neutral-950' : 'bg-muted/80'}`}>
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
 
         {/* Header */}
@@ -104,7 +102,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                     active
                       ? d ? 'bg-violet-500/20 text-violet-300' : 'bg-violet-100 text-violet-700'
-                      : d ? 'text-muted-foreground hover:text-foreground hover:surface-premium' : 'text-muted-foreground hover:text-foreground hover:bg-gray-100'
+                      : d ? 'text-muted-foreground hover:text-foreground hover:surface-premium' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
                   <Icon size={13} />
@@ -180,7 +178,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                 <p className={`${body} mb-3`}>{g.purpose}</p>
                 <div className="space-y-2">
                   {g.signals.map(s => (
-                    <div key={s.name} className={`rounded-lg p-2.5 ${d ? 'surface-premium' : 'bg-gray-50'}`}>
+                    <div key={s.name} className={`rounded-lg p-2.5 ${d ? 'surface-premium' : 'bg-muted'}`}>
                       <div className="flex items-center gap-2 mb-0.5">
                         <code className={code}>{s.name}</code>
                         <span className={BADGE('bg-violet-500/10 text-violet-400')}>{s.agg}</span>
@@ -500,7 +498,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                   { step: '6', color: 'text-red-400', title: 'Hard timeout fallback', desc: 'elapsed ≥ TRIP_END_TIMEOUT_MS (30 min). Force FINALIZE regardless. End time uses lastMeaningfulMovementAt or possibleEndAt.' },
                 ].map(s => (
                   <div key={s.step} className="flex gap-3">
-                    <span className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${d ? 'bg-neutral-700' : 'bg-gray-100'} ${s.color}`}>{s.step}</span>
+                    <span className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${d ? 'bg-neutral-700' : 'bg-muted'} ${s.color}`}>{s.step}</span>
                     <div>
                       <p className={`text-xs font-semibold ${d ? 'text-foreground' : 'text-foreground'}`}>{s.title}</p>
                       <p className={`text-[11px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{s.desc}</p>
@@ -558,7 +556,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                   { key: 'TRIP_END_SEGMENT_LOOKAHEAD_MS', default: '300 000 (5 min)', desc: 'How far forward from possibleEndAt to query' },
                   { key: 'TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS', default: '180 000 (3 min)', desc: 'Min stable inactivity before CUSUM runs' },
                 ].map(c => (
-                  <div key={c.key} className={`rounded-lg p-2.5 ${d ? 'surface-premium' : 'bg-gray-50'}`}>
+                  <div key={c.key} className={`rounded-lg p-2.5 ${d ? 'surface-premium' : 'bg-muted'}`}>
                     <code className={`${code} text-[10px]`}>{c.key}</code>
                     <p className={`text-[11px] mt-0.5 ${d ? 'text-muted-foreground' : 'text-foreground'}`}>Default: {c.default}</p>
                     <p className={sub}>{c.desc}</p>
@@ -583,7 +581,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                   { rank: '5', label: 'new Date()', desc: 'Absolute fallback if all above are null.', color: 'text-muted-foreground', bg: '' },
                 ].map(r => (
                   <div key={r.rank} className={`flex gap-3 rounded-lg p-3 ${r.bg}`}>
-                    <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${r.color} ${d ? 'bg-neutral-700' : 'bg-gray-100'}`}>{r.rank}</span>
+                    <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${r.color} ${d ? 'bg-neutral-700' : 'bg-muted'}`}>{r.rank}</span>
                     <div>
                       <code className={code}>{r.label}</code>
                       <p className={`text-[11px] mt-0.5 ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{r.desc}</p>
@@ -623,7 +621,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
               <div className="flex flex-wrap gap-2">
                 {['Trip status = COMPLETED', '→ BullMQ: hf-enrich job (5s delay)', '→ TripBehaviorEnrichmentService.enrichTrip()', '→ 1-second HF data fetched via DIMO', '→ Acceleration / Braking / Abuse events stored', '→ TripBehaviorEvent records created', '→ Driving Impact Engine V1 triggered'].map((s, i) => (
                   <div key={i} className="flex items-center gap-1.5">
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${d ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-muted-foreground'}`}>{s}</span>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${d ? 'surface-premium text-muted-foreground' : 'bg-muted text-muted-foreground'}`}>{s}</span>
                     {i < 6 && <ChevronRight size={12} className={d ? 'text-muted-foreground' : 'text-muted-foreground'} />}
                   </div>
                 ))}

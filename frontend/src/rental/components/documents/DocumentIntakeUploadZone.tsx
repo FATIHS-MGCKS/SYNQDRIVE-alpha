@@ -104,16 +104,10 @@ export function DocumentIntakeUploadZone({
         onClick={openPicker}
         className={`rounded-lg ${padding} text-center transition-all duration-300 border-2 border-dashed min-w-0 ${
           disabled
-            ? isDarkMode
-              ? 'border-neutral-800 bg-neutral-900/30 opacity-60 cursor-not-allowed'
-              : 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+            ? 'border-border bg-muted opacity-60 cursor-not-allowed'
             : dragActive
-              ? isDarkMode
-                ? 'border-brand bg-brand-soft cursor-pointer'
-                : 'border-brand bg-brand-soft cursor-pointer'
-              : isDarkMode
-                ? 'border-neutral-700 bg-neutral-900/60 hover:border-neutral-600 hover:bg-neutral-900/80 cursor-pointer'
-                : 'border-gray-300 bg-white/60 hover:border-gray-400 hover:bg-white/80 cursor-pointer'
+              ? 'border-brand bg-brand-soft cursor-pointer'
+              : 'border-border bg-muted/60 hover:border-border hover:bg-muted/80 cursor-pointer'
         }`}
       >
         <input

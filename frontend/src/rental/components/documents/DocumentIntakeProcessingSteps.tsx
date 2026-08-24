@@ -55,7 +55,7 @@ export function DocumentIntakeProcessingSteps({
         {steps.map((step) => (
           <li
             key={step.id}
-            className={`flex items-start gap-3 rounded-lg px-3 py-2 ${step.state === 'active' ? (isDarkMode ? 'bg-neutral-800/80' : 'bg-gray-50') : ''}`}
+            className={`flex items-start gap-3 rounded-lg px-3 py-2 ${step.state === 'active' ? 'bg-muted' : ''}`}
             aria-current={step.state === 'active' ? 'step' : undefined}
           >
             <div
@@ -66,9 +66,7 @@ export function DocumentIntakeProcessingSteps({
                     ? 'border-[color:var(--status-critical)]/40 bg-[color:var(--status-critical)]/10'
                     : step.state === 'active'
                       ? 'border-primary/40 bg-primary/10'
-                      : isDarkMode
-                        ? 'border-neutral-700 bg-neutral-900/40'
-                        : 'border-gray-200 bg-white'
+                      : 'border-border bg-muted/40'
               }`}
             >
               {stepIcon(step.state)}

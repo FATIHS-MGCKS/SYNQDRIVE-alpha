@@ -50,7 +50,7 @@ const CATEGORY_META: Record<ConditionCategory, { label: string; tagline: string;
 };
 
 function getProgressColor(v: number) { return v >= 70 ? 'bg-emerald-500' : v >= 40 ? 'bg-amber-500' : 'bg-red-500'; }
-function getProgressTrack(d: boolean) { return d ? 'bg-neutral-700/50' : 'bg-gray-200/80'; }
+function getProgressTrack(_d: boolean) { return 'bg-muted'; }
 function getMetricColor(v: number, d: boolean) { return v >= 70 ? (d ? 'text-emerald-400' : 'text-emerald-500') : v >= 40 ? (d ? 'text-amber-400' : 'text-amber-500') : (d ? 'text-red-400' : 'text-red-500'); }
 function fmtDate(s: string | null) { return s ? new Date(s).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'; }
 function fmtRemTime(mo: number | null) { if (mo == null) return '—'; if (mo < 0) return 'Overdue'; const m = Math.round(mo); return m >= 12 ? `${Math.floor(m / 12)}y ${m % 12}mo` : `${m} months`; }
@@ -62,7 +62,7 @@ function tireStatusPill(status: string | null | undefined, d: boolean): { cls: s
     case 'WATCH': return { cls: d ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700', label: 'Watch' };
     case 'WARNING': return { cls: d ? 'bg-orange-500/15 text-orange-400' : 'bg-orange-50 text-orange-700', label: 'Warning' };
     case 'CRITICAL': return { cls: d ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700', label: 'Critical' };
-    default: return { cls: d ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-muted-foreground', label: 'Unknown' };
+    default: return { cls: d ? 'surface-premium text-muted-foreground' : 'bg-muted text-muted-foreground', label: 'Unknown' };
   }
 }
 
@@ -128,7 +128,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
     finally { setAiLoading(false); }
   };
 
-  const cardClass = `rounded-2xl border shadow-sm ${isDark ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
+  const cardClass = `rounded-2xl border shadow-sm ${isDark ? 'surface-premium border-border' : 'surface-solid border-border'}`;
   const textPrimary = isDark ? 'text-white' : 'text-foreground';
   const textSecondary = isDark ? 'text-muted-foreground' : 'text-muted-foreground';
   const textMuted = isDark ? 'text-muted-foreground' : 'text-muted-foreground';
@@ -141,7 +141,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
           type="button"
           onClick={onBack}
           aria-label="Back to Fleet Health"
-          className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-muted text-muted-foreground' : 'hover:bg-gray-100 text-muted-foreground'}`}
+          className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-muted text-muted-foreground' : 'hover:bg-muted text-muted-foreground'}`}
         >
           <Icon name="arrow-left" className="w-5 h-5" />
         </button>
@@ -204,7 +204,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
             </div>
 
             {aiResult && (
-              <div className={`mt-1 rounded-xl p-4 space-y-4 ${isDark ? 'surface-premium border border-neutral-700/40' : 'bg-gray-50/80 border border-gray-200'}`}>
+              <div className="mt-1 rounded-xl p-4 space-y-4 surface-premium border border-border/40">
                 {/* Overall */}
                 <div className="flex items-center gap-3">
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -242,7 +242,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
                         <div key={i} className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
                           f.priority === 'high' ? (isDark ? 'bg-red-500/10 border border-red-500/20' : 'bg-red-50 border border-red-200/50')
                           : f.priority === 'medium' ? (isDark ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200/50')
-                          : (isDark ? 'surface-premium border border-neutral-700/40' : 'bg-gray-50 border border-gray-200')
+                          : 'surface-premium border border-border/40'
                         }`}>
                           <span className={`text-[10px] font-bold uppercase ${
                             f.priority === 'high' ? (isDark ? 'text-red-400' : 'text-red-600')
@@ -273,12 +273,12 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
                 )}
 
                 {/* Data Confidence */}
-                <div className="flex items-center gap-2 pt-2 border-t border-dashed border-gray-200 dark:border-border">
+                <div className="flex items-center gap-2 pt-2 border-t border-dashed border-border dark:border-border">
                   <span className={`text-[10px] font-semibold ${textMuted}`}>Data confidence:</span>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                     aiResult.dataConfidence.level === 'high' ? (isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')
                     : aiResult.dataConfidence.level === 'medium' ? (isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600')
-                    : (isDark ? 'bg-gray-500/10 text-muted-foreground' : 'bg-muted text-muted-foreground')
+                    : 'bg-muted text-muted-foreground'
                   }`}>{aiResult.dataConfidence.level}</span>
                   <span className={`text-[10px] ${textMuted}`}>{aiResult.dataConfidence.reason}</span>
                 </div>
@@ -369,7 +369,7 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
             </span>
           )}
           {s.confidence && (
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isDark ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-foreground'}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isDark ? 'surface-premium text-muted-foreground' : 'bg-muted text-foreground'}`}>
               Confidence: {s.confidence}
             </span>
           )}
@@ -422,17 +422,17 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
           )}
           <div className="flex flex-wrap gap-2 mt-2">
             {s.measurementState && (
-              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-foreground'}`}>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'surface-premium text-muted-foreground' : 'bg-muted text-foreground'}`}>
                 {s.measurementState}
               </span>
             )}
             {s.pressureContext?.dimoFreshness && (
-              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-foreground'}`}>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'surface-premium text-muted-foreground' : 'bg-muted text-foreground'}`}>
                 DIMO pressure: {s.pressureContext.dimoFreshness}
               </span>
             )}
             {s.pressureContext?.hmFreshness && (
-              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-foreground'}`}>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'surface-premium text-muted-foreground' : 'bg-muted text-foreground'}`}>
                 HM pressure: {s.pressureContext.hmFreshness}
               </span>
             )}
@@ -451,7 +451,7 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
           <h3 className={`text-sm font-semibold mb-4 ${p.textPrimary}`}>Per-Wheel Condition</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {detail.wheels.map(w => (
-              <div key={w.position} className={`p-3 rounded-xl border ${isDark ? 'surface-premium border-neutral-700/40' : 'bg-white border-gray-200'}`}>
+              <div key={w.position} className="p-3 rounded-xl border surface-solid border-border">
                 <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${p.textMuted}`}>{w.position}</p>
                 <div className={`h-2 rounded-full overflow-hidden mb-2 ${getProgressTrack(isDark)}`}>
                   <div className={`h-full rounded-full ${getProgressColor(w.wearPercent)}`} style={{ width: `${Math.min(w.wearPercent, 100)}%` }} />
@@ -476,7 +476,7 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
               { label: 'Usage Mix', value: detail.factors.usageFactor, desc: detail.factors.usageFactor > 1.08 ? 'City-heavy usage' : 'Balanced' },
               { label: 'Axle Front', value: detail.factors.axleFactorFront, desc: detail.factors.axleFactorFront > 1.1 ? 'Above average load' : 'Standard' },
             ].map(f => (
-              <div key={f.label} className={`px-3 py-2 rounded-lg ${isDark ? 'surface-premium' : 'bg-gray-50'}`}>
+              <div key={f.label} className={`px-3 py-2 rounded-lg ${isDark ? 'surface-premium' : 'bg-muted'}`}>
                 <p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>{f.label}</p>
                 <p className={`text-xs font-bold mt-1 ${f.value > 1.1 ? (isDark ? 'text-amber-400' : 'text-amber-600') : p.textPrimary}`}>×{f.value.toFixed(2)}</p>
                 <p className={`text-[10px] mt-0.5 ${p.textMuted}`}>{f.desc}</p>
@@ -690,7 +690,7 @@ function BrakesDetail({
           <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Bremsenservice-Historie</h3>
           <div className="space-y-2">
             {detail!.history.slice(0, 10).map((h) => (
-              <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'surface-premium' : 'bg-gray-50'}`}>
+              <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'surface-premium' : 'bg-muted'}`}>
                 <Icon name="clock" className={`w-3 h-3 ${p.textMuted}`} />
                 <span className={`text-xs font-medium ${p.textPrimary}`}>{fmtDate(h.date)}</span>
                 {h.serviceKind && <span className={`text-[10px] ${p.textMuted}`}>{h.serviceKind}</span>}
@@ -942,7 +942,7 @@ function ServiceDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & 
           <p className={`text-xs mb-3 ${p.textMuted}`}>{serviceHistoryDisclaimer()}</p>
           <div className="space-y-2">
             {svc.serviceHistory.slice(0, 10).map(h => (
-              <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'surface-premium' : 'bg-gray-50'}`}>
+              <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'surface-premium' : 'bg-muted'}`}>
                 <Icon name="clock" className={`w-3 h-3 ${p.textMuted}`} />
                 <span className={`text-xs font-medium ${p.textPrimary}`}>{formatServiceEventTypeDe(h.eventType)}</span>
                 <span className={`text-[10px] ${p.textMuted}`}>{fmtDate(h.date)}</span>
@@ -987,7 +987,7 @@ function TuevDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & { v
           <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>TÜV-Historie</h3>
           <div className="space-y-2">
             {svc.tuvHistory.map(h => (
-              <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'surface-premium' : 'bg-gray-50'}`}>
+              <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'surface-premium' : 'bg-muted'}`}>
                 <Icon name="clock" className={`w-3 h-3 ${p.textMuted}`} />
                 <span className={`text-xs font-medium ${p.textPrimary}`}>{fmtDate(h.date)}</span>
                 {h.workshopName && <span className={`text-[10px] ${p.textMuted}`}>{h.workshopName}</span>}
@@ -1030,7 +1030,7 @@ function BokraftDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & 
           <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>BOKraft-Historie</h3>
           <div className="space-y-2">
             {svc.bokraftHistory.map(h => (
-              <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'surface-premium' : 'bg-gray-50'}`}>
+              <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'surface-premium' : 'bg-muted'}`}>
                 <Icon name="clock" className={`w-3 h-3 ${p.textMuted}`} />
                 <span className={`text-xs font-medium ${p.textPrimary}`}>{fmtDate(h.date)}</span>
                 {h.workshopName && <span className={`text-[10px] ${p.textMuted}`}>{h.workshopName}</span>}
@@ -1109,7 +1109,7 @@ function AlertsDetail({ isDark, tires, brakeSummary, brakeDetail, battery, dtcAc
               <div key={i} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${
                 a.severity === 'critical' ? (isDark ? 'bg-red-500/5 border border-red-500/20' : 'bg-red-50 border border-red-200/50')
                 : a.severity === 'warning' ? (isDark ? 'bg-amber-500/5 border border-amber-500/20' : 'bg-amber-50 border border-amber-200/50')
-                : (isDark ? 'surface-premium border border-neutral-700/40' : 'bg-gray-50 border border-gray-200')
+                : 'surface-premium border border-border/40'
               }`}>
                 {a.severity === 'critical' ? <Icon name="shield-alert" className={`w-4 h-4 shrink-0 ${isDark ? 'text-red-400' : 'text-red-500'}`} />
                 : a.severity === 'warning' ? <Icon name="alert-triangle" className={`w-4 h-4 shrink-0 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />
