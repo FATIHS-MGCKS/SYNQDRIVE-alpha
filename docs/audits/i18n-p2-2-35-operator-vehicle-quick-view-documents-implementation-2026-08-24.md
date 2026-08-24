@@ -1,7 +1,7 @@
 # P2.2.35 — Operator Vehicle Quick View Documents Implementation Audit
 
-**Date:** 2026-08-24  
-**Authoritative baseline:** `4116bcdbc6580ac6fb431252c9dc7e711a0fc4d0`  
+**Date:** 2026-08-24
+**Authoritative baseline:** `4116bcdbc6580ac6fb431252c9dc7e711a0fc4d0`
 **Pre-flight:** PR #1249 (C — GO — final clean QV presentation slice)
 
 ## Topology

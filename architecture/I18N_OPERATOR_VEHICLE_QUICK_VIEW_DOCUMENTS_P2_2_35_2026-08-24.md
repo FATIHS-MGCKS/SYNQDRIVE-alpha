@@ -1,6 +1,6 @@
 # P2.2.35 — Operator Vehicle Quick View Documents i18n Architecture
 
-**Date:** 2026-08-24  
+**Date:** 2026-08-24
 **Baseline:** `4116bcdbc6580ac6fb431252c9dc7e711a0fc4d0`
 
 ## Scope
@@ -38,9 +38,9 @@ operator/lib/operator-vehicle-quick-view-i18n.ts
 
 ## Keys
 
-+1 `operator.vehicleQuickView.documents.sectionTitle` EN/DE  
-+1 canonical gap fill `documentExtraction.status.PARTIALLY_APPLIED` EN/DE  
-Reuses existing `documentExtraction.type.*` and `documentExtraction.status.*`  
++1 `operator.vehicleQuickView.documents.sectionTitle` EN/DE
++1 canonical gap fill `documentExtraction.status.PARTIALLY_APPLIED` EN/DE
+Reuses existing `documentExtraction.type.*` and `documentExtraction.status.*`
 8489 → 8491
 
 ## Quick View campaign state
