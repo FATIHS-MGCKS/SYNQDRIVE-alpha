@@ -1,6 +1,7 @@
 # SynqDrive Theme Color Contract
 
 > **Scope:** Central design tokens in `frontend/src/styles/theme.css`  
+> **Surface cutover audit (V4.9.196):** `frontend/src/styles/LIGHT_MODE_SURFACE_CUTOVER_AUDIT.md`  
 > **Text neutralization audit (V4.9.197):** `frontend/src/styles/LIGHT_MODE_TEXT_NEUTRALIZATION_AUDIT.md`  
 > **Surface levels (L0–L4):** `frontend/src/styles/LIQUID_GLASS_SYSTEM.md`  
 > **Inspiration & technique audit:** `frontend/src/styles/SURFACE_INSPIRATION_AUDIT.md`  

@@ -326,8 +326,8 @@ frontend/src/rental/lib/ai-chat/safe-markdown.tsx
 
 | Release | Commit | Inhalt |
 |---------|--------|--------|
-| V4.9.196 | `3964210b` | Surface cutover: `#F6F6F6` canvas, white cards/sidebar, flat L1 |
-| V4.9.197 | `940eddef` | Text neutralization: `#171717` ink, `#737373` muted |
+| V4.9.196 | `3964210b` | Surface cutover: `#F6F6F6` canvas, white cards/sidebar, flat L1 — siehe `LIGHT_MODE_SURFACE_CUTOVER_AUDIT.md` |
+| V4.9.197 | `940eddef` | Text neutralization: `#171717` ink, `#737373` muted — siehe `LIGHT_MODE_TEXT_NEUTRALIZATION_AUDIT.md` |
 
 ---
 
