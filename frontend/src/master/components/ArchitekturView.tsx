@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Booking Form Sheet (P2.2.36 — V4.9.963)', icon: Globe,
+    endpoint: 'Operator Booking Form Sheet — create/edit presentation slice',
+    service: '**Locale flow:** `useLanguage().locale` → `operator-booking-form-i18n.ts` adapter (`obf`, title/submit/status/price/error helpers); reuses `bookings.edit.*` for edit mode chrome. **Keys:** +35 EN+DE `operator.bookings.form.*` (8491→8526). **Machine values:** bookingId, customer/vehicle IDs and names, pickup/return timestamps, station IDs/names, notes, amounts, `PENDING`/`CONFIRMED` status frozen; validation predicates and submit payload unchanged. **Guardrails:** P2.2.36 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-booking-form-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_OPERATOR_BOOKING_FORM_SHEET_P2_2_36_2026-08-24.md' },
   { name: 'Platform i18n Operator Vehicle Quick View Documents (P2.2.35 — V4.9.962)', icon: Globe,
     endpoint: 'Operator Vehicle Quick View — Documents presentation slice',
     service: '**Locale flow:** `useLanguage().locale` → extracted Documents sub-surface; adapter maps machine `documentType`/`status` to canonical `documentExtraction.*` keys; locale-aware `formatOperatorVehicleQuickViewDateTime`; filenames remain raw dynamic data. **Keys:** +1 `operator.vehicleQuickView.documents.sectionTitle` +1 canonical `documentExtraction.status.PARTIALLY_APPLIED` (8489→8491). **Machine values:** document IDs, type/status enums, sort/limit/visibility frozen; no row actions. **Guardrails:** P2.2.35 enforce-clean exact (2 paths) — 0 findings. **Campaign:** QV presentation i18n complete; Blockers architecturally deferred. **Tests:** `operator-vehicle-quick-view-documents-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
