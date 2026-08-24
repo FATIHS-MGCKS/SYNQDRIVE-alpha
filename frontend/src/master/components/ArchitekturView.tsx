@@ -1163,6 +1163,19 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center C13.6 — Final Production Cutover Proof (V4.9.950)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-positive)]',
+    apis: [
+      { label: 'Verdict', detail: 'PRODUCTION CUTOVER — CONDITIONAL GO; code/security/isolation ready; activation requires env verify + controlled smoke; CC sole ops authority' },
+      { label: 'Write authority', detail: 'UI → api.communication.* → ReplyCommand/idempotency; legacy HTTP adapters non-authoritative' },
+      { label: 'Deprecated HTTP', detail: '8 routes RETAIN pending prod telemetry; ai-reply SECURITY_RETIRED; NO_PRODUCTION_EVIDENCE in repo' },
+      { label: 'Retention', detail: 'Framework IMPLEMENTED; message/attachment days POLICY_REQUIRED (0 = safe default); voice 90d EXISTING_POLICY' },
+      { label: 'Observability', detail: 'C13.2 health + Prometheus bounded metrics; CONFIG_VERIFY_REQUIRED post-deploy' },
+      { label: 'Doc', detail: 'architecture/COMMUNICATION_CENTER_C13_6_FINAL_PRODUCTION_CUTOVER_PROOF.md' },
+    ],
+  },
+  {
     name: 'Communication Center C13.5 — Dead Artifact Cleanup (V4.9.949)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-positive)]',
