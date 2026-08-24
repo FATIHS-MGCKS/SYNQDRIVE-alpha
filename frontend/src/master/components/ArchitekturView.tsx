@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Booking Cancel & No-Show (P2.2.37 — V4.9.964)', icon: Globe,
+    endpoint: 'Operator Booking Cancel & No-Show Sheets — presentation slice',
+    service: '**Locale flow:** `useLanguage().locale` → `operator-booking-cancel-noshow-i18n.ts` adapter (`obcn`, title/gate/toast helpers); reuses `bookings.customer`, `bookings.vehicle`, `bookings.period`, `common.cancel`, `common.close`. **Keys:** +26 EN+DE `operator.bookings.cancelNoShow.*` (8526→8552). **Machine values:** bookingId, customer/vehicle names, status enum mapping via `bookingStatusLabel`, gate booleans, matrix reason strings (map-only), freeform reason payload frozen. **Guardrails:** P2.2.37 enforce-clean exact (4 paths) — 0 findings. **Tests:** `operator-booking-cancel-noshow-localization.test.tsx`. **Semantics:** presentation-only; cancel/no-show mutations and transitions unchanged; Category E=0.',
+    dataSource: 'architecture/I18N_OPERATOR_BOOKING_CANCEL_NOSHOW_P2_2_37_2026-08-25.md' },
   { name: 'Platform i18n Operator Booking Form Sheet (P2.2.36 — V4.9.963)', icon: Globe,
     endpoint: 'Operator Booking Form Sheet — create/edit presentation slice',
     service: '**Locale flow:** `useLanguage().locale` → `operator-booking-form-i18n.ts` adapter (`obf`, title/submit/status/price/error helpers); reuses `bookings.edit.*` for edit mode chrome. **Keys:** +35 EN+DE `operator.bookings.form.*` (8491→8526). **Machine values:** bookingId, customer/vehicle IDs and names, pickup/return timestamps, station IDs/names, notes, amounts, `PENDING`/`CONFIRMED` status frozen; validation predicates and submit payload unchanged. **Guardrails:** P2.2.36 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-booking-form-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
