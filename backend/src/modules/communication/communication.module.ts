@@ -77,7 +77,7 @@ import { CommunicationMetricsRefreshService } from './observability/communicatio
     NotificationsModule,
     BookingsModule,
     TasksModule,
-    VoiceAssistantModule,
+    forwardRef(() => VoiceAssistantModule),
     forwardRef(() => WhatsAppModule),
     ConfigModule.forFeature(communicationProjectionConfig),
     ConfigModule.forFeature(communicationRetentionConfig),

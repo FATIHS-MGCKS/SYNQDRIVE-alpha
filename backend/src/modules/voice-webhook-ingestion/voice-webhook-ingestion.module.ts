@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
@@ -26,7 +26,7 @@ import { CommunicationModule } from '@modules/communication/communication.module
     SharedGuardsModule,
     VoiceBillingModule,
     VoiceProtectionModule,
-    CommunicationModule,
+    forwardRef(() => CommunicationModule),
     BullModule.registerQueue({ name: QUEUE_NAMES.VOICE_WEBHOOK_PROCESS }),
   ],
   controllers: [ElevenLabsWebhookController, VoiceWebhookReplayController],
