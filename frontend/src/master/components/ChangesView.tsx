@@ -44,7 +44,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Canonical write path proven (ReplyCommand + idempotency); legacy HTTP write adapters delegate to canonical authority; POST ai-reply remains security-retired.',
       '8 deprecated compatibility HTTP routes retained — NO_PRODUCTION_EVIDENCE for deletion; observation window POLICY_REQUIRED.',
       'RBAC, tenant isolation, station scope, webhook security, redirects, dashboard deep links — TEST_PROVEN in focused C9–C13 suites.',
-      'Verdict: PRODUCTION CUTOVER — GO WITH NON-BLOCKING FOLLOW-UPS (manual prod smoke + config verify + telemetry follow-up).',
+      'Verdict: PRODUCTION CUTOVER — CONDITIONAL GO — code/security/isolation ready; production activation requires environment verification + controlled smoke.',
     ],
     reason: 'Prove Communication Center readiness as final production operational authority without manufacturing PASS or deleting uncertain compatibility routes.',
     previousBehavior: 'C13.5 established deprecated HTTP wrappers and removed legacy clients; production cutover proof was deferred to C13.6.',

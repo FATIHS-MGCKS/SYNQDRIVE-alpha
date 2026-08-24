@@ -11,18 +11,28 @@
 
 ## 1. Executive verdict
 
-**Final production cutover verdict:** **PRODUCTION CUTOVER — GO WITH NON-BLOCKING FOLLOW-UPS**
+**Final production cutover verdict:** **PRODUCTION CUTOVER — CONDITIONAL GO**
+
+| Layer | Status |
+|-------|--------|
+| **CODE / SECURITY / ISOLATION** | **READY** — code- and test-proven |
+| **ACTUAL PRODUCTION ACTIVATION** | **CONDITIONAL** — environment verification + controlled smoke required before claiming production authority live |
 
 SynqDrive Communication Center is **code- and test-proven** as the sole operational authority for WhatsApp and Voice conversations. Legacy operational UI is removed. Canonical write authority, RBAC, tenant isolation, and station scope are enforced in backend tests. Provider webhooks remain native authority; CC consumes normalized domain state.
 
-**Non-blocking follow-ups (do not block cutover):**
-- Deprecated HTTP compatibility routes (8) retained — **NO_PRODUCTION_EVIDENCE** for zero external traffic
-- Retention duration policy for message/attachment/reply-command classes — **POLICY_REQUIRED** (safe default: destructive purge disabled at `0` days)
-- Production observation window duration — **POLICY_REQUIRED**
-- Post-deploy **MANUAL_CONTROLLED_SMOKE** on production/staging with test accounts
-- Environment/config verification — **CONFIG_VERIFY_REQUIRED**
+**Conditions before production activation** (see §58):
+1. Complete §51 **MANUAL_CONTROLLED_SMOKE** on staging or prod test org
+2. Verify provider webhooks, secrets, Redis, workers per §47 (**ENVIRONMENT_VERIFY_REQUIRED**)
+3. Confirm `SWAGGER_ENABLED` posture acceptable for environment
+4. Retention policy values decided **OR** safe `0`-day destructive-purge-disabled defaults explicitly accepted by responsible owner
 
-**Not claimed:** PRODUCTION_VERIFIED (no live access-log or prod smoke in this audit).
+**Not claimed:** **PRODUCTION_VERIFIED** (no live access-log or prod smoke in this audit). Merging this document does **not** automatically confer PRODUCTION_VERIFIED — that status requires actual environment/smoke evidence.
+
+**Non-blocking follow-ups (after activation conditions are satisfied):**
+- Production telemetry observation for 8 deprecated compatibility HTTP routes + final retirement decision
+- Deprecated HTTP observation window duration — **POLICY_REQUIRED** (blocks route deletion only, not activation)
+- Retention-duration policy codification where safe `0`-day defaults are explicitly accepted (does not block activation)
+- Longer-term alert/observability tuning for Communication metrics
 
 ---
 
@@ -555,8 +565,11 @@ Secrets not printed in this document.
 |------|--------|
 | CODE_READY | **Yes** |
 | CONFIG_READY | **ENVIRONMENT_VERIFY_REQUIRED** |
-| DEPLOY_READY | **Yes** (after config verify) |
-| PRODUCTION_VERIFIED | **No** — manual smoke + telemetry pending |
+| DEPLOY_READY | **CONDITIONAL** — after §58 activation conditions |
+| PRODUCTION_VERIFIED | **No** — requires actual environment/smoke evidence |
+| **Aggregate production activation verdict** | **PRODUCTION CUTOVER — CONDITIONAL GO** |
+
+Technical per-area verdicts in §53 remain **PASS/GO**; the aggregate activation verdict is conditional because deployment evidence is pending.
 
 ---
 
@@ -619,9 +632,10 @@ Use test/sandbox accounts where possible.
 | Reply non-idempotent | BLOCKING CODE | **PASS** |
 | Redirect loop / back trap | BLOCKING UX | **PASS** (tests) |
 | Production build fails | BLOCKING | **PASS** |
-| Retention duration policy missing | NON-BLOCKING POLICY | **GAP** (safe defaults) |
+| Retention duration policy missing | NON-BLOCKING POLICY | **GAP** (safe defaults; explicit owner acceptance satisfies §58) |
 | Deprecated route w/o prod telemetry | NON-BLOCKING CUTOVER | **GAP** — blocks route deletion only |
-| Prod manual smoke | POST-DEPLOY VERIFICATION | **REQUIRED** |
+| Environment/config verification | BLOCKING ACTIVATION | **REQUIRED** (§58) |
+| Prod manual smoke | BLOCKING ACTIVATION | **REQUIRED** (§58) |
 
 ---
 
@@ -650,6 +664,8 @@ Use test/sandbox accounts where possible.
 | i18n | Yes | Yes | — | TEST_PROVEN | No | **GO** |
 | Mobile/tablet/desktop | Yes | Unit yes | — | MANUAL_SMOKE_REQUIRED | No | **GO** |
 | Accessibility | Yes | Partial | — | MANUAL_SMOKE_REQUIRED | No | **GO** |
+
+**Aggregate production activation verdict:** **PRODUCTION CUTOVER — CONDITIONAL GO** — all technical areas above remain PASS/GO; activation is conditional on §58 (environment verification + controlled smoke). **PRODUCTION_VERIFIED** remains **No** until smoke evidence exists.
 
 ---
 
@@ -686,9 +702,9 @@ Use test/sandbox accounts where possible.
 
 ## 56. Remaining policy gaps
 
-1. Message/attachment/reply-command retention day values — **POLICY_REQUIRED** (Legal/Product)
-2. Deprecated HTTP observation window duration — **POLICY_REQUIRED** (Platform/SRE)
-3. Production alert rules for Communication metrics — **CONFIG_VERIFY_REQUIRED**
+1. Message/attachment/reply-command retention day values — **POLICY_REQUIRED** (Legal/Product) **or** explicit acceptance of safe `0`-day defaults (does not block activation per §58)
+2. Deprecated HTTP observation window duration — **POLICY_REQUIRED** (Platform/SRE) — blocks route deletion only
+3. Production alert rules for Communication metrics — **CONFIG_VERIFY_REQUIRED** (post-activation tuning)
 
 ---
 
@@ -702,10 +718,12 @@ Use test/sandbox accounts where possible.
 
 ## 58. Exact conditions before production activation
 
-1. Complete §51 manual smoke on staging or prod test org
-2. Verify provider webhooks, secrets, Redis, workers per §47
+1. Complete §51 manual controlled smoke on staging or prod test org (**MANUAL_CONTROLLED_SMOKE = REQUIRED**)
+2. Verify provider webhooks, secrets, Redis, workers per §47 (**ENVIRONMENT_VERIFY_REQUIRED** — do not infer from repository code)
 3. Confirm `SWAGGER_ENABLED` posture acceptable for environment
-4. Agree retention policy values OR explicitly accept `0`-day safe defaults
+4. Retention policy values decided **OR** safe `0`-day destructive-purge-disabled defaults explicitly accepted by responsible owner
+
+Until all four are satisfied, **PRODUCTION_VERIFIED** must remain **No**.
 
 ---
 

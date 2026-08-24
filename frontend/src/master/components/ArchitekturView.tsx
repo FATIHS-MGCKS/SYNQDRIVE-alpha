@@ -1167,7 +1167,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
     icon: MessagesSquare,
     color: 'text-[color:var(--status-positive)]',
     apis: [
-      { label: 'Verdict', detail: 'PRODUCTION CUTOVER — GO WITH NON-BLOCKING FOLLOW-UPS; CC sole ops authority; legacy UI mounts = 0' },
+      { label: 'Verdict', detail: 'PRODUCTION CUTOVER — CONDITIONAL GO; code/security/isolation ready; activation requires env verify + controlled smoke; CC sole ops authority' },
       { label: 'Write authority', detail: 'UI → api.communication.* → ReplyCommand/idempotency; legacy HTTP adapters non-authoritative' },
       { label: 'Deprecated HTTP', detail: '8 routes RETAIN pending prod telemetry; ai-reply SECURITY_RETIRED; NO_PRODUCTION_EVIDENCE in repo' },
       { label: 'Retention', detail: 'Framework IMPLEMENTED; message/attachment days POLICY_REQUIRED (0 = safe default); voice 90d EXISTING_POLICY' },
