@@ -177,6 +177,11 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
 
   it('explicit unplug episode → UNPLUGGED_CONFIRMED + DEVICE_UNPLUGGED', () => {
     const state = build({
+      telemetry: {
+        lastTelemetryAt: hoursAgo(2),
+        lastProviderObservedAt: hoursAgo(2),
+        lastReceivedAt: hoursAgo(2),
+      },
       episode: {
         activeEpisodeId: 'ep-1',
         openUnpluggedEpisode: true,
@@ -398,6 +403,11 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
 
   it('multiple simultaneous problems: integration error beats unplug', () => {
     const state = build({
+      telemetry: {
+        lastTelemetryAt: hoursAgo(1),
+        lastProviderObservedAt: hoursAgo(1),
+        lastReceivedAt: hoursAgo(1),
+      },
       processingErrors: {
         integrationError: true,
         webhookProcessingFailed: true,

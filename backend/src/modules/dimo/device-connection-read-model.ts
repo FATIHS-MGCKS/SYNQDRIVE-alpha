@@ -9,6 +9,10 @@ import {
   type InterruptionKnowledge,
   type InterruptionKnowledgeReason,
 } from './interruption-knowledge';
+import {
+  derivePhysicalDeviceEvidence,
+  physicalDeviceStateToConnectionStatus,
+} from '../vehicles/connectivity/domain/physical-device-evidence';
 
 export type {
   InterruptionKnowledge,
@@ -239,6 +243,8 @@ export interface BuildDeviceConnectionSummaryInput {
   persistedOpenEpisode?: PersistedOpenEpisodeInput | null;
   /** Trigger registry snapshot — must not be inferred from event history. */
   webhookConfiguration?: DeviceConnectionWebhookConfigurationView;
+  /** Last valid telemetry snapshot timestamp — positive connected evidence. */
+  latestValidSnapshotAt?: Date | null;
 }
 
 export interface PersistedOpenEpisodeInput {
@@ -372,11 +378,20 @@ export function buildDeviceConnectionSummary(
     : !!lastUnplug &&
       (!lastPlug || lastUnplug.observedAt.getTime() > lastPlug.observedAt.getTime());
 
-  let currentDeviceConnectionStatus: DeviceConnectionStatus = 'unknown';
-  if (openUnpluggedEpisode) currentDeviceConnectionStatus = 'unplugged';
-  else if (lastPlug && (!lastUnplug || lastPlug.observedAt >= lastUnplug.observedAt)) {
-    currentDeviceConnectionStatus = 'plugged';
-  }
+  const latestUnplugAt =
+    lastUnplug?.observedAt ??
+    (persistedOpenEpisode != null ? persistedOpenEpisode.openedAt : null);
+
+  const physicalEvidence = derivePhysicalDeviceEvidence({
+    latestValidSnapshotAt: input.latestValidSnapshotAt ?? null,
+    latestAcceptedUnplugEventAt: latestUnplugAt,
+    physicalObdApplicable: isLteR1Hardware(hardwareType) && dimoLinked,
+    nowMs,
+  });
+
+  const currentDeviceConnectionStatus = physicalDeviceStateToConnectionStatus(
+    physicalEvidence.physicalDeviceState,
+  );
 
   const activeBooking = findActiveBookingNow(bookings, nowMs);
   const openSince = openUnpluggedEpisode
@@ -454,17 +469,12 @@ export function buildDeviceConnectionSummary(
       ? true
       : recentEvents.some((e) => e.rentalRelevant);
 
-  const hasUnplugEvents = sorted.some(
-    (e) => e.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
-  );
-  const obdSnapshotUnplugged = connectivityIndicatesUnplugged(connectivityAnchor);
   const interruption = deriveInterruptionKnowledge({
     lteR1Capable: isLteR1Hardware(hardwareType),
     dimoLinked,
     usePersistedEpisodeScope: usePersistedEpisode,
     openUnpluggedEpisode,
-    hasUnplugEvents,
-    obdSnapshotUnplugged,
+    physicalDeviceState: physicalEvidence.physicalDeviceState,
   });
 
   return {

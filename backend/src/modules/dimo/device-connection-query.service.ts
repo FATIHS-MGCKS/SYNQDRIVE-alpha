@@ -41,7 +41,7 @@ export class DeviceConnectionQueryService {
         hardwareType: true,
         dimoVehicleId: true,
         dimoVehicle: { select: { connectionStatus: true, tokenId: true } },
-        latestState: { select: { rawPayloadJson: true } },
+        latestState: { select: { rawPayloadJson: true, lastSeenAt: true } },
       },
     });
     if (!vehicle) {
@@ -75,6 +75,7 @@ export class DeviceConnectionQueryService {
       trips,
       recentLimit: opts?.eventLimit ?? 20,
       connectivityAnchor: this.buildConnectivityAnchor(vehicle),
+      latestValidSnapshotAt: vehicle.latestState?.lastSeenAt ?? null,
       persistedOpenEpisode: this.toPersistedOpenEpisode(openEpisode),
       webhookConfiguration: webhookConfig,
     });
@@ -145,7 +146,7 @@ export class DeviceConnectionQueryService {
         select: {
           id: true,
           dimoVehicle: { select: { connectionStatus: true } },
-          latestState: { select: { rawPayloadJson: true } },
+          latestState: { select: { rawPayloadJson: true, lastSeenAt: true } },
         },
       }),
       this.episodeService.findOpenEpisodesForVehicles(organizationId, vehicleIds),
@@ -154,8 +155,10 @@ export class DeviceConnectionQueryService {
     const openEpisodeByVehicle = this.indexOpenEpisodesByVehicle(openEpisodes);
 
     const anchorByVehicle = new Map<string, DeviceConnectionConnectivityAnchor | null>();
+    const snapshotAtByVehicle = new Map<string, Date | null>();
     for (const v of vehicles) {
       anchorByVehicle.set(v.id, this.buildConnectivityAnchor(v));
+      snapshotAtByVehicle.set(v.id, v.latestState?.lastSeenAt ?? null);
     }
 
     const eventsByVehicle = new Map<string, DeviceConnectionEventRow[]>();
@@ -202,6 +205,7 @@ export class DeviceConnectionQueryService {
           trips: tripsByVehicle.get(vehicleId) ?? [],
           recentLimit: 5,
           connectivityAnchor: anchorByVehicle.get(vehicleId) ?? null,
+          latestValidSnapshotAt: snapshotAtByVehicle.get(vehicleId) ?? null,
           persistedOpenEpisode: openEpisodeByVehicle.get(vehicleId) ?? null,
           webhookConfiguration: webhookConfigs.get(vehicleId),
         }),
@@ -352,7 +356,7 @@ export class DeviceConnectionQueryService {
       where: { id: vehicleId },
       select: {
         dimoVehicle: { select: { connectionStatus: true } },
-        latestState: { select: { rawPayloadJson: true } },
+        latestState: { select: { rawPayloadJson: true, lastSeenAt: true } },
       },
     });
     if (!vehicle) return null;

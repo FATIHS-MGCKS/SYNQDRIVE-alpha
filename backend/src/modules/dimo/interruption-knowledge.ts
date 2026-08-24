@@ -1,17 +1,23 @@
 /**
  * Epistemic semantics for telematics interruption (OBD unplug episode) state.
  *
+ * Interruption lifecycle (episodes) is separate from physical-device evidence.
  * `openUnpluggedEpisode === false` must NOT be conflated with "no interruption exists"
- * when physical evidence (snapshot OBD unplugged, persisted unplug events without a
- * materialized OPEN episode) indicates uncertainty.
+ * when episode scope was not queried or physical unplug evidence exists without materialized episode.
  */
+import { PhysicalDeviceState } from '../vehicles/connectivity/domain/connectivity-domain.types';
 
-export type InterruptionKnowledge = 'known_none' | 'active' | 'unknown';
+export type InterruptionKnowledge =
+  | 'known_none'
+  | 'active'
+  | 'unknown'
+  | 'not_applicable';
 
 export type InterruptionKnowledgeReason =
   | 'episode_active'
   | 'episode_authoritative_no_open'
   | 'physical_evidence_without_episode'
+  | 'episode_scope_not_queried'
   | 'not_applicable_non_lte_r1'
   | 'not_applicable_not_dimo_linked';
 
@@ -26,14 +32,14 @@ export function deriveInterruptionKnowledge(input: {
   /** True when episode table was queried (persistedOpenEpisode is defined, including null). */
   usePersistedEpisodeScope: boolean;
   openUnpluggedEpisode: boolean;
-  hasUnplugEvents: boolean;
-  obdSnapshotUnplugged: boolean;
+  /** Physical device state from canonical evidence ordering — not historical event counts. */
+  physicalDeviceState: (typeof PhysicalDeviceState)[keyof typeof PhysicalDeviceState];
 }): InterruptionKnowledgeState {
   if (!input.dimoLinked) {
-    return { knowledge: 'unknown', reason: 'not_applicable_not_dimo_linked' };
+    return { knowledge: 'not_applicable', reason: 'not_applicable_not_dimo_linked' };
   }
   if (!input.lteR1Capable) {
-    return { knowledge: 'unknown', reason: 'not_applicable_non_lte_r1' };
+    return { knowledge: 'not_applicable', reason: 'not_applicable_non_lte_r1' };
   }
 
   if (input.openUnpluggedEpisode) {
@@ -41,10 +47,10 @@ export function deriveInterruptionKnowledge(input: {
   }
 
   if (!input.usePersistedEpisodeScope) {
-    return { knowledge: 'known_none', reason: 'episode_authoritative_no_open' };
+    return { knowledge: 'unknown', reason: 'episode_scope_not_queried' };
   }
 
-  if (input.hasUnplugEvents || input.obdSnapshotUnplugged) {
+  if (input.physicalDeviceState === PhysicalDeviceState.UNPLUGGED_CONFIRMED) {
     return { knowledge: 'unknown', reason: 'physical_evidence_without_episode' };
   }
 

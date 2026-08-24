@@ -1,4 +1,5 @@
 import { deriveInterruptionKnowledge } from './interruption-knowledge';
+import { PhysicalDeviceState } from '../vehicles/connectivity/domain/connectivity-domain.types';
 
 describe('deriveInterruptionKnowledge', () => {
   const base = {
@@ -6,8 +7,7 @@ describe('deriveInterruptionKnowledge', () => {
     dimoLinked: true,
     usePersistedEpisodeScope: true,
     openUnpluggedEpisode: false,
-    hasUnplugEvents: false,
-    obdSnapshotUnplugged: false,
+    physicalDeviceState: PhysicalDeviceState.PLUGGED_INFERRED,
   };
 
   it('returns active when an open episode exists', () => {
@@ -16,41 +16,38 @@ describe('deriveInterruptionKnowledge', () => {
     ).toBe('active');
   });
 
-  it('returns known_none when episode scope is authoritative and no physical evidence conflicts', () => {
+  it('returns known_none when episode scope is authoritative and no physical unplug evidence', () => {
     expect(deriveInterruptionKnowledge(base).knowledge).toBe('known_none');
   });
 
-  it('returns unknown when unplug events exist without a materialized open episode (Test C)', () => {
-    expect(
-      deriveInterruptionKnowledge({
-        ...base,
-        hasUnplugEvents: true,
-      }).knowledge,
-    ).toBe('unknown');
-  });
-
-  it('returns unknown when OBD snapshot is unplugged without open episode (Test C)', () => {
-    expect(
-      deriveInterruptionKnowledge({
-        ...base,
-        obdSnapshotUnplugged: true,
-      }).knowledge,
-    ).toBe('unknown');
-  });
-
-  it('does not conflate null open episode with known_none when physical evidence exists', () => {
+  it('Test I — episode scope not queried must not return known_none', () => {
     const result = deriveInterruptionKnowledge({
       ...base,
-      hasUnplugEvents: true,
-      obdSnapshotUnplugged: true,
+      usePersistedEpisodeScope: false,
+    });
+    expect(result.knowledge).toBe('unknown');
+    expect(result.reason).toBe('episode_scope_not_queried');
+    expect(result.knowledge).not.toBe('known_none');
+  });
+
+  it('Test J — unplug physical evidence without episode yields unknown interruption', () => {
+    const result = deriveInterruptionKnowledge({
+      ...base,
+      physicalDeviceState: PhysicalDeviceState.UNPLUGGED_CONFIRMED,
     });
     expect(result.knowledge).toBe('unknown');
     expect(result.reason).toBe('physical_evidence_without_episode');
   });
 
-  it('returns unknown for non-DIMO-linked vehicles', () => {
+  it('returns not_applicable for non-DIMO-linked vehicles', () => {
     expect(
-      deriveInterruptionKnowledge({ ...base, dimoLinked: false }).reason,
-    ).toBe('not_applicable_not_dimo_linked');
+      deriveInterruptionKnowledge({ ...base, dimoLinked: false }).knowledge,
+    ).toBe('not_applicable');
+  });
+
+  it('returns not_applicable for non-LTE_R1 hardware', () => {
+    expect(
+      deriveInterruptionKnowledge({ ...base, lteR1Capable: false }).knowledge,
+    ).toBe('not_applicable');
   });
 });
