@@ -387,10 +387,7 @@ export async function installVehicleDetailApiMocks(page: Page) {
       });
     }
 
-    if (method === 'GET' && url.includes('/api/')) {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
-    }
-
+    // Delegate org/dashboard/fleet-map traffic to installFleetOperationalMocks (registered first).
     return route.fallback();
   });
 }
