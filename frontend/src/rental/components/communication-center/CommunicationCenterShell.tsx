@@ -53,6 +53,7 @@ import type {
   CommunicationMobilePane,
   CommunicationPrimaryTab,
   CommunicationSettingsSection,
+  CommunicationWhatsAppChannelSubview,
 } from './communication-center.types';
 
 interface CommunicationCenterShellProps {
@@ -216,6 +217,10 @@ export function CommunicationCenterShell({
       return next;
     });
   }, []);
+
+  const handleWhatsappSubviewChange = useCallback((whatsappChannelSubview: CommunicationWhatsAppChannelSubview) => {
+    patchState({ whatsappChannelSubview, primaryTab: 'channels', channelsSection: 'whatsapp' });
+  }, [patchState]);
 
   const handleOpenConversations = useCallback(
     (channel: 'whatsapp' | 'voice' | 'sms') => {
@@ -409,7 +414,10 @@ export function CommunicationCenterShell({
           <CommunicationChannelsPane
             activeSection={channelsSection}
             enabled={channelsActive}
+            whatsappChannelSubview={state.whatsappChannelSubview}
+            voiceIntent={state.voiceIntent}
             onSectionChange={handleChannelsSectionChange}
+            onWhatsappSubviewChange={handleWhatsappSubviewChange}
             onOpenConversations={handleOpenConversations}
             onOpenVoiceAssistant={(options) => onOpenVoiceAssistant?.(options)}
             onOpenEmailSettings={() => onOpenEmailSettings?.()}

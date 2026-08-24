@@ -1,15 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { EmptyState } from '../../../components/patterns/states';
 import { cn } from '../../../components/ui/utils';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
+import { useAppTheme } from '../../../context/AppThemeContext';
 import { WhatsAppBusinessSettings } from '../whatsapp/WhatsAppBusinessSettings';
 import { WhatsAppTemplateManager } from '../whatsapp/WhatsAppTemplateManager';
 import { WhatsAppKpiCards } from '../whatsapp/WhatsAppKpiCards';
 import { WhatsAppReadinessStrip } from '../whatsapp/WhatsAppReadinessStrip';
 import { buildReadinessChecks } from '../whatsapp/whatsapp.ops';
 import { useWhatsAppBusinessSettings } from '../whatsapp/useWhatsAppBusinessSettings';
-import type { CommunicationChannelsSection } from './communication-center.types';
+import type { CommunicationChannelsSection, CommunicationVoiceIntent, CommunicationWhatsAppChannelSubview } from './communication-center.types';
+import { VoiceAssistantView } from '../VoiceAssistantView';
+import { mapVoiceIntentToAssistantState } from './legacy-communication-navigation';
 import { CommunicationChannelsNav } from './CommunicationChannelsNav';
 import { CommunicationChannelsLanding } from './CommunicationChannelsLanding';
 import { CommunicationChannelVoicePane } from './CommunicationChannelVoicePane';
@@ -26,7 +29,10 @@ type WhatsAppChannelSubview = 'overview' | 'configuration' | 'templates';
 interface CommunicationChannelsPaneProps {
   activeSection: CommunicationChannelsSection;
   enabled?: boolean;
+  whatsappChannelSubview?: CommunicationWhatsAppChannelSubview;
+  voiceIntent?: CommunicationVoiceIntent | null;
   onSectionChange: (section: CommunicationChannelsSection) => void;
+  onWhatsappSubviewChange?: (subview: CommunicationWhatsAppChannelSubview) => void;
   onOpenConversations: (channel: 'whatsapp' | 'voice' | 'sms') => void;
   onOpenVoiceAssistant: (options: { opsTab: 'overview' | 'settings' | 'analytics' | 'automations'; wizardStep?: 'tests' | null }) => void;
   onOpenEmailSettings: () => void;
@@ -35,14 +41,18 @@ interface CommunicationChannelsPaneProps {
 export function CommunicationChannelsPane({
   activeSection,
   enabled = true,
+  whatsappChannelSubview = 'overview',
+  voiceIntent = null,
   onSectionChange,
+  onWhatsappSubviewChange,
   onOpenConversations,
   onOpenVoiceAssistant,
   onOpenEmailSettings,
 }: CommunicationChannelsPaneProps) {
   const { t } = useLanguage();
+  const { isDarkMode } = useAppTheme();
   const { orgId, hasPermission, userRole } = useRentalOrg();
-  const [whatsappSubview, setWhatsappSubview] = useState<WhatsAppChannelSubview>('overview');
+  const [whatsappSubview, setWhatsappSubview] = useState<WhatsAppChannelSubview>(whatsappChannelSubview);
 
   const section = useMemo(() => activeSection, [activeSection]);
   const canAccessSection = canAccessCommunicationChannelsSection(
@@ -58,6 +68,21 @@ export function CommunicationChannelsPane({
     () => buildReadinessChecks(whatsappSettings.config, whatsappChannel.stats, whatsappChannel.templates),
     [whatsappChannel.stats, whatsappChannel.templates, whatsappSettings.config],
   );
+
+  useEffect(() => {
+    setWhatsappSubview(whatsappChannelSubview);
+  }, [whatsappChannelSubview]);
+
+  const handleWhatsappSubviewChange = (subview: WhatsAppChannelSubview) => {
+    setWhatsappSubview(subview);
+    onWhatsappSubviewChange?.(subview);
+  };
+
+  const showEmbeddedVoiceSpecialized =
+    section === 'voice' &&
+    voiceIntent != null &&
+    voiceIntent !== 'overview' &&
+    voiceIntent !== 'conversations';
 
   return (
     <div
@@ -112,7 +137,7 @@ export function CommunicationChannelsPane({
                       ? 'bg-[color:var(--brand)]/10 text-foreground'
                       : 'text-muted-foreground hover:text-foreground',
                   )}
-                  onClick={() => setWhatsappSubview(subview)}
+                  onClick={() => handleWhatsappSubviewChange(subview)}
                 >
                   {t(`communication.channels.whatsapp.subview.${subview}` as const)}
                 </button>
@@ -129,14 +154,14 @@ export function CommunicationChannelsPane({
                       return;
                     }
                     if (tab === 'templates') {
-                      setWhatsappSubview('templates');
+                      handleWhatsappSubviewChange('templates');
                       return;
                     }
                     if (tab === 'settings') {
-                      setWhatsappSubview('configuration');
+                      handleWhatsappSubviewChange('configuration');
                       return;
                     }
-                    setWhatsappSubview('overview');
+                    handleWhatsappSubviewChange('overview');
                   }}
                 />
                 <WhatsAppKpiCards
@@ -164,11 +189,21 @@ export function CommunicationChannelsPane({
             )}
           </div>
         ) : section === 'voice' ? (
-          <CommunicationChannelVoicePane
-            enabled={enabled}
-            onOpenConversations={() => onOpenConversations('voice')}
-            onOpenVoiceAssistant={onOpenVoiceAssistant}
-          />
+          showEmbeddedVoiceSpecialized ? (
+            <div data-testid="communication-voice-specialized-embedded">
+              <VoiceAssistantView
+                isDarkMode={isDarkMode}
+                suppressLegacyUrlSync
+                initialVoiceState={mapVoiceIntentToAssistantState(voiceIntent!)}
+              />
+            </div>
+          ) : (
+            <CommunicationChannelVoicePane
+              enabled={enabled}
+              onOpenConversations={() => onOpenConversations('voice')}
+              onOpenVoiceAssistant={onOpenVoiceAssistant}
+            />
+          )
         ) : section === 'sms' ? (
           <div data-testid="communication-channel-sms">
             <SmsSettingsPanel enabled={enabled} />

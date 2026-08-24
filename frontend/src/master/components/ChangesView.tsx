@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c13-3-legacy-navigation-redirects-2026-08-24',
+    version: '4.9.947',
+    title: 'Communication Center C13.3 — legacy navigation redirects',
+    summary: [
+      'Central resolveLegacyCommunicationRoute maps whatsapp-business and ai-voice-assistant to canonical CC or C10 Channels.',
+      'App mount + handleViewChange intercept with history.replaceState; legacy top-level view mounts removed.',
+      'Sidebar deduplicated to single Communication Center nav; CC URL params communicationWhatsAppSubview + communicationVoiceIntent.',
+      'VoiceAssistantView embedded in CC Channels with suppressLegacyUrlSync for analytics/settings/test/telephony/builder.',
+    ],
+    reason: 'Migrate navigation authority to Communication Center without deleting legacy UI/APIs (C13.4/C13.5 deferred).',
+    previousBehavior: 'Separate sidebar entries and top-level mounts for whatsapp-business and ai-voice-assistant operational products.',
+    details: 'architecture/COMMUNICATION_CENTER_C13_3_LEGACY_NAVIGATION_REDIRECTS.md',
+    affectsArchitecture: true,
+    module: 'Communication',
+    createdAt: '2026-08-24T14:00:00.000Z',
+  },
+  {
     id: 'communication-center-c13-2-observability-health-2026-08-24',
     version: '4.9.946',
     title: 'Communication Center C13.2 — observability & reconciliation health',
@@ -184,7 +201,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'C10 i18n keys in all governed locales (en, de, fr, nl, es, it, pl, cs); parity test communication-center-c10.i18n.test.ts.',
       'SMS channel reuses read-only SmsSettingsPanel; Email channel deep-links to settings/email-versand.',
       'Automations tab: thin landing + deep-link to WorkflowAutomationView (workflow-automation.read).',
-      'Legacy whatsapp-business and ai-voice-assistant nav preserved for C9 operational fallback.',
+      'Legacy whatsapp-business and ai-voice-assistant routes redirect to CC (C13.3); components retained until C13.4.',
     ],
     reason:
       'C10 channel configuration migration — canonical entry points for all communication channels per parity audit PR #1212.',

@@ -54,6 +54,28 @@ describe('communication-center-navigation', () => {
     });
   });
 
+  it('parses WhatsApp channel subview and voice intent params', () => {
+    expect(
+      readCommunicationCenterStateFromUrl(
+        '?communicationTab=channels&communicationChannels=voice&communicationVoiceIntent=analytics',
+      ),
+    ).toEqual({
+      primaryTab: 'channels',
+      channelsSection: 'voice',
+      voiceIntent: 'analytics',
+      inboxFilters: mergeCommunicationInboxFilters(),
+    });
+    expect(
+      readCommunicationCenterStateFromUrl(
+        '?communicationTab=channels&communicationChannels=whatsapp&communicationWhatsAppSubview=templates',
+      ),
+    ).toMatchObject({
+      primaryTab: 'channels',
+      channelsSection: 'whatsapp',
+      whatsappChannelSubview: 'templates',
+    });
+  });
+
   it('defaults to inbox/all with no conversation', () => {
     expect(mergeCommunicationCenterState({})).toEqual(DEFAULT_COMMUNICATION_CENTER_URL_STATE);
   });
@@ -84,6 +106,8 @@ describe('communication-center-navigation', () => {
       selectedConversationId: null,
       mobilePane: 'inbox',
       inboxFilters: mergeCommunicationInboxFilters(),
+      whatsappChannelSubview: 'overview',
+      voiceIntent: null,
     });
   });
 
