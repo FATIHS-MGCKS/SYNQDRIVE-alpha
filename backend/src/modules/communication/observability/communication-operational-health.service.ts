@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import communicationOperationalHealthConfig from '@config/communication-operational-health.config';
 import communicationRetentionConfig from '@config/communication-retention.config';
@@ -8,7 +8,10 @@ import { CommunicationRetentionMetrics } from '../retention/communication-retent
 import {
   COMMUNICATION_HEALTH_COMPONENT,
   COMMUNICATION_HEALTH_DIAGNOSTIC,
+  COMMUNICATION_HEALTH_OPTIONAL_UNMEASURED_COMPONENTS,
   COMMUNICATION_HEALTH_STATE,
+  COMMUNICATION_UNKNOWN_SEND_CHANNELS,
+  type CommunicationHealthChannel,
   type CommunicationHealthComponent,
   type CommunicationHealthDiagnostic,
   type CommunicationHealthState,
@@ -20,9 +23,8 @@ import type {
   CommunicationOperationalHealthSnapshot,
 } from './communication-operational-health.types';
 import {
+  refreshCommunicationSendUnknownGauges,
   setCommunicationRetentionLastSuccessTimestamp,
-  setCommunicationSendUnknownCurrent,
-  setCommunicationSendUnknownOldestSeconds,
 } from './communication-prometheus.metrics';
 
 @Injectable()
@@ -46,6 +48,13 @@ export class CommunicationOperationalHealthService {
   async evaluate(
     options: CommunicationOperationalHealthQueryOptions = {},
   ): Promise<CommunicationOperationalHealthSnapshot> {
+    if (options.organizationId) {
+      const exists = await this.repository.organizationExists(options.organizationId);
+      if (!exists) {
+        throw new NotFoundException('Organization not found');
+      }
+    }
+
     const now = options.now ?? new Date();
     const cacheKey = options.organizationId ?? '__global__';
     if (this.cache && this.cache.key === cacheKey && this.cache.expiresAt > now.getTime()) {
@@ -53,7 +62,8 @@ export class CommunicationOperationalHealthService {
     }
 
     const checkedAt = now.toISOString();
-    const inStartupGrace = now.getTime() - this.startedAt < this.healthConfig.startupGraceMs;
+    const inStartupGrace =
+      options.now == null && Date.now() - this.startedAt < this.healthConfig.startupGraceMs;
 
     const componentResults = await Promise.allSettled([
       this.evaluateProjection(options.organizationId, now, inStartupGrace),
@@ -131,8 +141,10 @@ export class CommunicationOperationalHealthService {
     checkedAt: string,
   ): CommunicationHealthComponentSnapshot {
     if (result.status === 'fulfilled') return result.value;
+    const reason = result.reason;
+    const errorClass = reason instanceof Error ? reason.constructor.name : 'UnknownError';
     this.logger.warn(
-      `Communication health component ${component} evaluation failed: ${(result.reason as Error)?.message ?? 'unknown'}`,
+      `communication_health_component_failed component=${component} errorClass=${errorClass}`,
     );
     return {
       state: COMMUNICATION_HEALTH_STATE.UNKNOWN,
@@ -149,10 +161,12 @@ export class CommunicationOperationalHealthService {
   ): Promise<CommunicationHealthComponentSnapshot> {
     const [whatsapp, voice] = await Promise.all([
       this.repository.getWhatsAppWebhookBacklog(organizationId, now),
-      this.repository.getVoiceWebhookBacklog(now),
+      this.repository.getVoiceWebhookBacklog(organizationId, now),
     ]);
 
-    const diagnostics: CommunicationHealthDiagnostic[] = [];
+    const diagnostics: CommunicationHealthDiagnostic[] = [
+      COMMUNICATION_HEALTH_DIAGNOSTIC.CANONICAL_PROJECTION_LAG_NOT_MEASURABLE,
+    ];
     let state: CommunicationHealthState = COMMUNICATION_HEALTH_STATE.HEALTHY;
 
     if (whatsapp.oldestAgeSeconds != null) {
@@ -186,23 +200,43 @@ export class CommunicationOperationalHealthService {
       checkedAt: now.toISOString(),
       signals: {
         whatsappWebhookBacklogBounded: whatsapp.unprocessedCountBounded,
+        whatsappWebhookBacklogCountAtLeastLimit: whatsapp.countAtLeastLimit,
         whatsappWebhookOldestAgeSeconds: whatsapp.oldestAgeSeconds,
         voiceWebhookBacklogBounded: voice.unprocessedCountBounded,
+        voiceWebhookBacklogCountAtLeastLimit: voice.countAtLeastLimit,
         voiceWebhookOldestAgeSeconds: voice.oldestAgeSeconds,
+        voiceWebhookTenantMeasurable: voice.tenantMeasurable,
         canonicalProjectionLagMeasurable: false,
+        ingestionPipelineEvidence: 'webhook_backlog_only',
       },
     };
   }
 
-  private async evaluateOutbound(
-    organizationId: string | undefined,
-    now: Date,
-    inStartupGrace: boolean,
-  ): Promise<CommunicationHealthComponentSnapshot> {
-    const unknown = await this.repository.getUnknownSendSignals(organizationId, now);
-    const diagnostics: CommunicationHealthDiagnostic[] = [];
-    let state: CommunicationHealthState = COMMUNICATION_HEALTH_STATE.HEALTHY;
+  private buildUnknownChannelSignals(
+    byChannel: Record<CommunicationHealthChannel, { count: number; countAtLeastLimit: boolean; oldestAgeSeconds: number | null }>,
+  ): Record<string, number | string | boolean | null> {
+    const signals: Record<string, number | string | boolean | null> = {};
+    for (const channel of COMMUNICATION_UNKNOWN_SEND_CHANNELS) {
+      const channelKey = channel.toLowerCase();
+      const channelSignals = byChannel[channel];
+      signals[`unknownSend${this.capitalize(channelKey)}CountBounded`] = channelSignals.count;
+      signals[`unknownSend${this.capitalize(channelKey)}CountAtLeastLimit`] =
+        channelSignals.countAtLeastLimit;
+      signals[`unknownSend${this.capitalize(channelKey)}OldestAgeSeconds`] =
+        channelSignals.oldestAgeSeconds;
+    }
+    return signals;
+  }
 
+  private capitalize(value: string): string {
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+
+  private evaluateUnknownSendSeverity(
+    unknown: { count: number; oldestAgeSeconds: number | null },
+    diagnostics: CommunicationHealthDiagnostic[],
+  ): CommunicationHealthState {
+    let state: CommunicationHealthState = COMMUNICATION_HEALTH_STATE.HEALTHY;
     if (unknown.count > 0) {
       if (
         unknown.count >= this.healthConfig.unknownCountUnhealthy ||
@@ -220,10 +254,21 @@ export class CommunicationOperationalHealthService {
         diagnostics.push(COMMUNICATION_HEALTH_DIAGNOSTIC.SEND_UNKNOWN_BACKLOG);
       }
     }
+    return state;
+  }
+
+  private async evaluateOutbound(
+    organizationId: string | undefined,
+    now: Date,
+    inStartupGrace: boolean,
+  ): Promise<CommunicationHealthComponentSnapshot> {
+    const unknownByChannel = await this.repository.getUnknownSendSignalsByChannel(organizationId, now);
+    const unknown = unknownByChannel.aggregate;
+    const diagnostics: CommunicationHealthDiagnostic[] = [];
+    let state = this.evaluateUnknownSendSeverity(unknown, diagnostics);
 
     if (this.tripMetrics) {
-      setCommunicationSendUnknownCurrent(this.tripMetrics, 'whatsapp', unknown.count);
-      setCommunicationSendUnknownOldestSeconds(this.tripMetrics, 'whatsapp', unknown.oldestAgeSeconds);
+      refreshCommunicationSendUnknownGauges(this.tripMetrics, unknownByChannel.byChannel);
     }
 
     if (inStartupGrace && unknown.count === 0) {
@@ -237,7 +282,9 @@ export class CommunicationOperationalHealthService {
       checkedAt: now.toISOString(),
       signals: {
         unknownSendCountBounded: unknown.count,
+        unknownSendCountAtLeastLimit: unknown.countAtLeastLimit,
         unknownSendOldestAgeSeconds: unknown.oldestAgeSeconds,
+        ...this.buildUnknownChannelSignals(unknownByChannel.byChannel),
       },
     };
   }
@@ -247,7 +294,8 @@ export class CommunicationOperationalHealthService {
     now: Date,
     inStartupGrace: boolean,
   ): Promise<CommunicationHealthComponentSnapshot> {
-    const unknown = await this.repository.getUnknownSendSignals(organizationId, now);
+    const unknownByChannel = await this.repository.getUnknownSendSignalsByChannel(organizationId, now);
+    const unknown = unknownByChannel.aggregate;
     const diagnostics: CommunicationHealthDiagnostic[] = [];
     let state: CommunicationHealthState = COMMUNICATION_HEALTH_STATE.HEALTHY;
 
@@ -267,8 +315,10 @@ export class CommunicationOperationalHealthService {
       checkedAt: now.toISOString(),
       signals: {
         unresolvedUnknownCountBounded: unknown.count,
+        unresolvedUnknownCountAtLeastLimit: unknown.countAtLeastLimit,
         automaticVoiceReconciliationAuthority: 'voice_webhook_processing',
         dedicatedReconciliationEngine: false,
+        ...this.buildUnknownChannelSignals(unknownByChannel.byChannel),
       },
     };
   }
@@ -298,15 +348,16 @@ export class CommunicationOperationalHealthService {
       checkedAt: now.toISOString(),
       signals: {
         humanRequiredCountBounded: handoff.humanRequiredCount,
+        humanRequiredCountAtLeastLimit: handoff.countAtLeastLimit,
         oldestHumanRequiredAgeSeconds: handoff.oldestAgeSeconds,
       },
     };
   }
 
-  private async evaluateMedia(inStartupGrace: boolean): Promise<CommunicationHealthComponentSnapshot> {
+  private async evaluateMedia(_inStartupGrace: boolean): Promise<CommunicationHealthComponentSnapshot> {
     return {
-      state: inStartupGrace ? COMMUNICATION_HEALTH_STATE.UNKNOWN : COMMUNICATION_HEALTH_STATE.HEALTHY,
-      diagnostics: inStartupGrace ? [COMMUNICATION_HEALTH_DIAGNOSTIC.INSUFFICIENT_EVIDENCE] : [],
+      state: COMMUNICATION_HEALTH_STATE.UNKNOWN,
+      diagnostics: [COMMUNICATION_HEALTH_DIAGNOSTIC.NOT_MEASURABLE],
       checkedAt: new Date().toISOString(),
       signals: {
         mediaMetricsInstrumented: false,
@@ -314,10 +365,10 @@ export class CommunicationOperationalHealthService {
     };
   }
 
-  private async evaluateAi(inStartupGrace: boolean): Promise<CommunicationHealthComponentSnapshot> {
+  private async evaluateAi(_inStartupGrace: boolean): Promise<CommunicationHealthComponentSnapshot> {
     return {
-      state: inStartupGrace ? COMMUNICATION_HEALTH_STATE.UNKNOWN : COMMUNICATION_HEALTH_STATE.HEALTHY,
-      diagnostics: inStartupGrace ? [COMMUNICATION_HEALTH_DIAGNOSTIC.INSUFFICIENT_EVIDENCE] : [],
+      state: COMMUNICATION_HEALTH_STATE.UNKNOWN,
+      diagnostics: [COMMUNICATION_HEALTH_DIAGNOSTIC.NOT_MEASURABLE],
       checkedAt: new Date().toISOString(),
       signals: {
         aiFailureRateMeasurable: false,
@@ -347,6 +398,22 @@ export class CommunicationOperationalHealthService {
           enabled: false,
           dryRun: retention.dryRun,
           policyDaysConfigured: false,
+        },
+      };
+    }
+
+    if (organizationId && !retention.tenantEvidenceAvailable) {
+      return {
+        state: COMMUNICATION_HEALTH_STATE.UNKNOWN,
+        diagnostics: retention.globalEvidenceOnly
+          ? [COMMUNICATION_HEALTH_DIAGNOSTIC.RETENTION_TENANT_EVIDENCE_GLOBAL_ONLY]
+          : [COMMUNICATION_HEALTH_DIAGNOSTIC.NOT_MEASURABLE_FOR_TENANT],
+        checkedAt: now.toISOString(),
+        signals: {
+          enabled: retention.enabled,
+          dryRun: retention.dryRun,
+          tenantEvidenceAvailable: false,
+          globalEvidenceOnly: retention.globalEvidenceOnly,
         },
       };
     }
@@ -390,6 +457,7 @@ export class CommunicationOperationalHealthService {
         lastRunErrorCode: retention.lastRunErrorCode,
         lastSuccessAt: retention.lastSuccessAt,
         lockContentionSkipsRecent: retention.lockContentionSkipsRecent,
+        tenantEvidenceAvailable: retention.tenantEvidenceAvailable,
         lastRunDurationMs: metricsSnapshot?.lastRunDurationMs ?? null,
         lastRunAffected: metricsSnapshot?.lastRunAffected ?? null,
         lastRunFailed: metricsSnapshot?.lastRunFailed ?? null,
@@ -402,29 +470,57 @@ export class CommunicationOperationalHealthService {
   ): Promise<CommunicationHealthComponentSnapshot> {
     return {
       state: inStartupGrace ? COMMUNICATION_HEALTH_STATE.UNKNOWN : COMMUNICATION_HEALTH_STATE.NOT_APPLICABLE,
-      diagnostics: inStartupGrace ? [COMMUNICATION_HEALTH_DIAGNOSTIC.INSUFFICIENT_EVIDENCE] : [],
+      diagnostics: inStartupGrace
+        ? [COMMUNICATION_HEALTH_DIAGNOSTIC.INSUFFICIENT_EVIDENCE]
+        : [COMMUNICATION_HEALTH_DIAGNOSTIC.DEFERRED_TO_EXISTING_C10_AUTHORITY],
       checkedAt: new Date().toISOString(),
       signals: {
         authority: 'platform_integrations_and_org_channel_config',
         emailConversationBoundary: 'transactional_outside_conversation_v1',
+        evaluationAuthority: 'DEFERRED_TO_EXISTING_C10_AUTHORITY',
       },
     };
   }
 
+  /**
+   * Overall aggregation:
+   * - measured core UNHEALTHY/DEGRADED wins
+   * - optional unmeasured media/ai UNKNOWN does not block overall health
+   * - never promote component UNKNOWN to overall HEALTHY when core is UNKNOWN
+   */
   private aggregateOverall(
     components: Record<CommunicationHealthComponent, CommunicationHealthComponentSnapshot>,
   ): CommunicationHealthState {
-    const states = Object.values(components).map((component) => component.state);
-    if (states.some((state) => state === COMMUNICATION_HEALTH_STATE.UNHEALTHY)) {
+    const optionalUnmeasured = new Set<string>(COMMUNICATION_HEALTH_OPTIONAL_UNMEASURED_COMPONENTS);
+    const statesForAggregation = Object.entries(components)
+      .filter(([componentKey, component]) => {
+        if (!optionalUnmeasured.has(componentKey)) return true;
+        if (component.state !== COMMUNICATION_HEALTH_STATE.UNKNOWN) return true;
+        const isUnmeasured =
+          (componentKey === COMMUNICATION_HEALTH_COMPONENT.MEDIA &&
+            component.signals.mediaMetricsInstrumented === false) ||
+          (componentKey === COMMUNICATION_HEALTH_COMPONENT.AI &&
+            component.signals.aiFailureRateMeasurable === false);
+        return !isUnmeasured;
+      })
+      .map(([, component]) => component.state);
+
+    if (statesForAggregation.some((state) => state === COMMUNICATION_HEALTH_STATE.UNHEALTHY)) {
       return COMMUNICATION_HEALTH_STATE.UNHEALTHY;
     }
-    if (states.some((state) => state === COMMUNICATION_HEALTH_STATE.DEGRADED)) {
+    if (statesForAggregation.some((state) => state === COMMUNICATION_HEALTH_STATE.DEGRADED)) {
       return COMMUNICATION_HEALTH_STATE.DEGRADED;
     }
-    if (states.every((state) => state === COMMUNICATION_HEALTH_STATE.DISABLED || state === COMMUNICATION_HEALTH_STATE.NOT_APPLICABLE)) {
+    if (
+      statesForAggregation.every(
+        (state) =>
+          state === COMMUNICATION_HEALTH_STATE.DISABLED ||
+          state === COMMUNICATION_HEALTH_STATE.NOT_APPLICABLE,
+      )
+    ) {
       return COMMUNICATION_HEALTH_STATE.HEALTHY;
     }
-    if (states.some((state) => state === COMMUNICATION_HEALTH_STATE.UNKNOWN)) {
+    if (statesForAggregation.some((state) => state === COMMUNICATION_HEALTH_STATE.UNKNOWN)) {
       return COMMUNICATION_HEALTH_STATE.UNKNOWN;
     }
     return COMMUNICATION_HEALTH_STATE.HEALTHY;

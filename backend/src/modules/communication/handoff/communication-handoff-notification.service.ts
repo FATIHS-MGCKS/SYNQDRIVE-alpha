@@ -68,7 +68,7 @@ export class CommunicationHandoffNotificationService {
         });
       }
       this.logger.warn(
-        `Communication handoff notification ingest failed for ${input.conversationId}: ${(error as Error).message}`,
+        `communication_handoff_notification_ingest_failed conversationId=${input.conversationId}`,
       );
     }
   }

@@ -43,6 +43,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'CommunicationOperationalHealthService with evidence-based component health states.',
       'Prometheus synqdrive_communication_* metrics via TripMetricsService.',
       'Master Admin GET /admin/communication/operational-health + Platform Ops Diagnostics tab.',
+      'C13.2 truthfulness hardening: NOT_MEASURABLE media/ai, per-channel UNKNOWN, voice tenant scope, bounded metric labels.',
     ],
     reason: 'Establish Communication-domain operational observability without parallel monitoring infrastructure.',
     previousBehavior: 'C13.1 retention hooks only; no Communication-specific health evaluation or Prometheus families.',

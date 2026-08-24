@@ -287,6 +287,34 @@ export function paymentStatusTone(status: string | null | undefined): StatusTone
   return toneForStatus(status);
 }
 
+export function communicationHealthStateTone(state: string | null | undefined): StatusTone {
+  switch (String(state ?? '').toUpperCase()) {
+    case 'HEALTHY':
+      return 'success';
+    case 'DEGRADED':
+      return 'warning';
+    case 'UNHEALTHY':
+      return 'critical';
+    case 'UNKNOWN':
+    case 'DISABLED':
+    case 'NOT_APPLICABLE':
+    case 'NOT_CONFIGURED':
+      return 'neutral';
+    default:
+      return 'neutral';
+  }
+}
+
+export const COMMUNICATION_HEALTH_STATE_LABEL_DE: Record<string, string> = {
+  HEALTHY: 'Gesund',
+  DEGRADED: 'Eingeschränkt',
+  UNHEALTHY: 'Kritisch',
+  UNKNOWN: 'Unbekannt',
+  DISABLED: 'Deaktiviert',
+  NOT_APPLICABLE: 'Nicht anwendbar',
+  NOT_CONFIGURED: 'Nicht konfiguriert',
+};
+
 export function planTone(plan: string | null | undefined): StatusTone {
   const s = String(plan ?? '').toLowerCase().trim();
   if (s === 'enterprise' || s === 'custom') return 'info';

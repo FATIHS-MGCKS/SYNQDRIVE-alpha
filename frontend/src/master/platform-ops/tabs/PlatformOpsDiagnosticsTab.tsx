@@ -6,6 +6,8 @@ import {
   ErrorState,
   SectionHeader,
   StatusChip,
+  communicationHealthStateTone,
+  COMMUNICATION_HEALTH_STATE_LABEL_DE,
   type DataTableColumn,
 } from '../../../components/patterns';
 import { MasterLoadingState, MasterPageSection } from '../../shell';
@@ -198,19 +200,16 @@ function CommunicationHealthPanel() {
     checkedAt: component.checkedAt,
   }));
 
-  const healthTone = (state: string): 'success' | 'warning' | 'critical' | 'neutral' => {
-    if (state === 'HEALTHY' || state === 'DISABLED' || state === 'NOT_APPLICABLE') return 'success';
-    if (state === 'DEGRADED') return 'warning';
-    if (state === 'UNHEALTHY') return 'critical';
-    return 'neutral';
-  };
-
   const columns: DataTableColumn<(typeof rows)[number]>[] = [
     { key: 'component', header: 'Komponente', cell: (row) => row.component },
     {
       key: 'state',
       header: 'Status',
-      cell: (row) => <StatusChip tone={healthTone(row.state)}>{row.state}</StatusChip>,
+      cell: (row) => (
+        <StatusChip tone={communicationHealthStateTone(row.state)}>
+          {COMMUNICATION_HEALTH_STATE_LABEL_DE[row.state] ?? row.state}
+        </StatusChip>
+      ),
     },
     { key: 'diagnostics', header: 'Diagnose', cell: (row) => row.diagnostics },
     {
@@ -224,7 +223,7 @@ function CommunicationHealthPanel() {
     <MasterPageSection>
       <SectionHeader
         title="Communication Center — Betriebsgesundheit"
-        description={`Gesamt: ${data.overall} · Zuletzt geprüft ${formatRelativeDe(data.checkedAt)}`}
+        description={`Gesamt: ${COMMUNICATION_HEALTH_STATE_LABEL_DE[data.overall] ?? data.overall} · Zuletzt geprüft ${formatRelativeDe(data.checkedAt)}`}
       />
       <DataTable columns={columns} rows={rows} getRowKey={(row) => row.id} card={false} />
     </MasterPageSection>

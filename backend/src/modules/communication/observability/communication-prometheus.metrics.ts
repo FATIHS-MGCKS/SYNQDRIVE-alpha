@@ -1,4 +1,8 @@
+import { CommunicationEventType } from '@prisma/client';
 import type { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import { CommunicationNormalizationErrorCode } from '../normalization/communication-normalization.errors';
+import type { CommunicationHealthChannel } from './communication-operational-health.constants';
+import { COMMUNICATION_UNKNOWN_SEND_CHANNELS } from './communication-operational-health.constants';
 
 export type CommunicationMetricChannel = 'whatsapp' | 'voice' | 'sms' | 'email' | 'unknown';
 export type CommunicationMetricOperation =
@@ -12,10 +16,54 @@ export type CommunicationMetricOperation =
   | 'retention';
 export type CommunicationMetricResult = 'success' | 'failed' | 'unknown' | 'skipped';
 
+export type CommunicationAiOperation =
+  | 'intent_detect'
+  | 'action_execute'
+  | 'summary_generate'
+  | 'handoff_classify'
+  | 'unknown';
+
+const COMMUNICATION_EVENT_TYPES = new Set<string>(Object.values(CommunicationEventType));
+const PROJECTION_ERROR_CODES = new Set<string>([
+  ...Object.values(CommunicationNormalizationErrorCode),
+  'PROJECTION_FAILURE',
+]);
+const AI_OPERATIONS = new Set<CommunicationAiOperation>([
+  'intent_detect',
+  'action_execute',
+  'summary_generate',
+  'handoff_classify',
+  'unknown',
+]);
+
+const METRIC_CHANNELS: CommunicationMetricChannel[] = ['whatsapp', 'voice', 'sms', 'email'];
+
 function normalizeChannel(channel: string): CommunicationMetricChannel {
   const value = channel.toLowerCase();
   if (value === 'whatsapp' || value === 'voice' || value === 'sms' || value === 'email') {
     return value;
+  }
+  return 'unknown';
+}
+
+export function normalizeCommunicationEventType(eventType: string): string {
+  if (COMMUNICATION_EVENT_TYPES.has(eventType)) {
+    return eventType;
+  }
+  return 'UNKNOWN_EVENT_TYPE';
+}
+
+export function normalizeProjectionErrorCode(errorCode: string | undefined): string {
+  if (errorCode && PROJECTION_ERROR_CODES.has(errorCode)) {
+    return errorCode;
+  }
+  return 'PROJECTION_FAILURE';
+}
+
+export function normalizeCommunicationAiOperation(operation: string): CommunicationAiOperation {
+  const normalized = operation.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  if (AI_OPERATIONS.has(normalized as CommunicationAiOperation)) {
+    return normalized as CommunicationAiOperation;
   }
   return 'unknown';
 }
@@ -30,21 +78,23 @@ export function recordCommunicationProjection(
     lagSeconds?: number;
   },
 ): void {
+  const eventType = normalizeCommunicationEventType(input.eventType);
+  const channel = normalizeChannel(input.channel);
   metrics.communicationProjectionTotal.inc({
-    channel: normalizeChannel(input.channel),
-    event_type: input.eventType,
+    channel,
+    event_type: eventType,
     result: input.result,
   });
   if (input.result === 'failed') {
     metrics.communicationProjectionFailuresTotal.inc({
-      channel: normalizeChannel(input.channel),
-      event_type: input.eventType,
-      error_code: input.errorCode ?? 'PROJECTION_FAILURE',
+      channel,
+      event_type: eventType,
+      error_code: normalizeProjectionErrorCode(input.errorCode),
     });
   }
   if (input.lagSeconds != null && Number.isFinite(input.lagSeconds)) {
     metrics.communicationProjectionLagSeconds.observe(
-      { channel: normalizeChannel(input.channel), event_type: input.eventType },
+      { channel, event_type: eventType },
       Math.max(0, input.lagSeconds),
     );
   }
@@ -111,13 +161,14 @@ export function recordCommunicationAiOperation(
     durationSeconds?: number;
   },
 ): void {
+  const operation = normalizeCommunicationAiOperation(input.operation);
   metrics.communicationAiOperationTotal.inc({
-    operation: input.operation,
+    operation,
     result: input.result,
   });
   if (input.durationSeconds != null && Number.isFinite(input.durationSeconds)) {
     metrics.communicationAiOperationDurationSeconds.observe(
-      { operation: input.operation },
+      { operation },
       Math.max(0, input.durationSeconds),
     );
   }
@@ -164,6 +215,27 @@ export function setCommunicationSendUnknownOldestSeconds(
     { channel: normalizeChannel(channel) },
     seconds == null ? 0 : Math.max(0, seconds),
   );
+}
+
+export function refreshCommunicationSendUnknownGauges(
+  metrics: TripMetricsService,
+  byChannel: Record<CommunicationHealthChannel, { count: number; oldestAgeSeconds: number | null }>,
+): void {
+  for (const channel of COMMUNICATION_UNKNOWN_SEND_CHANNELS) {
+    const metricChannel = normalizeChannel(channel);
+    const signals = byChannel[channel];
+    setCommunicationSendUnknownCurrent(metrics, metricChannel, signals?.count ?? 0);
+    setCommunicationSendUnknownOldestSeconds(metrics, metricChannel, signals?.oldestAgeSeconds ?? null);
+  }
+  for (const metricChannel of METRIC_CHANNELS) {
+    const hasChannel = COMMUNICATION_UNKNOWN_SEND_CHANNELS.some(
+      (channel) => normalizeChannel(channel) === metricChannel,
+    );
+    if (!hasChannel) {
+      setCommunicationSendUnknownCurrent(metrics, metricChannel, 0);
+      setCommunicationSendUnknownOldestSeconds(metrics, metricChannel, null);
+    }
+  }
 }
 
 export function setCommunicationRetentionLastSuccessTimestamp(
