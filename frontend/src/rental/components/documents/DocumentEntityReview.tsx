@@ -65,7 +65,7 @@ function CandidateCard({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between min-w-0">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2 min-w-0">
-            <span className={`text-xs font-semibold break-words ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <span className={`text-xs font-semibold break-words text-foreground`}>
               {candidate.displayLabel}
             </span>
             <span
@@ -76,19 +76,19 @@ function CandidateCard({
               {t('docUpload.entityReview.suggestionBadge')}
             </span>
           </div>
-          <p className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+          <p className={`text-[10px] text-muted-foreground`}>
             #{candidate.rank}
             {confidence ? ` · ${confidence}` : ''}
             {candidate.confidenceLevel ? ` · ${t(`docUpload.entityReview.confidence.${candidate.confidenceLevel}`)}` : ''}
           </p>
           {candidate.matchReasons.length > 0 ? (
-            <p className={`text-[11px] break-words ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+            <p className={`text-[11px] break-words ${isDarkMode ? 'text-muted-foreground' : 'text-foreground'}`}>
               {t('docUpload.entityReview.matchReasons')}:{' '}
               {candidate.matchReasons.map((reason) => reasonLabel(t, reason)).join(', ')}
             </p>
           ) : null}
           {candidate.metadata.driverRole ? (
-            <p className={`text-[11px] ${isDarkMode ? 'text-gray-400' : 'text-muted-foreground'}`}>
+            <p className={`text-[11px] text-muted-foreground`}>
               {t('docUpload.entityReview.driverRole')}: {t(`docUpload.entityReview.driverRole.${candidate.metadata.driverRole}` as TranslationKey)}
             </p>
           ) : null}
@@ -225,7 +225,7 @@ function EntityReviewSectionPanel({
       aria-label={t(section.titleKey)}
     >
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between min-w-0">
-        <h4 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t(section.titleKey)}</h4>
+        <h4 className={`text-sm font-semibold text-foreground`}>{t(section.titleKey)}</h4>
         {section.confirmedLink ? (
           <span
             className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold ${
@@ -273,7 +273,7 @@ function EntityReviewSectionPanel({
               onClick={onRemove}
               disabled={pending}
               className={`mt-2 min-h-10 text-[11px] font-semibold underline-offset-2 hover:underline ${
-                isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                isDarkMode ? 'text-muted-foreground' : 'text-foreground'
               }`}
             >
               {t('docUpload.entityReview.notAssignable')}
@@ -281,12 +281,12 @@ function EntityReviewSectionPanel({
           ) : null}
         </div>
       ) : section.candidates.length === 0 ? (
-        <p className={`text-xs ${isDarkMode ? 'text-muted-foreground' : 'text-gray-600'}`}>{t(section.emptyStateKey)}</p>
+        <p className={`text-xs text-muted-foreground`}>{t(section.emptyStateKey)}</p>
       ) : (
         <div className="space-y-2">
           {section.bestCandidate ? (
             <div className="space-y-1.5">
-              <p className={`text-[10px] font-semibold uppercase tracking-wide ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+              <p className={`text-[10px] font-semibold uppercase tracking-wide text-muted-foreground`}>
                 {t('docUpload.entityReview.bestCandidate')}
               </p>
               <CandidateCard
@@ -305,7 +305,7 @@ function EntityReviewSectionPanel({
 
           {section.alternativeCandidates.length > 0 ? (
             <div className="space-y-1.5">
-              <p className={`text-[10px] font-semibold uppercase tracking-wide ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+              <p className={`text-[10px] font-semibold uppercase tracking-wide text-muted-foreground`}>
                 {t('docUpload.entityReview.alternatives')}
               </p>
               <div className="space-y-2">
@@ -335,7 +335,7 @@ function EntityReviewSectionPanel({
             type="button"
             onClick={() => setSearchOpen((open) => !open)}
             className={`inline-flex items-center gap-1.5 min-h-10 text-[11px] font-semibold ${
-              isDarkMode ? 'text-gray-300' : 'text-gray-700'
+              isDarkMode ? 'text-muted-foreground' : 'text-foreground'
             }`}
           >
             <Icon name="search" className="w-3.5 h-3.5" />
@@ -387,9 +387,7 @@ function EntityReviewSectionPanel({
               type="button"
               onClick={onRemove}
               disabled={pending}
-              className={`min-h-10 text-[11px] font-semibold underline-offset-2 hover:underline ${
-                isDarkMode ? 'text-gray-400' : 'text-muted-foreground'
-              }`}
+              className="min-h-10 text-[11px] font-semibold underline-offset-2 hover:underline text-muted-foreground"
             >
               {t('docUpload.entityReview.notAssignable')}
             </button>
@@ -469,10 +467,10 @@ export function DocumentEntityReview({
     <div className="space-y-3 min-w-0">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between min-w-0">
         <div>
-          <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+          <h3 className={`text-sm font-semibold text-foreground`}>
             {t('docUpload.entityReview.title')}
           </h3>
-          <p className={`text-xs break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-600'}`}>
+          <p className={`text-xs break-words text-muted-foreground`}>
             {t('docUpload.entityReview.subtitle')}
           </p>
         </div>

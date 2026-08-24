@@ -44,13 +44,13 @@ export function renderSafeMarkdown(
     if (tableHeaders.length > 0) {
       elements.push(
         <div key={`table-${elements.length}`} className="my-3 overflow-x-auto">
-          <table className={`w-full text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          <table className="w-full text-xs text-foreground">
             <thead>
               <tr className={isDarkMode ? 'border-b border-neutral-700' : 'border-b border-gray-200'}>
                 {tableHeaders.map((h, i) => (
                   <th
                     key={i}
-                    className={`px-3 py-2 text-left text-[11px] font-semibold ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}
+                    className="px-3 py-2 text-left text-[11px] font-semibold text-muted-foreground"
                   >
                     {h.trim()}
                   </th>
@@ -107,9 +107,7 @@ export function renderSafeMarkdown(
       const number = line.match(/^\d+/)?.[0] ?? '';
       elements.push(
         <div key={`li-${i}`} className={`flex gap-2 ml-1 mb-1 min-w-0 ${textWrapClass}`}>
-          <span
-            className={`text-xs shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}
-          >
+          <span className="text-xs shrink-0 text-muted-foreground">
             {number}.
           </span>
           <span className="text-[10px] min-w-0 break-words [overflow-wrap:anywhere]">

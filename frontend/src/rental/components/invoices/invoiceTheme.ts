@@ -9,7 +9,7 @@ export interface InvoiceThemeClasses {
 export function getInvoiceThemeClasses(isDarkMode: boolean): InvoiceThemeClasses {
   return {
     isDarkMode,
-    tp: isDarkMode ? 'text-white' : 'text-foreground',
+    tp: 'text-foreground',
     ts: 'text-muted-foreground',
     card: `rounded-xl shadow-sm border ${isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'}`,
     inputCls: `w-full px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : 'bg-background border-border text-foreground placeholder:text-muted-foreground'} outline-none`,

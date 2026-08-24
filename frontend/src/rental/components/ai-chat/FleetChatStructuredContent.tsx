@@ -24,7 +24,7 @@ export function FleetChatStructuredContent({
   technicalDetails,
 }: FleetChatStructuredContentProps) {
   const collapseNarrative = shouldCollapseNarrative(structured, content);
-  const muted = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
+  const muted = 'text-muted-foreground';
 
   return (
     <div data-testid="fleet-chat-structured-content" className="min-w-0 break-words [overflow-wrap:anywhere]">
@@ -36,7 +36,7 @@ export function FleetChatStructuredContent({
       />
 
       {!collapseNarrative && (
-        <div className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
+        <div className={isDarkMode ? 'text-muted-foreground' : 'text-foreground'}>
           {renderSafeMarkdown(content, { isDarkMode })}
         </div>
       )}
@@ -46,7 +46,7 @@ export function FleetChatStructuredContent({
           <summary className="cursor-pointer hover:underline">
             {fleetChatUiLabel('aiChat.structured.fullAnswer', locale)}
           </summary>
-          <div className={`mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          <div className={`mt-1 ${isDarkMode ? 'text-muted-foreground' : 'text-foreground'}`}>
             {renderSafeMarkdown(content, { isDarkMode })}
           </div>
         </details>

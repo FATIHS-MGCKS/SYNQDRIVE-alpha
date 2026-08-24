@@ -15,7 +15,7 @@ export function FleetChatTechnicalErrorDetails({
     return null;
   }
 
-  const muted = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
+  const muted = 'text-muted-foreground';
 
   return (
     <details className={`mt-2 text-[10px] ${muted}`} data-testid="fleet-chat-technical-details">

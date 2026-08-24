@@ -167,10 +167,10 @@ export function VoiceOnboardingWizard({
 
   const inputCls = `w-full px-3 py-2 rounded-lg text-xs outline-none transition-colors ${
     isDarkMode
-      ? 'surface-premium border border-neutral-700 text-gray-200 focus:border-purple-500/50'
-      : 'bg-gray-50 border border-gray-200 text-gray-800 focus:border-purple-400'
+      ? 'surface-premium border border-neutral-700 text-foreground focus:border-purple-500/50'
+      : 'bg-gray-50 border border-gray-200 text-foreground focus:border-purple-400'
   }`;
-  const labelCls = `block text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`;
+  const labelCls = `block text-[11px] font-semibold mb-1 text-muted-foreground`;
 
   const goNext = async () => {
     if (hasDraft) {

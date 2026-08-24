@@ -215,7 +215,7 @@ export function TariffGroupDrawer({
 
   const inputCls = cn(
     'w-full rounded-lg border px-3 py-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
-    isDarkMode ? 'border-border bg-muted text-foreground' : 'border-gray-200 bg-white text-gray-900',
+    isDarkMode ? 'border-border bg-muted text-foreground' : 'border-gray-200 bg-white text-foreground',
   );
 
   const requestClose = () => {

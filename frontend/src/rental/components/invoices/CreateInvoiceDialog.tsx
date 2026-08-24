@@ -384,7 +384,7 @@ export function CreateInvoiceDialog({
               ) : (
                 <button
                   onClick={() => fileRef.current?.click()}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed text-xs font-medium transition-colors ${isDarkMode ? 'border-border text-muted-foreground' : 'border-gray-300 text-gray-500'}`}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed text-xs font-medium transition-colors ${isDarkMode ? 'border-border text-muted-foreground' : 'border-gray-300 text-muted-foreground'}`}
                 >
                   <Icon name="image" className="w-4 h-4" /> Datei anhängen
                 </button>

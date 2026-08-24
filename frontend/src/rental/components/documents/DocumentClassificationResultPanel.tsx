@@ -50,7 +50,7 @@ function confidenceTone(
     case 'low':
       return isDarkMode ? 'bg-red-500/10 text-red-300 border-red-500/30' : 'bg-red-50 text-red-800 border-red-200';
     default:
-      return isDarkMode ? 'surface-premium text-gray-300 border-neutral-700' : 'bg-gray-50 text-gray-700 border-gray-200';
+      return isDarkMode ? 'surface-premium text-muted-foreground border-neutral-700' : 'bg-gray-50 text-foreground border-gray-200';
   }
 }
 
@@ -111,11 +111,11 @@ export function DocumentClassificationResultPanel({
               className={`w-4 h-4 shrink-0 mt-0.5 ${result.isUncertain ? 'text-amber-500' : 'text-brand'}`}
             />
             <div className="min-w-0">
-              <h4 className={`text-sm font-semibold break-words ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              <h4 className={`text-sm font-semibold break-words text-foreground`}>
                 {headline}
               </h4>
               {(categoryLabel || result.subtype) && (
-                <p className={`text-xs break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-600'}`}>
+                <p className={`text-xs break-words text-muted-foreground`}>
                   {categoryLabel ? `${t('docUpload.category')}: ${categoryLabel}` : null}
                   {categoryLabel && result.subtype ? ' · ' : null}
                   {result.subtype
@@ -143,14 +143,14 @@ export function DocumentClassificationResultPanel({
       </div>
 
       {reasonList ? (
-        <p className={`text-xs break-words ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <p className={`text-xs break-words ${isDarkMode ? 'text-muted-foreground' : 'text-foreground'}`}>
           {t('docUpload.classificationRecognizedBecause', { reasons: reasonList })}
         </p>
       ) : null}
 
       {result.isUncertain && result.alternatives.length > 0 ? (
         <div className="min-w-0 space-y-1.5">
-          <p className={`text-[11px] font-semibold uppercase tracking-wide ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+          <p className={`text-[11px] font-semibold uppercase tracking-wide text-muted-foreground`}>
             {t('docUpload.classificationAlternatives')}
           </p>
           <ul className="space-y-1">
@@ -165,7 +165,7 @@ export function DocumentClassificationResultPanel({
                 <li
                   key={`${alt.category}-${alt.subtype}-${alt.legacyDocumentType}`}
                   className={`text-xs rounded-md px-2 py-1.5 break-words ${
-                    isDarkMode ? 'surface-premium text-gray-300' : 'bg-white text-gray-700 border border-gray-200'
+                    isDarkMode ? 'surface-premium text-muted-foreground' : 'bg-white text-foreground border border-gray-200'
                   }`}
                 >
                   <span className="font-medium">{altLabel}</span>
@@ -191,7 +191,7 @@ export function DocumentClassificationResultPanel({
               onClick={() => setShowTypeChange(true)}
               disabled={disabled}
               className={`inline-flex items-center gap-1.5 min-h-9 px-3 py-1.5 rounded-lg text-xs font-semibold ${
-                isDarkMode ? 'surface-premium text-gray-200 hover:bg-neutral-800' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                isDarkMode ? 'surface-premium text-foreground hover:bg-neutral-800' : 'bg-white border border-gray-200 text-foreground hover:bg-gray-50'
               } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Icon name="pencil" className="w-3.5 h-3.5" />
@@ -201,7 +201,7 @@ export function DocumentClassificationResultPanel({
 
           {(showTypeChange || mode === 'awaiting_type') && manualDocTypes.length > 0 ? (
             <div className="space-y-2">
-              <p className={`text-xs break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-600'}`}>
+              <p className={`text-xs break-words text-muted-foreground`}>
                 {t('docUpload.classificationReextractHint')}
               </p>
               <div className="flex flex-col sm:flex-row gap-2 min-w-0">
@@ -210,7 +210,7 @@ export function DocumentClassificationResultPanel({
                   onChange={(e) => onPendingTypeChange?.(e.target.value)}
                   disabled={disabled}
                   className={`flex-1 min-w-0 px-3 py-2 rounded-lg text-xs border ${
-                    isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'
+                    isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200 text-foreground'
                   }`}
                 >
                   {manualDocTypes.map((opt) => (
@@ -249,14 +249,12 @@ export function DocumentClassificationResultPanel({
           <button
             type="button"
             onClick={() => setShowTechnicalDetails((open) => !open)}
-            className={`text-[10px] font-semibold underline-offset-2 hover:underline ${
-              isDarkMode ? 'text-gray-500' : 'text-muted-foreground'
-            }`}
+            className="text-[10px] font-semibold underline-offset-2 hover:underline text-muted-foreground"
           >
             {showTechnicalDetails ? t('docUpload.classificationHideDetails') : t('docUpload.classificationShowDetails')}
           </button>
           {showTechnicalDetails ? (
-            <dl className={`mt-1 space-y-0.5 text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+            <dl className={`mt-1 space-y-0.5 text-[10px] text-muted-foreground`}>
               {result.contractVersion ? (
                 <div className="flex gap-2">
                   <dt className="shrink-0">{t('docUpload.classificationContractVersion')}:</dt>

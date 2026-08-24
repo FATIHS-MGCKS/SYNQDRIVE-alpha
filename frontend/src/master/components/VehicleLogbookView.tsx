@@ -41,11 +41,11 @@ export default function VehicleLogbookView({ isDarkMode: d }: Props) {
 
   const bg = d ? 'bg-neutral-900' : 'bg-white';
   const card = d ? 'surface-premium border-neutral-700/50' : 'bg-gray-50 border-gray-200';
-  const text1 = d ? 'text-white' : 'text-gray-900';
-  const text2 = d ? 'text-muted-foreground' : 'text-gray-500';
-  const text3 = d ? 'text-gray-500' : 'text-muted-foreground';
+  const text1 = d ? 'text-white' : 'text-foreground';
+  const text2 = d ? 'text-muted-foreground' : 'text-muted-foreground';
+  const text3 = d ? 'text-muted-foreground' : 'text-muted-foreground';
   const border = d ? 'border-neutral-700/50' : 'border-gray-200';
-  const inputBg = d ? 'surface-premium border-neutral-700 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
+  const inputBg = d ? 'surface-premium border-neutral-700 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-foreground placeholder-gray-400';
 
   const fetchVehicles = useCallback(async () => {
     setLoading(true);
@@ -218,9 +218,9 @@ interface TabProps { d: boolean; detail: any; card: string; text1: string; text2
 function StatBox({ d, label, value, sub, color }: { d: boolean; label: string; value: string; sub?: string; color?: string }) {
   return (
     <div className={`rounded-lg px-3 py-2 ${d ? 'surface-premium' : 'bg-gray-50'}`}>
-      <p className={`text-[9px] uppercase tracking-wider ${d ? 'text-gray-500' : 'text-muted-foreground'}`}>{label}</p>
-      <p className={`text-sm font-bold ${color || (d ? 'text-white' : 'text-gray-900')}`}>{value}</p>
-      {sub && <p className={`text-[9px] ${d ? 'text-gray-600' : 'text-muted-foreground'}`}>{sub}</p>}
+      <p className={`text-[9px] uppercase tracking-wider ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{label}</p>
+      <p className={`text-sm font-bold ${color || (d ? 'text-white' : 'text-foreground')}`}>{value}</p>
+      {sub && <p className={`text-[9px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{sub}</p>}
     </div>
   );
 }
@@ -236,9 +236,9 @@ function StatusBadge({ status, d }: { status: string; d: boolean }) {
     SUCCESS: d ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700',
     FAILURE: d ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700',
     TIMEOUT: d ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700',
-    SKIPPED: d ? 'bg-neutral-500/15 text-neutral-400' : 'bg-gray-100 text-gray-600',
+    SKIPPED: d ? 'bg-neutral-500/15 text-muted-foreground' : 'bg-gray-100 text-muted-foreground',
   };
-  return <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${colors[status] || (d ? 'bg-neutral-700 text-gray-400' : 'bg-muted text-muted-foreground')}`}>{status}</span>;
+  return <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${colors[status] || (d ? 'bg-neutral-700 text-muted-foreground' : 'bg-muted text-muted-foreground')}`}>{status}</span>;
 }
 
 function Explanation({ text, d }: { text: string; d: boolean }) {
@@ -251,7 +251,7 @@ function OverviewTab({ d, detail, card, text1, text2, text3, ago, fmtTime }: Tab
   const ov = detail.overview;
   const tripState = ov?.tripDetectionState ?? 'UNKNOWN';
   const tripColors: Record<string, string> = {
-    RESTING: d ? 'text-muted-foreground' : 'text-gray-500',
+    RESTING: d ? 'text-muted-foreground' : 'text-muted-foreground',
     POSSIBLE_START: d ? 'text-amber-400' : 'text-amber-600',
     ACTIVE_TRIP: d ? 'text-emerald-400' : 'text-emerald-600',
     IDLE_WITHIN_TRIP: d ? 'text-amber-400' : 'text-amber-600',
@@ -565,7 +565,7 @@ function UiMappingTab({ d, detail, card, text1, text2, text3 }: TabProps) {
               <span className={`font-mono text-[10px] flex-1 ${m.status === 'healthy' ? text2 : 'text-red-400/70'}`}>{m.value != null ? String(m.value) : 'null'}</span>
               <span className={`text-[9px] ${text3} hidden sm:block`}>{m.page}</span>
             </div>
-            <div className={`mt-1 text-[10px] ${d ? 'text-gray-600' : 'text-muted-foreground'}`}>
+            <div className={`mt-1 text-[10px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
               {m.backendField} ← {m.signalOrigin}
             </div>
             {m.status !== 'healthy' && (

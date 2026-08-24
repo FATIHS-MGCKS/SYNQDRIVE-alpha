@@ -83,11 +83,11 @@ const SEVERITY_CONFIG: Record<InsightSeverity, SeverityStyle> = {
       dark: 'bg-muted/40 border-border/30',
     },
     badge: {
-      light: 'bg-gray-500/15 text-gray-600',
+      light: 'bg-gray-500/15 text-muted-foreground',
       dark: 'bg-muted/50 text-muted-foreground',
     },
-    icon_color: { light: 'text-gray-600', dark: 'text-muted-foreground' },
-    text: { light: 'text-gray-700', dark: 'text-muted-foreground' },
+    icon_color: { light: 'text-muted-foreground', dark: 'text-muted-foreground' },
+    text: { light: 'text-foreground', dark: 'text-muted-foreground' },
   },
 };
 
@@ -256,7 +256,7 @@ export function BusinessInsightsBox({ isDarkMode, onOpenVehicle, onOpenView, not
             <Icon name="sparkles" className={`w-4 h-4 ${dm ? 'text-brand' : 'text-brand'}`} />
           </div>
           <div>
-            <h3 className={`text-[12px] font-semibold tracking-[-0.003em] leading-tight ${dm ? 'text-foreground' : 'text-gray-900'}`}>
+            <h3 className={`text-[12px] font-semibold tracking-[-0.003em] leading-tight ${dm ? 'text-foreground' : 'text-foreground'}`}>
               {locale === 'de' ? 'Insights aus deinem Business' : 'Insights from your Business'}
             </h3>
             {data && !loading && (businessInsights.length > 0 || vehicleHealthAlerts.length > 0) && (
@@ -444,11 +444,11 @@ function VehicleAlertsList({ alerts, isDarkMode, locale, onOpenVehicle }: Vehicl
           >
             <div className="flex items-center justify-between gap-2 mb-1">
               <div className="flex items-center gap-2 min-w-0">
-                <span className={`text-[10.5px] font-semibold truncate ${dm ? 'text-foreground' : 'text-gray-900'}`}>
+                <span className={`text-[10.5px] font-semibold truncate ${dm ? 'text-foreground' : 'text-foreground'}`}>
                   {alert.license || alert.model || alert.vehicleId.slice(0, 8)}
                 </span>
                 {alert.model && alert.license && (
-                  <span className={`text-[10.5px] truncate ${dm ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                  <span className={`text-[10.5px] truncate ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
                     {alert.model}
                   </span>
                 )}
@@ -466,11 +466,11 @@ function VehicleAlertsList({ alerts, isDarkMode, locale, onOpenVehicle }: Vehicl
                 ))}
               </div>
             </div>
-            <p className={`text-[10.5px] leading-relaxed ${dm ? 'text-foreground/90' : 'text-gray-800'}`}>
+            <p className={`text-[10.5px] leading-relaxed ${dm ? 'text-foreground/90' : 'text-foreground'}`}>
               {alert.primaryReason}
             </p>
             {alert.station && (
-              <div className={`mt-1 flex items-center gap-1 text-[10px] ${dm ? 'text-muted-foreground' : 'text-gray-500'}`}>
+              <div className={`mt-1 flex items-center gap-1 text-[10px] ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
                 <Icon name="map-pin" className="w-3 h-3" />
                 <span className="truncate">{alert.station}</span>
               </div>
@@ -501,7 +501,7 @@ function NotificationsList({ notifications, isDarkMode, emptyLabel }: Notificati
         }`}
       >
         <Icon name="bell" className={`w-4 h-4 ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
-        <p className={`text-[11px] ${dm ? 'text-muted-foreground' : 'text-gray-500'}`}>{emptyLabel}</p>
+        <p className={`text-[11px] ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{emptyLabel}</p>
       </div>
     );
   }
@@ -528,12 +528,12 @@ function NotificationsList({ notifications, isDarkMode, emptyLabel }: Notificati
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className={`text-[11.5px] font-semibold truncate ${dm ? 'text-foreground' : 'text-gray-900'}`}>
+                <span className={`text-[11.5px] font-semibold truncate ${dm ? 'text-foreground' : 'text-foreground'}`}>
                   {n.title}
                 </span>
                 {n.unread && <div className="w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0" />}
               </div>
-              <p className={`text-[10.5px] mt-0.5 leading-snug ${dm ? 'text-muted-foreground' : 'text-gray-600'}`}>
+              <p className={`text-[10.5px] mt-0.5 leading-snug ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
                 {n.desc}
               </p>
             </div>
@@ -631,7 +631,7 @@ function InsightRow({ insight, isDarkMode, isExpanded, onToggle, fleetById, onOp
               </span>
             </div>
 
-            <p className={`text-[11px] leading-relaxed ${dm ? 'text-muted-foreground' : 'text-gray-600'}`}>
+            <p className={`text-[11px] leading-relaxed ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
               {message}
             </p>
 
@@ -718,7 +718,7 @@ function ExpandedVehicleList({
 
   if (items.length === 0) {
     return (
-      <p className={`text-[11px] ${dm ? 'text-muted-foreground' : 'text-gray-500'}`}>
+      <p className={`text-[11px] ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
         Keine zugeordneten Fahrzeuge.
       </p>
     );
@@ -748,22 +748,22 @@ function ExpandedVehicleList({
           >
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className={`text-[12px] font-semibold truncate ${dm ? 'text-foreground' : 'text-gray-900'}`}>
+                <span className={`text-[12px] font-semibold truncate ${dm ? 'text-foreground' : 'text-foreground'}`}>
                   {label}
                 </span>
                 {sub && (
-                  <span className={`text-[10px] truncate ${dm ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                  <span className={`text-[10px] truncate ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
                     {sub}
                   </span>
                 )}
               </div>
               {detail && (
-                <p className={`text-[10.5px] mt-0.5 leading-snug ${dm ? 'text-muted-foreground' : 'text-gray-600'}`}>
+                <p className={`text-[10.5px] mt-0.5 leading-snug ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
                   {detail}
                 </p>
               )}
               {secondaryReason && (
-                <p className={`text-[10px] mt-0.5 leading-snug ${dm ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                <p className={`text-[10px] mt-0.5 leading-snug ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
                   {secondaryReason}
                 </p>
               )}
@@ -781,7 +781,7 @@ function ExpandedVehicleList({
                     : 'bg-status-info-soft text-status-info hover:bg-status-info-soft/80'
                   : dm
                     ? 'bg-muted text-muted-foreground/60 cursor-not-allowed'
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-100 text-muted-foreground cursor-not-allowed'
               }`}
               title={canOpen ? 'Fahrzeug öffnen' : 'Fahrzeug nicht in Flotte gefunden'}
             >
@@ -817,7 +817,7 @@ function ExpandedGenericBlock({
   return (
     <div className="space-y-2">
       {(insight.reasons?.length ?? 0) > 0 && (
-        <ul className={`text-[11px] leading-relaxed list-disc pl-4 space-y-0.5 ${dm ? 'text-muted-foreground' : 'text-gray-600'}`}>
+        <ul className={`text-[11px] leading-relaxed list-disc pl-4 space-y-0.5 ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
           {insight.reasons!.slice(0, 4).map((r, i) => (
             <li key={i}>{r}</li>
           ))}
@@ -889,12 +889,12 @@ function FinancialEmptyState({ isDarkMode, locale }: { isDarkMode: boolean; loca
 function ErrorState({ isDarkMode, onRetry }: { isDarkMode: boolean; onRetry: () => void }) {
   return (
     <div className={`rounded-lg border p-4 text-center ${isDarkMode ? 'bg-muted/30 border-border/30' : 'bg-gray-50/40 border-gray-200/40'}`}>
-      <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+      <p className={`text-xs text-muted-foreground`}>
         Could not load insights
       </p>
       <button
         onClick={onRetry}
-        className={`mt-2 text-[10px] font-medium px-2.5 py-1 rounded-md transition-colors ${isDarkMode ? 'bg-muted text-foreground/85 hover:bg-muted/80' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+        className={`mt-2 text-[10px] font-medium px-2.5 py-1 rounded-md transition-colors ${isDarkMode ? 'bg-muted text-foreground/85 hover:bg-muted/80' : 'bg-gray-100 text-muted-foreground hover:bg-gray-200'}`}
       >
         Retry
       </button>

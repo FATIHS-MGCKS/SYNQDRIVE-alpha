@@ -41,7 +41,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
   const [busyDomainId, setBusyDomainId] = useState<string | null>(null);
 
   const card = `rounded-xl border p-5 ${isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
-  const subtle = isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground';
+  const subtle = 'text-muted-foreground';
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -316,7 +316,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
                 type="button"
                 onClick={() => void saveSettings()}
                 disabled={saving}
-                className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 text-white px-4 py-2 text-sm font-medium disabled:opacity-50 dark:bg-white dark:text-neutral-900"
+                className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 text-white px-4 py-2 text-sm font-medium disabled:opacity-50 dark:bg-white dark:text-foreground"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
                 {t('email.settings.save')}

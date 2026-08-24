@@ -33,7 +33,7 @@ function statusTone(status: ApiTaskStatus, isDark: boolean): string {
     case 'DONE':
       return isDark ? 'bg-status-positive-soft text-status-positive border-status-positive/20' : 'bg-emerald-100 text-emerald-700 border-emerald-200';
     case 'CANCELLED':
-      return isDark ? 'bg-muted text-muted-foreground border-border' : 'bg-gray-100 text-gray-500 border-gray-200';
+      return isDark ? 'bg-muted text-muted-foreground border-border' : 'bg-gray-100 text-muted-foreground border-gray-200';
     default:
       return isDark ? 'bg-status-info-soft text-status-info border-status-info/20' : 'bg-status-info-soft text-status-info border-border';
   }
@@ -46,7 +46,7 @@ function priorityTone(priority: ApiTaskPriority): string {
     case 'HIGH':
       return 'text-orange-600';
     case 'LOW':
-      return 'text-gray-500';
+      return 'text-muted-foreground';
     case 'NORMAL':
     default:
       return 'text-amber-600';
@@ -99,20 +99,20 @@ export function EntityTasksSection({ isDark = false, title, emptyHint, fetchTask
   }, deps);
 
   const cardClass = `rounded-2xl border shadow-sm ${isDark ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
-  const textPrimary = isDark ? 'text-foreground' : 'text-gray-900';
-  const textSecondary = isDark ? 'text-muted-foreground' : 'text-gray-500';
+  const textPrimary = isDark ? 'text-foreground' : 'text-foreground';
+  const textSecondary = isDark ? 'text-muted-foreground' : 'text-muted-foreground';
 
   return (
     <div className={`${cardClass} p-5`}>
       <div className="flex items-center justify-between mb-4">
-        <h3 className={`text-xs font-semibold flex items-center gap-2 ${isDark ? 'text-muted-foreground' : 'text-gray-600'}`}>
+        <h3 className={`text-xs font-semibold flex items-center gap-2 ${isDark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
           <Icon name="list-todo" className="w-3.5 h-3.5" /> {title} ({tasks.length})
         </h3>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-8">
-          <Icon name="loader-2" className={`w-5 h-5 animate-spin ${isDark ? 'text-muted-foreground' : 'text-gray-300'}`} />
+          <Icon name="loader-2" className={`w-5 h-5 animate-spin ${isDark ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
         </div>
       ) : errored ? (
         <p className={`text-[11px] ${isDark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Tasks konnten nicht geladen werden.</p>

@@ -1,7 +1,8 @@
-# SynqDrive — Light Mode Text Color Neutralization Audit (V4.9.197)
+# SynqDrive — Light Mode Text Color Neutralization Audit (V4.9.197 + V4.9.198)
 
-> **Status:** Applied and deployed  
-> **Release:** `20260824155357_v4994` (`940eddef`)  
+> **Status:** V4.9.197 deployed; V4.9.198 feature cleanup applied (pending deploy)  
+> **Release (V4.9.197):** `20260824155357_v4994` (`940eddef`)  
+> **Release (V4.9.198):** pending commit  
 > **Scope:** Light-mode typography tokens only — no surface, layout, dark-mode, or status-color changes  
 > **Canonical tokens:** `frontend/src/styles/theme.css`  
 > **Contract:** `frontend/src/styles/THEME_COLOR_CONTRACT.md`  
@@ -124,30 +125,23 @@ Aktive Light-Mode UI-Textfarben außerhalb des Token-Systems:
 | `text-slate-600` in `IamBadges.tsx` | `UNKNOWN` badge | Semantischer Badge-Ton (gestrichelter unknown state) |
 | Purple focus in Voice Assistant | `VoiceOnboardingWizard.tsx`, `VoiceConversationsPanel.tsx` | Legacy Voice-UI-Akzent, nicht allgemeine Typografie |
 
-### 5.4 Bewusst belassen — Legacy / niedrige Priorität (Follow-up)
+### 5.4 ~~Bewusst belassen — Legacy / niedrige Priorität (Follow-up)~~ → Migriert in V4.9.198
 
-Breite `isDarkMode ? … : 'text-gray-*'`-Patterns in Feature-Views. Token-Cutover deckt **tokenbasierte** UI ab; diese Dateien umgehen das System noch teilweise.
+Breite `isDarkMode ? … : 'text-gray-*'`-Patterns in Feature-Views wurden in **V4.9.198** systematisch auf `text-foreground` / `text-muted-foreground` migriert (siehe §11).
 
-**Repo-Stand nach Deploy (2026-08-24):**
+**Repo-Stand nach V4.9.198 (2026-08-24):**
 
-- **~45 Dateien** mit `text-gray-*` / `text-slate-*` / `text-zinc-*` / `text-neutral-*` (siehe Anhang A)
-- **~33 Dateien** mit `text-gray-900|800|700` oder `#111827` in TSX (teilweise Überlappung)
+- **2 Dateien** mit `text-gray-*` / `text-slate-*` / `text-zinc-*` / `text-neutral-*` (siehe Anhang A) — beide bewusst ausgenommen
+- **0 aktive** `#111827` / `#1F2937` / `#374151` / `#4B5563` / `#6B7280` / `#7C8490` Hex-Treffer in Feature-TSX (außer erlaubte Ausnahmen, siehe §5.5)
 
-| Cluster | Beispiel-Dateien | Warum nicht migriert |
-|---------|------------------|----------------------|
-| Changelog / Architektur | `ChangesView.tsx`, `ArchitekturView.tsx` | Historische UI + Doku-Strings |
-| Voice Assistant | `VoiceConversationsPanel.tsx`, `VoiceOnboardingWizard.tsx` | Eigene Purple/Gray-Legacy-Palette |
-| Document Intake | `DocumentArchivePanel.tsx`, `DocumentEntityReview.tsx`, … | Dichte Legacy `isDarkMode`-Ternaries |
-| AI / Fleet Chat | `AIAssistantView.tsx`, `FleetChat*.tsx`, `safe-markdown.tsx` | Chat-spezifische Markdown/Table-Farben |
-| Master Admin Tools | `HealthTrackingView.tsx`, `VehicleRegistrationModal.tsx`, … | Große Legacy-Views, hohes Diff-Risiko |
-| Handover (Rest) | `HandoverProtocolDialog.tsx` (teilweise) | Zentrale Vars migriert; Inline `text-gray-*` in Buttons/Rows noch offen |
-| SignaturePad (Rest) | `SignaturePad.tsx` (teilweise) | Button-Chrome `text-gray-400/500` noch Legacy |
-
-**Empfohlene Follow-up-Migration (separater Pass):**
-
-1. Pro Cluster eine Datei → `text-foreground` / `text-muted-foreground` statt `text-gray-*` im Light-Zweig
-2. Keine neuen Hex-Hardcodes
-3. Status-/Brand-/Map-Semantik pro Treffer prüfen
+| Cluster | Beispiel-Dateien | V4.9.198 Ergebnis |
+|---------|------------------|-------------------|
+| Changelog / Architektur | `ChangesView.tsx`, `ArchitekturView.tsx` | UI-Chrome migriert; historische Changelog-Strings unverändert |
+| Voice Assistant | `VoiceConversationsPanel.tsx`, `VoiceOnboardingWizard.tsx` | Neutral text → Tokens; Purple-Akzente beibehalten |
+| Document Intake | `DocumentArchivePanel.tsx`, `DocumentEntityReview.tsx`, … | Vollständig migriert |
+| AI / Fleet Chat | `AIAssistantView.tsx`, `FleetChat*.tsx`, `safe-markdown.tsx` | Migriert; Purple Bullet-Akzent in Markdown beibehalten |
+| Master Admin Tools | `HealthTrackingView.tsx`, `VehicleRegistrationModal.tsx`, … | Migriert |
+| Handover (Rest) | `HandoverProtocolDialog.tsx`, `SignaturePad.tsx` | Text-Tokens; Surface-Chrome unverändert |
 
 ### 5.5 Verbleibende aktive Hex-Treffer (post-patch)
 
@@ -200,26 +194,18 @@ Keine aktiven Light-Mode Canvas/Card/Sidebar- oder Primary-Text-Umgehungen mehr 
 
 ## 9. Verbleibende Inkonsistenzen
 
-### 9.1 Legacy `text-gray-*` in Feature-Code
+### 9.1 ~~Legacy `text-gray-*` in Feature-Code~~ → Resolved in V4.9.198
 
-**~45 Dateien** nutzen noch Tailwind Gray/Slate/Neutral-Klassen in Light-Mode-Zweigen. Die zentrale Token-Schicht ist korrekt; einzelne Views können lokal noch leicht slate-wirken, bis sie migriert sind.
+**Vor V4.9.198:** ~45 Dateien mit Legacy Text-Klassen.
 
-**Höchste Trefferzahl (Follow-up-Kandidaten):**
+**Nach V4.9.198:** Nur noch **2 bewusste Ausnahmen** (siehe Anhang A):
 
-| Datei | `text-gray/slate/…` Treffer (rg count) |
-|-------|----------------------------------------|
-| `HealthTrackingView.tsx` | 86 |
-| `PartsAccessoriesView.tsx` | 54 |
-| `VehicleRegistrationModal.tsx` | 48 |
-| `StatInlineDetail.tsx` | 37 |
-| `TripDetectionLogicView.tsx` | 32 |
-| `AIAssistantView.tsx` | 29 |
-| `DocumentUploadView.tsx` | 26 |
-| `PerformanceLogicView.tsx` | 22 |
-| `BusinessInsightsBox.tsx` | 21 |
-| `WorkflowAutomationView.tsx` | 19 |
-| `DocumentArchivePanel.tsx` | 18 |
-| `ChangesView.tsx` | 18 |
+| Datei | Treffer | Grund |
+|-------|---------|-------|
+| `ChangesView.tsx` | 2 | Historische Changelog-Strings (`text-gray-*` in Doku-Text, nicht UI) |
+| `IamBadges.tsx` | 1 | Semantischer `text-slate-600` für UNKNOWN-Badge |
+
+Alle übrigen Feature-Views nutzen `text-foreground` / `text-muted-foreground` für neutrale Typografie.
 
 ### 9.2 `--status-nodata` vs. `--muted-foreground`
 
@@ -232,11 +218,11 @@ Visuell können NoData-Chips leicht bläulicher wirken als Meta-Text — **beabs
 
 ### 9.3 Teilweise migrierte Komponenten
 
-| Komponente | Stand |
-|------------|-------|
-| `HandoverProtocolDialog.tsx` | `textPrimary`/`textMuted` migriert; einzelne Inline-Buttons/Rows noch `text-gray-*` |
-| `SignaturePad.tsx` | Ink + Label/Helper migriert; Tool-Button-Chrome noch Legacy Gray |
-| `invoiceTheme.ts` | Text migriert; `card` Light noch `bg-white border-gray-200` (Surface, nicht Text) |
+| Komponente | Stand (V4.9.198) |
+|------------|------------------|
+| `HandoverProtocolDialog.tsx` | ✅ Text-Tokens vollständig; Surface-Chrome (`bg-gray-*`) unverändert (out of scope) |
+| `SignaturePad.tsx` | ✅ Ink + Label/Helper + Button-Text auf Tokens |
+| `invoiceTheme.ts` | ✅ Text migriert; `card` Light noch `bg-white border-gray-200` (Surface, nicht Text) |
 
 ### 9.4 Kein separater Subtle-Text-Token
 
@@ -257,7 +243,7 @@ Vollständige visuelle Abnahme aller 10 geforderten Rental/Master-Routes nicht e
 | 3 | Sidebar Foreground neutralisiert | ✅ |
 | 4 | Cards, Headers, Tabellen über Tokens (wenn tokenbasiert) | ✅ |
 | 5 | Keine unnötigen Hex-Hardcodes hinzugefügt | ✅ |
-| 6 | Bestehende Hardcodes teilweise auf Tokens migriert | ⚠️ Teilweise — siehe §5.4 |
+| 6 | Bestehende Hardcodes teilweise auf Tokens migriert | ✅ V4.9.198 — 43/45 Dateien migriert |
 | 7 | Brand Blue unverändert | ✅ |
 | 8 | Statusfarben unverändert | ✅ |
 | 9 | Map/Telemetry-Semantik unverändert | ✅ |
@@ -268,12 +254,19 @@ Vollständige visuelle Abnahme aller 10 geforderten Rental/Master-Routes nicht e
 
 ---
 
-## Anhang A — Dateien mit Legacy Text-Klassen (Follow-up)
+## Anhang A — Verbleibende Legacy Text-Klassen (post V4.9.198)
 
 Stand: `rg 'text-gray-|text-slate-|text-zinc-|text-neutral-' frontend/src --glob '*.{ts,tsx}'`
 
 ```
-frontend/src/master/components/ChangesView.tsx
+frontend/src/master/components/ChangesView.tsx          # 2× historische Changelog-Strings only
+frontend/src/rental/components/users-roles/IamBadges.tsx # 1× semantischer UNKNOWN badge
+```
+
+**V4.9.198 migrierte Dateien (43):**
+
+```
+frontend/src/master/components/ChangesView.tsx                    # UI chrome only
 frontend/src/master/components/ExteriorImagesEditor.tsx
 frontend/src/master/components/HealthTrackingView.tsx
 frontend/src/master/components/HighMobilityCompatibilityView.tsx
@@ -312,13 +305,14 @@ frontend/src/rental/components/handover/HandoverProtocolDialog.tsx
 frontend/src/rental/components/handover/SignaturePad.tsx
 frontend/src/rental/components/invoices/CreateInvoiceDialog.tsx
 frontend/src/rental/components/invoices/InvoiceFilters.tsx
+frontend/src/rental/components/invoices/invoiceTheme.ts
 frontend/src/rental/components/price-tariffs/TariffGroupDrawer.tsx
 frontend/src/rental/components/settings/email/EmailVersandTab.tsx
-frontend/src/rental/components/users-roles/IamBadges.tsx
-frontend/src/rental/components/voice-assistant/VoiceConversationsPanel.tsx
 frontend/src/rental/components/voice-assistant/VoiceOnboardingWizard.tsx
 frontend/src/rental/lib/ai-chat/safe-markdown.tsx
 ```
+
+> **Note:** `VoiceConversationsPanel.tsx` was deleted upstream in `5b3c598a` (C13.4 legacy UI removal) before this pass landed — no migration needed.
 
 ---
 
@@ -328,6 +322,58 @@ frontend/src/rental/lib/ai-chat/safe-markdown.tsx
 |---------|--------|--------|
 | V4.9.196 | `3964210b` | Surface cutover: `#F6F6F6` canvas, white cards/sidebar, flat L1 — siehe `LIGHT_MODE_SURFACE_CUTOVER_AUDIT.md` |
 | V4.9.197 | `940eddef` | Text neutralization: `#171717` ink, `#737373` muted — siehe `LIGHT_MODE_TEXT_NEUTRALIZATION_AUDIT.md` |
+| V4.9.198 | pending | Feature hardcode cleanup: 43 files `text-gray-*` → semantic tokens — siehe §11 |
+
+---
+
+## 11. V4.9.198 — Feature Hardcode Cleanup
+
+### 11.1 Ziel
+
+Systematische Migration der in §5.4 / Anhang A (V4.9.197) dokumentierten Legacy-`text-gray-*` / `text-slate-*` / `text-neutral-*` Klassen in Feature-Code auf semantische Tokens:
+
+- `text-foreground` — Primary UI text
+- `text-muted-foreground` — Secondary / meta / captions
+
+**Nicht geändert:** Surfaces, Brand, Status, Map/Telemetry, Dark-Mode-Tokens, historische Changelog-Strings.
+
+### 11.2 Vorgehen
+
+| Schritt | Beschreibung |
+|---------|--------------|
+| 1 | Bulk-Migration via `frontend/scripts/migrate-text-tokens.py` (44 Dateien) |
+| 2 | Ternary-Vereinfachung via `frontend/scripts/simplify-text-ternaries.py` + manuelle Fixes |
+| 3 | Build-Fix: unquoted `text-foreground` / `text-muted-foreground` aus fehlerhafter Perl-Pass korrigiert |
+| 4 | Manuelle Review: `IamBadges.tsx` (UNKNOWN badge), `ChangesView.tsx` (Changelog-Strings), `safe-markdown.tsx` (Purple accent) |
+
+### 11.3 Ergebnis
+
+| Metrik | Vorher (V4.9.197) | Nachher (V4.9.198) |
+|--------|-------------------|---------------------|
+| Dateien mit `text-gray/slate/zinc/neutral` | ~45 | **2** (bewusst) |
+| Migrierte Feature-Dateien | 6 (V4.9.197) | **+43** |
+| Aktive Hex-Hardcodes (`#111827` etc.) in TSX | ~33 Dateien | **0** (außer erlaubte) |
+| Redundante `isDarkMode ? 'text-gray-*' : 'text-gray-*'` Ternaries | viele | entfernt / vereinfacht |
+
+### 11.4 Bewusste Ausnahmen (unverändert)
+
+| Item | Datei | Grund |
+|------|-------|-------|
+| `text-slate-600` UNKNOWN badge | `IamBadges.tsx` | Semantischer Badge-Ton |
+| `text-gray-*` in Changelog-Strings | `ChangesView.tsx` | Historische Dokumentation |
+| Purple Voice-AI Akzente | `VoiceOnboardingWizard.tsx`, etc. | Domain accent |
+| Status colors (`text-red-*`, `text-green-*`, …) | diverse | Semantisch |
+| Canvas ink `#171717` | `SignaturePad.tsx` | Canvas API |
+| Map label `#171717` | `MapboxMap.tsx`, `vehicleMarker.ts` | Map style spec |
+| `--status-nodata` `#7C8490` | `theme.css` | Status token |
+
+### 11.5 Build / Test
+
+| Check | Ergebnis |
+|-------|----------|
+| `npm run build` | ✅ Erfolgreich |
+| `npm run check:surface` | ✅ Erfolgreich |
+| `npm test -- --run` | ⚠️ 6 pre-existing failures (unrelated to text migration) |
 
 ---
 

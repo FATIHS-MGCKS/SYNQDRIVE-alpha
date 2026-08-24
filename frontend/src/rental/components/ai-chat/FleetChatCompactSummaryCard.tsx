@@ -63,7 +63,7 @@ export function FleetChatCompactSummaryCard({
           {responseLabel}
         </span>
         {vehicleLabel && (
-          <span className={`inline-flex items-center gap-1 text-[10px] ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+          <span className={`inline-flex items-center gap-1 text-[10px] text-muted-foreground`}>
             <Icon name="car" className="w-3 h-3 shrink-0" aria-hidden="true" />
             <span className="break-all">{vehicleLabel}</span>
           </span>
@@ -79,7 +79,7 @@ export function FleetChatCompactSummaryCard({
       </div>
 
       {headline && (
-        <p className={`px-2.5 pt-2 text-xs font-semibold leading-snug ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+        <p className={`px-2.5 pt-2 text-xs font-semibold leading-snug text-foreground`}>
           {headline}
         </p>
       )}
@@ -116,12 +116,12 @@ export function FleetChatCompactSummaryCard({
       <dl className="px-2.5 py-2 space-y-1.5 min-w-0">
         {summary.facts.map((fact) => (
           <div key={fact.id} className="grid grid-cols-1 sm:grid-cols-[minmax(0,38%)_1fr] gap-x-2 gap-y-0.5 min-w-0">
-            <dt className={`text-[10px] font-semibold shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+            <dt className={`text-[10px] font-semibold shrink-0 text-muted-foreground`}>
               {fact.label}
             </dt>
             <dd
               className={`text-[10px] break-words font-mono tabular-nums min-w-0 ${
-                fact.tone ? compactToneTextClass(fact.tone) : isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                fact.tone ? compactToneTextClass(fact.tone) : isDarkMode ? 'text-muted-foreground' : 'text-foreground'
               }`}
             >
               {fact.value}
@@ -132,7 +132,7 @@ export function FleetChatCompactSummaryCard({
 
       {structured.actions && structured.actions.length > 0 && (
         <div className={`px-2.5 py-2 border-t ${borderClass}`}>
-          <p className={`text-[10px] font-semibold mb-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+          <p className={`text-[10px] font-semibold mb-1 text-muted-foreground`}>
             {fleetChatUiLabel('aiChat.structured.nextAction', locale)}
           </p>
           <p className="text-[10px] leading-snug">

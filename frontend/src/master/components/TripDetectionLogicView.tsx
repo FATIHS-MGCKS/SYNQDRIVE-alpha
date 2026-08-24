@@ -44,12 +44,12 @@ const SECTIONS = [
 export function TripDetectionLogicView({ isDarkMode: d }: Props) {
   const [section, setSection] = useState<SectionId>('signals');
 
-  const h2 = `text-base font-bold mb-1 ${d ? 'text-neutral-100' : 'text-gray-900'}`;
-  const h3 = `text-sm font-semibold mb-2 ${d ? 'text-neutral-200' : 'text-gray-800'}`;
-  const body = `text-xs leading-relaxed ${d ? 'text-neutral-400' : 'text-gray-600'}`;
+  const h2 = `text-base font-bold mb-1 text-foreground`;
+  const h3 = `text-sm font-semibold mb-2 ${d ? 'text-foreground' : 'text-foreground'}`;
+  const body = `text-xs leading-relaxed ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`;
   const code = `px-1 py-0.5 rounded text-[11px] font-mono ${d ? 'surface-premium text-violet-400' : 'bg-gray-100 text-violet-600'}`;
-  const li = `text-xs ${d ? 'text-neutral-400' : 'text-gray-600'}`;
-  const sub = `text-[11px] ${d ? 'text-neutral-500' : 'text-muted-foreground'}`;
+  const li = `text-xs ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`;
+  const sub = `text-[11px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`;
 
   return (
     <div className={`min-h-screen ${d ? 'bg-neutral-950' : 'bg-gray-50/80'}`}>
@@ -104,7 +104,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                     active
                       ? d ? 'bg-violet-500/20 text-violet-300' : 'bg-violet-100 text-violet-700'
-                      : d ? 'text-neutral-400 hover:text-neutral-200 hover:surface-premium' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                      : d ? 'text-muted-foreground hover:text-foreground hover:surface-premium' : 'text-muted-foreground hover:text-foreground hover:bg-gray-100'
                   }`}
                 >
                   <Icon size={13} />
@@ -175,7 +175,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
               <div key={g.name} className={`${CARD(d)} p-5 border-l-4 ${g.borderColor}`}>
                 <div className="flex items-center gap-2 mb-1">
                   <p className={`font-bold text-sm ${g.color}`}>{g.name}</p>
-                  <span className={BADGE('bg-gray-500/15 text-gray-400')}>{g.interval}</span>
+                  <span className={BADGE('bg-gray-500/15 text-muted-foreground')}>{g.interval}</span>
                 </div>
                 <p className={`${body} mb-3`}>{g.purpose}</p>
                 <div className="space-y-2">
@@ -201,12 +201,12 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
               <h2 className={h2}>State Diagram</h2>
               <div className="flex flex-wrap items-center gap-2 mb-4">
                 {[
-                  { label: 'RESTING', color: 'bg-neutral-500/20 text-neutral-400' },
+                  { label: 'RESTING', color: 'bg-neutral-500/20 text-muted-foreground' },
                   { label: '→ snapshot evidence', color: '' },
                   { label: 'POSSIBLE_START', color: 'bg-yellow-500/20 text-yellow-400' },
                   { label: '→ validation confirmed', color: '' },
                   { label: 'ACTIVE_TRIP', color: 'bg-emerald-500/20 text-emerald-400' },
-                ].map((s, i) => s.color ? <span key={i} className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full ${s.color}`}>{s.label}</span> : <span key={i} className={`text-[11px] ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>{s.label}</span>)}
+                ].map((s, i) => s.color ? <span key={i} className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full ${s.color}`}>{s.label}</span> : <span key={i} className={`text-[11px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{s.label}</span>)}
               </div>
               <div className="flex flex-wrap items-center gap-2 mb-4">
                 {[
@@ -216,14 +216,14 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                   { label: '→ extended inactivity', color: '' },
                   { label: 'POSSIBLE_END', color: 'bg-orange-500/20 text-orange-400' },
                   { label: '→ validated', color: '' },
-                  { label: 'RESTING', color: 'bg-neutral-500/20 text-neutral-400' },
-                ].map((s, i) => s.color ? <span key={i} className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full ${s.color}`}>{s.label}</span> : <span key={i} className={`text-[11px] ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>{s.label}</span>)}
+                  { label: 'RESTING', color: 'bg-neutral-500/20 text-muted-foreground' },
+                ].map((s, i) => s.color ? <span key={i} className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full ${s.color}`}>{s.label}</span> : <span key={i} className={`text-[11px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{s.label}</span>)}
               </div>
             </div>
             {[
               {
                 state: 'RESTING',
-                color: 'bg-neutral-500/20 text-neutral-400',
+                color: 'bg-neutral-500/20 text-muted-foreground',
                 desc: 'Vehicle is not being tracked. No active trip. SnapshotWorker runs every 30s, comparing the latest vehicle telemetry to previous state.',
                 triggers: ['Snapshot evidence check: evaluateSnapshotEvidence() triggers if strong ≥ 2, or (strong ≥ 1 AND movement), or weak ≥ 3'],
                 exits: ['→ POSSIBLE_START if evidence threshold met (5-minute cooldown between trips applies)'],
@@ -274,9 +274,9 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                     { label: 'Persisted fields', items: s.persisted },
                   ].map(g => (
                     <div key={g.label}>
-                      <p className={`text-[11px] font-semibold mb-1 ${d ? 'text-neutral-400' : 'text-gray-500'}`}>{g.label}</p>
+                      <p className={`text-[11px] font-semibold mb-1 ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{g.label}</p>
                       <ul className="space-y-1">
-                        {g.items.map(i => <li key={i} className={`text-[11px] ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>• {i}</li>)}
+                        {g.items.map(i => <li key={i} className={`text-[11px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>• {i}</li>)}
                       </ul>
                     </div>
                   ))}
@@ -397,8 +397,8 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                   <div key={s.step} className="flex gap-3">
                     <span className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${d ? 'bg-neutral-700 text-cyan-400' : 'bg-cyan-50 text-cyan-600'}`}>{s.step}</span>
                     <div>
-                      <p className={`text-xs font-semibold ${d ? 'text-neutral-200' : 'text-gray-700'}`}>{s.title}</p>
-                      <p className={`text-[11px] ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>{s.desc}</p>
+                      <p className={`text-xs font-semibold ${d ? 'text-foreground' : 'text-foreground'}`}>{s.title}</p>
+                      <p className={`text-[11px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{s.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -415,7 +415,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                   <div key={v.v} className={`rounded-xl p-3 ${v.bg}`}>
                     <p className={`text-xs font-bold mb-2 ${v.color}`}>{v.v}</p>
                     <ul className="space-y-1">
-                      {v.conditions.map(c => <li key={c} className={`text-[11px] ${d ? 'text-neutral-400' : 'text-gray-600'}`}>• {c}</li>)}
+                      {v.conditions.map(c => <li key={c} className={`text-[11px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>• {c}</li>)}
                     </ul>
                   </div>
                 ))}
@@ -467,7 +467,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                   </ul>
                 </div>
                 <div>
-                  <p className={`${h3} text-neutral-400`}>SECONDARY — bonus if available</p>
+                  <p className={`${h3} text-muted-foreground`}>SECONDARY — bonus if available</p>
                   <ul className="space-y-1">
                     {[
                       '7. ignitionOff confirmed → HIGH confidence end mode',
@@ -496,14 +496,14 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                   { step: '4', color: 'text-cyan-400', title: 'Trigger CUSUM (END_VALIDATION job)', desc: 'endValidationAttempts++. END_VALIDATION job dispatched. Fetches core data: [possibleEndAt − 15min … +5min]. detectTripEndChangePoint() applied.' },
                   { step: '5a', color: 'text-emerald-400', title: 'CUSUM: change-point found', desc: 'cusumSegmentEnd = changePointAt. endDetectionMode = CUSUM_VALIDATED. FINALIZE job dispatched.' },
                   { step: '5b', color: 'text-emerald-400', title: 'CUSUM: still ongoing', desc: 'appearsOngoing=true → cancel POSSIBLE_END, return to ACTIVE_TRIP with lastMeaningfulMovementAt updated.' },
-                  { step: '5c', color: 'text-neutral-400', title: 'CUSUM: inconclusive', desc: 'Reschedule POSSIBLE_END_CHECK with TRIP_END_VALIDATION_RETRY_MS delay. Retry up to TRIP_END_VALIDATION_MAX_ATTEMPTS (3).' },
+                  { step: '5c', color: 'text-muted-foreground', title: 'CUSUM: inconclusive', desc: 'Reschedule POSSIBLE_END_CHECK with TRIP_END_VALIDATION_RETRY_MS delay. Retry up to TRIP_END_VALIDATION_MAX_ATTEMPTS (3).' },
                   { step: '6', color: 'text-red-400', title: 'Hard timeout fallback', desc: 'elapsed ≥ TRIP_END_TIMEOUT_MS (30 min). Force FINALIZE regardless. End time uses lastMeaningfulMovementAt or possibleEndAt.' },
                 ].map(s => (
                   <div key={s.step} className="flex gap-3">
                     <span className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${d ? 'bg-neutral-700' : 'bg-gray-100'} ${s.color}`}>{s.step}</span>
                     <div>
-                      <p className={`text-xs font-semibold ${d ? 'text-neutral-200' : 'text-gray-700'}`}>{s.title}</p>
-                      <p className={`text-[11px] ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>{s.desc}</p>
+                      <p className={`text-xs font-semibold ${d ? 'text-foreground' : 'text-foreground'}`}>{s.title}</p>
+                      <p className={`text-[11px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{s.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -560,7 +560,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                 ].map(c => (
                   <div key={c.key} className={`rounded-lg p-2.5 ${d ? 'surface-premium' : 'bg-gray-50'}`}>
                     <code className={`${code} text-[10px]`}>{c.key}</code>
-                    <p className={`text-[11px] mt-0.5 ${d ? 'text-neutral-300' : 'text-gray-700'}`}>Default: {c.default}</p>
+                    <p className={`text-[11px] mt-0.5 ${d ? 'text-muted-foreground' : 'text-foreground'}`}>Default: {c.default}</p>
                     <p className={sub}>{c.desc}</p>
                   </div>
                 ))}
@@ -580,13 +580,13 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                   { rank: '2', label: 'lastMeaningfulMovementAt', desc: 'Timestamp of the last ACTIVE_TICK where motion was detected.', color: 'text-status-info', bg: '' },
                   { rank: '3', label: 'lastWaypoint.recordedAt', desc: 'Last GPS fix stored in VehicleTripWaypoint.', color: 'text-amber-400', bg: '' },
                   { rank: '4', label: 'possibleEndAt', desc: 'Timestamp when POSSIBLE_END state was first entered.', color: 'text-orange-400', bg: '' },
-                  { rank: '5', label: 'new Date()', desc: 'Absolute fallback if all above are null.', color: 'text-neutral-400', bg: '' },
+                  { rank: '5', label: 'new Date()', desc: 'Absolute fallback if all above are null.', color: 'text-muted-foreground', bg: '' },
                 ].map(r => (
                   <div key={r.rank} className={`flex gap-3 rounded-lg p-3 ${r.bg}`}>
                     <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${r.color} ${d ? 'bg-neutral-700' : 'bg-gray-100'}`}>{r.rank}</span>
                     <div>
                       <code className={code}>{r.label}</code>
-                      <p className={`text-[11px] mt-0.5 ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>{r.desc}</p>
+                      <p className={`text-[11px] mt-0.5 ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{r.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -602,7 +602,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                   <li key={r.rule} className="flex gap-3">
                     <ArrowRight size={13} className="flex-shrink-0 mt-0.5 text-red-400" />
                     <div>
-                      <p className={`text-xs font-semibold ${d ? 'text-neutral-200' : 'text-gray-700'}`}>{r.rule}</p>
+                      <p className={`text-xs font-semibold ${d ? 'text-foreground' : 'text-foreground'}`}>{r.rule}</p>
                       <p className={sub}>Reason: {r.reason}</p>
                     </div>
                   </li>
@@ -623,8 +623,8 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
               <div className="flex flex-wrap gap-2">
                 {['Trip status = COMPLETED', '→ BullMQ: hf-enrich job (5s delay)', '→ TripBehaviorEnrichmentService.enrichTrip()', '→ 1-second HF data fetched via DIMO', '→ Acceleration / Braking / Abuse events stored', '→ TripBehaviorEvent records created', '→ Driving Impact Engine V1 triggered'].map((s, i) => (
                   <div key={i} className="flex items-center gap-1.5">
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${d ? 'surface-premium text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>{s}</span>
-                    {i < 6 && <ChevronRight size={12} className={d ? 'text-neutral-600' : 'text-muted-foreground'} />}
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${d ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-muted-foreground'}`}>{s}</span>
+                    {i < 6 && <ChevronRight size={12} className={d ? 'text-muted-foreground' : 'text-muted-foreground'} />}
                   </div>
                 ))}
               </div>
@@ -672,7 +672,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                 },
                 {
                   profile: 'UNKNOWN',
-                  color: 'text-neutral-400',
+                  color: 'text-muted-foreground',
                   desc: 'Unclassified / no fuelType set',
                   thresholds: { speedActiveKmh: 5, speedMotionKmh: 0.5, odometerMinDeltaKm: 0.05, activeFreqPerMin: 2, restingFreqPerMin: 0.5 },
                   weights: { ignition: 2, speed: 3, odometer: 2, energy: 1, frequency: 2 },
@@ -683,8 +683,8 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                   <p className={`${sub} mb-3`}>{p.desc}</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <p className={`text-[11px] font-semibold mb-1 ${d ? 'text-neutral-400' : 'text-gray-500'}`}>Speed thresholds</p>
-                      <ul className={`space-y-0.5 text-[11px] ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>
+                      <p className={`text-[11px] font-semibold mb-1 ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Speed thresholds</p>
+                      <ul className={`space-y-0.5 text-[11px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
                         <li>Active: {p.thresholds.speedActiveKmh} km/h</li>
                         <li>Motion: {p.thresholds.speedMotionKmh} km/h</li>
                         <li>Odo min: {p.thresholds.odometerMinDeltaKm} km</li>
@@ -693,8 +693,8 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                       </ul>
                     </div>
                     <div>
-                      <p className={`text-[11px] font-semibold mb-1 ${d ? 'text-neutral-400' : 'text-gray-500'}`}>Signal weights</p>
-                      <ul className={`space-y-0.5 text-[11px] ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>
+                      <p className={`text-[11px] font-semibold mb-1 ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Signal weights</p>
+                      <ul className={`space-y-0.5 text-[11px] ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
                         <li>Ignition: {p.weights.ignition}</li>
                         <li>Speed: {p.weights.speed}</li>
                         <li>Odometer: {p.weights.odometer}</li>

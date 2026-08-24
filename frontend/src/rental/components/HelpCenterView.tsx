@@ -761,9 +761,9 @@ export function HelpCenterView({
   const [expandedArticle, setExpandedArticle] = useState<string | null>('welcome');
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
-  const textMuted = isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground';
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
+  const textMuted = 'text-muted-foreground';
   const cardClass = `rounded-xl shadow-sm border ${isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
   const dividerColor = isDarkMode ? 'border-border/40' : 'border-gray-200/60';
 
@@ -820,8 +820,8 @@ export function HelpCenterView({
             onClick={onOpenSupport}
             className={`mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-colors ${
               isDarkMode
-                ? 'border-neutral-700 text-gray-200 hover:surface-premium'
-                : 'border-gray-200 text-gray-800 hover:bg-gray-50'
+                ? 'border-neutral-700 text-foreground hover:surface-premium'
+                : 'border-gray-200 text-foreground hover:bg-gray-50'
             }`}
           >
             <Headphones className="w-4 h-4" />
@@ -860,7 +860,7 @@ export function HelpCenterView({
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
                     expandedSection === sec.id
                       ? (isDarkMode ? 'bg-brand-soft text-brand border-brand/25' : 'bg-brand-soft text-brand border-border')
-                      : (isDarkMode ? 'text-muted-foreground border-border hover:bg-muted hover:text-foreground' : 'text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-gray-800')
+                      : (isDarkMode ? 'text-muted-foreground border-border hover:bg-muted hover:text-foreground' : 'text-muted-foreground border-gray-200 hover:bg-gray-50 hover:text-foreground')
                   }`}
                 >
                   <sec.icon className="w-3 h-3" />
@@ -929,7 +929,7 @@ export function HelpCenterView({
                         </button>
                         {isArticleExpanded && (
                           <div className={`px-4 pb-4 pl-11 border-t ${dividerColor}`}>
-                            <div className={`pt-3 text-xs leading-[1.8] ${isDarkMode ? 'text-foreground/85' : 'text-gray-700'} help-content`}>
+                            <div className={`pt-3 text-xs leading-[1.8] ${isDarkMode ? 'text-foreground/85' : 'text-foreground'} help-content`}>
                               <ArticleContent content={article.content} isDarkMode={isDarkMode} />
                             </div>
                           </div>
@@ -963,9 +963,9 @@ export function HelpCenterView({
 // ═══════════════════════════════════════════════════
 
 function ArticleContent({ content, isDarkMode }: { content: string; isDarkMode: boolean }) {
-  const textStrong = isDarkMode ? 'text-white' : 'text-gray-900';
+  const textStrong = 'text-foreground';
   const listBullet = isDarkMode ? 'text-brand' : 'text-status-info';
-  const codeBg = isDarkMode ? 'bg-muted text-foreground/85' : 'bg-gray-100 text-gray-700';
+  const codeBg = isDarkMode ? 'bg-muted text-foreground/85' : 'bg-gray-100 text-foreground';
 
   const lines = content.split('\n');
   const elements: React.ReactNode[] = [];

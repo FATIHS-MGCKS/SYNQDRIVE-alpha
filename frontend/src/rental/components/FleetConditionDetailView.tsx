@@ -62,7 +62,7 @@ function tireStatusPill(status: string | null | undefined, d: boolean): { cls: s
     case 'WATCH': return { cls: d ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700', label: 'Watch' };
     case 'WARNING': return { cls: d ? 'bg-orange-500/15 text-orange-400' : 'bg-orange-50 text-orange-700', label: 'Warning' };
     case 'CRITICAL': return { cls: d ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700', label: 'Critical' };
-    default: return { cls: d ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-600', label: 'Unknown' };
+    default: return { cls: d ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-muted-foreground', label: 'Unknown' };
   }
 }
 
@@ -129,9 +129,9 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
   };
 
   const cardClass = `rounded-2xl border shadow-sm ${isDark ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
-  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDark ? 'text-muted-foreground' : 'text-gray-500';
-  const textMuted = isDark ? 'text-gray-500' : 'text-muted-foreground';
+  const textPrimary = isDark ? 'text-white' : 'text-foreground';
+  const textSecondary = isDark ? 'text-muted-foreground' : 'text-muted-foreground';
+  const textMuted = isDark ? 'text-muted-foreground' : 'text-muted-foreground';
 
   return (
     <div className="space-y-5">
@@ -141,7 +141,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
           type="button"
           onClick={onBack}
           aria-label="Back to Fleet Health"
-          className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-muted text-muted-foreground' : 'hover:bg-gray-100 text-gray-500'}`}
+          className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-muted text-muted-foreground' : 'hover:bg-gray-100 text-muted-foreground'}`}
         >
           <Icon name="arrow-left" className="w-5 h-5" />
         </button>
@@ -278,7 +278,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                     aiResult.dataConfidence.level === 'high' ? (isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')
                     : aiResult.dataConfidence.level === 'medium' ? (isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600')
-                    : (isDark ? 'bg-gray-500/10 text-gray-400' : 'bg-muted text-muted-foreground')
+                    : (isDark ? 'bg-gray-500/10 text-muted-foreground' : 'bg-muted text-muted-foreground')
                   }`}>{aiResult.dataConfidence.level}</span>
                   <span className={`text-[10px] ${textMuted}`}>{aiResult.dataConfidence.reason}</span>
                 </div>
@@ -369,7 +369,7 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
             </span>
           )}
           {s.confidence && (
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isDark ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isDark ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-foreground'}`}>
               Confidence: {s.confidence}
             </span>
           )}
@@ -422,17 +422,17 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
           )}
           <div className="flex flex-wrap gap-2 mt-2">
             {s.measurementState && (
-              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-foreground'}`}>
                 {s.measurementState}
               </span>
             )}
             {s.pressureContext?.dimoFreshness && (
-              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-foreground'}`}>
                 DIMO pressure: {s.pressureContext.dimoFreshness}
               </span>
             )}
             {s.pressureContext?.hmFreshness && (
-              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-foreground'}`}>
                 HM pressure: {s.pressureContext.hmFreshness}
               </span>
             )}
@@ -742,7 +742,7 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
             <span className={`text-sm font-semibold ${isDark ? 'text-status-info' : 'text-brand'}`}>Initial calibration in progress</span>
             <span className="inline-flex">{[0,1,2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${isDark ? 'bg-status-info' : 'bg-status-info'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}</span>
           </div>
-          <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-muted-foreground'}`}>Sammelt Ruhe- und Startzyklen für den {ESTIMATED_LV_HEALTH_SCORE_LABEL_DE}</p>
+          <p className={`text-xs ${isDark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Sammelt Ruhe- und Startzyklen für den {ESTIMATED_LV_HEALTH_SCORE_LABEL_DE}</p>
         </div>
       )}
 

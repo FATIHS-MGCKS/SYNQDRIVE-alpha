@@ -479,7 +479,7 @@ function SignalCoverageTable({
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${COVERAGE_CONFIG[s.coverage].dot}`} />
                   <span className="text-sm font-medium truncate">{s.signalLabel}</span>
                   {s.required && (
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${isDarkMode ? 'surface-premium text-neutral-400' : 'bg-muted text-muted-foreground'}`}>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${isDarkMode ? 'surface-premium text-muted-foreground' : 'bg-muted text-muted-foreground'}`}>
                       REQUIRED
                     </span>
                   )}
@@ -589,7 +589,7 @@ function SourceCard({
           />
         </div>
         {src.notes && (
-          <div className={`px-3 py-2.5 rounded-lg text-xs ${isDarkMode ? 'bg-neutral-900 border border-neutral-800 text-neutral-300' : 'bg-gray-50 border border-gray-200 text-gray-700'}`}>
+          <div className={`px-3 py-2.5 rounded-lg text-xs ${isDarkMode ? 'bg-neutral-900 border border-neutral-800 text-muted-foreground' : 'bg-gray-50 border border-gray-200 text-foreground'}`}>
             {src.notes}
           </div>
         )}

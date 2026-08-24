@@ -44,7 +44,7 @@ function getFileIcon(name: string) {
   const ext = name.split('.').pop()?.toLowerCase();
   if (ext === 'pdf') return <Icon name="file-text" className="w-5 h-5 text-red-500" />;
   if (['jpg', 'jpeg', 'png', 'webp'].includes(ext || '')) return <Icon name="image" className="w-5 h-5 text-status-info" />;
-  return <Icon name="file" className="w-5 h-5 text-gray-500" />;
+  return <Icon name="file" className="w-5 h-5 text-muted-foreground" />;
 }
 
 export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOrigin }: DocumentUploadViewProps) {
@@ -170,7 +170,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
         ) : (
           <StepIcon className={`${iconSize} ${isActive
             ? isDarkMode ? 'text-brand' : 'text-brand'
-            : isDarkMode ? 'text-gray-500' : 'text-muted-foreground'
+            : 'text-muted-foreground'
           }`} />
         )}
       </div>
@@ -184,8 +184,8 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
       centered ? 'text-[10px] sm:text-xs text-center leading-tight line-clamp-2 min-w-0 w-full' : 'text-xs min-w-0'
     } ${
       isDone ? 'text-green-500' : isActive
-        ? isDarkMode ? 'text-white' : 'text-gray-900'
-        : isDarkMode ? 'text-gray-500' : 'text-muted-foreground'
+        ? 'text-foreground'
+        : 'text-muted-foreground'
     }`;
   };
 
@@ -240,14 +240,14 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
       <div className="mb-3 min-w-0 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="min-w-0 break-words font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">{t('docUpload.title')}</h1>
-          <p className={`text-xs mt-1 break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{t('docUpload.subtitle')}</p>
+          <p className={`text-xs mt-1 break-words text-muted-foreground`}>{t('docUpload.subtitle')}</p>
         </div>
         {page.intakeEntry?.returnView && onReturnToOrigin ? (
           <button
             type="button"
             onClick={() => onReturnToOrigin(page.intakeEntry)}
             className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold ${
-              isDarkMode ? 'surface-premium text-gray-200' : 'bg-gray-100 text-gray-700'
+              isDarkMode ? 'surface-premium text-foreground' : 'bg-gray-100 text-foreground'
             }`}
           >
             {t('docUpload.backToOrigin')}
@@ -319,7 +319,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
               setActiveTab('review', null);
             }}
             className={`mb-3 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold ${
-              isDarkMode ? 'surface-premium text-gray-200' : 'bg-gray-100 text-gray-700'
+              isDarkMode ? 'surface-premium text-foreground' : 'bg-gray-100 text-foreground'
             }`}
           >
             {t('docUpload.review.backToInbox')}
@@ -340,7 +340,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
                 contextConflict={uploadContextConflict}
                 isDarkMode={isDarkMode}
                 headerSlot={
-                  <p className={`text-xs break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                  <p className={`text-xs break-words text-muted-foreground`}>
                     {t('docUpload.initialUploadHint')}
                   </p>
                 }
@@ -358,8 +358,8 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
             <div className={`rounded-lg p-4 sm:p-6 min-w-0 space-y-4 ${glass}`}>
               <DocumentExtractionFlowStatus {...flowStatusProps} />
               <div className="border-t pt-4 min-w-0" style={{ borderColor: isDarkMode ? 'var(--border)' : undefined }}>
-                <h3 className={`text-base font-semibold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('docUpload.awaitingTypeTitle')}</h3>
-                <p className={`text-xs mb-4 break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{t('docUpload.awaitingTypeHint')}</p>
+                <h3 className={`text-base font-semibold mb-1 text-foreground`}>{t('docUpload.awaitingTypeTitle')}</h3>
+                <p className={`text-xs mb-4 break-words text-muted-foreground`}>{t('docUpload.awaitingTypeHint')}</p>
                 <DocumentClassificationResultPanel
                   record={page.record}
                   locale={locale}
@@ -399,8 +399,8 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
                       <Icon name="shield" className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
                     </div>
                     <div className="min-w-0">
-                      <h3 className={`text-base font-semibold break-words ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('docUpload.analysisComplete')}</h3>
-                      <p className={`text-xs break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{t('docUpload.reviewHint')}</p>
+                      <h3 className={`text-base font-semibold break-words text-foreground`}>{t('docUpload.analysisComplete')}</h3>
+                      <p className={`text-xs break-words text-muted-foreground`}>{t('docUpload.reviewHint')}</p>
                     </div>
                   </div>
                   <button
@@ -410,7 +410,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
                     className={`flex items-center justify-center gap-1.5 self-start sm:self-auto shrink-0 min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
                       page.editingFields
                         ? isDarkMode ? 'bg-brand-soft text-brand' : 'bg-brand-soft text-brand'
-                        : isDarkMode ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        : isDarkMode ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-gray-100 text-muted-foreground hover:bg-gray-200'
                     } ${page.flow === 'applying' ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <Icon name="pencil" className="w-3 h-3" />
@@ -421,8 +421,8 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
 
               <div className={`px-3 py-2 border-b flex flex-wrap items-center gap-2 sm:gap-3 min-w-0 ${isDarkMode ? 'border-neutral-800 bg-neutral-900/40' : 'border-gray-200/60 bg-gray-50/40'}`}>
                 <div className="shrink-0">{getFileIcon(page.uploadedFileName)}</div>
-                <span className={`min-w-0 flex-1 break-all text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{page.uploadedFileName}</span>
-                <span className={`shrink-0 text-[10px] font-semibold px-2 py-1 rounded-full ${isDarkMode ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{page.flowStatusLabel(page.flow)}</span>
+                <span className={`min-w-0 flex-1 break-all text-xs font-semibold text-foreground`}>{page.uploadedFileName}</span>
+                <span className={`shrink-0 text-[10px] font-semibold px-2 py-1 rounded-full ${isDarkMode ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-muted-foreground'}`}>{page.flowStatusLabel(page.flow)}</span>
                 {page.record?.allowedActions?.includes('download') && page.record.hasStoredFile && (
                   <button type="button" onClick={() => void page.handleDownload()} className="text-[10px] font-semibold text-brand underline">
                     {t('docUpload.viewFile')}
@@ -449,18 +449,18 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
                   <div className="min-w-0">
-                    <label className={`text-xs font-semibold uppercase tracking-wider mb-1.5 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.documentType')}</label>
+                    <label className={`text-xs font-semibold uppercase tracking-wider mb-1.5 block text-muted-foreground`}>{t('docUpload.documentType')}</label>
                     <div className={`px-3 py-2 rounded-lg text-xs font-semibold break-words ${isDarkMode ? 'bg-brand-soft text-brand' : 'bg-status-info-soft text-status-info'}`}>
                       {page.typeLabel(`documentExtraction.type.${page.confirmedDocType}`, page.confirmedDocType)}
                     </div>
                   </div>
                   <div className="min-w-0">
-                    <label className={`text-xs font-semibold uppercase tracking-wider mb-1.5 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.assignedTo')}</label>
+                    <label className={`text-xs font-semibold uppercase tracking-wider mb-1.5 block text-muted-foreground`}>{t('docUpload.assignedTo')}</label>
                     {page.flow === 'ready' && page.record?.allowedActions?.includes('confirm') ? (
                       <select
                         value={page.assignedVehicleId}
                         onChange={(e) => void page.handleReassignVehicle(e.target.value)}
-                        className={`w-full min-w-0 px-3 py-2 rounded-lg text-xs font-semibold border ${isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                        className={`w-full min-w-0 px-3 py-2 rounded-lg text-xs font-semibold border ${isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200 text-foreground'}`}
                       >
                         <option value="">{t('docUpload.assignVehiclePlaceholder')}</option>
                         {page.vehicles.map((v) => (
@@ -470,7 +470,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
                         ))}
                       </select>
                     ) : (
-                      <div className={`px-3 py-2 rounded-lg text-xs font-semibold break-words ${isDarkMode ? 'surface-premium text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
+                      <div className={`px-3 py-2 rounded-lg text-xs font-semibold break-words ${isDarkMode ? 'surface-premium text-foreground' : 'bg-gray-100 text-foreground'}`}>
                         {page.vehicles.find((v) => v.id === page.assignedVehicleId)?.name || t('docUpload.assignVehiclePlaceholder')}
                       </div>
                     )}
@@ -538,12 +538,12 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
                     {page.flow === 'applying' ? page.flowStatusLabel('applying') : t('docUpload.confirmAndFile')}
                   </button>
                   {page.record?.allowedActions?.includes('reextract') && (
-                    <button type="button" onClick={() => void page.handleReextract()} disabled={page.flow === 'applying'} className={`w-full sm:w-auto min-h-11 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${isDarkMode ? 'surface-premium hover:bg-neutral-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'} ${page.flow === 'applying' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    <button type="button" onClick={() => void page.handleReextract()} disabled={page.flow === 'applying'} className={`w-full sm:w-auto min-h-11 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${isDarkMode ? 'surface-premium hover:bg-neutral-700 text-muted-foreground' : 'bg-gray-100 hover:bg-gray-200 text-muted-foreground'} ${page.flow === 'applying' ? 'opacity-50 cursor-not-allowed' : ''}`}>
                       <Icon name="rotate-ccw" className="w-3.5 h-3.5" />
                       {t('docUpload.reextract')}
                     </button>
                   )}
-                  <button type="button" onClick={page.handleReset} disabled={page.flow === 'applying'} className={`w-full sm:w-auto min-h-11 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${isDarkMode ? 'surface-premium hover:bg-neutral-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'} ${page.flow === 'applying' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <button type="button" onClick={page.handleReset} disabled={page.flow === 'applying'} className={`w-full sm:w-auto min-h-11 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${isDarkMode ? 'surface-premium hover:bg-neutral-700 text-muted-foreground' : 'bg-gray-100 hover:bg-gray-200 text-muted-foreground'} ${page.flow === 'applying' ? 'opacity-50 cursor-not-allowed' : ''}`}>
                     {t('docUpload.cancel')}
                   </button>
                 </div>
@@ -556,8 +556,8 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
               <div className={`w-16 h-16 rounded-lg mx-auto mb-3 flex items-center justify-center ${isDarkMode ? 'bg-green-500/15' : 'bg-green-100/80'}`}>
                 <Icon name="check-circle" className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
               </div>
-              <p className={`text-xs font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('docUpload.successFiled')}</p>
-              <p className={`text-xs mb-3 break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+              <p className={`text-xs font-semibold mb-2 text-foreground`}>{t('docUpload.successFiled')}</p>
+              <p className={`text-xs mb-3 break-words text-muted-foreground`}>
                 {t('docUpload.appliedTo', { type: page.typeLabel(`documentExtraction.type.${page.confirmedDocType}`, page.confirmedDocType) })}
               </p>
               <div className="mx-auto mb-4 max-w-lg text-left space-y-3">
@@ -588,10 +588,10 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
             <div className={`rounded-lg p-6 sm:p-10 min-w-0 ${glass}`}>
               <div className="text-center mb-4">
                 <Icon name="alert-triangle" className={`mx-auto mb-2 h-8 w-8 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
-                <p className={`text-xs font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                <p className={`text-xs font-semibold text-foreground`}>
                   {t('docUpload.applyResult.partialSuccessTitle')}
                 </p>
-                <p className={`text-xs mt-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                <p className={`text-xs mt-1 text-muted-foreground`}>
                   {t('docUpload.applyResult.partialSuccessHint')}
                 </p>
               </div>
@@ -624,7 +624,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
 
           {showCancelled && (
             <div className={`rounded-lg p-6 sm:p-10 text-center min-w-0 ${glass}`}>
-              <p className={`text-xs font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{page.flowStatusLabel('cancelled')}</p>
+              <p className={`text-xs font-semibold mb-3 text-foreground`}>{page.flowStatusLabel('cancelled')}</p>
               <button type="button" onClick={page.handleReset} className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold bg-brand text-brand-foreground">
                 {t('docUpload.uploadAnother')}
               </button>

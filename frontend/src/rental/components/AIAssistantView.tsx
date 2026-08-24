@@ -269,7 +269,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                       : 'bg-amber-500'
                 } animate-pulse`}
               />
-              <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <span className={`text-[11px] font-semibold text-muted-foreground`}>
                 {error
                   ? t('aiChat.status.unavailable')
                   : agentReady
@@ -277,11 +277,11 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                     : t('aiChat.status.preparing')}
               </span>
             </div>
-            <p className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+            <p className={`text-[10px] text-muted-foreground`}>
               {t('aiChat.branding.dataBasis')}
             </p>
             {messageCount > 0 && (
-              <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+              <p className={`text-[10px] mt-1 text-muted-foreground`}>
                 {t(messageCount === 1 ? 'aiChat.sessionMessage' : 'aiChat.sessionMessages', {
                   count: String(messageCount),
                 })}
@@ -298,7 +298,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
           }}
         >
           <div
-            className={`text-xs font-semibold uppercase tracking-wider px-2 py-1.5 ${isDarkMode ? 'text-gray-600' : 'text-muted-foreground'}`}
+            className={`text-xs font-semibold uppercase tracking-wider px-2 py-1.5 text-muted-foreground`}
           >
             {t('aiChat.capabilities')}
           </div>
@@ -307,7 +307,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
             return (
               <div
                 key={cap.key}
-                className={`flex items-center gap-2 px-2 py-2 rounded-lg mb-0.5 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}
+                className={`flex items-center gap-2 px-2 py-2 rounded-lg mb-0.5 text-muted-foreground`}
               >
                 <CapIcon
                   className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-purple-500/60' : 'text-purple-400/60'}`}
@@ -318,10 +318,10 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
           })}
 
           <div className={`mt-4 rounded-lg p-3 ${isDarkMode ? 'surface-premium' : 'bg-gray-50/60'}`}>
-            <p className={`text-[10px] font-semibold mb-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+            <p className={`text-[10px] font-semibold mb-1 text-muted-foreground`}>
               {t('aiChat.aboutTitle')}
             </p>
-            <p className={`text-[10px] leading-relaxed ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+            <p className={`text-[10px] leading-relaxed text-muted-foreground`}>
               {t('aiChat.aboutDesc')}
             </p>
           </div>
@@ -342,10 +342,10 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
             <Icon name="sparkles" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className={`text-base sm:text-lg font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <h2 className={`text-base sm:text-lg font-semibold truncate text-foreground`}>
               {t('aiChat.title')}
             </h2>
-            <p className={`text-[11px] sm:text-xs truncate ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+            <p className={`text-[11px] sm:text-xs truncate text-muted-foreground`}>
               {t('aiChat.subtitle')}
             </p>
           </div>
@@ -353,7 +353,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
             <button
               onClick={handleNewChat}
               title={t('aiChat.newChat')}
-              className={`lg:hidden p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+              className={`lg:hidden p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-gray-100 text-muted-foreground'}`}
             >
               <Icon name="plus" className="w-4 h-4" />
             </button>
@@ -361,7 +361,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
               <button
                 onClick={handleNewChat}
                 title="Clear conversation"
-                className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
+                className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-gray-100 text-muted-foreground'}`}
               >
                 <Icon name="trash-2" className="w-4 h-4" />
               </button>
@@ -402,10 +402,10 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                 >
                   <Icon name="sparkles" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                 </div>
-                <h2 className={`text-lg font-bold tracking-tight mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                <h2 className={`text-lg font-bold tracking-tight mb-2 text-foreground`}>
                   {t('aiChat.title')}
                 </h2>
-                <p className={`text-xs px-2 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                <p className={`text-xs px-2 text-muted-foreground`}>
                   {t('aiChat.welcomeDesc')}
                 </p>
               </div>
@@ -419,7 +419,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                       className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg min-w-0 ${isDarkMode ? 'surface-premium' : 'bg-gray-50/80'}`}
                     >
                       <CapIcon className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
-                      <span className={`text-[11px] font-semibold min-w-0 break-words ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      <span className={`text-[11px] font-semibold min-w-0 break-words text-muted-foreground`}>
                         {t(cap.key as any)}
                       </span>
                     </div>
@@ -429,7 +429,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
 
               <div>
                 <p
-                  className={`text-xs font-semibold uppercase tracking-wider mb-3 text-center ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}
+                  className={`text-xs font-semibold uppercase tracking-wider mb-3 text-center text-muted-foreground`}
                 >
                   {t('aiChat.tryAsking')}
                 </p>
@@ -451,12 +451,12 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                         >
                           <SIcon className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
                         </div>
-                        <span className={`text-xs font-semibold min-w-0 break-words ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                        <span className={`text-xs font-semibold min-w-0 break-words ${isDarkMode ? 'text-muted-foreground' : 'text-foreground'}`}>
                           {t(s.key as any)}
                         </span>
                         <Icon
                           name="chevron-right"
-                          className={`w-3.5 h-3.5 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}
+                          className={`w-3.5 h-3.5 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground`}
                         />
                       </button>
                     );
@@ -497,12 +497,12 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                       }`}
                     >
                       {msg.role === 'user' ? (
-                        <p className={`text-xs min-w-0 break-words ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                        <p className={`text-xs min-w-0 break-words text-foreground`}>
                           {msg.content}
                         </p>
                       ) : (
                         <div
-                          className={`min-w-0 break-words [overflow-wrap:anywhere] ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}
+                          className={`min-w-0 break-words [overflow-wrap:anywhere] ${isDarkMode ? 'text-muted-foreground' : 'text-foreground'}`}
                           role={msg.isError ? 'alert' : undefined}
                           aria-live={msg.isError ? 'polite' : undefined}
                         >
@@ -532,7 +532,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                       <div className="flex items-center gap-1 mt-1.5 ml-1">
                         <button
                           onClick={() => handleCopy(msg.id, msg.content)}
-                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
+                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-gray-100 text-muted-foreground'}`}
                         >
                           {copiedId === msg.id ? (
                             <Icon name="check" className="w-3 h-3 text-green-500" />
@@ -541,18 +541,18 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                           )}
                         </button>
                         <button
-                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
+                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-gray-100 text-muted-foreground'}`}
                         >
                           <Icon name="thumbs-up" className="w-3 h-3" />
                         </button>
                         <button
-                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
+                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-gray-100 text-muted-foreground'}`}
                         >
                           <Icon name="thumbs-down" className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => handleRetry(msg.id)}
-                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
+                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-muted-foreground' : 'hover:bg-gray-100 text-muted-foreground'}`}
                         >
                           <Icon name="rotate-ccw" className="w-3 h-3" />
                         </button>
@@ -582,7 +582,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                         name="loader-2"
                         className={`w-3.5 h-3.5 animate-spin ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`}
                       />
-                      <span className={`text-xs ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                      <span className={`text-xs text-muted-foreground`}>
                         {thinkingLabel || t('aiChat.thinking')}
                       </span>
                     </div>
@@ -614,9 +614,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                 onKeyDown={handleKeyDown}
                 placeholder={t('aiChat.inputPlaceholder')}
                 rows={1}
-                className={`flex-1 min-w-0 bg-transparent outline-none text-xs resize-none max-h-32 placeholder:text-gray-400 ${
-                  isDarkMode ? 'text-gray-200' : 'text-gray-800'
-                }`}
+                className={`flex-1 min-w-0 bg-transparent outline-none text-xs resize-none max-h-32 placeholder:text-muted-foreground text-foreground`}
                 style={{ minHeight: '24px' }}
                 onInput={(e) => {
                   const target = e.target as HTMLTextAreaElement;
@@ -632,14 +630,14 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                   input.trim() && !isTyping
                     ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-sm'
                     : isDarkMode
-                      ? 'bg-neutral-700 text-gray-500'
-                      : 'bg-gray-200 text-gray-400'
+                      ? 'bg-neutral-700 text-muted-foreground'
+                      : 'bg-gray-200 text-muted-foreground'
                 }`}
               >
                 <Icon name="send" className="w-3.5 h-3.5" />
               </button>
             </div>
-            <p className={`text-[10px] sm:text-xs text-center mt-2 px-1 ${isDarkMode ? 'text-gray-600' : 'text-muted-foreground'}`}>
+            <p className={`text-[10px] sm:text-xs text-center mt-2 px-1 text-muted-foreground`}>
               {t('aiChat.footer', { basis: t('aiChat.branding.dataBasis') })}
             </p>
           </div>

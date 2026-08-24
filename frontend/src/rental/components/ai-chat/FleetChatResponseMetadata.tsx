@@ -35,7 +35,7 @@ export function FleetChatResponseMetadata({
     structured.partial ||
     hasWarnings;
 
-  const muted = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
+  const muted = 'text-muted-foreground';
   const warnBg = isDarkMode ? 'bg-amber-900/20 border-amber-800/40' : 'bg-amber-50 border-amber-200';
   const infoBg = isDarkMode ? 'surface-premium border-neutral-800' : 'bg-gray-50/80 border-gray-200/60';
 

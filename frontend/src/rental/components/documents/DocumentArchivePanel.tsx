@@ -90,10 +90,10 @@ export function DocumentArchivePanel({
       <div className={`border-b px-3 py-3 space-y-3 ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
           <div className="min-w-0">
-            <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <h2 className={`text-base font-semibold text-foreground`}>
               {t('docUpload.archive.title')}
             </h2>
-            <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+            <p className={`text-xs mt-0.5 text-muted-foreground`}>
               {t('docUpload.archive.subtitle')}
             </p>
           </div>
@@ -237,11 +237,11 @@ export function DocumentArchivePanel({
 
         {!archive.loading && archive.items.length === 0 ? (
           <div className="py-12 text-center min-w-0">
-            <Archive className={`mx-auto mb-2 h-8 w-8 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
-            <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <Archive className={`mx-auto mb-2 h-8 w-8 text-muted-foreground`} />
+            <p className={`text-sm font-semibold text-foreground`}>
               {t('docUpload.archive.emptyTitle')}
             </p>
-            <p className={`text-xs mt-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+            <p className={`text-xs mt-1 text-muted-foreground`}>
               {t('docUpload.archive.emptyHint')}
             </p>
           </div>
@@ -256,10 +256,10 @@ export function DocumentArchivePanel({
               >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between min-w-0">
                   <div className="min-w-0 flex-1">
-                    <p className={`text-sm font-semibold break-all ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <p className={`text-sm font-semibold break-all text-foreground`}>
                       {item.sourceFileName || item.id}
                     </p>
-                    <p className={`text-xs mt-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                    <p className={`text-xs mt-1 text-muted-foreground`}>
                       {typeLabel(
                         `documentExtraction.type.${item.effectiveDocumentType || 'OTHER'}`,
                         item.effectiveDocumentType || 'OTHER',
@@ -272,7 +272,7 @@ export function DocumentArchivePanel({
                       </span>
                       {item.actionSummary.summary ? (
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                          isDarkMode ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-600'
+                          isDarkMode ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-muted-foreground'
                         }`}>
                           {item.actionSummary.summary}
                         </span>
@@ -285,9 +285,7 @@ export function DocumentArchivePanel({
                         </span>
                       ) : null}
                     </div>
-                    <div className={`mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px] ${
-                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                    }`}>
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px] text-muted-foreground">
                       <span>{t('docUpload.archive.uploadedAt')}: {formatDate(item.uploadedAt)}</span>
                       <span>{t('docUpload.archive.appliedAt')}: {formatDate(item.appliedAt)}</span>
                       {item.invoiceNumber ? <span>{t('docUpload.archive.invoiceNumber')}: {item.invoiceNumber}</span> : null}
@@ -299,7 +297,7 @@ export function DocumentArchivePanel({
                           <span
                             key={`${link.entityType}-${link.entityId}`}
                             className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] ${
-                              isDarkMode ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-600'
+                              isDarkMode ? 'surface-premium text-muted-foreground' : 'bg-gray-100 text-muted-foreground'
                             }`}
                           >
                             <Link2 className="w-3 h-3" />
@@ -309,7 +307,7 @@ export function DocumentArchivePanel({
                       </div>
                     ) : null}
                     {item.uploader?.displayName ? (
-                      <p className={`mt-2 text-[11px] ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+                      <p className={`mt-2 text-[11px] text-muted-foreground`}>
                         {t('docUpload.archive.uploader')}: {item.uploader.displayName}
                       </p>
                     ) : null}
@@ -317,10 +315,8 @@ export function DocumentArchivePanel({
                       isDarkMode ? 'border-neutral-800 bg-neutral-900/50' : 'border-gray-200 bg-gray-50/80'
                     }`}>
                       <div className="flex items-center gap-1.5 mb-2">
-                        <History className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                        <span className={`text-[10px] font-semibold uppercase tracking-wide ${
-                          isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                        }`}>
+                        <History className={`w-3.5 h-3.5 text-muted-foreground`} />
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                           {t('docUpload.archive.auditTrail')}
                         </span>
                       </div>
@@ -328,20 +324,18 @@ export function DocumentArchivePanel({
                         {buildDocumentArchiveAuditTrail(item).map((entry) => (
                           <li
                             key={`${entry.key}-${entry.at}`}
-                            className={`flex flex-col gap-0.5 text-[11px] sm:flex-row sm:items-baseline sm:justify-between ${
-                              isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                            }`}
+                            className="flex flex-col gap-0.5 text-[11px] sm:flex-row sm:items-baseline sm:justify-between text-muted-foreground"
                           >
                             <span className="font-medium">
                               {t(`docUpload.archive.audit.${entry.key}` as TranslationKey)}
                               {entry.detail ? (
-                                <span className={`font-normal ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+                                <span className={`font-normal text-muted-foreground`}>
                                   {' '}
                                   · {entry.detail}
                                 </span>
                               ) : null}
                             </span>
-                            <time className={`shrink-0 tabular-nums ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+                            <time className={`shrink-0 tabular-nums text-muted-foreground`}>
                               {formatDate(entry.at)}
                             </time>
                           </li>
@@ -366,7 +360,7 @@ export function DocumentArchivePanel({
                         type="button"
                         onClick={() => onDownload(item)}
                         className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[11px] font-semibold ${
-                          isDarkMode ? 'surface-premium text-gray-200' : 'bg-gray-100 text-gray-700'
+                          isDarkMode ? 'surface-premium text-foreground' : 'bg-gray-100 text-foreground'
                         }`}
                       >
                         <Download className="w-3.5 h-3.5" />
@@ -382,7 +376,7 @@ export function DocumentArchivePanel({
 
         {archive.totalPages > 1 ? (
           <div className="mt-4 flex items-center justify-between gap-3 min-w-0">
-            <p className={`text-[11px] ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+            <p className={`text-[11px] text-muted-foreground`}>
               {t('docUpload.archive.pagination', {
                 page,
                 totalPages: archive.totalPages,

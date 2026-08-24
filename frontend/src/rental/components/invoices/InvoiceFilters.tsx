@@ -34,7 +34,7 @@ function selectClass(isDarkMode: boolean): string {
   return `rounded-lg border px-3 py-2 text-xs font-medium outline-none transition-all ${
     isDarkMode
       ? 'bg-muted border-border text-foreground focus:border-ring'
-      : 'bg-white border-gray-200 text-gray-700 focus:border-brand'
+      : 'bg-white border-gray-200 text-foreground focus:border-brand'
   }`;
 }
 

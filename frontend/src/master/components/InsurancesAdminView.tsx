@@ -283,7 +283,7 @@ function PartnersTab() {
           <span className={`text-sm text-foreground`}>
             {testResult.success ? 'Connection OK' : 'Connection failed'} — {testResult.latencyMs}ms {testResult.message && `· ${testResult.message}`}
           </span>
-          <button onClick={() => setTestResult(null)} className="ml-auto"><X className="w-4 h-4 text-gray-400" /></button>
+          <button onClick={() => setTestResult(null)} className="ml-auto"><X className="w-4 h-4 text-muted-foreground" /></button>
         </div>
       )}
 
@@ -291,7 +291,7 @@ function PartnersTab() {
         <div className={`${CARD} p-6 space-y-4`}>
           <div className="flex items-center justify-between">
             <h3 className={`text-sm font-bold text-foreground`}>{editId ? 'Edit Partner' : 'New Partner'}</h3>
-            <button onClick={() => { setEditId(null); setShowCreate(false); }}><X className="w-4 h-4 text-gray-400" /></button>
+            <button onClick={() => { setEditId(null); setShowCreate(false); }}><X className="w-4 h-4 text-muted-foreground" /></button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div><label className={LABEL}>Key</label><input value={form.key} onChange={e => setForm(f => ({ ...f, key: e.target.value }))} className={INPUT} placeholder="partner-key" /></div>
@@ -379,7 +379,7 @@ function PartnersTab() {
                 <tr key={p.id} className={`border-b transition-colors border-border hover:bg-muted/50`}>
                   <td className={`px-5 py-3 font-semibold text-foreground`}>{p.displayName}</td>
                   <td className={`px-5 py-3 text-muted-foreground`}>{p.key}</td>
-                  <td className="px-5 py-3">{p.isEnabled ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <XCircle className="w-4 h-4 text-gray-400" />}</td>
+                  <td className="px-5 py-3">{p.isEnabled ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <XCircle className="w-4 h-4 text-muted-foreground" />}</td>
                   <td className={`px-5 py-3 text-muted-foreground`}>{p.communicationChannel}</td>
                   <td className="px-5 py-3">
                     <div className="flex flex-wrap gap-1">{(p.supportedInsuranceModels ?? []).slice(0, 3).map((m: string) => (
@@ -395,9 +395,9 @@ function PartnersTab() {
                   <td className={`px-5 py-3 text-xs text-muted-foreground`}>{fmtDate(p.lastTestedAt ?? null)}</td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => openEdit(p)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Settings2 className="w-3.5 h-3.5 text-gray-400" /></button>
+                      <button onClick={() => openEdit(p)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Settings2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
                       <button onClick={() => handleTest(p.id)} disabled={testingId === p.id} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}>
-                        {testingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin text-status-info" /> : <TestTube className="w-3.5 h-3.5 text-gray-400" />}
+                        {testingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin text-status-info" /> : <TestTube className="w-3.5 h-3.5 text-muted-foreground" />}
                       </button>
                     </div>
                   </td>
@@ -488,7 +488,7 @@ function ContactsTab() {
         <div className={`${CARD} p-6 space-y-4`}>
           <div className="flex items-center justify-between">
             <h3 className={`text-sm font-bold text-foreground`}>{editId ? 'Edit Contact' : 'New Contact'}</h3>
-            <button onClick={() => { setEditId(null); setShowCreate(false); }}><X className="w-4 h-4 text-gray-400" /></button>
+            <button onClick={() => { setEditId(null); setShowCreate(false); }}><X className="w-4 h-4 text-muted-foreground" /></button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div><label className={LABEL}>Full Name</label><input value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} className={INPUT} /></div>
@@ -534,9 +534,9 @@ function ContactsTab() {
                     <td className={`px-5 py-3 text-muted-foreground`}>{c.department ?? '—'}</td>
                     <td className="px-5 py-3"><span className={`flex items-center gap-1.5 text-muted-foreground`}><Mail className="w-3.5 h-3.5" />{c.email ?? '—'}</span></td>
                     <td className="px-5 py-3"><span className={`flex items-center gap-1.5 text-muted-foreground`}><Phone className="w-3.5 h-3.5" />{c.phone ?? '—'}</span></td>
-                    <td className="px-5 py-3">{c.isPrimary ? <Badge label="Primary" color="bg-status-info-soft text-status-info" /> : <span className="text-gray-500">—</span>}</td>
+                    <td className="px-5 py-3">{c.isPrimary ? <Badge label="Primary" color="bg-status-info-soft text-status-info" /> : <span className="text-muted-foreground">—</span>}</td>
                     <td className="px-5 py-3">
-                      <button onClick={() => openEdit(c)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Settings2 className="w-3.5 h-3.5 text-gray-400" /></button>
+                      <button onClick={() => openEdit(c)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Settings2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
                     </td>
                   </tr>
                 ))}
@@ -608,7 +608,7 @@ function DisclosureTemplatesTab() {
         <div className={`${CARD} p-6 space-y-4`}>
           <div className="flex items-center justify-between">
             <h3 className={`text-sm font-bold text-foreground`}>{editId ? 'Edit Disclosure' : 'New Disclosure'}</h3>
-            <button onClick={() => { setEditId(null); setShowCreate(false); }}><X className="w-4 h-4 text-gray-400" /></button>
+            <button onClick={() => { setEditId(null); setShowCreate(false); }}><X className="w-4 h-4 text-muted-foreground" /></button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div><label className={LABEL}>Title</label><input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className={INPUT} /></div>
@@ -651,7 +651,7 @@ function DisclosureTemplatesTab() {
                   <td className="px-5 py-3">{t.isActive ? <Badge label="Active" color="bg-emerald-500/20 text-emerald-400" /> : <Badge label="Inactive" color={'sq-chip-neutral'} />}</td>
                   <td className={`px-5 py-3 text-xs text-muted-foreground`}>{fmtDate(t.effectiveFrom)}</td>
                   <td className="px-5 py-3">
-                    <button onClick={() => openEdit(t)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Settings2 className="w-3.5 h-3.5 text-gray-400" /></button>
+                    <button onClick={() => openEdit(t)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Settings2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
                   </td>
                 </tr>
               ))}
@@ -722,7 +722,7 @@ function InquiryTemplatesTab() {
         <div className={`${CARD} p-6 space-y-4`}>
           <div className="flex items-center justify-between">
             <h3 className={`text-sm font-bold text-foreground`}>{editId ? 'Edit Template' : 'New Template'}</h3>
-            <button onClick={() => { setEditId(null); setShowCreate(false); }}><X className="w-4 h-4 text-gray-400" /></button>
+            <button onClick={() => { setEditId(null); setShowCreate(false); }}><X className="w-4 h-4 text-muted-foreground" /></button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2"><label className={LABEL}>Subject Template</label><input value={form.subjectTemplate} onChange={e => setForm(f => ({ ...f, subjectTemplate: e.target.value }))} className={INPUT} placeholder="Insurance inquiry for {{make}} {{model}} ({{year}})" /></div>
@@ -778,7 +778,7 @@ function InquiryTemplatesTab() {
                   <td className={`px-5 py-3 text-muted-foreground`}>v{t.version}</td>
                   <td className="px-5 py-3">{t.isActive ? <Badge label="Active" color="bg-emerald-500/20 text-emerald-400" /> : <Badge label="Inactive" color={'sq-chip-neutral'} />}</td>
                   <td className="px-5 py-3">
-                    <button onClick={() => openEdit(t)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Settings2 className="w-3.5 h-3.5 text-gray-400" /></button>
+                    <button onClick={() => openEdit(t)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Settings2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
                   </td>
                 </tr>
               ))}
@@ -877,7 +877,7 @@ function InquiriesTab() {
                         ))}</div>
                       </td>
                       <td className={`px-5 py-3 text-xs text-muted-foreground`}>{fmtDate(r.createdAt)}</td>
-                      <td className="px-5 py-3">{expandedId === r.id ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}</td>
+                      <td className="px-5 py-3">{expandedId === r.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}</td>
                     </tr>
                     {expandedId === r.id && (
                       <tr key={`${r.id}-detail`} className={'bg-muted/30'}>
@@ -917,9 +917,9 @@ function InquiriesTab() {
             <div className={`flex items-center justify-between px-5 py-3 border-t border-border`}>
               <span className={`text-xs text-muted-foreground`}>{total} total inquiries</span>
               <div className="flex items-center gap-2">
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className={`p-1.5 rounded-lg disabled:opacity-30 hover:bg-muted`}><ChevronLeft className="w-4 h-4 text-gray-400" /></button>
+                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className={`p-1.5 rounded-lg disabled:opacity-30 hover:bg-muted`}><ChevronLeft className="w-4 h-4 text-muted-foreground" /></button>
                 <span className={`text-xs font-semibold text-muted-foreground`}>{page} / {totalPages}</span>
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className={`p-1.5 rounded-lg disabled:opacity-30 hover:bg-muted`}><ChevronRight className="w-4 h-4 text-gray-400" /></button>
+                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className={`p-1.5 rounded-lg disabled:opacity-30 hover:bg-muted`}><ChevronRight className="w-4 h-4 text-muted-foreground" /></button>
               </div>
             </div>
           )}
@@ -1001,7 +1001,7 @@ function HealthTab() {
                 </div>
                 <div>
                   <span className={'text-muted-foreground'}>Enabled</span>
-                  <p className={`font-semibold mt-0.5 ${p.isEnabled ? 'text-emerald-500' : 'text-gray-500'}`}>{p.isEnabled ? 'Yes' : 'No'}</p>
+                  <p className={`font-semibold mt-0.5 ${p.isEnabled ? 'text-emerald-500' : 'text-muted-foreground'}`}>{p.isEnabled ? 'Yes' : 'No'}</p>
                 </div>
                 <div>
                   <span className={'text-muted-foreground'}>Last Tested</span>

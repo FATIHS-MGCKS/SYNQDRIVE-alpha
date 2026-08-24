@@ -119,8 +119,8 @@ export function HomeAwayBadge({ v, stationLookup, isDarkMode, compact = false }:
         : 'bg-emerald-50 text-emerald-700'
       : state === 'away'
         ? isDarkMode
-          ? 'bg-neutral-700/60 text-gray-300'
-          : 'bg-gray-100 text-gray-600'
+          ? 'bg-neutral-700/60 text-muted-foreground'
+          : 'bg-gray-100 text-muted-foreground'
         : isDarkMode
           ? 'bg-amber-500/10 text-amber-400'
           : 'bg-amber-50 text-amber-700';

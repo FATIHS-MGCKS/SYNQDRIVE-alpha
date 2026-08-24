@@ -322,7 +322,7 @@ function relativeTime(dateStr: string | null) {
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgClass: string; textClass: string }> = {
   ACTIVE: { label: 'Active', color: 'green', bgClass: 'bg-green-100 dark:bg-status-positive-soft', textClass: 'text-green-700 dark:text-status-positive' },
   DRAFT: { label: 'Draft', color: 'amber', bgClass: 'bg-amber-100 dark:bg-status-attention-soft', textClass: 'text-amber-700 dark:text-status-attention' },
-  DISABLED: { label: 'Disabled', color: 'gray', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-gray-500 dark:text-muted-foreground' },
+  DISABLED: { label: 'Disabled', color: 'gray', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-muted-foreground dark:text-muted-foreground' },
   INVALID: { label: 'Invalid', color: 'red', bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
   PENDING_ACTIVATION: { label: 'Pending approval', color: 'purple', bgClass: 'bg-purple-100 dark:bg-status-ai-soft', textClass: 'text-purple-700 dark:text-status-ai' },
 };
@@ -330,7 +330,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgClass: str
 const RUN_STATUS_CONFIG: Record<string, { label: string; bgClass: string; textClass: string }> = {
   SUCCESS: { label: 'Success', bgClass: 'bg-green-100 dark:bg-status-positive-soft', textClass: 'text-green-700 dark:text-status-positive' },
   FAILED: { label: 'Failed', bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
-  SKIPPED: { label: 'Skipped', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-gray-500 dark:text-muted-foreground' },
+  SKIPPED: { label: 'Skipped', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-muted-foreground dark:text-muted-foreground' },
   WAITING_APPROVAL: { label: 'Waiting approval', bgClass: 'bg-purple-100 dark:bg-status-ai-soft', textClass: 'text-purple-700 dark:text-status-ai' },
   RUNNING: { label: 'Running', bgClass: 'bg-status-info-soft', textClass: 'text-status-info' },
   PENDING: { label: 'Pending', bgClass: 'bg-amber-100 dark:bg-status-attention-soft', textClass: 'text-amber-700 dark:text-status-attention' },
@@ -350,9 +350,9 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
 
   const cardBg = isDarkMode ? 'bg-[#1e1e2e]' : 'bg-white';
   const cardBorder = isDarkMode ? 'border-gray-700/50' : 'border-gray-200';
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
-  const inputBg = isDarkMode ? 'bg-[#2a2a3e] border-gray-600 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
+  const inputBg = isDarkMode ? 'bg-[#2a2a3e] border-gray-600 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-foreground placeholder-gray-400';
   const hoverBg = isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50';
 
   const refreshSelectedWorkflow = useCallback(async () => {
@@ -559,7 +559,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
             className={`min-h-11 rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
               mainTab === tab.key
                 ? 'bg-brand text-brand-foreground'
-                : `${isDarkMode ? 'text-gray-400 hover:bg-white/5 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'}`
+                : `${isDarkMode ? 'text-muted-foreground hover:bg-white/5 hover:text-white' : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'}`
             }`}
           >
             {tab.label}
@@ -603,15 +603,15 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
                   className={`text-left p-3 rounded-lg border ${cardBorder} ${hoverBg} transition-colors group`}
                 >
                   <div className="flex items-start gap-2">
-                    <CatIcon className={`w-4 h-4 mt-0.5 shrink-0 ${catColors[cat.color] || 'text-gray-500'}`} />
+                    <CatIcon className={`w-4 h-4 mt-0.5 shrink-0 ${catColors[cat.color] || 'text-muted-foreground'}`} />
                     <div className="min-w-0">
                       <p className={`text-xs font-semibold ${textPrimary} truncate group-hover:text-status-info transition-colors`}>{t.name}</p>
                       <p className={`mt-0.5 text-xs ${textSecondary} line-clamp-2`}>{t.description}</p>
                       <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                        <span className={`rounded-full px-1.5 py-0.5 text-xs ${isDarkMode ? 'bg-white/5 text-gray-400' : 'bg-muted text-muted-foreground'}`}>
+                        <span className={`rounded-full px-1.5 py-0.5 text-xs ${isDarkMode ? 'bg-white/5 text-muted-foreground' : 'bg-muted text-muted-foreground'}`}>
                           {cat.label}
                         </span>
-                        <span className={`rounded-full px-1.5 py-0.5 text-xs ${isDarkMode ? 'bg-white/5 text-gray-400' : 'bg-muted text-muted-foreground'}`}>
+                        <span className={`rounded-full px-1.5 py-0.5 text-xs ${isDarkMode ? 'bg-white/5 text-muted-foreground' : 'bg-muted text-muted-foreground'}`}>
                           {t.actions.length} action{t.actions.length !== 1 ? 's' : ''}
                         </span>
                       </div>
@@ -728,8 +728,8 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
   const st = STATUS_CONFIG[wf.status] || STATUS_CONFIG.DRAFT;
   const cardBg = isDarkMode ? 'bg-[#1e1e2e]' : 'bg-white';
   const cardBorder = isDarkMode ? 'border-gray-700/50' : 'border-gray-200';
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
   const labelClass = `text-[10px] uppercase tracking-wider font-semibold ${textSecondary}`;
   const valueClass = `text-xs font-medium ${textPrimary}`;
   const isAi = wf.category === 'ai_permissions' || wf.actions?.some((a: ActionDef) => a.type.startsWith('ai_'));
@@ -834,7 +834,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
                           ? 'bg-purple-100 text-purple-700 dark:bg-status-ai-soft dark:text-status-ai'
                           : request.status === 'APPROVED'
                             ? 'bg-green-100 text-green-700 dark:bg-status-positive-soft dark:text-status-positive'
-                            : 'bg-gray-100 text-gray-600 dark:bg-muted dark:text-muted-foreground'
+                            : 'bg-gray-100 text-muted-foreground dark:bg-muted dark:text-muted-foreground'
                       }`}>
                         {request.status}
                       </span>
@@ -1016,9 +1016,9 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
 }) {
   const cardBg = isDarkMode ? 'bg-[#1e1e2e]' : 'bg-white';
   const cardBorder = isDarkMode ? 'border-gray-700/50' : 'border-gray-200';
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
-  const inputBg = isDarkMode ? 'bg-[#2a2a3e] border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900';
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
+  const inputBg = isDarkMode ? 'bg-[#2a2a3e] border-gray-600 text-white' : 'bg-white border-gray-300 text-foreground';
   const labelClass = `text-[10px] uppercase tracking-wider font-semibold ${textSecondary} mb-1 block`;
   const sectionClass = `${cardBg} border ${cardBorder} rounded-xl p-4`;
   const hoverBg = isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50';
@@ -1260,8 +1260,8 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
 function TriggerConfigEditor({ trigger, onChange, isDarkMode }: {
   trigger: TriggerDef; onChange: (t: TriggerDef) => void; isDarkMode: boolean;
 }) {
-  const inputBg = isDarkMode ? 'bg-[#2a2a3e] border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900';
-  const textSecondary = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
+  const inputBg = isDarkMode ? 'bg-[#2a2a3e] border-gray-600 text-white' : 'bg-white border-gray-300 text-foreground';
+  const textSecondary = 'text-muted-foreground';
   const labelClass = `text-[10px] ${textSecondary} mb-0.5 block mt-2`;
 
   const updateConfig = (key: string, value: any) => {
@@ -1376,8 +1376,8 @@ function TriggerConfigEditor({ trigger, onChange, isDarkMode }: {
 function ActionConfigEditor({ action, onChange, isDarkMode }: {
   action: ActionDef; onChange: (a: Partial<ActionDef>) => void; isDarkMode: boolean;
 }) {
-  const inputBg = isDarkMode ? 'bg-[#2a2a3e] border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900';
-  const textSecondary = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
+  const inputBg = isDarkMode ? 'bg-[#2a2a3e] border-gray-600 text-white' : 'bg-white border-gray-300 text-foreground';
+  const textSecondary = 'text-muted-foreground';
   const labelClass = `text-[10px] ${textSecondary} mb-0.5 block`;
 
   const updateConfig = (key: string, value: any) => {

@@ -23,9 +23,9 @@ function stepRowClass(state: IntakeProcessingStepView['state'], isDarkMode: bool
     return isDarkMode ? 'text-red-400' : 'text-red-700';
   }
   if (state === 'active') {
-    return isDarkMode ? 'text-white' : 'text-gray-900';
+    return 'text-foreground';
   }
-  return isDarkMode ? 'text-gray-500' : 'text-muted-foreground';
+  return 'text-muted-foreground';
 }
 
 export interface DocumentIntakeProcessingStepsProps {
@@ -84,7 +84,7 @@ export function DocumentIntakeProcessingSteps({
                         : 'text-red-600'
                       : isDarkMode
                         ? 'text-muted-foreground'
-                        : 'text-gray-500'
+                        : 'text-muted-foreground'
                   }`}
                 >
                   {step.detail}
@@ -96,23 +96,23 @@ export function DocumentIntakeProcessingSteps({
       </ol>
 
       {uploadedFileName ? (
-        <p className={`mt-4 text-[11px] break-all ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+        <p className={`mt-4 text-[11px] break-all text-muted-foreground`}>
           {uploadedFileName}
         </p>
       ) : null}
 
       {elapsedLabel ? (
-        <p className={`mt-2 text-[11px] ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{elapsedLabel}</p>
+        <p className={`mt-2 text-[11px] text-muted-foreground`}>{elapsedLabel}</p>
       ) : null}
 
       {longRunningHint ? (
-        <p className={`mt-2 text-[11px] break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+        <p className={`mt-2 text-[11px] break-words text-muted-foreground`}>
           {longRunningHint}
         </p>
       ) : null}
 
       {safeLeaveHint ? (
-        <p className={`mt-1 text-[11px] break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+        <p className={`mt-1 text-[11px] break-words text-muted-foreground`}>
           {safeLeaveHint}
         </p>
       ) : null}

@@ -134,10 +134,10 @@ export function DocumentIntakeUploadZone({
         >
           <Icon name="upload" className={`${compact ? 'w-5 h-5' : 'w-6 h-6 sm:w-7 sm:h-7'} ${isDarkMode ? 'text-brand' : 'text-brand'}`} />
         </div>
-        <p className={`text-xs font-semibold mb-2 break-words px-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+        <p className={`text-xs font-semibold mb-2 break-words px-1 text-foreground`}>
           {dragActive ? dropzoneActiveLabel : dropzoneLabel}
         </p>
-        <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{supportedFormatsLabel}</p>
+        <p className={`text-xs text-muted-foreground`}>{supportedFormatsLabel}</p>
         <button
           type="button"
           disabled={disabled}

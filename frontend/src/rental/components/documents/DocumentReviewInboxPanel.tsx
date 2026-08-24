@@ -85,7 +85,7 @@ export function DocumentReviewInboxPanel({
           type="button"
           onClick={onBackToList}
           className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold ${
-            isDarkMode ? 'surface-premium text-gray-200' : 'bg-gray-100 text-gray-700'
+            isDarkMode ? 'surface-premium text-foreground' : 'bg-gray-100 text-foreground'
           }`}
         >
           <ChevronLeft className="w-4 h-4" />
@@ -101,10 +101,10 @@ export function DocumentReviewInboxPanel({
       <div className={`border-b px-3 py-3 space-y-3 ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}>
         <div className="flex items-start justify-between gap-3 min-w-0">
           <div className="min-w-0">
-            <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <h2 className={`text-base font-semibold text-foreground`}>
               {t('docUpload.review.title')}
             </h2>
-            <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+            <p className={`text-xs mt-0.5 text-muted-foreground`}>
               {t('docUpload.review.subtitle')}
             </p>
           </div>
@@ -124,8 +124,8 @@ export function DocumentReviewInboxPanel({
                 reasonFilter === chip.id
                   ? 'bg-brand text-brand-foreground'
                   : isDarkMode
-                    ? 'surface-premium text-gray-300 hover:text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'surface-premium text-muted-foreground hover:text-white'
+                    : 'bg-gray-100 text-muted-foreground hover:bg-gray-200'
               }`}
             >
               {t(chip.labelKey)}
@@ -143,11 +143,11 @@ export function DocumentReviewInboxPanel({
 
         {!inbox.loading && inbox.items.length === 0 ? (
           <div className="py-12 text-center min-w-0">
-            <Inbox className={`mx-auto mb-2 h-8 w-8 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
-            <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <Inbox className={`mx-auto mb-2 h-8 w-8 text-muted-foreground`} />
+            <p className={`text-sm font-semibold text-foreground`}>
               {t('docUpload.review.emptyTitle')}
             </p>
-            <p className={`text-xs mt-1 max-w-md mx-auto ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+            <p className={`text-xs mt-1 max-w-md mx-auto text-muted-foreground`}>
               {t('docUpload.review.emptyHint')}
             </p>
           </div>
@@ -165,10 +165,10 @@ export function DocumentReviewInboxPanel({
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between min-w-0">
                     <div className="min-w-0 flex-1">
-                      <p className={`text-sm font-semibold break-all ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      <p className={`text-sm font-semibold break-all text-foreground`}>
                         {item.sourceFileName || item.id}
                       </p>
-                      <p className={`text-xs mt-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                      <p className={`text-xs mt-1 text-muted-foreground`}>
                         {typeLabel(
                           `documentExtraction.type.${summary.effectiveDocumentType || 'OTHER'}`,
                           summary.effectiveDocumentType || 'OTHER',
@@ -182,9 +182,7 @@ export function DocumentReviewInboxPanel({
                         ))}
                       </div>
                       {item.actionSummary.summary ? (
-                        <p className={`mt-2 text-[11px] flex items-start gap-1.5 ${
-                          isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                        }`}>
+                        <p className="mt-2 text-[11px] flex items-start gap-1.5 text-muted-foreground">
                           <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                           {item.actionSummary.summary}
                         </p>
@@ -207,7 +205,7 @@ export function DocumentReviewInboxPanel({
 
         {inbox.totalPages > 1 ? (
           <div className="mt-4 flex items-center justify-between gap-3 min-w-0">
-            <p className={`text-[11px] ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+            <p className={`text-[11px] text-muted-foreground`}>
               {t('docUpload.review.pagination', { page: inbox.page, totalPages: inbox.totalPages })}
             </p>
             <div className="flex gap-2">

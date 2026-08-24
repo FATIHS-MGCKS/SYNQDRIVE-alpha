@@ -14816,7 +14816,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     reason:
       'Zentrale Charcoal-Tokens (V4.9.166) wurden von isDarkMode-neutral-800/900 und dark:bg-slate/blue in Komponenten überschrieben.',
     previousBehavior:
-      'Viele Rental-Surfaces nutzten bg-neutral-800/900, dark:bg-blue-900/40, dark:text-slate-300 unabhängig vom Token-Layer.',
+      'Viele Rental-Surfaces nutzten bg-neutral-800/900, dark:bg-blue-900/40, dark:text-muted-foreground unabhängig vom Token-Layer.',
     details:
       'StatInlineDetail.tsx, BusinessInsightsBox.tsx, InvoicesView.tsx, VehicleInsightsCard.tsx, TariffGroupDrawer.tsx, WorkflowAutomationView.tsx, Trip*-Komponenten, FleetConditionDetailView.tsx, InsightsCockpit.tsx, FinesView.tsx, LegalDocumentsTab.tsx, HighMobility*.tsx u.a.',
     affectsArchitecture: false,
@@ -27513,8 +27513,8 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
   const [openSections, setOpenSections] = useState<Record<string, Partial<Record<SectionKey, boolean>>>>({});
 
   const card = `rounded-xl shadow-sm border ${d ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`;
-  const field = `px-4 py-3 rounded-xl border text-sm font-bold ${d ? 'bg-neutral-800 border-neutral-700 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-700'}`;
-  const expandBtn = `flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold ${d ? 'border-neutral-800 bg-neutral-800/40 text-neutral-200 hover:bg-neutral-800/70' : 'border-gray-100 bg-gray-50/80 text-gray-800 hover:bg-gray-100'}`;
+  const field = `px-4 py-3 rounded-xl border text-sm font-bold ${d ? 'bg-neutral-800 border-neutral-700 text-foreground' : 'bg-gray-50 border-gray-200 text-foreground'}`;
+  const expandBtn = `flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold ${d ? 'border-neutral-800 bg-neutral-800/40 text-foreground hover:bg-neutral-800/70' : 'border-gray-100 bg-gray-50/80 text-foreground hover:bg-gray-100'}`;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -27567,7 +27567,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
         title="Changes"
         description="Internal changelog and change journal"
         status={
-          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${d ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'}`}>
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${d ? 'bg-neutral-800 text-muted-foreground' : 'bg-gray-100 text-muted-foreground'}`}>
             <Code2 className="h-3 w-3" />
             SynqDrive Code
           </span>
@@ -27577,8 +27577,8 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
       <div className={`${card} p-4`}>
         <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
           <div className={`flex min-w-[200px] flex-1 items-center gap-2 rounded-2xl border px-4 py-3 ${d ? 'border-neutral-700/50 bg-neutral-800/50' : 'border-gray-200/50 bg-gray-50/50'}`}>
-            <Filter className={`h-5 w-5 shrink-0 ${d ? 'text-gray-500' : 'text-gray-400'}`} />
-            <span className={`text-sm font-bold ${d ? 'text-gray-300' : 'text-gray-600'}`}>Module</span>
+            <Filter className={`h-5 w-5 shrink-0 ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
+            <span className={`text-sm font-bold ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Module</span>
             <select value={moduleFilter} onChange={(e) => setModuleFilter(e.target.value)} className={`${field} ml-auto min-w-[160px] flex-1 cursor-pointer appearance-none lg:ml-0 lg:flex-none`} aria-label="Filter by module">
               {moduleOptions.map((m) => (
                 <option key={m || 'all'} value={m}>
@@ -27595,13 +27595,13 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
               <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow ${architectureOnly ? 'left-5' : 'left-0.5'}`} />
             </span>
           </label>
-          <button type="button" onClick={() => void load()} disabled={loading} className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-bold disabled:opacity-50 ${d ? 'border-neutral-700/50 bg-neutral-800/50 text-gray-200 hover:bg-neutral-800' : 'border-gray-200/50 bg-gray-50/50 text-gray-800 hover:bg-gray-100'}`}>
+          <button type="button" onClick={() => void load()} disabled={loading} className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-bold disabled:opacity-50 ${d ? 'border-neutral-700/50 bg-neutral-800/50 text-foreground hover:bg-neutral-800' : 'border-gray-200/50 bg-gray-50/50 text-foreground hover:bg-gray-100'}`}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>
         {usingFallback && !error && (
-          <p className={`mt-3 text-xs font-medium ${d ? 'text-neutral-500' : 'text-gray-500'}`}>
+          <p className={`mt-3 text-xs font-medium ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
             No entries in the database yet — showing embedded changelog highlights until records are added.
           </p>
         )}
@@ -27614,11 +27614,11 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
       {loading ? (
         <div className={`${card} flex flex-col items-center justify-center gap-3 py-20`}>
           <Loader2 className="h-10 w-10 animate-spin text-indigo-500" />
-          <p className={`text-sm font-medium ${d ? 'text-neutral-400' : 'text-gray-500'}`}>Loading changelog…</p>
+          <p className={`text-sm font-medium ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Loading changelog…</p>
         </div>
       ) : error ? null : filtered.length === 0 ? (
         <div className={`${card} py-16 text-center`}>
-          <p className={`text-sm font-medium ${d ? 'text-neutral-400' : 'text-gray-500'}`}>No entries match the current filters.</p>
+          <p className={`text-sm font-medium ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>No entries match the current filters.</p>
         </div>
       ) : (
         <div className="relative space-y-4 pl-2 sm:pl-4">
@@ -27638,7 +27638,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
                   <div className="flex flex-wrap items-start gap-2 gap-y-2">
                     <span className="inline-flex items-center rounded-full bg-indigo-500/15 px-2.5 py-0.5 text-[11px] font-bold text-indigo-400 ring-1 ring-indigo-500/25">v{entry.version}</span>
                     {entry.module && (
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${d ? 'bg-neutral-800 text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${d ? 'bg-neutral-800 text-muted-foreground' : 'bg-gray-100 text-muted-foreground'}`}>
                         <Tag className="h-3 w-3" />
                         {entry.module}
                       </span>
@@ -27650,16 +27650,16 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
                       <span className={`ml-auto text-[10px] font-bold uppercase tracking-wide ${d ? 'text-emerald-400/90' : 'text-emerald-600'}`}>Latest</span>
                     )}
                   </div>
-                  <h2 className={`mt-3 text-lg font-bold leading-snug ${d ? 'text-neutral-100' : 'text-gray-900'}`}>{entry.title}</h2>
-                  <div className={`mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium ${d ? 'text-neutral-500' : 'text-gray-500'}`}>
+                  <h2 className={`mt-3 text-lg font-bold leading-snug text-foreground`}>{entry.title}</h2>
+                  <div className={`mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
                     <span className="inline-flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
                       {formatRelativeTime(entry.createdAt)}
                     </span>
-                    <ArrowRight className={`h-3 w-3 ${d ? 'text-neutral-600' : 'text-gray-300'}`} />
+                    <ArrowRight className={`h-3 w-3 ${d ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
                     <span>{formatAbsoluteTime(entry.createdAt)}</span>
                   </div>
-                  <ul className={`mt-4 list-disc space-y-1.5 pl-5 text-sm leading-relaxed ${d ? 'text-neutral-300' : 'text-gray-700'}`}>
+                  <ul className={`mt-4 list-disc space-y-1.5 pl-5 text-sm leading-relaxed ${d ? 'text-muted-foreground' : 'text-foreground'}`}>
                     {entry.summary.map((line, i) => (
                       <li key={i}>{line}</li>
                     ))}
@@ -27676,7 +27676,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
                               {expanded ? <ChevronUp className="h-4 w-4 shrink-0 opacity-70" /> : <ChevronDown className="h-4 w-4 shrink-0 opacity-70" />}
                             </button>
                             {expanded && (
-                              <p className={`mt-2 whitespace-pre-wrap rounded-xl px-3 py-2 text-sm leading-relaxed ${d ? 'bg-neutral-950/50 text-neutral-400' : 'bg-white text-gray-600'}`}>{text}</p>
+                              <p className={`mt-2 whitespace-pre-wrap rounded-xl px-3 py-2 text-sm leading-relaxed ${d ? 'bg-neutral-950/50 text-muted-foreground' : 'bg-white text-muted-foreground'}`}>{text}</p>
                             )}
                           </div>
                         );

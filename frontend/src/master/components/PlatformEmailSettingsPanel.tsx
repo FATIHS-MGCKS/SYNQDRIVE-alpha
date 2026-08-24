@@ -14,9 +14,9 @@ export function PlatformEmailSettingsPanel({ isDarkMode }: PlatformEmailSettings
   const [saving, setSaving] = useState(false);
 
   const cardClass = `rounded-3xl shadow-sm border ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`;
-  const inputClass = `w-full px-4 py-3 rounded-xl border text-sm transition-colors outline-none ${isDarkMode ? 'bg-background border-neutral-700 text-gray-200 focus:border-brand/50 placeholder:text-gray-600' : 'bg-gray-50 border-gray-200 text-gray-700 focus:border-brand placeholder:text-gray-400'}`;
-  const labelClass = `block text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`;
-  const subtle = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
+  const inputClass = `w-full px-4 py-3 rounded-xl border text-sm transition-colors outline-none ${isDarkMode ? 'bg-background border-neutral-700 text-foreground focus:border-brand/50 placeholder:text-muted-foreground' : 'bg-gray-50 border-gray-200 text-foreground focus:border-brand placeholder:text-muted-foreground'}`;
+  const labelClass = `block text-sm font-semibold mb-2 ${isDarkMode ? 'text-muted-foreground' : 'text-foreground'}`;
+  const subtle = 'text-muted-foreground';
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -69,7 +69,7 @@ export function PlatformEmailSettingsPanel({ isDarkMode }: PlatformEmailSettings
           <Mail className="w-7 h-7 text-brand" />
         </div>
         <div>
-          <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+          <h2 className={`text-lg font-semibold text-foreground`}>
             Plattform-Absender (Standard)
           </h2>
           <p className={`text-sm mt-1 ${subtle}`}>
@@ -114,7 +114,7 @@ export function PlatformEmailSettingsPanel({ isDarkMode }: PlatformEmailSettings
         </div>
       </div>
 
-      <div className={`mt-6 rounded-xl border px-4 py-3 text-sm ${isDarkMode ? 'border-neutral-800 bg-neutral-950/50 text-gray-300' : 'border-gray-200 bg-gray-50 text-gray-600'}`}>
+      <div className={`mt-6 rounded-xl border px-4 py-3 text-sm ${isDarkMode ? 'border-neutral-800 bg-neutral-950/50 text-muted-foreground' : 'border-gray-200 bg-gray-50 text-muted-foreground'}`}>
         <div className="font-medium text-foreground mb-1">Aktiv im Versand</div>
         <div>
           {settings.effectiveFromName} &lt;{settings.effectiveFromEmail}&gt;

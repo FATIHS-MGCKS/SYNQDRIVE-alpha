@@ -59,7 +59,7 @@ function availabilityBadge(status: string, dk: boolean) {
     return { label: 'Limited', bg: dk ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700' };
   if (status === 'out_of_stock')
     return { label: 'Out of Stock', bg: dk ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700' };
-  return { label: 'Unknown', bg: dk ? 'bg-neutral-500/15 text-neutral-400' : 'bg-muted text-muted-foreground' };
+  return { label: 'Unknown', bg: dk ? 'bg-neutral-500/15 text-muted-foreground' : 'bg-muted text-muted-foreground' };
 }
 
 function fitmentBadge(status: string, dk: boolean) {
@@ -67,7 +67,7 @@ function fitmentBadge(status: string, dk: boolean) {
     return { label: 'Exact Fit', bg: dk ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700' };
   if (status === 'likely_fit')
     return { label: 'Likely Fit', bg: dk ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700' };
-  return { label: 'Universal', bg: dk ? 'bg-neutral-500/15 text-neutral-400' : 'bg-muted text-muted-foreground' };
+  return { label: 'Universal', bg: dk ? 'bg-neutral-500/15 text-muted-foreground' : 'bg-muted text-muted-foreground' };
 }
 
 function formatPrice(value: number | undefined, currency: string) {
@@ -310,7 +310,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
     return (
       <div className={cls(
         'flex flex-wrap items-center gap-3 px-4 py-2 rounded-xl text-xs',
-        dk ? 'bg-white/[0.04] text-white/60' : 'bg-gray-50 text-gray-500',
+        dk ? 'bg-white/[0.04] text-white/60' : 'bg-gray-50 text-muted-foreground',
       )}>
         {selectedVehicle && (
           <span className="flex items-center gap-1">
@@ -336,10 +336,10 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
   const renderVehicleSelection = () => (
     <div className="space-y-4">
       <div>
-        <h2 className={cls('text-lg font-semibold', dk ? 'text-white' : 'text-gray-900')}>
+        <h2 className={cls('text-lg font-semibold', dk ? 'text-white' : 'text-foreground')}>
           Select a Vehicle
         </h2>
-        <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-gray-500')}>
+        <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-muted-foreground')}>
           Choose the vehicle you'd like to find parts or accessories for.
         </p>
       </div>
@@ -352,7 +352,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           className={cls(
             'w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition',
             dk ? 'bg-white/[0.06] text-white placeholder:text-white/30 border border-white/[0.08] focus:border-brand/50'
-               : 'bg-white text-gray-900 placeholder:text-gray-400 border border-gray-200 focus:border-brand',
+               : 'bg-white text-foreground placeholder:text-muted-foreground border border-gray-200 focus:border-brand',
           )}
         />
       </div>
@@ -384,10 +384,10 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className={cls('text-sm font-semibold', dk ? 'text-white' : 'text-gray-900')}>
+                    <p className={cls('text-sm font-semibold', dk ? 'text-white' : 'text-foreground')}>
                       {v.license || '—'}
                     </p>
-                    <p className={cls('text-xs mt-0.5', dk ? 'text-white/50' : 'text-gray-500')}>
+                    <p className={cls('text-xs mt-0.5', dk ? 'text-white/50' : 'text-muted-foreground')}>
                       {v.make} {v.model} · {v.year}
                     </p>
                   </div>
@@ -412,10 +412,10 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
   const renderCategorySelection = () => (
     <div className="space-y-4">
       <div>
-        <h2 className={cls('text-lg font-semibold', dk ? 'text-white' : 'text-gray-900')}>
+        <h2 className={cls('text-lg font-semibold', dk ? 'text-white' : 'text-foreground')}>
           What are you looking for?
         </h2>
-        <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-gray-500')}>
+        <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-muted-foreground')}>
           Select a product category to continue.
         </p>
       </div>
@@ -441,8 +441,8 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 <Icon className="w-5 h-5" />
               </div>
               <div>
-                <p className={cls('font-semibold', dk ? 'text-white' : 'text-gray-900')}>{label}</p>
-                <p className={cls('text-xs mt-1 leading-relaxed', dk ? 'text-white/40' : 'text-gray-500')}>
+                <p className={cls('font-semibold', dk ? 'text-white' : 'text-foreground')}>{label}</p>
+                <p className={cls('text-xs mt-1 leading-relaxed', dk ? 'text-white/40' : 'text-muted-foreground')}>
                   {description}
                 </p>
               </div>
@@ -457,10 +457,10 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
   const renderProviderSelection = () => (
     <div className="space-y-4">
       <div>
-        <h2 className={cls('text-lg font-semibold', dk ? 'text-white' : 'text-gray-900')}>
+        <h2 className={cls('text-lg font-semibold', dk ? 'text-white' : 'text-foreground')}>
           Choose a Provider
         </h2>
-        <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-gray-500')}>
+        <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-muted-foreground')}>
           Select where you want to search for {selectedCategory?.toLowerCase() || 'products'}.
         </p>
       </div>
@@ -494,13 +494,13 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className={cls('font-semibold truncate', dk ? 'text-white' : 'text-gray-900')}>
+                      <p className={cls('font-semibold truncate', dk ? 'text-white' : 'text-foreground')}>
                         {p.displayName}
                       </p>
                       <span className={cls('w-2 h-2 rounded-full shrink-0', healthDot(p.healthStatus))} />
                     </div>
                     {p.description && (
-                      <p className={cls('text-xs mt-1 line-clamp-2', dk ? 'text-white/40' : 'text-gray-500')}>
+                      <p className={cls('text-xs mt-1 line-clamp-2', dk ? 'text-white/40' : 'text-muted-foreground')}>
                         {p.description}
                       </p>
                     )}
@@ -518,7 +518,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                       key={cat}
                       className={cls(
                         'px-2 py-0.5 rounded-full text-[10px] font-medium',
-                        dk ? 'bg-white/[0.06] text-white/50' : 'bg-gray-100 text-gray-600',
+                        dk ? 'bg-white/[0.06] text-white/50' : 'bg-gray-100 text-muted-foreground',
                       )}
                     >
                       {cat}
@@ -540,10 +540,10 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
   const renderAuthorization = () => (
     <div className="space-y-4 max-w-2xl mx-auto">
       <div>
-        <h2 className={cls('text-lg font-semibold', dk ? 'text-white' : 'text-gray-900')}>
+        <h2 className={cls('text-lg font-semibold', dk ? 'text-white' : 'text-foreground')}>
           Data Authorization
         </h2>
-        <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-gray-500')}>
+        <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-muted-foreground')}>
           Review what data will be shared before continuing.
         </p>
       </div>
@@ -567,10 +567,10 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               <Icon name="shield-check" className={cls('w-5 h-5', dk ? 'text-status-info' : 'text-brand')} />
             </div>
             <div>
-              <p className={cls('font-semibold', dk ? 'text-white' : 'text-gray-900')}>
+              <p className={cls('font-semibold', dk ? 'text-white' : 'text-foreground')}>
                 {selectedProvider?.displayName}
               </p>
-              <p className={cls('text-xs', dk ? 'text-white/40' : 'text-gray-500')}>
+              <p className={cls('text-xs', dk ? 'text-white/40' : 'text-muted-foreground')}>
                 Data disclosure notice
               </p>
             </div>
@@ -580,9 +580,9 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           {disclosure && (
             <div className={cls(
               'p-4 rounded-xl text-sm leading-relaxed',
-              dk ? 'bg-white/[0.04] text-white/70' : 'bg-gray-50 text-gray-700',
+              dk ? 'bg-white/[0.04] text-white/70' : 'bg-gray-50 text-foreground',
             )}>
-              <p className={cls('font-medium mb-1 text-xs uppercase tracking-wide', dk ? 'text-white/40' : 'text-gray-500')}>
+              <p className={cls('font-medium mb-1 text-xs uppercase tracking-wide', dk ? 'text-white/40' : 'text-muted-foreground')}>
                 Purpose
               </p>
               {disclosure.body}
@@ -592,7 +592,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           {/* Disclosed fields */}
           {disclosedFields && disclosedFields.fields.length > 0 && (
             <div>
-              <p className={cls('text-xs font-medium mb-2 uppercase tracking-wide', dk ? 'text-white/40' : 'text-gray-500')}>
+              <p className={cls('text-xs font-medium mb-2 uppercase tracking-wide', dk ? 'text-white/40' : 'text-muted-foreground')}>
                 Data Fields Shared
               </p>
               <div className="space-y-1.5">
@@ -606,9 +606,9 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   >
                     <Icon name="info" className={cls('w-3.5 h-3.5 mt-0.5 shrink-0', dk ? 'text-status-info/60' : 'text-status-info/60')} />
                     <div>
-                      <span className={cls('font-medium', dk ? 'text-white/80' : 'text-gray-800')}>{field}</span>
+                      <span className={cls('font-medium', dk ? 'text-white/80' : 'text-foreground')}>{field}</span>
                       {disclosedFields.descriptions[field] && (
-                        <p className={cls('text-xs mt-0.5', dk ? 'text-white/35' : 'text-gray-500')}>
+                        <p className={cls('text-xs mt-0.5', dk ? 'text-white/35' : 'text-muted-foreground')}>
                           {disclosedFields.descriptions[field]}
                         </p>
                       )}
@@ -626,7 +626,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               dk ? 'bg-white/[0.04]' : 'bg-gray-50',
             )}>
               <Icon name="car" className={cls('w-4 h-4', dk ? 'text-white/40' : 'text-muted-foreground')} />
-              <span className={cls('text-sm', dk ? 'text-white/70' : 'text-gray-700')}>
+              <span className={cls('text-sm', dk ? 'text-white/70' : 'text-foreground')}>
                 {selectedVehicle.make} {selectedVehicle.model} {selectedVehicle.year} — {selectedVehicle.license}
               </span>
             </div>
@@ -657,7 +657,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
             </div>
             <span
               onClick={() => setAuthorized(!authorized)}
-              className={cls('text-sm leading-snug', dk ? 'text-white/70' : 'text-gray-700')}
+              className={cls('text-sm leading-snug', dk ? 'text-white/70' : 'text-foreground')}
             >
               I understand and authorize this data transfer to {selectedProvider?.displayName} for the purpose of searching {selectedCategory?.toLowerCase()}.
             </span>
@@ -669,7 +669,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               onClick={goBack}
               className={cls(
                 'px-5 py-2.5 rounded-xl text-sm font-medium transition',
-                dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+                dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-gray-100 text-foreground hover:bg-gray-200',
               )}
             >
               Cancel
@@ -681,7 +681,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 'px-6 py-2.5 rounded-xl text-sm font-semibold transition flex items-center gap-2',
                 authorized
                   ? 'bg-brand text-brand-foreground hover:bg-brand-hover'
-                  : dk ? 'bg-white/[0.06] text-white/30 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed',
+                  : dk ? 'bg-white/[0.06] text-white/30 cursor-not-allowed' : 'bg-gray-200 text-muted-foreground cursor-not-allowed',
               )}
             >
               {confirmLoading && <Icon name="loader-2" className="w-4 h-4 animate-spin" />}
@@ -705,11 +705,11 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
         {/* Header row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className={cls('text-lg font-semibold', dk ? 'text-white' : 'text-gray-900')}>
+            <h2 className={cls('text-lg font-semibold', dk ? 'text-white' : 'text-foreground')}>
               Search Results
             </h2>
             {searchResults && !searchLoading && (
-              <p className={cls('text-xs mt-0.5', dk ? 'text-white/40' : 'text-gray-500')}>
+              <p className={cls('text-xs mt-0.5', dk ? 'text-white/40' : 'text-muted-foreground')}>
                 {searchResults.totalCount} result{searchResults.totalCount !== 1 ? 's' : ''} · {searchResults.searchDurationMs}ms
               </p>
             )}
@@ -724,7 +724,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 onChange={(e) => handleSort(e.target.value as SortOption)}
                 className={cls(
                   'text-sm rounded-lg px-3 py-1.5 outline-none appearance-none pr-7 cursor-pointer',
-                  dk ? 'bg-white/[0.06] text-white border border-white/[0.08]' : 'bg-white text-gray-700 border border-gray-200',
+                  dk ? 'bg-white/[0.06] text-white border border-white/[0.08]' : 'bg-white text-foreground border border-gray-200',
                 )}
               >
                 <option value="relevance">Relevance</option>
@@ -765,7 +765,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                         'h-40 flex items-center justify-center',
                         dk ? 'bg-white/[0.04]' : 'bg-gray-50',
                       )}>
-                        <Icon name="package" className={cls('w-10 h-10', dk ? 'text-white/15' : 'text-gray-300')} />
+                        <Icon name="package" className={cls('w-10 h-10', dk ? 'text-white/15' : 'text-muted-foreground')} />
                       </div>
                     )}
 
@@ -777,7 +777,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                         </p>
                       )}
                       {/* Title */}
-                      <p className={cls('text-sm font-semibold line-clamp-2 leading-snug', dk ? 'text-white' : 'text-gray-900')}>
+                      <p className={cls('text-sm font-semibold line-clamp-2 leading-snug', dk ? 'text-white' : 'text-foreground')}>
                         {product.title}
                       </p>
 
@@ -801,7 +801,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                       {/* Price + action */}
                       <div className="mt-auto pt-3 flex items-end justify-between">
                         <div>
-                          <p className={cls('text-lg font-bold', dk ? 'text-white' : 'text-gray-900')}>
+                          <p className={cls('text-lg font-bold', dk ? 'text-white' : 'text-foreground')}>
                             {formatPrice(product.priceGross, product.currency)}
                           </p>
                           {product.priceNet != null && product.priceNet !== product.priceGross && (
@@ -834,7 +834,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   disabled={searchLoading}
                   className={cls(
                     'px-6 py-2.5 rounded-xl text-sm font-medium transition flex items-center gap-2',
-                    dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+                    dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-gray-100 text-foreground hover:bg-gray-200',
                   )}
                 >
                   {searchLoading ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <Icon name="chevron-down" className="w-4 h-4" />}
@@ -866,7 +866,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
             onClick={() => setShowDetail(false)}
             className={cls(
               'absolute top-4 right-4 p-2 rounded-xl z-10 transition',
-              dk ? 'bg-white/[0.06] text-white/60 hover:bg-white/[0.1]' : 'bg-gray-100 text-gray-500 hover:bg-gray-200',
+              dk ? 'bg-white/[0.06] text-white/60 hover:bg-white/[0.1]' : 'bg-gray-100 text-muted-foreground hover:bg-gray-200',
             )}
           >
             <Icon name="x" className="w-4 h-4" />
@@ -899,7 +899,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   'h-56 rounded-2xl flex items-center justify-center',
                   dk ? 'bg-white/[0.04]' : 'bg-gray-50',
                 )}>
-                  <Icon name="package" className={cls('w-16 h-16', dk ? 'text-white/10' : 'text-gray-200')} />
+                  <Icon name="package" className={cls('w-16 h-16', dk ? 'text-white/10' : 'text-foreground')} />
                 </div>
               )}
 
@@ -909,11 +909,11 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   {detailProduct.brand}
                 </p>
               )}
-              <h3 className={cls('text-xl font-bold leading-snug', dk ? 'text-white' : 'text-gray-900')}>
+              <h3 className={cls('text-xl font-bold leading-snug', dk ? 'text-white' : 'text-foreground')}>
                 {detailProduct.title}
               </h3>
               {detailProduct.subtitle && (
-                <p className={cls('text-sm', dk ? 'text-white/50' : 'text-gray-500')}>
+                <p className={cls('text-sm', dk ? 'text-white/50' : 'text-muted-foreground')}>
                   {detailProduct.subtitle}
                 </p>
               )}
@@ -921,15 +921,15 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               {/* Price breakdown */}
               <div className={cls(card, 'p-4 space-y-2')}>
                 <div className="flex justify-between items-baseline">
-                  <span className={cls('text-sm', dk ? 'text-white/50' : 'text-gray-500')}>Price (incl. tax)</span>
-                  <span className={cls('text-2xl font-bold', dk ? 'text-white' : 'text-gray-900')}>
+                  <span className={cls('text-sm', dk ? 'text-white/50' : 'text-muted-foreground')}>Price (incl. tax)</span>
+                  <span className={cls('text-2xl font-bold', dk ? 'text-white' : 'text-foreground')}>
                     {formatPrice(detailProduct.priceGross, detailProduct.currency)}
                   </span>
                 </div>
                 {detailProduct.priceNet != null && (
                   <div className="flex justify-between items-baseline">
                     <span className={cls('text-xs', dk ? 'text-white/35' : 'text-muted-foreground')}>Net price</span>
-                    <span className={cls('text-sm', dk ? 'text-white/60' : 'text-gray-600')}>
+                    <span className={cls('text-sm', dk ? 'text-white/60' : 'text-muted-foreground')}>
                       {formatPrice(detailProduct.priceNet, detailProduct.currency)}
                     </span>
                   </div>
@@ -957,7 +957,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               {detailProduct.fitmentNotes && (
                 <div className={cls(
                   'p-3 rounded-xl text-sm',
-                  dk ? 'bg-white/[0.04] text-white/60' : 'bg-gray-50 text-gray-600',
+                  dk ? 'bg-white/[0.04] text-white/60' : 'bg-gray-50 text-muted-foreground',
                 )}>
                   <p className={cls('text-[10px] uppercase tracking-wider font-semibold mb-1', dk ? 'text-white/30' : 'text-muted-foreground')}>
                     Fitment Notes
@@ -972,7 +972,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   <p className={cls('text-xs uppercase tracking-wider font-semibold mb-2', dk ? 'text-white/30' : 'text-muted-foreground')}>
                     Description
                   </p>
-                  <p className={cls('text-sm leading-relaxed', dk ? 'text-white/60' : 'text-gray-600')}>
+                  <p className={cls('text-sm leading-relaxed', dk ? 'text-white/60' : 'text-muted-foreground')}>
                     {detailProduct.description}
                   </p>
                 </div>
@@ -987,8 +987,8 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   <div className={cls(card, 'overflow-hidden divide-y', dk ? 'divide-white/[0.06]' : 'divide-gray-100')}>
                     {Object.entries(detailProduct.specifications).map(([key, val]) => (
                       <div key={key} className="flex justify-between px-4 py-2.5 text-sm">
-                        <span className={dk ? 'text-white/50' : 'text-gray-500'}>{key}</span>
-                        <span className={cls('font-medium', dk ? 'text-white/80' : 'text-gray-800')}>{val}</span>
+                        <span className={dk ? 'text-white/50' : 'text-muted-foreground'}>{key}</span>
+                        <span className={cls('font-medium', dk ? 'text-white/80' : 'text-foreground')}>{val}</span>
                       </div>
                     ))}
                   </div>
@@ -1022,7 +1022,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 ) : (
                   <div className={cls(
                     'text-center py-3 rounded-xl text-sm',
-                    dk ? 'bg-white/[0.04] text-white/40' : 'bg-gray-50 text-gray-400',
+                    dk ? 'bg-white/[0.04] text-white/40' : 'bg-gray-50 text-muted-foreground',
                   )}>
                     No checkout link available for this product.
                   </div>
@@ -1081,8 +1081,8 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           className={cls(
             'flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-medium transition',
             step === 1
-              ? dk ? 'text-white/15 cursor-not-allowed' : 'text-gray-300 cursor-not-allowed'
-              : dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+              ? dk ? 'text-white/15 cursor-not-allowed' : 'text-muted-foreground cursor-not-allowed'
+              : dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-gray-100 text-foreground hover:bg-gray-200',
           )}
         >
           <Icon name="chevron-left" className="w-4 h-4" /> Back
@@ -1094,7 +1094,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
             'flex items-center gap-1 px-5 py-2 rounded-xl text-sm font-semibold transition',
             canContinue(step)
               ? 'bg-brand text-brand-foreground hover:bg-brand-hover'
-              : dk ? 'bg-white/[0.06] text-white/20 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed',
+              : dk ? 'bg-white/[0.06] text-white/20 cursor-not-allowed' : 'bg-gray-200 text-muted-foreground cursor-not-allowed',
           )}
         >
           Continue <Icon name="chevron-right" className="w-4 h-4" />
@@ -1104,13 +1104,13 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
   };
 
   return (
-    <div className={cls('flex flex-col gap-4 p-4 sm:p-6 min-h-full', dk ? 'text-white' : 'text-gray-900')}>
+    <div className={cls('flex flex-col gap-4 p-4 sm:p-6 min-h-full', dk ? 'text-white' : 'text-foreground')}>
       {/* Page header */}
       <div>
         <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
           Parts & Accessories
         </h1>
-        <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-gray-500')}>
+        <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-muted-foreground')}>
           Find and order parts, tires, and accessories for your fleet vehicles.
         </p>
       </div>

@@ -430,10 +430,10 @@ export function ExteriorImagesEditor({
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+          <p className={`text-xs font-bold uppercase tracking-wider text-muted-foreground`}>
             {title}
           </p>
-          <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+          <p className={`text-[11px] mt-0.5 text-muted-foreground`}>
             {subtitle} Images are compressed before upload.
           </p>
         </div>
@@ -450,7 +450,7 @@ export function ExteriorImagesEditor({
                   className={`px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize transition-colors ${
                     uploadTarget === target
                       ? 'sq-tone-info'
-                      : (isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
+                      : (isDarkMode ? 'text-muted-foreground hover:text-foreground' : 'text-muted-foreground hover:text-foreground')
                   }`}
                 >
                   {target}
@@ -463,7 +463,7 @@ export function ExteriorImagesEditor({
               ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-300' : 'bg-emerald-50 text-emerald-700')
               : filledCount > 0
                 ? (isDarkMode ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-50 text-amber-700')
-                : (isDarkMode ? 'bg-neutral-700/60 text-gray-400' : 'bg-muted text-muted-foreground')
+                : (isDarkMode ? 'bg-neutral-700/60 text-muted-foreground' : 'bg-muted text-muted-foreground')
           }`}>
             <Camera className="w-3 h-3" /> {filledCount}/5
           </span>
@@ -471,7 +471,7 @@ export function ExteriorImagesEditor({
       </div>
 
       {persisted && (
-        <p className={`text-[10px] leading-tight ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+        <p className={`text-[10px] leading-tight text-muted-foreground`}>
           Vehicle uploads override the selected vehicle only. Model uploads are reusable for every vehicle with the same model
           {modelKey ? ` (${modelKey})` : ''}; any library template can also be copied into this vehicle.
         </p>
@@ -502,7 +502,7 @@ export function ExteriorImagesEditor({
           return (
             <div key={v.key} className={`${cardClass} p-2 flex flex-col gap-2`}>
               <div className="flex items-center justify-between">
-                <p className={`text-[11px] font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{v.label}</p>
+                <p className={`text-[11px] font-semibold ${isDarkMode ? 'text-muted-foreground' : 'text-foreground'}`}>{v.label}</p>
                 {(persistedImg || bufferedImg) && (
                   <button
                     type="button"
@@ -510,7 +510,7 @@ export function ExteriorImagesEditor({
                     onClick={() => removeImage(v.key)}
                     title="Remove photo"
                     className={`p-1 rounded-md transition-colors ${
-                      isDarkMode ? 'text-gray-500 hover:text-red-400 hover:bg-red-500/10' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                      isDarkMode ? 'text-muted-foreground hover:text-red-400 hover:bg-red-500/10' : 'text-muted-foreground hover:text-red-600 hover:bg-red-50'
                     } disabled:opacity-50`}
                   >
                     <Trash2 className="w-3 h-3" />
@@ -554,7 +554,7 @@ export function ExteriorImagesEditor({
                     </span>
                   </>
                 ) : (
-                  <div className={`flex flex-col items-center gap-1 ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+                  <div className={`flex flex-col items-center gap-1 text-muted-foreground`}>
                     {isBusy ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
@@ -566,7 +566,7 @@ export function ExteriorImagesEditor({
                   </div>
                 )}
               </button>
-              <p className={`text-[10px] leading-tight ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+              <p className={`text-[10px] leading-tight text-muted-foreground`}>
                 {v.hint}
               </p>
               {persisted && (
@@ -595,8 +595,8 @@ export function ExteriorImagesEditor({
                       }}
                       className={`w-full rounded-lg border px-2 py-1 text-[10px] font-semibold outline-none ${
                         isDarkMode
-                          ? 'bg-neutral-900 border-neutral-700 text-gray-300'
-                          : 'bg-white border-gray-200 text-gray-600'
+                          ? 'bg-neutral-900 border-neutral-700 text-muted-foreground'
+                          : 'bg-white border-gray-200 text-muted-foreground'
                       } disabled:opacity-50`}
                     >
                       <option value="">Copy from model library</option>
