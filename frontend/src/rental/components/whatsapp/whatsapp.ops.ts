@@ -1,7 +1,5 @@
 import type {
   WhatsAppConfig,
-  WhatsAppConversation,
-  WhatsAppMsg,
   WhatsAppStats,
   WhatsAppTemplate,
 } from '../../../lib/api';
@@ -13,20 +11,6 @@ export type WhatsAppConnectionStatus =
   | 'setup_required'
   | 'error'
   | 'disconnected';
-
-export type InboxFilter =
-  | 'all'
-  | 'unread'
-  | 'needs_reply'
-  | 'ai_suggested'
-  | 'human_handover'
-  | 'booking'
-  | 'documents'
-  | 'payment'
-  | 'damage'
-  | 'unknown_customer';
-
-export type MobilePane = 'inbox' | 'chat' | 'context';
 
 export const AI_MODE_META: Record<
   WhatsAppConfig['aiMode'],
@@ -51,26 +35,6 @@ export const TEMPLATE_CATEGORY_LABELS: Record<string, string> = {
   SUPPORT_UPDATE: 'Support update',
   VEHICLE_READY: 'Vehicle ready',
 };
-
-export const NAV_ITEMS: { key: WhatsAppTab; label: string; icon: string; desc: string }[] = [
-  { key: 'overview', label: 'Overview', icon: 'layout-dashboard', desc: 'Readiness, KPIs and setup checklist' },
-  { key: 'inbox', label: 'Inbox', icon: 'message-circle', desc: 'Operations inbox with linked SynqDrive context' },
-  { key: 'templates', label: 'Templates', icon: 'file-text', desc: 'Approved and draft WhatsApp templates' },
-  { key: 'settings', label: 'Settings', icon: 'settings', desc: 'Connection, AI, compliance and sandbox' },
-];
-
-export const INBOX_FILTERS: { key: InboxFilter; label: string; needsIntent?: boolean }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'unread', label: 'Unread' },
-  { key: 'needs_reply', label: 'Needs reply' },
-  { key: 'ai_suggested', label: 'AI suggested', needsIntent: true },
-  { key: 'human_handover', label: 'Human handover' },
-  { key: 'booking', label: 'Booking' },
-  { key: 'documents', label: 'Documents', needsIntent: true },
-  { key: 'payment', label: 'Payment', needsIntent: true },
-  { key: 'damage', label: 'Damage', needsIntent: true },
-  { key: 'unknown_customer', label: 'Unknown customer' },
-];
 
 export function resolveConnectionStatus(config: WhatsAppConfig | null): WhatsAppConnectionStatus {
   if (!config?.isConnected) return 'disconnected';
@@ -122,7 +86,6 @@ export function buildReadinessChecks(
   stats: WhatsAppStats | null,
   templates: WhatsAppTemplate[],
 ): ReadinessCheck[] {
-  const providerOk = Boolean(config?.providerConfigured || config?.phoneNumberId);
   const webhookRecent =
     config?.lastWebhookAt &&
     Date.now() - new Date(config.lastWebhookAt).getTime() < 7 * 24 * 60 * 60 * 1000;
@@ -195,59 +158,6 @@ export function buildReadinessChecks(
   ];
 }
 
-export function filterConversations(
-  conversations: WhatsAppConversation[],
-  filter: InboxFilter,
-  search: string,
-): WhatsAppConversation[] {
-  const q = search.trim().toLowerCase();
-  return conversations.filter(c => {
-    if (q) {
-      const hay = `${c.contactName ?? ''} ${c.contactPhone} ${c.lastMessagePreview ?? ''}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    switch (filter) {
-      case 'unread':
-        return c.unreadCount > 0;
-      case 'needs_reply':
-        return c.unreadCount > 0 || c.status === 'PENDING_HUMAN';
-      case 'human_handover':
-        return c.status === 'PENDING_HUMAN';
-      case 'booking':
-        return Boolean(c.bookingId);
-      case 'unknown_customer':
-        return !c.customerId;
-      case 'ai_suggested':
-        return (
-          c.unreadCount > 0 &&
-          Boolean(c.intent) &&
-          c.intent !== 'UNKNOWN' &&
-          c.intent !== 'OPT_OUT'
-        );
-      case 'documents':
-        return c.intent === 'DOCUMENTS';
-      case 'payment':
-        return c.intent === 'PAYMENT' || c.intent === 'DEPOSIT';
-      case 'damage':
-        return c.intent === 'DAMAGE' || c.intent === 'ACCIDENT';
-      default:
-        return true;
-    }
-  });
-}
-
-export function countHumanReview(conversations: WhatsAppConversation[]): number {
-  return conversations.filter(c => c.status === 'PENDING_HUMAN').length;
-}
-
-export function countFailedInThread(messages: WhatsAppMsg[]): number {
-  return messages.filter(m => m.status === 'FAILED').length;
-}
-
-export function conversationDisplayName(c: WhatsAppConversation): string {
-  return c.contactName?.trim() || c.contactPhone;
-}
-
 export function formatRelativeTime(iso: string): string {
   const d = new Date(iso);
   const diffMin = Math.floor((Date.now() - d.getTime()) / 60000);
@@ -261,32 +171,6 @@ export function formatRelativeTime(iso: string): string {
   return d.toLocaleDateString();
 }
 
-export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-}
-
 export function isSandboxEnvironment(): boolean {
   return import.meta.env.DEV || import.meta.env.MODE === 'test';
-}
-
-export function canUseAiReply(config: WhatsAppConfig | null): boolean {
-  if (!config) return false;
-  return config.aiMode === 'AUTO_SIMPLE' || config.aiMode === 'FULL';
-}
-
-export function deliveryStatusLabel(status: string): string {
-  switch (status) {
-    case 'QUEUED':
-      return 'Queued';
-    case 'SENT':
-      return 'Sent';
-    case 'DELIVERED':
-      return 'Delivered';
-    case 'READ':
-      return 'Read';
-    case 'FAILED':
-      return 'Failed';
-    default:
-      return status;
-  }
 }

@@ -4140,33 +4140,6 @@ export const api = {
       post<WhatsAppConfig>(`/organizations/${orgId}/whatsapp/connect`, data),
     disconnect: (orgId: string) =>
       post<WhatsAppConfig>(`/organizations/${orgId}/whatsapp/disconnect`, {}),
-    getConversations: (orgId: string) =>
-      get<WhatsAppConversation[]>(`/organizations/${orgId}/whatsapp/conversations`),
-    getMessages: (orgId: string, conversationId: string) =>
-      get<WhatsAppMsg[]>(`/organizations/${orgId}/whatsapp/conversations/${conversationId}/messages`),
-    sendMessage: (orgId: string, conversationId: string, content: string, senderName?: string) =>
-      post<WhatsAppMsg>(`/organizations/${orgId}/whatsapp/conversations/${conversationId}/messages`, { content, senderName }),
-    getAiSuggestion: (orgId: string, conversationId: string) =>
-      post<WhatsAppAiSuggestionResponse>(`/organizations/${orgId}/whatsapp/conversations/${conversationId}/ai-suggestion`, {}),
-    sendAiReply: (orgId: string, conversationId: string, content: string, suggestionId?: string) =>
-      post<WhatsAppMsg>(`/organizations/${orgId}/whatsapp/conversations/${conversationId}/ai-reply`, { content, suggestionId }),
-    requestHumanReview: (orgId: string, conversationId: string, reason?: string) =>
-      post<{ ok: boolean; conversationId: string; status: string }>(
-        `/organizations/${orgId}/whatsapp/conversations/${conversationId}/human-review`,
-        { reason },
-      ),
-    getConversationContext: (orgId: string, conversationId: string) =>
-      get<WhatsAppConversationContext>(`/organizations/${orgId}/whatsapp/conversations/${conversationId}/context`),
-    executeQuickAction: (
-      orgId: string,
-      conversationId: string,
-      actionId: WhatsAppQuickActionId,
-      body?: WhatsAppQuickActionPayload,
-    ) =>
-      post<unknown>(
-        `/organizations/${orgId}/whatsapp/conversations/${conversationId}/actions/${actionId}`,
-        body ?? {},
-      ),
     simulateIncoming: (orgId: string, data: { contactPhone: string; contactName?: string; content: string }) =>
       post<WhatsAppSimulateResult>(`/organizations/${orgId}/whatsapp/simulate-incoming`, data),
     getStats: (orgId: string) =>
@@ -7818,24 +7791,6 @@ export const api = {
       get<VoiceOption[]>(`/organizations/${_orgId}/voice-assistant/voices`),
     testSession: (orgId: string) =>
       post<VoiceAssistantTestSession>(`/organizations/${orgId}/voice-assistant/test-session`, {}),
-    conversations: (orgId: string, params?: VoiceConversationListParams) =>
-      get<VoiceConversationListResult>(
-        `/organizations/${orgId}/voice-assistant/conversations${buildQuery({
-          limit: params?.limit,
-          offset: params?.offset,
-          page: params?.page,
-          outcome: params?.outcome,
-          direction: params?.direction,
-          status: params?.status,
-          dateFrom: params?.dateFrom,
-          dateTo: params?.dateTo,
-          search: params?.search,
-          escalatedOnly:
-            params?.escalatedOnly != null ? String(params.escalatedOnly) : undefined,
-          hasTranscript:
-            params?.hasTranscript != null ? String(params.hasTranscript) : undefined,
-        })}`,
-      ),
     analytics: (orgId: string) =>
       get<VoiceAssistantAnalytics>(`/organizations/${orgId}/voice-assistant/analytics`),
     syncConversations: (orgId: string) =>
@@ -11888,115 +11843,6 @@ export interface WhatsAppQuickActionPayload {
   reason?: string;
 }
 
-export interface WhatsAppConversationContext {
-  conversation: {
-    id: string;
-    status: string;
-    contactPhone: string;
-    contactName: string | null;
-    customerId: string | null;
-    bookingId: string | null;
-    vehicleId: string | null;
-    assignedTo: string | null;
-    lastDetectedIntent: string | null;
-    unreadCount: number;
-  };
-  customer: {
-    id: string;
-    displayName: string;
-    phone: string | null;
-    email: string | null;
-    status: string | null;
-  } | null;
-  booking: {
-    id: string;
-    bookingNumber: string;
-    status: string;
-    startDate: string;
-    endDate: string;
-    pickupStationName: string | null;
-    returnStationName: string | null;
-  } | null;
-  vehicle: {
-    id: string;
-    displayName: string;
-    licensePlate: string | null;
-    status: string | null;
-  } | null;
-  station: {
-    id: string;
-    name: string;
-    address: string | null;
-    handoverInstructions: string | null;
-    returnInstructions: string | null;
-  } | null;
-  documents: {
-    bundleStatus: string | null;
-    missingCount: number;
-    missingLabels: string[];
-    warnings: string[];
-  } | null;
-  payment: {
-    depositStatus: string | null;
-    paymentStatus: string | null;
-    depositAmountCents: number | null;
-    openAmountCents: number | null;
-    openInvoiceCount: number;
-  } | null;
-  damages: { openCount: number } | null;
-  tasks: {
-    openCount: number;
-    overdueCount: number;
-    items: { id: string; title: string; status: string; priority: string; dueAt: string | null }[];
-  } | null;
-  handover: {
-    pickupCompleted: boolean;
-    pickupCompletedAt: string | null;
-    returnCompleted: boolean;
-    returnCompletedAt: string | null;
-    operatorBookingUrl: string | null;
-  } | null;
-  whatsapp: {
-    isConnected: boolean;
-    isActive: boolean;
-    providerConfigured: boolean;
-    customerOptedOut: boolean;
-  };
-  quickActions: WhatsAppQuickActionDef[];
-}
-
-export interface WhatsAppAiSuggestionResponse {
-  suggestedReply: string | null;
-  intent: string;
-  confidence: number;
-  riskFlags: string[];
-  usedTools: string[];
-  decision: 'SUGGEST_ONLY' | 'AUTO_ALLOWED' | 'HUMAN_REQUIRED';
-  humanReason: string | null;
-  canSendAutomatically: boolean;
-  suggestionId?: string | null;
-  reason?: string | null;
-  sourceContextIds?: Record<string, string | null>;
-  /** @deprecated use suggestedReply */
-  suggestion?: string | null;
-}
-
-export interface WhatsAppConversation {
-  id: string;
-  contactPhone: string;
-  contactName: string | null;
-  customerId?: string | null;
-  bookingId?: string | null;
-  vehicleId?: string | null;
-  lastMessageAt: string | null;
-  lastMessagePreview: string | null;
-  unreadCount: number;
-  status: 'OPEN' | 'PENDING_HUMAN' | 'CLOSED' | string;
-  assignedTo?: string | null;
-  intent?: string | null;
-  createdAt: string;
-}
-
 export interface WhatsAppMsg {
   id: string;
   direction: 'incoming' | 'outgoing' | string;
@@ -12706,57 +12552,6 @@ export interface VoiceOption {
   category?: string;
   labels?: Record<string, string>;
   preview_url?: string;
-}
-
-export interface VoiceConversationListParams {
-  limit?: number;
-  offset?: number;
-  page?: number;
-  outcome?: VoiceConversationOutcome;
-  direction?: VoiceConversationDirection;
-  status?: VoiceConversationStatus;
-  dateFrom?: string;
-  dateTo?: string;
-  search?: string;
-  escalatedOnly?: boolean;
-  hasTranscript?: boolean;
-}
-
-export interface VoiceConversationListResult {
-  items: VoiceConversationEntry[];
-  total: number;
-  limit: number;
-  offset: number;
-  page: number;
-}
-
-export interface VoiceConversationEntry {
-  id: string;
-  startedAt: string;
-  direction: VoiceConversationDirection;
-  callerNumber: string | null;
-  durationSeconds: number | null;
-  status?: string;
-  outcome: VoiceConversationOutcome;
-  summary: string | null;
-  transcript: string | null;
-  hasTranscript: boolean;
-  escalated: boolean;
-  escalationReason: string | null;
-  linkedBookingId: string | null;
-  linkedCustomerId: string | null;
-  linkedVehicleId: string | null;
-  taskId: string | null;
-  metadata: Record<string, unknown> | null;
-  organizationId?: string;
-  voiceAssistantId?: string | null;
-  providerConversationId?: string | null;
-  elevenLabsConvId?: string | null;
-  actionsPerformed?: string[];
-  errorMessage?: string | null;
-  endedAt?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
 }
 
 export interface VoiceAssistantTestSession {

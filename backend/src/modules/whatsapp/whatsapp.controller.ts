@@ -1,21 +1,38 @@
-import { Controller, Get, Post, Put, Param, Body, UseGuards, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Param,
+  Body,
+  UseGuards,
+  Logger,
+  BadRequestException,
+} from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { RequireCommunicationPermission } from '@shared/decorators/require-communication-permission.decorator';
+import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { WhatsAppService } from './whatsapp.service';
 import { WhatsAppTemplateService } from './whatsapp-template.service';
-import { WhatsAppConversationContextService } from './whatsapp-conversation-context.service';
-import { WhatsAppQuickActionsService } from './whatsapp-quick-actions.service';
 import { WhatsAppBookingReminderService } from './whatsapp-booking-reminder.service';
+import { WhatsAppLegacyHttpCompatibilityService } from './whatsapp-legacy-http-compatibility.service';
 import { UpdateWhatsAppConfigDto } from './dto/update-whatsapp-config.dto';
 import { ConnectWhatsAppDto } from './dto/connect-whatsapp.dto';
-import { SendWhatsAppMessageDto } from './dto/send-whatsapp-message.dto';
 import { SimulateIncomingDto } from './dto/simulate-incoming.dto';
 import { CreateWhatsAppTemplateDto } from './dto/create-whatsapp-template.dto';
+import { SendWhatsAppMessageDto } from './dto/send-whatsapp-message.dto';
 import { WhatsAppQuickActionDto, WHATSAPP_QUICK_ACTION_IDS } from './dto/whatsapp-quick-action.dto';
 import type { WhatsAppQuickActionId } from './whatsapp-conversation-context.types';
+
+interface AuthUser {
+  id: string;
+  name?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+}
 
 @Controller('organizations/:orgId/whatsapp')
 @UseGuards(OrgScopingGuard, PermissionsGuard, RolesGuard)
@@ -25,9 +42,8 @@ export class WhatsAppController {
   constructor(
     private readonly whatsAppService: WhatsAppService,
     private readonly templateService: WhatsAppTemplateService,
-    private readonly contextService: WhatsAppConversationContextService,
-    private readonly quickActions: WhatsAppQuickActionsService,
     private readonly reminders: WhatsAppBookingReminderService,
+    private readonly legacyHttp: WhatsAppLegacyHttpCompatibilityService,
   ) {}
 
   @Get('config')
@@ -54,33 +70,53 @@ export class WhatsAppController {
     return this.whatsAppService.disconnect(orgId);
   }
 
+  /**
+   * @deprecated DEPRECATED_COMPATIBILITY_HTTP — use
+   * `GET /organizations/:orgId/communication/conversations?channel=whatsapp`.
+   * Retained for C13.6 route telemetry; not canonical authority.
+   */
   @Get('conversations')
   @RequireCommunicationPermission('read')
   async getConversations(@Param('orgId') orgId: string) {
-    return this.whatsAppService.getConversations(orgId);
+    return this.legacyHttp.getConversations(orgId);
   }
 
+  /**
+   * @deprecated DEPRECATED_COMPATIBILITY_HTTP — use
+   * `GET /organizations/:orgId/communication/conversations/:id/events`.
+   */
   @Get('conversations/:conversationId/context')
   @RequireCommunicationPermission('read')
   async getConversationContext(
     @Param('orgId') orgId: string,
     @Param('conversationId') conversationId: string,
   ) {
-    return this.contextService.getContext(orgId, conversationId);
+    return this.legacyHttp.getConversationContext(orgId, conversationId);
   }
 
+  /**
+   * @deprecated DEPRECATED_COMPATIBILITY_HTTP — use
+   * `POST /organizations/:orgId/communication/conversations/:id/quick-actions/:actionId`.
+   */
   @Post('conversations/:conversationId/actions/:actionId')
   @RequireCommunicationPermission('write')
   async executeQuickAction(
     @Param('orgId') orgId: string,
     @Param('conversationId') conversationId: string,
     @Param('actionId') actionId: string,
+    @CurrentUser() user: AuthUser,
     @Body() body: WhatsAppQuickActionDto,
   ) {
     if (!WHATSAPP_QUICK_ACTION_IDS.includes(actionId as WhatsAppQuickActionId)) {
       throw new BadRequestException(`Unknown quick action: ${actionId}`);
     }
-    return this.quickActions.execute(orgId, conversationId, actionId as WhatsAppQuickActionId, body);
+    return this.legacyHttp.executeQuickAction(
+      orgId,
+      conversationId,
+      actionId as WhatsAppQuickActionId,
+      this.actor(user),
+      body as Record<string, unknown>,
+    );
   }
 
   @Post('reminders/bookings/:bookingId/confirmation')
@@ -131,62 +167,76 @@ export class WhatsAppController {
     return this.reminders.sendDamageFollowupWhatsApp(orgId, damageId);
   }
 
+  /**
+   * @deprecated DEPRECATED_COMPATIBILITY_HTTP — use
+   * `GET /organizations/:orgId/communication/conversations/:id/events`.
+   */
   @Get('conversations/:conversationId/messages')
   @RequireCommunicationPermission('read')
   async getMessages(
     @Param('orgId') orgId: string,
     @Param('conversationId') conversationId: string,
   ) {
-    return this.whatsAppService.getMessages(orgId, conversationId);
+    return this.legacyHttp.getMessages(orgId, conversationId);
   }
 
+  /**
+   * @deprecated DEPRECATED_COMPATIBILITY_HTTP — use
+   * `POST /organizations/:orgId/communication/conversations/:id/reply` (ReplyCommand).
+   * Adapter delegates to canonical Communication reply authority with derived idempotency key.
+   */
   @Post('conversations/:conversationId/messages')
   @RequireCommunicationPermission('write')
   async sendMessage(
     @Param('orgId') orgId: string,
     @Param('conversationId') conversationId: string,
+    @CurrentUser() user: AuthUser,
     @Body() body: SendWhatsAppMessageDto,
   ) {
     if (!body.content?.trim()) {
       throw new BadRequestException('Message content is required');
     }
-    return this.whatsAppService.sendMessage(orgId, conversationId, body.content.trim(), body.senderName);
+    return this.legacyHttp.sendMessage(
+      orgId,
+      conversationId,
+      body.content.trim(),
+      this.actor(user),
+      body.senderName,
+    );
   }
 
+  /**
+   * @deprecated DEPRECATED_COMPATIBILITY_HTTP — use
+   * `POST /organizations/:orgId/communication/conversations/:id/ai-suggestion`.
+   */
   @Post('conversations/:conversationId/ai-suggestion')
   @RequireCommunicationPermission('write')
   async getAiSuggestion(
     @Param('orgId') orgId: string,
     @Param('conversationId') conversationId: string,
+    @CurrentUser() user: AuthUser,
   ) {
-    return this.whatsAppService.getAiSuggestion(orgId, conversationId);
+    return this.legacyHttp.getAiSuggestion(orgId, conversationId, this.actor(user));
   }
 
+  /**
+   * @deprecated DEPRECATED_COMPATIBILITY_HTTP — use
+   * `POST /organizations/:orgId/communication/conversations/:id/quick-actions/human_review`.
+   */
   @Post('conversations/:conversationId/human-review')
   @RequireCommunicationPermission('write')
   async requestHumanReview(
     @Param('orgId') orgId: string,
     @Param('conversationId') conversationId: string,
+    @CurrentUser() user: AuthUser,
     @Body() body: { reason?: string },
   ) {
-    return this.whatsAppService.requestHumanReview(
+    return this.legacyHttp.requestHumanReview(
       orgId,
       conversationId,
+      this.actor(user),
       body.reason ?? 'Manual human review requested from WhatsApp Operations Center',
     );
-  }
-
-  @Post('conversations/:conversationId/ai-reply')
-  @RequireCommunicationPermission('write')
-  async sendAiReply(
-    @Param('orgId') orgId: string,
-    @Param('conversationId') conversationId: string,
-    @Body() body: SendWhatsAppMessageDto,
-  ) {
-    if (!body.content?.trim()) {
-      throw new BadRequestException('Content is required');
-    }
-    return this.whatsAppService.sendAiReply(orgId, conversationId, body.content.trim(), body.suggestionId);
   }
 
   @Post('simulate-incoming')
@@ -214,5 +264,16 @@ export class WhatsAppController {
   @RequireCommunicationPermission('manage')
   async createTemplate(@Param('orgId') orgId: string, @Body() body: CreateWhatsAppTemplateDto) {
     return this.templateService.createDraft(orgId, body);
+  }
+
+  private actor(user: AuthUser) {
+    const displayName =
+      user.name?.trim()
+      || [user.firstName, user.lastName].filter(Boolean).join(' ').trim()
+      || null;
+    return {
+      userId: String(user.id),
+      displayName,
+    };
   }
 }

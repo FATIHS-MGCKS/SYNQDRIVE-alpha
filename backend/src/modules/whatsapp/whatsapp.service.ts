@@ -175,6 +175,11 @@ export class WhatsAppService {
     return this.mapConfig(config);
   }
 
+  /**
+   * @deprecated DEPRECATED_COMPATIBILITY_SERVICE — legacy HTTP only.
+   * Canonical list: `GET /organizations/:orgId/communication/conversations?channel=whatsapp`.
+   * C13.6 removal candidate after route telemetry shows zero callers.
+   */
   async getConversations(orgId: string) {
     const convos = await this.prisma.whatsAppConversation.findMany({
       where: { organizationId: orgId },
@@ -198,6 +203,11 @@ export class WhatsAppService {
     }));
   }
 
+  /**
+   * @deprecated DEPRECATED_COMPATIBILITY_SERVICE — legacy HTTP only.
+   * Canonical timeline: `GET /organizations/:orgId/communication/conversations/:id/events`.
+   * C13.6 removal candidate after route telemetry shows zero callers.
+   */
   async getMessages(orgId: string, conversationId: string) {
     const convo = await this.prisma.whatsAppConversation.findFirst({
       where: { id: conversationId, organizationId: orgId },

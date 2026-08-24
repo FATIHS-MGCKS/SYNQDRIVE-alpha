@@ -104,13 +104,6 @@ describe('VoiceAssistantView control-plane hardening', () => {
       checks: [],
       missing: [],
     } as never);
-    vi.spyOn(api.voiceAssistant, 'conversations').mockResolvedValue({
-      items: [],
-      total: 0,
-      limit: 50,
-      offset: 0,
-      page: 1,
-    } as never);
     vi.spyOn(api.voiceAssistant, 'syncConversations').mockResolvedValue({
       synced: 2,
       message: 'Synced 2 conversations',
@@ -165,7 +158,6 @@ describe('VoiceAssistantView control-plane hardening', () => {
     });
 
     expect(onOpenConversations).toHaveBeenCalledTimes(1);
-    expect(api.voiceAssistant.conversations).not.toHaveBeenCalled();
   });
 
   it('hands off legacy conversations tab to canonical inbox exactly once', async () => {
@@ -178,7 +170,6 @@ describe('VoiceAssistantView control-plane hardening', () => {
 
     expect(onOpenConversations).toHaveBeenCalledTimes(1);
     expect(container.textContent).not.toContain('VoiceConversationsPanel');
-    expect(api.voiceAssistant.conversations).not.toHaveBeenCalled();
   });
 
   it('sync performs troubleshooting refresh without loading conversation rows', async () => {
@@ -201,6 +192,5 @@ describe('VoiceAssistantView control-plane hardening', () => {
 
     expect(api.voiceAssistant.syncConversations).toHaveBeenCalledWith('org-1');
     expect(api.voiceAssistant.get).toHaveBeenCalled();
-    expect(api.voiceAssistant.conversations).not.toHaveBeenCalled();
   });
 });

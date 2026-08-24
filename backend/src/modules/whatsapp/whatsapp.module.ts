@@ -25,6 +25,7 @@ import { WhatsAppBookingReminderService } from './whatsapp-booking-reminder.serv
 import { WhatsAppAutomationHooksService } from './whatsapp-automation-hooks.service';
 import { MetaWhatsAppCloudProvider } from './providers/meta-whatsapp-cloud.provider';
 import { WhatsAppProviderService } from './providers/whatsapp-provider.service';
+import { WhatsAppLegacyHttpCompatibilityService } from './whatsapp-legacy-http-compatibility.service';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { WhatsAppProviderService } from './providers/whatsapp-provider.service';
     WhatsAppQuickActionsService,
     WhatsAppBookingReminderService,
     WhatsAppAutomationHooksService,
+    WhatsAppLegacyHttpCompatibilityService,
     MetaWhatsAppCloudProvider,
     WhatsAppProviderService,
   ],

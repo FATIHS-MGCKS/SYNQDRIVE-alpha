@@ -2,17 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type {
   VoiceAssistantData,
   VoiceAssistantReadiness,
-  VoiceConversationEntry,
 } from '../../../lib/api';
 import {
   NAV_GROUPS,
   TAB_DISPLAY_NAMES,
   answerRatePercent,
   buildLaunchChecklist,
-  callsTodayFromConversations,
-  hasConversationHistory,
-  lastCallLabel,
-  openEscalationsCount,
   operatorStatusLabel,
   providerStatusLabel,
   readinessPercent,
@@ -152,26 +147,7 @@ describe('voice-assistant.ops characterization', () => {
     });
   });
 
-  describe('conversation-derived KPIs', () => {
-    const conversations: VoiceConversationEntry[] = [
-      {
-        id: 'c-1',
-        startedAt: new Date().toISOString(),
-        direction: 'INBOUND',
-        callerNumber: '+*** *** 4567',
-        durationSeconds: 30,
-        status: 'COMPLETED',
-        outcome: 'ESCALATED',
-        escalated: true,
-      } as VoiceConversationEntry,
-    ];
-
-    it('returns null KPIs until conversations are loaded', () => {
-      expect(callsTodayFromConversations(conversations, false)).toBeNull();
-      expect(openEscalationsCount(conversations, false)).toBeNull();
-      expect(lastCallLabel(conversations, false)).toBe('Not available');
-    });
-
+  describe('assistant aggregate KPIs', () => {
     it('computes answer rate only when calls exist', () => {
       expect(answerRatePercent(buildAssistant())).toBeNull();
       expect(
@@ -179,12 +155,6 @@ describe('voice-assistant.ops characterization', () => {
           buildAssistant({ totalCalls: 10, answeredCalls: 7 }),
         ),
       ).toBe(70);
-    });
-
-    it('detects conversation history and open escalations after load', () => {
-      expect(hasConversationHistory(conversations)).toBe(true);
-      expect(openEscalationsCount(conversations, true)).toBe(1);
-      expect(lastCallLabel(conversations, true)).not.toBe('No calls yet');
     });
   });
 

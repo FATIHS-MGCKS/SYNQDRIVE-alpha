@@ -172,6 +172,8 @@ import { CommunicationMetricsRefreshService } from './observability/communicatio
     CommunicationConversationRepository,
     CommunicationAiActivityService,
     CommunicationHandoffNotificationService,
+    CommunicationWhatsAppOpsService,
+    CommunicationQuickActionExecutorService,
     CommunicationRetentionService,
     CommunicationOperationalHealthService,
   ],

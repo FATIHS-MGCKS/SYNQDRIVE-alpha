@@ -62,6 +62,11 @@ export class VoiceAssistantController {
     return this.service.getTestSession(orgId);
   }
 
+  /**
+   * @deprecated DEPRECATED_COMPATIBILITY_HTTP — use
+   * `GET /organizations/:orgId/communication/conversations?channel=voice`.
+   * Retained for C13.6 route telemetry; not canonical authority.
+   */
   @Get('conversations')
   @RequireCommunicationPermission('read', { voiceOperationalLegacy: true })
   async conversations(
