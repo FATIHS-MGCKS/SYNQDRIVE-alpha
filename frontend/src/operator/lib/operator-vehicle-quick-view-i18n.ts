@@ -1,5 +1,5 @@
 /**
- * Operator Vehicle Quick View presentation adapter (P2.2.27 QV-G tasks + P2.2.28 header + P2.2.29 quick actions).
+ * Operator Vehicle Quick View presentation adapter (P2.2.27 QV-G tasks + P2.2.28 header + P2.2.29 quick actions + P2.2.30 tool actions).
  * Machine status/task values stay unchanged; presentation maps to TranslationKey only.
  */
 import type { ApiTaskPriority, ApiTaskStatus, RentalHealthState } from '../../lib/api';
@@ -152,4 +152,36 @@ export function operatorVehicleQuickViewQuickActionReturnLabel(locale: string): 
 
 export function operatorVehicleQuickViewQuickActionCreateBookingLabel(locale: string): string {
   return ovqt(locale, 'operator.vehicleQuickView.quickActions.createBooking.title');
+}
+
+export function operatorVehicleQuickViewToolActionDamageCaptureTitle(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.toolActions.damageCapture.title');
+}
+
+export function operatorVehicleQuickViewToolActionDamageCaptureSubtitle(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.toolActions.damageCapture.subtitle');
+}
+
+export function operatorVehicleQuickViewToolActionAiUploadTitle(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.toolActions.aiUpload.title');
+}
+
+export function operatorVehicleQuickViewToolActionAiUploadSubtitle(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.toolActions.aiUpload.subtitle');
+}
+
+export function operatorVehicleQuickViewToolActionTireMeasureTitle(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.toolActions.tireMeasure.title');
+}
+
+export function operatorVehicleQuickViewToolActionTireMeasureSubtitle(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.toolActions.tireMeasure.subtitle');
+}
+
+export function operatorVehicleQuickViewToolActionTaskCreateTitle(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.toolActions.taskCreate.title');
+}
+
+export function operatorVehicleQuickViewToolActionTaskCreateSubtitle(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.toolActions.taskCreate.subtitle');
 }

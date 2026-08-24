@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-vehicle-quick-view-tool-footer-actions-p2-2-30-2026-08-23',
+    version: '4.9.957',
+    title: 'Platform i18n — P2.2.30 Operator Vehicle Quick View Tool & Footer Actions localization',
+    summary: [
+      'Localized Operator Vehicle Quick View footer tool actions via extracted `OperatorVehicleQuickViewToolActions.tsx` and extended `operator-vehicle-quick-view-i18n.ts`.',
+      'P230 enforce-clean exact scope (2 paths) reports 0 findings; +8 EN+DE keys under `operator.vehicleQuickView.toolActions.*` (8446→8454).',
+      'Presentation-only — damage-capture/ai-upload/tire-measure/task-create sheet types, callbacks, args, action order, highlight flag unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.30 post-P229 pre-flight (PR #1221) selected Tool & Footer Actions as the next bounded Vehicle Quick View slice.',
+    previousBehavior:
+      'Footer tool action grid used fixed German title/subtitle strings inline in `OperatorVehicleQuickView.tsx`.',
+    details:
+      'operator/components/OperatorVehicleQuickViewToolActions.tsx; operator/lib/operator-vehicle-quick-view-i18n.ts; OperatorVehicleQuickView.tsx (wiring); i18n/translations/operator.vehicleQuickView.toolActions.{en,de}.ts; operator-vehicle-quick-view-tool-actions-localization.test.tsx; P230_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_TOOL_FOOTER_ACTIONS_P2_2_30_2026-08-23.md; docs/audits/i18n-p2-2-30-operator-vehicle-quick-view-tool-footer-actions-implementation-2026-08-23.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-23T00:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-vehicle-quick-view-quick-actions-p2-2-29-2026-08-23',
     version: '4.9.956',
     title: 'Platform i18n — P2.2.29 Operator Vehicle Quick View Quick Actions localization',
