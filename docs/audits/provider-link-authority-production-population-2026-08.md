@@ -510,3 +510,96 @@ DIMO vehicles in org: **6**
 | PR #1277 | **HOLD** |
 
 **Production backfill `--apply`:** **DO NOT EXECUTE** until explicit approval with proposed runId.
+
+---
+
+## U. Controlled Production Backfill Apply + Acceptance (2026-08-25)
+
+**Deployed SHA:** `79bb49a075b2153d53398b567e94d80f4d2f7088`  
+**runId (approved):** `dimo-link-backfill-prod-2026-08-25-79bb49a`  
+**Mode:** backup → final dry-run → `--apply` attempt → **STOP on failure**
+
+### A. Pre-apply backup
+
+| Field | Value |
+|-------|-------|
+| Identifier | `/opt/synqdrive/shared/backups/postgresql/daily/synqdrive-daily-20260825T164532Z.dump.gpg` |
+| Timestamp UTC | 2026-08-25T16:45:58Z |
+| Status | **SUCCESS** |
+| Database | `synqdrive` (production VPS) |
+
+### B–E. Final dry-run + frozen plan
+
+| Field | Value |
+|-------|-------|
+| scanned | 6 |
+| CREATE | 6 |
+| REACTIVATE | 0 |
+| CONFLICT | 0 |
+| SKIP | 0 |
+| applied | 0 |
+| Frozen plan hash | `683fd1c72dafff73d175dd62c744b14b224f3e37d7cbfb4254007fe52a42978a` |
+
+Shadow predictions matched Pre-Apply Gate (HMÜ → AVAILABLE; WOB → NEEDS_VERIFICATION; KS → REAUTH_REQUIRED).
+
+### F. Apply result — **FAILED**
+
+```
+PrismaClientKnownRequestError P2003
+Foreign key constraint violated: vehicle_data_source_links_source_reference_id_fkey
+```
+
+Apply aborted on first `CREATE`. **No rows committed.**
+
+| Field | Value |
+|-------|-------|
+| scanned | (not completed) |
+| CREATE planned | 6 |
+| applied | **0** |
+| failures | 1 (FK on first insert) |
+
+### G. Actual DIMO links created
+
+**0** (verified post-failure)
+
+### Root cause (schema blocker)
+
+Production FK on `vehicle_data_source_links.source_reference_id`:
+
+```sql
+FOREIGN KEY (source_reference_id) REFERENCES high_mobility_vehicles(id)
+```
+
+PR #1281 writes `sourceReferenceId = DimoVehicle.id`, which is **not** present in `high_mobility_vehicles`. Dry-runs passed because they never execute `INSERT`. `registerFromDimo()` link creation would also fail in Production until schema is extended (e.g. optional `DimoVehicle` FK or provider-specific FK relaxation).
+
+### H–O. Post-apply verification
+
+**Not executed** — apply did not succeed. Pre-failure state unchanged:
+
+- active DIMO links: 0
+- HMÜ/WOB/KS live P0.1/P0.2: unchanged (providerLinkState UNKNOWN for HMÜ)
+- Fleet DTO: unchanged
+- unrelated mutations: **NONE**
+
+### P. Rollback required
+
+**NO** — zero rows created.
+
+### Q. Remaining issues
+
+1. **Schema migration required** before any Production DIMO link INSERT
+2. Integration test gap: unit tests mock Prisma and did not surface DB FK
+3. Pre-Apply Gate dry-run cannot catch write-time FK failures
+
+### R. Final verdict
+
+| Gate | Result |
+|------|--------|
+| **DIMO PROVIDER-LINK PRODUCTION BACKFILL** | **FAIL** |
+| **PRODUCTION BACKFILL PRE-APPLY GATE (post-apply)** | **NO-GO** |
+| HMÜ C 215 OPERATIONAL STATE | **FAIL** (links not created) |
+| WOB OFFLINE REGRESSION | **N/A** (apply blocked) |
+| KS AUTH-SEPARATION | **N/A** (apply blocked) |
+| P0.3 LIVE ACCEPTANCE | **N/A** |
+| PR #1277 | **HOLD** (upstream blocker **not** cleared) |
+| Production Connectivity Processing Gate | **CONDITIONAL** |
