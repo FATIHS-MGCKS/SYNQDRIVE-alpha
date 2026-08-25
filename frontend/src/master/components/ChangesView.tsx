@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'connectivity-pre-p02-hardening-2026-08-25',
+    version: '4.9.955',
+    title: 'Connectivity pre-P0.2 hardening — cutover correction, DI regression, long-offline matrix',
+    summary: [
+      'Production cutover corrected to 2026-08-25T08:04:17.000Z (first successful repaired-pipeline activation); gap query 0 rows.',
+      'Nest DI bootstrap regression: dimo-module.bootstrap.spec.ts + DimoConnectivityLifecycleDiModule.',
+      'Long-offline forensic matrix: WOB L 9755 + WOB L 7503 (>30d silence, DEVICE_CHECK_REQUIRED); HMÜ C 215 comparison.',
+      'Gate remains CONDITIONAL; P0.2 domain design YES / implementation NO.',
+    ],
+    reason: 'Final pre-P0.2 hardening before projection work — correct cutover semantics, prevent DI regression, document reference evidence classes.',
+    previousBehavior: 'Cutover predated successful activation; no DI regression test for exported-but-unregistered provider defect.',
+    details: 'docs/audits/connectivity-production-processing-gate-2026-08.md §R–S; docs/audits/connectivity-long-offline-reference-matrix-2026-08.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T09:05:00.000Z',
+  },
+  {
     id: 'connectivity-hmue-c-215-forensic-2026-08-25',
     version: '4.9.954',
     title: 'HMÜ C 215 — historical unplug forensic verification (read-only)',

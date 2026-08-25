@@ -210,6 +210,7 @@ DIMO `OBD_DEVICE_UNPLUGGED` webhooks flow: inbox (`RECEIVED`) → BullMQ `connec
 
 **Invariants (post gate fix):**
 - Event dedupe (`dedupBucket`) is separate from lifecycle completion (`processed_at`).
+- **Production cutover (corrected 2026-08-25):** `CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER=2026-08-25T08:04:17.000Z` — first instant the repaired inbox→BullMQ→episode pipeline was authoritative (not the pre-activation deploy timestamp).
 - Retry after partial failure must reconcile episode sync when `processed_at IS NULL` **and** `received_at >= CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER`.
 - Enqueue failure (intake or scheduler) marks inbox `RETRYABLE_FAILED` (not silent `RECEIVED` forever).
 - Scheduler reconciles eligible orphan `processed_at IS NULL` events only; historical pre-cutover orphans are logged, not materialized.

@@ -5,7 +5,7 @@
 | **Audit ID** | `connectivity-hmue-c-215-forensic-verification-2026-08` |
 | **Mode** | Production read-only forensic verification |
 | **Production modified** | **No** |
-| **Deployed SHA (context)** | `2022e586` with cutover `2026-08-25T07:48:30.000Z` |
+| **Deployed SHA (context)** | `2022e586` with cutover `2026-08-25T08:04:17.000Z` (corrected from `07:48:30Z`) |
 | **Investigation time (UTC)** | `2026-08-25T08:34Z` |
 
 ---
@@ -18,7 +18,7 @@
 
 1. **Canonical July 20 unplug** persisted (`5389a9c7…`) with `processed_at = NULL`, **no episode**, **no inbox** — historical lifecycle incomplete.
 2. **Additional pre-cutover inbox unplug signals** (July 28, Aug 8) remain stuck `RECEIVED` / `attempts=0` — historical `UNCLAIMED_PROCESSING_GAP`.
-3. **Telemetry/trip evidence shows recovery after unplug** — first trip **+15 minutes** after July 20 unplug; **176 trips** since; current snapshot `obdIsPluggedIn=1` (2026-08-24T20:30:48Z).
+3. **Telemetry/trip evidence shows recovery after unplug** — first proven post-unplug operational telemetry proxy: **2026-07-20T11:20:08Z** (recovery proven within ≤15m08s; exact first recovered snapshot timestamp unavailable); **176 trips** since; current snapshot `obdIsPluggedIn=1` (2026-08-24T20:30:48Z).
 4. **Current P0.1 runtime projection is correct:** `physicalDeviceState=PLUGGED_INFERRED`, `overallState=UNKNOWN` (not `DEVICE_UNPLUGGED`), reason codes include `DEVICE_RECONNECTED_SNAPSHOT`.
 5. **7-day API event window hides** the July 20 unplug from live device-connection endpoints — important P0.2/UI lineage note.
 6. **Legacy read-model with full history** would still compute `openUnpluggedEpisode=true` (no persisted episode to close) even though snapshot anchor is plugged — canonical runtime does **not** emit unplugged.
@@ -92,14 +92,14 @@
 
 | Evidence | Timestamp (UTC) | Notes |
 |----------|-----------------|-------|
-| First trip after unplug (**T2 proxy**) | **2026-07-20T11:20:08Z** | **+15m 8s** after T1 |
+| First trip after unplug (**T2 proxy**) | **2026-07-20T11:20:08Z** | Recovery proven within **≤15m08s** after T1; exact first recovered snapshot timestamp unavailable |
 | Trips after July 20 unplug | **176** total | Sustained operational use |
 | First postgres poll log | 2026-07-26T03:30:06Z | +5d 16h after T1 (poll retention gap) |
 | Current `VehicleLatestState.lastSeenAt` | **2026-08-24T20:30:48Z** | Fresh (<48h at investigation) |
 | Current `obdIsPluggedIn` | **1** (true) | Snapshot anchor plugged |
 | DIMO `last_signal` | 2026-08-23T20:26:14Z | Provider link active |
 
-**Recovery delay (T2 − T1):** **~15 minutes** (trip-based proxy).  
+**Recovery delay (T2 − T1):** **≤15m08s** (trip-based proxy; exact first recovered snapshot timestamp unavailable).  
 **Recovery class:** **immediate** (operational telemetry resumed within minutes).
 
 ---
@@ -113,7 +113,7 @@
 | providerBindingId on latest snapshot | null (not populated) |
 | Data source link rows | none |
 
-**Classification:** **SAME_DEVICE_RECOVERY** — same DIMO token/vehicle identity; no evidence of replacement or binding change.
+**Classification:** **SAME_TOKEN_RECOVERY** — high confidence; same DIMO token/vehicle identity throughout. Binding continuity not directly proven (`providerBindingId` null, no `dataSourceLink` rows).
 
 ---
 
