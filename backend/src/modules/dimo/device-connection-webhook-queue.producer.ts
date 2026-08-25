@@ -18,9 +18,10 @@ export class DeviceConnectionWebhookQueueProducer {
   ) {}
 
   buildJobId(inboxId: string, replay = false): string {
+    // BullMQ rejects custom job IDs containing ':' (v5+). Use '__' delimiters.
     return replay
-      ? `connectivity-webhook-replay:${inboxId}:${Date.now()}`
-      : `connectivity-webhook:${inboxId}`;
+      ? `connectivity-webhook-replay__${inboxId}__${Date.now()}`
+      : `connectivity-webhook__${inboxId}`;
   }
 
   async enqueue(inboxId: string, replay = false): Promise<void> {

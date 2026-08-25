@@ -11,10 +11,16 @@ describe('DeviceConnectionWebhookQueueProducer contract', () => {
 
   it('builds stable job ids for inbox processing', () => {
     const producer = new DeviceConnectionWebhookQueueProducer({} as never);
-    expect(producer.buildJobId('inbox-abc')).toBe('connectivity-webhook:inbox-abc');
+    expect(producer.buildJobId('inbox-abc')).toBe('connectivity-webhook__inbox-abc');
     expect(producer.buildJobId('inbox-abc', true)).toMatch(
-      /^connectivity-webhook-replay:inbox-abc:\d+$/,
+      /^connectivity-webhook-replay__inbox-abc__\d+$/,
     );
+  });
+
+  it('builds BullMQ-safe job ids without colon characters', () => {
+    const producer = new DeviceConnectionWebhookQueueProducer({} as never);
+    expect(producer.buildJobId('inbox-abc')).not.toContain(':');
+    expect(producer.buildJobId('inbox-abc', true)).not.toContain(':');
   });
 
   it('enqueues process jobs with canonical job name', async () => {
@@ -28,7 +34,7 @@ describe('DeviceConnectionWebhookQueueProducer contract', () => {
     expect(add).toHaveBeenCalledWith(
       DEVICE_CONNECTION_WEBHOOK_JOB_NAME,
       { inboxId: 'inbox-1', replay: false },
-      expect.objectContaining({ jobId: 'connectivity-webhook:inbox-1' }),
+      expect.objectContaining({ jobId: 'connectivity-webhook__inbox-1' }),
     );
   });
 });
