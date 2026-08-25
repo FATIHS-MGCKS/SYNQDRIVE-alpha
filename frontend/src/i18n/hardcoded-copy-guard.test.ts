@@ -445,6 +445,11 @@ const P242_ENFORCE_CLEAN_EXACT = [
   'operator/lib/operator-scan-search-i18n.ts',
 ];
 
+const P243_ENFORCE_CLEAN_EXACT = [
+  'operator/components/OperatorBottomNav.tsx',
+  'operator/lib/operator-shell-navigation-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -611,6 +616,10 @@ function isP241EnforceCleanPath(relPath: string): boolean {
 
 function isP242EnforceCleanPath(relPath: string): boolean {
   return P242_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP243EnforceCleanPath(relPath: string): boolean {
+  return P243_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -983,6 +992,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP242EnforceCleanPath(finding.file),
     );
     expect(p242Debt).toHaveLength(0);
+  });
+
+  it('keeps P243 Operator Shell Navigation Chrome enforce-clean scope at zero findings', () => {
+    const p243Debt = inventory.findings.filter((finding) =>
+      isP243EnforceCleanPath(finding.file),
+    );
+    expect(p243Debt).toHaveLength(0);
   });
 
   it('keeps operator-vehicle-quick-view-i18n.ts on canonical translation keys', () => {

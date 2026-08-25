@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-shell-navigation-chrome-p2-2-43-2026-08-25',
+    version: '4.9.970',
+    title: 'Platform i18n — P2.2.43 Operator Shell Navigation Chrome localization',
+    summary: [
+      'Localized Operator bottom navigation chrome via `operator-shell-navigation-i18n.ts` and `operator.navigation.*` keys.',
+      'P243 enforce-clean exact scope (2 paths) reports 0 findings; +4 EN+DE keys (8620→8624); reuses `common.today` and `nav.tasks`.',
+      'Presentation-only — tab machine IDs, order, React keys, callbacks, activeTab semantics, icons, and responsive layout unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.43 post-P242 pre-flight (PR #1294) selected OperatorBottomNav as the next bounded Operator shell navigation presentation slice.',
+    previousBehavior:
+      'OperatorBottomNav used fixed German tab labels and English aria-label without locale threading.',
+    details:
+      'operator/components/OperatorBottomNav.tsx; operator/lib/operator-shell-navigation-i18n.ts; i18n/translations/operator.navigation.{en,de}.ts; operator-shell-navigation-localization.test.tsx; P243_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_SHELL_NAVIGATION_P2_2_43_2026-08-25.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-25T23:45:00.000Z',
+  },
+  {
     id: 'i18n-operator-scan-search-ux-p2-2-42-2026-08-25',
     version: '4.9.969',
     title: 'Platform i18n — P2.2.42 Operator Scan Search UX localization',
