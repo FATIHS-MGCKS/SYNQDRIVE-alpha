@@ -547,3 +547,57 @@ Expected delta for long-offline pair: legacy `AVAILABLE` vs P0.2 `operationalAva
 3. **P0.5** — Vehicle Detail connectivity presentation
 4. **P0.6** — Fleet → Connectivity presentation alignment
 5. **P0.7** — Dashboard/readiness consumers
+
+---
+
+## Y. Final Implementation Gate (August 2026)
+
+### Business-state authority
+
+`FleetVehicleOperationalStateDto.dataQualityState` is set **only** by `buildFleetOperationalStateDto()`:
+
+| Value | Cause | Connectivity/Health involved? |
+|-------|-------|-------------------------------|
+| `RELIABLE` | Normal `deriveFleetStatusContext` success | **No** |
+| `UNAVAILABLE` | `bookingContextLoadFailed: true` only | **No** |
+| `DEGRADED` | Reserved in type; **not emitted** today | **No** |
+
+`status === 'UNKNOWN'` occurs when booking context load failed or display token is unrecognized — still **business/booking** scope only.
+
+**P0.2 adapter rule (final):**
+
+1. Persisted `IN_SERVICE` / `OUT_OF_SERVICE` → always map to matching `businessState` (authoritative over booking overlay failure).
+2. If `dataQualityState === 'UNAVAILABLE'` OR `!isReliable` OR `status === 'UNKNOWN'` → `businessState = UNKNOWN` (booking-dependent vehicles only).
+3. Otherwise map `operationalState.status` token (`AVAILABLE`, `ACTIVE_RENTED` → `RENTED`, etc.).
+
+Connectivity uncertainty affects **`operationalAvailability`** only, never `businessState`, when business overlay is reliable.
+
+### Apples-to-apples shadow design
+
+`shadow-vehicle-operational-projection-readonly.ts`:
+
+1. One org-scoped `vehicle.findMany`
+2. One `deriveFleetStatusContextBatch()` — shared booking load for legacy + resolved business context
+3. One `VehicleOperationalProjectionService.getVehicleProjections()` — exercises canonical P0.1 connectivity via service
+4. One `getFleetRowsBatch()` for health shadow metadata (`healthSourceAvailable`)
+
+Legacy and P0.2 `businessState` both derive from the **same** `FleetVehicleOperationalStateDto` produced by the batch loader.
+
+### Production reference results (read-only, F.S Mobility org)
+
+Executed on VPS against production DB via `VehicleOperationalProjectionService` (see PR gate report).
+
+### P0.3 entry decision
+
+**P0.3 may proceed** when Production shadow confirms long-offline pair:
+
+- `businessState = AVAILABLE`
+- `operationalAvailability = NEEDS_VERIFICATION`
+
+**Production Processing Gate** remains **CONDITIONAL** (post-cutover unplug lifecycle not reproduced).
+
+### Remaining limitations
+
+- Health batch remains heaviest leg.
+- No REST diagnostic endpoint.
+- `RENTED`/`RESERVED` operational hard-block deferred to P0.3.

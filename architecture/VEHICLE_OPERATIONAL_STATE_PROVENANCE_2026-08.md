@@ -186,15 +186,14 @@ Requirements: deep-linkable, browser-back safe, org-scoped, invalid vehicleId fa
 
 Consumes `VehicleConnectivityRuntimeState` without re-deriving connectivity evidence. Exposes `businessState`, `operationalAvailability`, `healthEvaluability`, `attention`, and `operatorSummary`. See `docs/audits/vehicle-operational-projection-p0-2-design-2026-08.md` §W.
 
-**Shadow compare (read-only):** `backend/scripts/ops/shadow-vehicle-operational-projection-readonly.ts`
+**Shadow compare (read-only):** `backend/scripts/ops/shadow-vehicle-operational-projection-readonly.ts` — batch `deriveFleetStatusContextBatch` + `VehicleOperationalProjectionService`
 
 ## Changes
 
-- Added `VehicleOperationalProjectionService` — canonical P0.2 batch/single projection composing P0.1 connectivity, fleet business context, and rental health summary.
-- Added `deriveFleetBusinessContextBatch` on `VehiclesService` for bounded booking-aware business state.
-- Added `business-state.adapter.ts` and `health-evidence.adapter.ts` at application boundary.
-- Added service/adapter tests (cases I–P, tenant isolation, query budget, health degradation).
-- Added read-only shadow comparison ops script; no consumer or UI migration.
+- Refined `businessStateFromFleetContext` — persisted IN_SERVICE/OUT_OF_SERVICE precede booking-overlay UNKNOWN; connectivity/health cannot affect businessState.
+- Added `deriveFleetStatusContextBatch` for shared legacy/P0.2 business evidence in batch + shadow tool.
+- Corrected shadow script to apples-to-apples batch business context (no `bookingCtx: null` on legacy side).
+- Production read-only shadow verification for HMÜ C 215, WOB L 7503, WOB L 9755.
 
 ---
 
