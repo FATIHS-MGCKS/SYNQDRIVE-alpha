@@ -634,3 +634,170 @@ KS MS 661: mapping identity ≠ authorization authority preserved (ACTIVE mappin
 | DIMO BACKFILL PRE-APPLY GATE | **GO** |
 
 **DIMO BACKFILL `--apply`:** **DO NOT EXECUTE** in this task.
+
+---
+
+## Y. Final Controlled Production Backfill Apply (2026-08-25)
+
+**Mode:** Single controlled `--apply` with approved runId — no schema/deploy changes, no manual row inserts.
+
+### A. Deployed SHA
+
+`1636d35286124b5a9b4d7f0b2a31a57372cd859b` (unchanged since pre-apply GO gate)
+
+### B. Pre-apply backup
+
+| Field | Value |
+|-------|-------|
+| Identifier | `/opt/synqdrive/shared/backups/db-pre-backfill-apply-20260825185002.sql.gz` |
+| Timestamp | 2026-08-25 18:50:12 UTC |
+| Status | **SUCCESS** |
+
+### C. runId
+
+`dimo-link-backfill-prod-2026-08-25-1636d35`
+
+### D. Final pre-apply dry-run
+
+| scanned | CREATE | NOOP | REACTIVATE | CONFLICT | SKIP | applied |
+|---------|--------|------|------------|----------|------|---------|
+| 6 | 6 | 0 | 0 | 0 | 0 | 0 |
+
+### E. Frozen mutation set
+
+| Field | Value |
+|-------|-------|
+| Count | **6** |
+| Hash | `3b9ecc39f061b938cea6b4970e5ef1187ad768e6657b80f4ed2feaa2b24590ca` |
+
+### F. Apply result
+
+| scanned | CREATE | NOOP | REACTIVATE | CONFLICT | SKIP | applied | failed |
+|---------|--------|------|------------|----------|------|---------|--------|
+| 6 | 6 | 0 | 0 | 0 | 0 | **6** | **0** |
+
+**Outcome:** **FULL_SUCCESS** (not ZERO_WRITES, not PARTIAL_WRITES)
+
+### G. Created rows (6)
+
+All rows: `provider=DIMO`, `sourceType=DIMO`, `dimoVehicleId` populated, `sourceReferenceId=NULL`, `isActive=true`, `metadata.provenance=backfill`, `metadata.runId=dimo-link-backfill-prod-2026-08-25-1636d35`.
+
+| Vehicle ref | Link created |
+|-------------|--------------|
+| HMÜ C 215 | YES |
+| KS FH 660E | YES |
+| KS MS 661 | YES |
+| KS MX 2024 | YES |
+| WOB L 7503 | YES |
+| WOB L 9755 | YES |
+
+### H. Integrity verification
+
+| Check | Result |
+|-------|--------|
+| Expected created | 6 |
+| Actual created | 6 |
+| Missing | 0 |
+| Unexpected | 0 |
+| Orphan DIMO FK | 0 |
+| Cross-tenant | 0 |
+| Duplicate active by dimoVehicleId | 0 |
+| Duplicate active by vehicle/source | 0 |
+| sourceReferenceId NULL on all DIMO links | **YES** |
+| dimoVehicleId valid on all DIMO links | **YES** |
+
+### I. Post-apply idempotency dry-run
+
+| CREATE | NOOP | REACTIVATE | CONFLICT | SKIP | applied |
+|--------|------|------------|----------|------|---------|
+| 0 | **6** | 0 | 0 | 0 | 0 |
+
+**Idempotency:** **PASS**
+
+### J–L. HMÜ C 215 — live P0.1 / P0.2 / P0.3
+
+| Layer | Key fields |
+|-------|------------|
+| **P0.1** | `providerLinkState=ACTIVE`, `telemetryState=standby`, `physicalDeviceState=PLUGGED_INFERRED`, `overallState=STANDBY`, `latestTelemetryAt=2026-08-25T16:42:08Z` |
+| **P0.2** | `businessState=AVAILABLE`, `operationalAvailability=AVAILABLE`, `primaryReason=LINK_ACTIVE` |
+| **P0.3 Fleet** | `operationalAvailability.state=AVAILABLE`, `attention=NONE` |
+
+HMÜ no longer UNKNOWN due to missing provider mapping.
+
+### M. WOB L 7503 — live P0.1/P0.2/P0.3
+
+| Field | Value |
+|-------|--------|
+| providerLinkState | **ACTIVE** |
+| telemetryState | offline |
+| physicalDeviceState | **UNKNOWN** |
+| overallState | OFFLINE |
+| operationalAvailability | **NEEDS_VERIFICATION** |
+| Fleet availability | **NEEDS_VERIFICATION** |
+
+Stale/offline telemetry preserved — mapping ACTIVE does not force AVAILABLE.
+
+### N. WOB L 9755 — live P0.1/P0.2/P0.3
+
+Same pattern as WOB L 7503: `providerLinkState=ACTIVE`, `physicalDeviceState=UNKNOWN`, `operationalAvailability=NEEDS_VERIFICATION`. Historical unplug not overriding current offline/unknown semantics (`DEVICE_CHECK_REQUIRED`, `latestTelemetryAt=2026-07-18`).
+
+### O. KS MS 661 — auth separation
+
+| Field | Value |
+|-------|--------|
+| active DIMO link | YES |
+| consent | MISSING |
+| auth | ACTIVE |
+| providerLinkState | **REAUTH_REQUIRED** (not ACTIVE) |
+| overallState | AUTHORIZATION_REQUIRED |
+| operationalAvailability | NEEDS_VERIFICATION |
+| Fleet availability | NEEDS_VERIFICATION |
+
+Mapping exists; authorization/consent gap correctly prevents ACTIVE provider state and AVAILABLE ops.
+
+### P. All-six Production matrix
+
+| Vehicle | Active link | providerLinkState | telemetry | physical | overall | op.avail |
+|---------|-------------|-------------------|-----------|----------|---------|----------|
+| HMÜ C 215 | YES | ACTIVE | standby | PLUGGED_INFERRED | STANDBY | **AVAILABLE** |
+| KS FH 660E | YES | REAUTH_REQUIRED | standby | PLUGGED_INFERRED | AUTHORIZATION_REQUIRED | NEEDS_VERIFICATION |
+| KS MS 661 | YES | REAUTH_REQUIRED | standby | PLUGGED_INFERRED | AUTHORIZATION_REQUIRED | NEEDS_VERIFICATION |
+| KS MX 2024 | YES | REAUTH_REQUIRED | standby | PLUGGED_INFERRED | AUTHORIZATION_REQUIRED | NEEDS_VERIFICATION |
+| WOB L 7503 | YES | ACTIVE | offline | UNKNOWN | OFFLINE | NEEDS_VERIFICATION |
+| WOB L 9755 | YES | ACTIVE | offline | UNKNOWN | OFFLINE | NEEDS_VERIFICATION |
+
+### Q–R. Fleet / Vehicle Detail connectivity
+
+Fleet `getFleetMapData` path returns canonical P0.2/P0.3 DTOs aligned with live runtime (verified via `shadow-fleet-operational-availability-readonly.ts`). Vehicle Detail uses same canonical projection authority.
+
+### S. Cache propagation
+
+No manual Redis/cache mutation performed. Fleet and projection queries reflect new link state immediately post-apply (natural read path, no stale UNKNOWN-from-missing-link observed).
+
+### T. Unrelated mutation check
+
+Only 6 new `vehicle_data_source_links` rows with approved runId. Legacy HM row, vehicles, dimo_vehicles, consent, episodes unchanged.
+
+### U. Rollback decision
+
+**Rollback required:** **NO** — all mappings correct, no cross-tenant/duplicate/malformed rows.
+
+### V. Remaining gates
+
+| Gate | Status |
+|------|--------|
+| Production Connectivity Processing Gate | **CONDITIONAL** |
+| PR #1277 | **HOLD** (not merged) |
+| Post-cutover unplug test | **NOT PERFORMED** |
+
+### W. Final verdict
+
+| Verdict | Result |
+|---------|--------|
+| DIMO PROVIDER-LINK PRODUCTION BACKFILL | **PASS** |
+| HMÜ C 215 LIVE ACCEPTANCE | **PASS** |
+| WOB OFFLINE SAFETY | **PASS** |
+| KS AUTH-SEPARATION | **PASS** |
+| P0.3 FLEET ACCEPTANCE | **PASS** |
+| DIMO PROVIDER-LINK POPULATION BLOCKER | **CLOSED** |
+| PR #1277 upstream blocker | **CLEARED** (ready to re-evaluate separately) |
