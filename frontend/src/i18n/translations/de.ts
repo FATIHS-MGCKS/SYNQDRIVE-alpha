@@ -31,6 +31,7 @@ import { operatorBookingsFormDe } from './operator.bookings.form.de';
 import { operatorBookingsCancelNoShowDe } from './operator.bookings.cancelNoShow.de';
 import { operatorBookingsDocumentsDe } from './operator.bookings.documents.de';
 import { operatorBookingsDetailDe } from './operator.bookings.detail.de';
+import { operatorBookingsCardDe } from './operator.bookings.card.de';
 import { operatorMoreDe } from './operator.more.de';
 import { vendorsDirectoryDe } from './vendors.directory.de';
 import { supportOpsDe } from './support.ops.de';
@@ -5617,6 +5618,7 @@ export const de: Record<TranslationKey, string> = {
   ...operatorBookingsCancelNoShowDe,
   ...operatorBookingsDocumentsDe,
   ...operatorBookingsDetailDe,
+  ...operatorBookingsCardDe,
   ...operatorMoreDe,
   ...vendorsDirectoryDe,
 } satisfies CompleteTranslationDictionary;

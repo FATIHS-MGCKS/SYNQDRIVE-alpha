@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-booking-cards-p2-2-41-2026-08-25',
+    version: '4.9.968',
+    title: 'Platform i18n — P2.2.41 Operator Today + Scan Booking Cards localization',
+    summary: [
+      'Localized Operator Today and Scan booking cards via `operator-booking-card-i18n.ts` and `operator.bookings.card.*` keys.',
+      'P241 enforce-clean exact scope (3 paths) reports 0 findings; +2 EN+DE keys (8608→8610); reuses status, pickup/return, details, vehicle, and overdue keys.',
+      'Presentation-only — booking/customer/vehicle/station IDs, dynamic data, callbacks, P240 detail sheet integration, and gate predicates unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.41 post-P240 pre-flight (PR #1284) selected Operator Today + Scan Booking Cards as the next bounded Operator booking presentation slice.',
+    previousBehavior:
+      'OperatorBookingCard and OperatorScanBookingCard used fixed German CTA labels, status precompute, scan title prefix, and action copy without locale threading.',
+    details:
+      'operator/components/OperatorBookingCard.tsx; operator/components/OperatorScanBookingCard.tsx; operator/lib/operator-booking-card-i18n.ts; i18n/translations/operator.bookings.card.{en,de}.ts; operator-booking-card-localization.test.tsx; P241_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_TODAY_SCAN_BOOKING_CARDS_P2_2_41_2026-08-25.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-25T22:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-booking-detail-sheet-p2-2-40-2026-08-25',
     version: '4.9.967',
     title: 'Platform i18n — P2.2.40 Operator Booking Detail Sheet localization',

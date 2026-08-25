@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Today + Scan Booking Cards (P2.2.41 — V4.9.968)', icon: Globe,
+    endpoint: 'Operator Today + Scan booking cards — handover and scan-result presentation slice',
+    service: '**Locale flow:** `useLanguage().locale` → `operator-booking-card-i18n.ts` adapter (`obc`, CTA/badge/title helpers); reuses `bookingStatusLabel`, `vehicle.bookings.startPickup`/`startReturn`, `common.details`, `status.overdue`, `bookings.vehicle`, `operator.bookings.documents.group.pickup`/`return`. **Keys:** +2 EN+DE `operator.bookings.card.*` (8608→8610). **Machine values:** bookingId, customer/vehicle/station data, status enum, gate predicates, handover callbacks, P240 detail sheet open frozen. **Guardrails:** P2.2.41 enforce-clean exact (3 paths) — 0 findings. **Tests:** `operator-booking-card-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_OPERATOR_TODAY_SCAN_BOOKING_CARDS_P2_2_41_2026-08-25.md' },
   { name: 'Platform i18n Operator Booking Detail Sheet (P2.2.40 — V4.9.967)', icon: Globe,
     endpoint: 'Operator Booking Detail Sheet — fullscreen booking detail presentation slice',
     service: '**Locale flow:** `useLanguage().locale` → `operator-booking-detail-i18n.ts` adapter (`obds`, section/action/gate helpers); reuses `bookingStatusLabel`, P237 gate helpers, `vehicle.bookings.startPickup`/`startReturn`. **Keys:** +12 EN+DE `operator.bookings.detail.*` (8596→8608). **Machine values:** bookingId, customer/vehicle/station data, status enum, callbacks, P238 documents panel, P237/P236 sheet targets frozen. **Guardrails:** P2.2.40 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-booking-detail-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

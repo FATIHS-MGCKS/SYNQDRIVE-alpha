@@ -6,6 +6,14 @@ import {
   normalizeBookingStatus,
 } from '../../rental/components/bookings/bookingStatus';
 import type { OperatorScanBookingHit } from '../hooks/useOperatorScanSearch';
+import {
+  operatorBookingCardDetailsLabel,
+  operatorBookingCardHandoverPickupLabel,
+  operatorBookingCardHandoverReturnLabel,
+  operatorBookingCardOpenVehicleLabel,
+  operatorBookingCardScanTitle,
+} from '../lib/operator-booking-card-i18n';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { OperatorGlassCard } from './OperatorGlassCard';
 
 interface Props {
@@ -25,7 +33,9 @@ export function OperatorScanBookingCard({
   onPickup,
   onReturn,
 }: Props) {
+  const { locale } = useLanguage();
   const status = normalizeBookingStatus(booking.statusEnum, booking.status);
+  const bookingIdSlice = `${booking.bookingId.slice(0, 8)}…`;
 
   return (
     <OperatorGlassCard
@@ -40,7 +50,7 @@ export function OperatorScanBookingCard({
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground">
-              Buchung · {booking.bookingId.slice(0, 8)}…
+              {operatorBookingCardScanTitle(locale, bookingIdSlice)}
             </p>
             <p className="mt-0.5 text-sm text-foreground">
               {booking.vehicleName}
@@ -49,7 +59,7 @@ export function OperatorScanBookingCard({
             <p className="mt-0.5 text-xs text-muted-foreground">{booking.customerName}</p>
             <div className="mt-2">
               <StatusChip tone={bookingStatusTone(status)} dot>
-                {bookingStatusLabel(status)}
+                {bookingStatusLabel(status, locale)}
               </StatusChip>
             </div>
           </div>
@@ -62,7 +72,7 @@ export function OperatorScanBookingCard({
             onClick={onDetails}
             className="sq-press min-h-[48px] surface-premium text-[11px] font-semibold"
           >
-            Details
+            {operatorBookingCardDetailsLabel(locale)}
           </button>
         )}
         {onOpenVehicle && (
@@ -71,7 +81,7 @@ export function OperatorScanBookingCard({
             onClick={onOpenVehicle}
             className="sq-press min-h-[48px] surface-premium text-[11px] font-semibold"
           >
-            Fahrzeug
+            {operatorBookingCardOpenVehicleLabel(locale)}
           </button>
         )}
         {onPickup && (
@@ -81,7 +91,7 @@ export function OperatorScanBookingCard({
             className="sq-press flex min-h-[48px] items-center justify-center gap-1 surface-premium text-[11px] font-semibold"
           >
             <ArrowUpRight className="h-3.5 w-3.5" />
-            Pickup
+            {operatorBookingCardHandoverPickupLabel(locale)}
           </button>
         )}
         {onReturn && (
@@ -91,7 +101,7 @@ export function OperatorScanBookingCard({
             className="sq-press flex min-h-[48px] items-center justify-center gap-1 surface-premium text-[11px] font-semibold"
           >
             <ArrowDownLeft className="h-3.5 w-3.5" />
-            Return
+            {operatorBookingCardHandoverReturnLabel(locale)}
           </button>
         )}
       </div>

@@ -434,6 +434,12 @@ const P240_ENFORCE_CLEAN_EXACT = [
   'operator/lib/operator-booking-detail-i18n.ts',
 ];
 
+const P241_ENFORCE_CLEAN_EXACT = [
+  'operator/components/OperatorBookingCard.tsx',
+  'operator/components/OperatorScanBookingCard.tsx',
+  'operator/lib/operator-booking-card-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -592,6 +598,10 @@ function isP239EnforceCleanPath(relPath: string): boolean {
 
 function isP240EnforceCleanPath(relPath: string): boolean {
   return P240_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP241EnforceCleanPath(relPath: string): boolean {
+  return P241_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -950,6 +960,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP240EnforceCleanPath(finding.file),
     );
     expect(p240Debt).toHaveLength(0);
+  });
+
+  it('keeps P241 Operator Today + Scan Booking Cards enforce-clean scope at zero findings', () => {
+    const p241Debt = inventory.findings.filter((finding) =>
+      isP241EnforceCleanPath(finding.file),
+    );
+    expect(p241Debt).toHaveLength(0);
   });
 
   it('keeps operator-vehicle-quick-view-i18n.ts on canonical translation keys', () => {
