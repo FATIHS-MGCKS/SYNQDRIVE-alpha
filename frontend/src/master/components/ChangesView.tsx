@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-booking-detail-sheet-p2-2-40-2026-08-25',
+    version: '4.9.967',
+    title: 'Platform i18n — P2.2.40 Operator Booking Detail Sheet localization',
+    summary: [
+      'Localized Operator Booking Detail Sheet via `operator-booking-detail-i18n.ts` and `operator.bookings.detail.*` keys.',
+      'P240 enforce-clean exact scope (2 paths) reports 0 findings; +12 EN+DE keys (8596→8608); reuses status, cancel/no-show, pickup/return, and common keys.',
+      'Presentation-only — booking/customer/vehicle/station IDs, dynamic data, callbacks, P236/P237/P238 mounted surfaces, and gate predicates unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.40 post-P239 pre-flight (PR #1278) selected Operator Booking Detail Sheet as the next bounded Operator booking presentation slice.',
+    previousBehavior:
+      'OperatorBookingDetailSheet used fixed German header, labels, manage-action copy, pickup/return CTAs, and gate tooltips without locale threading for status.',
+    details:
+      'operator/components/OperatorBookingDetailSheet.tsx; operator/lib/operator-booking-detail-i18n.ts; i18n/translations/operator.bookings.detail.{en,de}.ts; operator-booking-detail-localization.test.tsx; P240_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_BOOKING_DETAIL_SHEET_P2_2_40_2026-08-25.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-25T20:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-more-view-p2-2-39-2026-08-25',
     version: '4.9.966',
     title: 'Platform i18n — P2.2.39 Operator More View localization',
