@@ -66,7 +66,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const app = await NestFactory.createApplicationContext(AppModule, {
+  const appModule = await AppModule.forRootAsync();
+  const app = await NestFactory.createApplicationContext(appModule, {
     logger: ['error', 'warn'],
   });
 

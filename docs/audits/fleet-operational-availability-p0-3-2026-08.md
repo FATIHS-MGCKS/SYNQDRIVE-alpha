@@ -101,11 +101,34 @@ Documented as future Dashboard/readiness migration if operator-readiness counts 
 
 | Condition | Behavior |
 |-----------|----------|
-| P0.2 batch throws | Log warning; per-vehicle `UNKNOWN` |
-| Missing vehicle in projection map | `UNKNOWN` |
+| P0.2 batch throws | Log warning; per-vehicle `UNKNOWN` with **one request-scoped `generatedAt`** |
+| Missing vehicle in projection map | Same shared fallback object timestamp |
 | Frontend missing `operationalAvailability` | Presentation normalizes to `UNKNOWN` |
 
 Never defaults to green “Verfügbar”.
+
+### Technical fallback provenance (final gate)
+
+**Canonical reason for projection infrastructure failure:** **NO**
+
+Audited `OperationalReasonCode` / `OperationalProjectionReasonCode`:
+- `INSUFFICIENT_CROSS_DOMAIN_EVIDENCE` — domain-evaluated insufficient evidence, not loader failure
+- `HEALTH_EVIDENCE_UNAVAILABLE` — health-domain only
+- No `OPERATIONAL_EVIDENCE_UNAVAILABLE` or projection-loader code exists
+
+**Final technical fallback semantics:**
+
+```typescript
+createFleetOperationalAvailabilityUnknownFallback(requestGeneratedAt)
+// state: UNKNOWN
+// primaryReason: null
+// reasonCodes: []
+// recommendedAction: NONE
+// attention: NONE
+// generatedAt: <single fleet-map request timestamp>
+```
+
+This is a **conservative presentation fallback**, not a claim that canonical domain evidence evaluated to UNKNOWN. Structured log `fleet_map.operational_projection_batch_failed` remains for observability. UI still shows “Status unbekannt” only.
 
 ---
 
@@ -153,3 +176,34 @@ P0.2 production shadow (pre-P0.3): HMÜ `UNKNOWN`, WOB both `NEEDS_VERIFICATION`
 | P0.4 Health | **DO NOT START** |
 | Vehicle Detail connectivity migration | **DO NOT START** |
 | Production processing gate | **CONDITIONAL** (unchanged) |
+
+---
+
+## M. Final Gate Verification (P0.3 closure)
+
+### Common fallback `generatedAt`
+
+- **Issue:** Per-row `new Date().toISOString()` on fallback violated P0.2 request-time invariant.
+- **Fix:** `fleetProjectionGeneratedAt` captured once per `getFleetMapData()`; `createFleetOperationalAvailabilityUnknownFallback(generatedAt)` reused for all missing/failed rows.
+- **Test:** `B — batch failure` + `B — missing projection entries` (11 fleet-map tests total).
+
+### Fallback provenance decision
+
+- **Existing canonical reason for projection failure:** NO
+- **Technical fallback:** `UNKNOWN` + `primaryReason: null` (documented above)
+
+### Production Fleet DTO evidence
+
+See §M.1 below (populated after read-only VPS run).
+
+### Business field preservation
+
+`status`, `operationalState`, `bookingContext` remain additive-only change; `operationalAvailability` is new.
+
+### Production mutations
+
+**NONE**
+
+### Final merge verdict
+
+Pending Production Fleet DTO read + CI green on final commit.
