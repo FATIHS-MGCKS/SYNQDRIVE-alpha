@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-operational-availability-p0-3-2026-08-25',
+    version: '4.9.958',
+    title: 'P0.3 — Fleet operational availability consumer migration',
+    summary: [
+      'Fleet-map DTO exposes P0.2 `operationalAvailability` via batch `getVehicleProjections()` (no N+1).',
+      'Fleet list + map HUD badge uses operational availability — not business `status` alone.',
+      'Business workflow fields (`status`, `operationalState`) preserved; filters/KPIs unchanged.',
+      'DE/EN + governed locales; failure → UNKNOWN never green AVAILABLE.',
+      'Reference: WOB L 7503/9755 → Prüfung erforderlich; HMÜ C 215 → Status unbekannt.',
+    ],
+    reason: 'P0.3 — migrate operator-facing Fleet availability badge to canonical P0.2 operationalAvailability without conflating connectivity/health/booking.',
+    previousBehavior: 'Fleet “Verfügbar” badge followed business operationalState only; long-offline AVAILABLE vehicles showed green.',
+    details: 'docs/audits/fleet-operational-availability-p0-3-2026-08.md; fleet-operational-availability.dto.ts; operational-availability/presentation.ts; FleetOperatorRow; FleetMapVehicleStatusHud',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T12:00:00.000Z',
+  },
+  {
     id: 'vehicle-operational-projection-p0-2-design-2026-08-25',
     version: '4.9.957',
     title: 'P0.2 — VehicleOperationalProjection design + contract slice',

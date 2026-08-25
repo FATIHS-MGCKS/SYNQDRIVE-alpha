@@ -4,7 +4,7 @@
  * Composes authoritative domain loaders and delegates to the pure builder.
  * No consumer surfaces are wired here.
  */
-import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException, Optional, forwardRef } from '@nestjs/common';
 import { VehicleStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ConnectivityLifecycleRuntimePolicyService } from '@modules/dimo/connectivity/connectivity-lifecycle-runtime-policy.service';
@@ -73,6 +73,7 @@ export class VehicleOperationalProjectionService {
 
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => VehiclesService))
     private readonly vehiclesService: VehiclesService,
     private readonly connectivityProjection: VehicleConnectivityRuntimeProjectionService,
     private readonly rentalHealthSummary: RentalHealthSummaryService,

@@ -2,6 +2,7 @@ import { LiquidGlassLens } from '../../../components/surface';
 import { StatusChip } from '../../../components/patterns';
 import type { FleetVehicleContext } from '../../lib/fleet-operator-panel';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   VehicleOperationalStatusInlineHint,
 } from '../fleet/VehicleOperationalStatusCallout';
@@ -16,18 +17,20 @@ export interface FleetMapVehicleStatusHudProps {
 
 export function FleetMapVehicleStatusHud({
   ctx,
-  locale = 'de',
   timeZone,
   onRefresh,
 }: FleetMapVehicleStatusHudProps) {
   if (!ctx) return null;
 
+  const { locale, t } = useLanguage();
   const display = resolveFleetVehicleDisplayState(ctx.vehicle, {
     rentalHealth: ctx.health,
     visual: ctx.visual,
     locale,
     timeZone,
     compact: true,
+    operationalAvailabilityBadge: true,
+    t,
   });
 
   const { statusBadge, bookingSupplement } = display;

@@ -9838,6 +9838,17 @@ export interface FleetMapVehicleResponse {
   bookingContext?: VehicleBookingContext | null;
   /** Canonical connectivity runtime from backend builder. */
   connectivityRuntime?: VehicleConnectivityRuntimeState;
+  /** P0.3 — operator-facing operational availability from P0.2 projection. */
+  operationalAvailability?: FleetOperationalAvailabilityResponse;
+}
+
+export interface FleetOperationalAvailabilityResponse {
+  state: 'AVAILABLE' | 'NEEDS_VERIFICATION' | 'UNKNOWN' | 'UNAVAILABLE';
+  primaryReason: string | null;
+  reasonCodes: string[];
+  recommendedAction: string;
+  attention: string;
+  generatedAt: string;
 }
 
 export type FleetMaintenanceReasonCode = 'SCHEDULED_SERVICE' | 'OPERATIONAL_BLOCK';

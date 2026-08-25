@@ -332,6 +332,20 @@ export const fr: Record<TranslationKey, string> = {
   'fleet.vehicleHealth': 'Sante vehicule',
   'fleet.driverScore': 'Score conducteur',
   'fleet.noVehicles': 'Aucun vehicule trouve',
+  'fleet.operationalAvailability.available': 'Disponible',
+  'fleet.operationalAvailability.needsVerification': 'Verification requise',
+  'fleet.operationalAvailability.unknown': 'Statut inconnu',
+  'fleet.operationalAvailability.unavailable': 'Indisponible',
+  'fleet.operationalAvailability.tooltip.needsVerification':
+    'Donnees vehicule indisponibles depuis longtemps. Verifier l\'appareil.',
+  'fleet.operationalAvailability.tooltip.unknown':
+    'Le statut operationnel actuel ne peut pas etre determine avec certitude.',
+  'fleet.operationalAvailability.tooltip.unavailable':
+    'Le vehicule n\'est pas operationnellement disponible.',
+  'fleet.operationalAvailability.reason.deviceCheckRequired': 'Verifier l\'appareil',
+  'fleet.operationalAvailability.reason.telemetryOffline': 'Telemetrie hors ligne',
+  'fleet.operationalAvailability.reason.businessWorkflowBlocked': 'Workflow bloque',
+  'fleet.operationalAvailability.reason.healthRentalBlocked': 'Location bloquee (sante)',
   'vehicle.overview': 'Apercu',
   'vehicle.trips': 'Trajets',
   'vehicle.healthErrors': 'Sante et erreurs',

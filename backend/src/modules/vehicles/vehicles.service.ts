@@ -79,6 +79,12 @@ import { DataAuthorizationEnforcementService } from '@modules/data-authorization
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connection-read-model';
 import { VehicleConnectivityRuntimeProjectionService } from '@modules/dimo/device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
+import { VehicleOperationalProjectionService } from './operational/projection/vehicle-operational-projection.service';
+import {
+  createFleetOperationalAvailabilityUnknownFallback,
+  toFleetOperationalAvailabilityDto,
+  type FleetOperationalAvailabilityDto,
+} from './operational/fleet-operational-availability.dto';
 import { serializeVehicleConnectivityRuntimeState } from './connectivity/vehicle-connectivity-runtime-state.dto';
 import type { VehicleConnectivityRuntimeStateDto } from './connectivity/vehicle-connectivity-runtime-state.dto';
 import { TasksService } from '@modules/tasks/tasks.service';
@@ -289,6 +295,8 @@ export interface FleetMapVehicleDto
   isElectric: boolean;
   /** Canonical connectivity runtime — shared truth across fleet surfaces. */
   connectivityRuntime?: VehicleConnectivityRuntimeStateDto;
+  /** P0.3 — operator-facing operational availability from P0.2 projection. */
+  operationalAvailability?: FleetOperationalAvailabilityDto;
 }
 
 @Injectable()
@@ -309,6 +317,8 @@ export class VehiclesService {
     private readonly dataAuthEnforcement: DataAuthorizationEnforcementService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
     private readonly connectivityRuntimeProjection: VehicleConnectivityRuntimeProjectionService,
+    @Inject(forwardRef(() => VehicleOperationalProjectionService))
+    private readonly operationalProjection: VehicleOperationalProjectionService,
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
     private readonly tasksService: TasksService,
     private readonly fleetMapCache: FleetMapCacheService,
@@ -1532,6 +1542,35 @@ export class VehiclesService {
       vehicleIdsForMap,
     );
 
+    const fleetProjectionGeneratedAt = new Date().toISOString();
+
+    let projectionsByVehicle = new Map<
+      string,
+      ReturnType<typeof toFleetOperationalAvailabilityDto>
+    >();
+    try {
+      const projections = await this.operationalProjection.getVehicleProjections({
+        organizationId,
+        vehicleIds: vehicleIdsForMap,
+      });
+      projectionsByVehicle = new Map(
+        Array.from(projections.entries()).map(([id, projection]) => [
+          id,
+          toFleetOperationalAvailabilityDto(projection),
+        ]),
+      );
+    } catch (err) {
+      this.logger.warn({
+        msg: 'fleet_map.operational_projection_batch_failed',
+        organizationId,
+        vehicleCount: vehicleIdsForMap.length,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    const fleetOperationalAvailabilityFallback =
+      createFleetOperationalAvailabilityUnknownFallback(fleetProjectionGeneratedAt);
+
     const result: FleetMapVehicleDto[] = vehicles.map((vehicle) => {
       const state = vehicle.latestState;
       const tripState = tripStateMap.get(vehicle.id) ?? null;
@@ -1614,6 +1653,8 @@ export class VehiclesService {
         connectivityRuntime: runtimeByVehicle.has(vehicle.id)
           ? serializeVehicleConnectivityRuntimeState(runtimeByVehicle.get(vehicle.id)!)
           : undefined,
+        operationalAvailability:
+          projectionsByVehicle.get(vehicle.id) ?? fleetOperationalAvailabilityFallback,
       };
     });
 

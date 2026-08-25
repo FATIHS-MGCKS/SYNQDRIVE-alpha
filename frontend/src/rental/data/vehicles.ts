@@ -120,6 +120,8 @@ export interface VehicleData {
   operationalState?: import('../lib/vehicle-operational-state').VehicleOperationalState;
   bookingContext?: import('../lib/vehicle-operational-state').VehicleBookingContext;
   dataQualityReasons?: string[];
+  /** P0.3 — P0.2 operational availability when loaded from fleet-map. */
+  operationalAvailability?: import('../lib/operational-availability/types').FleetOperationalAvailability;
 }
 
 // Simulated data removed - loaded from API via RentalApp

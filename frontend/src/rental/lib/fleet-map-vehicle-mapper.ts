@@ -7,11 +7,29 @@ import type {
   VehicleOnlineStatus,
 } from '../data/vehicles';
 import {
+  normalizeOperationalAvailabilityState,
+  type FleetOperationalAvailability,
+} from './operational-availability/types';
+import {
   normalizeVehicleOperationalStateDto,
   type VehicleBookingContext,
   type VehicleBookingReference,
   type VehicleOperationalState,
 } from './vehicle-operational-state';
+
+function mapOperationalAvailability(
+  raw: FleetMapVehicleResponse['operationalAvailability'],
+): FleetOperationalAvailability | undefined {
+  if (!raw) return undefined;
+  return {
+    state: normalizeOperationalAvailabilityState(raw.state),
+    primaryReason: raw.primaryReason ?? null,
+    reasonCodes: Array.isArray(raw.reasonCodes) ? raw.reasonCodes : [],
+    recommendedAction: raw.recommendedAction ?? 'NONE',
+    attention: raw.attention ?? 'NONE',
+    generatedAt: raw.generatedAt ?? new Date(0).toISOString(),
+  };
+}
 
 /** Fleet map row after canonical DTO mapping — extends rental vehicle read-model. */
 export interface FleetMapVehicleRow extends VehicleData {
@@ -307,6 +325,7 @@ export function mapFleetMapVehicleResponse(
     heading: toFiniteNumber(raw.heading) ?? null,
     lastSeenAt: raw.lastSeenAt ?? null,
     connectivityRuntime: raw.connectivityRuntime,
+    operationalAvailability: mapOperationalAvailability(raw.operationalAvailability),
     ...legacyBooking,
     maintenanceReason: raw.maintenanceReason ?? null,
     maintenanceReasonCode: reasonCode,
