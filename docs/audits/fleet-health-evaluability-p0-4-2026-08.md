@@ -399,3 +399,134 @@ Bounded delay only; cannot permanently preserve legacy Gut when evaluability is 
 | **PR #1277 MERGE READY** | **YES** |
 
 **Note:** One unrelated pre-main lint failure in Legal Documents workflow (`register-from-dimo.spec.ts` prefer-const). Vehicle Detail CI gate is green. Does not block P0.4 merge readiness; fix separately on main if full dual-workflow green is required.
+
+---
+
+## Production Deployment + Live Fleet Acceptance (2026-08-25)
+
+### A. Main / deployed SHA
+
+| Item | Value |
+|------|-------|
+| **Main SHA (merged #1277)** | `a483ab72c59cc9b54bd5ff8db9a367ff6b8d69c5` |
+| **Pre-deploy Production SHA** | `1636d35286124b5a9b4d7f0b2a31a57372cd859b` (#1290) |
+| **Post-deploy release** | `20260825195646_v4994` |
+| **Post-deploy backend SHA** | `a483ab72` |
+| **Post-deploy frontend bundle** | `index-CkNPz9gj.js` (built 2026-08-25T20:02 UTC) |
+| **#1277 included** | **YES** |
+| **#1281 / #1290 included** | **YES** (already on pre-deploy baseline) |
+| **Later P0.4-affecting commits** | **None** after merge |
+
+### B. Deployment
+
+| Step | Result |
+|------|--------|
+| Path | `bash .cursor/scripts/cloud-agent-deploy.sh` → `vps-deploy-release.sh` |
+| DB migration required | **NO** (none in #1277) |
+| PM2 restart | `synqdrive` online (pid 467572) |
+| Deploy | **PASS** |
+
+### C. Service health (post-deploy)
+
+| Check | Result |
+|-------|--------|
+| API `/api/v1/health` | **PASS** (uptime reset post-restart) |
+| Fleet API path | **PASS** (`getFleetMapData` executed live) |
+| Prisma | **PASS** (no mismatch errors) |
+| Redis | **PASS** (projection + cache operational) |
+| BullMQ | **PASS** (no deploy-induced queue failure) |
+| Frontend load | **PASS** (bundle served; login page renders) |
+| ClickHouse | Degraded (pre-existing; analytics optional) |
+
+### D. Fleet DTO verification (live Production)
+
+`healthEvaluation` **present** on all six reference vehicles via `VehiclesService.getFleetMapData()`.
+
+`legacy healthStatus` still returned on DTO (diagnostic only) but **does not control** Fleet Health badge when `healthEvaluationBadge: true`.
+
+Missing `healthEvaluation` fallback → **Status unbekannt** (mapper + F7 test).
+
+### E. All-six live table
+
+| Vehicle | Legacy | condition | evaluability | OpAvail | DE label | EN label | Tooltip (DE) | Safe? |
+|---------|--------|-----------|--------------|---------|----------|----------|----------------|-------|
+| HMÜ C 215 | Good Health | unknown | PARTIALLY_EVALUABLE | AVAILABLE | Eingeschränkt bewertbar | Partially evaluable | Einige Fahrzeugdaten sind nicht aktuell. | YES |
+| KS FH 660E | Good Health | warning | PARTIALLY_EVALUABLE | NEEDS_VERIFICATION | Eingeschränkt bewertbar | Partially evaluable | (stale evidence) | YES |
+| KS MS 661 | Good Health | warning | PARTIALLY_EVALUABLE | NEEDS_VERIFICATION | Eingeschränkt bewertbar | Partially evaluable | (stale evidence) | YES |
+| KS MX 2024 | Good Health | warning | PARTIALLY_EVALUABLE | NEEDS_VERIFICATION | Eingeschränkt bewertbar | Partially evaluable | (stale evidence) | YES |
+| WOB L 7503 | Good Health | good | NOT_EVALUABLE | NEEDS_VERIFICATION | Nicht bewertbar | Not evaluable | Fehlende aktuelle Daten | YES |
+| WOB L 9755 | Good Health | warning | NOT_EVALUABLE | NEEDS_VERIFICATION | Nicht bewertbar | Not evaluable | Fehlende aktuelle Daten | YES |
+
+**No non-EVALUABLE vehicle renders Gut/Good.**
+
+### F–H. Per-vehicle connectivity + Health (live)
+
+**HMÜ C 215:** ACTIVE / standby / PLUGGED_INFERRED / AVAILABLE — PARTIALLY_EVALUABLE → Eingeschränkt bewertbar (stale modules; not Gut).
+
+**KS FH 660E / KS MS 661 / KS MX 2024:** REAUTH_REQUIRED / standby — PARTIALLY_EVALUABLE → Eingeschränkt bewertbar (auth does not fabricate Auffällig).
+
+**WOB L 7503 / WOB L 9755:** ACTIVE / offline / UNKNOWN — NOT_EVALUABLE → Nicht bewertbar (stale Gut blocked).
+
+### I–J. Desktop / mobile Fleet UI
+
+| Surface | Path | Result |
+|---------|------|--------|
+| Desktop Fleet list | `FleetCommandPanel` → `FleetOperatorRow` (`healthEvaluationBadge: true`) | **PASS** (DTO→mapper; bundle contains P0.4 code) |
+| Mobile Fleet list | Same `FleetOperatorRow` shared component | **PASS** (F9 shared path) |
+| Live browser | Login required at `app.synqdrive.eu` — credentials unavailable | **Limitation noted**; acceptance via live DTO + deployed bundle + mapper |
+
+Deployed bundle contains: `mapFleetHealthPresentation`, `healthEvaluationBadge`, `Eingeschränkt bewertbar`, `Nicht bewertbar`.
+
+### K. i18n
+
+DE/EN governed keys verified (tests 21/21 PASS). Other locales compile (keys added in #1277).
+
+### L. Tooltip semantics
+
+| Evaluability | DE tooltip | Safe? |
+|--------------|------------|-------|
+| PARTIALLY_EVALUABLE | Einige Fahrzeugdaten sind nicht aktuell. | YES — no defect implication |
+| NOT_EVALUABLE | …fehlender aktueller Daten nicht sicher bewertet… | YES |
+| UNKNOWN | Der aktuelle Fahrzeugzustand ist nicht bekannt. | YES |
+
+### M. P0.3 regression
+
+| Vehicle | Expected | Live | Result |
+|---------|----------|------|--------|
+| HMÜ C 215 | AVAILABLE | AVAILABLE | PASS |
+| WOB L 7503 | NEEDS_VERIFICATION | NEEDS_VERIFICATION | PASS |
+| WOB L 9755 | NEEDS_VERIFICATION | NEEDS_VERIFICATION | PASS |
+| KS MS 661 | NEEDS_VERIFICATION | NEEDS_VERIFICATION | PASS |
+
+### N. Provider-link regression
+
+Active DIMO links: **6** (unchanged). `providerLinkState` values match post-backfill baseline.
+
+### O. Cache propagation
+
+No manual Redis clear. Natural post-deploy cache miss repopulates with P0.4 DTO. TTLs: Rental Health **45s**, Fleet-map **5s**. **PASS**.
+
+### P. N+1 / performance
+
+Single `getVehicleProjections()` batch (B8). API health ~94ms. No P0.4-attributable errors in deploy logs.
+
+### Q. Scope boundaries
+
+| Surface | Status |
+|---------|--------|
+| Fleet list/mobile | **P0.4 canonical Health active** |
+| Dashboard drawer | **LEGACY** (`CompactFleetDrawerVehicleRow` — no `healthEvaluationBadge`) |
+| Vehicle Detail | **LEGACY** (out of scope) |
+
+### R. Final verdict
+
+| Gate | Result |
+|------|--------|
+| **P0.4 PRODUCTION DEPLOYMENT** | **PASS** |
+| **P0.4 LIVE FLEET ACCEPTANCE** | **PASS** |
+| **STALE GUT FALLBACK** | **CLOSED** |
+| **P0.3** | **PASS** |
+| **PROVIDER-LINK** | **PASS** |
+| **Production mutations** | **DEPLOYMENT ONLY** |
+| **Production Connectivity Processing Gate** | **CONDITIONAL** (unchanged) |
+| **NEXT STEP** | Vehicle Detail Health migration / Dashboard Health migration / post-cutover unplug test (separate) |
