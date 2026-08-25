@@ -73,7 +73,7 @@ export class DeviceConnectionWebhookInboxService {
         };
       }
 
-      await this.queue.enqueue(existing.id);
+      await this.safeEnqueue(existing.id, 'requeue');
       return {
         outcome: 'queued',
         inboxId: existing.id,
@@ -96,7 +96,7 @@ export class DeviceConnectionWebhookInboxService {
       },
     });
 
-    await this.queue.enqueue(inboxRow.id);
+    await this.safeEnqueue(inboxRow.id, 'intake');
 
     this.logger.log(
       `Queued device connection webhook inbox ${inboxRow.id} for tokenId=${input.tokenId} eventType=${eventType}`,
@@ -108,6 +108,29 @@ export class DeviceConnectionWebhookInboxService {
       processingStatus: DeviceConnectionWebhookProcessingStatus.RECEIVED,
       eventType,
     };
+  }
+
+  private async safeEnqueue(inboxId: string, source: 'intake' | 'requeue'): Promise<void> {
+    try {
+      await this.queue.enqueue(inboxId);
+      this.logger.debug(`Enqueued connectivity webhook inbox ${inboxId} source=${source}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `Failed to enqueue connectivity webhook inbox ${inboxId} source=${source}: ${message}`,
+      );
+      const nextRetryAt = new Date(Date.now() + 30_000);
+      await this.prisma.deviceConnectionWebhookInbox.update({
+        where: { id: inboxId },
+        data: {
+          processingStatus: DeviceConnectionWebhookProcessingStatus.RETRYABLE_FAILED,
+          lastErrorCode: 'enqueue_failed',
+          lastErrorAt: new Date(),
+          nextRetryAt,
+        },
+      });
+      throw err;
+    }
   }
 
   private mapTerminalOutcome(

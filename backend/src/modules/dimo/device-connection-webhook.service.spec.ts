@@ -320,7 +320,13 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
     );
     const created = new Date('2026-06-28T12:05:00Z');
     const updated = new Date('2026-06-28T12:05:05Z');
-    upsert.mockResolvedValue({ id: 'evt-2', createdAt: created, updatedAt: updated });
+    upsert.mockResolvedValue({
+      id: 'evt-2',
+      createdAt: created,
+      updatedAt: updated,
+      processedAt: new Date('2026-06-28T12:05:06Z'),
+      receivedAt: created,
+    });
 
     const service = new DeviceConnectionWebhookService(
       {
@@ -338,6 +344,74 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
     });
     expect(result.outcome).toBe('duplicate');
     expect(result.eventType).toBe(DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('reconciles lifecycle when upsert hits existing unprocessed event', async () => {
+    const { upsert, update, findFirst } = mockPrisma();
+    const observedAt = new Date('2026-06-28T12:00:00Z');
+    const created = observedAt;
+    const updated = new Date('2026-06-28T12:00:05Z');
+    upsert.mockResolvedValue({
+      id: 'evt-partial',
+      createdAt: created,
+      updatedAt: updated,
+      processedAt: null,
+      receivedAt: created,
+    });
+    const episodeService = mockEpisodeService();
+
+    const service = new DeviceConnectionWebhookService(
+      {
+        dimoDeviceConnectionEvent: { upsert, update, findFirst },
+        vehicle: { findUnique: jest.fn().mockResolvedValue(null) },
+      } as never,
+      episodeService as never,
+    );
+
+    const result = await service.processValidatedWebhookEvent({
+      vehicle: { id: 'v1', organizationId: 'o1' },
+      tokenId: 42,
+      pluggedIn: false,
+      observedAt,
+      rawPayload: { signal: 'obdIsPluggedIn', value: false },
+      inboxId: 'inbox-1',
+    });
+
+    expect(result.outcome).toBe('reconciled');
+    expect(episodeService.openFromUnplugEvent).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'evt-partial' },
+      data: { processedAt: expect.any(Date) },
+    });
+  });
+
+  it('reconcilePersistedEventLifecycle completes orphan events', async () => {
+    const findUnique = jest.fn().mockResolvedValue({
+      id: 'evt-orphan',
+      organizationId: 'o1',
+      vehicleId: 'v1',
+      tokenId: 42,
+      eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+      observedAt: new Date('2026-07-20T11:05:00Z'),
+      receivedAt: new Date('2026-07-20T11:05:03Z'),
+      processedAt: null,
+    });
+    const update = jest.fn().mockResolvedValue({});
+    const episodeService = mockEpisodeService();
+
+    const service = new DeviceConnectionWebhookService(
+      {
+        dimoDeviceConnectionEvent: { findUnique, update },
+        vehicle: { findUnique: jest.fn() },
+      } as never,
+      episodeService as never,
+    );
+
+    const result = await service.reconcilePersistedEventLifecycle('evt-orphan');
+    expect(result.outcome).toBe('reconciled');
+    expect(episodeService.openFromUnplugEvent).toHaveBeenCalled();
+    expect(update).toHaveBeenCalled();
   });
 
   it('propagates episode sync failures instead of swallowing as ignored', async () => {

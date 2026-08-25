@@ -28,7 +28,7 @@ Time-sensitive connectivity states (`standby`, `signal_delayed`, `offline`) must
 | `providerLinkState` | `ProviderLinkStateBuilder` / `DimoVehicle.connectionStatus` | `dimo_vehicles.connection_status` | DIMO sync time | Connectivity runtime dim A | Treating CONNECTED as telemetry-live |
 | `physicalDeviceState` | `derivePhysicalDeviceEvidence` (shared) | **Derived** | `latestValidSnapshotAt` vs `latestExplicitUnplugAt` | Runtime builder, device-connection read model | `events.some(UNPLUG)` historical boolean |
 | `webhookConfigurationState` | `DeviceConnectionWebhookConfigurationService` + trigger registry | Registry cache rows | Registry sync | Fleet connectivity, device-connection API | Inferring from event absence |
-| `deviceConnectionEventState` | `dimo_device_connection_events` | Yes (immutable) | `observedAt` (provider), `receivedAt` | Read-model history, counts | — |
+| `deviceConnectionEventState` | `dimo_device_connection_events` | Yes (immutable) | `observedAt` (provider), `receivedAt`, `processedAt` (lifecycle complete) | Read-model history, counts | — |
 | `interruptionState` | `device_connection_episodes.status=OPEN` | Yes | `openedAt` | Device-connection API when queried | 7-day event-window inference (deprecated when episodes queried) |
 | `interruptionKnowledge` | `deriveInterruptionKnowledge` | **Derived** | Episode query + physical evidence (separate) | Device-connection API (additive P0.1) | `!openUnpluggedEpisode` → "known none" |
 | `healthAggregate` | `RentalHealthService` → `computeOverallState` | **Derived** per request | Module `last_updated_at` | Health UI, readiness reasons | — |
@@ -201,6 +201,21 @@ Distinguish: `module state`, `module evidence freshness`, `overall evaluability`
 Six dimensions: provider link, telemetry, physical device, data coverage, attention, overall.
 
 Computed at read time — not persisted in P0.1/P0.2 initial rollout.
+
+---
+
+## Webhook inbox processing lifecycle (production gate 2026-08)
+
+DIMO `OBD_DEVICE_UNPLUGGED` webhooks flow: inbox (`RECEIVED`) → BullMQ `connectivity.webhook.process` → worker → canonical event → episode OPEN → `processed_at` set → inbox `PROCESSED`.
+
+**Invariants (post gate fix):**
+- Event dedupe (`dedupBucket`) is separate from lifecycle completion (`processed_at`).
+- Retry after partial failure must reconcile episode sync when `processed_at IS NULL`.
+- Enqueue failure marks inbox `RETRYABLE_FAILED` (not silent `RECEIVED` forever).
+- Scheduler reconciles orphan `processed_at IS NULL` events as defense-in-depth.
+- Snapshot recovery resolves OPEN episodes without requiring `OBD_DEVICE_PLUGGED_IN` webhook.
+
+**Audit:** `docs/audits/connectivity-production-processing-gate-2026-08.md`
 
 ---
 

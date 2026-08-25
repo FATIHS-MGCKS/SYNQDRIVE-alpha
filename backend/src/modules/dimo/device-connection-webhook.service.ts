@@ -11,7 +11,11 @@ import {
 
 export const DEVICE_CONNECTION_DEDUP_WINDOW_MS = 30_000;
 
-export type DeviceConnectionIntakeOutcome = 'created' | 'duplicate' | 'ignored_by_policy';
+export type DeviceConnectionIntakeOutcome =
+  | 'created'
+  | 'duplicate'
+  | 'reconciled'
+  | 'ignored_by_policy';
 
 export type DeviceConnectionDomainResult = {
   outcome: DeviceConnectionIntakeOutcome;
@@ -222,12 +226,50 @@ export class DeviceConnectionWebhookService {
     };
   }
 
+  /**
+   * Completes episode lifecycle for a persisted event that still lacks processedAt.
+   * Safe to call on retry after partial failure (event row exists, lifecycle incomplete).
+   */
+  async reconcilePersistedEventLifecycle(eventId: string): Promise<DeviceConnectionDomainResult> {
+    const row = await this.prisma.dimoDeviceConnectionEvent.findUnique({
+      where: { id: eventId },
+      select: {
+        id: true,
+        organizationId: true,
+        vehicleId: true,
+        tokenId: true,
+        eventType: true,
+        observedAt: true,
+        receivedAt: true,
+        processedAt: true,
+      },
+    });
+    if (!row) {
+      throw new Error(`Device connection event ${eventId} not found`);
+    }
+    if (row.processedAt) {
+      return { outcome: 'duplicate', eventId: row.id, eventType: row.eventType };
+    }
+
+    return this.completePersistedEventLifecycle({
+      organizationId: row.organizationId,
+      vehicleId: row.vehicleId,
+      tokenId: row.tokenId,
+      eventId: row.id,
+      eventType: row.eventType,
+      observedAt: row.observedAt,
+      receivedAt: row.receivedAt,
+      inboxId: undefined,
+      logContext: 'reconcile',
+    });
+  }
+
   private async persistDeviceConnectionEvent(
     input: Omit<IngestDeviceConnectionInput, 'pluggedIn'> & {
       eventType: DimoDeviceConnectionEventType;
     },
   ): Promise<DeviceConnectionDomainResult> {
-    const { vehicle, tokenId, observedAt, rawPayload, eventType } = input;
+    const { vehicle, tokenId, observedAt, rawPayload, eventType, inboxId } = input;
     const receivedAt = new Date();
     const dedupBucket = DeviceConnectionWebhookService.dedupBucket(observedAt);
 
@@ -252,35 +294,85 @@ export class DeviceConnectionWebhookService {
         rawPayloadJson: rawPayload as object,
       },
       update: {},
-      select: { id: true, createdAt: true, updatedAt: true },
+      select: {
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        processedAt: true,
+        receivedAt: true,
+      },
     });
 
     const isNew = row.createdAt.getTime() === row.updatedAt.getTime();
-    if (!isNew) {
+    if (!isNew && row.processedAt) {
+      this.logger.debug(
+        `Device connection dedupe hit for event ${row.id} inboxId=${inboxId ?? 'n/a'} — lifecycle already complete`,
+      );
       return { outcome: 'duplicate', eventId: row.id, eventType };
     }
 
-    this.logger.log(
-      `Device connection event ${eventType} for vehicle ${vehicle.id} at ${observedAt.toISOString()}`,
-    );
+    if (!isNew && !row.processedAt) {
+      this.logger.warn(
+        `Reconciling partially processed device connection event ${row.id} inboxId=${inboxId ?? 'n/a'} — episode lifecycle incomplete`,
+      );
+    } else {
+      this.logger.log(
+        `Device connection event ${eventType} for vehicle ${vehicle.id} at ${observedAt.toISOString()} inboxId=${inboxId ?? 'n/a'}`,
+      );
+    }
 
-    const processedAt = new Date();
-    await this.syncEpisodeAfterPersistedEvent({
+    return this.completePersistedEventLifecycle({
       organizationId: vehicle.organizationId,
       vehicleId: vehicle.id,
       tokenId,
       eventId: row.id,
       eventType,
       observedAt,
-      receivedAt,
+      receivedAt: row.receivedAt ?? receivedAt,
+      inboxId,
+      logContext: isNew ? 'created' : 'reconciled',
+    });
+  }
+
+  private async completePersistedEventLifecycle(input: {
+    organizationId: string;
+    vehicleId: string;
+    tokenId: number;
+    eventId: string;
+    eventType: DimoDeviceConnectionEventType;
+    observedAt: Date;
+    receivedAt: Date;
+    inboxId?: string;
+    logContext: 'created' | 'reconciled' | 'reconcile';
+  }): Promise<DeviceConnectionDomainResult> {
+    const processedAt = new Date();
+    await this.syncEpisodeAfterPersistedEvent({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      tokenId: input.tokenId,
+      eventId: input.eventId,
+      eventType: input.eventType,
+      observedAt: input.observedAt,
+      receivedAt: input.receivedAt,
     });
 
     await this.prisma.dimoDeviceConnectionEvent.update({
-      where: { id: row.id },
+      where: { id: input.eventId },
       data: { processedAt },
     });
 
-    return { outcome: 'created', eventId: row.id, eventType };
+    this.logger.log({
+      msg: 'device_connection.lifecycle_complete',
+      eventId: input.eventId,
+      inboxId: input.inboxId ?? null,
+      outcome: input.logContext,
+      eventType: input.eventType,
+    });
+
+    if (input.logContext === 'reconciled' || input.logContext === 'reconcile') {
+      return { outcome: 'reconciled', eventId: input.eventId, eventType: input.eventType };
+    }
+    return { outcome: 'created', eventId: input.eventId, eventType: input.eventType };
   }
 
   private async syncEpisodeAfterPersistedEvent(input: {

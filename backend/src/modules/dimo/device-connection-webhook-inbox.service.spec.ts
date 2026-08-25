@@ -126,4 +126,41 @@ describe('DeviceConnectionWebhookInboxService — async intake', () => {
     expect(result.outcome).toBe('already_processed');
     expect(queue.enqueue).not.toHaveBeenCalled();
   });
+
+  it('marks inbox retryable when enqueue fails at intake', async () => {
+    const prisma = mockPrismaInbox();
+    const update = jest.fn().mockResolvedValue({});
+    const queue = {
+      enqueue: jest.fn().mockRejectedValue(new Error('redis unavailable')),
+    };
+    const service = new DeviceConnectionWebhookInboxService(
+      {
+        deviceConnectionWebhookInbox: {
+          findUnique: prisma.findUnique,
+          create: prisma.create,
+          update,
+        },
+      } as never,
+      queue as never,
+    );
+
+    await expect(
+      service.intakeDeviceConnectionWebhook({
+        tokenId: 1001,
+        pluggedIn: false,
+        observedAt: OBSERVED_AT,
+        rawPayload: { value: false },
+      }),
+    ).rejects.toThrow('redis unavailable');
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'inbox-1' },
+        data: expect.objectContaining({
+          processingStatus: DeviceConnectionWebhookProcessingStatus.RETRYABLE_FAILED,
+          lastErrorCode: 'enqueue_failed',
+        }),
+      }),
+    );
+  });
 });
