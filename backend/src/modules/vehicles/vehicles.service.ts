@@ -1161,10 +1161,10 @@ export class VehiclesService {
   }
 
   /**
-   * Batch fleet business/workflow context for P0.2 operational projection.
+   * Batch fleet status context — shared booking load for legacy fleet + P0.2 shadow.
    * Reuses booking-context batch loaders — no per-vehicle booking queries.
    */
-  async deriveFleetBusinessContextBatch(
+  async deriveFleetStatusContextBatch(
     organizationId: string,
     vehicles: Array<{
       id: string;
@@ -1179,9 +1179,17 @@ export class VehiclesService {
         rawPayloadJson?: unknown;
       } | null;
     }>,
-  ): Promise<Map<string, FleetVehicleOperationalStateDto>> {
+  ): Promise<
+    Map<
+      string,
+      ReturnType<VehiclesService['deriveFleetStatusContext']>
+    >
+  > {
     const vehicleIds = vehicles.map((v) => v.id);
-    const result = new Map<string, FleetVehicleOperationalStateDto>();
+    const result = new Map<
+      string,
+      ReturnType<VehiclesService['deriveFleetStatusContext']>
+    >();
     if (vehicleIds.length === 0) return result;
 
     const bookingBundle = await this.buildBookingContextMap(organizationId, vehicleIds);
@@ -1201,10 +1209,26 @@ export class VehiclesService {
         pickupOdoByBooking,
         bookingContextLoadFailed: bookingBundle.loadFailed,
       });
-      result.set(vehicle.id, fleetCtx.operationalState);
+      result.set(vehicle.id, fleetCtx);
     }
 
     return result;
+  }
+
+  /**
+   * Batch fleet business/workflow context for P0.2 operational projection.
+   */
+  async deriveFleetBusinessContextBatch(
+    organizationId: string,
+    vehicles: Parameters<VehiclesService['deriveFleetStatusContextBatch']>[1],
+  ): Promise<Map<string, FleetVehicleOperationalStateDto>> {
+    const contexts = await this.deriveFleetStatusContextBatch(organizationId, vehicles);
+    return new Map(
+      Array.from(contexts.entries()).map(([vehicleId, fleetCtx]) => [
+        vehicleId,
+        fleetCtx.operationalState,
+      ]),
+    );
   }
 
   /**
