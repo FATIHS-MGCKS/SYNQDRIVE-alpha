@@ -1,8 +1,8 @@
 # P2.2.42 — Operator Scan Search UX Implementation
 
-**Date:** 2026-08-25  
-**Baseline:** `1418f52e23d74e459272ddcf842fe861f169526e`  
-**Pre-flight:** PR #1289  
+**Date:** 2026-08-25
+**Baseline:** `1418f52e23d74e459272ddcf842fe861f169526e`
+**Pre-flight:** PR #1289
 **Branch:** `cursor/p2242-operator-scan-search-ux-i18n-3c10`
 
 ## Scope

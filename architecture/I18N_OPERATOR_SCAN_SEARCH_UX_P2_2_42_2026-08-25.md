@@ -1,7 +1,7 @@
 # I18N — Operator Scan Search UX (P2.2.42)
 
-**Version:** V4.9.969  
-**Date:** 2026-08-25  
+**Version:** V4.9.969
+**Date:** 2026-08-25
 **Baseline:** `1418f52e23d74e459272ddcf842fe861f169526e`
 
 ## Overview
