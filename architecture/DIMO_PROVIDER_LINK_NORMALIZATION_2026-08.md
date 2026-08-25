@@ -78,7 +78,7 @@ Migration `20260825180000_dimo_provider_link_dimo_vehicle_fk`:
 |--------|--------|
 | `dimo_vehicle_id` | Nullable FK → `dimo_vehicles(id)` ON DELETE RESTRICT |
 | `source_reference_id` | Made nullable; HM FK preserved |
-| CHECK constraint | DIMO: `dimo_vehicle_id NOT NULL` + `source_reference_id IS NULL`; non-DIMO: inverse |
+| CHECK constraint | Explicit DIMO / HM canonical / HM legacy branches; rejects unsupported providers |
 | Partial unique index | One active DIMO mapping per `dimo_vehicle_id` |
 
 Application writes `dimoVehicleId` for DIMO; `assembleProviderLinkEvidence` requires `dimoVehicleId` on active DIMO links.
