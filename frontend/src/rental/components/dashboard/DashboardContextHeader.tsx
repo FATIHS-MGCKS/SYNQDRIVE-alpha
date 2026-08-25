@@ -59,7 +59,7 @@ export function DashboardContextHeader({ vm }: DashboardContextHeaderProps) {
     <header
       className={cn(
         DASHBOARD_LAYOUT.contextHeader,
-        'grid w-full grid-cols-[1fr_auto_1fr] grid-rows-[auto_auto] items-center gap-x-3 gap-y-2 sm:grid-rows-1 sm:gap-x-6',
+        'grid w-full grid-cols-[1fr_auto_1fr] grid-rows-[auto_auto] items-center gap-x-3 gap-y-1 sm:grid-rows-1 sm:gap-x-6 sm:gap-y-0',
       )}
       aria-label={t('dashboard.context.headerAria')}
     >
@@ -85,16 +85,15 @@ export function DashboardContextHeader({ vm }: DashboardContextHeaderProps) {
         />
       </div>
 
-      <div className="col-start-3 row-start-2 flex items-center justify-end gap-2 justify-self-end sm:row-start-1">
-        <span className="whitespace-nowrap text-[12px] leading-none text-muted-foreground sm:text-[13px]">
+      <p className="col-start-3 row-start-2 justify-self-end whitespace-nowrap text-[12px] leading-none text-muted-foreground sm:hidden">
+        {dateLabelShort}
+      </p>
+
+      <div className="col-start-3 row-start-1 hidden items-center justify-end gap-2 justify-self-end sm:flex">
+        <span className="whitespace-nowrap text-[13px] leading-none text-muted-foreground">
           {dateLabelShort}
         </span>
-        <SyncStatusBadge
-          tone={syncTone}
-          label={syncLabel}
-          loading={syncBadge.phase === 'loading'}
-          className="hidden sm:inline-flex"
-        />
+        <SyncStatusBadge tone={syncTone} label={syncLabel} loading={syncBadge.phase === 'loading'} />
       </div>
     </header>
   );

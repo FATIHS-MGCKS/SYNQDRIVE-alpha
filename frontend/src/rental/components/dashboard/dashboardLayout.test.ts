@@ -5,6 +5,10 @@ import { describe, expect, it } from 'vitest';
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 
+function countMatches(source: string, pattern: RegExp): number {
+  return (source.match(pattern) ?? []).length;
+}
+
 describe('dashboard layout contracts', () => {
   it('centers station via 1fr auto 1fr context-header grid', () => {
     const headerSrc = readFileSync(resolve(testDir, './DashboardContextHeader.tsx'), 'utf8');
@@ -13,7 +17,6 @@ describe('dashboard layout contracts', () => {
 
     expect(headerSrc).toMatch(/grid-cols-\[1fr_auto_1fr\]/);
     expect(headerSrc).toMatch(/col-start-2[\s\S]*justify-self-center/);
-    expect(headerSrc).toMatch(/dateLabelShort[\s\S]*SyncStatusBadge/);
     expect(headerSrc).toMatch(/resolveDashboardSyncBadge/);
     expect(headerSrc).toMatch(/common\.loading/);
     expect(dashboardViewSrc).toMatch(/<DashboardContextHeader vm=\{vm\}/);
@@ -22,6 +25,23 @@ describe('dashboard layout contracts', () => {
     expect(dashboardViewSrc).toMatch(/operationsGridContents/);
     expect(shellSrc).toMatch(/operationsGrid:[\s\S]*grid-cols-2/);
     expect(shellSrc).toMatch(/controlFinanceKpiGrid:[\s\S]*contents/);
+  });
+
+  it('keeps exactly one visible status badge per breakpoint in the context header', () => {
+    const headerSrc = readFileSync(resolve(testDir, './DashboardContextHeader.tsx'), 'utf8');
+
+    expect(countMatches(headerSrc, /<SyncStatusBadge/g)).toBe(2);
+    expect(headerSrc).toMatch(/col-start-3 row-start-1 justify-self-end sm:hidden[\s\S]*<SyncStatusBadge/);
+    expect(headerSrc).toMatch(
+      /<p className="col-start-3 row-start-2[^"]*">[\s\S]*?\{dateLabelShort\}[\s\S]*?<\/p>/,
+    );
+    const mobileDateBlock = headerSrc.match(
+      /<p className="col-start-3 row-start-2[^"]*">[\s\S]*?<\/p>/,
+    )?.[0];
+    expect(mobileDateBlock).toBeTruthy();
+    expect(mobileDateBlock).not.toMatch(/SyncStatusBadge/);
+    expect(headerSrc).toMatch(/hidden items-center justify-end gap-2 justify-self-end sm:flex[\s\S]*<SyncStatusBadge/);
+    expect(headerSrc).toMatch(/gap-y-1 sm:[\s\S]*gap-y-0/);
   });
 
   it('renders six independent Operations cards without an outer surface wrapper', () => {
