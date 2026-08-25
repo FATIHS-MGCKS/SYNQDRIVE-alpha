@@ -209,7 +209,7 @@ export class VehicleConnectivityRuntimeStateBuilder {
     const overallState = resolveOverallState({
       providerLinkState,
       telemetryState,
-      episodeRelevant,
+      physicalDeviceState,
       physicalObdApplicable,
       processingErrors: input.processingErrors,
       hasProviderLink: input.provider.link.hasProviderLink,
@@ -434,7 +434,7 @@ function resolveDataCoverageState(
 function resolveOverallState(params: {
   providerLinkState: ProviderLinkState;
   telemetryState: ReturnType<typeof classifyTelemetryFreshness>;
-  episodeRelevant: boolean;
+  physicalDeviceState: PhysicalDeviceState;
   physicalObdApplicable: boolean;
   processingErrors: ProcessingErrorInput;
   hasProviderLink: boolean;
@@ -462,7 +462,10 @@ function resolveOverallState(params: {
     candidates.push(OverallConnectivityState.AUTHORIZATION_REQUIRED);
   }
 
-  if (params.episodeRelevant && params.physicalObdApplicable) {
+  if (
+    params.physicalObdApplicable &&
+    params.physicalDeviceState === PhysicalDeviceState.UNPLUGGED_CONFIRMED
+  ) {
     candidates.push(OverallConnectivityState.DEVICE_UNPLUGGED);
   }
 
