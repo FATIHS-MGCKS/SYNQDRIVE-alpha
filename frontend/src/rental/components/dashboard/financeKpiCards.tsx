@@ -274,7 +274,7 @@ export function FinanceKpiCard({
     >
       <div className="flex items-start justify-between gap-1.5">
         <div className="min-w-0">
-          <p className={cn(DASHBOARD_KPI_TITLE_CLASS, 'text-[10px] sm:text-[10.5px]')}>{title}</p>
+          <p className={DASHBOARD_KPI_TITLE_CLASS}>{title}</p>
           <FinanceKpiValue
             amount={valueParts?.amount ?? noDataLabel}
             currency={valueParts?.currency}
