@@ -48,6 +48,35 @@ function normalizePlate(value: string): string {
   return value.replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
+function fleetHealthPresentationLabelDe(
+  evaluation: {
+    condition: string;
+    evaluability: string;
+  } | null | undefined,
+): string {
+  if (!evaluation) return 'Status unbekannt';
+  if (evaluation.evaluability === 'EVALUABLE') {
+    switch (evaluation.condition) {
+      case 'good':
+        return 'Gut';
+      case 'warning':
+        return 'Auffällig';
+      case 'critical':
+        return 'Kritisch';
+      default:
+        return 'Status unbekannt';
+    }
+  }
+  switch (evaluation.evaluability) {
+    case 'PARTIALLY_EVALUABLE':
+      return 'Eingeschränkt bewertbar';
+    case 'NOT_EVALUABLE':
+      return 'Nicht bewertbar';
+    default:
+      return 'Status unbekannt';
+  }
+}
+
 async function main(): Promise<void> {
   const organizationId =
     parseArg('--organization-id') ?? process.env.ORG_ID?.trim();
@@ -131,6 +160,7 @@ async function main(): Promise<void> {
         licensePlate: row.licensePlate ?? plateToId.get(row.id) ?? null,
         legacyHealthStatus: row.healthStatus,
         healthEvaluation: row.healthEvaluation ?? null,
+        fleetHealthLabelDe: fleetHealthPresentationLabelDe(row.healthEvaluation),
         operationalAvailability: row.operationalAvailability?.state ?? null,
         wouldShowLegacyGut: String(row.healthStatus).toLowerCase().includes('good'),
         wouldShowEvaluableGood:

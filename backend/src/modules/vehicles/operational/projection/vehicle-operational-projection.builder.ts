@@ -380,6 +380,7 @@ export function buildVehicleOperationalEvidence(
     latestConnectivityEvidenceAt: input.connectivity.calculatedAt,
     healthEvidenceAt: input.health?.generatedAt ?? null,
     healthConditionState: input.health?.conditionState ?? null,
+    healthPipelineAvailability: input.health?.pipelineAvailability ?? null,
     anyModuleDataStale: input.health?.anyModuleDataStale ?? null,
     episodeEvidenceReliable: input.episodeEvidenceReliable ?? null,
   };

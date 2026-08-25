@@ -13,15 +13,74 @@ import {
   HealthEvaluabilityState,
   OperationalAvailabilityState,
 } from './projection/vehicle-operational-projection.types';
+import { healthEvidenceFromVehicleHealth } from './projection/health-evidence.adapter';
+import { buildVehicleOperationalProjection } from './projection/vehicle-operational-projection.builder';
 import {
   fixtureHmueC215,
   fixtureWobL7503,
   fixtureWobL9755,
   syntheticCurrentHealthEvidence,
 } from './projection/vehicle-operational-projection.fixtures';
-import { buildVehicleOperationalProjection } from './projection/vehicle-operational-projection.builder';
+import type { VehicleHealth } from '../../rental-health/rental-health.types';
+import {
+  RENTAL_HEALTH_MODULE_KEYS,
+  computeOverallState,
+  finalizeVehicleHealthAvailability,
+  type ModuleHealth,
+  type RentalHealthModuleKey,
+} from '../../rental-health/rental-health.types';
 
 const ORG_ID = 'org-fleet-p04';
+const NOW = '2026-08-25T12:00:00.000Z';
+
+function moduleHealth(
+  state: ModuleHealth['state'],
+  overrides: Partial<ModuleHealth> = {},
+): ModuleHealth {
+  return {
+    state,
+    reason: overrides.reason ?? 'test',
+    last_updated_at: overrides.last_updated_at ?? NOW,
+    data_stale: overrides.data_stale ?? false,
+    ...overrides,
+  };
+}
+
+/** Canonical ICE-like Rental Health: telemetry modules n_a; service paths current. */
+function iceTelemetryModulesNotApplicableHealth(): VehicleHealth {
+  const modules = Object.fromEntries(
+    RENTAL_HEALTH_MODULE_KEYS.map((key: RentalHealthModuleKey) => {
+      const telemetryKeys = new Set<RentalHealthModuleKey>([
+        'battery',
+        'tires',
+        'brakes',
+        'error_codes',
+        'vehicle_alerts',
+      ]);
+      return [
+        key,
+        telemetryKeys.has(key)
+          ? moduleHealth('n_a', { reason: 'Nicht unterstützt' })
+          : moduleHealth('good'),
+      ];
+    }),
+  ) as VehicleHealth['modules'];
+  const { modules: withAvailability, availability } = finalizeVehicleHealthAvailability(
+    modules,
+    {},
+  );
+  return {
+    vehicle_id: 'veh-ice-na',
+    organization_id: ORG_ID,
+    overall_state: computeOverallState(Object.values(withAvailability)),
+    availability,
+    rental_blocked: false,
+    blocking_reasons: [],
+    modules: withAvailability,
+    generated_at: NOW,
+    evaluated_at: NOW,
+  };
+}
 
 type ProjectionFixture = {
   vehicleId: string;
@@ -220,19 +279,20 @@ describe('Fleet health evaluation — fleet-map (P0.4)', () => {
     expect(getVehicleProjection).not.toHaveBeenCalled();
   });
 
-  it('B9 — hardware non-applicable module does not force NOT_EVALUABLE alone', async () => {
+  it('B9 — non-applicable telemetry Health modules do not reduce evaluability', async () => {
     const vehicle = makeVehicleRow({ id: 'veh-ice' });
+    const rentalHealth = iceTelemetryModulesNotApplicableHealth();
+    const healthEvidence = healthEvidenceFromVehicleHealth(rentalHealth);
+    expect(healthEvidence.telemetryDependentModulesEvaluated).toBe(false);
+
     const projection = buildVehicleOperationalProjection({
       vehicleId: vehicle.id,
       organizationId: ORG_ID,
       businessState: 'AVAILABLE',
       connectivity: fixtureHmueC215().connectivity,
-      health: syntheticCurrentHealthEvidence({
-        conditionState: 'good',
-        telemetryDependentModulesEvaluated: false,
-      }),
+      health: healthEvidence,
       episodeEvidenceReliable: true,
-      generatedAt: NOW.toISOString(),
+      generatedAt: NOW,
     });
 
     const { service } = makeFleetMapService({
@@ -242,6 +302,8 @@ describe('Fleet health evaluation — fleet-map (P0.4)', () => {
 
     const rows = await service.getFleetMapData(ORG_ID);
     expect(rows[0].healthEvaluation?.evaluability).toBe(HealthEvaluabilityState.EVALUABLE);
+    expect(rows[0].healthEvaluation?.condition).toBe('good');
+    expect(rows[0].healthEvaluation?.pipelineAvailability).toBe('ready');
   });
 
   it('production semantic fixtures — long-offline vehicles not EVALUABLE+good', async () => {

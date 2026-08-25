@@ -24,6 +24,7 @@ export type FleetHealthConditionState =
 export interface FleetHealthEvaluation {
   condition: FleetHealthConditionState;
   evaluability: HealthEvaluabilityState;
+  pipelineAvailability: 'ready' | 'partial' | 'unavailable' | null;
   generatedAt: string;
   healthEvidenceAt: string | null;
   anyModuleDataStale: boolean | null;

@@ -9847,6 +9847,7 @@ export interface FleetMapVehicleResponse {
 export interface FleetHealthEvaluationResponse {
   condition: 'good' | 'warning' | 'critical' | 'unknown';
   evaluability: 'EVALUABLE' | 'PARTIALLY_EVALUABLE' | 'NOT_EVALUABLE' | 'UNKNOWN';
+  pipelineAvailability: 'ready' | 'partial' | 'unavailable' | null;
   generatedAt: string;
   healthEvidenceAt: string | null;
   anyModuleDataStale: boolean | null;

@@ -14,6 +14,8 @@ export interface FleetHealthEvaluationDto {
   condition: FleetHealthConditionState;
   /** P0.2 — whether the condition can be presented confidently. */
   evaluability: HealthEvaluabilityState;
+  /** Rental Health pipeline coverage — passthrough for operator diagnostics. */
+  pipelineAvailability: 'ready' | 'partial' | 'unavailable' | null;
   generatedAt: string;
   healthEvidenceAt: string | null;
   anyModuleDataStale: boolean | null;
@@ -47,6 +49,7 @@ export function toFleetHealthEvaluationDto(
       projection.evidence.healthConditionState,
     ),
     evaluability: projection.healthEvaluability,
+    pipelineAvailability: projection.evidence.healthPipelineAvailability,
     generatedAt: projection.generatedAt,
     healthEvidenceAt: projection.evidence.healthEvidenceAt,
     anyModuleDataStale: projection.evidence.anyModuleDataStale,
@@ -57,6 +60,7 @@ export function toFleetHealthEvaluationDto(
 export const FLEET_HEALTH_EVALUATION_UNKNOWN: FleetHealthEvaluationDto = {
   condition: 'unknown',
   evaluability: 'UNKNOWN',
+  pipelineAvailability: null,
   generatedAt: new Date(0).toISOString(),
   healthEvidenceAt: null,
   anyModuleDataStale: null,

@@ -22,6 +22,7 @@ function evaluation(
     evaluability: HEALTH_EVALUABILITY_STATE.EVALUABLE,
     generatedAt: '2026-08-25T12:00:00.000Z',
     healthEvidenceAt: '2026-08-25T11:00:00.000Z',
+    pipelineAvailability: 'ready',
     anyModuleDataStale: false,
     source: 'p0.2_projection',
     ...overrides,

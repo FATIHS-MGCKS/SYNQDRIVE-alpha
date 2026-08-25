@@ -29,6 +29,12 @@ function mapHealthEvaluation(
   return {
     condition: normalizeFleetHealthConditionState(raw.condition),
     evaluability: normalizeHealthEvaluabilityState(raw.evaluability),
+    pipelineAvailability:
+      raw.pipelineAvailability === 'ready' ||
+      raw.pipelineAvailability === 'partial' ||
+      raw.pipelineAvailability === 'unavailable'
+        ? raw.pipelineAvailability
+        : null,
     generatedAt: raw.generatedAt ?? new Date(0).toISOString(),
     healthEvidenceAt: raw.healthEvidenceAt ?? null,
     anyModuleDataStale:
