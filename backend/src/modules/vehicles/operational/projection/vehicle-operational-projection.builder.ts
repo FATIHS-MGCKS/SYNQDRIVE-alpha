@@ -379,6 +379,8 @@ export function buildVehicleOperationalEvidence(
     latestTelemetryAt: input.connectivity.lastTelemetryAt,
     latestConnectivityEvidenceAt: input.connectivity.calculatedAt,
     healthEvidenceAt: input.health?.generatedAt ?? null,
+    healthConditionState: input.health?.conditionState ?? null,
+    anyModuleDataStale: input.health?.anyModuleDataStale ?? null,
     episodeEvidenceReliable: input.episodeEvidenceReliable ?? null,
   };
 }

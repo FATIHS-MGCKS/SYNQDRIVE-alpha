@@ -114,6 +114,10 @@ export interface VehicleOperationalEvidence {
   latestTelemetryAt: string | null;
   latestConnectivityEvidenceAt: string | null;
   healthEvidenceAt: string | null;
+  /** Passthrough from Rental Health `overall_state` when health evidence exists. */
+  healthConditionState: HealthState | null;
+  /** Passthrough — any evaluated module flagged `data_stale`. */
+  anyModuleDataStale: boolean | null;
   episodeEvidenceReliable: boolean | null;
 }
 

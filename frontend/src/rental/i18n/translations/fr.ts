@@ -346,6 +346,19 @@ export const fr: Record<TranslationKey, string> = {
   'fleet.operationalAvailability.reason.telemetryOffline': 'Telemetrie hors ligne',
   'fleet.operationalAvailability.reason.businessWorkflowBlocked': 'Workflow bloque',
   'fleet.operationalAvailability.reason.healthRentalBlocked': 'Location bloquee (sante)',
+  'fleet.healthEvaluation.condition.good': 'Bon',
+  'fleet.healthEvaluation.condition.warning': 'A surveiller',
+  'fleet.healthEvaluation.condition.critical': 'Critique',
+  'fleet.healthEvaluation.condition.unknown': 'Statut inconnu',
+  'fleet.healthEvaluation.partiallyEvaluable': 'Evaluation limitee',
+  'fleet.healthEvaluation.notEvaluable': 'Non evaluable',
+  'fleet.healthEvaluation.unknown': 'Statut inconnu',
+  'fleet.healthEvaluation.tooltip.partiallyEvaluable':
+    'Certaines donnees vehicule ne sont pas a jour.',
+  'fleet.healthEvaluation.tooltip.notEvaluable':
+    'L\'etat du vehicule ne peut pas etre evalue de maniere fiable faute de donnees actuelles.',
+  'fleet.healthEvaluation.tooltip.unknown':
+    'L\'etat actuel du vehicule est inconnu.',
   'vehicle.overview': 'Apercu',
   'vehicle.trips': 'Trajets',
   'vehicle.healthErrors': 'Sante et erreurs',

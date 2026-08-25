@@ -36,6 +36,8 @@ import { de } from '../i18n/translations/de';
 import { mapOperationalAvailabilityPresentation } from './operational-availability/presentation';
 import type { FleetOperationalAvailability } from './operational-availability/types';
 import { OPERATIONAL_AVAILABILITY_STATE } from './operational-availability/types';
+import { mapFleetHealthPresentation } from './fleet-health-evaluation/presentation';
+import type { FleetHealthEvaluation } from './fleet-health-evaluation/types';
 
 /**
  * Shared display layer for fleet vehicle rows (Dashboard Fleet State Board +
@@ -85,6 +87,8 @@ export interface FleetHealthDisplay {
   status: FleetHealthStatus;
   label: string;
   tone: StatusTone;
+  tooltip?: string | null;
+  isEvaluable?: boolean;
 }
 
 /** Rental availability — strictly separate from health condition. */
@@ -304,6 +308,29 @@ function primaryToneFor(status: FleetOperationalStatus): StatusTone {
     default:
       return 'neutral';
   }
+}
+
+function resolveHealthEvaluationDisplay(
+  evaluation: FleetHealthEvaluation | null | undefined,
+  options: { t: (key: TranslationKey) => string },
+): FleetHealthDisplay {
+  const presentation = mapFleetHealthPresentation(evaluation ?? null, options);
+  const status: FleetHealthStatus =
+    presentation.isEvaluable && presentation.condition === 'good'
+      ? 'good'
+      : presentation.isEvaluable && presentation.condition === 'warning'
+        ? 'warning'
+        : presentation.isEvaluable && presentation.condition === 'critical'
+          ? 'critical'
+          : 'unknown';
+
+  return {
+    status,
+    label: presentation.label,
+    tone: presentation.tone,
+    tooltip: presentation.tooltip,
+    isEvaluable: presentation.isEvaluable,
+  };
 }
 
 function resolveHealthDisplay(
@@ -584,7 +611,12 @@ export interface ResolveFleetVehicleDisplayOptions {
    * instead of legacy business-only `operationalState.status`.
    */
   operationalAvailabilityBadge?: boolean;
-  /** i18n translate — required when `operationalAvailabilityBadge` is true. */
+  /**
+   * Fleet list/map: use P0.4 `healthEvaluation` (condition + P0.2 evaluability)
+   * instead of legacy rental health / `healthStatus` fallback.
+   */
+  healthEvaluationBadge?: boolean;
+  /** i18n translate — required when `operationalAvailabilityBadge` or `healthEvaluationBadge` is true. */
   t?: (key: TranslationKey) => string;
 }
 
@@ -631,7 +663,11 @@ export function resolveFleetVehicleDisplayState(
     tone: fleetEnergyTone(percent),
   };
 
-  const healthDisplay = resolveHealthDisplay(vehicle, rentalHealth, de);
+  const healthDisplay = options.healthEvaluationBadge
+    ? resolveHealthEvaluationDisplay(vehicle.healthEvaluation, {
+        t: options.t ?? tForFleetLocale(options.locale),
+      })
+    : resolveHealthDisplay(vehicle, rentalHealth, de);
   const rentalDisplay = resolveRentalDisplay(vehicle, rentalHealth, visual, de);
   const reasonBadge =
     buildReasonBadge(vehicle, rentalHealth, visual, healthDisplay.status, de) ??

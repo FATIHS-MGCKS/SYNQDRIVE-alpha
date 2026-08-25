@@ -122,6 +122,8 @@ export interface VehicleData {
   dataQualityReasons?: string[];
   /** P0.3 — P0.2 operational availability when loaded from fleet-map. */
   operationalAvailability?: import('../lib/operational-availability/types').FleetOperationalAvailability;
+  /** P0.4 — Health condition + P0.2 evaluability when loaded from fleet-map. */
+  healthEvaluation?: import('../lib/fleet-health-evaluation/types').FleetHealthEvaluation;
 }
 
 // Simulated data removed - loaded from API via RentalApp

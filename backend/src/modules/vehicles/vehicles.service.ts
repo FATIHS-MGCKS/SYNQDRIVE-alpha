@@ -86,6 +86,12 @@ import {
   toFleetOperationalAvailabilityDto,
   type FleetOperationalAvailabilityDto,
 } from './operational/fleet-operational-availability.dto';
+import {
+  createFleetHealthEvaluationUnknownFallback,
+  toFleetHealthEvaluationDto,
+  type FleetHealthEvaluationDto,
+} from './operational/fleet-health-evaluation.dto';
+import type { VehicleOperationalProjection } from './operational/projection/vehicle-operational-projection.types';
 import { serializeVehicleConnectivityRuntimeState } from './connectivity/vehicle-connectivity-runtime-state.dto';
 import type { VehicleConnectivityRuntimeStateDto } from './connectivity/vehicle-connectivity-runtime-state.dto';
 import { TasksService } from '@modules/tasks/tasks.service';
@@ -298,6 +304,8 @@ export interface FleetMapVehicleDto
   connectivityRuntime?: VehicleConnectivityRuntimeStateDto;
   /** P0.3 — operator-facing operational availability from P0.2 projection. */
   operationalAvailability?: FleetOperationalAvailabilityDto;
+  /** P0.4 — Health condition + P0.2 evaluability for Fleet presentation. */
+  healthEvaluation?: FleetHealthEvaluationDto;
 }
 
 @Injectable()
@@ -1546,21 +1554,13 @@ export class VehiclesService {
 
     const fleetProjectionGeneratedAt = new Date().toISOString();
 
-    let projectionsByVehicle = new Map<
-      string,
-      ReturnType<typeof toFleetOperationalAvailabilityDto>
-    >();
+    let projectionsByVehicle = new Map<string, VehicleOperationalProjection>();
     try {
       const projections = await this.operationalProjection.getVehicleProjections({
         organizationId,
         vehicleIds: vehicleIdsForMap,
       });
-      projectionsByVehicle = new Map(
-        Array.from(projections.entries()).map(([id, projection]) => [
-          id,
-          toFleetOperationalAvailabilityDto(projection),
-        ]),
-      );
+      projectionsByVehicle = projections;
     } catch (err) {
       this.logger.warn({
         msg: 'fleet_map.operational_projection_batch_failed',
@@ -1572,6 +1572,8 @@ export class VehiclesService {
 
     const fleetOperationalAvailabilityFallback =
       createFleetOperationalAvailabilityUnknownFallback(fleetProjectionGeneratedAt);
+    const fleetHealthEvaluationFallback =
+      createFleetHealthEvaluationUnknownFallback(fleetProjectionGeneratedAt);
 
     const result: FleetMapVehicleDto[] = vehicles.map((vehicle) => {
       const state = vehicle.latestState;
@@ -1655,8 +1657,12 @@ export class VehiclesService {
         connectivityRuntime: runtimeByVehicle.has(vehicle.id)
           ? serializeVehicleConnectivityRuntimeState(runtimeByVehicle.get(vehicle.id)!)
           : undefined,
-        operationalAvailability:
-          projectionsByVehicle.get(vehicle.id) ?? fleetOperationalAvailabilityFallback,
+        operationalAvailability: projectionsByVehicle.has(vehicle.id)
+          ? toFleetOperationalAvailabilityDto(projectionsByVehicle.get(vehicle.id)!)
+          : fleetOperationalAvailabilityFallback,
+        healthEvaluation: projectionsByVehicle.has(vehicle.id)
+          ? toFleetHealthEvaluationDto(projectionsByVehicle.get(vehicle.id)!)
+          : fleetHealthEvaluationFallback,
       };
     });
 
