@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-header-connectivity-p2-2-44-2026-08-26',
+    version: '4.9.971',
+    title: 'Platform i18n — P2.2.44 Operator Header + Connectivity Banner localization',
+    summary: [
+      'Localized Operator top shell chrome via `operator-shell-top-chrome-i18n.ts` and `operator.header.*` / `operator.connectivity.*` keys.',
+      'P244 enforce-clean exact scope (3 paths) reports 0 findings; +8 EN+DE keys (8624→8632); reuses `common.loading`.',
+      'Presentation-only — sync state, refresh callback, App link route, `navigator.onLine` visibility, orgName, and P243 bottom nav frozen. Category E=0.',
+    ],
+    reason:
+      'P2.2.44 post-P243 pre-flight (PR #1297) selected Operator Header + Connectivity Banner as the next bounded Operator shell presentation slice.',
+    previousBehavior:
+      'OperatorHeader and OperatorConnectivityBanner used fixed German sync/offline copy and mixed-locale aria without full locale threading.',
+    details:
+      'operator/components/OperatorHeader.tsx; operator/components/OperatorConnectivityBanner.tsx; operator/lib/operator-shell-top-chrome-i18n.ts; i18n/translations/operator.shellTopChrome.{en,de}.ts; operator-shell-top-chrome-localization.test.tsx; P244_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_HEADER_CONNECTIVITY_P2_2_44_2026-08-26.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-26T22:45:00.000Z',
+  },
+  {
     id: 'i18n-operator-shell-navigation-chrome-p2-2-43-2026-08-25',
     version: '4.9.970',
     title: 'Platform i18n — P2.2.43 Operator Shell Navigation Chrome localization',

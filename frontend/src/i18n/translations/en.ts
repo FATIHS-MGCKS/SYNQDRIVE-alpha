@@ -32,6 +32,7 @@ import { operatorBookingsDetailEn } from './operator.bookings.detail.en';
 import { operatorBookingsCardEn } from './operator.bookings.card.en';
 import { operatorScanEn } from './operator.scan.en';
 import { operatorNavigationEn } from './operator.navigation.en';
+import { operatorShellTopChromeEn } from './operator.shellTopChrome.en';
 import { operatorMoreEn } from './operator.more.en';
 import { vendorsDirectoryEn } from './vendors.directory.en';
 import { supportOpsEn } from './support.ops.en';
@@ -5617,6 +5618,7 @@ export const en = {
   ...operatorBookingsCardEn,
   ...operatorScanEn,
   ...operatorNavigationEn,
+  ...operatorShellTopChromeEn,
   ...operatorMoreEn,
   ...vendorsDirectoryEn,
 } as const;
