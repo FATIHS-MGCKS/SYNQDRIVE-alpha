@@ -77,6 +77,7 @@ import type { RegisterFromDimoResult } from './dto/register-from-dimo-result.dto
 import { DataAuthorizationsService } from '@modules/data-authorizations/data-authorizations.service';
 import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
+import { DimoVehicleDataSourceLinkService } from '@modules/dimo/dimo-vehicle-data-source-link.service';
 import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connection-read-model';
 import { VehicleConnectivityRuntimeProjectionService } from '@modules/dimo/device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
 import { VehicleOperationalProjectionService } from './operational/projection/vehicle-operational-projection.service';
@@ -316,6 +317,7 @@ export class VehiclesService {
     private readonly dataAuthorizations: DataAuthorizationsService,
     private readonly dataAuthEnforcement: DataAuthorizationEnforcementService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
+    private readonly dimoVehicleDataSourceLink: DimoVehicleDataSourceLinkService,
     private readonly connectivityRuntimeProjection: VehicleConnectivityRuntimeProjectionService,
     @Inject(forwardRef(() => VehicleOperationalProjectionService))
     private readonly operationalProjection: VehicleOperationalProjectionService,
@@ -2294,12 +2296,25 @@ export class VehiclesService {
         }
 
         try {
-          return await tx.vehicle.create({
+          const created = await tx.vehicle.create({
             data: {
               ...createData,
               ...(createdByUserId ? { createdByUserId } : {}),
             },
           });
+
+          await this.dimoVehicleDataSourceLink.ensureDimoVehicleDataSourceLinkOrThrow(
+            {
+              organizationId: orgId,
+              vehicleId: created.id,
+              dimoVehicleId,
+              linkedByUserId: createdByUserId ?? null,
+              provenance: 'registration',
+            },
+            tx,
+          );
+
+          return created;
         } catch (error) {
           if (
             isPrismaUniqueViolation(error, ['dimo_vehicle_id'])

@@ -37,6 +37,7 @@ import { DeviceConnectionWebhookConfigurationService } from './device-connection
 import { DimoTriggerRegistryService } from './device-connection-webhook-configuration/dimo-trigger-registry.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { DimoConnectivityLifecycleDiModule } from './dimo-connectivity-lifecycle-di.module';
+import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-link.service';
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { DimoConnectivityLifecycleDiModule } from './dimo-connectivity-lifecycle
     ConnectivityAlertService,
     VehicleConnectivityRuntimeProjectionService,
     DeviceConnectionQueryService,
+    DimoVehicleDataSourceLinkService,
     RpmWebhookCandidateService,
     RpmWebhookQueryService,
   ],
@@ -96,6 +98,7 @@ import { DimoConnectivityLifecycleDiModule } from './dimo-connectivity-lifecycle
     DeviceConnectionWebhookReplayService,
     DeviceConnectionWebhookConfigurationService,
     DimoTriggerRegistryService,
+    DimoVehicleDataSourceLinkService,
   ],
 })
 export class DimoModule {}

@@ -283,12 +283,145 @@ Metrics exist for `providerLinkState` distribution (`connectivity-observability.
 
 ---
 
+**PR #1277:** HOLD (unchanged)
+
+---
+
+## R. Implementation Gate (2026-08-25)
+
+**Branch:** `fix/dimo-provider-link-normalization-2026-08`  
+**Mode:** Implementation + dry-run + shadow verification — **no Production writes**
+
+### A. Canonical DIMO link contract
+
+| Field | Value |
+|-------|-------|
+| `provider` | `DIMO` |
+| `sourceType` | `DIMO` |
+| `sourceSubtype` | `null` (canonical single DIMO telemetry channel) |
+| `sourceReferenceId` | Internal `DimoVehicle.id` (= `Vehicle.dimoVehicleId`). **Not** external DIMO vehicle ID/token — see `metadata.dimoExternalId`. |
+| `consentId` | Latest ACTIVE consent if present; else latest consent for provenance; nullable at registration |
+| `isActive` | `true` |
+| `activatedAt` / `lastVerifiedAt` | Set on create/reactivate/verify |
+| `linkedByUserId` | Registration actor when available |
+| `metadata` | `{ version, provenance, runId, dimoExternalId }` |
+
+**Authority:** `Vehicle.dimoVehicleId` → `DimoVehicle` is the deterministic, tenant-safe, idempotent upsert key. Telemetry payloads are never used for identity.
+
+### B. Registration pipeline fix
+
+`VehiclesService.registerFromDimo()` now calls `DimoVehicleDataSourceLinkService.ensureDimoVehicleDataSourceLinkOrThrow()` **inside** the registration transaction immediately after `Vehicle.create`. Future DIMO registrations cannot succeed without a canonical link row.
+
+**Service:** `backend/src/modules/dimo/dimo-vehicle-data-source-link.service.ts`
+
+### C. Failure / retry semantics
+
+- `CONFLICT` → `ConflictException` (`DIMO_PROVIDER_LINK_CONFLICT`) rolls back the registration transaction
+- Idempotent `NOOP` on retry
+- Structured logs via `ConnectivityObservabilityService.log('binding_changed', …)` — no tokens/VIN/location
+
+### D. Backfill design
+
+**Script:** `backend/scripts/ops/backfill-dimo-vehicle-data-source-links.ts`  
+**Default:** `--dry-run` (writes require explicit `--apply`)  
+**Eligibility:** `Vehicle.dimoVehicleId != null` + valid `DimoVehicle` relation + tenant consistency  
+**Inactive consent:** Link row still created (mapping normalization); `ProviderLinkStateBuilder` resolves grant health separately (`REAUTH_REQUIRED` / `REVOKED` as appropriate)
+
+### E. Reconciliation policy
+
+`DimoVehicleDataSourceLinkService.auditProviderLinkDrift()` detects `dimoVehicleId` + valid relation + missing active DIMO link.  
+**Self-heal:** `reconcileSafeDrift({ apply: true })` only for deterministic `missing_link` cases (CREATE). Ambiguous/conflict → flag only, never guess.
+
+### F. Rollback design
+
+Backfill/reconciliation writes `metadata.provenance` + `metadata.runId`. Rollback = deactivate links where `metadata.runId = <run>` and `metadata.provenance in ('backfill','reconciliation')`. No broad deletes.
+
+### G. Pre-apply Production gate
+
+Before `--apply`: deploy pipeline fix → DB backup → dry-run stable ×2 → zero conflicts → HMÜ/WOB shadow confirmed → rollback runId prepared → CI green.
+
+### H. Data migration strategy
+
+**Ops script (not Prisma migration)** — row-level provenance, live consent resolution, per-vehicle audit, rollback by runId.
+
+---
+
 ## Q. Next Implementation Gate
 
-1. Add DIMO link creation to `registerFromDimo` (+ tests)
-2. Backfill script for existing DIMO vehicles (org-scoped, idempotent)
-3. Verify HMÜ → AVAILABLE operational path in shadow read-only
-4. Re-run WOB regression in shadow
-5. Optional: observability alert for mapping drift
+1. ~~Add DIMO link creation to `registerFromDimo` (+ tests)~~ **DONE**
+2. ~~Backfill script for existing DIMO vehicles (org-scoped, idempotent)~~ **DONE (dry-run)**
+3. ~~Verify HMÜ → AVAILABLE operational path in shadow read-only~~ **DONE (fixture + shadow)**
+4. ~~Re-run WOB regression in shadow~~ **DONE**
+5. ~~Observability for binding_changed~~ **DONE**
+
+**Production `--apply`:** **DO NOT EXECUTE** without explicit approval.
 
 **PR #1277:** HOLD (unchanged)
+
+---
+
+## S. Final Hardening Gate (2026-08-25)
+
+**Branch:** `fix/dimo-provider-link-normalization-2026-08`  
+**Mode:** Hardening + tests + read-only Production dry-runs — **no Production writes**
+
+### 1. Production shadow authority
+
+Shadow path now invokes `VehicleOperationalProjectionService.projectWithConnectivityOverride()` with:
+
+- Real persisted `vehicle.status`
+- `deriveFleetBusinessContextBatch()` for booking/episode business context
+- `RentalHealthSummaryService` for health evaluability
+- `resolveEpisodeEvidenceReliability()` from lifecycle policy
+- Connectivity simulated only via `assembleVehicleConnectivityRuntimeBundle()` with planned active DIMO link
+
+**Removed:** hardcoded `vehicleStatus: 'AVAILABLE'` and `episodeEvidenceReliable: false`.
+
+### 2. REACTIVATE safety
+
+| Scenario | Action |
+|----------|--------|
+| Backfill / reconciliation + inactive historical link | `CONFLICT` — `inactive_link_requires_manual_review` |
+| `metadata.intentionalDeactivation` | `CONFLICT` |
+| `metadata.deactivationReason` | `CONFLICT` |
+| Registration + `metadata.reactivationEligible === true` | `REACTIVATE` |
+| Registration without positive provenance | `CONFLICT` |
+
+`reconcileSafeDrift()` applies **CREATE only** — never reactivates.
+
+### 3. Complete test matrix
+
+| Suite | Cases |
+|-------|-------|
+| Link ensure | L1–L10 |
+| Backfill | B1–B8 |
+| Reconciliation | R1–R5 |
+| Operational regression | O1–O5 |
+
+### 4. Canonical `sourceReferenceId`
+
+`VehicleDataSourceLink.sourceReferenceId` for DIMO = internal `DimoVehicle.id`. External DIMO identity stored in `metadata.dimoExternalId`.
+
+### 5. Mapping vs auth separation
+
+Provider link row existence ≠ healthy provider authorization. KS MS 661 may have structurally correct mapping while `ProviderLinkState` remains `REVOKED` / `REAUTH_REQUIRED`.
+
+### 6. Production dry-run results (read-only, 2026-08-25 UTC)
+
+**Org:** `faa710c9-6d91-4079-a7d5-91fdccdec14a`  
+**Command:** `backfill-dimo-vehicle-data-source-links.ts --org=<org> --shadow` (no `--apply`)  
+**Branch:** `fix/dimo-provider-link-normalization-2026-08` @ `58a39e6a`
+
+| Run | scanned | CREATE | REACTIVATE | CONFLICT | applied | Deterministic |
+|-----|---------|--------|------------|----------|---------|---------------|
+| #1 | 6 | 6 | 0 | 0 | 0 | — |
+| #2 | 6 | 6 | 0 | 0 | 0 | SHA256 match with #1 |
+
+| Vehicle | Action | Consent | Current link | Current op.avail | Expected link | Expected op.avail |
+|---------|--------|---------|--------------|------------------|---------------|-------------------|
+| HMÜ C 215 | CREATE | ACTIVE | UNKNOWN | UNKNOWN | ACTIVE | **AVAILABLE** |
+| WOB L 7503 | CREATE | ACTIVE | UNKNOWN | NEEDS_VERIFICATION | ACTIVE | NEEDS_VERIFICATION |
+| WOB L 9755 | CREATE | ACTIVE | UNKNOWN | NEEDS_VERIFICATION | ACTIVE | NEEDS_VERIFICATION |
+| KS MS 661 | CREATE | MISSING | UNKNOWN | UNKNOWN | **REAUTH_REQUIRED** | NEEDS_VERIFICATION |
+
+Shadow uses real `vehicle.status` + fleet business context — WOB vehicles retain NEEDS_VERIFICATION; KS MS 661 does not falsely become ACTIVE provider auth.

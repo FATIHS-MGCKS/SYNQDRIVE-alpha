@@ -40,6 +40,7 @@ export function makeOperationalVehiclesService(deps: {
     stub(),
     stub(),
     stub(),
+    stub(),
     connectivityRuntimeProjection,
     operationalProjection,
     stub(),
