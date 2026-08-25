@@ -178,6 +178,15 @@ describe('dashboard utilization UI', () => {
     expect(container.textContent).toContain('100%');
   });
 
+  it('renders month navigation above the utilization calendar', () => {
+    act(() => {
+      root.render(createElement(DashboardUtilizationPanel, { vm: minimalVm }));
+    });
+    expect(container.textContent).toMatch(/August 2026|2026/);
+    expect(container.querySelectorAll('button[aria-label="Vorheriger Monat"]').length).toBe(1);
+    expect(container.querySelectorAll('button[aria-label="Nächster Monat"]').length).toBe(1);
+  });
+
   it('formats utilization percent safely', () => {
     expect(formatUtilizationPercent(null)).toBe('—');
     expect(formatUtilizationPercent(78.4)).toBe('78 %');
@@ -193,7 +202,7 @@ describe('dashboard utilization layout contract', () => {
     expect(panelSrc).toMatch(/layout="stack"/);
     expect(panelSrc).toMatch(/fillHeight/);
     expect(panelSrc).toMatch(/lg:grid-cols-\[minmax\(0,2fr\)_minmax\(0,3fr\)\]/);
-    expect(panelSrc).not.toMatch(/UtilizationMonthNav/);
+    expect(panelSrc).toMatch(/UtilizationMonthNav/);
     expect(panelSrc).not.toMatch(/UtilizationProgressBar/);
     expect(readFileSync(resolve(testDir, './utilization/UtilizationKpiRow.tsx'), 'utf8')).toMatch(
       /grid-cols-2[\s\S]*lg:flex lg:flex-col/,
