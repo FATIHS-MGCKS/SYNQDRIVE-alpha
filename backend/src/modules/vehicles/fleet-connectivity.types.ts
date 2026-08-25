@@ -67,6 +67,8 @@ export interface FleetDeviceConnectionDto {
   openUnpluggedEpisode: boolean;
   openUnpluggedSince: string | null;
   openUnpluggedDurationMs: number | null;
+  interruptionKnowledge?: 'known_none' | 'active' | 'unknown' | 'not_applicable';
+  interruptionKnowledgeReason?: string;
   severity: DeviceConnectionSeverity | null;
   rentalRelevant: boolean;
   duringActiveBooking: boolean;

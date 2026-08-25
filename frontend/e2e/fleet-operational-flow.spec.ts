@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import {
   assertNoVisibleUuids,
+  fleetCommandPanel,
   fleetRowByPlate,
   fleetTabButton,
   getFleetMapFetchCount,
@@ -55,9 +56,7 @@ test.describe('Vehicle Operational State V2 — fleet & dashboard flows', () => 
     await openFleetOperationalFleetPage(page);
     await fleetTabButton(page, /Unknown/).click();
 
-    const fleetPanel = page
-      .locator('.surface-premium.rounded-2xl')
-      .filter({ hasText: 'Fleet Command' });
+    const fleetPanel = fleetCommandPanel(page);
     await expect(fleetPanel.getByText('UNK-1', { exact: true })).toBeVisible();
     await expect(fleetPanel.getByText('Status nicht verfügbar').first()).toBeVisible();
     await assertNoVisibleUuids(page);

@@ -141,8 +141,8 @@ describe('connectivity consumer migration', () => {
     });
   });
 
-  describe('incident state — no parallel live + unplugged', () => {
-    it('DEVICE_UNPLUGGED with live telemetry never maps legacy online', () => {
+  describe('incident state — episode vs physical evidence separation', () => {
+    it('open episode with newer live telemetry does not force DEVICE_UNPLUGGED overall', () => {
       const runtime = assembleVehicleConnectivityRuntimeState(
         baseRow({
           deviceConnectionEpisodes: [
@@ -165,14 +165,17 @@ describe('connectivity consumer migration', () => {
         NOW,
       );
 
-      expect(runtime.overallState).toBe('DEVICE_UNPLUGGED');
+      expect(runtime.physicalDeviceState).toBe('PLUGGED_INFERRED');
+      expect(runtime.overallState).toBe('TELEMETRY_ACTIVE');
+      expect(runtime.overallState).not.toBe('DEVICE_UNPLUGGED');
+      expect(runtime.reasonCodes).toContain('STATE_CONFLICT');
       expect(runtime.telemetryState).toBe('live');
       const legacy = projectLegacyFleetConnectivityFields(runtime);
-      expect(legacy.connectionStatus).not.toBe('online');
-      expect(legacy.online).toBe(false);
+      expect(legacy.connectionStatus).toBe('online');
+      expect(legacy.online).toBe(true);
     });
 
-    it('fleet connectivity DTO exposes same runtime overallState', () => {
+    it('fleet connectivity DTO keeps runtime overall aligned with physical evidence during conflict', () => {
       const input = {
         id: 'v-consumer-1',
         vin: 'VIN',
@@ -233,9 +236,44 @@ describe('connectivity consumer migration', () => {
         deviceConnection,
       );
 
-      expect(mapped.connectivityRuntime.overallState).toBe('DEVICE_UNPLUGGED');
-      expect(mapped.connectionStatus).not.toBe('online');
+      expect(mapped.connectivityRuntime.physicalDeviceState).toBe('PLUGGED_INFERRED');
+      expect(mapped.connectivityRuntime.overallState).toBe('TELEMETRY_ACTIVE');
+      expect(mapped.connectivityRuntime.overallState).not.toBe('DEVICE_UNPLUGGED');
+      expect(mapped.connectivityRuntime.reasonCodes).toContain('STATE_CONFLICT');
+      expect(mapped.connectivityRuntime.evidence.openUnpluggedEpisode).toBe(true);
+      expect(mapped.connectionStatus).toBe('online');
       expect(mapped.connectivityRuntime.telemetryState).toBe('live');
+    });
+
+    it('confirmed unplug still reports DEVICE_UNPLUGGED overall', () => {
+      const runtime = assembleVehicleConnectivityRuntimeState(
+        baseRow({
+          deviceConnectionEpisodes: [
+            {
+              id: 'ep-1',
+              deviceBindingId: 'binding-1',
+              openedAt: hoursAgo(2),
+              status: DeviceConnectionEpisodeStatus.OPEN,
+              resolutionMethod: null,
+              resolutionEvidenceAt: null,
+              resolvedAt: null,
+            },
+          ],
+          latestState: {
+            ...baseRow().latestState!,
+            lastSeenAt: hoursAgo(2),
+            sourceTimestamp: hoursAgo(2),
+            providerFetchedAt: hoursAgo(2),
+            rawPayloadJson: { obdIsPluggedIn: { value: false } },
+          },
+        }),
+        null,
+        NOW,
+      );
+
+      expect(runtime.physicalDeviceState).toBe('UNPLUGGED_CONFIRMED');
+      expect(runtime.overallState).toBe('DEVICE_UNPLUGGED');
+      expect(runtime.activeEpisodeId).toBe('ep-1');
     });
   });
 

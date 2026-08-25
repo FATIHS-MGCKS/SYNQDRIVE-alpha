@@ -4,6 +4,7 @@
 import { expect, type Page } from '@playwright/test';
 
 import { assertNoHorizontalOverflow } from './document-upload-fixtures';
+import { fleetCommandPanel } from './fleet-operational-fixtures';
 import type {
   ApiServiceCase,
   ApiTask,
@@ -1242,9 +1243,7 @@ export async function openHealthDetailForPlate(page: Page, plate: string) {
 
 export async function openHealthErrorsForPlate(page: Page, plate: string) {
   await page.getByRole('tablist', { name: 'Flotte' }).getByRole('tab', { name: 'Status' }).click();
-  const fleetPanel = page
-    .locator('.surface-premium.rounded-2xl')
-    .filter({ hasText: 'Fleet Command' });
+  const fleetPanel = fleetCommandPanel(page);
   await fleetPanel.getByText(plate, { exact: true }).first().waitFor({ state: 'visible', timeout: 30_000 });
   await fleetPanel
     .getByRole('button', { name: new RegExp(plate) })

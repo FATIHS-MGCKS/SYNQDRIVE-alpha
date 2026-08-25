@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-operational-state-p01-provenance-2026-08-24',
+    version: '4.9.951',
+    title: 'Vehicle Operational State P0.1 — provenance & episode lifecycle verification',
+    summary: [
+      'Production episode empty root cause reclassified MIXED: HISTORICAL_ONLY (July 8/11) + CURRENT_PROCESSING_DEFECT (July 20) + DEPLOYMENT_OR_WORKER_GAP (inbox July 28/Aug 8).',
+      'Canonical physical-device evidence ordering: latest snapshot vs unplug event wins; DEVICE_CHECK_REQUIRED when offline without unplug evidence.',
+      'interruptionKnowledge corrected: not_applicable, episode_scope_not_queried; fixed usePersistedEpisodeScope inversion; physical vs episode state separated.',
+      'Normative provenance contract + Fleet Connectivity canonical diagnostics surface + Vehicle Detail deep-link navigation contract.',
+      'Regression tests A–J; P0.2 = NO-GO until production pipeline defects remediated.',
+    ],
+    reason: 'Establish canonical provenance boundaries and correct epistemic semantics before P0.2; evidence-backed production investigation without data mutation.',
+    previousBehavior: 'openUnpluggedEpisode=false implied known_none; hasUnplugEvents boolean could override newer snapshots; HISTORICAL_ONLY masked current processing defects.',
+    details: 'docs/audits/vehicle-operational-state-p01-provenance-2026-08.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-24T22:30:00.000Z',
+  },
+  {
     id: 'communication-center-c13-6-final-production-cutover-proof-2026-08-24',
     version: '4.9.950',
     title: 'Communication Center C13.6 — final production cutover proof',

@@ -208,16 +208,20 @@ function isServiceOnlyOverdueCritical(
 }
 
 function isHealthCritical(v: VehicleData, rentalHealth: VehicleHealthResponse | null): boolean {
-  if (rentalHealth?.rental_blocked && hasHardRentalBlockingReasons(rentalHealth)) return true;
-  if (hasNonServiceCriticalModule(rentalHealth)) return true;
-  if (rentalHealth?.overall_state === 'critical' && !isServiceOnlyOverdueCritical(rentalHealth)) {
-    return true;
+  if (rentalHealth) {
+    if (rentalHealth.rental_blocked && hasHardRentalBlockingReasons(rentalHealth)) return true;
+    if (hasNonServiceCriticalModule(rentalHealth)) return true;
+    if (rentalHealth.overall_state === 'critical' && !isServiceOnlyOverdueCritical(rentalHealth)) {
+      return true;
+    }
+    return false;
   }
   return v.healthStatus === 'Critical' && !isServiceOnlyOverdueCritical(rentalHealth);
 }
 
 function isHealthWarning(v: VehicleData, rentalHealth: VehicleHealthResponse | null): boolean {
-  return rentalHealth?.overall_state === 'warning' || v.healthStatus === 'Warning';
+  if (rentalHealth) return rentalHealth.overall_state === 'warning';
+  return v.healthStatus === 'Warning';
 }
 
 /**
@@ -306,9 +310,12 @@ function resolveHealthDisplay(
   else if (serviceModule?.state === 'critical') status = 'critical';
   else if (isHealthWarning(v, rentalHealth)) status = 'warning';
   else if (serviceModule?.state === 'warning') status = 'warning';
-  else {
-    const hasData = rentalHealth != null || Boolean(v.healthStatus);
-    status = hasData ? 'good' : 'unknown';
+  else if (rentalHealth) {
+    status = rentalHealth.overall_state === 'good' ? 'good' : 'unknown';
+  } else if (v.healthStatus) {
+    status = 'good';
+  } else {
+    status = 'unknown';
   }
 
   const labels: Record<FleetHealthStatus, [string, string]> = {

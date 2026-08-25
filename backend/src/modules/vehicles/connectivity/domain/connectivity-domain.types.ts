@@ -114,6 +114,8 @@ export const ConnectivityReasonCode = {
   WEBHOOK_PROCESSING_FAILED: 'WEBHOOK_PROCESSING_FAILED',
   STATE_CONFLICT: 'STATE_CONFLICT',
   MANUAL_REVIEW_REQUIRED: 'MANUAL_REVIEW_REQUIRED',
+  /** Telemetry silent >48h without explicit unplug evidence — manual device check required. */
+  DEVICE_CHECK_REQUIRED: 'DEVICE_CHECK_REQUIRED',
 } as const;
 export type ConnectivityReasonCode =
   (typeof ConnectivityReasonCode)[keyof typeof ConnectivityReasonCode];
