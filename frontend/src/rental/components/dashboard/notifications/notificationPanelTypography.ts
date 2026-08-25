@@ -8,7 +8,7 @@ export const NOTIFICATION_PANEL_TYPO = {
   metaBadge: 'inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-4',
   eyebrow: 'text-[11px] font-medium leading-4 text-muted-foreground',
   lastSeen: 'text-[11px] font-medium leading-4 text-muted-foreground',
-  cardTitle: 'text-sm font-semibold leading-[19px] tracking-[-0.01em] text-foreground text-pretty line-clamp-2',
+  cardTitle: 'text-[10.5px] font-semibold leading-[14px] tracking-[-0.01em] text-foreground text-pretty line-clamp-2',
   childTitle: 'text-xs font-medium leading-4 text-foreground/90 line-clamp-1',
   childDescription: 'text-[11px] font-normal leading-4 text-muted-foreground text-pretty',
   entity: 'text-xs font-medium leading-[17px] text-muted-foreground line-clamp-1',

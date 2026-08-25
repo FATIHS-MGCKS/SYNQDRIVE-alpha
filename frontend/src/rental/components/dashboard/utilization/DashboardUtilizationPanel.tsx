@@ -8,6 +8,7 @@ import { NOTIFICATION_PANEL_TYPO } from '../notifications/notificationPanelTypog
 import { UtilizationHeatmapLegend } from './UtilizationHeatmapLegend';
 import { UtilizationKpiRow } from './UtilizationKpiRow';
 import { UtilizationMonthCalendar } from './UtilizationMonthCalendar';
+import { UtilizationMonthNav } from './UtilizationMonthNav';
 import { useDashboardUtilization } from './useDashboardUtilization';
 
 interface DashboardUtilizationPanelProps {
@@ -16,9 +17,18 @@ interface DashboardUtilizationPanelProps {
 }
 
 export function DashboardUtilizationPanel({ vm, className }: DashboardUtilizationPanelProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
-  const { month, phase, data, error } = useDashboardUtilization(orgId, vm.selectedStationId);
+  const { month, phase, data, error, goToPreviousMonth, goToNextMonth } = useDashboardUtilization(
+    orgId,
+    vm.selectedStationId,
+  );
+
+  const monthLabel = new Date(Date.UTC(month.year, month.month - 1, 1)).toLocaleDateString(locale, {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
 
   const weekdayLabels = [
     t('bookings.planner.weekdayMon'),
@@ -72,7 +82,10 @@ export function DashboardUtilizationPanel({ vm, className }: DashboardUtilizatio
               <Skeleton className="h-12 rounded-lg" />
             </div>
           </div>
-          <Skeleton className="min-h-[140px] rounded-xl lg:min-h-0 lg:h-full" />
+          <div className="flex min-h-[140px] flex-col gap-1.5 lg:min-h-0 lg:h-full">
+            <Skeleton className="mx-auto h-7 w-40 rounded-md lg:ml-auto lg:mr-0" />
+            <Skeleton className="min-h-[140px] flex-1 rounded-xl lg:min-h-0" />
+          </div>
         </div>
       ) : (
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-stretch lg:gap-2">
@@ -103,7 +116,15 @@ export function DashboardUtilizationPanel({ vm, className }: DashboardUtilizatio
             />
           </div>
 
-          <div className="flex min-h-[140px] min-w-0 lg:min-h-0 lg:h-full">
+          <div className="flex min-h-[140px] min-w-0 flex-col gap-1.5 lg:min-h-0 lg:h-full">
+            <UtilizationMonthNav
+              label={monthLabel}
+              onPrevious={goToPreviousMonth}
+              onNext={goToNextMonth}
+              previousLabel={t('dashboard.utilization.prevMonth')}
+              nextLabel={t('dashboard.utilization.nextMonth')}
+              className="shrink-0 justify-center lg:justify-end"
+            />
             <UtilizationMonthCalendar
               fillHeight
               className="h-full w-full"
