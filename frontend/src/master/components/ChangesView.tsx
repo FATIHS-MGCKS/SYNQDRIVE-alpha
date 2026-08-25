@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-booking-documents-panel-p2-2-38-2026-08-25',
+    version: '4.9.965',
+    title: 'Platform i18n — P2.2.38 Operator Booking Documents Panel localization',
+    summary: [
+      'Localized Operator Booking Documents Panel via `operator-booking-documents-i18n.ts` and `operator.bookings.documents.*` keys.',
+      'P238 enforce-clean exact scope (3 paths) reports 0 findings; +26 EN+DE keys (8552→8578); reuses `email.docType.*` for canonical booking document types and `common.open`.',
+      'Presentation-only — document IDs, booking IDs, filenames, bundle status, customer doc status, type/availability machine values, ordering, and open/preview callbacks unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.38 post-P237 pre-flight (PR #1265) selected Operator Booking Documents Panel as the next bounded Operator booking presentation slice.',
+    previousBehavior:
+      'OperatorBookingDocumentsPanel and operatorBookingDocuments.utils used fixed German section titles, group labels, type/availability maps, and de-DE date formatting.',
+    details:
+      'operator/documents/OperatorBookingDocumentsPanel.tsx; operator/documents/operatorBookingDocuments.utils.ts; operator/lib/operator-booking-documents-i18n.ts; i18n/translations/operator.bookings.documents.{en,de}.ts; operator-booking-documents-localization.test.tsx; P238_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_BOOKING_DOCUMENTS_PANEL_P2_2_38_2026-08-25.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-25T12:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-booking-cancel-noshow-p2-2-37-2026-08-25',
     version: '4.9.964',
     title: 'Platform i18n — P2.2.37 Operator Booking Cancel & No-Show Sheets localization',

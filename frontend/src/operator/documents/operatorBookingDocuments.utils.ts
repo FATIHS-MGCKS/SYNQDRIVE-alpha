@@ -2,50 +2,40 @@ import type { BookingDocumentBundleView, GeneratedDocumentDto } from '../../lib/
 
 export type OperatorDocumentAvailability = 'available' | 'missing' | 'generating' | 'failed';
 
+export type OperatorBookingDocumentGroupKey =
+  | 'contractTerms'
+  | 'pickup'
+  | 'return'
+  | 'invoiceDeposit';
+
 export interface OperatorDocumentSlot {
   documentType: string;
-  label: string;
+  dynamicTitle?: string;
   doc: GeneratedDocumentDto | null;
   availability: OperatorDocumentAvailability;
 }
 
-export const OPERATOR_BOOKING_DOCUMENT_GROUPS: { groupLabel: string; types: string[] }[] = [
+export const OPERATOR_BOOKING_DOCUMENT_GROUPS: {
+  groupKey: OperatorBookingDocumentGroupKey;
+  types: string[];
+}[] = [
   {
-    groupLabel: 'Vertrag & Bedingungen',
+    groupKey: 'contractTerms',
     types: ['RENTAL_CONTRACT', 'TERMS_AND_CONDITIONS', 'WITHDRAWAL_INFORMATION', 'PRIVACY_POLICY'],
   },
   {
-    groupLabel: 'Abholung',
+    groupKey: 'pickup',
     types: ['HANDOVER_PICKUP'],
   },
   {
-    groupLabel: 'Rückgabe',
+    groupKey: 'return',
     types: ['HANDOVER_RETURN', 'FINAL_INVOICE'],
   },
   {
-    groupLabel: 'Rechnung & Kaution',
+    groupKey: 'invoiceDeposit',
     types: ['BOOKING_INVOICE', 'DEPOSIT_RECEIPT'],
   },
 ];
-
-export const OPERATOR_DOCUMENT_TYPE_LABELS: Record<string, string> = {
-  BOOKING_INVOICE: 'Buchungsrechnung',
-  DEPOSIT_RECEIPT: 'Kautionsbeleg',
-  RENTAL_CONTRACT: 'Mietvertrag',
-  TERMS_AND_CONDITIONS: 'AGB',
-  WITHDRAWAL_INFORMATION: 'Widerrufsbelehrung',
-  PRIVACY_POLICY: 'Datenschutzerklärung',
-  HANDOVER_PICKUP: 'Pickup-Protokoll',
-  HANDOVER_RETURN: 'Return-Protokoll',
-  FINAL_INVOICE: 'Schlussrechnung',
-};
-
-export const OPERATOR_DOCUMENT_AVAILABILITY_LABELS: Record<OperatorDocumentAvailability, string> = {
-  available: 'Verfügbar',
-  missing: 'Fehlt',
-  generating: 'Wird generiert',
-  failed: 'Fehlerhaft',
-};
 
 export function currentDocumentsByType(
   documents: GeneratedDocumentDto[] | undefined,
@@ -85,7 +75,6 @@ export function buildOperatorDocumentSlots(
       const doc = byType[documentType] ?? null;
       slots.push({
         documentType,
-        label: OPERATOR_DOCUMENT_TYPE_LABELS[documentType] ?? documentType,
         doc,
         availability: deriveDocumentAvailability(documentType, doc, bundle),
       });
@@ -97,7 +86,7 @@ export function buildOperatorDocumentSlots(
     if (doc.documentType.toUpperCase().includes('DAMAGE') || doc.title?.toLowerCase().includes('schaden')) {
       slots.push({
         documentType: doc.documentType,
-        label: doc.title || 'Schadensbericht',
+        dynamicTitle: doc.title ?? undefined,
         doc,
         availability: deriveDocumentAvailability(doc.documentType, doc, bundle),
       });
@@ -105,23 +94,4 @@ export function buildOperatorDocumentSlots(
   }
 
   return slots;
-}
-
-export const OPERATOR_CUSTOMER_DOCUMENT_LABELS: Record<string, string> = {
-  ID_FRONT: 'Ausweis (Vorderseite)',
-  ID_BACK: 'Ausweis (Rückseite)',
-  LICENSE_FRONT: 'Führerschein (Vorderseite)',
-  LICENSE_BACK: 'Führerschein (Rückseite)',
-};
-
-export function formatOperatorDocumentMeta(doc: GeneratedDocumentDto): string {
-  return [
-    doc.documentNumber || doc.fileName,
-    doc.legalVersionLabel ? `v${doc.legalVersionLabel}` : null,
-    doc.generatedAt || doc.createdAt
-      ? new Date(doc.generatedAt || doc.createdAt).toLocaleDateString('de-DE')
-      : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
 }

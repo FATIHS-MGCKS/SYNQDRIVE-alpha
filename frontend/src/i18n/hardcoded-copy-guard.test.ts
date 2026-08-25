@@ -418,6 +418,12 @@ const P237_ENFORCE_CLEAN_EXACT = [
   'operator/lib/operator-booking-cancel-noshow-i18n.ts',
 ];
 
+const P238_ENFORCE_CLEAN_EXACT = [
+  'operator/documents/OperatorBookingDocumentsPanel.tsx',
+  'operator/documents/operatorBookingDocuments.utils.ts',
+  'operator/lib/operator-booking-documents-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -564,6 +570,10 @@ function isP236EnforceCleanPath(relPath: string): boolean {
 
 function isP237EnforceCleanPath(relPath: string): boolean {
   return P237_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP238EnforceCleanPath(relPath: string): boolean {
+  return P238_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -901,6 +911,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP237EnforceCleanPath(finding.file),
     );
     expect(p237Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.38 enforce-clean findings to Operator Booking Documents Panel only', () => {
+    const p238Debt = inventory.findings.filter((finding) =>
+      isP238EnforceCleanPath(finding.file),
+    );
+    expect(p238Debt).toHaveLength(0);
   });
 
   it('keeps operator-vehicle-quick-view-i18n.ts on canonical translation keys', () => {

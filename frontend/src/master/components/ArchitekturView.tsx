@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Booking Documents Panel (P2.2.38 — V4.9.965)', icon: Globe,
+    endpoint: 'Operator Booking Documents Panel — booking/customer document presentation slice',
+    service: '**Locale flow:** `useLanguage().locale` → `operator-booking-documents-i18n.ts` adapter (`obd`, group/type/availability helpers, locale-aware `formatOperatorDocumentMeta`); reuses `email.docType.*` and `common.open`. **Keys:** +26 EN+DE `operator.bookings.documents.*` (8552→8578). **Machine values:** documentType codes, availability enum, bundle.status, document IDs, filenames, customer doc type codes, slot ordering frozen; `api.documents.open` / preview callbacks unchanged. **Guardrails:** P2.2.38 enforce-clean exact (3 paths) — 0 findings. **Tests:** `operator-booking-documents-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_OPERATOR_BOOKING_DOCUMENTS_PANEL_P2_2_38_2026-08-25.md' },
   { name: 'Platform i18n Operator Booking Cancel & No-Show (P2.2.37 — V4.9.964)', icon: Globe,
     endpoint: 'Operator Booking Cancel & No-Show Sheets — presentation slice',
     service: '**Locale flow:** `useLanguage().locale` → `operator-booking-cancel-noshow-i18n.ts` adapter (`obcn`, title/gate/toast helpers); reuses `bookings.customer`, `bookings.vehicle`, `bookings.period`, `common.cancel`, `common.close`. **Keys:** +26 EN+DE `operator.bookings.cancelNoShow.*` (8526→8552). **Machine values:** bookingId, customer/vehicle names, status enum mapping via `bookingStatusLabel`, gate booleans, matrix reason strings (map-only), freeform reason payload frozen. **Guardrails:** P2.2.37 enforce-clean exact (4 paths) — 0 findings. **Tests:** `operator-booking-cancel-noshow-localization.test.tsx`. **Semantics:** presentation-only; cancel/no-show mutations and transitions unchanged; Category E=0.',

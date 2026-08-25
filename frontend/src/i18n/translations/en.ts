@@ -27,6 +27,7 @@ import { operatorVehicleQuickViewTireEn } from './operator.vehicleQuickView.tire
 import { operatorVehicleQuickViewDocumentsEn } from './operator.vehicleQuickView.documents.en';
 import { operatorBookingsFormEn } from './operator.bookings.form.en';
 import { operatorBookingsCancelNoShowEn } from './operator.bookings.cancelNoShow.en';
+import { operatorBookingsDocumentsEn } from './operator.bookings.documents.en';
 import { vendorsDirectoryEn } from './vendors.directory.en';
 import { supportOpsEn } from './support.ops.en';
 import { whatsappEn } from './whatsapp.en';
@@ -5606,6 +5607,7 @@ export const en = {
   ...operatorVehicleQuickViewDocumentsEn,
   ...operatorBookingsFormEn,
   ...operatorBookingsCancelNoShowEn,
+  ...operatorBookingsDocumentsEn,
   ...vendorsDirectoryEn,
 } as const;
 
