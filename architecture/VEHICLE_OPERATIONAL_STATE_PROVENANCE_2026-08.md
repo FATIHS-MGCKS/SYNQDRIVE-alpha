@@ -91,14 +91,16 @@ The Vehicle Detail label **“Status (Webhook)”** is misleading — it display
 
 | Evidence type | Meaning |
 |---------------|---------|
-| Valid telemetry snapshot (`VehicleLatestState.lastSeenAt`) | Positive connected / communicating evidence |
+| Valid telemetry snapshot with `obdIsPluggedIn=true` or absent/null | Positive communication / inferred plugged evidence when fresh |
+| Valid telemetry snapshot with `obdIsPluggedIn=false` | Negative physical signal — communication may exist but **not** physical reconnect |
 | `OBD_DEVICE_UNPLUGGED` event (`observedAt`) | Explicit physical disconnect evidence |
 
 Compare timestamps:
 
 | Case | Result |
 |------|--------|
-| Snapshot newer than unplug (snapshot still fresh) | `PLUGGED_INFERRED` |
+| Snapshot newer than unplug, `obdIsPluggedIn` true/null, snapshot still fresh | `PLUGGED_INFERRED` |
+| Snapshot newer than unplug, `obdIsPluggedIn=false` | `UNKNOWN` + `DEVICE_CHECK_REQUIRED` (communication ≠ physical plug) |
 | Snapshot newer than unplug but snapshot now offline (≥48h) | `UNKNOWN` + `DEVICE_CHECK_REQUIRED` |
 | Explicit plug newer than unplug | `PLUGGED_CONFIRMED` (does not expire with telemetry staleness) |
 | Unplug newer than snapshot/plug | `UNPLUGGED_CONFIRMED` |
@@ -210,6 +212,7 @@ DIMO `OBD_DEVICE_UNPLUGGED` webhooks flow: inbox (`RECEIVED`) → BullMQ `connec
 
 **Invariants (post gate fix):**
 - Event dedupe (`dedupBucket`) is separate from lifecycle completion (`processed_at`).
+- **Production cutover (corrected 2026-08-25):** `CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER=2026-08-25T08:04:17.000Z` — first instant the repaired inbox→BullMQ→episode pipeline was authoritative (not the pre-activation deploy timestamp).
 - Retry after partial failure must reconcile episode sync when `processed_at IS NULL` **and** `received_at >= CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER`.
 - Enqueue failure (intake or scheduler) marks inbox `RETRYABLE_FAILED` (not silent `RECEIVED` forever).
 - Scheduler reconciles eligible orphan `processed_at IS NULL` events only; historical pre-cutover orphans are logged, not materialized.

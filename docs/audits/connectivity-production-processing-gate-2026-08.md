@@ -34,6 +34,8 @@ Production investigation confirms two distinct runtime defects blocking reliable
 
 **Gate verdict (post-deploy 2026-08-25):** **CONDITIONAL** — infrastructure verified live; lifecycle OPEN/RESOLVE not yet observed on natural post-cutover traffic. **P0.2: NO-GO** until live event observed.
 
+**Cutover correction (2026-08-25T08:49Z):** Initial cutover `2026-08-25T07:48:30.000Z` predated successful repaired-pipeline activation (`2026-08-25T08:04:17.000Z`). Gap query returned **0** inbox/event/episode rows in the accidental window. Cutover corrected forward to activation instant; historical July safety re-verified PASS.
+
 ---
 
 ## B. Production Baseline
@@ -502,6 +504,75 @@ Existing: `ConnectivityObservabilityService` webhook_processing events, Promethe
 PRODUCTION PROCESSING GATE: CONDITIONAL
 P0.2 READY: NO-GO
 ```
+
+---
+
+## R. Cutover Correction (2026-08-25)
+
+### R.1 Activation evidence
+
+| Source | Timestamp (UTC) |
+|--------|-----------------|
+| Failed deploy release `20260825074743_v4994` | Aborted — `ConnectivityLifecycleRuntimePolicyService` missing from `DimoModule.providers` |
+| Successful deploy release `20260825075756_v4994` (SHA `2022e586`) | Built ~07:58 |
+| PM2 process `created_at` | **2026-08-25T08:04:11.594Z** |
+| `connectivity.lifecycle_reconciliation_enabled` startup log | **2026-08-25T08:04:17Z** |
+| `Nest application successfully started` | **2026-08-25T08:04:17Z** |
+
+**Authoritative activation instant:** `2026-08-25T08:04:17.000Z` (first successful bootstrap of repaired pipeline).
+
+### R.2 Pre-correction gap query
+
+Window: `2026-08-25T07:48:30.000Z` → `2026-08-25T08:04:17.000Z`
+
+| Table | Count |
+|-------|-------|
+| `device_connection_webhook_inbox` | **0** |
+| `dimo_device_connection_events` | **0** |
+| `device_connection_episodes` | **0** |
+
+Safe to advance cutover — no stranded post-cutover evidence.
+
+### R.3 Correction applied
+
+| Item | Value |
+|------|-------|
+| Old cutover | `2026-08-25T07:48:30.000Z` |
+| **Corrected cutover** | **`2026-08-25T08:04:17.000Z`** |
+| Mechanism | `/opt/synqdrive/shared/backend.env` (backup `backend.env.pre-cutover-correction-20260825084914`) |
+| PM2 restart | `pm2 restart synqdrive --update-env` |
+| Post-restart startup log | `cutover: 2026-08-25T08:04:17.000Z` at `2026-08-25T08:49:19Z` |
+
+### R.4 Post-correction historical safety
+
+After scheduler cycles + env reload:
+
+| Historical row | Status |
+|----------------|--------|
+| July 8 event `27c12038…` | `processed_at` NULL — **unchanged** |
+| July 11 event `d79dc043…` | `processed_at` NULL — **unchanged** |
+| July 20 event `5389a9c7…` | `processed_at` NULL — **unchanged** |
+| July 28 inbox `da2601ce…` | RECEIVED / attempts=0 — **unchanged** |
+| Aug 8 inbox `c19d5eed…` | RECEIVED / attempts=0 — **unchanged** |
+| Episodes total | **0** |
+| Gap-window mutations | **0** |
+
+**Historical safety after correction: PASS**
+
+### R.5 Nest DI bootstrap regression
+
+| Item | Value |
+|------|-------|
+| Test | `backend/src/modules/dimo/dimo-module.bootstrap.spec.ts` |
+| Module fixture | `DimoConnectivityLifecycleDiModule` |
+| Guards | DimoModule export/provider metadata + runtime graph resolution |
+| Mutation proof | Compile fails when `ConnectivityLifecycleRuntimePolicyService` omitted |
+
+---
+
+## S. Long-offline reference matrix
+
+See `docs/audits/connectivity-long-offline-reference-matrix-2026-08.md`.
 
 **CONDITIONAL because:** deploy + cutover + worker/queue + historical safety verified live, but no natural post-cutover `OBD_DEVICE_UNPLUGGED` → OPEN episode → snapshot RESOLVE chain observed.
 

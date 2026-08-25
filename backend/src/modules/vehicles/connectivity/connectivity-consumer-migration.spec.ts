@@ -142,7 +142,40 @@ describe('connectivity consumer migration', () => {
   });
 
   describe('incident state — episode vs physical evidence separation', () => {
-    it('open episode with newer live telemetry does not force DEVICE_UNPLUGGED overall', () => {
+    it('open episode with newer live telemetry and positive plug signal does not force DEVICE_UNPLUGGED overall', () => {
+      const runtime = assembleVehicleConnectivityRuntimeState(
+        baseRow({
+          deviceConnectionEpisodes: [
+            {
+              id: 'ep-1',
+              deviceBindingId: 'binding-1',
+              openedAt: hoursAgo(2),
+              status: DeviceConnectionEpisodeStatus.OPEN,
+              resolutionMethod: null,
+              resolutionEvidenceAt: null,
+              resolvedAt: null,
+            },
+          ],
+          latestState: {
+            ...baseRow().latestState!,
+            rawPayloadJson: { obdIsPluggedIn: { value: true } },
+          },
+        }),
+        null,
+        NOW,
+      );
+
+      expect(runtime.physicalDeviceState).toBe('PLUGGED_INFERRED');
+      expect(runtime.overallState).toBe('TELEMETRY_ACTIVE');
+      expect(runtime.overallState).not.toBe('DEVICE_UNPLUGGED');
+      expect(runtime.reasonCodes).toContain('STATE_CONFLICT');
+      expect(runtime.telemetryState).toBe('live');
+      const legacy = projectLegacyFleetConnectivityFields(runtime);
+      expect(legacy.connectionStatus).toBe('online');
+      expect(legacy.online).toBe(true);
+    });
+
+    it('open episode with fresh snapshot obdIsPluggedIn=false does not infer physical reconnect', () => {
       const runtime = assembleVehicleConnectivityRuntimeState(
         baseRow({
           deviceConnectionEpisodes: [
@@ -165,14 +198,11 @@ describe('connectivity consumer migration', () => {
         NOW,
       );
 
-      expect(runtime.physicalDeviceState).toBe('PLUGGED_INFERRED');
-      expect(runtime.overallState).toBe('TELEMETRY_ACTIVE');
-      expect(runtime.overallState).not.toBe('DEVICE_UNPLUGGED');
-      expect(runtime.reasonCodes).toContain('STATE_CONFLICT');
+      expect(runtime.physicalDeviceState).not.toBe('PLUGGED_INFERRED');
+      expect(runtime.physicalDeviceState).toBe('UNPLUGGED_CONFIRMED');
+      expect(runtime.overallState).toBe('DEVICE_UNPLUGGED');
+      expect(runtime.reasonCodes).toContain('DEVICE_CHECK_REQUIRED');
       expect(runtime.telemetryState).toBe('live');
-      const legacy = projectLegacyFleetConnectivityFields(runtime);
-      expect(legacy.connectionStatus).toBe('online');
-      expect(legacy.online).toBe(true);
     });
 
     it('fleet connectivity DTO keeps runtime overall aligned with physical evidence during conflict', () => {

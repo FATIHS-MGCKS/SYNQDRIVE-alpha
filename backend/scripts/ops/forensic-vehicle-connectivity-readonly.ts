@@ -14,6 +14,11 @@ import {
   buildDeviceConnectionSummary,
   type DeviceConnectionEventRow,
 } from '../../src/modules/dimo/device-connection-read-model';
+import {
+  mapFleetConnectivityVehicle,
+  type FleetConnectivityVehicleInput,
+} from '../../src/modules/vehicles/fleet-connectivity.util';
+import { mapFleetConnectivityListItem } from '../../src/modules/vehicles/fleet-connectivity-api.mapper';
 
 function loadEnv(): void {
   const envPath = process.env.SYNQDRIVE_BACKEND_ENV ?? '/opt/synqdrive/shared/backend.env';
@@ -43,6 +48,10 @@ async function main(): Promise<void> {
         id: true,
         organizationId: true,
         licensePlate: true,
+        vin: true,
+        make: true,
+        model: true,
+        year: true,
         hardwareType: true,
         fuelType: true,
         status: true,
@@ -140,6 +149,34 @@ async function main(): Promise<void> {
       (e) => e.observedAt.getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000,
     );
 
+    const inboxRows = await prisma.deviceConnectionWebhookInbox.findMany({
+      where: { organizationId, vehicleId },
+      orderBy: { receivedAt: 'asc' },
+      select: {
+        id: true,
+        eventType: true,
+        observedAt: true,
+        receivedAt: true,
+        processedAt: true,
+        processingStatus: true,
+        processingAttempts: true,
+        domainEventId: true,
+      },
+    });
+
+    const latestSnapshotAt = vehicle.latestState?.lastSeenAt ?? null;
+    const snapshotAgeHours =
+      latestSnapshotAt == null
+        ? null
+        : Math.round((Date.now() - latestSnapshotAt.getTime()) / (60 * 60 * 1000));
+
+    const latestCanonicalUnplug = [...allEvents]
+      .reverse()
+      .find((e) => e.eventType === 'OBD_DEVICE_UNPLUGGED');
+    const latestCanonicalPlug = [...allEvents]
+      .reverse()
+      .find((e) => e.eventType === 'OBD_DEVICE_PLUGGED_IN');
+
     const bundle = assembleVehicleConnectivityRuntimeBundle(
       vehicle as ConnectivityRuntimeVehicleRow,
       orgAuth,
@@ -181,6 +218,34 @@ async function main(): Promise<void> {
       episodeEvidenceReliable: false,
     });
 
+    const fleetInput: FleetConnectivityVehicleInput = {
+      id: vehicle.id,
+      vin: vehicle.vin,
+      licensePlate: vehicle.licensePlate,
+      make: vehicle.make,
+      model: vehicle.model,
+      year: vehicle.year,
+      fuelType: vehicle.fuelType,
+      hardwareType: vehicle.hardwareType,
+      dimoVehicle: vehicle.dimoVehicle
+        ? {
+            tokenId: vehicle.dimoVehicle.tokenId,
+            lastSignal: vehicle.dimoVehicle.lastSignal,
+            syncedAt: null,
+            createdAt: new Date('2026-01-01'),
+            rawJson: null,
+          }
+        : null,
+      latestState: vehicle.latestState,
+    };
+    const fleetMapped = mapFleetConnectivityVehicle(
+      fleetInput,
+      Date.now(),
+      null,
+      bundle.runtime,
+    );
+    const fleetListItem = mapFleetConnectivityListItem(fleetMapped);
+
     console.log(
       JSON.stringify(
         {
@@ -195,10 +260,43 @@ async function main(): Promise<void> {
             obdIsPluggedIn:
               (vehicle.latestState?.rawPayloadJson as { obdIsPluggedIn?: { value?: boolean } })
                 ?.obdIsPluggedIn?.value ?? null,
+            snapshotAgeHours,
+          },
+          canonicalEvents: allEvents.map((e) => ({
+            id: e.id,
+            eventType: e.eventType,
+            observedAt: e.observedAt.toISOString(),
+            receivedAt: e.receivedAt.toISOString(),
+            processedAt: e.processedAt?.toISOString() ?? null,
+          })),
+          inboxRows: inboxRows.map((row) => ({
+            id: row.id,
+            eventType: row.eventType,
+            observedAt: row.observedAt.toISOString(),
+            receivedAt: row.receivedAt.toISOString(),
+            processingStatus: row.processingStatus,
+            processingAttempts: row.processingAttempts,
+            domainEventId: row.domainEventId,
+          })),
+          episodes: vehicle.deviceConnectionEpisodes.map((ep) => ({
+            id: ep.id,
+            status: ep.status,
+            openedAt: ep.openedAt.toISOString(),
+            resolvedAt: ep.resolvedAt?.toISOString() ?? null,
+            resolutionMethod: ep.resolutionMethod,
+          })),
+          evidenceOrdering: {
+            latestValidSnapshotAt: latestSnapshotAt?.toISOString() ?? null,
+            latestCanonicalUnplugAt: latestCanonicalUnplug?.observedAt.toISOString() ?? null,
+            latestCanonicalPlugAt: latestCanonicalPlug?.observedAt.toISOString() ?? null,
           },
           eventCountAllTime: allEvents.length,
           eventCount7d: events7d.length,
           connectivityRuntime: bundle.runtime,
+          uiProjections: {
+            fleetAvailabilityBadge: vehicle.status,
+            fleetConnectivityListItem: fleetListItem,
+          },
           readModelAllHistory: {
             openUnpluggedEpisode: readModelAll.openUnpluggedEpisode,
             currentDeviceConnectionStatus: readModelAll.currentDeviceConnectionStatus,

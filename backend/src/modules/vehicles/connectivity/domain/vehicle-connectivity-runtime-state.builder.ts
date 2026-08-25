@@ -354,6 +354,7 @@ function resolvePhysicalDeviceState(
     latestAcceptedUnplugEventAt: unplugAt,
     latestAcceptedPlugEventAt: explicitPlugAt,
     physicalObdApplicable,
+    snapshotObdIsPluggedIn: input.snapshotPlug.obdIsPluggedIn,
     nowMs,
   });
 
