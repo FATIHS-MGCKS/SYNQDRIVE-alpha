@@ -578,6 +578,165 @@ See `docs/audits/connectivity-long-offline-reference-matrix-2026-08.md`.
 
 **Upgrade to PASS/GO when:** at least one post-cutover webhook completes full lifecycle (inbox → BullMQ → canonical event → episode OPEN → `processed_at` → inbox PROCESSED) and, if applicable, snapshot recovery resolves without plug webhook.
 
+---
+
+## T. FINAL LIVE POST-CUTOVER ACCEPTANCE — KS MX 2024 (2026-08-25)
+
+### A. Production SHA
+
+| Item | Value |
+|------|-------|
+| Backend SHA | `a483ab72` (release `20260825195646_v4994`, includes #1277 P0.4) |
+| Test vehicle | KS MX 2024 (`a60c0749-a7cd-494e-b5b9-dea3c6b97d63`) |
+| DIMO tokenId | `187336` |
+| Active DIMO link | `e2bd6a49-f1fc-4d4f-bd60-e958b15d8142` (`dimoVehicleId` set, `sourceReferenceId` NULL) |
+
+### B. T0
+
+**T0 = `2026-08-25T20:37:17Z`** (agent observation start; operator had already been driving ~1–2 min)
+
+`CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER` configured in production env (value redacted).
+
+### C. Pre-test canonical state
+
+| Layer | State |
+|-------|-------|
+| OPEN episodes | **0** (no ambiguous pre-existing OPEN episode) |
+| Canonical events (KS MX) | **0** historical rows for this vehicle |
+| Inbox (KS MX) | **0** pre-test rows |
+| P0.3 operationalAvailability | `NEEDS_VERIFICATION` |
+| P0.4 health | `PARTIALLY_EVALUABLE` → Eingeschränkt bewertbar |
+| Provider link | ACTIVE DIMO mapping valid |
+
+### D. PRE_UNPLUG_BASELINE_SNAPSHOT
+
+| Field | Value |
+|-------|-------|
+| Snapshot ref | `90802564-0045-4a4a-98f9-6e4ad579322a` |
+| `source_timestamp` | **`2026-08-25T20:39:59Z`** |
+| Newer than T0 | **YES** |
+| Speed | 46 km/h (driving) |
+| **UNPLUG TEST READY** | **YES** (declared 20:40:28Z) |
+
+### E. Real OBD_DEVICE_UNPLUGGED (post-cutover)
+
+**YES** — two natural provider unplug webhooks for token `187336`:
+
+| Inbox ID | `observed_at` | `received_at` | Provider event ref (safe) |
+|----------|---------------|---------------|---------------------------|
+| `38e7951d-58a0-4eb4-9f55-de88a94348f1` | `2026-08-25T20:41:54Z` | `2026-08-25T20:41:58.738Z` | `DIMO:token:187336:type:OBD_DEVICE_UNPLUGGED:bucket:59589683` |
+| `0d4cc578-b377-4de5-84e1-db9eac7b7a4f` | `2026-08-25T20:42:02Z` | `2026-08-25T20:42:06.258Z` | `DIMO:token:187336:type:OBD_DEVICE_UNPLUGGED:bucket:59589684` |
+
+Both `observed_at > T0`. Second aligns with last pre-unplug snapshot timestamp.
+
+### F–H. Inbox / BullMQ / Worker
+
+| Step | Result |
+|------|--------|
+| Inbox created | **YES** (2 rows) |
+| Inbox status | **`RETRYABLE_FAILED`** (both) |
+| `processing_attempts` | **0** (worker never claimed) |
+| `last_error_code` | **`enqueue_failed`** |
+| BullMQ enqueue | **FAIL** |
+| Worker processing | **FAIL** (never reached) |
+| Scheduler retry | Observed natural retries (`next_retry_at` advanced at ~20:53, 20:54, 20:56) — enqueue continued failing |
+
+**Root cause class:** **ENQUEUE_FAILURE** — inbox intake succeeded but `DeviceConnectionWebhookInboxEnqueueService.enqueueOrMarkRetryableFailed()` could not add BullMQ jobs. Same failure class as pre-fix July 28/Aug 8 stuck rows, but now correctly surfaced as `RETRYABLE_FAILED` with `enqueue_failed` (not silent `RECEIVED`).
+
+### I–K. Canonical event / processedAt / Episode OPEN
+
+| Check | Result |
+|-------|--------|
+| Canonical events created | **0** |
+| `processedAt` populated | **NO** |
+| Episode OPEN | **NO** |
+| Duplicate canonical events | **0** (none created) |
+| Duplicate OPEN episodes | **0** |
+
+### L. Unplug window observation
+
+Telemetry snapshots ceased updating at `20:42:02` during unplug window; `provider_fetched_at` continued polling but `source_timestamp` remained stale until `20:53:45` (recovery snapshot candidate). Without processed unplug event, P0.1 `physicalDeviceState` did **not** transition to canonical `UNPLUGGED` via lifecycle pipeline.
+
+### M. RECOVERY_SNAPSHOT
+
+| Field | Value |
+|-------|-------|
+| `source_timestamp` | **`2026-08-25T20:53:45Z`** |
+| Newer than unplug event | **YES** (`20:53:45 > 20:42:02`) |
+| Speed | 14 km/h |
+| Telemetry recovery observations | **0** (no episode to attach) |
+
+### N–O. Physical recovery / Episode RESOLVE
+
+| Check | Result |
+|-------|--------|
+| Physical state via lifecycle pipeline | **NOT PROVEN** (no canonical unplug processed) |
+| Episode auto-RESOLVE | **NOT OBSERVED** (no OPEN episode existed) |
+| PLUGGED webhook observed | **NO** |
+| PLUGGED webhook required | **NO** (by contract) |
+| Manual episode mutation | **NO** |
+
+### P. Authoritative timeline (UTC)
+
+| Marker | Timestamp | Evidence |
+|--------|-----------|----------|
+| T0 | `20:37:17` | Agent start |
+| T1 | `20:39:59` | PRE_UNPLUG_BASELINE_SNAPSHOT (`source_timestamp`) |
+| T2 | `20:41:54` | First `OBD_DEVICE_UNPLUGGED` (`observed_at`) |
+| T3 | `20:41:58.738` | First inbox received |
+| T2b | `20:42:02` | Second unplug + last stale snapshot before gap |
+| T4 | `20:42:06.258` | Second inbox received |
+| T5–T8 | — | **Not reached** (enqueue_failed) |
+| T9 | `20:53:45` | First post-unplug recovery snapshot |
+| T10–T12 | — | **Not reached** (no episode) |
+
+Physical reconnect: inferred between T4 and T9 (not system-recorded).
+
+### Q–U. Post-recovery P0.1/P0.2/P0.3/P0.4
+
+Without lifecycle processing, connectivity projection remained on pre-test characteristics (`REAUTH_REQUIRED` / `NEEDS_VERIFICATION`). P0.4 Health unaffected (no fabricated severity from connectivity). Fresh telemetry resumed at 20:53:45 but lifecycle gate criteria not met.
+
+### V–X. Health checks after test
+
+| Check | Result |
+|-------|--------|
+| Post-cutover stuck inbox (`RECEIVED`, attempts=0) | **0** |
+| Post-cutover stuck inbox (`RETRYABLE_FAILED`, enqueue_failed) | **2** (this test) |
+| Post-cutover `processedAt NULL` events | **0** new (July historical unchanged) |
+| July `5389a9c7…` `processed_at` | **Still NULL** (historical safety PASS) |
+| PM2/API/Redis | **PASS** (Redis PONG; API healthy) |
+
+### Y. Historical safety
+
+**PASS** — July 20 canonical event `5389a9c7-33c3-4f50-ba07-0338da4841d6` still `processed_at = NULL`; no historical replay or mutation.
+
+### Z. Final gate verdict
+
+| Gate | Verdict |
+|------|---------|
+| Fresh snapshot after T0 before unplug | **PASS** |
+| Real post-cutover unplug webhook | **PASS** |
+| Inbox created | **PASS** |
+| BullMQ enqueue | **FAIL** (`enqueue_failed`) |
+| Worker processed | **FAIL** |
+| Canonical event + processedAt | **FAIL** |
+| Episode OPEN | **FAIL** |
+| Recovery snapshot newer than unplug | **PASS** (observed) |
+| Snapshot-based episode RESOLVE | **NOT OBSERVED** |
+| Historical safety | **PASS** |
+| **REAL UNPLUG PROCESSING** | **FAIL** |
+| **SNAPSHOT-BASED RECOVERY** | **NOT YET OBSERVED** |
+| **EPISODE OPEN** | **FAIL** |
+| **EPISODE AUTO-RESOLVE** | **NOT YET OBSERVED** |
+| **PRODUCTION CONNECTIVITY PROCESSING GATE** | **FAIL** |
+| **P0 CONNECTIVITY FOUNDATION** | **NOT PRODUCTION READY** |
+
+**Blocker:** BullMQ job enqueue failure prevents inbox → worker → canonical event → episode lifecycle. Scheduler retries observed but enqueue repeatedly fails. **Do not manually repair during acceptance test.**
+
+**Production mutations:** Natural pipeline only (2 inbox rows from real DIMO webhooks; scheduler retry metadata updates).
+
+**Next step (out of scope for this test):** Investigate/fix BullMQ `connectivity.webhook.process` enqueue failure on Production, then re-run physical acceptance test.
+
 **Pre-deploy verdict (superseded):**
 ```
 PRODUCTION PROCESSING GATE: FAIL (pre-deploy)
