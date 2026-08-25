@@ -56,6 +56,7 @@ const testFiles = [
   'src/operator/bookings/operator-booking-form-localization.test.tsx',
   'src/operator/bookings/operator-booking-cancel-noshow-localization.test.tsx',
   'src/operator/documents/operator-booking-documents-localization.test.tsx',
+  'src/operator/views/operator-more-localization.test.tsx',
 ];
 
 const result = spawnSync('npx', ['vitest', 'run', ...testFiles], {

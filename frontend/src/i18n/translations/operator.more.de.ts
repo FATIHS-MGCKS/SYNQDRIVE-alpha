@@ -1,0 +1,21 @@
+export const operatorMoreDe = {
+  'operator.more.section.actions': 'Aktionen',
+  'operator.more.action.createBooking.subtitle': 'Neue Mietbuchung anlegen',
+  'operator.more.action.aiUpload.title': 'AI Upload',
+  'operator.more.action.aiUpload.subtitle': 'Dokumente am Fahrzeug erfassen',
+  'operator.more.action.tireMeasure.title': 'Reifenprofil messen',
+  'operator.more.action.tireMeasure.subtitle': 'Profiltiefe manuell erfassen',
+  'operator.more.vehiclePicker.title': 'Fahrzeug wählen',
+  'operator.more.vehiclePicker.searchInVehicles': 'In Fahrzeuge suchen →',
+  'operator.more.section.navigation': 'Navigation',
+  'operator.more.nav.scan': 'Fahrzeug suchen / Scan',
+  'operator.more.section.appearance': 'Darstellung',
+  'operator.more.appearance.design': 'Design',
+  'operator.more.theme.system': 'Design: Systemeinstellung',
+  'operator.more.theme.light': 'Design: Hell',
+  'operator.more.theme.dark': 'Design: Dunkel',
+  'operator.more.section.synqdrive': 'SynqDrive',
+  'operator.more.link.webApp': 'Zur Web-App',
+  'operator.more.info.body':
+    'Operator ist für mobile Endgeräte und Tablets optimiert. Status und Aufgaben stammen aus den kanonischen SynqDrive-APIs — keine separaten Berechnungen.',
+} as const;

@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-more-view-p2-2-39-2026-08-25',
+    version: '4.9.966',
+    title: 'Platform i18n — P2.2.39 Operator More View localization',
+    summary: [
+      'Localized Operator More View via `operator-more-i18n.ts` and `operator.more.*` keys.',
+      'P239 enforce-clean exact scope (2 paths) reports 0 findings; +17 EN+DE keys (8578→8596); reuses `operator.bookings.form.createTitle` for create-booking action title.',
+      'Presentation-only — tab ID `more`, sheet callbacks, vehicle labels, theme preference machine values, internal tab navigation, and `/rental` link unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.39 post-P238 pre-flight (PR #1272) selected Operator More View as the next bounded Operator presentation slice.',
+    previousBehavior:
+      'OperatorMoreView used fixed German section titles, action labels, theme copy via `themePreferenceLabel()`, and info paragraph text.',
+    details:
+      'operator/views/OperatorMoreView.tsx; operator/lib/operator-more-i18n.ts; i18n/translations/operator.more.{en,de}.ts; operator-more-localization.test.tsx; P239_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_MORE_VIEW_P2_2_39_2026-08-25.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-25T18:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-booking-documents-panel-p2-2-38-2026-08-25',
     version: '4.9.965',
     title: 'Platform i18n — P2.2.38 Operator Booking Documents Panel localization',

@@ -2,13 +2,30 @@ import { CalendarPlus, ExternalLink, Sparkles, Disc3, Info, Car } from 'lucide-r
 import { Link } from 'react-router-dom';
 import { ThemeToggleButton } from '../../components/ThemeToggleButton';
 import { useAppTheme } from '../../context/AppThemeContext';
-import { themePreferenceLabel } from '../../lib/theme';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { OperatorGlassCard } from '../components/OperatorGlassCard';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useOperatorVehiclesData } from '../hooks/useOperatorVehiclesData';
+import {
+  operatorMoreAiUploadSubtitle,
+  operatorMoreAiUploadTitle,
+  operatorMoreAppearanceDesignLabel,
+  operatorMoreCreateBookingSubtitle,
+  operatorMoreCreateBookingTitle,
+  operatorMoreInfoBody,
+  operatorMoreScanNavLabel,
+  operatorMoreSearchInVehiclesLabel,
+  operatorMoreSectionTitle,
+  operatorMoreThemePreferenceLabel,
+  operatorMoreTireMeasureSubtitle,
+  operatorMoreTireMeasureTitle,
+  operatorMoreVehiclePickerTitle,
+  operatorMoreWebAppLinkLabel,
+} from '../lib/operator-more-i18n';
 import { useState } from 'react';
 
 export function OperatorMoreView() {
+  const { locale } = useLanguage();
   const { openSheet, setActiveTab, setScanQuery } = useOperatorShell();
   const { preference, cycleThemePreference } = useAppTheme();
   const { allVehicles } = useOperatorVehiclesData();
@@ -32,7 +49,9 @@ export function OperatorMoreView() {
   return (
     <div className="space-y-4 pb-4">
       <section>
-        <h2 className="sq-section-label mb-2 px-0.5">Aktionen</h2>
+        <h2 className="sq-section-label mb-2 px-0.5">
+          {operatorMoreSectionTitle(locale, 'actions')}
+        </h2>
         <div className="grid gap-2">
           <OperatorGlassCard
             as="button"
@@ -43,8 +62,12 @@ export function OperatorMoreView() {
               <CalendarPlus className="h-5 w-5" />
             </span>
             <span className="text-left">
-              <span className="block text-sm font-semibold">Buchung aufnehmen</span>
-              <span className="text-xs text-muted-foreground">Neue Mietbuchung anlegen</span>
+              <span className="block text-sm font-semibold">
+                {operatorMoreCreateBookingTitle(locale)}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {operatorMoreCreateBookingSubtitle(locale)}
+              </span>
             </span>
           </OperatorGlassCard>
           <OperatorGlassCard
@@ -56,8 +79,12 @@ export function OperatorMoreView() {
               <Sparkles className="h-5 w-5" />
             </span>
             <span className="text-left">
-              <span className="block text-sm font-semibold">AI Upload</span>
-              <span className="text-xs text-muted-foreground">Dokumente am Fahrzeug erfassen</span>
+              <span className="block text-sm font-semibold">
+                {operatorMoreAiUploadTitle(locale)}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {operatorMoreAiUploadSubtitle(locale)}
+              </span>
             </span>
           </OperatorGlassCard>
           <OperatorGlassCard
@@ -69,8 +96,12 @@ export function OperatorMoreView() {
               <Disc3 className="h-5 w-5" />
             </span>
             <span className="text-left">
-              <span className="block text-sm font-semibold">Reifenprofil messen</span>
-              <span className="text-xs text-muted-foreground">Profiltiefe manuell erfassen</span>
+              <span className="block text-sm font-semibold">
+                {operatorMoreTireMeasureTitle(locale)}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {operatorMoreTireMeasureSubtitle(locale)}
+              </span>
             </span>
           </OperatorGlassCard>
         </div>
@@ -78,7 +109,7 @@ export function OperatorMoreView() {
 
       {pickerOpen && (
         <section className="rounded-2xl border border-border surface-premium p-4">
-          <p className="mb-3 text-sm font-semibold">Fahrzeug wählen</p>
+          <p className="mb-3 text-sm font-semibold">{operatorMoreVehiclePickerTitle(locale)}</p>
           <div className="max-h-48 space-y-2 overflow-y-auto">
             {allVehicles.map((v) => {
               const label = `${v.model} · ${v.license}`;
@@ -111,13 +142,15 @@ export function OperatorMoreView() {
               setActiveTab('vehicles');
             }}
           >
-            In Fahrzeuge suchen →
+            {operatorMoreSearchInVehiclesLabel(locale)}
           </button>
         </section>
       )}
 
       <section>
-        <h2 className="sq-section-label mb-2 px-0.5">Navigation</h2>
+        <h2 className="sq-section-label mb-2 px-0.5">
+          {operatorMoreSectionTitle(locale, 'navigation')}
+        </h2>
         <OperatorGlassCard
           as="button"
           onClick={() => {
@@ -126,38 +159,43 @@ export function OperatorMoreView() {
           }}
           className="flex min-h-[48px] w-full items-center justify-between p-4"
         >
-          <span className="text-sm font-semibold">Fahrzeug suchen / Scan</span>
+          <span className="text-sm font-semibold">{operatorMoreScanNavLabel(locale)}</span>
         </OperatorGlassCard>
       </section>
 
       <section>
-        <h2 className="sq-section-label mb-2 px-0.5">Darstellung</h2>
+        <h2 className="sq-section-label mb-2 px-0.5">
+          {operatorMoreSectionTitle(locale, 'appearance')}
+        </h2>
         <OperatorGlassCard className="flex min-h-[56px] items-center justify-between gap-3 p-4">
           <div>
-            <p className="text-sm font-semibold text-foreground">Design</p>
-            <p className="text-xs text-muted-foreground">{themePreferenceLabel(preference)}</p>
+            <p className="text-sm font-semibold text-foreground">
+              {operatorMoreAppearanceDesignLabel(locale)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {operatorMoreThemePreferenceLabel(locale, preference)}
+            </p>
           </div>
           <ThemeToggleButton preference={preference} onCycle={cycleThemePreference} />
         </OperatorGlassCard>
       </section>
 
       <section>
-        <h2 className="sq-section-label mb-2 px-0.5">SynqDrive</h2>
+        <h2 className="sq-section-label mb-2 px-0.5">
+          {operatorMoreSectionTitle(locale, 'synqdrive')}
+        </h2>
         <Link
           to="/rental"
           className="sq-press flex min-h-[48px] items-center justify-between rounded-2xl border border-border/60 surface-premium p-4"
         >
-          <span className="text-sm font-semibold">Zur Web-App</span>
+          <span className="text-sm font-semibold">{operatorMoreWebAppLinkLabel(locale)}</span>
           <ExternalLink className="h-4 w-4 text-muted-foreground" />
         </Link>
       </section>
 
       <OperatorGlassCard className="flex gap-3 p-4 text-xs text-muted-foreground">
         <Info className="h-4 w-4 shrink-0 mt-0.5" />
-        <p>
-          Operator ist für mobile Endgeräte und Tablets optimiert. Status und Aufgaben stammen aus den
-          kanonischen SynqDrive-APIs — keine separaten Berechnungen.
-        </p>
+        <p>{operatorMoreInfoBody(locale)}</p>
       </OperatorGlassCard>
     </div>
   );
