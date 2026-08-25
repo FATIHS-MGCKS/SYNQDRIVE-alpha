@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'connectivity-hmue-c-215-forensic-2026-08-25',
+    version: '4.9.954',
+    title: 'HMÜ C 215 — historical unplug forensic verification (read-only)',
+    summary: [
+      'Production forensic audit: July 20 canonical unplug + Aug inbox signals; no episode; snapshot recovery +15m.',
+      'P0.1 runtime: PLUGGED_INFERRED, overall UNKNOWN — not DEVICE_UNPLUGGED.',
+      '7d API window hides historical unplug from Vehicle Detail device-connection query.',
+      'Gate remains CONDITIONAL; P0.2 NO-GO.',
+    ],
+    reason: 'Document real historical reference case for P0.1 evidence ordering before P0.2 UI alignment.',
+    previousBehavior: null,
+    details: 'docs/audits/connectivity-hmue-c-215-forensic-verification-2026-08.md',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T08:40:00.000Z',
+  },
+  {
     id: 'connectivity-production-processing-gate-deploy-2026-08-25',
     version: '4.9.953',
     title: 'Connectivity Production Processing Gate — production deploy + live verification',
