@@ -88,25 +88,28 @@ async function main(): Promise<void> {
         const match = orgVehicles.find(
           (v) => v.licensePlate && normalizePlate(v.licensePlate) === normalized,
         );
-        if (!match) {
-          const fuzzy = orgVehicles.filter((v) =>
-            v.licensePlate?.toUpperCase().includes(normalized.replace(/\s/g, '')),
-          );
+        if (match) {
+          resolvedIds.add(match.id);
+          plateToId.set(match.id, match.licensePlate ?? plate);
+          continue;
+        }
+        const compact = normalized.replace(/\s/g, '');
+        const fuzzy = orgVehicles.find((v) => {
+          const candidate = v.licensePlate ? normalizePlate(v.licensePlate).replace(/\s/g, '') : '';
+          return candidate === compact || candidate.includes(compact);
+        });
+        if (fuzzy) {
+          resolvedIds.add(fuzzy.id);
+          plateToId.set(fuzzy.id, fuzzy.licensePlate ?? plate);
+        } else {
           console.error(
             JSON.stringify({
               error: 'vehicle_not_found_by_plate',
               licensePlate: plate,
               normalized,
-              fuzzyCandidates: fuzzy.map((v) => ({
-                id: v.id,
-                licensePlate: v.licensePlate,
-              })),
             }),
           );
-          continue;
         }
-        resolvedIds.add(match.id);
-        plateToId.set(match.id, match.licensePlate ?? plate);
       }
     }
 

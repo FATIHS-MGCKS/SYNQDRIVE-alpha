@@ -194,16 +194,25 @@ P0.2 production shadow (pre-P0.3): HMÜ `UNKNOWN`, WOB both `NEEDS_VERIFICATION`
 
 ### Production Fleet DTO evidence
 
-See §M.1 below (populated after read-only VPS run).
+**Run:** 2026-08-25 VPS read-only via `shadow-fleet-operational-availability-readonly.ts`  
+**Path:** `VehiclesService.getFleetMapData()` → batch P0.2 → `FleetOperationalAvailabilityDto`  
+**Org:** `faa710c9-6d91-4079-a7d5-91fdccdec14a`  
+**Mutations:** NONE
+
+All three targets shared batch `generatedAt`: `2026-08-25T12:14:52.927Z`
+
+| Vehicle | legacy status | operationalState | operationalAvailability.state | primaryReason | DE label |
+|---------|---------------|----------------|------------------------------|---------------|----------|
+| WOB L 7503 (`19fedd4b…`) | Available | AVAILABLE | NEEDS_VERIFICATION | DEVICE_CHECK_REQUIRED | Prüfung erforderlich |
+| WOB L 9755 (`c43c3b45…`) | Available | AVAILABLE | NEEDS_VERIFICATION | DEVICE_CHECK_REQUIRED | Prüfung erforderlich |
+| HMÜ C 215 (`8c850ff1…`) | Available | AVAILABLE | UNKNOWN | TELEMETRY_STANDBY | Status unbekannt |
+
+HMÜ: no `DEVICE_UNPLUGGED` / current-unplug operational UNAVAILABLE; attention `NONE`.
 
 ### Business field preservation
 
-`status`, `operationalState`, `bookingContext` remain additive-only change; `operationalAvailability` is new.
-
-### Production mutations
-
-**NONE**
+`status`, `operationalState.status`, and `bookingContext` unchanged for all three vehicles (all `Available` / `AVAILABLE`, no active/reserved bookings).
 
 ### Final merge verdict
 
-Pending Production Fleet DTO read + CI green on final commit.
+**READY** — common fallback `generatedAt`, technical fallback documented, Production Fleet DTO verified, CI green on `875a70ab`.
