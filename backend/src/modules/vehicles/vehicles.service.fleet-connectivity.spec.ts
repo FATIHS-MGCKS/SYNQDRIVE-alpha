@@ -47,6 +47,7 @@ function makeFleetConnectivityService(
     stub(),
     stub(),
     deviceConnectionQuery,
+    stub(),
     connectivityRuntimeProjection,
     stub(),
     stub(),
