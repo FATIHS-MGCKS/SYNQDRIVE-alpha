@@ -18,9 +18,11 @@ Production contains **two** DIMO-linked vehicles with **≥30 days** telemetry s
 
 Yet fleet desk **Availability** remains `AVAILABLE` for both — a cross-surface inconsistency reserved for P0.3/P0.4.
 
-**HMÜ C 215** is included as the recovered-historical-unplug reference (Case C / recovery proxy).
+**HMÜ C 215** is included as the recovered-historical-unplug reference (Case C / recovery proxy with `obdIsPluggedIn=true`).
 
-**Reference matrix verdict:** **PASS** — three distinct real-world evidence classes documented.
+**WOB L 9755 forensic correction (2026-08-25):** The July 18 snapshot is **proven fresh at observation time** but **does not prove physical reconnect** — `obdIsPluggedIn=false` with concurrent speed telemetry (22 km/h). Evidence class: **COMMUNICATION_RECOVERY_ONLY** / conflicting physical signal — **not** “historical unplug recovered by later snapshot.”
+
+**Reference matrix verdict:** **PASS** — four distinct real-world evidence classes documented (including conflicting plug-flag case).
 
 **P0.2 domain design:** **YES** (reference classes sufficient to design conservative projection).
 
@@ -41,28 +43,44 @@ No additional ≥30d candidates in production at audit time.
 
 ---
 
-## C. Vehicle 1 — WOB L 9755 (Case A: silence, no confirmed unplug)
+## C. Vehicle 1 — WOB L 9755 (Case A: silence, conflicting plug-flag evidence)
 
 ### Identity
 - LTE_R1, DIMO token `190497`, connection status `CONNECTED`
-- Latest snapshot: **2026-07-18T13:42:28Z** (`obdIsPluggedIn=0` at last snapshot)
+- Latest snapshot: **2026-07-18T13:42:28Z** (`obdIsPluggedIn=false` at same timestamp)
 - OBD applicable: **yes**
+
+### Timestamp provenance (forensic)
+| Field | Value | Semantics |
+|-------|-------|-----------|
+| `last_seen_at` | 2026-07-18T13:42:28Z | Provider observation time (canonical snapshot anchor) |
+| `source_timestamp` | 2026-07-18T13:42:28Z | Same as `last_seen_at` |
+| `provider_fetched_at` | 2026-08-25T09:19:49Z | Persistence/re-fetch only — **not** a fresh observation |
+| DIMO `last_signal` | 2026-07-18T13:42:28Z | Aligns with snapshot observation |
+| Raw `obdIsPluggedIn` | `{ value: 0, timestamp: "2026-07-18T13:42:28Z" }` | Explicit false at observation time |
+| Concurrent telemetry | `speed` = 22 km/h at same timestamp | Communication active; plug flag contradicts motion |
 
 ### Device events
 | Source | Type | observedAt | processedAt | Notes |
 |--------|------|----------|-------------|-------|
-| Canonical | `OBD_DEVICE_UNPLUGGED` | 2026-07-11T18:39:45Z | NULL | **Older than last snapshot** — historically recovered |
+| Canonical | `OBD_DEVICE_UNPLUGGED` | 2026-07-11T18:39:45Z | NULL | Pre-snapshot; no OPEN episode |
 | Inbox | — | — | — | **0 rows** |
 
 ### Episodes
 - **0** OPEN / resolved episodes
 
+### Poll / history (Jul 11–20)
+- **0** `dimo_poll_logs` between Jul 11–25; poll activity resumes Jul 26+
+- Single materialized latest-state row; no fresher telemetry after Jul 18
+
 ### Evidence ordering
-1. Canonical unplug **2026-07-11** (pre-snapshot-era, not newer than telemetry)
-2. Last valid snapshot **2026-07-18** (after unplug — recovery proxy)
+1. Canonical unplug **2026-07-11**
+2. Last valid snapshot **2026-07-18** — **communication resumed** but `obdIsPluggedIn=false`
 3. **>30d silence** since 2026-07-18
 
-**Classification:** **Case C variant** — historical unplug recovered by later snapshot, then long silence → `UNKNOWN` + `DEVICE_CHECK_REQUIRED` (not `UNPLUGGED_CONFIRMED`).
+**Evidence class:** **COMMUNICATION_RECOVERY_ONLY** — snapshot proves telemetry at Jul 18, **not** physical reconnect. Distinct from WOB L 7503 (`obdIsPluggedIn=true`) and HMÜ C 215 (fresh plugged snapshot).
+
+**Classification:** Historical unplug + later communication with **negative OBD plug flag** → physical state **indeterminate** → `UNKNOWN` + `DEVICE_CHECK_REQUIRED` after freshness expiry (not `PLUGGED_INFERRED`, not “recovered plugged”).
 
 ### Canonical runtime (P0.1)
 | Field | Value |
@@ -102,9 +120,9 @@ No additional ≥30d candidates in production at audit time.
 - **0** episodes
 
 ### Evidence ordering
-Historical unplug **2026-07-08** → recovery snapshot **2026-07-23** → **>30d silence**.
+Historical unplug **2026-07-08** → recovery snapshot **2026-07-23** with `obdIsPluggedIn=true` → **>30d silence**.
 
-**Classification:** **Case C variant** (same as WOB L 9755).
+**Classification:** **Case C variant** — historical unplug recovered by later snapshot with **positive plug flag**, then long silence → `UNKNOWN` + `DEVICE_CHECK_REQUIRED`.
 
 ### Canonical runtime
 | Field | Value |
@@ -128,11 +146,11 @@ None beyond the two ≥30d vehicles above.
 
 ## F. Canonical Evidence Ordering (summary)
 
-| Vehicle | Latest snapshot | Latest canonical unplug | Unplug newer than snapshot? | Recovery after unplug? |
-|---------|-----------------|-------------------------|----------------------------|------------------------|
-| WOB L 9755 | 2026-07-18 | 2026-07-11 | **No** | Yes (snapshot after unplug) |
-| WOB L 7503 | 2026-07-23 | 2026-07-08 | **No** | Yes |
-| HMÜ C 215 | 2026-08-24 (fresh) | 2026-07-20 | No (superseded) | Yes (trip proxy ≤15m) |
+| Vehicle | Latest snapshot | Latest canonical unplug | Unplug newer than snapshot? | Recovery after unplug? | Plug flag at recovery |
+|---------|-----------------|-------------------------|----------------------------|------------------------|----------------------|
+| WOB L 9755 | 2026-07-18 | 2026-07-11 | **No** | Communication only | **false** (not physical recovery) |
+| WOB L 7503 | 2026-07-23 | 2026-07-08 | **No** | Yes (positive plug flag) | **true** |
+| HMÜ C 215 | 2026-08-24 (fresh) | 2026-07-20 | No (superseded) | Yes (trip proxy ≤15m) | **true** |
 
 ---
 
@@ -177,7 +195,7 @@ No inconsistency within the Connectivity surface itself.
 | Snapshot freshness | Fresh (~12h at prior audit) | **>30d stale** |
 | physicalDeviceState | `PLUGGED_INFERRED` | `UNKNOWN` |
 | overallState | `UNKNOWN` (standby) | `OFFLINE` |
-| Historical unplug | July 20, recovered | July 8/11, recovered then silent |
+| Historical unplug | July 20, recovered (plug=true) | July 8/11 — mixed recovery evidence |
 | Operator label (future) | Standby / inferred plugged | **Device check required** |
 
 HMÜ C 215 audit precision corrections applied in `connectivity-hmue-c-215-forensic-verification-2026-08.md` (recovery proxy wording, SAME_TOKEN_RECOVERY).
@@ -189,7 +207,7 @@ HMÜ C 215 audit precision corrections applied in `connectivity-hmue-c-215-foren
 | Vehicle | Latest snapshot | Age | Latest unplug | Later recovery | Telemetry | Physical | Overall | Attention | Availability UI | Health UI | Connectivity UI | Future operator label |
 |---------|-----------------|-----|---------------|----------------|-----------|----------|---------|-----------|-----------------|-----------|-----------------|----------------------|
 | **HMÜ C 215** | 2026-08-24T20:30:48Z | ~12h | 2026-07-20 | Trip proxy ≤15m | standby | PLUGGED_INFERRED | UNKNOWN | NONE | AVAILABLE | good (inferred) | standby/unknown | Standby / inferred plugged |
-| **WOB L 9755** | 2026-07-18T13:42:28Z | **38d** | 2026-07-11 | Snapshot 2026-07-18 | offline | UNKNOWN | OFFLINE | ACTION_REQUIRED | **AVAILABLE** | unevaluable (inferred) | offline/unknown | **Device check required** |
+| **WOB L 9755** | 2026-07-18T13:42:28Z | **38d** | 2026-07-11 | Comm. only (plug=false) | offline | UNKNOWN | OFFLINE | ACTION_REQUIRED | **AVAILABLE** | unevaluable (inferred) | offline/unknown | **Device check required** |
 | **WOB L 7503** | 2026-07-23T14:43:38Z | **33d** | 2026-07-08 | Snapshot 2026-07-23 | offline | UNKNOWN | OFFLINE | ACTION_REQUIRED | **AVAILABLE** | unevaluable (inferred) | offline/unknown | **Device check required** |
 
 **Counts:**
@@ -198,7 +216,23 @@ HMÜ C 215 audit precision corrections applied in `connectivity-hmue-c-215-foren
 
 ---
 
-## M. P0.2 Requirements
+## M. obdIsPluggedIn Semantics (domain decision)
+
+Repository evidence (`connectivity-signals.ts` → `parseBoolSignal`, DIMO `{ value, timestamp }` shape):
+
+| Flag | Meaning in domain model |
+|------|-------------------------|
+| `true` | Strong positive physical evidence when snapshot is fresh |
+| `null` / absent | Communication evidence only — inferred plugged when fresh |
+| `false` | Negative physical signal — **does not** count as recovery; `UNKNOWN` + `DEVICE_CHECK_REQUIRED` |
+
+**Decision:** OPTION 2 — snapshot communication ≠ physical plug. Implemented in `derivePhysicalDeviceEvidence()` (tests S1–S6).
+
+**WOB L 9755 answer:** A valid snapshot after unplug does **not** always mean positive connected/recovery evidence when `obdIsPluggedIn=false`.
+
+---
+
+## N. P0.2 Requirements
 
 1. Conservative episode authority — do not OPEN from silence alone.
 2. Projection layer must reconcile Availability/Health with canonical connectivity (P0.3/P0.4).
@@ -207,7 +241,7 @@ HMÜ C 215 audit precision corrections applied in `connectivity-hmue-c-215-foren
 
 ---
 
-## N. Final Verdict
+## O. Final Verdict
 
 | Question | Answer |
 |----------|--------|

@@ -15,8 +15,8 @@ import { DeviceConnectionWebhookQueueProducer } from './device-connection-webhoo
 import { DeviceConnectionWebhookInboxSchedulerService } from './device-connection-webhook-inbox-scheduler.service';
 
 /**
- * Minimal genuine Nest module graph for connectivity lifecycle DI regression.
- * Mirrors the DimoModule connectivity/webhook providers required for production boot.
+ * Canonical Nest submodule for connectivity lifecycle webhook processing.
+ * Imported by DimoModule — single provider graph for production and DI regression tests.
  */
 @Module({
   imports: [
@@ -37,9 +37,14 @@ import { DeviceConnectionWebhookInboxSchedulerService } from './device-connectio
   ],
   exports: [
     ConnectivityLifecycleRuntimePolicyService,
+    ConnectivityRecoveryPolicyService,
     DeviceConnectionWebhookService,
+    DeviceConnectionWebhookInboxRepository,
+    DeviceConnectionWebhookInboxEnqueueService,
     DeviceConnectionWebhookProcessingService,
+    DeviceConnectionWebhookQueueProducer,
     DeviceConnectionWebhookInboxSchedulerService,
+    DeviceConnectionEpisodeService,
   ],
 })
 export class DimoConnectivityLifecycleDiModule {}

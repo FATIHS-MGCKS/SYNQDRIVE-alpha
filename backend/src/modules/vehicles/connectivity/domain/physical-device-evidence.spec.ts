@@ -86,4 +86,75 @@ describe('derivePhysicalDeviceEvidence', () => {
     });
     expect(result.physicalDeviceState).toBe(PhysicalDeviceState.NOT_APPLICABLE);
   });
+
+  describe('snapshot obdIsPluggedIn semantics (S1–S6)', () => {
+    it('S1 — fresh snapshot obdIsPluggedIn=true → PLUGGED_INFERRED', () => {
+      const result = derivePhysicalDeviceEvidence({
+        ...base,
+        latestValidSnapshotAt: new Date('2026-08-24T11:55:00.000Z'),
+        snapshotObdIsPluggedIn: true,
+      });
+      expect(result.physicalDeviceState).toBe(PhysicalDeviceState.PLUGGED_INFERRED);
+      expect(result.reasonCodes).toContain(ConnectivityReasonCode.DEVICE_RECONNECTED_SNAPSHOT);
+    });
+
+    it('S2 — fresh snapshot obdIsPluggedIn=null preserves inferred communication semantics', () => {
+      const result = derivePhysicalDeviceEvidence({
+        ...base,
+        latestValidSnapshotAt: new Date('2026-08-24T11:55:00.000Z'),
+        snapshotObdIsPluggedIn: null,
+      });
+      expect(result.physicalDeviceState).toBe(PhysicalDeviceState.PLUGGED_INFERRED);
+      expect(result.reasonCodes).toContain(ConnectivityReasonCode.DEVICE_RECONNECTED_SNAPSHOT);
+    });
+
+    it('S3 — fresh snapshot obdIsPluggedIn=false → UNKNOWN + DEVICE_CHECK_REQUIRED', () => {
+      const result = derivePhysicalDeviceEvidence({
+        ...base,
+        latestValidSnapshotAt: new Date('2026-08-24T11:55:00.000Z'),
+        snapshotObdIsPluggedIn: false,
+      });
+      expect(result.physicalDeviceState).toBe(PhysicalDeviceState.UNKNOWN);
+      expect(result.physicalDeviceState).not.toBe(PhysicalDeviceState.PLUGGED_INFERRED);
+      expect(result.reasonCodes).toContain(ConnectivityReasonCode.DEVICE_CHECK_REQUIRED);
+    });
+
+    it('S4 — older unplug + newer fresh snapshot false does not claim recovered plugged', () => {
+      const result = derivePhysicalDeviceEvidence({
+        ...base,
+        latestAcceptedUnplugEventAt: new Date('2026-07-11T18:39:45.000Z'),
+        latestValidSnapshotAt: new Date('2026-07-18T13:42:28.000Z'),
+        snapshotObdIsPluggedIn: false,
+        nowMs: new Date('2026-07-19T12:00:00.000Z').getTime(),
+      });
+      expect(result.physicalDeviceState).toBe(PhysicalDeviceState.UNKNOWN);
+      expect(result.physicalDeviceState).not.toBe(PhysicalDeviceState.PLUGGED_INFERRED);
+      expect(result.reasonCodes).toContain(ConnectivityReasonCode.DEVICE_CHECK_REQUIRED);
+    });
+
+    it('S5 — older unplug + newer fresh snapshot true → PLUGGED_INFERRED recovery', () => {
+      const result = derivePhysicalDeviceEvidence({
+        ...base,
+        latestAcceptedUnplugEventAt: new Date('2026-07-11T18:39:45.000Z'),
+        latestValidSnapshotAt: new Date('2026-07-18T13:42:28.000Z'),
+        snapshotObdIsPluggedIn: true,
+        nowMs: new Date('2026-07-19T12:00:00.000Z').getTime(),
+      });
+      expect(result.physicalDeviceState).toBe(PhysicalDeviceState.PLUGGED_INFERRED);
+      expect(result.winningEvidence).toBe('snapshot');
+    });
+
+    it('S6 — snapshot false + >48h stale → UNKNOWN + DEVICE_CHECK_REQUIRED', () => {
+      const result = derivePhysicalDeviceEvidence({
+        ...base,
+        latestValidSnapshotAt: new Date('2026-07-18T13:42:28.000Z'),
+        snapshotObdIsPluggedIn: false,
+        nowMs: NOW,
+      });
+      expect(result.telemetryFreshness).toBe('offline');
+      expect(result.physicalDeviceState).toBe(PhysicalDeviceState.UNKNOWN);
+      expect(result.reasonCodes).toContain(ConnectivityReasonCode.DEVICE_CHECK_REQUIRED);
+      expect(result.reasonCodes).toContain(ConnectivityReasonCode.TELEMETRY_OFFLINE);
+    });
+  });
 });

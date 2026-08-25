@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'connectivity-wob-9755-obd-semantics-2026-08-25',
+    version: '4.9.956',
+    title: 'WOB L 9755 forensics — obdIsPluggedIn=false is not physical recovery evidence',
+    summary: [
+      'Production forensics: Jul 18 snapshot fresh at observation (lastSeenAt=sourceTimestamp) but obdIsPluggedIn=false with speed=22 km/h; providerFetchedAt is re-fetch only.',
+      'Domain: derivePhysicalDeviceEvidence respects snapshotObdIsPluggedIn — false → UNKNOWN + DEVICE_CHECK_REQUIRED (tests S1–S6).',
+      'DimoConnectivityLifecycleDiModule is canonical production submodule imported by DimoModule; DI regression uses same graph.',
+      'Reference matrix corrected: WOB L 9755 = COMMUNICATION_RECOVERY_ONLY, not historical unplug recovered.',
+    ],
+    reason: 'Final pre-P0.2 corrective pass — prove snapshot semantics before projection work; eliminate duplicate Nest DI provider graph.',
+    previousBehavior: 'Any fresh snapshot counted as positive_snapshot regardless of obdIsPluggedIn; DimoModule duplicated connectivity lifecycle providers.',
+    details: 'docs/audits/connectivity-long-offline-reference-matrix-2026-08.md §C/M; physical-device-evidence.ts; dimo-connectivity-lifecycle-di.module.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T09:30:00.000Z',
+  },
+  {
     id: 'connectivity-pre-p02-hardening-2026-08-25',
     version: '4.9.955',
     title: 'Connectivity pre-P0.2 hardening — cutover correction, DI regression, long-offline matrix',

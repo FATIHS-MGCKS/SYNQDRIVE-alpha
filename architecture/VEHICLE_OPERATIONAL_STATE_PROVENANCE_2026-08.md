@@ -91,14 +91,16 @@ The Vehicle Detail label **“Status (Webhook)”** is misleading — it display
 
 | Evidence type | Meaning |
 |---------------|---------|
-| Valid telemetry snapshot (`VehicleLatestState.lastSeenAt`) | Positive connected / communicating evidence |
+| Valid telemetry snapshot with `obdIsPluggedIn=true` or absent/null | Positive communication / inferred plugged evidence when fresh |
+| Valid telemetry snapshot with `obdIsPluggedIn=false` | Negative physical signal — communication may exist but **not** physical reconnect |
 | `OBD_DEVICE_UNPLUGGED` event (`observedAt`) | Explicit physical disconnect evidence |
 
 Compare timestamps:
 
 | Case | Result |
 |------|--------|
-| Snapshot newer than unplug (snapshot still fresh) | `PLUGGED_INFERRED` |
+| Snapshot newer than unplug, `obdIsPluggedIn` true/null, snapshot still fresh | `PLUGGED_INFERRED` |
+| Snapshot newer than unplug, `obdIsPluggedIn=false` | `UNKNOWN` + `DEVICE_CHECK_REQUIRED` (communication ≠ physical plug) |
 | Snapshot newer than unplug but snapshot now offline (≥48h) | `UNKNOWN` + `DEVICE_CHECK_REQUIRED` |
 | Explicit plug newer than unplug | `PLUGGED_CONFIRMED` (does not expire with telemetry staleness) |
 | Unplug newer than snapshot/plug | `UNPLUGGED_CONFIRMED` |

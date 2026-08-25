@@ -1,10 +1,6 @@
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import { getQueueToken } from '@nestjs/bullmq';
-import { ConfigModule } from '@nestjs/config';
-import { BullModule } from '@nestjs/bullmq';
 import { Test, type TestingModule } from '@nestjs/testing';
-import deviceConnectionWebhookInboxConfig from '@config/device-connection-webhook-inbox.config';
-import connectivityRecoveryConfig from '@config/connectivity-recovery.config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
@@ -14,10 +10,6 @@ import { ConnectivityLifecycleRuntimePolicyService } from './connectivity/connec
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
 import { DeviceConnectionWebhookInboxSchedulerService } from './device-connection-webhook-inbox-scheduler.service';
 import { DeviceConnectionWebhookProcessingService } from './device-connection-webhook-processing.service';
-import { ConnectivityRecoveryPolicyService } from './connectivity/connectivity-recovery.policy';
-import { DeviceConnectionEpisodeService } from './device-connection-episode.service';
-import { DeviceConnectionWebhookInboxRepository } from './device-connection-webhook-inbox.repository';
-import { DeviceConnectionWebhookInboxEnqueueService } from './device-connection-webhook-inbox-enqueue.service';
 import { DeviceConnectionWebhookQueueProducer } from './device-connection-webhook-queue.producer';
 
 function createPrismaMock(): PrismaService {
@@ -49,26 +41,30 @@ function createQueueMock() {
 }
 
 describe('DimoModule — Nest DI bootstrap regression', () => {
-  describe('DimoModule export/provider metadata (production boot defect guard)', () => {
-    it('registers ConnectivityLifecycleRuntimePolicyService in providers and exports', () => {
+  describe('canonical submodule wiring', () => {
+    it('registers ConnectivityLifecycleRuntimePolicyService in the canonical submodule', () => {
       const providers: unknown[] =
-        Reflect.getMetadata(MODULE_METADATA.PROVIDERS, DimoModule) ?? [];
-      const exports: unknown[] = Reflect.getMetadata(MODULE_METADATA.EXPORTS, DimoModule) ?? [];
+        Reflect.getMetadata(MODULE_METADATA.PROVIDERS, DimoConnectivityLifecycleDiModule) ?? [];
+      const exports: unknown[] =
+        Reflect.getMetadata(MODULE_METADATA.EXPORTS, DimoConnectivityLifecycleDiModule) ?? [];
 
       expect(providers).toContain(ConnectivityLifecycleRuntimePolicyService);
       expect(exports).toContain(ConnectivityLifecycleRuntimePolicyService);
     });
 
-    it('fails metadata review when an export lacks a matching provider', () => {
-      const providers: unknown[] =
+    it('imports the canonical submodule from DimoModule (no duplicate provider list)', () => {
+      const imports: unknown[] = Reflect.getMetadata(MODULE_METADATA.IMPORTS, DimoModule) ?? [];
+      const dimoProviders: unknown[] =
         Reflect.getMetadata(MODULE_METADATA.PROVIDERS, DimoModule) ?? [];
+
+      expect(imports).toContain(DimoConnectivityLifecycleDiModule);
+      expect(dimoProviders).not.toContain(ConnectivityLifecycleRuntimePolicyService);
+      expect(dimoProviders).not.toContain(DeviceConnectionWebhookService);
+    });
+
+    it('re-exports the canonical submodule from DimoModule', () => {
       const exports: unknown[] = Reflect.getMetadata(MODULE_METADATA.EXPORTS, DimoModule) ?? [];
-
-      const exportedWithoutProvider = exports.filter(
-        (token) => typeof token === 'function' && !providers.includes(token),
-      );
-
-      expect(exportedWithoutProvider).not.toContain(ConnectivityLifecycleRuntimePolicyService);
+      expect(exports).toContain(DimoConnectivityLifecycleDiModule);
     });
   });
 
@@ -104,41 +100,39 @@ describe('DimoModule — Nest DI bootstrap regression', () => {
       );
     });
 
-    it('resolves inbox scheduler and processing services for worker/scheduler wiring', () => {
+    it('resolves inbox scheduler, processing service, and queue producer', () => {
       expect(moduleRef.get(DeviceConnectionWebhookInboxSchedulerService)).toBeInstanceOf(
         DeviceConnectionWebhookInboxSchedulerService,
       );
       expect(moduleRef.get(DeviceConnectionWebhookProcessingService)).toBeInstanceOf(
         DeviceConnectionWebhookProcessingService,
       );
+      expect(moduleRef.get(DeviceConnectionWebhookQueueProducer)).toBeInstanceOf(
+        DeviceConnectionWebhookQueueProducer,
+      );
     });
 
-    it('would fail compile if ConnectivityLifecycleRuntimePolicyService were omitted from providers', async () => {
-      const providersWithoutPolicy = [
-        ConnectivityRecoveryPolicyService,
-        DeviceConnectionEpisodeService,
-        DeviceConnectionWebhookService,
-        DeviceConnectionWebhookInboxRepository,
-        DeviceConnectionWebhookInboxEnqueueService,
-        DeviceConnectionWebhookProcessingService,
-        DeviceConnectionWebhookQueueProducer,
-        DeviceConnectionWebhookInboxSchedulerService,
-      ];
+    it('fails compile when ConnectivityLifecycleRuntimePolicyService is omitted from the canonical submodule', async () => {
+      const submoduleProviders: unknown[] =
+        Reflect.getMetadata(MODULE_METADATA.PROVIDERS, DimoConnectivityLifecycleDiModule) ?? [];
+      const providersWithoutPolicy = submoduleProviders.filter(
+        (token) => token !== ConnectivityLifecycleRuntimePolicyService,
+      );
 
       await expect(
         Test.createTestingModule({
-          imports: [
-            PrismaModule,
-            ConfigModule.forFeature(deviceConnectionWebhookInboxConfig),
-            ConfigModule.forFeature(connectivityRecoveryConfig),
-            BullModule.registerQueue({ name: QUEUE_NAMES.CONNECTIVITY_WEBHOOK_PROCESS }),
-          ],
-          providers: providersWithoutPolicy,
+          imports: [PrismaModule, DimoConnectivityLifecycleDiModule],
         })
           .overrideProvider(PrismaService)
           .useValue(createPrismaMock())
           .overrideProvider(getQueueToken(QUEUE_NAMES.CONNECTIVITY_WEBHOOK_PROCESS))
           .useValue(createQueueMock())
+          .overrideModule(DimoConnectivityLifecycleDiModule)
+          .useModule({
+            module: class DimoConnectivityLifecycleDiModuleBroken {},
+            providers: providersWithoutPolicy as never[],
+            exports: providersWithoutPolicy as never[],
+          })
           .compile(),
       ).rejects.toThrow();
     });
