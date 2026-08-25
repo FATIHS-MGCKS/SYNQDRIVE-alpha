@@ -1,0 +1,294 @@
+# Provider Link Authority — Production Population & Creation-Pipeline Audit
+
+| Field | Value |
+|-------|-------|
+| **Audit ID** | `provider-link-authority-production-population-2026-08` |
+| **Mode** | Production read-only |
+| **Production modified** | **No** |
+| **Investigation time (UTC)** | `2026-08-25T14:46Z` |
+| **Related** | `hmue-c215-operational-state-forensic-2026-08.md` |
+
+---
+
+## A. Executive Summary
+
+HMÜ C 215 shows `providerLinkState = UNKNOWN` despite active DIMO consent, org authorization, token, CONNECTED status, and fresh telemetry — **not** because of a per-vehicle data deletion, but because **no DIMO vehicle in Production has ever received a `VehicleDataSourceLink` row**.
+
+The table was introduced for **High Mobility** bindings. DIMO registration (`registerFromDimo`) sets `Vehicle.dimoVehicleId` only and **never creates** `VehicleDataSourceLink`. `ProviderLinkStateBuilder` requires `hasActiveMapping` for `ACTIVE`, so all DIMO-only vehicles fall through to `UNKNOWN`, which outranks `STANDBY` in overall synthesis → P0.2 `operationalAvailability = UNKNOWN`.
+
+**Production population (single org, 6 DIMO vehicles):**
+
+| Metric | Count |
+|--------|-------|
+| DIMO vehicles | 6 |
+| Active DIMO `VehicleDataSourceLink` | **0** |
+| Recent telemetry + missing DIMO link (Group B) | **3 (50%)** |
+| Offline + missing DIMO link (Group D) | **3 (50%)** |
+
+**Verdict:** Architecture gap — **SYSTEMIC for DIMO linkage model**, small absolute fleet. Fix requires **COMBINATION** (pipeline + backfill + optional builder alignment).
+
+---
+
+## B. Provider Link Contract
+
+### Vocabulary (`ProviderLinkState`)
+
+| State | Meaning | Required evidence | Operator meaning |
+|-------|---------|-------------------|------------------|
+| `ACTIVE` | Full configured provider chain | Active mapping + ACTIVE consent + token + ACTIVE authorization | Provider link is configured and authorized |
+| `REAUTH_REQUIRED` | Grant chain broken | Missing/expired consent or authorization, or mapping without token | Re-authorize provider access |
+| `REVOKED` | Explicit revocation | Consent or org authorization revoked | Provider access withdrawn |
+| `NO_LINK` | No provider identity | No mapping, no token, no historical DimoVehicle | Vehicle not linked to any provider |
+| `ERROR` | Integration/tenant error | Cross-tenant mapping or provider ERROR status | Integration misconfiguration |
+| `UNKNOWN` | Identity exists but chain incomplete | Historical identity and/or partial grants without full ACTIVE chain | Provider linkage indeterminate |
+
+**Canonical builder:** `ProviderLinkStateBuilder.build()` — `backend/src/modules/vehicles/connectivity/domain/provider-link-state.builder.ts`
+
+**Evidence assembler:** `assembleProviderLinkEvidence()` — `provider-link-evidence.assembler.ts`
+
+Telemetry recency is **explicitly excluded** from provider link state.
+
+---
+
+## C. VehicleDataSourceLink Authority
+
+### Schema (`vehicle_data_source_links`)
+
+| Field | Role |
+|-------|------|
+| `id` | Binding UUID (also `providerBindingId` on snapshots) |
+| `vehicleId` | FK → Vehicle |
+| `provider` | `DIMO` \| `HIGH_MOBILITY` \| … |
+| `sourceType` / `sourceSubtype` | Provider channel discriminator |
+| `sourceReferenceId` | Provider-side record id |
+| `consentId` | FK to consent that authorized binding |
+| `isActive` | Active flag |
+| `activatedAt` / `deactivatedAt` | Lifecycle |
+| `linkedByUserId` / `lastVerifiedAt` | Provenance |
+
+**Unique constraint:** `(vehicleId, sourceType, sourceSubtype, isActive)` — one active row per type/subtype.
+
+### Classification
+
+| Input | Role |
+|-------|------|
+| `VehicleDataSourceLink` (active) | **HARD_AUTHORITY** for `ProviderLinkState.ACTIVE` (`fullyActive` requires `hasActiveMapping`) |
+| `Vehicle.dimoVehicleId` + `DimoVehicle` | **LEGACY** canonical DIMO mapping (used everywhere except provider-link ACTIVE gate) |
+| `ProviderConsent` | **HARD_AUTHORITY** for consent dimension (permission, not per-vehicle mapping) |
+| `OrgDataAuthorization` | **HARD_AUTHORITY** for org-level DIMO authorization (permission-only; `vehicleIds` JSON optional) |
+| `DimoVehicle.tokenId` | **SUPPORTING_EVIDENCE** for token binding |
+| Latest telemetry | **DIAGNOSTIC_ONLY** (telemetry dimension separate) |
+
+**Answer:** `VehicleDataSourceLink` is intended as **canonical provider binding** per schema comments, but for DIMO it was **never wired into the registration pipeline**. DIMO vehicles use **`Vehicle.dimoVehicleId` as the de-facto mapping**, creating a **dual-authority gap**.
+
+---
+
+## D. Creation Pipeline
+
+### Code paths that CREATE `VehicleDataSourceLink`
+
+| Path | File | Trigger | Provider |
+|------|------|---------|----------|
+| HM Health link | `high-mobility-vehicle-link.service.ts` → `activateHealthLink()` | Admin HM activation | HIGH_MOBILITY |
+| HM Full Telemetry link | `high-mobility-vehicle-link.service.ts` → `linkFullTelemetry()` | Admin HM telemetry link | HIGH_MOBILITY |
+| HM-only registration | `high-mobility-registration.service.ts` | `registerHmOnlyVehicle()` | HIGH_MOBILITY |
+
+**DIMO paths audited (no create found):**
+
+- `VehiclesService.registerFromDimo()` — connects `dimoVehicle` FK only
+- `DimoVehicleSyncService` / snapshot schedulers — sync identity, no link row
+- Device-connection webhooks — episodes/events, no link row
+- Consent flows — grant permission, no link row
+
+**Conclusion:** **No DIMO creation path exists.** New DIMO onboarding **will reproduce** missing links.
+
+---
+
+## E. Deactivation Pipeline
+
+| Path | File | Action |
+|------|------|--------|
+| HM Health deactivate | `high-mobility-vehicle-link.service.ts` → `deactivateHealthLink()` | `isActive: false`, `deactivatedAt` |
+| HM fleet cleanup | `high-mobility-fleet.service.ts` | `deleteMany` on links |
+
+No DIMO-specific deactivation path found (because no DIMO links exist).
+
+---
+
+## F. Reconciliation / Self-Heal
+
+**Self-healing job for missing DIMO `VehicleDataSourceLink`:** **NO**
+
+Existing reconciliation covers **device-connection episodes/events** only (`device-connection-episode-reconciliation`, webhook inbox scheduler). None materialize provider binding rows.
+
+**Architecture gap:** No process detects `dimoVehicleId present + telemetry flowing + missing VehicleDataSourceLink`.
+
+---
+
+## G. HMÜ C 215 History
+
+| Evidence | Value |
+|----------|-------|
+| `dimoVehicleId` | present |
+| `VehicleDataSourceLink` history | **empty (never created)** |
+| Consent | ACTIVE |
+| Org DIMO auth | ACTIVE |
+| Latest telemetry | `2026-08-25T12:46:00Z` (standby) |
+| `obdIsPluggedIn` | true |
+
+**Root-cause history:** **A — never got a link** (not deleted/deactivated). **LEGACY_LINKAGE_NOT_MIGRATED** — DIMO path predates/normalizes via `dimoVehicleId` only.
+
+---
+
+## H. Production Population Matrix
+
+**Scope:** All Production vehicles with `dimoVehicleId != null` (6 vehicles, 1 org).
+
+| Group | Description | Count |
+|-------|-------------|-------|
+| **A** | Recent telemetry + active DIMO link | **0** |
+| **B** | Recent telemetry + NO active DIMO link | **3** |
+| **C** | No recent telemetry + connected/auth + active DIMO link | **0** |
+| **D** | No recent telemetry + connected/auth + NO DIMO link | **3** |
+| **E** | Active DIMO link + no dimoVehicleId | **0** |
+| **F** | Duplicate active DIMO links | **0** |
+| **G** | Inactive link + current telemetry (no active DIMO link) | **0** |
+
+**Total `VehicleDataSourceLink` rows:** 1 (HIGH_MOBILITY only, KS MX 2024).
+
+**Group B vehicles (recent telemetry, no DIMO link):** HMÜ C 215, KS MS 661, KS MX 2024*
+
+\*KS MX 2024 has active **HM** link, not DIMO.
+
+### Representative matrix
+
+| Vehicle | Business | DIMO relation | Consent | Auth | Telemetry | Freshness | DIMO link | Expected providerLink |
+|---------|----------|---------------|---------|------|-----------|-----------|-----------|----------------------|
+| HMÜ C 215 | AVAILABLE | yes | ACTIVE | ACTIVE | 2026-08-25T12:46Z | standby | **0** | UNKNOWN |
+| KS MS 661 | AVAILABLE | yes | inactive | ACTIVE | 2026-08-25T14:07Z | standby | **0** | UNKNOWN/REAUTH |
+| WOB L 7503 | AVAILABLE | yes | ACTIVE | ACTIVE | 2026-07-23 | offline | **0** | UNKNOWN |
+| WOB L 9755 | AVAILABLE | yes | ACTIVE | ACTIVE | 2026-07-18 | offline | **0** | UNKNOWN |
+
+---
+
+## I. Legacy Parallel Linkage
+
+| Mechanism | Status for DIMO |
+|-----------|-----------------|
+| `Vehicle.dimoVehicleId` → `DimoVehicle` | **Active canonical DIMO mapping** (registration, snapshots, webhooks) |
+| `VehicleDataSourceLink` | **Required by P0.1 ACTIVE gate but never populated for DIMO** |
+| `OrgDataAuthorization` | Org permission scope; does not prove vehicle mapping |
+| `ProviderConsent` | Grant ledger; org/vehicle permission, not binding row |
+| `providerBindingId` on snapshot | References link id when set; HMÜ = null |
+
+---
+
+## J. Authorization Relationship
+
+- **OrgDataAuthorization:** permission-only (org can use DIMO integration). Optional `vehicleIds` JSON — not used as mapping source in `ProviderLinkStateBuilder`.
+- **ProviderConsent:** ACTIVE on HMÜ — proves grant, not `VehicleDataSourceLink`.
+- **DimoVehicle relation:** proves which DIMO identity is bound to Vehicle — **functional mapping** ignored by ACTIVE gate.
+
+---
+
+## K. Runtime Inference Assessment
+
+Current case: fresh telemetry + active grants + **no link** → `UNKNOWN`.
+
+**Is UNKNOWN correct?** Per current builder rules: **yes**. Per operator semantics with working DIMO telemetry: **no — too strict**.
+
+**ACTIVE_INFERRED:** Not recommended as a single merged field — risks conflating configuration authority with runtime activity.
+
+**Cleaner architecture:** separate dimensions:
+
+- `configuredProviderLinkState` (mapping + grants)
+- `observedProviderActivityState` (telemetry arriving from known provider identity)
+
+For DIMO, simplest fix: treat `Vehicle.dimoVehicleId` + ACTIVE consent/auth as satisfying `hasActiveMapping` **or** materialize link rows on registration.
+
+**Tenant safety:** DIMO attribution is secure via `Vehicle.dimoVehicleId` FK + org scoping — inference from telemetry alone would **not** be safe without that FK.
+
+---
+
+## L. Observability Gap
+
+No alert found for: **telemetry observed + missing VehicleDataSourceLink**.
+
+Metrics exist for `providerLinkState` distribution (`connectivity-observability.service.ts`) but no missing-mapping detector.
+
+---
+
+## M. Migrations
+
+- `20260408120000_high_mobility_phase1` — **creates** `vehicle_data_source_links` for HM
+- `20260412040000_audit_consent_provenance` — extends links with provider/consent fields
+- **No migration backfills DIMO vehicles into `vehicle_data_source_links`**
+
+**Historical migration for DIMO:** **NO**
+
+---
+
+## N. Root Cause & Severity
+
+**HMÜ primary root cause:** `LEGACY_LINKAGE_NOT_MIGRATED` + `PROVIDER_LINK_BUILDER_TOO_STRICT` (for DIMO dual-authority)
+
+**Systemic severity:** **SYSTEMIC** for DIMO model (100% of 6 DIMO vehicles lack DIMO link rows). Small absolute population (1 org, 6 vehicles).
+
+---
+
+## O. Fix Options & Recommendation
+
+| Option | Assessment |
+|--------|------------|
+| **A — Backfill** | Required for existing 6 DIMO vehicles |
+| **B — Pipeline fix** | **Required** — `registerFromDimo` must create DIMO `VehicleDataSourceLink` |
+| **C — Reconciliation** | Recommended safety net for drift detection |
+| **D — Inference only** | Insufficient alone — masks data gap |
+| **E — Combination** | **RECOMMENDED** |
+
+**Recommended strategy:** **COMBINATION (B + A + C)**
+
+1. Create DIMO link on `registerFromDimo` (permanent pipeline fix)
+2. One-time backfill from `Vehicle.dimoVehicleId` where consent/auth active
+3. Optional reconciliation job: flag `dimoVehicleId + telemetry + no link`
+4. **Do not** weaken ACTIVE gate without mapping authority
+
+`configuredProviderLinkState` split is optional future refinement.
+
+---
+
+## P. Expected State After Correction
+
+### HMÜ C 215 (in-memory builder)
+
+| Field | After valid DIMO link |
+|-------|----------------------|
+| providerLinkState | ACTIVE |
+| telemetryState | standby |
+| physicalDeviceState | PLUGGED_INFERRED |
+| overallState | **STANDBY** |
+| businessState | AVAILABLE |
+| operationalAvailability | **AVAILABLE** |
+
+### WOB L 7503 / WOB L 9755 (regression)
+
+| Field | With provider ACTIVE + offline telemetry |
+|-------|----------------------------------------|
+| providerLinkState | ACTIVE (if link backfilled) |
+| telemetryState | offline |
+| overallState | OFFLINE |
+| operationalAvailability | **NEEDS_VERIFICATION** (telemetry offline gate fires before overallState) |
+
+**Regression safe:** provider-link fix does **not** create false AVAILABLE for long-offline vehicles.
+
+---
+
+## Q. Next Implementation Gate
+
+1. Add DIMO link creation to `registerFromDimo` (+ tests)
+2. Backfill script for existing DIMO vehicles (org-scoped, idempotent)
+3. Verify HMÜ → AVAILABLE operational path in shadow read-only
+4. Re-run WOB regression in shadow
+5. Optional: observability alert for mapping drift
+
+**PR #1277:** HOLD (unchanged)
