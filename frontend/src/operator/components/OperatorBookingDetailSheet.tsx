@@ -14,6 +14,28 @@ import { useOperatorShell } from '../context/OperatorShellContext';
 import { canOperatorMarkNoShow } from '../bookings/operatorBooking.utils';
 import { OperatorBookingDocumentsPanel } from '../documents/OperatorBookingDocumentsPanel';
 import type { OperatorTodayBookingItem } from '../lib/operatorData';
+import {
+  operatorBookingDetailCancelGateReasonLabel,
+  operatorBookingDetailCancelLabel,
+  operatorBookingDetailCloseAria,
+  operatorBookingDetailCustomerLabel,
+  operatorBookingDetailDocumentVerificationTitle,
+  operatorBookingDetailEditGateReasonLabel,
+  operatorBookingDetailEditLabel,
+  operatorBookingDetailEmptyValue,
+  operatorBookingDetailEyebrow,
+  operatorBookingDetailKindLabel,
+  operatorBookingDetailLoadErrorFallback,
+  operatorBookingDetailManageSectionTitle,
+  operatorBookingDetailNoShowGateReasonLabel,
+  operatorBookingDetailNoShowLabel,
+  operatorBookingDetailPickupVerificationAction,
+  operatorBookingDetailStartPickupLabel,
+  operatorBookingDetailStartReturnLabel,
+  operatorBookingDetailStationLabel,
+  operatorBookingDetailTimeLabel,
+  operatorBookingDetailVehicleBlockedTitle,
+} from '../lib/operator-booking-detail-i18n';
 import { OperatorGlassCard } from './OperatorGlassCard';
 
 interface OperatorBookingDetailSheetProps {
@@ -51,7 +73,9 @@ export function OperatorBookingDetailSheet({
         if (!cancelled) setDetail(d);
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Details nicht verfügbar');
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : operatorBookingDetailLoadErrorFallback(locale));
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -92,7 +116,9 @@ export function OperatorBookingDetailSheet({
     >
       <header className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Buchung</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            {operatorBookingDetailEyebrow(locale)}
+          </p>
           <h2 className="truncate text-base font-bold text-foreground">
             {item.vehicleName} · {item.plate}
           </h2>
@@ -101,7 +127,7 @@ export function OperatorBookingDetailSheet({
           type="button"
           onClick={onClose}
           className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
-          aria-label="Schließen"
+          aria-label={operatorBookingDetailCloseAria(locale)}
         >
           <X className="h-4 w-4" />
         </button>
@@ -111,28 +137,37 @@ export function OperatorBookingDetailSheet({
         <OperatorGlassCard className="space-y-3 p-4">
           <div className="flex flex-wrap gap-2">
             <StatusChip tone="info" dot>
-              {bookingStatusLabel(status)}
+              {bookingStatusLabel(status, locale)}
             </StatusChip>
             <StatusChip tone="neutral">
-              {!item.station ? 'Buchung' : item.kind === 'PICKUP' ? 'Abholung' : 'Rückgabe'}
+              {operatorBookingDetailKindLabel(
+                locale,
+                !item.station ? 'BOOKING' : item.kind,
+              )}
             </StatusChip>
           </div>
           <dl className="grid gap-2 text-sm">
             <div>
-              <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Kunde</dt>
+              <dt className="text-[10px] font-semibold uppercase text-muted-foreground">
+                {operatorBookingDetailCustomerLabel(locale)}
+              </dt>
               <dd className="font-medium">{item.customerName}</dd>
             </div>
             <div>
-              <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Station</dt>
+              <dt className="text-[10px] font-semibold uppercase text-muted-foreground">
+                {operatorBookingDetailStationLabel(locale)}
+              </dt>
               <dd>
                 {(detail?.core.pickupStationName ??
                   detail?.core.returnStationName ??
                   item.station) ||
-                  '—'}
+                  operatorBookingDetailEmptyValue(locale)}
               </dd>
             </div>
             <div>
-              <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Zeit</dt>
+              <dt className="text-[10px] font-semibold uppercase text-muted-foreground">
+                {operatorBookingDetailTimeLabel(locale)}
+              </dt>
               <dd>{item.timeLabel}</dd>
             </div>
           </dl>
@@ -147,7 +182,9 @@ export function OperatorBookingDetailSheet({
 
         {detail && detail.health.rentalBlocked && (
           <OperatorGlassCard className="border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] p-4">
-            <p className="text-sm font-semibold text-[color:var(--status-critical)]">Fahrzeug blockiert</p>
+            <p className="text-sm font-semibold text-[color:var(--status-critical)]">
+              {operatorBookingDetailVehicleBlockedTitle(locale)}
+            </p>
             <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
               {detail.health.blockingReasons.map((r) => (
                 <li key={r}>{r}</li>
@@ -179,7 +216,7 @@ export function OperatorBookingDetailSheet({
         {detail && item.kind === 'PICKUP' && (
           <OperatorGlassCard className="p-4 space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Dokumentenprüfung
+              {operatorBookingDetailDocumentVerificationTitle(locale)}
             </p>
             <button
               type="button"
@@ -195,7 +232,9 @@ export function OperatorBookingDetailSheet({
               className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-border/60 px-4 text-left"
             >
               <ClipboardCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="text-sm font-semibold">Prüfung beim Pickup erfassen</span>
+              <span className="text-sm font-semibold">
+                {operatorBookingDetailPickupVerificationAction(locale)}
+              </span>
             </button>
           </OperatorGlassCard>
         )}
@@ -203,40 +242,40 @@ export function OperatorBookingDetailSheet({
         {detail && matrix && (
           <OperatorGlassCard className="space-y-2 p-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Buchung verwalten
+              {operatorBookingDetailManageSectionTitle(locale)}
             </p>
             <button
               type="button"
               disabled={!matrix.edit.allowed}
-              title={matrix.edit.reason}
+              title={operatorBookingDetailEditGateReasonLabel(locale, matrix.edit.reason)}
               onClick={() => openBookingAction('booking-edit')}
               className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-border/60 px-4 text-left disabled:opacity-45"
             >
               <Pencil className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="text-sm font-semibold">Bearbeiten</span>
+              <span className="text-sm font-semibold">{operatorBookingDetailEditLabel(locale)}</span>
             </button>
             <button
               type="button"
               disabled={!matrix.cancel.allowed}
-              title={matrix.cancel.reason}
+              title={operatorBookingDetailCancelGateReasonLabel(locale, matrix.cancel.reason)}
               onClick={() => openBookingAction('booking-cancel')}
               className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-[color:var(--status-critical)]/30 px-4 text-left disabled:opacity-45"
             >
               <Ban className="h-4 w-4 shrink-0 text-[color:var(--status-critical)]" />
               <span className="text-sm font-semibold text-[color:var(--status-critical)]">
-                Buchung stornieren
+                {operatorBookingDetailCancelLabel(locale)}
               </span>
             </button>
             <button
               type="button"
               disabled={!noShowGate.allowed}
-              title={noShowGate.reason}
+              title={operatorBookingDetailNoShowGateReasonLabel(locale, noShowGate.reason)}
               onClick={() => openBookingAction('booking-no-show')}
               className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-[color:var(--status-critical)]/30 px-4 text-left disabled:opacity-45"
             >
               <UserX className="h-4 w-4 shrink-0 text-[color:var(--status-critical)]" />
               <span className="text-sm font-semibold text-[color:var(--status-critical)]">
-                No-Show markieren
+                {operatorBookingDetailNoShowLabel(locale)}
               </span>
             </button>
           </OperatorGlassCard>
@@ -253,7 +292,7 @@ export function OperatorBookingDetailSheet({
             }}
             className="sq-3d-btn sq-3d-btn--primary min-h-[48px] font-semibold disabled:opacity-45"
           >
-            Pickup starten
+            {operatorBookingDetailStartPickupLabel(locale)}
           </button>
           <button
             type="button"
@@ -265,7 +304,7 @@ export function OperatorBookingDetailSheet({
             }}
             className="sq-3d-btn sq-3d-btn--neutral min-h-[48px] font-semibold disabled:opacity-45"
           >
-            Return starten
+            {operatorBookingDetailStartReturnLabel(locale)}
           </button>
         </div>
       </div>

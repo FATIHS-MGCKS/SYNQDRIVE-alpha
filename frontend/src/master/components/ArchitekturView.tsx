@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Booking Detail Sheet (P2.2.40 — V4.9.967)', icon: Globe,
+    endpoint: 'Operator Booking Detail Sheet — fullscreen booking detail presentation slice',
+    service: '**Locale flow:** `useLanguage().locale` → `operator-booking-detail-i18n.ts` adapter (`obds`, section/action/gate helpers); reuses `bookingStatusLabel`, P237 gate helpers, `vehicle.bookings.startPickup`/`startReturn`. **Keys:** +12 EN+DE `operator.bookings.detail.*` (8596→8608). **Machine values:** bookingId, customer/vehicle/station data, status enum, callbacks, P238 documents panel, P237/P236 sheet targets frozen. **Guardrails:** P2.2.40 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-booking-detail-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_OPERATOR_BOOKING_DETAIL_SHEET_P2_2_40_2026-08-25.md' },
   { name: 'Platform i18n Operator More View (P2.2.39 — V4.9.966)', icon: Globe,
     endpoint: 'Operator More View — mobile More tab presentation slice',
     service: '**Locale flow:** `useLanguage().locale` → `operator-more-i18n.ts` adapter (`om`, section/action/theme helpers); reuses `operator.bookings.form.createTitle`. **Keys:** +17 EN+DE `operator.more.*` (8578→8596). **Machine values:** tab ID `more`, sheet types, vehicle `${model} · ${license}` labels, theme preference codes, `setActiveTab`/`openSheet` callbacks, `/rental` link frozen. **Guardrails:** P2.2.39 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-more-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
