@@ -22,7 +22,7 @@ export interface EnsureDimoVehicleDataSourceLinkResult {
   action: DimoVehicleDataSourceLinkAction;
   linkId: string | null;
   reason: string;
-  sourceReferenceId: string;
+  dimoVehicleId: string;
   consentId: string | null;
 }
 
@@ -39,7 +39,7 @@ export interface DimoBackfillVehicleReport {
   dimoVehicleRelationValid: boolean;
   existingActiveDimoLink: boolean;
   existingInactiveDimoLink: boolean;
-  candidateSourceReferenceId: string | null;
+  candidateDimoVehicleId: string | null;
   consentProvenance: DimoConsentProvenance;
   plannedAction: DimoVehicleDataSourceLinkAction;
   reason: string;

@@ -18,6 +18,7 @@ describe('assembleProviderLinkEvidence', () => {
           provider: 'DIMO',
           isActive: true,
           organizationId: 'org-1',
+          dimoVehicleId: 'dimo-1',
         },
       ],
       providerConsents: [
@@ -51,7 +52,7 @@ describe('assembleProviderLinkEvidence', () => {
       dimoVehicleId: 'dimo-1',
       dimoVehicle: { tokenId: 99, connectionStatus: 'CONNECTED' },
       dataSourceLinks: [
-        { id: 'link-1', provider: 'DIMO', isActive: true, organizationId: 'org-1' },
+        { id: 'link-1', provider: 'DIMO', isActive: true, organizationId: 'org-1', dimoVehicleId: 'dimo-1' },
       ],
       providerConsents: [],
       orgAuthorization: null,

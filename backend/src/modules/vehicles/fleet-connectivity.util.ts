@@ -443,6 +443,7 @@ export function buildFleetConnectivityRuntimeForInput(
             sourceSubtype: null,
             isActive: true,
             provider: 'DIMO',
+            dimoVehicleId: 'dimo-linked',
           },
         ]
       : [],

@@ -11,7 +11,8 @@ Materializes canonical `VehicleDataSourceLink` rows for DIMO vehicles. Previousl
 | provider | `DIMO` |
 | sourceType | `DIMO` |
 | sourceSubtype | `null` |
-| sourceReferenceId | Internal `DimoVehicle.id` (= `Vehicle.dimoVehicleId`). **Not** external DIMO vehicle ID — see `metadata.dimoExternalId`. |
+| **dimoVehicleId** | Internal `DimoVehicle.id` (= `Vehicle.dimoVehicleId`). **Not** external DIMO vehicle ID — see `metadata.dimoExternalId`. |
+| **sourceReferenceId** | `null` for DIMO rows (reserved for HM `high_mobility_vehicles.id`) |
 
 Mapping population is separate from grant health — inactive consent still gets a link row; provider state resolves via existing builder.
 
@@ -68,3 +69,16 @@ Deactivate rows by `metadata.runId` + `metadata.provenance in ('backfill','recon
 - Production shadow uses canonical `projectWithConnectivityOverride()` — no synthetic business state
 - REACTIVATE gated by `assessInactiveLinkReactivation()`; backfill/reconciliation never reactivates
 - Test matrix completed: L1–L10, B1–B8, R1–R5, O1–O5
+
+## Schema fix (2026-08-25 provider-specific FK)
+
+Migration `20260825180000_dimo_provider_link_dimo_vehicle_fk`:
+
+| Change | Detail |
+|--------|--------|
+| `dimo_vehicle_id` | Nullable FK → `dimo_vehicles(id)` ON DELETE RESTRICT |
+| `source_reference_id` | Made nullable; HM FK preserved |
+| CHECK constraint | Explicit DIMO / HM canonical / HM legacy branches; rejects unsupported providers |
+| Partial unique index | One active DIMO mapping per `dimo_vehicle_id` |
+
+Application writes `dimoVehicleId` for DIMO; `assembleProviderLinkEvidence` requires `dimoVehicleId` on active DIMO links.

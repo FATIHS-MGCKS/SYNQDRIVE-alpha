@@ -60,6 +60,7 @@ export interface ConnectivityRuntimeVehicleRow {
     sourceSubtype: string | null;
     isActive: boolean;
     provider: string;
+    dimoVehicleId?: string | null;
   }>;
   providerConsents: Array<{
     organizationId: string;
@@ -107,6 +108,7 @@ export function assembleVehicleConnectivityRuntimeBundle(
       id: link.id,
       provider: link.provider,
       isActive: link.isActive,
+      dimoVehicleId: link.dimoVehicleId ?? null,
       organizationId: vehicle.organizationId,
     })),
     providerConsents: vehicle.providerConsents,
@@ -121,8 +123,9 @@ export function assembleVehicleConnectivityRuntimeBundle(
       (episode) => episode.status === DeviceConnectionEpisodeStatus.OPEN,
     ) ?? null;
   const binding =
-    vehicle.dataSourceLinks.find((link) => link.isActive && link.provider === 'DIMO') ??
-    null;
+    vehicle.dataSourceLinks.find(
+      (link) => link.isActive && link.provider === 'DIMO' && link.dimoVehicleId != null,
+    ) ?? null;
   const bindingId = binding?.id ?? vehicle.latestState?.providerBindingId ?? null;
   const currentBinding = buildCanonicalDeviceBinding({
     provider: 'DIMO',

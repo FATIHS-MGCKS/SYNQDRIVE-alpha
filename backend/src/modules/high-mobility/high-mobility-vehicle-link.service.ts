@@ -174,10 +174,12 @@ export class HighMobilityVehicleLinkService {
     });
 
     // Unlink from HM vehicle record
-    await this.prisma.highMobilityVehicle.updateMany({
-      where: { id: link.sourceReferenceId, synqdriveVehicleId },
-      data: { isLinked: false },
-    });
+    if (link.sourceReferenceId) {
+      await this.prisma.highMobilityVehicle.updateMany({
+        where: { id: link.sourceReferenceId, synqdriveVehicleId },
+        data: { isLinked: false },
+      });
+    }
 
     this.logger.log(`HM Health deactivated for SynqDrive vehicle ${synqdriveVehicleId}`);
   }

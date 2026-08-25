@@ -56,7 +56,8 @@ export function buildCanonicalDeviceBinding(input: {
     id: string;
     sourceType: string;
     sourceSubtype: string | null;
-    sourceReferenceId: string;
+    sourceReferenceId: string | null;
+    dimoVehicleId?: string | null;
     activatedAt: Date;
     deactivatedAt: Date | null;
   } | null;

@@ -42,9 +42,9 @@ export class DimoVehicleDataSourceLinkService {
   ) {}
 
   /**
-   * sourceReferenceId authority: Vehicle.dimoVehicleId → DimoVehicle.id (stable UUID).
+   * DIMO mapping identity: internal DimoVehicle.id (stable UUID).
    */
-  static resolveSourceReferenceId(dimoVehicleId: string): string {
+  static resolveDimoVehicleId(dimoVehicleId: string): string {
     return dimoVehicleId;
   }
 
@@ -104,7 +104,7 @@ export class DimoVehicleDataSourceLinkService {
     client: DbClient = this.prisma,
   ): Promise<EnsureDimoVehicleDataSourceLinkResult> {
     const now = input.now ?? new Date();
-    const sourceReferenceId = DimoVehicleDataSourceLinkService.resolveSourceReferenceId(
+    const dimoVehicleId = DimoVehicleDataSourceLinkService.resolveDimoVehicleId(
       input.dimoVehicleId,
     );
 
@@ -132,7 +132,7 @@ export class DimoVehicleDataSourceLinkService {
         action: 'CONFLICT',
         linkId: null,
         reason: 'vehicle_dimo_binding_mismatch',
-        sourceReferenceId,
+        dimoVehicleId,
         consentId: input.consentId ?? null,
       };
     }
@@ -141,7 +141,7 @@ export class DimoVehicleDataSourceLinkService {
       where: {
         provider: DIMO_DATA_SOURCE_PROVIDER,
         sourceType: DIMO_DATA_SOURCE_TYPE,
-        sourceReferenceId,
+        dimoVehicleId,
         isActive: true,
         vehicle: { organizationId: { not: input.organizationId } },
       },
@@ -153,7 +153,7 @@ export class DimoVehicleDataSourceLinkService {
         action: 'CONFLICT',
         linkId: null,
         reason: 'cross_tenant_active_mapping',
-        sourceReferenceId,
+        dimoVehicleId,
         consentId: input.consentId ?? null,
       };
     }
@@ -175,20 +175,20 @@ export class DimoVehicleDataSourceLinkService {
         action: 'CONFLICT',
         linkId: null,
         reason: 'duplicate_active_dimo_links',
-        sourceReferenceId,
+        dimoVehicleId,
         consentId: input.consentId ?? null,
       };
     }
 
     const activeLink = activeLinks[0] ?? null;
     if (activeLink) {
-      if (activeLink.sourceReferenceId !== sourceReferenceId) {
+      if (activeLink.dimoVehicleId !== dimoVehicleId) {
         this.observeBinding('conflict', input.provenance);
         return {
           action: 'CONFLICT',
           linkId: activeLink.id,
-          reason: 'conflicting_active_source_reference',
-          sourceReferenceId,
+          reason: 'conflicting_active_dimo_vehicle',
+          dimoVehicleId,
           consentId: activeLink.consentId,
         };
       }
@@ -202,13 +202,13 @@ export class DimoVehicleDataSourceLinkService {
         action: 'NOOP',
         linkId: activeLink.id,
         reason: 'active_link_already_correct',
-        sourceReferenceId,
+        dimoVehicleId,
         consentId: activeLink.consentId,
       };
     }
 
     const inactiveMatch = links.find(
-      (l) => !l.isActive && l.sourceReferenceId === sourceReferenceId,
+      (l) => !l.isActive && l.dimoVehicleId === dimoVehicleId,
     );
     if (inactiveMatch) {
       const reactivation = assessInactiveLinkReactivation(
@@ -227,7 +227,7 @@ export class DimoVehicleDataSourceLinkService {
             reactivation.reason === 'backfill_reconciliation_never_reactivates'
               ? 'inactive_link_requires_manual_review'
               : reactivation.reason,
-          sourceReferenceId,
+          dimoVehicleId,
           consentId: inactiveMatch.consentId,
         };
       }
@@ -256,21 +256,21 @@ export class DimoVehicleDataSourceLinkService {
         action: 'REACTIVATE',
         linkId: updated.id,
         reason: 'reactivated_inactive_link',
-        sourceReferenceId,
+        dimoVehicleId,
         consentId: updated.consentId,
       };
     }
 
     const inactiveConflict = links.find(
-      (l) => !l.isActive && l.sourceReferenceId !== sourceReferenceId,
+      (l) => !l.isActive && l.dimoVehicleId !== dimoVehicleId,
     );
     if (inactiveConflict) {
       this.observeBinding('conflict', input.provenance);
       return {
         action: 'CONFLICT',
         linkId: inactiveConflict.id,
-        reason: 'inactive_link_source_reference_mismatch',
-        sourceReferenceId,
+        reason: 'inactive_link_dimo_vehicle_mismatch',
+        dimoVehicleId,
         consentId: inactiveConflict.consentId,
       };
     }
@@ -287,7 +287,8 @@ export class DimoVehicleDataSourceLinkService {
         provider: DIMO_DATA_SOURCE_PROVIDER,
         sourceType: DIMO_DATA_SOURCE_TYPE,
         sourceSubtype: DIMO_DATA_SOURCE_SUBTYPE,
-        sourceReferenceId,
+        dimoVehicleId,
+        sourceReferenceId: null,
         consentId,
         isActive: true,
         activatedAt: now,
@@ -305,7 +306,7 @@ export class DimoVehicleDataSourceLinkService {
       action: 'CREATE',
       linkId: created.id,
       reason: 'created_missing_link',
-      sourceReferenceId,
+      dimoVehicleId,
       consentId: created.consentId,
     };
   }
@@ -517,7 +518,7 @@ export class DimoVehicleDataSourceLinkService {
         dimoVehicleRelationValid: false,
         existingActiveDimoLink: false,
         existingInactiveDimoLink: false,
-        candidateSourceReferenceId: null,
+        candidateDimoVehicleId: null,
         consentProvenance: {
           consentId: null,
           consentStatus: 'MISSING',
@@ -535,7 +536,7 @@ export class DimoVehicleDataSourceLinkService {
 
     const activeLinks = vehicle.dataSourceLinks.filter((l) => l.isActive);
     const inactiveLinks = vehicle.dataSourceLinks.filter((l) => !l.isActive);
-    const sourceReferenceId = DimoVehicleDataSourceLinkService.resolveSourceReferenceId(
+    const candidateDimoVehicleId = DimoVehicleDataSourceLinkService.resolveDimoVehicleId(
       vehicle.dimoVehicleId!,
     );
 
@@ -547,7 +548,7 @@ export class DimoVehicleDataSourceLinkService {
         dimoVehicleRelationValid: true,
         existingActiveDimoLink: true,
         existingInactiveDimoLink: inactiveLinks.length > 0,
-        candidateSourceReferenceId: sourceReferenceId,
+        candidateDimoVehicleId,
         consentProvenance,
         plannedAction: 'CONFLICT',
         reason: 'duplicate_active_dimo_links',
@@ -556,7 +557,7 @@ export class DimoVehicleDataSourceLinkService {
 
     const activeLink = activeLinks[0] ?? null;
     if (activeLink) {
-      if (activeLink.sourceReferenceId !== sourceReferenceId) {
+      if (activeLink.dimoVehicleId !== candidateDimoVehicleId) {
         return {
           vehicleId: vehicle.id,
           vehicleRef: vehicle.vehicleRef,
@@ -564,10 +565,10 @@ export class DimoVehicleDataSourceLinkService {
           dimoVehicleRelationValid: true,
           existingActiveDimoLink: true,
           existingInactiveDimoLink: inactiveLinks.length > 0,
-          candidateSourceReferenceId: sourceReferenceId,
+          candidateDimoVehicleId,
           consentProvenance,
           plannedAction: 'CONFLICT',
-          reason: 'conflicting_active_source_reference',
+          reason: 'conflicting_active_dimo_vehicle',
         };
       }
       return {
@@ -577,7 +578,7 @@ export class DimoVehicleDataSourceLinkService {
         dimoVehicleRelationValid: true,
         existingActiveDimoLink: true,
         existingInactiveDimoLink: inactiveLinks.length > 0,
-        candidateSourceReferenceId: sourceReferenceId,
+        candidateDimoVehicleId,
         consentProvenance,
         plannedAction: 'NOOP',
         reason: 'active_link_already_correct',
@@ -585,7 +586,7 @@ export class DimoVehicleDataSourceLinkService {
     }
 
     const inactiveMatch = inactiveLinks.find(
-      (l) => l.sourceReferenceId === sourceReferenceId,
+      (l) => l.dimoVehicleId === candidateDimoVehicleId,
     );
     if (inactiveMatch) {
       return {
@@ -595,14 +596,14 @@ export class DimoVehicleDataSourceLinkService {
         dimoVehicleRelationValid: true,
         existingActiveDimoLink: false,
         existingInactiveDimoLink: true,
-        candidateSourceReferenceId: sourceReferenceId,
+        candidateDimoVehicleId,
         consentProvenance,
         plannedAction: 'CONFLICT',
         reason: 'inactive_link_requires_manual_review',
       };
     }
 
-    if (inactiveLinks.some((l) => l.sourceReferenceId !== sourceReferenceId)) {
+    if (inactiveLinks.some((l) => l.dimoVehicleId !== candidateDimoVehicleId)) {
       return {
         vehicleId: vehicle.id,
         vehicleRef: vehicle.vehicleRef,
@@ -610,10 +611,10 @@ export class DimoVehicleDataSourceLinkService {
         dimoVehicleRelationValid: true,
         existingActiveDimoLink: false,
         existingInactiveDimoLink: true,
-        candidateSourceReferenceId: sourceReferenceId,
+        candidateDimoVehicleId,
         consentProvenance,
         plannedAction: 'CONFLICT',
-        reason: 'inactive_link_source_reference_mismatch',
+        reason: 'inactive_link_dimo_vehicle_mismatch',
       };
     }
 
@@ -624,7 +625,7 @@ export class DimoVehicleDataSourceLinkService {
       dimoVehicleRelationValid: true,
       existingActiveDimoLink: false,
       existingInactiveDimoLink: false,
-      candidateSourceReferenceId: sourceReferenceId,
+      candidateDimoVehicleId,
       consentProvenance,
       plannedAction: 'CREATE',
       reason: 'missing_active_dimo_link',
@@ -652,7 +653,7 @@ export class DimoVehicleDataSourceLinkService {
           },
           select: {
             id: true,
-            sourceReferenceId: true,
+            dimoVehicleId: true,
             isActive: true,
             deactivatedAt: true,
             metadata: true,
@@ -735,7 +736,7 @@ interface BackfillCandidate {
   dimoVehicle: { id: string } | null;
   dataSourceLinks: Array<{
     id: string;
-    sourceReferenceId: string;
+    dimoVehicleId: string | null;
     isActive: boolean;
     deactivatedAt: Date | null;
     metadata: unknown;
