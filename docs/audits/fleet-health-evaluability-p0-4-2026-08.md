@@ -44,7 +44,7 @@ P0.2 `deriveHealthEvaluability()` applies connectivity limiter (downgrade only).
 ## E. Cache semantics
 
 - Rental Health: Redis cache-aside in `RentalHealthSummaryService`
-- Fleet-map: 30s Redis cache on full `FleetMapVehicleDto[]`
+- Fleet-map: **5s** Redis cache on full `FleetMapVehicleDto[]`
 - Stale cached GOOD + `NOT_EVALUABLE` → P0.4 presentation shows **Nicht bewertbar**, not Gut
 - Projection batch failure → `healthEvaluation` UNKNOWN fallback (request-scoped `generatedAt`)
 
@@ -117,9 +117,9 @@ sudo SYNQDRIVE_BACKEND_ENV=/opt/synqdrive/shared/backend.env \
 
 | Vehicle | Legacy | condition | evaluability | pipeline | stale | P0.4 label |
 |---------|--------|-----------|--------------|----------|-------|------------|
-| WOB L 7503 | Good Health | good | NOT_EVALUABLE | *(live)* | true | **Nicht bewertbar** |
-| WOB L 9755 | Good Health | warning | NOT_EVALUABLE | *(live)* | true | **Nicht bewertbar** |
-| HMÜ C 215 | Good Health | unknown | PARTIALLY_EVALUABLE | *(live)* | true | **Eingeschränkt bewertbar** |
+| WOB L 7503 | Good Health | good | NOT_EVALUABLE | ready | true | **Nicht bewertbar** |
+| WOB L 9755 | Good Health | warning | NOT_EVALUABLE | ready | true | **Nicht bewertbar** |
+| HMÜ C 215 | Good Health | unknown | PARTIALLY_EVALUABLE | ready | true | **Eingeschränkt bewertbar** |
 
 All three: `wouldShowEvaluableGood: false`. Legacy would have shown **Gut**.
 
