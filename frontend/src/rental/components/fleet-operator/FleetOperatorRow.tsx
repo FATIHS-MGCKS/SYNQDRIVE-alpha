@@ -64,6 +64,7 @@ export function FleetOperatorRow({
     locale,
     compact: true,
     operationalAvailabilityBadge: true,
+    healthEvaluationBadge: true,
     t,
   });
   const { healthDisplay, statusBadge, bookingSupplement, reasonBadge } = display;
@@ -214,6 +215,7 @@ export function FleetOperatorRow({
             tone={rowHealth.tone}
             icon={<Icon name="heart" className="h-3 w-3" />}
             className="px-1.5 py-0.5 text-[9.5px] font-semibold"
+            title={rowHealth.tooltip ?? undefined}
           >
             {rowHealth.label}
           </StatusChip>

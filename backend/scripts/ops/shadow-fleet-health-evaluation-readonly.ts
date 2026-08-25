@@ -1,0 +1,181 @@
+/**
+ * Read-only P0.4 Fleet Health DTO verification — exercises the actual consumer path:
+ *
+ *   VehiclesService.getFleetMapData()
+ *   → VehicleOperationalProjectionService.getVehicleProjections() (batch)
+ *   → FleetHealthEvaluationDto
+ *
+ * NEVER mutates production data.
+ *
+ * Usage:
+ *   cd backend
+ *   npx ts-node -r tsconfig-paths/register scripts/ops/shadow-fleet-health-evaluation-readonly.ts \
+ *     --organization-id=<uuid> --license-plate="WOB L 7503" --license-plate="WOB L 9755" --license-plate="HMÜ C 215"
+ */
+import * as fs from 'fs';
+import * as path from 'path';
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from '../../src/app.module';
+import { PrismaService } from '../../src/shared/database/prisma.service';
+import { VehiclesService } from '../../src/modules/vehicles/vehicles.service';
+
+{
+  const envPath =
+    process.env.SYNQDRIVE_BACKEND_ENV ??
+    path.resolve(__dirname, '..', '..', '.env');
+  if (fs.existsSync(envPath)) {
+    for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+      if (m && !process.env[m[1]]) {
+        process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1');
+      }
+    }
+  }
+}
+
+function parseArgs(prefix: string): string[] {
+  return process.argv
+    .filter((a) => a.startsWith(`${prefix}=`))
+    .map((a) => a.split('=').slice(1).join('=').trim())
+    .filter(Boolean);
+}
+
+function parseArg(prefix: string): string | undefined {
+  return parseArgs(prefix)[0];
+}
+
+function normalizePlate(value: string): string {
+  return value.replace(/\s+/g, ' ').trim().toUpperCase();
+}
+
+function fleetHealthPresentationLabelDe(
+  evaluation: {
+    condition: string;
+    evaluability: string;
+  } | null | undefined,
+): string {
+  if (!evaluation) return 'Status unbekannt';
+  if (evaluation.evaluability === 'EVALUABLE') {
+    switch (evaluation.condition) {
+      case 'good':
+        return 'Gut';
+      case 'warning':
+        return 'Auffällig';
+      case 'critical':
+        return 'Kritisch';
+      default:
+        return 'Status unbekannt';
+    }
+  }
+  switch (evaluation.evaluability) {
+    case 'PARTIALLY_EVALUABLE':
+      return 'Eingeschränkt bewertbar';
+    case 'NOT_EVALUABLE':
+      return 'Nicht bewertbar';
+    default:
+      return 'Status unbekannt';
+  }
+}
+
+async function main(): Promise<void> {
+  const organizationId =
+    parseArg('--organization-id') ?? process.env.ORG_ID?.trim();
+  const licensePlates = parseArgs('--license-plate');
+  const vehicleIds = parseArgs('--vehicle-id');
+
+  if (!organizationId) {
+    console.error(
+      'Usage: shadow-fleet-health-evaluation-readonly.ts --organization-id=<uuid> (--license-plate=<plate> | --vehicle-id=<uuid>)+',
+    );
+    process.exit(1);
+  }
+
+  if (licensePlates.length === 0 && vehicleIds.length === 0) {
+    console.error('Provide at least one --license-plate or --vehicle-id');
+    process.exit(1);
+  }
+
+  const appModule = await AppModule.forRootAsync();
+  const app = await NestFactory.createApplicationContext(appModule, {
+    logger: ['error', 'warn'],
+  });
+
+  try {
+    const prisma = app.get(PrismaService);
+    const vehiclesService = app.get(VehiclesService);
+
+    const resolvedIds = new Set<string>(vehicleIds);
+    const plateToId = new Map<string, string>();
+
+    if (licensePlates.length > 0) {
+      const orgVehicles = await prisma.vehicle.findMany({
+        where: { organizationId },
+        select: { id: true, licensePlate: true },
+      });
+      for (const plate of licensePlates) {
+        const normalized = normalizePlate(plate);
+        const match = orgVehicles.find(
+          (v) => v.licensePlate && normalizePlate(v.licensePlate) === normalized,
+        );
+        if (match) {
+          resolvedIds.add(match.id);
+          plateToId.set(match.id, match.licensePlate ?? plate);
+          continue;
+        }
+        const compact = normalized.replace(/\s/g, '');
+        const fuzzy = orgVehicles.find((v) => {
+          const candidate = v.licensePlate ? normalizePlate(v.licensePlate).replace(/\s/g, '') : '';
+          return candidate === compact || candidate.includes(compact);
+        });
+        if (fuzzy) {
+          resolvedIds.add(fuzzy.id);
+          plateToId.set(fuzzy.id, fuzzy.licensePlate ?? plate);
+        } else {
+          console.error(
+            JSON.stringify({
+              error: 'vehicle_not_found_by_plate',
+              licensePlate: plate,
+              normalized,
+            }),
+          );
+        }
+      }
+    }
+
+    if (resolvedIds.size === 0) {
+      console.error('No vehicles resolved');
+      process.exit(1);
+    }
+
+    const fleetMap = await vehiclesService.getFleetMapData(organizationId);
+    const targets = fleetMap.filter((row) => resolvedIds.has(row.id));
+
+    const report = {
+      organizationId,
+      path: 'VehiclesService.getFleetMapData',
+      fleetMapVehicleCount: fleetMap.length,
+      targetCount: targets.length,
+      vehicles: targets.map((row) => ({
+        vehicleId: row.id,
+        licensePlate: row.licensePlate ?? plateToId.get(row.id) ?? null,
+        legacyHealthStatus: row.healthStatus,
+        healthEvaluation: row.healthEvaluation ?? null,
+        fleetHealthLabelDe: fleetHealthPresentationLabelDe(row.healthEvaluation),
+        operationalAvailability: row.operationalAvailability?.state ?? null,
+        wouldShowLegacyGut: String(row.healthStatus).toLowerCase().includes('good'),
+        wouldShowEvaluableGood:
+          row.healthEvaluation?.evaluability === 'EVALUABLE' &&
+          row.healthEvaluation?.condition === 'good',
+      })),
+    };
+
+    console.log(JSON.stringify(report, null, 2));
+  } finally {
+    await app.close();
+  }
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

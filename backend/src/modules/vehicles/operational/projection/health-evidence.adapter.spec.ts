@@ -72,4 +72,47 @@ describe('healthEvidenceFromVehicleHealth', () => {
     expect(snapshot.anyModuleDataStale).toBe(true);
     expect(snapshot.generatedAt).toBe('2026-07-01T00:00:00.000Z');
   });
+
+  it('telemetryDependentModulesEvaluated is false only when all telemetry modules are n_a', () => {
+    const modules = baseHealth().modules;
+    for (const key of ['battery', 'tires', 'brakes', 'error_codes', 'vehicle_alerts'] as const) {
+      modules[key] = {
+        state: 'n_a',
+        reason: 'Nicht unterstützt',
+        last_updated_at: '2026-08-25T12:00:00.000Z',
+        data_stale: false,
+      };
+    }
+
+    const snapshot = healthEvidenceFromVehicleHealth(
+      baseHealth({
+        modules,
+        availability: 'ready',
+        overall_state: 'good',
+      }),
+    );
+
+    expect(snapshot.telemetryDependentModulesEvaluated).toBe(false);
+    expect(snapshot.anyModuleDataStale).toBe(false);
+  });
+
+  it('n_a modules do not set anyModuleDataStale even when other modules are stale', () => {
+    const modules = baseHealth().modules;
+    modules.battery = {
+      state: 'n_a',
+      reason: 'Nicht unterstützt',
+      last_updated_at: null,
+      data_stale: true,
+    };
+    modules.tires = {
+      state: 'good',
+      reason: 'ok',
+      last_updated_at: '2026-08-25T12:00:00.000Z',
+      data_stale: false,
+    };
+
+    const snapshot = healthEvidenceFromVehicleHealth(baseHealth({ modules }));
+    expect(snapshot.anyModuleDataStale).toBe(true);
+    expect(snapshot.telemetryDependentModulesEvaluated).toBe(true);
+  });
 });

@@ -11,11 +11,37 @@ import {
   type FleetOperationalAvailability,
 } from './operational-availability/types';
 import {
+  normalizeFleetHealthConditionState,
+  normalizeHealthEvaluabilityState,
+  type FleetHealthEvaluation,
+} from './fleet-health-evaluation/types';
+import {
   normalizeVehicleOperationalStateDto,
   type VehicleBookingContext,
   type VehicleBookingReference,
   type VehicleOperationalState,
 } from './vehicle-operational-state';
+
+function mapHealthEvaluation(
+  raw: FleetMapVehicleResponse['healthEvaluation'],
+): FleetHealthEvaluation | undefined {
+  if (!raw) return undefined;
+  return {
+    condition: normalizeFleetHealthConditionState(raw.condition),
+    evaluability: normalizeHealthEvaluabilityState(raw.evaluability),
+    pipelineAvailability:
+      raw.pipelineAvailability === 'ready' ||
+      raw.pipelineAvailability === 'partial' ||
+      raw.pipelineAvailability === 'unavailable'
+        ? raw.pipelineAvailability
+        : null,
+    generatedAt: raw.generatedAt ?? new Date(0).toISOString(),
+    healthEvidenceAt: raw.healthEvidenceAt ?? null,
+    anyModuleDataStale:
+      typeof raw.anyModuleDataStale === 'boolean' ? raw.anyModuleDataStale : null,
+    source: raw.source ?? 'p0.2_projection',
+  };
+}
 
 function mapOperationalAvailability(
   raw: FleetMapVehicleResponse['operationalAvailability'],
@@ -326,6 +352,7 @@ export function mapFleetMapVehicleResponse(
     lastSeenAt: raw.lastSeenAt ?? null,
     connectivityRuntime: raw.connectivityRuntime,
     operationalAvailability: mapOperationalAvailability(raw.operationalAvailability),
+    healthEvaluation: mapHealthEvaluation(raw.healthEvaluation),
     ...legacyBooking,
     maintenanceReason: raw.maintenanceReason ?? null,
     maintenanceReasonCode: reasonCode,

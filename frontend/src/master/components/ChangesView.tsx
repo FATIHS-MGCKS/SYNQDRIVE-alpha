@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-evaluability-p0-4-2026-08-25',
+    version: '4.9.959',
+    title: 'P0.4 — Fleet Health evaluability consumer migration',
+    summary: [
+      'Fleet-map DTO exposes `healthEvaluation` (condition + P0.2 evaluability) from the same batch projection as P0.3.',
+      'Fleet list Health badge uses `mapFleetHealthPresentation()` — stale/unknown health never shows Gut.',
+      'Legacy `healthStatus` / rental-health fallback preserved for non-Fleet surfaces.',
+      'DE/EN + 8 governed locales; tooltips for partial/not-evaluable/unknown.',
+      'Reference vehicles: long-offline must not show false Gut when evaluability is conservative.',
+    ],
+    reason: 'P0.4 — separate Health condition from Health evaluability on operator Fleet surfaces; consume canonical P0.2 healthEvaluability.',
+    previousBehavior: 'Fleet Health chip showed Gut from legacy healthStatus or stale rental-health overall_state without evaluability gate.',
+    details: 'docs/audits/fleet-health-evaluability-p0-4-2026-08.md; fleet-health-evaluation.dto.ts; fleet-health-evaluation/presentation.ts; FleetOperatorRow',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T13:20:00.000Z',
+  },
+  {
     id: 'fleet-operational-availability-p0-3-2026-08-25',
     version: '4.9.958',
     title: 'P0.3 — Fleet operational availability consumer migration',

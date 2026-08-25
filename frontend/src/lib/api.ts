@@ -9840,6 +9840,18 @@ export interface FleetMapVehicleResponse {
   connectivityRuntime?: VehicleConnectivityRuntimeState;
   /** P0.3 — operator-facing operational availability from P0.2 projection. */
   operationalAvailability?: FleetOperationalAvailabilityResponse;
+  /** P0.4 — Health condition + P0.2 evaluability from projection. */
+  healthEvaluation?: FleetHealthEvaluationResponse;
+}
+
+export interface FleetHealthEvaluationResponse {
+  condition: 'good' | 'warning' | 'critical' | 'unknown';
+  evaluability: 'EVALUABLE' | 'PARTIALLY_EVALUABLE' | 'NOT_EVALUABLE' | 'UNKNOWN';
+  pipelineAvailability: 'ready' | 'partial' | 'unavailable' | null;
+  generatedAt: string;
+  healthEvidenceAt: string | null;
+  anyModuleDataStale: boolean | null;
+  source: string;
 }
 
 export interface FleetOperationalAvailabilityResponse {

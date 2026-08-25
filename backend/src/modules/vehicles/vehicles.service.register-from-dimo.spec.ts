@@ -39,8 +39,8 @@ type LinkRow = {
 };
 
 function createRegisterFromDimoHarness() {
-  let vehicles: VehicleRow[] = [];
-  let links: LinkRow[] = [];
+  const vehicles: VehicleRow[] = [];
+  const links: LinkRow[] = [];
   const dimoVehicles = [
     {
       id: 'dimo-veh-1',

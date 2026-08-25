@@ -1332,6 +1332,19 @@ export const en = {
   'fleet.operationalAvailability.reason.telemetryOffline': 'Telemetry offline',
   'fleet.operationalAvailability.reason.businessWorkflowBlocked': 'Workflow blocked',
   'fleet.operationalAvailability.reason.healthRentalBlocked': 'Health rental blocked',
+  'fleet.healthEvaluation.condition.good': 'Good',
+  'fleet.healthEvaluation.condition.warning': 'Attention needed',
+  'fleet.healthEvaluation.condition.critical': 'Critical',
+  'fleet.healthEvaluation.condition.unknown': 'Status unknown',
+  'fleet.healthEvaluation.partiallyEvaluable': 'Partially evaluable',
+  'fleet.healthEvaluation.notEvaluable': 'Not evaluable',
+  'fleet.healthEvaluation.unknown': 'Status unknown',
+  'fleet.healthEvaluation.tooltip.partiallyEvaluable':
+    'Some vehicle data is not current.',
+  'fleet.healthEvaluation.tooltip.notEvaluable':
+    'Vehicle condition cannot be assessed reliably due to missing current data.',
+  'fleet.healthEvaluation.tooltip.unknown':
+    'The current vehicle condition is not known.',
 
   // ─── Vehicle Detail ───
   'vehicle.overview': 'Overview',
