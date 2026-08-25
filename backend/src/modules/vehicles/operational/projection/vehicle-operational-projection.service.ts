@@ -128,23 +128,15 @@ export class VehicleOperationalProjectionService {
 
     const episodeEvidenceReliable = this.resolveEpisodeEvidenceReliability();
 
-    let connectivityMap: Awaited<
-      ReturnType<VehicleConnectivityRuntimeProjectionService['projectForVehicles']>
-    >;
-    let healthRows: FleetVehicleHealthRow[] = [];
-    let businessContextMap: Awaited<
-      ReturnType<VehiclesService['deriveFleetBusinessContextBatch']>
-    >;
-
-    const [businessResult, connectivityResult] = await Promise.all([
+    const [businessContextMap, connectivityMap] = await Promise.all([
       this.vehiclesService.deriveFleetBusinessContextBatch(
         input.organizationId,
         vehicles as VehicleOperationalProjectionVehicleRow[],
       ),
       this.connectivityProjection.projectForVehicles(input.organizationId, vehicleIds),
     ]);
-    businessContextMap = businessResult;
-    connectivityMap = connectivityResult;
+
+    let healthRows: FleetVehicleHealthRow[] = [];
 
     try {
       healthRows = await this.rentalHealthSummary.getFleetRowsBatch(
