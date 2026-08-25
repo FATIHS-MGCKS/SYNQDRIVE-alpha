@@ -4,9 +4,10 @@
 |-------|-------|
 | **Audit ID** | `connectivity-production-processing-gate-2026-08` |
 | **Baseline main SHA** | `ff03c4b7` (PR #1263 merged) |
-| **Branch** | `cursor/connectivity-production-processing-gate-90ec` (PR #1267) |
-| **Mode** | Production read-only investigation + targeted code repair |
-| **Production modified** | **No** |
+| **Deployed main SHA** | `6acd45cc` (PR #1267) + hotfix `2022e586` (DimoModule provider registration) |
+| **Branch** | `main` (PR #1267 merged 2026-08-25T07:43:15Z) |
+| **Mode** | Production controlled deployment + live verification |
+| **Production modified** | **Yes** — env cutover set; release deployed; no historical row mutations |
 
 ---
 
@@ -30,6 +31,8 @@ Production investigation confirms two distinct runtime defects blocking reliable
 **Corrective pass (PR #1267 follow-up):** prevents automatic historical episode backfill on deploy and closes scheduler silent-stuck enqueue gap.
 
 **Gate verdict (pre-deploy):** **FAIL** — fix not yet deployed; historical rows remain. **P0.2: NO-GO** until post-deploy verification.
+
+**Gate verdict (post-deploy 2026-08-25):** **CONDITIONAL** — infrastructure verified live; lifecycle OPEN/RESOLVE not yet observed on natural post-cutover traffic. **P0.2: NO-GO** until live event observed.
 
 ---
 
@@ -320,24 +323,132 @@ Controlled historical remediation (if ever approved) must evaluate unplug `obser
 
 ## M. Production Verification
 
-### Performed (read-only)
+### Performed (read-only, pre-deploy 2026-08-25T07:47Z)
 - Health check
 - SQL audit (events, inbox, counts)
-- BullMQ queue counts
+- BullMQ queue counts (empty)
 - Deploy path / process start time
 
-### Not performed (requires deploy + approval)
-- Controlled webhook replay
-- Manual vehicle unplug test
-- Post-fix inbox row mutation
+### Production Deployment Verification (2026-08-25)
 
-### Post-deploy verification plan
-1. Set `CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER` to actual rollout instant **before** deploy
-2. Deploy via standard VPS workflow
-3. Verify startup log shows expected cutover
-4. Confirm first scheduler tick does **not** create episodes for July 8/11/20 events or July 28/Aug 8 inbox rows
-5. Confirm new post-cutover webhooks process end-to-end (inbox → job → episode → `processed_at`)
-6. Confirm scheduler enqueue failures produce `RETRYABLE_FAILED` (not silent `RECEIVED`)
+#### A. Merged / deployed SHA
+| Item | Value |
+|------|-------|
+| PR #1267 merge commit | `6acd45cc12dfe3d4de9e99e0eeaade13c4b7f7f5` |
+| PR #1263 (still included) | `ff03c4b7` |
+| Deploy hotfix (boot check) | `2022e586399ef5d08ff44b8bfdd20e866ee34639` — `ConnectivityLifecycleRuntimePolicyService` missing from `DimoModule.providers` blocked first deploy attempt |
+| **Deployed release** | `20260825075756_v4994` |
+| **Running SHA** | `2022e586` |
+
+#### B. Cutover timestamp
+| Item | Value |
+|------|-------|
+| `CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER` | **`2026-08-25T07:48:30.000Z`** |
+| Set via | `/opt/synqdrive/shared/backend.env` (backup: `backend.env.pre-connectivity-gate-*`) |
+| Startup log confirmed | `connectivity.lifecycle_reconciliation_enabled` with `cutover: 2026-08-25T07:48:30.000Z` at `2026-08-25T08:04:17Z` |
+
+#### C. Process / worker verification
+| Check | Result |
+|-------|--------|
+| PM2 `synqdrive` | **online** (PID 433289, restart count 47 after deploy) |
+| Public health | `https://app.synqdrive.eu/api/v1/health` → `ok` |
+| Boot check | Passed on second deploy attempt (first aborted safely — prior release untouched) |
+| `DeviceConnectionWebhookProcessor` | Registered in deployed build (`WorkersModule`) |
+| `DeviceConnectionWebhookInboxSchedulerService` | Active — cron ticks at `:00` and `:30` each minute observed |
+
+#### D. Queue verification
+| Queue | waiting | active | delayed | failed | completed |
+|-------|---------|--------|---------|--------|-----------|
+| `connectivity.webhook.process` | 0 | 0 | 0 | 0 | 0 |
+
+Redis reachable via `REDIS_HOST`/`REDIS_PORT` (no `REDIS_URL` in production env).
+
+#### E. Historical safety verification (post-deploy scheduler ticks)
+Verified at `2026-08-25T08:05Z` and `08:06Z` after deploy:
+
+| Historical row | Pre-deploy | Post-deploy | Episode created? |
+|----------------|------------|-------------|------------------|
+| July 8 event `27c12038…` | `processed_at` NULL, no episode | **unchanged** | **No** |
+| July 11 event `d79dc043…` | `processed_at` NULL, no episode | **unchanged** | **No** |
+| July 20 event `5389a9c7…` | `processed_at` NULL, no episode | **unchanged** | **No** |
+| July 28 inbox `da2601ce…` | RECEIVED, attempts=0 | **unchanged** | **No** |
+| Aug 8 inbox `c19d5eed…` | RECEIVED, attempts=0 | **unchanged** | **No** |
+
+Scheduler emits `connectivity.historical_orphan_backlog` warnings (report-only) — **no automatic materialization**.
+
+**Historical safety: PASS**
+
+#### F. New webhook processing evidence
+| Item | Result |
+|------|--------|
+| Natural post-cutover `OBD_DEVICE_UNPLUGGED` webhooks | **None observed** during observation window (~08:04–08:07 UTC) |
+| Post-cutover inbox rows | **0** |
+| Post-cutover canonical events | **0** |
+| Post-cutover `RECEIVED` + `attempts=0` | **0** |
+
+**Live end-to-end webhook path: UNOBSERVED** — no customer unplug events during window. Manual replay not executed (requires explicit approval per safety rules).
+
+#### G. Snapshot recovery evidence
+| Item | Result |
+|------|--------|
+| Post-cutover OPEN episodes | **0** |
+| Post-cutover RESOLVED episodes | **0** |
+| Natural snapshot-based episode resolution | **Not observed** (no new unplug to recover from) |
+
+Automated tests J/I cover snapshot recovery paths; live production RESOLVE not yet proven.
+
+#### H. Post-cutover inbox health
+| Status | Count |
+|--------|-------|
+| RECEIVED (all) | 2 (both pre-cutover historical) |
+| Post-cutover RECEIVED + attempts=0 | **0** |
+| Oldest RECEIVED row | `2026-07-28T07:56:52Z` (historical) |
+
+#### I. Post-cutover canonical event health
+| Metric | Count |
+|--------|-------|
+| Total `processed_at IS NULL` | 3 (all pre-cutover historical) |
+| Post-cutover `processed_at IS NULL` | **0** |
+| Post-cutover events total | **0** |
+
+#### J. Episode health
+| Metric | Count |
+|--------|-------|
+| OPEN episodes (all) | **0** |
+| Post-cutover OPEN | **0** |
+| Post-cutover RESOLVED | **0** |
+| State conflicts | **0** observed |
+
+#### K. P0.1 domain invariants (live, read-only)
+Not re-audited exhaustively in this window. Pre-deploy P0.1 audit (`vehicle-operational-state-p01-provenance-2026-08.md`) remains authoritative. No Availability/Health mutations performed.
+
+#### L. Unresolved items
+1. **Live webhook OPEN path** — await natural post-cutover `OBD_DEVICE_UNPLUGGED` or approved controlled test
+2. **Live snapshot RESOLVE path** — await recoverable post-cutover unplug + telemetry resume
+3. **Historical July rows** — intentionally untouched; separate controlled remediation if desired
+4. **Pre-cutover stuck inbox** (`da2601ce…`, `c19d5eed…`) — excluded from auto-replay by cutover policy
+
+#### M. Production mutations performed
+| Action | Detail |
+|--------|--------|
+| Env var set | `CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER=2026-08-25T07:48:30.000Z` |
+| VPS deploy | Standard `vps-deploy-release.sh` via `cloud-agent-deploy.sh` |
+| PM2 restart | Yes (with new release) |
+| Historical row mutations | **None** |
+| Manual replay / synthetic webhook | **None** |
+
+### Not performed (requires approval or natural traffic)
+- Controlled webhook replay (`POST .../inbox/:id/replay` — operator-authenticated)
+- Manual vehicle unplug test
+- Historical row remediation
+
+### Post-deploy verification plan (original)
+1. Set `CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER` to actual rollout instant **before** deploy — **DONE**
+2. Deploy via standard VPS workflow — **DONE** (`2022e586`)
+3. Verify startup log shows expected cutover — **DONE**
+4. Confirm first scheduler tick does **not** create episodes for July 8/11/20 events or July 28/Aug 8 inbox rows — **DONE**
+5. Confirm new post-cutover webhooks process end-to-end — **PENDING** (no natural traffic)
+6. Confirm scheduler enqueue failures produce `RETRYABLE_FAILED` — **not triggered** (no failures observed)
 
 **Historical remediation:** deferred — requires explicit controlled approval and snapshot-aware evaluation.
 
@@ -377,21 +488,30 @@ Existing: `ConnectivityObservabilityService` webhook_processing events, Promethe
 | Why July 20 `processed_at` NULL? | Initial lifecycle completion failed (cause unproven); retry dedupe blocked completion |
 | Why no episode? | `syncEpisodeAfterPersistedEvent` never succeeded |
 | Why inbox stuck RECEIVED? | Worker never claimed (`attempts=0`); exact subcause unproven |
-| BullMQ job created? | No jobs in Redis at audit; enqueue/worker gap suspected but unproven |
-| Correct worker running? | Processor in deployed build; consumption unproven for stuck rows |
-| Partial failure retryable? | **Yes after fix** |
-| Dedupe blocks lifecycle? | **Yes pre-fix; fixed** |
-| Unplug → OPEN episode reliable? | **After deploy + verification** |
-| Snapshots resolve without plug webhook? | **Yes** (existing resolution service) |
-| Future failures diagnosable? | Improved logging; metrics follow-up recommended |
-| Production processing healthy now? | **No** — fix not deployed |
+| BullMQ job created? | No jobs in Redis at pre-deploy audit; enqueue/worker gap suspected but unproven |
+| Correct worker running? | **Yes** — deployed `2022e586`, processor registered, queue healthy |
+| Partial failure retryable? | **Yes** (code + cutover configured) |
+| Dedupe blocks lifecycle? | **Fixed** in deployed build |
+| Unplug → OPEN episode reliable? | **Proven in tests; live post-cutover UNOBSERVED** |
+| Snapshots resolve without plug webhook? | **Proven in tests; live post-cutover UNOBSERVED** |
+| Historical rows auto-mutated on deploy? | **No** — verified |
+| Cutover loaded? | **Yes** — `2026-08-25T07:48:30.000Z` |
+| Production processing healthy now? | **Partially** — infrastructure PASS; lifecycle path awaiting natural traffic |
 
+```
+PRODUCTION PROCESSING GATE: CONDITIONAL
+P0.2 READY: NO-GO
+```
+
+**CONDITIONAL because:** deploy + cutover + worker/queue + historical safety verified live, but no natural post-cutover `OBD_DEVICE_UNPLUGGED` → OPEN episode → snapshot RESOLVE chain observed.
+
+**Upgrade to PASS/GO when:** at least one post-cutover webhook completes full lifecycle (inbox → BullMQ → canonical event → episode OPEN → `processed_at` → inbox PROCESSED) and, if applicable, snapshot recovery resolves without plug webhook.
+
+**Pre-deploy verdict (superseded):**
 ```
 PRODUCTION PROCESSING GATE: FAIL (pre-deploy)
 P0.2 READY: NO-GO
 ```
-
-**Re-evaluate to PASS/GO after:** deploy + post-deploy verification steps in §M complete with no new stuck rows.
 
 ---
 

@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'connectivity-production-processing-gate-deploy-2026-08-25',
+    version: '4.9.953',
+    title: 'Connectivity Production Processing Gate — production deploy + live verification',
+    summary: [
+      'Deployed PR #1267 (+ hotfix 2022e586) to production release 20260825075756_v4994.',
+      'Cutover CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER=2026-08-25T07:48:30.000Z set before deploy; startup log confirmed.',
+      'Historical safety PASS: July 8/11/20 events and July 28/Aug 8 inbox untouched after scheduler ticks.',
+      'Worker/queue healthy: PM2 online, BullMQ connectivity.webhook.process empty, no crash loop.',
+      'Gate CONDITIONAL / P0.2 NO-GO: live post-cutover unplug→OPEN→RESOLVE not yet observed on natural traffic.',
+    ],
+    reason: 'Controlled production rollout of connectivity processing gate with evidence-safe verification.',
+    previousBehavior: 'Gate FAIL pre-deploy; historical orphans and stuck inbox rows present.',
+    details: 'docs/audits/connectivity-production-processing-gate-2026-08.md §M Production Deployment Verification',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T08:08:00.000Z',
+  },
+  {
     id: 'connectivity-production-processing-gate-2026-08-25',
     version: '4.9.952',
     title: 'Connectivity Production Processing Gate — webhook inbox / BullMQ / episode lifecycle repair',
