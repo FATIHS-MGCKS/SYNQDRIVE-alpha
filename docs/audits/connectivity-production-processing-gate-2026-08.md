@@ -745,6 +745,113 @@ P0.2 READY: NO-GO
 
 ---
 
+## U. BullMQ Enqueue Root Cause + Controlled Production Recovery (2026-08-25)
+
+### Root cause (proven)
+
+| Item | Evidence |
+|------|----------|
+| **Exact failure** | BullMQ v5 rejects custom `jobId` values containing `:` |
+| **Exact exception** | `Custom Id cannot contain :` |
+| **Causal chain** | HTTP webhook → inbox `RECEIVED` → `DeviceConnectionWebhookQueueProducer.enqueue()` → `queue.add({ jobId: 'connectivity-webhook:{inboxId}' })` → exception → `DeviceConnectionWebhookInboxEnqueueService` marks `RETRYABLE_FAILED` / `enqueue_failed` → worker never reached |
+| **Redis** | Healthy (PONG); not root cause |
+| **Producer/worker drift** | None — same `BullModule.forRootAsync` (`REDIS_HOST=localhost`, `REDIS_PORT=6379`, `REDIS_DB=0`), queue `connectivity.webhook.process`, job name `process` |
+
+**Faulty code (pre-fix):** `device-connection-webhook-queue.producer.ts` `buildJobId()` returned `connectivity-webhook:${inboxId}`.
+
+**Fix:** Replace `:` delimiters with `__` → `connectivity-webhook__${inboxId}` (replay: `connectivity-webhook-replay__${inboxId}__${timestamp}`).
+
+### Deploy
+
+| Field | Value |
+|-------|-------|
+| Production SHA before | `a483ab72` (release `20260825195646_v4994`) |
+| Fix commit | `655f9dbe` |
+| Production SHA after | `655f9dbe` (release `20260825221549_v4994`) |
+| Deploy timestamp (UTC) | `2026-08-25T22:21:40Z` |
+| Affected service | `synqdrive` PM2 (single process: API + workers) |
+| Failed inbox rows before | 2 (`RETRYABLE_FAILED`, `enqueue_failed`, attempts=0) |
+| Failed inbox rows after | 0 |
+
+### Natural retry recovery (KS MX 2024)
+
+**No manual inbox mutation, enqueue, or worker invocation.**
+
+Scheduler discovered `RETRYABLE_FAILED` rows ~50s after deploy:
+
+| Inbox ID | Status after | processedAt | processing_attempts | domainEventId |
+|----------|--------------|-------------|---------------------|---------------|
+| `38e7951d-58a0-4eb4-9f55-de88a94348f1` | `PROCESSED` | `2026-08-25T22:22:30.067Z` | 1 | `b0f4ffc3-5edb-4d50-a879-a1bd51f4c75d` |
+| `0d4cc578-b377-4de5-84e1-db9eac7b7a4f` | `PROCESSED` | `2026-08-25T22:22:30.072Z` | 1 | `ecaaab0d-4b41-424b-9ead-137c15328285` |
+
+**Canonical events:** 2 `OBD_DEVICE_UNPLUGGED` (distinct provider `dedup_bucket` values — two real provider notifications).
+
+**Episode:** 1 OPEN (`b256bb09-86ce-4676-a197-76dd7ea5871b`, `openedAt=2026-08-25T20:41:54Z`, `openedReason=OBD_DEVICE_UNPLUGGED_WEBHOOK`). **No duplicate OPEN episodes.**
+
+### Recovery snapshot / episode RESOLVE
+
+| Check | Result |
+|-------|--------|
+| Post-replug snapshot exists | **YES** (`source_timestamp=2026-08-25T20:53:45Z`, latest `20:56:39Z`) |
+| Telemetry recovery observations | **0** (none created after episode opened at 22:22:30) |
+| Episode RESOLVED | **NO** (still `OPEN` at 22:27:54Z observation) |
+| Architecture contract | Snapshot-based recovery runs **prospectively** via `dimo-snapshot.processor` → `tryResolveFromSustainedTelemetry()`; pre-existing recovery snapshots ingested before episode creation are **not** retroactively replayed through the live pipeline |
+| Manual reconciliation | **Not invoked** (out of scope / prohibited for acceptance) |
+
+**Conclusion:** Unplug → canonical event → OPEN episode is **proven**. Snapshot-based auto-RESOLVE from the already-persisted recovery evidence **cannot be demonstrated** on this delayed test without a second physical cycle or manual historical reconciliation apply.
+
+### KS MX P0.1 / P0.2 / P0.3 / P0.4 (post-recovery processing)
+
+| Layer | State |
+|-------|-------|
+| **P0.1** `providerLinkState` | `UNKNOWN` (consent gap) |
+| **P0.1** `telemetryState` | `standby` |
+| **P0.1** `physicalDeviceState` | `PLUGGED_INFERRED` |
+| **P0.1** `overallState` | `UNKNOWN` (`STATE_CONFLICT` — open episode + reconnection evidence) |
+| **P0.2** `businessState` | `AVAILABLE` |
+| **P0.2** `operationalAvailability` | `NEEDS_VERIFICATION` |
+| **P0.2** `primaryReason` | `CONNECTIVITY_VERIFICATION_REQUIRED` |
+| **P0.3** fleet `operationalAvailability.state` | `NEEDS_VERIFICATION` |
+| **P0.3** `attention` | `ACTION_REQUIRED` |
+| **P0.4** health | `PARTIALLY_EVALUABLE` → **Eingeschränkt bewertbar**; `wouldShowEvaluableGood=false` (no stale Gut regression) |
+
+### Blast radius / safety
+
+| Check | Result |
+|-------|--------|
+| Unexpected canonical event explosion | **NO** (exactly 2 new events for KS MX) |
+| Duplicate OPEN episodes | **NO** (1) |
+| Cross-tenant contamination | **NO** |
+| Historical inbox replay storm | **NO** |
+| July `5389a9c7…` `processed_at` | **Still NULL** |
+| Global `RETRYABLE_FAILED` inbox | **0** |
+| Global OPEN episodes | **1** (KS MX only) |
+
+### Tests (fix validation)
+
+| Suite | Result |
+|-------|--------|
+| `device-connection-webhook-queue.producer.spec.ts` | **PASS** (incl. colon-safe job id test) |
+| `device-connection-webhook-inbox-enqueue.service.spec.ts` | **PASS** |
+| `device-connection-webhook-inbox-scheduler.service.spec.ts` | **PASS** |
+| `device-connection-webhook-processing.service.spec.ts` | **PASS** |
+| `npm run build` | **PASS** |
+| Connectivity regression (`connectivity-consumer-migration.spec.ts`) | 2 pre-existing failures (unrelated `overallState` mapping) |
+
+### Gate verdict (post-fix)
+
+| Gate | Verdict |
+|------|---------|
+| BullMQ enqueue | **PASS** |
+| Worker / canonical event / episode OPEN | **PASS** |
+| Snapshot-based episode RESOLVE | **NOT OBSERVED** |
+| Full end-to-end lifecycle | **INCOMPLETE** |
+| **PRODUCTION CONNECTIVITY PROCESSING GATE** | **CONDITIONAL** |
+| **P0 CONNECTIVITY FOUNDATION** | **NOT PRODUCTION READY** (recovery lifecycle unproven) |
+| **SECOND PHYSICAL TEST REQUIRED** | **YES** |
+
+---
+
 ## Changes / Architektur
 
 - **Changes:** `ChangesView.tsx` — production processing gate entry
