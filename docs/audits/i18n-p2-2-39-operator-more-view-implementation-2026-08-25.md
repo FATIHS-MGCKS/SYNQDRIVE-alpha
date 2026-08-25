@@ -82,7 +82,7 @@ Localized Operator More View presentation in:
 | Metric | Before | After |
 |--------|-------:|------:|
 | P239 scoped findings | 9 | **0** |
-| Operator total | 77 | 68 |
+| Operator total | 77 | 69 |
 | Global enforce-clean | 0 | 0 |
 
 ## Tests
