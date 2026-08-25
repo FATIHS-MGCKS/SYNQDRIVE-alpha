@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-scan-search-ux-p2-2-42-2026-08-25',
+    version: '4.9.969',
+    title: 'Platform i18n — P2.2.42 Operator Scan Search UX localization',
+    summary: [
+      'Localized Operator Scan tab search chrome via `operator-scan-search-i18n.ts` and `operator.scan.*` keys.',
+      'P242 enforce-clean exact scope (2 paths) reports 0 findings; +10 EN+DE keys (8610→8620); reuses `nav.bookings` for bookings section header.',
+      'Presentation-only — scanQuery, search hook, result order/identity, P241 booking cards, callbacks, and dynamic API errors unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.42 post-P241 pre-flight (PR #1289) selected Operator Scan Search UX as the next bounded Operator presentation slice.',
+    previousBehavior:
+      'OperatorScanView used fixed German placeholder, scanner hint, empty/no-results copy, section headers, tablet placeholder, and back CTA without locale threading.',
+    details:
+      'operator/views/OperatorScanView.tsx; operator/lib/operator-scan-search-i18n.ts; i18n/translations/operator.scan.{en,de}.ts; operator-scan-search-localization.test.tsx; P242_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_SCAN_SEARCH_UX_P2_2_42_2026-08-25.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-25T23:30:00.000Z',
+  },
+  {
     id: 'i18n-operator-booking-cards-p2-2-41-2026-08-25',
     version: '4.9.968',
     title: 'Platform i18n — P2.2.41 Operator Today + Scan Booking Cards localization',
