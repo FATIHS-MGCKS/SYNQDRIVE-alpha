@@ -17,12 +17,13 @@ export function healthEvidenceFromVehicleHealth(
   health: VehicleHealth,
 ): HealthEvidenceSnapshot {
   const anyModuleDataStale = RENTAL_HEALTH_MODULE_KEYS.some(
-    (key) => health.modules[key].data_stale,
+    (key) => health.modules[key]?.data_stale === true,
   );
   const telemetryDependentModulesEvaluated = RENTAL_HEALTH_MODULE_KEYS.some(
     (key) =>
       TELEMETRY_DEPENDENT_MODULE_KEYS.has(key) &&
-      health.modules[key].state !== 'n_a',
+      health.modules[key]?.state !== undefined &&
+      health.modules[key]?.state !== 'n_a',
   );
 
   return {

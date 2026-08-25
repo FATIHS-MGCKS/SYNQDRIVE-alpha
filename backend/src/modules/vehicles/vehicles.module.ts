@@ -16,7 +16,9 @@ import { VehicleBookingHandoverDiagnosticService } from './diagnostic/vehicle-bo
 import { VehicleBookingHandoverRepairService } from './diagnostic/vehicle-booking-handover-repair.service';
 import { PlatformAdminModule } from '../platform-admin/platform-admin.module';
 import { VehiclesOperationalService } from './vehicles-operational.service';
+import { RentalHealthModule } from '../rental-health/rental-health.module';
 import { FLEET_STATUS_DERIVATION } from './diagnostic/fleet-status-derivation.port';
+import { VehicleOperationalProjectionService } from './operational/projection/vehicle-operational-projection.service';
 
 @Module({
   imports: [
@@ -28,6 +30,7 @@ import { FLEET_STATUS_DERIVATION } from './diagnostic/fleet-status-derivation.po
     TasksModule,
     forwardRef(() => BillingModule),
     forwardRef(() => PlatformAdminModule),
+    forwardRef(() => RentalHealthModule),
   ],
   controllers: [VehiclesController],
   providers: [
@@ -38,6 +41,7 @@ import { FLEET_STATUS_DERIVATION } from './diagnostic/fleet-status-derivation.po
     VehicleBookingHandoverDiagnosticService,
     VehicleBookingHandoverRepairService,
     VehiclesOperationalService,
+    VehicleOperationalProjectionService,
     {
       provide: FLEET_STATUS_DERIVATION,
       useExisting: VehiclesService,
@@ -51,6 +55,7 @@ import { FLEET_STATUS_DERIVATION } from './diagnostic/fleet-status-derivation.po
     VehicleBookingHandoverDiagnosticService,
     VehicleBookingHandoverRepairService,
     VehiclesOperationalService,
+    VehicleOperationalProjectionService,
   ],
 })
 export class VehiclesModule {}

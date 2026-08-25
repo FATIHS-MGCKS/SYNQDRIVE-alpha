@@ -178,11 +178,22 @@ Target URL: `?view=fleet&fleetTab=connectivity&connectivityVehicleId=<vehicleId>
 
 Requirements: deep-linkable, browser-back safe, org-scoped, invalid vehicleId falls back to list. UI CTA implementation deferred to P0.5.
 
-### P0.2 projection module (design slice)
+### P0.2 projection module (implementation slice — August 2026)
 
-**Authority:** `backend/src/modules/vehicles/operational/projection/vehicle-operational-projection.builder.ts`
+**Application authority:** `backend/src/modules/vehicles/operational/projection/vehicle-operational-projection.service.ts`
 
-Consumes `VehicleConnectivityRuntimeState` without re-deriving connectivity evidence. Exposes `businessState`, `operationalAvailability`, `healthEvaluability`, `attention`, and `operatorSummary`. See `docs/audits/vehicle-operational-projection-p0-2-design-2026-08.md`.
+**Pure builder:** `vehicle-operational-projection.builder.ts`
+
+Consumes `VehicleConnectivityRuntimeState` without re-deriving connectivity evidence. Exposes `businessState`, `operationalAvailability`, `healthEvaluability`, `attention`, and `operatorSummary`. See `docs/audits/vehicle-operational-projection-p0-2-design-2026-08.md` §W.
+
+**Shadow compare (read-only):** `backend/scripts/ops/shadow-vehicle-operational-projection-readonly.ts` — batch `deriveFleetStatusContextBatch` + `VehicleOperationalProjectionService`
+
+## Changes
+
+- Refined `businessStateFromFleetContext` — persisted IN_SERVICE/OUT_OF_SERVICE precede booking-overlay UNKNOWN; connectivity/health cannot affect businessState.
+- Added `deriveFleetStatusContextBatch` for shared legacy/P0.2 business evidence in batch + shadow tool.
+- Corrected shadow script to apples-to-apples batch business context (no `bookingCtx: null` on legacy side).
+- Production read-only shadow verification for HMÜ C 215, WOB L 7503, WOB L 9755.
 
 ---
 
