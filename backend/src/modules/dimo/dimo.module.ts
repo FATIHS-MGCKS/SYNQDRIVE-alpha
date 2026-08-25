@@ -86,6 +86,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionEpisodeReconciliationApplyService,
     ConnectivityObservabilityService,
     ConnectivityRecoveryPolicyService,
+    ConnectivityLifecycleRuntimePolicyService,
     DeviceConnectionEpisodeResolutionService,
     DeviceConnectionEpisodeResolutionOutboxService,
     DeviceConnectionEpisodeResolutionOutboxRepository,
