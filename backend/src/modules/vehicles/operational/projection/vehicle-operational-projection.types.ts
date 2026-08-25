@@ -13,6 +13,10 @@ import type {
   ConnectivityRecommendedAction,
   VehicleConnectivityRuntimeState,
 } from '../../connectivity/domain/connectivity-domain.types';
+import type {
+  HealthState,
+  RentalHealthAvailabilityState,
+} from '../../../rental-health/rental-health.types';
 
 /** Persisted workflow / desk availability (`Vehicle.status` family). */
 export const BusinessOperationalState = {
@@ -45,7 +49,7 @@ export type OperationalAvailabilityState =
 
 /**
  * Whether health assessment can be presented confidently — orthogonal to
- * {@link HealthConditionSnapshot.overallState} severity.
+ * {@link HealthEvidenceSnapshot.conditionState} severity.
  */
 export const HealthEvaluabilityState = {
   EVALUABLE: 'EVALUABLE',
@@ -66,6 +70,8 @@ export type OperatorAttentionLevel = AttentionState;
 export const OperationalProjectionReasonCode = {
   BUSINESS_WORKFLOW_BLOCKED: 'BUSINESS_WORKFLOW_BLOCKED',
   HEALTH_RENTAL_BLOCKED: 'HEALTH_RENTAL_BLOCKED',
+  HEALTH_EVIDENCE_STALE: 'HEALTH_EVIDENCE_STALE',
+  HEALTH_EVIDENCE_UNAVAILABLE: 'HEALTH_EVIDENCE_UNAVAILABLE',
   CONNECTIVITY_CONFIRMED_INTERRUPTION: 'CONNECTIVITY_CONFIRMED_INTERRUPTION',
   CONNECTIVITY_VERIFICATION_REQUIRED: 'CONNECTIVITY_VERIFICATION_REQUIRED',
   INSUFFICIENT_CROSS_DOMAIN_EVIDENCE: 'INSUFFICIENT_CROSS_DOMAIN_EVIDENCE',
@@ -77,14 +83,31 @@ export type OperationalReasonCode =
   | ConnectivityReasonCode
   | OperationalProjectionReasonCode;
 
-/** Minimal health input — evaluability only; does not re-run health modules. */
-export interface HealthConditionSnapshot {
-  overallState: 'good' | 'warning' | 'critical' | 'unknown' | 'n_a';
-  pipelineAvailability: 'ready' | 'partial' | 'unavailable';
+/**
+ * Minimal health-domain input for evaluability — does not re-run health modules.
+ *
+ * Maps from Rental Health V1 `VehicleHealth`:
+ * - `conditionState` ← `overall_state` (severity / condition — not evaluability)
+ * - `pipelineAvailability` ← `availability` (pipeline coverage)
+ * - `generatedAt` ← `generated_at` (last successful health evaluation)
+ * - `anyModuleDataStale` ← any module `data_stale === true`
+ * - `telemetryDependentModulesEvaluated` ← caller indicates battery/tires/DTC/etc. were in scope
+ */
+export interface HealthEvidenceSnapshot {
+  conditionState: HealthState;
+  pipelineAvailability: RentalHealthAvailabilityState;
   rentalBlocked: boolean | null;
   generatedAt: string | null;
   anyModuleDataStale: boolean;
+  /**
+   * When true, offline telemetry may conservatively downgrade evaluability
+   * because evaluated modules depend on live provider signals.
+   */
+  telemetryDependentModulesEvaluated?: boolean;
 }
+
+/** @deprecated Use {@link HealthEvidenceSnapshot} — retained for in-module migration. */
+export type HealthConditionSnapshot = HealthEvidenceSnapshot;
 
 export interface VehicleOperationalEvidence {
   generatedAt: string;

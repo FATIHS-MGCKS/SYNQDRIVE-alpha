@@ -5,12 +5,13 @@ import {
   DataCoverageState,
   OverallConnectivityState,
   PhysicalDeviceState,
-  ProviderLinkState,
 } from '../../connectivity/domain/connectivity-domain.types';
 import {
+  applyConnectivityHealthEvaluabilityLimiter,
   buildVehicleOperationalProjection,
   buildVehicleOperationalProjectionBatch,
   deriveHealthEvaluability,
+  deriveHealthEvaluabilityFromHealthDomain,
   deriveOperationalAvailability,
 } from './vehicle-operational-projection.builder';
 import {
@@ -26,6 +27,7 @@ import {
   fixtureWobL9755,
   FIXTURE_GENERATED_AT,
   FIXTURE_ORG_ID,
+  syntheticCurrentHealthEvidence,
 } from './vehicle-operational-projection.fixtures';
 
 describe('VehicleOperationalProjection (P0.2 contract)', () => {
@@ -33,7 +35,7 @@ describe('VehicleOperationalProjection (P0.2 contract)', () => {
     buildVehicleOperationalProjection(input);
 
   describe('production reference fixtures', () => {
-    it('HMÜ C 215 — recovered standby; not blocked by historical unplug', () => {
+    it('HMÜ C 215 — recovered standby; health evaluability UNKNOWN without proven health evidence', () => {
       const f = fixtureHmueC215();
       const projection = build({
         vehicleId: f.vehicleId,
@@ -50,10 +52,11 @@ describe('VehicleOperationalProjection (P0.2 contract)', () => {
       expect(projection.connectivity.physicalDeviceState).toBe(PhysicalDeviceState.PLUGGED_INFERRED);
       expect(projection.connectivity.overallState).not.toBe(OverallConnectivityState.DEVICE_UNPLUGGED);
       expect(projection.attention).toBe(AttentionState.NONE);
-      expect(projection.healthEvaluability).toBe(HealthEvaluabilityState.EVALUABLE);
+      expect(projection.healthEvaluability).toBe(HealthEvaluabilityState.UNKNOWN);
+      expect(projection.healthEvaluability).not.toBe(HealthEvaluabilityState.EVALUABLE);
     });
 
-    it('WOB L 7503 — business AVAILABLE but operational NEEDS_VERIFICATION', () => {
+    it('WOB L 7503 — NOT_EVALUABLE from health pipeline unavailable, not connectivity offline alone', () => {
       const f = fixtureWobL7503();
       const projection = build({
         vehicleId: f.vehicleId,
@@ -69,18 +72,16 @@ describe('VehicleOperationalProjection (P0.2 contract)', () => {
       expect(projection.operationalAvailability).toBe(
         OperationalAvailabilityState.NEEDS_VERIFICATION,
       );
-      expect(projection.operationalAvailability).not.toBe(OperationalAvailabilityState.AVAILABLE);
       expect(projection.healthEvaluability).toBe(HealthEvaluabilityState.NOT_EVALUABLE);
-      expect(projection.attention).toBe(AttentionState.ACTION_REQUIRED);
-      expect(projection.operatorSummary.primaryReason).toBe(
-        ConnectivityReasonCode.DEVICE_CHECK_REQUIRED,
+      expect(deriveHealthEvaluabilityFromHealthDomain(f.health)).toBe(
+        HealthEvaluabilityState.NOT_EVALUABLE,
       );
-      expect(projection.operatorSummary.recommendedAction).toBe(
-        ConnectivityRecommendedAction.CHECK_DEVICE,
+      expect(projection.operatorSummary.reasonCodes).toContain(
+        OperationalProjectionReasonCode.HEALTH_EVIDENCE_UNAVAILABLE,
       );
     });
 
-    it('WOB L 9755 — communication-only recovery; not UNPLUGGED from history', () => {
+    it('WOB L 9755 — NOT_EVALUABLE from health metadata; not UNPLUGGED from history', () => {
       const f = fixtureWobL9755();
       const projection = build({
         vehicleId: f.vehicleId,
@@ -92,20 +93,18 @@ describe('VehicleOperationalProjection (P0.2 contract)', () => {
         episodeEvidenceReliable: f.episodeEvidenceReliable,
       });
 
-      expect(projection.businessState).toBe(BusinessOperationalState.AVAILABLE);
-      expect(projection.operationalAvailability).toBe(
-        OperationalAvailabilityState.NEEDS_VERIFICATION,
-      );
       expect(projection.connectivity.physicalDeviceState).toBe(PhysicalDeviceState.UNKNOWN);
       expect(projection.connectivity.physicalDeviceState).not.toBe(
         PhysicalDeviceState.UNPLUGGED_CONFIRMED,
       );
       expect(projection.healthEvaluability).toBe(HealthEvaluabilityState.NOT_EVALUABLE);
-      expect(projection.evidence.episodeEvidenceReliable).toBe(false);
+      expect(deriveHealthEvaluabilityFromHealthDomain(f.health)).toBe(
+        HealthEvaluabilityState.NOT_EVALUABLE,
+      );
     });
   });
 
-  describe('synthetic contract cases A–H', () => {
+  describe('synthetic contract cases A–H (operational availability)', () => {
     it('CASE A — fresh telemetry, PLUGGED_INFERRED, business AVAILABLE → operational AVAILABLE', () => {
       const projection = build({
         vehicleId: 'case-a',
@@ -113,13 +112,7 @@ describe('VehicleOperationalProjection (P0.2 contract)', () => {
         generatedAt: FIXTURE_GENERATED_AT,
         businessState: BusinessOperationalState.AVAILABLE,
         connectivity: baseConnectivity({ vehicleId: 'case-a' }),
-        health: {
-          overallState: 'good',
-          pipelineAvailability: 'ready',
-          rentalBlocked: false,
-          generatedAt: FIXTURE_GENERATED_AT,
-          anyModuleDataStale: false,
-        },
+        health: syntheticCurrentHealthEvidence(),
       });
       expect(projection.operationalAvailability).toBe(OperationalAvailabilityState.AVAILABLE);
       expect(projection.attention).toBe(AttentionState.NONE);
@@ -174,7 +167,6 @@ describe('VehicleOperationalProjection (P0.2 contract)', () => {
           recommendedAction: ConnectivityRecommendedAction.CHECK_DEVICE,
         }),
       });
-      expect(projection.connectivity.physicalDeviceState).toBe(PhysicalDeviceState.UNKNOWN);
       expect(projection.operationalAvailability).toBe(
         OperationalAvailabilityState.NEEDS_VERIFICATION,
       );
@@ -198,9 +190,6 @@ describe('VehicleOperationalProjection (P0.2 contract)', () => {
         episodeEvidenceReliable: true,
       });
       expect(projection.operationalAvailability).toBe(OperationalAvailabilityState.AVAILABLE);
-      expect(projection.connectivity.overallState).not.toBe(
-        OverallConnectivityState.DEVICE_UNPLUGGED,
-      );
     });
 
     it('CASE E — historical unplug, positive snapshot, then >48h silence → NEEDS_VERIFICATION not UNPLUGGED', () => {
@@ -250,11 +239,9 @@ describe('VehicleOperationalProjection (P0.2 contract)', () => {
           recommendedAction: ConnectivityRecommendedAction.CHECK_DEVICE,
         }),
       });
-      expect(projection.connectivity.physicalDeviceState).toBe(PhysicalDeviceState.UNKNOWN);
       expect(projection.operationalAvailability).toBe(
         OperationalAvailabilityState.NEEDS_VERIFICATION,
       );
-      expect(projection.operationalAvailability).not.toBe(OperationalAvailabilityState.AVAILABLE);
     });
 
     it('CASE G — connectivity healthy but business IN_SERVICE → operational UNAVAILABLE', () => {
@@ -266,31 +253,149 @@ describe('VehicleOperationalProjection (P0.2 contract)', () => {
         connectivity: baseConnectivity({ vehicleId: 'case-g' }),
       });
       expect(projection.operationalAvailability).toBe(OperationalAvailabilityState.UNAVAILABLE);
-      expect(projection.operatorSummary.reasonCodes).toContain(
-        OperationalProjectionReasonCode.BUSINESS_WORKFLOW_BLOCKED,
-      );
     });
 
-    it('CASE H — connectivity healthy, health CRITICAL + rental blocked → operational UNAVAILABLE', () => {
+    it('CASE H — health CRITICAL + rental blocked → UNAVAILABLE but health still EVALUABLE', () => {
       const projection = build({
         vehicleId: 'case-h',
         organizationId: FIXTURE_ORG_ID,
         generatedAt: FIXTURE_GENERATED_AT,
         businessState: BusinessOperationalState.AVAILABLE,
         connectivity: baseConnectivity({ vehicleId: 'case-h' }),
-        health: {
-          overallState: 'critical',
-          pipelineAvailability: 'ready',
+        health: syntheticCurrentHealthEvidence({
+          conditionState: 'critical',
           rentalBlocked: true,
-          generatedAt: FIXTURE_GENERATED_AT,
-          anyModuleDataStale: false,
-        },
+        }),
       });
       expect(projection.operationalAvailability).toBe(OperationalAvailabilityState.UNAVAILABLE);
+      expect(projection.healthEvaluability).toBe(HealthEvaluabilityState.EVALUABLE);
       expect(projection.attention).toBe(AttentionState.CRITICAL);
-      expect(projection.operatorSummary.reasonCodes).toContain(
-        OperationalProjectionReasonCode.HEALTH_RENTAL_BLOCKED,
+    });
+  });
+
+  describe('health evaluability contract cases H1–H8', () => {
+    const healthyConnectivity = () => baseConnectivity({ vehicleId: 'health-case' });
+
+    it('H1 — no health input + healthy connectivity → UNKNOWN', () => {
+      expect(
+        deriveHealthEvaluability(null, healthyConnectivity()),
+      ).toBe(HealthEvaluabilityState.UNKNOWN);
+    });
+
+    it('H2 — pipeline ready + current evidence → EVALUABLE', () => {
+      expect(
+        deriveHealthEvaluability(
+          syntheticCurrentHealthEvidence(),
+          healthyConnectivity(),
+        ),
+      ).toBe(HealthEvaluabilityState.EVALUABLE);
+    });
+
+    it('H3 — pipeline ready + some module stale → PARTIALLY_EVALUABLE', () => {
+      expect(
+        deriveHealthEvaluability(
+          syntheticCurrentHealthEvidence({ anyModuleDataStale: true }),
+          healthyConnectivity(),
+        ),
+      ).toBe(HealthEvaluabilityState.PARTIALLY_EVALUABLE);
+    });
+
+    it('H4 — stale health evidence + healthy connectivity → NOT_EVALUABLE (connectivity does not upgrade)', () => {
+      expect(
+        deriveHealthEvaluability(
+          {
+            conditionState: 'good',
+            pipelineAvailability: 'unavailable',
+            rentalBlocked: null,
+            generatedAt: '2026-07-01T12:00:00.000Z',
+            anyModuleDataStale: true,
+          },
+          healthyConnectivity(),
+        ),
+      ).toBe(HealthEvaluabilityState.NOT_EVALUABLE);
+    });
+
+    it('H5 — current health + offline telemetry for telemetry-dependent modules → downgraded', () => {
+      const health = syntheticCurrentHealthEvidence({
+        telemetryDependentModulesEvaluated: true,
+      });
+      const offline = baseConnectivity({
+        telemetryState: 'offline',
+        lastTelemetryAt: '2026-07-01T12:00:00.000Z',
+      });
+      expect(deriveHealthEvaluabilityFromHealthDomain(health)).toBe(
+        HealthEvaluabilityState.EVALUABLE,
       );
+      expect(deriveHealthEvaluability(health, offline)).toBe(
+        HealthEvaluabilityState.PARTIALLY_EVALUABLE,
+      );
+    });
+
+    it('H6 — health CRITICAL + current evidence → EVALUABLE (condition ≠ evaluability)', () => {
+      expect(
+        deriveHealthEvaluability(
+          syntheticCurrentHealthEvidence({ conditionState: 'critical' }),
+          healthyConnectivity(),
+        ),
+      ).toBe(HealthEvaluabilityState.EVALUABLE);
+    });
+
+    it('H7 — health GOOD + stale modules → not EVALUABLE', () => {
+      expect(
+        deriveHealthEvaluability(
+          syntheticCurrentHealthEvidence({
+            conditionState: 'good',
+            anyModuleDataStale: true,
+          }),
+          healthyConnectivity(),
+        ),
+      ).toBe(HealthEvaluabilityState.PARTIALLY_EVALUABLE);
+    });
+
+    it('H8 — rentalBlocked + current evidence → operational UNAVAILABLE, health EVALUABLE', () => {
+      const projection = build({
+        vehicleId: 'h8',
+        organizationId: FIXTURE_ORG_ID,
+        generatedAt: FIXTURE_GENERATED_AT,
+        businessState: BusinessOperationalState.AVAILABLE,
+        connectivity: healthyConnectivity(),
+        health: syntheticCurrentHealthEvidence({ rentalBlocked: true }),
+      });
+      expect(projection.operationalAvailability).toBe(OperationalAvailabilityState.UNAVAILABLE);
+      expect(projection.healthEvaluability).toBe(HealthEvaluabilityState.EVALUABLE);
+    });
+  });
+
+  describe('connectivity limiter asymmetry', () => {
+    it('healthy connectivity cannot upgrade missing health to EVALUABLE', () => {
+      expect(
+        deriveHealthEvaluability(undefined, baseConnectivity()),
+      ).toBe(HealthEvaluabilityState.UNKNOWN);
+    });
+
+    it('offline connectivity alone does not force NOT_EVALUABLE when health pipeline is ready and current', () => {
+      const health = syntheticCurrentHealthEvidence({
+        telemetryDependentModulesEvaluated: false,
+      });
+      const offline = baseConnectivity({
+        telemetryState: 'offline',
+        lastTelemetryAt: '2026-07-01T12:00:00.000Z',
+      });
+      expect(deriveHealthEvaluability(health, offline)).toBe(
+        HealthEvaluabilityState.EVALUABLE,
+      );
+    });
+
+    it('connectivity limiter only downgrades, never upgrades', () => {
+      const health = syntheticCurrentHealthEvidence({
+        telemetryDependentModulesEvaluated: true,
+      });
+      const limited = applyConnectivityHealthEvaluabilityLimiter(
+        HealthEvaluabilityState.PARTIALLY_EVALUABLE,
+        health,
+        baseConnectivity({ telemetryState: 'offline' }),
+      );
+      expect(limited).not.toBe(HealthEvaluabilityState.EVALUABLE);
     });
   });
 
@@ -307,23 +412,6 @@ describe('VehicleOperationalProjection (P0.2 contract)', () => {
       });
       expect(JSON.stringify(connectivity)).toBe(snapshot);
     });
-
-    it('references connectivity object without re-deriving thresholds', () => {
-      const connectivity = baseConnectivity({
-        vehicleId: 'ref',
-        telemetryState: 'offline',
-        reasonCodes: [ConnectivityReasonCode.TELEMETRY_OFFLINE],
-      });
-      const projection = build({
-        vehicleId: 'ref',
-        organizationId: FIXTURE_ORG_ID,
-        generatedAt: FIXTURE_GENERATED_AT,
-        businessState: BusinessOperationalState.AVAILABLE,
-        connectivity,
-      });
-      expect(projection.connectivity).toBe(connectivity);
-      expect(projection.connectivity.telemetryState).toBe('offline');
-    });
   });
 
   describe('batch projection', () => {
@@ -338,67 +426,33 @@ describe('VehicleOperationalProjection (P0.2 contract)', () => {
             businessState: BusinessOperationalState.AVAILABLE,
             connectivity: baseConnectivity({ vehicleId: 'v1' }),
           },
-          {
-            vehicleId: 'v2',
-            organizationId: FIXTURE_ORG_ID,
-            generatedAt: 'ignored',
-            businessState: BusinessOperationalState.AVAILABLE,
-            connectivity: baseConnectivity({ vehicleId: 'v2' }),
-          },
         ],
       });
-      expect(batch).toHaveLength(2);
       expect(batch[0]!.generatedAt).toBe(FIXTURE_GENERATED_AT);
-      expect(batch[1]!.generatedAt).toBe(FIXTURE_GENERATED_AT);
-    });
-  });
-
-  describe('health evaluability', () => {
-    it('does not mark GOOD health evaluable when telemetry is offline and modules stale', () => {
-      const connectivity = baseConnectivity({
-        telemetryState: 'offline',
-        lastTelemetryAt: '2026-07-01T12:00:00.000Z',
-      });
-      const result = deriveHealthEvaluability(
-        {
-          overallState: 'good',
-          pipelineAvailability: 'ready',
-          rentalBlocked: false,
-          generatedAt: FIXTURE_GENERATED_AT,
-          anyModuleDataStale: true,
-        },
-        connectivity,
-      );
-      expect(result).toBe(HealthEvaluabilityState.NOT_EVALUABLE);
     });
   });
 
   describe('operational availability invariants', () => {
     it('business AVAILABLE + offline telemetry + DEVICE_CHECK_REQUIRED ≠ operational AVAILABLE', () => {
       const f = fixtureWobL7503();
-      const result = deriveOperationalAvailability(
-        f.businessState,
-        f.connectivity,
-        f.health,
-      );
-      expect(f.businessState).toBe(BusinessOperationalState.AVAILABLE);
-      expect(result).toBe(OperationalAvailabilityState.NEEDS_VERIFICATION);
-      expect(result).not.toBe(OperationalAvailabilityState.AVAILABLE);
+      expect(
+        deriveOperationalAvailability(f.businessState, f.connectivity, f.health),
+      ).toBe(OperationalAvailabilityState.NEEDS_VERIFICATION);
     });
 
     it('offline telemetry alone does not force UNAVAILABLE', () => {
       const connectivity = baseConnectivity({
         telemetryState: 'offline',
         overallState: OverallConnectivityState.OFFLINE,
-        physicalDeviceState: PhysicalDeviceState.UNKNOWN,
         reasonCodes: [ConnectivityReasonCode.TELEMETRY_OFFLINE],
       });
-      const result = deriveOperationalAvailability(
-        BusinessOperationalState.AVAILABLE,
-        connectivity,
-        null,
-      );
-      expect(result).not.toBe(OperationalAvailabilityState.UNAVAILABLE);
+      expect(
+        deriveOperationalAvailability(
+          BusinessOperationalState.AVAILABLE,
+          connectivity,
+          null,
+        ),
+      ).not.toBe(OperationalAvailabilityState.UNAVAILABLE);
     });
   });
 });

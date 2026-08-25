@@ -42,7 +42,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Canonical multi-dimensional operator projection consuming P0.1 connectivity runtime (no re-derivation).',
       'Separates businessState, operationalAvailability, healthEvaluability, attention, operatorSummary.',
-      'Reference fixtures: HMÜ C 215, WOB L 7503, WOB L 9755 + synthetic cases A–H.',
+      'Health evaluability: health-domain authority; connectivity downgrade-only (never upgrades to EVALUABLE).',
+      'Reference fixtures: HMÜ C 215 (health UNKNOWN), WOB L 7503/9755 + synthetic cases A–H/H1–H8.',
       'Batch builder with shared generatedAt; no consumer UI migration.',
     ],
     reason: 'P0.2 domain design — unify operator-facing operational interpretation without collapsing connectivity/health/business domains.',

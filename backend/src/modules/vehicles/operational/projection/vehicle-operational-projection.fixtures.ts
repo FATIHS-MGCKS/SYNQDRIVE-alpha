@@ -12,7 +12,7 @@ import {
   type VehicleConnectivityRuntimeState,
 } from '../../connectivity/domain/connectivity-domain.types';
 import { BusinessOperationalState } from './vehicle-operational-projection.types';
-import type { HealthConditionSnapshot } from './vehicle-operational-projection.types';
+import type { HealthEvidenceSnapshot } from './vehicle-operational-projection.types';
 
 const GENERATED_AT = '2026-08-25T12:00:00.000Z';
 const ORG_ID = 'org-fixture-1';
@@ -47,12 +47,30 @@ function baseConnectivity(
   };
 }
 
-/** HMÜ C 215 — historical unplug recovered; standby; PLUGGED_INFERRED. */
+/** Synthetic complete health evidence for contract tests that require EVALUABLE. */
+export function syntheticCurrentHealthEvidence(
+  overrides: Partial<HealthEvidenceSnapshot> = {},
+): HealthEvidenceSnapshot {
+  return {
+    conditionState: 'good',
+    pipelineAvailability: 'ready',
+    rentalBlocked: false,
+    generatedAt: GENERATED_AT,
+    anyModuleDataStale: false,
+    telemetryDependentModulesEvaluated: true,
+    ...overrides,
+  };
+}
+
+/**
+ * HMÜ C 215 — production connectivity reference only.
+ * Health-domain evidence was NOT independently proven in forensics — no health input.
+ */
 export function fixtureHmueC215(): {
   vehicleId: string;
   businessState: BusinessOperationalState;
   connectivity: VehicleConnectivityRuntimeState;
-  health: HealthConditionSnapshot;
+  health?: HealthEvidenceSnapshot;
   episodeEvidenceReliable: boolean;
 } {
   return {
@@ -74,23 +92,16 @@ export function fixtureHmueC215(): {
       lastReceivedAt: '2026-08-24T20:30:48.000Z',
       recommendedAction: ConnectivityRecommendedAction.NONE,
     }),
-    health: {
-      overallState: 'good',
-      pipelineAvailability: 'ready',
-      rentalBlocked: false,
-      generatedAt: GENERATED_AT,
-      anyModuleDataStale: false,
-    },
     episodeEvidenceReliable: true,
   };
 }
 
-/** WOB L 7503 — recovered then >30d silence; obdIsPluggedIn=true at last snapshot. */
+/** WOB L 7503 — recovered then >30d silence; health pipeline unavailable / stale. */
 export function fixtureWobL7503(): {
   vehicleId: string;
   businessState: BusinessOperationalState;
   connectivity: VehicleConnectivityRuntimeState;
-  health: HealthConditionSnapshot;
+  health: HealthEvidenceSnapshot;
   episodeEvidenceReliable: boolean;
 } {
   return {
@@ -115,7 +126,7 @@ export function fixtureWobL7503(): {
       recommendedAction: ConnectivityRecommendedAction.CHECK_DEVICE,
     }),
     health: {
-      overallState: 'unknown',
+      conditionState: 'unknown',
       pipelineAvailability: 'unavailable',
       rentalBlocked: null,
       generatedAt: null,
@@ -125,12 +136,12 @@ export function fixtureWobL7503(): {
   };
 }
 
-/** WOB L 9755 — communication recovery only; obdIsPluggedIn=false; >30d silence. */
+/** WOB L 9755 — communication recovery only; health pipeline unavailable / stale. */
 export function fixtureWobL9755(): {
   vehicleId: string;
   businessState: BusinessOperationalState;
   connectivity: VehicleConnectivityRuntimeState;
-  health: HealthConditionSnapshot;
+  health: HealthEvidenceSnapshot;
   episodeEvidenceReliable: boolean;
 } {
   return {
@@ -155,7 +166,7 @@ export function fixtureWobL9755(): {
       recommendedAction: ConnectivityRecommendedAction.CHECK_DEVICE,
     }),
     health: {
-      overallState: 'unknown',
+      conditionState: 'unknown',
       pipelineAvailability: 'unavailable',
       rentalBlocked: null,
       generatedAt: null,

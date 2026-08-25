@@ -148,16 +148,37 @@ Implementation: `connectivity` field embeds full `VehicleConnectivityRuntimeStat
 
 | Field | Meaning |
 |-------|---------|
-| `health.overallState` | Severity (`good`/`warning`/`critical`/…) — Rental Health domain |
+| `health.conditionState` | Severity (`good`/`warning`/`critical`/…) — Rental Health domain |
 | `healthEvaluability` | Whether assessment is trustworthy now |
 
-Rules:
-- Connectivity offline + stale modules → `NOT_EVALUABLE`
-- Pipeline `unavailable` → `NOT_EVALUABLE`
-- Pipeline `partial` or stale modules → `PARTIALLY_EVALUABLE`
-- Pipeline `ready` + fresh telemetry → `EVALUABLE`
+### Health Evaluability Authority
 
-**Does not** infer `critical` health from `offline` connectivity.
+**Invariant:** Fresh connectivity is **necessary** for some health signals but is **never sufficient** to prove health evaluability.
+
+| Rule | Behavior |
+|------|----------|
+| No health input | `UNKNOWN` |
+| Health pipeline `unavailable` | `NOT_EVALUABLE` |
+| Health input without `generatedAt` | `UNKNOWN` (no proven evaluation timestamp) |
+| Pipeline `ready` + no stale modules + `generatedAt` | Health-domain base `EVALUABLE` |
+| Pipeline `partial` or some stale modules | `PARTIALLY_EVALUABLE` |
+| Broadly stale / unusable health metadata | `NOT_EVALUABLE` |
+
+**Connectivity downgrade-only role:**
+- Bad/stale connectivity **may reduce** evaluability when telemetry-dependent modules are in scope or coverage is insufficient.
+- Good/live/standby connectivity **cannot create** health evidence or upgrade `UNKNOWN` → `EVALUABLE`.
+- Offline connectivity **alone** does not force `NOT_EVALUABLE` when health pipeline is `ready` and modules are current.
+
+**Asymmetry (central invariant):**
+```
+Connectivity state ≠ Health condition ≠ Health evaluability
+```
+
+**Production reference:**
+- HMÜ C 215: connectivity proven; health input absent → `healthEvaluability=UNKNOWN` (not `EVALUABLE`).
+- WOB L 7503 / 9755: `NOT_EVALUABLE` driven by health `pipelineAvailability=unavailable` + missing `generatedAt`, not merely `overallState=OFFLINE`.
+
+**Does not** infer `critical`/`bad` health from offline connectivity.
 
 ---
 
@@ -300,13 +321,14 @@ When `episodeEvidenceReliable=false` (Production Processing Gate **CONDITIONAL**
 - `businessState=AVAILABLE`
 - `connectivity`: `PLUGGED_INFERRED`, `standby`, attention `NONE`
 - `operationalAvailability=AVAILABLE`
+- `healthEvaluability=UNKNOWN` (connectivity-only forensic reference — health not proven)
 - Historical July unplug does not block
 
 ### WOB L 7503
 - `businessState=AVAILABLE`
 - `connectivity`: `OFFLINE`, `UNKNOWN` physical, `DEVICE_CHECK_REQUIRED`
 - `operationalAvailability=NEEDS_VERIFICATION`
-- `healthEvaluability=NOT_EVALUABLE`
+- `healthEvaluability=NOT_EVALUABLE` (health pipeline `unavailable`, not offline alone)
 
 ### WOB L 9755
 - Same operational outcome as 7503
@@ -317,16 +339,29 @@ When `episodeEvidenceReliable=false` (Production Processing Gate **CONDITIONAL**
 
 ## R. Synthetic Contract Cases
 
-| Case | Expected `operationalAvailability` |
-|------|-----------------------------------|
-| A — healthy connectivity + business AVAILABLE | `AVAILABLE` |
-| B — confirmed current unplug | `NEEDS_VERIFICATION` |
-| C — >48h silence, no unplug | `NEEDS_VERIFICATION` |
-| D — recovered after historical unplug | `AVAILABLE` |
-| E — silence after recovery | `NEEDS_VERIFICATION`, not unplugged |
-| F — `obdIsPluggedIn=false` fresh comm | `NEEDS_VERIFICATION` |
-| G — business `IN_SERVICE` | `UNAVAILABLE` |
-| H — health critical + rental blocked | `UNAVAILABLE` |
+| Case | Expected `operationalAvailability` | Expected `healthEvaluability` |
+|------|-----------------------------------|------------------------------|
+| A — healthy connectivity + business AVAILABLE | `AVAILABLE` | (with synthetic health) `EVALUABLE` |
+| B — confirmed current unplug | `NEEDS_VERIFICATION` | — |
+| C — >48h silence, no unplug | `NEEDS_VERIFICATION` | — |
+| D — recovered after historical unplug | `AVAILABLE` | — |
+| E — silence after recovery | `NEEDS_VERIFICATION`, not unplugged | — |
+| F — `obdIsPluggedIn=false` fresh comm | `NEEDS_VERIFICATION` | — |
+| G — business `IN_SERVICE` | `UNAVAILABLE` | — |
+| H — health critical + rental blocked | `UNAVAILABLE` | `EVALUABLE` |
+
+### Health evaluability cases H1–H8
+
+| Case | Expected `healthEvaluability` |
+|------|------------------------------|
+| H1 — no health + healthy connectivity | `UNKNOWN` |
+| H2 — pipeline ready + current evidence | `EVALUABLE` |
+| H3 — some module stale | `PARTIALLY_EVALUABLE` |
+| H4 — stale/unavailable health + healthy connectivity | `NOT_EVALUABLE` |
+| H5 — current health + offline telemetry-dependent | `PARTIALLY_EVALUABLE` |
+| H6 — health CRITICAL + current evidence | `EVALUABLE` |
+| H7 — health GOOD + stale modules | `PARTIALLY_EVALUABLE` |
+| H8 — rentalBlocked + current evidence | `EVALUABLE` (operational `UNAVAILABLE`) |
 
 Tests: `vehicle-operational-projection.builder.spec.ts`
 
@@ -387,4 +422,6 @@ Tests: `vehicle-operational-projection.builder.spec.ts`
 | `vehicle-operational-projection.types.ts` | Contract + vocabularies |
 | `vehicle-operational-projection.builder.ts` | Pure derivation |
 | `vehicle-operational-projection.fixtures.ts` | Semantic reference fixtures |
-| `vehicle-operational-projection.builder.spec.ts` | Contract + reference tests |
+| `vehicle-operational-projection.fixtures.ts` | Semantic reference fixtures |
+| `health-evidence.adapter.ts` | `VehicleHealth` → `HealthEvidenceSnapshot` |
+| `vehicle-operational-projection.builder.spec.ts` | Contract + reference + H1–H8 tests |

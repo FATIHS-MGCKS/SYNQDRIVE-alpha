@@ -8,6 +8,7 @@ import {
   AttentionState,
   ConnectivityReasonCode,
   ConnectivityRecommendedAction,
+  DataCoverageState,
   OverallConnectivityState,
   PhysicalDeviceState,
   type VehicleConnectivityRuntimeState,
@@ -17,7 +18,7 @@ import {
   HealthEvaluabilityState,
   OperationalAvailabilityState,
   OperationalProjectionReasonCode,
-  type HealthConditionSnapshot,
+  type HealthEvidenceSnapshot,
   type OperationalReasonCode,
   type OperatorAttentionLevel,
   type VehicleOperationalEvidence,
@@ -32,7 +33,7 @@ export interface BuildVehicleOperationalProjectionInput {
   generatedAt: Date | string;
   businessState: BusinessOperationalState;
   connectivity: VehicleConnectivityRuntimeState;
-  health?: HealthConditionSnapshot | null;
+  health?: HealthEvidenceSnapshot | null;
   /**
    * When false, projection preserves epistemic uncertainty from P0.1.
    * When null/undefined, treated as unknown reliability.
@@ -87,34 +88,31 @@ function connectivityRequiresVerification(
 }
 
 /**
- * Derive health evaluability from rental-health pipeline signals only.
- * Does not infer mechanical health from connectivity offline.
+ * Health-domain evaluability — connectivity-independent base.
+ * Fresh connectivity must never upgrade missing health evidence to EVALUABLE.
  */
-export function deriveHealthEvaluability(
-  health: HealthConditionSnapshot | null | undefined,
-  connectivity: VehicleConnectivityRuntimeState,
+export function deriveHealthEvaluabilityFromHealthDomain(
+  health: HealthEvidenceSnapshot | null | undefined,
 ): HealthEvaluabilityState {
   if (!health) {
     return HealthEvaluabilityState.UNKNOWN;
   }
 
-  const telemetrySilent =
-    connectivity.telemetryState === 'offline' ||
-    connectivity.telemetryState === 'no_signal';
-
   if (health.pipelineAvailability === 'unavailable') {
     return HealthEvaluabilityState.NOT_EVALUABLE;
   }
 
-  if (telemetrySilent && health.anyModuleDataStale) {
-    return HealthEvaluabilityState.NOT_EVALUABLE;
+  if (!health.generatedAt) {
+    return HealthEvaluabilityState.UNKNOWN;
   }
 
-  if (telemetrySilent) {
-    return HealthEvaluabilityState.PARTIALLY_EVALUABLE;
+  if (health.anyModuleDataStale) {
+    return health.pipelineAvailability === 'ready'
+      ? HealthEvaluabilityState.PARTIALLY_EVALUABLE
+      : HealthEvaluabilityState.NOT_EVALUABLE;
   }
 
-  if (health.pipelineAvailability === 'partial' || health.anyModuleDataStale) {
+  if (health.pipelineAvailability === 'partial') {
     return HealthEvaluabilityState.PARTIALLY_EVALUABLE;
   }
 
@@ -123,6 +121,77 @@ export function deriveHealthEvaluability(
   }
 
   return HealthEvaluabilityState.UNKNOWN;
+}
+
+function downgradeHealthEvaluability(
+  current: HealthEvaluabilityState,
+  steps: number,
+): HealthEvaluabilityState {
+  const ladder: HealthEvaluabilityState[] = [
+    HealthEvaluabilityState.EVALUABLE,
+    HealthEvaluabilityState.PARTIALLY_EVALUABLE,
+    HealthEvaluabilityState.NOT_EVALUABLE,
+    HealthEvaluabilityState.UNKNOWN,
+  ];
+  const index = ladder.indexOf(current);
+  if (index < 0) return current;
+  return ladder[Math.min(index + steps, ladder.length - 1)]!;
+}
+
+/**
+ * Connectivity may only downgrade health evaluability — never create or upgrade it.
+ */
+export function applyConnectivityHealthEvaluabilityLimiter(
+  base: HealthEvaluabilityState,
+  health: HealthEvidenceSnapshot,
+  connectivity: VehicleConnectivityRuntimeState,
+): HealthEvaluabilityState {
+  if (
+    base === HealthEvaluabilityState.UNKNOWN ||
+    base === HealthEvaluabilityState.NOT_EVALUABLE
+  ) {
+    return base;
+  }
+
+  const telemetrySilent =
+    connectivity.telemetryState === 'offline' ||
+    connectivity.telemetryState === 'no_signal';
+  const coverageGap =
+    connectivity.dataCoverageState === DataCoverageState.INSUFFICIENT ||
+    connectivity.reasonCodes.includes(ConnectivityReasonCode.DATA_COVERAGE_INSUFFICIENT);
+
+  if (!telemetrySilent && !coverageGap) {
+    return base;
+  }
+
+  if (health.anyModuleDataStale || coverageGap) {
+    return downgradeHealthEvaluability(base, 1);
+  }
+
+  if (
+    telemetrySilent &&
+    health.telemetryDependentModulesEvaluated === true &&
+    base === HealthEvaluabilityState.EVALUABLE
+  ) {
+    return HealthEvaluabilityState.PARTIALLY_EVALUABLE;
+  }
+
+  return base;
+}
+
+/**
+ * Derive health evaluability from health-domain metadata with connectivity as
+ * a conservative limiter only.
+ */
+export function deriveHealthEvaluability(
+  health: HealthEvidenceSnapshot | null | undefined,
+  connectivity: VehicleConnectivityRuntimeState,
+): HealthEvaluabilityState {
+  const base = deriveHealthEvaluabilityFromHealthDomain(health);
+  if (!health) {
+    return base;
+  }
+  return applyConnectivityHealthEvaluabilityLimiter(base, health, connectivity);
 }
 
 /**
@@ -136,7 +205,7 @@ export function deriveHealthEvaluability(
 export function deriveOperationalAvailability(
   businessState: BusinessOperationalState,
   connectivity: VehicleConnectivityRuntimeState,
-  health: HealthConditionSnapshot | null | undefined,
+  health: HealthEvidenceSnapshot | null | undefined,
 ): OperationalAvailabilityState {
   if (isBusinessHardBlocked(businessState)) {
     return OperationalAvailabilityState.UNAVAILABLE;
@@ -183,7 +252,7 @@ export function deriveOperationalAttention(
   connectivity: VehicleConnectivityRuntimeState,
   operationalAvailability: OperationalAvailabilityState,
   businessState: BusinessOperationalState,
-  health: HealthConditionSnapshot | null | undefined,
+  health: HealthEvidenceSnapshot | null | undefined,
 ): OperatorAttentionLevel {
   if (isBusinessHardBlocked(businessState)) {
     return AttentionState.ACTION_REQUIRED;
@@ -196,7 +265,7 @@ export function deriveOperationalAttention(
     return AttentionState.CRITICAL;
   }
 
-  if (health?.overallState === 'critical' && health.pipelineAvailability === 'ready') {
+  if (health?.conditionState === 'critical' && health.pipelineAvailability === 'ready') {
     return maxAttention(connectivity.attentionState, AttentionState.ACTION_REQUIRED);
   }
 
@@ -224,8 +293,9 @@ export function collectOperationalReasonCodes(
   businessState: BusinessOperationalState,
   connectivity: VehicleConnectivityRuntimeState,
   operationalAvailability: OperationalAvailabilityState,
-  health: HealthConditionSnapshot | null | undefined,
+  health: HealthEvidenceSnapshot | null | undefined,
   episodeEvidenceReliable: boolean | null,
+  healthEvaluability: HealthEvaluabilityState,
 ): OperationalReasonCode[] {
   const codes: OperationalReasonCode[] = [...connectivity.reasonCodes];
 
@@ -253,6 +323,15 @@ export function collectOperationalReasonCodes(
 
   if (episodeEvidenceReliable === false) {
     codes.push(OperationalProjectionReasonCode.INSUFFICIENT_CROSS_DOMAIN_EVIDENCE);
+  }
+
+  if (healthEvaluability === HealthEvaluabilityState.NOT_EVALUABLE) {
+    codes.push(OperationalProjectionReasonCode.HEALTH_EVIDENCE_UNAVAILABLE);
+  } else if (
+    healthEvaluability === HealthEvaluabilityState.PARTIALLY_EVALUABLE &&
+    health?.anyModuleDataStale
+  ) {
+    codes.push(OperationalProjectionReasonCode.HEALTH_EVIDENCE_STALE);
   }
 
   return [...new Set(codes)];
@@ -326,6 +405,7 @@ export function buildVehicleOperationalProjection(
     operationalAvailability,
     input.health,
     input.episodeEvidenceReliable ?? null,
+    healthEvaluability,
   );
   const operatorSummary = deriveOperatorSummary(
     operationalAvailability,
