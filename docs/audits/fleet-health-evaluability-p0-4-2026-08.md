@@ -258,3 +258,144 @@ Evaluability mapping (`deriveHealthEvaluabilityFromHealthDomain`):
 
 **PR #1277 MERGE READY:** YES (pending CI green)  
 **Production mutations:** NONE
+
+---
+
+## Post-DIMO-Backfill Re-Evaluation (2026-08-25)
+
+### Context
+
+| Item | SHA / state |
+|------|-------------|
+| **Current main** | `84486fc219bb4a3b48d13db11302ad2025b29c72` |
+| **Original #1277 head** | `41a6df7c1ba1f2f373845ae0b7f14bbe915a7874` |
+| **Rebased #1277 head** | `3c8599b16134e8832d97c883930607b455637695` |
+| **Rebase strategy** | `git rebase origin/main` — **0 conflicts** |
+| **DIMO provider-link blocker** | **CLOSED** (#1281 + #1290 + backfill audit `84486fc2`) |
+| **Provider-link code in #1277 diff** | **NO** (expected) |
+
+Rebase brought in #1281 provider-link normalization, #1290 provider-specific DIMO FK schema, and post-backfill audit commits. No stale pre-provider-fix logic reintroduced; `vehicles.service.ts` diff is limited to P0.4 `healthEvaluation` wiring on the existing single `getVehicleProjections()` batch.
+
+### Rebase conflict resolution
+
+| Metric | Value |
+|--------|-------|
+| Conflicts | **0** |
+| Stale changes dropped | **None required** — clean rebase |
+| Files changed vs main | 29 (all P0.4 REQUIRED / TEST / DOC) |
+
+### All-six Production read-only shadow (post-DIMO)
+
+Executed on VPS with PR branch clone (`3c8599b1`) + production `backend.env`. **No deploy, no PM2, no mutations.**
+
+```bash
+sudo SYNQDRIVE_BACKEND_ENV=/opt/synqdrive/shared/backend.env \
+  npx ts-node -r tsconfig-paths/register scripts/ops/shadow-fleet-health-evaluation-readonly.ts \
+  --organization-id=faa710c9-6d91-4079-a7d5-91fdccdec14a \
+  --license-plate="HMÜ C 215" --license-plate="KS FH 660E" --license-plate="KS MS 661" \
+  --license-plate="KS MX 2024" --license-plate="WOB L 7503" --license-plate="WOB L 9755"
+```
+
+Connectivity columns from post-backfill Production P0.1/P0.2 baseline (read-only, verified same session).
+
+| Vehicle | ProviderLink | Telemetry | Operational (P0.3) | condition | evaluability | pipeline | stale | P0.4 DE label | Legacy | Changed? | Safe? |
+|---------|--------------|-----------|-------------------|-----------|--------------|----------|-------|---------------|--------|----------|-------|
+| HMÜ C 215 | ACTIVE | standby | **AVAILABLE** | unknown | PARTIALLY_EVALUABLE | ready | true | **Eingeschränkt bewertbar** | Gut | YES | YES |
+| KS FH 660E | REAUTH_REQUIRED | standby | NEEDS_VERIFICATION | warning | PARTIALLY_EVALUABLE | ready | true | **Eingeschränkt bewertbar** | Gut | YES | YES |
+| KS MS 661 | REAUTH_REQUIRED | standby | NEEDS_VERIFICATION | warning | PARTIALLY_EVALUABLE | ready | true | **Eingeschränkt bewertbar** | Gut | YES | YES |
+| KS MX 2024 | REAUTH_REQUIRED | standby | NEEDS_VERIFICATION | warning | PARTIALLY_EVALUABLE | ready | true | **Eingeschränkt bewertbar** | Gut | YES | YES |
+| WOB L 7503 | ACTIVE | offline | NEEDS_VERIFICATION | good | NOT_EVALUABLE | ready | true | **Nicht bewertbar** | Gut | YES | YES |
+| WOB L 9755 | ACTIVE | offline | NEEDS_VERIFICATION | warning | NOT_EVALUABLE | ready | true | **Nicht bewertbar** | Gut | YES | YES |
+
+**All six:** `wouldShowEvaluableGood: false`. No stale/non-evaluable vehicle shows plain **Gut**.
+
+### HMÜ C 215 — updated acceptance (post-DIMO)
+
+| Field | Value |
+|-------|-------|
+| Provider | ACTIVE |
+| Telemetry | standby (PLUGGED_INFERRED) |
+| operationalAvailability | **AVAILABLE** (unchanged P0.3) |
+| condition | `unknown` |
+| evaluability | `PARTIALLY_EVALUABLE` |
+| pipeline | `ready` |
+| anyModuleDataStale | `true` |
+| P0.4 label | **Eingeschränkt bewertbar** |
+| Decisive reason | Health evidence has stale module data (`anyModuleDataStale: true`) with `condition: unknown` despite healthy provider link. Provider ACTIVE does **not** imply Gut. |
+
+Result may legitimately differ from pre-DIMO run; outcome is traceable to Health evidence, not missing provider mapping.
+
+### WOB L 7503 / WOB L 9755
+
+Conservative presentation preserved. Historical `condition: good` (7503) blocked from **Gut** by `NOT_EVALUABLE` + stale evidence. Offline telemetry + NEEDS_VERIFICATION operational state does not override evaluability gate.
+
+### KS MS 661 / KS FH 660E / KS MX 2024 (auth cases)
+
+`REAUTH_REQUIRED` provider state does **not** fabricate Health severity. Canonical `condition: warning` exists in evidence but `PARTIALLY_EVALUABLE` gates presentation to **Eingeschränkt bewertbar**, not **Auffällig**. Authorization failure limits confidence; it does not invent critical/warning Fleet badge when not EVALUABLE.
+
+### P0.3 regression
+
+| Vehicle | Expected | Shadow result |
+|---------|----------|---------------|
+| HMÜ C 215 | AVAILABLE | **AVAILABLE** PASS |
+| WOB L 7503 | NEEDS_VERIFICATION | **NEEDS_VERIFICATION** PASS |
+| WOB L 9755 | NEEDS_VERIFICATION | **NEEDS_VERIFICATION** PASS |
+| KS MS 661 | NEEDS_VERIFICATION | **NEEDS_VERIFICATION** PASS |
+
+P0.4 does not mutate P0.3 values.
+
+### Test matrix (re-run on rebased head)
+
+| Suite | Result |
+|-------|--------|
+| A1–A8 (health-evidence-applicability) | **8/8 PASS** |
+| B1–B9 (fleet-health-evaluation.fleet-map) | **9/9 PASS** |
+| F1–F10 (presentation + display) | **10/10 PASS** |
+| P0.3 fleet-operational-availability.fleet-map | **7/7 PASS** |
+| Backend typecheck / build | **PASS** |
+| Frontend typecheck / build | **PASS** |
+
+### CI (rebased push `3c8599b1`)
+
+| Workflow | Gate | Notes |
+|----------|------|-------|
+| Vehicle Detail — Production Readiness CI | **PASS** (CI gate all critical jobs) | Lint, typecheck, tests, build, E2E |
+| Legal Documents — Production Readiness CI | Lint **FAIL** | **Unrelated:** `prefer-const` in `vehicles.service.register-from-dimo.spec.ts` from main (#1290); **not in #1277 diff** |
+
+### Scope boundaries (unchanged)
+
+- Fleet list/mobile: P0.4 enabled (`FleetOperatorRow` + `healthEvaluationBadge: true`)
+- Fleet map HUD: no Health badge
+- Dashboard drawer (`CompactFleetDrawerVehicleRow`): legacy path — **not migrated**
+- Vehicle Detail Health: **OUT OF SCOPE**
+
+### Cache semantics (confirmed on rebased main)
+
+| Cache | TTL |
+|-------|-----|
+| Rental Health Redis | **45s** (`RENTAL_HEALTH_SUMMARY_CACHE_TTL_SECONDS`) |
+| Fleet-map Redis | **5s** (`FLEET_MAP_CACHE_TTL_SECONDS`) |
+
+Bounded delay only; cannot permanently preserve legacy Gut when evaluability is not EVALUABLE.
+
+### N+1 / batch
+
+`getFleetMapData()` → single `getVehicleProjections()` batch → both `operationalAvailability` and `healthEvaluation`. B8 test confirms one batch call, no per-vehicle projection.
+
+### Production Connectivity Processing Gate
+
+**CONDITIONAL** (unchanged; post-cutover unplug test not performed here).
+
+### Final merge verdict (post-DIMO)
+
+| Gate | Result |
+|------|--------|
+| P0.4 Health domain contract | **PASS** |
+| P0.4 Fleet consumer | **PASS** |
+| Post-DIMO Production acceptance | **PASS** |
+| P0.3 regression | **PASS** |
+| Provider-link regression | **PASS** (untouched) |
+| Production mutations | **NONE** |
+| **PR #1277 MERGE READY** | **YES** |
+
+**Note:** One unrelated pre-main lint failure in Legal Documents workflow (`register-from-dimo.spec.ts` prefer-const). Vehicle Detail CI gate is green. Does not block P0.4 merge readiness; fix separately on main if full dual-workflow green is required.
