@@ -1318,6 +1318,20 @@ export const en = {
   'fleet.vehicleHealth': 'Vehicle Health',
   'fleet.driverScore': 'Vehicle load',
   'fleet.noVehicles': 'No vehicles found',
+  'fleet.operationalAvailability.available': 'Available',
+  'fleet.operationalAvailability.needsVerification': 'Check required',
+  'fleet.operationalAvailability.unknown': 'Status unknown',
+  'fleet.operationalAvailability.unavailable': 'Unavailable',
+  'fleet.operationalAvailability.tooltip.needsVerification':
+    'Vehicle data has not been available for an extended period. Check the device.',
+  'fleet.operationalAvailability.tooltip.unknown':
+    'The current operational status cannot be determined reliably.',
+  'fleet.operationalAvailability.tooltip.unavailable':
+    'The vehicle is not operationally available.',
+  'fleet.operationalAvailability.reason.deviceCheckRequired': 'Check device',
+  'fleet.operationalAvailability.reason.telemetryOffline': 'Telemetry offline',
+  'fleet.operationalAvailability.reason.businessWorkflowBlocked': 'Workflow blocked',
+  'fleet.operationalAvailability.reason.healthRentalBlocked': 'Health rental blocked',
 
   // ─── Vehicle Detail ───
   'vehicle.overview': 'Overview',

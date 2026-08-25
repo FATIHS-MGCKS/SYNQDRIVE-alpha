@@ -6,6 +6,10 @@ import { FleetMapCacheService } from '../fleet-map-cache.service';
 export function makeOperationalVehiclesService(deps: {
   prisma?: Record<string, unknown>;
   redis?: { get?: jest.Mock; set?: jest.Mock; del?: jest.Mock };
+  operationalProjection?: {
+    getVehicleProjections?: jest.Mock;
+    getVehicleProjection?: jest.Mock;
+  };
 } = {}): VehiclesService {
   const stub = (): unknown => ({});
   const prisma = deps.prisma ?? {};
@@ -18,6 +22,10 @@ export function makeOperationalVehiclesService(deps: {
   const fleetMapCache = new FleetMapCacheService(redis as never);
   const connectivityRuntimeProjection = {
     projectForVehicles: jest.fn().mockResolvedValue(new Map()),
+  };
+  const operationalProjection = deps.operationalProjection ?? {
+    getVehicleProjections: jest.fn().mockResolvedValue(new Map()),
+    getVehicleProjection: jest.fn(),
   };
   return new (VehiclesService as unknown as {
     new (...args: unknown[]): VehiclesService;
@@ -33,6 +41,7 @@ export function makeOperationalVehiclesService(deps: {
     stub(),
     stub(),
     connectivityRuntimeProjection,
+    operationalProjection,
     stub(),
     stub(),
     fleetMapCache,

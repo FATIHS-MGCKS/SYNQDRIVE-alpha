@@ -26,9 +26,16 @@ import {
   resolveBookingSupplement,
   resolveOperationalStatusBadge,
   type BookingSupplementDisplay,
+  type FleetDisplayTimeOptions,
   type OperationalStatusBadgeDisplay,
 } from './vehicle-operational-booking-display';
 import type { VehicleOperationalDisplayLocale } from './vehicle-operational-state';
+import type { TranslationKey } from '../i18n/translations/en';
+import { en } from '../i18n/translations/en';
+import { de } from '../i18n/translations/de';
+import { mapOperationalAvailabilityPresentation } from './operational-availability/presentation';
+import type { FleetOperationalAvailability } from './operational-availability/types';
+import { OPERATIONAL_AVAILABILITY_STATE } from './operational-availability/types';
 
 /**
  * Shared display layer for fleet vehicle rows (Dashboard Fleet State Board +
@@ -529,6 +536,38 @@ function buildReasonBadge(
   return null;
 }
 
+function tForFleetLocale(locale: string | undefined): (key: TranslationKey) => string {
+  const dict = locale === 'de' ? de : en;
+  return (key: TranslationKey) => dict[key] ?? key;
+}
+
+function resolveOperationalAvailabilityStatusBadge(
+  vehicle: VehicleData,
+  displayTimeOptions: FleetDisplayTimeOptions,
+  options: ResolveFleetVehicleDisplayOptions,
+): OperationalStatusBadgeDisplay {
+  if (!options.operationalAvailabilityBadge) {
+    return resolveOperationalStatusBadge(vehicle, displayTimeOptions);
+  }
+
+  const availability: FleetOperationalAvailability | null | undefined =
+    vehicle.operationalAvailability;
+  const t = options.t ?? tForFleetLocale(options.locale);
+  const presentation = mapOperationalAvailabilityPresentation(availability ?? null, { t });
+  const tooltipParts = [presentation.tooltip, presentation.reasonLabel].filter(Boolean);
+  const businessStatus = selectOperationalStatus(vehicle);
+
+  return {
+    status: businessStatus,
+    label: presentation.label,
+    tone: presentation.tone,
+    isUnknown: presentation.state === OPERATIONAL_AVAILABILITY_STATE.UNKNOWN,
+    dataQualityHint: tooltipParts.length > 0 ? tooltipParts.join(' · ') : null,
+    unreliableExplanation: null,
+    showUnreliableCallout: false,
+  };
+}
+
 export interface ResolveFleetVehicleDisplayOptions {
   rentalHealth?: VehicleHealthResponse | null;
   healthAlert?: VehicleHealthAlert | null;
@@ -540,6 +579,13 @@ export interface ResolveFleetVehicleDisplayOptions {
   now?: number;
   /** Compact booking supplement copy for list/map surfaces. */
   compact?: boolean;
+  /**
+   * Fleet list/map HUD: use P0.2 `operationalAvailability` for the primary status badge
+   * instead of legacy business-only `operationalState.status`.
+   */
+  operationalAvailabilityBadge?: boolean;
+  /** i18n translate — required when `operationalAvailabilityBadge` is true. */
+  t?: (key: TranslationKey) => string;
 }
 
 export function resolveFleetVehicleDisplayState(
@@ -559,7 +605,11 @@ export function resolveFleetVehicleDisplayState(
     compact: options.compact,
   };
 
-  const statusBadge = resolveOperationalStatusBadge(vehicle, displayTimeOptions);
+  const statusBadge = resolveOperationalAvailabilityStatusBadge(
+    vehicle,
+    displayTimeOptions,
+    options,
+  );
   const bookingSupplement = resolveBookingSupplement(vehicle, displayTimeOptions);
 
   const primaryStatus = resolveOperationalStatus(vehicle, rentalHealth, visual);

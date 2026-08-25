@@ -57,12 +57,14 @@ export function FleetOperatorRow({
   isDarkMode = false,
 }: FleetOperatorRowProps) {
   const { vehicle: v, visual, health } = ctx;
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const display = resolveFleetVehicleDisplayState(v, {
     rentalHealth: health,
     visual,
     locale,
     compact: true,
+    operationalAvailabilityBadge: true,
+    t,
   });
   const { healthDisplay, statusBadge, bookingSupplement, reasonBadge } = display;
   const rowHealth = healthDisplay;

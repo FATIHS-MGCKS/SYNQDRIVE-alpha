@@ -425,7 +425,6 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
           />
           <FleetMapVehicleStatusHud
             ctx={mapHudContext}
-            locale="de"
             onRefresh={handleRefreshNow}
           />
           {filteredVehicles.length === 0 && !loading && (

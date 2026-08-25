@@ -1418,6 +1418,20 @@ export const de: Record<TranslationKey, string> = {
   'fleet.vehicleHealth': 'Fahrzeugzustand',
   'fleet.driverScore': 'Fahrbelastung',
   'fleet.noVehicles': 'Keine Fahrzeuge gefunden',
+  'fleet.operationalAvailability.available': 'Verfügbar',
+  'fleet.operationalAvailability.needsVerification': 'Prüfung erforderlich',
+  'fleet.operationalAvailability.unknown': 'Status unbekannt',
+  'fleet.operationalAvailability.unavailable': 'Nicht verfügbar',
+  'fleet.operationalAvailability.tooltip.needsVerification':
+    'Fahrzeugdaten seit längerer Zeit nicht verfügbar. Gerät prüfen.',
+  'fleet.operationalAvailability.tooltip.unknown':
+    'Der aktuelle Betriebsstatus kann nicht sicher bestimmt werden.',
+  'fleet.operationalAvailability.tooltip.unavailable':
+    'Das Fahrzeug ist betrieblich nicht verfügbar.',
+  'fleet.operationalAvailability.reason.deviceCheckRequired': 'Gerät prüfen',
+  'fleet.operationalAvailability.reason.telemetryOffline': 'Telemetrie offline',
+  'fleet.operationalAvailability.reason.businessWorkflowBlocked': 'Workflow blockiert',
+  'fleet.operationalAvailability.reason.healthRentalBlocked': 'Health-Vermietung blockiert',
 
   // ─── Vehicle Detail ───
   'vehicle.overview': 'Uebersicht',
