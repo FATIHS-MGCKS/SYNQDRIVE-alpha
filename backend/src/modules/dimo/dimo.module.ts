@@ -37,6 +37,7 @@ import { DeviceConnectionEpisodeResolutionOutboxRepository } from './device-conn
 import { DeviceConnectionEpisodeResolutionOutboxProcessorService } from './device-connection-episode-resolution/device-connection-episode-resolution-outbox-processor.service';
 import deviceConnectionEpisodeResolutionOutboxConfig from '@config/device-connection-episode-resolution-outbox.config';
 import { ConnectivityAlertService } from './connectivity-alert/connectivity-alert.service';
+import { ConnectivityLifecycleRuntimePolicyService } from './connectivity/connectivity-lifecycle-runtime-policy.service';
 import { ConnectivityObservabilityService } from './connectivity/connectivity-observability.service';
 import { ConnectivityRecoveryPolicyService } from './connectivity/connectivity-recovery.policy';
 import { DeviceConnectionQueryService } from './device-connection-query.service';
@@ -115,6 +116,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionWebhookReplayService,
     DeviceConnectionWebhookInboxSchedulerService,
     DeviceConnectionWebhookConfigurationService,
+    ConnectivityLifecycleRuntimePolicyService,
     DimoTriggerRegistryService,
   ],
 })

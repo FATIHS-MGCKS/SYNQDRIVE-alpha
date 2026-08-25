@@ -20,7 +20,9 @@ Production investigation confirms two distinct runtime defects blocking reliable
 
 **Code fix (PR #1267):**
 - Separate event dedupe from lifecycle completion — reconcile when `processed_at` is null **for current-era events only**.
-- Explicit runtime cutover (`CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER`, default `2026-08-25T00:00:00.000Z`) — historical orphans excluded from automatic reconciliation.
+- Explicit runtime cutover (`CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER`) — **required in production**; fail-closed when missing.
+- Central domain-boundary eligibility via `ConnectivityLifecycleRuntimePolicyService`.
+- Historical orphans return `historical_orphan` — inbox terminal ignore, canonical event untouched.
 - Shared `DeviceConnectionWebhookInboxEnqueueService` — intake + scheduler enqueue failures persist `RETRYABLE_FAILED`.
 - Scheduler batch isolation — per-row enqueue with `continue`; one failure cannot abort the batch.
 - Scheduler defense-in-depth: reconcile eligible orphan `processed_at IS NULL` events each 30s poll tick.
@@ -201,8 +203,9 @@ Single valid snapshot with plug signal can resolve via `SNAPSHOT_PLUG_SIGNAL`. S
 | `device-connection-webhook-inbox-scheduler.service.ts` | Cutover-gated reconciliation; per-row scheduler enqueue; historical orphan reporting |
 | `device-connection-webhook-inbox.repository.ts` | Cutover filter on stale/retryable batch queries |
 | `device-connection-webhook-inbox.config.ts` | `lifecycleReconcileAfter` + `CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER` |
-| `connectivity-lifecycle-runtime.policy.ts` | Cutover eligibility helpers |
-| Tests | A–M + N1–N7 |
+| `connectivity-lifecycle-runtime.policy.ts` | Central eligibility evaluation |
+| `connectivity-lifecycle-runtime-policy.service.ts` | Injectable policy + startup logging |
+| Tests | A–M + N1–N13 |
 | `scripts/ops/read-only-connectivity-audit.mjs` | Production read-only audit helper |
 
 ---
@@ -212,16 +215,58 @@ Single valid snapshot with plug signal can resolve via `SNAPSHOT_PLUG_SIGNAL`. S
 | Item | Value |
 |------|-------|
 | Config key | `CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER` (ISO-8601) |
-| Code default | `2026-08-25T00:00:00.000Z` (`CONNECTIVITY_LIFECYCLE_RUNTIME_RECONCILE_AFTER_ISO`) |
-| Meaning | First instant the **repaired** inbox→BullMQ→episode pipeline (PR #1267) is authoritative |
-| Inbox migration reference | `20260719160000_device_connection_webhook_inbox` (introduced inbox; not used as cutover — pre-dates repair) |
+| **Production** | **Required** — no silent default. Missing → `automaticLifecycleReconciliationEnabled = false` |
+| **Non-production** | Deterministic dev default `CONNECTIVITY_LIFECYCLE_DEV_RECONCILE_AFTER_ISO` (`2026-08-25T00:00:00.000Z`) for tests/local only |
+| Meaning | First instant the **repaired** inbox→BullMQ→episode pipeline is **actually authoritative in that environment** |
 
-### Runtime rules
+### Production fail-closed behavior
+
+When `NODE_ENV=production` and `CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER` is unset:
+
+- Automatic canonical-event orphan reconciliation = **DISABLED**
+- Stale inbox auto-retry under this gate = **DISABLED**
+- Structured warning: `connectivity.lifecycle_reconciliation_disabled`
+- Application remains healthy (no startup failure)
+- **Primary webhook intake** for new events still processes normally
+
+### Deployment contract (required before enabling auto-reconciliation)
+
+1. Choose deployment timestamp immediately before rollout
+2. Set `CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER=<that ISO instant>` in production env
+3. Deploy PR #1267 release
+4. Verify startup log: `connectivity.lifecycle_reconciliation_enabled` with expected cutover
+5. Verify historical July rows remain excluded (read-only audit)
+
+Do **not** set the cutover before deployment. Do **not** use `Date.now()` at boot.
+
+### Domain-boundary enforcement (not scheduler-only)
+
+Central check: `ConnectivityLifecycleRuntimePolicyService.evaluateOrphanReconciliationEligibility`
+
+Enforced in:
+- `reconcilePersistedEventLifecycle`
+- `persistDeviceConnectionEvent` (existing-event dedupe/retry path)
+
+Outcomes:
+- `eligible` → reconcile lifecycle, set `processed_at` after success
+- `historical_orphan` → no episode sync, no `processed_at` mutation
+- `reconciliation_disabled` → same (cutover not configured)
+- `duplicate` → fully processed event only
+
+### Duplicate delivery edge case (N9)
+
+Historical canonical event (`receivedAt` pre-cutover, `processedAt` null) + new post-cutover inbox delivery:
+
+- Domain returns `historical_orphan`
+- Inbox → `IGNORED_BY_POLICY` with reason `historical_orphan` (terminal, no retry loop)
+- Canonical historical event remains `processedAt = null`
+
+### Runtime rules (when cutover configured)
 
 | Condition | Automatic scheduler behavior |
 |-----------|------------------------------|
 | `processed_at IS NULL` AND `received_at >= cutover` | May call `reconcilePersistedEventLifecycle` |
-| `processed_at IS NULL` AND `received_at < cutover` | **Log/report only** — no `openFromUnplugEvent` |
+| `processed_at IS NULL` AND `received_at < cutover` | **Blocked at domain boundary** + log/report only |
 | Inbox stale `RECEIVED`/`VALIDATED` AND `received_at >= cutover` | May enqueue via scheduler |
 | Inbox stale `RECEIVED`/`VALIDATED` AND `received_at < cutover` | **Excluded** — controlled remediation only |
 | Scheduler enqueue failure | `RETRYABLE_FAILED`, `lastErrorCode=enqueue_failed`, `nextRetryAt` set |
@@ -230,7 +275,9 @@ Single valid snapshot with plug signal can resolve via `SNAPSHOT_PLUG_SIGNAL`. S
 ### Historical safety invariant
 
 > Runtime retry/reconciliation repairs **current-pipeline partial failures** only.  
-> Historical pre-cutover evidence is **never automatically materialized** into episodes.
+> Historical pre-cutover evidence is **never automatically materialized** into episodes through any normal runtime path.
+
+Scheduler filtering is **defense-in-depth**, not the sole safety control.
 
 Controlled historical remediation (if ever approved) must evaluate unplug `observedAt` vs latest valid snapshot after unplug — not implemented in this slice.
 
@@ -260,6 +307,14 @@ Controlled historical remediation (if ever approved) must evaluate unplug `obser
 | N5 | Scheduler enqueue failure persisted | enqueue + scheduler spec |
 | N6 | Batch isolation (3 rows, middle fails) | scheduler spec |
 | N7 | July historical orphans excluded | scheduler spec + policy spec |
+| N8 | Direct reconcile blocks pre-cutover | `device-connection-webhook.service.spec.ts` |
+| N9 | Post-cutover duplicate hits historical event | service + processing spec |
+| N10 | Post-cutover reconcile completes lifecycle | service spec |
+| N11 | Production missing cutover disables auto-reconciliation | config + scheduler spec |
+| N12 | Explicit cutover enables eligible reconciliation | config + scheduler spec |
+| N13 | Invalid cutover fails config validation | config spec |
+
+**Pass count (targeted):** 107 tests across 13 suites (local run 2026-08-25).
 
 ---
 
@@ -277,12 +332,12 @@ Controlled historical remediation (if ever approved) must evaluate unplug `obser
 - Post-fix inbox row mutation
 
 ### Post-deploy verification plan
-1. Deploy via standard VPS workflow
-2. Confirm first scheduler tick does **not** create episodes for July 8/11/20 events or July 28/Aug 8 inbox rows
-3. Confirm `connectivity.historical_orphan_backlog` log reports historical counts without reconciliation
-4. Confirm new post-cutover webhooks process end-to-end (inbox → job → episode → `processed_at`)
-5. Confirm scheduler enqueue failures produce `RETRYABLE_FAILED` (not silent `RECEIVED`)
-6. Monitor `connectivity.webhook.process` queue consumption
+1. Set `CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER` to actual rollout instant **before** deploy
+2. Deploy via standard VPS workflow
+3. Verify startup log shows expected cutover
+4. Confirm first scheduler tick does **not** create episodes for July 8/11/20 events or July 28/Aug 8 inbox rows
+5. Confirm new post-cutover webhooks process end-to-end (inbox → job → episode → `processed_at`)
+6. Confirm scheduler enqueue failures produce `RETRYABLE_FAILED` (not silent `RECEIVED`)
 
 **Historical remediation:** deferred — requires explicit controlled approval and snapshot-aware evaluation.
 

@@ -3,7 +3,7 @@ import { ConfigType } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import deviceConnectionWebhookInboxConfig from '@config/device-connection-webhook-inbox.config';
 import { PrismaService } from '@shared/database/prisma.service';
-import { isHistoricalLifecycleOrphan } from './connectivity/connectivity-lifecycle-runtime.policy';
+import { ConnectivityLifecycleRuntimePolicyService } from './connectivity/connectivity-lifecycle-runtime-policy.service';
 import { DeviceConnectionWebhookInboxEnqueueService } from './device-connection-webhook-inbox-enqueue.service';
 import { DeviceConnectionWebhookInboxRepository } from './device-connection-webhook-inbox.repository';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
@@ -15,6 +15,7 @@ export class DeviceConnectionWebhookInboxSchedulerService {
   constructor(
     @Inject(deviceConnectionWebhookInboxConfig.KEY)
     private readonly config: ConfigType<typeof deviceConnectionWebhookInboxConfig>,
+    private readonly lifecyclePolicy: ConnectivityLifecycleRuntimePolicyService,
     private readonly inboxRepo: DeviceConnectionWebhookInboxRepository,
     private readonly enqueueService: DeviceConnectionWebhookInboxEnqueueService,
     private readonly prisma: PrismaService,
@@ -40,9 +41,18 @@ export class DeviceConnectionWebhookInboxSchedulerService {
 
   @Cron('*/30 * * * * *')
   async pollRetryableInbox(): Promise<void> {
+    if (!this.lifecyclePolicy.automaticLifecycleReconciliationEnabled) {
+      await this.reportHistoricalOrphansWithoutCutover();
+      return;
+    }
+
+    const cutover = this.lifecyclePolicy.lifecycleReconcileAfter;
+    if (!cutover) {
+      return;
+    }
+
     const now = new Date();
     const staleBefore = new Date(now.getTime() - this.config.processingStaleMs);
-    const cutover = this.config.lifecycleReconcileAfter;
 
     const stale = await this.inboxRepo.findStaleInFlightBatch(
       staleBefore,
@@ -64,6 +74,29 @@ export class DeviceConnectionWebhookInboxSchedulerService {
 
     await this.reportHistoricalOrphans(cutover);
     await this.reconcileUnprocessedCanonicalEvents(cutover);
+  }
+
+  private async reportHistoricalOrphansWithoutCutover(): Promise<void> {
+    const [historicalEvents, historicalInbox] = await Promise.all([
+      this.prisma.dimoDeviceConnectionEvent.count({
+        where: { processedAt: null },
+      }),
+      this.prisma.deviceConnectionWebhookInbox.count({
+        where: {
+          processingStatus: { in: ['RECEIVED', 'VALIDATED', 'RETRYABLE_FAILED'] },
+          processedAt: null,
+        },
+      }),
+    ]);
+
+    if (historicalEvents > 0 || historicalInbox > 0) {
+      this.logger.warn({
+        msg: 'connectivity.historical_orphan_backlog',
+        historicalUnprocessedEvents: historicalEvents,
+        historicalUnprocessedInbox: historicalInbox,
+        automaticReconciliationEnabled: false,
+      });
+    }
   }
 
   private async reportHistoricalOrphans(cutover: Date): Promise<void> {
@@ -104,15 +137,17 @@ export class DeviceConnectionWebhookInboxSchedulerService {
     if (batch.length === 0) return;
 
     for (const row of batch) {
-      if (isHistoricalLifecycleOrphan(row.receivedAt, cutover)) {
-        this.logger.debug(
-          `Skipping historical canonical orphan event ${row.id} (receivedAt=${row.receivedAt.toISOString()})`,
-        );
-        continue;
-      }
-
       try {
         const result = await this.deviceConnection.reconcilePersistedEventLifecycle(row.id);
+        if (
+          result.outcome === 'historical_orphan' ||
+          result.outcome === 'reconciliation_disabled'
+        ) {
+          this.logger.debug(
+            `Skipped canonical event ${row.id} — ${result.outcome} (receivedAt=${row.receivedAt.toISOString()})`,
+          );
+          continue;
+        }
         this.logger.log(
           `Reconciled unprocessed canonical device connection event ${row.id} → ${result.outcome}`,
         );

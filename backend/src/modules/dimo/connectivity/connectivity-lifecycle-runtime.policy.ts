@@ -1,17 +1,15 @@
-import { CONNECTIVITY_LIFECYCLE_RUNTIME_RECONCILE_AFTER_ISO } from '@config/device-connection-webhook-inbox.config';
+import { CONNECTIVITY_LIFECYCLE_DEV_RECONCILE_AFTER_ISO } from '@config/device-connection-webhook-inbox.config';
 
 /**
- * First instant the repaired inbox → BullMQ → episode lifecycle pipeline (PR #1267) is authoritative.
- *
- * Canonical events and inbox rows with `receivedAt` strictly before this boundary are
- * **historical orphans** — reported only, never auto-reconciled by the 30s scheduler.
- *
- * Override via `CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER` (ISO-8601) for controlled environments.
- *
  * @see docs/audits/connectivity-production-processing-gate-2026-08.md
- * @see prisma/migrations/20260719160000_device_connection_webhook_inbox
  */
-export { CONNECTIVITY_LIFECYCLE_RUNTIME_RECONCILE_AFTER_ISO };
+export { CONNECTIVITY_LIFECYCLE_DEV_RECONCILE_AFTER_ISO };
+
+export type LifecycleReconciliationEligibility =
+  | 'eligible'
+  | 'already_complete'
+  | 'historical_orphan'
+  | 'reconciliation_disabled';
 
 export function isEligibleForRuntimeLifecycleReconciliation(
   receivedAt: Date,
@@ -25,4 +23,36 @@ export function isHistoricalLifecycleOrphan(
   reconcileAfter: Date,
 ): boolean {
   return receivedAt.getTime() < reconcileAfter.getTime();
+}
+
+export function evaluateOrphanReconciliationEligibility(input: {
+  receivedAt: Date;
+  processedAt: Date | null;
+  lifecycleReconcileAfter: Date | null;
+  automaticLifecycleReconciliationEnabled: boolean;
+}): LifecycleReconciliationEligibility {
+  if (input.processedAt) {
+    return 'already_complete';
+  }
+  if (!input.automaticLifecycleReconciliationEnabled || !input.lifecycleReconcileAfter) {
+    return 'reconciliation_disabled';
+  }
+  if (isHistoricalLifecycleOrphan(input.receivedAt, input.lifecycleReconcileAfter)) {
+    return 'historical_orphan';
+  }
+  return 'eligible';
+}
+
+export function isInboxEligibleForAutomaticRuntimeReplay(input: {
+  receivedAt: Date;
+  lifecycleReconcileAfter: Date | null;
+  automaticLifecycleReconciliationEnabled: boolean;
+}): boolean {
+  if (!input.automaticLifecycleReconciliationEnabled || !input.lifecycleReconcileAfter) {
+    return false;
+  }
+  return isEligibleForRuntimeLifecycleReconciliation(
+    input.receivedAt,
+    input.lifecycleReconcileAfter,
+  );
 }

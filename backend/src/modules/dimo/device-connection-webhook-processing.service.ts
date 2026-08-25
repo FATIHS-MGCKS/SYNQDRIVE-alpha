@@ -127,6 +127,24 @@ export class DeviceConnectionWebhookProcessingService {
         return 'reconciled';
       }
 
+      if (
+        domainResult.outcome === 'historical_orphan' ||
+        domainResult.outcome === 'reconciliation_disabled'
+      ) {
+        const reason = domainResult.policyReason ?? domainResult.outcome;
+        await this.inboxRepo.markIgnoredByPolicy(inboxId, reason);
+        this.observability?.log('webhook_processing', {
+          provider: row.provider,
+          eventType: row.eventType,
+          outcome: 'ignored',
+          reason,
+        });
+        this.logger.warn(
+          `Connectivity webhook inbox ${inboxId} terminal ignore — canonical event ${domainResult.eventId} is ${reason}`,
+        );
+        return 'ignored_by_policy';
+      }
+
       await this.inboxRepo.markProcessed(inboxId, { domainEventId: domainResult.eventId });
       this.observability?.log('webhook_processing', {
         provider: row.provider,

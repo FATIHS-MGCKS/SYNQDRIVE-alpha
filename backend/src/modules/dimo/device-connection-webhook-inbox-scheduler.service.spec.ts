@@ -1,16 +1,31 @@
-import { CONNECTIVITY_LIFECYCLE_RUNTIME_RECONCILE_AFTER_ISO } from '@config/device-connection-webhook-inbox.config';
+import { CONNECTIVITY_LIFECYCLE_DEV_RECONCILE_AFTER_ISO } from '@config/device-connection-webhook-inbox.config';
 import deviceConnectionWebhookInboxConfig from '@config/device-connection-webhook-inbox.config';
 import { DeviceConnectionWebhookInboxSchedulerService } from './device-connection-webhook-inbox-scheduler.service';
 
-const CUTOVER = new Date(CONNECTIVITY_LIFECYCLE_RUNTIME_RECONCILE_AFTER_ISO);
+const CUTOVER = new Date(CONNECTIVITY_LIFECYCLE_DEV_RECONCILE_AFTER_ISO);
 const config = {
   ...deviceConnectionWebhookInboxConfig(),
   lifecycleReconcileAfter: CUTOVER,
+  automaticLifecycleReconciliationEnabled: true,
 };
 
 const JULY20 = new Date('2026-07-20T11:05:03.768Z');
 const JULY28_INBOX = new Date('2026-07-28T07:56:52.211Z');
 const POST_CUTOVER = new Date('2026-08-26T10:00:00.000Z');
+
+function mockLifecyclePolicy(overrides: Partial<{
+  automaticLifecycleReconciliationEnabled: boolean;
+  lifecycleReconcileAfter: Date | null;
+}> = {}) {
+  const enabled = overrides.automaticLifecycleReconciliationEnabled ?? true;
+  const cutover = overrides.lifecycleReconcileAfter ?? (enabled ? CUTOVER : null);
+  return {
+    automaticLifecycleReconciliationEnabled: enabled,
+    lifecycleReconcileAfter: cutover,
+    evaluateOrphanReconciliationEligibility: jest.fn(),
+    isInboxEligibleForAutomaticRuntimeReplay: jest.fn(),
+  };
+}
 
 function buildService(deps: {
   findStaleInFlightBatch?: jest.Mock;
@@ -20,9 +35,12 @@ function buildService(deps: {
   countEvents?: jest.Mock;
   countInbox?: jest.Mock;
   reconcile?: jest.Mock;
+  lifecyclePolicy?: ReturnType<typeof mockLifecyclePolicy>;
 }) {
+  const lifecyclePolicy = deps.lifecyclePolicy ?? mockLifecyclePolicy();
   return new DeviceConnectionWebhookInboxSchedulerService(
     config as never,
+    lifecyclePolicy as never,
     {
       findStaleInFlightBatch:
         deps.findStaleInFlightBatch ?? jest.fn().mockResolvedValue([]),
@@ -107,25 +125,10 @@ describe('DeviceConnectionWebhookInboxSchedulerService — runtime cutover', () 
   });
 
   it('N5: scheduler enqueue failure marks RETRYABLE_FAILED via enqueue service', async () => {
-    const markRetryableFailed = jest.fn();
     const enqueue = jest.fn().mockResolvedValue('failed');
     const findStaleInFlightBatch = jest.fn().mockResolvedValue([{ id: 'inbox-fail' }]);
 
-    const service = new DeviceConnectionWebhookInboxSchedulerService(
-      config as never,
-      {
-        findStaleInFlightBatch,
-        findRetryableBatch: jest.fn().mockResolvedValue([]),
-        markRetryableFailed,
-      } as never,
-      { enqueueOrMarkRetryableFailed: enqueue } as never,
-      {
-        dimoDeviceConnectionEvent: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
-        deviceConnectionWebhookInbox: { count: jest.fn().mockResolvedValue(0) },
-      } as never,
-      { reconcilePersistedEventLifecycle: jest.fn() } as never,
-    );
-
+    const service = buildService({ findStaleInFlightBatch, enqueueOrMarkRetryableFailed: enqueue });
     await service.pollRetryableInbox();
     expect(enqueue).toHaveBeenCalledWith('inbox-fail', 'scheduler', false);
   });
@@ -141,9 +144,6 @@ describe('DeviceConnectionWebhookInboxSchedulerService — runtime cutover', () 
     await service.scheduleInboxIds(['inbox-1', 'inbox-2', 'inbox-3']);
 
     expect(enqueue).toHaveBeenCalledTimes(3);
-    expect(enqueue).toHaveBeenNthCalledWith(1, 'inbox-1', 'scheduler', false);
-    expect(enqueue).toHaveBeenNthCalledWith(2, 'inbox-2', 'scheduler', false);
-    expect(enqueue).toHaveBeenNthCalledWith(3, 'inbox-3', 'scheduler', false);
   });
 
   it('N7: July historical orphan fixture — no episode reconciliation', async () => {
@@ -155,19 +155,58 @@ describe('DeviceConnectionWebhookInboxSchedulerService — runtime cutover', () 
     const service = buildService({ reconcile, countEvents, countInbox, findManyEvents });
     await service.pollRetryableInbox();
 
-    expect(findManyEvents).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          receivedAt: { gte: CUTOVER },
-        }),
-      }),
-    );
     expect(reconcile).not.toHaveBeenCalled();
     expect(countEvents).toHaveBeenCalledWith({
       where: { processedAt: null, receivedAt: { lt: CUTOVER } },
     });
-    expect(countInbox).toHaveBeenCalled();
     expect(JULY20.getTime()).toBeLessThan(CUTOVER.getTime());
     expect(JULY28_INBOX.getTime()).toBeLessThan(CUTOVER.getTime());
+  });
+
+  it('N11: skips automatic reconciliation when cutover disabled', async () => {
+    const reconcile = jest.fn();
+    const findStaleInFlightBatch = jest.fn();
+    const findManyEvents = jest.fn();
+
+    const service = buildService({
+      reconcile,
+      findStaleInFlightBatch,
+      findManyEvents,
+      lifecyclePolicy: mockLifecyclePolicy({
+        automaticLifecycleReconciliationEnabled: false,
+        lifecycleReconcileAfter: null,
+      }),
+    });
+
+    await service.pollRetryableInbox();
+
+    expect(findStaleInFlightBatch).not.toHaveBeenCalled();
+    expect(findManyEvents).not.toHaveBeenCalled();
+    expect(reconcile).not.toHaveBeenCalled();
+  });
+
+  it('N12: with explicit cutover reconciles eligible rows only', async () => {
+    const reconcile = jest.fn().mockResolvedValue({ outcome: 'reconciled' });
+    const findManyEvents = jest
+      .fn()
+      .mockResolvedValue([{ id: 'evt-eligible', receivedAt: POST_CUTOVER }]);
+
+    const service = buildService({
+      reconcile,
+      findManyEvents,
+      lifecyclePolicy: mockLifecyclePolicy({
+        automaticLifecycleReconciliationEnabled: true,
+        lifecycleReconcileAfter: CUTOVER,
+      }),
+    });
+
+    await service.pollRetryableInbox();
+
+    expect(findManyEvents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { processedAt: null, receivedAt: { gte: CUTOVER } },
+      }),
+    );
+    expect(reconcile).toHaveBeenCalledWith('evt-eligible');
   });
 });

@@ -2,6 +2,7 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { DimoDeviceConnectionEventType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
+import { ConnectivityLifecycleRuntimePolicyService } from './connectivity/connectivity-lifecycle-runtime-policy.service';
 import { ConnectivityRecoveryPolicyService } from './connectivity/connectivity-recovery.policy';
 import { DeviceConnectionEpisodeService } from './device-connection-episode.service';
 import {
@@ -15,6 +16,8 @@ export type DeviceConnectionIntakeOutcome =
   | 'created'
   | 'duplicate'
   | 'reconciled'
+  | 'historical_orphan'
+  | 'reconciliation_disabled'
   | 'ignored_by_policy';
 
 export type DeviceConnectionDomainResult = {
@@ -84,6 +87,7 @@ export class DeviceConnectionWebhookService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly episodeService: DeviceConnectionEpisodeService,
+    private readonly lifecyclePolicy: ConnectivityLifecycleRuntimePolicyService,
     @Optional() private readonly recoveryPolicy?: ConnectivityRecoveryPolicyService,
   ) {}
 
@@ -251,6 +255,17 @@ export class DeviceConnectionWebhookService {
       return { outcome: 'duplicate', eventId: row.id, eventType: row.eventType };
     }
 
+    const orphanEligibility = this.lifecyclePolicy.evaluateOrphanReconciliationEligibility({
+      receivedAt: row.receivedAt,
+      processedAt: row.processedAt,
+    });
+    const blocked = this.mapOrphanEligibilityToOutcome(
+      orphanEligibility,
+      row.id,
+      row.eventType,
+    );
+    if (blocked) return blocked;
+
     return this.completePersistedEventLifecycle({
       organizationId: row.organizationId,
       vehicleId: row.vehicleId,
@@ -312,10 +327,22 @@ export class DeviceConnectionWebhookService {
     }
 
     if (!isNew && !row.processedAt) {
+      const orphanEligibility = this.lifecyclePolicy.evaluateOrphanReconciliationEligibility({
+        receivedAt: row.receivedAt ?? receivedAt,
+        processedAt: row.processedAt,
+      });
+      const blocked = this.mapOrphanEligibilityToOutcome(
+        orphanEligibility,
+        row.id,
+        eventType,
+        inboxId,
+      );
+      if (blocked) return blocked;
+
       this.logger.warn(
         `Reconciling partially processed device connection event ${row.id} inboxId=${inboxId ?? 'n/a'} — episode lifecycle incomplete`,
       );
-    } else {
+    } else if (isNew) {
       this.logger.log(
         `Device connection event ${eventType} for vehicle ${vehicle.id} at ${observedAt.toISOString()} inboxId=${inboxId ?? 'n/a'}`,
       );
@@ -373,6 +400,35 @@ export class DeviceConnectionWebhookService {
       return { outcome: 'reconciled', eventId: input.eventId, eventType: input.eventType };
     }
     return { outcome: 'created', eventId: input.eventId, eventType: input.eventType };
+  }
+
+  private mapOrphanEligibilityToOutcome(
+    eligibility: ReturnType<ConnectivityLifecycleRuntimePolicyService['evaluateOrphanReconciliationEligibility']>,
+    eventId: string,
+    eventType: DimoDeviceConnectionEventType,
+    inboxId?: string,
+  ): DeviceConnectionDomainResult | null {
+    if (eligibility === 'eligible' || eligibility === 'already_complete') {
+      return null;
+    }
+
+    const outcome =
+      eligibility === 'historical_orphan' ? 'historical_orphan' : 'reconciliation_disabled';
+
+    this.logger.warn({
+      msg: 'device_connection.orphan_reconciliation_blocked',
+      eventId,
+      inboxId: inboxId ?? null,
+      eligibility,
+      eventType,
+    });
+
+    return {
+      outcome,
+      eventId,
+      eventType,
+      policyReason: eligibility,
+    };
   }
 
   private async syncEpisodeAfterPersistedEvent(input: {

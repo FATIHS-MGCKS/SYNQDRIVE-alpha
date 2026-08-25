@@ -210,9 +210,11 @@ DIMO `OBD_DEVICE_UNPLUGGED` webhooks flow: inbox (`RECEIVED`) → BullMQ `connec
 
 **Invariants (post gate fix):**
 - Event dedupe (`dedupBucket`) is separate from lifecycle completion (`processed_at`).
-- Retry after partial failure must reconcile episode sync when `processed_at IS NULL`.
-- Enqueue failure marks inbox `RETRYABLE_FAILED` (not silent `RECEIVED` forever).
-- Scheduler reconciles orphan `processed_at IS NULL` events as defense-in-depth.
+- Retry after partial failure must reconcile episode sync when `processed_at IS NULL` **and** `received_at >= CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER`.
+- Enqueue failure (intake or scheduler) marks inbox `RETRYABLE_FAILED` (not silent `RECEIVED` forever).
+- Scheduler reconciles eligible orphan `processed_at IS NULL` events only; historical pre-cutover orphans are logged, not materialized.
+- **Historical reconciliation eligibility is enforced centrally at the lifecycle mutation boundary** (`ConnectivityLifecycleRuntimePolicyService`). Scheduler filtering is defense-in-depth.
+- **Runtime retry/reconciliation repairs current-pipeline partial failures. Historical pre-cutover evidence is never automatically materialized into episodes.**
 - Snapshot recovery resolves OPEN episodes without requiring `OBD_DEVICE_PLUGGED_IN` webhook.
 
 **Audit:** `docs/audits/connectivity-production-processing-gate-2026-08.md`
