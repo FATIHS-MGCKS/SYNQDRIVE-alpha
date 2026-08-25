@@ -248,5 +248,47 @@ describe('Fleet operational availability — fleet-map (P0.3)', () => {
     expect(rows[0].operationalAvailability?.state).toBe(
       FLEET_OPERATIONAL_AVAILABILITY_UNKNOWN.state,
     );
+    expect(rows[0].operationalAvailability?.generatedAt).toBe(NOW.toISOString());
+  });
+
+  it('B — batch failure: all fallback vehicles share one request-scoped generatedAt', async () => {
+    const vehicles = [
+      makeVehicleRow({ id: 'veh-fallback-a' }),
+      makeVehicleRow({ id: 'veh-fallback-b', licensePlate: 'FB-B' }),
+      makeVehicleRow({ id: 'veh-fallback-c', licensePlate: 'FB-C' }),
+    ];
+    const { service } = makeFleetMapService({
+      vehicles,
+      projectionError: new Error('projection batch unavailable'),
+    });
+
+    const rows = await service.getFleetMapData(ORG_ID);
+    expect(rows).toHaveLength(3);
+    expect(rows.every((row) => row.operationalAvailability?.state === 'UNKNOWN')).toBe(true);
+    expect(rows.every((row) => row.operationalAvailability?.primaryReason === null)).toBe(
+      true,
+    );
+
+    const generatedAtValues = rows.map((row) => row.operationalAvailability?.generatedAt);
+    expect(new Set(generatedAtValues).size).toBe(1);
+    expect(generatedAtValues[0]).toBe(NOW.toISOString());
+    expect(generatedAtValues[0]).not.toBe(FLEET_OPERATIONAL_AVAILABILITY_UNKNOWN.generatedAt);
+  });
+
+  it('B — missing projection entries: all fallback vehicles share one request-scoped generatedAt', async () => {
+    const vehicles = [
+      makeVehicleRow({ id: 'veh-miss-a' }),
+      makeVehicleRow({ id: 'veh-miss-b', licensePlate: 'MS-B' }),
+    ];
+    const { service } = makeFleetMapService({
+      vehicles,
+      projections: new Map(),
+    });
+
+    const rows = await service.getFleetMapData(ORG_ID);
+    const generatedAtValues = rows.map((row) => row.operationalAvailability?.generatedAt);
+    expect(new Set(generatedAtValues).size).toBe(1);
+    expect(generatedAtValues[0]).toBe(NOW.toISOString());
+    expect(rows.every((row) => row.operationalAvailability?.state === 'UNKNOWN')).toBe(true);
   });
 });

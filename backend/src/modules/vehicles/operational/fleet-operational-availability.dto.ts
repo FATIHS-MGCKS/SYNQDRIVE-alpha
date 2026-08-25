@@ -38,3 +38,19 @@ export const FLEET_OPERATIONAL_AVAILABILITY_UNKNOWN: FleetOperationalAvailabilit
   attention: 'NONE',
   generatedAt: new Date(0).toISOString(),
 };
+
+/**
+ * Conservative technical fallback when P0.2 projection is missing for a vehicle
+ * or the batch loader failed. Uses a single request-scoped `generatedAt` for the
+ * entire Fleet response — never per-row `new Date()`.
+ *
+ * `primaryReason` stays null: this is not a domain-evaluated UNKNOWN (see P0.3 audit).
+ */
+export function createFleetOperationalAvailabilityUnknownFallback(
+  generatedAt: string,
+): FleetOperationalAvailabilityDto {
+  return {
+    ...FLEET_OPERATIONAL_AVAILABILITY_UNKNOWN,
+    generatedAt,
+  };
+}

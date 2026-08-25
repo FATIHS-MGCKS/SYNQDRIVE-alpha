@@ -81,7 +81,7 @@ import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connectio
 import { VehicleConnectivityRuntimeProjectionService } from '@modules/dimo/device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
 import { VehicleOperationalProjectionService } from './operational/projection/vehicle-operational-projection.service';
 import {
-  FLEET_OPERATIONAL_AVAILABILITY_UNKNOWN,
+  createFleetOperationalAvailabilityUnknownFallback,
   toFleetOperationalAvailabilityDto,
   type FleetOperationalAvailabilityDto,
 } from './operational/fleet-operational-availability.dto';
@@ -1541,6 +1541,8 @@ export class VehiclesService {
       vehicleIdsForMap,
     );
 
+    const fleetProjectionGeneratedAt = new Date().toISOString();
+
     let projectionsByVehicle = new Map<
       string,
       ReturnType<typeof toFleetOperationalAvailabilityDto>
@@ -1564,6 +1566,9 @@ export class VehiclesService {
         error: err instanceof Error ? err.message : String(err),
       });
     }
+
+    const fleetOperationalAvailabilityFallback =
+      createFleetOperationalAvailabilityUnknownFallback(fleetProjectionGeneratedAt);
 
     const result: FleetMapVehicleDto[] = vehicles.map((vehicle) => {
       const state = vehicle.latestState;
@@ -1647,10 +1652,8 @@ export class VehiclesService {
         connectivityRuntime: runtimeByVehicle.has(vehicle.id)
           ? serializeVehicleConnectivityRuntimeState(runtimeByVehicle.get(vehicle.id)!)
           : undefined,
-        operationalAvailability: projectionsByVehicle.get(vehicle.id) ?? {
-          ...FLEET_OPERATIONAL_AVAILABILITY_UNKNOWN,
-          generatedAt: new Date().toISOString(),
-        },
+        operationalAvailability:
+          projectionsByVehicle.get(vehicle.id) ?? fleetOperationalAvailabilityFallback,
       };
     });
 
