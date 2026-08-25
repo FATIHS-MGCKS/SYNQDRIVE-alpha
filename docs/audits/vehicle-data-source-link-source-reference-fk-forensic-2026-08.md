@@ -511,3 +511,126 @@ Predicate evaluation: **PASS** (legacy HM branch).
 | Partial unique index | Safe — no active DIMO rows today |
 
 **Expected migration safety: PASS**
+
+---
+
+## X. Production Schema Deployment Verification (2026-08-25)
+
+**Mode:** Normal VPS deploy + approved additive migration — **no backfill `--apply`**
+
+### A. Deployed SHA
+
+| Field | Value |
+|-------|-------|
+| `main` SHA | `1636d35286124b5a9b4d7f0b2a31a57372cd859b` |
+| PR #1290 merge | **YES** (`fix(dimo): add provider-specific FK for DIMO vehicle links`) |
+| PR #1281 included | **YES** (ancestor on `main`) |
+| PR #1277 | **NOT included** (HOLD) |
+| Commits after #1290 on `main` | **None** (HEAD is #1290 merge) |
+| Production release | `20260825182836_v4994` |
+| Deploy method | `bash .cursor/scripts/cloud-agent-deploy.sh` → `vps-deploy-release.sh` |
+
+### B. Backup
+
+| Field | Value |
+|-------|-------|
+| Identifier | `/opt/synqdrive/shared/backups/db-pre-deploy-20260825182836.sql.gz` |
+| Timestamp | 2026-08-25 18:28 UTC |
+| Status | **SUCCESS** |
+| Restore reference | `vps-deploy-release.sh` pre-deploy `pg_dump`; prior release `20260825174150_v4994` available |
+
+### C. Migration result
+
+| Field | Value |
+|-------|-------|
+| Migration | `20260825180000_dimo_provider_link_dimo_vehicle_fk` |
+| Result | **PASS** (applied 2026-08-25 18:29:50 UTC) |
+| Prisma migrate deploy | **PASS** (deploy script) |
+
+### D. Real Production DDL (pg_catalog)
+
+| Check | Result |
+|-------|--------|
+| `source_reference_id` nullable | **YES** |
+| HM FK preserved | **YES** → `high_mobility_vehicles(id)` `ON DELETE RESTRICT` `ON UPDATE CASCADE` |
+| `dimo_vehicle_id` exists | **YES** (TEXT, nullable) |
+| DIMO FK | `dimo_vehicles(id)` `ON DELETE RESTRICT` `ON UPDATE CASCADE` |
+| CHECK `vehicle_data_source_links_provider_reference_check` | **PASS** (3 explicit branches) |
+| Partial unique `uq_vdsl_active_dimo_vehicle` | **PASS** |
+
+### E–G. Legacy compatibility
+
+| Check | Result |
+|-------|--------|
+| Legacy HM row unchanged | **YES** — `UNKNOWN` / `HIGH_MOBILITY` / `HM_HEALTH`, `source_reference_id` set, `dimo_vehicle_id` NULL |
+| CHECK compat (all rows) | 1 total, 1 compatible, 0 incompatible |
+| Failed apply residue | **0** (`provenance=backfill`, failed runId) |
+
+### H–K. Post-migration counts / health
+
+| Check | Result |
+|-------|-------|
+| DIMO links before migration | **0** |
+| DIMO links after migration/deploy | **0** |
+| Automatic link creation | **NO** |
+| API `/api/v1/health` | **ok** |
+| PM2 `synqdrive` | **online** (stable post-restart) |
+| Redis | **PONG** |
+| BullMQ | queues present; no abnormal backlog observed |
+| Boot check / DI graph | **PASS** |
+
+### L–N. Backfill dry-runs (NO `--apply`, org `faa710c9-6d91-4079-a7d5-91fdccdec14a`)
+
+| | Dry-run #1 | Dry-run #2 |
+|---|------------|------------|
+| scanned | 6 | 6 |
+| CREATE | 6 | 6 |
+| NOOP | 0 | 0 |
+| REACTIVATE | 0 | 0 |
+| CONFLICT | 0 | 0 |
+| SKIP | 0 | 0 |
+| applied | 0 | 0 |
+
+**Deterministic:** **YES** (plan hash `5cd0a4bfc6bf085f65ee357948718383940aadcdccb7f7cf46965c69a1cc9cf1`)
+
+**Mutation plan shape (via `planBackfillForOrganization`):** all 6 CREATE rows use `candidateDimoVehicleId = Vehicle.dimoVehicleId`; `candidateSourceReferenceId` unset (NULL). **No plan places DimoVehicle.id into `sourceReferenceId`.**
+
+**Note:** Built-in `--shadow` enrichment in `backfill-dimo-vehicle-data-source-links.ts` does not yet populate `dimoVehicleId` on simulated shadow links (post-#1290 evidence contract). Corrected shadow analysis (manual, with `dimoVehicleId` on simulated link) used for gate O–Q below.
+
+### O–Q. Reference vehicle shadow (corrected provider-specific simulation)
+
+| Vehicle | providerLinkState | operationalAvailability | overallState |
+|---------|-------------------|-------------------------|--------------|
+| HMÜ C 215 | UNKNOWN → **ACTIVE** | UNKNOWN → **AVAILABLE** | UNKNOWN → STANDBY |
+| WOB L 7503 | UNKNOWN → ACTIVE | NEEDS_VERIFICATION → **NEEDS_VERIFICATION** | OFFLINE → OFFLINE |
+| WOB L 9755 | UNKNOWN → ACTIVE | NEEDS_VERIFICATION → **NEEDS_VERIFICATION** | OFFLINE → OFFLINE |
+| KS MS 661 | UNKNOWN → **REAUTH_REQUIRED** | UNKNOWN → NEEDS_VERIFICATION | UNKNOWN → AUTHORIZATION_REQUIRED |
+
+KS MS 661: mapping identity ≠ authorization authority preserved (ACTIVE mapping would not be inferred; REAUTH_REQUIRED).
+
+### R. Proposed future backfill runId
+
+`dimo-link-backfill-prod-2026-08-25-1636d35`
+
+**Rollback selector:** `metadata.provenance IN ('backfill','reconciliation') AND metadata.runId = 'dimo-link-backfill-prod-2026-08-25-1636d35'`
+
+### S. Remaining gates
+
+| Gate | Status |
+|------|--------|
+| DIMO backfill `--apply` | **DO NOT EXECUTE** (await explicit approval) |
+| Production Connectivity Processing Gate | **CONDITIONAL** |
+| PR #1277 | **HOLD** |
+| Post-cutover unplug test | **NOT PERFORMED** |
+
+### T. Final verdict
+
+| Verdict | Result |
+|---------|--------|
+| #1290 PRODUCTION DEPLOYMENT | **PASS** |
+| PRODUCTION SCHEMA MIGRATION | **PASS** |
+| HIGH MOBILITY COMPATIBILITY | **PASS** |
+| DIMO PROVIDER-SPECIFIC FK | **PASS** |
+| DIMO BACKFILL PRE-APPLY GATE | **GO** |
+
+**DIMO BACKFILL `--apply`:** **DO NOT EXECUTE** in this task.
