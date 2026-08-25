@@ -317,6 +317,7 @@ export class VehiclesService {
     private readonly dataAuthEnforcement: DataAuthorizationEnforcementService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
     private readonly connectivityRuntimeProjection: VehicleConnectivityRuntimeProjectionService,
+    @Inject(forwardRef(() => VehicleOperationalProjectionService))
     private readonly operationalProjection: VehicleOperationalProjectionService,
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
     private readonly tasksService: TasksService,
