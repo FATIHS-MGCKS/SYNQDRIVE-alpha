@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-operational-projection-p0-2-design-2026-08-25',
+    version: '4.9.957',
+    title: 'P0.2 — VehicleOperationalProjection design + contract slice',
+    summary: [
+      'Canonical multi-dimensional operator projection consuming P0.1 connectivity runtime (no re-derivation).',
+      'Separates businessState, operationalAvailability, healthEvaluability, attention, operatorSummary.',
+      'Health evaluability: health-domain authority; connectivity downgrade-only (never upgrades to EVALUABLE).',
+      'Reference fixtures: HMÜ C 215 (health UNKNOWN), WOB L 7503/9755 + synthetic cases A–H/H1–H8.',
+      'Batch builder with shared generatedAt; no consumer UI migration.',
+    ],
+    reason: 'P0.2 domain design — unify operator-facing operational interpretation without collapsing connectivity/health/business domains.',
+    previousBehavior: 'Fleet availability, health, connectivity, and dashboard readiness derived independently per surface.',
+    details: 'docs/audits/vehicle-operational-projection-p0-2-design-2026-08.md; backend/src/modules/vehicles/operational/projection/*',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T10:00:00.000Z',
+  },
+  {
     id: 'connectivity-wob-9755-obd-semantics-2026-08-25',
     version: '4.9.956',
     title: 'WOB L 9755 forensics — obdIsPluggedIn=false is not physical recovery evidence',

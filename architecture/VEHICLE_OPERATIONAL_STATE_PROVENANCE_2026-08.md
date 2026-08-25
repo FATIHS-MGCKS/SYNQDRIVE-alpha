@@ -178,6 +178,12 @@ Target URL: `?view=fleet&fleetTab=connectivity&connectivityVehicleId=<vehicleId>
 
 Requirements: deep-linkable, browser-back safe, org-scoped, invalid vehicleId falls back to list. UI CTA implementation deferred to P0.5.
 
+### P0.2 projection module (design slice)
+
+**Authority:** `backend/src/modules/vehicles/operational/projection/vehicle-operational-projection.builder.ts`
+
+Consumes `VehicleConnectivityRuntimeState` without re-deriving connectivity evidence. Exposes `businessState`, `operationalAvailability`, `healthEvaluability`, `attention`, and `operatorSummary`. See `docs/audits/vehicle-operational-projection-p0-2-design-2026-08.md`.
+
 ---
 
 ## Health evaluability (P0.4 design requirement)
