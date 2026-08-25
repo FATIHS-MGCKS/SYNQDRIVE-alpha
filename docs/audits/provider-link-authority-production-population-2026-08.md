@@ -299,7 +299,7 @@ Metrics exist for `providerLinkState` distribution (`connectivity-observability.
 | `provider` | `DIMO` |
 | `sourceType` | `DIMO` |
 | `sourceSubtype` | `null` (canonical single DIMO telemetry channel) |
-| `sourceReferenceId` | `DimoVehicle.id` (= `Vehicle.dimoVehicleId`) |
+| `sourceReferenceId` | Internal `DimoVehicle.id` (= `Vehicle.dimoVehicleId`). **Not** external DIMO vehicle ID/token — see `metadata.dimoExternalId`. |
 | `consentId` | Latest ACTIVE consent if present; else latest consent for provenance; nullable at registration |
 | `isActive` | `true` |
 | `activatedAt` / `lastVerifiedAt` | Set on create/reactivate/verify |
@@ -357,3 +357,51 @@ Before `--apply`: deploy pipeline fix → DB backup → dry-run stable ×2 → z
 **Production `--apply`:** **DO NOT EXECUTE** without explicit approval.
 
 **PR #1277:** HOLD (unchanged)
+
+---
+
+## S. Final Hardening Gate (2026-08-25)
+
+**Branch:** `fix/dimo-provider-link-normalization-2026-08`  
+**Mode:** Hardening + tests + read-only Production dry-runs — **no Production writes**
+
+### 1. Production shadow authority
+
+Shadow path now invokes `VehicleOperationalProjectionService.projectWithConnectivityOverride()` with:
+
+- Real persisted `vehicle.status`
+- `deriveFleetBusinessContextBatch()` for booking/episode business context
+- `RentalHealthSummaryService` for health evaluability
+- `resolveEpisodeEvidenceReliability()` from lifecycle policy
+- Connectivity simulated only via `assembleVehicleConnectivityRuntimeBundle()` with planned active DIMO link
+
+**Removed:** hardcoded `vehicleStatus: 'AVAILABLE'` and `episodeEvidenceReliable: false`.
+
+### 2. REACTIVATE safety
+
+| Scenario | Action |
+|----------|--------|
+| Backfill / reconciliation + inactive historical link | `CONFLICT` — `inactive_link_requires_manual_review` |
+| `metadata.intentionalDeactivation` | `CONFLICT` |
+| `metadata.deactivationReason` | `CONFLICT` |
+| Registration + `metadata.reactivationEligible === true` | `REACTIVATE` |
+| Registration without positive provenance | `CONFLICT` |
+
+`reconcileSafeDrift()` applies **CREATE only** — never reactivates.
+
+### 3. Complete test matrix
+
+| Suite | Cases |
+|-------|-------|
+| Link ensure | L1–L10 |
+| Backfill | B1–B8 |
+| Reconciliation | R1–R5 |
+| Operational regression | O1–O5 |
+
+### 4. Canonical `sourceReferenceId`
+
+`VehicleDataSourceLink.sourceReferenceId` for DIMO = internal `DimoVehicle.id`. External DIMO identity stored in `metadata.dimoExternalId`.
+
+### 5. Mapping vs auth separation
+
+Provider link row existence ≠ healthy provider authorization. KS MS 661 may have structurally correct mapping while `ProviderLinkState` remains `REVOKED` / `REAUTH_REQUIRED`.

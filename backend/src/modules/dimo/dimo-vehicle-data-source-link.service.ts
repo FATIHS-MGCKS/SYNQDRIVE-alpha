@@ -16,7 +16,10 @@ import {
   DIMO_LINK_METADATA_VERSION,
   type DimoLinkProvenance,
 } from './dimo-vehicle-data-source-link.contract';
-import type {
+import {
+  assessInactiveLinkReactivation,
+} from './dimo-vehicle-data-source-link.reactivation.policy';
+import {
   DimoBackfillSummary,
   DimoBackfillVehicleReport,
   DimoConsentProvenance,
@@ -208,6 +211,27 @@ export class DimoVehicleDataSourceLinkService {
       (l) => !l.isActive && l.sourceReferenceId === sourceReferenceId,
     );
     if (inactiveMatch) {
+      const reactivation = assessInactiveLinkReactivation(
+        {
+          deactivatedAt: inactiveMatch.deactivatedAt,
+          metadata: inactiveMatch.metadata,
+        },
+        input.provenance ?? 'manual',
+      );
+      if (!reactivation.eligible) {
+        this.observeBinding('conflict', input.provenance);
+        return {
+          action: 'CONFLICT',
+          linkId: inactiveMatch.id,
+          reason:
+            reactivation.reason === 'backfill_reconciliation_never_reactivates'
+              ? 'inactive_link_requires_manual_review'
+              : reactivation.reason,
+          sourceReferenceId,
+          consentId: inactiveMatch.consentId,
+        };
+      }
+
       const consentId =
         input.consentId !== undefined
           ? input.consentId
@@ -351,10 +375,7 @@ export class DimoVehicleDataSourceLinkService {
       const plan = await this.planBackfillForVehicle(vehicle);
       reports.push(plan);
 
-      if (
-        input.apply &&
-        (plan.plannedAction === 'CREATE' || plan.plannedAction === 'REACTIVATE')
-      ) {
+      if (input.apply && plan.plannedAction === 'CREATE') {
         const result = await this.ensureDimoVehicleDataSourceLink({
           organizationId: vehicle.organizationId,
           vehicleId: vehicle.id,
@@ -364,7 +385,7 @@ export class DimoVehicleDataSourceLinkService {
           provenance: 'backfill',
           runId,
         });
-        if (result.action === 'CREATE' || result.action === 'REACTIVATE') {
+        if (result.action === 'CREATE') {
           applied += 1;
         }
       }
@@ -469,7 +490,7 @@ export class DimoVehicleDataSourceLinkService {
           provenance: 'reconciliation',
           runId,
         });
-        if (result.action === 'CREATE' || result.action === 'REACTIVATE') {
+        if (result.action === 'CREATE') {
           applied += 1;
         }
       }
@@ -576,8 +597,8 @@ export class DimoVehicleDataSourceLinkService {
         existingInactiveDimoLink: true,
         candidateSourceReferenceId: sourceReferenceId,
         consentProvenance,
-        plannedAction: 'REACTIVATE',
-        reason: 'reactivate_inactive_link',
+        plannedAction: 'CONFLICT',
+        reason: 'inactive_link_requires_manual_review',
       };
     }
 
@@ -633,6 +654,8 @@ export class DimoVehicleDataSourceLinkService {
             id: true,
             sourceReferenceId: true,
             isActive: true,
+            deactivatedAt: true,
+            metadata: true,
           },
         },
       },
@@ -714,5 +737,7 @@ interface BackfillCandidate {
     id: string;
     sourceReferenceId: string;
     isActive: boolean;
+    deactivatedAt: Date | null;
+    metadata: unknown;
   }>;
 }

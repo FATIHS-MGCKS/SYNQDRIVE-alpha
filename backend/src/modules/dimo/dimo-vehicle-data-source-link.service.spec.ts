@@ -319,6 +319,53 @@ describe('DimoVehicleDataSourceLinkService', () => {
     expect(store.links.filter((l) => l.provider === 'HIGH_MOBILITY')).toHaveLength(1);
     expect(store.links.filter((l) => l.provider === 'DIMO')).toHaveLength(1);
   });
+
+  it('L9 — inactive link reactivates only with explicit positive provenance', async () => {
+    const store = baseStore();
+    store.links.push({
+      id: 'link-inactive',
+      vehicleId: 'veh-1',
+      provider: DIMO_DATA_SOURCE_PROVIDER,
+      sourceType: DIMO_DATA_SOURCE_TYPE,
+      sourceSubtype: DIMO_DATA_SOURCE_SUBTYPE,
+      sourceReferenceId: 'dimo-1',
+      consentId: 'consent-active',
+      isActive: false,
+      activatedAt: new Date('2026-01-01'),
+      deactivatedAt: new Date('2026-06-01'),
+      linkedByUserId: null,
+      lastVerifiedAt: null,
+      metadata: { reactivationEligible: true },
+    });
+    const service = new DimoVehicleDataSourceLinkService(createMockPrisma(store) as any);
+    const result = await service.ensureDimoVehicleDataSourceLink(baseInput);
+    expect(result.action).toBe('REACTIVATE');
+    expect(store.links[0].isActive).toBe(true);
+  });
+
+  it('L10 — inactive link without safe provenance → CONFLICT on registration', async () => {
+    const store = baseStore();
+    store.links.push({
+      id: 'link-inactive',
+      vehicleId: 'veh-1',
+      provider: DIMO_DATA_SOURCE_PROVIDER,
+      sourceType: DIMO_DATA_SOURCE_TYPE,
+      sourceSubtype: DIMO_DATA_SOURCE_SUBTYPE,
+      sourceReferenceId: 'dimo-1',
+      consentId: 'consent-active',
+      isActive: false,
+      activatedAt: new Date('2026-01-01'),
+      deactivatedAt: new Date('2026-06-01'),
+      linkedByUserId: null,
+      lastVerifiedAt: null,
+      metadata: { intentionalDeactivation: true },
+    });
+    const service = new DimoVehicleDataSourceLinkService(createMockPrisma(store) as any);
+    const result = await service.ensureDimoVehicleDataSourceLink(baseInput);
+    expect(result.action).toBe('CONFLICT');
+    expect(result.reason).toBe('intentional_deactivation');
+    expect(store.links[0].isActive).toBe(false);
+  });
 });
 
 describe('DimoVehicleDataSourceLinkService backfill planning', () => {
@@ -398,6 +445,130 @@ describe('DimoVehicleDataSourceLinkService backfill planning', () => {
     expect(first.applied).toBe(1);
     expect(second.plannedNoop).toBe(1);
     expect(second.applied).toBe(0);
+  });
+
+  it('B4 — apply creates link once', async () => {
+    const store = baseStore();
+    const prisma = createMockPrisma(store) as any;
+    prisma.vehicle.findMany = jest.fn(async () => [
+      {
+        id: 'veh-1',
+        organizationId: 'org-1',
+        licensePlate: 'HMÜ C 215',
+        vehicleName: null,
+        dimoVehicleId: 'dimo-1',
+        dimoVehicle: { id: 'dimo-1' },
+        dataSourceLinks: [],
+      },
+    ]);
+    const service = new DimoVehicleDataSourceLinkService(prisma as any);
+    const summary = await service.runBackfill({ organizationId: 'org-1', apply: true });
+    expect(summary.applied).toBe(1);
+    expect(store.links).toHaveLength(1);
+  });
+
+  it('B6 — tenant isolation: cross-tenant active mapping blocks CREATE', async () => {
+    const store = baseStore();
+    store.vehicles.push({
+      id: 'veh-2',
+      organizationId: 'org-2',
+      dimoVehicleId: 'dimo-1',
+      licensePlate: 'OTHER',
+    });
+    store.links.push({
+      id: 'link-org2',
+      vehicleId: 'veh-2',
+      provider: DIMO_DATA_SOURCE_PROVIDER,
+      sourceType: DIMO_DATA_SOURCE_TYPE,
+      sourceSubtype: DIMO_DATA_SOURCE_SUBTYPE,
+      sourceReferenceId: 'dimo-1',
+      consentId: null,
+      isActive: true,
+      activatedAt: new Date(),
+      deactivatedAt: null,
+      linkedByUserId: null,
+      lastVerifiedAt: null,
+      metadata: null,
+    });
+    const service = new DimoVehicleDataSourceLinkService(createMockPrisma(store) as any);
+    const result = await service.ensureDimoVehicleDataSourceLink({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      dimoVehicleId: 'dimo-1',
+      provenance: 'backfill',
+    });
+    expect(result.action).toBe('CONFLICT');
+    expect(result.reason).toBe('cross_tenant_active_mapping');
+    expect(store.links.filter((l) => l.vehicleId === 'veh-1')).toHaveLength(0);
+  });
+
+  it('B7 — inactive historical link → CONFLICT (no auto-reactivate in backfill)', async () => {
+    const store = baseStore();
+    store.links.push({
+      id: 'link-inactive',
+      vehicleId: 'veh-1',
+      provider: DIMO_DATA_SOURCE_PROVIDER,
+      sourceType: DIMO_DATA_SOURCE_TYPE,
+      sourceSubtype: DIMO_DATA_SOURCE_SUBTYPE,
+      sourceReferenceId: 'dimo-1',
+      consentId: 'consent-active',
+      isActive: false,
+      activatedAt: new Date('2026-01-01'),
+      deactivatedAt: new Date('2026-06-01'),
+      linkedByUserId: null,
+      lastVerifiedAt: null,
+      metadata: null,
+    });
+    const prisma = createMockPrisma(store) as any;
+    prisma.vehicle.findMany = jest.fn(async () => [
+      {
+        id: 'veh-1',
+        organizationId: 'org-1',
+        licensePlate: 'HMÜ C 215',
+        vehicleName: null,
+        dimoVehicleId: 'dimo-1',
+        dimoVehicle: { id: 'dimo-1' },
+        dataSourceLinks: store.links.filter((l) => l.vehicleId === 'veh-1'),
+      },
+    ]);
+    const service = new DimoVehicleDataSourceLinkService(prisma as any);
+    const summary = await service.runBackfill({ organizationId: 'org-1', apply: true });
+    expect(summary.plannedConflict).toBe(1);
+    expect(summary.plannedReactivate).toBe(0);
+    expect(summary.applied).toBe(0);
+    expect(store.links[0].isActive).toBe(false);
+  });
+
+  it('B8 — revoked consent: link mapping does not imply ACTIVE provider auth', async () => {
+    const store = baseStore();
+    store.consents = [
+      {
+        id: 'consent-revoked',
+        vehicleId: 'veh-1',
+        organizationId: 'org-1',
+        provider: 'DIMO',
+        status: 'REVOKED',
+        grantedAt: new Date('2026-01-01'),
+      },
+    ];
+    const prisma = createMockPrisma(store) as any;
+    prisma.vehicle.findMany = jest.fn(async () => [
+      {
+        id: 'veh-1',
+        organizationId: 'org-1',
+        licensePlate: 'KS MS 661',
+        vehicleName: null,
+        dimoVehicleId: 'dimo-1',
+        dimoVehicle: { id: 'dimo-1' },
+        dataSourceLinks: [],
+      },
+    ]);
+    const service = new DimoVehicleDataSourceLinkService(prisma as any);
+    const summary = await service.runBackfill({ organizationId: 'org-1', apply: false });
+    expect(summary.plannedCreate).toBe(1);
+    const provenance = await service.resolveConsentProvenance('veh-1', 'org-1');
+    expect(provenance.consentStatus).toBe('REVOKED');
+    expect(provenance.selection).toBe('latest_inactive');
   });
 });
 
@@ -518,6 +689,81 @@ describe('DimoVehicleDataSourceLinkService reconciliation', () => {
       apply: true,
     });
     expect(result.applied).toBe(0);
+  });
+
+  it('R4 — cross-tenant conflict detected, no automatic mutation', async () => {
+    const store = baseStore();
+    store.vehicles.push({
+      id: 'veh-2',
+      organizationId: 'org-2',
+      dimoVehicleId: 'dimo-1',
+      licensePlate: 'OTHER',
+    });
+    store.links.push({
+      id: 'link-org2',
+      vehicleId: 'veh-2',
+      provider: DIMO_DATA_SOURCE_PROVIDER,
+      sourceType: DIMO_DATA_SOURCE_TYPE,
+      sourceSubtype: DIMO_DATA_SOURCE_SUBTYPE,
+      sourceReferenceId: 'dimo-1',
+      consentId: null,
+      isActive: true,
+      activatedAt: new Date(),
+      deactivatedAt: null,
+      linkedByUserId: null,
+      lastVerifiedAt: null,
+      metadata: null,
+    });
+    const prisma = createMockPrisma(store) as any;
+    prisma.vehicle.findMany = jest.fn(async ({ where }: any) =>
+      store.vehicles
+        .filter((v) => v.organizationId === where.organizationId && v.dimoVehicleId)
+        .map((v) => ({
+          ...v,
+          dimoVehicle: { id: v.dimoVehicleId! },
+          dataSourceLinks: store.links.filter(
+            (l) => l.vehicleId === v.id && dimoFilter(l),
+          ),
+        })),
+    );
+    const service = new DimoVehicleDataSourceLinkService(prisma as any);
+    const result = await service.reconcileSafeDrift({
+      organizationId: 'org-1',
+      apply: true,
+    });
+    expect(result.applied).toBe(0);
+    expect(store.links.filter((l) => l.vehicleId === 'veh-1')).toHaveLength(0);
+  });
+
+  it('R5 — idempotent reconciliation: second run applies zero mutations', async () => {
+    const store = baseStore();
+    const prisma = createMockPrisma(store) as any;
+    prisma.vehicle.findMany = jest.fn(async () => [
+      {
+        id: 'veh-1',
+        organizationId: 'org-1',
+        licensePlate: 'HMÜ C 215',
+        vehicleName: null,
+        dimoVehicleId: 'dimo-1',
+        dimoVehicle: { id: 'dimo-1' },
+        dataSourceLinks: store.links.filter((l) => l.vehicleId === 'veh-1'),
+      },
+    ]);
+    const service = new DimoVehicleDataSourceLinkService(prisma as any);
+    const first = await service.reconcileSafeDrift({
+      organizationId: 'org-1',
+      apply: true,
+    });
+    const second = await service.reconcileSafeDrift({
+      organizationId: 'org-1',
+      apply: true,
+    });
+    expect(first.applied).toBe(1);
+    expect(second.applied).toBe(0);
+    expect(store.links.filter((l) => l.isActive && dimoFilter(l))).toHaveLength(1);
+    const drift = await service.auditProviderLinkDrift({ organizationId: 'org-1' });
+    expect(drift.healthy).toBe(1);
+    expect(drift.missingLink).toBe(0);
   });
 });
 

@@ -17,11 +17,6 @@ import { PrismaService } from '../../src/shared/database/prisma.service';
 import { DimoVehicleDataSourceLinkService } from '../../src/modules/dimo/dimo-vehicle-data-source-link.service';
 import { assembleVehicleConnectivityRuntimeBundle } from '../../src/modules/vehicles/connectivity/vehicle-connectivity-runtime-batch.assembler';
 import { VehicleOperationalProjectionService } from '../../src/modules/vehicles/operational/projection/vehicle-operational-projection.service';
-import { buildVehicleOperationalProjection } from '../../src/modules/vehicles/operational/projection/vehicle-operational-projection.builder';
-import { businessStateFromFleetContext } from '../../src/modules/vehicles/operational/projection/business-state.adapter';
-import { healthEvidenceFromVehicleHealth } from '../../src/modules/vehicles/operational/projection/health-evidence.adapter';
-import { RentalHealthSummaryService } from '../../src/modules/rental-health/rental-health-summary.service';
-import { VehiclesService } from '../../src/modules/vehicles/vehicles.service';
 import { ProviderLinkStateBuilder } from '../../src/modules/vehicles/connectivity/domain/provider-link-state.builder';
 import { assembleProviderLinkEvidence } from '../../src/modules/vehicles/connectivity/domain/provider-link-evidence.assembler';
 import {
@@ -64,8 +59,6 @@ async function main(): Promise<void> {
     const linkService = app.get(DimoVehicleDataSourceLinkService);
     const prisma = app.get(PrismaService);
     const projectionService = app.get(VehicleOperationalProjectionService);
-    const vehiclesService = app.get(VehiclesService);
-    const rentalHealthSummary = app.get(RentalHealthSummaryService);
     const now = new Date();
 
     const summary = await linkService.runBackfill({
@@ -81,6 +74,7 @@ async function main(): Promise<void> {
             id: true,
             organizationId: true,
             licensePlate: true,
+            status: true,
             dimoVehicleId: true,
             dimoVehicle: {
               select: { connectionStatus: true, tokenId: true, lastSignal: true },
@@ -210,33 +204,11 @@ async function main(): Promise<void> {
             orgAuth,
           );
 
-          const [businessContextMap, healthRows] = await Promise.all([
-            vehiclesService.deriveFleetBusinessContextBatch(row.organizationId, [
-              {
-                id: row.id,
-                organizationId: row.organizationId,
-                status: 'AVAILABLE',
-                licensePlate: row.licensePlate,
-                tankCapacityLiters: null,
-                latestState: row.latestState,
-              } as any,
-            ]),
-            rentalHealthSummary.getFleetRowsBatch(row.organizationId, [row.id]),
-          ]);
-          const businessContext = businessContextMap.get(row.id);
-          const healthRow = healthRows[0];
-
-          const shadowProjection = buildVehicleOperationalProjection({
-            vehicleId: row.id,
+          const shadowProjection = await projectionService.projectWithConnectivityOverride({
             organizationId: row.organizationId,
-            generatedAt: now.toISOString(),
-            businessState: businessStateFromFleetContext({
-              vehicleStatus: 'AVAILABLE',
-              operationalState: businessContext!,
-            }),
-            connectivity: shadowBundle.runtime,
-            health: healthRow ? healthEvidenceFromVehicleHealth(healthRow) : undefined,
-            episodeEvidenceReliable: false,
+            vehicleId: row.id,
+            connectivityOverride: shadowBundle.runtime,
+            now,
           });
           expectedOperationalAvailabilityAfterLink = shadowProjection.operationalAvailability;
         }

@@ -16,3 +16,10 @@ export type DimoLinkProvenance =
   | 'manual';
 
 export const DIMO_LINK_METADATA_VERSION = 1 as const;
+
+/**
+ * VehicleDataSourceLink.sourceReferenceId for DIMO references the internal
+ * SynqDrive DimoVehicle.id (Vehicle.dimoVehicleId), NOT the external DIMO
+ * vehicle identifier/token. External identity is stored in metadata.dimoExternalId.
+ */
+export const DIMO_SOURCE_REFERENCE_AUTHORITY = 'DimoVehicle.id' as const;
