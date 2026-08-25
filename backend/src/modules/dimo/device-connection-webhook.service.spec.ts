@@ -498,6 +498,44 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  it('N11: production fail-closed reconciliation does not block brand-new OBD_DEVICE_UNPLUGGED webhook', async () => {
+    const { upsert, update, findFirst } = mockPrisma();
+    const observedAt = new Date('2026-08-26T12:00:00.000Z');
+    upsert.mockResolvedValue({
+      id: 'evt-brand-new',
+      createdAt: observedAt,
+      updatedAt: observedAt,
+      processedAt: null,
+      receivedAt: new Date('2026-08-26T12:00:01.000Z'),
+    });
+    const episodeService = mockEpisodeService();
+    const productionFailClosedPolicy = mockLifecyclePolicy(false, null);
+    const service = buildWebhookService(
+      { upsert, update, findFirst, findUnique: jest.fn(), vehicle: { findUnique: jest.fn().mockResolvedValue(null) } } as never,
+      episodeService,
+      productionFailClosedPolicy,
+    );
+
+    const result = await service.processValidatedWebhookEvent({
+      vehicle: { id: 'v1', organizationId: 'o1' },
+      tokenId: 42,
+      pluggedIn: false,
+      observedAt,
+      rawPayload: { signal: 'obdIsPluggedIn', value: false },
+      inboxId: 'inbox-brand-new',
+    });
+
+    expect(result.outcome).toBe('created');
+    expect(result.eventType).toBe(DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED);
+    expect(episodeService.openFromUnplugEvent).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'evt-brand-new' },
+      data: { processedAt: expect.any(Date) },
+    });
+    expect(result.outcome).not.toBe('historical_orphan');
+    expect(result.outcome).not.toBe('reconciliation_disabled');
+  });
+
   it('N10: reconcilePersistedEventLifecycle completes post-cutover orphan events', async () => {
     const findUnique = jest.fn().mockResolvedValue({
       id: 'evt-new-era',

@@ -319,6 +319,8 @@ export class DeviceConnectionWebhookService {
     });
 
     const isNew = row.createdAt.getTime() === row.updatedAt.getTime();
+    // Newly persisted events always run normal lifecycle processing below.
+    // Runtime cutover policy gates only reconciliation of pre-existing incomplete events.
     if (!isNew && row.processedAt) {
       this.logger.debug(
         `Device connection dedupe hit for event ${row.id} inboxId=${inboxId ?? 'n/a'} — lifecycle already complete`,
