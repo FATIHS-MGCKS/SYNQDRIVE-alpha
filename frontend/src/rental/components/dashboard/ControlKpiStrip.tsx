@@ -4,9 +4,9 @@ import { cn } from '../../../components/ui/utils';
 import {
   DASHBOARD_KPI_HINT_CLASS,
   DASHBOARD_KPI_NUMBER_CLASS,
-  DASHBOARD_KPI_TITLE_CLASS,
   DASHBOARD_LAYOUT,
 } from './dashboardShell';
+import { DASHBOARD_BOX_TITLE_CLASS } from './notifications/notificationPanelTypography';
 import { de } from '../../i18n/translations/de';
 import { en } from '../../i18n/translations/en';
 import { resolveReadyForRentingKpiCounts, resolveTodaysOperationsKpiCounts } from './dashboardSliceAccess';
@@ -115,8 +115,8 @@ function formatKpiCount(value: number | null, disabled: boolean): string {
   return String(value);
 }
 
-/** Shared typography across operational KPI twin cards (matches dashboardShell tokens). */
-const KPI_TITLE_CLASS = DASHBOARD_KPI_TITLE_CLASS;
+/** Box titles for Operations twin KPI cards — matches Auslastung / Meldungen. */
+const KPI_BOX_TITLE_CLASS = cn(DASHBOARD_BOX_TITLE_CLASS, 'min-w-0 truncate');
 const KPI_NUMBER_CLASS = DASHBOARD_KPI_NUMBER_CLASS;
 const KPI_SECONDARY_TEXT_CLASS = DASHBOARD_KPI_HINT_CLASS;
 const KPI_MAIN_LABEL_CLASS = cn('mt-1.5 text-center', KPI_SECONDARY_TEXT_CLASS);
@@ -191,7 +191,7 @@ function ReadyForRentingKpiContent({ slice, disabled, locale }: ReadyForRentingK
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-start justify-between gap-2">
-        <p className={KPI_TITLE_CLASS}>{slice.title}</p>
+        <p className={KPI_BOX_TITLE_CLASS}>{slice.title}</p>
         <div
           className={cn(
             'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
@@ -270,7 +270,7 @@ function TodaysOperationsKpiContent({
         )}
       >
         <div className="flex shrink-0 items-start justify-between gap-2">
-          <p className={KPI_TITLE_CLASS}>{slice.title}</p>
+          <p className={KPI_BOX_TITLE_CLASS}>{slice.title}</p>
           <div
             className={cn(
               'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',

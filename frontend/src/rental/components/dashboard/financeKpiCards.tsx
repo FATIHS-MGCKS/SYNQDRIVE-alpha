@@ -4,9 +4,9 @@ import type { TranslationKey } from '../../i18n/translations/en';
 import {
   DASHBOARD_KPI_CURRENCY_CLASS,
   DASHBOARD_KPI_HINT_CLASS,
-  DASHBOARD_KPI_TITLE_CLASS,
   DASHBOARD_LAYOUT,
 } from './dashboardShell';
+import { DASHBOARD_BOX_TITLE_CLASS } from './notifications/notificationPanelTypography';
 import { formatBusinessMoney, formatDashboardMoneyParts } from './dashboardKpiFormat';
 import type { BusinessMetricId, BusinessPulseSlice } from './runtime';
 
@@ -274,7 +274,7 @@ export function FinanceKpiCard({
     >
       <div className="flex items-start justify-between gap-1.5">
         <div className="min-w-0">
-          <p className={DASHBOARD_KPI_TITLE_CLASS}>{title}</p>
+          <p className={cn(DASHBOARD_BOX_TITLE_CLASS, 'min-w-0 truncate')}>{title}</p>
           <FinanceKpiValue
             amount={valueParts?.amount ?? noDataLabel}
             currency={valueParts?.currency}

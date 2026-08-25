@@ -157,7 +157,7 @@ export const ACTION_QUEUE_LIST_CAP = 25;
 
 /** Shared compact KPI typography (Control Center strip + Business Pulse). */
 export const DASHBOARD_KPI_TITLE_CLASS =
-  'min-w-0 truncate text-sm font-medium tracking-[-0.01em] text-muted-foreground';
+  'min-w-0 truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground';
 export const DASHBOARD_KPI_NUMBER_CLASS =
   'text-[21px] font-semibold tabular-nums leading-none tracking-[-0.03em]';
 /** Currency suffix on finance KPIs — same optical weight as operational count-only values. */
