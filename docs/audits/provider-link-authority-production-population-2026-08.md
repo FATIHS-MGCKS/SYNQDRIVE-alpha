@@ -283,12 +283,77 @@ Metrics exist for `providerLinkState` distribution (`connectivity-observability.
 
 ---
 
+**PR #1277:** HOLD (unchanged)
+
+---
+
+## R. Implementation Gate (2026-08-25)
+
+**Branch:** `fix/dimo-provider-link-normalization-2026-08`  
+**Mode:** Implementation + dry-run + shadow verification — **no Production writes**
+
+### A. Canonical DIMO link contract
+
+| Field | Value |
+|-------|-------|
+| `provider` | `DIMO` |
+| `sourceType` | `DIMO` |
+| `sourceSubtype` | `null` (canonical single DIMO telemetry channel) |
+| `sourceReferenceId` | `DimoVehicle.id` (= `Vehicle.dimoVehicleId`) |
+| `consentId` | Latest ACTIVE consent if present; else latest consent for provenance; nullable at registration |
+| `isActive` | `true` |
+| `activatedAt` / `lastVerifiedAt` | Set on create/reactivate/verify |
+| `linkedByUserId` | Registration actor when available |
+| `metadata` | `{ version, provenance, runId, dimoExternalId }` |
+
+**Authority:** `Vehicle.dimoVehicleId` → `DimoVehicle` is the deterministic, tenant-safe, idempotent upsert key. Telemetry payloads are never used for identity.
+
+### B. Registration pipeline fix
+
+`VehiclesService.registerFromDimo()` now calls `DimoVehicleDataSourceLinkService.ensureDimoVehicleDataSourceLinkOrThrow()` **inside** the registration transaction immediately after `Vehicle.create`. Future DIMO registrations cannot succeed without a canonical link row.
+
+**Service:** `backend/src/modules/dimo/dimo-vehicle-data-source-link.service.ts`
+
+### C. Failure / retry semantics
+
+- `CONFLICT` → `ConflictException` (`DIMO_PROVIDER_LINK_CONFLICT`) rolls back the registration transaction
+- Idempotent `NOOP` on retry
+- Structured logs via `ConnectivityObservabilityService.log('binding_changed', …)` — no tokens/VIN/location
+
+### D. Backfill design
+
+**Script:** `backend/scripts/ops/backfill-dimo-vehicle-data-source-links.ts`  
+**Default:** `--dry-run` (writes require explicit `--apply`)  
+**Eligibility:** `Vehicle.dimoVehicleId != null` + valid `DimoVehicle` relation + tenant consistency  
+**Inactive consent:** Link row still created (mapping normalization); `ProviderLinkStateBuilder` resolves grant health separately (`REAUTH_REQUIRED` / `REVOKED` as appropriate)
+
+### E. Reconciliation policy
+
+`DimoVehicleDataSourceLinkService.auditProviderLinkDrift()` detects `dimoVehicleId` + valid relation + missing active DIMO link.  
+**Self-heal:** `reconcileSafeDrift({ apply: true })` only for deterministic `missing_link` cases (CREATE). Ambiguous/conflict → flag only, never guess.
+
+### F. Rollback design
+
+Backfill/reconciliation writes `metadata.provenance` + `metadata.runId`. Rollback = deactivate links where `metadata.runId = <run>` and `metadata.provenance in ('backfill','reconciliation')`. No broad deletes.
+
+### G. Pre-apply Production gate
+
+Before `--apply`: deploy pipeline fix → DB backup → dry-run stable ×2 → zero conflicts → HMÜ/WOB shadow confirmed → rollback runId prepared → CI green.
+
+### H. Data migration strategy
+
+**Ops script (not Prisma migration)** — row-level provenance, live consent resolution, per-vehicle audit, rollback by runId.
+
+---
+
 ## Q. Next Implementation Gate
 
-1. Add DIMO link creation to `registerFromDimo` (+ tests)
-2. Backfill script for existing DIMO vehicles (org-scoped, idempotent)
-3. Verify HMÜ → AVAILABLE operational path in shadow read-only
-4. Re-run WOB regression in shadow
-5. Optional: observability alert for mapping drift
+1. ~~Add DIMO link creation to `registerFromDimo` (+ tests)~~ **DONE**
+2. ~~Backfill script for existing DIMO vehicles (org-scoped, idempotent)~~ **DONE (dry-run)**
+3. ~~Verify HMÜ → AVAILABLE operational path in shadow read-only~~ **DONE (fixture + shadow)**
+4. ~~Re-run WOB regression in shadow~~ **DONE**
+5. ~~Observability for binding_changed~~ **DONE**
+
+**Production `--apply`:** **DO NOT EXECUTE** without explicit approval.
 
 **PR #1277:** HOLD (unchanged)
