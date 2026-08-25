@@ -16,10 +16,13 @@ interface DashboardContextHeaderProps {
   vm: DashboardViewModel;
 }
 
+/**
+ * Page-level dashboard context. Uses `grid-cols-[1fr_auto_1fr]` so the station
+ * selector stays geometrically centered regardless of left/right content width.
+ */
 export function DashboardContextHeader({ vm }: DashboardContextHeaderProps) {
   const {
     t,
-    dateLabel,
     dateLabelShort,
     dataFreshness,
     fleetVehicles,
@@ -56,16 +59,19 @@ export function DashboardContextHeader({ vm }: DashboardContextHeaderProps) {
     <header
       className={cn(
         DASHBOARD_LAYOUT.contextHeader,
-        'grid grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto] items-center gap-x-3 gap-y-2',
-        'sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:grid-rows-1 sm:gap-x-6',
+        'grid w-full grid-cols-[1fr_auto_1fr] grid-rows-[auto_auto] items-center gap-x-3 gap-y-2 sm:grid-rows-1 sm:gap-x-6',
       )}
       aria-label={t('dashboard.context.headerAria')}
     >
-      <p className="col-start-1 row-start-1 min-w-0 truncate font-display text-[15px] font-semibold leading-tight tracking-[-0.02em] text-foreground sm:text-[16px]">
+      <p className="col-start-1 row-start-1 min-w-0 justify-self-start truncate font-display text-[15px] font-semibold leading-tight tracking-[-0.02em] text-foreground sm:text-[16px]">
         {orgDisplayName}
       </p>
 
-      <div className="col-start-1 row-start-2 min-w-0 sm:col-start-2 sm:row-start-1 sm:justify-self-center">
+      <div className="col-start-3 row-start-1 justify-self-end sm:hidden">
+        <SyncStatusBadge tone={syncTone} label={syncLabel} loading={syncBadge.phase === 'loading'} />
+      </div>
+
+      <div className="col-start-2 row-start-2 justify-self-center sm:row-start-1">
         <StationScopeControl
           t={t}
           fleetVehicles={fleetVehicles}
@@ -79,15 +85,16 @@ export function DashboardContextHeader({ vm }: DashboardContextHeaderProps) {
         />
       </div>
 
-      <p className="col-start-2 row-start-2 justify-self-end text-[12px] leading-none text-muted-foreground sm:hidden">
-        <span className="whitespace-nowrap">{dateLabelShort}</span>
-      </p>
-
-      <div className="col-start-2 row-start-1 flex items-center justify-end gap-2 justify-self-end sm:col-start-3 sm:row-start-1">
-        <span className="hidden whitespace-nowrap text-[13px] leading-none text-muted-foreground sm:inline">
-          {dateLabel}
+      <div className="col-start-3 row-start-2 flex items-center justify-end gap-2 justify-self-end sm:row-start-1">
+        <span className="whitespace-nowrap text-[12px] leading-none text-muted-foreground sm:text-[13px]">
+          {dateLabelShort}
         </span>
-        <SyncStatusBadge tone={syncTone} label={syncLabel} loading={syncBadge.phase === 'loading'} />
+        <SyncStatusBadge
+          tone={syncTone}
+          label={syncLabel}
+          loading={syncBadge.phase === 'loading'}
+          className="hidden sm:inline-flex"
+        />
       </div>
     </header>
   );
@@ -138,14 +145,14 @@ function StationScopeControl({
   applyStationFilter: DashboardViewModel['applyStationFilter'];
 }) {
   return (
-    <div className="relative min-w-0" ref={stationDropdownRef}>
+    <div className="relative min-w-0 max-w-[min(100vw-2rem,320px)]" ref={stationDropdownRef}>
       <button
         type="button"
         onClick={() => setIsStationDropdownOpen((prev) => !prev)}
         aria-haspopup="listbox"
         aria-expanded={isStationDropdownOpen}
         aria-label={t('dashboard.context.stationSelectorLabel', { station: stationLabel })}
-        className="sq-press -ml-1 flex min-h-8 max-w-full items-center gap-1 rounded-md px-1 text-left text-[13px] font-semibold leading-snug text-foreground transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] sm:ml-0 sm:px-1.5 sm:text-[14px] sm:text-muted-foreground sm:hover:text-foreground"
+        className="sq-press flex min-h-8 max-w-full items-center gap-1 rounded-md px-1.5 text-left text-[13px] font-semibold leading-snug text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
       >
         <span className="truncate">{stationLabel}</span>
         <Icon
@@ -159,7 +166,7 @@ function StationScopeControl({
       {isStationDropdownOpen && (
         <div
           role="listbox"
-          className="sq-overlay animate-fade-up absolute left-0 top-full z-50 mt-2 max-h-[60vh] min-w-[240px] max-w-[min(320px,calc(100vw-2rem))] overflow-auto rounded-xl p-1 sm:left-1/2 sm:-translate-x-1/2"
+          className="sq-overlay animate-fade-up absolute left-1/2 top-full z-50 mt-2 max-h-[60vh] min-w-[240px] max-w-[min(320px,calc(100vw-2rem))] -translate-x-1/2 overflow-auto rounded-xl p-1"
         >
           <button
             type="button"
