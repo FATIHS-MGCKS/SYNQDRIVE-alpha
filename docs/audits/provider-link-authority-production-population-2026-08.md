@@ -405,3 +405,23 @@ Shadow path now invokes `VehicleOperationalProjectionService.projectWithConnecti
 ### 5. Mapping vs auth separation
 
 Provider link row existence ≠ healthy provider authorization. KS MS 661 may have structurally correct mapping while `ProviderLinkState` remains `REVOKED` / `REAUTH_REQUIRED`.
+
+### 6. Production dry-run results (read-only, 2026-08-25 UTC)
+
+**Org:** `faa710c9-6d91-4079-a7d5-91fdccdec14a`  
+**Command:** `backfill-dimo-vehicle-data-source-links.ts --org=<org> --shadow` (no `--apply`)  
+**Branch:** `fix/dimo-provider-link-normalization-2026-08` @ `58a39e6a`
+
+| Run | scanned | CREATE | REACTIVATE | CONFLICT | applied | Deterministic |
+|-----|---------|--------|------------|----------|---------|---------------|
+| #1 | 6 | 6 | 0 | 0 | 0 | — |
+| #2 | 6 | 6 | 0 | 0 | 0 | SHA256 match with #1 |
+
+| Vehicle | Action | Consent | Current link | Current op.avail | Expected link | Expected op.avail |
+|---------|--------|---------|--------------|------------------|---------------|-------------------|
+| HMÜ C 215 | CREATE | ACTIVE | UNKNOWN | UNKNOWN | ACTIVE | **AVAILABLE** |
+| WOB L 7503 | CREATE | ACTIVE | UNKNOWN | NEEDS_VERIFICATION | ACTIVE | NEEDS_VERIFICATION |
+| WOB L 9755 | CREATE | ACTIVE | UNKNOWN | NEEDS_VERIFICATION | ACTIVE | NEEDS_VERIFICATION |
+| KS MS 661 | CREATE | MISSING | UNKNOWN | UNKNOWN | **REAUTH_REQUIRED** | NEEDS_VERIFICATION |
+
+Shadow uses real `vehicle.status` + fleet business context — WOB vehicles retain NEEDS_VERIFICATION; KS MS 661 does not falsely become ACTIVE provider auth.
