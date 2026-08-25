@@ -1,4 +1,3 @@
-import { SkeletonMetricGrid } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { DASHBOARD_LAYOUT } from './dashboardShell';
@@ -17,6 +16,7 @@ interface FinanceKpiStripProps {
   currency?: string;
   loading?: boolean;
   error?: boolean;
+  className?: string;
 }
 
 export function FinanceKpiStrip({
@@ -27,6 +27,7 @@ export function FinanceKpiStrip({
   currency = 'EUR',
   loading = false,
   error = false,
+  className,
 }: FinanceKpiStripProps) {
   const { locale: contextLocale, t } = useLanguage();
   const locale = localeProp ?? contextLocale;
@@ -34,19 +35,25 @@ export function FinanceKpiStrip({
 
   if (loading) {
     return (
-      <div aria-busy aria-label={t('dashboard.financesTitle')}>
-        <SkeletonMetricGrid
-          count={4}
-          className={DASHBOARD_LAYOUT.controlFinanceKpiGrid}
-          cardClassName={cn(DASHBOARD_LAYOUT.controlFinanceKpiCard, 'surface-elevated')}
-        />
+      <div
+        aria-busy
+        aria-label={t('dashboard.financesTitle')}
+        className={cn(DASHBOARD_LAYOUT.operationsGridContents, className)}
+      >
+        {PRIMARY_BUSINESS_METRICS.map((metricId) => (
+          <div
+            key={metricId}
+            className={cn(DASHBOARD_LAYOUT.controlFinanceKpiCard, 'surface-elevated animate-pulse rounded-md')}
+            aria-hidden
+          />
+        ))}
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-md border border-border/35 bg-muted/10 px-3 py-3">
+      <div className={cn('col-span-2 rounded-md border border-border/35 bg-muted/10 px-3 py-3', className)}>
         <p className="text-[12px] font-medium text-foreground">
           {t('dashboard.financialDataUnavailable')}
         </p>
@@ -58,9 +65,11 @@ export function FinanceKpiStrip({
   }
 
   return (
-    <div aria-label={t('dashboard.financesTitle')}>
-      <div className={DASHBOARD_LAYOUT.controlFinanceKpiGrid}>
-        {PRIMARY_BUSINESS_METRICS.map((metricId) => (
+    <div
+      aria-label={t('dashboard.financesTitle')}
+      className={cn(DASHBOARD_LAYOUT.operationsGridContents, className)}
+    >
+      {PRIMARY_BUSINESS_METRICS.map((metricId) => (
           <FinanceKpiCard
             key={metricId}
             metricId={metricId}
@@ -72,10 +81,9 @@ export function FinanceKpiStrip({
             t={t}
             onSelect={onSelectBusinessMetric}
             embedded
-            isActive={activeBusinessMetricId === metricId}
-          />
-        ))}
-      </div>
+          isActive={activeBusinessMetricId === metricId}
+        />
+      ))}
     </div>
   );
 }

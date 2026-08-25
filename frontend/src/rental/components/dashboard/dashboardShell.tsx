@@ -41,15 +41,18 @@ export const DASHBOARD_LAYOUT = {
   notificationsSlotLegacy: 'min-w-0 w-full',
   /** @deprecated Tagesplan panel removed from standard dashboard. */
   dayPlanSlot: 'min-w-0 w-full',
-  financeZone: 'border-t border-border/50 pt-7',
-  /** Primary finance KPIs embedded under operational twin cards in the control center. */
-  controlFinanceKpiGrid: 'grid grid-cols-2 items-stretch gap-2 sm:grid-cols-4 sm:gap-2.5 lg:gap-3',
-  controlFinanceKpiCard: 'min-h-[72px] px-2.5 py-2.5 sm:min-h-[74px] lg:px-3 lg:py-2.5',
+  /** Six independent Operations cards (2 twin + 4 finance) on the dashboard canvas. */
+  operationsGrid: 'grid grid-cols-2 items-stretch gap-3 sm:gap-3.5',
+  /** Lets KPI strip children participate directly in `operationsGrid`. */
+  operationsGridContents: 'contents',
+  /** Four finance KPI cards in the Operations 2×2 grid (always two columns). */
+  controlFinanceKpiGrid: 'contents',
+  controlFinanceKpiCard: 'min-h-[80px] px-2.5 py-2.5 sm:min-h-[84px] lg:px-3 lg:py-3',
   /** Four finance KPI cards in one row inside the legacy Finanzen panel. */
   financeKpiGrid: 'grid w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2',
   financeKpiCard:
     'min-h-[72px] rounded-md px-2.5 py-2 sm:min-h-[76px] sm:px-2.5 sm:py-2.5',
-  /** Shared outer surface for Control Center header + embedded KPI strip. */
+  /** @deprecated Operations cards render directly on the dashboard canvas via `operationsGrid`. */
   controlCenterCard: 'surface-premium overflow-hidden',
   controlCenterCardPadding: 'px-4 py-4 sm:p-5 lg:p-6',
   /** Compact page-context strip above the dashboard card grid (no card surface). */

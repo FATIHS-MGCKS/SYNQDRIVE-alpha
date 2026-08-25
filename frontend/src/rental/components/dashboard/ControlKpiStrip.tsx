@@ -40,8 +40,8 @@ interface ControlKpiStripProps {
  */
 const VISIBLE_KPI_ORDER: DashboardSliceId[] = ['ready-to-rent', 'active-rented'];
 
-/** Twin KPI shell height — balanced between compact and airy. */
-const TWIN_KPI_MIN_HEIGHT_EMBEDDED = 'min-h-[172px]';
+/** Twin KPI shell height — enlarged for canvas-level Operations cards. */
+const TWIN_KPI_MIN_HEIGHT_EMBEDDED = 'min-h-[192px]';
 const TWIN_KPI_MIN_HEIGHT_STANDARD = 'min-h-[156px]';
 
 function kpiStripGapClass(embedded: boolean): string {
@@ -67,7 +67,7 @@ function kpiCardClass(
         : TWIN_KPI_MIN_HEIGHT_STANDARD
       : size === 'compact'
         ? embedded
-          ? 'min-h-[88px]'
+          ? 'min-h-[92px]'
           : 'min-h-[80px]'
         : embedded
           ? 'min-h-[112px]'
@@ -395,16 +395,27 @@ export function ControlKpiStrip({
     : false;
 
   if (loading) {
-    const gridClass = kpiGridClass(embedded, sliceIds.length);
     const skeletonCardClass = embedded
-      ? cn(TWIN_KPI_MIN_HEIGHT_EMBEDDED, 'rounded-md p-3.5')
+      ? cn(TWIN_KPI_MIN_HEIGHT_EMBEDDED, 'surface-elevated animate-pulse rounded-md')
       : undefined;
+
+    if (className?.includes('contents')) {
+      return (
+        <>
+          {sliceIds.map((id) => (
+            <div key={id} className={skeletonCardClass} aria-hidden />
+          ))}
+        </>
+      );
+    }
+
+    const gridClass = kpiGridClass(embedded, sliceIds.length);
 
     return (
       <SkeletonMetricGrid
         count={sliceIds.length}
-        className={cn(gridClass, sliceIds.length === 1 && '!grid-cols-1')}
-        cardClassName={skeletonCardClass}
+        className={cn(gridClass, sliceIds.length === 1 && '!grid-cols-1', className)}
+        cardClassName={embedded ? cn(TWIN_KPI_MIN_HEIGHT_EMBEDDED, 'rounded-md p-3.5') : undefined}
       />
     );
   }
