@@ -2,8 +2,11 @@
  * Central typography tokens for the Dashboard Notification Panel (V2).
  * Sizes: 11px/16px meta, 12px/17px body, 14px/19–20px titles — no 9.5px / 10.5px.
  */
+export const DASHBOARD_BOX_TITLE_CLASS =
+  'text-sm font-semibold leading-5 tracking-[-0.01em] text-foreground text-balance';
+
 export const NOTIFICATION_PANEL_TYPO = {
-  boxTitle: 'text-sm font-semibold leading-5 tracking-[-0.01em] text-foreground text-balance',
+  boxTitle: DASHBOARD_BOX_TITLE_CLASS,
   meta: 'text-[11px] font-medium leading-4 text-muted-foreground',
   metaBadge: 'inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-4',
   eyebrow: 'text-[11px] font-medium leading-4 text-muted-foreground',
