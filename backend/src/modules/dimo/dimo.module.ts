@@ -20,6 +20,7 @@ import { DimoTriggersService } from './dimo-triggers.service';
 import { DimoTriggersBootstrapService } from './dimo-triggers-bootstrap.service';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
 import { DeviceConnectionWebhookInboxService } from './device-connection-webhook-inbox.service';
+import { DeviceConnectionWebhookInboxEnqueueService } from './device-connection-webhook-inbox-enqueue.service';
 import { DeviceConnectionWebhookInboxRepository } from './device-connection-webhook-inbox.repository';
 import { DeviceConnectionWebhookProcessingService } from './device-connection-webhook-processing.service';
 import { DeviceConnectionWebhookQueueProducer } from './device-connection-webhook-queue.producer';
@@ -71,6 +72,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionWebhookService,
     DeviceConnectionWebhookInboxService,
     DeviceConnectionWebhookInboxRepository,
+    DeviceConnectionWebhookInboxEnqueueService,
     DeviceConnectionWebhookProcessingService,
     DeviceConnectionWebhookQueueProducer,
     DeviceConnectionWebhookInboxSchedulerService,

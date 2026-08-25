@@ -4,7 +4,7 @@
 |-------|-------|
 | **Audit ID** | `connectivity-production-processing-gate-2026-08` |
 | **Baseline main SHA** | `ff03c4b7` (PR #1263 merged) |
-| **Branch** | `fix/connectivity-production-processing-gate-2026-08` |
+| **Branch** | `cursor/connectivity-production-processing-gate-90ec` (PR #1267) |
 | **Mode** | Production read-only investigation + targeted code repair |
 | **Production modified** | **No** |
 
@@ -18,10 +18,14 @@ Production investigation confirms two distinct runtime defects blocking reliable
 
 2. **July 28 / Aug 8 inbox rows** — `RECEIVED`, `processing_attempts = 0`, no BullMQ jobs in Redis. Root cause: **DEPLOYMENT_OR_WORKER_GAP** — inbox intake succeeded but async worker never claimed rows (no job consumption evidence; queue empty at audit time).
 
-**Code fix (this branch):**
-- Separate event dedupe from lifecycle completion — reconcile when `processed_at` is null.
-- Mark inbox `RETRYABLE_FAILED` on enqueue failure (prevents silent `RECEIVED` forever).
-- Scheduler defense-in-depth: reconcile orphan `processed_at IS NULL` events every 30s poll tick.
+**Code fix (PR #1267):**
+- Separate event dedupe from lifecycle completion — reconcile when `processed_at` is null **for current-era events only**.
+- Explicit runtime cutover (`CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER`, default `2026-08-25T00:00:00.000Z`) — historical orphans excluded from automatic reconciliation.
+- Shared `DeviceConnectionWebhookInboxEnqueueService` — intake + scheduler enqueue failures persist `RETRYABLE_FAILED`.
+- Scheduler batch isolation — per-row enqueue with `continue`; one failure cannot abort the batch.
+- Scheduler defense-in-depth: reconcile eligible orphan `processed_at IS NULL` events each 30s poll tick.
+
+**Corrective pass (PR #1267 follow-up):** prevents automatic historical episode backfill on deploy and closes scheduler silent-stuck enqueue gap.
 
 **Gate verdict (pre-deploy):** **FAIL** — fix not yet deployed; historical rows remain. **P0.2: NO-GO** until post-deploy verification.
 
@@ -57,23 +61,23 @@ Production investigation confirms two distinct runtime defects blocking reliable
 | Lifecycle audits | **0** |
 | Inbox row | **none** |
 
-### Classification: **IDEMPOTENCY_RETRY_DEFECT**
+### Classification: **IDEMPOTENCY_RETRY_DEFECT** (proven retry blocker)
 
-**Path:** Direct persist (pre-inbox era or synchronous path) → `persistDeviceConnectionEvent` → upsert succeeded → episode sync did not complete → `processed_at` never set.
+**PROVEN:**
+- Event persisted (`5389a9c7…`)
+- `processed_at = NULL`, no episode, no inbox, 0 lifecycle audits
+- Pre-fix retry/dedupe logic returned `duplicate` on existing upsert and could not complete lifecycle once the event row already existed
 
-**First failure stage:** Episode lifecycle sync / `processed_at` update after successful event upsert.
+**NOT PROVEN:**
+- Exact original first-failure trigger (episode sync exception, feature gate, worker absence, DB constraint, etc.)
 
-**Retry defect:** On retry, upsert hits existing row (`isNew === false`) and returned `duplicate` without calling `syncEpisodeAfterPersistedEvent` or setting `processed_at`. Processing service then marked inbox processed on `duplicate` outcome (when inbox path used).
+**Evidence-safe wording:** Initial lifecycle completion failed for an historically unobservable reason. A proven **IDEMPOTENCY_RETRY_DEFECT** prevented later reconciliation on retry. The idempotency defect does not necessarily explain the original first failure.
 
-**Code reference (pre-fix):**
+**Path:** Direct persist (no inbox row) → `persistDeviceConnectionEvent` → upsert succeeded → lifecycle never completed.
 
-```typescript
-const isNew = row.createdAt.getTime() === row.updatedAt.getTime();
-if (!isNew) {
-  return { outcome: 'duplicate', eventId: row.id, eventType };
-}
-// episode sync only below this guard
-```
+**Retry defect:** On retry, upsert hits existing row (`isNew === false`) and returned `duplicate` without calling `syncEpisodeAfterPersistedEvent` or setting `processed_at`.
+
+**Post-fix runtime policy:** July 20 event has `received_at < CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER` → **excluded from automatic scheduler reconciliation**. Controlled remediation only.
 
 ---
 
@@ -86,15 +90,18 @@ if (!isNew) {
 
 Both: tokenId 187784, `last_error_code = null`.
 
-### Classification: **DEPLOYMENT_OR_WORKER_GAP**
+### Classification: **UNCLAIMED_PROCESSING_GAP** (evidence-safe; subcause unresolved)
 
-**Evidence:**
-- `processing_attempts = 0` → `claimForProcessing` never ran → worker never consumed.
-- BullMQ queue empty at audit — no waiting/failed jobs.
-- Inbox rows exist → HTTP intake + DB persist succeeded.
-- Scheduler stale re-enqueue (`findStaleInFlightBatch` every 30s after 5min stale) should have re-queued — either enqueue failed without status transition (pre-fix), worker was not registered in deployed build at that time, or Redis job was lost after completion-with-skip.
+**PROVEN:**
+- Inbox row persisted
+- Status remained `RECEIVED`, `processing_attempts = 0`
+- Worker never claimed the row (`claimForProcessing` never incremented attempts)
+- BullMQ queue empty at audit time
 
-**Most likely:** Enqueue failure or worker not consuming left rows in `RECEIVED` with no retryable status. Pre-fix code did not mark `RETRYABLE_FAILED` on enqueue failure.
+**NOT PROVEN (cannot distinguish from current evidence):**
+- Enqueue failure vs worker unavailable vs deployment gap vs lost BullMQ job vs runtime mismatch
+
+**Post-fix runtime policy:** Both rows have `received_at < CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER` → **excluded from automatic stale re-enqueue**. Controlled remediation only (must consider unplug `observedAt` vs later valid snapshots before materializing episodes).
 
 ---
 
@@ -156,7 +163,7 @@ POST /api/v1/webhooks/dimo
 | Duplicate webhook, fully processed | Skip (correct) | Skip (correct) |
 | Retry after event persisted, episode failed | Skip lifecycle (**bug**) | Reconcile lifecycle |
 | Duplicate OPEN episode | Episode service idempotent (`already_open`) | Unchanged |
-| Scheduler orphan reconciliation | None | `reconcilePersistedEventLifecycle` batch |
+| Scheduler orphan reconciliation | None | Eligible current-era events only (`receivedAt >= cutover`) |
 
 ---
 
@@ -189,10 +196,43 @@ Single valid snapshot with plug signal can resolve via `SNAPSHOT_PLUG_SIGNAL`. S
 |------|--------|
 | `device-connection-webhook.service.ts` | Reconcile partial events; `reconciled` outcome; `reconcilePersistedEventLifecycle` |
 | `device-connection-webhook-processing.service.ts` | Handle `reconciled` outcome |
-| `device-connection-webhook-inbox.service.ts` | `safeEnqueue` → `RETRYABLE_FAILED` on failure |
-| `device-connection-webhook-inbox-scheduler.service.ts` | Orphan event reconciliation in poll tick |
-| Tests | Service, processing, inbox, scheduler, queue producer specs |
+| `device-connection-webhook-inbox-enqueue.service.ts` | Shared enqueue + `RETRYABLE_FAILED` on failure (intake + scheduler) |
+| `device-connection-webhook-inbox.service.ts` | Uses shared enqueue service |
+| `device-connection-webhook-inbox-scheduler.service.ts` | Cutover-gated reconciliation; per-row scheduler enqueue; historical orphan reporting |
+| `device-connection-webhook-inbox.repository.ts` | Cutover filter on stale/retryable batch queries |
+| `device-connection-webhook-inbox.config.ts` | `lifecycleReconcileAfter` + `CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER` |
+| `connectivity-lifecycle-runtime.policy.ts` | Cutover eligibility helpers |
+| Tests | A–M + N1–N7 |
 | `scripts/ops/read-only-connectivity-audit.mjs` | Production read-only audit helper |
+
+---
+
+## Q. Automatic Reconciliation Cutover Policy
+
+| Item | Value |
+|------|-------|
+| Config key | `CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER` (ISO-8601) |
+| Code default | `2026-08-25T00:00:00.000Z` (`CONNECTIVITY_LIFECYCLE_RUNTIME_RECONCILE_AFTER_ISO`) |
+| Meaning | First instant the **repaired** inbox→BullMQ→episode pipeline (PR #1267) is authoritative |
+| Inbox migration reference | `20260719160000_device_connection_webhook_inbox` (introduced inbox; not used as cutover — pre-dates repair) |
+
+### Runtime rules
+
+| Condition | Automatic scheduler behavior |
+|-----------|------------------------------|
+| `processed_at IS NULL` AND `received_at >= cutover` | May call `reconcilePersistedEventLifecycle` |
+| `processed_at IS NULL` AND `received_at < cutover` | **Log/report only** — no `openFromUnplugEvent` |
+| Inbox stale `RECEIVED`/`VALIDATED` AND `received_at >= cutover` | May enqueue via scheduler |
+| Inbox stale `RECEIVED`/`VALIDATED` AND `received_at < cutover` | **Excluded** — controlled remediation only |
+| Scheduler enqueue failure | `RETRYABLE_FAILED`, `lastErrorCode=enqueue_failed`, `nextRetryAt` set |
+| Scheduler batch | Per-row isolation — one failure does not block siblings |
+
+### Historical safety invariant
+
+> Runtime retry/reconciliation repairs **current-pipeline partial failures** only.  
+> Historical pre-cutover evidence is **never automatically materialized** into episodes.
+
+Controlled historical remediation (if ever approved) must evaluate unplug `observedAt` vs latest valid snapshot after unplug — not implemented in this slice.
 
 ---
 
@@ -213,8 +253,13 @@ Single valid snapshot with plug signal can resolve via `SNAPSHOT_PLUG_SIGNAL`. S
 | K | Reconciliation scheduler | `device-connection-webhook-inbox-scheduler.service.spec.ts` |
 | L | Queue constant alignment | `device-connection-webhook-queue.producer.spec.ts` |
 | M | Stuck inbox enqueue failure | inbox service spec |
-
-**Pass count (targeted):** 84 tests across 11 suites (local run 2026-08-25).
+| N1 | Pre-cutover event not reconciled | scheduler spec |
+| N2 | Post-cutover event reconciled | scheduler spec |
+| N3 | Pre-cutover stale inbox not enqueued | scheduler spec |
+| N4 | Post-cutover stale inbox enqueued | scheduler spec |
+| N5 | Scheduler enqueue failure persisted | enqueue + scheduler spec |
+| N6 | Batch isolation (3 rows, middle fails) | scheduler spec |
+| N7 | July historical orphans excluded | scheduler spec + policy spec |
 
 ---
 
@@ -233,11 +278,13 @@ Single valid snapshot with plug signal can resolve via `SNAPSHOT_PLUG_SIGNAL`. S
 
 ### Post-deploy verification plan
 1. Deploy via standard VPS workflow
-2. Confirm worker logs: `device_connection.lifecycle_complete`, scheduler reconciliation
-3. Observe scheduler reconcile 3 orphan events (read-only verify `processed_at` populated)
-4. Re-enqueue 2 stuck inbox rows via scheduler stale poll or admin replay API
-5. Confirm no new `RECEIVED` + `attempts=0` rows accumulate
+2. Confirm first scheduler tick does **not** create episodes for July 8/11/20 events or July 28/Aug 8 inbox rows
+3. Confirm `connectivity.historical_orphan_backlog` log reports historical counts without reconciliation
+4. Confirm new post-cutover webhooks process end-to-end (inbox → job → episode → `processed_at`)
+5. Confirm scheduler enqueue failures produce `RETRYABLE_FAILED` (not silent `RECEIVED`)
 6. Monitor `connectivity.webhook.process` queue consumption
+
+**Historical remediation:** deferred — requires explicit controlled approval and snapshot-aware evaluation.
 
 ---
 
@@ -245,12 +292,12 @@ Single valid snapshot with plug signal can resolve via `SNAPSHOT_PLUG_SIGNAL`. S
 
 | Item | Disposition |
 |------|-------------|
-| July 8/11 events | **HISTORICAL_ONLY** — no backfill |
-| July 20 event | Repairable post-deploy via scheduler reconciliation |
-| July 28 / Aug 8 inbox | Repairable post-deploy via stale re-enqueue + fixed processor |
-| 3rd unprocessed event | Identify in post-deploy audit; reconcile via scheduler |
+| July 8/11 events | **HISTORICAL_ONLY** — no automatic backfill |
+| July 20 event | **Historical orphan** — excluded from scheduler; controlled remediation only |
+| July 28 / Aug 8 inbox | **Historical stuck inbox** — excluded from auto-replay; controlled remediation only |
+| Post-cutover partial failures | Repairable via retry + eligible scheduler reconciliation |
 
-No automatic historical episode fabrication.
+No automatic historical episode fabrication on deploy.
 
 ---
 
@@ -272,10 +319,10 @@ Existing: `ConnectivityObservabilityService` webhook_processing events, Promethe
 
 | Question | Answer |
 |----------|--------|
-| Why July 20 `processed_at` NULL? | Episode sync never completed; retry dedupe skipped lifecycle |
+| Why July 20 `processed_at` NULL? | Initial lifecycle completion failed (cause unproven); retry dedupe blocked completion |
 | Why no episode? | `syncEpisodeAfterPersistedEvent` never succeeded |
-| Why inbox stuck RECEIVED? | Worker never claimed; likely enqueue/worker gap |
-| BullMQ job created? | No jobs in Redis at audit; likely never enqueued or completed without claim |
+| Why inbox stuck RECEIVED? | Worker never claimed (`attempts=0`); exact subcause unproven |
+| BullMQ job created? | No jobs in Redis at audit; enqueue/worker gap suspected but unproven |
 | Correct worker running? | Processor in deployed build; consumption unproven for stuck rows |
 | Partial failure retryable? | **Yes after fix** |
 | Dedupe blocks lifecycle? | **Yes pre-fix; fixed** |

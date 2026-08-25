@@ -5,6 +5,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
+import { DeviceConnectionWebhookInboxEnqueueService } from './device-connection-webhook-inbox-enqueue.service';
 import { DeviceConnectionWebhookQueueProducer } from './device-connection-webhook-queue.producer';
 import {
   computeProviderEventId,
@@ -37,7 +38,7 @@ export class DeviceConnectionWebhookInboxService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly queue: DeviceConnectionWebhookQueueProducer,
+    private readonly enqueueService: DeviceConnectionWebhookInboxEnqueueService,
   ) {}
 
   async intakeDeviceConnectionWebhook(
@@ -73,7 +74,13 @@ export class DeviceConnectionWebhookInboxService {
         };
       }
 
-      await this.safeEnqueue(existing.id, 'requeue');
+      const outcome = await this.enqueueService.enqueueOrMarkRetryableFailed(
+        existing.id,
+        'requeue',
+      );
+      if (outcome === 'failed') {
+        throw new Error('enqueue_failed');
+      }
       return {
         outcome: 'queued',
         inboxId: existing.id,
@@ -96,7 +103,13 @@ export class DeviceConnectionWebhookInboxService {
       },
     });
 
-    await this.safeEnqueue(inboxRow.id, 'intake');
+    const outcome = await this.enqueueService.enqueueOrMarkRetryableFailed(
+      inboxRow.id,
+      'intake',
+    );
+    if (outcome === 'failed') {
+      throw new Error('enqueue_failed');
+    }
 
     this.logger.log(
       `Queued device connection webhook inbox ${inboxRow.id} for tokenId=${input.tokenId} eventType=${eventType}`,
@@ -108,29 +121,6 @@ export class DeviceConnectionWebhookInboxService {
       processingStatus: DeviceConnectionWebhookProcessingStatus.RECEIVED,
       eventType,
     };
-  }
-
-  private async safeEnqueue(inboxId: string, source: 'intake' | 'requeue'): Promise<void> {
-    try {
-      await this.queue.enqueue(inboxId);
-      this.logger.debug(`Enqueued connectivity webhook inbox ${inboxId} source=${source}`);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(
-        `Failed to enqueue connectivity webhook inbox ${inboxId} source=${source}: ${message}`,
-      );
-      const nextRetryAt = new Date(Date.now() + 30_000);
-      await this.prisma.deviceConnectionWebhookInbox.update({
-        where: { id: inboxId },
-        data: {
-          processingStatus: DeviceConnectionWebhookProcessingStatus.RETRYABLE_FAILED,
-          lastErrorCode: 'enqueue_failed',
-          lastErrorAt: new Date(),
-          nextRetryAt,
-        },
-      });
-      throw err;
-    }
   }
 
   private mapTerminalOutcome(
