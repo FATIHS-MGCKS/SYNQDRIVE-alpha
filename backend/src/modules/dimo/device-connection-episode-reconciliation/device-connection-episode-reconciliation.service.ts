@@ -255,7 +255,8 @@ export class DeviceConnectionEpisodeReconciliationService {
         isActive: boolean;
         activatedAt: Date;
         deactivatedAt: Date | null;
-        sourceReferenceId: string;
+        sourceReferenceId: string | null;
+        dimoVehicleId?: string | null;
       }>;
       deviceConnectionEpisodes: Array<{ id: string }>;
     },

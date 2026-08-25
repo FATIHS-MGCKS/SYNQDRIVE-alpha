@@ -44,7 +44,7 @@ export interface ReconciliationBindingInput {
   isActive: boolean;
   activatedAt: Date;
   deactivatedAt: Date | null;
-  sourceReferenceId: string;
+  sourceReferenceId: string | null;
 }
 
 export interface ReconciliationSnapshotInput {

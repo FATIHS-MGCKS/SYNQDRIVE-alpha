@@ -62,6 +62,7 @@ function hmueProductionRow(withLink: boolean) {
             sourceSubtype: DIMO_DATA_SOURCE_SUBTYPE,
             isActive: true,
             provider: DIMO_DATA_SOURCE_PROVIDER,
+            dimoVehicleId: 'dimo-hmue',
           },
         ]
       : [],
@@ -115,6 +116,7 @@ function wobProductionRow(vehicleId: string, lastSeenAt: string) {
         sourceSubtype: DIMO_DATA_SOURCE_SUBTYPE,
         isActive: true,
         provider: DIMO_DATA_SOURCE_PROVIDER,
+        dimoVehicleId: `dimo-${vehicleId}`,
       },
     ],
     providerConsents: [
@@ -221,6 +223,7 @@ describe('DIMO provider-link operational regressions', () => {
           provider: DIMO_DATA_SOURCE_PROVIDER,
           isActive: true,
           organizationId: FIXTURE_ORG_ID,
+          dimoVehicleId: 'dimo-ks',
         },
       ],
       providerConsents: [

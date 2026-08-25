@@ -57,6 +57,7 @@ const CONNECTIVITY_RUNTIME_VEHICLE_SELECT = {
       sourceSubtype: true,
       isActive: true,
       provider: true,
+      dimoVehicleId: true,
     },
   },
   providerConsents: {

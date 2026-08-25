@@ -91,7 +91,7 @@ export class HmVehicleActivationService {
       },
     });
 
-    if (activeLink) {
+    if (activeLink?.sourceReferenceId) {
       const hmRecord = await this.prisma.highMobilityVehicle.findUnique({
         where: { id: activeLink.sourceReferenceId },
         select: {

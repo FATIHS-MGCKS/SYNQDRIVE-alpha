@@ -3235,6 +3235,7 @@ model DimoVehicle {
   updatedAt        DateTime             @updatedAt @map("updated_at")
 
   registeredVehicles Vehicle[]
+  dataSourceLinks    VehicleDataSourceLink[]
 
   @@index([vin])
   @@index([connectionStatus])
@@ -14255,7 +14256,10 @@ model VehicleDataSourceLink {
   provider          String    @default("UNKNOWN") @map("provider")
   sourceType        String    @map("source_type") // e.g. HIGH_MOBILITY, DIMO
   sourceSubtype     String?   @map("source_subtype") // e.g. HM_HEALTH_APP, HM_TELEMETRY_APP
-  sourceReferenceId String    @map("source_reference_id")
+  // HM provider identity — null for DIMO rows (see dimoVehicleId)
+  sourceReferenceId String?   @map("source_reference_id")
+  // DIMO provider identity — internal DimoVehicle.id; null for HM rows
+  dimoVehicleId     String?   @map("dimo_vehicle_id")
   // FK to the consent record that authorized this binding
   consentId         String?   @map("consent_id")
   isActive          Boolean   @default(true) @map("is_active")
@@ -14267,8 +14271,9 @@ model VehicleDataSourceLink {
   metadata          Json?     @map("metadata")
 
   // Direct FK to Vehicle enables DB-level ownership enforcement
-  vehicle   Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  hmVehicle HighMobilityVehicle? @relation(fields: [sourceReferenceId], references: [id])
+  vehicle     Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  hmVehicle   HighMobilityVehicle? @relation(fields: [sourceReferenceId], references: [id])
+  dimoVehicle DimoVehicle?         @relation(fields: [dimoVehicleId], references: [id], onDelete: Restrict)
 
   // Only one active link per vehicle + source type + subtype
   @@unique([vehicleId, sourceType, sourceSubtype, isActive], name: "uq_data_source_link_active")
@@ -14276,6 +14281,7 @@ model VehicleDataSourceLink {
   @@index([sourceType])
   @@index([provider])
   @@index([sourceReferenceId])
+  @@index([dimoVehicleId])
   @@index([consentId])
   @@map("vehicle_data_source_links")
 }

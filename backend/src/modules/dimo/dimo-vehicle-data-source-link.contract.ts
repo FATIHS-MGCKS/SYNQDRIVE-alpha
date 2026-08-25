@@ -18,8 +18,16 @@ export type DimoLinkProvenance =
 export const DIMO_LINK_METADATA_VERSION = 1 as const;
 
 /**
- * VehicleDataSourceLink.sourceReferenceId for DIMO references the internal
- * SynqDrive DimoVehicle.id (Vehicle.dimoVehicleId), NOT the external DIMO
- * vehicle identifier/token. External identity is stored in metadata.dimoExternalId.
+ * DIMO mapping identity is stored in VehicleDataSourceLink.dimoVehicleId
+ * (internal SynqDrive DimoVehicle.id = Vehicle.dimoVehicleId).
+ *
+ * sourceReferenceId is reserved for High Mobility (high_mobility_vehicles.id)
+ * and MUST remain null for DIMO rows.
+ *
+ * External DIMO identity is stored in metadata.dimoExternalId.
  */
-export const DIMO_SOURCE_REFERENCE_AUTHORITY = 'DimoVehicle.id' as const;
+export const DIMO_MAPPING_IDENTITY_FIELD = 'dimoVehicleId' as const;
+export const DIMO_MAPPING_IDENTITY_AUTHORITY = 'DimoVehicle.id' as const;
+
+/** @deprecated Use DIMO_MAPPING_IDENTITY_FIELD — legacy name from pre-schema-fix contract */
+export const DIMO_SOURCE_REFERENCE_AUTHORITY = DIMO_MAPPING_IDENTITY_AUTHORITY;
