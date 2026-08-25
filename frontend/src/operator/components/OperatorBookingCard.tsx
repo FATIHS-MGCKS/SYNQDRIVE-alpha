@@ -1,10 +1,19 @@
 import { ArrowDownLeft, ArrowUpRight, ChevronRight } from 'lucide-react';
 import { StatusChip } from '../../components/patterns';
 import {
+  bookingStatusLabel,
   bookingStatusTone,
   type BookingUiStatus,
 } from '../../rental/components/bookings/bookingStatus';
 import type { OperatorHandoverKind, OperatorTodayBookingItem } from '../lib/operatorData';
+import {
+  operatorBookingCardDetailsLabel,
+  operatorBookingCardDoneLabel,
+  operatorBookingCardDueKindLabel,
+  operatorBookingCardOverdueLabel,
+  operatorBookingCardStartPickupLabel,
+  operatorBookingCardStartReturnLabel,
+} from '../lib/operator-booking-card-i18n';
 import { OperatorGlassCard } from './OperatorGlassCard';
 import { OperatorStatusChip } from './OperatorStatusChip';
 import { pickupDueBadge, returnDueBadge } from '../lib/operatorStatus';
@@ -28,11 +37,24 @@ export function OperatorBookingCard({
   const kind: OperatorHandoverKind = item.kind;
   const primaryAction =
     kind === 'PICKUP'
-      ? { label: 'Pickup starten', gate: item.pickupGate, onClick: onPickupStart }
-      : { label: 'Return starten', gate: item.returnGate, onClick: onReturnStart };
+      ? {
+          label: operatorBookingCardStartPickupLabel(locale),
+          gate: item.pickupGate,
+          onClick: onPickupStart,
+        }
+      : {
+          label: operatorBookingCardStartReturnLabel(locale),
+          gate: item.returnGate,
+          onClick: onReturnStart,
+        };
   const gateReason = resolveHandoverGateReason(locale, primaryAction.gate);
 
-  const dueBadge = kind === 'PICKUP' ? pickupDueBadge() : returnDueBadge();
+  const dueBadgeRaw = kind === 'PICKUP' ? pickupDueBadge() : returnDueBadge();
+  const dueBadge = {
+    ...dueBadgeRaw,
+    label: operatorBookingCardDueKindLabel(locale, kind),
+  };
+  const statusLabel = bookingStatusLabel(item.status as BookingUiStatus, locale);
 
   return (
     <OperatorGlassCard className="overflow-hidden p-0">
@@ -70,14 +92,26 @@ export function OperatorBookingCard({
           )}
           <span className="mt-2 flex flex-wrap gap-1.5">
             <StatusChip tone={bookingStatusTone(item.status as BookingUiStatus)} dot>
-              {item.statusLabel}
+              {statusLabel}
             </StatusChip>
             {!item.isDone && <OperatorStatusChip badge={dueBadge} />}
             {item.isOverdue && !item.isDone && (
-              <OperatorStatusChip badge={{ kind: 'blocked', label: 'Überfällig', tone: 'critical' }} />
+              <OperatorStatusChip
+                badge={{
+                  kind: 'blocked',
+                  label: operatorBookingCardOverdueLabel(locale),
+                  tone: 'critical',
+                }}
+              />
             )}
             {item.isDone && (
-              <OperatorStatusChip badge={{ kind: 'ready', label: 'Erledigt', tone: 'success' }} />
+              <OperatorStatusChip
+                badge={{
+                  kind: 'ready',
+                  label: operatorBookingCardDoneLabel(locale),
+                  tone: 'success',
+                }}
+              />
             )}
           </span>
         </span>
@@ -101,7 +135,7 @@ export function OperatorBookingCard({
               onClick={onDetails}
               className="sq-press min-h-[48px] rounded-xl border border-border/70 surface-premium px-4 text-sm font-semibold text-foreground sm:max-w-[120px]"
             >
-              Details
+              {operatorBookingCardDetailsLabel(locale)}
             </button>
           )}
         </div>

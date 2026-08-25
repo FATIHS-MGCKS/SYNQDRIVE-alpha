@@ -29,6 +29,7 @@ import { operatorBookingsFormEn } from './operator.bookings.form.en';
 import { operatorBookingsCancelNoShowEn } from './operator.bookings.cancelNoShow.en';
 import { operatorBookingsDocumentsEn } from './operator.bookings.documents.en';
 import { operatorBookingsDetailEn } from './operator.bookings.detail.en';
+import { operatorBookingsCardEn } from './operator.bookings.card.en';
 import { operatorMoreEn } from './operator.more.en';
 import { vendorsDirectoryEn } from './vendors.directory.en';
 import { supportOpsEn } from './support.ops.en';
@@ -5611,6 +5612,7 @@ export const en = {
   ...operatorBookingsCancelNoShowEn,
   ...operatorBookingsDocumentsEn,
   ...operatorBookingsDetailEn,
+  ...operatorBookingsCardEn,
   ...operatorMoreEn,
   ...vendorsDirectoryEn,
 } as const;
