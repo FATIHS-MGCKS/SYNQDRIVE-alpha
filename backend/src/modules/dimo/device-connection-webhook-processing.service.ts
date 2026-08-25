@@ -13,6 +13,7 @@ import { isTerminalInboxStatus } from './device-connection-webhook-inbox.types';
 
 export type DeviceConnectionWebhookProcessOutcome =
   | 'processed'
+  | 'reconciled'
   | 'ignored_by_policy'
   | 'duplicate'
   | 'permanently_failed'
@@ -106,7 +107,42 @@ export class DeviceConnectionWebhookProcessingService {
           eventType: row.eventType,
           outcome: 'duplicate',
         });
+        this.logger.debug(
+          `Connectivity webhook inbox ${inboxId} dedupe hit — domain event ${domainResult.eventId} already processed`,
+        );
         return 'duplicate';
+      }
+
+      if (domainResult.outcome === 'reconciled') {
+        await this.inboxRepo.markProcessed(inboxId, { domainEventId: domainResult.eventId });
+        this.observability?.log('webhook_processing', {
+          provider: row.provider,
+          eventType: row.eventType,
+          outcome: 'processed',
+          reason: 'reconciled',
+        });
+        this.logger.log(
+          `Connectivity webhook inbox ${inboxId} reconciled partial lifecycle for event ${domainResult.eventId}`,
+        );
+        return 'reconciled';
+      }
+
+      if (
+        domainResult.outcome === 'historical_orphan' ||
+        domainResult.outcome === 'reconciliation_disabled'
+      ) {
+        const reason = domainResult.policyReason ?? domainResult.outcome;
+        await this.inboxRepo.markIgnoredByPolicy(inboxId, reason);
+        this.observability?.log('webhook_processing', {
+          provider: row.provider,
+          eventType: row.eventType,
+          outcome: 'ignored',
+          reason,
+        });
+        this.logger.warn(
+          `Connectivity webhook inbox ${inboxId} terminal ignore — canonical event ${domainResult.eventId} is ${reason}`,
+        );
+        return 'ignored_by_policy';
       }
 
       await this.inboxRepo.markProcessed(inboxId, { domainEventId: domainResult.eventId });

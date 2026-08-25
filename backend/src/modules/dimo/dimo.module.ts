@@ -20,6 +20,7 @@ import { DimoTriggersService } from './dimo-triggers.service';
 import { DimoTriggersBootstrapService } from './dimo-triggers-bootstrap.service';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
 import { DeviceConnectionWebhookInboxService } from './device-connection-webhook-inbox.service';
+import { DeviceConnectionWebhookInboxEnqueueService } from './device-connection-webhook-inbox-enqueue.service';
 import { DeviceConnectionWebhookInboxRepository } from './device-connection-webhook-inbox.repository';
 import { DeviceConnectionWebhookProcessingService } from './device-connection-webhook-processing.service';
 import { DeviceConnectionWebhookQueueProducer } from './device-connection-webhook-queue.producer';
@@ -36,6 +37,7 @@ import { DeviceConnectionEpisodeResolutionOutboxRepository } from './device-conn
 import { DeviceConnectionEpisodeResolutionOutboxProcessorService } from './device-connection-episode-resolution/device-connection-episode-resolution-outbox-processor.service';
 import deviceConnectionEpisodeResolutionOutboxConfig from '@config/device-connection-episode-resolution-outbox.config';
 import { ConnectivityAlertService } from './connectivity-alert/connectivity-alert.service';
+import { ConnectivityLifecycleRuntimePolicyService } from './connectivity/connectivity-lifecycle-runtime-policy.service';
 import { ConnectivityObservabilityService } from './connectivity/connectivity-observability.service';
 import { ConnectivityRecoveryPolicyService } from './connectivity/connectivity-recovery.policy';
 import { DeviceConnectionQueryService } from './device-connection-query.service';
@@ -71,6 +73,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionWebhookService,
     DeviceConnectionWebhookInboxService,
     DeviceConnectionWebhookInboxRepository,
+    DeviceConnectionWebhookInboxEnqueueService,
     DeviceConnectionWebhookProcessingService,
     DeviceConnectionWebhookQueueProducer,
     DeviceConnectionWebhookInboxSchedulerService,
@@ -113,6 +116,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionWebhookReplayService,
     DeviceConnectionWebhookInboxSchedulerService,
     DeviceConnectionWebhookConfigurationService,
+    ConnectivityLifecycleRuntimePolicyService,
     DimoTriggerRegistryService,
   ],
 })

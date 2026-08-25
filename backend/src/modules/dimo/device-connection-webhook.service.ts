@@ -2,6 +2,7 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { DimoDeviceConnectionEventType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
+import { ConnectivityLifecycleRuntimePolicyService } from './connectivity/connectivity-lifecycle-runtime-policy.service';
 import { ConnectivityRecoveryPolicyService } from './connectivity/connectivity-recovery.policy';
 import { DeviceConnectionEpisodeService } from './device-connection-episode.service';
 import {
@@ -11,7 +12,13 @@ import {
 
 export const DEVICE_CONNECTION_DEDUP_WINDOW_MS = 30_000;
 
-export type DeviceConnectionIntakeOutcome = 'created' | 'duplicate' | 'ignored_by_policy';
+export type DeviceConnectionIntakeOutcome =
+  | 'created'
+  | 'duplicate'
+  | 'reconciled'
+  | 'historical_orphan'
+  | 'reconciliation_disabled'
+  | 'ignored_by_policy';
 
 export type DeviceConnectionDomainResult = {
   outcome: DeviceConnectionIntakeOutcome;
@@ -80,6 +87,7 @@ export class DeviceConnectionWebhookService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly episodeService: DeviceConnectionEpisodeService,
+    private readonly lifecyclePolicy: ConnectivityLifecycleRuntimePolicyService,
     @Optional() private readonly recoveryPolicy?: ConnectivityRecoveryPolicyService,
   ) {}
 
@@ -222,12 +230,61 @@ export class DeviceConnectionWebhookService {
     };
   }
 
+  /**
+   * Completes episode lifecycle for a persisted event that still lacks processedAt.
+   * Safe to call on retry after partial failure (event row exists, lifecycle incomplete).
+   */
+  async reconcilePersistedEventLifecycle(eventId: string): Promise<DeviceConnectionDomainResult> {
+    const row = await this.prisma.dimoDeviceConnectionEvent.findUnique({
+      where: { id: eventId },
+      select: {
+        id: true,
+        organizationId: true,
+        vehicleId: true,
+        tokenId: true,
+        eventType: true,
+        observedAt: true,
+        receivedAt: true,
+        processedAt: true,
+      },
+    });
+    if (!row) {
+      throw new Error(`Device connection event ${eventId} not found`);
+    }
+    if (row.processedAt) {
+      return { outcome: 'duplicate', eventId: row.id, eventType: row.eventType };
+    }
+
+    const orphanEligibility = this.lifecyclePolicy.evaluateOrphanReconciliationEligibility({
+      receivedAt: row.receivedAt,
+      processedAt: row.processedAt,
+    });
+    const blocked = this.mapOrphanEligibilityToOutcome(
+      orphanEligibility,
+      row.id,
+      row.eventType,
+    );
+    if (blocked) return blocked;
+
+    return this.completePersistedEventLifecycle({
+      organizationId: row.organizationId,
+      vehicleId: row.vehicleId,
+      tokenId: row.tokenId,
+      eventId: row.id,
+      eventType: row.eventType,
+      observedAt: row.observedAt,
+      receivedAt: row.receivedAt,
+      inboxId: undefined,
+      logContext: 'reconcile',
+    });
+  }
+
   private async persistDeviceConnectionEvent(
     input: Omit<IngestDeviceConnectionInput, 'pluggedIn'> & {
       eventType: DimoDeviceConnectionEventType;
     },
   ): Promise<DeviceConnectionDomainResult> {
-    const { vehicle, tokenId, observedAt, rawPayload, eventType } = input;
+    const { vehicle, tokenId, observedAt, rawPayload, eventType, inboxId } = input;
     const receivedAt = new Date();
     const dedupBucket = DeviceConnectionWebhookService.dedupBucket(observedAt);
 
@@ -252,35 +309,128 @@ export class DeviceConnectionWebhookService {
         rawPayloadJson: rawPayload as object,
       },
       update: {},
-      select: { id: true, createdAt: true, updatedAt: true },
+      select: {
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        processedAt: true,
+        receivedAt: true,
+      },
     });
 
     const isNew = row.createdAt.getTime() === row.updatedAt.getTime();
-    if (!isNew) {
+    // Newly persisted events always run normal lifecycle processing below.
+    // Runtime cutover policy gates only reconciliation of pre-existing incomplete events.
+    if (!isNew && row.processedAt) {
+      this.logger.debug(
+        `Device connection dedupe hit for event ${row.id} inboxId=${inboxId ?? 'n/a'} — lifecycle already complete`,
+      );
       return { outcome: 'duplicate', eventId: row.id, eventType };
     }
 
-    this.logger.log(
-      `Device connection event ${eventType} for vehicle ${vehicle.id} at ${observedAt.toISOString()}`,
-    );
+    if (!isNew && !row.processedAt) {
+      const orphanEligibility = this.lifecyclePolicy.evaluateOrphanReconciliationEligibility({
+        receivedAt: row.receivedAt ?? receivedAt,
+        processedAt: row.processedAt,
+      });
+      const blocked = this.mapOrphanEligibilityToOutcome(
+        orphanEligibility,
+        row.id,
+        eventType,
+        inboxId,
+      );
+      if (blocked) return blocked;
 
-    const processedAt = new Date();
-    await this.syncEpisodeAfterPersistedEvent({
+      this.logger.warn(
+        `Reconciling partially processed device connection event ${row.id} inboxId=${inboxId ?? 'n/a'} — episode lifecycle incomplete`,
+      );
+    } else if (isNew) {
+      this.logger.log(
+        `Device connection event ${eventType} for vehicle ${vehicle.id} at ${observedAt.toISOString()} inboxId=${inboxId ?? 'n/a'}`,
+      );
+    }
+
+    return this.completePersistedEventLifecycle({
       organizationId: vehicle.organizationId,
       vehicleId: vehicle.id,
       tokenId,
       eventId: row.id,
       eventType,
       observedAt,
-      receivedAt,
+      receivedAt: row.receivedAt ?? receivedAt,
+      inboxId,
+      logContext: isNew ? 'created' : 'reconciled',
+    });
+  }
+
+  private async completePersistedEventLifecycle(input: {
+    organizationId: string;
+    vehicleId: string;
+    tokenId: number;
+    eventId: string;
+    eventType: DimoDeviceConnectionEventType;
+    observedAt: Date;
+    receivedAt: Date;
+    inboxId?: string;
+    logContext: 'created' | 'reconciled' | 'reconcile';
+  }): Promise<DeviceConnectionDomainResult> {
+    const processedAt = new Date();
+    await this.syncEpisodeAfterPersistedEvent({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      tokenId: input.tokenId,
+      eventId: input.eventId,
+      eventType: input.eventType,
+      observedAt: input.observedAt,
+      receivedAt: input.receivedAt,
     });
 
     await this.prisma.dimoDeviceConnectionEvent.update({
-      where: { id: row.id },
+      where: { id: input.eventId },
       data: { processedAt },
     });
 
-    return { outcome: 'created', eventId: row.id, eventType };
+    this.logger.log({
+      msg: 'device_connection.lifecycle_complete',
+      eventId: input.eventId,
+      inboxId: input.inboxId ?? null,
+      outcome: input.logContext,
+      eventType: input.eventType,
+    });
+
+    if (input.logContext === 'reconciled' || input.logContext === 'reconcile') {
+      return { outcome: 'reconciled', eventId: input.eventId, eventType: input.eventType };
+    }
+    return { outcome: 'created', eventId: input.eventId, eventType: input.eventType };
+  }
+
+  private mapOrphanEligibilityToOutcome(
+    eligibility: ReturnType<ConnectivityLifecycleRuntimePolicyService['evaluateOrphanReconciliationEligibility']>,
+    eventId: string,
+    eventType: DimoDeviceConnectionEventType,
+    inboxId?: string,
+  ): DeviceConnectionDomainResult | null {
+    if (eligibility === 'eligible' || eligibility === 'already_complete') {
+      return null;
+    }
+
+    const outcome =
+      eligibility === 'historical_orphan' ? 'historical_orphan' : 'reconciliation_disabled';
+
+    this.logger.warn({
+      msg: 'device_connection.orphan_reconciliation_blocked',
+      eventId,
+      inboxId: inboxId ?? null,
+      eligibility,
+      eventType,
+    });
+
+    return {
+      outcome,
+      eventId,
+      eventType,
+      policyReason: eligibility,
+    };
   }
 
   private async syncEpisodeAfterPersistedEvent(input: {

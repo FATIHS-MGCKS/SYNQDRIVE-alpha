@@ -39,11 +39,12 @@ export class DeviceConnectionWebhookInboxRepository {
     });
   }
 
-  findRetryableBatch(limit: number, now: Date = new Date()) {
+  findRetryableBatch(limit: number, now: Date = new Date(), receivedOnOrAfter?: Date) {
     return this.prisma.deviceConnectionWebhookInbox.findMany({
       where: {
         processingStatus: DeviceConnectionWebhookProcessingStatus.RETRYABLE_FAILED,
         nextRetryAt: { lte: now },
+        ...(receivedOnOrAfter ? { receivedAt: { gte: receivedOnOrAfter } } : {}),
       },
       orderBy: { nextRetryAt: 'asc' },
       take: limit,
@@ -51,7 +52,7 @@ export class DeviceConnectionWebhookInboxRepository {
     });
   }
 
-  findStaleInFlightBatch(staleBefore: Date, limit: number) {
+  findStaleInFlightBatch(staleBefore: Date, limit: number, receivedOnOrAfter?: Date) {
     return this.prisma.deviceConnectionWebhookInbox.findMany({
       where: {
         processingStatus: {
@@ -61,6 +62,7 @@ export class DeviceConnectionWebhookInboxRepository {
           ],
         },
         updatedAt: { lt: staleBefore },
+        ...(receivedOnOrAfter ? { receivedAt: { gte: receivedOnOrAfter } } : {}),
       },
       orderBy: { updatedAt: 'asc' },
       take: limit,

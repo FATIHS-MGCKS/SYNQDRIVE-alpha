@@ -223,6 +223,60 @@ describe('DeviceConnectionWebhookProcessingService', () => {
     expect(deviceConnection.processValidatedWebhookEvent).toHaveBeenCalledTimes(1);
   });
 
+  it('records reconciled partial lifecycle as processed', async () => {
+    const repo = mockRepo();
+    const row = baseRow();
+    repo.findById.mockResolvedValue(row);
+    repo.claimForProcessing.mockResolvedValue({ ...row, processingAttempts: 1 });
+    repo.findVehicleByTokenId.mockResolvedValue({ id: 'veh-1', organizationId: 'org-1' });
+
+    const deviceConnection = {
+      processValidatedWebhookEvent: jest.fn().mockResolvedValue({
+        outcome: 'reconciled',
+        eventId: 'evt-reconciled',
+      }),
+    };
+
+    const service = new DeviceConnectionWebhookProcessingService(
+      config as never,
+      repo as never,
+      deviceConnection as never,
+    );
+
+    expect(await service.processInboxId('inbox-1')).toBe('reconciled');
+    expect(repo.markProcessed).toHaveBeenCalledWith('inbox-1', {
+      domainEventId: 'evt-reconciled',
+    });
+  });
+
+  it('retries after partial event persistence and completes episode lifecycle', async () => {
+    const repo = mockRepo();
+    const row = baseRow({
+      processingStatus: DeviceConnectionWebhookProcessingStatus.RETRYABLE_FAILED,
+      processingAttempts: 1,
+    });
+    repo.findById.mockResolvedValue(row);
+    repo.claimForProcessing.mockResolvedValue({ ...row, processingAttempts: 2 });
+    repo.findVehicleByTokenId.mockResolvedValue({ id: 'veh-1', organizationId: 'org-1' });
+
+    const deviceConnection = {
+      processValidatedWebhookEvent: jest.fn().mockResolvedValue({
+        outcome: 'reconciled',
+        eventId: 'evt-partial',
+        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+      }),
+    };
+
+    const service = new DeviceConnectionWebhookProcessingService(
+      config as never,
+      repo as never,
+      deviceConnection as never,
+    );
+
+    expect(await service.processInboxId('inbox-1')).toBe('reconciled');
+    expect(deviceConnection.processValidatedWebhookEvent).toHaveBeenCalledTimes(1);
+  });
+
   it('allows replay after requeue resets status to RECEIVED', async () => {
     const repo = mockRepo();
     const row = baseRow({
@@ -247,5 +301,32 @@ describe('DeviceConnectionWebhookProcessingService', () => {
     );
 
     expect(await service.processInboxId('inbox-1', true)).toBe('processed');
+  });
+
+  it('terminally ignores inbox when domain returns historical_orphan', async () => {
+    const repo = mockRepo();
+    const row = baseRow();
+    repo.findById.mockResolvedValue(row);
+    repo.claimForProcessing.mockResolvedValue({ ...row, processingAttempts: 1 });
+    repo.findVehicleByTokenId.mockResolvedValue({ id: 'veh-1', organizationId: 'org-1' });
+
+    const deviceConnection = {
+      processValidatedWebhookEvent: jest.fn().mockResolvedValue({
+        outcome: 'historical_orphan',
+        eventId: 'evt-july20',
+        policyReason: 'historical_orphan',
+      }),
+    };
+
+    const service = new DeviceConnectionWebhookProcessingService(
+      config as never,
+      repo as never,
+      deviceConnection as never,
+    );
+
+    expect(await service.processInboxId('inbox-1')).toBe('ignored_by_policy');
+    expect(repo.markIgnoredByPolicy).toHaveBeenCalledWith('inbox-1', 'historical_orphan');
+    expect(repo.markProcessed).not.toHaveBeenCalled();
+    expect(repo.markRetryableFailed).not.toHaveBeenCalled();
   });
 });

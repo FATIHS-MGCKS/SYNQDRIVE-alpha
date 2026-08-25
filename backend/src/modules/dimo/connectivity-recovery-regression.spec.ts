@@ -17,6 +17,8 @@ import {
   DeviceConnectionWebhookService,
   shouldPersistObdPlugStateChange,
 } from './device-connection-webhook.service';
+import { CONNECTIVITY_LIFECYCLE_DEV_RECONCILE_AFTER_ISO } from '@config/device-connection-webhook-inbox.config';
+import { evaluateOrphanReconciliationEligibility } from './connectivity/connectivity-lifecycle-runtime.policy';
 
 const VEHICLE_ID = 'veh-regression-001';
 const ORG_ID = 'org-regression-001';
@@ -30,6 +32,30 @@ function mockEpisodeService() {
     resolveFromExplicitPlugEvent: jest
       .fn()
       .mockResolvedValue({ outcome: 'resolved', episodeId: 'ep-1' }),
+  };
+}
+
+function mockLifecyclePolicy(
+  enabled = true,
+  cutover: Date | null = new Date(CONNECTIVITY_LIFECYCLE_DEV_RECONCILE_AFTER_ISO),
+) {
+  return {
+    automaticLifecycleReconciliationEnabled: enabled,
+    lifecycleReconcileAfter: enabled ? cutover : null,
+    evaluateOrphanReconciliationEligibility: ({
+      receivedAt,
+      processedAt,
+    }: {
+      receivedAt: Date;
+      processedAt: Date | null;
+    }) =>
+      evaluateOrphanReconciliationEligibility({
+        receivedAt,
+        processedAt,
+        lifecycleReconcileAfter: enabled ? cutover : null,
+        automaticLifecycleReconciliationEnabled: enabled,
+      }),
+    isInboxEligibleForAutomaticRuntimeReplay: jest.fn(),
   };
 }
 
@@ -114,6 +140,7 @@ describe('connectivity recovery regressions (A–G)', () => {
           vehicle: { findUnique: vehicleFindUnique },
         } as never,
         mockEpisodeService() as never,
+        mockLifecyclePolicy() as never,
       );
 
       const unplugResult = await service.ingestObdPlugStateChange({

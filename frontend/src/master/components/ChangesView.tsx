@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'connectivity-production-processing-gate-2026-08-25',
+    version: '4.9.952',
+    title: 'Connectivity Production Processing Gate — webhook inbox / BullMQ / episode lifecycle repair',
+    summary: [
+      'Root cause proven: July 20 IDEMPOTENCY_RETRY_DEFECT; July 28/Aug 8 inbox UNCLAIMED_PROCESSING_GAP (subcause unproven).',
+      'Fix: reconcile partial events on retry (current-era only); explicit cutover CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER default 2026-08-25T00:00:00Z.',
+      'Shared enqueue service: intake + scheduler failures persist RETRYABLE_FAILED; scheduler batch per-row isolation.',
+      'Cutover hardening: production requires explicit CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER (fail-closed); domain-boundary historical_orphan enforcement.',
+      'Tests A–N7; gate FAIL / P0.2 NO-GO until post-deploy verification.',
+    ],
+    reason: 'Close production processing gate before P0.2 — prove and repair DIMO webhook → episode OPEN/RESOLVE pipeline without historical backfill.',
+    previousBehavior: 'Duplicate upsert skipped lifecycle; scheduler reconciled all processed_at null rows; scheduler enqueue failures could leave RECEIVED silently.',
+    details: 'docs/audits/connectivity-production-processing-gate-2026-08.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T00:55:00.000Z',
+  },
+  {
     id: 'vehicle-operational-state-p01-provenance-2026-08-24',
     version: '4.9.951',
     title: 'Vehicle Operational State P0.1 — provenance & episode lifecycle verification',

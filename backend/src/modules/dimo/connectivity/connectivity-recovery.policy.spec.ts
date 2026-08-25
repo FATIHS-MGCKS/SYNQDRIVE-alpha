@@ -4,7 +4,33 @@ import { DeviceConnectionEpisodeReconciliationApplyService } from '../device-con
 import { DeviceConnectionEpisodeResolutionOutboxProcessorService } from '../device-connection-episode-resolution/device-connection-episode-resolution-outbox-processor.service';
 import { DeviceConnectionEpisodeResolutionService } from '../device-connection-episode-resolution/device-connection-episode-resolution.service';
 import { DeviceConnectionWebhookService } from '../device-connection-webhook.service';
+import { CONNECTIVITY_LIFECYCLE_DEV_RECONCILE_AFTER_ISO } from '@config/device-connection-webhook-inbox.config';
+import { evaluateOrphanReconciliationEligibility } from './connectivity-lifecycle-runtime.policy';
 import { ConnectivityRecoveryPolicyService } from './connectivity-recovery.policy';
+
+function mockLifecyclePolicy(
+  enabled = true,
+  cutover: Date | null = new Date(CONNECTIVITY_LIFECYCLE_DEV_RECONCILE_AFTER_ISO),
+) {
+  return {
+    automaticLifecycleReconciliationEnabled: enabled,
+    lifecycleReconcileAfter: enabled ? cutover : null,
+    evaluateOrphanReconciliationEligibility: ({
+      receivedAt,
+      processedAt,
+    }: {
+      receivedAt: Date;
+      processedAt: Date | null;
+    }) =>
+      evaluateOrphanReconciliationEligibility({
+        receivedAt,
+        processedAt,
+        lifecycleReconcileAfter: enabled ? cutover : null,
+        automaticLifecycleReconciliationEnabled: enabled,
+      }),
+    isInboxEligibleForAutomaticRuntimeReplay: jest.fn(),
+  };
+}
 
 describe('connectivity recovery policy', () => {
   it('defaults episode recovery on and reconciliation apply off', () => {
@@ -59,6 +85,7 @@ describe('connectivity recovery kill switch behavior', () => {
     const service = new DeviceConnectionWebhookService(
       prisma as never,
       episodeService as never,
+      mockLifecyclePolicy() as never,
       recoveryPolicy as never,
     );
 
