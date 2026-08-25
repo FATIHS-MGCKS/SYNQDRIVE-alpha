@@ -28,6 +28,7 @@ import { operatorVehicleQuickViewDocumentsEn } from './operator.vehicleQuickView
 import { operatorBookingsFormEn } from './operator.bookings.form.en';
 import { operatorBookingsCancelNoShowEn } from './operator.bookings.cancelNoShow.en';
 import { operatorBookingsDocumentsEn } from './operator.bookings.documents.en';
+import { operatorMoreEn } from './operator.more.en';
 import { vendorsDirectoryEn } from './vendors.directory.en';
 import { supportOpsEn } from './support.ops.en';
 import { whatsappEn } from './whatsapp.en';
@@ -5608,6 +5609,7 @@ export const en = {
   ...operatorBookingsFormEn,
   ...operatorBookingsCancelNoShowEn,
   ...operatorBookingsDocumentsEn,
+  ...operatorMoreEn,
   ...vendorsDirectoryEn,
 } as const;
 

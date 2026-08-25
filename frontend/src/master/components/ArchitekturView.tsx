@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator More View (P2.2.39 — V4.9.966)', icon: Globe,
+    endpoint: 'Operator More View — mobile More tab presentation slice',
+    service: '**Locale flow:** `useLanguage().locale` → `operator-more-i18n.ts` adapter (`om`, section/action/theme helpers); reuses `operator.bookings.form.createTitle`. **Keys:** +17 EN+DE `operator.more.*` (8578→8596). **Machine values:** tab ID `more`, sheet types, vehicle `${model} · ${license}` labels, theme preference codes, `setActiveTab`/`openSheet` callbacks, `/rental` link frozen. **Guardrails:** P2.2.39 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-more-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_OPERATOR_MORE_VIEW_P2_2_39_2026-08-25.md' },
   { name: 'Platform i18n Operator Booking Documents Panel (P2.2.38 — V4.9.965)', icon: Globe,
     endpoint: 'Operator Booking Documents Panel — booking/customer document presentation slice',
     service: '**Locale flow:** `useLanguage().locale` → `operator-booking-documents-i18n.ts` adapter (`obd`, group/type/availability helpers, locale-aware `formatOperatorDocumentMeta`); reuses `email.docType.*` and `common.open`. **Keys:** +26 EN+DE `operator.bookings.documents.*` (8552→8578). **Machine values:** documentType codes, availability enum, bundle.status, document IDs, filenames, customer doc type codes, slot ordering frozen; `api.documents.open` / preview callbacks unchanged. **Guardrails:** P2.2.38 enforce-clean exact (3 paths) — 0 findings. **Tests:** `operator-booking-documents-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
