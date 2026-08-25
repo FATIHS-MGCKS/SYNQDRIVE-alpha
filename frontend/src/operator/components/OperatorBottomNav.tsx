@@ -5,25 +5,31 @@ import {
   MoreHorizontal,
   ScanLine,
 } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { OperatorTab } from '../lib/operatorTypes';
 import { useOperatorShell } from '../context/OperatorShellContext';
+import {
+  operatorShellNavigationAriaLabel,
+  operatorShellNavigationTabLabel,
+} from '../lib/operator-shell-navigation-i18n';
 
-const NAV_ITEMS: { id: OperatorTab; label: string; icon: typeof CalendarDays }[] = [
-  { id: 'today', label: 'Heute', icon: CalendarDays },
-  { id: 'scan', label: 'Scan', icon: ScanLine },
-  { id: 'vehicles', label: 'Fahrzeuge', icon: Car },
-  { id: 'tasks', label: 'Aufgaben', icon: ListTodo },
-  { id: 'more', label: 'Mehr', icon: MoreHorizontal },
+const NAV_ITEMS: { id: OperatorTab; icon: typeof CalendarDays }[] = [
+  { id: 'today', icon: CalendarDays },
+  { id: 'scan', icon: ScanLine },
+  { id: 'vehicles', icon: Car },
+  { id: 'tasks', icon: ListTodo },
+  { id: 'more', icon: MoreHorizontal },
 ];
 
 export function OperatorBottomNav() {
+  const { locale } = useLanguage();
   const { activeTab, setActiveTab } = useOperatorShell();
 
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/60 surface-frosted"
       style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
-      aria-label="Operator navigation"
+      aria-label={operatorShellNavigationAriaLabel(locale)}
     >
       <div className="mx-auto flex max-w-lg items-stretch justify-around px-1 pt-1 md:max-w-none">
         {NAV_ITEMS.map((item) => {
@@ -49,7 +55,7 @@ export function OperatorBottomNav() {
               >
                 <Icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.25 : 2} />
               </span>
-              <span>{item.label}</span>
+              <span>{operatorShellNavigationTabLabel(locale, item.id)}</span>
             </button>
           );
         })}

@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Shell Navigation Chrome (P2.2.43 — V4.9.970)', icon: Globe,
+    endpoint: 'Operator bottom navigation — tab label presentation slice',
+    service: '**Locale flow:** `useLanguage().locale` → `operator-shell-navigation-i18n.ts` adapter (`osn`, tab label + aria helpers); reuses `common.today`, `nav.tasks`. **Keys:** +4 EN+DE `operator.navigation.*` (8620→8624). **Machine values:** tab IDs, `activeTab`, `setActiveTab` args, React keys, order, icons frozen. **Guardrails:** P2.2.43 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-shell-navigation-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_OPERATOR_SHELL_NAVIGATION_P2_2_43_2026-08-25.md' },
   { name: 'Platform i18n Operator Scan Search UX (P2.2.42 — V4.9.969)', icon: Globe,
     endpoint: 'Operator Scan tab — search chrome presentation slice',
     service: '**Locale flow:** `useLanguage().locale` → `operator-scan-search-i18n.ts` adapter (`oss`, placeholder/empty/no-results/section helpers); reuses `nav.bookings`. **Keys:** +10 EN+DE `operator.scan.*` (8610→8620). **Machine values:** scanQuery, hasQuery predicate, result order/IDs, bookingsError raw, P241 card props/callbacks frozen. **Guardrails:** P2.2.42 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-scan-search-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
