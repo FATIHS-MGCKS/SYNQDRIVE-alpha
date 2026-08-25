@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ScanLine, Search } from 'lucide-react';
 import { EmptyState, SkeletonRows } from '../../components/patterns';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useOperatorData } from '../context/OperatorDataContext';
 import { useOperatorScanSearch } from '../hooks/useOperatorScanSearch';
@@ -14,8 +15,22 @@ import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
 import type { OperatorScanBookingHit } from '../hooks/useOperatorScanSearch';
 import { mapScanBookingToDetailItem, toHandoverBookingSeed } from '../lib/operatorData';
 import type { OperatorTodayBookingItem } from '../lib/operatorData';
+import {
+  operatorScanBackToSearchLabel,
+  operatorScanEmptyQueryDescription,
+  operatorScanEmptyQueryTitle,
+  operatorScanNoResultsDescription,
+  operatorScanNoResultsTitle,
+  operatorScanScannerHint,
+  operatorScanScannerTitle,
+  operatorScanSearchPlaceholder,
+  operatorScanSectionBookingsLabel,
+  operatorScanSectionVehiclesLabel,
+  operatorScanTabletPlaceholder,
+} from '../lib/operator-scan-search-i18n';
 
 export function OperatorScanView() {
+  const { locale } = useLanguage();
   const {
     scanQuery,
     setScanQuery,
@@ -97,7 +112,7 @@ export function OperatorScanView() {
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
-            placeholder="Kennzeichen, Fahrzeug oder Buchungs-ID"
+            placeholder={operatorScanSearchPlaceholder(locale)}
             value={scanQuery}
             onChange={(e) => {
               setScanQuery(e.target.value);
@@ -109,9 +124,11 @@ export function OperatorScanView() {
 
         <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-center">
           <ScanLine className="mx-auto h-6 w-6 text-muted-foreground" />
-          <p className="mt-2 text-sm font-semibold text-foreground">Kennzeichen eingeben</p>
+          <p className="mt-2 text-sm font-semibold text-foreground">
+            {operatorScanScannerTitle(locale)}
+          </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            QR-Scanner später verfügbar — WebApp/PWA ohne native Scanner-Library im MVP.
+            {operatorScanScannerHint(locale)}
           </p>
         </div>
       </div>
@@ -127,8 +144,8 @@ export function OperatorScanView() {
           <EmptyState
             compact
             icon={<ScanLine className="h-5 w-5" />}
-            title="Fahrzeug oder Buchung suchen"
-            description="Kennzeichen, Modell oder Buchungs-ID eingeben — oder Deep-Link öffnen."
+            title={operatorScanEmptyQueryTitle(locale)}
+            description={operatorScanEmptyQueryDescription(locale)}
           />
         )}
 
@@ -136,14 +153,16 @@ export function OperatorScanView() {
           <EmptyState
             compact
             icon={<Search className="h-5 w-5" />}
-            title="Kein Treffer"
-            description="Anderes Kennzeichen, Fahrzeugname oder Buchungs-ID versuchen."
+            title={operatorScanNoResultsTitle(locale)}
+            description={operatorScanNoResultsDescription(locale)}
           />
         )}
 
         {bookings.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Buchungen</p>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              {operatorScanSectionBookingsLabel(locale)}
+            </p>
             {bookings.map((b) => (
               <OperatorScanBookingCard
                 key={b.bookingId}
@@ -160,7 +179,9 @@ export function OperatorScanView() {
 
         {vehicles.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Fahrzeuge</p>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              {operatorScanSectionVehiclesLabel(locale)}
+            </p>
             {vehicles.map((v) => (
               <OperatorScanVehicleCard
                 key={v.id}
@@ -186,7 +207,7 @@ export function OperatorScanView() {
     />
   ) : (
     <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">
-      Fahrzeug aus der Suche wählen
+      {operatorScanTabletPlaceholder(locale)}
     </div>
   );
 
@@ -201,7 +222,7 @@ export function OperatorScanView() {
             className="min-h-[44px] text-sm font-semibold text-[color:var(--brand-ink)]"
             onClick={() => setSelectedVehicleId(null)}
           >
-            ← Zurück zur Suche
+            {operatorScanBackToSearchLabel(locale)}
           </button>
           <OperatorVehicleQuickView vehicleId={selectedVehicleId} />
         </div>

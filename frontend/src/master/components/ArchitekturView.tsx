@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Scan Search UX (P2.2.42 — V4.9.969)', icon: Globe,
+    endpoint: 'Operator Scan tab — search chrome presentation slice',
+    service: '**Locale flow:** `useLanguage().locale` → `operator-scan-search-i18n.ts` adapter (`oss`, placeholder/empty/no-results/section helpers); reuses `nav.bookings`. **Keys:** +10 EN+DE `operator.scan.*` (8610→8620). **Machine values:** scanQuery, hasQuery predicate, result order/IDs, bookingsError raw, P241 card props/callbacks frozen. **Guardrails:** P2.2.42 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-scan-search-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_OPERATOR_SCAN_SEARCH_UX_P2_2_42_2026-08-25.md' },
   { name: 'Platform i18n Operator Today + Scan Booking Cards (P2.2.41 — V4.9.968)', icon: Globe,
     endpoint: 'Operator Today + Scan booking cards — handover and scan-result presentation slice',
     service: '**Locale flow:** `useLanguage().locale` → `operator-booking-card-i18n.ts` adapter (`obc`, CTA/badge/title helpers); reuses `bookingStatusLabel`, `vehicle.bookings.startPickup`/`startReturn`, `common.details`, `status.overdue`, `bookings.vehicle`, `operator.bookings.documents.group.pickup`/`return`. **Keys:** +2 EN+DE `operator.bookings.card.*` (8608→8610). **Machine values:** bookingId, customer/vehicle/station data, status enum, gate predicates, handover callbacks, P240 detail sheet open frozen. **Guardrails:** P2.2.41 enforce-clean exact (3 paths) — 0 findings. **Tests:** `operator-booking-card-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
