@@ -1,8 +1,8 @@
 # P2.2.44 — Operator Header + Connectivity Banner Implementation
 
-**Date:** 2026-08-26  
-**Baseline:** `e5bd8ee996940d8577d1b7e0f04bff31c06805f0`  
-**Pre-flight:** PR #1297  
+**Date:** 2026-08-26
+**Baseline:** `e5bd8ee996940d8577d1b7e0f04bff31c06805f0`
+**Pre-flight:** PR #1297
 **Branch:** `cursor/p2244-operator-header-connectivity-i18n-3c10`
 
 ## Scope

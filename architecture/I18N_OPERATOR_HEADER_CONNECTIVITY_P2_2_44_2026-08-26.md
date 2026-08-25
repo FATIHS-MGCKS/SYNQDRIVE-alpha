@@ -1,7 +1,7 @@
 # I18N — Operator Header + Connectivity Banner (P2.2.44)
 
-**Version:** V4.9.971  
-**Date:** 2026-08-26  
+**Version:** V4.9.971
+**Date:** 2026-08-26
 **Baseline:** `e5bd8ee996940d8577d1b7e0f04bff31c06805f0`
 
 ## Overview
