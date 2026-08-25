@@ -410,11 +410,61 @@ Options (require explicit approval):
 
 ### Final schema shape
 
-| Column | DIMO | HIGH_MOBILITY |
-|--------|------|---------------|
-| `dimo_vehicle_id` | `DimoVehicle.id` (NOT NULL) | `NULL` |
-| `source_reference_id` | `NULL` | `HighMobilityVehicle.id` (NOT NULL) |
-| `provider` | `DIMO` | `HIGH_MOBILITY` / `UNKNOWN` (legacy) |
+| Column | DIMO | HIGH_MOBILITY (canonical) | HIGH_MOBILITY (legacy) |
+|--------|------|---------------------------|------------------------|
+| `provider` | `DIMO` | `HIGH_MOBILITY` | `UNKNOWN` |
+| `source_type` | `DIMO` | `HIGH_MOBILITY` | `HIGH_MOBILITY` |
+| `dimo_vehicle_id` | `DimoVehicle.id` (NOT NULL) | `NULL` | `NULL` |
+| `source_reference_id` | `NULL` | `HighMobilityVehicle.id` (NOT NULL) | `HighMobilityVehicle.id` (NOT NULL) |
+
+### Hardened CHECK constraint (final)
+
+```sql
+CHECK (
+  (provider = 'DIMO' AND source_type = 'DIMO'
+   AND dimo_vehicle_id IS NOT NULL AND source_reference_id IS NULL)
+  OR
+  (provider = 'HIGH_MOBILITY' AND source_type = 'HIGH_MOBILITY'
+   AND dimo_vehicle_id IS NULL AND source_reference_id IS NOT NULL)
+  OR
+  (provider = 'UNKNOWN' AND source_type = 'HIGH_MOBILITY'
+   AND dimo_vehicle_id IS NULL AND source_reference_id IS NOT NULL)
+)
+```
+
+**Previous issue:** `provider <> 'DIMO'` branch treated all non-DIMO rows as HM semantics.
+
+**Unsupported/future providers:** Rejected at DB layer — must add explicit CHECK branch + dedicated FK before use.
+
+### HM writer audit (runtime, no Production mutation)
+
+| Writer | `sourceType` | `sourceSubtype` | `provider` set? | `sourceReferenceId` | `dimoVehicleId` |
+|--------|--------------|-----------------|-----------------|----------------------|-----------------|
+| `HighMobilityVehicleLinkService.activateHealthLink` | `HIGH_MOBILITY` | `HM_HEALTH` | **No** (defaults `UNKNOWN`) | `hmVehicleId` | `null` |
+| `HighMobilityVehicleLinkService.linkFullTelemetry` | `HIGH_MOBILITY` | `HM_FULL_TELEMETRY` | **No** | `hmVehicleId` | `null` |
+| `HighMobilityRegistrationService` | `HIGH_MOBILITY` | `HM_ONLY` | **No** | `hmVehicleId` | `null` |
+
+New HM writes produce **legacy HM combination** (`UNKNOWN` + `HIGH_MOBILITY`) — accepted by CHECK. Production legacy row unchanged.
+
+Forward canonical HM (`provider=HIGH_MOBILITY`) is supported by CHECK but not yet emitted by writers (deferred).
+
+### Production legacy HM row verification (read-only)
+
+Known Production row: `provider=UNKNOWN`, `sourceType=HIGH_MOBILITY`, `sourceReferenceId≠null`, `dimoVehicleId=null`.
+
+Predicate evaluation: **PASS** (legacy HM branch).
+
+### registerFromDimo coverage
+
+- `vehicles.service.register-from-dimo.spec.ts` — real `VehiclesService.registerFromDimo()` success + transactional rollback
+- CHECK matrix C1–C10 — `vehicle-data-source-link-provider-reference.check.spec.ts`
+
+### Future third-provider path
+
+1. Add provider-specific FK column or neutral binding entity
+2. Extend CHECK with explicit `(provider, source_type)` branch
+3. Add writer + evidence reader support
+4. Do **not** rely on catch-all non-DIMO semantics
 
 ### FK semantics
 

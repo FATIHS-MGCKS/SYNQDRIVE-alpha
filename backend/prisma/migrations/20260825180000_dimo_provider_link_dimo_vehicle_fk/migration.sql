@@ -25,18 +25,28 @@ CREATE UNIQUE INDEX "uq_vdsl_active_dimo_vehicle"
     AND "provider" = 'DIMO'
     AND "dimo_vehicle_id" IS NOT NULL;
 
--- Provider-specific reference invariant (HM vs DIMO).
+-- Provider-specific reference invariant (explicit supported combinations only).
+-- Unsupported future providers are rejected — they must not masquerade as HM/DIMO.
 ALTER TABLE "vehicle_data_source_links"
   ADD CONSTRAINT "vehicle_data_source_links_provider_reference_check"
   CHECK (
     (
       "provider" = 'DIMO'
+      AND "source_type" = 'DIMO'
       AND "dimo_vehicle_id" IS NOT NULL
       AND "source_reference_id" IS NULL
     )
     OR
     (
-      "provider" <> 'DIMO'
+      "provider" = 'HIGH_MOBILITY'
+      AND "source_type" = 'HIGH_MOBILITY'
+      AND "dimo_vehicle_id" IS NULL
+      AND "source_reference_id" IS NOT NULL
+    )
+    OR
+    (
+      "provider" = 'UNKNOWN'
+      AND "source_type" = 'HIGH_MOBILITY'
       AND "dimo_vehicle_id" IS NULL
       AND "source_reference_id" IS NOT NULL
     )
