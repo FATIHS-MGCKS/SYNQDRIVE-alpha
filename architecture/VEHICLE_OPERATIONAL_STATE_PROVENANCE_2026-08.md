@@ -178,11 +178,23 @@ Target URL: `?view=fleet&fleetTab=connectivity&connectivityVehicleId=<vehicleId>
 
 Requirements: deep-linkable, browser-back safe, org-scoped, invalid vehicleId falls back to list. UI CTA implementation deferred to P0.5.
 
-### P0.2 projection module (design slice)
+### P0.2 projection module (implementation slice — August 2026)
 
-**Authority:** `backend/src/modules/vehicles/operational/projection/vehicle-operational-projection.builder.ts`
+**Application authority:** `backend/src/modules/vehicles/operational/projection/vehicle-operational-projection.service.ts`
 
-Consumes `VehicleConnectivityRuntimeState` without re-deriving connectivity evidence. Exposes `businessState`, `operationalAvailability`, `healthEvaluability`, `attention`, and `operatorSummary`. See `docs/audits/vehicle-operational-projection-p0-2-design-2026-08.md`.
+**Pure builder:** `vehicle-operational-projection.builder.ts`
+
+Consumes `VehicleConnectivityRuntimeState` without re-deriving connectivity evidence. Exposes `businessState`, `operationalAvailability`, `healthEvaluability`, `attention`, and `operatorSummary`. See `docs/audits/vehicle-operational-projection-p0-2-design-2026-08.md` §W.
+
+**Shadow compare (read-only):** `backend/scripts/ops/shadow-vehicle-operational-projection-readonly.ts`
+
+## Changes
+
+- Added `VehicleOperationalProjectionService` — canonical P0.2 batch/single projection composing P0.1 connectivity, fleet business context, and rental health summary.
+- Added `deriveFleetBusinessContextBatch` on `VehiclesService` for bounded booking-aware business state.
+- Added `business-state.adapter.ts` and `health-evidence.adapter.ts` at application boundary.
+- Added service/adapter tests (cases I–P, tenant isolation, query budget, health degradation).
+- Added read-only shadow comparison ops script; no consumer or UI migration.
 
 ---
 

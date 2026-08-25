@@ -1161,6 +1161,53 @@ export class VehiclesService {
   }
 
   /**
+   * Batch fleet business/workflow context for P0.2 operational projection.
+   * Reuses booking-context batch loaders — no per-vehicle booking queries.
+   */
+  async deriveFleetBusinessContextBatch(
+    organizationId: string,
+    vehicles: Array<{
+      id: string;
+      status: VehicleStatus;
+      licensePlate?: string | null;
+      tankCapacityLiters?: number | null;
+      latestState: {
+        odometerKm?: number | null;
+        evSoc?: number | null;
+        fuelLevelRelative?: number | null;
+        fuelLevelAbsolute?: number | null;
+        rawPayloadJson?: unknown;
+      } | null;
+    }>,
+  ): Promise<Map<string, FleetVehicleOperationalStateDto>> {
+    const vehicleIds = vehicles.map((v) => v.id);
+    const result = new Map<string, FleetVehicleOperationalStateDto>();
+    if (vehicleIds.length === 0) return result;
+
+    const bookingBundle = await this.buildBookingContextMap(organizationId, vehicleIds);
+    const activeBookingIds = Array.from(bookingBundle.map.values())
+      .map((ctx) => ctx.activeBookingId)
+      .filter((id): id is string => !!id);
+    const pickupOdoByBooking = await this.fetchPickupOdometerMap(
+      organizationId,
+      activeBookingIds,
+    );
+
+    for (const vehicle of vehicles) {
+      const fleetCtx = this.deriveFleetStatusContext({
+        vehicle,
+        state: vehicle.latestState,
+        bookingCtx: bookingBundle.map.get(vehicle.id) ?? null,
+        pickupOdoByBooking,
+        bookingContextLoadFailed: bookingBundle.loadFailed,
+      });
+      result.set(vehicle.id, fleetCtx.operationalState);
+    }
+
+    return result;
+  }
+
+  /**
    * Resolve the best fuel percentage from VehicleLatestState.
    *
    * DIMO provides two fuel signals that update independently:

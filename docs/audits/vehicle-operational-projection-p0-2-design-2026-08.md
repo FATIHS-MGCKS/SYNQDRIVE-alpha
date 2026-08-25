@@ -422,6 +422,128 @@ Tests: `vehicle-operational-projection.builder.spec.ts`
 | `vehicle-operational-projection.types.ts` | Contract + vocabularies |
 | `vehicle-operational-projection.builder.ts` | Pure derivation |
 | `vehicle-operational-projection.fixtures.ts` | Semantic reference fixtures |
-| `vehicle-operational-projection.fixtures.ts` | Semantic reference fixtures |
 | `health-evidence.adapter.ts` | `VehicleHealth` → `HealthEvidenceSnapshot` |
 | `vehicle-operational-projection.builder.spec.ts` | Contract + reference + H1–H8 tests |
+| `business-state.adapter.ts` | Fleet context → `businessState` |
+| `vehicle-operational-projection.service.ts` | Application service (batch + single) |
+| `vehicle-operational-projection.service.spec.ts` | Service integration + cases I–P |
+| `business-state.adapter.spec.ts` | Business adapter unit tests |
+| `health-evidence.adapter.spec.ts` | Health adapter unit tests |
+| `scripts/ops/shadow-vehicle-operational-projection-readonly.ts` | Read-only legacy vs P0.2 shadow compare |
+
+---
+
+## W. Implementation (August 2026)
+
+### A. Application Service
+
+**Authority:** `backend/src/modules/vehicles/operational/projection/vehicle-operational-projection.service.ts`
+
+| Method | Purpose |
+|--------|---------|
+| `getVehicleProjection({ organizationId, vehicleId, now? })` | Single-vehicle projection; `NotFoundException` when missing |
+| `getVehicleProjections({ organizationId, vehicleIds?, now? })` | Batch projection map keyed by `vehicleId` |
+
+Registered in `VehiclesModule` and exported for future consumer wiring. **No REST/controller exposure** in this slice.
+
+### B. Data Sources
+
+| Dimension | Authoritative loader | Notes |
+|-----------|---------------------|-------|
+| Business/workflow | `VehiclesService.deriveFleetBusinessContextBatch()` | Reuses `buildBookingContextMap` + `deriveFleetStatusContext`; does not mutate `Vehicle.status` |
+| Connectivity (P0.1) | `VehicleConnectivityRuntimeProjectionService.projectForVehicles()` | Embedded by reference — no duplicate telemetry/webhook rules |
+| Health evaluability input | `RentalHealthSummaryService.getFleetRowsBatch()` | Cache-aside fleet rows → `healthEvidenceFromVehicleHealth()` |
+| Episode reliability | `ConnectivityLifecycleRuntimePolicyService.automaticLifecycleReconciliationEnabled` | `false` → `INSUFFICIENT_CROSS_DOMAIN_EVIDENCE` when no active episode |
+| Vehicles | `PrismaService.vehicle.findMany` (org-scoped) | Single bounded read per batch |
+
+### C. Health Adapter
+
+`health-evidence.adapter.ts` maps `VehicleHealth` → `HealthEvidenceSnapshot` only. P0.2 does **not** re-run health modules.
+
+**Failure behavior:** if `getFleetRowsBatch` throws, the service logs `vehicle_operational_projection.health_load_failed` and continues with empty health rows → `healthEvaluability = UNKNOWN` per vehicle (does not crash the batch).
+
+### D. P0.1 Integration
+
+Connectivity runtime objects from `projectForVehicles()` are passed directly into `buildVehicleOperationalProjection()`. Regression test asserts object identity (no re-derivation).
+
+### E. Batch Strategy
+
+Per batch request:
+
+1. One `vehicle.findMany` (org + optional id filter; deduped ids)
+2. Parallel: business batch + connectivity batch
+3. Health batch (chunked internally by rental-health summary service)
+4. In-memory pure builder per vehicle with shared `generatedAt`
+
+Empty `vehicleIds: []` returns immediately without queries.
+
+### F. Tenant Isolation
+
+All queries include `organizationId`. Foreign vehicle IDs return empty map (batch) or `NotFoundException` (single). No cross-tenant existence leak.
+
+### G. Failure Semantics
+
+| Failure | Behavior |
+|---------|----------|
+| Vehicle not found | Single: `NotFoundException`; batch: omitted from map |
+| Health loader failure | Degrade to `healthEvaluability UNKNOWN`; projection continues |
+| Connectivity missing for resolved vehicle | Hard error (invariant violation) |
+| Business context missing | Hard error (invariant violation) |
+| Business booking context unavailable | `businessState UNKNOWN` via existing fleet DTO semantics |
+
+### H. Query Complexity
+
+Service tests assert for 10 and 100 vehicles:
+
+- `vehicle.findMany` × 1
+- `deriveFleetBusinessContextBatch` × 1
+- `projectForVehicles` × 1
+- `getFleetRowsBatch` × 1
+
+Health batch uses internal chunk size 5 but remains **O(vehicles)** with bounded concurrency, not N+1 per domain loader.
+
+### I. Shadow Comparison
+
+**Script:** `backend/scripts/ops/shadow-vehicle-operational-projection-readonly.ts`
+
+Compares legacy `deriveFleetStatusContext` display token vs P0.2 `businessState` / `operationalAvailability` for operator-selected plates or vehicle IDs. Read-only; JSON stdout.
+
+### J. Production Read-Only Validation
+
+Run on VPS with production env:
+
+```bash
+cd backend && npx ts-node -r tsconfig-paths/register scripts/ops/shadow-vehicle-operational-projection-readonly.ts \
+  --organization-id=<org> --license-plate="WOB L 7503" --license-plate="WOB L 9755" --license-plate="HMÜ C 215"
+```
+
+Expected delta for long-offline pair: legacy `AVAILABLE` vs P0.2 `operationalAvailability NEEDS_VERIFICATION` while `businessState AVAILABLE` preserved.
+
+### K. Consumer Migration Readiness
+
+| Gate | Status |
+|------|--------|
+| Canonical service | ✅ |
+| Batch path | ✅ |
+| Contract tests A–H + H1–H8 | ✅ |
+| Service tests I–P | ✅ |
+| No consumer wiring | ✅ |
+| No persisted projection table | ✅ |
+| No dedicated P0.2 Redis cache | ✅ |
+
+### L. Known Limitations
+
+1. Health batch is the heaviest leg (canonical evaluator per vehicle, chunked).
+2. No REST diagnostic endpoint — ops script only.
+3. `RENTED` / `RESERVED` not hard-blocked in operational availability (P0.3 scope).
+4. Production Processing Gate remains **CONDITIONAL**.
+
+---
+
+## X. Consumer Migration Order (unchanged)
+
+1. **P0.3** — Fleet operational availability badge
+2. **P0.4** — Health evaluability / Health badge
+3. **P0.5** — Vehicle Detail connectivity presentation
+4. **P0.6** — Fleet → Connectivity presentation alignment
+5. **P0.7** — Dashboard/readiness consumers
