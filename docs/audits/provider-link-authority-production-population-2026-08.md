@@ -425,3 +425,88 @@ Provider link row existence ≠ healthy provider authorization. KS MS 661 may ha
 | KS MS 661 | CREATE | MISSING | UNKNOWN | UNKNOWN | **REAUTH_REQUIRED** | NEEDS_VERIFICATION |
 
 Shadow uses real `vehicle.status` + fleet business context — WOB vehicles retain NEEDS_VERIFICATION; KS MS 661 does not falsely become ACTIVE provider auth.
+
+---
+
+## T. Production Deployment + Pre-Apply Gate (2026-08-25)
+
+**Deployed SHA:** `79bb49a075b2153d53398b567e94d80f4d2f7088` (PR #1281 merge)  
+**Release:** `20260825161414_v4994`  
+**Pre-deploy SHA:** `2fef253302d71f4cd48be1f7be5f6f8a766d16c5`  
+**Mode:** Normal VPS deploy + read-only verification — **no backfill `--apply`**
+
+### Service health
+
+| Check | Result |
+|-------|--------|
+| API `/api/v1/health` | `ok` |
+| PM2 `synqdrive` | online (no crash loop post-deploy) |
+| Redis | `PONG` |
+| Prisma migrate / boot check | PASS (deploy script) |
+| DimoModule / DI graph | PASS (boot check OK) |
+
+### DIMO link counts
+
+| When | Active DIMO `VehicleDataSourceLink` |
+|------|-------------------------------------|
+| Pre-deploy | **0** |
+| Post-deploy | **0** |
+| Deployment auto-created links | **NO** |
+
+DIMO vehicles in org: **6**
+
+### Registration pipeline (deployed code)
+
+`VehiclesService.registerFromDimo()` → `ensureDimoVehicleDataSourceLinkOrThrow()` inside registration transaction (line 2306 in deployed `vehicles.service.ts`).
+
+### Dry-runs (post-deploy, `--shadow`, no `--apply`)
+
+| | #1 | #2 |
+|---|----|----|
+| scanned | 6 | 6 |
+| CREATE | 6 | 6 |
+| NOOP | 0 | 0 |
+| REACTIVATE | 0 | 0 |
+| CONFLICT | 0 | 0 |
+| SKIP | 0 | 0 |
+| applied | 0 | 0 |
+
+**Planned mutation set:** deterministic (identical actions and shadow predictions; only `runId`/timestamp differ).
+
+### Reference vehicle shadow
+
+| Vehicle | Current → Predicted `providerLinkState` | Current → Predicted `operationalAvailability` | Invariant |
+|---------|----------------------------------------|-----------------------------------------------|-----------|
+| HMÜ C 215 | UNKNOWN → ACTIVE | UNKNOWN → **AVAILABLE** | PASS |
+| WOB L 7503 | UNKNOWN → ACTIVE | NEEDS_VERIFICATION → **NEEDS_VERIFICATION** | PASS |
+| WOB L 9755 | UNKNOWN → ACTIVE | NEEDS_VERIFICATION → **NEEDS_VERIFICATION** | PASS |
+| KS MS 661 | UNKNOWN → **REAUTH_REQUIRED** | UNKNOWN → NEEDS_VERIFICATION | PASS (not falsely ACTIVE) |
+
+**Health evaluability:** unchanged pre/post deploy for all four reference vehicles.
+
+### Backup / rollback readiness
+
+| Item | Status |
+|------|--------|
+| Pre-deploy DB backup | `db-pre-deploy-20260825161414.sql.gz` (2026-08-25 16:14 UTC) |
+| Backup mechanism | `vps-deploy-release.sh` → `pg_dump` to `/opt/synqdrive/shared/backups/` |
+| Rollback by `metadata.runId` + `metadata.provenance` | Schema supports `metadata` jsonb; deactivate-only rollback documented in PR #1281 |
+| Proposed future runId | `dimo-link-backfill-prod-2026-08-25-79bb49a` |
+
+### Apply safety
+
+- Default: dry-run (no `--apply`)
+- `--shadow`: still dry-run
+- `--apply`: explicit write only
+- Partial failure: **per-row** (not whole-run transactional); `metadata.runId` identifies created rows
+- Idempotency: second apply → NOOP (unit tests B5 + reconcile R5)
+
+### Gates (separate)
+
+| Gate | Status |
+|------|--------|
+| **DIMO Provider-Link Pre-Apply** | **GO** |
+| Production Connectivity Processing Gate | **CONDITIONAL** (unchanged; post-cutover unplug test not performed) |
+| PR #1277 | **HOLD** |
+
+**Production backfill `--apply`:** **DO NOT EXECUTE** until explicit approval with proposed runId.
