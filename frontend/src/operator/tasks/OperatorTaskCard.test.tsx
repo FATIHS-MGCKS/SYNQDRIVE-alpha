@@ -1,7 +1,18 @@
+// @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { LanguageProvider } from '../../i18n/LanguageContext';
 import { OperatorTaskCard } from './OperatorTaskCard';
 import type { ApiTask } from '../../lib/api';
+import {
+  operatorTaskCardActionLabel,
+  operatorTaskCardAssigneePrefix,
+} from '../lib/operator-task-card-i18n';
+
+function renderCard(ui: React.ReactElement, locale: 'de' | 'en' = 'de') {
+  window.localStorage.setItem('synqdrive.locale', locale);
+  return renderToStaticMarkup(<LanguageProvider>{ui}</LanguageProvider>);
+}
 
 function task(partial: Partial<ApiTask> & Pick<ApiTask, 'id' | 'title' | 'type'>): ApiTask {
   return {
@@ -60,7 +71,7 @@ function task(partial: Partial<ApiTask> & Pick<ApiTask, 'id' | 'title' | 'type'>
 
 describe('OperatorTaskCard', () => {
   it('renders operative core fields and one primary action for mobile', () => {
-    const html = renderToStaticMarkup(
+    const html = renderCard(
       <OperatorTaskCard
         task={task({ id: '1', title: 'Reifen prüfen mit langem deutschen Aufgabentitel', type: 'TIRE_CHECK' })}
         onOpen={vi.fn()}
@@ -70,15 +81,15 @@ describe('OperatorTaskCard', () => {
 
     expect(html).toContain('Reifen prüfen mit langem deutschen Aufgabentitel');
     expect(html).toContain('M-AB 1234 · BK-ABC123');
-    expect(html).toContain('Verantwortlich:');
+    expect(html).toContain(operatorTaskCardAssigneePrefix('de'));
     expect(html).toContain('Alex Operator');
-    expect(html).toContain('Starten');
+    expect(html).toContain(operatorTaskCardActionLabel('de', 'start'));
     expect(html).toContain('min-h-[48px]');
     expect(html).not.toContain('NORMAL');
   });
 
   it('renders inline API error feedback from action handler', async () => {
-    const html = renderToStaticMarkup(
+    const html = renderCard(
       <OperatorTaskCard
         task={task({ id: '2', title: 'Wartend', type: 'TIRE_CHECK', status: 'WAITING' })}
         onOpen={vi.fn()}
@@ -86,12 +97,12 @@ describe('OperatorTaskCard', () => {
       />,
     );
 
-    expect(html).toContain('Fortsetzen');
+    expect(html).toContain(operatorTaskCardActionLabel('de', 'resume'));
     expect(html).toContain('min-h-[44px]');
   });
 
   it('renders no action rail for terminal auto-resolved tasks', () => {
-    const html = renderToStaticMarkup(
+    const html = renderCard(
       <OperatorTaskCard
         task={task({
           id: '3',
@@ -106,6 +117,6 @@ describe('OperatorTaskCard', () => {
 
     expect(html).toContain('Automatisch erledigt');
     expect(html).not.toContain('Erledigen');
-    expect(html).not.toContain('Kommentar');
+    expect(html).not.toContain(operatorTaskCardActionLabel('de', 'comment'));
   });
 });

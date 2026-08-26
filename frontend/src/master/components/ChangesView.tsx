@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-task-card-row-p2-2-46-2026-08-26',
+    version: '4.9.973',
+    title: 'Platform i18n — P2.2.46 Operator Task Card Row localization',
+    summary: [
+      'Localized Operator Task Card row chrome via `operator-task-card-i18n.ts` and `operator.task.card.*` keys.',
+      'P246 enforce-clean exact scope (4 paths) reports 0 findings; +27 EN+DE keys (8667→8694); reuses `tasks.*` and task-detail presentation adapters.',
+      'Presentation-only — priority/status/due semantics, callbacks, and dynamic task content frozen. Tasks tab chrome deferred to P2.2.47. Category E=0.',
+    ],
+    reason:
+      'P2.2.46 pre-flight (PR #1305) selected Operator Task Card row presentation as the next bounded Operator slice after P2.2.45 Today chrome.',
+    previousBehavior:
+      'OperatorTaskCard and operatorTaskCard.utils used fixed German labels for status, timing, actions, assignee prefix, and disabled reasons.',
+    details:
+      'operator/tasks/OperatorTaskCard.tsx; operator/tasks/operatorTaskCard.utils.ts; operator/lib/operator-task-card-i18n.ts; i18n/translations/operator.task.card.{en,de}.ts; operator-task-card-localization.test.tsx; P246_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_TASK_CARD_ROW_P2_2_46_2026-08-26.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-26T14:30:00.000Z',
+  },
+  {
     id: 'i18n-operator-today-tab-chrome-p2-2-45-2026-08-26',
     version: '4.9.972',
     title: 'Platform i18n — P2.2.45 Operator Today Tab Chrome localization',

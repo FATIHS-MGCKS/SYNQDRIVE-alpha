@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Task Card Row (P2.2.46 — V4.9.973)', icon: Globe,
+    endpoint: 'Operator Task Card row — status/timing/actions/assignee presentation slice',
+    service: '**Locale flow:** `useLanguage().locale` → `operator-task-card-i18n.ts` adapter (`otc`, status/timing/action helpers); reuses `tasks.*`, `status.overdue`, task-detail presentation adapters. **Keys:** +27 EN+DE `operator.task.card.*` (8667→8694). **Machine values:** status/priority/type/isOverdue, due/activatesAt predicates, action availability, callbacks frozen; dynamic title/assignee/entity labels excluded. **Guardrails:** P2.2.46 enforce-clean exact (4 paths) — 0 findings. **Tests:** `operator-task-card-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_OPERATOR_TASK_CARD_ROW_P2_2_46_2026-08-26.md' },
   { name: 'Platform i18n Operator Today Tab Chrome (P2.2.45 — V4.9.972)', icon: Globe,
     endpoint: 'Operator Today tab — page chrome + bucket section presentation slice',
     service: '**Locale flow:** `useLanguage().locale` → `operator-today-i18n.ts` adapter (`otd`, bucket/section helpers); reuses `common.today`, `common.retry`. **Keys:** +35 EN+DE `operator.today.*` (8632→8667). **Machine values:** bucket IDs, order, membership, task feed source/order, callbacks frozen; Task Card rows excluded. **Guardrails:** P2.2.45 enforce-clean exact (4 paths) — 0 findings. **Tests:** `operator-today-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

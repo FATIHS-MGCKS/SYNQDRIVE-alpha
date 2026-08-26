@@ -10,10 +10,29 @@ import type {
 } from '../../lib/api';
 import { isTerminalTaskStatus } from '../../rental/lib/task-detail.utils';
 import {
+  operatorTaskCardActionLabel,
+  operatorTaskCardAssigneeFallbackLabel,
+  operatorTaskCardChecklistBlockerLabel,
+  operatorTaskCardDisabledAlreadyWaiting,
+  operatorTaskCardDisabledChecklistBlocked,
+  operatorTaskCardDisabledNoBooking,
+  operatorTaskCardDisabledNoDocumentPackage,
+  operatorTaskCardDisabledNoInvoice,
+  operatorTaskCardDisabledNoOverridePermission,
+  operatorTaskCardDisabledNoVehicle,
+  operatorTaskCardDisabledNotActive,
+  operatorTaskCardDisabledOverrideChecklistOnly,
+  operatorTaskCardDisabledResumeWaitingOnly,
+  operatorTaskCardDisabledStartOpenOnly,
+  operatorTaskCardDisabledTerminal,
+  operatorTaskCardDisabledUnavailable,
+  operatorTaskCardDisabledWaitingOpenOrProgress,
+  operatorTaskCardTimingLabel,
+} from '../lib/operator-task-card-i18n';
+import {
   buildOperatorTaskDisplayModel,
   type FleetVehicleLookup,
 } from './operatorTaskDisplay.utils';
-import { formatOperatorTaskDue } from './operatorTask.utils';
 
 export type OperatorTaskCardActionKind =
   | 'start'
@@ -68,6 +87,7 @@ export interface OperatorTaskCardActionPlan {
 }
 
 function availability(
+  locale: string,
   enabled: boolean,
   disabledReasonWhenFalse?: string,
   forcedDisabledReason?: string,
@@ -76,7 +96,9 @@ function availability(
   return {
     enabled: false,
     disabledReason:
-      forcedDisabledReason ?? disabledReasonWhenFalse ?? 'Aktion derzeit nicht verfügbar.',
+      forcedDisabledReason ??
+      disabledReasonWhenFalse ??
+      operatorTaskCardDisabledUnavailable(locale),
   };
 }
 
@@ -133,25 +155,15 @@ export function shouldShowOperatorTaskPriority(task: ApiTask): boolean {
   return task.priority === 'CRITICAL' || task.priority === 'HIGH' || task.isOverdue;
 }
 
-export function resolveOperatorTaskTimingLabel(task: ApiTask, now = new Date()): {
+export function resolveOperatorTaskTimingLabel(
+  task: ApiTask,
+  locale: string,
+  now = new Date(),
+): {
   label: string | null;
   warn: boolean;
 } {
-  if (task.dueDate) {
-    return {
-      label: `Fällig ${formatOperatorTaskDue(task.dueDate)}`,
-      warn: task.isOverdue,
-    };
-  }
-
-  if (task.activatesAt && !isTaskActivated(task, now)) {
-    return {
-      label: `Aktiv ab ${formatOperatorTaskDue(task.activatesAt)}`,
-      warn: false,
-    };
-  }
-
-  return { label: null, warn: false };
+  return operatorTaskCardTimingLabel(locale, task, isTaskActivated(task, now));
 }
 
 export function resolveOperatorTaskObjectLine(
@@ -181,19 +193,18 @@ export function resolveOperatorTaskObjectLine(
   return { line: null, unavailable: false };
 }
 
-export function resolveOperatorTaskAssigneeLabel(task: ApiTask): string | null {
-  if (task.assignedUserName?.trim()) return task.assignedUserName.trim();
-  if (task.assignedUserId) return 'Zugewiesen';
-  return 'Nicht zugewiesen';
+export function resolveOperatorTaskAssigneeLabel(task: ApiTask, locale: string): string | null {
+  return operatorTaskCardAssigneeFallbackLabel(locale, task);
 }
 
 export function buildOperatorTaskCardModel(
   task: ApiTask,
-  options?: { vehicleById?: Map<string, FleetVehicleLookup>; now?: Date },
+  options?: { vehicleById?: Map<string, FleetVehicleLookup>; now?: Date; locale?: string },
 ): OperatorTaskCardModel {
+  const locale = options?.locale ?? 'de';
   const now = options?.now ?? new Date();
   const object = resolveOperatorTaskObjectLine(task, options?.vehicleById);
-  const timing = resolveOperatorTaskTimingLabel(task, now);
+  const timing = resolveOperatorTaskTimingLabel(task, locale, now);
   const progress = inferChecklistProgress(task);
   const checklist =
     progress.hasChecklist && progress.requiredItems > 0
@@ -204,7 +215,7 @@ export function buildOperatorTaskCardModel(
           blocked: !progress.canCompleteByChecklist,
           blockerLabel: progress.canCompleteByChecklist
             ? null
-            : 'Offene Pflichtpunkte vor Abschluss',
+            : operatorTaskCardChecklistBlockerLabel(locale),
         }
       : null;
 
@@ -218,7 +229,7 @@ export function buildOperatorTaskCardModel(
     priority: task.priority,
     timingLabel: timing.label,
     timingWarn: timing.warn,
-    assigneeLabel: resolveOperatorTaskAssigneeLabel(task),
+    assigneeLabel: resolveOperatorTaskAssigneeLabel(task, locale),
     checklist,
     autoResolved: task.completionMode === 'AUTO_RESOLVED',
     terminal: isTerminalTaskStatus(task.status),
@@ -228,20 +239,22 @@ export function buildOperatorTaskCardModel(
 export function readTaskAvailableActions(
   task: ApiTask,
   canOverrideChecklist: boolean,
+  locale: string,
   now = new Date(),
 ): TaskAvailableActions {
   const detailActions = (task as ApiTaskDetail).availableActions;
   if (detailActions) return detailActions;
-  return inferTaskAvailableActions(task, canOverrideChecklist, now);
+  return inferTaskAvailableActions(task, canOverrideChecklist, locale, now);
 }
 
 export function inferTaskAvailableActions(
   task: ApiTask,
   canOverrideChecklist: boolean,
+  locale: string,
   now = new Date(),
 ): TaskAvailableActions {
   const terminal = isTerminalTaskStatus(task.status);
-  const disabledTerminal = availability(false, 'Aufgabe ist bereits abgeschlossen.');
+  const disabledTerminal = availability(locale, false, operatorTaskCardDisabledTerminal(locale));
   if (terminal) {
     return {
       start: disabledTerminal,
@@ -259,115 +272,134 @@ export function inferTaskAvailableActions(
   const progress = inferChecklistProgress(task);
   const checklistBlocked =
     !progress.canCompleteByChecklist && progress.completionBlockers.length > 0;
-  const disabledNotActive = availability(false, 'Die Aufgabe ist noch nicht aktiv.');
+  const disabledNotActive = availability(
+    locale,
+    false,
+    operatorTaskCardDisabledNotActive(locale),
+  );
 
   const completeBlockers: string[] = [];
-  if (notYetActive) completeBlockers.push('Aufgabe ist noch nicht aktiv.');
+  if (notYetActive) completeBlockers.push(operatorTaskCardDisabledNotActive(locale));
   if (checklistBlocked && !canOverrideChecklist) {
-    completeBlockers.push('Offene Pflichtpunkte in der Checkliste.');
+    completeBlockers.push(operatorTaskCardDisabledChecklistBlocked(locale));
   }
 
   return {
     start: availability(
+      locale,
       task.status === 'OPEN' && !notYetActive,
-      task.status !== 'OPEN' ? 'Nur offene Aufgaben können gestartet werden.' : undefined,
+      task.status !== 'OPEN'
+        ? operatorTaskCardDisabledStartOpenOnly(locale)
+        : undefined,
       notYetActive ? disabledNotActive.disabledReason : undefined,
     ),
     moveToWaiting: availability(
+      locale,
       (task.status === 'OPEN' || task.status === 'IN_PROGRESS') && !notYetActive,
       task.status === 'WAITING'
-        ? 'Aufgabe wartet bereits.'
-        : 'Nur offene oder laufende Aufgaben können pausiert werden.',
+        ? operatorTaskCardDisabledAlreadyWaiting(locale)
+        : operatorTaskCardDisabledWaitingOpenOrProgress(locale),
       notYetActive ? disabledNotActive.disabledReason : undefined,
     ),
     resume: availability(
+      locale,
       task.status === 'WAITING' && !notYetActive,
-      task.status !== 'WAITING' ? 'Nur wartende Aufgaben können fortgesetzt werden.' : undefined,
+      task.status !== 'WAITING'
+        ? operatorTaskCardDisabledResumeWaitingOnly(locale)
+        : undefined,
       notYetActive ? disabledNotActive.disabledReason : undefined,
     ),
-    complete: availability(completeBlockers.length === 0, completeBlockers[0]),
-    cancel: availability(!notYetActive, disabledNotActive.disabledReason),
+    complete: availability(locale, completeBlockers.length === 0, completeBlockers[0]),
+    cancel: availability(locale, !notYetActive, disabledNotActive.disabledReason),
     comment: { enabled: true },
     overrideCompletion: availability(
+      locale,
       checklistBlocked && canOverrideChecklist,
       !checklistBlocked
-        ? 'Override nur bei offenen Pflicht-Checklistenpunkten verfügbar.'
-        : 'Keine Berechtigung für Checklisten-Override.',
+        ? operatorTaskCardDisabledOverrideChecklistOnly(locale)
+        : operatorTaskCardDisabledNoOverridePermission(locale),
     ),
   };
 }
 
 function action(
+  locale: string,
   kind: OperatorTaskCardActionKind,
-  label: string,
   enabled: boolean,
   emphasis: OperatorTaskCardAction['emphasis'],
   disabledReason?: string,
 ): OperatorTaskCardAction {
-  return { kind, label, enabled, emphasis, disabledReason };
+  return {
+    kind,
+    label: operatorTaskCardActionLabel(locale, kind),
+    enabled,
+    emphasis,
+    disabledReason,
+  };
 }
 
 function resolveTypePrimaryAction(
   task: ApiTask,
   available: TaskAvailableActions,
+  locale: string,
 ): OperatorTaskCardAction | null {
   if (!isTaskActivated(task)) return null;
 
   switch (task.type as ApiTaskType) {
     case 'DOCUMENT_REVIEW':
       return action(
+        locale,
         'open-document-package',
-        'Dokumentenpaket öffnen',
         Boolean(task.bookingId || task.documentId),
         'primary',
-        'Kein Dokumentenpaket verknüpft.',
+        operatorTaskCardDisabledNoDocumentPackage(locale),
       );
     case 'INVOICE_REQUIRED':
       return action(
+        locale,
         'open-invoice',
-        'Rechnung öffnen',
         Boolean(task.invoiceId),
         'primary',
-        'Keine Rechnung verknüpft.',
+        operatorTaskCardDisabledNoInvoice(locale),
       );
     case 'BOOKING_PREPARATION':
       return action(
+        locale,
         'open-booking',
-        'Buchung öffnen',
         Boolean(task.bookingId),
         'primary',
-        'Keine Buchung verknüpft.',
+        operatorTaskCardDisabledNoBooking(locale),
       );
     case 'BOOKING_PICKUP':
       return action(
+        locale,
         'open-handover-pickup',
-        'Übergabe öffnen',
         Boolean(task.bookingId),
         'primary',
-        'Keine Buchung verknüpft.',
+        operatorTaskCardDisabledNoBooking(locale),
       );
     case 'BOOKING_RETURN':
       return action(
+        locale,
         'open-handover-return',
-        'Rücknahme öffnen',
         Boolean(task.bookingId),
         'primary',
-        'Keine Buchung verknüpft.',
+        operatorTaskCardDisabledNoBooking(locale),
       );
     case 'VEHICLE_SERVICE':
       if (task.serviceCaseId) {
-        return action('open-service-case', 'Servicefall öffnen', true, 'primary');
+        return action(locale, 'open-service-case', true, 'primary');
       }
       return action(
+        locale,
         'open-vehicle',
-        'Fahrzeug öffnen',
         Boolean(task.vehicleId),
         'primary',
-        'Kein Fahrzeug verknüpft.',
+        operatorTaskCardDisabledNoVehicle(locale),
       );
     default:
       if (task.status === 'IN_PROGRESS' && !available.complete.enabled) {
-        return action('open-task', 'Aufgabe öffnen', true, 'primary');
+        return action(locale, 'open-task', true, 'primary');
       }
       return null;
   }
@@ -376,15 +408,16 @@ function resolveTypePrimaryAction(
 function resolveStatusPrimaryAction(
   task: ApiTask,
   available: TaskAvailableActions,
+  locale: string,
 ): OperatorTaskCardAction | null {
   if (!isTaskActivated(task)) {
-    return action('open-task', 'Aufgabe öffnen', true, 'primary');
+    return action(locale, 'open-task', true, 'primary');
   }
 
   if (task.status === 'WAITING') {
     return action(
+      locale,
       'resume',
-      'Fortsetzen',
       available.resume.enabled,
       'primary',
       available.resume.disabledReason,
@@ -393,8 +426,8 @@ function resolveStatusPrimaryAction(
 
   if (task.status === 'OPEN') {
     return action(
+      locale,
       'start',
-      'Starten',
       available.start.enabled,
       'primary',
       available.start.disabledReason,
@@ -402,24 +435,32 @@ function resolveStatusPrimaryAction(
   }
 
   if (task.status === 'IN_PROGRESS') {
-    return action('open-task', 'Aufgabe öffnen', true, 'primary');
+    return action(locale, 'open-task', true, 'primary');
   }
 
-  return action('open-task', 'Aufgabe öffnen', true, 'primary');
+  return action(locale, 'open-task', true, 'primary');
 }
 
 export function buildOperatorTaskCardActionPlan(
   task: ApiTask,
-  options?: { canOverrideChecklist?: boolean; now?: Date },
+  options?: { canOverrideChecklist?: boolean; now?: Date; locale?: string },
 ): OperatorTaskCardActionPlan {
+  const locale = options?.locale ?? 'de';
   const now = options?.now ?? new Date();
   const terminal = isTerminalTaskStatus(task.status);
   if (terminal || task.completionMode === 'AUTO_RESOLVED') {
     return { primary: null, secondaries: [] };
   }
 
-  const available = readTaskAvailableActions(task, options?.canOverrideChecklist ?? false, now);
-  const primary = resolveTypePrimaryAction(task, available) ?? resolveStatusPrimaryAction(task, available);
+  const available = readTaskAvailableActions(
+    task,
+    options?.canOverrideChecklist ?? false,
+    locale,
+    now,
+  );
+  const primary =
+    resolveTypePrimaryAction(task, available, locale) ??
+    resolveStatusPrimaryAction(task, available, locale);
   const secondaries: OperatorTaskCardAction[] = [];
 
   const addSecondary = (candidate: OperatorTaskCardAction | null) => {
@@ -430,20 +471,13 @@ export function buildOperatorTaskCardActionPlan(
   };
 
   if (primary?.kind !== 'complete') {
-    addSecondary(
-      action(
-        'open-task',
-        'Aufgabe öffnen',
-        true,
-        'secondary',
-      ),
-    );
+    addSecondary(action(locale, 'open-task', true, 'secondary'));
   }
 
   addSecondary(
     action(
+      locale,
       'waiting',
-      'Warten',
       available.moveToWaiting.enabled,
       'secondary',
       available.moveToWaiting.disabledReason,
@@ -451,7 +485,13 @@ export function buildOperatorTaskCardActionPlan(
   );
 
   addSecondary(
-    action('comment', 'Kommentar', available.comment.enabled, 'secondary', available.comment.disabledReason),
+    action(
+      locale,
+      'comment',
+      available.comment.enabled,
+      'secondary',
+      available.comment.disabledReason,
+    ),
   );
 
   return {

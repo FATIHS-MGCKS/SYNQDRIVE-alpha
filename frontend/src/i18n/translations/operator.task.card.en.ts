@@ -1,0 +1,32 @@
+export const operatorTaskCardEn = {
+  'operator.task.card.openAria': 'Open task: {title}',
+  'operator.task.card.objectUnavailable': 'Linked object unavailable',
+  'operator.task.card.assigneePrefix': 'Assignee:',
+  'operator.task.card.assigneeAssigned': 'Assigned',
+  'operator.task.card.checklist': 'Checklist',
+  'operator.task.card.checklistRequired': '{completed}/{total} required',
+  'operator.task.card.action.openTask': 'Open task',
+  'operator.task.card.action.openDocumentPackage': 'Open document package',
+  'operator.task.card.action.openInvoice': 'Open invoice',
+  'operator.task.card.action.openBooking': 'Open booking',
+  'operator.task.card.action.openHandoverPickup': 'Open handover',
+  'operator.task.card.action.openHandoverReturn': 'Open return',
+  'operator.task.card.action.openVehicle': 'Open vehicle',
+  'operator.task.card.action.openServiceCase': 'Open service case',
+  'operator.task.card.disabled.unavailable': 'Action is not available right now.',
+  'operator.task.card.disabled.terminal': 'Task is already completed.',
+  'operator.task.card.disabled.notActive': 'Task is not active yet.',
+  'operator.task.card.disabled.startOpenOnly': 'Only open tasks can be started.',
+  'operator.task.card.disabled.alreadyWaiting': 'Task is already waiting.',
+  'operator.task.card.disabled.waitingOpenOrProgress':
+    'Only open or in-progress tasks can be paused.',
+  'operator.task.card.disabled.resumeWaitingOnly': 'Only waiting tasks can be resumed.',
+  'operator.task.card.disabled.overrideChecklistOnly':
+    'Override is only available when required checklist items are open.',
+  'operator.task.card.disabled.noOverridePermission':
+    'No permission for checklist override.',
+  'operator.task.card.disabled.noDocumentPackage': 'No document package linked.',
+  'operator.task.card.disabled.noInvoice': 'No invoice linked.',
+  'operator.task.card.disabled.noBooking': 'No booking linked.',
+  'operator.task.card.disabled.noVehicle': 'No vehicle linked.',
+} as const;

@@ -189,8 +189,8 @@ describe('operatorTaskCard.utils', () => {
       },
     });
 
-    expect(inferTaskAvailableActions(blocked, false).complete.enabled).toBe(false);
-    expect(inferTaskAvailableActions(blocked, true).overrideCompletion.enabled).toBe(true);
+    expect(inferTaskAvailableActions(blocked, false, 'de').complete.enabled).toBe(false);
+    expect(inferTaskAvailableActions(blocked, true, 'de').overrideCompletion.enabled).toBe(true);
   });
 
   it('hides actions for auto-resolved tasks', () => {
