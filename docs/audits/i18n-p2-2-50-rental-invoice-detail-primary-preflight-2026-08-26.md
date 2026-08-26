@@ -57,12 +57,15 @@ Visible / hidden / machine-display debt = 0. Dynamic/raw boundaries intact (task
 |------|-------|
 | P250 authoritative baseline | `e0aa79d3135866eb9f890c2666165f15a1411c0b` |
 | Current main SHA | `7c7ed2c1fb3ffffecf125b11232773b6cb4b5fc4` |
-| Classification | **VALID CAMPAIGN BASELINE BEHIND MAIN** |
-| Commits after #1330 on main | 20+ (P1.x vehicle operational cutovers, Battery V2, docs) |
+| Classification | **PARALLEL CAMPAIGN BASELINE** |
+| P249 merge target branch | `p239-p238-merge-baseline-3c10` (not `main`) |
+| Campaign baseline branch HEAD | `e0aa79d3135866eb9f890c2666165f15a1411c0b` (= P249 merge) |
+| Commits on `main` not in campaign baseline | 162+ (P1.x vehicle operational cutovers, Battery V2, docs) |
+| Commits on campaign baseline not in `main` | P216–P249 i18n campaign stack |
 | Relevant Rental drift | None on invoice primary paths (theme-token-only diffs on some TSX) |
 | Relevant Invoice drift | `invoice-detail.constants.ts` **deleted on main** — P250 must **not** absorb |
 | Shared-i18n drift | `invoice-list-i18n.ts` unchanged between baseline and main |
-| Baseline strategy | **DIRECT FROM P249 MERGE BASELINE** |
+| Baseline strategy | **DIRECT FROM P249 MERGE BASELINE** (`p239-p238-merge-baseline-3c10` @ `e0aa79d`) |
 
 ---
 
