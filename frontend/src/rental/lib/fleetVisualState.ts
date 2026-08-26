@@ -115,6 +115,7 @@ export interface DeriveFleetVisualStateOptions {
   uiProjection?: VehicleOperationalUiProjection;
   /** When true, missing coordinates yield `no_location` instead of `ready`. */
   requireLocation?: boolean;
+  locale?: 'en' | 'de';
 }
 
 const SORT_PRIORITY: Record<FleetVisualStatus, number> = {
@@ -368,6 +369,7 @@ export function deriveFleetVisualState(
   if (options.uiProjection) {
     return deriveFleetVisualStateFromUiProjection(vehicle, options.uiProjection, {
       requireLocation: options.requireLocation,
+      locale: options.locale,
     });
   }
 
@@ -548,6 +550,7 @@ export function buildFleetMapGeoJson(
       rentalHealth: getHealth?.(vehicle.id) ?? null,
       uiProjection,
       requireLocation: true,
+      locale,
     });
 
     features.push({

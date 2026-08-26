@@ -292,7 +292,7 @@ export function buildFleetVehicleContexts(
       vehicle as import('./fleet-vehicle-ui-projection').FleetProjectionVehicle,
       { locale },
     );
-    const visual = deriveFleetVisualState(vehicle, { uiProjection });
+    const visual = deriveFleetVisualState(vehicle, { uiProjection, locale });
     return { vehicle, visual, health, uiProjection };
   });
 }

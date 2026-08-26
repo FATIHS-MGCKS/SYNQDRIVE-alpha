@@ -22,9 +22,11 @@ export type FleetHealthConditionState =
   (typeof FLEET_HEALTH_CONDITION)[keyof typeof FLEET_HEALTH_CONDITION];
 
 export interface FleetHealthEvaluation {
-  condition: FleetHealthConditionState;
-  evaluability: HealthEvaluabilityState;
-  pipelineAvailability: 'ready' | 'partial' | 'unavailable' | null;
+  /** Omitted when absent on API slice — do not coerce to unknown. */
+  condition?: FleetHealthConditionState;
+  /** Omitted when absent on API slice — do not coerce to unknown. */
+  evaluability?: HealthEvaluabilityState;
+  pipelineAvailability?: 'ready' | 'partial' | 'unavailable' | null;
   generatedAt: string;
   healthEvidenceAt: string | null;
   anyModuleDataStale: boolean | null;

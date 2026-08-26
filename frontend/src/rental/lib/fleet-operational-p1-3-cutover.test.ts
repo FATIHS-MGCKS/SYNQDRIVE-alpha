@@ -4,12 +4,17 @@
 import { describe, expect, it } from 'vitest';
 import type { FleetMapVehicleResponse, VehicleConnectivityRuntimeState } from '../../lib/api';
 import { de } from '../i18n/translations/de';
+import { en } from '../i18n/translations/en';
 import type { TranslationKey } from '../i18n/translations/en';
 import { mapFleetMapVehicleResponse } from './fleet-map-vehicle-mapper';
 import { buildFleetVehicleContexts } from './fleet-operator-panel';
 import { deriveFleetVisualState } from './fleetVisualState';
 import { resolveFleetVehicleDisplayState } from './fleetVehicleDisplay';
 import { buildFleetVehicleUiProjection } from './fleet-vehicle-ui-projection';
+import {
+  mapFleetStoreVehicleToCanonicalVehicleOperationalView,
+  mapVehicleOperationalUiProjection,
+} from './operational-projection';
 import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 
 function tFor() {
@@ -47,10 +52,6 @@ function availability(
 ) {
   return {
     state,
-    primaryReason: null,
-    reasonCodes: [],
-    recommendedAction: 'NONE',
-    attention: 'NONE',
     generatedAt: '2026-08-26T12:00:00.000Z',
     ...overrides,
   };
@@ -136,8 +137,27 @@ function surfacesForRow(row: Partial<FleetMapVehicleResponse>) {
     locale: 'de',
     t: tFor(),
   });
-  const visual = deriveFleetVisualState(vehicle, { uiProjection: ui, requireLocation: true });
+  const visual = deriveFleetVisualState(vehicle, {
+    uiProjection: ui,
+    requireLocation: true,
+    locale: 'de',
+  });
   return { vehicle, ui, display, visual };
+}
+
+function masterUiForRow(row: Partial<FleetMapVehicleResponse>) {
+  const vehicle = mapFleetMapVehicleResponse(fleetRow(row));
+  const canonical = mapFleetStoreVehicleToCanonicalVehicleOperationalView({
+    id: vehicle.id,
+    connectivityRuntime: vehicle.connectivityRuntime,
+    operationalAvailability: vehicle.operationalAvailability,
+    healthEvaluation: vehicle.healthEvaluation,
+  });
+  const ui = mapVehicleOperationalUiProjection(canonical, {
+    audience: 'master_admin',
+    t: tFor(),
+  });
+  return { vehicle, canonical, ui };
 }
 
 describe('P1.3 fleet consumer cutover', () => {
@@ -340,5 +360,219 @@ describe('P1.3 cross-surface consistency', () => {
       operationalAvailability: availability('AVAILABLE'),
     });
     expect(s.ui.technicalDetail).toBeUndefined();
+  });
+});
+
+describe('P1.3 critical precedence over UNKNOWN availability', () => {
+  it('A — DEVICE_UNPLUGGED + availability UNKNOWN => blocked', () => {
+    const s = surfacesForRow({
+      connectivityRuntime: runtime({
+        overallState: 'DEVICE_UNPLUGGED',
+        physicalDeviceState: 'UNPLUGGED_CONFIRMED',
+      }),
+      operationalAvailability: availability('UNKNOWN'),
+    });
+    expect(s.visual.mapTone).toBe('blocked');
+    expect(s.visual.visualStatus).not.toBe('unknown');
+  });
+
+  it('B — DEVICE_UNPLUGGED + availability absent => blocked', () => {
+    const vehicle = mapFleetMapVehicleResponse(
+      fleetRow({
+        connectivityRuntime: runtime({
+          overallState: 'DEVICE_UNPLUGGED',
+          physicalDeviceState: 'UNPLUGGED_CONFIRMED',
+        }),
+      }),
+    );
+    const ui = buildFleetVehicleUiProjection(vehicle, { locale: 'de' });
+    const visual = deriveFleetVisualState(vehicle, {
+      uiProjection: ui,
+      requireLocation: true,
+      locale: 'de',
+    });
+    expect(visual.mapTone).toBe('blocked');
+  });
+
+  it('C — AUTHORIZATION_REQUIRED + availability UNKNOWN => blocked', () => {
+    const s = surfacesForRow({
+      connectivityRuntime: runtime({
+        overallState: 'AUTHORIZATION_REQUIRED',
+        providerLinkState: 'REAUTH_REQUIRED',
+      }),
+      operationalAvailability: availability('UNKNOWN'),
+    });
+    expect(s.visual.mapTone).toBe('blocked');
+  });
+
+  it('D — INTEGRATION_ERROR + availability absent => blocked', () => {
+    const vehicle = mapFleetMapVehicleResponse(
+      fleetRow({
+        connectivityRuntime: runtime({ overallState: 'INTEGRATION_ERROR' }),
+      }),
+    );
+    const ui = buildFleetVehicleUiProjection(vehicle, { locale: 'de' });
+    const visual = deriveFleetVisualState(vehicle, {
+      uiProjection: ui,
+      requireLocation: true,
+      locale: 'de',
+    });
+    expect(visual.mapTone).toBe('blocked');
+  });
+
+  it('E — CRITICAL attention + availability UNKNOWN => blocked', () => {
+    const s = surfacesForRow({
+      connectivityRuntime: runtime({ attentionState: 'CRITICAL' }),
+      operationalAvailability: availability('UNKNOWN'),
+    });
+    expect(s.visual.mapTone).toBe('blocked');
+  });
+
+  it('F — availability UNKNOWN + connectivity UNKNOWN => unknown', () => {
+    const s = surfacesForRow({
+      connectivityRuntime: runtime({ overallState: 'UNKNOWN', telemetryState: 'no_signal' }),
+      operationalAvailability: availability('UNKNOWN'),
+    });
+    expect(s.visual.mapTone).toBe('unknown');
+  });
+
+  it('G — availability absent + connectivity absent => unknown', () => {
+    const vehicle = mapFleetMapVehicleResponse(fleetRow({}));
+    const ui = buildFleetVehicleUiProjection(vehicle, { locale: 'de' });
+    const visual = deriveFleetVisualState(vehicle, {
+      uiProjection: ui,
+      requireLocation: true,
+      locale: 'de',
+    });
+    expect(visual.mapTone).toBe('unknown');
+  });
+});
+
+describe('P1.3 health evaluability does not force map attention', () => {
+  it('NOT_EVALUABLE + AVAILABLE + healthy connectivity stays ready on map', () => {
+    const s = surfacesForRow({
+      connectivityRuntime: runtime(),
+      operationalAvailability: availability('AVAILABLE'),
+      healthEvaluation: health('NOT_EVALUABLE'),
+    });
+    expect(s.visual.mapTone).toBe('ready');
+    expect(s.display.healthDisplay.label).not.toBe('Gut');
+  });
+
+  it('PARTIALLY_EVALUABLE + AVAILABLE + good stays ready on map', () => {
+    const s = surfacesForRow({
+      connectivityRuntime: runtime(),
+      operationalAvailability: availability('AVAILABLE'),
+      healthEvaluation: health('PARTIALLY_EVALUABLE', { condition: 'good' }),
+    });
+    expect(s.visual.mapTone).toBe('ready');
+    expect(s.display.healthDisplay.label).not.toBe('Gut');
+  });
+});
+
+describe('P1.3 provenance through store → canonical → projection', () => {
+  it('primaryReason absent remains absent', () => {
+    const { ui } = masterUiForRow({
+      operationalAvailability: {
+        state: 'AVAILABLE',
+        generatedAt: '2026-08-26T12:00:00.000Z',
+      } as FleetMapVehicleResponse['operationalAvailability'],
+      connectivityRuntime: runtime(),
+    });
+    expect(ui.operator.primaryReason.presence).toBe('absent');
+    expect(ui.technicalDetail?.primaryReason.presence).toBe('absent');
+  });
+
+  it('primaryReason null remains present+null', () => {
+    const { ui } = masterUiForRow({
+      operationalAvailability: availability('AVAILABLE', { primaryReason: null }),
+      connectivityRuntime: runtime(),
+    });
+    expect(ui.operator.primaryReason.presence).toBe('present');
+    expect(ui.operator.primaryReason.presentation?.resolution).toBe('explicit_null');
+  });
+
+  it('reasonCodes absent remains absent', () => {
+    const { ui } = masterUiForRow({
+      operationalAvailability: {
+        state: 'AVAILABLE',
+        generatedAt: '2026-08-26T12:00:00.000Z',
+      } as FleetMapVehicleResponse['operationalAvailability'],
+      connectivityRuntime: runtime(),
+    });
+    expect(ui.operator.reasonCodes.presence).toBe('absent');
+  });
+
+  it('reasonCodes [] remains present+[]', () => {
+    const { ui } = masterUiForRow({
+      operationalAvailability: availability('AVAILABLE', { reasonCodes: [] }),
+      connectivityRuntime: runtime(),
+    });
+    expect(ui.operator.reasonCodes.presence).toBe('present');
+    expect(ui.operator.reasonCodes.presentation?.items).toEqual([]);
+  });
+
+  it('recommendedAction absent remains absent', () => {
+    const { ui } = masterUiForRow({
+      operationalAvailability: {
+        state: 'AVAILABLE',
+        generatedAt: '2026-08-26T12:00:00.000Z',
+      } as FleetMapVehicleResponse['operationalAvailability'],
+      connectivityRuntime: runtime(),
+    });
+    expect(ui.operator.recommendedAction.presence).toBe('absent');
+  });
+
+  it('recommendedAction NONE remains present+NONE', () => {
+    const { ui } = masterUiForRow({
+      operationalAvailability: availability('AVAILABLE', { recommendedAction: 'NONE' }),
+      connectivityRuntime: runtime(),
+    });
+    expect(ui.operator.recommendedAction.presence).toBe('present');
+    expect(ui.operator.recommendedAction.presentation?.action).toBe('NONE');
+  });
+
+  it('health condition absent remains absent', () => {
+    const { ui } = masterUiForRow({
+      operationalAvailability: availability('AVAILABLE'),
+      connectivityRuntime: runtime(),
+      healthEvaluation: {
+        evaluability: 'EVALUABLE',
+        generatedAt: '2026-08-26T12:00:00.000Z',
+        healthEvidenceAt: null,
+        anyModuleDataStale: false,
+        source: 'p0.2_projection',
+      } as FleetMapVehicleResponse['healthEvaluation'],
+    });
+    expect(ui.technicalDetail?.healthCondition.presence).toBe('absent');
+  });
+
+  it('health condition unknown remains present+unknown', () => {
+    const { ui } = masterUiForRow({
+      operationalAvailability: availability('AVAILABLE'),
+      connectivityRuntime: runtime(),
+      healthEvaluation: health('EVALUABLE', { condition: 'unknown' }),
+    });
+    expect(ui.technicalDetail?.healthCondition.presence).toBe('present');
+    expect(ui.technicalDetail?.healthCondition.presentation).toBe('unknown');
+  });
+});
+
+describe('P1.3 map marker labels are localized', () => {
+  it('uses German connectivity label for offline map marker', () => {
+    const vehicle = mapFleetMapVehicleResponse(
+      fleetRow({
+        connectivityRuntime: runtime({ overallState: 'OFFLINE', telemetryState: 'offline' }),
+      }),
+    );
+    const ui = buildFleetVehicleUiProjection(vehicle, { locale: 'de' });
+    const visual = deriveFleetVisualState(vehicle, {
+      uiProjection: ui,
+      requireLocation: true,
+      locale: 'de',
+    });
+    expect(visual.mapTone).toBe('offline');
+    expect(visual.label).toBe(de['fleetConnectivity.state.OFFLINE']);
+    expect(visual.label).toBe(en['fleetConnectivity.state.OFFLINE']);
   });
 });

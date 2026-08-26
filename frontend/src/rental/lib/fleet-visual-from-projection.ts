@@ -2,7 +2,7 @@
  * P1.3 — Map marker / fleet visual derivation from P1.2 UI projection.
  *
  * Precedence (highest first):
- * 1. Critical / action-required canonical condition (attention, UNAVAILABLE, DEVICE_UNPLUGGED)
+ * 1. Critical / action-required canonical condition (attention CRITICAL, UNAVAILABLE, DEVICE_UNPLUGGED, AUTHORIZATION_REQUIRED, INTEGRATION_ERROR)
  * 2. Operationally unavailable
  * 3. Needs verification
  * 4. Active business workflow (rented / reserved / maintenance)
@@ -10,11 +10,15 @@
  * 6. Unknown / no data
  *
  * Standby telemetry never downgrades an AVAILABLE vehicle to offline/unavailable.
+ * Explicit critical connectivity evidence outranks availability UNKNOWN/absent.
  */
 import type { OverallConnectivityState } from '../../lib/api';
+import { overallStateLabel } from '../components/fleet-connectivity/fleet-connectivity.presentation';
+import { de } from '../i18n/translations/de';
+import { en } from '../i18n/translations/en';
+import type { TranslationKey } from '../i18n/translations/en';
 import type { VehicleOperationalUiProjection } from './operational-projection';
 import { OPERATIONAL_AVAILABILITY_STATE } from './operational-availability/types';
-import { HEALTH_EVALUABILITY_STATE } from './fleet-health-evaluation/types';
 import {
   selectFleetActiveIsOverdue,
   selectFleetReservedIsOverdue,
@@ -47,6 +51,12 @@ const SORT_PRIORITY: Record<FleetVisualStatus, number> = {
   ready: 70,
   no_location: 80,
   unknown: 90,
+};
+
+export type FleetVisualProjectionOptions = {
+  requireLocation?: boolean;
+  locale?: 'en' | 'de';
+  t?: (key: TranslationKey) => string;
 };
 
 function operationalStatusToRentalStatus(
@@ -103,46 +113,60 @@ function deriveChipTone(
 function labelForVisualStatus(
   visualStatus: FleetVisualStatus,
   rentalStatus: FleetRentalStatus,
+  ui: VehicleOperationalUiProjection,
+  locale: 'en' | 'de',
+  t: (key: TranslationKey) => string,
 ): { label: string; shortLabel: string } {
+  const availabilityLabel = ui.availability.presentation?.label;
+  const overall = ui.connectivity.overallState.presentation?.state;
+  const connectivityLabel = overall ? overallStateLabel(overall, t) : undefined;
+
+  const withShort = (label: string) => ({ label, shortLabel: label });
+
   switch (visualStatus) {
     case 'ready':
-      return {
-        label: formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, 'en'),
-        shortLabel: 'Avail.',
-      };
+      return withShort(
+        availabilityLabel ??
+          formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, locale),
+      );
     case 'active':
-      return {
-        label: formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED, 'en'),
-        shortLabel: 'Active',
-      };
+      return withShort(
+        formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED, locale),
+      );
     case 'reserved':
-      return {
-        label: formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.RESERVED, 'en'),
-        shortLabel: 'Reserved',
-      };
+      return withShort(
+        formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.RESERVED, locale),
+      );
     case 'maintenance':
-      return {
-        label: formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.MAINTENANCE, 'en'),
-        shortLabel: 'Service',
-      };
+      return withShort(
+        formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.MAINTENANCE, locale),
+      );
     case 'blocked':
-      return { label: 'Blocked', shortLabel: 'Blocked' };
+      return withShort(
+        availabilityLabel ??
+          connectivityLabel ??
+          formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.BLOCKED, locale),
+      );
     case 'offline':
-      return { label: 'Offline', shortLabel: 'Offline' };
+      return withShort(connectivityLabel ?? t('fleetConnectivity.state.OFFLINE'));
     case 'stale':
-      return { label: 'Needs Verification', shortLabel: 'Verify' };
+      return withShort(
+        availabilityLabel ?? t('fleet.operationalAvailability.needsVerification'),
+      );
     case 'no_location':
-      return { label: 'No Location', shortLabel: 'No GPS' };
+      return withShort(t('fleetConnectivity.detail.locationUnavailable'));
     case 'attention':
-      return { label: 'Needs Attention', shortLabel: 'Attention' };
+      return withShort(
+        connectivityLabel ?? t('communication.dashboard.needsAttention'),
+      );
     default:
-      return {
-        label:
-          rentalStatus === 'unknown'
-            ? formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.UNKNOWN, 'en')
-            : 'Unavailable',
-        shortLabel: 'Unknown',
-      };
+      return withShort(
+        rentalStatus === 'unknown'
+          ? formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.UNKNOWN, locale)
+          : (availabilityLabel ??
+              connectivityLabel ??
+              formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.UNKNOWN, locale)),
+      );
   }
 }
 
@@ -155,7 +179,16 @@ function readAvailabilityState(ui: VehicleOperationalUiProjection) {
 }
 
 function readAttentionState(ui: VehicleOperationalUiProjection) {
-  return ui.attention.attention.presentation?.state ?? ui.operator.attention.presentation?.state;
+  const presentationAttention = ui.attention.attention.presentation?.state;
+  const operatorAttention = ui.operator.attention.presentation?.state;
+
+  for (const state of [presentationAttention, operatorAttention]) {
+    if (state === 'CRITICAL' || state === 'ACTION_REQUIRED') return state;
+  }
+  for (const state of [presentationAttention, operatorAttention]) {
+    if (state && state !== 'NONE') return state;
+  }
+  return undefined;
 }
 
 function isCriticalAttention(ui: VehicleOperationalUiProjection): boolean {
@@ -163,10 +196,9 @@ function isCriticalAttention(ui: VehicleOperationalUiProjection): boolean {
   return attention === 'CRITICAL' || attention === 'ACTION_REQUIRED';
 }
 
-function isHealthAttention(ui: VehicleOperationalUiProjection): boolean {
+function isHealthMechanicalAttention(ui: VehicleOperationalUiProjection): boolean {
   const health = ui.health.presentation;
-  if (!health) return false;
-  if (!health.isEvaluable) return true;
+  if (!health?.isEvaluable) return false;
   const condition = health.condition.presentation?.state;
   return condition === 'critical' || condition === 'warning';
 }
@@ -183,12 +215,54 @@ function isConnectivityOffline(overall?: OverallConnectivityState): boolean {
   return overall === 'OFFLINE';
 }
 
+function hasCanonicalCriticalEvidence(
+  availability: ReturnType<typeof readAvailabilityState>,
+  overall: OverallConnectivityState | undefined,
+  attentionState: ReturnType<typeof readAttentionState>,
+): boolean {
+  return (
+    availability === OPERATIONAL_AVAILABILITY_STATE.UNAVAILABLE ||
+    isConnectivityCritical(overall) ||
+    overall === 'DEVICE_UNPLUGGED' ||
+    attentionState === 'CRITICAL'
+  );
+}
+
+function isOperationalUnknown(
+  ui: VehicleOperationalUiProjection,
+  rentalStatus: FleetRentalStatus,
+  businessStatus: ReturnType<typeof selectOperationalStatus>,
+  availability: ReturnType<typeof readAvailabilityState>,
+  overall: OverallConnectivityState | undefined,
+  hasCriticalEvidence: boolean,
+): boolean {
+  if (hasCriticalEvidence) return false;
+
+  const availabilityAbsent =
+    availability === undefined && ui.availability.presence === 'absent';
+  const availabilityUnknown = availability === OPERATIONAL_AVAILABILITY_STATE.UNKNOWN;
+  const connectivityAbsent =
+    overall === undefined && ui.connectivity.overallState.presence === 'absent';
+  const connectivityUnknown = overall === 'UNKNOWN';
+
+  if (availabilityUnknown) return true;
+  if (availabilityAbsent && (connectivityAbsent || connectivityUnknown)) return true;
+  if (connectivityUnknown && availabilityAbsent) return true;
+
+  return (
+    rentalStatus === 'unknown' || businessStatus === VEHICLE_OPERATIONAL_STATUS.UNKNOWN
+  );
+}
+
 export function deriveFleetVisualStateFromUiProjection(
   vehicle: FleetVisualStateVehicle,
   ui: VehicleOperationalUiProjection,
-  options: { requireLocation?: boolean } = {},
+  options: FleetVisualProjectionOptions = {},
 ): FleetVisualState {
   const requireLocation = options.requireLocation === true;
+  const locale = options.locale ?? 'de';
+  const dict = locale === 'de' ? de : en;
+  const t = options.t ?? ((key: TranslationKey) => dict[key] ?? key);
   const hasLocation = vehicleHasFleetLocation(vehicle);
   const rentalStatus = operationalStatusToRentalStatus(vehicle);
   const businessStatus = selectOperationalStatus(vehicle);
@@ -196,37 +270,33 @@ export function deriveFleetVisualStateFromUiProjection(
   const overall = readOverallState(ui);
   const attentionState = readAttentionState(ui);
 
-  const operationalUnknown =
-    rentalStatus === 'unknown' ||
-    businessStatus === VEHICLE_OPERATIONAL_STATUS.UNKNOWN ||
-    availability === OPERATIONAL_AVAILABILITY_STATE.UNKNOWN ||
-    (availability === undefined && ui.availability.presence === 'absent');
+  const hasCriticalEvidence = hasCanonicalCriticalEvidence(availability, overall, attentionState);
+  const operationalUnknown = isOperationalUnknown(
+    ui,
+    rentalStatus,
+    businessStatus,
+    availability,
+    overall,
+    hasCriticalEvidence,
+  );
 
-  const isBlocked =
-    availability === OPERATIONAL_AVAILABILITY_STATE.UNAVAILABLE ||
-    isConnectivityCritical(overall) ||
-    attentionState === 'CRITICAL';
-
+  const isBlocked = hasCriticalEvidence;
   const isMaintenance =
     rentalStatus === 'maintenance' ||
     businessStatus === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE ||
     businessStatus === VEHICLE_OPERATIONAL_STATUS.BLOCKED;
-
   const needsVerification = availability === OPERATIONAL_AVAILABILITY_STATE.NEEDS_VERIFICATION;
+  const healthMechanicalAttention = isHealthMechanicalAttention(ui);
 
-  const healthAttention = isHealthAttention(ui);
-
-  // Offline map tone only when canonical connectivity says OFFLINE and availability
-  // is not explicitly AVAILABLE (canonical availability wins over legacy timestamps).
   const isOffline =
     isConnectivityOffline(overall) &&
     availability !== OPERATIONAL_AVAILABILITY_STATE.AVAILABLE;
 
   let visualStatus: FleetVisualStatus;
-  if (operationalUnknown) {
-    visualStatus = 'unknown';
-  } else if (isBlocked || overall === 'DEVICE_UNPLUGGED') {
+  if (hasCriticalEvidence) {
     visualStatus = 'blocked';
+  } else if (attentionState === 'ACTION_REQUIRED') {
+    visualStatus = 'attention';
   } else if (isMaintenance) {
     visualStatus = 'maintenance';
   } else if (needsVerification) {
@@ -239,9 +309,14 @@ export function deriveFleetVisualStateFromUiProjection(
     visualStatus = 'reserved';
   } else if (requireLocation && !hasLocation) {
     visualStatus = 'no_location';
-  } else if (healthAttention || isCriticalAttention(ui) || overall === 'SOFT_OFFLINE') {
+  } else if (healthMechanicalAttention || overall === 'SOFT_OFFLINE' || attentionState === 'WATCH') {
     visualStatus = 'attention';
-  } else if (rentalStatus === 'available' || availability === OPERATIONAL_AVAILABILITY_STATE.AVAILABLE) {
+  } else if (operationalUnknown) {
+    visualStatus = 'unknown';
+  } else if (
+    rentalStatus === 'available' ||
+    availability === OPERATIONAL_AVAILABILITY_STATE.AVAILABLE
+  ) {
     visualStatus = 'ready';
   } else {
     visualStatus = 'unknown';
@@ -250,7 +325,7 @@ export function deriveFleetVisualStateFromUiProjection(
   let attentionLevel: FleetAttentionLevel = 'none';
   if (isBlocked || isCriticalAttention(ui) || selectFleetActiveIsOverdue(vehicle)) {
     attentionLevel = 'critical';
-  } else if (isOffline || needsVerification || healthAttention || attentionState === 'WATCH') {
+  } else if (isOffline || needsVerification || healthMechanicalAttention || attentionState === 'WATCH') {
     attentionLevel = 'warning';
   } else if (operationalUnknown) {
     attentionLevel = 'info';
@@ -259,7 +334,7 @@ export function deriveFleetVisualStateFromUiProjection(
   }
 
   let readiness: FleetReadiness;
-  if (operationalUnknown) {
+  if (operationalUnknown && !hasCriticalEvidence) {
     readiness = 'unknown';
   } else if (isBlocked) {
     readiness = 'blocked';
@@ -276,7 +351,13 @@ export function deriveFleetVisualStateFromUiProjection(
     readiness = 'unknown';
   }
 
-  const { label, shortLabel } = labelForVisualStatus(visualStatus, rentalStatus);
+  const { label, shortLabel } = labelForVisualStatus(
+    visualStatus,
+    rentalStatus,
+    ui,
+    locale,
+    t,
+  );
   const mapTone = mapVisualStatusToMapTone(visualStatus);
   const chipTone = deriveChipTone(visualStatus, attentionLevel, { isBlocked, isOffline });
 

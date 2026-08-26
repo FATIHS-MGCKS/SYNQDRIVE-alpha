@@ -13,6 +13,8 @@ import type {
   FleetMapVehicleResponse,
   VehicleConnectivityRuntimeState,
 } from '../../../lib/api';
+import type { FleetHealthEvaluation } from '../fleet-health-evaluation/types';
+import type { FleetOperationalAvailability } from '../operational-availability/types';
 import {
   asConnectivityAttentionState,
   asConnectivityRecommendedAction,
@@ -132,7 +134,7 @@ function mapOperatorSlice(
 }
 
 function mapHealthEvaluation(
-  raw: FleetMapVehicleResponse['healthEvaluation'],
+  raw: FleetMapVehicleResponse['healthEvaluation'] | FleetHealthEvaluation | undefined,
 ): CanonicalVehicleOperationalView['health'] {
   if (raw === undefined) {
     return {
@@ -148,6 +150,68 @@ function mapHealthEvaluation(
     evaluability: mapHealthEvaluabilityField(raw.evaluability, source),
     condition: mapHealthConditionField(raw.condition, source),
     pipelineAvailability: mapPipelineAvailabilityField(raw.pipelineAvailability, source),
+  };
+}
+
+function storeAvailabilityToOperatorInput(
+  availability: FleetOperationalAvailability,
+): FleetMapVehicleResponse['operationalAvailability'] {
+  return {
+    state: availability.state,
+    generatedAt: availability.generatedAt,
+    ...(availability.primaryReason !== undefined
+      ? { primaryReason: availability.primaryReason }
+      : {}),
+    ...(availability.reasonCodes !== undefined ? { reasonCodes: availability.reasonCodes } : {}),
+    ...(availability.recommendedAction !== undefined
+      ? { recommendedAction: availability.recommendedAction }
+      : {}),
+    ...(availability.attention !== undefined ? { attention: availability.attention } : {}),
+  } as FleetMapVehicleResponse['operationalAvailability'];
+}
+
+export interface FleetStoreCanonicalVehicleInput {
+  id: string;
+  connectivityRuntime?: VehicleConnectivityRuntimeState;
+  operationalAvailability?: FleetOperationalAvailability;
+  healthEvaluation?: FleetHealthEvaluation;
+}
+
+/**
+ * P1.3 — Map fleet store vehicle slices directly to the P1.1 canonical contract.
+ * Avoids API DTO round-trip and preserves per-field provenance from the store mapper.
+ */
+export function mapFleetStoreVehicleToCanonicalVehicleOperationalView(
+  vehicle: FleetStoreCanonicalVehicleInput,
+  options: MapCanonicalVehicleOperationalViewOptions = {},
+): CanonicalVehicleOperationalView {
+  const runtime = vehicle.connectivityRuntime;
+  const detail = options.fleetConnectivityDetail;
+
+  let connectivity: CanonicalVehicleOperationalView['connectivity'];
+  if (runtime) {
+    connectivity = mapConnectivityFromRuntime(runtime);
+  } else if (detail) {
+    connectivity = mapConnectivityFromDetail(detail);
+  } else {
+    connectivity = absentConnectivity();
+  }
+
+  const availabilityInput = vehicle.operationalAvailability
+    ? storeAvailabilityToOperatorInput(vehicle.operationalAvailability)
+    : undefined;
+
+  const operator = mapOperatorSlice(availabilityInput);
+
+  return {
+    vehicleId: vehicle.id,
+    business: {
+      businessState: absentField(),
+      operationalAvailability: mapOperationalAvailability(availabilityInput),
+    },
+    connectivity,
+    health: mapHealthEvaluation(vehicle.healthEvaluation),
+    operator,
   };
 }
 
