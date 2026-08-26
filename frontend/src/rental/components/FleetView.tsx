@@ -2,6 +2,7 @@
 import { useState, useRef, useMemo, useEffect, useSyncExternalStore, useCallback, Component, type ReactNode, type ErrorInfo, type SyntheticEvent } from 'react';
 import { MapboxMap, type MapboxMapHandle } from '../../components/MapboxMap';
 import { VehicleData } from '../data/vehicles';
+import { useLanguage } from '../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { PageHeader, SkeletonCard } from '../../components/patterns';
 import { useFleetVehicles } from '../FleetContext';
@@ -107,6 +108,8 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
   const setStationFilter = useFleetMapStore((state) => state.setStationFilter);
   const setSelectedVehicleId = useFleetMapStore((state) => state.setSelectedVehicleId);
   const { healthMap, refresh: refreshFleetMap } = useFleetVehicles();
+  const { locale } = useLanguage();
+  const displayLocale = locale === 'de' ? 'de' : 'en';
 
   const [stationsApi, setStationsApi] = useState<Station[]>([]);
   useEffect(() => {
@@ -162,8 +165,8 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
   }, [stationFiltered, healthMap]);
 
   const baseContexts = useMemo(
-    () => buildFleetVehicleContexts(stationFiltered, getHealth),
-    [stationFiltered, getHealth],
+    () => buildFleetVehicleContexts(stationFiltered, getHealth, { locale: displayLocale }),
+    [stationFiltered, getHealth, displayLocale],
   );
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -200,13 +203,13 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
     [filteredContexts],
   );
 
-  const fleetGeoJson = useMemo(
-    () =>
-      buildFleetMapGeoJson(filteredVehicles, {
-        getRentalHealth: (id) => healthMap.get(id) ?? null,
-      }),
-    [filteredVehicles, healthMap],
-  );
+  const fleetGeoJson = useMemo(() => {
+    const byId = new Map(filteredContexts.map((ctx) => [ctx.vehicle.id, ctx]));
+    return buildFleetMapGeoJson(filteredVehicles, {
+      locale: displayLocale,
+      getUiProjection: (v) => byId.get(v.id)?.uiProjection,
+    });
+  }, [filteredVehicles, filteredContexts, displayLocale]);
 
   const scrollRowIntoView = useCallback((vehicleId: string) => {
     const el = rowRefs.current.get(vehicleId);

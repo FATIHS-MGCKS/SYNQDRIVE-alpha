@@ -1,6 +1,8 @@
 import type { Station } from '../../lib/api';
 import type { VehicleHealthResponse } from '../../lib/api';
 import type { VehicleData } from '../data/vehicles';
+import type { VehicleOperationalUiProjection } from './operational-projection';
+import { buildFleetVehicleUiProjection } from './fleet-vehicle-ui-projection';
 import {
   ALL_STATIONS_FILTER,
   NO_LOCATION_FILTER,
@@ -135,24 +137,24 @@ export function resolveFleetCommandRowSeverity(
   ctx: FleetVehicleContext,
   options: ResolveFleetCommandRowSeverityOptions = {},
 ): FleetCommandRowSeverity {
-  const { vehicle: v, visual, health } = ctx;
+  const { vehicle: v, visual, health, uiProjection } = ctx;
+  const attention = uiProjection.attention.attention.presentation?.state;
 
   if (options.canonicalCriticalVehicleIds?.has(v.id)) return 'critical';
 
+  if (attention === 'CRITICAL' || attention === 'ACTION_REQUIRED') return 'critical';
   if (health?.rental_blocked === true) return 'critical';
   if (health?.overall_state === 'critical') return 'critical';
   if (visual.attentionLevel === 'critical') return 'critical';
   if (visual.isBlocked || hasHardBlockingReasons(health)) return 'critical';
-  if (v.healthStatus === 'Critical') return 'critical';
   if (v.activeIsOverdue) return 'critical';
   if (hasCriticalHealthModule(health)) return 'critical';
   if (health?.modules?.error_codes?.state === 'critical') return 'critical';
-  // Offline (≥48h) is critical in the dashboard runtime telemetry path.
   if (visual.isOffline) return 'critical';
 
+  if (attention === 'WATCH') return 'warning';
   if (health?.overall_state === 'warning') return 'warning';
   if (visual.attentionLevel === 'warning') return 'warning';
-  if (v.healthStatus === 'Warning') return 'warning';
   if (hasWarningHealthModule(health)) return 'warning';
   if (hasCriticalOrWarningDtc(health) && health?.modules?.error_codes?.state === 'warning') {
     return 'warning';
@@ -206,6 +208,8 @@ export interface FleetVehicleContext {
   vehicle: VehicleData;
   visual: FleetVisualState;
   health: VehicleHealthResponse | null;
+  /** P1.3 — canonical UI projection for fleet list/map surfaces. */
+  uiProjection: import('./operational-projection').VehicleOperationalUiProjection;
 }
 
 export interface StationFilterOption {
@@ -239,6 +243,7 @@ export function isFleetAttentionVehicle(
   const healthWarning =
     health?.overall_state === 'warning' || vehicle.healthStatus === 'Warning';
 
+  if (health?.rental_blocked) return true;
   // Operational reasons (independent of telemetry freshness).
   if (visual.isBlocked || hasCriticalOrWarningDtc(health)) return true;
   if (visual.attentionLevel === 'critical') return true; // blocked / health-critical / maintenance-urgent / return overdue
@@ -278,11 +283,17 @@ export function attentionSortRank(
 export function buildFleetVehicleContexts(
   vehicles: VehicleData[],
   getHealth: (id: string) => VehicleHealthResponse | null | undefined,
+  options: { locale?: 'en' | 'de' } = {},
 ): FleetVehicleContext[] {
+  const locale = options.locale ?? 'de';
   return vehicles.map((vehicle) => {
     const health = getHealth(vehicle.id) ?? null;
-    const visual = deriveFleetVisualState(vehicle, { rentalHealth: health });
-    return { vehicle, visual, health };
+    const uiProjection = buildFleetVehicleUiProjection(
+      vehicle as import('./fleet-vehicle-ui-projection').FleetProjectionVehicle,
+      { locale },
+    );
+    const visual = deriveFleetVisualState(vehicle, { uiProjection });
+    return { vehicle, visual, health, uiProjection };
   });
 }
 
@@ -354,6 +365,7 @@ export function sortFleetContexts(
     display: resolveFleetVehicleDisplayState(ctx.vehicle, {
       rentalHealth: ctx.health,
       visual: ctx.visual,
+      uiProjection: ctx.uiProjection,
     }),
   }));
 

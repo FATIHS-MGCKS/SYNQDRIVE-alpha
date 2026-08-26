@@ -55,6 +55,7 @@ export function FleetCommandView({
   lastFetchedAt = null,
   onRefresh,
   onOpenVehicle,
+  locale,
   headerAction,
   isDarkMode,
   dashboardRuntime,
@@ -66,8 +67,11 @@ export function FleetCommandView({
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const baseContexts = useMemo(
-    () => buildFleetVehicleContexts(vehicles, getHealth),
-    [vehicles, getHealth],
+    () =>
+      buildFleetVehicleContexts(vehicles, getHealth, {
+        locale: locale === 'de' ? 'de' : 'en',
+      }),
+    [vehicles, getHealth, locale],
   );
 
   const searchContexts = useMemo(

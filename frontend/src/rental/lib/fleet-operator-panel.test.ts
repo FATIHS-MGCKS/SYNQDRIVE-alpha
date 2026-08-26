@@ -22,6 +22,51 @@ import {
   NO_STATION_FILTER,
 } from '../stores/useFleetMapStore';
 
+import type { VehicleConnectivityRuntimeState } from '../../lib/api';
+import type { FleetProjectionVehicle } from './fleet-vehicle-ui-projection';
+
+function runtime(
+  overrides: Partial<VehicleConnectivityRuntimeState> = {},
+): VehicleConnectivityRuntimeState {
+  return {
+    vehicleId: 'v1',
+    organizationId: 'org-1',
+    overallState: 'TELEMETRY_ACTIVE',
+    providerLinkState: 'ACTIVE',
+    telemetryState: 'live',
+    physicalDeviceState: 'PLUGGED_CONFIRMED',
+    dataCoverageState: 'GOOD',
+    attentionState: 'NONE',
+    reasonCodes: [],
+    recommendedAction: 'NONE',
+    requiresAction: false,
+    lastTelemetryAt: null,
+    lastProviderObservedAt: null,
+    lastReceivedAt: null,
+    deviceBindingId: null,
+    activeEpisodeId: null,
+    evidence: {},
+    calculatedAt: '2026-08-26T12:00:00.000Z',
+    stateVersion: 1,
+    ...overrides,
+  };
+}
+
+function availability(
+  state: 'AVAILABLE' | 'NEEDS_VERIFICATION' | 'UNAVAILABLE' | 'UNKNOWN',
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    state,
+    primaryReason: null,
+    reasonCodes: [],
+    recommendedAction: 'NONE',
+    attention: 'NONE',
+    generatedAt: '2026-08-26T12:00:00.000Z',
+    ...overrides,
+  };
+}
+
 function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
   const status = overrides.status ?? VEHICLE_OPERATIONAL_STATUS.AVAILABLE;
   const operationalState =
@@ -85,6 +130,10 @@ function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
     totalMonthlyCost: '',
     ...overrides,
   };
+}
+
+function canonicalVehicle(overrides: Partial<FleetProjectionVehicle> = {}): FleetProjectionVehicle {
+  return vehicle(overrides) as FleetProjectionVehicle;
 }
 
 describe('fleet-operator-panel', () => {
@@ -184,10 +233,9 @@ describe('fleet-operator-panel', () => {
 
     const offline = buildFleetVehicleContexts(
       [
-        vehicle({
-          onlineStatus: 'OFFLINE',
-          isFresh: false,
-          lastSignal: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(),
+        canonicalVehicle({
+          connectivityRuntime: runtime({ overallState: 'OFFLINE', telemetryState: 'offline' }),
+          operationalAvailability: availability('NEEDS_VERIFICATION'),
         }),
       ],
       () => null,
@@ -274,20 +322,40 @@ describe('fleet-operator-panel', () => {
   });
 
   it('offline available vehicles stay in Available tab, not a separate Offline tab', () => {
-    const hoursAgoIso = (h: number) =>
-      new Date(Date.now() - h * 60 * 60_000).toISOString();
-    // 2h-quiet device = standby, not stale, not offline.
     const standby = buildFleetVehicleContexts(
-      [vehicle({ onlineStatus: 'STANDBY', isFresh: false, lastSignal: hoursAgoIso(2) })],
+      [
+        canonicalVehicle({
+          connectivityRuntime: runtime({ overallState: 'STANDBY', telemetryState: 'standby' }),
+          operationalAvailability: availability('AVAILABLE'),
+        }),
+      ],
       () => null,
     )[0];
-    // 30h = soft offline (signal_delayed) — still not in the Offline tab.
     const softOffline = buildFleetVehicleContexts(
-      [vehicle({ id: 'soft', onlineStatus: 'OFFLINE', isFresh: false, lastSignal: hoursAgoIso(30) })],
+      [
+        canonicalVehicle({
+          id: 'soft',
+          connectivityRuntime: runtime({
+            overallState: 'SOFT_OFFLINE',
+            telemetryState: 'signal_delayed',
+            attentionState: 'WATCH',
+          }),
+          operationalAvailability: {
+            state: 'AVAILABLE',
+            generatedAt: '2026-08-26T12:00:00.000Z',
+          } as import('../data/vehicles').VehicleData['operationalAvailability'],
+        }),
+      ],
       () => null,
     )[0];
     const offline = buildFleetVehicleContexts(
-      [vehicle({ id: 'v2', onlineStatus: 'OFFLINE', isFresh: false, lastSignal: hoursAgoIso(49) })],
+      [
+        canonicalVehicle({
+          id: 'v2',
+          connectivityRuntime: runtime({ overallState: 'OFFLINE', telemetryState: 'offline' }),
+          operationalAvailability: availability('AVAILABLE'),
+        }),
+      ],
       () => null,
     )[0];
     expect(standby.visual.isStale).toBe(false);
@@ -295,21 +363,44 @@ describe('fleet-operator-panel', () => {
     expect(vehicleMatchesCommandTab(standby, 'Available')).toBe(true);
     expect(vehicleMatchesCommandTab(softOffline, 'Available')).toBe(true);
     expect(vehicleMatchesCommandTab(offline, 'Available')).toBe(true);
+    expect(offline.visual.mapTone).toBe('ready');
   });
 
   it('Attention is not inflated by normal standby; soft-offline gets a low slot', () => {
-    const hoursAgoIso = (h: number) =>
-      new Date(Date.now() - h * 60 * 60_000).toISOString();
     const standby1h = buildFleetVehicleContexts(
-      [vehicle({ onlineStatus: 'STANDBY', isFresh: false, lastSignal: hoursAgoIso(1) })],
+      [
+        canonicalVehicle({
+          connectivityRuntime: runtime({ overallState: 'STANDBY', telemetryState: 'standby' }),
+          operationalAvailability: availability('AVAILABLE'),
+        }),
+      ],
       () => null,
     )[0];
     const standby8h = buildFleetVehicleContexts(
-      [vehicle({ id: 'v2', onlineStatus: 'STANDBY', isFresh: false, lastSignal: hoursAgoIso(8) })],
+      [
+        canonicalVehicle({
+          id: 'v2',
+          connectivityRuntime: runtime({ overallState: 'STANDBY', telemetryState: 'standby' }),
+          operationalAvailability: availability('AVAILABLE'),
+        }),
+      ],
       () => null,
     )[0];
     const softOffline = buildFleetVehicleContexts(
-      [vehicle({ id: 'v3', onlineStatus: 'OFFLINE', isFresh: false, lastSignal: hoursAgoIso(30) })],
+      [
+        canonicalVehicle({
+          id: 'v3',
+          connectivityRuntime: runtime({
+            overallState: 'SOFT_OFFLINE',
+            telemetryState: 'signal_delayed',
+            attentionState: 'WATCH',
+          }),
+          operationalAvailability: {
+            state: 'AVAILABLE',
+            generatedAt: '2026-08-26T12:00:00.000Z',
+          } as import('../data/vehicles').VehicleData['operationalAvailability'],
+        }),
+      ],
       () => null,
     )[0];
     expect(isFleetAttentionVehicle(standby1h.visual, standby1h.vehicle)).toBe(false);
@@ -318,19 +409,16 @@ describe('fleet-operator-panel', () => {
   });
 
   it('sortFleetContexts keeps critical first and pushes offline to the bottom', () => {
-    const hoursAgoIso = (h: number) =>
-      new Date(Date.now() - h * 60 * 60_000).toISOString();
     const contexts = buildFleetVehicleContexts(
       [
-        vehicle({ id: 'ready', license: 'B-READY 1' }),
-        vehicle({
+        canonicalVehicle({ id: 'ready', license: 'B-READY 1', operationalAvailability: availability('AVAILABLE'), connectivityRuntime: runtime() }),
+        canonicalVehicle({
           id: 'offline',
           license: 'A-OFF 1',
-          onlineStatus: 'OFFLINE',
-          isFresh: false,
-          lastSignal: hoursAgoIso(49),
+          connectivityRuntime: runtime({ overallState: 'OFFLINE', telemetryState: 'offline' }),
+          operationalAvailability: availability('NEEDS_VERIFICATION'),
         }),
-        vehicle({ id: 'crit', license: 'Z-CRIT 1' }),
+        canonicalVehicle({ id: 'crit', license: 'Z-CRIT 1' }),
       ],
       (id) =>
         id === 'crit'
