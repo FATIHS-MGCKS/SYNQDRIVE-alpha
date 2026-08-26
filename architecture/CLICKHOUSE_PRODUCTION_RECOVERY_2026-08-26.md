@@ -25,6 +25,10 @@ Production ClickHouse was restored after OOM kill on 2026-08-21. Root cause: `me
 - ClickHouse remains analytics mirror only.
 - No schema or retention policy changes in this recovery.
 
+## Stability gate (2026-08-26)
+
+61-minute production observation post-recovery: memory bounded ~860–879 MiB / 4 GiB, 0 restarts, 0 OOM, merges idle, parts stable (11), rows +774, mirror failed count unchanged at 7, Prometheus blackbox probe UP, readiness `available`. **READY TO MERGE** — see `docs/audits/clickhouse-production-recovery-2026-08.md` §14.
+
 ## Reference
 
 Full forensics: `docs/audits/clickhouse-production-recovery-2026-08.md`
