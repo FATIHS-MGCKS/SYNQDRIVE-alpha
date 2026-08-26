@@ -593,6 +593,87 @@ Command: `npx vitest run src/rental/lib/operational-projection/map-fleet-map-to-
 
 ---
 
+## Q. P1.2 implementation — Shared UI projection facade (2026-08-26)
+
+| Field | Value |
+|-------|-------|
+| **Phase** | P1.2 — Shared presentation facade |
+| **Visible UI behavior changed** | **NO** |
+| **Consumer cutover** | **NO** |
+
+### Presentation inventory (pre-P1.2)
+
+| Module | Function | Reuse in P1.2 |
+|--------|----------|---------------|
+| `operational-availability/presentation.ts` | `mapOperationalAvailabilityPresentation` | **Wrapped** — availability slice |
+| `fleet-health-evaluation/presentation.ts` | `mapFleetHealthPresentation` | **Wrapped** — health slice |
+| `fleet-connectivity.presentation.ts` | `overallStateLabel`, `attentionTone`, `recommendedActionLabel`, etc. | **Wrapped** — connectivity/attention slices |
+| `operational-availability/presentation.ts` REASON_LABEL_KEYS | 4 of 9+ P0.2 codes | **Extracted** → `OPERATIONAL_PRIMARY_REASON_LABEL_KEYS` (9 codes + unknown fallback) |
+
+### Files created
+
+| Path | Role |
+|------|------|
+| `operational-projection/ui/types.ts` | `VehicleOperationalUiProjection` contract |
+| `operational-projection/ui/primary-reason-presentation.ts` | Extended primaryReason mapping + safe unknown fallback |
+| `operational-projection/ui/map-connectivity-presentation.ts` | Connectivity + attention + operator presentation |
+| `operational-projection/ui/map-vehicle-operational-ui-projection.ts` | **Public facade** |
+| `operational-projection/ui/map-vehicle-operational-ui-projection.test.ts` | 39 P1.2 tests |
+| `operational-projection/ui/index.ts` | Public exports |
+| `architecture/VEHICLE_OPERATIONAL_STATE_UI_PROJECTION_P1_2_2026-08.md` | Normative P1.2 doc |
+
+### Public facade
+
+```typescript
+mapVehicleOperationalUiProjection(
+  canonical: CanonicalVehicleOperationalView,
+  options: { audience: 'org_admin' | 'master_admin' | 'worker'; t: OperationalTranslator },
+): VehicleOperationalUiProjection
+```
+
+### `VehicleOperationalUiProjection` structure
+
+- `availability` — `UiPresentationSlice<OperationalAvailabilityPresentation>`
+- `health` — `UiPresentationSlice<FleetHealthPresentation>`
+- `connectivity` — per-field connectivity presentations (overallState, providerLink, telemetry, device, coverage, recommendedAction, reasonCodes)
+- `attention` — operator attention + reason/action presentation
+- `operator` — primaryReason, recommendedAction, attention, reasonCodes (with absent/present semantics)
+- `technicalDetail?` — master_admin only (raw canonical enums)
+
+### primaryReason coverage (DE/EN)
+
+All 9 backend precedence codes now mapped:
+
+`BUSINESS_WORKFLOW_BLOCKED`, `HEALTH_RENTAL_BLOCKED`, `DEVICE_UNPLUG_WEBHOOK`, `CONNECTIVITY_CONFIRMED_INTERRUPTION`, `DEVICE_CHECK_REQUIRED`, `CONNECTIVITY_VERIFICATION_REQUIRED`, `TELEMETRY_OFFLINE`, `DATA_COVERAGE_INSUFFICIENT`, `INSUFFICIENT_CROSS_DOMAIN_EVIDENCE`
+
+Unknown future codes: `fleet.operationalAvailability.reason.unknown` (org_admin); raw code in `technicalDetail` (master_admin).
+
+### Tests
+
+- P1.1 regression: **29 passed**
+- P1.2 facade: **39 passed** (30 scenarios + 9 primaryReason coverage)
+- Related presentation regression: **127 total passed**
+
+### Legacy consumers (intentionally unchanged)
+
+FleetOperatorRow, FleetMapVehicleStatusHud, fleetVisualState, dashboard runtime, VehicleDetailHeaderBadges, booking preflight, fleet-map-vehicle-mapper — still use direct slice presentation or legacy paths.
+
+### P1.2 gate
+
+| Gate | Result |
+|------|--------|
+| P1.2 SHARED UI PROJECTION | **PASS** |
+| P1.1 REGRESSION | **PASS** |
+| NO SECOND STATE MACHINE | **PASS** |
+| NO TIMESTAMP RE-DERIVATION | **PASS** |
+| NO LEGACY ONLINESTATUS DEPENDENCY | **PASS** |
+| VISIBLE UI BEHAVIOR CHANGED | **NO** |
+| P1.3 READY | **YES** |
+
+**STOP.** P1.3 not started.
+
+---
+
 ## Related architecture references
 
 - `architecture/VEHICLE_OPERATIONAL_STATE_PROVENANCE_2026-08.md`
