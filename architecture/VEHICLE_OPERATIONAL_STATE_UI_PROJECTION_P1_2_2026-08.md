@@ -91,7 +91,7 @@ Audience changes **presentation only** — never canonical state.
 npx vitest run src/rental/lib/operational-projection/
 ```
 
-68 tests (29 P1.1 + 53 P1.2)
+82 tests (29 P1.1 + 53 P1.2)
 
 ## Next phase
 
