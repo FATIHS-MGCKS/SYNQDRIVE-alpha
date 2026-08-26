@@ -19,7 +19,10 @@ import {
   TELEMETRY_STANDBY_MAX_MS,
   type TelemetryFreshness,
 } from './telemetryFreshness';
+import { buildFleetVehicleUiProjection } from './fleet-vehicle-ui-projection';
+import { resolveTelemetryFromUi } from './fleet-p1-3-display';
 import type { VehicleData } from '../data/vehicles';
+import type { FleetProjectionVehicle } from './fleet-vehicle-ui-projection';
 
 const NOW = new Date('2026-07-18T12:00:00.000Z').getTime();
 
@@ -304,6 +307,45 @@ describe('connectivity cross-surface regressions', () => {
         dataCoverageState: 'UNKNOWN',
       });
       expect(runtime.overallState).not.toBe('TELEMETRY_ACTIVE');
+    });
+  });
+
+  describe('P1.4 — vehicle detail uses canonical runtime when present', () => {
+    function vehicleWithRuntime(
+      lastSignal: string,
+      runtimeOverrides: Partial<VehicleConnectivityRuntimeState> = {},
+    ): FleetProjectionVehicle {
+      return {
+        ...baseVehicle(lastSignal),
+        connectivityRuntime: runtimeFixture(runtimeOverrides),
+      };
+    }
+
+    function detailTelemetry(vehicle: FleetProjectionVehicle): TelemetryFreshness {
+      const ui = buildFleetVehicleUiProjection(vehicle, { locale: 'de' });
+      return resolveTelemetryFromUi(ui).telemetryStatus;
+    }
+
+    it('vehicle detail matches fleet main when canonical runtime is present', () => {
+      const vehicle = vehicleWithRuntime(minutesAgo(5), { telemetryState: 'live' });
+      const fleetMain = resolveFleetVehicleDisplayState(vehicle, {
+        now: NOW,
+        uiProjection: buildFleetVehicleUiProjection(vehicle, { locale: 'de' }),
+      }).telemetryStatus;
+      const detail = detailTelemetry(vehicle);
+      expect(detail).toBe('live');
+      expect(detail).toBe(fleetMain);
+    });
+
+    it('vehicle detail standby ignores legacy offline timestamps', () => {
+      const vehicle = vehicleWithRuntime(hoursAgo(30), {
+        overallState: 'STANDBY',
+        telemetryState: 'standby',
+      });
+      const legacy = resolveTelemetryFreshness(vehicle, { now: NOW }).freshness;
+      const detail = detailTelemetry(vehicle);
+      expect(legacy).toBe('signal_delayed');
+      expect(detail).toBe('standby');
     });
   });
 });
