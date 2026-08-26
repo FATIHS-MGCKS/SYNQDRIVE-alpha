@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import type { FleetConnectivityStatus, FleetTelemetryFreshness, OverallConnectivityState, VehicleConnectivityRuntimeState } from '../../../lib/api';
 import { isVehicleOffline } from '../data/vehicles';
+import { isBookingOperationalGatePass } from './booking-vehicle-eligibility';
 import { deriveFleetVisualState } from './fleetVisualState';
 import { resolveFleetVehicleDisplayState } from './fleetVehicleDisplay';
 import {
@@ -56,6 +57,7 @@ function baseVehicle(lastSignal: string): VehicleData {
     lat: 52.5,
     lng: 13.4,
     signalAgeMs: NOW - Date.parse(lastSignal),
+    operationalAvailability: { state: 'AVAILABLE', generatedAt: new Date(NOW).toISOString() },
   };
 }
 
@@ -172,6 +174,10 @@ function resolveAcrossSurfaces(lastSignal: string): SurfaceTelemetry[] {
       surface: 'notifications_offline_gate',
       freshness: isVehicleOffline(vehicle) ? 'offline' : canonical,
     },
+    {
+      surface: 'booking_operational_gate',
+      freshness: isBookingOperationalGatePass(vehicle) ? 'pass' : 'fail',
+    },
   ];
 }
 
@@ -241,11 +247,12 @@ describe('connectivity cross-surface regressions', () => {
       }
     });
 
-    it('offline ≥48h: all surfaces report offline', () => {
+    it('offline ≥48h: telemetry offline but booking gate follows P0.2 AVAILABLE', () => {
       const surfaces = resolveAcrossSurfaces(hoursAgo(50));
       expect(surfaces.find((s) => s.surface === 'canonical')?.freshness).toBe('offline');
       expect(surfaces.find((s) => s.surface === 'fleet_connectivity_api')?.freshness).toBe('offline');
       expect(isVehicleOffline(baseVehicle(hoursAgo(50)))).toBe(true);
+      expect(surfaces.find((s) => s.surface === 'booking_operational_gate')?.freshness).toBe('pass');
     });
 
     it('no signal: canonical no_signal; fleet API offline; offline gate warns', () => {

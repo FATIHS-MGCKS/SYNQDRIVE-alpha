@@ -22,7 +22,9 @@ import { bookingStatusLabel as plannerStatusLabel, bookingStatusTone as plannerS
 // already guarantees no fresh bookings land here in a blocked state, but
 // confirmed-in-the-past bookings may still transition to CRITICAL between
 // creation and the actual pickup day.
-import { useVehicleHealth } from '../hooks/useVehicleHealth';
+import { useVehicleHealth, useFleetHealthMap } from '../hooks/useVehicleHealth';
+import { useLanguage } from '../i18n/LanguageContext';
+import { isBookingVehicleHardBlocked, resolveBookingVehiclePreflight } from '../lib/booking-vehicle-preflight';
 import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
 import {
   PageHeader,
@@ -93,6 +95,9 @@ export function BookingsView({
   onConsumeInitialDetailBookingId,
 }: BookingsViewProps) {
   const { orgId } = useRentalOrg();
+  const { locale, t } = useLanguage();
+  const activeLocale = locale === 'de' ? 'de' : 'en';
+  const { map: fleetHealthMap, loading: fleetHealthLoading } = useFleetHealthMap(orgId);
   const systemDark = useSyncExternalStore(
     (onStoreChange) => {
       const el = document.documentElement;
@@ -248,15 +253,65 @@ export function BookingsView({
   // Vehicle options come from the shared FleetContext (same source as FleetView /
   // NewBookingView). This keeps plate + MMY consistent across the app.
   const vehicleOptions = useMemo(
-    () => fleetVehicles.map(v => ({
-      id: v.id,
-      name: buildMMY({ make: v.make, model: v.model, year: v.year }),
-      plate: v.license || '',
-      make: v.make || '',
-      model: v.model || '',
-      year: v.year || null,
-    })),
-    [fleetVehicles],
+    () => {
+      const editPickupIso = editingBooking
+        ? (() => {
+            const startDate = editForm.startDate || editingBooking.startDate;
+            const startTime = editForm.startTime || editingBooking.startTime || '10:00';
+            if (!startDate) return null;
+            const parsed = new Date(`${startDate}T${startTime}:00`);
+            return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+          })()
+        : null;
+      const editReturnIso = editingBooking
+        ? (() => {
+            const endDate = editForm.endDate || editingBooking.endDate;
+            const endTime = editForm.endTime || editingBooking.endTime || '10:00';
+            if (!endDate) return null;
+            const parsed = new Date(`${endDate}T${endTime}:00`);
+            return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+          })()
+        : null;
+
+      return fleetVehicles.map((v) => {
+        const health = fleetHealthMap.get(v.id) ?? null;
+        const isCurrentVehicle = editingBooking?.vehicleId === v.id;
+        const preflight = resolveBookingVehiclePreflight(v, health, true, false, {
+          locale: activeLocale,
+          bookingRows: apiBookings,
+          pickupAt: editPickupIso,
+          returnAt: editReturnIso,
+          excludeBookingId: editingBooking?.id ?? null,
+          healthLoading: fleetHealthLoading,
+          healthRecordAbsent: !fleetHealthLoading && !fleetHealthMap.has(v.id),
+          allowHealthBypass: isCurrentVehicle,
+        });
+        return {
+          id: v.id,
+          name: buildMMY({ make: v.make, model: v.model, year: v.year }),
+          plate: v.license || '',
+          make: v.make || '',
+          model: v.model || '',
+          year: v.year || null,
+          hardBlocked: !preflight.isSelectable,
+          healthPending: preflight.healthPending,
+          pendingReason: preflight.pendingReason,
+          isCurrentVehicle,
+        };
+      });
+    },
+    [
+      fleetVehicles,
+      fleetHealthMap,
+      fleetHealthLoading,
+      apiBookings,
+      editingBooking,
+      editForm.startDate,
+      editForm.startTime,
+      editForm.endDate,
+      editForm.endTime,
+      activeLocale,
+    ],
   );
 
   const customerOptions = useMemo(
@@ -567,6 +622,30 @@ export function BookingsView({
         `${v.make ?? ''} ${v.model}`.trim() === cleanEdit.vehicle ||
         v.license === cleanEdit.plate,
     );
+    const vehicleUnchanged = !selectedVehicle || selectedVehicle.id === booking.vehicleId;
+    const targetVehicle = selectedVehicle ?? fleetVehicles.find((v) => v.id === booking.vehicleId) ?? null;
+    if (
+      targetVehicle &&
+      isBookingVehicleHardBlocked(
+        targetVehicle,
+        fleetHealthMap.get(targetVehicle.id) ?? null,
+        true,
+        false,
+        {
+          locale: activeLocale,
+          bookingRows: apiBookings,
+          pickupAt: startIso ?? null,
+          returnAt: endIso ?? null,
+          excludeBookingId: booking.id,
+          healthLoading: fleetHealthLoading,
+          healthRecordAbsent: !fleetHealthLoading && !fleetHealthMap.has(targetVehicle.id),
+          allowHealthBypass: vehicleUnchanged,
+        },
+      )
+    ) {
+      toast.error(t('booking.eligibility.vehicleNotAvailable'));
+      return;
+    }
     if (selectedVehicle && selectedVehicle.id !== booking.vehicleId) {
       patch.vehicle = { connect: { id: selectedVehicle.id } };
     }
@@ -735,16 +814,48 @@ export function BookingsView({
 
   const saveEdit = async () => {
     if (!editingBooking || !orgId) return;
+    const selectedFleetVehicle = fleetVehicles.find(
+      (v) =>
+        buildMMY({ make: v.make, model: v.model, year: v.year }) === editForm.vehicle ||
+        v.license === editForm.plate,
+    );
+    const startIso = editForm.startDate && editForm.startTime
+      ? new Date(`${editForm.startDate}T${editForm.startTime}:00`).toISOString()
+      : null;
+    const endIso = editForm.endDate && editForm.endTime
+      ? new Date(`${editForm.endDate}T${editForm.endTime}:00`).toISOString()
+      : null;
+    const vehicleUnchanged =
+      !selectedFleetVehicle || selectedFleetVehicle.id === editingBooking.vehicleId;
+    const targetVehicle =
+      selectedFleetVehicle ??
+      fleetVehicles.find((v) => v.id === editingBooking.vehicleId) ??
+      null;
+    if (
+      targetVehicle &&
+      isBookingVehicleHardBlocked(
+        targetVehicle,
+        fleetHealthMap.get(targetVehicle.id) ?? null,
+        true,
+        false,
+        {
+          locale: activeLocale,
+          bookingRows: apiBookings,
+          pickupAt: startIso,
+          returnAt: endIso,
+          excludeBookingId: editingBooking.id,
+          healthLoading: fleetHealthLoading,
+          healthRecordAbsent: !fleetHealthLoading && !fleetHealthMap.has(targetVehicle.id),
+          allowHealthBypass: vehicleUnchanged,
+        },
+      )
+    ) {
+      toast.error(t('booking.eligibility.vehicleNotAvailable'));
+      return;
+    }
     const updatedBooking = { ...editingBooking, ...editForm };
     try {
-      const startIso = editForm.startDate && editForm.startTime
-        ? new Date(`${editForm.startDate}T${editForm.startTime}:00`).toISOString()
-        : undefined;
-      const endIso = editForm.endDate && editForm.endTime
-        ? new Date(`${editForm.endDate}T${editForm.endTime}:00`).toISOString()
-        : undefined;
-
-      const patch: any = {};
+      const patch: Record<string, unknown> = {};
       if (startIso) patch.startDate = startIso;
       if (endIso) patch.endDate = endIso;
       if (editForm.notes !== undefined) patch.notes = editForm.notes;
@@ -1655,8 +1766,15 @@ export function BookingsView({
                           <option value="">Keine Fahrzeuge verfügbar</option>
                         ) : (
                           vehicleOptions.map((v) => (
-                            <option key={v.id} value={v.name}>
+                            <option
+                              key={v.id}
+                              value={v.name}
+                              disabled={v.hardBlocked && !v.isCurrentVehicle}
+                            >
                               {v.name} · {v.plate}
+                              {v.hardBlocked && !v.isCurrentVehicle
+                                ? ` (${v.healthPending && v.pendingReason ? v.pendingReason : t('booking.eligibility.notAvailable')})`
+                                : ''}
                             </option>
                           ))
                         )}

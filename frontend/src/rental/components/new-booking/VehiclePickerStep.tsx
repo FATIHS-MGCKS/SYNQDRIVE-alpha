@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { VehicleHealthResponse } from '../../../lib/api';
+import type { BookingUiRow } from '../../components/bookings/bookingTypes';
 import { SectionHeader } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import type { VehicleData } from '../../data/vehicles';
@@ -39,10 +40,15 @@ export interface VehiclePickerStepProps {
   stationOptions: VehiclePickerStationOption[];
   fuelTypes: string[];
   pickerHealthMap: Map<string, VehicleHealthResponse | null>;
+  pickerHealthLoading?: boolean;
   catalogLoading: boolean;
   vehicleHasTariff: (vehicleId: string) => boolean;
   getDailyRateLabel: (vehicleId: string) => string | null;
   isDarkMode: boolean;
+  bookingRows?: BookingUiRow[];
+  pickupAt?: string | null;
+  returnAt?: string | null;
+  locale?: 'de' | 'en';
 }
 
 const STATUS_TABS = [
@@ -108,6 +114,12 @@ function VehiclePickerCard({
   vehicleHasTariff,
   isDarkMode,
   onSelect,
+  bookingRows,
+  pickupAt,
+  returnAt,
+  locale = 'de',
+  pickerHealthLoading = false,
+  healthRecordAbsent = false,
 }: {
   vehicle: VehicleData;
   selected: boolean;
@@ -117,12 +129,26 @@ function VehiclePickerCard({
   vehicleHasTariff: (vehicleId: string) => boolean;
   isDarkMode: boolean;
   onSelect: () => void;
+  bookingRows?: BookingUiRow[];
+  pickupAt?: string | null;
+  returnAt?: string | null;
+  locale?: 'de' | 'en';
+  pickerHealthLoading?: boolean;
+  healthRecordAbsent?: boolean;
 }) {
   const preflight = resolveBookingVehiclePreflight(
     vehicle,
     health,
     vehicleHasTariff(vehicle.id),
     catalogLoading,
+    {
+      locale,
+      bookingRows,
+      pickupAt,
+      returnAt,
+      healthLoading: pickerHealthLoading,
+      healthRecordAbsent,
+    },
   );
   const operationalStatus = selectOperationalStatus(vehicle);
   const brandKey = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
@@ -141,7 +167,8 @@ function VehiclePickerCard({
       }}
       className={cn(
         'w-full min-w-0 max-w-full rounded-xl border px-3 py-2.5 text-left transition-all duration-200',
-        !preflight.isSelectable && 'cursor-not-allowed border-border bg-muted/25 opacity-70 grayscale',
+        !preflight.isSelectable && !preflight.healthPending && 'cursor-not-allowed border-border bg-muted/25 opacity-70 grayscale',
+        !preflight.isSelectable && preflight.healthPending && 'cursor-wait border-border bg-muted/20 opacity-80',
         preflight.isSelectable && preflight.muted && !selected && 'border-border bg-muted/35 hover:border-border hover:bg-muted/50',
         preflight.isSelectable && !preflight.muted && !selected && 'border-border bg-muted/40 hover:border-border hover:surface-premium',
         selected && preflight.isSelectable && 'border-[color:var(--brand)] bg-[color:var(--brand-soft)] ring-1 ring-[color:var(--brand-glow)]',
@@ -221,6 +248,13 @@ function VehiclePickerCard({
               </span>
             ) : null}
 
+            {preflight.healthPending && preflight.pendingReason ? (
+              <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                <Icon name="loader-2" className="h-3 w-3 shrink-0 animate-spin" />
+                <span className="truncate">{preflight.pendingReason}</span>
+              </span>
+            ) : null}
+
             {preflight.rentalBlocked ? (
               <RentalHealthBadge health={health} size="sm" showBlockingLabel />
             ) : preflight.healthWarningOnly ? (
@@ -289,10 +323,15 @@ export function VehiclePickerStep({
   stationOptions,
   fuelTypes,
   pickerHealthMap,
+  pickerHealthLoading = false,
   catalogLoading,
   vehicleHasTariff,
   getDailyRateLabel,
   isDarkMode,
+  bookingRows,
+  pickupAt,
+  returnAt,
+  locale = 'de',
 }: VehiclePickerStepProps) {
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
 
@@ -455,6 +494,12 @@ export function VehiclePickerStep({
             catalogLoading={catalogLoading}
             vehicleHasTariff={vehicleHasTariff}
             isDarkMode={isDarkMode}
+            bookingRows={bookingRows}
+            pickupAt={pickupAt}
+            returnAt={returnAt}
+            locale={locale}
+            pickerHealthLoading={pickerHealthLoading}
+            healthRecordAbsent={!pickerHealthLoading && !pickerHealthMap.has(vehicle.id)}
             onSelect={() => onSelectVehicle(vehicle)}
           />
         ))}

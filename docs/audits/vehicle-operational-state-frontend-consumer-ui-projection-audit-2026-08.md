@@ -147,7 +147,7 @@ Representative inventory (~35+ touchpoints). Risk: P0 = incorrect business decis
 | 10 | Vehicle detail OBD | vehicle header | `ObdUnpluggedBadge` | Org Admin | Unplugged | OBD plug index | YES (device) | Separate from telemetry age | Good separation | — | Done |
 | 11 | Vehicle Health (fleet) | `?view=fleet` condition | `fleet-health-control-center.ts` | Org Admin | Good/Warning/Critical bands | Rental health API | YES (health) | `data_stale` separate | Does not use telemetry offline for severity | — | Done |
 | 12 | Vehicle Health (detail) | `?view=health-errors` | `HealthVehicleDetailPanel.tsx` | Org Admin | Module states + `data_stale` | Rental health per module | YES | — | Stale ≠ mechanical defect | — | Done |
-| 13 | Booking picker | `?view=new-booking` | `booking-vehicle-preflight.ts` | Org Admin | Hard-block offline/rental_blocked | `isVehicleOffline` + rental health | PARTIAL | Ignores P0.2 `NEEDS_VERIFICATION` | Auth gap not blocked at picker | P0 | P1.5 |
+| 13 | Booking picker | `?view=new-booking` | `booking-vehicle-preflight.ts` | Org Admin | Hard-block offline/rental_blocked | P0.2 `operationalAvailability` + rental health | YES | P1.6 cutover | Auth gap blocked at picker when NEEDS_VERIFICATION | P0 | **P1.6 DONE** |
 | 14 | Master Connected Vehicles | `/master?view=vehicles` | `ConnectedVehiclesListView.tsx` | Platform | `telemetryFreshness`, `attention.primaryReason` | Admin operational APIs | YES | — | Correct for platform ops | — | P1.7 |
 | 15 | Master org list | `/master?view=organizations` | `OrganizationsView.tsx` | Platform | `attention`, `connectivityHealth` | Admin org operational API | YES | — | Platform vs tenant separated | — | Done |
 | 16 | Operator quick view | `/operator` | `operatorStatus.ts` | Worker | Business badges only | fleet-map + health | PARTIAL | No connectivity | By design omission | P3 | Optional |
@@ -985,6 +985,138 @@ Unchanged — finance/booking slice only.
 | P1.6 READY | **YES** |
 
 **STOP.** P1.6 not started.
+
+---
+
+## U. P1.6 — Booking / Rental Eligibility Cutover
+
+| Field | Value |
+|-------|-------|
+| **Branch** | `cursor/vehicle-operational-state-p1-6-booking-eligibility-90ec` |
+| **Baseline main** | `95e28f2b` (P1.5 PR #1329 merged) |
+
+### Old eligibility path
+
+```
+VehiclePickerStep / NewBookingView
+  → resolveBookingVehiclePreflight()
+  → isVehicleOffline(vehicle)           # resolveTelemetryFreshness 48h
+  → rental_blocked / isRentalBlockedUnverified
+  → business status (UNKNOWN unreliable hard block; MAINTENANCE hard block; RENTED/RESERVED caution)
+  → tariff catalog
+```
+
+`onlineStatus`, `lastSignal`, `signalAgeMs`, and `healthStatus` on `VehicleData` were **not** used directly, but `isVehicleOffline()` acted as a parallel operational state machine.
+
+Dashboard `rentalReadiness` was **not** on the booking path.
+
+### New eligibility architecture
+
+```
+booking-vehicle-eligibility.ts
+  readBookingOperationalAvailability()
+  evaluateBookingOperationalGate()      # P0.2 only
+  evaluateBookingVehicleEligibility()     # domains A–F
+booking-vehicle-preflight.ts
+  resolveBookingVehiclePreflight()        # presentation adapter
+  isBookingVehicleHardBlocked()
+```
+
+### Operational gate semantics
+
+| P0.2 state | Booking operational gate |
+|------------|--------------------------|
+| AVAILABLE | PASS |
+| NEEDS_VERIFICATION | FAIL |
+| UNAVAILABLE | FAIL |
+| UNKNOWN | FAIL |
+| absent | FAIL |
+
+Connectivity (`STANDBY`, `SOFT_OFFLINE`, `OFFLINE`, `AUTHORIZATION_REQUIRED`, `DEVICE_UNPLUGGED`) does **not** override P0.2 when AVAILABLE.
+
+### Booking-window semantics
+
+- Future interval conflicts: `evaluateBookingWindowConflict()` / calendar `vehicleBlockedInfo` — independent domain with precedence #1.
+- Current `ACTIVE_RENTED` / `RESERVED`: caution in picker when otherwise eligible; not equated to Dashboard Ready-to-Rent.
+- `MAINTENANCE`: **hard business block** (aligned with vehicle detail + `isVehicleOperationallyBlocked()`), not caution-only.
+- `ACTIVE_RENTED` + non-overlapping future window → selectable with caution.
+
+### Denial reason precedence
+
+1. booking conflict → 2. business block → 3. rental health → 4. operational UNAVAILABLE → 5. NEEDS_VERIFICATION → 6. UNKNOWN/absent → 7. no tariff → 8. status unreliable → 9. rental rules
+
+Operational denials use P1.2 projection labels (`buildFleetVehicleUiProjection`), not generic “Offline”.
+
+### Create / edit / preflight coverage
+
+| Surface | Status |
+|---------|--------|
+| `VehiclePickerStep` / `NewBookingView` | Canonical adapter + `hasBookingWindowConflict` via `orgBookingRows` |
+| Submit step gate (`canProceed` case 1) | `isBookingVehicleHardBlocked` with booking window + health map |
+| `BookingsView` edit modal + inline save | Fleet health map + booking window + `allowHealthBypass` for unchanged vehicle |
+| `OperatorBookingFormSheet` | Documented out of scope (no fleet-map operational fields) |
+
+### Booking-window authority
+
+`hasBookingWindowConflict()` delegates to existing `bookingsForVehicleInRange()` / `overlapsRange()` in `bookingUtils.ts` (pending/confirmed/active blockers only). No duplicate overlap algorithm.
+
+### Rental-health semantics
+
+| State | Eligibility |
+|-------|-------------|
+| `healthLoading` | **Pending** — not selectable (`healthPending`); `booking.eligibility.healthLoading`; not treated as eligible or as `healthNotLoaded` |
+| `healthRecordAbsent` (fleet loaded, vehicle missing from map) | Blocked — `booking.eligibility.healthNotLoaded` |
+| `health` with `rental_blocked` / unverified | Blocked |
+| `allowHealthBypass` (unchanged edit vehicle only) | Health loading + hard blocks skipped; operational + booking-window + business + tariff + rules still apply |
+| `health == null` without `healthRecordAbsent` | Health gate not evaluated (caller must set absent flag when fleet map is authoritative) |
+
+**Tariff vs health loading:** `catalogLoading` remains fail-open (non-safety pricing UX). `healthLoading` is fail-closed for candidate selection (rental-safety race).
+
+### Maintenance policy
+
+`VEHICLE_OPERATIONAL_STATUS.MAINTENANCE` is a **hard business block** (aligned with `vehicleDetail.statusModal.maintenance` “not bookable” and `isVehicleOperationallyBlocked()`), not caution-only.
+
+### Backend vs frontend authority
+
+- **UI preflight:** advisory eligibility for picker/disable reasons.
+- **Backend:** `BookingsService` authoritative for conflicts, business rules, rental health at create/update.
+
+### Cross-surface consistency (current-time scenario)
+
+| P0.2 | Fleet badge | Dashboard ready | Booking gate |
+|------|-------------|-----------------|--------------|
+| AVAILABLE + standby | available | ready if business AVAILABLE | PASS |
+| NEEDS_VERIFICATION | needs verification | not ready | FAIL |
+
+### Tests
+
+| Suite | Result |
+|-------|--------|
+| P1.6 focused | **26/26** |
+| booking-window-conflict | **3/3** |
+| booking-preflight integration | **22/22** |
+| booking-vehicle-preflight | **9/9** |
+| P1.5 regression | dashboard bundle PASS |
+| P1.4 regression | **33/33** |
+| P1.3 regression | **45/45** |
+| P1.2 regression | **67/67** |
+| P1.1 regression | **29/29** |
+| Build/typecheck | **PASS** |
+
+### P1.6 gates
+
+| Gate | Status |
+|------|--------|
+| P1.6 BOOKING ELIGIBILITY CUTOVER | **PASS** |
+| P0.2 OPERATIONAL GATE AUTHORITY | **PASS** |
+| BOOKING WINDOW / OPERATIONAL SEPARATION | **PASS** |
+| NO CLIENT TELEMETRY ELIGIBILITY STATE MACHINE | **PASS** |
+| CREATE / EDIT / PREFLIGHT CONSISTENCY | **PASS** |
+| CROSS-SURFACE CONSISTENCY | **PASS** |
+| P1.1–P1.5 REGRESSION | **PASS** |
+| P1.7 READY | **YES** |
+
+**STOP.** P1.7 not started.
 
 ---
 
