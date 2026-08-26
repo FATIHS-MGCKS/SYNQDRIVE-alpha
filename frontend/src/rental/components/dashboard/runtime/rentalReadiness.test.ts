@@ -197,4 +197,42 @@ describe('deriveIsReadyForRenting', () => {
     });
     expect(ready).toBe(false);
   });
+
+  it('canonical connectivity attention never blocks readiness when P0.2 AVAILABLE', () => {
+    const ready = deriveIsReadyForRenting({
+      operationalBlock: {
+        canonicalStatus: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+        backendDataQualityState: VEHICLE_DATA_QUALITY_STATE.RELIABLE,
+        isReliable: true,
+      },
+      operationalStatus: 'available',
+      operationalAvailability: OPERATIONAL_AVAILABILITY_STATE.AVAILABLE,
+      cleaningStatus: 'Clean',
+      blockLevel: 'none',
+      reasons: [
+        createRuntimeReason({
+          category: 'telemetry',
+          severity: 'critical',
+          title: 'Device unplugged',
+          source: 'canonical:connectivity:DEVICE_UNPLUGGED',
+          blocking: true,
+          preventsReady: false,
+        }),
+      ],
+      telemetryState: 'offline',
+      nextBooking: null,
+    });
+    expect(ready).toBe(true);
+    expect(
+      reasonBlocksReadyForRenting(
+        createRuntimeReason({
+          source: 'canonical:connectivity:DEVICE_UNPLUGGED',
+          category: 'telemetry',
+          severity: 'critical',
+          title: 'x',
+          blocking: true,
+        }),
+      ),
+    ).toBe(false);
+  });
 });

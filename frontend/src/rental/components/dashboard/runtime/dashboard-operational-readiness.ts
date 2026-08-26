@@ -68,21 +68,13 @@ export function deriveDashboardTelemetryState(vehicle: VehicleData): TelemetryCo
   return mapCanonicalTelemetryState(vehicle.connectivityRuntime?.telemetryState);
 }
 
+/** Canonical dashboard critical attention — attentionState is authoritative; overallState alone never escalates. */
 export function isCanonicalDashboardCriticalAttention(
   runtime: VehicleConnectivityRuntimeState | undefined,
-  ui: VehicleOperationalUiProjection,
+  _ui?: VehicleOperationalUiProjection,
 ): boolean {
   if (!runtime) return false;
-  if (runtime.attentionState === 'CRITICAL' || runtime.attentionState === 'ACTION_REQUIRED') {
-    return true;
-  }
-  const overall = ui.connectivity.overallState.presentation?.state;
-  return (
-    overall === 'DEVICE_UNPLUGGED' ||
-    overall === 'INTEGRATION_ERROR' ||
-    overall === 'AUTHORIZATION_REQUIRED' ||
-    overall === 'OFFLINE'
-  );
+  return runtime.attentionState === 'CRITICAL' || runtime.attentionState === 'ACTION_REQUIRED';
 }
 
 export function isCanonicalDashboardWatchAttention(
@@ -161,10 +153,6 @@ export function addCanonicalConnectivityAttentionReasons(input: {
 
   if (isCanonicalDashboardCriticalAttention(runtime, ui)) {
     const title = overall?.label ?? primary ?? (de ? 'Kritischer Hinweis' : 'Critical attention');
-    const blocking =
-      overall?.state === 'DEVICE_UNPLUGGED' ||
-      overall?.state === 'INTEGRATION_ERROR' ||
-      runtime.attentionState === 'CRITICAL';
     input.target.push(
       createRuntimeReason({
         category: overall?.state === 'AUTHORIZATION_REQUIRED' ? 'operational' : 'telemetry',
@@ -172,7 +160,7 @@ export function addCanonicalConnectivityAttentionReasons(input: {
         title,
         description: primary ?? undefined,
         source: `canonical:connectivity:${overall?.state ?? runtime.attentionState}`,
-        blocking,
+        blocking: false,
         preventsReady: false,
       }),
     );

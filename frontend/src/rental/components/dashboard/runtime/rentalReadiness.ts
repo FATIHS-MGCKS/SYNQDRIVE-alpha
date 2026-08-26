@@ -54,6 +54,8 @@ export function isBackendOperationalDataQualityReliable(
 
 export function reasonBlocksReadyForRenting(reason: RuntimeReason): boolean {
   if (reason.source === RENTAL_READINESS_NEXT_BOOKING_INFO_SOURCE) return false;
+  // Canonical connectivity attention is informational for Dashboard readiness — P0.2 owns availability.
+  if (reason.source?.startsWith('canonical:connectivity:')) return false;
   if (reason.preventsReady === true) return true;
   if (reason.blocking === true) return true;
   if (reason.severity === 'critical' && READINESS_BLOCKING_CATEGORIES.has(reason.category)) {

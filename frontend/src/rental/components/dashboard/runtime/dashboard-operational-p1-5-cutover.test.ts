@@ -407,8 +407,8 @@ describe('P1.5 dashboard count-level regression', () => {
 
   it('asserts exact Ready to Rent and Active Rented counts', () => {
     const model = mixedFleet();
-    expect(readyCount(model)).toBe(2);
-    expect(model.slices['ready-to-rent'].rows.length).toBe(2);
+    expect(readyCount(model)).toBe(3);
+    expect(model.slices['ready-to-rent'].rows.length).toBe(3);
     expect(model.slices['active-rented'].count).toBe(1);
     expect(model.slices['blocked-maintenance'].count).toBe(1);
     expect(model.slices['critical-alerts'].count).toBe(2);
@@ -497,7 +497,7 @@ describe('P1.5 dashboard count-level regression', () => {
     const model = mixedFleet();
     const slice = model.slices['ready-to-rent'];
     expect(slice.count).toBe(slice.rows.length);
-    expect(slice.rows.map((row) => row.vehicleId).sort()).toEqual(['r1', 'r2']);
+    expect(slice.rows.map((row) => row.vehicleId).sort()).toEqual(['crit1', 'r1', 'r2']);
   });
 });
 
@@ -549,5 +549,282 @@ describe('P1.5 canonical attention helpers', () => {
     const vehicle = buildReadyVehicle({ connectivityRuntime: runtime });
     const ui = buildFleetVehicleUiProjection(vehicle, { locale: 'de' });
     expect(isCanonicalDashboardCriticalAttention(runtime, ui)).toBe(true);
+  });
+
+  it('does not escalate overallState OFFLINE without canonical critical attention', () => {
+    const runtime = canonicalConnectivityRuntime({
+      attentionState: 'WATCH',
+      overallState: 'OFFLINE',
+      telemetryState: 'offline',
+    });
+    const vehicle = buildReadyVehicle({ connectivityRuntime: runtime });
+    const ui = buildFleetVehicleUiProjection(vehicle, { locale: 'de' });
+    expect(isCanonicalDashboardCriticalAttention(runtime, ui)).toBe(false);
+  });
+});
+
+describe('P1.5 connectivity vs P0.2 readiness authority (no second state machine)', () => {
+  function stateFor(overrides: Parameters<typeof buildReadyVehicle>[0] = {}) {
+    const [state] = buildVehicleRuntimeStates({
+      fleetVehicles: [buildReadyVehicle(overrides)],
+      now: NOW,
+    });
+    return state;
+  }
+
+  it('A. DEVICE_UNPLUGGED + P0.2 AVAILABLE + CRITICAL => READY + critical alert', () => {
+    const vehicle = buildReadyVehicle({
+      id: 'a',
+      operationalAvailability: canonicalAvailability('AVAILABLE'),
+      connectivityRuntime: canonicalConnectivityRuntime({
+        vehicleId: 'a',
+        overallState: 'DEVICE_UNPLUGGED',
+        attentionState: 'CRITICAL',
+      }),
+    });
+    const model = runtimeModelFor([vehicle]);
+    const state = model.vehicleStates[0];
+    expect(state?.isReadyToRent).toBe(true);
+    expect(model.slices['ready-to-rent'].rows.map((r) => r.vehicleId)).toContain('a');
+    expect(model.slices['critical-alerts'].rows.map((r) => r.vehicleId)).toContain('a');
+  });
+
+  it('B. DEVICE_UNPLUGGED + P0.2 UNAVAILABLE => NOT READY (P0.2 authority)', () => {
+    const state = stateFor({
+      operationalAvailability: canonicalAvailability('UNAVAILABLE'),
+      connectivityRuntime: canonicalConnectivityRuntime({
+        overallState: 'DEVICE_UNPLUGGED',
+        attentionState: 'CRITICAL',
+      }),
+    });
+    expect(state?.isReadyToRent).toBe(false);
+    expect(
+      state?.notReadyReasons.some((r) => r.source === 'canonical:operational-availability:unavailable'),
+    ).toBe(true);
+  });
+
+  it('C. INTEGRATION_ERROR + P0.2 AVAILABLE => READY + attention may exist', () => {
+    const state = stateFor({
+      operationalAvailability: canonicalAvailability('AVAILABLE'),
+      connectivityRuntime: canonicalConnectivityRuntime({
+        overallState: 'INTEGRATION_ERROR',
+        attentionState: 'ACTION_REQUIRED',
+      }),
+    });
+    expect(state?.isReadyToRent).toBe(true);
+    expect(state?.criticalReasons.some((r) => r.source?.startsWith('canonical:connectivity:'))).toBe(true);
+  });
+
+  it('D. INTEGRATION_ERROR + P0.2 NEEDS_VERIFICATION => NOT READY', () => {
+    const state = stateFor({
+      operationalAvailability: canonicalAvailability('NEEDS_VERIFICATION'),
+      connectivityRuntime: canonicalConnectivityRuntime({
+        overallState: 'INTEGRATION_ERROR',
+        attentionState: 'ACTION_REQUIRED',
+      }),
+    });
+    expect(state?.isReadyToRent).toBe(false);
+    expect(
+      state?.notReadyReasons.some((r) => r.source === 'canonical:operational-availability:needs-verification'),
+    ).toBe(true);
+  });
+
+  it('E. AUTHORIZATION_REQUIRED + P0.2 AVAILABLE => READY', () => {
+    const state = stateFor({
+      operationalAvailability: canonicalAvailability('AVAILABLE'),
+      connectivityRuntime: canonicalConnectivityRuntime({
+        overallState: 'AUTHORIZATION_REQUIRED',
+        providerLinkState: 'REAUTH_REQUIRED',
+        attentionState: 'ACTION_REQUIRED',
+      }),
+    });
+    expect(state?.isReadyToRent).toBe(true);
+    expect(state?.isBlocked).toBe(false);
+  });
+
+  it('F. OFFLINE + P0.2 AVAILABLE => READY', () => {
+    const state = stateFor({
+      operationalAvailability: canonicalAvailability('AVAILABLE'),
+      connectivityRuntime: canonicalConnectivityRuntime({
+        overallState: 'OFFLINE',
+        telemetryState: 'offline',
+        attentionState: 'NONE',
+      }),
+    });
+    expect(state?.isReadyToRent).toBe(true);
+  });
+
+  it('G. OFFLINE + P0.2 NEEDS_VERIFICATION => NOT READY', () => {
+    const state = stateFor({
+      operationalAvailability: canonicalAvailability('NEEDS_VERIFICATION'),
+      connectivityRuntime: canonicalConnectivityRuntime({
+        overallState: 'OFFLINE',
+        telemetryState: 'offline',
+        attentionState: 'WATCH',
+      }),
+    });
+    expect(state?.isReadyToRent).toBe(false);
+  });
+});
+
+describe('P1.5 canonical attention severity (dashboard alerts)', () => {
+  function criticalAlertIds(vehicle: ReturnType<typeof buildReadyVehicle>) {
+    return runtimeModelFor([vehicle]).slices['critical-alerts'].rows.map((r) => r.vehicleId);
+  }
+
+  function vehicleState(vehicle: ReturnType<typeof buildReadyVehicle>) {
+    return runtimeModelFor([vehicle]).vehicleStates[0];
+  }
+
+  it('1. AUTHORIZATION_REQUIRED + ACTION_REQUIRED => critical alert', () => {
+    const v = buildReadyVehicle({
+      id: 'att-1',
+      connectivityRuntime: canonicalConnectivityRuntime({
+        vehicleId: 'att-1',
+        overallState: 'AUTHORIZATION_REQUIRED',
+        attentionState: 'ACTION_REQUIRED',
+      }),
+    });
+    expect(criticalAlertIds(v)).toContain('att-1');
+  });
+
+  it('2. AUTHORIZATION_REQUIRED + WATCH => warning, NOT critical', () => {
+    const v = buildReadyVehicle({
+      id: 'att-2',
+      connectivityRuntime: canonicalConnectivityRuntime({
+        vehicleId: 'att-2',
+        overallState: 'AUTHORIZATION_REQUIRED',
+        attentionState: 'WATCH',
+      }),
+    });
+    expect(criticalAlertIds(v)).not.toContain('att-2');
+    expect(vehicleState(v)?.warningReasons.some((r) => r.source?.startsWith('canonical:connectivity:watch'))).toBe(
+      true,
+    );
+  });
+
+  it('3. AUTHORIZATION_REQUIRED + NONE => NOT critical from overallState alone', () => {
+    const v = buildReadyVehicle({
+      id: 'att-3',
+      connectivityRuntime: canonicalConnectivityRuntime({
+        vehicleId: 'att-3',
+        overallState: 'AUTHORIZATION_REQUIRED',
+        attentionState: 'NONE',
+      }),
+    });
+    expect(criticalAlertIds(v)).not.toContain('att-3');
+    expect(isCanonicalDashboardCriticalAttention(v.connectivityRuntime)).toBe(false);
+  });
+
+  it('4. OFFLINE + WATCH => warning, not critical', () => {
+    const v = buildReadyVehicle({
+      id: 'att-4',
+      connectivityRuntime: canonicalConnectivityRuntime({
+        vehicleId: 'att-4',
+        overallState: 'OFFLINE',
+        telemetryState: 'offline',
+        attentionState: 'WATCH',
+      }),
+    });
+    expect(criticalAlertIds(v)).not.toContain('att-4');
+    expect(vehicleState(v)?.warningReasons.length).toBeGreaterThan(0);
+  });
+
+  it('5. OFFLINE + CRITICAL => critical', () => {
+    const v = buildReadyVehicle({
+      id: 'att-5',
+      connectivityRuntime: canonicalConnectivityRuntime({
+        vehicleId: 'att-5',
+        overallState: 'OFFLINE',
+        telemetryState: 'offline',
+        attentionState: 'CRITICAL',
+      }),
+    });
+    expect(criticalAlertIds(v)).toContain('att-5');
+  });
+
+  it('6. DEVICE_UNPLUGGED + CRITICAL => critical', () => {
+    const v = buildReadyVehicle({
+      id: 'att-6',
+      connectivityRuntime: canonicalConnectivityRuntime({
+        vehicleId: 'att-6',
+        overallState: 'DEVICE_UNPLUGGED',
+        attentionState: 'CRITICAL',
+      }),
+    });
+    expect(criticalAlertIds(v)).toContain('att-6');
+  });
+
+  it('7. DEVICE_UNPLUGGED + WATCH => warning per canonical attention, not enum escalation', () => {
+    const v = buildReadyVehicle({
+      id: 'att-7',
+      connectivityRuntime: canonicalConnectivityRuntime({
+        vehicleId: 'att-7',
+        overallState: 'DEVICE_UNPLUGGED',
+        attentionState: 'WATCH',
+      }),
+    });
+    expect(criticalAlertIds(v)).not.toContain('att-7');
+    expect(isCanonicalDashboardCriticalAttention(v.connectivityRuntime)).toBe(false);
+    expect(vehicleState(v)?.warningReasons.some((r) => r.source?.startsWith('canonical:connectivity:watch'))).toBe(
+      true,
+    );
+  });
+
+  it('8. INTEGRATION_ERROR + ACTION_REQUIRED => critical', () => {
+    const v = buildReadyVehicle({
+      id: 'att-8',
+      connectivityRuntime: canonicalConnectivityRuntime({
+        vehicleId: 'att-8',
+        overallState: 'INTEGRATION_ERROR',
+        attentionState: 'ACTION_REQUIRED',
+      }),
+    });
+    expect(criticalAlertIds(v)).toContain('att-8');
+  });
+});
+
+describe('P1.5 blocked/maintenance separation regression', () => {
+  it('connectivity attention states do not enter blocked-maintenance', () => {
+    const model = runtimeModelFor([
+      buildReadyVehicle({
+        id: 'auth',
+        operationalAvailability: canonicalAvailability('AVAILABLE'),
+        connectivityRuntime: canonicalConnectivityRuntime({
+          vehicleId: 'auth',
+          overallState: 'AUTHORIZATION_REQUIRED',
+          attentionState: 'ACTION_REQUIRED',
+        }),
+      }),
+      buildReadyVehicle({
+        id: 'unplug',
+        operationalAvailability: canonicalAvailability('AVAILABLE'),
+        connectivityRuntime: canonicalConnectivityRuntime({
+          vehicleId: 'unplug',
+          overallState: 'DEVICE_UNPLUGGED',
+          attentionState: 'CRITICAL',
+        }),
+      }),
+      buildReadyVehicle({
+        id: 'integration',
+        operationalAvailability: canonicalAvailability('AVAILABLE'),
+        connectivityRuntime: canonicalConnectivityRuntime({
+          vehicleId: 'integration',
+          overallState: 'INTEGRATION_ERROR',
+          attentionState: 'ACTION_REQUIRED',
+        }),
+      }),
+      buildReadyVehicle({
+        id: 'verify',
+        operationalAvailability: canonicalAvailability('NEEDS_VERIFICATION'),
+        connectivityRuntime: canonicalConnectivityRuntime({
+          vehicleId: 'verify',
+          overallState: 'OFFLINE',
+          attentionState: 'WATCH',
+        }),
+      }),
+    ]);
+    const blocked = model.slices['blocked-maintenance'].rows.map((r) => r.vehicleId);
+    expect(blocked).toEqual([]);
   });
 });
