@@ -588,8 +588,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         rentalBlockingServiceCases,
         now: dashboardNow,
         dueSoonMinutes: runtimeDueSoonMinutes,
-        telemetrySoftOfflineHours: 24,
-        telemetryHardOfflineHours: 48,
       }),
     [
       locale,

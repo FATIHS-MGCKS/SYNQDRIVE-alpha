@@ -45,8 +45,6 @@ export interface BuildDashboardRuntimeModelInput {
   rentalBlockingServiceCases?: Map<string, { id: string; title: string }>;
   now?: Date;
   dueSoonMinutes?: number;
-  telemetrySoftOfflineHours?: number;
-  telemetryHardOfflineHours?: number;
   generatedAt?: string;
 }
 
@@ -643,16 +641,23 @@ function hasBlockingReason(state: VehicleRuntimeState): boolean {
 }
 
 function buildBlockedMaintenanceSlice(states: VehicleRuntimeState[], locale: string): DashboardSlice {
-  // Blocked & Maintenance counts only genuine blockers: maintenance, unavailable
-  // and vehicles with a hard blocking reason. Cleaning-not-clean, warnings,
-  // soft-offline, standby and available-but-not-ready are explicitly excluded.
+  // Blocked & Maintenance counts genuine blockers: maintenance, unavailable business workflow,
+  // canonical operational UNAVAILABLE, and explicit hard blocking reasons.
+  // NEEDS_VERIFICATION, authorization/device issues, and telemetry-only states are excluded.
   const blocked = states
-    .filter(
-      (state) =>
-        state.isMaintenance ||
-        state.operationalStatus === 'unavailable' ||
-        hasBlockingReason(state),
-    )
+    .filter((state) => {
+      if (state.isMaintenance || state.operationalStatus === 'unavailable') return true;
+      if (!hasBlockingReason(state)) return false;
+      const hasNonTelemetryBlock = state.blockReasons.some(
+        (reason) => reason.blocking === true && reason.category !== 'telemetry',
+      );
+      if (hasNonTelemetryBlock) return true;
+      return state.blockReasons.some(
+        (reason) =>
+          reason.blocking === true &&
+          reason.source?.startsWith('canonical:operational-availability:unavailable'),
+      );
+    })
     .sort(byVehicleLabel);
   const rows = blocked.map((state) =>
     vehicleRow({ state, slice: 'blocked-maintenance', locale, severity: vehicleSeverity(state), reasons: state.blockReasons }),
@@ -673,7 +678,12 @@ function buildBlockedMaintenanceSlice(states: VehicleRuntimeState[], locale: str
     .filter((state) => state.operationalStatus === 'unavailable')
     .map((state) => vehicleRow({ state, slice: 'unavailable', locale, reasons: state.blockReasons }));
   const offlineRows = blocked
-    .filter((state) => state.telemetryState === 'offline' && reasonHasCategory(state, ['telemetry']))
+    .filter(
+      (state) =>
+        state.blockReasons.some(
+          (reason) => reason.blocking === true && reason.category === 'telemetry',
+        ),
+    )
     .map((state) => vehicleRow({ state, slice: 'offline-blocked', locale, severity: 'critical', reasons: state.blockReasons }));
 
   return {
@@ -909,8 +919,6 @@ export function buildDashboardRuntimeModel(input: BuildDashboardRuntimeModelInpu
     now,
     locale: input.locale,
     dueSoonMinutes,
-    telemetrySoftOfflineHours: input.telemetrySoftOfflineHours,
-    telemetryHardOfflineHours: input.telemetryHardOfflineHours,
   });
 
   return {

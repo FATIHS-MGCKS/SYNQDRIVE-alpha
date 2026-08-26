@@ -1,5 +1,9 @@
 import type { VehicleData } from '../../../data/vehicles';
 import {
+  OPERATIONAL_AVAILABILITY_STATE,
+  type OperationalAvailabilityState,
+} from '../../../lib/operational-availability/types';
+import {
   VEHICLE_DATA_QUALITY_STATE,
   VEHICLE_OPERATIONAL_STATUS,
   type VehicleBookingReference,
@@ -32,6 +36,7 @@ const READINESS_BLOCKING_CATEGORIES = new Set<RuntimeReasonCategory>([
 export interface DeriveReadyForRentingInput {
   operationalBlock: RentalReadinessOperationalBlock;
   operationalStatus: VehicleOperationalStatus;
+  operationalAvailability: OperationalAvailabilityState | 'absent';
   cleaningStatus: VehicleData['cleaningStatus'];
   blockLevel: RentalBlockLevel;
   reasons: RuntimeReason[];
@@ -71,7 +76,7 @@ export function deriveIsReadyForRenting(input: DeriveReadyForRentingInput): bool
 
   if (input.blockLevel !== 'none') return false;
 
-  if (input.telemetryState === 'offline') return false;
+  if (input.operationalAvailability !== OPERATIONAL_AVAILABILITY_STATE.AVAILABLE) return false;
 
   const readinessBlockers = input.reasons.filter(reasonBlocksReadyForRenting);
   if (readinessBlockers.length > 0) return false;
