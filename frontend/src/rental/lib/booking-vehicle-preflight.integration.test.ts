@@ -7,6 +7,9 @@ import { en } from '../i18n/translations/en';
 import type { TranslationKey } from '../i18n/translations/en';
 import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 import {
+  evaluateBookingVehicleEligibility,
+} from './booking-vehicle-eligibility';
+import {
   isBookingVehicleHardBlocked,
   resolveBookingVehiclePreflight,
 } from './booking-vehicle-preflight';
@@ -99,6 +102,7 @@ const BOOKING_KEYS = [
   'booking.eligibility.notAvailable',
   'booking.eligibility.notRentable',
   'booking.eligibility.healthNotLoaded',
+  'booking.eligibility.healthLoading',
   'booking.eligibility.vehicleNotAvailable',
   'booking.eligibility.caution.rented',
   'booking.eligibility.caution.reserved',
@@ -332,5 +336,175 @@ describe('booking preflight real-path integration', () => {
       },
     );
     expect(result.primaryDenialDomain).toBe('booking_conflict');
+  });
+
+  it('A. CREATE candidate healthLoading => pending, not selectable, no health failure', () => {
+    const result = resolveBookingVehiclePreflight(vehicle(), null, true, false, {
+      ...baseOptions,
+      healthLoading: true,
+    });
+    const eligibility = evaluateBookingVehicleEligibility({
+      vehicle: vehicle(),
+      health: null,
+      hasTariff: true,
+      healthLoading: true,
+      locale: 'en',
+    });
+    expect(result.isSelectable).toBe(false);
+    expect(result.pending).toBe(true);
+    expect(result.healthPending).toBe(true);
+    expect(result.pendingReason).toBe(en['booking.eligibility.healthLoading']);
+    expect(result.hardBlockReason).toBeNull();
+    expect(result.primaryDenialDomain).toBeNull();
+    expect(result.blockingReason).toBeNull();
+    expect(eligibility.eligible).toBe(false);
+    expect(eligibility.healthEligible).toBe(false);
+    expect(eligibility.healthPending).toBe(true);
+    expect(eligibility.primaryDenialDomain).toBeNull();
+  });
+
+  it('B. CREATE candidate health loaded + good => selectable', () => {
+    const result = resolveBookingVehiclePreflight(vehicle(), health(), true, false, baseOptions);
+    expect(result.isSelectable).toBe(true);
+    expect(result.pending).toBe(false);
+    expect(result.healthPending).toBe(false);
+  });
+
+  it('C. CREATE candidate health loaded + rental_blocked => blocked', () => {
+    const result = resolveBookingVehiclePreflight(
+      vehicle(),
+      health({ rental_blocked: true }),
+      true,
+      false,
+      baseOptions,
+    );
+    expect(result.isSelectable).toBe(false);
+    expect(result.pending).toBe(false);
+    expect(result.hardBlockReason).toBe('rental_blocked');
+    expect(result.primaryDenialDomain).toBe('rental_health');
+  });
+
+  it('D. EDIT new candidate healthLoading => pending, not selectable', () => {
+    const result = resolveBookingVehiclePreflight(
+      vehicle({ id: 'v-2' }),
+      null,
+      true,
+      false,
+      {
+        ...baseOptions,
+        healthLoading: true,
+        allowHealthBypass: false,
+      },
+    );
+    expect(result.isSelectable).toBe(false);
+    expect(result.healthPending).toBe(true);
+    expect(result.pendingReason).toBe(en['booking.eligibility.healthLoading']);
+    expect(result.hardBlockReason).toBeNull();
+  });
+
+  it('E. EDIT new candidate health loaded + good => selectable', () => {
+    const result = resolveBookingVehiclePreflight(
+      vehicle({ id: 'v-2' }),
+      health({ vehicle_id: 'v-2' }),
+      true,
+      false,
+      baseOptions,
+    );
+    expect(result.isSelectable).toBe(true);
+    expect(result.healthPending).toBe(false);
+  });
+
+  it('F. EDIT unchanged current vehicle allowHealthBypass + healthLoading => save may proceed', () => {
+    const result = resolveBookingVehiclePreflight(vehicle(), null, true, false, {
+      ...baseOptions,
+      healthLoading: true,
+      allowHealthBypass: true,
+    });
+    expect(result.isSelectable).toBe(true);
+    expect(result.healthPending).toBe(false);
+    expect(
+      isBookingVehicleHardBlocked(vehicle(), null, true, false, {
+        ...baseOptions,
+        healthLoading: true,
+        allowHealthBypass: true,
+      }),
+    ).toBe(false);
+  });
+
+  it('G. EDIT unchanged current vehicle allowHealthBypass + rental_blocked => save may proceed', () => {
+    const result = resolveBookingVehiclePreflight(
+      vehicle(),
+      health({ rental_blocked: true }),
+      true,
+      false,
+      { ...baseOptions, allowHealthBypass: true },
+    );
+    expect(result.isSelectable).toBe(true);
+    expect(
+      isBookingVehicleHardBlocked(vehicle(), health({ rental_blocked: true }), true, false, {
+        ...baseOptions,
+        allowHealthBypass: true,
+      }),
+    ).toBe(false);
+  });
+
+  it('H. allowHealthBypass does not bypass booking conflict, operational, business, or tariff gates', () => {
+    const overlap = resolveBookingVehiclePreflight(
+      vehicle(),
+      health({ rental_blocked: true }),
+      true,
+      false,
+      {
+        ...baseOptions,
+        pickupAt: overlapPickup,
+        returnAt: overlapReturn,
+        allowHealthBypass: true,
+      },
+    );
+    expect(overlap.isSelectable).toBe(false);
+    expect(overlap.primaryDenialDomain).toBe('booking_conflict');
+
+    const operational = resolveBookingVehiclePreflight(
+      vehicle({ operationalAvailability: { state: 'NEEDS_VERIFICATION', generatedAt: NOW_ISO } }),
+      health({ rental_blocked: true }),
+      true,
+      false,
+      { ...baseOptions, allowHealthBypass: true },
+    );
+    expect(operational.isSelectable).toBe(false);
+    expect(operational.hardBlockReason).toBe('operational_gate');
+
+    const maintenance = resolveBookingVehiclePreflight(
+      vehicle({
+        status: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
+        operationalState: {
+          status: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
+          reason: null,
+          source: 'fleet-read-model',
+          effectiveFrom: null,
+          effectiveUntil: null,
+          derivedAt: NOW_ISO,
+          dataQualityState: 'RELIABLE',
+          dataQualityReasons: [],
+          isReliable: true,
+        },
+      }),
+      health({ rental_blocked: true }),
+      true,
+      false,
+      { ...baseOptions, allowHealthBypass: true },
+    );
+    expect(maintenance.isSelectable).toBe(false);
+    expect(maintenance.hardBlockReason).toBe('business_block');
+
+    const noTariff = resolveBookingVehiclePreflight(
+      vehicle(),
+      health({ rental_blocked: true }),
+      false,
+      false,
+      { ...baseOptions, allowHealthBypass: true },
+    );
+    expect(noTariff.isSelectable).toBe(false);
+    expect(noTariff.hardBlockReason).toBe('no_tariff');
   });
 });

@@ -133,6 +133,16 @@ describe('booking-vehicle-preflight', () => {
     expect(result.noTariff).toBe(false);
   });
 
+  it('health loading is pending — not selectable and not a rental-health failure', () => {
+    const v = baseVehicle();
+    const result = resolveBookingVehiclePreflight(v, null, true, false, { healthLoading: true, locale: 'en' });
+    expect(result.isSelectable).toBe(false);
+    expect(result.healthPending).toBe(true);
+    expect(result.pendingReason).toContain('Loading rental health');
+    expect(result.hardBlockReason).toBeNull();
+    expect(result.blockingReason).toBeNull();
+  });
+
   it('resolves station id from homeStationId', () => {
     expect(vehicleStationId(baseVehicle({ homeStationId: 'st-9', stationId: 'st-1' }))).toBe('st-9');
   });

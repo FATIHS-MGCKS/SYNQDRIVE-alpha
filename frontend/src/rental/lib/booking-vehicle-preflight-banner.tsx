@@ -52,7 +52,9 @@ export function BookingVehiclePreflightBanner({
 
   const items: Array<{ tone: 'critical' | 'warning' | 'info'; text: string }> = [];
 
-  if (!preflight.isSelectable && preflight.blockingReason) {
+  if (preflight.healthPending && preflight.pendingReason && !preflight.blockingReason) {
+    items.push({ tone: 'info', text: preflight.pendingReason });
+  } else if (!preflight.isSelectable && preflight.blockingReason) {
     items.push({ tone: 'critical', text: preflight.blockingReason });
   } else if (preflight.cautionReason) {
     items.push({

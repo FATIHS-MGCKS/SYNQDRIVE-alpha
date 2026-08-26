@@ -63,6 +63,10 @@ export interface BookingVehiclePreflight {
   noTariff: boolean;
   /** Hard-disabled in picker — backend would reject or canonical gate fails. */
   isSelectable: boolean;
+  /** Required evidence still loading — not a hard operational/health failure. */
+  pending: boolean;
+  healthPending: boolean;
+  pendingReason: string | null;
   hardBlockReason: BookingVehicleHardBlockReason | null;
   blockingReason: string | null;
   cautionReason: string | null;
@@ -217,6 +221,11 @@ export function resolveBookingVehiclePreflight(
     ? null
     : mapDenialDomainToHardBlock(eligibility.primaryDenialDomain);
 
+  const pendingReason =
+    eligibility.healthPending && eligibility.primaryDenialDomain == null
+      ? t('booking.eligibility.healthLoading')
+      : null;
+
   return {
     fleetStatus: operationalStatus,
     offline: false,
@@ -225,11 +234,15 @@ export function resolveBookingVehiclePreflight(
     healthWarningOnly,
     noTariff,
     isSelectable: eligibility.eligible,
+    pending: eligibility.pending,
+    healthPending: eligibility.healthPending,
+    pendingReason,
     hardBlockReason,
     blockingReason: eligibility.eligible ? null : eligibility.primaryDenialReason,
     cautionReason,
     muted:
       !eligibility.operationalEligible ||
+      eligibility.healthPending ||
       rentalBlocked ||
       rentalUnverified ||
       isRented ||

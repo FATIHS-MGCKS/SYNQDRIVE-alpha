@@ -1429,6 +1429,7 @@ export const en = {
   'booking.eligibility.notAvailable': 'not available',
   'booking.eligibility.notRentable': 'Not rentable',
   'booking.eligibility.healthNotLoaded': 'Rental health not loaded for this vehicle',
+  'booking.eligibility.healthLoading': 'Loading rental health…',
   'booking.eligibility.vehicleNotAvailable': 'Vehicle is not available for bookings',
   'booking.eligibility.caution.rented': 'Currently rented',
   'booking.eligibility.caution.reserved': 'Reserved',

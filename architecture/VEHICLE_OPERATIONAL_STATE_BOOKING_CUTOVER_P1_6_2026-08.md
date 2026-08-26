@@ -35,12 +35,12 @@ frontend/src/rental/lib/
 
 | Domain | Authority | Booking rule |
 |--------|-----------|--------------|
-| **A. Business workflow** | `operationalState` / explicit block | BLOCKED/UNKNOWN/unreliable = fail; MAINTENANCE/RENTED/RESERVED = caution only when otherwise eligible |
+| **A. Business workflow** | `operationalState` / explicit block | BLOCKED/UNKNOWN/unreliable = fail; **MAINTENANCE = hard business block**; ACTIVE_RENTED/RESERVED = caution when otherwise eligible (future-window-aware via conflict check) |
 | **B. Operational availability** | P0.2 `operationalAvailability` | AVAILABLE = pass; NEEDS_VERIFICATION/UNAVAILABLE/UNKNOWN/absent = fail |
 | **C. Booking conflicts** | Interval overlap on vehicle | Independent of operational gate |
 | **D. Rental rules** | Station/category/permissions | `rentalRuleBlockReason` when wired |
-| **E. Rental health** | `rental_blocked` / unverified | Hard block via rental health API |
-| **F. Tariff** | Price catalog | No active tariff = hard block |
+| **E. Rental health** | `rental_blocked` / unverified / loading | Hard block when loaded and blocked/unverified; **pending (not selectable) while `healthLoading`**; `healthRecordAbsent` after load = blocked/unverified |
+| **F. Tariff** | Price catalog | No active tariff = hard block; `catalogLoading` = fail-open (UX-safe: tariff absence is non-safety) |
 
 ## Operational gate invariant
 
@@ -83,7 +83,7 @@ Presentation uses P1.2 projection labels for operational denials (`buildFleetVeh
 |------|---------|
 | New booking picker (`VehiclePickerStep`) | `resolveBookingVehiclePreflight` |
 | New booking step gate / select handler | `isBookingVehicleHardBlocked` |
-| Bookings edit modal / inline save | `isBookingVehicleHardBlocked` (operational gate; health when available on create path) |
+| Bookings edit modal / inline save | `resolveBookingVehiclePreflight` + `allowHealthBypass` for unchanged vehicle only |
 | Operator booking sheet | Out of scope — operator fleet rows lack `operationalAvailability`; backend authoritative |
 
 UI preflight is **advisory**. Backend `BookingsService` remains authoritative for conflicts and business rules at submit.
@@ -102,12 +102,38 @@ UI preflight is **advisory**. Backend `BookingsService` remains authoritative fo
 - Global legacy helper deletion (`controlSignalsBuilder`, `derivePredictiveOperationsInsights` timestamp paths)
 - Operator booking sheet canonical gate (needs fleet-map operational fields on operator vehicle DTO)
 
+## Booking-window authority
+
+`booking-window-conflict.ts` → `bookingsForVehicleInRange()` (existing `bookingUtils.ts` overlap semantics).
+
+## Rental-health semantics
+
+| State | Eligibility |
+|-------|-------------|
+| `healthLoading` | **Pending** — `healthPending=true`, `eligible=false`, not selectable; `booking.eligibility.healthLoading` (not a failure / not `healthNotLoaded`) |
+| `healthRecordAbsent` (fleet loaded, vehicle missing from map) | Blocked — `booking.eligibility.healthNotLoaded` |
+| `health` with `rental_blocked` / unverified | Blocked |
+| `allowHealthBypass` (unchanged edit vehicle only) | Health loading + hard blocks skipped; operational, booking-window, business, tariff, and rules still apply |
+
+### Health loading vs tariff loading
+
+- **Rental health loading** is fail-closed for candidate selection: assigning a vehicle before health evidence arrives could surface `rental_blocked` after load (safety race).
+- **Tariff catalog loading** remains fail-open (`tariffEligible=true` while `catalogLoading`): missing tariff is a pricing/completeness concern, not a rental-safety gate; blocking the entire picker during catalog fetch would be overly disruptive.
+
+## Maintenance policy
+
+Hard business block per vehicle detail modal + `isVehicleOperationallyBlocked()`. **Not** caution-only.
+
+ACTIVE_RENTED / RESERVED: caution in picker when otherwise eligible; future non-overlapping windows may remain selectable (conflict check authoritative).
+
 ## Tests
 
 | Suite | Result |
 |-------|--------|
 | P1.6 focused | 26/26 |
-| booking-vehicle-preflight | 8/8 |
+| booking-window-conflict | 3/3 |
+| booking-preflight integration | 22/22 |
+| booking-vehicle-preflight | 9/9 |
 | P1.5 regression | dashboard bundle |
 | P1.4–P1.1 regression | unchanged suites |
 | Build/typecheck | PASS |

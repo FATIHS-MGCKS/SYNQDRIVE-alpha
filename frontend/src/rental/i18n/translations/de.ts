@@ -1529,6 +1529,7 @@ export const de: Record<TranslationKey, string> = {
   'booking.eligibility.notAvailable': 'nicht verfügbar',
   'booking.eligibility.notRentable': 'Nicht vermietbar',
   'booking.eligibility.healthNotLoaded': 'Mietfreigabe für dieses Fahrzeug nicht geladen',
+  'booking.eligibility.healthLoading': 'Mietfreigabe wird geladen…',
   'booking.eligibility.vehicleNotAvailable': 'Fahrzeug ist für Buchungen nicht verfügbar',
   'booking.eligibility.caution.rented': 'Aktuell vermietet',
   'booking.eligibility.caution.reserved': 'Reserviert',

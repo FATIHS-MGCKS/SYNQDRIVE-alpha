@@ -61,8 +61,8 @@ export interface BookingVehicleEligibilityInput {
   /** Station/category/permission restriction copy. */
   rentalRuleBlockReason?: string | null;
   /**
-   * Fleet rental-health map is still loading — health gate deferred (not treated as eligible).
-   * Mirrors catalogLoading semantics.
+   * Fleet rental-health map is still loading — health gate is pending (not eligible until resolved).
+   * Unlike catalogLoading, health loading is fail-closed for candidate vehicle selection.
    */
   healthLoading?: boolean;
   /**
@@ -78,9 +78,13 @@ export interface BookingVehicleEligibilityInput {
 
 export interface BookingVehicleEligibilityResult extends BookingVehicleOperationalGateResult {
   eligible: boolean;
+  /** True when required evidence is still loading (e.g. fleet rental-health map). */
+  pending: boolean;
   businessEligible: boolean;
   bookingWindowEligible: boolean;
   healthEligible: boolean;
+  /** True when rental-health evidence is still loading for a non-bypassed candidate. */
+  healthPending: boolean;
   tariffEligible: boolean;
   diagnosticReasons: string[];
 }
@@ -197,10 +201,12 @@ export function evaluateBookingVehicleEligibility(
   let rentalBlocked = false;
   let rentalUnverified = false;
   let healthEligible = true;
+  let healthPending = false;
 
   if (!allowHealthBypass) {
     if (healthLoading) {
-      healthEligible = true;
+      healthPending = true;
+      healthEligible = false;
     } else if (healthRecordAbsent) {
       rentalUnverified = true;
       healthEligible = false;
@@ -285,7 +291,10 @@ export function evaluateBookingVehicleEligibility(
     primaryDenialReason = rentalRuleBlockReason;
   }
 
+  const pending = healthPending;
+
   const eligible =
+    !pending &&
     bookingWindowEligible &&
     businessEligible &&
     healthEligible &&
@@ -296,9 +305,11 @@ export function evaluateBookingVehicleEligibility(
   return {
     ...operational,
     eligible,
+    pending,
     businessEligible,
     bookingWindowEligible,
     healthEligible,
+    healthPending,
     tariffEligible,
     primaryDenialDomain,
     primaryDenialReason,

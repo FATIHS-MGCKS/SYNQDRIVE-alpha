@@ -1002,7 +1002,7 @@ VehiclePickerStep / NewBookingView
   → resolveBookingVehiclePreflight()
   → isVehicleOffline(vehicle)           # resolveTelemetryFreshness 48h
   → rental_blocked / isRentalBlockedUnverified
-  → business status (UNKNOWN unreliable hard block; MAINTENANCE caution)
+  → business status (UNKNOWN unreliable hard block; MAINTENANCE hard block; RENTED/RESERVED caution)
   → tariff catalog
 ```
 
@@ -1037,7 +1037,8 @@ Connectivity (`STANDBY`, `SOFT_OFFLINE`, `OFFLINE`, `AUTHORIZATION_REQUIRED`, `D
 ### Booking-window semantics
 
 - Future interval conflicts: `evaluateBookingWindowConflict()` / calendar `vehicleBlockedInfo` — independent domain with precedence #1.
-- Current `ACTIVE_RENTED` / `RESERVED` / `MAINTENANCE`: caution in picker when otherwise eligible; not equated to Dashboard Ready-to-Rent.
+- Current `ACTIVE_RENTED` / `RESERVED`: caution in picker when otherwise eligible; not equated to Dashboard Ready-to-Rent.
+- `MAINTENANCE`: **hard business block** (aligned with vehicle detail + `isVehicleOperationallyBlocked()`), not caution-only.
 - `ACTIVE_RENTED` + non-overlapping future window → selectable with caution.
 
 ### Denial reason precedence
@@ -1050,10 +1051,30 @@ Operational denials use P1.2 projection labels (`buildFleetVehicleUiProjection`)
 
 | Surface | Status |
 |---------|--------|
-| `VehiclePickerStep` / `NewBookingView` | Canonical adapter |
-| Submit step gate (`canProceed` case 1) | `isBookingVehicleHardBlocked` |
-| `BookingsView` edit modal + inline save | Operational gate on vehicle change |
+| `VehiclePickerStep` / `NewBookingView` | Canonical adapter + `hasBookingWindowConflict` via `orgBookingRows` |
+| Submit step gate (`canProceed` case 1) | `isBookingVehicleHardBlocked` with booking window + health map |
+| `BookingsView` edit modal + inline save | Fleet health map + booking window + `allowHealthBypass` for unchanged vehicle |
 | `OperatorBookingFormSheet` | Documented out of scope (no fleet-map operational fields) |
+
+### Booking-window authority
+
+`hasBookingWindowConflict()` delegates to existing `bookingsForVehicleInRange()` / `overlapsRange()` in `bookingUtils.ts` (pending/confirmed/active blockers only). No duplicate overlap algorithm.
+
+### Rental-health semantics
+
+| State | Eligibility |
+|-------|-------------|
+| `healthLoading` | **Pending** — not selectable (`healthPending`); `booking.eligibility.healthLoading`; not treated as eligible or as `healthNotLoaded` |
+| `healthRecordAbsent` (fleet loaded, vehicle missing from map) | Blocked — `booking.eligibility.healthNotLoaded` |
+| `health` with `rental_blocked` / unverified | Blocked |
+| `allowHealthBypass` (unchanged edit vehicle only) | Health loading + hard blocks skipped; operational + booking-window + business + tariff + rules still apply |
+| `health == null` without `healthRecordAbsent` | Health gate not evaluated (caller must set absent flag when fleet map is authoritative) |
+
+**Tariff vs health loading:** `catalogLoading` remains fail-open (non-safety pricing UX). `healthLoading` is fail-closed for candidate selection (rental-safety race).
+
+### Maintenance policy
+
+`VEHICLE_OPERATIONAL_STATUS.MAINTENANCE` is a **hard business block** (aligned with `vehicleDetail.statusModal.maintenance` “not bookable” and `isVehicleOperationallyBlocked()`), not caution-only.
 
 ### Backend vs frontend authority
 
@@ -1072,7 +1093,9 @@ Operational denials use P1.2 projection labels (`buildFleetVehicleUiProjection`)
 | Suite | Result |
 |-------|--------|
 | P1.6 focused | **26/26** |
-| booking-vehicle-preflight | **8/8** |
+| booking-window-conflict | **3/3** |
+| booking-preflight integration | **22/22** |
+| booking-vehicle-preflight | **9/9** |
 | P1.5 regression | dashboard bundle PASS |
 | P1.4 regression | **33/33** |
 | P1.3 regression | **45/45** |

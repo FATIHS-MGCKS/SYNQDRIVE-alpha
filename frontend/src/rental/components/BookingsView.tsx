@@ -24,7 +24,7 @@ import { bookingStatusLabel as plannerStatusLabel, bookingStatusTone as plannerS
 // creation and the actual pickup day.
 import { useVehicleHealth, useFleetHealthMap } from '../hooks/useVehicleHealth';
 import { useLanguage } from '../i18n/LanguageContext';
-import { isBookingVehicleHardBlocked } from '../lib/booking-vehicle-preflight';
+import { isBookingVehicleHardBlocked, resolveBookingVehiclePreflight } from '../lib/booking-vehicle-preflight';
 import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
 import {
   PageHeader,
@@ -276,6 +276,16 @@ export function BookingsView({
       return fleetVehicles.map((v) => {
         const health = fleetHealthMap.get(v.id) ?? null;
         const isCurrentVehicle = editingBooking?.vehicleId === v.id;
+        const preflight = resolveBookingVehiclePreflight(v, health, true, false, {
+          locale: activeLocale,
+          bookingRows: apiBookings,
+          pickupAt: editPickupIso,
+          returnAt: editReturnIso,
+          excludeBookingId: editingBooking?.id ?? null,
+          healthLoading: fleetHealthLoading,
+          healthRecordAbsent: !fleetHealthLoading && !fleetHealthMap.has(v.id),
+          allowHealthBypass: isCurrentVehicle,
+        });
         return {
           id: v.id,
           name: buildMMY({ make: v.make, model: v.model, year: v.year }),
@@ -283,16 +293,9 @@ export function BookingsView({
           make: v.make || '',
           model: v.model || '',
           year: v.year || null,
-          hardBlocked: isBookingVehicleHardBlocked(v, health, true, false, {
-            locale: activeLocale,
-            bookingRows: apiBookings,
-            pickupAt: editPickupIso,
-            returnAt: editReturnIso,
-            excludeBookingId: editingBooking?.id ?? null,
-            healthLoading: fleetHealthLoading,
-            healthRecordAbsent: !fleetHealthLoading && !fleetHealthMap.has(v.id),
-            allowHealthBypass: isCurrentVehicle,
-          }),
+          hardBlocked: !preflight.isSelectable,
+          healthPending: preflight.healthPending,
+          pendingReason: preflight.pendingReason,
           isCurrentVehicle,
         };
       });
@@ -1770,7 +1773,7 @@ export function BookingsView({
                             >
                               {v.name} · {v.plate}
                               {v.hardBlocked && !v.isCurrentVehicle
-                                ? ` (${t('booking.eligibility.notAvailable')})`
+                                ? ` (${v.healthPending && v.pendingReason ? v.pendingReason : t('booking.eligibility.notAvailable')})`
                                 : ''}
                             </option>
                           ))
