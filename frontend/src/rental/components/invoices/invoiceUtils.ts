@@ -1,5 +1,10 @@
 import type { OrgInvoiceStatus } from './invoiceTypes';
 import { isOutgoingInvoice } from './invoiceClassification';
+import {
+  formatInvoiceListAmount,
+  formatInvoiceListDate,
+  labelInvoiceListStatus,
+} from '../../lib/invoice-list-i18n';
 
 export const STATUS_MAP: Record<string, { label: string; bg: string; text: string; dot: string }> = {
   DRAFT: { label: 'Entwurf', bg: 'bg-status-nodata-soft', text: 'text-status-nodata', dot: 'bg-status-nodata' },
@@ -22,19 +27,28 @@ export function isOutgoing(type: string) {
   return isOutgoingInvoice(type);
 }
 
-export function displayNumber(inv: { invoiceNumberDisplay?: string; invoiceNumber?: number | null; status?: string }) {
+export function displayNumber(
+  inv: { invoiceNumberDisplay?: string; invoiceNumber?: number | null; status?: string },
+  locale?: string,
+) {
   if (inv.invoiceNumberDisplay) return inv.invoiceNumberDisplay;
   if (inv.invoiceNumber != null) return `#${inv.invoiceNumber}`;
-  return 'Entwurf';
+  if (locale) return labelInvoiceListStatus(locale, 'DRAFT');
+  return STATUS_MAP.DRAFT.label;
 }
 
-export function formatAmount(cents: number, currency = 'EUR'): string {
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(cents / 100);
+export function formatAmount(cents: number, currency = 'EUR', locale?: string): string {
+  if (locale) {
+    return formatInvoiceListAmount(locale, cents, currency);
+  }
+  return formatInvoiceListAmount('de', cents, currency);
 }
 
-export function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+export function formatDate(iso: string | null, locale?: string): string {
+  if (locale) {
+    return formatInvoiceListDate(locale, iso);
+  }
+  return formatInvoiceListDate('de', iso);
 }
 
 export function canIssue(status: string, type: string): boolean {

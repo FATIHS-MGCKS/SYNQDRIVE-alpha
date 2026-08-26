@@ -495,6 +495,16 @@ const P249_ENFORCE_CLEAN_EXACT = [
   'rental/lib/rental-invoice-detail-secondary-i18n.ts',
 ];
 
+const P250_ENFORCE_CLEAN_EXACT = [
+  'rental/components/invoices/InvoiceDetailHeader.tsx',
+  'rental/components/invoices/InvoiceHeaderMoreMenu.tsx',
+  'rental/components/invoices/InvoiceRelations.tsx',
+  'rental/components/invoices/invoiceDetail.mapper.ts',
+  'rental/components/invoices/invoiceRelations.mapper.ts',
+  'rental/components/invoices/invoiceUtils.ts',
+  'rental/lib/rental-invoice-detail-primary-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -689,6 +699,10 @@ function isP248EnforceCleanPath(relPath: string): boolean {
 
 function isP249EnforceCleanPath(relPath: string): boolean {
   return P249_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP250EnforceCleanPath(relPath: string): boolean {
+  return P250_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -1110,6 +1124,24 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP249EnforceCleanPath(finding.file),
     );
     expect(p249Debt).toHaveLength(0);
+  });
+
+  it('keeps P250 Rental Invoice Detail Primary enforce-clean scope at zero findings', () => {
+    const p250Debt = inventory.findings.filter((finding) =>
+      isP250EnforceCleanPath(finding.file),
+    );
+    expect(p250Debt).toHaveLength(0);
+  });
+
+  it('keeps rental-invoice-detail-primary-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/rental-invoice-detail-primary-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('rentalInvoiceDetailPrimaryStatusLabel');
+    expect(source).not.toMatch(/locale === 'de'/);
+    expect(source).not.toMatch(/de-DE/);
   });
 
   it('keeps rental-invoice-detail-secondary-i18n.ts on canonical translation keys', () => {

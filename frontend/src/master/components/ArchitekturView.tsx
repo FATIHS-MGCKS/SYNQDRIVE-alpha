@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Invoice Detail Primary (P2.2.50 — V4.9.977)', icon: Globe,
+    endpoint: 'Rental Invoice Detail — primary header + relations presentation slice',
+    service: '**Locale flow:** `useLanguage().locale` → `rental-invoice-detail-primary-i18n.ts` adapter (`ridp`, gate reasons, relation chrome); reuses `invoice-list-i18n` for status/type/money/date. **Keys:** +42 EN+DE `rental.invoice.detail.primary.*` (8760→8802). **Machine values:** invoice number, status/type IDs, cents/currency, outstanding formula, action `.allowed`, PDF/document IDs, relation entity IDs/navigation frozen. **Guardrails:** P2.2.50 enforce-clean exact (7 paths) — 0 findings. **Tests:** `rental-invoice-detail-primary-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_RENTAL_INVOICE_DETAIL_PRIMARY_P2_2_50_2026-08-26.md' },
   { name: 'Platform i18n Rental Invoice Detail Secondary (P2.2.49 — V4.9.976)', icon: Globe,
     endpoint: 'Rental Invoice Detail — secondary accordion (description, notes, tasks, provenance, timeline)',
     service: '**Locale flow:** `useLanguage().locale` → `rental-invoice-detail-secondary-i18n.ts` adapter (`rids`, task-status map, timeline date formatter); reuses `common.*`, `tasks.filter.status.*`. **Keys:** +28 EN+DE `rental.invoice.detail.secondary.*` (8732→8760). **Machine values:** task status, timeline events, notes/description/provenance raw content, copy callback frozen. **Guardrails:** P2.2.49 enforce-clean exact (5 paths) — 0 findings. **Tests:** `rental-invoice-detail-secondary-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

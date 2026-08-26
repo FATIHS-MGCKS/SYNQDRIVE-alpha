@@ -1,13 +1,10 @@
 import { INVOICE_TYPE_MAP } from './invoice-detail.constants';
 import {
-  STATUS_MAP,
   canCancelInvoice,
   canIssue,
   canMarkSent,
   canRecordPayment,
   displayNumber,
-  formatAmount,
-  formatDate,
   isOutgoing,
 } from './invoiceFormatters';
 import type { Invoice } from './invoiceTypes';
@@ -16,8 +13,16 @@ import { documentGatesFromPanel } from './invoiceDocuments.mapper';
 import type { InvoiceDocumentsPanel } from './invoiceDocumentTypes';
 import { buildInvoiceRelationsDto } from './invoiceRelations.mapper';
 import type { InvoiceRelationsEnrichment, InvoiceRelationsPermissions } from './invoiceRelations.mapper';
+import {
+  rentalInvoiceDetailPrimaryFormatAmount,
+  rentalInvoiceDetailPrimaryFormatDate,
+  rentalInvoiceDetailPrimaryGateReason,
+  rentalInvoiceDetailPrimaryStatusLabel,
+  rentalInvoiceDetailPrimaryTypeLabel,
+} from '../../lib/rental-invoice-detail-primary-i18n';
 
 export interface BuildInvoiceDetailDtoContext {
+  locale?: string;
   canManageEmail: boolean;
   canManageFinance?: boolean;
   relationsEnrichment?: InvoiceRelationsEnrichment;
@@ -33,8 +38,8 @@ export function buildInvoiceDetailDto(
   invoice: Invoice,
   ctx: BuildInvoiceDetailDtoContext,
 ): InvoiceDetailDto {
+  const locale = ctx.locale ?? 'de';
   const ty = INVOICE_TYPE_MAP[invoice.type] || INVOICE_TYPE_MAP.OUTGOING_MANUAL;
-  const st = STATUS_MAP[invoice.status] || STATUS_MAP.DRAFT;
   const paidCents = invoice.paidCents ?? 0;
   const outstanding =
     invoice.outstandingCents ?? Math.max(0, invoice.totalCents - paidCents);
@@ -62,7 +67,7 @@ export function buildInvoiceDetailDto(
 
   const issueGate = gate(
     canIssue(invoice.status, invoice.type),
-    isDraft ? undefined : 'Nur Entwürfe können ausgestellt werden',
+    isDraft ? undefined : rentalInvoiceDetailPrimaryGateReason(locale, 'issueNotDraft'),
   );
 
   const viewPdfGate = gate(
@@ -71,20 +76,20 @@ export function buildInvoiceDetailDto(
       ? undefined
       : hasAttachment
         ? undefined
-        : 'Noch kein PDF vorhanden',
+        : rentalInvoiceDetailPrimaryGateReason(locale, 'noPdfYet'),
   );
 
   let generateReason: string | undefined;
   if (hasGeneratedPdf) {
-    generateReason = 'PDF ist bereits vorhanden — „PDF neu erzeugen“ im Menü';
+    generateReason = rentalInvoiceDetailPrimaryGateReason(locale, 'pdfAlreadyExists');
   } else if (!outgoing) {
-    generateReason = 'PDF-Generierung nur für Ausgangsrechnungen';
+    generateReason = rentalInvoiceDetailPrimaryGateReason(locale, 'pdfOutgoingOnly');
   } else if (isDraft) {
-    generateReason = 'Zuerst ausstellen, danach PDF erzeugen';
+    generateReason = rentalInvoiceDetailPrimaryGateReason(locale, 'issueBeforePdf');
   } else if (terminal) {
-    generateReason = 'Für stornierte oder abgeschlossene Sonderfälle nicht verfügbar';
+    generateReason = rentalInvoiceDetailPrimaryGateReason(locale, 'pdfTerminalState');
   } else if (!regenerateDocumentType) {
-    generateReason = 'PDF-Generierung ist derzeit nur für Ausgangsrechnungen verfügbar';
+    generateReason = rentalInvoiceDetailPrimaryGateReason(locale, 'pdfTypeUnavailable');
   }
 
   const generatePdfGate = gate(
@@ -98,13 +103,13 @@ export function buildInvoiceDetailDto(
 
   let emailReason: string | undefined;
   if (!ctx.canManageEmail) {
-    emailReason = 'Nur Administratoren können Rechnungen per E-Mail senden';
+    emailReason = rentalInvoiceDetailPrimaryGateReason(locale, 'emailAdminOnly');
   } else if (!outgoing) {
-    emailReason = 'E-Mail-Versand nur für Ausgangsrechnungen';
+    emailReason = rentalInvoiceDetailPrimaryGateReason(locale, 'emailOutgoingOnly');
   } else if (isDraft) {
-    emailReason = 'Zuerst ausstellen';
+    emailReason = rentalInvoiceDetailPrimaryGateReason(locale, 'issueFirst');
   } else if (!hasGeneratedPdf) {
-    emailReason = 'PDF muss zuerst erzeugt werden';
+    emailReason = rentalInvoiceDetailPrimaryGateReason(locale, 'emailNeedsPdf');
   }
 
   const sendEmailGate = gate(
@@ -115,41 +120,41 @@ export function buildInvoiceDetailDto(
   const regeneratePdfGate = gate(
     Boolean(regenerateDocumentType && hasGeneratedPdf && !isDraft && !terminal),
     !regenerateDocumentType
-      ? 'Nur für Buchungsrechnungen mit PDF'
+      ? rentalInvoiceDetailPrimaryGateReason(locale, 'regenerateBookingOnly')
       : !hasGeneratedPdf
-        ? 'Zuerst PDF erzeugen'
+        ? rentalInvoiceDetailPrimaryGateReason(locale, 'generatePdfFirst')
         : isDraft
-          ? 'Zuerst ausstellen'
+          ? rentalInvoiceDetailPrimaryGateReason(locale, 'issueFirst')
           : undefined,
   );
 
   const markSentGate = gate(
     canMarkSent(invoice.status, invoice.type),
     outgoing
-      ? 'Bereits gesendet oder noch nicht ausgestellt'
-      : 'Nur für Ausgangsrechnungen',
+      ? rentalInvoiceDetailPrimaryGateReason(locale, 'markSentState')
+      : rentalInvoiceDetailPrimaryGateReason(locale, 'outgoingOnly'),
   );
 
   const recordPaymentGate = gate(
     canFinance,
     !canRecordPayment(invoice.status)
-      ? 'Für diesen Status nicht möglich'
+      ? rentalInvoiceDetailPrimaryGateReason(locale, 'paymentStatusBlocked')
       : outstanding <= 0
-        ? 'Kein offener Betrag'
+        ? rentalInvoiceDetailPrimaryGateReason(locale, 'noOutstandingAmount')
         : undefined,
   );
 
   const editGate = gate(
     ['DRAFT', 'NEEDS_REVIEW'].includes(invoice.status),
-    'Bearbeiten nur für Entwürfe oder Rechnungen in Prüfung',
+    rentalInvoiceDetailPrimaryGateReason(locale, 'editDraftOrReview'),
   );
 
   const cancelGate = gate(
     (ctx.canManageFinance !== false) &&
       canCancelInvoice(invoice.status, paidCents, invoice.totalCents),
     ctx.canManageFinance === false
-      ? 'Keine Berechtigung zum Stornieren'
-      : 'Stornierung für diesen Status nicht möglich',
+      ? rentalInvoiceDetailPrimaryGateReason(locale, 'cancelNoPermission')
+      : rentalInvoiceDetailPrimaryGateReason(locale, 'cancelStatusBlocked'),
   );
 
   const copyIdGate = gate(true);
@@ -176,12 +181,12 @@ export function buildInvoiceDetailDto(
   return {
     core: {
       invoiceId: invoice.id,
-      invoiceNumberDisplay: displayNumber(invoice),
+      invoiceNumberDisplay: displayNumber(invoice, locale),
       title: invoice.title,
       type: invoice.type,
-      typeLabel: ty.label,
+      typeLabel: rentalInvoiceDetailPrimaryTypeLabel(locale, invoice.type) || ty.label,
       status: invoice.status,
-      statusLabel: st.label,
+      statusLabel: rentalInvoiceDetailPrimaryStatusLabel(locale, invoice.status),
       currency,
       invoiceDate: invoice.invoiceDate,
       dueDate: invoice.dueDate,
@@ -190,11 +195,11 @@ export function buildInvoiceDetailDto(
       totalCents: invoice.totalCents,
       paidCents,
       outstandingCents: outstanding,
-      totalFormatted: formatAmount(invoice.totalCents, currency),
-      paidFormatted: formatAmount(paidCents, currency),
-      outstandingFormatted: formatAmount(outstanding, currency),
-      invoiceDateFormatted: formatDate(invoice.invoiceDate),
-      dueDateFormatted: formatDate(invoice.dueDate),
+      totalFormatted: rentalInvoiceDetailPrimaryFormatAmount(locale, invoice.totalCents, currency),
+      paidFormatted: rentalInvoiceDetailPrimaryFormatAmount(locale, paidCents, currency),
+      outstandingFormatted: rentalInvoiceDetailPrimaryFormatAmount(locale, outstanding, currency),
+      invoiceDateFormatted: rentalInvoiceDetailPrimaryFormatDate(locale, invoice.invoiceDate),
+      dueDateFormatted: rentalInvoiceDetailPrimaryFormatDate(locale, invoice.dueDate),
     },
     document: {
       hasPdf,
@@ -218,6 +223,7 @@ export function buildInvoiceDetailDto(
       invoice,
       ctx.relationsEnrichment,
       ctx.relationsPermissions,
+      locale,
     ),
   };
 }
