@@ -215,3 +215,23 @@ Until `BATTERY_V2_PUBLICATION_ENABLED=true`:
 ```bash
 npm test -- --testPathPattern="lv-live-voltage|battery-v2-cutover|battery-v2-snapshot-ingestion|battery-capability-preflight"
 ```
+
+Regression coverage (adversarial gate):
+
+- Legacy `battery_health_snapshots` with matching ts/voltage does **not** suppress first canonical LIVE_VOLTAGE write.
+- Replay of same provider observation remains idempotent (canonical lastStored only).
+- REST_60M and REST_6H chain tests exercise `listLvVoltageCandidates()` → `evaluateAndPersist()`.
+- DB idempotency: `battery-measurement.repository.spec.ts` (P2002 + unique constraints); ingestion uses `measurements.create()` → `createIdempotent()`.
+
+---
+
+## 10. Stage 1 production validation expectations (not yet performed)
+
+After merge + deploy with Stage 1 flags, validate 30–60 min:
+
+- `battery_measurements` type `LIVE_VOLTAGE` count increasing on active DIMO vehicles.
+- First canonical LIVE_VOLTAGE row appears even when legacy `battery_health_snapshots` already hold matching voltage/timestamp.
+- REST target jobs produce REST_60M/6H measurements (not all MISSED).
+- `vehicle_battery_capabilities` LIVE_VOLTAGE ≠ `QUERY_ERROR` when signal present.
+- Canonical LV_REST_WINDOW sessions > 0; queue healthy.
+- Do **not** enable `BATTERY_V2_PUBLICATION_ENABLED` or `BATTERY_V2_READINESS_ENABLED` until above evidence is proven.
