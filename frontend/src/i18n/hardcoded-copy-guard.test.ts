@@ -475,6 +475,18 @@ const P247_ENFORCE_CLEAN_EXACT = [
   'operator/lib/operator-tasks-tab-i18n.ts',
 ];
 
+const P248_ENFORCE_CLEAN_EXACT = [
+  'operator/components/OperatorEntryModal.tsx',
+  'operator/components/OperatorDesktopOnlyNotice.tsx',
+  'operator/components/OperatorAccessDeniedScreen.tsx',
+  'operator/components/OperatorAccessGuard.tsx',
+  'operator/components/OperatorEntryButton.tsx',
+  'operator/components/OperatorLinkCard.tsx',
+  'operator/lib/operatorAccess.ts',
+  'operator/components/OperatorAccessLoadingScreen.tsx',
+  'operator/lib/operator-entry-access-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -661,6 +673,10 @@ function isP246EnforceCleanPath(relPath: string): boolean {
 
 function isP247EnforceCleanPath(relPath: string): boolean {
   return P247_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP248EnforceCleanPath(relPath: string): boolean {
+  return P248_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -1068,6 +1084,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP247EnforceCleanPath(finding.file),
     );
     expect(p247Debt).toHaveLength(0);
+  });
+
+  it('keeps P248 Operator Entry & Access Shell enforce-clean scope at zero findings', () => {
+    const p248Debt = inventory.findings.filter((finding) =>
+      isP248EnforceCleanPath(finding.file),
+    );
+    expect(p248Debt).toHaveLength(0);
   });
 
   it('keeps operator-vehicle-quick-view-i18n.ts on canonical translation keys', () => {

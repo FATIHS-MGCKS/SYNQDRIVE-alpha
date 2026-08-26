@@ -1,8 +1,16 @@
 import { Smartphone, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  operatorEntryAccessBackToAppLabel,
+  operatorEntryAccessNoticeBody,
+  operatorEntryAccessNoticeHeading,
+} from '../lib/operator-entry-access-i18n';
 import { OperatorLinkCard } from './OperatorLinkCard';
 
 export function OperatorDesktopOnlyNotice() {
+  const { locale } = useLanguage();
+
   return (
     <div
       data-testid="operator-desktop-only"
@@ -14,11 +22,10 @@ export function OperatorDesktopOnlyNotice() {
         </div>
         <div className="space-y-2">
           <h1 className="font-display text-xl font-bold text-foreground">
-            Operator App ist für mobile Endgeräte und Tablets optimiert
+            {operatorEntryAccessNoticeHeading(locale)}
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Kopiere den Link und öffne ihn auf deinem Smartphone oder Tablet, um Übergaben,
-            Rückgaben, Schäden und Fahrzeugchecks direkt am Fahrzeug durchzuführen.
+            {operatorEntryAccessNoticeBody(locale)}
           </p>
         </div>
         <OperatorLinkCard />
@@ -27,7 +34,7 @@ export function OperatorDesktopOnlyNotice() {
           className="sq-press inline-flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Zurück zur SynqDrive App
+          {operatorEntryAccessBackToAppLabel(locale)}
         </Link>
       </div>
     </div>

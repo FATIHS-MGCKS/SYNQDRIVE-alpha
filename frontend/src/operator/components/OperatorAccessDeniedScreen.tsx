@@ -1,9 +1,12 @@
 import { ArrowLeft, LogIn, ShieldX } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { EmptyState } from '../../components/patterns';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
-  operatorAccessDenialMessage,
-} from '../lib/operatorAccess';
+  operatorEntryAccessBackToAppLabel,
+  operatorEntryAccessDenialMessage,
+  operatorEntryAccessLoginCta,
+} from '../lib/operator-entry-access-i18n';
 import type { OperatorAccessDenialReason } from '../lib/operatorAccess.types';
 
 interface Props {
@@ -11,7 +14,8 @@ interface Props {
 }
 
 export function OperatorAccessDeniedScreen({ reason }: Props) {
-  const copy = operatorAccessDenialMessage(reason);
+  const { locale } = useLanguage();
+  const copy = operatorEntryAccessDenialMessage(locale, reason);
 
   return (
     <div
@@ -33,7 +37,7 @@ export function OperatorAccessDeniedScreen({ reason }: Props) {
                   className="sq-press inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[color:var(--brand)] px-5 text-sm font-semibold text-white"
                 >
                   <LogIn className="h-4 w-4" />
-                  Zur Anmeldung
+                  {operatorEntryAccessLoginCta(locale)}
                 </Link>
               ) : (
                 <Link
@@ -41,7 +45,7 @@ export function OperatorAccessDeniedScreen({ reason }: Props) {
                   className="sq-press inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-border surface-premium px-5 text-sm font-semibold"
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  Zur SynqDrive App
+                  {operatorEntryAccessBackToAppLabel(locale)}
                 </Link>
               )}
             </div>

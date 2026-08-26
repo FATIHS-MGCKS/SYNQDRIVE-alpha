@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from '../../rental/components/ui/Icon';
 import { canAccessOperatorApp } from '../lib/operatorAccess';
+import {
+  operatorEntryAccessButtonLabel,
+  operatorEntryAccessButtonTitle,
+} from '../lib/operator-entry-access-i18n';
 import { OPERATOR_BASE_PATH } from '../lib/operatorRoutes';
 import { useIsOperatorDevice } from '../hooks/useIsOperatorDevice';
 import { OperatorEntryModal } from './OperatorEntryModal';
@@ -11,6 +16,7 @@ interface OperatorEntryButtonProps {
 }
 
 export function OperatorEntryButton({ className = '' }: OperatorEntryButtonProps) {
+  const { locale } = useLanguage();
   const navigate = useNavigate();
   const isOperatorDevice = useIsOperatorDevice();
   const [modalOpen, setModalOpen] = useState(false);
@@ -29,10 +35,10 @@ export function OperatorEntryButton({ className = '' }: OperatorEntryButtonProps
           setModalOpen(true);
         }}
         className={`sq-press inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-[11px] font-semibold transition-colors hover:bg-muted text-muted-foreground hover:text-foreground ${className}`}
-        title="Operator App — mobile field operations"
+        title={operatorEntryAccessButtonTitle(locale)}
       >
         <Icon name="smartphone" className="w-3.5 h-3.5" />
-        <span>Operator</span>
+        <span>{operatorEntryAccessButtonLabel(locale)}</span>
       </button>
       <OperatorEntryModal open={modalOpen} onOpenChange={setModalOpen} />
     </>

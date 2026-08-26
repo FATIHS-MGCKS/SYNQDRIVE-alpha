@@ -2,7 +2,6 @@ import { getStoredUser, isAuthenticated, isMasterAdmin, type AuthUser } from '..
 import {
   OPERATOR_ALLOWED_MEMBERSHIP_ROLES,
   OPERATOR_DENIED_MEMBERSHIP_ROLES,
-  type OperatorAccessDenialReason,
   type OperatorAccessEvaluation,
 } from './operatorAccess.types';
 
@@ -40,39 +39,6 @@ export function evaluateOperatorAccess(user: AuthUser | null = getStoredUser()):
 
 export function canAccessOperatorApp(): boolean {
   return evaluateOperatorAccess().allowed;
-}
-
-export function operatorAccessDenialMessage(reason: OperatorAccessDenialReason): {
-  title: string;
-  description: string;
-} {
-  switch (reason) {
-    case 'unauthenticated':
-      return {
-        title: 'Anmeldung erforderlich',
-        description: 'Melde dich an, um die Operator App zu nutzen.',
-      };
-    case 'forbidden_role':
-      return {
-        title: 'Keine Berechtigung',
-        description: 'Du hast keine Berechtigung für die Operator App.',
-      };
-    case 'no_organization':
-      return {
-        title: 'Keine Organisation ausgewählt',
-        description: 'Wähle eine Miet-Organisation in der SynqDrive App oder melde dich mit einem Organisationskonto an.',
-      };
-    case 'no_rental_product':
-      return {
-        title: 'Kein Mietprodukt',
-        description: 'Diese Organisation ist nicht für den Mietbetrieb (Rental) freigeschaltet.',
-      };
-    default:
-      return {
-        title: 'Zugriff nicht möglich',
-        description: 'Die Operator App ist für dieses Konto nicht verfügbar.',
-      };
-  }
 }
 
 export function isRentalBusinessType(businessType: string | null | undefined): boolean {

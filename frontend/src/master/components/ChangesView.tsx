@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-entry-access-shell-p2-2-48-2026-08-26',
+    version: '4.9.975',
+    title: 'Platform i18n — P2.2.48 Operator Entry & Access Shell localization',
+    summary: [
+      'Localized Operator entry/access shell via `operator-entry-access-i18n.ts` and `operator.entry.access.*` keys.',
+      'P248 enforce-clean exact scope (9 paths) reports 0 findings; +29 EN+DE keys (8703→8732); reuses `common.close`, `common.retry`.',
+      'Presentation-only — auth/access predicates, routes, redirects, session, and denial machine IDs frozen. Category E=0.',
+    ],
+    reason:
+      'P2.2.48 pre-flight (PR #1316) selected Operator Entry & Access Shell as the final bounded Operator slice after P2.2.47 Tasks tab chrome.',
+    previousBehavior:
+      'Entry modal, desktop notice, link card, access denied/loading/guard screens, and entry button used fixed German literals.',
+    details:
+      'operator/components/OperatorEntry*; OperatorAccess*; OperatorLinkCard; operator/lib/operatorAccess.ts; operator-entry-access-i18n.ts; operator.entry.access.{en,de}.ts; operator-entry-access-localization.test.tsx; P248_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_ENTRY_ACCESS_SHELL_P2_2_48_2026-08-26.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-26T17:30:00.000Z',
+  },
+  {
     id: 'i18n-operator-tasks-tab-chrome-p2-2-47-2026-08-26',
     version: '4.9.974',
     title: 'Platform i18n — P2.2.47 Operator Tasks Tab Chrome localization',
