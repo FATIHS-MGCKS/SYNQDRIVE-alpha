@@ -450,8 +450,10 @@ describe('mapVehicleOperationalUiProjection (P1.2)', () => {
       }),
       'master_admin',
     );
-    expect(ui.technicalDetail?.connectivityProviderLinkState).toBe('ACTIVE');
-    expect(ui.technicalDetail?.operationalAvailability).toBe('AVAILABLE');
+    expect(ui.technicalDetail?.connectivityProviderLinkState.presence).toBe('present');
+    expect(ui.technicalDetail?.connectivityProviderLinkState.presentation).toBe('ACTIVE');
+    expect(ui.technicalDetail?.operationalAvailability.presence).toBe('present');
+    expect(ui.technicalDetail?.operationalAvailability.presentation).toBe('AVAILABLE');
   });
 
   it('29 — no timestamp derivation in facade', () => {
@@ -664,6 +666,140 @@ describe('P1.2 availability/health provenance (cross-slice)', () => {
       healthView!.condition.presence === 'present' &&
       healthView!.condition.presentation?.state === 'unknown';
     expect(wouldMisinterpretAsUnknown).toBe(false);
+  });
+});
+
+function mapMasterUi(
+  row: Partial<FleetMapVehicleResponse> & { id?: string },
+) {
+  return mapUi(row, 'master_admin');
+}
+
+describe('P1.2 technical detail provenance (master_admin)', () => {
+  it('1 — primaryReason absent -> technical field absent', () => {
+    const ui = mapMasterUi(partialAvailabilityRow());
+    expect(ui.technicalDetail?.primaryReason.presence).toBe('absent');
+    expect(ui.technicalDetail?.primaryReason.presentation).toBeUndefined();
+  });
+
+  it('2 — primaryReason explicit null -> present + null', () => {
+    const ui = mapMasterUi(
+      fleetRow({
+        operationalAvailability: availability('AVAILABLE', { primaryReason: null }),
+      }),
+    );
+    expect(ui.technicalDetail?.primaryReason.presence).toBe('present');
+    expect(ui.technicalDetail?.primaryReason.presentation).toBeNull();
+  });
+
+  it('3 — reasonCodes absent -> absent', () => {
+    const ui = mapMasterUi(partialAvailabilityRow());
+    expect(ui.technicalDetail?.reasonCodes.presence).toBe('absent');
+    expect(ui.technicalDetail?.reasonCodes.presentation).toBeUndefined();
+  });
+
+  it('4 — reasonCodes explicit [] -> present + []', () => {
+    const ui = mapMasterUi(
+      fleetRow({
+        operationalAvailability: availability('AVAILABLE', { reasonCodes: [] }),
+      }),
+    );
+    expect(ui.technicalDetail?.reasonCodes.presence).toBe('present');
+    expect(ui.technicalDetail?.reasonCodes.presentation).toEqual([]);
+  });
+
+  it('5 — recommendedAction absent -> absent', () => {
+    const ui = mapMasterUi(partialAvailabilityRow());
+    expect(ui.technicalDetail?.recommendedAction.presence).toBe('absent');
+    expect(ui.technicalDetail?.recommendedAction.presentation).toBeUndefined();
+  });
+
+  it('6 — recommendedAction NONE -> present + NONE', () => {
+    const ui = mapMasterUi(
+      fleetRow({
+        operationalAvailability: availability('AVAILABLE', { recommendedAction: 'NONE' }),
+      }),
+    );
+    expect(ui.technicalDetail?.recommendedAction.presence).toBe('present');
+    expect(ui.technicalDetail?.recommendedAction.presentation).toBe('NONE');
+  });
+
+  it('7 — healthCondition absent -> absent', () => {
+    const ui = mapMasterUi(
+      fleetRow({
+        healthEvaluation: {
+          evaluability: 'EVALUABLE',
+          generatedAt: '2026-08-26T12:00:00.000Z',
+          source: 'p0.2_projection',
+        } as FleetMapVehicleResponse['healthEvaluation'],
+      }),
+    );
+    expect(ui.technicalDetail?.healthCondition.presence).toBe('absent');
+    expect(ui.technicalDetail?.healthCondition.presentation).toBeUndefined();
+  });
+
+  it('8 — healthCondition unknown -> present', () => {
+    const ui = mapMasterUi(
+      fleetRow({
+        healthEvaluation: health('EVALUABLE', { condition: 'unknown' }),
+      }),
+    );
+    expect(ui.technicalDetail?.healthCondition.presence).toBe('present');
+    expect(ui.technicalDetail?.healthCondition.presentation).toBe('unknown');
+  });
+
+  it('9 — operationalAvailability absent -> absent', () => {
+    const ui = mapMasterUi(fleetRow({}));
+    expect(ui.technicalDetail?.operationalAvailability.presence).toBe('absent');
+    expect(ui.technicalDetail?.operationalAvailability.presentation).toBeUndefined();
+  });
+
+  it('10 — operationalAvailability UNKNOWN -> present + UNKNOWN', () => {
+    const ui = mapMasterUi(
+      fleetRow({
+        operationalAvailability: availability('UNKNOWN'),
+      }),
+    );
+    expect(ui.technicalDetail?.operationalAvailability.presence).toBe('present');
+    expect(ui.technicalDetail?.operationalAvailability.presentation).toBe('UNKNOWN');
+  });
+
+  it('11 — connectivity overallState absent -> absent', () => {
+    const ui = mapMasterUi(fleetRow({}));
+    expect(ui.technicalDetail?.connectivityOverallState.presence).toBe('absent');
+    expect(ui.technicalDetail?.connectivityOverallState.presentation).toBeUndefined();
+  });
+
+  it('12 — connectivity overallState UNKNOWN -> present + UNKNOWN', () => {
+    const ui = mapMasterUi(
+      fleetRow({
+        connectivityRuntime: runtime({ overallState: 'UNKNOWN' }),
+      }),
+    );
+    expect(ui.technicalDetail?.connectivityOverallState.presence).toBe('present');
+    expect(ui.technicalDetail?.connectivityOverallState.presentation).toBe('UNKNOWN');
+  });
+
+  it('org_admin receives no technicalDetail', () => {
+    const ui = mapUi(
+      fleetRow({
+        connectivityRuntime: runtime(),
+        operationalAvailability: availability('AVAILABLE'),
+      }),
+      'org_admin',
+    );
+    expect(ui.technicalDetail).toBeUndefined();
+  });
+
+  it('worker receives no technicalDetail', () => {
+    const ui = mapUi(
+      fleetRow({
+        connectivityRuntime: runtime(),
+        operationalAvailability: availability('AVAILABLE'),
+      }),
+      'worker',
+    );
+    expect(ui.technicalDetail).toBeUndefined();
   });
 });
 

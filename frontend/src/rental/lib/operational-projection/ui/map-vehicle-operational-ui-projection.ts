@@ -1,5 +1,4 @@
 import type { CanonicalVehicleOperationalView } from '../types';
-import { readCanonicalField } from '../map-fleet-map-to-canonical';
 import {
   mapAttentionUiPresentation,
   mapAvailabilityUiPresentation,
@@ -7,37 +6,15 @@ import {
   mapOperatorUiPresentation,
 } from './map-availability-ui-presentation';
 import { mapHealthUiPresentation } from './map-health-ui-presentation';
+import { mapTechnicalDetail } from './map-technical-detail';
 import type {
   MapVehicleOperationalUiProjectionOptions,
-  TechnicalDetailProjection,
   UiPresentationSlice,
   VehicleOperationalUiProjection,
 } from './types';
 
 function absentSlice<T>(): UiPresentationSlice<T> {
   return { presence: 'absent' };
-}
-
-function mapTechnicalDetail(
-  canonical: CanonicalVehicleOperationalView,
-): TechnicalDetailProjection {
-  return {
-    businessState: readCanonicalField(canonical.business.businessState) ?? null,
-    connectivityOverallState: readCanonicalField(canonical.connectivity.overallState) ?? null,
-    connectivityProviderLinkState:
-      readCanonicalField(canonical.connectivity.providerLinkState) ?? null,
-    connectivityTelemetryState: readCanonicalField(canonical.connectivity.telemetryState) ?? null,
-    operationalAvailability: readCanonicalField(canonical.business.operationalAvailability) ?? null,
-    healthEvaluability: readCanonicalField(canonical.health.evaluability) ?? null,
-    healthCondition: readCanonicalField(canonical.health.condition) ?? null,
-    attention: readCanonicalField(canonical.operator.attention) ?? null,
-    primaryReason: readCanonicalField(canonical.operator.primaryReason) ?? null,
-    recommendedAction: readCanonicalField(canonical.operator.recommendedAction) ?? null,
-    reasonCodes:
-      canonical.operator.reasonCodes.presence === 'present'
-        ? [...(canonical.operator.reasonCodes.value ?? [])]
-        : [],
-  };
 }
 
 /**

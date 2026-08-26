@@ -20,6 +20,7 @@ frontend/src/rental/lib/operational-projection/ui/
   map-connectivity-presentation.ts
   map-availability-ui-presentation.ts
   map-health-ui-presentation.ts
+  map-technical-detail.ts
   map-vehicle-operational-ui-projection.ts
   map-vehicle-operational-ui-projection.test.ts
   index.ts
@@ -73,7 +74,7 @@ mapVehicleOperationalUiProjection(
 | Audience | Behavior |
 |----------|----------|
 | `org_admin` | Human-facing labels; no raw enum leakage for unknown reasons |
-| `master_admin` | Adds `technicalDetail` with raw canonical enum values |
+| `master_admin` | Adds `technicalDetail` with raw canonical enum values per `UiPresentationSlice` (no absent→null/[] coercion) |
 | `worker` | Minimal connectivity (overallState + recommendedAction only) |
 
 Audience changes **presentation only** — never canonical state.
@@ -91,7 +92,7 @@ Audience changes **presentation only** — never canonical state.
 npx vitest run src/rental/lib/operational-projection/
 ```
 
-82 tests (29 P1.1 + 53 P1.2)
+82 tests (29 P1.1 + 67 P1.2)
 
 ## Next phase
 

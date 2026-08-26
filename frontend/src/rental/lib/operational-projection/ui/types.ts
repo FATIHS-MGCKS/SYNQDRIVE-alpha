@@ -12,6 +12,7 @@ import type { TranslationKey } from '../../../i18n/translations/en';
 import type { FleetHealthConditionState, HealthEvaluabilityState } from '../../fleet-health-evaluation/types';
 import type { OperationalAvailabilityState } from '../../operational-availability/types';
 import type { PipelineAvailability } from '../field-semantics';
+import type { BusinessOperationalState } from '../types';
 import type { PrimaryReasonPresentation } from './primary-reason-presentation';
 
 export type VehicleOperationalAudience = 'org_admin' | 'master_admin' | 'worker';
@@ -104,17 +105,17 @@ export interface OperatorUiPresentation {
 }
 
 export interface TechnicalDetailProjection {
-  businessState: string | null;
-  connectivityOverallState: OverallConnectivityState | null;
-  connectivityProviderLinkState: ProviderLinkState | null;
-  connectivityTelemetryState: FleetTelemetryFreshness | null;
-  operationalAvailability: string | null;
-  healthEvaluability: string | null;
-  healthCondition: string | null;
-  attention: ConnectivityAttentionState | null;
-  primaryReason: string | null;
-  recommendedAction: ConnectivityRecommendedAction | null;
-  reasonCodes: readonly string[];
+  businessState: UiPresentationSlice<string>;
+  connectivityOverallState: UiPresentationSlice<OverallConnectivityState>;
+  connectivityProviderLinkState: UiPresentationSlice<ProviderLinkState>;
+  connectivityTelemetryState: UiPresentationSlice<FleetTelemetryFreshness>;
+  operationalAvailability: UiPresentationSlice<OperationalAvailabilityState>;
+  healthEvaluability: UiPresentationSlice<HealthEvaluabilityState>;
+  healthCondition: UiPresentationSlice<FleetHealthConditionState>;
+  attention: UiPresentationSlice<ConnectivityAttentionState>;
+  primaryReason: UiPresentationSlice<string | null>;
+  recommendedAction: UiPresentationSlice<ConnectivityRecommendedAction>;
+  reasonCodes: UiPresentationSlice<readonly string[]>;
 }
 
 export interface VehicleOperationalUiProjection {

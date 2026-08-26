@@ -658,11 +658,19 @@ Unknown future codes: `fleet.operationalAvailability.reason.unknown` (org_admin)
 
 **Cross-slice tests added:** 14 (tests 1–12 + 2 dumb-consumer guards) proving `ui.availability` and `ui.health` preserve absent vs explicit-null/[]/NONE/unknown semantics.
 
+### P1.2 final review fix — technical detail provenance (2026-08-26)
+
+**Root cause:** `mapTechnicalDetail()` used `readCanonicalField(...) ?? null` and `absent → []` for `reasonCodes`, collapsing absent canonical fields into explicit null/[].
+
+**Fix:** `TechnicalDetailProjection` fields are now `UiPresentationSlice<T>` via `map-technical-detail.ts` (`mapCanonicalFieldToTechnicalSlice`). Master admin technical detail preserves absent vs explicit null/[]/NONE/UNKNOWN.
+
+**Technical detail tests added:** 14 (12 provenance scenarios + org_admin/worker guards).
+
 ### Tests
 
 - P1.1 regression: **29 passed**
-- P1.2 facade: **53 passed** (30 scenarios + 14 provenance + 9 primaryReason coverage)
-- Related presentation regression: **132 total passed**
+- P1.2 facade: **67 passed** (30 scenarios + 14 availability/health provenance + 14 technical detail + 9 primaryReason coverage)
+- Related presentation regression: **146 total passed**
 
 ### Legacy consumers (intentionally unchanged)
 
@@ -674,6 +682,7 @@ FleetOperatorRow, FleetMapVehicleStatusHud, fleetVisualState, dashboard runtime,
 |------|--------|
 | P1.2 SHARED UI PROJECTION | **PASS** |
 | PROVENANCE PRESERVATION | **PASS** |
+| TECHNICAL DETAIL PROVENANCE | **PASS** |
 | ABSENT != NULL / [] / NONE / UNKNOWN | **PASS** |
 | P1.1 REGRESSION | **PASS** |
 | NO SECOND STATE MACHINE | **PASS** |

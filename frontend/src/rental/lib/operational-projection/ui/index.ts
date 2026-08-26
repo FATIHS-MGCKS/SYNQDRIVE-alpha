@@ -29,4 +29,6 @@ export {
 export { mapAvailabilityUiPresentation } from './map-availability-ui-presentation';
 export { mapHealthUiPresentation } from './map-health-ui-presentation';
 
+export { mapTechnicalDetail, mapCanonicalFieldToTechnicalSlice } from './map-technical-detail';
+
 export { mapVehicleOperationalUiProjection } from './map-vehicle-operational-ui-projection';
