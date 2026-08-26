@@ -22,10 +22,12 @@ Read-only forensic + dry-run only. See `docs/audits/dimo-vehicle-provider-consen
 
 **Apply gate:** explicit `--vehicle-id` allowlist + `--org` scope + deterministic `runId`.
 
-**Phase 1.1 apply semantics (2026-08-26):**
+**Phase 1.2 apply semantics (2026-08-26):**
 
-- Per-vehicle plan invariants: requested `organizationId` match, exactly one active DIMO link, zero ACTIVE consents before CREATE, no unexpected `link.consentId`.
-- **Atomic apply:** all CREATE targets preflighted; any SKIP/CONFLICT/identity mismatch aborts with **zero writes**; successful apply runs all CREATE + `consentId` WIRE in **one DB transaction** with post-write verification.
-- `partialWritePossible: false` when `atomicApply: true`.
+- **Authoritative mutation gate is transaction-local:** fleet identity index and per-target snapshots are re-read via `tx`, not `this.prisma`, before any write.
+- **All-target preflight before first write:** validate every mutation plan, then CREATE/WIRE — never interleave validate→write per target.
+- **Mutation targets:** `CREATE + WIRE_CONSENT_ID` and `NOOP + WIRE_CONSENT_ID` (existing ACTIVE consent, unwired link).
+- **Apply counters:** `createdConsents`, `wiredConsentIds`, `mutatedVehicles`, `noopVehicles` (plus legacy `applied` = `mutatedVehicles`).
+- Stale pre-transaction snapshots never authorize writes.
 
 **Do not** infer consent from telemetry in `ProviderLinkStateBuilder`.

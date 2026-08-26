@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-consent-ledger-backfill-phase1-2-2026-08-26',
+    version: '4.9.963',
+    title: 'DIMO consent ledger backfill — Phase 1.2 transactional consistency hardening',
+    summary: [
+      'Authoritative apply gate moved inside DB transaction: tx-local fleet identity + target re-reads before any write.',
+      'All mutation targets validated before first CREATE/WIRE; stale pre-transaction snapshots no longer authorize writes.',
+      'NOOP + WIRE_CONSENT_ID apply path wires existing ACTIVE consent without creating duplicate rows.',
+      'Explicit apply counters: createdConsents, wiredConsentIds, mutatedVehicles, noopVehicles.',
+      'Post-write cardinality verification for ACTIVE consent count, link count, and FK wiring inside transaction.',
+      '7 concurrency regression tests added (18 total). Production re-dry-run PASS (NO --apply).',
+    ],
+    reason:
+      'Independent review found TOCTOU gap between pre-transaction preflight and mutation, plus silent skip of existing-consent wire-only plans.',
+    previousBehavior:
+      'Apply used pre-transaction snapshots for write authorization; WIRE-only plans were excluded from apply mutation set.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Connectivity',
+    createdAt: '2026-08-26T15:15:00.000Z',
+  },
+  {
     id: 'dimo-consent-ledger-backfill-phase1-1-2026-08-26',
     version: '4.9.962',
     title: 'DIMO consent ledger backfill — Phase 1.1 apply-path hardening',

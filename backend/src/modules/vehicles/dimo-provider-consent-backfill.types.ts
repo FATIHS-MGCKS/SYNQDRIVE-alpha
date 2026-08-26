@@ -53,7 +53,14 @@ export interface DimoConsentBackfillVehiclePlan {
   };
 }
 
-export interface DimoConsentBackfillSummary {
+export interface DimoConsentBackfillApplyResult {
+  createdConsents: number;
+  wiredConsentIds: number;
+  mutatedVehicles: number;
+  noopVehicles: number;
+}
+
+export interface DimoConsentBackfillSummary extends DimoConsentBackfillApplyResult {
   mode: 'dry-run' | 'apply';
   organizationId: string;
   runId: string;
@@ -63,10 +70,11 @@ export interface DimoConsentBackfillSummary {
   noop: number;
   conflict: number;
   skip: number;
+  /** @deprecated Use mutatedVehicles — kept for backward compatibility */
   applied: number;
-  /** Apply executes all CREATE targets in one DB transaction; any failure rolls back all. */
+  /** Apply executes all mutation targets in one DB transaction; any failure rolls back all. */
   atomicApply: boolean;
-  /** False when atomicApply is enabled for CREATE batches. */
+  /** False when atomicApply is enabled for mutation batches. */
   partialWritePossible: boolean;
   vehicles: DimoConsentBackfillVehiclePlan[];
 }

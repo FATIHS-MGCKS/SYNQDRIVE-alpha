@@ -76,16 +76,41 @@ describe('DimoProviderConsentBackfillService', () => {
     };
   }
 
+  function buildSnapshot(vehicle: typeof ksFh) {
+    const activeLinks = vehicle.dataSourceLinks.filter(
+      (l) => l.provider === 'DIMO' && l.isActive && l.dimoVehicleId,
+    );
+    const activeConsents = vehicle.providerConsents.filter((c) => c.status === 'ACTIVE');
+    return {
+      id: vehicle.id,
+      organizationId: vehicle.organizationId,
+      dimoVehicleId: vehicle.dimoVehicleId,
+      dimoVehicle: vehicle.dimoVehicle,
+      dataSourceLinks: activeLinks,
+      providerConsents: activeConsents.map((c) => ({ id: c.id })),
+    };
+  }
+
   function makeService(config: {
     vehicles?: typeof ksFh[];
     fleet?: ReturnType<typeof fleetFromVehicles>;
-    applySnapshots?: Record<string, any>;
+    txApplySnapshots?: Record<string, any>;
   } = {}) {
     const vehicles = (config.vehicles ?? [ksFh]).map(cloneVehicle);
     const fleet = config.fleet ?? fleetFromVehicles(vehicles);
-    const applySnapshots = config.applySnapshots ?? {};
+    const txApplySnapshots = config.txApplySnapshots ?? {};
     const createdConsents: any[] = [];
     const linkUpdates: any[] = [];
+    let inTransaction = false;
+
+    const resolveVehicleSnapshot = (vehicleId: string) => {
+      const vehicle = vehicles.find((v) => v.id === vehicleId);
+      if (!vehicle) return null;
+      if (inTransaction && txApplySnapshots[vehicleId]) {
+        return txApplySnapshots[vehicleId];
+      }
+      return buildSnapshot(vehicle);
+    };
 
     const prisma = {
       vehicle: {
@@ -99,48 +124,45 @@ describe('DimoProviderConsentBackfillService', () => {
           return [];
         }),
         findFirst: jest.fn(async (args: any) => {
-          const vehicle = vehicles.find(
-            (v) =>
-              v.id === args.where.id &&
-              (!args.where.organizationId || v.organizationId === args.where.organizationId),
-          );
-          if (!vehicle) return null;
-
-          if (applySnapshots[vehicle.id]) {
-            return applySnapshots[vehicle.id];
+          const vehicleId = args?.where?.id;
+          if (!vehicleId) return null;
+          if (args?.where?.organizationId) {
+            const vehicle = vehicles.find(
+              (v) => v.id === vehicleId && v.organizationId === args.where.organizationId,
+            );
+            if (!vehicle) return null;
           }
-
-          const activeLinks = vehicle.dataSourceLinks.filter(
-            (l) => l.provider === 'DIMO' && l.isActive && l.dimoVehicleId,
-          );
-          const activeConsents = vehicle.providerConsents.filter((c) => c.status === 'ACTIVE');
-
-          return {
-            id: vehicle.id,
-            organizationId: vehicle.organizationId,
-            dimoVehicleId: vehicle.dimoVehicleId,
-            dimoVehicle: vehicle.dimoVehicle,
-            dataSourceLinks: activeLinks,
-            providerConsents: activeConsents.map((c) => ({ id: c.id })),
-          };
+          return resolveVehicleSnapshot(vehicleId);
         }),
       },
       vehicleProviderConsent: {
         create: jest.fn(async ({ data }: any) => {
-          const row = { id: `consent-${createdConsents.length + 1}`, ...data };
+          const row = {
+            id: `consent-${createdConsents.length + 1}`,
+            ...data,
+            metadataJson: data.metadataJson,
+          };
           createdConsents.push(row);
           return row;
         }),
         findFirst: jest.fn(async ({ where }: any) => {
-          return (
-            createdConsents.find(
-              (c) =>
-                c.id === where.id &&
-                c.vehicleId === where.vehicleId &&
-                c.organizationId === where.organizationId &&
-                c.provider === where.provider &&
-                c.status === where.status,
-            ) ?? null
+          const rows = [...createdConsents, ...collectVehicleConsents(vehicles)].filter(
+            (c) =>
+              (!where.id || c.id === where.id) &&
+              (!where.vehicleId || c.vehicleId === where.vehicleId) &&
+              (!where.organizationId || c.organizationId === where.organizationId) &&
+              (!where.provider || c.provider === where.provider) &&
+              (!where.status || c.status === where.status),
+          );
+          return rows[0] ?? null;
+        }),
+        findMany: jest.fn(async ({ where }: any) => {
+          return [...createdConsents, ...collectVehicleConsents(vehicles)].filter(
+            (c) =>
+              (!where.vehicleId || c.vehicleId === where.vehicleId) &&
+              (!where.organizationId || c.organizationId === where.organizationId) &&
+              (!where.provider || c.provider === where.provider) &&
+              (!where.status || c.status === where.status),
           );
         }),
       },
@@ -159,10 +181,10 @@ describe('DimoProviderConsentBackfillService', () => {
             const link = vehicle.dataSourceLinks.find(
               (l) =>
                 l.id === where.id &&
-                l.provider === where.provider &&
-                l.isActive === where.isActive &&
-                l.dimoVehicleId === where.dimoVehicleId &&
-                vehicle.id === where.vehicleId,
+                (!where.provider || l.provider === where.provider) &&
+                (!where.isActive || l.isActive === where.isActive) &&
+                (!where.dimoVehicleId || l.dimoVehicleId === where.dimoVehicleId) &&
+                (!where.vehicleId || vehicle.id === where.vehicleId),
             );
             if (link) return { ...link, vehicleId: vehicle.id };
           }
@@ -177,11 +199,49 @@ describe('DimoProviderConsentBackfillService', () => {
             consentId: update.data.consentId,
           };
         }),
+        findMany: jest.fn(async ({ where }: any) => {
+          const links: any[] = [];
+          for (const vehicle of vehicles) {
+            if (where.vehicleId && vehicle.id !== where.vehicleId) continue;
+            for (const link of vehicle.dataSourceLinks) {
+              if (where.provider && link.provider !== where.provider) continue;
+              if (where.isActive != null && link.isActive !== where.isActive) continue;
+              if (where.dimoVehicleId?.not === null && link.dimoVehicleId == null) continue;
+              links.push({ ...link, vehicleId: vehicle.id });
+            }
+          }
+          return links;
+        }),
       },
-      $transaction: jest.fn(async (fn: any) => fn(prisma)),
+      $transaction: jest.fn(async (fn: any) => {
+        inTransaction = true;
+        try {
+          return await fn(prisma);
+        } finally {
+          inTransaction = false;
+        }
+      }),
     } as any;
 
     return { service: new DimoProviderConsentBackfillService(prisma), prisma, createdConsents, linkUpdates };
+  }
+
+  function collectVehicleConsents(vehicles: typeof ksFh[]) {
+    return vehicles.flatMap((v) =>
+      v.providerConsents
+        .filter((c) => c.status === 'ACTIVE')
+        .map((c) => ({
+          id: c.id,
+          vehicleId: v.id,
+          organizationId: v.organizationId,
+          provider: 'DIMO',
+          status: 'ACTIVE',
+          providerVehicleRef: v.dimoVehicle?.externalId ?? String(v.dimoVehicle?.tokenId),
+          expiresAt: null,
+          revokedAt: null,
+          metadataJson: {},
+        })),
+    );
   }
 
   it('plans CREATE + WIRE for missing consent with valid DIMO mapping', async () => {
@@ -295,18 +355,14 @@ describe('DimoProviderConsentBackfillService', () => {
     expect(plans[0].plannedAction).toBe('NOOP');
   });
 
-  it('apply aborts with zero writes when ACTIVE consent appears between plan and apply', async () => {
-    const { service, prisma, createdConsents } = makeService();
-    const plans = await service.plan({ organizationId: orgId, vehicleIds: [ksFh.id] }, 'run-1');
-    expect(plans[0].plannedAction).toBe('CREATE');
-
-    prisma.vehicle.findFirst.mockResolvedValueOnce({
-      id: ksFh.id,
-      organizationId: orgId,
-      dimoVehicleId: ksFh.dimoVehicleId,
-      dimoVehicle: ksFh.dimoVehicle,
-      dataSourceLinks: ksFh.dataSourceLinks,
-      providerConsents: [{ id: 'new-active' }],
+  it('apply aborts with zero writes when ACTIVE consent appears at tx-local re-read', async () => {
+    const { service, createdConsents } = makeService({
+      txApplySnapshots: {
+        [ksFh.id]: {
+          ...buildSnapshot(ksFh),
+          providerConsents: [{ id: 'new-active' }],
+        },
+      },
     });
 
     await expect(
@@ -315,25 +371,59 @@ describe('DimoProviderConsentBackfillService', () => {
     expect(createdConsents).toHaveLength(0);
   });
 
-  it('apply aborts with zero writes when tokenId changes after dry-run', async () => {
-    const { service, createdConsents } = makeService();
-    await service.plan({ organizationId: orgId, vehicleIds: [ksFh.id] }, 'run-1');
-
-    const { service: service2, prisma: prisma2 } = makeService({
-      applySnapshots: {
+  it('apply aborts with zero writes when link.consentId changes at tx-local re-read', async () => {
+    const { service, createdConsents } = makeService({
+      txApplySnapshots: {
         [ksFh.id]: {
-          id: ksFh.id,
-          organizationId: orgId,
-          dimoVehicleId: ksFh.dimoVehicleId,
-          dimoVehicle: { tokenId: 999999, externalId: '999999' },
-          dataSourceLinks: ksFh.dataSourceLinks,
-          providerConsents: [],
+          ...buildSnapshot(ksFh),
+          dataSourceLinks: [{ ...ksFh.dataSourceLinks[0], consentId: 'foreign-consent' }],
         },
       },
     });
 
     await expect(
-      service2.run({ organizationId: orgId, vehicleIds: [ksFh.id], apply: true, runId: 'run-1' }),
+      service.run({ organizationId: orgId, vehicleIds: [ksFh.id], apply: true, runId: 'run-1' }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(createdConsents).toHaveLength(0);
+  });
+
+  it('apply aborts with zero writes when tokenId changes at tx-local re-read', async () => {
+    const { service, createdConsents } = makeService({
+      txApplySnapshots: {
+        [ksFh.id]: {
+          ...buildSnapshot(ksFh),
+          dimoVehicle: { tokenId: 999999, externalId: '999999' },
+        },
+      },
+    });
+
+    await expect(
+      service.run({ organizationId: orgId, vehicleIds: [ksFh.id], apply: true, runId: 'run-1' }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(createdConsents).toHaveLength(0);
+  });
+
+  it('apply aborts with zero writes when second active DIMO link appears at tx-local re-read', async () => {
+    const { service, createdConsents } = makeService({
+      txApplySnapshots: {
+        [ksFh.id]: {
+          ...buildSnapshot(ksFh),
+          dataSourceLinks: [
+            ...ksFh.dataSourceLinks,
+            {
+              id: 'link-dup',
+              provider: 'DIMO',
+              isActive: true,
+              dimoVehicleId: 'dimo-1',
+              consentId: null,
+            },
+          ],
+        },
+      },
+    });
+
+    await expect(
+      service.run({ organizationId: orgId, vehicleIds: [ksFh.id], apply: true, runId: 'run-1' }),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(createdConsents).toHaveLength(0);
   });
@@ -360,6 +450,57 @@ describe('DimoProviderConsentBackfillService', () => {
     expect(createdConsents).toHaveLength(0);
   });
 
+  it('target 1 and 2 tx-local PASS but target 3 FAIL => zero CREATE and zero WIRE', async () => {
+    const targets = [ksFh, ksMs, ksMx];
+    const { service, prisma, createdConsents, linkUpdates } = makeService({
+      vehicles: targets,
+      fleet: fleetFromVehicles(targets),
+      txApplySnapshots: {
+        [ksMx.id]: {
+          ...buildSnapshot(ksMx),
+          providerConsents: [{ id: 'appeared-active' }],
+        },
+      },
+    });
+
+    await expect(
+      service.run({
+        organizationId: orgId,
+        vehicleIds: targets.map((v) => v.id),
+        apply: true,
+        runId: 'run-partial-fail',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(createdConsents).toHaveLength(0);
+    expect(linkUpdates).toHaveLength(0);
+    expect(prisma.vehicleProviderConsent.create).not.toHaveBeenCalled();
+    expect(prisma.vehicleDataSourceLink.update).not.toHaveBeenCalled();
+  });
+
+  it('NOOP + WIRE_CONSENT_ID wires existing consent without creating a new row', async () => {
+    const unwired = {
+      ...ksFh,
+      providerConsents: [{ id: 'existing-consent', status: 'ACTIVE' }],
+      dataSourceLinks: [{ ...ksFh.dataSourceLinks[0], consentId: null }],
+    };
+    const { service, createdConsents, linkUpdates } = makeService({ vehicles: [unwired] });
+
+    const summary = await service.run({
+      organizationId: orgId,
+      vehicleIds: [unwired.id],
+      apply: true,
+      runId: 'run-wire-only',
+    });
+
+    expect(summary.createdConsents).toBe(0);
+    expect(summary.wiredConsentIds).toBe(1);
+    expect(summary.mutatedVehicles).toBe(1);
+    expect(createdConsents).toHaveLength(0);
+    expect(linkUpdates).toHaveLength(1);
+    expect(linkUpdates[0].data.consentId).toBe('existing-consent');
+  });
+
   it('successful exact 3-target apply creates 3 consents and wires 3 links atomically', async () => {
     const targets = [ksFh, ksMs, ksMx];
     const { service, createdConsents, linkUpdates } = makeService({
@@ -374,6 +515,9 @@ describe('DimoProviderConsentBackfillService', () => {
       runId: 'run-atomic-3',
     });
 
+    expect(summary.createdConsents).toBe(3);
+    expect(summary.wiredConsentIds).toBe(3);
+    expect(summary.mutatedVehicles).toBe(3);
     expect(summary.applied).toBe(3);
     expect(createdConsents).toHaveLength(3);
     expect(linkUpdates).toHaveLength(3);
@@ -389,11 +533,12 @@ describe('DimoProviderConsentBackfillService', () => {
       apply: true,
       runId: 'run-1',
     });
-    expect(first.applied).toBe(1);
+    expect(first.mutatedVehicles).toBe(1);
+    expect(first.createdConsents).toBe(1);
     expect(createdConsents).toHaveLength(1);
 
     const wired = {
-      ...ksFh,
+      ...cloneVehicle(ksFh),
       providerConsents: [{ id: createdConsents[0].id, status: 'ACTIVE' }],
       dataSourceLinks: [{ ...ksFh.dataSourceLinks[0], consentId: createdConsents[0].id }],
     };
@@ -401,6 +546,10 @@ describe('DimoProviderConsentBackfillService', () => {
     prisma.vehicle.findMany.mockImplementation(async (args: any) => {
       if (args?.where?.id?.in) return [wired];
       return fleetFromVehicles([wired]);
+    });
+    prisma.vehicle.findFirst.mockImplementation(async (args: any) => {
+      if (args?.where?.id === wired.id) return buildSnapshot(wired);
+      return null;
     });
 
     const second = await service.run({
@@ -411,7 +560,8 @@ describe('DimoProviderConsentBackfillService', () => {
     });
     expect(second.create).toBe(0);
     expect(second.noop).toBe(1);
-    expect(second.applied).toBe(0);
+    expect(second.mutatedVehicles).toBe(0);
+    expect(second.createdConsents).toBe(0);
     expect(createdConsents).toHaveLength(1);
   });
 });
