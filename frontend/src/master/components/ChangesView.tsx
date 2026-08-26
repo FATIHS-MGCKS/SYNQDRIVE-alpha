@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-lv-rest-fsm-wiring-phase1-2026-08-26',
+    version: '4.9.965',
+    title: 'Battery V2 — canonical LV REST FSM wired to observation classify (Phase 1)',
+    summary: [
+      'LvRestWindowIngestionBridgeService connects ingestObservationClassify to LvRestWindowStateMachineService.',
+      'Internal TRIP_ENDED synthesized from read-only vehicle_trip_detection_states (RESTING + lastActivityAt).',
+      'Event order: invalidate → TRIP_ENDED → REST_SNAPSHOT; gated by BATTERY_V2_REST_SHADOW_ENABLED.',
+      'Legacy BatteryV2Service.onSnapshot unchanged (battery_features); no Trip Detection changes.',
+      'LIVE_VOLTAGE remediation explicitly deferred to Phase 2.',
+    ],
+    reason:
+      'Production had zero LV_REST_WINDOW sessions because processEvent had no production call sites.',
+    previousBehavior:
+      'BATTERY_OBSERVATION_CLASSIFY only ran legacy onSnapshot; canonical FSM was implemented but unwired.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T19:30:00.000Z',
+  },
+  {
     id: 'dimo-consent-ledger-backfill-phase2-2026-08-26',
     version: '4.9.964',
     title: 'DIMO consent ledger backfill — Phase 2 production apply (KS trio)',

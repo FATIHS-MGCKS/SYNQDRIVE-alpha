@@ -202,6 +202,7 @@ import { BatteryCapabilityPreflightService } from './battery-health/capability-p
 import { BatteryCapabilityRefreshService } from './battery-health/capability-preflight/battery-capability-refresh.service';
 import { BatteryCapabilityMeasurementGateService } from './battery-health/capability-preflight/battery-capability-measurement-gate.service';
 import { LvRestWindowStateMachineService } from './battery-health/lv-rest-window/lv-rest-window.service';
+import { LvRestWindowIngestionBridgeService } from './battery-health/lv-rest-window/lv-rest-window-ingestion-bridge.service';
 import { BatteryRestTargetEvaluationService } from './battery-health/lv-rest-window/battery-rest-target-evaluation.service';
 import { LvRestShadowSummaryService } from './battery-health/lv-rest-window/lv-rest-shadow-summary.service';
 import { LvStartProxyDiagnosticService } from './battery-health/lv-start-proxy/lv-start-proxy-diagnostic.service';
@@ -365,6 +366,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     BatteryCapabilityRefreshService,
     BatteryCapabilityMeasurementGateService,
     LvRestWindowStateMachineService,
+    LvRestWindowIngestionBridgeService,
     BatteryRestTargetEvaluationService,
     LvRestShadowSummaryService,
     LvStartProxyDiagnosticService,
@@ -548,6 +550,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     BatteryCapabilityRefreshService,
     BatteryCapabilityMeasurementGateService,
     LvRestWindowStateMachineService,
+    LvRestWindowIngestionBridgeService,
     BatteryRestTargetEvaluationService,
     LvRestShadowSummaryService,
     LvStartProxyDiagnosticService,
