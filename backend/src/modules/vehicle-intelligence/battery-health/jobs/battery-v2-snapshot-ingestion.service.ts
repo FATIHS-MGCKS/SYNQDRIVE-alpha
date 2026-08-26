@@ -7,6 +7,7 @@ import { HvFallbackChargeSessionDetectorService } from '../hv-charge-session/hv-
 import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 import { HvMethodProfileService } from '../hv-method-profile/hv-method-profile.service';
 import { HvBatteryHealthService } from '../hv-battery-health.service';
+import { LvRestWindowIngestionBridgeService } from '../lv-rest-window/lv-rest-window-ingestion-bridge.service';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import { BatteryV2ProviderError } from './battery-v2-job.errors';
@@ -55,6 +56,7 @@ export class BatteryV2SnapshotIngestionService {
     private readonly fallbackDetector: HvFallbackChargeSessionDetectorService,
     private readonly jobProducer: BatteryV2JobProducerService,
     private readonly deadLetters: BatteryV2JobDeadLetterService,
+    private readonly lvRestBridge: LvRestWindowIngestionBridgeService,
   ) {}
 
   async ingestObservationClassify(payload: BatteryObservationClassifyPayload): Promise<void> {
@@ -71,6 +73,12 @@ export class BatteryV2SnapshotIngestionService {
       where: { vehicleId: payload.vehicleId },
       select: { tractionBatteryIsCharging: true },
     });
+
+    await this.lvRestBridge.processObservationCycle(
+      payload.organizationId,
+      payload.vehicleId,
+      ctx,
+    );
 
     if (ctx.lvBatteryVoltage != null) {
       const capture = await this.batteryV2.onSnapshot(
