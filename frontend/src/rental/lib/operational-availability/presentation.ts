@@ -1,5 +1,6 @@
 import type { StatusTone } from '../../../components/patterns';
 import type { TranslationKey } from '../../i18n/translations/en';
+import { OPERATIONAL_PRIMARY_REASON_LABEL_KEYS } from '../operational-projection/ui/primary-reason-presentation';
 import {
   normalizeOperationalAvailabilityState,
   OPERATIONAL_AVAILABILITY_STATE,
@@ -23,12 +24,7 @@ const STATE_TOOLTIP_KEYS: Partial<Record<OperationalAvailabilityState, Translati
     'fleet.operationalAvailability.tooltip.unavailable',
 };
 
-const REASON_LABEL_KEYS: Record<string, TranslationKey> = {
-  DEVICE_CHECK_REQUIRED: 'fleet.operationalAvailability.reason.deviceCheckRequired',
-  TELEMETRY_OFFLINE: 'fleet.operationalAvailability.reason.telemetryOffline',
-  BUSINESS_WORKFLOW_BLOCKED: 'fleet.operationalAvailability.reason.businessWorkflowBlocked',
-  HEALTH_RENTAL_BLOCKED: 'fleet.operationalAvailability.reason.healthRentalBlocked',
-};
+const REASON_LABEL_KEYS: Record<string, TranslationKey> = OPERATIONAL_PRIMARY_REASON_LABEL_KEYS;
 
 const STATE_TONES: Record<OperationalAvailabilityState, StatusTone> = {
   [OPERATIONAL_AVAILABILITY_STATE.AVAILABLE]: 'success',

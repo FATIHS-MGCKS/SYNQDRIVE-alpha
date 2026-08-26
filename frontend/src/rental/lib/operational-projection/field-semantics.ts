@@ -4,7 +4,10 @@
  * Preserves absent vs present vs explicit sentinel (NONE / null / []) semantics.
  * Does not coerce omitted or unrecognized values into benign defaults.
  */
-import type { ConnectivityAttentionState, ConnectivityRecommendedAction } from '../../../lib/api';
+import {
+  asConnectivityAttentionState,
+  asConnectivityRecommendedAction,
+} from './connectivity-enums';
 import {
   isFleetHealthConditionState,
   isHealthEvaluabilityState,
@@ -14,33 +17,6 @@ import { absentField, presentField } from './provenance';
 import type { CanonicalField, OperationalFieldSource } from './types';
 
 type PresentSource = Exclude<OperationalFieldSource, 'absent'>;
-
-const CONNECTIVITY_RECOMMENDED_ACTIONS: readonly ConnectivityRecommendedAction[] = [
-  'NONE',
-  'CHECK_DEVICE',
-  'REAUTHORIZE_PROVIDER',
-  'CONNECT_DATA_SOURCE',
-  'REVIEW_CONNECTIVITY',
-  'WAIT_FOR_TELEMETRY',
-  'CHECK_INTEGRATION',
-];
-
-const CONNECTIVITY_ATTENTION_STATES: readonly ConnectivityAttentionState[] = [
-  'NONE',
-  'WATCH',
-  'ACTION_REQUIRED',
-  'CRITICAL',
-];
-
-export function isConnectivityRecommendedAction(
-  value: unknown,
-): value is ConnectivityRecommendedAction {
-  return CONNECTIVITY_RECOMMENDED_ACTIONS.includes(value as ConnectivityRecommendedAction);
-}
-
-export function isConnectivityAttentionState(value: unknown): value is ConnectivityAttentionState {
-  return CONNECTIVITY_ATTENTION_STATES.includes(value as ConnectivityAttentionState);
-}
 
 export type PipelineAvailability = 'ready' | 'partial' | 'unavailable' | null;
 
@@ -122,13 +98,13 @@ export function mapPipelineAvailabilityField(
 export function mapConnectivityRecommendedActionField(
   value: unknown,
   source: PresentSource,
-): CanonicalField<ConnectivityRecommendedAction> {
-  return mapSliceEnumField(value, isConnectivityRecommendedAction, source);
+): CanonicalField<import('../../../lib/api').ConnectivityRecommendedAction> {
+  return mapSliceEnumField(value, asConnectivityRecommendedAction, source);
 }
 
 export function mapConnectivityAttentionField(
   value: unknown,
   source: PresentSource,
-): CanonicalField<ConnectivityAttentionState> {
-  return mapSliceEnumField(value, isConnectivityAttentionState, source);
+): CanonicalField<import('../../../lib/api').ConnectivityAttentionState> {
+  return mapSliceEnumField(value, asConnectivityAttentionState, source);
 }

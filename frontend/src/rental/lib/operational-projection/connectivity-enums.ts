@@ -33,6 +33,10 @@ export function asConnectivityRecommendedAction(
   );
 }
 
+/** Alias used by field-semantics and presentation layers. */
+export const isConnectivityAttentionState = asConnectivityAttentionState;
+export const isConnectivityRecommendedAction = asConnectivityRecommendedAction;
+
 export function asOverallConnectivityState(
   value: unknown,
 ): value is OverallConnectivityState {

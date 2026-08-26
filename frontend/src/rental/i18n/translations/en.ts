@@ -1332,6 +1332,20 @@ export const en = {
   'fleet.operationalAvailability.reason.telemetryOffline': 'Telemetry offline',
   'fleet.operationalAvailability.reason.businessWorkflowBlocked': 'Workflow blocked',
   'fleet.operationalAvailability.reason.healthRentalBlocked': 'Health rental blocked',
+  'fleet.operationalAvailability.reason.deviceUnplugWebhook': 'Device disconnected',
+  'fleet.operationalAvailability.reason.connectivityConfirmedInterruption':
+    'Confirmed connectivity interruption',
+  'fleet.operationalAvailability.reason.connectivityVerificationRequired':
+    'Connectivity verification required',
+  'fleet.operationalAvailability.reason.dataCoverageInsufficient': 'Insufficient data coverage',
+  'fleet.operationalAvailability.reason.insufficientCrossDomainEvidence':
+    'Insufficient cross-domain evidence',
+  'fleet.operationalAvailability.reason.unknown': 'Reason unavailable',
+  'fleetConnectivity.telemetryFreshness.live': 'Live',
+  'fleetConnectivity.telemetryFreshness.standby': 'Standby',
+  'fleetConnectivity.telemetryFreshness.signal_delayed': 'Signal delayed',
+  'fleetConnectivity.telemetryFreshness.offline': 'Offline',
+  'fleetConnectivity.telemetryFreshness.no_signal': 'No signal',
   'fleet.healthEvaluation.condition.good': 'Good',
   'fleet.healthEvaluation.condition.warning': 'Attention needed',
   'fleet.healthEvaluation.condition.critical': 'Critical',

@@ -1432,6 +1432,20 @@ export const de: Record<TranslationKey, string> = {
   'fleet.operationalAvailability.reason.telemetryOffline': 'Telemetrie offline',
   'fleet.operationalAvailability.reason.businessWorkflowBlocked': 'Workflow blockiert',
   'fleet.operationalAvailability.reason.healthRentalBlocked': 'Health-Vermietung blockiert',
+  'fleet.operationalAvailability.reason.deviceUnplugWebhook': 'Gerät getrennt',
+  'fleet.operationalAvailability.reason.connectivityConfirmedInterruption':
+    'Bestätigte Konnektivitätsunterbrechung',
+  'fleet.operationalAvailability.reason.connectivityVerificationRequired':
+    'Konnektivitätsprüfung erforderlich',
+  'fleet.operationalAvailability.reason.dataCoverageInsufficient': 'Unzureichende Datenabdeckung',
+  'fleet.operationalAvailability.reason.insufficientCrossDomainEvidence':
+    'Unzureichende bereichsübergreifende Evidenz',
+  'fleet.operationalAvailability.reason.unknown': 'Grund nicht verfügbar',
+  'fleetConnectivity.telemetryFreshness.live': 'Live',
+  'fleetConnectivity.telemetryFreshness.standby': 'Standby',
+  'fleetConnectivity.telemetryFreshness.signal_delayed': 'Signal verzögert',
+  'fleetConnectivity.telemetryFreshness.offline': 'Offline',
+  'fleetConnectivity.telemetryFreshness.no_signal': 'Kein Signal',
   'fleet.healthEvaluation.condition.good': 'Gut',
   'fleet.healthEvaluation.condition.warning': 'Auffällig',
   'fleet.healthEvaluation.condition.critical': 'Kritisch',
