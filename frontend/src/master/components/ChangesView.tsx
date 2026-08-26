@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-live-voltage-canonical-laststored-2026-08-26',
+    version: '4.9.967',
+    title: 'Battery V2 — canonical LIVE_VOLTAGE lastStored uses BatteryMeasurement only',
+    summary: [
+      'LvLiveVoltageIngestionService.resolveLastStoredObservation no longer falls back to battery_health_snapshots.',
+      'Legacy snapshots cannot suppress the first canonical LIVE_VOLTAGE bootstrap on legacy-heavy fleets.',
+      'Idempotency remains DB-backed via createIdempotent + P2002; REST_60M/6H consume canonical LIVE_VOLTAGE.',
+    ],
+    reason:
+      'Adversarial pre-merge gate: legacy snapshot matching incoming observation classified DUPLICATE_OBSERVATION before any canonical row existed.',
+    previousBehavior:
+      'lastStored compared against battery_health_snapshots when no canonical LIVE_VOLTAGE measurement existed.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T20:45:00.000Z',
+  },
+  {
     id: 'battery-v2-production-cutover-stage1-2026-08-26',
     version: '4.9.966',
     title: 'Battery V2 — Stage 1 production cutover (canonical processing, publication gated)',

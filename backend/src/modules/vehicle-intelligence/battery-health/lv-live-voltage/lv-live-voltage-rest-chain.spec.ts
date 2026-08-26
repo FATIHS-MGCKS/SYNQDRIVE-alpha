@@ -154,5 +154,95 @@ describe('LIVE_VOLTAGE → REST target evaluation chain', () => {
       expect(result.sourceObservationId).toBe('live-meas-1');
       expect(result.quality).toBe(BatteryMeasurementQuality.VALID);
     }
+
+    expect(prisma.batteryMeasurement.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          organizationId: ORG,
+          vehicleId: VEH,
+          type: BatteryMeasurementType.LIVE_VOLTAGE,
+        }),
+      }),
+    );
+  });
+
+  it('LIVE_VOLTAGE candidates feed REST_6H evaluation', async () => {
+    const rest6hObservedAt = new Date('2026-08-26T16:00:00.000Z');
+    const rest6hContext = {
+      speedKmh: 0,
+      ignitionOn: false,
+      engineRunning: false,
+      hasActiveTrip: false,
+      isLvCharging: false,
+      isHvCharging: false,
+      providerObservationOutcome: 'NEW_OBSERVATION',
+    };
+
+    prisma.vehicle.findUnique.mockResolvedValue({
+      latestState: {
+        speedKmh: 0,
+        isIgnitionOn: false,
+        engineLoad: 0,
+        tractionBatteryIsCharging: false,
+        tractionBatteryChargingPowerKw: 0,
+      },
+      tripDetectionState: {
+        activeTripId: null,
+        lastActivityAt: restWindowStartedAt,
+      },
+    });
+
+    prisma.batteryMeasurement.findMany.mockResolvedValue([
+      {
+        id: 'live-meas-6h',
+        observedAt: rest6hObservedAt,
+        numericValue: 12.39,
+        providerTimestamp: rest6hObservedAt,
+        context: rest6hContext,
+        provenance: {},
+      },
+    ]);
+
+    await liveVoltage.persistFromObservationClassify({
+      organizationId: ORG,
+      vehicleId: VEH,
+      idempotencyKey: 'obs-6h',
+      snapshotContext: {
+        providerFetchedAt: '2026-08-26T16:00:08.000Z',
+        lvBatteryVoltage: 12.39,
+        lvBatteryObservedAt: rest6hObservedAt.toISOString(),
+      },
+    } as never);
+
+    const result = await restEval.evaluateAndPersist({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session: {
+        id: SESSION,
+        organizationId: ORG,
+        vehicleId: VEH,
+        type: BatteryMeasurementSessionType.LV_REST_WINDOW,
+        status: BatteryMeasurementSessionStatus.ACTIVE,
+        startedAt: restWindowStartedAt,
+      } as never,
+      restTargetType: 'REST_6H',
+      now: new Date('2026-08-26T16:00:30.000Z'),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.sourceObservationId).toBe('live-meas-6h');
+      expect(result.quality).toBe(BatteryMeasurementQuality.VALID);
+    }
+
+    expect(prisma.batteryMeasurement.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          organizationId: ORG,
+          vehicleId: VEH,
+          type: BatteryMeasurementType.LIVE_VOLTAGE,
+        }),
+      }),
+    );
   });
 });

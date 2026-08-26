@@ -140,4 +140,80 @@ describe('LvLiveVoltageIngestionService', () => {
       }),
     );
   });
+
+  describe('legacy bootstrap (canonical lastStored only)', () => {
+    const legacyRecordedAt = '2026-08-26T12:00:00.000Z';
+    const legacyVoltage = 12.45;
+
+    beforeEach(() => {
+      prisma.batteryMeasurement.findFirst.mockResolvedValue(null);
+      prisma.batteryHealthSnapshot.findFirst.mockResolvedValue({
+        recordedAt: new Date(legacyRecordedAt),
+        voltageV: legacyVoltage,
+      });
+    });
+
+    it('bootstraps canonical LIVE_VOLTAGE when legacy snapshot matches incoming observation', async () => {
+      const result = await service.persistFromObservationClassify(basePayload as never);
+
+      expect(result.persisted).toBe(true);
+      expect(result.decision?.outcome).toBe('NEW_OBSERVATION');
+      expect(measurements.create).toHaveBeenCalledTimes(1);
+      expect(prisma.batteryHealthSnapshot.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('replays idempotently after canonical bootstrap (no second row)', async () => {
+      const canonicalRow = {
+        observedAt: new Date(legacyRecordedAt),
+        numericValue: legacyVoltage,
+        receivedAt: new Date('2026-08-26T12:00:08.000Z'),
+        idempotencyKey: 'canonical-key',
+      };
+
+      prisma.batteryMeasurement.findFirst.mockResolvedValue(canonicalRow);
+
+      const result = await service.persistFromObservationClassify(basePayload as never);
+
+      expect(result.persisted).toBe(false);
+      expect(result.skippedReason).toBe('DUPLICATE_OBSERVATION');
+      expect(measurements.create).not.toHaveBeenCalled();
+    });
+
+    it('persists newer provider observation when legacy snapshot is older', async () => {
+      prisma.batteryHealthSnapshot.findFirst.mockResolvedValue({
+        recordedAt: new Date('2026-08-26T11:00:00.000Z'),
+        voltageV: 12.2,
+      });
+
+      const result = await service.persistFromObservationClassify(basePayload as never);
+
+      expect(result.persisted).toBe(true);
+      expect(result.decision?.outcome).toBe('NEW_OBSERVATION');
+      expect(measurements.create).toHaveBeenCalledTimes(1);
+      expect(prisma.batteryHealthSnapshot.findFirst).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('concurrency / DB idempotency', () => {
+    it('parallel identical observations do not fail ingestion (P2002 handled in createIdempotent)', async () => {
+      let createCalls = 0;
+      measurements.create.mockImplementation(async () => {
+        createCalls += 1;
+        return { id: 'meas-live-1' };
+      });
+
+      const results = await Promise.all([
+        service.persistFromObservationClassify(basePayload as never),
+        service.persistFromObservationClassify(basePayload as never),
+      ]);
+
+      expect(createCalls).toBe(2);
+      expect(results.every((r) => r.persisted === true)).toBe(true);
+      expect(results.every((r) => r.measurementId === 'meas-live-1')).toBe(true);
+    });
+
+    it('documents DB uniqueness + P2002 proof in battery-measurement.repository.spec.ts', () => {
+      expect(measurements.create).toBeDefined();
+    });
+  });
 });

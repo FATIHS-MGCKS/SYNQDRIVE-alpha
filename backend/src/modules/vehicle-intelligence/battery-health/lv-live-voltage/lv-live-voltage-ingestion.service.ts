@@ -154,6 +154,10 @@ export class LvLiveVoltageIngestionService {
     };
   }
 
+  /**
+   * Canonical LIVE_VOLTAGE policy comparison only — legacy battery_health_snapshots
+   * must not suppress the first canonical BatteryMeasurement bootstrap.
+   */
   private async resolveLastStoredObservation(
     organizationId: string,
     vehicleId: string,
@@ -173,28 +177,15 @@ export class LvLiveVoltageIngestionService {
       },
     });
 
-    if (lastMeasurement?.numericValue != null) {
-      return {
-        observedAt: lastMeasurement.observedAt,
-        normalizedValue: lastMeasurement.numericValue,
-        receivedAt: lastMeasurement.receivedAt,
-        idempotencyKey: lastMeasurement.idempotencyKey,
-      };
-    }
-
-    const lastLegacy = await this.prisma.batteryHealthSnapshot.findFirst({
-      where: { vehicleId },
-      orderBy: { recordedAt: 'desc' },
-      select: { recordedAt: true, voltageV: true },
-    });
-
-    if (!lastLegacy?.voltageV) {
+    if (lastMeasurement?.numericValue == null) {
       return null;
     }
 
     return {
-      observedAt: lastLegacy.recordedAt,
-      normalizedValue: lastLegacy.voltageV,
+      observedAt: lastMeasurement.observedAt,
+      normalizedValue: lastMeasurement.numericValue,
+      receivedAt: lastMeasurement.receivedAt,
+      idempotencyKey: lastMeasurement.idempotencyKey,
     };
   }
 

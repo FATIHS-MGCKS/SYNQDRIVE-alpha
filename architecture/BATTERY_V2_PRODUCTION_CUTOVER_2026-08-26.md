@@ -2,11 +2,11 @@
 
 ## Verdict (code release)
 
-**LIVE_VOLTAGE FIXED IN CODE — PR #1331 READY FOR PRE-MERGE REVIEW**
+**LIVE_VOLTAGE FIXED IN CODE — adversarial gate patch applied (PR #1331)**
 
-Stage 1 cutover + canonical `LIVE_VOLTAGE` ingestion are implemented in code. Production must still validate measurement accumulation before enabling publication/readiness.
+Stage 1 cutover + canonical `LIVE_VOLTAGE` ingestion are implemented in code. Canonical `lastStored` for LIVE_VOLTAGE policy comparison uses **BatteryMeasurement only** — legacy `battery_health_snapshots` cannot suppress the first canonical bootstrap.
 
-Stage 1 production `backend.env` must keep `BATTERY_V2_PUBLICATION_ENABLED=false` and `BATTERY_V2_READINESS_ENABLED=false` until post-deploy evidence is proven (30–60 min minimum).
+Production validation has **not** occurred. Stage 1 production `backend.env` must keep `BATTERY_V2_PUBLICATION_ENABLED=false` and `BATTERY_V2_READINESS_ENABLED=false` until post-deploy evidence is proven (30–60 min minimum).
 
 ---
 
@@ -34,8 +34,10 @@ No synchronous DIMO API in REST target evaluation — evaluation reads persisted
 
 - Reuses `evaluateBatteryProviderObservation` — **NEW_OBSERVATION only** (~0.6–6% of polls per domain audit).
 - Idempotency key: `buildBatteryProviderObservationIdempotencyKey` (org, vehicle, signal, provider, observedAt, value).
-- Last-stored comparison: prior `LIVE_VOLTAGE` measurement, fallback `battery_health_snapshots` during cutover.
-- Out-of-order / duplicate / stale replay → no write.
+- Last-stored comparison: **canonical `battery_measurements` LIVE_VOLTAGE only** (org + vehicle scoped). Legacy `battery_health_snapshots` are **not** used for policy comparison — they cannot block the first canonical LIVE_VOLTAGE write on legacy-heavy fleets.
+- Idempotency remains DB-backed: `@@unique([organizationId, vehicleId, idempotencyKey])` + P2002 handling via `createIdempotent()`.
+- REST_60M and REST_6H evaluation consume persisted canonical LIVE_VOLTAGE via `listLvVoltageCandidates()`.
+- Out-of-order / duplicate / stale replay → no write (against canonical store only).
 - Missing or implausible voltage (outside 9.0–16.0 V) → no fabrication.
 
 ### Capability behavior after fix
