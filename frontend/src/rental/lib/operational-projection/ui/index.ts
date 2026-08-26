@@ -1,6 +1,8 @@
 export type {
+  AvailabilityUiPresentation,
   ConnectivityUiPresentation,
   EnumFieldPresentation,
+  HealthUiPresentation,
   MapVehicleOperationalUiProjectionOptions,
   OperatorUiPresentation,
   TechnicalDetailProjection,
@@ -23,5 +25,8 @@ export {
   mapConnectivityUiPresentation,
   mapOperatorUiPresentation,
 } from './map-connectivity-presentation';
+
+export { mapAvailabilityUiPresentation } from './map-availability-ui-presentation';
+export { mapHealthUiPresentation } from './map-health-ui-presentation';
 
 export { mapVehicleOperationalUiProjection } from './map-vehicle-operational-ui-projection';

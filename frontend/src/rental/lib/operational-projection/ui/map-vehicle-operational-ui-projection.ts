@@ -1,15 +1,12 @@
 import type { CanonicalVehicleOperationalView } from '../types';
 import { readCanonicalField } from '../map-fleet-map-to-canonical';
-import { mapFleetHealthPresentation } from '../../fleet-health-evaluation/presentation';
-import type { FleetHealthEvaluation } from '../../fleet-health-evaluation/types';
-import { mapOperationalAvailabilityPresentation } from '../../operational-availability/presentation';
-import type { FleetOperationalAvailability } from '../../operational-availability/types';
 import {
   mapAttentionUiPresentation,
+  mapAvailabilityUiPresentation,
   mapConnectivityUiPresentation,
   mapOperatorUiPresentation,
-} from './map-connectivity-presentation';
-import { mapPrimaryReasonPresentation } from './primary-reason-presentation';
+} from './map-availability-ui-presentation';
+import { mapHealthUiPresentation } from './map-health-ui-presentation';
 import type {
   MapVehicleOperationalUiProjectionOptions,
   TechnicalDetailProjection,
@@ -19,91 +16,6 @@ import type {
 
 function absentSlice<T>(): UiPresentationSlice<T> {
   return { presence: 'absent' };
-}
-
-function presentSlice<T>(presentation: T): UiPresentationSlice<T> {
-  return { presence: 'present', presentation };
-}
-
-function mapAvailabilityPresentation(
-  canonical: CanonicalVehicleOperationalView,
-  options: MapVehicleOperationalUiProjectionOptions,
-): UiPresentationSlice<ReturnType<typeof mapOperationalAvailabilityPresentation>> {
-  const field = canonical.business.operationalAvailability;
-  if (field.presence !== 'present' || field.value === undefined) {
-    return absentSlice();
-  }
-
-  const availabilityDto: FleetOperationalAvailability = {
-    state: field.value,
-    primaryReason:
-      canonical.operator.primaryReason.presence === 'present'
-        ? (canonical.operator.primaryReason.value ?? null)
-        : null,
-    reasonCodes:
-      canonical.operator.reasonCodes.presence === 'present'
-        ? [...canonical.operator.reasonCodes.value!]
-        : [],
-    recommendedAction:
-      canonical.operator.recommendedAction.presence === 'present'
-        ? canonical.operator.recommendedAction.value!
-        : 'NONE',
-    attention:
-      canonical.operator.attention.presence === 'present'
-        ? canonical.operator.attention.value!
-        : 'NONE',
-    generatedAt: '',
-  };
-
-  const presentation = mapOperationalAvailabilityPresentation(availabilityDto, {
-    t: options.t,
-  });
-
-  if (
-    canonical.operator.primaryReason.presence === 'present' &&
-    canonical.operator.primaryReason.value
-  ) {
-    const reasonPresentation = mapPrimaryReasonPresentation(
-      canonical.operator.primaryReason.value,
-      options,
-    );
-    if (reasonPresentation.label) {
-      return presentSlice({
-        ...presentation,
-        reasonLabel: reasonPresentation.label,
-      });
-    }
-  }
-
-  return presentSlice(presentation);
-}
-
-function mapHealthPresentation(
-  canonical: CanonicalVehicleOperationalView,
-  options: MapVehicleOperationalUiProjectionOptions,
-): UiPresentationSlice<ReturnType<typeof mapFleetHealthPresentation>> {
-  const evaluabilityField = canonical.health.evaluability;
-  if (evaluabilityField.presence !== 'present' || evaluabilityField.value === undefined) {
-    return absentSlice();
-  }
-
-  const evaluation: FleetHealthEvaluation = {
-    evaluability: evaluabilityField.value,
-    condition:
-      canonical.health.condition.presence === 'present'
-        ? canonical.health.condition.value!
-        : 'unknown',
-    pipelineAvailability:
-      canonical.health.pipelineAvailability.presence === 'present'
-        ? canonical.health.pipelineAvailability.value!
-        : null,
-    generatedAt: '',
-    healthEvidenceAt: null,
-    anyModuleDataStale: null,
-    source: 'p0.2_projection',
-  };
-
-  return presentSlice(mapFleetHealthPresentation(evaluation, { t: options.t }));
 }
 
 function mapTechnicalDetail(
@@ -145,8 +57,8 @@ export function mapVehicleOperationalUiProjection(
   return {
     vehicleId: canonical.vehicleId,
     audience,
-    availability: mapAvailabilityPresentation(canonical, options),
-    health: mapHealthPresentation(canonical, options),
+    availability: mapAvailabilityUiPresentation(canonical, connectivityOptions),
+    health: mapHealthUiPresentation(canonical, { t: options.t }),
     connectivity:
       audience === 'worker'
         ? mapWorkerConnectivityPresentation(canonical.connectivity, connectivityOptions)

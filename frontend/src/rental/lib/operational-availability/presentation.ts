@@ -42,22 +42,36 @@ export interface OperationalAvailabilityPresentation {
   reasonLabel: string | null;
 }
 
+export function mapOperationalAvailabilityStatePresentation(
+  state: OperationalAvailabilityState,
+  options: { t: (key: TranslationKey) => string },
+): Pick<OperationalAvailabilityPresentation, 'state' | 'labelKey' | 'label' | 'tone' | 'tooltip'> {
+  const normalized = normalizeOperationalAvailabilityState(state);
+  const labelKey = STATE_LABEL_KEYS[normalized];
+  const tooltipKey = STATE_TOOLTIP_KEYS[normalized];
+
+  return {
+    state: normalized,
+    labelKey,
+    label: options.t(labelKey),
+    tone: STATE_TONES[normalized],
+    tooltip: tooltipKey ? options.t(tooltipKey) : null,
+  };
+}
+
 export function mapOperationalAvailabilityPresentation(
   availability: FleetOperationalAvailability | null | undefined,
   options: { t: (key: TranslationKey) => string },
 ): OperationalAvailabilityPresentation {
-  const state = normalizeOperationalAvailabilityState(availability?.state);
-  const labelKey = STATE_LABEL_KEYS[state];
-  const tooltipKey = STATE_TOOLTIP_KEYS[state];
+  const base = mapOperationalAvailabilityStatePresentation(
+    normalizeOperationalAvailabilityState(availability?.state),
+    options,
+  );
   const primaryReason = availability?.primaryReason ?? null;
   const reasonKey = primaryReason ? REASON_LABEL_KEYS[primaryReason] : undefined;
 
   return {
-    state,
-    labelKey,
-    label: options.t(labelKey),
-    tone: STATE_TONES[state],
-    tooltip: tooltipKey ? options.t(tooltipKey) : null,
+    ...base,
     reasonLabel: reasonKey ? options.t(reasonKey) : null,
   };
 }

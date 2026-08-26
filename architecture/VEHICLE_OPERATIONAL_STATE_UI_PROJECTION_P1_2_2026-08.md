@@ -18,6 +18,8 @@ frontend/src/rental/lib/operational-projection/ui/
   types.ts
   primary-reason-presentation.ts
   map-connectivity-presentation.ts
+  map-availability-ui-presentation.ts
+  map-health-ui-presentation.ts
   map-vehicle-operational-ui-projection.ts
   map-vehicle-operational-ui-projection.test.ts
   index.ts
@@ -42,9 +44,18 @@ mapVehicleOperationalUiProjection(
 
 ## Reused presentation modules (unchanged semantics)
 
-- `operational-availability/presentation.ts` — P0.3 availability labels/tones
-- `fleet-health-evaluation/presentation.ts` — P0.4 health/evaluability labels
+- `operational-availability/presentation.ts` — P0.3 availability state labels/tones (`mapOperationalAvailabilityStatePresentation`)
+- `fleet-health-evaluation/presentation.ts` — P0.4 health condition/evaluability labels (`mapHealthConditionStatePresentation`, `mapHealthEvaluabilityStatePresentation`)
 - `fleet-connectivity/fleet-connectivity.presentation.ts` — connectivity enum labels/tones
+
+## Provenance-aware slice types (P1.2 review fix)
+
+`AvailabilityUiPresentation` and `HealthUiPresentation` use `UiPresentationSlice<T>` for semantic sub-fields. The facade **does not** adapt canonical views into legacy flat DTOs that coerce absent fields to `null`, `[]`, `NONE`, or `unknown`.
+
+| Slice | Provenance-aware sub-fields |
+|-------|----------------------------|
+| `availability.presentation` | `primaryReason`, `reasonCodes`, `recommendedAction`, `attention` |
+| `health.presentation` | `condition`, `pipelineAvailability` |
 
 ## Presentation fallback policy
 
@@ -80,7 +91,7 @@ Audience changes **presentation only** — never canonical state.
 npx vitest run src/rental/lib/operational-projection/
 ```
 
-68 tests (29 P1.1 + 39 P1.2)
+68 tests (29 P1.1 + 53 P1.2)
 
 ## Next phase
 

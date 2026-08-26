@@ -8,8 +8,10 @@ import type {
   PhysicalDeviceState,
   ProviderLinkState,
 } from '../../../../lib/api';
-import type { FleetHealthPresentation } from '../../fleet-health-evaluation/presentation';
-import type { OperationalAvailabilityPresentation } from '../../operational-availability/presentation';
+import type { TranslationKey } from '../../../i18n/translations/en';
+import type { FleetHealthConditionState, HealthEvaluabilityState } from '../../fleet-health-evaluation/types';
+import type { OperationalAvailabilityState } from '../../operational-availability/types';
+import type { PipelineAvailability } from '../field-semantics';
 import type { PrimaryReasonPresentation } from './primary-reason-presentation';
 
 export type VehicleOperationalAudience = 'org_admin' | 'master_admin' | 'worker';
@@ -25,6 +27,41 @@ export interface EnumFieldPresentation<T extends string> {
   state: T;
   label: string;
   tone: StatusTone;
+}
+
+/** P1.2 — availability state labels + provenance-aware operator sub-fields. */
+export interface AvailabilityUiPresentation {
+  state: OperationalAvailabilityState;
+  labelKey: TranslationKey;
+  label: string;
+  tone: StatusTone;
+  tooltip: string | null;
+  primaryReason: UiPresentationSlice<PrimaryReasonPresentation>;
+  reasonCodes: UiPresentationSlice<{ items: PrimaryReasonPresentation[] }>;
+  recommendedAction: UiPresentationSlice<{
+    action: ConnectivityRecommendedAction;
+    label: string;
+  }>;
+  attention: UiPresentationSlice<EnumFieldPresentation<ConnectivityAttentionState>>;
+}
+
+/** P1.2 — health evaluability labels + provenance-aware condition/pipeline sub-fields. */
+export interface HealthUiPresentation {
+  evaluability: HealthEvaluabilityState;
+  labelKey: TranslationKey;
+  label: string;
+  tone: StatusTone;
+  tooltip: string | null;
+  isEvaluable: boolean;
+  secondaryLabel: string | null;
+  condition: UiPresentationSlice<{
+    state: FleetHealthConditionState;
+    label: string;
+    tone: StatusTone;
+  }>;
+  pipelineAvailability: UiPresentationSlice<{
+    value: PipelineAvailability;
+  }>;
 }
 
 export interface ConnectivityUiPresentation {
@@ -83,8 +120,8 @@ export interface TechnicalDetailProjection {
 export interface VehicleOperationalUiProjection {
   vehicleId: string;
   audience: VehicleOperationalAudience;
-  availability: UiPresentationSlice<OperationalAvailabilityPresentation>;
-  health: UiPresentationSlice<FleetHealthPresentation>;
+  availability: UiPresentationSlice<AvailabilityUiPresentation>;
+  health: UiPresentationSlice<HealthUiPresentation>;
   connectivity: ConnectivityUiPresentation;
   attention: AttentionUiPresentation;
   operator: OperatorUiPresentation;

@@ -348,6 +348,8 @@ describe('mapVehicleOperationalUiProjection (P1.2)', () => {
     expect(ui.operator.primaryReason.presence).toBe('present');
     expect(ui.operator.primaryReason.presentation?.resolution).toBe('explicit_null');
     expect(ui.operator.primaryReason.presentation?.label).toBeNull();
+    expect(ui.availability.presentation?.primaryReason.presence).toBe('present');
+    expect(ui.availability.presentation?.primaryReason.presentation?.resolution).toBe('explicit_null');
   });
 
   it('20 — primaryReason absent', () => {
@@ -360,6 +362,7 @@ describe('mapVehicleOperationalUiProjection (P1.2)', () => {
       }),
     );
     expect(ui.operator.primaryReason.presence).toBe('absent');
+    expect(ui.availability.presentation?.primaryReason.presence).toBe('absent');
   });
 
   it('21 — recommendedAction NONE', () => {
@@ -474,6 +477,193 @@ describe('mapVehicleOperationalUiProjection (P1.2)', () => {
       }),
     );
     expect(ui.connectivity.telemetryState.presentation?.state).toBe('live');
+  });
+});
+
+function partialAvailabilityRow() {
+  return fleetRow({
+    operationalAvailability: {
+      state: 'AVAILABLE',
+      generatedAt: '2026-08-26T12:00:00.000Z',
+    } as FleetMapVehicleResponse['operationalAvailability'],
+  });
+}
+
+describe('P1.2 availability/health provenance (cross-slice)', () => {
+  it('1 — availability present + primaryReason absent does not fabricate null reason semantics', () => {
+    const ui = mapUi(partialAvailabilityRow());
+    expect(ui.availability.presentation?.primaryReason.presence).toBe('absent');
+    expect(ui.availability.presentation?.primaryReason.presentation).toBeUndefined();
+  });
+
+  it('2 — availability present + reasonCodes absent does not fabricate []', () => {
+    const ui = mapUi(partialAvailabilityRow());
+    expect(ui.availability.presentation?.reasonCodes.presence).toBe('absent');
+    expect(ui.availability.presentation?.reasonCodes.presentation).toBeUndefined();
+  });
+
+  it('3 — availability present + recommendedAction absent does not fabricate NONE', () => {
+    const ui = mapUi(partialAvailabilityRow());
+    expect(ui.availability.presentation?.recommendedAction.presence).toBe('absent');
+    expect(ui.availability.presentation?.recommendedAction.presentation).toBeUndefined();
+  });
+
+  it('4 — availability present + attention absent does not fabricate NONE', () => {
+    const ui = mapUi(partialAvailabilityRow());
+    expect(ui.availability.presentation?.attention.presence).toBe('absent');
+    expect(ui.availability.presentation?.attention.presentation).toBeUndefined();
+  });
+
+  it('5 — explicit primaryReason=null distinguishable from absent', () => {
+    const absentUi = mapUi(partialAvailabilityRow());
+    const nullUi = mapUi(
+      fleetRow({
+        operationalAvailability: availability('AVAILABLE', { primaryReason: null }),
+      }),
+    );
+    expect(absentUi.availability.presentation?.primaryReason.presence).toBe('absent');
+    expect(nullUi.availability.presentation?.primaryReason.presence).toBe('present');
+    expect(nullUi.availability.presentation?.primaryReason.presentation?.resolution).toBe('explicit_null');
+  });
+
+  it('6 — explicit reasonCodes=[] distinguishable from absent', () => {
+    const absentUi = mapUi(partialAvailabilityRow());
+    const emptyUi = mapUi(
+      fleetRow({
+        operationalAvailability: availability('AVAILABLE', { reasonCodes: [] }),
+      }),
+    );
+    expect(absentUi.availability.presentation?.reasonCodes.presence).toBe('absent');
+    expect(emptyUi.availability.presentation?.reasonCodes.presence).toBe('present');
+    expect(emptyUi.availability.presentation?.reasonCodes.presentation?.items).toEqual([]);
+  });
+
+  it('7 — explicit recommendedAction=NONE distinguishable from absent', () => {
+    const absentUi = mapUi(partialAvailabilityRow());
+    const noneUi = mapUi(
+      fleetRow({
+        operationalAvailability: availability('AVAILABLE', { recommendedAction: 'NONE' }),
+      }),
+    );
+    expect(absentUi.availability.presentation?.recommendedAction.presence).toBe('absent');
+    expect(noneUi.availability.presentation?.recommendedAction.presence).toBe('present');
+    expect(noneUi.availability.presentation?.recommendedAction.presentation?.action).toBe('NONE');
+  });
+
+  it('8 — explicit attention=NONE distinguishable from absent', () => {
+    const absentUi = mapUi(partialAvailabilityRow());
+    const noneUi = mapUi(
+      fleetRow({
+        operationalAvailability: availability('AVAILABLE', { attention: 'NONE' }),
+      }),
+    );
+    expect(absentUi.availability.presentation?.attention.presence).toBe('absent');
+    expect(noneUi.availability.presentation?.attention.presence).toBe('present');
+    expect(noneUi.availability.presentation?.attention.presentation?.state).toBe('NONE');
+  });
+
+  it('9 — health evaluability present + condition absent does not fabricate unknown', () => {
+    const ui = mapUi(
+      fleetRow({
+        healthEvaluation: {
+          evaluability: 'EVALUABLE',
+          generatedAt: '2026-08-26T12:00:00.000Z',
+          source: 'p0.2_projection',
+        } as FleetMapVehicleResponse['healthEvaluation'],
+      }),
+    );
+    expect(ui.health.presentation?.condition.presence).toBe('absent');
+    expect(ui.health.presentation?.condition.presentation).toBeUndefined();
+  });
+
+  it('10 — explicit health condition=unknown distinguishable from absent', () => {
+    const absentUi = mapUi(
+      fleetRow({
+        healthEvaluation: {
+          evaluability: 'EVALUABLE',
+          generatedAt: '2026-08-26T12:00:00.000Z',
+          source: 'p0.2_projection',
+        } as FleetMapVehicleResponse['healthEvaluation'],
+      }),
+    );
+    const unknownUi = mapUi(
+      fleetRow({
+        healthEvaluation: health('EVALUABLE', { condition: 'unknown' }),
+      }),
+    );
+    expect(absentUi.health.presentation?.condition.presence).toBe('absent');
+    expect(unknownUi.health.presentation?.condition.presence).toBe('present');
+    expect(unknownUi.health.presentation?.condition.presentation?.state).toBe('unknown');
+  });
+
+  it('11 — health evaluability present + pipelineAvailability absent does not fabricate null', () => {
+    const ui = mapUi(
+      fleetRow({
+        healthEvaluation: {
+          evaluability: 'EVALUABLE',
+          condition: 'good',
+          generatedAt: '2026-08-26T12:00:00.000Z',
+          source: 'p0.2_projection',
+        } as FleetMapVehicleResponse['healthEvaluation'],
+      }),
+    );
+    expect(ui.health.presentation?.pipelineAvailability.presence).toBe('absent');
+    expect(ui.health.presentation?.pipelineAvailability.presentation).toBeUndefined();
+  });
+
+  it('12 — explicit pipelineAvailability=null distinguishable from absent', () => {
+    const absentUi = mapUi(
+      fleetRow({
+        healthEvaluation: {
+          evaluability: 'EVALUABLE',
+          condition: 'good',
+          generatedAt: '2026-08-26T12:00:00.000Z',
+          source: 'p0.2_projection',
+        } as FleetMapVehicleResponse['healthEvaluation'],
+      }),
+    );
+    const nullUi = mapUi(
+      fleetRow({
+        healthEvaluation: health('EVALUABLE', {
+          condition: 'good',
+          pipelineAvailability: null,
+        }),
+      }),
+    );
+    expect(absentUi.health.presentation?.pipelineAvailability.presence).toBe('absent');
+    expect(nullUi.health.presentation?.pipelineAvailability.presence).toBe('present');
+    expect(nullUi.health.presentation?.pipelineAvailability.presentation?.value).toBeNull();
+  });
+
+  it('dumb consumer — ui.availability only cannot infer NONE from absent recommendedAction', () => {
+    const ui = mapUi(partialAvailabilityRow());
+    const avail = ui.availability.presentation;
+    expect(avail).toBeDefined();
+    const action = avail!.recommendedAction;
+    expect(action.presence).toBe('absent');
+    // Future consumer guard: never treat absent as NONE
+    const wouldMisinterpretAsNone =
+      action.presence === 'present' && action.presentation?.action === 'NONE';
+    expect(wouldMisinterpretAsNone).toBe(false);
+  });
+
+  it('dumb consumer — ui.health only cannot infer unknown condition from absent', () => {
+    const ui = mapUi(
+      fleetRow({
+        healthEvaluation: {
+          evaluability: 'PARTIALLY_EVALUABLE',
+          generatedAt: '2026-08-26T12:00:00.000Z',
+          source: 'p0.2_projection',
+        } as FleetMapVehicleResponse['healthEvaluation'],
+      }),
+    );
+    const healthView = ui.health.presentation;
+    expect(healthView).toBeDefined();
+    expect(healthView!.condition.presence).toBe('absent');
+    const wouldMisinterpretAsUnknown =
+      healthView!.condition.presence === 'present' &&
+      healthView!.condition.presentation?.state === 'unknown';
+    expect(wouldMisinterpretAsUnknown).toBe(false);
   });
 });
 
