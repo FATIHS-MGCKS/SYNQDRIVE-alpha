@@ -187,6 +187,18 @@ describe('BatteryRestTargetEvaluateHandler', () => {
     );
   });
 
+  it('rejects REST target job missing restWindowId', async () => {
+    await expect(
+      handler.handle({
+        ...basePayload('REST_60M'),
+        restWindowId: undefined,
+      } as any),
+    ).rejects.toMatchObject({
+      message: 'REST target job missing restWindowId',
+      retryable: false,
+    });
+  });
+
   it('skips evaluation when REST shadow flag is disabled', async () => {
     process.env.BATTERY_V2_REST_SHADOW_ENABLED = 'false';
 

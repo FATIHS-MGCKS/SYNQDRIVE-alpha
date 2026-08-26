@@ -13,7 +13,6 @@ import {
 } from '@config/battery-health-v2.config';
 import {
   buildAssessmentJobIdempotencyKey,
-  buildRestTargetJobIdempotencyKey,
   buildStartProxyJobIdempotencyKey,
 } from './battery-v2-job-idempotency.policy';
 import { BATTERY_V2_JOB_MODEL_VERSION_DEFAULT } from './battery-v2-job.types';
@@ -25,15 +24,18 @@ import { BatteryCapabilityRefreshService } from '../capability-preflight/battery
 import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 import {
   isLvRestTargetAlreadyScheduled,
+  LV_REST_TARGET_JOB_STATUS,
   LV_REST_TARGET_TYPES,
+  mergeLvRestTargetJobMetadata,
   readLvRestWindowSessionMetadata,
 } from '../lv-rest-window/lv-rest-window-target.metadata';
 import {
   BatteryMeasurementSessionStatus,
   BatteryMeasurementSessionType,
   BatteryMeasurementType,
+  Prisma,
 } from '@prisma/client';
-import { LvRestWindowState } from '../battery-v2-domain';
+import { buildLvRestWindowIdempotencyKey, LvRestWindowState } from '../battery-v2-domain';
 import { measurementTypeForRestTarget } from '../lv-rest-window/battery-rest-target-evaluation';
 import { buildStartProxyMeasurementIdempotencyKey } from '../lv-start-proxy/battery-start-proxy.policy';
 import { BatteryV2TripStartProducer } from './battery-v2-trip-start.producer';
@@ -303,7 +305,8 @@ export class BatteryV2ReconciliationService {
 
     let enqueued = 0;
     for (const session of sessions) {
-      const metadata = readLvRestWindowSessionMetadata(session.metadata);
+      let sessionMetadata: Prisma.JsonValue = session.metadata;
+      const metadata = readLvRestWindowSessionMetadata(sessionMetadata);
       const fsmState = metadata.lvRestWindowState;
       if (
         fsmState === LvRestWindowState.INVALIDATED ||
@@ -323,7 +326,7 @@ export class BatteryV2ReconciliationService {
         if (session.startedAt.getTime() > dueBefore.getTime()) {
           continue;
         }
-        if (isLvRestTargetAlreadyScheduled(session.metadata, targetType)) {
+        if (isLvRestTargetAlreadyScheduled(sessionMetadata, targetType)) {
           continue;
         }
 
@@ -356,6 +359,22 @@ export class BatteryV2ReconciliationService {
                 now: new Date(now),
               });
         if (scheduleResult.scheduled || scheduleResult.bullJobId) {
+          const mergedMetadata = mergeLvRestTargetJobMetadata(
+            sessionMetadata,
+            targetType,
+            this.restTargetProducer.buildScheduledTargetMetadata(
+              scheduleResult,
+              targetType,
+            ),
+          );
+          await this.prisma.batteryMeasurementSession.update({
+            where: {
+              id: session.id,
+              organizationId: session.organizationId,
+            },
+            data: { metadata: mergedMetadata },
+          });
+          sessionMetadata = mergedMetadata as Prisma.JsonValue;
           enqueued += 1;
         }
       }
@@ -364,6 +383,12 @@ export class BatteryV2ReconciliationService {
     return enqueued;
   }
 
+  /**
+   * Bridge legacy `battery_features` rest-window flags to canonical LV rest sessions.
+   *
+   * REST target evaluation requires `restWindowId` + an LV_REST_WINDOW session (handler contract).
+   * Do not enqueue bare `rest-target:*` jobs without `restWindowId` — they fail terminally.
+   */
   private async reconcileLegacyRestTargets(batch: number): Promise<number> {
     if (!isBatteryV2RestShadowEnabled()) {
       return 0;
@@ -390,6 +415,37 @@ export class BatteryV2ReconciliationService {
       const startedAt = row.restWindowStartedAt;
       if (!organizationId || !startedAt) continue;
 
+      const restWindowId = buildLvRestWindowIdempotencyKey(row.vehicleId, startedAt);
+      const session = await this.prisma.batteryMeasurementSession.findFirst({
+        where: {
+          organizationId,
+          vehicleId: row.vehicleId,
+          type: BatteryMeasurementSessionType.LV_REST_WINDOW,
+          idempotencyKey: restWindowId,
+        },
+        select: {
+          id: true,
+          organizationId: true,
+          vehicleId: true,
+          startedAt: true,
+          metadata: true,
+          status: true,
+        },
+      });
+      if (!session) {
+        continue;
+      }
+
+      let sessionMetadata: Prisma.JsonValue = session.metadata;
+      const metadata = readLvRestWindowSessionMetadata(sessionMetadata);
+      const fsmState = metadata.lvRestWindowState;
+      if (
+        fsmState === LvRestWindowState.INVALIDATED ||
+        fsmState === LvRestWindowState.EXPIRED
+      ) {
+        continue;
+      }
+
       const targets: Array<'REST_60M' | 'REST_6H'> = [];
       if (!row.rest60mCapturedAt && now - startedAt.getTime() >= REST_60M_MS) {
         targets.push('REST_60M');
@@ -399,24 +455,57 @@ export class BatteryV2ReconciliationService {
       }
 
       for (const restTargetType of targets) {
-        const idempotencyKey = buildRestTargetJobIdempotencyKey({
-          vehicleId: row.vehicleId,
-          restWindowStartedAt: startedAt,
-          restTargetType,
-        });
-        if (await this.deadLetters.isDeadLetter('BATTERY_REST_TARGET_EVALUATE', idempotencyKey)) {
+        if (isLvRestTargetAlreadyScheduled(sessionMetadata, restTargetType)) {
           continue;
         }
 
-        const jobId = await this.jobProducer.enqueue('BATTERY_REST_TARGET_EVALUATE', {
-          organizationId,
-          vehicleId: row.vehicleId,
-          idempotencyKey,
-          restWindowStartedAt: startedAt.toISOString(),
-          restTargetType,
-          correlationId: `reconcile:rest:${row.vehicleId}:${restTargetType}`,
+        const hasMeasurement = await this.prisma.batteryMeasurement.findFirst({
+          where: {
+            organizationId: session.organizationId,
+            sessionId: session.id,
+            type: measurementTypeForRestTarget(restTargetType),
+          },
+          select: { id: true },
         });
-        if (jobId) enqueued += 1;
+        if (hasMeasurement) continue;
+
+        const scheduleResult =
+          restTargetType === LV_REST_TARGET_TYPES.REST_60M
+            ? await this.restTargetProducer.scheduleRest60m({
+                organizationId: session.organizationId,
+                vehicleId: session.vehicleId,
+                sessionId: session.id,
+                restWindowId,
+                restWindowStartedAt: session.startedAt,
+                now: new Date(now),
+              })
+            : await this.restTargetProducer.scheduleRest6h({
+                organizationId: session.organizationId,
+                vehicleId: session.vehicleId,
+                sessionId: session.id,
+                restWindowId,
+                restWindowStartedAt: session.startedAt,
+                now: new Date(now),
+              });
+        if (scheduleResult.scheduled || scheduleResult.bullJobId) {
+          const mergedMetadata = mergeLvRestTargetJobMetadata(
+            sessionMetadata,
+            restTargetType,
+            this.restTargetProducer.buildScheduledTargetMetadata(
+              scheduleResult,
+              restTargetType,
+            ),
+          );
+          await this.prisma.batteryMeasurementSession.update({
+            where: {
+              id: session.id,
+              organizationId: session.organizationId,
+            },
+            data: { metadata: mergedMetadata },
+          });
+          sessionMetadata = mergedMetadata as Prisma.JsonValue;
+          enqueued += 1;
+        }
       }
     }
 

@@ -40,7 +40,11 @@ describe('battery-v2-job.validation', () => {
 
   describe('validateBatteryV2JobPayload — base fields', () => {
     it.each(
-      BATTERY_V2_JOB_TYPES.filter((t) => t !== 'BATTERY_START_PROXY_EXTRACT'),
+      BATTERY_V2_JOB_TYPES.filter(
+        (t) =>
+          t !== 'BATTERY_START_PROXY_EXTRACT' &&
+          t !== 'BATTERY_REST_TARGET_EVALUATE',
+      ),
     )('validates base payload for %s', (jobType) => {
       const payload = validateBatteryV2JobPayload(jobType, validBase());
       expect(payload.organizationId).toBe(ORG_ID);
@@ -109,21 +113,40 @@ describe('battery-v2-job.validation', () => {
   });
 
   describe('validateBatteryV2JobPayload — type-specific fields', () => {
-    it('validates restWindowStartedAt for BATTERY_REST_TARGET_EVALUATE', () => {
+    const restBase = (overrides: Record<string, unknown> = {}) =>
+      validBase({
+        idempotencyKey: `battery-rest:${VEHICLE_ID}:lv-rest:${VEHICLE_ID}:1721124000000:60m`,
+        restWindowId: `lv-rest:${VEHICLE_ID}:1721124000000`,
+        restTargetType: 'REST_60M',
+        ...overrides,
+      });
+
+    it('validates rest target payload with required restWindowId', () => {
       const payload = validateBatteryV2JobPayload(
         'BATTERY_REST_TARGET_EVALUATE',
-        validBase({ restWindowStartedAt: '2026-07-16T10:00:00.000Z' }),
+        restBase({ restWindowStartedAt: '2026-07-16T10:00:00.000Z' }),
       );
       expect(payload).toMatchObject({
+        restWindowId: `lv-rest:${VEHICLE_ID}:1721124000000`,
         restWindowStartedAt: '2026-07-16T10:00:00.000Z',
+        restTargetType: 'REST_60M',
       });
+    });
+
+    it('rejects REST target job without restWindowId', () => {
+      expect(() =>
+        validateBatteryV2JobPayload(
+          'BATTERY_REST_TARGET_EVALUATE',
+          restBase({ restWindowId: undefined }),
+        ),
+      ).toThrow(/restWindowId/);
     });
 
     it('rejects invalid restWindowStartedAt', () => {
       expect(() =>
         validateBatteryV2JobPayload(
           'BATTERY_REST_TARGET_EVALUATE',
-          validBase({ restWindowStartedAt: 'not-a-date' }),
+          restBase({ restWindowStartedAt: 'not-a-date' }),
         ),
       ).toThrow(/restWindowStartedAt/);
     });

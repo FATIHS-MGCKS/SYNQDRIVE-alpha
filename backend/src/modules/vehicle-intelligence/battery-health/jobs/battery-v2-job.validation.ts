@@ -305,6 +305,9 @@ export function validateBatteryV2JobPayload<T extends BatteryV2JobType>(
       } as BatteryV2JobPayload<T>;
     }
     case 'BATTERY_REST_TARGET_EVALUATE': {
+      if (!isNonEmptyString(data.restWindowId, 256)) {
+        throw new BatteryV2JobValidationError('restWindowId is required', 'restWindowId');
+      }
       let restWindowStartedAt: string | null | undefined;
       if (data.restWindowStartedAt !== undefined && data.restWindowStartedAt !== null) {
         restWindowStartedAt = parseIsoDate(
@@ -325,6 +328,7 @@ export function validateBatteryV2JobPayload<T extends BatteryV2JobType>(
       }
       return {
         ...base,
+        restWindowId: data.restWindowId.trim(),
         restWindowStartedAt: restWindowStartedAt ?? null,
         restTargetType: restTargetType ?? null,
       } as BatteryV2JobPayload<T>;

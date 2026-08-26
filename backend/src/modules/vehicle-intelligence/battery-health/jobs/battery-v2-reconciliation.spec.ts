@@ -48,6 +48,7 @@ describe('BatteryV2JobProducerService hardening', () => {
       organizationId: ORG,
       vehicleId: VEH,
       idempotencyKey,
+      restWindowId: `lv-rest:${VEH}:${startedAt.getTime()}`,
       restWindowStartedAt: startedAt.toISOString(),
       restTargetType: 'REST_60M',
     });
@@ -70,6 +71,7 @@ describe('BatteryV2JobProducerService hardening', () => {
       organizationId: ORG,
       vehicleId: VEH,
       idempotencyKey: `rest-target:${VEH}:REST_60M:123`,
+      restWindowId: `lv-rest:${VEH}:123`,
       restWindowStartedAt: new Date().toISOString(),
       restTargetType: 'REST_60M',
     });
@@ -83,7 +85,11 @@ describe('BatteryV2ReconciliationService', () => {
   const prisma = {
     vehicleLatestState: { findMany: jest.fn().mockResolvedValue([]) },
     batteryFeatures: { findMany: jest.fn().mockResolvedValue([]) },
-    batteryMeasurementSession: { findMany: jest.fn().mockResolvedValue([]) },
+    batteryMeasurementSession: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+      update: jest.fn().mockResolvedValue({}),
+    },
     batteryMeasurement: { findFirst: jest.fn().mockResolvedValue(null) },
     vehicleTrip: { findMany: jest.fn().mockResolvedValue([]) },
     vehicleEnergyEvent: { findMany: jest.fn().mockResolvedValue([]) },
@@ -116,6 +122,13 @@ describe('BatteryV2ReconciliationService', () => {
       scheduledFor: new Date(),
       delayMs: 0,
       bullJobId: 'job-6h',
+    }),
+    buildScheduledTargetMetadata: jest.fn().mockReturnValue({
+      idempotencyKey: 'battery-rest:60m',
+      scheduledFor: new Date().toISOString(),
+      enqueuedAt: new Date().toISOString(),
+      bullJobId: 'job-60m',
+      status: 'ENQUEUED',
     }),
     getRest60mDelayMs: jest.fn().mockReturnValue(60 * 60_000),
     getRest6hDelayMs: jest.fn().mockReturnValue(6 * 60 * 60_000),
@@ -222,9 +235,24 @@ describe('BatteryV2ReconciliationService', () => {
     expect(restTargetProducer.scheduleRest60m).not.toHaveBeenCalled();
   });
 
-  it('reconciles legacy rest targets without duplicate enqueue', async () => {
+  it('reconciles legacy battery_features via canonical rest target producer when LV session exists', async () => {
     const startedAt = new Date(Date.now() - 2 * 60 * 60_000);
+    const windowId = `lv-rest:${VEH}:${startedAt.getTime()}`;
+    const legacySession = {
+      id: 'sess-legacy',
+      organizationId: ORG,
+      vehicleId: VEH,
+      startedAt,
+      idempotencyKey: windowId,
+      metadata: { lvRestWindowState: 'RESTING' },
+      status: 'ACTIVE',
+    };
     prisma.batteryMeasurementSession.findMany.mockResolvedValue([]);
+    prisma.batteryMeasurementSession.findFirst.mockResolvedValue(legacySession);
+    prisma.batteryMeasurementSession.update.mockImplementation(async ({ data }) => {
+      legacySession.metadata = data.metadata as typeof legacySession.metadata;
+      return legacySession;
+    });
     prisma.batteryFeatures.findMany.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
       if (args.where?.restWindowStartedAt != null) {
         return [
@@ -244,14 +272,41 @@ describe('BatteryV2ReconciliationService', () => {
     const second = await service.reconcileAll();
 
     expect(first.restTargets).toBe(1);
-    expect(second.restTargets).toBe(1);
-    expect(jobProducer.enqueue).toHaveBeenCalledTimes(2);
-    const key = buildRestTargetJobIdempotencyKey({
-      vehicleId: VEH,
-      restWindowStartedAt: startedAt,
-      restTargetType: 'REST_60M',
+    expect(second.restTargets).toBe(0);
+    expect(restTargetProducer.scheduleRest60m).toHaveBeenCalledTimes(1);
+    expect(restTargetProducer.scheduleRest60m).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restWindowId: windowId,
+        sessionId: 'sess-legacy',
+      }),
+    );
+    expect(jobProducer.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('skips legacy battery_features reconciliation when no LV rest session exists', async () => {
+    const startedAt = new Date(Date.now() - 2 * 60 * 60_000);
+    prisma.batteryMeasurementSession.findMany.mockResolvedValue([]);
+    prisma.batteryMeasurementSession.findFirst.mockResolvedValue(null);
+    prisma.batteryFeatures.findMany.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
+      if (args.where?.restWindowStartedAt != null) {
+        return [
+          {
+            vehicleId: VEH,
+            restWindowStartedAt: startedAt,
+            rest60mCapturedAt: null,
+            rest6hCapturedAt: null,
+            vehicle: { organizationId: ORG },
+          },
+        ];
+      }
+      return [];
     });
-    expect(jobProducer.enqueue.mock.calls[0][1].idempotencyKey).toBe(key);
+
+    const result = await service.reconcileAll();
+
+    expect(result.restTargets).toBe(0);
+    expect(restTargetProducer.scheduleRest60m).not.toHaveBeenCalled();
+    expect(jobProducer.enqueue).not.toHaveBeenCalled();
   });
 
   it('delegates periodic recharge reconcile to producer', async () => {
