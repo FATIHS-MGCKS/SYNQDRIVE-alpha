@@ -1,8 +1,8 @@
 # P2.2.48 — Operator Entry & Access Shell Implementation
 
-**Date:** 2026-08-26  
-**Baseline:** `35fba3159322b6f82a5d29afa77ad74986628efd` (P2.2.47 merge)  
-**Pre-flight:** PR #1316  
+**Date:** 2026-08-26
+**Baseline:** `35fba3159322b6f82a5d29afa77ad74986628efd` (P2.2.47 merge)
+**Pre-flight:** PR #1316
 **Branch:** `cursor/p2248-operator-entry-access-shell-i18n-3c10`
 
 ## Scope

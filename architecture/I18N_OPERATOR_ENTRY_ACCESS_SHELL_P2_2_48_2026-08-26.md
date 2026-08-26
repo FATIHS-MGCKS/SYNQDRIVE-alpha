@@ -1,7 +1,7 @@
 # P2.2.48 — Operator Entry & Access Shell i18n Architecture
 
-**Date:** 2026-08-26  
-**Baseline:** `35fba3159322b6f82a5d29afa77ad74986628efd` (P2.2.47 merge)  
+**Date:** 2026-08-26
+**Baseline:** `35fba3159322b6f82a5d29afa77ad74986628efd` (P2.2.47 merge)
 **Pre-flight:** PR #1316
 
 ## Scope
