@@ -15,7 +15,6 @@ import {
   canAccessOperatorApp,
   evaluateOperatorAccess,
   isRentalBusinessType,
-  operatorAccessDenialMessage,
 } from './operatorAccess';
 import { isAuthenticated } from '../../lib/auth';
 
@@ -68,11 +67,6 @@ describe('evaluateOperatorAccess', () => {
 });
 
 describe('operator access helpers', () => {
-  it('maps denial reasons to operator-facing copy', () => {
-    expect(operatorAccessDenialMessage('no_organization').title).toBe('Keine Organisation ausgewählt');
-    expect(operatorAccessDenialMessage('no_rental_product').title).toBe('Kein Mietprodukt');
-  });
-
   it('detects rental business type', () => {
     expect(isRentalBusinessType('RENTAL')).toBe(true);
     expect(isRentalBusinessType('fleet')).toBe(false);

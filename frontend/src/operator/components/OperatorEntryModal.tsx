@@ -6,6 +6,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../components/ui/dialog';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  operatorEntryAccessAppName,
+  operatorEntryAccessCloseLabel,
+  operatorEntryAccessModalInstructionsLine,
+  operatorEntryAccessModalOptimizeLine,
+} from '../lib/operator-entry-access-i18n';
 import { OperatorLinkCard } from './OperatorLinkCard';
 
 interface OperatorEntryModalProps {
@@ -14,18 +21,17 @@ interface OperatorEntryModalProps {
 }
 
 export function OperatorEntryModal({ open, onOpenChange }: OperatorEntryModalProps) {
+  const { locale } = useLanguage();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Operator App</DialogTitle>
+          <DialogTitle>{operatorEntryAccessAppName(locale)}</DialogTitle>
           <DialogDescription className="text-left space-y-3 pt-1">
-            <span className="block">
-              Diese Oberfläche ist für mobile Endgeräte und Tablets optimiert.
-            </span>
+            <span className="block">{operatorEntryAccessModalOptimizeLine(locale)}</span>
             <span className="block text-muted-foreground">
-              Kopiere den Link und öffne ihn auf deinem Smartphone oder Tablet, um Übergaben,
-              Rückgaben, Schäden und Fahrzeugchecks direkt am Fahrzeug durchzuführen.
+              {operatorEntryAccessModalInstructionsLine(locale)}
             </span>
           </DialogDescription>
         </DialogHeader>
@@ -36,7 +42,7 @@ export function OperatorEntryModal({ open, onOpenChange }: OperatorEntryModalPro
             onClick={() => onOpenChange(false)}
             className="sq-press rounded-xl border border-border px-4 py-2 text-xs font-semibold"
           >
-            Schließen
+            {operatorEntryAccessCloseLabel(locale)}
           </button>
         </DialogFooter>
       </DialogContent>

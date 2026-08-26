@@ -38,6 +38,7 @@ import { operatorShellTopChromeDe } from './operator.shellTopChrome.de';
 import { operatorTodayDe } from './operator.today.de';
 import { operatorTaskCardDe } from './operator.task.card.de';
 import { operatorTasksTabDe } from './operator.tasks.tab.de';
+import { operatorEntryAccessDe } from './operator.entry.access.de';
 import { operatorMoreDe } from './operator.more.de';
 import { vendorsDirectoryDe } from './vendors.directory.de';
 import { supportOpsDe } from './support.ops.de';
@@ -5631,6 +5632,7 @@ export const de: Record<TranslationKey, string> = {
   ...operatorTodayDe,
   ...operatorTaskCardDe,
   ...operatorTasksTabDe,
+  ...operatorEntryAccessDe,
   ...operatorMoreDe,
   ...vendorsDirectoryDe,
 } satisfies CompleteTranslationDictionary;
