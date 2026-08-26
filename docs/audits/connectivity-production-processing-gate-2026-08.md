@@ -856,3 +856,276 @@ Scheduler discovered `RETRYABLE_FAILED` rows ~50s after deploy:
 
 - **Changes:** `ChangesView.tsx` — production processing gate entry
 - **Architektur:** `architecture/VEHICLE_OPERATIONAL_STATE_PROVENANCE_2026-08.md` — webhook processing lifecycle section
+
+---
+
+## V. FINAL CLOSURE AUDIT (2026-08-26)
+
+**Mode:** Read-only Production inspection — no inbox replay, no episode mutation, no new physical events, no deploy during audit.
+
+**Audit timestamp (UTC):** `2026-08-26T13:07:30Z`
+
+**Production mutations during this closure audit:** **NONE**
+
+### A. Production SHA / baseline
+
+| Item | Value |
+|------|-------|
+| **main SHA** | `bdb4ffa01122d6ced929d11228f9c134cc7ff428` |
+| **Production release** | `20260826122009_v4994` |
+| **Production backend SHA** | `bdb4ffa0` (Prisma `@map("event_type")` fix + docs) |
+| **Prior fix SHA** | `655f9dbe` (BullMQ colon-safe connectivity job IDs) |
+| **Frontend SHA** | Same release lineage (connectivity gate is backend-only; no frontend delta required) |
+| **PM2** | `synqdrive` **online**, uptime ~34m, 1 restart (post-deploy) |
+| **API health** | `https://app.synqdrive.eu/api/v1/health` → `{"status":"ok"}` |
+| **Redis** | `PONG` |
+| **BullMQ `connectivity.webhook.process`** | `waiting=0`, `active=0`, `delayed=0`, `failed=0`, `completed=2` |
+| **Worker / scheduler (connectivity)** | Inbox scheduler polling; 2 jobs completed; 0 post-fix connectivity enqueue failures in logs |
+
+**Deployed code verification:**
+
+| Fix | Present in Production |
+|-----|----------------------|
+| BullMQ connectivity `jobId` uses `__` (no `:`) | **YES** — `connectivity-webhook__${inboxId}` |
+| `DeviceConnectionEpisodeResolutionOutbox.eventType` `@map("event_type")` | **YES** — schema line 8057 |
+
+### B. Inbox health (`device_connection_webhook_inbox`)
+
+| Status | Count | Notes |
+|--------|-------|-------|
+| `PROCESSED` | **2** | KS MX 2024 post-cutover unplug webhooks |
+| `RECEIVED` | **2** | Pre-cutover historical (July 28, Aug 8) — untouched |
+| `VALIDATED` | **0** | |
+| `PROCESSING` | **0** | |
+| `RETRYABLE_FAILED` | **0** | |
+
+| Metric | Value |
+|--------|-------|
+| Oldest unprocessed `received_at` | `2026-07-28T07:56:52.207Z` (2 pre-cutover `RECEIVED`) |
+| Post-cutover stuck rows (`RECEIVED` / `RETRYABLE_FAILED` / `PROCESSING`) | **0** |
+| `processing_attempts = 0` on `RETRYABLE_FAILED` | **0** |
+| Unresolved `last_error_code` on retryable failures | **0** |
+
+**Required:** No unexplained NEW post-cutover `RETRYABLE_FAILED`. **PASS**
+
+### C. Canonical event health (`dimo_device_connection_events`)
+
+| Metric | Value |
+|--------|-------|
+| Post-cutover events (≥ `2026-08-25T08:04:17Z`) | **2** |
+| `processedAt IS NULL` (post-cutover) | **0** |
+| Duplicate logical unplug events (KS MX) | **2** distinct provider `dedup_bucket` values (two real provider notifications — expected) |
+| Events lacking lifecycle processing | **0** post-cutover |
+
+**Required:** No unexplained post-cutover `processedAt = NULL`. **PASS**
+
+### D. Episode health (`device_connection_episodes`)
+
+| Metric | Value |
+|--------|-------|
+| Global `OPEN` | **0** |
+| KS MX `OPEN` | **0** |
+| Global `RESOLVED` | **1** |
+| Duplicate `OPEN` per lifecycle | **0** |
+| `OPEN` contradicted by newer snapshots (unresolved) | **0** |
+| `RESOLVED` missing `resolvedAt` | **0** |
+| Invalid `resolutionMethod` | **0** |
+
+**KS MX 2024 test episode** `b256bb09-86ce-4676-a197-76dd7ea5871b`:
+
+| Field | Value |
+|-------|-------|
+| Status | **RESOLVED** |
+| `resolvedAt` | `2026-08-26T11:58:27.000Z` |
+| `resolutionMethod` | `SNAPSHOT_PLUG_SIGNAL` |
+| `resolutionSnapshotId` | `vls:90802564-0045-4a4a-98f9-6e4ad579322a:obd:2026-08-26T11:58:27.000Z` |
+
+**Required:** KS MX episode RESOLVED; global OPEN = 0. **PASS**
+
+### E. Resolution outbox health (`device_connection_episode_resolution_outbox`)
+
+| Status | Count |
+|--------|-------|
+| `PENDING` | **0** |
+| `PROCESSING` | **0** |
+| `COMPLETED` | **2** |
+| `FAILED` | **0** |
+| `RETRYABLE_FAILED` | **0** |
+
+KS MX episode outbox rows (post-Prisma fix deploy `2026-08-26T12:26:28Z`):
+
+| `event_type` | Status | `processed_at` | Error |
+|--------------|--------|--------------|-------|
+| `CONNECTIVITY_RUNTIME_RECALCULATE` | `COMPLETED` | `2026-08-26T12:26:29.210Z` | none |
+| `DEVICE_ALERT_RESOLVE_PREPARED` | `COMPLETED` | `2026-08-26T12:26:29.220Z` | none |
+
+**Prisma column errors** (`The column eventType does not exist`): **0** in PM2 logs post-fix.
+
+**Required:** Outbox healthy; no stuck post-fix rows; no Prisma mapping errors. **PASS**
+
+### F. Resolution audit health
+
+| Field | Value |
+|-------|-------|
+| Audit ID | `2095f766-9552-4c62-96a8-0fbecf9e5f7b` |
+| Episode ID | `b256bb09-86ce-4676-a197-76dd7ea5871b` |
+| `resolution_method` | `SNAPSHOT_PLUG_SIGNAL` |
+| `resolution_snapshot_id` | `vls:90802564-0045-4a4a-98f9-6e4ad579322a:obd:2026-08-26T11:58:27.000Z` |
+| `provider_observed_at` | `2026-08-26T11:58:27.000Z` |
+| `outcome` | `resolved` |
+| Manual resolution marker | **none** |
+
+**Resolution audit:** **PASS**
+
+### G. KS MX 2024 final P0.1 (forensic connectivity)
+
+| Field | Value |
+|-------|-------|
+| `providerLinkState` | `UNKNOWN` |
+| `telemetryState` | `standby` |
+| `physicalDeviceState` | `PLUGGED_INFERRED` |
+| `overallState` | `UNKNOWN` |
+| `attentionState` | `NONE` |
+| `reasonCodes` | `CONSENT_MISSING`, `TELEMETRY_STANDBY`, `DEVICE_RECONNECTED_SNAPSHOT` |
+| `recommendedAction` | `WAIT_FOR_TELEMETRY` |
+| `activeEpisodeId` | `null` |
+| `openUnpluggedEpisode` (runtime evidence) | `false` |
+
+**Invariant:** Historical unplug no longer dominates — `DEVICE_RECONNECTED_SNAPSHOT` present; **`STATE_CONFLICT` cleared**. **PASS**
+
+### H. KS MX 2024 final P0.2 (operational projection shadow)
+
+| Field | Value |
+|-------|-------|
+| `businessState` | `AVAILABLE` |
+| `operationalAvailability` | `NEEDS_VERIFICATION` |
+| `healthEvaluability` | `PARTIALLY_EVALUABLE` |
+| `primaryReason` | `CONNECTIVITY_VERIFICATION_REQUIRED` |
+| `recommendedAction` | `REAUTHORIZE_PROVIDER` |
+| `connectivity.overallState` | `AUTHORIZATION_REQUIRED` |
+
+Connectivity recovery does not override separate auth/consent semantics. **PASS**
+
+### I. KS MX 2024 final P0.3 (fleet DTO shadow)
+
+| Field | Value |
+|-------|-------|
+| `operationalAvailability.state` | `NEEDS_VERIFICATION` |
+| `primaryReason` | `CONNECTIVITY_VERIFICATION_REQUIRED` |
+| `attention` | `ACTION_REQUIRED` |
+| `legacyStatus` | `Available` |
+
+P0.3 aligns with P0.1/P0.2. **PASS**
+
+### J. KS MX 2024 final P0.4 (fleet health shadow)
+
+| Field | Value |
+|-------|-------|
+| `condition` | `warning` |
+| `evaluability` | `PARTIALLY_EVALUABLE` |
+| Rendered label (`fleetHealthLabelDe`) | **Eingeschränkt bewertbar** |
+| `wouldShowEvaluableGood` | `false` |
+| `wouldShowLegacyGut` | `true` (legacy path only — canonical evaluability gate blocks false Gut) |
+
+Connectivity repair does not fabricate Gut/Auffällig/Kritisch without health evidence. **PASS**
+
+### K. Provider-link safety
+
+| Check | Result |
+|-------|--------|
+| Active DIMO `vehicle_data_source_links` | **6** (unchanged) |
+| KS MX links | 2 active (binding `e2bd6a49…` with `dimo_vehicle_id`; legacy link `67c4ce42…`) |
+| `dimoVehicleId` / `sourceReferenceId` regression | **none observed** |
+| Tenant mapping | Org `faa710c9-6d91-4079-a7d5-91fdccdec14a` scoped |
+
+**Provider-link safety:** **PASS** — provider-link population blocker remains **CLOSED**
+
+### L. Historical safety
+
+| Record | State |
+|--------|-------|
+| July 20 event `5389a9c7…` `processed_at` | **Still NULL** (unchanged) |
+| Pre-cutover inbox (`RECEIVED`, attempts=0) | **2** rows unchanged |
+| Historical inbox replay | **none** |
+| Historical `processedAt` mutation | **none** |
+| Historical episode fabrication | **none** |
+| Broad reconciliation side effects | **none** |
+
+**Historical safety:** **PASS**
+
+### M. BullMQ regression (connectivity path)
+
+| Check | Result |
+|-------|-------|
+| Connectivity `jobId` format | `connectivity-webhook__{inboxId}` |
+| Contains `:` | **NO** |
+| Post-fix connectivity enqueue errors | **0** |
+| Queue backlog | `waiting=0`, `active=0` |
+| Worker failures (connectivity queue) | **0** |
+
+**Note:** PM2 logs show recurring `[Scheduler] Error: Custom Id cannot contain :` every ~30s from **unrelated** latent producers (candidates: `dimo-dtc.processor` `dtc-poll:{vehicleId}:{bucket}`, `voice-webhook-ingest.service` `voice-webhook:{eventId}`). These do **not** affect connectivity inbox enqueue (verified: 0 connectivity enqueue failures post-fix). Tracked as separate hygiene workstream — **not a connectivity gate blocker**.
+
+**BullMQ connectivity regression:** **PASS**
+
+### N. Prisma mapping regression
+
+| Check | Result |
+|-------|-------|
+| `DeviceConnectionEpisodeResolutionOutbox.eventType` → `event_type` | **YES** (`@map("event_type")`) |
+| Production DDL column | `event_type` (migration `20260719130000`) |
+| Post-fix outbox writes | **2 COMPLETED** rows |
+| `eventType does not exist` errors post-fix | **0** |
+| Migration drift | **none** (321 migrations applied) |
+
+**PRISMA/DB COMPATIBILITY:** **PASS**
+
+### O. Service health
+
+| Check | Result |
+|-------|-------|
+| API | **PASS** |
+| PM2 crash loop | **none** (1 planned restart at deploy) |
+| Redis | **PASS** |
+| Connectivity processing errors post-fix | **none** |
+| Resolution outbox errors post-fix | **none** |
+| Unrelated scheduler colon errors (non-connectivity) | **present** — see §M note |
+
+**Service health (connectivity scope):** **PASS**
+
+### P. Final gate verdict
+
+| Gate | Verdict |
+|------|---------|
+| Inbox processing healthy | **PASS** |
+| No unexplained post-cutover stuck rows | **PASS** |
+| BullMQ connectivity enqueue healthy | **PASS** |
+| Worker processing healthy | **PASS** |
+| Canonical events processed | **PASS** |
+| No unexplained post-cutover `processedAt NULL` | **PASS** |
+| Episode creation semantics valid | **PASS** |
+| KS MX episode resolved naturally | **PASS** |
+| No duplicate OPEN lifecycle | **PASS** |
+| Resolution outbox healthy | **PASS** |
+| Prisma `eventType` mapping healthy | **PASS** |
+| Resolution audit present | **PASS** |
+| Historical rows untouched | **PASS** |
+| P0.1 / P0.2 / P0.3 consistent | **PASS** |
+| P0.4 regression | **PASS** |
+| Provider-link blocker | **CLOSED** |
+| Services healthy (connectivity) | **PASS** |
+
+```
+PRODUCTION CONNECTIVITY PROCESSING GATE: PASS
+P0 CONNECTIVITY FOUNDATION: PRODUCTION READY
+PROVIDER-LINK BLOCKER: CLOSED
+SNAPSHOT RECOVERY: PASS
+EPISODE AUTO-RESOLVE: PASS
+HISTORICAL SAFETY: PASS
+SECOND PHYSICAL UNPLUG TEST: NOT REQUIRED
+```
+
+**Next safe architectural workstream (do not start automatically):**
+
+1. **BullMQ colon hygiene** — extend `__` job-ID sanitization to non-connectivity producers (`dtc-poll`, `voice-webhook`) to eliminate recurring scheduler errors.
+2. **Provider consent / reauthorization** — address `CONSENT_MISSING` / `AUTHORIZATION_REQUIRED` for KS MX independently of connectivity lifecycle (P0.2 `NEEDS_VERIFICATION` is auth-driven, not connectivity-failure-driven).
+3. **Historical orphan reconciliation** — optional controlled apply for pre-cutover July/Aug inbox rows and July 20 canonical event (explicit operator decision; not required for gate closure).
