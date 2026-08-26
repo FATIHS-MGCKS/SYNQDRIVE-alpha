@@ -4,6 +4,7 @@ import {
   computeBrakeRecalculationInputFingerprint,
   buildBrakeRecalculationJobId,
 } from './brake-recalculation-fingerprint';
+import { isBullMqCompatibleJobId } from '@shared/queue/bullmq-job-id.sanitizer';
 
 const baseContext = () => ({
   vehicleId: 'v1',
@@ -139,8 +140,15 @@ describe('computeBrakeRecalculationInputFingerprint', () => {
 });
 
 describe('buildBrakeRecalculationJobId', () => {
-  it('uses vehicle id for burst coalescing and hour bucket for scheduler', () => {
-    expect(buildBrakeRecalculationJobId('v1')).toBe('brake-recalc:v1');
-    expect(buildBrakeRecalculationJobId('v1', 42)).toBe('brake-recalc:v1:42');
+  it('emits colon-free deterministic ids for burst coalescing and hour buckets', () => {
+    const withoutBucket = buildBrakeRecalculationJobId('v1');
+    const withBucket = buildBrakeRecalculationJobId('v1', 42);
+
+    expect(withoutBucket).not.toContain(':');
+    expect(withBucket).not.toContain(':');
+    expect(isBullMqCompatibleJobId(withoutBucket)).toBe(true);
+    expect(isBullMqCompatibleJobId(withBucket)).toBe(true);
+    expect(withoutBucket).toBe(buildBrakeRecalculationJobId('v1'));
+    expect(withBucket).not.toBe(withoutBucket);
   });
 });

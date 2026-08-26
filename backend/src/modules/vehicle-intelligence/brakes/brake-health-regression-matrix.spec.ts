@@ -29,6 +29,7 @@ import {
   brakeRecalculationLockKey,
   computeBrakeRecalculationInputFingerprint,
 } from './brake-recalculation-fingerprint';
+import { isBullMqCompatibleJobId } from '@shared/queue/bullmq-job-id.sanitizer';
 import {
   BRAKE_WEAR_MODEL_VERSION,
   computeBrakeWearModelConfigHash,
@@ -422,10 +423,10 @@ describe('brake health regression matrix', () => {
 
   describe('TC21 tdi_concurrency', () => {
     it('deduplicates scheduler jobs per vehicle and hour bucket', () => {
-      expect(buildBrakeRecalculationJobId('veh-1', 12)).toBe('brake-recalc:veh-1:12');
-      expect(buildBrakeRecalculationJobId('veh-1', 12)).toBe(
-        buildBrakeRecalculationJobId('veh-1', 12),
-      );
+      const jobId = buildBrakeRecalculationJobId('veh-1', 12);
+      expect(jobId).not.toContain(':');
+      expect(isBullMqCompatibleJobId(jobId)).toBe(true);
+      expect(buildBrakeRecalculationJobId('veh-1', 12)).toBe(jobId);
     });
   });
 

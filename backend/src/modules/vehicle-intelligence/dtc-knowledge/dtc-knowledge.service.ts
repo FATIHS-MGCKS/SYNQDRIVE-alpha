@@ -22,6 +22,10 @@ import {
   DTC_PROCESSING_STALE_MS,
   DTC_QUEUED_STALE_MS,
 } from './dtc-knowledge.types';
+import {
+  buildDtcKnowledgeGenericJobId,
+  buildDtcKnowledgeVehicleJobId,
+} from './dtc-knowledge-queue.util';
 
 const PENDING_MESSAGE = 'AI-Erklärung wird vorbereitet.';
 const FAILED_MESSAGE = 'Erklärung konnte noch nicht erstellt werden.';
@@ -245,7 +249,11 @@ export class DtcKnowledgeService {
       normalizedCode: generic.normalizedCode,
       language,
     };
-    await this.enqueue(DTC_ENRICHMENT_JOB.GENERIC, data, `generic:${generic.normalizedCode}:${language}`);
+    await this.enqueue(
+      DTC_ENRICHMENT_JOB.GENERIC,
+      data,
+      buildDtcKnowledgeGenericJobId(generic.normalizedCode, language),
+    );
   }
 
   private async maybeQueueVehicle(
@@ -282,7 +290,14 @@ export class DtcKnowledgeService {
       fuelType: vehicle.fuelType ?? null,
       engineCode: vehicle.engineCode ?? null,
     };
-    const jobId = `vehicle:${vk.normalizedCode}:${vehicle.make ?? ''}:${vehicle.model ?? ''}:${vehicle.year ?? ''}:${vehicle.fuelType ?? ''}:${language}`;
+    const jobId = buildDtcKnowledgeVehicleJobId({
+      normalizedCode: vk.normalizedCode,
+      make: vehicle.make ?? null,
+      model: vehicle.model ?? null,
+      year: vehicle.year ?? null,
+      fuelType: vehicle.fuelType ?? null,
+      language,
+    });
     await this.enqueue(DTC_ENRICHMENT_JOB.VEHICLE, data, jobId);
   }
 

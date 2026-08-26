@@ -1,11 +1,15 @@
 import { JobsOptions } from 'bullmq';
 import { ConfigType } from '@nestjs/config';
 import notificationDeliveryConfig from '@config/notification-delivery.config';
+import { sanitizeBullMqJobId } from '@shared/queue/bullmq-job-id.sanitizer';
 
 export const NOTIFICATION_DELIVERY_JOB_NAME = 'deliver';
 
 export function buildDeliveryJobId(outboxId: string): string {
-  return `notification-delivery:${outboxId}`;
+  return sanitizeBullMqJobId({
+    namespace: 'notification-delivery',
+    key: outboxId,
+  });
 }
 
 export function buildDeliveryJobOptions(

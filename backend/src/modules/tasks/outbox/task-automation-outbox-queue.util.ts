@@ -1,11 +1,15 @@
 import { JobsOptions } from 'bullmq';
 import { ConfigType } from '@nestjs/config';
 import taskAutomationOutboxConfig from '@config/task-automation-outbox.config';
+import { sanitizeBullMqJobId } from '@shared/queue/bullmq-job-id.sanitizer';
 
 export const TASK_AUTOMATION_OUTBOX_JOB_NAME = 'execute';
 
 export function buildTaskAutomationOutboxJobId(outboxId: string): string {
-  return `task-automation:${outboxId}`;
+  return sanitizeBullMqJobId({
+    namespace: 'task-automation',
+    key: outboxId,
+  });
 }
 
 export function buildTaskAutomationOutboxJobOptions(
