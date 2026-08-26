@@ -56,6 +56,41 @@ export interface FleetHealthPresentation {
   secondaryLabel: string | null;
 }
 
+export function mapHealthConditionStatePresentation(
+  condition: FleetHealthConditionState,
+  options: { t: (key: TranslationKey) => string },
+): Pick<FleetHealthPresentation, 'condition' | 'labelKey' | 'label' | 'tone'> {
+  const normalized = normalizeFleetHealthConditionState(condition);
+  const labelKey = CONDITION_LABEL_KEYS[normalized];
+  return {
+    condition: normalized,
+    labelKey,
+    label: options.t(labelKey),
+    tone: CONDITION_TONES[normalized],
+  };
+}
+
+export function mapHealthEvaluabilityStatePresentation(
+  evaluability: HealthEvaluabilityState,
+  options: { t: (key: TranslationKey) => string },
+): Pick<
+  FleetHealthPresentation,
+  'evaluability' | 'labelKey' | 'label' | 'tone' | 'tooltip' | 'isEvaluable' | 'secondaryLabel'
+> {
+  const normalized = normalizeHealthEvaluabilityState(evaluability);
+  const tooltipKey = EVALUABILITY_TOOLTIP_KEYS[normalized];
+  const labelKey = EVALUABILITY_LABEL_KEYS[normalized] ?? EVALUABILITY_LABEL_KEYS.UNKNOWN!;
+  return {
+    evaluability: normalized,
+    labelKey,
+    label: options.t(labelKey),
+    tone: EVALUABILITY_TONES[normalized],
+    tooltip: tooltipKey ? options.t(tooltipKey) : null,
+    isEvaluable: false,
+    secondaryLabel: null,
+  };
+}
+
 export function mapFleetHealthPresentation(
   evaluation: FleetHealthEvaluation | null | undefined,
   options: { t: (key: TranslationKey) => string },
@@ -65,28 +100,22 @@ export function mapFleetHealthPresentation(
   const tooltipKey = EVALUABILITY_TOOLTIP_KEYS[evaluability];
 
   if (evaluability === HEALTH_EVALUABILITY_STATE.EVALUABLE) {
-    const labelKey = CONDITION_LABEL_KEYS[condition];
+    const conditionPresentation = mapHealthConditionStatePresentation(condition, options);
     return {
-      condition,
+      condition: conditionPresentation.condition,
       evaluability,
-      labelKey,
-      label: options.t(labelKey),
-      tone: CONDITION_TONES[condition],
+      labelKey: conditionPresentation.labelKey,
+      label: conditionPresentation.label,
+      tone: conditionPresentation.tone,
       tooltip: tooltipKey ? options.t(tooltipKey) : null,
       isEvaluable: true,
       secondaryLabel: null,
     };
   }
 
-  const labelKey = EVALUABILITY_LABEL_KEYS[evaluability] ?? EVALUABILITY_LABEL_KEYS.UNKNOWN!;
+  const evaluabilityPresentation = mapHealthEvaluabilityStatePresentation(evaluability, options);
   return {
     condition,
-    evaluability,
-    labelKey,
-    label: options.t(labelKey),
-    tone: EVALUABILITY_TONES[evaluability],
-    tooltip: tooltipKey ? options.t(tooltipKey) : null,
-    isEvaluable: false,
-    secondaryLabel: null,
+    ...evaluabilityPresentation,
   };
 }

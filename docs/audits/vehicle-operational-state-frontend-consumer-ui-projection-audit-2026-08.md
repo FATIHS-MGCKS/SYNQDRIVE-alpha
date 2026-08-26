@@ -593,6 +593,108 @@ Command: `npx vitest run src/rental/lib/operational-projection/map-fleet-map-to-
 
 ---
 
+## Q. P1.2 implementation — Shared UI projection facade (2026-08-26)
+
+| Field | Value |
+|-------|-------|
+| **Phase** | P1.2 — Shared presentation facade |
+| **Visible UI behavior changed** | **NO** |
+| **Consumer cutover** | **NO** |
+
+### Presentation inventory (pre-P1.2)
+
+| Module | Function | Reuse in P1.2 |
+|--------|----------|---------------|
+| `operational-availability/presentation.ts` | `mapOperationalAvailabilityPresentation` | **Wrapped** — availability slice |
+| `fleet-health-evaluation/presentation.ts` | `mapFleetHealthPresentation` | **Wrapped** — health slice |
+| `fleet-connectivity.presentation.ts` | `overallStateLabel`, `attentionTone`, `recommendedActionLabel`, etc. | **Wrapped** — connectivity/attention slices |
+| `operational-availability/presentation.ts` REASON_LABEL_KEYS | 4 of 9+ P0.2 codes | **Extracted** → `OPERATIONAL_PRIMARY_REASON_LABEL_KEYS` (9 codes + unknown fallback) |
+
+### Files created
+
+| Path | Role |
+|------|------|
+| `operational-projection/ui/types.ts` | `VehicleOperationalUiProjection` contract |
+| `operational-projection/ui/primary-reason-presentation.ts` | Extended primaryReason mapping + safe unknown fallback |
+| `operational-projection/ui/map-connectivity-presentation.ts` | Connectivity + attention + operator presentation |
+| `operational-projection/ui/map-vehicle-operational-ui-projection.ts` | **Public facade** |
+| `operational-projection/ui/map-availability-ui-presentation.ts` | Provenance-aware availability slice mapper |
+| `operational-projection/ui/map-health-ui-presentation.ts` | Provenance-aware health slice mapper |
+| `operational-projection/ui/map-vehicle-operational-ui-projection.test.ts` | 53 P1.2 tests |
+| `operational-projection/ui/index.ts` | Public exports |
+| `architecture/VEHICLE_OPERATIONAL_STATE_UI_PROJECTION_P1_2_2026-08.md` | Normative P1.2 doc |
+
+### Public facade
+
+```typescript
+mapVehicleOperationalUiProjection(
+  canonical: CanonicalVehicleOperationalView,
+  options: { audience: 'org_admin' | 'master_admin' | 'worker'; t: OperationalTranslator },
+): VehicleOperationalUiProjection
+```
+
+### `VehicleOperationalUiProjection` structure
+
+- `availability` — `UiPresentationSlice<AvailabilityUiPresentation>` (state labels + provenance-aware operator sub-fields)
+- `health` — `UiPresentationSlice<HealthUiPresentation>` (evaluability labels + provenance-aware condition/pipeline sub-fields)
+- `connectivity` — per-field connectivity presentations (overallState, providerLink, telemetry, device, coverage, recommendedAction, reasonCodes)
+- `attention` — operator attention + reason/action presentation
+- `operator` — primaryReason, recommendedAction, attention, reasonCodes (with absent/present semantics)
+- `technicalDetail?` — master_admin only (raw canonical enums)
+
+### primaryReason coverage (DE/EN)
+
+All 9 backend precedence codes now mapped:
+
+`BUSINESS_WORKFLOW_BLOCKED`, `HEALTH_RENTAL_BLOCKED`, `DEVICE_UNPLUG_WEBHOOK`, `CONNECTIVITY_CONFIRMED_INTERRUPTION`, `DEVICE_CHECK_REQUIRED`, `CONNECTIVITY_VERIFICATION_REQUIRED`, `TELEMETRY_OFFLINE`, `DATA_COVERAGE_INSUFFICIENT`, `INSUFFICIENT_CROSS_DOMAIN_EVIDENCE`
+
+Unknown future codes: `fleet.operationalAvailability.reason.unknown` (org_admin); raw code in `technicalDetail` (master_admin).
+
+### P1.2 review fix — availability/health provenance (2026-08-26)
+
+**Root cause:** Initial P1.2 wrapped legacy `mapOperationalAvailabilityPresentation` / `mapFleetHealthPresentation` via adapter DTOs that fabricated `null`, `[]`, `NONE`, and `unknown` when canonical operator/health fields were `absent`.
+
+**Fix:** Dedicated `mapAvailabilityUiPresentation` and `mapHealthUiPresentation` compose state-only labels from P0.3/P0.4 helpers and map each semantic sub-field independently with `UiPresentationSlice` (`presence: absent` when canonical absent). No legacy flat DTO adapter.
+
+**Cross-slice tests added:** 14 (tests 1–12 + 2 dumb-consumer guards) proving `ui.availability` and `ui.health` preserve absent vs explicit-null/[]/NONE/unknown semantics.
+
+### P1.2 final review fix — technical detail provenance (2026-08-26)
+
+**Root cause:** `mapTechnicalDetail()` used `readCanonicalField(...) ?? null` and `absent → []` for `reasonCodes`, collapsing absent canonical fields into explicit null/[].
+
+**Fix:** `TechnicalDetailProjection` fields are now `UiPresentationSlice<T>` via `map-technical-detail.ts` (`mapCanonicalFieldToTechnicalSlice`). Master admin technical detail preserves absent vs explicit null/[]/NONE/UNKNOWN.
+
+**Technical detail tests added:** 14 (12 provenance scenarios + org_admin/worker guards).
+
+### Tests
+
+- P1.1 regression: **29 passed**
+- P1.2 facade: **67 passed** (30 scenarios + 14 availability/health provenance + 14 technical detail + 9 primaryReason coverage)
+- Related presentation regression: **146 total passed**
+
+### Legacy consumers (intentionally unchanged)
+
+FleetOperatorRow, FleetMapVehicleStatusHud, fleetVisualState, dashboard runtime, VehicleDetailHeaderBadges, booking preflight, fleet-map-vehicle-mapper — still use direct slice presentation or legacy paths.
+
+### P1.2 gate
+
+| Gate | Result |
+|------|--------|
+| P1.2 SHARED UI PROJECTION | **PASS** |
+| PROVENANCE PRESERVATION | **PASS** |
+| TECHNICAL DETAIL PROVENANCE | **PASS** |
+| ABSENT != NULL / [] / NONE / UNKNOWN | **PASS** |
+| P1.1 REGRESSION | **PASS** |
+| NO SECOND STATE MACHINE | **PASS** |
+| NO TIMESTAMP RE-DERIVATION | **PASS** |
+| NO LEGACY ONLINESTATUS DEPENDENCY | **PASS** |
+| VISIBLE UI BEHAVIOR CHANGED | **NO** |
+| P1.3 READY | **YES** |
+
+**STOP.** P1.3 not started.
+
+---
+
 ## Related architecture references
 
 - `architecture/VEHICLE_OPERATIONAL_STATE_PROVENANCE_2026-08.md`

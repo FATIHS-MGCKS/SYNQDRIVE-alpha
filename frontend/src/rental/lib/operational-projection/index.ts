@@ -18,3 +18,10 @@ export {
   readCanonicalField,
   type MapCanonicalVehicleOperationalViewOptions,
 } from './map-fleet-map-to-canonical';
+
+export {
+  mapVehicleOperationalUiProjection,
+  type MapVehicleOperationalUiProjectionOptions,
+  type VehicleOperationalUiProjection,
+  type VehicleOperationalAudience,
+} from './ui';

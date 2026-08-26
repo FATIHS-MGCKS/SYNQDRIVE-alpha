@@ -1,5 +1,6 @@
 import type { StatusTone } from '../../../components/patterns';
 import type { TranslationKey } from '../../i18n/translations/en';
+import { OPERATIONAL_PRIMARY_REASON_LABEL_KEYS } from '../operational-projection/ui/primary-reason-presentation';
 import {
   normalizeOperationalAvailabilityState,
   OPERATIONAL_AVAILABILITY_STATE,
@@ -23,12 +24,7 @@ const STATE_TOOLTIP_KEYS: Partial<Record<OperationalAvailabilityState, Translati
     'fleet.operationalAvailability.tooltip.unavailable',
 };
 
-const REASON_LABEL_KEYS: Record<string, TranslationKey> = {
-  DEVICE_CHECK_REQUIRED: 'fleet.operationalAvailability.reason.deviceCheckRequired',
-  TELEMETRY_OFFLINE: 'fleet.operationalAvailability.reason.telemetryOffline',
-  BUSINESS_WORKFLOW_BLOCKED: 'fleet.operationalAvailability.reason.businessWorkflowBlocked',
-  HEALTH_RENTAL_BLOCKED: 'fleet.operationalAvailability.reason.healthRentalBlocked',
-};
+const REASON_LABEL_KEYS: Record<string, TranslationKey> = OPERATIONAL_PRIMARY_REASON_LABEL_KEYS;
 
 const STATE_TONES: Record<OperationalAvailabilityState, StatusTone> = {
   [OPERATIONAL_AVAILABILITY_STATE.AVAILABLE]: 'success',
@@ -46,22 +42,36 @@ export interface OperationalAvailabilityPresentation {
   reasonLabel: string | null;
 }
 
+export function mapOperationalAvailabilityStatePresentation(
+  state: OperationalAvailabilityState,
+  options: { t: (key: TranslationKey) => string },
+): Pick<OperationalAvailabilityPresentation, 'state' | 'labelKey' | 'label' | 'tone' | 'tooltip'> {
+  const normalized = normalizeOperationalAvailabilityState(state);
+  const labelKey = STATE_LABEL_KEYS[normalized];
+  const tooltipKey = STATE_TOOLTIP_KEYS[normalized];
+
+  return {
+    state: normalized,
+    labelKey,
+    label: options.t(labelKey),
+    tone: STATE_TONES[normalized],
+    tooltip: tooltipKey ? options.t(tooltipKey) : null,
+  };
+}
+
 export function mapOperationalAvailabilityPresentation(
   availability: FleetOperationalAvailability | null | undefined,
   options: { t: (key: TranslationKey) => string },
 ): OperationalAvailabilityPresentation {
-  const state = normalizeOperationalAvailabilityState(availability?.state);
-  const labelKey = STATE_LABEL_KEYS[state];
-  const tooltipKey = STATE_TOOLTIP_KEYS[state];
+  const base = mapOperationalAvailabilityStatePresentation(
+    normalizeOperationalAvailabilityState(availability?.state),
+    options,
+  );
   const primaryReason = availability?.primaryReason ?? null;
   const reasonKey = primaryReason ? REASON_LABEL_KEYS[primaryReason] : undefined;
 
   return {
-    state,
-    labelKey,
-    label: options.t(labelKey),
-    tone: STATE_TONES[state],
-    tooltip: tooltipKey ? options.t(tooltipKey) : null,
+    ...base,
     reasonLabel: reasonKey ? options.t(reasonKey) : null,
   };
 }
