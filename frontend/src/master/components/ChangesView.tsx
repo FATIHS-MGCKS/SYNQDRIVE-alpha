@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-tasks-tab-chrome-p2-2-47-2026-08-26',
+    version: '4.9.974',
+    title: 'Platform i18n — P2.2.47 Operator Tasks Tab Chrome localization',
+    summary: [
+      'Localized Operator Tasks tab chrome via `operator-tasks-tab-i18n.ts` and `operator.tasks.tab.*` keys.',
+      'P247 enforce-clean exact scope (2 paths) reports 0 findings; +9 EN+DE keys (8694→8703); reuses `tasks.*`, `common.*`, `status.overdue`.',
+      'Presentation-only — filter/sort predicates, task list order, callbacks, and P246 Task Card rows frozen. Category E=0.',
+    ],
+    reason:
+      'P2.2.47 pre-flight (PR #1310) selected Operator Tasks tab chrome as the next bounded Operator slice after P2.2.46 Task Card rows.',
+    previousBehavior:
+      'OperatorTasksView used fixed German literals for title, scope toggle, summary, filters, empty state, detail placeholder, and FAB aria.',
+    details:
+      'operator/views/OperatorTasksView.tsx; operator/lib/operator-tasks-tab-i18n.ts; i18n/translations/operator.tasks.tab.{en,de}.ts; operator-tasks-tab-localization.test.tsx; P247_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_TASKS_TAB_P2_2_47_2026-08-26.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-26T16:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-task-card-row-p2-2-46-2026-08-26',
     version: '4.9.973',
     title: 'Platform i18n — P2.2.46 Operator Task Card Row localization',

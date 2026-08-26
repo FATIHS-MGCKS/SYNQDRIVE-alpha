@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ListTodo, Plus } from 'lucide-react';
-import { apiTaskPriorityLabelDe } from '../../lib/tasks/task-labels';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { api, type ApiTask, type ApiTaskPriority } from '../../lib/api';
 import { unwrapTaskListPage } from '../../lib/tasks-pagination';
 import { EmptyState, ErrorState, SkeletonRows } from '../../components/patterns';
@@ -11,6 +11,23 @@ import { useOperatorData } from '../context/OperatorDataContext';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { OperatorTabletFrame } from '../components/OperatorTabletFrame';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
+import {
+  operatorTasksTabBackToList,
+  operatorTasksTabBookingBannerPrefix,
+  operatorTasksTabCloseLabel,
+  operatorTasksTabCreateFabAria,
+  operatorTasksTabCreateSheetVehicleLabel,
+  operatorTasksTabDetailPlaceholder,
+  operatorTasksTabEmptyDescription,
+  operatorTasksTabEmptyTitle,
+  operatorTasksTabFilterChipLabel,
+  operatorTasksTabListTitle,
+  operatorTasksTabPriorityLabel,
+  operatorTasksTabRemoveLabel,
+  operatorTasksTabScopeToggleLabel,
+  operatorTasksTabSummaryLabel,
+  type OperatorTasksTabFilterChip,
+} from '../lib/operator-tasks-tab-i18n';
 import { OperatorTaskCardConnected } from '../tasks/OperatorTaskCardConnected';
 import { OperatorTaskDetail } from '../tasks/OperatorTaskDetail';
 import { filterCanonicalOperatorTasks } from '../tasks/operatorTodayTasks';
@@ -27,11 +44,12 @@ import {
   type OperatorTaskViewFilters,
 } from '../tasks/operatorTask.utils';
 
-type FilterChip = 'today' | 'overdue' | 'vehicle' | 'booking';
-
 const PRIORITY_OPTIONS: Array<ApiTaskPriority | 'all'> = ['all', 'CRITICAL', 'HIGH', 'NORMAL', 'LOW'];
 
+const FILTER_CHIPS: OperatorTasksTabFilterChip[] = ['today', 'overdue', 'vehicle', 'booking'];
+
 export function OperatorTasksView() {
+  const { locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const { taskSummary, tasksLoading, tasksError, reloadTasks } = useOperatorData();
   const { fleetVehicles } = useFleetVehicles();
@@ -102,9 +120,11 @@ export function OperatorTasksView() {
     for (const t of canonicalTasks) if (t.vehicleId) ids.add(t.vehicleId);
     return [...ids].map((id) => ({
       id,
-      label: formatFleetVehicleLabel(vehicleById.get(id)) ?? 'Fahrzeug',
+      label:
+        formatFleetVehicleLabel(vehicleById.get(id)) ??
+        operatorTasksTabFilterChipLabel(locale, 'vehicle'),
     }));
-  }, [canonicalTasks, vehicleById]);
+  }, [canonicalTasks, locale, vehicleById]);
 
   const bookingOptions = useMemo(() => {
     const ids = new Set<string>();
@@ -122,10 +142,9 @@ export function OperatorTasksView() {
     sourceTasks.find((t) => t.id === selectedTaskId) ??
     null;
 
-  const listTitle =
-    filters.scope === 'mine' && userId ? 'Meine Aufgaben' : 'Offene operative Aufgaben';
+  const listTitle = operatorTasksTabListTitle(locale, filters.scope, Boolean(userId));
 
-  const toggleChip = (chip: FilterChip) => {
+  const toggleChip = (chip: OperatorTasksTabFilterChip) => {
     setFilters((f) => {
       if (chip === 'vehicle') {
         if (f.vehicleId) return { ...f, vehicleId: null };
@@ -153,13 +172,15 @@ export function OperatorTasksView() {
   const summaryRow = taskSummary && (
     <div className="grid grid-cols-3 gap-2 shrink-0">
       {[
-        { label: 'Offen', value: taskSummary.open },
-        { label: 'Heute', value: taskSummary.dueToday },
-        { label: 'Überfällig', value: taskSummary.overdue },
+        { key: 'open' as const, value: taskSummary.open },
+        { key: 'today' as const, value: taskSummary.dueToday },
+        { key: 'overdue' as const, value: taskSummary.overdue },
       ].map((s) => (
-        <div key={s.label} className="rounded-xl border border-border/50 bg-muted/20 px-2 py-2 text-center">
+        <div key={s.key} className="rounded-xl border border-border/50 bg-muted/20 px-2 py-2 text-center">
           <p className="text-lg font-bold tabular-nums text-foreground">{s.value}</p>
-          <p className="text-[10px] font-semibold uppercase text-muted-foreground">{s.label}</p>
+          <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+            {operatorTasksTabSummaryLabel(locale, s.key)}
+          </p>
         </div>
       ))}
     </div>
@@ -177,39 +198,35 @@ export function OperatorTasksView() {
             }
             className="sq-btn sq-btn-secondary min-h-8 px-2.5 text-[11px]"
           >
-            {filters.scope === 'mine' ? 'Alle anzeigen' : 'Nur meine'}
+            {operatorTasksTabScopeToggleLabel(locale, filters.scope)}
           </button>
         )}
       </div>
       {filters.bookingId && (
         <div className="flex items-center justify-between gap-2 rounded-xl border border-border surface-premium px-3 py-2">
           <p className="text-xs text-foreground">
-            Buchung <span className="font-mono">{bookingRef(filters.bookingId)}</span>
+            {operatorTasksTabBookingBannerPrefix(locale)}{' '}
+            <span className="font-mono">{bookingRef(filters.bookingId)}</span>
           </p>
           <button
             type="button"
             className="sq-btn sq-btn-secondary px-2 py-1 text-[10px]"
             onClick={() => setFilters((f) => ({ ...f, bookingId: null }))}
           >
-            Entfernen
+            {operatorTasksTabRemoveLabel(locale)}
           </button>
         </div>
       )}
       <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {(['today', 'overdue', 'vehicle', 'booking'] as FilterChip[]).map((chip) => {
+        {FILTER_CHIPS.map((chip) => {
           const active =
             (chip === 'today' && filters.today) ||
             (chip === 'overdue' && filters.overdue) ||
             (chip === 'vehicle' && Boolean(filters.vehicleId)) ||
             (chip === 'booking' && Boolean(filters.bookingId));
-          const labels: Record<FilterChip, string> = {
-            today: 'Heute',
-            overdue: 'Überfällig',
-            vehicle: filters.vehicleId
-              ? formatFleetVehicleLabel(vehicleById.get(filters.vehicleId)) ?? 'Fahrzeug'
-              : 'Fahrzeug',
-            booking: filters.bookingId ? 'Buchung ✓' : 'Buchung',
-          };
+          const vehicleLabel = filters.vehicleId
+            ? formatFleetVehicleLabel(vehicleById.get(filters.vehicleId))
+            : null;
           return (
             <button
               key={chip}
@@ -221,7 +238,10 @@ export function OperatorTasksView() {
                   : 'border-border surface-premium text-foreground'
               }`}
             >
-              {labels[chip]}
+              {operatorTasksTabFilterChipLabel(locale, chip, {
+                vehicleLabel,
+                bookingActive: Boolean(filters.bookingId),
+              })}
             </button>
           );
         })}
@@ -238,7 +258,7 @@ export function OperatorTasksView() {
                 : 'border-border surface-premium text-muted-foreground'
             }`}
           >
-            {p === 'all' ? 'Priorität' : apiTaskPriorityLabelDe(p)}
+            {operatorTasksTabPriorityLabel(locale, p)}
           </button>
         ))}
       </div>
@@ -262,7 +282,7 @@ export function OperatorTasksView() {
             onClick={() => setVehiclePickerOpen(false)}
             className="text-xs text-muted-foreground"
           >
-            Schließen
+            {operatorTasksTabCloseLabel(locale)}
           </button>
         </div>
       )}
@@ -282,12 +302,8 @@ export function OperatorTasksView() {
           <EmptyState
             compact
             icon={<ListTodo className="h-5 w-5" />}
-            title="Keine offenen Aufgaben"
-            description={
-              filters.scope === 'mine'
-                ? 'Dir sind keine offenen Aufgaben zugewiesen.'
-                : 'Alle Aufgaben erledigt — oder Filter zu eng.'
-            }
+            title={operatorTasksTabEmptyTitle(locale)}
+            description={operatorTasksTabEmptyDescription(locale, filters.scope)}
           />
         )}
         {!tasksLoading &&
@@ -317,17 +333,22 @@ export function OperatorTasksView() {
     />
   ) : (
     <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">
-      Aufgabe für Details wählen
+      {operatorTasksTabDetailPlaceholder(locale)}
     </div>
   );
 
   const createFab = (
     <button
       type="button"
-      onClick={() => openSheet({ type: 'task-create', vehicleLabel: 'Neue Aufgabe' })}
+      onClick={() =>
+        openSheet({
+          type: 'task-create',
+          vehicleLabel: operatorTasksTabCreateSheetVehicleLabel(locale),
+        })
+      }
       className="sq-press fixed right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-[color:var(--brand)] text-white shadow-lg"
       style={{ bottom: 'calc(5.25rem + env(safe-area-inset-bottom))' }}
-      aria-label="Aufgabe erstellen"
+      aria-label={operatorTasksTabCreateFabAria(locale)}
     >
       <Plus className="h-6 w-6" />
     </button>
@@ -353,7 +374,7 @@ export function OperatorTasksView() {
             setFocusComment(false);
           }}
         >
-          ← Zurück zur Liste
+          {operatorTasksTabBackToList(locale)}
         </button>
         {detailContent}
       </div>
