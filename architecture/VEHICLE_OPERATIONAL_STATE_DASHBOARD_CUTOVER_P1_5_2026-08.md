@@ -85,3 +85,4 @@ Unchanged — finance/booking operations only; no vehicle connectivity cutover i
 - Vehicles with stale timestamps but `operationalAvailability AVAILABLE` may move **into** Ready to Rent
 - Vehicles with fresh telemetry but `NEEDS_VERIFICATION` / `UNKNOWN` / `UNAVAILABLE` move **out** of Ready to Rent
 - Hard-offline timestamp alone no longer inflates Blocked & Maintenance
+- **Hardening:** connectivity attention (`DEVICE_UNPLUGGED`, `INTEGRATION_ERROR`, etc.) never independently blocks Ready when P0.2 says AVAILABLE; critical alerts follow `attentionState` CRITICAL/ACTION_REQUIRED only
