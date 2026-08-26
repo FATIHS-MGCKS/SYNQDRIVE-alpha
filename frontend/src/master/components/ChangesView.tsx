@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-invoice-detail-secondary-p2-2-49-2026-08-26',
+    version: '4.9.976',
+    title: 'Platform i18n — P2.2.49 Rental Invoice Detail Secondary localization',
+    summary: [
+      'Localized Invoice Detail Secondary accordion via `rental-invoice-detail-secondary-i18n.ts` and `rental.invoice.detail.secondary.*` keys.',
+      'P249 enforce-clean exact scope (5 paths) reports 0 findings; +28 EN+DE keys (8732→8760); reuses `common.*`, `tasks.filter.status.*`, notification expand/collapse keys.',
+      'Presentation-only — notes mutation, task machine values/order, timeline raw events, provenance, internal ID copy frozen. Category E=0.',
+    ],
+    reason:
+      'P2.2.49 pre-flight (PR #1327) selected Rental Invoice Detail Secondary as the first bounded Rental slice after Operator campaign closure.',
+    previousBehavior:
+      'Secondary accordion sections (description, notes, tasks, provenance, timeline) used fixed German literals; task status labels derived in mapper.',
+    details:
+      'rental/components/invoices/InvoiceDetailSecondary.tsx; InvoiceNotes.tsx; InvoiceTimeline.tsx; invoiceDetailSecondary.mapper.ts; rental-invoice-detail-secondary-i18n.ts; rental.invoice.detail.secondary.{en,de}.ts; rental-invoice-detail-secondary-localization.test.tsx; P249_ENFORCE_CLEAN_EXACT; architecture/I18N_RENTAL_INVOICE_DETAIL_SECONDARY_P2_2_49_2026-08-26.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-26T19:45:00.000Z',
+  },
+  {
     id: 'i18n-operator-entry-access-shell-p2-2-48-2026-08-26',
     version: '4.9.975',
     title: 'Platform i18n — P2.2.48 Operator Entry & Access Shell localization',

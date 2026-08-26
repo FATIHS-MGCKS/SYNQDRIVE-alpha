@@ -111,25 +111,25 @@
     }
   },
   "summary": {
-    "total": 1469,
+    "total": 1453,
     "bySurface": {
       "MASTER": 1049,
       "OPERATOR": 22,
-      "RENTAL": 372,
+      "RENTAL": 356,
       "SHARED": 1,
       "SHELL": 25
     },
     "byCategory": {
-      "ARIA": 52,
-      "TITLE": 218,
-      "TEXT": 1041,
+      "ARIA": 49,
+      "TITLE": 217,
+      "TEXT": 1030,
       "LABEL": 85,
-      "PLACEHOLDER": 65,
+      "PLACEHOLDER": 64,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
       "other Rental areas": 260,
-      "Finance/Billing": 90,
+      "Finance/Billing": 74,
       "Tasks": 13,
       "Documents": 8,
       "App / routing shell": 1
@@ -17216,20 +17216,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/InvoiceDetailSecondary.tsx",
-      "line": 178,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Herkunft &amp; Audit",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceDetailSecondary.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 863,
       "surface": "RENTAL",
@@ -17412,76 +17398,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/InvoiceDetailSecondary.tsx",
-      "line": 194,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Interne ID kopieren",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceDetailSecondary.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/InvoiceNotes.tsx",
-      "line": 80,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "ARIA",
-      "sample": "Interne Notizen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceNotes.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/InvoiceNotes.tsx",
-      "line": 51,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Interne Notizen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceNotes.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/InvoiceNotes.tsx",
-      "line": 79,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "PLACEHOLDER",
-      "sample": "Interne Notizen zur Rechnung…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceNotes.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/InvoiceDetailSecondary.tsx",
-      "line": 192,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "ARIA",
-      "sample": "Interne Rechnungs-ID in Zwischenablage kopieren",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceDetailSecondary.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DocumentsView.tsx",
       "line": 415,
       "surface": "RENTAL",
@@ -17521,20 +17437,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/CreateDamageDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/InvoiceDetailSecondary.tsx",
-      "line": 102,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Kann auf der Rechnung für den Kunden sichtbar sein.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceDetailSecondary.tsx"
       ]
     },
     {
@@ -18297,20 +18199,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/InvoiceTimeline.tsx",
-      "line": 124,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Neueste Ereignisse zuerst",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceTimeline.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageWorkQueue.tsx",
       "line": 263,
       "surface": "RENTAL",
@@ -18592,20 +18480,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/InvoiceTimeline.tsx",
-      "line": 57,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Noch keine Ereignisse für diese Rechnung.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceTimeline.tsx"
-      ]
-    },
-    {
       "file": "rental/components/RentalStressAnalysisCard.tsx",
       "line": 40,
       "surface": "RENTAL",
@@ -18632,20 +18506,6 @@
       "files": [
         "rental/components/billing/BillableVehiclesDrawer.tsx",
         "rental/components/billing/TenantVehicleChangesSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/InvoiceNotes.tsx",
-      "line": 105,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Noch keine internen Notizen.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceNotes.tsx"
       ]
     },
     {
@@ -18717,20 +18577,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VehicleInsightsCard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/InvoiceNotes.tsx",
-      "line": 54,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Nur intern — nicht auf der Kundenrechnung.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceNotes.tsx"
       ]
     },
     {
@@ -19408,20 +19254,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/InvoiceTimeline.tsx",
-      "line": 37,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TITLE",
-      "sample": "Reduzierter Verlauf für ältere Rechnungen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceTimeline.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageRentalSections.tsx",
       "line": 77,
       "surface": "RENTAL",
@@ -19898,20 +19730,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/InvoiceDetailSecondary.tsx",
-      "line": 197,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Technische Kennung — nicht für Kundenkommunikation.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceDetailSecondary.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 621,
       "surface": "RENTAL",
@@ -20151,34 +19969,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/InvoiceDetailSecondary.tsx",
-      "line": 134,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "ARIA",
-      "sample": "Verknüpfte Aufgaben",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceDetailSecondary.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/InvoiceTimeline.tsx",
-      "line": 45,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Verlauf wird geladen…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceTimeline.tsx"
-      ]
-    },
-    {
       "file": "rental/components/RentalStressAnalysisCard.tsx",
       "line": 82,
       "surface": "RENTAL",
@@ -20246,20 +20036,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/InvoiceDetailSecondary.tsx",
-      "line": 92,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Weitere Informationen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceDetailSecondary.tsx"
       ]
     },
     {

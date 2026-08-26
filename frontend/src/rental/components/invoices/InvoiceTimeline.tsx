@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react';
 
+import { useLanguage } from '../../../i18n/LanguageContext';
+import {
+  formatRentalInvoiceDetailSecondaryTimelineDateTime,
+  rentalInvoiceDetailSecondaryTimelineCollapseLabel,
+  rentalInvoiceDetailSecondaryTimelineExpandLabel,
+  rids,
+} from '../../lib/rental-invoice-detail-secondary-i18n';
 import { Icon } from '../ui/Icon';
 import { useInvoiceTimeline } from './hooks/useInvoiceTimeline';
 import { mapInvoiceTimelinePanel } from './invoiceTimeline.mapper';
@@ -12,10 +19,17 @@ interface InvoiceTimelineProps extends Partial<InvoiceThemeClasses> {
 }
 
 export function InvoiceTimeline({ orgId, invoiceId, card, tp, ts, embedded = false }: InvoiceTimelineProps) {
+  const { locale } = useLanguage();
   const { panel, loading, error } = useInvoiceTimeline(orgId, invoiceId);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-  const items = useMemo(() => (panel ? mapInvoiceTimelinePanel(panel) : []), [panel]);
+  const items = useMemo(() => {
+    if (!panel) return [];
+    return mapInvoiceTimelinePanel(panel).map((item) => ({
+      ...item,
+      time: formatRentalInvoiceDetailSecondaryTimelineDateTime(locale, item.occurredAt, panel.timezone),
+    }));
+  }, [panel, locale]);
 
   const toggleExpanded = (id: string) => {
     setExpandedIds((prev) => {
@@ -32,10 +46,15 @@ export function InvoiceTimeline({ orgId, invoiceId, card, tp, ts, embedded = fal
   return (
     <div className={embedded ? 'space-y-2 pt-2 border-t border-border/40' : `${card} p-5 space-y-3`}>
       <div className="flex items-center justify-between gap-2">
-        <h3 className={`text-[10px] font-semibold ${titleClass} uppercase tracking-wider`}>Verlauf</h3>
+        <h3 className={`text-[10px] font-semibold ${titleClass} uppercase tracking-wider`}>
+          {rids(locale, 'rental.invoice.detail.secondary.timeline.heading')}
+        </h3>
         {panel?.isLegacyReduced ? (
-          <span className={`text-[10px] ${mutedClass}`} title="Reduzierter Verlauf für ältere Rechnungen">
-            Basis-Verlauf
+          <span
+            className={`text-[10px] ${mutedClass}`}
+            title={rids(locale, 'rental.invoice.detail.secondary.timeline.legacyReducedTitle')}
+          >
+            {rids(locale, 'rental.invoice.detail.secondary.timeline.legacyReducedBadge')}
           </span>
         ) : null}
       </div>
@@ -43,7 +62,7 @@ export function InvoiceTimeline({ orgId, invoiceId, card, tp, ts, embedded = fal
       {loading && !panel ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground" role="status">
           <Icon name="loader-2" className="h-4 w-4 animate-spin" />
-          Verlauf wird geladen…
+          {rids(locale, 'rental.invoice.detail.secondary.timeline.loading')}
         </div>
       ) : null}
 
@@ -54,11 +73,13 @@ export function InvoiceTimeline({ orgId, invoiceId, card, tp, ts, embedded = fal
       ) : null}
 
       {panel && items.length === 0 ? (
-        <p className={`text-xs ${mutedClass}`}>Noch keine Ereignisse für diese Rechnung.</p>
+        <p className={`text-xs ${mutedClass}`}>
+          {rids(locale, 'rental.invoice.detail.secondary.timeline.empty')}
+        </p>
       ) : null}
 
       {items.length > 0 ? (
-        <ol className="relative space-y-0" aria-label="Rechnungsverlauf">
+        <ol className="relative space-y-0" aria-label={rids(locale, 'rental.invoice.detail.secondary.timeline.listAria')}>
           {items.map((item, index) => {
             const last = index === items.length - 1;
             const expanded = expandedIds.has(item.id);
@@ -106,7 +127,9 @@ export function InvoiceTimeline({ orgId, invoiceId, card, tp, ts, embedded = fal
                       className="mt-1 text-left text-[11px] font-medium text-brand hover:underline"
                       aria-expanded={expanded}
                     >
-                      {expanded ? 'Weniger anzeigen' : 'Details anzeigen'}
+                      {expanded
+                        ? rentalInvoiceDetailSecondaryTimelineCollapseLabel(locale)
+                        : rentalInvoiceDetailSecondaryTimelineExpandLabel(locale)}
                     </button>
                   ) : null}
 
@@ -121,7 +144,9 @@ export function InvoiceTimeline({ orgId, invoiceId, card, tp, ts, embedded = fal
       ) : null}
 
       {panel?.sortOrder === 'desc' ? (
-        <p className={`text-[10px] ${mutedClass}`}>Neueste Ereignisse zuerst</p>
+        <p className={`text-[10px] ${mutedClass}`}>
+          {rids(locale, 'rental.invoice.detail.secondary.timeline.sortNewestFirst')}
+        </p>
       ) : null}
     </div>
   );

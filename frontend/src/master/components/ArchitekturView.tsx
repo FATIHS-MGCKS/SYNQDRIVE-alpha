@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Invoice Detail Secondary (P2.2.49 — V4.9.976)', icon: Globe,
+    endpoint: 'Rental Invoice Detail — secondary accordion (description, notes, tasks, provenance, timeline)',
+    service: '**Locale flow:** `useLanguage().locale` → `rental-invoice-detail-secondary-i18n.ts` adapter (`rids`, task-status map, timeline date formatter); reuses `common.*`, `tasks.filter.status.*`. **Keys:** +28 EN+DE `rental.invoice.detail.secondary.*` (8732→8760). **Machine values:** task status, timeline events, notes/description/provenance raw content, copy callback frozen. **Guardrails:** P2.2.49 enforce-clean exact (5 paths) — 0 findings. **Tests:** `rental-invoice-detail-secondary-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_RENTAL_INVOICE_DETAIL_SECONDARY_P2_2_49_2026-08-26.md' },
   { name: 'Platform i18n Operator Entry & Access Shell (P2.2.48 — V4.9.975)', icon: Globe,
     endpoint: 'Operator entry/access — modal, gate, denial, link card presentation slice',
     service: '**Locale flow:** `useLanguage().locale` → `operator-entry-access-i18n.ts` adapter (`oea`, denial/entry/link helpers); reuses `common.close`, `common.retry`. **Keys:** +29 EN+DE `operator.entry.access.*` (8703→8732). **Machine values:** `OperatorAccessDenialReason`, routes `/login`/`/rental`/`/operator`, access predicates, callbacks frozen; dynamic API errors excluded. **Guardrails:** P2.2.48 enforce-clean exact (9 paths) — 0 findings. **Tests:** `operator-entry-access-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
