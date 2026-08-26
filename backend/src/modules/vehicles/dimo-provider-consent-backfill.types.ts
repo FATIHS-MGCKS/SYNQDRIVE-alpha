@@ -64,5 +64,9 @@ export interface DimoConsentBackfillSummary {
   conflict: number;
   skip: number;
   applied: number;
+  /** Apply executes all CREATE targets in one DB transaction; any failure rolls back all. */
+  atomicApply: boolean;
+  /** False when atomicApply is enabled for CREATE batches. */
+  partialWritePossible: boolean;
   vehicles: DimoConsentBackfillVehiclePlan[];
 }

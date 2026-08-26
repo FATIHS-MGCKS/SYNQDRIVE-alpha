@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-consent-ledger-backfill-phase1-1-2026-08-26',
+    version: '4.9.962',
+    title: 'DIMO consent ledger backfill — Phase 1.1 apply-path hardening',
+    summary: [
+      'Fixed tautological org identity check: vehicle.organizationId must match requested org scope.',
+      'Apply-time full identity revalidation inside transaction before CREATE (link, token, dimoVehicleId, consent cardinality).',
+      'Exactly-one active DIMO link invariant; zero ACTIVE consents before CREATE; unexpected link.consentId → CONFLICT.',
+      'Atomic 3-target apply: preflight all targets, single DB transaction for CREATE+WIRE, rollback on any failure (partialWritePossible=false).',
+      '14 focused regression tests; production re-dry-run with --shadow (NO --apply).',
+    ],
+    reason:
+      'Phase 1 forensic accepted but APPLY not yet authorized. Harden apply path before operator approval with atomic all-or-nothing semantics for KS trio repair.',
+    previousBehavior:
+      'Apply path lacked meaningful cross-org assertion, per-vehicle transactions, and apply-time identity revalidation against dry-run plan.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Connectivity',
+    createdAt: '2026-08-26T15:00:00.000Z',
+  },
+  {
     id: 'dimo-consent-ledger-backfill-phase1-2026-08-26',
     version: '4.9.961',
     title: 'DIMO per-vehicle consent ledger backfill — Phase 1 dry-run (KS trio)',

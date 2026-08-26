@@ -28,6 +28,23 @@ export interface RunDimoConsentBackfillInput extends PlanDimoConsentBackfillInpu
   runId?: string;
 }
 
+interface FleetIdentityIndex {
+  dimoVehicleIdOwners: Map<string, string>;
+  tokenIdOwners: Map<number, string>;
+}
+
+interface ApplyTimeSnapshot {
+  vehicleId: string;
+  organizationId: string;
+  dimoVehicleId: string;
+  dimoTokenId: number;
+  dimoExternalId: string;
+  activeDimoLinkId: string;
+  linkDimoVehicleId: string;
+  linkConsentId: string | null;
+  activeConsentIds: string[];
+}
+
 @Injectable()
 export class DimoProviderConsentBackfillService {
   constructor(private readonly prisma: PrismaService) {}
@@ -46,7 +63,9 @@ export class DimoProviderConsentBackfillService {
         plans.push(this.skipPlan(vehicleId, input.organizationId, 'vehicle_not_found_in_org'));
         continue;
       }
-      plans.push(this.planForVehicle(vehicle, fleetIdentity, runId));
+      plans.push(
+        this.planForVehicle(vehicle, input.organizationId, fleetIdentity, runId),
+      );
     }
 
     return plans;
@@ -58,70 +77,85 @@ export class DimoProviderConsentBackfillService {
     let applied = 0;
 
     if (input.apply) {
-      for (const plan of plans) {
-        if (plan.plannedAction === 'CONFLICT' || plan.plannedAction === 'SKIP') {
-          continue;
-        }
-        const didApply = await this.applyPlan(plan, runId);
-        if (didApply) applied += 1;
-      }
+      applied = await this.applyPlansAtomic(input.organizationId, plans, runId);
     }
 
     return this.summarize(input.apply ? 'apply' : 'dry-run', input.organizationId, runId, plans, applied);
   }
 
-  private async applyPlan(plan: DimoConsentBackfillVehiclePlan, runId: string): Promise<boolean> {
-    if (plan.plannedAction === 'NOOP') {
-      return false;
+  /**
+   * Atomic apply semantics:
+   * 1. Abort without writes if any plan is SKIP/CONFLICT.
+   * 2. Preflight identity for every CREATE plan; abort all if any fails.
+   * 3. Execute all CREATE + consentId WIRE operations in one DB transaction.
+   * 4. Post-verify row counts and FK wiring inside the same transaction.
+   */
+  private async applyPlansAtomic(
+    requestedOrganizationId: string,
+    plans: DimoConsentBackfillVehiclePlan[],
+    runId: string,
+  ): Promise<number> {
+    const blocking = plans.filter(
+      (p) => p.plannedAction === 'CONFLICT' || p.plannedAction === 'SKIP',
+    );
+    if (blocking.length > 0) {
+      throw new ConflictException({
+        code: 'DIMO_CONSENT_BACKFILL_APPLY_BLOCKED',
+        message: 'Apply aborted: one or more targets are CONFLICT or SKIP',
+        vehicles: blocking.map((p) => ({
+          vehicleId: p.vehicleId,
+          plannedAction: p.plannedAction,
+          reason: p.reason,
+        })),
+      });
     }
 
+    const mutatePlans = plans.filter((p) => p.plannedAction === 'CREATE');
+    if (mutatePlans.length === 0) {
+      return 0;
+    }
+
+    const snapshots = new Map<string, ApplyTimeSnapshot>();
+    for (const plan of mutatePlans) {
+      const snapshot = await this.loadApplyTimeSnapshot(
+        requestedOrganizationId,
+        plan.vehicleId,
+      );
+      this.assertApplyTimeIdentity(plan, snapshot, requestedOrganizationId);
+      snapshots.set(plan.vehicleId, snapshot);
+    }
+
+    const fleetIdentity = await this.loadFleetIdentityIndex(requestedOrganizationId);
+
     return this.prisma.$transaction(async (tx) => {
-      const fresh = await tx.vehicle.findFirst({
-        where: { id: plan.vehicleId, organizationId: plan.organizationId },
-        select: {
-          id: true,
-          providerConsents: {
-            where: { provider: DIMO_DATA_SOURCE_PROVIDER, status: VehicleProviderConsentStatus.ACTIVE },
-            orderBy: { grantedAt: 'desc' },
-            take: 1,
-            select: { id: true },
-          },
-          dataSourceLinks: {
-            where: {
-              provider: DIMO_DATA_SOURCE_PROVIDER,
-              isActive: true,
-              dimoVehicleId: { not: null },
-            },
-            select: { id: true, consentId: true },
-          },
-        },
-      });
+      const createdConsentIds = new Map<string, string>();
 
-      if (!fresh) {
-        throw new NotFoundException(`Vehicle ${plan.vehicleId} not found at apply time`);
-      }
+      for (const plan of mutatePlans) {
+        const snapshot = snapshots.get(plan.vehicleId)!;
+        this.assertApplyTimeIdentity(plan, snapshot, requestedOrganizationId, fleetIdentity);
 
-      const activeLink = fresh.dataSourceLinks[0];
-      if (!activeLink || activeLink.id !== plan.activeDimoLinkId) {
-        throw new ConflictException({
-          code: 'DIMO_CONSENT_BACKFILL_LINK_CHANGED',
-          message: 'Active DIMO link identity changed since dry-run',
-        });
-      }
-
-      let consentId = fresh.providerConsents[0]?.id ?? null;
-
-      if (plan.plannedAction === 'CREATE') {
-        if (consentId) {
+        if (snapshot.activeConsentIds.length > 0) {
           throw new ConflictException({
             code: 'DIMO_CONSENT_BACKFILL_CONSENT_EXISTS',
             message: 'ACTIVE consent appeared between plan and apply',
+            vehicleId: plan.vehicleId,
           });
         }
+
         if (!plan.proposedConsent) {
           throw new ConflictException({
             code: 'DIMO_CONSENT_BACKFILL_MISSING_PROPOSAL',
             message: 'Missing proposed consent payload',
+            vehicleId: plan.vehicleId,
+          });
+        }
+
+        if (snapshot.linkConsentId != null) {
+          throw new ConflictException({
+            code: 'DIMO_CONSENT_BACKFILL_UNEXPECTED_LINK_CONSENT',
+            message: 'Unexpected link.consentId appeared before apply',
+            vehicleId: plan.vehicleId,
+            consentId: snapshot.linkConsentId,
           });
         }
 
@@ -141,46 +175,229 @@ export class DimoProviderConsentBackfillService {
             metadataJson: plan.proposedConsent.metadataJson as Prisma.InputJsonValue,
           },
         });
-        consentId = created.id;
-      }
 
-      if (
-        plan.plannedLinkAction === 'WIRE_CONSENT_ID' &&
-        consentId &&
-        activeLink.consentId !== consentId
-      ) {
-        if (activeLink.consentId && activeLink.consentId !== consentId) {
-          throw new ConflictException({
-            code: 'DIMO_CONSENT_BACKFILL_LINK_CONSENT_MISMATCH',
-            message: 'Link consentId populated with unexpected value',
-          });
-        }
+        createdConsentIds.set(plan.vehicleId, created.id);
+
         await tx.vehicleDataSourceLink.update({
-          where: { id: activeLink.id },
-          data: { consentId },
+          where: { id: snapshot.activeDimoLinkId },
+          data: { consentId: created.id },
         });
       }
 
-      return plan.plannedAction === 'CREATE' || plan.plannedLinkAction === 'WIRE_CONSENT_ID';
+      await this.verifyPostWrite(tx, requestedOrganizationId, mutatePlans, createdConsentIds, runId);
+
+      return mutatePlans.length;
     });
+  }
+
+  private async loadApplyTimeSnapshot(
+    requestedOrganizationId: string,
+    vehicleId: string,
+  ): Promise<ApplyTimeSnapshot> {
+    const row = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId: requestedOrganizationId },
+      select: {
+        id: true,
+        organizationId: true,
+        dimoVehicleId: true,
+        dimoVehicle: { select: { tokenId: true, externalId: true } },
+        dataSourceLinks: {
+          where: {
+            provider: DIMO_DATA_SOURCE_PROVIDER,
+            isActive: true,
+            dimoVehicleId: { not: null },
+          },
+          select: { id: true, dimoVehicleId: true, consentId: true, provider: true, isActive: true },
+        },
+        providerConsents: {
+          where: {
+            provider: DIMO_DATA_SOURCE_PROVIDER,
+            status: VehicleProviderConsentStatus.ACTIVE,
+          },
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!row || !row.dimoVehicleId || !row.dimoVehicle?.tokenId || !row.dimoVehicle.externalId) {
+      throw new ConflictException({
+        code: 'DIMO_CONSENT_BACKFILL_VEHICLE_NOT_FOUND',
+        message: 'Vehicle not found or missing DIMO identity at apply time',
+        vehicleId,
+      });
+    }
+
+    if (row.dataSourceLinks.length !== 1) {
+      throw new ConflictException({
+        code: 'DIMO_CONSENT_BACKFILL_ACTIVE_LINK_CARDINALITY',
+        message: `Expected exactly one active DIMO link, found ${row.dataSourceLinks.length}`,
+        vehicleId,
+      });
+    }
+
+    const link = row.dataSourceLinks[0]!;
+
+    return {
+      vehicleId: row.id,
+      organizationId: row.organizationId,
+      dimoVehicleId: row.dimoVehicleId,
+      dimoTokenId: row.dimoVehicle.tokenId,
+      dimoExternalId: row.dimoVehicle.externalId,
+      activeDimoLinkId: link.id,
+      linkDimoVehicleId: link.dimoVehicleId!,
+      linkConsentId: link.consentId,
+      activeConsentIds: row.providerConsents.map((c) => c.id),
+    };
+  }
+
+  private assertApplyTimeIdentity(
+    plan: DimoConsentBackfillVehiclePlan,
+    snapshot: ApplyTimeSnapshot,
+    requestedOrganizationId: string,
+    fleetIdentity?: FleetIdentityIndex,
+  ): void {
+    const fail = (code: string, message: string, extra?: Record<string, unknown>): never => {
+      throw new ConflictException({ code, message, vehicleId: plan.vehicleId, ...extra });
+    };
+
+    if (snapshot.organizationId !== requestedOrganizationId) {
+      fail('DIMO_CONSENT_BACKFILL_ORG_MISMATCH', 'Vehicle organization mismatch at apply time');
+    }
+    if (plan.organizationId !== requestedOrganizationId) {
+      fail('DIMO_CONSENT_BACKFILL_PLAN_ORG_MISMATCH', 'Plan organization mismatch');
+    }
+    if (snapshot.vehicleId !== plan.vehicleId) {
+      fail('DIMO_CONSENT_BACKFILL_VEHICLE_MISMATCH', 'Vehicle id mismatch at apply time');
+    }
+    if (snapshot.activeDimoLinkId !== plan.activeDimoLinkId) {
+      fail('DIMO_CONSENT_BACKFILL_LINK_CHANGED', 'Active DIMO link identity changed since dry-run');
+    }
+    if (snapshot.dimoVehicleId !== plan.dimoVehicleId) {
+      fail('DIMO_CONSENT_BACKFILL_DIMO_VEHICLE_CHANGED', 'dimoVehicleId changed since dry-run');
+    }
+    if (snapshot.linkDimoVehicleId !== plan.dimoVehicleId) {
+      fail('DIMO_CONSENT_BACKFILL_LINK_DIMO_VEHICLE_CHANGED', 'Link dimoVehicleId mismatch');
+    }
+    if (snapshot.dimoTokenId !== plan.dimoTokenId) {
+      fail('DIMO_CONSENT_BACKFILL_TOKEN_CHANGED', 'DIMO tokenId changed since dry-run');
+    }
+    if (snapshot.dimoExternalId !== plan.dimoExternalId) {
+      fail('DIMO_CONSENT_BACKFILL_EXTERNAL_ID_CHANGED', 'DIMO externalId changed since dry-run');
+    }
+    if (String(snapshot.dimoTokenId) !== snapshot.dimoExternalId) {
+      fail('DIMO_CONSENT_BACKFILL_TOKEN_EXTERNAL_MISMATCH', 'tokenId does not map to externalId');
+    }
+    if (snapshot.activeConsentIds.length > 1) {
+      fail('DIMO_CONSENT_BACKFILL_MULTIPLE_ACTIVE_CONSENTS', 'Multiple ACTIVE DIMO consents at apply time');
+    }
+
+    if (fleetIdentity) {
+      if (fleetIdentity.dimoVehicleIdOwners.get(snapshot.dimoVehicleId) !== snapshot.vehicleId) {
+        fail('DIMO_CONSENT_BACKFILL_DIMO_VEHICLE_COLLISION', 'dimoVehicleId collision in org');
+      }
+      if (fleetIdentity.tokenIdOwners.get(snapshot.dimoTokenId) !== snapshot.vehicleId) {
+        fail('DIMO_CONSENT_BACKFILL_TOKEN_COLLISION', 'tokenId collision in org');
+      }
+    }
+  }
+
+  private async verifyPostWrite(
+    tx: Prisma.TransactionClient,
+    requestedOrganizationId: string,
+    mutatePlans: DimoConsentBackfillVehiclePlan[],
+    createdConsentIds: Map<string, string>,
+    runId: string,
+  ): Promise<void> {
+    if (createdConsentIds.size !== mutatePlans.length) {
+      throw new ConflictException({
+        code: 'DIMO_CONSENT_BACKFILL_POST_VERIFY_COUNT',
+        message: 'Post-write consent count mismatch',
+      });
+    }
+
+    for (const plan of mutatePlans) {
+      const consentId = createdConsentIds.get(plan.vehicleId);
+      if (!consentId) {
+        throw new ConflictException({
+          code: 'DIMO_CONSENT_BACKFILL_POST_VERIFY_MISSING_CONSENT',
+          message: 'Created consent id missing for vehicle',
+          vehicleId: plan.vehicleId,
+        });
+      }
+
+      const consent = await tx.vehicleProviderConsent.findFirst({
+        where: {
+          id: consentId,
+          vehicleId: plan.vehicleId,
+          organizationId: requestedOrganizationId,
+          provider: DIMO_DATA_SOURCE_PROVIDER,
+          status: VehicleProviderConsentStatus.ACTIVE,
+        },
+      });
+      if (!consent) {
+        throw new ConflictException({
+          code: 'DIMO_CONSENT_BACKFILL_POST_VERIFY_CONSENT_ROW',
+          message: 'Post-write consent row verification failed',
+          vehicleId: plan.vehicleId,
+        });
+      }
+
+      const metadata = consent.metadataJson as Record<string, unknown> | null;
+      if (metadata?.dimoTokenId !== plan.dimoTokenId) {
+        throw new ConflictException({
+          code: 'DIMO_CONSENT_BACKFILL_POST_VERIFY_METADATA',
+          message: 'Post-write metadata dimoTokenId mismatch',
+          vehicleId: plan.vehicleId,
+        });
+      }
+      if (metadata?.runId !== runId) {
+        throw new ConflictException({
+          code: 'DIMO_CONSENT_BACKFILL_POST_VERIFY_RUNID',
+          message: 'Post-write metadata runId mismatch',
+          vehicleId: plan.vehicleId,
+        });
+      }
+
+      const link = await tx.vehicleDataSourceLink.findFirst({
+        where: {
+          id: plan.activeDimoLinkId,
+          vehicleId: plan.vehicleId,
+          provider: DIMO_DATA_SOURCE_PROVIDER,
+          isActive: true,
+          dimoVehicleId: plan.dimoVehicleId,
+        },
+      });
+      if (!link || link.consentId !== consentId) {
+        throw new ConflictException({
+          code: 'DIMO_CONSENT_BACKFILL_POST_VERIFY_LINK_FK',
+          message: 'Post-write link.consentId verification failed',
+          vehicleId: plan.vehicleId,
+        });
+      }
+    }
   }
 
   private planForVehicle(
     vehicle: Awaited<ReturnType<DimoProviderConsentBackfillService['loadTargetVehicles']>>[number],
-    identityIndex: Awaited<ReturnType<DimoProviderConsentBackfillService['loadFleetIdentityIndex']>>,
+    requestedOrganizationId: string,
+    identityIndex: FleetIdentityIndex,
     runId: string,
   ): DimoConsentBackfillVehiclePlan {
-    const activeDimoLink = vehicle.dataSourceLinks.find(
+    const activeDimoLinks = vehicle.dataSourceLinks.filter(
       (l) => l.provider === DIMO_DATA_SOURCE_PROVIDER && l.isActive && l.dimoVehicleId != null,
     );
+    const activeDimoLink = activeDimoLinks.length === 1 ? activeDimoLinks[0]! : null;
     const dimoVehicle = vehicle.dimoVehicle;
     const tokenId = dimoVehicle?.tokenId ?? null;
     const externalId = dimoVehicle?.externalId ?? null;
-    const activeConsent = vehicle.providerConsents.find((c) => c.status === 'ACTIVE') ?? null;
+    const activeConsents = vehicle.providerConsents.filter((c) => c.status === 'ACTIVE');
+    const activeConsent = activeConsents[0] ?? null;
     const nonActiveConsent = vehicle.providerConsents.find((c) => c.status !== 'ACTIVE') ?? null;
 
+    const vehicleInRequestedOrg = vehicle.organizationId === requestedOrganizationId;
+
     const identityChecks = {
-      vehicleInOrg: vehicle.organizationId === vehicle.organizationId,
+      vehicleInOrg: vehicleInRequestedOrg,
       linkInOrg: !!activeDimoLink,
       linkIsDimo: activeDimoLink?.provider === DIMO_DATA_SOURCE_PROVIDER,
       linkHasDimoVehicleId: !!activeDimoLink?.dimoVehicleId,
@@ -200,7 +417,7 @@ export class DimoProviderConsentBackfillService {
       vehicleId: vehicle.id,
       vehicleRef: vehicle.licensePlate ?? vehicle.id,
       organizationId: vehicle.organizationId,
-      dimoVehicleId: vehicle.dimoVehicleId!,
+      dimoVehicleId: vehicle.dimoVehicleId ?? '',
       dimoTokenId: tokenId ?? 0,
       dimoExternalId: externalId ?? '',
       activeDimoLinkId: activeDimoLink?.id ?? '',
@@ -212,7 +429,36 @@ export class DimoProviderConsentBackfillService {
       proposedLinkUpdate: null as DimoConsentBackfillVehiclePlan['proposedLinkUpdate'],
     };
 
-    if (!activeDimoLink || !dimoVehicle || tokenId == null || !externalId) {
+    if (!vehicleInRequestedOrg) {
+      return {
+        ...base,
+        plannedAction: 'CONFLICT',
+        plannedLinkAction: null,
+        reason: 'vehicle_organization_mismatch',
+      };
+    }
+
+    if (activeDimoLinks.length === 0) {
+      return {
+        ...base,
+        plannedAction: 'CONFLICT',
+        plannedLinkAction: null,
+        reason: 'no_active_dimo_link',
+      };
+    }
+
+    if (activeDimoLinks.length > 1) {
+      return {
+        ...base,
+        plannedAction: 'CONFLICT',
+        plannedLinkAction: null,
+        reason: 'multiple_active_dimo_links',
+      };
+    }
+
+    const link = activeDimoLinks[0]!;
+
+    if (!dimoVehicle || tokenId == null || !externalId || !vehicle.dimoVehicleId) {
       return {
         ...base,
         plannedAction: 'CONFLICT',
@@ -234,6 +480,15 @@ export class DimoProviderConsentBackfillService {
       };
     }
 
+    if (activeConsents.length > 1) {
+      return {
+        ...base,
+        plannedAction: 'CONFLICT',
+        plannedLinkAction: null,
+        reason: 'multiple_active_dimo_consents',
+      };
+    }
+
     if (nonActiveConsent && !activeConsent) {
       return {
         ...base,
@@ -244,7 +499,7 @@ export class DimoProviderConsentBackfillService {
     }
 
     if (activeConsent) {
-      if (activeDimoLink.consentId === activeConsent.id) {
+      if (link.consentId === activeConsent.id) {
         return {
           ...base,
           plannedAction: 'NOOP',
@@ -252,7 +507,7 @@ export class DimoProviderConsentBackfillService {
           reason: 'active_consent_and_link_already_wired',
         };
       }
-      if (activeDimoLink.consentId && activeDimoLink.consentId !== activeConsent.id) {
+      if (link.consentId && link.consentId !== activeConsent.id) {
         return {
           ...base,
           plannedAction: 'CONFLICT',
@@ -266,10 +521,19 @@ export class DimoProviderConsentBackfillService {
         plannedLinkAction: 'WIRE_CONSENT_ID',
         reason: 'active_consent_exists_link_unwired',
         proposedLinkUpdate: {
-          linkId: activeDimoLink.id,
-          currentConsentId: activeDimoLink.consentId,
+          linkId: link.id,
+          currentConsentId: link.consentId,
           proposedConsentIdBinding: 'existing-active-consent-id',
         },
+      };
+    }
+
+    if (link.consentId != null) {
+      return {
+        ...base,
+        plannedAction: 'CONFLICT',
+        plannedLinkAction: 'CONFLICT',
+        reason: 'unexpected_link_consent_id_without_active_consent',
       };
     }
 
@@ -281,8 +545,8 @@ export class DimoProviderConsentBackfillService {
       reason: 'missing_active_dimo_consent_with_valid_mapping',
       proposedConsent,
       proposedLinkUpdate: {
-        linkId: activeDimoLink.id,
-        currentConsentId: activeDimoLink.consentId,
+        linkId: link.id,
+        currentConsentId: link.consentId,
         proposedConsentIdBinding: 'new-consent-id',
       },
     };
@@ -388,7 +652,7 @@ export class DimoProviderConsentBackfillService {
     });
   }
 
-  private async loadFleetIdentityIndex(organizationId: string) {
+  private async loadFleetIdentityIndex(organizationId: string): Promise<FleetIdentityIndex> {
     const fleet = await this.prisma.vehicle.findMany({
       where: { organizationId, dimoVehicleId: { not: null } },
       select: {
@@ -429,6 +693,8 @@ export class DimoProviderConsentBackfillService {
       conflict: plans.filter((p) => p.plannedAction === 'CONFLICT').length,
       skip: plans.filter((p) => p.plannedAction === 'SKIP').length,
       applied,
+      atomicApply: true,
+      partialWritePossible: false,
       vehicles: plans,
     };
   }

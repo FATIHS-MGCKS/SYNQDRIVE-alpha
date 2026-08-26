@@ -17,9 +17,15 @@ Read-only forensic + dry-run only. See `docs/audits/dimo-vehicle-provider-consen
 
 | Artifact | Role |
 |----------|------|
-| `dimo-provider-consent-backfill.service.ts` | Plan/apply with CREATE/NOOP/CONFLICT |
+| `dimo-provider-consent-backfill.service.ts` | Plan/apply with CREATE/NOOP/CONFLICT + atomic apply |
 | `backfill-dimo-vehicle-provider-consents.ts` | Ops entry (`--dry-run` default, `--apply` gated) |
 
 **Apply gate:** explicit `--vehicle-id` allowlist + `--org` scope + deterministic `runId`.
+
+**Phase 1.1 apply semantics (2026-08-26):**
+
+- Per-vehicle plan invariants: requested `organizationId` match, exactly one active DIMO link, zero ACTIVE consents before CREATE, no unexpected `link.consentId`.
+- **Atomic apply:** all CREATE targets preflighted; any SKIP/CONFLICT/identity mismatch aborts with **zero writes**; successful apply runs all CREATE + `consentId` WIRE in **one DB transaction** with post-write verification.
+- `partialWritePossible: false` when `atomicApply: true`.
 
 **Do not** infer consent from telemetry in `ProviderLinkStateBuilder`.

@@ -191,3 +191,54 @@ npx ts-node -r tsconfig-paths/register scripts/ops/backfill-dimo-vehicle-provide
 | PRODUCTION MUTATIONS | **NONE** |
 
 **STOP** — await explicit operator approval before `--apply`.
+
+---
+
+## Phase 1.1 — Apply-Path Hardening (2026-08-26)
+
+| Field | Value |
+|-------|-------|
+| **Mode** | Code hardening + production re-dry-run (read-only) |
+| **Production modified** | **NO** |
+| **PR** | #1307 (`cursor/dimo-consent-ledger-backfill-phase1-90ec`) |
+
+### Hardening summary
+
+| Invariant | Implementation |
+|-----------|----------------|
+| Tenant identity | `vehicle.organizationId === requestedOrganizationId` (replaces tautological self-comparison) |
+| Active DIMO link cardinality | Exactly 1 required; 0 or >1 → CONFLICT |
+| ACTIVE consent cardinality | 0 before CREATE; >1 → CONFLICT (plan + apply) |
+| `link.consentId` FK safety | null or exact intended consent only; foreign value → CONFLICT |
+| Apply-time revalidation | Full identity snapshot re-read before mutation inside transaction |
+| Atomic 3-target apply | Preflight all targets; single transaction for all CREATE+WIRE; rollback on any failure |
+| Post-write verification | Consent rows, metadata, link FK wiring verified inside transaction |
+
+### Regression tests (14)
+
+cross-org mismatch, token/dimoVehicleId collision, zero/multiple active links, multiple ACTIVE consents, unexpected `link.consentId`, consent appears between plan/apply, token change after dry-run, atomic 3-target success, one CONFLICT blocks all writes, second apply NOOP.
+
+### Phase 1.1 dry-run command
+
+```bash
+cd /opt/synqdrive/current/backend
+export SYNQDRIVE_BACKEND_ENV=/opt/synqdrive/shared/backend.env
+npx ts-node -r tsconfig-paths/register scripts/ops/backfill-dimo-vehicle-provider-consents.ts \
+  --org=faa710c9-6d91-4079-a7d5-91fdccdec14a \
+  --vehicle-id=68868291-5478-42cd-b0c4-cc77b2a78e21 \
+  --vehicle-id=c10351f8-b6a2-4258-947f-631aeaa6d359 \
+  --vehicle-id=a60c0749-a7cd-494e-b5b9-dea3c6b97d63 \
+  --run-id=dimo-consent-backfill-prod-2026-08-26-phase1-1 \
+  --shadow
+```
+
+### Phase 1.1 final gate
+
+| Verdict | Result |
+|---------|--------|
+| PRE-APPLY HARDENING | *(see final report)* |
+| CONSENT LEDGER DRY-RUN | *(see final report)* |
+| ATOMIC APPLY READY | *(see final report)* |
+| PRODUCTION MUTATIONS | **NONE** |
+
+**STOP** — await explicit operator approval before `--apply`.

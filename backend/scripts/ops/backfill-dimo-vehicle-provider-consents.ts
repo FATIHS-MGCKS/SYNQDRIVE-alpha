@@ -271,6 +271,8 @@ async function main(): Promise<void> {
           ...summary,
           apply,
           shadow,
+          atomicApply: summary.atomicApply,
+          partialWritePossible: summary.partialWritePossible,
           vehicles: enriched,
         },
         null,
