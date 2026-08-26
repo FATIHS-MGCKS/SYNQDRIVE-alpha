@@ -2,9 +2,90 @@
 
 ## Verdict (code release)
 
-**BATTERY V2 CANONICAL PROCESSING LIVE — PUBLICATION BLOCKED ON LIVE_VOLTAGE**
+**LIVE_VOLTAGE FIXED IN CODE — PR #1331 READY FOR PRE-MERGE REVIEW**
 
-Stage 1 is implemented in code. Production `backend.env` must keep `BATTERY_V2_PUBLICATION_ENABLED=false` and `BATTERY_V2_READINESS_ENABLED=false` until LIVE_VOLTAGE canonical ingestion is fixed.
+Stage 1 cutover + canonical `LIVE_VOLTAGE` ingestion are implemented in code. Production must still validate measurement accumulation before enabling publication/readiness.
+
+Stage 1 production `backend.env` must keep `BATTERY_V2_PUBLICATION_ENABLED=false` and `BATTERY_V2_READINESS_ENABLED=false` until post-deploy evidence is proven (30–60 min minimum).
+
+---
+
+## LIVE_VOLTAGE root cause & fix (2026-08-26)
+
+### Root cause
+
+1. **No production writer** — `BatteryMeasurementType.LIVE_VOLTAGE` was specified in domain docs but never persisted from `BATTERY_OBSERVATION_CLASSIFY`. Legacy path wrote `battery_health_snapshots` only.
+2. **Capability QUERY_ERROR** — `fetchBatteryCapabilityPreflightSnapshot` used a separate GraphQL query (with `source` field + `availableSignals`) that failed in production while the standard `LatestVehicleSnapshot` poll path worked.
+
+### Signal source (single normalized path)
+
+```
+DIMO signalsLatest.lowVoltageBatteryCurrentVoltage
+  → mapDimoBatterySignals / toVlsBatteryFields
+  → VehicleLatestState.lvBatteryVoltage
+  → BatteryV2SnapshotObservationProducer.classify (evaluateBatteryProviderObservation)
+  → BATTERY_OBSERVATION_CLASSIFY snapshotContext.lvBatteryVoltage
+  → LvLiveVoltageIngestionService → battery_measurements LIVE_VOLTAGE
+```
+
+No synchronous DIMO API in REST target evaluation — evaluation reads persisted `LIVE_VOLTAGE` rows only.
+
+### Sampling / idempotency policy
+
+- Reuses `evaluateBatteryProviderObservation` — **NEW_OBSERVATION only** (~0.6–6% of polls per domain audit).
+- Idempotency key: `buildBatteryProviderObservationIdempotencyKey` (org, vehicle, signal, provider, observedAt, value).
+- Last-stored comparison: prior `LIVE_VOLTAGE` measurement, fallback `battery_health_snapshots` during cutover.
+- Out-of-order / duplicate / stale replay → no write.
+- Missing or implausible voltage (outside 9.0–16.0 V) → no fabrication.
+
+### Capability behavior after fix
+
+- Preflight query: removed unsupported `source` GraphQL field.
+- On preflight failure: fallback to `fetchAvailableSignals` + `fetchLatestVehicleSnapshot` (same path as snapshot processor).
+- Real provider errors still → `QUERY_ERROR`; absent signal → `NOT_LISTED`; null → `AVAILABLE_BUT_NULL`.
+
+### Files
+
+- `lv-live-voltage/lv-live-voltage-ingestion.service.ts` — canonical writer
+- `battery-v2-snapshot-ingestion.service.ts` — wired before REST FSM bridge
+- `battery-capability-preflight.service.ts` — snapshot fallback
+- `battery-capability-preflight.query.ts` — query shape fix
+
+---
+
+## Staged production procedure (after merge)
+
+### A — Stage 1 (deploy first)
+
+```env
+BATTERY_V2_REST_SHADOW_ENABLED=true
+BATTERY_V2_PUBLICATION_ENABLED=false
+BATTERY_V2_READINESS_ENABLED=false
+BATTERY_V2_RECONCILIATION_ENABLED=true
+```
+
+Validate 30–60 min:
+
+- `battery_measurements` type `LIVE_VOLTAGE` count increasing
+- `vehicle_battery_capabilities` LIVE_VOLTAGE ≠ `QUERY_ERROR` when signal present
+- REST target jobs produce REST_60M/6H (not all MISSED)
+- Canonical sessions > 0; queue healthy
+
+### B — Stage 2 (only after LIVE_VOLTAGE evidence proven)
+
+```env
+BATTERY_V2_PUBLICATION_ENABLED=true
+```
+
+Validate: publications STABLE/PROVISIONAL with evidence; `isBatteryV2LegacyRestCaptureEnabled()` auto-false; no dual rest authority.
+
+### C — Stage 3
+
+```env
+BATTERY_V2_READINESS_ENABLED=true
+```
+
+Validate: rental readiness consumes canonical publishable results only.
 
 ---
 
@@ -33,10 +114,11 @@ Stage 1 is implemented in code. Production `backend.env` must keep `BATTERY_V2_P
 ## 2. Canonical production target
 
 ```
-DIMO snapshot → BATTERY_OBSERVATION_CLASSIFY
+DIMO snapshot → classify (provider observation policy)
+  → LvLiveVoltageIngestionService → battery_measurements LIVE_VOLTAGE
   → LvRestWindowIngestionBridge (fail-open)
   → LvRestWindowStateMachineService (sessions)
-  → REST target jobs → REST_60M/6H measurements (needs LIVE_VOLTAGE DB)
+  → REST target jobs → REST_60M/6H measurements (reads LIVE_VOLTAGE DB)
   → BATTERY_ASSESSMENT_RECOMPUTE (canonical LV_HEALTH)
   → BATTERY_PUBLICATION_UPDATE (when PUBLICATION_ENABLED)
   → LvCanonicalBatteryResolver → Vehicle Health / UI
@@ -61,9 +143,11 @@ DIMO snapshot → BATTERY_OBSERVATION_CLASSIFY
 
 Canonical REST target evaluation reads **`battery_measurements` type `LIVE_VOLTAGE`** — not live DIMO API.
 
-Production audit: **0 LIVE_VOLTAGE measurements**, capability `QUERY_ERROR`.
+**Code fix (this PR):** `LvLiveVoltageIngestionService` persists from classified snapshot observations.
 
-**Decision:** Do not enable `BATTERY_V2_PUBLICATION_ENABLED` or `BATTERY_V2_READINESS_ENABLED` until LIVE_VOLTAGE ingestion is fixed (Phase 2).
+**Production validation still required** before Stage 2/3: confirm LIVE_VOLTAGE rows accumulate and REST targets are not all MISSED.
+
+**Decision:** Do not enable `BATTERY_V2_PUBLICATION_ENABLED` or `BATTERY_V2_READINESS_ENABLED` until post-deploy LIVE_VOLTAGE evidence is proven.
 
 Stage 1 production env:
 
@@ -93,10 +177,11 @@ BATTERY_V2_RECONCILIATION_ENABLED=true
 ## 6. Code changes (this release)
 
 - Fail-open canonical bridge in `ingestObservationClassify`
+- `LvLiveVoltageIngestionService` — canonical LIVE_VOLTAGE persistence from snapshot classify
+- Capability preflight snapshot fallback + query shape fix
 - `isLvRestShadowModeActive()` = pipeline on AND publication off
 - `isBatteryV2LegacyRestCaptureEnabled()` gates legacy `onSnapshot`
 - Session quality VALID when not in shadow measurement mode
-- `resolveLvRestShadowPublicationEligible()` respects publication flag
 - Config aliases and env documentation
 
 ---
@@ -126,5 +211,5 @@ Until `BATTERY_V2_PUBLICATION_ENABLED=true`:
 ## 9. Tests
 
 ```bash
-npm test -- --testPathPattern="battery-v2-cutover|lv-rest-shadow|battery-v2-snapshot-ingestion|battery-v2.service"
+npm test -- --testPathPattern="lv-live-voltage|battery-v2-cutover|battery-v2-snapshot-ingestion|battery-capability-preflight"
 ```

@@ -11,7 +11,7 @@ const BATTERY_FLOAT_SIGNAL_NAMES = [
  */
 export function buildBatteryCapabilityPreflightQuery(tokenId: number): string {
   const signalFields = BATTERY_FLOAT_SIGNAL_NAMES.map(
-    (name) => `${name} { timestamp value source }`,
+    (name) => `${name} { timestamp value }`,
   ).join('\n        ');
 
   return `

@@ -57,6 +57,7 @@ export class BatteryCapabilityPreflightService {
     let queryError: string | null = null;
     let availableSignals: string[] | null = null;
     let signalsLatest: Record<string, unknown> | null = null;
+    let usedSnapshotFallback = false;
 
     try {
       const vehicleJwt = await this.dimoAuth.getVehicleJwt(tokenId);
@@ -70,12 +71,53 @@ export class BatteryCapabilityPreflightService {
       if (snapshot.queryError) {
         queryError = snapshot.queryError;
       }
+
+      if (queryError || !signalsLatest) {
+        const fallback = await this.fetchCapabilitySnapshotFallback(
+          vehicleJwt,
+          tokenId,
+        );
+        if (fallback.signalsLatest) {
+          signalsLatest = fallback.signalsLatest;
+          availableSignals = fallback.availableSignals ?? availableSignals;
+          usedSnapshotFallback = true;
+          if (!fallback.queryError) {
+            queryError = null;
+          } else if (!queryError) {
+            queryError = fallback.queryError;
+          }
+        } else if (!queryError && fallback.queryError) {
+          queryError = fallback.queryError;
+        }
+      }
     } catch (error) {
       queryError =
         error instanceof Error ? error.message : 'DIMO capability preflight failed';
       this.logger.warn(
         `Capability preflight query failed vehicle=${vehicleId}: ${queryError}`,
       );
+
+      try {
+        const vehicleJwt = await this.dimoAuth.getVehicleJwt(tokenId);
+        const fallback = await this.fetchCapabilitySnapshotFallback(
+          vehicleJwt,
+          tokenId,
+        );
+        if (fallback.signalsLatest) {
+          signalsLatest = fallback.signalsLatest;
+          availableSignals = fallback.availableSignals ?? null;
+          usedSnapshotFallback = true;
+          if (!fallback.queryError) {
+            queryError = null;
+          }
+        }
+      } catch (fallbackError) {
+        this.logger.warn(
+          `Capability snapshot fallback failed vehicle=${vehicleId}: ${
+            fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+          }`,
+        );
+      }
     }
 
     const assessedSignals = assessBatteryCapabilityPreflight({
@@ -83,6 +125,7 @@ export class BatteryCapabilityPreflightService {
       signalsLatest,
       queryError,
       checkedAt,
+      metadata: usedSnapshotFallback ? { snapshotFallback: true } : undefined,
     });
 
     const rechargeProbe = await this.probeRechargeSegments(tokenId, checkedAt);
@@ -116,6 +159,51 @@ export class BatteryCapabilityPreflightService {
       signals: assessedSignals,
       queryError,
     };
+  }
+
+  private async fetchCapabilitySnapshotFallback(
+    vehicleJwt: string,
+    tokenId: number,
+  ): Promise<{
+    availableSignals: string[] | null;
+    signalsLatest: Record<string, unknown> | null;
+    queryError?: string | null;
+  }> {
+    try {
+      const availableSignals = await this.dimoTelemetry.fetchAvailableSignals(
+        vehicleJwt,
+        tokenId,
+      );
+      const raw = await this.dimoTelemetry.fetchLatestVehicleSnapshot(
+        vehicleJwt,
+        tokenId,
+      );
+      const record =
+        raw && typeof raw === 'object' && !Array.isArray(raw)
+          ? (raw as Record<string, unknown>)
+          : null;
+      const signalsLatest = (record?.signalsLatest ?? record) as
+        | Record<string, unknown>
+        | null;
+
+      return {
+        availableSignals,
+        signalsLatest:
+          signalsLatest && typeof signalsLatest === 'object'
+            ? signalsLatest
+            : null,
+        queryError: null,
+      };
+    } catch (error) {
+      return {
+        availableSignals: null,
+        signalsLatest: null,
+        queryError:
+          error instanceof Error
+            ? error.message
+            : 'DIMO snapshot capability fallback failed',
+      };
+    }
   }
 
   private async probeRechargeSegments(

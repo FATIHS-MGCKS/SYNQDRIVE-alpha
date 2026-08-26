@@ -32,6 +32,9 @@ describe('BatteryV2SnapshotIngestionService', () => {
     const deadLetters = {
       isDeadLetter: jest.fn().mockResolvedValue(false),
     };
+    const lvLiveVoltage = {
+      persistFromObservationClassify: jest.fn().mockResolvedValue({ persisted: false }),
+    };
     const lvRestBridge = {
       processObservationCycle: jest.fn().mockResolvedValue(undefined),
     };
@@ -45,10 +48,18 @@ describe('BatteryV2SnapshotIngestionService', () => {
       {} as any,
       jobProducer as any,
       deadLetters as any,
+      lvLiveVoltage as any,
       lvRestBridge as any,
     );
 
-    return { service, batteryV2, jobProducer, deadLetters, lvRestBridge };
+    return {
+      service,
+      batteryV2,
+      jobProducer,
+      deadLetters,
+      lvLiveVoltage,
+      lvRestBridge,
+    };
   }
 
   it('continues legacy onSnapshot when canonical bridge throws (fail-open)', async () => {
@@ -82,6 +93,16 @@ describe('BatteryV2SnapshotIngestionService', () => {
     await service.ingestObservationClassify(basePayload as any);
 
     expect(jobProducer.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('invokes LIVE_VOLTAGE persistence on every observation classify', async () => {
+    const { service, lvLiveVoltage } = buildService();
+
+    await service.ingestObservationClassify(basePayload as any);
+
+    expect(lvLiveVoltage.persistFromObservationClassify).toHaveBeenCalledWith(
+      basePayload,
+    );
   });
 
   it('invokes canonical LV REST bridge on every observation classify (I)', async () => {

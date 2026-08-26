@@ -7,6 +7,7 @@ import { HvFallbackChargeSessionDetectorService } from '../hv-charge-session/hv-
 import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 import { HvMethodProfileService } from '../hv-method-profile/hv-method-profile.service';
 import { HvBatteryHealthService } from '../hv-battery-health.service';
+import { LvLiveVoltageIngestionService } from '../lv-live-voltage/lv-live-voltage-ingestion.service';
 import { LvRestWindowIngestionBridgeService } from '../lv-rest-window/lv-rest-window-ingestion-bridge.service';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
@@ -56,6 +57,7 @@ export class BatteryV2SnapshotIngestionService {
     private readonly fallbackDetector: HvFallbackChargeSessionDetectorService,
     private readonly jobProducer: BatteryV2JobProducerService,
     private readonly deadLetters: BatteryV2JobDeadLetterService,
+    private readonly lvLiveVoltage: LvLiveVoltageIngestionService,
     private readonly lvRestBridge: LvRestWindowIngestionBridgeService,
   ) {}
 
@@ -72,6 +74,12 @@ export class BatteryV2SnapshotIngestionService {
     const previousChargingState = await this.prisma.vehicleLatestState.findUnique({
       where: { vehicleId: payload.vehicleId },
       select: { tractionBatteryIsCharging: true },
+    });
+
+    await this.lvLiveVoltage.persistFromObservationClassify(payload).catch((err) => {
+      this.logger.warn(
+        `LIVE_VOLTAGE persistence failed (pipeline continues): vehicle=${payload.vehicleId} error=${(err as Error).message}`,
+      );
     });
 
     await this.lvRestBridge.processObservationCycle(

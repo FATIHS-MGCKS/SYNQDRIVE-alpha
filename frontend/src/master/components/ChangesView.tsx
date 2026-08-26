@@ -41,10 +41,12 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'Battery V2 — Stage 1 production cutover (canonical processing, publication gated)',
     summary: [
       'Fail-open canonical LV REST bridge; legacy onSnapshot continues if FSM throws.',
+      'LvLiveVoltageIngestionService persists canonical LIVE_VOLTAGE from classified snapshots.',
+      'Capability preflight falls back to LatestVehicleSnapshot when dedicated query fails.',
       'isLvRestShadowModeActive = REST pipeline on AND publication off.',
       'Legacy rest capture gated; disabled automatically when publication authority active.',
       'Stage 1 prod flags: REST_SHADOW=true, PUBLICATION=false, READINESS=false.',
-      'Publication/readiness blocked until LIVE_VOLTAGE canonical ingestion fixed.',
+      'Publication/readiness blocked until post-deploy LIVE_VOLTAGE evidence validated.',
     ],
     reason:
       'Shadow validation complete; canonical pipeline must run in production without dual-authority publication.',

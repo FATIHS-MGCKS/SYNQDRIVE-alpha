@@ -201,6 +201,7 @@ export function assessBatteryCapabilityPreflight(
         inAvailableSignals: availableSet.has(definition.dimoSignalName),
         checkedAt: checkedAt.toISOString(),
         staleThresholdMs,
+        ...(input.metadata ?? {}),
         ...(input.queryError ? { queryError: input.queryError } : {}),
       },
     };
