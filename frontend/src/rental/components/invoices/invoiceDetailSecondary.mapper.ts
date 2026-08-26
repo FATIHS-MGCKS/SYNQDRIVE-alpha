@@ -9,7 +9,6 @@ export interface InvoiceLinkedTaskView {
   id: string;
   title: string;
   status: string;
-  statusLabel: string;
   isDone: boolean;
 }
 
@@ -29,14 +28,7 @@ export interface InvoiceDetailSecondaryPanel {
 
 export function sanitizeTaskTitle(title: string): string {
   const cleaned = title.replace(UUID_RE, '').replace(/\s{2,}/g, ' ').trim();
-  return cleaned || 'Aufgabe';
-}
-
-export function taskStatusLabel(status: string): string {
-  if (status === 'DONE' || status === 'COMPLETED') return 'Erledigt';
-  if (status === 'IN_PROGRESS') return 'In Bearbeitung';
-  if (status === 'CANCELLED') return 'Abgebrochen';
-  return 'Offen';
+  return cleaned;
 }
 
 export function buildInvoiceDetailSecondaryPanel(
@@ -54,7 +46,6 @@ export function buildInvoiceDetailSecondaryPanel(
     id: task.id,
     title: sanitizeTaskTitle(task.title),
     status: task.status,
-    statusLabel: taskStatusLabel(task.status),
     isDone: task.status === 'DONE' || task.status === 'COMPLETED',
   }));
 

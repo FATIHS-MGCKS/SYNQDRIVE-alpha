@@ -44,7 +44,7 @@ describe('invoiceDetailSecondary.mapper', () => {
     expect(
       sanitizeTaskTitle('Zahlung prüfen 11111111-2222-4333-8444-555555555555'),
     ).toBe('Zahlung prüfen');
-    expect(sanitizeTaskTitle('  ')).toBe('Aufgabe');
+    expect(sanitizeTaskTitle('  ')).toBe('');
   });
 
   it('hides more-info when no description, notes, or edit permission', () => {

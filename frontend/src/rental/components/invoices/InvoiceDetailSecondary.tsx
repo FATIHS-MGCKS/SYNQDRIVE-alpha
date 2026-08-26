@@ -7,6 +7,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '../../../components/ui/accordion';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import {
+  rentalInvoiceDetailSecondaryDefaultTaskTitle,
+  rentalInvoiceDetailSecondaryLinkedTaskStatusLabel,
+  rids,
+} from '../../lib/rental-invoice-detail-secondary-i18n';
 import { Icon } from '../ui/Icon';
 import type { InvoiceDetailDto } from './invoiceDetailTypes';
 import { buildInvoiceDetailSecondaryPanel } from './invoiceDetailSecondary.mapper';
@@ -50,6 +56,8 @@ export function InvoiceDetailSecondary({
   inputCls,
   isDarkMode,
 }: InvoiceDetailSecondaryProps) {
+  const { locale } = useLanguage();
+
   const panel = useMemo(
     () => buildInvoiceDetailSecondaryPanel(invoice, detail.relations.provenance, detail.actions.edit),
     [invoice, detail.relations.provenance, detail.actions.edit],
@@ -78,6 +86,8 @@ export function InvoiceDetailSecondary({
 
   if (!panel.hasAnySection) return null;
 
+  const defaultTaskTitle = rentalInvoiceDetailSecondaryDefaultTaskTitle(locale);
+
   return (
     <div className={`${card} p-3 sm:p-4`} data-testid="invoice-detail-secondary">
       <Accordion
@@ -89,17 +99,19 @@ export function InvoiceDetailSecondary({
         {panel.showMoreInfo ? (
           <AccordionItem value="more-info" className="border-border/50">
             <AccordionTrigger className="py-3 text-xs font-bold uppercase tracking-wider hover:no-underline">
-              <span className={tp}>Weitere Informationen</span>
+              <span className={tp}>{rids(locale, 'rental.invoice.detail.secondary.moreInfo.heading')}</span>
             </AccordionTrigger>
             <AccordionContent className="pb-3 pt-0">
               <div ref={notesSectionRef} className="space-y-4">
                 {panel.description ? (
                   <section aria-labelledby="invoice-description-heading">
                     <h4 id="invoice-description-heading" className={`text-[10px] font-semibold uppercase tracking-wider ${ts}`}>
-                      Rechnungsbeschreibung
+                      {rids(locale, 'rental.invoice.detail.secondary.description.heading')}
                     </h4>
                     <p className={`mt-1.5 text-xs leading-relaxed break-words ${tp}`}>{panel.description}</p>
-                    <p className={`mt-1 text-[10px] ${ts}`}>Kann auf der Rechnung für den Kunden sichtbar sein.</p>
+                    <p className={`mt-1 text-[10px] ${ts}`}>
+                      {rids(locale, 'rental.invoice.detail.secondary.description.hint')}
+                    </p>
                   </section>
                 ) : null}
 
@@ -124,14 +136,18 @@ export function InvoiceDetailSecondary({
           <AccordionItem value="tasks" className="border-border/50">
             <AccordionTrigger className="py-3 text-xs font-bold uppercase tracking-wider hover:no-underline">
               <span className={tp}>
-                Aufgaben
+                {rids(locale, 'rental.invoice.detail.secondary.tasks.heading')}
                 {panel.openTaskCount > 0 ? (
-                  <span className={`ml-2 font-normal normal-case ${ts}`}>({panel.openTaskCount} offen)</span>
+                  <span className={`ml-2 font-normal normal-case ${ts}`}>
+                    {rids(locale, 'rental.invoice.detail.secondary.tasks.openCount', {
+                      count: panel.openTaskCount,
+                    })}
+                  </span>
                 ) : null}
               </span>
             </AccordionTrigger>
             <AccordionContent className="pb-3 pt-0">
-              <ul className="space-y-2" aria-label="Verknüpfte Aufgaben">
+              <ul className="space-y-2" aria-label={rids(locale, 'rental.invoice.detail.secondary.tasks.listAria')}>
                 {panel.tasks.map((task) => (
                   <li
                     key={task.id}
@@ -158,15 +174,21 @@ export function InvoiceDetailSecondary({
                           task.isDone ? `${ts} line-through decoration-muted-foreground/50` : tp
                         }`}
                       >
-                        {task.title}
+                        {task.title || defaultTaskTitle}
                       </p>
-                      <p className={`text-[10px] ${ts}`}>{task.statusLabel}</p>
+                      <p className={`text-[10px] ${ts}`}>
+                        {rentalInvoiceDetailSecondaryLinkedTaskStatusLabel(locale, task.status)}
+                      </p>
                     </div>
                   </li>
                 ))}
               </ul>
               {panel.doneTaskCount > 0 ? (
-                <p className={`mt-2 text-[10px] ${ts}`}>{panel.doneTaskCount} erledigt</p>
+                <p className={`mt-2 text-[10px] ${ts}`}>
+                  {rids(locale, 'rental.invoice.detail.secondary.tasks.doneCount', {
+                    count: panel.doneTaskCount,
+                  })}
+                </p>
               ) : null}
             </AccordionContent>
           </AccordionItem>
@@ -175,13 +197,28 @@ export function InvoiceDetailSecondary({
         {panel.showAudit ? (
           <AccordionItem value="audit" className="border-border/50 border-b-0">
             <AccordionTrigger className="py-3 text-xs font-bold uppercase tracking-wider hover:no-underline">
-              <span className={tp}>Herkunft &amp; Audit</span>
+              <span className={tp}>{rids(locale, 'rental.invoice.detail.secondary.audit.heading')}</span>
             </AccordionTrigger>
             <AccordionContent className="pb-1 pt-0 space-y-4">
               <dl className="space-y-0.5">
-                <ProvenanceRow label="Erstellt von" value={panel.provenance.erstelltVon} tp={tp} ts={ts} />
-                <ProvenanceRow label="Erstellt über" value={panel.provenance.erstelltUeber} tp={tp} ts={ts} />
-                <ProvenanceRow label="Quelle" value={panel.provenance.quelle} tp={tp} ts={ts} />
+                <ProvenanceRow
+                  label={rids(locale, 'rental.invoice.detail.secondary.provenance.createdBy')}
+                  value={panel.provenance.erstelltVon}
+                  tp={tp}
+                  ts={ts}
+                />
+                <ProvenanceRow
+                  label={rids(locale, 'rental.invoice.detail.secondary.provenance.createdVia')}
+                  value={panel.provenance.erstelltUeber}
+                  tp={tp}
+                  ts={ts}
+                />
+                <ProvenanceRow
+                  label={rids(locale, 'rental.invoice.detail.secondary.provenance.source')}
+                  value={panel.provenance.quelle}
+                  tp={tp}
+                  ts={ts}
+                />
               </dl>
 
               <div>
@@ -189,12 +226,14 @@ export function InvoiceDetailSecondary({
                   type="button"
                   onClick={onCopyInternalId}
                   className={`${INVOICE_ACTION_BTN} text-[11px]`}
-                  aria-label="Interne Rechnungs-ID in Zwischenablage kopieren"
+                  aria-label={rids(locale, 'rental.invoice.detail.secondary.copyInternalId.aria')}
                 >
                   <Icon name="copy" className="h-3 w-3" />
-                  Interne ID kopieren
+                  {rids(locale, 'rental.invoice.detail.secondary.copyInternalId.label')}
                 </button>
-                <p className={`mt-1 text-[10px] ${ts}`}>Technische Kennung — nicht für Kundenkommunikation.</p>
+                <p className={`mt-1 text-[10px] ${ts}`}>
+                  {rids(locale, 'rental.invoice.detail.secondary.copyInternalId.hint')}
+                </p>
               </div>
 
               <InvoiceTimeline orgId={orgId} invoiceId={invoice.id} embedded tp={tp} ts={ts} />

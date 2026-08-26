@@ -15,6 +15,7 @@ import { invoicesListDe } from './invoices.list.de';
 import { invoicesCreateDe } from './invoices.create.de';
 import { invoicesSendDe } from './invoices.send.de';
 import { invoicesDocumentsDe } from './invoices.documents.de';
+import { rentalInvoiceDetailSecondaryDe } from './rental.invoice.detail.secondary.de';
 import { operatorDamageCaptureDe } from './operator.damageCapture.de';
 import { operatorPickupCheckDe } from './operator.pickupCheck.de';
 import { operatorTireMeasureDe } from './operator.tireMeasure.de';
@@ -5609,6 +5610,7 @@ export const de: Record<TranslationKey, string> = {
   ...invoicesCreateDe,
   ...invoicesSendDe,
   ...invoicesDocumentsDe,
+  ...rentalInvoiceDetailSecondaryDe,
   ...operatorDamageCaptureDe,
   ...operatorPickupCheckDe,
   ...operatorTireMeasureDe,

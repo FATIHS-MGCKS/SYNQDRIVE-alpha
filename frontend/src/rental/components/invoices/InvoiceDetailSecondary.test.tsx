@@ -1,5 +1,10 @@
+// @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
+import { act, createElement } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
+
+import { LanguageProvider } from '../../../i18n/LanguageContext';
 
 vi.mock('./hooks/useInvoiceTimeline', () => ({
   useInvoiceTimeline: () => ({ panel: null, loading: false, error: null }),
@@ -17,6 +22,19 @@ const theme = {
   inputCls: 'input',
   isDarkMode: false,
 };
+
+function renderSecondaryMarkup(props: Parameters<typeof InvoiceDetailSecondary>[0]) {
+  const container = document.createElement('div');
+  const root = createRoot(container);
+  window.localStorage.setItem('synqdrive.locale', 'de');
+  act(() => {
+    root.render(createElement(LanguageProvider, null, createElement(InvoiceDetailSecondary, props)));
+  });
+  const html = container.innerHTML;
+  act(() => root.unmount());
+  window.localStorage.clear();
+  return html;
+}
 
 const invoice = (overrides: Partial<Invoice> = {}): Invoice => ({
   id: 'inv-1',
@@ -87,17 +105,15 @@ describe('InvoiceDetailSecondary', () => {
       relationsEnrichment: { createdByUserName: 'Tom Tenant' },
     });
 
-    const html = renderToStaticMarkup(
-      <InvoiceDetailSecondary
-        invoice={invoice()}
-        detail={detail}
-        orgId="org-1"
-        viewportWidth={1280}
-        onSaveNotes={async () => true}
-        onCopyInternalId={() => undefined}
-        {...theme}
-      />,
-    );
+    const html = renderSecondaryMarkup({
+      invoice: invoice(),
+      detail,
+      orgId: 'org-1',
+      viewportWidth: 1280,
+      onSaveNotes: async () => true,
+      onCopyInternalId: () => undefined,
+      ...theme,
+    });
 
     expect(html).toContain('invoice-detail-secondary');
     expect(html).toContain('Weitere Informationen');
@@ -115,17 +131,15 @@ describe('InvoiceDetailSecondary', () => {
       canManageEmail: true,
     });
 
-    const html = renderToStaticMarkup(
-      <InvoiceDetailSecondary
-        invoice={invoice({ status: 'DRAFT', description: '' })}
-        detail={detail}
-        orgId="org-1"
-        viewportWidth={1280}
-        onSaveNotes={async () => true}
-        onCopyInternalId={() => undefined}
-        {...theme}
-      />,
-    );
+    const html = renderSecondaryMarkup({
+      invoice: invoice({ status: 'DRAFT', description: '' }),
+      detail,
+      orgId: 'org-1',
+      viewportWidth: 1280,
+      onSaveNotes: async () => true,
+      onCopyInternalId: () => undefined,
+      ...theme,
+    });
 
     expect(html).toContain('Weitere Informationen');
     expect(html).not.toContain('Keine Notizen vorhanden');
@@ -133,17 +147,15 @@ describe('InvoiceDetailSecondary', () => {
 
   it('keeps secondary sections collapsed by default on narrow mobile', () => {
     const detail = buildInvoiceDetailDto(invoice(), { canManageEmail: true });
-    const html = renderToStaticMarkup(
-      <InvoiceDetailSecondary
-        invoice={invoice()}
-        detail={detail}
-        orgId="org-1"
-        viewportWidth={320}
-        onSaveNotes={async () => true}
-        onCopyInternalId={() => undefined}
-        {...theme}
-      />,
-    );
+    const html = renderSecondaryMarkup({
+      invoice: invoice(),
+      detail,
+      orgId: 'org-1',
+      viewportWidth: 320,
+      onSaveNotes: async () => true,
+      onCopyInternalId: () => undefined,
+      ...theme,
+    });
 
     expect(html).toContain('Weitere Informationen');
     expect(html).toContain('aria-expanded="false"');
@@ -156,16 +168,14 @@ describe('layout hierarchy reduction', () => {
     const relationsHtml = renderToStaticMarkup(
       <InvoiceRelations detail={detail} {...theme} />,
     );
-    const secondaryHtml = renderToStaticMarkup(
-      <InvoiceDetailSecondary
-        invoice={invoice()}
-        detail={detail}
-        orgId="org-1"
-        onSaveNotes={async () => true}
-        onCopyInternalId={() => undefined}
-        {...theme}
-      />,
-    );
+    const secondaryHtml = renderSecondaryMarkup({
+      invoice: invoice(),
+      detail,
+      orgId: 'org-1',
+      onSaveNotes: async () => true,
+      onCopyInternalId: () => undefined,
+      ...theme,
+    });
 
     expect(relationsHtml.match(/class="card/g)?.length ?? 0).toBeLessThanOrEqual(1);
     expect(secondaryHtml).toContain('accordion');
