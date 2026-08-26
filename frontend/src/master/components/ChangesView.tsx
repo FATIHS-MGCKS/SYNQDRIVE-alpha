@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-consent-ledger-backfill-phase1-2026-08-26',
+    version: '4.9.961',
+    title: 'DIMO per-vehicle consent ledger backfill — Phase 1 dry-run (KS trio)',
+    summary: [
+      'Read-only production forensic + dry-run for missing vehicle_provider_consents on KS FH 660E, KS MS 661, KS MX 2024.',
+      'Canonical contract traced via VehicleProviderConsentService.recordDimoConsent(); HMÜ C 215 used as reference.',
+      'Dry-run plans exactly 3 CREATE + 3 link.consentId WIRE; HMÜ + WOB vehicles NOOP; 0 CONFLICT.',
+      'Shadow counterfactual: providerLinkState REAUTH_REQUIRED → ACTIVE; P0.2 NEEDS_VERIFICATION → AVAILABLE; telemetry unchanged.',
+      'Ops script: backend/scripts/ops/backfill-dimo-vehicle-provider-consents.ts (--dry-run default, --apply gated).',
+      'Audit: docs/audits/dimo-vehicle-provider-consent-backfill-phase1-2026-08.md — APPLY READY YES, production mutations NONE.',
+    ],
+    reason:
+      'DIMO VehicleDataSourceLink backfill succeeded for all six org vehicles, but three KS vehicles never received per-vehicle consent rows at registration. ProviderLinkStateBuilder correctly surfaces CONSENT_MISSING despite live telemetry.',
+    previousBehavior:
+      'KS FH/MS/MX: active DIMO link + CONNECTED telemetry + ACTIVE org auth, but providerLinkState=REAUTH_REQUIRED and P0.2 NEEDS_VERIFICATION.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Connectivity',
+    createdAt: '2026-08-26T14:35:00.000Z',
+  },
+  {
     id: 'bullmq-v5-job-id-global-hardening-2026-08-26',
     version: '4.9.960',
     title: 'Global BullMQ v5 custom jobId hardening',
