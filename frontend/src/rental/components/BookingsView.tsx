@@ -23,6 +23,7 @@ import { bookingStatusLabel as plannerStatusLabel, bookingStatusTone as plannerS
 // confirmed-in-the-past bookings may still transition to CRITICAL between
 // creation and the actual pickup day.
 import { useVehicleHealth } from '../hooks/useVehicleHealth';
+import { isBookingVehicleHardBlocked } from '../lib/booking-vehicle-preflight';
 import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
 import {
   PageHeader,
@@ -255,6 +256,7 @@ export function BookingsView({
       make: v.make || '',
       model: v.model || '',
       year: v.year || null,
+      hardBlocked: isBookingVehicleHardBlocked(v, null),
     })),
     [fleetVehicles],
   );
@@ -567,6 +569,14 @@ export function BookingsView({
         `${v.make ?? ''} ${v.model}`.trim() === cleanEdit.vehicle ||
         v.license === cleanEdit.plate,
     );
+    if (
+      selectedVehicle &&
+      selectedVehicle.id !== booking.vehicleId &&
+      isBookingVehicleHardBlocked(selectedVehicle, null)
+    ) {
+      toast.error('Fahrzeug ist für Buchungen nicht verfügbar');
+      return;
+    }
     if (selectedVehicle && selectedVehicle.id !== booking.vehicleId) {
       patch.vehicle = { connect: { id: selectedVehicle.id } };
     }
@@ -735,6 +745,19 @@ export function BookingsView({
 
   const saveEdit = async () => {
     if (!editingBooking || !orgId) return;
+    const selectedFleetVehicle = fleetVehicles.find(
+      (v) =>
+        buildMMY({ make: v.make, model: v.model, year: v.year }) === editForm.vehicle ||
+        v.license === editForm.plate,
+    );
+    if (
+      selectedFleetVehicle &&
+      selectedFleetVehicle.id !== editingBooking.vehicleId &&
+      isBookingVehicleHardBlocked(selectedFleetVehicle, null)
+    ) {
+      toast.error('Fahrzeug ist für Buchungen nicht verfügbar');
+      return;
+    }
     const updatedBooking = { ...editingBooking, ...editForm };
     try {
       const startIso = editForm.startDate && editForm.startTime
@@ -1655,8 +1678,17 @@ export function BookingsView({
                           <option value="">Keine Fahrzeuge verfügbar</option>
                         ) : (
                           vehicleOptions.map((v) => (
-                            <option key={v.id} value={v.name}>
+                            <option
+                              key={v.id}
+                              value={v.name}
+                              disabled={
+                                v.hardBlocked &&
+                                v.id !== editingBooking?.vehicleId &&
+                                v.name !== editForm.vehicle
+                              }
+                            >
                               {v.name} · {v.plate}
+                              {v.hardBlocked && v.id !== editingBooking?.vehicleId ? ' (nicht verfügbar)' : ''}
                             </option>
                           ))
                         )}

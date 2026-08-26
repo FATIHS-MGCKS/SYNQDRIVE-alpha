@@ -38,6 +38,10 @@ function baseVehicle(overrides: Partial<VehicleData> = {}): VehicleData {
     taxCost: '0',
     totalMonthlyCost: '0',
     onlineStatus: 'ONLINE',
+    operationalAvailability: {
+      state: 'AVAILABLE',
+      generatedAt: new Date().toISOString(),
+    },
     ...overrides,
   } as VehicleData;
 }
@@ -51,17 +55,33 @@ function health(overrides: Partial<VehicleHealthResponse> = {}): VehicleHealthRe
     blocking_reasons: [],
     modules: {} as VehicleHealthResponse['modules'],
     generated_at: new Date().toISOString(),
+    availability: 'ready',
     ...overrides,
   };
 }
 
 describe('booking-vehicle-preflight', () => {
-  it('blocks offline vehicles', () => {
-    const v = baseVehicle({ onlineStatus: 'OFFLINE', lastSignal: '2020-01-01T00:00:00.000Z' });
+  it('does not block legacy offline timestamps when P0.2 AVAILABLE', () => {
+    const v = baseVehicle({
+      onlineStatus: 'OFFLINE',
+      lastSignal: '2020-01-01T00:00:00.000Z',
+      operationalAvailability: { state: 'AVAILABLE', generatedAt: new Date().toISOString() },
+    });
+    const result = resolveBookingVehiclePreflight(v, null, true, false);
+    expect(result.isSelectable).toBe(true);
+    expect(result.operationalGatePass).toBe(true);
+    expect(result.offline).toBe(false);
+    expect(result.hardBlockReason).toBeNull();
+    expect(isBookingVehicleHardBlocked(v, null)).toBe(false);
+  });
+
+  it('blocks NEEDS_VERIFICATION via operational gate', () => {
+    const v = baseVehicle({
+      operationalAvailability: { state: 'NEEDS_VERIFICATION', generatedAt: new Date().toISOString() },
+    });
     const result = resolveBookingVehiclePreflight(v, null, true, false);
     expect(result.isSelectable).toBe(false);
-    expect(result.hardBlockReason).toBe('offline');
-    expect(isBookingVehicleHardBlocked(v, null)).toBe(true);
+    expect(result.hardBlockReason).toBe('operational_gate');
   });
 
   it('blocks rental_blocked vehicles', () => {
