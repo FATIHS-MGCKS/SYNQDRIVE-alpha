@@ -422,10 +422,10 @@ describe('brake health regression matrix', () => {
 
   describe('TC21 tdi_concurrency', () => {
     it('deduplicates scheduler jobs per vehicle and hour bucket', () => {
-      expect(buildBrakeRecalculationJobId('veh-1', 12)).toBe('brake-recalc:veh-1:12');
-      expect(buildBrakeRecalculationJobId('veh-1', 12)).toBe(
-        buildBrakeRecalculationJobId('veh-1', 12),
-      );
+      const first = buildBrakeRecalculationJobId('veh-1', 12);
+      expect(first).not.toContain(':');
+      expect(buildBrakeRecalculationJobId('veh-1', 12)).toBe(first);
+      expect(buildBrakeRecalculationJobId('veh-1', 13)).not.toBe(first);
     });
   });
 

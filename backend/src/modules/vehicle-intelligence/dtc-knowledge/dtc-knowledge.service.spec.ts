@@ -1,3 +1,4 @@
+import { buildDtcGenericEnrichmentJobId } from './dtc-knowledge-queue.util';
 import { DtcKnowledgeService } from './dtc-knowledge.service';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 
@@ -104,7 +105,8 @@ describe('DtcKnowledgeService', () => {
     expect(queue.add).toHaveBeenCalledTimes(1);
     const [name, , opts] = queue.add.mock.calls[0];
     expect(name).toBe('DTC_GENERIC_ENRICHMENT');
-    expect(opts.jobId).toBe('generic:P0675:de');
+    expect(opts.jobId).toBe(buildDtcGenericEnrichmentJobId('P0675', 'de'));
+    expect(opts.jobId).not.toContain(':');
     expect(dto.status).toBe('QUEUED');
     expect(dto.source).toBe('PENDING');
   });

@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { sanitizeBullMqJobId } from '@shared/queue/bullmq-job-id.sanitizer';
 import {
   BRAKE_WEAR_MODEL_VERSION,
   computeBrakeWearModelConfigHash,
@@ -258,10 +259,8 @@ export function computeBrakeRecalculationInputFingerprint(
 }
 
 export function buildBrakeRecalculationJobId(vehicleId: string, hourBucket?: number): string {
-  if (hourBucket != null) {
-    return `brake-recalc:${vehicleId}:${hourBucket}`;
-  }
-  return `brake-recalc:${vehicleId}`;
+  const key = hourBucket != null ? `${vehicleId}:${hourBucket}` : vehicleId;
+  return sanitizeBullMqJobId({ namespace: 'brake-recalc', key });
 }
 
 export function brakeRecalculationLockKey(vehicleId: string): string {

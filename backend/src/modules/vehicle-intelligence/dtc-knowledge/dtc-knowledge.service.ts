@@ -6,6 +6,10 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import {
+  buildDtcGenericEnrichmentJobId,
+  buildDtcVehicleEnrichmentJobId,
+} from './dtc-knowledge-queue.util';
+import {
   getDtcStandardType,
   getDtcSystemCategory,
   normalizeDtcCode,
@@ -245,7 +249,11 @@ export class DtcKnowledgeService {
       normalizedCode: generic.normalizedCode,
       language,
     };
-    await this.enqueue(DTC_ENRICHMENT_JOB.GENERIC, data, `generic:${generic.normalizedCode}:${language}`);
+    await this.enqueue(
+      DTC_ENRICHMENT_JOB.GENERIC,
+      data,
+      buildDtcGenericEnrichmentJobId(generic.normalizedCode, language),
+    );
   }
 
   private async maybeQueueVehicle(
@@ -282,7 +290,14 @@ export class DtcKnowledgeService {
       fuelType: vehicle.fuelType ?? null,
       engineCode: vehicle.engineCode ?? null,
     };
-    const jobId = `vehicle:${vk.normalizedCode}:${vehicle.make ?? ''}:${vehicle.model ?? ''}:${vehicle.year ?? ''}:${vehicle.fuelType ?? ''}:${language}`;
+    const jobId = buildDtcVehicleEnrichmentJobId({
+      normalizedCode: vk.normalizedCode,
+      make: vehicle.make ?? '',
+      model: vehicle.model ?? '',
+      year: vehicle.year ?? '',
+      fuelType: vehicle.fuelType ?? '',
+      language,
+    });
     await this.enqueue(DTC_ENRICHMENT_JOB.VEHICLE, data, jobId);
   }
 

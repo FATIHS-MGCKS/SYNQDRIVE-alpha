@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'bullmq-v5-job-id-global-hardening-2026-08-26',
+    version: '4.9.960',
+    title: 'Global BullMQ v5 custom jobId hardening',
+    summary: [
+      'Repository-wide migration: all executable BullMQ producers now route custom jobId through sanitizeBullMqJobId().',
+      'Fixed colon-capable producers: DTC poll fan-out, voice webhook, notification evaluation/delivery, payment email, task automation outbox, brake recalc, DTC knowledge enrichment.',
+      'Connectivity producer unchanged (connectivity-webhook__{inboxId}); regression tests preserved.',
+      'Added bullmq-job-id.producers.audit.spec.ts static scan + per-producer unit tests.',
+    ],
+    reason: 'Post-connectivity closure hygiene — eliminate recurring Production [Scheduler] Custom Id cannot contain : errors from non-connectivity queues.',
+    previousBehavior: 'Multiple producers used colon-delimited jobId templates (e.g. dtc-poll:{vehicleId}:{bucket}, notification-evaluation:{orgId}:{class}) rejected by BullMQ v5.',
+    details: 'architecture/BULLMQ_JOB_ID_COMPATIBILITY_2026-08.md; backend/src/shared/queue/bullmq-job-id.sanitizer.ts',
+    affectsArchitecture: true,
+    module: 'Platform',
+    createdAt: '2026-08-26T13:30:00.000Z',
+  },
+  {
     id: 'fleet-health-evaluability-p0-4-2026-08-25',
     version: '4.9.959',
     title: 'P0.4 — Fleet Health evaluability consumer migration',

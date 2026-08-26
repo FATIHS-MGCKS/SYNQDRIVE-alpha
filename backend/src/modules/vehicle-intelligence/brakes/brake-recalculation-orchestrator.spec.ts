@@ -137,6 +137,8 @@ describe('BrakeRecalculationOrchestratorService', () => {
     await orchestrator.enqueue({ vehicleId: 'veh-a', organizationId: 'org-a', trigger: 'manual' });
     await orchestrator.enqueue({ vehicleId: 'veh-b', organizationId: 'org-b', trigger: 'manual' });
     const ids = queueAdd.mock.calls.map((call) => call[2].jobId);
-    expect(ids).toEqual(['brake-recalc:veh-a', 'brake-recalc:veh-b']);
+    expect(ids[0]).not.toContain(':');
+    expect(ids[1]).not.toContain(':');
+    expect(new Set(ids).size).toBe(2);
   });
 });

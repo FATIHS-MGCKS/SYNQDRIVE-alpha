@@ -10,6 +10,7 @@ import { hashWebhookPayload } from './voice-webhook-payload.util';
 import { redactTwilioFormPayload, redactWebhookPayload } from './voice-webhook-redaction.util';
 import { isVoiceWebhookIngestionEnabled } from './voice-webhook-ingestion.config';
 import { VOICE_WEBHOOK_EVENT_TYPES } from './voice-webhook-ingestion.constants';
+import { buildVoiceWebhookJobOptions } from './voice-webhook-queue.util';
 
 export type VoiceWebhookIngestResult = {
   accepted: boolean;
@@ -31,16 +32,11 @@ export class VoiceWebhookQueueProducer {
   ) {}
 
   async enqueue(eventId: string, replay = false): Promise<void> {
+    const options = buildVoiceWebhookJobOptions(eventId, replay);
     await this.queue.add(
       replay ? 'replay' : 'process',
       { eventId, replay },
-      {
-        jobId: replay ? `voice-webhook-replay:${eventId}:${Date.now()}` : `voice-webhook:${eventId}`,
-        attempts: 5,
-        backoff: { type: 'exponential', delay: 5_000 },
-        removeOnComplete: { count: 2000, age: 24 * 3600 },
-        removeOnFail: { count: 5000, age: 7 * 24 * 3600 },
-      },
+      options,
     );
   }
 }

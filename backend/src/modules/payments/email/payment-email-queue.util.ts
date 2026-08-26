@@ -1,11 +1,12 @@
 import { JobsOptions } from 'bullmq';
 import { ConfigType } from '@nestjs/config';
 import paymentEmailConfig from '@config/payment-email.config';
+import { sanitizeBullMqJobId } from '@shared/queue/bullmq-job-id.sanitizer';
 
 export const PAYMENT_EMAIL_JOB_NAME = 'deliver';
 
 export function buildPaymentEmailJobId(outboxId: string): string {
-  return `payment-email:${outboxId}`;
+  return sanitizeBullMqJobId({ namespace: 'payment-email', key: outboxId });
 }
 
 export function buildPaymentEmailJobOptions(
