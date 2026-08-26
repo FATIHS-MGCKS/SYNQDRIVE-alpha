@@ -1,7 +1,6 @@
 import type { DashboardInsight } from '../../DashboardInsightsContext';
 import type { VehicleHealthAlert } from '../../DashboardInsightsContext';
 import type { VehicleData } from '../../data/vehicles';
-import { resolveTelemetryFreshness } from '../../lib/telemetryFreshness';
 import type { VehicleHealthResponse } from '../../../lib/api';
 import type { Station } from '../../../lib/api';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
@@ -22,6 +21,11 @@ import {
   selectFleetReservedIsOverdue,
   selectFleetReservedPickupAt,
 } from '../../lib/fleet-map-vehicle-selectors';
+import {
+  mapAttentionToNotificationSeverity,
+  shouldEmitCanonicalConnectivityNotification,
+} from '../../lib/notifications/notification-operational-attention';
+import { buildFleetVehicleUiProjection } from '../../lib/fleet-vehicle-ui-projection';
 
 export type PredictiveRiskType =
   | 'RETURN_OVERDUE_THREATENS_FOLLOWUP'
@@ -90,25 +94,29 @@ function readEvSoc(v: VehicleData): number | null {
   return null;
 }
 
-function telemetryRiskBucket(
-  v: VehicleData,
-): 'offline' | 'stale' | 'unknown' | 'fresh' | 'none' {
-  // Central 5-state freshness. STANDBY is normal (fresh); only soft-offline
-  // (signal_delayed, 24–48h) is "stale", offline ≥48h, never-reported → none.
-  const f = resolveTelemetryFreshness(v);
-  if (f.isOffline) return 'offline';
-  if (f.isNoSignal) return 'none';
-  if (f.isSignalDelayed) return 'stale';
-  return 'fresh';
-}
-
-function runtimeTelemetryRiskBucket(
-  state: VehicleRuntimeState | undefined,
-): 'offline' | 'soft_offline' | 'none' {
-  if (!state) return 'none';
-  if (state.telemetryState === 'offline') return 'offline';
-  if (state.telemetryState === 'soft_offline') return 'soft_offline';
-  return 'none';
+function canonicalConnectivityPickupRisk(
+  vehicle: VehicleData,
+  locale: 'de' | 'en',
+): { severity: 'critical' | 'warning'; title: string; explanation: string; recommendedAction?: string } | null {
+  const runtime = vehicle.connectivityRuntime;
+  if (!shouldEmitCanonicalConnectivityNotification(runtime)) return null;
+  const mapped = mapAttentionToNotificationSeverity(runtime);
+  if (!mapped) return null;
+  const ui = buildFleetVehicleUiProjection(vehicle, { locale });
+  const title =
+    ui.attention.primaryReason.presentation?.label ??
+    ui.connectivity.overallState.presentation?.label ??
+    (locale === 'de' ? 'Konnektivität vor Pickup prüfen' : 'Check connectivity before pickup');
+  const explanation =
+    ui.availability.presentation?.tooltip ??
+    ui.operator.recommendedAction.presentation?.label ??
+    title;
+  return {
+    severity: mapped === 'critical' ? 'critical' : 'warning',
+    title,
+    explanation,
+    recommendedAction: ui.operator.recommendedAction.presentation?.label ?? undefined,
+  };
 }
 
 function reasonSummary(reasons: RuntimeReason[], fallback: string): string {
@@ -395,30 +403,31 @@ export function derivePredictiveOperationsInsights(input: {
       }
 
       if (vehicle) {
-        const tel = runtimeState ? runtimeTelemetryRiskBucket(runtimeState) : telemetryRiskBucket(vehicle);
-        if (tel === 'offline' || tel === 'stale' || tel === 'soft_offline') {
+        const locale = de ? 'de' as const : 'en' as const;
+        const connectivityRisk = canonicalConnectivityPickupRisk(vehicle, locale);
+        if (connectivityRisk) {
           push({
             id: `predictive-telemetry-${p.vehicleId}-${p.bookingId}`,
             type: 'SOFT_OFFLINE_TELEMETRY_CHECK',
-            severity: tel === 'offline' ? 'warning' : 'attention',
+            severity: connectivityRisk.severity,
             title: de
-              ? 'Operatives Risiko · Telemetrie prüfen'
-              : 'Operational risk · check telemetry',
-            explanation: de
-              ? `${label} ist ${tel === 'offline' ? 'Offline' : 'Soft Offline'} vor Pickup.`
-              : `${label} is ${tel === 'offline' ? 'offline' : 'soft offline'} before pickup.`,
+              ? `Operatives Risiko · ${connectivityRisk.title}`
+              : `Operational risk · ${connectivityRisk.title}`,
+            explanation: connectivityRisk.explanation,
             affectedEntity: {
               kind: 'vehicle',
               vehicleId: p.vehicleId,
               label,
             },
-            sourceData: de
-              ? `lastSignal=${vehicle.lastSignal || '—'} · onlineStatus=${vehicle.onlineStatus ?? '—'}`
-              : `lastSignal=${vehicle.lastSignal || '—'} · onlineStatus=${vehicle.onlineStatus ?? '—'}`,
-            recommendedAction: de
-              ? 'Fahrzeug vor Übergabe physisch prüfen (Kraftstoff/Standort/Zustand).'
-              : 'Physically verify vehicle before handover (fuel/location/condition).',
-            confidence: tel === 'offline' ? 'medium' : 'low',
+            sourceData: vehicle.connectivityRuntime
+              ? `canonical:${vehicle.connectivityRuntime.overallState}:${vehicle.connectivityRuntime.attentionState}`
+              : 'canonical:connectivity:absent',
+            recommendedAction:
+              connectivityRisk.recommendedAction ??
+              (de
+                ? 'Konnektivität prüfen und vor Übergabe verifizieren.'
+                : 'Review connectivity and verify before handover.'),
+            confidence: connectivityRisk.severity === 'critical' ? 'high' : 'medium',
             timeSortMs: startMs ?? now,
             timeLabel,
             cta: 'open-vehicle',

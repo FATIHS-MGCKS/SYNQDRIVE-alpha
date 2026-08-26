@@ -7,8 +7,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { FleetConnectivityStatus, FleetTelemetryFreshness, OverallConnectivityState, VehicleConnectivityRuntimeState } from '../../../lib/api';
-import { isVehicleOffline } from '../data/vehicles';
 import { isBookingOperationalGatePass } from './booking-vehicle-eligibility';
+import { shouldEmitCanonicalConnectivityNotification } from './notifications/notification-operational-attention';
 import { deriveFleetVisualState } from './fleetVisualState';
 import { resolveFleetVehicleDisplayState } from './fleetVehicleDisplay';
 import {
@@ -158,8 +158,14 @@ type SurfaceTelemetry = {
   freshness: TelemetryFreshness | FleetConnectivityStatus;
 };
 
-function resolveAcrossSurfaces(lastSignal: string): SurfaceTelemetry[] {
-  const vehicle = baseVehicle(lastSignal);
+function resolveAcrossSurfaces(
+  lastSignal: string,
+  runtimeOverrides?: Partial<VehicleConnectivityRuntimeState>,
+): SurfaceTelemetry[] {
+  const vehicle = {
+    ...baseVehicle(lastSignal),
+    ...(runtimeOverrides ? { connectivityRuntime: runtimeFixture(runtimeOverrides) } : {}),
+  };
   const canonical = resolveTelemetryFreshness(vehicle, { now: NOW }).freshness;
   const fleetMain = resolveFleetVehicleDisplayState(vehicle, { now: NOW }).telemetryStatus;
   const fleetApi = fleetConnectivityFromCanonical(lastSignal);
@@ -171,8 +177,10 @@ function resolveAcrossSurfaces(lastSignal: string): SurfaceTelemetry[] {
     { surface: 'dashboard', freshness: resolveTelemetryFreshness(vehicle, { now: NOW }).freshness },
     { surface: 'fleet_connectivity_api', freshness: fleetApi.telemetryFreshness },
     {
-      surface: 'notifications_offline_gate',
-      freshness: isVehicleOffline(vehicle) ? 'offline' : canonical,
+      surface: 'notifications_connectivity_gate',
+      freshness: shouldEmitCanonicalConnectivityNotification(vehicle.connectivityRuntime)
+        ? 'alert'
+        : 'none',
     },
     {
       surface: 'booking_operational_gate',
@@ -251,16 +259,16 @@ describe('connectivity cross-surface regressions', () => {
       const surfaces = resolveAcrossSurfaces(hoursAgo(50));
       expect(surfaces.find((s) => s.surface === 'canonical')?.freshness).toBe('offline');
       expect(surfaces.find((s) => s.surface === 'fleet_connectivity_api')?.freshness).toBe('offline');
-      expect(isVehicleOffline(baseVehicle(hoursAgo(50)))).toBe(true);
+      expect(surfaces.find((s) => s.surface === 'notifications_connectivity_gate')?.freshness).toBe('none');
       expect(surfaces.find((s) => s.surface === 'booking_operational_gate')?.freshness).toBe('pass');
     });
 
-    it('no signal: canonical no_signal; fleet API offline; offline gate warns', () => {
+    it('no signal: canonical no_signal; notifications gate none without canonical attention', () => {
       const vehicle = { ...baseVehicle(''), lastSignal: '', signalAgeMs: Number.MAX_SAFE_INTEGER };
       const fresh = resolveTelemetryFreshness(vehicle, { now: NOW });
       expect(fresh.freshness).toBe('no_signal');
       expect(fleetConnectivityFromCanonical(null).telemetryFreshness).toBe('no_signal');
-      expect(isVehicleOffline(vehicle)).toBe(true);
+      expect(shouldEmitCanonicalConnectivityNotification(vehicle.connectivityRuntime)).toBe(false);
     });
   });
 
