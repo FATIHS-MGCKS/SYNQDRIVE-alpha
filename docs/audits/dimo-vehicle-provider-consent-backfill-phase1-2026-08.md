@@ -254,3 +254,52 @@ npx ts-node -r tsconfig-paths/register scripts/ops/backfill-dimo-vehicle-provide
 `atomicApply: true`, `partialWritePossible: false`, `applied: 0`.
 
 **STOP** — await explicit operator approval before `--apply`.
+
+---
+
+## Phase 1.2 — Transactional Consistency Hardening (2026-08-26)
+
+| Field | Value |
+|-------|-------|
+| **Mode** | Code hardening + production re-dry-run (read-only) |
+| **Production modified** | **NO** |
+| **HEAD SHA** | `84b31c6c` (see final report for full SHA) |
+
+### Fixes
+
+| Issue | Resolution |
+|-------|------------|
+| TOCTOU / stale preflight | Authoritative gate moved inside `$transaction` via tx-local reads |
+| Interleaved validate→write | All targets validated before any CREATE/WIRE |
+| NOOP + WIRE_CONSENT_ID skipped | Wire-only mutation path implemented |
+| Ambiguous `applied` counter | Explicit `createdConsents`, `wiredConsentIds`, `mutatedVehicles`, `noopVehicles` |
+| Post-write verification | ACTIVE consent cardinality, link cardinality, FK + metadata inside tx |
+
+### Regression tests: 18 (7 concurrency-focused)
+
+### Phase 1.2 dry-run command
+
+```bash
+cd /opt/synqdrive/current/backend
+export SYNQDRIVE_BACKEND_ENV=/opt/synqdrive/shared/backend.env
+npx ts-node -r tsconfig-paths/register scripts/ops/backfill-dimo-vehicle-provider-consents.ts \
+  --org=faa710c9-6d91-4079-a7d5-91fdccdec14a \
+  --vehicle-id=68868291-5478-42cd-b0c4-cc77b2a78e21 \
+  --vehicle-id=c10351f8-b6a2-4258-947f-631aeaa6d359 \
+  --vehicle-id=a60c0749-a7cd-494e-b5b9-dea3c6b97d63 \
+  --run-id=dimo-consent-backfill-prod-2026-08-26-phase1-2 \
+  --shadow
+```
+
+### Phase 1.2 final gate
+
+| Verdict | Result |
+|---------|--------|
+| TRANSACTIONAL CONSISTENCY | **PASS** |
+| ATOMIC ALL-TARGET PREFLIGHT | **PASS** |
+| WIRE-ONLY SEMANTICS | **PASS** |
+| CONSENT LEDGER DRY-RUN | **PASS** (CREATE=3, WIRE=3, CONFLICT=0, SKIP=0) |
+| PRODUCTION APPLY READY | **YES** |
+| PRODUCTION MUTATIONS | **NONE** |
+
+**STOP** — await explicit operator approval before `--apply`.
