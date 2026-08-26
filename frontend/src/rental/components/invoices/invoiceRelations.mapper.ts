@@ -4,6 +4,13 @@ import { bookingRef } from '../bookings/bookingUtils';
 import { bookingStatusLabel, normalizeBookingStatus } from '../bookings/bookingStatus';
 import { INVOICE_TEMPLATES } from './invoice-detail.constants';
 import { formatDate } from './invoiceFormatters';
+import {
+  rentalInvoiceDetailPrimaryFallbackLabel,
+  rentalInvoiceDetailPrimaryPermissionReason,
+  rentalInvoiceDetailPrimaryRelationLabel,
+  rentalInvoiceDetailPrimaryRentalPeriod,
+  rentalInvoiceDetailPrimaryTemplateName,
+} from '../../lib/rental-invoice-detail-primary-i18n';
 import type {
   InvoiceEntityRelation,
   InvoiceProvenanceDto,
@@ -41,62 +48,42 @@ export function customerPrimaryLabel(customer: CustomerApiRecord): string {
   return customerDisplayName(customer);
 }
 
-function fallbackLabel(fallback: InvoiceRelationFallback): string {
-  switch (fallback) {
-    case 'archived':
-      return 'Relation archiviert';
-    case 'deleted':
-      return 'Relation gelöscht';
-    case 'unavailable':
-      return 'Daten nicht verfügbar';
-    case 'legacy':
-      return 'Legacy-Herkunft';
-    default:
-      return 'Daten nicht verfügbar';
-  }
+function fallbackLabel(fallback: InvoiceRelationFallback, locale: string): string {
+  return rentalInvoiceDetailPrimaryFallbackLabel(locale, fallback);
 }
 
 function permissionBlockedReason(
   kind: InvoiceEntityRelation['kind'],
   canRead: boolean,
+  locale: string,
 ): string | null {
   if (canRead) return null;
-  switch (kind) {
-    case 'customer':
-      return 'Keine Berechtigung für Kundendetails';
-    case 'booking':
-      return 'Keine Berechtigung für Buchungsdetails';
-    case 'vehicle':
-      return 'Keine Berechtigung für Fahrzeugdetails';
-    default:
-      return 'Keine Berechtigung';
-  }
+  return rentalInvoiceDetailPrimaryPermissionReason(locale, kind);
 }
 
-function formatRentalPeriod(start: string, end: string): string {
-  const startLabel = formatDate(start);
-  const endLabel = formatDate(end);
-  if (startLabel === '—' && endLabel === '—') return 'Zeitraum unbekannt';
-  if (startLabel === '—') return `bis ${endLabel}`;
-  if (endLabel === '—') return `ab ${startLabel}`;
-  return `${startLabel} – ${endLabel}`;
+function formatRentalPeriod(start: string, end: string, locale: string): string {
+  const startLabel = formatDate(start, locale);
+  const endLabel = formatDate(end, locale);
+  return rentalInvoiceDetailPrimaryRentalPeriod(locale, startLabel, endLabel);
 }
 
 function buildCustomerRelation(
   invoice: Invoice,
   enrichment: InvoiceRelationsEnrichment,
   permissions: InvoiceRelationsPermissions,
+  locale: string,
 ): InvoiceEntityRelation | null {
   if (!invoice.customerId) return null;
 
   const canNavigate = permissions.canReadCustomers;
-  const blocked = permissionBlockedReason('customer', canNavigate);
+  const blocked = permissionBlockedReason('customer', canNavigate, locale);
+  const label = rentalInvoiceDetailPrimaryRelationLabel(locale, 'customer');
 
   if (enrichment.customerFetchState === 'not_found') {
     return {
       kind: 'customer',
-      label: 'Kunde',
-      primary: fallbackLabel('deleted'),
+      label,
+      primary: fallbackLabel('deleted', locale),
       secondary: customerRef(invoice.customerId),
       tertiary: null,
       fallback: 'deleted',
@@ -109,8 +96,8 @@ function buildCustomerRelation(
   if (enrichment.customerFetchState === 'error' || !enrichment.customer) {
     return {
       kind: 'customer',
-      label: 'Kunde',
-      primary: fallbackLabel('unavailable'),
+      label,
+      primary: fallbackLabel('unavailable', locale),
       secondary: customerRef(invoice.customerId),
       tertiary: null,
       fallback: 'unavailable',
@@ -125,8 +112,8 @@ function buildCustomerRelation(
 
   return {
     kind: 'customer',
-    label: 'Kunde',
-    primary: archived ? fallbackLabel('archived') : customerPrimaryLabel(customer),
+    label,
+    primary: archived ? fallbackLabel('archived', locale) : customerPrimaryLabel(customer),
     secondary: customerRef(customer.id),
     tertiary: customer.email?.trim() || null,
     fallback: archived ? 'archived' : null,
@@ -140,19 +127,21 @@ function buildBookingRelation(
   invoice: Invoice,
   enrichment: InvoiceRelationsEnrichment,
   permissions: InvoiceRelationsPermissions,
+  locale: string,
 ): InvoiceEntityRelation | null {
   if (!invoice.bookingId) return null;
 
   const canNavigate = permissions.canReadBookings;
-  const blocked = permissionBlockedReason('booking', canNavigate);
+  const blocked = permissionBlockedReason('booking', canNavigate, locale);
   const publicNumber = bookingRef(invoice.bookingId);
+  const label = rentalInvoiceDetailPrimaryRelationLabel(locale, 'booking');
 
   if (enrichment.bookingFetchState === 'not_found') {
     return {
       kind: 'booking',
-      label: 'Buchung',
+      label,
       primary: publicNumber,
-      secondary: fallbackLabel('deleted'),
+      secondary: fallbackLabel('deleted', locale),
       tertiary: null,
       fallback: 'deleted',
       entityId: invoice.bookingId,
@@ -164,9 +153,9 @@ function buildBookingRelation(
   if (enrichment.bookingFetchState === 'error' || !enrichment.booking) {
     return {
       kind: 'booking',
-      label: 'Buchung',
+      label,
       primary: publicNumber,
-      secondary: fallbackLabel('unavailable'),
+      secondary: fallbackLabel('unavailable', locale),
       tertiary: null,
       fallback: 'unavailable',
       entityId: invoice.bookingId,
@@ -177,14 +166,14 @@ function buildBookingRelation(
 
   const booking = enrichment.booking;
   const status = normalizeBookingStatus(booking.core.statusEnum, booking.core.status);
-  const period = formatRentalPeriod(booking.core.startDate, booking.core.endDate);
+  const period = formatRentalPeriod(booking.core.startDate, booking.core.endDate, locale);
 
   return {
     kind: 'booking',
-    label: 'Buchung',
+    label,
     primary: booking.core.bookingNumber || publicNumber,
     secondary: period,
-    tertiary: bookingStatusLabel(status),
+    tertiary: bookingStatusLabel(status, locale),
     fallback: null,
     entityId: booking.core.bookingId,
     navigable: canNavigate,
@@ -224,11 +213,13 @@ function buildVehicleRelation(
   invoice: Invoice,
   enrichment: InvoiceRelationsEnrichment,
   permissions: InvoiceRelationsPermissions,
+  locale: string,
 ): InvoiceEntityRelation | null {
   if (!invoice.vehicleId) return null;
 
   const canNavigate = permissions.canReadFleet;
-  const blocked = permissionBlockedReason('vehicle', canNavigate);
+  const blocked = permissionBlockedReason('vehicle', canNavigate, locale);
+  const label = rentalInvoiceDetailPrimaryRelationLabel(locale, 'vehicle');
   const { make, model, licensePlate, fleetName } = resolveVehicleFields(invoice, enrichment);
   const hasVehicleData = Boolean(make || model || licensePlate || fleetName);
   const bookingHasVehicle =
@@ -243,8 +234,8 @@ function buildVehicleRelation(
   if (enrichment.vehicleFetchState === 'not_found' && !hasVehicleData && !bookingHasVehicle) {
     return {
       kind: 'vehicle',
-      label: 'Fahrzeug',
-      primary: fallbackLabel('deleted'),
+      label,
+      primary: fallbackLabel('deleted', locale),
       secondary: null,
       tertiary: null,
       fallback: 'deleted',
@@ -257,8 +248,8 @@ function buildVehicleRelation(
   if (!hasVehicleData && enrichment.vehicleFetchState === 'error') {
     return {
       kind: 'vehicle',
-      label: 'Fahrzeug',
-      primary: fallbackLabel('unavailable'),
+      label,
+      primary: fallbackLabel('unavailable', locale),
       secondary: null,
       tertiary: null,
       fallback: 'unavailable',
@@ -271,11 +262,11 @@ function buildVehicleRelation(
   const primary =
     [make, model].filter(Boolean).join(' ').trim() ||
     fleetName ||
-    fallbackLabel('unavailable');
+    fallbackLabel('unavailable', locale);
 
   return {
     kind: 'vehicle',
-    label: 'Fahrzeug',
+    label,
     primary,
     secondary: licensePlate,
     tertiary: fleetName,
@@ -286,13 +277,13 @@ function buildVehicleRelation(
   };
 }
 
-function buildVendorRelation(invoice: Invoice): InvoiceEntityRelation | null {
+function buildVendorRelation(invoice: Invoice, locale: string): InvoiceEntityRelation | null {
   if (!invoice.vendorName && !invoice.vendorId) return null;
 
   return {
     kind: 'vendor',
-    label: 'Lieferant',
-    primary: invoice.vendorName?.trim() || fallbackLabel('unavailable'),
+    label: rentalInvoiceDetailPrimaryRelationLabel(locale, 'vendor'),
+    primary: invoice.vendorName?.trim() || fallbackLabel('unavailable', locale),
     secondary: null,
     tertiary: null,
     fallback: invoice.vendorName ? null : 'unavailable',
@@ -331,7 +322,7 @@ export function buildInvoiceProvenance(
   } else {
     isLegacy = true;
     erstelltUeber = 'Legacy-Herkunft';
-    quelle = fallbackLabel('legacy');
+    quelle = 'Legacy-Herkunft';
   }
 
   if (!erstelltVon) {
@@ -339,11 +330,11 @@ export function buildInvoiceProvenance(
   }
 
   if (!erstelltUeber) {
-    erstelltUeber = isLegacy ? fallbackLabel('legacy') : 'Unbekannt';
+    erstelltUeber = isLegacy ? 'Legacy-Herkunft' : 'Unbekannt';
   }
 
   if (!quelle) {
-    quelle = isLegacy ? fallbackLabel('legacy') : '—';
+    quelle = isLegacy ? 'Legacy-Herkunft' : '—';
   }
 
   return { erstelltVon, erstelltUeber, quelle, isLegacy };
@@ -357,21 +348,25 @@ export function buildInvoiceRelationsDto(
     canReadBookings: true,
     canReadFleet: true,
   },
+  locale = 'de',
 ): InvoiceRelationsDto {
   const template = invoice.templateId
     ? {
         id: invoice.templateId,
-        name:
-          INVOICE_TEMPLATES.find((t) => t.id === invoice.templateId)?.name ||
+        name: rentalInvoiceDetailPrimaryTemplateName(
+          locale,
           invoice.templateId,
+          INVOICE_TEMPLATES.find((t) => t.id === invoice.templateId)?.name ||
+            invoice.templateId,
+        ),
       }
     : null;
 
   return {
-    customer: buildCustomerRelation(invoice, enrichment, permissions),
-    booking: buildBookingRelation(invoice, enrichment, permissions),
-    vehicle: buildVehicleRelation(invoice, enrichment, permissions),
-    vendor: buildVendorRelation(invoice),
+    customer: buildCustomerRelation(invoice, enrichment, permissions, locale),
+    booking: buildBookingRelation(invoice, enrichment, permissions, locale),
+    vehicle: buildVehicleRelation(invoice, enrichment, permissions, locale),
+    vendor: buildVendorRelation(invoice, locale),
     provenance: buildInvoiceProvenance(invoice, enrichment),
     template,
   };

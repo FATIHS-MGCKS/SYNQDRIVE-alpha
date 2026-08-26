@@ -4,6 +4,8 @@ import { InvoiceDetailRow } from './InvoiceDetailRow';
 import { InvoiceRelationRow } from './InvoiceRelationRow';
 import type { InvoiceEntityRelation } from './invoiceDetailTypes';
 import type { InvoiceThemeClasses } from './invoiceTheme';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { ridp } from '../../lib/rental-invoice-detail-primary-i18n';
 
 export type InvoiceRelationNavigation = {
   onOpenCustomer?: (customerId: string) => void;
@@ -24,6 +26,7 @@ export function InvoiceRelations({
   ts,
   isDarkMode,
 }: InvoiceRelationsProps) {
+  const { locale } = useLanguage();
   const { relations } = detail;
 
   const handleNavigate = (relation: InvoiceEntityRelation) => {
@@ -56,7 +59,9 @@ export function InvoiceRelations({
 
   return (
     <div className={`${card} p-4 sm:p-5`} data-testid="invoice-relations-primary">
-      <h3 className={`text-xs font-bold ${tp} mb-2 uppercase tracking-wider`}>Zuordnung</h3>
+      <h3 className={`text-xs font-bold ${tp} mb-2 uppercase tracking-wider`}>
+        {ridp(locale, 'rental.invoice.detail.primary.relations.heading')}
+      </h3>
       <div className={`divide-y ${isDarkMode ? 'divide-border/30' : 'divide-gray-100'}`}>
         {entityRelations.map((relation) => (
           <InvoiceRelationRow
@@ -71,7 +76,7 @@ export function InvoiceRelations({
 
         {relations.template ? (
           <InvoiceDetailRow
-            label="Vorlage"
+            label={ridp(locale, 'rental.invoice.detail.primary.relations.template')}
             value={relations.template.name}
             icon={Receipt}
             tp={tp}

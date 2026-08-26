@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-invoice-detail-primary-p2-2-50-2026-08-26',
+    version: '4.9.977',
+    title: 'Platform i18n — P2.2.50 Rental Invoice Detail Primary localization',
+    summary: [
+      'Localized Invoice Detail Primary header + relations via `rental-invoice-detail-primary-i18n.ts` and `rental.invoice.detail.primary.*` keys.',
+      'P250 enforce-clean exact scope (7 paths) reports 0 findings; +42 EN+DE keys (8760→8802); reuses `invoices.list.*`, `invoices.create.template.*`, `tasks.entity.*`, `common.edit`/`common.cancel`.',
+      'Presentation-only — money/status/type machine values, outstanding formula, action eligibility, PDF args, relation navigation, and dynamic entity data frozen. Category E=0.',
+    ],
+    reason:
+      'P2.2.50 pre-flight (PR #1335) selected Rental Invoice Detail Primary header + relations as the next bounded Rental slice after P2.2.49 Secondary.',
+    previousBehavior:
+      'Header amount/date/PDF chrome, more-menu labels, relations heading, gate reasons, and relation fallbacks used fixed German literals; invoiceUtils used fixed de-DE Intl formatters.',
+    details:
+      'rental/components/invoices/InvoiceDetailHeader.tsx; InvoiceHeaderMoreMenu.tsx; InvoiceRelations.tsx; invoiceDetail.mapper.ts; invoiceRelations.mapper.ts; invoiceUtils.ts; rental-invoice-detail-primary-i18n.ts; rental.invoice.detail.primary.{en,de}.ts; rental-invoice-detail-primary-localization.test.tsx; P250_ENFORCE_CLEAN_EXACT; architecture/I18N_RENTAL_INVOICE_DETAIL_PRIMARY_P2_2_50_2026-08-26.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-26T21:30:00.000Z',
+  },
+  {
     id: 'i18n-rental-invoice-detail-secondary-p2-2-49-2026-08-26',
     version: '4.9.976',
     title: 'Platform i18n — P2.2.49 Rental Invoice Detail Secondary localization',

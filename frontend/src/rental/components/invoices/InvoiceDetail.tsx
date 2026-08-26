@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { api } from '../../../lib/api';
 import { Icon } from '../ui/Icon';
 import { useRentalOrg } from '../../RentalContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useInvoiceActions } from './hooks/useInvoiceActions';
 import { useInvoiceDocuments } from './hooks/useInvoiceDocuments';
 import { useInvoicePayments } from './hooks/useInvoicePayments';
@@ -57,6 +58,7 @@ export function InvoiceDetail({
   inputCls,
 }: InvoiceDetailProps) {
   const { userRole, hasPermission } = useRentalOrg();
+  const { locale } = useLanguage();
   const canManageEmail = userRole === 'ORG_ADMIN' || userRole === 'MASTER_ADMIN';
   const canManageFinance = hasPermission('invoices', 'write');
   const relationsPermissions = useInvoiceRelationsPermissions();
@@ -81,13 +83,14 @@ export function InvoiceDetail({
   const detail = useMemo(
     () =>
       buildInvoiceDetailDto(invoice, {
+        locale,
         canManageEmail,
         canManageFinance,
         relationsEnrichment: enrichment,
         relationsPermissions,
         documentsPanel: documents.panel,
       }),
-    [invoice, canManageEmail, canManageFinance, enrichment, relationsPermissions, documents.panel],
+    [invoice, locale, canManageEmail, canManageFinance, enrichment, relationsPermissions, documents.panel],
   );
 
   const paymentsHook = useInvoicePayments(orgId, invoice, onUpdate, detail.actions.record_payment);

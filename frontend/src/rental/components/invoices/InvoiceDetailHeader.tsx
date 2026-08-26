@@ -8,6 +8,12 @@ import { primaryActionsGridClass, resolveInvoiceHeaderLayoutMode } from './invoi
 import { HeaderActionButton } from './InvoiceHeaderActionButton';
 import { InvoiceHeaderMoreMenu } from './InvoiceHeaderMoreMenu';
 import type { InvoiceThemeClasses } from './invoiceTheme';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  rentalInvoiceDetailPrimaryAmountDueLabel,
+  rentalInvoiceDetailPrimaryAmountTotalLabel,
+  ridp,
+} from '../../lib/rental-invoice-detail-primary-i18n';
 
 export interface InvoiceDetailHeaderProps extends InvoiceThemeClasses {
   detail: InvoiceDetailDto;
@@ -66,6 +72,7 @@ export function InvoiceDetailHeader({
   tp,
   ts,
 }: InvoiceDetailHeaderProps) {
+  const { locale } = useLanguage();
   const layoutMode = useMemo(() => resolveInvoiceHeaderLayoutMode(viewportWidth), [viewportWidth]);
   const typeMeta = INVOICE_TYPE_MAP[detail.core.type] || INVOICE_TYPE_MAP.OUTGOING_MANUAL;
   const TypeIcon = typeMeta.icon;
@@ -91,18 +98,28 @@ export function InvoiceDetailHeader({
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <AmountCell label="Gesamtbetrag" value={detail.amounts.totalFormatted} />
-            <AmountCell label="Bezahlt" value={detail.amounts.paidFormatted} emphasize="success" />
             <AmountCell
-              label="Offen"
+              label={rentalInvoiceDetailPrimaryAmountTotalLabel(locale)}
+              value={detail.amounts.totalFormatted}
+            />
+            <AmountCell
+              label={ridp(locale, 'rental.invoice.detail.primary.amount.paid')}
+              value={detail.amounts.paidFormatted}
+              emphasize="success"
+            />
+            <AmountCell
+              label={ridp(locale, 'rental.invoice.detail.primary.amount.outstanding')}
               value={detail.amounts.outstandingFormatted}
               emphasize={detail.amounts.outstandingCents > 0 ? 'watch' : undefined}
             />
-            <AmountCell label="Fälligkeit" value={detail.amounts.dueDateFormatted} />
+            <AmountCell
+              label={rentalInvoiceDetailPrimaryAmountDueLabel(locale)}
+              value={detail.amounts.dueDateFormatted}
+            />
           </div>
 
           <p className={`text-[11px] ${ts}`}>
-            Rechnungsdatum:{' '}
+            {ridp(locale, 'rental.invoice.detail.primary.invoiceDate')}{' '}
             <span className={`font-medium tabular-nums ${tp}`}>{detail.amounts.invoiceDateFormatted}</span>
           </p>
         </div>
@@ -111,7 +128,7 @@ export function InvoiceDetailHeader({
           <div className={primaryGrid}>
             {showViewPdf ? (
               <HeaderActionButton
-                label="PDF ansehen"
+                label={ridp(locale, 'rental.invoice.detail.primary.action.viewPdf')}
                 icon="file-text"
                 disabled={!detail.primary.viewPdf.allowed}
                 reason={detail.primary.viewPdf.reason}
