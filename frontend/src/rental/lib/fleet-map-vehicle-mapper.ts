@@ -7,14 +7,15 @@ import type {
   VehicleOnlineStatus,
 } from '../data/vehicles';
 import {
-  normalizeOperationalAvailabilityState,
-  type FleetOperationalAvailability,
-} from './operational-availability/types';
-import {
-  normalizeFleetHealthConditionState,
-  normalizeHealthEvaluabilityState,
+  isFleetHealthConditionState,
+  isHealthEvaluabilityState,
+  isPipelineAvailability,
   type FleetHealthEvaluation,
 } from './fleet-health-evaluation/types';
+import {
+  isOperationalAvailabilityState,
+  type FleetOperationalAvailability,
+} from './operational-availability/types';
 import {
   normalizeVehicleOperationalStateDto,
   type VehicleBookingContext,
@@ -26,35 +27,48 @@ function mapHealthEvaluation(
   raw: FleetMapVehicleResponse['healthEvaluation'],
 ): FleetHealthEvaluation | undefined {
   if (!raw) return undefined;
-  return {
-    condition: normalizeFleetHealthConditionState(raw.condition),
-    evaluability: normalizeHealthEvaluabilityState(raw.evaluability),
-    pipelineAvailability:
-      raw.pipelineAvailability === 'ready' ||
-      raw.pipelineAvailability === 'partial' ||
-      raw.pipelineAvailability === 'unavailable'
-        ? raw.pipelineAvailability
-        : null,
+  const evaluation: FleetHealthEvaluation = {
     generatedAt: raw.generatedAt ?? new Date(0).toISOString(),
     healthEvidenceAt: raw.healthEvidenceAt ?? null,
     anyModuleDataStale:
       typeof raw.anyModuleDataStale === 'boolean' ? raw.anyModuleDataStale : null,
     source: raw.source ?? 'p0.2_projection',
   };
+  if (raw.condition !== undefined && isFleetHealthConditionState(raw.condition)) {
+    evaluation.condition = raw.condition;
+  }
+  if (raw.evaluability !== undefined && isHealthEvaluabilityState(raw.evaluability)) {
+    evaluation.evaluability = raw.evaluability;
+  }
+  if (raw.pipelineAvailability !== undefined && isPipelineAvailability(raw.pipelineAvailability)) {
+    evaluation.pipelineAvailability = raw.pipelineAvailability;
+  }
+  return evaluation;
 }
 
 function mapOperationalAvailability(
   raw: FleetMapVehicleResponse['operationalAvailability'],
 ): FleetOperationalAvailability | undefined {
   if (!raw) return undefined;
-  return {
-    state: normalizeOperationalAvailabilityState(raw.state),
-    primaryReason: raw.primaryReason ?? null,
-    reasonCodes: Array.isArray(raw.reasonCodes) ? raw.reasonCodes : [],
-    recommendedAction: raw.recommendedAction ?? 'NONE',
-    attention: raw.attention ?? 'NONE',
+  const availability: FleetOperationalAvailability = {
     generatedAt: raw.generatedAt ?? new Date(0).toISOString(),
   };
+  if (raw.state !== undefined && isOperationalAvailabilityState(raw.state)) {
+    availability.state = raw.state;
+  }
+  if (raw.primaryReason !== undefined) {
+    availability.primaryReason = raw.primaryReason;
+  }
+  if (raw.reasonCodes !== undefined) {
+    availability.reasonCodes = Array.isArray(raw.reasonCodes) ? raw.reasonCodes : raw.reasonCodes;
+  }
+  if (raw.recommendedAction !== undefined) {
+    availability.recommendedAction = raw.recommendedAction;
+  }
+  if (raw.attention !== undefined) {
+    availability.attention = raw.attention;
+  }
+  return availability;
 }
 
 /** Fleet map row after canonical DTO mapping — extends rental vehicle read-model. */

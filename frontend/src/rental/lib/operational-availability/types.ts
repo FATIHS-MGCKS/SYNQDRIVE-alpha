@@ -12,11 +12,16 @@ export type OperationalAvailabilityState =
   (typeof OPERATIONAL_AVAILABILITY_STATE)[keyof typeof OPERATIONAL_AVAILABILITY_STATE];
 
 export interface FleetOperationalAvailability {
-  state: OperationalAvailabilityState;
-  primaryReason: string | null;
-  reasonCodes: string[];
-  recommendedAction: string;
-  attention: string;
+  /** Omitted when API state is absent or an unrecognized future enum value. */
+  state?: OperationalAvailabilityState;
+  /** Omitted when absent on API slice — do not coerce to null. */
+  primaryReason?: string | null;
+  /** Omitted when absent on API slice — do not coerce to []. */
+  reasonCodes?: string[];
+  /** Omitted when absent on API slice — do not coerce to NONE. */
+  recommendedAction?: string;
+  /** Omitted when absent on API slice — do not coerce to NONE. */
+  attention?: string;
   generatedAt: string;
 }
 

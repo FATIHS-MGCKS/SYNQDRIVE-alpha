@@ -29,7 +29,7 @@ export function FleetMapVehicleStatusHud({
     locale,
     timeZone,
     compact: true,
-    operationalAvailabilityBadge: true,
+    uiProjection: ctx.uiProjection,
     t,
   });
 

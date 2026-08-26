@@ -22,9 +22,11 @@ export type FleetHealthConditionState =
   (typeof FLEET_HEALTH_CONDITION)[keyof typeof FLEET_HEALTH_CONDITION];
 
 export interface FleetHealthEvaluation {
-  condition: FleetHealthConditionState;
-  evaluability: HealthEvaluabilityState;
-  pipelineAvailability: 'ready' | 'partial' | 'unavailable' | null;
+  /** Omitted when absent on API slice — do not coerce to unknown. */
+  condition?: FleetHealthConditionState;
+  /** Omitted when absent on API slice — do not coerce to unknown. */
+  evaluability?: HealthEvaluabilityState;
+  pipelineAvailability?: 'ready' | 'partial' | 'unavailable' | null;
   generatedAt: string;
   healthEvidenceAt: string | null;
   anyModuleDataStale: boolean | null;
@@ -50,6 +52,17 @@ export function isFleetHealthConditionState(value: unknown): value is FleetHealt
     value === FLEET_HEALTH_CONDITION.WARNING ||
     value === FLEET_HEALTH_CONDITION.CRITICAL ||
     value === FLEET_HEALTH_CONDITION.UNKNOWN
+  );
+}
+
+export type PipelineAvailability = 'ready' | 'partial' | 'unavailable' | null;
+
+export function isPipelineAvailability(value: unknown): value is PipelineAvailability {
+  return (
+    value === 'ready' ||
+    value === 'partial' ||
+    value === 'unavailable' ||
+    value === null
   );
 }
 

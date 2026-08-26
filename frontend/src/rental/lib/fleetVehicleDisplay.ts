@@ -38,6 +38,13 @@ import type { FleetOperationalAvailability } from './operational-availability/ty
 import { OPERATIONAL_AVAILABILITY_STATE } from './operational-availability/types';
 import { mapFleetHealthPresentation } from './fleet-health-evaluation/presentation';
 import type { FleetHealthEvaluation } from './fleet-health-evaluation/types';
+import type { VehicleOperationalUiProjection } from './operational-projection';
+import {
+  resolveAvailabilityBadgeFromUi,
+  resolveHealthDisplayFromUi,
+  resolveReasonBadgeFromUi,
+  resolveTelemetryFromUi,
+} from './fleet-p1-3-display';
 
 /**
  * Shared display layer for fleet vehicle rows (Dashboard Fleet State Board +
@@ -616,6 +623,11 @@ export interface ResolveFleetVehicleDisplayOptions {
    * instead of legacy rental health / `healthStatus` fallback.
    */
   healthEvaluationBadge?: boolean;
+  /**
+   * P1.3 — canonical UI projection. When set, availability/health/telemetry/reason
+   * derive from P1.2 and legacy timestamp/healthStatus paths are bypassed.
+   */
+  uiProjection?: VehicleOperationalUiProjection;
   /** i18n translate — required when `operationalAvailabilityBadge` or `healthEvaluationBadge` is true. */
   t?: (key: TranslationKey) => string;
 }
@@ -637,24 +649,27 @@ export function resolveFleetVehicleDisplayState(
     compact: options.compact,
   };
 
-  const statusBadge = resolveOperationalAvailabilityStatusBadge(
-    vehicle,
-    displayTimeOptions,
-    options,
-  );
+  const statusBadge = options.uiProjection
+    ? resolveAvailabilityBadgeFromUi(options.uiProjection, vehicle)
+    : resolveOperationalAvailabilityStatusBadge(vehicle, displayTimeOptions, options);
   const bookingSupplement = resolveBookingSupplement(vehicle, displayTimeOptions);
 
   const primaryStatus = resolveOperationalStatus(vehicle, rentalHealth, visual);
   const primaryLabel = primaryLabelFor(primaryStatus, vehicle, de);
   const primaryTone = primaryToneFor(primaryStatus);
 
-  const fresh = resolveTelemetryFreshness(vehicle, { now, locale: options.locale });
-  const ageMs = fresh.signalAgeMs;
-  const telemetryStatus: FleetTelemetryStatus = fresh.freshness;
-  const telemetryLabel = fresh.label;
-  // Only genuine connectivity problems (offline / no signal) warn the operator.
-  // Standby and signal_delayed are shown calmly with no warning styling.
-  const showTelemetryWarning = fresh.shouldWarnUser;
+  const telemetryFromUi = options.uiProjection
+    ? resolveTelemetryFromUi(options.uiProjection)
+    : null;
+  const fresh = telemetryFromUi
+    ? null
+    : resolveTelemetryFreshness(vehicle, { now, locale: options.locale });
+  const ageMs = fresh?.signalAgeMs ?? fleetSignalAgeMs(vehicle, now);
+  const telemetryStatus: FleetTelemetryStatus =
+    telemetryFromUi?.telemetryStatus ?? fresh!.freshness;
+  const telemetryLabel = telemetryFromUi?.telemetryLabel ?? fresh!.label;
+  const showTelemetryWarning =
+    telemetryFromUi?.showTelemetryWarning ?? fresh!.shouldWarnUser;
 
   const percent = canonicalEnergyPercent(vehicle);
   const energy: FleetEnergyDisplay = {
@@ -663,14 +678,18 @@ export function resolveFleetVehicleDisplayState(
     tone: fleetEnergyTone(percent),
   };
 
-  const healthDisplay = options.healthEvaluationBadge
-    ? resolveHealthEvaluationDisplay(vehicle.healthEvaluation, {
-        t: options.t ?? tForFleetLocale(options.locale),
-      })
-    : resolveHealthDisplay(vehicle, rentalHealth, de);
+  const healthDisplay = options.uiProjection
+    ? resolveHealthDisplayFromUi(options.uiProjection)
+    : options.healthEvaluationBadge
+      ? resolveHealthEvaluationDisplay(vehicle.healthEvaluation, {
+          t: options.t ?? tForFleetLocale(options.locale),
+        })
+      : resolveHealthDisplay(vehicle, rentalHealth, de);
   const rentalDisplay = resolveRentalDisplay(vehicle, rentalHealth, visual, de);
   const reasonBadge =
-    buildReasonBadge(vehicle, rentalHealth, visual, healthDisplay.status, de) ??
+    (options.uiProjection
+      ? resolveReasonBadgeFromUi(options.uiProjection, healthDisplay.status)
+      : buildReasonBadge(vehicle, rentalHealth, visual, healthDisplay.status, de)) ??
     (options.healthAlert?.primaryReason && isConcreteReason(options.healthAlert.primaryReason)
       ? {
           text: formatUserFacingReasonLabel({ title: options.healthAlert.primaryReason }, de ? 'de' : 'en'),

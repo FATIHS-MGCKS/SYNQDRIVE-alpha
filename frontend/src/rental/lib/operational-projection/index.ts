@@ -15,7 +15,9 @@ export {
 
 export {
   mapFleetMapToCanonicalVehicleOperationalView,
+  mapFleetStoreVehicleToCanonicalVehicleOperationalView,
   readCanonicalField,
+  type FleetStoreCanonicalVehicleInput,
   type MapCanonicalVehicleOperationalViewOptions,
 } from './map-fleet-map-to-canonical';
 

@@ -695,6 +695,117 @@ FleetOperatorRow, FleetMapVehicleStatusHud, fleetVisualState, dashboard runtime,
 
 ---
 
+## R. P1.3 implementation — Fleet list / map consumer cutover (2026-08-26)
+
+| Field | Value |
+|-------|-------|
+| **Phase** | P1.3 — Fleet list + map consumer cutover |
+| **Visible UI behavior changed** | **YES** (Fleet marker tone, semantic badges, attention offline semantics) |
+| **Consumer cutover** | **Fleet list row, map HUD, map marker tone only** |
+
+### Consumers migrated
+
+| Consumer | Before | After |
+|----------|--------|-------|
+| `FleetOperatorRow` | Direct P0.3/P0.4 slice flags | `uiProjection` → `resolveFleetVehicleDisplayState` |
+| `FleetMapVehicleStatusHud` | Direct slice flags | Same |
+| `fleetVisualState` / map markers | `isVehicleOffline()` + `resolveTelemetryFreshness()` | `deriveFleetVisualStateFromUiProjection()` when `uiProjection` present |
+| `fleetVehicleDisplay` | Legacy health/telemetry fallback possible | Projection path; no false Gut when health absent |
+| `FleetView` geojson | Legacy visual derivation | `getUiProjection` from `FleetVehicleContext` |
+
+### Files created
+
+| Path | Role |
+|------|------|
+| `fleet-vehicle-ui-projection.ts` | `VehicleData` → fleet-map DTO → P1.1 → P1.2 bridge |
+| `fleet-visual-from-projection.ts` | Map marker visual precedence from P1.2 |
+| `fleet-p1-3-display.ts` | Availability/health/telemetry display from P1.2 |
+| `fleet-operational-p1-3-cutover.test.ts` | 19 P1.3 tests |
+| `architecture/VEHICLE_OPERATIONAL_STATE_FLEET_CONSUMER_CUTOVER_P1_3_2026-08.md` | Normative P1.3 doc |
+
+### Map marker precedence
+
+1. Critical / action-required (attention, UNAVAILABLE, DEVICE_UNPLUGGED, AUTHORIZATION_REQUIRED)
+2. Operationally unavailable → `blocked`
+3. Needs verification → `stale`
+4. Active business workflow (rented / reserved / maintenance)
+5. Available → `ready` (standby does **not** downgrade)
+6. Unknown / no data
+
+### Fleet Command filter semantics
+
+| Filter / bucket | Semantic domain |
+|-----------------|-----------------|
+| Available / Reserved / Active / Maintenance / Unknown tabs | **Business workflow** (`operationalState`) |
+| Attention bucket offline | Canonical `connectivityRuntime.overallState === OFFLINE` (not `isVehicleOffline`) |
+| Attention bucket soft-offline | Canonical `SOFT_OFFLINE` / needs verification (not 24–48h client threshold alone) |
+
+### Legacy removed from P1.3 fleet path
+
+- `isVehicleOffline()` — not used by fleet row/HUD/marker when `uiProjection` wired
+- `resolveTelemetryFreshness()` — not used for operational map tone when projection present
+- `onlineStatus` / `lastSeenAt` / `signalAgeMs` — informational only; canonical wins in conflict tests
+- False `Gut` health fallback when `healthEvaluation` absent
+
+### Legacy retained (intentional)
+
+- `deriveFleetVisualState()` without `uiProjection` — non-fleet callers / direct unit tests
+- Dashboard runtime, Vehicle Detail, booking preflight — unchanged (P1.4+)
+
+### Tests
+
+| Suite | Result |
+|-------|--------|
+| P1.3 focused | **19 passed** |
+| P1.1 regression | **29 passed** |
+| P1.2 regression | **67 passed** |
+| Fleet regression bundle | **223 passed** (15 files) |
+| Frontend build | **PASS** |
+
+### Expected visible changes
+
+- Map markers: `AVAILABLE` + `STANDBY` remain ready (not offline)
+- Map markers: canonical `OFFLINE` + `NEEDS_VERIFICATION` → stale (not blocked unless UNAVAILABLE)
+- Health: absent / PARTIALLY_EVALUABLE / NOT_EVALUABLE never show Gut on Fleet row
+- Filter tabs unchanged (business); attention offline follows connectivity runtime
+
+### P1.3 gates
+
+| Gate | Result |
+|------|--------|
+| P1.3 FLEET LIST CUTOVER | **PASS** |
+| P1.3 MAP HUD CUTOVER | **PASS** |
+| P1.3 MAP MARKER CUTOVER | **PASS** |
+| P1.3 FILTER SEMANTICS | **PASS** |
+| NO CLIENT TIMESTAMP OPERATIONAL DERIVATION (fleet P1.3) | **PASS** |
+| NO LEGACY ONLINESTATUS OPERATIONAL DEPENDENCY (fleet P1.3) | **PASS** |
+| NO FALSE HEALTHY FALLBACK (fleet P1.3) | **PASS** |
+| CROSS-SURFACE CONSISTENCY | **PASS** |
+| P1.1/P1.2 REGRESSION | **PASS** |
+| P1.4 READY | **YES** |
+
+**STOP.** P1.4 not started.
+
+---
+
+## R.1 P1.3 review hardening (PR #1320 — 2026-08-26)
+
+| Fix | Detail |
+|-----|--------|
+| Provenance | Removed `vehicleDataToFleetMapResponse()` round-trip; added `mapFleetStoreVehicleToCanonicalVehicleOperationalView()` |
+| Store mapper | `mapOperationalAvailability` / `mapHealthEvaluation` no longer coerce absent → null/[]/NONE/unknown |
+| Precedence | Critical connectivity (`DEVICE_UNPLUGGED`, `AUTHORIZATION_REQUIRED`, `INTEGRATION_ERROR`, `CRITICAL` attention, `UNAVAILABLE`) outranks availability UNKNOWN/absent |
+| Health map attention | `NOT_EVALUABLE` / `PARTIALLY_EVALUABLE` no longer force map attention marker |
+| i18n | Map marker labels use P1.2 / `fleetConnectivity.*` / `formatVehicleOperationalStatusLabel` — no new hardcoded EN strings |
+
+P1.3 tests: **45/45** (added precedence A–G, provenance, health evaluability, i18n, contract-drift A–H).
+
+### R.2 Contract-drift enum hardening (PR #1320 — 2026-08-26)
+
+Fleet store mapper no longer calls `normalize*()` helpers that coerce unrecognized enum values to UNKNOWN. Guards (`isOperationalAvailabilityState`, `isHealthEvaluabilityState`, `isFleetHealthConditionState`, `isPipelineAvailability`) preserve explicit UNKNOWN vs future/absent semantics on the P1.3 canonical path.
+
+---
+
 ## Related architecture references
 
 - `architecture/VEHICLE_OPERATIONAL_STATE_PROVENANCE_2026-08.md`

@@ -13,6 +13,9 @@ import {
   type VehicleOperationalStatus,
 } from './vehicle-operational-state';
 import { resolveTelemetryFreshness } from './telemetryFreshness';
+import type { VehicleOperationalUiProjection } from './operational-projection';
+import { deriveFleetVisualStateFromUiProjection } from './fleet-visual-from-projection';
+import { buildFleetVehicleUiProjection } from './fleet-vehicle-ui-projection';
 
 export type FleetVisualStatus =
   | 'ready'
@@ -108,8 +111,11 @@ export interface DeriveFleetVisualStateOptions {
       > &
         Partial<Pick<VehicleHealthResponse, 'modules'>>)
     | null;
+  /** P1.3 — when set, map/list visuals derive from canonical UI projection. */
+  uiProjection?: VehicleOperationalUiProjection;
   /** When true, missing coordinates yield `no_location` instead of `ready`. */
   requireLocation?: boolean;
+  locale?: 'en' | 'de';
 }
 
 const SORT_PRIORITY: Record<FleetVisualStatus, number> = {
@@ -360,6 +366,13 @@ export function deriveFleetVisualState(
   vehicle: FleetVisualStateVehicle,
   options: DeriveFleetVisualStateOptions = {},
 ): FleetVisualState {
+  if (options.uiProjection) {
+    return deriveFleetVisualStateFromUiProjection(vehicle, options.uiProjection, {
+      requireLocation: options.requireLocation,
+      locale: options.locale,
+    });
+  }
+
   const rentalHealth = options.rentalHealth ?? null;
   const requireLocation = options.requireLocation === true;
   const hasLocation = vehicleHasFleetLocation(vehicle);
@@ -502,7 +515,8 @@ export type FleetMapVisualGeoJson = FeatureCollection<
 export function buildFleetMapGeoJson(
   vehicles: Array<
     FleetVisualStateVehicle &
-      Pick<VehicleData, 'id' | 'license' | 'model' | 'stationId'>
+      Pick<VehicleData, 'id' | 'license' | 'model' | 'stationId'> &
+      Partial<import('./fleet-vehicle-ui-projection').FleetProjectionVehicle>
   >,
   options?: {
     getRentalHealth?: (
@@ -511,17 +525,32 @@ export function buildFleetMapGeoJson(
       VehicleHealthResponse,
       'rental_blocked' | 'overall_state' | 'blocking_reasons'
     > | null;
+    /** P1.3 — locale for building UI projection when not passed per vehicle. */
+    locale?: 'en' | 'de';
+    getUiProjection?: (
+      vehicle: FleetVisualStateVehicle & Pick<VehicleData, 'id'>,
+    ) => VehicleOperationalUiProjection | undefined;
   },
 ): FleetMapVisualGeoJson {
   const getHealth = options?.getRentalHealth;
+  const locale = options?.locale ?? 'de';
+  const getUi = options?.getUiProjection;
   const features: Array<Feature<Point, FleetMapFeatureVisualProperties>> = [];
 
   for (const vehicle of vehicles) {
     if (!vehicleHasFleetLocation(vehicle)) continue;
 
+    const uiProjection =
+      getUi?.(vehicle) ??
+      buildFleetVehicleUiProjection(vehicle as import('./fleet-vehicle-ui-projection').FleetProjectionVehicle, {
+        locale,
+      });
+
     const visual = deriveFleetVisualState(vehicle, {
       rentalHealth: getHealth?.(vehicle.id) ?? null,
+      uiProjection,
       requireLocation: true,
+      locale,
     });
 
     features.push({

@@ -63,8 +63,7 @@ export function FleetOperatorRow({
     visual,
     locale,
     compact: true,
-    operationalAvailabilityBadge: true,
-    healthEvaluationBadge: true,
+    uiProjection: ctx.uiProjection,
     t,
   });
   const { healthDisplay, statusBadge, bookingSupplement, reasonBadge } = display;
