@@ -163,14 +163,16 @@ Regression: production error string `REST target job missing restWindowId` cover
 
 ## 11. Production Validation
 
-| Metric | Pre-deploy (2026-08-26) |
-|--------|-------------------------|
-| `battery.v2` failed | **68** |
-| waiting / active / delayed | **0** / **0** / **0** |
-| Failure reason (sample) | 100% `REST target job missing restWindowId` |
-| Idempotency prefix | 100% `rest-target:` |
+| Metric | Pre-deploy (2026-08-26 17:30 UTC) | Post-deploy (+6 min, 17:42 UTC) |
+|--------|-----------------------------------|----------------------------------|
+| Release | — | `20260826173048_v4994` (`fb2f48e`) |
+| `battery.v2` failed | **68** | **68** (unchanged — historical retained) |
+| waiting / active / delayed | **0** / **0** / **0** | **0** / **0** / **0** |
+| New `REST target job missing restWindowId` (logs since deploy) | — | **0** |
+| Reconciliation tick (17:41 UTC) | — | `restTargets=0`, `assessments=5`, no errors |
+| App health | ok | ok |
 
-Post-deploy validation: see PR / gate section (monitor failed count + new failures over window).
+**Validation window:** ~6 minutes post-deploy (2+ reconciliation intervals). No new malformed REST target enqueue observed; failed count did not increase.
 
 ---
 
