@@ -1,9 +1,9 @@
 # P2.2.49 — Rental Invoice Detail Secondary Localization — Implementation Audit
 
-**Date:** 2026-08-26  
-**Verdict:** A — IMPLEMENTATION COMPLETE — READY FOR INDEPENDENT P2.2.49 RE-AUDIT  
-**Branch:** `cursor/p2249-rental-invoice-detail-secondary-i18n-3c10`  
-**Baseline:** `2dfafe8f8810bf995146e95487792a8e8a5d5897`  
+**Date:** 2026-08-26
+**Verdict:** A — IMPLEMENTATION COMPLETE — READY FOR INDEPENDENT P2.2.49 RE-AUDIT
+**Branch:** `cursor/p2249-rental-invoice-detail-secondary-i18n-3c10`
+**Baseline:** `2dfafe8f8810bf995146e95487792a8e8a5d5897`
 **Pre-flight authority:** PR #1327 (read-only; no ancestry)
 
 ## Scope
@@ -23,8 +23,8 @@ Invoice Detail Primary, documents panel, create/send flows, tenant billing, fina
 
 ## Runtime trace
 
-`/rental` → `currentView=invoices` → `InvoiceDetail` → `InvoiceDetailSecondary`  
-Data: `buildInvoiceDetailSecondaryPanel(invoice, provenance, editGate)`  
+`/rental` → `currentView=invoices` → `InvoiceDetail` → `InvoiceDetailSecondary`
+Data: `buildInvoiceDetailSecondaryPanel(invoice, provenance, editGate)`
 Callbacks: `onSaveNotes(notes)`, `onCopyInternalId()` (toast in parent — frozen)
 
 ## Key accounting
@@ -49,7 +49,7 @@ Callbacks: `onSaveNotes(notes)`, `onCopyInternalId()` (toast in parent — froze
 
 ## Adapter classification
 
-`rental-invoice-detail-secondary-i18n.ts` — **CANONICAL**  
+`rental-invoice-detail-secondary-i18n.ts` — **CANONICAL**
 No business/financial/task derivation logic (E–N = 0).
 
 ## Fixed-locale handling

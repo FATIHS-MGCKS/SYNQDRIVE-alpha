@@ -1,8 +1,8 @@
 # Platform i18n — Rental Invoice Detail Secondary (P2.2.49)
 
-**Date:** 2026-08-26  
-**Baseline:** `2dfafe8f8810bf995146e95487792a8e8a5d5897` (P2.2.48 merge)  
-**Campaign:** Rental  
+**Date:** 2026-08-26
+**Baseline:** `2dfafe8f8810bf995146e95487792a8e8a5d5897` (P2.2.48 merge)
+**Campaign:** Rental
 **Scope:** Invoice Detail Secondary accordion surface only
 
 ## Boundary
