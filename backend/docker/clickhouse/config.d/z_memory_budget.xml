@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!--
+  VPS memory budget — keeps ClickHouse within Docker cgroup limits on 15GB hosts.
+  z_ prefix loads after package defaults.
+
+  Incident 2026-08-21: metric_log merge + 2G cgroup → OOM.
+  Recovery 2026-08-26: startup MergeMutate storm also hit 3G cgroup — tighter caps + 4G limit.
+-->
+<clickhouse>
+    <!-- ~50% of 4G cgroup — leave headroom for untracked allocations during merges -->
+    <max_server_memory_usage>2000000000</max_server_memory_usage>
+    <max_server_memory_usage_to_ram_ratio>0</max_server_memory_usage_to_ram_ratio>
+
+    <mark_cache_size>134217728</mark_cache_size>
+    <uncompressed_cache_size>67108864</uncompressed_cache_size>
+
+    <merge_tree>
+        <max_bytes_to_merge_at_max_space_in_pool>52428800</max_bytes_to_merge_at_max_space_in_pool>
+        <max_bytes_to_merge_at_min_space_in_pool>5242880</max_bytes_to_merge_at_min_space_in_pool>
+        <merge_max_block_size>4096</merge_max_block_size>
+        <number_of_free_entries_in_pool_to_lower_max_size_of_merge>4</number_of_free_entries_in_pool_to_lower_max_size_of_merge>
+    </merge_tree>
+</clickhouse>
