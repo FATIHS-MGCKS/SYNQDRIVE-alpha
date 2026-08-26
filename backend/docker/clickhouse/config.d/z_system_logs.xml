@@ -12,6 +12,8 @@
     <query_views_log remove="1"/>
     <query_metric_log remove="1"/>
     <session_log remove="1"/>
+    <!-- metric_log merge caused OOM on 2026-08-21 (see clickhouse-production-recovery-2026-08 audit) -->
+    <metric_log remove="1"/>
 
     <query_log replace="1">
         <database>system</database>
@@ -19,10 +21,6 @@
         <engine>ENGINE = MergeTree PARTITION BY (event_date) ORDER BY (event_time) TTL event_date + INTERVAL 7 DAY DELETE</engine>
         <flush_interval_milliseconds>7500</flush_interval_milliseconds>
     </query_log>
-
-    <metric_log>
-        <ttl>event_date + INTERVAL 3 DAY DELETE</ttl>
-    </metric_log>
 
     <part_log>
         <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>

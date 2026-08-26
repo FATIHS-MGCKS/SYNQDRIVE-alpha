@@ -7,17 +7,15 @@
 # Local dev: omit this file — keep release-relative paths in docker-compose.yml.
 #
 # Named volumes clickhouse_data / clickhouse_logs are unchanged (no data loss on recreate).
+#
+# mem_limit / cpus apply on standalone Docker Compose (deploy.resources is Swarm-only).
 
 services:
   clickhouse:
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
+    restart: unless-stopped
+    mem_limit: 4g
+    mem_reservation: 1g
+    cpus: 2.0
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
@@ -26,4 +24,5 @@ services:
       - /opt/synqdrive/shared/clickhouse/config/config.d/01_logger.xml:/etc/clickhouse-server/config.d/01_logger.xml:ro
       - /opt/synqdrive/shared/clickhouse/config/config.d/z_system_logs.xml:/etc/clickhouse-server/config.d/z_system_logs.xml:ro
       - /opt/synqdrive/shared/clickhouse/config/config.d/z_async_insert.xml:/etc/clickhouse-server/config.d/z_async_insert.xml:ro
+      - /opt/synqdrive/shared/clickhouse/config/config.d/z_memory_budget.xml:/etc/clickhouse-server/config.d/z_memory_budget.xml:ro
       - /opt/synqdrive/shared/clickhouse/config/users.d/z_log_profiles.xml:/etc/clickhouse-server/users.d/z_log_profiles.xml:ro

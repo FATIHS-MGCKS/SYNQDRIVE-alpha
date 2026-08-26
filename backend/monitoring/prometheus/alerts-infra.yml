@@ -45,6 +45,17 @@ groups:
           description: Analytics mirror degraded — operational PG path remains canonical.
           runbook_url: docs/remediation/alertmanager.md#clickhouse
 
+      - alert: ClickHouseHttpProbeFailed
+        expr: probe_success{job="blackbox-clickhouse-http"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          component: clickhouse
+        annotations:
+          summary: ClickHouse HTTP probe failed
+          description: Blackbox cannot reach http://127.0.0.1:8123/ping — container likely down.
+          runbook_url: docs/audits/clickhouse-production-recovery-2026-08.md
+
       - alert: BullMQWorkersDisabled
         expr: synqdrive_worker_runtime_enabled == 0
         for: 5m
