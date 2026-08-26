@@ -4,7 +4,10 @@
  * Tenant notification eligibility uses P0.1 connectivityRuntime attentionState
  * and P1.2 presentation — not client timestamp / onlineStatus heuristics.
  */
-import type { VehicleConnectivityRuntimeState } from '../../../lib/api';
+import type { RentalHealthModule, VehicleConnectivityRuntimeState } from '../../../lib/api';
+import type { TranslationKey } from '../../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
 import type { VehicleData } from '../../data/vehicles';
 import { buildFleetVehicleUiProjection, type FleetProjectionVehicle } from '../fleet-vehicle-ui-projection';
 import {
@@ -13,7 +16,6 @@ import {
   type HealthEvaluabilityState,
   normalizeHealthEvaluabilityState,
 } from '../fleet-health-evaluation/types';
-import { createVehicleIssueKey } from '../operational-issues/operationalIssueKeys';
 import type {
   OperationalIssueDraft,
   OperationalIssueSeverity,
@@ -25,6 +27,26 @@ export type ConnectivityNotificationAttention =
   | 'WATCH'
   | 'ACTION_REQUIRED'
   | 'CRITICAL';
+
+export interface MechanicalHealthModuleEvidenceLike {
+  /** Rental-health module state (critical/warning), not alert severity alias. */
+  moduleState?: string | null;
+  evidenceType?: RentalHealthModule['evidence_type'] | string | null;
+  reason?: string | null;
+}
+
+function tFor(locale: 'de' | 'en'): (key: TranslationKey, params?: Record<string, string | number>) => string {
+  const dict = locale === 'de' ? de : en;
+  return (key, params) => {
+    let text = dict[key] ?? en[key] ?? key;
+    if (params) {
+      for (const [name, value] of Object.entries(params)) {
+        text = text.replace(`{${name}}`, String(value));
+      }
+    }
+    return text;
+  };
+}
 
 export function readConnectivityAttention(
   runtime: VehicleConnectivityRuntimeState | undefined,
@@ -62,13 +84,21 @@ export function shouldEmitCanonicalConnectivityNotification(
   return mapAttentionToNotificationSeverity(runtime) != null;
 }
 
+function buildStableConnectivityReasonIdentity(
+  runtime: VehicleConnectivityRuntimeState,
+): string {
+  const codes = [...(runtime.reasonCodes ?? [])].sort();
+  if (codes.length > 0) return codes.join('+');
+  return runtime.overallState ?? 'none';
+}
+
 export function buildCanonicalConnectivityNotificationIdentity(
   vehicleId: string,
   runtime: VehicleConnectivityRuntimeState,
 ): string {
-  const reasonCode = runtime.reasonCodes?.[0] ?? runtime.overallState;
   const episode = runtime.activeEpisodeId ?? 'none';
-  return `connectivity:${vehicleId}:${episode}:${reasonCode}:${runtime.overallState}`;
+  const reasonMaterial = buildStableConnectivityReasonIdentity(runtime);
+  return `connectivity:${vehicleId}:${episode}:${reasonMaterial}`;
 }
 
 export function resolveCanonicalConnectivityIssueType(
@@ -95,16 +125,50 @@ export function readVehicleHealthEvaluability(
 }
 
 /**
+ * Rental-health module rows may exist without valid mechanical evidence.
+ * Notification emission requires explicit evaluated module evidence — not object presence alone.
+ */
+export function hasValidMechanicalHealthModuleEvidence(
+  module: MechanicalHealthModuleEvidenceLike | null | undefined,
+): boolean {
+  if (!module) return false;
+  const state = module.moduleState;
+  if (state !== 'critical' && state !== 'warning') return false;
+  if (module.evidenceType === 'unknown') return false;
+  if (!module.reason?.trim() && !module.evidenceType) return false;
+  return true;
+}
+
+/**
  * NOT_EVALUABLE / UNKNOWN must not fabricate mechanical-critical notifications
- * without explicit rental-health module evidence.
+ * without valid rental-health module evidence.
  */
 export function canEmitMechanicalHealthNotification(input: {
   vehicle?: OperationalIssueVehicleLike | VehicleData | null;
-  hasExplicitModuleEvidence: boolean;
+  module?: MechanicalHealthModuleEvidenceLike | null;
   proposedSeverity: OperationalIssueSeverity;
 }): boolean {
-  if (input.hasExplicitModuleEvidence) return true;
   const evaluability = readVehicleHealthEvaluability(input.vehicle ?? undefined);
+
+  if (input.module) {
+    if (!hasValidMechanicalHealthModuleEvidence(input.module)) {
+      return false;
+    }
+    if (
+      evaluability === HEALTH_EVALUABILITY_STATE.NOT_EVALUABLE ||
+      evaluability === HEALTH_EVALUABILITY_STATE.UNKNOWN
+    ) {
+      return false;
+    }
+    if (
+      evaluability === HEALTH_EVALUABILITY_STATE.PARTIALLY_EVALUABLE &&
+      input.proposedSeverity === 'critical'
+    ) {
+      return false;
+    }
+    return true;
+  }
+
   if (
     evaluability === HEALTH_EVALUABILITY_STATE.NOT_EVALUABLE ||
     evaluability === HEALTH_EVALUABILITY_STATE.UNKNOWN
@@ -131,12 +195,13 @@ export function buildCanonicalConnectivityNotificationDraft(input: {
   if (!runtime || !severity) return null;
 
   const locale = input.locale ?? 'de';
+  const t = tFor(locale);
   const ui = buildFleetVehicleUiProjection(vehicle, { locale });
   const title =
     ui.attention.primaryReason.presentation?.label ??
     ui.connectivity.overallState.presentation?.label ??
     ui.operator.primaryReason.presentation?.label ??
-    (locale === 'de' ? 'Konnektivität prüfen' : 'Check connectivity');
+    t('fleetConnectivity.action.REVIEW_CONNECTIVITY');
   const subtitle =
     ui.availability.presentation?.tooltip ??
     ui.operator.recommendedAction.presentation?.label ??
@@ -161,7 +226,7 @@ export function buildCanonicalConnectivityNotificationDraft(input: {
     },
     recommendedAction,
     evidence: runtime.lastReceivedAt
-      ? [{ label: locale === 'de' ? 'Zuletzt empfangen' : 'Last received', value: runtime.lastReceivedAt }]
+      ? [{ label: t('notification.connectivity.evidenceLastReceived'), value: runtime.lastReceivedAt }]
       : undefined,
   };
 }

@@ -14,10 +14,15 @@ import {
   buildCanonicalConnectivityNotificationDraft,
   buildCanonicalConnectivityNotificationIdentity,
   canEmitMechanicalHealthNotification,
+  hasValidMechanicalHealthModuleEvidence,
   mapAttentionToNotificationSeverity,
   resolveLegacyConflictConnectivityAlert,
   shouldEmitCanonicalConnectivityNotification,
 } from './notification-operational-attention';
+import { buildNotificationQueueModel } from '../../components/dashboard/notificationQueueEnricher';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 
 const NOW_ISO = '2026-08-26T12:00:00.000Z';
 
@@ -230,34 +235,250 @@ describe('P1.7 canonical connectivity notification attention', () => {
 });
 
 describe('P1.7 health evaluability notification semantics', () => {
-  it('12. health critical + EVALUABLE => mechanical alert allowed', () => {
+  const brakeEvidence = {
+    moduleState: 'critical',
+    evidenceType: 'measured' as const,
+    reason: 'Brake pad below minimum',
+  };
+
+  const tireWarningEvidence = {
+    moduleState: 'warning',
+    evidenceType: 'measured' as const,
+    reason: 'Tire tread low',
+  };
+
+  const hollowModule = {
+    moduleState: 'critical',
+    evidenceType: 'unknown' as const,
+    reason: '',
+  };
+
+  it('12. EVALUABLE + explicit critical brake evidence => critical health notification allowed', () => {
+    expect(hasValidMechanicalHealthModuleEvidence(brakeEvidence)).toBe(true);
     expect(
       canEmitMechanicalHealthNotification({
         vehicle: vehicle({ healthEvaluation: healthEvaluability('EVALUABLE') }),
-        hasExplicitModuleEvidence: true,
+        module: brakeEvidence,
         proposedSeverity: 'critical',
       }),
     ).toBe(true);
   });
 
-  it('13. NOT_EVALUABLE without module evidence => no fabricated mechanical critical', () => {
+  it('13. NOT_EVALUABLE + module-shaped object without valid evidence => no fabricated critical', () => {
     expect(
       canEmitMechanicalHealthNotification({
         vehicle: vehicle({ healthEvaluation: healthEvaluability('NOT_EVALUABLE') }),
-        hasExplicitModuleEvidence: false,
+        module: hollowModule,
         proposedSeverity: 'critical',
       }),
     ).toBe(false);
   });
 
-  it('PARTIALLY_EVALUABLE + good condition does not imply mechanical critical without evidence', () => {
+  it('UNKNOWN + module-shaped object without valid evidence => no fabricated critical', () => {
     expect(
       canEmitMechanicalHealthNotification({
-        vehicle: vehicle({ healthEvaluation: healthEvaluability('PARTIALLY_EVALUABLE') }),
-        hasExplicitModuleEvidence: false,
+        vehicle: vehicle({ healthEvaluation: healthEvaluability('UNKNOWN') }),
+        module: hollowModule,
         proposedSeverity: 'critical',
       }),
     ).toBe(false);
+  });
+
+  it('PARTIALLY_EVALUABLE + valid warning tire evidence => warning allowed', () => {
+    expect(
+      canEmitMechanicalHealthNotification({
+        vehicle: vehicle({ healthEvaluation: healthEvaluability('PARTIALLY_EVALUABLE') }),
+        module: tireWarningEvidence,
+        proposedSeverity: 'warning',
+      }),
+    ).toBe(true);
+  });
+
+  it('PARTIALLY_EVALUABLE + missing module evidence => no fabricated alert', () => {
+    expect(
+      canEmitMechanicalHealthNotification({
+        vehicle: vehicle({ healthEvaluation: healthEvaluability('PARTIALLY_EVALUABLE') }),
+        module: hollowModule,
+        proposedSeverity: 'critical',
+      }),
+    ).toBe(false);
+  });
+
+  it('health absent => no mechanical notification fabricated from overview-only path', () => {
+    expect(
+      canEmitMechanicalHealthNotification({
+        vehicle: vehicle(),
+        module: null,
+        proposedSeverity: 'critical',
+      }),
+    ).toBe(false);
+  });
+});
+
+describe('P1.7 notification identity stability', () => {
+  it('same episode + reordered reasonCodes => identical identity', () => {
+    const first = runtime({
+      activeEpisodeId: 'ep-1',
+      reasonCodes: ['AUTHORIZATION_REQUIRED', 'DATA_COVERAGE_INSUFFICIENT'],
+      overallState: 'AUTHORIZATION_REQUIRED',
+      attentionState: 'ACTION_REQUIRED',
+    });
+    const second = runtime({
+      activeEpisodeId: 'ep-1',
+      reasonCodes: ['DATA_COVERAGE_INSUFFICIENT', 'AUTHORIZATION_REQUIRED'],
+      overallState: 'AUTHORIZATION_REQUIRED',
+      attentionState: 'ACTION_REQUIRED',
+    });
+    expect(buildCanonicalConnectivityNotificationIdentity('v-1', first))
+      .toBe(buildCanonicalConnectivityNotificationIdentity('v-1', second));
+  });
+
+  it('new activeEpisodeId => new identity', () => {
+    const first = runtime({
+      activeEpisodeId: 'ep-1',
+      reasonCodes: ['AUTHORIZATION_REQUIRED'],
+      overallState: 'AUTHORIZATION_REQUIRED',
+      attentionState: 'ACTION_REQUIRED',
+    });
+    const second = runtime({
+      activeEpisodeId: 'ep-2',
+      reasonCodes: ['AUTHORIZATION_REQUIRED'],
+      overallState: 'AUTHORIZATION_REQUIRED',
+      attentionState: 'ACTION_REQUIRED',
+    });
+    expect(buildCanonicalConnectivityNotificationIdentity('v-1', first))
+      .not.toBe(buildCanonicalConnectivityNotificationIdentity('v-1', second));
+  });
+
+  it('absent episode uses deterministic fallback identity', () => {
+    const rt = runtime({
+      activeEpisodeId: null,
+      reasonCodes: ['DEVICE_UNPLUG_WEBHOOK'],
+      overallState: 'DEVICE_UNPLUGGED',
+      attentionState: 'CRITICAL',
+    });
+    expect(buildCanonicalConnectivityNotificationIdentity('v-1', rt))
+      .toBe('connectivity:v-1:none:DEVICE_UNPLUG_WEBHOOK');
+  });
+});
+
+describe('P1.7 notification category semantics', () => {
+  function tDe(key: TranslationKey) {
+    return de[key] ?? en[key] ?? key;
+  }
+
+  function queueForConnectivity(issueType: string, runtime: VehicleConnectivityRuntimeState) {
+    const draft = buildCanonicalConnectivityNotificationDraft({
+      vehicle: vehicle({ id: 'v-cat', connectivityRuntime: runtime }),
+      vehicleId: 'v-cat',
+      locale: 'de',
+    });
+    expect(draft).toBeTruthy();
+    const issue = normalizeOperationalIssues({
+      vehiclesById: new Map([['v-cat', vehicle({ id: 'v-cat', connectivityRuntime: runtime })]]),
+      vehicleRuntimeStates: [{ vehicleId: 'v-cat', connectivityRuntime: runtime }],
+    }).find((row) => row.issueType === issueType);
+    expect(issue).toBeTruthy();
+    const item = mapOperationalIssueToActionQueueItem(issue!, { locale: 'de' });
+    return buildNotificationQueueModel(item);
+  }
+
+  it('AUTHORIZATION_REQUIRED maps to Fleet internal health category / vehicle-health domain', () => {
+    const queue = queueForConnectivity(
+      'authorization_required',
+      runtime({
+        overallState: 'AUTHORIZATION_REQUIRED',
+        attentionState: 'ACTION_REQUIRED',
+        reasonCodes: ['AUTHORIZATION_REQUIRED'],
+      }),
+    );
+    expect(queue.domain).toBe('vehicle-health');
+    expect(tDe('notification.domain.vehicleHealth')).toBe('Fahrzeugzustand');
+    expect(tDe('dashboardAttention.fleetReadiness.title')).toBe('Flottenmeldungen');
+  });
+
+  it('DEVICE_UNPLUGGED maps to Fleet vehicle-health domain', () => {
+    const queue = queueForConnectivity(
+      'device_unplugged',
+      runtime({
+        overallState: 'DEVICE_UNPLUGGED',
+        attentionState: 'CRITICAL',
+        physicalDeviceState: 'UNPLUGGED_CONFIRMED',
+      }),
+    );
+    expect(queue.domain).toBe('vehicle-health');
+  });
+
+  it('INTEGRATION_ERROR maps to Fleet vehicle-health domain', () => {
+    const queue = queueForConnectivity(
+      'integration_error',
+      runtime({ overallState: 'INTEGRATION_ERROR', attentionState: 'ACTION_REQUIRED' }),
+    );
+    expect(queue.domain).toBe('vehicle-health');
+  });
+
+  it('OFFLINE canonical attention maps to Fleet vehicle-health domain', () => {
+    const queue = queueForConnectivity(
+      'telemetry_offline',
+      runtime({ overallState: 'OFFLINE', telemetryState: 'offline', attentionState: 'CRITICAL' }),
+    );
+    expect(queue.domain).toBe('vehicle-health');
+  });
+
+  it('mechanical health module maps to Fleet vehicle-health domain', () => {
+    const issues = normalizeOperationalIssues({
+      vehiclesById: new Map([
+        [
+          'v-health',
+          vehicle({ id: 'v-health', healthEvaluation: healthEvaluability('EVALUABLE') }),
+        ],
+      ]),
+      vehicleHealthAlerts: [
+        {
+          vehicleId: 'v-health',
+          severity: 'critical',
+          primaryReason: 'Brakes critical',
+          modules: [
+            {
+              module: 'brakes',
+              severity: 'critical',
+              reason: 'Pad below minimum',
+              moduleState: 'critical',
+              evidenceType: 'measured',
+            },
+          ],
+        },
+      ],
+    });
+    const brakeIssue = issues.find((issue) => issue.issueType === 'brake_critical');
+    expect(brakeIssue).toBeTruthy();
+    const item = mapOperationalIssueToActionQueueItem(brakeIssue!, { locale: 'de' });
+    expect(item.category).toBe('health');
+    expect(buildNotificationQueueModel(item).domain).toBe('vehicle-health');
+  });
+
+  it('overdue return remains Operations/Betrieb domain', () => {
+    const issues = normalizeOperationalIssues({
+      vehiclesById: new Map([['v-ret', vehicle({ id: 'v-ret' })]]),
+      predictiveInsights: [
+        {
+          id: 'pred-return-overdue',
+          type: 'RETURN_OVERDUE_THREATENS_FOLLOWUP',
+          severity: 'critical',
+          title: 'Return overdue',
+          explanation: 'Return blocks follow-up booking',
+          vehicleId: 'v-ret',
+          bookingId: 'b-1',
+          affectedEntity: { kind: 'booking', bookingId: 'b-1', label: 'B-1' },
+        },
+      ],
+    });
+    const overdue = issues.find((issue) => issue.issueType.includes('return'));
+    expect(overdue).toBeTruthy();
+    const item = mapOperationalIssueToActionQueueItem(overdue!, { locale: 'de' });
+    expect(item.category).toBe('handover');
+    expect(buildNotificationQueueModel(item).domain).toBe('handovers');
+    expect(tDe('notification.domain.operations')).toBe('Betrieb');
   });
 });
 

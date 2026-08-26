@@ -526,7 +526,7 @@ function vehicleHealthAlertToIssueDrafts(
     if (
       !canEmitMechanicalHealthNotification({
         vehicle,
-        hasExplicitModuleEvidence: false,
+        module: null,
         proposedSeverity: severity,
       })
     ) {
@@ -567,15 +567,6 @@ function healthModuleToIssueDraft(
   if (!warning) return null;
 
   const vehicleRecord = vehiclesById.get(vehicleId) ?? vehicle;
-  if (
-    !canEmitMechanicalHealthNotification({
-      vehicle: vehicleRecord,
-      hasExplicitModuleEvidence: true,
-      proposedSeverity: critical ? 'critical' : 'warning',
-    })
-  ) {
-    return null;
-  }
 
   const source: OperationalIssueSource = {
     sourceType: 'rental_health',
@@ -611,6 +602,20 @@ function healthModuleToIssueDraft(
       vehicle,
       source,
     });
+  }
+
+  if (
+    !canEmitMechanicalHealthNotification({
+      vehicle: vehicleRecord,
+      module: {
+        moduleState: module.moduleState ?? (critical ? 'critical' : 'warning'),
+        evidenceType: module.evidenceType,
+        reason: module.reason,
+      },
+      proposedSeverity: critical ? 'critical' : 'warning',
+    })
+  ) {
+    return null;
   }
 
   const mapped = healthModuleIssue(module, critical);

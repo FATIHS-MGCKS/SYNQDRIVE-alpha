@@ -26,6 +26,22 @@ import {
   shouldEmitCanonicalConnectivityNotification,
 } from '../../lib/notifications/notification-operational-attention';
 import { buildFleetVehicleUiProjection } from '../../lib/fleet-vehicle-ui-projection';
+import type { TranslationKey } from '../../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
+
+function tFor(locale: 'de' | 'en'): (key: TranslationKey, params?: Record<string, string | number>) => string {
+  const dict = locale === 'de' ? de : en;
+  return (key, params) => {
+    let text = dict[key] ?? en[key] ?? key;
+    if (params) {
+      for (const [name, value] of Object.entries(params)) {
+        text = text.replace(`{${name}}`, String(value));
+      }
+    }
+    return text;
+  };
+}
 
 export type PredictiveRiskType =
   | 'RETURN_OVERDUE_THREATENS_FOLLOWUP'
@@ -102,11 +118,12 @@ function canonicalConnectivityPickupRisk(
   if (!shouldEmitCanonicalConnectivityNotification(runtime)) return null;
   const mapped = mapAttentionToNotificationSeverity(runtime);
   if (!mapped) return null;
+  const t = tFor(locale);
   const ui = buildFleetVehicleUiProjection(vehicle, { locale });
   const title =
     ui.attention.primaryReason.presentation?.label ??
     ui.connectivity.overallState.presentation?.label ??
-    (locale === 'de' ? 'Konnektivität vor Pickup prüfen' : 'Check connectivity before pickup');
+    t('notification.predictive.connectivityBeforePickup');
   const explanation =
     ui.availability.presentation?.tooltip ??
     ui.operator.recommendedAction.presentation?.label ??
@@ -404,15 +421,16 @@ export function derivePredictiveOperationsInsights(input: {
 
       if (vehicle) {
         const locale = de ? 'de' as const : 'en' as const;
+        const t = tFor(locale);
         const connectivityRisk = canonicalConnectivityPickupRisk(vehicle, locale);
         if (connectivityRisk) {
           push({
             id: `predictive-telemetry-${p.vehicleId}-${p.bookingId}`,
             type: 'SOFT_OFFLINE_TELEMETRY_CHECK',
             severity: connectivityRisk.severity,
-            title: de
-              ? `Operatives Risiko · ${connectivityRisk.title}`
-              : `Operational risk · ${connectivityRisk.title}`,
+            title: t('notification.predictive.operationalRiskDetail', {
+              detail: connectivityRisk.title,
+            }),
             explanation: connectivityRisk.explanation,
             affectedEntity: {
               kind: 'vehicle',
@@ -424,9 +442,7 @@ export function derivePredictiveOperationsInsights(input: {
               : 'canonical:connectivity:absent',
             recommendedAction:
               connectivityRisk.recommendedAction ??
-              (de
-                ? 'Konnektivität prüfen und vor Übergabe verifizieren.'
-                : 'Review connectivity and verify before handover.'),
+              t('notification.predictive.verifyConnectivityBeforeHandover'),
             confidence: connectivityRisk.severity === 'critical' ? 'high' : 'medium',
             timeSortMs: startMs ?? now,
             timeLabel,

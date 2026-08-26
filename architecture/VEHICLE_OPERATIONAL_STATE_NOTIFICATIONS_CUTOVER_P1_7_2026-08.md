@@ -52,10 +52,20 @@ Backend V2 notifications (`GET /notifications?attentionScope=`) remain authorita
 Stable client-derived connectivity identity:
 
 ```
-connectivity:{vehicleId}:{activeEpisodeId|none}:{reasonCode}:{overallState}
+connectivity:{vehicleId}:{activeEpisodeId|none}:{sortedReasonCodesJoined}
 ```
 
-Runtime canonical reasons use `source: canonical:connectivity:{attentionState}` for dedup with predictive coverage suppression.
+Reason codes are sorted before join so reordering does not create duplicate rows within the same episode. Runtime canonical reasons use `source: canonical:connectivity:{attentionState}` for dedup with predictive coverage suppression.
+
+## Category mapping (Betrieb / Flotte)
+
+Internal `ActionQueueCategory.health` maps to `NotificationDomain.vehicle-health` (UI label: Fahrzeugzustand / Vehicle condition). This is the established Fleet-side bucket (`dashboardAttention.fleetReadiness` / `FLEET_READINESS` scope) — not the mechanical Health tab label.
+
+Connectivity `telemetry` domain issues use `category: health` → `vehicle-health` domain → Fleet notifications surface.
+
+## Health notification evidence (P1.7 hardening)
+
+Rental-health module object presence is **not** sufficient for mechanical notifications. `hasValidMechanicalHealthModuleEvidence()` requires module state `critical`/`warning`, non-unknown `evidenceType`, and a reason or evidence type. `canEmitMechanicalHealthNotification()` additionally enforces P0.4 evaluability (critical requires `EVALUABLE`; `PARTIALLY_EVALUABLE` allows warning only). `service_compliance` paths remain separate.
 
 ## Health evaluability
 
