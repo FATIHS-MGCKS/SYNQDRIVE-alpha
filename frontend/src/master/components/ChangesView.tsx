@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-consent-ledger-backfill-phase2-2026-08-26',
+    version: '4.9.964',
+    title: 'DIMO consent ledger backfill — Phase 2 production apply (KS trio)',
+    summary: [
+      'Deployed main 7d92e687 (PR #1307 Phase 1.2) to production release 20260826152600_v4994.',
+      'Atomic apply runId dimo-consent-backfill-prod-2026-08-26-phase2: createdConsents=3, wiredConsentIds=3, mutatedVehicles=3.',
+      'KS FH 660E, KS MS 661, KS MX 2024: providerLinkState REAUTH_REQUIRED → ACTIVE; P0.2 NEEDS_VERIFICATION → AVAILABLE.',
+      'Telemetry source_timestamp unchanged; org auth unchanged; 0 connectivity episodes created; idempotency dry-run NOOP=3.',
+      'HMÜ/WOB vehicles untouched. Repair closed.',
+    ],
+    reason:
+      'Operator-approved production repair for missing per-vehicle DIMO consent rows on the KS trio after Phase 1/1.1/1.2 hardening.',
+    previousBehavior:
+      'KS trio: active DIMO links + live telemetry but zero vehicle_provider_consents → REAUTH_REQUIRED / NEEDS_VERIFICATION.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Connectivity',
+    createdAt: '2026-08-26T15:45:00.000Z',
+  },
+  {
     id: 'dimo-consent-ledger-backfill-phase1-2-2026-08-26',
     version: '4.9.963',
     title: 'DIMO consent ledger backfill — Phase 1.2 transactional consistency hardening',

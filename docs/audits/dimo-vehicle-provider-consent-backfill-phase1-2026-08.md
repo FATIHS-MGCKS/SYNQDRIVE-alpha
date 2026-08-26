@@ -303,3 +303,71 @@ npx ts-node -r tsconfig-paths/register scripts/ops/backfill-dimo-vehicle-provide
 | PRODUCTION MUTATIONS | **NONE** |
 
 **STOP** — await explicit operator approval before `--apply`.
+
+---
+
+## Phase 2 — Controlled Production Apply (2026-08-26)
+
+| Field | Value |
+|-------|-------|
+| **Mode** | Approved production mutation |
+| **runId** | `dimo-consent-backfill-prod-2026-08-26-phase2` |
+| **Main SHA** | `7d92e6877c426679b0bcc77a0573a8d0b6f1af78` |
+| **Production release** | `20260826152600_v4994` |
+| **Applied at (UTC)** | `2026-08-26T15:38:54Z` |
+
+### Apply summary
+
+| Metric | Result |
+|--------|--------|
+| createdConsents | **3** |
+| wiredConsentIds | **3** |
+| mutatedVehicles | **3** |
+| conflict | **0** |
+| skip | **0** |
+| partialWritePossible | **false** |
+
+### Consent IDs created
+
+| Vehicle | Consent ID | Link ID |
+|---------|-----------|---------|
+| KS FH 660E | `8db7c1c2-7e9a-4143-bb2f-6a05aed804d3` | `805b271c-ba87-4776-9e39-23e24d595c53` |
+| KS MS 661 | `35a33e73-9418-4bdf-9ee4-86cb2a62ad1e` | `71b75519-3053-4836-8bcd-554680d592b2` |
+| KS MX 2024 | `72c25c8d-67d1-4b54-a7ff-6d531785ce85` | `e2bd6a49-f1fc-4d4f-bd60-e958b15d8142` |
+
+### Post-apply runtime (canonical)
+
+| Vehicle | providerLinkState | P0.2 | primaryReason | recommendedAction |
+|---------|-------------------|------|---------------|-------------------|
+| KS FH 660E | **ACTIVE** | **AVAILABLE** | LINK_ACTIVE | NONE |
+| KS MS 661 | **ACTIVE** | **AVAILABLE** | LINK_ACTIVE | NONE |
+| KS MX 2024 | **ACTIVE** | **AVAILABLE** | LINK_ACTIVE | NONE |
+
+No `CONSENT_MISSING` / `AUTHORIZATION_REQUIRED` from consent ledger on any KS target.
+
+### Safety verification
+
+| Check | Result |
+|-------|--------|
+| Telemetry `source_timestamp` unchanged | **PASS** (all 3) |
+| Connectivity episodes | **PASS** (0 open before/after) |
+| Org auth (`bb129e88-…`) | **UNCHANGED** |
+| DIMO token/link identity | **UNCHANGED** (consentId wired only) |
+| businessState | **UNCHANGED** (AVAILABLE) |
+| Idempotency dry-run | **PASS** (CREATE=0, WIRE=0, NOOP=3) |
+
+### Phase 2 final gate
+
+| Verdict | Result |
+|---------|--------|
+| CONSENT LEDGER APPLY | **PASS** |
+| 3/3 ACTIVE CONSENTS | **PASS** |
+| 3/3 LINK CONSENT IDS WIRED | **PASS** |
+| PROVIDER LINK RECOVERY | **PASS** |
+| P0.2 RECOVERY | **PASS** |
+| IDEMPOTENCY | **PASS** |
+| TELEMETRY SAFETY | **PASS** |
+| CONNECTIVITY SAFETY | **PASS** |
+| SERVICE HEALTH | **PASS** |
+
+**DIMO PER-VEHICLE CONSENT LEDGER REPAIR: CLOSED**

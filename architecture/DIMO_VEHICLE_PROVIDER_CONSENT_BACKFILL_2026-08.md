@@ -31,3 +31,18 @@ Read-only forensic + dry-run only. See `docs/audits/dimo-vehicle-provider-consen
 - Stale pre-transaction snapshots never authorize writes.
 
 **Do not** infer consent from telemetry in `ProviderLinkStateBuilder`.
+
+## Phase 2 production apply (2026-08-26)
+
+Approved atomic apply executed for KS FH 660E, KS MS 661, KS MX 2024 only.
+
+| Field | Value |
+|-------|-------|
+| runId | `dimo-consent-backfill-prod-2026-08-26-phase2` |
+| createdConsents | 3 |
+| wiredConsentIds | 3 |
+| Production release | `20260826152600_v4994` |
+
+Post-apply: all three targets `providerLinkState=ACTIVE`, P0.2 `AVAILABLE`. Idempotency dry-run `NOOP=3`. See `docs/audits/dimo-vehicle-provider-consent-backfill-phase1-2026-08.md` Phase 2 section.
+
+**Status: CLOSED**
