@@ -434,7 +434,7 @@ describe('mapFleetMapToCanonicalVehicleOperationalView (P1.1)', () => {
     expect(readCanonicalField(view.business.operationalAvailability)).toBe('AVAILABLE');
   });
 
-  it('13b — fleet-connectivity detail enriches absent connectivityRuntime', () => {
+  it('13b — fleet-connectivity detail whole-slice fallback when connectivityRuntime absent', () => {
     const view = mapFleetMapToCanonicalVehicleOperationalView(
       fleetMapRow({
         operationalAvailability: availability('NEEDS_VERIFICATION'),
@@ -553,5 +553,145 @@ describe('mapFleetMapToCanonicalVehicleOperationalView (P1.1)', () => {
 
     expect(view.business.businessState.presence).toBe('absent');
     expect(view.business.businessState.source).toBe('absent');
+  });
+});
+
+describe('P1.1 contract hardening — absent vs UNKNOWN vs NONE', () => {
+  it('preserves explicit backend NONE, null, and empty arrays when slice is present', () => {
+    const view = mapFleetMapToCanonicalVehicleOperationalView(
+      fleetMapRow({
+        connectivityRuntime: runtime({
+          reasonCodes: [],
+          recommendedAction: 'NONE',
+          attentionState: 'NONE',
+        }),
+        operationalAvailability: {
+          state: 'AVAILABLE',
+          primaryReason: null,
+          reasonCodes: [],
+          recommendedAction: 'NONE',
+          attention: 'NONE',
+          generatedAt: GENERATED_AT,
+        },
+      }),
+    );
+
+    expect(view.connectivity.reasonCodes.presence).toBe('present');
+    expect(readCanonicalField(view.connectivity.reasonCodes)).toEqual([]);
+    expect(readCanonicalField(view.connectivity.recommendedAction)).toBe('NONE');
+    expect(readCanonicalField(view.connectivity.attentionState)).toBe('NONE');
+    expect(view.operator.primaryReason.presence).toBe('present');
+    expect(readCanonicalField(view.operator.primaryReason)).toBeNull();
+    expect(view.operator.reasonCodes.presence).toBe('present');
+    expect(readCanonicalField(view.operator.reasonCodes)).toEqual([]);
+    expect(readCanonicalField(view.operator.recommendedAction)).toBe('NONE');
+    expect(readCanonicalField(view.operator.attention)).toBe('NONE');
+  });
+
+  it('marks omitted operator fields absent instead of coercing to NONE or []', () => {
+    const view = mapFleetMapToCanonicalVehicleOperationalView(
+      fleetMapRow({
+        operationalAvailability: {
+          state: 'AVAILABLE',
+          generatedAt: GENERATED_AT,
+        } as FleetMapVehicleResponse['operationalAvailability'],
+      }),
+    );
+
+    expect(view.operator.recommendedAction.presence).toBe('absent');
+    expect(view.operator.attention.presence).toBe('absent');
+    expect(view.operator.reasonCodes.presence).toBe('absent');
+    expect(view.operator.primaryReason.presence).toBe('absent');
+  });
+
+  it('marks omitted connectivity reasonCodes absent instead of coercing to []', () => {
+    const view = mapFleetMapToCanonicalVehicleOperationalView(
+      fleetMapRow({
+        connectivityRuntime: {
+          ...runtime(),
+          reasonCodes: undefined as unknown as string[],
+        },
+      }),
+    );
+
+    expect(view.connectivity.reasonCodes.presence).toBe('absent');
+  });
+
+  it('marks invalid pipelineAvailability absent instead of coercing to null', () => {
+    const view = mapFleetMapToCanonicalVehicleOperationalView(
+      fleetMapRow({
+        healthEvaluation: healthEvaluation('EVALUABLE', {
+          pipelineAvailability: 'future_value' as 'ready',
+        }),
+      }),
+    );
+
+    expect(view.health.pipelineAvailability.presence).toBe('absent');
+  });
+
+  it('marks invalid operational availability state absent instead of coercing to UNKNOWN', () => {
+    const view = mapFleetMapToCanonicalVehicleOperationalView(
+      fleetMapRow({
+        operationalAvailability: {
+          state: 'MAYBE_AVAILABLE' as 'AVAILABLE',
+          primaryReason: null,
+          reasonCodes: [],
+          recommendedAction: 'NONE',
+          attention: 'NONE',
+          generatedAt: GENERATED_AT,
+        },
+      }),
+    );
+
+    expect(view.business.operationalAvailability.presence).toBe('absent');
+  });
+
+  it('marks invalid health evaluability absent instead of coercing to UNKNOWN', () => {
+    const view = mapFleetMapToCanonicalVehicleOperationalView(
+      fleetMapRow({
+        healthEvaluation: healthEvaluation('EVALUABLE', {
+          evaluability: 'FUTURE_STATE' as 'EVALUABLE',
+        }),
+      }),
+    );
+
+    expect(view.health.evaluability.presence).toBe('absent');
+  });
+
+  it('marks invalid operator recommendedAction absent instead of coercing to NONE', () => {
+    const view = mapFleetMapToCanonicalVehicleOperationalView(
+      fleetMapRow({
+        operationalAvailability: availability('AVAILABLE', {
+          recommendedAction: 'DO_NOTHING' as 'NONE',
+        }),
+      }),
+    );
+
+    expect(view.operator.recommendedAction.presence).toBe('absent');
+  });
+
+  it('runtime present + detail present => fleet-map connectivityRuntime wins entirely', () => {
+    const view = mapFleetMapToCanonicalVehicleOperationalView(
+      fleetMapRow({
+        connectivityRuntime: runtime({
+          providerLinkState: 'ACTIVE',
+          recommendedAction: 'NONE',
+          overallState: 'TELEMETRY_ACTIVE',
+        }),
+        operationalAvailability: availability('AVAILABLE'),
+      }),
+      {
+        fleetConnectivityDetail: fleetConnectivityDetail({
+          providerLinkState: 'REAUTH_REQUIRED',
+          recommendedAction: 'REAUTHORIZE_PROVIDER',
+          overallState: 'AUTHORIZATION_REQUIRED',
+        }),
+      },
+    );
+
+    expect(readCanonicalField(view.connectivity.providerLinkState)).toBe('ACTIVE');
+    expect(readCanonicalField(view.connectivity.recommendedAction)).toBe('NONE');
+    expect(readCanonicalField(view.connectivity.overallState)).toBe('TELEMETRY_ACTIVE');
+    expect(view.connectivity.providerLinkState.source).toBe('fleet_map.connectivityRuntime');
   });
 });

@@ -47,6 +47,29 @@ mapFleetMapToCanonicalVehicleOperationalView(
 3. `business.businessState` is always absent until fleet-map exposes P0.2 `businessState`.
 4. Legacy fleet-map fields (`onlineStatus`, `lastSeenAt`, `telemetryFreshness`, `status`) must not influence the mapper.
 
+## Connectivity precedence
+
+`VehicleConnectivityRuntimeState` on fleet-map is an authoritative **complete** P0.1 snapshot
+(`serializeVehicleConnectivityRuntimeState` always emits every field).
+
+`fleetConnectivityDetail` is a **whole-slice fallback only** when `connectivityRuntime` is absent.
+It does **not** enrich individual fields of an existing runtime snapshot — avoiding mixed snapshots
+captured at different times.
+
+## Field semantics (absent vs UNKNOWN vs NONE)
+
+| Case | `CanonicalField` result |
+|------|-------------------------|
+| Slice absent | `presence: absent` for all fields in that slice |
+| Slice present, field omitted (`undefined`) | `presence: absent` |
+| Slice present, field explicitly `null` | `presence: present`, `value: null` |
+| Slice present, field explicitly `[]` or `NONE` | `presence: present`, value preserved |
+| Backend supplies `UNKNOWN` enum | `presence: present`, `value: UNKNOWN` |
+| Unrecognized / future enum | `presence: absent` — **not** coerced to NONE/null/available/good |
+
+Invalid enum handling in the canonical mapper uses strict guards (`field-semantics.ts`).
+Presentation-layer `normalize*` helpers (which coerce to UNKNOWN) are **not** used here.
+
 ## Non-goals (P1.1)
 
 - No UI label/color mapping (P1.2)

@@ -549,7 +549,7 @@ interface CanonicalVehicleOperationalView {
 | `vehicleId` | `fleet_map.id` | — |
 | `business.businessState` | — | **absent** (not on fleet-map; never inferred from legacy `status`) |
 | `business.operationalAvailability` | `fleet_map.operationalAvailability.state` | **absent** if slice missing |
-| `connectivity.*` | `fleet_map.connectivityRuntime` | `fleet_connectivity.detail` when runtime absent |
+| `connectivity.*` | `fleet_map.connectivityRuntime` (complete snapshot) | `fleet_connectivity.detail` **whole-slice only** when runtime absent |
 | `health.*` | `fleet_map.healthEvaluation` | **absent** if slice missing |
 | `operator.primaryReason` | `fleet_map.operationalAvailability.primaryReason` | **absent** |
 | `operator.recommendedAction` | `fleet_map.operationalAvailability.recommendedAction` | **absent** |
@@ -558,7 +558,15 @@ interface CanonicalVehicleOperationalView {
 
 **Explicitly ignored inputs:** `onlineStatus`, `telemetryFreshness`, `lastSeenAt`, `signalAgeMs`, `isFresh`, legacy `status`.
 
-### Tests (21 cases)
+### P1.1 final contract hardening (2026-08-26)
+
+- Added `field-semantics.ts` + `connectivity-enums.ts` — strict per-field guards
+- Omitted fields no longer coerced to `NONE`, `[]`, or `null`
+- Unrecognized enums => `absent` (not coerced to UNKNOWN/available/good)
+- `fleetConnectivityDetail` documented as whole-slice fallback only; runtime wins when both present
+- Tests: 29 cases (`map-fleet-map-to-canonical.test.ts`)
+
+### Tests (29 cases)
 
 Covers: ACTIVE+live+AVAILABLE, ACTIVE+standby+AVAILABLE, offline+NEEDS_VERIFICATION/UNAVAILABLE, REAUTH_REQUIRED, REVOKED, DEVICE_UNPLUGGED, AUTHORIZATION_REQUIRED, NO_ACTIVE_DATA_SOURCE, UNKNOWN, EVALUABLE/PARTIALLY_EVALUABLE/NOT_EVALUABLE health, missing connectivityRuntime, missing healthEvaluation, backend UNKNOWN vs absent, reasonCodes/recommendedAction preservation, no timestamp-derived availability fallback, fleet-connectivity detail enrichment.
 

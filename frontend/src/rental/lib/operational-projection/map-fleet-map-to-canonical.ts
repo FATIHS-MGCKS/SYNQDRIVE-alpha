@@ -2,186 +2,87 @@
  * P1.1 — Single normalization entry from fleet-map API rows to the canonical contract.
  *
  * Does not consult legacy onlineStatus, telemetry age heuristics, or client runtime builders.
+ *
+ * Connectivity precedence:
+ * `fleet_map.connectivityRuntime` is an authoritative complete P0.1 snapshot on fleet-map.
+ * `fleetConnectivityDetail` is a whole-slice fallback only when `connectivityRuntime` is
+ * absent — it does not enrich individual fields of an existing runtime snapshot.
  */
 import type {
-  ConnectivityAttentionState,
-  ConnectivityRecommendedAction,
   FleetConnectivityDetail,
-  FleetDataCoverageState,
   FleetMapVehicleResponse,
-  FleetTelemetryFreshness,
-  OverallConnectivityState,
-  PhysicalDeviceState,
-  ProviderLinkState,
   VehicleConnectivityRuntimeState,
 } from '../../../lib/api';
 import {
-  normalizeFleetHealthConditionState,
-  normalizeHealthEvaluabilityState,
-} from '../fleet-health-evaluation/types';
-import { normalizeOperationalAvailabilityState } from '../operational-availability/types';
+  asConnectivityAttentionState,
+  asConnectivityRecommendedAction,
+  asDataCoverageState,
+  asOverallConnectivityState,
+  asPhysicalDeviceState,
+  asProviderLinkState,
+  asTelemetryState,
+} from './connectivity-enums';
+import {
+  mapConnectivityAttentionField,
+  mapConnectivityRecommendedActionField,
+  mapHealthConditionField,
+  mapHealthEvaluabilityField,
+  mapNullableSliceField,
+  mapOperationalAvailabilityStateField,
+  mapPipelineAvailabilityField,
+  mapSliceArrayField,
+  mapSliceEnumField,
+} from './field-semantics';
 import { absentField, presentField } from './provenance';
 import type { CanonicalField, CanonicalVehicleOperationalView } from './types';
 
 export interface MapCanonicalVehicleOperationalViewOptions {
-  /** Optional fleet-connectivity detail enrichment when fleet-map runtime slice is partial. */
+  /**
+   * Whole-slice fallback when `fleetMap.connectivityRuntime` is absent.
+   * Ignored when `connectivityRuntime` is present — no field-by-field mixing.
+   */
   fleetConnectivityDetail?: FleetConnectivityDetail;
-}
-
-function asConnectivityAttentionState(
-  value: unknown,
-): ConnectivityAttentionState | undefined {
-  if (
-    value === 'NONE' ||
-    value === 'WATCH' ||
-    value === 'ACTION_REQUIRED' ||
-    value === 'CRITICAL'
-  ) {
-    return value;
-  }
-  return undefined;
-}
-
-function asConnectivityRecommendedAction(
-  value: unknown,
-): ConnectivityRecommendedAction | undefined {
-  const actions: ConnectivityRecommendedAction[] = [
-    'NONE',
-    'CHECK_DEVICE',
-    'REAUTHORIZE_PROVIDER',
-    'CONNECT_DATA_SOURCE',
-    'REVIEW_CONNECTIVITY',
-    'WAIT_FOR_TELEMETRY',
-    'CHECK_INTEGRATION',
-  ];
-  return actions.includes(value as ConnectivityRecommendedAction)
-    ? (value as ConnectivityRecommendedAction)
-    : undefined;
-}
-
-function asOverallConnectivityState(value: unknown): OverallConnectivityState | undefined {
-  const states: OverallConnectivityState[] = [
-    'TELEMETRY_ACTIVE',
-    'STANDBY',
-    'SOFT_OFFLINE',
-    'OFFLINE',
-    'DEVICE_UNPLUGGED',
-    'AUTHORIZATION_REQUIRED',
-    'NO_ACTIVE_DATA_SOURCE',
-    'INTEGRATION_ERROR',
-    'UNKNOWN',
-  ];
-  return states.includes(value as OverallConnectivityState)
-    ? (value as OverallConnectivityState)
-    : undefined;
-}
-
-function asProviderLinkState(value: unknown): ProviderLinkState | undefined {
-  const states: ProviderLinkState[] = [
-    'ACTIVE',
-    'REAUTH_REQUIRED',
-    'REVOKED',
-    'NO_LINK',
-    'ERROR',
-    'UNKNOWN',
-  ];
-  return states.includes(value as ProviderLinkState) ? (value as ProviderLinkState) : undefined;
-}
-
-function asTelemetryState(value: unknown): FleetTelemetryFreshness | undefined {
-  if (
-    value === 'live' ||
-    value === 'standby' ||
-    value === 'signal_delayed' ||
-    value === 'offline' ||
-    value === 'no_signal'
-  ) {
-    return value;
-  }
-  return undefined;
-}
-
-function asPhysicalDeviceState(value: unknown): PhysicalDeviceState | undefined {
-  const states: PhysicalDeviceState[] = [
-    'PLUGGED_CONFIRMED',
-    'PLUGGED_INFERRED',
-    'UNPLUGGED_CONFIRMED',
-    'UNKNOWN',
-    'NOT_APPLICABLE',
-  ];
-  return states.includes(value as PhysicalDeviceState)
-    ? (value as PhysicalDeviceState)
-    : undefined;
-}
-
-function asDataCoverageState(value: unknown): FleetDataCoverageState | undefined {
-  const states: FleetDataCoverageState[] = [
-    'GOOD',
-    'PARTIAL',
-    'INSUFFICIENT',
-    'UNKNOWN',
-    'NOT_APPLICABLE',
-  ];
-  return states.includes(value as FleetDataCoverageState)
-    ? (value as FleetDataCoverageState)
-    : undefined;
 }
 
 function mapConnectivityFromRuntime(
   runtime: VehicleConnectivityRuntimeState,
 ): CanonicalVehicleOperationalView['connectivity'] {
+  const source = 'fleet_map.connectivityRuntime' as const;
+
   return {
-    overallState: presentField(runtime.overallState, 'fleet_map.connectivityRuntime'),
-    providerLinkState: presentField(runtime.providerLinkState, 'fleet_map.connectivityRuntime'),
-    telemetryState: presentField(runtime.telemetryState, 'fleet_map.connectivityRuntime'),
-    physicalDeviceState: presentField(runtime.physicalDeviceState, 'fleet_map.connectivityRuntime'),
-    dataCoverageState: presentField(runtime.dataCoverageState, 'fleet_map.connectivityRuntime'),
-    attentionState: presentField(runtime.attentionState, 'fleet_map.connectivityRuntime'),
-    reasonCodes: presentField(
-      Array.isArray(runtime.reasonCodes) ? [...runtime.reasonCodes] : [],
-      'fleet_map.connectivityRuntime',
+    overallState: mapSliceEnumField(runtime.overallState, asOverallConnectivityState, source),
+    providerLinkState: mapSliceEnumField(runtime.providerLinkState, asProviderLinkState, source),
+    telemetryState: mapSliceEnumField(runtime.telemetryState, asTelemetryState, source),
+    physicalDeviceState: mapSliceEnumField(
+      runtime.physicalDeviceState,
+      asPhysicalDeviceState,
+      source,
     ),
-    recommendedAction: presentField(runtime.recommendedAction, 'fleet_map.connectivityRuntime'),
+    dataCoverageState: mapSliceEnumField(runtime.dataCoverageState, asDataCoverageState, source),
+    attentionState: mapSliceEnumField(runtime.attentionState, asConnectivityAttentionState, source),
+    reasonCodes: mapSliceArrayField<string>(runtime.reasonCodes, source),
+    recommendedAction: mapConnectivityRecommendedActionField(runtime.recommendedAction, source),
   };
 }
 
 function mapConnectivityFromDetail(
   detail: FleetConnectivityDetail,
 ): CanonicalVehicleOperationalView['connectivity'] {
-  const overallState = asOverallConnectivityState(detail.overallState);
-  const telemetryState = asTelemetryState(detail.telemetryState);
-  const attentionState = asConnectivityAttentionState(detail.attentionState);
-  const providerLinkState = asProviderLinkState(detail.providerLinkState);
-  const physicalDeviceState = asPhysicalDeviceState(detail.physicalDeviceState);
-  const dataCoverageState = asDataCoverageState(detail.dataCoverageState);
-  const recommendedAction = asConnectivityRecommendedAction(detail.recommendedAction);
+  const source = 'fleet_connectivity.detail' as const;
 
   return {
-    overallState: overallState
-      ? presentField(overallState, 'fleet_connectivity.detail')
-      : absentField(),
-    providerLinkState: providerLinkState
-      ? presentField(providerLinkState, 'fleet_connectivity.detail')
-      : absentField(),
-    telemetryState: telemetryState
-      ? presentField(telemetryState, 'fleet_connectivity.detail')
-      : absentField(),
-    physicalDeviceState: physicalDeviceState
-      ? presentField(physicalDeviceState, 'fleet_connectivity.detail')
-      : absentField(),
-    dataCoverageState: dataCoverageState
-      ? presentField(dataCoverageState, 'fleet_connectivity.detail')
-      : absentField(),
-    attentionState: attentionState
-      ? presentField(attentionState, 'fleet_connectivity.detail')
-      : absentField(),
-    reasonCodes: presentField(
-      Array.isArray(detail.reasonCodes) ? [...detail.reasonCodes] : [],
-      'fleet_connectivity.detail',
+    overallState: mapSliceEnumField(detail.overallState, asOverallConnectivityState, source),
+    providerLinkState: mapSliceEnumField(detail.providerLinkState, asProviderLinkState, source),
+    telemetryState: mapSliceEnumField(detail.telemetryState, asTelemetryState, source),
+    physicalDeviceState: mapSliceEnumField(
+      detail.physicalDeviceState,
+      asPhysicalDeviceState,
+      source,
     ),
-    recommendedAction: recommendedAction
-      ? presentField(recommendedAction, 'fleet_connectivity.detail')
-      : absentField(),
+    dataCoverageState: mapSliceEnumField(detail.dataCoverageState, asDataCoverageState, source),
+    attentionState: mapSliceEnumField(detail.attentionState, asConnectivityAttentionState, source),
+    reasonCodes: mapSliceArrayField<string>(detail.reasonCodes, source),
+    recommendedAction: mapConnectivityRecommendedActionField(detail.recommendedAction, source),
   };
 }
 
@@ -201,18 +102,16 @@ function absentConnectivity(): CanonicalVehicleOperationalView['connectivity'] {
 function mapOperationalAvailability(
   raw: FleetMapVehicleResponse['operationalAvailability'],
 ): CanonicalVehicleOperationalView['business']['operationalAvailability'] {
-  if (raw === undefined) {
-    return absentField();
-  }
-  return presentField(
-    normalizeOperationalAvailabilityState(raw.state),
-    'fleet_map.operationalAvailability',
-  );
+  if (raw === undefined) return absentField();
+  return mapOperationalAvailabilityStateField(raw.state, 'fleet_map.operationalAvailability');
 }
 
 function mapOperatorSlice(
   raw: FleetMapVehicleResponse['operationalAvailability'],
-): Pick<CanonicalVehicleOperationalView['operator'], 'primaryReason' | 'recommendedAction' | 'attention' | 'reasonCodes'> {
+): Pick<
+  CanonicalVehicleOperationalView['operator'],
+  'primaryReason' | 'recommendedAction' | 'attention' | 'reasonCodes'
+> {
   if (raw === undefined) {
     return {
       primaryReason: absentField(),
@@ -222,14 +121,13 @@ function mapOperatorSlice(
     };
   }
 
+  const source = 'fleet_map.operationalAvailability' as const;
+
   return {
-    primaryReason: presentField(raw.primaryReason ?? null, 'fleet_map.operationalAvailability'),
-    recommendedAction: presentField(raw.recommendedAction ?? 'NONE', 'fleet_map.operationalAvailability'),
-    attention: presentField(raw.attention ?? 'NONE', 'fleet_map.operationalAvailability'),
-    reasonCodes: presentField(
-      Array.isArray(raw.reasonCodes) ? [...raw.reasonCodes] : [],
-      'fleet_map.operationalAvailability',
-    ),
+    primaryReason: mapNullableSliceField(raw.primaryReason, source),
+    recommendedAction: mapConnectivityRecommendedActionField(raw.recommendedAction, source),
+    attention: mapConnectivityAttentionField(raw.attention, source),
+    reasonCodes: mapSliceArrayField<string>(raw.reasonCodes, source),
   };
 }
 
@@ -244,25 +142,12 @@ function mapHealthEvaluation(
     };
   }
 
-  const pipelineAvailability =
-    raw.pipelineAvailability === 'ready' ||
-    raw.pipelineAvailability === 'partial' ||
-    raw.pipelineAvailability === 'unavailable'
-      ? raw.pipelineAvailability
-      : raw.pipelineAvailability === null
-        ? null
-        : null;
+  const source = 'fleet_map.healthEvaluation' as const;
 
   return {
-    evaluability: presentField(
-      normalizeHealthEvaluabilityState(raw.evaluability),
-      'fleet_map.healthEvaluation',
-    ),
-    condition: presentField(
-      normalizeFleetHealthConditionState(raw.condition),
-      'fleet_map.healthEvaluation',
-    ),
-    pipelineAvailability: presentField(pipelineAvailability, 'fleet_map.healthEvaluation'),
+    evaluability: mapHealthEvaluabilityField(raw.evaluability, source),
+    condition: mapHealthConditionField(raw.condition, source),
+    pipelineAvailability: mapPipelineAvailabilityField(raw.pipelineAvailability, source),
   };
 }
 

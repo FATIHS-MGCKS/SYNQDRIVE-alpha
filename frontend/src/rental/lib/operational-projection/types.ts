@@ -73,8 +73,8 @@ export interface CanonicalVehicleOperationalView {
 
   operator: {
     primaryReason: CanonicalField<string | null>;
-    recommendedAction: CanonicalField<string>;
-    attention: CanonicalField<string>;
+    recommendedAction: CanonicalField<ConnectivityRecommendedAction>;
+    attention: CanonicalField<ConnectivityAttentionState>;
     reasonCodes: CanonicalField<readonly string[]>;
   };
 }
