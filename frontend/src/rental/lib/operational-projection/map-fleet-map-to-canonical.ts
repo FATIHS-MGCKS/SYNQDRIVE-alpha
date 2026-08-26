@@ -157,7 +157,7 @@ function storeAvailabilityToOperatorInput(
   availability: FleetOperationalAvailability,
 ): FleetMapVehicleResponse['operationalAvailability'] {
   return {
-    state: availability.state,
+    ...(availability.state !== undefined ? { state: availability.state } : {}),
     generatedAt: availability.generatedAt,
     ...(availability.primaryReason !== undefined
       ? { primaryReason: availability.primaryReason }

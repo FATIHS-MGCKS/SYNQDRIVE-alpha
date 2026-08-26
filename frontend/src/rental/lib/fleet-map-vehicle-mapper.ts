@@ -7,14 +7,15 @@ import type {
   VehicleOnlineStatus,
 } from '../data/vehicles';
 import {
-  normalizeOperationalAvailabilityState,
-  type FleetOperationalAvailability,
-} from './operational-availability/types';
-import {
-  normalizeFleetHealthConditionState,
-  normalizeHealthEvaluabilityState,
+  isFleetHealthConditionState,
+  isHealthEvaluabilityState,
+  isPipelineAvailability,
   type FleetHealthEvaluation,
 } from './fleet-health-evaluation/types';
+import {
+  isOperationalAvailabilityState,
+  type FleetOperationalAvailability,
+} from './operational-availability/types';
 import {
   normalizeVehicleOperationalStateDto,
   type VehicleBookingContext,
@@ -33,19 +34,14 @@ function mapHealthEvaluation(
       typeof raw.anyModuleDataStale === 'boolean' ? raw.anyModuleDataStale : null,
     source: raw.source ?? 'p0.2_projection',
   };
-  if (raw.condition !== undefined) {
-    evaluation.condition = normalizeFleetHealthConditionState(raw.condition);
+  if (raw.condition !== undefined && isFleetHealthConditionState(raw.condition)) {
+    evaluation.condition = raw.condition;
   }
-  if (raw.evaluability !== undefined) {
-    evaluation.evaluability = normalizeHealthEvaluabilityState(raw.evaluability);
+  if (raw.evaluability !== undefined && isHealthEvaluabilityState(raw.evaluability)) {
+    evaluation.evaluability = raw.evaluability;
   }
-  if (raw.pipelineAvailability !== undefined) {
-    evaluation.pipelineAvailability =
-      raw.pipelineAvailability === 'ready' ||
-      raw.pipelineAvailability === 'partial' ||
-      raw.pipelineAvailability === 'unavailable'
-        ? raw.pipelineAvailability
-        : null;
+  if (raw.pipelineAvailability !== undefined && isPipelineAvailability(raw.pipelineAvailability)) {
+    evaluation.pipelineAvailability = raw.pipelineAvailability;
   }
   return evaluation;
 }
@@ -55,9 +51,11 @@ function mapOperationalAvailability(
 ): FleetOperationalAvailability | undefined {
   if (!raw) return undefined;
   const availability: FleetOperationalAvailability = {
-    state: normalizeOperationalAvailabilityState(raw.state),
     generatedAt: raw.generatedAt ?? new Date(0).toISOString(),
   };
+  if (raw.state !== undefined && isOperationalAvailabilityState(raw.state)) {
+    availability.state = raw.state;
+  }
   if (raw.primaryReason !== undefined) {
     availability.primaryReason = raw.primaryReason;
   }

@@ -55,6 +55,17 @@ export function isFleetHealthConditionState(value: unknown): value is FleetHealt
   );
 }
 
+export type PipelineAvailability = 'ready' | 'partial' | 'unavailable' | null;
+
+export function isPipelineAvailability(value: unknown): value is PipelineAvailability {
+  return (
+    value === 'ready' ||
+    value === 'partial' ||
+    value === 'unavailable' ||
+    value === null
+  );
+}
+
 export function normalizeFleetHealthConditionState(value: unknown): FleetHealthConditionState {
   return isFleetHealthConditionState(value)
     ? value

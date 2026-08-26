@@ -576,3 +576,124 @@ describe('P1.3 map marker labels are localized', () => {
     expect(visual.label).toBe(en['fleetConnectivity.state.OFFLINE']);
   });
 });
+
+describe('P1.3 contract-drift enum preservation (full store path)', () => {
+  function fullPathUi(row: Partial<FleetMapVehicleResponse>) {
+    const vehicle = mapFleetMapVehicleResponse(fleetRow(row));
+    const canonical = mapFleetStoreVehicleToCanonicalVehicleOperationalView({
+      id: vehicle.id,
+      connectivityRuntime: vehicle.connectivityRuntime,
+      operationalAvailability: vehicle.operationalAvailability,
+      healthEvaluation: vehicle.healthEvaluation,
+    });
+    const ui = buildFleetVehicleUiProjection(vehicle, { locale: 'de' });
+    const masterUi = mapVehicleOperationalUiProjection(canonical, {
+      audience: 'master_admin',
+      t: tFor(),
+    });
+    return { vehicle, canonical, ui, masterUi };
+  }
+
+  it('A — explicit availability UNKNOWN stays present + UNKNOWN', () => {
+    const { ui, canonical } = fullPathUi({
+      operationalAvailability: availability('UNKNOWN'),
+      connectivityRuntime: runtime(),
+    });
+    expect(canonical.business.operationalAvailability.presence).toBe('present');
+    expect(canonical.business.operationalAvailability.value).toBe('UNKNOWN');
+    expect(ui.availability.presence).toBe('present');
+    expect(ui.availability.presentation?.state).toBe('UNKNOWN');
+  });
+
+  it('B — future availability enum stays absent (not coerced to UNKNOWN)', () => {
+    const { ui, canonical } = fullPathUi({
+      operationalAvailability: {
+        state: 'FUTURE_STATE',
+        generatedAt: '2026-08-26T12:00:00.000Z',
+      } as FleetMapVehicleResponse['operationalAvailability'],
+      connectivityRuntime: runtime(),
+    });
+    expect(canonical.business.operationalAvailability.presence).toBe('absent');
+    expect(ui.availability.presence).toBe('absent');
+    expect(ui.availability.presentation).toBeUndefined();
+  });
+
+  it('C — explicit health evaluability UNKNOWN stays present + UNKNOWN', () => {
+    const { masterUi } = fullPathUi({
+      operationalAvailability: availability('AVAILABLE'),
+      connectivityRuntime: runtime(),
+      healthEvaluation: health('UNKNOWN'),
+    });
+    expect(masterUi.technicalDetail?.healthEvaluability.presence).toBe('present');
+    expect(masterUi.technicalDetail?.healthEvaluability.presentation).toBe('UNKNOWN');
+  });
+
+  it('D — future health evaluability stays absent', () => {
+    const { masterUi } = fullPathUi({
+      operationalAvailability: availability('AVAILABLE'),
+      connectivityRuntime: runtime(),
+      healthEvaluation: {
+        evaluability: 'FUTURE_EVALUABILITY',
+        generatedAt: '2026-08-26T12:00:00.000Z',
+        healthEvidenceAt: null,
+        anyModuleDataStale: false,
+        source: 'p0.2_projection',
+      } as FleetMapVehicleResponse['healthEvaluation'],
+    });
+    expect(masterUi.technicalDetail?.healthEvaluability.presence).toBe('absent');
+    expect(masterUi.health.presence).toBe('absent');
+  });
+
+  it('E — explicit health condition unknown stays present + unknown', () => {
+    const { masterUi } = fullPathUi({
+      operationalAvailability: availability('AVAILABLE'),
+      connectivityRuntime: runtime(),
+      healthEvaluation: health('EVALUABLE', { condition: 'unknown' }),
+    });
+    expect(masterUi.technicalDetail?.healthCondition.presence).toBe('present');
+    expect(masterUi.technicalDetail?.healthCondition.presentation).toBe('unknown');
+  });
+
+  it('F — future health condition stays absent', () => {
+    const { masterUi } = fullPathUi({
+      operationalAvailability: availability('AVAILABLE'),
+      connectivityRuntime: runtime(),
+      healthEvaluation: {
+        evaluability: 'EVALUABLE',
+        condition: 'future_condition',
+        generatedAt: '2026-08-26T12:00:00.000Z',
+        healthEvidenceAt: null,
+        anyModuleDataStale: false,
+        source: 'p0.2_projection',
+      } as FleetMapVehicleResponse['healthEvaluation'],
+    });
+    expect(masterUi.technicalDetail?.healthCondition.presence).toBe('absent');
+  });
+
+  it('G — explicit pipelineAvailability null stays present + null', () => {
+    const { ui } = fullPathUi({
+      operationalAvailability: availability('AVAILABLE'),
+      connectivityRuntime: runtime(),
+      healthEvaluation: health('EVALUABLE', { pipelineAvailability: null }),
+    });
+    expect(ui.health.presentation?.pipelineAvailability.presence).toBe('present');
+    expect(ui.health.presentation?.pipelineAvailability.presentation?.value).toBeNull();
+  });
+
+  it('H — future pipeline enum stays absent', () => {
+    const { ui } = fullPathUi({
+      operationalAvailability: availability('AVAILABLE'),
+      connectivityRuntime: runtime(),
+      healthEvaluation: {
+        evaluability: 'EVALUABLE',
+        condition: 'good',
+        pipelineAvailability: 'future_pipeline_state',
+        generatedAt: '2026-08-26T12:00:00.000Z',
+        healthEvidenceAt: null,
+        anyModuleDataStale: false,
+        source: 'p0.2_projection',
+      } as FleetMapVehicleResponse['healthEvaluation'],
+    });
+    expect(ui.health.presentation?.pipelineAvailability.presence).toBe('absent');
+  });
+});

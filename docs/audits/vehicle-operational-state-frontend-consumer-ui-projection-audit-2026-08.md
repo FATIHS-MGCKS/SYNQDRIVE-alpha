@@ -798,7 +798,11 @@ FleetOperatorRow, FleetMapVehicleStatusHud, fleetVisualState, dashboard runtime,
 | Health map attention | `NOT_EVALUABLE` / `PARTIALLY_EVALUABLE` no longer force map attention marker |
 | i18n | Map marker labels use P1.2 / `fleetConnectivity.*` / `formatVehicleOperationalStatusLabel` — no new hardcoded EN strings |
 
-P1.3 tests: **37/37** (added precedence A–G, provenance, health evaluability, i18n).
+P1.3 tests: **45/45** (added precedence A–G, provenance, health evaluability, i18n, contract-drift A–H).
+
+### R.2 Contract-drift enum hardening (PR #1320 — 2026-08-26)
+
+Fleet store mapper no longer calls `normalize*()` helpers that coerce unrecognized enum values to UNKNOWN. Guards (`isOperationalAvailabilityState`, `isHealthEvaluabilityState`, `isFleetHealthConditionState`, `isPipelineAvailability`) preserve explicit UNKNOWN vs future/absent semantics on the P1.3 canonical path.
 
 ---
 
