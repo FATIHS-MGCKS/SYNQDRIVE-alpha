@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Header + Connectivity Banner (P2.2.44 — V4.9.971)', icon: Globe,
+    endpoint: 'Operator top shell chrome — header sync + app-network offline banner',
+    service: '**Locale flow:** `useLanguage().locale` → `operator-shell-top-chrome-i18n.ts` adapter (`ostc`, sync/header/connectivity helpers); reuses `common.loading`. **Keys:** +8 EN+DE `operator.header.*` / `operator.connectivity.*` (8624→8632). **Machine values:** `syncState`, `triggerRefresh`, `/rental` link, `navigator.onLine`, `orgName` frozen. **Guardrails:** P2.2.44 enforce-clean exact (3 paths) — 0 findings. **Tests:** `operator-shell-top-chrome-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_OPERATOR_HEADER_CONNECTIVITY_P2_2_44_2026-08-26.md' },
   { name: 'Platform i18n Operator Shell Navigation Chrome (P2.2.43 — V4.9.970)', icon: Globe,
     endpoint: 'Operator bottom navigation — tab label presentation slice',
     service: '**Locale flow:** `useLanguage().locale` → `operator-shell-navigation-i18n.ts` adapter (`osn`, tab label + aria helpers); reuses `common.today`, `nav.tasks`. **Keys:** +4 EN+DE `operator.navigation.*` (8620→8624). **Machine values:** tab IDs, `activeTab`, `setActiveTab` args, React keys, order, icons frozen. **Guardrails:** P2.2.43 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-shell-navigation-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

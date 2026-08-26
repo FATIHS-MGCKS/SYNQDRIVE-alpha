@@ -1,10 +1,13 @@
 import { WifiOff } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useOperatorNetworkStatus } from '../hooks/useOperatorNetworkStatus';
+import { operatorShellConnectivityOfflineMessage } from '../lib/operator-shell-top-chrome-i18n';
 
 /**
  * Lightweight connectivity hint — no offline queue or sync illusion.
  */
 export function OperatorConnectivityBanner() {
+  const { locale } = useLanguage();
   const { online } = useOperatorNetworkStatus();
 
   if (online) return null;
@@ -15,7 +18,7 @@ export function OperatorConnectivityBanner() {
       role="status"
     >
       <WifiOff className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      <span>Verbindung instabil oder offline — Aktionen werden erst nach erneutem Senden übernommen.</span>
+      <span>{operatorShellConnectivityOfflineMessage(locale)}</span>
     </div>
   );
 }
