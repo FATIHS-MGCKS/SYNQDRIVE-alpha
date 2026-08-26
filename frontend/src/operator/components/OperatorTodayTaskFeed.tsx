@@ -1,11 +1,18 @@
 import { useCallback, type ReactNode } from 'react';
 import { ErrorState, SkeletonRows } from '../../components/patterns';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { ApiTask } from '../../lib/api';
 import { OperatorTodaySection } from '../components/OperatorTodaySection';
 import type { OperatorTodayFeedBucket, OperatorTodayBucketSlice } from '../hooks/operatorTodayFeed.utils';
 import type { OperatorTodayTaskEntry } from '../tasks/operatorTodayTasks';
 import { OperatorTaskCardConnected } from '../tasks/OperatorTaskCardConnected';
 import type { FleetVehicleLookup } from '../tasks/operatorTaskDisplay.utils';
+import {
+  operatorTodayBucketSubtitle,
+  operatorTodayBucketTitle,
+  operatorTodayFeedBucketUnavailableTitle,
+  operatorTodayFeedRetryLabel,
+} from '../lib/operator-today-i18n';
 import {
   getOperatorTodayBucketSections,
   type OperatorTodayBucketSectionMeta,
@@ -36,6 +43,8 @@ export function OperatorTodayTaskFeed({
   sectionExtras,
   renderEntry,
 }: OperatorTodayTaskFeedProps) {
+  const { locale } = useLanguage();
+
   const defaultRenderEntry = useCallback(
     (entry: OperatorTodayTaskEntry) => (
       <OperatorTaskCardConnected
@@ -55,6 +64,8 @@ export function OperatorTodayTaskFeed({
     const slice = buckets[meta.bucket];
     if (!slice) return null;
 
+    const title = operatorTodayBucketTitle(locale, meta.bucket);
+    const subtitle = operatorTodayBucketSubtitle(locale, meta.bucket);
     const extras = sectionExtras?.[meta.bucket];
     const hasExtras = Boolean(extras);
     const collapsedPlanned = meta.bucket === 'PLANNED' && meta.collapsible && !plannedOpen;
@@ -64,8 +75,8 @@ export function OperatorTodayTaskFeed({
     return (
       <OperatorTodaySection
         key={meta.bucket}
-        title={meta.title}
-        subtitle={meta.subtitle}
+        title={title}
+        subtitle={subtitle}
         count={slice.count}
         variant={meta.variant}
         collapsible={meta.collapsible}
@@ -79,9 +90,9 @@ export function OperatorTodayTaskFeed({
           slice.error ? (
             <ErrorState
               compact
-              title={`${meta.title} nicht verfügbar`}
+              title={operatorTodayFeedBucketUnavailableTitle(locale, meta.bucket)}
               error={slice.error}
-              retryLabel="Erneut laden"
+              retryLabel={operatorTodayFeedRetryLabel(locale)}
               onRetry={onReload}
             />
           ) : undefined

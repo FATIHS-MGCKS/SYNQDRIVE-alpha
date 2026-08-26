@@ -18,8 +18,6 @@ export type OperatorTodaySectionVariant = 'critical' | 'default' | 'team';
 
 export interface OperatorTodayBucketSectionMeta {
   bucket: OperatorTodayFeedBucket;
-  title: string;
-  subtitle: string;
   variant: OperatorTodaySectionVariant;
   collapsible: boolean;
   defaultCollapsed: boolean;
@@ -29,8 +27,6 @@ export interface OperatorTodayBucketSectionMeta {
 export const OPERATOR_TODAY_BUCKET_SECTIONS: OperatorTodayBucketSectionMeta[] = [
   {
     bucket: 'NOW',
-    title: 'Jetzt erforderlich',
-    subtitle: 'Überfällige, kritische und unmittelbar blockierende Aufgaben',
     variant: 'critical',
     collapsible: false,
     defaultCollapsed: false,
@@ -38,8 +34,6 @@ export const OPERATOR_TODAY_BUCKET_SECTIONS: OperatorTodayBucketSectionMeta[] = 
   },
   {
     bucket: 'TODAY',
-    title: 'Heute',
-    subtitle: 'Heute fällige und aktivierte Aufgaben',
     variant: 'default',
     collapsible: false,
     defaultCollapsed: false,
@@ -47,8 +41,6 @@ export const OPERATOR_TODAY_BUCKET_SECTIONS: OperatorTodayBucketSectionMeta[] = 
   },
   {
     bucket: 'UPCOMING',
-    title: 'Demnächst',
-    subtitle: 'Aktiviert sich im definierten kommenden Zeitfenster',
     variant: 'default',
     collapsible: false,
     defaultCollapsed: false,
@@ -56,8 +48,6 @@ export const OPERATOR_TODAY_BUCKET_SECTIONS: OperatorTodayBucketSectionMeta[] = 
   },
   {
     bucket: 'PLANNED',
-    title: 'Geplant',
-    subtitle: 'Zukünftige Erinnerungen und Aufgaben',
     variant: 'default',
     collapsible: true,
     defaultCollapsed: true,
@@ -65,8 +55,6 @@ export const OPERATOR_TODAY_BUCKET_SECTIONS: OperatorTodayBucketSectionMeta[] = 
   },
   {
     bucket: 'UNASSIGNED',
-    title: 'Unzugewiesen',
-    subtitle: 'Team-Queue — Aufgaben ohne Bearbeiter',
     variant: 'team',
     collapsible: false,
     defaultCollapsed: false,

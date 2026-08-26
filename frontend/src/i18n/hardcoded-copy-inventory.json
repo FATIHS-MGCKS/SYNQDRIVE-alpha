@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-25",
+  "generatedAt": "2026-08-26",
   "phases": {
     "P21": {
       "enforceCleanExact": [
@@ -111,18 +111,18 @@
     }
   },
   "summary": {
-    "total": 1498,
+    "total": 1486,
     "bySurface": {
       "MASTER": 1049,
-      "OPERATOR": 51,
+      "OPERATOR": 39,
       "RENTAL": 372,
       "SHARED": 1,
       "SHELL": 25
     },
     "byCategory": {
       "ARIA": 54,
-      "TITLE": 227,
-      "TEXT": 1059,
+      "TITLE": 221,
+      "TEXT": 1053,
       "LABEL": 85,
       "PLACEHOLDER": 65,
       "FORMAT_LOCALE": 8
@@ -14981,20 +14981,6 @@
       ]
     },
     {
-      "file": "operator/views/OperatorTodayView.tsx",
-      "line": 339,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Aufgaben und Buchungen öffnen sich als Vollbild-Sheets auf dem Gerät.",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/views/OperatorTodayView.tsx"
-      ]
-    },
-    {
       "file": "operator/tasks/OperatorTaskCard.tsx",
       "line": 82,
       "surface": "OPERATOR",
@@ -15062,48 +15048,6 @@
       "occurrences": 1,
       "files": [
         "operator/components/OperatorVehicleQuickView.tsx"
-      ]
-    },
-    {
-      "file": "operator/views/OperatorTodayView.tsx",
-      "line": 305,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TITLE",
-      "sample": "Blockierte Fahrzeuge",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/views/OperatorTodayView.tsx"
-      ]
-    },
-    {
-      "file": "operator/views/OperatorTodayView.tsx",
-      "line": 201,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Buchung aufnehmen",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/views/OperatorTodayView.tsx"
-      ]
-    },
-    {
-      "file": "operator/views/OperatorTodayView.tsx",
-      "line": 213,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TITLE",
-      "sample": "Buchungen nicht verfügbar",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/views/OperatorTodayView.tsx"
       ]
     },
     {
@@ -15220,34 +15164,6 @@
       ]
     },
     {
-      "file": "operator/views/OperatorTodayView.tsx",
-      "line": 222,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TITLE",
-      "sample": "Heute ist alles ruhig",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/views/OperatorTodayView.tsx"
-      ]
-    },
-    {
-      "file": "operator/views/OperatorTodayView.tsx",
-      "line": 210,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TITLE",
-      "sample": "Heute-Daten nicht verfügbar",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/views/OperatorTodayView.tsx"
-      ]
-    },
-    {
       "file": "operator/views/OperatorVehiclesView.tsx",
       "line": 67,
       "surface": "OPERATOR",
@@ -15273,20 +15189,6 @@
       "occurrences": 1,
       "files": [
         "operator/views/OperatorTasksView.tsx"
-      ]
-    },
-    {
-      "file": "operator/views/OperatorTodayView.tsx",
-      "line": 188,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TITLE",
-      "sample": "Keine Organisation",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/views/OperatorTodayView.tsx"
       ]
     },
     {
@@ -15329,34 +15231,6 @@
       "occurrences": 1,
       "files": [
         "operator/ai-upload/OperatorAiUploadFlow.tsx"
-      ]
-    },
-    {
-      "file": "operator/views/OperatorTodayView.tsx",
-      "line": 263,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TITLE",
-      "sample": "Operative Hinweise",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/views/OperatorTodayView.tsx"
-      ]
-    },
-    {
-      "file": "operator/views/OperatorTodayView.tsx",
-      "line": 242,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Operativer Tagesüberblick",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/views/OperatorTodayView.tsx"
       ]
     },
     {
@@ -15431,20 +15305,6 @@
       ]
     },
     {
-      "file": "operator/views/OperatorTodayView.tsx",
-      "line": 245,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Priorisiert nach Dringlichkeit — kritisch und überfällig zuerst.",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/views/OperatorTodayView.tsx"
-      ]
-    },
-    {
       "file": "operator/ai-upload/OperatorAiUploadFlow.tsx",
       "line": 205,
       "surface": "OPERATOR",
@@ -15488,45 +15348,16 @@
       ]
     },
     {
-      "file": "operator/views/OperatorTodayView.tsx",
-      "line": 173,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Übergaben heute",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/views/OperatorTodayView.tsx"
-      ]
-    },
-    {
-      "file": "operator/views/OperatorTodayView.tsx",
-      "line": 162,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Übergaben jetzt",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/views/OperatorTodayView.tsx"
-      ]
-    },
-    {
-      "file": "operator/views/OperatorTodayView.tsx",
-      "line": 314,
+      "file": "operator/views/OperatorVehiclesView.tsx",
+      "line": 79,
       "surface": "OPERATOR",
       "module": null,
       "category": "TITLE",
       "sample": "v.station || undefined",
       "severity": "debt",
       "migrationPhase": "P2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "operator/views/OperatorTodayView.tsx",
         "operator/views/OperatorVehiclesView.tsx"
       ]
     },

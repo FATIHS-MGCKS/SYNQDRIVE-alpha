@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-today-tab-chrome-p2-2-45-2026-08-26',
+    version: '4.9.972',
+    title: 'Platform i18n — P2.2.45 Operator Today Tab Chrome localization',
+    summary: [
+      'Localized Operator Today tab chrome via `operator-today-i18n.ts` and `operator.today.*` keys.',
+      'P245 enforce-clean exact scope (4 paths) reports 0 findings; +35 EN+DE keys (8632→8667); reuses `common.today` and `common.retry`.',
+      'Presentation-only — bucket IDs/order/membership, task feed semantics, callbacks, and Task Card rows frozen. Category E=0.',
+    ],
+    reason:
+      'P2.2.45 post-P244 pre-flight (PR #1300) selected Operator Today tab chrome as the next bounded Operator presentation slice.',
+    previousBehavior:
+      'OperatorTodayView, bucket utils, and task feed section chrome used fixed German copy and `useOperatorToday(\'de\')`.',
+    details:
+      'operator/views/OperatorTodayView.tsx; operator/views/operatorTodayView.utils.ts; operator/components/OperatorTodayTaskFeed.tsx; operator/lib/operator-today-i18n.ts; i18n/translations/operator.today.{en,de}.ts; operator-today-localization.test.tsx; P245_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_TODAY_TAB_P2_2_45_2026-08-26.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-26T09:10:00.000Z',
+  },
+  {
     id: 'i18n-operator-header-connectivity-p2-2-44-2026-08-26',
     version: '4.9.971',
     title: 'Platform i18n — P2.2.44 Operator Header + Connectivity Banner localization',
