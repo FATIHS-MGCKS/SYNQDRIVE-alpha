@@ -7,6 +7,7 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { EmptyState, ErrorState, SkeletonRows } from '../../components/patterns';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useFleetVehicles } from '../../rental/FleetContext';
 import type { ApiTask } from '../../lib/api';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
@@ -22,6 +23,32 @@ import { useOperatorShell } from '../context/OperatorShellContext';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
 import type { OperatorTodayBookingItem } from '../lib/operatorData';
 import { toHandoverBookingSeed } from '../lib/operatorData';
+import {
+  operatorTodayAlertSeverityLabel,
+  operatorTodayBlockedBadgeLabel,
+  operatorTodayBlockedSectionTitle,
+  operatorTodayBookingsErrorTitle,
+  operatorTodayCreateBookingLabel,
+  operatorTodayEmptyAllOpenTasksLabel,
+  operatorTodayEmptyDescription,
+  operatorTodayEmptyTitle,
+  operatorTodayFatalErrorTitle,
+  operatorTodayHandoverNowLabel,
+  operatorTodayHandoverTodayLabel,
+  operatorTodayHeaderSubtitle,
+  operatorTodayHeaderTitle,
+  operatorTodayNavAllOpenWithCount,
+  operatorTodayNavAllTasksLabel,
+  operatorTodayNoOrgDescription,
+  operatorTodayNoOrgTitle,
+  operatorTodayAlertsSectionTitle,
+  operatorTodayStaleOfflineBody,
+  operatorTodayStaleOfflineTitle,
+  operatorTodayStaleRefreshLabel,
+  operatorTodayStaleStaleBody,
+  operatorTodayStaleStaleTitle,
+  operatorTodayTabletPlaceholder,
+} from '../lib/operator-today-i18n';
 import { buildFleetVehicleById } from '../tasks/operatorTaskDisplay.utils';
 import {
   countVisibleTaskFeedEntries,
@@ -34,7 +61,15 @@ import {
   shouldShowOperatorTodayStaleBanner,
 } from './operatorTodayView.utils';
 
-function OperatorTodayStaleBanner({ offline, onRetry }: { offline: boolean; onRetry: () => void }) {
+function OperatorTodayStaleBanner({
+  locale,
+  offline,
+  onRetry,
+}: {
+  locale: string;
+  offline: boolean;
+  onRetry: () => void;
+}) {
   return (
     <div
       className="flex items-start gap-2 rounded-xl border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.08] px-3 py-2.5"
@@ -43,12 +78,10 @@ function OperatorTodayStaleBanner({ offline, onRetry }: { offline: boolean; onRe
       <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-watch)]" aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="text-xs font-semibold text-foreground">
-          {offline ? 'Offline — zwischengespeicherte Daten' : 'Daten möglicherweise veraltet'}
+          {offline ? operatorTodayStaleOfflineTitle(locale) : operatorTodayStaleStaleTitle(locale)}
         </p>
         <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-          {offline
-            ? 'Die Anzeige basiert auf dem letzten erfolgreichen Abruf. Aktionen werden nach Verbindungsaufbau synchronisiert.'
-            : 'Der letzte Abruf ist fehlgeschlagen. Angezeigt werden die zuletzt geladenen Aufgaben.'}
+          {offline ? operatorTodayStaleOfflineBody(locale) : operatorTodayStaleStaleBody(locale)}
         </p>
       </div>
       <button
@@ -57,13 +90,14 @@ function OperatorTodayStaleBanner({ offline, onRetry }: { offline: boolean; onRe
         className="sq-press inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-lg border border-border px-2.5 text-[11px] font-semibold text-foreground"
       >
         <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-        Aktualisieren
+        {operatorTodayStaleRefreshLabel(locale)}
       </button>
     </div>
   );
 }
 
 export function OperatorTodayView() {
+  const { locale, formattingLocale } = useLanguage();
   const {
     orgId,
     orgLoading,
@@ -75,7 +109,7 @@ export function OperatorTodayView() {
     isStale,
     offline,
     reload,
-  } = useOperatorToday('de');
+  } = useOperatorToday(formattingLocale);
   const { openHandover } = useOperatorHandover();
   const { openSheet, setActiveTab, setPendingTasksBookingId, setSelectedVehicleId } = useOperatorShell();
   const { fleetVehicles } = useFleetVehicles();
@@ -160,7 +194,7 @@ export function OperatorTodayView() {
       extras.NOW = (
         <div className="space-y-2">
           <p className="px-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Übergaben jetzt
+            {operatorTodayHandoverNowLabel(locale)}
           </p>
           {renderHandoverCards(snapshot.dueNow)}
         </div>
@@ -171,22 +205,22 @@ export function OperatorTodayView() {
       extras.TODAY = (
         <div className="space-y-2">
           <p className="px-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Übergaben heute
+            {operatorTodayHandoverTodayLabel(locale)}
           </p>
           {renderHandoverCards(todayHandovers)}
         </div>
       );
     }
     return extras;
-  }, [renderHandoverCards, snapshot.dueNow, snapshot.pickupsToday, snapshot.returnsToday]);
+  }, [locale, renderHandoverCards, snapshot.dueNow, snapshot.pickupsToday, snapshot.returnsToday]);
 
   if (!orgLoading && !orgId) {
     return (
       <EmptyState
         compact
         icon={<Car className="h-5 w-5" />}
-        title="Keine Organisation"
-        description="Melde dich mit einem Miet-Organisationskonto an."
+        title={operatorTodayNoOrgTitle(locale)}
+        description={operatorTodayNoOrgDescription(locale)}
       />
     );
   }
@@ -199,18 +233,34 @@ export function OperatorTodayView() {
         className="sq-3d-btn sq-3d-btn--primary flex min-h-[48px] w-full items-center justify-center gap-2 font-semibold"
       >
         <Plus className="h-5 w-5" />
-        Buchung aufnehmen
+        {operatorTodayCreateBookingLabel(locale)}
       </button>
 
-      {showStaleBanner && <OperatorTodayStaleBanner offline={offline} onRetry={() => void reload()} />}
+      {showStaleBanner && (
+        <OperatorTodayStaleBanner
+          locale={locale}
+          offline={offline}
+          onRetry={() => void reload()}
+        />
+      )}
 
       {initialLoading && <SkeletonRows rows={4} />}
 
       {fatalError && (
-        <ErrorState compact title="Heute-Daten nicht verfügbar" error={error} onRetry={() => void reload()} />
+        <ErrorState
+          compact
+          title={operatorTodayFatalErrorTitle(locale)}
+          error={error}
+          onRetry={() => void reload()}
+        />
       )}
       {bookingsError && !bookingsLoading && !fatalError && (
-        <ErrorState compact title="Buchungen nicht verfügbar" error={bookingsError} onRetry={() => void reload()} />
+        <ErrorState
+          compact
+          title={operatorTodayBookingsErrorTitle(locale)}
+          error={bookingsError}
+          onRetry={() => void reload()}
+        />
       )}
 
       {!initialLoading && !fatalError && (
@@ -219,8 +269,8 @@ export function OperatorTodayView() {
             <EmptyState
               compact
               icon={<ListTodo className="h-5 w-5" />}
-              title="Heute ist alles ruhig"
-              description="Keine dringenden Aufgaben, Übergaben oder Blocker für den heutigen Tag."
+              title={operatorTodayEmptyTitle(locale)}
+              description={operatorTodayEmptyDescription(locale)}
               action={
                 snapshot.totalOpenTasksCount > 0 ? (
                   <button
@@ -228,7 +278,7 @@ export function OperatorTodayView() {
                     onClick={() => setActiveTab('tasks')}
                     className="sq-btn sq-btn-secondary min-h-[44px] px-4 text-xs font-semibold"
                   >
-                    Alle offenen Aufgaben ({snapshot.totalOpenTasksCount})
+                    {operatorTodayEmptyAllOpenTasksLabel(locale, snapshot.totalOpenTasksCount)}
                   </button>
                 ) : undefined
               }
@@ -240,10 +290,10 @@ export function OperatorTodayView() {
               <header className="flex items-start justify-between gap-3 px-0.5">
                 <div className="min-w-0">
                   <h1 className="font-display text-base font-bold tracking-tight text-foreground">
-                    Operativer Tagesüberblick
+                    {operatorTodayHeaderTitle(locale)}
                   </h1>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Priorisiert nach Dringlichkeit — kritisch und überfällig zuerst.
+                    {operatorTodayHeaderSubtitle(locale)}
                   </p>
                 </div>
                 {(showAllOpenNav || snapshot.totalOpenTasksCount > 0) && (
@@ -253,14 +303,17 @@ export function OperatorTodayView() {
                     className="sq-btn sq-btn-secondary min-h-[44px] shrink-0 px-3 text-[11px] font-semibold"
                   >
                     {showAllOpenNav
-                      ? `Alle offenen (${snapshot.totalOpenTasksCount})`
-                      : 'Alle Aufgaben'}
+                      ? operatorTodayNavAllOpenWithCount(locale, snapshot.totalOpenTasksCount)
+                      : operatorTodayNavAllTasksLabel(locale)}
                   </button>
                 )}
               </header>
 
               {operationalAlerts.length > 0 && (
-                <OperatorTodaySection title="Operative Hinweise" count={operationalAlerts.length}>
+                <OperatorTodaySection
+                  title={operatorTodayAlertsSectionTitle(locale)}
+                  count={operationalAlerts.length}
+                >
                   <div className="space-y-2">
                     {operationalAlerts.map((alert) => (
                       <OperatorListCard
@@ -270,7 +323,7 @@ export function OperatorTodayView() {
                         badges={[
                           {
                             kind: 'blocked',
-                            label: alert.severity === 'CRITICAL' ? 'Kritisch' : 'Warnung',
+                            label: operatorTodayAlertSeverityLabel(locale, alert.severity),
                             tone: alert.severity === 'CRITICAL' ? 'critical' : 'warning',
                           },
                         ]}
@@ -302,7 +355,7 @@ export function OperatorTodayView() {
 
               {snapshot.blockedVehicles.length > 0 && (
                 <OperatorTodaySection
-                  title="Blockierte Fahrzeuge"
+                  title={operatorTodayBlockedSectionTitle(locale)}
                   count={snapshot.blockedVehicles.length}
                   variant="critical"
                 >
@@ -311,8 +364,14 @@ export function OperatorTodayView() {
                       <OperatorListCard
                         key={v.vehicleId}
                         title={`${v.label} · ${v.plate}`}
-                        subtitle={v.station || undefined}
-                        badges={[{ kind: 'blocked', label: 'Blockiert', tone: 'critical' }]}
+                        subtitle={v.station}
+                        badges={[
+                          {
+                            kind: 'blocked',
+                            label: operatorTodayBlockedBadgeLabel(locale),
+                            tone: 'critical',
+                          },
+                        ]}
                         onClick={() => {
                           setSelectedVehicleId(v.vehicleId);
                           setActiveTab('vehicles');
@@ -337,7 +396,7 @@ export function OperatorTodayView() {
           detail={
             <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/10 p-8 text-center">
               <p className="text-sm text-muted-foreground">
-                Aufgaben und Buchungen öffnen sich als Vollbild-Sheets auf dem Gerät.
+                {operatorTodayTabletPlaceholder(locale)}
               </p>
             </div>
           }

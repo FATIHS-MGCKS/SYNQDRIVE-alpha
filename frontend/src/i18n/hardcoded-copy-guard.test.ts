@@ -456,6 +456,13 @@ const P244_ENFORCE_CLEAN_EXACT = [
   'operator/lib/operator-shell-top-chrome-i18n.ts',
 ];
 
+const P245_ENFORCE_CLEAN_EXACT = [
+  'operator/views/OperatorTodayView.tsx',
+  'operator/views/operatorTodayView.utils.ts',
+  'operator/components/OperatorTodayTaskFeed.tsx',
+  'operator/lib/operator-today-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -630,6 +637,10 @@ function isP243EnforceCleanPath(relPath: string): boolean {
 
 function isP244EnforceCleanPath(relPath: string): boolean {
   return P244_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP245EnforceCleanPath(relPath: string): boolean {
+  return P245_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -1016,6 +1027,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP244EnforceCleanPath(finding.file),
     );
     expect(p244Debt).toHaveLength(0);
+  });
+
+  it('keeps P245 Operator Today Tab Chrome enforce-clean scope at zero findings', () => {
+    const p245Debt = inventory.findings.filter((finding) =>
+      isP245EnforceCleanPath(finding.file),
+    );
+    expect(p245Debt).toHaveLength(0);
   });
 
   it('keeps operator-vehicle-quick-view-i18n.ts on canonical translation keys', () => {

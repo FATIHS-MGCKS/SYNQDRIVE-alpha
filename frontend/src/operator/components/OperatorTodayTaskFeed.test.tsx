@@ -1,9 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ApiTask } from '../../lib/api';
+import { LanguageProvider } from '../../i18n/LanguageContext';
 import { buildBucketSlice } from '../hooks/operatorTodayFeed.utils';
+import {
+  operatorTodayBucketTitle,
+  operatorTodayFeedBucketUnavailableTitle,
+  operatorTodayFeedRetryLabel,
+} from '../lib/operator-today-i18n';
 import { OperatorTaskCard } from '../tasks/OperatorTaskCard';
 import { OperatorTodayTaskFeed } from '../components/OperatorTodayTaskFeed';
+
+function renderFeed(ui: React.ReactElement) {
+  return renderToStaticMarkup(<LanguageProvider>{ui}</LanguageProvider>);
+}
 
 function task(partial: Partial<ApiTask> & Pick<ApiTask, 'id' | 'title'>): ApiTask {
   return {
@@ -47,7 +57,7 @@ const noop = vi.fn();
 
 describe('OperatorTodayTaskFeed', () => {
   it('renders actionable buckets and hides empty sections', () => {
-    const html = renderToStaticMarkup(
+    const html = renderFeed(
       <OperatorTodayTaskFeed
         buckets={{
           NOW: buildBucketSlice({
@@ -107,15 +117,15 @@ describe('OperatorTodayTaskFeed', () => {
       />,
     );
 
-    expect(html).toContain('Jetzt erforderlich');
+    expect(html).toContain(operatorTodayBucketTitle('en', 'NOW'));
     expect(html).toContain('Kritische Aufgabe mit sehr langem deutschen Titel zur Darstellung');
-    expect(html).toContain('Geplant');
+    expect(html).toContain(operatorTodayBucketTitle('en', 'PLANNED'));
     expect(html).not.toContain('Heute fällig');
     expect(html).not.toContain('Demnächst');
   });
 
   it('renders only planned bucket when other buckets are empty', () => {
-    const html = renderToStaticMarkup(
+    const html = renderFeed(
       <div className="dark">
         <OperatorTodayTaskFeed
           buckets={{
@@ -143,13 +153,13 @@ describe('OperatorTodayTaskFeed', () => {
       </div>,
     );
 
-    expect(html).toContain('Geplant');
+    expect(html).toContain(operatorTodayBucketTitle('en', 'PLANNED'));
     expect(html).toContain('Zukünftige Rechnung prüfen');
-    expect(html).not.toContain('Jetzt erforderlich');
+    expect(html).not.toContain(operatorTodayBucketTitle('en', 'NOW'));
   });
 
   it('renders team queue section for authorized users', () => {
-    const html = renderToStaticMarkup(
+    const html = renderFeed(
       <OperatorTodayTaskFeed
         buckets={{
           UNASSIGNED: buildBucketSlice({
@@ -173,13 +183,13 @@ describe('OperatorTodayTaskFeed', () => {
       />,
     );
 
-    expect(html).toContain('Unzugewiesen');
-    expect(html).toContain('Team-Queue');
+    expect(html).toContain(operatorTodayBucketTitle('en', 'UNASSIGNED'));
+    expect(html).toContain('Team queue');
     expect(html).toContain('Unzugewiesene Team-Aufgabe');
   });
 
   it('renders bucket error with retry in light markup', () => {
-    const html = renderToStaticMarkup(
+    const html = renderFeed(
       <OperatorTodayTaskFeed
         buckets={{
           NOW: buildBucketSlice({
@@ -207,8 +217,8 @@ describe('OperatorTodayTaskFeed', () => {
       />,
     );
 
-    expect(html).toContain('Jetzt erforderlich nicht verfügbar');
+    expect(html).toContain(operatorTodayFeedBucketUnavailableTitle('en', 'NOW'));
     expect(html).toContain('Netzwerkfehler');
-    expect(html).toContain('Erneut laden');
+    expect(html).toContain(operatorTodayFeedRetryLabel('en'));
   });
 });

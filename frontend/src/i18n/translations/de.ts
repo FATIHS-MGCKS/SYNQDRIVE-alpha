@@ -35,6 +35,7 @@ import { operatorBookingsCardDe } from './operator.bookings.card.de';
 import { operatorScanDe } from './operator.scan.de';
 import { operatorNavigationDe } from './operator.navigation.de';
 import { operatorShellTopChromeDe } from './operator.shellTopChrome.de';
+import { operatorTodayDe } from './operator.today.de';
 import { operatorMoreDe } from './operator.more.de';
 import { vendorsDirectoryDe } from './vendors.directory.de';
 import { supportOpsDe } from './support.ops.de';
@@ -5625,6 +5626,7 @@ export const de: Record<TranslationKey, string> = {
   ...operatorScanDe,
   ...operatorNavigationDe,
   ...operatorShellTopChromeDe,
+  ...operatorTodayDe,
   ...operatorMoreDe,
   ...vendorsDirectoryDe,
 } satisfies CompleteTranslationDictionary;
