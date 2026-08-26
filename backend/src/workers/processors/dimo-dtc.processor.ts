@@ -11,6 +11,7 @@ import { normalizeDtcSeverityBand } from '@modules/vehicle-intelligence/dtc/dtc-
 import type { VehicleHealthAdapterSource } from '@modules/notifications/adapters/notification-adapter.types';
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
+import { buildDtcPollJobId } from './dtc-poll-queue.util';
 
 // Supported job names on the DTC queue:
 //   dtc-poll         — legacy full-fleet scan (still works, but fans out)
@@ -67,7 +68,7 @@ export class DimoDtcProcessor extends WorkerHost {
         DTC_JOB_SINGLE,
         { vehicleId: vehicle.id, tokenId },
         {
-          jobId: `dtc-poll:${vehicle.id}:${pollBucket}`,
+          jobId: buildDtcPollJobId(vehicle.id, pollBucket),
           // Per-vehicle retention so a single flaky vehicle doesn't fill Redis.
           removeOnComplete: { count: 100, age: 24 * 3600 },
           removeOnFail: { count: 500, age: 7 * 24 * 3600 },

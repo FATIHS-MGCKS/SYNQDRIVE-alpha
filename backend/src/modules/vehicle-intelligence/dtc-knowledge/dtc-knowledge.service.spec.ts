@@ -1,4 +1,5 @@
 import { DtcKnowledgeService } from './dtc-knowledge.service';
+import { buildDtcKnowledgeGenericJobId } from './dtc-knowledge-queue.util';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 
 // Queue producers are gated on bootstrap Redis state — enable for unit tests.
@@ -104,7 +105,7 @@ describe('DtcKnowledgeService', () => {
     expect(queue.add).toHaveBeenCalledTimes(1);
     const [name, , opts] = queue.add.mock.calls[0];
     expect(name).toBe('DTC_GENERIC_ENRICHMENT');
-    expect(opts.jobId).toBe('generic:P0675:de');
+    expect(opts.jobId).toBe(buildDtcKnowledgeGenericJobId('P0675', 'de'));
     expect(dto.status).toBe('QUEUED');
     expect(dto.source).toBe('PENDING');
   });

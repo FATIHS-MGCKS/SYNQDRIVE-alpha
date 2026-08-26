@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'bullmq-v5-job-id-hardening-2026-08-26',
+    version: '4.9.960',
+    title: 'BullMQ v5 custom job ID hardening (repository-wide)',
+    summary: [
+      'Canonical invariant: no BullMQ custom jobId may contain `:` — use `sanitizeBullMqJobId()` or approved `__` delimiters.',
+      'Repaired AT_RISK producers: voice webhook, notification evaluation/delivery, payment email, task automation outbox, brake recalc, DTC poll fan-out, DTC knowledge enrichment.',
+      'Connectivity webhook producer remains on `connectivity-webhook__{inboxId}` (production fix preserved).',
+      'Regression contract: `bullmq-job-id.producers.spec.ts` + existing sanitizer specs.',
+    ],
+    reason: 'BullMQ v5 rejects colon-containing custom job IDs — connectivity enqueue failure proved systemic risk across other producers.',
+    previousBehavior: 'Several queues used `namespace:{id}` or `domain:{a}:{b}` BullMQ jobId patterns incompatible with BullMQ v5.',
+    details: 'architecture/BULLMQ_V5_JOB_ID_COMPATIBILITY_2026-08.md; shared/queue/bullmq-job-id.sanitizer.ts; *-queue.util.ts producers',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-26T09:30:00.000Z',
+  },
+  {
     id: 'fleet-health-evaluability-p0-4-2026-08-25',
     version: '4.9.959',
     title: 'P0.4 — Fleet Health evaluability consumer migration',

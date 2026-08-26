@@ -10,6 +10,14 @@ export type DeviceConnectionWebhookJobData = {
 
 export const DEVICE_CONNECTION_WEBHOOK_JOB_NAME = 'process';
 
+/** BullMQ-safe deterministic job id for connectivity webhook inbox processing. */
+export function buildDeviceConnectionWebhookJobId(inboxId: string, replay = false): string {
+  // BullMQ rejects custom job IDs containing ':' (v5+). Use '__' delimiters.
+  return replay
+    ? `connectivity-webhook-replay__${inboxId}__${Date.now()}`
+    : `connectivity-webhook__${inboxId}`;
+}
+
 @Injectable()
 export class DeviceConnectionWebhookQueueProducer {
   constructor(
@@ -18,10 +26,7 @@ export class DeviceConnectionWebhookQueueProducer {
   ) {}
 
   buildJobId(inboxId: string, replay = false): string {
-    // BullMQ rejects custom job IDs containing ':' (v5+). Use '__' delimiters.
-    return replay
-      ? `connectivity-webhook-replay__${inboxId}__${Date.now()}`
-      : `connectivity-webhook__${inboxId}`;
+    return buildDeviceConnectionWebhookJobId(inboxId, replay);
   }
 
   async enqueue(inboxId: string, replay = false): Promise<void> {
