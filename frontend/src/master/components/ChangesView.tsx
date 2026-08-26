@@ -141,6 +141,23 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-08-25T08:40:00.000Z',
   },
   {
+    id: 'connectivity-resolution-outbox-eventtype-map-2026-08-26',
+    version: '4.9.955',
+    title: 'Connectivity resolution outbox — Prisma eventType column mapping fix',
+    summary: [
+      'Root cause: Prisma schema missing @map("event_type") on DeviceConnectionEpisodeResolutionOutbox.eventType.',
+      'Production DDL already had event_type (migration 20260719130000); Prisma client queried non-existent eventType column.',
+      'Live KS MX driving recovery proved snapshot processing invoked but outbox create failed on every cycle.',
+      'Fix is schema-only — no Production DDL migration required.',
+    ],
+    reason: 'Unblock snapshot-based episode auto-RESOLVE after BullMQ enqueue repair.',
+    previousBehavior: 'DimoSnapshotProcessor skipped telemetry recovery with Prisma P2022 on outbox create.',
+    details: 'backend/prisma/schema.prisma DeviceConnectionEpisodeResolutionOutbox.eventType @map',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T12:20:00.000Z',
+  },
+  {
     id: 'connectivity-bullmq-jobid-enqueue-fix-2026-08-25',
     version: '4.9.954',
     title: 'Connectivity BullMQ enqueue fix — colon-safe job IDs',

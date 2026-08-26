@@ -233,6 +233,7 @@ DIMO `OBD_DEVICE_UNPLUGGED` webhooks flow: inbox (`RECEIVED`) → BullMQ `connec
 - Retry after partial failure must reconcile episode sync when `processed_at IS NULL` **and** `received_at >= CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER`.
 - Enqueue failure (intake or scheduler) marks inbox `RETRYABLE_FAILED` (not silent `RECEIVED` forever).
 - **BullMQ custom `jobId` must not contain `:`** (BullMQ v5+). Producer uses `connectivity-webhook__{inboxId}` (see `DeviceConnectionWebhookQueueProducer.buildJobId`). Shared sanitizer exists at `bullmq-job-id.sanitizer.ts` for other queues.
+- **Resolution outbox Prisma mapping:** `DeviceConnectionEpisodeResolutionOutbox.eventType` must use `@map("event_type")` to match migration DDL `20260719130000`.
 - Scheduler reconciles eligible orphan `processed_at IS NULL` events only; historical pre-cutover orphans are logged, not materialized.
 - **Historical reconciliation eligibility is enforced centrally at the lifecycle mutation boundary** (`ConnectivityLifecycleRuntimePolicyService`). Scheduler filtering is defense-in-depth.
 - **Runtime retry/reconciliation repairs current-pipeline partial failures. Historical pre-cutover evidence is never automatically materialized into episodes.**
