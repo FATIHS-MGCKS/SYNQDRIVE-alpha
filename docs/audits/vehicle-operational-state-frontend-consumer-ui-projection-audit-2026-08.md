@@ -857,11 +857,14 @@ Bridge: `buildFleetVehicleUiProjection()` → `mapVehicleOperationalUiProjection
 
 ### Remaining P1.5+ consumers
 
-- Dashboard runtime / Fleet Readiness KPIs
 - Booking picker `isVehicleOffline()` gate
 - Notifications offline generation
 - Master Admin redesign
 - Global legacy helper deletion
+
+### P1.5 stale docs corrected
+
+Dashboard Fleet Readiness marked migrated in §T. `architecture/VEHICLE_OPERATIONAL_STATE_DASHBOARD_CUTOVER_P1_5_2026-08.md` documents KPI domains and bypassed legacy paths.
 
 ### P1.3 stale docs corrected
 
@@ -902,6 +905,86 @@ Bridge: `buildFleetVehicleUiProjection()` → `mapVehicleOperationalUiProjection
 | i18n | `vehicleDetail.mapBadge.lastKnown`, `signalIssue`, `noTracking`, `acquiring` |
 
 P1.4 tests after hardening: **33/33**.
+
+---
+
+## T. P1.5 — Dashboard / Fleet Readiness Cutover
+
+| Field | Value |
+|-------|-------|
+| **Branch** | `cursor/vehicle-operational-state-p1-5-dashboard-readiness-90ec` |
+| **Baseline main** | `c943cba9` (P1.4 PR #1324 merged) |
+
+### KPI truth table (summary)
+
+| Scenario | Ready to Rent |
+|----------|---------------|
+| AVAILABLE + operational AVAILABLE + live/standby/SOFT_OFFLINE | YES |
+| AVAILABLE + NEEDS_VERIFICATION / UNKNOWN / UNAVAILABLE | NO |
+| ACTIVE_RENTED + OFFLINE | Active Rented YES |
+| MAINTENANCE business | Blocked/Maintenance YES |
+| DEVICE_UNPLUGGED / AUTHORIZATION_REQUIRED + AVAILABLE business | Not maintenance; attention/critical separate |
+| Legacy OFFLINE timestamp + canonical AVAILABLE | YES |
+| Fresh timestamp + canonical UNAVAILABLE | NO |
+
+### Old source vs new source
+
+| KPI | Before (P1.4) | After (P1.5) |
+|-----|---------------|--------------|
+| Ready to Rent | `deriveIsReadyForRenting()` blocked on `telemetryState === offline'` from `resolveTelemetryFreshness()` | `operationalAvailability === AVAILABLE` via `readDashboardOperationalAvailability()` |
+| Telemetry state | `resolveTelemetryFreshness()` + `onlineStatus`/timestamps | `connectivityRuntime.telemetryState` only |
+| Blocked/Maintenance | Included 48h telemetry offline hard block | Business maintenance/unavailable + explicit blocks + canonical UNAVAILABLE |
+| Critical Alerts | Runtime `criticalReasons` from mixed sources | Canonical attention CRITICAL/ACTION_REQUIRED + DEVICE_UNPLUGGED/INTEGRATION_ERROR/OFFLINE |
+
+### Legacy runtime paths bypassed
+
+- `resolveTelemetryFreshness()` — dashboard telemetry derivation removed
+- `addTelemetryReason()` — removed from `vehicleRuntimeStateBuilder`
+- `telemetrySoftOfflineHours` / `telemetryHardOfflineHours` / `telemetryOfflineBlockLevel` — removed from dashboard runtime input
+- `onlineStatus` / `lastSignal` age thresholds — not used for readiness on dashboard path
+
+### `vehicleRuntimeStateBuilder` / `rentalReadiness` authority
+
+Both remain as **thin adapters** over canonical projection fields — **not** independent timestamp state machines.
+
+### BusinessPulse
+
+Unchanged — finance/booking slice only.
+
+### Remaining P1.6+ consumers
+
+- Booking picker `isVehicleOffline()`
+- Notifications offline generation
+- `controlSignalsBuilder` / `derivePredictiveOperationsInsights` timestamp paths
+- Master Admin redesign
+- Global legacy helper deletion
+
+### Tests
+
+| Suite | Result |
+|-------|--------|
+| P1.5 focused | **28/28** |
+| Dashboard runtime bundle | **193/193** |
+| P1.4 regression | **33/33** |
+| P1.3 regression | **45/45** |
+| P1.2 regression | **67/67** |
+| P1.1 regression | **29/29** |
+| Build/typecheck | **PASS** |
+
+### P1.5 gates
+
+| Gate | Status |
+|------|--------|
+| P1.5 DASHBOARD CUTOVER | **PASS** |
+| READY-TO-RENT CANONICAL | **PASS** |
+| BUSINESS / OPERATIONAL SEPARATION | **PASS** |
+| NO CLIENT TIMESTAMP READINESS STATE MACHINE | **PASS** |
+| CRITICAL ALERT SEMANTICS | **PASS** |
+| COUNT / CLICK-THROUGH CONSISTENCY | **PASS** |
+| P1.1–P1.4 REGRESSION | **PASS** |
+| P1.6 READY | **YES** |
+
+**STOP.** P1.6 not started.
 
 ---
 

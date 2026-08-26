@@ -4,11 +4,6 @@ import type {
   InsightSeverity,
 } from '../../../DashboardInsightsContext';
 import type { VehicleData } from '../../../data/vehicles';
-import {
-  resolveTelemetryFreshness,
-  type TelemetryFreshness,
-  type TelemetryFreshnessInput,
-} from '../../../lib/telemetryFreshness';
 import type { PickupTileItem, ReturnTileItem } from '../../StatInlineDetail';
 import { mapCanonicalOperationalStatusToRuntime } from '../../../lib/fleet-map-vehicle-selectors';
 import {
@@ -25,6 +20,12 @@ import {
   type VehicleOperationalReadModel,
   type VehicleOperationalStatus as CanonicalOperationalStatus,
 } from '../../../lib/vehicle-operational-state';
+import {
+  addCanonicalConnectivityAttentionReasons,
+  addCanonicalOperationalAvailabilityReasons,
+  deriveDashboardTelemetryState,
+  readDashboardOperationalAvailability,
+} from './dashboard-operational-readiness';
 import {
   buildNextBookingInfoReason,
   deriveIsReadyForRenting,
@@ -54,10 +55,6 @@ import type {
 
 const MS_MINUTE = 60_000;
 const DEFAULT_DUE_SOON_MINUTES = 60;
-/** @deprecated Thresholds are fixed in `telemetryFreshness.ts` — kept for call-site compatibility. */
-const DEFAULT_SOFT_OFFLINE_HOURS = 24;
-/** @deprecated Thresholds are fixed in `telemetryFreshness.ts` — kept for call-site compatibility. */
-const DEFAULT_HARD_OFFLINE_HOURS = 48;
 
 /** Canonical backend operational read-model consumed by the runtime builder. */
 export interface VehicleRuntimeOperationalBlock {
@@ -145,19 +142,6 @@ export function resolveVehicleRuntimeOperationalBlock(
   };
 }
 
-type VehicleTelemetryTimestampFields = VehicleData &
-  TelemetryFreshnessInput & {
-    lastSeen?: string | null;
-    lastSeenAt?: string | null;
-    lastSnapshotAt?: string | null;
-    telemetryUpdatedAt?: string | null;
-    latestTelemetryAt?: string | null;
-    providerObservedAt?: string | null;
-    lastValidTelemetryAt?: string | null;
-    receivedAt?: string | null;
-    latestStateUpdatedAt?: string | null;
-  };
-
 export interface RentalBlockingServiceCaseRef {
   id: string;
   title: string;
@@ -178,9 +162,6 @@ export interface BuildVehicleRuntimeStatesInput {
   now?: Date;
   locale?: string;
   dueSoonMinutes?: number;
-  telemetrySoftOfflineHours?: number;
-  telemetryHardOfflineHours?: number;
-  telemetryOfflineBlockLevel?: Exclude<RentalBlockLevel, 'none'> | 'none';
 }
 
 function parseTimeMs(iso: string | null | undefined): number | null {
@@ -189,49 +170,9 @@ function parseTimeMs(iso: string | null | undefined): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-function toTelemetryFreshnessInput(vehicle: VehicleTelemetryTimestampFields): TelemetryFreshnessInput {
-  return {
-    signalAgeMs: vehicle.signalAgeMs,
-    lastSignal: vehicle.lastSignal,
-    providerObservedAt:
-      vehicle.providerObservedAt ?? vehicle.lastSeenAt ?? vehicle.lastSnapshotAt ?? null,
-    lastValidTelemetryAt:
-      vehicle.lastValidTelemetryAt ?? vehicle.latestTelemetryAt ?? vehicle.telemetryUpdatedAt ?? null,
-    receivedAt: vehicle.receivedAt ?? null,
-    latestStateUpdatedAt: vehicle.latestStateUpdatedAt ?? vehicle.lastSeen ?? null,
-    onlineStatus: vehicle.onlineStatus ?? null,
-  };
-}
-
-function mapTelemetryFreshnessToConnectionState(
-  freshness: TelemetryFreshness,
-): TelemetryConnectionState {
-  switch (freshness) {
-    case 'live':
-      return 'live';
-    case 'standby':
-      return 'standby';
-    case 'signal_delayed':
-      return 'soft_offline';
-    case 'offline':
-      return 'offline';
-    case 'no_signal':
-    default:
-      return 'unknown';
-  }
-}
-
-/** Canonical telemetry connection state — delegates to `telemetryFreshness.ts` (VW-F-005). */
-export function deriveTelemetryState(
-  vehicle: VehicleData,
-  now: Date,
-  _softOfflineHours: number = DEFAULT_SOFT_OFFLINE_HOURS,
-  _hardOfflineHours: number = DEFAULT_HARD_OFFLINE_HOURS,
-): TelemetryConnectionState {
-  const freshness = resolveTelemetryFreshness(toTelemetryFreshnessInput(vehicle), {
-    now: now.getTime(),
-  });
-  return mapTelemetryFreshnessToConnectionState(freshness.freshness);
+/** Canonical telemetry connection state — P1.5 dashboard uses connectivityRuntime only. */
+export function deriveTelemetryState(vehicle: VehicleData, _now?: Date): TelemetryConnectionState {
+  return deriveDashboardTelemetryState(vehicle);
 }
 
 function vehicleDisplayName(vehicle: VehicleData): string {
@@ -498,49 +439,6 @@ function addHealthReasons(input: {
   }
 }
 
-function addTelemetryReason(input: {
-  target: RuntimeReason[];
-  telemetryState: TelemetryConnectionState;
-  locale: string;
-  offlineBlockLevel: BuildVehicleRuntimeStatesInput['telemetryOfflineBlockLevel'];
-}): void {
-  const de = input.locale === 'de';
-  if (input.telemetryState === 'soft_offline') {
-    addReason(
-      input.target,
-      createRuntimeReason({
-        category: 'telemetry',
-        severity: 'warning',
-        title: de ? 'Signal verzögert' : 'Signal delayed',
-        description: de
-          ? 'Der letzte Telemetrie-Snapshot liegt mehr als 24 Stunden zurück.'
-          : 'The latest telemetry snapshot is older than 24 hours.',
-        source: 'telemetry',
-        blocking: false,
-        preventsReady: false,
-      }),
-    );
-  }
-
-  if (input.telemetryState === 'offline') {
-    const blocks = input.offlineBlockLevel !== 'none';
-    addReason(
-      input.target,
-      createRuntimeReason({
-        category: 'telemetry',
-        severity: 'critical',
-        title: 'Offline',
-        description: de
-          ? 'Der letzte Telemetrie-Snapshot liegt mindestens 48 Stunden zurück.'
-          : 'The latest telemetry snapshot is at least 48 hours old.',
-        source: 'telemetry',
-        blocking: blocks,
-        preventsReady: true,
-      }),
-    );
-  }
-}
-
 function addBookingReasons(input: {
   target: RuntimeReason[];
   bookingState: BookingRuntimeState;
@@ -743,6 +641,7 @@ function buildRuntimeState(input: {
   const isReadyToRent = deriveIsReadyForRenting({
     operationalBlock: input.operationalBlock,
     operationalStatus: input.operationalBlock.operationalStatus,
+    operationalAvailability: readDashboardOperationalAvailability(input.vehicle),
     cleaningStatus: input.vehicle.cleaningStatus,
     blockLevel,
     reasons,
@@ -801,17 +700,11 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
   const blockedVehicleIds = input.blockedVehicleIds ?? new Set<string>();
   const rentalBlockingServiceCases = input.rentalBlockingServiceCases ?? new Map();
   const healthRiskVehicleIds = input.healthRiskVehicleIds ?? new Set<string>();
-  const telemetryOfflineBlockLevel = input.telemetryOfflineBlockLevel ?? 'hard_blocked';
 
   return input.fleetVehicles.map((vehicle) => {
     const operationalBlock = resolveVehicleRuntimeOperationalBlock(vehicle);
     const operationalStatus = operationalBlock.operationalStatus;
-    const telemetryState = deriveTelemetryState(
-      vehicle,
-      now,
-      input.telemetrySoftOfflineHours ?? DEFAULT_SOFT_OFFLINE_HOURS,
-      input.telemetryHardOfflineHours ?? DEFAULT_HARD_OFFLINE_HOURS,
-    );
+    const telemetryState = deriveTelemetryState(vehicle, now);
     const bookingState = deriveBookingState({
       vehicle,
       operationalStatus,
@@ -904,13 +797,9 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
       health,
       healthRisk: healthRiskVehicleIds.has(vehicle.id),
     });
+    addCanonicalOperationalAvailabilityReasons({ target: reasons, vehicle, locale });
+    addCanonicalConnectivityAttentionReasons({ target: reasons, vehicle, locale });
     addInsightReasons({ target: reasons, vehicle, insights });
-    addTelemetryReason({
-      target: reasons,
-      telemetryState,
-      locale,
-      offlineBlockLevel: telemetryOfflineBlockLevel,
-    });
     addBookingReasons({ target: reasons, bookingState, locale });
 
     const nextBooking = operationalBlock.bookingContext.nextBooking;
@@ -922,8 +811,7 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
       if (
         reason.blocking === true &&
         reason.severity === 'critical' &&
-        (isHardBlockingCategory(reason.category) ||
-          (reason.category === 'telemetry' && telemetryOfflineBlockLevel === 'hard_blocked'))
+        isHardBlockingCategory(reason.category)
       ) {
         hardBlockReasonIds.add(reason.id);
       }
