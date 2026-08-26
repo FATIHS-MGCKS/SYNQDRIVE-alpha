@@ -36,6 +36,68 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-consent-ledger-backfill-phase1-2-2026-08-26',
+    version: '4.9.963',
+    title: 'DIMO consent ledger backfill — Phase 1.2 transactional consistency hardening',
+    summary: [
+      'Authoritative apply gate moved inside DB transaction: tx-local fleet identity + target re-reads before any write.',
+      'All mutation targets validated before first CREATE/WIRE; stale pre-transaction snapshots no longer authorize writes.',
+      'NOOP + WIRE_CONSENT_ID apply path wires existing ACTIVE consent without creating duplicate rows.',
+      'Explicit apply counters: createdConsents, wiredConsentIds, mutatedVehicles, noopVehicles.',
+      'Post-write cardinality verification for ACTIVE consent count, link count, and FK wiring inside transaction.',
+      '7 concurrency regression tests added (18 total). Production re-dry-run PASS (NO --apply).',
+    ],
+    reason:
+      'Independent review found TOCTOU gap between pre-transaction preflight and mutation, plus silent skip of existing-consent wire-only plans.',
+    previousBehavior:
+      'Apply used pre-transaction snapshots for write authorization; WIRE-only plans were excluded from apply mutation set.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Connectivity',
+    createdAt: '2026-08-26T15:15:00.000Z',
+  },
+  {
+    id: 'dimo-consent-ledger-backfill-phase1-1-2026-08-26',
+    version: '4.9.962',
+    title: 'DIMO consent ledger backfill — Phase 1.1 apply-path hardening',
+    summary: [
+      'Fixed tautological org identity check: vehicle.organizationId must match requested org scope.',
+      'Apply-time full identity revalidation inside transaction before CREATE (link, token, dimoVehicleId, consent cardinality).',
+      'Exactly-one active DIMO link invariant; zero ACTIVE consents before CREATE; unexpected link.consentId → CONFLICT.',
+      'Atomic 3-target apply: preflight all targets, single DB transaction for CREATE+WIRE, rollback on any failure (partialWritePossible=false).',
+      '14 focused regression tests; production re-dry-run with --shadow (NO --apply).',
+    ],
+    reason:
+      'Phase 1 forensic accepted but APPLY not yet authorized. Harden apply path before operator approval with atomic all-or-nothing semantics for KS trio repair.',
+    previousBehavior:
+      'Apply path lacked meaningful cross-org assertion, per-vehicle transactions, and apply-time identity revalidation against dry-run plan.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Connectivity',
+    createdAt: '2026-08-26T15:00:00.000Z',
+  },
+  {
+    id: 'dimo-consent-ledger-backfill-phase1-2026-08-26',
+    version: '4.9.961',
+    title: 'DIMO per-vehicle consent ledger backfill — Phase 1 dry-run (KS trio)',
+    summary: [
+      'Read-only production forensic + dry-run for missing vehicle_provider_consents on KS FH 660E, KS MS 661, KS MX 2024.',
+      'Canonical contract traced via VehicleProviderConsentService.recordDimoConsent(); HMÜ C 215 used as reference.',
+      'Dry-run plans exactly 3 CREATE + 3 link.consentId WIRE; HMÜ + WOB vehicles NOOP; 0 CONFLICT.',
+      'Shadow counterfactual: providerLinkState REAUTH_REQUIRED → ACTIVE; P0.2 NEEDS_VERIFICATION → AVAILABLE; telemetry unchanged.',
+      'Ops script: backend/scripts/ops/backfill-dimo-vehicle-provider-consents.ts (--dry-run default, --apply gated).',
+      'Audit: docs/audits/dimo-vehicle-provider-consent-backfill-phase1-2026-08.md — APPLY READY YES, production mutations NONE.',
+    ],
+    reason:
+      'DIMO VehicleDataSourceLink backfill succeeded for all six org vehicles, but three KS vehicles never received per-vehicle consent rows at registration. ProviderLinkStateBuilder correctly surfaces CONSENT_MISSING despite live telemetry.',
+    previousBehavior:
+      'KS FH/MS/MX: active DIMO link + CONNECTED telemetry + ACTIVE org auth, but providerLinkState=REAUTH_REQUIRED and P0.2 NEEDS_VERIFICATION.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Connectivity',
+    createdAt: '2026-08-26T14:35:00.000Z',
+  },
+  {
     id: 'bullmq-v5-job-id-global-hardening-2026-08-26',
     version: '4.9.960',
     title: 'Global BullMQ v5 custom jobId hardening',
