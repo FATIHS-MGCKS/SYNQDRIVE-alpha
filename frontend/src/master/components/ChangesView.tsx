@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-production-cutover-stage1-2026-08-26',
+    version: '4.9.966',
+    title: 'Battery V2 — Stage 1 production cutover (canonical processing, publication gated)',
+    summary: [
+      'Fail-open canonical LV REST bridge; legacy onSnapshot continues if FSM throws.',
+      'isLvRestShadowModeActive = REST pipeline on AND publication off.',
+      'Legacy rest capture gated; disabled automatically when publication authority active.',
+      'Stage 1 prod flags: REST_SHADOW=true, PUBLICATION=false, READINESS=false.',
+      'Publication/readiness blocked until LIVE_VOLTAGE canonical ingestion fixed.',
+    ],
+    reason:
+      'Shadow validation complete; canonical pipeline must run in production without dual-authority publication.',
+    previousBehavior:
+      'REST_SHADOW meant shadow-only measurements always; bridge failure blocked legacy path.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T19:50:00.000Z',
+  },
+  {
     id: 'battery-v2-lv-rest-fsm-wiring-phase1-2026-08-26',
     version: '4.9.965',
     title: 'Battery V2 — canonical LV REST FSM wired to observation classify (Phase 1)',

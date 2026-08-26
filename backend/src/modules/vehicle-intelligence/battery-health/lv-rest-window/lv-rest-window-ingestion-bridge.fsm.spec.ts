@@ -12,6 +12,7 @@ import { LvRestWindowIngestionBridgeService } from './lv-rest-window-ingestion-b
 
 jest.mock('@config/battery-health-v2.config', () => ({
   isBatteryV2RestShadowEnabled: jest.fn().mockReturnValue(true),
+  isBatteryV2PublicationEnabled: jest.fn().mockReturnValue(false),
 }));
 
 const ORG = 'org-1';

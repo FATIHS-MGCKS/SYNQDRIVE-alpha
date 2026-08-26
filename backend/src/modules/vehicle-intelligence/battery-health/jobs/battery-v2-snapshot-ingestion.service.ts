@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { isBatteryV2HvFallbackChargeSessionEnabled, isBatteryV2HvRechargeSessionEnabled } from '@config/battery-health-v2.config';
+import { isBatteryV2HvFallbackChargeSessionEnabled, isBatteryV2HvRechargeSessionEnabled, isBatteryV2LegacyRestCaptureEnabled } from '@config/battery-health-v2.config';
 import type { HvBatterySignalObservedAt } from '../../../dimo/mappers/dimo-battery-signal.mapper';
 import { BatteryV2Service } from '../battery-v2.service';
 import { HvFallbackChargeSessionDetectorService } from '../hv-charge-session/hv-fallback-charge-session-detector.service';
@@ -78,9 +78,13 @@ export class BatteryV2SnapshotIngestionService {
       payload.organizationId,
       payload.vehicleId,
       ctx,
-    );
+    ).catch((err) => {
+      this.logger.warn(
+        `Canonical LV REST bridge failed (legacy path continues): vehicle=${payload.vehicleId} error=${(err as Error).message}`,
+      );
+    });
 
-    if (ctx.lvBatteryVoltage != null) {
+    if (ctx.lvBatteryVoltage != null && isBatteryV2LegacyRestCaptureEnabled()) {
       const capture = await this.batteryV2.onSnapshot(
         payload.vehicleId,
         ctx.lvBatteryVoltage,

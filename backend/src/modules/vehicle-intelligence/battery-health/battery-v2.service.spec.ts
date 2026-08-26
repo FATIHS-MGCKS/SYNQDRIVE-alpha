@@ -1,6 +1,8 @@
 import { BatteryV2Service } from './battery-v2.service';
 import {
   BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV,
+  BATTERY_V2_PUBLICATION_ENABLED_ENV,
+  BATTERY_V2_REST_SHADOW_ENABLED_ENV,
   BATTERY_V2_START_PROXY_ENV,
 } from '../../../config/battery-health-v2.config';
 
@@ -209,5 +211,13 @@ describe('BatteryV2Service crank deprecation', () => {
     expect(result.restCaptured).toBe(true);
     expect(result.capturedAt).toEqual(sampleAt);
     expect(recomputeSpy).not.toHaveBeenCalled();
+  });
+
+  it('skips legacy rest capture when canonical publication authority is active', async () => {
+    process.env[BATTERY_V2_REST_SHADOW_ENABLED_ENV] = 'true';
+    process.env[BATTERY_V2_PUBLICATION_ENABLED_ENV] = 'true';
+    const { svc } = buildService();
+    const result = await svc.onSnapshot('veh-1', 12.5, new Date());
+    expect(result.restCaptured).toBe(false);
   });
 });

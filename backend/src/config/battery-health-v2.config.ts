@@ -25,8 +25,18 @@ export const BATTERY_V2_START_PROXY_ENV = 'BATTERY_V2_START_PROXY_ENABLED';
 export const BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENV =
   'BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENABLED';
 
-/** Prompt 35 flag — REST_60M/REST_6H shadow capture only (default OFF). */
+/**
+ * Canonical LV REST pipeline (FSM sessions, REST target jobs).
+ * Historically named REST_SHADOW — when true, canonical ingestion runs.
+ * Measurement shadow semantics are gated separately via publication flag.
+ */
 export const BATTERY_V2_REST_SHADOW_ENABLED_ENV = 'BATTERY_V2_REST_SHADOW_ENABLED';
+
+/** Reconciliation scheduler (default ON). */
+export const BATTERY_V2_RECONCILIATION_ENABLED_ENV = 'BATTERY_V2_RECONCILIATION_ENABLED';
+
+/** Optional DLQ replay during reconciliation ticks (default OFF). */
+export const BATTERY_V2_DLQ_REPLAY_ENABLED_ENV = 'BATTERY_V2_DLQ_REPLAY_ENABLED';
 
 /** Prompt 44 flag — LV Battery Health V2 publication pipeline (default OFF). */
 export const BATTERY_V2_PUBLICATION_ENABLED_ENV = 'BATTERY_V2_PUBLICATION_ENABLED';
@@ -122,7 +132,7 @@ export function getBatteryCapabilityDegradedGraceMs(): number {
 }
 
 export function isBatteryV2ReconciliationEnabled(): boolean {
-  return parseBooleanEnv(process.env.BATTERY_V2_RECONCILIATION_ENABLED, true);
+  return parseBooleanEnv(process.env[BATTERY_V2_RECONCILIATION_ENABLED_ENV], true);
 }
 
 export function isLegacyCrankAssessmentEnabled(): boolean {
@@ -142,6 +152,24 @@ export function isLegacyHvPairwiseCapacityAssessmentEnabled(): boolean {
 
 export function isBatteryV2RestShadowEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_REST_SHADOW_ENABLED_ENV], false);
+}
+
+/** Alias: canonical LV REST FSM + REST target scheduling enabled. */
+export const isBatteryV2CanonicalRestPipelineEnabled = isBatteryV2RestShadowEnabled;
+
+/**
+ * Legacy `battery_features` rest capture (60m/6h) + legacy assessment enqueue.
+ * Disabled when canonical pipeline + publication are both active (single authority).
+ */
+export function isBatteryV2LegacyRestCaptureEnabled(): boolean {
+  if (!isBatteryV2RestShadowEnabled()) {
+    return true;
+  }
+  return !isBatteryV2PublicationEnabled();
+}
+
+export function isBatteryV2DlqReplayEnabled(): boolean {
+  return parseBooleanEnv(process.env[BATTERY_V2_DLQ_REPLAY_ENABLED_ENV], false);
 }
 
 export function isBatteryV2PublicationEnabled(): boolean {
@@ -243,6 +271,8 @@ export default registerAs('batteryHealthV2', () => ({
   capabilityDegradedGraceMs: getBatteryCapabilityDegradedGraceMs(),
   rest60mDelayMs: getBatteryRest60mDelayMs(),
   rest6hDelayMs: getBatteryRest6hDelayMs(),
+  canonicalRestPipelineEnabled: isBatteryV2CanonicalRestPipelineEnabled(),
+  legacyRestCaptureEnabled: isBatteryV2LegacyRestCaptureEnabled(),
   restShadowEnabled: isBatteryV2RestShadowEnabled(),
   publicationEnabled: isBatteryV2PublicationEnabled(),
   hvRechargeSessionEnabled: isBatteryV2HvRechargeSessionEnabled(),

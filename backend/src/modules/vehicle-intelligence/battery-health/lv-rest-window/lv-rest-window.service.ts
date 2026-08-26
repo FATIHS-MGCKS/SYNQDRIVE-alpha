@@ -3,6 +3,7 @@ import {
   BatteryMeasurementSession,
   BatteryMeasurementSessionStatus,
   BatteryMeasurementSessionType,
+  BatteryMeasurementQuality,
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -30,6 +31,7 @@ import {
   readLvRestWindowSessionMetadata,
 } from './lv-rest-window-target.metadata';
 import type { LvRestWindowEvent, LvRestWindowSignalContext } from './lv-rest-window.types';
+import { isLvRestShadowModeActive } from './lv-rest-shadow.policy';
 
 @Injectable()
 export class LvRestWindowStateMachineService {
@@ -92,6 +94,9 @@ export class LvRestWindowStateMachineService {
         sourceEntityType: 'trip',
         sourceEntityId: next.tripId,
         metadata,
+        quality: isLvRestShadowModeActive()
+          ? BatteryMeasurementQuality.SHADOW
+          : BatteryMeasurementQuality.VALID,
       });
       if (this.metrics && transition.reason === 'opened_candidate') {
         recordBatteryRestWindow(this.metrics, {

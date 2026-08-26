@@ -51,6 +51,15 @@ describe('BatteryV2SnapshotIngestionService', () => {
     return { service, batteryV2, jobProducer, deadLetters, lvRestBridge };
   }
 
+  it('continues legacy onSnapshot when canonical bridge throws (fail-open)', async () => {
+    const { service, batteryV2, lvRestBridge } = buildService();
+    lvRestBridge.processObservationCycle.mockRejectedValue(new Error('fsm failed'));
+
+    await service.ingestObservationClassify(basePayload as any);
+
+    expect(batteryV2.onSnapshot).toHaveBeenCalled();
+  });
+
   it('enqueues LV assessment recompute after rest capture (B-01)', async () => {
     const { service, jobProducer } = buildService();
 
