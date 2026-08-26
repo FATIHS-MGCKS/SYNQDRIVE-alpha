@@ -236,9 +236,21 @@ npx ts-node -r tsconfig-paths/register scripts/ops/backfill-dimo-vehicle-provide
 
 | Verdict | Result |
 |---------|--------|
-| PRE-APPLY HARDENING | *(see final report)* |
-| CONSENT LEDGER DRY-RUN | *(see final report)* |
-| ATOMIC APPLY READY | *(see final report)* |
+| PRE-APPLY HARDENING | **PASS** |
+| CONSENT LEDGER DRY-RUN | **PASS** (CREATE=3, WIRE=3, CONFLICT=0, SKIP=0) |
+| ATOMIC APPLY READY | **YES** |
 | PRODUCTION MUTATIONS | **NONE** |
+
+**HEAD SHA:** `7e25f721d67418f2f31aa1d11040b29267ceadbd`
+
+**Production dry-run (2026-08-26T15:03Z, runId `dimo-consent-backfill-prod-2026-08-26-phase1-1`):**
+
+| Vehicle | CREATE | Shadow providerLink | Shadow P0.2 | Telemetry | Physical |
+|---------|--------|---------------------|-------------|-----------|----------|
+| KS FH 660E | yes | ACTIVE | AVAILABLE | standby (unchanged) | PLUGGED_INFERRED |
+| KS MS 661 | yes | ACTIVE | AVAILABLE | standby (unchanged) | PLUGGED_INFERRED |
+| KS MX 2024 | yes | ACTIVE | AVAILABLE | standby (unchanged) | PLUGGED_INFERRED |
+
+`atomicApply: true`, `partialWritePossible: false`, `applied: 0`.
 
 **STOP** — await explicit operator approval before `--apply`.
