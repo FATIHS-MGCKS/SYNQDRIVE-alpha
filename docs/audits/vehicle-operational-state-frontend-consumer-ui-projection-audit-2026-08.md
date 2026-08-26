@@ -806,6 +806,105 @@ Fleet store mapper no longer calls `normalize*()` helpers that coerce unrecogniz
 
 ---
 
+## S. P1.4 implementation — Vehicle Detail header / connectivity cutover (2026-08-26)
+
+| Field | Value |
+|-------|-------|
+| **Phase** | P1.4 — Vehicle Detail header + connectivity presentation |
+| **Branch** | `cursor/vehicle-operational-state-p1-4-vehicle-detail-90ec` |
+| **Baseline main** | `df674776` (P1.3 merged #1320) |
+
+### Detail consumers migrated
+
+| File | Migration |
+|------|-----------|
+| `VehicleDetailHeaderBadges.tsx` | `VehicleConnectionBadge` + `VehicleHealthChip` use P1.2 projection |
+| `VehicleDetailHeader.tsx` | Readiness chip passes `uiProjection` to `resolveFleetVehicleDisplayState` |
+| `OverviewLiveMapCard.tsx` | Map tracking badge from `resolveVehicleDetailMapTrackingBadge` |
+| `vehicle-detail-operational-display.ts` | New detail bridge (connectivity + cross-surface helpers) |
+| `vehicles.ts` | `connectivityRuntime?` on `VehicleData` type |
+
+### Canonical input source
+
+`selectedVehicle` from fleet-map store (`GET /organizations/:orgId/fleet-map`) — fields:
+
+- `connectivityRuntime` (P0.1)
+- `operationalAvailability` (P0.3)
+- `healthEvaluation` (P0.4)
+
+Bridge: `buildFleetVehicleUiProjection()` → `mapVehicleOperationalUiProjection(audience: org_admin)`.
+
+### Legacy timestamp rules removed/bypassed (Vehicle Detail only)
+
+- `VehicleConnectionBadge` no longer calls `resolveTelemetryFreshness({ lastSignal, onlineStatus })`
+- No 24h/48h client operational derivation in header connectivity path
+- Informational last-data text via `formatLastTelemetry(connectivityRuntime.lastTelemetryAt)` only
+
+### Badge semantics
+
+| Badge | Authority |
+|-------|-----------|
+| Readiness / availability | `ui.availability` |
+| Connection | `ui.connectivity` (+ critical `overallState` precedence) |
+| Health | `ui.health` evaluability + condition |
+
+### Expected visible changes
+
+- STANDBY + old `lastSeenAt` → Standby/Verfügbar, not Offline
+- `AUTHORIZATION_REQUIRED` overrides legacy ONLINE
+- `NOT_EVALUABLE` / `PARTIALLY_EVALUABLE` → evaluability labels, not Gut
+- Fleet row / map HUD / detail header agree on canonical state
+
+### Remaining P1.5+ consumers
+
+- Dashboard runtime / Fleet Readiness KPIs
+- Booking picker `isVehicleOffline()` gate
+- Notifications offline generation
+- Master Admin redesign
+- Global legacy helper deletion
+
+### P1.3 stale docs corrected
+
+`architecture/VEHICLE_OPERATIONAL_STATE_FLEET_CONSUMER_CUTOVER_P1_3_2026-08.md` canonical path updated to `mapFleetStoreVehicleToCanonicalVehicleOperationalView()` (removed `vehicleDataToFleetMapResponse()` round-trip reference).
+
+### Tests
+
+| Suite | Result |
+|-------|--------|
+| P1.4 focused | **33/33** |
+| P1.3 regression | **45/45** |
+| P1.2 regression | **67/67** |
+| P1.1 regression | **29/29** |
+| Vehicle detail bundle | **185/185** |
+| Build/typecheck | **PASS** |
+
+### P1.4 gates
+
+| Gate | Status |
+|------|--------|
+| P1.4 VEHICLE DETAIL CUTOVER | **PASS** |
+| NO LOCAL TIMESTAMP OPERATIONAL DERIVATION | **PASS** |
+| NO LEGACY ONLINESTATUS AUTHORITY | **PASS** |
+| CANONICAL REASON/ACTION | **PASS** |
+| HEALTH EVALUABILITY SEMANTICS | **PASS** |
+| CROSS-SURFACE CONSISTENCY | **PASS** |
+| P1.1/P1.2/P1.3 REGRESSION | **PASS** |
+| P1.5 READY | **YES** |
+
+**STOP.** P1.5 not started.
+
+### S.1 P1.4 semantic hardening (PR #1324 follow-up)
+
+| Fix | Detail |
+|-----|--------|
+| Map position vs connectivity | `resolveVehicleDetailMapTrackingBadge()` derives badge from `OverviewMapPositionMode` only — connectivity shown in header badge |
+| Critical visual tone | P1.2 `critical` tone maps to `--status-critical` in connection badge dot/label classes |
+| i18n | `vehicleDetail.mapBadge.lastKnown`, `signalIssue`, `noTracking`, `acquiring` |
+
+P1.4 tests after hardening: **33/33**.
+
+---
+
 ## Related architecture references
 
 - `architecture/VEHICLE_OPERATIONAL_STATE_PROVENANCE_2026-08.md`

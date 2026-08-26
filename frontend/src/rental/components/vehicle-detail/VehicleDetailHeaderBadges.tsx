@@ -1,7 +1,5 @@
 import { Icon } from '../ui/Icon';
 import { HealthStatusChip, StatusChip } from '../../../components/patterns';
-import { useVehicleLiveMapStore } from '../../stores/useVehicleLiveMapStore';
-import { resolveTelemetryFreshness } from '../../lib/telemetryFreshness';
 import { useEffectiveHealth } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
 import { useFleetObdPlugIndex } from '../../hooks/useFleetObdPlugIndex';
@@ -13,70 +11,63 @@ import {
   mapDataCoverageDisplay,
   mapHealthSeverityDisplay,
 } from './vehicle-health-display.mapper';
-import { useShallow } from 'zustand/react/shallow';
+import type { FleetProjectionVehicle } from '../../lib/fleet-vehicle-ui-projection';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  resolveVehicleDetailConnectivityPresentation,
+} from '../../lib/vehicle-detail-operational-display';
+import { resolveHealthDisplayFromUi } from '../../lib/fleet-p1-3-display';
+import { buildFleetVehicleUiProjection } from '../../lib/fleet-vehicle-ui-projection';
+import type { StatusTone } from '../../../components/patterns';
+
+function healthChipStateFromTone(
+  tone: StatusTone,
+  status: 'good' | 'warning' | 'critical' | 'unknown',
+): 'good' | 'warning' | 'critical' | 'unknown' | 'no_data' {
+  if (!status || status === 'unknown') return 'no_data';
+  if (status === 'good') return 'good';
+  if (status === 'warning') return 'warning';
+  if (status === 'critical') return 'critical';
+  if (tone === 'success') return 'good';
+  if (tone === 'watch' || tone === 'warning') return 'warning';
+  if (tone === 'critical') return 'critical';
+  return 'no_data';
+}
 
 export function VehicleConnectionBadge({
   compact = false,
-  vehicleId,
+  vehicle,
 }: {
   compact?: boolean;
-  vehicleId?: string | null;
+  vehicle: FleetProjectionVehicle;
 }) {
   const { orgId } = useRentalOrg();
+  const { locale, t } = useLanguage();
   const obdPlugByVehicleId = useFleetObdPlugIndex(orgId);
-  const { onlineStatus, lastSignal, boundVehicleId } = useVehicleLiveMapStore(
-    useShallow((state) => ({
-      onlineStatus: state.onlineStatus,
-      lastSignal: state.lastSignal,
-      boundVehicleId: state.boundVehicleId,
-    })),
-  );
-
-  const resolvedVehicleId = vehicleId ?? boundVehicleId;
+  const resolvedVehicleId = vehicle.id;
   const showObdUnplugged = resolvedVehicleId
     ? shouldShowObdUnpluggedBadge(obdPlugByVehicleId.get(resolvedVehicleId))
     : false;
 
-  const freshness = resolveTelemetryFreshness({ lastSignal, onlineStatus });
-  let timeAgo = '—';
-  if (freshness.signalAgeMs != null) {
-    const mins = Math.floor(freshness.signalAgeMs / 60000);
-    if (mins < 1) timeAgo = 'just now';
-    else if (mins < 60) timeAgo = `${mins}m ago`;
-    else {
-      const hrs = Math.floor(mins / 60);
-      if (hrs < 24) timeAgo = `${hrs}h ago`;
-      else timeAgo = `${Math.floor(hrs / 24)}d ago`;
-    }
-  }
-
-  const dotColor = freshness.isLive
-    ? 'text-[color:var(--status-positive)] fill-[color:var(--status-positive)] animate-online-pulse'
-    : freshness.isSignalDelayed
-      ? 'text-[color:var(--status-watch)] fill-[color:var(--status-watch)]'
-      : freshness.isStandby
-        ? 'text-muted-foreground fill-[color:var(--muted-foreground)]'
-        : 'text-muted-foreground fill-[color:var(--status-nodata)]';
-  const labelColor = freshness.isLive
-    ? 'text-[color:var(--status-positive)]'
-    : freshness.isSignalDelayed
-      ? 'text-[color:var(--status-watch)]'
-      : 'text-muted-foreground';
+  const connectivity = resolveVehicleDetailConnectivityPresentation(vehicle, {
+    locale: locale === 'en' ? 'en' : 'de',
+  });
+  const lastTelemetryCaption = t('fleetConnectivity.detail.lastTelemetry');
 
   if (compact) {
     return (
       <div
         className="inline-flex max-w-[52vw] flex-wrap items-center justify-end gap-1 sm:max-w-none"
-        title={`${freshness.label} · Last signal ${timeAgo}${showObdUnplugged ? ' · OBD unplugged' : ''}`}
+        title={`${connectivity.title}${showObdUnplugged ? ` · ${t('fleetConnectivity.physicalDevice.UNPLUGGED_CONFIRMED')}` : ''}`}
       >
         <div className="inline-flex max-w-full items-center gap-1 rounded-md surface-premium px-1.5 py-0.5">
-          <Icon name="circle" className={`h-1.5 w-1.5 shrink-0 ${dotColor}`} />
-          <span className={`truncate text-[9.5px] font-semibold leading-none ${labelColor}`}>
-            {freshness.shortLabel}
+          <Icon name="circle" className={`h-1.5 w-1.5 shrink-0 ${connectivity.dotColorClass}`} />
+          <span className={`truncate text-[9.5px] font-semibold leading-none ${connectivity.labelColorClass}`}>
+            {connectivity.shortLabel}
           </span>
           <span className="text-[9px] text-muted-foreground/70">·</span>
           <span className="truncate text-[9.5px] font-bold tabular-nums leading-none text-foreground">
-            {timeAgo}
+            {connectivity.lastDataLabel}
           </span>
         </div>
         {showObdUnplugged ? <ObdUnpluggedBadge /> : null}
@@ -89,15 +80,17 @@ export function VehicleConnectionBadge({
     <div className="flex flex-wrap items-center justify-end gap-1.5">
       <div className="flex items-center gap-2 rounded-md surface-premium px-2.5 py-1">
         <div className="flex items-center gap-1.5">
-          <Icon name="circle" className={`h-2 w-2 ${dotColor}`} />
-          <span className={`text-[10px] font-semibold tracking-[-0.003em] ${labelColor}`}>
-            {freshness.shortLabel}
+          <Icon name="circle" className={`h-2 w-2 ${connectivity.dotColorClass}`} />
+          <span className={`text-[10px] font-semibold tracking-[-0.003em] ${connectivity.labelColorClass}`}>
+            {connectivity.shortLabel}
           </span>
         </div>
         <div className="h-4 w-px bg-border" />
         <div className="flex items-center gap-1">
-          <span className="text-[10.5px] font-semibold text-muted-foreground">Last Signal</span>
-          <span className="text-[10.5px] font-bold tabular-nums text-foreground">{timeAgo}</span>
+          <span className="text-[10.5px] font-semibold text-muted-foreground">{lastTelemetryCaption}</span>
+          <span className="text-[10.5px] font-bold tabular-nums text-foreground">
+            {connectivity.lastDataLabel}
+          </span>
         </div>
       </div>
       {showObdUnplugged ? <ObdUnpluggedBadge className="text-[9.5px]" /> : null}
@@ -106,20 +99,27 @@ export function VehicleConnectionBadge({
   );
 }
 
-export function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
-  const { health, loading } = useEffectiveHealth(vehicleId);
+export function VehicleHealthChip({ vehicle }: { vehicle: FleetProjectionVehicle }) {
+  const { locale } = useLanguage();
+  const { health, loading } = useEffectiveHealth(vehicle.id ?? null);
+  const localeCode = locale === 'en' ? 'en' : 'de';
+
+  const canonicalHealth = vehicle.healthEvaluation
+    ? resolveHealthDisplayFromUi(buildFleetVehicleUiProjection(vehicle, { locale: localeCode }))
+    : null;
+
   const reasons: string[] = [];
   if (health?.rental_blocked && health.blocking_reasons.length > 0) {
     reasons.push(
       ...health.blocking_reasons.map((reason) =>
         formatUserFacingReasonLabel(
           { title: reason, category: 'rental', issueType: 'rental_blocked' },
-          'de',
+          localeCode,
         ),
       ),
     );
   }
-  if (health) {
+  if (health && canonicalHealth?.isEvaluable) {
     for (const [name, mod] of Object.entries(health.modules)) {
       if (mod.state === 'critical' || mod.state === 'warning') {
         reasons.push(
@@ -129,13 +129,25 @@ export function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
               source: `rental-health:${name}`,
               category: name === 'error_codes' ? 'dtc' : name,
             },
-            'de',
+            localeCode,
           ),
         );
       }
     }
   }
-  const title = reasons.join(' · ') || undefined;
+  const title = (canonicalHealth?.tooltip ?? reasons.join(' · ')) || undefined;
+
+  if (canonicalHealth) {
+    const chipState = healthChipStateFromTone(canonicalHealth.tone, canonicalHealth.status);
+    return (
+      <HealthStatusChip
+        state={chipState}
+        label={canonicalHealth.label}
+        icon={<Icon name="heart" className="h-3 w-3" />}
+        title={title}
+      />
+    );
+  }
 
   if (loading && !health) {
     return (

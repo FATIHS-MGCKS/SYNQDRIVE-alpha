@@ -3,12 +3,14 @@ import { LiquidGlassLens } from '../../../components/surface';
 import { cn } from '../../../components/ui/utils';
 import { useShallow } from 'zustand/react/shallow';
 import { LiveMapOverview } from '../LiveMapOverview';
-import type { VehicleData } from '../../data/vehicles';
 import { useVehicleLiveMapStore } from '../../stores/useVehicleLiveMapStore';
+import type { VehicleData } from '../../data/vehicles';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   deriveOverviewMapPosition,
   type OverviewMapPositionMode,
 } from '../../lib/overview-map-position';
+import { resolveVehicleDetailMapTrackingBadge } from '../../lib/vehicle-detail-operational-display';
 
 export interface OverviewLiveMapCardProps {
   selectedVehicle: VehicleData | null;
@@ -19,23 +21,12 @@ export interface OverviewLiveMapCardProps {
 function trackingBadge(
   mode: OverviewMapPositionMode,
   isLiveTracking: boolean,
+  locale: 'en' | 'de',
 ): { label: string; tone: 'live' | 'watch' | 'muted' } | null {
-  switch (mode) {
-    case 'livePosition':
-      return { label: 'Live', tone: 'live' };
-    case 'lastKnownPosition':
-      return { label: 'Last known', tone: 'watch' };
-    case 'staticPositionOnly':
-      return { label: 'Last known', tone: 'watch' };
-    case 'telemetryUnavailable':
-      return { label: 'Signal issue', tone: 'muted' };
-    case 'trackingUnavailable':
-      return { label: 'No tracking', tone: 'muted' };
-    case 'noPosition':
-      return isLiveTracking ? { label: 'Acquiring', tone: 'watch' } : null;
-    default:
-      return null;
-  }
+  return resolveVehicleDetailMapTrackingBadge(mode, {
+    locale,
+    isLiveTracking,
+  });
 }
 
 export function OverviewLiveMapCard({
@@ -43,6 +34,8 @@ export function OverviewLiveMapCard({
   orgId,
   isDarkMode,
 }: OverviewLiveMapCardProps) {
+  const { locale } = useLanguage();
+  const localeCode = locale === 'en' ? 'en' : 'de';
   const liveTelemetry = useVehicleLiveMapStore(
     useShallow((state) => ({
       boundVehicleId: state.boundVehicleId,
@@ -83,6 +76,7 @@ export function OverviewLiveMapCard({
   const statusBadge = trackingBadge(
     positionView.mode,
     positionView.isBoundToCurrentVehicle && liveTelemetry.isLiveTracking,
+    localeCode,
   );
 
   const stateColor =

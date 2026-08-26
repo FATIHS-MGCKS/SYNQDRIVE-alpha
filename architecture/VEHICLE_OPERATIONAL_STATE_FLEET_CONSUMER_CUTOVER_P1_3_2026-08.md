@@ -15,8 +15,7 @@ Cut over Fleet list row, map HUD, map marker tone, and fleet display helpers to 
 
 ```
 VehicleData (fleet-map store)
-  → vehicleDataToFleetMapResponse()
-  → mapFleetMapToCanonicalVehicleOperationalView()
+  → mapFleetStoreVehicleToCanonicalVehicleOperationalView()
   → mapVehicleOperationalUiProjection()
   → Fleet consumers (row / HUD / marker / display)
 ```

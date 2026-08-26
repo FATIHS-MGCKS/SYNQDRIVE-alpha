@@ -1504,6 +1504,10 @@ export const de: Record<TranslationKey, string> = {
   'vehicleDetail.stationModal.description':
     'Möchten Sie dieses Fahrzeug von {from} nach {to} verlegen? Der Standort wird im System aktualisiert.',
   'vehicleDetail.stationModal.confirm': 'Umsetzung bestätigen',
+  'vehicleDetail.mapBadge.lastKnown': 'Letzte Position',
+  'vehicleDetail.mapBadge.signalIssue': 'Signalproblem',
+  'vehicleDetail.mapBadge.noTracking': 'Kein Tracking',
+  'vehicleDetail.mapBadge.acquiring': 'Wird ermittelt',
 
   // ─── Bookings ───
   'bookings.title': 'Buchungen',

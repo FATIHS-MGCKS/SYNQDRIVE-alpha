@@ -12,6 +12,7 @@ import {
 import type { VehicleData } from '../../data/vehicles';
 import { useEffectiveHealth } from '../../FleetContext';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import { buildFleetVehicleUiProjection } from '../../lib/fleet-vehicle-ui-projection';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { VehicleOperationalStatusCallout } from '../fleet/VehicleOperationalStatusCallout';
@@ -67,6 +68,7 @@ function readinessChipFromDisplay(
   vehicle: VehicleData,
   rentalHealth: ReturnType<typeof useEffectiveHealth>['health'],
   locale: string,
+  t: ReturnType<typeof useLanguage>['t'],
 ): {
   label: string;
   tone: StatusTone;
@@ -75,6 +77,16 @@ function readinessChipFromDisplay(
   supplementDetail: string | null;
   statusBadge: ReturnType<typeof resolveFleetVehicleDisplayState>['statusBadge'];
 } {
+  const localeCode = locale === 'en' ? 'en' : 'de';
+  const uiProjection = buildFleetVehicleUiProjection(vehicle, { locale: localeCode });
+  const displayOptions = {
+    rentalHealth,
+    locale,
+    compact: false as const,
+    uiProjection,
+    t,
+  };
+
   if (vehicleStatus === 'Manual Block') {
     return {
       label: 'Manual Block',
@@ -82,7 +94,7 @@ function readinessChipFromDisplay(
       icon: <Icon name="x-circle" className="h-3 w-3" />,
       supplement: null,
       supplementDetail: null,
-      statusBadge: resolveFleetVehicleDisplayState(vehicle, { rentalHealth, locale }).statusBadge,
+      statusBadge: resolveFleetVehicleDisplayState(vehicle, displayOptions).statusBadge,
     };
   }
   if (vehicleStatus === 'Maintenance') {
@@ -92,15 +104,11 @@ function readinessChipFromDisplay(
       icon: <Icon name="wrench" className="h-3 w-3" />,
       supplement: null,
       supplementDetail: null,
-      statusBadge: resolveFleetVehicleDisplayState(vehicle, { rentalHealth, locale }).statusBadge,
+      statusBadge: resolveFleetVehicleDisplayState(vehicle, displayOptions).statusBadge,
     };
   }
 
-  const display = resolveFleetVehicleDisplayState(vehicle, {
-    rentalHealth,
-    locale,
-    compact: false,
-  });
+  const display = resolveFleetVehicleDisplayState(vehicle, displayOptions);
   const { statusBadge, bookingSupplement } = display;
 
   return {
@@ -138,10 +146,10 @@ export function VehicleDetailHeader({
   onRefreshOperationalStatus,
 }: VehicleDetailHeaderProps) {
   const isDarkMode = useDocumentDark();
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const { userRole, hasPermission } = useRentalOrg();
   const { health: rentalHealth } = useEffectiveHealth(vehicle.id ?? null);
-  const readinessChip = readinessChipFromDisplay(vehicleStatus, vehicle, rentalHealth, locale);
+  const readinessChip = readinessChipFromDisplay(vehicleStatus, vehicle, rentalHealth, locale, t);
   const title = `${vehicle.make ?? ''} ${vehicle.model} ${vehicle.year}`.trim();
   const brand = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
   const hasLicense = Boolean(vehicle.license);
@@ -206,7 +214,7 @@ export function VehicleDetailHeader({
             </div>
 
             <div className="shrink-0 sm:hidden">
-              <VehicleConnectionBadge compact vehicleId={vehicle.id} />
+              <VehicleConnectionBadge compact vehicle={vehicle} />
             </div>
           </div>
 
@@ -299,10 +307,10 @@ export function VehicleDetailHeader({
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <VehicleHealthChip vehicleId={vehicle.id ?? null} />
+              <VehicleHealthChip vehicle={vehicle} />
 
               <div className="hidden sm:block">
-                <VehicleConnectionBadge vehicleId={vehicle.id} />
+                <VehicleConnectionBadge vehicle={vehicle} />
               </div>
               </div>
 

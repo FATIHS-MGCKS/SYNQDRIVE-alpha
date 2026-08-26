@@ -1404,6 +1404,10 @@ export const en = {
   'vehicleDetail.stationModal.description':
     'Are you sure you want to relocate this vehicle from {from} to {to}? This action will update the vehicle\'s location in the system.',
   'vehicleDetail.stationModal.confirm': 'Confirm relocation',
+  'vehicleDetail.mapBadge.lastKnown': 'Last known',
+  'vehicleDetail.mapBadge.signalIssue': 'Signal issue',
+  'vehicleDetail.mapBadge.noTracking': 'No tracking',
+  'vehicleDetail.mapBadge.acquiring': 'Acquiring',
 
   // ─── Bookings ───
   'bookings.title': 'Bookings',
