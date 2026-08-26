@@ -62,6 +62,7 @@ const testFiles = [
   'src/operator/components/operator-shell-navigation-localization.test.tsx',
   'src/operator/components/operator-shell-top-chrome-localization.test.tsx',
   'src/operator/views/operator-today-localization.test.tsx',
+  'src/operator/tasks/operator-task-card-localization.test.tsx',
 ];
 
 const result = spawnSync('npx', ['vitest', 'run', ...testFiles], {

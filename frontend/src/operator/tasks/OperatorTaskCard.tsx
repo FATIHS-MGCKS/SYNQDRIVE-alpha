@@ -1,8 +1,19 @@
 import { useMemo, useState } from 'react';
 import { PriorityBadge, StatusChip } from '../../components/patterns';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { ApiTask } from '../../lib/api';
-import { taskStatusLabelDe, taskStatusTone } from '../../rental/lib/task-detail.utils';
+import { taskStatusTone } from '../../rental/lib/task-detail.utils';
 import { OperatorGlassCard } from '../components/OperatorGlassCard';
+import {
+  operatorTaskCardAssigneePrefix,
+  operatorTaskCardAutoResolvedLabel,
+  operatorTaskCardChecklistRequiredLabel,
+  operatorTaskCardChecklistTitle,
+  operatorTaskCardObjectUnavailableLabel,
+  operatorTaskCardOpenAriaLabel,
+  operatorTaskCardOverdueLabel,
+  operatorTaskCardStatusLabel,
+} from '../lib/operator-task-card-i18n';
 import {
   buildOperatorTaskCardActionPlan,
   buildOperatorTaskCardModel,
@@ -32,14 +43,15 @@ export function OperatorTaskCard({
   onOpen,
   onAction,
 }: Props) {
+  const { locale } = useLanguage();
   const [actionError, setActionError] = useState<string | null>(null);
   const model = useMemo(
-    () => buildOperatorTaskCardModel(task, { vehicleById }),
-    [task, vehicleById],
+    () => buildOperatorTaskCardModel(task, { vehicleById, locale }),
+    [task, vehicleById, locale],
   );
   const actions = useMemo(
-    () => buildOperatorTaskCardActionPlan(task, { canOverrideChecklist }),
-    [task, canOverrideChecklist],
+    () => buildOperatorTaskCardActionPlan(task, { canOverrideChecklist, locale }),
+    [task, canOverrideChecklist, locale],
   );
 
   const runAction = async (action: OperatorTaskCardAction) => {
@@ -58,7 +70,7 @@ export function OperatorTaskCard({
         onClick={onOpen}
         disabled={disabled}
         className="sq-press w-full px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
-        aria-label={`Aufgabe öffnen: ${model.title}`}
+        aria-label={operatorTaskCardOpenAriaLabel(locale, model.title)}
       >
         <div className="flex items-start justify-between gap-2">
           <p className="text-sm font-semibold text-foreground line-clamp-2">{model.title}</p>
@@ -70,17 +82,19 @@ export function OperatorTaskCard({
         )}
         {model.objectUnavailable && (
           <p className="mt-1 text-xs font-medium text-[color:var(--status-watch)]">
-            Bezugsobjekt nicht verfügbar
+            {operatorTaskCardObjectUnavailableLabel(locale)}
           </p>
         )}
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <StatusChip tone={taskStatusTone(model.status, model.isOverdue)} dot>
-            {model.isOverdue ? 'Überfällig' : taskStatusLabelDe(model.status)}
+            {model.isOverdue
+              ? operatorTaskCardOverdueLabel(locale)
+              : operatorTaskCardStatusLabel(locale, model.status)}
           </StatusChip>
           {model.autoResolved && (
             <StatusChip tone="success" dot>
-              Automatisch erledigt
+              {operatorTaskCardAutoResolvedLabel(locale)}
             </StatusChip>
           )}
           {model.timingLabel && (
@@ -96,16 +110,21 @@ export function OperatorTaskCard({
 
         {model.assigneeLabel && (
           <p className="mt-1.5 text-[11px] text-muted-foreground">
-            Verantwortlich: <span className="font-medium text-foreground">{model.assigneeLabel}</span>
+            {operatorTaskCardAssigneePrefix(locale)}{' '}
+            <span className="font-medium text-foreground">{model.assigneeLabel}</span>
           </p>
         )}
 
         {model.checklist && (
           <div className="mt-2.5 space-y-1">
             <div className="flex items-center justify-between gap-2 text-[10px] font-medium text-muted-foreground">
-              <span>Checkliste</span>
+              <span>{operatorTaskCardChecklistTitle(locale)}</span>
               <span className="tabular-nums">
-                {model.checklist.completedRequiredItems}/{model.checklist.requiredItems} Pflicht
+                {operatorTaskCardChecklistRequiredLabel(
+                  locale,
+                  model.checklist.completedRequiredItems,
+                  model.checklist.requiredItems,
+                )}
               </span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-muted">
