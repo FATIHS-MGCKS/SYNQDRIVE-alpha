@@ -24,6 +24,7 @@ import {
   resolveTelemetryFromUi,
 } from './fleet-p1-3-display';
 import { resolveFleetVehicleDisplayState } from './fleetVehicleDisplay';
+import type { OverviewMapPositionMode } from './overview-map-position';
 
 const OVERALL_CONNECTIVITY_LABEL_STATES: ReadonlySet<OverallConnectivityState> = new Set([
   'AUTHORIZATION_REQUIRED',
@@ -66,9 +67,11 @@ function toneToDotClass(tone: StatusTone): string {
     case 'warning':
       return 'text-[color:var(--status-watch)] fill-[color:var(--status-watch)]';
     case 'critical':
-      return 'text-muted-foreground fill-[color:var(--status-nodata)]';
+      return 'text-[color:var(--status-critical)] fill-[color:var(--status-critical)]';
+    case 'noData':
+    case 'neutral':
     default:
-      return 'text-muted-foreground fill-[color:var(--muted-foreground)]';
+      return 'text-muted-foreground fill-[color:var(--status-nodata)]';
   }
 }
 
@@ -79,6 +82,10 @@ function toneToLabelClass(tone: StatusTone): string {
     case 'watch':
     case 'warning':
       return 'text-[color:var(--status-watch)]';
+    case 'critical':
+      return 'text-[color:var(--status-critical)]';
+    case 'noData':
+    case 'neutral':
     default:
       return 'text-muted-foreground';
   }
@@ -177,57 +184,50 @@ export function resolveVehicleDetailFleetDisplay(
 
 export type VehicleDetailMapTrackingTone = 'live' | 'watch' | 'muted';
 
+/**
+ * Map HUD position badge — position provenance only.
+ *
+ * Connectivity health is shown separately in VehicleConnectionBadge (P1.2).
+ * OverviewMapPositionMode answers what coordinate is rendered, not provider health.
+ */
 export function resolveVehicleDetailMapTrackingBadge(
-  vehicle: FleetProjectionVehicle,
-  positionMode: import('./overview-map-position').OverviewMapPositionMode,
+  positionMode: OverviewMapPositionMode,
   options: { locale?: 'en' | 'de'; isLiveTracking?: boolean } = {},
 ): { label: string; tone: VehicleDetailMapTrackingTone } | null {
   const locale = options.locale ?? 'de';
-  const connectivity = resolveVehicleDetailConnectivityPresentation(vehicle, { locale });
+  const t = tFor(locale);
 
-  if (positionMode === 'livePosition' && connectivity.tone === 'success') {
-    return { label: connectivity.shortLabel, tone: 'live' };
-  }
-
-  if (
-    positionMode === 'telemetryUnavailable' ||
-    connectivity.tone === 'critical' ||
-    connectivity.tone === 'warning' ||
-    connectivity.tone === 'noData'
-  ) {
-    const overall = buildFleetVehicleUiProjection(vehicle, { locale }).connectivity.overallState
-      .presentation?.state;
-    if (overall && OVERALL_CONNECTIVITY_LABEL_STATES.has(overall)) {
-      const t = tFor(locale);
+  switch (positionMode) {
+    case 'livePosition':
       return {
-        label: overallStateLabel(overall, t),
-        tone: overall === 'UNKNOWN' ? 'muted' : 'watch',
+        label: t('fleetConnectivity.telemetryFreshness.live'),
+        tone: 'live',
       };
-    }
-    if (connectivity.tone === 'critical' || connectivity.tone === 'warning') {
-      return { label: connectivity.shortLabel, tone: 'watch' };
-    }
+    case 'lastKnownPosition':
+    case 'staticPositionOnly':
+      return {
+        label: t('vehicleDetail.mapBadge.lastKnown'),
+        tone: 'watch',
+      };
+    case 'telemetryUnavailable':
+      return {
+        label: t('vehicleDetail.mapBadge.signalIssue'),
+        tone: 'muted',
+      };
+    case 'trackingUnavailable':
+      return {
+        label: t('vehicleDetail.mapBadge.noTracking'),
+        tone: 'muted',
+      };
+    case 'noPosition':
+      if (options.isLiveTracking) {
+        return {
+          label: t('vehicleDetail.mapBadge.acquiring'),
+          tone: 'watch',
+        };
+      }
+      return null;
+    default:
+      return null;
   }
-
-  if (positionMode === 'lastKnownPosition' || positionMode === 'staticPositionOnly') {
-    if (connectivity.tone === 'watch' || connectivity.tone === 'success') {
-      return { label: connectivity.shortLabel, tone: connectivity.tone === 'success' ? 'live' : 'watch' };
-    }
-  }
-
-  if (positionMode === 'noPosition' && options.isLiveTracking) {
-    return null;
-  }
-
-  if (positionMode === 'trackingUnavailable') {
-    const t = tFor(locale);
-    return {
-      label: buildFleetVehicleUiProjection(vehicle, { locale }).connectivity.overallState.presentation
-        ? connectivity.shortLabel
-        : t('fleetConnectivity.telemetryFreshness.no_signal'),
-      tone: 'muted',
-    };
-  }
-
-  return null;
 }

@@ -38,7 +38,7 @@ Reuses P1.3 helpers: `fleet-vehicle-ui-projection.ts`, `fleet-p1-3-display.ts`, 
 | `VehicleConnectionBadge` | Removed `useVehicleLiveMapStore` + `resolveTelemetryFreshness`; uses `resolveVehicleDetailConnectivityPresentation()` |
 | `VehicleHealthChip` | Uses `resolveHealthDisplayFromUi()` when `healthEvaluation` present on vehicle |
 | `VehicleDetailHeader` | Readiness chip via `buildFleetVehicleUiProjection()` + `resolveFleetVehicleDisplayState({ uiProjection })` |
-| `OverviewLiveMapCard` | Map tracking badge labels from canonical connectivity when runtime present |
+| `OverviewLiveMapCard` | Map HUD badge from `resolveVehicleDetailMapTrackingBadge()` — position provenance only |
 
 ## Badge semantics (header)
 
@@ -73,7 +73,19 @@ Reuses P1.3 helpers: `fleet-vehicle-ui-projection.ts`, `fleet-p1-3-display.ts`, 
 - Connection badge aligns with Fleet list telemetry/connectivity (e.g. STANDBY not forced Offline on old `lastSeenAt`)
 - `AUTHORIZATION_REQUIRED` / `DEVICE_UNPLUGGED` shown even when legacy `onlineStatus=ONLINE`
 - Health chip shows evaluability labels (`Eingeschränkt bewertbar`, `Nicht bewertbar`) instead of false Gut
-- Overview map tracking badge uses P1.2 connectivity labels when runtime present
+- Overview map tracking badge uses position-mode labels (`live` / last known / signal issue / no tracking); connectivity remains in header badge
+
+### P1.4 semantic hardening (PR #1324 follow-up)
+
+| Fix | Detail |
+|-----|--------|
+| Map position vs connectivity | `resolveVehicleDetailMapTrackingBadge()` is position-provenance only; no longer reads canonical connectivity |
+| Critical visual tone | `toneToDotClass` / `toneToLabelClass` map P1.2 `critical` → `--status-critical` (not `--status-nodata`) |
+| i18n | `vehicleDetail.mapBadge.*` keys for position badge labels |
+
+P1.4 tests: **33/33** (added 12 position vs connectivity + critical tone tests).
+
+---
 
 ## Remaining consumers (P1.5+)
 
@@ -84,5 +96,5 @@ Reuses P1.3 helpers: `fleet-vehicle-ui-projection.ts`, `fleet-p1-3-display.ts`, 
 
 ## Tests
 
-- `vehicle-detail-operational-p1-4-cutover.test.ts` — 21 focused tests (14 scenarios + 4 legacy conflicts + 3 cross-surface)
+- `vehicle-detail-operational-p1-4-cutover.test.ts` — 33 focused tests (14 scenarios + 4 legacy conflicts + 3 cross-surface + 12 position/connectivity hardening)
 - `connectivity-cross-surface-regression.test.ts` — P1.4 vehicle detail canonical path section

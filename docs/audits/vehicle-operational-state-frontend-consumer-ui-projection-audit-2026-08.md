@@ -871,7 +871,7 @@ Bridge: `buildFleetVehicleUiProjection()` → `mapVehicleOperationalUiProjection
 
 | Suite | Result |
 |-------|--------|
-| P1.4 focused | **21/21** |
+| P1.4 focused | **33/33** |
 | P1.3 regression | **45/45** |
 | P1.2 regression | **67/67** |
 | P1.1 regression | **29/29** |
@@ -892,6 +892,16 @@ Bridge: `buildFleetVehicleUiProjection()` → `mapVehicleOperationalUiProjection
 | P1.5 READY | **YES** |
 
 **STOP.** P1.5 not started.
+
+### S.1 P1.4 semantic hardening (PR #1324 follow-up)
+
+| Fix | Detail |
+|-----|--------|
+| Map position vs connectivity | `resolveVehicleDetailMapTrackingBadge()` derives badge from `OverviewMapPositionMode` only — connectivity shown in header badge |
+| Critical visual tone | P1.2 `critical` tone maps to `--status-critical` in connection badge dot/label classes |
+| i18n | `vehicleDetail.mapBadge.lastKnown`, `signalIssue`, `noTracking`, `acquiring` |
+
+P1.4 tests after hardening: **33/33**.
 
 ---
 

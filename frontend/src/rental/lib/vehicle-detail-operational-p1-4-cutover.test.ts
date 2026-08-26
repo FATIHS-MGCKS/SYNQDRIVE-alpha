@@ -13,6 +13,7 @@ import { buildFleetVehicleUiProjection } from './fleet-vehicle-ui-projection';
 import {
   resolveVehicleDetailConnectivityPresentation,
   resolveVehicleDetailFleetDisplay,
+  resolveVehicleDetailMapTrackingBadge,
 } from './vehicle-detail-operational-display';
 
 function tFor() {
@@ -401,5 +402,170 @@ describe('P1.4 cross-surface consistency (fleet row/map + vehicle detail)', () =
       connectivityRuntime: runtime(),
     });
     expect(detail.health.label).toBe(row.display.healthDisplay.label);
+  });
+});
+
+describe('P1.4 map position vs connectivity separation', () => {
+  function vehicleWithConnectivity(
+    overrides: Partial<FleetMapVehicleResponse> = {},
+  ): ReturnType<typeof mapFleetMapVehicleResponse> {
+    return mapFleetMapVehicleResponse(
+      fleetRow({
+        connectivityRuntime: runtime(),
+        operationalAvailability: availability('AVAILABLE'),
+        ...overrides,
+      }),
+    );
+  }
+
+  it('1 — livePosition + TELEMETRY_ACTIVE/live => live position badge', () => {
+    const badge = resolveVehicleDetailMapTrackingBadge('livePosition', { locale: 'de' });
+    expect(badge?.label).toBe(de['fleetConnectivity.telemetryFreshness.live']);
+    expect(badge?.tone).toBe('live');
+  });
+
+  it('2 — lastKnownPosition + TELEMETRY_ACTIVE/live => Last known, NOT Live', () => {
+    const vehicle = vehicleWithConnectivity({
+      connectivityRuntime: runtime({ overallState: 'TELEMETRY_ACTIVE', telemetryState: 'live' }),
+    });
+    const badge = resolveVehicleDetailMapTrackingBadge('lastKnownPosition', { locale: 'de' });
+    const connectivity = resolveVehicleDetailConnectivityPresentation(vehicle, { locale: 'de' });
+    expect(badge?.label).toBe(de['vehicleDetail.mapBadge.lastKnown']);
+    expect(badge?.label).not.toBe(connectivity.shortLabel);
+    expect(badge?.tone).toBe('watch');
+  });
+
+  it('3 — lastKnownPosition + STANDBY => Last known, not fabricated connectivity', () => {
+    const vehicle = vehicleWithConnectivity({
+      connectivityRuntime: runtime({ overallState: 'STANDBY', telemetryState: 'standby' }),
+    });
+    const badge = resolveVehicleDetailMapTrackingBadge('lastKnownPosition', { locale: 'de' });
+    const connectivity = resolveVehicleDetailConnectivityPresentation(vehicle, { locale: 'de' });
+    expect(badge?.label).toBe(de['vehicleDetail.mapBadge.lastKnown']);
+    expect(badge?.label).not.toBe(connectivity.shortLabel);
+  });
+
+  it('4 — staticPositionOnly + healthy connectivity => last-known semantics, NOT Live', () => {
+    const vehicle = vehicleWithConnectivity({
+      connectivityRuntime: runtime({ overallState: 'TELEMETRY_ACTIVE', telemetryState: 'live' }),
+    });
+    const badge = resolveVehicleDetailMapTrackingBadge('staticPositionOnly', { locale: 'de' });
+    const connectivity = resolveVehicleDetailConnectivityPresentation(vehicle, { locale: 'de' });
+    expect(badge?.label).toBe(de['vehicleDetail.mapBadge.lastKnown']);
+    expect(badge?.label).not.toBe(connectivity.shortLabel);
+    expect(badge?.tone).not.toBe('live');
+  });
+
+  it('5 — telemetryUnavailable + connectivity ACTIVE/live => position unavailable semantics', () => {
+    const vehicle = vehicleWithConnectivity({
+      connectivityRuntime: runtime({ overallState: 'TELEMETRY_ACTIVE', telemetryState: 'live' }),
+    });
+    const badge = resolveVehicleDetailMapTrackingBadge('telemetryUnavailable', { locale: 'de' });
+    const connectivity = resolveVehicleDetailConnectivityPresentation(vehicle, { locale: 'de' });
+    expect(badge?.label).toBe(de['vehicleDetail.mapBadge.signalIssue']);
+    expect(badge?.label).not.toBe(connectivity.shortLabel);
+    expect(badge?.tone).toBe('muted');
+  });
+
+  it('6 — trackingUnavailable + connectivity ACTIVE/live => tracking unavailable, NOT Live', () => {
+    const vehicle = vehicleWithConnectivity({
+      connectivityRuntime: runtime({ overallState: 'TELEMETRY_ACTIVE', telemetryState: 'live' }),
+    });
+    const badge = resolveVehicleDetailMapTrackingBadge('trackingUnavailable', { locale: 'de' });
+    const connectivity = resolveVehicleDetailConnectivityPresentation(vehicle, { locale: 'de' });
+    expect(badge?.label).toBe(de['vehicleDetail.mapBadge.noTracking']);
+    expect(badge?.label).not.toBe(connectivity.shortLabel);
+    expect(badge?.tone).toBe('muted');
+  });
+
+  it('7 — noPosition + connectivity ACTIVE/live => does not claim live coordinate', () => {
+    const vehicle = vehicleWithConnectivity({
+      connectivityRuntime: runtime({ overallState: 'TELEMETRY_ACTIVE', telemetryState: 'live' }),
+    });
+    const badge = resolveVehicleDetailMapTrackingBadge('noPosition', {
+      locale: 'de',
+      isLiveTracking: false,
+    });
+    const connectivity = resolveVehicleDetailConnectivityPresentation(vehicle, { locale: 'de' });
+    expect(badge).toBeNull();
+    expect(connectivity.shortLabel).toBe(de['fleetConnectivity.telemetryFreshness.live']);
+  });
+
+  it('8 — DEVICE_UNPLUGGED connectivity remains critical presentation', () => {
+    const vehicle = vehicleWithConnectivity({
+      connectivityRuntime: runtime({
+        overallState: 'DEVICE_UNPLUGGED',
+        physicalDeviceState: 'UNPLUGGED_CONFIRMED',
+      }),
+    });
+    const connectivity = resolveVehicleDetailConnectivityPresentation(vehicle, { locale: 'de' });
+    expect(connectivity.tone).toBe('critical');
+    expect(connectivity.dotColorClass).toContain('--status-critical');
+    expect(connectivity.labelColorClass).toContain('--status-critical');
+    expect(connectivity.shortLabel).toBe(de['fleetConnectivity.state.DEVICE_UNPLUGGED']);
+  });
+
+  it('9 — AUTHORIZATION_REQUIRED connectivity is not muted/no-data', () => {
+    const vehicle = vehicleWithConnectivity({
+      connectivityRuntime: runtime({
+        overallState: 'AUTHORIZATION_REQUIRED',
+        providerLinkState: 'REAUTH_REQUIRED',
+      }),
+      operationalAvailability: availability('NEEDS_VERIFICATION'),
+    });
+    const connectivity = resolveVehicleDetailConnectivityPresentation(vehicle, { locale: 'de' });
+    expect(connectivity.tone).toBe('warning');
+    expect(connectivity.dotColorClass).toContain('--status-watch');
+    expect(connectivity.labelColorClass).toContain('--status-watch');
+    expect(connectivity.dotColorClass).not.toContain('--status-nodata');
+    expect(connectivity.shortLabel).toBe(de['fleetConnectivity.state.AUTHORIZATION_REQUIRED']);
+  });
+
+  it('10 — INTEGRATION_ERROR connectivity remains critical presentation', () => {
+    const vehicle = vehicleWithConnectivity({
+      connectivityRuntime: runtime({ overallState: 'INTEGRATION_ERROR', telemetryState: 'no_signal' }),
+    });
+    const connectivity = resolveVehicleDetailConnectivityPresentation(vehicle, { locale: 'de' });
+    expect(connectivity.tone).toBe('critical');
+    expect(connectivity.dotColorClass).toContain('--status-critical');
+    expect(connectivity.shortLabel).toBe(de['fleetConnectivity.state.INTEGRATION_ERROR']);
+  });
+
+  it('11 — UNKNOWN / connectivity absent => neutral/noData, not critical', () => {
+    const vehicleAbsent = mapFleetMapVehicleResponse(
+      fleetRow({
+        operationalAvailability: availability('AVAILABLE'),
+        onlineStatus: 'OFFLINE',
+        lastSeenAt: '2010-01-01T00:00:00.000Z',
+      }),
+    );
+    const connectivityAbsent = resolveVehicleDetailConnectivityPresentation(vehicleAbsent, {
+      locale: 'de',
+    });
+    expect(connectivityAbsent.tone).toBe('noData');
+    expect(connectivityAbsent.dotColorClass).not.toContain('--status-critical');
+
+    const vehicleUnknown = vehicleWithConnectivity({
+      connectivityRuntime: runtime({ overallState: 'UNKNOWN', telemetryState: 'no_signal' }),
+      operationalAvailability: availability('UNKNOWN'),
+    });
+    const connectivityUnknown = resolveVehicleDetailConnectivityPresentation(vehicleUnknown, {
+      locale: 'de',
+    });
+    expect(connectivityUnknown.tone).toBe('noData');
+    expect(connectivityUnknown.dotColorClass).not.toContain('--status-critical');
+  });
+
+  it('position provenance does not alter canonical operationalAvailability', () => {
+    const vehicle = vehicleWithConnectivity({
+      connectivityRuntime: runtime({ overallState: 'STANDBY', telemetryState: 'standby' }),
+      operationalAvailability: availability('AVAILABLE'),
+    });
+    const before = resolveVehicleDetailFleetDisplay(vehicle, { locale: 'de' });
+    resolveVehicleDetailMapTrackingBadge('lastKnownPosition', { locale: 'de' });
+    resolveVehicleDetailMapTrackingBadge('livePosition', { locale: 'de' });
+    const after = resolveVehicleDetailFleetDisplay(vehicle, { locale: 'de' });
+    expect(after.display.statusBadge.label).toBe(before.display.statusBadge.label);
+    expect(after.connectivity.shortLabel).toBe(before.connectivity.shortLabel);
   });
 });

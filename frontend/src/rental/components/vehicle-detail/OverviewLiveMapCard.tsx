@@ -5,7 +5,6 @@ import { useShallow } from 'zustand/react/shallow';
 import { LiveMapOverview } from '../LiveMapOverview';
 import { useVehicleLiveMapStore } from '../../stores/useVehicleLiveMapStore';
 import type { VehicleData } from '../../data/vehicles';
-import type { FleetProjectionVehicle } from '../../lib/fleet-vehicle-ui-projection';
 import { useLanguage } from '../../i18n/LanguageContext';
 import {
   deriveOverviewMapPosition,
@@ -20,13 +19,11 @@ export interface OverviewLiveMapCardProps {
 }
 
 function trackingBadge(
-  vehicle: FleetProjectionVehicle | null,
   mode: OverviewMapPositionMode,
   isLiveTracking: boolean,
   locale: 'en' | 'de',
 ): { label: string; tone: 'live' | 'watch' | 'muted' } | null {
-  if (!vehicle) return null;
-  return resolveVehicleDetailMapTrackingBadge(vehicle, mode, {
+  return resolveVehicleDetailMapTrackingBadge(mode, {
     locale,
     isLiveTracking,
   });
@@ -77,7 +74,6 @@ export function OverviewLiveMapCard({
   const hudSnapshot = positionView.isBoundToCurrentVehicle ? liveTelemetry.snapshot : null;
   const hudDisplayState = positionView.isBoundToCurrentVehicle ? liveTelemetry.displayState : 'PARKED';
   const statusBadge = trackingBadge(
-    selectedVehicle as FleetProjectionVehicle | null,
     positionView.mode,
     positionView.isBoundToCurrentVehicle && liveTelemetry.isLiveTracking,
     localeCode,
