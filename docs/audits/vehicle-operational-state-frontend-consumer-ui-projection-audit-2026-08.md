@@ -788,6 +788,20 @@ FleetOperatorRow, FleetMapVehicleStatusHud, fleetVisualState, dashboard runtime,
 
 ---
 
+## R.1 P1.3 review hardening (PR #1320 — 2026-08-26)
+
+| Fix | Detail |
+|-----|--------|
+| Provenance | Removed `vehicleDataToFleetMapResponse()` round-trip; added `mapFleetStoreVehicleToCanonicalVehicleOperationalView()` |
+| Store mapper | `mapOperationalAvailability` / `mapHealthEvaluation` no longer coerce absent → null/[]/NONE/unknown |
+| Precedence | Critical connectivity (`DEVICE_UNPLUGGED`, `AUTHORIZATION_REQUIRED`, `INTEGRATION_ERROR`, `CRITICAL` attention, `UNAVAILABLE`) outranks availability UNKNOWN/absent |
+| Health map attention | `NOT_EVALUABLE` / `PARTIALLY_EVALUABLE` no longer force map attention marker |
+| i18n | Map marker labels use P1.2 / `fleetConnectivity.*` / `formatVehicleOperationalStatusLabel` — no new hardcoded EN strings |
+
+P1.3 tests: **37/37** (added precedence A–G, provenance, health evaluability, i18n).
+
+---
+
 ## Related architecture references
 
 - `architecture/VEHICLE_OPERATIONAL_STATE_PROVENANCE_2026-08.md`
