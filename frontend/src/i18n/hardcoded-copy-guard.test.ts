@@ -470,6 +470,11 @@ const P246_ENFORCE_CLEAN_EXACT = [
   'operator/lib/operator-task-card-i18n.ts',
 ];
 
+const P247_ENFORCE_CLEAN_EXACT = [
+  'operator/views/OperatorTasksView.tsx',
+  'operator/lib/operator-tasks-tab-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -652,6 +657,10 @@ function isP245EnforceCleanPath(relPath: string): boolean {
 
 function isP246EnforceCleanPath(relPath: string): boolean {
   return P246_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP247EnforceCleanPath(relPath: string): boolean {
+  return P247_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -1052,6 +1061,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP246EnforceCleanPath(finding.file),
     );
     expect(p246Debt).toHaveLength(0);
+  });
+
+  it('keeps P247 Operator Tasks Tab Chrome enforce-clean scope at zero findings', () => {
+    const p247Debt = inventory.findings.filter((finding) =>
+      isP247EnforceCleanPath(finding.file),
+    );
+    expect(p247Debt).toHaveLength(0);
   });
 
   it('keeps operator-vehicle-quick-view-i18n.ts on canonical translation keys', () => {

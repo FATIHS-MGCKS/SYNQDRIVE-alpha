@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Tasks Tab Chrome (P2.2.47 — V4.9.974)', icon: Globe,
+    endpoint: 'Operator Tasks tab — list chrome + filter/priority presentation slice',
+    service: '**Locale flow:** `useLanguage().locale` → `operator-tasks-tab-i18n.ts` adapter (`ott`, summary/filter/priority helpers); reuses `tasks.*`, `common.*`, `status.overdue`. **Keys:** +9 EN+DE `operator.tasks.tab.*` (8694→8703). **Machine values:** filter chip IDs, priority values, scope, filter/sort predicates, task list source/order, callbacks frozen; P246 Task Card rows excluded. **Guardrails:** P2.2.47 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-tasks-tab-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_OPERATOR_TASKS_TAB_P2_2_47_2026-08-26.md' },
   { name: 'Platform i18n Operator Task Card Row (P2.2.46 — V4.9.973)', icon: Globe,
     endpoint: 'Operator Task Card row — status/timing/actions/assignee presentation slice',
     service: '**Locale flow:** `useLanguage().locale` → `operator-task-card-i18n.ts` adapter (`otc`, status/timing/action helpers); reuses `tasks.*`, `status.overdue`, task-detail presentation adapters. **Keys:** +27 EN+DE `operator.task.card.*` (8667→8694). **Machine values:** status/priority/type/isOverdue, due/activatesAt predicates, action availability, callbacks frozen; dynamic title/assignee/entity labels excluded. **Guardrails:** P2.2.46 enforce-clean exact (4 paths) — 0 findings. **Tests:** `operator-task-card-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
