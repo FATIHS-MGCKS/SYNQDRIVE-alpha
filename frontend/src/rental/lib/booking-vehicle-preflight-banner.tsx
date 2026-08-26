@@ -1,4 +1,5 @@
 import type { VehicleHealthResponse } from '../../lib/api';
+import type { BookingUiRow } from '../components/bookings/bookingTypes';
 import { cn } from '../../components/ui/utils';
 import type { VehicleData } from '../data/vehicles';
 import { resolveBookingVehiclePreflight } from './booking-vehicle-preflight';
@@ -9,7 +10,14 @@ export interface BookingVehiclePreflightBannerProps {
   health: VehicleHealthResponse | null | undefined;
   hasTariff: boolean;
   catalogLoading: boolean;
-  rangeHasConflict?: boolean;
+  locale?: 'de' | 'en';
+  bookingRows?: BookingUiRow[];
+  pickupAt?: string | null;
+  returnAt?: string | null;
+  excludeBookingId?: string | null;
+  healthLoading?: boolean;
+  healthRecordAbsent?: boolean;
+  allowHealthBypass?: boolean;
   className?: string;
 }
 
@@ -21,10 +29,26 @@ export function BookingVehiclePreflightBanner({
   health,
   hasTariff,
   catalogLoading,
-  rangeHasConflict = false,
+  locale = 'de',
+  bookingRows,
+  pickupAt,
+  returnAt,
+  excludeBookingId,
+  healthLoading = false,
+  healthRecordAbsent = false,
+  allowHealthBypass = false,
   className,
 }: BookingVehiclePreflightBannerProps) {
-  const preflight = resolveBookingVehiclePreflight(vehicle, health, hasTariff, catalogLoading);
+  const preflight = resolveBookingVehiclePreflight(vehicle, health, hasTariff, catalogLoading, {
+    locale,
+    bookingRows,
+    pickupAt,
+    returnAt,
+    excludeBookingId,
+    healthLoading,
+    healthRecordAbsent,
+    allowHealthBypass,
+  });
 
   const items: Array<{ tone: 'critical' | 'warning' | 'info'; text: string }> = [];
 
@@ -34,13 +58,6 @@ export function BookingVehiclePreflightBanner({
     items.push({
       tone: preflight.noTariff || preflight.healthWarningOnly ? 'warning' : 'info',
       text: preflight.cautionReason,
-    });
-  }
-
-  if (rangeHasConflict) {
-    items.push({
-      tone: 'critical',
-      text: 'Zeitraum-Konflikt: Fahrzeug im gewählten Zeitraum bereits gebucht',
     });
   }
 

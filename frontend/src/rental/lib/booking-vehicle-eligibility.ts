@@ -60,6 +60,20 @@ export interface BookingVehicleEligibilityInput {
   businessBlockReason?: string | null;
   /** Station/category/permission restriction copy. */
   rentalRuleBlockReason?: string | null;
+  /**
+   * Fleet rental-health map is still loading — health gate deferred (not treated as eligible).
+   * Mirrors catalogLoading semantics.
+   */
+  healthLoading?: boolean;
+  /**
+   * When true, rental-health hard blocks are skipped (e.g. unchanged vehicle on edit save).
+   * Operational and booking-window gates still apply.
+   */
+  allowHealthBypass?: boolean;
+  /**
+   * After fleet health load: vehicle id absent from health map — treated as unverified/not loaded.
+   */
+  healthRecordAbsent?: boolean;
 }
 
 export interface BookingVehicleEligibilityResult extends BookingVehicleOperationalGateResult {
@@ -163,45 +177,6 @@ export function evaluateBookingOperationalGate(
   };
 }
 
-export function evaluateBookingWindowConflict(input: {
-  vehicleId: string;
-  pickupAt: string;
-  returnAt: string;
-  bookings: Array<{
-    vehicleId?: string | null;
-    vehicle?: { id?: string | null } | null;
-    status?: string | null;
-    startDate?: string | null;
-    endDate?: string | null;
-  }>;
-  excludeBookingId?: string | null;
-}): boolean {
-  const pickupMs = Date.parse(input.pickupAt);
-  const returnMs = Date.parse(input.returnAt);
-  if (!Number.isFinite(pickupMs) || !Number.isFinite(returnMs) || returnMs <= pickupMs) {
-    return false;
-  }
-
-  for (const booking of input.bookings) {
-    const bookingId = (booking as { id?: string }).id;
-    if (input.excludeBookingId && bookingId === input.excludeBookingId) continue;
-
-    const bookingVehicleId = booking.vehicleId ?? booking.vehicle?.id ?? null;
-    if (!bookingVehicleId || bookingVehicleId !== input.vehicleId) continue;
-
-    const status = (booking.status ?? '').toUpperCase();
-    if (status === 'CANCELLED' || status === 'CANCELED' || status === 'NO_SHOW') continue;
-
-    const startMs = booking.startDate ? Date.parse(booking.startDate) : NaN;
-    const endMs = booking.endDate ? Date.parse(booking.endDate) : NaN;
-    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) continue;
-
-    if (startMs < returnMs && endMs > pickupMs) return true;
-  }
-
-  return false;
-}
-
 /**
  * Pure booking eligibility evaluation for picker/preflight/submit guards.
  * UI preflight is advisory; backend booking APIs remain authoritative for conflicts.
@@ -215,9 +190,27 @@ export function evaluateBookingVehicleEligibility(
   const diagnosticReasons: string[] = [];
 
   const health = input.health;
-  const rentalBlocked = health?.rental_blocked === true;
-  const rentalUnverified = health != null && isRentalBlockedUnverified(health);
-  const healthEligible = !rentalBlocked && !rentalUnverified;
+  const healthLoading = input.healthLoading ?? false;
+  const allowHealthBypass = input.allowHealthBypass ?? false;
+  const healthRecordAbsent = input.healthRecordAbsent ?? false;
+
+  let rentalBlocked = false;
+  let rentalUnverified = false;
+  let healthEligible = true;
+
+  if (!allowHealthBypass) {
+    if (healthLoading) {
+      healthEligible = true;
+    } else if (healthRecordAbsent) {
+      rentalUnverified = true;
+      healthEligible = false;
+      diagnosticReasons.push('rental_health_not_loaded');
+    } else if (health != null) {
+      rentalBlocked = health.rental_blocked === true;
+      rentalUnverified = isRentalBlockedUnverified(health);
+      healthEligible = !rentalBlocked && !rentalUnverified;
+    }
+  }
 
   const catalogLoading = input.catalogLoading ?? false;
   const hasTariff = input.hasTariff ?? true;
@@ -227,19 +220,25 @@ export function evaluateBookingVehicleEligibility(
   const statusUnreliable = !selectIsStatusReliable(input.vehicle);
   const isBlockedBusiness = operationalStatus === VEHICLE_OPERATIONAL_STATUS.BLOCKED;
   const isUnknownBusiness = operationalStatus === VEHICLE_OPERATIONAL_STATUS.UNKNOWN;
+  const isMaintenanceBusiness = operationalStatus === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
 
   const bookingWindowEligible = !input.bookingWindowConflict;
   const businessBlockReason = input.businessBlockReason ?? null;
   const rentalRuleBlockReason = input.rentalRuleBlockReason ?? null;
 
   const businessEligible =
-    !businessBlockReason && !isBlockedBusiness && !isUnknownBusiness && !statusUnreliable;
+    !businessBlockReason &&
+    !isBlockedBusiness &&
+    !isUnknownBusiness &&
+    !statusUnreliable &&
+    !isMaintenanceBusiness;
 
   if (input.bookingWindowConflict) {
     diagnosticReasons.push('booking_window_conflict');
   }
   if (businessBlockReason) diagnosticReasons.push('business_block');
   if (isBlockedBusiness) diagnosticReasons.push('business_status_blocked');
+  if (isMaintenanceBusiness) diagnosticReasons.push('business_status_maintenance');
   if (isUnknownBusiness || statusUnreliable) diagnosticReasons.push('status_unreliable');
   if (!operational.operationalEligible) diagnosticReasons.push(`operational:${operational.availability}`);
   if (rentalBlocked) diagnosticReasons.push('rental_health_blocked');
@@ -256,6 +255,9 @@ export function evaluateBookingVehicleEligibility(
   } else if (businessBlockReason) {
     primaryDenialDomain = 'business_block';
     primaryDenialReason = businessBlockReason;
+  } else if (isMaintenanceBusiness) {
+    primaryDenialDomain = 'business_block';
+    primaryDenialReason = t('booking.eligibility.maintenance');
   } else if (isBlockedBusiness) {
     primaryDenialDomain = 'business_block';
     primaryDenialReason = t('booking.eligibility.businessBlocked');
@@ -263,10 +265,12 @@ export function evaluateBookingVehicleEligibility(
     primaryDenialDomain = 'rental_health';
     primaryDenialReason =
       health?.blocking_reasons?.filter(Boolean).join(' · ') ||
-      (locale === 'de' ? 'Nicht vermietbar' : 'Not rentable');
+      t('booking.eligibility.notRentable');
   } else if (rentalUnverified) {
     primaryDenialDomain = 'rental_health';
-    primaryDenialReason = healthRentalUnverifiedMessage(locale);
+    primaryDenialReason = healthRecordAbsent
+      ? t('booking.eligibility.healthNotLoaded')
+      : healthRentalUnverifiedMessage(locale);
   } else if (!operational.operationalEligible) {
     primaryDenialDomain = operational.primaryDenialDomain;
     primaryDenialReason = operational.primaryDenialReason;

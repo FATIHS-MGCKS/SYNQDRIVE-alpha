@@ -67,19 +67,20 @@ describe('booking-vehicle-preflight', () => {
       lastSignal: '2020-01-01T00:00:00.000Z',
       operationalAvailability: { state: 'AVAILABLE', generatedAt: new Date().toISOString() },
     });
-    const result = resolveBookingVehiclePreflight(v, null, true, false);
+    const h = health();
+    const result = resolveBookingVehiclePreflight(v, h, true, false);
     expect(result.isSelectable).toBe(true);
     expect(result.operationalGatePass).toBe(true);
     expect(result.offline).toBe(false);
     expect(result.hardBlockReason).toBeNull();
-    expect(isBookingVehicleHardBlocked(v, null)).toBe(false);
+    expect(isBookingVehicleHardBlocked(v, h, true, false)).toBe(false);
   });
 
   it('blocks NEEDS_VERIFICATION via operational gate', () => {
     const v = baseVehicle({
       operationalAvailability: { state: 'NEEDS_VERIFICATION', generatedAt: new Date().toISOString() },
     });
-    const result = resolveBookingVehiclePreflight(v, null, true, false);
+    const result = resolveBookingVehiclePreflight(v, health(), true, false);
     expect(result.isSelectable).toBe(false);
     expect(result.hardBlockReason).toBe('operational_gate');
   });
@@ -117,16 +118,17 @@ describe('booking-vehicle-preflight', () => {
 
   it('flags no tariff as hard block while catalog loaded', () => {
     const v = baseVehicle();
-    const result = resolveBookingVehiclePreflight(v, null, false, false);
+    const h = health();
+    const result = resolveBookingVehiclePreflight(v, h, false, false);
     expect(result.isSelectable).toBe(false);
     expect(result.hardBlockReason).toBe('no_tariff');
     expect(result.blockingReason).toContain('Tarif');
-    expect(isBookingVehicleHardBlocked(v, null)).toBe(false);
+    expect(isBookingVehicleHardBlocked(v, h, true, false)).toBe(false);
   });
 
   it('does not hard block tariff while catalog is still loading', () => {
     const v = baseVehicle();
-    const result = resolveBookingVehiclePreflight(v, null, false, true);
+    const result = resolveBookingVehiclePreflight(v, health(), false, true);
     expect(result.isSelectable).toBe(true);
     expect(result.noTariff).toBe(false);
   });

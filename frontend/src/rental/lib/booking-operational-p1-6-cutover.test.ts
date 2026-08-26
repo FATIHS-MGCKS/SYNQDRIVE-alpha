@@ -11,10 +11,11 @@ import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 import {
   evaluateBookingOperationalGate,
   evaluateBookingVehicleEligibility,
-  evaluateBookingWindowConflict,
   isBookingOperationalGatePass,
   readBookingOperationalAvailability,
 } from './booking-vehicle-eligibility';
+import { hasBookingWindowConflict } from './booking-window-conflict';
+import type { BookingUiRow } from '../components/bookings/bookingTypes';
 import {
   isBookingVehicleHardBlocked,
   resolveBookingVehiclePreflight,
@@ -137,10 +138,43 @@ function health(overrides: Partial<VehicleHealthResponse> = {}): VehicleHealthRe
   };
 }
 
+function cutoverBookingRow(
+  overrides: Partial<BookingUiRow> & { id: string; vehicleId: string },
+): BookingUiRow {
+  return {
+    id: overrides.id,
+    vehicleId: overrides.vehicleId,
+    customer: 'C',
+    vehicle: 'Golf',
+    plate: 'BK 1',
+    status: 'active',
+    startDate: '20 Aug 2026',
+    endDate: '28 Aug 2026',
+    startTime: '10:00',
+    endTime: '10:00',
+    pickupLocation: 'Berlin',
+    returnLocation: 'Berlin',
+    revenue: 100,
+    days: [20, 21, 22],
+    startDay: 20,
+    endDay: 28,
+    startMonth: 7,
+    endMonth: 7,
+    startYear: 2026,
+    endYear: 2026,
+    _raw: {
+      startDate: overrides._raw?.startDate ?? '2026-08-20T08:00:00.000Z',
+      endDate: overrides._raw?.endDate ?? '2026-08-28T18:00:00.000Z',
+      statusEnum: overrides._raw?.statusEnum ?? 'ACTIVE',
+    },
+    ...overrides,
+  };
+}
+
 function eligible(input: Partial<Parameters<typeof evaluateBookingVehicleEligibility>[0]> = {}) {
   return evaluateBookingVehicleEligibility({
     vehicle: vehicle(),
-    health: null,
+    health: health(),
     hasTariff: true,
     catalogLoading: false,
     locale: 'de',
@@ -150,7 +184,7 @@ function eligible(input: Partial<Parameters<typeof evaluateBookingVehicleEligibi
 
 describe('P1.6 booking operational gate truth table', () => {
   it('1. business available + operational AVAILABLE + no conflict => selectable', () => {
-    const result = resolveBookingVehiclePreflight(vehicle(), null, true, false);
+    const result = resolveBookingVehiclePreflight(vehicle(), health(), true, false);
     expect(result.isSelectable).toBe(true);
     expect(result.operationalGatePass).toBe(true);
   });
@@ -279,17 +313,20 @@ describe('P1.6 booking operational gate truth table', () => {
         isReliable: true,
       },
     });
-    const conflict = evaluateBookingWindowConflict({
+    const conflict = hasBookingWindowConflict({
       vehicleId: v.id,
       pickupAt: '2026-09-01T10:00:00.000Z',
       returnAt: '2026-09-03T10:00:00.000Z',
       bookings: [
-        {
+        cutoverBookingRow({
+          id: 'bk-1',
           vehicleId: v.id,
-          status: 'ACTIVE',
-          startDate: '2026-08-20T08:00:00.000Z',
-          endDate: '2026-08-28T18:00:00.000Z',
-        },
+          _raw: {
+            startDate: '2026-08-20T08:00:00.000Z',
+            endDate: '2026-08-28T18:00:00.000Z',
+            statusEnum: 'ACTIVE',
+          },
+        }),
       ],
     });
     expect(conflict).toBe(false);
@@ -312,17 +349,20 @@ describe('P1.6 booking operational gate truth table', () => {
         isReliable: true,
       },
     });
-    const conflict = evaluateBookingWindowConflict({
+    const conflict = hasBookingWindowConflict({
       vehicleId: v.id,
       pickupAt: '2026-08-25T10:00:00.000Z',
       returnAt: '2026-08-27T10:00:00.000Z',
       bookings: [
-        {
+        cutoverBookingRow({
+          id: 'bk-1',
           vehicleId: v.id,
-          status: 'ACTIVE',
-          startDate: '2026-08-20T08:00:00.000Z',
-          endDate: '2026-08-28T18:00:00.000Z',
-        },
+          _raw: {
+            startDate: '2026-08-20T08:00:00.000Z',
+            endDate: '2026-08-28T18:00:00.000Z',
+            statusEnum: 'ACTIVE',
+          },
+        }),
       ],
     });
     expect(conflict).toBe(true);
@@ -345,24 +385,27 @@ describe('P1.6 booking operational gate truth table', () => {
         isReliable: true,
       },
     });
-    const conflict = evaluateBookingWindowConflict({
+    const conflict = hasBookingWindowConflict({
       vehicleId: v.id,
       pickupAt: '2026-09-10T10:00:00.000Z',
       returnAt: '2026-09-12T10:00:00.000Z',
       bookings: [
-        {
+        cutoverBookingRow({
+          id: 'bk-1',
           vehicleId: v.id,
-          status: 'CONFIRMED',
-          startDate: '2026-08-20T08:00:00.000Z',
-          endDate: '2026-08-22T18:00:00.000Z',
-        },
+          _raw: {
+            startDate: '2026-08-20T08:00:00.000Z',
+            endDate: '2026-08-22T18:00:00.000Z',
+            statusEnum: 'CONFIRMED',
+          },
+        }),
       ],
     });
     expect(conflict).toBe(false);
     expect(eligible({ vehicle: v, bookingWindowConflict: conflict }).eligible).toBe(true);
   });
 
-  it('17. MAINTENANCE business caution remains selectable (current UX)', () => {
+  it('17. MAINTENANCE business status is not bookable (vehicle detail policy)', () => {
     const v = vehicle({
       status: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
       operationalState: {
@@ -377,9 +420,9 @@ describe('P1.6 booking operational gate truth table', () => {
         isReliable: true,
       },
     });
-    const result = resolveBookingVehiclePreflight(v, null, true, false);
-    expect(result.isSelectable).toBe(true);
-    expect(result.cautionReason).toBeTruthy();
+    const result = resolveBookingVehiclePreflight(v, health(), true, false);
+    expect(result.isSelectable).toBe(false);
+    expect(result.hardBlockReason).toBe('business_block');
   });
 
   it('18. manual/business block => fail', () => {
@@ -423,7 +466,7 @@ describe('P1.6 booking operational gate truth table', () => {
       operationalAvailability: availability('AVAILABLE'),
     });
     expect(isBookingOperationalGatePass(v)).toBe(true);
-    expect(isBookingVehicleHardBlocked(v, null)).toBe(false);
+    expect(isBookingVehicleHardBlocked(v, health())).toBe(false);
   });
 });
 
@@ -461,7 +504,7 @@ describe('P1.6 picker count consistency', () => {
       }),
       vehicle({ id: 'd', operationalAvailability: availability('UNAVAILABLE') }),
     ];
-    const selectable = fleet.filter((v) => !isBookingVehicleHardBlocked(v, null));
+    const selectable = fleet.filter((v) => !isBookingVehicleHardBlocked(v, health()));
     expect(selectable.map((v) => v.id)).toEqual(['a', 'c']);
   });
 });

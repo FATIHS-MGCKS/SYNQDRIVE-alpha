@@ -37,6 +37,7 @@ import {
   type CustomerVerificationPlanState,
 } from '../lib/add-customer-wizard';
 import { useFleetHealthMap } from '../hooks/useVehicleHealth';
+import { useLanguage } from '../i18n/LanguageContext';
 import type { BookingRentalEligibilityResult } from '../lib/booking-rental-eligibility.types';
 import type { BookingWizardEligibilityPreview } from '../lib/booking-wizard-eligibility.types';
 import {
@@ -58,6 +59,7 @@ import {
   vehicleHasAssignedTariff,
   vehicleStationId,
 } from '../lib/booking-vehicle-preflight';
+import { hasBookingWindowConflict } from '../lib/booking-window-conflict';
 import { VehiclePickerStep } from './new-booking/VehiclePickerStep';
 import { BookingStepper } from './new-booking/BookingStepper';
 import { BookingStepCard } from './new-booking/BookingStepCard';
@@ -136,6 +138,7 @@ export function NewBookingView({
   initialCustomerId = null,
 }: NewBookingViewProps) {
   const isDarkMode = useDocumentDark();
+  const { locale, t } = useLanguage();
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
   const { canReviewEligibility, canOverrideEligibility } = useRentalRulesPermissions();
@@ -520,7 +523,12 @@ export function NewBookingView({
   });
 
   // V4.6.76 Rental Health V1 — org-scoped fleet health map (no vehicleIds in URL).
-  const { map: pickerHealthMap } = useFleetHealthMap(orgId);
+  const { map: pickerHealthMap, loading: pickerHealthLoading } = useFleetHealthMap(orgId);
+
+  const orgBookingRows = useMemo(
+    () => orgBookings.map((booking) => mapApiBooking(booking)),
+    [orgBookings],
+  );
 
   const selectedVehicleHealth = selectedVehicle
     ? pickerHealthMap.get(selectedVehicle.id) ?? null
@@ -539,6 +547,18 @@ export function NewBookingView({
   const returnAtIso = returnDate
     ? new Date(`${returnDate}T${returnTime || '10:00'}:00`).toISOString()
     : '';
+
+  const buildVehiclePreflightOptions = useCallback(
+    (vehicle: VehicleData) => ({
+      locale: locale === 'de' ? 'de' as const : 'en' as const,
+      bookingRows: orgBookingRows,
+      pickupAt: pickupAtIso || null,
+      returnAt: returnAtIso || null,
+      healthLoading: pickerHealthLoading,
+      healthRecordAbsent: !pickerHealthLoading && !pickerHealthMap.has(vehicle.id),
+    }),
+    [locale, orgBookingRows, pickupAtIso, returnAtIso, pickerHealthLoading, pickerHealthMap],
+  );
 
   const bookingPeriodLabel = useMemo(() => {
     if (!pickupDate || !returnDate) return null;
@@ -1310,16 +1330,14 @@ export function NewBookingView({
   // full range across month boundaries by comparing date strings rather than
   // raw day numbers.
   const rangeHasConflict = useMemo(() => {
-    if (!pickupDate || !returnDate || !selectedVehicle) return false;
-    if (returnDate < pickupDate) return false;
-    for (const dayKey of Object.keys(vehicleBlockedInfo)) {
-      const day = parseInt(dayKey, 10);
-      if (Number.isNaN(day)) continue;
-      const ds = calendarDateStr(day);
-      if (ds >= pickupDate && ds <= returnDate) return true;
-    }
-    return false;
-  }, [pickupDate, returnDate, vehicleBlockedInfo, calendarYear, calendarMonth, selectedVehicle]);
+    if (!pickupAtIso || !returnAtIso || !selectedVehicle) return false;
+    return hasBookingWindowConflict({
+      vehicleId: selectedVehicle.id,
+      pickupAt: pickupAtIso,
+      returnAt: returnAtIso,
+      bookings: orgBookingRows,
+    });
+  }, [pickupAtIso, returnAtIso, selectedVehicle, orgBookingRows]);
 
   // V4.6.67 — Gating rules for the new step order
   //   1: Vehicle  → must be selected
@@ -1338,6 +1356,7 @@ export function NewBookingView({
           selectedVehicleHealth,
           vehicleHasTariff(selectedVehicle.id),
           catalogLoading,
+          buildVehiclePreflightOptions(selectedVehicle),
         );
       }
       case 2: {
@@ -1380,7 +1399,17 @@ export function NewBookingView({
 
   const handleSelectVehicle = (v: VehicleData) => {
     const health = pickerHealthMap.get(v.id) ?? null;
-    if (isBookingVehicleHardBlocked(v, health, vehicleHasTariff(v.id), catalogLoading)) return;
+    if (
+      isBookingVehicleHardBlocked(
+        v,
+        health,
+        vehicleHasTariff(v.id),
+        catalogLoading,
+        buildVehiclePreflightOptions(v),
+      )
+    ) {
+      return;
+    }
     setSelectedVehicle(v);
     const defaultPickup = resolveDefaultPickupStationId(
       orgStations,
@@ -1504,7 +1533,16 @@ export function NewBookingView({
           health={selectedVehicleHealth}
           hasTariff={selectedVehicleHasTariff}
           catalogLoading={catalogLoading}
-          rangeHasConflict={currentStep >= 2 && rangeHasConflict}
+          locale={locale === 'de' ? 'de' : 'en'}
+          bookingRows={orgBookingRows}
+          pickupAt={pickupAtIso || null}
+          returnAt={returnAtIso || null}
+          healthLoading={pickerHealthLoading}
+          healthRecordAbsent={
+            !pickerHealthLoading &&
+            Boolean(selectedVehicle) &&
+            !pickerHealthMap.has(selectedVehicle.id)
+          }
         />
       )}
 
@@ -1611,10 +1649,15 @@ export function NewBookingView({
                   stationOptions={stationOptions}
                   fuelTypes={fuelTypes}
                   pickerHealthMap={pickerHealthMap}
+                  pickerHealthLoading={pickerHealthLoading}
                   catalogLoading={catalogLoading}
                   vehicleHasTariff={vehicleHasTariff}
                   getDailyRateLabel={getVehicleDailyRateLabel}
                   isDarkMode={isDarkMode}
+                  bookingRows={orgBookingRows}
+                  pickupAt={pickupAtIso || null}
+                  returnAt={returnAtIso || null}
+                  locale={locale === 'de' ? 'de' : 'en'}
                 />
               </BookingStepCard>
             )}

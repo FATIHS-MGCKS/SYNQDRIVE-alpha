@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { VehicleHealthResponse } from '../../../lib/api';
+import type { BookingUiRow } from '../../components/bookings/bookingTypes';
 import { SectionHeader } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import type { VehicleData } from '../../data/vehicles';
@@ -39,10 +40,15 @@ export interface VehiclePickerStepProps {
   stationOptions: VehiclePickerStationOption[];
   fuelTypes: string[];
   pickerHealthMap: Map<string, VehicleHealthResponse | null>;
+  pickerHealthLoading?: boolean;
   catalogLoading: boolean;
   vehicleHasTariff: (vehicleId: string) => boolean;
   getDailyRateLabel: (vehicleId: string) => string | null;
   isDarkMode: boolean;
+  bookingRows?: BookingUiRow[];
+  pickupAt?: string | null;
+  returnAt?: string | null;
+  locale?: 'de' | 'en';
 }
 
 const STATUS_TABS = [
@@ -108,6 +114,12 @@ function VehiclePickerCard({
   vehicleHasTariff,
   isDarkMode,
   onSelect,
+  bookingRows,
+  pickupAt,
+  returnAt,
+  locale = 'de',
+  pickerHealthLoading = false,
+  healthRecordAbsent = false,
 }: {
   vehicle: VehicleData;
   selected: boolean;
@@ -117,12 +129,26 @@ function VehiclePickerCard({
   vehicleHasTariff: (vehicleId: string) => boolean;
   isDarkMode: boolean;
   onSelect: () => void;
+  bookingRows?: BookingUiRow[];
+  pickupAt?: string | null;
+  returnAt?: string | null;
+  locale?: 'de' | 'en';
+  pickerHealthLoading?: boolean;
+  healthRecordAbsent?: boolean;
 }) {
   const preflight = resolveBookingVehiclePreflight(
     vehicle,
     health,
     vehicleHasTariff(vehicle.id),
     catalogLoading,
+    {
+      locale,
+      bookingRows,
+      pickupAt,
+      returnAt,
+      healthLoading: pickerHealthLoading,
+      healthRecordAbsent,
+    },
   );
   const operationalStatus = selectOperationalStatus(vehicle);
   const brandKey = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
@@ -289,10 +315,15 @@ export function VehiclePickerStep({
   stationOptions,
   fuelTypes,
   pickerHealthMap,
+  pickerHealthLoading = false,
   catalogLoading,
   vehicleHasTariff,
   getDailyRateLabel,
   isDarkMode,
+  bookingRows,
+  pickupAt,
+  returnAt,
+  locale = 'de',
 }: VehiclePickerStepProps) {
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
 
@@ -455,6 +486,12 @@ export function VehiclePickerStep({
             catalogLoading={catalogLoading}
             vehicleHasTariff={vehicleHasTariff}
             isDarkMode={isDarkMode}
+            bookingRows={bookingRows}
+            pickupAt={pickupAt}
+            returnAt={returnAt}
+            locale={locale}
+            pickerHealthLoading={pickerHealthLoading}
+            healthRecordAbsent={!pickerHealthLoading && !pickerHealthMap.has(vehicle.id)}
             onSelect={() => onSelectVehicle(vehicle)}
           />
         ))}

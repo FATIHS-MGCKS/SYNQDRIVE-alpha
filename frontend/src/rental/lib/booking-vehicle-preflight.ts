@@ -1,4 +1,8 @@
 import type { VehicleHealthResponse } from '../../lib/api';
+import type { BookingUiRow } from '../components/bookings/bookingTypes';
+import { de } from '../i18n/translations/de';
+import { en } from '../i18n/translations/en';
+import type { TranslationKey } from '../i18n/translations/en';
 import { isRentalBlockedUnverified } from './rental-health-availability';
 import type { PriceTariffCatalog } from '../pricing/pricingTypes';
 import {
@@ -16,6 +20,7 @@ import {
   evaluateBookingVehicleEligibility,
   type BookingEligibilityDenialDomain,
 } from './booking-vehicle-eligibility';
+import { hasBookingWindowConflict } from './booking-window-conflict';
 
 export const UNCATEGORIZED_VEHICLE_LABEL = 'Nicht kategorisiert';
 
@@ -26,6 +31,27 @@ export type BookingVehicleHardBlockReason =
   | 'business_block'
   | 'booking_conflict'
   | 'rental_rules';
+
+export interface BookingVehiclePreflightOptions {
+  locale?: 'de' | 'en';
+  bookingWindowConflict?: boolean;
+  businessBlockReason?: string | null;
+  rentalRuleBlockReason?: string | null;
+  healthLoading?: boolean;
+  healthRecordAbsent?: boolean;
+  allowHealthBypass?: boolean;
+}
+
+export interface BookingVehiclePreflightContextInput extends BookingVehiclePreflightOptions {
+  vehicle: VehicleData;
+  health: VehicleHealthResponse | null | undefined;
+  hasTariff: boolean;
+  catalogLoading: boolean;
+  bookingRows?: BookingUiRow[];
+  pickupAt?: string | null;
+  returnAt?: string | null;
+  excludeBookingId?: string | null;
+}
 
 export interface BookingVehiclePreflight {
   fleetStatus: FleetStatus;
@@ -43,6 +69,11 @@ export interface BookingVehiclePreflight {
   muted: boolean;
   recommendedAction: string | null;
   primaryDenialDomain: BookingEligibilityDenialDomain;
+}
+
+function tFor(locale: 'de' | 'en'): (key: TranslationKey) => string {
+  const dict = locale === 'de' ? de : en;
+  return (key: TranslationKey) => dict[key] ?? key;
 }
 
 export function vehicleStationId(vehicle: VehicleData): string | null {
@@ -105,28 +136,53 @@ function mapDenialDomainToHardBlock(
   }
 }
 
+export function resolveBookingWindowConflictForVehicle(
+  input: Pick<
+    BookingVehiclePreflightContextInput,
+    'vehicle' | 'bookingRows' | 'pickupAt' | 'returnAt' | 'excludeBookingId' | 'bookingWindowConflict'
+  >,
+): boolean {
+  if (input.bookingWindowConflict != null) return input.bookingWindowConflict;
+  if (!input.bookingRows?.length || !input.pickupAt || !input.returnAt) return false;
+  return hasBookingWindowConflict({
+    vehicleId: input.vehicle.id,
+    pickupAt: input.pickupAt,
+    returnAt: input.returnAt,
+    bookings: input.bookingRows,
+    excludeBookingId: input.excludeBookingId,
+  });
+}
+
 export function resolveBookingVehiclePreflight(
   vehicle: VehicleData,
   health: VehicleHealthResponse | null | undefined,
   hasTariff: boolean,
   catalogLoading: boolean,
-  options: {
-    locale?: 'de' | 'en';
-    bookingWindowConflict?: boolean;
-    businessBlockReason?: string | null;
-    rentalRuleBlockReason?: string | null;
-  } = {},
+  options: BookingVehiclePreflightContextInput | BookingVehiclePreflightOptions = {},
 ): BookingVehiclePreflight {
   const locale = options.locale ?? 'de';
+  const t = tFor(locale);
+  const bookingWindowConflict = resolveBookingWindowConflictForVehicle({
+    vehicle,
+    bookingRows: 'bookingRows' in options ? options.bookingRows : undefined,
+    pickupAt: 'pickupAt' in options ? options.pickupAt : undefined,
+    returnAt: 'returnAt' in options ? options.returnAt : undefined,
+    excludeBookingId: 'excludeBookingId' in options ? options.excludeBookingId : undefined,
+    bookingWindowConflict: options.bookingWindowConflict,
+  });
+
   const eligibility = evaluateBookingVehicleEligibility({
     vehicle,
     health,
     hasTariff,
     catalogLoading,
     locale,
-    bookingWindowConflict: options.bookingWindowConflict,
+    bookingWindowConflict,
     businessBlockReason: options.businessBlockReason,
     rentalRuleBlockReason: options.rentalRuleBlockReason,
+    healthLoading: options.healthLoading,
+    healthRecordAbsent: options.healthRecordAbsent,
+    allowHealthBypass: options.allowHealthBypass,
   });
 
   const rentalBlocked = health?.rental_blocked === true;
@@ -139,28 +195,21 @@ export function resolveBookingVehiclePreflight(
   const noTariff = !hasTariff && !catalogLoading;
 
   const operationalStatus = selectOperationalStatus(vehicle);
-  const isMaintenance = operationalStatus === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
   const isRented = operationalStatus === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED;
   const isReserved = operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED;
 
   let cautionReason: string | null = null;
   if (eligibility.eligible) {
-    if (isMaintenance) {
-      cautionReason = locale === 'de' ? 'In Wartung — Auswahl mit Vorsicht' : 'In maintenance — select with caution';
-    } else if (isRented) {
-      cautionReason = locale === 'de' ? 'Aktuell vermietet' : 'Currently rented';
+    if (isRented) {
+      cautionReason = t('booking.eligibility.caution.rented');
     } else if (isReserved) {
-      cautionReason = locale === 'de' ? 'Reserviert' : 'Reserved';
+      cautionReason = t('booking.eligibility.caution.reserved');
     } else if (healthWarningOnly) {
       cautionReason =
         health?.blocking_reasons?.[0] ??
         (health?.overall_state === 'critical'
-          ? locale === 'de'
-            ? 'Gesundheit kritisch'
-            : 'Health critical'
-          : locale === 'de'
-            ? 'Gesundheit Warnung'
-            : 'Health warning');
+          ? t('booking.eligibility.caution.healthCritical')
+          : t('booking.eligibility.caution.healthWarning'));
     }
   }
 
@@ -183,7 +232,6 @@ export function resolveBookingVehiclePreflight(
       !eligibility.operationalEligible ||
       rentalBlocked ||
       rentalUnverified ||
-      isMaintenance ||
       isRented ||
       operationalStatus === VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
     recommendedAction: eligibility.recommendedAction,
@@ -196,12 +244,7 @@ export function isBookingVehicleHardBlocked(
   health: VehicleHealthResponse | null | undefined,
   hasTariff = true,
   catalogLoading = false,
-  options: {
-    locale?: 'de' | 'en';
-    bookingWindowConflict?: boolean;
-    businessBlockReason?: string | null;
-    rentalRuleBlockReason?: string | null;
-  } = {},
+  options: BookingVehiclePreflightContextInput | BookingVehiclePreflightOptions = {},
 ): boolean {
   return !resolveBookingVehiclePreflight(vehicle, health, hasTariff, catalogLoading, options).isSelectable;
 }
