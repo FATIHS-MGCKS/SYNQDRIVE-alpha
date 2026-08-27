@@ -13,6 +13,7 @@ import {
   canonicalAvailability,
   canonicalConnectivityRuntime,
   canonicalOperationalVehicle,
+  dashboardTestVehicle,
 } from './runtime/dashboard-canonical-test-fixtures';
 import {
   buildReadyToRentDrawerGroups,
@@ -31,39 +32,17 @@ import { buildDashboardRuntimeModel } from './runtime/dashboardSliceBuilder';
 const NOW = new Date('2026-06-24T10:00:00.000Z');
 
 function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
-  return {
-    id: overrides.id ?? 'v1',
+  return dashboardTestVehicle({
     license: overrides.license ?? 'KS MS 661',
     make: overrides.make ?? 'Audi',
     model: overrides.model ?? 'A4',
     year: overrides.year ?? 2022,
     station: overrides.station ?? 'Zentrale',
-    stationId: overrides.stationId ?? 'st-1',
-    fuelType: overrides.fuelType ?? 'Petrol',
-    status: overrides.status ?? 'Available',
-    cleaningStatus: overrides.cleaningStatus ?? 'Clean',
-    healthStatus: overrides.healthStatus ?? 'Good Health',
     online: overrides.online ?? false,
     lastSignal: overrides.lastSignal,
-    badge: overrides.badge ?? 0,
-    odometer: overrides.odometer ?? 10000,
-    fuel: overrides.fuel ?? 72,
-    battery: overrides.battery ?? 100,
-    speed: overrides.speed ?? 0,
-    coolant: overrides.coolant ?? 90,
-    brakes: overrides.brakes ?? 90,
-    tires: overrides.tires ?? 90,
-    engineOil: overrides.engineOil ?? 90,
-    isElectric: overrides.isElectric ?? false,
-    hvBatteryCapacityKwh: overrides.hvBatteryCapacityKwh ?? null,
-    isFresh: overrides.isFresh ?? false,
     onlineStatus: overrides.onlineStatus ?? 'OFFLINE',
-    leasingRate: overrides.leasingRate ?? '',
-    insuranceCost: overrides.insuranceCost ?? '',
-    taxCost: overrides.taxCost ?? '',
-    totalMonthlyCost: overrides.totalMonthlyCost ?? '',
     ...overrides,
-  };
+  });
 }
 
 function insight(overrides: Partial<DashboardInsight> = {}): DashboardInsight {

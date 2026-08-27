@@ -3,6 +3,7 @@
  */
 import type { VehicleConnectivityRuntimeState } from '../../../../lib/api';
 import type { VehicleData } from '../../../data/vehicles';
+import type { FleetHealthEvaluation } from '../../../lib/fleet-health-evaluation/types';
 import {
   VEHICLE_DATA_QUALITY_STATE,
   VEHICLE_OPERATIONAL_STATUS,
@@ -20,6 +21,87 @@ export function canonicalAvailability(
     generatedAt: NOW_ISO,
     ...overrides,
   };
+}
+
+export function canonicalHealthEvaluability(
+  evaluability: 'EVALUABLE' | 'PARTIALLY_EVALUABLE' | 'NOT_EVALUABLE' | 'UNKNOWN' = 'EVALUABLE',
+  overrides: Partial<FleetHealthEvaluation> = {},
+): FleetHealthEvaluation {
+  return {
+    condition: 'good',
+    evaluability,
+    pipelineAvailability: 'ready',
+    generatedAt: NOW_ISO,
+    healthEvidenceAt: NOW_ISO,
+    anyModuleDataStale: false,
+    source: 'p0.2_projection',
+    ...overrides,
+  };
+}
+
+/**
+ * Map legacy/string dashboard test status values to canonical P0.1 status.
+ */
+export function normalizeDashboardTestVehicleStatus(
+  status: unknown,
+): VehicleOperationalStatus {
+  const raw = typeof status === 'string' ? status : undefined;
+  if (raw === 'Available' || raw === 'available') {
+    return VEHICLE_OPERATIONAL_STATUS.AVAILABLE;
+  }
+  if (raw === 'Active Rented' || raw === 'active_rented') {
+    return VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED;
+  }
+  if (raw === 'Maintenance' || raw === 'maintenance') {
+    return VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
+  }
+  if (raw === 'Reserved' || raw === 'reserved') {
+    return VEHICLE_OPERATIONAL_STATUS.RESERVED;
+  }
+  if (raw === 'Blocked' || raw === 'blocked') {
+    return VEHICLE_OPERATIONAL_STATUS.BLOCKED;
+  }
+  if (
+    status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE ||
+    status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED ||
+    status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE ||
+    status === VEHICLE_OPERATIONAL_STATUS.RESERVED ||
+    status === VEHICLE_OPERATIONAL_STATUS.BLOCKED ||
+    status === VEHICLE_OPERATIONAL_STATUS.UNKNOWN
+  ) {
+    return status as VehicleOperationalStatus;
+  }
+  return VEHICLE_OPERATIONAL_STATUS.AVAILABLE;
+}
+
+export type DashboardTestVehicleOptions = Partial<VehicleData> & {
+  /** When true, attach explicit P0.4 EVALUABLE/good healthEvaluation (opt-in). */
+  withCanonicalHealth?: boolean;
+};
+
+/**
+ * Dashboard/Fleet runtime test vehicle with P0.2 operationalAvailability + connectivity by default.
+ * Legacy onlineStatus/lastSignal may still be set for informational display tests.
+ */
+export function dashboardTestVehicle(options: DashboardTestVehicleOptions = {}): VehicleData {
+  const { withCanonicalHealth, ...overrides } = options;
+  const status = normalizeDashboardTestVehicleStatus(overrides.status);
+  const id = overrides.id ?? 'v1';
+
+  return canonicalOperationalVehicle(status, {
+    isFresh: overrides.isFresh ?? false,
+    onlineStatus: overrides.onlineStatus ?? 'STANDBY',
+    leasingRate: overrides.leasingRate ?? '',
+    insuranceCost: overrides.insuranceCost ?? '',
+    taxCost: overrides.taxCost ?? '',
+    totalMonthlyCost: overrides.totalMonthlyCost ?? '',
+    connectivityRuntime: canonicalConnectivityRuntime({ vehicleId: id }),
+    ...(withCanonicalHealth
+      ? { healthEvaluation: canonicalHealthEvaluability('EVALUABLE') }
+      : {}),
+    ...overrides,
+    status,
+  });
 }
 
 export function canonicalConnectivityRuntime(
