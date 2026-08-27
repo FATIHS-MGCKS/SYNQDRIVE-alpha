@@ -1,10 +1,17 @@
 import type { BatteryMeasurementQuality } from '@prisma/client';
-import { isBatteryV2RestShadowEnabled } from '@config/battery-health-v2.config';
+import {
+  isBatteryV2PublicationEnabled,
+  isBatteryV2RestShadowEnabled,
+} from '@config/battery-health-v2.config';
 
 export const LV_REST_SHADOW_CONTEXT_MARKER = 'shadowMode' as const;
 
+/**
+ * Shadow measurement semantics: block evidence/publication side effects.
+ * Active when canonical REST pipeline runs but LV publication is still OFF.
+ */
 export function isLvRestShadowModeActive(): boolean {
-  return isBatteryV2RestShadowEnabled();
+  return isBatteryV2RestShadowEnabled() && !isBatteryV2PublicationEnabled();
 }
 
 export function withLvRestShadowContext<T extends Record<string, unknown>>(
@@ -36,8 +43,11 @@ export function resolveLvRestShadowEvidenceEligible(
   return qualityEvidenceEligible;
 }
 
-export function resolveLvRestShadowPublicationEligible(): false {
-  return false;
+export function resolveLvRestShadowPublicationEligible(): boolean {
+  if (isLvRestShadowModeActive()) {
+    return false;
+  }
+  return isBatteryV2PublicationEnabled();
 }
 
 export function isLvRestShadowProminentHealthEligible(): false {

@@ -32,6 +32,12 @@ describe('BatteryV2SnapshotIngestionService', () => {
     const deadLetters = {
       isDeadLetter: jest.fn().mockResolvedValue(false),
     };
+    const lvLiveVoltage = {
+      persistFromObservationClassify: jest.fn().mockResolvedValue({ persisted: false }),
+    };
+    const lvRestBridge = {
+      processObservationCycle: jest.fn().mockResolvedValue(undefined),
+    };
 
     const service = new BatteryV2SnapshotIngestionService(
       prisma as any,
@@ -42,10 +48,28 @@ describe('BatteryV2SnapshotIngestionService', () => {
       {} as any,
       jobProducer as any,
       deadLetters as any,
+      lvLiveVoltage as any,
+      lvRestBridge as any,
     );
 
-    return { service, batteryV2, jobProducer, deadLetters };
+    return {
+      service,
+      batteryV2,
+      jobProducer,
+      deadLetters,
+      lvLiveVoltage,
+      lvRestBridge,
+    };
   }
+
+  it('continues legacy onSnapshot when canonical bridge throws (fail-open)', async () => {
+    const { service, batteryV2, lvRestBridge } = buildService();
+    lvRestBridge.processObservationCycle.mockRejectedValue(new Error('fsm failed'));
+
+    await service.ingestObservationClassify(basePayload as any);
+
+    expect(batteryV2.onSnapshot).toHaveBeenCalled();
+  });
 
   it('enqueues LV assessment recompute after rest capture (B-01)', async () => {
     const { service, jobProducer } = buildService();
@@ -69,5 +93,35 @@ describe('BatteryV2SnapshotIngestionService', () => {
     await service.ingestObservationClassify(basePayload as any);
 
     expect(jobProducer.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('invokes LIVE_VOLTAGE persistence on every observation classify', async () => {
+    const { service, lvLiveVoltage } = buildService();
+
+    await service.ingestObservationClassify(basePayload as any);
+
+    expect(lvLiveVoltage.persistFromObservationClassify).toHaveBeenCalledWith(
+      basePayload,
+    );
+  });
+
+  it('invokes canonical LV REST bridge on every observation classify (I)', async () => {
+    const { service, lvRestBridge } = buildService();
+
+    await service.ingestObservationClassify(basePayload as any);
+
+    expect(lvRestBridge.processObservationCycle).toHaveBeenCalledWith(
+      'org-1',
+      'veh-1',
+      basePayload.snapshotContext,
+    );
+  });
+
+  it('still runs legacy onSnapshot when LV voltage is present (I)', async () => {
+    const { service, batteryV2 } = buildService();
+
+    await service.ingestObservationClassify(basePayload as any);
+
+    expect(batteryV2.onSnapshot).toHaveBeenCalled();
   });
 });

@@ -1,12 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { isBatteryV2HvFallbackChargeSessionEnabled, isBatteryV2HvRechargeSessionEnabled } from '@config/battery-health-v2.config';
+import { isBatteryV2HvFallbackChargeSessionEnabled, isBatteryV2HvRechargeSessionEnabled, isBatteryV2LegacyRestCaptureEnabled } from '@config/battery-health-v2.config';
 import type { HvBatterySignalObservedAt } from '../../../dimo/mappers/dimo-battery-signal.mapper';
 import { BatteryV2Service } from '../battery-v2.service';
 import { HvFallbackChargeSessionDetectorService } from '../hv-charge-session/hv-fallback-charge-session-detector.service';
 import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 import { HvMethodProfileService } from '../hv-method-profile/hv-method-profile.service';
 import { HvBatteryHealthService } from '../hv-battery-health.service';
+import { LvLiveVoltageIngestionService } from '../lv-live-voltage/lv-live-voltage-ingestion.service';
+import { LvRestWindowIngestionBridgeService } from '../lv-rest-window/lv-rest-window-ingestion-bridge.service';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import { BatteryV2ProviderError } from './battery-v2-job.errors';
@@ -55,6 +57,8 @@ export class BatteryV2SnapshotIngestionService {
     private readonly fallbackDetector: HvFallbackChargeSessionDetectorService,
     private readonly jobProducer: BatteryV2JobProducerService,
     private readonly deadLetters: BatteryV2JobDeadLetterService,
+    private readonly lvLiveVoltage: LvLiveVoltageIngestionService,
+    private readonly lvRestBridge: LvRestWindowIngestionBridgeService,
   ) {}
 
   async ingestObservationClassify(payload: BatteryObservationClassifyPayload): Promise<void> {
@@ -72,7 +76,23 @@ export class BatteryV2SnapshotIngestionService {
       select: { tractionBatteryIsCharging: true },
     });
 
-    if (ctx.lvBatteryVoltage != null) {
+    await this.lvLiveVoltage.persistFromObservationClassify(payload).catch((err) => {
+      this.logger.warn(
+        `LIVE_VOLTAGE persistence failed (pipeline continues): vehicle=${payload.vehicleId} error=${(err as Error).message}`,
+      );
+    });
+
+    await this.lvRestBridge.processObservationCycle(
+      payload.organizationId,
+      payload.vehicleId,
+      ctx,
+    ).catch((err) => {
+      this.logger.warn(
+        `Canonical LV REST bridge failed (legacy path continues): vehicle=${payload.vehicleId} error=${(err as Error).message}`,
+      );
+    });
+
+    if (ctx.lvBatteryVoltage != null && isBatteryV2LegacyRestCaptureEnabled()) {
       const capture = await this.batteryV2.onSnapshot(
         payload.vehicleId,
         ctx.lvBatteryVoltage,

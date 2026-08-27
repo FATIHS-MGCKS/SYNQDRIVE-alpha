@@ -19,6 +19,7 @@ import {
 import {
   isLegacyCrankAssessmentEnabled,
   isStartWindowCollectionEnabled,
+  isBatteryV2LegacyRestCaptureEnabled,
 } from '../../../config/battery-health-v2.config';
 import {
   isLeadAcidCurveApplicable,
@@ -97,6 +98,9 @@ export class BatteryV2Service {
     lvBatteryVoltage: number | null,
     observedAt: Date | null = null,
   ): Promise<BatteryV2SnapshotCaptureResult> {
+    if (!isBatteryV2LegacyRestCaptureEnabled()) {
+      return { restCaptured: false };
+    }
     if (!isPlausibleVoltage(lvBatteryVoltage)) {
       return { restCaptured: false };
     }

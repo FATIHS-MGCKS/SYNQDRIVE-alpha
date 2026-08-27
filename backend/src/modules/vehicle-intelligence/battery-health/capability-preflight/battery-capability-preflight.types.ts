@@ -17,6 +17,7 @@ export interface BatteryCapabilityPreflightInput {
   queryError?: string | null;
   checkedAt?: Date;
   staleThresholdMs?: number;
+  metadata?: Record<string, unknown>;
 }
 
 export interface RechargeSegmentsProbeResult {

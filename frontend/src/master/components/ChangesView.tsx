@@ -36,6 +36,66 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-live-voltage-canonical-laststored-2026-08-26',
+    version: '4.9.967',
+    title: 'Battery V2 — canonical LIVE_VOLTAGE lastStored uses BatteryMeasurement only',
+    summary: [
+      'LvLiveVoltageIngestionService.resolveLastStoredObservation no longer falls back to battery_health_snapshots.',
+      'Legacy snapshots cannot suppress the first canonical LIVE_VOLTAGE bootstrap on legacy-heavy fleets.',
+      'Idempotency remains DB-backed via createIdempotent + P2002; REST_60M/6H consume canonical LIVE_VOLTAGE.',
+    ],
+    reason:
+      'Adversarial pre-merge gate: legacy snapshot matching incoming observation classified DUPLICATE_OBSERVATION before any canonical row existed.',
+    previousBehavior:
+      'lastStored compared against battery_health_snapshots when no canonical LIVE_VOLTAGE measurement existed.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T20:45:00.000Z',
+  },
+  {
+    id: 'battery-v2-production-cutover-stage1-2026-08-26',
+    version: '4.9.966',
+    title: 'Battery V2 — Stage 1 production cutover (canonical processing, publication gated)',
+    summary: [
+      'Fail-open canonical LV REST bridge; legacy onSnapshot continues if FSM throws.',
+      'LvLiveVoltageIngestionService persists canonical LIVE_VOLTAGE from classified snapshots.',
+      'Capability preflight falls back to LatestVehicleSnapshot when dedicated query fails.',
+      'isLvRestShadowModeActive = REST pipeline on AND publication off.',
+      'Legacy rest capture gated; disabled automatically when publication authority active.',
+      'Stage 1 prod flags: REST_SHADOW=true, PUBLICATION=false, READINESS=false.',
+      'Publication/readiness blocked until post-deploy LIVE_VOLTAGE evidence validated.',
+    ],
+    reason:
+      'Shadow validation complete; canonical pipeline must run in production without dual-authority publication.',
+    previousBehavior:
+      'REST_SHADOW meant shadow-only measurements always; bridge failure blocked legacy path.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T19:50:00.000Z',
+  },
+  {
+    id: 'battery-v2-lv-rest-fsm-wiring-phase1-2026-08-26',
+    version: '4.9.965',
+    title: 'Battery V2 — canonical LV REST FSM wired to observation classify (Phase 1)',
+    summary: [
+      'LvRestWindowIngestionBridgeService connects ingestObservationClassify to LvRestWindowStateMachineService.',
+      'Internal TRIP_ENDED synthesized from read-only vehicle_trip_detection_states (RESTING + lastActivityAt).',
+      'Event order: invalidate → TRIP_ENDED → REST_SNAPSHOT; gated by BATTERY_V2_REST_SHADOW_ENABLED.',
+      'Legacy BatteryV2Service.onSnapshot unchanged (battery_features); no Trip Detection changes.',
+      'LIVE_VOLTAGE remediation explicitly deferred to Phase 2.',
+    ],
+    reason:
+      'Production had zero LV_REST_WINDOW sessions because processEvent had no production call sites.',
+    previousBehavior:
+      'BATTERY_OBSERVATION_CLASSIFY only ran legacy onSnapshot; canonical FSM was implemented but unwired.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T19:30:00.000Z',
+  },
+  {
     id: 'dimo-consent-ledger-backfill-phase2-2026-08-26',
     version: '4.9.964',
     title: 'DIMO consent ledger backfill — Phase 2 production apply (KS trio)',
