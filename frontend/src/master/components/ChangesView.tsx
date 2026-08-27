@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-cross-surface-stage-5-final-closure-2026-08-27',
+    version: '4.9.974',
+    title: 'Cross-Surface Vehicle State/Health — Stage 5 final closure + bounded legacy cleanup',
+    summary: [
+      'Final authority matrix certified: Fleet Command / Ready-to-Rent / Vehicle Detail all use P0.1 business, P0.2 availability, P1.5 readiness, P0.4 health aggregate, shared `activeHealthFindings[]`, canonical attention — no tenant-facing legacy authority.',
+      'Removed proven-dead first-finding collapse: `pickModuleReason` + `moduleReasonText` + the `rental_health:<module>` branch of `buildReasonBadge` (reachable only on the test-only no-`uiProjection` path).',
+      'Retained bounded: `buildReasonBadge` blocking/workflow/generic branches (legacy fallback), `resolveReasonBadgeFromUi` (canonical, filtered by attention resolver), Active Rentals drawer reasonBadge (workflow surface).',
+      'New `vehicle-cross-surface-stage5-final.test.ts` — M1–M25 canonical fixture matrix across fleet + detail projections, S1–S4 no-duplicate-health-text gates, D1–D5 attention≠health≠readiness contradiction gates.',
+      'Certified: no N+1 (batched health + embedded `dashboard_warning_lights` passthrough), backend passthrough safe/read-only, i18n keys complete (en+de, en-fallback locales), a11y (aria labels, overflow label, DTC count).',
+    ],
+    reason:
+      'Stages 2A–4 are accepted; Stage 5 certifies production readiness of the complete cross-surface contract and removes only superseded first-finding code.',
+    previousBehavior:
+      '`pickModuleReason` still collapsed rental-health modules into one arbitrary first-finding text on the legacy no-projection path; no single certification suite asserted all three surfaces against one fixture matrix.',
+    details:
+      'frontend: fleetVehicleDisplay.ts (first-finding removal), fleetVehicleDisplay.test.ts (legacy-path expectations), vehicle-cross-surface-stage5-final.test.ts (new). architecture + audit docs Stage 5 closure. No P0/P1 semantic changes, no backend changes, no UI redesign.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T20:15:00.000Z',
+  },
+  {
     id: 'vehicle-detail-row-alignment-stage-4-2026-08-27',
     version: '4.9.973',
     title: 'Vehicle Detail Row Alignment — Stage 4 shared semantic contract',

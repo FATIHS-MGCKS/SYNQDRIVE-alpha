@@ -724,3 +724,60 @@ Cleanup deferred to Stage 4/5 after Vehicle Detail cutover.
 - Optional: Health box aggregate badge alignment to P0.4 when product requires single aggregate everywhere
 
 *Stage 4 complete — Vehicle Detail shares canonical truth with Fleet/Ready-to-Rent; rich module UI unchanged.*
+
+---
+
+## STAGE 5 — FINAL CLOSURE (2026-08-27)
+
+Final production readiness gate + bounded legacy cleanup. No new semantics, no new UI, no backend changes.
+
+### Final authority matrix
+
+| Surface | Business | Availability | Readiness | Health aggregate | Findings | Attention | Legacy authority? |
+|---------|----------|--------------|-----------|------------------|----------|-----------|-------------------|
+| Fleet Command | P0.1 | P0.2 | P1.5 | P0.4 | `activeHealthFindings[]` | canonical | **No** |
+| Ready-to-Rent | P0.1 | P0.2 | P1.5 (primary) | P0.4 | `activeHealthFindings[]` | canonical | **No** |
+| Vehicle Detail Header | P0.1 | P0.2 | — | P0.4 | `activeHealthFindings[]` | canonical | **No** |
+| Vehicle Detail Overview | P0.1 | P0.2 | — | P0.4 | shared projection | canonical | **No** |
+| Vehicle Detail Health | P0.1 | — | — | P0.4 aggregate | module APIs (density only) | canonical | **No** |
+| Dashboard Warning Lights | — | — | — | — | canonical telltale read model | — | **No** |
+
+### Bounded legacy cleanup
+
+| Item | Verdict |
+|------|---------|
+| `pickModuleReason` + `moduleReasonText` + module scan order | **REMOVED** — first-finding collapse; reachable only without `uiProjection` (test-only path; all live tenant callers pass `uiProjection`) |
+| `buildReasonBadge` health-module branch | **REMOVED** (the `rental_health:<module>` first-finding branch) |
+| `buildReasonBadge` (blocking / workflow-overdue / visual / `HEALTH_GENERIC`) | **RETAINED** — legacy fallback path, no first-finding semantics |
+| `resolveReasonBadgeFromUi` | **RETAINED** — live canonical path; health-domain output suppressed/filtered by `resolveRowOperationalAttentionBadge` |
+| Active Rentals drawer `reasonBadge` | **RETAINED** — workflow/handover surface, outside the three-surface health contract |
+| `HealthErrorsView` direct `battery.svg` | **RETAINED** — battery-specific slot guarded by key-based `isBatteryTelltaleActive`; no competing key→asset map |
+
+### Final gates
+
+| Gate | Verdict |
+|------|---------|
+| Fleet / Ready / Detail authority consistency | **PASS** |
+| Multi-finding preservation | **PASS** (M16 KS MX: 6-finding set identical on all surfaces) |
+| Single-first-finding loss | **REMOVED** |
+| Rendered text as machine authority | **NO** (typed `type`/`severity`/`reasonCode`/`source`/`domain` only) |
+| Health / attention / readiness separation | **PASS** (D1–D5) |
+| DTC != dashboard warning | **PASS** (M12/M13) |
+| Unknown telltale → CEL | **NO** (M11: generic `alert-triangle`) |
+| No finding = no icon | **PASS** (M1, B1, B15) |
+| No duplicate health text | **PASS** (S1–S4) |
+| No N+1 regression | **PASS** (batched accessors; Vehicle Detail per-vehicle request intentional + bounded) |
+| i18n | **PASS** (`fleet.rowFinding.*` ×14, `fleet.rowProjection.*` ×3 in en+de; other locales fall back to en per governance) |
+| Accessibility | **PASS** (aria-label + tooltip per icon, `role=list/listitem`, overflow accessible label, DTC count in label) |
+| Stage 2–4 regression | **PASS** |
+| P0/P1 architecture | **UNCHANGED** |
+
+### Test evidence
+
+`vehicle-cross-surface-stage5-final.test.ts` — 34 tests: M1–M25 fixture matrix
+(businessState / operationalAvailability / readiness / healthEvaluability /
+healthCondition / findings set / attention on fleet + detail projections),
+S1–S4 duplicate-text gates, D1–D5 contradiction gates.
+Regressions: C1–C10, A1–A8, H1–H16, B1–B16, L1–L10, V1–V16, T1–T12.
+
+**CROSS-SURFACE VEHICLE STATE / HEALTH WORKSTREAM: CLOSED.**

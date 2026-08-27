@@ -307,3 +307,84 @@ Tests: `vehicle-detail-row-alignment.test.ts` (V1–V16 + cross-surface matrix +
 | `frontend/src/rental/lib/vehicle-detail-row-projection.ts` | Stage 4 Vehicle Detail shared projection builder |
 | `frontend/src/rental/lib/vehicle-detail-row-alignment.test.ts` | V1–V16 + cross-surface matrix |
 | `frontend/src/rental/components/vehicle-detail/VehicleDetailHeaderBadges.tsx` | P0.4 header + optional finding icons |
+
+---
+
+## STAGE 5 — FINAL CLOSURE (2026-08-27)
+
+Production-readiness certification of the complete cross-surface contract. No new
+semantics, no new UI, no backend truth changes.
+
+### Final cross-surface authority matrix
+
+| Surface | Business State | Operational Availability | Readiness | Health Aggregate | Active Findings | Attention | Legacy authority remaining? |
+|---------|----------------|--------------------------|-----------|------------------|-----------------|-----------|------------------------------|
+| Fleet Command | P0.1 (`selectOperationalStatus` → `businessState`) | P0.2 (`operationalAvailability`) | P1.5 (`getReadiness` → projection) | P0.4 (`healthEvaluation` via ui projection) | shared `activeHealthFindings[]` | canonical operational attention (`resolveRowOperationalAttentionBadge`) | No |
+| Ready-to-Rent | P0.1 | P0.2 | P1.5 (readiness-primary badge) | P0.4 | shared `activeHealthFindings[]` | canonical operational attention | No |
+| Vehicle Detail Header | P0.1 | P0.2 | — (readiness not asserted; `authorityPresent=false`) | P0.4 (`resolveVehicleDetailCanonicalHealthDisplay`) | shared `activeHealthFindings[]` (optional header icons) | canonical | No |
+| Vehicle Detail Overview | P0.1 | P0.2 | — | P0.4 | shared projection | canonical | No |
+| Vehicle Detail Health | P0.1 | — | — | P0.4 aggregate; module APIs for density | module read models (richer density, same truth) | canonical | No (module detail is intentional density, not competing authority) |
+| Dashboard Warning Lights | — | — | — | — | canonical telltale read model (`dashboard_warning_lights`) | — | No (single registry `resolveDashboardTelltaleIcon`) |
+
+### First-finding / single-reason helper audit (final)
+
+| Helper | Verdict |
+|--------|---------|
+| `pickModuleReason` | **REMOVED** (Stage 5) — was reachable only on the legacy no-`uiProjection` path (test-only; every live tenant caller passes `uiProjection`). Module detail is carried by `activeHealthFindings[]`. |
+| `moduleReasonText` / `REASON_MODULE_ORDER` / local `extractCount` in `fleetVehicleDisplay.ts` | **REMOVED** with `pickModuleReason`. |
+| `buildReasonBadge` | **RETAINED** (legacy fallback path only, reached when `uiProjection` absent — no live tenant caller). Remaining branches: concrete blocking reason, workflow overdue (RETURN/PICKUP), visual reason, generic `HEALTH_GENERIC`. No per-module first-finding collapse remains. |
+| `resolveReasonBadgeFromUi` | **RETAINED** — live consumer: `resolveFleetVehicleDisplayState` (canonical path). Output flows through `resolveRowOperationalAttentionBadge`, which suppresses health-domain badges when findings render and only passes operational/workflow domains. |
+| `resolveRowOperationalAttentionBadge` | **RETAINED** — live consumers: `FleetOperatorRow`, `CompactFleetDrawerVehicleRow` (operational attention, not health). |
+| `FleetVehicleDisplayState.reasonBadge` direct render | **RETAINED** for Active Rentals drawer (`ActiveRentalDrawerRowCard` via `resolveDrawerVehicleReasonBadge`) — workflow/handover surface outside the three-surface health contract. |
+
+### Duplicate mapper audit (final)
+
+- Health condition → tone: single authority `resolveHealthDisplayFromUi` (used by fleet display, row projection, detail projection).
+- Telltale key → asset: single registry `dashboard-warning-lights-display.ts` (`resolveDashboardTelltaleIcon`); consumers render via `DashboardTelltaleIcon`. Bounded exception: `HealthErrorsView.tsx` renders `battery.svg` directly inside a battery-specific slot guarded by key-based `isBatteryTelltaleActive` — no competing key→asset mapping.
+- Module severity: single authority `operativeSeverityFromRentalModule` (`operationalIssueTaxonomy`).
+- Finding → icon/tooltip/aria: single authority `vehicle-health-finding-presentation.ts`.
+
+### Language-independence (final)
+
+Machine classification in the cross-surface contract uses typed fields only
+(`type`, `severity`, `reasonCode`, `source`, `domain`, enums). Remaining
+`includes(...)`/regex sites outside the contract operate on backend-origin
+identifiers or raw backend reason strings (e.g. `operationalIssueTaxonomy`
+issueType codes, `vehicleRuntimeStateBuilder` backend reason normalization,
+`fleet-map-vehicle-mapper` legacy backend healthStatus strings) — never on
+rendered localized labels. `isConcreteReason` / `isTelemetryReason` in
+`fleetVehicleDisplay.ts` are presentation-hygiene filters (they gate whether raw
+backend text may render, they do not classify machine state).
+
+### N+1 / data flow certification
+
+- Fleet Command: `buildFleetVehicleContexts` — batch `getHealth` accessor + embedded
+  `dashboard_warning_lights` passthrough (`composeFleetDashboardWarningLightsAccessor`). No per-row provider or telltale fetch.
+- Ready-to-Rent: same shared batched flow.
+- Vehicle Detail: already-loaded `VehicleData` + the vehicle's Rental Health response
+  (bounded per-detail request — intentional, single vehicle) + embedded warning lights.
+- Backend passthrough (`dashboard_warning_lights` in `VehicleHealth`): read-only, produced
+  from the same `Promise.allSettled` fetch used for the `vehicle_alerts` module — zero
+  additional provider calls, bounded payload, additive optional field, tenant-facing DTO only.
+
+### KS MX 2024 final matrix (fixture-shaped, read-only)
+
+business `AVAILABLE` · operational availability `AVAILABLE` · readiness `false` ·
+evaluability `EVALUABLE` · aggregate `warning` · findings = {BATTERY critical, SERVICE critical,
+DTC warning ×2, BRAKE warning, TIRE warning, DASHBOARD_WARNING (TPMS)} · attention: none fabricated.
+Fleet Command: business-primary "Frei/Free" + full icon strip; Ready-to-Rent: readiness-primary
+"Nicht bereit" + same icon strip; Vehicle Detail: P0.4 aggregate + same finding set at higher density.
+No surface reduces the set to a single "Reifen beobachten"; no surface fabricates findings.
+
+### Stage 5 test evidence
+
+`vehicle-cross-surface-stage5-final.test.ts`: M1–M25 canonical fixture matrix asserted across
+fleet + detail projections (business/availability/readiness/evaluability/condition/findings/attention),
+S1–S4 no-duplicate-health-text gates, D1–D5 domain-independence contradiction gates.
+Stage 2–4 regressions: C1–C10, A1–A8, H1–H16, B1–B16, L1–L10, V1–V16, T1–T12 — all green.
+
+### Production-readiness verdict
+
+Cross-surface vehicle state / health workstream **CLOSED**. Authority matrix has no
+tenant-facing legacy authority; first-finding collapse removed; multi-finding preserved;
+DTC ≠ dashboard warning; unknown telltale → generic (never CEL); no N+1 regression.

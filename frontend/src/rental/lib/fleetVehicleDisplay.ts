@@ -15,7 +15,6 @@ import {
 } from './vehicle-operational-state';
 import {
   formatUserFacingReasonLabel,
-  isOperativeRentalHealthModule,
   sanitizeUserFacingIssueText,
 } from './operational-issues';
 import {
@@ -504,72 +503,6 @@ function isTelemetryReason(text: string | null | undefined): boolean {
   return /offline|no signal|signal delayed|standby|stale/i.test(String(text));
 }
 
-type ReasonModuleKey = 'error_codes' | 'service_compliance' | 'brakes' | 'tires' | 'battery';
-
-const REASON_MODULE_ORDER: ReasonModuleKey[] = [
-  'error_codes',
-  'service_compliance',
-  'brakes',
-  'tires',
-  'battery',
-];
-
-function extractCount(text: string | null | undefined): number | null {
-  if (!text) return null;
-  const m = String(text).match(/\d+/);
-  return m ? Number(m[0]) : null;
-}
-
-function moduleReasonText(
-  key: ReasonModuleKey,
-  module: RentalHealthModule,
-  de: boolean,
-): string {
-  const critical = module.state === 'critical';
-  switch (key) {
-    case 'error_codes': {
-      const n = extractCount(module.reason);
-      if (n != null && n > 0) {
-        if (de) return n === 1 ? '1 aktiver Fehlercode' : `${n} aktive Fehlercodes`;
-        return n === 1 ? '1 active fault code' : `${n} active fault codes`;
-      }
-      return de ? 'Aktiver Fehlercode' : 'Active fault code';
-    }
-    case 'service_compliance':
-      return critical
-        ? de ? 'Service überfällig' : 'Service overdue'
-        : de ? 'Service fällig' : 'Service due';
-    case 'brakes':
-      return de ? 'Bremsen prüfen' : 'Check brakes';
-    case 'tires':
-      return critical
-        ? de ? 'Reifen prüfen' : 'Check tires'
-        : de ? 'Reifen beobachten' : 'Monitor tires';
-    case 'battery':
-      return de ? 'Batterie prüfen' : 'Check battery';
-    default:
-      return de ? 'Health prüfen' : 'Check health';
-  }
-}
-
-/** Pick the most important concrete module reason (critical before warning). */
-function pickModuleReason(
-  rentalHealth: VehicleHealthResponse | null,
-  de: boolean,
-): { text: string; moduleKey: ReasonModuleKey } | null {
-  const modules = rentalHealth?.modules;
-  if (!modules) return null;
-  for (const severity of ['critical', 'warning'] as const) {
-    for (const key of REASON_MODULE_ORDER) {
-      const module = modules[key];
-      if (module && isOperativeRentalHealthModule(key, module) && module.state === severity) {
-        return { text: moduleReasonText(key, module, de), moduleKey: key };
-      }
-    }
-  }
-  return null;
-}
-
 function buildReasonBadge(
   v: VehicleData,
   rentalHealth: VehicleHealthResponse | null,
@@ -596,17 +529,8 @@ function buildReasonBadge(
     };
   }
 
-  const moduleReason = pickModuleReason(rentalHealth, de);
-  if (moduleReason) {
-    const code = `rental_health:${moduleReason.moduleKey}`;
-    return {
-      text: moduleReason.text,
-      tone,
-      code,
-      domain: 'health',
-      source: code,
-    };
-  }
+  // Stage 5: per-module first-finding reason collapse removed — module-level
+  // health detail is carried by activeHealthFindings[] (shared projection).
 
   if (v.activeIsOverdue) {
     return {
