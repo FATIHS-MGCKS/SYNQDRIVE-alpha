@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-row-operational-projection-stage-2a-2026-08-27',
+    version: '4.9.968',
+    title: 'Vehicle Row Operational Projection — Stage 2A shared frontend contract',
+    summary: [
+      'New `VehicleRowOperationalProjection` adapter preserves separate business, P0.2 availability, P1.5 readiness, connectivity, P0.4 health, and full `activeHealthFindings[]` (no first-finding-wins).',
+      '`buildFleetVehicleContexts` exposes `rowOperationalProjection` alongside existing `uiProjection`; Fleet Command passes P1.5 readiness when dashboard runtime is present.',
+      'Visible Fleet / Ready-to-Rent / Vehicle Detail row UI unchanged in this stage.',
+      'Contract tests: fixtures A–F, invariants C1–C10, six production-shaped vehicles including KS MX 2024 multi-finding preservation.',
+    ],
+    reason:
+      'Stage 1 audit (PR #1347) proved cross-surface inconsistencies are frontend contract fragmentation — establish shared projection before UI cutover.',
+    previousBehavior:
+      'Compact rows used single `reasonBadge` / `pickModuleReason` while Vehicle Detail showed all module findings.',
+    details:
+      'frontend: vehicle-row-operational-projection.ts(+test), fleet-operator-panel.ts, FleetCommandView.tsx, i18n de/en rowFinding keys. architecture: VEHICLE_ROW_OPERATIONAL_PROJECTION_CONTRACT_2026-08.md. audit: vehicle-cross-surface-state-health-consumer-consistency-audit-2026-08.md §Stage 2A. No backend/P0/P1 semantic changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T17:30:00.000Z',
+  },
+  {
     id: 'battery-v2-live-voltage-canonical-laststored-2026-08-26',
     version: '4.9.967',
     title: 'Battery V2 — canonical LIVE_VOLTAGE lastStored uses BatteryMeasurement only',

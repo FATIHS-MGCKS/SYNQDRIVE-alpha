@@ -487,9 +487,21 @@ interface VehicleRowOperationalProjection {
 
 | Doc | Updated |
 |-----|---------|
-| Changes (master UI) | **No** — audit-only, no implementation |
-| Architektur (master UI) | **No** — audit-only; Stage 2 should add architecture record when contract lands |
+| Changes (master UI) | **Yes** — Stage 2A contract entry |
+| Architektur (master UI) | **Yes** — `VEHICLE_ROW_OPERATIONAL_PROJECTION_CONTRACT_2026-08.md` |
 
 ---
 
-*End of Stage 1 audit. No runtime, UI, schema, or production changes were made.*
+## Stage 2A implementation (2026-08-27)
+
+| Field | Value |
+|-------|-------|
+| **Phase** | Shared frontend contract — no visible UI cutover |
+| **Adapter** | `frontend/src/rental/lib/vehicle-row-operational-projection.ts` |
+| **Integration** | `buildFleetVehicleContexts()` → `rowOperationalProjection`; `FleetCommandView` passes P1.5 readiness when `dashboardRuntime` present |
+| **Tests** | `vehicle-row-operational-projection.test.ts` — fixtures A–F, invariants C1–C10, six production-shaped vehicles |
+| **Architecture** | `architecture/VEHICLE_ROW_OPERATIONAL_PROJECTION_CONTRACT_2026-08.md` |
+
+**Stage 2A confirms:** `activeHealthFindings[]` preserves concurrent module findings (KS MX 2024-shaped fixture ≥ 6 findings) without `pickModuleReason` / single `primaryReason` collapse.
+
+*Stage 1 audit complete. Stage 2A adds contract + tests only — visible UI unchanged.*
