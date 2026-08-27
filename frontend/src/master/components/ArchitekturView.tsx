@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Tenant Billing Overview (P2.2.54 — V4.9.981)', icon: Globe,
+    endpoint: 'Settings → Billing → Overview + subscription shell',
+    service: '**Locale flow:** `useLanguage().locale` → `rental-tenant-billing-i18n.ts` → `formatInvoiceListAmount` / `toLocaleDateString`. **Keys:** +35 EN+DE `tenantBilling.*`; reuses `invoiceLineItem.summary.*`, `common.*`. **Machine values:** tab IDs, subscription status IDs, API labels, money.formatted, warnings, actions frozen. **Guardrails:** P2.2.54 enforce-clean exact (8 paths) — 0 findings. **Frozen:** P253–P249, deferred billing tabs, CustomerPayments. **Tests:** `rental-tenant-billing-overview-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_RENTAL_TENANT_BILLING_OVERVIEW_P2_2_54_2026-08-27.md' },
   { name: 'Platform i18n Rental Invoice Line Items (P2.2.53 — V4.9.980)', icon: Globe,
     endpoint: 'Invoice Detail → InvoiceLineItems card + summary',
     service: '**Locale flow:** `useLanguage().locale` → `rental-invoice-line-items-i18n.ts` → `formatInvoiceListAmount`. **Keys:** +3 EN+DE (`unit.days`, `unit.hours`, `fallback.description`); reuses 21 `invoiceLineItem.*`. **Machine values:** quantity, cents, tax rates, descriptions, explicit units, formulas frozen. **Guardrails:** P2.2.53 enforce-clean exact (3 paths) — 0 findings. **Frozen:** P252 Payments, P251 Relations, P250 Header, P249 Secondary. **Tests:** `rental-invoice-line-items-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

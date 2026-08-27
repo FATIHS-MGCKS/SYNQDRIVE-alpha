@@ -5,22 +5,24 @@ export type TenantSubscriptionSubTab =
   | 'invoices'
   | 'payment-method';
 
+export const TENANT_SUBSCRIPTION_SUB_TAB_IDS: TenantSubscriptionSubTab[] = [
+  'overview',
+  'tariff-vehicles',
+  'addons',
+  'invoices',
+  'payment-method',
+];
+
+/** @deprecated Use TENANT_SUBSCRIPTION_SUB_TAB_IDS + resolveTenantBillingTabLabel */
 export const TENANT_SUBSCRIPTION_SUB_TABS: Array<{ id: TenantSubscriptionSubTab; label: string }> =
-  [
-    { id: 'overview', label: 'Übersicht' },
-    { id: 'tariff-vehicles', label: 'Tarif & Fahrzeuge' },
-    { id: 'addons', label: 'Zusatzmodule' },
-    { id: 'invoices', label: 'Rechnungen' },
-    { id: 'payment-method', label: 'Zahlungsmethode' },
-  ];
+  TENANT_SUBSCRIPTION_SUB_TAB_IDS.map((id) => ({ id, label: id }));
 
 export const TENANT_BILLING_SUB_TAB_PARAM = 'billingSubTab';
 
 export function parseTenantSubscriptionSubTab(
   value: string | null | undefined,
 ): TenantSubscriptionSubTab {
-  const allowed = TENANT_SUBSCRIPTION_SUB_TABS.map((tab) => tab.id);
-  if (value && allowed.includes(value as TenantSubscriptionSubTab)) {
+  if (value && TENANT_SUBSCRIPTION_SUB_TAB_IDS.includes(value as TenantSubscriptionSubTab)) {
     return value as TenantSubscriptionSubTab;
   }
   return 'overview';

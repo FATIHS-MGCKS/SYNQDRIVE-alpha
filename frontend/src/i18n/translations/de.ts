@@ -798,6 +798,47 @@ export const de: Record<TranslationKey, string> = {
   'billing.section.customerPayments': 'Kundenzahlungen & Auszahlungen',
   'billing.saasOnlyHint':
     'SynqDrive-Abonnement, SynqDrive-Rechnungen und Ihre Zahlungsmethode gegenüber SynqDrive. Kundenzahlungen und Auszahlungen finden Sie unter Finanzen.',
+
+  // ─── Tenant Billing (SynqDrive-Abonnement — P2.2.54 Übersicht + Shell) ───
+  'tenantBilling.tab.overview': 'Übersicht',
+  'tenantBilling.tab.tariffVehicles': 'Tarif & Fahrzeuge',
+  'tenantBilling.tab.addons': 'Zusatzmodule',
+  'tenantBilling.tab.invoices': 'Rechnungen',
+  'tenantBilling.tab.paymentMethod': 'Zahlungsmethode',
+  'tenantBilling.shell.title': 'Abrechnung & Abo',
+  'tenantBilling.shell.refresh': 'Aktualisieren',
+  'tenantBilling.shell.noAccessTitle':
+    'Kein Zugriff auf Abrechnung. Du benötigst Leseberechtigung für das Modul Abrechnung.',
+  'tenantBilling.a11y.subTabs': 'SynqDrive-Abonnement Bereiche',
+  'tenantBilling.overview.currentPlan': 'Aktueller Tarif',
+  'tenantBilling.overview.contractStatus': 'Vertragsstatus',
+  'tenantBilling.overview.billableVehicles': 'Abrechenbare Fahrzeuge',
+  'tenantBilling.overview.connectedHint': '{count} verbunden',
+  'tenantBilling.overview.nextAmount': 'Erwarteter nächster Betrag',
+  'tenantBilling.overview.nextCharge': 'Nächste Abbuchung',
+  'tenantBilling.overview.breakdownTitle': 'Kostenaufschlüsselung',
+  'tenantBilling.overview.rowBase': 'Grundbetrag',
+  'tenantBilling.overview.taxMissing': 'Noch nicht hinterlegt',
+  'tenantBilling.overview.pricingTier': 'Preisstaffel',
+  'tenantBilling.overview.contractPeriod': 'Vertragszeitraum',
+  'tenantBilling.overview.lastPaidTitle': 'Zuletzt bezahlte Rechnung',
+  'tenantBilling.overview.viewInvoices': 'Rechnungen ansehen',
+  'tenantBilling.overview.loadError': 'Übersicht konnte nicht geladen werden',
+  'tenantBilling.overview.emptyTitle':
+    'Noch kein SynqDrive-Abo. Sobald ein Vertrag für diese Organisation aktiv ist, sehen Sie hier Tarif, Kosten und Zahlungsstatus.',
+  'tenantBilling.problem.title':
+    'Handlungsbedarf bei der Zahlung. Bitte prüfen Sie offene Rechnungen und aktualisieren Sie Ihre Zahlungsmethode.',
+  'tenantBilling.problem.updatePayment': 'Zahlungsmethode aktualisieren',
+  'tenantBilling.problem.openPortal': 'Kundenportal öffnen',
+  'tenantBilling.status.active': 'Aktiv',
+  'tenantBilling.status.trialing': 'Testphase',
+  'tenantBilling.status.pastDue': 'Überfällig',
+  'tenantBilling.status.priceNotConfigured': 'Preis nicht konfiguriert',
+  'tenantBilling.status.prepared': 'Vorbereitet',
+  'tenantBilling.pricingModel.volume': 'Mengenpreis',
+  'tenantBilling.pricingModel.graduated': 'Gestaffelter Preis',
+  'tenantBilling.invoice.fallbackNumber': 'Noch nicht finalisiert',
+
   'finance.separationHint':
     'Kundenzahlungen und Auszahlungen sind getrennt von Ihrem SynqDrive-Abonnement. Ihre Abo-Zahlungsmethode ist nicht dasselbe wie Ihr Auszahlungskonto.',
   'finance.customerPayments.pageTitle': 'Kundenzahlungen & Auszahlungen',

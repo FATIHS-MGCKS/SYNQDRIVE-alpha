@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   TENANT_BILLING_SUB_TAB_PARAM,
+  TENANT_SUBSCRIPTION_SUB_TAB_IDS,
   TENANT_SUBSCRIPTION_SUB_TABS,
   buildTenantBillingSubTabSearch,
   parseTenantSubscriptionSubTab,
@@ -12,15 +13,18 @@ import {
 const billingDir = resolve(import.meta.dirname);
 
 describe('tenant billing navigation', () => {
-  it('defines five German subscription sub-tabs', () => {
-    expect(TENANT_SUBSCRIPTION_SUB_TABS).toHaveLength(5);
-    expect(TENANT_SUBSCRIPTION_SUB_TABS.map((tab) => tab.label)).toEqual([
-      'Übersicht',
-      'Tarif & Fahrzeuge',
-      'Zusatzmodule',
-      'Rechnungen',
-      'Zahlungsmethode',
+  it('defines five stable subscription sub-tab machine IDs', () => {
+    expect(TENANT_SUBSCRIPTION_SUB_TAB_IDS).toEqual([
+      'overview',
+      'tariff-vehicles',
+      'addons',
+      'invoices',
+      'payment-method',
     ]);
+    expect(TENANT_SUBSCRIPTION_SUB_TABS.map((tab) => tab.id)).toEqual(
+      TENANT_SUBSCRIPTION_SUB_TAB_IDS,
+    );
+    expect(TENANT_SUBSCRIPTION_SUB_TABS.every((tab) => tab.label === tab.id)).toBe(true);
   });
 
   it('parses valid sub-tab from search params', () => {
@@ -47,6 +51,7 @@ describe('tenant billing navigation', () => {
     expect(source).toContain('max-sm:px-3');
     expect(source).toContain('data-testid="tenant-subscription-subtab-bar"');
     expect(source).not.toContain('truncate');
+    expect(source).toContain('resolveTenantBillingTabLabel');
   });
 
   it('uses mobile-safe layout in BillingTab shell', () => {
@@ -54,5 +59,6 @@ describe('tenant billing navigation', () => {
     expect(source).toContain('safe-area-inset-bottom');
     expect(source).toContain('TenantBillingProblemPanel');
     expect(source).toContain('TenantSubscriptionTabBar');
+    expect(source).toContain('overviewHeaderBadge(overview, t)');
   });
 });

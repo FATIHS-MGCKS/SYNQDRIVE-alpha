@@ -1,8 +1,8 @@
-import type {
-  BillingCalculationStatus,
-  BillingSubscriptionStatus,
-  BillingSummaryDto,
-} from '../../types/billing.types';
+import type { BillingCalculationStatus, BillingSubscriptionStatus, BillingSummaryDto } from '../../types/billing.types';
+import {
+  formatRentalTenantBillingDate,
+  formatRentalTenantBillingMoney,
+} from '../../lib/rental-tenant-billing-i18n';
 import {
   mapInvoiceStatusToLabel,
   mapInvoiceStatusToTone,
@@ -12,25 +12,13 @@ import {
 export function formatMoneyCents(
   cents: number | null | undefined,
   currency = 'EUR',
+  locale = 'de',
 ): string {
-  if (cents == null) return '—';
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency,
-  }).format(cents / 100);
+  return formatRentalTenantBillingMoney(locale, cents, currency);
 }
 
-export function formatDateDe(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  } catch {
-    return iso;
-  }
+export function formatDateDe(iso: string | null | undefined, locale = 'de'): string {
+  return formatRentalTenantBillingDate(locale, iso);
 }
 
 export function formatTierRange(min: number, max: number | null): string {

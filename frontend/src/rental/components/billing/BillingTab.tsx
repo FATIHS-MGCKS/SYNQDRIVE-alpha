@@ -69,7 +69,7 @@ export function BillingTab() {
     syncBillingSubTabUrl(subTab);
   }, [subTab]);
 
-  const headerBadge = overviewHeaderBadge(overview);
+  const headerBadge = overviewHeaderBadge(overview, t);
 
   const reloadAll = () =>
     Promise.allSettled([
@@ -94,8 +94,7 @@ export function BillingTab() {
       <div className="max-w-[1200px] mx-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
         <EmptyState
           icon={<Icon name="lock" className="w-5 h-5" />}
-          title="Kein Zugriff auf Abrechnung"
-          description="Du benötigst Leseberechtigung für das Modul Abrechnung."
+          title={t('tenantBilling.shell.noAccessTitle')}
         />
       </div>
     );
@@ -104,8 +103,8 @@ export function BillingTab() {
   if (!orgId) {
     return (
       <div className="max-w-[1200px] mx-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <PageHeader title="Abrechnung & Abo" />
-        <EmptyState title="Organisation konnte nicht bestimmt werden" />
+        <PageHeader title={t('tenantBilling.shell.title')} />
+        <EmptyState title={t('billing.customerPayments.orgMissingTitle')} />
       </div>
     );
   }
@@ -113,7 +112,7 @@ export function BillingTab() {
   return (
     <div className="max-w-[1200px] mx-auto space-y-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
       <PageHeader
-        title="Abrechnung & Abo"
+        title={t('tenantBilling.shell.title')}
         status={
           headerBadge ? (
             <span
@@ -125,7 +124,7 @@ export function BillingTab() {
         }
         actions={
           <Button type="button" variant="outline" size="sm" onClick={() => void reloadAll()}>
-            Aktualisieren
+            {t('tenantBilling.shell.refresh')}
           </Button>
         }
       />

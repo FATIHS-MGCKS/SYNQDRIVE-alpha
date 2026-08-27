@@ -1,5 +1,6 @@
 import type { TenantSubscriptionOverviewDto } from '../../types/billing.types';
 import { Button } from '../../../components/ui/button';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface TenantBillingProblemPanelProps {
   overview: TenantSubscriptionOverviewDto | null;
@@ -18,6 +19,8 @@ export function TenantBillingProblemPanel({
   onOpenPortal,
   portalLoading = false,
 }: TenantBillingProblemPanelProps) {
+  const { t } = useLanguage();
+
   if (!overview) return null;
 
   const criticalWarnings = overview.warnings.filter((warning) => warning.severity === 'critical');
@@ -38,10 +41,7 @@ export function TenantBillingProblemPanel({
       data-testid="tenant-billing-problem-panel"
     >
       <div>
-        <h3 className="text-sm font-semibold">Handlungsbedarf bei der Zahlung</h3>
-        <p className="text-[12px] mt-1 text-muted-foreground">
-          Bitte prüfen Sie offene Rechnungen und aktualisieren Sie Ihre Zahlungsmethode.
-        </p>
+        <h3 className="text-sm font-semibold">{t('tenantBilling.problem.title')}</h3>
       </div>
 
       {warnings.map((warning, index) => (
@@ -56,12 +56,12 @@ export function TenantBillingProblemPanel({
       <div className="flex flex-wrap gap-2">
         {onViewInvoices ? (
           <Button type="button" size="sm" variant="outline" onClick={onViewInvoices}>
-            Offene Rechnungen ansehen
+            {t('tenantBilling.overview.viewInvoices')}
           </Button>
         ) : null}
         {canWrite && onManagePaymentMethod ? (
           <Button type="button" size="sm" variant="outline" onClick={onManagePaymentMethod}>
-            Zahlungsmethode aktualisieren
+            {t('tenantBilling.problem.updatePayment')}
           </Button>
         ) : null}
         {canWrite && onOpenPortal ? (
@@ -72,7 +72,7 @@ export function TenantBillingProblemPanel({
             disabled={portalLoading}
             onClick={onOpenPortal}
           >
-            {portalLoading ? 'Wird geöffnet…' : 'Kundenportal öffnen'}
+            {portalLoading ? t('common.loading') : t('tenantBilling.problem.openPortal')}
           </Button>
         ) : null}
       </div>
