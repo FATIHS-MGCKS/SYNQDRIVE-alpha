@@ -8,8 +8,14 @@ import type {
 import {
   fleetEnergyTone,
   fleetOperationalSortScore,
+  resolveCanonicalFleetVehicleDisplayState,
   resolveFleetVehicleDisplayState,
 } from './fleetVehicleDisplay';
+import {
+  canonicalAvailability,
+  canonicalConnectivityRuntime,
+  canonicalOperationalVehicle,
+} from '../components/dashboard/runtime/dashboard-canonical-test-fixtures';
 import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 
 function mod(state: RentalHealthState, reason = ''): RentalHealthModule {
@@ -570,5 +576,41 @@ describe('fleetOperationalSortScore', () => {
     );
     expect(d.statusBadge.tone).toBe('neutral');
     expect(d.statusBadge.dataQualityHint).toBeTruthy();
+  });
+});
+
+describe('canonical domain separation (marker attention != rental block)', () => {
+  it('DEVICE_UNPLUGGED + P0.2 AVAILABLE keeps rentalDisplay ready and health good', () => {
+    const v = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      connectivityRuntime: canonicalConnectivityRuntime({
+        overallState: 'DEVICE_UNPLUGGED',
+        physicalDeviceState: 'UNPLUGGED_CONFIRMED',
+        attentionState: 'ACTION_REQUIRED',
+      }),
+      operationalAvailability: canonicalAvailability('AVAILABLE'),
+      healthEvaluation: {
+        condition: 'good',
+        evaluability: 'EVALUABLE',
+        pipelineAvailability: 'ready',
+        generatedAt: '2026-08-26T12:00:00.000Z',
+        healthEvidenceAt: '2026-08-26T12:00:00.000Z',
+        anyModuleDataStale: false,
+        source: 'p0.2_projection',
+      },
+    });
+    const d = resolveCanonicalFleetVehicleDisplayState(v, { locale: 'en' });
+    expect(d.rentalDisplay.status).toBe('ready');
+    expect(d.primaryStatus).toBe('ready');
+    expect(d.healthDisplay.status).toBe('good');
+  });
+
+  it('P0.2 UNAVAILABLE marks rentalDisplay blocked without marker-only attention', () => {
+    const v = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      connectivityRuntime: canonicalConnectivityRuntime(),
+      operationalAvailability: canonicalAvailability('UNAVAILABLE'),
+    });
+    const d = resolveCanonicalFleetVehicleDisplayState(v, { locale: 'en' });
+    expect(d.rentalDisplay.status).toBe('blocked');
+    expect(d.primaryStatus).toBe('blocked');
   });
 });

@@ -140,11 +140,39 @@ Tenant fleet/map/list/detail/booking/dashboard/notification/handover operational
 
 ## Regression evidence
 
-| Suite | Result |
-|-------|--------|
-| `vehicle-operational-state-p1-final-closure.test.ts` | **21/21** |
-| Combined P1.1–P1.7 + operator/dashboard/booking/notification | **400/400** |
-| Frontend build (`tsc -b` + vite) | **PASS** |
+| Suite | Command scope | Result |
+|-------|---------------|--------|
+| **P1 focused/canonical suites** | `vitest run vehicle-operational-state-p1-final-closure fleetVehicleDisplay fleet-operational-p1-3-cutover vehicle-detail-operational-p1-4-cutover dashboard-operational-p1-5-cutover booking-operational-p1-6-cutover notifications-operational-p1-7-cutover fleet-operator-panel connectivity-cross-surface vehicle-operational-provenance fleet-health-evaluation-display fleet-operational-availability-display` + handover tests | **303/303 PASS** |
+| **Broader dashboard/fleet suite** | Above + `dashboardDrilldownRowDisplay` + `dashboardRuntimeUI` | **321/329 PASS**, **8 proven baseline failures** (identical on `8c586785`) |
+| **PR-introduced failures** | — | **0** |
+| Frontend build (`tsc -b` + vite) | — | **PASS** |
+
+### Broader suite — 8 pre-existing failures (baseline `8c586785` = PR HEAD)
+
+| File | Test | Message (summary) | Baseline | PR |
+|------|------|-------------------|----------|-----|
+| `dashboardDrilldownRowDisplay.test.ts` | shows not-ready vehicle only once… | `groups` length 2 expected, got 1 | FAIL | FAIL |
+| `dashboardDrilldownRowDisplay.test.ts` | uses ready/not-ready hint… | hint/count mismatch | FAIL | FAIL |
+| `dashboardDrilldownRowDisplay.test.ts` | allows Critical health with Ready readiness… | ready count / group mismatch | FAIL | FAIL |
+| `dashboardDrilldownRowDisplay.test.ts` | sorts rows within a group fresh → older… | `groups` length 2 expected, got 1 | FAIL | FAIL |
+| `dashboardRuntimeUI.test.ts` | keeps KPI counts aligned… | KPI count mismatch | FAIL | FAIL |
+| `dashboardRuntimeUI.test.ts` | deduplicates ready-to-rent… drawer groups | group dedup mismatch | FAIL | FAIL |
+| `dashboardRuntimeUI.test.ts` | reads not-ready rows from groups only… | not-ready row access mismatch | FAIL | FAIL |
+| `dashboardRuntimeUI.test.ts` | resolves ready-for-renting KPI counts… | `readyCount: 5` expected, got `0` | FAIL | FAIL |
+
+Cause: dashboard drawer/runtime fixture vehicles lack canonical P1.5 readiness fields — not introduced by P1 FINAL handover/domain work.
+
+## Domain separation (P1 FINAL closure)
+
+| Dimension | Authority when `uiProjection` set |
+|-----------|-------------------------------------|
+| **Marker `visual.isBlocked`** | P1.3 connectivity attention (DEVICE_UNPLUGGED, INTEGRATION_ERROR, AUTHORIZATION_REQUIRED, …) — map/marker only |
+| **`rentalDisplay` / rental block** | P0.2 `UNAVAILABLE` + `rentalHealth` blockers — **not** marker `isBlocked` |
+| **`healthDisplay`** | P0.4 `healthEvaluation` — **not** marker/connectivity |
+| **`primaryStatus`** | Business workflow + canonical health + canonical rental block — **not** marker attention |
+| **Handover readiness badge** | Health + canonical rental/operational block + cleaning — **not** `primaryStatus` / connectivity attention |
+
+**ATTENTION ≠ RENTAL BLOCK ≠ HEALTH CRITICAL** — enforced in `resolveCanonicalRentalBlockedFromUi`, `resolveOperationalStatus`, `resolveRentalDisplay`, `resolveHandoverReadinessBadge`.
 
 ## Related documents
 

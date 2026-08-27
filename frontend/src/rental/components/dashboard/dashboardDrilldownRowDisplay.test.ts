@@ -3,6 +3,11 @@ import type { DashboardInsight } from '../../../DashboardInsightsContext';
 import type { VehicleData } from '../../../data/vehicles';
 import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
 import { buildFleetVehicleUiProjection } from '../../lib/fleet-vehicle-ui-projection';
+import { deriveFleetVisualState } from '../../lib/fleetVisualState';
+import {
+  resolveCanonicalFleetVehicleDisplayState,
+} from '../../lib/fleetVehicleDisplay';
+import type { VehicleHealthResponse } from '../../../lib/api';
 import { buildDashboardGroups } from './dashboardDrilldownGroups';
 import {
   canonicalAvailability,
@@ -543,6 +548,108 @@ describe('handover canonical authority contradictions', () => {
     expect(resolveHandoverVehicleReasonBadge(row, mutated, null, 'en')).toEqual(
       resolveHandoverVehicleReasonBadge(row, baseline, null, 'en'),
     );
+  });
+});
+
+function rentalHealthBlocked(overrides: Partial<VehicleHealthResponse> = {}): VehicleHealthResponse {
+  return {
+    vehicle_id: 'v1',
+    organization_id: 'org-1',
+    overall_state: 'critical',
+    rental_blocked: true,
+    blocking_reasons: ['Battery critical'],
+    modules: {},
+    ...overrides,
+  };
+}
+
+describe('handover domain separation (attention != rental/health)', () => {
+  function expectConnectivityAttentionNotHandoverCritical(vehicle: VehicleData) {
+    const ui = buildFleetVehicleUiProjection(vehicle, { locale: 'en' });
+    const visual = deriveFleetVisualState(vehicle, { uiProjection: ui, locale: 'en' });
+    expect(visual.isBlocked || visual.attentionLevel === 'critical').toBe(true);
+
+    const display = resolveCanonicalFleetVehicleDisplayState(vehicle, { locale: 'en' });
+    expect(display.healthDisplay.status).toBe('good');
+    expect(display.rentalDisplay.status).toBe('reserved');
+    expect(display.primaryStatus).toBe('reserved');
+
+    const badge = resolveHandoverReadinessBadge(vehicle, null, undefined, 'en');
+    expect(badge?.tone).toBe('success');
+  }
+
+  it('A — DEVICE_UNPLUGGED + P0.2 AVAILABLE + good health: marker blocked, handover not critical', () => {
+    expectConnectivityAttentionNotHandoverCritical(
+      reservedHandoverVehicle({
+        connectivityRuntime: canonicalConnectivityRuntime({
+          overallState: 'DEVICE_UNPLUGGED',
+          physicalDeviceState: 'UNPLUGGED_CONFIRMED',
+          attentionState: 'ACTION_REQUIRED',
+        }),
+      }),
+    );
+  });
+
+  it('B — INTEGRATION_ERROR + CRITICAL attention does not make handover rental/health critical', () => {
+    expectConnectivityAttentionNotHandoverCritical(
+      reservedHandoverVehicle({
+        connectivityRuntime: canonicalConnectivityRuntime({
+          overallState: 'INTEGRATION_ERROR',
+          attentionState: 'CRITICAL',
+        }),
+      }),
+    );
+  });
+
+  it('C — AUTHORIZATION_REQUIRED may surface reason chip without critical handover readiness', () => {
+    const vehicle = reservedHandoverVehicle({
+      connectivityRuntime: canonicalConnectivityRuntime({
+        overallState: 'AUTHORIZATION_REQUIRED',
+        providerLinkState: 'REAUTH_REQUIRED',
+        attentionState: 'ACTION_REQUIRED',
+        recommendedAction: 'REAUTHORIZE_PROVIDER',
+      }),
+      operationalAvailability: canonicalAvailability('NEEDS_VERIFICATION', {
+        attention: 'ACTION_REQUIRED',
+        primaryReason: 'CONNECTIVITY_VERIFICATION_REQUIRED',
+      }),
+    });
+
+    const badge = resolveHandoverReadinessBadge(vehicle, null, undefined, 'en');
+    expect(badge?.tone).toBe('success');
+
+    const reasonBadge = resolveHandoverVehicleReasonBadge(
+      handoverRow() as any,
+      vehicle,
+      null,
+      'en',
+    );
+    expect(reasonBadge?.text).toBeTruthy();
+  });
+
+  it('D — P0.2 UNAVAILABLE makes handover readiness critical', () => {
+    const vehicle = reservedHandoverVehicle({
+      operationalAvailability: canonicalAvailability('UNAVAILABLE', {
+        attention: 'ACTION_REQUIRED',
+      }),
+    });
+    const badge = resolveHandoverReadinessBadge(vehicle, null, undefined, 'en');
+    expect(badge?.tone).toBe('critical');
+  });
+
+  it('E — canonical health critical makes handover readiness critical', () => {
+    const vehicle = reservedHandoverVehicle({
+      healthEvaluation: healthEvaluability('EVALUABLE', { condition: 'critical' }),
+      healthStatus: 'Good Health',
+    });
+    const badge = resolveHandoverReadinessBadge(vehicle, null, undefined, 'en');
+    expect(badge?.tone).toBe('critical');
+  });
+
+  it('F — rentalHealth.rental_blocked makes handover readiness critical', () => {
+    const vehicle = reservedHandoverVehicle();
+    const badge = resolveHandoverReadinessBadge(vehicle, rentalHealthBlocked(), undefined, 'en');
+    expect(badge?.tone).toBe('critical');
   });
 });
 

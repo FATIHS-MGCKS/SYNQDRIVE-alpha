@@ -1286,9 +1286,18 @@ All tenant surfaces: **Legacy Authority Remaining = NO**
 
 | Suite | Result |
 |-------|--------|
+| P1 focused/canonical suites | **303/303 PASS** |
 | P1 FINAL closure (`vehicle-operational-state-p1-final-closure.test.ts`) | **21/21** |
-| Combined P1.1–P1.7 + fleet/dashboard/booking/notification regression | **400/400** |
+| Handover domain separation + contradiction tests | **12/12 PASS** |
+| Broader suite (+ `dashboardDrilldownRowDisplay` drawer + `dashboardRuntimeUI`) | **321/329** — **8 identical failures on baseline `8c586785`** |
+| PR-introduced failures | **0** |
 | Build + typecheck | **PASS** |
+
+**Broader vitest command:** see `architecture/VEHICLE_OPERATIONAL_STATE_FRONTEND_ARCHITECTURE_CLOSURE_2026-08.md` §Regression evidence.
+
+### Domain separation (final closure)
+
+Marker `visual.isBlocked` (P1.3 attention) no longer drives `rentalDisplay`, `primaryStatus`, or handover readiness when `uiProjection` is set. Handover badge = health + P0.2/rental block only.
 
 ### Closure gates
 
