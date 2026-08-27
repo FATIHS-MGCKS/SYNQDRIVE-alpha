@@ -65,7 +65,15 @@ Connectivity `telemetry` domain issues use `category: health` → `vehicle-healt
 
 ## Health notification evidence (P1.7 hardening)
 
-Rental-health module object presence is **not** sufficient for mechanical notifications. `hasValidMechanicalHealthModuleEvidence()` requires module state `critical`/`warning`, non-unknown `evidenceType`, and a reason or evidence type. `canEmitMechanicalHealthNotification()` additionally enforces P0.4 evaluability (critical requires `EVALUABLE`; `PARTIALLY_EVALUABLE` allows warning only). `service_compliance` paths remain separate.
+Rental-health `ModuleHealth.evidence_type` contract (backend `rental-health.types.ts`):
+
+`measured` | `estimated` | `provider` | `manual` | `document` | `sensor` | `complaint` | `legacy_unverified` | `unknown`
+
+**Accepted for mechanical notifications:** `measured`, `estimated`, `provider`, `manual`, `document`, `sensor`, `complaint`
+
+**Rejected:** `unknown`, `legacy_unverified`, absent, unsupported future values
+
+`hasValidMechanicalHealthModuleEvidence()` requires canonical `moduleState` (`warning`|`critical`) **and** accepted `evidenceType`. Reason text is presentation-only. Alert `severity` is never synthesized into `moduleState`. `deriveVehicleHealthAlertsFromRentalHealth` propagates canonical `moduleState` + `evidenceType`.
 
 ## Health evaluability
 

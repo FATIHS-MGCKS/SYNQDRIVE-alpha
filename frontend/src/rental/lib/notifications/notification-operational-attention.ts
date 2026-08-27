@@ -29,11 +29,49 @@ export type ConnectivityNotificationAttention =
   | 'CRITICAL';
 
 export interface MechanicalHealthModuleEvidenceLike {
-  /** Rental-health module state (critical/warning), not alert severity alias. */
+  /** Canonical rental-health module state — never synthesized from alert severity. */
   moduleState?: string | null;
   evidenceType?: RentalHealthModule['evidence_type'] | string | null;
+  /** Presentation only — does not prove evidence validity. */
   reason?: string | null;
 }
+
+/**
+ * Canonical `ModuleHealth.evidence_type` values (backend rental-health.types.ts).
+ * Frontend `RentalHealthModule` omits `legacy_unverified` but backend may emit it.
+ */
+export const RENTAL_HEALTH_MODULE_EVIDENCE_TYPES = [
+  'measured',
+  'estimated',
+  'provider',
+  'manual',
+  'document',
+  'sensor',
+  'complaint',
+  'legacy_unverified',
+  'unknown',
+] as const;
+
+export type RentalHealthModuleEvidenceType = (typeof RENTAL_HEALTH_MODULE_EVIDENCE_TYPES)[number];
+
+/**
+ * Evidence types that prove an evaluated module observation for vehicle-health notifications.
+ * Rejects: unknown, legacy_unverified, absent, and any future/unsupported value.
+ */
+export const VALID_MECHANICAL_HEALTH_EVIDENCE_TYPES = new Set<RentalHealthModuleEvidenceType>([
+  'measured',
+  'estimated',
+  'provider',
+  'manual',
+  'document',
+  'sensor',
+  'complaint',
+]);
+
+export const REJECTED_MECHANICAL_HEALTH_EVIDENCE_TYPES = new Set<RentalHealthModuleEvidenceType>([
+  'unknown',
+  'legacy_unverified',
+]);
 
 function tFor(locale: 'de' | 'en'): (key: TranslationKey, params?: Record<string, string | number>) => string {
   const dict = locale === 'de' ? de : en;
@@ -126,7 +164,7 @@ export function readVehicleHealthEvaluability(
 
 /**
  * Rental-health module rows may exist without valid mechanical evidence.
- * Notification emission requires explicit evaluated module evidence — not object presence alone.
+ * Requires canonical moduleState + recognized evidenceType — reason text alone is insufficient.
  */
 export function hasValidMechanicalHealthModuleEvidence(
   module: MechanicalHealthModuleEvidenceLike | null | undefined,
@@ -134,9 +172,12 @@ export function hasValidMechanicalHealthModuleEvidence(
   if (!module) return false;
   const state = module.moduleState;
   if (state !== 'critical' && state !== 'warning') return false;
-  if (module.evidenceType === 'unknown') return false;
-  if (!module.reason?.trim() && !module.evidenceType) return false;
-  return true;
+  const evidenceType = module.evidenceType;
+  if (!evidenceType) return false;
+  if (REJECTED_MECHANICAL_HEALTH_EVIDENCE_TYPES.has(evidenceType as RentalHealthModuleEvidenceType)) {
+    return false;
+  }
+  return VALID_MECHANICAL_HEALTH_EVIDENCE_TYPES.has(evidenceType as RentalHealthModuleEvidenceType);
 }
 
 /**

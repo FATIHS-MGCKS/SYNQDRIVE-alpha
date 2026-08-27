@@ -608,7 +608,7 @@ function healthModuleToIssueDraft(
     !canEmitMechanicalHealthNotification({
       vehicle: vehicleRecord,
       module: {
-        moduleState: module.moduleState ?? (critical ? 'critical' : 'warning'),
+        moduleState: module.moduleState,
         evidenceType: module.evidenceType,
         reason: module.reason,
       },

@@ -16,9 +16,14 @@ import {
   canEmitMechanicalHealthNotification,
   hasValidMechanicalHealthModuleEvidence,
   mapAttentionToNotificationSeverity,
+  REJECTED_MECHANICAL_HEALTH_EVIDENCE_TYPES,
+  RENTAL_HEALTH_MODULE_EVIDENCE_TYPES,
   resolveLegacyConflictConnectivityAlert,
   shouldEmitCanonicalConnectivityNotification,
+  VALID_MECHANICAL_HEALTH_EVIDENCE_TYPES,
 } from './notification-operational-attention';
+import { deriveVehicleHealthAlertsFromRentalHealth } from '../../DashboardInsightsContext';
+import type { VehicleHealthResponse } from '../../../lib/api';
 import { buildNotificationQueueModel } from '../../components/dashboard/notificationQueueEnricher';
 import { de } from '../../i18n/translations/de';
 import { en } from '../../i18n/translations/en';
@@ -234,74 +239,174 @@ describe('P1.7 canonical connectivity notification attention', () => {
   });
 });
 
-describe('P1.7 health evaluability notification semantics', () => {
-  const brakeEvidence = {
-    moduleState: 'critical',
-    evidenceType: 'measured' as const,
-    reason: 'Brake pad below minimum',
-  };
+describe('P1.7 health evidence strictness', () => {
+  const evaluableVehicle = () => vehicle({ healthEvaluation: healthEvaluability('EVALUABLE') });
 
-  const tireWarningEvidence = {
-    moduleState: 'warning',
-    evidenceType: 'measured' as const,
-    reason: 'Tire tread low',
-  };
+  it('documents RentalHealthModule evidence_type contract values', () => {
+    expect([...RENTAL_HEALTH_MODULE_EVIDENCE_TYPES]).toEqual([
+      'measured',
+      'estimated',
+      'provider',
+      'manual',
+      'document',
+      'sensor',
+      'complaint',
+      'legacy_unverified',
+      'unknown',
+    ]);
+    expect([...VALID_MECHANICAL_HEALTH_EVIDENCE_TYPES]).toEqual([
+      'measured',
+      'estimated',
+      'provider',
+      'manual',
+      'document',
+      'sensor',
+      'complaint',
+    ]);
+    expect([...REJECTED_MECHANICAL_HEALTH_EVIDENCE_TYPES]).toEqual(['unknown', 'legacy_unverified']);
+  });
 
-  const hollowModule = {
-    moduleState: 'critical',
-    evidenceType: 'unknown' as const,
-    reason: '',
-  };
-
-  it('12. EVALUABLE + explicit critical brake evidence => critical health notification allowed', () => {
-    expect(hasValidMechanicalHealthModuleEvidence(brakeEvidence)).toBe(true);
+  it('1. EVALUABLE + moduleState=critical + measured evidence + reason => valid + alert allowed', () => {
+    const module = { moduleState: 'critical', evidenceType: 'measured', reason: 'Pad worn' };
+    expect(hasValidMechanicalHealthModuleEvidence(module)).toBe(true);
     expect(
       canEmitMechanicalHealthNotification({
-        vehicle: vehicle({ healthEvaluation: healthEvaluability('EVALUABLE') }),
-        module: brakeEvidence,
+        vehicle: evaluableVehicle(),
+        module,
         proposedSeverity: 'critical',
       }),
     ).toBe(true);
   });
 
-  it('13. NOT_EVALUABLE + module-shaped object without valid evidence => no fabricated critical', () => {
+  it('2. EVALUABLE + moduleState absent + severity=critical + valid evidenceType => NOT valid', () => {
+    const module = { moduleState: undefined, evidenceType: 'measured', reason: 'Pad worn' };
+    expect(hasValidMechanicalHealthModuleEvidence(module)).toBe(false);
+    const issues = normalizeOperationalIssues({
+      vehiclesById: new Map([['v-legacy', evaluableVehicle()]]),
+      vehicleHealthAlerts: [{
+        vehicleId: 'v-legacy',
+        severity: 'critical',
+        primaryReason: 'Brake critical',
+        modules: [{ module: 'brakes', severity: 'critical', reason: 'Brake critical' }],
+      }],
+    });
+    expect(issues.some((issue) => issue.issueType === 'brake_critical')).toBe(false);
+  });
+
+  it('3. EVALUABLE + moduleState=critical + evidenceType absent + reason => NOT valid', () => {
+    const module = { moduleState: 'critical', evidenceType: undefined, reason: 'Brake critical' };
+    expect(hasValidMechanicalHealthModuleEvidence(module)).toBe(false);
+    expect(
+      canEmitMechanicalHealthNotification({
+        vehicle: evaluableVehicle(),
+        module,
+        proposedSeverity: 'critical',
+      }),
+    ).toBe(false);
+  });
+
+  it('4. EVALUABLE + moduleState=critical + evidenceType=unknown + reason => NOT valid', () => {
+    const module = { moduleState: 'critical', evidenceType: 'unknown', reason: 'Brake critical' };
+    expect(hasValidMechanicalHealthModuleEvidence(module)).toBe(false);
+  });
+
+  it('5. EVALUABLE + moduleState=critical + future/unsupported evidenceType => NOT valid', () => {
+    const module = { moduleState: 'critical', evidenceType: 'future_evidence_v2', reason: 'Brake critical' };
+    expect(hasValidMechanicalHealthModuleEvidence(module)).toBe(false);
+  });
+
+  it('6. EVALUABLE + moduleState=critical + valid evidenceType + empty reason => valid (reason is presentation-only)', () => {
+    const module = { moduleState: 'critical', evidenceType: 'measured', reason: '' };
+    expect(hasValidMechanicalHealthModuleEvidence(module)).toBe(true);
+  });
+
+  it('7. NOT_EVALUABLE + otherwise valid module evidence => no mechanical alert', () => {
+    const module = { moduleState: 'critical', evidenceType: 'measured', reason: 'Pad worn' };
     expect(
       canEmitMechanicalHealthNotification({
         vehicle: vehicle({ healthEvaluation: healthEvaluability('NOT_EVALUABLE') }),
-        module: hollowModule,
+        module,
         proposedSeverity: 'critical',
       }),
     ).toBe(false);
   });
 
-  it('UNKNOWN + module-shaped object without valid evidence => no fabricated critical', () => {
-    expect(
-      canEmitMechanicalHealthNotification({
-        vehicle: vehicle({ healthEvaluation: healthEvaluability('UNKNOWN') }),
-        module: hollowModule,
-        proposedSeverity: 'critical',
-      }),
-    ).toBe(false);
-  });
-
-  it('PARTIALLY_EVALUABLE + valid warning tire evidence => warning allowed', () => {
+  it('8. PARTIALLY_EVALUABLE + valid warning evidence => warning allowed', () => {
+    const module = { moduleState: 'warning', evidenceType: 'measured', reason: 'Tire tread low' };
     expect(
       canEmitMechanicalHealthNotification({
         vehicle: vehicle({ healthEvaluation: healthEvaluability('PARTIALLY_EVALUABLE') }),
-        module: tireWarningEvidence,
+        module,
         proposedSeverity: 'warning',
       }),
     ).toBe(true);
   });
 
-  it('PARTIALLY_EVALUABLE + missing module evidence => no fabricated alert', () => {
-    expect(
-      canEmitMechanicalHealthNotification({
-        vehicle: vehicle({ healthEvaluation: healthEvaluability('PARTIALLY_EVALUABLE') }),
-        module: hollowModule,
-        proposedSeverity: 'critical',
-      }),
-    ).toBe(false);
+  it('9. legacy severity-only module (no moduleState/evidenceType) => NO fabricated alert', () => {
+    const issues = normalizeOperationalIssues({
+      vehiclesById: new Map([['v-legacy', evaluableVehicle()]]),
+      vehicleHealthAlerts: [{
+        vehicleId: 'v-legacy',
+        severity: 'critical',
+        primaryReason: 'Brake critical',
+        modules: [{
+          module: 'brakes',
+          severity: 'critical',
+          reason: 'Brake critical',
+        }],
+      }],
+    });
+    expect(issues.filter((issue) => issue.domain === 'vehicle_health')).toHaveLength(0);
+  });
+
+  it('10. canonical deriveVehicleHealthAlertsFromRentalHealth => valid critical notification', () => {
+    const baseModule = {
+      reason: 'OK',
+      last_updated_at: NOW_ISO,
+      data_stale: false,
+    };
+    const health: VehicleHealthResponse = {
+      vehicle_id: 'v-canonical',
+      organization_id: 'org-1',
+      overall_state: 'critical',
+      rental_blocked: true,
+      blocking_reasons: ['Brakes: Pad worn'],
+      modules: {
+        battery: { state: 'good', ...baseModule },
+        tires: { state: 'good', ...baseModule },
+        brakes: {
+          state: 'critical',
+          reason: 'Pad worn below minimum',
+          last_updated_at: NOW_ISO,
+          data_stale: false,
+          evidence_type: 'measured',
+        },
+        error_codes: { state: 'good', ...baseModule },
+        service_compliance: { state: 'good', ...baseModule },
+        complaints: { state: 'good', ...baseModule },
+        vehicle_alerts: { state: 'good', ...baseModule },
+      },
+      generated_at: NOW_ISO,
+    };
+    const fleetVehicle = vehicle({
+      id: 'v-canonical',
+      healthEvaluation: healthEvaluability('EVALUABLE'),
+    });
+    const alerts = deriveVehicleHealthAlertsFromRentalHealth(
+      new Map([['v-canonical', health]]),
+      [fleetVehicle],
+    );
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]?.modules?.[0]).toMatchObject({
+      module: 'brakes',
+      moduleState: 'critical',
+      evidenceType: 'measured',
+    });
+    const issues = normalizeOperationalIssues({
+      vehiclesById: new Map([['v-canonical', fleetVehicle]]),
+      vehicleHealthAlerts: alerts,
+    });
+    expect(issues.some((issue) => issue.issueType === 'brake_critical')).toBe(true);
   });
 
   it('health absent => no mechanical notification fabricated from overview-only path', () => {
