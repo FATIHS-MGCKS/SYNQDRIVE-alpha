@@ -1512,6 +1512,17 @@ export const de: Record<TranslationKey, string> = {
   'vehicleDetail.mapBadge.signalIssue': 'Signalproblem',
   'vehicleDetail.mapBadge.noTracking': 'Kein Tracking',
   'vehicleDetail.mapBadge.acquiring': 'Wird ermittelt',
+  'vehicleDetail.connectivity.ariaLabel': 'Fahrzeug-Konnektivität',
+  'vehicleDetail.connectivity.eyebrow': 'Konnektivität',
+  'vehicleDetail.connectivity.lastSignal': 'Letztes Fahrzeugsignal',
+  'vehicleDetail.connectivity.dataSource': 'Datenquelle',
+  'vehicleDetail.connectivity.device': 'Gerätestatus',
+  'vehicleDetail.connectivity.interruption': 'Unterbrechung',
+  'vehicleDetail.connectivity.noActiveInterruption': 'Keine aktive Unterbrechung',
+  'vehicleDetail.connectivity.activeInterruption': 'Aktiv seit {since} · {duration}',
+  'vehicleDetail.connectivity.providerDimo': 'DIMO',
+  'vehicleDetail.connectivity.providerGeneric': 'Datenquelle',
+  'vehicleDetail.connectivity.duringActiveBooking': 'Während aktiver Buchung',
 
   // ─── Bookings ───
   'bookings.title': 'Buchungen',
