@@ -6,7 +6,7 @@ vi.mock('@iconify/react', () => ({
   disableCache: vi.fn(),
 }));
 
-import { act, createElement, type ReactNode } from 'react';
+import { act, createElement, useId, useMemo, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { LanguageProvider, useLanguage } from '../../i18n/LanguageContext';
 import { de } from '../../i18n/translations/de';
@@ -14,6 +14,7 @@ import { en } from '../../i18n/translations/en';
 import inventory from '../../i18n/hardcoded-copy-inventory.json';
 import { buildInvoiceDetailDto } from './invoices/invoiceDetail.mapper';
 import { InvoiceDetailHeader } from './invoices/InvoiceDetailHeader';
+import { InvoiceHeaderMoreMenu } from './invoices/InvoiceHeaderMoreMenu';
 import {
   rentalInvoiceDetailHeaderFormatAmount,
   rentalInvoiceDetailHeaderGateReason,
@@ -160,6 +161,73 @@ function buildDetail(invoice: Invoice, locale: 'de' | 'en' = 'de') {
     canManageEmail: true,
     canManageFinance: true,
   });
+}
+
+function findMoreMenuTrigger(container: HTMLElement): HTMLButtonElement | null {
+  return (
+    (container.querySelector('[data-slot="dropdown-menu-trigger"]') as HTMLButtonElement | null) ??
+    (Array.from(container.querySelectorAll('button')).find((button) =>
+      /^(Mehr|More)$/.test(button.textContent?.trim() ?? ''),
+    ) as HTMLButtonElement | undefined) ??
+    null
+  );
+}
+
+function openMoreMenu(container: HTMLElement) {
+  const trigger = findMoreMenuTrigger(container);
+  act(() => {
+    trigger?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
+    trigger?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+    trigger?.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }));
+    trigger?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+  });
+}
+
+function isMoreMenuOpen(container: HTMLElement): boolean {
+  const trigger = findMoreMenuTrigger(container);
+  const triggerOpen = trigger?.getAttribute('data-state') === 'open';
+  const menuNode =
+    document.body.querySelector('[role="menu"]') ??
+    document.body.querySelector('[data-slot="dropdown-menu-content"]');
+  return Boolean(triggerOpen && menuNode);
+}
+
+function menuItems(): HTMLElement[] {
+  return Array.from(document.body.querySelectorAll('[role="menuitem"]'));
+}
+
+function closeMoreMenu() {
+  act(() => {
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  });
+}
+
+function LocaleAwareMoreMenuHarness({
+  invoice,
+  callbacks,
+}: {
+  invoice: Invoice;
+  callbacks: {
+    onIssue: () => void;
+    onRegeneratePdf: () => void;
+    onMarkSentExternally: () => void;
+    onRecordPayment: () => void;
+    onEdit: () => void;
+    onCancel: () => void;
+  };
+}) {
+  const instanceId = useId();
+  const { locale } = useLanguage();
+  const detail = useMemo(() => buildDetail(invoice, locale as 'de' | 'en'), [invoice, locale]);
+
+  return createElement(
+    'div',
+    { 'data-menu-instance': instanceId },
+    createElement(InvoiceHeaderMoreMenu, {
+      actions: detail.actions,
+      ...callbacks,
+    }),
+  );
 }
 
 function renderHeader(locale: 'de' | 'en', invoice = sampleInvoice()) {
@@ -334,6 +402,107 @@ describe('rental Invoice Detail Header localization (P2.2.50)', () => {
     expect(text).toContain(INVOICE_NUMBER_RAW);
     expect(text).toContain(en['invoices.list.col.total']);
     expect(text).not.toContain(de['invoices.list.col.total']);
+  });
+
+  it('preserves More Menu open state across same-mount locale switch', async () => {
+    const invoice = sampleInvoice({ status: 'ISSUED', generatedDocumentId: 'doc-issued-1' });
+    const detailDe = buildDetail(invoice, 'de');
+    expect(detailDe.actions.edit.allowed).toBe(false);
+    expect(detailDe.actions.record_payment.allowed).toBe(true);
+    expect(detailDe.actions.regenerate_pdf.allowed).toBe(true);
+
+    const callbacks = {
+      onIssue: vi.fn(),
+      onRegeneratePdf: vi.fn(),
+      onMarkSentExternally: vi.fn(),
+      onRecordPayment: vi.fn(),
+      onEdit: vi.fn(),
+      onCancel: vi.fn(),
+    };
+    const view = renderWithLocale(
+      'de',
+      createElement(LocaleSwitchHarness, {
+        children: createElement(LocaleAwareMoreMenuHarness, {
+          invoice,
+          callbacks,
+        }),
+      }),
+    );
+    cleanup = view.cleanup;
+
+    const instanceBefore = view.container.querySelector('[data-menu-instance]')?.getAttribute('data-menu-instance');
+    expect(instanceBefore).toBeTruthy();
+
+    openMoreMenu(view.container);
+    expect(isMoreMenuOpen(view.container)).toBe(true);
+
+    const deItems = menuItems();
+    const deLabels = deItems.map((item) => item.textContent ?? '');
+    expect(deLabels.some((label) => label.includes(de['rental.invoice.detail.header.menu.regeneratePdf']))).toBe(
+      true,
+    );
+    expect(deLabels.some((label) => label.includes(de['invoicePayment.action.record']))).toBe(true);
+    expect(deLabels.some((label) => label.includes(de['common.edit']))).toBe(true);
+    expect(deLabels.some((label) => label.includes('Stornieren'))).toBe(true);
+    expect(deLabels.some((label) => label.includes(de['common.cancel']))).toBe(false);
+
+    const editItemDe = deItems.find((item) => item.textContent?.includes(de['common.edit']));
+    expect(editItemDe?.getAttribute('aria-disabled')).toBe('true');
+    const recordItemDe = deItems.find((item) => item.textContent?.includes(de['invoicePayment.action.record']));
+    expect(recordItemDe?.getAttribute('aria-disabled')).not.toBe('true');
+
+    await act(async () => {
+      (view.container.querySelector('[data-testid="toggle-locale"]') as HTMLButtonElement)?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+    });
+
+    expect(isMoreMenuOpen(view.container)).toBe(true);
+    expect(view.container.querySelector('[data-menu-instance]')?.getAttribute('data-menu-instance')).toBe(
+      instanceBefore,
+    );
+    expect(findMoreMenuTrigger(view.container)?.textContent).toContain(en['rental.invoice.detail.header.menu.more']);
+
+    const enItems = menuItems();
+    const enLabels = enItems.map((item) => item.textContent ?? '');
+    expect(enLabels.some((label) => label.includes(en['rental.invoice.detail.header.menu.regeneratePdf']))).toBe(
+      true,
+    );
+    expect(enLabels.some((label) => label.includes(en['invoicePayment.action.record']))).toBe(true);
+    expect(enLabels.some((label) => label.includes(en['common.edit']))).toBe(true);
+    expect(enLabels.some((label) => label.includes('Void invoice'))).toBe(true);
+    expect(enLabels.some((label) => label.includes('Stornieren'))).toBe(false);
+
+    const editItemEn = enItems.find((item) => item.textContent?.includes(en['common.edit']));
+    expect(editItemEn?.getAttribute('aria-disabled')).toBe('true');
+    const recordItemEn = enItems.find((item) => item.textContent?.includes(en['invoicePayment.action.record']));
+    expect(recordItemEn?.getAttribute('aria-disabled')).not.toBe('true');
+
+    await act(async () => {
+      (view.container.querySelector('[data-testid="toggle-locale"]') as HTMLButtonElement)?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+    });
+
+    expect(isMoreMenuOpen(view.container)).toBe(true);
+    expect(view.container.querySelector('[data-menu-instance]')?.getAttribute('data-menu-instance')).toBe(
+      instanceBefore,
+    );
+    const deItemsAgain = menuItems();
+    expect(deItemsAgain.some((item) => item.textContent?.includes('Stornieren'))).toBe(true);
+    expect(findMoreMenuTrigger(view.container)?.textContent).toContain(de['rental.invoice.detail.header.menu.more']);
+
+    const recordItemDeAgain = deItemsAgain.find((item) =>
+      item.textContent?.includes(de['invoicePayment.action.record']),
+    );
+    await act(async () => {
+      recordItemDeAgain?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(callbacks.onRecordPayment).toHaveBeenCalledTimes(1);
+
+    openMoreMenu(view.container);
+    closeMoreMenu();
+    expect(isMoreMenuOpen(view.container)).toBe(false);
   });
 
   it('preserves edit action eligibility for draft invoices', () => {
