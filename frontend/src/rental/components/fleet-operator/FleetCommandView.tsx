@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { VehicleData } from '../../data/vehicles';
 import type { VehicleHealthResponse } from '../../../lib/api';
 import type { DashboardRuntimeModel } from '../dashboard/runtime/dashboardRuntimeTypes';
-import { resolveFleetTabCountsFromRuntime } from '../dashboard/runtime/runtimeSliceConsistency';
+import { resolveFleetTabCountsFromRuntime, runtimeStateForVehicle } from '../dashboard/runtime/runtimeSliceConsistency';
 import { FleetCommandPanel } from './FleetCommandPanel';
 import {
   type FleetCommandTab,
@@ -70,8 +70,20 @@ export function FleetCommandView({
     () =>
       buildFleetVehicleContexts(vehicles, getHealth, {
         locale: locale === 'de' ? 'de' : 'en',
+        getReadiness: dashboardRuntime
+          ? (vehicleId) => {
+              const state = runtimeStateForVehicle(dashboardRuntime, vehicleId);
+              if (!state) return undefined;
+              return {
+                isReadyToRent: state.isReadyToRent,
+                blockingReasonCodes: state.notReadyReasons
+                  .map((reason) => reason.source ?? reason.id)
+                  .filter((code): code is string => Boolean(code)),
+              };
+            }
+          : undefined,
       }),
-    [vehicles, getHealth, locale],
+    [vehicles, getHealth, locale, dashboardRuntime],
   );
 
   const searchContexts = useMemo(
