@@ -80,11 +80,11 @@ export function buildVehicleConnectivityOverviewView(
     : '—';
 
   const interruptionText = summary.openUnpluggedEpisode
-    ? t('vehicleDetail.connectivity.activeInterruption', {
+    ? t('fleetConnectivity.detail.activeInterruption', {
         since,
         duration: formatInterruptionDuration(summary.openUnpluggedDurationMs, locale),
       })
-    : t('vehicleDetail.connectivity.noActiveInterruption');
+    : t('fleetConnectivity.detail.noActiveInterruption');
 
   const showAttention =
     runtime.attentionState !== 'NONE' || runtime.requiresAction;

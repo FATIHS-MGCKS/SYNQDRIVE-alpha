@@ -155,7 +155,7 @@ describe('P1.8B cross-surface offline + active provider + unknown device', () =>
     expect(overview.primaryTelemetryLabel).toBe(en['fleetConnectivity.telemetryFreshness.offline']);
     expect(overview.dataSourceText).toContain(en['fleetConnectivity.providerLink.ACTIVE']);
     expect(overview.deviceText).toBe(en['fleetConnectivity.physicalDevice.UNKNOWN']);
-    expect(overview.interruptionText).toBe(en['vehicleDetail.connectivity.noActiveInterruption']);
+    expect(overview.interruptionText).toBe(en['fleetConnectivity.detail.noActiveInterruption']);
   });
 
   it('detail tab sections show same separated dimensions with light text emphasis', () => {
