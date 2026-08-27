@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-invoice-payments-p2-2-52-2026-08-27',
+    version: '4.9.979',
+    title: 'Platform i18n — P2.2.52 Rental Invoice Payments production hardening',
+    summary: [
+      'Hardened Invoice Detail Payments locale threading via `rental-invoice-payments-i18n.ts`; reuses existing 43 `invoicePayment.*` keys and `common.actions` for table aria.',
+      'P252 enforce-clean exact scope (5 paths) reports 0 findings; +0 new dictionary keys; locale-aware money/date via `formatInvoiceListAmount`/`formatInvoiceListDate`.',
+      'Payment status/method machine values, mutation payload, validation, sorting, and record gate unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.52 production hardening after P2.2.51 Relations merge (#1345) per #1348 pre-flight.',
+    previousBehavior:
+      'Payments UI used `invoicePayment.*` keys but money/date formatters defaulted to German locale regardless of active language.',
+    details:
+      'Locale threaded through `formatPaymentAmount`, `formatPaymentRowDate`, `buildPaymentSummary`, and dialog hints. Same-mount tests cover list, detail, and record dialog draft preservation.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-27T00:00:00.000Z',
+  },
+  {
     id: 'i18n-rental-invoice-relations-p2-2-51-2026-08-27',
     version: '4.9.978',
     title: 'Platform i18n — P2.2.51 Rental Invoice Relations localization',

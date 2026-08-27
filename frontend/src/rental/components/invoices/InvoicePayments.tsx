@@ -79,6 +79,7 @@ function SummaryCell({
 function PaymentMobileCard({
   payment,
   currency,
+  locale,
   onDetails,
   t,
   tp,
@@ -86,6 +87,7 @@ function PaymentMobileCard({
 }: {
   payment: InvoicePayment;
   currency: string;
+  locale: string;
   onDetails: () => void;
   t: ReturnType<typeof useLanguage>['t'];
   tp: string;
@@ -100,7 +102,7 @@ function PaymentMobileCard({
     <article className="rounded-xl border border-border/60 bg-muted/10 p-3 space-y-2.5">
       <div className="flex items-start justify-between gap-3">
         <p className={`text-lg font-bold tabular-nums tracking-tight ${tp}`}>
-          {formatPaymentAmount(payment.amountCents, currency)}
+          {formatPaymentAmount(payment.amountCents, currency, locale)}
         </p>
         <StatusChip tone={paymentStatusTone(payment.statusKind)} dot>
           {statusLabel}
@@ -114,7 +116,7 @@ function PaymentMobileCard({
         </div>
         <div className="flex justify-between gap-3">
           <dt className={ts}>{t('invoicePayment.col.date')}</dt>
-          <dd className={`font-medium tabular-nums text-right ${tp}`}>{formatPaymentRowDate(payment.paidAt)}</dd>
+          <dd className={`font-medium tabular-nums text-right ${tp}`}>{formatPaymentRowDate(payment.paidAt, locale)}</dd>
         </div>
         {reference ? (
           <div className="flex justify-between gap-3">
@@ -141,6 +143,7 @@ function PaymentMobileCard({
 function PaymentDesktopTable({
   payments,
   currency,
+  locale,
   onDetails,
   t,
   tp,
@@ -149,6 +152,7 @@ function PaymentDesktopTable({
 }: {
   payments: InvoicePayment[];
   currency: string;
+  locale: string;
   onDetails: (id: string) => void;
   t: ReturnType<typeof useLanguage>['t'];
   tp: string;
@@ -166,7 +170,7 @@ function PaymentDesktopTable({
             <th className={`text-left px-3 py-2 text-[11px] font-semibold ${ts}`}>{t('invoicePayment.col.reference')}</th>
             <th className={`text-left px-3 py-2 text-[11px] font-semibold ${ts}`}>{t('invoicePayment.col.status')}</th>
             <th className={`text-left px-3 py-2 text-[11px] font-semibold ${ts}`}>{t('invoicePayment.col.recordedBy')}</th>
-            <th className={`text-right px-3 py-2 text-[11px] font-semibold ${ts}`} aria-label="Aktionen" />
+            <th className={`text-right px-3 py-2 text-[11px] font-semibold ${ts}`} aria-label={t('common.actions')} />
           </tr>
         </thead>
         <tbody className={`divide-y ${isDarkMode ? 'divide-border/30' : 'divide-gray-100'}`}>
@@ -175,13 +179,13 @@ function PaymentDesktopTable({
             return (
               <tr key={payment.id}>
                 <td className={`px-3 py-2.5 text-xs tabular-nums whitespace-nowrap ${tp}`}>
-                  {formatPaymentRowDate(payment.paidAt)}
+                  {formatPaymentRowDate(payment.paidAt, locale)}
                 </td>
                 <td className={`px-3 py-2.5 text-xs ${tp}`}>
                   {invoicePaymentMethodLabel(payment.method, t)}
                 </td>
                 <td className={`px-3 py-2.5 text-xs text-right font-semibold tabular-nums whitespace-nowrap ${tp}`}>
-                  {formatPaymentAmount(payment.amountCents, currency)}
+                  {formatPaymentAmount(payment.amountCents, currency, locale)}
                 </td>
                 <td className={`px-3 py-2.5 text-xs max-w-[140px] truncate ${ts}`}>
                   {payment.reference?.trim() || '—'}
@@ -236,8 +240,8 @@ export function InvoicePayments({
   ts,
   isDarkMode,
 }: InvoicePaymentsProps) {
-  const { t } = useLanguage();
-  const summary = useMemo(() => buildPaymentSummary(invoice, t), [invoice, t]);
+  const { t, locale } = useLanguage();
+  const summary = useMemo(() => buildPaymentSummary(invoice, t, locale), [invoice, t, locale]);
   const sorted = useMemo(() => sortPaymentsNewestFirst(payments), [payments]);
   const detailPayment = sorted.find((p) => p.id === detailPaymentId) ?? null;
   const canRecord = recordGate.allowed;
@@ -287,6 +291,7 @@ export function InvoicePayments({
                 key={payment.id}
                 payment={payment}
                 currency={summary.currency}
+                locale={locale}
                 onDetails={() => onDetailPaymentIdChange(payment.id)}
                 t={t}
                 tp={tp}
@@ -298,6 +303,7 @@ export function InvoicePayments({
           <PaymentDesktopTable
             payments={sorted}
             currency={summary.currency}
+            locale={locale}
             onDetails={onDetailPaymentIdChange}
             t={t}
             tp={tp}

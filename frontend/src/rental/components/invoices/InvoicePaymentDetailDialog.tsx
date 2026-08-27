@@ -38,7 +38,7 @@ export function InvoicePaymentDetailDialog({
   currency,
   onOpenChange,
 }: InvoicePaymentDetailDialogProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   if (!payment) return null;
 
   const recordedBy = invoicePaymentRecordedByLabel(payment, t);
@@ -64,7 +64,7 @@ export function InvoicePaymentDetailDialog({
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <p className="text-2xl font-bold tabular-nums tracking-tight text-foreground">
-            {formatPaymentAmount(payment.amountCents, currency)}
+            {formatPaymentAmount(payment.amountCents, currency, locale)}
           </p>
           <StatusChip tone={paymentStatusTone(payment.statusKind)} dot>
             {invoicePaymentStatusLabel(payment, t)}
@@ -73,7 +73,7 @@ export function InvoicePaymentDetailDialog({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <DetailRow label={t('invoicePayment.col.method')} value={invoicePaymentMethodLabel(payment.method, t)} />
-          <DetailRow label={t('invoicePayment.col.date')} value={formatPaymentRowDate(payment.paidAt)} />
+          <DetailRow label={t('invoicePayment.col.date')} value={formatPaymentRowDate(payment.paidAt, locale)} />
           {reference ? (
             <DetailRow label={t('invoicePayment.col.reference')} value={reference} />
           ) : null}
