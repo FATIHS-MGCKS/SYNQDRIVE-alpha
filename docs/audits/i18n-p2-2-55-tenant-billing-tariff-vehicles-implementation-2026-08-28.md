@@ -10,11 +10,11 @@ Localized read-only Tariff & Vehicles tab via extended `rental-tenant-billing-i1
 
 | Metric | Baseline | Final |
 |--------|----------|-------|
-| EN keys | 8837 | 8889 |
-| DE keys | 8837 | 8889 |
-| New keys | — | 52 |
+| EN keys | 8837 | 8894 |
+| DE keys | 8837 | 8894 |
+| New keys | — | 57 |
 | Reused keys | — | ~12 |
-| Global scanner | 1438 | TBD |
+| Global scanner | 1438 | 1421 |
 | P255 enforce-clean | 17+blind | 0 |
 
 ## Key budget note
