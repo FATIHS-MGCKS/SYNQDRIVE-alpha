@@ -1,60 +1,23 @@
 import type { StatusTone } from '../../components/patterns';
 import type { TranslationKey } from '../i18n/translations/en';
 import type { FleetReasonBadge } from './fleetVehicleDisplay';
-import { OPERATIONAL_PRIMARY_REASON_LABEL_KEYS } from './operational-projection/ui/primary-reason-presentation';
-import type { ActiveHealthFinding, VehicleRowOperationalProjection } from './vehicle-row-operational-projection';
+import {
+  isOperationalAttentionReasonBadge,
+  isOperationalAttentionReasonCode,
+  shouldSuppressHealthReasonBadge,
+} from './fleet-reason-badge-domain';
+import type { VehicleRowOperationalProjection } from './vehicle-row-operational-projection';
 
-const HEALTH_PRIMARY_REASON_CODES = new Set(['HEALTH_RENTAL_BLOCKED']);
-
-const OPERATIONAL_CONNECTIVITY_PREFIXES = [
-  'TELEMETRY_',
-  'DEVICE_',
-  'DATA_COVERAGE_',
-  'AUTHORIZATION_',
-  'CONSENT_',
-  'TOKEN_',
-  'PROVIDER_',
-  'LINK_',
-  'WEBHOOK_',
-  'STATE_',
-  'MANUAL_',
-] as const;
-
-const OPERATIONAL_CONNECTIVITY_CODES = new Set([
-  'NO_ACTIVE_PROVIDER_LINK',
-  'NO_TELEMETRY_TIMESTAMP',
-  'INTEGRATION_ERROR',
-  'NEEDS_VERIFICATION',
-]);
-
-const HEALTH_REASON_TEXT_PATTERN =
-  /reifen|tire|brems|brake|batter|battery|dtc|fault|service|health|warnung|warning|kritisch|critical|überfällig|overdue|compliance|öl|oil|limp/i;
+export type { FleetReasonBadgeDomain } from './fleet-reason-badge-domain';
+export {
+  classifyReasonBadgeDomain,
+  isOperationalAttentionReasonCode,
+  shouldSuppressHealthReasonBadge,
+} from './fleet-reason-badge-domain';
 
 export interface RowOperationalAttentionBadge {
   text: string;
   tone: StatusTone;
-}
-
-function isConnectivityAttentionCode(code: string): boolean {
-  if (OPERATIONAL_CONNECTIVITY_CODES.has(code)) return true;
-  return OPERATIONAL_CONNECTIVITY_PREFIXES.some((prefix) => code.startsWith(prefix));
-}
-
-export function isOperationalAttentionReasonCode(code: string | null | undefined): boolean {
-  if (!code) return false;
-  if (HEALTH_PRIMARY_REASON_CODES.has(code)) return false;
-  if (code.startsWith('rental_health:')) return false;
-  return (
-    OPERATIONAL_PRIMARY_REASON_LABEL_KEYS[code] != null || isConnectivityAttentionCode(code)
-  );
-}
-
-export function shouldSuppressHealthReasonBadgeText(
-  reasonBadge: FleetReasonBadge | null | undefined,
-  activeHealthFindings: readonly ActiveHealthFinding[],
-): boolean {
-  if (!reasonBadge || activeHealthFindings.length === 0) return false;
-  return HEALTH_REASON_TEXT_PATTERN.test(reasonBadge.text);
 }
 
 function attentionTone(
@@ -128,6 +91,9 @@ function resolveAttentionFromProjection(
 /**
  * Operational attention chip for compact rows — excludes health findings
  * already rendered via VehicleHealthFindingIcons.
+ *
+ * Domain classification is machine-readable (FleetReasonBadge.domain / projection codes).
+ * Rendered localized text is never used as authority.
  */
 export function resolveRowOperationalAttentionBadge(input: {
   projection: VehicleRowOperationalProjection;
@@ -142,7 +108,12 @@ export function resolveRowOperationalAttentionBadge(input: {
 
   const { reasonBadge, projection } = input;
   if (!reasonBadge) return null;
-  if (shouldSuppressHealthReasonBadgeText(reasonBadge, projection.activeHealthFindings)) {
+
+  if (shouldSuppressHealthReasonBadge(reasonBadge, projection.activeHealthFindings)) {
+    return null;
+  }
+
+  if (!isOperationalAttentionReasonBadge(reasonBadge)) {
     return null;
   }
 

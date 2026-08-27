@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-health-finding-domain-hardening-stage-3b-2026-08-27',
+    version: '4.9.972',
+    title: 'Vehicle Health Finding Consumer — Stage 3B machine-readable domain hardening',
+    summary: [
+      'Removed `HEALTH_REASON_TEXT_PATTERN` regex classification on rendered reason text.',
+      'Extended `FleetReasonBadge` with machine-readable `domain` + `code` fields.',
+      'New `fleet-reason-badge-domain.ts` classifies health vs operational vs workflow from typed codes.',
+      'Health reason suppression uses `domain === health` + active findings — language-independent.',
+      'L1–L10 tests prove multilingual label independence; B1–B16 consumer regressions pass.',
+    ],
+    reason:
+      'Stage 3B cutover initially used EN/DE regex on rendered labels — violates Stage 2A invariant and breaks multilingual UI.',
+    previousBehavior:
+      'shouldSuppressHealthReasonBadgeText matched health keywords in localized reasonBadge.text via regex.',
+    details:
+      'frontend: fleet-reason-badge-domain.ts(+test), FleetReasonBadge contract, fleetVehicleDisplay.ts, fleet-p1-3-display.ts, vehicle-row-operational-attention.ts. architecture + audit Stage 3B hardening. No P0/P1 semantic changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T18:35:00.000Z',
+  },
+  {
     id: 'vehicle-health-finding-consumer-cutover-stage-3b-2026-08-27',
     version: '4.9.971',
     title: 'Vehicle Health Finding Icons — Stage 3B Fleet + Ready-to-Rent consumer cutover',

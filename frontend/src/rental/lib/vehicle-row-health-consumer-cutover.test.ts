@@ -28,7 +28,7 @@ import {
 import {
   isOperationalAttentionReasonCode,
   resolveRowOperationalAttentionBadge,
-  shouldSuppressHealthReasonBadgeText,
+  shouldSuppressHealthReasonBadge,
 } from './vehicle-row-operational-attention';
 import { de as deTranslations } from '../i18n/translations/de';
 import { en as enTranslations } from '../i18n/translations/en';
@@ -574,10 +574,15 @@ describe('vehicle-row-operational-attention helpers', () => {
     expect(isOperationalAttentionReasonCode('HEALTH_RENTAL_BLOCKED')).toBe(false);
   });
 
-  it('suppresses health reason badge when findings are active', () => {
+  it('suppresses health reason badge when findings are active (machine domain)', () => {
     expect(
-      shouldSuppressHealthReasonBadgeText(
-        { text: 'Reifen beobachten', tone: 'watch' },
+      shouldSuppressHealthReasonBadge(
+        {
+          text: 'Reifen beobachten',
+          tone: 'watch',
+          code: 'rental_health:tires',
+          domain: 'health',
+        },
         [{ type: ACTIVE_HEALTH_FINDING_TYPE.TIRE, severity: 'warning', reasonCode: 'x', source: 'rental_health', localizationKey: 'fleet.rowFinding.tire.warning' }],
       ),
     ).toBe(true);
@@ -597,7 +602,12 @@ describe('vehicle-row-operational-attention helpers', () => {
     });
     const badge = resolveRowOperationalAttentionBadge({
       projection,
-      reasonBadge: { text: 'Monitor tires', tone: 'watch' },
+      reasonBadge: {
+        text: 'Monitor tires',
+        tone: 'watch',
+        code: 'rental_health:tires',
+        domain: 'health',
+      },
       t: (key) => enTranslations[key] ?? key,
     });
     expect(badge?.text).toBe('Device disconnected');

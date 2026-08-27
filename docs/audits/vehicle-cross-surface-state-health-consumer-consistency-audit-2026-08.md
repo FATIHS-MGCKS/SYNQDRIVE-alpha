@@ -646,7 +646,7 @@ All **PASS** (27 tests in presentation suite).
 | Fleet Command row | `reasonBadge` text chip (first-finding-wins) | `VehicleHealthFindingIcons` + optional attention chip |
 | Ready-to-Rent row | `resolveDrawerVehicleReasonBadge` health text | Same icon strip + optional attention chip |
 
-Health reason text suppressed when icons render the same finding (`shouldSuppressHealthReasonBadgeText`). Operational attention (`AUTHORIZATION_REQUIRED`, `DEVICE_UNPLUGGED`, `INTEGRATION_ERROR`, connectivity verification) preserved.
+Health reason text suppressed when `FleetReasonBadge.domain === 'health'` and `activeHealthFindings.length > 0` (machine-readable — **not** regex on rendered text). Operational attention codes (`AUTHORIZATION_REQUIRED`, `DEVICE_UNPLUGGED`, `INTEGRATION_ERROR`, `NEEDS_VERIFICATION`, etc.) remain visible. `HEALTH_RENTAL_BLOCKED` without concrete findings may render as unique blocker attention.
 
 ### N+1 assessment
 
@@ -683,4 +683,14 @@ Cleanup deferred to Stage 4/5 after Vehicle Detail cutover.
 - Cross-surface CI gate
 - Legacy `pickModuleReason` removal after all consumers cut over
 
-*Stage 3B complete — Fleet Command and Ready-to-Rent compact rows share `VehicleHealthFindingIcons`; Vehicle Detail unchanged.*
+### Stage 3B hardening (2026-08-27) — machine-readable domain classification
+
+| Field | Value |
+|-------|-------|
+| **Removed** | `HEALTH_REASON_TEXT_PATTERN` regex on rendered `reasonBadge.text` |
+| **Added** | `FleetReasonBadge.domain` (`health` \| `operational` \| `workflow` \| `unknown`) + `code` |
+| **Classifier** | `fleet-reason-badge-domain.ts` — `classifyReasonBadgeDomain()`, `shouldSuppressHealthReasonBadge()` |
+| **Invariant** | Rendered localized strings are **not** machine authority (Stage 2A preserved) |
+| **Tests** | L1–L10 language-independence suite |
+
+*Stage 3B complete — machine-readable health/operational separation hardened.*

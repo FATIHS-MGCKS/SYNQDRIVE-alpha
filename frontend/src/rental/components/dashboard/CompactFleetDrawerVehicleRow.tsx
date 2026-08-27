@@ -13,7 +13,6 @@ import { VehicleHealthFindingIcons } from '../health/VehicleHealthFindingIcons';
 import { de as deTranslations } from '../../i18n/translations/de';
 import { en as enTranslations } from '../../i18n/translations/en';
 import type { TranslationKey } from '../../i18n/translations/en';
-import { resolveDrawerVehicleReasonBadge } from './dashboardDrilldownRowDisplay';
 import { DrawerRowActionButton } from './dashboardDrawerRowActions';
 import { drawerRowActionStackClassName } from './dashboardDrawerRowLines';
 import type { DashboardSliceRow, VehicleRuntimeState } from './runtime';
@@ -149,19 +148,12 @@ export function CompactFleetDrawerVehicleRow({
         }
       : null;
   const bookingSupplement = fleetDisplay?.bookingSupplement ?? null;
-  const reasonBadge = resolveDrawerVehicleReasonBadge(
-    row,
-    locale,
-    fleetDisplay?.reasonBadge ?? null,
-  );
   const activeHealthFindings = rowOperationalProjection?.activeHealthFindings ?? [];
   const operationalAttentionBadge =
     rowOperationalProjection != null
       ? resolveRowOperationalAttentionBadge({
           projection: rowOperationalProjection,
-          reasonBadge: reasonBadge
-            ? { text: reasonBadge.text, tone: reasonBadge.tone }
-            : null,
+          reasonBadge: fleetDisplay?.reasonBadge ?? null,
           t: translate,
         })
       : null;

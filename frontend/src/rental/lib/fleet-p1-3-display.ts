@@ -5,7 +5,8 @@ import type { StatusTone } from '../../components/patterns';
 import type { FleetTelemetryFreshness } from '../../lib/api';
 import type { VehicleData } from '../data/vehicles';
 import type { VehicleOperationalUiProjection } from './operational-projection';
-import type { FleetHealthDisplay, FleetHealthStatus, FleetTelemetryStatus } from './fleetVehicleDisplay';
+import type { FleetHealthDisplay, FleetHealthStatus, FleetReasonBadge, FleetTelemetryStatus } from './fleetVehicleDisplay';
+import { classifyReasonBadgeDomain } from './fleet-reason-badge-domain';
 import { OPERATIONAL_AVAILABILITY_STATE } from './operational-availability/types';
 import { HEALTH_EVALUABILITY_STATE } from './fleet-health-evaluation/types';
 import type { OperationalStatusBadgeDisplay } from './vehicle-operational-booking-display';
@@ -118,12 +119,19 @@ export function resolveTelemetryFromUi(ui: VehicleOperationalUiProjection): {
 export function resolveReasonBadgeFromUi(
   ui: VehicleOperationalUiProjection,
   healthStatus: FleetHealthStatus,
-): { text: string; tone: StatusTone } | null {
+): FleetReasonBadge | null {
   const primary = ui.operator.primaryReason.presentation ?? ui.attention.primaryReason.presentation;
   if (primary?.label) {
     const tone: StatusTone =
       healthStatus === 'critical' ? 'critical' : healthStatus === 'warning' ? 'watch' : 'neutral';
-    return { text: primary.label, tone };
+    const code = primary.code ?? null;
+    return {
+      text: primary.label,
+      tone,
+      code,
+      domain: classifyReasonBadgeDomain(code),
+      source: 'ui_projection',
+    };
   }
   return null;
 }

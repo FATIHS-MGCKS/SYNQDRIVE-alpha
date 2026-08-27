@@ -208,14 +208,16 @@ VehicleData + rentalHealth (+ embedded dashboard_warning_lights)
 
 ### Health vs operational attention split
 
-| Domain | Presentation | Source |
-|--------|--------------|--------|
-| Active health findings | `VehicleHealthFindingIcons` | `activeHealthFindings[]` |
-| Operational attention | Compact reason chip | `projection.attention`, connectivity fallback, non-health `reasonBadge` |
-| Aggregate health | Heart `StatusChip` | P0.4 `healthEvaluation` |
-| Business / readiness | Primary status `StatusChip` | Stage 2B surface mapping |
+| Domain | Presentation | Source | Classification |
+|--------|--------------|--------|----------------|
+| Active health findings | `VehicleHealthFindingIcons` | `activeHealthFindings[]` | Machine-readable finding `type` / `reasonCode` |
+| Operational attention | Compact reason chip | `projection.attention`, connectivity fallback, non-health `reasonBadge` | Machine-readable `FleetReasonBadge.domain` / `code` |
+| Aggregate health | Heart `StatusChip` | P0.4 `healthEvaluation` | Unchanged |
+| Business / readiness | Primary status `StatusChip` | Stage 2B surface mapping | Unchanged |
 
-Single textual health reasons (`pickModuleReason` / `resolveReasonBadgeFromUi` health text) are **suppressed** when icons render the same finding. Operational attention codes (`AUTHORIZATION_REQUIRED`, `DEVICE_UNPLUGGED`, `INTEGRATION_ERROR`, `NEEDS_VERIFICATION`, etc.) remain visible.
+**Machine authority rule:** rendered localized strings are **not** domain authority. `FleetReasonBadge.domain` and projection reason codes classify health vs operational vs workflow. Regex/text pattern matching is **not** part of the contract.
+
+Single textual health reasons (`pickModuleReason` / `resolveReasonBadgeFromUi` health domain) are **suppressed** when `domain === 'health'` and `activeHealthFindings.length > 0`. `HEALTH_RENTAL_BLOCKED` without concrete findings may still render as unique blocker attention.
 
 ### Bypassed paths (compact rows only)
 
@@ -249,6 +251,7 @@ Tests: `vehicle-row-health-consumer-cutover.test.ts` (B1–B16 + KS MX + cross-s
 | `frontend/src/rental/components/health/VehicleHealthFindingIcons.tsx` | Shared compact icon strip component |
 | `frontend/src/rental/lib/dashboard-warning-lights-display.ts` | `resolveDashboardTelltaleIconSrc` registry |
 | `frontend/src/rental/lib/vehicle-row-health-consumer.ts` | Stage 3B dashboard-warning passthrough accessor |
-| `frontend/src/rental/lib/vehicle-row-operational-attention.ts` | Stage 3B health vs attention split |
+| `frontend/src/rental/lib/fleet-reason-badge-domain.ts` | Machine-readable `FleetReasonBadge.domain` classification |
+| `frontend/src/rental/lib/fleet-reason-badge-domain.test.ts` | L1–L10 language-independence tests |
 | `frontend/src/rental/lib/vehicle-row-health-consumer-cutover.test.ts` | B1–B16 consumer tests + fixture matrix |
 | `backend/src/modules/rental-health/rental-health.service.ts` | `dashboard_warning_lights` batch passthrough |
