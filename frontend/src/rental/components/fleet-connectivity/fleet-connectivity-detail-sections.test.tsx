@@ -78,25 +78,64 @@ function mockDetail(overrides: Partial<FleetConnectivityDetail> = {}): FleetConn
   };
 }
 
+function extractDimensionEmphasis(html: string, testId: string): string | null {
+  const match = html.match(
+    new RegExp(`data-testid="${testId}"[^>]*data-emphasis="([^"]+)"`),
+  );
+  return match?.[1] ?? null;
+}
+
+function sectionHeadingLinkageValid(html: string): boolean {
+  const sections = [...html.matchAll(/<section[^>]*aria-labelledby="([^"]+)"[^>]*>([\s\S]*?)<\/section>/g)];
+  return sections.every(([, headingId, inner]) => {
+    const heading = new RegExp(`<h3[^>]*id="${headingId}"[^>]*>`);
+    return heading.test(inner);
+  });
+}
+
 describe('FleetConnectivityDetailSections', () => {
-  it('renders shared sections with separated connectivity dimensions', () => {
+  it('links section headings via stable aria-labelledby ids', () => {
     const html = renderToStaticMarkup(
       <FleetConnectivityDetailSections detail={mockDetail()} t={t} locale="en" showSupportButton={false} />,
     );
 
-    expect(html).toContain('data-testid="fleet-connectivity-detail-sections"');
-    expect(html).toContain(en['fleetConnectivity.detail.section.currentState']);
-    expect(html).toContain(en['fleetConnectivity.detail.section.dimensions']);
-    expect(html).toContain(en['fleetConnectivity.detail.section.dataAvailability']);
-    expect(html).toContain(en['fleetConnectivity.detail.section.integration']);
-    expect(html).toContain(en['fleetConnectivity.telemetryFreshness.offline']);
-    expect(html).toContain(en['fleetConnectivity.providerLink.ACTIVE']);
-    expect(html).toContain(en['fleetConnectivity.physicalDevice.UNKNOWN']);
-    expect(html).toContain(en['fleetConnectivity.detail.noActiveInterruption']);
-    expect(html).toContain(en['fleetConnectivity.action.REVIEW_CONNECTIVITY']);
+    expect(sectionHeadingLinkageValid(html)).toBe(true);
+    expect(html).not.toContain(`aria-labelledby="${en['fleetConnectivity.detail.section.currentState']}"`);
   });
 
-  it('keeps provider ACTIVE separate from offline telemetry', () => {
+  it('renders drawer variant as single-column layout host', () => {
+    const html = renderToStaticMarkup(
+      <FleetConnectivityDetailSections
+        detail={mockDetail()}
+        t={t}
+        locale="en"
+        showSupportButton={false}
+        variant="drawer"
+      />,
+    );
+
+    expect(html).toContain('data-layout-variant="drawer"');
+    expect(html).toContain('data-testid="connectivity-sections-top"');
+    expect(html).not.toContain('lg:grid-cols-2');
+  });
+
+  it('renders page variant with responsive two-column section groups on desktop', () => {
+    const html = renderToStaticMarkup(
+      <FleetConnectivityDetailSections
+        detail={mockDetail()}
+        t={t}
+        locale="en"
+        showSupportButton={false}
+        variant="page"
+      />,
+    );
+
+    expect(html).toContain('data-layout-variant="page"');
+    expect(html).toContain('lg:grid-cols-2');
+    expect(html).toContain('data-testid="connectivity-sections-middle"');
+  });
+
+  it('uses light text dimensions for OFFLINE + ACTIVE + UNKNOWN + no episode', () => {
     const html = renderToStaticMarkup(
       <FleetConnectivityDetailSections
         detail={mockDetail({
@@ -111,23 +150,95 @@ describe('FleetConnectivityDetailSections', () => {
       />,
     );
 
+    expect(extractDimensionEmphasis(html, 'connectivity-dimension-telemetry')).toBe('text');
+    expect(extractDimensionEmphasis(html, 'connectivity-dimension-provider')).toBe('text');
+    expect(extractDimensionEmphasis(html, 'connectivity-dimension-device')).toBe('text');
+    expect(extractDimensionEmphasis(html, 'connectivity-dimension-interruption')).toBe('text');
     expect(html).toContain(en['fleetConnectivity.telemetryFreshness.offline']);
     expect(html).toContain(en['fleetConnectivity.providerLink.ACTIVE']);
+    expect(html).toContain(en['fleetConnectivity.physicalDevice.UNKNOWN']);
+    expect(html).toContain(en['fleetConnectivity.detail.noActiveInterruption']);
     expect(html).not.toContain(en['fleetConnectivity.telemetryFreshness.live']);
   });
 
-  it('does not treat UNKNOWN physical device as connected', () => {
+  it('keeps drawer and page variants semantically aligned', () => {
+    const detail = mockDetail({
+      telemetryState: 'offline',
+      providerLinkState: 'ACTIVE',
+      physicalDeviceState: 'UNKNOWN',
+      activeEpisode: null,
+    });
+    const drawerHtml = renderToStaticMarkup(
+      <FleetConnectivityDetailSections detail={detail} t={t} locale="en" showSupportButton={false} variant="drawer" />,
+    );
+    const pageHtml = renderToStaticMarkup(
+      <FleetConnectivityDetailSections detail={detail} t={t} locale="en" showSupportButton={false} variant="page" />,
+    );
+
+    for (const label of [
+      en['fleetConnectivity.telemetryFreshness.offline'],
+      en['fleetConnectivity.providerLink.ACTIVE'],
+      en['fleetConnectivity.physicalDevice.UNKNOWN'],
+      en['fleetConnectivity.detail.noActiveInterruption'],
+    ]) {
+      expect(drawerHtml).toContain(label);
+      expect(pageHtml).toContain(label);
+    }
+  });
+
+  it('uses chip emphasis for active interruption', () => {
     const html = renderToStaticMarkup(
       <FleetConnectivityDetailSections
-        detail={mockDetail({ physicalDeviceState: 'UNKNOWN' })}
+        detail={mockDetail({
+          activeEpisode: {
+            episodeId: 'ep-1',
+            open: true,
+            openedAt: '2026-07-18T09:00:00.000Z',
+            durationMs: 3_600_000,
+            rentalRelevant: true,
+            recoveryMethod: null,
+          },
+        })}
         t={t}
         locale="en"
         showSupportButton={false}
       />,
     );
 
-    expect(html).toContain(en['fleetConnectivity.physicalDevice.UNKNOWN']);
-    expect(html).not.toContain(en['fleetConnectivity.physicalDevice.PLUGGED_CONFIRMED']);
+    expect(extractDimensionEmphasis(html, 'connectivity-dimension-interruption')).toBe('chip');
+  });
+
+  it('uses chip emphasis for provider authorization problems', () => {
+    const html = renderToStaticMarkup(
+      <FleetConnectivityDetailSections
+        detail={mockDetail({
+          providerLinkState: 'REAUTH_REQUIRED',
+          provider: {
+            providerLabel: 'DIMO',
+            deviceKind: 'OBD',
+            authorizationState: 'REAUTH_REQUIRED',
+            consentGranted: false,
+            triggerConfigured: true,
+            lastSuccessfulFetchAt: null,
+          },
+        })}
+        t={t}
+        locale="en"
+        showSupportButton={false}
+      />,
+    );
+
+    expect(extractDimensionEmphasis(html, 'connectivity-dimension-provider')).toBe('chip');
+    expect(html).toContain(en['fleetConnectivity.providerLink.REAUTH_REQUIRED']);
+  });
+
+  it('renders recommendation and reason as supporting text, not chips', () => {
+    const html = renderToStaticMarkup(
+      <FleetConnectivityDetailSections detail={mockDetail()} t={t} locale="en" showSupportButton={false} />,
+    );
+
+    expect(html).toContain(en['fleetConnectivity.action.REVIEW_CONNECTIVITY']);
+    expect(html).toContain('text-muted-foreground');
   });
 
   it('uses DE labels when locale is de', () => {
@@ -149,9 +260,19 @@ describe('FleetConnectivityDetailSections', () => {
     expect(html).toContain(de['fleetConnectivity.telemetryFreshness.offline']);
   });
 
+  it('keeps mobile page composition single-column (no forced desktop-only grid at base)', () => {
+    const html = renderToStaticMarkup(
+      <FleetConnectivityDetailSections detail={mockDetail()} t={t} locale="en" variant="page" showSupportButton={false} />,
+    );
+
+    expect(html).toContain('grid-cols-1');
+    expect(html).not.toMatch(/grid-cols-[3-9]/);
+  });
+
   it('is used by FleetConnectivityDetailDrawer without duplicating section markup', () => {
     const drawerSrc = FleetConnectivityDetailDrawer.toString();
     expect(drawerSrc).toContain('FleetConnectivityDetailSections');
+    expect(drawerSrc).toContain('variant: "drawer"');
     expect(drawerSrc).not.toContain('fleetConnectivity.detail.section.dataAvailability');
   });
 });

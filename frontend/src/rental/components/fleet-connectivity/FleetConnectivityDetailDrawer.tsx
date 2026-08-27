@@ -90,7 +90,7 @@ export function FleetConnectivityDetailDrawer({
           retryLabel={t('fleetConnectivity.retry')}
         />
       ) : detail ? (
-        <FleetConnectivityDetailSections detail={detail} t={t} locale={locale} />
+        <FleetConnectivityDetailSections detail={detail} t={t} locale={locale} variant="drawer" />
       ) : null}
     </DetailDrawer>
   );

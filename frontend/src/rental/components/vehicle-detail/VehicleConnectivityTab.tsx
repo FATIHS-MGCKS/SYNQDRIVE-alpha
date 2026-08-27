@@ -62,7 +62,7 @@ export function VehicleConnectivityTab({ orgId, vehicleId }: VehicleConnectivity
           retryLabel={t('fleetConnectivity.retry')}
         />
       ) : detail ? (
-        <FleetConnectivityDetailSections detail={detail} t={t} locale={locale} />
+        <FleetConnectivityDetailSections detail={detail} t={t} locale={locale} variant="page" />
       ) : null}
     </div>
   );

@@ -100,6 +100,7 @@ describe('VehicleConnectivityTab', () => {
     expect(src).toContain('fleetConnectivityDetail');
     expect(src).not.toContain('deviceConnection');
     expect(src).toContain('FleetConnectivityDetailSections');
+    expect(src).toContain('variant: "page"');
   });
 });
 
@@ -157,16 +158,18 @@ describe('P1.8B cross-surface offline + active provider + unknown device', () =>
     expect(overview.interruptionText).toBe(en['vehicleDetail.connectivity.noActiveInterruption']);
   });
 
-  it('detail tab sections show same separated dimensions', () => {
+  it('detail tab sections show same separated dimensions with light text emphasis', () => {
     const detail = mockDetail();
     const html = renderToStaticMarkup(
-      <FleetConnectivityDetailSections detail={detail} t={t} locale="en" showSupportButton={false} />,
+      <FleetConnectivityDetailSections detail={detail} t={t} locale="en" showSupportButton={false} variant="page" />,
     );
 
+    expect(html).toContain('data-layout-variant="page"');
     expect(html).toContain(en['fleetConnectivity.telemetryFreshness.offline']);
     expect(html).toContain(en['fleetConnectivity.providerLink.ACTIVE']);
     expect(html).toContain(en['fleetConnectivity.physicalDevice.UNKNOWN']);
     expect(html).toContain(en['fleetConnectivity.detail.noActiveInterruption']);
+    expect(html).toMatch(/data-testid="connectivity-dimension-telemetry"[^>]*data-emphasis="text"/);
     expect(html).not.toContain(en['fleetConnectivity.telemetryFreshness.live']);
     expect(html).not.toContain(en['fleetConnectivity.physicalDevice.PLUGGED_CONFIRMED']);
   });
