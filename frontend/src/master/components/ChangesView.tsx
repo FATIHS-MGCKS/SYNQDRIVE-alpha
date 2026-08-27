@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-health-finding-consumer-cutover-stage-3b-2026-08-27',
+    version: '4.9.971',
+    title: 'Vehicle Health Finding Icons — Stage 3B Fleet + Ready-to-Rent consumer cutover',
+    summary: [
+      'Fleet Command (`FleetOperatorRow`) and Ready-to-Rent (`CompactFleetDrawerVehicleRow`) render `VehicleHealthFindingIcons` from `rowOperationalProjection.activeHealthFindings[]`.',
+      'Operational attention (auth, device unplugged, integration error, connectivity verification) preserved via `resolveRowOperationalAttentionBadge()` — separate from health icons.',
+      'Rental-health batch now passthroughs `dashboard_warning_lights` (server already fetched); `composeFleetDashboardWarningLightsAccessor` avoids per-row N+1.',
+      'Single health reason text (“Reifen beobachten” / first-finding-wins) suppressed when icons are authoritative; aggregate health + business/readiness badges unchanged.',
+      'Tests: B1–B16 consumer matrix, KS MX 2024 multi-finding, cross-surface fixture matrix.',
+    ],
+    reason:
+      'Stage 3A established shared icon contract; Stage 3B performs visible cutover on the two compact row surfaces identified in Stage 1 audit.',
+    previousBehavior:
+      'Fleet Command and Ready-to-Rent showed at most one textual health reason chip; multiple concurrent findings collapsed to first-finding-wins.',
+    details:
+      'frontend: FleetOperatorRow.tsx, CompactFleetDrawerVehicleRow.tsx, vehicle-row-health-consumer.ts, vehicle-row-operational-attention.ts, fleet-operator-panel.ts, vehicle-row-health-consumer-cutover.test.ts. backend: rental-health dashboard_warning_lights passthrough. architecture + audit Stage 3B. Vehicle Detail unchanged (Stage 4).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T18:30:00.000Z',
+  },
+  {
     id: 'vehicle-health-finding-icons-stage-3a-2026-08-27',
     version: '4.9.970',
     title: 'Vehicle Health Finding Icons — Stage 3A shared icon contract',

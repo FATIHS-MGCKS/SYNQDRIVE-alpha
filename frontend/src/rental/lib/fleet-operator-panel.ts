@@ -24,6 +24,7 @@ import {
   buildVehicleRowOperationalProjection,
   type VehicleRowReadinessInput,
 } from './vehicle-row-operational-projection';
+import { composeFleetDashboardWarningLightsAccessor } from './vehicle-row-health-consumer';
 
 import { isStationFilterHudOperationallyReady } from '../components/dashboard/runtime/dashboard-operational-readiness';
 import type { DashboardRuntimeModel } from '../components/dashboard/runtime/dashboardRuntimeTypes';
@@ -299,6 +300,10 @@ export function buildFleetVehicleContexts(
   } = {},
 ): FleetVehicleContext[] {
   const locale = options.locale ?? 'de';
+  const resolveDashboardWarningLights = composeFleetDashboardWarningLightsAccessor(
+    getHealth,
+    options.getDashboardWarningLights,
+  );
   return vehicles.map((vehicle) => {
     const health = getHealth(vehicle.id) ?? null;
     const uiProjection = buildFleetVehicleUiProjection(
@@ -311,7 +316,7 @@ export function buildFleetVehicleContexts(
       uiProjection,
       rentalHealth: health,
       readiness: options.getReadiness?.(vehicle.id) ?? null,
-      dashboardWarningLights: options.getDashboardWarningLights?.(vehicle.id) ?? null,
+      dashboardWarningLights: resolveDashboardWarningLights(vehicle.id) ?? null,
       locale,
     });
     return { vehicle, visual, health, uiProjection, rowOperationalProjection };

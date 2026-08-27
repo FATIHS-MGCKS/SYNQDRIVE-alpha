@@ -131,7 +131,7 @@ Tests: `frontend/src/rental/lib/vehicle-row-operational-projection.test.ts`
 |-------|------|
 | **2B** | ✅ Label clarity (Avail. → Frei/Free); readiness-primary Ready-to-Rent badge; business-primary Fleet Command badge |
 | **3A** | ✅ Shared `VehicleHealthFindingIcons` + `vehicle-health-finding-presentation.ts` (no consumer cutover) |
-| **3B** | Wire Fleet Command / Ready-to-Rent rows to `VehicleHealthFindingIcons`; remove single reason chip |
+| **3B** | ✅ Fleet Command + Ready-to-Rent rows consume `VehicleHealthFindingIcons` from `activeHealthFindings[]` |
 | **4** | Vehicle Detail header chip strip consumes same projection |
 | **5** | Cross-surface contract CI gate + legacy `pickModuleReason` cleanup after all consumers cut over |
 
@@ -184,6 +184,53 @@ Tests: `vehicle-health-finding-presentation.test.ts` (H1–H16 + KS MX 2024 fixt
 
 ---
 
+## Stage 3B — Fleet Command + Ready-to-Rent consumer cutover (2026-08)
+
+| Field | Value |
+|-------|-------|
+| **Consumers** | `FleetOperatorRow`, `CompactFleetDrawerVehicleRow` |
+| **Health findings** | `VehicleHealthFindingIcons` ← `rowOperationalProjection.activeHealthFindings` |
+| **Operational attention** | `resolveRowOperationalAttentionBadge()` — separate chip; not derived from icons |
+| **Aggregate health** | Unchanged — `healthDisplay` / `StatusChip` (P0.4) |
+| **Primary row status** | Unchanged — Fleet = business (Stage 2B); Ready-to-Rent = P1.5 readiness |
+| **Dashboard warning lights** | Passthrough on rental-health batch (`dashboard_warning_lights`); no per-row API |
+
+### Data flow
+
+```
+VehicleData + rentalHealth (+ embedded dashboard_warning_lights)
+  → buildFleetVehicleContexts / buildVehicleRowOperationalProjection
+    → rowOperationalProjection.activeHealthFindings[]
+      → VehicleHealthFindingIcons (Fleet + Ready-to-Rent)
+```
+
+`composeFleetDashboardWarningLightsAccessor()` reuses embedded rental-health telltales; explicit accessor wins when supplied. **No N+1** — server already fetches telltales during rental-health evaluation.
+
+### Health vs operational attention split
+
+| Domain | Presentation | Source |
+|--------|--------------|--------|
+| Active health findings | `VehicleHealthFindingIcons` | `activeHealthFindings[]` |
+| Operational attention | Compact reason chip | `projection.attention`, connectivity fallback, non-health `reasonBadge` |
+| Aggregate health | Heart `StatusChip` | P0.4 `healthEvaluation` |
+| Business / readiness | Primary status `StatusChip` | Stage 2B surface mapping |
+
+Single textual health reasons (`pickModuleReason` / `resolveReasonBadgeFromUi` health text) are **suppressed** when icons render the same finding. Operational attention codes (`AUTHORIZATION_REQUIRED`, `DEVICE_UNPLUGGED`, `INTEGRATION_ERROR`, `NEEDS_VERIFICATION`, etc.) remain visible.
+
+### Bypassed paths (compact rows only)
+
+- `FleetOperatorRow` / `CompactFleetDrawerVehicleRow` no longer render `reasonBadge` for health findings
+- `shouldSuppressHealthReasonBadgeText()` blocks duplicate health text when icons are authoritative
+
+### Remaining legacy (Stage 4/5)
+
+- `pickModuleReason` / `buildReasonBadge` / `resolveReasonBadgeFromUi` still used by `fleetVehicleDisplay.ts` and Vehicle Detail surfaces
+- Vehicle Detail health box / overview unchanged in Stage 3B
+
+Tests: `vehicle-row-health-consumer-cutover.test.ts` (B1–B16 + KS MX + cross-surface matrix + N+1 structural proof).
+
+---
+
 ## Files
 
 | Path | Role |
@@ -201,3 +248,7 @@ Tests: `vehicle-health-finding-presentation.test.ts` (H1–H16 + KS MX 2024 fixt
 | `frontend/src/rental/lib/vehicle-health-finding-presentation.test.ts` | H1–H16 + KS MX fixture |
 | `frontend/src/rental/components/health/VehicleHealthFindingIcons.tsx` | Shared compact icon strip component |
 | `frontend/src/rental/lib/dashboard-warning-lights-display.ts` | `resolveDashboardTelltaleIconSrc` registry |
+| `frontend/src/rental/lib/vehicle-row-health-consumer.ts` | Stage 3B dashboard-warning passthrough accessor |
+| `frontend/src/rental/lib/vehicle-row-operational-attention.ts` | Stage 3B health vs attention split |
+| `frontend/src/rental/lib/vehicle-row-health-consumer-cutover.test.ts` | B1–B16 consumer tests + fixture matrix |
+| `backend/src/modules/rental-health/rental-health.service.ts` | `dashboard_warning_lights` batch passthrough |

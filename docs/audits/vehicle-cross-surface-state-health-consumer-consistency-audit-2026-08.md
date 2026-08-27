@@ -625,3 +625,62 @@ All **PASS** (27 tests in presentation suite).
 - Remove `pickModuleReason` / `resolveReasonBadgeFromUi` from compact row surfaces after cutover
 
 *Stage 3A complete — shared contract ready; visible consumer cutover deferred to Stage 3B.*
+
+---
+
+## Stage 3B implementation (2026-08-27) — Fleet Command + Ready-to-Rent consumer cutover
+
+| Field | Value |
+|-------|-------|
+| **Phase** | Visible consumer cutover for compact health finding presentation |
+| **Fleet Command** | `FleetOperatorRow` → `VehicleHealthFindingIcons` from `ctx.rowOperationalProjection.activeHealthFindings` |
+| **Ready-to-Rent** | `CompactFleetDrawerVehicleRow` → same component + same projection field |
+| **Operational attention** | Preserved via `resolveRowOperationalAttentionBadge()` — separate from health icons |
+| **Dashboard warning lights** | `dashboard_warning_lights` passthrough on rental-health batch; `composeFleetDashboardWarningLightsAccessor` avoids N+1 |
+| **Tests** | `vehicle-row-health-consumer-cutover.test.ts` — B1–B16 + KS MX 2024 + cross-surface matrix |
+
+### Old single-reason paths bypassed
+
+| Surface | Before | After |
+|---------|--------|-------|
+| Fleet Command row | `reasonBadge` text chip (first-finding-wins) | `VehicleHealthFindingIcons` + optional attention chip |
+| Ready-to-Rent row | `resolveDrawerVehicleReasonBadge` health text | Same icon strip + optional attention chip |
+
+Health reason text suppressed when icons render the same finding (`shouldSuppressHealthReasonBadgeText`). Operational attention (`AUTHORIZATION_REQUIRED`, `DEVICE_UNPLUGGED`, `INTEGRATION_ERROR`, connectivity verification) preserved.
+
+### N+1 assessment
+
+**PASS** — no per-row warning-light or health API calls added. Server embeds `dashboard_warning_lights` in existing rental-health evaluation; frontend reuses via `resolveDashboardWarningLightsFromRentalHealth`.
+
+### KS MX 2024 acceptance (production-shaped fixture)
+
+| Dimension | Result |
+|-----------|--------|
+| Aggregate health | Warning (multi-module) |
+| Active findings | TIRE warning, BATTERY critical, BRAKE warning, DTC×2, SERVICE critical, TPMS telltale |
+| Rendered icons | Tire + battery + brake + DTC + service + TPMS — no single “Reifen beobachten” collapse |
+| Operational attention | Separate when connectivity/attention codes present |
+| Fleet business status | Stage 2B business-primary badge unchanged |
+| Ready-to-Rent readiness | P1.5 readiness-primary badge unchanged (`isReadyToRent: false` → “Nicht bereit”) |
+
+### B1–B16 results
+
+All **PASS** (29 tests in consumer cutover suite).
+
+### Remaining first-finding helpers
+
+| Helper | Remaining consumers |
+|--------|---------------------|
+| `pickModuleReason` | `fleetVehicleDisplay.ts` legacy path |
+| `buildReasonBadge` | `fleetVehicleDisplay.ts` when `uiProjection` absent |
+| `resolveReasonBadgeFromUi` | `fleetVehicleDisplay.ts`, projection tests, attention fallback input |
+
+Cleanup deferred to Stage 4/5 after Vehicle Detail cutover.
+
+### Stage 4 boundary
+
+- Vehicle Detail header / overview chip strip from shared `activeHealthFindings`
+- Cross-surface CI gate
+- Legacy `pickModuleReason` removal after all consumers cut over
+
+*Stage 3B complete — Fleet Command and Ready-to-Rent compact rows share `VehicleHealthFindingIcons`; Vehicle Detail unchanged.*

@@ -7,6 +7,9 @@ import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
 import { resolveCanonicalFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
 import { buildVehicleRowOperationalProjection } from '../../lib/vehicle-row-operational-projection';
 import { getVehicleRowOperationalDisplay } from '../../lib/vehicle-row-operational-display';
+import { resolveDashboardWarningLightsFromRentalHealth } from '../../lib/vehicle-row-health-consumer';
+import { resolveRowOperationalAttentionBadge } from '../../lib/vehicle-row-operational-attention';
+import { VehicleHealthFindingIcons } from '../health/VehicleHealthFindingIcons';
 import { de as deTranslations } from '../../i18n/translations/de';
 import { en as enTranslations } from '../../i18n/translations/en';
 import type { TranslationKey } from '../../i18n/translations/en';
@@ -101,8 +104,14 @@ export function CompactFleetDrawerVehicleRow({
       ? runtimeHealthLabel(runtimeState, de)
       : null;
   const localeKey = (de ? 'de' : 'en') as 'de' | 'en';
-  const translate = (key: TranslationKey) =>
-    (de ? deTranslations[key] : enTranslations[key]) ?? key;
+  const translate = (key: TranslationKey, vars?: Record<string, string | number>) => {
+    const template = (de ? deTranslations[key] : enTranslations[key]) ?? key;
+    if (!vars) return template;
+    return Object.entries(vars).reduce(
+      (acc, [name, value]) => acc.replaceAll(`{${name}}`, String(value)),
+      template,
+    );
+  };
 
   const rowOperationalProjection =
     vehicle != null
@@ -114,6 +123,7 @@ export function CompactFleetDrawerVehicleRow({
                 isReadyToRent: runtimeState.isReadyToRent,
               }
             : null,
+          dashboardWarningLights: resolveDashboardWarningLightsFromRentalHealth(health),
           locale: localeKey,
         })
       : null;
@@ -144,6 +154,17 @@ export function CompactFleetDrawerVehicleRow({
     locale,
     fleetDisplay?.reasonBadge ?? null,
   );
+  const activeHealthFindings = rowOperationalProjection?.activeHealthFindings ?? [];
+  const operationalAttentionBadge =
+    rowOperationalProjection != null
+      ? resolveRowOperationalAttentionBadge({
+          projection: rowOperationalProjection,
+          reasonBadge: reasonBadge
+            ? { text: reasonBadge.text, tone: reasonBadge.tone }
+            : null,
+          t: translate,
+        })
+      : null;
   const energy = fleetDisplay?.energy;
   const odometerLabel = fleetDisplay?.odometerLabel ?? null;
   const dimmed = fleetDisplay?.showTelemetryWarning && vehicle && selectIsCurrentlyAvailable(vehicle);
@@ -247,15 +268,25 @@ export function CompactFleetDrawerVehicleRow({
             </div>
           ) : null}
 
-          {reasonBadge ? (
-            <span
-              className={cn(
-                'inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-medium',
-                reasonChipClass(reasonBadge.tone),
-              )}
-            >
-              <span className="truncate">{reasonBadge.text}</span>
-            </span>
+          {activeHealthFindings.length > 0 || operationalAttentionBadge ? (
+            <div className="flex min-w-0 flex-wrap items-center gap-1">
+              <VehicleHealthFindingIcons
+                findings={activeHealthFindings}
+                locale={localeKey}
+                t={translate}
+                size="sm"
+              />
+              {operationalAttentionBadge ? (
+                <span
+                  className={cn(
+                    'inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-medium',
+                    reasonChipClass(operationalAttentionBadge.tone),
+                  )}
+                >
+                  <span className="truncate">{operationalAttentionBadge.text}</span>
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
 
