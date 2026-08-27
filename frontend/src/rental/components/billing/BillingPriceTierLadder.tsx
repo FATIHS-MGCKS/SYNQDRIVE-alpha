@@ -1,6 +1,10 @@
 import type { BillingPriceTierDto } from '../../types/billing.types';
-import { formatMoneyCents, formatTierRange } from './billing.utils';
-import { pricingModelLabel } from './tenant-billing-overview.utils';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  formatTierRangeDisplay,
+  resolvePricingModelDisplayLabel,
+  resolveTenantBillingMoneyDisplay,
+} from '../../lib/rental-tenant-billing-i18n';
 import { EmptyState } from '../../../components/patterns/states';
 import { Icon } from '../ui/Icon';
 
@@ -9,6 +13,7 @@ interface BillingPriceTierLadderProps {
   currency: string;
   currentTierId: string | null;
   pricingModel?: 'VOLUME' | 'GRADUATED' | null;
+  locale: string;
 }
 
 export function BillingPriceTierLadder({
@@ -16,18 +21,22 @@ export function BillingPriceTierLadder({
   currency,
   currentTierId,
   pricingModel = 'VOLUME',
+  locale,
 }: BillingPriceTierLadderProps) {
+  const { t } = useLanguage();
+  const modelLabel = resolvePricingModelDisplayLabel(pricingModel, t);
+
   if (!tiers.length) {
     return (
       <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)]">
         <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground mb-3">
-          Preisstaffel
+          {t('tenantBilling.overview.pricingTier')}
         </h3>
         <EmptyState
           compact
           icon={<Icon name="layers" className="w-5 h-5" />}
-          title="Preisstaffeln wurden noch nicht konfiguriert."
-          description="Sobald eine aktive Preisversion veröffentlicht ist, erscheinen die Staffeln hier."
+          title={t('tenantBilling.tariff.tierLadder.emptyTitle')}
+          description={t('tenantBilling.tariff.tierLadder.emptyDescription')}
         />
       </div>
     );
@@ -38,10 +47,11 @@ export function BillingPriceTierLadder({
   return (
     <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)]">
       <div className="mb-4">
-        <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">Preisstaffel</h3>
+        <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+          {t('tenantBilling.overview.pricingTier')}
+        </h3>
         <p className="text-[11px] mt-0.5 text-muted-foreground">
-          {pricingModelLabel(pricingModel)}: Ihr gesamter Fahrzeugbestand wird mit der passenden
-          Staffel berechnet.
+          {t('tenantBilling.tariff.tierLadder.fleetHint', { model: modelLabel })}
         </p>
       </div>
 
@@ -59,20 +69,27 @@ export function BillingPriceTierLadder({
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="text-sm font-semibold text-foreground">
-                  {formatTierRange(tier.minVehicles, tier.maxVehicles)}
+                  {formatTierRangeDisplay(tier.minVehicles, tier.maxVehicles, t)}
                 </p>
                 {isCurrent && (
                   <span className="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-semibold sq-tone-brand">
-                    Aktuell
+                    {t('tenantBilling.tariff.tierLadder.current')}
                   </span>
                 )}
               </div>
               <p className="mt-3 text-[22px] font-semibold tracking-[-0.03em] tabular-nums text-foreground">
                 {tier.unitPriceCents != null
-                  ? formatMoneyCents(tier.unitPriceCents, currency)
-                  : 'Noch nicht konfiguriert'}
+                  ? resolveTenantBillingMoneyDisplay(
+                      null,
+                      locale,
+                      tier.unitPriceCents,
+                      currency,
+                    )
+                  : t('tenantBilling.tariff.tierLadder.notConfigured')}
               </p>
-              <p className="text-[11px] text-muted-foreground mt-1">pro Fahrzeug / Monat</p>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {t('tenantBilling.tariff.tierLadder.perVehicleMonth')}
+              </p>
             </div>
           );
         })}

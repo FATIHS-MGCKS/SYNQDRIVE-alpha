@@ -1,19 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  TenantSubscriptionTariffPricingDto,
-  TenantVehicleBillingChangeDto,
-} from '../../types/billing.types';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
+import type { TenantSubscriptionTariffPricingDto } from '../../types/billing.types';
 import {
-  changeTypeLabel,
-  planKindLabel,
-  pricingBreakdownRows,
-} from './tenant-tariff-vehicles.utils';
+  buildTariffPricingBreakdownRows,
+  formatTierRangeDisplay,
+  resolvePlanKindDisplayLabel,
+} from '../../lib/rental-tenant-billing-i18n';
 
 const money = (cents: number, formatted: string) => ({
   cents,
   currency: 'EUR',
   formatted,
 });
+
+const translate =
+  (dict: Record<string, string>) =>
+  (key: TranslationKey, vars?: Record<string, string | number>) => {
+    let text = dict[key] ?? key;
+    if (vars) {
+      Object.entries(vars).forEach(([k, v]) => {
+        text = text.replace(`{${k}}`, String(v));
+      });
+    }
+    return text;
+  };
+
+const tDe = translate(de);
+const tEn = translate(en);
 
 function buildPricing(
   partial: Partial<TenantSubscriptionTariffPricingDto>,
@@ -42,21 +57,31 @@ function buildPricing(
   };
 }
 
-describe('tenant tariff vehicles utils', () => {
-  it('labels rental and fleet plans', () => {
-    expect(planKindLabel('RENTAL')).toBe('SynqDrive Rental');
-    expect(planKindLabel('FLEET')).toBe('SynqDrive Fleet');
+describe('tenant tariff vehicles utils (P255A)', () => {
+  it('labels rental and fleet plans via stable brand strings', () => {
+    expect(resolvePlanKindDisplayLabel('RENTAL', tDe)).toBe('SynqDrive Rental');
+    expect(resolvePlanKindDisplayLabel('FLEET', tEn)).toBe('SynqDrive Fleet');
   });
 
-  it('builds volume pricing breakdown rows', () => {
-    const rows = pricingBreakdownRows(buildPricing({ pricingModel: 'VOLUME' }));
-    expect(rows.some((row) => row.label === 'Stückpreis')).toBe(true);
-    expect(rows.some((row) => row.label === 'Brutto' && row.value === '89,25 €')).toBe(true);
-    expect(rows.some((row) => row.label === 'Preismodell' && row.value === 'Mengenpreis')).toBe(true);
+  it('builds volume pricing breakdown rows with reused keys', () => {
+    const rows = buildTariffPricingBreakdownRows(buildPricing({ pricingModel: 'VOLUME' }), tDe, 'de');
+    expect(
+      rows.some((row) => row.label === tDe('tenantBilling.tariff.breakdown.unitPriceColumn')),
+    ).toBe(true);
+    expect(rows.some((row) => row.label === tDe('invoiceLineItem.summary.gross') && row.value === '89,25 €')).toBe(
+      true,
+    );
+    expect(
+      rows.some(
+        (row) =>
+          row.label === tDe('tenantBilling.tariff.breakdown.pricingModelRow') &&
+          row.value === tDe('tenantBilling.pricingModel.volume'),
+      ),
+    ).toBe(true);
   });
 
-  it('builds graduated pricing breakdown with tier lines', () => {
-    const rows = pricingBreakdownRows(
+  it('builds graduated pricing breakdown with tier lines excluded from rows', () => {
+    const rows = buildTariffPricingBreakdownRows(
       buildPricing({
         pricingModel: 'GRADUATED',
         tierBreakdown: [
@@ -66,56 +91,52 @@ describe('tenant tariff vehicles utils', () => {
             unitPrice: money(1000, '10,00 €'),
             subtotal: money(3000, '30,00 €'),
           },
-          {
-            tierLabel: '6–10 Fahrzeuge',
-            quantity: 2,
-            unitPrice: money(800, '8,00 €'),
-            subtotal: money(1600, '16,00 €'),
-          },
         ],
       }),
+      tDe,
+      'de',
     );
 
-    expect(rows.some((row) => row.label === 'Preismodell' && row.value === 'Gestaffelter Preis')).toBe(
-      true,
-    );
+    expect(
+      rows.some(
+        (row) =>
+          row.label === tDe('tenantBilling.tariff.breakdown.pricingModelRow') &&
+          row.value === tDe('tenantBilling.pricingModel.graduated'),
+      ),
+    ).toBe(true);
     expect(rows.some((row) => row.label.includes('1–5 Fahrzeuge'))).toBe(false);
   });
 
-  it('includes discount rows in pricing breakdown', () => {
-    const rows = pricingBreakdownRows(
+  it('includes discount rows in pricing breakdown with raw labels', () => {
+    const rows = buildTariffPricingBreakdownRows(
       buildPricing({
-        discounts: [{ label: 'Willkommensrabatt', amount: money(500, '5,00 €') }],
+        discounts: [{ label: 'Provider Discount X7', amount: money(500, '5,00 €') }],
         netAmount: money(7000, '70,00 €'),
       }),
+      tDe,
+      'de',
     );
-    expect(rows.some((row) => row.label === 'Willkommensrabatt' && row.value === '−5,00 €')).toBe(
+    expect(rows.some((row) => row.label === 'Provider Discount X7' && row.value === '−5,00 €')).toBe(
       true,
     );
   });
 
-  it('labels vehicle change types for history', () => {
-    const added: TenantVehicleBillingChangeDto = {
-      id: '1',
-      licensePlate: 'B-AB 1',
-      vehicleLabel: 'VW Golf',
-      changeType: 'ADDED',
-      eventTypeLabel: 'Fahrzeug abrechenbar',
-      effectiveAt: '2026-07-16T00:00:00.000Z',
-      prorationAmount: money(1500, '15,00 €'),
-      reason: null,
-    };
-    const removed: TenantVehicleBillingChangeDto = { ...added, changeType: 'REMOVED' };
-
-    expect(changeTypeLabel(added)).toBe('Hinzugefügt');
-    expect(changeTypeLabel(removed)).toBe('Entfernt');
+  it('formats tier ranges without changing thresholds', () => {
+    expect(formatTierRangeDisplay(1, 10, tDe)).toBe('1–10 Fahrzeuge');
+    expect(formatTierRangeDisplay(20, null, tEn)).toBe('20+ vehicles');
+    expect(formatTierRangeDisplay(1, 1, tDe)).toBe('1 Fahrzeug');
   });
 
   it('handles empty pricing state for no vehicles', () => {
-    expect(pricingBreakdownRows(null)).toEqual([]);
-    const rows = pricingBreakdownRows(
+    expect(buildTariffPricingBreakdownRows(null, tDe, 'de')).toEqual([]);
+    const rows = buildTariffPricingBreakdownRows(
       buildPricing({ billableVehicleCount: 0, baseAmount: money(0, '0,00 €') }),
+      tDe,
+      'de',
     );
-    expect(rows[0]).toEqual({ label: 'Abrechenbare Fahrzeuge', value: '0' });
+    expect(rows[0]).toEqual({
+      label: tDe('tenantBilling.overview.billableVehicles'),
+      value: '0',
+    });
   });
 });

@@ -1,4 +1,5 @@
 import { ErrorState, SkeletonCard } from '../../../components/patterns/states';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { BillingPriceTierLadder } from './BillingPriceTierLadder';
 import { TenantBillableVehiclesTable } from './TenantBillableVehiclesTable';
 import { TenantPricingBreakdownSection } from './TenantPricingBreakdownSection';
@@ -13,6 +14,7 @@ interface TenantBillingTariffVehiclesTabProps {
 }
 
 export function TenantBillingTariffVehiclesTab({ data }: TenantBillingTariffVehiclesTabProps) {
+  const { t, locale } = useLanguage();
   const {
     tariff,
     tariffLoading,
@@ -46,10 +48,10 @@ export function TenantBillingTariffVehiclesTab({ data }: TenantBillingTariffVehi
   if (tariffError && !tariff) {
     return (
       <ErrorState
-        title="Tarif & Fahrzeuge konnten nicht geladen werden"
+        title={t('tenantBilling.tariff.loadErrorTitle')}
         description={tariffError}
         onRetry={() => void reloadTariff()}
-        retryLabel="Erneut versuchen"
+        retryLabel={t('common.retry')}
       />
     );
   }
@@ -68,7 +70,7 @@ export function TenantBillingTariffVehiclesTab({ data }: TenantBillingTariffVehi
   return (
     <div className="space-y-4" data-testid="tenant-tariff-vehicles-tab">
       <p className="text-[12px] leading-relaxed text-muted-foreground max-w-[70ch]">
-        Tarif, Preisbildung und abrechenbare Fahrzeuge — nachvollziehbar und ohne technische Details.
+        {t('tenantBilling.tariff.intro')}
       </p>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -86,6 +88,7 @@ export function TenantBillingTariffVehiclesTab({ data }: TenantBillingTariffVehi
           currency={pricing?.currency ?? 'EUR'}
           currentTierId={currentTierIndex >= 0 ? `tier-${currentTierIndex}` : null}
           pricingModel={pricing?.pricingModel ?? null}
+          locale={locale}
         />
       ) : null}
 

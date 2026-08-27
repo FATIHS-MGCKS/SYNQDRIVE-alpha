@@ -111,25 +111,25 @@
     }
   },
   "summary": {
-    "total": 1438,
+    "total": 1430,
     "bySurface": {
       "MASTER": 1049,
       "OPERATOR": 22,
-      "RENTAL": 341,
+      "RENTAL": 333,
       "SHARED": 1,
       "SHELL": 25
     },
     "byCategory": {
       "ARIA": 48,
-      "TITLE": 212,
-      "TEXT": 1021,
+      "TITLE": 210,
+      "TEXT": 1015,
       "LABEL": 85,
       "PLACEHOLDER": 64,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
       "other Rental areas": 260,
-      "Finance/Billing": 59,
+      "Finance/Billing": 51,
       "Tasks": 13,
       "Documents": 8,
       "App / routing shell": 1
@@ -377,7 +377,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1676,
+      "line": 1680,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -405,7 +405,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24313,
+      "line": 24332,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -657,7 +657,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28198,
+      "line": 28217,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1606,7 +1606,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28143,
+      "line": 28162,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1747,7 +1747,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1147,
+      "line": 1151,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1761,7 +1761,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24617,
+      "line": 24636,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1803,7 +1803,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1766,
+      "line": 1770,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2728,7 +2728,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1887,
+      "line": 1891,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2812,7 +2812,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1196,
+      "line": 1200,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3106,7 +3106,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1777,
+      "line": 1781,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3432,7 +3432,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1681,
+      "line": 1685,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3488,7 +3488,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1835,
+      "line": 1839,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3502,7 +3502,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1837,
+      "line": 1841,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4107,7 +4107,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 25585,
+      "line": 25604,
       "surface": "MASTER",
       "module": null,
       "category": "FORMAT_LOCALE",
@@ -4137,7 +4137,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1661,
+      "line": 1665,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4151,7 +4151,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1805,
+      "line": 1809,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4642,7 +4642,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28133,
+      "line": 28152,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -4838,7 +4838,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1885,
+      "line": 1889,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5147,7 +5147,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 22926,
+      "line": 22945,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5595,7 +5595,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24227,
+      "line": 24246,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6170,7 +6170,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1724,
+      "line": 1728,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6185,7 +6185,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1164,
+      "line": 1168,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7622,7 +7622,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1740,
+      "line": 1744,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7846,7 +7846,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1730,
+      "line": 1734,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7888,7 +7888,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28168,
+      "line": 28187,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8183,7 +8183,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24293,
+      "line": 24312,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8421,7 +8421,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1717,
+      "line": 1721,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8941,7 +8941,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28155,
+      "line": 28174,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8955,7 +8955,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28172,
+      "line": 28191,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9376,7 +9376,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27849,
+      "line": 27868,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10012,7 +10012,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1705,
+      "line": 1709,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10530,7 +10530,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1841,
+      "line": 1845,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10544,7 +10544,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1838,
+      "line": 1842,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10558,7 +10558,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1834,
+      "line": 1838,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11455,7 +11455,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1738,
+      "line": 1742,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11665,7 +11665,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1888,
+      "line": 1892,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12295,7 +12295,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1639,
+      "line": 1643,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12857,7 +12857,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28122,
+      "line": 28141,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12871,7 +12871,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1435,
+      "line": 1439,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12969,7 +12969,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1778,
+      "line": 1782,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13490,7 +13490,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1635,
+      "line": 1639,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13588,7 +13588,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1768,
+      "line": 1772,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13674,7 +13674,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1683,
+      "line": 1687,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13856,7 +13856,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 25587,
+      "line": 25606,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13898,7 +13898,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24313,
+      "line": 24332,
       "surface": "MASTER",
       "module": null,
       "category": "TITLE",
@@ -13926,7 +13926,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1639,
+      "line": 1643,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13940,7 +13940,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1640,
+      "line": 1644,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13983,7 +13983,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1582,
+      "line": 1586,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13997,7 +13997,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1606,
+      "line": 1610,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14039,7 +14039,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1765,
+      "line": 1769,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14377,7 +14377,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24353,
+      "line": 24372,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14545,7 +14545,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1888,
+      "line": 1892,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -17368,20 +17368,6 @@
       ]
     },
     {
-      "file": "rental/components/billing/TenantTariffSummarySection.tsx",
-      "line": 22,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Kein aktiver Tarif hinterlegt.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/TenantTariffSummarySection.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DocumentsView.tsx",
       "line": 216,
       "surface": "RENTAL",
@@ -18774,34 +18760,6 @@
       ]
     },
     {
-      "file": "rental/components/billing/TenantPricingBreakdownSection.tsx",
-      "line": 23,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Preisaufschlüsselung",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/billing/TenantPricingBreakdownSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/billing/TenantPricingBreakdownSection.tsx",
-      "line": 32,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Preisaufschlüsselung noch nicht verfügbar.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/TenantPricingBreakdownSection.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillingStatusHero.tsx",
       "line": 134,
       "surface": "RENTAL",
@@ -18813,20 +18771,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/BillingStatusHero.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/billing/BillingPriceTierLadder.tsx",
-      "line": 29,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TITLE",
-      "sample": "Preisstaffeln wurden noch nicht konfiguriert.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/BillingPriceTierLadder.tsx"
       ]
     },
     {
@@ -18897,20 +18841,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageEvidenceCanvas.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/billing/BillingPriceTierLadder.tsx",
-      "line": 75,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "pro Fahrzeug / Monat",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/BillingPriceTierLadder.tsx"
       ]
     },
     {
@@ -19434,20 +19364,6 @@
       ]
     },
     {
-      "file": "rental/components/billing/TenantPricingBreakdownSection.tsx",
-      "line": 61,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Stückpreis",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/TenantPricingBreakdownSection.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/UsersTab.tsx",
       "line": 388,
       "surface": "RENTAL",
@@ -19487,34 +19403,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/billing/TenantBillingTariffVehiclesTab.tsx",
-      "line": 49,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TITLE",
-      "sample": "Tarif & Fahrzeuge konnten nicht geladen werden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/TenantBillingTariffVehiclesTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/billing/TenantBillingTariffVehiclesTab.tsx",
-      "line": 70,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Tarif, Preisbildung und abrechenbare Fahrzeuge — nachvollziehbar und ohne technische Details.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/TenantBillingTariffVehiclesTab.tsx"
       ]
     },
     {

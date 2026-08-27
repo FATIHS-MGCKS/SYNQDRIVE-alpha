@@ -1,6 +1,9 @@
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  buildTariffPricingBreakdownRows,
+  resolvePricingModelDisplayLabel,
+} from '../../lib/rental-tenant-billing-i18n';
 import type { TenantSubscriptionTariffPricingDto } from '../../types/billing.types';
-import { pricingModelLabel } from './tenant-billing-overview.utils';
-import { pricingBreakdownRows } from './tenant-tariff-vehicles.utils';
 
 interface TenantPricingBreakdownSectionProps {
   pricing: TenantSubscriptionTariffPricingDto | null;
@@ -13,6 +16,8 @@ export function TenantPricingBreakdownSection({
   loading = false,
   error = null,
 }: TenantPricingBreakdownSectionProps) {
+  const { t, locale } = useLanguage();
+
   if (loading && !pricing) {
     return <div className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5 h-48 animate-pulse bg-muted/20" />;
   }
@@ -20,7 +25,7 @@ export function TenantPricingBreakdownSection({
   if (error) {
     return (
       <div className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5">
-        <p className="text-sm font-semibold">Preisaufschlüsselung</p>
+        <p className="text-sm font-semibold">{t('tenantBilling.overview.breakdownTitle')}</p>
         <p className="text-xs mt-2 sq-tone-warning px-2 py-1 rounded">{error}</p>
       </div>
     );
@@ -29,12 +34,12 @@ export function TenantPricingBreakdownSection({
   if (!pricing) {
     return (
       <div className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5">
-        <p className="text-sm text-muted-foreground">Preisaufschlüsselung noch nicht verfügbar.</p>
+        <p className="text-sm text-muted-foreground">{t('tenantBilling.tariff.breakdown.unavailable')}</p>
       </div>
     );
   }
 
-  const rows = pricingBreakdownRows(pricing);
+  const rows = buildTariffPricingBreakdownRows(pricing, t, locale);
   const showGraduatedTable =
     pricing.pricingModel === 'GRADUATED' && pricing.tierBreakdown.length > 0;
 
@@ -44,10 +49,12 @@ export function TenantPricingBreakdownSection({
       data-testid="tenant-pricing-breakdown"
     >
       <div>
-        <h3 className="text-sm font-semibold">Preisaufschlüsselung</h3>
+        <h3 className="text-sm font-semibold">{t('tenantBilling.overview.breakdownTitle')}</h3>
         <p className="text-[12px] text-muted-foreground mt-1">
-          {pricingModelLabel(pricing.pricingModel)} · {pricing.billableVehicleCount} abrechenbare
-          Fahrzeuge
+          {t('tenantBilling.tariff.breakdown.subtitleHint', {
+            model: resolvePricingModelDisplayLabel(pricing.pricingModel, t),
+            count: pricing.billableVehicleCount,
+          })}
         </p>
       </div>
 
@@ -56,12 +63,18 @@ export function TenantPricingBreakdownSection({
           <table className="w-full min-w-[520px] text-xs">
             <thead>
               <tr className="bg-muted/40">
-                <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Staffel</th>
-                <th className="text-right px-3 py-2 font-semibold text-muted-foreground">Menge</th>
-                <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
-                  Stückpreis
+                <th className="text-left px-3 py-2 font-semibold text-muted-foreground">
+                  {t('tenantBilling.overview.pricingTier')}
                 </th>
-                <th className="text-right px-3 py-2 font-semibold text-muted-foreground">Summe</th>
+                <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                  {t('tenantBilling.tariff.breakdown.quantityColumn')}
+                </th>
+                <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                  {t('tenantBilling.tariff.breakdown.unitPriceColumn')}
+                </th>
+                <th className="text-right px-3 py-2 font-semibold text-muted-foreground">
+                  {t('tenantBilling.tariff.breakdown.subtotalColumn')}
+                </th>
               </tr>
             </thead>
             <tbody>

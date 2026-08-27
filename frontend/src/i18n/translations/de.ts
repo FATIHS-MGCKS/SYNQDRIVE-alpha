@@ -839,6 +839,41 @@ export const de: Record<TranslationKey, string> = {
   'tenantBilling.pricingModel.graduated': 'Gestaffelter Preis',
   'tenantBilling.invoice.fallbackNumber': 'Noch nicht finalisiert',
 
+  // ─── Tenant Billing Tariff (P2.2.55A) ───
+  'tenantBilling.tariff.intro':
+    'Tarif, Preisbildung und abrechenbare Fahrzeuge — nachvollziehbar und ohne technische Details.',
+  'tenantBilling.tariff.loadErrorTitle': 'Tarif & Fahrzeuge konnten nicht geladen werden',
+  'tenantBilling.tariff.summary.title': 'Tarif',
+  'tenantBilling.tariff.summary.empty': 'Kein aktiver Tarif hinterlegt.',
+  'tenantBilling.tariff.summary.product': 'Produkt',
+  'tenantBilling.tariff.summary.planNameLabel': 'Tarifbezeichnung',
+  'tenantBilling.tariff.summary.billingInterval': 'Abrechnungsintervall',
+  'tenantBilling.tariff.summary.priceVersion': 'Preisversion',
+  'tenantBilling.tariff.summary.contractStart': 'Vertragsbeginn',
+  'tenantBilling.tariff.summary.nextPeriod': 'Nächster Zeitraum',
+  'tenantBilling.tariff.summary.cancellationStatus': 'Kündigungsstatus',
+  'tenantBilling.tariff.breakdown.unavailable': 'Preisaufschlüsselung noch nicht verfügbar.',
+  'tenantBilling.tariff.breakdown.subtitleHint': '{model} · {count} abrechenbare Fahrzeuge',
+  'tenantBilling.tariff.breakdown.quantityColumn': 'Menge',
+  'tenantBilling.tariff.breakdown.unitPriceColumn': 'Stückpreis',
+  'tenantBilling.tariff.breakdown.subtotalColumn': 'Summe',
+  'tenantBilling.tariff.breakdown.unitPricePerVehicle': '{amount} pro Fahrzeug',
+  'tenantBilling.tariff.breakdown.currencyRow': 'Währung',
+  'tenantBilling.tariff.breakdown.calculatedAtRow': 'Stand der Berechnung',
+  'tenantBilling.tariff.breakdown.pricingModelRow': 'Preismodell',
+  'tenantBilling.tariff.tierLadder.emptyTitle': 'Preisstaffeln wurden noch nicht konfiguriert.',
+  'tenantBilling.tariff.tierLadder.emptyDescription':
+    'Sobald eine aktive Preisversion veröffentlicht ist, erscheinen die Staffeln hier.',
+  'tenantBilling.tariff.tierLadder.fleetHint':
+    '{model}: Ihr gesamter Fahrzeugbestand wird mit der passenden Staffel berechnet.',
+  'tenantBilling.tariff.tierLadder.current': 'Aktuell',
+  'tenantBilling.tariff.tierLadder.notConfigured': 'Noch nicht konfiguriert',
+  'tenantBilling.tariff.tierLadder.perVehicleMonth': 'pro Fahrzeug / Monat',
+  'tenantBilling.tariff.tierRange.singleOne': '1 Fahrzeug',
+  'tenantBilling.tariff.tierRange.singleExact': '{count} Fahrzeuge',
+  'tenantBilling.tariff.tierRange.range': '{min}–{max} Fahrzeuge',
+  'tenantBilling.tariff.tierRange.openEnded': '{min}+ Fahrzeuge',
+
   'finance.separationHint':
     'Kundenzahlungen und Auszahlungen sind getrennt von Ihrem SynqDrive-Abonnement. Ihre Abo-Zahlungsmethode ist nicht dasselbe wie Ihr Auszahlungskonto.',
   'finance.customerPayments.pageTitle': 'Kundenzahlungen & Auszahlungen',

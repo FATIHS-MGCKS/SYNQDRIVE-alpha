@@ -740,6 +740,41 @@ export const en = {
   'tenantBilling.pricingModel.graduated': 'Graduated pricing',
   'tenantBilling.invoice.fallbackNumber': 'Not finalized yet',
 
+  // ─── Tenant Billing Tariff (P2.2.55A) ───
+  'tenantBilling.tariff.intro':
+    'Plan, pricing, and billable vehicles — transparent and without technical details.',
+  'tenantBilling.tariff.loadErrorTitle': 'Plan & vehicles could not be loaded',
+  'tenantBilling.tariff.summary.title': 'Plan',
+  'tenantBilling.tariff.summary.empty': 'No active plan on file.',
+  'tenantBilling.tariff.summary.product': 'Product',
+  'tenantBilling.tariff.summary.planNameLabel': 'Plan name',
+  'tenantBilling.tariff.summary.billingInterval': 'Billing interval',
+  'tenantBilling.tariff.summary.priceVersion': 'Price version',
+  'tenantBilling.tariff.summary.contractStart': 'Contract start',
+  'tenantBilling.tariff.summary.nextPeriod': 'Next period',
+  'tenantBilling.tariff.summary.cancellationStatus': 'Cancellation status',
+  'tenantBilling.tariff.breakdown.unavailable': 'Cost breakdown is not available yet.',
+  'tenantBilling.tariff.breakdown.subtitleHint': '{model} · {count} billable vehicles',
+  'tenantBilling.tariff.breakdown.quantityColumn': 'Quantity',
+  'tenantBilling.tariff.breakdown.unitPriceColumn': 'Unit price',
+  'tenantBilling.tariff.breakdown.subtotalColumn': 'Subtotal',
+  'tenantBilling.tariff.breakdown.unitPricePerVehicle': '{amount} per vehicle',
+  'tenantBilling.tariff.breakdown.currencyRow': 'Currency',
+  'tenantBilling.tariff.breakdown.calculatedAtRow': 'Calculation as of',
+  'tenantBilling.tariff.breakdown.pricingModelRow': 'Pricing model',
+  'tenantBilling.tariff.tierLadder.emptyTitle': 'Price tiers have not been configured yet.',
+  'tenantBilling.tariff.tierLadder.emptyDescription':
+    'Once an active price version is published, tiers will appear here.',
+  'tenantBilling.tariff.tierLadder.fleetHint':
+    '{model}: your entire fleet is priced using the matching tier.',
+  'tenantBilling.tariff.tierLadder.current': 'Current',
+  'tenantBilling.tariff.tierLadder.notConfigured': 'Not configured yet',
+  'tenantBilling.tariff.tierLadder.perVehicleMonth': 'per vehicle / month',
+  'tenantBilling.tariff.tierRange.singleOne': '1 vehicle',
+  'tenantBilling.tariff.tierRange.singleExact': '{count} vehicles',
+  'tenantBilling.tariff.tierRange.range': '{min}–{max} vehicles',
+  'tenantBilling.tariff.tierRange.openEnded': '{min}+ vehicles',
+
   'finance.separationHint':
     'Customer payments and payouts are separate from your SynqDrive subscription. Your subscription card is not the same as your payout bank account.',
   'finance.customerPayments.pageTitle': 'Customer payments & payouts',
