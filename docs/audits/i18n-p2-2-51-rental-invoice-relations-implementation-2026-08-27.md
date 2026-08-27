@@ -1,9 +1,9 @@
 # P2.2.51 — Rental Invoice Relations — Implementation Record
 
-**Date:** 2026-08-27  
-**Baseline:** `fb03d921668701168c5eb31c02524c1d9b187fc9`  
-**Pre-flight:** PR #1343 (read-only; not merged)  
-**Branch:** `cursor/p2251-rental-invoice-relations-i18n-3c10`  
+**Date:** 2026-08-27
+**Baseline:** `fb03d921668701168c5eb31c02524c1d9b187fc9`
+**Pre-flight:** PR #1343 (read-only; not merged)
+**Branch:** `cursor/p2251-rental-invoice-relations-i18n-3c10`
 
 ## Summary
 

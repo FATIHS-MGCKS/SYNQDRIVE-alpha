@@ -151,7 +151,7 @@ describe('P2.2.51 rental invoice relations localization', () => {
           lastName: 'Mustermann X7',
           email: 'max@example.com',
         },
-        customerFetchState: 'ok',
+        customerFetchState: 'ok' as const,
         booking: {
           core: {
             bookingId: 'book-99999999-8888-7777-6666-555555555555',
@@ -265,7 +265,7 @@ describe('P2.2.51 rental invoice relations localization', () => {
           activity: [],
           payments: null,
         },
-        bookingFetchState: 'ok',
+        bookingFetchState: 'ok' as const,
         vehicleFetchState: 'ok',
       },
       {
@@ -298,7 +298,7 @@ describe('P2.2.51 rental invoice relations localization', () => {
           status: 'ARCHIVED',
           archivedAt: '2026-01-01T00:00:00.000Z',
         },
-        customerFetchState: 'ok',
+        customerFetchState: 'ok' as const,
       },
       undefined,
       'en',
@@ -323,7 +323,7 @@ describe('P2.2.51 rental invoice relations localization', () => {
           lastName: 'Mustermann X7',
           email: 'max@example.com',
         },
-        customerFetchState: 'ok',
+        customerFetchState: 'ok' as const,
         booking: {
           core: {
             bookingId: 'book-99999999-8888-7777-6666-555555555555',
@@ -437,7 +437,7 @@ describe('P2.2.51 rental invoice relations localization', () => {
           activity: [],
           payments: null,
         },
-        bookingFetchState: 'ok',
+        bookingFetchState: 'ok' as const,
         vehicleFetchState: 'ok' as const,
       };
     const permissions = {

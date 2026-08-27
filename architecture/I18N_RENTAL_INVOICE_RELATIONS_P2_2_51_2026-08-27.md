@@ -1,8 +1,8 @@
 # P2.2.51 — Rental Invoice Relations i18n
 
-**Date:** 2026-08-27  
-**Baseline:** `fb03d921` (P2.2.50 Header merge)  
-**Campaign:** RENTAL  
+**Date:** 2026-08-27
+**Baseline:** `fb03d921` (P2.2.50 Header merge)
+**Campaign:** RENTAL
 
 ## Scope
 
