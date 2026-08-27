@@ -4,7 +4,7 @@ import {
 } from './reasonDisplay';
 import { sanitizeUserFacingIssueText } from '../../lib/operational-issues';
 import type { FleetReasonBadge } from '../../lib/fleetVehicleDisplay';
-import { fleetSignalAgeMs, resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import { fleetSignalAgeMs, resolveCanonicalFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
 import type { VehicleHealthResponse } from '../../../lib/api';
 import type { VehicleData } from '../../data/vehicles';
 import type {
@@ -322,7 +322,7 @@ export function resolveHandoverReadinessBadge(
   const label = fallbackLabel ?? (de ? 'Reserviert' : 'Reserved');
 
   const fleetDisplay = vehicle
-    ? resolveFleetVehicleDisplayState(vehicle, { rentalHealth: health ?? null, locale })
+    ? resolveCanonicalFleetVehicleDisplayState(vehicle, { rentalHealth: health ?? null, locale })
     : null;
 
   if (fleetDisplay) {
@@ -366,7 +366,7 @@ export function resolveHandoverVehicleReasonBadge(
   locale: string,
 ): DrawerVehicleReasonBadge | null {
   const fleetDisplay = vehicle
-    ? resolveFleetVehicleDisplayState(vehicle, { rentalHealth: health ?? null, locale })
+    ? resolveCanonicalFleetVehicleDisplayState(vehicle, { rentalHealth: health ?? null, locale })
     : null;
   const badge = resolveDrawerVehicleReasonBadge(row, locale, fleetDisplay?.reasonBadge ?? null);
   if (!badge || isHandoverTimingReason(badge.text)) return null;

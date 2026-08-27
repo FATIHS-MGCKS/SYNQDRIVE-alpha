@@ -1270,6 +1270,18 @@ All tenant surfaces: **Legacy Authority Remaining = NO**
 | Authority | `deriveFleetVisualState({ rentalHealth }).isReady` (legacy timestamps) | `deriveFleetVisualState({ uiProjection }).isReady` (**marker presentation — rejected**) | `isStationFilterHudOperationallyReady()` — P0.2 + business AVAILABLE |
 | DEVICE_UNPLUGGED + P0.2 AVAILABLE | excluded from ready | excluded from ready | **included in ready**, attention still yes |
 
+### Dashboard handover display (final blocker fix)
+
+| Path | Before | After |
+|------|--------|-------|
+| `resolveHandoverReadinessBadge` | `resolveFleetVehicleDisplayState` without `uiProjection` → legacy timestamps + `healthStatus` | `resolveCanonicalFleetVehicleDisplayState` → P1.2 `uiProjection` |
+| `resolveHandoverVehicleReasonBadge` | same legacy fallback | same canonical helper |
+| `CompactFleetDrawerVehicleRow`, `ActiveRentalDrawerRowCard`, `OperatorVehicleQuickView` | legacy fallback | `resolveCanonicalFleetVehicleDisplayState` |
+
+**`resolveFleetVehicleDisplayState` live production:** 11 calls · 11 canonical · 0 without projection (B = 0).
+
+**Handover contradiction tests:** `dashboardDrilldownRowDisplay.test.ts` — stale `lastSignal`, legacy `onlineStatus`, legacy `healthStatus` cannot override canonical readiness/reason.
+
 ### Regression evidence
 
 | Suite | Result |

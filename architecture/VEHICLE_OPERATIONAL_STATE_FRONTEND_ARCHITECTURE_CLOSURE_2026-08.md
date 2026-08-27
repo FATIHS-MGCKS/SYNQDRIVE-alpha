@@ -77,14 +77,47 @@ Includes: business AVAILABLE, P0.2 AVAILABLE, cleaning Clean, rental health not 
 
 ## Production callsite audit (legacy fallback)
 
-| Helper | Production operational calls | Display-only / deprecated |
-|--------|------------------------------|---------------------------|
-| `isVehicleOffline()` | **0** | Legacy `deriveFleetVisualState` when no `uiProjection` |
-| `resolveTelemetryFreshness()` | **0** operational | Telemetry labels in display layers |
-| `deriveFleetVisualState({ rentalHealth })` without projection | **0** operational | Internal to `resolveFleetVehicleDisplayState` when no `uiProjection` passed (`CompactFleetDrawerVehicleRow`, `dashboardDrilldownRowDisplay` — supplemental chips only) |
-| `fleetStateBuilder` / `buildFleetBoard` | **0** | `@deprecated` — test-only reference board |
+### `resolveFleetVehicleDisplayState` (live tenant production)
 
-**Tenant fleet/map/list/detail/booking/dashboard/notification operational paths** all pass `uiProjection` or use dedicated canonical adapters.
+| Callsite | `uiProjection` |
+|----------|----------------|
+| `FleetOperatorRow.tsx` | yes (`ctx.uiProjection`) |
+| `FleetMapVehicleStatusHud.tsx` | yes |
+| `VehicleDetailHeader.tsx` (×3) | yes (`buildFleetVehicleUiProjection`) |
+| `vehicle-detail-operational-display.ts` | yes |
+| `fleet-operator-panel.ts` (`sortFleetContexts`) | yes |
+| `dashboardDrilldownRowDisplay.ts` (handover readiness + reason) | yes (`resolveCanonicalFleetVehicleDisplayState`) |
+| `CompactFleetDrawerVehicleRow.tsx` | yes (`resolveCanonicalFleetVehicleDisplayState`) |
+| `ActiveRentalDrawerRowCard.tsx` | yes (`resolveCanonicalFleetVehicleDisplayState`) |
+| `OperatorVehicleQuickView.tsx` | yes (`resolveCanonicalFleetVehicleDisplayState`) |
+
+**Totals:** live production calls **11** · with canonical `uiProjection` **11** · without **0** (B = 0).
+
+### `deriveFleetVisualState` (live tenant production)
+
+| Callsite | Projection |
+|----------|------------|
+| `fleet-operator-panel.ts` (`buildFleetVehicleContexts`, attention) | canonical `uiProjection` |
+| `fleetVisualState.ts` (`buildFleetMapGeoJson`) | canonical (built internally) |
+| `fleetVehicleDisplay.ts` (`resolveCanonicalFleetVehicleDisplayState`) | canonical |
+| `fleetVehicleDisplay.ts` line 645 (no-projection fallback) | **0 live consumers** — only tests / direct legacy calls |
+
+**Totals:** live with canonical projection **3 paths** · live no-projection fallback **0**.
+
+### Legacy helper remaining consumers
+
+| Helper | Live tenant operational | Compatibility / display-only |
+|--------|-------------------------|------------------------------|
+| `isVehicleOffline()` | **0** | Legacy `deriveFleetVisualState` no-projection branch (no live tenant path) |
+| `resolveTelemetryFreshness()` | **0** operational | `controlSignalsBuilder` KPI sync buckets; age labels when no `uiProjection` (no live tenant path) |
+| `fleetStateBuilder` / `buildFleetBoard` | **0** | `@deprecated` — test-only reference board |
+| Legacy `healthStatus` in `resolveFleetVehicleDisplayState` | **0** live handover/fleet paths | Tests + deprecated `fleetStateBuilder` |
+
+**Handover readiness authority:** `resolveCanonicalFleetVehicleDisplayState` → P1.2 `uiProjection` → `healthEvaluation` + P0.2 availability (not legacy `healthStatus` / timestamps).
+
+**Handover reason authority:** same canonical path → `resolveReasonBadgeFromUi` (not legacy `buildReasonBadge`).
+
+Tenant fleet/map/list/detail/booking/dashboard/notification/handover operational paths all pass `uiProjection` or use `resolveCanonicalFleetVehicleDisplayState`.
 
 ## Final consumer authority table
 

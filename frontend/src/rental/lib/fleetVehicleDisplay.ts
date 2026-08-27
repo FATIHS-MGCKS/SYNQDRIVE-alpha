@@ -45,6 +45,7 @@ import {
   resolveReasonBadgeFromUi,
   resolveTelemetryFromUi,
 } from './fleet-p1-3-display';
+import { buildFleetVehicleUiProjection } from './fleet-vehicle-ui-projection';
 
 /**
  * Shared display layer for fleet vehicle rows (Dashboard Fleet State Board +
@@ -251,10 +252,15 @@ function resolveOperationalStatus(
   v: VehicleData,
   rentalHealth: VehicleHealthResponse | null,
   visual: FleetVisualState,
+  options: { canonicalHealth?: Pick<FleetHealthDisplay, 'status'> | null } = {},
 ): FleetOperationalStatus {
   const rentalBlocked = hasHardRentalBlockingReasons(rentalHealth) || visual.isBlocked;
-  const healthCritical = isHealthCritical(v, rentalHealth);
-  const healthWarning = isHealthWarning(v, rentalHealth);
+  const healthCritical = options.canonicalHealth
+    ? options.canonicalHealth.status === 'critical'
+    : isHealthCritical(v, rentalHealth);
+  const healthWarning = options.canonicalHealth
+    ? options.canonicalHealth.status === 'warning'
+    : isHealthWarning(v, rentalHealth);
   const status = selectOperationalStatus(v);
 
   if (healthCritical) return 'critical';
@@ -654,7 +660,12 @@ export function resolveFleetVehicleDisplayState(
     : resolveOperationalAvailabilityStatusBadge(vehicle, displayTimeOptions, options);
   const bookingSupplement = resolveBookingSupplement(vehicle, displayTimeOptions);
 
-  const primaryStatus = resolveOperationalStatus(vehicle, rentalHealth, visual);
+  const canonicalHealthDisplay = options.uiProjection
+    ? resolveHealthDisplayFromUi(options.uiProjection)
+    : null;
+  const primaryStatus = resolveOperationalStatus(vehicle, rentalHealth, visual, {
+    canonicalHealth: canonicalHealthDisplay,
+  });
   const primaryLabel = primaryLabelFor(primaryStatus, vehicle, de);
   const primaryTone = primaryToneFor(primaryStatus);
 
@@ -678,13 +689,13 @@ export function resolveFleetVehicleDisplayState(
     tone: fleetEnergyTone(percent),
   };
 
-  const healthDisplay = options.uiProjection
-    ? resolveHealthDisplayFromUi(options.uiProjection)
-    : options.healthEvaluationBadge
+  const healthDisplay =
+    canonicalHealthDisplay ??
+    (options.healthEvaluationBadge
       ? resolveHealthEvaluationDisplay(vehicle.healthEvaluation, {
           t: options.t ?? tForFleetLocale(options.locale),
         })
-      : resolveHealthDisplay(vehicle, rentalHealth, de);
+      : resolveHealthDisplay(vehicle, rentalHealth, de));
   const rentalDisplay = resolveRentalDisplay(vehicle, rentalHealth, visual, de);
   const reasonBadge =
     (options.uiProjection
@@ -722,6 +733,29 @@ export function resolveFleetVehicleDisplayState(
     reasonBadge,
     criticalHint,
   };
+}
+
+/**
+ * P1 FINAL — tenant fleet display with canonical P1.2 uiProjection + P1.3 visual.
+ * Use for all live production surfaces; bypasses legacy timestamp/healthStatus fallback.
+ */
+export function resolveCanonicalFleetVehicleDisplayState(
+  vehicle: VehicleData,
+  options: Omit<ResolveFleetVehicleDisplayOptions, 'uiProjection' | 'visual'> = {},
+): FleetVehicleDisplayState {
+  const localeCode = options.locale === 'de' ? 'de' : 'en';
+  const uiProjection = buildFleetVehicleUiProjection(vehicle, { locale: localeCode });
+  const visual = deriveFleetVisualState(vehicle, {
+    rentalHealth: options.rentalHealth ?? null,
+    uiProjection,
+    locale: localeCode,
+  });
+  return resolveFleetVehicleDisplayState(vehicle, {
+    ...options,
+    locale: options.locale ?? localeCode,
+    uiProjection,
+    visual,
+  });
 }
 
 /**
