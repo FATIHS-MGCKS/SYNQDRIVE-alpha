@@ -4,6 +4,7 @@ import {
   DimoSegmentsService,
   type DimoEnergyEventSegment,
 } from '@modules/dimo/dimo-segments.service';
+import type { EnergyMechanismFetchOutcome } from '@modules/dimo/energy-events/energy-mechanism-fetch.types';
 import {
   EnergyEventConfidence,
   EnergyEventKind,
@@ -24,6 +25,7 @@ export interface DetectEnergyEventsResult {
   coalescedGroups: number;
   prunedStale: number;
   events: EnergyEventDto[];
+  mechanismOutcomes?: EnergyMechanismFetchOutcome[];
 }
 
 // ── Coalescing constants ──────────────────────────────────────────────────
@@ -130,25 +132,25 @@ export class EnergyEventsService {
     }
 
     let segments: DimoEnergyEventSegment[] = [];
-    try {
-      segments = await this.dimoSegments.fetchEnergyEventSegments(
-        tokenId,
-        options.from,
-        options.to,
-      );
-    } catch (err: any) {
-      this.logger.warn(
-        `DIMO energy-event fetch failed for vehicle=${vehicleId} tokenId=${tokenId}: ${err.message}`,
-      );
-      return {
-        fetched: 0,
-        created: 0,
-        updated: 0,
-        skipped: 0,
-        coalescedGroups: 0,
-        prunedStale: 0,
-        events: [],
-      };
+    let mechanismOutcomes: EnergyMechanismFetchOutcome[] = [];
+    const fetchResult = await this.dimoSegments.fetchEnergyEventSegments(
+      tokenId,
+      options.from,
+      options.to,
+    );
+    mechanismOutcomes = fetchResult.outcomes;
+    segments = fetchResult.segments;
+
+    for (const outcome of mechanismOutcomes) {
+      if (outcome.status === 'FAILED') {
+        this.logger.warn(
+          `DIMO energy-event fetch failed vehicle=${vehicleId} tokenId=${tokenId} mechanism=${outcome.mechanism} window=${outcome.windowFrom}..${outcome.windowTo} httpStatus=${outcome.error?.httpStatus ?? 'n/a'} retryable=${outcome.error?.retryable ?? false} message="${outcome.error?.message ?? 'unknown'}"`,
+        );
+      } else {
+        this.logger.debug(
+          `DIMO energy-event fetch ${outcome.status} vehicle=${vehicleId} tokenId=${tokenId} mechanism=${outcome.mechanism} window=${outcome.windowFrom}..${outcome.windowTo} segments=${outcome.segments.length}`,
+        );
+      }
     }
 
     // Filter sub-segments first so noise (sensor jitter, partial windows)
@@ -168,27 +170,28 @@ export class EnergyEventsService {
     let created = 0;
     let updated = 0;
     const persistedRows: VehicleEnergyEvent[] = [];
-    const persistedSegmentIds = new Set<string>();
+    const persistedSegmentIdsByMechanism = new Map<
+      DimoEnergyEventSegment['mechanism'],
+      Set<string>
+    >();
 
     for (const group of coalesced) {
       const { row, wasCreated } = await this.upsertSegment(vehicleId, group);
       persistedRows.push(row);
-      persistedSegmentIds.add(group.coalescedSegmentId);
+      const keepSet =
+        persistedSegmentIdsByMechanism.get(group.mechanism) ?? new Set<string>();
+      keepSet.add(group.coalescedSegmentId);
+      persistedSegmentIdsByMechanism.set(group.mechanism, keepSet);
       if (wasCreated) created++;
       else updated++;
     }
 
-    // Prune stale sub-segments inside the detection window: rows that were
-    // persisted by a previous (pre-coalescing) run with their raw DIMO
-    // segmentId, but are now subsumed by a coalesced group. Without this
-    // cleanup the user would see (3 old + 1 new merged) = 4 cards.
-    // Bounded to [from, to] and to this vehicle so we never touch unrelated
-    // history.
     const prunedStale = await this.pruneStaleSubSegments(
       vehicleId,
       options.from,
       options.to,
-      persistedSegmentIds,
+      mechanismOutcomes,
+      persistedSegmentIdsByMechanism,
     );
 
     return {
@@ -199,6 +202,7 @@ export class EnergyEventsService {
       coalescedGroups: coalesced.length,
       prunedStale,
       events: persistedRows.map(toEnergyEventDto),
+      mechanismOutcomes,
     };
   }
 
@@ -477,24 +481,58 @@ export class EnergyEventsService {
 
   /**
    * Delete legacy sub-segment rows that would otherwise live alongside a
-   * freshly persisted coalesced event. Scoped to (vehicleId, [from, to])
-   * and only touches rows whose `dimoSegmentId` is NOT one of the ids we
-   * just persisted in this run.
+   * freshly persisted coalesced event. E1 safety invariants:
+   * - never prune when any mechanism fetch failed
+   * - never prune when a mechanism returned zero persistable events
+   * - only prune rows for mechanisms that succeeded with events
    */
   private async pruneStaleSubSegments(
     vehicleId: string,
     from: Date,
     to: Date,
-    keepIds: Set<string>,
+    mechanismOutcomes: EnergyMechanismFetchOutcome[],
+    persistedSegmentIdsByMechanism: Map<
+      DimoEnergyEventSegment['mechanism'],
+      Set<string>
+    >,
   ): Promise<number> {
+    if (mechanismOutcomes.some((outcome) => outcome.status === 'FAILED')) {
+      this.logger.debug(
+        `Skipping energy-event prune vehicle=${vehicleId} window=[${from.toISOString()}, ${to.toISOString()}] reason=mechanism_fetch_failed`,
+      );
+      return 0;
+    }
+
     const candidates = await this.prisma.vehicleEnergyEvent.findMany({
       where: {
         vehicleId,
         startTime: { gte: from, lte: to },
       },
-      select: { id: true, dimoSegmentId: true },
+      select: { id: true, dimoSegmentId: true, kind: true },
     });
-    const stale = candidates.filter((row) => !keepIds.has(row.dimoSegmentId));
+
+    const stale: Array<{ id: string }> = [];
+
+    for (const row of candidates) {
+      const mechanism =
+        row.kind === EnergyEventKind.REFUEL ? 'refuel' : 'recharge';
+      const outcome = mechanismOutcomes.find(
+        (entry) => entry.mechanism === mechanism,
+      );
+      if (!outcome || outcome.status !== 'SUCCESS_WITH_EVENTS') {
+        continue;
+      }
+
+      const keepIds = persistedSegmentIdsByMechanism.get(mechanism);
+      if (!keepIds || keepIds.size === 0) {
+        continue;
+      }
+
+      if (!keepIds.has(row.dimoSegmentId)) {
+        stale.push({ id: row.id });
+      }
+    }
+
     if (stale.length === 0) return 0;
     const result = await this.prisma.vehicleEnergyEvent.deleteMany({
       where: { id: { in: stale.map((row) => row.id) } },

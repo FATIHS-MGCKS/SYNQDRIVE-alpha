@@ -1,14 +1,9 @@
-import {
-  DIMO_RECHARGE_SEGMENT_DEFAULT_PAGE_LIMIT,
-  type DimoRechargeSegmentAggregation,
-} from './dimo-recharge-segments.types';
+import type { DimoRechargeSegmentAggregation } from './dimo-recharge-segments.types';
 
 export interface BuildDimoRechargeSegmentsQueryInput {
   tokenId: number;
   fromIso: string;
   toIso: string;
-  afterIso?: string | null;
-  limit?: number;
   sourceFilter?: string | null;
 }
 
@@ -56,30 +51,26 @@ function renderSourceFilter(sourceFilter?: string | null): string {
 
 /**
  * Canonical DIMO GraphQL query for `segments(mechanism: recharge)`.
- * Supports pagination (`after: Time`), page limit, and optional source filter.
+ *
+ * Aligned with the live Telemetry schema and `buildEnergyEventSegmentsQuery`:
+ * - no `id` on Segment (unsupported — HTTP 422)
+ * - no `limit` / `after` pagination args (unsupported — HTTP 422)
+ * - signals selection returns `name` + `value` only (no `agg`)
  */
 export function buildDimoRechargeSegmentsQuery(
   input: BuildDimoRechargeSegmentsQueryInput,
 ): string {
-  const limit = input.limit ?? DIMO_RECHARGE_SEGMENT_DEFAULT_PAGE_LIMIT;
-  const afterClause =
-    typeof input.afterIso === 'string' && input.afterIso.length > 0
-      ? `\n        after: "${input.afterIso}"`
-      : '';
-
   return `
     query DimoRechargeSegments {
       segments(
         tokenId: ${input.tokenId}
         from: "${input.fromIso}"
         to: "${input.toIso}"
-        mechanism: recharge
-        limit: ${limit}${afterClause}${renderSourceFilter(input.sourceFilter)}
+        mechanism: recharge${renderSourceFilter(input.sourceFilter)}
         signalRequests: [
           ${renderSignalRequests()}
         ]
       ) {
-        id
         start {
           timestamp
           value { latitude longitude }
@@ -93,7 +84,6 @@ export function buildDimoRechargeSegmentsQuery(
         startedBeforeRange
         signals {
           name
-          agg
           value
         }
       }

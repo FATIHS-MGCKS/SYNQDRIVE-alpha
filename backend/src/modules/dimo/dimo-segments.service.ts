@@ -35,6 +35,13 @@ import {
 import { buildEnergyEventSegmentsQuery } from './queries/energy-event-segments.query';
 import { DimoRechargeSegmentsClient } from './recharge-segments/dimo-recharge-segments.client';
 import { mapRechargeSegmentToEnergyEvent } from './recharge-segments/dimo-recharge-segments.mapper';
+import {
+  classifyMechanismFetchStatus,
+  type EnergyMechanism,
+  type EnergyMechanismFetchOutcome,
+  type FetchEnergyEventSegmentsResult,
+} from './energy-events/energy-mechanism-fetch.types';
+import { buildDimoRechargeFetchError } from './recharge-segments/dimo-recharge-segments.graphql';
 
 // ── V3 LTE_R1: native DIMO driving event record ────────────────────────────
 // Re-exported for downstream consumers. Historically this interface was
@@ -318,8 +325,8 @@ export class DimoSegmentsService {
 
   /**
    * Fetch energy-event segments (refuel / recharge) from DIMO's native
-   * detectors. Combines both mechanisms by default and returns a flat,
-   * chronologically sorted list of segments — one row per detected event.
+   * detectors. Each mechanism is isolated — a failure in one does not
+   * discard segments already fetched for the other.
    */
   async fetchEnergyEventSegments(
     tokenId: number,
@@ -329,24 +336,114 @@ export class DimoSegmentsService {
       'refuel',
       'recharge',
     ],
-  ): Promise<DimoEnergyEventSegment[]> {
+  ): Promise<FetchEnergyEventSegmentsResult> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
-    if (!jwt) return [];
+    const windowFrom = from.toISOString();
+    const windowTo = to.toISOString();
 
+    if (!jwt) {
+      const outcomes: EnergyMechanismFetchOutcome[] = mechanisms.map((mechanism) => ({
+        mechanism,
+        status: 'FAILED',
+        segments: [],
+        windowFrom,
+        windowTo,
+        tokenId,
+        error: {
+          message: 'DIMO_JWT_UNAVAILABLE',
+          retryable: false,
+        },
+      }));
+      return { tokenId, outcomes, segments: [] };
+    }
+
+    const outcomes: EnergyMechanismFetchOutcome[] = [];
     const collected: DimoEnergyEventSegment[] = [];
+
     for (const mechanism of mechanisms) {
-      if (mechanism === 'recharge') {
+      const outcome = await this.fetchEnergyEventMechanism(
+        jwt,
+        tokenId,
+        from,
+        to,
+        mechanism,
+      );
+      outcomes.push(outcome);
+      if (outcome.status !== 'FAILED') {
+        collected.push(...outcome.segments);
+      }
+    }
+
+    return {
+      tokenId,
+      outcomes,
+      segments: collected.sort(
+        (a, b) =>
+          new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+      ),
+    };
+  }
+
+  private async fetchEnergyEventMechanism(
+    jwt: string,
+    tokenId: number,
+    from: Date,
+    to: Date,
+    mechanism: EnergyMechanism,
+  ): Promise<EnergyMechanismFetchOutcome> {
+    const windowFrom = from.toISOString();
+    const windowTo = to.toISOString();
+
+    if (mechanism === 'recharge') {
+      try {
         const result = await this.rechargeSegmentsClient.fetchForToken(
           tokenId,
           from,
           to,
         );
-        collected.push(
-          ...result.segments.map(mapRechargeSegmentToEnergyEvent),
-        );
-        continue;
-      }
 
+        if (result.meta.status === 'FAILED' || result.error) {
+          return {
+            mechanism,
+            status: 'FAILED',
+            segments: [],
+            windowFrom,
+            windowTo,
+            tokenId,
+            error: result.error ?? {
+              message: 'DIMO recharge segments fetch failed',
+              retryable: false,
+            },
+          };
+        }
+
+        const segments = result.segments.map(mapRechargeSegmentToEnergyEvent);
+        return {
+          mechanism,
+          status: classifyMechanismFetchStatus(segments, false),
+          segments,
+          windowFrom,
+          windowTo,
+          tokenId,
+        };
+      } catch (error) {
+        const fetchError = buildDimoRechargeFetchError(error);
+        this.logger.warn(
+          `Energy-event segment fetch failed tokenId=${tokenId} mechanism=recharge window=${windowFrom}..${windowTo} httpStatus=${fetchError.httpStatus ?? 'n/a'} retryable=${fetchError.retryable} message="${fetchError.message}"`,
+        );
+        return {
+          mechanism,
+          status: 'FAILED',
+          segments: [],
+          windowFrom,
+          windowTo,
+          tokenId,
+          error: fetchError,
+        };
+      }
+    }
+
+    try {
       const segments = await this.fetchEnergyEventSegmentsWithJwt(
         jwt,
         tokenId,
@@ -354,13 +451,29 @@ export class DimoSegmentsService {
         to,
         mechanism,
       );
-      collected.push(...segments);
+      return {
+        mechanism,
+        status: classifyMechanismFetchStatus(segments, false),
+        segments,
+        windowFrom,
+        windowTo,
+        tokenId,
+      };
+    } catch (error) {
+      const fetchError = buildDimoRechargeFetchError(error);
+      this.logger.warn(
+        `Energy-event segment fetch failed tokenId=${tokenId} mechanism=${mechanism} window=${windowFrom}..${windowTo} httpStatus=${fetchError.httpStatus ?? 'n/a'} retryable=${fetchError.retryable} message="${fetchError.message}"`,
+      );
+      return {
+        mechanism,
+        status: 'FAILED',
+        segments: [],
+        windowFrom,
+        windowTo,
+        tokenId,
+        error: fetchError,
+      };
     }
-
-    return collected.sort(
-      (a, b) =>
-        new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
-    );
   }
 
   private async fetchEnergyEventSegmentsWithJwt(
@@ -371,18 +484,11 @@ export class DimoSegmentsService {
     mechanism: Extract<DimoDetectionMechanism, 'refuel' | 'recharge'>,
   ): Promise<DimoEnergyEventSegment[]> {
     const query = buildEnergyEventSegmentsQuery(tokenId, from, to, mechanism);
-    try {
-      const result = await this.telemetry.queryGraphQL(jwt, query);
-      const segments: any[] = result?.data?.segments ?? [];
-      return segments
-        .map((segment) => this.parseEnergyEventSegment(tokenId, mechanism, segment))
-        .filter((s): s is DimoEnergyEventSegment => s != null);
-    } catch (err: any) {
-      this.logger.warn(
-        `Energy-event segment fetch failed for tokenId=${tokenId} mechanism=${mechanism}: ${err.message}`,
-      );
-      return [];
-    }
+    const result = await this.telemetry.queryGraphQL(jwt, query);
+    const segments: any[] = result?.data?.segments ?? [];
+    return segments
+      .map((segment) => this.parseEnergyEventSegment(tokenId, mechanism, segment))
+      .filter((s): s is DimoEnergyEventSegment => s != null);
   }
 
   private parseEnergyEventSegment(
