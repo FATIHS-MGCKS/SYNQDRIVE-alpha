@@ -1114,9 +1114,113 @@ Operational denials use P1.2 projection labels (`buildFleetVehicleUiProjection`)
 | CREATE / EDIT / PREFLIGHT CONSISTENCY | **PASS** |
 | CROSS-SURFACE CONSISTENCY | **PASS** |
 | P1.1–P1.5 REGRESSION | **PASS** |
-| P1.7 READY | **YES** |
+| P1.7 READY | **YES** (completed — see §V) |
 
-**STOP.** P1.7 not started.
+---
+
+## V. P1.7 — Notifications / Operational Alerts Cutover
+
+| Field | Value |
+|-------|-------|
+| **Branch** | `cursor/vehicle-operational-state-p1-7-notifications-90ec` |
+| **Baseline main** | `7c7ed2c1` (P1.6 PR #1332 merged) |
+
+### Notification sources audited
+
+| Source | Role | P1.7 status |
+|--------|------|-------------|
+| `NotificationPanel` / `DashboardAttentionStack` | V2 inbox presentation | Unchanged shell — consumes canonical items |
+| `normalizeOperationalIssues` | Client issue normalization | **Cut** — connectivity from `connectivityRuntime` attention only |
+| `deriveOperationalInsights` | Derived fleet signals | **Removed** `derived-fleet-soft-offline-telemetry` |
+| `derivePredictiveOperationsInsights` | Per-pickup risks | **Cut** timestamp `SOFT_OFFLINE_TELEMETRY_CHECK` fallback |
+| `controlSignalsBuilder` | Telemetry KPI buckets | Unchanged for sync labels; not notification authority |
+| `vehicleRuntimeStateBuilder` | Runtime reasons | Reuses `addCanonicalConnectivityAttentionReasons` |
+| Backend `GET /notifications` | Durable records | **Authoritative** — unchanged |
+
+### Old offline notification authority
+
+```
+telemetryState offline/soft_offline on runtime
+  → telemetryStateToIssueDraft (24h/48h subtitles)
+deriveOperationalInsights
+  → fleet soft-offline count aggregation
+derivePredictiveOperationsInsights
+  → resolveTelemetryFreshness(vehicle) per pickup
+connectivity-cross-surface-regression
+  → isVehicleOffline(vehicle) notifications gate
+```
+
+### New canonical notification authority
+
+```
+connectivityRuntime.attentionState (CRITICAL/ACTION_REQUIRED/WATCH/NONE)
+  → mapAttentionToNotificationSeverity()
+  → buildCanonicalConnectivityNotificationDraft() / runtime canonical reasons
+P1.2 presentation: primaryReason, recommendedAction
+P0.4 healthEvaluation.evaluability for mechanical alerts
+```
+
+### Severity policy
+
+| Case | Severity |
+|------|----------|
+| AUTHORIZATION_REQUIRED + ACTION_REQUIRED | critical |
+| AUTHORIZATION_REQUIRED + WATCH | warning |
+| OFFLINE + CRITICAL | critical |
+| OFFLINE + WATCH | warning |
+| DEVICE_UNPLUGGED + CRITICAL | critical |
+| STANDBY/TELEMETRY_ACTIVE/UNKNOWN + NONE | no alert |
+
+### Notification identity / dedup
+
+`connectivity:{vehicleId}:{episode}:{reasonCode}:{overallState}` — stable per episode. Predictive `SOFT_OFFLINE_TELEMETRY_CHECK` suppressed when runtime already has `canonical:connectivity:*` reason.
+
+### Category mapping
+
+- Connectivity/telemetry client issues → `ActionQueueCategory.health` (Fleet presentation)
+- Operations/booking/handover → unchanged (Betrieb)
+
+### Count consistency
+
+`computeNotificationPrimaryTabCounts` validated against `mapOperationalIssueToActionQueueItem` output; legacy timestamp mutation does not change counts.
+
+### Visible changes
+
+- Vehicles with stale `lastSignal` but `attentionState: NONE` no longer generate client offline notifications
+- Fleet "many vehicles soft-offline" derived card removed (backend notifications cover fleet connectivity)
+- Connectivity notification copy uses P1.2 reason labels (not generic "Offline" / 24h/48h)
+
+### Remaining legacy after P1.7
+
+- `controlSignalsBuilder.classifyTelemetry` without runtime (KPI only)
+- `fleetStateBuilder` telemetry labels
+- Global `isVehicleOffline()` helper (non-notification surfaces)
+
+### Tests
+
+| Suite | Result |
+|-------|--------|
+| P1.7 focused | **24/24** |
+| operationalIssues | **19/19** |
+| connectivity-cross-surface | **21/21** |
+| dashboardAttentionBuilder | **5/5** |
+| P1.6–P1.1 regression | PASS |
+| Build/typecheck | PASS |
+
+### P1.7 gates
+
+| Gate | Status |
+|------|--------|
+| P1.7 NOTIFICATIONS CUTOVER | **PASS** |
+| CANONICAL SEVERITY AUTHORITY | **PASS** |
+| NO CLIENT OFFLINE NOTIFICATION STATE MACHINE | **PASS** |
+| HEALTH EVALUABILITY SEMANTICS | **PASS** |
+| COUNT / LIST CONSISTENCY | **PASS** |
+| I18N DISCIPLINE | **PASS** |
+| P1.1–P1.6 REGRESSION | **PASS** |
+| GLOBAL LEGACY CLEANUP READY | **YES** (helpers remain for non-notification surfaces) |
+
+**STOP.** Global legacy deletion not started.
 
 ---
 

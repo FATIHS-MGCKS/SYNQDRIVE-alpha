@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { api } from '../lib/api';
-import type { VehicleHealthResponse, RentalHealthState } from '../lib/api';
+import type { VehicleHealthResponse, RentalHealthState, RentalHealthModule } from '../lib/api';
 import { useRentalOrg } from './RentalContext';
 import { useFleetVehicles } from './FleetContext';
 import type { VehicleData } from './data/vehicles';
@@ -97,6 +97,9 @@ export interface VehicleHealthAlertModule {
   reason: string;
   dataStale: boolean;
   lastUpdatedAt: string | null;
+  /** Canonical rental-health module state used for notification evidence checks. */
+  moduleState?: string;
+  evidenceType?: RentalHealthModule['evidence_type'];
 }
 
 /** Per-vehicle health alert row derived from DashboardInsights. */
@@ -396,6 +399,8 @@ export function deriveVehicleHealthAlertsFromRentalHealth(
         reason: mod.reason,
         dataStale: mod.data_stale,
         lastUpdatedAt: mod.last_updated_at,
+        moduleState: mod.state,
+        evidenceType: mod.evidence_type,
       });
       if (SEVERITY_RANK[sev] > SEVERITY_RANK[worst]) worst = sev;
     }

@@ -24,6 +24,10 @@ import {
   isHmOemServiceTrackingMissingText,
 } from './operationalIssueTaxonomy';
 import { mapTireOperationalIssue } from './operationalIssueTireTaxonomy';
+import {
+  buildCanonicalConnectivityNotificationDraft,
+  canEmitMechanicalHealthNotification,
+} from '../notifications/notification-operational-attention';
 import type {
   DashboardInsightLike,
   OperationalIssue,
@@ -63,7 +67,7 @@ export function normalizeOperationalIssues(
       const draft = runtimeReasonToIssueDraft(reason, state, vehicle);
       if (draft) drafts.push(draft);
     }
-    const telemetryDraft = telemetryStateToIssueDraft(state, vehicle);
+    const telemetryDraft = connectivityNotificationToIssueDraft(state, vehicle, vehiclesById);
     if (telemetryDraft) drafts.push(telemetryDraft);
   }
 
@@ -138,7 +142,10 @@ function runtimeReasonToIssueDraft(
     semanticKey: mapped.semanticKey,
     domain: mapped.domain,
     issueType: mapped.issueType,
-    severity: mapped.severity ?? runtimeReasonSeverity(reason),
+    severity:
+      reason.source?.startsWith('canonical:')
+        ? runtimeReasonSeverity(reason)
+        : (mapped.severity ?? runtimeReasonSeverity(reason)),
     title,
     subtitle,
     entityLabel: formatVehicleIssueEntityLabel(vehicle),
@@ -164,23 +171,30 @@ function runtimeReasonToIssueDraft(
   };
 }
 
+function connectivityNotificationToIssueDraft(
+  state: VehicleRuntimeStateLike,
+  vehicle: OperationalIssueVehicleLike,
+  vehiclesById: Map<string, OperationalIssueVehicleLike>,
+): OperationalIssueDraft | null {
+  const fullVehicle = vehiclesById.get(state.vehicleId) ?? vehicle;
+  const draft = buildCanonicalConnectivityNotificationDraft({
+    vehicle: fullVehicle,
+    vehicleId: state.vehicleId,
+  });
+  if (draft) return draft;
+
+  // P1.7: telemetryState alone is not notification authority without canonical attention.
+  return null;
+}
+
+/** @deprecated P1.7 — telemetryState is not notification authority. */
 function telemetryStateToIssueDraft(
   state: VehicleRuntimeStateLike,
   vehicle: OperationalIssueVehicleLike,
 ): OperationalIssueDraft | null {
-  if (state.telemetryState !== 'soft_offline' && state.telemetryState !== 'offline') return null;
-  const offline = state.telemetryState === 'offline';
-  return {
-    semanticKey: createVehicleIssueKey(state.vehicleId, 'telemetry', offline ? 'offline' : 'soft_offline'),
-    domain: 'telemetry',
-    issueType: offline ? 'telemetry_offline' : 'telemetry_soft_offline',
-    severity: offline ? 'critical' : 'attention',
-    title: offline ? 'Offline' : 'Soft Offline',
-    subtitle: offline ? 'Seit 48h kein Signal' : 'Seit 24h kein Signal',
-    entityLabel: formatVehicleIssueEntityLabel(vehicle),
-    vehicleId: state.vehicleId,
-    source: { sourceType: 'runtime', rawType: state.telemetryState, debugLabel: 'vehicle-runtime' },
-  };
+  void state;
+  void vehicle;
+  return null;
 }
 
 function mapRuntimeReason(
@@ -507,6 +521,17 @@ function vehicleHealthAlertToIssueDrafts(
   const vehicle = vehiclesById.get(alert.vehicleId) ?? alert.vehicle ?? alert;
   const modules = alert.modules ?? [];
   if (modules.length === 0) {
+    const severity = healthAlertSeverity(alert.severity);
+    const vehicle = vehiclesById.get(alert.vehicleId) ?? alert.vehicle ?? alert;
+    if (
+      !canEmitMechanicalHealthNotification({
+        vehicle,
+        module: null,
+        proposedSeverity: severity,
+      })
+    ) {
+      return [];
+    }
     return [vehicleIssueDraft({
       semanticKey: createVehicleIssueKey(alert.vehicleId, 'vehicle_health', 'review_required'),
       domain: 'vehicle_health',
@@ -526,7 +551,7 @@ function vehicleHealthAlertToIssueDrafts(
   }
 
   return modules
-    .map((module) => healthModuleToIssueDraft(alert, module, vehicle))
+    .map((module) => healthModuleToIssueDraft(alert, module, vehicle, vehiclesById))
     .filter((draft): draft is OperationalIssueDraft => Boolean(draft));
 }
 
@@ -534,11 +559,14 @@ function healthModuleToIssueDraft(
   alert: VehicleHealthAlertLike,
   module: VehicleHealthAlertModuleLike,
   vehicle: OperationalIssueVehicleLike,
+  vehiclesById: Map<string, OperationalIssueVehicleLike>,
 ): OperationalIssueDraft | null {
   const vehicleId = alert.vehicleId;
   const critical = module.severity === 'critical';
   const warning = module.severity === 'warning' || critical;
   if (!warning) return null;
+
+  const vehicleRecord = vehiclesById.get(vehicleId) ?? vehicle;
 
   const source: OperationalIssueSource = {
     sourceType: 'rental_health',
@@ -574,6 +602,20 @@ function healthModuleToIssueDraft(
       vehicle,
       source,
     });
+  }
+
+  if (
+    !canEmitMechanicalHealthNotification({
+      vehicle: vehicleRecord,
+      module: {
+        moduleState: module.moduleState,
+        evidenceType: module.evidenceType,
+        reason: module.reason,
+      },
+      proposedSeverity: critical ? 'critical' : 'warning',
+    })
+  ) {
+    return null;
   }
 
   const mapped = healthModuleIssue(module, critical);
