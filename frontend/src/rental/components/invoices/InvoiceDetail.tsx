@@ -13,6 +13,7 @@ import {
   useInvoiceRelationsPermissions,
 } from './hooks/useInvoiceRelationsEnrichment';
 import { buildInvoiceDetailDto } from './invoiceDetail.mapper';
+import { buildInvoiceRelationsDto } from './invoiceRelations.mapper';
 import type { Invoice } from './invoiceTypes';
 import type { InvoiceThemeClasses } from './invoiceTheme';
 import { InvoiceDetailHeader } from './InvoiceDetailHeader';
@@ -80,18 +81,33 @@ export function InvoiceDetail({
     void refreshInvoice();
   });
 
-  const detail = useMemo(
-    () =>
-      buildInvoiceDetailDto(invoice, {
-        locale,
-        canManageEmail,
-        canManageFinance,
-        relationsEnrichment: enrichment,
+  const detail = useMemo(() => {
+    const base = buildInvoiceDetailDto(invoice, {
+      locale,
+      canManageEmail,
+      canManageFinance,
+      relationsEnrichment: enrichment,
+      relationsPermissions,
+      documentsPanel: documents.panel,
+    });
+    return {
+      ...base,
+      relations: buildInvoiceRelationsDto(
+        invoice,
+        enrichment,
         relationsPermissions,
-        documentsPanel: documents.panel,
-      }),
-    [invoice, locale, canManageEmail, canManageFinance, enrichment, relationsPermissions, documents.panel],
-  );
+        locale,
+      ),
+    };
+  }, [
+    invoice,
+    locale,
+    canManageEmail,
+    canManageFinance,
+    enrichment,
+    relationsPermissions,
+    documents.panel,
+  ]);
 
   const paymentsHook = useInvoicePayments(orgId, invoice, onUpdate, detail.actions.record_payment);
 

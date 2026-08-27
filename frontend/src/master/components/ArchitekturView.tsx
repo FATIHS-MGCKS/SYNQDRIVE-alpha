@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Invoice Relations (P2.2.51 — V4.9.978)', icon: Globe,
+    endpoint: 'Invoice Detail → InvoiceRelations card',
+    service: '**Locale flow:** `useLanguage().locale` → `InvoiceDetail` relations rebuild → `rental-invoice-relations-i18n.ts` + `buildInvoiceRelationsDto(..., locale)`. **Keys:** +13 EN+DE `rental.invoice.relations.*` (8786→8799). **Reuse:** `bookings.customer`, `bookings.vehicle`, `tasks.entity.booking`, `tasks.entity.vendor`, `invoices.create.template.*`, `bookingStatusLabel`. **Machine values:** entity IDs, names, booking numbers, plates, vendor names, custom template IDs frozen. **Guardrails:** P2.2.51 enforce-clean exact (4 paths) — 0 findings. **Frozen:** `buildInvoiceProvenance`, P250 Header, P249 Secondary. **Tests:** `rental-invoice-relations-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+  },
   { name: 'Platform i18n Rental Invoice Detail Header (P2.2.50 — V4.9.977)', icon: Globe,
     endpoint: 'Rental Invoice Detail — primary header (amounts, status/type, PDF, more-menu actions)',
     service: '**Locale flow:** `useLanguage().locale` → `InvoiceDetail` threading → `rental-invoice-detail-header-i18n.ts` (`ridh`, gate reasons) + `invoice-list-i18n` (status/type/money/date). **Keys:** +26 EN+DE `rental.invoice.detail.header.*` (8760→8786). **Machine values:** status/type IDs, cents, currency, invoice number, dates, action gates, callbacks frozen. **Void fix:** `menu.voidInvoice` not `common.cancel`. **Guardrails:** P2.2.50 enforce-clean exact (5 paths) — 0 findings. **Tests:** `rental-invoice-detail-header-localization.test.tsx`. **Semantics:** presentation-only; Relations deferred P251; Category E=0.',

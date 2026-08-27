@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-invoice-relations-p2-2-51-2026-08-27',
+    version: '4.9.978',
+    title: 'Platform i18n — P2.2.51 Rental Invoice Relations localization',
+    summary: [
+      'Localized Invoice Detail Relations card via `rental-invoice-relations-i18n.ts` and `rental.invoice.relations.*` keys (PR #1343 pre-flight scope).',
+      'P251 enforce-clean exact scope (4 paths) reports 0 findings; +13 EN+DE keys (8786→8799); reuses `bookings.*`, `tasks.entity.*`, `invoices.create.template.*`, `bookingStatusLabel`.',
+      '`buildInvoiceProvenance` and P250/P249 surfaces unchanged. Locale threaded in `InvoiceDetail.tsx` without modifying frozen `invoiceDetail.mapper.ts`. Category E=0.',
+    ],
+    reason:
+      'P2.2.51 Relations-only slice after P2.2.50 Header (#1340) per #1338 split decision.',
+    previousBehavior:
+      'Invoice Relations card used fixed German literals for section title, entity labels, fallbacks, permission hints, and booking period chrome.',
+    details:
+      'rental/components/invoices/InvoiceRelations.tsx; InvoiceRelationRow.tsx; invoiceRelations.mapper.ts (relation builders); InvoiceDetail.tsx (locale relations rebuild); rental-invoice-relations-i18n.ts; rental.invoice.relations.{en,de}.ts; rental-invoice-relations-localization.test.tsx; P251_ENFORCE_CLEAN_EXACT; architecture/I18N_RENTAL_INVOICE_RELATIONS_P2_2_51_2026-08-27.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-27T16:20:00.000Z',
+  },
+  {
     id: 'i18n-rental-invoice-detail-header-p2-2-50-2026-08-27',
     version: '4.9.977',
     title: 'Platform i18n — P2.2.50 Rental Invoice Detail Primary Header localization',

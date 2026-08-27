@@ -503,6 +503,13 @@ const P250_ENFORCE_CLEAN_EXACT = [
   'rental/lib/rental-invoice-detail-header-i18n.ts',
 ];
 
+const P251_ENFORCE_CLEAN_EXACT = [
+  'rental/components/invoices/InvoiceRelations.tsx',
+  'rental/components/invoices/InvoiceRelationRow.tsx',
+  'rental/components/invoices/invoiceRelations.mapper.ts',
+  'rental/lib/rental-invoice-relations-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -701,6 +708,10 @@ function isP249EnforceCleanPath(relPath: string): boolean {
 
 function isP250EnforceCleanPath(relPath: string): boolean {
   return P250_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP251EnforceCleanPath(relPath: string): boolean {
+  return P251_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -1129,6 +1140,24 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP250EnforceCleanPath(finding.file),
     );
     expect(p250Debt).toHaveLength(0);
+  });
+
+  it('keeps P251 Rental Invoice Relations enforce-clean scope at zero findings', () => {
+    const p251Debt = inventory.findings.filter((finding) =>
+      isP251EnforceCleanPath(finding.file),
+    );
+    expect(p251Debt).toHaveLength(0);
+  });
+
+  it('keeps rental-invoice-relations-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/rental-invoice-relations-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('rentalInvoiceRelationsFallbackLabel');
+    expect(source).not.toMatch(/locale === 'de'/);
+    expect(source).not.toMatch(/de-DE/);
   });
 
   it('keeps rental-invoice-detail-header-i18n.ts on canonical translation keys', () => {
