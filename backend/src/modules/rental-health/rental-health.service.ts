@@ -297,6 +297,9 @@ export class RentalHealthService {
       evaluated_at: evaluatedAt,
       rental_readiness,
       projection_version: RENTAL_HEALTH_PROJECTION_VERSION,
+      ...(dashboardLightsRes.status === 'fulfilled'
+        ? { dashboard_warning_lights: dashboardLightsRes.value }
+        : {}),
     };
 
     this.fleetHealthObservability?.recordVehicleHealth(health);

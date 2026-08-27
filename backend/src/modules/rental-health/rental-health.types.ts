@@ -75,6 +75,8 @@ export interface ModuleHealth {
     | 'unknown';
 }
 
+import type { DashboardWarningLightsResponse } from '../vehicle-intelligence/dashboard-warning-lights/dashboard-warning-lights.types';
+
 export interface VehicleHealth {
   vehicle_id: string;
   organization_id: string;
@@ -108,6 +110,11 @@ export interface VehicleHealth {
   projection_version?: string;
   /** Present when the aggregate was degraded — safe operator copy, no internals. */
   degradation?: RentalHealthDegradation;
+  /**
+   * Read-only passthrough of the canonical telltale read model already fetched
+   * during rental-health evaluation — avoids per-row frontend warning-light calls.
+   */
+  dashboard_warning_lights?: DashboardWarningLightsResponse;
 }
 
 export const RENTAL_HEALTH_DEGRADATION_CODES = {
