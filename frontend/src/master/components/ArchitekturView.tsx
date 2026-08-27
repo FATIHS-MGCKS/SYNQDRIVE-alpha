@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Tenant Billing Tariff & Vehicles (P2.2.55 — V4.9.982)', icon: Globe,
+    endpoint: 'Settings → Billing → Tariff & Vehicles',
+    service: '**Locale flow:** `useLanguage().locale` → extended `rental-tenant-billing-i18n.ts` → `formatInvoiceListAmount` / `toLocaleDateString` / tier-range display. **Keys:** +52 EN+DE `tenantBilling.tariff.*`; reuses `tenantBilling.overview.*`, `invoiceLineItem.summary.*`, `common.*`. **Machine values:** plan/tier/vehicle/provider raw fields, money.formatted, tier thresholds, billable counts, filter/pagination frozen. **Guardrails:** P2.2.55 enforce-clean exact (8 paths) — 0 findings. **Frozen:** P254 overview/shell, P253–P249, deferred billing tabs. **Tests:** `rental-tenant-billing-tariff-vehicles-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_TENANT_BILLING_TARIFF_VEHICLES_P2_2_55_2026-08-28.md' },
   { name: 'Platform i18n Rental Tenant Billing Overview (P2.2.54 — V4.9.981)', icon: Globe,
     endpoint: 'Settings → Billing → Overview + subscription shell',
     service: '**Locale flow:** `useLanguage().locale` → `rental-tenant-billing-i18n.ts` → `formatInvoiceListAmount` / `toLocaleDateString`. **Keys:** +35 EN+DE `tenantBilling.*`; reuses `invoiceLineItem.summary.*`, `common.*`. **Machine values:** tab IDs, subscription status IDs, API labels, money.formatted, warnings, actions frozen. **Guardrails:** P2.2.54 enforce-clean exact (8 paths) — 0 findings. **Frozen:** P253–P249, deferred billing tabs, CustomerPayments. **Tests:** `rental-tenant-billing-overview-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-tenant-billing-tariff-vehicles-p2-2-55-2026-08-28',
+    version: '4.9.982',
+    title: 'Platform i18n — P2.2.55 Rental Tenant Billing Tariff & Vehicles production hardening',
+    summary: [
+      'Localized read-only Tariff & Vehicles tab via extended `rental-tenant-billing-i18n.ts`; 52 bounded `tenantBilling.tariff.*` keys (8837→8889 EN+DE).',
+      'P255 enforce-clean exact scope (8 paths) targets 0 findings; reuses `tenantBilling.overview.*`, `tenantBilling.pricingModel.*`, `invoiceLineItem.summary.*`, `common.*`, `fleet.licensePlate`, `bookings.vehicle`.',
+      'Plan/tier/vehicle/provider raw fields, money.formatted precedence, tier thresholds, billable counts, filter/pagination state frozen. Category E=0.',
+    ],
+    reason:
+      'P2.2.55 production hardening after P2.2.54 Overview merge (#1359) per #1361 pre-flight (full Tariff & Vehicles slice selected).',
+    previousBehavior:
+      'Tariff & Vehicles tab used hardcoded German strings; tier range and breakdown rows were not locale-aware.',
+    details:
+      'Presentation-only adapter extensions for tier range, plan kind, change types, and pricing breakdown rows. P254 overview/shell and deferred billing tabs untouched.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-28T00:00:00.000Z',
+  },
+  {
     id: 'i18n-rental-tenant-billing-overview-p2-2-54-2026-08-27',
     version: '4.9.981',
     title: 'Platform i18n — P2.2.54 Rental Tenant Billing Overview + shell production hardening',

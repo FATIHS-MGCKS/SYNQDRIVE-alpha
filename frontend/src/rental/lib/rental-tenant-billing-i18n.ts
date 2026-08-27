@@ -1,5 +1,5 @@
 /**
- * Rental Tenant Billing presentation adapter (P2.2.54 — overview + shell).
+ * Rental Tenant Billing presentation adapter (P2.2.54 overview + shell; P2.2.55 tariff & vehicles).
  * Locale-aware display helpers and static TranslationKeys only.
  */
 import {
@@ -10,6 +10,11 @@ import {
 import type { TranslationKey } from '../../i18n/translations/en';
 import { formatInvoiceListAmount } from './invoice-list-i18n';
 import type { TenantSubscriptionSubTab } from '../components/billing/tenant-billing-navigation';
+import type {
+  TenantSubscriptionTariffDetailsDto,
+  TenantSubscriptionTariffPricingDto,
+  TenantVehicleBillingChangeDto,
+} from '../types/billing.types';
 
 type Translate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
@@ -46,6 +51,16 @@ export function formatRentalTenantBillingDate(
   } catch {
     return iso;
   }
+}
+
+export function resolveTenantBillingMoneyDisplay(
+  formatted: string | null | undefined,
+  locale: string,
+  cents: number | null | undefined,
+  currency = 'EUR',
+): string {
+  if (formatted) return formatted;
+  return formatRentalTenantBillingMoney(locale, cents, currency);
 }
 
 export function resolveTenantBillingTabLabel(
@@ -96,4 +111,121 @@ export function resolveOverviewHeaderBadge(
     return { label: t('tenantBilling.status.active'), tone: 'sq-tone-success' };
   }
   return { label: t('tenantBilling.status.prepared'), tone: 'sq-tone-warning' };
+}
+
+export function resolvePlanKindDisplayLabel(
+  kind: TenantSubscriptionTariffDetailsDto['planKind'],
+  t: Translate,
+): string {
+  if (kind === 'RENTAL') return t('tenantBilling.tariff.planKind.rental');
+  if (kind === 'FLEET') return t('tenantBilling.tariff.planKind.fleet');
+  return '—';
+}
+
+export function formatTariffPeriodRangeDisplay(
+  locale: string,
+  start: string | null | undefined,
+  end: string | null | undefined,
+): string {
+  if (!start && !end) return '—';
+  return `${formatRentalTenantBillingDate(locale, start)} – ${formatRentalTenantBillingDate(locale, end)}`;
+}
+
+export function formatTierRangeDisplay(
+  min: number,
+  max: number | null,
+  t: Translate,
+): string {
+  if (max == null) {
+    return t('tenantBilling.tariff.tierRange.openEnded', { min });
+  }
+  if (min === max) {
+    if (min === 1) return t('tenantBilling.tariff.tierRange.singleOne');
+    return t('tenantBilling.tariff.tierRange.singleExact', { count: min });
+  }
+  return t('tenantBilling.tariff.tierRange.range', { min, max });
+}
+
+export function resolveVehicleChangeTypeLabel(
+  changeType: TenantVehicleBillingChangeDto['changeType'],
+  t: Translate,
+): string {
+  switch (changeType) {
+    case 'ADDED':
+      return t('tenantBilling.tariff.changeType.added');
+    case 'REMOVED':
+      return t('tenantBilling.tariff.changeType.removed');
+    default:
+      return t('tenantBilling.tariff.changeType.changed');
+  }
+}
+
+export function buildTariffPricingBreakdownRows(
+  pricing: TenantSubscriptionTariffPricingDto | null,
+  t: Translate,
+  locale: string,
+): Array<{ label: string; value: string; emphasize?: boolean }> {
+  if (!pricing) return [];
+
+  const rows: Array<{ label: string; value: string; emphasize?: boolean }> = [
+    {
+      label: t('tenantBilling.overview.billableVehicles'),
+      value: String(pricing.billableVehicleCount),
+    },
+    {
+      label: t('tenantBilling.overview.pricingTier'),
+      value: pricing.appliedTier?.label ?? '—',
+    },
+  ];
+
+  if (pricing.pricingModel === 'GRADUATED' && pricing.tierBreakdown.length > 0) {
+    // Graduated lines are rendered in a dedicated table in the UI.
+  } else if (pricing.appliedTier?.unitPrice) {
+    rows.push({
+      label: t('tenantBilling.tariff.breakdown.unitPriceRow'),
+      value: t('tenantBilling.tariff.breakdown.unitPricePerVehicle', {
+        amount: pricing.appliedTier.unitPrice.formatted,
+      }),
+    });
+  }
+
+  rows.push(
+    {
+      label: t('tenantBilling.overview.rowBase'),
+      value: pricing.baseAmount?.formatted ?? '—',
+    },
+    ...pricing.discounts.map((discount) => ({
+      label: discount.label,
+      value: `−${discount.amount.formatted}`,
+    })),
+    {
+      label: t('invoiceLineItem.summary.net'),
+      value: pricing.netAmount?.formatted ?? '—',
+    },
+    {
+      label: t('invoiceLineItem.summary.tax'),
+      value: pricing.taxConfigured
+        ? pricing.taxAmount?.formatted ?? '—'
+        : t('tenantBilling.overview.taxMissing'),
+    },
+    {
+      label: t('invoiceLineItem.summary.gross'),
+      value: pricing.grossAmount?.formatted ?? '—',
+      emphasize: true,
+    },
+    {
+      label: t('tenantBilling.tariff.breakdown.currencyRow'),
+      value: pricing.currency ?? '—',
+    },
+    {
+      label: t('tenantBilling.tariff.breakdown.calculatedAtRow'),
+      value: formatRentalTenantBillingDate(locale, pricing.calculatedAt),
+    },
+    {
+      label: t('tenantBilling.tariff.breakdown.pricingModelRow'),
+      value: resolvePricingModelDisplayLabel(pricing.pricingModel, t),
+    },
+  );
+
+  return rows;
 }

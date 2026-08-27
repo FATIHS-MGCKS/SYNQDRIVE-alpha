@@ -1,6 +1,10 @@
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  formatRentalTenantBillingDate,
+  formatTariffPeriodRangeDisplay,
+  resolvePlanKindDisplayLabel,
+} from '../../lib/rental-tenant-billing-i18n';
 import type { TenantSubscriptionTariffDetailsDto } from '../../types/billing.types';
-import { formatDateDe } from './billing.utils';
-import { formatPeriodRange, planKindLabel } from './tenant-tariff-vehicles.utils';
 
 interface TenantTariffSummarySectionProps {
   tariff: TenantSubscriptionTariffDetailsDto | null;
@@ -16,10 +20,12 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 }
 
 export function TenantTariffSummarySection({ tariff }: TenantTariffSummarySectionProps) {
+  const { t, locale } = useLanguage();
+
   if (!tariff) {
     return (
       <div className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5">
-        <p className="text-sm text-muted-foreground">Kein aktiver Tarif hinterlegt.</p>
+        <p className="text-sm text-muted-foreground">{t('tenantBilling.tariff.summary.empty')}</p>
       </div>
     );
   }
@@ -29,19 +35,44 @@ export function TenantTariffSummarySection({ tariff }: TenantTariffSummarySectio
       className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5"
       data-testid="tenant-tariff-summary"
     >
-      <h3 className="text-sm font-semibold mb-3">Tarif</h3>
+      <h3 className="text-sm font-semibold mb-3">{t('tenantBilling.tariff.summary.title')}</h3>
       <div className="space-y-0">
-        <DetailRow label="Produkt" value={planKindLabel(tariff.planKind)} />
-        <DetailRow label="Tarifbezeichnung" value={tariff.planName ?? '—'} />
-        <DetailRow label="Abrechnungsintervall" value={tariff.billingIntervalLabel} />
-        <DetailRow label="Preisversion" value={tariff.priceVersionLabel ?? '—'} />
-        <DetailRow label="Vertragsbeginn" value={formatDateDe(tariff.contractStartedAt)} />
         <DetailRow
-          label="Nächster Zeitraum"
-          value={formatPeriodRange(tariff.nextPeriodStart, tariff.nextPeriodEnd)}
+          label={t('tenantBilling.tariff.summary.product')}
+          value={resolvePlanKindDisplayLabel(tariff.planKind, t)}
         />
-        <DetailRow label="Kündigungsstatus" value={tariff.cancellationStatusLabel ?? '—'} />
-        <DetailRow label="Aktuelle Staffel" value={tariff.appliedTierLabel ?? '—'} />
+        <DetailRow
+          label={t('tenantBilling.tariff.summary.planNameLabel')}
+          value={tariff.planName ?? '—'}
+        />
+        <DetailRow
+          label={t('tenantBilling.tariff.summary.billingInterval')}
+          value={tariff.billingIntervalLabel}
+        />
+        <DetailRow
+          label={t('tenantBilling.tariff.summary.priceVersion')}
+          value={tariff.priceVersionLabel ?? '—'}
+        />
+        <DetailRow
+          label={t('tenantBilling.tariff.summary.contractStart')}
+          value={formatRentalTenantBillingDate(locale, tariff.contractStartedAt)}
+        />
+        <DetailRow
+          label={t('tenantBilling.tariff.summary.nextPeriod')}
+          value={formatTariffPeriodRangeDisplay(
+            locale,
+            tariff.nextPeriodStart,
+            tariff.nextPeriodEnd,
+          )}
+        />
+        <DetailRow
+          label={t('tenantBilling.tariff.summary.cancellationStatus')}
+          value={tariff.cancellationStatusLabel ?? '—'}
+        />
+        <DetailRow
+          label={t('tenantBilling.overview.pricingTier')}
+          value={tariff.appliedTierLabel ?? '—'}
+        />
       </div>
     </div>
   );
