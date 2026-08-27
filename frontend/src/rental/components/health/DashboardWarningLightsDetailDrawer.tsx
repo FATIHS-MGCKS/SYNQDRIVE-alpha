@@ -5,7 +5,6 @@ import {
   deriveTelltaleDisplayCategory,
   formatObservedAtAbsolute,
   formatRelativeObservedAt,
-  resolveDashboardTelltaleIconSrc,
   resolveSourceFooter,
   resolveTelltalePanelPresentation,
   sortDashboardLights,
@@ -14,6 +13,7 @@ import {
   telltaleShortLabel,
   telltaleToneFromLight,
 } from '../../lib/dashboard-warning-lights-display';
+import { DashboardTelltaleIcon } from './DashboardTelltaleIcon';
 import {
   findBookingForTelltale,
   findTripForTelltale,
@@ -94,7 +94,7 @@ function LightDetailCard({
     <div className={` border ${toneBorder} surface-premium p-3 space-y-2`}>
       <div className="flex items-start gap-2.5">
         <div className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center shrink-0">
-          <img src={resolveDashboardTelltaleIconSrc(light.key)} alt="" aria-hidden className="w-4 h-4 object-contain" />
+          <DashboardTelltaleIcon telltaleKey={light.key} className="w-4 h-4" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">

@@ -1,10 +1,10 @@
 import type { DashboardWarningLightsResponse } from '../../lib/api';
 import { Icon } from './ui/Icon';
 import { StatusChip } from '../../components/patterns';
+import { DashboardTelltaleIcon } from './health/DashboardTelltaleIcon';
 import {
   DASHBOARD_TELLTALE_KEYS,
   formatRelativeObservedAt,
-  resolveDashboardTelltaleIconSrc,
   resolveTelltalePanelPresentation,
   telltaleShortLabel,
   telltaleShortTextFromLight,
@@ -45,7 +45,6 @@ export function DashboardWarningLightsQuickView({
       label,
       tone,
       text: light ? telltaleShortTextFromLight(light, telltales?.freshness) : loading ? '…' : 'Unbekannt',
-      icon: resolveDashboardTelltaleIconSrc(key),
     };
   });
 
@@ -93,11 +92,9 @@ export function DashboardWarningLightsQuickView({
             }`}
           >
             <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${iconBgFor(it.tone)}`}>
-              <img
-                src={it.icon}
-                alt=""
-                aria-hidden="true"
-                className={`w-3.5 h-3.5 object-contain transition-opacity ${
+              <DashboardTelltaleIcon
+                telltaleKey={it.key}
+                className={`w-3.5 h-3.5 transition-opacity ${
                   it.tone === 'alert' || it.tone === 'critical'
                     ? 'opacity-95'
                     : it.tone === 'ok'

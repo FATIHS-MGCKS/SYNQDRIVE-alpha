@@ -89,7 +89,7 @@ describe('resolveVehicleHealthFindingPresentation icon assets', () => {
     expect(tpms.telltaleKey).toBe('tire_pressure_warning');
   });
 
-  it('uses cel.svg fallback for unknown telltale keys', () => {
+  it('uses generic dashboard-warning fallback for unknown telltale keys', () => {
     const unknown = resolveVehicleHealthFindingPresentation(
       finding({
         type: ACTIVE_HEALTH_FINDING_TYPE.DASHBOARD_WARNING,
@@ -97,7 +97,9 @@ describe('resolveVehicleHealthFindingPresentation icon assets', () => {
         metadata: { telltaleKey: 'unsupported_abs_module' },
       }),
     );
-    expect(unknown.iconSrc).toBe(tellTaleCelIcon);
+    expect(unknown.iconKind).toBe('lucide');
+    expect(unknown.lucideIconName).toBe('alert-triangle');
+    expect(unknown.iconSrc).toBe('');
     expect(unknown.domainLabelKey).toBe('fleet.healthFinding.telltale.unknown');
   });
 });
@@ -295,7 +297,7 @@ describe('VehicleHealthFindingIcons H1-H16', () => {
     expect(aggregated).toHaveLength(1);
   });
 
-  it('H9 unknown telltale uses cel fallback without losing finding', () => {
+  it('H9 unknown telltale uses generic fallback without losing finding', () => {
     const presentation = resolveVehicleHealthFindingPresentation(
       finding({
         type: ACTIVE_HEALTH_FINDING_TYPE.DASHBOARD_WARNING,
@@ -310,8 +312,10 @@ describe('VehicleHealthFindingIcons H1-H16', () => {
         metadata: { telltaleKey: 'unknown_abs' },
       }),
     ]);
-    expect(presentation.iconSrc).toBe(tellTaleCelIcon);
+    expect(presentation.iconKind).toBe('lucide');
+    expect(presentation.lucideIconName).toBe('alert-triangle');
     expect(html).toContain('Warnleuchte — Warnung');
+    expect(html).not.toContain(tellTaleCelIcon);
     expect(listItemCount(html)).toBe(1);
   });
 

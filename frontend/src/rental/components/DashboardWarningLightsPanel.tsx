@@ -5,10 +5,10 @@ import type {
 } from '../../lib/api';
 import { Icon } from './ui/Icon';
 import { StatusChip, SkeletonCard } from '../../components/patterns';
+import { DashboardTelltaleIcon } from './health/DashboardTelltaleIcon';
 import {
   DASHBOARD_TELLTALE_KEYS,
   formatRelativeObservedAt,
-  resolveDashboardTelltaleIconSrc,
   resolveTelltalePanelPresentation,
   telltaleShortLabel,
   telltaleTileStatusLabel,
@@ -83,7 +83,6 @@ export function DashboardWarningLightsPanel({
       label: telltaleShortLabel(key),
       tone,
       statusLabel,
-      icon: resolveDashboardTelltaleIconSrc(key),
       ariaLabel: `${telltaleShortLabel(key)}: ${statusLabel}`,
     };
   });
@@ -135,11 +134,9 @@ export function DashboardWarningLightsPanel({
               <div
                 className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${tileIconBg(tile.tone, disabled)}`}
               >
-                <img
-                  src={tile.icon}
-                  alt=""
-                  aria-hidden="true"
-                  className={`w-3.5 h-3.5 object-contain ${
+                <DashboardTelltaleIcon
+                  telltaleKey={tile.key}
+                  className={`w-3.5 h-3.5 ${
                     disabled
                       ? 'opacity-30 grayscale'
                       : tile.tone === 'alert' || tile.tone === 'critical'

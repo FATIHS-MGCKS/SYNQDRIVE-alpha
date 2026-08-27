@@ -605,8 +605,9 @@ Reused: `fleet.operationalAvailability.*`, `fleet.healthEvaluation.notEvaluable`
 | TIRE | `assets/icons/vehicle-health/motor-filter.svg` (rotate 90°) |
 | BRAKE | `assets/icons/vehicle-health/brake.svg` |
 | BATTERY | `assets/icons/vehicle-health/car-battery.svg` |
-| DTC | `assets/icons/telltale/cel.svg` |
-| DASHBOARD_WARNING | `resolveDashboardTelltaleIconSrc(telltaleKey)`; unknown → `cel.svg` fallback |
+| DTC | `assets/icons/telltale/cel.svg` | DTC / error_codes domain only |
+| DASHBOARD_WARNING (known) | `resolveDashboardTelltaleIconSrc(telltaleKey)` → specific telltale SVG | |
+| DASHBOARD_WARNING (unknown) | Lucide `alert-triangle` | **UNKNOWN TELLTALE → CEL: FORBIDDEN** |
 
 ### Aggregation / duplicate policy
 
@@ -704,8 +705,8 @@ Cleanup deferred to Stage 4/5 after Vehicle Detail cutover.
 | **Scope** | Semantic alignment to shared `VehicleRowOperationalProjection` — no Health box/tab redesign |
 | **Header aggregate** | P0.4 `resolveHealthDisplayFromUi` via `resolveVehicleDetailCanonicalHealthDisplay()` |
 | **Finding strip** | `VehicleDetailHeaderFindingIcons` from shared `activeHealthFindings[]` |
-| **Telltale registry** | Consolidated to `resolveDashboardTelltaleIconSrc()` in all Vehicle Detail telltale panels |
-| **Tests** | `vehicle-detail-row-alignment.test.ts` — V1–V16 + KS MX cross-surface matrix |
+| **Telltale registry** | `resolveDashboardTelltaleIconSrc()` + `DashboardTelltaleIcon` — known keys → specific SVG; unknown → Lucide `alert-triangle` (**not CEL**) |
+| **Tests** | `vehicle-detail-row-alignment.test.ts` (V1–V16), `dashboard-telltale-icon-registry.test.ts` (T1–T12) |
 
 ### KS MX 2024 cross-surface result
 

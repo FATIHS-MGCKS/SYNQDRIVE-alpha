@@ -235,7 +235,7 @@ describe('Vehicle Detail row alignment V1-V16', () => {
     );
   });
 
-  it('V9 — ABS telltale uses canonical registry', () => {
+  it('V9 — ABS telltale uses generic dashboard-warning fallback, not CEL', () => {
     const lights = dashboardLights([
       {
         key: 'abs_warning',
@@ -252,11 +252,18 @@ describe('Vehicle Detail row alignment V1-V16', () => {
         isCurrentActive: true,
       },
     ]);
-    expect(resolveDashboardTelltaleIconSrc('abs_warning')).toBe(tellTaleCelIcon);
+    expect(resolveDashboardTelltaleIconSrc('abs_warning')).toBeNull();
     const health = rentalHealth({}, { dashboard_warning_lights: lights });
     const vehicle = dashboardTestVehicle({ withCanonicalHealth: true });
     const { fleetProjection } = crossSurfaceProjections(vehicle, health);
     expect(findingTypes(fleetProjection)).toContain(ACTIVE_HEALTH_FINDING_TYPE.DASHBOARD_WARNING);
+    const telltale = fleetProjection.activeHealthFindings.find(
+      (f) => f.type === ACTIVE_HEALTH_FINDING_TYPE.DASHBOARD_WARNING,
+    );
+    const presentation = resolveVehicleHealthFindingPresentation(telltale!, { locale: 'en' });
+    expect(presentation.iconKind).toBe('lucide');
+    expect(presentation.lucideIconName).toBe('alert-triangle');
+    expect(presentation.iconSrc).not.toBe(tellTaleCelIcon);
   });
 
   it('V10 — DTC + ABS both preserved separately', () => {

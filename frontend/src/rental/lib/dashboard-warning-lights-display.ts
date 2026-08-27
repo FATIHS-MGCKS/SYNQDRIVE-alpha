@@ -412,6 +412,7 @@ export function telltaleRowSecondaryText(light: DashboardWarningLight): string |
   return light.reason || null;
 }
 
+/** Panel display order (subset of backend-supported telltale keys). */
 export const DASHBOARD_TELLTALE_KEYS = [
   'engine_oil_level',
   'engine_limp_mode',
@@ -420,14 +421,54 @@ export const DASHBOARD_TELLTALE_KEYS = [
   'battery_warning_light',
 ] as const;
 
-/** Canonical telltale key → instrument-cluster SVG asset (single registry). */
-export function resolveDashboardTelltaleIconSrc(key: string): string {
+/** All telltale keys with explicit icon mappings in the canonical registry. */
+export const KNOWN_DASHBOARD_TELLTALE_KEYS = [
+  'engine_oil_level',
+  'engine_limp_mode',
+  'check_engine_light',
+  'brake_lining_wear_pre_warning',
+  'tire_pressure_warning',
+  'battery_warning_light',
+] as const;
+
+export type KnownDashboardTelltaleKey = (typeof KNOWN_DASHBOARD_TELLTALE_KEYS)[number];
+
+export type DashboardTelltaleIconKind = 'specific' | 'generic';
+
+export const DASHBOARD_TELLTALE_GENERIC_ICON_NAME = 'alert-triangle' as const;
+
+export interface DashboardTelltaleIconResolution {
+  kind: DashboardTelltaleIconKind;
+  /** Present when kind === 'specific'. */
+  src?: string;
+  genericIconName: typeof DASHBOARD_TELLTALE_GENERIC_ICON_NAME;
+}
+
+export function isKnownDashboardTelltaleKey(key: string): key is KnownDashboardTelltaleKey {
+  return (KNOWN_DASHBOARD_TELLTALE_KEYS as readonly string[]).includes(key);
+}
+
+/**
+ * Canonical telltale key → instrument-cluster SVG asset.
+ * Returns null for unknown keys — callers must use generic dashboard-warning fallback.
+ * UNKNOWN TELLTALE → CEL is forbidden.
+ */
+export function resolveDashboardTelltaleIconSrc(key: string): string | null {
   if (key === 'engine_oil_level') return tellTaleOilIcon;
   if (key === 'engine_limp_mode' || key === 'check_engine_light') return tellTaleCelIcon;
   if (key === 'brake_lining_wear_pre_warning') return tellTaleBrakePadIcon;
   if (key === 'tire_pressure_warning') return tellTaleTirePressureIcon;
   if (key === 'battery_warning_light') return tellTaleBatteryIcon;
-  return tellTaleCelIcon;
+  return null;
+}
+
+/** Structured telltale icon resolution for shared consumers. */
+export function resolveDashboardTelltaleIcon(key: string): DashboardTelltaleIconResolution {
+  const src = resolveDashboardTelltaleIconSrc(key);
+  if (src) {
+    return { kind: 'specific', src, genericIconName: DASHBOARD_TELLTALE_GENERIC_ICON_NAME };
+  }
+  return { kind: 'generic', genericIconName: DASHBOARD_TELLTALE_GENERIC_ICON_NAME };
 }
 
 export function shouldShowOilLevelBar(

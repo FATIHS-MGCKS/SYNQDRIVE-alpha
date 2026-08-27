@@ -143,7 +143,7 @@ Tests: `frontend/src/rental/lib/vehicle-row-operational-projection.test.ts`
 |-------|-------|
 | **Resolver** | `resolveVehicleHealthFindingPresentation()` + `aggregateActiveHealthFindingsForDisplay()` |
 | **Component** | `VehicleHealthFindingIcons` — renders only supplied `activeHealthFindings[]` |
-| **Telltale registry** | `resolveDashboardTelltaleIconSrc()` in `dashboard-warning-lights-display.ts` (canonical) |
+| **Telltale registry** | `resolveDashboardTelltaleIconSrc()` + `DashboardTelltaleIcon` in `dashboard-warning-lights-display.ts` (canonical) |
 | **Consumer cutover** | **None** — Fleet/Ready-to-Rent reason chips unchanged |
 
 ### Icon asset matrix
@@ -153,8 +153,9 @@ Tests: `frontend/src/rental/lib/vehicle-row-operational-projection.test.ts`
 | TIRE | Rental Health `modules.tires` | `VehicleHealthBox` → `motor-filter.svg` (+90°) | `assets/icons/vehicle-health/motor-filter.svg` | Matches Vehicle Detail health vocabulary |
 | BRAKE | Rental Health `modules.brakes` | `VehicleHealthBox` → `brake.svg` | `assets/icons/vehicle-health/brake.svg` | Same |
 | BATTERY | Rental Health `modules.battery` | `VehicleHealthBox` → `car-battery.svg` | `assets/icons/vehicle-health/car-battery.svg` | Same |
-| DTC | Rental Health `modules.error_codes` | Telltale CEL / engine warning | `assets/icons/telltale/cel.svg` | Distinct from dashboard telltales |
-| DASHBOARD_WARNING | `metadata.telltaleKey` | `DashboardWarningLightsPanel.iconForKey` | `resolveDashboardTelltaleIconSrc(key)` | Preserves specific telltale identity |
+| DTC | Rental Health `modules.error_codes` | Telltale CEL / engine warning | `assets/icons/telltale/cel.svg` | **DTC-only** — never used as unknown telltale fallback |
+| DASHBOARD_WARNING (known key) | `metadata.telltaleKey` | Per-key telltale SVG | `resolveDashboardTelltaleIconSrc(key)` → specific asset | e.g. TPMS, oil, brake-pad, battery, CEL for `check_engine_light` / `engine_limp_mode` |
+| DASHBOARD_WARNING (unknown key) | `metadata.telltaleKey` | Lucide `alert-triangle` | Generic instrument-cluster warning | **UNKNOWN TELLTALE → CEL: FORBIDDEN** |
 | SERVICE / COMPLIANCE | Rental Health modules | Lucide wrench / shield-alert | Icon component | Secondary domains; bounded support |
 
 ### Severity / tone
@@ -270,10 +271,11 @@ VehicleData + rentalHealth (+ dashboard_warning_lights)
 | TIRE | `motor-filter.svg` (+90°) | `vehicle-health-finding-presentation`, `VehicleHealthBox` |
 | BRAKE | `brake.svg` | Same |
 | BATTERY | `car-battery.svg` | Same |
-| DTC | `cel.svg` | Same (not telltale domain) |
-| DASHBOARD_WARNING | `resolveDashboardTelltaleIconSrc(key)` | Row icons + Vehicle Detail telltale panels |
+| DTC | `cel.svg` | DTC / error_codes domain only |
+| DASHBOARD_WARNING (known) | `resolveDashboardTelltaleIconSrc(key)` → specific telltale SVG | Row icons + Vehicle Detail telltale panels |
+| DASHBOARD_WARNING (unknown) | Lucide `alert-triangle` via `DashboardTelltaleIcon` | Generic instrument-warning fallback — **not CEL** |
 
-DTC and dashboard telltales remain separate domains; both may coexist.
+DTC and dashboard telltales remain separate domains; both may coexist. Unknown telltale keys must never fall back to `cel.svg`.
 
 Tests: `vehicle-detail-row-alignment.test.ts` (V1–V16 + cross-surface matrix + KS MX).
 
@@ -295,7 +297,9 @@ Tests: `vehicle-detail-row-alignment.test.ts` (V1–V16 + cross-surface matrix +
 | `frontend/src/rental/lib/vehicle-health-finding-presentation.ts` | Stage 3A icon resolver + aggregation |
 | `frontend/src/rental/lib/vehicle-health-finding-presentation.test.ts` | H1–H16 + KS MX fixture |
 | `frontend/src/rental/components/health/VehicleHealthFindingIcons.tsx` | Shared compact icon strip component |
-| `frontend/src/rental/lib/dashboard-warning-lights-display.ts` | `resolveDashboardTelltaleIconSrc` registry |
+| `frontend/src/rental/lib/dashboard-warning-lights-display.ts` | `resolveDashboardTelltaleIconSrc` + `resolveDashboardTelltaleIcon` registry |
+| `frontend/src/rental/components/health/DashboardTelltaleIcon.tsx` | Shared telltale icon renderer (specific SVG or generic `alert-triangle`) |
+| `frontend/src/rental/lib/dashboard-telltale-icon-registry.test.ts` | T1–T12 telltale semantic integrity tests |
 | `frontend/src/rental/lib/vehicle-row-health-consumer.ts` | Stage 3B dashboard-warning passthrough accessor |
 | `frontend/src/rental/lib/fleet-reason-badge-domain.ts` | Machine-readable `FleetReasonBadge.domain` classification |
 | `frontend/src/rental/lib/fleet-reason-badge-domain.test.ts` | L1–L10 language-independence tests |

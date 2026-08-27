@@ -42,16 +42,17 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Vehicle Detail header uses `resolveVehicleDetailCanonicalHealthDisplay()` — same P0.4 aggregate authority as Fleet rows.',
       'Optional `VehicleDetailHeaderFindingIcons` from `buildVehicleDetailRowOperationalProjection().activeHealthFindings`.',
-      'Consolidated telltale icon registry: Panel/QuickView/DetailDrawer → `resolveDashboardTelltaleIconSrc()`.',
+      'Consolidated telltale icon registry: Panel/QuickView/DetailDrawer → `DashboardTelltaleIcon` + `resolveDashboardTelltaleIconSrc()`.',
+      'Telltale semantic hardening: unknown keys → Lucide `alert-triangle` generic fallback; **UNKNOWN TELLTALE → CEL forbidden**.',
       'Rich surfaces unchanged: VehicleHealthBox, HealthErrorsView, HealthVehicleDetailPanel retain module APIs.',
-      'Tests: V1–V16 alignment + KS MX cross-surface matrix.',
+      'Tests: V1–V16 alignment, T1–T12 telltale registry, KS MX cross-surface matrix.',
     ],
     reason:
       'Stage 3B aligned Fleet/Ready-to-Rent compact rows; Stage 4 aligns Vehicle Detail to the same canonical truth without flattening the richer UI.',
     previousBehavior:
       'Vehicle Detail header used P0.4 when present but findings/telltale icons used duplicate local registries; no shared projection on detail surfaces.',
     details:
-      'frontend: vehicle-detail-row-projection.ts(+test), VehicleDetailHeaderBadges.tsx, VehicleDetailHeader.tsx, DashboardWarningLights*.tsx. architecture + audit Stage 4. No P0/P1/backend changes.',
+      'frontend: vehicle-detail-row-projection.ts(+test), VehicleDetailHeaderBadges.tsx, VehicleDetailHeader.tsx, DashboardWarningLights*.tsx, DashboardTelltaleIcon.tsx, dashboard-telltale-icon-registry.test.ts. architecture + audit Stage 4. No P0/P1/backend changes.',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-08-27T19:20:00.000Z',

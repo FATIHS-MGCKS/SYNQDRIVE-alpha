@@ -31,7 +31,7 @@ export interface VehicleHealthFindingPresentation {
   iconSrc: string;
   /** Applied to vehicle-health tire icon (matches VehicleHealthBox). */
   iconClassName?: string;
-  lucideIconName?: 'wrench' | 'shield-alert';
+  lucideIconName?: 'wrench' | 'shield-alert' | 'alert-triangle';
   localizationKey: TranslationKey;
   domainLabelKey: TranslationKey;
   severityLabelKey: TranslationKey;
@@ -147,9 +147,18 @@ function resolveIconForFinding(finding: ActiveHealthFinding): Pick<
       };
     case ACTIVE_HEALTH_FINDING_TYPE.DASHBOARD_WARNING: {
       const telltaleKey = resolveTelltaleKey(finding);
+      const iconSrc = resolveDashboardTelltaleIconSrc(telltaleKey);
+      if (iconSrc) {
+        return {
+          iconKind: 'telltale_svg',
+          iconSrc,
+          telltaleKey,
+        };
+      }
       return {
-        iconKind: 'telltale_svg',
-        iconSrc: resolveDashboardTelltaleIconSrc(telltaleKey),
+        iconKind: 'lucide',
+        iconSrc: '',
+        lucideIconName: 'alert-triangle',
         telltaleKey,
       };
     }
@@ -167,8 +176,9 @@ function resolveIconForFinding(finding: ActiveHealthFinding): Pick<
       };
     default:
       return {
-        iconKind: 'telltale_svg',
-        iconSrc: tellTaleCelIcon,
+        iconKind: 'lucide',
+        iconSrc: '',
+        lucideIconName: 'alert-triangle',
       };
   }
 }
