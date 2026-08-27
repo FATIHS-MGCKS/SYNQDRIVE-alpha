@@ -1527,8 +1527,6 @@ export const de: Record<TranslationKey, string> = {
   'vehicleDetail.connectivity.dataSource': 'Datenquelle',
   'vehicleDetail.connectivity.device': 'Gerätestatus',
   'vehicleDetail.connectivity.interruption': 'Unterbrechung',
-  'vehicleDetail.connectivity.noActiveInterruption': 'Keine aktive Unterbrechung',
-  'vehicleDetail.connectivity.activeInterruption': 'Aktiv seit {since} · {duration}',
   'vehicleDetail.connectivity.providerDimo': 'DIMO',
   'vehicleDetail.connectivity.providerGeneric': 'Datenquelle',
   'vehicleDetail.connectivity.duringActiveBooking': 'Während aktiver Buchung',
