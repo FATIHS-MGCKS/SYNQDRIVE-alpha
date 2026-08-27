@@ -4526,6 +4526,9 @@ export const de: Record<TranslationKey, string> = {
   'invoiceLineItem.summary.credit': 'Gutschriften',
   'invoiceLineItem.summary.creditNote': 'Rechnung gutgeschrieben',
   'invoiceLineItem.empty': 'Keine Positionen vorhanden.',
+  'invoiceLineItem.fallback.description': 'Position',
+  'invoiceLineItem.unit.days': 'Tage',
+  'invoiceLineItem.unit.hours': 'Std.',
 
   // ─── KI-Sprachassistent ───
   'voice.common.loading': 'Laden…',

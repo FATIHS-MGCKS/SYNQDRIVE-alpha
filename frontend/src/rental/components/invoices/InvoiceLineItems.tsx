@@ -50,12 +50,14 @@ function SumRow({
 function LineMobileCard({
   line,
   currency,
+  locale,
   t,
   tp,
   ts,
 }: {
   line: InvoiceLineItemView;
   currency: string;
+  locale: string;
   t: ReturnType<typeof useLanguage>['t'];
   tp: string;
   ts: string;
@@ -64,16 +66,16 @@ function LineMobileCard({
     <article className="rounded-xl border border-border/60 bg-muted/10 p-3 space-y-2" aria-label={line.description}>
       <p className={`text-sm font-semibold break-words ${tp}`}>{line.description}</p>
       <p className={`text-xs ${ts}`}>
-        {formatUnitTimesPrice(line.quantity, line.unitPriceNetCents, currency, line.unitLabel, t)}
+        {formatUnitTimesPrice(line.quantity, line.unitPriceNetCents, currency, line.unitLabel, t, locale)}
       </p>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
         <span className={ts}>{line.taxRateLabel}</span>
         <span className={`font-semibold tabular-nums ${tp}`}>
-          {t('invoiceLineItem.mobile.lineTotal')}: {formatInvoiceMoney(line.grossCents, currency)}
+          {t('invoiceLineItem.mobile.lineTotal')}: {formatInvoiceMoney(line.grossCents, currency, locale)}
         </span>
       </div>
       <p className={`text-[10px] ${ts}`}>
-        {t('invoiceLineItem.col.taxAmount')}: {formatInvoiceMoney(line.taxCents, currency)}
+        {t('invoiceLineItem.col.taxAmount')}: {formatInvoiceMoney(line.taxCents, currency, locale)}
         {line.unitLabel ? ` · ${t('invoiceLineItem.col.unit')}: ${line.unitLabel}` : ''}
       </p>
     </article>
@@ -83,6 +85,7 @@ function LineMobileCard({
 function LineDesktopTable({
   lines,
   currency,
+  locale,
   t,
   tp,
   ts,
@@ -90,6 +93,7 @@ function LineDesktopTable({
 }: {
   lines: InvoiceLineItemView[];
   currency: string;
+  locale: string;
   t: ReturnType<typeof useLanguage>['t'];
   tp: string;
   ts: string;
@@ -133,14 +137,14 @@ function LineDesktopTable({
               </td>
               <td className={`px-3 py-2.5 text-xs align-top ${ts}`}>{line.unitLabel ?? '—'}</td>
               <td className={`px-3 py-2.5 text-xs text-right tabular-nums align-top ${ts}`}>
-                {formatInvoiceMoney(line.unitPriceNetCents, currency)}
+                {formatInvoiceMoney(line.unitPriceNetCents, currency, locale)}
               </td>
               <td className={`px-3 py-2.5 text-xs text-right align-top ${ts}`}>{line.taxRateLabel}</td>
               <td className={`px-3 py-2.5 text-xs text-right tabular-nums align-top ${ts}`}>
-                {formatInvoiceMoney(line.taxCents, currency)}
+                {formatInvoiceMoney(line.taxCents, currency, locale)}
               </td>
               <td className={`px-3 py-2.5 text-xs text-right font-semibold tabular-nums align-top ${tp}`}>
-                {formatInvoiceMoney(line.grossCents, currency)}
+                {formatInvoiceMoney(line.grossCents, currency, locale)}
               </td>
             </tr>
           ))}
@@ -151,8 +155,8 @@ function LineDesktopTable({
 }
 
 export function InvoiceLineItems({ invoice, card, tp, ts, isDarkMode }: InvoiceLineItemsProps) {
-  const { t } = useLanguage();
-  const panel = useMemo(() => buildInvoiceLineItemsPanel(invoice, t), [invoice, t]);
+  const { t, locale } = useLanguage();
+  const panel = useMemo(() => buildInvoiceLineItemsPanel(invoice, t, locale), [invoice, t, locale]);
 
   if (!panel) return null;
 
@@ -162,13 +166,22 @@ export function InvoiceLineItems({ invoice, card, tp, ts, isDarkMode }: InvoiceL
 
       <div className="md:hidden space-y-3" data-layout="mobile-line-cards">
         {panel.lines.map((line) => (
-          <LineMobileCard key={line.id} line={line} currency={panel.currency} t={t} tp={tp} ts={ts} />
+          <LineMobileCard
+            key={line.id}
+            line={line}
+            currency={panel.currency}
+            locale={locale}
+            t={t}
+            tp={tp}
+            ts={ts}
+          />
         ))}
       </div>
 
       <LineDesktopTable
         lines={panel.lines}
         currency={panel.currency}
+        locale={locale}
         t={t}
         tp={tp}
         ts={ts}
@@ -182,7 +195,7 @@ export function InvoiceLineItems({ invoice, card, tp, ts, isDarkMode }: InvoiceL
         <dl>
           <SumRow
             label={t('invoiceLineItem.summary.net')}
-            value={formatInvoiceMoney(panel.subtotalCents, panel.currency)}
+            value={formatInvoiceMoney(panel.subtotalCents, panel.currency, locale)}
             tp={tp}
             ts={ts}
           />
@@ -190,7 +203,7 @@ export function InvoiceLineItems({ invoice, card, tp, ts, isDarkMode }: InvoiceL
           {panel.taxBreakdown.length <= 1 ? (
             <SumRow
               label={t('invoiceLineItem.summary.tax')}
-              value={formatInvoiceMoney(panel.taxCents, panel.currency)}
+              value={formatInvoiceMoney(panel.taxCents, panel.currency, locale)}
               tp={tp}
               ts={ts}
             />
@@ -203,7 +216,7 @@ export function InvoiceLineItems({ invoice, card, tp, ts, isDarkMode }: InvoiceL
                     ? t('invoiceLineItem.tax.free')
                     : t('invoiceLineItem.summary.taxAtRate', { rate: row.taxRate })
                 }
-                value={formatInvoiceMoney(row.taxCents, panel.currency)}
+                value={formatInvoiceMoney(row.taxCents, panel.currency, locale)}
                 tp={tp}
                 ts={ts}
               />
@@ -214,7 +227,7 @@ export function InvoiceLineItems({ invoice, card, tp, ts, isDarkMode }: InvoiceL
 
           <SumRow
             label={t('invoiceLineItem.summary.gross')}
-            value={formatInvoiceMoney(panel.totalCents, panel.currency)}
+            value={formatInvoiceMoney(panel.totalCents, panel.currency, locale)}
             emphasize="gross"
             tp={tp}
             ts={ts}
@@ -222,7 +235,7 @@ export function InvoiceLineItems({ invoice, card, tp, ts, isDarkMode }: InvoiceL
 
           <SumRow
             label={t('invoiceLineItem.summary.paid')}
-            value={formatInvoiceMoney(panel.paidCents, panel.currency)}
+            value={formatInvoiceMoney(panel.paidCents, panel.currency, locale)}
             emphasize="success"
             tp={tp}
             ts={ts}
@@ -230,7 +243,7 @@ export function InvoiceLineItems({ invoice, card, tp, ts, isDarkMode }: InvoiceL
 
           <SumRow
             label={t('invoiceLineItem.summary.outstanding')}
-            value={formatInvoiceMoney(panel.outstandingCents, panel.currency)}
+            value={formatInvoiceMoney(panel.outstandingCents, panel.currency, locale)}
             emphasize={panel.outstandingCents > 0 ? 'watch' : undefined}
             tp={tp}
             ts={ts}
@@ -239,7 +252,7 @@ export function InvoiceLineItems({ invoice, card, tp, ts, isDarkMode }: InvoiceL
           {panel.hasCredits ? (
             <SumRow
               label={panel.creditLabel ?? t('invoiceLineItem.summary.credit')}
-              value={formatInvoiceMoney(panel.creditCents, panel.currency)}
+              value={formatInvoiceMoney(panel.creditCents, panel.currency, locale)}
               tp={tp}
               ts={ts}
             />
