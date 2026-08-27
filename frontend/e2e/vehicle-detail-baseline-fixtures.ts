@@ -32,6 +32,7 @@ export const VEHICLE_DETAIL_TAB_LABELS_EXPORT: Record<
   string
 > = {
   overview: 'Overview',
+  connectivity: 'Connectivity',
   trips: 'Trips',
   'health-errors': 'Health',
   damages: 'Damages',

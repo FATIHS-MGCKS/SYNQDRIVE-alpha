@@ -2,17 +2,19 @@ import type { StatusTone } from '../../../components/patterns/status-utils';
 import type {
   DeviceConnectionSummary,
   FleetTelemetryFreshness,
-  PhysicalDeviceState,
-  ProviderLinkState,
   VehicleConnectivityRuntimeState,
 } from '../../../lib/api';
 import type { TranslationKey } from '../../i18n/translations/en';
 import {
   attentionTone,
+  formatInterruptionDuration,
   formatLastTelemetry,
   physicalDeviceLabel,
+  physicalDevicePresentationTone,
   providerLinkLabel,
+  providerLinkPresentationTone,
   recommendedActionLabel,
+  telemetryFreshnessLabel,
   telemetryFreshnessTone,
   type FleetConnectivityTranslator,
 } from '../fleet-connectivity/fleet-connectivity.presentation';
@@ -39,72 +41,10 @@ export function telemetryStateLabel(
   state: FleetTelemetryFreshness,
   t: VehicleConnectivityTranslator,
 ): string {
-  const key = `fleetConnectivity.telemetryFreshness.${state}` as TranslationKey;
-  return t(key);
+  return telemetryFreshnessLabel(state, t);
 }
 
-/** Provider ACTIVE must not read as vehicle-online — keep neutral. */
-export function providerLinkPresentationTone(state: ProviderLinkState): StatusTone {
-  switch (state) {
-    case 'ACTIVE':
-      return 'neutral';
-    case 'REAUTH_REQUIRED':
-      return 'warning';
-    case 'REVOKED':
-    case 'ERROR':
-      return 'critical';
-    case 'NO_LINK':
-      return 'noData';
-    default:
-      return 'noData';
-  }
-}
-
-export function physicalDevicePresentationTone(state: PhysicalDeviceState): StatusTone {
-  switch (state) {
-    case 'UNPLUGGED_CONFIRMED':
-      return 'critical';
-    case 'PLUGGED_CONFIRMED':
-    case 'PLUGGED_INFERRED':
-      return 'neutral';
-    case 'NOT_APPLICABLE':
-      return 'neutral';
-    default:
-      return 'noData';
-  }
-}
-
-export function formatInterruptionDuration(
-  ms: number | null | undefined,
-  locale: string,
-): string {
-  if (ms == null || ms < 0) return '—';
-  const minutes = Math.floor(ms / 60_000);
-  const de = locale === 'de';
-  if (minutes < 60) {
-    return de ? `${minutes} Min.` : `${minutes} min`;
-  }
-  const hours = Math.floor(minutes / 60);
-  const rem = minutes % 60;
-  if (hours < 24) {
-    return de
-      ? rem > 0
-        ? `${hours} Std. ${rem} Min.`
-        : `${hours} Std.`
-      : rem > 0
-        ? `${hours} h ${rem} min`
-        : `${hours} h`;
-  }
-  const days = Math.floor(hours / 24);
-  const hr = hours % 24;
-  return de
-    ? hr > 0
-      ? `${days} T. ${hr} Std.`
-      : `${days} T.`
-    : hr > 0
-      ? `${days} d ${hr} h`
-      : `${days} d`;
-}
+export { providerLinkPresentationTone, physicalDevicePresentationTone, formatInterruptionDuration };
 
 export function shouldShowVehicleConnectivityCard(
   summary: DeviceConnectionSummary | null | undefined,

@@ -23,6 +23,7 @@ export interface VehicleOverviewTabProps {
    */
   onNavigate?: NavigateVehicleOverviewTarget;
   onOpenHealthDetails: () => void;
+  onOpenConnectivityDetails?: () => void;
   onOpenServiceCenter?: (nav?: Partial<ServiceCenterNavState>) => void;
   onOpenVehicleTask?: (taskId: string) => void;
   tasksRefreshToken?: number;
@@ -43,6 +44,7 @@ export function VehicleOverviewTab({
   isDarkMode,
   summary,
   onOpenHealthDetails,
+  onOpenConnectivityDetails,
   onOpenServiceCenter,
   onOpenVehicleTask,
   tasksRefreshToken,
@@ -81,7 +83,11 @@ export function VehicleOverviewTab({
               showDataBasis={false}
             />
             {selectedVehicle?.id && (
-              <VehicleDeviceConnectionCard orgId={orgId} vehicleId={selectedVehicle.id} />
+              <VehicleDeviceConnectionCard
+                orgId={orgId}
+                vehicleId={selectedVehicle.id}
+                onOpenDetails={onOpenConnectivityDetails}
+              />
             )}
             {selectedVehicle?.id && (
               <VehicleDrivingAssessmentQualityOverviewCard vehicleId={selectedVehicle.id} />

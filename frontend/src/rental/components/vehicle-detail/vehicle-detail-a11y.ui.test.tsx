@@ -15,6 +15,7 @@ describe('Vehicle detail a11y UI', () => {
     );
     expect(html).toContain('role="tablist"');
     expect(html).toContain(`id="${VEHICLE_DETAIL_TAB_ID.overview}"`);
+    expect(html).toContain(`id="${VEHICLE_DETAIL_TAB_ID.connectivity}"`);
     expect(html).toContain(`aria-controls="${VEHICLE_DETAIL_TAB_PANEL_ID.overview}"`);
     expect(html).toContain('aria-selected="true"');
     expect(html).toContain('min-h-[44px]');

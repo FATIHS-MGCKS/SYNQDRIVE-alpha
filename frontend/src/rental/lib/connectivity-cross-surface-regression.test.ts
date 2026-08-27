@@ -363,4 +363,26 @@ describe('connectivity cross-surface regressions', () => {
       expect(detail).toBe('standby');
     });
   });
+
+  describe('P1.8B — vehicle detail connectivity tab dimensions', () => {
+    it('offline telemetry + active provider + unknown device + no episode stay semantically separate', () => {
+      const runtime = runtimeFixture({
+        overallState: 'OFFLINE',
+        telemetryState: 'offline',
+        providerLinkState: 'ACTIVE',
+        physicalDeviceState: 'UNKNOWN',
+        activeEpisodeId: null,
+        attentionState: 'ACTION_REQUIRED',
+        recommendedAction: 'REVIEW_CONNECTIVITY',
+        requiresAction: true,
+      });
+
+      expect(runtime.telemetryState).toBe('offline');
+      expect(runtime.providerLinkState).toBe('ACTIVE');
+      expect(runtime.physicalDeviceState).toBe('UNKNOWN');
+      expect(runtime.activeEpisodeId).toBeNull();
+      expect(runtime.overallState).toBe('OFFLINE');
+      expect(runtime.providerLinkState).not.toBe(runtime.telemetryState);
+    });
+  });
 });
