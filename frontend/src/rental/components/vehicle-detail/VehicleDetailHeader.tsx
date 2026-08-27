@@ -18,6 +18,7 @@ import { useRentalOrg } from '../../RentalContext';
 import { VehicleOperationalStatusCallout } from '../fleet/VehicleOperationalStatusCallout';
 import {
   VehicleConnectionBadge,
+  VehicleDetailHeaderFindingIcons,
   VehicleHealthChip,
 } from './VehicleDetailHeaderBadges';
 import {
@@ -308,6 +309,7 @@ export function VehicleDetailHeader({
               </DropdownMenu>
 
               <VehicleHealthChip vehicle={vehicle} />
+              <VehicleDetailHeaderFindingIcons vehicle={vehicle} />
 
               <div className="hidden sm:block">
                 <VehicleConnectionBadge vehicle={vehicle} />

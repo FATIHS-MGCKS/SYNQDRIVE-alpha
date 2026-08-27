@@ -694,3 +694,32 @@ Cleanup deferred to Stage 4/5 after Vehicle Detail cutover.
 | **Tests** | L1–L10 language-independence suite |
 
 *Stage 3B complete — machine-readable health/operational separation hardened.*
+
+---
+
+## Stage 4 implementation (2026-08-27) — Vehicle Detail alignment
+
+| Field | Value |
+|-------|-------|
+| **Scope** | Semantic alignment to shared `VehicleRowOperationalProjection` — no Health box/tab redesign |
+| **Header aggregate** | P0.4 `resolveHealthDisplayFromUi` via `resolveVehicleDetailCanonicalHealthDisplay()` |
+| **Finding strip** | `VehicleDetailHeaderFindingIcons` from shared `activeHealthFindings[]` |
+| **Telltale registry** | Consolidated to `resolveDashboardTelltaleIconSrc()` in all Vehicle Detail telltale panels |
+| **Tests** | `vehicle-detail-row-alignment.test.ts` — V1–V16 + KS MX cross-surface matrix |
+
+### KS MX 2024 cross-surface result
+
+| Dimension | Fleet / Ready-to-Rent / Vehicle Detail |
+|-----------|----------------------------------------|
+| Aggregate health | Warning (P0.4 when present) |
+| Active findings | TIRE, BATTERY, BRAKE, DTC×2, SERVICE, TPMS — same semantic set |
+| DTC vs telltale | Separate domains preserved |
+| Attention | Connectivity/operational separate from health icons |
+
+### Stage 5 boundary
+
+- Cross-surface CI gate
+- Legacy `pickModuleReason` / `buildReasonBadge` removal after all surfaces cut over
+- Optional: Health box aggregate badge alignment to P0.4 when product requires single aggregate everywhere
+
+*Stage 4 complete — Vehicle Detail shares canonical truth with Fleet/Ready-to-Rent; rich module UI unchanged.*

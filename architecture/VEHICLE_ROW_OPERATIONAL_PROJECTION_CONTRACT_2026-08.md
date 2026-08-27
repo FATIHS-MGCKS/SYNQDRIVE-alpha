@@ -132,7 +132,7 @@ Tests: `frontend/src/rental/lib/vehicle-row-operational-projection.test.ts`
 | **2B** | ✅ Label clarity (Avail. → Frei/Free); readiness-primary Ready-to-Rent badge; business-primary Fleet Command badge |
 | **3A** | ✅ Shared `VehicleHealthFindingIcons` + `vehicle-health-finding-presentation.ts` (no consumer cutover) |
 | **3B** | ✅ Fleet Command + Ready-to-Rent rows consume `VehicleHealthFindingIcons` from `activeHealthFindings[]` |
-| **4** | Vehicle Detail header chip strip consumes same projection |
+| **4** | ✅ Vehicle Detail header aligned to shared projection + telltale registry consolidation |
 | **5** | Cross-surface contract CI gate + legacy `pickModuleReason` cleanup after all consumers cut over |
 
 ---
@@ -233,6 +233,52 @@ Tests: `vehicle-row-health-consumer-cutover.test.ts` (B1–B16 + KS MX + cross-s
 
 ---
 
+## Stage 4 — Vehicle Detail alignment (2026-08)
+
+| Field | Value |
+|-------|-------|
+| **Scope** | Semantic alignment — not layout redesign |
+| **Header aggregate** | `resolveVehicleDetailCanonicalHealthDisplay()` — P0.4 `healthEvaluation` via `resolveHealthDisplayFromUi` (same as Fleet rows) |
+| **Header finding strip** | Optional `VehicleDetailHeaderFindingIcons` from `buildVehicleDetailRowOperationalProjection().activeHealthFindings` |
+| **Fallback** | When P0.4 absent: Rental Health V1 via `mapHealthSeverityDisplay` only — never overrides canonical P0.4 |
+| **Telltale registry** | `DashboardWarningLightsPanel`, `QuickView`, `DetailDrawer` → `resolveDashboardTelltaleIconSrc()` (duplicate `iconForKey` removed) |
+| **Rich surfaces unchanged** | `VehicleHealthBox`, `HealthErrorsView`, `HealthVehicleDetailPanel` retain module APIs and detailed layout |
+
+### Vehicle Detail consumer graph
+
+```
+VehicleData + rentalHealth (+ dashboard_warning_lights)
+  → buildVehicleDetailRowOperationalProjection()
+    → healthCondition / healthEvaluability / activeHealthFindings / attention
+  → resolveVehicleDetailCanonicalHealthDisplay() [header aggregate when P0.4 present]
+  → VehicleDetailHeaderFindingIcons [compact summary, optional]
+  → VehicleHealthBox / HealthErrorsView [module APIs — richer density]
+```
+
+### Evaluability invariants
+
+| State | Header aggregate | Fabricated module health? |
+|-------|------------------|---------------------------|
+| `EVALUABLE` | P0.4 condition (good/warning/critical) | No |
+| `NOT_EVALUABLE` | Evaluability label, status `unknown` | No |
+| `PARTIALLY_EVALUABLE` | Evaluability label, not forced good | No |
+
+### Icon vocabulary (single registry)
+
+| Finding | Asset | Consumers |
+|---------|-------|-----------|
+| TIRE | `motor-filter.svg` (+90°) | `vehicle-health-finding-presentation`, `VehicleHealthBox` |
+| BRAKE | `brake.svg` | Same |
+| BATTERY | `car-battery.svg` | Same |
+| DTC | `cel.svg` | Same (not telltale domain) |
+| DASHBOARD_WARNING | `resolveDashboardTelltaleIconSrc(key)` | Row icons + Vehicle Detail telltale panels |
+
+DTC and dashboard telltales remain separate domains; both may coexist.
+
+Tests: `vehicle-detail-row-alignment.test.ts` (V1–V16 + cross-surface matrix + KS MX).
+
+---
+
 ## Files
 
 | Path | Role |
@@ -254,4 +300,6 @@ Tests: `vehicle-row-health-consumer-cutover.test.ts` (B1–B16 + KS MX + cross-s
 | `frontend/src/rental/lib/fleet-reason-badge-domain.ts` | Machine-readable `FleetReasonBadge.domain` classification |
 | `frontend/src/rental/lib/fleet-reason-badge-domain.test.ts` | L1–L10 language-independence tests |
 | `frontend/src/rental/lib/vehicle-row-health-consumer-cutover.test.ts` | B1–B16 consumer tests + fixture matrix |
-| `backend/src/modules/rental-health/rental-health.service.ts` | `dashboard_warning_lights` batch passthrough |
+| `frontend/src/rental/lib/vehicle-detail-row-projection.ts` | Stage 4 Vehicle Detail shared projection builder |
+| `frontend/src/rental/lib/vehicle-detail-row-alignment.test.ts` | V1–V16 + cross-surface matrix |
+| `frontend/src/rental/components/vehicle-detail/VehicleDetailHeaderBadges.tsx` | P0.4 header + optional finding icons |

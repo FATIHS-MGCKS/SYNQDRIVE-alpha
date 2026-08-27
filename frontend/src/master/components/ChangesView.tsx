@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-row-alignment-stage-4-2026-08-27',
+    version: '4.9.973',
+    title: 'Vehicle Detail Row Alignment — Stage 4 shared semantic contract',
+    summary: [
+      'Vehicle Detail header uses `resolveVehicleDetailCanonicalHealthDisplay()` — same P0.4 aggregate authority as Fleet rows.',
+      'Optional `VehicleDetailHeaderFindingIcons` from `buildVehicleDetailRowOperationalProjection().activeHealthFindings`.',
+      'Consolidated telltale icon registry: Panel/QuickView/DetailDrawer → `resolveDashboardTelltaleIconSrc()`.',
+      'Rich surfaces unchanged: VehicleHealthBox, HealthErrorsView, HealthVehicleDetailPanel retain module APIs.',
+      'Tests: V1–V16 alignment + KS MX cross-surface matrix.',
+    ],
+    reason:
+      'Stage 3B aligned Fleet/Ready-to-Rent compact rows; Stage 4 aligns Vehicle Detail to the same canonical truth without flattening the richer UI.',
+    previousBehavior:
+      'Vehicle Detail header used P0.4 when present but findings/telltale icons used duplicate local registries; no shared projection on detail surfaces.',
+    details:
+      'frontend: vehicle-detail-row-projection.ts(+test), VehicleDetailHeaderBadges.tsx, VehicleDetailHeader.tsx, DashboardWarningLights*.tsx. architecture + audit Stage 4. No P0/P1/backend changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T19:20:00.000Z',
+  },
+  {
     id: 'vehicle-health-finding-domain-hardening-stage-3b-2026-08-27',
     version: '4.9.972',
     title: 'Vehicle Health Finding Consumer — Stage 3B machine-readable domain hardening',

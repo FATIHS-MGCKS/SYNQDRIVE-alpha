@@ -1,9 +1,4 @@
 import { useState } from 'react';
-import tellTaleOilIcon from '../../assets/icons/telltale/oil.svg';
-import tellTaleCelIcon from '../../assets/icons/telltale/cel.svg';
-import tellTaleBrakePadIcon from '../../assets/icons/telltale/brake-pad.svg';
-import tellTaleTirePressureIcon from '../../assets/icons/telltale/tire-pressure.svg';
-import tellTaleBatteryIcon from '../../assets/icons/telltale/battery.svg';
 import type {
   DashboardWarningLightsResponse,
   OilLevelDisplay,
@@ -13,6 +8,7 @@ import { StatusChip, SkeletonCard } from '../../components/patterns';
 import {
   DASHBOARD_TELLTALE_KEYS,
   formatRelativeObservedAt,
+  resolveDashboardTelltaleIconSrc,
   resolveTelltalePanelPresentation,
   telltaleShortLabel,
   telltaleTileStatusLabel,
@@ -32,14 +28,6 @@ export interface DashboardWarningLightsPanelProps {
   onOpenTrips?: (dateIso?: string) => void;
 }
 
-function iconForKey(key: string): string {
-  if (key === 'engine_oil_level') return tellTaleOilIcon;
-  if (key === 'engine_limp_mode' || key === 'check_engine_light') return tellTaleCelIcon;
-  if (key === 'brake_lining_wear_pre_warning') return tellTaleBrakePadIcon;
-  if (key === 'tire_pressure_warning') return tellTaleTirePressureIcon;
-  if (key === 'battery_warning_light') return tellTaleBatteryIcon;
-  return tellTaleCelIcon;
-}
 
 function tileIconBg(tone: TelltaleTone, disabled: boolean): string {
   if (disabled) return 'bg-muted/30 ring-1 ring-border';
@@ -95,7 +83,7 @@ export function DashboardWarningLightsPanel({
       label: telltaleShortLabel(key),
       tone,
       statusLabel,
-      icon: iconForKey(key),
+      icon: resolveDashboardTelltaleIconSrc(key),
       ariaLabel: `${telltaleShortLabel(key)}: ${statusLabel}`,
     };
   });
