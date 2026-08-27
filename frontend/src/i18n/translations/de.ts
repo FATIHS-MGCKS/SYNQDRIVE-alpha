@@ -839,7 +839,7 @@ export const de: Record<TranslationKey, string> = {
   'tenantBilling.pricingModel.graduated': 'Gestaffelter Preis',
   'tenantBilling.invoice.fallbackNumber': 'Noch nicht finalisiert',
 
-  // ─── Tenant Billing Tariff & Vehicles (P2.2.55) ───
+  // ─── Tenant Billing Tariff (P2.2.55A) ───
   'tenantBilling.tariff.intro':
     'Tarif, Preisbildung und abrechenbare Fahrzeuge — nachvollziehbar und ohne technische Details.',
   'tenantBilling.tariff.loadErrorTitle': 'Tarif & Fahrzeuge konnten nicht geladen werden',
@@ -857,7 +857,6 @@ export const de: Record<TranslationKey, string> = {
   'tenantBilling.tariff.breakdown.quantityColumn': 'Menge',
   'tenantBilling.tariff.breakdown.unitPriceColumn': 'Stückpreis',
   'tenantBilling.tariff.breakdown.subtotalColumn': 'Summe',
-  'tenantBilling.tariff.breakdown.unitPriceRow': 'Stückpreis',
   'tenantBilling.tariff.breakdown.unitPricePerVehicle': '{amount} pro Fahrzeug',
   'tenantBilling.tariff.breakdown.currencyRow': 'Währung',
   'tenantBilling.tariff.breakdown.calculatedAtRow': 'Stand der Berechnung',
@@ -874,34 +873,6 @@ export const de: Record<TranslationKey, string> = {
   'tenantBilling.tariff.tierRange.singleExact': '{count} Fahrzeuge',
   'tenantBilling.tariff.tierRange.range': '{min}–{max} Fahrzeuge',
   'tenantBilling.tariff.tierRange.openEnded': '{min}+ Fahrzeuge',
-  'tenantBilling.tariff.vehicles.title': 'Fahrzeuge in der Abrechnung',
-  'tenantBilling.tariff.vehicles.loadErrorTitle': 'Fahrzeugliste konnte nicht geladen werden',
-  'tenantBilling.tariff.vehicles.searchPlaceholder': 'Kennzeichen oder Modell suchen…',
-  'tenantBilling.tariff.filter.allStatuses': 'Alle Status',
-  'tenantBilling.tariff.filter.billable': 'Abrechenbar',
-  'tenantBilling.tariff.filter.excluded': 'Nicht abrechenbar',
-  'tenantBilling.tariff.vehicles.emptyTitle': 'Keine Fahrzeuge in der Abrechnung',
-  'tenantBilling.tariff.vehicles.emptyDescription':
-    'Sobald Fahrzeuge für Ihr Abo zugeordnet sind, erscheinen sie hier mit Abrechnungsstatus und Zeitraum.',
-  'tenantBilling.tariff.col.station': 'Standort',
-  'tenantBilling.tariff.col.billableFrom': 'Abrechenbar seit',
-  'tenantBilling.tariff.col.billableUntil': 'Abrechenbar bis',
-  'tenantBilling.tariff.col.billingStatus': 'Abrechnungsstatus',
-  'tenantBilling.tariff.col.reason': 'Grund',
-  'tenantBilling.tariff.pagination.shownOfTotal': '{shown} von {total} Fahrzeugen',
-  'tenantBilling.tariff.pagination.page': 'Seite {page} von {totalPages}',
-  'tenantBilling.tariff.changes.title': 'Änderungen an der Fahrzeugmenge',
-  'tenantBilling.tariff.changes.subtitle':
-    'Hinzugefügte oder entfernte Fahrzeuge mit anteiliger Berechnung im aktuellen Zeitraum.',
-  'tenantBilling.tariff.changes.loadErrorTitle': 'Änderungen konnten nicht geladen werden',
-  'tenantBilling.tariff.changes.emptyTitle': 'Noch keine Fahrzeugänderungen',
-  'tenantBilling.tariff.changes.vehicleFallback': 'Fahrzeug',
-  'tenantBilling.tariff.changes.prorationLabel': 'Anteilige Berechnung',
-  'tenantBilling.tariff.changeType.added': 'Hinzugefügt',
-  'tenantBilling.tariff.changeType.removed': 'Entfernt',
-  'tenantBilling.tariff.changeType.changed': 'Geändert',
-  'tenantBilling.tariff.planKind.rental': 'SynqDrive Rental',
-  'tenantBilling.tariff.planKind.fleet': 'SynqDrive Fleet',
 
   'finance.separationHint':
     'Kundenzahlungen und Auszahlungen sind getrennt von Ihrem SynqDrive-Abonnement. Ihre Abo-Zahlungsmethode ist nicht dasselbe wie Ihr Auszahlungskonto.',

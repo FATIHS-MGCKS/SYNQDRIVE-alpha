@@ -1,14 +1,10 @@
 import { EmptyState, ErrorState } from '../../../components/patterns/states';
 import { Button } from '../../../components/ui/button';
-import { useLanguage } from '../../i18n/LanguageContext';
-import {
-  formatRentalTenantBillingDate,
-  resolveVehicleChangeTypeLabel,
-} from '../../lib/rental-tenant-billing-i18n';
 import type { TenantVehicleBillingChangeDto } from '../../types/billing.types';
 import type { BillingPaginatedMeta } from './billing-query.utils';
 import type { VehicleBillingChangesQuery } from './useBillingTariffVehicles';
-import { changeTypeTone } from './tenant-tariff-vehicles.utils';
+import { formatDateDe } from './billing.utils';
+import { changeTypeLabel, changeTypeTone } from './tenant-tariff-vehicles.utils';
 
 interface TenantVehicleChangesSectionProps {
   changes: TenantVehicleBillingChangeDto[];
@@ -29,15 +25,13 @@ export function TenantVehicleChangesSection({
   onQueryChange,
   onRetry,
 }: TenantVehicleChangesSectionProps) {
-  const { t, locale } = useLanguage();
-
   if (error) {
     return (
       <ErrorState
-        title={t('tenantBilling.tariff.changes.loadErrorTitle')}
+        title="Änderungen konnten nicht geladen werden"
         description={error}
         onRetry={() => void onRetry()}
-        retryLabel={t('common.retry')}
+        retryLabel="Erneut versuchen"
       />
     );
   }
@@ -46,9 +40,9 @@ export function TenantVehicleChangesSection({
     <div className="space-y-3" data-testid="tenant-vehicle-changes">
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-sm font-semibold">{t('tenantBilling.tariff.changes.title')}</h3>
+          <h3 className="text-sm font-semibold">Änderungen an der Fahrzeugmenge</h3>
           <p className="text-[12px] text-muted-foreground mt-0.5">
-            {t('tenantBilling.tariff.changes.subtitle')}
+            Hinzugefügte oder entfernte Fahrzeuge mit anteiliger Berechnung im aktuellen Zeitraum.
           </p>
         </div>
       </div>
@@ -56,7 +50,7 @@ export function TenantVehicleChangesSection({
       {loading && changes.length === 0 ? (
         <div className="h-28 rounded-2xl border border-border/60 bg-muted/10" />
       ) : changes.length === 0 ? (
-        <EmptyState compact title={t('tenantBilling.tariff.changes.emptyTitle')} />
+        <EmptyState compact title="Noch keine Fahrzeugänderungen" />
       ) : (
         <div className="space-y-2">
           {changes.map((change) => (
@@ -67,16 +61,16 @@ export function TenantVehicleChangesSection({
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-[12px] font-semibold text-foreground">
-                    {change.licensePlate ?? change.vehicleLabel ?? t('tenantBilling.tariff.changes.vehicleFallback')}
+                    {change.licensePlate ?? change.vehicleLabel ?? 'Fahrzeug'}
                   </p>
                   <span
                     className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${changeTypeTone(change.changeType)}`}
                   >
-                    {resolveVehicleChangeTypeLabel(change.changeType, t)}
+                    {changeTypeLabel(change)}
                   </span>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  {change.eventTypeLabel} · {formatRentalTenantBillingDate(locale, change.effectiveAt)}
+                  {change.eventTypeLabel} · {formatDateDe(change.effectiveAt)}
                 </p>
                 {change.reason ? (
                   <p className="text-[11px] text-muted-foreground mt-1">{change.reason}</p>
@@ -84,7 +78,7 @@ export function TenantVehicleChangesSection({
               </div>
               <div className="text-right shrink-0">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {t('tenantBilling.tariff.changes.prorationLabel')}
+                  Anteilige Berechnung
                 </p>
                 <p className="text-[13px] font-semibold tabular-nums">
                   {change.prorationAmount?.formatted ?? '—'}
@@ -104,13 +98,10 @@ export function TenantVehicleChangesSection({
             disabled={loading || (query.page ?? 1) <= 1}
             onClick={() => onQueryChange({ ...query, page: Math.max(1, (query.page ?? 1) - 1) })}
           >
-            {t('common.back')}
+            Zurück
           </Button>
           <span className="text-muted-foreground tabular-nums">
-            {t('tenantBilling.tariff.pagination.page', {
-              page: meta.page,
-              totalPages: meta.totalPages,
-            })}
+            Seite {meta.page} von {meta.totalPages}
           </span>
           <Button
             type="button"
@@ -119,7 +110,7 @@ export function TenantVehicleChangesSection({
             disabled={loading || (query.page ?? 1) >= meta.totalPages}
             onClick={() => onQueryChange({ ...query, page: (query.page ?? 1) + 1 })}
           >
-            {t('common.next')}
+            Weiter
           </Button>
         </div>
       ) : null}

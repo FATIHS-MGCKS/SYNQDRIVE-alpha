@@ -1,12 +1,9 @@
 import { EmptyState, ErrorState } from '../../../components/patterns/states';
 import { Button } from '../../../components/ui/button';
-import { useLanguage } from '../../i18n/LanguageContext';
-import {
-  formatRentalTenantBillingDate,
-} from '../../lib/rental-tenant-billing-i18n';
 import type { TenantBillableVehicleListItemDto } from '../../types/billing.types';
 import type { BillingPaginatedMeta } from './billing-query.utils';
 import type { BillableVehicleListQuery } from './useBillingTariffVehicles';
+import { formatDateDe } from './billing.utils';
 import { Icon } from '../ui/Icon';
 
 interface TenantBillableVehiclesTableProps {
@@ -31,38 +28,26 @@ export function TenantBillableVehiclesTable({
   onQueryChange,
   onRetry,
 }: TenantBillableVehiclesTableProps) {
-  const { t, locale } = useLanguage();
-
   if (error) {
     return (
       <ErrorState
-        title={t('tenantBilling.tariff.vehicles.loadErrorTitle')}
+        title="Fahrzeugliste konnte nicht geladen werden"
         description={error}
         onRetry={() => void onRetry()}
-        retryLabel={t('common.retry')}
+        retryLabel="Erneut versuchen"
       />
     );
   }
 
-  const columnLabels = [
-    t('fleet.licensePlate'),
-    t('bookings.vehicle'),
-    t('tenantBilling.tariff.col.station'),
-    t('tenantBilling.tariff.col.billableFrom'),
-    t('tenantBilling.tariff.col.billableUntil'),
-    t('tenantBilling.tariff.col.billingStatus'),
-    t('tenantBilling.tariff.col.reason'),
-  ];
-
   return (
     <div className="space-y-3" data-testid="tenant-billable-vehicles-table">
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-        <h3 className="text-sm font-semibold">{t('tenantBilling.tariff.vehicles.title')}</h3>
+        <h3 className="text-sm font-semibold">Fahrzeuge in der Abrechnung</h3>
         <div className="flex flex-wrap gap-2">
           <input
             type="search"
             className={`${inputClass} sm:w-52`}
-            placeholder={t('tenantBilling.tariff.vehicles.searchPlaceholder')}
+            placeholder="Kennzeichen oder Modell suchen…"
             value={query.search ?? ''}
             onChange={(event) =>
               onQueryChange({ ...query, page: 1, search: event.target.value || undefined })
@@ -79,9 +64,9 @@ export function TenantBillableVehiclesTable({
               })
             }
           >
-            <option value="">{t('tenantBilling.tariff.filter.allStatuses')}</option>
-            <option value="BILLABLE">{t('tenantBilling.tariff.filter.billable')}</option>
-            <option value="EXCLUDED">{t('tenantBilling.tariff.filter.excluded')}</option>
+            <option value="">Alle Status</option>
+            <option value="BILLABLE">Abrechenbar</option>
+            <option value="EXCLUDED">Nicht abrechenbar</option>
           </select>
         </div>
       </div>
@@ -92,15 +77,23 @@ export function TenantBillableVehiclesTable({
         <EmptyState
           compact
           icon={<Icon name="car" className="w-5 h-5" />}
-          title={t('tenantBilling.tariff.vehicles.emptyTitle')}
-          description={t('tenantBilling.tariff.vehicles.emptyDescription')}
+          title="Keine Fahrzeuge in der Abrechnung"
+          description="Sobald Fahrzeuge für Ihr Abo zugeordnet sind, erscheinen sie hier mit Abrechnungsstatus und Zeitraum."
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border/60">
           <table className="w-full min-w-[900px]">
             <thead>
               <tr className="bg-muted/40">
-                {columnLabels.map((label) => (
+                {[
+                  'Kennzeichen',
+                  'Fahrzeug',
+                  'Standort',
+                  'Abrechenbar seit',
+                  'Abrechenbar bis',
+                  'Abrechnungsstatus',
+                  'Grund',
+                ].map((label) => (
                   <th
                     key={label}
                     className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
@@ -119,10 +112,10 @@ export function TenantBillableVehiclesTable({
                     {vehicle.stationName ?? '—'}
                   </td>
                   <td className="px-3 py-2.5 text-[12px] tabular-nums">
-                    {formatRentalTenantBillingDate(locale, vehicle.billableFrom)}
+                    {formatDateDe(vehicle.billableFrom)}
                   </td>
                   <td className="px-3 py-2.5 text-[12px] tabular-nums">
-                    {formatRentalTenantBillingDate(locale, vehicle.billableUntil)}
+                    {formatDateDe(vehicle.billableUntil)}
                   </td>
                   <td className="px-3 py-2.5 text-[12px]">
                     <span
@@ -148,10 +141,7 @@ export function TenantBillableVehiclesTable({
       {meta && meta.totalPages > 1 ? (
         <div className="flex items-center justify-between gap-2 text-xs">
           <span className="text-muted-foreground">
-            {t('tenantBilling.tariff.pagination.shownOfTotal', {
-              shown: vehicles.length,
-              total: meta.total,
-            })}
+            {vehicles.length} von {meta.total} Fahrzeugen
           </span>
           <div className="flex items-center gap-2">
             <Button
@@ -161,13 +151,10 @@ export function TenantBillableVehiclesTable({
               disabled={loading || (query.page ?? 1) <= 1}
               onClick={() => onQueryChange({ ...query, page: Math.max(1, (query.page ?? 1) - 1) })}
             >
-              {t('common.back')}
+              Zurück
             </Button>
             <span className="text-muted-foreground tabular-nums">
-              {t('tenantBilling.tariff.pagination.page', {
-                page: meta.page,
-                totalPages: meta.totalPages,
-              })}
+              Seite {meta.page} von {meta.totalPages}
             </span>
             <Button
               type="button"
@@ -176,7 +163,7 @@ export function TenantBillableVehiclesTable({
               disabled={loading || (query.page ?? 1) >= meta.totalPages}
               onClick={() => onQueryChange({ ...query, page: (query.page ?? 1) + 1 })}
             >
-              {t('common.next')}
+              Weiter
             </Button>
           </div>
         </div>

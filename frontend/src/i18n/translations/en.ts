@@ -740,7 +740,7 @@ export const en = {
   'tenantBilling.pricingModel.graduated': 'Graduated pricing',
   'tenantBilling.invoice.fallbackNumber': 'Not finalized yet',
 
-  // ─── Tenant Billing Tariff & Vehicles (P2.2.55) ───
+  // ─── Tenant Billing Tariff (P2.2.55A) ───
   'tenantBilling.tariff.intro':
     'Plan, pricing, and billable vehicles — transparent and without technical details.',
   'tenantBilling.tariff.loadErrorTitle': 'Plan & vehicles could not be loaded',
@@ -758,7 +758,6 @@ export const en = {
   'tenantBilling.tariff.breakdown.quantityColumn': 'Quantity',
   'tenantBilling.tariff.breakdown.unitPriceColumn': 'Unit price',
   'tenantBilling.tariff.breakdown.subtotalColumn': 'Subtotal',
-  'tenantBilling.tariff.breakdown.unitPriceRow': 'Unit price',
   'tenantBilling.tariff.breakdown.unitPricePerVehicle': '{amount} per vehicle',
   'tenantBilling.tariff.breakdown.currencyRow': 'Currency',
   'tenantBilling.tariff.breakdown.calculatedAtRow': 'Calculation as of',
@@ -775,34 +774,6 @@ export const en = {
   'tenantBilling.tariff.tierRange.singleExact': '{count} vehicles',
   'tenantBilling.tariff.tierRange.range': '{min}–{max} vehicles',
   'tenantBilling.tariff.tierRange.openEnded': '{min}+ vehicles',
-  'tenantBilling.tariff.vehicles.title': 'Vehicles in billing',
-  'tenantBilling.tariff.vehicles.loadErrorTitle': 'Vehicle list could not be loaded',
-  'tenantBilling.tariff.vehicles.searchPlaceholder': 'Search plate or model…',
-  'tenantBilling.tariff.filter.allStatuses': 'All statuses',
-  'tenantBilling.tariff.filter.billable': 'Billable',
-  'tenantBilling.tariff.filter.excluded': 'Not billable',
-  'tenantBilling.tariff.vehicles.emptyTitle': 'No vehicles in billing',
-  'tenantBilling.tariff.vehicles.emptyDescription':
-    'Once vehicles are assigned to your subscription, they will appear here with billing status and period.',
-  'tenantBilling.tariff.col.station': 'Location',
-  'tenantBilling.tariff.col.billableFrom': 'Billable from',
-  'tenantBilling.tariff.col.billableUntil': 'Billable until',
-  'tenantBilling.tariff.col.billingStatus': 'Billing status',
-  'tenantBilling.tariff.col.reason': 'Reason',
-  'tenantBilling.tariff.pagination.shownOfTotal': '{shown} of {total} vehicles',
-  'tenantBilling.tariff.pagination.page': 'Page {page} of {totalPages}',
-  'tenantBilling.tariff.changes.title': 'Changes to vehicle count',
-  'tenantBilling.tariff.changes.subtitle':
-    'Added or removed vehicles with prorated billing in the current period.',
-  'tenantBilling.tariff.changes.loadErrorTitle': 'Changes could not be loaded',
-  'tenantBilling.tariff.changes.emptyTitle': 'No vehicle changes yet',
-  'tenantBilling.tariff.changes.vehicleFallback': 'Vehicle',
-  'tenantBilling.tariff.changes.prorationLabel': 'Prorated amount',
-  'tenantBilling.tariff.changeType.added': 'Added',
-  'tenantBilling.tariff.changeType.removed': 'Removed',
-  'tenantBilling.tariff.changeType.changed': 'Changed',
-  'tenantBilling.tariff.planKind.rental': 'SynqDrive Rental',
-  'tenantBilling.tariff.planKind.fleet': 'SynqDrive Fleet',
 
   'finance.separationHint':
     'Customer payments and payouts are separate from your SynqDrive subscription. Your subscription card is not the same as your payout bank account.',

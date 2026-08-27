@@ -8,12 +8,17 @@ vi.mock('@iconify/react', () => ({
 
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { readFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { join } from 'node:path';
 import { LanguageProvider, useLanguage } from '../../i18n/LanguageContext';
 import inventory from '../../i18n/hardcoded-copy-inventory.json';
 import { de } from '../../i18n/translations/de';
 import { en } from '../../i18n/translations/en';
 import type { TranslationKey } from '../../i18n/translations/en';
 import { BillingTab } from './billing/BillingTab';
+import { TenantBillableVehiclesTable } from './billing/TenantBillableVehiclesTable';
+import { TenantVehicleChangesSection } from './billing/TenantVehicleChangesSection';
 import {
   buildTariffPricingBreakdownRows,
   formatTierRangeDisplay,
@@ -24,11 +29,7 @@ import {
   buildTenantBillingSubTabSearch,
   readTenantBillingSubTab,
 } from './billing/tenant-billing-navigation';
-import type {
-  TenantBillableVehicleListItemDto,
-  TenantSubscriptionTariffDto,
-  TenantVehicleBillingChangeDto,
-} from '../types/billing.types';
+import type { TenantSubscriptionTariffDto } from '../types/billing.types';
 
 const P254_ENFORCE_CLEAN_EXACT = [
   'rental/components/billing/BillingTab.tsx',
@@ -41,23 +42,22 @@ const P254_ENFORCE_CLEAN_EXACT = [
   'rental/lib/rental-tenant-billing-i18n.ts',
 ];
 
-const P255_ENFORCE_CLEAN_EXACT = [
+const P255A_ENFORCE_CLEAN_EXACT = [
   'rental/components/billing/TenantBillingTariffVehiclesTab.tsx',
   'rental/components/billing/TenantTariffSummarySection.tsx',
   'rental/components/billing/TenantPricingBreakdownSection.tsx',
+  'rental/components/billing/BillingPriceTierLadder.tsx',
+  'rental/lib/rental-tenant-billing-i18n.ts',
+];
+
+const P255B_DEFERRED_PATHS = [
   'rental/components/billing/TenantBillableVehiclesTable.tsx',
   'rental/components/billing/TenantVehicleChangesSection.tsx',
-  'rental/components/billing/BillingPriceTierLadder.tsx',
-  'rental/components/billing/tenant-tariff-vehicles.utils.ts',
-  'rental/lib/rental-tenant-billing-i18n.ts',
 ];
 
 const RAW_PLAN_NAME = 'SynqDrive Enterprise X7';
 const RAW_INTERVAL_LABEL = 'Provider Interval X7';
 const RAW_TIER_LABEL = 'Provider Tier X7';
-const RAW_VEHICLE_NAME = 'Mietwagen Sonderfall X7';
-const RAW_PLATE = 'KS-FS-7777';
-const RAW_REASON = 'Provider Reason X7';
 const RAW_DISCOUNT = 'Provider Discount X7';
 const PROVIDER_FORMATTED = '123,45 € PROVIDER-X7';
 
@@ -136,35 +136,6 @@ function buildTariffFixture(): TenantSubscriptionTariffDto {
   };
 }
 
-function buildVehicleFixture(): TenantBillableVehicleListItemDto {
-  return {
-    id: 'veh-1',
-    licensePlate: RAW_PLATE,
-    make: 'VW',
-    model: 'Golf',
-    vehicleLabel: RAW_VEHICLE_NAME,
-    stationName: 'Station X7',
-    billableFrom: '2026-09-01T00:00:00.000Z',
-    billableUntil: null,
-    billingStatus: 'BILLABLE',
-    billingStatusLabel: 'Provider Status X7',
-    reasonLabel: RAW_REASON,
-  };
-}
-
-function buildChangeFixture(): TenantVehicleBillingChangeDto {
-  return {
-    id: 'chg-1',
-    licensePlate: RAW_PLATE,
-    vehicleLabel: RAW_VEHICLE_NAME,
-    changeType: 'ADDED',
-    eventTypeLabel: 'Provider Event X7',
-    effectiveAt: '2026-09-15T00:00:00.000Z',
-    prorationAmount: money(12345, PROVIDER_FORMATTED),
-    reason: RAW_REASON,
-  };
-}
-
 const vehicleQuery = { page: 1, pageSize: 10, sort: 'licensePlate' };
 const changesQuery = { page: 1, pageSize: 5, sort: '-effectiveAt' };
 
@@ -184,15 +155,15 @@ vi.mock('./billing/useBillingTariffVehicles', () => ({
     tariffLoading: false,
     tariffError: null,
     reloadTariff: vi.fn(),
-    vehicles: [buildVehicleFixture()],
-    vehiclesMeta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
+    vehicles: [],
+    vehiclesMeta: null,
     vehiclesLoading: false,
     vehiclesError: null,
     vehicleQuery,
     setVehicleQuery: vi.fn(),
     reloadVehicles: vi.fn(),
-    changes: [buildChangeFixture()],
-    changesMeta: { page: 1, pageSize: 5, total: 1, totalPages: 1 },
+    changes: [],
+    changesMeta: null,
     changesLoading: false,
     changesError: null,
     changesQuery,
@@ -240,10 +211,23 @@ vi.mock('../RentalContext', () => ({
   }),
 }));
 
-describe('P2.2.55 rental tenant billing tariff & vehicles localization', () => {
-  it('has zero P255 enforce-clean scanner debt', () => {
-    const scoped = inventory.findings.filter((f) => P255_ENFORCE_CLEAN_EXACT.includes(f.file));
+function readBaselineSource(relativePath: string): string {
+  return execSync(`git show 314d9c63:${relativePath}`, { encoding: 'utf8' });
+}
+
+function readCurrentSource(filename: string): string {
+  return readFileSync(join(__dirname, 'billing', filename), 'utf8');
+}
+
+describe('P2.2.55A rental tenant billing tariff localization', () => {
+  it('has zero P255A enforce-clean scanner debt', () => {
+    const scoped = inventory.findings.filter((f) => P255A_ENFORCE_CLEAN_EXACT.includes(f.file));
     expect(scoped).toHaveLength(0);
+  });
+
+  it('does not falsely declare deferred P255B surfaces clean', () => {
+    const deferredFindings = inventory.findings.filter((f) => P255B_DEFERRED_PATHS.includes(f.file));
+    expect(deferredFindings.length).toBeGreaterThan(0);
   });
 
   it('has zero P254 enforce-clean regression', () => {
@@ -258,7 +242,7 @@ describe('P2.2.55 rental tenant billing tariff & vehicles localization', () => {
     );
   });
 
-  it('preserves raw provider fields and localizes host chrome', () => {
+  it('preserves raw provider fields and localizes P255A host chrome', () => {
     const tariff = buildTariffFixture();
     expect(tariff.tariff?.planName).toBe(RAW_PLAN_NAME);
     expect(tariff.tariff?.billingIntervalLabel).toBe(RAW_INTERVAL_LABEL);
@@ -282,7 +266,84 @@ describe('P2.2.55 rental tenant billing tariff & vehicles localization', () => {
     expect(rows.some((row) => row.label === RAW_DISCOUNT)).toBe(true);
   });
 
-  it('preserves same-mount tariff tab state across DE↔EN', async () => {
+  it('keeps deferred P255B vehicle surfaces at baseline German copy', () => {
+    const vehiclesBaseline = readBaselineSource(
+      'frontend/src/rental/components/billing/TenantBillableVehiclesTable.tsx',
+    );
+    const changesBaseline = readBaselineSource(
+      'frontend/src/rental/components/billing/TenantVehicleChangesSection.tsx',
+    );
+    const vehiclesCurrent = readCurrentSource('TenantBillableVehiclesTable.tsx');
+    const changesCurrent = readCurrentSource('TenantVehicleChangesSection.tsx');
+
+    expect(vehiclesCurrent).toBe(vehiclesBaseline);
+    expect(changesCurrent).toBe(changesBaseline);
+    expect(vehiclesCurrent).toContain('Fahrzeuge in der Abrechnung');
+    expect(changesCurrent).toContain('Änderungen an der Fahrzeugmenge');
+    expect(vehiclesCurrent).not.toContain('tenantBilling.tariff');
+    expect(changesCurrent).not.toContain('resolveVehicleChangeTypeLabel');
+  });
+
+  it('renders deferred P255B sections with baseline German chrome even when locale is EN', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root: Root = createRoot(container);
+
+    function EnThenDeferredSections() {
+      const { setLocale } = useLanguage();
+      return createElement(
+        'div',
+        null,
+        createElement('button', {
+          type: 'button',
+          'data-testid': 'locale-en',
+          onClick: () => setLocale('en'),
+        }),
+        createElement(TenantBillableVehiclesTable, {
+          vehicles: [],
+          meta: null,
+          query: vehicleQuery,
+          loading: false,
+          error: null,
+          onQueryChange: vi.fn(),
+          onRetry: vi.fn(),
+        }),
+        createElement(TenantVehicleChangesSection, {
+          changes: [],
+          meta: null,
+          query: changesQuery,
+          loading: false,
+          error: null,
+          onQueryChange: vi.fn(),
+          onRetry: vi.fn(),
+        }),
+      );
+    }
+
+    await act(async () => {
+      root.render(
+        createElement(LanguageProvider, null, createElement(EnThenDeferredSections)),
+      );
+    });
+
+    await act(async () => {
+      container.querySelector('[data-testid="locale-en"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+    });
+
+    expect(container.textContent).toContain('Fahrzeuge in der Abrechnung');
+    expect(container.textContent).toContain('Änderungen an der Fahrzeugmenge');
+    expect(container.textContent).not.toContain('Vehicles in billing');
+    expect(container.textContent).not.toContain('Changes to vehicle count');
+
+    await act(async () => {
+      root.unmount();
+      container.remove();
+    });
+  });
+
+  it('preserves same-mount tariff tab state across DE↔EN for P255A surfaces', async () => {
     window.history.replaceState(
       null,
       '',
@@ -323,11 +384,10 @@ describe('P2.2.55 rental tenant billing tariff & vehicles localization', () => {
     });
     expect(window.location.search).toContain('billingSubTab=tariff-vehicles');
     expect(container.textContent).toContain(RAW_PLAN_NAME);
-    expect(container.textContent).toContain(RAW_PLATE);
-    expect(container.textContent).toContain(RAW_VEHICLE_NAME);
-    expect(container.textContent).toContain(RAW_REASON);
+    expect(container.textContent).toContain(RAW_TIER_LABEL);
     expect(container.textContent).toContain(PROVIDER_FORMATTED);
     expect(container.textContent).toContain('Plan & vehicles');
+    expect(container.textContent).toContain('Volume pricing');
 
     await act(async () => {
       container.querySelector('[data-testid="locale-de"]')?.dispatchEvent(
@@ -337,6 +397,7 @@ describe('P2.2.55 rental tenant billing tariff & vehicles localization', () => {
     expect(window.location.search).toContain('billingSubTab=tariff-vehicles');
     expect(container.textContent).toContain('Tarif & Fahrzeuge');
     expect(container.textContent).toContain(RAW_PLAN_NAME);
+    expect(container.textContent).toContain('Mengenpreis');
 
     await act(async () => {
       root.unmount();

@@ -2,17 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { de } from '../../i18n/translations/de';
 import { en } from '../../i18n/translations/en';
 import type { TranslationKey } from '../../i18n/translations/en';
-import type {
-  TenantSubscriptionTariffPricingDto,
-  TenantVehicleBillingChangeDto,
-} from '../../types/billing.types';
+import type { TenantSubscriptionTariffPricingDto } from '../../types/billing.types';
 import {
   buildTariffPricingBreakdownRows,
   formatTierRangeDisplay,
   resolvePlanKindDisplayLabel,
-  resolveVehicleChangeTypeLabel,
 } from '../../lib/rental-tenant-billing-i18n';
-import { changeTypeTone } from './tenant-tariff-vehicles.utils';
 
 const money = (cents: number, formatted: string) => ({
   cents,
@@ -62,17 +57,17 @@ function buildPricing(
   };
 }
 
-describe('tenant tariff vehicles utils', () => {
-  it('labels rental and fleet plans via adapter', () => {
+describe('tenant tariff vehicles utils (P255A)', () => {
+  it('labels rental and fleet plans via stable brand strings', () => {
     expect(resolvePlanKindDisplayLabel('RENTAL', tDe)).toBe('SynqDrive Rental');
     expect(resolvePlanKindDisplayLabel('FLEET', tEn)).toBe('SynqDrive Fleet');
   });
 
   it('builds volume pricing breakdown rows with reused keys', () => {
     const rows = buildTariffPricingBreakdownRows(buildPricing({ pricingModel: 'VOLUME' }), tDe, 'de');
-    expect(rows.some((row) => row.label === tDe('tenantBilling.tariff.breakdown.unitPriceRow'))).toBe(
-      true,
-    );
+    expect(
+      rows.some((row) => row.label === tDe('tenantBilling.tariff.breakdown.unitPriceColumn')),
+    ).toBe(true);
     expect(rows.some((row) => row.label === tDe('invoiceLineItem.summary.gross') && row.value === '89,25 €')).toBe(
       true,
     );
@@ -124,24 +119,6 @@ describe('tenant tariff vehicles utils', () => {
     expect(rows.some((row) => row.label === 'Provider Discount X7' && row.value === '−5,00 €')).toBe(
       true,
     );
-  });
-
-  it('labels vehicle change types for history', () => {
-    const added: TenantVehicleBillingChangeDto = {
-      id: '1',
-      licensePlate: 'KS-FS-7777',
-      vehicleLabel: 'Mietwagen Sonderfall X7',
-      changeType: 'ADDED',
-      eventTypeLabel: 'Provider Event X7',
-      effectiveAt: '2026-07-16T00:00:00.000Z',
-      prorationAmount: money(1500, '15,00 €'),
-      reason: 'Provider Reason X7',
-    };
-    const removed: TenantVehicleBillingChangeDto = { ...added, changeType: 'REMOVED' };
-
-    expect(resolveVehicleChangeTypeLabel(added.changeType, tDe)).toBe('Hinzugefügt');
-    expect(resolveVehicleChangeTypeLabel(removed.changeType, tEn)).toBe('Removed');
-    expect(changeTypeTone(added.changeType)).toBe('sq-tone-success');
   });
 
   it('formats tier ranges without changing thresholds', () => {

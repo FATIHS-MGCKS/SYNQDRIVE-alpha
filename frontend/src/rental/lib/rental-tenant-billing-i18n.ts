@@ -1,5 +1,5 @@
 /**
- * Rental Tenant Billing presentation adapter (P2.2.54 overview + shell; P2.2.55 tariff & vehicles).
+ * Rental Tenant Billing presentation adapter (P2.2.54 overview + shell; P2.2.55A tariff summary/breakdown/tier ladder).
  * Locale-aware display helpers and static TranslationKeys only.
  */
 import {
@@ -13,7 +13,6 @@ import type { TenantSubscriptionSubTab } from '../components/billing/tenant-bill
 import type {
   TenantSubscriptionTariffDetailsDto,
   TenantSubscriptionTariffPricingDto,
-  TenantVehicleBillingChangeDto,
 } from '../types/billing.types';
 
 type Translate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
@@ -115,10 +114,10 @@ export function resolveOverviewHeaderBadge(
 
 export function resolvePlanKindDisplayLabel(
   kind: TenantSubscriptionTariffDetailsDto['planKind'],
-  t: Translate,
+  _t: Translate,
 ): string {
-  if (kind === 'RENTAL') return t('tenantBilling.tariff.planKind.rental');
-  if (kind === 'FLEET') return t('tenantBilling.tariff.planKind.fleet');
+  if (kind === 'RENTAL') return 'SynqDrive Rental';
+  if (kind === 'FLEET') return 'SynqDrive Fleet';
   return '—';
 }
 
@@ -146,20 +145,6 @@ export function formatTierRangeDisplay(
   return t('tenantBilling.tariff.tierRange.range', { min, max });
 }
 
-export function resolveVehicleChangeTypeLabel(
-  changeType: TenantVehicleBillingChangeDto['changeType'],
-  t: Translate,
-): string {
-  switch (changeType) {
-    case 'ADDED':
-      return t('tenantBilling.tariff.changeType.added');
-    case 'REMOVED':
-      return t('tenantBilling.tariff.changeType.removed');
-    default:
-      return t('tenantBilling.tariff.changeType.changed');
-  }
-}
-
 export function buildTariffPricingBreakdownRows(
   pricing: TenantSubscriptionTariffPricingDto | null,
   t: Translate,
@@ -182,7 +167,7 @@ export function buildTariffPricingBreakdownRows(
     // Graduated lines are rendered in a dedicated table in the UI.
   } else if (pricing.appliedTier?.unitPrice) {
     rows.push({
-      label: t('tenantBilling.tariff.breakdown.unitPriceRow'),
+      label: t('tenantBilling.tariff.breakdown.unitPriceColumn'),
       value: t('tenantBilling.tariff.breakdown.unitPricePerVehicle', {
         amount: pricing.appliedTier.unitPrice.formatted,
       }),
