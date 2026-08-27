@@ -1,3 +1,8 @@
+import tellTaleOilIcon from '../../assets/icons/telltale/oil.svg';
+import tellTaleCelIcon from '../../assets/icons/telltale/cel.svg';
+import tellTaleBrakePadIcon from '../../assets/icons/telltale/brake-pad.svg';
+import tellTaleTirePressureIcon from '../../assets/icons/telltale/tire-pressure.svg';
+import tellTaleBatteryIcon from '../../assets/icons/telltale/battery.svg';
 import type {
   DashboardWarningLight,
   DashboardWarningLightsResponse,
@@ -414,6 +419,16 @@ export const DASHBOARD_TELLTALE_KEYS = [
   'tire_pressure_warning',
   'battery_warning_light',
 ] as const;
+
+/** Canonical telltale key → instrument-cluster SVG asset (single registry). */
+export function resolveDashboardTelltaleIconSrc(key: string): string {
+  if (key === 'engine_oil_level') return tellTaleOilIcon;
+  if (key === 'engine_limp_mode' || key === 'check_engine_light') return tellTaleCelIcon;
+  if (key === 'brake_lining_wear_pre_warning') return tellTaleBrakePadIcon;
+  if (key === 'tire_pressure_warning') return tellTaleTirePressureIcon;
+  if (key === 'battery_warning_light') return tellTaleBatteryIcon;
+  return tellTaleCelIcon;
+}
 
 export function shouldShowOilLevelBar(
   light: DashboardWarningLight,

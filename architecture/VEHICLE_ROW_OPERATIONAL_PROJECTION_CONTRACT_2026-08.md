@@ -130,9 +130,57 @@ Tests: `frontend/src/rental/lib/vehicle-row-operational-projection.test.ts`
 | Stage | Work |
 |-------|------|
 | **2B** | ✅ Label clarity (Avail. → Frei/Free); readiness-primary Ready-to-Rent badge; business-primary Fleet Command badge |
-| **3** | Compact domain icons from `activeHealthFindings[]` using existing telltale / vehicle-health SVG assets |
+| **3A** | ✅ Shared `VehicleHealthFindingIcons` + `vehicle-health-finding-presentation.ts` (no consumer cutover) |
+| **3B** | Wire Fleet Command / Ready-to-Rent rows to `VehicleHealthFindingIcons`; remove single reason chip |
 | **4** | Vehicle Detail header chip strip consumes same projection |
 | **5** | Cross-surface contract CI gate + legacy `pickModuleReason` cleanup after all consumers cut over |
+
+---
+
+## Stage 3A — health finding icon contract (2026-08)
+
+| Field | Value |
+|-------|-------|
+| **Resolver** | `resolveVehicleHealthFindingPresentation()` + `aggregateActiveHealthFindingsForDisplay()` |
+| **Component** | `VehicleHealthFindingIcons` — renders only supplied `activeHealthFindings[]` |
+| **Telltale registry** | `resolveDashboardTelltaleIconSrc()` in `dashboard-warning-lights-display.ts` (canonical) |
+| **Consumer cutover** | **None** — Fleet/Ready-to-Rent reason chips unchanged |
+
+### Icon asset matrix
+
+| Finding type | Source data | Existing asset | Selected asset | Reason |
+|--------------|-------------|----------------|----------------|--------|
+| TIRE | Rental Health `modules.tires` | `VehicleHealthBox` → `motor-filter.svg` (+90°) | `assets/icons/vehicle-health/motor-filter.svg` | Matches Vehicle Detail health vocabulary |
+| BRAKE | Rental Health `modules.brakes` | `VehicleHealthBox` → `brake.svg` | `assets/icons/vehicle-health/brake.svg` | Same |
+| BATTERY | Rental Health `modules.battery` | `VehicleHealthBox` → `car-battery.svg` | `assets/icons/vehicle-health/car-battery.svg` | Same |
+| DTC | Rental Health `modules.error_codes` | Telltale CEL / engine warning | `assets/icons/telltale/cel.svg` | Distinct from dashboard telltales |
+| DASHBOARD_WARNING | `metadata.telltaleKey` | `DashboardWarningLightsPanel.iconForKey` | `resolveDashboardTelltaleIconSrc(key)` | Preserves specific telltale identity |
+| SERVICE / COMPLIANCE | Rental Health modules | Lucide wrench / shield-alert | Icon component | Secondary domains; bounded support |
+
+### Severity / tone
+
+| Finding severity | Status tone | CSS variables |
+|------------------|-------------|---------------|
+| `critical` | `critical` | `--status-critical` |
+| `warning` | `watch` | `--status-watch` |
+
+No icon when `findings.length === 0`. No green/healthy placeholder icons.
+
+### Aggregation rules
+
+| Type | Rule |
+|------|------|
+| TIRE / BRAKE / BATTERY / SERVICE / COMPLIANCE | Domain-level aggregation; highest severity wins |
+| DTC | One icon + optional count badge |
+| DASHBOARD_WARNING | Dedupe same `telltaleKey`; preserve distinct telltales |
+
+**Cross-domain policy:** health-domain findings and dashboard telltales are **not** deduplicated (e.g. TIRE + TPMS both render).
+
+### Overflow
+
+`splitAggregatedFindingsForDisplay(presentations, maxVisible)` — shows first N−1 + `+M` overflow chip with accessible list of hidden findings.
+
+Tests: `vehicle-health-finding-presentation.test.ts` (H1–H16 + KS MX 2024 fixture).
 
 ---
 
@@ -149,3 +197,7 @@ Tests: `frontend/src/rental/lib/vehicle-row-operational-projection.test.ts`
 | `frontend/src/rental/components/fleet-operator/FleetCommandPanel.tsx` | Tab i18n cutover |
 | `frontend/src/rental/components/fleet-operator/FleetOperatorRow.tsx` | Business-primary row badge |
 | `frontend/src/rental/components/dashboard/CompactFleetDrawerVehicleRow.tsx` | Readiness-primary row badge |
+| `frontend/src/rental/lib/vehicle-health-finding-presentation.ts` | Stage 3A icon resolver + aggregation |
+| `frontend/src/rental/lib/vehicle-health-finding-presentation.test.ts` | H1–H16 + KS MX fixture |
+| `frontend/src/rental/components/health/VehicleHealthFindingIcons.tsx` | Shared compact icon strip component |
+| `frontend/src/rental/lib/dashboard-warning-lights-display.ts` | `resolveDashboardTelltaleIconSrc` registry |

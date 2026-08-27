@@ -487,7 +487,7 @@ interface VehicleRowOperationalProjection {
 
 | Doc | Updated |
 |-----|---------|
-| Changes (master UI) | **Yes** — Stage 2A + Stage 2B entries |
+| Changes (master UI) | **Yes** — Stage 2A + Stage 2B + Stage 3A entries |
 | Architektur (master UI) | **Yes** — `VEHICLE_ROW_OPERATIONAL_PROJECTION_CONTRACT_2026-08.md` |
 
 ---
@@ -584,3 +584,44 @@ Reused: `fleet.operationalAvailability.*`, `fleet.healthEvaluation.notEvaluable`
 - Legacy `pickModuleReason` cleanup after all consumers cut over
 
 *Stage 2B complete — display semantics cut over; health finding UI deferred to Stage 3.*
+
+---
+
+## Stage 3A implementation (2026-08-27) — shared health finding icon contract
+
+| Field | Value |
+|-------|-------|
+| **Phase** | Shared presentation resolver + `VehicleHealthFindingIcons` component only |
+| **Resolver** | `frontend/src/rental/lib/vehicle-health-finding-presentation.ts` |
+| **Component** | `frontend/src/rental/components/health/VehicleHealthFindingIcons.tsx` |
+| **Telltale registry** | `resolveDashboardTelltaleIconSrc()` centralized in `dashboard-warning-lights-display.ts` |
+| **Consumer cutover** | **None** — Fleet Command / Ready-to-Rent reason chips unchanged |
+| **Tests** | `vehicle-health-finding-presentation.test.ts` — H1–H16 + KS MX 2024 multi-finding fixture |
+
+### Icon asset matrix (selected)
+
+| Domain | Asset path |
+|--------|------------|
+| TIRE | `assets/icons/vehicle-health/motor-filter.svg` (rotate 90°) |
+| BRAKE | `assets/icons/vehicle-health/brake.svg` |
+| BATTERY | `assets/icons/vehicle-health/car-battery.svg` |
+| DTC | `assets/icons/telltale/cel.svg` |
+| DASHBOARD_WARNING | `resolveDashboardTelltaleIconSrc(telltaleKey)`; unknown → `cel.svg` fallback |
+
+### Aggregation / duplicate policy
+
+- Domain types aggregate; DTC shows count; dashboard telltales dedupe per `telltaleKey` only.
+- **No cross-domain dedupe** (TIRE health + TPMS telltale both render).
+- Empty findings → render nothing (no green placeholders).
+
+### H1–H16 results
+
+All **PASS** (27 tests in presentation suite).
+
+### Stage 3B boundary
+
+- Replace `FleetOperatorRow` / `CompactFleetDrawerVehicleRow` single reason chip with `VehicleHealthFindingIcons`
+- Pass `rowOperationalProjection.activeHealthFindings` from existing context
+- Remove `pickModuleReason` / `resolveReasonBadgeFromUi` from compact row surfaces after cutover
+
+*Stage 3A complete — shared contract ready; visible consumer cutover deferred to Stage 3B.*

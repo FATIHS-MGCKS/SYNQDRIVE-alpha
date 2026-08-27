@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-health-finding-icons-stage-3a-2026-08-27',
+    version: '4.9.970',
+    title: 'Vehicle Health Finding Icons — Stage 3A shared icon contract',
+    summary: [
+      'New `vehicle-health-finding-presentation.ts` resolves `activeHealthFindings[]` → icon asset, severity tone, localized tooltip (machine-readable authority).',
+      'New `VehicleHealthFindingIcons` compact strip component with domain aggregation, telltale dedupe, overflow +N, and accessibility labels.',
+      'Centralized `resolveDashboardTelltaleIconSrc()` in dashboard-warning-lights-display.ts (reuses existing telltale SVG registry).',
+      'Vehicle Detail health assets reused: motor-filter/brake/car-battery (health modules), cel.svg (DTC), per-telltale SVGs (dashboard warnings).',
+      'No Fleet Command / Ready-to-Rent / Vehicle Detail consumer cutover in this stage.',
+    ],
+    reason:
+      'Stage 2A established multi-finding contract; Stage 3A adds one shared visual vocabulary before replacing single reason chips in Stage 3B.',
+    previousBehavior:
+      'Compact rows showed at most one reason chip via first-finding-wins; no shared icon resolver for activeHealthFindings[].',
+    details:
+      'frontend: vehicle-health-finding-presentation.ts(+test), VehicleHealthFindingIcons.tsx, dashboard-warning-lights-display.ts (resolveDashboardTelltaleIconSrc), i18n fleet.healthFinding.* keys. architecture + audit Stage 3A. Visible Fleet/Ready-to-Rent UI unchanged.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T18:10:00.000Z',
+  },
+  {
     id: 'vehicle-row-operational-display-stage-2b-2026-08-27',
     version: '4.9.969',
     title: 'Vehicle Row Operational Display — Stage 2B availability/readiness semantic cutover',
