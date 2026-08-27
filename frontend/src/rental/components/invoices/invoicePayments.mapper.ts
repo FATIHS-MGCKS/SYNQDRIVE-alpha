@@ -1,5 +1,8 @@
 import type { TranslationKey } from '../../i18n/translations/en';
-import { formatAmount, formatDate } from './invoiceFormatters';
+import {
+  formatRentalInvoicePaymentAmount,
+  formatRentalInvoicePaymentDate,
+} from '../../lib/rental-invoice-payments-i18n';
 import type {
   InvoicePaymentRecord,
   InvoicePaymentSummary,
@@ -62,14 +65,18 @@ export function paymentMethodOptions(t: Translate) {
   }));
 }
 
-export function buildPaymentSummary(invoice: Invoice, t: Translate): InvoicePaymentSummary {
+export function buildPaymentSummary(
+  invoice: Invoice,
+  t: Translate,
+  locale = 'de',
+): InvoicePaymentSummary {
   const currency = invoice.currency || 'EUR';
   return {
     paidCents: invoice.paidCents,
     outstandingCents: invoice.outstandingCents,
     currency,
-    paidFormatted: formatAmount(invoice.paidCents, currency),
-    outstandingFormatted: formatAmount(invoice.outstandingCents, currency),
+    paidFormatted: formatPaymentAmount(invoice.paidCents, currency, locale),
+    outstandingFormatted: formatPaymentAmount(invoice.outstandingCents, currency, locale),
   };
 }
 
@@ -147,10 +154,14 @@ export function parseRecordPaymentError(
   return t('invoicePayment.error.generic');
 }
 
-export function formatPaymentRowDate(iso: string): string {
-  return formatDate(iso);
+export function formatPaymentRowDate(iso: string, locale = 'de'): string {
+  return formatRentalInvoicePaymentDate(locale, iso);
 }
 
-export function formatPaymentAmount(amountCents: number, currency: string): string {
-  return formatAmount(amountCents, currency);
+export function formatPaymentAmount(
+  amountCents: number,
+  currency: string,
+  locale = 'de',
+): string {
+  return formatRentalInvoicePaymentAmount(locale, amountCents, currency);
 }

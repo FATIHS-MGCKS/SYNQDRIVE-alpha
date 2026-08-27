@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 
 import { FormDialog } from '../../../components/patterns';
 import { useLanguage } from '../../i18n/LanguageContext';
-import { formatAmount } from './invoiceFormatters';
+import { formatRentalInvoicePaymentAmount } from '../../lib/rental-invoice-payments-i18n';
 import { outstandingAmountInputValue, paymentMethodOptions } from './invoicePayments.mapper';
 import { INVOICE_ACTION_BTN, INVOICE_DISABLED_BTN } from './invoiceTheme';
 
@@ -43,7 +43,7 @@ export function RecordPaymentDialog({
   onNoteChange,
   onSubmit,
 }: RecordPaymentDialogProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const methods = paymentMethodOptions(t);
   const inputCls =
     'w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground outline-none';
@@ -56,7 +56,7 @@ export function RecordPaymentDialog({
   }, [open, outstandingCents, amountInput, onAmountInputChange]);
 
   const outstandingHint = t('invoicePayment.dialog.outstandingHint', {
-    amount: formatAmount(outstandingCents, currency),
+    amount: formatRentalInvoicePaymentAmount(locale, outstandingCents, currency),
   });
 
   return (
