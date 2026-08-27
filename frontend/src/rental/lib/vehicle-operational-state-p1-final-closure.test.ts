@@ -1,16 +1,19 @@
 /**
  * P1 FINAL — Global legacy authority cleanup & architecture closure regressions.
  *
- * Proves tenant-facing operational decisions use canonical state, not legacy
- * timestamp/onlineStatus/healthStatus heuristics.
+ * Separates operational authority (P0.2 + P1.5 readiness) from marker/attention
+ * presentation (P1.3 map visuals, notifications).
  */
 import { describe, expect, it } from 'vitest';
 import type { VehicleConnectivityRuntimeState, VehicleHealthResponse } from '../../lib/api';
 import {
-  isDashboardAvailablePopupReadyForRent,
   isDashboardOperationalAvailabilityReady,
+  isStationFilterHudOperationallyReady,
 } from '../components/dashboard/runtime/dashboard-operational-readiness';
-import { buildVehicleRuntimeStates } from '../components/dashboard/runtime/vehicleRuntimeStateBuilder';
+import {
+  buildVehicleRuntimeStates,
+  isDashboardPopupReadyForRent,
+} from '../components/dashboard/runtime/vehicleRuntimeStateBuilder';
 import {
   canonicalAvailability,
   canonicalConnectivityRuntime,
@@ -43,254 +46,342 @@ function health(overrides: Partial<VehicleHealthResponse> = {}): VehicleHealthRe
   };
 }
 
-function healthEvaluability(
-  evaluability: 'EVALUABLE' | 'PARTIALLY_EVALUABLE' | 'NOT_EVALUABLE' | 'UNKNOWN',
-  condition: 'good' | 'warning' | 'critical' = 'good',
-) {
-  return {
-    condition,
-    evaluability,
-    pipelineAvailability: 'ready',
-    generatedAt: NOW.toISOString(),
-    healthEvidenceAt: null,
-    anyModuleDataStale: false,
-    source: 'p0.2_projection',
-  };
-}
-
 function runtime(overrides: Partial<VehicleConnectivityRuntimeState> = {}) {
   return canonicalConnectivityRuntime(overrides);
 }
 
-type TruthCase = {
-  name: string;
-  vehicle: ReturnType<typeof canonicalOperationalVehicle>;
-  fleetReady: boolean;
-  dashboardReady: boolean;
-  bookingPass: boolean;
-  notificationEmit: boolean;
+type OperationalAuthorityExpectation = {
+  fleetOperationalAvailability: boolean;
+  dashboardReadyToRent: boolean;
+  dashboardPopupReady: boolean;
+  bookingOperationalGate: boolean;
+  stationReady: boolean;
 };
 
-function assertSurfaces(input: TruthCase) {
-  const { vehicle } = input;
+type PresentationExpectation = {
+  markerVisualReady: boolean;
+  markerBlocked: boolean;
+  notificationEmit: boolean;
+  stationAttention: boolean;
+};
+
+function readOperationalAuthority(
+  vehicle: ReturnType<typeof canonicalOperationalVehicle>,
+  healthRecord: VehicleHealthResponse | null = health(),
+): OperationalAuthorityExpectation {
   const ui = buildFleetVehicleUiProjection(vehicle, { locale: 'de' });
-  const visual = deriveFleetVisualState(vehicle, { uiProjection: ui, locale: 'de' });
   const availability = resolveAvailabilityBadgeFromUi(ui, vehicle);
-  const detailConnectivity = resolveVehicleDetailConnectivityPresentation(vehicle, { locale: 'de' });
   const [runtimeState] = buildVehicleRuntimeStates({
     fleetVehicles: [vehicle],
+    healthMap: new Map([[vehicle.id, healthRecord]]),
     now: NOW,
   });
+  const station = buildStationFilterOptions([], [vehicle], () => healthRecord)[0];
 
-  expect(visual.isReady).toBe(input.fleetReady);
-  expect(availability.label.length).toBeGreaterThan(0);
-  expect(detailConnectivity.label.length).toBeGreaterThan(0);
-  expect(isDashboardOperationalAvailabilityReady(vehicle)).toBe(input.dashboardReady);
-  expect(runtimeState?.isReadyToRent ?? false).toBe(input.dashboardReady);
-  expect(isBookingOperationalGatePass(vehicle)).toBe(input.bookingPass);
-  expect(evaluateBookingOperationalGate(vehicle).operationalEligible).toBe(input.bookingPass);
-  expect(shouldEmitCanonicalConnectivityNotification(vehicle.connectivityRuntime)).toBe(
-    input.notificationEmit,
-  );
+  return {
+    fleetOperationalAvailability:
+      availability.label.length > 0 &&
+      isDashboardOperationalAvailabilityReady(vehicle),
+    dashboardReadyToRent: runtimeState?.isReadyToRent ?? false,
+    dashboardPopupReady: isDashboardPopupReadyForRent(vehicle, healthRecord, { now: NOW }),
+    bookingOperationalGate: isBookingOperationalGatePass(vehicle),
+    stationReady: (station?.ready ?? 0) > 0,
+  };
 }
 
-describe('P1 FINAL cross-surface truth table', () => {
-  const cases: TruthCase[] = [
-    {
-      name: '1. AVAILABLE + live + EVALUABLE/good',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        healthEvaluation: healthEvaluability('EVALUABLE', 'good'),
-        connectivityRuntime: runtime({ telemetryState: 'live', overallState: 'TELEMETRY_ACTIVE' }),
-      }),
-      fleetReady: true,
-      dashboardReady: true,
-      bookingPass: true,
-      notificationEmit: false,
-    },
-    {
-      name: '2. AVAILABLE + standby',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        connectivityRuntime: runtime({ overallState: 'STANDBY', telemetryState: 'standby' }),
-      }),
-      fleetReady: true,
-      dashboardReady: true,
-      bookingPass: true,
-      notificationEmit: false,
-    },
-    {
-      name: '3. AVAILABLE + soft offline',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        connectivityRuntime: runtime({
-          overallState: 'SOFT_OFFLINE',
-          telemetryState: 'signal_delayed',
-          attentionState: 'WATCH',
-        }),
-      }),
-      fleetReady: true,
-      dashboardReady: true,
-      bookingPass: true,
-      notificationEmit: true,
-    },
-    {
-      name: '4. NEEDS_VERIFICATION + AUTHORIZATION_REQUIRED',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        operationalAvailability: canonicalAvailability('NEEDS_VERIFICATION'),
-        connectivityRuntime: runtime({
-          overallState: 'AUTHORIZATION_REQUIRED',
-          attentionState: 'ACTION_REQUIRED',
-        }),
-      }),
-      fleetReady: false,
-      dashboardReady: false,
-      bookingPass: false,
-      notificationEmit: true,
-    },
-    {
-      name: '5. UNAVAILABLE',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        operationalAvailability: canonicalAvailability('UNAVAILABLE'),
-      }),
-      fleetReady: false,
-      dashboardReady: false,
-      bookingPass: false,
-      notificationEmit: false,
-    },
-    {
-      name: '6. DEVICE_UNPLUGGED',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        operationalAvailability: canonicalAvailability('AVAILABLE'),
-        connectivityRuntime: runtime({
-          overallState: 'DEVICE_UNPLUGGED',
-          attentionState: 'CRITICAL',
-          physicalDeviceState: 'UNPLUGGED_CONFIRMED',
-        }),
-      }),
-      fleetReady: false,
-      dashboardReady: true,
-      bookingPass: true,
-      notificationEmit: true,
-    },
-    {
-      name: '7. INTEGRATION_ERROR',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        connectivityRuntime: runtime({
-          overallState: 'INTEGRATION_ERROR',
-          attentionState: 'CRITICAL',
-        }),
-      }),
-      fleetReady: false,
-      dashboardReady: true,
-      bookingPass: true,
-      notificationEmit: true,
-    },
-    {
-      name: '8. OFFLINE + WATCH',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        connectivityRuntime: runtime({
-          overallState: 'OFFLINE',
-          telemetryState: 'offline',
-          attentionState: 'WATCH',
-        }),
-      }),
-      fleetReady: true,
-      dashboardReady: true,
-      bookingPass: true,
-      notificationEmit: true,
-    },
-    {
-      name: '9. OFFLINE + CRITICAL',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        connectivityRuntime: runtime({
-          overallState: 'OFFLINE',
-          telemetryState: 'offline',
-          attentionState: 'CRITICAL',
-        }),
-      }),
-      fleetReady: false,
-      dashboardReady: true,
-      bookingPass: true,
-      notificationEmit: true,
-    },
-    {
-      name: '10. UNKNOWN operational availability',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        operationalAvailability: canonicalAvailability('UNKNOWN'),
-      }),
-      fleetReady: false,
-      dashboardReady: false,
-      bookingPass: false,
-      notificationEmit: false,
-    },
-    {
-      name: '11. connectivity absent',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        connectivityRuntime: undefined,
-      }),
-      fleetReady: true,
-      dashboardReady: true,
-      bookingPass: true,
-      notificationEmit: false,
-    },
-    {
-      name: '12. health PARTIALLY_EVALUABLE',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        healthEvaluation: healthEvaluability('PARTIALLY_EVALUABLE', 'warning'),
-      }),
-      fleetReady: true,
-      dashboardReady: true,
-      bookingPass: true,
-      notificationEmit: false,
-    },
-    {
-      name: '13. health NOT_EVALUABLE',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        healthEvaluation: healthEvaluability('NOT_EVALUABLE'),
-      }),
-      fleetReady: true,
-      dashboardReady: true,
-      bookingPass: true,
-      notificationEmit: false,
-    },
-    {
-      name: '14. health absent',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        healthEvaluation: undefined,
-      }),
-      fleetReady: true,
-      dashboardReady: true,
-      bookingPass: true,
-      notificationEmit: false,
-    },
-    {
-      name: '15. legacy ONLINE contradicts canonical bad state',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        onlineStatus: 'ONLINE',
-        lastSignal: NOW.toISOString(),
-        operationalAvailability: canonicalAvailability('UNAVAILABLE'),
-        connectivityRuntime: runtime({ overallState: 'OFFLINE', attentionState: 'CRITICAL' }),
-      }),
-      fleetReady: false,
-      dashboardReady: false,
-      bookingPass: false,
-      notificationEmit: true,
-    },
-    {
-      name: '16. legacy OFFLINE contradicts canonical good state',
-      vehicle: canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
-        onlineStatus: 'OFFLINE',
-        lastSignal: '2010-01-01T00:00:00.000Z',
-        operationalAvailability: canonicalAvailability('AVAILABLE'),
-        connectivityRuntime: runtime({ overallState: 'TELEMETRY_ACTIVE', telemetryState: 'live' }),
-      }),
-      fleetReady: true,
-      dashboardReady: true,
-      bookingPass: true,
-      notificationEmit: false,
-    },
-  ];
+function readPresentationSignals(
+  vehicle: ReturnType<typeof canonicalOperationalVehicle>,
+  healthRecord: VehicleHealthResponse | null = health(),
+): PresentationExpectation {
+  const ui = buildFleetVehicleUiProjection(vehicle, { locale: 'de' });
+  const visual = deriveFleetVisualState(vehicle, { uiProjection: ui, locale: 'de' });
+  const station = buildStationFilterOptions([], [vehicle], () => healthRecord)[0];
 
-  it.each(cases)('$name', (input) => {
-    assertSurfaces(input);
+  return {
+    markerVisualReady: visual.isReady,
+    markerBlocked: visual.isBlocked || visual.visualStatus === 'blocked',
+    notificationEmit: shouldEmitCanonicalConnectivityNotification(vehicle.connectivityRuntime),
+    stationAttention: (station?.attention ?? 0) > 0,
+  };
+}
+
+function expectOperationalAuthority(
+  vehicle: ReturnType<typeof canonicalOperationalVehicle>,
+  expected: OperationalAuthorityExpectation,
+  healthRecord: VehicleHealthResponse | null = health(),
+) {
+  expect(readOperationalAuthority(vehicle, healthRecord)).toEqual(expected);
+}
+
+function expectPresentation(
+  vehicle: ReturnType<typeof canonicalOperationalVehicle>,
+  expected: PresentationExpectation,
+  healthRecord: VehicleHealthResponse | null = health(),
+) {
+  expect(readPresentationSignals(vehicle, healthRecord)).toEqual(expected);
+}
+
+describe('P1 FINAL operational authority (must agree across surfaces)', () => {
+  it('AVAILABLE + live => all operational selectors ready', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      connectivityRuntime: runtime({ telemetryState: 'live', overallState: 'TELEMETRY_ACTIVE' }),
+    });
+    expectOperationalAuthority(vehicle, {
+      fleetOperationalAvailability: true,
+      dashboardReadyToRent: true,
+      dashboardPopupReady: true,
+      bookingOperationalGate: true,
+      stationReady: true,
+    });
+  });
+
+  it('NEEDS_VERIFICATION excludes all operational readiness selectors', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      operationalAvailability: canonicalAvailability('NEEDS_VERIFICATION'),
+    });
+    expectOperationalAuthority(vehicle, {
+      fleetOperationalAvailability: false,
+      dashboardReadyToRent: false,
+      dashboardPopupReady: false,
+      bookingOperationalGate: false,
+      stationReady: false,
+    });
+  });
+
+  it('UNAVAILABLE excludes all operational readiness selectors', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      operationalAvailability: canonicalAvailability('UNAVAILABLE'),
+    });
+    expectOperationalAuthority(vehicle, {
+      fleetOperationalAvailability: false,
+      dashboardReadyToRent: false,
+      dashboardPopupReady: false,
+      bookingOperationalGate: false,
+      stationReady: false,
+    });
+  });
+});
+
+describe('P1 FINAL authority vs presentation separation', () => {
+  it('1. AVAILABLE + DEVICE_UNPLUGGED + CRITICAL — ready yes, attention yes, marker blocked', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      operationalAvailability: canonicalAvailability('AVAILABLE'),
+      connectivityRuntime: runtime({
+        overallState: 'DEVICE_UNPLUGGED',
+        attentionState: 'CRITICAL',
+        physicalDeviceState: 'UNPLUGGED_CONFIRMED',
+      }),
+    });
+
+    expectOperationalAuthority(vehicle, {
+      fleetOperationalAvailability: true,
+      dashboardReadyToRent: true,
+      dashboardPopupReady: true,
+      bookingOperationalGate: true,
+      stationReady: true,
+    });
+    expectPresentation(vehicle, {
+      markerVisualReady: false,
+      markerBlocked: true,
+      notificationEmit: true,
+      stationAttention: true,
+    });
+    expect(
+      resolveVehicleDetailConnectivityPresentation(vehicle, { locale: 'de' }).label.length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('2. AVAILABLE + INTEGRATION_ERROR + CRITICAL', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      connectivityRuntime: runtime({
+        overallState: 'INTEGRATION_ERROR',
+        attentionState: 'CRITICAL',
+      }),
+    });
+
+    expectOperationalAuthority(vehicle, {
+      fleetOperationalAvailability: true,
+      dashboardReadyToRent: true,
+      dashboardPopupReady: true,
+      bookingOperationalGate: true,
+      stationReady: true,
+    });
+    expectPresentation(vehicle, {
+      markerVisualReady: false,
+      markerBlocked: true,
+      notificationEmit: true,
+      stationAttention: true,
+    });
+  });
+
+  it('3. AVAILABLE + OFFLINE + CRITICAL', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      connectivityRuntime: runtime({
+        overallState: 'OFFLINE',
+        telemetryState: 'offline',
+        attentionState: 'CRITICAL',
+      }),
+    });
+
+    expectOperationalAuthority(vehicle, {
+      fleetOperationalAvailability: true,
+      dashboardReadyToRent: true,
+      dashboardPopupReady: true,
+      bookingOperationalGate: true,
+      stationReady: true,
+    });
+    expectPresentation(vehicle, {
+      markerVisualReady: false,
+      markerBlocked: true,
+      notificationEmit: true,
+      stationAttention: true,
+    });
+  });
+
+  it('4. AVAILABLE + AUTHORIZATION_REQUIRED + ACTION_REQUIRED', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      operationalAvailability: canonicalAvailability('AVAILABLE'),
+      connectivityRuntime: runtime({
+        overallState: 'AUTHORIZATION_REQUIRED',
+        attentionState: 'ACTION_REQUIRED',
+      }),
+    });
+
+    expectOperationalAuthority(vehicle, {
+      fleetOperationalAvailability: true,
+      dashboardReadyToRent: true,
+      dashboardPopupReady: true,
+      bookingOperationalGate: true,
+      stationReady: true,
+    });
+    expectPresentation(vehicle, {
+      markerVisualReady: false,
+      markerBlocked: true,
+      notificationEmit: true,
+      stationAttention: true,
+    });
+  });
+
+  it('5. NEEDS_VERIFICATION + AUTHORIZATION_REQUIRED — operational false, attention true', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      operationalAvailability: canonicalAvailability('NEEDS_VERIFICATION'),
+      connectivityRuntime: runtime({
+        overallState: 'AUTHORIZATION_REQUIRED',
+        attentionState: 'ACTION_REQUIRED',
+      }),
+    });
+
+    expectOperationalAuthority(vehicle, {
+      fleetOperationalAvailability: false,
+      dashboardReadyToRent: false,
+      dashboardPopupReady: false,
+      bookingOperationalGate: false,
+      stationReady: false,
+    });
+    expectPresentation(vehicle, {
+      markerVisualReady: false,
+      markerBlocked: true,
+      notificationEmit: true,
+      stationAttention: true,
+    });
+  });
+
+  it('6. UNAVAILABLE + DEVICE_UNPLUGGED — all operational false, attention true', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      operationalAvailability: canonicalAvailability('UNAVAILABLE'),
+      connectivityRuntime: runtime({
+        overallState: 'DEVICE_UNPLUGGED',
+        attentionState: 'CRITICAL',
+      }),
+    });
+
+    expectOperationalAuthority(vehicle, {
+      fleetOperationalAvailability: false,
+      dashboardReadyToRent: false,
+      dashboardPopupReady: false,
+      bookingOperationalGate: false,
+      stationReady: false,
+    });
+    expectPresentation(vehicle, {
+      markerVisualReady: false,
+      markerBlocked: true,
+      notificationEmit: true,
+      stationAttention: true,
+    });
+  });
+
+  it('proves ATTENTION != UNAVAILABLE for canonical AVAILABLE + critical connectivity', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      operationalAvailability: canonicalAvailability('AVAILABLE'),
+      connectivityRuntime: runtime({
+        overallState: 'DEVICE_UNPLUGGED',
+        attentionState: 'CRITICAL',
+      }),
+    });
+    const authority = readOperationalAuthority(vehicle);
+    const presentation = readPresentationSignals(vehicle);
+    expect(authority.stationReady).toBe(true);
+    expect(presentation.stationAttention).toBe(true);
+    expect(isStationFilterHudOperationallyReady(vehicle)).toBe(true);
+  });
+});
+
+describe('P1 FINAL dashboard popup readiness contract (P1.5 Ready to Rent)', () => {
+  it('AVAILABLE + dirty => popup not ready', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      cleaningStatus: 'Dirty',
+    });
+    expect(isDashboardPopupReadyForRent(vehicle, health(), { now: NOW })).toBe(false);
+  });
+
+  it('AVAILABLE + rental_blocked => popup not ready', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE);
+    expect(isDashboardPopupReadyForRent(vehicle, health({ rental_blocked: true }), { now: NOW })).toBe(
+      false,
+    );
+  });
+
+  it('AVAILABLE + health absent => popup ready when P0.2 AVAILABLE', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE);
+    expect(isDashboardPopupReadyForRent(vehicle, null, { now: NOW })).toBe(true);
+  });
+
+  it('AVAILABLE + standby => popup ready', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      connectivityRuntime: runtime({ overallState: 'STANDBY', telemetryState: 'standby' }),
+    });
+    expect(isDashboardPopupReadyForRent(vehicle, health(), { now: NOW })).toBe(true);
+  });
+
+  it('AVAILABLE + critical connectivity => popup ready (connectivity does not block P1.5)', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      connectivityRuntime: runtime({
+        overallState: 'DEVICE_UNPLUGGED',
+        attentionState: 'CRITICAL',
+      }),
+    });
+    expect(isDashboardPopupReadyForRent(vehicle, health(), { now: NOW })).toBe(true);
+  });
+
+  it('NEEDS_VERIFICATION + otherwise clean/good => popup not ready', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      operationalAvailability: canonicalAvailability('NEEDS_VERIFICATION'),
+    });
+    expect(isDashboardPopupReadyForRent(vehicle, health(), { now: NOW })).toBe(false);
+  });
+
+  it('popup readiness matches dashboard runtime isReadyToRent', () => {
+    const vehicle = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      cleaningStatus: 'Dirty',
+    });
+    const [state] = buildVehicleRuntimeStates({
+      fleetVehicles: [vehicle],
+      healthMap: new Map([[vehicle.id, health()]]),
+      now: NOW,
+    });
+    expect(isDashboardPopupReadyForRent(vehicle, health(), { now: NOW })).toBe(
+      state?.isReadyToRent ?? false,
+    );
   });
 });
 
@@ -301,45 +392,34 @@ describe('P1 FINAL negative legacy authority', () => {
     connectivityRuntime: runtime({ overallState: 'TELEMETRY_ACTIVE', telemetryState: 'live' }),
   });
 
-  function snapshot(vehicle: typeof base) {
-    const ui = buildFleetVehicleUiProjection(vehicle, { locale: 'de' });
-    const visual = deriveFleetVisualState(vehicle, { uiProjection: ui, locale: 'de' });
-    const [runtimeState] = buildVehicleRuntimeStates({ fleetVehicles: [vehicle], now: NOW });
-    const station = buildStationFilterOptions([], [vehicle], () => null)[0];
-    return {
-      fleetReady: visual.isReady,
-      popupReady: isDashboardAvailablePopupReadyForRent(vehicle, health()),
-      dashboardReady: runtimeState?.isReadyToRent ?? false,
-      bookingPass: isBookingOperationalGatePass(vehicle),
-      notification: shouldEmitCanonicalConnectivityNotification(vehicle.connectivityRuntime),
-      stationReady: station?.ready ?? 0,
-    };
+  function authoritySnapshot(vehicle: typeof base) {
+    return readOperationalAuthority(vehicle, health());
   }
 
-  it('mutating only onlineStatus does not change canonical operational outcomes', () => {
-    const before = snapshot(base);
+  it('mutating only onlineStatus does not change operational authority', () => {
+    const before = authoritySnapshot(base);
     const mutated = { ...base, onlineStatus: 'OFFLINE' as const };
-    expect(snapshot(mutated)).toEqual(before);
+    expect(authoritySnapshot(mutated)).toEqual(before);
   });
 
-  it('mutating only lastSignal/signalAgeMs does not change canonical operational outcomes', () => {
-    const before = snapshot(base);
+  it('mutating only lastSignal/signalAgeMs does not change operational authority', () => {
+    const before = authoritySnapshot(base);
     const mutated = {
       ...base,
       lastSignal: '2010-01-01T00:00:00.000Z',
       signalAgeMs: 999_999_999,
     };
-    expect(snapshot(mutated)).toEqual(before);
+    expect(authoritySnapshot(mutated)).toEqual(before);
     expect(isVehicleOffline(mutated)).toBe(true);
   });
 
-  it('mutating only legacy healthStatus does not change canonical operational outcomes', () => {
-    const before = snapshot(base);
+  it('mutating only legacy healthStatus does not change operational authority', () => {
+    const before = authoritySnapshot(base);
     const mutated = { ...base, healthStatus: 'Critical' as const };
-    expect(snapshot(mutated)).toEqual(before);
+    expect(authoritySnapshot(mutated)).toEqual(before);
   });
 
-  it('stale telemetry with canonical AVAILABLE still counts ready in station filter HUD', () => {
+  it('stale telemetry with canonical AVAILABLE still counts in station ready HUD', () => {
     const vehicle = {
       ...base,
       lastSignal: '2010-01-01T00:00:00.000Z',

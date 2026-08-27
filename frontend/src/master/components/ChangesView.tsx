@@ -219,7 +219,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Repo-wide legacy authority audit completed; tenant surfaces classified A–E.',
       'Migrated StatInlineDetail Available popup from isVehicleOffline to P1.5 canonical readiness.',
-      'Migrated buildStationFilterOptions to P1.2 uiProjection (station HUD ready/attention counts).',
+      'Station filter HUD ready count uses isStationFilterHudOperationallyReady (P0.2 + business AVAILABLE), not marker visual.isReady.',
+      'Dashboard Available popup uses isDashboardPopupReadyForRent (full P1.5 deriveIsReadyForRenting authority).',
       'Removed dead code: telemetryStateToIssueDraft, isFleetSignalOutdated.',
       'isVehicleOffline retained @deprecated for legacy deriveFleetVisualState fallback only.',
       'Added vehicle-operational-state-p1-final-closure.test.ts (16-case truth table + negative authority).',

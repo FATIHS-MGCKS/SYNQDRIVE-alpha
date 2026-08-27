@@ -1235,7 +1235,7 @@ P0.4 healthEvaluation.evaluability for mechanical alerts
 | Category | Count (relevant matches) | Notes |
 |----------|--------------------------|-------|
 | **A — CANONICAL / ALLOWED** | ~180 | P1.1–P1.7 adapters, display labels, test fixtures, canonical regression tests |
-| **B — LEGACY AUTHORITY (removed)** | 2 | `StatInlineDetail` `isVehicleOffline`; `buildStationFilterOptions` legacy `deriveFleetVisualState` |
+| **B — LEGACY AUTHORITY (removed)** | 2 | `StatInlineDetail` `isVehicleOffline`; station HUD initial `visual.isReady` (corrected) |
 | **C — LEGACY COMPATIBILITY (retained)** | ~25 | DTO `onlineStatus`/`healthStatus`, `resolveTelemetryFreshness` display, deprecated `fleetStateBuilder` |
 | **D — DEAD CODE (removed)** | 2 | `telemetryStateToIssueDraft`, `isFleetSignalOutdated` |
 | **E — MASTER ADMIN / OUT OF SCOPE** | ~8 | Raw technical telemetry in Master Admin surfaces |
@@ -1263,12 +1263,19 @@ See `architecture/VEHICLE_OPERATIONAL_STATE_FRONTEND_ARCHITECTURE_CLOSURE_2026-0
 
 All tenant surfaces: **Legacy Authority Remaining = NO**
 
+### Station HUD ready authority (blocker fix)
+
+| | Before P1 FINAL | Initial P1 FINAL PR | Corrected |
+|--|-----------------|---------------------|-----------|
+| Authority | `deriveFleetVisualState({ rentalHealth }).isReady` (legacy timestamps) | `deriveFleetVisualState({ uiProjection }).isReady` (**marker presentation — rejected**) | `isStationFilterHudOperationallyReady()` — P0.2 + business AVAILABLE |
+| DEVICE_UNPLUGGED + P0.2 AVAILABLE | excluded from ready | excluded from ready | **included in ready**, attention still yes |
+
 ### Regression evidence
 
 | Suite | Result |
 |-------|--------|
-| P1 FINAL closure (`vehicle-operational-state-p1-final-closure.test.ts`) | **20/20** |
-| Combined P1.1–P1.7 + fleet/dashboard/booking/notification regression | **434/434** |
+| P1 FINAL closure (`vehicle-operational-state-p1-final-closure.test.ts`) | **21/21** |
+| Combined P1.1–P1.7 + fleet/dashboard/booking/notification regression | **400/400** |
 | Build + typecheck | **PASS** |
 
 ### Closure gates
@@ -1276,13 +1283,16 @@ All tenant surfaces: **Legacy Authority Remaining = NO**
 | Gate | Status |
 |------|--------|
 | TENANT LEGACY OPERATIONAL AUTHORITY REMAINING | **NO** |
-| CLIENT TIMESTAMP CONNECTIVITY STATE MACHINE REMAINING | **NO** |
+| SECOND READINESS AUTHORITY REMAINING | **NO** |
+| STATION READY / P0.2 CONSISTENCY | **PASS** |
+| ATTENTION != UNAVAILABLE | **PASS** |
+| CLIENT TIMESTAMP CONNECTIVITY AUTHORITY | **NO** |
 | LEGACY ONLINESTATUS AUTHORITY REMAINING | **NO** |
 | LEGACY HEALTHSTATUS AUTHORITY REMAINING | **NO** |
-| DUPLICATE FRONTEND VEHICLE STATE MACHINE REMAINING | **NO** |
 | P1.1–P1.7 REGRESSION | **PASS** |
-| CROSS-SURFACE AUTHORITY CONSISTENCY | **PASS** |
-| VISIBLE BEHAVIOR CHANGED | **YES** (StatInlineDetail + station HUD alignment) |
+| CROSS-SURFACE OPERATIONAL AUTHORITY | **PASS** |
+| NEW BUSINESS SEMANTICS INTRODUCED | **NO** |
+| VISIBLE ALIGNMENT FROM APPROVED CANONICAL SEMANTICS | **YES** (popup + station HUD pixels may differ from legacy) |
 | VEHICLE OPERATIONAL STATE FRONTEND ARCHITECTURE | **CLOSED** |
 
 ---

@@ -21,6 +21,7 @@ import {
   resolveFleetVehicleDisplayState,
 } from './fleetVehicleDisplay';
 
+import { isStationFilterHudOperationallyReady } from '../components/dashboard/runtime/dashboard-operational-readiness';
 import type { DashboardRuntimeModel } from '../components/dashboard/runtime/dashboardRuntimeTypes';
 import type { VehicleRuntimeState } from '../components/dashboard/runtime/dashboardRuntimeTypes';
 import {
@@ -427,7 +428,7 @@ export function buildStationFilterOptions(
     );
     const visual = deriveFleetVisualState(vehicle, { uiProjection, locale });
     const attention = isFleetAttentionVehicle(visual, vehicle, health);
-    const ready = visual.isReady;
+    const ready = isStationFilterHudOperationallyReady(vehicle);
     bump(ALL_STATIONS_FILTER, ready, attention);
     if (!vehicle.stationId) {
       bump(NO_STATION_FILTER, ready, attention);

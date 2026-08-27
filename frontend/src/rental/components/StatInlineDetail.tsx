@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { BrandLogoMark, getBrandFromModel } from './BrandLogo';
 
 import { VehicleData } from '../data/vehicles';
-import { isDashboardAvailablePopupReadyForRent } from './dashboard/runtime/dashboard-operational-readiness';
+import { isDashboardPopupReadyForRent } from './dashboard/runtime/vehicleRuntimeStateBuilder';
 import { useFleetVehicles, useEffectiveHealth } from '../FleetContext';
 import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
 import type { Station, VehicleHealthResponse } from '../../lib/api';
@@ -462,7 +462,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                   ? healthMap.get(v.id) ?? null
                   : null;
                 const isBlocked = !!vHealth?.rental_blocked;
-                const isReady = isDashboardAvailablePopupReadyForRent(v, vHealth);
+                const isReady = isDashboardPopupReadyForRent(v, vHealth);
                 return (
                 <div key={v.id} onClick={vehicleClick(v)} onMouseEnter={() => onItemHover?.(v.model)} onMouseLeave={() => onItemHover?.(null)} className={`rounded-xl p-3 border transition-all hover:shadow-sm cursor-pointer ${cardClass}`}>
                   {/* Row 1: License + MMY + Clean / Health / Ready badges + chevron.

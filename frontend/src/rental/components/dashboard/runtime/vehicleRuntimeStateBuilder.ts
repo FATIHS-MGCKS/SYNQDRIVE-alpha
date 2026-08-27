@@ -829,3 +829,18 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
     });
   });
 }
+
+/** P1.5 — Dashboard Available popup Ready pill; same authority as `deriveIsReadyForRenting`. */
+export function isDashboardPopupReadyForRent(
+  vehicle: VehicleData,
+  health: VehicleHealthResponse | null | undefined,
+  options: Pick<BuildVehicleRuntimeStatesInput, 'now' | 'locale'> = {},
+): boolean {
+  const [state] = buildVehicleRuntimeStates({
+    fleetVehicles: [vehicle],
+    healthMap: health ? new Map([[vehicle.id, health]]) : undefined,
+    now: options.now,
+    locale: options.locale,
+  });
+  return state?.isReadyToRent ?? false;
+}
