@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-tenant-billing-overview-p2-2-54-2026-08-27',
+    version: '4.9.981',
+    title: 'Platform i18n — P2.2.54 Rental Tenant Billing Overview + shell production hardening',
+    summary: [
+      'Localized read-only Tenant Billing overview and subscription shell via `rental-tenant-billing-i18n.ts`; 35 bounded `tenantBilling.*` keys (8802→8837 EN+DE).',
+      'P254 enforce-clean exact scope (8 paths) targets 0 findings; reuses `invoiceLineItem.summary.*`, `common.*`, and `billing.customerPayments.orgMissingTitle`.',
+      'Tab machine IDs, API/provider raw labels, money.formatted precedence, problem predicates, and Stripe callbacks frozen. Category E=0.',
+    ],
+    reason:
+      'P2.2.54 production hardening after P2.2.53 Line Items merge (#1355) per #1358 pre-flight split (overview selected).',
+    previousBehavior:
+      'Tenant Billing overview/shell used hardcoded German strings; `formatMoneyCents`/`formatDateDe` defaulted to `de-DE`.',
+    details:
+      'Presentation-only adapter for tabs, overview metrics, problem panel, and header-badge fallbacks. Deferred Tariff/Invoices/PM tabs untouched.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-27T00:00:00.000Z',
+  },
+  {
     id: 'i18n-rental-invoice-line-items-p2-2-53-2026-08-27',
     version: '4.9.980',
     title: 'Platform i18n — P2.2.53 Rental Invoice Line Items production hardening',

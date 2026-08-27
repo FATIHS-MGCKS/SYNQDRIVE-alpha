@@ -699,6 +699,47 @@ export const en = {
   'billing.section.customerPayments': 'Customer payments & payouts',
   'billing.saasOnlyHint':
     'SynqDrive subscription, SynqDrive invoices, and your payment method to SynqDrive. Customer payments and payouts live under Finance.',
+
+  // ─── Tenant Billing (SynqDrive subscription — P2.2.54 overview + shell) ───
+  'tenantBilling.tab.overview': 'Overview',
+  'tenantBilling.tab.tariffVehicles': 'Plan & vehicles',
+  'tenantBilling.tab.addons': 'Add-ons',
+  'tenantBilling.tab.invoices': 'Invoices',
+  'tenantBilling.tab.paymentMethod': 'Payment method',
+  'tenantBilling.shell.title': 'Billing & subscription',
+  'tenantBilling.shell.refresh': 'Refresh',
+  'tenantBilling.shell.noAccessTitle':
+    'No access to billing. You need read permission for the billing module.',
+  'tenantBilling.a11y.subTabs': 'SynqDrive subscription sections',
+  'tenantBilling.overview.currentPlan': 'Current plan',
+  'tenantBilling.overview.contractStatus': 'Contract status',
+  'tenantBilling.overview.billableVehicles': 'Billable vehicles',
+  'tenantBilling.overview.connectedHint': '{count} connected',
+  'tenantBilling.overview.nextAmount': 'Expected next amount',
+  'tenantBilling.overview.nextCharge': 'Next charge',
+  'tenantBilling.overview.breakdownTitle': 'Cost breakdown',
+  'tenantBilling.overview.rowBase': 'Base amount',
+  'tenantBilling.overview.taxMissing': 'Not configured yet',
+  'tenantBilling.overview.pricingTier': 'Price tier',
+  'tenantBilling.overview.contractPeriod': 'Contract period',
+  'tenantBilling.overview.lastPaidTitle': 'Last paid invoice',
+  'tenantBilling.overview.viewInvoices': 'View invoices',
+  'tenantBilling.overview.loadError': 'Overview could not be loaded',
+  'tenantBilling.overview.emptyTitle':
+    'No SynqDrive subscription yet. Once a contract is active for this organization, you will see plan, costs, and payment status here.',
+  'tenantBilling.problem.title':
+    'Payment action required. Please review open invoices and update your payment method.',
+  'tenantBilling.problem.updatePayment': 'Update payment method',
+  'tenantBilling.problem.openPortal': 'Open customer portal',
+  'tenantBilling.status.active': 'Active',
+  'tenantBilling.status.trialing': 'Trial',
+  'tenantBilling.status.pastDue': 'Past due',
+  'tenantBilling.status.priceNotConfigured': 'Price not configured',
+  'tenantBilling.status.prepared': 'Prepared',
+  'tenantBilling.pricingModel.volume': 'Volume pricing',
+  'tenantBilling.pricingModel.graduated': 'Graduated pricing',
+  'tenantBilling.invoice.fallbackNumber': 'Not finalized yet',
+
   'finance.separationHint':
     'Customer payments and payouts are separate from your SynqDrive subscription. Your subscription card is not the same as your payout bank account.',
   'finance.customerPayments.pageTitle': 'Customer payments & payouts',
