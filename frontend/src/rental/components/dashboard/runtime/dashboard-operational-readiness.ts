@@ -4,7 +4,7 @@
  * Dashboard must not derive operational readiness from timestamps, onlineStatus,
  * or legacy telemetry freshness heuristics.
  */
-import type { VehicleConnectivityRuntimeState } from '../../../../lib/api';
+import type { VehicleConnectivityRuntimeState, VehicleHealthResponse } from '../../../../lib/api';
 import type { VehicleData } from '../../../data/vehicles';
 import { buildFleetVehicleUiProjection, type FleetProjectionVehicle } from '../../../lib/fleet-vehicle-ui-projection';
 import {
@@ -208,4 +208,14 @@ export function shouldIncludeInDashboardBlockedMaintenance(input: {
   }
 
   return false;
+}
+
+/** P1.5 — Dashboard Available popup Ready pill (not timestamp/offline heuristics). */
+export function isDashboardAvailablePopupReadyForRent(
+  vehicle: VehicleData,
+  health: VehicleHealthResponse | null | undefined,
+): boolean {
+  if (vehicle.cleaningStatus !== 'Clean') return false;
+  if (health?.rental_blocked) return false;
+  return isDashboardOperationalAvailabilityReady(vehicle);
 }

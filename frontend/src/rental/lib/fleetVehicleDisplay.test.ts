@@ -8,7 +8,6 @@ import type {
 import {
   fleetEnergyTone,
   fleetOperationalSortScore,
-  isFleetSignalOutdated,
   resolveFleetVehicleDisplayState,
 } from './fleetVehicleDisplay';
 import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
@@ -507,18 +506,6 @@ describe('fleetEnergyTone', () => {
     expect(fleetEnergyTone(45)).toBe('yellow');
     expect(fleetEnergyTone(10)).toBe('red');
     expect(fleetEnergyTone(null)).toBe('neutral');
-  });
-});
-
-describe('isFleetSignalOutdated', () => {
-  it('is false for live/standby and true only from signal_delayed (>=24h)', () => {
-    // standby (a few hours) is normal → not outdated
-    expect(isFleetSignalOutdated({ lastSignal: hoursAgoIso(1), signalAgeMs: undefined })).toBe(false);
-    expect(isFleetSignalOutdated({ lastSignal: hoursAgoIso(8), signalAgeMs: undefined })).toBe(false);
-    // soft offline (24–48h) → outdated
-    expect(isFleetSignalOutdated({ lastSignal: hoursAgoIso(30), signalAgeMs: undefined })).toBe(true);
-    // offline (>=48h) → outdated
-    expect(isFleetSignalOutdated({ lastSignal: hoursAgoIso(50), signalAgeMs: undefined })).toBe(true);
   });
 });
 

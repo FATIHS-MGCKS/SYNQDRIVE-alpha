@@ -187,16 +187,6 @@ function connectivityNotificationToIssueDraft(
   return null;
 }
 
-/** @deprecated P1.7 — telemetryState is not notification authority. */
-function telemetryStateToIssueDraft(
-  state: VehicleRuntimeStateLike,
-  vehicle: OperationalIssueVehicleLike,
-): OperationalIssueDraft | null {
-  void state;
-  void vehicle;
-  return null;
-}
-
 function mapRuntimeReason(
   reason: RuntimeReasonLike,
   vehicleId: string,

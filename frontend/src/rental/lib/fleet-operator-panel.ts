@@ -406,7 +406,9 @@ export function buildStationFilterOptions(
   stations: Station[],
   vehicles: VehicleData[],
   getHealth: (id: string) => VehicleHealthResponse | null | undefined,
+  options: { locale?: 'en' | 'de' } = {},
 ): StationFilterOption[] {
+  const locale = options.locale ?? 'de';
   const stats = new Map<string, { total: number; ready: number; attention: number }>();
 
   const bump = (id: string, ready: boolean, attention: boolean) => {
@@ -419,7 +421,11 @@ export function buildStationFilterOptions(
 
   for (const vehicle of vehicles) {
     const health = getHealth(vehicle.id) ?? null;
-    const visual = deriveFleetVisualState(vehicle, { rentalHealth: health });
+    const uiProjection = buildFleetVehicleUiProjection(
+      vehicle as import('./fleet-vehicle-ui-projection').FleetProjectionVehicle,
+      { locale },
+    );
+    const visual = deriveFleetVisualState(vehicle, { uiProjection, locale });
     const attention = isFleetAttentionVehicle(visual, vehicle, health);
     const ready = visual.isReady;
     bump(ALL_STATIONS_FILTER, ready, attention);
@@ -434,7 +440,7 @@ export function buildStationFilterOptions(
   }
 
   const all = stats.get(ALL_STATIONS_FILTER) ?? { total: 0, ready: 0, attention: 0 };
-  const options: StationFilterOption[] = [
+  const filterOptions: StationFilterOption[] = [
     {
       id: ALL_STATIONS_FILTER,
       label: 'All Stations',
@@ -457,11 +463,11 @@ export function buildStationFilterOptions(
       };
     });
 
-  options.push(...stationRows);
+  filterOptions.push(...stationRows);
 
   const noStation = stats.get(NO_STATION_FILTER);
   if (noStation && noStation.total > 0) {
-    options.push({
+    filterOptions.push({
       id: NO_STATION_FILTER,
       label: 'No Station',
       ...noStation,
@@ -470,14 +476,14 @@ export function buildStationFilterOptions(
 
   const noLocation = stats.get(NO_LOCATION_FILTER);
   if (noLocation && noLocation.total > 0) {
-    options.push({
+    filterOptions.push({
       id: NO_LOCATION_FILTER,
       label: 'No Location',
       ...noLocation,
     });
   }
 
-  return options;
+  return filterOptions;
 }
 
 export function formatLastSignalAge(lastSignal: string | undefined): string {

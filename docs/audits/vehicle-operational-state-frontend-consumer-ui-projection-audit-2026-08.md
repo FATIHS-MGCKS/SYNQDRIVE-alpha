@@ -1224,6 +1224,69 @@ P0.4 healthEvaluation.evaluability for mechanical alerts
 
 ---
 
+## P1 FINAL — Legacy Authority Cleanup & Architecture Closure
+
+**Date:** 2026-08-27  
+**Branch:** `cursor/global-legacy-authority-cleanup-90ec`  
+**Baseline main:** `8c5867853357922ca7fe8df7a5353336c14c0e35`
+
+### Classification summary
+
+| Category | Count (relevant matches) | Notes |
+|----------|--------------------------|-------|
+| **A — CANONICAL / ALLOWED** | ~180 | P1.1–P1.7 adapters, display labels, test fixtures, canonical regression tests |
+| **B — LEGACY AUTHORITY (removed)** | 2 | `StatInlineDetail` `isVehicleOffline`; `buildStationFilterOptions` legacy `deriveFleetVisualState` |
+| **C — LEGACY COMPATIBILITY (retained)** | ~25 | DTO `onlineStatus`/`healthStatus`, `resolveTelemetryFreshness` display, deprecated `fleetStateBuilder` |
+| **D — DEAD CODE (removed)** | 2 | `telemetryStateToIssueDraft`, `isFleetSignalOutdated` |
+| **E — MASTER ADMIN / OUT OF SCOPE** | ~8 | Raw technical telemetry in Master Admin surfaces |
+
+### Critical helper disposition
+
+| Helper | Production operational consumers | Disposition |
+|--------|----------------------------------|-------------|
+| `isVehicleOffline()` | **0** (was StatInlineDetail; fleet legacy path only) | **@deprecated** — legacy visual fallback only |
+| `resolveTelemetryFreshness()` | **0** operational | **Retained** — display / deprecated board |
+| `vehicleRuntimeStateBuilder` | Dashboard runtime (canonical) | **Retained** — thinned P1.5 |
+| `rentalReadiness` | Dashboard readiness (canonical) | **Retained** |
+| `controlSignalsBuilder` | KPI sync labels only | **Retained** — not notification authority |
+| `deriveOperationalInsights` | Fleet insights (canonical connectivity) | **Retained** |
+| `derivePredictiveOperationsInsights` | Predictive (canonical attention) | **Retained** |
+
+### Timestamp threshold audit
+
+- **CANONICAL BACKEND-CONTRACT DISPLAY/TEST:** `telemetryFreshness.ts` thresholds (15m/24h/48h) used for age labels and contradiction tests — **ALLOWED**
+- **FRONTEND STATE DERIVATION:** No tenant-facing operational gate remains on client age thresholds when canonical runtime/availability present — **PASS**
+
+### Final authority table
+
+See `architecture/VEHICLE_OPERATIONAL_STATE_FRONTEND_ARCHITECTURE_CLOSURE_2026-08.md`.
+
+All tenant surfaces: **Legacy Authority Remaining = NO**
+
+### Regression evidence
+
+| Suite | Result |
+|-------|--------|
+| P1 FINAL closure (`vehicle-operational-state-p1-final-closure.test.ts`) | **20/20** |
+| Combined P1.1–P1.7 + fleet/dashboard/booking/notification regression | **434/434** |
+| Build + typecheck | **PASS** |
+
+### Closure gates
+
+| Gate | Status |
+|------|--------|
+| TENANT LEGACY OPERATIONAL AUTHORITY REMAINING | **NO** |
+| CLIENT TIMESTAMP CONNECTIVITY STATE MACHINE REMAINING | **NO** |
+| LEGACY ONLINESTATUS AUTHORITY REMAINING | **NO** |
+| LEGACY HEALTHSTATUS AUTHORITY REMAINING | **NO** |
+| DUPLICATE FRONTEND VEHICLE STATE MACHINE REMAINING | **NO** |
+| P1.1–P1.7 REGRESSION | **PASS** |
+| CROSS-SURFACE AUTHORITY CONSISTENCY | **PASS** |
+| VISIBLE BEHAVIOR CHANGED | **YES** (StatInlineDetail + station HUD alignment) |
+| VEHICLE OPERATIONAL STATE FRONTEND ARCHITECTURE | **CLOSED** |
+
+---
+
 ## Related architecture references
 
 - `architecture/VEHICLE_OPERATIONAL_STATE_PROVENANCE_2026-08.md`

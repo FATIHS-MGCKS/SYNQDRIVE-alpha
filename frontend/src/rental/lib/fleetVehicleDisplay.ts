@@ -752,15 +752,3 @@ export function fleetOperationalSortScore(display: FleetVehicleDisplayState): nu
   return score;
 }
 
-/**
- * Whether the telemetry signal is old enough to be operationally notable, i.e.
- * soft-offline (signal_delayed, ≥24h) or worse. STANDBY (15min–24h) is normal
- * and returns false — it must never inflate Attention.
- */
-export function isFleetSignalOutdated(
-  v: Pick<VehicleData, 'signalAgeMs' | 'lastSignal' | 'onlineStatus'>,
-  now: number = Date.now(),
-): boolean {
-  const f = resolveTelemetryFreshness(v, { now });
-  return f.isSignalDelayed || f.isOffline || f.isNoSignal;
-}

@@ -2,7 +2,8 @@ import { Icon } from './ui/Icon';
 import { useMemo } from 'react';
 import { BrandLogoMark, getBrandFromModel } from './BrandLogo';
 
-import { VehicleData, isVehicleOffline, VEHICLE_OFFLINE_LABEL } from '../data/vehicles';
+import { VehicleData } from '../data/vehicles';
+import { isDashboardAvailablePopupReadyForRent } from './dashboard/runtime/dashboard-operational-readiness';
 import { useFleetVehicles, useEffectiveHealth } from '../FleetContext';
 import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
 import type { Station, VehicleHealthResponse } from '../../lib/api';
@@ -461,12 +462,9 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                   ? healthMap.get(v.id) ?? null
                   : null;
                 const isBlocked = !!vHealth?.rental_blocked;
-                // V4.7.62 — Offline (Last Signal ≥ 1 day) → "Not Ready"
-                // + greyed card + explicit "Vehicle Offline - Check
-                // Device" line, mirroring the Fleet-page Fleet-Status box.
-                const offline = isVehicleOffline(v);
+                const isReady = isDashboardAvailablePopupReadyForRent(v, vHealth);
                 return (
-                <div key={v.id} onClick={vehicleClick(v)} onMouseEnter={() => onItemHover?.(v.model)} onMouseLeave={() => onItemHover?.(null)} className={`rounded-xl p-3 border transition-all hover:shadow-sm cursor-pointer ${cardClass} ${offline ? 'opacity-60 grayscale' : ''}`}>
+                <div key={v.id} onClick={vehicleClick(v)} onMouseEnter={() => onItemHover?.(v.model)} onMouseLeave={() => onItemHover?.(null)} className={`rounded-xl p-3 border transition-all hover:shadow-sm cursor-pointer ${cardClass}`}>
                   {/* Row 1: License + MMY + Clean / Health / Ready badges + chevron.
                       V4.6.88 — Clean & Health switched from icons to pill badges
                       that share the same visual language as the Ready badge so
@@ -502,15 +500,13 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                       <HealthChip vehicleId={v.id} />
                       <span
                         className={`shrink-0 inline-block w-[72px] text-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${
-                          offline
-                            ? (isDarkMode ? 'bg-muted/60 text-foreground/85' : 'bg-muted text-muted-foreground')
-                            : !isBlocked
-                              ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
-                              : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
+                          isReady
+                            ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
+                            : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
                         }`}
-                        title={offline ? VEHICLE_OFFLINE_LABEL : !isBlocked ? 'Ready for rental' : 'Not ready — rental blocked'}
+                        title={isReady ? 'Ready for rental' : isBlocked ? 'Not ready — rental blocked' : 'Not ready'}
                       >
-                        {!offline && !isBlocked ? 'Ready' : 'Not Ready'}
+                        {isReady ? 'Ready' : 'Not Ready'}
                       </span>
                       <Icon name="chevron-right" className={`w-3.5 h-3.5 text-muted-foreground`} />
                     </div>
@@ -522,26 +518,17 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                       seiner zugewiesenen Station steht. Bei fehlender
                       Station, fehlenden Koordinaten oder fehlendem GPS-Fix
                       wird gar nichts gerendert (kein false-positive AWAY). */}
-                  {offline ? (
-                    <div className={`flex items-center gap-1.5 pt-1.5 border-t min-w-0 overflow-hidden ${isDarkMode ? 'border-border/40' : 'border-border'}`}>
-                      <Icon name="wifi-off" className={`w-2.5 h-2.5 shrink-0 text-muted-foreground`} />
-                      <span className={`truncate min-w-0 flex-1 text-[10px] font-semibold text-muted-foreground`}>
-                        {VEHICLE_OFFLINE_LABEL}
-                      </span>
+                  <div className={`flex items-center gap-1.5 pt-1.5 border-t min-w-0 overflow-hidden ${isDarkMode ? 'border-border/40' : 'border-border'}`}>
+                    <Icon name="map-pin" className={`w-2.5 h-2.5 shrink-0 text-muted-foreground`} />
+                    <div className="truncate min-w-0 flex-1 text-[10px]">
+                      <VehicleAddress v={v} isDarkMode={isDarkMode} />
                     </div>
-                  ) : (
-                    <div className={`flex items-center gap-1.5 pt-1.5 border-t min-w-0 overflow-hidden ${isDarkMode ? 'border-border/40' : 'border-border'}`}>
-                      <Icon name="map-pin" className={`w-2.5 h-2.5 shrink-0 text-muted-foreground`} />
-                      <div className="truncate min-w-0 flex-1 text-[10px]">
-                        <VehicleAddress v={v} isDarkMode={isDarkMode} />
-                      </div>
-                      <HomeAwayBadge v={v} stationLookup={stationLookup} isDarkMode={isDarkMode} />
-                      <div className={`w-px h-3 shrink-0 bg-muted`} />
-                      <FuelStripe v={v} isDarkMode={isDarkMode} />
-                      <div className={`w-px h-3 shrink-0 bg-muted`} />
-                      <OdometerText v={v} isDarkMode={isDarkMode} />
-                    </div>
-                  )}
+                    <HomeAwayBadge v={v} stationLookup={stationLookup} isDarkMode={isDarkMode} />
+                    <div className={`w-px h-3 shrink-0 bg-muted`} />
+                    <FuelStripe v={v} isDarkMode={isDarkMode} />
+                    <div className={`w-px h-3 shrink-0 bg-muted`} />
+                    <OdometerText v={v} isDarkMode={isDarkMode} />
+                  </div>
                 </div>
                 );
               })}
