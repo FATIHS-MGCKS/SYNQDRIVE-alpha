@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-invoice-detail-header-p2-2-50-2026-08-27',
+    version: '4.9.977',
+    title: 'Platform i18n — P2.2.50 Rental Invoice Detail Primary Header localization',
+    summary: [
+      'Localized Invoice Detail Primary Header via `rental-invoice-detail-header-i18n.ts` and `rental.invoice.detail.header.*` keys (clean reimplementation after #1338 split).',
+      'P250 enforce-clean exact scope (5 paths) reports 0 findings; +26 EN+DE keys (8760→8786); reuses `invoices.list.*`, `invoicePayment.*`, `common.edit`.',
+      'Void action uses `menu.voidInvoice` (Stornieren) — not `common.cancel`. Relations deferred to P2.2.51. Category E=0.',
+    ],
+    reason:
+      'P2.2.50 key-budget reassessment (PR #1338) required Header-first split after rejected combined PR #1337.',
+    previousBehavior:
+      'Invoice Detail Header used fixed German literals for amounts, dates, status/type labels, menu items, and action gate reasons; `invoiceUtils` used fixed `de-DE` formatting.',
+    details:
+      'rental/components/invoices/InvoiceDetailHeader.tsx; InvoiceHeaderMoreMenu.tsx; invoiceDetail.mapper.ts; invoiceUtils.ts; InvoiceDetail.tsx (locale threading); rental-invoice-detail-header-i18n.ts; rental.invoice.detail.header.{en,de}.ts; rental-invoice-detail-header-localization.test.tsx; P250_ENFORCE_CLEAN_EXACT; architecture/I18N_RENTAL_INVOICE_DETAIL_HEADER_P2_2_50_2026-08-27.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-27T14:30:00.000Z',
+  },
+  {
     id: 'i18n-rental-invoice-detail-secondary-p2-2-49-2026-08-26',
     version: '4.9.976',
     title: 'Platform i18n — P2.2.49 Rental Invoice Detail Secondary localization',

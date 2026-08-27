@@ -13,6 +13,7 @@ import { invoicesListEn } from './invoices.list.en';
 import { invoicesCreateEn } from './invoices.create.en';
 import { invoicesSendEn } from './invoices.send.en';
 import { invoicesDocumentsEn } from './invoices.documents.en';
+import { rentalInvoiceDetailHeaderEn } from './rental.invoice.detail.header.en';
 import { rentalInvoiceDetailSecondaryEn } from './rental.invoice.detail.secondary.en';
 import { operatorDamageCaptureEn } from './operator.damageCapture.en';
 import { operatorPickupCheckEn } from './operator.pickupCheck.en';
@@ -5604,6 +5605,7 @@ export const en = {
   ...invoicesCreateEn,
   ...invoicesSendEn,
   ...invoicesDocumentsEn,
+  ...rentalInvoiceDetailHeaderEn,
   ...rentalInvoiceDetailSecondaryEn,
   ...operatorDamageCaptureEn,
   ...operatorPickupCheckEn,
