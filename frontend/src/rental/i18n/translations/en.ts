@@ -1412,6 +1412,17 @@ export const en = {
   'vehicleDetail.mapBadge.signalIssue': 'Signal issue',
   'vehicleDetail.mapBadge.noTracking': 'No tracking',
   'vehicleDetail.mapBadge.acquiring': 'Acquiring',
+  'vehicleDetail.connectivity.ariaLabel': 'Vehicle connectivity',
+  'vehicleDetail.connectivity.eyebrow': 'Connectivity',
+  'vehicleDetail.connectivity.lastSignal': 'Last vehicle signal',
+  'vehicleDetail.connectivity.dataSource': 'Data source',
+  'vehicleDetail.connectivity.device': 'Device status',
+  'vehicleDetail.connectivity.interruption': 'Interruption',
+  'vehicleDetail.connectivity.noActiveInterruption': 'No active interruption',
+  'vehicleDetail.connectivity.activeInterruption': 'Active since {since} · {duration}',
+  'vehicleDetail.connectivity.providerDimo': 'DIMO',
+  'vehicleDetail.connectivity.providerGeneric': 'Data source',
+  'vehicleDetail.connectivity.duringActiveBooking': 'During active booking',
 
   // ─── Bookings ───
   'bookings.title': 'Bookings',
