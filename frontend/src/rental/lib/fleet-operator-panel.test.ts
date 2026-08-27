@@ -297,6 +297,19 @@ describe('fleet-operator-panel', () => {
     expect(options.some((o) => o.id === NO_STATION_FILTER)).toBe(true);
   });
 
+  it('buildStationFilterOptions ready uses P0.2 not marker visual.isReady', () => {
+    const unplugged = canonicalVehicle({
+      operationalAvailability: availability('AVAILABLE'),
+      connectivityRuntime: runtime({
+        overallState: 'DEVICE_UNPLUGGED',
+        attentionState: 'CRITICAL',
+      }),
+    });
+    const options = buildStationFilterOptions([], [unplugged], () => null);
+    expect(options[0]?.ready).toBe(1);
+    expect(options[0]?.attention).toBe(1);
+  });
+
   it('resolveOperatorTabForVehicle maps by operational status, not health attention', () => {
     const offlineAvailable = buildFleetVehicleContexts(
       [

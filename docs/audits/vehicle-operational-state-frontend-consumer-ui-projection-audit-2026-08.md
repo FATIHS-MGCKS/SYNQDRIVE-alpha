@@ -1224,6 +1224,100 @@ P0.4 healthEvaluation.evaluability for mechanical alerts
 
 ---
 
+## P1 FINAL — Legacy Authority Cleanup & Architecture Closure
+
+**Date:** 2026-08-27  
+**Branch:** `cursor/global-legacy-authority-cleanup-90ec`  
+**Baseline main:** `8c5867853357922ca7fe8df7a5353336c14c0e35`
+
+### Classification summary
+
+| Category | Count (relevant matches) | Notes |
+|----------|--------------------------|-------|
+| **A — CANONICAL / ALLOWED** | ~180 | P1.1–P1.7 adapters, display labels, test fixtures, canonical regression tests |
+| **B — LEGACY AUTHORITY (removed)** | 2 | `StatInlineDetail` `isVehicleOffline`; station HUD initial `visual.isReady` (corrected) |
+| **C — LEGACY COMPATIBILITY (retained)** | ~25 | DTO `onlineStatus`/`healthStatus`, `resolveTelemetryFreshness` display, deprecated `fleetStateBuilder` |
+| **D — DEAD CODE (removed)** | 2 | `telemetryStateToIssueDraft`, `isFleetSignalOutdated` |
+| **E — MASTER ADMIN / OUT OF SCOPE** | ~8 | Raw technical telemetry in Master Admin surfaces |
+
+### Critical helper disposition
+
+| Helper | Production operational consumers | Disposition |
+|--------|----------------------------------|-------------|
+| `isVehicleOffline()` | **0** (was StatInlineDetail; fleet legacy path only) | **@deprecated** — legacy visual fallback only |
+| `resolveTelemetryFreshness()` | **0** operational | **Retained** — display / deprecated board |
+| `vehicleRuntimeStateBuilder` | Dashboard runtime (canonical) | **Retained** — thinned P1.5 |
+| `rentalReadiness` | Dashboard readiness (canonical) | **Retained** |
+| `controlSignalsBuilder` | KPI sync labels only | **Retained** — not notification authority |
+| `deriveOperationalInsights` | Fleet insights (canonical connectivity) | **Retained** |
+| `derivePredictiveOperationsInsights` | Predictive (canonical attention) | **Retained** |
+
+### Timestamp threshold audit
+
+- **CANONICAL BACKEND-CONTRACT DISPLAY/TEST:** `telemetryFreshness.ts` thresholds (15m/24h/48h) used for age labels and contradiction tests — **ALLOWED**
+- **FRONTEND STATE DERIVATION:** No tenant-facing operational gate remains on client age thresholds when canonical runtime/availability present — **PASS**
+
+### Final authority table
+
+See `architecture/VEHICLE_OPERATIONAL_STATE_FRONTEND_ARCHITECTURE_CLOSURE_2026-08.md`.
+
+All tenant surfaces: **Legacy Authority Remaining = NO**
+
+### Station HUD ready authority (blocker fix)
+
+| | Before P1 FINAL | Initial P1 FINAL PR | Corrected |
+|--|-----------------|---------------------|-----------|
+| Authority | `deriveFleetVisualState({ rentalHealth }).isReady` (legacy timestamps) | `deriveFleetVisualState({ uiProjection }).isReady` (**marker presentation — rejected**) | `isStationFilterHudOperationallyReady()` — P0.2 + business AVAILABLE |
+| DEVICE_UNPLUGGED + P0.2 AVAILABLE | excluded from ready | excluded from ready | **included in ready**, attention still yes |
+
+### Dashboard handover display (final blocker fix)
+
+| Path | Before | After |
+|------|--------|-------|
+| `resolveHandoverReadinessBadge` | `resolveFleetVehicleDisplayState` without `uiProjection` → legacy timestamps + `healthStatus` | `resolveCanonicalFleetVehicleDisplayState` → P1.2 `uiProjection` |
+| `resolveHandoverVehicleReasonBadge` | same legacy fallback | same canonical helper |
+| `CompactFleetDrawerVehicleRow`, `ActiveRentalDrawerRowCard`, `OperatorVehicleQuickView` | legacy fallback | `resolveCanonicalFleetVehicleDisplayState` |
+
+**`resolveFleetVehicleDisplayState` live production:** 11 calls · 11 canonical · 0 without projection (B = 0).
+
+**Handover contradiction tests:** `dashboardDrilldownRowDisplay.test.ts` — stale `lastSignal`, legacy `onlineStatus`, legacy `healthStatus` cannot override canonical readiness/reason.
+
+### Regression evidence
+
+| Suite | Result |
+|-------|--------|
+| P1 focused/canonical suites | **303/303 PASS** |
+| P1 FINAL closure (`vehicle-operational-state-p1-final-closure.test.ts`) | **21/21** |
+| Handover domain separation + contradiction tests | **12/12 PASS** |
+| Broader suite (+ `dashboardDrilldownRowDisplay` drawer + `dashboardRuntimeUI`) | **321/329** — **8 identical failures on baseline `8c586785`** |
+| PR-introduced failures | **0** |
+| Build + typecheck | **PASS** |
+
+**Broader vitest command:** see `architecture/VEHICLE_OPERATIONAL_STATE_FRONTEND_ARCHITECTURE_CLOSURE_2026-08.md` §Regression evidence.
+
+### Domain separation (final closure)
+
+Marker `visual.isBlocked` (P1.3 attention) no longer drives `rentalDisplay`, `primaryStatus`, or handover readiness when `uiProjection` is set. Handover badge = health + P0.2/rental block only.
+
+### Closure gates
+
+| Gate | Status |
+|------|--------|
+| TENANT LEGACY OPERATIONAL AUTHORITY REMAINING | **NO** |
+| SECOND READINESS AUTHORITY REMAINING | **NO** |
+| STATION READY / P0.2 CONSISTENCY | **PASS** |
+| ATTENTION != UNAVAILABLE | **PASS** |
+| CLIENT TIMESTAMP CONNECTIVITY AUTHORITY | **NO** |
+| LEGACY ONLINESTATUS AUTHORITY REMAINING | **NO** |
+| LEGACY HEALTHSTATUS AUTHORITY REMAINING | **NO** |
+| P1.1–P1.7 REGRESSION | **PASS** |
+| CROSS-SURFACE OPERATIONAL AUTHORITY | **PASS** |
+| NEW BUSINESS SEMANTICS INTRODUCED | **NO** |
+| VISIBLE ALIGNMENT FROM APPROVED CANONICAL SEMANTICS | **YES** (popup + station HUD pixels may differ from legacy) |
+| VEHICLE OPERATIONAL STATE FRONTEND ARCHITECTURE | **CLOSED** |
+
+---
+
 ## Related architecture references
 
 - `architecture/VEHICLE_OPERATIONAL_STATE_PROVENANCE_2026-08.md`

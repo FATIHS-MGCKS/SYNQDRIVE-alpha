@@ -4,8 +4,12 @@
  * Dashboard must not derive operational readiness from timestamps, onlineStatus,
  * or legacy telemetry freshness heuristics.
  */
-import type { VehicleConnectivityRuntimeState } from '../../../../lib/api';
+import type { VehicleConnectivityRuntimeState, VehicleHealthResponse } from '../../../../lib/api';
 import type { VehicleData } from '../../../data/vehicles';
+import {
+  VEHICLE_OPERATIONAL_STATUS,
+  selectOperationalStatus,
+} from '../../../lib/vehicle-operational-state';
 import { buildFleetVehicleUiProjection, type FleetProjectionVehicle } from '../../../lib/fleet-vehicle-ui-projection';
 import {
   OPERATIONAL_AVAILABILITY_STATE,
@@ -208,4 +212,25 @@ export function shouldIncludeInDashboardBlockedMaintenance(input: {
   }
 
   return false;
+}
+
+/**
+ * Station filter HUD "ready" count — P0.2 operational availability within the
+ * business Available workflow. NOT map marker visual readiness.
+ */
+export function isStationFilterHudOperationallyReady(vehicle: VehicleData): boolean {
+  if (selectOperationalStatus(vehicle) !== VEHICLE_OPERATIONAL_STATUS.AVAILABLE) {
+    return false;
+  }
+  return isDashboardOperationalAvailabilityReady(vehicle);
+}
+
+/** @deprecated Use `isDashboardPopupReadyForRent` from vehicleRuntimeStateBuilder for full P1.5 readiness. */
+export function isDashboardAvailablePopupReadyForRent(
+  vehicle: VehicleData,
+  health: VehicleHealthResponse | null | undefined,
+): boolean {
+  if (vehicle.cleaningStatus !== 'Clean') return false;
+  if (health?.rental_blocked) return false;
+  return isDashboardOperationalAvailabilityReady(vehicle);
 }

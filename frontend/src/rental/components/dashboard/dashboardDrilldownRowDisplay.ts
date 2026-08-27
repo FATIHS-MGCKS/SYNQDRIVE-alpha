@@ -3,8 +3,9 @@ import {
   formatRuntimeReasonLabel,
 } from './reasonDisplay';
 import { sanitizeUserFacingIssueText } from '../../lib/operational-issues';
-import type { FleetReasonBadge } from '../../lib/fleetVehicleDisplay';
-import { fleetSignalAgeMs, resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import type { FleetReasonBadge, FleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import { fleetSignalAgeMs, resolveCanonicalFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import { OPERATIONAL_AVAILABILITY_STATE } from '../../lib/operational-availability/types';
 import type { VehicleHealthResponse } from '../../../lib/api';
 import type { VehicleData } from '../../data/vehicles';
 import type {
@@ -308,8 +309,27 @@ function isHandoverTimingReason(text: string): boolean {
 }
 
 /**
- * Reserved handover badge tone follows fleet health readiness (green / orange / red),
- * not pickup timing — overdue is shown only in the timing chip.
+ * Handover readiness badge tone — health condition + canonical rental/operational block.
+ * Connectivity/marker attention alone must not flip the badge (see reasonBadge for that).
+ */
+function isHandoverHealthOrRentalCritical(
+  vehicle: VehicleData | undefined,
+  health: VehicleHealthResponse | null | undefined,
+  fleetDisplay: FleetVehicleDisplayState,
+): boolean {
+  if (fleetDisplay.healthDisplay.status === 'critical') return true;
+  if (fleetDisplay.rentalDisplay.status === 'blocked') return true;
+  if (vehicle?.operationalAvailability?.state === OPERATIONAL_AVAILABILITY_STATE.UNAVAILABLE) {
+    return true;
+  }
+  if (health?.rental_blocked) return true;
+  return false;
+}
+
+/**
+ * Reserved handover badge tone follows health readiness and canonical rental/operational
+ * blockers — not pickup timing (overdue is shown only in the timing chip) and not
+ * P1.3 marker/connectivity attention alone.
  */
 export function resolveHandoverReadinessBadge(
   vehicle: VehicleData | undefined,
@@ -322,22 +342,17 @@ export function resolveHandoverReadinessBadge(
   const label = fallbackLabel ?? (de ? 'Reserviert' : 'Reserved');
 
   const fleetDisplay = vehicle
-    ? resolveFleetVehicleDisplayState(vehicle, { rentalHealth: health ?? null, locale })
+    ? resolveCanonicalFleetVehicleDisplayState(vehicle, { rentalHealth: health ?? null, locale })
     : null;
 
   if (fleetDisplay) {
     const healthStatus = fleetDisplay.healthDisplay.status;
-    const blocked =
-      fleetDisplay.rentalDisplay.status === 'blocked'
-      || fleetDisplay.primaryStatus === 'blocked'
-      || fleetDisplay.primaryStatus === 'critical';
 
-    if (blocked || healthStatus === 'critical') {
+    if (isHandoverHealthOrRentalCritical(vehicle, health, fleetDisplay)) {
       return { label, tone: 'critical' };
     }
     if (
       healthStatus === 'warning'
-      || fleetDisplay.primaryStatus === 'warning'
       || (vehicle?.cleaningStatus && vehicle.cleaningStatus !== 'Clean')
     ) {
       return { label, tone: 'watch' };
@@ -366,7 +381,7 @@ export function resolveHandoverVehicleReasonBadge(
   locale: string,
 ): DrawerVehicleReasonBadge | null {
   const fleetDisplay = vehicle
-    ? resolveFleetVehicleDisplayState(vehicle, { rentalHealth: health ?? null, locale })
+    ? resolveCanonicalFleetVehicleDisplayState(vehicle, { rentalHealth: health ?? null, locale })
     : null;
   const badge = resolveDrawerVehicleReasonBadge(row, locale, fleetDisplay?.reasonBadge ?? null);
   if (!badge || isHandoverTimingReason(badge.text)) return null;

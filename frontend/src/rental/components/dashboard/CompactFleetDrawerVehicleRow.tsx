@@ -4,7 +4,7 @@ import { cn } from '../../../components/ui/utils';
 import type { VehicleHealthResponse } from '../../../lib/api';
 import { getShortModel, type VehicleData } from '../../data/vehicles';
 import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
-import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import { resolveCanonicalFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
 import { resolveDrawerVehicleReasonBadge } from './dashboardDrilldownRowDisplay';
 import { DrawerRowActionButton } from './dashboardDrawerRowActions';
 import { drawerRowActionStackClassName } from './dashboardDrawerRowLines';
@@ -81,7 +81,7 @@ export function CompactFleetDrawerVehicleRow({
   const ctaLabel = de ? 'Öffnen' : 'Open';
 
   const fleetDisplay = vehicle
-    ? resolveFleetVehicleDisplayState(vehicle, { rentalHealth: health, locale })
+    ? resolveCanonicalFleetVehicleDisplayState(vehicle, { rentalHealth: health, locale })
     : null;
 
   const license = vehicle?.license ?? row.title;

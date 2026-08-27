@@ -135,14 +135,12 @@ export function getShortModel(model: string): string {
   return model.replace(/ \d{4}$/, '');
 }
 
-// V4.9.16 — Canonical "vehicle offline" predicate, now driven by the central
-// age-based telemetry-freshness logic (`resolveTelemetryFreshness`). A vehicle
-// only counts as offline once its last signal is ≥ 48h old (real OFFLINE) or it
-// has never reported a valid signal (NO_SIGNAL). STANDBY (15min–24h) and
-// SIGNAL_DELAYED / soft-offline (24–48h) are NOT offline — they are normal /
-// secondary telemetry states and must keep a vehicle bookable & "Ready".
-// Every surface (Fleet page Fleet-Status, Dashboard Fleet-Status, booking
-// picker) reads this single helper so the rule never drifts between views.
+/**
+ * @deprecated P1 FINAL — legacy telemetry-age offline predicate. Retained only for
+ * `deriveFleetVisualState` fallback when no P1.2 `uiProjection` is supplied
+ * (e.g. deprecated `fleetStateBuilder`). Tenant operational decisions must use
+ * canonical `operationalAvailability` / `connectivityRuntime` instead.
+ */
 export function isVehicleOffline(
   v: Pick<VehicleData, 'onlineStatus' | 'lastSignal' | 'signalAgeMs'>,
 ): boolean {

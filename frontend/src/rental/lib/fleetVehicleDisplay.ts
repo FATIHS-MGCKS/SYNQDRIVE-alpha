@@ -45,6 +45,7 @@ import {
   resolveReasonBadgeFromUi,
   resolveTelemetryFromUi,
 } from './fleet-p1-3-display';
+import { buildFleetVehicleUiProjection } from './fleet-vehicle-ui-projection';
 
 /**
  * Shared display layer for fleet vehicle rows (Dashboard Fleet State Board +
@@ -124,6 +125,10 @@ export interface FleetVehicleDisplayState {
   statusBadge: OperationalStatusBadgeDisplay;
   /** Booking context supplement line (nextBooking, pickup, return). */
   bookingSupplement: BookingSupplementDisplay | null;
+  /**
+   * List-row presentation urgency from business workflow + canonical health + rental block.
+   * Not marker/connectivity attention — use `reasonBadge` / P1.3 visual for attention.
+   */
   primaryStatus: FleetOperationalStatus;
   primaryLabel: string;
   primaryTone: StatusTone;
@@ -217,6 +222,20 @@ function hasHardRentalBlockingReasons(
   });
 }
 
+/**
+ * P1 FINAL — canonical rental/operational block (P0.2 + rental health).
+ * Excludes P1.3 marker `visual.isBlocked` from connectivity attention alone.
+ */
+export function resolveCanonicalRentalBlockedFromUi(
+  rentalHealth: VehicleHealthResponse | null | undefined,
+  uiProjection: VehicleOperationalUiProjection,
+): boolean {
+  if (hasHardRentalBlockingReasons(rentalHealth)) return true;
+  if (rentalHealth?.rental_blocked) return true;
+  const availability = uiProjection.availability.presentation?.state;
+  return availability === OPERATIONAL_AVAILABILITY_STATE.UNAVAILABLE;
+}
+
 function isServiceOnlyOverdueCritical(
   rentalHealth: VehicleHealthResponse | null | undefined,
 ): boolean {
@@ -251,14 +270,26 @@ function resolveOperationalStatus(
   v: VehicleData,
   rentalHealth: VehicleHealthResponse | null,
   visual: FleetVisualState,
+  options: {
+    canonicalHealth?: Pick<FleetHealthDisplay, 'status'> | null;
+    /** When set, P1.3 marker `visual.isBlocked` is not used for rental block. */
+    canonicalRentalBlocked?: boolean;
+  } = {},
 ): FleetOperationalStatus {
-  const rentalBlocked = hasHardRentalBlockingReasons(rentalHealth) || visual.isBlocked;
-  const healthCritical = isHealthCritical(v, rentalHealth);
-  const healthWarning = isHealthWarning(v, rentalHealth);
+  const rentalBlocked =
+    options.canonicalRentalBlocked !== undefined
+      ? options.canonicalRentalBlocked
+      : hasHardRentalBlockingReasons(rentalHealth) || visual.isBlocked;
+  const healthCritical = options.canonicalHealth
+    ? options.canonicalHealth.status === 'critical'
+    : isHealthCritical(v, rentalHealth);
+  const healthWarning = options.canonicalHealth
+    ? options.canonicalHealth.status === 'warning'
+    : isHealthWarning(v, rentalHealth);
   const status = selectOperationalStatus(v);
 
   if (healthCritical) return 'critical';
-  if (rentalBlocked || visual.isBlocked) return 'blocked';
+  if (rentalBlocked) return 'blocked';
   if (status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return 'maintenance';
   if (status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) {
     return selectFleetActiveIsOverdue(v) ? 'warning' : 'active';
@@ -385,15 +416,19 @@ function resolveRentalDisplay(
   rentalHealth: VehicleHealthResponse | null,
   visual: FleetVisualState,
   de: boolean,
+  options: { canonicalRentalBlocked?: boolean } = {},
 ): FleetRentalDisplay {
   const operationalStatus = selectOperationalStatus(v);
+  const rentalBlocked =
+    options.canonicalRentalBlocked !== undefined
+      ? options.canonicalRentalBlocked
+      : hasHardRentalBlockingReasons(rentalHealth) || visual.isBlocked;
   let rentalStatus: FleetRentalAvailability;
   if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) rentalStatus = 'active';
   else if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED) rentalStatus = 'reserved';
   else if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) rentalStatus = 'maintenance';
   else if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) {
-    const blocked = hasHardRentalBlockingReasons(rentalHealth) || visual.isBlocked;
-    if (blocked) rentalStatus = 'blocked';
+    if (rentalBlocked) rentalStatus = 'blocked';
     else if (visual.isOffline) rentalStatus = 'not_ready';
     else rentalStatus = 'ready';
   } else {
@@ -654,7 +689,17 @@ export function resolveFleetVehicleDisplayState(
     : resolveOperationalAvailabilityStatusBadge(vehicle, displayTimeOptions, options);
   const bookingSupplement = resolveBookingSupplement(vehicle, displayTimeOptions);
 
-  const primaryStatus = resolveOperationalStatus(vehicle, rentalHealth, visual);
+  const canonicalHealthDisplay = options.uiProjection
+    ? resolveHealthDisplayFromUi(options.uiProjection)
+    : null;
+  const canonicalRentalBlocked =
+    options.uiProjection != null
+      ? resolveCanonicalRentalBlockedFromUi(rentalHealth, options.uiProjection)
+      : undefined;
+  const primaryStatus = resolveOperationalStatus(vehicle, rentalHealth, visual, {
+    canonicalHealth: canonicalHealthDisplay,
+    canonicalRentalBlocked,
+  });
   const primaryLabel = primaryLabelFor(primaryStatus, vehicle, de);
   const primaryTone = primaryToneFor(primaryStatus);
 
@@ -678,14 +723,16 @@ export function resolveFleetVehicleDisplayState(
     tone: fleetEnergyTone(percent),
   };
 
-  const healthDisplay = options.uiProjection
-    ? resolveHealthDisplayFromUi(options.uiProjection)
-    : options.healthEvaluationBadge
+  const healthDisplay =
+    canonicalHealthDisplay ??
+    (options.healthEvaluationBadge
       ? resolveHealthEvaluationDisplay(vehicle.healthEvaluation, {
           t: options.t ?? tForFleetLocale(options.locale),
         })
-      : resolveHealthDisplay(vehicle, rentalHealth, de);
-  const rentalDisplay = resolveRentalDisplay(vehicle, rentalHealth, visual, de);
+      : resolveHealthDisplay(vehicle, rentalHealth, de));
+  const rentalDisplay = resolveRentalDisplay(vehicle, rentalHealth, visual, de, {
+    canonicalRentalBlocked,
+  });
   const reasonBadge =
     (options.uiProjection
       ? resolveReasonBadgeFromUi(options.uiProjection, healthDisplay.status)
@@ -725,6 +772,29 @@ export function resolveFleetVehicleDisplayState(
 }
 
 /**
+ * P1 FINAL — tenant fleet display with canonical P1.2 uiProjection + P1.3 visual.
+ * Use for all live production surfaces; bypasses legacy timestamp/healthStatus fallback.
+ */
+export function resolveCanonicalFleetVehicleDisplayState(
+  vehicle: VehicleData,
+  options: Omit<ResolveFleetVehicleDisplayOptions, 'uiProjection' | 'visual'> = {},
+): FleetVehicleDisplayState {
+  const localeCode = options.locale === 'de' ? 'de' : 'en';
+  const uiProjection = buildFleetVehicleUiProjection(vehicle, { locale: localeCode });
+  const visual = deriveFleetVisualState(vehicle, {
+    rentalHealth: options.rentalHealth ?? null,
+    uiProjection,
+    locale: localeCode,
+  });
+  return resolveFleetVehicleDisplayState(vehicle, {
+    ...options,
+    locale: options.locale ?? localeCode,
+    uiProjection,
+    visual,
+  });
+}
+
+/**
  * Operational ordering score (higher = further up). Critical/blocked/warning
  * stay on top regardless of telemetry; non-urgent offline vehicles drop to the
  * very bottom, non-urgent outdated-signal vehicles are nudged down.
@@ -752,15 +822,3 @@ export function fleetOperationalSortScore(display: FleetVehicleDisplayState): nu
   return score;
 }
 
-/**
- * Whether the telemetry signal is old enough to be operationally notable, i.e.
- * soft-offline (signal_delayed, ≥24h) or worse. STANDBY (15min–24h) is normal
- * and returns false — it must never inflate Attention.
- */
-export function isFleetSignalOutdated(
-  v: Pick<VehicleData, 'signalAgeMs' | 'lastSignal' | 'onlineStatus'>,
-  now: number = Date.now(),
-): boolean {
-  const f = resolveTelemetryFreshness(v, { now });
-  return f.isSignalDelayed || f.isOffline || f.isNoSignal;
-}

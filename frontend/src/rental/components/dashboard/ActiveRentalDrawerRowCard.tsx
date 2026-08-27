@@ -3,7 +3,7 @@ import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import type { VehicleHealthResponse } from '../../../lib/api';
 import { getShortModel, type VehicleData } from '../../data/vehicles';
-import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import { resolveCanonicalFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
 import { bookingRef } from '../bookings/bookingUtils';
 import {
   resolveDrawerVehicleReasonBadge,
@@ -65,7 +65,7 @@ export function ActiveRentalDrawerRowCard({
   onClose,
 }: ActiveRentalDrawerRowCardProps) {
   const de = locale === 'de';
-  const display = resolveFleetVehicleDisplayState(vehicle, {
+  const display = resolveCanonicalFleetVehicleDisplayState(vehicle, {
     rentalHealth: health,
     locale,
   });
