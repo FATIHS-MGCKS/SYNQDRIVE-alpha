@@ -1,4 +1,9 @@
-import { FileText, Receipt } from 'lucide-react';
+import { Receipt } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  rentalInvoiceRelationsSectionTitle,
+  rentalInvoiceRelationsTemplateLabel,
+} from '../../lib/rental-invoice-relations-i18n';
 import type { InvoiceDetailDto } from './invoiceDetailTypes';
 import { InvoiceDetailRow } from './InvoiceDetailRow';
 import { InvoiceRelationRow } from './InvoiceRelationRow';
@@ -24,6 +29,7 @@ export function InvoiceRelations({
   ts,
   isDarkMode,
 }: InvoiceRelationsProps) {
+  const { locale } = useLanguage();
   const { relations } = detail;
 
   const handleNavigate = (relation: InvoiceEntityRelation) => {
@@ -56,7 +62,9 @@ export function InvoiceRelations({
 
   return (
     <div className={`${card} p-4 sm:p-5`} data-testid="invoice-relations-primary">
-      <h3 className={`text-xs font-bold ${tp} mb-2 uppercase tracking-wider`}>Zuordnung</h3>
+      <h3 className={`text-xs font-bold ${tp} mb-2 uppercase tracking-wider`}>
+        {rentalInvoiceRelationsSectionTitle(locale)}
+      </h3>
       <div className={`divide-y ${isDarkMode ? 'divide-border/30' : 'divide-gray-100'}`}>
         {entityRelations.map((relation) => (
           <InvoiceRelationRow
@@ -71,7 +79,7 @@ export function InvoiceRelations({
 
         {relations.template ? (
           <InvoiceDetailRow
-            label="Vorlage"
+            label={rentalInvoiceRelationsTemplateLabel(locale)}
             value={relations.template.name}
             icon={Receipt}
             tp={tp}

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
+import { LanguageProvider } from '../../i18n/LanguageContext';
 import { buildInvoiceDetailDto } from './invoiceDetail.mapper';
 import { InvoiceRelations } from './InvoiceRelations';
 import type { Invoice } from './invoiceTypes';
@@ -44,6 +46,12 @@ const theme = {
   isDarkMode: false,
 };
 
+function renderRelations(ui: Parameters<typeof InvoiceRelations>[0]) {
+  return renderToStaticMarkup(
+    createElement(LanguageProvider, null, createElement(InvoiceRelations, ui)),
+  );
+}
+
 describe('InvoiceRelations component', () => {
   it('renders entity relations without provenance block', () => {
     const detail = buildInvoiceDetailDto(sampleInvoice(), {
@@ -62,9 +70,10 @@ describe('InvoiceRelations component', () => {
       },
     });
 
-    const html = renderToStaticMarkup(
-      <InvoiceRelations detail={detail} {...theme} />,
-    );
+    const html = renderRelations({
+      detail,
+      ...theme,
+    });
 
     expect(html).toContain('Erika Beispiel');
     expect(html).toContain('KD-555555');
@@ -192,13 +201,11 @@ describe('InvoiceRelations component', () => {
     });
 
     const onOpenBooking = vi.fn();
-    const html = renderToStaticMarkup(
-      <InvoiceRelations
-        detail={detail}
-        navigation={{ onOpenBooking }}
-        {...theme}
-      />,
-    );
+    const html = renderRelations({
+      detail,
+      navigation: { onOpenBooking },
+      ...theme,
+    });
 
     expect(html).toContain('BK-555555');
     expect(html).toContain('<button');
@@ -219,9 +226,11 @@ describe('InvoiceRelations component', () => {
       },
     });
 
-    const html = renderToStaticMarkup(
-      <InvoiceRelations detail={detail} navigation={{ onOpenCustomer: vi.fn() }} {...theme} />,
-    );
+    const html = renderRelations({
+      detail,
+      navigation: { onOpenCustomer: vi.fn() },
+      ...theme,
+    });
 
     expect(html).toContain('Keine Berechtigung für Kundendetails');
     expect(html).not.toContain('aria-label="Kunde: No Access"');
@@ -243,7 +252,7 @@ describe('InvoiceRelations component', () => {
       },
     });
 
-    const html = renderToStaticMarkup(<InvoiceRelations detail={detail} {...theme} />);
+    const html = renderRelations({ detail, ...theme });
     expect(html).toContain('Relation gelöscht');
     expect(html).not.toContain('Legacy-Herkunft');
     expect(html).not.toContain('BK-');

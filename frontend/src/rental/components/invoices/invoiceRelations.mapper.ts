@@ -2,8 +2,13 @@ import type { BookingDetailDto, CustomerApiRecord } from '../../../lib/api';
 import { customerDisplayName } from '../../../operator/bookings/operatorBooking.utils';
 import { bookingRef } from '../bookings/bookingUtils';
 import { bookingStatusLabel, normalizeBookingStatus } from '../bookings/bookingStatus';
-import { INVOICE_TEMPLATES } from './invoice-detail.constants';
-import { formatDate } from './invoiceFormatters';
+import {
+  formatRentalInvoiceRelationsPeriod,
+  rentalInvoiceRelationsEntityLabel,
+  rentalInvoiceRelationsFallbackLabel,
+  rentalInvoiceRelationsPermissionBlockedReason,
+  rentalInvoiceRelationsTemplateDisplayName,
+} from '../../lib/rental-invoice-relations-i18n';
 import type {
   InvoiceEntityRelation,
   InvoiceProvenanceDto,
@@ -56,47 +61,22 @@ function fallbackLabel(fallback: InvoiceRelationFallback): string {
   }
 }
 
-function permissionBlockedReason(
-  kind: InvoiceEntityRelation['kind'],
-  canRead: boolean,
-): string | null {
-  if (canRead) return null;
-  switch (kind) {
-    case 'customer':
-      return 'Keine Berechtigung für Kundendetails';
-    case 'booking':
-      return 'Keine Berechtigung für Buchungsdetails';
-    case 'vehicle':
-      return 'Keine Berechtigung für Fahrzeugdetails';
-    default:
-      return 'Keine Berechtigung';
-  }
-}
-
-function formatRentalPeriod(start: string, end: string): string {
-  const startLabel = formatDate(start);
-  const endLabel = formatDate(end);
-  if (startLabel === '—' && endLabel === '—') return 'Zeitraum unbekannt';
-  if (startLabel === '—') return `bis ${endLabel}`;
-  if (endLabel === '—') return `ab ${startLabel}`;
-  return `${startLabel} – ${endLabel}`;
-}
-
 function buildCustomerRelation(
   invoice: Invoice,
   enrichment: InvoiceRelationsEnrichment,
   permissions: InvoiceRelationsPermissions,
+  locale: string,
 ): InvoiceEntityRelation | null {
   if (!invoice.customerId) return null;
 
   const canNavigate = permissions.canReadCustomers;
-  const blocked = permissionBlockedReason('customer', canNavigate);
+  const blocked = rentalInvoiceRelationsPermissionBlockedReason(locale, 'customer', canNavigate);
 
   if (enrichment.customerFetchState === 'not_found') {
     return {
       kind: 'customer',
-      label: 'Kunde',
-      primary: fallbackLabel('deleted'),
+      label: rentalInvoiceRelationsEntityLabel(locale, 'customer'),
+      primary: rentalInvoiceRelationsFallbackLabel(locale, 'deleted'),
       secondary: customerRef(invoice.customerId),
       tertiary: null,
       fallback: 'deleted',
@@ -109,8 +89,8 @@ function buildCustomerRelation(
   if (enrichment.customerFetchState === 'error' || !enrichment.customer) {
     return {
       kind: 'customer',
-      label: 'Kunde',
-      primary: fallbackLabel('unavailable'),
+      label: rentalInvoiceRelationsEntityLabel(locale, 'customer'),
+      primary: rentalInvoiceRelationsFallbackLabel(locale, 'unavailable'),
       secondary: customerRef(invoice.customerId),
       tertiary: null,
       fallback: 'unavailable',
@@ -125,8 +105,10 @@ function buildCustomerRelation(
 
   return {
     kind: 'customer',
-    label: 'Kunde',
-    primary: archived ? fallbackLabel('archived') : customerPrimaryLabel(customer),
+    label: rentalInvoiceRelationsEntityLabel(locale, 'customer'),
+    primary: archived
+      ? rentalInvoiceRelationsFallbackLabel(locale, 'archived')
+      : customerPrimaryLabel(customer),
     secondary: customerRef(customer.id),
     tertiary: customer.email?.trim() || null,
     fallback: archived ? 'archived' : null,
@@ -140,19 +122,20 @@ function buildBookingRelation(
   invoice: Invoice,
   enrichment: InvoiceRelationsEnrichment,
   permissions: InvoiceRelationsPermissions,
+  locale: string,
 ): InvoiceEntityRelation | null {
   if (!invoice.bookingId) return null;
 
   const canNavigate = permissions.canReadBookings;
-  const blocked = permissionBlockedReason('booking', canNavigate);
+  const blocked = rentalInvoiceRelationsPermissionBlockedReason(locale, 'booking', canNavigate);
   const publicNumber = bookingRef(invoice.bookingId);
 
   if (enrichment.bookingFetchState === 'not_found') {
     return {
       kind: 'booking',
-      label: 'Buchung',
+      label: rentalInvoiceRelationsEntityLabel(locale, 'booking'),
       primary: publicNumber,
-      secondary: fallbackLabel('deleted'),
+      secondary: rentalInvoiceRelationsFallbackLabel(locale, 'deleted'),
       tertiary: null,
       fallback: 'deleted',
       entityId: invoice.bookingId,
@@ -164,9 +147,9 @@ function buildBookingRelation(
   if (enrichment.bookingFetchState === 'error' || !enrichment.booking) {
     return {
       kind: 'booking',
-      label: 'Buchung',
+      label: rentalInvoiceRelationsEntityLabel(locale, 'booking'),
       primary: publicNumber,
-      secondary: fallbackLabel('unavailable'),
+      secondary: rentalInvoiceRelationsFallbackLabel(locale, 'unavailable'),
       tertiary: null,
       fallback: 'unavailable',
       entityId: invoice.bookingId,
@@ -177,14 +160,18 @@ function buildBookingRelation(
 
   const booking = enrichment.booking;
   const status = normalizeBookingStatus(booking.core.statusEnum, booking.core.status);
-  const period = formatRentalPeriod(booking.core.startDate, booking.core.endDate);
+  const period = formatRentalInvoiceRelationsPeriod(
+    locale,
+    booking.core.startDate,
+    booking.core.endDate,
+  );
 
   return {
     kind: 'booking',
-    label: 'Buchung',
+    label: rentalInvoiceRelationsEntityLabel(locale, 'booking'),
     primary: booking.core.bookingNumber || publicNumber,
     secondary: period,
-    tertiary: bookingStatusLabel(status),
+    tertiary: bookingStatusLabel(status, locale),
     fallback: null,
     entityId: booking.core.bookingId,
     navigable: canNavigate,
@@ -224,11 +211,12 @@ function buildVehicleRelation(
   invoice: Invoice,
   enrichment: InvoiceRelationsEnrichment,
   permissions: InvoiceRelationsPermissions,
+  locale: string,
 ): InvoiceEntityRelation | null {
   if (!invoice.vehicleId) return null;
 
   const canNavigate = permissions.canReadFleet;
-  const blocked = permissionBlockedReason('vehicle', canNavigate);
+  const blocked = rentalInvoiceRelationsPermissionBlockedReason(locale, 'vehicle', canNavigate);
   const { make, model, licensePlate, fleetName } = resolveVehicleFields(invoice, enrichment);
   const hasVehicleData = Boolean(make || model || licensePlate || fleetName);
   const bookingHasVehicle =
@@ -243,8 +231,8 @@ function buildVehicleRelation(
   if (enrichment.vehicleFetchState === 'not_found' && !hasVehicleData && !bookingHasVehicle) {
     return {
       kind: 'vehicle',
-      label: 'Fahrzeug',
-      primary: fallbackLabel('deleted'),
+      label: rentalInvoiceRelationsEntityLabel(locale, 'vehicle'),
+      primary: rentalInvoiceRelationsFallbackLabel(locale, 'deleted'),
       secondary: null,
       tertiary: null,
       fallback: 'deleted',
@@ -257,8 +245,8 @@ function buildVehicleRelation(
   if (!hasVehicleData && enrichment.vehicleFetchState === 'error') {
     return {
       kind: 'vehicle',
-      label: 'Fahrzeug',
-      primary: fallbackLabel('unavailable'),
+      label: rentalInvoiceRelationsEntityLabel(locale, 'vehicle'),
+      primary: rentalInvoiceRelationsFallbackLabel(locale, 'unavailable'),
       secondary: null,
       tertiary: null,
       fallback: 'unavailable',
@@ -271,11 +259,11 @@ function buildVehicleRelation(
   const primary =
     [make, model].filter(Boolean).join(' ').trim() ||
     fleetName ||
-    fallbackLabel('unavailable');
+    rentalInvoiceRelationsFallbackLabel(locale, 'unavailable');
 
   return {
     kind: 'vehicle',
-    label: 'Fahrzeug',
+    label: rentalInvoiceRelationsEntityLabel(locale, 'vehicle'),
     primary,
     secondary: licensePlate,
     tertiary: fleetName,
@@ -286,13 +274,13 @@ function buildVehicleRelation(
   };
 }
 
-function buildVendorRelation(invoice: Invoice): InvoiceEntityRelation | null {
+function buildVendorRelation(invoice: Invoice, locale: string): InvoiceEntityRelation | null {
   if (!invoice.vendorName && !invoice.vendorId) return null;
 
   return {
     kind: 'vendor',
-    label: 'Lieferant',
-    primary: invoice.vendorName?.trim() || fallbackLabel('unavailable'),
+    label: rentalInvoiceRelationsEntityLabel(locale, 'vendor'),
+    primary: invoice.vendorName?.trim() || rentalInvoiceRelationsFallbackLabel(locale, 'unavailable'),
     secondary: null,
     tertiary: null,
     fallback: invoice.vendorName ? null : 'unavailable',
@@ -357,21 +345,20 @@ export function buildInvoiceRelationsDto(
     canReadBookings: true,
     canReadFleet: true,
   },
+  locale = 'de',
 ): InvoiceRelationsDto {
   const template = invoice.templateId
     ? {
         id: invoice.templateId,
-        name:
-          INVOICE_TEMPLATES.find((t) => t.id === invoice.templateId)?.name ||
-          invoice.templateId,
+        name: rentalInvoiceRelationsTemplateDisplayName(locale, invoice.templateId),
       }
     : null;
 
   return {
-    customer: buildCustomerRelation(invoice, enrichment, permissions),
-    booking: buildBookingRelation(invoice, enrichment, permissions),
-    vehicle: buildVehicleRelation(invoice, enrichment, permissions),
-    vendor: buildVendorRelation(invoice),
+    customer: buildCustomerRelation(invoice, enrichment, permissions, locale),
+    booking: buildBookingRelation(invoice, enrichment, permissions, locale),
+    vehicle: buildVehicleRelation(invoice, enrichment, permissions, locale),
+    vendor: buildVendorRelation(invoice, locale),
     provenance: buildInvoiceProvenance(invoice, enrichment),
     template,
   };
