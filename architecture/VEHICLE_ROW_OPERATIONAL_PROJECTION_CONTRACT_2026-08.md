@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Contract ID** | `vehicle-row-operational-projection-stage-2a` |
-| **Status** | Implemented — not yet bound to visible row UI |
+| **Status** | Stage 2B — availability/readiness display cutover active |
 | **Audit parent** | `docs/audits/vehicle-cross-surface-state-health-consumer-consistency-audit-2026-08.md` |
 | **Implementation SHA** | (see commit on branch `cursor/vehicle-cross-surface-state-health-consumer-consistency-audit-2026-08-90ec`) |
 
@@ -22,6 +22,34 @@ Introduce one **frontend-only** shared projection (`VehicleRowOperationalProject
 - **all** active health findings (no first-finding-wins)
 
 Stage 2A **does not** change visible UI chips, tab labels, or icon rendering.
+
+Stage 2B binds **display semantics only** via `getVehicleRowOperationalDisplay()` — no backend or readiness derivation changes.
+
+---
+
+## Stage 2B display mapping (`getVehicleRowOperationalDisplay`)
+
+| Surface | Primary row badge dimension | Authority |
+|---------|---------------------------|-----------|
+| Fleet Command tabs | business workflow (P0.1) | unchanged — tab filter/count |
+| Fleet Command row status chip | `businessState` | `fleet.businessState.*` labels (e.g. **Frei** / **Free**, not P0.2 “Verfügbar”) |
+| Ready-to-Rent drilldown row status chip | `readiness` | P1.5 `isReadyToRent` + deterministic not-ready labels |
+| Vehicle Detail | explicit per-dimension (unchanged visually) | existing detail panels |
+
+### Readiness not-ready label precedence (deterministic)
+
+1. `businessState === OUT_OF_SERVICE` OR `operationalAvailability === UNAVAILABLE` → `fleet.rowProjection.readiness.blocked`
+2. `operationalAvailability === NEEDS_VERIFICATION` → `fleet.operationalAvailability.needsVerification`
+3. `healthEvaluability === NOT_EVALUABLE` → `fleet.healthEvaluation.notEvaluable`
+4. else → `fleet.rowProjection.readiness.notReady`
+
+**Never** render P0.2 green “Verfügbar” / `fleet.operationalAvailability.available` as the Ready-to-Rent primary badge when `isReadyToRent === false`.
+
+### Fleet Command tab rename (authority unchanged)
+
+| Tab key | Before label | After label (DE / EN) | Count authority |
+|---------|--------------|----------------------|-----------------|
+| `Available` | Avail. | Frei / Free | P0.1 `operationalStatus === 'available'` (unchanged) |
 
 ---
 
@@ -69,7 +97,10 @@ Stage 2A **does not** change visible UI chips, tab labels, or icon rendering.
 | `buildVehicleRowOperationalProjection()` | New adapter in `frontend/src/rental/lib/vehicle-row-operational-projection.ts` |
 | `buildFleetVehicleContexts()` | Adds `rowOperationalProjection` alongside existing `uiProjection` / `visual` / `health` |
 | `FleetCommandView` | Passes `getReadiness` from `dashboardRuntime` when available |
-| Visible row components | **Unchanged** in Stage 2A |
+| `getVehicleRowOperationalDisplay()` | Stage 2B — surface-aware labels/tones from projection |
+| `FleetOperatorRow` | Primary status chip = business workflow (`fleet_command` surface) |
+| `CompactFleetDrawerVehicleRow` | Primary status chip = readiness (`ready_to_rent` surface) |
+| `FleetCommandPanel` | Tab labels via `fleet.command.tab.*` i18n (Frei/Free replaces Avail.) |
 
 Future consumers (Stage 2B/2C/3) should read `ctx.rowOperationalProjection` instead of re-deriving readiness vs availability vs findings independently.
 
@@ -98,8 +129,7 @@ Tests: `frontend/src/rental/lib/vehicle-row-operational-projection.test.ts`
 
 | Stage | Work |
 |-------|------|
-| **2B** | Label clarity (Avail. vs bereit); optional readiness chip semantics |
-| **2C** | Ready-to-Rent row binds readiness badge without breaking P0.2 availability chip |
+| **2B** | ✅ Label clarity (Avail. → Frei/Free); readiness-primary Ready-to-Rent badge; business-primary Fleet Command badge |
 | **3** | Compact domain icons from `activeHealthFindings[]` using existing telltale / vehicle-health SVG assets |
 | **4** | Vehicle Detail header chip strip consumes same projection |
 | **5** | Cross-surface contract CI gate + legacy `pickModuleReason` cleanup after all consumers cut over |
@@ -112,5 +142,10 @@ Tests: `frontend/src/rental/lib/vehicle-row-operational-projection.test.ts`
 |------|------|
 | `frontend/src/rental/lib/vehicle-row-operational-projection.ts` | Contract types + builder |
 | `frontend/src/rental/lib/vehicle-row-operational-projection.test.ts` | Fixtures + invariants |
+| `frontend/src/rental/lib/vehicle-row-operational-display.ts` | Stage 2B display mapping |
+| `frontend/src/rental/lib/vehicle-row-operational-display.test.ts` | Invariants A1–A8 + six-vehicle matrix |
 | `frontend/src/rental/lib/fleet-operator-panel.ts` | Context wiring |
 | `frontend/src/rental/components/fleet-operator/FleetCommandView.tsx` | Runtime readiness wiring |
+| `frontend/src/rental/components/fleet-operator/FleetCommandPanel.tsx` | Tab i18n cutover |
+| `frontend/src/rental/components/fleet-operator/FleetOperatorRow.tsx` | Business-primary row badge |
+| `frontend/src/rental/components/dashboard/CompactFleetDrawerVehicleRow.tsx` | Readiness-primary row badge |

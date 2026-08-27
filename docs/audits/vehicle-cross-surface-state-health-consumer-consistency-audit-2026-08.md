@@ -487,7 +487,7 @@ interface VehicleRowOperationalProjection {
 
 | Doc | Updated |
 |-----|---------|
-| Changes (master UI) | **Yes** — Stage 2A contract entry |
+| Changes (master UI) | **Yes** — Stage 2A + Stage 2B entries |
 | Architektur (master UI) | **Yes** — `VEHICLE_ROW_OPERATIONAL_PROJECTION_CONTRACT_2026-08.md` |
 
 ---
@@ -505,3 +505,82 @@ interface VehicleRowOperationalProjection {
 **Stage 2A confirms:** `activeHealthFindings[]` preserves concurrent module findings (KS MX 2024-shaped fixture ≥ 6 findings) without `pickModuleReason` / single `primaryReason` collapse.
 
 *Stage 1 audit complete. Stage 2A adds contract + tests only — visible UI unchanged.*
+
+---
+
+## Stage 2B implementation (2026-08-27) — availability/readiness display cutover
+
+| Field | Value |
+|-------|-------|
+| **Phase** | User-visible availability/readiness semantics only |
+| **Display adapter** | `frontend/src/rental/lib/vehicle-row-operational-display.ts` → `getVehicleRowOperationalDisplay()` |
+| **Fleet Command authority** | **P0.1 business workflow** — tab filter/count unchanged |
+| **Fleet Command tab label** | Renamed **Avail.** → **Frei** / **Free** (`fleet.command.tab.businessAvailable*`) |
+| **Fleet Command row badge** | Primary chip = **businessState** (`fleet.businessState.*`), not P0.2 `statusBadge` |
+| **Ready-to-Rent row badge** | Primary chip = **readiness** (P1.5), never green P0.2 “Verfügbar” when `isReadyToRent === false` |
+| **Tests** | `vehicle-row-operational-display.test.ts` — invariants A1–A8, six-vehicle matrix |
+| **Non-goals honored** | No health finding icons; no Vehicle Detail visual redesign; no P0/P1 backend changes |
+
+### Fleet Command authority decision
+
+**Keep P0.1 business workflow** for tab membership and counts (`resolveFleetTabCountsFromRuntime` → `operationalStatus === 'available'`). Tab label renamed to disambiguate from rental readiness (“Bereit zur Vermietung”).
+
+### Ready-to-Rent authority decision
+
+**P1.5 `isReadyToRent`** drives primary row status chip via `getVehicleRowOperationalDisplay({ surface: 'ready_to_rent' })`. Operational availability may still exist on the projection but does not masquerade as readiness.
+
+### i18n keys (Stage 2B)
+
+| Key | DE | EN | Dimension |
+|-----|----|----|-----------|
+| `fleet.command.tab.businessAvailable` | Frei | Free | Fleet tab (P0.1) |
+| `fleet.businessState.available` | Frei | Free | Fleet row business badge |
+| `fleet.rowProjection.readiness.ready` | Bereit | Ready | Readiness |
+| `fleet.rowProjection.readiness.notReady` | Nicht bereit | Not ready | Readiness |
+| `fleet.rowProjection.readiness.blocked` | Blockiert | Blocked | Readiness (blocked) |
+| `fleet.operationalAvailability.needsVerification` | Prüfung erforderlich | Check required | Readiness / P0.2 |
+| `fleet.healthEvaluation.notEvaluable` | Nicht bewertbar | Not evaluable | Readiness |
+
+Reused: `fleet.operationalAvailability.*`, `fleet.healthEvaluation.notEvaluable`, `fleet.rowProjection.readiness.*` (Stage 2A).
+
+### Six-vehicle before/after matrix (fixture-shaped)
+
+| Vehicle | businessState | operationalAvailability | readiness | Fleet Command badge (after) | Ready-to-Rent badge (after) | Before confusion |
+|---------|---------------|-------------------------|-----------|----------------------------|----------------------------|------------------|
+| KS MX 2024 | AVAILABLE | AVAILABLE | true | Frei | Bereit | Row could show P0.2 Verfügbar |
+| KS MS 661 | AVAILABLE | AVAILABLE | true | Frei | Bereit | Same |
+| KS FH 660E | AVAILABLE | AVAILABLE | true | Frei | Bereit | Same |
+| HMÜ C 215 | AVAILABLE | NEEDS_VERIFICATION | false | Frei | Prüfung erforderlich | Was in “Nicht bereit” with green Verfügbar |
+| WOB L 7503 | AVAILABLE | NEEDS_VERIFICATION | false | Frei | Prüfung erforderlich | Same |
+| WOB L 9755 | AVAILABLE | NEEDS_VERIFICATION | false | Frei | Prüfung erforderlich | Same |
+
+**Note:** Fleet Command “Frei” count (P0.1 business-available) may legitimately exceed Ready-to-Rent “bereit” count (P1.5 subset) — semantic truth preserved.
+
+### Invariant test results (A1–A8)
+
+| ID | Result |
+|----|--------|
+| A1 | PASS — tab count matches `applyFleetCommandFilters` business AVAILABLE membership |
+| A2 | PASS — ready/not-ready drawer groups align with `isReadyToRent` |
+| A3 | PASS — readiness=false never gets success-tone P0.2 “Verfügbar” primary badge |
+| A4 | PASS — business AVAILABLE ≠ readiness true |
+| A5 | PASS — operational AVAILABLE ≠ readiness true |
+| A6 | PASS — Fleet AVAILABLE count can differ from ready count |
+| A7 | PASS — `primaryRowStatusDimension` differs by surface (`business` vs `readiness`) |
+| A8 | PASS — labels from shared i18n keys, not local raw-state maps |
+
+### Legacy cleanup boundary (report only — not removed)
+
+| Helper | Status |
+|--------|--------|
+| `resolveAvailabilityBadgeFromUi` / `statusBadge` in fleet display | Still used for data-quality hints / Vehicle Detail; Fleet Command row primary chip no longer binds it |
+| `runtimeReadinessLabel` in `CompactFleetDrawerVehicleRow` | Fallback when fleet vehicle absent |
+| `pickModuleReason` / `buildReasonBadge` | Unchanged — Stage 3 health UI |
+
+### Stage 3 boundary
+
+- Replace single reason chip with `activeHealthFindings[]` domain icons (tire/brake/battery/DTC/telltale)
+- Vehicle Detail header chip strip from shared projection
+- Legacy `pickModuleReason` cleanup after all consumers cut over
+
+*Stage 2B complete — display semantics cut over; health finding UI deferred to Stage 3.*

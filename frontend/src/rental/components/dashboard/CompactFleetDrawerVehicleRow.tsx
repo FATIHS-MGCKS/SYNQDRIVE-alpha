@@ -5,6 +5,11 @@ import type { VehicleHealthResponse } from '../../../lib/api';
 import { getShortModel, type VehicleData } from '../../data/vehicles';
 import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
 import { resolveCanonicalFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import { buildVehicleRowOperationalProjection } from '../../lib/vehicle-row-operational-projection';
+import { getVehicleRowOperationalDisplay } from '../../lib/vehicle-row-operational-display';
+import { de as deTranslations } from '../../i18n/translations/de';
+import { en as enTranslations } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { resolveDrawerVehicleReasonBadge } from './dashboardDrilldownRowDisplay';
 import { DrawerRowActionButton } from './dashboardDrawerRowActions';
 import { drawerRowActionStackClassName } from './dashboardDrawerRowLines';
@@ -95,14 +100,37 @@ export function CompactFleetDrawerVehicleRow({
     : runtimeState
       ? runtimeHealthLabel(runtimeState, de)
       : null;
-  const statusChip = fleetDisplay
+  const localeKey = (de ? 'de' : 'en') as 'de' | 'en';
+  const translate = (key: TranslationKey) =>
+    (de ? deTranslations[key] : enTranslations[key]) ?? key;
+
+  const rowOperationalProjection =
+    vehicle != null
+      ? buildVehicleRowOperationalProjection({
+          vehicle,
+          rentalHealth: health,
+          readiness: runtimeState
+            ? {
+                isReadyToRent: runtimeState.isReadyToRent,
+              }
+            : null,
+          locale: localeKey,
+        })
+      : null;
+
+  const readinessDisplay = rowOperationalProjection
+    ? getVehicleRowOperationalDisplay(rowOperationalProjection, {
+        surface: 'ready_to_rent',
+        locale: localeKey,
+        t: translate,
+      })
+    : null;
+
+  const statusChip = readinessDisplay
     ? {
-        label: fleetDisplay.statusBadge.label,
-        tone: fleetDisplay.statusBadge.tone,
-        title:
-          fleetDisplay.bookingSupplement?.detail ??
-          fleetDisplay.statusBadge.dataQualityHint ??
-          fleetDisplay.statusBadge.label,
+        label: readinessDisplay.primaryRowStatus.label,
+        tone: readinessDisplay.primaryRowStatus.tone,
+        title: readinessDisplay.primaryRowStatus.label,
       }
     : runtimeState
       ? {

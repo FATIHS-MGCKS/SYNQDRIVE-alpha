@@ -245,7 +245,7 @@ function sortActiveHealthFindings(findings: ActiveHealthFinding[]): ActiveHealth
 }
 
 function rentalModuleReasonCode(moduleKey: RentalHealthModuleKey, module: RentalHealthModule): string {
-  const tireCode = module.tire_read_model?.primaryReasonCode;
+  const tireCode = module.tire_read_model?.primaryReason;
   if (moduleKey === 'tires' && tireCode) return tireCode;
   const brakeCode = module.brake_read_model?.structuredReasonCodes?.[0];
   if (moduleKey === 'brakes' && brakeCode) return brakeCode;

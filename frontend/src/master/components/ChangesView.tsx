@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-row-operational-display-stage-2b-2026-08-27',
+    version: '4.9.969',
+    title: 'Vehicle Row Operational Display — Stage 2B availability/readiness semantic cutover',
+    summary: [
+      'New `getVehicleRowOperationalDisplay()` maps `VehicleRowOperationalProjection` to surface-aware labels (business / operational / readiness) with explicit i18n keys.',
+      'Fleet Command: tab **Avail.** renamed to **Frei/Free** (P0.1 business workflow authority unchanged); row primary badge shows business state, not P0.2 “Verfügbar”.',
+      'Ready-to-Rent drilldown: primary row badge reflects P1.5 readiness — never green “Verfügbar” when `isReadyToRent === false`.',
+      'Tests: invariants A1–A8, six production-shaped vehicle matrix; Fleet Command + projection regression suites pass.',
+    ],
+    reason:
+      'Stage 1 audit proved Fleet “Avail.”, Ready-to-Rent grouping, and green row badges used different semantic dimensions with overlapping labels.',
+    previousBehavior:
+      'Fleet Command tab counted P0.1 business-available but rows showed P0.2 availability badge; Ready-to-Rent “Nicht bereit” rows could still show green “Verfügbar”.',
+    details:
+      'frontend: vehicle-row-operational-display.ts(+test), FleetCommandPanel.tsx, FleetOperatorRow.tsx, CompactFleetDrawerVehicleRow.tsx, i18n fleet.businessState.* / fleet.command.tab.* / fleet.rowProjection.readiness.blocked. architecture + audit Stage 2B closure. No backend/P0/P1/readiness derivation/health-icon changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T17:45:00.000Z',
+  },
+  {
     id: 'vehicle-row-operational-projection-stage-2a-2026-08-27',
     version: '4.9.968',
     title: 'Vehicle Row Operational Projection — Stage 2A shared frontend contract',

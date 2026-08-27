@@ -12,21 +12,53 @@ import {
   sortFleetContexts,
   type ResolveFleetCommandRowSeverityOptions,
 } from '../../lib/fleet-operator-panel';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { FleetOperatorRow } from './FleetOperatorRow';
 import { CommandCountBadge, PanelStatusChip } from './fleetOperatorUi';
 
-const COMMAND_TABS: Array<{
+const COMMAND_TAB_CONFIG: Array<{
   key: FleetCommandTab;
-  label: string;
-  shortLabel?: string;
+  labelKey: TranslationKey;
+  shortLabelKey: TranslationKey;
   tone?: 'success' | 'brand' | 'warning' | 'critical' | 'neutral';
 }> = [
-  { key: 'All', label: 'All', shortLabel: 'All', tone: 'neutral' },
-  { key: 'Available', label: 'Available', shortLabel: 'Avail.', tone: 'success' },
-  { key: 'Reserved', label: 'Reserved', shortLabel: 'Res.', tone: 'warning' },
-  { key: 'Active', label: 'Active Rented', shortLabel: 'Active', tone: 'brand' },
-  { key: 'Maintenance', label: 'Maint./Blocked', shortLabel: 'Maint.', tone: 'critical' },
-  { key: 'Unknown', label: 'Unknown', shortLabel: 'Unk.', tone: 'neutral' },
+  {
+    key: 'All',
+    labelKey: 'fleet.command.tab.all',
+    shortLabelKey: 'fleet.command.tab.all.short',
+    tone: 'neutral',
+  },
+  {
+    key: 'Available',
+    labelKey: 'fleet.command.tab.businessAvailable',
+    shortLabelKey: 'fleet.command.tab.businessAvailable.short',
+    tone: 'success',
+  },
+  {
+    key: 'Reserved',
+    labelKey: 'fleet.command.tab.reserved',
+    shortLabelKey: 'fleet.command.tab.reserved.short',
+    tone: 'warning',
+  },
+  {
+    key: 'Active',
+    labelKey: 'fleet.command.tab.activeRented',
+    shortLabelKey: 'fleet.command.tab.activeRented.short',
+    tone: 'brand',
+  },
+  {
+    key: 'Maintenance',
+    labelKey: 'fleet.command.tab.maintenance',
+    shortLabelKey: 'fleet.command.tab.maintenance.short',
+    tone: 'critical',
+  },
+  {
+    key: 'Unknown',
+    labelKey: 'fleet.command.tab.unknown',
+    shortLabelKey: 'fleet.command.tab.unknown.short',
+    tone: 'neutral',
+  },
 ];
 
 export interface FleetCommandPanelProps {
@@ -101,6 +133,7 @@ export function FleetCommandPanel({
   futureBookingOnly = false,
   onFutureBookingOnlyChange,
 }: FleetCommandPanelProps) {
+  const { t } = useLanguage();
   const severityOptions = useMemo<ResolveFleetCommandRowSeverityOptions>(
     () => ({ canonicalCriticalVehicleIds }),
     [canonicalCriticalVehicleIds],
@@ -180,9 +213,11 @@ export function FleetCommandPanel({
 
         <div className="sq-tab-bar mb-2 w-full overflow-x-auto p-1">
           <div className="flex min-w-max items-stretch gap-0.5 pr-1">
-          {COMMAND_TABS.map((tab) => {
+          {COMMAND_TAB_CONFIG.map((tab) => {
             const isActive = activeTab === tab.key;
             const count = tabCounts[tab.key];
+            const label = t(tab.labelKey);
+            const shortLabel = t(tab.shortLabelKey);
             return (
               <button
                 key={tab.key}
@@ -194,8 +229,8 @@ export function FleetCommandPanel({
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <span className="sm:hidden">{tab.shortLabel ?? tab.label}</span>
-                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{shortLabel}</span>
+                <span className="hidden sm:inline">{label}</span>
                 <CommandCountBadge count={count} tone={tab.tone} active={isActive} />
               </button>
             );

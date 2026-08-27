@@ -9,6 +9,7 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import { useAddress } from '../../../lib/useAddress';
 import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import { getVehicleRowOperationalDisplay } from '../../lib/vehicle-row-operational-display';
 import type {
   FleetCommandRowSeverity,
   FleetVehicleContext,
@@ -68,6 +69,12 @@ export function FleetOperatorRow({
   });
   const { healthDisplay, statusBadge, bookingSupplement, reasonBadge } = display;
   const rowHealth = healthDisplay;
+  const rowOperationalDisplay = getVehicleRowOperationalDisplay(ctx.rowOperationalProjection, {
+    surface: 'fleet_command',
+    locale: locale === 'de' ? 'de' : 'en',
+    t,
+  });
+  const workflowStatusBadge = rowOperationalDisplay.primaryRowStatus;
 
   const dimmed = display.showTelemetryWarning && selectIsCurrentlyAvailable(v);
 
@@ -219,11 +226,15 @@ export function FleetOperatorRow({
             {rowHealth.label}
           </StatusChip>
           <StatusChip
-            tone={statusBadge.tone}
+            tone={workflowStatusBadge.tone}
             className="px-1.5 py-0.5 text-[9.5px] font-semibold"
-            title={bookingSupplement?.detail ?? statusBadge.dataQualityHint ?? statusBadge.label}
+            title={
+              bookingSupplement?.detail ??
+              statusBadge.dataQualityHint ??
+              workflowStatusBadge.label
+            }
           >
-            {statusBadge.label}
+            {workflowStatusBadge.label}
           </StatusChip>
         </div>
         <button
