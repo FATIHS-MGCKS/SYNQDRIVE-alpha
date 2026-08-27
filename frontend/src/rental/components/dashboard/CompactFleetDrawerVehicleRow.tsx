@@ -5,7 +5,14 @@ import type { VehicleHealthResponse } from '../../../lib/api';
 import { getShortModel, type VehicleData } from '../../data/vehicles';
 import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
 import { resolveCanonicalFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
-import { resolveDrawerVehicleReasonBadge } from './dashboardDrilldownRowDisplay';
+import { buildVehicleRowOperationalProjection } from '../../lib/vehicle-row-operational-projection';
+import { getVehicleRowOperationalDisplay } from '../../lib/vehicle-row-operational-display';
+import { resolveDashboardWarningLightsFromRentalHealth } from '../../lib/vehicle-row-health-consumer';
+import { resolveRowOperationalAttentionBadge } from '../../lib/vehicle-row-operational-attention';
+import { VehicleHealthFindingIcons } from '../health/VehicleHealthFindingIcons';
+import { de as deTranslations } from '../../i18n/translations/de';
+import { en as enTranslations } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { DrawerRowActionButton } from './dashboardDrawerRowActions';
 import { drawerRowActionStackClassName } from './dashboardDrawerRowLines';
 import type { DashboardSliceRow, VehicleRuntimeState } from './runtime';
@@ -95,14 +102,44 @@ export function CompactFleetDrawerVehicleRow({
     : runtimeState
       ? runtimeHealthLabel(runtimeState, de)
       : null;
-  const statusChip = fleetDisplay
+  const localeKey = (de ? 'de' : 'en') as 'de' | 'en';
+  const translate = (key: TranslationKey, vars?: Record<string, string | number>) => {
+    const template = (de ? deTranslations[key] : enTranslations[key]) ?? key;
+    if (!vars) return template;
+    return Object.entries(vars).reduce(
+      (acc, [name, value]) => acc.replaceAll(`{${name}}`, String(value)),
+      template,
+    );
+  };
+
+  const rowOperationalProjection =
+    vehicle != null
+      ? buildVehicleRowOperationalProjection({
+          vehicle,
+          rentalHealth: health,
+          readiness: runtimeState
+            ? {
+                isReadyToRent: runtimeState.isReadyToRent,
+              }
+            : null,
+          dashboardWarningLights: resolveDashboardWarningLightsFromRentalHealth(health),
+          locale: localeKey,
+        })
+      : null;
+
+  const readinessDisplay = rowOperationalProjection
+    ? getVehicleRowOperationalDisplay(rowOperationalProjection, {
+        surface: 'ready_to_rent',
+        locale: localeKey,
+        t: translate,
+      })
+    : null;
+
+  const statusChip = readinessDisplay
     ? {
-        label: fleetDisplay.statusBadge.label,
-        tone: fleetDisplay.statusBadge.tone,
-        title:
-          fleetDisplay.bookingSupplement?.detail ??
-          fleetDisplay.statusBadge.dataQualityHint ??
-          fleetDisplay.statusBadge.label,
+        label: readinessDisplay.primaryRowStatus.label,
+        tone: readinessDisplay.primaryRowStatus.tone,
+        title: readinessDisplay.primaryRowStatus.label,
       }
     : runtimeState
       ? {
@@ -111,11 +148,15 @@ export function CompactFleetDrawerVehicleRow({
         }
       : null;
   const bookingSupplement = fleetDisplay?.bookingSupplement ?? null;
-  const reasonBadge = resolveDrawerVehicleReasonBadge(
-    row,
-    locale,
-    fleetDisplay?.reasonBadge ?? null,
-  );
+  const activeHealthFindings = rowOperationalProjection?.activeHealthFindings ?? [];
+  const operationalAttentionBadge =
+    rowOperationalProjection != null
+      ? resolveRowOperationalAttentionBadge({
+          projection: rowOperationalProjection,
+          reasonBadge: fleetDisplay?.reasonBadge ?? null,
+          t: translate,
+        })
+      : null;
   const energy = fleetDisplay?.energy;
   const odometerLabel = fleetDisplay?.odometerLabel ?? null;
   const dimmed = fleetDisplay?.showTelemetryWarning && vehicle && selectIsCurrentlyAvailable(vehicle);
@@ -219,15 +260,25 @@ export function CompactFleetDrawerVehicleRow({
             </div>
           ) : null}
 
-          {reasonBadge ? (
-            <span
-              className={cn(
-                'inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-medium',
-                reasonChipClass(reasonBadge.tone),
-              )}
-            >
-              <span className="truncate">{reasonBadge.text}</span>
-            </span>
+          {activeHealthFindings.length > 0 || operationalAttentionBadge ? (
+            <div className="flex min-w-0 flex-wrap items-center gap-1">
+              <VehicleHealthFindingIcons
+                findings={activeHealthFindings}
+                locale={localeKey}
+                t={translate}
+                size="sm"
+              />
+              {operationalAttentionBadge ? (
+                <span
+                  className={cn(
+                    'inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-medium',
+                    reasonChipClass(operationalAttentionBadge.tone),
+                  )}
+                >
+                  <span className="truncate">{operationalAttentionBadge.text}</span>
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
 

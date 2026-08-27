@@ -1,10 +1,5 @@
-import tellTaleOilIcon from '../../../assets/icons/telltale/oil.svg';
-import tellTaleCelIcon from '../../../assets/icons/telltale/cel.svg';
-import tellTaleBrakePadIcon from '../../../assets/icons/telltale/brake-pad.svg';
-import tellTaleTirePressureIcon from '../../../assets/icons/telltale/tire-pressure.svg';
-import tellTaleBatteryIcon from '../../../assets/icons/telltale/battery.svg';
-import { DetailDrawer, StatusChip } from '../../../components/patterns';
 import type { DashboardWarningLight, DashboardWarningLightsResponse } from '../../../lib/api';
+import { DetailDrawer, StatusChip } from '../../../components/patterns';
 import {
   DASHBOARD_TELLTALE_KEYS,
   deriveTelltaleDisplayCategory,
@@ -18,6 +13,7 @@ import {
   telltaleShortLabel,
   telltaleToneFromLight,
 } from '../../lib/dashboard-warning-lights-display';
+import { DashboardTelltaleIcon } from './DashboardTelltaleIcon';
 import {
   findBookingForTelltale,
   findTripForTelltale,
@@ -37,14 +33,6 @@ export interface DashboardWarningLightsDetailDrawerProps {
   onOpenTrips?: (dateIso?: string) => void;
 }
 
-function iconForKey(key: string): string {
-  if (key === 'engine_oil_level') return tellTaleOilIcon;
-  if (key === 'engine_limp_mode' || key === 'check_engine_light') return tellTaleCelIcon;
-  if (key === 'brake_lining_wear_pre_warning') return tellTaleBrakePadIcon;
-  if (key === 'tire_pressure_warning') return tellTaleTirePressureIcon;
-  if (key === 'battery_warning_light') return tellTaleBatteryIcon;
-  return tellTaleCelIcon;
-}
 
 function freshnessLabel(freshness: DashboardWarningLightsResponse['freshness'] | undefined): string {
   switch (freshness) {
@@ -106,7 +94,7 @@ function LightDetailCard({
     <div className={` border ${toneBorder} surface-premium p-3 space-y-2`}>
       <div className="flex items-start gap-2.5">
         <div className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center shrink-0">
-          <img src={iconForKey(light.key)} alt="" aria-hidden className="w-4 h-4 object-contain" />
+          <DashboardTelltaleIcon telltaleKey={light.key} className="w-4 h-4" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">

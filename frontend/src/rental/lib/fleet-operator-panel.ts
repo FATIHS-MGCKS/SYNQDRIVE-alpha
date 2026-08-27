@@ -20,6 +20,11 @@ import {
   fleetSignalAgeMs,
   resolveFleetVehicleDisplayState,
 } from './fleetVehicleDisplay';
+import {
+  buildVehicleRowOperationalProjection,
+  type VehicleRowReadinessInput,
+} from './vehicle-row-operational-projection';
+import { composeFleetDashboardWarningLightsAccessor } from './vehicle-row-health-consumer';
 
 import { isStationFilterHudOperationallyReady } from '../components/dashboard/runtime/dashboard-operational-readiness';
 import type { DashboardRuntimeModel } from '../components/dashboard/runtime/dashboardRuntimeTypes';
@@ -211,6 +216,8 @@ export interface FleetVehicleContext {
   health: VehicleHealthResponse | null;
   /** P1.3 — canonical UI projection for fleet list/map surfaces. */
   uiProjection: import('./operational-projection').VehicleOperationalUiProjection;
+  /** Stage 2A — shared row projection contract (not yet bound to visible UI). */
+  rowOperationalProjection: import('./vehicle-row-operational-projection').VehicleRowOperationalProjection;
 }
 
 export interface StationFilterOption {
@@ -284,9 +291,19 @@ export function attentionSortRank(
 export function buildFleetVehicleContexts(
   vehicles: VehicleData[],
   getHealth: (id: string) => VehicleHealthResponse | null | undefined,
-  options: { locale?: 'en' | 'de' } = {},
+  options: {
+    locale?: 'en' | 'de';
+    getReadiness?: (vehicleId: string) => VehicleRowReadinessInput | undefined;
+    getDashboardWarningLights?: (
+      vehicleId: string,
+    ) => import('../../lib/api').DashboardWarningLightsResponse | null | undefined;
+  } = {},
 ): FleetVehicleContext[] {
   const locale = options.locale ?? 'de';
+  const resolveDashboardWarningLights = composeFleetDashboardWarningLightsAccessor(
+    getHealth,
+    options.getDashboardWarningLights,
+  );
   return vehicles.map((vehicle) => {
     const health = getHealth(vehicle.id) ?? null;
     const uiProjection = buildFleetVehicleUiProjection(
@@ -294,7 +311,15 @@ export function buildFleetVehicleContexts(
       { locale },
     );
     const visual = deriveFleetVisualState(vehicle, { uiProjection, locale });
-    return { vehicle, visual, health, uiProjection };
+    const rowOperationalProjection = buildVehicleRowOperationalProjection({
+      vehicle: vehicle as import('./fleet-vehicle-ui-projection').FleetProjectionVehicle,
+      uiProjection,
+      rentalHealth: health,
+      readiness: options.getReadiness?.(vehicle.id) ?? null,
+      dashboardWarningLights: resolveDashboardWarningLights(vehicle.id) ?? null,
+      locale,
+    });
+    return { vehicle, visual, health, uiProjection, rowOperationalProjection };
   });
 }
 

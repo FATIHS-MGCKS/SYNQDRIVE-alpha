@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { FleetCommandPanel } from './FleetCommandPanel';
+import { LanguageProvider } from '../../i18n/LanguageContext';
 import { buildFleetVehicleContexts } from '../../lib/fleet-operator-panel';
 import type { VehicleData } from '../../data/vehicles';
 import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
@@ -100,8 +102,10 @@ describe('FleetCommandPanel — operational tabs', () => {
   };
 
   it('renders fleet command tabs with counts including Unknown', () => {
-    const html = renderToStaticMarkup(<FleetCommandPanel {...baseProps} />);
-    expect(html).toContain('Available');
+    const html = renderToStaticMarkup(
+      createElement(LanguageProvider, null, createElement(FleetCommandPanel, baseProps)),
+    );
+    expect(html).toContain('Free');
     expect(html).toContain('Reserved');
     expect(html).toContain('Active Rented');
     expect(html).toContain('Unknown');
@@ -111,7 +115,11 @@ describe('FleetCommandPanel — operational tabs', () => {
 
   it('filters list to Reserved tab vehicles only', () => {
     const html = renderToStaticMarkup(
-      <FleetCommandPanel {...baseProps} activeTab="Reserved" />,
+      createElement(
+        LanguageProvider,
+        null,
+        createElement(FleetCommandPanel, { ...baseProps, activeTab: 'Reserved' }),
+      ),
     );
     expect(html).toContain('RSV-1');
     expect(html).not.toContain('AVL-1');

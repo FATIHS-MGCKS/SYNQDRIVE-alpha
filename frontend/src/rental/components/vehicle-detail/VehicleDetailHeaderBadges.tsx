@@ -16,8 +16,12 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import {
   resolveVehicleDetailConnectivityPresentation,
 } from '../../lib/vehicle-detail-operational-display';
-import { resolveHealthDisplayFromUi } from '../../lib/fleet-p1-3-display';
-import { buildFleetVehicleUiProjection } from '../../lib/fleet-vehicle-ui-projection';
+import {
+  buildVehicleDetailRowOperationalProjection,
+  hasVehicleDetailCanonicalHealthEvaluation,
+  resolveVehicleDetailCanonicalHealthDisplay,
+} from '../../lib/vehicle-detail-row-projection';
+import { VehicleHealthFindingIcons } from '../health/VehicleHealthFindingIcons';
 import type { StatusTone } from '../../../components/patterns';
 
 function healthChipStateFromTone(
@@ -99,13 +103,34 @@ export function VehicleConnectionBadge({
   );
 }
 
+export function VehicleDetailHeaderFindingIcons({ vehicle }: { vehicle: FleetProjectionVehicle }) {
+  const { locale, t } = useLanguage();
+  const { health } = useEffectiveHealth(vehicle.id ?? null);
+  const localeCode = locale === 'en' ? 'en' : 'de';
+  const projection = buildVehicleDetailRowOperationalProjection({
+    vehicle,
+    rentalHealth: health,
+    locale: localeCode,
+  });
+  if (projection.activeHealthFindings.length === 0) return null;
+  return (
+    <VehicleHealthFindingIcons
+      findings={projection.activeHealthFindings}
+      locale={localeCode}
+      t={t}
+      size="sm"
+      maxVisible={4}
+    />
+  );
+}
+
 export function VehicleHealthChip({ vehicle }: { vehicle: FleetProjectionVehicle }) {
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const { health, loading } = useEffectiveHealth(vehicle.id ?? null);
   const localeCode = locale === 'en' ? 'en' : 'de';
 
-  const canonicalHealth = vehicle.healthEvaluation
-    ? resolveHealthDisplayFromUi(buildFleetVehicleUiProjection(vehicle, { locale: localeCode }))
+  const canonicalHealth = hasVehicleDetailCanonicalHealthEvaluation(vehicle)
+    ? resolveVehicleDetailCanonicalHealthDisplay(vehicle, { locale: localeCode })
     : null;
 
   const reasons: string[] = [];

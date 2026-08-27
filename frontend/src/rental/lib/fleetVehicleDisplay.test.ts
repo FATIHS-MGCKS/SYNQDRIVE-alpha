@@ -264,7 +264,10 @@ describe('health vs rental display separation', () => {
     expect(d.healthDisplay.status).toBe('critical');
     expect(d.rentalDisplay.status).toBe('ready');
     expect(d.rentalDisplay.label).toBe('Ready · Action needed');
-    expect(d.reasonBadge?.text).toBe('Service overdue');
+    // Stage 5: per-module first-finding text removed — legacy path yields generic
+    // health badge; module detail is carried by activeHealthFindings[].
+    expect(d.reasonBadge?.code).toBe('HEALTH_GENERIC');
+    expect(d.reasonBadge?.domain).toBe('health');
   });
 
   it('warning tires alone → Warning health but rental stays Ready (not Not Ready)', () => {
@@ -285,10 +288,11 @@ describe('health vs rental display separation', () => {
     });
     expect(d.healthDisplay.status).toBe('warning');
     expect(d.rentalDisplay.status).toBe('ready');
-    expect(d.reasonBadge?.text).toBe('Monitor tires');
+    expect(d.reasonBadge?.code).toBe('HEALTH_GENERIC');
+    expect(d.reasonBadge?.domain).toBe('health');
   });
 
-  it('error_codes reason counts active fault codes', () => {
+  it('error_codes module no longer collapses to a first-finding count text', () => {
     const d = resolveFleetVehicleDisplayState(vehicle(), {
       locale: 'en',
       rentalHealth: health({
@@ -304,10 +308,12 @@ describe('health vs rental display separation', () => {
         },
       }),
     });
-    expect(d.reasonBadge?.text).toBe('2 active fault codes');
+    // DTC count semantics live in activeHealthFindings[] (H/T suites), not reasonBadge.
+    expect(d.reasonBadge?.code).toBe('HEALTH_GENERIC');
+    expect(d.reasonBadge?.domain).toBe('health');
   });
 
-  it('skips generic blocking reasons and falls back to a concrete module reason', () => {
+  it('skips generic blocking reasons and falls back to generic health badge', () => {
     const d = resolveFleetVehicleDisplayState(vehicle(), {
       locale: 'en',
       rentalHealth: health({
@@ -325,10 +331,11 @@ describe('health vs rental display separation', () => {
         },
       }),
     });
-    expect(d.reasonBadge?.text).toBe('Service overdue');
+    expect(d.reasonBadge?.code).toBe('HEALTH_GENERIC');
+    expect(d.reasonBadge?.text.toLowerCase()).not.toContain('critical vehicle health');
   });
 
-  it('shows a concrete tire monitor reason instead of generic warning health status', () => {
+  it('never surfaces raw module reason text as a first-finding chip', () => {
     const d = resolveFleetVehicleDisplayState(vehicle({ healthStatus: 'Warning' }), {
       locale: 'de',
       rentalHealth: health({
@@ -344,8 +351,9 @@ describe('health vs rental display separation', () => {
         },
       }),
     });
-    expect(d.reasonBadge?.text).toBe('Reifen beobachten');
+    expect(d.reasonBadge?.code).toBe('HEALTH_GENERIC');
     expect(d.reasonBadge?.text).not.toBe('Warning health status');
+    expect(d.reasonBadge?.text).not.toBe('Reifen beobachten');
   });
 
   it('Active Rented → rental Active; Reserved → rental Reserved', () => {
@@ -502,7 +510,8 @@ describe('health vs rental display separation', () => {
     });
     expect(d.healthDisplay.label).toBe('Warnung');
     expect(d.rentalDisplay.label).toBe('Bereit');
-    expect(d.reasonBadge?.text).toBe('Reifen beobachten');
+    expect(d.reasonBadge?.code).toBe('HEALTH_GENERIC');
+    expect(d.reasonBadge?.text).toBe('Health prüfen');
   });
 });
 

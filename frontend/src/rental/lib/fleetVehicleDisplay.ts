@@ -15,7 +15,6 @@ import {
 } from './vehicle-operational-state';
 import {
   formatUserFacingReasonLabel,
-  isOperativeRentalHealthModule,
   sanitizeUserFacingIssueText,
 } from './operational-issues';
 import {
@@ -114,10 +113,21 @@ export interface FleetRentalDisplay {
   tone: StatusTone;
 }
 
+import type { FleetReasonBadgeDomain } from './fleet-reason-badge-domain';
+import { classifyReasonBadgeDomain } from './fleet-reason-badge-domain';
+
+export type { FleetReasonBadgeDomain } from './fleet-reason-badge-domain';
+
 /** A short, concrete reason chip (never a long red sentence). */
 export interface FleetReasonBadge {
   text: string;
   tone: StatusTone;
+  /** Machine-readable reason code — never derived from rendered text. */
+  code?: string | null;
+  /** Domain classification for health vs operational vs workflow attention. */
+  domain: FleetReasonBadgeDomain;
+  /** Provenance hint (e.g. rental_health:tires, ui_projection). */
+  source?: string | null;
 }
 
 export interface FleetVehicleDisplayState {
@@ -493,72 +503,6 @@ function isTelemetryReason(text: string | null | undefined): boolean {
   return /offline|no signal|signal delayed|standby|stale/i.test(String(text));
 }
 
-type ReasonModuleKey = 'error_codes' | 'service_compliance' | 'brakes' | 'tires' | 'battery';
-
-const REASON_MODULE_ORDER: ReasonModuleKey[] = [
-  'error_codes',
-  'service_compliance',
-  'brakes',
-  'tires',
-  'battery',
-];
-
-function extractCount(text: string | null | undefined): number | null {
-  if (!text) return null;
-  const m = String(text).match(/\d+/);
-  return m ? Number(m[0]) : null;
-}
-
-function moduleReasonText(
-  key: ReasonModuleKey,
-  module: RentalHealthModule,
-  de: boolean,
-): string {
-  const critical = module.state === 'critical';
-  switch (key) {
-    case 'error_codes': {
-      const n = extractCount(module.reason);
-      if (n != null && n > 0) {
-        if (de) return n === 1 ? '1 aktiver Fehlercode' : `${n} aktive Fehlercodes`;
-        return n === 1 ? '1 active fault code' : `${n} active fault codes`;
-      }
-      return de ? 'Aktiver Fehlercode' : 'Active fault code';
-    }
-    case 'service_compliance':
-      return critical
-        ? de ? 'Service überfällig' : 'Service overdue'
-        : de ? 'Service fällig' : 'Service due';
-    case 'brakes':
-      return de ? 'Bremsen prüfen' : 'Check brakes';
-    case 'tires':
-      return critical
-        ? de ? 'Reifen prüfen' : 'Check tires'
-        : de ? 'Reifen beobachten' : 'Monitor tires';
-    case 'battery':
-      return de ? 'Batterie prüfen' : 'Check battery';
-    default:
-      return de ? 'Health prüfen' : 'Check health';
-  }
-}
-
-/** Pick the most important concrete module reason (critical before warning). */
-function pickModuleReason(
-  rentalHealth: VehicleHealthResponse | null,
-  de: boolean,
-): string | null {
-  const modules = rentalHealth?.modules;
-  if (!modules) return null;
-  for (const severity of ['critical', 'warning'] as const) {
-    for (const key of REASON_MODULE_ORDER) {
-      const module = modules[key];
-      if (module && isOperativeRentalHealthModule(key, module) && module.state === severity) {
-        return moduleReasonText(key, module, de);
-      }
-    }
-  }
-  return null;
-}
-
 function buildReasonBadge(
   v: VehicleData,
   rentalHealth: VehicleHealthResponse | null,
@@ -579,28 +523,52 @@ function buildReasonBadge(
     return {
       text: formatUserFacingReasonLabel({ title: blockingReason }, de ? 'de' : 'en'),
       tone,
+      code: blockingReason,
+      domain: classifyReasonBadgeDomain(blockingReason),
+      source: 'rental_health_blocking',
     };
   }
 
-  const moduleReason = pickModuleReason(rentalHealth, de);
-  if (moduleReason) return { text: moduleReason, tone };
+  // Stage 5: per-module first-finding reason collapse removed — module-level
+  // health detail is carried by activeHealthFindings[] (shared projection).
 
   if (v.activeIsOverdue) {
-    return { text: de ? 'Rückgabe überfällig' : 'Return overdue', tone: 'critical' };
+    return {
+      text: de ? 'Rückgabe überfällig' : 'Return overdue',
+      tone: 'critical',
+      code: 'RETURN_OVERDUE',
+      domain: 'workflow',
+      source: 'booking',
+    };
   }
   if (v.reservedIsOverdue) {
-    return { text: de ? 'Abholung überfällig' : 'Pickup overdue', tone: 'watch' };
+    return {
+      text: de ? 'Abholung überfällig' : 'Pickup overdue',
+      tone: 'watch',
+      code: 'PICKUP_OVERDUE',
+      domain: 'workflow',
+      source: 'booking',
+    };
   }
 
   if (isConcreteReason(visual.reason) && !isTelemetryReason(visual.reason)) {
     return {
       text: formatUserFacingReasonLabel({ title: visual.reason }, de ? 'de' : 'en'),
       tone,
+      code: visual.reason,
+      domain: classifyReasonBadgeDomain(visual.reason),
+      source: 'visual',
     };
   }
 
   if (health === 'warning' || health === 'critical') {
-    return { text: de ? 'Health prüfen' : 'Check health', tone };
+    return {
+      text: de ? 'Health prüfen' : 'Check health',
+      tone,
+      code: 'HEALTH_GENERIC',
+      domain: 'health',
+      source: 'health_fallback',
+    };
   }
   return null;
 }
@@ -741,6 +709,9 @@ export function resolveFleetVehicleDisplayState(
       ? {
           text: formatUserFacingReasonLabel({ title: options.healthAlert.primaryReason }, de ? 'de' : 'en'),
           tone: healthDisplay.status === 'critical' ? 'critical' : 'watch',
+          code: options.healthAlert.primaryReason,
+          domain: classifyReasonBadgeDomain(options.healthAlert.primaryReason),
+          source: 'health_alert',
         }
       : null);
 

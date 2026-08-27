@@ -288,6 +288,8 @@ export interface VehicleHealthResponse {
     code: 'PIPELINE_UNAVAILABLE';
     message: string;
   };
+  /** Read-only passthrough from rental-health evaluation — no extra frontend fetch. */
+  dashboard_warning_lights?: DashboardWarningLightsResponse;
 }
 
 export interface FleetRentalHealthQuery {

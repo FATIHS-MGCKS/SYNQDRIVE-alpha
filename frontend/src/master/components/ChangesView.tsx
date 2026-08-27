@@ -36,6 +36,152 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-cross-surface-stage-5-final-closure-2026-08-27',
+    version: '4.9.974',
+    title: 'Cross-Surface Vehicle State/Health — Stage 5 final closure + bounded legacy cleanup',
+    summary: [
+      'Final authority matrix certified: Fleet Command / Ready-to-Rent / Vehicle Detail all use P0.1 business, P0.2 availability, P1.5 readiness, P0.4 health aggregate, shared `activeHealthFindings[]`, canonical attention — no tenant-facing legacy authority.',
+      'Removed proven-dead first-finding collapse: `pickModuleReason` + `moduleReasonText` + the `rental_health:<module>` branch of `buildReasonBadge` (reachable only on the test-only no-`uiProjection` path).',
+      'Retained bounded: `buildReasonBadge` blocking/workflow/generic branches (legacy fallback), `resolveReasonBadgeFromUi` (canonical, filtered by attention resolver), Active Rentals drawer reasonBadge (workflow surface).',
+      'New `vehicle-cross-surface-stage5-final.test.ts` — M1–M25 canonical fixture matrix across fleet + detail projections, S1–S4 no-duplicate-health-text gates, D1–D5 attention≠health≠readiness contradiction gates.',
+      'Certified: no N+1 (batched health + embedded `dashboard_warning_lights` passthrough), backend passthrough safe/read-only, i18n keys complete (en+de, en-fallback locales), a11y (aria labels, overflow label, DTC count).',
+    ],
+    reason:
+      'Stages 2A–4 are accepted; Stage 5 certifies production readiness of the complete cross-surface contract and removes only superseded first-finding code.',
+    previousBehavior:
+      '`pickModuleReason` still collapsed rental-health modules into one arbitrary first-finding text on the legacy no-projection path; no single certification suite asserted all three surfaces against one fixture matrix.',
+    details:
+      'frontend: fleetVehicleDisplay.ts (first-finding removal), fleetVehicleDisplay.test.ts (legacy-path expectations), vehicle-cross-surface-stage5-final.test.ts (new). architecture + audit docs Stage 5 closure. No P0/P1 semantic changes, no backend changes, no UI redesign.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T20:15:00.000Z',
+  },
+  {
+    id: 'vehicle-detail-row-alignment-stage-4-2026-08-27',
+    version: '4.9.973',
+    title: 'Vehicle Detail Row Alignment — Stage 4 shared semantic contract',
+    summary: [
+      'Vehicle Detail header uses `resolveVehicleDetailCanonicalHealthDisplay()` — same P0.4 aggregate authority as Fleet rows.',
+      'Optional `VehicleDetailHeaderFindingIcons` from `buildVehicleDetailRowOperationalProjection().activeHealthFindings`.',
+      'Consolidated telltale icon registry: Panel/QuickView/DetailDrawer → `DashboardTelltaleIcon` + `resolveDashboardTelltaleIconSrc()`.',
+      'Telltale semantic hardening: unknown keys → Lucide `alert-triangle` generic fallback; **UNKNOWN TELLTALE → CEL forbidden**.',
+      'Rich surfaces unchanged: VehicleHealthBox, HealthErrorsView, HealthVehicleDetailPanel retain module APIs.',
+      'Tests: V1–V16 alignment, T1–T12 telltale registry, KS MX cross-surface matrix.',
+    ],
+    reason:
+      'Stage 3B aligned Fleet/Ready-to-Rent compact rows; Stage 4 aligns Vehicle Detail to the same canonical truth without flattening the richer UI.',
+    previousBehavior:
+      'Vehicle Detail header used P0.4 when present but findings/telltale icons used duplicate local registries; no shared projection on detail surfaces.',
+    details:
+      'frontend: vehicle-detail-row-projection.ts(+test), VehicleDetailHeaderBadges.tsx, VehicleDetailHeader.tsx, DashboardWarningLights*.tsx, DashboardTelltaleIcon.tsx, dashboard-telltale-icon-registry.test.ts. architecture + audit Stage 4. No P0/P1/backend changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T19:20:00.000Z',
+  },
+  {
+    id: 'vehicle-health-finding-domain-hardening-stage-3b-2026-08-27',
+    version: '4.9.972',
+    title: 'Vehicle Health Finding Consumer — Stage 3B machine-readable domain hardening',
+    summary: [
+      'Removed `HEALTH_REASON_TEXT_PATTERN` regex classification on rendered reason text.',
+      'Extended `FleetReasonBadge` with machine-readable `domain` + `code` fields.',
+      'New `fleet-reason-badge-domain.ts` classifies health vs operational vs workflow from typed codes.',
+      'Health reason suppression uses `domain === health` + active findings — language-independent.',
+      'L1–L10 tests prove multilingual label independence; B1–B16 consumer regressions pass.',
+    ],
+    reason:
+      'Stage 3B cutover initially used EN/DE regex on rendered labels — violates Stage 2A invariant and breaks multilingual UI.',
+    previousBehavior:
+      'shouldSuppressHealthReasonBadgeText matched health keywords in localized reasonBadge.text via regex.',
+    details:
+      'frontend: fleet-reason-badge-domain.ts(+test), FleetReasonBadge contract, fleetVehicleDisplay.ts, fleet-p1-3-display.ts, vehicle-row-operational-attention.ts. architecture + audit Stage 3B hardening. No P0/P1 semantic changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T18:35:00.000Z',
+  },
+  {
+    id: 'vehicle-health-finding-consumer-cutover-stage-3b-2026-08-27',
+    version: '4.9.971',
+    title: 'Vehicle Health Finding Icons — Stage 3B Fleet + Ready-to-Rent consumer cutover',
+    summary: [
+      'Fleet Command (`FleetOperatorRow`) and Ready-to-Rent (`CompactFleetDrawerVehicleRow`) render `VehicleHealthFindingIcons` from `rowOperationalProjection.activeHealthFindings[]`.',
+      'Operational attention (auth, device unplugged, integration error, connectivity verification) preserved via `resolveRowOperationalAttentionBadge()` — separate from health icons.',
+      'Rental-health batch now passthroughs `dashboard_warning_lights` (server already fetched); `composeFleetDashboardWarningLightsAccessor` avoids per-row N+1.',
+      'Single health reason text (“Reifen beobachten” / first-finding-wins) suppressed when icons are authoritative; aggregate health + business/readiness badges unchanged.',
+      'Tests: B1–B16 consumer matrix, KS MX 2024 multi-finding, cross-surface fixture matrix.',
+    ],
+    reason:
+      'Stage 3A established shared icon contract; Stage 3B performs visible cutover on the two compact row surfaces identified in Stage 1 audit.',
+    previousBehavior:
+      'Fleet Command and Ready-to-Rent showed at most one textual health reason chip; multiple concurrent findings collapsed to first-finding-wins.',
+    details:
+      'frontend: FleetOperatorRow.tsx, CompactFleetDrawerVehicleRow.tsx, vehicle-row-health-consumer.ts, vehicle-row-operational-attention.ts, fleet-operator-panel.ts, vehicle-row-health-consumer-cutover.test.ts. backend: rental-health dashboard_warning_lights passthrough. architecture + audit Stage 3B. Vehicle Detail unchanged (Stage 4).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T18:30:00.000Z',
+  },
+  {
+    id: 'vehicle-health-finding-icons-stage-3a-2026-08-27',
+    version: '4.9.970',
+    title: 'Vehicle Health Finding Icons — Stage 3A shared icon contract',
+    summary: [
+      'New `vehicle-health-finding-presentation.ts` resolves `activeHealthFindings[]` → icon asset, severity tone, localized tooltip (machine-readable authority).',
+      'New `VehicleHealthFindingIcons` compact strip component with domain aggregation, telltale dedupe, overflow +N, and accessibility labels.',
+      'Centralized `resolveDashboardTelltaleIconSrc()` in dashboard-warning-lights-display.ts (reuses existing telltale SVG registry).',
+      'Vehicle Detail health assets reused: motor-filter/brake/car-battery (health modules), cel.svg (DTC), per-telltale SVGs (dashboard warnings).',
+      'No Fleet Command / Ready-to-Rent / Vehicle Detail consumer cutover in this stage.',
+    ],
+    reason:
+      'Stage 2A established multi-finding contract; Stage 3A adds one shared visual vocabulary before replacing single reason chips in Stage 3B.',
+    previousBehavior:
+      'Compact rows showed at most one reason chip via first-finding-wins; no shared icon resolver for activeHealthFindings[].',
+    details:
+      'frontend: vehicle-health-finding-presentation.ts(+test), VehicleHealthFindingIcons.tsx, dashboard-warning-lights-display.ts (resolveDashboardTelltaleIconSrc), i18n fleet.healthFinding.* keys. architecture + audit Stage 3A. Visible Fleet/Ready-to-Rent UI unchanged.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T18:10:00.000Z',
+  },
+  {
+    id: 'vehicle-row-operational-display-stage-2b-2026-08-27',
+    version: '4.9.969',
+    title: 'Vehicle Row Operational Display — Stage 2B availability/readiness semantic cutover',
+    summary: [
+      'New `getVehicleRowOperationalDisplay()` maps `VehicleRowOperationalProjection` to surface-aware labels (business / operational / readiness) with explicit i18n keys.',
+      'Fleet Command: tab **Avail.** renamed to **Frei/Free** (P0.1 business workflow authority unchanged); row primary badge shows business state, not P0.2 “Verfügbar”.',
+      'Ready-to-Rent drilldown: primary row badge reflects P1.5 readiness — never green “Verfügbar” when `isReadyToRent === false`.',
+      'Tests: invariants A1–A8, six production-shaped vehicle matrix; Fleet Command + projection regression suites pass.',
+    ],
+    reason:
+      'Stage 1 audit proved Fleet “Avail.”, Ready-to-Rent grouping, and green row badges used different semantic dimensions with overlapping labels.',
+    previousBehavior:
+      'Fleet Command tab counted P0.1 business-available but rows showed P0.2 availability badge; Ready-to-Rent “Nicht bereit” rows could still show green “Verfügbar”.',
+    details:
+      'frontend: vehicle-row-operational-display.ts(+test), FleetCommandPanel.tsx, FleetOperatorRow.tsx, CompactFleetDrawerVehicleRow.tsx, i18n fleet.businessState.* / fleet.command.tab.* / fleet.rowProjection.readiness.blocked. architecture + audit Stage 2B closure. No backend/P0/P1/readiness derivation/health-icon changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T17:45:00.000Z',
+  },
+  {
+    id: 'vehicle-row-operational-projection-stage-2a-2026-08-27',
+    version: '4.9.968',
+    title: 'Vehicle Row Operational Projection — Stage 2A shared frontend contract',
+    summary: [
+      'New `VehicleRowOperationalProjection` adapter preserves separate business, P0.2 availability, P1.5 readiness, connectivity, P0.4 health, and full `activeHealthFindings[]` (no first-finding-wins).',
+      '`buildFleetVehicleContexts` exposes `rowOperationalProjection` alongside existing `uiProjection`; Fleet Command passes P1.5 readiness when dashboard runtime is present.',
+      'Visible Fleet / Ready-to-Rent / Vehicle Detail row UI unchanged in this stage.',
+      'Contract tests: fixtures A–F, invariants C1–C10, six production-shaped vehicles including KS MX 2024 multi-finding preservation.',
+    ],
+    reason:
+      'Stage 1 audit (PR #1347) proved cross-surface inconsistencies are frontend contract fragmentation — establish shared projection before UI cutover.',
+    previousBehavior:
+      'Compact rows used single `reasonBadge` / `pickModuleReason` while Vehicle Detail showed all module findings.',
+    details:
+      'frontend: vehicle-row-operational-projection.ts(+test), fleet-operator-panel.ts, FleetCommandView.tsx, i18n de/en rowFinding keys. architecture: VEHICLE_ROW_OPERATIONAL_PROJECTION_CONTRACT_2026-08.md. audit: vehicle-cross-surface-state-health-consumer-consistency-audit-2026-08.md §Stage 2A. No backend/P0/P1 semantic changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T17:30:00.000Z',
+  },
+  {
     id: 'battery-v2-live-voltage-canonical-laststored-2026-08-26',
     version: '4.9.967',
     title: 'Battery V2 — canonical LIVE_VOLTAGE lastStored uses BatteryMeasurement only',
