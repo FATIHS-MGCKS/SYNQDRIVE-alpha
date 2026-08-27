@@ -52,6 +52,7 @@ export {
 } from '../../lib/vehicle-overview-navigation';
 export { VehicleServiceContextPanel } from './VehicleServiceContextPanel';
 export { VehicleRequirementsTab } from './VehicleRequirementsTab';
+export { VehicleConnectivityTab } from './VehicleConnectivityTab';
 export { VehicleRentalRequirementsQuickCard } from './VehicleRentalRequirementsQuickCard';
 export { useVehicleRentalRequirements } from '../../hooks/useVehicleRentalRequirements';
 export {

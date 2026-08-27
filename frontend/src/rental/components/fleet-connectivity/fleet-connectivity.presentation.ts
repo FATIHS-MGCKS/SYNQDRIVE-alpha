@@ -211,9 +211,80 @@ export function showLiveDot(state: OverallConnectivityState): boolean {
   return state === 'TELEMETRY_ACTIVE';
 }
 
+export function telemetryFreshnessLabel(
+  state: FleetTelemetryFreshness,
+  t: FleetConnectivityTranslator,
+): string {
+  const key = `fleetConnectivity.telemetryFreshness.${state}` as TranslationKey;
+  return t(key);
+}
+
 export function telemetryFreshnessTone(state: FleetTelemetryFreshness): StatusTone {
   if (state === 'live') return 'success';
   if (state === 'standby' || state === 'signal_delayed') return 'watch';
   if (state === 'offline') return 'critical';
   return 'noData';
+}
+
+/** Provider ACTIVE must not read as vehicle-online — keep neutral. */
+export function providerLinkPresentationTone(state: ProviderLinkState): StatusTone {
+  switch (state) {
+    case 'ACTIVE':
+      return 'neutral';
+    case 'REAUTH_REQUIRED':
+      return 'warning';
+    case 'REVOKED':
+    case 'ERROR':
+      return 'critical';
+    case 'NO_LINK':
+      return 'noData';
+    default:
+      return 'noData';
+  }
+}
+
+export function physicalDevicePresentationTone(state: PhysicalDeviceState): StatusTone {
+  switch (state) {
+    case 'UNPLUGGED_CONFIRMED':
+      return 'critical';
+    case 'PLUGGED_CONFIRMED':
+    case 'PLUGGED_INFERRED':
+      return 'neutral';
+    case 'NOT_APPLICABLE':
+      return 'neutral';
+    default:
+      return 'noData';
+  }
+}
+
+export function formatInterruptionDuration(
+  ms: number | null | undefined,
+  locale: string,
+): string {
+  if (ms == null || ms < 0) return '—';
+  const minutes = Math.floor(ms / 60_000);
+  const de = locale === 'de';
+  if (minutes < 60) {
+    return de ? `${minutes} Min.` : `${minutes} min`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const rem = minutes % 60;
+  if (hours < 24) {
+    return de
+      ? rem > 0
+        ? `${hours} Std. ${rem} Min.`
+        : `${hours} Std.`
+      : rem > 0
+        ? `${hours} h ${rem} min`
+        : `${hours} h`;
+  }
+  const days = Math.floor(hours / 24);
+  const hr = hours % 24;
+  return de
+    ? hr > 0
+      ? `${days} T. ${hr} Std.`
+      : `${days} T.`
+    : hr > 0
+      ? `${days} d ${hr} h`
+      : `${days} d`;
 }

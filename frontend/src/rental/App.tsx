@@ -103,6 +103,7 @@ import {
   VehicleDetailTabPanel,
   VehicleOverviewTab,
   VehicleRequirementsTab,
+  VehicleConnectivityTab,
   VehicleTripsFilterBar,
   createVehicleOverviewNavigator,
   useVehicleOverviewSummary,
@@ -123,6 +124,7 @@ import {
 // Keep in sync with the header/tabs guards further below in RentalAppContent.
 const VEHICLE_DETAIL_VIEWS = new Set<string>([
   'overview',
+  'connectivity',
   'trips',
   'health-errors',
   'damages',
@@ -230,7 +232,7 @@ function RentalAppContent() {
   const [cleaningStatus, setCleaningStatus] = useState<'Clean' | 'Needs Cleaning'>('Clean');
   const [vehicleStatus, setVehicleStatus] = useState<'Available' | 'Manual Block' | 'Maintenance'>('Available');
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
-  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'customer-payments' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant' | 'communication-center'>(() => {
+  const [currentView, setCurrentView] = useState<'overview' | 'connectivity' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'customer-payments' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant' | 'communication-center'>(() => {
     if (typeof window !== 'undefined') {
       const legacy = resolveLegacyCommunicationRoute(window.location.search);
       if (legacy) {
@@ -1201,6 +1203,13 @@ function RentalAppContent() {
               }}
             />
           </VehicleDetailTabPanel>
+        ) : currentView === 'connectivity' ? (
+          <VehicleDetailTabPanel tab="connectivity" activeTab="connectivity">
+            <VehicleConnectivityTab
+              orgId={orgId}
+              vehicleId={selectedVehicle?.id ?? null}
+            />
+          </VehicleDetailTabPanel>
         ) : currentView === 'customers' ? (
           <CustomersView onOpenCustomerDetail={(c) => { setDetailCustomer(c); setCurrentView('customer-detail'); }} additionalCustomers={newlyCreatedCustomers} />
         ) : currentView === 'customer-detail' && detailCustomer ? (
@@ -1370,6 +1379,9 @@ function RentalAppContent() {
               onNavigate={navigateVehicleOverview}
               onOpenHealthDetails={() => {
                 if (selectedVehicle) setCurrentView('health-errors');
+              }}
+              onOpenConnectivityDetails={() => {
+                if (selectedVehicle) setCurrentView('connectivity');
               }}
               onOpenServiceCenter={openServiceCenter}
               onOpenVehicleTask={(taskId) => {

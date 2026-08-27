@@ -1,4 +1,4 @@
-import { AlertTriangle, Radio } from 'lucide-react';
+import { AlertTriangle, ChevronRight, Radio } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { StatusChip } from '../../../components/patterns';
 import type { StatusTone } from '../../../components/patterns/status-utils';
@@ -14,6 +14,7 @@ import {
 export interface VehicleDeviceConnectionCardProps {
   orgId: string;
   vehicleId: string;
+  onOpenDetails?: () => void;
 }
 
 function valueToneClass(tone: StatusTone): string {
@@ -75,6 +76,7 @@ function splitDataSourceLines(value: string): string[] {
 export function VehicleDeviceConnectionCard({
   orgId,
   vehicleId,
+  onOpenDetails,
 }: VehicleDeviceConnectionCardProps) {
   const { t, locale } = useLanguage();
   const [summary, setSummary] = useState<DeviceConnectionSummary | null>(null);
@@ -198,6 +200,17 @@ export function VehicleDeviceConnectionCard({
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[color:var(--status-critical)]" aria-hidden />
           <StatusChip tone="critical">{t('vehicleDetail.connectivity.duringActiveBooking')}</StatusChip>
         </div>
+      ) : null}
+
+      {onOpenDetails ? (
+        <button
+          type="button"
+          onClick={onOpenDetails}
+          className="mt-3 flex w-full min-h-[44px] items-center justify-between gap-2 border-t border-border/30 pt-2.5 text-left text-[12px] font-medium text-[color:var(--brand)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-soft)] focus-visible:ring-offset-2"
+        >
+          <span>{t('vehicleDetail.connectivityTab.showDetails')}</span>
+          <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
+        </button>
       ) : null}
     </section>
   );

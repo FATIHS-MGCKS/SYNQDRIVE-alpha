@@ -16,6 +16,7 @@ export type NavigateVehicleOverviewTarget = (target: VehicleOverviewNavigateTarg
 /** Keep in sync with `VEHICLE_DETAIL_VIEWS` in `rental/App.tsx`. */
 export const VEHICLE_DETAIL_TAB_KEYS = [
   'overview',
+  'connectivity',
   'trips',
   'health-errors',
   'damages',
