@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Invoice Line Items (P2.2.53 — V4.9.980)', icon: Globe,
+    endpoint: 'Invoice Detail → InvoiceLineItems card + summary',
+    service: '**Locale flow:** `useLanguage().locale` → `rental-invoice-line-items-i18n.ts` → `formatInvoiceListAmount`. **Keys:** +3 EN+DE (`unit.days`, `unit.hours`, `fallback.description`); reuses 21 `invoiceLineItem.*`. **Machine values:** quantity, cents, tax rates, descriptions, explicit units, formulas frozen. **Guardrails:** P2.2.53 enforce-clean exact (3 paths) — 0 findings. **Frozen:** P252 Payments, P251 Relations, P250 Header, P249 Secondary. **Tests:** `rental-invoice-line-items-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_RENTAL_INVOICE_LINE_ITEMS_P2_2_53_2026-08-27.md' },
   { name: 'Platform i18n Rental Invoice Payments (P2.2.52 — V4.9.979)', icon: Globe,
     endpoint: 'Invoice Detail → InvoicePayments card + record/detail dialogs',
     service: '**Locale flow:** `useLanguage().locale` → `rental-invoice-payments-i18n.ts` → `formatInvoiceListAmount`/`formatInvoiceListDate`. **Keys:** 0 new; reuses 43 `invoicePayment.*` + `common.actions`. **Machine values:** amountCents, method codes, statusKind, reference, note, payload frozen. **Guardrails:** P2.2.52 enforce-clean exact (5 paths) — 0 findings. **Frozen:** P251 Relations, P250 Header, P249 Secondary. **Tests:** `rental-invoice-payments-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

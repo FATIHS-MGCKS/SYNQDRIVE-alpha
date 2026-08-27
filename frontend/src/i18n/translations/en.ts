@@ -4520,6 +4520,9 @@ export const en = {
   'invoiceLineItem.summary.credit': 'Credits',
   'invoiceLineItem.summary.creditNote': 'Invoice credited',
   'invoiceLineItem.empty': 'No line items.',
+  'invoiceLineItem.fallback.description': 'Line item',
+  'invoiceLineItem.unit.days': 'days',
+  'invoiceLineItem.unit.hours': 'hrs',
 
   // ─── Voice AI assistant ───
   'voice.common.loading': 'Loading…',

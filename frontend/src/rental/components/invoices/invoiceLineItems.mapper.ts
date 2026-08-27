@@ -1,11 +1,19 @@
 import type { TranslationKey } from '../../i18n/translations/en';
-import { formatAmount } from './invoiceFormatters';
+import {
+  formatRentalInvoiceLineItemMoney,
+  inferUnitLabelBaseline,
+  resolveLineItemFallbackDescription,
+  resolveLineItemUnitDisplayLabel,
+} from '../../lib/rental-invoice-line-items-i18n';
 import type { InvoiceLineItemView, InvoiceLineItemsPanel, InvoiceTaxBreakdownRow } from './invoiceLineItemTypes';
 import type { Invoice, InvoiceLineItem } from './invoiceTypes';
 
 type Translate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
 const ALLOWED_TAX_RATES = [0, 7, 19];
+
+export { inferUnitKind } from '../../lib/rental-invoice-line-items-i18n';
+export type { InferredUnitKind, InvoiceLineItemInferInput } from '../../lib/rental-invoice-line-items-i18n';
 
 export function normalizeTaxRate(rate: number | undefined | null): number {
   if (rate == null || !Number.isFinite(rate)) return 19;
@@ -14,13 +22,7 @@ export function normalizeTaxRate(rate: number | undefined | null): number {
 }
 
 export function inferUnitLabel(description: string, raw?: InvoiceLineItem): string | null {
-  const explicit = (raw as { unit?: string; unitLabel?: string } | undefined)?.unit
-    ?? (raw as { unitLabel?: string } | undefined)?.unitLabel;
-  if (typeof explicit === 'string' && explicit.trim()) return explicit.trim();
-  if (/\bTage\b/i.test(description)) return 'Tage';
-  if (/\bStunden?\b/i.test(description)) return 'Std.';
-  if (/\bkm\b/i.test(description)) return 'km';
-  return null;
+  return inferUnitLabelBaseline(description, raw);
 }
 
 export function taxRateLabel(rate: number, t: Translate): string {
@@ -87,8 +89,12 @@ export function buildTaxBreakdown(lines: InvoiceLineItemView[]): InvoiceTaxBreak
     }));
 }
 
-export function formatInvoiceMoney(cents: number, currency: string): string {
-  return formatAmount(cents, currency);
+export function formatInvoiceMoney(
+  cents: number,
+  currency: string,
+  locale = 'de',
+): string {
+  return formatRentalInvoiceLineItemMoney(locale, cents, currency);
 }
 
 export function formatQuantityWithUnit(quantity: number, unitLabel: string | null): string {
@@ -102,21 +108,31 @@ export function formatUnitTimesPrice(
   currency: string,
   unitLabel: string | null,
   t: Translate,
+  locale = 'de',
 ): string {
   const qtyLabel = formatQuantityWithUnit(quantity, unitLabel);
-  const unitPrice = formatInvoiceMoney(unitPriceNetCents, currency);
+  const unitPrice = formatInvoiceMoney(unitPriceNetCents, currency, locale);
   return t('invoiceLineItem.mobile.qtyTimesPrice', { qty: qtyLabel, price: unitPrice });
 }
 
-export function buildInvoiceLineItemsPanel(invoice: Invoice, t: Translate): InvoiceLineItemsPanel | null {
+export function buildInvoiceLineItemsPanel(
+  invoice: Invoice,
+  t: Translate,
+  locale = 'de',
+): InvoiceLineItemsPanel | null {
   const rawItems = Array.isArray(invoice.lineItems) ? invoice.lineItems : [];
   if (rawItems.length === 0) return null;
 
   const currency = invoice.currency || 'EUR';
   const lines = rawItems.map((item, index) => {
     const parsed = parseLineInput(item, index);
+    const descriptionSource = item.description?.trim() || parsed.description;
     return {
       ...parsed,
+      description: item.description?.trim()
+        ? parsed.description
+        : resolveLineItemFallbackDescription(t),
+      unitLabel: resolveLineItemUnitDisplayLabel(descriptionSource, item, t),
       taxRateLabel: taxRateLabel(parsed.taxRate, t),
     };
   });

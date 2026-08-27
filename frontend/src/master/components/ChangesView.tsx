@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-invoice-line-items-p2-2-53-2026-08-27',
+    version: '4.9.980',
+    title: 'Platform i18n — P2.2.53 Rental Invoice Line Items production hardening',
+    summary: [
+      'Hardened Invoice Detail Line Items locale threading via `rental-invoice-line-items-i18n.ts`; reuses 21 existing `invoiceLineItem.*` keys plus 3 bounded unit/fallback keys.',
+      'P253 enforce-clean exact scope (3 paths) reports 0 findings; locale-aware money via `formatInvoiceListAmount`; inferred unit labels localized (days/hours; km static).',
+      'Financial/tax/quantity formulas, credit classification, line order, and empty behavior unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.53 production hardening after P2.2.52 Payments merge (#1351) per #1354 pre-flight.',
+    previousBehavior:
+      'Line Items UI used `invoiceLineItem.*` keys but money formatters defaulted to German locale; inferred units were hardcoded German strings.',
+    details:
+      'Locale threaded through `formatInvoiceMoney`, `formatUnitTimesPrice`, and `buildInvoiceLineItemsPanel`. Same-mount tests cover multi-line list preservation across DE↔EN.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-27T00:00:00.000Z',
+  },
+  {
     id: 'i18n-rental-invoice-payments-p2-2-52-2026-08-27',
     version: '4.9.979',
     title: 'Platform i18n — P2.2.52 Rental Invoice Payments production hardening',
