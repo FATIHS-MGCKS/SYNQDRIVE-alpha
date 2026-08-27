@@ -1,7 +1,7 @@
 # P2.2.53 — Rental Invoice Line Items i18n Architecture
 
-**Date:** 2026-08-27  
-**Baseline:** `d92440355178d3f7b0a5cd1417bf0d3c3e7fa5da` (post-P252 merge)  
+**Date:** 2026-08-27
+**Baseline:** `d92440355178d3f7b0a5cd1417bf0d3c3e7fa5da` (post-P252 merge)
 **Pre-flight:** PR #1354 — Verdict A
 
 ## Runtime flow

@@ -1,7 +1,7 @@
 # P2.2.53 — Rental Invoice Line Items Implementation Evidence
 
-**Date:** 2026-08-27  
-**Baseline:** `d92440355178d3f7b0a5cd1417bf0d3c3e7fa5da`  
+**Date:** 2026-08-27
+**Baseline:** `d92440355178d3f7b0a5cd1417bf0d3c3e7fa5da`
 **Pre-flight:** PR #1354 (Verdict A)
 
 ## Summary
