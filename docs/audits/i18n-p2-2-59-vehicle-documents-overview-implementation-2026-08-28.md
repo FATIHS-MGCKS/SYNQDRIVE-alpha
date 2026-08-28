@@ -1,9 +1,9 @@
 # P2.2.59 — Vehicle Documents Overview Localization (Implementation)
 
-**Date:** 2026-08-28  
-**Campaign:** RENTAL  
-**Baseline:** `7871809e94cb6cd9f80c47999878c1fafc22e608` (P2.2.58 merge)  
-**Branch:** `cursor/p2259-vehicle-documents-overview-i18n-3c10`  
+**Date:** 2026-08-28
+**Campaign:** RENTAL
+**Baseline:** `7871809e94cb6cd9f80c47999878c1fafc22e608` (P2.2.58 merge)
+**Branch:** `cursor/p2259-vehicle-documents-overview-i18n-3c10`
 **Split:** LIST / OVERVIEW FIRST — Upload Drawer deferred
 
 ## Scope
@@ -27,7 +27,7 @@
 
 ## Mount topology
 
-`/rental` → `currentView = documents` + selected vehicle → `DocumentsView.tsx`  
+`/rental` → `currentView = documents` + selected vehicle → `DocumentsView.tsx`
 Data: `useVehicleFileSummary(vehicleId)` → vehicle file summary API
 
 ## Machine inventory (unchanged)
