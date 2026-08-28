@@ -42,7 +42,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Fixed fleet-wide energy-event outage since 2026-07-17: recharge GraphQL query from commit 79e381069 used unsupported `id`, `limit`, `after` → HTTP 422.',
       'Decoupled refuel/recharge fetches — one mechanism failing no longer discards the other.',
-      'Safe prune: no deletion on fetch failure or empty detection; per-mechanism prune only after SUCCESS_WITH_EVENTS.',
+      'Safe prune: no deletion on fetch failure or empty detection; only raw sub-segment rows explicitly listed in `coalescedFromSegmentIds` of a successfully persisted multi-segment coalesced event may be pruned — absence from the current detector response is never prune evidence.',
       'Added schema fixture validator + EnergyEventsService regression tests.',
       'Live DIMO validation: refuel + recharge return HTTP 200 for tokenIds 187336, 186946.',
     ],
