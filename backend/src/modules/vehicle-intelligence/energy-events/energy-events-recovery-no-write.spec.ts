@@ -3,6 +3,7 @@ import {
   createMutationGuardedPrismaClient,
   createPrismaRecoveryReadRepository,
 } from './energy-events-recovery-read.repository';
+import { buildRecoveryVehicleInput } from './energy-events-recovery-capability';
 import { runEnergyEventsRecoveryDryRun } from './energy-events-recovery-runner';
 import type { DimoEnergyEventSegment } from '@modules/dimo/dimo-segments.service';
 import {
@@ -20,15 +21,24 @@ describe('energy-events recovery dry-run zero DB writes', () => {
         licensePlate: 'AUDIT_CANONICAL_REFUEL',
         vehicleName: null,
         hardwareType: 'LTE_R1',
+        fuelType: 'GASOLINE',
         dimoVehicle: { tokenId: 100001 },
         energyEvents: [],
+        vehicleBatteryCapabilities: [],
       },
     ] as never);
 
-    const vehicles = await repository.loadVehiclesForRecovery({
+    const rows = await repository.loadRecoveryVehicleDbRows({
       outageStart: new Date(ENERGY_EVENTS_OUTAGE_START_ISO),
       recoveryCutoff: new Date(ENERGY_EVENTS_RECOVERY_CUTOFF_ISO),
     });
+    const vehicles = rows.map((row) =>
+      buildRecoveryVehicleInput(
+        row,
+        ['powertrainFuelSystemRelativeLevel', 'powertrainFuelSystemAbsoluteLevel'],
+        'full',
+      ),
+    );
 
     const refuel: DimoEnergyEventSegment = {
       segmentId: 'dimo-refuel-100001-1724427315000',

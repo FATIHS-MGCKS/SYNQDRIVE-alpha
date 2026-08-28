@@ -31,14 +31,17 @@ import {
   type RecoveryVehicleInput,
 } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-runner';
 import {
+  buildRecoveryVehicleInput,
+} from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-capability';
+import {
   buildFleetFallbackVehicles,
   createMutationGuardedPrismaClient,
   createPrismaRecoveryReadRepository,
-  mergeAuditedFleetIntoDbVehicles,
   type DbComparisonStatus,
 } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-read.repository';
 import {
   fetchEnergyEventSegmentsStandalone,
+  probeAvailableSignalsForTokenIds,
   probeDimoAccessForTokenIds,
   probeFleetDimoAccess,
 } from './energy-events-standalone-dimo-fetch';
@@ -84,17 +87,30 @@ async function loadVehiclesForMode(): Promise<{
   const prisma = createMutationGuardedPrismaClient(new PrismaClient());
   const repository = createPrismaRecoveryReadRepository(prisma);
   try {
-    const vehicles = await repository.loadVehiclesForRecovery({
+    const rows = await repository.loadRecoveryVehicleDbRows({
       outageStart,
       recoveryCutoff,
     });
-    const dimoAccessByTokenId = await probeDimoAccessForTokenIds(
-      vehicles.map((vehicle) => vehicle.tokenId),
+    const tokenIds = rows.map((row) => row.tokenId);
+    const dimoAccessByTokenId = await probeDimoAccessForTokenIds(tokenIds);
+    const accessibleTokenIds = tokenIds.filter((tokenId) => dimoAccessByTokenId[tokenId]);
+    const availableSignalsByTokenId =
+      await probeAvailableSignalsForTokenIds(accessibleTokenIds);
+
+    const vehicles = rows.map((row) =>
+      buildRecoveryVehicleInput(
+        {
+          ...row,
+          dimoAccessAvailable: dimoAccessByTokenId[row.tokenId] ?? false,
+        },
+        availableSignalsByTokenId[row.tokenId] ?? null,
+        'full',
+      ),
     );
-    const merged = mergeAuditedFleetIntoDbVehicles(vehicles, dimoAccessByTokenId, true);
+
     await prisma.$disconnect();
     return {
-      vehicles: merged,
+      vehicles,
       dbComparisonEnabled: true,
       dbComparisonStatus: 'ok',
     };

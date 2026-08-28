@@ -409,6 +409,7 @@ describe('energy-events recovery runner gates', () => {
     relativeFuelAvailable: true,
     absoluteFuelAvailable: true,
     rechargeSocAvailable: false,
+    capabilityLookupStatus: 'ok' as const,
     dimoAccessAvailable: true,
     dbVehicleMapped: true,
     existingEvents: [],
@@ -543,9 +544,20 @@ describe('energy-events recovery runner gates', () => {
   });
 
   it('11. FULL mode unmapped vehicle → DB_VEHICLE_MAPPING_MISSING gate', async () => {
-    const unmapped = mergeAuditedFleetIntoDbVehicles([], { 100001: true }, true).find(
-      (v) => v.tokenId === 100001,
-    )!;
+    const unmapped = {
+      vehicleId: 'dry-run-token-100001',
+      label: 'AUDIT_CANONICAL_REFUEL',
+      tokenId: 100001,
+      provider: 'LTE_R1',
+      powertrain: 'ICE' as const,
+      relativeFuelAvailable: true,
+      absoluteFuelAvailable: true,
+      rechargeSocAvailable: false,
+      capabilityLookupStatus: 'ok' as const,
+      dimoAccessAvailable: true,
+      dbVehicleMapped: false,
+      existingEvents: [],
+    };
     expect(unmapped.dbVehicleMapped).toBe(false);
 
     const report = await runEnergyEventsRecoveryDryRun([unmapped], {
@@ -634,16 +646,18 @@ describe('read repository mutation guard', () => {
         licensePlate: 'AUDIT_CANONICAL_REFUEL',
         vehicleName: null,
         hardwareType: 'LTE_R1',
+        fuelType: 'GASOLINE',
         dimoVehicle: { tokenId: 100001 },
         energyEvents: [],
+        vehicleBatteryCapabilities: [],
       },
     ] as never);
 
-    const vehicles = await repository.loadVehiclesForRecovery({
+    const rows = await repository.loadRecoveryVehicleDbRows({
       outageStart: new Date(ENERGY_EVENTS_OUTAGE_START_ISO),
       recoveryCutoff: new Date(ENERGY_EVENTS_RECOVERY_CUTOFF_ISO),
     });
-    expect(vehicles).toHaveLength(1);
+    expect(rows).toHaveLength(1);
 
     expect(() =>
       prisma.vehicleEnergyEvent.create({ data: {} as never }),

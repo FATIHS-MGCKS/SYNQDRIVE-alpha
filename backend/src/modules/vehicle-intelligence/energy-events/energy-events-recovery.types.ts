@@ -17,7 +17,8 @@ export type EnergyVehicleEnergyClass =
   | 'RECHARGE_CANDIDATE'
   | 'BOTH'
   | 'NO_ENERGY_SIGNAL'
-  | 'DIMO_ACCESS_FAILED';
+  | 'DIMO_ACCESS_FAILED'
+  | 'CAPABILITY_UNKNOWN';
 
 export type ManualReviewDisposition =
   | 'APPROVE_FOR_BACKFILL'
@@ -35,6 +36,7 @@ export interface EnergyRecoveryVehicleInventoryRow {
   relativeFuelAvailable: boolean;
   absoluteFuelAvailable: boolean;
   rechargeSocAvailable: boolean;
+  capabilityLookupStatus: 'ok' | 'failed';
   existingEventCountInWindow: number;
   energyClass: EnergyVehicleEnergyClass;
 }
@@ -133,6 +135,7 @@ export interface EnergyRecoveryDryRunReport {
   trafficBudget: {
     eligibleVehicles: number;
     inaccessibleVehicles: number;
+    capabilityUnknownVehicles: number;
     windowsPerVehicle: number;
     mechanismsPerWindowAverage: number;
     expectedTelemetryGraphqlRequests: number;

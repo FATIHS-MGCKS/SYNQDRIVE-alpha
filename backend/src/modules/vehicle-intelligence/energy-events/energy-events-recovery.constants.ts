@@ -127,7 +127,8 @@ export function mechanismsForEnergyClass(
     | 'RECHARGE_CANDIDATE'
     | 'BOTH'
     | 'NO_ENERGY_SIGNAL'
-    | 'DIMO_ACCESS_FAILED',
+    | 'DIMO_ACCESS_FAILED'
+    | 'CAPABILITY_UNKNOWN',
 ): Array<'refuel' | 'recharge'> {
   switch (energyClass) {
     case 'REFUEL_CANDIDATE':

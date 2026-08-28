@@ -43,6 +43,7 @@ export interface RecoveryVehicleInput {
   relativeFuelAvailable: boolean;
   absoluteFuelAvailable: boolean;
   rechargeSocAvailable: boolean;
+  capabilityLookupStatus: 'ok' | 'failed';
   dimoAccessAvailable: boolean;
   dbVehicleMapped: boolean;
   existingEvents: RecoveryExistingEnergyEvent[];
@@ -110,6 +111,7 @@ export async function runEnergyEventsRecoveryDryRun(
     relativeFuelAvailable: v.relativeFuelAvailable,
     absoluteFuelAvailable: v.absoluteFuelAvailable,
     rechargeSocAvailable: v.rechargeSocAvailable,
+    capabilityLookupStatus: v.capabilityLookupStatus,
     existingEventCountInWindow: v.existingEvents.length,
     energyClass: classifyVehicle(v),
   }));
@@ -121,11 +123,15 @@ export async function runEnergyEventsRecoveryDryRun(
       v.dimoAccessAvailable &&
       mappingOk &&
       energyClass !== 'NO_ENERGY_SIGNAL' &&
-      energyClass !== 'DIMO_ACCESS_FAILED'
+      energyClass !== 'DIMO_ACCESS_FAILED' &&
+      energyClass !== 'CAPABILITY_UNKNOWN'
     );
   });
   const inaccessibleVehicles = vehicles.filter(
     (v) => !v.dimoAccessAvailable || classifyVehicle(v) === 'DIMO_ACCESS_FAILED',
+  );
+  const capabilityUnknownVehicles = vehicles.filter(
+    (v) => classifyVehicle(v) === 'CAPABILITY_UNKNOWN',
   );
   const unmappedVehicles = vehicles.filter((v) => {
     const energyClass = classifyVehicle(v);
@@ -133,7 +139,8 @@ export async function runEnergyEventsRecoveryDryRun(
       deps.mode === 'full' &&
       !v.dbVehicleMapped &&
       energyClass !== 'NO_ENERGY_SIGNAL' &&
-      energyClass !== 'DIMO_ACCESS_FAILED'
+      energyClass !== 'DIMO_ACCESS_FAILED' &&
+      energyClass !== 'CAPABILITY_UNKNOWN'
     );
   });
 
@@ -298,6 +305,11 @@ export async function runEnergyEventsRecoveryDryRun(
   if (deps.mode === 'full' && unmappedVehicles.length > 0) {
     gateBlockersRaw.push(`DB_VEHICLE_MAPPING_MISSING:${unmappedVehicles.length}`);
   }
+  if (deps.mode === 'full' && capabilityUnknownVehicles.length > 0) {
+    gateBlockersRaw.push(
+      `CAPABILITY_UNKNOWN:${capabilityUnknownVehicles.length}`,
+    );
+  }
 
   if (
     !canonicalRefuelCandidate ||
@@ -318,6 +330,10 @@ export async function runEnergyEventsRecoveryDryRun(
     backfillGate = 'NOT READY';
   } else if (
     gateBlockers.some((blocker) => blocker.startsWith('DB_VEHICLE_MAPPING_MISSING'))
+  ) {
+    backfillGate = 'NOT READY';
+  } else if (
+    gateBlockers.some((blocker) => blocker.startsWith('CAPABILITY_UNKNOWN'))
   ) {
     backfillGate = 'NOT READY';
   } else if (
@@ -377,6 +393,7 @@ export async function runEnergyEventsRecoveryDryRun(
     trafficBudget: {
       eligibleVehicles: eligible.length,
       inaccessibleVehicles: inaccessibleVehicles.length,
+      capabilityUnknownVehicles: capabilityUnknownVehicles.length,
       windowsPerVehicle: windows.length,
       mechanismsPerWindowAverage,
       expectedTelemetryGraphqlRequests: expectedTelemetryRequests,
@@ -417,6 +434,7 @@ export async function runEnergyEventsRecoveryDryRun(
 
 function classifyVehicle(vehicle: RecoveryVehicleInput): EnergyVehicleEnergyClass {
   if (!vehicle.dimoAccessAvailable) return 'DIMO_ACCESS_FAILED';
+  if (vehicle.capabilityLookupStatus === 'failed') return 'CAPABILITY_UNKNOWN';
   const refuel = vehicle.relativeFuelAvailable || vehicle.absoluteFuelAvailable;
   const recharge = vehicle.rechargeSocAvailable;
   if (refuel && recharge) return 'BOTH';

@@ -146,6 +146,7 @@ describe('energy-events-recovery-artifact-sanitize', () => {
           relativeFuelAvailable: true,
           absoluteFuelAvailable: true,
           rechargeSocAvailable: false,
+          capabilityLookupStatus: 'ok',
           existingEventCountInWindow: 0,
           energyClass: 'REFUEL_CANDIDATE',
         },
@@ -175,6 +176,7 @@ describe('energy-events-recovery-artifact-sanitize', () => {
       trafficBudget: {
         eligibleVehicles: 1,
         inaccessibleVehicles: 0,
+        capabilityUnknownVehicles: 0,
         windowsPerVehicle: 1,
         mechanismsPerWindowAverage: 1,
         expectedTelemetryGraphqlRequests: 1,

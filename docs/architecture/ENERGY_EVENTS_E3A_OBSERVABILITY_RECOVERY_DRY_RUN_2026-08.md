@@ -23,6 +23,9 @@
 | No-write proof | `EnergyEventsRecoveryReadRepository` + mutation-guarded Prisma client |
 | Fetch failure gate | Any unresolved `FETCH_FAILED` in FULL mode → `NOT READY` |
 | Fleet inventory | One synthetic inaccessible ICE profile in QUICK mode; FULL mode loads vehicles from DB |
+| FULL capability discovery | Runtime/canonical: `Vehicle.fuelType`, `VehicleBatteryCapability`, DIMO `availableSignals` probe; existing events supplemental only — never sole source |
+| CAPABILITY_UNKNOWN gate | DIMO probe failure without canonical DB coverage → `CAPABILITY_UNKNOWN`; FULL gate `NOT READY` (not `NO_ENERGY_SIGNAL`) |
+| Synthetic QUICK isolation | `mergeAuditedFleetIntoDbVehicles` never injects synthetic QUICK profiles in FULL mode |
 | Metrics | `synqdrive_energy_events_zero_persist_runs_total` (per-run supporting signal only) |
 | Parser drift | `DimoSegmentsService` delegates to shared `parseDimoEnergyEventSegment` |
 
@@ -148,7 +151,7 @@ VehicleEnergyDetectionStatus
 
 ## 8. Tests
 
-Focused energy-events tests (74) plus E3A privacy regression checks:
+Focused energy-events tests (83) plus E3A privacy regression checks:
 
 - E1 mechanism isolation in dry-run
 - Full mode without DB → NOT READY
@@ -163,6 +166,7 @@ Focused energy-events tests (74) plus E3A privacy regression checks:
 - Manual-review disposition resolution (`EXCLUDE` counts as resolved)
 - Sanitized artifact builder (inventory-order aliases, no forbidden identifier fields)
 - Privacy regression scan of committed artifacts + architecture doc
+- Capability discovery regression (ICE/EV zero-event probe, CAPABILITY_UNKNOWN gate, synthetic QUICK FULL isolation)
 
 ---
 

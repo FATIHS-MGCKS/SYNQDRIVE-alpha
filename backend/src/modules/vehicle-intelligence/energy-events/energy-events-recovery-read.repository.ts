@@ -4,10 +4,8 @@ import {
   QUICK_MODE_AUDIT_FLEET_PROFILES,
   type AuditedFleetSignalProfile,
 } from './energy-events-recovery.constants';
-import {
-  inferFleetCapabilitiesFromEvents,
-  resolveQuickModeProfile,
-} from './energy-events-recovery-fleet-inference';
+import { resolveQuickModeProfile } from './energy-events-recovery-fleet-inference';
+import type { RecoveryVehicleDbLoad } from './energy-events-recovery-capability';
 
 export type DbComparisonStatus = 'ok' | 'DB_COMPARISON_UNAVAILABLE';
 
@@ -34,10 +32,10 @@ export interface RecoveryExistingEnergyEvent {
 }
 
 export interface EnergyEventsRecoveryReadRepository {
-  loadVehiclesForRecovery(options: {
+  loadRecoveryVehicleDbRows(options: {
     outageStart: Date;
     recoveryCutoff: Date;
-  }): Promise<RecoveryVehicleInput[]>;
+  }): Promise<RecoveryVehicleDbLoad[]>;
 }
 
 const EXISTING_EVENT_SELECT = {
@@ -62,53 +60,33 @@ const EXISTING_EVENT_SELECT = {
   rawDetectionMeta: true,
 } as const;
 
-function resolveSignalProfile(
-  tokenId: number,
-  events: RecoveryExistingEnergyEvent[],
-): Pick<
-  AuditedFleetSignalProfile,
-  'relativeFuel' | 'absoluteFuel' | 'rechargeSoc' | 'powertrain' | 'provider'
-> {
-  const quickProfile = resolveQuickModeProfile(
-    tokenId,
-    QUICK_MODE_AUDIT_FLEET_PROFILES,
-  );
-  if (quickProfile) {
-    return quickProfile;
-  }
-  return {
-    provider: 'LTE_R1',
-    ...inferFleetCapabilitiesFromEvents(events),
-  };
-}
-
-function mapDbRowToRecoveryVehicle(
+function mapDbRowToRecoveryVehicleLoad(
   row: {
     id: string;
     licensePlate: string | null;
     vehicleName: string | null;
     hardwareType: string | null;
+    fuelType: string;
     dimoVehicle: { tokenId: number } | null;
     energyEvents: RecoveryExistingEnergyEvent[];
+    vehicleBatteryCapabilities: Array<{
+      signalKey: string;
+      status: RecoveryVehicleDbLoad['batteryCapabilities'][number]['status'];
+    }>;
   },
-  dimoAccessAvailable: boolean,
-): RecoveryVehicleInput | null {
+): RecoveryVehicleDbLoad | null {
   const tokenId = row.dimoVehicle?.tokenId;
   if (tokenId == null) return null;
 
-  const profile = resolveSignalProfile(tokenId, row.energyEvents);
   return {
     vehicleId: row.id,
     label: row.licensePlate ?? row.vehicleName ?? `vehicle-${tokenId}`,
     tokenId,
-    provider: row.hardwareType ?? profile.provider,
-    powertrain: profile.powertrain ?? 'UNKNOWN',
-    relativeFuelAvailable: profile.relativeFuel,
-    absoluteFuelAvailable: profile.absoluteFuel,
-    rechargeSocAvailable: profile.rechargeSoc,
-    dimoAccessAvailable,
-    dbVehicleMapped: true,
+    provider: row.hardwareType ?? 'LTE_R1',
+    fuelType: row.fuelType,
+    dimoAccessAvailable: true,
     existingEvents: row.energyEvents,
+    batteryCapabilities: row.vehicleBatteryCapabilities,
   };
 }
 
@@ -116,7 +94,7 @@ export function createPrismaRecoveryReadRepository(
   prisma: PrismaClient,
 ): EnergyEventsRecoveryReadRepository {
   return {
-    async loadVehiclesForRecovery({ outageStart, recoveryCutoff }) {
+    async loadRecoveryVehicleDbRows({ outageStart, recoveryCutoff }) {
       const rows = await prisma.vehicle.findMany({
         where: { dimoVehicle: { isNot: null } },
         select: {
@@ -124,18 +102,25 @@ export function createPrismaRecoveryReadRepository(
           licensePlate: true,
           vehicleName: true,
           hardwareType: true,
+          fuelType: true,
           dimoVehicle: { select: { tokenId: true } },
           energyEvents: {
             where: { startTime: { gte: outageStart, lt: recoveryCutoff } },
             select: EXISTING_EVENT_SELECT,
+          },
+          vehicleBatteryCapabilities: {
+            select: {
+              signalKey: true,
+              status: true,
+            },
           },
         },
         orderBy: { licensePlate: 'asc' },
       });
 
       return rows
-        .map((row) => mapDbRowToRecoveryVehicle(row as never, true))
-        .filter((row): row is RecoveryVehicleInput => row != null);
+        .map((row) => mapDbRowToRecoveryVehicleLoad(row as never))
+        .filter((row): row is RecoveryVehicleDbLoad => row != null);
     },
   };
 }
@@ -200,6 +185,7 @@ export function buildFleetFallbackVehicles(
     relativeFuelAvailable: profile.relativeFuel,
     absoluteFuelAvailable: profile.absoluteFuel,
     rechargeSocAvailable: profile.rechargeSoc,
+    capabilityLookupStatus: 'ok' as const,
     dimoAccessAvailable: dimoAccessByTokenId[profile.tokenId] ?? false,
     dbVehicleMapped: false,
     existingEvents: [],
@@ -211,13 +197,23 @@ export function mergeAuditedFleetIntoDbVehicles(
   dimoAccessByTokenId: Record<number, boolean>,
   fullMode: boolean,
 ): RecoveryVehicleInput[] {
+  if (fullMode) {
+    return dbVehicles.map((vehicle) => ({
+      ...vehicle,
+      dbVehicleMapped: true,
+      dimoAccessAvailable:
+        dimoAccessByTokenId[vehicle.tokenId] ?? vehicle.dimoAccessAvailable,
+    }));
+  }
+
   const byToken = new Map(
     dbVehicles.map((vehicle) => [
       vehicle.tokenId,
       {
         ...vehicle,
         dbVehicleMapped: true,
-        dimoAccessAvailable: dimoAccessByTokenId[vehicle.tokenId] ?? vehicle.dimoAccessAvailable,
+        dimoAccessAvailable:
+          dimoAccessByTokenId[vehicle.tokenId] ?? vehicle.dimoAccessAvailable,
       },
     ]),
   );
@@ -231,15 +227,8 @@ export function mergeAuditedFleetIntoDbVehicles(
       existing.absoluteFuelAvailable = vehicle.absoluteFuelAvailable;
       existing.rechargeSocAvailable = vehicle.rechargeSocAvailable;
       existing.powertrain = vehicle.powertrain;
+      existing.capabilityLookupStatus = 'ok';
       existing.dbVehicleMapped = true;
-      continue;
-    }
-
-    if (fullMode) {
-      byToken.set(vehicle.tokenId, {
-        ...vehicle,
-        dbVehicleMapped: false,
-      });
       continue;
     }
 
@@ -247,4 +236,18 @@ export function mergeAuditedFleetIntoDbVehicles(
   }
 
   return [...byToken.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+export function resolveQuickProfileCapabilities(
+  tokenId: number,
+): Pick<
+  AuditedFleetSignalProfile,
+  'relativeFuel' | 'absoluteFuel' | 'rechargeSoc' | 'powertrain' | 'provider'
+> | null {
+  const quickProfile = resolveQuickModeProfile(
+    tokenId,
+    QUICK_MODE_AUDIT_FLEET_PROFILES,
+  );
+  if (!quickProfile) return null;
+  return quickProfile;
 }

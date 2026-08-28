@@ -17,6 +17,7 @@ import { parseDimoEnergyEventSegment } from '../../src/modules/dimo/energy-event
 import { mapRechargeSegmentToEnergyEvent } from '../../src/modules/dimo/recharge-segments/dimo-recharge-segments.mapper';
 import { normalizeDimoRechargeSegments } from '../../src/modules/dimo/recharge-segments/dimo-recharge-segments.normalizer';
 import { isRetryableDimoAxiosError } from '../../src/modules/dimo/recharge-segments/dimo-recharge-segments.graphql';
+import { buildAvailableSignalsQuery } from '../../src/modules/dimo/queries/available-signals.query';
 import {
   mechanismsForEnergyClass,
   type AuditedFleetSignalProfile,
@@ -269,6 +270,41 @@ export async function fetchEnergyEventSegmentsStandalone(
   }
 
   return { segments, outcomes, accounting };
+}
+
+export async function probeAvailableSignals(
+  tokenId: number,
+  accounting?: DimoRequestAccounting,
+): Promise<string[] | null> {
+  try {
+    const vehicleJwt = await getVehicleJwt(tokenId, accounting);
+    if (accounting) {
+      accounting.telemetryGraphqlRequests += 1;
+    }
+    const response = await gql(vehicleJwt, buildAvailableSignalsQuery(tokenId));
+    if (response.httpStatus !== 200 || response.errors) {
+      return null;
+    }
+    const available = (response.data as { availableSignals?: string[] })
+      ?.availableSignals;
+    return Array.isArray(available) ? available : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function probeAvailableSignalsForTokenIds(
+  tokenIds: number[],
+): Promise<Record<number, string[] | null>> {
+  const accounting = emptyAccounting();
+  const results: Record<number, string[] | null> = {};
+  const uniqueTokenIds = [...new Set(tokenIds)];
+
+  for (const tokenId of uniqueTokenIds) {
+    results[tokenId] = await probeAvailableSignals(tokenId, accounting);
+  }
+
+  return results;
 }
 
 export async function probeDimoAccessForTokenIds(
