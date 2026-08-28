@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'energy-events-e3a-m1-operator-disposition-prep-2026-08-28',
+    version: '4.9.994',
+    title: 'Energy Events — M1 Option B closed-set operator disposition manifest (preparation only)',
+    summary: [
+      'Operator direction: APPROVE_FOR_BACKFILL for Jul-16 consolidated recharge M1 + explicit closed-set prune of 16 legacy sliding-window singleton rows.',
+      'New `energy-events-operator-mutation-manifest.ts` derives the manifest, fingerprint invariants, expected post-state, and pre-mutation backup artifact. Prune list is ID-based and closed-set — no runtime overlap discovery during mutation.',
+      'Production read-only proof: 16 temporally-contained legacy rows overlap M1; 1 overlap tail (ends 3 min after M1) excluded; Jul-17 R1 and Jul-18 R2 independent sessions preserved. `assessOverlapPopulation` proves redundancy but `pruneAuthority` remains false.',
+      'Expected post-mutation row count: 133 + 1 − 16 = 118. No production mutation executed this turn.',
+    ],
+    reason:
+      'Outage gate `MANUAL_REVIEW_UNRESOLVED:1` requires operator-authorized disposition for M1; automatic prune from overlap alone is architecturally forbidden.',
+    previousBehavior:
+      'No closed-set operator manifest existed; legacy subsegment reconciliation could not proceed without durable coalesce provenance.',
+    details:
+      'backend: energy-events-operator-mutation-manifest.ts, scripts/ops/energy-events-operator-disposition-prepare.ts. 170 energy-events tests pass.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T22:40:00.000Z',
+  },
+  {
     id: 'trip-coverage-aware-overlap-2026-08-28',
     version: '4.9.991',
     title: 'Containment-aware overlap suppression + repair audit ordering (shadow mode)',
@@ -61,6 +81,50 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-08-28T21:00:00.000Z',
+  },
+  {
+    id: 'energy-events-canonical-storage-precision-equality-2026-08-28',
+    version: '4.9.993',
+    title: 'Energy Events — canonical measurements compared at storage precision (E3A WOULD_UPDATE closed)',
+    summary: [
+      'Root cause: the database driver serializes doubles with at most 16 significant decimal digits, so a measurement needing 17 digits is stored as a neighbouring double. Bitwise comparison of stored vs freshly detected values never converged.',
+      '`isMateriallyIdentical` now compares numeric measurements — and numbers nested in `rawDetectionMeta` — at 15 significant digits, far finer than any SOC, energy, fuel, odometer or GPS resolution.',
+      'Read-only ops probe `energy-events-storage-precision-probe.ts` proves the truncation through a driver parameter round-trip (`2.2399999499320984` arrives as `2.239999949932098`).',
+      'Recovery forensics now report every representation difference instead of swallowing metadata drift, classify storage-precision drift as non-semantic on both columns and metadata, and flag any verdict the reported diffs cannot account for.',
+      'New `assessOverlapPopulation` proves an overlapping persisted population is internally inconsistent (pairwise overlap, aggregate gain above the candidate) while granting prune authority only when coalesce provenance names every overlapping row.',
+      'Production read-only re-validation: `WOULD_UPDATE` 3 → 0, `ALREADY_IDENTICAL` 0 → 3, table digest unchanged (zero writes). `MANUAL_REVIEW_UNRESOLVED:1` deliberately preserved — one Jul-16 recharge session still needs operator disposition.',
+    ],
+    reason:
+      'Three E3A recovery rows were re-written on every detection run and never converged, so the outage gate could not close and each run churned production data.',
+    previousBehavior:
+      'Stored and detected measurements were compared bitwise, so a value that lost its 17th significant digit on write was permanently classified `WOULD_UPDATE`; the forensic diff hid the drift and reported an unexplainable verdict.',
+    details:
+      'backend: energy-events.pipeline.ts (canonical measurement precision), energy-events-recovery-forensics.ts (diff attribution + overlap population), scripts/ops/energy-events-storage-precision-probe.ts, scripts/ops/energy-events-forensic-closure.ts. 166 energy-events tests pass.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T20:55:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-controlled-write-backfill-partial-2026-08-28',
+    version: '4.9.992',
+    title: 'Energy Events E3A — controlled write-backfill executor (partial production recovery)',
+    summary: [
+      'Added secured ops executor `energy-events-recovery-write-backfill.ts` + recovery module for approved historical writes only.',
+      'Production secured apply: 3 approved CREATEs present (baseline 130 → peak 133; current 132 after 1 proven legacy prune across completion attempts).',
+      'Completion fix on PR #1395: shared `pruneStaleCoalescedSubSegments`, reconcile on `NO_OP_ALREADY_PRESENT`, proven-stale write-set filtering, post-write gate rebuild, 121 energy-events tests.',
+      'Post-fix completion runs on secured VPS: `FETCH_FAILED` eliminated after DIMO load reduction; validation still reports `WOULD_UPDATE=3` and `MANUAL_REVIEW_UNRESOLVED:1`.',
+      'Remaining: canonical Jul-16 recharge window does not currently emit `legacySubsegmentsWouldReplace` in FULL dry-run (coalesce authorization empty); refuel meta + recharge soc/meta UPDATEs still pending material identity.',
+      'Outage recovery NOT CLOSED — hold PR #1395 until `WOULD_CREATE=0`, `WOULD_UPDATE=0`, `gateBlockers=[]`, and mandatory idempotency re-run pass.',
+    ],
+    reason:
+      'E3A gate was READY FOR CONTROLLED WRITE BACKFILL; executor and first production pass were required before closing the outage.',
+    previousBehavior:
+      'Dry-run only (`dbWritesPerformed=false`); no secured historical write path for the approved 4-candidate set.',
+    details:
+      'backend: energy-events-recovery-write-backfill.ts, scripts/ops/energy-events-recovery-write-backfill.ts. Secured infra only; no private plan/identifiers committed.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T17:45:00.000Z',
   },
   {
     id: 'trip-start-isolation-hardening-2026-08-28',

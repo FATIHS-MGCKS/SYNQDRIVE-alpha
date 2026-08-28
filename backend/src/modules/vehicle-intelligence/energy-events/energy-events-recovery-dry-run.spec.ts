@@ -13,6 +13,12 @@ import {
   QUICK_ACCEPTANCE_WINDOWS,
 } from './energy-events-recovery.constants';
 import { reconcileRecoveryCandidates } from './energy-events-recovery-reconcile';
+import {
+  allManualReviewsResolved,
+  buildManualReviewReport,
+  countUnresolvedManualReviews,
+} from './energy-events-recovery-manual-review';
+import { applyRecoveryPlanManualReview } from './energy-events-recovery-plan';
 import { runEnergyEventsRecoveryDryRun } from './energy-events-recovery-runner';
 import {
   createMutationGuardedPrismaClient,
@@ -399,6 +405,91 @@ describe('energy-events recovery reconciliation', () => {
     expect(result.candidates[0].manualReviewReasons).toContain(
       'existing_db_overlap_different_id',
     );
+  });
+
+  it('7b. a candidate matched to its own DB row is not pulled into manual review by overlapping legacy rows', () => {
+    const candidate = buildRecoveryCandidate({
+      classification: 'ALREADY_IDENTICAL',
+      dimoSegmentId: 'dimo-refuel-100001-canonical',
+      coalescedFromSegmentIds: ['dimo-refuel-100001-canonical'],
+      existingRowId: 'db-canonical',
+      windowTo: '2026-08-24T00:00:00.000Z',
+    });
+    const existing = new Map([
+      [
+        VEHICLE_ID,
+        [
+          {
+            id: 'db-canonical',
+            dimoSegmentId: 'dimo-refuel-100001-canonical',
+            kind: 'REFUEL',
+            startTime: new Date('2026-08-23T16:15:15.000Z'),
+            endTime: new Date('2026-08-23T16:23:16.000Z'),
+          },
+          {
+            id: 'db-legacy',
+            dimoSegmentId: 'dimo-refuel-100001-legacy',
+            kind: 'REFUEL',
+            startTime: new Date('2026-08-23T16:16:00.000Z'),
+            endTime: new Date('2026-08-23T16:22:00.000Z'),
+          },
+        ],
+      ],
+    ]);
+
+    const result = reconcileRecoveryCandidates([candidate], existing);
+
+    expect(result.candidates[0].classification).toBe('ALREADY_IDENTICAL');
+    expect(result.candidates[0].manualReviewReasons).toEqual([]);
+    expect(result.existingDbOverlapFlags).toBe(0);
+  });
+});
+
+describe('energy-events recovery manual-review gate', () => {
+  it('7c. an unproven overlap with existing rows stays unresolved and blocks the gate', () => {
+    const candidate = buildRecoveryCandidate({
+      classification: 'MANUAL_REVIEW_REQUIRED',
+      manualReviewReasons: ['existing_db_overlap_different_id'],
+    });
+
+    const entries = buildManualReviewReport([candidate]);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0].recommendation).toBe('NEEDS_FURTHER_EVIDENCE');
+    expect(countUnresolvedManualReviews(entries)).toBe(1);
+    expect(allManualReviewsResolved(entries)).toBe(false);
+  });
+
+  it('7d. only an explicit reviewed disposition clears the gate', () => {
+    const candidate = buildRecoveryCandidate({
+      classification: 'MANUAL_REVIEW_REQUIRED',
+      manualReviewReasons: ['existing_db_overlap_different_id'],
+      dimoSegmentId: 'dimo-refuel-100001-ambiguous',
+    });
+    const entries = buildManualReviewReport([candidate]);
+
+    const applied = applyRecoveryPlanManualReview(entries, {
+      planVersion: 'test-plan',
+      reviewProvenance: 'test',
+      reviewedDispositions: [
+        {
+          dimoSegmentId: 'dimo-refuel-100001-ambiguous',
+          mechanism: 'refuel',
+          disposition: 'EXCLUDE_FROM_BACKFILL',
+          evidenceCategory: 'operator_disposition',
+        },
+      ],
+    });
+
+    expect(applied.appliedCount).toBe(1);
+    expect(countUnresolvedManualReviews(applied.entries)).toBe(0);
+    expect(allManualReviewsResolved(applied.entries)).toBe(true);
+  });
+
+  it('8. a deterministically resolvable candidate never enters manual review', () => {
+    const candidate = buildRecoveryCandidate({ classification: 'ALREADY_IDENTICAL' });
+
+    expect(buildManualReviewReport([candidate])).toEqual([]);
   });
 });
 

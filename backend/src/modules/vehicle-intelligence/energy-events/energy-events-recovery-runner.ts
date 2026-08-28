@@ -374,7 +374,9 @@ export async function runEnergyEventsRecoveryDryRun(
 
   if (
     !canonicalRefuelCandidate ||
-    canonicalRefuelCandidate.classification !== 'WOULD_CREATE'
+    (canonicalRefuelCandidate.classification !== 'WOULD_CREATE' &&
+      canonicalRefuelCandidate.classification !== 'ALREADY_IDENTICAL' &&
+      canonicalRefuelCandidate.classification !== 'WOULD_UPDATE')
   ) {
     gateBlockersRaw.push('CANONICAL_REFUEL_CASE_MISSING');
   }
