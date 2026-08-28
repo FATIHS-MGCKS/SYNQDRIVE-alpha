@@ -1537,7 +1537,10 @@ export class TripMetricsService implements OnModuleInit {
 
     this.connectivityProviderReachableObservationRecoveredTotal = new Counter({
       name: 'synqdrive_connectivity_provider_reachable_observation_recovered_total',
-      help: 'Transitions out of provider-reachable / vehicle-observation-stale',
+      help:
+        'Transitions from provider-reachable / vehicle-observation-stale back ' +
+        'to fresh observation (precedence changes to unreachable / auth error / ' +
+        'unknown are deliberately excluded)',
       labelNames: ['provider', 'telemetry_state'],
       registers: [this.registry],
     });

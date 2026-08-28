@@ -58,6 +58,32 @@ const STALE_OBSERVATION_STATES: ReadonlySet<TelemetryFreshness> = new Set([
   'offline',
 ]);
 
+/**
+ * Why the canonical fresh threshold is the right reachability window — and what
+ * it does and does not prove.
+ *
+ * `providerFetchedAt` is written in `DimoSnapshotProcessor` only after the
+ * vehicle JWT, the telemetry fetch and a non-empty `signalsLatest` all succeed;
+ * a failed or empty poll throws first and leaves the column frozen. So a recent
+ * value is confirmed evidence of a successful provider response, which is what
+ * makes the `PROVIDER_REACHABLE_DATA_STALE` signal trustworthy.
+ *
+ * The absence of a recent value is weaker evidence, because our own polling can
+ * pause without the provider being at fault:
+ * - `DimoSnapshotScheduler` documents host-level suspensions (sleep, freeze, GC
+ *   stall) and treats gaps over 3 min as missed work, capped at a 24h backfill.
+ * - `canEnqueueQueue` can gate enqueueing entirely.
+ * - Vehicles outside the poll cohort are never enqueued at all — handled
+ *   explicitly via `providerPollEligible`.
+ *
+ * The 30s cadence against a 15 min window leaves ~30 missed ticks of slack, so
+ * normal jitter, retries and backoff never trip it. A fleet-wide worker pause
+ * still can, which is why `PROVIDER_UNREACHABLE` is worded as "no recent
+ * successful provider response" rather than an assertion that the provider is
+ * down. Deliberately no second threshold: this reuses
+ * `TELEMETRY_FRESH_THRESHOLD_MS` unchanged.
+ */
+
 /** Link states where the grant chain, not provider reachability, is the fault. */
 const BROKEN_LINK_STATES: ReadonlySet<ProviderLinkState> = new Set([
   ProviderLinkState.REAUTH_REQUIRED,

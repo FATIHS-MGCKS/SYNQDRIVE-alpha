@@ -22,6 +22,7 @@ function diagnostic(
     bindingState: 'ACTIVE',
     consentState: 'ACTIVE',
     connectionStatus: 'CONNECTED',
+    providerPollScheduled: true,
     deviceBindingRef: 'binding-1',
     providerErrorCategory: null,
     calculatedAt: '2026-08-28T12:00:00.000Z',
@@ -97,6 +98,45 @@ describe('buildConnectivityDiagnosticView', () => {
     expect(view.providerApiLabel).toBe('nicht erreichbar');
   });
 
+  it('does not blame the provider when our own polling could be paused', () => {
+    const view = buildConnectivityDiagnosticView(
+      diagnostic({
+        diagnosticState: 'PROVIDER_UNREACHABLE',
+        providerApiReachable: false,
+        lastProviderFetchAgeMs: 26 * HOUR_MS,
+      }),
+    );
+
+    // A paused worker/queue produces the same frozen providerFetchedAt as a
+    // provider outage, so the hint must name both possibilities.
+    expect(view.hint).toContain('Worker/Queue');
+    expect(view.hint).toContain('eigenen Abfrage');
+  });
+
+  it('explains a stale provider fetch for a vehicle that is never polled', () => {
+    const view = buildConnectivityDiagnosticView(
+      diagnostic({
+        diagnosticState: 'UNKNOWN',
+        providerApiReachable: false,
+        lastProviderFetchAgeMs: 26 * HOUR_MS,
+        providerPollScheduled: false,
+        observationState: 'offline',
+      }),
+    );
+
+    expect(view.providerPollScheduledLabel).toBe('nicht geplant');
+    expect(view.hint).toContain('kein Provider-Ausfall');
+  });
+
+  it('keeps the generic hint when poll scheduling is unknown', () => {
+    const view = buildConnectivityDiagnosticView(
+      diagnostic({ diagnosticState: 'UNKNOWN', providerPollScheduled: null }),
+    );
+
+    expect(view.providerPollScheduledLabel).toBe('unbekannt');
+    expect(view.hint).toBe('Nicht genügend Diagnosedaten für eine Einordnung.');
+  });
+
   it('reports a broken grant chain', () => {
     const view = buildConnectivityDiagnosticView(
       diagnostic({
@@ -125,11 +165,13 @@ describe('buildConnectivityDiagnosticView', () => {
         lastVehicleObservationAt: null,
         lastVehicleObservationAgeMs: null,
         observationState: 'no_signal',
+        providerPollScheduled: null,
         deviceBindingRef: null,
       }),
     );
 
     expect(view.providerLabel).toBe('keine Datenquelle');
+    expect(view.providerPollScheduledLabel).toBe('unbekannt');
     expect(view.providerApiLabel).toBe('unbekannt');
     expect(view.lastProviderFetchLabel).toBe('unbekannt');
     expect(view.lastObservationLabel).toBe('unbekannt');

@@ -33,8 +33,10 @@ const DIAGNOSTIC_HINTS: Record<ConnectivityDiagnosticState, string | null> = {
   PROVIDER_REACHABLE_DATA_FRESH: null,
   PROVIDER_REACHABLE_DATA_STALE:
     'Provider antwortet, aber das Fahrzeuggerät liefert keine neuen Daten.',
+  // Deliberately does not assert a provider outage: a pausierte eigene
+  // Abfrage (Worker/Queue) produces the identical symptom.
   PROVIDER_UNREACHABLE:
-    'Es wurden keine aktuellen Provider-Antworten empfangen. Provider-Anbindung prüfen.',
+    'Keine aktuelle erfolgreiche Provider-Antwort empfangen. Ursache kann provider-seitig oder in der eigenen Abfrage liegen (Worker/Queue pausiert) — beides prüfen.',
   AUTH_OR_BINDING_ERROR:
     'Freigabe, Consent oder Fahrzeugbindung prüfen — die Provider-Kette ist unterbrochen.',
   UNKNOWN: 'Nicht genügend Diagnosedaten für eine Einordnung.',

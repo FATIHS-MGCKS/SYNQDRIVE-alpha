@@ -45,7 +45,9 @@ export function ConnectivityDiagnosticPanel({
         />
         <DiagnosticRow label="Provider-API" value={view.providerApiLabel} />
         <DiagnosticRow label="Beobachtungsstatus" value={view.observationStateLabel} />
-        <DiagnosticRow label="Provider-Abfrage" value={view.providerPollScheduledLabel} />
+        {/* Distinct from "Letzte Provider-Abfrage" above: this is whether the
+            scheduler polls this vehicle at all, not when it last did. */}
+        <DiagnosticRow label="Abfrage-Planung" value={view.providerPollScheduledLabel} />
         <DiagnosticRow label="Bindung" value={view.bindingLabel} />
         <DiagnosticRow label="Consent" value={view.consentLabel} />
         <DiagnosticRow label="Verbindungsstatus" value={view.connectionStatusLabel} />

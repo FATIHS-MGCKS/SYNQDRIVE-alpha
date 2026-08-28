@@ -74,6 +74,7 @@ No new freshness policy. The canonical bands from
 | Boundary | Value | Diagnostic use |
 |----------|-------|----------------|
 | `TELEMETRY_FRESH_THRESHOLD_MS` | 15 min | "Provider fetch is recent" (DIMO polls ~30s, so this is generous) |
+| `DIAGNOSTIC_MAX_FUTURE_SKEW_MS` | 60 s | Forward clock-skew tolerance, mirroring `battery-provider-observation.policy.ts` |
 | `TELEMETRY_STANDBY_THRESHOLD_MS` | 24 h | Stale boundary for observations |
 | `TELEMETRY_SIGNAL_DELAYED_THRESHOLD_MS` | 48 h | Soft-offline → offline |
 
@@ -112,15 +113,42 @@ vehicle IDs):
 - `synqdrive_connectivity_provider_reachable_observation_stale_total`
 - `synqdrive_connectivity_provider_reachable_observation_recovered_total`
 
-Emitted on **state transitions only**. The runtime is projected on every fleet
-request, so `ConnectivityDiagnosticTransitionTracker` dedupes to changes and
-only for the stale dimension — entering it or recovering from it. All other
+Emitted on **state transitions only**. The runtime is projected whenever a
+consumer asks for it, so `ConnectivityDiagnosticTransitionTracker` dedupes to
+changes and only for the stale dimension — entering it or leaving it. All other
 diagnostic churn stays silent. Logs carry a coarse `observationAgeBucket`
 (`lt_24h` / `24h_48h` / `48h_7d` / `gte_7d`) rather than raw per-vehicle ages.
 
-The tracker is process-local and best-effort; a restart re-emits current state
-once per affected vehicle, which is bounded by fleet size and useful for
-visibility.
+### Demand-driven, best-effort — not an authoritative monitor
+
+`VehicleConnectivityRuntimeProjectionService` runs only when something projects
+runtime state: fleet and vehicle-detail reads, the operational projection, and
+episode-resolution outbox processing. **No scheduled job evaluates the
+diagnostic dimension** — DIMO snapshot polling writes telemetry but never
+projects connectivity runtime state.
+
+Consequences, accepted deliberately (option A; this PR adds no polling loop):
+
+- A vehicle nobody looks at emits nothing. Absence of a stale event is **not**
+  evidence of health.
+- Tracker state is process-local and resets on restart, which re-emits the
+  current state once per vehicle (bounded by fleet size).
+- Each instance in a multi-instance deployment keeps its own map, so counters
+  can double-count the same real-world transition.
+- Eviction at 20k vehicles is **LRU** (least recently observed), so actively
+  projected vehicles are not forgotten and re-announced.
+
+Treat these signals as leading indicators for investigation, never as an SLO
+source.
+
+### Recovery counter semantics
+
+`_recovered_total` increments **only** on a transition to
+`PROVIDER_REACHABLE_DATA_FRESH`. Leaving the stale state for
+`PROVIDER_UNREACHABLE`, `AUTH_OR_BINDING_ERROR` or `UNKNOWN` is a change of
+diagnostic precedence, not the vehicle resuming telemetry, and must never
+inflate recovery. Log level follows the same rule: only genuine recovery logs at
+info, everything else stays at warn.
 
 ## Recovery
 
@@ -185,6 +213,76 @@ causal for this signature.
 | `master/connected-vehicles/ConnectivityDiagnosticPanel.tsx` | New — Master Admin panel |
 | `master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx` | Panel in existing "Technische Diagnostik" section; raw JSON moved behind a disclosure |
 | `master/connected-vehicles/useConnectedVehiclesOperational.ts` | Typed diagnostics state |
+
+## Adversarial pre-merge review (PR #1378)
+
+Findings raised against the first implementation and how they were resolved.
+
+### Provider reachability is asymmetric evidence
+
+A **recent** `providerFetchedAt` is confirmed evidence of a successful provider
+response: `DimoSnapshotProcessor` computes `fetchedAt` only after the vehicle
+JWT, the telemetry fetch and a non-empty `signalsLatest` all succeed, so a
+failed or empty poll throws first and leaves the column frozen.
+
+Its **absence** is weaker, because our own polling can pause without the
+provider being at fault — `DimoSnapshotScheduler` documents host-level
+suspensions (sleep, freeze, GC stall) and treats gaps over 3 min as missed work,
+and `canEnqueueQueue` can gate enqueueing entirely. The 30s cadence against a
+15 min window leaves ~30 ticks of slack, so jitter, retries and backoff never
+trip it, but a fleet-wide worker pause can.
+
+Two corrections, both using existing authoritative evidence and no new
+threshold:
+
+1. **Per-vehicle cohort evidence.** `resolveProviderPollEligibility` mirrors the
+   scheduler's own filter (`status` ∈ {`AVAILABLE`, `RENTED`}, `dimoVehicleId`
+   present, `connectionStatus` = `CONNECTED`, `tokenId` present). A vehicle
+   outside that cohort is never enqueued, so a frozen fetch proves nothing — it
+   classifies `UNKNOWN` instead of `PROVIDER_UNREACHABLE`. Surfaced to Master
+   Admin as `providerPollScheduled`. `null` (status not selected) keeps the
+   conservative verdict.
+2. **Honest copy.** The `PROVIDER_UNREACHABLE` hint names both possibilities
+   (provider side, or our own paused worker/queue) rather than asserting a
+   provider outage.
+
+### Clock skew
+
+`ageMs` previously used `Math.max(0, now - parsed)`, so a wildly future
+timestamp reported age 0 and could read as "just observed". It now returns
+`null` beyond `DIAGNOSTIC_MAX_FUTURE_SKEW_MS` (60s), matching the existing
+battery-policy convention. Small forward skew still clamps to 0, since provider
+and device clocks drift. Upstream `resolveTelemetryFreshness` already classifies
+a future observation as `offline`; the diagnostic no longer contradicts it.
+
+### Binding / consent certainty
+
+`bindingState` previously inferred `ACTIVE` from `deviceBindingId` under
+`REAUTH_REQUIRED` / `ERROR`, but that field falls back to the last known
+`providerBindingId`, which can reference a deactivated link. It now prefers the
+authoritative `diagnostic.bindingActive` (an active DIMO `dataSourceLink`
+exists) and otherwise reports `UNKNOWN` rather than fabricating certainty.
+`REVOKED` no longer implies `INACTIVE` binding — it describes the grant chain.
+
+`consentState` is unchanged and sound: `ProviderLinkStateBuilder` emits
+`LINK_ACTIVE` only when mapping, consent, token and authorization are all
+active.
+
+### Master Admin authorization
+
+`GET admin/vehicles/:vehicleId/operational/diagnostics` is guarded by
+`JwtAuthGuard` + `RolesGuard` with `@Roles('MASTER_ADMIN')`, and the lookup is
+`findFirst({ where: { id, organizationId } })` — org-scoped, so no IDOR. One
+gap: a missing `organizationId` query parameter became `undefined`, which Prisma
+drops, collapsing the filter to an unscoped vehicle lookup. The controller now
+rejects that with `BadRequestException`.
+
+### Tenant isolation
+
+Verified at endpoint level across the real fleet mappers, not just the
+serializer unit. `deviceBindingRef` is exposed to tenants on `main` already (a
+pre-existing field of `VehicleConnectivityTechnicalEvidence`) and is therefore
+not a diagnostic leak introduced here.
 
 ## Explicitly unchanged
 
