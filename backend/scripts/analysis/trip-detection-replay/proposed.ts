@@ -13,7 +13,13 @@
  * not wired into the application and performs no writes.
  */
 
-import { longestStationaryRunMs, maxSpeedInRange, normalizeIntervals, samplesInRange, subtract, totalMs } from './data';
+import { longestStationaryRunMs, maxSpeedInRange, samplesInRange } from './data';
+import {
+  assessCoverage,
+  isSuppressingVerdict,
+  MIN_REPAIR_SPAN_SECONDS,
+  type CoverageVerdict,
+} from '../../../src/modules/vehicle-intelligence/trips/detectors/trip-coverage.util';
 import type { Candidate, Confidence, Interval, MinuteAgg, SignalName, StateChange, Trip } from './types';
 
 // ─── R1 ─────────────────────────────────────────────────────────────────────
@@ -233,6 +239,13 @@ export function scoreCandidate(params: {
   telemetrySamples: number;
   distanceKm: number | null;
   hasDimoSegment?: boolean;
+  /**
+   * True when a movement-signal ON edge actually falls inside the span being
+   * scored. Envelope-level motion evidence is inherited by every span derived
+   * from that envelope, including spans in which the vehicle demonstrably sat
+   * still, so it cannot be used to override observed telemetry.
+   */
+  motionEdgeInsideSpan?: boolean;
 }): ConfidenceScore {
   const contributions: Record<string, number> = {};
 
@@ -241,9 +254,14 @@ export function scoreCandidate(params: {
   // would otherwise score MEDIUM on duration alone. Absence of telemetry is not
   // absence of movement, so the gate only applies when we actually observed the
   // vehicle and saw it stationary throughout.
+  //
+  // A stuck movement signal is the other half of the same problem: a `motion=1`
+  // edge that is not closed until hours later marks the whole envelope as
+  // moving, so a parked span carved out of that envelope inherits movement
+  // evidence it never had. Only an edge located inside the span counts.
   const observedStationary =
     params.telemetrySamples > 0 &&
-    !params.hasMotionEvidence &&
+    !params.motionEdgeInsideSpan &&
     (params.maxSpeedKmh ?? 0) <= 1 &&
     !params.hasDimoSegment;
   if (observedStationary) {
@@ -305,14 +323,14 @@ export function fuseCandidates(groups: CoalescedCandidate[]): CoalescedCandidate
 
 // ─── K: containment-aware overlap ───────────────────────────────────────────
 
-export const DUPLICATE_COVERAGE_RATIO = 0.9;
-export const MIN_REPAIR_SPAN_MS = 5 * 60_000;
+export const MIN_REPAIR_SPAN_MS = MIN_REPAIR_SPAN_SECONDS * 1000;
 export const OBSERVABLE_GAP_MS = 60_000;
 
 export type OverlapVerdict = 'DUPLICATE' | 'REPAIRABLE_GAP' | 'AMBIGUOUS';
 
 export interface OverlapAssessment {
   verdict: OverlapVerdict;
+  coverageVerdict: CoverageVerdict;
   coverageRatio: number;
   repairableSpans: Interval[];
   observedGapSpans: Interval[];
@@ -323,53 +341,77 @@ export interface OverlapAssessment {
  * Replaces "does any trip touch this window?" with "how much of this drive is
  * already represented?".
  *
- * CANCELLED trips never count as coverage. An ONGOING trip intersecting the
- * candidate yields AMBIGUOUS rather than a guess, because its rolling end_time
- * is an activity cursor rather than a boundary.
+ * This is a thin adapter over the shipped implementation in
+ * `src/modules/vehicle-intelligence/trips/detectors/trip-coverage.util.ts`, so
+ * the replay measures the code that actually runs in production rather than a
+ * parallel model of it. The adapter only converts between the harness's epoch
+ * milliseconds and the Date-based application types.
  */
 export function assessOverlap(candidate: Interval, trips: Trip[]): OverlapAssessment {
-  const relevant = trips.filter(
-    (trip) => trip.status !== 'CANCELLED' && trip.start < candidate.end && (trip.end ?? Infinity) > candidate.start,
+  const assessment = assessCoverage(
+    new Date(candidate.start),
+    new Date(candidate.end),
+    trips.map((trip) => ({
+      id: trip.id,
+      startTime: new Date(trip.start),
+      endTime: trip.end === null ? null : new Date(trip.end),
+      tripStatus: trip.status,
+    })),
   );
 
-  const ongoing = relevant.find((trip) => trip.end === null);
-  if (ongoing) {
+  const toInterval = (span: { start: Date; end: Date }): Interval => ({
+    start: span.start.getTime(),
+    end: span.end.getTime(),
+  });
+
+  if (assessment.verdict === 'AMBIGUOUS') {
     return {
       verdict: 'AMBIGUOUS',
-      coverageRatio: 0,
+      coverageVerdict: assessment.verdict,
+      coverageRatio: assessment.metrics.coverageRatio,
       repairableSpans: [],
       observedGapSpans: [],
-      ambiguousReason: `ongoing trip ${ongoing.id} intersects candidate`,
+      ambiguousReason: assessment.ambiguousReason,
     };
   }
 
-  const covers: Interval[] = normalizeIntervals(
-    relevant.map((trip) => ({ start: trip.start, end: trip.end as number })),
-  );
-  const candidateMs = candidate.end - candidate.start;
-  const coveredMs = totalMs(
-    covers
-      .map((cover) => ({
-        start: Math.max(cover.start, candidate.start),
-        end: Math.min(cover.end, candidate.end),
-      }))
-      .filter((i) => i.end > i.start),
-  );
-  const coverageRatio = candidateMs > 0 ? coveredMs / candidateMs : 1;
-
-  if (coverageRatio >= DUPLICATE_COVERAGE_RATIO) {
-    return { verdict: 'DUPLICATE', coverageRatio, repairableSpans: [], observedGapSpans: [] };
+  if (isSuppressingVerdict(assessment.verdict)) {
+    return {
+      verdict: 'DUPLICATE',
+      coverageVerdict: assessment.verdict,
+      coverageRatio: assessment.metrics.coverageRatio,
+      repairableSpans: [],
+      observedGapSpans: [],
+    };
   }
 
-  const uncovered = subtract(candidate, covers);
   return {
     verdict: 'REPAIRABLE_GAP',
-    coverageRatio,
-    repairableSpans: uncovered.filter((span) => span.end - span.start >= MIN_REPAIR_SPAN_MS),
-    observedGapSpans: uncovered.filter(
-      (span) => span.end - span.start >= OBSERVABLE_GAP_MS && span.end - span.start < MIN_REPAIR_SPAN_MS,
-    ),
+    coverageVerdict: assessment.verdict,
+    coverageRatio: assessment.metrics.coverageRatio,
+    repairableSpans: assessment.repairableSpans.map(toInterval),
+    observedGapSpans: assessment.metrics.uncoveredSpans
+      .map(toInterval)
+      .filter(
+        (span) => span.end - span.start >= OBSERVABLE_GAP_MS && span.end - span.start < MIN_REPAIR_SPAN_MS,
+      ),
   };
+}
+
+/**
+ * Is there a movement-signal ON edge inside [start, end]?
+ *
+ * Used to decide whether motion evidence belongs to the span itself or was
+ * inherited from an envelope that extends beyond it.
+ */
+export function hasMovementEdgeInside(
+  changes: StateChange[],
+  start: number,
+  end: number,
+): boolean {
+  return changes.some(
+    (c) => c.signal === 'motion' && c.newValue === 1 && c.changedAt >= start && c.changedAt <= end,
+  );
 }
 
 // ─── full proposed pipeline for one window ──────────────────────────────────
@@ -436,6 +478,7 @@ export function runProposedWindow(params: {
         maxSpeedKmh: maxSpeedInRange(minutes, span.start, span.end),
         telemetrySamples: samplesInRange(minutes, span.start, span.end),
         distanceKm: null,
+        motionEdgeInsideSpan: hasMovementEdgeInside(changes, span.start, span.end),
       });
 
       if (scored.confidence === 'REJECT' || scored.confidence === 'LOW') {
