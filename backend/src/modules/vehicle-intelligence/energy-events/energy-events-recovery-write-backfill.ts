@@ -363,6 +363,8 @@ export function buildRemainingWriteSet(
     (candidate) =>
       candidate.classification === 'WOULD_CREATE' ||
       candidate.classification === 'WOULD_UPDATE',
+    undefined,
+    true,
   );
 }
 
@@ -370,6 +372,7 @@ function buildWriteSetFromCandidates(
   report: EnergyRecoveryDryRunReport,
   predicate: (candidate: EnergyRecoveryCandidate) => boolean,
   expectedSize?: number,
+  allowEmpty = false,
 ): WriteSetEntry[] {
   const writeCandidates = report.candidates.filter(predicate);
 
@@ -379,6 +382,9 @@ function buildWriteSetFromCandidates(
     );
   }
   if (writeCandidates.length === 0) {
+    if (allowEmpty) {
+      return [];
+    }
     throw new Error('Write set is empty');
   }
 
@@ -509,6 +515,64 @@ async function pruneSupersededRechargeSubsegments(
   return deleteResult.count;
 }
 
+function isSubsumedRechargeSession(
+  legacy: EnergyRecoveryCandidate,
+  canonical: EnergyRecoveryCandidate,
+): boolean {
+  if (legacy.mechanism !== 'recharge' || canonical.mechanism !== 'recharge') {
+    return false;
+  }
+  if (legacy.dimoSegmentId === canonical.dimoSegmentId) {
+    return false;
+  }
+  const legacyStart = new Date(legacy.startTime).getTime();
+  const legacyEnd = new Date(legacy.endTime).getTime();
+  const canonicalStart = new Date(canonical.startTime).getTime();
+  const canonicalEnd = new Date(canonical.endTime).getTime();
+  return legacyStart >= canonicalStart && legacyEnd <= canonicalEnd;
+}
+
+async function pruneSubsumedRechargeCandidates(
+  prisma: PrismaClient,
+  candidates: EnergyRecoveryCandidate[],
+): Promise<number> {
+  const rechargeUpdates = candidates.filter(
+    (candidate) =>
+      candidate.classification === 'WOULD_UPDATE' &&
+      candidate.mechanism === 'recharge',
+  );
+  if (rechargeUpdates.length <= 1) {
+    return 0;
+  }
+
+  const canonical = rechargeUpdates.reduce((best, current) => {
+    const bestDuration =
+      best.durationSeconds ||
+      (new Date(best.endTime).getTime() - new Date(best.startTime).getTime()) /
+        1000;
+    const currentDuration =
+      current.durationSeconds ||
+      (new Date(current.endTime).getTime() - new Date(current.startTime).getTime()) /
+        1000;
+    return currentDuration > bestDuration ? current : best;
+  });
+
+  const legacyIds = rechargeUpdates
+    .filter((candidate) => isSubsumedRechargeSession(candidate, canonical))
+    .map((candidate) => candidate.dimoSegmentId);
+  if (legacyIds.length === 0) {
+    return 0;
+  }
+
+  const deleteResult = await prisma.vehicleEnergyEvent.deleteMany({
+    where: {
+      vehicleId: canonical.vehicleId,
+      dimoSegmentId: { in: legacyIds },
+    },
+  });
+  return deleteResult.count;
+}
+
 async function applyUpsertPayload(
   prisma: PrismaClient,
   payload: EnergyEventUpsertPayload,
@@ -632,6 +696,11 @@ export async function executeControlledWriteBackfill(options: {
   }
 
   if (options.completeRemaining) {
+    legacySubsegmentsReconciledTotal += await pruneSubsumedRechargeCandidates(
+      options.prisma,
+      preWriteReport.candidates,
+    );
+
     const prunedWindows = new Set<string>();
     for (const entry of writeSet) {
       if (entry.mechanism !== 'recharge') continue;
@@ -647,6 +716,25 @@ export async function executeControlledWriteBackfill(options: {
         options.fetchSegments,
       );
     }
+
+    const refreshedVehicles = await refreshVehicleExistingEvents(
+      options.prisma,
+      options.vehicles,
+    );
+    for (const vehicle of refreshedVehicles) {
+      vehiclesById.set(vehicle.vehicleId, vehicle);
+    }
+    options.vehicles = refreshedVehicles;
+    const refreshedReport = await runEnergyEventsRecoveryDryRun(refreshedVehicles, {
+      fetchSegments: options.fetchSegments,
+      interRequestDelayMs: delayMs,
+      mode: 'full',
+      dbComparisonEnabled: true,
+      dbComparisonStatus: 'ok',
+      recoveryPlan: options.recoveryPlan,
+    });
+    writeSet.length = 0;
+    writeSet.push(...buildRemainingWriteSet(refreshedReport));
   }
 
   for (let index = 0; index < writeSet.length; index++) {
