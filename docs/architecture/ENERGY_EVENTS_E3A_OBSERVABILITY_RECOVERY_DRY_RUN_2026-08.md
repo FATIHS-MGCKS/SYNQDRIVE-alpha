@@ -562,3 +562,45 @@ pass.
    `MANUAL_REVIEW_UNRESOLVED:1`.
 4. **No** broad completion run, **no** E3B, **no** merge of PR #1395 until gate
    policy satisfied.
+
+---
+
+## 14. Option B operator disposition preparation — M1 / Jul-16 legacy population (2026-08-28)
+
+**Status:** preparation / proof only — **no production mutation executed**.
+
+### Operator direction
+
+**Option B:** `APPROVE_FOR_BACKFILL` for M1 + **explicit operator-authorized closed-set
+prune** of the 16 temporally-contained legacy sliding-window singleton rows.
+
+Infrastructure: `energy-events-operator-mutation-manifest.ts`,
+`scripts/ops/energy-events-operator-disposition-prepare.ts` (private output only).
+
+### Production read-only proof (2026-08-28T22:36Z)
+
+| Item | Value |
+|------|-------|
+| Pre-mutation row count | **133** |
+| Table digest | `b38c6b5d339c5eecffe105850484bed3a17557db13bb2d472a01c617692a1dea` |
+| M1 present | **false** |
+| M1 `dimoSegmentId` | `dimo-recharge-186946-1784220138893` |
+| Explicit prune rows | **16** (temporally contained within M1) |
+| Excluded overlap tail | **1** (ends 3 min after M1 — not in prune set) |
+| Independent preserved | **2** (Jul-17 R1, Jul-18 R2) |
+
+### Why automatic `pruneAuthority` remains false
+
+`assessOverlapPopulation` → `REDUNDANT_POPULATION_PROVENANCE_ABSENT`,
+`pruneAuthority=false`. Overlap proves redundancy; only explicit operator closed-set
+authorization may delete.
+
+### Expected post-mutation (derived)
+
+`133 + 1 (M1 CREATE) − 16 (legacy DELETE) = 118` rows. R1/R2/F1 → `ALREADY_IDENTICAL`
+after precision-fix deploy. Overlap tail may require follow-up disposition.
+
+### Rollback
+
+Pre-mutation backup artifact with full payloads for all 16 prune IDs. Restore:
+`DELETE_M1_IF_CREATED` → `RESTORE_PRUNED_ROWS`.
