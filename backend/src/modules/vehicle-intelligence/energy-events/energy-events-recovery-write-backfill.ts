@@ -12,6 +12,7 @@ import {
   isMateriallyIdentical,
   isSegmentPersistable,
   pruneStaleCoalescedSubSegments,
+  resolveStaleSubsegmentPruneAuthorization,
   type CoalescedEnergySegment,
   type EnergyEventUpsertPayload,
 } from './energy-events.pipeline';
@@ -368,8 +369,10 @@ export function buildWriteSet(
 
 export function buildRemainingWriteSet(
   report: EnergyRecoveryDryRunReport,
+  provenStaleSubsegmentIds: Set<string> = new Set(
+    report.legacySubsegmentsWouldReplace,
+  ),
 ): WriteSetEntry[] {
-  const staleSubsegmentIds = new Set(report.legacySubsegmentsWouldReplace);
   const entries = buildWriteSetFromCandidates(
     report,
     (candidate) => {
@@ -380,8 +383,7 @@ export function buildRemainingWriteSet(
       if (
         candidate.classification === 'WOULD_UPDATE' &&
         candidate.mechanism === 'recharge' &&
-        (candidate.coalescedFromSegmentIds.length === 1 ||
-          staleSubsegmentIds.has(candidate.dimoSegmentId))
+        provenStaleSubsegmentIds.has(candidate.dimoSegmentId)
       ) {
         return false;
       }
@@ -392,13 +394,6 @@ export function buildRemainingWriteSet(
   );
 
   return entries.sort((left, right) => {
-    const leftParentScore =
-      left.mechanism === 'recharge' && left.legacySubsegmentIds.length > 0 ? 0 : 1;
-    const rightParentScore =
-      right.mechanism === 'recharge' && right.legacySubsegmentIds.length > 0 ? 0 : 1;
-    if (leftParentScore !== rightParentScore) {
-      return leftParentScore - rightParentScore;
-    }
     if (left.mechanism === 'recharge' && right.mechanism !== 'recharge') {
       return -1;
     }
@@ -567,6 +562,54 @@ async function reconcileCanonicalRechargeLegacySubsegments(options: {
     },
   });
   return prunedCount;
+}
+
+export async function collectProvenStaleRechargeSubsegmentIdsFromReport(options: {
+  report: EnergyRecoveryDryRunReport;
+  vehiclesById: Map<string, RecoveryVehicleInput>;
+  fetchSegments: RecoveryDryRunDeps['fetchSegments'];
+}): Promise<Set<string>> {
+  const windows = new Set<string>();
+  const staleIds = new Set<string>();
+
+  for (const candidate of options.report.candidates) {
+    if (candidate.mechanism !== 'recharge') {
+      continue;
+    }
+    const windowKey = `${candidate.vehicleId}:${candidate.windowFrom}:${candidate.windowTo}`;
+    if (windows.has(windowKey)) {
+      continue;
+    }
+    windows.add(windowKey);
+
+    const vehicle = options.vehiclesById.get(candidate.vehicleId);
+    const inventory = options.report.vehicles.find(
+      (row) => row.vehicleId === candidate.vehicleId,
+    );
+    if (!vehicle || !inventory) {
+      continue;
+    }
+
+    const fetchResult = await options.fetchSegments(
+      vehicle.tokenId,
+      new Date(candidate.windowFrom),
+      new Date(candidate.windowTo),
+      inventory.energyClass,
+    );
+    const persistable = fetchResult.segments.filter(isSegmentPersistable);
+    const coalesced = coalesceSegments(persistable);
+    const authorization = resolveStaleSubsegmentPruneAuthorization(
+      coalesced,
+      fetchResult.outcomes,
+    );
+    if (authorization) {
+      for (const subsegmentId of authorization.staleSubsegmentIds) {
+        staleIds.add(subsegmentId);
+      }
+    }
+  }
+
+  return staleIds;
 }
 
 export async function reconcileCanonicalRechargeWindowsFromReport(options: {
@@ -762,8 +805,16 @@ export async function executeControlledWriteBackfill(options: {
       dbComparisonStatus: 'ok',
       recoveryPlan: options.recoveryPlan,
     });
+    const provenStaleSubsegmentIds =
+      await collectProvenStaleRechargeSubsegmentIdsFromReport({
+        report: refreshedReport,
+        vehiclesById,
+        fetchSegments: options.fetchSegments,
+      });
     writeSet.length = 0;
-    writeSet.push(...buildRemainingWriteSet(refreshedReport));
+    writeSet.push(
+      ...buildRemainingWriteSet(refreshedReport, provenStaleSubsegmentIds),
+    );
   }
 
   for (let index = 0; index < writeSet.length; index++) {

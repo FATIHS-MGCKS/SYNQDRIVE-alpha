@@ -540,7 +540,7 @@ describe('reconcileCanonicalRechargeWindowsFromReport', () => {
 });
 
 describe('buildRemainingWriteSet', () => {
-  it('excludes singleton recharge WOULD_UPDATE rows handled by canonical prune', () => {
+  it('excludes only proven stale recharge WOULD_UPDATE rows from completion write set', () => {
     const report = buildCompletionReport({
       legacySubsegmentsWouldReplace: ['legacy-sub-a'],
       vehicles: [
@@ -614,9 +614,63 @@ describe('buildRemainingWriteSet', () => {
       ],
     });
 
-    const writeSet = buildRemainingWriteSet(report);
+    const writeSet = buildRemainingWriteSet(report, new Set(['legacy-sub-a']));
     expect(writeSet).toHaveLength(1);
     expect(writeSet[0].mechanism).toBe('refuel');
+  });
+
+  it('keeps canonical recharge parent WOULD_UPDATE when it is not a proven stale subsegment', () => {
+    const report = buildCompletionReport({
+      vehicles: [
+        {
+          vehicleId: VEHICLE_ID,
+          label: 'TEST_EV',
+          tokenId: TOKEN_ID,
+          provider: 'LTE_R1',
+          powertrain: 'EV',
+          dimoAccessAvailable: true,
+          dbVehicleMapped: true,
+          refuelApplicability: 'NOT_APPLICABLE',
+          rechargeApplicability: 'APPLICABLE',
+          relativeFuelAvailable: false,
+          absoluteFuelAvailable: false,
+          rechargeSocAvailable: true,
+          capabilityLookupStatus: 'ok',
+          existingEventCountInWindow: 2,
+          energyClass: 'RECHARGE_CANDIDATE',
+        },
+      ],
+      candidates: [
+        {
+          classification: 'WOULD_UPDATE',
+          mechanism: 'recharge',
+          vehicleId: VEHICLE_ID,
+          tokenId: TOKEN_ID,
+          label: 'TEST_EV',
+          dimoSegmentId: 'canonical-parent',
+          coalescedFromSegmentIds: ['canonical-parent'],
+          startTime: '2026-07-16T08:00:00.000Z',
+          endTime: '2026-07-16T18:00:00.000Z',
+          durationSeconds: 36000,
+          fuelDeltaLiters: null,
+          fuelDeltaPercent: null,
+          socDeltaPercent: 20,
+          energyDeltaKwh: 10,
+          odometerStartKm: 1000,
+          odometerEndKm: 1000,
+          confidence: EnergyEventConfidence.HIGH,
+          detectorConfigVersion: 'e2-2026-08',
+          manualReviewReasons: [],
+          existingRowId: 'parent-row',
+          windowFrom: WINDOW_FROM.toISOString(),
+          windowTo: WINDOW_TO.toISOString(),
+        },
+      ],
+    });
+
+    const writeSet = buildRemainingWriteSet(report, new Set(['legacy-sub-a']));
+    expect(writeSet).toHaveLength(1);
+    expect(writeSet[0].mechanism).toBe('recharge');
   });
 });
 
