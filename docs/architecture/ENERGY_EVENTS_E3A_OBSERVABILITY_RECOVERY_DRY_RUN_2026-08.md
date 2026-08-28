@@ -163,22 +163,28 @@ VehicleEnergyDetectionStatus
 
 Executed on `srv1374778.hstgr.cloud` with production `DATABASE_URL`, `dbComparisonEnabled=true`, `dbComparisonStatus=ok`, mutation-guarded Prisma, zero writes.
 
+### Before refuel plausibility hardening
+
+| Metric | Value |
+|--------|-------|
+| WOULD_CREATE | 7 (5 refuels incl. 4 moving-vehicle false positives) |
+| MANUAL_REVIEW_REQUIRED | 12 |
+| Gate | `READY AFTER MANUAL REVIEW OF 12 EVENTS` |
+
+### After refuel plausibility hardening (HEAD `160b9b571`)
+
 | Metric | Value |
 |--------|-------|
 | Telemetry GraphQL requests | 220 |
-| Token exchanges | 0 (cached) |
 | Refuel detections | 18 |
-| Recharge detections | 3 |
-| Deduplicated candidates | 21 |
-| WOULD_CREATE | 7 |
-| MANUAL_REVIEW_REQUIRED | 12 |
+| WOULD_CREATE | 3 (KS MX refuel + 2 Tesla recharge) |
+| WOULD_UPDATE | 1 (Tesla Jul-16 extended session) |
+| MANUAL_REVIEW_REQUIRED | 15 (13 refuel + 2 ambiguous) |
 | FETCH_FAILED | 0 |
-| DB mapping failures | 0 |
 | KS MX canonical | WOULD_CREATE @ 2026-08-23T16:15:15Z |
-| Tesla recharge | 3 detected, 2 WOULD_CREATE, 1 MR |
-| Gate | `READY AFTER MANUAL REVIEW OF 12 EVENTS` |
+| Gate | `READY AFTER MANUAL REVIEW OF 15 EVENTS` |
 
-All 12 manual-review entries: `NEEDS_FURTHER_EVIDENCE` (11 long-duration refuels + 1 Tesla existing-DB overlap).
+4 refuel candidates reclassified from WOULD_CREATE → MANUAL_REVIEW (`refuel_high_odometer_movement`). Sole refuel WOULD_CREATE: KS MX (+16 L, ~6 km).
 
 ---
 
@@ -194,4 +200,4 @@ FULL prod dry-run exposed DIMO RefuelDetector false positives: large fuel increa
 
 **Production recommendation:** Apply same movement plausibility to live `EnergyEventsService.detectEnergyEvents` after recovery gate validates — DIMO false positives can occur in production too. **Not changed in this PR** (recovery-only hardening).
 
-**Tesla Jul-16 overlap:** Extended recharge segment (`dimo-recharge-186946-1784220138893`) is `WOULD_UPDATE` on existing DB row; overlapping sub-segment (`1784227838927`) is subsumed — no duplicate create.
+**Tesla Jul-16 overlap:** Extended recharge (`dimo-recharge-186946-1784220138893`) → `WOULD_UPDATE` on existing DB row `ddb44b81` (same physical session, expanded detector window). No duplicate create.
