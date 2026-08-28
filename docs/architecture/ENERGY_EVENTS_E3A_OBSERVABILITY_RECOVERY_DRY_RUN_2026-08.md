@@ -192,21 +192,37 @@ Both contain aliases (`ICE_A`, `EV_A`, `CANONICAL_REFUEL_CASE`, …), coarse dur
 
 ## 10. FULL DB-backed preview (secured production infrastructure, 2026-08-28)
 
-FULL DB-backed read-only run executed on secured production infrastructure with production `DATABASE_URL`, `dbComparisonEnabled=true`, `dbComparisonStatus=ok`, mutation-guarded Prisma, zero writes.
+FULL DB-backed read-only run executed on secured production infrastructure with production `DATABASE_URL`, `dbComparisonEnabled=true`, `dbComparisonStatus=ok`, mutation-guarded Prisma, zero writes. **Clean branch execution** (`codeShaUnderTest` = clean PR HEAD, not legacy #1373).
 
-### After refuel plausibility hardening
+### Capability discovery (clean PR fix)
+
+FULL mode resolves energy capability from canonical runtime sources — **not** from existing `VehicleEnergyEvent` history:
+
+1. `Vehicle.fuelType` → powertrain class
+2. `VehicleBatteryCapability` → recharge/SOC (`dimo.segments.recharge`, `hv.soc`)
+3. DIMO `availableSignals` probe → fuel + supplemental recharge listing
+4. Existing outage-window events → **supplemental only**
+
+`CAPABILITY_UNKNOWN` when probe fails without canonical DB coverage; FULL gate `NOT READY`. Synthetic QUICK profiles (tokenIds 100001–100099) cannot enter FULL inventory.
+
+### After refuel plausibility hardening + runtime capability discovery
 
 | Metric | Value |
 |--------|-------|
-| Telemetry GraphQL requests | 220 |
+| `codeShaUnderTest` | clean PR HEAD (runtime git SHA) |
+| Telemetry GraphQL requests | **396** (5 BOTH-class eligible × 44 windows × 2 mechanisms; +5 `availableSignals` preflight probes) |
 | Refuel detections | 18 |
+| Recharge detections | 3 |
 | WOULD_CREATE | 3 (`CANONICAL_REFUEL_CASE` + 2 `EV_A` recharge) |
 | WOULD_UPDATE | 1 (`CANONICAL_RECHARGE_OVERLAP_CASE`) |
 | MANUAL_REVIEW_REQUIRED | 15 (13 `EXCLUDE_FROM_BACKFILL` + 2 `NEEDS_FURTHER_EVIDENCE`) |
 | Unresolved manual review | 2 (`NEEDS_FURTHER_EVIDENCE` only) |
 | FETCH_FAILED | 0 |
+| `CAPABILITY_UNKNOWN` | 0 |
 | `CANONICAL_REFUEL_CASE` | `WOULD_CREATE` (Aug 2026) |
 | Gate | `READY AFTER MANUAL REVIEW OF 2 EVENTS` (`MANUAL_REVIEW_UNRESOLVED:2`) |
+
+**Telemetry note:** Prior #1373 evidence reported 220 requests when fleet was classified REFUEL/RECHARGE-only. Runtime `availableSignals` probe correctly surfaces BOTH on several ICE vehicles (fuel + recharge SOC listed), increasing mechanism queries to 396 while **detection and classification counts remain identical**.
 
 4 refuel candidates reclassified from WOULD_CREATE → MANUAL_REVIEW (`refuel_high_odometer_movement`). Sole refuel WOULD_CREATE: `CANONICAL_REFUEL_CASE` (+16 L bucket, ~6 km bucket).
 
