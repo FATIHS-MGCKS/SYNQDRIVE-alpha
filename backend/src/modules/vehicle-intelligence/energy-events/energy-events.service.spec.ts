@@ -11,6 +11,7 @@ import {
   KS_MX_2024_TOKEN_ID,
   KS_MX_2024_TUNED_CONFIG_SEGMENT,
 } from '@modules/dimo/fixtures/ks-mx-2024-refuel.fixture';
+import { DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG } from '@modules/dimo/energy-events/dimo-energy-detector.config';
 
 const VEHICLE_ID = 'clveh1234567890123456789012';
 const FROM = new Date('2026-08-22T00:00:00.000Z');
@@ -538,10 +539,39 @@ describe('KS MX 2024 E2 reference fixture', () => {
     expect(KS_MX_2024_FUEL_LEVEL_EVIDENCE.endRelativePercent).toBe(42);
   });
 
-  it('requires E2 minIncreasePercent tuning — not fixed by E1 transport repair', () => {
-    // E1 only restores fetch/persistence. Detector sensitivity remains E2 scope.
-    expect(KS_MX_2024_DEFAULT_CONFIG_SEGMENTS.length).toBe(0);
-    expect(KS_MX_2024_TUNED_CONFIG_SEGMENT.duration).toBeGreaterThan(0);
+  it('E2 production refuel config matches live calibration reference', () => {
+    expect(DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG.minIncreasePercent).toBe(5);
+    expect(KS_MX_2024_TUNED_CONFIG_SEGMENT.duration).toBe(481);
+  });
+});
+
+describe('EnergyEventsService persist gate (E2 false-positive guard)', () => {
+  it('does not persist refuel segments with fuelDeltaLiters <= 1 (sensor noise)', async () => {
+    const noiseRefuel = buildRefuelSegment({
+      fuelDeltaLiters: 0.4,
+      fuelDeltaPercent: 1.2,
+      fuelStartPercent: 40,
+      fuelEndPercent: 41.2,
+    });
+    const dimoSegments = {
+      fetchEnergyEventSegments: jest.fn().mockResolvedValue({
+        tokenId: KS_MX_2024_TOKEN_ID,
+        segments: [noiseRefuel],
+        outcomes: [outcome('refuel', 'SUCCESS_WITH_EVENTS', [noiseRefuel])],
+      }),
+    };
+    const store = {
+      vehicles: [{ id: VEHICLE_ID, dimoVehicle: { tokenId: KS_MX_2024_TOKEN_ID } }],
+      energyEvents: [],
+    };
+    const service = new EnergyEventsService(
+      createPrismaMock(store) as never,
+      dimoSegments as never,
+    );
+    const result = await service.detectEnergyEvents(VEHICLE_ID, { from: FROM, to: TO });
+    expect(result.created).toBe(0);
+    expect(result.skipped).toBe(1);
+    expect(store.energyEvents).toHaveLength(0);
   });
 });
 

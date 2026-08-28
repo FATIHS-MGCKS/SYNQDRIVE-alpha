@@ -2,6 +2,7 @@ import { DimoTelemetryService } from './dimo-telemetry.service';
 import { DimoSegmentsService } from './dimo-segments.service';
 import { DimoRechargeSegmentsClient } from './recharge-segments/dimo-recharge-segments.client';
 import { buildEnergyEventSegmentsQuery } from './queries/energy-event-segments.query';
+import { DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG } from './energy-events/dimo-energy-detector.config';
 import { isRetryableDimoAxiosError } from './recharge-segments/dimo-recharge-segments.graphql';
 import {
   TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1,
@@ -183,7 +184,10 @@ describe('DimoSegmentsService.fetchEnergyEventSegments isolation', () => {
     await service.fetchEnergyEventSegments(TOKEN_ID, FROM, TO);
 
     const refuelQuery = telemetry.queryGraphQL.mock.calls[0][1] as string;
-    expect(refuelQuery).toBe(buildEnergyEventSegmentsQuery(TOKEN_ID, FROM, TO, 'refuel'));
+    expect(refuelQuery).toBe(
+      buildEnergyEventSegmentsQuery(TOKEN_ID, FROM, TO, 'refuel', DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG),
+    );
+    expect(refuelQuery).toContain('config: { minIncreasePercent: 5 }');
     expect(refuelQuery).not.toMatch(/\blimit\s*:/);
     expect(refuelQuery).not.toMatch(/\bafter\s*:/);
   });

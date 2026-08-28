@@ -10,6 +10,14 @@ import axios from 'axios';
 import { Wallet } from 'ethers';
 import { buildDimoRechargeSegmentsQuery } from '../../src/modules/dimo/recharge-segments/dimo-recharge-segments.query';
 import { buildEnergyEventSegmentsQuery } from '../../src/modules/dimo/queries/energy-event-segments.query';
+import {
+  DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG,
+  DIMO_PRODUCTION_RECHARGE_DETECTOR_CONFIG,
+} from '../../src/modules/dimo/energy-events/dimo-energy-detector.config';
+import {
+  KS_MX_2024_REFUEL_WINDOW,
+  KS_MX_2024_TOKEN_ID,
+} from '../../src/modules/dimo/fixtures/ks-mx-2024-refuel.fixture';
 
 {
   const envPath = path.resolve(__dirname, '..', '..', '.env');
@@ -25,8 +33,12 @@ const TOKEN_IDS = process.argv.slice(2).map(Number).filter((n) => n > 0).length
   ? process.argv.slice(2).map(Number).filter((n) => n > 0)
   : [187336, 186946];
 
-const FROM = new Date('2026-08-20T00:00:00.000Z');
-const TO = new Date('2026-08-27T00:00:00.000Z');
+const KS_MX_FROM = new Date(KS_MX_2024_REFUEL_WINDOW.from);
+const KS_MX_TO = new Date(KS_MX_2024_REFUEL_WINDOW.to);
+const TESLA_RECHARGE_FROM = new Date('2026-06-15T00:00:00.000Z');
+const TESLA_RECHARGE_TO = new Date('2026-07-16T00:00:00.000Z');
+const DEFAULT_FROM = new Date('2026-08-20T00:00:00.000Z');
+const DEFAULT_TO = new Date('2026-08-27T00:00:00.000Z');
 
 const AUTH_URL = 'https://auth.dimo.zone';
 const TOKEN_EXCHANGE_URL =
@@ -129,14 +141,26 @@ async function main() {
   for (const tokenId of TOKEN_IDS) {
     const vehicleJwt = await getVehicleJwt(devJwt, tokenId);
 
+    const refuelFrom = tokenId === KS_MX_2024_TOKEN_ID ? KS_MX_FROM : DEFAULT_FROM;
+    const refuelTo = tokenId === KS_MX_2024_TOKEN_ID ? KS_MX_TO : DEFAULT_TO;
+    const rechargeFrom = tokenId === 186946 ? TESLA_RECHARGE_FROM : DEFAULT_FROM;
+    const rechargeTo = tokenId === 186946 ? TESLA_RECHARGE_TO : DEFAULT_TO;
+
     for (const mechanism of ['refuel', 'recharge'] as const) {
       const query =
         mechanism === 'refuel'
-          ? buildEnergyEventSegmentsQuery(tokenId, FROM, TO, 'refuel')
+          ? buildEnergyEventSegmentsQuery(
+              tokenId,
+              refuelFrom,
+              refuelTo,
+              'refuel',
+              DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG,
+            )
           : buildDimoRechargeSegmentsQuery({
               tokenId,
-              fromIso: FROM.toISOString(),
-              toIso: TO.toISOString(),
+              fromIso: rechargeFrom.toISOString(),
+              toIso: rechargeTo.toISOString(),
+              detectorConfig: DIMO_PRODUCTION_RECHARGE_DETECTOR_CONFIG,
             });
 
       const response = await gql(vehicleJwt, query);
@@ -144,15 +168,30 @@ async function main() {
       results.push({
         tokenId,
         mechanism,
+        detectorConfig:
+          mechanism === 'refuel'
+            ? DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG
+            : DIMO_PRODUCTION_RECHARGE_DETECTOR_CONFIG ?? 'default',
+        window: {
+          from: (mechanism === 'refuel' ? refuelFrom : rechargeFrom).toISOString(),
+          to: (mechanism === 'refuel' ? refuelTo : rechargeTo).toISOString(),
+        },
         httpStatus: response.httpStatus,
         segmentCount: Array.isArray(segments) ? segments.length : 0,
+        segments: Array.isArray(segments)
+          ? segments.slice(0, 3).map((segment: any) => ({
+              start: segment?.start?.timestamp,
+              end: segment?.end?.timestamp,
+              duration: segment?.duration,
+            }))
+          : [],
         errors: response.errors ?? null,
       });
     }
   }
 
   const payload = {
-    window: { from: FROM.toISOString(), to: TO.toISOString() },
+    detectorConfigVersion: 'e2-2026-08',
     results,
   };
   console.log(JSON.stringify(payload, null, 2));

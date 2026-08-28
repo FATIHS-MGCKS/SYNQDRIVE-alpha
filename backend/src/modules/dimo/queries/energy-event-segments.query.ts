@@ -1,4 +1,9 @@
 import type { DimoDetectionMechanism } from './trip-segments.query';
+import {
+  type DimoRechargeDetectorConfig,
+  type DimoRefuelDetectorConfig,
+  renderDimoDetectorConfigArg,
+} from '../energy-events/dimo-energy-detector.config';
 
 /**
  * Energy-event segments (native DIMO detectors).
@@ -18,6 +23,7 @@ export function buildEnergyEventSegmentsQuery(
   from: Date,
   to: Date,
   mechanism: Extract<DimoDetectionMechanism, 'refuel' | 'recharge'>,
+  detectorConfig?: DimoRefuelDetectorConfig | DimoRechargeDetectorConfig,
 ): string {
   const commonSignals = [
     '{ name: "powertrainTransmissionTravelledDistance", agg: MIN }',
@@ -49,7 +55,7 @@ export function buildEnergyEventSegmentsQuery(
         tokenId: ${tokenId}
         from: "${from.toISOString()}"
         to: "${to.toISOString()}"
-        mechanism: ${mechanism}
+        mechanism: ${mechanism}${renderDimoDetectorConfigArg(detectorConfig)}
         signalRequests: [
           ${signalRequests}
         ]

@@ -33,6 +33,9 @@ import {
   type DimoDetectionMechanism,
 } from './queries/trip-segments.query';
 import { buildEnergyEventSegmentsQuery } from './queries/energy-event-segments.query';
+import {
+  DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG,
+} from './energy-events/dimo-energy-detector.config';
 import { DimoRechargeSegmentsClient } from './recharge-segments/dimo-recharge-segments.client';
 import { mapRechargeSegmentToEnergyEvent } from './recharge-segments/dimo-recharge-segments.mapper';
 import {
@@ -483,7 +486,13 @@ export class DimoSegmentsService {
     to: Date,
     mechanism: Extract<DimoDetectionMechanism, 'refuel' | 'recharge'>,
   ): Promise<DimoEnergyEventSegment[]> {
-    const query = buildEnergyEventSegmentsQuery(tokenId, from, to, mechanism);
+    const query = buildEnergyEventSegmentsQuery(
+      tokenId,
+      from,
+      to,
+      mechanism,
+      mechanism === 'refuel' ? DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG : undefined,
+    );
     const result = await this.telemetry.queryGraphQL(jwt, query);
     const segments: any[] = result?.data?.segments ?? [];
     return segments
