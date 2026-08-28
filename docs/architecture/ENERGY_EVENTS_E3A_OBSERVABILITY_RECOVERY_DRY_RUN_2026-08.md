@@ -409,11 +409,31 @@ The ops evidence script (`energy-events-manual-review-evidence.ts`) is an analys
 aid only — E2 remains canonical; `suggestedDisposition` is advisory and never
 feeds writes automatically.
 
-### FULL re-run after resolution
+### FULL re-run after resolution (observed on hardened code)
+
+Executed on secured production infrastructure via the established Cloud Agent SSH
+path (`cloud-agent-verify-vps.sh` → `synqdrive-admin@` VPS), sourcing
+`/opt/synqdrive/shared/backend.env` for the read-only `DATABASE_URL` and DIMO
+credentials. The private recovery plan was supplied through
+`ENERGY_EVENTS_RECOVERY_PLAN_PATH` and never committed.
+
+**Runtime manual-review authority evidence (observed):**
+
+| Metric | Observed |
+|--------|----------|
+| `recoveryPlan.supplied` | `true` (`planVersion=e3a-2026-08`) |
+| `reviewedDispositionCount` | 2 |
+| `appliedCount` (exact single matches) | 2 |
+| `unmatchedCount` | 0 |
+| `ambiguousCount` | 0 |
+| Derived-EXCLUDE rows needing no human input | 13 (unchanged) |
+| Derived-NEEDS rows changed by plan | 2 |
+| Unexpected disposition changes | 0 |
+| Bucket fingerprint present in artifact | no |
 
 | Metric | Value |
 |--------|-------|
-| `codeShaUnderTest` | `771b9f69b47beef15d0cb9982fe7050a12ec347b` |
+| `codeShaUnderTest` | `b292a14c0b7ed5c958849e49b583a017a0b195c1` |
 | `baseMainSha` | `6c38d8c26d81aeb3ea5e3589e11a46625e016ed5` |
 | `dbComparisonEnabled` / `dbComparisonStatus` | `true` / `ok` |
 | Telemetry GraphQL requests (TOTAL) | **225** (probes 5 + mechanism 220) |
@@ -425,7 +445,12 @@ feeds writes automatically.
 | `dbWritesPerformed` | `false` |
 | `CANONICAL_REFUEL_CASE` | `WOULD_CREATE` |
 | `CANONICAL_RECHARGE_OVERLAP_CASE` | `WOULD_UPDATE` |
-| Gate | **`READY FOR CONTROLLED WRITE BACKFILL`** |
+| Gate | **`READY FOR CONTROLLED WRITE BACKFILL`** (`gateBlockers: []`) |
+
+**Zero-write proof (observed):** `vehicle_energy_events` row count (130), newest
+`created_at` / `updated_at`, and a SHA-256 digest over `(id, dimo_segment_id,
+updated_at)` for all rows were captured before and after the run and are
+byte-identical. No INSERT / UPDATE / DELETE / UPSERT occurred.
 
 **No historical backfill executed.** Write-back remains a separate controlled phase.
 

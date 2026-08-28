@@ -46,6 +46,9 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Explicit empty `reviewedDispositions` applies no overrides; omitting `recoveryPlan` leaves NEEDS candidates unchanged.',
       'Ops evidence script: `suggestedDisposition` advisory only — E2 detector remains canonical; analyst aid does not feed writes.',
       'Private E3A plan built on secured infra via `ENERGY_EVENTS_RECOVERY_PLAN_PATH`; synthetic fixtures for repository tests only.',
+      'Observed secured FULL DB-backed validation on the hardened code: plan applied 2/2 exact single matches, 0 unmatched, 0 ambiguous, 13 derived-EXCLUDE rows untouched, 0 unexpected changes.',
+      'Observed gate: manual review 15 total / 15 EXCLUDE / 0 NEEDS, 3 WOULD_CREATE, 1 WOULD_UPDATE, 2 WOULD_SKIP, FETCH_FAILED 0, gateBlockers [], READY FOR CONTROLLED WRITE BACKFILL.',
+      'Zero-write proof: vehicle_energy_events row count and table digest byte-identical before/after the run.',
     ],
     reason:
       'Bucket fingerprints are privacy-safe but not unique — one human decision must not fan out to every candidate sharing the same coarse signature.',

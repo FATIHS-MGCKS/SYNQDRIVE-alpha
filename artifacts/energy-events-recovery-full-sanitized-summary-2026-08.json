@@ -1,8 +1,8 @@
 {
   "artifactKind": "sanitized_full_summary",
   "privacyPolicy": "Repository-safe aggregate evidence only. Raw FULL DB preview reports with operational identifiers are generated on secured infrastructure and must not be committed.",
-  "generatedAt": "2026-08-28T14:15:14.213Z",
-  "codeShaUnderTest": "771b9f69b47beef15d0cb9982fe7050a12ec347b",
+  "generatedAt": "2026-08-28T14:51:55.712Z",
+  "codeShaUnderTest": "b292a14c0b7ed5c958849e49b583a017a0b195c1",
   "baseMainSha": "6c38d8c26d81aeb3ea5e3589e11a46625e016ed5",
   "detectorConfigVersion": "e2-2026-08",
   "refuelDetectorConfig": {
@@ -509,5 +509,14 @@
   "manualReviewCount": 15,
   "gateBlockers": [],
   "zeroWriteStatus": true,
-  "finalGate": "READY FOR CONTROLLED WRITE BACKFILL"
+  "finalGate": "READY FOR CONTROLLED WRITE BACKFILL",
+  "recoveryPlan": {
+    "supplied": true,
+    "planVersion": "e3a-2026-08",
+    "reviewProvenance": "secured-production-telemetry-inspection-2026-08-28",
+    "reviewedDispositionCount": 2,
+    "appliedCount": 2,
+    "unmatchedCount": 0,
+    "ambiguousCount": 0
+  }
 }
