@@ -224,7 +224,21 @@ a `CANCELLED` trip which never contained the events.
 
 API health HTTP 200; PM2 online with `unstable_restarts=0`. No restart was
 performed or required — the repair was pure row-level data. No Prisma, deadlock,
-lock-timeout, scheduler or `EventTripAssociation` errors appeared after the
-write. The only errors in the window are the pre-existing `DimoAuthService` 403
-for `tokenId=190497` and the pre-existing ClickHouse migration checksum
-mismatches, neither related to this work.
+scheduler or `EventTripAssociation` errors appeared after the write. The
+candidate table checksum has stayed at `7046a0a8d5beeb3970e805182512ea62` since
+the commit, with zero rows created or updated afterwards.
+
+Three unrelated error sources are present in the window and were each checked
+rather than assumed benign:
+
+- `DimoAuthService` 403 for `tokenId=190497` — pre-existing polling failure.
+- `ClickHouseSchemaService` migration checksum mismatches — pre-existing, logged
+  at every startup.
+- `BatteryV2Processor` `LOCK_CONTENTION` on `BATTERY_LV_REST_SESSION_OPEN` for
+  vehicle `c10351f8` — recurring every 5 minutes since 15:37:23, i.e. from
+  shortly after the 15:32 process start and more than an hour before the Stage 2
+  write at 16:44:59. The rate is identical before and after (2 per cycle; 36
+  occurrences before, 4 in the shorter window after), the vehicle is not in the
+  mutation set, and the job touches battery tables rather than
+  `rpm_webhook_candidates`. It belongs to the Battery V2 LV_REST work, not to
+  this repair.
