@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-start-isolation-hardening-2026-08-28',
+    version: '4.9.990',
+    title: 'Trip-start isolation hardening — device-connection outbox drain can no longer block live trip detection (PR A0)',
+    summary: [
+      'DimoSnapshotProcessor.process() awaited resolutionOutboxProcessor.processPendingBatch() unguarded, ahead of evaluateTripStart(). Every other non-trip subsystem on that path (episode snapshot resolution, sustained-telemetry recovery, ClickHouse mirror, Battery V2) was already isolated — the outbox drain was the last unguarded call.',
+      'Same failure class as the July 2026 Battery V2 incident, which stalled live trip detection fleet-wide for three days. That incident was fixed at the one call site rather than as a class, so this one survived.',
+      'The drain is the only caller of processPendingBatch() in the system — no scheduler drains this outbox — so its retry/recovery semantics are carried by the outbox rows themselves (nextRetryAt, PROCESSING claim, dead-letter after maxAttempts). Catching at the call site loses nothing: the next snapshot poll re-drains.',
+      'Row-level failures never reach the call site; executeClaimedRow already catches them and marks retry or dead-letter. Only infrastructure faults (outbox table unreachable, claim/complete write failure) propagate, which is exactly the class that must not take trip detection down with it.',
+      'BullMQ UnrecoverableError — the codebase-wide non-retryable marker used by battery-v2.processor — is deliberately re-thrown, so the existing fatal taxonomy is preserved.',
+      'No reordering, no parallelism, no behavioral change when the outbox drain succeeds. Six regression tests cover success, throw-with-trip-detection-continuing, trip-start failure visibility, no duplicate evaluation, actionable log context, and fatal propagation. Three of the six fail against the pre-fix processor.',
+      'PRODUCTION_MUTATIONS = NONE.',
+    ],
+    reason:
+      'A non-trip subsystem must never be able to prevent trip detection. The hardening design measured the cost of the previous instance of this defect; leaving an identical unguarded await in place while adding detector improvements would have risked repeating it.',
+    previousBehavior:
+      'Any throw from the resolution outbox drain aborted the snapshot job before evaluateTripStart(), so a fault confined to device-connection bookkeeping silently suppressed live trip starts for every vehicle on the queue.',
+    details:
+      'backend/src/workers/processors/dimo-snapshot.processor.ts gains a narrow failure boundary; backend/src/workers/processors/dimo-snapshot.trip-start-isolation.spec.ts is the permanent regression suite.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T20:10:00.000Z',
+  },
+  {
     id: 'trip-detection-hardening-design-2026-08-28',
     version: '4.9.989',
     title: 'Trip Detection Hardening — design + read-only replay plan (R1–R8, nothing implemented)',
