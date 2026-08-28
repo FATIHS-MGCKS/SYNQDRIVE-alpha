@@ -100,8 +100,21 @@ function aliasRowId(rowId: string | null): string | null {
   return alias;
 }
 
+const opaqueSegmentAliases = new Map<string, string>();
+
+/**
+ * Canonical `dimo-<mechanism>-<tokenId>-...` ids keep their readable shape with
+ * the token id aliased. Provider-issued opaque ids are replaced wholesale so no
+ * upstream identifier can leak into shared output.
+ */
 function aliasSegmentId(segmentId: string): string {
-  return redactSegmentIdentity(segmentId, aliasTokenId);
+  const redacted = redactSegmentIdentity(segmentId, aliasTokenId);
+  if (redacted !== segmentId) return redacted;
+  const existing = opaqueSegmentAliases.get(segmentId);
+  if (existing) return existing;
+  const alias = `SEG${opaqueSegmentAliases.size + 1}`;
+  opaqueSegmentAliases.set(segmentId, alias);
+  return alias;
 }
 
 function sanitizeSegment(segment: DimoEnergyEventSegment) {
@@ -325,7 +338,68 @@ async function main() {
       candidate.classification === 'WOULD_UPDATE',
   );
 
-  const candidateForensics = pending.map((candidate) => {
+  const unresolvedManualReviewSegmentIds = new Set(
+    report.manualReviewReport
+      .filter(
+        (entry) =>
+          entry.recommendation !== 'APPROVE_FOR_BACKFILL' &&
+          entry.recommendation !== 'EXCLUDE_FROM_BACKFILL',
+      )
+      .map((entry) => entry.dimoSegmentId),
+  );
+
+  /** Pending writes plus every candidate that still blocks the gate. */
+  const analysisTargets = report.candidates.filter(
+    (candidate) =>
+      candidate.classification === 'WOULD_CREATE' ||
+      candidate.classification === 'WOULD_UPDATE' ||
+      (candidate.classification === 'MANUAL_REVIEW_REQUIRED' &&
+        unresolvedManualReviewSegmentIds.has(candidate.dimoSegmentId)),
+  );
+
+  /**
+   * Every window whose fetch mentions one of the candidate's segment ids. A
+   * canonical event that appears with different payloads in two adjacent
+   * windows can never converge to ALREADY_IDENTICAL, so this is captured
+   * explicitly.
+   */
+  function crossWindowOccurrences(
+    tokenId: number,
+    relevantSegmentIds: Set<string>,
+    canonicalDimoSegmentId: string,
+    vehicleId: string,
+    dbRow: RecoveryExistingEnergyEvent | null,
+  ) {
+    return captured
+      .filter((entry) => entry.tokenId === tokenId)
+      .map((entry) => {
+        const matching = entry.segments.filter((segment) =>
+          relevantSegmentIds.has(segment.segmentId),
+        );
+        const groups = coalescedGroupsForWindow(entry.tokenId, entry.windowFrom);
+        const group =
+          groups.find(
+            (candidateGroup) =>
+              candidateGroup.coalescedSegmentId === canonicalDimoSegmentId,
+          ) ?? null;
+        if (matching.length === 0 && !group) return null;
+        const payload = group ? buildUpsertPayload(vehicleId, group) : null;
+        return {
+          windowFrom: entry.windowFrom,
+          windowTo: entry.windowTo,
+          matchingSegments: matching.map(sanitizeSegment),
+          canonicalGroupPresent: Boolean(group),
+          canonicalGroupPayload: payload ? sanitizePayloadMeta(payload) : null,
+          diffAgainstDbRow:
+            dbRow && payload
+              ? sanitizeDiff(diffCanonicalMaterialIdentity(dbRow, payload))
+              : null,
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry != null);
+  }
+
+  const candidateForensics = analysisTargets.map((candidate) => {
     const tokenId = tokenIdByVehicleId.get(candidate.vehicleId) ?? candidate.tokenId;
     const groups = coalescedGroupsForWindow(tokenId, candidate.windowFrom);
     const group =
@@ -373,6 +447,7 @@ async function main() {
       vehicleAlias: aliasVehicleId(candidate.vehicleId),
       tokenAlias: aliasTokenId(tokenId),
       classification: candidate.classification,
+      manualReviewReasons: candidate.manualReviewReasons,
       mechanism: candidate.mechanism,
       dimoSegmentId: aliasSegmentId(candidate.dimoSegmentId),
       coalescedFromSegmentIds:
@@ -400,6 +475,13 @@ async function main() {
               : null,
           }
         : null,
+      crossWindowOccurrences: crossWindowOccurrences(
+        tokenId,
+        new Set([candidate.dimoSegmentId, ...candidate.coalescedFromSegmentIds]),
+        candidate.dimoSegmentId,
+        candidate.vehicleId,
+        dbRow,
+      ),
       currentDimoWindowSegments:
         windowFetch?.segments
           .filter((segment) => segment.mechanism === candidate.mechanism)
