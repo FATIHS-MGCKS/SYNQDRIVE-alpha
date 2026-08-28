@@ -31,6 +31,9 @@ export const REPAIR_STATUS = {
   APPLIED: 'APPLIED',
   REJECTED: 'REJECTED',
   EXPIRED: 'EXPIRED',
+  // Evaluated, then withheld because canonical trips already represent the
+  // window. Distinct from REJECTED, which means an attempted repair failed.
+  SUPPRESSED: 'SUPPRESSED',
 } as const;
 
 export type RepairStatus = (typeof REPAIR_STATUS)[keyof typeof REPAIR_STATUS];
