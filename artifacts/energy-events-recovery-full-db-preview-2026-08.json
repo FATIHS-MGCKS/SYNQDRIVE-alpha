@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-28T10:30:51.342Z",
-  "codeShaUnderTest": "fce002a507793ac1ec4244d342a450fdf6787da9",
+  "generatedAt": "2026-08-28T10:39:13.301Z",
+  "codeShaUnderTest": "160b9b571e086d3ae42bf9abdeafefc41cd79c45",
   "baseMainSha": "unknown",
   "detectorConfigVersion": "e2-2026-08",
   "refuelDetectorConfig": {
@@ -158,11 +158,11 @@
   "deduplicatedCandidateCount": 21,
   "summary": {
     "WOULD_CREATE": 3,
-    "WOULD_UPDATE": 0,
+    "WOULD_UPDATE": 1,
     "ALREADY_IDENTICAL": 0,
     "WOULD_SKIP_NOT_PERSISTABLE": 2,
     "WOULD_REPLACE_LEGACY_SUBSEGMENTS": 0,
-    "MANUAL_REVIEW_REQUIRED": 16,
+    "MANUAL_REVIEW_REQUIRED": 15,
     "FETCH_FAILED": 0
   },
   "candidates": [
@@ -429,7 +429,7 @@
       "startedBeforeRange": false
     },
     {
-      "classification": "MANUAL_REVIEW_REQUIRED",
+      "classification": "WOULD_UPDATE",
       "mechanism": "recharge",
       "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
       "tokenId": 186946,
@@ -449,14 +449,11 @@
       "odometerEndKm": 179360.3335191583,
       "confidence": "HIGH",
       "detectorConfigVersion": "e2-2026-08",
-      "manualReviewReasons": [
-        "existing_db_overlap_different_id"
-      ],
+      "manualReviewReasons": [],
       "existingRowId": "ddb44b81-c475-4c2a-9c70-950470f60f93",
       "windowFrom": "2026-07-16T00:00:00.000Z",
       "windowTo": "2026-07-17T00:00:00.000Z",
-      "startedBeforeRange": false,
-      "existingDbRelation": "overlaps existing row 54ad6102-b1c8-4159-8266-2850570caf1a (dimo-recharge-186946-1784244182926)"
+      "startedBeforeRange": false
     },
     {
       "classification": "WOULD_CREATE",
@@ -805,7 +802,7 @@
       "existingDbRelation": null,
       "existingRowId": null,
       "dimoSegmentId": "dimo-refuel-187784-1784362845000",
-      "recommendation": "NEEDS_FURTHER_EVIDENCE"
+      "recommendation": "EXCLUDE_FROM_BACKFILL"
     },
     {
       "vehicle": "HMÜ C 215",
@@ -861,7 +858,7 @@
       "existingDbRelation": null,
       "existingRowId": null,
       "dimoSegmentId": "dimo-refuel-187784-1784451668000",
-      "recommendation": "NEEDS_FURTHER_EVIDENCE"
+      "recommendation": "EXCLUDE_FROM_BACKFILL"
     },
     {
       "vehicle": "HMÜ C 215",
@@ -890,7 +887,7 @@
       "existingDbRelation": null,
       "existingRowId": null,
       "dimoSegmentId": "dimo-refuel-187784-1784553624000",
-      "recommendation": "NEEDS_FURTHER_EVIDENCE"
+      "recommendation": "EXCLUDE_FROM_BACKFILL"
     },
     {
       "vehicle": "HMÜ C 215",
@@ -919,7 +916,7 @@
       "existingDbRelation": null,
       "existingRowId": null,
       "dimoSegmentId": "dimo-refuel-187784-1784622238000",
-      "recommendation": "NEEDS_FURTHER_EVIDENCE"
+      "recommendation": "EXCLUDE_FROM_BACKFILL"
     },
     {
       "vehicle": "HMÜ C 215",
@@ -948,7 +945,7 @@
       "existingDbRelation": null,
       "existingRowId": null,
       "dimoSegmentId": "dimo-refuel-187784-1784645182000",
-      "recommendation": "NEEDS_FURTHER_EVIDENCE"
+      "recommendation": "EXCLUDE_FROM_BACKFILL"
     },
     {
       "vehicle": "HMÜ C 215",
@@ -978,29 +975,6 @@
       "recommendation": "EXCLUDE_FROM_BACKFILL"
     },
     {
-      "vehicle": "KS FH 660E",
-      "tokenId": 186946,
-      "mechanism": "recharge",
-      "startTime": "2026-07-16T16:42:18.893887Z",
-      "endTime": "2026-07-16T23:54:02.926689Z",
-      "durationSeconds": 25904,
-      "fuelDeltaLiters": null,
-      "fuelDeltaPercent": null,
-      "socDeltaPercent": 23.59584792408137,
-      "energyDeltaKwh": 11.879999734461308,
-      "odometerDeltaKm": 0,
-      "confidence": "HIGH",
-      "plausibilityReasons": [
-        "existing_db_overlap_different_id"
-      ],
-      "telemetryEvidenceNotes": [],
-      "overlapRelation": null,
-      "existingDbRelation": "overlaps existing row 54ad6102-b1c8-4159-8266-2850570caf1a (dimo-recharge-186946-1784244182926)",
-      "existingRowId": "ddb44b81-c475-4c2a-9c70-950470f60f93",
-      "dimoSegmentId": "dimo-recharge-186946-1784220138893",
-      "recommendation": "NEEDS_FURTHER_EVIDENCE"
-    },
-    {
       "vehicle": "WOB L  7503",
       "tokenId": 192922,
       "mechanism": "refuel",
@@ -1027,7 +1001,7 @@
       "existingDbRelation": null,
       "existingRowId": null,
       "dimoSegmentId": "dimo-refuel-192922-1784364472000",
-      "recommendation": "NEEDS_FURTHER_EVIDENCE"
+      "recommendation": "EXCLUDE_FROM_BACKFILL"
     },
     {
       "vehicle": "WOB L  7503",
@@ -1111,7 +1085,7 @@
       "existingDbRelation": null,
       "existingRowId": null,
       "dimoSegmentId": "dimo-refuel-192922-1784451304000",
-      "recommendation": "NEEDS_FURTHER_EVIDENCE"
+      "recommendation": "EXCLUDE_FROM_BACKFILL"
     },
     {
       "vehicle": "WOB L  7503",
@@ -1166,7 +1140,7 @@
       "existingDbRelation": null,
       "existingRowId": null,
       "dimoSegmentId": "dimo-refuel-192922-1784555559000",
-      "recommendation": "NEEDS_FURTHER_EVIDENCE"
+      "recommendation": "EXCLUDE_FROM_BACKFILL"
     },
     {
       "vehicle": "WOB L  7503",
@@ -1222,7 +1196,7 @@
       "existingDbRelation": null,
       "existingRowId": null,
       "dimoSegmentId": "dimo-refuel-192922-1784645161000",
-      "recommendation": "NEEDS_FURTHER_EVIDENCE"
+      "recommendation": "EXCLUDE_FROM_BACKFILL"
     }
   ],
   "legacySubsegmentsWouldReplace": [],
@@ -1248,14 +1222,14 @@
       "detectedSessions": 3,
       "wouldCreate": 2,
       "alreadyIdentical": 0,
-      "manualReview": 1
+      "manualReview": 0
     }
   },
   "dbWritesPerformed": false,
-  "backfillGate": "READY AFTER MANUAL REVIEW OF 16 EVENTS",
-  "manualReviewCount": 16,
+  "backfillGate": "READY AFTER MANUAL REVIEW OF 15 EVENTS",
+  "manualReviewCount": 15,
   "gateBlockers": [
-    "MANUAL_REVIEW_REQUIRED:16"
+    "MANUAL_REVIEW_REQUIRED:15"
   ],
   "candidateCount": 21
 }
