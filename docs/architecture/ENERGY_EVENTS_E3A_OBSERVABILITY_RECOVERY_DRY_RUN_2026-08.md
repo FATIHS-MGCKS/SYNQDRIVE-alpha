@@ -346,3 +346,80 @@ FULL prod dry-run exposed DIMO RefuelDetector false positives: large fuel increa
 **Production recommendation:** Apply same movement plausibility to live `EnergyEventsService.detectEnergyEvents` after recovery gate validates — DIMO false positives can occur in production too. **Not changed in this PR** (recovery-only hardening).
 
 **Recharge overlap:** Extended recharge → `WOULD_UPDATE` on existing DB row (same physical session, expanded detector window). No duplicate create. Before write-back: reconcile overlapping legacy recharge subsegments (see write-phase invariant above).
+
+---
+
+## 12. Manual-review resolution (post-merge, 2026-08-28)
+
+After E3A clean merge (#1380), two `ICE_A` July 2026 refuel candidates remained
+`NEEDS_FURTHER_EVIDENCE` (both: `under_15m`, `11_to_50km` odometer bucket,
+`under_10L` fuel bucket). Secured production DIMO telemetry was inspected in a
+bounded ±30 minute window around each candidate (read-only; raw evidence retained
+off-repo only).
+
+### Evidence summary (repository-safe categories only)
+
+| Case | Confidence | Reasons | Evidence category | Disposition |
+|------|------------|---------|-------------------|-------------|
+| A | MEDIUM | `fuel_signal_contradiction`, `refuel_odometer_movement_during_event` | `continuous_driving_irreconcilable_fuel_signals_no_stationary_refuel` | `EXCLUDE_FROM_BACKFILL` |
+| B | LOW | `refuel_odometer_movement_during_event` | `dimo_segment_padding_unsustained_micro_fuel_bump_during_driving` | `EXCLUDE_FROM_BACKFILL` |
+
+**Case A:** No stable pre-event fuel baseline; no discrete sustained upward fuel
+step; absolute vs relative signals irreconcilable at the transition (segment-level
+claim did not match largest raw step); continuous driving at highway speeds with
+no ignition-off stationary interval consistent with refueling.
+
+**Case B:** DIMO segment-level odometer spread overstated movement relative to the
+true fuel-transition window (segment padding); micro fuel bump unsustained;
+continuous driving — not a genuine refuel.
+
+Neither candidate was a real refuel. Segment padding did mislead segment-level
+movement for Case B.
+
+### Privacy-safe override mechanism
+
+`energy-events-recovery-manual-review-overrides.ts` applies human-reviewed
+dispositions via bucketed fingerprints (`mechanism`, month, duration/odometer/fuel
+buckets, confidence, sorted plausibility reasons) — no tokenIds, plates, segment
+ids, or GPS in git.
+
+Private ops script `energy-events-manual-review-evidence.ts` supports secured
+inspection only; its output must never be committed.
+
+### FULL re-run after resolution
+
+| Metric | Value |
+|--------|-------|
+| `codeShaUnderTest` | `771b9f69b47beef15d0cb9982fe7050a12ec347b` |
+| `baseMainSha` | `6c38d8c26d81aeb3ea5e3589e11a46625e016ed5` |
+| `dbComparisonEnabled` / `dbComparisonStatus` | `true` / `ok` |
+| Telemetry GraphQL requests (TOTAL) | **225** (probes 5 + mechanism 220) |
+| Token exchange / developer auth / retries | 6 / 1 / 0 |
+| Refuel / recharge detections | 18 / 3 |
+| WOULD_CREATE / WOULD_UPDATE / WOULD_SKIP | 3 / 1 / 2 |
+| Manual review | **15 total — 15 `EXCLUDE_FROM_BACKFILL`, 0 `NEEDS_FURTHER_EVIDENCE`** |
+| FETCH_FAILED / DB mapping failures / CAPABILITY_UNKNOWN | 0 / 0 / 0 |
+| `dbWritesPerformed` | `false` |
+| `CANONICAL_REFUEL_CASE` | `WOULD_CREATE` |
+| `CANONICAL_RECHARGE_OVERLAP_CASE` | `WOULD_UPDATE` |
+| Gate | **`READY FOR CONTROLLED WRITE BACKFILL`** |
+
+**No historical backfill executed.** Write-back remains a separate controlled phase.
+
+### Recommended next phase: controlled write-backfill (not executed here)
+
+| Classification | Count | Write behavior |
+|----------------|-------|----------------|
+| `WOULD_CREATE` | 3 | Insert (`CANONICAL_REFUEL_CASE` + 2 EV recharge sessions) |
+| `WOULD_UPDATE` | 1 | Expand canonical recharge overlap (`CANONICAL_RECHARGE_OVERLAP_CASE`) |
+| `EXCLUDE_FROM_BACKFILL` | 15 | Never written (resolved manual-review skips) |
+| `WOULD_SKIP_NOT_PERSISTABLE` | 2 | No-op |
+
+**Idempotency:** upsert key `dimoSegmentId`. **Reconciliation:** before updating
+the canonical Jul-16 recharge parent, reconcile overlapping legacy recharge
+subsegments so one physical session does not leave duplicate logical rows.
+**Concurrency:** respect existing traffic budget (`proposedConcurrency: 2`,
+`interRequestDelayMs: 500`). **Rollback:** re-run FULL dry-run; no destructive
+deletes without explicit reconcile plan. **Re-run safety:** dry-run + write paths
+share material identity checks; a second write pass should be idempotent on
+`dimoSegmentId`.
