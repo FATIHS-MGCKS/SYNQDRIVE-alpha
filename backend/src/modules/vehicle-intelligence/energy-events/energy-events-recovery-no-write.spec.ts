@@ -10,6 +10,7 @@ import {
   ENERGY_EVENTS_OUTAGE_START_ISO,
   ENERGY_EVENTS_RECOVERY_CUTOFF_ISO,
 } from './energy-events-recovery.constants';
+import { createDimoRequestAccounting } from './energy-events-recovery-accounting';
 
 describe('energy-events recovery dry-run zero DB writes', () => {
   it('9. dry-run uses read-only repository and performs zero VehicleEnergyEvent mutations', async () => {
@@ -81,12 +82,7 @@ describe('energy-events recovery dry-run zero DB writes', () => {
             tokenId: 100001,
           },
         ],
-        accounting: {
-          telemetryGraphqlRequests: 1,
-          tokenExchangeRequests: 1,
-          mechanismRequests: 1,
-          retries: 0,
-        },
+        accounting: createDimoRequestAccounting(),
       }),
       interRequestDelayMs: 0,
       windowsOverride: [

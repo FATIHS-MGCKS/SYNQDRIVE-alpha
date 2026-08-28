@@ -10,6 +10,7 @@ import {
 } from './energy-events-recovery-read.repository';
 import { runEnergyEventsRecoveryDryRun } from './energy-events-recovery-runner';
 import { RECHARGE_SEGMENTS_SIGNAL_KEY } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-signals.registry';
+import { createDimoRequestAccounting } from './energy-events-recovery-accounting';
 
 const VEHICLE_ID = 'clveh1234567890123456789012';
 
@@ -19,7 +20,7 @@ function buildDbLoad(
   return {
     vehicleId: VEHICLE_ID,
     label: 'TEST_VEHICLE',
-    tokenId: 192922,
+    tokenId: 900001,
     provider: 'LTE_R1',
     fuelType: 'GASOLINE',
     dimoAccessAvailable: true,
@@ -83,12 +84,7 @@ describe('energy-events recovery capability discovery', () => {
       fetchSegments: async () => ({
         segments: [],
         outcomes: [],
-        accounting: {
-          telemetryGraphqlRequests: 0,
-          tokenExchangeRequests: 0,
-          mechanismRequests: 0,
-          retries: 0,
-        },
+        accounting: createDimoRequestAccounting(),
       }),
       interRequestDelayMs: 0,
       windowsOverride: [
@@ -118,13 +114,13 @@ describe('energy-events recovery capability discovery', () => {
 
   it('E. synthetic QUICK profiles never appear in FULL inventory merge', () => {
     const dbVehicle = buildRecoveryVehicleInput(
-      buildDbLoad({ tokenId: 192922 }),
+      buildDbLoad({ tokenId: 900001 }),
       ['powertrainFuelSystemRelativeLevel'],
       'full',
     );
     const merged = mergeAuditedFleetIntoDbVehicles(
       [dbVehicle],
-      { 192922: true, 100001: true },
+      { 900001: true, 100001: true },
       true,
     );
 
@@ -136,11 +132,11 @@ describe('energy-events recovery capability discovery', () => {
 
   it('F. FULL inventory contains only DB-mapped production vehicles', () => {
     const dbVehicle = buildRecoveryVehicleInput(
-      buildDbLoad({ tokenId: 192922 }),
+      buildDbLoad({ tokenId: 900001 }),
       ['powertrainFuelSystemRelativeLevel'],
       'full',
     );
-    const merged = mergeAuditedFleetIntoDbVehicles([dbVehicle], { 192922: true }, true);
+    const merged = mergeAuditedFleetIntoDbVehicles([dbVehicle], { 900001: true }, true);
 
     expect(merged.every((vehicle) => vehicle.dbVehicleMapped)).toBe(true);
     expect(merged.every((vehicle) => !isSyntheticQuickTokenId(vehicle.tokenId))).toBe(
@@ -185,12 +181,7 @@ describe('energy-events recovery capability classification', () => {
       fetchSegments: async () => ({
         segments: [],
         outcomes: [],
-        accounting: {
-          telemetryGraphqlRequests: 0,
-          tokenExchangeRequests: 0,
-          mechanismRequests: 0,
-          retries: 0,
-        },
+        accounting: createDimoRequestAccounting(),
       }),
       interRequestDelayMs: 0,
       windowsOverride: [

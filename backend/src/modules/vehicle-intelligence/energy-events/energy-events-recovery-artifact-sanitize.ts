@@ -11,20 +11,35 @@ export const FULL_SANITIZED_SUMMARY_ARTIFACT_FILENAME =
 /** Raw FULL DB preview artifacts must never be committed — secured storage only. */
 export const RAW_FULL_DB_ARTIFACT_GLOB = 'energy-events-recovery-full-db-preview-*.json';
 
-export type VehicleAlias =
-  | 'ICE_A'
-  | 'ICE_B'
-  | 'ICE_C'
-  | 'EV_A'
-  | 'CANONICAL_REFUEL_CASE'
-  | 'CANONICAL_RECHARGE_OVERLAP_CASE'
-  | 'INACCESSIBLE_ICE'
-  | 'UNKNOWN';
+/**
+ * Runtime-assigned aliases. No committed reverse mapping to production
+ * identifiers — the prefix encodes the energy class, the letter encodes the
+ * inventory position within that class.
+ */
+export type VehicleAlias = string;
+
+const ALIAS_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+/**
+ * Alias prefix per energy class. Every class gets one, so a BOTH vehicle can
+ * never fall through to `UNKNOWN` merely because of its class.
+ */
+const ALIAS_PREFIX_BY_ENERGY_CLASS: Record<
+  EnergyRecoveryVehicleInventoryRow['energyClass'],
+  string
+> = {
+  REFUEL_CANDIDATE: 'ICE',
+  RECHARGE_CANDIDATE: 'EV',
+  BOTH: 'PHEV',
+  NO_ENERGY_SIGNAL: 'NO_ENERGY_SIGNAL',
+  DIMO_ACCESS_FAILED: 'INACCESSIBLE',
+  CAPABILITY_UNKNOWN: 'CAPABILITY_UNKNOWN',
+};
 
 interface SanitizationContext {
   aliasByInventorySlot: Map<string, VehicleAlias>;
-  canonicalRefuelSlot: string | null;
-  canonicalRechargeOverlapSlot: string | null;
+  /** Event-scoped canonical roles, keyed by internal candidate identity. */
+  canonicalRoleByCandidateKey: Map<string, VehicleAlias>;
 }
 
 function inventorySlotKey(row: {
@@ -57,35 +72,41 @@ function manualReviewSlotKey(
   return `manual-review:${entry.tokenId}`;
 }
 
+/**
+ * Internal candidate identity used only to attach event-scoped canonical roles.
+ * `dimoSegmentId` never reaches a committed artifact — it is a map key inside
+ * this process, and the sanitized output emits the alias instead.
+ */
+function candidateEventKey(candidate: {
+  mechanism: string;
+  dimoSegmentId: string;
+}): string {
+  return `${candidate.mechanism}:${candidate.dimoSegmentId}`;
+}
+
+function manualReviewEventKey(entry: ManualReviewEntry): string {
+  return `${entry.mechanism}:${entry.dimoSegmentId}`;
+}
+
 export function buildSanitizationContext(
   report: EnergyRecoveryDryRunReport,
 ): SanitizationContext {
   const aliasByInventorySlot = new Map<string, VehicleAlias>();
+  const usedCountByPrefix = new Map<string, number>();
 
-  const iceRows = report.vehicles
-    .filter((row) => row.energyClass === 'REFUEL_CANDIDATE')
-    .sort((left, right) => inventorySlotKey(left).localeCompare(inventorySlotKey(right)));
-  const iceAliases: VehicleAlias[] = ['ICE_A', 'ICE_B', 'ICE_C'];
-  iceRows.forEach((row, index) => {
-    aliasByInventorySlot.set(
-      inventorySlotKey(row),
-      iceAliases[index] ?? 'UNKNOWN',
-    );
-  });
-
-  const evRow = report.vehicles.find(
-    (row) => row.energyClass === 'RECHARGE_CANDIDATE',
+  const orderedRows = [...report.vehicles].sort((left, right) =>
+    inventorySlotKey(left).localeCompare(inventorySlotKey(right)),
   );
-  if (evRow) {
-    aliasByInventorySlot.set(inventorySlotKey(evRow), 'EV_A');
+
+  for (const row of orderedRows) {
+    const prefix = ALIAS_PREFIX_BY_ENERGY_CLASS[row.energyClass] ?? 'VEHICLE';
+    const index = usedCountByPrefix.get(prefix) ?? 0;
+    usedCountByPrefix.set(prefix, index + 1);
+    const suffix = ALIAS_LETTERS[index] ?? `${index + 1}`;
+    aliasByInventorySlot.set(inventorySlotKey(row), `${prefix}_${suffix}`);
   }
 
-  const inaccessibleRow = report.vehicles.find(
-    (row) => row.energyClass === 'DIMO_ACCESS_FAILED',
-  );
-  if (inaccessibleRow) {
-    aliasByInventorySlot.set(inventorySlotKey(inaccessibleRow), 'INACCESSIBLE_ICE');
-  }
+  const canonicalRoleByCandidateKey = new Map<string, VehicleAlias>();
 
   const canonicalRefuelCandidate = report.candidates.find(
     (candidate) =>
@@ -94,6 +115,12 @@ export function buildSanitizationContext(
       report.acceptance.canonicalRefuel.found &&
       candidate.startTime === report.acceptance.canonicalRefuel.segmentStart,
   );
+  if (canonicalRefuelCandidate) {
+    canonicalRoleByCandidateKey.set(
+      candidateEventKey(canonicalRefuelCandidate),
+      'CANONICAL_REFUEL_CASE',
+    );
+  }
 
   const canonicalRechargeCandidate = report.candidates.find(
     (candidate) =>
@@ -101,16 +128,14 @@ export function buildSanitizationContext(
       candidate.classification === 'WOULD_UPDATE' &&
       candidate.existingRowId != null,
   );
+  if (canonicalRechargeCandidate) {
+    canonicalRoleByCandidateKey.set(
+      candidateEventKey(canonicalRechargeCandidate),
+      'CANONICAL_RECHARGE_OVERLAP_CASE',
+    );
+  }
 
-  return {
-    aliasByInventorySlot,
-    canonicalRefuelSlot: canonicalRefuelCandidate
-      ? candidateSlotKey(canonicalRefuelCandidate, report.vehicles)
-      : null,
-    canonicalRechargeOverlapSlot: canonicalRechargeCandidate
-      ? candidateSlotKey(canonicalRechargeCandidate, report.vehicles)
-      : null,
-  };
+  return { aliasByInventorySlot, canonicalRoleByCandidateKey };
 }
 
 export function durationBucket(seconds: number): string {
@@ -142,15 +167,26 @@ export function monthBucket(isoTimestamp: string): string {
   return isoTimestamp.slice(0, 7);
 }
 
-function resolveAlias(
+function resolveInventoryAlias(
   slotKey: string,
   ctx: SanitizationContext,
 ): VehicleAlias {
-  if (slotKey === ctx.canonicalRefuelSlot) return 'CANONICAL_REFUEL_CASE';
-  if (slotKey === ctx.canonicalRechargeOverlapSlot) {
-    return 'CANONICAL_RECHARGE_OVERLAP_CASE';
-  }
   return ctx.aliasByInventorySlot.get(slotKey) ?? 'UNKNOWN';
+}
+
+/**
+ * Canonical roles are EVENT-scoped: only the matching acceptance candidate wears
+ * the canonical alias. Sibling events on the same vehicle keep the vehicle alias.
+ */
+function resolveEventAlias(
+  eventKey: string,
+  slotKey: string,
+  ctx: SanitizationContext,
+): VehicleAlias {
+  return (
+    ctx.canonicalRoleByCandidateKey.get(eventKey) ??
+    resolveInventoryAlias(slotKey, ctx)
+  );
 }
 
 function sanitizeInventoryRow(
@@ -158,11 +194,14 @@ function sanitizeInventoryRow(
   ctx: SanitizationContext,
 ): Record<string, unknown> {
   return {
-    alias: resolveAlias(inventorySlotKey(row), ctx),
+    alias: resolveInventoryAlias(inventorySlotKey(row), ctx),
     powertrain: row.powertrain,
     energyClass: row.energyClass,
+    refuelApplicability: row.refuelApplicability,
+    rechargeApplicability: row.rechargeApplicability,
     dimoAccessAvailable: row.dimoAccessAvailable,
     dbVehicleMapped: row.dbVehicleMapped,
+    capabilityLookupStatus: row.capabilityLookupStatus,
     relativeFuelAvailable: row.relativeFuelAvailable,
     absoluteFuelAvailable: row.absoluteFuelAvailable,
     rechargeSocAvailable: row.rechargeSocAvailable,
@@ -181,7 +220,15 @@ export function sanitizeCandidateEvidence(
       : null;
 
   return {
-    alias: resolveAlias(candidateSlotKey(candidate, report.vehicles), ctx),
+    alias: resolveEventAlias(
+      candidateEventKey(candidate),
+      candidateSlotKey(candidate, report.vehicles),
+      ctx,
+    ),
+    vehicleAlias: resolveInventoryAlias(
+      candidateSlotKey(candidate, report.vehicles),
+      ctx,
+    ),
     classification: candidate.classification,
     mechanism: candidate.mechanism,
     month: monthBucket(candidate.startTime),
@@ -201,7 +248,15 @@ export function sanitizeManualReviewEntry(
   ctx: SanitizationContext = buildSanitizationContext(report),
 ): Record<string, unknown> {
   return {
-    alias: resolveAlias(manualReviewSlotKey(entry, report.vehicles), ctx),
+    alias: resolveEventAlias(
+      manualReviewEventKey(entry),
+      manualReviewSlotKey(entry, report.vehicles),
+      ctx,
+    ),
+    vehicleAlias: resolveInventoryAlias(
+      manualReviewSlotKey(entry, report.vehicles),
+      ctx,
+    ),
     mechanism: entry.mechanism,
     month: monthBucket(entry.startTime),
     durationBucket: durationBucket(entry.durationSeconds),
@@ -256,6 +311,7 @@ export function buildSanitizedFullSummaryArtifact(
     dbComparisonStatus: report.dbComparisonStatus,
     dbVehicleMappingFailures: report.dbVehicleMappingFailures,
     vehicles: report.vehicles.map((row) => sanitizeInventoryRow(row, ctx)),
+    capabilityEvidenceAggregate: report.capabilityEvidenceAggregate,
     requestAccounting: report.requestAccounting,
     refuelDetections: report.refuelDetections,
     rechargeDetections: report.rechargeDetections,
@@ -336,6 +392,7 @@ export function buildSanitizedQuickArtifact(
     dbComparisonEnabled: report.dbComparisonEnabled,
     dbComparisonStatus: report.dbComparisonStatus,
     vehicles: report.vehicles.map((row) => sanitizeInventoryRow(row, ctx)),
+    capabilityEvidenceAggregate: report.capabilityEvidenceAggregate,
     requestAccounting: report.requestAccounting,
     refuelDetections: report.refuelDetections,
     rechargeDetections: report.rechargeDetections,

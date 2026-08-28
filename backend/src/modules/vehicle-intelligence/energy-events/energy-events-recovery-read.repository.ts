@@ -5,7 +5,10 @@ import {
   type AuditedFleetSignalProfile,
 } from './energy-events-recovery.constants';
 import { resolveQuickModeProfile } from './energy-events-recovery-fleet-inference';
-import type { RecoveryVehicleDbLoad } from './energy-events-recovery-capability';
+import {
+  resolveEnergyMechanismApplicability,
+  type RecoveryVehicleDbLoad,
+} from './energy-events-recovery-capability';
 
 export type DbComparisonStatus = 'ok' | 'DB_COMPARISON_UNAVAILABLE';
 
@@ -176,20 +179,39 @@ function installMutationGuard(
 export function buildFleetFallbackVehicles(
   dimoAccessByTokenId: Record<number, boolean>,
 ): RecoveryVehicleInput[] {
-  return QUICK_MODE_AUDIT_FLEET_PROFILES.map((profile) => ({
-    vehicleId: `dry-run-token-${profile.tokenId}`,
-    label: profile.label,
-    tokenId: profile.tokenId,
-    provider: profile.provider,
-    powertrain: profile.powertrain,
-    relativeFuelAvailable: profile.relativeFuel,
-    absoluteFuelAvailable: profile.absoluteFuel,
-    rechargeSocAvailable: profile.rechargeSoc,
-    capabilityLookupStatus: 'ok' as const,
-    dimoAccessAvailable: dimoAccessByTokenId[profile.tokenId] ?? false,
-    dbVehicleMapped: false,
-    existingEvents: [],
-  }));
+  return QUICK_MODE_AUDIT_FLEET_PROFILES.map((profile) => {
+    const applicability = resolveEnergyMechanismApplicability(profile.powertrain);
+    const fuelApplicable = applicability.refuel !== 'NOT_APPLICABLE';
+    const rechargeApplicable = applicability.recharge !== 'NOT_APPLICABLE';
+    return {
+      vehicleId: `dry-run-token-${profile.tokenId}`,
+      label: profile.label,
+      tokenId: profile.tokenId,
+      provider: profile.provider,
+      powertrain: profile.powertrain,
+      relativeFuelAvailable: fuelApplicable && profile.relativeFuel,
+      absoluteFuelAvailable: fuelApplicable && profile.absoluteFuel,
+      rechargeSocAvailable: rechargeApplicable && profile.rechargeSoc,
+      capabilityLookupStatus: 'ok' as const,
+      dimoAccessAvailable: dimoAccessByTokenId[profile.tokenId] ?? false,
+      dbVehicleMapped: false,
+      existingEvents: [],
+      capabilityEvidence: {
+        applicability,
+        confirmedFuelSources:
+          fuelApplicable && (profile.relativeFuel || profile.absoluteFuel)
+            ? (['SUPPLEMENTAL_WINDOW_EVENTS'] as const).slice()
+            : [],
+        confirmedRechargeSources:
+          rechargeApplicable && profile.rechargeSoc
+            ? (['SUPPLEMENTAL_WINDOW_EVENTS'] as const).slice()
+            : [],
+        suppressedFuelSources: [],
+        suppressedRechargeSources: [],
+        availableSignalsProbeStatus: 'not_attempted' as const,
+      },
+    };
+  });
 }
 
 export function mergeAuditedFleetIntoDbVehicles(
@@ -228,6 +250,7 @@ export function mergeAuditedFleetIntoDbVehicles(
       existing.rechargeSocAvailable = vehicle.rechargeSocAvailable;
       existing.powertrain = vehicle.powertrain;
       existing.capabilityLookupStatus = 'ok';
+      existing.capabilityEvidence = vehicle.capabilityEvidence;
       existing.dbVehicleMapped = true;
       continue;
     }

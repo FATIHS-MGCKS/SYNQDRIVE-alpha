@@ -26,12 +26,23 @@ import {
 } from './energy-events-recovery-manual-review';
 import { reconcileRecoveryCandidates } from './energy-events-recovery-reconcile';
 import type { DbComparisonStatus, RecoveryExistingEnergyEvent } from './energy-events-recovery-read.repository';
+import {
+  buildCapabilityEvidenceAggregate,
+  resolveEnergyMechanismApplicability,
+} from './energy-events-recovery-capability';
+import {
+  cloneDimoRequestAccounting,
+  createDimoRequestAccounting,
+  mergeDimoRequestAccounting,
+  type DimoRequestAccounting,
+} from './energy-events-recovery-accounting';
 import type {
-  DimoRequestAccounting,
   EnergyRecoveryCandidate,
   EnergyRecoveryDryRunReport,
   EnergyRecoveryVehicleInventoryRow,
   EnergyVehicleEnergyClass,
+  RecoveryCapabilityEvidence,
+  RecoveryPowertrainClass,
 } from './energy-events-recovery.types';
 
 export interface RecoveryVehicleInput {
@@ -39,7 +50,7 @@ export interface RecoveryVehicleInput {
   label: string;
   tokenId: number;
   provider: string;
-  powertrain: 'ICE' | 'EV' | 'UNKNOWN';
+  powertrain: RecoveryPowertrainClass;
   relativeFuelAvailable: boolean;
   absoluteFuelAvailable: boolean;
   rechargeSocAvailable: boolean;
@@ -47,6 +58,8 @@ export interface RecoveryVehicleInput {
   dimoAccessAvailable: boolean;
   dbVehicleMapped: boolean;
   existingEvents: RecoveryExistingEnergyEvent[];
+  /** Capability provenance; present for DB-backed FULL loads. */
+  capabilityEvidence?: RecoveryCapabilityEvidence;
 }
 
 export interface RecoveryDryRunDeps {
@@ -65,25 +78,15 @@ export interface RecoveryDryRunDeps {
   mode: 'full' | 'quick';
   dbComparisonEnabled: boolean;
   dbComparisonStatus: DbComparisonStatus;
-}
-
-function emptyAccounting(): DimoRequestAccounting {
-  return {
-    telemetryGraphqlRequests: 0,
-    tokenExchangeRequests: 0,
-    mechanismRequests: 0,
-    retries: 0,
-  };
-}
-
-function mergeAccounting(
-  total: DimoRequestAccounting,
-  delta: DimoRequestAccounting,
-): void {
-  total.telemetryGraphqlRequests += delta.telemetryGraphqlRequests;
-  total.tokenExchangeRequests += delta.tokenExchangeRequests;
-  total.mechanismRequests += delta.mechanismRequests;
-  total.retries += delta.retries;
+  /**
+   * Run-level accounting authority. Network work performed before the recovery
+   * loop (developer auth, vehicle token exchange, `availableSignals` capability
+   * probes) is already recorded here, so `telemetryGraphqlRequests` stays a TOTAL
+   * rather than mechanism-only traffic.
+   */
+  accounting?: DimoRequestAccounting;
+  /** Overrides `git merge-base HEAD main` when the checkout has no `main` ref. */
+  baseMainShaOverride?: string;
 }
 
 export async function runEnergyEventsRecoveryDryRun(
@@ -108,6 +111,12 @@ export async function runEnergyEventsRecoveryDryRun(
     powertrain: v.powertrain,
     dimoAccessAvailable: v.dimoAccessAvailable,
     dbVehicleMapped: v.dbVehicleMapped,
+    refuelApplicability:
+      v.capabilityEvidence?.applicability.refuel ??
+      resolveEnergyMechanismApplicability(v.powertrain).refuel,
+    rechargeApplicability:
+      v.capabilityEvidence?.applicability.recharge ??
+      resolveEnergyMechanismApplicability(v.powertrain).recharge,
     relativeFuelAvailable: v.relativeFuelAvailable,
     absoluteFuelAvailable: v.absoluteFuelAvailable,
     rechargeSocAvailable: v.rechargeSocAvailable,
@@ -144,7 +153,8 @@ export async function runEnergyEventsRecoveryDryRun(
     );
   });
 
-  const requestAccounting = emptyAccounting();
+  const requestAccounting = deps.accounting ?? createDimoRequestAccounting();
+  const preLoopAccounting = cloneDimoRequestAccounting(requestAccounting);
   const windowCandidates: EnergyRecoveryCandidate[] = [];
   const legacySubsegmentsWouldReplace = new Set<string>();
   const fetchFailures: EnergyRecoveryDryRunReport['fetchFailures'] = [];
@@ -152,13 +162,13 @@ export async function runEnergyEventsRecoveryDryRun(
   let rechargeDetections = 0;
 
   const delayMs = deps.interRequestDelayMs ?? ENERGY_EVENTS_BACKFILL_INTER_REQUEST_DELAY_MS;
-  let expectedTelemetryRequests = 0;
+  let expectedMechanismRequests = 0;
   let totalMechanismsPerWindow = 0;
 
   for (const vehicle of eligible) {
     const energyClass = classifyVehicle(vehicle);
     const mechanisms = mechanismsForEnergyClass(energyClass);
-    expectedTelemetryRequests += windows.length * mechanisms.length;
+    expectedMechanismRequests += windows.length * mechanisms.length;
     totalMechanismsPerWindow += mechanisms.length;
 
     for (const window of windows) {
@@ -178,7 +188,7 @@ export async function runEnergyEventsRecoveryDryRun(
           window.to,
           energyClass,
         );
-        mergeAccounting(requestAccounting, fetchResult.accounting);
+        mergeDimoRequestAccounting(requestAccounting, fetchResult.accounting);
       } catch (error) {
         for (const mechanism of mechanisms) {
           fetchFailures.push({
@@ -268,9 +278,14 @@ export async function runEnergyEventsRecoveryDryRun(
 
   const canonicalRefuelCandidate = findCanonicalRefuelCandidate(candidates);
 
+  // Recharge-capable powertrains only (EV + PHEV). ICE can never own a recharge
+  // session, so it must not contribute to the canonical recharge acceptance.
   const evTokenIds = new Set(
     vehicles
-      .filter((vehicle) => vehicle.powertrain === 'EV')
+      .filter(
+        (vehicle) =>
+          vehicle.powertrain === 'EV' || vehicle.powertrain === 'PHEV',
+      )
       .map((vehicle) => vehicle.tokenId),
   );
   const evRechargeCandidates = candidates.filter(
@@ -280,9 +295,12 @@ export async function runEnergyEventsRecoveryDryRun(
 
   const mechanismsPerWindowAverage =
     eligible.length > 0 ? totalMechanismsPerWindow / eligible.length : 0;
-  const worstCaseWithRetries = expectedTelemetryRequests * 3;
+  const expectedCapabilityProbeRequests = preLoopAccounting.capabilityProbeRequests;
+  const expectedTelemetryGraphqlRequests =
+    expectedMechanismRequests + expectedCapabilityProbeRequests;
+  const worstCaseWithRetries = expectedTelemetryGraphqlRequests * 3;
   const estimatedRuntimeMinutes = Math.ceil(
-    (expectedTelemetryRequests * delayMs) /
+    (expectedMechanismRequests * delayMs) /
       ENERGY_EVENTS_BACKFILL_PROPOSED_CONCURRENCY /
       60_000,
   );
@@ -350,14 +368,8 @@ export async function runEnergyEventsRecoveryDryRun(
     backfillGate = 'NOT READY';
   }
 
-  let codeShaUnderTest = 'unknown';
-  let baseMainSha = 'unknown';
-  try {
-    codeShaUnderTest = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
-    baseMainSha = execSync('git merge-base HEAD main', { encoding: 'utf8' }).trim();
-  } catch {
-    // non-git environment
-  }
+  const codeShaUnderTest = resolveCodeShaUnderTest();
+  const baseMainSha = resolveBaseMainSha(deps.baseMainShaOverride);
 
   const windowSizesHours = windows.map(
     (window) => (window.to.getTime() - window.from.getTime()) / (60 * 60 * 1000),
@@ -381,6 +393,7 @@ export async function runEnergyEventsRecoveryDryRun(
     dbComparisonStatus: deps.dbComparisonStatus,
     dbVehicleMappingFailures: unmappedVehicles.length,
     vehicles: inventory,
+    capabilityEvidenceAggregate: buildCapabilityEvidenceAggregate(vehicles),
     requestAccounting,
     refuelDetections,
     rechargeDetections,
@@ -396,7 +409,9 @@ export async function runEnergyEventsRecoveryDryRun(
       capabilityUnknownVehicles: capabilityUnknownVehicles.length,
       windowsPerVehicle: windows.length,
       mechanismsPerWindowAverage,
-      expectedTelemetryGraphqlRequests: expectedTelemetryRequests,
+      expectedMechanismRequests,
+      expectedCapabilityProbeRequests,
+      expectedTelemetryGraphqlRequests,
       worstCaseWithRetries,
       proposedConcurrency: ENERGY_EVENTS_BACKFILL_PROPOSED_CONCURRENCY,
       interRequestDelayMs: delayMs,
@@ -430,6 +445,48 @@ export async function runEnergyEventsRecoveryDryRun(
     manualReviewCount,
     gateBlockers,
   };
+}
+
+function gitSha(command: string): string | null {
+  try {
+    const value = execSync(command, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    return /^[0-9a-f]{40}$/.test(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveCodeShaUnderTest(): string {
+  return (
+    process.env.ENERGY_RECOVERY_CODE_SHA?.trim() ||
+    gitSha('git rev-parse HEAD') ||
+    'unknown'
+  );
+}
+
+/**
+ * Shallow/detached operational checkouts often have no local `main` ref, which
+ * previously left `baseMainSha` as "unknown" in committed FULL evidence. Try the
+ * explicit override first, then every ref that can legitimately name main.
+ */
+function resolveBaseMainSha(override?: string): string {
+  const explicit = (
+    override ?? process.env.ENERGY_RECOVERY_BASE_MAIN_SHA
+  )?.trim();
+  if (explicit && /^[0-9a-f]{40}$/.test(explicit)) return explicit;
+
+  for (const ref of ['main', 'origin/main', 'refs/remotes/origin/main']) {
+    const mergeBase = gitSha(`git merge-base HEAD ${ref}`);
+    if (mergeBase) return mergeBase;
+  }
+  for (const ref of ['origin/main', 'main']) {
+    const tip = gitSha(`git rev-parse ${ref}`);
+    if (tip) return tip;
+  }
+  return 'unknown';
 }
 
 function classifyVehicle(vehicle: RecoveryVehicleInput): EnergyVehicleEnergyClass {

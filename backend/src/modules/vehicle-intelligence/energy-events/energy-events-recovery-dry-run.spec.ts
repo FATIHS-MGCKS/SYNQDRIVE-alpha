@@ -21,6 +21,10 @@ import {
 } from './energy-events-recovery-read.repository';
 import { PrismaClient } from '@prisma/client';
 import { assessPlausibilityFlags } from './energy-events-plausibility';
+import {
+  createDimoRequestAccounting,
+  recordMechanismRequest,
+} from './energy-events-recovery-accounting';
 
 const VEHICLE_ID = 'clveh1234567890123456789012';
 
@@ -415,25 +419,24 @@ describe('energy-events recovery runner gates', () => {
     existingEvents: [],
   };
 
-  const fetchOk = async () => ({
-    segments: [refuel],
-    outcomes: [
-      {
-        mechanism: 'refuel' as const,
-        status: 'SUCCESS_WITH_EVENTS' as const,
-        segments: [refuel],
-        windowFrom: '2026-08-22T00:00:00.000Z',
-        windowTo: '2026-08-24T00:00:00.000Z',
-        tokenId: 100001,
-      },
-    ],
-    accounting: {
-      telemetryGraphqlRequests: 1,
-      tokenExchangeRequests: 1,
-      mechanismRequests: 1,
-      retries: 0,
-    },
-  });
+  const fetchOk = async () => {
+    const accounting = createDimoRequestAccounting();
+    recordMechanismRequest('refuel', accounting);
+    return {
+      segments: [refuel],
+      outcomes: [
+        {
+          mechanism: 'refuel' as const,
+          status: 'SUCCESS_WITH_EVENTS' as const,
+          segments: [refuel],
+          windowFrom: '2026-08-22T00:00:00.000Z',
+          windowTo: '2026-08-24T00:00:00.000Z',
+          tokenId: 100001,
+        },
+      ],
+      accounting,
+    };
+  };
 
   it('3. DB read failure in FULL mode → NOT READY even with manual-review candidates', async () => {
     const longRefuel = buildRefuel({
@@ -454,12 +457,7 @@ describe('energy-events recovery runner gates', () => {
             tokenId: 100001,
           },
         ],
-        accounting: {
-          telemetryGraphqlRequests: 1,
-          tokenExchangeRequests: 0,
-          mechanismRequests: 1,
-          retries: 0,
-        },
+        accounting: createDimoRequestAccounting(),
       }),
       interRequestDelayMs: 0,
       windowsOverride: [{ from: new Date('2026-07-18T00:00:00.000Z'), to: new Date('2026-07-19T00:00:00.000Z') }],
@@ -512,12 +510,7 @@ describe('energy-events recovery runner gates', () => {
             error: { httpStatus: 500, retryable: true, message: 'server' },
           },
         ],
-        accounting: {
-          telemetryGraphqlRequests: 1,
-          tokenExchangeRequests: 0,
-          mechanismRequests: 1,
-          retries: 0,
-        },
+        accounting: createDimoRequestAccounting(),
       }),
       interRequestDelayMs: 0,
       windowsOverride: [{ from: new Date('2026-08-22T00:00:00.000Z'), to: new Date('2026-08-24T00:00:00.000Z') }],
@@ -540,6 +533,10 @@ describe('energy-events recovery runner gates', () => {
     });
     expect(report.requestAccounting.telemetryGraphqlRequests).toBe(1);
     expect(report.requestAccounting.mechanismRequests).toBe(1);
+    expect(report.requestAccounting.refuelSegmentRequests).toBe(1);
+    expect(report.requestAccounting.capabilityProbeRequests).toBe(0);
+    expect(report.trafficBudget.expectedMechanismRequests).toBe(1);
+    expect(report.trafficBudget.expectedCapabilityProbeRequests).toBe(0);
     expect(report.trafficBudget.expectedTelemetryGraphqlRequests).toBe(1);
   });
 

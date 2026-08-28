@@ -34,6 +34,11 @@ import {
   buildRecoveryVehicleInput,
 } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-capability';
 import {
+  createDimoRequestAccounting,
+  isTelemetryTotalConsistent,
+  type DimoRequestAccounting,
+} from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-accounting';
+import {
   buildFleetFallbackVehicles,
   createMutationGuardedPrismaClient,
   createPrismaRecoveryReadRepository,
@@ -58,6 +63,13 @@ import {
 
 const QUICK_MODE = process.argv.includes('--quick');
 
+/**
+ * One accounting authority for the whole run. Capability discovery happens before
+ * `runEnergyEventsRecoveryDryRun`, so its traffic is recorded here and the runner
+ * merges the recovery-loop deltas into the same record.
+ */
+const RUN_ACCOUNTING: DimoRequestAccounting = createDimoRequestAccounting();
+
 async function loadVehiclesForMode(): Promise<{
   vehicles: RecoveryVehicleInput[];
   dbComparisonEnabled: boolean;
@@ -66,17 +78,8 @@ async function loadVehiclesForMode(): Promise<{
   const outageStart = new Date(ENERGY_EVENTS_OUTAGE_START_ISO);
   const recoveryCutoff = new Date(ENERGY_EVENTS_RECOVERY_CUTOFF_ISO);
 
-  if (QUICK_MODE) {
-    const dimoAccessByTokenId = await probeFleetDimoAccess();
-    return {
-      vehicles: buildFleetFallbackVehicles(dimoAccessByTokenId),
-      dbComparisonEnabled: false,
-      dbComparisonStatus: 'DB_COMPARISON_UNAVAILABLE',
-    };
-  }
-
-  if (!process.env.DATABASE_URL) {
-    const dimoAccessByTokenId = await probeFleetDimoAccess();
+  if (QUICK_MODE || !process.env.DATABASE_URL) {
+    const dimoAccessByTokenId = await probeFleetDimoAccess(RUN_ACCOUNTING);
     return {
       vehicles: buildFleetFallbackVehicles(dimoAccessByTokenId),
       dbComparisonEnabled: false,
@@ -92,10 +95,15 @@ async function loadVehiclesForMode(): Promise<{
       recoveryCutoff,
     });
     const tokenIds = rows.map((row) => row.tokenId);
-    const dimoAccessByTokenId = await probeDimoAccessForTokenIds(tokenIds);
+    const dimoAccessByTokenId = await probeDimoAccessForTokenIds(
+      tokenIds,
+      RUN_ACCOUNTING,
+    );
     const accessibleTokenIds = tokenIds.filter((tokenId) => dimoAccessByTokenId[tokenId]);
-    const availableSignalsByTokenId =
-      await probeAvailableSignalsForTokenIds(accessibleTokenIds);
+    const availableSignalsByTokenId = await probeAvailableSignalsForTokenIds(
+      accessibleTokenIds,
+      RUN_ACCOUNTING,
+    );
 
     const vehicles = rows.map((row) =>
       buildRecoveryVehicleInput(
@@ -116,7 +124,7 @@ async function loadVehiclesForMode(): Promise<{
     };
   } catch {
     await prisma.$disconnect();
-    const dimoAccessByTokenId = await probeFleetDimoAccess();
+    const dimoAccessByTokenId = await probeFleetDimoAccess(RUN_ACCOUNTING);
     return {
       vehicles: buildFleetFallbackVehicles(dimoAccessByTokenId),
       dbComparisonEnabled: false,
@@ -152,7 +160,16 @@ async function main() {
     mode: QUICK_MODE ? 'quick' : 'full',
     dbComparisonEnabled,
     dbComparisonStatus,
+    accounting: RUN_ACCOUNTING,
   });
+
+  if (!isTelemetryTotalConsistent(report.requestAccounting)) {
+    console.error(
+      '[dry-run] FATAL: telemetryGraphqlRequests is not the sum of capability probes and mechanism requests',
+    );
+    console.error(JSON.stringify(report.requestAccounting));
+    process.exit(1);
+  }
 
   const artifactDir = path.resolve(__dirname, '..', '..', '..', 'artifacts');
   fs.mkdirSync(artifactDir, { recursive: true });
@@ -167,8 +184,15 @@ async function main() {
 
   console.log(JSON.stringify(payload, null, 2));
   console.error(`[dry-run] Sanitized artifact: ${outPath}`);
+  const accounting = report.requestAccounting;
   console.error(
-    `[dry-run] dbComparisonEnabled=${report.dbComparisonEnabled} dbComparisonStatus=${report.dbComparisonStatus} telemetryRequests=${report.requestAccounting.telemetryGraphqlRequests} gate=${report.backfillGate}`,
+    `[dry-run] dbComparisonEnabled=${report.dbComparisonEnabled} dbComparisonStatus=${report.dbComparisonStatus} gate=${report.backfillGate}`,
+  );
+  console.error(
+    `[dry-run] accounting telemetryTotal=${accounting.telemetryGraphqlRequests} capabilityProbes=${accounting.capabilityProbeRequests} mechanism=${accounting.mechanismRequests} (refuel=${accounting.refuelSegmentRequests} recharge=${accounting.rechargeSegmentRequests}) tokenExchange=${accounting.tokenExchangeRequests} developerAuth=${accounting.developerAuthRequests} retries=${accounting.retries}`,
+  );
+  console.error(
+    `[dry-run] provenance codeShaUnderTest=${report.codeShaUnderTest} baseMainSha=${report.baseMainSha}`,
   );
   if (!QUICK_MODE) {
     console.error(

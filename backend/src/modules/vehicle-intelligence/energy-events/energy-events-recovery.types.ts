@@ -1,7 +1,74 @@
 import type { EnergyEventConfidence } from '@prisma/client';
 import type { DimoEnergyEventSegment } from '@modules/dimo/dimo-segments.service';
 import type { EnergyMechanismFetchOutcome } from '@modules/dimo/energy-events/energy-mechanism-fetch.types';
+import type { FleetPowertrainClass } from '@modules/vehicles/fleet-data-coverage.types';
+import type { DimoRequestAccounting } from './energy-events-recovery-accounting';
 import type { DbComparisonStatus } from './energy-events-recovery-read.repository';
+
+export type { DimoRequestAccounting };
+
+/**
+ * Recovery reuses the canonical fleet powertrain taxonomy (`resolveFleetPowertrainClass`)
+ * verbatim. PHEV is a first-class class and is never flattened into ICE.
+ */
+export type RecoveryPowertrainClass = FleetPowertrainClass;
+
+/**
+ * Canonical applicability of an energy mechanism for a powertrain class. This is
+ * independent of whether a provider currently lists the corresponding signal.
+ */
+export type EnergyMechanismApplicability =
+  | 'APPLICABLE'
+  | 'NOT_APPLICABLE'
+  | 'UNKNOWN';
+
+export interface EnergyMechanismApplicabilityMatrix {
+  refuel: EnergyMechanismApplicability;
+  recharge: EnergyMechanismApplicability;
+}
+
+/** Where a capability claim came from. Never a production identifier. */
+export type CapabilityEvidenceSource =
+  | 'DIMO_AVAILABLE_SIGNALS'
+  | 'VEHICLE_BATTERY_CAPABILITY'
+  | 'SUPPLEMENTAL_WINDOW_EVENTS';
+
+export const CAPABILITY_EVIDENCE_SOURCES: CapabilityEvidenceSource[] = [
+  'DIMO_AVAILABLE_SIGNALS',
+  'VEHICLE_BATTERY_CAPABILITY',
+  'SUPPLEMENTAL_WINDOW_EVENTS',
+];
+
+/**
+ * Per-vehicle capability provenance. `confirmed*` sources survived canonical
+ * applicability; `suppressed*` sources claimed a signal that the powertrain class
+ * declares NOT_APPLICABLE (e.g. traction SOC listed for a pure ICE vehicle).
+ */
+export interface RecoveryCapabilityEvidence {
+  applicability: EnergyMechanismApplicabilityMatrix;
+  confirmedFuelSources: CapabilityEvidenceSource[];
+  confirmedRechargeSources: CapabilityEvidenceSource[];
+  suppressedFuelSources: CapabilityEvidenceSource[];
+  suppressedRechargeSources: CapabilityEvidenceSource[];
+  availableSignalsProbeStatus: 'ok' | 'failed' | 'not_attempted';
+}
+
+/**
+ * Repository-safe aggregate answer to "why did an inapplicable signal show up?".
+ * Counts vehicles per evidence source — no per-vehicle identifiers.
+ */
+export interface CapabilityEvidenceAggregate {
+  vehiclesByPowertrain: Record<RecoveryPowertrainClass, number>;
+  confirmedFuelSourceCounts: Record<CapabilityEvidenceSource, number>;
+  confirmedRechargeSourceCounts: Record<CapabilityEvidenceSource, number>;
+  suppressedFuelSourceCounts: Record<CapabilityEvidenceSource, number>;
+  suppressedRechargeSourceCounts: Record<CapabilityEvidenceSource, number>;
+  vehiclesWithSuppressedRechargeEvidence: number;
+  vehiclesWithSuppressedFuelEvidence: number;
+  availableSignalsProbeOk: number;
+  availableSignalsProbeFailed: number;
+  availableSignalsProbeNotAttempted: number;
+}
 
 export type EnergyRecoveryClassification =
   | 'WOULD_CREATE'
@@ -30,9 +97,11 @@ export interface EnergyRecoveryVehicleInventoryRow {
   label: string;
   tokenId: number;
   provider: string;
-  powertrain: 'ICE' | 'EV' | 'UNKNOWN';
+  powertrain: RecoveryPowertrainClass;
   dimoAccessAvailable: boolean;
   dbVehicleMapped: boolean;
+  refuelApplicability: EnergyMechanismApplicability;
+  rechargeApplicability: EnergyMechanismApplicability;
   relativeFuelAvailable: boolean;
   absoluteFuelAvailable: boolean;
   rechargeSocAvailable: boolean;
@@ -91,13 +160,6 @@ export interface ManualReviewEntry {
   recommendation: ManualReviewDisposition;
 }
 
-export interface DimoRequestAccounting {
-  telemetryGraphqlRequests: number;
-  tokenExchangeRequests: number;
-  mechanismRequests: number;
-  retries: number;
-}
-
 export interface EnergyRecoveryDryRunReport {
   generatedAt: string;
   codeShaUnderTest: string;
@@ -115,6 +177,7 @@ export interface EnergyRecoveryDryRunReport {
   dbComparisonStatus: DbComparisonStatus;
   dbVehicleMappingFailures: number;
   vehicles: EnergyRecoveryVehicleInventoryRow[];
+  capabilityEvidenceAggregate: CapabilityEvidenceAggregate;
   requestAccounting: DimoRequestAccounting;
   refuelDetections: number;
   rechargeDetections: number;
@@ -138,6 +201,11 @@ export interface EnergyRecoveryDryRunReport {
     capabilityUnknownVehicles: number;
     windowsPerVehicle: number;
     mechanismsPerWindowAverage: number;
+    /** Segment queries only (refuel + recharge), excluding capability probes. */
+    expectedMechanismRequests: number;
+    /** `availableSignals` probes performed before the recovery loop. */
+    expectedCapabilityProbeRequests: number;
+    /** TOTAL expectation = mechanism requests + capability probes. */
     expectedTelemetryGraphqlRequests: number;
     worstCaseWithRetries: number;
     proposedConcurrency: number;

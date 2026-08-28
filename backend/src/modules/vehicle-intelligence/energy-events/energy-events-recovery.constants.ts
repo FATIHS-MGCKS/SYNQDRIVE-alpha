@@ -1,3 +1,5 @@
+import type { RecoveryPowertrainClass } from './energy-events-recovery.types';
+
 /**
  * E3A — fixed outage/recovery window for read-only dry-run analysis.
  * Do not use unbounded Date.now() during recovery processing.
@@ -37,7 +39,7 @@ export interface AuditedFleetSignalProfile {
   label: string;
   tokenId: number;
   provider: string;
-  powertrain: 'ICE' | 'EV';
+  powertrain: RecoveryPowertrainClass;
   relativeFuel: boolean;
   absoluteFuel: boolean;
   rechargeSoc: boolean;
