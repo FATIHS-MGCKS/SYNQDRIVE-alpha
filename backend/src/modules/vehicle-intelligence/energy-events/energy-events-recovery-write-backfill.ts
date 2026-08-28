@@ -345,16 +345,40 @@ export function validatePreWriteReport(report: EnergyRecoveryDryRunReport): void
 export function buildWriteSet(
   report: EnergyRecoveryDryRunReport,
 ): WriteSetEntry[] {
-  const writeCandidates = report.candidates.filter(
+  return buildWriteSetFromCandidates(
+    report,
+    (candidate) =>
+      candidate.classification === 'WOULD_CREATE' ||
+      candidate.classification === 'WOULD_UPDATE',
+    4,
+  );
+}
+
+export function buildRemainingWriteSet(
+  report: EnergyRecoveryDryRunReport,
+): WriteSetEntry[] {
+  return buildWriteSetFromCandidates(
+    report,
     (candidate) =>
       candidate.classification === 'WOULD_CREATE' ||
       candidate.classification === 'WOULD_UPDATE',
   );
+}
 
-  if (writeCandidates.length !== 4) {
+function buildWriteSetFromCandidates(
+  report: EnergyRecoveryDryRunReport,
+  predicate: (candidate: EnergyRecoveryCandidate) => boolean,
+  expectedSize?: number,
+): WriteSetEntry[] {
+  const writeCandidates = report.candidates.filter(predicate);
+
+  if (expectedSize != null && writeCandidates.length !== expectedSize) {
     throw new Error(
-      `Write set size ${writeCandidates.length} != 4 approved candidates`,
+      `Write set size ${writeCandidates.length} != ${expectedSize} approved candidates`,
     );
+  }
+  if (writeCandidates.length === 0) {
+    throw new Error('Write set is empty');
   }
 
   return writeCandidates.map((candidate) => {
@@ -516,6 +540,7 @@ export async function executeControlledWriteBackfill(options: {
   verifyIdempotency: boolean;
   interRequestDelayMs?: number;
   codeSha?: string;
+  completeRemaining?: boolean;
 }): Promise<ControlledWriteBackfillResult> {
   const delayMs =
     options.interRequestDelayMs ?? ENERGY_EVENTS_BACKFILL_INTER_REQUEST_DELAY_MS;
@@ -534,8 +559,12 @@ export async function executeControlledWriteBackfill(options: {
     recoveryPlan: options.recoveryPlan,
   });
 
-  validatePreWriteReport(preWriteReport);
-  const writeSet = buildWriteSet(preWriteReport);
+  if (!options.completeRemaining) {
+    validatePreWriteReport(preWriteReport);
+  }
+  const writeSet = options.completeRemaining
+    ? buildRemainingWriteSet(preWriteReport)
+    : buildWriteSet(preWriteReport);
 
   const audit: SanitizedWriteAuditEntry[] = [];
   let legacySubsegmentsReconciledTotal = 0;

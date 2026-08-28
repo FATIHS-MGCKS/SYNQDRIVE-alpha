@@ -27,6 +27,7 @@ import {
   createPrismaRecoveryReadRepository,
 } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-read.repository';
 import {
+  buildRemainingWriteSet,
   buildWriteSet,
   captureEnergyEventsTableSnapshot,
   captureRollbackPlan,
@@ -55,7 +56,8 @@ import {
 }
 
 const APPLY = process.argv.includes('--apply');
-const PREFLIGHT = process.argv.includes('--preflight') || (!APPLY && !process.argv.includes('--idempotency-check'));
+const COMPLETE_REMAINING = process.argv.includes('--complete-remaining');
+const PREFLIGHT = process.argv.includes('--preflight') || (!APPLY && !process.argv.includes('--idempotency-check') && !COMPLETE_REMAINING);
 const IDEMPOTENCY_CHECK = process.argv.includes('--idempotency-check');
 const OUTPUT_DIR =
   process.env.ENERGY_EVENTS_WRITE_BACKFILL_OUTPUT_DIR?.trim() ??
@@ -180,7 +182,7 @@ async function main() {
       JSON.stringify(preSnapshot, null, 2),
     );
 
-    if (APPLY) {
+    if (APPLY || COMPLETE_REMAINING) {
       const preflightReport = await runEnergyEventsRecoveryDryRun(vehicles, {
         fetchSegments: (tokenId, from, to, energyClass) =>
           fetchEnergyEventSegmentsStandalone(tokenId, from, to, energyClass),
@@ -190,8 +192,12 @@ async function main() {
         dbComparisonStatus: 'ok',
         recoveryPlan,
       });
-      validatePreWriteReport(preflightReport);
-      const writeSet = buildWriteSet(preflightReport);
+      if (!COMPLETE_REMAINING) {
+        validatePreWriteReport(preflightReport);
+      }
+      const writeSet = COMPLETE_REMAINING
+        ? buildRemainingWriteSet(preflightReport)
+        : buildWriteSet(preflightReport);
       const rollbackPlan = await captureRollbackPlan(prisma, writeSet);
       fs.writeFileSync(
         path.join(OUTPUT_DIR, 'rollback-plan-private.json'),
@@ -218,19 +224,25 @@ async function main() {
       recoveryPlan,
       fetchSegments: (tokenId, from, to, energyClass) =>
         fetchEnergyEventSegmentsStandalone(tokenId, from, to, energyClass),
-      applyWrites: APPLY,
-      verifyIdempotency: APPLY,
+      applyWrites: APPLY || COMPLETE_REMAINING,
+      verifyIdempotency: APPLY || COMPLETE_REMAINING,
       codeSha,
+      completeRemaining: COMPLETE_REMAINING,
     });
 
     const sanitized = sanitizeSummary(result);
+    const resultName = COMPLETE_REMAINING
+      ? 'complete-remaining-result.json'
+      : APPLY
+        ? 'write-backfill-result.json'
+        : 'preflight-result.json';
     fs.writeFileSync(
-      path.join(OUTPUT_DIR, APPLY ? 'write-backfill-result.json' : 'preflight-result.json'),
+      path.join(OUTPUT_DIR, resultName),
       JSON.stringify(sanitized, null, 2),
     );
     console.log(JSON.stringify(sanitized, null, 2));
 
-    if (APPLY) {
+    if (APPLY || COMPLETE_REMAINING) {
       validatePostWriteReport(result.postWriteReport!);
       if (!result.idempotencyVerified) {
         throw new Error('Idempotency verification failed');
