@@ -12,6 +12,7 @@ import {
 } from '../../lib/rental-tenant-billing-i18n';
 import { hasPaymentProblem, summarizeFailedAttemptReason } from './tenant-invoices.utils';
 import {
+  resolveInvoiceDocumentActionErrorMessage,
   useBillingInvoiceDetail,
   useInvoiceDocumentAction,
 } from './useBillingInvoiceDetail';
@@ -56,12 +57,7 @@ export function TenantInvoiceDetailDrawer({
   const machineStatus = resolveTenantInvoiceMachineStatus(display);
   const statusLabel = resolveTenantInvoiceStatusLabel(display, t);
   const showProblem = hasPaymentProblem(payments);
-  const documentErrorMessage =
-    documents.error === 'unavailable'
-      ? t('tenantBilling.invoices.document.unavailable')
-      : documents.error === 'openFailed'
-        ? t('invoices.list.error.openFailed')
-        : null;
+  const documentErrorMessage = resolveInvoiceDocumentActionErrorMessage(documents.error, t);
 
   return (
     <DetailDrawer

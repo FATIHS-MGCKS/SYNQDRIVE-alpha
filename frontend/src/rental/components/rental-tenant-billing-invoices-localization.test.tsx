@@ -142,8 +142,11 @@ vi.mock('./billing/useBillingStripeActions', () => ({
   }),
 }));
 
-vi.mock('./billing/useBillingInvoiceDetail', () => ({
-  useBillingInvoiceDetail: () => ({
+vi.mock('./billing/useBillingInvoiceDetail', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./billing/useBillingInvoiceDetail')>();
+  return {
+    ...actual,
+    useBillingInvoiceDetail: () => ({
     detail: {
       ...buildInvoice(),
       amountPaid: null,
@@ -209,7 +212,8 @@ vi.mock('./billing/useBillingInvoiceDetail', () => ({
     openHosted: vi.fn(),
     openPdf: vi.fn(),
   }),
-}));
+  };
+});
 
 vi.mock('../RentalContext', () => ({
   useRentalOrg: () => ({

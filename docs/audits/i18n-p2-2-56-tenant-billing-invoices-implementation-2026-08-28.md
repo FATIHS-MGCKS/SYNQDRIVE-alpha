@@ -83,6 +83,7 @@ Settings → Billing → billingSubTab=invoices
 - Filter/search (300ms debounce)/sort/pagination — **unchanged**
 - Money `.formatted` precedence — **preserved**
 - Document URLs / open actions — **unchanged**
+- Document errors — host-owned (`unavailable`, `openFailed`) localized; dynamic backend/provider messages preserved verbatim
 - Drawer selected invoice ID + open state on locale switch — **preserved**
 - P255A/B semantic diff — **ZERO**
 - Category E — **0**
@@ -100,6 +101,8 @@ Settings → Billing → billingSubTab=invoices
 - Drawer same-mount detail (portal body assertions)
 
 Updated `tenant-invoices.utils.test.ts` for business-neutral utils.
+
+`useBillingInvoiceDetail.test.ts`: real `useInvoiceDocumentAction` regression for raw provider errors, string exceptions, host fallbacks, and null URL ownership.
 
 ## Next slice
 

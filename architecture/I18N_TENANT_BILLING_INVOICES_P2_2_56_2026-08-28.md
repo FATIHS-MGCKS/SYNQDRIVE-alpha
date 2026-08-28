@@ -42,6 +42,7 @@ Settings → Billing → billingSubTab=invoices
 | Search | `query.search` debounced 300ms — unchanged |
 | Sort/pagination | `sort=-invoiceDate`, page/pageSize — unchanged on locale switch |
 | Document URLs | `openHostedInvoice` / `openInvoicePdf` — unchanged |
+| Document errors | Host codes (`unavailable`, `openFailed`) → localized; dynamic API/provider `Error.message` → raw verbatim |
 
 ## Dictionary
 
