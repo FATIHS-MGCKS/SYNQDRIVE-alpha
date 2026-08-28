@@ -36,6 +36,93 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'energy-events-e3a-powertrain-accounting-merge-gate-2026-08-28',
+    version: '4.9.983',
+    title: 'Energy Events E3A — canonical powertrain applicability + real request accounting',
+    summary: [
+      'FULL capability resolution now separates canonical applicability (`resolveFleetPowertrainClass`: ICE/EV/PHEV/UNKNOWN) from provider signal availability.',
+      'ICE no longer becomes BOTH because DIMO `availableSignals` or a stale battery-capability row lists traction SOC; EV no longer becomes BOTH from a stray fuel signal.',
+      'PHEV preserved as first-class class — never flattened into ICE; fuel + recharge both applicable with capability evidence.',
+      'UNKNOWN powertrain without sufficient runtime capability evidence fails closed → `CAPABILITY_UNKNOWN` → FULL gate NOT READY.',
+      'One run-level DIMO accounting authority: capability probe + token exchange traffic is no longer discarded; TOTAL `telemetryGraphqlRequests` includes `availableSignals` probes.',
+      'Sanitizer aliases cover all energy classes (no BOTH → UNKNOWN fallthrough) and canonical roles are event-specific, not vehicle-slot-wide.',
+      'Rebased onto current main (Connectivity Diagnostic Hardening) — no PR #1373 ancestry. Zero historical writes; E2 detector config unchanged.',
+    ],
+    reason:
+      'FULL clean run classified reachable ICE vehicles as BOTH, contradicting the canonical fleet powertrain capability matrix, and reported mechanism-only traffic as total DIMO traffic.',
+    previousBehavior:
+      'Capability resolution OR-ed provider signal listings into applicability, so any SOC listing made recharge applicable on ICE; `probeAvailableSignalsForTokenIds` created throwaway accounting and token exchange counts were lost.',
+    details:
+      'backend: energy-events-recovery-capability.ts (applicability matrix), energy-events-recovery-accounting.ts (run-level authority), energy-events-recovery-artifact-sanitize.ts (class aliases + event roles), energy-events-recovery-runner.ts, energy-events-recovery.types.ts, scripts/ops/energy-events-standalone-dimo-fetch.ts, scripts/ops/energy-events-recovery-dry-run.ts. Reuses `resolveFleetPowertrainClass` — no competing powertrain taxonomy.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T13:00:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-clean-replacement-pr-2026-08-28',
+    version: '4.9.982',
+    title: 'Energy Events E3A — clean replacement PR (privacy-safe cutover)',
+    summary: [
+      'Clean branch from current main — no ancestry from PR #1373 GPS-bearing history.',
+      'Removed production fleet reverse-mapping from sanitizer, constants, docs, and E3A tests.',
+      'Aliases assigned at runtime by inventory order; synthetic QUICK-mode fixtures only in git.',
+      'Privacy regression test scans committed artifacts and architecture doc structure.',
+      'Runtime/canonical FULL capability discovery replaces circular event-history inference; `CAPABILITY_UNKNOWN` fails the FULL gate closed.',
+      'Preserves full E3A behavior: plausibility, gates, 13 EXCLUDE / 2 NEEDS, zero writes.',
+    ],
+    reason:
+      'PR #1373 final code accepted but branch history and repo content exposed production identifiers.',
+    previousBehavior:
+      'Sanitizer hardcoded tokenId→alias maps; docs listed plates/tokenIds/VPS hostnames; tests used production fleet IDs; FULL capability was inferred from existing energy events.',
+    details:
+      'backend: energy-events-recovery-artifact-sanitize.ts, energy-events-recovery-capability.ts, energy-events-recovery-fleet-inference.ts, energy-events-recovery.test-fixtures.ts, privacy regression spec. Artifacts remain sanitized aggregate only.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T12:00:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-artifact-privacy-merge-gate-2026-08-28',
+    version: '4.9.981',
+    title: 'Energy Events E3A — artifact privacy + merge gate (PR #1373)',
+    summary: [
+      'Removed raw FULL DB preview artifact from git; committed sanitized aggregate summary only.',
+      'Vehicle aliases (ICE_A/B/C, EV_A, CANONICAL_REFUEL_CASE) + coarse buckets; no plates/tokenIds/UUIDs/exact odometer.',
+      'Manual-review gate: EXCLUDE_FROM_BACKFILL counts as resolved; only NEEDS_FURTHER_EVIDENCE blocks (2 unresolved).',
+      'Raw FULL reports retained on secured VPS/private storage only; `.gitignore` blocks future raw commits.',
+      'Squash merge recommended so prior GPS-bearing branch commits do not become main ancestors. 73 focused energy-events tests.',
+    ],
+    reason:
+      'Production recovery FULL report contained operational identifiers unsuitable for repository artifacts.',
+    previousBehavior:
+      'Committed `energy-events-recovery-full-db-preview-2026-08.json` with plates, tokenIds, UUIDs, and exact telemetry; gate counted all 15 manual reviews as unresolved.',
+    details:
+      'backend: energy-events-recovery-artifact-sanitize.ts, energy-events-recovery-manual-review.ts, energy-events-recovery-runner.ts, energy-events-recovery-dry-run.ts. Artifacts: energy-events-recovery-full-sanitized-summary-2026-08.json + sanitized quick evidence.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T11:30:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-refuel-plausibility-hardening-2026-08-28',
+    version: '4.9.980',
+    title: 'Energy Events E3A — refuel movement/duration plausibility hardening',
+    summary: [
+      'Calibrated recovery plausibility from 18 FULL prod refuel detections; canonical refuel case (+16 L, ~6 km) remains eligible.',
+      'New flags: `refuel_high_odometer_movement` (≥50 km + ≥10 L), `refuel_elevated_movement_during_refuel` (≥20 km + ≥40 km/h + ≥10 L).',
+      'Moving-vehicle false refuels (122–205 km) no longer remain WOULD_CREATE; disposition EXCLUDE_FROM_BACKFILL.',
+      'EV recharge sub-segment overlap: subsumed existing rows no longer block WOULD_UPDATE parent session.',
+      'Recovery-only; production persist path unchanged pending validation. 53 focused tests.',
+    ],
+    reason:
+      'FULL DB dry-run showed DIMO RefuelDetector sparse-signal rebounds classified as refuel during sustained driving.',
+    previousBehavior:
+      'Odometer movement flagged only when delta >5 km AND liters <10 L; large false positives with 55 L / 170 km remained WOULD_CREATE.',
+    details:
+      'backend: energy-events-refuel-plausibility.ts, energy-events-plausibility.ts, energy-events-recovery-reconcile.ts, energy-events-recovery-manual-review.ts. Sanitized FULL summary artifact re-generated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T11:00:00.000Z',
+  },
+  {
     id: 'connectivity-diagnostic-hardening-2026-08-28',
     version: '4.9.977',
     title: 'Connectivity Diagnostic Hardening — Provider erreichbar vs. Fahrzeugdaten veraltet',
@@ -64,6 +151,48 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-08-28T10:30:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-production-dry-run-gate-2026-08-28',
+    version: '4.9.979',
+    title: 'Energy Events E3A — production dry-run gate hardening (PR #1373)',
+    summary: [
+      'Conservative same-ID dedup: MANUAL_REVIEW_REQUIRED wins across windows; `same_id_material_payload_mismatch` on divergent payloads.',
+      'FULL mode requires per-vehicle `dbVehicleMapped`; synthetic dry-run IDs never write targets.',
+      'Expanded `isMateriallyIdentical` to match production upsert (coords, odometer, rawDetectionMeta).',
+      'Standalone DIMO fetch isolates per-mechanism network failures; QUICK windows bounded ≤24h.',
+      'Separate artifacts: `energy-events-recovery-quick-evidence-2026-08.json` + `energy-events-recovery-full-db-preview-2026-08.json`; GPS stripped from committed artifacts.',
+    ],
+    reason:
+      'E3A final production-dry-run gate: close recovery correctness gaps before first real DB-backed FULL read-only preview.',
+    previousBehavior:
+      'Same-ID dedup could downgrade MANUAL_REVIEW; FULL mode could use synthetic vehicle IDs; material identity compared partial fields; multi-week QUICK windows.',
+    details:
+      'backend: energy-events-recovery-reconcile.ts, energy-events-recovery-read.repository.ts, energy-events.pipeline.ts, energy-events-standalone-dimo-fetch.ts, energy-events-recovery.constants.ts, energy-events-recovery-runner.ts. 47 focused tests. docs/architecture/ENERGY_EVENTS_E3A_OBSERVABILITY_RECOVERY_DRY_RUN_2026-08.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T09:55:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-observability-recovery-dry-run-2026-08-28',
+    version: '4.9.978',
+    title: 'Energy Events E3A — observability + read-only historical recovery dry-run',
+    summary: [
+      'Prometheus metrics for energy-event detection via existing TripMetrics registry (`detector_config_version=e2-2026-08`).',
+      'Read-only Jul→Aug outage dry-run: 24h bounded windows, production E2 detector config, zero VehicleEnergyEvent writes.',
+      'Safety: E1 mechanism isolation in dry-run, fail-closed FULL-mode DB comparison gate, mechanism-aware request accounting (220 telemetry requests), cross-window dedup, mutation-guarded read repository.',
+      'Fleet inventory includes VW Golf 190497 as DIMO_ACCESS_FAILED; KS MX canonical refuel verified; Tesla recharge sessions verified.',
+      'Artifact `artifacts/energy-events-recovery-dry-run-2026-08.json`; FULL mode requires DATABASE_URL or gate stays NOT READY.',
+    ],
+    reason:
+      'E3A per audit: Jul outage had no strong operational alarm; need deterministic recovery preview before any historical write-back.',
+    previousBehavior:
+      'No Prometheus energy-event metrics; no bounded-window recovery preview; pipeline observability limited to debug logs.',
+    details:
+      'backend: energy-events.pipeline.ts, energy-events-metrics.service.ts, energy-events-recovery-*.ts, scripts/ops/energy-events-recovery-dry-run.ts. docs/architecture/ENERGY_EVENTS_E3A_OBSERVABILITY_RECOVERY_DRY_RUN_2026-08.md. E1/E2 detector config unchanged.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T08:55:00.000Z',
   },
   {
     id: 'energy-events-e2-detector-calibration-2026-08-28',
