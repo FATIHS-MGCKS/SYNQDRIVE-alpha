@@ -49,6 +49,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly hfEventsDetectedTotal: Counter<string>;
   readonly tripEvidencePaths: Counter<string>;
   readonly tripAssignmentResolutions: Counter<string>;
+  readonly eventTripAssociations: Counter<string>;
   readonly tripScoreDrift: Counter<string>;
   readonly tripCounterAnomalies: Counter<string>;
   readonly clickHouseMigrationFailures: Counter<string>;
@@ -371,6 +372,13 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_trip_assignment_resolutions_total',
       help: 'Total canonical trip assignment resolutions by status and eligibility',
       labelNames: ['status', 'score_eligible'],
+      registers: [this.registry],
+    });
+
+    this.eventTripAssociations = new Counter({
+      name: 'synqdrive_event_trip_associations_total',
+      help: 'Event to trip association decisions by pipeline stage and reason',
+      labelNames: ['stage', 'reason'],
       registers: [this.registry],
     });
 

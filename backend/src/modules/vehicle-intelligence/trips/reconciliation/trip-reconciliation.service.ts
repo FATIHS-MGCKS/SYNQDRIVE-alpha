@@ -35,6 +35,7 @@ import {
 import { TripEnrichmentOrchestratorService } from '../trip-enrichment-orchestrator.service';
 import { TripPostFinalizeAnalysisProducer } from '../../driving-analysis-init/trip-post-finalize-analysis.producer';
 import { EnergyEventsService } from '../../energy-events/energy-events.service';
+import { EventTripAssociationService } from '../event-association/event-trip-association.service';
 
 interface ReconciliationOptions {
   useDimoSegmentFallback?: boolean;
@@ -143,6 +144,7 @@ export class TripReconciliationService {
     @Optional() private readonly tripMetrics?: TripMetricsService,
     @Optional() private readonly configService?: ConfigService,
     @Optional() private readonly energyEventsService?: EnergyEventsService,
+    @Optional() private readonly tripAssociation?: EventTripAssociationService,
   ) {
     this.TRIP_MID_GAP_SPLIT_MS =
       this.configService?.get<number>('worker.tripMidGapSplitMs') ?? 180_000;
@@ -238,6 +240,26 @@ export class TripReconciliationService {
         } catch (err: unknown) {
           this.logger.warn(
             `Energy-event detection failed for vehicle ${vehicleId}: ${(err as Error).message}`,
+          );
+        }
+      }
+
+      // ── Step 6: Event → Trip association safety net ────────────────────
+      // Runs last so it observes trips repaired by steps 1-4. Covers the cases
+      // the intake resolver and the finalization hook cannot: an event that was
+      // persisted before its trip row existed, or a finalization hook that
+      // failed transiently. Scoped to the same vehicle + window, so it inherits
+      // the tiered scheduler's bounds instead of scanning history.
+      if (this.tripAssociation) {
+        try {
+          await this.tripAssociation.reconcileUnresolvedWindow({
+            vehicleId,
+            from,
+            to,
+          });
+        } catch (err: unknown) {
+          this.logger.warn(
+            `Event trip association sweep failed for vehicle ${vehicleId}: ${(err as Error).message}`,
           );
         }
       }

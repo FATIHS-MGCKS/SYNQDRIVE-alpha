@@ -218,6 +218,7 @@ import {
   BatteryShadowValidationService,
 } from './battery-health/shadow-validation';
 import { VehicleIntelligencePermissionGuard } from './vehicle-intelligence-permission.guard';
+import { EventTripAssociationModule } from './trips/event-association/event-trip-association.module';
 import { VehicleFindingsModule } from './findings/findings.module';
 import { FindingLifecycleService } from './findings/finding-lifecycle.service';
 import { FindingBridgeService } from './findings/finding-bridge.service';
@@ -238,6 +239,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     VehicleFindingsModule,
     TasksModule,
     BatteryV2JobsProducerModule,
+    EventTripAssociationModule,
     BullModule.registerQueue(
       { name: QUEUE_NAMES.TRIP_TRACKING },
       { name: QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT },
@@ -601,6 +603,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     TripReconciliationService,
     DetectorRegistry,
     BatteryV2JobsProducerModule,
+    EventTripAssociationModule,
   ],
 })
 export class VehicleIntelligenceModule {}

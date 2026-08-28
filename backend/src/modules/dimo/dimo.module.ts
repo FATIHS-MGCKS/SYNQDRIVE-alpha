@@ -37,6 +37,7 @@ import { DeviceConnectionEpisodeReconciliationApplyService } from './device-conn
 import { DeviceConnectionWebhookConfigurationService } from './device-connection-webhook-configuration/device-connection-webhook-configuration.service';
 import { DimoTriggerRegistryService } from './device-connection-webhook-configuration/dimo-trigger-registry.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
+import { EventTripAssociationModule } from '../vehicle-intelligence/trips/event-association/event-trip-association.module';
 import { DimoConnectivityLifecycleDiModule } from './dimo-connectivity-lifecycle-di.module';
 import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-link.service';
 
@@ -47,6 +48,7 @@ import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-lin
     ConfigModule.forFeature(deviceConnectionEpisodeResolutionOutboxConfig),
     ConfigModule.forFeature(connectivityRecoveryConfig),
     DimoConnectivityLifecycleDiModule,
+    EventTripAssociationModule,
     ActivityLogModule,
     SharedGuardsModule,
     forwardRef(() => NotificationsModule),
