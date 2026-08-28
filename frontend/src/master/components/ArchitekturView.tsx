@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Vehicle Documents Overview (P2.2.59 — V4.9.987)', icon: Globe,
+    endpoint: 'Vehicle detail → Documents tab (read-only overview)',
+    service: '**Locale flow:** `useLanguage().locale` → `rental-vehicle-documents-i18n.ts` → category/status/timeline/source/resolvers + `formatVehicleDocumentDate`. **Keys:** +128 EN+DE `vehicleDocuments.*` (8954→9082); reuses `common.retry`, `bookings.detail.rentalHealth`, `vehicle.overview.readiness.ready/unknown`. **Machine values:** category IDs, UI status, timeline kind, fixed-cost status, sort order, task navigation, upload drawer open state frozen; raw titles/filenames/errors/spec values preserved. **Guardrails:** P259 enforce-clean exact (2 paths) — 0 findings. **Frozen:** P258 billing add-ons, P216–P258 billing/operator slices. **Deferred:** `VehicleDocumentUploadDrawer`. **Tests:** `rental-vehicle-documents-localization.test.tsx` (true same-mount, machine-order). **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_VEHICLE_DOCUMENTS_OVERVIEW_P2_2_59_2026-08-28.md' },
   { name: 'Platform i18n Rental Tenant Billing Add-ons (P2.2.58 — V4.9.986)', icon: Globe,
     endpoint: 'Settings → Billing → Add-ons',
     service: '**Locale flow:** `useLanguage().locale` → extended `rental-tenant-billing-i18n.ts` → `resolveTenantBillingAddonName` / `resolveTenantBillingAddonStatusLabel`. **Keys:** +12 EN+DE `tenantBilling.addons.*` (8942→8954); reuses `common.retry`, `tenantBilling.tab.addons`. **Machine values:** add-on `key`, backend `status` machine, `active` filter, overview fetch frozen; unknown name/statusLabel remain raw. **Guardrails:** P258 enforce-clean exact (1 path) — 0 findings. **Frozen:** P257 payment method, P256 invoices, P255A/B tariff/vehicles, P254 overview/shell, dead legacy cards. **Tests:** `rental-tenant-billing-addons-localization.test.tsx`, backend `resolveAddOnDtos` spec. **Semantics:** presentation-only; Category E=0; active mounted Tenant Billing complete.',

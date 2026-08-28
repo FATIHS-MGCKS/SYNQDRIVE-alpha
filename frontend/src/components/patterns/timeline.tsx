@@ -29,7 +29,7 @@ export function Timeline({ items, className }: TimelineProps) {
       {items.map((item, i) => {
         const last = i === items.length - 1;
         return (
-          <li key={item.id} className="relative flex gap-3 pb-4 last:pb-0">
+          <li key={item.id} data-timeline-id={item.id} className="relative flex gap-3 pb-4 last:pb-0">
             {/* Rail + node */}
             <div className="relative flex flex-col items-center">
               <span className="mt-1 flex h-3.5 w-3.5 items-center justify-center">
