@@ -39,6 +39,7 @@ import {
 } from '../lib/document-extraction-validation';
 import type { UseDocumentIntakeFlowOptions } from './useDocumentIntakeFlow.types';
 import { shouldUseOrgUploadForContext } from '../lib/document-intake-entry';
+import type { DocumentIntakeHostErrorKey } from '../lib/document-intake-i18n';
 
 const LONG_RUNNING_MS = 90_000;
 const NETWORK_WARN_THRESHOLD = 3;
@@ -48,28 +49,18 @@ function toPlausibility(raw: unknown): Plausibility | null {
   return raw as Plausibility;
 }
 
-function defaultValidationMessage(code: UploadValidationCode, maxMb: number): string {
-  const messages: Record<UploadValidationCode, string> = {
-    NO_VEHICLE: 'Bitte zuerst ein Fahrzeug auswählen.',
-    NO_FILE: 'Bitte eine Datei auswählen.',
-    MULTIPLE_FILES: 'Bitte nur eine Datei hochladen.',
-    EMPTY_FILE: 'Die Datei ist leer.',
-    FILE_TOO_LARGE: `Die Datei überschreitet ${maxMb} MB.`,
-    INVALID_EXTENSION: 'Dateityp wird nicht unterstützt.',
-    INVALID_MIME: 'Dateiformat wird vom Browser nicht unterstützt.',
-  };
-  return messages[code];
-}
-
-function mapUploadError(err: unknown): string {
+function mapUploadError(err: unknown): { message: string; hostErrorKey: DocumentIntakeHostErrorKey | null } {
   if (err instanceof DocumentUploadRateLimitedError) {
-    return `${err.payload.message} (${err.payload.scope}, Retry in ${err.payload.retryAfterSeconds}s)`;
+    return {
+      message: `${err.payload.message} (${err.payload.scope}, Retry in ${err.payload.retryAfterSeconds}s)`,
+      hostErrorKey: null,
+    };
   }
   if (err instanceof DocumentIdentificationRejectedError) {
-    return err.payload.message;
+    return { message: err.payload.message, hostErrorKey: null };
   }
-  if (err instanceof Error) return err.message;
-  return 'Upload fehlgeschlagen.';
+  if (err instanceof Error) return { message: err.message, hostErrorKey: null };
+  return { message: '', hostErrorKey: 'docUpload.hostError.uploadFailed' };
 }
 
 export function useDocumentIntakeFlow({
@@ -91,6 +82,8 @@ export function useDocumentIntakeFlow({
   const pollerStopRef = useRef<(() => void) | null>(null);
   const pendingFileRef = useRef<File | null>(null);
   const processingStartedRef = useRef<number | null>(null);
+  const localeRef = useRef(locale);
+  localeRef.current = locale;
 
   const [metadata, setMetadata] = useState<DocumentExtractionMetadata | null>(null);
   const [flow, setFlow] = useState<FlowStatus>('idle');
@@ -98,7 +91,9 @@ export function useDocumentIntakeFlow({
   const [documentType, setDocumentType] = useState(initialDocType);
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [hostErrorKey, setHostErrorKey] = useState<DocumentIntakeHostErrorKey | null>(null);
+  const [actionPlanBlockedReason, setActionPlanBlockedReason] = useState<string | null>(null);
+  const [validationErrorCode, setValidationErrorCode] = useState<UploadValidationCode | null>(null);
   const [duplicateBlocked, setDuplicateBlocked] = useState<DocumentUploadDuplicateError | null>(null);
   const [uploadDuplicateWarning, setUploadDuplicateWarning] = useState<PublicUploadDuplicate | null>(null);
   const [editingFields, setEditingFields] = useState(false);
@@ -218,7 +213,11 @@ export function useDocumentIntakeFlow({
       setUploadContext(next.uploadContext ?? null);
 
       if (mapped === 'ready') {
-        setEditedFields(buildReviewFields(effectiveType, next.extractedData ?? undefined, { locale }));
+        setEditedFields(
+          buildReviewFields(effectiveType, next.extractedData ?? undefined, {
+            locale: localeRef.current,
+          }),
+        );
         setPlausibility(toPlausibility(next.plausibility));
         setFlow('ready');
         stopPolling();
@@ -240,7 +239,8 @@ export function useDocumentIntakeFlow({
       }
 
       if (mapped === 'failed' || mapped === 'cancelled') {
-        setErrorMessage(next.errorMessage || 'Extraktion fehlgeschlagen.');
+        setErrorMessage(next.errorMessage || null);
+        setHostErrorKey(next.errorMessage ? null : 'docUpload.hostError.extractionFailed');
         setFlow(mapped);
         stopPolling();
         return;
@@ -263,7 +263,7 @@ export function useDocumentIntakeFlow({
 
       setFlow(mapped);
     },
-    [locale, mode, onComplete, onRecordApplied, stopPolling, vehicleId, writePagePointer],
+    [mode, onComplete, onRecordApplied, stopPolling, vehicleId, writePagePointer],
   );
 
   const startPolling = useCallback(
@@ -308,6 +308,7 @@ export function useDocumentIntakeFlow({
     setApplyRetryPending(true);
     setFlow('applying');
     setErrorMessage(null);
+    setHostErrorKey(null);
 
     try {
       const updated = mutationVehicleId
@@ -320,7 +321,8 @@ export function useDocumentIntakeFlow({
       applyRecord(updated as PublicDocumentExtraction);
       startPolling(extractionId, mutationVehicleId);
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Erneuter Versuch fehlgeschlagen.');
+      setErrorMessage(err instanceof Error ? err.message : null);
+      setHostErrorKey(err instanceof Error ? null : 'docUpload.hostError.retryFailed');
       setFlow('apply_failed');
     } finally {
       setApplyRetryPending(false);
@@ -352,7 +354,9 @@ export function useDocumentIntakeFlow({
     setUploadContext(null);
     setExtractionId(null);
     setErrorMessage(null);
-    setValidationError(null);
+    setHostErrorKey(null);
+    setActionPlanBlockedReason(null);
+    setValidationErrorCode(null);
     setPollNetworkWarning(false);
     setShowLongRunningHint(false);
     setProcessingStartedAt(null);
@@ -408,7 +412,7 @@ export function useDocumentIntakeFlow({
           referenceNumberHint: options?.referenceNumberHint,
         });
       } else {
-        throw new Error('Upload-Ziel nicht verfügbar.');
+        throw new Error('UPLOAD_TARGET_UNAVAILABLE');
       }
 
       setDuplicateBlocked(null);
@@ -451,8 +455,9 @@ export function useDocumentIntakeFlow({
     async (file: File) => {
       if (mode === 'embedded' && !vehicleId && !useOrgContextUpload) return;
       if (mode === 'page' && !orgId) return;
-      setValidationError(null);
+      setValidationErrorCode(null);
       setErrorMessage(null);
+      setHostErrorKey(null);
       setDuplicateBlocked(null);
       setUploadDuplicateWarning(null);
       setEditingFields(false);
@@ -468,7 +473,7 @@ export function useDocumentIntakeFlow({
         requireVehicle: mode === 'embedded' && !useOrgContextUpload,
       });
       if (!validation.ok && validation.code) {
-        setValidationError(defaultValidationMessage(validation.code, metadata?.maxUploadMb ?? 10));
+        setValidationErrorCode(validation.code);
         setFlow('idle');
         return;
       }
@@ -485,7 +490,15 @@ export function useDocumentIntakeFlow({
           setFlow('duplicate_blocked');
           return;
         }
-        setErrorMessage(mapUploadError(err));
+        if (err instanceof Error && err.message === 'UPLOAD_TARGET_UNAVAILABLE') {
+          setErrorMessage(null);
+          setHostErrorKey('docUpload.hostError.uploadTargetUnavailable');
+          setFlow('failed');
+          return;
+        }
+        const uploadError = mapUploadError(err);
+        setErrorMessage(uploadError.message || null);
+        setHostErrorKey(uploadError.hostErrorKey);
         setFlow('failed');
       }
     },
@@ -498,6 +511,7 @@ export function useDocumentIntakeFlow({
       if (!file || !duplicateBlocked) return;
       setFlow('uploading');
       setErrorMessage(null);
+      setHostErrorKey(null);
       try {
         await performUpload(file, {
           reuploadReason: reason,
@@ -509,7 +523,9 @@ export function useDocumentIntakeFlow({
           setFlow('duplicate_blocked');
           return;
         }
-        setErrorMessage(mapUploadError(err));
+        const uploadError = mapUploadError(err);
+        setErrorMessage(uploadError.message || null);
+        setHostErrorKey(uploadError.hostErrorKey);
         setFlow('failed');
       }
     },
@@ -524,13 +540,15 @@ export function useDocumentIntakeFlow({
     }
     if (respectAllowedActions && record && !record.allowedActions?.includes('retry')) return;
     setErrorMessage(null);
-    setValidationError(null);
+    setHostErrorKey(null);
+    setValidationErrorCode(null);
     setFlow('retrying');
     try {
       await api.vehicleIntelligence.retryDocumentExtraction(mutationVehicleId, extractionId);
       startPolling(extractionId, mutationVehicleId);
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Erneuter Versuch fehlgeschlagen.');
+      setErrorMessage(err instanceof Error ? err.message : null);
+      setHostErrorKey(err instanceof Error ? null : 'docUpload.hostError.retryFailed');
       setFlow('failed');
     }
   }, [extractionId, handleReset, record, respectAllowedActions, resolveMutationVehicleId, startPolling]);
@@ -541,6 +559,7 @@ export function useDocumentIntakeFlow({
     if (respectAllowedActions && !record.allowedActions?.includes('reextract')) return;
     const type = resolveEffectiveType(record);
     setErrorMessage(null);
+    setHostErrorKey(null);
     setFlow('retrying');
     try {
       if (mutationVehicleId) {
@@ -559,7 +578,8 @@ export function useDocumentIntakeFlow({
         return;
       }
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Re-Extraktion fehlgeschlagen.');
+      setErrorMessage(err instanceof Error ? err.message : null);
+      setHostErrorKey(err instanceof Error ? null : 'docUpload.hostError.reextractFailed');
       setFlow(record ? mapServerToFlowStatus(record.status, record.processingStage) : 'failed');
     }
   }, [canUseOrgScope, extractionId, orgId, record, respectAllowedActions, resolveMutationVehicleId, startPolling]);
@@ -570,6 +590,7 @@ export function useDocumentIntakeFlow({
       const mutationVehicleId = resolveMutationVehicleId();
       setDocumentType(type);
       setErrorMessage(null);
+      setHostErrorKey(null);
       setFlow('retrying');
       try {
         if (mutationVehicleId) {
@@ -588,7 +609,8 @@ export function useDocumentIntakeFlow({
           return;
         }
       } catch (err: unknown) {
-        setErrorMessage(err instanceof Error ? err.message : 'Dokumenttyp konnte nicht gesetzt werden.');
+        setErrorMessage(err instanceof Error ? err.message : null);
+        setHostErrorKey(err instanceof Error ? null : 'docUpload.hostError.typeSetFailed');
         setFlow(record ? mapServerToFlowStatus(record.status, record.processingStage) : 'failed');
       }
     },
@@ -601,25 +623,28 @@ export function useDocumentIntakeFlow({
     if (respectAllowedActions && record && !record.allowedActions?.includes('confirm')) return;
 
     if (!hasSavedFieldReview(record?.confirmedData)) {
-      setErrorMessage('Bitte Felder speichern und erneut prüfen, bevor Sie bestätigen.');
+      setErrorMessage(null);
+      setHostErrorKey('docUpload.hostError.saveFieldsBeforeConfirm');
+      setActionPlanBlockedReason(null);
       return;
     }
 
     if (actionPlanPreview && !actionPlanPreview.canConfirm) {
-      setErrorMessage(
-        actionPlanPreview.confirmBlockedReason ??
-          'Der Aktionsplan ist blockiert — bitte offene Punkte beheben.',
-      );
+      setErrorMessage(null);
+      setHostErrorKey('docUpload.hostError.actionPlanBlocked');
+      setActionPlanBlockedReason(actionPlanPreview.confirmBlockedReason ?? null);
       return;
     }
 
     setFlow('applying');
     setErrorMessage(null);
+    setHostErrorKey(null);
+    setActionPlanBlockedReason(null);
 
     const confirmedData =
       record?.confirmedData && typeof record.confirmedData === 'object' && !Array.isArray(record.confirmedData)
         ? (record.confirmedData as Record<string, unknown>)
-        : parseReviewFieldsForConfirm(editedFields, { locale });
+        : parseReviewFieldsForConfirm(editedFields, { locale: localeRef.current });
 
     try {
       const confirmPayload = {
@@ -637,20 +662,21 @@ export function useDocumentIntakeFlow({
               )
             : null;
       if (!updated) {
-        setErrorMessage('Fahrzeugzuordnung erforderlich, bevor die Übernahme bestätigt werden kann.');
+        setErrorMessage(null);
+        setHostErrorKey('docUpload.hostError.vehicleRequiredBeforeConfirm');
         setFlow('ready');
         return;
       }
       applyRecord(updated as PublicDocumentExtraction);
       startPolling(extractionId, mutationVehicleId || updated.vehicleId || null);
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Bestätigung fehlgeschlagen.');
+      setErrorMessage(err instanceof Error ? err.message : null);
+      setHostErrorKey(err instanceof Error ? null : 'docUpload.hostError.confirmFailed');
       setFlow('ready');
     }
   }, [
     editedFields,
     extractionId,
-    locale,
     onComplete,
     pollThroughApply,
     record,
@@ -676,7 +702,8 @@ export function useDocumentIntakeFlow({
       if (!effectiveVehicleId && !canUseOrgScope) return;
       setExtractionId(id);
       setErrorMessage(null);
-      setValidationError(null);
+      setHostErrorKey(null);
+      setValidationErrorCode(null);
       setEditingFields(false);
       if (fileName) setUploadedFileName(fileName);
       writePagePointer(id, effectiveVehicleId);
@@ -688,7 +715,8 @@ export function useDocumentIntakeFlow({
           startPolling(id, detail.vehicleId ?? effectiveVehicleId);
         }
       } catch {
-        setErrorMessage('Dokument konnte nicht geladen werden.');
+        setErrorMessage(null);
+        setHostErrorKey('docUpload.hostError.loadFailed');
         setFlow('failed');
       }
     },
@@ -720,7 +748,9 @@ export function useDocumentIntakeFlow({
     confirmedDocType,
     uploadedFileName,
     errorMessage,
-    validationError,
+    hostErrorKey,
+    actionPlanBlockedReason,
+    validationErrorCode,
     duplicateBlocked,
     uploadDuplicateWarning,
     editingFields,

@@ -3,8 +3,10 @@ import { Camera, CheckCircle, ChevronDown, FileUp, Loader2, X } from 'lucide-rea
 import { StatusChip } from '../../components/patterns';
 import { useDocumentExtractionFlow } from '../../rental/hooks/useDocumentExtractionFlow';
 import {
-  FLOW_STATUS_LABEL_DE,
-} from '../../rental/components/documents/document-extraction.shared';
+  resolveFlowStatusLabel,
+  resolveHostErrorMessage,
+  resolveValidationMessage,
+} from '../../rental/lib/document-intake-i18n';
 import { DocumentClassificationResultPanel } from '../../rental/components/documents/DocumentClassificationResultPanel';
 import { DocumentExtractionFlowStatus } from '../../rental/components/documents/DocumentExtractionFlowStatus';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -61,6 +63,30 @@ export function OperatorAiUploadFlow({ action }: Props) {
       setTimeout(closeSheet, 900);
     },
   });
+
+  const flowStatusLabel = useCallback(
+    (status: Parameters<typeof resolveFlowStatusLabel>[0]) => resolveFlowStatusLabel(status, t),
+    [t],
+  );
+
+  const resolvedValidationError = useMemo(
+    () =>
+      flow.validationErrorCode
+        ? resolveValidationMessage(flow.validationErrorCode, t, flow.metadata?.maxUploadMb ?? 10)
+        : null,
+    [flow.metadata?.maxUploadMb, flow.validationErrorCode, t],
+  );
+
+  const resolvedErrorMessage = useMemo(
+    () =>
+      resolveHostErrorMessage(
+        flow.hostErrorKey,
+        flow.errorMessage,
+        t,
+        flow.actionPlanBlockedReason,
+      ),
+    [flow.actionPlanBlockedReason, flow.errorMessage, flow.hostErrorKey, t],
+  );
 
   useEffect(() => {
     flow.setDocumentType(initialDocType);
@@ -208,7 +234,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
           </button>
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
-          <StatusChip tone="info">{FLOW_STATUS_LABEL_DE[flow.flow]}</StatusChip>
+          <StatusChip tone="info">{flowStatusLabel(flow.flow)}</StatusChip>
           <StatusChip tone="neutral">{CONTEXT_MODE_LABELS[contextMode]}</StatusChip>
         </div>
       </header>
@@ -321,16 +347,16 @@ export function OperatorAiUploadFlow({ action }: Props) {
               }}
             />
 
-            {(pickError || flow.errorMessage) && flow.flow === 'failed' && (
+            {(pickError || resolvedErrorMessage) && flow.flow === 'failed' && (
               <p className="text-xs text-[color:var(--status-critical)]">
-                {pickError ?? flow.errorMessage}
+                {pickError ?? resolvedErrorMessage}
               </p>
             )}
             {pickError && flow.flow === 'idle' && (
               <p className="text-xs text-[color:var(--status-critical)]">{pickError}</p>
             )}
-            {flow.validationError && flow.flow === 'idle' && (
-              <p className="text-xs text-[color:var(--status-critical)]">{flow.validationError}</p>
+            {resolvedValidationError && flow.flow === 'idle' && (
+              <p className="text-xs text-[color:var(--status-critical)]">{resolvedValidationError}</p>
             )}
           </div>
         )}
@@ -338,7 +364,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
         {flow.isBusy && !showAwaitingType && (
           <div className="flex flex-col items-center py-16 text-center">
             <Loader2 className="h-10 w-10 animate-spin text-[color:var(--brand)]" />
-            <p className="mt-4 text-sm font-semibold">{FLOW_STATUS_LABEL_DE[flow.flow]}</p>
+            <p className="mt-4 text-sm font-semibold">{flowStatusLabel(flow.flow)}</p>
             {flow.uploadedFileName && (
               <p className="mt-1 text-xs text-muted-foreground">{flow.uploadedFileName}</p>
             )}
@@ -350,7 +376,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
             <DocumentExtractionFlowStatus
               flow={flow.flow}
               uploadedFileName={flow.uploadedFileName}
-              errorMessage={flow.errorMessage}
+              errorMessage={resolvedErrorMessage}
               record={flow.record}
               onRetry={() => void flow.handleRetry()}
               onReset={flow.handleReset}

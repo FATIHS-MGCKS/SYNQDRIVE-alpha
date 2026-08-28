@@ -1,4 +1,4 @@
-import { DOC_TYPE_LABELS, EXTRACTION_TEMPLATES } from '../../rental/components/documents/document-extraction.shared';
+import { EXTRACTION_TEMPLATES } from '../../rental/components/documents/document-extraction.shared';
 
 export type OperatorAiUploadContextMode =
   | 'general'
@@ -84,7 +84,7 @@ export const CRITICAL_REVIEW_FIELD_KEYS = new Set([
 ]);
 
 export function docTypeLabel(key: string): string {
-  return OPERATOR_DOC_TYPE_OPTIONS.find((o) => o.key === key)?.label ?? DOC_TYPE_LABELS[key] ?? key;
+  return OPERATOR_DOC_TYPE_OPTIONS.find((o) => o.key === key)?.label ?? key;
 }
 
 export function isCriticalReviewField(key: string): boolean {

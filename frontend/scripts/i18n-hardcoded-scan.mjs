@@ -348,6 +348,25 @@ const P226_ENFORCE_CLEAN_EXACT = new Set([
   'operator/lib/operator-tire-measure-i18n.ts',
 ]);
 
+const P260_ENFORCE_CLEAN_EXACT = new Set([
+  'rental/components/documents/VehicleDocumentUploadDrawer.tsx',
+  'rental/components/documents/DocumentIntakeUploadZone.tsx',
+  'rental/components/documents/DocumentExtractionFlowStatus.tsx',
+  'rental/components/documents/DocumentUploadDuplicatePanel.tsx',
+  'rental/components/documents/DocumentIntakeProcessingSteps.tsx',
+  'rental/components/documents/DocumentClassificationResultPanel.tsx',
+  'rental/components/documents/DocumentExtractionReviewPanel.tsx',
+  'rental/components/documents/DocumentApplyResultPanel.tsx',
+  'rental/components/documents/DocumentFollowUpSuggestionsPanel.tsx',
+  'rental/components/documents/DocumentEntityReview.tsx',
+  'rental/components/documents/DocumentSchemaFieldReview.tsx',
+  'rental/components/documents/DocumentActionPlanReview.tsx',
+  'rental/lib/document-intake-i18n.ts',
+  'rental/hooks/useDocumentIntakeFlow.ts',
+  'rental/hooks/useDocumentUploadPage.ts',
+  'rental/components/documents/document-extraction.shared.ts',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -360,7 +379,6 @@ const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/service-center/',
   'rental/components/vehicle-bookings/',
   'rental/components/rental-health/',
-  'rental/components/documents/VehicleDocumentUploadDrawer.tsx',
   'rental/lib/vehicle-',
   'rental/lib/fleet',
   'rental/lib/health-',
@@ -675,6 +693,10 @@ function isP226EnforceCleanPath(relPath) {
   return P226_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP260EnforceCleanPath(relPath) {
+  return P260_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -725,6 +747,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (isP224EnforceCleanPath(relPath)) return true;
   if (isP225EnforceCleanPath(relPath)) return true;
   if (isP226EnforceCleanPath(relPath)) return true;
+  if (isP260EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -756,6 +779,7 @@ function migrationPhaseFor(relPath, surface) {
   if (isP224EnforceCleanPath(relPath)) return 'P2.2.24';
   if (isP225EnforceCleanPath(relPath)) return 'P2.2.25';
   if (isP226EnforceCleanPath(relPath)) return 'P2.2.26';
+  if (isP260EnforceCleanPath(relPath)) return 'P2.2.60';
   if (isP210EnforceCleanPath(relPath)) return 'P2.2.10';
   if (isP29EnforceCleanPath(relPath)) return 'P2.2.9';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';

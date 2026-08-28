@@ -29,6 +29,10 @@ import { useDocumentIntakeFlow } from './useDocumentIntakeFlow';
 import type { FlowStatus } from '../components/documents/document-extraction.shared';
 import { canShowApplyDone } from '../lib/document-apply-result';
 import { readDocumentIntakeEntry, type DocumentIntakeEntryState } from '../lib/document-intake-entry';
+import {
+  resolveHostErrorMessage,
+  resolveValidationMessage,
+} from '../lib/document-intake-i18n';
 
 const AUTO_TYPE = 'AUTO';
 const UPLOAD_SOURCE = 'rental_ui';
@@ -462,8 +466,17 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     flow: intake.flow,
     record: intake.record,
     uploadedFileName: intake.uploadedFileName,
-    errorMessage: intake.errorMessage,
-    validationError: pageValidationError ?? intake.validationError,
+    errorMessage: resolveHostErrorMessage(
+      intake.hostErrorKey,
+      intake.errorMessage,
+      t,
+      intake.actionPlanBlockedReason,
+    ),
+    validationError:
+      pageValidationError ??
+      (intake.validationErrorCode
+        ? resolveValidationMessage(intake.validationErrorCode, t, metadata?.maxUploadMb ?? 10)
+        : null),
     editingFields: intake.editingFields,
     setEditingFields: intake.setEditingFields,
     editedFields: intake.editedFields,

@@ -4,11 +4,11 @@ import { useDocumentSchemaReview } from '../../hooks/useDocumentSchemaReview';
 import { useDocumentActionPlanPreview } from '../../hooks/useDocumentActionPlanPreview';
 import { hasSavedFieldReview } from '../../lib/document-schema-field-review';
 import {
-  DOC_TYPE_LABELS,
   type Plausibility,
   type PlausibilityStatus,
   type ReviewField,
 } from './document-extraction.shared';
+import { resolveDocumentTypeLabel, resolveExtractionFieldLabel } from '../../lib/document-intake-i18n';
 import { DocumentEntityReview } from './DocumentEntityReview';
 import { DocumentSchemaFieldReview } from './DocumentSchemaFieldReview';
 import { DocumentActionPlanReview } from './DocumentActionPlanReview';
@@ -99,8 +99,8 @@ export function DocumentExtractionReviewPanel({
   canEdit = true,
   onToggleEdit,
   onFieldChange,
-  fieldsTitle = 'Erkannte Felder',
-  plausibilityTitle = 'Plausibilität',
+  fieldsTitle,
+  plausibilityTitle,
   showActionPreview = true,
   showEntityResolution = true,
   entityReviewOrgId = null,
@@ -151,14 +151,16 @@ export function DocumentExtractionReviewPanel({
       {plausibility ? (
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="sq-section-label">{plausibilityTitle}</span>
+            <span className="sq-section-label">
+              {plausibilityTitle ?? entityReviewT?.('docUpload.plausibilityTitle')}
+            </span>
             <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${plausClass(plausibility.overallStatus)}`}>
               {plausibility.overallStatus}
             </span>
           </div>
           {plausibility.checks.length === 0 ? (
             <div className={`rounded-lg border px-3 py-2 text-[11px] ${plausClass('OK')}`}>
-              {entityReviewT?.('docUpload.plausibilityOk') ?? 'Keine Auffälligkeiten'}
+              {entityReviewT?.('docUpload.plausibilityOk')}
             </div>
           ) : (
             <div className="space-y-1.5">
@@ -205,10 +207,12 @@ export function DocumentExtractionReviewPanel({
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <span className="sq-section-label">{fieldsTitle}</span>
-          {!useSchemaFieldReview && canEdit && !readOnly && onToggleEdit ? (
+          <span className="sq-section-label">
+            {fieldsTitle ?? entityReviewT?.('docUpload.detectedFields')}
+          </span>
+          {!useSchemaFieldReview && canEdit && !readOnly && onToggleEdit && entityReviewT ? (
             <button type="button" onClick={onToggleEdit} className="text-[10px] font-semibold text-primary">
-              {editingFields ? 'Fertig' : 'Bearbeiten'}
+              {editingFields ? entityReviewT('docUpload.doneEditing') : entityReviewT('docUpload.editFields')}
             </button>
           ) : null}
         </div>
@@ -241,7 +245,9 @@ export function DocumentExtractionReviewPanel({
                 key={field.key}
                 className={`flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3 px-3 py-2.5 min-w-0 ${index > 0 ? 'border-t border-border' : ''} bg-muted/10`}
               >
-                <span className="sm:w-44 shrink-0 text-[10px] font-medium text-muted-foreground">{field.label}</span>
+                <span className="sm:w-44 shrink-0 text-[10px] font-medium text-muted-foreground">
+                  {entityReviewT ? resolveExtractionFieldLabel(field.key, entityReviewT) : field.label}
+                </span>
                 {editingFields && !readOnly ? (
                   field.fieldType === 'multiline' ? (
                     <textarea
@@ -266,7 +272,9 @@ export function DocumentExtractionReviewPanel({
         )}
 
         <p className="mt-1 text-[10px] text-muted-foreground">
-          {DOC_TYPE_LABELS[confirmedDocType] || confirmedDocType}
+          {entityReviewT
+            ? resolveDocumentTypeLabel(confirmedDocType, entityReviewT)
+            : confirmedDocType}
         </p>
       </div>
 

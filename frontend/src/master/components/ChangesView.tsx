@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-vehicle-documents-upload-p2-2-60-2026-08-28',
+    version: '4.9.988',
+    title: 'Platform i18n — P2.2.60 Vehicle Documents Upload / Extraction Flow',
+    summary: [
+      'Vehicle Documents upload/extraction flow localized across drawer + shared intake stack via `document-intake-i18n.ts` and `rental.documentIntake.{en,de}.ts`; +157 keys (9082→9239 EN/DE) after reassessment key-reuse correction.',
+      'Active mounted Vehicle Documents i18n coverage complete. FlowStatus/validation/document-type machines frozen; raw backend/provider/user data preserved; `categoryId` not wired; `initialDocType` remains AUTO.',
+      'P260 enforce-clean exact scope (13 paths) — 0 findings; `VehicleDocumentUploadDrawer` removed from P22 allowlist. True same-mount DE→EN→DE drawer test. Category E=0.',
+    ],
+    reason:
+      'P2.2.60 strict mutation-safe implementation from P259 merge baseline per pre-flight verdict A (complete upload/extraction flow).',
+    previousBehavior:
+      'Upload drawer and shared intake components used German-only labels (`FLOW_STATUS_LABEL_DE`, `DOC_TYPE_LABELS`, template field labels) and hook-level German validation strings.',
+    details:
+      'Presentation-only resolvers for flow status, validation codes, extraction fields, drawer/duplicate chrome. Hook returns `validationErrorCode` + `hostErrorKey`; `localeRef` stabilizes polling. Shared callers (`DocumentUploadView`, `OperatorAiUploadFlow`) use same namespaces.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-28T18:50:00.000Z',
+  },
+  {
     id: 'i18n-rental-vehicle-documents-overview-p2-2-59-2026-08-28',
     version: '4.9.987',
     title: 'Platform i18n — P2.2.59 Vehicle Documents Read-Only Overview',

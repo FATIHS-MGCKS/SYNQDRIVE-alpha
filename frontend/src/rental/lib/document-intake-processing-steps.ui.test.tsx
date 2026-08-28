@@ -27,10 +27,11 @@ describe('DocumentIntakeProcessingSteps UI', () => {
         steps,
         uploadedFileName: 'scan.pdf',
         isDarkMode: false,
+        progressAriaLabel: 'Processing progress',
       }),
     );
     expect(html).toContain('Text wird erkannt');
     expect(html).toContain('OCR fehlgeschlagen');
-    expect(html).toContain('aria-label="Verarbeitungsfortschritt"');
+    expect(html).toContain('aria-label="Processing progress"');
   });
 });

@@ -58,7 +58,6 @@ const P22_ENFORCE_CLEAN_EXACT = [
   'rental/components/DashboardWarningLightsPanel.tsx',
   'rental/components/DashboardWarningLightsQuickView.tsx',
   'rental/rental-health-ui.ts',
-  'rental/components/documents/VehicleDocumentUploadDrawer.tsx',
   'rental/components/vehicle/vehicle-i18n.ts',
 ];
 
@@ -540,6 +539,25 @@ const P259_ENFORCE_CLEAN_EXACT = [
   'rental/components/documents/DocumentComplianceSummaryCard.tsx',
 ];
 
+const P260_ENFORCE_CLEAN_EXACT = [
+  'rental/components/documents/VehicleDocumentUploadDrawer.tsx',
+  'rental/components/documents/DocumentIntakeUploadZone.tsx',
+  'rental/components/documents/DocumentExtractionFlowStatus.tsx',
+  'rental/components/documents/DocumentUploadDuplicatePanel.tsx',
+  'rental/components/documents/DocumentIntakeProcessingSteps.tsx',
+  'rental/components/documents/DocumentClassificationResultPanel.tsx',
+  'rental/components/documents/DocumentExtractionReviewPanel.tsx',
+  'rental/components/documents/DocumentApplyResultPanel.tsx',
+  'rental/components/documents/DocumentFollowUpSuggestionsPanel.tsx',
+  'rental/components/documents/DocumentEntityReview.tsx',
+  'rental/components/documents/DocumentSchemaFieldReview.tsx',
+  'rental/components/documents/DocumentActionPlanReview.tsx',
+  'rental/lib/document-intake-i18n.ts',
+  'rental/hooks/useDocumentIntakeFlow.ts',
+  'rental/hooks/useDocumentUploadPage.ts',
+  'rental/components/documents/document-extraction.shared.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -762,6 +780,10 @@ function isP258EnforceCleanPath(relPath: string): boolean {
 
 function isP259EnforceCleanPath(relPath: string): boolean {
   return P259_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP260EnforceCleanPath(relPath: string): boolean {
+  return P260_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -1232,6 +1254,38 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP259EnforceCleanPath(finding.file),
     );
     expect(p259Debt).toHaveLength(0);
+  });
+
+  it('keeps P260 Vehicle Documents upload/extraction enforce-clean scope at zero findings', () => {
+    const p260Debt = inventory.findings.filter((finding) =>
+      isP260EnforceCleanPath(finding.file),
+    );
+    expect(p260Debt).toHaveLength(0);
+  });
+
+  it('keeps document-intake-i18n.ts on canonical translation resolvers', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/document-intake-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('resolveFlowStatusLabel');
+    expect(source).toContain('resolveValidationMessage');
+    expect(source).toContain('resolveExtractionFieldLabel');
+    expect(source).not.toMatch(/locale === 'de'/);
+    expect(source).not.toMatch(/Fertig/);
+  });
+
+  it('keeps VehicleDocumentUploadDrawer free of hardcoded German presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/documents/VehicleDocumentUploadDrawer.tsx'),
+      'utf8',
+    );
+    expect(source).toContain("t('docUpload.drawer.");
+    expect(source).toContain('resolveFlowStatusLabel');
+    expect(source).toContain('initialDocType: \'AUTO\'');
+    expect(source).not.toMatch(/Dokument hochladen/);
+    expect(source).not.toMatch(/Fertig/);
+    expect(source).not.toMatch(/FLOW_STATUS_LABEL_DE/);
   });
 
   it('keeps rental-invoice-line-items-i18n.ts on canonical formatter delegation', () => {
