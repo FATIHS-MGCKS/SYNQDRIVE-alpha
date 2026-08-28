@@ -1,8 +1,8 @@
 # P2.2.55B — Tenant Billing Billable Vehicles + Vehicle Changes Implementation
 
-**Date:** 2026-08-28  
-**Baseline:** `20eb441fdf98596f3a49296c014410bfdbbfe080` (P255A merge)  
-**Pre-flight:** PR #1367  
+**Date:** 2026-08-28
+**Baseline:** `20eb441fdf98596f3a49296c014410bfdbbfe080` (P255A merge)
+**Pre-flight:** PR #1367
 **Branch:** `cursor/p2255b-billable-vehicles-changes-i18n-3c10`
 
 ## Summary

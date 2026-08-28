@@ -1,7 +1,7 @@
 # I18N — Tenant Billing Billable Vehicles + Vehicle Changes (P2.2.55B)
 
-**Date:** 2026-08-28  
-**Version:** V4.9.983  
+**Date:** 2026-08-28
+**Version:** V4.9.983
 **Campaign:** RENTAL i18n Production Hardening
 
 ## Mount topology
