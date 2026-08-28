@@ -39,6 +39,9 @@ const P260_ENFORCE_CLEAN_EXACT = [
   'rental/components/documents/DocumentSchemaFieldReview.tsx',
   'rental/components/documents/DocumentActionPlanReview.tsx',
   'rental/lib/document-intake-i18n.ts',
+  'rental/hooks/useDocumentIntakeFlow.ts',
+  'rental/hooks/useDocumentUploadPage.ts',
+  'rental/components/documents/document-extraction.shared.ts',
 ];
 
 const RAW_FILENAME = 'Fahrzeugschein_P260_X7.pdf';
@@ -235,12 +238,17 @@ describe('P2.2.60 Vehicle Documents upload/extraction localization', () => {
     }
   });
 
-  it('resolves document type labels from canonical classification keys', () => {
-    expect(resolveDocumentTypeLabel('SERVICE', tFor('de'))).toBe(de['documentExtraction.classification.SERVICE']);
+  it('resolves document type labels from canonical type keys with classification fallback', () => {
+    expect(resolveDocumentTypeLabel('SERVICE', tFor('de'))).toBe(de['documentExtraction.type.SERVICE']);
     expect(resolveDocumentTypeLabel('FINE', tFor('en'))).toBe(en['documentExtraction.classification.FINE']);
     expect(resolveDocumentTypeLabel('UNKNOWN_P260', tFor('en'), 'Unknown Category P260 X7')).toBe(
       'Unknown Category P260 X7',
     );
+  });
+
+  it('reuses canonical field label for description', () => {
+    expect(resolveExtractionFieldLabel('description', tFor('de'))).toBe(de['docUpload.field.description']);
+    expect(resolveExtractionFieldLabel('description', tFor('en'))).toBe(en['docUpload.field.description']);
   });
 
   it('preserves backend raw error message ownership at hook boundary', () => {

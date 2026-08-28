@@ -55,19 +55,43 @@ export function extractionFieldTranslationKey(fieldKey: string): TranslationKey 
 }
 
 export function resolveExtractionFieldLabel(fieldKey: string, t: DocumentIntakeTranslate): string {
+  if (fieldKey === 'description') {
+    return t('docUpload.field.description');
+  }
   const key = extractionFieldTranslationKey(fieldKey);
   const translated = t(key);
   return translated === key ? fieldKey : translated;
 }
+
+const EXACT_DOCUMENT_TYPE_REUSE = new Set([
+  'SERVICE',
+  'OIL_CHANGE',
+  'BOKRAFT_REPORT',
+  'INVOICE',
+  'DAMAGE',
+  'ACCIDENT',
+  'OTHER',
+]);
 
 export function resolveDocumentTypeLabel(
   docType: string,
   t: DocumentIntakeTranslate,
   fallback?: string,
 ): string {
-  const key = `documentExtraction.classification.${docType}` as TranslationKey;
-  const translated = t(key);
-  if (translated !== key) return translated;
+  if (EXACT_DOCUMENT_TYPE_REUSE.has(docType)) {
+    const typeKey = `documentExtraction.type.${docType}` as TranslationKey;
+    const typeTranslated = t(typeKey);
+    if (typeTranslated !== typeKey) return typeTranslated;
+  }
+
+  const classificationKey = `documentExtraction.classification.${docType}` as TranslationKey;
+  const classificationTranslated = t(classificationKey);
+  if (classificationTranslated !== classificationKey) return classificationTranslated;
+
+  const typeKey = `documentExtraction.type.${docType}` as TranslationKey;
+  const typeTranslated = t(typeKey);
+  if (typeTranslated !== typeKey) return typeTranslated;
+
   return fallback ?? docType;
 }
 

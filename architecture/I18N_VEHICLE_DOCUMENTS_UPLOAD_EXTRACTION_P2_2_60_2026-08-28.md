@@ -1,7 +1,7 @@
 # I18N — Vehicle Documents Upload / Extraction (P2.2.60)
 
-**Date:** 2026-08-28  
-**Version:** V4.9.988
+**Date:** 2026-08-28
+**Version:** V4.9.989
 
 ## Locale flow
 
@@ -11,7 +11,7 @@ Hook boundary (`useDocumentIntakeFlow`) returns machine codes (`validationErrorC
 
 ## Keys
 
-+165 EN+DE keys (9082→9247): `rental.documentIntake.{en,de}.ts` module (`docUpload.drawer.*`, `docUpload.duplicate.*`, `docUpload.extractionField.*`, `docUpload.hostError.*`, `documentExtraction.classification.*` additions) plus reuse of existing `docUpload.flow.*`, `docUpload.validation.*`, `docUpload.processingStep.*`, `common.cancel`, `vehicle.documents.*`.
++157 EN+DE keys (9082→9239): `rental.documentIntake.{en,de}.ts` module (`docUpload.drawer.*`, `docUpload.duplicate.*`, `docUpload.extractionField.*`, `docUpload.hostError.*`, semantically distinct `documentExtraction.classification.*` additions) plus reuse of existing `documentExtraction.type.*` (7 exact) and `docUpload.field.description`; also reuses existing `docUpload.flow.*`, `docUpload.validation.*`, `docUpload.processingStep.*`, `common.cancel`, `vehicle.documents.*`.
 
 ## Machine values (frozen)
 
@@ -24,7 +24,7 @@ Hook boundary (`useDocumentIntakeFlow`) returns machine codes (`validationErrorC
 
 ## Guardrails
 
-P260 enforce-clean exact (13 paths): drawer + shared intake stack + `document-intake-i18n.ts` — 0 findings. `VehicleDocumentUploadDrawer` removed from P22 allowlist.
+P260 enforce-clean exact (16 paths): drawer + shared intake stack + hook/presentation boundaries — 0 findings. `VehicleDocumentUploadDrawer` removed from P22 allowlist.
 
 ## Shared surfaces
 
@@ -36,7 +36,7 @@ P259 overview, P216–P259 rental/operator/billing slices.
 
 ## Tests
 
-`rental-vehicle-documents-upload-localization.test.tsx` — enforce-clean, FlowStatus/validation/template resolvers, hook contract freeze, true same-mount DE→EN→DE, locale mutation counters.
+`rental-vehicle-documents-upload-localization.test.tsx` + `useDocumentIntakeFlow.p260-locale-mutation.test.ts` — enforce-clean, FlowStatus/validation/template resolvers, hook contract freeze, true same-mount DE→EN→DE, confirm payload locale parsing, polling lifecycle stability.
 
 ## Semantics
 

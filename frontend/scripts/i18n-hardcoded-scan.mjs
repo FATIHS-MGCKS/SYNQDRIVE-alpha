@@ -362,6 +362,9 @@ const P260_ENFORCE_CLEAN_EXACT = new Set([
   'rental/components/documents/DocumentSchemaFieldReview.tsx',
   'rental/components/documents/DocumentActionPlanReview.tsx',
   'rental/lib/document-intake-i18n.ts',
+  'rental/hooks/useDocumentIntakeFlow.ts',
+  'rental/hooks/useDocumentUploadPage.ts',
+  'rental/components/documents/document-extraction.shared.ts',
 ]);
 
 const P22_ENFORCE_CLEAN_PREFIXES = [
