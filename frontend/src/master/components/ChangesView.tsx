@@ -36,6 +36,34 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-detection-hardening-design-2026-08-28',
+    version: '4.9.989',
+    title: 'Trip Detection Hardening — design + read-only replay plan (R1–R8, nothing implemented)',
+    summary: [
+      'Verdict B: multiple structural defects, controlled hardening required. A full detector redesign is not warranted — an offline replay recovers 61.9 of 63.7 uncovered driving hours using only evidence the system already collects.',
+      'Correction to the forensic audit: TripOverlapDetector would have suppressed all four distinct RPM sentinel windows as duplicates even with pairing and confidence fixed. Every window has an adjacent trip inside the ±5min tolerance, or a short trip wholly inside it. Overlap is the first blocker for 26 of 65 gaps, and it fires before the trip_repairs audit row is written — which is why four of the five sentinels have no proposal record.',
+      'Coverage re-derived independently: 65 drives / 63.72 h uncovered across 6 vehicles in 90 days, of which 12.30 h fall in August, after the live-detection fix. Truncation dominates: 61 of 65 gaps have partial coverage, only 4 are full misses.',
+      'The prior 49 drives / 42.7 h does not reproduce, and the cause is coverage arithmetic, not data: the earlier figure credited a trip\u2019s entire duration as coverage of a drive it merely overlapped. Same population (365 drives / 179.6 h vs 367 / 179.8 h), corrected union-and-clip math gives 66 drives / 48.9 h; adding motion evidence and the EV gives 65 / 63.7 h.',
+      'Failure classification by first blocking stage: fixed-window pairing 25 drives / 39.92 h, overlap suppression 26 drives / 20.00 h, scheduler phase 13 drives / 3.50 h, unattributed 1 drive / 0.30 h. After containment-aware overlap lands, 27 drives / 20.30 h become recoverable with no further change.',
+      'Read-only replay over 90 days of production evidence: current algorithm creates 5 trips and suppresses 9720 candidates as duplicates, recovering 0.30 h. Proposed algorithm creates 89 trips recovering 61.88 h, with 0 false merges, 0 proposals overlapping an existing trip, 0 healthy drives touched and 2 false positives. All 5 RPM sentinels recovered vs 0 today.',
+      'Detection becomes phase-independent: 61.82–61.88 h across scheduler tick phases 0/3/6/9/12 min, against a 0.30–0.95 h swing today. No cadence change is recommended — cadence is the first blocker for only 3.50 h of 63.72 h, and increasing frequency would mask defect B rather than fix it.',
+      'Designs R1 bounded look-forward pairing (stateless, ON edge as identity), R2 fragment coalescing with five explicit invariants including splitting at internal stops, R3 deterministic additive confidence with a hard movement gate (the 298s case scores HIGH; 20min of engine-on parking is REJECTed), R4 union fusion so a weak source can only widen a stronger one, R5 coverage invariant, R6 scheduler safety, R7 idempotency/concurrency, R8 bounded backfill.',
+      'Coverage invariant defined as the missing health primitive: coverage_ratio, prefix/suffix/interior missing seconds, longest uncovered span, with WARNING / REPAIR ELIGIBLE / CRITICAL thresholds. Its critical rule — zero fleet-wide finalizations while movement evidence exists — would have caught the July outage within 6 hours instead of 3 days.',
+      'Live-path hazard still open on main: DimoSnapshotProcessor.process() awaits resolutionOutboxProcessor.processPendingBatch() unguarded at line 219, ahead of evaluateTripStart. Same shape as the July 2026 trigger, which was fixed at the Battery V2 call site rather than as a class.',
+      'Recommended first PR: containment-aware overlap plus repair audit ordering, behind TRIP_REPAIR_COVERAGE_MODE defaulting to shadow. It unlocks 20.3 h alone and is a precondition for measuring any later change.',
+      'PRODUCTION_MUTATIONS = NONE, IMPLEMENTATION_STARTED = NO, BACKFILL_STARTED = NO, READY_FOR_IMPLEMENTATION = YES.',
+    ],
+    reason:
+      'The forensic audit established that real driving is missing from canonical trips but stopped at diagnosis. Implementation could not start without knowing which defect blocks first, what a corrected algorithm would actually recover, and in what order changes become observable.',
+    previousBehavior:
+      'Trip repair paired ON/OFF transitions only inside the query window, scored confidence from duration alone with a hard 300s cliff, ran motion detection for ICE only when ignition produced nothing, let a DIMO segment short-circuit ClickHouse, and treated any trip within ±5 minutes — including CANCELLED rows — as proof a drive was covered. No metric compared driving evidence against canonical trip time.',
+    details:
+      'Design and read-only validation only — no application code changed. architecture/TRIP_DETECTION_HARDENING_DESIGN_2026-08-28.md documents the re-derived lifecycle, the reproduced gap dataset, the failure category table, R1–R8, the coverage invariant, replay results, scale analysis for 1000+ vehicles, the five-PR slicing plan, the 20-row regression matrix and the acceptance gates. backend/scripts/analysis/trip-detection-replay/ holds the offline harness: baseline.ts mirrors current production semantics, proposed.ts is the executable specification.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T19:30:00.000Z',
+  },
+  {
     id: 'battery-v2-ice-rest-opening-policy-2026-08-28',
     version: '4.9.988',
     title: 'Battery V2 Stage 1 — ICE rest-window opening policy hardening',
