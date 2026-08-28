@@ -9,6 +9,7 @@ import {
 import { buildDimoRechargeSegmentsQuery } from './dimo-recharge-segments.query';
 import { normalizeDimoRechargeSegments } from './dimo-recharge-segments.normalizer';
 import { splitDimoRechargeQueryWindows } from './dimo-recharge-segments.window';
+import { DIMO_PRODUCTION_RECHARGE_DETECTOR_CONFIG } from '../energy-events/dimo-energy-detector.config';
 import type {
   DimoRechargeSegmentFetchOptions,
   DimoRechargeSegmentFetchResult,
@@ -99,6 +100,7 @@ export class DimoRechargeSegmentsClient {
               fromIso: window.from.toISOString(),
               toIso: window.to.toISOString(),
               sourceFilter: withSourceFilter ? options?.sourceFilter : null,
+              detectorConfig: DIMO_PRODUCTION_RECHARGE_DETECTOR_CONFIG,
             }),
         );
 

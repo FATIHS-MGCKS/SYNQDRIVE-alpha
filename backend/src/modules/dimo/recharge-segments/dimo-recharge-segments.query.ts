@@ -1,10 +1,15 @@
 import type { DimoRechargeSegmentAggregation } from './dimo-recharge-segments.types';
+import {
+  type DimoRechargeDetectorConfig,
+  renderDimoDetectorConfigArg,
+} from '../energy-events/dimo-energy-detector.config';
 
 export interface BuildDimoRechargeSegmentsQueryInput {
   tokenId: number;
   fromIso: string;
   toIso: string;
   sourceFilter?: string | null;
+  detectorConfig?: DimoRechargeDetectorConfig;
 }
 
 const RECHARGE_SIGNAL_REQUESTS: Array<{
@@ -66,7 +71,7 @@ export function buildDimoRechargeSegmentsQuery(
         tokenId: ${input.tokenId}
         from: "${input.fromIso}"
         to: "${input.toIso}"
-        mechanism: recharge${renderSourceFilter(input.sourceFilter)}
+        mechanism: recharge${renderSourceFilter(input.sourceFilter)}${renderDimoDetectorConfigArg(input.detectorConfig)}
         signalRequests: [
           ${renderSignalRequests()}
         ]

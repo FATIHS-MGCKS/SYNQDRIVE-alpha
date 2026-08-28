@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'energy-events-e2-detector-calibration-2026-08-28',
+    version: '4.9.976',
+    title: 'Energy Events E2 — DIMO refuel/recharge detector calibration',
+    summary: [
+      'Centralized detector config in `dimo-energy-detector.config.ts` (version `e2-2026-08`).',
+      'Production refuel: `config: { minIncreasePercent: 5 }` — live sweep default/2/3/5/7/10%; detects KS MX 2024 23-Aug refuel (13%→42%).',
+      'Production recharge: DIMO default detector (omit config) — Tesla 8 segments Jun 2026 re-validated live.',
+      'Fleet fuel inventory: KS MX + Arteon Class A (both signals); Audi Class C (absolute only); liters persist gate unchanged.',
+      '47 focused tests; full threshold matrix + fleet inventory artifacts; no historical backfill.',
+    ],
+    reason:
+      'E2 per audit: default DIMO refuel detector missed real refuels (KS MX canonical case) even after E1 transport repair.',
+    previousBehavior:
+      'Refuel/recharge queries omitted DIMO `config`; KS MX 23-Aug refuel returned zero segments with default detector.',
+    details:
+      'backend: dimo-energy-detector.config.ts, calibrate-energy-event-detectors.ts (default/2/3/5/7/10), e2-fleet-fuel-signal-inventory.ts, energy-events.service.spec persist gate A–E. docs/architecture/ENERGY_EVENTS_E2_DETECTOR_CALIBRATION_2026-08.md. E1 isolation/prune preserved.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T01:20:00.000Z',
+  },
+  {
     id: 'energy-events-e1-restoration-2026-08-27',
     version: '4.9.975',
     title: 'Energy Events E1 — restore refuel/recharge detection transport + safe prune',

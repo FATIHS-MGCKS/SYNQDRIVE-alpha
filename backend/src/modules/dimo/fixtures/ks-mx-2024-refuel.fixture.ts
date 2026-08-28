@@ -6,8 +6,8 @@
  * tokenId: 187336
  * License plate: KS MX 2024
  *
- * E1 restores transport/persistence. E2 must tune refuel detector config
- * (e.g. minIncreasePercent: 5) — default DIMO config returns [] for this refuel.
+ * E2 applies production refuel detector config (minIncreasePercent: 5).
+ * Default DIMO config returns [] for this refuel.
  */
 export const KS_MX_2024_TOKEN_ID = 187336;
 
