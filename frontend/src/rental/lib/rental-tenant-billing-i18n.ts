@@ -1,5 +1,5 @@
 /**
- * Rental Tenant Billing presentation adapter (P2.2.54 overview + shell; P2.2.55A tariff summary/breakdown/tier ladder).
+ * Rental Tenant Billing presentation adapter (P2.2.54 overview + shell; P2.2.55A tariff summary/breakdown/tier ladder; P2.2.55B billable vehicles + vehicle changes).
  * Locale-aware display helpers and static TranslationKeys only.
  */
 import {
@@ -13,6 +13,7 @@ import type { TenantSubscriptionSubTab } from '../components/billing/tenant-bill
 import type {
   TenantSubscriptionTariffDetailsDto,
   TenantSubscriptionTariffPricingDto,
+  TenantVehicleBillingChangeDto,
 } from '../types/billing.types';
 
 type Translate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
@@ -213,4 +214,13 @@ export function buildTariffPricingBreakdownRows(
   );
 
   return rows;
+}
+
+export function resolveVehicleChangeTypeLabel(
+  changeType: TenantVehicleBillingChangeDto['changeType'],
+  t: Translate,
+): string {
+  if (changeType === 'ADDED') return t('rentalRules.workflow.publish.kindAdded');
+  if (changeType === 'REMOVED') return t('rentalRules.workflow.publish.kindRemoved');
+  return t('rentalRules.workflow.publish.kindChanged');
 }

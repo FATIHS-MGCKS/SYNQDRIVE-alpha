@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-27",
+  "generatedAt": "2026-08-28",
   "phases": {
     "P21": {
       "enforceCleanExact": [
@@ -111,25 +111,25 @@
     }
   },
   "summary": {
-    "total": 1430,
+    "total": 1421,
     "bySurface": {
       "MASTER": 1049,
       "OPERATOR": 22,
-      "RENTAL": 333,
+      "RENTAL": 324,
       "SHARED": 1,
       "SHELL": 25
     },
     "byCategory": {
       "ARIA": 48,
-      "TITLE": 210,
-      "TEXT": 1015,
+      "TITLE": 207,
+      "TEXT": 1010,
       "LABEL": 85,
-      "PLACEHOLDER": 64,
+      "PLACEHOLDER": 63,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
       "other Rental areas": 260,
-      "Finance/Billing": 51,
+      "Finance/Billing": 42,
       "Tasks": 13,
       "Documents": 8,
       "App / routing shell": 1
@@ -15639,10 +15639,9 @@
       "sample": "Alle Status",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 3,
+      "occurrences": 2,
       "files": [
         "rental/components/billing/BillingInvoiceSection.tsx",
-        "rental/components/billing/TenantBillableVehiclesTable.tsx",
         "rental/components/billing/TenantInvoicesSection.tsx"
       ]
     },
@@ -15731,34 +15730,6 @@
       ]
     },
     {
-      "file": "rental/components/billing/TenantVehicleChangesSection.tsx",
-      "line": 43,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Änderungen an der Fahrzeugmenge",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/TenantVehicleChangesSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/billing/TenantVehicleChangesSection.tsx",
-      "line": 31,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TITLE",
-      "sample": "Änderungen konnten nicht geladen werden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/TenantVehicleChangesSection.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillableVehiclesDrawer.tsx",
       "line": 85,
       "surface": "RENTAL",
@@ -15770,20 +15741,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/BillableVehiclesDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/billing/TenantVehicleChangesSection.tsx",
-      "line": 80,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Anteilige Berechnung",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/TenantVehicleChangesSection.tsx"
       ]
     },
     {
@@ -16920,34 +16877,6 @@
       ]
     },
     {
-      "file": "rental/components/billing/TenantBillableVehiclesTable.tsx",
-      "line": 45,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Fahrzeuge in der Abrechnung",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/TenantBillableVehiclesTable.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/billing/TenantBillableVehiclesTable.tsx",
-      "line": 34,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TITLE",
-      "sample": "Fahrzeugliste konnte nicht geladen werden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/TenantBillableVehiclesTable.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantInvoiceDetailDrawer.tsx",
       "line": 148,
       "surface": "RENTAL",
@@ -17197,20 +17126,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/MisuseCasesPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/billing/TenantVehicleChangesSection.tsx",
-      "line": 44,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Hinzugefügte oder entfernte Fahrzeuge mit anteiliger Berechnung im aktuellen Zeitraum.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/TenantVehicleChangesSection.tsx"
       ]
     },
     {
@@ -17564,20 +17479,6 @@
       ]
     },
     {
-      "file": "rental/components/billing/TenantBillableVehiclesTable.tsx",
-      "line": 80,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TITLE",
-      "sample": "Keine Fahrzeuge in der Abrechnung",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/TenantBillableVehiclesTable.tsx"
-      ]
-    },
-    {
       "file": "rental/components/insights/InsightsCockpit.tsx",
       "line": 359,
       "surface": "RENTAL",
@@ -17689,20 +17590,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/BusinessInsightsBox.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/billing/TenantBillableVehiclesTable.tsx",
-      "line": 50,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "PLACEHOLDER",
-      "sample": "Kennzeichen oder Modell suchen…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/TenantBillableVehiclesTable.tsx"
       ]
     },
     {
@@ -18113,20 +18000,6 @@
       ]
     },
     {
-      "file": "rental/components/billing/TenantBillableVehiclesTable.tsx",
-      "line": 69,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Nicht abrechenbar",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/billing/TenantBillableVehiclesTable.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 709,
       "surface": "RENTAL",
@@ -18346,10 +18219,9 @@
       "sample": "Noch keine Fahrzeugänderungen",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/billing/BillableVehiclesDrawer.tsx",
-        "rental/components/billing/TenantVehicleChangesSection.tsx"
+        "rental/components/billing/BillableVehiclesDrawer.tsx"
       ]
     },
     {
@@ -19933,12 +19805,10 @@
       "sample": "Zurück",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 7,
+      "occurrences": 5,
       "files": [
         "rental/components/billing/BillingInvoiceSection.tsx",
-        "rental/components/billing/TenantBillableVehiclesTable.tsx",
         "rental/components/billing/TenantInvoicesSection.tsx",
-        "rental/components/billing/TenantVehicleChangesSection.tsx",
         "rental/components/booking-detail/BookingDossier.tsx",
         "rental/components/invoices/InvoiceDetail.tsx",
         "rental/components/new-booking/MobileBookingFooter.tsx"

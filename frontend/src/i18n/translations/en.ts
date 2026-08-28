@@ -775,6 +775,28 @@ export const en = {
   'tenantBilling.tariff.tierRange.range': '{min}–{max} vehicles',
   'tenantBilling.tariff.tierRange.openEnded': '{min}+ vehicles',
 
+  // ─── Tenant Billing Tariff Vehicles + Changes (P2.2.55B) ───
+  'tenantBilling.tariff.vehicles.loadErrorTitle': 'Vehicle list could not be loaded',
+  'tenantBilling.tariff.vehicles.title': 'Vehicles in billing',
+  'tenantBilling.tariff.vehicles.searchPlaceholder': 'Search license plate or model…',
+  'tenantBilling.tariff.vehicles.filter.billable': 'Billable',
+  'tenantBilling.tariff.vehicles.filter.excluded': 'Not billable',
+  'tenantBilling.tariff.vehicles.emptyTitle': 'No vehicles in billing',
+  'tenantBilling.tariff.vehicles.emptyDescription':
+    'Once vehicles are assigned to your subscription, they will appear here with billing status and period.',
+  'tenantBilling.tariff.vehicles.col.billableFrom': 'Billable from',
+  'tenantBilling.tariff.vehicles.col.billableUntil': 'Billable until',
+  'tenantBilling.tariff.vehicles.col.billingStatus': 'Billing status',
+  'tenantBilling.tariff.vehicles.col.reason': 'Reason',
+  'tenantBilling.tariff.vehicles.pagination.summary': '{shown} of {total} vehicles',
+  'tenantBilling.tariff.pagination.pageOf': 'Page {page} of {totalPages}',
+  'tenantBilling.tariff.changes.loadErrorTitle': 'Changes could not be loaded',
+  'tenantBilling.tariff.changes.title': 'Changes to vehicle count',
+  'tenantBilling.tariff.changes.subtitle':
+    'Added or removed vehicles with prorated billing in the current period.',
+  'tenantBilling.tariff.changes.emptyTitle': 'No vehicle changes yet',
+  'tenantBilling.tariff.changes.prorationLabel': 'Prorated billing',
+
   'finance.separationHint':
     'Customer payments and payouts are separate from your SynqDrive subscription. Your subscription card is not the same as your payout bank account.',
   'finance.customerPayments.pageTitle': 'Customer payments & payouts',

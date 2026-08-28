@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-tenant-billing-billable-vehicles-changes-p2-2-55b-2026-08-28',
+    version: '4.9.983',
+    title: 'Platform i18n — P2.2.55B Rental Tenant Billing Billable Vehicles + Vehicle Changes',
+    summary: [
+      'Localized billable vehicles table and vehicle changes section on Tariff & Vehicles tab via extended `rental-tenant-billing-i18n.ts`; 18 `tenantBilling.tariff.*` keys (8867→8885 EN+DE).',
+      'P255B enforce-clean exact scope (3 paths) — 0 findings; reuses `common.*`, `fleet.licensePlate`, `bookings.vehicle`, `vehicle.station`, `tasks.filter.statusAll`, `rentalRules.workflow.publish.kind*`.',
+      'Vehicle identity, billingStatus machine, billingStatusLabel/reason/event raw text, filter/search/sort/pagination, proration formatted precedence frozen. P255A frozen. Category E=0.',
+    ],
+    reason:
+      'P2.2.55B bounded implementation after P255A merge (#1362) per #1367 pre-flight verdict A.',
+    previousBehavior:
+      'Billable vehicles table and vehicle changes section used hardcoded German strings; changeTypeLabel in utils.',
+    details:
+      'Presentation-only adapter extension (`resolveVehicleChangeTypeLabel`). Removed German changeTypeLabel from utils; kept changeTypeTone. Deferred invoices/payment/add-ons untouched. P256 not started.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-28T00:00:00.000Z',
+  },
+  {
     id: 'i18n-rental-tenant-billing-tariff-vehicles-p2-2-55-2026-08-28',
     version: '4.9.982',
     title: 'Platform i18n — P2.2.55A Rental Tenant Billing Tariff (summary, breakdown, tier ladder)',
