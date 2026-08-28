@@ -13,7 +13,10 @@
  */
 import {
   buildUpsertPayload,
+  canonicalMeasurementEquals,
   isMateriallyIdentical,
+  normalizeRawDetectionMeta,
+  roundToCanonicalMeasurementPrecision,
   type CoalescedEnergySegment,
   type EnergyEventUpsertPayload,
   type MaterializedEnergyEventRow,
@@ -41,6 +44,32 @@ export const CANONICAL_MATERIAL_IDENTITY_FIELDS = [
   'confidence',
 ] as const;
 
+/**
+ * Fields `isMateriallyIdentical` compares at canonical measurement precision
+ * rather than bitwise, because storage cannot hold the 17th significant digit.
+ */
+const CANONICAL_MEASUREMENT_FIELDS = new Set<string>([
+  'startLatitude',
+  'startLongitude',
+  'endLatitude',
+  'endLongitude',
+  'fuelDeltaLiters',
+  'fuelDeltaPercent',
+  'socDeltaPercent',
+  'energyDeltaKwh',
+  'odometerStartKm',
+  'odometerEndKm',
+]);
+
+/**
+ * Fields where `isMateriallyIdentical` falls back to the payload value when the
+ * stored column is null, so a null column is not a difference.
+ */
+const NULL_TOLERANT_IDENTITY_FIELDS = new Set<string>([
+  'detectionMechanism',
+  'durationSeconds',
+]);
+
 /** Keys the canonical pipeline currently writes into `rawDetectionMeta`. */
 export const RAW_DETECTION_META_CANONICAL_KEYS = [
   'fuelStartLiters',
@@ -62,14 +91,13 @@ export const RAW_DETECTION_META_PROVENANCE_KEYS = [
 ] as const;
 
 /**
- * Relative tolerance for float re-serialization of the same physical value
- * (e.g. `34.599999999999994` vs `34.6`). Deliberately far below any
- * operationally meaningful SOC/energy/fuel resolution.
+ * Tolerance used when checking whether a constituent's SOC/energy gain fits
+ * inside its canonical parent. Only absorbs storage-precision noise.
  */
-export const FLOAT_REPRESENTATION_EPSILON = 1e-9;
+export const CONTAINMENT_TOLERANCE = 1e-9;
 
 export type RawDetectionMetaDiffClass =
-  | 'FLOAT_REPRESENTATION_DRIFT'
+  | 'STORAGE_PRECISION_DRIFT'
   | 'ARRAY_ORDER_DRIFT'
   | 'NON_CANONICAL_DIAGNOSTIC_DIFF'
   | 'CANONICAL_KEY_PRESENCE_DRIFT'
@@ -77,7 +105,7 @@ export type RawDetectionMetaDiffClass =
   | 'MEASUREMENT_VALUE_DIFFERS';
 
 const NON_SEMANTIC_META_DIFF_CLASSES: RawDetectionMetaDiffClass[] = [
-  'FLOAT_REPRESENTATION_DRIFT',
+  'STORAGE_PRECISION_DRIFT',
   'ARRAY_ORDER_DRIFT',
   'NON_CANONICAL_DIAGNOSTIC_DIFF',
 ];
@@ -90,8 +118,13 @@ export interface RawDetectionMetaDiff {
   detectorValue: unknown;
 }
 
+export type CanonicalFieldDiffClass =
+  | 'STORAGE_PRECISION_DRIFT'
+  | 'VALUE_DIFFERS';
+
 export interface CanonicalFieldDiff {
   field: string;
+  diffClass: CanonicalFieldDiffClass;
   fieldClass: CanonicalFieldClass;
   dbValue: unknown;
   detectorValue: unknown;
@@ -103,6 +136,14 @@ export interface CanonicalIdentityDiff {
   metaDiffs: RawDetectionMetaDiff[];
   semanticDiffCount: number;
   nonSemanticDiffCount: number;
+  /**
+   * True when the production verdict cannot be attributed to the reported
+   * diffs: either the canonical comparison says "different" while no difference
+   * was found at all, or it says "identical" despite a semantic difference.
+   * Either way the forensic layer has drifted from the canonical comparison and
+   * no disposition derived from it may be trusted.
+   */
+  unexplainedVerdict: boolean;
 }
 
 function normalizeComparable(value: unknown): unknown {
@@ -120,12 +161,20 @@ export function asMetaRecord(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function isFloatRepresentationDrift(left: unknown, right: unknown): boolean {
-  if (typeof left !== 'number' || typeof right !== 'number') return false;
-  if (!Number.isFinite(left) || !Number.isFinite(right)) return false;
-  if (left === right) return true;
-  const scale = Math.max(1, Math.abs(left), Math.abs(right));
-  return Math.abs(left - right) <= FLOAT_REPRESENTATION_EPSILON * scale;
+/**
+ * True when two values render differently but describe the same measurement at
+ * canonical precision — the signature of a value that lost its 17th significant
+ * digit on write. Callers must rule out key-presence drift first, because an
+ * absent key normalizes to null and would otherwise land here.
+ */
+function isStoragePrecisionDrift(left: unknown, right: unknown): boolean {
+  if (typeof left === 'number' && typeof right === 'number') {
+    return canonicalMeasurementEquals(left, right);
+  }
+  return (
+    JSON.stringify(canonicalizeForComparison(normalizeComparable(left))) ===
+    JSON.stringify(canonicalizeForComparison(normalizeComparable(right)))
+  );
 }
 
 function isArrayOrderDrift(left: unknown, right: unknown): boolean {
@@ -136,9 +185,27 @@ function isArrayOrderDrift(left: unknown, right: unknown): boolean {
   return sortedLeft.every((item, index) => item === sortedRight[index]);
 }
 
-function metaValuesEqual(left: unknown, right: unknown): boolean {
-  if (isFloatRepresentationDrift(left, right)) return true;
-  return JSON.stringify(normalizeComparable(left)) === JSON.stringify(normalizeComparable(right));
+/**
+ * Byte-level equality of two metadata values. A difference here is exactly what
+ * makes the canonical comparison classify the candidate as UPDATE, so it is
+ * always reported — the diff class then says whether it is semantic.
+ */
+function metaValuesBitwiseEqual(left: unknown, right: unknown): boolean {
+  return (
+    JSON.stringify(normalizeComparable(left)) ===
+    JSON.stringify(normalizeComparable(right))
+  );
+}
+
+function canonicalizeForComparison(value: unknown): unknown {
+  if (typeof value === 'number') {
+    return roundToCanonicalMeasurementPrecision(value);
+  }
+  if (Array.isArray(value)) return value.map(canonicalizeForComparison);
+  if (value && typeof value === 'object') {
+    return normalizeRawDetectionMeta(value);
+  }
+  return value;
 }
 
 export function classifyRawDetectionMetaKeyDiff(
@@ -148,13 +215,13 @@ export function classifyRawDetectionMetaKeyDiff(
 ): RawDetectionMetaDiffClass {
   const canonicalKey = (RAW_DETECTION_META_CANONICAL_KEYS as readonly string[]).includes(key);
   if (!canonicalKey) return 'NON_CANONICAL_DIAGNOSTIC_DIFF';
-  if (isFloatRepresentationDrift(dbValue, detectorValue)) {
-    return 'FLOAT_REPRESENTATION_DRIFT';
+  if ((dbValue === undefined) !== (detectorValue === undefined)) {
+    return 'CANONICAL_KEY_PRESENCE_DRIFT';
+  }
+  if (isStoragePrecisionDrift(dbValue, detectorValue)) {
+    return 'STORAGE_PRECISION_DRIFT';
   }
   if (isArrayOrderDrift(dbValue, detectorValue)) return 'ARRAY_ORDER_DRIFT';
-  const dbAbsent = dbValue === undefined;
-  const detectorAbsent = detectorValue === undefined;
-  if (dbAbsent !== detectorAbsent) return 'CANONICAL_KEY_PRESENCE_DRIFT';
   if ((RAW_DETECTION_META_PROVENANCE_KEYS as readonly string[]).includes(key)) {
     return 'CANONICAL_PROVENANCE_DIFFERS';
   }
@@ -185,7 +252,7 @@ export function diffRawDetectionMeta(
     const detectorValue = Object.prototype.hasOwnProperty.call(right, key)
       ? right[key]
       : undefined;
-    if (metaValuesEqual(dbValue, detectorValue)) continue;
+    if (metaValuesBitwiseEqual(dbValue, detectorValue)) continue;
 
     const diffClass = classifyRawDetectionMetaKeyDiff(key, dbValue, detectorValue);
     diffs.push({
@@ -200,10 +267,48 @@ export function diffRawDetectionMeta(
   return diffs;
 }
 
+function classifyCanonicalFieldDiff(
+  field: string,
+  dbValue: unknown,
+  detectorValue: unknown,
+): CanonicalFieldDiffClass {
+  if (
+    CANONICAL_MEASUREMENT_FIELDS.has(field) &&
+    canonicalMeasurementEquals(dbValue as number, detectorValue as number)
+  ) {
+    return 'STORAGE_PRECISION_DRIFT';
+  }
+  return 'VALUE_DIFFERS';
+}
+
+function reportableValue(value: unknown): unknown {
+  if (value instanceof Date) return value.toISOString();
+  return value ?? null;
+}
+
+/**
+ * Self-check on the attribution above: an UPDATE verdict with nothing reported
+ * means the forensic layer no longer sees what the canonical comparison sees,
+ * and an identical verdict alongside a semantic difference is a contradiction.
+ */
+export function isUnexplainedVerdict(input: {
+  materiallyIdentical: boolean;
+  reportedDiffCount: number;
+  semanticDiffCount: number;
+}): boolean {
+  if (!input.materiallyIdentical) return input.reportedDiffCount === 0;
+  return input.semanticDiffCount > 0;
+}
+
 /**
  * Field-by-field explanation of a canonical WOULD_UPDATE. Uses the production
  * comparison (`isMateriallyIdentical`) as the authority for the verdict, then
  * attributes the verdict to concrete fields.
+ *
+ * Every representation difference is reported, including ones the canonical
+ * comparison tolerates: hiding them is what made a WOULD_UPDATE look
+ * unexplainable. `unexplainedVerdict` guards against the inverse — a verdict the
+ * reported diffs cannot account for.
  */
 export function diffCanonicalMaterialIdentity(
   existing: MaterializedEnergyEventRow,
@@ -217,14 +322,18 @@ export function diffCanonicalMaterialIdentity(
     const dbValue = existingRecord[field];
     const detectorValue = payloadRecord[field];
     if (valuesEqual(dbValue, detectorValue)) continue;
+    if (NULL_TOLERANT_IDENTITY_FIELDS.has(field) && dbValue == null) continue;
+
+    const diffClass = classifyCanonicalFieldDiff(field, dbValue, detectorValue);
     fieldDiffs.push({
       field,
-      fieldClass: 'SEMANTIC',
-      dbValue: dbValue instanceof Date ? dbValue.toISOString() : (dbValue ?? null),
-      detectorValue:
-        detectorValue instanceof Date
-          ? detectorValue.toISOString()
-          : (detectorValue ?? null),
+      diffClass,
+      fieldClass:
+        diffClass === 'STORAGE_PRECISION_DRIFT'
+          ? 'NON_SEMANTIC_METADATA'
+          : 'SEMANTIC',
+      dbValue: reportableValue(dbValue),
+      detectorValue: reportableValue(detectorValue),
     });
   }
 
@@ -233,18 +342,25 @@ export function diffCanonicalMaterialIdentity(
     payload.rawDetectionMeta,
   );
 
+  const isSemantic = (entry: { fieldClass: CanonicalFieldClass }): boolean =>
+    entry.fieldClass === 'SEMANTIC';
   const semanticDiffCount =
-    fieldDiffs.length +
-    metaDiffs.filter((diff) => diff.fieldClass === 'SEMANTIC').length;
+    fieldDiffs.filter(isSemantic).length + metaDiffs.filter(isSemantic).length;
+  const nonSemanticDiffCount =
+    fieldDiffs.length + metaDiffs.length - semanticDiffCount;
+  const materiallyIdentical = isMateriallyIdentical(existing, payload);
 
   return {
-    materiallyIdentical: isMateriallyIdentical(existing, payload),
+    materiallyIdentical,
     fieldDiffs,
     metaDiffs,
     semanticDiffCount,
-    nonSemanticDiffCount: metaDiffs.filter(
-      (diff) => diff.fieldClass === 'NON_SEMANTIC_METADATA',
-    ).length,
+    nonSemanticDiffCount,
+    unexplainedVerdict: isUnexplainedVerdict({
+      materiallyIdentical,
+      reportedDiffCount: fieldDiffs.length + metaDiffs.length,
+      semanticDiffCount,
+    }),
   };
 }
 
@@ -340,10 +456,10 @@ function socCompatibility(
     const rowEnergy = row.energyDeltaKwh;
     const parentEnergy = parent.energyDeltaKwh;
     if (rowEnergy == null || parentEnergy == null) return 'UNAVAILABLE';
-    return rowEnergy <= parentEnergy + FLOAT_REPRESENTATION_EPSILON ? 'YES' : 'NO';
+    return rowEnergy <= parentEnergy + CONTAINMENT_TOLERANCE ? 'YES' : 'NO';
   }
   // A constituent can never carry more SOC gain than the session that contains it.
-  return rowSoc <= parentSoc + FLOAT_REPRESENTATION_EPSILON ? 'YES' : 'NO';
+  return rowSoc <= parentSoc + CONTAINMENT_TOLERANCE ? 'YES' : 'NO';
 }
 
 /**
@@ -480,6 +596,165 @@ export function assessSubsegmentProvenance(
     stillEmittedByCurrentDetector: stillEmitted,
     safePruneAuthority: provenProvenance && blockers.length === 0,
     blockers: [...new Set(blockers)],
+  };
+}
+
+export interface OverlapPopulationRow {
+  id: string;
+  dimoSegmentId: string;
+  startTime: Date;
+  endTime: Date;
+  socDeltaPercent: number | null;
+  energyDeltaKwh: number | null;
+}
+
+export type OverlapPopulationDisposition =
+  /** The candidate does not overlap any persisted row of the same identity class. */
+  | 'NO_OVERLAP'
+  /** Every overlapping row is named in the candidate's coalesce provenance. */
+  | 'PROVEN_CONSTITUENTS'
+  /**
+   * The overlapping rows contradict each other or over-count the candidate's
+   * measured gain, so they cannot all be independent events — but nothing links
+   * them to the candidate, so the correction is an operator decision.
+   */
+  | 'REDUNDANT_POPULATION_PROVENANCE_ABSENT'
+  /** Overlapping but mutually consistent: may be genuinely separate sessions. */
+  | 'INDEPENDENT_SESSIONS_PRESERVE';
+
+export interface OverlapPopulationAssessment {
+  candidateDimoSegmentId: string;
+  overlappingRowIds: string[];
+  containedRowCount: number;
+  /** Overlapping pairs *within* the population — physically impossible. */
+  pairwiseOverlapContradictions: number;
+  provenanceLinkedRowCount: number;
+  socDeltaSum: number | null;
+  energyDeltaSum: number | null;
+  candidateSocDelta: number | null;
+  candidateEnergyDelta: number | null;
+  /** Population gain exceeds the candidate's own gain — double counting. */
+  aggregateExceedsCandidate: boolean | null;
+  disposition: OverlapPopulationDisposition;
+  pruneAuthority: boolean;
+  blockers: string[];
+}
+
+function overlaps(
+  left: { startTime: Date; endTime: Date },
+  right: { startTime: Date; endTime: Date },
+): boolean {
+  return (
+    left.startTime.getTime() < right.endTime.getTime() &&
+    left.endTime.getTime() > right.startTime.getTime()
+  );
+}
+
+function sumOrNull(values: Array<number | null>): number | null {
+  const finite = values.filter(
+    (value): value is number => value != null && Number.isFinite(value),
+  );
+  return finite.length === 0
+    ? null
+    : finite.reduce((total, value) => total + value, 0);
+}
+
+/**
+ * Classifies the population of persisted rows a canonical candidate overlaps.
+ *
+ * The only source of prune authority is coalesce provenance: every overlapping
+ * row must be named in the candidate's `coalescedFromSegmentIds`. Temporal
+ * containment, pairwise contradiction and aggregate over-counting are reported
+ * as evidence that the persisted population is internally inconsistent, but
+ * they never authorize a delete — which row is redundant, and whether the
+ * candidate should replace it, is not derivable from arithmetic alone.
+ *
+ * Caller scopes `population` to the candidate's vehicle and mechanism.
+ */
+export function assessOverlapPopulation(input: {
+  candidate: {
+    dimoSegmentId: string;
+    startTime: Date;
+    endTime: Date;
+    socDeltaPercent: number | null;
+    energyDeltaKwh: number | null;
+    coalescedFromSegmentIds: string[];
+  };
+  population: OverlapPopulationRow[];
+}): OverlapPopulationAssessment {
+  const { candidate } = input;
+  const provenanceIds = new Set(
+    candidate.coalescedFromSegmentIds.filter(
+      (id) => id !== candidate.dimoSegmentId,
+    ),
+  );
+
+  const overlapping = input.population.filter(
+    (row) => row.dimoSegmentId !== candidate.dimoSegmentId && overlaps(row, candidate),
+  );
+
+  let pairwiseOverlapContradictions = 0;
+  for (let i = 0; i < overlapping.length; i++) {
+    for (let j = i + 1; j < overlapping.length; j++) {
+      if (overlaps(overlapping[i], overlapping[j])) {
+        pairwiseOverlapContradictions += 1;
+      }
+    }
+  }
+
+  const socDeltaSum = sumOrNull(overlapping.map((row) => row.socDeltaPercent));
+  const energyDeltaSum = sumOrNull(overlapping.map((row) => row.energyDeltaKwh));
+  const aggregateExceedsCandidate =
+    socDeltaSum != null && candidate.socDeltaPercent != null
+      ? socDeltaSum > candidate.socDeltaPercent + CONTAINMENT_TOLERANCE
+      : energyDeltaSum != null && candidate.energyDeltaKwh != null
+        ? energyDeltaSum > candidate.energyDeltaKwh + CONTAINMENT_TOLERANCE
+        : null;
+
+  const provenanceLinked = overlapping.filter((row) =>
+    provenanceIds.has(row.dimoSegmentId),
+  );
+
+  const blockers: string[] = [];
+  let disposition: OverlapPopulationDisposition;
+
+  if (overlapping.length === 0) {
+    disposition = 'NO_OVERLAP';
+  } else if (provenanceLinked.length === overlapping.length) {
+    disposition = 'PROVEN_CONSTITUENTS';
+  } else if (pairwiseOverlapContradictions > 0 || aggregateExceedsCandidate) {
+    disposition = 'REDUNDANT_POPULATION_PROVENANCE_ABSENT';
+    blockers.push(
+      'redundant_overlapping_population_without_canonical_provenance',
+    );
+  } else {
+    disposition = 'INDEPENDENT_SESSIONS_PRESERVE';
+    blockers.push('overlapping_rows_may_be_independent_sessions');
+  }
+
+  if (
+    overlapping.length > 0 &&
+    provenanceLinked.length > 0 &&
+    provenanceLinked.length < overlapping.length
+  ) {
+    blockers.push('canonical_provenance_covers_population_only_partially');
+  }
+
+  return {
+    candidateDimoSegmentId: candidate.dimoSegmentId,
+    overlappingRowIds: overlapping.map((row) => row.id),
+    containedRowCount: overlapping.filter((row) => containedIn(row, candidate))
+      .length,
+    pairwiseOverlapContradictions,
+    provenanceLinkedRowCount: provenanceLinked.length,
+    socDeltaSum,
+    energyDeltaSum,
+    candidateSocDelta: candidate.socDeltaPercent,
+    candidateEnergyDelta: candidate.energyDeltaKwh,
+    aggregateExceedsCandidate,
+    disposition,
+    pruneAuthority: disposition === 'PROVEN_CONSTITUENTS',
+    blockers,
   };
 }
 

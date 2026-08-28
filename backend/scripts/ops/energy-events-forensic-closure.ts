@@ -38,6 +38,7 @@ import {
   type CoalescedEnergySegment,
 } from '../../src/modules/vehicle-intelligence/energy-events/energy-events.pipeline';
 import {
+  assessOverlapPopulation,
   assessSubsegmentProvenance,
   diffCanonicalMaterialIdentity,
   readStoredCoalesceProvenance,
@@ -161,10 +162,20 @@ function sanitizeMeta(meta: unknown): unknown {
   return out;
 }
 
+/**
+ * Row write provenance, read separately so the production recovery read path
+ * keeps its narrow column selection. Distinguishes rows this recovery wrote
+ * from rows that predate it.
+ */
+const rowWriteProvenance = new Map<string, { createdAt: string; updatedAt: string }>();
+
 function sanitizeDbRow(row: RecoveryExistingEnergyEvent) {
   const provenance = readStoredCoalesceProvenance(row.rawDetectionMeta);
+  const writeProvenance = rowWriteProvenance.get(row.id) ?? null;
   return {
     rowAlias: aliasRowId(row.id),
+    createdAt: writeProvenance?.createdAt ?? null,
+    updatedAt: writeProvenance?.updatedAt ?? null,
     dimoSegmentId: aliasSegmentId(row.dimoSegmentId),
     kind: row.kind,
     detectionMechanism: row.detectionMechanism,
@@ -253,6 +264,16 @@ async function main() {
     outageStart,
     recoveryCutoff,
   });
+
+  for (const row of await prisma.vehicleEnergyEvent.findMany({
+    where: { startTime: { gte: outageStart, lt: recoveryCutoff } },
+    select: { id: true, createdAt: true, updatedAt: true },
+  })) {
+    rowWriteProvenance.set(row.id, {
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+    });
+  }
 
   const accounting = createDimoRequestAccounting();
   const tokenIds = rows.map((row) => row.tokenId);
@@ -421,6 +442,25 @@ async function main() {
         row.kind === (candidate.mechanism === 'refuel' ? 'REFUEL' : 'RECHARGE'),
     );
 
+    const overlapPopulation = assessOverlapPopulation({
+      candidate: {
+        dimoSegmentId: candidate.dimoSegmentId,
+        startTime: new Date(candidate.startTime),
+        endTime: new Date(candidate.endTime),
+        socDeltaPercent: candidate.socDeltaPercent,
+        energyDeltaKwh: candidate.energyDeltaKwh,
+        coalescedFromSegmentIds: candidate.coalescedFromSegmentIds,
+      },
+      population: sameMechanismRows.map((row) => ({
+        id: row.id,
+        dimoSegmentId: row.dimoSegmentId,
+        startTime: row.startTime,
+        endTime: row.endTime,
+        socDeltaPercent: row.socDeltaPercent,
+        energyDeltaKwh: row.energyDeltaKwh,
+      })),
+    });
+
     const provenance =
       dbRow &&
       assessSubsegmentProvenance({
@@ -465,6 +505,13 @@ async function main() {
         dbRow && payload
           ? sanitizeDiff(diffCanonicalMaterialIdentity(dbRow, payload))
           : null,
+      overlapPopulation: {
+        ...overlapPopulation,
+        candidateDimoSegmentId: aliasSegmentId(
+          overlapPopulation.candidateDimoSegmentId,
+        ),
+        overlappingRowIds: overlapPopulation.overlappingRowIds.map(aliasRowId),
+      },
       provenance: provenance
         ? {
             ...provenance,

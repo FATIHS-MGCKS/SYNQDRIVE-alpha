@@ -6,13 +6,16 @@ import {
   type CoalescedEnergySegment,
 } from './energy-events.pipeline';
 import {
+  assessOverlapPopulation,
   assessSubsegmentProvenance,
   classifyRawDetectionMetaKeyDiff,
   diffCanonicalMaterialIdentity,
   diffRawDetectionMeta,
+  isUnexplainedVerdict,
   readStoredCoalesceProvenance,
   redactSegmentIdentity,
   type CanonicalParentRow,
+  type OverlapPopulationRow,
 } from './energy-events-recovery-forensics';
 
 const VEHICLE_ID = 'clveh1234567890123456789012';
@@ -92,6 +95,7 @@ describe('energy-events recovery forensics — canonical identity diff', () => {
     expect(diff.fieldDiffs).toEqual([]);
     expect(diff.metaDiffs).toEqual([]);
     expect(diff.semanticDiffCount).toBe(0);
+    expect(diff.unexplainedVerdict).toBe(false);
   });
 
   it('classifies a business-field drift as SEMANTIC', () => {
@@ -105,12 +109,115 @@ describe('energy-events recovery forensics — canonical identity diff', () => {
     expect(diff.fieldDiffs).toEqual([
       {
         field: 'socDeltaPercent',
+        diffClass: 'VALUE_DIFFERS',
         fieldClass: 'SEMANTIC',
         dbValue: 11,
         detectorValue: 15,
       },
     ]);
     expect(diff.semanticDiffCount).toBe(1);
+    expect(diff.unexplainedVerdict).toBe(false);
+  });
+
+  it('classifies a stored measurement that lost its 17th digit as NON_SEMANTIC_METADATA', () => {
+    const group = coalesceSegments([
+      buildRecharge({
+        socDeltaPercent: 11.636887154233477,
+        energyDeltaKwh: 2.2399999499320984,
+        odometerStartKm: 179360.35151915916,
+        odometerEndKm: 179360.35151915916,
+      }),
+    ])[0];
+    const payload = buildUpsertPayload(VEHICLE_ID, group);
+    const row = rowFromSegment(group, {
+      socDeltaPercent: 11.63688715423348,
+      energyDeltaKwh: 2.239999949932098,
+      odometerStartKm: 179360.3515191592,
+    });
+
+    const diff = diffCanonicalMaterialIdentity(row, payload);
+
+    expect(diff.materiallyIdentical).toBe(true);
+    expect(diff.semanticDiffCount).toBe(0);
+    expect(diff.unexplainedVerdict).toBe(false);
+    expect(
+      diff.fieldDiffs.map((entry) => [entry.field, entry.diffClass, entry.fieldClass]),
+    ).toEqual([
+      ['socDeltaPercent', 'STORAGE_PRECISION_DRIFT', 'NON_SEMANTIC_METADATA'],
+      ['energyDeltaKwh', 'STORAGE_PRECISION_DRIFT', 'NON_SEMANTIC_METADATA'],
+      ['odometerStartKm', 'STORAGE_PRECISION_DRIFT', 'NON_SEMANTIC_METADATA'],
+    ]);
+  });
+
+  it('reports metadata precision drift instead of hiding it', () => {
+    const group = coalesceSegments([
+      buildRecharge({ socStartPercent: 12.941176470588236 }),
+    ])[0];
+    const payload = buildUpsertPayload(VEHICLE_ID, group);
+    const row = rowFromSegment(group, {
+      rawDetectionMeta: {
+        ...(payload.rawDetectionMeta as Record<string, unknown>),
+        socStartPercent: 12.94117647058824,
+      },
+    });
+
+    const diff = diffCanonicalMaterialIdentity(row, payload);
+
+    expect(diff.materiallyIdentical).toBe(true);
+    expect(diff.semanticDiffCount).toBe(0);
+    expect(diff.nonSemanticDiffCount).toBe(1);
+    expect(diff.metaDiffs.map((entry) => [entry.key, entry.diffClass])).toEqual([
+      ['socStartPercent', 'STORAGE_PRECISION_DRIFT'],
+    ]);
+    expect(diff.unexplainedVerdict).toBe(false);
+  });
+
+  it('mirrors the null-column tolerance of the canonical comparison', () => {
+    const group = coalesceSegments([buildRecharge()])[0];
+    const payload = buildUpsertPayload(VEHICLE_ID, group);
+    const legacyRow = rowFromSegment(group, {
+      durationSeconds: null,
+      detectionMechanism: null,
+    });
+
+    const diff = diffCanonicalMaterialIdentity(legacyRow, payload);
+
+    expect(diff.materiallyIdentical).toBe(true);
+    expect(diff.fieldDiffs).toEqual([]);
+    expect(diff.unexplainedVerdict).toBe(false);
+  });
+
+  it('flags an UPDATE verdict that no reported difference accounts for', () => {
+    // The failure mode observed in production: WOULD_UPDATE with an empty diff,
+    // because the forensic layer swallowed the drift the comparison acted on.
+    expect(
+      isUnexplainedVerdict({
+        materiallyIdentical: false,
+        reportedDiffCount: 0,
+        semanticDiffCount: 0,
+      }),
+    ).toBe(true);
+    expect(
+      isUnexplainedVerdict({
+        materiallyIdentical: false,
+        reportedDiffCount: 1,
+        semanticDiffCount: 0,
+      }),
+    ).toBe(false);
+    expect(
+      isUnexplainedVerdict({
+        materiallyIdentical: true,
+        reportedDiffCount: 2,
+        semanticDiffCount: 1,
+      }),
+    ).toBe(true);
+    expect(
+      isUnexplainedVerdict({
+        materiallyIdentical: true,
+        reportedDiffCount: 2,
+        semanticDiffCount: 0,
+      }),
+    ).toBe(false);
   });
 
   it('classifies coalesce provenance drift as SEMANTIC', () => {
@@ -163,7 +270,15 @@ describe('energy-events recovery forensics — canonical identity diff', () => {
       { socEndPercent: 55 },
     );
 
-    expect(diffs).toEqual([]);
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0].diffClass).toBe('STORAGE_PRECISION_DRIFT');
+    expect(diffs[0].fieldClass).toBe('NON_SEMANTIC_METADATA');
+  });
+
+  it('does not report metadata that is byte-identical', () => {
+    expect(
+      diffRawDetectionMeta({ socEndPercent: 55 }, { socEndPercent: 55 }),
+    ).toEqual([]);
   });
 
   it('classifies array order drift of canonical provenance as NON_SEMANTIC_METADATA', () => {
@@ -401,6 +516,142 @@ describe('energy-events recovery forensics — prune authority', () => {
     expect(assessment.blockers).toContain(
       'canonical_parent_row_not_materially_identical',
     );
+  });
+});
+
+describe('energy-events recovery forensics — overlapping persisted population', () => {
+  const candidate = {
+    dimoSegmentId: `dimo-recharge-${TOKEN_ID}-1784220138893`,
+    startTime: new Date('2026-07-16T16:42:18.893Z'),
+    endTime: new Date('2026-07-16T23:54:02.926Z'),
+    socDeltaPercent: 23.59584792408137,
+    energyDeltaKwh: 11.879999734461308,
+    coalescedFromSegmentIds: [`dimo-recharge-${TOKEN_ID}-1784220138893`],
+  };
+
+  function legacyRow(
+    index: number,
+    startIso: string,
+    endIso: string,
+    socDeltaPercent: number,
+  ): OverlapPopulationRow {
+    return {
+      id: `legacy-${index}`,
+      dimoSegmentId: `dimo-recharge-${TOKEN_ID}-17842${index}00000`,
+      startTime: new Date(startIso),
+      endTime: new Date(endIso),
+      socDeltaPercent,
+      energyDeltaKwh: socDeltaPercent / 2,
+    };
+  }
+
+  it('proves a sliding-window legacy population is redundant without granting delete authority', () => {
+    // Overlapping ~32 min detections stepping every ~15 min: they overlap each
+    // other, which no two independent physical sessions can do.
+    const population = [
+      legacyRow(1, '2026-07-16T18:50:38.927Z', '2026-07-16T19:22:06.926Z', 1.26),
+      legacyRow(2, '2026-07-16T19:06:38.927Z', '2026-07-16T19:37:38.927Z', 1.37),
+      legacyRow(3, '2026-07-16T19:21:06.927Z', '2026-07-16T19:52:53.926Z', 1.29),
+    ];
+
+    const assessment = assessOverlapPopulation({ candidate, population });
+
+    expect(assessment.overlappingRowIds).toHaveLength(3);
+    expect(assessment.containedRowCount).toBe(3);
+    expect(assessment.pairwiseOverlapContradictions).toBe(3);
+    expect(assessment.provenanceLinkedRowCount).toBe(0);
+    expect(assessment.disposition).toBe(
+      'REDUNDANT_POPULATION_PROVENANCE_ABSENT',
+    );
+    expect(assessment.pruneAuthority).toBe(false);
+    expect(assessment.blockers).toContain(
+      'redundant_overlapping_population_without_canonical_provenance',
+    );
+  });
+
+  it('proves double counting when the population gain exceeds the candidate gain', () => {
+    const population = [
+      legacyRow(1, '2026-07-16T17:00:00.000Z', '2026-07-16T19:00:00.000Z', 15),
+      legacyRow(2, '2026-07-16T20:00:00.000Z', '2026-07-16T22:00:00.000Z', 15),
+    ];
+
+    const assessment = assessOverlapPopulation({ candidate, population });
+
+    expect(assessment.pairwiseOverlapContradictions).toBe(0);
+    expect(assessment.socDeltaSum).toBe(30);
+    expect(assessment.aggregateExceedsCandidate).toBe(true);
+    expect(assessment.disposition).toBe(
+      'REDUNDANT_POPULATION_PROVENANCE_ABSENT',
+    );
+    expect(assessment.pruneAuthority).toBe(false);
+  });
+
+  it('grants prune authority only when coalesce provenance names every overlapping row', () => {
+    const population = [
+      legacyRow(1, '2026-07-16T17:00:00.000Z', '2026-07-16T19:00:00.000Z', 8),
+      legacyRow(2, '2026-07-16T20:00:00.000Z', '2026-07-16T22:00:00.000Z', 8),
+    ];
+
+    const assessment = assessOverlapPopulation({
+      candidate: {
+        ...candidate,
+        coalescedFromSegmentIds: population.map((row) => row.dimoSegmentId),
+      },
+      population,
+    });
+
+    expect(assessment.disposition).toBe('PROVEN_CONSTITUENTS');
+    expect(assessment.pruneAuthority).toBe(true);
+    expect(assessment.blockers).toEqual([]);
+  });
+
+  it('refuses prune authority when provenance covers the population only partially', () => {
+    const population = [
+      legacyRow(1, '2026-07-16T17:00:00.000Z', '2026-07-16T19:00:00.000Z', 8),
+      legacyRow(2, '2026-07-16T20:00:00.000Z', '2026-07-16T22:00:00.000Z', 8),
+    ];
+
+    const assessment = assessOverlapPopulation({
+      candidate: {
+        ...candidate,
+        coalescedFromSegmentIds: [population[0].dimoSegmentId],
+      },
+      population,
+    });
+
+    expect(assessment.provenanceLinkedRowCount).toBe(1);
+    expect(assessment.pruneAuthority).toBe(false);
+    expect(assessment.blockers).toContain(
+      'canonical_provenance_covers_population_only_partially',
+    );
+  });
+
+  it('preserves mutually consistent overlapping rows as possibly independent sessions', () => {
+    const population = [
+      legacyRow(1, '2026-07-16T17:00:00.000Z', '2026-07-16T19:00:00.000Z', 5),
+      legacyRow(2, '2026-07-16T20:00:00.000Z', '2026-07-16T22:00:00.000Z', 5),
+    ];
+
+    const assessment = assessOverlapPopulation({ candidate, population });
+
+    expect(assessment.disposition).toBe('INDEPENDENT_SESSIONS_PRESERVE');
+    expect(assessment.pruneAuthority).toBe(false);
+    expect(assessment.blockers).toContain(
+      'overlapping_rows_may_be_independent_sessions',
+    );
+  });
+
+  it('reports no overlap for a physically separate session', () => {
+    const assessment = assessOverlapPopulation({
+      candidate,
+      population: [
+        legacyRow(9, '2026-07-18T11:35:23.495Z', '2026-07-18T13:39:23.494Z', 11),
+      ],
+    });
+
+    expect(assessment.disposition).toBe('NO_OVERLAP');
+    expect(assessment.pruneAuthority).toBe(false);
+    expect(assessment.overlappingRowIds).toEqual([]);
   });
 });
 
