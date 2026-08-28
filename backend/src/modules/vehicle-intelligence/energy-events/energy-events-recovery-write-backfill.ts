@@ -529,7 +529,14 @@ function isSubsumedRechargeSession(
   const legacyEnd = new Date(legacy.endTime).getTime();
   const canonicalStart = new Date(canonical.startTime).getTime();
   const canonicalEnd = new Date(canonical.endTime).getTime();
-  return legacyStart >= canonicalStart && legacyEnd <= canonicalEnd;
+  const overlapStart = Math.max(legacyStart, canonicalStart);
+  const overlapEnd = Math.min(legacyEnd, canonicalEnd);
+  const overlap = Math.max(0, overlapEnd - overlapStart);
+  if (overlap <= 0) {
+    return false;
+  }
+  const legacyDuration = Math.max(1, legacyEnd - legacyStart);
+  return overlap / legacyDuration >= 0.9;
 }
 
 async function pruneSubsumedRechargeCandidates(
@@ -791,8 +798,7 @@ export async function executeControlledWriteBackfill(options: {
           resolved.payload,
           entry.requestedAction,
           {
-            forceUpdate:
-              options.completeRemaining === true && entry.mechanism === 'refuel',
+            forceUpdate: options.completeRemaining === true,
           },
         );
 
