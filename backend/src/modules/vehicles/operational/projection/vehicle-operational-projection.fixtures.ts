@@ -11,6 +11,7 @@ import {
   ProviderLinkState,
   type VehicleConnectivityRuntimeState,
 } from '../../connectivity/domain/connectivity-domain.types';
+import { classifyConnectivityDiagnostic } from '../../connectivity/domain/connectivity-diagnostic-state';
 import { BusinessOperationalState } from './vehicle-operational-projection.types';
 import type { HealthEvidenceSnapshot } from './vehicle-operational-projection.types';
 
@@ -20,7 +21,9 @@ const ORG_ID = 'org-fixture-1';
 function baseConnectivity(
   overrides: Partial<VehicleConnectivityRuntimeState> = {},
 ): VehicleConnectivityRuntimeState {
-  return {
+  const state: Omit<VehicleConnectivityRuntimeState, 'diagnostic'> & {
+    diagnostic?: VehicleConnectivityRuntimeState['diagnostic'];
+  } = {
     vehicleId: overrides.vehicleId ?? 'vehicle-fixture',
     organizationId: ORG_ID,
     providerLinkState: ProviderLinkState.ACTIVE,
@@ -44,6 +47,19 @@ function baseConnectivity(
     calculatedAt: GENERATED_AT,
     stateVersion: 1,
     ...overrides,
+  };
+
+  return {
+    ...state,
+    diagnostic:
+      state.diagnostic ??
+      classifyConnectivityDiagnostic({
+        providerLinkState: state.providerLinkState,
+        telemetryState: state.telemetryState,
+        lastObservationAt: state.lastTelemetryAt,
+        lastProviderFetchAt: state.lastReceivedAt,
+        nowMs: Date.parse(state.calculatedAt),
+      }),
   };
 }
 

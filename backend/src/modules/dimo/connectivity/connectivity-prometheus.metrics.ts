@@ -106,6 +106,24 @@ export function recordConnectivityProviderLinkState(
   metrics.connectivityProviderLinkStateTotal.inc(input);
 }
 
+/**
+ * Provider responding while the real vehicle observation is stale.
+ * Emitted on state transition only — never per poll.
+ */
+export function recordConnectivityProviderReachableObservationStale(
+  metrics: TripMetricsService,
+  input: { provider: string; telemetry_state: string },
+): void {
+  metrics.connectivityProviderReachableObservationStaleTotal.inc(input);
+}
+
+export function recordConnectivityProviderReachableObservationRecovered(
+  metrics: TripMetricsService,
+  input: { provider: string; telemetry_state: string },
+): void {
+  metrics.connectivityProviderReachableObservationRecoveredTotal.inc(input);
+}
+
 export function recordConnectivityDeviceState(
   metrics: TripMetricsService,
   input: { physical_device_state: string },

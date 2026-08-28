@@ -15,6 +15,10 @@ import {
   type ConnectivityRuntimeVehicleRow,
 } from '../../vehicles/connectivity/vehicle-connectivity-runtime-batch.assembler';
 import { ConnectivityAlertService } from '../connectivity-alert/connectivity-alert.service';
+import {
+  ConnectivityDiagnosticTransitionTracker,
+  observationAgeBucket,
+} from '../connectivity/connectivity-diagnostic-transition.tracker';
 import { ConnectivityObservabilityService } from '../connectivity/connectivity-observability.service';
 import { DeviceConnectionWebhookConfigurationService } from '../device-connection-webhook-configuration/device-connection-webhook-configuration.service';
 import { WebhookConfigurationStateEnum } from '../device-connection-webhook-configuration/device-connection-webhook-configuration.types';
@@ -97,6 +101,8 @@ export class VehicleConnectivityRuntimeProjectionService {
     @Optional() private readonly observability?: ConnectivityObservabilityService,
     @Optional()
     private readonly webhookConfiguration?: DeviceConnectionWebhookConfigurationService,
+    @Optional()
+    private readonly diagnosticTransitions?: ConnectivityDiagnosticTransitionTracker,
   ) {}
 
   async projectForVehicle(
@@ -141,6 +147,11 @@ export class VehicleConnectivityRuntimeProjectionService {
       coverageRatio: runtime.evidence.signalCoveragePercent ?? undefined,
     });
 
+    this.recordDiagnosticTransition(
+      runtime,
+      vehicle.latestState?.providerSource ?? null,
+    );
+
     return runtime;
   }
 
@@ -158,10 +169,58 @@ export class VehicleConnectivityRuntimeProjectionService {
       this.loadOrgAuthorization(organizationId),
     ]);
 
-    return assembleVehicleConnectivityRuntimeStates(
+    const runtimes = assembleVehicleConnectivityRuntimeStates(
       vehicles as ConnectivityRuntimeVehicleRow[],
       orgAuthorization,
     );
+
+    for (const vehicle of vehicles) {
+      const runtime = runtimes.get(vehicle.id);
+      if (!runtime) continue;
+      this.recordDiagnosticTransition(
+        runtime,
+        vehicle.latestState?.providerSource ?? null,
+      );
+    }
+
+    return runtimes;
+  }
+
+  /**
+   * Emit observability for the provider-reachable / observation-stale gap.
+   * Deduped to state transitions, and only for the stale dimension — entering it
+   * or recovering from it. All other diagnostic churn stays silent.
+   */
+  private recordDiagnosticTransition(
+    runtime: VehicleConnectivityRuntimeState,
+    providerSource: string | null,
+  ): void {
+    if (!this.diagnosticTransitions || !this.observability) return;
+
+    const { diagnostic } = runtime;
+    const transition = this.diagnosticTransitions.observe(
+      runtime.vehicleId,
+      diagnostic.state,
+    );
+    if (!transition) return;
+
+    const entersStale = transition.current === 'PROVIDER_REACHABLE_DATA_STALE';
+    const leavesStale = transition.previous === 'PROVIDER_REACHABLE_DATA_STALE';
+    if (!entersStale && !leavesStale) return;
+
+    const ctx = {
+      provider: providerSource ?? 'unknown',
+      telemetryState: runtime.telemetryState,
+      diagnosticState: transition.current,
+      previousDiagnosticState: transition.previous ?? undefined,
+      observationAgeBucket: observationAgeBucket(diagnostic.observationAgeMs),
+    };
+
+    if (entersStale) {
+      this.observability.logWarn('diagnostic_state_transition', ctx);
+    } else {
+      this.observability.log('diagnostic_state_transition', ctx);
+    }
   }
 
   private async applyWebhookConfigurationEvidence(

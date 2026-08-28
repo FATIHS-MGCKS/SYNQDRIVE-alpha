@@ -325,7 +325,10 @@ export class VehiclesOperationalService {
   }
 
   async getDiagnostics(vehicleId: string, organizationId: string) {
-    return this.vehiclesService.getFleetConnectivityDetail(organizationId, vehicleId);
+    return this.vehiclesService.getFleetConnectivityAdminDiagnostics(
+      organizationId,
+      vehicleId,
+    );
   }
 
   private async findRegisteredOperational(

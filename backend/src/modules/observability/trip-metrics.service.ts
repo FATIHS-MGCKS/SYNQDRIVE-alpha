@@ -194,6 +194,8 @@ export class TripMetricsService implements OnModuleInit {
   readonly connectivityStateConflictTotal: Counter<string>;
   readonly connectivityRuntimeStateTotal: Counter<string>;
   readonly connectivityTelemetryStateTotal: Counter<string>;
+  readonly connectivityProviderReachableObservationStaleTotal: Counter<string>;
+  readonly connectivityProviderReachableObservationRecoveredTotal: Counter<string>;
   readonly connectivityProviderLinkStateTotal: Counter<string>;
   readonly connectivityDeviceStateTotal: Counter<string>;
   readonly connectivityAlertTotal: Counter<string>;
@@ -1521,6 +1523,22 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_connectivity_provider_link_state_total',
       help: 'Connectivity provider link states calculated',
       labelNames: ['provider_link_state'],
+      registers: [this.registry],
+    });
+
+    this.connectivityProviderReachableObservationStaleTotal = new Counter({
+      name: 'synqdrive_connectivity_provider_reachable_observation_stale_total',
+      help:
+        'Transitions into provider-reachable / vehicle-observation-stale ' +
+        '(provider responding while source_timestamp is stale)',
+      labelNames: ['provider', 'telemetry_state'],
+      registers: [this.registry],
+    });
+
+    this.connectivityProviderReachableObservationRecoveredTotal = new Counter({
+      name: 'synqdrive_connectivity_provider_reachable_observation_recovered_total',
+      help: 'Transitions out of provider-reachable / vehicle-observation-stale',
+      labelNames: ['provider', 'telemetry_state'],
       registers: [this.registry],
     });
 

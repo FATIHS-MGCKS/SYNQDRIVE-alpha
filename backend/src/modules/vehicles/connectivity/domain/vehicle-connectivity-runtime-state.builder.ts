@@ -3,6 +3,7 @@
  * No database access — deterministic domain synthesis only.
  */
 import { classifyTelemetryFreshness } from '../../vehicle-state-interpreter';
+import { classifyConnectivityDiagnostic } from './connectivity-diagnostic-state';
 import { pickHighestPriorityOverallState } from './connectivity-domain.priority';
 import {
   AttentionState,
@@ -249,6 +250,16 @@ export class VehicleConnectivityRuntimeStateBuilder {
 
     const uniqueReasons = [...new Set(reasonCodes)];
 
+    // Diagnostic dimension consumes the already-derived canonical telemetryState;
+    // it never re-derives freshness and never feeds back into it.
+    const diagnostic = classifyConnectivityDiagnostic({
+      providerLinkState,
+      telemetryState,
+      lastObservationAt: input.telemetry.lastTelemetryAt,
+      lastProviderFetchAt: input.telemetry.lastReceivedAt,
+      nowMs,
+    });
+
     return {
       vehicleId: input.vehicleId,
       organizationId: input.organizationId,
@@ -270,6 +281,7 @@ export class VehicleConnectivityRuntimeStateBuilder {
       requiresAction,
       recommendedAction,
       evidence,
+      diagnostic,
       calculatedAt,
       stateVersion: CONNECTIVITY_RUNTIME_STATE_VERSION,
     };
