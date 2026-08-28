@@ -17,6 +17,7 @@
 import type { BatteryCapabilityStatus } from '@prisma/client';
 import { resolveFleetPowertrainClass } from '@modules/vehicles/fleet-data-coverage';
 import { RECHARGE_SEGMENTS_SIGNAL_KEY } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-signals.registry';
+import { isCapabilityMeasurementEnabled } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-lifecycle.policy';
 import type { RecoveryExistingEnergyEvent } from './energy-events-recovery-read.repository';
 import { inferFleetCapabilitiesFromEvents } from './energy-events-recovery-fleet-inference';
 import type { RecoveryVehicleInput } from './energy-events-recovery-runner';
@@ -54,12 +55,19 @@ const RECHARGE_CAPABILITY_SIGNAL_KEYS = new Set([
   'hv.soc',
 ]);
 
-const LISTED_BATTERY_CAPABILITY_STATUSES = new Set<BatteryCapabilityStatus>([
-  'AVAILABLE',
-  'AVAILABLE_STALE',
-  'AVAILABLE_NULL',
-  'DEGRADED',
-]);
+/**
+ * "The provider lists this signal" — deliberately delegated to the canonical
+ * battery-capability authority rather than restating the enum here.
+ *
+ * `AVAILABLE_NULL` counts as listed (canonical: signal listed, latest value
+ * null) and `DEGRADED` counts as recently-listed. Neither is narrowed for
+ * recovery: an overbroad row is a *listing* fact, and the powertrain
+ * applicability matrix — not the status filter — is what stops a listed but
+ * inapplicable signal from becoming a capability.
+ */
+function batteryCapabilityIsListed(status: BatteryCapabilityStatus): boolean {
+  return isCapabilityMeasurementEnabled(status) || status === 'DEGRADED';
+}
 
 export const SYNTHETIC_QUICK_TOKEN_ID_MIN = 100_001;
 export const SYNTHETIC_QUICK_TOKEN_ID_MAX = 100_099;
@@ -136,7 +144,7 @@ function collectAvailabilityClaims(input: {
   const batteryCapabilityListsSoc = input.row.batteryCapabilities.some(
     (capability) =>
       RECHARGE_CAPABILITY_SIGNAL_KEYS.has(capability.signalKey) &&
-      LISTED_BATTERY_CAPABILITY_STATUSES.has(capability.status),
+      batteryCapabilityIsListed(capability.status),
   );
   if (batteryCapabilityListsSoc) {
     claims.rechargeSoc.push('VEHICLE_BATTERY_CAPABILITY');
