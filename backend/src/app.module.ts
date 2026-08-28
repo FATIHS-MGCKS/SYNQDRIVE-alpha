@@ -32,6 +32,7 @@ import { FleetHealthObservabilityModule } from '@modules/fleet-health-observabil
 import { VehicleDetailObservabilityModule } from '@modules/vehicles/observability/vehicle-detail-observability.module';
 import { IamObservabilityModule } from '@modules/iam-observability/iam-observability.module';
 import { EvaluationsObservabilityModule } from '@modules/evaluations-observability/evaluations-observability.module';
+import { EnergyEventsObservabilityModule } from '@modules/energy-events-observability/energy-events-observability.module';
 import { EvaluationsApiObservabilityInterceptor } from '@modules/evaluations-observability/evaluations-api.interceptor';
 import { DimoModule } from '@modules/dimo/dimo.module';
 import { AiModule } from '@modules/ai/ai.module';
@@ -230,6 +231,7 @@ export class AppModule {
         FleetHealthObservabilityModule,
         VehicleDetailObservabilityModule,
         EvaluationsObservabilityModule,
+        EnergyEventsObservabilityModule,
         VehicleIntelligenceModule,
         DimoModule,
         AiModule,

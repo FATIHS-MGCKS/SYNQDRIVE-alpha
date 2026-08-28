@@ -36,6 +36,7 @@ import { buildEnergyEventSegmentsQuery } from './queries/energy-event-segments.q
 import {
   DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG,
 } from './energy-events/dimo-energy-detector.config';
+import { parseDimoEnergyEventSegment } from './energy-events/parse-energy-event-segment';
 import { DimoRechargeSegmentsClient } from './recharge-segments/dimo-recharge-segments.client';
 import { mapRechargeSegmentToEnergyEvent } from './recharge-segments/dimo-recharge-segments.mapper';
 import {
@@ -505,72 +506,7 @@ export class DimoSegmentsService {
     mechanism: Extract<DimoDetectionMechanism, 'refuel' | 'recharge'>,
     segment: any,
   ): DimoEnergyEventSegment | null {
-    const startTimestamp =
-      typeof segment?.start?.timestamp === 'string' ? segment.start.timestamp : null;
-    if (!startTimestamp) return null;
-    const endTimestamp =
-      typeof segment?.end?.timestamp === 'string' ? segment.end.timestamp : null;
-
-    const signalValues = this.groupNumericSignalValues(segment?.signals);
-    const pick = (name: string): { min: number | null; max: number | null } => {
-      const values = signalValues.get(name) ?? [];
-      if (values.length === 0) return { min: null, max: null };
-      return { min: Math.min(...values), max: Math.max(...values) };
-    };
-
-    const odometer = pick('powertrainTransmissionTravelledDistance');
-    const fuelAbs = pick('powertrainFuelSystemAbsoluteLevel');
-    const fuelRel = pick('powertrainFuelSystemRelativeLevel');
-    const soc = pick('powertrainTractionBatteryStateOfChargeCurrent');
-    const energy = pick('powertrainTractionBatteryStateOfChargeCurrentEnergy');
-
-    const posDelta = (min: number | null, max: number | null): number | null =>
-      min != null && max != null && max > min ? max - min : null;
-
-    return {
-      segmentId: `dimo-${mechanism}-${tokenId}-${new Date(startTimestamp).getTime()}`,
-      mechanism,
-      startTime: startTimestamp,
-      endTime: endTimestamp,
-      isOngoing: segment?.isOngoing === true,
-      startedBeforeRange: segment?.startedBeforeRange === true,
-      durationSeconds:
-        typeof segment?.duration === 'number' ? segment.duration : 0,
-      startLatitude:
-        typeof segment?.start?.value?.latitude === 'number'
-          ? segment.start.value.latitude
-          : null,
-      startLongitude:
-        typeof segment?.start?.value?.longitude === 'number'
-          ? segment.start.value.longitude
-          : null,
-      endLatitude:
-        typeof segment?.end?.value?.latitude === 'number'
-          ? segment.end.value.latitude
-          : null,
-      endLongitude:
-        typeof segment?.end?.value?.longitude === 'number'
-          ? segment.end.value.longitude
-          : null,
-      odometerStartKm: odometer.min,
-      odometerEndKm: odometer.max,
-      fuelStartLiters: mechanism === 'refuel' ? fuelAbs.min : null,
-      fuelEndLiters: mechanism === 'refuel' ? fuelAbs.max : null,
-      fuelDeltaLiters:
-        mechanism === 'refuel' ? posDelta(fuelAbs.min, fuelAbs.max) : null,
-      fuelStartPercent: mechanism === 'refuel' ? fuelRel.min : null,
-      fuelEndPercent: mechanism === 'refuel' ? fuelRel.max : null,
-      fuelDeltaPercent:
-        mechanism === 'refuel' ? posDelta(fuelRel.min, fuelRel.max) : null,
-      socStartPercent: mechanism === 'recharge' ? soc.min : null,
-      socEndPercent: mechanism === 'recharge' ? soc.max : null,
-      socDeltaPercent:
-        mechanism === 'recharge' ? posDelta(soc.min, soc.max) : null,
-      energyStartKwh: mechanism === 'recharge' ? energy.min : null,
-      energyEndKwh: mechanism === 'recharge' ? energy.max : null,
-      energyDeltaKwh:
-        mechanism === 'recharge' ? posDelta(energy.min, energy.max) : null,
-    };
+    return parseDimoEnergyEventSegment(tokenId, mechanism, segment);
   }
 
   async fetchRawTripCoreData(

@@ -75,6 +75,9 @@ coverage/
 *.temp
 .cache/
 
+# E3A recovery — raw FULL DB preview artifacts contain production identifiers
+artifacts/energy-events-recovery-full-db-preview-*.json
+
 # Figma reference assets (large, binary)
 figma-ref/
 
