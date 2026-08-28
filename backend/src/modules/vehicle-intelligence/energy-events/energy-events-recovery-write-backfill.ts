@@ -564,13 +564,15 @@ async function reconcileCanonicalRechargeLegacySubsegments(options: {
   return prunedCount;
 }
 
-export async function collectProvenStaleRechargeSubsegmentIdsFromReport(options: {
+export async function reconcileCanonicalRechargeWindowsFromReport(options: {
+  prisma: PrismaClient;
   report: EnergyRecoveryDryRunReport;
   vehiclesById: Map<string, RecoveryVehicleInput>;
   fetchSegments: RecoveryDryRunDeps['fetchSegments'];
-}): Promise<Set<string>> {
+}): Promise<{ prunedCount: number; provenStaleSubsegmentIds: Set<string> }> {
   const windows = new Set<string>();
-  const staleIds = new Set<string>();
+  let reconciled = 0;
+  const provenStaleSubsegmentIds = new Set<string>();
 
   for (const candidate of options.report.candidates) {
     if (candidate.mechanism !== 'recharge') {
@@ -604,49 +606,9 @@ export async function collectProvenStaleRechargeSubsegmentIdsFromReport(options:
     );
     if (authorization) {
       for (const subsegmentId of authorization.staleSubsegmentIds) {
-        staleIds.add(subsegmentId);
+        provenStaleSubsegmentIds.add(subsegmentId);
       }
     }
-  }
-
-  return staleIds;
-}
-
-export async function reconcileCanonicalRechargeWindowsFromReport(options: {
-  prisma: PrismaClient;
-  report: EnergyRecoveryDryRunReport;
-  vehiclesById: Map<string, RecoveryVehicleInput>;
-  fetchSegments: RecoveryDryRunDeps['fetchSegments'];
-}): Promise<number> {
-  const windows = new Set<string>();
-  let reconciled = 0;
-
-  for (const candidate of options.report.candidates) {
-    if (candidate.mechanism !== 'recharge') {
-      continue;
-    }
-    const windowKey = `${candidate.vehicleId}:${candidate.windowFrom}:${candidate.windowTo}`;
-    if (windows.has(windowKey)) {
-      continue;
-    }
-    windows.add(windowKey);
-
-    const vehicle = options.vehiclesById.get(candidate.vehicleId);
-    const inventory = options.report.vehicles.find(
-      (row) => row.vehicleId === candidate.vehicleId,
-    );
-    if (!vehicle || !inventory) {
-      continue;
-    }
-
-    const fetchResult = await options.fetchSegments(
-      vehicle.tokenId,
-      new Date(candidate.windowFrom),
-      new Date(candidate.windowTo),
-      inventory.energyClass,
-    );
-    const persistable = fetchResult.segments.filter(isSegmentPersistable);
-    const coalesced = coalesceSegments(persistable);
     reconciled += await reconcileCanonicalRechargeLegacySubsegments({
       prisma: options.prisma,
       vehicleId: candidate.vehicleId,
@@ -657,7 +619,7 @@ export async function reconcileCanonicalRechargeWindowsFromReport(options: {
     });
   }
 
-  return reconciled;
+  return { prunedCount: reconciled, provenStaleSubsegmentIds };
 }
 
 async function applyUpsertPayload(
@@ -782,12 +744,13 @@ export async function executeControlledWriteBackfill(options: {
   }
 
   if (options.completeRemaining) {
-    legacySubsegmentsReconciledTotal += await reconcileCanonicalRechargeWindowsFromReport({
+    const preReconcile = await reconcileCanonicalRechargeWindowsFromReport({
       prisma: options.prisma,
       report: preWriteReport,
       vehiclesById,
       fetchSegments: options.fetchSegments,
     });
+    legacySubsegmentsReconciledTotal += preReconcile.prunedCount;
 
     const refreshedVehicles = await refreshVehicleExistingEvents(
       options.prisma,
@@ -805,15 +768,12 @@ export async function executeControlledWriteBackfill(options: {
       dbComparisonStatus: 'ok',
       recoveryPlan: options.recoveryPlan,
     });
-    const provenStaleSubsegmentIds =
-      await collectProvenStaleRechargeSubsegmentIdsFromReport({
-        report: refreshedReport,
-        vehiclesById,
-        fetchSegments: options.fetchSegments,
-      });
     writeSet.length = 0;
     writeSet.push(
-      ...buildRemainingWriteSet(refreshedReport, provenStaleSubsegmentIds),
+      ...buildRemainingWriteSet(
+        refreshedReport,
+        preReconcile.provenStaleSubsegmentIds,
+      ),
     );
   }
 
@@ -896,11 +856,21 @@ export async function executeControlledWriteBackfill(options: {
   }
 
   const postWriteSnapshot = await captureEnergyEventsTableSnapshot(options.prisma);
-  let vehiclesAfterWrite = await refreshVehicleExistingEvents(
+  if (options.completeRemaining) {
+    const postReconcile = await reconcileCanonicalRechargeWindowsFromReport({
+      prisma: options.prisma,
+      report: preWriteReport,
+      vehiclesById,
+      fetchSegments: options.fetchSegments,
+    });
+    legacySubsegmentsReconciledTotal += postReconcile.prunedCount;
+  }
+
+  const vehiclesAfterWrite = await refreshVehicleExistingEvents(
     options.prisma,
     options.vehicles,
   );
-  let postWriteReport = await runEnergyEventsRecoveryDryRun(vehiclesAfterWrite, {
+  const postWriteReport = await runEnergyEventsRecoveryDryRun(vehiclesAfterWrite, {
     fetchSegments: options.fetchSegments,
     interRequestDelayMs: delayMs,
     mode: 'full',
@@ -908,27 +878,6 @@ export async function executeControlledWriteBackfill(options: {
     dbComparisonStatus: 'ok',
     recoveryPlan: options.recoveryPlan,
   });
-
-  if (options.completeRemaining) {
-    legacySubsegmentsReconciledTotal += await reconcileCanonicalRechargeWindowsFromReport({
-      prisma: options.prisma,
-      report: postWriteReport,
-      vehiclesById,
-      fetchSegments: options.fetchSegments,
-    });
-    vehiclesAfterWrite = await refreshVehicleExistingEvents(
-      options.prisma,
-      options.vehicles,
-    );
-    postWriteReport = await runEnergyEventsRecoveryDryRun(vehiclesAfterWrite, {
-      fetchSegments: options.fetchSegments,
-      interRequestDelayMs: delayMs,
-      mode: 'full',
-      dbComparisonEnabled: true,
-      dbComparisonStatus: 'ok',
-      recoveryPlan: options.recoveryPlan,
-    });
-  }
 
   validatePostWriteCompletionReport(postWriteReport);
 

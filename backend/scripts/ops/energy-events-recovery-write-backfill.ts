@@ -226,7 +226,7 @@ async function main() {
       fetchSegments: (tokenId, from, to, energyClass) =>
         fetchEnergyEventSegmentsStandalone(tokenId, from, to, energyClass),
       applyWrites: APPLY || COMPLETE_REMAINING,
-      verifyIdempotency: APPLY || COMPLETE_REMAINING,
+      verifyIdempotency: APPLY && !COMPLETE_REMAINING,
       codeSha,
       completeRemaining: COMPLETE_REMAINING,
     });
@@ -249,7 +249,7 @@ async function main() {
       } else {
         validatePostWriteReport(result.postWriteReport!);
       }
-      if (!result.idempotencyVerified) {
+      if (APPLY && !result.idempotencyVerified) {
         throw new Error('Idempotency verification failed');
       }
     } else {

@@ -505,7 +505,7 @@ describe('reconcileCanonicalRechargeWindowsFromReport', () => {
       'full',
     );
 
-    const reconciled = await reconcileCanonicalRechargeWindowsFromReport({
+    const result = await reconcileCanonicalRechargeWindowsFromReport({
       prisma: prisma as never,
       report,
       vehiclesById: new Map([[VEHICLE_ID, recoveryVehicle]]),
@@ -533,7 +533,8 @@ describe('reconcileCanonicalRechargeWindowsFromReport', () => {
       }),
     });
 
-    expect(reconciled).toBe(3);
+    expect(result.prunedCount).toBe(3);
+    expect(result.provenStaleSubsegmentIds.size).toBe(3);
     expect(store.energyEvents).toHaveLength(1);
     expect(store.energyEvents[0].dimoSegmentId).toBe(parent.coalescedSegmentId);
   });
