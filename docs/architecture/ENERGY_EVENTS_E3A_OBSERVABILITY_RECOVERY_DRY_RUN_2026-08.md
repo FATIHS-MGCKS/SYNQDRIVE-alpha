@@ -188,7 +188,7 @@ VehicleEnergyDetectionStatus
 
 ## 8. Tests
 
-Focused energy-events tests (101, of which 70 are net-new versus `main`) plus
+Focused energy-events tests (105, of which 74 are net-new versus `main`) plus
 E3A privacy regression checks:
 
 - E1 mechanism isolation in dry-run
@@ -202,6 +202,7 @@ E3A privacy regression checks:
 - Mechanism-aware request accounting
 - Refuel movement plausibility (canonical positive control + false-positive exclusions)
 - Manual-review disposition resolution (`EXCLUDE` counts as resolved)
+- Privacy-safe manual-review fingerprint overrides (secured evidence → EXCLUDE without committing identifiers)
 - Sanitized artifact builder (inventory-order aliases, no forbidden identifier fields)
 - Privacy regression scan of committed artifacts + architecture doc
 - Capability discovery regression (ICE/EV zero-event probe, CAPABILITY_UNKNOWN gate, synthetic QUICK FULL isolation)
