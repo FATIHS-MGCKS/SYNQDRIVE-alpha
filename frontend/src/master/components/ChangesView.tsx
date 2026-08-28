@@ -67,12 +67,12 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.992',
     title: 'Energy Events E3A — controlled write-backfill executor (partial production recovery)',
     summary: [
-      'Added secured ops executor `energy-events-recovery-write-backfill.ts` + `energy-events-recovery-write-backfill.ts` module for approved 4-candidate historical writes only.',
-      'Pre-write gate validates approved counts (3 CREATE, 1 UPDATE, 2 SKIP, 15 EXCLUDE, 0 NEEDS); rollback plan + table snapshot captured privately before writes.',
-      'Production secured run: preflight matched approved plan; apply phase created 3 approved rows (table 130→133); excluded/skip candidates not written.',
-      'Canonical recharge overlap legacy subsegment reconciliation remains incomplete — post-write FULL recovery still reports pending WOULD_UPDATE rows; outage not closed.',
-      'Follow-up required: complete legacy recharge subsegment prune without broad window delete; re-run post-write gate to 0 CREATE / 0 UPDATE before idempotency sign-off.',
-      'E2 detector thresholds unchanged; E3B not started.',
+      'Added secured ops executor `energy-events-recovery-write-backfill.ts` + recovery module for approved historical writes only.',
+      'Production secured apply: 3 approved CREATEs present (baseline 130 → peak 133; current 132 after 1 proven legacy prune across completion attempts).',
+      'Completion fix on PR #1395: shared `pruneStaleCoalescedSubSegments`, reconcile on `NO_OP_ALREADY_PRESENT`, proven-stale write-set filtering, post-write gate rebuild, 121 energy-events tests.',
+      'Post-fix completion runs on secured VPS: `FETCH_FAILED` eliminated after DIMO load reduction; validation still reports `WOULD_UPDATE=3` and `MANUAL_REVIEW_UNRESOLVED:1`.',
+      'Remaining: canonical Jul-16 recharge window does not currently emit `legacySubsegmentsWouldReplace` in FULL dry-run (coalesce authorization empty); refuel meta + recharge soc/meta UPDATEs still pending material identity.',
+      'Outage recovery NOT CLOSED — hold PR #1395 until `WOULD_CREATE=0`, `WOULD_UPDATE=0`, `gateBlockers=[]`, and mandatory idempotency re-run pass.',
     ],
     reason:
       'E3A gate was READY FOR CONTROLLED WRITE BACKFILL; executor and first production pass were required before closing the outage.',
