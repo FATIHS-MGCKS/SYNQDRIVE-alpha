@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-vehicle-documents-overview-p2-2-59-2026-08-28',
+    version: '4.9.987',
+    title: 'Platform i18n — P2.2.59 Vehicle Documents Read-Only Overview',
+    summary: [
+      'Localized production-mounted Vehicle Documents overview/list slice (`DocumentsView`, `DocumentComplianceSummaryCard`) via new `rental-vehicle-documents-i18n.ts`; +133 `vehicleDocuments.*` keys (8954→9087 EN+DE).',
+      'Category/status/timeline-kind/fixed-cost/source machines mapped through adapter; raw timeline titles, filenames, linked-task titles, backend errors, and spec values preserved.',
+      'P259 enforce-clean exact scope (2 paths) — 0 findings; reuses `common.retry`. True same-mount DE→EN→DE test. Upload Drawer deferred. Category E=0.',
+    ],
+    reason:
+      'P2.2.59 bounded implementation after P258 merge (#1386) per pre-flight verdict B (split list/overview first).',
+    previousBehavior:
+      'Documents overview used hardcoded German host strings, `de-DE` date formatting, and inline category metadata in `vehicle-file.constants.ts`.',
+    details:
+      'Presentation-only adapter (`resolveVehicleDocumentCategory*`, status/timeline/source/resolvers, `formatVehicleDocumentDate`). Sort order, compliance derivation, task navigation, upload open state unchanged. `VehicleDocumentUploadDrawer` not modified.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-28T15:45:00.000Z',
+  },
+  {
     id: 'i18n-rental-tenant-billing-addons-p2-2-58-2026-08-28',
     version: '4.9.986',
     title: 'Platform i18n — P2.2.58 Rental Tenant Billing Add-ons',

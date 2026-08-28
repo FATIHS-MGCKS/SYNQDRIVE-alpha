@@ -29,104 +29,23 @@ export const CATEGORY_TO_DOC_TYPE: Record<VehicleDocumentCategoryId, string> = {
 
 export interface CategoryUiMeta {
   icon: string;
-  shortTitle: string;
-  description: string;
-  emptyHint: string;
   tone: 'brand' | 'info' | 'success' | 'warning' | 'critical' | 'neutral';
 }
 
 export const CATEGORY_UI_META: Record<VehicleDocumentCategoryId, CategoryUiMeta> = {
-  registration: {
-    icon: 'car',
-    shortTitle: 'Zulassung',
-    description: 'Fahrzeugschein und Halterdaten',
-    emptyHint: 'Lade den Fahrzeugschein hoch, damit Zulassungsdaten als Evidenz sichtbar werden.',
-    tone: 'brand',
-  },
-  insurance: {
-    icon: 'shield',
-    shortTitle: 'Versicherung',
-    description: 'Police, Deckung und Selbstbeteiligung',
-    emptyHint: 'Lade die Versicherungspolice hoch, damit Kosten und Laufzeit als Evidenz sichtbar werden.',
-    tone: 'success',
-  },
-  tax: {
-    icon: 'receipt',
-    shortTitle: 'Kfz-Steuer',
-    description: 'Steuerbescheid und jährliche Last',
-    emptyHint: 'Lade den Steuerbescheid hoch, um die Kfz-Steuer als Nachweis zu hinterlegen.',
-    tone: 'warning',
-  },
-  leasing_financing: {
-    icon: 'credit-card',
-    shortTitle: 'Leasing / Finanzierung',
-    description: 'Vertrag, Laufzeit und monatliche Rate',
-    emptyHint: 'Lade den Leasing- oder Finanzierungsvertrag hoch.',
-    tone: 'info',
-  },
-  tuv_hu: {
-    icon: 'clipboard-check',
-    shortTitle: 'HU / TÜV',
-    description: 'Prüftermine und HU-Nachweise',
-    emptyHint: 'TÜV-Status kommt aus Service Compliance — Nachweise ergänzen die Akte.',
-    tone: 'success',
-  },
-  bokraft: {
-    icon: 'shield-check',
-    shortTitle: 'BOKraft',
-    description: 'Betriebsgenehmigung und Prüfungen',
-    emptyHint: 'BOKraft-Status kommt aus Service Compliance — Nachweise ergänzen die Akte.',
-    tone: 'info',
-  },
-  service_proof: {
-    icon: 'wrench',
-    shortTitle: 'Service-Nachweise',
-    description: 'Inspektionen, Ölwechsel und Wartung',
-    emptyHint: 'Noch keine Service-Nachweise hinterlegt.',
-    tone: 'info',
-  },
-  repair_proof: {
-    icon: 'file-signature',
-    shortTitle: 'Reparatur-Nachweise',
-    description: 'Werkstattrechnungen und Belege',
-    emptyHint: 'Noch keine Reparaturbelege hinterlegt.',
-    tone: 'neutral',
-  },
-  tire_proof: {
-    icon: 'circle',
-    shortTitle: 'Reifen-Nachweise',
-    description: 'Reifenwechsel und Profiltiefen',
-    emptyHint: 'Noch keine Reifen-Nachweise hinterlegt.',
-    tone: 'neutral',
-  },
-  brake_proof: {
-    icon: 'disc',
-    shortTitle: 'Bremsen-Nachweise',
-    description: 'Bremsenservice und Messungen',
-    emptyHint: 'Noch keine Bremsen-Nachweise hinterlegt.',
-    tone: 'neutral',
-  },
-  battery_proof: {
-    icon: 'battery',
-    shortTitle: 'Batterie-Nachweise',
-    description: 'LV/HV Batterie Service und Tests',
-    emptyHint: 'Noch keine Batterie-Nachweise hinterlegt.',
-    tone: 'neutral',
-  },
-  damage_accident: {
-    icon: 'alert-triangle',
-    shortTitle: 'Damage / Accident',
-    description: 'Schadens- und Unfallberichte',
-    emptyHint: 'Noch keine Schadens- oder Unfallberichte hinterlegt.',
-    tone: 'critical',
-  },
-  other: {
-    icon: 'file',
-    shortTitle: 'Sonstige',
-    description: 'Weitere Fahrzeugdokumente',
-    emptyHint: 'Noch keine sonstigen Dokumente hinterlegt.',
-    tone: 'neutral',
-  },
+  registration: { icon: 'car', tone: 'brand' },
+  insurance: { icon: 'shield', tone: 'success' },
+  tax: { icon: 'receipt', tone: 'warning' },
+  leasing_financing: { icon: 'credit-card', tone: 'info' },
+  tuv_hu: { icon: 'clipboard-check', tone: 'success' },
+  bokraft: { icon: 'shield-check', tone: 'info' },
+  service_proof: { icon: 'wrench', tone: 'info' },
+  repair_proof: { icon: 'file-signature', tone: 'neutral' },
+  tire_proof: { icon: 'circle', tone: 'neutral' },
+  brake_proof: { icon: 'disc', tone: 'neutral' },
+  battery_proof: { icon: 'battery', tone: 'neutral' },
+  damage_accident: { icon: 'alert-triangle', tone: 'critical' },
+  other: { icon: 'file', tone: 'neutral' },
 };
 
 const STATUS_SORT_RANK: Record<VehicleDocumentUiStatus, number> = {
@@ -154,36 +73,4 @@ export function sortDocumentCategories(
   categories: VehicleDocumentCategorySummary[],
 ): VehicleDocumentCategorySummary[] {
   return [...categories].sort((a, b) => categorySortPriority(a) - categorySortPriority(b));
-}
-
-export function formatStatusSource(source: string): string {
-  const map: Record<string, string> = {
-    rental_health_service: 'RentalHealth',
-    service_compliance_service: 'Service Compliance',
-    vehicle_master_data: 'Vehicle Master Data',
-    document_extraction: 'AI Document Extraction',
-    insurance_module: 'Versicherungsmodul',
-    telemetry: 'Telemetry / Latest State',
-    vehicle_battery_spec: 'Vehicle Master Data',
-    service_events: 'Service Events',
-    not_available: 'Nicht verfügbar',
-  };
-  return map[source] ?? source;
-}
-
-export function rentalHealthLabelDe(
-  status: 'healthy' | 'warning' | 'critical' | 'blocked' | 'unknown' | null | undefined,
-): string {
-  switch (status) {
-    case 'healthy':
-      return 'Bereit';
-    case 'warning':
-      return 'Hinweis';
-    case 'critical':
-      return 'Kritisch';
-    case 'blocked':
-      return 'Gesperrt';
-    default:
-      return 'Unbekannt';
-  }
 }

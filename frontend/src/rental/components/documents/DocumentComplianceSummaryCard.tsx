@@ -1,19 +1,15 @@
 import { StatusChip, StatusDot } from '../../../components/patterns';
 import type { StatusTone } from '../../../components/patterns/status-utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
-  uiStatusLabel,
   uiStatusTone,
   type ComplianceDisplayItem,
   type VehicleFileSummary,
 } from '../../lib/vehicle-file-summary.types';
+import { resolveVehicleDocumentUiStatusLabel } from '../../lib/rental-vehicle-documents-i18n';
 
 function complianceChipTone(item: ComplianceDisplayItem): StatusTone {
   return uiStatusTone(item.uiStatus);
-}
-
-function complianceShortLabel(item: ComplianceDisplayItem | null): string {
-  if (!item) return '—';
-  return uiStatusLabel(item.uiStatus, true);
 }
 
 function CompliancePill({
@@ -23,6 +19,8 @@ function CompliancePill({
   prefix: string;
   item: ComplianceDisplayItem | null;
 }) {
+  const { t } = useLanguage();
+
   if (!item) {
     return (
       <span className="inline-flex items-center rounded-md border border-border/60 bg-muted/30 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
@@ -43,7 +41,7 @@ function CompliancePill({
     <span
       className={`inline-flex items-center rounded-md border border-border/50 px-2 py-0.5 text-[10px] font-semibold ${toneClass}`}
     >
-      {prefix} · {complianceShortLabel(item)}
+      {prefix} · {resolveVehicleDocumentUiStatusLabel(item.uiStatus, t)}
     </span>
   );
 }
@@ -55,6 +53,8 @@ function ComplianceStatusLine({
   prefix: string;
   item: ComplianceDisplayItem | null;
 }) {
+  const { t } = useLanguage();
+
   if (!item) {
     return (
       <p className="text-[13px] font-semibold leading-[1.3] text-muted-foreground">
@@ -64,7 +64,7 @@ function ComplianceStatusLine({
   }
   return (
     <StatusChip tone={complianceChipTone(item)} className="!text-[11px] !py-0.5">
-      {prefix}: {uiStatusLabel(item.uiStatus, true)}
+      {prefix}: {resolveVehicleDocumentUiStatusLabel(item.uiStatus, t)}
     </StatusChip>
   );
 }
@@ -76,6 +76,7 @@ export function DocumentComplianceSummaryCard({
   summary: VehicleFileSummary;
   compact?: boolean;
 }) {
+  const { t } = useLanguage();
   const tuv = summary.canonicalStatus.serviceCompliance.tuv;
   const bok = summary.canonicalStatus.serviceCompliance.bokraft;
   const hasAny = Boolean(tuv || bok);
@@ -83,15 +84,19 @@ export function DocumentComplianceSummaryCard({
   if (compact) {
     return (
       <div className="rounded-xl border border-border/60 bg-muted/15 px-2.5 py-2 sm:col-span-2">
-        <p className="text-[11px] font-semibold text-muted-foreground">Compliance</p>
+        <p className="text-[11px] font-semibold text-muted-foreground">
+          {t('vehicleDocuments.compliance.title')}
+        </p>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {hasAny ? (
             <>
-              <CompliancePill prefix="TÜV" item={tuv} />
-              <CompliancePill prefix="BOKraft" item={bok} />
+              <CompliancePill prefix={t('vehicleDocuments.compliance.tuvPrefix')} item={tuv} />
+              <CompliancePill prefix={t('vehicleDocuments.compliance.bokraftPrefix')} item={bok} />
             </>
           ) : (
-            <span className="text-[11px] text-muted-foreground">Keine Daten</span>
+            <span className="text-[11px] text-muted-foreground">
+              {t('vehicleDocuments.compliance.noData')}
+            </span>
           )}
         </div>
       </div>
@@ -102,17 +107,22 @@ export function DocumentComplianceSummaryCard({
     <div className="surface-premium flex h-full flex-col p-3.5 sm:p-4">
       <div className="flex items-center gap-1.5">
         <StatusDot tone="neutral" />
-        <span className="text-[12px] font-medium text-muted-foreground">Compliance</span>
+        <span className="text-[12px] font-medium text-muted-foreground">
+          {t('vehicleDocuments.compliance.title')}
+        </span>
       </div>
       <div className="mt-2 flex flex-1 flex-col justify-center gap-1.5">
         {hasAny ? (
           <>
-            <ComplianceStatusLine prefix="TÜV" item={tuv} />
-            <ComplianceStatusLine prefix="BOKraft" item={bok} />
+            <ComplianceStatusLine prefix={t('vehicleDocuments.compliance.tuvPrefix')} item={tuv} />
+            <ComplianceStatusLine
+              prefix={t('vehicleDocuments.compliance.bokraftPrefix')}
+              item={bok}
+            />
           </>
         ) : (
           <p className="text-[13px] font-semibold leading-[1.3] text-muted-foreground">
-            Keine Daten
+            {t('vehicleDocuments.compliance.noData')}
           </p>
         )}
       </div>

@@ -44,6 +44,7 @@ import { operatorTasksTabDe } from './operator.tasks.tab.de';
 import { operatorEntryAccessDe } from './operator.entry.access.de';
 import { operatorMoreDe } from './operator.more.de';
 import { vendorsDirectoryDe } from './vendors.directory.de';
+import { rentalVehicleDocumentsDe } from './rental.vehicleDocuments.de';
 import { supportOpsDe } from './support.ops.de';
 import { whatsappDe } from './whatsapp.de';
 
@@ -5828,4 +5829,5 @@ export const de: Record<TranslationKey, string> = {
   ...operatorEntryAccessDe,
   ...operatorMoreDe,
   ...vendorsDirectoryDe,
+  ...rentalVehicleDocumentsDe,
 } satisfies CompleteTranslationDictionary;

@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { mapFlowStatus } from './document-extraction.shared';
 import {
   categorySortPriority,
-  formatStatusSource,
   MANDATORY_CATEGORY_IDS,
   sortDocumentCategories,
 } from './vehicle-file.constants';
 import type { VehicleDocumentCategorySummary } from '../../lib/vehicle-file-summary.types';
+import { resolveStatusSourceLabel } from '../../lib/rental-vehicle-documents-i18n';
+import { de } from '../../../i18n/translations/de';
 
 function cat(
   partial: Partial<VehicleDocumentCategorySummary> & { id: VehicleDocumentCategorySummary['id'] },
@@ -45,11 +46,13 @@ describe('vehicle file category sorting', () => {
   });
 });
 
-describe('formatStatusSource', () => {
+describe('resolveStatusSourceLabel', () => {
+  const tDe = (key: keyof typeof de) => de[key];
+
   it('labels canonical backend sources for operators', () => {
-    expect(formatStatusSource('rental_health_service')).toBe('RentalHealth');
-    expect(formatStatusSource('service_compliance_service')).toBe('Service Compliance');
-    expect(formatStatusSource('document_extraction')).toBe('AI Document Extraction');
+    expect(resolveStatusSourceLabel('rental_health_service', tDe)).toBe('RentalHealth');
+    expect(resolveStatusSourceLabel('service_compliance_service', tDe)).toBe('Service Compliance');
+    expect(resolveStatusSourceLabel('document_extraction', tDe)).toBe('AI Document Extraction');
   });
 });
 

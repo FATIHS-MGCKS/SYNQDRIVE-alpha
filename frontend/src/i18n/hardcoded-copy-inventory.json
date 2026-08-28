@@ -111,27 +111,27 @@
     }
   },
   "summary": {
-    "total": 1405,
+    "total": 1382,
     "bySurface": {
       "MASTER": 1049,
       "OPERATOR": 22,
-      "RENTAL": 308,
+      "RENTAL": 285,
       "SHARED": 1,
       "SHELL": 25
     },
     "byCategory": {
       "ARIA": 48,
-      "TITLE": 202,
-      "TEXT": 999,
+      "TITLE": 189,
+      "TEXT": 989,
       "LABEL": 85,
       "PLACEHOLDER": 63,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
-      "other Rental areas": 261,
+      "other Rental areas": 239,
       "Finance/Billing": 25,
       "Tasks": 13,
-      "Documents": 8,
+      "Documents": 7,
       "App / routing shell": 1
     },
     "enforceCleanRemaining": 0
@@ -15643,20 +15643,6 @@
       ]
     },
     {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 441,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Allgemeine Technische Daten",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
       "line": 90,
       "surface": "RENTAL",
@@ -15939,20 +15925,6 @@
       ]
     },
     {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 356,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Compliance & Dokumente",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
       "line": 122,
       "surface": "RENTAL",
@@ -16228,10 +16200,9 @@
       "sample": "de-DE",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 68,
+      "occurrences": 66,
       "files": [
         "rental/components/BusinessInsightsBox.tsx",
-        "rental/components/DocumentsView.tsx",
         "rental/components/EntityTasksSection.tsx",
         "rental/components/FinancialInsightsView.tsx",
         "rental/components/NewBookingView.tsx",
@@ -16818,48 +16789,6 @@
       ]
     },
     {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 227,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Fahrzeugakte nicht verfügbar",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 430,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Fehlende Beträge können im Fahrzeugstamm (Master Admin) gepflegt werden.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 381,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Feste monatliche Fahrzeugkosten",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/CreateUserWizard.tsx",
       "line": 297,
       "surface": "RENTAL",
@@ -16944,20 +16873,6 @@
       ]
     },
     {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 425,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Gesamt pro Monat",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/RentalStressAnalysisCard.tsx",
       "line": 73,
       "surface": "RENTAL",
@@ -17039,20 +16954,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/MisuseCasesPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 449,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "HV Battery",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
       ]
     },
     {
@@ -17154,20 +17055,6 @@
       ]
     },
     {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 415,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Jährlich",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/AddDamagePhotoPanel.tsx",
       "line": 115,
       "surface": "RENTAL",
@@ -17193,20 +17080,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/CreateDamageDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 216,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Kein Fahrzeug ausgewählt",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
       ]
     },
     {
@@ -17333,34 +17206,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/AccessScopesTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 500,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Keine Daten",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/documents/DocumentComplianceSummaryCard.tsx",
-      "line": 94,
-      "surface": "RENTAL",
-      "module": "Documents",
-      "category": "TEXT",
-      "sample": "Keine Daten",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/documents/DocumentComplianceSummaryCard.tsx"
       ]
     },
     {
@@ -17547,20 +17392,6 @@
       ]
     },
     {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 631,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Letzte Datei:",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/UserDetailDrawer.tsx",
       "line": 365,
       "surface": "RENTAL",
@@ -17656,20 +17487,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 443,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "LV Battery Daten",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
       ]
     },
     {
@@ -18091,20 +17908,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/HelpCenterView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 491,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Noch keine Einträge",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
       ]
     },
     {
@@ -18640,20 +18443,6 @@
       ]
     },
     {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 627,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Quelle:",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/TeamMemberDrawer.tsx",
       "line": 190,
       "surface": "RENTAL",
@@ -18805,20 +18594,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 471,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Reparaturen (Ø)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
       ]
     },
     {
@@ -19116,20 +18891,6 @@
       ]
     },
     {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 452,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Tank / Motor",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageWorkQueue.tsx",
       "line": 278,
       "surface": "RENTAL",
@@ -19144,20 +18905,6 @@
       ]
     },
     {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 437,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Technische Fahrzeugdaten",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 621,
       "surface": "RENTAL",
@@ -19169,20 +18916,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 482,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Timeline / Audit Trail",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
       ]
     },
     {
@@ -19270,20 +19003,6 @@
       ]
     },
     {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 311,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Übersicht",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/AccessScopesTab.tsx",
       "line": 144,
       "surface": "RENTAL",
@@ -19337,20 +19056,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/UserDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 460,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Variable Durchschnittskosten",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
       ]
     },
     {
@@ -19421,20 +19126,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/CreateUserWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 465,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Wartung & Service (Ø)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
       ]
     },
     {
@@ -19561,20 +19252,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/AccessScopesTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/DocumentsView.tsx",
-      "line": 685,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Zur Prüfung",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DocumentsView.tsx"
       ]
     },
     {
