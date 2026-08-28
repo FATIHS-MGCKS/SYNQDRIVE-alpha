@@ -552,32 +552,61 @@ async function pruneSubsumedRechargeCandidates(
     return 0;
   }
 
-  const canonical = rechargeUpdates.reduce((best, current) => {
-    const bestDuration =
-      best.durationSeconds ||
-      (new Date(best.endTime).getTime() - new Date(best.startTime).getTime()) /
-        1000;
-    const currentDuration =
-      current.durationSeconds ||
-      (new Date(current.endTime).getTime() - new Date(current.startTime).getTime()) /
-        1000;
-    return currentDuration > bestDuration ? current : best;
-  });
-
-  const legacyIds = rechargeUpdates
-    .filter((candidate) => isSubsumedRechargeSession(candidate, canonical))
-    .map((candidate) => candidate.dimoSegmentId);
-  if (legacyIds.length === 0) {
-    return 0;
+  const byVehicle = new Map<string, EnergyRecoveryCandidate[]>();
+  for (const candidate of rechargeUpdates) {
+    const bucket = byVehicle.get(candidate.vehicleId) ?? [];
+    bucket.push(candidate);
+    byVehicle.set(candidate.vehicleId, bucket);
   }
 
-  const deleteResult = await prisma.vehicleEnergyEvent.deleteMany({
-    where: {
-      vehicleId: canonical.vehicleId,
-      dimoSegmentId: { in: legacyIds },
-    },
-  });
-  return deleteResult.count;
+  let deleted = 0;
+  for (const [vehicleId, updates] of byVehicle) {
+    if (updates.length <= 1) {
+      continue;
+    }
+
+    const canonical = updates.reduce((best, current) => {
+      const bestDuration =
+        best.durationSeconds ||
+        (new Date(best.endTime).getTime() - new Date(best.startTime).getTime()) /
+          1000;
+      const currentDuration =
+        current.durationSeconds ||
+        (new Date(current.endTime).getTime() -
+          new Date(current.startTime).getTime()) /
+          1000;
+      return currentDuration > bestDuration ? current : best;
+    });
+
+    const legacyIds = updates
+      .filter(
+        (candidate) =>
+          candidate.dimoSegmentId !== canonical.dimoSegmentId &&
+          isSubsumedRechargeSession(candidate, canonical),
+      )
+      .map((candidate) => candidate.dimoSegmentId);
+
+    const duplicateIds =
+      legacyIds.length > 0
+        ? legacyIds
+        : updates
+            .filter((candidate) => candidate.dimoSegmentId !== canonical.dimoSegmentId)
+            .map((candidate) => candidate.dimoSegmentId);
+
+    if (duplicateIds.length === 0) {
+      continue;
+    }
+
+    const deleteResult = await prisma.vehicleEnergyEvent.deleteMany({
+      where: {
+        vehicleId,
+        dimoSegmentId: { in: duplicateIds },
+      },
+    });
+    deleted += deleteResult.count;
+  }
+
+  return deleted;
 }
 
 async function applyUpsertPayload(
