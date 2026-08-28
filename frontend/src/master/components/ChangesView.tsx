@@ -42,9 +42,9 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Prometheus metrics for energy-event detection via existing TripMetrics registry (`detector_config_version=e2-2026-08`).',
       'Read-only Jul→Aug outage dry-run: 24h bounded windows, production E2 detector config, zero VehicleEnergyEvent writes.',
-      'Full fleet preview (5 vehicles, 220 DIMO requests): 8 WOULD_CREATE, 11 MANUAL_REVIEW_REQUIRED, 0 FETCH_FAILED.',
-      'KS MX 2024 canonical refuel (23-Aug 16:15:15Z) → WOULD_CREATE; Tesla KS FH 660E → 3 recharge sessions.',
-      'Artifact `artifacts/energy-events-recovery-dry-run-2026-08.json`; gate: READY AFTER MANUAL REVIEW OF 11 EVENTS.',
+      'Safety: E1 mechanism isolation in dry-run, fail-closed FULL-mode DB comparison gate, mechanism-aware request accounting (220 telemetry requests), cross-window dedup, mutation-guarded read repository.',
+      'Fleet inventory includes VW Golf 190497 as DIMO_ACCESS_FAILED; KS MX canonical refuel verified; Tesla recharge sessions verified.',
+      'Artifact `artifacts/energy-events-recovery-dry-run-2026-08.json`; FULL mode requires DATABASE_URL or gate stays NOT READY.',
     ],
     reason:
       'E3A per audit: Jul outage had no strong operational alarm; need deterministic recovery preview before any historical write-back.',

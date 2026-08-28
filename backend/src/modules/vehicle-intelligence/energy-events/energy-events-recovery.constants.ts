@@ -20,7 +20,99 @@ export const ENERGY_EVENTS_RECOVERY_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const KS_MX_2024_TOKEN_ID = 187336;
 export const KS_MX_2024_CANONICAL_REFUEL_START = '2026-08-23T16:15:15.000Z';
 export const TESLA_KS_FH_660E_TOKEN_ID = 186946;
+export const VW_GOLF_ICE_TOKEN_ID = 190497;
 
 /** Proposed real backfill execution budget (E3A estimate only). */
 export const ENERGY_EVENTS_BACKFILL_PROPOSED_CONCURRENCY = 2;
 export const ENERGY_EVENTS_BACKFILL_INTER_REQUEST_DELAY_MS = 500;
+
+export interface AuditedFleetSignalProfile {
+  label: string;
+  tokenId: number;
+  provider: string;
+  powertrain: 'ICE' | 'EV';
+  relativeFuel: boolean;
+  absoluteFuel: boolean;
+  rechargeSoc: boolean;
+  /** When true, DIMO token exchange is known to fail (e.g. HTTP 403). */
+  knownDimoAccessFailure?: boolean;
+}
+
+/** Audited DIMO-connected fleet from E2 inventory + known access failures. */
+export const AUDITED_FLEET_SIGNAL_PROFILES: AuditedFleetSignalProfile[] = [
+  {
+    label: 'KS MX 2024',
+    tokenId: 187336,
+    provider: 'LTE_R1',
+    powertrain: 'ICE',
+    relativeFuel: true,
+    absoluteFuel: true,
+    rechargeSoc: false,
+  },
+  {
+    label: 'VW Arteon ICE',
+    tokenId: 187784,
+    provider: 'LTE_R1',
+    powertrain: 'ICE',
+    relativeFuel: true,
+    absoluteFuel: true,
+    rechargeSoc: false,
+  },
+  {
+    label: 'Audi A4 (KS MS 661)',
+    tokenId: 187361,
+    provider: 'LTE_R1',
+    powertrain: 'ICE',
+    relativeFuel: false,
+    absoluteFuel: true,
+    rechargeSoc: false,
+  },
+  {
+    label: 'VW Tiguan ICE',
+    tokenId: 192922,
+    provider: 'LTE_R1',
+    powertrain: 'ICE',
+    relativeFuel: true,
+    absoluteFuel: true,
+    rechargeSoc: false,
+  },
+  {
+    label: 'KS FH 660E Tesla',
+    tokenId: 186946,
+    provider: 'LTE_R1',
+    powertrain: 'EV',
+    relativeFuel: false,
+    absoluteFuel: false,
+    rechargeSoc: true,
+  },
+  {
+    label: 'VW Golf ICE',
+    tokenId: 190497,
+    provider: 'LTE_R1',
+    powertrain: 'ICE',
+    relativeFuel: false,
+    absoluteFuel: false,
+    rechargeSoc: false,
+    knownDimoAccessFailure: true,
+  },
+];
+
+export function mechanismsForEnergyClass(
+  energyClass:
+    | 'REFUEL_CANDIDATE'
+    | 'RECHARGE_CANDIDATE'
+    | 'BOTH'
+    | 'NO_ENERGY_SIGNAL'
+    | 'DIMO_ACCESS_FAILED',
+): Array<'refuel' | 'recharge'> {
+  switch (energyClass) {
+    case 'REFUEL_CANDIDATE':
+      return ['refuel'];
+    case 'RECHARGE_CANDIDATE':
+      return ['recharge'];
+    case 'BOTH':
+      return ['refuel', 'recharge'];
+    default:
+      return [];
+  }
+}

@@ -34,7 +34,7 @@ export class EnergyEventsMetricsService {
   readonly dimoHttp422Total: Counter<string>;
   readonly dimoRetryableFailuresTotal: Counter<string>;
   readonly detectionDuration: Histogram<string>;
-  readonly fleetZeroEventsGauge: Counter<string>;
+  readonly zeroPersistRunsTotal: Counter<string>;
 
   constructor(private readonly tripMetrics: TripMetricsService) {
     const register = this.tripMetrics.registry;
@@ -70,21 +70,18 @@ export class EnergyEventsMetricsService {
     this.eventsCreatedTotal = new Counter({
       name: 'synqdrive_energy_events_created_total',
       help: 'Energy events created',
-      labelNames: ['mechanism'],
       registers: [register],
     });
 
     this.eventsUpdatedTotal = new Counter({
       name: 'synqdrive_energy_events_updated_total',
       help: 'Energy events updated',
-      labelNames: ['mechanism'],
       registers: [register],
     });
 
     this.eventsSkippedTotal = new Counter({
       name: 'synqdrive_energy_events_skipped_total',
       help: 'Segments skipped by persist gate',
-      labelNames: ['mechanism'],
       registers: [register],
     });
 
@@ -116,9 +113,10 @@ export class EnergyEventsMetricsService {
       registers: [register],
     });
 
-    this.fleetZeroEventsGauge = new Counter({
-      name: 'synqdrive_energy_events_fleet_zero_persist_total',
-      help: 'Detection runs that persisted zero events while fetches succeeded (pipeline health signal)',
+    this.zeroPersistRunsTotal = new Counter({
+      name: 'synqdrive_energy_events_zero_persist_runs_total',
+      help:
+        'Single detection runs that persisted zero events (supporting signal only; not fleet-level outage proof)',
       labelNames: ['had_fetch_failure'],
       registers: [register],
     });
@@ -171,15 +169,15 @@ export class EnergyEventsMetricsService {
     hadFetchFailure: boolean;
     totalPersisted: number;
   }): void {
-    this.eventsCreatedTotal.inc({ mechanism: 'all' }, stats.created);
-    this.eventsUpdatedTotal.inc({ mechanism: 'all' }, stats.updated);
-    this.eventsSkippedTotal.inc({ mechanism: 'all' }, stats.skipped);
+    this.eventsCreatedTotal.inc(stats.created);
+    this.eventsUpdatedTotal.inc(stats.updated);
+    this.eventsSkippedTotal.inc(stats.skipped);
     this.eventsPrunedTotal.inc(stats.pruned);
     for (const [mechanism, count] of Object.entries(stats.persistableByMechanism)) {
       this.segmentsPersistableTotal.inc({ mechanism }, count);
     }
     if (stats.totalPersisted === 0) {
-      this.fleetZeroEventsGauge.inc({
+      this.zeroPersistRunsTotal.inc({
         had_fetch_failure: stats.hadFetchFailure ? 'true' : 'false',
       });
     }

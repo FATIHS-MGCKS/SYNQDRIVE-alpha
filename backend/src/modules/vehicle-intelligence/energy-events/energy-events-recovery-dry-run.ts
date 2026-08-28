@@ -34,26 +34,27 @@ export function simulateRecoveryWindow(
     input.existingEvents.map((row) => [row.dimoSegmentId, row]),
   );
 
-  if (input.mechanismOutcomes.some((o) => o.status === 'FAILED')) {
-    for (const outcome of input.mechanismOutcomes.filter(
-      (o) => o.status === 'FAILED',
-    )) {
-      candidates.push(
-        buildFetchFailedCandidate(input, outcome),
-      );
-    }
-    return {
-      candidates,
-      skippedNotPersistable: 0,
-      legacySubsegmentsWouldReplace: [],
-      fetchFailed: true,
-    };
+  const failedOutcomes = input.mechanismOutcomes.filter(
+    (outcome) => outcome.status === 'FAILED',
+  );
+  const successfulMechanisms = new Set(
+    input.mechanismOutcomes
+      .filter((outcome) => outcome.status !== 'FAILED')
+      .map((outcome) => outcome.mechanism),
+  );
+
+  for (const outcome of failedOutcomes) {
+    candidates.push(buildFetchFailedCandidate(input, outcome));
   }
 
-  const persistable = input.segments.filter(isSegmentPersistable);
-  const skippedNotPersistable = input.segments.length - persistable.length;
+  const successfulSegments = input.segments.filter((segment) =>
+    successfulMechanisms.has(segment.mechanism),
+  );
 
-  for (const segment of input.segments.filter((s) => !isSegmentPersistable(s))) {
+  const persistable = successfulSegments.filter(isSegmentPersistable);
+  const skippedNotPersistable = successfulSegments.length - persistable.length;
+
+  for (const segment of successfulSegments.filter((s) => !isSegmentPersistable(s))) {
     candidates.push(
       buildSegmentCandidate(input, segment, 'WOULD_SKIP_NOT_PERSISTABLE', [], null),
     );
@@ -64,7 +65,7 @@ export function simulateRecoveryWindow(
     coalesced,
     input.mechanismOutcomes,
   );
-  const overlapIds = detectOverlappingDuplicates(input.segments);
+  const overlapIds = detectOverlappingDuplicates(successfulSegments);
 
   for (const group of coalesced) {
     const payload = buildUpsertPayload(input.vehicleId, group);
@@ -133,7 +134,7 @@ export function simulateRecoveryWindow(
     candidates,
     skippedNotPersistable,
     legacySubsegmentsWouldReplace,
-    fetchFailed: false,
+    fetchFailed: failedOutcomes.length > 0,
   };
 }
 
@@ -216,6 +217,7 @@ function buildSegmentCandidate(
     existingRowId,
     windowFrom: input.windowFrom.toISOString(),
     windowTo: input.windowTo.toISOString(),
+    startedBeforeRange: segment.startedBeforeRange === true,
   };
 }
 

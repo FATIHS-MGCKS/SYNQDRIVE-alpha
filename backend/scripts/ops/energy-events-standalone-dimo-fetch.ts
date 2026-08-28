@@ -16,6 +16,14 @@ import type { EnergyMechanismFetchOutcome } from '../../src/modules/dimo/energy-
 import { parseDimoEnergyEventSegment } from '../../src/modules/dimo/energy-events/parse-energy-event-segment';
 import { mapRechargeSegmentToEnergyEvent } from '../../src/modules/dimo/recharge-segments/dimo-recharge-segments.mapper';
 import { normalizeDimoRechargeSegments } from '../../src/modules/dimo/recharge-segments/dimo-recharge-segments.normalizer';
+import {
+  mechanismsForEnergyClass,
+  type AuditedFleetSignalProfile,
+} from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery.constants';
+import type {
+  DimoRequestAccounting,
+  EnergyVehicleEnergyClass,
+} from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery.types';
 
 const AUTH_URL = 'https://auth.dimo.zone';
 const TOKEN_EXCHANGE_URL =
@@ -28,6 +36,7 @@ const NFT_CONTRACT =
 
 let cachedDevJwt: string | null = null;
 const vehicleJwtCache = new Map<number, string>();
+const dimoAccessCache = new Map<number, boolean>();
 
 async function getDeveloperJwt(): Promise<string> {
   if (cachedDevJwt) return cachedDevJwt;
@@ -66,9 +75,37 @@ async function getDeveloperJwt(): Promise<string> {
   return cachedDevJwt;
 }
 
-async function getVehicleJwt(tokenId: number): Promise<string> {
+export async function probeDimoTokenAccess(
+  tokenId: number,
+  profile?: AuditedFleetSignalProfile,
+): Promise<boolean> {
+  if (profile?.knownDimoAccessFailure) {
+    dimoAccessCache.set(tokenId, false);
+    return false;
+  }
+  const cached = dimoAccessCache.get(tokenId);
+  if (cached != null) return cached;
+
+  try {
+    await getVehicleJwt(tokenId);
+    dimoAccessCache.set(tokenId, true);
+    return true;
+  } catch {
+    dimoAccessCache.set(tokenId, false);
+    return false;
+  }
+}
+
+async function getVehicleJwt(
+  tokenId: number,
+  accounting?: DimoRequestAccounting,
+): Promise<string> {
   const cached = vehicleJwtCache.get(tokenId);
   if (cached) return cached;
+
+  if (accounting) {
+    accounting.tokenExchangeRequests += 1;
+  }
   const devJwt = await getDeveloperJwt();
   const resp = await axios.post(
     `${TOKEN_EXCHANGE_URL}/v1/tokens/exchange`,
@@ -105,21 +142,41 @@ async function gql(jwt: string, query: string) {
   };
 }
 
+function emptyAccounting(): DimoRequestAccounting {
+  return {
+    telemetryGraphqlRequests: 0,
+    tokenExchangeRequests: 0,
+    mechanismRequests: 0,
+    retries: 0,
+  };
+}
+
 export async function fetchEnergyEventSegmentsStandalone(
   tokenId: number,
   from: Date,
   to: Date,
-): Promise<{ segments: DimoEnergyEventSegment[]; outcomes: EnergyMechanismFetchOutcome[] }> {
+  energyClass: EnergyVehicleEnergyClass,
+): Promise<{
+  segments: DimoEnergyEventSegment[];
+  outcomes: EnergyMechanismFetchOutcome[];
+  accounting: DimoRequestAccounting;
+}> {
   const windowFrom = from.toISOString();
   const windowTo = to.toISOString();
   const outcomes: EnergyMechanismFetchOutcome[] = [];
   const segments: DimoEnergyEventSegment[] = [];
+  const accounting = emptyAccounting();
+  const mechanisms = mechanismsForEnergyClass(energyClass);
+
+  if (mechanisms.length === 0) {
+    return { segments, outcomes, accounting };
+  }
 
   let vehicleJwt: string;
   try {
-    vehicleJwt = await getVehicleJwt(tokenId);
+    vehicleJwt = await getVehicleJwt(tokenId, accounting);
   } catch (error) {
-    for (const mechanism of ['refuel', 'recharge'] as const) {
+    for (const mechanism of mechanisms) {
       outcomes.push({
         mechanism,
         status: 'FAILED',
@@ -134,10 +191,11 @@ export async function fetchEnergyEventSegmentsStandalone(
         },
       });
     }
-    return { segments, outcomes };
+    return { segments, outcomes, accounting };
   }
 
-  for (const mechanism of ['refuel', 'recharge'] as const) {
+  for (const mechanism of mechanisms) {
+    accounting.mechanismRequests += 1;
     const query =
       mechanism === 'refuel'
         ? buildEnergyEventSegmentsQuery(
@@ -154,6 +212,7 @@ export async function fetchEnergyEventSegmentsStandalone(
             detectorConfig: DIMO_PRODUCTION_RECHARGE_DETECTOR_CONFIG,
           });
 
+    accounting.telemetryGraphqlRequests += 1;
     const response = await gql(vehicleJwt, query);
     if (response.httpStatus !== 200 || response.errors) {
       outcomes.push({
@@ -193,5 +252,16 @@ export async function fetchEnergyEventSegmentsStandalone(
     segments.push(...parsed);
   }
 
-  return { segments, outcomes };
+  return { segments, outcomes, accounting };
+}
+
+export async function probeFleetDimoAccess(): Promise<Record<number, boolean>> {
+  const { AUDITED_FLEET_SIGNAL_PROFILES } = await import(
+    '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery.constants'
+  );
+  const access: Record<number, boolean> = {};
+  for (const profile of AUDITED_FLEET_SIGNAL_PROFILES) {
+    access[profile.tokenId] = await probeDimoTokenAccess(profile.tokenId, profile);
+  }
+  return access;
 }

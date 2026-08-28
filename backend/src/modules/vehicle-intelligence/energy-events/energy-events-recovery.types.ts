@@ -1,6 +1,7 @@
 import type { EnergyEventConfidence } from '@prisma/client';
 import type { DimoEnergyEventSegment } from '@modules/dimo/dimo-segments.service';
 import type { EnergyMechanismFetchOutcome } from '@modules/dimo/energy-events/energy-mechanism-fetch.types';
+import type { DbComparisonStatus } from './energy-events-recovery-read.repository';
 
 export type EnergyRecoveryClassification =
   | 'WOULD_CREATE'
@@ -17,6 +18,11 @@ export type EnergyVehicleEnergyClass =
   | 'BOTH'
   | 'NO_ENERGY_SIGNAL'
   | 'DIMO_ACCESS_FAILED';
+
+export type ManualReviewDisposition =
+  | 'APPROVE_FOR_BACKFILL'
+  | 'EXCLUDE_FROM_BACKFILL'
+  | 'NEEDS_FURTHER_EVIDENCE';
 
 export interface EnergyRecoveryVehicleInventoryRow {
   vehicleId: string | null;
@@ -52,14 +58,45 @@ export interface EnergyRecoveryCandidate {
   confidence: EnergyEventConfidence;
   detectorConfigVersion: string;
   manualReviewReasons: string[];
+  overlapRelation?: string | null;
+  existingDbRelation?: string | null;
   existingRowId: string | null;
   windowFrom: string;
   windowTo: string;
+  startedBeforeRange?: boolean;
+}
+
+export interface ManualReviewEntry {
+  vehicle: string;
+  tokenId: number;
+  mechanism: 'refuel' | 'recharge';
+  startTime: string;
+  endTime: string;
+  durationSeconds: number;
+  fuelDeltaLiters: number | null;
+  fuelDeltaPercent: number | null;
+  socDeltaPercent: number | null;
+  energyDeltaKwh: number | null;
+  confidence: EnergyEventConfidence;
+  plausibilityReasons: string[];
+  overlapRelation: string | null;
+  existingDbRelation: string | null;
+  existingRowId: string | null;
+  dimoSegmentId: string;
+  recommendation: ManualReviewDisposition;
+}
+
+export interface DimoRequestAccounting {
+  telemetryGraphqlRequests: number;
+  tokenExchangeRequests: number;
+  mechanismRequests: number;
+  retries: number;
 }
 
 export interface EnergyRecoveryDryRunReport {
   generatedAt: string;
   mainSha: string;
+  baseSha: string;
   detectorConfigVersion: string;
   refuelDetectorConfig: { minIncreasePercent: number };
   rechargeDetectorConfig: 'default';
@@ -67,12 +104,17 @@ export interface EnergyRecoveryDryRunReport {
   recoveryCutoff: string;
   windowSizeHours: number;
   windowSemantics: string;
+  mode: 'full' | 'quick';
+  dbComparisonEnabled: boolean;
+  dbComparisonStatus: DbComparisonStatus;
   vehicles: EnergyRecoveryVehicleInventoryRow[];
-  dimoRequestCount: number;
+  requestAccounting: DimoRequestAccounting;
   refuelDetections: number;
   rechargeDetections: number;
+  deduplicatedCandidateCount: number;
   summary: Record<EnergyRecoveryClassification, number>;
   candidates: EnergyRecoveryCandidate[];
+  manualReviewReport: ManualReviewEntry[];
   legacySubsegmentsWouldReplace: string[];
   fetchFailures: Array<{
     vehicleId: string;
@@ -85,9 +127,10 @@ export interface EnergyRecoveryDryRunReport {
   }>;
   trafficBudget: {
     eligibleVehicles: number;
+    inaccessibleVehicles: number;
     windowsPerVehicle: number;
-    mechanismsPerWindow: number;
-    expectedDimoRequests: number;
+    mechanismsPerWindowAverage: number;
+    expectedTelemetryGraphqlRequests: number;
     worstCaseWithRetries: number;
     proposedConcurrency: number;
     interRequestDelayMs: number;
@@ -109,6 +152,7 @@ export interface EnergyRecoveryDryRunReport {
   dbWritesPerformed: false;
   backfillGate: string;
   manualReviewCount: number;
+  gateBlockers: string[];
 }
 
 export interface EnergyRecoverySimulateInput {
