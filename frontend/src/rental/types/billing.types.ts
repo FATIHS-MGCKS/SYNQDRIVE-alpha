@@ -231,7 +231,13 @@ export interface TenantSubscriptionOverviewDto {
     } | null;
     asOf: string;
   } | null;
-  addOns: Array<{ key: string; name: string; statusLabel: string; active: boolean }>;
+  addOns: Array<{
+    key: string;
+    name: string;
+    status: string;
+    statusLabel: string;
+    active: boolean;
+  }>;
   warnings: TenantBillingWarningDto[];
   availableActions: Array<{
     action: string;

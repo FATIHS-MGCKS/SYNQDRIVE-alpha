@@ -865,6 +865,20 @@ export const en = {
   'tenantBilling.paymentMethod.error.portalNotConfigured': 'Stripe payments are not available right now.',
   'tenantBilling.paymentMethod.error.portalOpenFailed': 'The payment portal could not be opened.',
 
+  'tenantBilling.addons.loadErrorTitle': 'Add-ons could not be loaded',
+  'tenantBilling.addons.empty.title': 'No active add-ons yet',
+  'tenantBilling.addons.empty.body':
+    'Optional extensions such as Voice Assistant or AI packages can be managed here later. No add-on is currently on your subscription.',
+  'tenantBilling.addons.key.VOICE_AGENT': 'Voice Assistant',
+  'tenantBilling.addons.key.AI_PACKAGE': 'AI Package',
+  'tenantBilling.addons.key.WHATSAPP': 'WhatsApp',
+  'tenantBilling.addons.status.ACTIVE': 'Active',
+  'tenantBilling.addons.status.TRIALING': 'Trial',
+  'tenantBilling.addons.status.GRACE_PERIOD': 'Grace period',
+  'tenantBilling.addons.status.SCHEDULED_CANCEL': 'Cancellation scheduled',
+  'tenantBilling.addons.status.PAUSED': 'Paused',
+  'tenantBilling.addons.status.INACTIVE': 'Inactive',
+
   'finance.separationHint':
     'Customer payments and payouts are separate from your SynqDrive subscription. Your subscription card is not the same as your payout bank account.',
   'finance.customerPayments.pageTitle': 'Customer payments & payouts',

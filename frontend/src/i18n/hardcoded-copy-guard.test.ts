@@ -533,6 +533,8 @@ const P257_ENFORCE_CLEAN_EXACT = [
   'rental/components/billing/useBillingStripeActions.ts',
 ];
 
+const P258_ENFORCE_CLEAN_EXACT = ['rental/components/billing/TenantBillingAddOnsTab.tsx'];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -747,6 +749,10 @@ function isP253EnforceCleanPath(relPath: string): boolean {
 
 function isP257EnforceCleanPath(relPath: string): boolean {
   return P257_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP258EnforceCleanPath(relPath: string): boolean {
+  return P258_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -1203,6 +1209,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP257EnforceCleanPath(finding.file),
     );
     expect(p257Debt).toHaveLength(0);
+  });
+
+  it('keeps P258 Tenant Billing Add-ons enforce-clean scope at zero findings', () => {
+    const p258Debt = inventory.findings.filter((finding) =>
+      isP258EnforceCleanPath(finding.file),
+    );
+    expect(p258Debt).toHaveLength(0);
   });
 
   it('keeps rental-invoice-line-items-i18n.ts on canonical formatter delegation', () => {

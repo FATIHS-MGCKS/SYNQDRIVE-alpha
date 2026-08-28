@@ -1,5 +1,5 @@
 /**
- * Rental Tenant Billing presentation adapter (P2.2.54 overview + shell; P2.2.55A tariff summary/breakdown/tier ladder; P2.2.55B billable vehicles + vehicle changes; P2.2.56 tenant billing invoices list + detail; P2.2.57 tenant billing payment method).
+ * Rental Tenant Billing presentation adapter (P2.2.54 overview + shell; P2.2.55A tariff summary/breakdown/tier ladder; P2.2.55B billable vehicles + vehicle changes; P2.2.56 tenant billing invoices list + detail; P2.2.57 tenant billing payment method; P2.2.58 tenant billing add-ons).
  * Locale-aware display helpers and static TranslationKeys only.
  */
 import {
@@ -452,4 +452,62 @@ export function resolveStripePortalActionErrorMessage(
     return t('tenantBilling.paymentMethod.error.portalNotConfigured');
   }
   return t('tenantBilling.paymentMethod.error.portalOpenFailed');
+}
+
+const TENANT_BILLING_ADDON_KEYS = ['VOICE_AGENT', 'AI_PACKAGE', 'WHATSAPP'] as const;
+type TenantBillingAddonKey = (typeof TENANT_BILLING_ADDON_KEYS)[number];
+
+const TENANT_BILLING_ADDON_STATUSES = [
+  'ACTIVE',
+  'TRIALING',
+  'GRACE_PERIOD',
+  'SCHEDULED_CANCEL',
+  'PAUSED',
+  'INACTIVE',
+] as const;
+type TenantBillingAddonStatus = (typeof TENANT_BILLING_ADDON_STATUSES)[number];
+
+function isTenantBillingAddonKey(key: string): key is TenantBillingAddonKey {
+  return (TENANT_BILLING_ADDON_KEYS as readonly string[]).includes(key);
+}
+
+function isTenantBillingAddonStatus(status: string): status is TenantBillingAddonStatus {
+  return (TENANT_BILLING_ADDON_STATUSES as readonly string[]).includes(status);
+}
+
+export function resolveTenantBillingAddonName(
+  addon: { key: string; name: string },
+  t: Translate,
+): string {
+  if (isTenantBillingAddonKey(addon.key)) {
+    const keyByAddon: Record<TenantBillingAddonKey, TranslationKey> = {
+      VOICE_AGENT: 'tenantBilling.addons.key.VOICE_AGENT',
+      AI_PACKAGE: 'tenantBilling.addons.key.AI_PACKAGE',
+      WHATSAPP: 'tenantBilling.addons.key.WHATSAPP',
+    };
+    return t(keyByAddon[addon.key]);
+  }
+  const rawName = addon.name?.trim();
+  if (rawName) return rawName;
+  return addon.key;
+}
+
+export function resolveTenantBillingAddonStatusLabel(
+  addon: { status: string; statusLabel: string },
+  t: Translate,
+): string {
+  if (isTenantBillingAddonStatus(addon.status)) {
+    const keyByStatus: Record<TenantBillingAddonStatus, TranslationKey> = {
+      ACTIVE: 'tenantBilling.addons.status.ACTIVE',
+      TRIALING: 'tenantBilling.addons.status.TRIALING',
+      GRACE_PERIOD: 'tenantBilling.addons.status.GRACE_PERIOD',
+      SCHEDULED_CANCEL: 'tenantBilling.addons.status.SCHEDULED_CANCEL',
+      PAUSED: 'tenantBilling.addons.status.PAUSED',
+      INACTIVE: 'tenantBilling.addons.status.INACTIVE',
+    };
+    return t(keyByStatus[addon.status]);
+  }
+  const rawLabel = addon.statusLabel?.trim();
+  if (rawLabel) return rawLabel;
+  return addon.status;
 }

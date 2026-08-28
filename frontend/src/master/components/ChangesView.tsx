@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-tenant-billing-addons-p2-2-58-2026-08-28',
+    version: '4.9.986',
+    title: 'Platform i18n — P2.2.58 Rental Tenant Billing Add-ons',
+    summary: [
+      'Localized production-mounted Add-ons tab (load error, empty state, add-on key/status presentation) via extended `rental-tenant-billing-i18n.ts`; 12 `tenantBilling.addons.*` keys (8942→8954 EN+DE).',
+      'Backend DTO additively exposes existing add-on `status` machine alongside preserved `name`/`statusLabel`; frontend maps known keys/statuses from machine, unknown values remain raw.',
+      'P258 enforce-clean exact scope (1 path) — 0 findings; reuses `common.retry`, `tenantBilling.tab.addons`. Active mounted Tenant Billing surfaces now complete. Category E=0.',
+    ],
+    reason:
+      'P2.2.58 bounded implementation after P257 merge (#1377) per #1382 pre-flight verdict A.',
+    previousBehavior:
+      'Add-ons tab used hardcoded German host strings and rendered backend German name/status labels in EN.',
+    details:
+      'Presentation-only adapter extensions (`resolveTenantBillingAddonName`, `resolveTenantBillingAddonStatusLabel`). Active filter (`addon.active`), ordering, entitlements, and overview fetch unchanged. No mutations/provider/commercial UI introduced.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-28T14:30:00.000Z',
+  },
+  {
     id: 'i18n-rental-tenant-billing-payment-method-p2-2-57-2026-08-28',
     version: '4.9.985',
     title: 'Platform i18n — P2.2.57 Rental Tenant Billing Payment Method',

@@ -1,6 +1,10 @@
-import { EmptyState } from '../../../components/patterns/states';
+import { EmptyState, ErrorState, SkeletonCard } from '../../../components/patterns/states';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  resolveTenantBillingAddonName,
+  resolveTenantBillingAddonStatusLabel,
+} from '../../lib/rental-tenant-billing-i18n';
 import type { TenantSubscriptionOverviewDto } from '../../types/billing.types';
-import { ErrorState, SkeletonCard } from '../../../components/patterns/states';
 
 interface TenantBillingAddOnsTabProps {
   overview: TenantSubscriptionOverviewDto | null;
@@ -15,14 +19,16 @@ export function TenantBillingAddOnsTab({
   error,
   onRetry,
 }: TenantBillingAddOnsTabProps) {
+  const { t } = useLanguage();
+
   if (loading && !overview) return <SkeletonCard className="h-48 rounded-2xl" />;
   if (error) {
     return (
       <ErrorState
-        title="Zusatzmodule konnten nicht geladen werden"
+        title={t('tenantBilling.addons.loadErrorTitle')}
         description={error}
         onRetry={() => void onRetry()}
-        retryLabel="Erneut versuchen"
+        retryLabel={t('common.retry')}
       />
     );
   }
@@ -34,8 +40,8 @@ export function TenantBillingAddOnsTab({
     return (
       <EmptyState
         data-testid="tenant-addons-empty"
-        title="Noch keine Zusatzmodule aktiv"
-        description="Optionale Erweiterungen wie Sprachassistent oder KI-Pakete können später hier verwaltet werden. Aktuell ist kein Zusatzmodul für Ihr Abo hinterlegt."
+        title={t('tenantBilling.addons.empty.title')}
+        description={t('tenantBilling.addons.empty.body')}
       />
     );
   }
@@ -48,8 +54,10 @@ export function TenantBillingAddOnsTab({
           className="surface-premium rounded-xl border border-border/60 px-4 py-3 flex items-center justify-between gap-3"
         >
           <div>
-            <p className="text-sm font-semibold">{addon.name}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{addon.statusLabel}</p>
+            <p className="text-sm font-semibold">{resolveTenantBillingAddonName(addon, t)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {resolveTenantBillingAddonStatusLabel(addon, t)}
+            </p>
           </div>
         </div>
       ))}
