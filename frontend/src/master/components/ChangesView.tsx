@@ -36,6 +36,32 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-detection-gap-forensic-audit-2026-08-28',
+    version: '4.9.988',
+    title: 'Trip-Detection Gap — forensic audit of the 5 remaining NULL_UNRESOLVABLE RPM candidates (read-only)',
+    summary: [
+      'Verdict B: multiple trip-detection failure modes confirmed, sharing one upstream trigger. Provider telemetry gaps (verdict C) are positively excluded — ClickHouse holds ignition/motion evidence containing every one of the five events, HIGH confidence in four of five.',
+      'All five are real drives: intake context recorded 103–165 km/h, coolant 90–95 °C and engineOnHint=true for every candidate → VEHICLE_MOVEMENT_PROVEN across the board.',
+      'Upstream trigger: between 2026-07-17 and 2026-07-20 11:20 the live V2 detector produced ZERO trips fleet-wide (V2_LIVE 14/18 per day → 0/0/0 → 34). DimoSnapshotProcessor awaited an unguarded Battery V2 classifyAndEnqueue whose correlationId contained colons, which BullMQ v5 rejects as a custom job id — the throw aborted the snapshot before evaluateTripStart. Fixed by 06d5642b3; first live trip 23 minutes after that deploy.',
+      'FIRST_BROKEN_BOUNDARY = 2 (DIMO → SynqDrive ingestion) for all five; boundaries 4–8 were never exercised, so the retroactive repair path is where the individual failures occurred.',
+      'Repair path then failed for three distinct reasons: 79c4f647/d9197e1f — 107-min and 98-min drives cannot pair ON+OFF inside a 45-min window (structurally impossible, no proposal ever existed); d6073d34/aba38e11 — 37-min drive left a 7m47s detection slot against a 15-min tick, missed by runs at 06:41:21 and 07:26:20; 5e46a6de — containing ignition fragment was 298 s against the 300 s MEDIUM cutoff → LOW → re-proposed and re-dropped 4 times.',
+      '5e46a6de is doubly unlucky: a clean HIGH motion segment (1301 s) covered the same event in the same window but was never queried, because for ICE profiles the motion detector runs only when ignition yields zero candidates.',
+      'Gap arithmetic independently verified: 37.97 / 42.28 / 42.28 / 90.00 / 193.02 minutes between completed trips, confirming the Stage 2 “38–193 min” statement. Candidates 4 and 5 share one gap → 4 distinct missing windows, not 5.',
+      'Blast radius (bounded 90-day, time-coverage not binary overlap): 49 drives with ≥5 min of driving absent from any canonical trip, ~42.7 h, across all 5 live tracked vehicles — and 14 drives / 12.9 h fall in August, after the live-detection fix. Dominant shape is truncation, not absence: zero drives have 0 % coverage.',
+      'Architectural weaknesses recorded: detectability = window − duration (scheduler-phase lottery), duration used as a confidence proxy with a hard 300 s cliff, no fragment coalescing, evidence sources competing instead of combining (ICE suppresses motion; DIMO short-circuits ClickHouse since 2026-07-20), 8103+313 LOW proposals re-proposed forever, overlap check runs before the audit row is written, and no coverage invariant.',
+      'Repair strategy is DESIGN ONLY (R1–R8) with required tests and a 6-step production validation plan. Nothing implemented, no trips created, no thresholds or DIMO triggers touched.',
+    ],
+    reason:
+      'Stage 2 left exactly 5 NULL_UNRESOLVABLE candidates carrying real >5000 RPM observations with no canonical trip containing them — evidence of a trip DETECTION problem rather than an event↔trip association problem.',
+    previousBehavior:
+      'The five gaps were known only as unresolvable association rows. Why each proven engine-running interval never became a vehicle_trip was undetermined, and the fleet-wide 3-day live-detection outage had produced no alert at the time.',
+    details:
+      'Read-only audit — PRODUCTION_MUTATIONS = NONE. No application code changed. architecture/TRIP_DETECTION_GAP_FORENSIC_AUDIT_2026-08-28.md documents the candidate table, per-candidate timelines and reconstructed windows, provider activity proof, the full detection pipeline, the boundary matrix, the detectAndRepairMissingTrips audit, root causes, blast radius, downstream impact, repair design, tests and evidence gaps.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T17:45:00.000Z',
+  },
+  {
     id: 'event-trip-association-stage2-historical-repair-2026-08-28',
     version: '4.9.987',
     title: 'Event ↔ Trip Association Stage 2 — historical RPM candidate repair (production)',
