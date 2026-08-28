@@ -10,7 +10,15 @@ import {
   extractLatestSegmentEnd,
   resolveAnalyticsAssistedEndDecision,
 } from '../trip-evidence.helpers';
-import { TripOverlapDetector } from '../detectors/trip-overlap.detector';
+import { createHash } from 'node:crypto';
+import {
+  TripOverlapDetector,
+  type TripOverlapEvidence,
+} from '../detectors/trip-overlap.detector';
+import {
+  normalizeCoverageMode,
+  type TripRepairCoverageMode,
+} from '@config/worker.config';
 import { IgnitionSegmentDetector } from '../detectors/ignition-segment.detector';
 import { MotionSegmentDetector } from '../detectors/motion-segment.detector';
 import { ActivityWindowDetector } from '../detectors/activity-window.detector';
@@ -465,6 +473,8 @@ export class TripReconciliationService {
       options,
     );
 
+    const coverageMode = this.resolveCoverageMode();
+
     for (const candidate of repairCandidates) {
       const segStart = candidate.startTime;
       const segEnd = candidate.endTime;
@@ -476,55 +486,85 @@ export class TripReconciliationService {
         phase: DETECTION_PHASES.DUPLICATE_OR_OVERLAP_CHECK,
         candidateStart: segStart,
         candidateEnd: segEnd,
+        coverageMode,
       } as any);
 
-      if (overlapFinding.verdict === 'TRIGGERED') {
+      const overlapEvidence = (overlapFinding.evidence ?? {}) as Partial<TripOverlapEvidence>;
+      const suppressed = overlapFinding.verdict === 'TRIGGERED';
+
+      // Audit before decision. Suppression used to `continue` ahead of this
+      // write, so a suppressed proposal left no trace at all and the repair
+      // audit trail silently omitted its own most common outcome.
+      const evaluationAudit = await this.recordRepairProposalAudit({
+        vehicleId,
+        windowFrom: segStart,
+        windowTo: segEnd,
+        candidate,
+        overlapEvidence,
+        suppressed,
+      });
+
+      if (suppressed) {
         this.tripMetrics?.duplicateCandidates.inc();
         continue;
       }
 
-      const repair = await this.prisma.tripRepair.create({
-        data: {
+      // In enforce mode the accepted proposal is the uncovered part of the
+      // candidate, never the whole envelope — otherwise a partially covered
+      // drive would be persisted on top of the trips that already cover it.
+      const acceptedSpans =
+        coverageMode === 'enforce'
+          ? (overlapEvidence.repairableSpans ?? []).map((span) => ({
+              start: new Date(span.start),
+              end: new Date(span.end),
+            }))
+          : [{ start: segStart, end: segEnd }];
+
+      for (const span of acceptedSpans) {
+        const isFullCandidate =
+          span.start.getTime() === segStart.getTime() && span.end.getTime() === segEnd.getTime();
+        const repair = isFullCandidate
+          ? evaluationAudit
+          : await this.recordRepairProposalAudit({
+              vehicleId,
+              windowFrom: span.start,
+              windowTo: span.end,
+              candidate,
+              overlapEvidence,
+              suppressed: false,
+              clippedFromCandidate: true,
+            });
+        proposed++;
+
+        const effectiveConfidence = await this.resolveEffectiveConfidence(
           vehicleId,
-          repairType: REPAIR_TYPES.MISSING_TRIP,
-          status: REPAIR_STATUS.PROPOSED,
-          reason: candidate.reason,
-          confidence: candidate.confidence,
-          windowFrom: segStart,
-          windowTo: segEnd,
-          detectorEvidence: JSON.parse(JSON.stringify(candidate.detectorEvidence)),
-        },
-      });
-      proposed++;
+          profile,
+          dimoTokenId,
+          candidate,
+        );
 
-      const effectiveConfidence = await this.resolveEffectiveConfidence(
-        vehicleId,
-        profile,
-        dimoTokenId,
-        candidate,
-      );
+        if (effectiveConfidence !== 'HIGH' && effectiveConfidence !== 'MEDIUM') continue;
 
-      if (effectiveConfidence === 'HIGH' || effectiveConfidence === 'MEDIUM') {
         try {
           const trip = await this.decisionEngine.createRepairedTrip({
             vehicleId,
             organizationId: vehicle.organizationId ?? null,
-            dimoSegmentId: candidate.segmentId,
-            startTime: segStart,
-            startLatitude: candidate.startLatitude ?? null,
-            startLongitude: candidate.startLongitude ?? null,
+            dimoSegmentId: isFullCandidate ? candidate.segmentId : undefined,
+            startTime: span.start,
+            startLatitude: isFullCandidate ? (candidate.startLatitude ?? null) : null,
+            startLongitude: isFullCandidate ? (candidate.startLongitude ?? null) : null,
             detectionProfile: profile,
             startDetectionMode: candidate.startDetectionMode,
             startConfidence: effectiveConfidence,
           });
           await this.decisionEngine.finalizeRepairedTrip(trip.id, {
-            endTime: segEnd,
-            endLatitude: candidate.endLatitude ?? null,
-            endLongitude: candidate.endLongitude ?? null,
+            endTime: span.end,
+            endLatitude: isFullCandidate ? (candidate.endLatitude ?? null) : null,
+            endLongitude: isFullCandidate ? (candidate.endLongitude ?? null) : null,
             endDetectionMode: candidate.endDetectionMode,
             endConfidence: effectiveConfidence,
-            durationMs: segEnd.getTime() - segStart.getTime(),
-            distanceKm: candidate.distanceKm ?? null,
+            durationMs: span.end.getTime() - span.start.getTime(),
+            distanceKm: isFullCandidate ? (candidate.distanceKm ?? null) : null,
             rawDetectionMeta: candidate.detectorEvidence,
           });
           await this.prisma.tripRepair.update({
@@ -548,7 +588,7 @@ export class TripReconciliationService {
             result: 'applied',
           });
           this.logger.log(
-            `Missing trip repaired for vehicle ${vehicleId}: ${segStart.toISOString()} → ${segEnd.toISOString()}`,
+            `Missing trip repaired for vehicle ${vehicleId}: ${span.start.toISOString()} → ${span.end.toISOString()}`,
           );
         } catch (err: unknown) {
           await this.prisma.tripRepair.update({
@@ -565,6 +605,125 @@ export class TripReconciliationService {
     }
 
     return { proposed, applied, rejected };
+  }
+
+  private resolveCoverageMode(): TripRepairCoverageMode {
+    return normalizeCoverageMode(
+      this.configService?.get<string>('worker.tripRepairCoverageMode') ??
+        process.env.TRIP_REPAIR_COVERAGE_MODE,
+    );
+  }
+
+  /**
+   * Deterministic identity for a repair audit row.
+   *
+   * The same drive is re-evaluated on every scheduler tick and by every tier,
+   * so an insert-per-evaluation would turn `trip_repairs` into a tick log. The
+   * primary key is derived from what actually identifies the proposal, which
+   * makes the write idempotent without a schema change.
+   */
+  private buildRepairAuditId(
+    vehicleId: string,
+    repairType: string,
+    windowFrom: Date,
+    windowTo: Date,
+  ): string {
+    const digest = createHash('sha256')
+      .update(
+        `${vehicleId}|${repairType}|${windowFrom.toISOString()}|${windowTo.toISOString()}`,
+      )
+      .digest('hex');
+    return [
+      digest.slice(0, 8),
+      digest.slice(8, 12),
+      digest.slice(12, 16),
+      digest.slice(16, 20),
+      digest.slice(20, 32),
+    ].join('-');
+  }
+
+  /**
+   * Writes the durable diagnostic record for one evaluated proposal, before the
+   * suppression decision is acted on.
+   *
+   * Everything needed to reconstruct the decision — proposal interval, evidence
+   * source, intersecting canonical trips, coverage metrics, verdict, reason,
+   * detector, confidence, timestamp — is carried by existing columns plus the
+   * existing `detectorEvidence` payload, so no migration is required.
+   */
+  private async recordRepairProposalAudit(input: {
+    vehicleId: string;
+    windowFrom: Date;
+    windowTo: Date;
+    candidate: RepairCandidate;
+    overlapEvidence: Partial<TripOverlapEvidence>;
+    suppressed: boolean;
+    clippedFromCandidate?: boolean;
+  }): Promise<{ id: string }> {
+    const { vehicleId, windowFrom, windowTo, candidate, overlapEvidence, suppressed } = input;
+    const id = this.buildRepairAuditId(
+      vehicleId,
+      REPAIR_TYPES.MISSING_TRIP,
+      windowFrom,
+      windowTo,
+    );
+
+    const status = suppressed ? REPAIR_STATUS.SUPPRESSED : REPAIR_STATUS.PROPOSED;
+    const reason = suppressed
+      ? `Suppressed as duplicate (${overlapEvidence.decisionSource ?? 'legacy'}: ${
+          overlapEvidence.decisionSource === 'coverage'
+            ? (overlapEvidence.coverageVerdict ?? 'UNKNOWN')
+            : 'OVERLAP_TRIGGERED'
+        }) — ${candidate.reason}`
+      : candidate.reason;
+
+    const detectorEvidence = JSON.parse(
+      JSON.stringify({
+        ...candidate.detectorEvidence,
+        source: candidate.source,
+        clippedFromCandidate: input.clippedFromCandidate ?? false,
+        candidateWindow: {
+          from: candidate.startTime.toISOString(),
+          to: candidate.endTime.toISOString(),
+        },
+        overlapDecision: overlapEvidence,
+      }),
+    );
+
+    const data = {
+      vehicleId,
+      repairType: REPAIR_TYPES.MISSING_TRIP,
+      status,
+      reason,
+      confidence: candidate.confidence,
+      windowFrom,
+      windowTo,
+      detectorEvidence,
+    };
+
+    const existing = await this.prisma.tripRepair.findUnique({
+      where: { id },
+      select: { id: true, status: true },
+    });
+
+    if (!existing) {
+      try {
+        return await this.prisma.tripRepair.create({ data: { id, ...data } });
+      } catch {
+        // Lost an insert race with a concurrent evaluation of the same window.
+        // The row now exists and carries the same decision; fall through.
+        return { id };
+      }
+    }
+
+    // An applied repair is history: re-evaluating its window must not rewrite it.
+    if (existing.status === REPAIR_STATUS.APPLIED) return existing;
+
+    await this.prisma.tripRepair.update({
+      where: { id },
+      data: { status, reason, confidence: candidate.confidence, detectorEvidence },
+    });
+    return existing;
   }
 
   private async collectRepairCandidates(

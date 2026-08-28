@@ -36,6 +36,33 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-coverage-aware-overlap-2026-08-28',
+    version: '4.9.991',
+    title: 'Containment-aware overlap suppression + repair audit ordering (shadow mode)',
+    summary: [
+      'TripOverlapDetector no longer treats "a trip touches this window" as proof the drive is covered. It now clips intersecting canonical trips to the proposal, unions them, and measures coverage_ratio, prefix/suffix/interior missing seconds, longest uncovered span and covering trip count. A trip\u2019s duration outside the proposal is never credited.',
+      'Five explicit verdicts replace the binary one: FULLY_COVERED, SUBSTANTIALLY_COVERED, PARTIALLY_COVERED, NOT_COVERED, AMBIGUOUS. Only the first two suppress on coverage grounds; AMBIGUOUS also suppresses, because an intersecting ONGOING trip has a moving end_time and is a reason to wait rather than to write a second trip over the same time.',
+      'Thresholds derived from the 1455 candidates in the 90-day replay, not chosen: SUBSTANTIAL_COVERAGE_RATIO 0.90, MAX_IGNORABLE_UNCOVERED_SPAN 180s (= TRIP_MID_GAP_SPLIT_MS), FULL_COVERAGE_SLACK 60s. The 300s floor applies only to spans carved out of a partially covered proposal — an entirely uncovered proposal is returned whole however short, so coverage can never suppress what binary overlap accepts.',
+      'That invariant is checked rather than asserted: over all 10071 candidates the current collector produces in 90 days, 470 are accepted by binary overlap and 0 of those are blocked by coverage.',
+      'Audit ordering fixed: trip_repairs rows are now written for every evaluated proposal before the suppression decision is acted on, with new status SUPPRESSED. Previously suppression returned ahead of the insert, so the most common outcome was the one with no diagnostic trace. Audit ids are deterministic (sha256 of vehicle+type+window), so re-evaluation by the fast/warm/cold tiers updates one row instead of appending a tick log — measured 6.9 updates per insert.',
+      'TRIP_REPAIR_COVERAGE_MODE gates the rollout: legacy | shadow | enforce, defaulting to shadow, with any unrecognised value normalising to shadow. In shadow the production decision stays byte-identical to today and only the audit gains the comparison. In enforce an accepted proposal is persisted as its uncovered spans, never the whole envelope.',
+      'Replay on the same 90-day dataset: coverage-aware suppression alone recovers 46.77 h of the 63.72 h uncovered (baseline 0.30 h), 51 of 65 drives, with 0 proposals overlapping a real canonical trip and 0 false merges introduced by the coverage rule itself.',
+      'Four of five RPM sentinels become recoverable by this PR alone; the fifth is a 4min58s drive that legacy pairing scores LOW on duration, so it stays blocked by the confidence gate that PR C addresses.',
+      'A no_suppression control run establishes that the 15 false positives and 23 false merges visible under enforce originate in the untouched pairing and confidence stages, not in coverage — removing suppression entirely makes them 7x and 10x worse. This is why enforce stays off until those PRs land.',
+      'No migration: trip_repairs.status is a free-form string column, detector_evidence is already Json. Only the Prisma schema comment changed.',
+      'PRODUCTION_MUTATIONS = NONE, BACKFILL_STARTED = NO, COVERAGE_MODE_PRODUCTION = SHADOW.',
+    ],
+    reason:
+      'Binary overlap suppression was the first blocking stage for 26 of 65 uncovered drives (20.00 h), and because it fires before the audit write it also erased the evidence of its own decisions. It gates every later detector improvement: a better pairing rule cannot be measured while its output is discarded one stage downstream.',
+    previousBehavior:
+      'Any canonical trip within ±5 minutes of a proposed repair window — including a 6-minute trip wholly inside a 107-minute drive — marked the drive as already represented, and the proposal was discarded without a trip_repairs row.',
+    details:
+      'New: detectors/trip-coverage.util.ts (pure interval algebra, shared verbatim with the offline replay harness so the two cannot drift). Changed: detectors/trip-overlap.detector.ts, reconciliation/trip-reconciliation.service.ts, reconciliation/reconciliation.types.ts, config/worker.config.ts, prisma/schema.prisma (comment only), scripts/analysis/trip-detection-replay/*. Query shape is unchanged apart from LIMIT 1 becoming LIMIT 201 and is deliberately left unordered — adding ORDER BY start_time makes the planner prefer a non-selective index (1249 buffers / 8.6 ms vs 405 buffers / 1.9 ms on production). Canonical intervals per proposal measured on production: avg 5.48, p95 12, max 18, hard cap 200. 55 regression tests. architecture/TRIP_COVERAGE_AWARE_OVERLAP_2026-08-28.md documents the model, thresholds, replay evidence, performance and rollout.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T21:00:00.000Z',
+  },
+  {
     id: 'trip-start-isolation-hardening-2026-08-28',
     version: '4.9.990',
     title: 'Trip-start isolation hardening — device-connection outbox drain can no longer block live trip detection (PR A0)',

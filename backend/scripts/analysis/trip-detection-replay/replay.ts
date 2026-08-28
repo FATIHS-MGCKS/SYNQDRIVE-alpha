@@ -29,7 +29,7 @@ import {
   findSegmentsWindowBounded,
   overlapTriggered,
 } from './baseline';
-import { runProposedWindow } from './proposed';
+import { assessOverlap, runProposedWindow } from './proposed';
 import type { CoverageResult, GapShape, GroundTruthDrive, Interval, Trip } from './types';
 import { SHAPE } from './types';
 
@@ -134,7 +134,20 @@ function vehicleActiveNear(vehicleId: string, at: number): boolean {
   return minutes.some((m) => m.minute >= at - 3600_000 && m.minute <= at);
 }
 
-function simulate(mode: 'baseline' | 'proposed', phaseOffsetMs: number): SimResult {
+/**
+ * `coverage_only` isolates PR A: candidate collection, pairing and the
+ * confidence gate are exactly today's, and only the suppression decision is
+ * containment-aware. It is what shipping PR A with
+ * TRIP_REPAIR_COVERAGE_MODE=enforce would do, and nothing more.
+ *
+ * `no_suppression` is the attribution control for it: today's candidates with
+ * suppression removed entirely. Anything wrong that `coverage_only` emits must
+ * also appear here, which is what proves the defect lives in pairing/confidence
+ * rather than in the coverage rule.
+ */
+type SimMode = 'baseline' | 'coverage_only' | 'no_suppression' | 'proposed';
+
+function simulate(mode: SimMode, phaseOffsetMs: number): SimResult {
   const created = new Map<string, Interval[]>();
   const simulatedTrips = new Map<string, Trip[]>();
   for (const [vehicleId, trips] of dataset.trips) {
@@ -174,6 +187,38 @@ function simulate(mode: 'baseline' | 'proposed', phaseOffsetMs: number): SimResu
             continue;
           }
           appendCreated(created, simulatedTrips, vehicleId, candidate);
+        }
+      } else if (mode === 'no_suppression') {
+        const candidates = collectRepairCandidatesBaseline(changes, vehicle.profile, run.from, run.to);
+        for (const candidate of candidates) {
+          result.proposals++;
+          if (candidate.confidence === 'LOW') {
+            result.rejected++;
+            continue;
+          }
+          appendCreated(created, simulatedTrips, vehicleId, candidate);
+        }
+      } else if (mode === 'coverage_only') {
+        const candidates = collectRepairCandidatesBaseline(changes, vehicle.profile, run.from, run.to);
+        for (const candidate of candidates) {
+          const assessment = assessOverlap(candidate, trips);
+          if (assessment.verdict === 'DUPLICATE') {
+            result.duplicatesSuppressed++;
+            continue;
+          }
+          if (assessment.verdict === 'AMBIGUOUS') {
+            result.ambiguous++;
+            continue;
+          }
+          for (const span of assessment.repairableSpans) {
+            result.proposals++;
+            // Confidence stays exactly as production resolves it today.
+            if (candidate.confidence === 'LOW') {
+              result.rejected++;
+              continue;
+            }
+            appendCreated(created, simulatedTrips, vehicleId, span);
+          }
         }
       } else {
         const outcome = runProposedWindow({
@@ -264,24 +309,34 @@ function auditProposed(sim: SimResult): {
   falsePositives: number;
   falseMerges: number;
   overlapsExisting: number;
+  degenerateContainments: number;
   touchingHealthyDrives: number;
   totalCreated: number;
   overlapExamples: string[];
+  degenerateExamples: string[];
 } {
   let falsePositives = 0;
   let falseMerges = 0;
   let overlapsExisting = 0;
+  let degenerateContainments = 0;
   let touchingHealthyDrives = 0;
   let totalCreated = 0;
   const overlapExamples: string[] = [];
+  const degenerateExamples: string[] = [];
 
   const healthy = baselineDrives.filter((row) => row.shape === SHAPE.HEALTHY);
 
   for (const [vehicleId, intervals] of sim.createdTrips) {
     const minutes = dataset.minutes.get(vehicleId);
-    const trips = (dataset.trips.get(vehicleId) ?? []).filter(
+    const canonical = (dataset.trips.get(vehicleId) ?? []).filter(
       (t) => t.status !== 'CANCELLED' && t.end !== null,
     );
+    // A canonical row with start_time == end_time claims no driving time. It is
+    // a MID_TRIP_GAP_SPLIT artifact, not coverage, so containing one is not a
+    // double-representation of any second of driving.
+    const trips = canonical.filter((t) => (t.end as number) > t.start);
+    const degenerate = canonical.filter((t) => (t.end as number) <= t.start);
+
     for (const interval of intervals) {
       totalCreated++;
 
@@ -298,6 +353,14 @@ function auditProposed(sim: SimResult): {
         overlapsExisting++;
         overlapExamples.push(
           `${vehicleId.slice(0, 8)} proposal ${new Date(interval.start).toISOString()}→${new Date(interval.end).toISOString()} vs trip ${clash.id.slice(0, 8)} ${new Date(clash.start).toISOString()}→${new Date(clash.end as number).toISOString()} (${clash.status}/${clash.source})`,
+        );
+      }
+
+      const point = degenerate.find((t) => t.start >= interval.start && t.start <= interval.end);
+      if (point) {
+        degenerateContainments++;
+        degenerateExamples.push(
+          `${vehicleId.slice(0, 8)} proposal ${new Date(interval.start).toISOString()}→${new Date(interval.end).toISOString()} contains zero-duration trip ${point.id.slice(0, 8)} @ ${new Date(point.start).toISOString()}`,
         );
       }
 
@@ -318,9 +381,11 @@ function auditProposed(sim: SimResult): {
     falsePositives,
     falseMerges,
     overlapsExisting,
+    degenerateContainments,
     touchingHealthyDrives,
     totalCreated,
     overlapExamples,
+    degenerateExamples,
   };
 }
 
@@ -329,6 +394,8 @@ function auditProposed(sim: SimResult): {
 const PHASES = [0, 3, 6, 9, 12].map((m) => m * 60_000);
 
 const baselineRuns = PHASES.map((phase) => ({ phase, sim: simulate('baseline', phase) }));
+const coverageOnlyRuns = PHASES.map((phase) => ({ phase, sim: simulate('coverage_only', phase) }));
+const noSuppressionRuns = PHASES.map((phase) => ({ phase, sim: simulate('no_suppression', phase) }));
 const proposedRuns = PHASES.map((phase) => ({ phase, sim: simulate('proposed', phase) }));
 
 const hours = (seconds: number) => (seconds / 3600).toFixed(2);
@@ -635,6 +702,20 @@ for (const { phase, sim } of baselineRuns) {
     `${String(phase / 60_000).padStart(10)} | baseline | ${String(audit.totalCreated).padStart(7)} | ${String(sim.duplicatesSuppressed).padStart(14)} | ${String(sim.ambiguous).padStart(9)} | ${String(sim.rejected).padStart(8)} | ${String(after.recoveredDrives).padStart(16)} | ${String(after.fullyRecovered).padStart(5)} | ${hours(after.recoveredSeconds).padStart(11)} | ${hours(after.residualSeconds).padStart(10)}`,
   );
 }
+for (const { phase, sim } of coverageOnlyRuns) {
+  const after = coverageAfter(sim);
+  const audit = auditProposed(sim);
+  console.log(
+    `${String(phase / 60_000).padStart(10)} | cov-only | ${String(audit.totalCreated).padStart(7)} | ${String(sim.duplicatesSuppressed).padStart(14)} | ${String(sim.ambiguous).padStart(9)} | ${String(sim.rejected).padStart(8)} | ${String(after.recoveredDrives).padStart(16)} | ${String(after.fullyRecovered).padStart(5)} | ${hours(after.recoveredSeconds).padStart(11)} | ${hours(after.residualSeconds).padStart(10)}`,
+  );
+}
+for (const { phase, sim } of noSuppressionRuns) {
+  const after = coverageAfter(sim);
+  const audit = auditProposed(sim);
+  console.log(
+    `${String(phase / 60_000).padStart(10)} | no-suppr | ${String(audit.totalCreated).padStart(7)} | ${String(sim.duplicatesSuppressed).padStart(14)} | ${String(sim.ambiguous).padStart(9)} | ${String(sim.rejected).padStart(8)} | ${String(after.recoveredDrives).padStart(16)} | ${String(after.fullyRecovered).padStart(5)} | ${hours(after.recoveredSeconds).padStart(11)} | ${hours(after.residualSeconds).padStart(10)}`,
+  );
+}
 for (const { phase, sim } of proposedRuns) {
   const after = coverageAfter(sim);
   const audit = auditProposed(sim);
@@ -643,31 +724,124 @@ for (const { phase, sim } of proposedRuns) {
   );
 }
 
-console.log('\n── proposed output quality (phase 0) ──');
-const proposedAudit = auditProposed(proposedRuns[0].sim);
-console.log(`  trips created            : ${proposedAudit.totalCreated}`);
-console.log(`  false positives (no move): ${proposedAudit.falsePositives}`);
-console.log(`  false merges (>=10min stop inside): ${proposedAudit.falseMerges}`);
-console.log(`  overlapping existing trip: ${proposedAudit.overlapsExisting}`);
-console.log(`  touching healthy drives  : ${proposedAudit.touchingHealthyDrives}`);
-const baselineAudit = auditProposed(baselineRuns[0].sim);
-console.log(`  baseline overlapping existing trip: ${baselineAudit.overlapsExisting}`);
+console.log('\n── output quality by mode (phase 0) ──');
+const audits = [
+  { label: 'baseline (today)', audit: auditProposed(baselineRuns[0].sim) },
+  { label: 'coverage_only (PR A alone)', audit: auditProposed(coverageOnlyRuns[0].sim) },
+  { label: 'no_suppression (control)', audit: auditProposed(noSuppressionRuns[0].sim) },
+  { label: 'proposed (PR A+B+C)', audit: auditProposed(proposedRuns[0].sim) },
+];
+console.log(
+  'mode                       | created | false pos | false merges | overlaps real trip | contains 0-dur row | touches healthy',
+);
+for (const { label, audit } of audits) {
+  console.log(
+    `${label.padEnd(26)} | ${String(audit.totalCreated).padStart(7)} | ${String(audit.falsePositives).padStart(9)} | ${String(audit.falseMerges).padStart(12)} | ${String(audit.overlapsExisting).padStart(18)} | ${String(audit.degenerateContainments).padStart(18)} | ${String(audit.touchingHealthyDrives).padStart(15)}`,
+  );
+}
+
+const coverageOnlyAudit = audits[1].audit;
+const proposedAudit = audits[3].audit;
+
+console.log('\n  coverage_only overlap detail:');
+for (const example of coverageOnlyAudit.overlapExamples.slice(0, 5)) {
+  console.log(`    overlap: ${example}`);
+}
+for (const example of coverageOnlyAudit.degenerateExamples.slice(0, 5)) {
+  console.log(`    zero-duration: ${example}`);
+}
+console.log('\n  proposed overlap detail:');
 for (const example of proposedAudit.overlapExamples.slice(0, 5)) {
   console.log(`    overlap: ${example}`);
 }
+for (const example of proposedAudit.degenerateExamples.slice(0, 5)) {
+  console.log(`    zero-duration: ${example}`);
+}
+
+// The safety invariant PR A rests on: containment-aware suppression must be a
+// relaxation of binary overlap, never a tightening. Checked against every
+// candidate the current collector produces over the full window, not argued.
+console.log('\n── invariant: coverage never suppresses what binary overlap accepts ──');
+{
+  let checked = 0;
+  let legacyAccepted = 0;
+  let violations = 0;
+  const violationExamples: string[] = [];
+
+  for (const [vehicleId, vehicle] of dataset.vehicles) {
+    if (vehicle.plate.startsWith('STG-')) continue;
+    const changes = dataset.stateChanges.get(vehicleId);
+    if (!changes || changes.length === 0) continue;
+    const trips = dataset.trips.get(vehicleId) ?? [];
+
+    for (const run of buildTierRuns(windowFrom, windowTo, 0)) {
+      for (const candidate of collectRepairCandidatesBaseline(changes, vehicle.profile, run.from, run.to)) {
+        checked++;
+        if (overlapTriggered(trips, candidate)) continue;
+        legacyAccepted++;
+        const assessment = assessOverlap(candidate, trips);
+        if (assessment.verdict !== 'REPAIRABLE_GAP' || assessment.repairableSpans.length === 0) {
+          violations++;
+          if (violationExamples.length < 5) {
+            violationExamples.push(
+              `${vehicleId.slice(0, 8)} ${new Date(candidate.start).toISOString()}→${new Date(candidate.end).toISOString()} verdict=${assessment.coverageVerdict} spans=${assessment.repairableSpans.length}`,
+            );
+          }
+        }
+      }
+    }
+  }
+
+  console.log(`  candidates checked         : ${checked}`);
+  console.log(`  accepted by binary overlap : ${legacyAccepted}`);
+  console.log(`  of those, coverage blocks  : ${violations}  ${violations === 0 ? '(invariant holds)' : '(INVARIANT VIOLATED)'}`);
+  for (const example of violationExamples) console.log(`    violation: ${example}`);
+}
+
+// Audit-first ordering writes a row for suppressed proposals too, so the cost of
+// the audit change is the write volume it adds. The deterministic audit id makes
+// repeated evaluations of one window an update rather than an insert, which is
+// what keeps trip_repairs from becoming a scheduler tick log.
+console.log('\n── audit write volume introduced by audit-first ordering ──');
+{
+  let evaluations = 0;
+  const distinctWindows = new Set<string>();
+
+  for (const [vehicleId, vehicle] of dataset.vehicles) {
+    if (vehicle.plate.startsWith('STG-')) continue;
+    const changes = dataset.stateChanges.get(vehicleId);
+    if (!changes || changes.length === 0) continue;
+    for (const run of buildTierRuns(windowFrom, windowTo, 0)) {
+      for (const candidate of collectRepairCandidatesBaseline(changes, vehicle.profile, run.from, run.to)) {
+        evaluations++;
+        distinctWindows.add(`${vehicleId}|${candidate.start}|${candidate.end}`);
+      }
+    }
+  }
+
+  const days = (windowTo - windowFrom) / 86_400_000;
+  const vehicles = [...dataset.vehicles.values()].filter((v) => !v.plate.startsWith('STG-')).length;
+  console.log(`  evaluations over ${days.toFixed(0)} days   : ${evaluations} (${(evaluations / days / vehicles).toFixed(1)} per vehicle per day)`);
+  console.log(`  distinct audit rows        : ${distinctWindows.size} (${(distinctWindows.size / days / vehicles).toFixed(2)} inserted per vehicle per day)`);
+  console.log(`  re-evaluation factor       : ${(evaluations / Math.max(1, distinctWindows.size)).toFixed(1)}x updates per insert`);
+  console.log(`  projected at 1000 vehicles : ${Math.round((evaluations / days / vehicles) * 1000)} evaluations/day, ${Math.round((distinctWindows.size / days / vehicles) * 1000)} new rows/day`);
+}
 
 console.log('\n── RPM sentinels ──');
+const sentinelHit = (sim: SimResult, vehicleId: string, at: number): Interval | undefined =>
+  (sim.createdTrips.get(vehicleId) ?? []).find((i) => i.start <= at && i.end >= at);
+const span = (i: Interval | undefined): string =>
+  i
+    ? `RECOVERED ${new Date(i.start).toISOString().slice(11, 19)}→${new Date(i.end).toISOString().slice(11, 19)}`
+    : 'missed';
+
 for (const candidate of dataset.rpmCandidates.filter((c) => !c.tripId)) {
-  const created = proposedRuns[0].sim.createdTrips.get(candidate.vehicleId) ?? [];
-  const hit = created.find((i) => i.start <= candidate.observedAt && i.end >= candidate.observedAt);
-  const baselineCreated = baselineRuns[0].sim.createdTrips.get(candidate.vehicleId) ?? [];
-  const baselineHit = baselineCreated.find(
-    (i) => i.start <= candidate.observedAt && i.end >= candidate.observedAt,
-  );
+  const at = candidate.observedAt;
   console.log(
-    `  ${candidate.id.slice(0, 8)} ${new Date(candidate.observedAt).toISOString().slice(0, 19)} rpm=${candidate.observedValue} baseline=${baselineHit ? 'RECOVERED' : 'missed'} proposed=${
-      hit ? `RECOVERED ${new Date(hit.start).toISOString().slice(11, 19)}→${new Date(hit.end).toISOString().slice(11, 19)}` : 'missed'
-    }`,
+    `  ${candidate.id.slice(0, 8)} ${new Date(at).toISOString().slice(0, 19)} rpm=${candidate.observedValue}` +
+      ` | baseline=${span(sentinelHit(baselineRuns[0].sim, candidate.vehicleId, at))}` +
+      ` | coverage_only=${span(sentinelHit(coverageOnlyRuns[0].sim, candidate.vehicleId, at))}` +
+      ` | proposed=${span(sentinelHit(proposedRuns[0].sim, candidate.vehicleId, at))}`,
   );
 }
 
@@ -689,7 +863,18 @@ if (outFile) {
           hours: Number(hours(e.seconds)),
         })),
         baseline: baselineRuns.map(({ phase, sim }) => ({ phase: phase / 60_000, ...coverageAfter(sim) })),
+        coverageOnly: coverageOnlyRuns.map(({ phase, sim }) => ({ phase: phase / 60_000, ...coverageAfter(sim) })),
+        noSuppression: noSuppressionRuns.map(({ phase, sim }) => ({ phase: phase / 60_000, ...coverageAfter(sim) })),
         proposed: proposedRuns.map(({ phase, sim }) => ({ phase: phase / 60_000, ...coverageAfter(sim) })),
+        quality: audits.map(({ label, audit }) => ({
+          mode: label,
+          created: audit.totalCreated,
+          falsePositives: audit.falsePositives,
+          falseMerges: audit.falseMerges,
+          overlapsExisting: audit.overlapsExisting,
+          degenerateContainments: audit.degenerateContainments,
+          touchingHealthyDrives: audit.touchingHealthyDrives,
+        })),
       },
       null,
       2,

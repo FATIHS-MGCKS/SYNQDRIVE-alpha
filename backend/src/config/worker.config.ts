@@ -81,4 +81,20 @@ export default registerAs('worker', () => ({
     process.env.TRIP_MID_GAP_MIN_PRE_DURATION_MS || '60000',
     10,
   ),
+
+  // ── Repair suppression: containment-aware coverage rollout ──
+  // legacy  — binary overlap decides, exactly as before.
+  // shadow  — binary overlap still decides; the coverage verdict is computed
+  //           and audited alongside it so the two can be compared on real
+  //           traffic without touching trip persistence.
+  // enforce — the coverage verdict decides.
+  // Defaults to shadow: measuring first is the whole point of the mode.
+  tripRepairCoverageMode: normalizeCoverageMode(process.env.TRIP_REPAIR_COVERAGE_MODE),
 }));
+
+export type TripRepairCoverageMode = 'legacy' | 'shadow' | 'enforce';
+
+export function normalizeCoverageMode(raw: string | undefined): TripRepairCoverageMode {
+  const value = (raw ?? '').trim().toLowerCase();
+  return value === 'legacy' || value === 'enforce' ? value : 'shadow';
+}

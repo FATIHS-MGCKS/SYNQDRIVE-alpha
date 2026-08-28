@@ -13427,7 +13427,10 @@ model TripRepair {
 
   // MISSING_TRIP | MISSING_END | SPLIT_MERGE | DUPLICATE | STALE_ONGOING
   repairType String   @map("repair_type")
-  // PROPOSED | APPLIED | REJECTED | EXPIRED
+  // PROPOSED | APPLIED | REJECTED | EXPIRED | SUPPRESSED
+  // SUPPRESSED records a proposal that was evaluated and withheld as already
+  // represented. It is written before the suppression decision takes effect, so
+  // withheld proposals leave the same audit trail as accepted ones.
   status     String   @default("PROPOSED")
   reason     String
   // LOW | MEDIUM | HIGH
