@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-stage1-lv-rest-liveness-deploy-observability-2026-08-28',
+    version: '4.9.986',
+    title: 'Battery V2 Stage 1 — LV_REST_WINDOW liveness fix deployed + production evidence collector',
+    summary: [
+      'Deployed origin/main 5cc9c22 (release 20260828152525_v4994) containing PR #1383 squash-merge f104f522; every file the PR touched is byte-identical at PR head a8cb7cd and on main.',
+      'Only pending migration came from #1385, not #1383: additive CREATE INDEX IF NOT EXISTS on rpm_webhook_candidates(vehicle_id, observed_at).',
+      'Runtime proof the merged code is live: reconciliation now emits restSessions (6 on the first post-restart tick) — a counter that only exists post-#1383 and that stays 0 unless BATTERY_V2_REST_SHADOW_ENABLED=true.',
+      'Recovery path exercised end-to-end on pre-deploy trips: 9 settled COMPLETED trips scanned, 6 BATTERY_LV_REST_SESSION_OPEN jobs enqueued on deterministic lv-rest-open:{vehicleId}:{anchorMs} identities, 0 dead letters, 0 duplicate sessions, 0 P2002; 3 LOCK_CONTENTION retries absorbed by the per-vehicle lock + retry policy.',
+      'Finding (not a #1383 regression): pre-existing canOpenRestWindowCandidate gates declined all 6 — 5x active_trip (vehicle already driving again), 1x engine_not_off on the original defect trip 61715ecd where source_timestamp == trip.endTime and engine_load 10.19 > 5 while ignition was off.',
+      'New read-only ops script battery-v2-lv-rest-liveness-evidence.ts collects the full evidence set for a qualifying trip and states an explicit OBSERVATION_INDEPENDENT / INCONCLUSIVE / NO_SESSION liveness verdict.',
+      'Flags unchanged: BATTERY_V2_REST_SHADOW_ENABLED=true, BATTERY_V2_PUBLICATION_ENABLED=false, BATTERY_V2_READINESS_ENABLED=false. Stage 2 not started.',
+    ],
+    reason:
+      'PR #1383 cannot be validated from tests alone — Stage 1 needs a natural post-deploy trip proving the LV_REST_WINDOW opens without a later provider observation.',
+    previousBehavior:
+      'Production ran 61a3578e (pre-#1383): LV_REST_WINDOW opening depended on a BATTERY_OBSERVATION_CLASSIFY cycle after Trip Detection persisted RESTING, and no ops tooling existed to prove observation independence.',
+    details:
+      'backend: scripts/ops/battery-v2-lv-rest-liveness-evidence.ts (read-only, no writes). architecture: BATTERY_V2_STAGE1_PRODUCTION_VALIDATION_PLAN_2026-08-28.md. No Battery V2 runtime, policy, schema, or flag changes.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T15:45:00.000Z',
+  },
+  {
     id: 'energy-events-e3a-recovery-plan-authority-hardening-2026-08-28',
     version: '4.9.985',
     title: 'Energy Events E3A — recovery-plan manual-review authority hardening',
