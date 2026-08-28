@@ -1,9 +1,10 @@
 import { EmptyState, ErrorState } from '../../../components/patterns/states';
 import { Button } from '../../../components/ui/button';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { formatRentalTenantBillingDate } from '../../lib/rental-tenant-billing-i18n';
 import type { TenantBillableVehicleListItemDto } from '../../types/billing.types';
 import type { BillingPaginatedMeta } from './billing-query.utils';
 import type { BillableVehicleListQuery } from './useBillingTariffVehicles';
-import { formatDateDe } from './billing.utils';
 import { Icon } from '../ui/Icon';
 
 interface TenantBillableVehiclesTableProps {
@@ -19,6 +20,16 @@ interface TenantBillableVehiclesTableProps {
 const inputClass =
   'w-full px-3 py-2.5 rounded-xl border border-border/70 bg-background text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]';
 
+const VEHICLE_COLUMNS = [
+  { id: 'licensePlate', labelKey: 'fleet.licensePlate' as const },
+  { id: 'vehicle', labelKey: 'bookings.vehicle' as const },
+  { id: 'station', labelKey: 'vehicle.station' as const },
+  { id: 'billableFrom', labelKey: 'tenantBilling.tariff.vehicles.col.billableFrom' as const },
+  { id: 'billableUntil', labelKey: 'tenantBilling.tariff.vehicles.col.billableUntil' as const },
+  { id: 'billingStatus', labelKey: 'tenantBilling.tariff.vehicles.col.billingStatus' as const },
+  { id: 'reason', labelKey: 'tenantBilling.tariff.vehicles.col.reason' as const },
+] as const;
+
 export function TenantBillableVehiclesTable({
   vehicles,
   meta,
@@ -28,13 +39,15 @@ export function TenantBillableVehiclesTable({
   onQueryChange,
   onRetry,
 }: TenantBillableVehiclesTableProps) {
+  const { t, locale } = useLanguage();
+
   if (error) {
     return (
       <ErrorState
-        title="Fahrzeugliste konnte nicht geladen werden"
+        title={t('tenantBilling.tariff.vehicles.loadErrorTitle')}
         description={error}
         onRetry={() => void onRetry()}
-        retryLabel="Erneut versuchen"
+        retryLabel={t('common.retry')}
       />
     );
   }
@@ -42,12 +55,12 @@ export function TenantBillableVehiclesTable({
   return (
     <div className="space-y-3" data-testid="tenant-billable-vehicles-table">
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-        <h3 className="text-sm font-semibold">Fahrzeuge in der Abrechnung</h3>
+        <h3 className="text-sm font-semibold">{t('tenantBilling.tariff.vehicles.title')}</h3>
         <div className="flex flex-wrap gap-2">
           <input
             type="search"
             className={`${inputClass} sm:w-52`}
-            placeholder="Kennzeichen oder Modell suchen…"
+            placeholder={t('tenantBilling.tariff.vehicles.searchPlaceholder')}
             value={query.search ?? ''}
             onChange={(event) =>
               onQueryChange({ ...query, page: 1, search: event.target.value || undefined })
@@ -64,9 +77,9 @@ export function TenantBillableVehiclesTable({
               })
             }
           >
-            <option value="">Alle Status</option>
-            <option value="BILLABLE">Abrechenbar</option>
-            <option value="EXCLUDED">Nicht abrechenbar</option>
+            <option value="">{t('tasks.filter.statusAll')}</option>
+            <option value="BILLABLE">{t('tenantBilling.tariff.vehicles.filter.billable')}</option>
+            <option value="EXCLUDED">{t('tenantBilling.tariff.vehicles.filter.excluded')}</option>
           </select>
         </div>
       </div>
@@ -77,28 +90,20 @@ export function TenantBillableVehiclesTable({
         <EmptyState
           compact
           icon={<Icon name="car" className="w-5 h-5" />}
-          title="Keine Fahrzeuge in der Abrechnung"
-          description="Sobald Fahrzeuge für Ihr Abo zugeordnet sind, erscheinen sie hier mit Abrechnungsstatus und Zeitraum."
+          title={t('tenantBilling.tariff.vehicles.emptyTitle')}
+          description={t('tenantBilling.tariff.vehicles.emptyDescription')}
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border/60">
           <table className="w-full min-w-[900px]">
             <thead>
               <tr className="bg-muted/40">
-                {[
-                  'Kennzeichen',
-                  'Fahrzeug',
-                  'Standort',
-                  'Abrechenbar seit',
-                  'Abrechenbar bis',
-                  'Abrechnungsstatus',
-                  'Grund',
-                ].map((label) => (
+                {VEHICLE_COLUMNS.map((column) => (
                   <th
-                    key={label}
+                    key={column.id}
                     className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
                   >
-                    {label}
+                    {t(column.labelKey)}
                   </th>
                 ))}
               </tr>
@@ -112,10 +117,10 @@ export function TenantBillableVehiclesTable({
                     {vehicle.stationName ?? '—'}
                   </td>
                   <td className="px-3 py-2.5 text-[12px] tabular-nums">
-                    {formatDateDe(vehicle.billableFrom)}
+                    {formatRentalTenantBillingDate(locale, vehicle.billableFrom)}
                   </td>
                   <td className="px-3 py-2.5 text-[12px] tabular-nums">
-                    {formatDateDe(vehicle.billableUntil)}
+                    {formatRentalTenantBillingDate(locale, vehicle.billableUntil)}
                   </td>
                   <td className="px-3 py-2.5 text-[12px]">
                     <span
@@ -141,7 +146,10 @@ export function TenantBillableVehiclesTable({
       {meta && meta.totalPages > 1 ? (
         <div className="flex items-center justify-between gap-2 text-xs">
           <span className="text-muted-foreground">
-            {vehicles.length} von {meta.total} Fahrzeugen
+            {t('tenantBilling.tariff.vehicles.pagination.summary', {
+              shown: vehicles.length,
+              total: meta.total,
+            })}
           </span>
           <div className="flex items-center gap-2">
             <Button
@@ -151,10 +159,13 @@ export function TenantBillableVehiclesTable({
               disabled={loading || (query.page ?? 1) <= 1}
               onClick={() => onQueryChange({ ...query, page: Math.max(1, (query.page ?? 1) - 1) })}
             >
-              Zurück
+              {t('common.back')}
             </Button>
             <span className="text-muted-foreground tabular-nums">
-              Seite {meta.page} von {meta.totalPages}
+              {t('tenantBilling.tariff.pagination.pageOf', {
+                page: meta.page,
+                totalPages: meta.totalPages,
+              })}
             </span>
             <Button
               type="button"
@@ -163,7 +174,7 @@ export function TenantBillableVehiclesTable({
               disabled={loading || (query.page ?? 1) >= meta.totalPages}
               onClick={() => onQueryChange({ ...query, page: (query.page ?? 1) + 1 })}
             >
-              Weiter
+              {t('common.next')}
             </Button>
           </div>
         </div>

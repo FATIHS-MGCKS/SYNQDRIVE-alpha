@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Tenant Billing Billable Vehicles + Changes (P2.2.55B — V4.9.983)', icon: Globe,
+    endpoint: 'Settings → Billing → Tariff & Vehicles (billable vehicles table + vehicle changes)',
+    service: '**Locale flow:** `useLanguage().locale` → extended `rental-tenant-billing-i18n.ts` → `formatRentalTenantBillingDate` / `resolveVehicleChangeTypeLabel` / `resolveTenantBillingMoneyDisplay`. **Keys:** +18 EN+DE `tenantBilling.tariff.*` (8867→8885); reuses `common.*`, `fleet.licensePlate`, `bookings.vehicle`, `vehicle.station`, `tasks.filter.statusAll`, `rentalRules.workflow.publish.kind*`. **Machine values:** billingStatus, filter status, search/sort/pagination, provider raw labels, proration formatted precedence frozen. **Guardrails:** P255B enforce-clean exact (3 paths) — 0 findings. **Frozen:** P255A summary/breakdown/tier ladder, P254 overview/shell, deferred billing tabs. **Tests:** `rental-tenant-billing-tariff-vehicles-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_TENANT_BILLING_BILLABLE_VEHICLES_CHANGES_P2_2_55B_2026-08-28.md' },
   { name: 'Platform i18n Rental Tenant Billing Tariff (P2.2.55A — V4.9.982)', icon: Globe,
     endpoint: 'Settings → Billing → Tariff & Vehicles (summary, breakdown, tier ladder)',
     service: '**Locale flow:** `useLanguage().locale` → extended `rental-tenant-billing-i18n.ts` → `formatInvoiceListAmount` / `toLocaleDateString` / tier-range display / breakdown row builder. **Keys:** +30 EN+DE `tenantBilling.tariff.*` (8837→8867); reuses `tenantBilling.overview.*`, `invoiceLineItem.summary.*`, `common.*`. **Machine values:** plan/tier/provider raw fields, money.formatted, tier thresholds, billable counts frozen. **Guardrails:** P255A enforce-clean exact (5 paths) — 0 findings; P255B vehicle table/changes deferred (baseline German). **Frozen:** P254 overview/shell, P253–P249, deferred billing tabs. **Tests:** `rental-tenant-billing-tariff-vehicles-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

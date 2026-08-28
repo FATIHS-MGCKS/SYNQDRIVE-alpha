@@ -6,10 +6,9 @@ vi.mock('@iconify/react', () => ({
   disableCache: vi.fn(),
 }));
 
-import { act, createElement } from 'react';
+import { act, createElement, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 import { LanguageProvider, useLanguage } from '../../i18n/LanguageContext';
 import inventory from '../../i18n/hardcoded-copy-inventory.json';
@@ -24,12 +23,18 @@ import {
   formatTierRangeDisplay,
   resolveOverviewHeaderBadge,
   resolvePricingModelDisplayLabel,
+  resolveVehicleChangeTypeLabel,
+  resolveTenantBillingMoneyDisplay,
 } from '../lib/rental-tenant-billing-i18n';
 import {
   buildTenantBillingSubTabSearch,
   readTenantBillingSubTab,
 } from './billing/tenant-billing-navigation';
-import type { TenantSubscriptionTariffDto } from '../types/billing.types';
+import type {
+  TenantBillableVehicleListItemDto,
+  TenantSubscriptionTariffDto,
+  TenantVehicleBillingChangeDto,
+} from '../types/billing.types';
 
 const P254_ENFORCE_CLEAN_EXACT = [
   'rental/components/billing/BillingTab.tsx',
@@ -50,10 +55,19 @@ const P255A_ENFORCE_CLEAN_EXACT = [
   'rental/lib/rental-tenant-billing-i18n.ts',
 ];
 
-const P255B_DEFERRED_PATHS = [
+const P255B_ENFORCE_CLEAN_EXACT = [
   'rental/components/billing/TenantBillableVehiclesTable.tsx',
   'rental/components/billing/TenantVehicleChangesSection.tsx',
+  'rental/components/billing/tenant-tariff-vehicles.utils.ts',
 ];
+
+const RAW_VEHICLE_LABEL = 'Mietwagen Sonderfall X7';
+const RAW_PLATE = 'KS-FS-7777';
+const RAW_STATION = 'Station X7';
+const RAW_STATUS_LABEL = 'Provider Status X7';
+const RAW_REASON_LABEL = 'Provider Reason X7';
+const RAW_EVENT_LABEL = 'Provider Event X7';
+const RAW_CHANGE_REASON = 'Provider Reason X7';
 
 const RAW_PLAN_NAME = 'SynqDrive Enterprise X7';
 const RAW_INTERVAL_LABEL = 'Provider Interval X7';
@@ -211,13 +225,233 @@ vi.mock('../RentalContext', () => ({
   }),
 }));
 
-function readBaselineSource(relativePath: string): string {
-  return execSync(`git show 314d9c63:${relativePath}`, { encoding: 'utf8' });
+function buildVehicleFixture(
+  partial: Partial<TenantBillableVehicleListItemDto> = {},
+): TenantBillableVehicleListItemDto {
+  return {
+    id: 'vehicle-x7',
+    licensePlate: RAW_PLATE,
+    make: 'Mietwagen',
+    model: 'Sonderfall X7',
+    vehicleLabel: RAW_VEHICLE_LABEL,
+    stationName: RAW_STATION,
+    billableFrom: '2026-06-01T00:00:00.000Z',
+    billableUntil: null,
+    billingStatus: 'BILLABLE',
+    billingStatusLabel: RAW_STATUS_LABEL,
+    reasonLabel: RAW_REASON_LABEL,
+    ...partial,
+  };
 }
 
-function readCurrentSource(filename: string): string {
-  return readFileSync(join(__dirname, 'billing', filename), 'utf8');
+function buildChangeFixture(
+  partial: Partial<TenantVehicleBillingChangeDto> = {},
+): TenantVehicleBillingChangeDto {
+  return {
+    id: 'change-x7',
+    licensePlate: RAW_PLATE,
+    vehicleLabel: RAW_VEHICLE_LABEL,
+    changeType: 'ADDED',
+    eventTypeLabel: RAW_EVENT_LABEL,
+    effectiveAt: '2026-09-15T10:00:00.000Z',
+    prorationAmount: money(12345, PROVIDER_FORMATTED),
+    reason: RAW_CHANGE_REASON,
+    ...partial,
+  };
 }
+
+describe('P2.2.55B rental tenant billing billable vehicles + changes localization', () => {
+  it('localizes host chrome in EN while preserving raw provider fields', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root: Root = createRoot(container);
+
+    function EnSurfaces() {
+      const { setLocale } = useLanguage();
+      return createElement(
+        'div',
+        null,
+        createElement('button', {
+          type: 'button',
+          'data-testid': 'locale-en',
+          onClick: () => setLocale('en'),
+        }),
+        createElement(TenantBillableVehiclesTable, {
+          vehicles: [buildVehicleFixture()],
+          meta: null,
+          query: vehicleQuery,
+          loading: false,
+          error: null,
+          onQueryChange: vi.fn(),
+          onRetry: vi.fn(),
+        }),
+        createElement(TenantVehicleChangesSection, {
+          changes: [buildChangeFixture()],
+          meta: null,
+          query: changesQuery,
+          loading: false,
+          error: null,
+          onQueryChange: vi.fn(),
+          onRetry: vi.fn(),
+        }),
+      );
+    }
+
+    await act(async () => {
+      root.render(createElement(LanguageProvider, null, createElement(EnSurfaces)));
+    });
+
+    await act(async () => {
+      container.querySelector('[data-testid="locale-en"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+    });
+
+    expect(container.textContent).toContain('Vehicles in billing');
+    expect(container.textContent).toContain('Changes to vehicle count');
+    expect(container.textContent).toContain(RAW_VEHICLE_LABEL);
+    expect(container.textContent).toContain(RAW_PLATE);
+    expect(container.textContent).toContain(RAW_STATION);
+    expect(container.textContent).toContain(RAW_STATUS_LABEL);
+    expect(container.textContent).toContain(RAW_REASON_LABEL);
+    expect(container.textContent).toContain(RAW_EVENT_LABEL);
+    expect(container.textContent).toContain(RAW_CHANGE_REASON);
+    expect(container.textContent).toContain(PROVIDER_FORMATTED);
+    expect(container.textContent).toContain('Added');
+
+    await act(async () => {
+      root.unmount();
+      container.remove();
+    });
+  });
+
+  it('maps change types via adapter without altering machine values', () => {
+    expect(resolveVehicleChangeTypeLabel('ADDED', tDe)).toBe('Hinzugefügt');
+    expect(resolveVehicleChangeTypeLabel('REMOVED', tEn)).toBe('Removed');
+    expect(resolveVehicleChangeTypeLabel('CHANGED', tEn)).toBe('Changed');
+  });
+
+  it('preserves provider formatted money precedence for proration', () => {
+    expect(
+      resolveTenantBillingMoneyDisplay(PROVIDER_FORMATTED, 'en', 12345, 'EUR'),
+    ).toBe(PROVIDER_FORMATTED);
+    expect(resolveTenantBillingMoneyDisplay(null, 'en', 12345, 'EUR')).toContain('123');
+  });
+
+  it('preserves search, filter machine, and pagination across locale switches', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root: Root = createRoot(container);
+    const vehicleMeta = { page: 2, limit: 10, total: 25, totalPages: 3 };
+    const changesMeta = { page: 2, limit: 5, total: 12, totalPages: 3 };
+    let latestVehicleQuery = {
+      page: 2,
+      pageSize: 10,
+      sort: 'licensePlate',
+      search: RAW_PLATE,
+      status: 'BILLABLE' as const,
+    };
+    let latestChangesQuery = { page: 2, pageSize: 5, sort: '-effectiveAt' };
+
+    function StatefulP255BSurfaces() {
+      const { setLocale } = useLanguage();
+      const [vehicleQueryState, setVehicleQueryState] = useState(latestVehicleQuery);
+      const [changesQueryState, setChangesQueryState] = useState(latestChangesQuery);
+
+      return createElement(
+        'div',
+        null,
+        createElement('button', {
+          type: 'button',
+          'data-testid': 'locale-en',
+          onClick: () => setLocale('en'),
+        }),
+        createElement('button', {
+          type: 'button',
+          'data-testid': 'locale-de',
+          onClick: () => setLocale('de'),
+        }),
+        createElement(TenantBillableVehiclesTable, {
+          vehicles: [
+            buildVehicleFixture(),
+            buildVehicleFixture({ id: 'vehicle-x8', licensePlate: 'KS-FS-8888' }),
+          ],
+          meta: vehicleMeta,
+          query: vehicleQueryState,
+          loading: false,
+          error: null,
+          onQueryChange: (next) => {
+            latestVehicleQuery = next as typeof latestVehicleQuery;
+            setVehicleQueryState(next as typeof latestVehicleQuery);
+          },
+          onRetry: vi.fn(),
+        }),
+        createElement(TenantVehicleChangesSection, {
+          changes: [
+            buildChangeFixture(),
+            buildChangeFixture({ id: 'change-x8', changeType: 'REMOVED' }),
+          ],
+          meta: changesMeta,
+          query: changesQueryState,
+          loading: false,
+          error: null,
+          onQueryChange: (next) => {
+            latestChangesQuery = next as typeof latestChangesQuery;
+            setChangesQueryState(next as typeof latestChangesQuery);
+          },
+          onRetry: vi.fn(),
+        }),
+      );
+    }
+
+    await act(async () => {
+      root.render(
+        createElement(LanguageProvider, null, createElement(StatefulP255BSurfaces)),
+      );
+    });
+
+    await act(async () => {
+      container.querySelector('[data-testid="locale-en"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+    });
+    expect(latestVehicleQuery.search).toBe(RAW_PLATE);
+    expect(latestVehicleQuery.status).toBe('BILLABLE');
+    expect(latestVehicleQuery.page).toBe(2);
+    expect(latestChangesQuery.page).toBe(2);
+    expect(container.textContent).toContain(RAW_STATUS_LABEL);
+    expect(container.textContent).toContain(PROVIDER_FORMATTED);
+
+    await act(async () => {
+      container.querySelector('[data-testid="locale-de"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+    });
+    expect(latestVehicleQuery.search).toBe(RAW_PLATE);
+    expect(latestVehicleQuery.status).toBe('BILLABLE');
+    expect(latestVehicleQuery.page).toBe(2);
+    expect(latestChangesQuery.page).toBe(2);
+    expect(container.textContent).toContain('Fahrzeuge in der Abrechnung');
+    expect(container.textContent).toContain(RAW_STATUS_LABEL);
+
+    await act(async () => {
+      root.unmount();
+      container.remove();
+    });
+  });
+
+  it('does not introduce locale-keyed React remounts in P255B sources', () => {
+    for (const filename of [
+      'TenantBillableVehiclesTable.tsx',
+      'TenantVehicleChangesSection.tsx',
+      'tenant-tariff-vehicles.utils.ts',
+    ]) {
+      const source = readFileSync(join(__dirname, 'billing', filename), 'utf8');
+      expect(source).not.toMatch(/key=\{locale\}/);
+      expect(source).not.toMatch(/key=\{t\(/);
+    }
+  });
+});
 
 describe('P2.2.55A rental tenant billing tariff localization', () => {
   it('has zero P255A enforce-clean scanner debt', () => {
@@ -225,9 +459,9 @@ describe('P2.2.55A rental tenant billing tariff localization', () => {
     expect(scoped).toHaveLength(0);
   });
 
-  it('does not falsely declare deferred P255B surfaces clean', () => {
-    const deferredFindings = inventory.findings.filter((f) => P255B_DEFERRED_PATHS.includes(f.file));
-    expect(deferredFindings.length).toBeGreaterThan(0);
+  it('has zero P255B enforce-clean scanner debt', () => {
+    const scoped = inventory.findings.filter((f) => P255B_ENFORCE_CLEAN_EXACT.includes(f.file));
+    expect(scoped).toHaveLength(0);
   });
 
   it('has zero P254 enforce-clean regression', () => {
@@ -264,83 +498,6 @@ describe('P2.2.55A rental tenant billing tariff localization', () => {
     const rows = buildTariffPricingBreakdownRows(buildTariffFixture().pricing, tDe, 'de');
     expect(rows.some((row) => row.value === PROVIDER_FORMATTED)).toBe(true);
     expect(rows.some((row) => row.label === RAW_DISCOUNT)).toBe(true);
-  });
-
-  it('keeps deferred P255B vehicle surfaces at baseline German copy', () => {
-    const vehiclesBaseline = readBaselineSource(
-      'frontend/src/rental/components/billing/TenantBillableVehiclesTable.tsx',
-    );
-    const changesBaseline = readBaselineSource(
-      'frontend/src/rental/components/billing/TenantVehicleChangesSection.tsx',
-    );
-    const vehiclesCurrent = readCurrentSource('TenantBillableVehiclesTable.tsx');
-    const changesCurrent = readCurrentSource('TenantVehicleChangesSection.tsx');
-
-    expect(vehiclesCurrent).toBe(vehiclesBaseline);
-    expect(changesCurrent).toBe(changesBaseline);
-    expect(vehiclesCurrent).toContain('Fahrzeuge in der Abrechnung');
-    expect(changesCurrent).toContain('Änderungen an der Fahrzeugmenge');
-    expect(vehiclesCurrent).not.toContain('tenantBilling.tariff');
-    expect(changesCurrent).not.toContain('resolveVehicleChangeTypeLabel');
-  });
-
-  it('renders deferred P255B sections with baseline German chrome even when locale is EN', async () => {
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    const root: Root = createRoot(container);
-
-    function EnThenDeferredSections() {
-      const { setLocale } = useLanguage();
-      return createElement(
-        'div',
-        null,
-        createElement('button', {
-          type: 'button',
-          'data-testid': 'locale-en',
-          onClick: () => setLocale('en'),
-        }),
-        createElement(TenantBillableVehiclesTable, {
-          vehicles: [],
-          meta: null,
-          query: vehicleQuery,
-          loading: false,
-          error: null,
-          onQueryChange: vi.fn(),
-          onRetry: vi.fn(),
-        }),
-        createElement(TenantVehicleChangesSection, {
-          changes: [],
-          meta: null,
-          query: changesQuery,
-          loading: false,
-          error: null,
-          onQueryChange: vi.fn(),
-          onRetry: vi.fn(),
-        }),
-      );
-    }
-
-    await act(async () => {
-      root.render(
-        createElement(LanguageProvider, null, createElement(EnThenDeferredSections)),
-      );
-    });
-
-    await act(async () => {
-      container.querySelector('[data-testid="locale-en"]')?.dispatchEvent(
-        new MouseEvent('click', { bubbles: true }),
-      );
-    });
-
-    expect(container.textContent).toContain('Fahrzeuge in der Abrechnung');
-    expect(container.textContent).toContain('Änderungen an der Fahrzeugmenge');
-    expect(container.textContent).not.toContain('Vehicles in billing');
-    expect(container.textContent).not.toContain('Changes to vehicle count');
-
-    await act(async () => {
-      root.unmount();
-      container.remove();
-    });
   });
 
   it('preserves same-mount tariff tab state across DE↔EN for P255A surfaces', async () => {

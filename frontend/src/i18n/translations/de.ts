@@ -874,6 +874,28 @@ export const de: Record<TranslationKey, string> = {
   'tenantBilling.tariff.tierRange.range': '{min}–{max} Fahrzeuge',
   'tenantBilling.tariff.tierRange.openEnded': '{min}+ Fahrzeuge',
 
+  // ─── Tenant Billing Tariff Vehicles + Changes (P2.2.55B) ───
+  'tenantBilling.tariff.vehicles.loadErrorTitle': 'Fahrzeugliste konnte nicht geladen werden',
+  'tenantBilling.tariff.vehicles.title': 'Fahrzeuge in der Abrechnung',
+  'tenantBilling.tariff.vehicles.searchPlaceholder': 'Kennzeichen oder Modell suchen…',
+  'tenantBilling.tariff.vehicles.filter.billable': 'Abrechenbar',
+  'tenantBilling.tariff.vehicles.filter.excluded': 'Nicht abrechenbar',
+  'tenantBilling.tariff.vehicles.emptyTitle': 'Keine Fahrzeuge in der Abrechnung',
+  'tenantBilling.tariff.vehicles.emptyDescription':
+    'Sobald Fahrzeuge für Ihr Abo zugeordnet sind, erscheinen sie hier mit Abrechnungsstatus und Zeitraum.',
+  'tenantBilling.tariff.vehicles.col.billableFrom': 'Abrechenbar seit',
+  'tenantBilling.tariff.vehicles.col.billableUntil': 'Abrechenbar bis',
+  'tenantBilling.tariff.vehicles.col.billingStatus': 'Abrechnungsstatus',
+  'tenantBilling.tariff.vehicles.col.reason': 'Grund',
+  'tenantBilling.tariff.vehicles.pagination.summary': '{shown} von {total} Fahrzeugen',
+  'tenantBilling.tariff.pagination.pageOf': 'Seite {page} von {totalPages}',
+  'tenantBilling.tariff.changes.loadErrorTitle': 'Änderungen konnten nicht geladen werden',
+  'tenantBilling.tariff.changes.title': 'Änderungen an der Fahrzeugmenge',
+  'tenantBilling.tariff.changes.subtitle':
+    'Hinzugefügte oder entfernte Fahrzeuge mit anteiliger Berechnung im aktuellen Zeitraum.',
+  'tenantBilling.tariff.changes.emptyTitle': 'Noch keine Fahrzeugänderungen',
+  'tenantBilling.tariff.changes.prorationLabel': 'Anteilige Berechnung',
+
   'finance.separationHint':
     'Kundenzahlungen und Auszahlungen sind getrennt von Ihrem SynqDrive-Abonnement. Ihre Abo-Zahlungsmethode ist nicht dasselbe wie Ihr Auszahlungskonto.',
   'finance.customerPayments.pageTitle': 'Kundenzahlungen & Auszahlungen',
