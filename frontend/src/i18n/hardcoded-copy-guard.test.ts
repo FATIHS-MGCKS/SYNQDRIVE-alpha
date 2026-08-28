@@ -524,6 +524,15 @@ const P253_ENFORCE_CLEAN_EXACT = [
   'rental/lib/rental-invoice-line-items-i18n.ts',
 ];
 
+const P257_ENFORCE_CLEAN_EXACT = [
+  'rental/components/billing/TenantBillingPaymentMethodTab.tsx',
+  'rental/components/billing/TenantPaymentMethodsSection.tsx',
+  'rental/components/billing/tenant-payment-methods.utils.ts',
+  'rental/components/billing/billing-stripe-ui.ts',
+  'rental/components/billing/useBillingPaymentMethodActions.ts',
+  'rental/components/billing/useBillingStripeActions.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -734,6 +743,10 @@ function isP252EnforceCleanPath(relPath: string): boolean {
 
 function isP253EnforceCleanPath(relPath: string): boolean {
   return P253_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP257EnforceCleanPath(relPath: string): boolean {
+  return P257_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -1183,6 +1196,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP253EnforceCleanPath(finding.file),
     );
     expect(p253Debt).toHaveLength(0);
+  });
+
+  it('keeps P257 Tenant Billing Payment Method enforce-clean scope at zero findings', () => {
+    const p257Debt = inventory.findings.filter((finding) =>
+      isP257EnforceCleanPath(finding.file),
+    );
+    expect(p257Debt).toHaveLength(0);
   });
 
   it('keeps rental-invoice-line-items-i18n.ts on canonical formatter delegation', () => {

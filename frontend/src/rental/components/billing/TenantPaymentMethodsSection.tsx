@@ -1,9 +1,12 @@
 import { Button } from '../../../components/ui/button';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { TenantPaymentMethodDto } from '../../types/billing.types';
+import {
+  formatPaymentMethodDisplayLocalized,
+  resolvePaymentMethodBillingStateLabel,
+} from '../../lib/rental-tenant-billing-i18n';
 import type { BillingStripeUiState } from './billing-stripe-ui';
 import {
-  formatPaymentMethodDisplay,
-  paymentMethodBillingStateLabel,
   paymentMethodBillingStateTone,
   paymentMethodNeedsAttention,
 } from './tenant-payment-methods.utils';
@@ -41,6 +44,7 @@ export function TenantPaymentMethodsSection({
   onSetDefault,
   onDetach,
 }: TenantPaymentMethodsSectionProps) {
+  const { t } = useLanguage();
   const defaultMethod = paymentMethods.find((method) => method.isDefault) ?? null;
 
   return (
@@ -49,15 +53,15 @@ export function TenantPaymentMethodsSection({
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
             <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">
-              Zahlungsmethoden
+              {t('tenantBilling.paymentMethod.section.title')}
             </h3>
             <p className="text-[12px] mt-0.5 text-muted-foreground">
-              Verwalten Sie Karte oder SEPA-Lastschrift für Ihr SynqDrive-Abo.
+              {t('tenantBilling.paymentMethod.section.subtitle')}
             </p>
           </div>
           {defaultMethod ? (
             <span className="shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold sq-tone-brand">
-              Standard hinterlegt
+              {t('tenantBilling.paymentMethod.header.defaultConfigured')}
             </span>
           ) : null}
         </div>
@@ -66,8 +70,8 @@ export function TenantPaymentMethodsSection({
           <div
             className={`rounded-xl border border-border/60 px-3.5 py-3 mb-4 text-[12px] ${stripeStateTone(stripeState)}`}
           >
-            <p className="font-semibold">{stripeStateLabel(stripeState)}</p>
-            <p className="mt-1 text-muted-foreground">{stripeStateHint(stripeState)}</p>
+            <p className="font-semibold">{stripeStateLabel(stripeState, t)}</p>
+            <p className="mt-1 text-muted-foreground">{stripeStateHint(stripeState, t)}</p>
           </div>
         ) : null}
 
@@ -76,9 +80,9 @@ export function TenantPaymentMethodsSection({
             <div className="sq-tone-neutral w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center">
               <Icon name="credit-card" className="w-5 h-5" />
             </div>
-            <p className="text-[13px] font-semibold">Keine Zahlungsmethode hinterlegt</p>
+            <p className="text-[13px] font-semibold">{t('tenantBilling.paymentMethod.empty.title')}</p>
             <p className="text-[12px] mt-1 text-muted-foreground max-w-sm mx-auto">
-              Hinterlegen Sie eine Zahlungsmethode im sicheren Kundenbereich.
+              {t('tenantBilling.paymentMethod.empty.body')}
             </p>
             {canWrite && canUseStripePayments ? (
               <Button
@@ -89,14 +93,16 @@ export function TenantPaymentMethodsSection({
                 disabled={portalLoading}
                 onClick={onOpenPortal}
               >
-                {portalLoading ? 'Wird geöffnet…' : 'Zahlungsmethode hinzufügen'}
+                {portalLoading
+                  ? t('common.loading')
+                  : t('tenantBilling.paymentMethod.action.add')}
               </Button>
             ) : null}
           </div>
         ) : (
           <div className="space-y-3">
             {paymentMethods.map((method) => {
-              const display = formatPaymentMethodDisplay(method);
+              const display = formatPaymentMethodDisplayLocalized(method, t);
               const needsAttention = paymentMethodNeedsAttention(method);
               return (
                 <div
@@ -109,13 +115,13 @@ export function TenantPaymentMethodsSection({
                       <p className="text-[14px] font-semibold truncate">{display.title}</p>
                       {method.isDefault ? (
                         <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold sq-tone-brand">
-                          Standard
+                          {t('tenantBilling.paymentMethod.badge.default')}
                         </span>
                       ) : null}
                       <span
                         className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${paymentMethodBillingStateTone(method.billingState)}`}
                       >
-                        {paymentMethodBillingStateLabel(method.billingState)}
+                        {resolvePaymentMethodBillingStateLabel(method.billingState, t)}
                       </span>
                     </div>
                     <p className="text-[12px] text-muted-foreground mt-1">{display.subtitle}</p>
@@ -124,7 +130,7 @@ export function TenantPaymentMethodsSection({
                     ) : null}
                     {needsAttention ? (
                       <p className="text-[11px] sq-tone-warning mt-2">
-                        Diese Zahlungsmethode erfordert eine Aktualisierung.
+                        {t('tenantBilling.paymentMethod.attention.updateRequired')}
                       </p>
                     ) : null}
                   </div>
@@ -139,7 +145,7 @@ export function TenantPaymentMethodsSection({
                           disabled={loadingId === method.id}
                           onClick={() => onSetDefault(method.id)}
                         >
-                          Als Standard setzen
+                          {t('tenantBilling.paymentMethod.action.setDefault')}
                         </Button>
                       ) : null}
                       <Button
@@ -149,7 +155,7 @@ export function TenantPaymentMethodsSection({
                         disabled={loadingId === method.id || (method.isDefault && paymentMethods.length === 1)}
                         onClick={() => onDetach(method.id)}
                       >
-                        Entfernen
+                        {t('common.remove')}
                       </Button>
                     </div>
                   ) : null}
@@ -168,7 +174,7 @@ export function TenantPaymentMethodsSection({
               disabled={portalLoading}
               onClick={onOpenPortal}
             >
-              {portalLoading ? 'Wird geöffnet…' : 'Zahlungsmethode hinzufügen'}
+              {portalLoading ? t('common.loading') : t('tenantBilling.paymentMethod.action.add')}
             </Button>
             <Button
               type="button"
@@ -177,7 +183,7 @@ export function TenantPaymentMethodsSection({
               disabled={portalLoading}
               onClick={onOpenPortal}
             >
-              {portalLoading ? 'Wird geöffnet…' : 'Kundenportal öffnen'}
+              {portalLoading ? t('common.loading') : t('tenantBilling.problem.openPortal')}
             </Button>
           </div>
         ) : null}

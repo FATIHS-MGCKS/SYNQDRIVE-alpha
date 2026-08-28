@@ -1,6 +1,13 @@
 import type { BillingSummaryDto } from '../../types/billing.types';
+import type { TranslationKey } from '../../../i18n/translations/en';
+import {
+  resolveStripeStateHint,
+  resolveStripeStateLabel,
+} from '../../lib/rental-tenant-billing-i18n';
 
 export type BillingStripeUiState = 'configured' | 'prepared' | 'not_configured';
+
+type Translate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
 export function getBillingStripeUiState(
   summary?: Pick<BillingSummaryDto, 'stripeConfigured' | 'stripePortalPrepared'> | null,
@@ -10,7 +17,8 @@ export function getBillingStripeUiState(
   return 'not_configured';
 }
 
-export function stripeStateLabel(state: BillingStripeUiState): string {
+export function stripeStateLabel(state: BillingStripeUiState, t?: Translate): string {
+  if (t) return resolveStripeStateLabel(state, t);
   switch (state) {
     case 'configured':
       return 'Zahlungen aktiv';
@@ -32,7 +40,8 @@ export function stripeStateTone(state: BillingStripeUiState): string {
   }
 }
 
-export function stripeStateHint(state: BillingStripeUiState): string {
+export function stripeStateHint(state: BillingStripeUiState, t?: Translate): string {
+  if (t) return resolveStripeStateHint(state, t);
   switch (state) {
     case 'configured':
       return 'Zahlungsmethoden und Rechnungen werden im sicheren Kundenbereich verwaltet.';

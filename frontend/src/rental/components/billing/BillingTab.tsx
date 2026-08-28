@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/button';
 import { EmptyState, SkeletonCard } from '../../../components/patterns/states';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
+import { resolveStripePortalActionErrorMessage } from '../../lib/rental-tenant-billing-i18n';
 import { getBillingStripeUiState } from './billing-stripe-ui';
 import { useBillingStripeActions } from './useBillingStripeActions';
 import { Icon } from '../ui/Icon';
@@ -70,6 +71,7 @@ export function BillingTab() {
   }, [subTab]);
 
   const headerBadge = overviewHeaderBadge(overview, t);
+  const portalErrorMessage = resolveStripePortalActionErrorMessage(stripeActions.error, t);
 
   const reloadAll = () =>
     Promise.allSettled([
@@ -204,7 +206,7 @@ export function BillingTab() {
           onRetry={paymentMethods.reload}
           onOpenPortal={() => void stripeActions.openCustomerPortal()}
           portalLoading={stripeActions.loading}
-          portalError={stripeActions.error}
+          portalError={portalErrorMessage}
           onChanged={() => void paymentMethods.reload()}
         />
       ) : null}

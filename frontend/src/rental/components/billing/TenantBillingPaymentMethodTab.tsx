@@ -1,4 +1,6 @@
 import { ErrorState, SkeletonCard } from '../../../components/patterns/states';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { resolvePaymentMethodActionErrorMessage } from '../../lib/rental-tenant-billing-i18n';
 import type { TenantPaymentMethodDto } from '../../types/billing.types';
 import type { BillingStripeUiState } from './billing-stripe-ui';
 import { TenantPaymentMethodsSection } from './TenantPaymentMethodsSection';
@@ -33,7 +35,9 @@ export function TenantBillingPaymentMethodTab({
   portalError,
   onChanged,
 }: TenantBillingPaymentMethodTabProps) {
+  const { t } = useLanguage();
   const actions = useBillingPaymentMethodActions(orgId, canWrite);
+  const actionError = resolvePaymentMethodActionErrorMessage(actions.error, t);
 
   if (loading && paymentMethods.length === 0 && !error) {
     return <SkeletonCard className="h-72 rounded-2xl" />;
@@ -41,10 +45,10 @@ export function TenantBillingPaymentMethodTab({
   if (error) {
     return (
       <ErrorState
-        title="Zahlungsmethoden konnten nicht geladen werden"
+        title={t('tenantBilling.paymentMethod.loadErrorTitle')}
         description={error}
         onRetry={() => void onRetry()}
-        retryLabel="Erneut versuchen"
+        retryLabel={t('common.retry')}
       />
     );
   }
@@ -57,7 +61,7 @@ export function TenantBillingPaymentMethodTab({
         canUseStripePayments={canUseStripePayments && canWrite}
         canWrite={canWrite}
         loadingId={actions.loadingId}
-        actionError={actions.error}
+        actionError={actionError}
         portalLoading={portalLoading}
         portalError={portalError}
         onOpenPortal={onOpenPortal}

@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-tenant-billing-payment-method-p2-2-57-2026-08-28',
+    version: '4.9.985',
+    title: 'Platform i18n — P2.2.57 Rental Tenant Billing Payment Method',
+    summary: [
+      'Localized production-mounted payment method tab (section, stripe state panel, inline set-default/detach, portal chrome) via extended `rental-tenant-billing-i18n.ts`; 27 `tenantBilling.paymentMethod.*` keys (8915→8942 EN+DE).',
+      'P257 enforce-clean exact scope (6 paths) — 0 findings; reuses `common.retry`, `common.loading`, `common.remove`, `tenantBilling.problem.openPortal`, `tenantBilling.tab.paymentMethod`.',
+      'Payment method IDs, brand/last4/typeLabel/bank/mandate raw fields, billingState/default machines, mutation endpoints/payloads, portal URL/return URL, permissions frozen. Mixed raw/host error ownership preserved for detach + portal. Category E=0.',
+    ],
+    reason:
+      'P2.2.57 bounded implementation after P256 merge (#1372) per #1376 pre-flight verdict A.',
+    previousBehavior:
+      'Tenant payment method tab used hardcoded German strings; detach/portal errors stored as German host strings.',
+    details:
+      'Presentation-only adapter extensions (`resolvePaymentMethodBillingStateLabel`, `formatPaymentMethodDisplayLocalized`, `resolveStripeStateLabel/Hint`, detach/portal error resolvers). Dead legacy `BillingPaymentMethodCard` untouched (legacy German fallback in `billing-stripe-ui.ts`). Add-ons deferred.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-28T00:00:00.000Z',
+  },
+  {
     id: 'i18n-rental-tenant-billing-invoices-p2-2-56-2026-08-28',
     version: '4.9.984',
     title: 'Platform i18n — P2.2.56 Rental Tenant Billing Invoices List + Detail',
