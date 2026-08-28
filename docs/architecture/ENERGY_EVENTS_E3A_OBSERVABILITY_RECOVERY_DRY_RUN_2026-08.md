@@ -179,3 +179,19 @@ Executed on `srv1374778.hstgr.cloud` with production `DATABASE_URL`, `dbComparis
 | Gate | `READY AFTER MANUAL REVIEW OF 12 EVENTS` |
 
 All 12 manual-review entries: `NEEDS_FURTHER_EVIDENCE` (11 long-duration refuels + 1 Tesla existing-DB overlap).
+
+---
+
+## 11. Refuel movement/duration plausibility calibration (v4.9.979)
+
+FULL prod dry-run exposed DIMO RefuelDetector false positives: large fuel increases during 122–205 km odometer travel. KS MX canonical refuel (positive control): 8 min, +16 L, ~6 km apparent spread — must remain eligible.
+
+| Rule | Threshold | Rationale |
+|------|-----------|-----------|
+| `refuel_high_odometer_movement` | odometer Δ ≥ 50 km AND liters ≥ 10 | All confirmed false positives had ≥122 km; KS MX has 6 km |
+| `refuel_elevated_movement_during_refuel` | odometer Δ ≥ 20 km AND implied speed ≥ 40 km/h AND liters ≥ 10 | Catches sustained driving refuels below 50 km |
+| `refuel_odometer_movement_during_event` | odometer Δ > 5 km AND liters < 10 | Preserved for small-volume contradictions |
+
+**Production recommendation:** Apply same movement plausibility to live `EnergyEventsService.detectEnergyEvents` after recovery gate validates — DIMO false positives can occur in production too. **Not changed in this PR** (recovery-only hardening).
+
+**Tesla Jul-16 overlap:** Extended recharge segment (`dimo-recharge-186946-1784220138893`) is `WOULD_UPDATE` on existing DB row; overlapping sub-segment (`1784227838927`) is subsumed — no duplicate create.

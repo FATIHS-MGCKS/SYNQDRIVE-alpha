@@ -125,6 +125,72 @@ function markManualReview(
   };
 }
 
+function isSubsumedExistingSubsegmentOverlap(
+  candidate: EnergyRecoveryCandidate,
+  existingStart: Date,
+  existingEnd: Date,
+): boolean {
+  if (!candidate.existingRowId) return false;
+  const candidateStart = parseTime(candidate.startTime);
+  const candidateEnd = parseTime(candidate.endTime);
+  const existingStartMs = existingStart.getTime();
+  const existingEndMs = existingEnd.getTime();
+  return (
+    existingStartMs >= candidateStart &&
+    existingEndMs <= candidateEnd &&
+  candidate.classification !== 'WOULD_CREATE'
+  );
+}
+
+function isSamePhysicalRechargeSession(
+  candidate: EnergyRecoveryCandidate,
+  existing: {
+    startTime: Date;
+    endTime: Date;
+    socDeltaPercent: number | null;
+    energyDeltaKwh: number | null;
+  },
+): boolean {
+  if (candidate.mechanism !== 'recharge') return false;
+  const overlapStart = Math.max(
+    parseTime(candidate.startTime),
+    existing.startTime.getTime(),
+  );
+  const overlapEnd = Math.min(
+    parseTime(candidate.endTime),
+    existing.endTime.getTime(),
+  );
+  const overlapMs = Math.max(0, overlapEnd - overlapStart);
+  if (overlapMs <= 0) return false;
+
+  const candidateDuration = Math.max(
+    1,
+    parseTime(candidate.endTime) - parseTime(candidate.startTime),
+  );
+  const existingDuration = Math.max(
+    1,
+    existing.endTime.getTime() - existing.startTime.getTime(),
+  );
+  const shorter = Math.min(candidateDuration, existingDuration);
+  if (overlapMs / shorter < 0.5) return false;
+
+  const candidateOdo =
+    candidate.odometerStartKm != null && candidate.odometerEndKm != null
+      ? Math.abs(candidate.odometerEndKm - candidate.odometerStartKm)
+      : 0;
+  const socClose =
+    candidate.socDeltaPercent != null &&
+    existing.socDeltaPercent != null &&
+    Math.abs(candidate.socDeltaPercent - existing.socDeltaPercent) <= 3;
+  const energyClose =
+    candidate.energyDeltaKwh != null &&
+    existing.energyDeltaKwh != null &&
+    Math.abs(candidate.energyDeltaKwh - existing.energyDeltaKwh) <= 2;
+  const stationary = candidateOdo <= 2;
+
+  return stationary && (socClose || energyClose);
+}
+
 export interface ReconcileRecoveryCandidatesResult {
   candidates: EnergyRecoveryCandidate[];
   deduplicatedCount: number;
@@ -142,6 +208,8 @@ export function reconcileRecoveryCandidates(
       kind: string;
       startTime: Date;
       endTime: Date;
+      socDeltaPercent?: number | null;
+      energyDeltaKwh?: number | null;
     }>
   >,
 ): ReconcileRecoveryCandidatesResult {
@@ -222,6 +290,37 @@ export function reconcileRecoveryCandidates(
           existing.endTime.toISOString(),
         )
       ) {
+        if (
+          isSubsumedExistingSubsegmentOverlap(
+            candidate,
+            existing.startTime,
+            existing.endTime,
+          )
+        ) {
+          continue;
+        }
+        if (
+          isSamePhysicalRechargeSession(candidate, {
+            startTime: existing.startTime,
+            endTime: existing.endTime,
+            socDeltaPercent: existing.socDeltaPercent ?? null,
+            energyDeltaKwh: existing.energyDeltaKwh ?? null,
+          })
+        ) {
+          existingDbOverlapFlags += 1;
+          return {
+            ...candidate,
+            classification: 'MANUAL_REVIEW_REQUIRED',
+            manualReviewReasons: [
+              ...new Set([
+                ...candidate.manualReviewReasons,
+                'same_physical_session_existing_db',
+              ]),
+            ],
+            existingDbRelation: `same physical session as existing row ${existing.id} (${existing.dimoSegmentId})`,
+            existingRowId: candidate.existingRowId ?? existing.id,
+          };
+        }
         existingDbOverlapFlags += 1;
         return markManualReview(
           candidate,

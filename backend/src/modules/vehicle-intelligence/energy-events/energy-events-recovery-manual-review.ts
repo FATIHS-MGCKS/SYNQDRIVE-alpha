@@ -22,6 +22,7 @@ export function deriveManualReviewDisposition(
         'overlapping_duplicate_session',
         'cross_window_overlapping_different_id',
         'existing_db_overlap_different_id',
+        'same_physical_session_existing_db',
         'same_id_material_payload_mismatch',
       ].includes(reason),
     )
@@ -30,6 +31,12 @@ export function deriveManualReviewDisposition(
   }
   if (reasons.includes('refuel_duration_very_long')) {
     return 'NEEDS_FURTHER_EVIDENCE';
+  }
+  if (
+    reasons.includes('refuel_high_odometer_movement') ||
+    reasons.includes('refuel_elevated_movement_during_refuel')
+  ) {
+    return 'EXCLUDE_FROM_BACKFILL';
   }
   if (reasons.includes('refuel_odometer_movement_during_event')) {
     return 'NEEDS_FURTHER_EVIDENCE';
@@ -43,6 +50,12 @@ function buildTelemetryEvidenceNotes(
   const notes: string[] = [];
   if (candidate.mechanism === 'refuel' && candidate.durationSeconds > 2 * 60 * 60) {
     notes.push('long_duration_refuel_review_odometer_and_stationary_evidence');
+  }
+  if (
+    candidate.manualReviewReasons.includes('refuel_high_odometer_movement') ||
+    candidate.manualReviewReasons.includes('refuel_elevated_movement_during_refuel')
+  ) {
+    notes.push('fuel_increase_during_sustained_vehicle_movement_likely_detector_false_positive');
   }
   if (
     candidate.odometerStartKm != null &&

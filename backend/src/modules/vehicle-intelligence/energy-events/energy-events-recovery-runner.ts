@@ -223,7 +223,15 @@ export async function runEnergyEventsRecoveryDryRun(
 
   const existingEventsByVehicle = new Map<
     string,
-    Array<{ id: string; dimoSegmentId: string; kind: string; startTime: Date; endTime: Date }>
+    Array<{
+      id: string;
+      dimoSegmentId: string;
+      kind: string;
+      startTime: Date;
+      endTime: Date;
+      socDeltaPercent: number | null;
+      energyDeltaKwh: number | null;
+    }>
   >();
   for (const vehicle of vehicles) {
     existingEventsByVehicle.set(
@@ -234,6 +242,8 @@ export async function runEnergyEventsRecoveryDryRun(
         kind: event.kind,
         startTime: event.startTime,
         endTime: event.endTime,
+        socDeltaPercent: event.socDeltaPercent,
+        energyDeltaKwh: event.energyDeltaKwh,
       })),
     );
   }

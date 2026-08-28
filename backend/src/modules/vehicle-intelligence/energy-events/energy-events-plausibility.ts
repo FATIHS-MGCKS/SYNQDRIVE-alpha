@@ -1,4 +1,5 @@
 import type { DimoEnergyEventSegment } from '@modules/dimo/dimo-segments.service';
+import { assessRefuelMovementPlausibility } from './energy-events-refuel-plausibility';
 
 export function assessPlausibilityFlags(
   segment: DimoEnergyEventSegment,
@@ -28,16 +29,7 @@ export function assessPlausibilityFlags(
     if (segment.durationSeconds > 2 * 60 * 60) {
       flags.push('refuel_duration_very_long');
     }
-    const odoStart = segment.odometerStartKm;
-    const odoEnd = segment.odometerEndKm;
-    if (
-      odoStart != null &&
-      odoEnd != null &&
-      Math.abs(odoEnd - odoStart) > 5 &&
-      (segment.fuelDeltaLiters ?? 0) < 10
-    ) {
-      flags.push('refuel_odometer_movement_during_event');
-    }
+    flags.push(...assessRefuelMovementPlausibility(segment));
     if (
       (segment.fuelDeltaLiters == null || segment.fuelDeltaLiters <= 0) &&
       (segment.fuelDeltaPercent == null || segment.fuelDeltaPercent <= 0)

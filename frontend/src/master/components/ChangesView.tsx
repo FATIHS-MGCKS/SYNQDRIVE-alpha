@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'energy-events-e3a-refuel-plausibility-hardening-2026-08-28',
+    version: '4.9.979',
+    title: 'Energy Events E3A — refuel movement/duration plausibility hardening',
+    summary: [
+      'Calibrated recovery plausibility from 18 FULL prod refuel detections; KS MX (+16 L, ~6 km) remains eligible.',
+      'New flags: `refuel_high_odometer_movement` (≥50 km + ≥10 L), `refuel_elevated_movement_during_refuel` (≥20 km + ≥40 km/h + ≥10 L).',
+      'Moving-vehicle false refuels (122–205 km) no longer remain WOULD_CREATE; disposition EXCLUDE_FROM_BACKFILL.',
+      'Tesla recharge sub-segment overlap: subsumed existing rows no longer block WOULD_UPDATE parent session.',
+      'Recovery-only; production persist path unchanged pending validation. 53 focused tests.',
+    ],
+    reason:
+      'FULL DB dry-run showed DIMO RefuelDetector sparse-signal rebounds classified as refuel during sustained driving.',
+    previousBehavior:
+      'Odometer movement flagged only when delta >5 km AND liters <10 L; large false positives with 55 L / 170 km remained WOULD_CREATE.',
+    details:
+      'backend: energy-events-refuel-plausibility.ts, energy-events-plausibility.ts, energy-events-recovery-reconcile.ts, energy-events-recovery-manual-review.ts. Artifact re-run: energy-events-recovery-full-db-preview-2026-08.json.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T10:30:00.000Z',
+  },
+  {
     id: 'energy-events-e3a-production-dry-run-gate-2026-08-28',
     version: '4.9.978',
     title: 'Energy Events E3A — production dry-run gate hardening (PR #1373)',
