@@ -45,8 +45,8 @@ export function isPlausibleLvVoltage(v: number | null | undefined): boolean {
 /**
  * Conservative engine-off check for REST target measurement quality and
  * in-window observation eligibility. Residual OBD engine_load may still
- * reject here — downstream evaluation must not treat transitional load as proof
- * the engine is running during a rest measurement window.
+ * reject here when it implies `engineRunning` — opening and measurement paths
+ * are intentionally split (see `isEngineOffForRestWindowOpening`).
  */
 export function isEngineOffForRest(
   signal: LvRestWindowSignalContext,
@@ -64,10 +64,11 @@ export function isEngineOffForRest(
  *
  * Evidence precedence when `restRequiresEngineOff` is true:
  * - Strong RUNNING: explicit ignition on → reject.
- * - Strong OFF (opening): ignition off + speed at rest → accept even when
- *   transitional OBD engine_load implies `engineRunning` (the load proxy alone
- *   must not override authoritative key-off + stationary evidence).
- * - Ambiguous: unknown ignition with engine_running proxy → conservative reject.
+ * - Strong OFF (opening): ignition off + measured speed at rest (non-null,
+ *   `<= 0.5` km/h) → accept even when transitional OBD engine_load implies
+ *   `engineRunning`. Missing speed is not treated as stationary evidence.
+ * - Ambiguous: unknown ignition or missing speed with engine_running proxy →
+ *   conservative reject.
  */
 export function isEngineOffForRestWindowOpening(
   signal: LvRestWindowSignalContext,
@@ -75,7 +76,11 @@ export function isEngineOffForRestWindowOpening(
 ): boolean {
   if (!restRequiresEngineOff) return true;
   if (signal.ignitionOn === true) return false;
-  if (signal.ignitionOn === false && isSpeedAtRest(signal.speedKmh)) {
+  if (
+    signal.ignitionOn === false &&
+    signal.speedKmh != null &&
+    isSpeedAtRest(signal.speedKmh)
+  ) {
     return true;
   }
   if (signal.engineRunning === true) return false;

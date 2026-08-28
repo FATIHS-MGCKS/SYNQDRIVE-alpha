@@ -114,6 +114,46 @@ describe('isEngineOffForRestWindowOpening (ICE opening gate)', () => {
     });
     expect(isEngineOffForRestWindowOpening(signal, policyOn)).toBe(true);
   });
+
+  it('G: ignition off, speed null, engine load high — conservative reject (no widening)', () => {
+    const signal = baseOpeningSignal({
+      ignitionOn: false,
+      speedKmh: null,
+      engineRunning: true,
+    });
+    expect(isEngineOffForRestWindowOpening(signal, policyOn)).toBe(false);
+    expect(canOpenRestWindowCandidate(signal, icePolicy()).reason).toBe(
+      'engine_not_off',
+    );
+  });
+
+  it('H: ignition off, speed null, engine load absent — same as pre-#1393 (passes engine gate)', () => {
+    const signal = baseOpeningSignal({
+      ignitionOn: false,
+      speedKmh: null,
+      engineRunning: null,
+    });
+    expect(isEngineOffForRestWindowOpening(signal, policyOn)).toBe(true);
+    expect(canOpenRestWindowCandidate(signal, icePolicy()).ok).toBe(true);
+  });
+
+  it('I: unknown ignition and speed with high load stays conservative', () => {
+    const signal = baseOpeningSignal({
+      ignitionOn: null,
+      speedKmh: null,
+      engineRunning: true,
+    });
+    expect(isEngineOffForRestWindowOpening(signal, policyOn)).toBe(false);
+  });
+
+  it('J: ignition on with null speed still rejects', () => {
+    const signal = baseOpeningSignal({
+      ignitionOn: true,
+      speedKmh: null,
+      engineRunning: false,
+    });
+    expect(isEngineOffForRestWindowOpening(signal, policyOn)).toBe(false);
+  });
 });
 
 describe('isEngineOffForRest (downstream measurement quality — unchanged)', () => {

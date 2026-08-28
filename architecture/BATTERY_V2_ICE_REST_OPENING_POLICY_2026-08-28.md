@@ -24,7 +24,7 @@ Two functions now govern engine-off semantics:
 
 | Function | Used by | Behavior |
 |----------|---------|----------|
-| `isEngineOffForRestWindowOpening` | `canOpenRestWindowCandidate`, `isValidRestSnapshot` | Ignition-off + speed at rest outrank transitional `engine_load` proxy |
+| `isEngineOffForRestWindowOpening` | `canOpenRestWindowCandidate`, `isValidRestSnapshot` | Ignition-off + **measured** speed at rest (`speedKmh != null`, `<= 0.5`) outrank transitional `engine_load` proxy |
 | `isEngineOffForRest` | REST target evaluation, measurement quality | Unchanged conservative: residual `engine_load` may still reject in-window observations |
 
 Opening eligibility and downstream REST measurement quality remain separate
@@ -33,8 +33,8 @@ concerns. `engine_load` is not discarded globally.
 ## Evidence precedence (opening gate)
 
 1. **Strong RUNNING** — `ignitionOn === true` → reject.
-2. **Strong OFF** — `ignitionOn === false` and `isSpeedAtRest(speedKmh)` → accept (even when `engineRunning` is true from load proxy).
-3. **Ambiguous** — unknown ignition with `engineRunning === true` → conservative reject.
+2. **Strong OFF** — `ignitionOn === false`, `speedKmh != null`, and `speedKmh <= 0.5` → accept (even when `engineRunning` is true from load proxy). **Missing speed is not stationary evidence.**
+3. **Ambiguous** — unknown ignition, missing speed with `engineRunning === true`, or moving → conservative reject (falls back to `engineRunning` proxy where applicable).
 
 RPM is not yet available on `LvRestWindowSignalContext` / `VehicleLatestState`;
 when wired, strong RPM-based running evidence can be layered without changing
@@ -49,7 +49,7 @@ the ignition-off + at-rest override for load-only proxies.
 
 ## Tests
 
-`lv-rest-window.policy.spec.ts` — opening-gate matrix A–F + downstream unchanged check.
+`lv-rest-window.policy.spec.ts` — opening-gate matrix A–J + null-speed regression + downstream unchanged check.
 
 `lv-rest-window-session-arming.service.spec.ts` — production trip `61715ecd`
 shape with `engineLoad = 10.196` opens and promotes to RESTING.
