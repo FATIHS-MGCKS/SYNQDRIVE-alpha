@@ -24,6 +24,7 @@ import {
   countUnresolvedManualReviews,
   buildManualReviewReport,
 } from './energy-events-recovery-manual-review';
+import { applyManualReviewOverrides } from './energy-events-recovery-manual-review-overrides';
 import { reconcileRecoveryCandidates } from './energy-events-recovery-reconcile';
 import type { DbComparisonStatus, RecoveryExistingEnergyEvent } from './energy-events-recovery-read.repository';
 import {
@@ -270,7 +271,9 @@ export async function runEnergyEventsRecoveryDryRun(
   );
   const candidates = reconciled.candidates;
   const summary = summarizeClassifications(candidates);
-  const manualReviewReport = buildManualReviewReport(candidates);
+  const manualReviewReport = applyManualReviewOverrides(
+    buildManualReviewReport(candidates),
+  );
   const manualReviewCount = summary.MANUAL_REVIEW_REQUIRED;
   const unresolvedManualReviewCount =
     countUnresolvedManualReviews(manualReviewReport);
