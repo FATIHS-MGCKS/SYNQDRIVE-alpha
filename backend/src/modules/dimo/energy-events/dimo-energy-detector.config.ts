@@ -32,11 +32,12 @@ export interface DimoRechargeDetectorConfig {
  *
  * KS MX 2024 canonical refuel (tokenId 187336, 2026-08-23, ~13%→~42%):
  * - default config: 0 segments in 22–24 Aug window
- * - minIncreasePercent 2–10: identical single segment (16:15:15–16:23:16 UTC)
+ * - minIncreasePercent 2, 3, 5, 7, 10: identical single segment (16:15:15–16:23:16 UTC)
  *
- * 5% chosen (not 2%) as conservative margin identical to audit reference
- * across Apr–Aug 2026 monthly windows — no extra segments vs default in months
- * where default already detects large refuels; fixes default-blind cases.
+ * Live sweep (Aug 2026): thresholds 2–10 produce identical segment counts on KS MX
+ * monthly windows (Apr–Jun, Aug) and VW Arteon Aug window. 5% chosen as conservative
+ * margin matching audit reference; fixes default-blind canonical case without adding
+ * segments vs tuned thresholds in tested windows.
  */
 export const DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG: DimoRefuelDetectorConfig = {
   minIncreasePercent: 5,

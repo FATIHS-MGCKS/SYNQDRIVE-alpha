@@ -36,8 +36,9 @@ const PRIVATE_KEY = process.env.DIMO_PRIVATE_KEY!;
 const DOMAIN =
   process.env.DIMO_DOMAIN ?? process.env.DIMO_REDIRECT_URI ?? 'https://auth.dimo.zone';
 
-const REFUEL_THRESHOLDS = [undefined, 2, 5] as const;
-const RECHARGE_THRESHOLDS = [undefined, 1, 2, 3, 5] as const;
+/** E2 evidence gate: full threshold sweep (default + 2/3/5/7/10). */
+const REFUEL_THRESHOLDS = [undefined, 2, 3, 5, 7, 10] as const;
+const RECHARGE_THRESHOLDS = [undefined] as const;
 
 interface CalibrationVehicle {
   tokenId: number;
@@ -45,6 +46,13 @@ interface CalibrationVehicle {
   from: string;
   to: string;
 }
+
+/** Additional ICE calibration candidates (accessible tokenIds only). */
+const ICE_CALIBRATION_CANDIDATES: CalibrationVehicle[] = [
+  { tokenId: 187784, label: 'VW Arteon ICE', from: '2026-08-01T00:00:00.000Z', to: '2026-08-27T00:00:00.000Z' },
+  { tokenId: 187361, label: 'Audi A4 ICE (KS MS 661)', from: '2026-08-01T00:00:00.000Z', to: '2026-08-27T00:00:00.000Z' },
+  { tokenId: 192922, label: 'VW Tiguan ICE', from: '2026-08-01T00:00:00.000Z', to: '2026-08-27T00:00:00.000Z' },
+];
 
 const VEHICLES: CalibrationVehicle[] = [
   {
@@ -83,11 +91,12 @@ const VEHICLES: CalibrationVehicle[] = [
     from: '2026-08-01T00:00:00.000Z',
     to: '2026-08-27T00:00:00.000Z',
   },
+  ...ICE_CALIBRATION_CANDIDATES,
   {
     tokenId: 186946,
     label: 'KS FH 660E (Tesla EV)',
-    from: '2026-08-01T00:00:00.000Z',
-    to: '2026-08-27T00:00:00.000Z',
+    from: '2026-06-15T00:00:00.000Z',
+    to: '2026-07-16T00:00:00.000Z',
   },
 ];
 
@@ -260,7 +269,23 @@ async function main() {
   const matrix: Array<Record<string, unknown>> = [];
 
   for (const vehicle of VEHICLES) {
-    const vehicleJwt = await getVehicleJwt(devJwt, vehicle.tokenId);
+    let vehicleJwt: string;
+    try {
+      vehicleJwt = await getVehicleJwt(devJwt, vehicle.tokenId);
+    } catch (error) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      matrix.push({
+        vehicle: vehicle.label,
+        tokenId: vehicle.tokenId,
+        mechanism: 'access',
+        config: 'n/a',
+        httpStatus: status ?? 0,
+        segmentCount: 0,
+        segments: [],
+        errors: status === 403 ? 'DIMO_TOKEN_EXCHANGE_FORBIDDEN' : 'DIMO_TOKEN_EXCHANGE_FAILED',
+      });
+      continue;
+    }
 
     for (const threshold of REFUEL_THRESHOLDS) {
       if (vehicle.label.includes('Tesla')) continue;

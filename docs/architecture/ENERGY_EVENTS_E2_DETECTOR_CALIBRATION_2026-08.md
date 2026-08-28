@@ -37,41 +37,101 @@ Other detector fields (`minAbsoluteLiters`, duration gates, etc.) were **not con
 ## 3. Calibration methodology
 
 1. Read-only live sweep via `scripts/ops/calibrate-energy-event-detectors.ts`
-2. Vehicles: KS MX 2024 (`187336`), KS FH 660E Tesla (`186946`)
-3. Refuel thresholds: default, 2%, 5% on canonical + monthly windows
-4. Recharge thresholds: default, 1–5% on bounded windows (≤32 days)
-5. Cross-check against audit live evidence + Tesla HV audit (`dimo-tesla-hv-signal-capability.md`)
-6. SynqDrive persist gate retained: refuel `fuelDeltaLiters > 1.0`; recharge `socDeltaPercent >= 1` OR `energyDeltaKwh > 0`
+2. Fleet fuel signal inventory via `scripts/ops/e2-fleet-fuel-signal-inventory.ts`
+3. Vehicles with DIMO access: KS MX 2024 (`187336`), VW Arteon (`187784`), Audi A4 KS MS 661 (`187361`), VW Tiguan (`192922`), KS FH 660E Tesla (`186946`)
+4. Refuel thresholds tested: **default, 2%, 3%, 5%, 7%, 10%** (canonical + monthly + Aug fleet windows)
+5. Recharge: DIMO default only (Tesla Jun 2026 re-validated live)
+6. SynqDrive persist gate audited: refuel `fuelDeltaLiters > 1.0`; recharge `socDeltaPercent >= 1` OR `energyDeltaKwh > 0`
 
-Artifact: `/opt/cursor/artifacts/e2_energy_detector_calibration_matrix.json`
+Artifacts:
+- `/opt/cursor/artifacts/e2_energy_detector_calibration_matrix.json`
+- `/opt/cursor/artifacts/e2_fleet_fuel_signal_inventory.json`
 
 ---
 
-## 4. Refuel threshold matrix (KS MX 2024, tokenId 187336)
+## 3b. Fleet fuel signal capability (Aug 2026, bounded)
 
-| Window | default | minIncreasePercent: 2 | minIncreasePercent: 5 |
-|--------|---------|----------------------|----------------------|
-| **22–24 Aug (canonical)** | **0** | **1** ✓ 16:15–16:23, Δ29.4% | **1** ✓ same |
-| Apr 2026 | 3 | 3 (identical) | 3 (identical) |
-| May 2026 | 2 | 2 (identical) | 2 (identical) |
-| Jun 2026 | 2 | 2 (identical) | 2 (identical) |
-| Jul 2026 | 0 | 0 | 0 |
-| Aug 2026 (full month) | 1 | 1 (identical) | 1 (identical) |
+| Vehicle | tokenId | Provider | Relative % | Absolute L | Usable history | Class | Calibration candidate |
+|---------|---------|----------|------------|------------|----------------|-------|----------------------|
+| VW Tiguan ICE | 192922 | LTE_R1 | listed | listed | **no** Aug samples | D | no |
+| VW Golf ICE | 190497 | LTE_R1 | — | — | DIMO 403 (no access) | D | no |
+| VW Arteon ICE | 187784 | LTE_R1 | yes (159 samples) | yes (191 samples) | yes | **A** | **yes** |
+| Audi A4 (KS MS 661) | 187361 | LTE_R1 | **not listed** | yes (238 samples) | yes | **C** | yes (0 refuels Aug) |
+| MB C63 (KS MX 2024) | 187336 | LTE_R1 | yes (31) | yes (31) | yes | **A** | **yes** |
+| Tesla M3 (KS FH 660E) | 186946 | LTE_R1 | n/a | n/a | n/a (EV) | D | recharge only |
+
+**ICE vehicles with refuel detector calibration evidence:** **2** (KS MX 2024, VW Arteon). Audi contributes signal-capability evidence only (absolute liters; 0 refuel segments in Aug window). Global 5% is a **provisional fleet default** from these calibrated vehicles plus canonical KS MX acceptance — not a large multi-OEM sweep.
+
+---
+
+## 4. Refuel threshold matrix
+
+### KS MX 2024 canonical window (22–24 Aug, tokenId 187336)
+
+| Config | Segments | Canonical segment |
+|--------|----------|-------------------|
+| default | **0** | — |
+| minIncreasePercent: 2 | **1** | 16:15:15–16:23:16 UTC, Δ29.4% |
+| minIncreasePercent: 3 | **1** | same |
+| minIncreasePercent: 5 | **1** | same |
+| minIncreasePercent: 7 | **1** | same |
+| minIncreasePercent: 10 | **1** | same |
+
+### KS MX monthly windows (all thresholds identical within each month)
+
+| Window | default | 2% | 3% | 5% | 7% | 10% |
+|--------|---------|----|----|----|----|-----|
+| Apr 2026 | 3 | 3 | 3 | 3 | 3 | 3 |
+| May 2026 | 2 | 2 | 2 | 2 | 2 | 2 |
+| Jun 2026 | 2 | 2 | 2 | 2 | 2 | 2 |
+| Jul 2026 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Aug 2026 | 1 | 1 | 1 | 1 | 1 | 1 |
+
+### VW Arteon ICE (Aug 2026, tokenId 187784)
+
+| default | 2% | 3% | 5% | 7% | 10% |
+|---------|----|----|----|----|-----|
+| 3 | 3 | 3 | 3 | 3 | 3 |
 
 **Lowest threshold detecting canonical refuel:** **2%**.  
-**Production choice:** **5%** — identical results to 2% across all tested windows; matches audit reference; conservative margin without losing the canonical case.
+**Production choice:** **5%** — identical segment counts to 2/3/7/10% on all tested KS MX and Arteon windows; fixes default-blind canonical case.
+
+---
+
+## 4b. Refuel persistability gate audit
+
+**Code** (`EnergyEventsService.isSegmentPersistable`):
+
+```typescript
+// refuel path
+return (segment.fuelDeltaLiters ?? 0) > 1.0;
+```
+
+| Scenario | fuelDeltaLiters | fuelDeltaPercent | Persisted? |
+|----------|-----------------|------------------|------------|
+| Liters-based refuel (KS MX production) | > 1.0 | any | **yes** |
+| Small liters noise | ≤ 1.0 | low | **no** |
+| Percent-only, large delta | **null** | 29% | **no** (treated as 0 L) |
+| Percent-only noise | null | 2.5% | **no** |
+| Neither signal | null | null | **no** |
+
+**Fleet evidence:** all accessible ICE vehicles with usable fuel history report **`powertrainFuelSystemAbsoluteLevel`** (Class A or C). No Class B (relative-only with history) in connected fleet. KS MX production events carry 24–35 L (audit confirmed).
+
+**E2 decision:** **no persistence gate change.** Liters gate remains correct for current fleet. Percent-only fallback deferred until a relative-only vehicle with live refuel evidence is connected.
+
+Regression tests added in `energy-events.service.spec.ts` (cases A–E).
 
 ---
 
 ## 5. Recharge threshold analysis
 
-| Vehicle | Window | default | minIncreasePercent 1–5 |
-|---------|--------|---------|------------------------|
-| KS MX 2024 (ICE) | 22–24 Aug | 0 | 0 |
-| KS FH 660E (Tesla) | Aug 2026 | 0 | 0 (no charging in window) |
-| KS FH 660E (Tesla) | Jun 2026 (audit) | **8 reliable segments** | not re-swept (defaults sufficient) |
+| Vehicle | Window | default | Result |
+|---------|--------|---------|--------|
+| KS MX 2024 (ICE) | 22–24 Aug | 0 segments | n/a |
+| KS FH 660E (Tesla) | Aug 2026 | 0 segments | no charging in window |
+| KS FH 660E (Tesla) | Jun 15–Jul 16 2026 | **8 segments** | **re-validated live** |
 
-**Decision:** keep **DIMO default** recharge detector (omit `config`). Tesla audit shows default detector is reliable; tuning `minIncreasePercent` did not improve Aug window and is unproven for recharge.
+**Decision:** keep **DIMO default** recharge detector (omit `config`). Tesla live sweep confirms 8 segments unchanged with default config.
 
 SynqDrive persist gate (`socDeltaPercent >= 1` OR `energyDeltaKwh > 0`) remains **unchanged** — aligned with audit SEGMENT_RELIABLE (≥5% SOC) and filters sub-1% noise.
 
@@ -133,7 +193,8 @@ E1 mechanism isolation and evidence-based prune **unchanged**.
 | `recharge-segments/dimo-recharge-segments.query.ts` | Optional `config` arg |
 | `dimo-segments.service.ts` | Pass refuel production config |
 | `recharge-segments/dimo-recharge-segments.client.ts` | Pass recharge config (undefined) |
-| `scripts/ops/calibrate-energy-event-detectors.ts` | Calibration matrix tool |
+| `scripts/ops/calibrate-energy-event-detectors.ts` | Full threshold sweep (default/2/3/5/7/10) |
+| `scripts/ops/e2-fleet-fuel-signal-inventory.ts` | Fleet fuel signal capability |
 | `scripts/ops/validate-energy-event-dimo-queries.ts` | E2-aware live validation |
 
 ---
@@ -143,7 +204,7 @@ E1 mechanism isolation and evidence-based prune **unchanged**.
 - `dimo-energy-detector.config.spec.ts` — config + query shape
 - `validate-dimo-segments-query.spec.ts` — E2 refuel config in schema-valid query
 - `dimo-segments.energy-events.spec.ts` — refuel query includes config
-- `energy-events.service.spec.ts` — KS MX fixture, noise gate, E1 prune/isolation (retained)
+- `energy-events.service.spec.ts` — KS MX fixture, persist gate A–E, E1 prune/isolation (retained)
 
 ---
 
@@ -168,10 +229,14 @@ Post-E2 `validate-energy-event-dimo-queries.ts`:
 
 ## 13. Backfill readiness
 
-**E2 establishes detector config + tests + live proof.**  
-Historical Jul→Aug backfill is **not executed** in E2.
+**BACKFILL READY AFTER E2 MERGE** — subject to human review of this evidence gate.
 
-**Backfill may start after E2 merge** using existing reconciliation/backfill architecture, rate-limited and off-peak per audit Phase E5.
+ Preconditions met:
+- Detector threshold evidence consistent with docs (default/2/3/5/7/10 live sweep committed)
+- Fleet fuel signal capability documented (absolute liters on all calibrated ICE)
+- Percent-only persistence behavior understood and tested (no gate change; safe for current fleet)
+
+Historical Jul→Aug backfill is **not executed** in E2. Rate-limited backfill per audit Phase E5 may proceed after merge.
 
 ---
 
