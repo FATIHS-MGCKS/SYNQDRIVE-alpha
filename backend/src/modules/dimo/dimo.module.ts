@@ -28,6 +28,7 @@ import { DeviceConnectionEpisodeResolutionOutboxRepository } from './device-conn
 import { DeviceConnectionEpisodeResolutionOutboxProcessorService } from './device-connection-episode-resolution/device-connection-episode-resolution-outbox-processor.service';
 import deviceConnectionEpisodeResolutionOutboxConfig from '@config/device-connection-episode-resolution-outbox.config';
 import { ConnectivityAlertService } from './connectivity-alert/connectivity-alert.service';
+import { ConnectivityDiagnosticTransitionTracker } from './connectivity/connectivity-diagnostic-transition.tracker';
 import { ConnectivityObservabilityService } from './connectivity/connectivity-observability.service';
 import { DeviceConnectionQueryService } from './device-connection-query.service';
 import { DeviceConnectionEpisodeReconciliationService } from './device-connection-episode-reconciliation/device-connection-episode-reconciliation.service';
@@ -69,6 +70,7 @@ import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-lin
     DeviceConnectionEpisodeReconciliationHistoricalLoader,
     DeviceConnectionEpisodeReconciliationApplyService,
     ConnectivityObservabilityService,
+    ConnectivityDiagnosticTransitionTracker,
     DeviceConnectionEpisodeResolutionService,
     DeviceConnectionEpisodeResolutionOutboxService,
     DeviceConnectionEpisodeResolutionOutboxRepository,

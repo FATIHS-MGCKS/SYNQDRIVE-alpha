@@ -10,6 +10,9 @@
  * - State, reason codes, recommended actions, and technical evidence are separate.
  */
 import type { TelemetryFreshness } from '../../vehicle-state-interpreter';
+// Type-only import: erased at runtime, so the diagnostic module can keep
+// importing ProviderLinkState from here without a runtime import cycle.
+import type { ConnectivityDiagnostic } from './connectivity-diagnostic-state';
 
 export type { TelemetryFreshness };
 
@@ -198,6 +201,14 @@ export interface VehicleConnectivityRuntimeState {
 
   /** Structured facts supporting the state — never user-facing copy. */
   evidence: VehicleConnectivityTechnicalEvidence;
+
+  /**
+   * Master-Admin-only diagnostic dimension separating provider reachability from
+   * vehicle observation freshness. Deliberately excluded from the tenant-facing
+   * {@link VehicleConnectivityRuntimeStateDto} — see
+   * `serializeVehicleConnectivityRuntimeState`.
+   */
+  diagnostic: ConnectivityDiagnostic;
 
   calculatedAt: string;
   stateVersion: number;

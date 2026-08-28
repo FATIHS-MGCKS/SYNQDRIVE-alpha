@@ -3,6 +3,7 @@
  * No database access — deterministic domain synthesis only.
  */
 import { classifyTelemetryFreshness } from '../../vehicle-state-interpreter';
+import { classifyConnectivityDiagnostic } from './connectivity-diagnostic-state';
 import { pickHighestPriorityOverallState } from './connectivity-domain.priority';
 import {
   AttentionState,
@@ -71,6 +72,12 @@ export interface DeviceBindingInput {
   /** True when physical OBD plug/unplug semantics apply to this vehicle. */
   physicalObdCapable: boolean;
   bindingChangedSinceEpisode: boolean;
+  /**
+   * Authoritative "an active provider data source link exists" evidence.
+   * `deviceBindingId` alone is not proof: it falls back to the last known
+   * `providerBindingId`, which can reference a deactivated link.
+   */
+  hasActiveProviderBinding?: boolean | null;
 }
 
 export interface DeviceEpisodeInput {
@@ -124,6 +131,11 @@ export interface BuildVehicleConnectivityRuntimeStateInput {
   webhook: WebhookEvidenceInput;
   dataCoverage: DataCoverageInput;
   processingErrors: ProcessingErrorInput;
+  /**
+   * Whether the provider polling cohort currently includes this vehicle.
+   * Diagnostic-only input — never influences canonical freshness or states.
+   */
+  providerPollEligible?: boolean | null;
 }
 
 const COVERAGE_GOOD_MIN = 80;
@@ -249,6 +261,18 @@ export class VehicleConnectivityRuntimeStateBuilder {
 
     const uniqueReasons = [...new Set(reasonCodes)];
 
+    // Diagnostic dimension consumes the already-derived canonical telemetryState;
+    // it never re-derives freshness and never feeds back into it.
+    const diagnostic = classifyConnectivityDiagnostic({
+      providerLinkState,
+      telemetryState,
+      lastObservationAt: input.telemetry.lastTelemetryAt,
+      lastProviderFetchAt: input.telemetry.lastReceivedAt,
+      providerPollEligible: input.providerPollEligible ?? null,
+      bindingActive: input.binding.hasActiveProviderBinding ?? null,
+      nowMs,
+    });
+
     return {
       vehicleId: input.vehicleId,
       organizationId: input.organizationId,
@@ -270,6 +294,7 @@ export class VehicleConnectivityRuntimeStateBuilder {
       requiresAction,
       recommendedAction,
       evidence,
+      diagnostic,
       calculatedAt,
       stateVersion: CONNECTIVITY_RUNTIME_STATE_VERSION,
     };

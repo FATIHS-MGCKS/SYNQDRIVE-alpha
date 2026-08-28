@@ -15,6 +15,10 @@ import {
   type ConnectivityRuntimeVehicleRow,
 } from '../../vehicles/connectivity/vehicle-connectivity-runtime-batch.assembler';
 import { ConnectivityAlertService } from '../connectivity-alert/connectivity-alert.service';
+import {
+  ConnectivityDiagnosticTransitionTracker,
+  observationAgeBucket,
+} from '../connectivity/connectivity-diagnostic-transition.tracker';
 import { ConnectivityObservabilityService } from '../connectivity/connectivity-observability.service';
 import { DeviceConnectionWebhookConfigurationService } from '../device-connection-webhook-configuration/device-connection-webhook-configuration.service';
 import { WebhookConfigurationStateEnum } from '../device-connection-webhook-configuration/device-connection-webhook-configuration.types';
@@ -24,6 +28,10 @@ const CONNECTIVITY_RUNTIME_VEHICLE_SELECT = {
   organizationId: true,
   hardwareType: true,
   fuelType: true,
+  // Provider-poll eligibility evidence: the snapshot scheduler only enqueues
+  // AVAILABLE/RENTED vehicles, so status is needed to tell "provider down"
+  // apart from "never scheduled".
+  status: true,
   make: true,
   model: true,
   licensePlate: true,
@@ -97,6 +105,8 @@ export class VehicleConnectivityRuntimeProjectionService {
     @Optional() private readonly observability?: ConnectivityObservabilityService,
     @Optional()
     private readonly webhookConfiguration?: DeviceConnectionWebhookConfigurationService,
+    @Optional()
+    private readonly diagnosticTransitions?: ConnectivityDiagnosticTransitionTracker,
   ) {}
 
   async projectForVehicle(
@@ -141,6 +151,11 @@ export class VehicleConnectivityRuntimeProjectionService {
       coverageRatio: runtime.evidence.signalCoveragePercent ?? undefined,
     });
 
+    this.recordDiagnosticTransition(
+      runtime,
+      vehicle.latestState?.providerSource ?? null,
+    );
+
     return runtime;
   }
 
@@ -158,10 +173,67 @@ export class VehicleConnectivityRuntimeProjectionService {
       this.loadOrgAuthorization(organizationId),
     ]);
 
-    return assembleVehicleConnectivityRuntimeStates(
+    const runtimes = assembleVehicleConnectivityRuntimeStates(
       vehicles as ConnectivityRuntimeVehicleRow[],
       orgAuthorization,
     );
+
+    for (const vehicle of vehicles) {
+      const runtime = runtimes.get(vehicle.id);
+      if (!runtime) continue;
+      this.recordDiagnosticTransition(
+        runtime,
+        vehicle.latestState?.providerSource ?? null,
+      );
+    }
+
+    return runtimes;
+  }
+
+  /**
+   * Emit observability for the provider-reachable / observation-stale gap.
+   *
+   * Deduped to state transitions, and only for the stale dimension — entering it
+   * or leaving it. All other diagnostic churn stays silent.
+   *
+   * This runs only where a consumer already projects runtime state, so it is
+   * demand-driven best-effort visibility rather than a continuous monitor. See
+   * {@link ConnectivityDiagnosticTransitionTracker} for the full caveats.
+   */
+  private recordDiagnosticTransition(
+    runtime: VehicleConnectivityRuntimeState,
+    providerSource: string | null,
+  ): void {
+    if (!this.diagnosticTransitions || !this.observability) return;
+
+    const { diagnostic } = runtime;
+    const transition = this.diagnosticTransitions.observe(
+      runtime.vehicleId,
+      diagnostic.state,
+    );
+    if (!transition) return;
+
+    const entersStale = transition.current === 'PROVIDER_REACHABLE_DATA_STALE';
+    const leavesStale = transition.previous === 'PROVIDER_REACHABLE_DATA_STALE';
+    if (!entersStale && !leavesStale) return;
+
+    const ctx = {
+      provider: providerSource ?? 'unknown',
+      telemetryState: runtime.telemetryState,
+      diagnosticState: transition.current,
+      previousDiagnosticState: transition.previous ?? undefined,
+      observationAgeBucket: observationAgeBucket(diagnostic.observationAgeMs),
+    };
+
+    // Only a genuine return to fresh observation is good news. Leaving the
+    // stale state for UNREACHABLE / AUTH_OR_BINDING_ERROR / UNKNOWN still needs
+    // attention, so it stays at warn level.
+    const recovered = transition.current === 'PROVIDER_REACHABLE_DATA_FRESH';
+    if (recovered) {
+      this.observability.log('diagnostic_state_transition', ctx);
+    } else {
+      this.observability.logWarn('diagnostic_state_transition', ctx);
+    }
   }
 
   private async applyWebhookConfigurationEvidence(

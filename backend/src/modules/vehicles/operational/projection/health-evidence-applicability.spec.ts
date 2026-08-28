@@ -100,6 +100,15 @@ function healthyConnectivity(): VehicleConnectivityRuntimeState {
     requiresAction: false,
     recommendedAction: 'NONE',
     evidence: {},
+    diagnostic: {
+      state: 'PROVIDER_REACHABLE_DATA_FRESH',
+      providerReachable: true,
+      observationAgeMs: 0,
+      providerFetchAgeMs: 0,
+      observationState: 'live',
+      providerPollEligible: true,
+      bindingActive: true,
+    },
     calculatedAt: NOW,
     stateVersion: 1,
   };

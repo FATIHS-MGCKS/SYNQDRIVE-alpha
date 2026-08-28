@@ -93,6 +93,11 @@ import {
 } from './operational/fleet-health-evaluation.dto';
 import type { VehicleOperationalProjection } from './operational/projection/vehicle-operational-projection.types';
 import { serializeVehicleConnectivityRuntimeState } from './connectivity/vehicle-connectivity-runtime-state.dto';
+import {
+  serializeConnectivityDiagnosticAdmin,
+  type ConnectivityDiagnosticAdminDto,
+} from './connectivity/connectivity-diagnostic.admin-dto';
+import type { VehicleConnectivityRuntimeState } from './connectivity/domain/connectivity-domain.types';
 import type { VehicleConnectivityRuntimeStateDto } from './connectivity/vehicle-connectivity-runtime-state.dto';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { BillingQuantityVehicleIntegration } from '@modules/billing/billing-quantity-vehicle.integration';
@@ -2600,6 +2605,44 @@ export class VehiclesService {
     organizationId: string,
     vehicleId: string,
   ): Promise<FleetConnectivityDetailDto> {
+    const { detail } = await this.buildFleetConnectivityDetail(
+      organizationId,
+      vehicleId,
+    );
+    return detail;
+  }
+
+  /**
+   * Master-Admin-only. Tenant-facing detail plus the connectivity diagnostic
+   * dimension (provider reachability vs. vehicle observation freshness).
+   */
+  async getFleetConnectivityAdminDiagnostics(
+    organizationId: string,
+    vehicleId: string,
+  ): Promise<
+    FleetConnectivityDetailDto & {
+      connectivityDiagnostic: ConnectivityDiagnosticAdminDto;
+    }
+  > {
+    const { detail, runtime, providerSource } =
+      await this.buildFleetConnectivityDetail(organizationId, vehicleId);
+
+    return {
+      ...detail,
+      connectivityDiagnostic: serializeConnectivityDiagnosticAdmin(runtime, {
+        provider: providerSource,
+      }),
+    };
+  }
+
+  private async buildFleetConnectivityDetail(
+    organizationId: string,
+    vehicleId: string,
+  ): Promise<{
+    detail: FleetConnectivityDetailDto;
+    runtime: VehicleConnectivityRuntimeState;
+    providerSource: string | null;
+  }> {
     const nowMs = Date.now();
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId },
@@ -2638,7 +2681,13 @@ export class VehiclesService {
     }
 
     const mapped = mapFleetConnectivityVehicle(vehicle, nowMs, deviceConnection, runtime);
-    return mapFleetConnectivityDetail(mapped);
+    return {
+      detail: mapFleetConnectivityDetail(mapped),
+      runtime,
+      providerSource:
+        vehicle.latestState?.providerSource ??
+        (vehicle.dimoVehicleId != null ? 'DIMO' : null),
+    };
   }
 
   async getDeviceConnection(organizationId: string, vehicleId: string) {

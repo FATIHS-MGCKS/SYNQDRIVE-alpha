@@ -11,7 +11,14 @@ import type {
 } from './domain/connectivity-domain.types';
 import type { TelemetryFreshness } from '../vehicle-state-interpreter';
 
-/** API-serializable connectivity runtime state — machine codes only. */
+/**
+ * API-serializable connectivity runtime state — machine codes only.
+ *
+ * Tenant-facing (fleet/org users). The domain state's `diagnostic` dimension is
+ * intentionally NOT part of this DTO: provider reachability and fetch internals
+ * are Master-Admin-only and are serialized by
+ * `serializeConnectivityDiagnosticAdmin` instead. Do not add it here.
+ */
 export interface VehicleConnectivityRuntimeStateDto {
   vehicleId: string;
   organizationId: string;

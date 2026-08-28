@@ -8,6 +8,8 @@ import {
   recordConnectivityEpisodeOpened,
   recordConnectivityEpisodeResolved,
   recordConnectivityProviderLinkState,
+  recordConnectivityProviderReachableObservationRecovered,
+  recordConnectivityProviderReachableObservationStale,
   recordConnectivityReconciliationConflict,
   recordConnectivityRecoverySnapshot,
   recordConnectivityRecoveryTelemetry,
@@ -29,6 +31,7 @@ export type ConnectivityLogEvent =
   | 'telemetry_recovery'
   | 'binding_changed'
   | 'runtime_state_calculated'
+  | 'diagnostic_state_transition'
   | 'state_conflict'
   | 'alert_created'
   | 'alert_resolved'
@@ -52,6 +55,12 @@ export interface ConnectivityObservabilityContext {
   alertType?: string;
   surface?: string;
   operation?: string;
+  /** Connectivity diagnostic dimension state (provider reachability vs. observation). */
+  diagnosticState?: string;
+  /** Previous diagnostic state — set only on transitions. */
+  previousDiagnosticState?: string;
+  /** Coarse observation-age bucket. Never a raw per-vehicle age. */
+  observationAgeBucket?: string;
 }
 
 /**
@@ -152,6 +161,26 @@ export class ConnectivityObservabilityService {
         if (ctx.physicalDeviceState) {
           recordConnectivityDeviceState(this.metrics, {
             physical_device_state: ctx.physicalDeviceState,
+          });
+        }
+        break;
+      case 'diagnostic_state_transition':
+        if (ctx.diagnosticState === 'PROVIDER_REACHABLE_DATA_STALE') {
+          recordConnectivityProviderReachableObservationStale(this.metrics, {
+            provider,
+            telemetry_state: ctx.telemetryState ?? 'unknown',
+          });
+        } else if (
+          ctx.previousDiagnosticState === 'PROVIDER_REACHABLE_DATA_STALE' &&
+          ctx.diagnosticState === 'PROVIDER_REACHABLE_DATA_FRESH'
+        ) {
+          // Recovery means the observation itself became fresh again. Leaving
+          // the stale state for PROVIDER_UNREACHABLE, AUTH_OR_BINDING_ERROR or
+          // UNKNOWN is a change of diagnostic precedence, not the vehicle
+          // resuming telemetry — those must never inflate this counter.
+          recordConnectivityProviderReachableObservationRecovered(this.metrics, {
+            provider,
+            telemetry_state: ctx.telemetryState ?? 'unknown',
           });
         }
         break;

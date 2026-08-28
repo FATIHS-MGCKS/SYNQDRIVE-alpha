@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
+import type { ConnectivityAdminDiagnosticsResponse } from '../../lib/api';
 import type {
   PaginatedVehiclesOperationalResponse,
   VehicleOperationalDetailDto,
@@ -76,7 +77,8 @@ export function useConnectedVehiclesList() {
 
 export function useConnectedVehicleDetail(vehicleId: string | null, dimoVehicleId: string | null) {
   const [detail, setDetail] = useState<VehicleOperationalDetailDto | null>(null);
-  const [diagnostics, setDiagnostics] = useState<unknown | null>(null);
+  const [diagnostics, setDiagnostics] =
+    useState<ConnectivityAdminDiagnosticsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
