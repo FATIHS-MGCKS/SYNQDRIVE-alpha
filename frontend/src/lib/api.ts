@@ -10480,6 +10480,11 @@ export interface ConnectivityDiagnosticAdmin {
   bindingState: ConnectivityTriState;
   consentState: ConnectivityTriState;
   connectionStatus: string | null;
+  /**
+   * Whether the provider polling cohort currently includes this vehicle.
+   * `false` explains a stale provider fetch without blaming the provider.
+   */
+  providerPollScheduled: boolean | null;
   deviceBindingRef: string | null;
   providerErrorCategory: ConnectivityReasonCode | null;
   calculatedAt: string;

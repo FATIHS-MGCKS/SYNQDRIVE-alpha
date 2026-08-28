@@ -1,18 +1,26 @@
 /**
  * In-memory dedupe for connectivity diagnostic state observability.
  *
- * The connectivity runtime is projected on every fleet request (and DIMO polls
- * every ~30s), so emitting a log/metric per projection would be pure noise.
- * This tracker reduces that to state transitions only.
+ * The connectivity runtime is projected whenever a consumer asks for it — fleet
+ * and vehicle-detail reads, the operational projection, and episode-resolution
+ * outbox processing. Those paths can repeat many times per minute, so emitting
+ * a log/metric per projection would be pure noise; this tracker reduces it to
+ * state transitions.
  *
- * Best-effort by design: process-local and reset on restart. A restart re-emits
- * the current state once per vehicle, which is desirable for visibility and
- * bounded by fleet size.
+ * DEMAND-DRIVEN, BEST-EFFORT — NOT AN AUTHORITATIVE MONITOR.
+ * No scheduled job evaluates the diagnostic dimension: DIMO snapshot polling
+ * writes telemetry but never projects connectivity runtime state. A vehicle
+ * nobody looks at emits nothing, so absence of a stale event is not evidence of
+ * health. State is also process-local and resets on restart (which re-emits the
+ * current state once per vehicle, bounded by fleet size), and each instance in a
+ * multi-instance deployment keeps its own map, so counters can double-count the
+ * same real-world transition. Treat these signals as leading indicators for
+ * investigation, never as an SLO source.
  */
 import { Injectable } from '@nestjs/common';
 import type { ConnectivityDiagnosticState } from '../../vehicles/connectivity/domain/connectivity-diagnostic-state';
 
-/** Bound on tracked vehicles; oldest entries are evicted first. */
+/** Bound on tracked vehicles; least recently observed entries are evicted. */
 const MAX_TRACKED_VEHICLES = 20_000;
 
 export interface ConnectivityDiagnosticTransition {
@@ -27,6 +35,11 @@ export class ConnectivityDiagnosticTransitionTracker {
     ConnectivityDiagnosticState
   >();
 
+  /** Number of vehicles currently tracked. Exposed for eviction assertions. */
+  get trackedCount(): number {
+    return this.lastStateByVehicle.size;
+  }
+
   /**
    * Record the latest diagnostic state for a vehicle.
    * Returns the transition when the state changed, otherwise `null`.
@@ -36,11 +49,17 @@ export class ConnectivityDiagnosticTransitionTracker {
     state: ConnectivityDiagnosticState,
   ): ConnectivityDiagnosticTransition | null {
     const previous = this.lastStateByVehicle.get(vehicleId) ?? null;
-    if (previous === state) return null;
 
+    // Re-insert on every observation so Map iteration order tracks recency.
+    // Evicting the least recently *observed* vehicle is correct: a vehicle no
+    // longer being projected is the right one to forget, whereas evicting by
+    // first-insert would drop actively watched vehicles and re-emit their
+    // current state as a fresh transition.
+    this.lastStateByVehicle.delete(vehicleId);
     this.lastStateByVehicle.set(vehicleId, state);
     this.evictIfNeeded();
-    return { previous, current: state };
+
+    return previous === state ? null : { previous, current: state };
   }
 
   private evictIfNeeded(): void {

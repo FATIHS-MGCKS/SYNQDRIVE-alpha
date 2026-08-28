@@ -40,6 +40,19 @@ const DIAGNOSTIC_HINTS: Record<ConnectivityDiagnosticState, string | null> = {
   UNKNOWN: 'Nicht genügend Diagnosedaten für eine Einordnung.',
 };
 
+/**
+ * Replaces the generic UNKNOWN hint when we can name the reason: the vehicle is
+ * simply not in the Abfrage-Kohorte, so a stale Provider-Abfrage is expected.
+ */
+const NOT_SCHEDULED_HINT =
+  'Für dieses Fahrzeug werden derzeit keine Provider-Abfragen geplant (Fahrzeug- oder Verbindungsstatus). Eine veraltete Provider-Abfrage ist hier kein Provider-Ausfall.';
+
+const POLL_SCHEDULED_LABELS: Record<'true' | 'false' | 'null', string> = {
+  true: 'geplant',
+  false: 'nicht geplant',
+  null: 'unbekannt',
+};
+
 const OBSERVATION_STATE_LABELS: Record<FleetTelemetryFreshness, string> = {
   live: 'aktuell',
   standby: 'Standby',
@@ -66,6 +79,7 @@ export interface ConnectivityDiagnosticView {
   bindingLabel: string;
   consentLabel: string;
   connectionStatusLabel: string;
+  providerPollScheduledLabel: string;
   deviceBindingRef: string | null;
   providerErrorCategory: string | null;
 }
@@ -78,7 +92,7 @@ export function buildConnectivityDiagnosticView(
   return {
     headline: buildHeadline(diagnostic),
     tone: DIAGNOSTIC_STATE_TONES[state] ?? 'neutral',
-    hint: DIAGNOSTIC_HINTS[state] ?? null,
+    hint: buildHint(diagnostic),
     providerLabel: diagnostic.provider ?? 'keine Datenquelle',
     providerApiLabel: providerApiLabel(diagnostic.providerApiReachable),
     lastProviderFetchLabel: relativeAgeLabel(diagnostic.lastProviderFetchAgeMs),
@@ -88,9 +102,22 @@ export function buildConnectivityDiagnosticView(
     bindingLabel: TRI_STATE_LABELS[diagnostic.bindingState] ?? 'unbekannt',
     consentLabel: TRI_STATE_LABELS[diagnostic.consentState] ?? 'unbekannt',
     connectionStatusLabel: diagnostic.connectionStatus ?? 'unbekannt',
+    providerPollScheduledLabel:
+      POLL_SCHEDULED_LABELS[String(diagnostic.providerPollScheduled) as 'true' | 'false' | 'null'] ??
+      'unbekannt',
     deviceBindingRef: diagnostic.deviceBindingRef,
     providerErrorCategory: diagnostic.providerErrorCategory,
   };
+}
+
+function buildHint(diagnostic: ConnectivityDiagnosticAdmin): string | null {
+  if (
+    diagnostic.diagnosticState === 'UNKNOWN' &&
+    diagnostic.providerPollScheduled === false
+  ) {
+    return NOT_SCHEDULED_HINT;
+  }
+  return DIAGNOSTIC_HINTS[diagnostic.diagnosticState] ?? null;
 }
 
 /**

@@ -11,6 +11,7 @@ import {
   ConnectivityDiagnosticTransitionTracker,
   observationAgeBucket,
 } from '../../dimo/connectivity/connectivity-diagnostic-transition.tracker';
+import { ConnectivityObservabilityService } from '../../dimo/connectivity/connectivity-observability.service';
 import { serializeConnectivityDiagnosticAdmin } from './connectivity-diagnostic.admin-dto';
 import { mockConnectivityRuntime } from './connectivity-runtime.test-fixture';
 import { ConnectivityDiagnosticState } from './domain/connectivity-diagnostic-state';
@@ -259,11 +260,69 @@ describe('serializeConnectivityDiagnosticAdmin', () => {
     expect(dto.diagnosticState).toBe(
       ConnectivityDiagnosticState.AUTH_OR_BINDING_ERROR,
     );
-    expect(dto.bindingState).toBe('INACTIVE');
+    // REVOKED describes the grant chain, not the binding row — without
+    // authoritative binding evidence we must not assert either way.
+    expect(dto.bindingState).toBe('UNKNOWN');
     expect(dto.consentState).toBe('INACTIVE');
     expect(dto.providerErrorCategory).toBe(
       ConnectivityReasonCode.PROVIDER_REVOKED,
     );
+  });
+
+  // ── Adversarial review — no fabricated binding certainty ──────────────────
+  it('never infers binding ACTIVE from a stale deviceBindingId reference', () => {
+    // `deviceBindingId` falls back to the last known `providerBindingId`, which
+    // can point at a deactivated link, so it is not proof of an active binding.
+    for (const providerLinkState of [
+      ProviderLinkState.REAUTH_REQUIRED,
+      ProviderLinkState.ERROR,
+      ProviderLinkState.REVOKED,
+    ]) {
+      const runtime = mockConnectivityRuntime({
+        providerLinkState,
+        telemetryState: 'offline',
+        deviceBindingId: 'stale-binding-ref',
+      });
+
+      expect(
+        serializeConnectivityDiagnosticAdmin(runtime, { provider: 'DIMO' })
+          .bindingState,
+      ).toBe('UNKNOWN');
+    }
+  });
+
+  it('reports the authoritative binding state when the assembler supplied it', () => {
+    const runtime = mockConnectivityRuntime({
+      providerLinkState: ProviderLinkState.REVOKED,
+      telemetryState: 'offline',
+      deviceBindingId: 'binding-1',
+    });
+
+    const withActiveBinding = serializeConnectivityDiagnosticAdmin(
+      { ...runtime, diagnostic: { ...runtime.diagnostic, bindingActive: true } },
+      { provider: 'DIMO' },
+    );
+    const withoutBinding = serializeConnectivityDiagnosticAdmin(
+      { ...runtime, diagnostic: { ...runtime.diagnostic, bindingActive: false } },
+      { provider: 'DIMO' },
+    );
+
+    expect(withActiveBinding.bindingState).toBe('ACTIVE');
+    expect(withoutBinding.bindingState).toBe('INACTIVE');
+  });
+
+  it('surfaces provider-poll scheduling so UNKNOWN is explainable', () => {
+    const runtime = mockConnectivityRuntime({ telemetryState: 'offline' });
+
+    const dto = serializeConnectivityDiagnosticAdmin(
+      {
+        ...runtime,
+        diagnostic: { ...runtime.diagnostic, providerPollEligible: false },
+      },
+      { provider: 'DIMO' },
+    );
+
+    expect(dto.providerPollScheduled).toBe(false);
   });
 
   it('exposes no credentials or raw provider payloads', () => {
@@ -340,5 +399,150 @@ describe('ConnectivityDiagnosticTransitionTracker', () => {
     expect(observationAgeBucket(27 * 3_600_000)).toBe('24h_48h');
     expect(observationAgeBucket(72 * 3_600_000)).toBe('48h_7d');
     expect(observationAgeBucket(30 * 24 * 3_600_000)).toBe('gte_7d');
+  });
+
+  // ── Adversarial review — bounded memory ───────────────────────────────────
+  it('stays bounded and evicts the least recently observed vehicle', () => {
+    const tracker = new ConnectivityDiagnosticTransitionTracker();
+    const total = 20_050;
+
+    for (let i = 0; i < total; i += 1) {
+      tracker.observe(
+        `veh-${i}`,
+        ConnectivityDiagnosticState.PROVIDER_REACHABLE_DATA_FRESH,
+      );
+    }
+
+    expect(tracker.trackedCount).toBe(20_000);
+    // veh-0 was evicted, so it is seen as brand new again.
+    expect(
+      tracker.observe(
+        'veh-0',
+        ConnectivityDiagnosticState.PROVIDER_REACHABLE_DATA_FRESH,
+      ),
+    ).toEqual({
+      previous: null,
+      current: ConnectivityDiagnosticState.PROVIDER_REACHABLE_DATA_FRESH,
+    });
+  });
+
+  it('keeps repeatedly observed vehicles alive across eviction pressure', () => {
+    const tracker = new ConnectivityDiagnosticTransitionTracker();
+    tracker.observe(
+      'veh-watched',
+      ConnectivityDiagnosticState.PROVIDER_REACHABLE_DATA_STALE,
+    );
+
+    for (let i = 0; i < 20_100; i += 1) {
+      tracker.observe(
+        `veh-filler-${i}`,
+        ConnectivityDiagnosticState.PROVIDER_REACHABLE_DATA_FRESH,
+      );
+      // A watched vehicle keeps being projected, so it must not be evicted and
+      // must not re-emit its unchanged state as a fresh transition.
+      expect(
+        tracker.observe(
+          'veh-watched',
+          ConnectivityDiagnosticState.PROVIDER_REACHABLE_DATA_STALE,
+        ),
+      ).toBeNull();
+    }
+  });
+});
+
+// ── Adversarial review — recovery must mean the observation came back ───────
+describe('diagnostic transition metrics', () => {
+  function makeObservability() {
+    const stale = { inc: jest.fn() };
+    const recovered = { inc: jest.fn() };
+    const metrics = {
+      connectivityProviderReachableObservationStaleTotal: stale,
+      connectivityProviderReachableObservationRecoveredTotal: recovered,
+    } as unknown as ConstructorParameters<
+      typeof ConnectivityObservabilityService
+    >[0];
+
+    return {
+      service: new ConnectivityObservabilityService(metrics),
+      stale,
+      recovered,
+    };
+  }
+
+  it('counts entering the stale state', () => {
+    const { service, stale, recovered } = makeObservability();
+
+    service.logWarn('diagnostic_state_transition', {
+      provider: 'DIMO',
+      telemetryState: 'signal_delayed',
+      diagnosticState: 'PROVIDER_REACHABLE_DATA_STALE',
+      previousDiagnosticState: 'PROVIDER_REACHABLE_DATA_FRESH',
+    });
+
+    expect(stale.inc).toHaveBeenCalledWith({
+      provider: 'DIMO',
+      telemetry_state: 'signal_delayed',
+    });
+    expect(recovered.inc).not.toHaveBeenCalled();
+  });
+
+  it('counts recovery only when the observation actually became fresh', () => {
+    const { service, recovered } = makeObservability();
+
+    service.log('diagnostic_state_transition', {
+      provider: 'DIMO',
+      telemetryState: 'live',
+      diagnosticState: 'PROVIDER_REACHABLE_DATA_FRESH',
+      previousDiagnosticState: 'PROVIDER_REACHABLE_DATA_STALE',
+    });
+
+    expect(recovered.inc).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    'PROVIDER_UNREACHABLE',
+    'AUTH_OR_BINDING_ERROR',
+    'UNKNOWN',
+  ])('leaving stale for %s is not recovery', (diagnosticState) => {
+    const { service, stale, recovered } = makeObservability();
+
+    service.logWarn('diagnostic_state_transition', {
+      provider: 'DIMO',
+      telemetryState: 'offline',
+      diagnosticState,
+      previousDiagnosticState: 'PROVIDER_REACHABLE_DATA_STALE',
+    });
+
+    // Diagnostic precedence changed; the vehicle is still not transmitting.
+    expect(recovered.inc).not.toHaveBeenCalled();
+    expect(stale.inc).not.toHaveBeenCalled();
+  });
+
+  it('unrelated diagnostic churn creates neither counter', () => {
+    const { service, stale, recovered } = makeObservability();
+
+    service.log('diagnostic_state_transition', {
+      provider: 'DIMO',
+      telemetryState: 'live',
+      diagnosticState: 'PROVIDER_REACHABLE_DATA_FRESH',
+      previousDiagnosticState: 'UNKNOWN',
+    });
+
+    expect(stale.inc).not.toHaveBeenCalled();
+    expect(recovered.inc).not.toHaveBeenCalled();
+  });
+
+  it('emits only low-cardinality labels', () => {
+    const { service, stale } = makeObservability();
+
+    service.logWarn('diagnostic_state_transition', {
+      provider: 'DIMO',
+      telemetryState: 'offline',
+      diagnosticState: 'PROVIDER_REACHABLE_DATA_STALE',
+      observationAgeBucket: '24h_48h',
+    });
+
+    const labels = stale.inc.mock.calls[0][0] as Record<string, string>;
+    expect(Object.keys(labels).sort()).toEqual(['provider', 'telemetry_state']);
   });
 });

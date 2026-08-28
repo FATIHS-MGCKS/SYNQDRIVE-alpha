@@ -66,11 +66,21 @@ const BROKEN_LINK_STATES: ReadonlySet<ProviderLinkState> = new Set([
   ProviderLinkState.NO_LINK,
 ]);
 
+/**
+ * Tolerated forward clock skew between provider/device clocks and ours.
+ * Matches the existing convention in `battery-provider-observation.policy.ts`
+ * (`DEFAULT_MAX_FUTURE_SKEW_MS`) rather than introducing a new policy value.
+ *
+ * Beyond this the timestamp is unusable: reporting it as age 0 would let a
+ * wildly future timestamp read as "just observed".
+ */
+export const DIAGNOSTIC_MAX_FUTURE_SKEW_MS = 60_000;
+
 export interface ConnectivityDiagnostic {
   state: ConnectivityDiagnosticState;
   /**
    * Whether a provider response arrived within the canonical fresh window.
-   * `null` when no provider fetch timestamp has ever been recorded.
+   * `null` when no usable provider fetch timestamp has been recorded.
    */
   providerReachable: boolean | null;
   /** Age of the real vehicle observation (`sourceTimestamp` lineage). */
@@ -79,6 +89,18 @@ export interface ConnectivityDiagnostic {
   providerFetchAgeMs: number | null;
   /** Canonical observation freshness — passed through, never re-derived here. */
   observationState: TelemetryFreshness;
+  /**
+   * Whether the vehicle currently sits inside the provider polling cohort.
+   * `false` proves an absent recent fetch is a scheduling decision rather than
+   * provider downtime; `null` when eligibility could not be established.
+   */
+  providerPollEligible: boolean | null;
+  /**
+   * Whether an active provider binding (data source link) exists.
+   * `null` when the caller supplied no authoritative binding evidence — the
+   * link state alone cannot prove it either way outside ACTIVE/NO_LINK.
+   */
+  bindingActive: boolean | null;
 }
 
 export interface ClassifyConnectivityDiagnosticInput {
@@ -89,6 +111,13 @@ export interface ClassifyConnectivityDiagnosticInput {
   lastObservationAt: string | null;
   /** `lastReceivedAt` — provider response receipt instant. Diagnostic only. */
   lastProviderFetchAt: string | null;
+  /**
+   * Whether the provider polling cohort currently includes this vehicle.
+   * See {@link ConnectivityDiagnostic.providerPollEligible}.
+   */
+  providerPollEligible?: boolean | null;
+  /** Authoritative active-binding evidence, when the caller has it. */
+  bindingActive?: boolean | null;
   nowMs: number;
 }
 
@@ -114,6 +143,8 @@ export function classifyConnectivityDiagnostic(
     observationAgeMs,
     providerFetchAgeMs,
     observationState: input.telemetryState,
+    providerPollEligible: input.providerPollEligible ?? null,
+    bindingActive: input.bindingActive ?? null,
   };
 
   if (BROKEN_LINK_STATES.has(input.providerLinkState)) {
@@ -129,7 +160,17 @@ export function classifyConnectivityDiagnostic(
   }
 
   if (!providerReachable) {
-    return { ...base, state: ConnectivityDiagnosticState.PROVIDER_UNREACHABLE };
+    // A stale `providerFetchedAt` only proves the provider is unreachable when
+    // the vehicle was actually due to be polled. Vehicles outside the polling
+    // cohort (status not AVAILABLE/RENTED, provider not CONNECTED, no token)
+    // are never enqueued, so their fetch timestamp freezes for benign reasons.
+    return {
+      ...base,
+      state:
+        input.providerPollEligible === false
+          ? ConnectivityDiagnosticState.UNKNOWN
+          : ConnectivityDiagnosticState.PROVIDER_UNREACHABLE,
+    };
   }
 
   if (STALE_OBSERVATION_STATES.has(input.telemetryState)) {
@@ -149,9 +190,19 @@ export function classifyConnectivityDiagnostic(
   };
 }
 
+/**
+ * Age of an instant, or `null` when there is no usable age.
+ *
+ * A timestamp beyond {@link DIAGNOSTIC_MAX_FUTURE_SKEW_MS} in the future is
+ * treated as unusable rather than clamped to 0 — clamping would let a corrupt
+ * future timestamp present as "observed just now" and read as healthy. Small
+ * forward skew still clamps to 0, since provider and device clocks drift.
+ */
 function ageMs(iso: string | null, nowMs: number): number | null {
   if (!iso) return null;
   const parsed = Date.parse(iso);
   if (Number.isNaN(parsed)) return null;
-  return Math.max(0, nowMs - parsed);
+  const age = nowMs - parsed;
+  if (age < -DIAGNOSTIC_MAX_FUTURE_SKEW_MS) return null;
+  return Math.max(0, age);
 }

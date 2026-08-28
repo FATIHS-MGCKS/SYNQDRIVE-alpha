@@ -106,6 +106,8 @@ function healthyConnectivity(): VehicleConnectivityRuntimeState {
       observationAgeMs: 0,
       providerFetchAgeMs: 0,
       observationState: 'live',
+      providerPollEligible: true,
+      bindingActive: true,
     },
     calculatedAt: NOW,
     stateVersion: 1,

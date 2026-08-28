@@ -19,8 +19,10 @@ export function ConnectivityDiagnosticPanel({
 
   return (
     <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <StatusChip tone={view.tone} dot className="text-xs">
+      {/* items-start keeps the layout clean when the incident headline wraps to
+          two lines in a narrow drawer. */}
+      <div className="flex flex-wrap items-start gap-2">
+        <StatusChip tone={view.tone} dot className="max-w-full text-xs">
           {view.headline}
         </StatusChip>
         <span className="text-xs text-muted-foreground">{view.providerLabel}</span>
@@ -43,6 +45,7 @@ export function ConnectivityDiagnosticPanel({
         />
         <DiagnosticRow label="Provider-API" value={view.providerApiLabel} />
         <DiagnosticRow label="Beobachtungsstatus" value={view.observationStateLabel} />
+        <DiagnosticRow label="Provider-Abfrage" value={view.providerPollScheduledLabel} />
         <DiagnosticRow label="Bindung" value={view.bindingLabel} />
         <DiagnosticRow label="Consent" value={view.consentLabel} />
         <DiagnosticRow label="Verbindungsstatus" value={view.connectionStatusLabel} />
@@ -69,7 +72,9 @@ function DiagnosticRow({
   return (
     <div className="min-w-0">
       <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className="truncate text-sm" title={title}>
+      {/* Values truncate, so every row needs a hover title — binding refs and
+          provider error codes are long enough to be cut off otherwise. */}
+      <dd className="truncate text-sm" title={title ?? value}>
         {value}
       </dd>
     </div>

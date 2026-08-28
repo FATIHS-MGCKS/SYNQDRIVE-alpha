@@ -171,8 +171,13 @@ export class ConnectivityObservabilityService {
             telemetry_state: ctx.telemetryState ?? 'unknown',
           });
         } else if (
-          ctx.previousDiagnosticState === 'PROVIDER_REACHABLE_DATA_STALE'
+          ctx.previousDiagnosticState === 'PROVIDER_REACHABLE_DATA_STALE' &&
+          ctx.diagnosticState === 'PROVIDER_REACHABLE_DATA_FRESH'
         ) {
+          // Recovery means the observation itself became fresh again. Leaving
+          // the stale state for PROVIDER_UNREACHABLE, AUTH_OR_BINDING_ERROR or
+          // UNKNOWN is a change of diagnostic precedence, not the vehicle
+          // resuming telemetry — those must never inflate this counter.
           recordConnectivityProviderReachableObservationRecovered(this.metrics, {
             provider,
             telemetry_state: ctx.telemetryState ?? 'unknown',

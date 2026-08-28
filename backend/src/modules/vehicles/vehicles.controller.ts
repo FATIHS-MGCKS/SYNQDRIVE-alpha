@@ -127,6 +127,12 @@ export class VehiclesController {
     @Param('vehicleId') vehicleId: string,
     @Query('organizationId') organizationId: string,
   ) {
+    // Without an explicit org the Prisma filter would collapse to an unscoped
+    // vehicle lookup, so the diagnostic payload could describe a vehicle in an
+    // organization the caller never named.
+    if (!organizationId) {
+      throw new BadRequestException('organizationId is required');
+    }
     return this.vehiclesOperational.getDiagnostics(vehicleId, organizationId);
   }
 

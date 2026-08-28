@@ -28,6 +28,10 @@ const CONNECTIVITY_RUNTIME_VEHICLE_SELECT = {
   organizationId: true,
   hardwareType: true,
   fuelType: true,
+  // Provider-poll eligibility evidence: the snapshot scheduler only enqueues
+  // AVAILABLE/RENTED vehicles, so status is needed to tell "provider down"
+  // apart from "never scheduled".
+  status: true,
   make: true,
   model: true,
   licensePlate: true,
@@ -188,8 +192,13 @@ export class VehicleConnectivityRuntimeProjectionService {
 
   /**
    * Emit observability for the provider-reachable / observation-stale gap.
+   *
    * Deduped to state transitions, and only for the stale dimension — entering it
-   * or recovering from it. All other diagnostic churn stays silent.
+   * or leaving it. All other diagnostic churn stays silent.
+   *
+   * This runs only where a consumer already projects runtime state, so it is
+   * demand-driven best-effort visibility rather than a continuous monitor. See
+   * {@link ConnectivityDiagnosticTransitionTracker} for the full caveats.
    */
   private recordDiagnosticTransition(
     runtime: VehicleConnectivityRuntimeState,
@@ -216,10 +225,14 @@ export class VehicleConnectivityRuntimeProjectionService {
       observationAgeBucket: observationAgeBucket(diagnostic.observationAgeMs),
     };
 
-    if (entersStale) {
-      this.observability.logWarn('diagnostic_state_transition', ctx);
-    } else {
+    // Only a genuine return to fresh observation is good news. Leaving the
+    // stale state for UNREACHABLE / AUTH_OR_BINDING_ERROR / UNKNOWN still needs
+    // attention, so it stays at warn level.
+    const recovered = transition.current === 'PROVIDER_REACHABLE_DATA_FRESH';
+    if (recovered) {
       this.observability.log('diagnostic_state_transition', ctx);
+    } else {
+      this.observability.logWarn('diagnostic_state_transition', ctx);
     }
   }
 
