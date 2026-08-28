@@ -1,6 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger, Optional } from '@nestjs/common';
-import { Job } from 'bullmq';
+import { Job, UnrecoverableError } from 'bullmq';
 import { DimoPollJobType, DimoPollStatus } from '@prisma/client';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
@@ -216,8 +216,24 @@ export class DimoSnapshotProcessor extends WorkerHost {
         signals,
       });
 
+      // Device-connection resolution outbox drain: non-trip subsystem running
+      // ahead of evaluateTripStart. Row-level failures are already handled by
+      // the processor (retry/dead-letter); only infrastructure faults surface
+      // here, and they must never block trip detection. UnrecoverableError is
+      // the codebase-wide non-retryable marker and is deliberately re-thrown.
       if (this.resolutionOutboxProcessor) {
-        await this.resolutionOutboxProcessor.processPendingBatch();
+        try {
+          await this.resolutionOutboxProcessor.processPendingBatch();
+        } catch (err) {
+          if (err instanceof UnrecoverableError) throw err;
+          this.logger.error(
+            `Resolution outbox drain failed for ${vehicleId} (snapshot continues): ` +
+              `subsystem=device_connection_episode_resolution_outbox ` +
+              `vehicleId=${vehicleId} jobId=${job.id ?? 'unknown'} ` +
+              `errorName=${err instanceof Error ? err.name : typeof err} ` +
+              `error=${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
       }
 
       // ── ClickHouse dual-write (fire-and-forget, never blocks live pipeline) ──
