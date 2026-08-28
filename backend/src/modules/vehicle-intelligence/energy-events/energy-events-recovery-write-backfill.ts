@@ -566,6 +566,11 @@ async function pruneSubsumedRechargeCandidates(
     }
 
     const canonical = updates.reduce((best, current) => {
+      const bestCoalesced = best.coalescedFromSegmentIds.length;
+      const currentCoalesced = current.coalescedFromSegmentIds.length;
+      if (currentCoalesced !== bestCoalesced) {
+        return currentCoalesced > bestCoalesced ? current : best;
+      }
       const bestDuration =
         best.durationSeconds ||
         (new Date(best.endTime).getTime() - new Date(best.startTime).getTime()) /
@@ -586,21 +591,14 @@ async function pruneSubsumedRechargeCandidates(
       )
       .map((candidate) => candidate.dimoSegmentId);
 
-    const duplicateIds =
-      legacyIds.length > 0
-        ? legacyIds
-        : updates
-            .filter((candidate) => candidate.dimoSegmentId !== canonical.dimoSegmentId)
-            .map((candidate) => candidate.dimoSegmentId);
-
-    if (duplicateIds.length === 0) {
+    if (legacyIds.length === 0) {
       continue;
     }
 
     const deleteResult = await prisma.vehicleEnergyEvent.deleteMany({
       where: {
         vehicleId,
-        dimoSegmentId: { in: duplicateIds },
+        dimoSegmentId: { in: legacyIds },
       },
     });
     deleted += deleteResult.count;

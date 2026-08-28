@@ -63,6 +63,28 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-08-28T21:00:00.000Z',
   },
   {
+    id: 'energy-events-e3a-controlled-write-backfill-partial-2026-08-28',
+    version: '4.9.992',
+    title: 'Energy Events E3A — controlled write-backfill executor (partial production recovery)',
+    summary: [
+      'Added secured ops executor `energy-events-recovery-write-backfill.ts` + `energy-events-recovery-write-backfill.ts` module for approved 4-candidate historical writes only.',
+      'Pre-write gate validates approved counts (3 CREATE, 1 UPDATE, 2 SKIP, 15 EXCLUDE, 0 NEEDS); rollback plan + table snapshot captured privately before writes.',
+      'Production secured run: preflight matched approved plan; apply phase created 3 approved rows (table 130→133); excluded/skip candidates not written.',
+      'Canonical recharge overlap legacy subsegment reconciliation remains incomplete — post-write FULL recovery still reports pending WOULD_UPDATE rows; outage not closed.',
+      'Follow-up required: complete legacy recharge subsegment prune without broad window delete; re-run post-write gate to 0 CREATE / 0 UPDATE before idempotency sign-off.',
+      'E2 detector thresholds unchanged; E3B not started.',
+    ],
+    reason:
+      'E3A gate was READY FOR CONTROLLED WRITE BACKFILL; executor and first production pass were required before closing the outage.',
+    previousBehavior:
+      'Dry-run only (`dbWritesPerformed=false`); no secured historical write path for the approved 4-candidate set.',
+    details:
+      'backend: energy-events-recovery-write-backfill.ts, scripts/ops/energy-events-recovery-write-backfill.ts. Secured infra only; no private plan/identifiers committed.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T17:45:00.000Z',
+  },
+  {
     id: 'trip-start-isolation-hardening-2026-08-28',
     version: '4.9.990',
     title: 'Trip-start isolation hardening — device-connection outbox drain can no longer block live trip detection (PR A0)',
