@@ -26,6 +26,14 @@ export function validateBatteryV2JobIdempotencyKey(
         );
       }
       return;
+    case 'BATTERY_LV_REST_SESSION_OPEN':
+      if (!key.startsWith(`${BATTERY_V2_JOB_IDENTITY_PREFIX.restSessionOpen}:`)) {
+        throw new BatteryV2JobValidationError(
+          `idempotencyKey must start with ${BATTERY_V2_JOB_IDENTITY_PREFIX.restSessionOpen}:`,
+          'idempotencyKey',
+        );
+      }
+      return;
     case 'BATTERY_REST_TARGET_EVALUATE': {
       const restPrefixes = [
         `${BATTERY_V2_JOB_IDENTITY_PREFIX.restTarget}:`,

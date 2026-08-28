@@ -304,6 +304,17 @@ export function validateBatteryV2JobPayload<T extends BatteryV2JobType>(
         snapshotContext: snapshotContext ?? null,
       } as BatteryV2JobPayload<T>;
     }
+    case 'BATTERY_LV_REST_SESSION_OPEN': {
+      if (!isEntityId(data.tripId)) {
+        throw new BatteryV2JobValidationError('tripId is required', 'tripId');
+      }
+      const tripEndedAt = parseIsoDate(data.tripEndedAt, 'tripEndedAt');
+      return {
+        ...base,
+        tripId: data.tripId,
+        tripEndedAt,
+      } as BatteryV2JobPayload<T>;
+    }
     case 'BATTERY_REST_TARGET_EVALUATE': {
       if (!isNonEmptyString(data.restWindowId, 256)) {
         throw new BatteryV2JobValidationError('restWindowId is required', 'restWindowId');

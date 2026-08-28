@@ -9,6 +9,7 @@ import { BatteryV2SnapshotIngestionService } from './battery-v2-snapshot-ingesti
 import { LvLiveVoltageIngestionService } from '../lv-live-voltage/lv-live-voltage-ingestion.service';
 import { BatteryRestTargetEvaluationService } from '../lv-rest-window/battery-rest-target-evaluation.service';
 import { BatteryObservationClassifyHandler } from './handlers/battery-observation-classify.handler';
+import { BatteryLvRestSessionOpenHandler } from './handlers/battery-lv-rest-session-open.handler';
 import { BatteryRestTargetEvaluateHandler } from './handlers/battery-rest-target-evaluate.handler';
 import { BatteryStartProxyExtractHandler } from './handlers/battery-start-proxy-extract.handler';
 import { BatteryAssessmentRecomputeHandler } from './handlers/battery-assessment-recompute.handler';
@@ -31,6 +32,7 @@ import { DimoModule } from '../../../dimo/dimo.module';
 
 const BATTERY_V2_JOB_HANDLERS = [
   BatteryObservationClassifyHandler,
+  BatteryLvRestSessionOpenHandler,
   BatteryRestTargetEvaluateHandler,
   BatteryStartProxyExtractHandler,
   BatteryAssessmentRecomputeHandler,

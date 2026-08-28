@@ -19,7 +19,7 @@ function mockHandler<T extends BatteryV2JobType>(jobType: T): BatteryV2JobHandle
 }
 
 describe('BatteryV2JobsModule', () => {
-  it('registers all eight job handlers as providers', () => {
+  it('registers all job handlers as providers', () => {
     const providers: unknown[] =
       Reflect.getMetadata(MODULE_METADATA.PROVIDERS, BatteryV2JobsModule) ?? [];
     for (const Handler of BATTERY_V2_JOB_HANDLERS) {
@@ -58,6 +58,7 @@ describe('BatteryV2JobsModule', () => {
   it('wires handler registry with all job types', () => {
     const registry = new BatteryV2JobHandlerRegistry(
       mockHandler('BATTERY_OBSERVATION_CLASSIFY') as never,
+      mockHandler('BATTERY_LV_REST_SESSION_OPEN') as never,
       mockHandler('BATTERY_REST_TARGET_EVALUATE') as never,
       mockHandler('BATTERY_START_PROXY_EXTRACT') as never,
       mockHandler('BATTERY_ASSESSMENT_RECOMPUTE') as never,

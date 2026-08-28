@@ -9,6 +9,7 @@ import {
   type DimoTripSegment,
 } from '../../dimo/dimo-segments.service';
 import { BatteryV2TripStartProducer } from '../battery-health/jobs/battery-v2-trip-start.producer';
+import { BatteryV2LvRestSessionProducer } from '../battery-health/jobs/battery-v2-lv-rest-session.producer';
 import { TripEnrichmentOrchestratorService } from './trip-enrichment-orchestrator.service';
 import { TripPostFinalizeAnalysisProducer } from '../driving-analysis-init/trip-post-finalize-analysis.producer';
 import {
@@ -130,6 +131,7 @@ export class TripDetectionOrchestrationService {
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
     private readonly batteryTripStartProducer: BatteryV2TripStartProducer,
+    private readonly batteryLvRestSessionProducer: BatteryV2LvRestSessionProducer,
     private readonly configService: ConfigService,
     @InjectQueue(QUEUE_NAMES.TRIP_TRACKING)
     private readonly trackingQueue: Queue,
@@ -2242,6 +2244,11 @@ export class TripDetectionOrchestrationService {
     // 'complete' | 'discard' | 'timeout' — used to select smart cooldown window
     let restingReason = 'complete';
     let restWindowAnchorAt: Date | null = null;
+    // Set when a trip is persisted as COMPLETED — after the RESTING transition
+    // commits we hand the finalized trip to Battery V2 so the LV rest window
+    // opens without requiring another provider observation.
+    let finalizedTripForRestWindow: { tripId: string; endTime: Date } | null =
+      null;
 
     try {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
@@ -2370,6 +2377,7 @@ export class TripDetectionOrchestrationService {
                 startEvSoc: det.startEvSoc,
               },
             });
+            finalizedTripForRestWindow = { tripId, endTime };
             this.logger.log(
               `Trip ${tripId} finalized for ${vehicleId} [endSource=${chosenEndSource} mode=${det.endDetectionMode}]`,
             );
@@ -2449,6 +2457,28 @@ export class TripDetectionOrchestrationService {
         // Store resting reason for smart cooldown selection on next snapshot
         lastEvidenceSummary: { lastRestingReason: restingReason },
       });
+
+      // ── Battery V2 LV rest window (observation-independent primary path) ──
+      // Enqueued only after both the COMPLETED trip and the RESTING transition
+      // are persisted, so the consumer reads authoritative finalized state.
+      // Durable + idempotent (lv-rest-open:{vehicleId}:{anchorMs}); failures
+      // never affect the trip lifecycle — reconciliation self-heals misses.
+      if (finalizedTripForRestWindow && organizationId) {
+        const { tripId: finalizedTripId, endTime: finalizedEndTime } =
+          finalizedTripForRestWindow;
+        try {
+          await this.batteryLvRestSessionProducer.enqueueSessionOpenForFinalizedTrip({
+            organizationId,
+            vehicleId,
+            tripId: finalizedTripId,
+            tripEndedAt: finalizedEndTime,
+          });
+        } catch (e) {
+          this.logger.warn(
+            `V2 finalize: LV rest session open enqueue failed for trip ${finalizedTripId}: ${e}`,
+          );
+        }
+      }
 
       await this.logTrackingRun({
         vehicleId,

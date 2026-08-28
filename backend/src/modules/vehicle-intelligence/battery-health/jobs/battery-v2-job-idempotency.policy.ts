@@ -16,6 +16,7 @@ export const BATTERY_V2_JOB_IDENTITY_PREFIX = {
   hvSnapshot: 'hv-snap',
   restTarget: 'rest-target',
   batteryRest: 'battery-rest',
+  restSessionOpen: 'lv-rest-open',
   startProxy: 'battery-start-proxy',
   assessment: 'assess',
   publication: 'pub',
@@ -63,6 +64,22 @@ export function buildBatteryRestTargetJobIdempotencyKey(input: {
     input.vehicleId,
     input.restWindowId,
     input.targetSuffix,
+  ].join(':');
+}
+
+/**
+ * LV rest session open: lv-rest-open:{vehicleId}:{anchorMs}.
+ * Deterministic per canonical trip end anchor — the same identity regardless
+ * of whether the trip-finalize path or reconciliation enqueues the job.
+ */
+export function buildLvRestSessionOpenJobIdempotencyKey(input: {
+  vehicleId: string;
+  anchorAt: Date;
+}): string {
+  return [
+    BATTERY_V2_JOB_IDENTITY_PREFIX.restSessionOpen,
+    input.vehicleId,
+    String(input.anchorAt.getTime()),
   ].join(':');
 }
 

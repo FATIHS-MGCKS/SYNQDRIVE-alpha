@@ -34,6 +34,7 @@ describe('LvRestWindowIngestionBridgeService FSM integration', () => {
   const prisma: {
     vehicleTripDetectionState: { findUnique: jest.Mock };
     vehicle: { findUnique: jest.Mock };
+    vehicleTrip: { findFirst: jest.Mock };
   } = {
     vehicleTripDetectionState: {
       findUnique: jest.fn(),
@@ -41,6 +42,16 @@ describe('LvRestWindowIngestionBridgeService FSM integration', () => {
     vehicle: {
       findUnique: jest.fn(),
     },
+    vehicleTrip: {
+      findFirst: jest.fn(),
+    },
+  };
+
+  // Legacy anchor-without-finalized-trip path: the bridge emits TRIP_ENDED
+  // directly into the FSM. Finalized-trip convergence is covered by the
+  // session-arming service specs.
+  const sessionArming = {
+    ensureLvRestWindowForFinalizedTrip: jest.fn(),
   };
 
   const sessions: Map<string, any> = new Map();
@@ -169,10 +180,13 @@ describe('LvRestWindowIngestionBridgeService FSM integration', () => {
       },
     });
 
+    prisma.vehicleTrip.findFirst.mockResolvedValue(null);
+
     bridge = new LvRestWindowIngestionBridgeService(
       prisma as any,
       fsm as any,
       policyProfiles as any,
+      sessionArming as any,
     );
   });
 

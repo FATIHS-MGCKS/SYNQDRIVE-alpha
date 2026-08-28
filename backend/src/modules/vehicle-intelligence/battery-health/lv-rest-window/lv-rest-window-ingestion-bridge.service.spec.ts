@@ -47,10 +47,16 @@ describe('LvRestWindowIngestionBridgeService', () => {
     vehicleTripDetectionState: {
       findUnique: jest.fn(),
     },
+    vehicleTrip: {
+      findFirst: jest.fn(),
+    },
   };
   const fsm = {
     buildSignalFromLatestState: jest.fn(),
     processEvent: jest.fn(),
+  };
+  const sessionArming = {
+    ensureLvRestWindowForFinalizedTrip: jest.fn(),
   };
   const policyProfiles = {
     resolveForVehicle: jest.fn().mockResolvedValue({
@@ -73,10 +79,18 @@ describe('LvRestWindowIngestionBridgeService', () => {
       lastActivityAt: TRIP_END,
       activeTripId: null,
     });
+    // No canonical finalized trip for the anchor by default → legacy
+    // direct TRIP_ENDED emission path (anchor without trip linkage).
+    prisma.vehicleTrip.findFirst.mockResolvedValue(null);
+    sessionArming.ensureLvRestWindowForFinalizedTrip.mockResolvedValue({
+      outcome: 'opened',
+      reason: 'opened_candidate',
+    });
     bridge = new LvRestWindowIngestionBridgeService(
       prisma as any,
       fsm as any,
       policyProfiles as any,
+      sessionArming as any,
     );
   });
 
@@ -214,6 +228,24 @@ describe('LvRestWindowIngestionBridgeService', () => {
         ([, , event]) => event.type === LvRestWindowEventType.NEW_TRIP_STARTED,
       ),
     ).toBe(true);
+  });
+
+  it('converges on canonical session arming when a finalized trip matches the anchor', async () => {
+    prisma.vehicleTrip.findFirst.mockResolvedValue({ id: 'trip-fin-1' });
+
+    await bridge.processObservationCycle(ORG, VEHICLE, baseCtx());
+
+    expect(sessionArming.ensureLvRestWindowForFinalizedTrip).toHaveBeenCalledWith({
+      organizationId: ORG,
+      vehicleId: VEHICLE,
+      tripId: 'trip-fin-1',
+    });
+    // No parallel direct TRIP_ENDED emission when the canonical opener runs.
+    expect(
+      fsm.processEvent.mock.calls.some(
+        ([, , event]) => event.type === LvRestWindowEventType.TRIP_ENDED,
+      ),
+    ).toBe(false);
   });
 
   it('reads trip detection state only (H)', async () => {

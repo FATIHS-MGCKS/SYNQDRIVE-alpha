@@ -18,6 +18,7 @@ import {
 import { BATTERY_V2_JOB_MODEL_VERSION_DEFAULT } from './battery-v2-job.types';
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { BatteryV2LvRestSessionProducer } from './battery-v2-lv-rest-session.producer';
 import { BatteryV2RestTargetProducer } from './battery-v2-rest-target.producer';
 import { BatteryV2SnapshotObservationProducer } from './battery-v2-snapshot-observation.producer';
 import { BatteryCapabilityRefreshService } from '../capability-preflight/battery-capability-refresh.service';
@@ -34,6 +35,8 @@ import {
   BatteryMeasurementSessionType,
   BatteryMeasurementType,
   Prisma,
+  TripDetectionState,
+  TripStatus,
 } from '@prisma/client';
 import { buildLvRestWindowIdempotencyKey, LvRestWindowState } from '../battery-v2-domain';
 import { measurementTypeForRestTarget } from '../lv-rest-window/battery-rest-target-evaluation';
@@ -47,9 +50,16 @@ import { formatBatteryV2PipelineLog } from '../observability/battery-v2-pipeline
 
 const TRIP_LOOKBACK_MS = 7 * 24 * 3600_000;
 const ASSESSMENT_STALE_MS = 6 * 3600_000;
+/** Max age of a rest anchor still worth arming (FSM max rest window). */
+const LV_REST_SESSION_LOOKBACK_MS = 24 * 3600_000;
+/** Grace before recovery kicks in — lets the primary finalize path land first. */
+const LV_REST_SESSION_SETTLE_MS = 2 * 60_000;
+/** Anchor tolerance between det-state lastActivityAt and trip.endTime. */
+const LV_REST_ANCHOR_TOLERANCE_MS = 120_000;
 
 export interface BatteryV2ReconciliationResult {
   observationClassify: number;
+  restSessions: number;
   restTargets: number;
   tripStarts: number;
   rechargeSegments: number;
@@ -68,6 +78,7 @@ export class BatteryV2ReconciliationService {
     private readonly observationProducer: BatteryV2SnapshotObservationProducer,
     private readonly deadLetters: BatteryV2JobDeadLetterService,
     private readonly capabilityRefresh: BatteryCapabilityRefreshService,
+    private readonly lvRestSessionProducer: BatteryV2LvRestSessionProducer,
     private readonly restTargetProducer: BatteryV2RestTargetProducer,
     private readonly tripStartProducer: BatteryV2TripStartProducer,
     private readonly rechargeReconcileProducer: HvRechargeSessionReconcileProducerService,
@@ -78,6 +89,7 @@ export class BatteryV2ReconciliationService {
     const batch = getBatteryV2ReconciliationBatchSize();
     const result: BatteryV2ReconciliationResult = {
       observationClassify: 0,
+      restSessions: 0,
       restTargets: 0,
       tripStarts: 0,
       rechargeSegments: 0,
@@ -87,6 +99,7 @@ export class BatteryV2ReconciliationService {
     };
 
     result.observationClassify = await this.reconcileMissingObservations(batch);
+    result.restSessions = await this.reconcileMissingLvRestSessions(batch);
     result.restTargets = await this.reconcileRestTargets(batch);
     result.tripStarts = await this.reconcileTripStarts(batch);
     result.rechargeSegments = await this.reconcileRechargeSegments(batch);
@@ -98,6 +111,7 @@ export class BatteryV2ReconciliationService {
 
     const total =
       result.observationClassify +
+      result.restSessions +
       result.restTargets +
       result.tripStarts +
       result.rechargeSegments +
@@ -122,6 +136,7 @@ export class BatteryV2ReconciliationService {
     if (!this.metrics) return;
     const entries: Array<[BatteryV2ReconciliationCategory, number]> = [
       ['observation_classify', result.observationClassify],
+      ['rest_sessions', result.restSessions],
       ['rest_targets', result.restTargets],
       ['trip_starts', result.tripStarts],
       ['recharge_segments', result.rechargeSegments],
@@ -265,6 +280,104 @@ export class BatteryV2ReconciliationService {
     };
   }
 
+  /**
+   * Self-healing recovery for the trip-finalization liveness gap: when Trip
+   * Detection persisted a COMPLETED trip and transitioned to RESTING but no
+   * LV_REST_WINDOW session exists for the canonical trip-end anchor (e.g. the
+   * primary BATTERY_LV_REST_SESSION_OPEN job was lost, or the deploy predates
+   * the primary path), re-enqueue the same canonical idempotent session-open
+   * job. Recovery converges on the identical job identity
+   * (`lv-rest-open:{vehicleId}:{anchorMs}`) and the identical canonical
+   * operation, so racing with the primary path, repeated reconciliation runs,
+   * and worker restarts cannot create duplicate sessions or targets.
+   */
+  private async reconcileMissingLvRestSessions(batch: number): Promise<number> {
+    if (!isBatteryV2RestShadowEnabled()) {
+      return 0;
+    }
+
+    const now = Date.now();
+    const lookbackFrom = new Date(now - LV_REST_SESSION_LOOKBACK_MS);
+    const settleBefore = new Date(now - LV_REST_SESSION_SETTLE_MS);
+
+    // Canonical Trip Detection is the authority: vehicle currently RESTING,
+    // no active trip, rest anchor recent enough that temporal targets are
+    // still meaningful (≤ FSM max rest window).
+    const detStates = await this.prisma.vehicleTripDetectionState.findMany({
+      where: {
+        state: TripDetectionState.RESTING,
+        activeTripId: null,
+        lastActivityAt: { gte: lookbackFrom, lte: settleBefore },
+      },
+      take: batch,
+      select: {
+        vehicleId: true,
+        organizationId: true,
+        lastActivityAt: true,
+        vehicle: { select: { organizationId: true } },
+      },
+    });
+
+    let enqueued = 0;
+    for (const det of detStates) {
+      const organizationId = det.organizationId ?? det.vehicle.organizationId;
+      if (!organizationId || !det.lastActivityAt) continue;
+
+      // Authoritative finalized trip whose endTime matches the rest anchor
+      // (same ±120s tolerance the FSM trip-end consistency gate applies).
+      // Discarded/cancelled trips deliberately do not match — canonical
+      // finalized trips are the only source of truth for recovered anchors.
+      const trip = await this.prisma.vehicleTrip.findFirst({
+        where: {
+          vehicleId: det.vehicleId,
+          tripStatus: TripStatus.COMPLETED,
+          endTime: {
+            gte: new Date(
+              det.lastActivityAt.getTime() - LV_REST_ANCHOR_TOLERANCE_MS,
+            ),
+            lte: new Date(
+              det.lastActivityAt.getTime() + LV_REST_ANCHOR_TOLERANCE_MS,
+            ),
+          },
+        },
+        orderBy: { endTime: 'desc' },
+        select: { id: true, endTime: true },
+      });
+      if (!trip?.endTime) continue;
+
+      // Any session (open or terminal) for the canonical anchor means the
+      // window was already opened/adjudicated — recovery is only for the
+      // missing-session condition.
+      const windowId = buildLvRestWindowIdempotencyKey(
+        det.vehicleId,
+        trip.endTime,
+      );
+      const existingSession =
+        await this.prisma.batteryMeasurementSession.findFirst({
+          where: {
+            organizationId,
+            vehicleId: det.vehicleId,
+            type: BatteryMeasurementSessionType.LV_REST_WINDOW,
+            idempotencyKey: windowId,
+          },
+          select: { id: true },
+        });
+      if (existingSession) continue;
+
+      const jobId =
+        await this.lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip({
+          organizationId,
+          vehicleId: det.vehicleId,
+          tripId: trip.id,
+          tripEndedAt: trip.endTime,
+          correlationId: `reconcile:lv-rest-open:${det.vehicleId}:${trip.endTime.toISOString()}`,
+        });
+      if (jobId) enqueued += 1;
+    }
+
+    return enqueued;
+  }
+
   private async reconcileRestTargets(batch: number): Promise<number> {
     const lvSessions = await this.reconcileLvRestWindowTargets(batch);
     const legacy = await this.reconcileLegacyRestTargets(batch);
@@ -285,6 +398,13 @@ export class BatteryV2ReconciliationService {
         type: BatteryMeasurementSessionType.LV_REST_WINDOW,
         status: {
           in: [
+            // PLANNED = FSM CANDIDATE: a window armed from a finalized trip
+            // whose CANDIDATE → RESTING promotion never happened (no post-
+            // anchor observation). Its temporal targets must still reach
+            // evaluation — the evaluation quality policy adjudicates the
+            // outcome (VALID from real in-window observations, contaminated,
+            // or MISSED). Skipping PLANNED here would silently drop targets.
+            BatteryMeasurementSessionStatus.PLANNED,
             BatteryMeasurementSessionStatus.ACTIVE,
             BatteryMeasurementSessionStatus.COMPLETED,
           ],

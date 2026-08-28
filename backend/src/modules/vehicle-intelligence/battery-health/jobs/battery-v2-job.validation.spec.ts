@@ -43,7 +43,8 @@ describe('battery-v2-job.validation', () => {
       BATTERY_V2_JOB_TYPES.filter(
         (t) =>
           t !== 'BATTERY_START_PROXY_EXTRACT' &&
-          t !== 'BATTERY_REST_TARGET_EVALUATE',
+          t !== 'BATTERY_REST_TARGET_EVALUATE' &&
+          t !== 'BATTERY_LV_REST_SESSION_OPEN',
       ),
     )('validates base payload for %s', (jobType) => {
       const payload = validateBatteryV2JobPayload(jobType, validBase());
@@ -179,6 +180,34 @@ describe('battery-v2-job.validation', () => {
           validBase({ tripId: 'x', tripStartedAt: '2026-07-16T12:00:00.000Z' }),
         ),
       ).toThrow(/tripId/);
+    });
+
+    it('validates tripId + tripEndedAt for BATTERY_LV_REST_SESSION_OPEN', () => {
+      const tripId = 'cltrip123456789012345678901';
+      const payload = validateBatteryV2JobPayload(
+        'BATTERY_LV_REST_SESSION_OPEN',
+        validBase({
+          idempotencyKey: `lv-rest-open:${VEHICLE_ID}:1721124000000`,
+          tripId,
+          tripEndedAt: '2026-07-16T12:00:00.000Z',
+        }),
+      );
+      expect(payload).toMatchObject({
+        tripId,
+        tripEndedAt: '2026-07-16T12:00:00.000Z',
+      });
+    });
+
+    it('rejects LV rest session open without tripEndedAt', () => {
+      expect(() =>
+        validateBatteryV2JobPayload(
+          'BATTERY_LV_REST_SESSION_OPEN',
+          validBase({
+            idempotencyKey: `lv-rest-open:${VEHICLE_ID}:1721124000000`,
+            tripId: 'cltrip123456789012345678901',
+          }),
+        ),
+      ).toThrow(/tripEndedAt/);
     });
   });
 

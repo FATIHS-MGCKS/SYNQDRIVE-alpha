@@ -15,6 +15,11 @@ export const BATTERY_V2_JOB_RETRY_POLICIES: Record<BatteryV2JobType, BatteryV2Jo
     backoffType: 'exponential',
     backoffDelayMs: 5_000,
   },
+  BATTERY_LV_REST_SESSION_OPEN: {
+    attempts: 3,
+    backoffType: 'exponential',
+    backoffDelayMs: 5_000,
+  },
   BATTERY_REST_TARGET_EVALUATE: {
     attempts: 3,
     backoffType: 'exponential',

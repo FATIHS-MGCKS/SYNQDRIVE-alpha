@@ -227,6 +227,7 @@ export type BatteryV2EnqueueSuppressionReason =
 
 export type BatteryV2ReconciliationCategory =
   | 'observation_classify'
+  | 'rest_sessions'
   | 'rest_targets'
   | 'trip_starts'
   | 'recharge_segments'
