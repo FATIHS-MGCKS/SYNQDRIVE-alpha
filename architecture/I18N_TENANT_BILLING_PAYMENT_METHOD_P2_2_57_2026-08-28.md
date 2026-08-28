@@ -1,7 +1,7 @@
 # I18N — Tenant Billing Payment Method (P2.2.57)
 
-**Date:** 2026-08-28  
-**Baseline:** `9b466c4ac930afe752dcd14a872b320f240537f3` (P2.2.56 merge)  
+**Date:** 2026-08-28
+**Baseline:** `9b466c4ac930afe752dcd14a872b320f240537f3` (P2.2.56 merge)
 **Branch:** `cursor/p2257-tenant-billing-payment-method-i18n-3c10`
 
 ## Mount topology
