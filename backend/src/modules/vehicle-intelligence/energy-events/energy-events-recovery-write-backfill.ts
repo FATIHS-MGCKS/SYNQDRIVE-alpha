@@ -9,6 +9,7 @@ import {
 import {
   buildUpsertPayload,
   coalesceSegments,
+  collectReplaceableSubSegmentIds,
   isMateriallyIdentical,
   isSegmentPersistable,
   type CoalescedEnergySegment,
@@ -477,10 +478,42 @@ async function resolvePayloadForWriteEntry(
   };
 }
 
+async function pruneSupersededRechargeSubsegments(
+  prisma: PrismaClient,
+  entry: WriteSetEntry,
+  vehicle: RecoveryVehicleInput,
+  fetchSegments: RecoveryDryRunDeps['fetchSegments'],
+): Promise<number> {
+  const fetchResult = await fetchSegments(
+    vehicle.tokenId,
+    new Date(entry.windowFrom),
+    new Date(entry.windowTo),
+    entry.energyClass,
+  );
+  const persistable = fetchResult.segments.filter(isSegmentPersistable);
+  const coalesced = coalesceSegments(persistable);
+  const replaceableIds = collectReplaceableSubSegmentIds(
+    coalesced,
+    fetchResult.outcomes,
+  );
+  if (replaceableIds.size === 0) {
+    return 0;
+  }
+
+  const deleteResult = await prisma.vehicleEnergyEvent.deleteMany({
+    where: {
+      vehicleId: entry.vehicleId,
+      dimoSegmentId: { in: [...replaceableIds] },
+    },
+  });
+  return deleteResult.count;
+}
+
 async function applyUpsertPayload(
   prisma: PrismaClient,
   payload: EnergyEventUpsertPayload,
   requestedAction: 'CREATE' | 'UPDATE',
+  options?: { forceUpdate?: boolean },
 ): Promise<{ result: WriteActionResult; rowId: string | null }> {
   const existing = await prisma.vehicleEnergyEvent.findUnique({
     where: { dimoSegmentId: payload.dimoSegmentId },
@@ -508,7 +541,7 @@ async function applyUpsertPayload(
   };
 
   if (existing) {
-    if (isMateriallyIdentical(existing, payload)) {
+    if (!options?.forceUpdate && isMateriallyIdentical(existing, payload)) {
       return { result: 'NO_OP_ALREADY_PRESENT', rowId: existing.id };
     }
     if (requestedAction === 'CREATE') {
@@ -598,6 +631,24 @@ export async function executeControlledWriteBackfill(options: {
     };
   }
 
+  if (options.completeRemaining) {
+    const prunedWindows = new Set<string>();
+    for (const entry of writeSet) {
+      if (entry.mechanism !== 'recharge') continue;
+      const windowKey = `${entry.vehicleId}:${entry.windowFrom}:${entry.windowTo}`;
+      if (prunedWindows.has(windowKey)) continue;
+      prunedWindows.add(windowKey);
+      const vehicle = vehiclesById.get(entry.vehicleId);
+      if (!vehicle) continue;
+      legacySubsegmentsReconciledTotal += await pruneSupersededRechargeSubsegments(
+        options.prisma,
+        entry,
+        vehicle,
+        options.fetchSegments,
+      );
+    }
+  }
+
   for (let index = 0; index < writeSet.length; index++) {
     const entry = writeSet[index];
     if (index > 0 && delayMs > 0) {
@@ -624,18 +675,45 @@ export async function executeControlledWriteBackfill(options: {
         options.fetchSegments,
       );
 
+      if (
+        options.completeRemaining &&
+        entry.mechanism === 'recharge' &&
+        resolved.coalesced.coalescedFromSegmentIds.length === 1 &&
+        resolved.legacySubsegmentIds.length === 0
+      ) {
+        const existingSingleton = await options.prisma.vehicleEnergyEvent.findUnique({
+          where: { dimoSegmentId: entry.dimoSegmentId },
+        });
+        if (!existingSingleton) {
+          audit.push({
+            alias: entry.alias,
+            mechanism: entry.mechanism,
+            requestedAction: entry.requestedAction,
+            result: 'SKIPPED_IDEMPOTENCY',
+            legacySubsegmentsReconciled: 0,
+            timestamp: new Date().toISOString(),
+          });
+          continue;
+        }
+      }
+
       const txResult = await options.prisma.$transaction(async (tx) => {
         const upsert = await applyUpsertPayload(
           tx as PrismaClient,
           resolved.payload,
           entry.requestedAction,
+          {
+            forceUpdate:
+              options.completeRemaining === true && entry.mechanism === 'refuel',
+          },
         );
 
         let reconciled = 0;
         if (
           entry.requestedAction === 'UPDATE' &&
-          upsert.result === 'UPDATED' &&
-          resolved.legacySubsegmentIds.length > 0
+          resolved.legacySubsegmentIds.length > 0 &&
+          (upsert.result === 'UPDATED' ||
+            upsert.result === 'NO_OP_ALREADY_PRESENT')
         ) {
           const deleteResult = await tx.vehicleEnergyEvent.deleteMany({
             where: {
