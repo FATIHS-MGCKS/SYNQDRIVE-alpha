@@ -33,6 +33,7 @@ import {
   captureRollbackPlan,
   executeControlledWriteBackfill,
   validateIdempotencyReport,
+  validatePostWriteCompletionReport,
   validatePostWriteReport,
   validatePreWriteReport,
 } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-write-backfill';
@@ -243,7 +244,11 @@ async function main() {
     console.log(JSON.stringify(sanitized, null, 2));
 
     if (APPLY || COMPLETE_REMAINING) {
-      validatePostWriteReport(result.postWriteReport!);
+      if (COMPLETE_REMAINING) {
+        validatePostWriteCompletionReport(result.postWriteReport!);
+      } else {
+        validatePostWriteReport(result.postWriteReport!);
+      }
       if (!result.idempotencyVerified) {
         throw new Error('Idempotency verification failed');
       }

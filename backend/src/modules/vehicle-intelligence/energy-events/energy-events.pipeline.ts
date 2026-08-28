@@ -271,6 +271,96 @@ export function collectReplaceableSubSegmentIds(
   return replaced;
 }
 
+export interface StaleSubsegmentPruneAuthorization {
+  canonicalParentDimoSegmentId: string;
+  staleSubsegmentIds: string[];
+  coalescedParent: CoalescedEnergySegment;
+}
+
+export type MaterializedEnergyEventRow = Parameters<typeof isMateriallyIdentical>[0];
+
+export function resolveStaleSubsegmentPruneAuthorization(
+  coalesced: CoalescedEnergySegment[],
+  mechanismOutcomes: Array<{ mechanism: string; status: string }>,
+): StaleSubsegmentPruneAuthorization | null {
+  if (mechanismOutcomes.some((outcome) => outcome.status === 'FAILED')) {
+    return null;
+  }
+
+  const staleSubsegmentIds = collectReplaceableSubSegmentIds(
+    coalesced,
+    mechanismOutcomes,
+  );
+  if (staleSubsegmentIds.size === 0) {
+    return null;
+  }
+
+  const coalescedParent = coalesced.find(
+    (group) =>
+      group.coalescedFromSegmentIds.length > 1 &&
+      [...staleSubsegmentIds].every((subSegmentId) =>
+        group.coalescedFromSegmentIds.includes(subSegmentId),
+      ),
+  );
+  if (!coalescedParent) {
+    return null;
+  }
+
+  return {
+    canonicalParentDimoSegmentId: coalescedParent.coalescedSegmentId,
+    staleSubsegmentIds: [...staleSubsegmentIds],
+    coalescedParent,
+  };
+}
+
+export interface PruneStaleCoalescedSubSegmentsInput {
+  vehicleId: string;
+  windowFrom: Date;
+  windowTo: Date;
+  coalesced: CoalescedEnergySegment[];
+  mechanismOutcomes: Array<{ mechanism: string; status: string }>;
+  findEnergyEventByDimoSegmentId: (
+    dimoSegmentId: string,
+  ) => Promise<MaterializedEnergyEventRow | null>;
+  findStaleCandidates: (
+    staleSubsegmentIds: string[],
+  ) => Promise<Array<{ id: string; dimoSegmentId: string }>>;
+  deleteEnergyEventsByIds: (ids: string[]) => Promise<number>;
+}
+
+export async function pruneStaleCoalescedSubSegments(
+  input: PruneStaleCoalescedSubSegmentsInput,
+): Promise<{ prunedCount: number; authorization: StaleSubsegmentPruneAuthorization | null }> {
+  const authorization = resolveStaleSubsegmentPruneAuthorization(
+    input.coalesced,
+    input.mechanismOutcomes,
+  );
+  if (!authorization) {
+    return { prunedCount: 0, authorization: null };
+  }
+
+  const parentPayload = buildUpsertPayload(
+    input.vehicleId,
+    authorization.coalescedParent,
+  );
+  const parentExisting = await input.findEnergyEventByDimoSegmentId(
+    authorization.canonicalParentDimoSegmentId,
+  );
+  if (!parentExisting || !isMateriallyIdentical(parentExisting, parentPayload)) {
+    return { prunedCount: 0, authorization };
+  }
+
+  const candidates = await input.findStaleCandidates(authorization.staleSubsegmentIds);
+  if (candidates.length === 0) {
+    return { prunedCount: 0, authorization };
+  }
+
+  const prunedCount = await input.deleteEnergyEventsByIds(
+    candidates.map((candidate) => candidate.id),
+  );
+  return { prunedCount, authorization };
+}
+
 export function isMateriallyIdentical(
   existing: {
     kind: string;

@@ -9,9 +9,9 @@ import {
 import {
   buildUpsertPayload,
   coalesceSegments,
-  collectReplaceableSubSegmentIds,
   isMateriallyIdentical,
   isSegmentPersistable,
+  pruneStaleCoalescedSubSegments,
   type CoalescedEnergySegment,
   type EnergyEventUpsertPayload,
 } from './energy-events.pipeline';
@@ -288,14 +288,25 @@ export function validatePostWriteReport(report: EnergyRecoveryDryRunReport): voi
   }
 }
 
-export function validateIdempotencyReport(report: EnergyRecoveryDryRunReport): void {
+export function validatePostWriteCompletionReport(
+  report: EnergyRecoveryDryRunReport,
+): void {
   validatePostWriteReport(report);
   const needs = report.manualReviewReport.filter(
     (entry) => entry.recommendation === 'NEEDS_FURTHER_EVIDENCE',
   ).length;
   if (needs !== 0) {
-    throw new Error(`Idempotency check NEEDS=${needs}`);
+    throw new Error(`Post-write completion NEEDS=${needs}`);
   }
+  if (report.gateBlockers.length > 0) {
+    throw new Error(
+      `Post-write completion gate blockers: ${report.gateBlockers.join(', ')}`,
+    );
+  }
+}
+
+export function validateIdempotencyReport(report: EnergyRecoveryDryRunReport): void {
+  validatePostWriteCompletionReport(report);
 }
 
 export function validatePreWriteReport(report: EnergyRecoveryDryRunReport): void {
@@ -429,6 +440,8 @@ async function resolvePayloadForWriteEntry(
   payload: EnergyEventUpsertPayload;
   coalesced: CoalescedEnergySegment;
   legacySubsegmentIds: string[];
+  coalescedGroups: CoalescedEnergySegment[];
+  mechanismOutcomes: Array<{ mechanism: string; status: string }>;
 }> {
   const fetchResult = await fetchSegments(
     vehicle.tokenId,
@@ -481,137 +494,103 @@ async function resolvePayloadForWriteEntry(
     payload: buildUpsertPayload(vehicle.vehicleId, group),
     coalesced: group,
     legacySubsegmentIds,
+    coalescedGroups: coalesced,
+    mechanismOutcomes: fetchResult.outcomes,
   };
 }
 
-async function pruneSupersededRechargeSubsegments(
-  prisma: PrismaClient,
-  entry: WriteSetEntry,
-  vehicle: RecoveryVehicleInput,
-  fetchSegments: RecoveryDryRunDeps['fetchSegments'],
-): Promise<number> {
-  const fetchResult = await fetchSegments(
-    vehicle.tokenId,
-    new Date(entry.windowFrom),
-    new Date(entry.windowTo),
-    entry.energyClass,
-  );
-  const persistable = fetchResult.segments.filter(isSegmentPersistable);
-  const coalesced = coalesceSegments(persistable);
-  const replaceableIds = collectReplaceableSubSegmentIds(
-    coalesced,
-    fetchResult.outcomes,
-  );
-  if (replaceableIds.size === 0) {
-    return 0;
-  }
-
-  const deleteResult = await prisma.vehicleEnergyEvent.deleteMany({
-    where: {
-      vehicleId: entry.vehicleId,
-      dimoSegmentId: { in: [...replaceableIds] },
+async function reconcileCanonicalRechargeLegacySubsegments(options: {
+  prisma: PrismaClient;
+  vehicleId: string;
+  windowFrom: Date;
+  windowTo: Date;
+  coalesced: CoalescedEnergySegment[];
+  mechanismOutcomes: Array<{ mechanism: string; status: string }>;
+}): Promise<number> {
+  const { prunedCount } = await pruneStaleCoalescedSubSegments({
+    vehicleId: options.vehicleId,
+    windowFrom: options.windowFrom,
+    windowTo: options.windowTo,
+    coalesced: options.coalesced,
+    mechanismOutcomes: options.mechanismOutcomes,
+    findEnergyEventByDimoSegmentId: (dimoSegmentId) =>
+      options.prisma.vehicleEnergyEvent.findUnique({
+        where: { dimoSegmentId },
+      }),
+    findStaleCandidates: (staleSubsegmentIds) =>
+      options.prisma.vehicleEnergyEvent.findMany({
+        where: {
+          vehicleId: options.vehicleId,
+          startTime: { gte: options.windowFrom, lte: options.windowTo },
+          dimoSegmentId: { in: staleSubsegmentIds },
+        },
+        select: { id: true, dimoSegmentId: true },
+      }),
+    deleteEnergyEventsByIds: async (ids) => {
+      if (ids.length === 0) {
+        return 0;
+      }
+      const result = await options.prisma.vehicleEnergyEvent.deleteMany({
+        where: { id: { in: ids } },
+      });
+      return result.count;
     },
   });
-  return deleteResult.count;
+  return prunedCount;
 }
 
-function isSubsumedRechargeSession(
-  legacy: EnergyRecoveryCandidate,
-  canonical: EnergyRecoveryCandidate,
-): boolean {
-  if (legacy.mechanism !== 'recharge' || canonical.mechanism !== 'recharge') {
-    return false;
-  }
-  if (legacy.dimoSegmentId === canonical.dimoSegmentId) {
-    return false;
-  }
-  const legacyStart = new Date(legacy.startTime).getTime();
-  const legacyEnd = new Date(legacy.endTime).getTime();
-  const canonicalStart = new Date(canonical.startTime).getTime();
-  const canonicalEnd = new Date(canonical.endTime).getTime();
-  const overlapStart = Math.max(legacyStart, canonicalStart);
-  const overlapEnd = Math.min(legacyEnd, canonicalEnd);
-  const overlap = Math.max(0, overlapEnd - overlapStart);
-  if (overlap <= 0) {
-    return false;
-  }
-  const legacyDuration = Math.max(1, legacyEnd - legacyStart);
-  return overlap / legacyDuration >= 0.9;
-}
+export async function reconcileCanonicalRechargeWindowsFromReport(options: {
+  prisma: PrismaClient;
+  report: EnergyRecoveryDryRunReport;
+  vehiclesById: Map<string, RecoveryVehicleInput>;
+  fetchSegments: RecoveryDryRunDeps['fetchSegments'];
+}): Promise<number> {
+  const windows = new Set<string>();
+  let reconciled = 0;
 
-async function pruneSubsumedRechargeCandidates(
-  prisma: PrismaClient,
-  candidates: EnergyRecoveryCandidate[],
-): Promise<number> {
-  const rechargeUpdates = candidates.filter(
-    (candidate) =>
-      candidate.classification === 'WOULD_UPDATE' &&
-      candidate.mechanism === 'recharge',
-  );
-  if (rechargeUpdates.length <= 1) {
-    return 0;
-  }
+  for (const candidate of options.report.candidates) {
+    if (candidate.mechanism !== 'recharge') {
+      continue;
+    }
+    const windowKey = `${candidate.vehicleId}:${candidate.windowFrom}:${candidate.windowTo}`;
+    if (windows.has(windowKey)) {
+      continue;
+    }
+    windows.add(windowKey);
 
-  const byVehicle = new Map<string, EnergyRecoveryCandidate[]>();
-  for (const candidate of rechargeUpdates) {
-    const bucket = byVehicle.get(candidate.vehicleId) ?? [];
-    bucket.push(candidate);
-    byVehicle.set(candidate.vehicleId, bucket);
-  }
-
-  let deleted = 0;
-  for (const [vehicleId, updates] of byVehicle) {
-    if (updates.length <= 1) {
+    const vehicle = options.vehiclesById.get(candidate.vehicleId);
+    const inventory = options.report.vehicles.find(
+      (row) => row.vehicleId === candidate.vehicleId,
+    );
+    if (!vehicle || !inventory) {
       continue;
     }
 
-    const canonical = updates.reduce((best, current) => {
-      const bestCoalesced = best.coalescedFromSegmentIds.length;
-      const currentCoalesced = current.coalescedFromSegmentIds.length;
-      if (currentCoalesced !== bestCoalesced) {
-        return currentCoalesced > bestCoalesced ? current : best;
-      }
-      const bestDuration =
-        best.durationSeconds ||
-        (new Date(best.endTime).getTime() - new Date(best.startTime).getTime()) /
-          1000;
-      const currentDuration =
-        current.durationSeconds ||
-        (new Date(current.endTime).getTime() -
-          new Date(current.startTime).getTime()) /
-          1000;
-      return currentDuration > bestDuration ? current : best;
+    const fetchResult = await options.fetchSegments(
+      vehicle.tokenId,
+      new Date(candidate.windowFrom),
+      new Date(candidate.windowTo),
+      inventory.energyClass,
+    );
+    const persistable = fetchResult.segments.filter(isSegmentPersistable);
+    const coalesced = coalesceSegments(persistable);
+    reconciled += await reconcileCanonicalRechargeLegacySubsegments({
+      prisma: options.prisma,
+      vehicleId: candidate.vehicleId,
+      windowFrom: new Date(candidate.windowFrom),
+      windowTo: new Date(candidate.windowTo),
+      coalesced,
+      mechanismOutcomes: fetchResult.outcomes,
     });
-
-    const legacyIds = updates
-      .filter(
-        (candidate) =>
-          candidate.dimoSegmentId !== canonical.dimoSegmentId &&
-          isSubsumedRechargeSession(candidate, canonical),
-      )
-      .map((candidate) => candidate.dimoSegmentId);
-
-    if (legacyIds.length === 0) {
-      continue;
-    }
-
-    const deleteResult = await prisma.vehicleEnergyEvent.deleteMany({
-      where: {
-        vehicleId,
-        dimoSegmentId: { in: legacyIds },
-      },
-    });
-    deleted += deleteResult.count;
   }
 
-  return deleted;
+  return reconciled;
 }
 
 async function applyUpsertPayload(
   prisma: PrismaClient,
   payload: EnergyEventUpsertPayload,
   requestedAction: 'CREATE' | 'UPDATE',
-  options?: { forceUpdate?: boolean },
 ): Promise<{ result: WriteActionResult; rowId: string | null }> {
   const existing = await prisma.vehicleEnergyEvent.findUnique({
     where: { dimoSegmentId: payload.dimoSegmentId },
@@ -639,7 +618,7 @@ async function applyUpsertPayload(
   };
 
   if (existing) {
-    if (!options?.forceUpdate && isMateriallyIdentical(existing, payload)) {
+    if (isMateriallyIdentical(existing, payload)) {
       return { result: 'NO_OP_ALREADY_PRESENT', rowId: existing.id };
     }
     if (requestedAction === 'CREATE') {
@@ -730,26 +709,12 @@ export async function executeControlledWriteBackfill(options: {
   }
 
   if (options.completeRemaining) {
-    legacySubsegmentsReconciledTotal += await pruneSubsumedRechargeCandidates(
-      options.prisma,
-      preWriteReport.candidates,
-    );
-
-    const prunedWindows = new Set<string>();
-    for (const entry of writeSet) {
-      if (entry.mechanism !== 'recharge') continue;
-      const windowKey = `${entry.vehicleId}:${entry.windowFrom}:${entry.windowTo}`;
-      if (prunedWindows.has(windowKey)) continue;
-      prunedWindows.add(windowKey);
-      const vehicle = vehiclesById.get(entry.vehicleId);
-      if (!vehicle) continue;
-      legacySubsegmentsReconciledTotal += await pruneSupersededRechargeSubsegments(
-        options.prisma,
-        entry,
-        vehicle,
-        options.fetchSegments,
-      );
-    }
+    legacySubsegmentsReconciledTotal += await reconcileCanonicalRechargeWindowsFromReport({
+      prisma: options.prisma,
+      report: preWriteReport,
+      vehiclesById,
+      fetchSegments: options.fetchSegments,
+    });
 
     const refreshedVehicles = await refreshVehicleExistingEvents(
       options.prisma,
@@ -797,52 +762,27 @@ export async function executeControlledWriteBackfill(options: {
         options.fetchSegments,
       );
 
-      if (
-        options.completeRemaining &&
-        entry.mechanism === 'recharge' &&
-        resolved.coalesced.coalescedFromSegmentIds.length === 1 &&
-        resolved.legacySubsegmentIds.length === 0
-      ) {
-        const existingSingleton = await options.prisma.vehicleEnergyEvent.findUnique({
-          where: { dimoSegmentId: entry.dimoSegmentId },
-        });
-        if (!existingSingleton) {
-          audit.push({
-            alias: entry.alias,
-            mechanism: entry.mechanism,
-            requestedAction: entry.requestedAction,
-            result: 'SKIPPED_IDEMPOTENCY',
-            legacySubsegmentsReconciled: 0,
-            timestamp: new Date().toISOString(),
-          });
-          continue;
-        }
-      }
-
       const txResult = await options.prisma.$transaction(async (tx) => {
         const upsert = await applyUpsertPayload(
           tx as PrismaClient,
           resolved.payload,
           entry.requestedAction,
-          {
-            forceUpdate: options.completeRemaining === true,
-          },
         );
 
         let reconciled = 0;
         if (
-          entry.requestedAction === 'UPDATE' &&
-          resolved.legacySubsegmentIds.length > 0 &&
+          entry.mechanism === 'recharge' &&
           (upsert.result === 'UPDATED' ||
             upsert.result === 'NO_OP_ALREADY_PRESENT')
         ) {
-          const deleteResult = await tx.vehicleEnergyEvent.deleteMany({
-            where: {
-              vehicleId: entry.vehicleId,
-              dimoSegmentId: { in: resolved.legacySubsegmentIds },
-            },
+          reconciled = await reconcileCanonicalRechargeLegacySubsegments({
+            prisma: tx as PrismaClient,
+            vehicleId: entry.vehicleId,
+            windowFrom: new Date(entry.windowFrom),
+            windowTo: new Date(entry.windowTo),
+            coalesced: resolved.coalescedGroups,
+            mechanismOutcomes: resolved.mechanismOutcomes,
           });
-          reconciled = deleteResult.count;
         }
 
         return { upsert, reconciled };
@@ -888,7 +828,7 @@ export async function executeControlledWriteBackfill(options: {
     recoveryPlan: options.recoveryPlan,
   });
 
-  validatePostWriteReport(postWriteReport);
+  validatePostWriteCompletionReport(postWriteReport);
 
   let idempotencyReport: EnergyRecoveryDryRunReport | undefined;
   let idempotencyVerified = false;

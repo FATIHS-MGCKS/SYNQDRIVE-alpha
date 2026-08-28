@@ -14,8 +14,8 @@ import { toEnergyEventDto, type EnergyEventDto } from './energy-events.types';
 import {
   buildUpsertPayload,
   coalesceSegments,
-  collectReplaceableSubSegmentIds,
   isSegmentPersistable,
+  pruneStaleCoalescedSubSegments,
   type CoalescedEnergySegment,
 } from './energy-events.pipeline';
 import { EnergyEventsMetricsService } from './energy-events-metrics.service';
@@ -260,41 +260,40 @@ export class EnergyEventsService {
     mechanismOutcomes: EnergyMechanismFetchOutcome[],
     persistedCoalescedGroups: CoalescedEnergySegment[],
   ): Promise<number> {
-    if (mechanismOutcomes.some((outcome) => outcome.status === 'FAILED')) {
-      this.logger.debug(
-        `Skipping energy-event prune vehicle=${vehicleId} window=[${from.toISOString()}, ${to.toISOString()}] reason=mechanism_fetch_failed`,
-      );
-      return 0;
-    }
-
-    const replacedSubSegmentIds = collectReplaceableSubSegmentIds(
-      persistedCoalescedGroups,
+    const { prunedCount } = await pruneStaleCoalescedSubSegments({
+      vehicleId,
+      windowFrom: from,
+      windowTo: to,
+      coalesced: persistedCoalescedGroups,
       mechanismOutcomes,
-    );
-
-    if (replacedSubSegmentIds.size === 0) {
-      return 0;
-    }
-
-    const candidates = await this.prisma.vehicleEnergyEvent.findMany({
-      where: {
-        vehicleId,
-        startTime: { gte: from, lte: to },
-        dimoSegmentId: { in: [...replacedSubSegmentIds] },
+      findEnergyEventByDimoSegmentId: (dimoSegmentId) =>
+        this.prisma.vehicleEnergyEvent.findUnique({
+          where: { dimoSegmentId },
+        }),
+      findStaleCandidates: (staleSubsegmentIds) =>
+        this.prisma.vehicleEnergyEvent.findMany({
+          where: {
+            vehicleId,
+            startTime: { gte: from, lte: to },
+            dimoSegmentId: { in: staleSubsegmentIds },
+          },
+          select: { id: true, dimoSegmentId: true },
+        }),
+      deleteEnergyEventsByIds: async (ids) => {
+        if (ids.length === 0) {
+          return 0;
+        }
+        const result = await this.prisma.vehicleEnergyEvent.deleteMany({
+          where: { id: { in: ids } },
+        });
+        if (result.count > 0) {
+          this.logger.debug(
+            `Pruned ${result.count} replaced energy-event sub-segments for vehicle=${vehicleId} window=[${from.toISOString()}, ${to.toISOString()}]`,
+          );
+        }
+        return result.count;
       },
-      select: { id: true, dimoSegmentId: true },
     });
-
-    if (candidates.length === 0) return 0;
-
-    const result = await this.prisma.vehicleEnergyEvent.deleteMany({
-      where: { id: { in: candidates.map((row) => row.id) } },
-    });
-    if (result.count > 0) {
-      this.logger.debug(
-        `Pruned ${result.count} replaced energy-event sub-segments for vehicle=${vehicleId} window=[${from.toISOString()}, ${to.toISOString()}] replacedIds=${[...replacedSubSegmentIds].join(',')}`,
-      );
-    }
-    return result.count;
+    return prunedCount;
   }
 }
