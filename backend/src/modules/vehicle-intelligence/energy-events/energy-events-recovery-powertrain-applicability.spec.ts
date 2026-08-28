@@ -595,6 +595,7 @@ function buildAliasReport(): EnergyRecoveryDryRunReport {
     backfillGate: 'NOT READY',
     manualReviewCount: 0,
     gateBlockers: [],
+    recoveryPlan: null,
   };
 }
 

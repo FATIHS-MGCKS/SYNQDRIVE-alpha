@@ -229,6 +229,16 @@ export interface EnergyRecoveryDryRunReport {
   backfillGate: string;
   manualReviewCount: number;
   gateBlockers: string[];
+  /** Present only when an explicit recovery plan was supplied to the dry-run. */
+  recoveryPlan: {
+    supplied: true;
+    planVersion: string;
+    reviewProvenance: string;
+    reviewedDispositionCount: number;
+    appliedCount: number;
+    unmatchedCount: number;
+    ambiguousCount: number;
+  } | null;
 }
 
 export interface EnergyRecoverySimulateInput {

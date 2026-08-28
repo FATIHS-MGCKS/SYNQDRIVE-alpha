@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'energy-events-e3a-recovery-plan-authority-hardening-2026-08-28',
+    version: '4.9.985',
+    title: 'Energy Events E3A — recovery-plan manual-review authority hardening',
+    summary: [
+      'Removed coarse bucket fingerprints as authoritative event identity for human dispositions — fingerprints remain reporting/grouping only.',
+      'Human-reviewed decisions are explicit recovery-plan input (`dimoSegmentId` + mechanism), not hardcoded August-2026 defaults in `runEnergyEventsRecoveryDryRun()`.',
+      'Fail-closed matching: 0 matches → UNMATCHED_REVIEWED_DISPOSITION; >1 → AMBIGUOUS_MANUAL_REVIEW_MATCH; both block gate.',
+      'Explicit empty `reviewedDispositions` applies no overrides; omitting `recoveryPlan` leaves NEEDS candidates unchanged.',
+      'Ops evidence script: `suggestedDisposition` advisory only — E2 detector remains canonical; analyst aid does not feed writes.',
+      'Private E3A plan built on secured infra via `ENERGY_EVENTS_RECOVERY_PLAN_PATH`; synthetic fixtures for repository tests only.',
+    ],
+    reason:
+      'Bucket fingerprints are privacy-safe but not unique — one human decision must not fan out to every candidate sharing the same coarse signature.',
+    previousBehavior:
+      '`applyManualReviewOverrides()` matched bucket fingerprints with global E3A defaults even when `overrides=[]`.',
+    details:
+      'backend: energy-events-recovery-plan.ts, energy-events-recovery-manual-review-reporting.ts, energy-events-recovery-runner.ts, scripts/ops/energy-events-build-e3a-recovery-plan.ts. Removed energy-events-recovery-manual-review-overrides.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T14:45:00.000Z',
+  },
+  {
     id: 'energy-events-e3a-manual-review-resolution-gate-2026-08-28',
     version: '4.9.984',
     title: 'Energy Events E3A — resolve final 2 manual-review refuel candidates (gate READY)',

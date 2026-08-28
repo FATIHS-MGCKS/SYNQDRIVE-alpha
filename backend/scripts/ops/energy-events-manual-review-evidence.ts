@@ -1,9 +1,12 @@
 /**
  * PRIVATE OPS ONLY — read-only manual-review evidence inspection for E3A.
  *
- * Locates NEEDS_FURTHER_EVIDENCE refuel candidates, fetches bounded DIMO telemetry
- * around each event, and emits a disposition recommendation. Output contains
- * operational identifiers and must NEVER be committed to the repository.
+ * Analyst aid only — NOT a second detector authority:
+ * - E2 remains the canonical refuel/recharge detector
+ * - this script fetches bounded DIMO telemetry to support human review
+ * - `suggestedDisposition` is advisory and must not feed writes automatically
+ *
+ * Output contains operational identifiers and must NEVER be committed to the repository.
  *
  * Usage (secured infrastructure only):
  *   cd backend && npx ts-node -r tsconfig-paths/register scripts/ops/energy-events-manual-review-evidence.ts
@@ -206,7 +209,7 @@ function analyzeCandidate(entry: ManualReviewEntry, samples: RefuelEvidenceSampl
       return gapMs > 5 * 60 * 1000;
     });
 
-  let recommendedDisposition: 'APPROVE_FOR_BACKFILL' | 'EXCLUDE_FROM_BACKFILL' =
+  let suggestedDisposition: 'APPROVE_FOR_BACKFILL' | 'EXCLUDE_FROM_BACKFILL' =
     'EXCLUDE_FROM_BACKFILL';
   let evidenceCategory = 'insufficient_or_artifactual_fuel_step';
 
@@ -217,7 +220,7 @@ function analyzeCandidate(entry: ManualReviewEntry, samples: RefuelEvidenceSampl
     trueStepOdometerDeltaKm <= 10 &&
     !continuousDriving
   ) {
-    recommendedDisposition = 'APPROVE_FOR_BACKFILL';
+    suggestedDisposition = 'APPROVE_FOR_BACKFILL';
     evidenceCategory = 'stationary_sustained_refuel_step';
   } else if (
     sustainedIncrease &&
@@ -225,7 +228,7 @@ function analyzeCandidate(entry: ManualReviewEntry, samples: RefuelEvidenceSampl
     trueStepOdometerDeltaKm != null &&
     trueStepOdometerDeltaKm <= 15
   ) {
-    recommendedDisposition = 'APPROVE_FOR_BACKFILL';
+    suggestedDisposition = 'APPROVE_FOR_BACKFILL';
     evidenceCategory = 'credible_refuel_despite_segment_padding';
   } else if (
     !sustainedIncrease ||
@@ -233,12 +236,12 @@ function analyzeCandidate(entry: ManualReviewEntry, samples: RefuelEvidenceSampl
     continuousDriving ||
     (largestStep?.absoluteDeltaLiters ?? 0) < 2
   ) {
-    recommendedDisposition = 'EXCLUDE_FROM_BACKFILL';
+    suggestedDisposition = 'EXCLUDE_FROM_BACKFILL';
     evidenceCategory = largestStep
       ? 'unsustained_or_driving_artifact'
       : 'no_discrete_fuel_step';
   } else if (entry.plausibilityReasons.includes('fuel_signal_contradiction')) {
-    recommendedDisposition = signalsEventuallyAgree
+    suggestedDisposition = signalsEventuallyAgree
       ? 'APPROVE_FOR_BACKFILL'
       : 'EXCLUDE_FROM_BACKFILL';
     evidenceCategory = signalsEventuallyAgree
@@ -264,7 +267,7 @@ function analyzeCandidate(entry: ManualReviewEntry, samples: RefuelEvidenceSampl
       segmentOdometerDeltaKm != null &&
       trueStepOdometerDeltaKm != null &&
       segmentOdometerDeltaKm - trueStepOdometerDeltaKm >= 10,
-    recommendedDisposition,
+    suggestedDisposition,
     evidenceCategory,
   };
 }

@@ -188,7 +188,7 @@ VehicleEnergyDetectionStatus
 
 ## 8. Tests
 
-Focused energy-events tests (105, of which 74 are net-new versus `main`) plus
+Focused energy-events tests (110) plus
 E3A privacy regression checks:
 
 - E1 mechanism isolation in dry-run
@@ -203,6 +203,7 @@ E3A privacy regression checks:
 - Refuel movement plausibility (canonical positive control + false-positive exclusions)
 - Manual-review disposition resolution (`EXCLUDE` counts as resolved)
 - Privacy-safe manual-review fingerprint overrides (secured evidence → EXCLUDE without committing identifiers)
+- Recovery-plan authority: event-specific dimoSegmentId matching, fail-closed, no global defaults in generic runner
 - Sanitized artifact builder (inventory-order aliases, no forbidden identifier fields)
 - Privacy regression scan of committed artifacts + architecture doc
 - Capability discovery regression (ICE/EV zero-event probe, CAPABILITY_UNKNOWN gate, synthetic QUICK FULL isolation)
@@ -379,13 +380,34 @@ movement for Case B.
 
 ### Privacy-safe override mechanism
 
-`energy-events-recovery-manual-review-overrides.ts` applies human-reviewed
-dispositions via bucketed fingerprints (`mechanism`, month, duration/odometer/fuel
-buckets, confidence, sorted plausibility reasons) — no tokenIds, plates, segment
-ids, or GPS in git.
+`energy-events-recovery-plan.ts` applies human-reviewed dispositions only when an
+**explicit recovery plan** is supplied at runtime (`recoveryPlan` on
+`runEnergyEventsRecoveryDryRun` deps, or `ENERGY_EVENTS_RECOVERY_PLAN_PATH` for
+the ops dry-run script). Each reviewed entry binds to **one candidate** via
+`dimoSegmentId` + `mechanism` — never coarse bucket fingerprints.
 
-Private ops script `energy-events-manual-review-evidence.ts` supports secured
-inspection only; its output must never be committed.
+Bucket fingerprints (`buildManualReviewBucketFingerprint`) remain for sanitized
+reporting and aggregate grouping only.
+
+Fail-closed match semantics:
+
+| Matches | Behavior |
+|---------|----------|
+| 0 | `UNMATCHED_REVIEWED_DISPOSITION` → gate NOT READY |
+| 1 | apply disposition |
+| >1 | `AMBIGUOUS_MANUAL_REVIEW_MATCH` → gate NOT READY |
+
+No global/hidden defaults: omitting `recoveryPlan` leaves derived recommendations
+unchanged; an explicit empty `reviewedDispositions` array applies nothing.
+
+Private E3A plan JSON (operational `dimoSegmentId` values) stays on secured
+infrastructure only. Build via `energy-events-build-e3a-recovery-plan.ts` from
+private evidence output. Repository tests use synthetic segment ids only
+(`energy-events-recovery-plan.fixture.ts`).
+
+The ops evidence script (`energy-events-manual-review-evidence.ts`) is an analyst
+aid only — E2 remains canonical; `suggestedDisposition` is advisory and never
+feeds writes automatically.
 
 ### FULL re-run after resolution
 

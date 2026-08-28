@@ -8,6 +8,7 @@
  *
  * Requires: DIMO_CLIENT_ID, DIMO_PRIVATE_KEY
  * Full mode requires: DATABASE_URL (read-only comparison; fails closed without it)
+ * Optional FULL historical plan: ENERGY_EVENTS_RECOVERY_PLAN_PATH (private JSON, secured infra only)
  *
  * Artifacts written to artifacts/ are sanitized for git. Raw FULL DB preview reports
  * (with operational identifiers) must be retained only on secured infrastructure.
@@ -30,6 +31,9 @@ import {
   runEnergyEventsRecoveryDryRun,
   type RecoveryVehicleInput,
 } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-runner';
+import {
+  parseEnergyEventsRecoveryPlan,
+} from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-plan';
 import {
   buildRecoveryVehicleInput,
 } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-capability';
@@ -152,6 +156,19 @@ async function main() {
     to: new Date(window.to),
   }));
 
+  const recoveryPlanPath = process.env.ENERGY_EVENTS_RECOVERY_PLAN_PATH?.trim();
+  const recoveryPlan =
+    !QUICK_MODE && recoveryPlanPath
+      ? parseEnergyEventsRecoveryPlan(
+          JSON.parse(fs.readFileSync(recoveryPlanPath, 'utf8')),
+        )
+      : undefined;
+  if (!QUICK_MODE && recoveryPlanPath && recoveryPlan) {
+    console.error(
+      `[dry-run] Applying explicit recovery plan ${recoveryPlan.planVersion} (${recoveryPlan.reviewedDispositions.length} reviewed dispositions)`,
+    );
+  }
+
   const report = await runEnergyEventsRecoveryDryRun(vehicles, {
     fetchSegments: (tokenId, from, to, energyClass) =>
       fetchEnergyEventSegmentsStandalone(tokenId, from, to, energyClass),
@@ -161,6 +178,7 @@ async function main() {
     dbComparisonEnabled,
     dbComparisonStatus,
     accounting: RUN_ACCOUNTING,
+    recoveryPlan,
   });
 
   if (!isTelemetryTotalConsistent(report.requestAccounting)) {
