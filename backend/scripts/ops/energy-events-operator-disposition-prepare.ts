@@ -22,7 +22,11 @@ import {
   createPrismaRecoveryReadRepository,
 } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-read.repository';
 import { runEnergyEventsRecoveryDryRun } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-runner';
-import { buildRecoveryVehicleInput } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-capability';
+import type { EnergyVehicleEnergyClass } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery.types';
+import {
+  buildRecoveryVehicleInput,
+  type RecoveryVehicleDbLoad,
+} from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-capability';
 import { createDimoRequestAccounting } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-accounting';
 import {
   buildUpsertPayload,
@@ -59,6 +63,19 @@ const BACKUP_PATH =
   process.argv.find((arg) => arg.startsWith('--backup-out='))?.slice('--backup-out='.length) ??
   '/tmp/e3a-operator-m1-pre-mutation-backup-private.json';
 
+function classifyRecoveryVehicleEnergyClass(vehicle: {
+  relativeFuelAvailable: boolean;
+  absoluteFuelAvailable: boolean;
+  rechargeSocAvailable: boolean;
+}): EnergyVehicleEnergyClass {
+  const refuel = vehicle.relativeFuelAvailable || vehicle.absoluteFuelAvailable;
+  const recharge = vehicle.rechargeSocAvailable;
+  if (refuel && recharge) return 'BOTH';
+  if (refuel) return 'REFUEL_CANDIDATE';
+  if (recharge) return 'RECHARGE_CANDIDATE';
+  return 'NO_ENERGY_SIGNAL';
+}
+
 async function main() {
   const rawPrisma = new PrismaClient();
   const prisma = createMutationGuardedPrismaClient(rawPrisma);
@@ -69,7 +86,12 @@ async function main() {
     ? parseEnergyEventsRecoveryPlan(JSON.parse(fs.readFileSync(PLAN_PATH, 'utf8')))
     : undefined;
 
-  const rows = await readRepo.loadFleetInventory('full');
+  const outageStart = new Date(ENERGY_EVENTS_OUTAGE_START_ISO);
+  const recoveryCutoff = new Date(ENERGY_EVENTS_RECOVERY_CUTOFF_ISO);
+  const rows: RecoveryVehicleDbLoad[] = await readRepo.loadRecoveryVehicleDbRows({
+    outageStart,
+    recoveryCutoff,
+  });
   const tokenIds = rows.map((row) => row.tokenId);
   const dimoAccessByTokenId = await probeDimoAccessForTokenIds(tokenIds, accounting);
   const accessibleTokenIds = tokenIds.filter((tokenId) => dimoAccessByTokenId[tokenId]);
@@ -78,7 +100,7 @@ async function main() {
     accounting,
   );
 
-  const vehicles = rows.map((row) =>
+  const vehicles = rows.map((row: RecoveryVehicleDbLoad) =>
     buildRecoveryVehicleInput(
       { ...row, dimoAccessAvailable: dimoAccessByTokenId[row.tokenId] ?? false },
       availableSignalsByTokenId[row.tokenId] ?? null,
@@ -108,7 +130,9 @@ async function main() {
     throw new Error('M1 manual-review recharge candidate not found in recovery dry-run');
   }
 
-  const vehicle = vehicles.find((entry) => entry.vehicleId === m1Candidate.vehicleId);
+  const vehicle = vehicles.find(
+    (entry: (typeof vehicles)[number]) => entry.vehicleId === m1Candidate.vehicleId,
+  );
   if (!vehicle) {
     throw new Error(`Vehicle not found for M1 candidate ${m1Candidate.vehicleId}`);
   }
@@ -117,7 +141,7 @@ async function main() {
     m1Candidate.tokenId,
     new Date(m1Candidate.windowFrom),
     new Date(m1Candidate.windowTo),
-    vehicle.energyClass,
+    classifyRecoveryVehicleEnergyClass(vehicle),
   );
   const persistable = windowFetch.segments.filter(isSegmentPersistable);
   const groups = coalesceSegments(persistable);
@@ -129,8 +153,6 @@ async function main() {
   }
   const payload = buildUpsertPayload(m1Candidate.vehicleId, group);
 
-  const outageStart = new Date(ENERGY_EVENTS_OUTAGE_START_ISO);
-  const recoveryCutoff = new Date(ENERGY_EVENTS_RECOVERY_CUTOFF_ISO);
   const rechargeRows = await rawPrisma.vehicleEnergyEvent.findMany({
     where: {
       vehicleId: m1Candidate.vehicleId,

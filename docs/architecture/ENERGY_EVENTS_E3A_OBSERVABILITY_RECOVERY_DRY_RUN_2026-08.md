@@ -584,7 +584,7 @@ Infrastructure: `energy-events-operator-mutation-manifest.ts`,
 | Pre-mutation row count | **133** |
 | Table digest | `b38c6b5d339c5eecffe105850484bed3a17557db13bb2d472a01c617692a1dea` |
 | M1 present | **false** |
-| M1 `dimoSegmentId` | `dimo-recharge-186946-1784220138893` |
+| M1 `dimoSegmentId` | private manifest only (Jul-16 consolidated recharge) |
 | Explicit prune rows | **16** (temporally contained within M1) |
 | Excluded overlap tail | **1** (ends 3 min after M1 — not in prune set) |
 | Independent preserved | **2** (Jul-17 R1, Jul-18 R2) |
