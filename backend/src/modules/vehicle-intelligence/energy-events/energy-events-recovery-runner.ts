@@ -23,6 +23,7 @@ import {
 } from './energy-events-recovery-dry-run';
 import {
   allManualReviewsResolved,
+  countUnresolvedManualReviews,
   buildManualReviewReport,
 } from './energy-events-recovery-manual-review';
 import { reconcileRecoveryCandidates } from './energy-events-recovery-reconcile';
@@ -256,6 +257,8 @@ export async function runEnergyEventsRecoveryDryRun(
   const summary = summarizeClassifications(candidates);
   const manualReviewReport = buildManualReviewReport(candidates);
   const manualReviewCount = summary.MANUAL_REVIEW_REQUIRED;
+  const unresolvedManualReviewCount =
+    countUnresolvedManualReviews(manualReviewReport);
   const fetchFailedCount = summary.FETCH_FAILED;
 
   const ksMxCandidate = candidates.find(
@@ -288,8 +291,10 @@ export async function runEnergyEventsRecoveryDryRun(
   if (deps.mode === 'full' && fetchFailedCount > 0) {
     gateBlockersRaw.push(`UNRESOLVED_FETCH_FAILED:${fetchFailedCount}`);
   }
-  if (manualReviewCount > 0 && !allManualReviewsResolved(manualReviewReport)) {
-    gateBlockersRaw.push(`MANUAL_REVIEW_REQUIRED:${manualReviewCount}`);
+  if (unresolvedManualReviewCount > 0) {
+    gateBlockersRaw.push(
+      `MANUAL_REVIEW_UNRESOLVED:${unresolvedManualReviewCount}`,
+    );
   }
   if (deps.mode === 'full' && unmappedVehicles.length > 0) {
     gateBlockersRaw.push(`DB_VEHICLE_MAPPING_MISSING:${unmappedVehicles.length}`);
@@ -304,8 +309,8 @@ export async function runEnergyEventsRecoveryDryRun(
   let backfillGate: EnergyRecoveryDryRunReport['backfillGate'] = 'NOT READY';
   if (deps.mode === 'quick') {
     backfillGate =
-      manualReviewCount > 0
-        ? (`READY AFTER MANUAL REVIEW OF ${manualReviewCount} EVENTS` as EnergyRecoveryDryRunReport['backfillGate'])
+      unresolvedManualReviewCount > 0
+        ? (`READY AFTER MANUAL REVIEW OF ${unresolvedManualReviewCount} EVENTS` as EnergyRecoveryDryRunReport['backfillGate'])
         : 'NOT READY';
   } else if (gateBlockers.includes('DB_COMPARISON_UNAVAILABLE')) {
     backfillGate = 'NOT READY';
@@ -318,9 +323,9 @@ export async function runEnergyEventsRecoveryDryRun(
   ) {
     backfillGate = 'NOT READY';
   } else if (
-    gateBlockers.some((blocker) => blocker.startsWith('MANUAL_REVIEW_REQUIRED'))
+    gateBlockers.some((blocker) => blocker.startsWith('MANUAL_REVIEW_UNRESOLVED'))
   ) {
-    backfillGate = `READY AFTER MANUAL REVIEW OF ${manualReviewCount} EVENTS` as EnergyRecoveryDryRunReport['backfillGate'];
+    backfillGate = `READY AFTER MANUAL REVIEW OF ${unresolvedManualReviewCount} EVENTS` as EnergyRecoveryDryRunReport['backfillGate'];
   } else if (gateBlockers.length === 0) {
     backfillGate = 'READY FOR CONTROLLED WRITE BACKFILL';
   } else {

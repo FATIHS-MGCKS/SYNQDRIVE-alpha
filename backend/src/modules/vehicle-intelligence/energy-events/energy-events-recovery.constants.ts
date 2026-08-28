@@ -105,7 +105,8 @@ export const QUICK_ACCEPTANCE_WINDOWS: Array<{ from: string; to: string }> = [
 ];
 
 export const QUICK_ARTIFACT_FILENAME = 'energy-events-recovery-quick-evidence-2026-08.json';
-export const FULL_DB_ARTIFACT_FILENAME = 'energy-events-recovery-full-db-preview-2026-08.json';
+export const FULL_SANITIZED_SUMMARY_ARTIFACT_FILENAME =
+  'energy-events-recovery-full-sanitized-summary-2026-08.json';
 
 export function mechanismsForEnergyClass(
   energyClass:

@@ -8,6 +8,9 @@
  *
  * Requires: DIMO_CLIENT_ID, DIMO_PRIVATE_KEY
  * Full mode requires: DATABASE_URL (read-only comparison; fails closed without it)
+ *
+ * Artifacts written to artifacts/ are sanitized for git. Raw FULL DB preview reports
+ * (with operational identifiers) must be retained only on secured infrastructure.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -15,10 +18,14 @@ import { PrismaClient } from '@prisma/client';
 import {
   ENERGY_EVENTS_OUTAGE_START_ISO,
   ENERGY_EVENTS_RECOVERY_CUTOFF_ISO,
-  FULL_DB_ARTIFACT_FILENAME,
+  FULL_SANITIZED_SUMMARY_ARTIFACT_FILENAME,
   QUICK_ACCEPTANCE_WINDOWS,
   QUICK_ARTIFACT_FILENAME,
 } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery.constants';
+import {
+  buildSanitizedFullSummaryArtifact,
+  buildSanitizedQuickArtifact,
+} from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-artifact-sanitize';
 import {
   runEnergyEventsRecoveryDryRun,
   type RecoveryVehicleInput,
@@ -46,15 +53,6 @@ import {
 }
 
 const QUICK_MODE = process.argv.includes('--quick');
-
-function sanitizeArtifactCandidate(
-  candidate: Record<string, unknown>,
-): Record<string, unknown> {
-  const copy = { ...candidate };
-  delete copy.startLatitude;
-  delete copy.startLongitude;
-  return copy;
-}
 
 async function loadVehiclesForMode(): Promise<{
   vehicles: RecoveryVehicleInput[];
@@ -139,27 +137,25 @@ async function main() {
 
   const artifactDir = path.resolve(__dirname, '..', '..', '..', 'artifacts');
   fs.mkdirSync(artifactDir, { recursive: true });
-  const artifactFilename = QUICK_MODE ? QUICK_ARTIFACT_FILENAME : FULL_DB_ARTIFACT_FILENAME;
+  const artifactFilename = QUICK_MODE
+    ? QUICK_ARTIFACT_FILENAME
+    : FULL_SANITIZED_SUMMARY_ARTIFACT_FILENAME;
   const outPath = path.join(artifactDir, artifactFilename);
-  const payload = {
-    ...report,
-    candidates: report.candidates.map((candidate) =>
-      sanitizeArtifactCandidate(candidate as unknown as Record<string, unknown>),
-    ),
-    candidateCount: report.candidates.length,
-  };
+  const payload = QUICK_MODE
+    ? buildSanitizedQuickArtifact(report)
+    : buildSanitizedFullSummaryArtifact(report);
   fs.writeFileSync(outPath, JSON.stringify(payload, null, 2));
 
-  const summaryOnly = {
-    ...payload,
-    candidates: payload.candidates.slice(0, 50),
-    candidatesTruncated: payload.candidates.length > 50,
-  };
-  console.log(JSON.stringify(summaryOnly, null, 2));
-  console.error(`[dry-run] Artifact: ${outPath}`);
+  console.log(JSON.stringify(payload, null, 2));
+  console.error(`[dry-run] Sanitized artifact: ${outPath}`);
   console.error(
     `[dry-run] dbComparisonEnabled=${report.dbComparisonEnabled} dbComparisonStatus=${report.dbComparisonStatus} telemetryRequests=${report.requestAccounting.telemetryGraphqlRequests} gate=${report.backfillGate}`,
   );
+  if (!QUICK_MODE) {
+    console.error(
+      '[dry-run] Raw FULL DB preview reports are not written to git; retain them only on secured operational storage.',
+    );
+  }
 }
 
 main().catch((error) => {

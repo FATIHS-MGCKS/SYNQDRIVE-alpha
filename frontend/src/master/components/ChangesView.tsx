@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'energy-events-e3a-artifact-privacy-merge-gate-2026-08-28',
+    version: '4.9.980',
+    title: 'Energy Events E3A — artifact privacy + merge gate (PR #1373)',
+    summary: [
+      'Removed raw FULL DB preview artifact from git; committed sanitized aggregate summary only.',
+      'Vehicle aliases (ICE_A/B/C, EV_A, CANONICAL_REFUEL_CASE) + coarse buckets; no plates/tokenIds/UUIDs/exact odometer.',
+      'Manual-review gate: EXCLUDE_FROM_BACKFILL counts as resolved; only NEEDS_FURTHER_EVIDENCE blocks (2 unresolved).',
+      'Raw FULL reports retained on secured VPS/private storage only; `.gitignore` blocks future raw commits.',
+      'Squash merge recommended so prior GPS-bearing branch commits do not become main ancestors. 73 focused energy-events tests.',
+    ],
+    reason:
+      'Production recovery FULL report contained operational identifiers unsuitable for repository artifacts.',
+    previousBehavior:
+      'Committed `energy-events-recovery-full-db-preview-2026-08.json` with plates, tokenIds, UUIDs, and exact telemetry; gate counted all 15 manual reviews as unresolved.',
+    details:
+      'backend: energy-events-recovery-artifact-sanitize.ts, energy-events-recovery-manual-review.ts, energy-events-recovery-runner.ts, energy-events-recovery-dry-run.ts. Artifacts: energy-events-recovery-full-sanitized-summary-2026-08.json + sanitized quick evidence.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T11:30:00.000Z',
+  },
+  {
     id: 'energy-events-e3a-refuel-plausibility-hardening-2026-08-28',
     version: '4.9.979',
     title: 'Energy Events E3A — refuel movement/duration plausibility hardening',

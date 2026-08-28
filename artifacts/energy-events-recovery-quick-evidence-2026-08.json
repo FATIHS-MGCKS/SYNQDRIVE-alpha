@@ -1,6 +1,8 @@
 {
+  "artifactKind": "sanitized_quick_evidence",
+  "privacyPolicy": "Repository-safe evidence only. Operational identifiers (plates, tokenIds, UUIDs, exact odometer) are omitted.",
   "generatedAt": "2026-08-28T09:55:01.980Z",
-  "codeShaUnderTest": "a4b6e0f0684cfd26b61de820463505b287f1b51e",
+  "codeShaUnderTest": "7390851e1b4ade3cd808c6dd8d751c45eca99e92",
   "baseMainSha": "ba0bdd621ba96e42abbda8fee442c36849dd5905",
   "detectorConfigVersion": "e2-2026-08",
   "refuelDetectorConfig": {
@@ -10,100 +12,75 @@
   "outageStart": "2026-07-16T00:00:00.000Z",
   "recoveryCutoff": "2026-08-28T08:00:00.000Z",
   "windowSizeHours": 24,
-  "windowSizesHours": [
-    24,
-    24,
-    24
-  ],
-  "windowSemantics": "Non-overlapping [from, to) windows; inclusive start, exclusive end at recovery cutoff. DIMO segments with startedBeforeRange=true may appear in the first window that contains their start timestamp; global dedup keeps one candidate per dimoSegmentId.",
   "mode": "quick",
   "dbComparisonEnabled": false,
   "dbComparisonStatus": "DB_COMPARISON_UNAVAILABLE",
-  "dbVehicleMappingFailures": 0,
   "vehicles": [
     {
-      "vehicleId": "dry-run-token-187336",
-      "label": "KS MX 2024",
-      "tokenId": 187336,
-      "provider": "LTE_R1",
+      "alias": "CANONICAL_REFUEL_CASE",
       "powertrain": "ICE",
+      "energyClass": "REFUEL_CANDIDATE",
       "dimoAccessAvailable": true,
       "dbVehicleMapped": false,
       "relativeFuelAvailable": true,
       "absoluteFuelAvailable": true,
       "rechargeSocAvailable": false,
-      "existingEventCountInWindow": 0,
-      "energyClass": "REFUEL_CANDIDATE"
+      "existingEventCountInWindow": 0
     },
     {
-      "vehicleId": "dry-run-token-187784",
-      "label": "VW Arteon ICE",
-      "tokenId": 187784,
-      "provider": "LTE_R1",
+      "alias": "ICE_A",
       "powertrain": "ICE",
+      "energyClass": "REFUEL_CANDIDATE",
       "dimoAccessAvailable": true,
       "dbVehicleMapped": false,
       "relativeFuelAvailable": true,
       "absoluteFuelAvailable": true,
       "rechargeSocAvailable": false,
-      "existingEventCountInWindow": 0,
-      "energyClass": "REFUEL_CANDIDATE"
+      "existingEventCountInWindow": 0
     },
     {
-      "vehicleId": "dry-run-token-187361",
-      "label": "Audi A4 (KS MS 661)",
-      "tokenId": 187361,
-      "provider": "LTE_R1",
+      "alias": "ICE_B",
       "powertrain": "ICE",
+      "energyClass": "REFUEL_CANDIDATE",
       "dimoAccessAvailable": true,
       "dbVehicleMapped": false,
       "relativeFuelAvailable": false,
       "absoluteFuelAvailable": true,
       "rechargeSocAvailable": false,
-      "existingEventCountInWindow": 0,
-      "energyClass": "REFUEL_CANDIDATE"
+      "existingEventCountInWindow": 0
     },
     {
-      "vehicleId": "dry-run-token-192922",
-      "label": "VW Tiguan ICE",
-      "tokenId": 192922,
-      "provider": "LTE_R1",
+      "alias": "ICE_C",
       "powertrain": "ICE",
+      "energyClass": "REFUEL_CANDIDATE",
       "dimoAccessAvailable": true,
       "dbVehicleMapped": false,
       "relativeFuelAvailable": true,
       "absoluteFuelAvailable": true,
       "rechargeSocAvailable": false,
-      "existingEventCountInWindow": 0,
-      "energyClass": "REFUEL_CANDIDATE"
+      "existingEventCountInWindow": 0
     },
     {
-      "vehicleId": "dry-run-token-186946",
-      "label": "KS FH 660E Tesla",
-      "tokenId": 186946,
-      "provider": "LTE_R1",
+      "alias": "EV_A",
       "powertrain": "EV",
+      "energyClass": "RECHARGE_CANDIDATE",
       "dimoAccessAvailable": true,
       "dbVehicleMapped": false,
       "relativeFuelAvailable": false,
       "absoluteFuelAvailable": false,
       "rechargeSocAvailable": true,
-      "existingEventCountInWindow": 0,
-      "energyClass": "RECHARGE_CANDIDATE"
+      "existingEventCountInWindow": 0
     },
     {
-      "vehicleId": "dry-run-token-190497",
-      "label": "VW Golf ICE",
-      "tokenId": 190497,
-      "provider": "LTE_R1",
+      "alias": "INACCESSIBLE_ICE",
       "powertrain": "ICE",
+      "energyClass": "DIMO_ACCESS_FAILED",
       "dimoAccessAvailable": false,
       "dbVehicleMapped": false,
       "relativeFuelAvailable": false,
       "absoluteFuelAvailable": false,
       "rechargeSocAvailable": false,
-      "existingEventCountInWindow": 0,
-      "energyClass": "DIMO_ACCESS_FAILED"
+      "existingEventCountInWindow": 0
     }
   ],
   "requestAccounting": {
@@ -124,119 +101,60 @@
     "MANUAL_REVIEW_REQUIRED": 0,
     "FETCH_FAILED": 0
   },
-  "candidates": [
+  "candidateEvidence": [
     {
+      "alias": "CANONICAL_REFUEL_CASE",
       "classification": "WOULD_CREATE",
       "mechanism": "refuel",
-      "vehicleId": "dry-run-token-187336",
-      "tokenId": 187336,
-      "label": "KS MX 2024",
-      "dimoSegmentId": "dimo-refuel-187336-1787501715000",
-      "coalescedFromSegmentIds": [
-        "dimo-refuel-187336-1787501715000"
-      ],
-      "startTime": "2026-08-23T16:15:15Z",
-      "endTime": "2026-08-23T16:23:16Z",
-      "durationSeconds": 481,
-      "fuelDeltaLiters": 16,
-      "fuelDeltaPercent": 29.41176470588235,
-      "socDeltaPercent": null,
-      "energyDeltaKwh": null,
-      "odometerStartKm": 187423,
-      "odometerEndKm": 187429,
+      "month": "2026-08",
+      "durationBucket": "under_15m",
+      "odometerDeltaBucket": "0_to_10km",
+      "fuelDeltaBucket": "10_to_30L",
       "confidence": "HIGH",
-      "detectorConfigVersion": "e2-2026-08",
       "manualReviewReasons": [],
-      "existingRowId": null,
-      "windowFrom": "2026-08-23T00:00:00.000Z",
-      "windowTo": "2026-08-24T00:00:00.000Z",
-      "startedBeforeRange": false
+      "overlapRelation": null,
+      "existingDbRelation": null
     },
     {
+      "alias": "ICE_A",
       "classification": "WOULD_SKIP_NOT_PERSISTABLE",
       "mechanism": "refuel",
-      "vehicleId": "dry-run-token-187784",
-      "tokenId": 187784,
-      "label": "VW Arteon ICE",
-      "dimoSegmentId": "dimo-refuel-187784-1787490774000",
-      "coalescedFromSegmentIds": [
-        "dimo-refuel-187784-1787490774000"
-      ],
-      "startTime": "2026-08-23T13:12:54Z",
-      "endTime": "2026-08-23T13:24:55Z",
-      "durationSeconds": 721,
-      "fuelDeltaLiters": 1,
-      "fuelDeltaPercent": 76.86274509803923,
-      "socDeltaPercent": null,
-      "energyDeltaKwh": null,
-      "odometerStartKm": 121688,
-      "odometerEndKm": 121705,
+      "month": "2026-08",
+      "durationBucket": "under_15m",
+      "odometerDeltaBucket": "11_to_50km",
+      "fuelDeltaBucket": "under_10L",
       "confidence": "LOW",
-      "detectorConfigVersion": "e2-2026-08",
       "manualReviewReasons": [],
-      "existingRowId": null,
-      "windowFrom": "2026-08-23T00:00:00.000Z",
-      "windowTo": "2026-08-24T00:00:00.000Z",
-      "startedBeforeRange": false
+      "overlapRelation": null,
+      "existingDbRelation": null
     },
     {
+      "alias": "EV_A",
       "classification": "WOULD_CREATE",
       "mechanism": "recharge",
-      "vehicleId": "dry-run-token-186946",
-      "tokenId": 186946,
-      "label": "KS FH 660E Tesla",
-      "dimoSegmentId": "dimo-recharge-186946-1781545649620",
-      "coalescedFromSegmentIds": [
-        "dimo-recharge-186946-1781545649620"
-      ],
-      "startTime": "2026-06-15T17:47:29.620392Z",
-      "endTime": "2026-06-15T20:04:27.478421Z",
-      "durationSeconds": 8217,
-      "fuelDeltaLiters": null,
-      "fuelDeltaPercent": null,
-      "socDeltaPercent": 6.092757486836248,
-      "energyDeltaKwh": 2.8799999356269836,
-      "odometerStartKm": 178913.72349794547,
-      "odometerEndKm": 178913.72349794547,
+      "month": "2026-06",
+      "durationBucket": "2h_to_4h",
+      "odometerDeltaBucket": "0_to_10km",
+      "fuelDeltaBucket": null,
       "confidence": "MEDIUM",
-      "detectorConfigVersion": "e2-2026-08",
       "manualReviewReasons": [],
-      "existingRowId": null,
-      "windowFrom": "2026-06-15T00:00:00.000Z",
-      "windowTo": "2026-06-16T00:00:00.000Z",
-      "startedBeforeRange": false
+      "overlapRelation": null,
+      "existingDbRelation": null
     },
     {
+      "alias": "EV_A",
       "classification": "WOULD_CREATE",
       "mechanism": "recharge",
-      "vehicleId": "dry-run-token-186946",
-      "tokenId": 186946,
-      "label": "KS FH 660E Tesla",
-      "dimoSegmentId": "dimo-recharge-186946-1781704342425",
-      "coalescedFromSegmentIds": [
-        "dimo-recharge-186946-1781704342425"
-      ],
-      "startTime": "2026-06-17T13:52:22.425916Z",
-      "endTime": "2026-06-17T16:20:03.738283Z",
-      "durationSeconds": 8861,
-      "fuelDeltaLiters": null,
-      "fuelDeltaPercent": null,
-      "socDeltaPercent": 8.68935553946416,
-      "energyDeltaKwh": 4.519999898970127,
-      "odometerStartKm": 178944.70649941708,
-      "odometerEndKm": 178944.70649941708,
+      "month": "2026-06",
+      "durationBucket": "2h_to_4h",
+      "odometerDeltaBucket": "0_to_10km",
+      "fuelDeltaBucket": null,
       "confidence": "MEDIUM",
-      "detectorConfigVersion": "e2-2026-08",
       "manualReviewReasons": [],
-      "existingRowId": null,
-      "windowFrom": "2026-06-17T00:00:00.000Z",
-      "windowTo": "2026-06-18T00:00:00.000Z",
-      "startedBeforeRange": false
+      "overlapRelation": null,
+      "existingDbRelation": null
     }
   ],
-  "manualReviewReport": [],
-  "legacySubsegmentsWouldReplace": [],
-  "fetchFailures": [],
   "trafficBudget": {
     "eligibleVehicles": 5,
     "inaccessibleVehicles": 1,
@@ -249,12 +167,12 @@
     "estimatedRuntimeMinutes": 1
   },
   "acceptance": {
-    "ksMx2024": {
+    "CANONICAL_REFUEL_CASE": {
       "found": true,
       "classification": "WOULD_CREATE",
-      "segmentStart": "2026-08-23T16:15:15Z"
+      "month": "2026-08"
     },
-    "teslaRecharge": {
+    "EV_A": {
       "detectedSessions": 2,
       "wouldCreate": 2,
       "alreadyIdentical": 0,
@@ -267,5 +185,5 @@
   "gateBlockers": [
     "DB_COMPARISON_UNAVAILABLE"
   ],
-  "candidateCount": 4
+  "zeroWriteStatus": true
 }

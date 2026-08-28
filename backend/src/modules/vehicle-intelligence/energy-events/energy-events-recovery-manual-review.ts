@@ -111,10 +111,26 @@ export function buildManualReviewReport(
     }));
 }
 
+export function isManualReviewDispositionResolved(
+  disposition: ManualReviewDisposition,
+): boolean {
+  return (
+    disposition === 'APPROVE_FOR_BACKFILL' ||
+    disposition === 'EXCLUDE_FROM_BACKFILL'
+  );
+}
+
+export function countUnresolvedManualReviews(
+  entries: ManualReviewEntry[],
+): number {
+  return entries.filter(
+    (entry) => !isManualReviewDispositionResolved(entry.recommendation),
+  ).length;
+}
+
+/** APPROVE and EXCLUDE are resolved; NEEDS_FURTHER_EVIDENCE blocks write-backfill. */
 export function allManualReviewsResolved(
   entries: ManualReviewEntry[],
 ): boolean {
-  return entries.every(
-    (entry) => entry.recommendation === 'APPROVE_FOR_BACKFILL',
-  );
+  return countUnresolvedManualReviews(entries) === 0;
 }

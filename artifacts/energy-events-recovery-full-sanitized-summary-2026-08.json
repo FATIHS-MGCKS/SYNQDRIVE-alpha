@@ -1,0 +1,439 @@
+{
+  "artifactKind": "sanitized_full_summary",
+  "privacyPolicy": "Repository-safe aggregate evidence only. Raw FULL DB preview reports with operational identifiers are generated on secured infrastructure and must not be committed.",
+  "generatedAt": "2026-08-28T10:39:13.301Z",
+  "codeShaUnderTest": "7390851e1b4ade3cd808c6dd8d751c45eca99e92",
+  "baseMainSha": "ba0bdd621ba96e42abbda8fee442c36849dd5905",
+  "detectorConfigVersion": "e2-2026-08",
+  "refuelDetectorConfig": {
+    "minIncreasePercent": 5
+  },
+  "rechargeDetectorConfig": "default",
+  "outageStart": "2026-07-16T00:00:00.000Z",
+  "recoveryCutoff": "2026-08-28T08:00:00.000Z",
+  "windowSizeHours": 24,
+  "mode": "full",
+  "dbComparisonEnabled": true,
+  "dbComparisonStatus": "ok",
+  "dbVehicleMappingFailures": 0,
+  "vehicles": [
+    {
+      "alias": "ICE_A",
+      "powertrain": "ICE",
+      "energyClass": "REFUEL_CANDIDATE",
+      "dimoAccessAvailable": true,
+      "dbVehicleMapped": true,
+      "relativeFuelAvailable": true,
+      "absoluteFuelAvailable": true,
+      "rechargeSocAvailable": false,
+      "existingEventCountInWindow": 0
+    },
+    {
+      "alias": "EV_A",
+      "powertrain": "EV",
+      "energyClass": "RECHARGE_CANDIDATE",
+      "dimoAccessAvailable": true,
+      "dbVehicleMapped": true,
+      "relativeFuelAvailable": false,
+      "absoluteFuelAvailable": false,
+      "rechargeSocAvailable": true,
+      "existingEventCountInWindow": 18
+    },
+    {
+      "alias": "ICE_B",
+      "powertrain": "ICE",
+      "energyClass": "REFUEL_CANDIDATE",
+      "dimoAccessAvailable": true,
+      "dbVehicleMapped": true,
+      "relativeFuelAvailable": false,
+      "absoluteFuelAvailable": true,
+      "rechargeSocAvailable": false,
+      "existingEventCountInWindow": 0
+    },
+    {
+      "alias": "CANONICAL_REFUEL_CASE",
+      "powertrain": "ICE",
+      "energyClass": "REFUEL_CANDIDATE",
+      "dimoAccessAvailable": true,
+      "dbVehicleMapped": true,
+      "relativeFuelAvailable": true,
+      "absoluteFuelAvailable": true,
+      "rechargeSocAvailable": false,
+      "existingEventCountInWindow": 0
+    },
+    {
+      "alias": "ICE_C",
+      "powertrain": "ICE",
+      "energyClass": "REFUEL_CANDIDATE",
+      "dimoAccessAvailable": true,
+      "dbVehicleMapped": true,
+      "relativeFuelAvailable": true,
+      "absoluteFuelAvailable": true,
+      "rechargeSocAvailable": false,
+      "existingEventCountInWindow": 0
+    },
+    {
+      "alias": "INACCESSIBLE_ICE",
+      "powertrain": "ICE",
+      "energyClass": "DIMO_ACCESS_FAILED",
+      "dimoAccessAvailable": false,
+      "dbVehicleMapped": true,
+      "relativeFuelAvailable": false,
+      "absoluteFuelAvailable": false,
+      "rechargeSocAvailable": false,
+      "existingEventCountInWindow": 0
+    }
+  ],
+  "requestAccounting": {
+    "telemetryGraphqlRequests": 220,
+    "tokenExchangeRequests": 0,
+    "mechanismRequests": 220,
+    "retries": 0
+  },
+  "refuelDetections": 18,
+  "rechargeDetections": 3,
+  "deduplicatedCandidateCount": 21,
+  "summary": {
+    "WOULD_CREATE": 3,
+    "WOULD_UPDATE": 1,
+    "ALREADY_IDENTICAL": 0,
+    "WOULD_SKIP_NOT_PERSISTABLE": 2,
+    "WOULD_REPLACE_LEGACY_SUBSEGMENTS": 0,
+    "MANUAL_REVIEW_REQUIRED": 15,
+    "FETCH_FAILED": 0
+  },
+  "classificationCounts": {
+    "WOULD_CREATE": 3,
+    "WOULD_UPDATE": 1,
+    "ALREADY_IDENTICAL": 0,
+    "WOULD_SKIP_NOT_PERSISTABLE": 2,
+    "WOULD_REPLACE_LEGACY_SUBSEGMENTS": 0,
+    "MANUAL_REVIEW_REQUIRED": 15,
+    "FETCH_FAILED": 0
+  },
+  "reasonCounts": {
+    "refuel_duration_very_long": 9,
+    "refuel_high_odometer_movement": 13,
+    "fuel_signal_contradiction": 1,
+    "refuel_odometer_movement_during_event": 2
+  },
+  "dispositionCounts": {
+    "EXCLUDE_FROM_BACKFILL": 13,
+    "NEEDS_FURTHER_EVIDENCE": 2
+  },
+  "manualReviewResolvedSemantics": {
+    "APPROVE_FOR_BACKFILL": "eligible_for_write",
+    "EXCLUDE_FROM_BACKFILL": "intentionally_skipped_resolved",
+    "NEEDS_FURTHER_EVIDENCE": "unresolved_blocker",
+    "resolvedDispositions": [
+      "APPROVE_FOR_BACKFILL",
+      "EXCLUDE_FROM_BACKFILL"
+    ],
+    "blockingDispositions": [
+      "NEEDS_FURTHER_EVIDENCE"
+    ]
+  },
+  "manualReviewAggregate": {
+    "total": 15,
+    "resolved": 13,
+    "unresolved": 2,
+    "excludeFromBackfill": 13,
+    "needsFurtherEvidence": 2
+  },
+  "candidateEvidence": [
+    {
+      "alias": "CANONICAL_RECHARGE_OVERLAP_CASE",
+      "classification": "WOULD_UPDATE",
+      "mechanism": "recharge",
+      "month": "2026-07",
+      "durationBucket": "over_4h",
+      "odometerDeltaBucket": "0_to_10km",
+      "fuelDeltaBucket": null,
+      "confidence": "HIGH",
+      "manualReviewReasons": [],
+      "overlapRelation": null,
+      "existingDbRelation": null
+    },
+    {
+      "alias": "EV_A",
+      "classification": "WOULD_CREATE",
+      "mechanism": "recharge",
+      "month": "2026-07",
+      "durationBucket": "over_4h",
+      "odometerDeltaBucket": "0_to_10km",
+      "fuelDeltaBucket": null,
+      "confidence": "LOW",
+      "manualReviewReasons": [],
+      "overlapRelation": null,
+      "existingDbRelation": null
+    },
+    {
+      "alias": "EV_A",
+      "classification": "WOULD_CREATE",
+      "mechanism": "recharge",
+      "month": "2026-07",
+      "durationBucket": "2h_to_4h",
+      "odometerDeltaBucket": null,
+      "fuelDeltaBucket": null,
+      "confidence": "MEDIUM",
+      "manualReviewReasons": [],
+      "overlapRelation": null,
+      "existingDbRelation": null
+    },
+    {
+      "alias": "CANONICAL_REFUEL_CASE",
+      "classification": "WOULD_CREATE",
+      "mechanism": "refuel",
+      "month": "2026-08",
+      "durationBucket": "under_15m",
+      "odometerDeltaBucket": "0_to_10km",
+      "fuelDeltaBucket": "10_to_30L",
+      "confidence": "HIGH",
+      "manualReviewReasons": [],
+      "overlapRelation": null,
+      "existingDbRelation": null
+    }
+  ],
+  "manualReviewEvidence": [
+    {
+      "alias": "ICE_A",
+      "mechanism": "refuel",
+      "month": "2026-07",
+      "durationBucket": "over_4h",
+      "odometerDeltaBucket": "over_150km",
+      "fuelDeltaBucket": "over_30L",
+      "confidence": "HIGH",
+      "plausibilityReasons": [
+        "refuel_duration_very_long",
+        "refuel_high_odometer_movement"
+      ],
+      "disposition": "EXCLUDE_FROM_BACKFILL"
+    },
+    {
+      "alias": "ICE_A",
+      "mechanism": "refuel",
+      "month": "2026-07",
+      "durationBucket": "15m_to_2h",
+      "odometerDeltaBucket": "over_150km",
+      "fuelDeltaBucket": "10_to_30L",
+      "confidence": "HIGH",
+      "plausibilityReasons": [
+        "refuel_high_odometer_movement"
+      ],
+      "disposition": "EXCLUDE_FROM_BACKFILL"
+    },
+    {
+      "alias": "ICE_A",
+      "mechanism": "refuel",
+      "month": "2026-07",
+      "durationBucket": "over_4h",
+      "odometerDeltaBucket": "over_150km",
+      "fuelDeltaBucket": "10_to_30L",
+      "confidence": "HIGH",
+      "plausibilityReasons": [
+        "refuel_duration_very_long",
+        "refuel_high_odometer_movement"
+      ],
+      "disposition": "EXCLUDE_FROM_BACKFILL"
+    },
+    {
+      "alias": "ICE_A",
+      "mechanism": "refuel",
+      "month": "2026-07",
+      "durationBucket": "2h_to_4h",
+      "odometerDeltaBucket": "over_150km",
+      "fuelDeltaBucket": "over_30L",
+      "confidence": "HIGH",
+      "plausibilityReasons": [
+        "refuel_duration_very_long",
+        "refuel_high_odometer_movement"
+      ],
+      "disposition": "EXCLUDE_FROM_BACKFILL"
+    },
+    {
+      "alias": "ICE_A",
+      "mechanism": "refuel",
+      "month": "2026-07",
+      "durationBucket": "2h_to_4h",
+      "odometerDeltaBucket": "over_150km",
+      "fuelDeltaBucket": "over_30L",
+      "confidence": "HIGH",
+      "plausibilityReasons": [
+        "refuel_duration_very_long",
+        "refuel_high_odometer_movement"
+      ],
+      "disposition": "EXCLUDE_FROM_BACKFILL"
+    },
+    {
+      "alias": "ICE_A",
+      "mechanism": "refuel",
+      "month": "2026-07",
+      "durationBucket": "2h_to_4h",
+      "odometerDeltaBucket": "over_150km",
+      "fuelDeltaBucket": "10_to_30L",
+      "confidence": "HIGH",
+      "plausibilityReasons": [
+        "refuel_duration_very_long",
+        "refuel_high_odometer_movement"
+      ],
+      "disposition": "EXCLUDE_FROM_BACKFILL"
+    },
+    {
+      "alias": "ICE_A",
+      "mechanism": "refuel",
+      "month": "2026-08",
+      "durationBucket": "15m_to_2h",
+      "odometerDeltaBucket": "over_150km",
+      "fuelDeltaBucket": "over_30L",
+      "confidence": "HIGH",
+      "plausibilityReasons": [
+        "refuel_high_odometer_movement"
+      ],
+      "disposition": "EXCLUDE_FROM_BACKFILL"
+    },
+    {
+      "alias": "ICE_C",
+      "mechanism": "refuel",
+      "month": "2026-07",
+      "durationBucket": "2h_to_4h",
+      "odometerDeltaBucket": "101_to_150km",
+      "fuelDeltaBucket": "over_30L",
+      "confidence": "HIGH",
+      "plausibilityReasons": [
+        "refuel_duration_very_long",
+        "refuel_high_odometer_movement"
+      ],
+      "disposition": "EXCLUDE_FROM_BACKFILL"
+    },
+    {
+      "alias": "ICE_C",
+      "mechanism": "refuel",
+      "month": "2026-07",
+      "durationBucket": "15m_to_2h",
+      "odometerDeltaBucket": "101_to_150km",
+      "fuelDeltaBucket": "10_to_30L",
+      "confidence": "HIGH",
+      "plausibilityReasons": [
+        "refuel_high_odometer_movement"
+      ],
+      "disposition": "EXCLUDE_FROM_BACKFILL"
+    },
+    {
+      "alias": "ICE_C",
+      "mechanism": "refuel",
+      "month": "2026-07",
+      "durationBucket": "under_15m",
+      "odometerDeltaBucket": "11_to_50km",
+      "fuelDeltaBucket": "under_10L",
+      "confidence": "MEDIUM",
+      "plausibilityReasons": [
+        "fuel_signal_contradiction",
+        "refuel_odometer_movement_during_event"
+      ],
+      "disposition": "NEEDS_FURTHER_EVIDENCE"
+    },
+    {
+      "alias": "ICE_C",
+      "mechanism": "refuel",
+      "month": "2026-07",
+      "durationBucket": "2h_to_4h",
+      "odometerDeltaBucket": "101_to_150km",
+      "fuelDeltaBucket": "10_to_30L",
+      "confidence": "HIGH",
+      "plausibilityReasons": [
+        "refuel_duration_very_long",
+        "refuel_high_odometer_movement"
+      ],
+      "disposition": "EXCLUDE_FROM_BACKFILL"
+    },
+    {
+      "alias": "ICE_C",
+      "mechanism": "refuel",
+      "month": "2026-07",
+      "durationBucket": "under_15m",
+      "odometerDeltaBucket": "11_to_50km",
+      "fuelDeltaBucket": "under_10L",
+      "confidence": "LOW",
+      "plausibilityReasons": [
+        "refuel_odometer_movement_during_event"
+      ],
+      "disposition": "NEEDS_FURTHER_EVIDENCE"
+    },
+    {
+      "alias": "ICE_C",
+      "mechanism": "refuel",
+      "month": "2026-07",
+      "durationBucket": "2h_to_4h",
+      "odometerDeltaBucket": "over_150km",
+      "fuelDeltaBucket": "over_30L",
+      "confidence": "HIGH",
+      "plausibilityReasons": [
+        "refuel_duration_very_long",
+        "refuel_high_odometer_movement"
+      ],
+      "disposition": "EXCLUDE_FROM_BACKFILL"
+    },
+    {
+      "alias": "ICE_C",
+      "mechanism": "refuel",
+      "month": "2026-07",
+      "durationBucket": "15m_to_2h",
+      "odometerDeltaBucket": "101_to_150km",
+      "fuelDeltaBucket": "10_to_30L",
+      "confidence": "HIGH",
+      "plausibilityReasons": [
+        "refuel_high_odometer_movement"
+      ],
+      "disposition": "EXCLUDE_FROM_BACKFILL"
+    },
+    {
+      "alias": "ICE_C",
+      "mechanism": "refuel",
+      "month": "2026-07",
+      "durationBucket": "2h_to_4h",
+      "odometerDeltaBucket": "over_150km",
+      "fuelDeltaBucket": "10_to_30L",
+      "confidence": "HIGH",
+      "plausibilityReasons": [
+        "refuel_duration_very_long",
+        "refuel_high_odometer_movement"
+      ],
+      "disposition": "EXCLUDE_FROM_BACKFILL"
+    }
+  ],
+  "canonicalAcceptance": {
+    "CANONICAL_REFUEL_CASE": {
+      "found": true,
+      "classification": "WOULD_CREATE",
+      "month": "2026-08"
+    },
+    "CANONICAL_RECHARGE_OVERLAP_CASE": {
+      "detectedSessions": 3,
+      "wouldCreate": 2,
+      "wouldUpdate": 1,
+      "alreadyIdentical": 0,
+      "manualReview": 0,
+      "writePhaseInvariant": "Jul-16 Tesla session is SAME_PHYSICAL_SESSION / WOULD_UPDATE; reconcile overlapping legacy recharge subsegments before write-back to avoid duplicate logical charge sessions."
+    }
+  },
+  "trafficBudget": {
+    "eligibleVehicles": 5,
+    "inaccessibleVehicles": 1,
+    "windowsPerVehicle": 44,
+    "mechanismsPerWindowAverage": 1,
+    "expectedTelemetryGraphqlRequests": 220,
+    "worstCaseWithRetries": 660,
+    "proposedConcurrency": 2,
+    "interRequestDelayMs": 500,
+    "estimatedRuntimeMinutes": 1
+  },
+  "fetchFailures": 0,
+  "dbWritesPerformed": false,
+  "backfillGate": "READY AFTER MANUAL REVIEW OF 2 EVENTS",
+  "manualReviewCount": 15,
+  "gateBlockers": [
+    "MANUAL_REVIEW_UNRESOLVED:2"
+  ],
+  "zeroWriteStatus": true,
+  "finalGate": "READY AFTER MANUAL REVIEW OF 2 EVENTS"
+}

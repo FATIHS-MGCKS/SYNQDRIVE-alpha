@@ -87,9 +87,19 @@ Per eligible vehicle/window, only required mechanisms are queried:
 
 1. `dbComparisonEnabled=true` (production `DATABASE_URL` read path)
 2. Zero unresolved `FETCH_FAILED` candidates
-3. All manual-review entries explicitly resolved (`APPROVE_FOR_BACKFILL`)
+3. All manual-review entries resolved per disposition semantics below
 4. KS MX canonical case present
 5. Zero-write guarantee via read-only repository
+
+**Manual-review disposition semantics (write-backfill phase, not executed in E3A):**
+
+| Disposition | Meaning | Gate effect |
+|-------------|---------|-------------|
+| `APPROVE_FOR_BACKFILL` | Eligible for write | Resolved |
+| `EXCLUDE_FROM_BACKFILL` | Intentionally skipped; considered resolved | Resolved |
+| `NEEDS_FURTHER_EVIDENCE` | Unresolved blocker | Blocks write-backfill |
+
+The gate counts only **unresolved** manual-review entries (`NEEDS_FURTHER_EVIDENCE`). `EXCLUDE_FROM_BACKFILL` does **not** require conversion to `APPROVE_FOR_BACKFILL`.
 
 **QUICK mode:** detector acceptance only — never `READY FOR CONTROLLED WRITE BACKFILL`.
 
@@ -134,7 +144,7 @@ VehicleEnergyDetectionStatus
 
 ## 8. Tests
 
-47 focused tests pass:
+73 focused energy-events tests pass:
 
 - E1 mechanism isolation in dry-run
 - Full mode without DB → NOT READY
@@ -146,14 +156,27 @@ VehicleEnergyDetectionStatus
 - Mutation-guarded repository path
 - Mechanism-aware request accounting
 - E1 prune + E2 KS MX regressions
+- Refuel movement plausibility (KS MX positive control + false-positive exclusions)
+- Manual-review disposition resolution (`EXCLUDE` counts as resolved)
+- Sanitized artifact builder (no operational identifiers in committed output)
 
 ---
 
-## 9. Artifacts
+## 9. Artifacts and private evidence policy
 
-- `artifacts/energy-events-recovery-quick-evidence-2026-08.json` (QUICK acceptance, no coordinates)
-- `artifacts/energy-events-recovery-full-db-preview-2026-08.json` (FULL DB-backed read-only preview)
-- Prior branch commit `dd9ed2f8d` contained precise GPS coordinates in artifacts (removed; history not rewritten)
+**Committed (repository-safe, sanitized only):**
+
+- `artifacts/energy-events-recovery-quick-evidence-2026-08.json` — QUICK acceptance; aliases (`ICE_A`, `EV_A`, `CANONICAL_REFUEL_CASE`, …), coarse buckets only
+- `artifacts/energy-events-recovery-full-sanitized-summary-2026-08.json` — FULL DB-backed aggregate summary; no plates, tokenIds, UUIDs, GPS, or exact odometer
+
+**Not in git (secured operational storage only):**
+
+- Raw FULL DB preview reports generated on the production VPS during E3A dry-run execution
+- These contain operational identifiers and historical telemetry detail required for recovery execution review
+- Retain raw reports only in private VPS output, private CI artifacts, or other secured internal storage — never commit them
+- `.gitignore` blocks `artifacts/energy-events-recovery-full-db-preview-*.json`
+
+Prior branch commits (`dd9ed2f8d`, `c57c72afa`) contained precise GPS coordinates in artifacts. **Do not merge those commits into `main` via a normal merge.** Use **squash merge** (or a clean branch from `main` with only the final sanitized tree) so GPS-bearing commits do not become ancestors of `main`. Do not force-push or rewrite history without explicit approval.
 
 **No historical backfill executed.**
 
@@ -171,20 +194,23 @@ Executed on `srv1374778.hstgr.cloud` with production `DATABASE_URL`, `dbComparis
 | MANUAL_REVIEW_REQUIRED | 12 |
 | Gate | `READY AFTER MANUAL REVIEW OF 12 EVENTS` |
 
-### After refuel plausibility hardening (HEAD `160b9b571`)
+### After refuel plausibility hardening (HEAD `7390851e1`)
 
 | Metric | Value |
 |--------|-------|
 | Telemetry GraphQL requests | 220 |
 | Refuel detections | 18 |
-| WOULD_CREATE | 3 (KS MX refuel + 2 Tesla recharge) |
-| WOULD_UPDATE | 1 (Tesla Jul-16 extended session) |
-| MANUAL_REVIEW_REQUIRED | 15 (13 refuel + 2 ambiguous) |
+| WOULD_CREATE | 3 (CANONICAL_REFUEL_CASE + 2 EV_A recharge) |
+| WOULD_UPDATE | 1 (CANONICAL_RECHARGE_OVERLAP_CASE — Tesla Jul-16 extended session) |
+| MANUAL_REVIEW_REQUIRED | 15 (13 `EXCLUDE_FROM_BACKFILL` + 2 `NEEDS_FURTHER_EVIDENCE`) |
+| Unresolved manual review | 2 (`NEEDS_FURTHER_EVIDENCE` only) |
 | FETCH_FAILED | 0 |
-| KS MX canonical | WOULD_CREATE @ 2026-08-23T16:15:15Z |
-| Gate | `READY AFTER MANUAL REVIEW OF 15 EVENTS` |
+| CANONICAL_REFUEL_CASE | WOULD_CREATE (Aug 2026) |
+| Gate | `READY AFTER MANUAL REVIEW OF 2 EVENTS` (`MANUAL_REVIEW_UNRESOLVED:2`) |
 
-4 refuel candidates reclassified from WOULD_CREATE → MANUAL_REVIEW (`refuel_high_odometer_movement`). Sole refuel WOULD_CREATE: KS MX (+16 L, ~6 km).
+4 refuel candidates reclassified from WOULD_CREATE → MANUAL_REVIEW (`refuel_high_odometer_movement`). Sole refuel WOULD_CREATE: CANONICAL_REFUEL_CASE (+16 L bucket, ~6 km bucket).
+
+**Write-phase Tesla invariant:** The canonical Jul-16 Tesla session is `SAME_PHYSICAL_SESSION` / `WOULD_UPDATE`. Before any real write-back, verify overlapping legacy recharge subsegments are explicitly reconciled so a parent update does not leave duplicate logical charge sessions.
 
 ---
 
@@ -200,4 +226,4 @@ FULL prod dry-run exposed DIMO RefuelDetector false positives: large fuel increa
 
 **Production recommendation:** Apply same movement plausibility to live `EnergyEventsService.detectEnergyEvents` after recovery gate validates — DIMO false positives can occur in production too. **Not changed in this PR** (recovery-only hardening).
 
-**Tesla Jul-16 overlap:** Extended recharge (`dimo-recharge-186946-1784220138893`) → `WOULD_UPDATE` on existing DB row `ddb44b81` (same physical session, expanded detector window). No duplicate create.
+**Tesla Jul-16 overlap:** Extended recharge → `WOULD_UPDATE` on existing DB row (same physical session, expanded detector window). No duplicate create. Before write-back: reconcile overlapping legacy recharge subsegments (see write-phase invariant above).
