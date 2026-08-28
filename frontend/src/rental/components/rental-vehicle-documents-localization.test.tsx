@@ -21,11 +21,14 @@ import {
   formatVehicleDocumentDate,
   formatVehicleDocumentSpecValue,
   resolveFixedCostStatusLabel,
+  resolveRentalHealthLabel,
   resolveTimelineKindLabel,
+  resolveVehicleDocumentCategoryEmptyHint,
   resolveVehicleDocumentCategoryShortTitle,
   resolveVehicleDocumentUiStatusLabel,
 } from '../lib/rental-vehicle-documents-i18n';
-import { uiStatusTone } from '../lib/vehicle-file-summary.types';
+import { uiStatusLabel, uiStatusTone } from '../lib/vehicle-file-summary.types';
+import { sortDocumentCategories } from './documents/vehicle-file.constants';
 import type { VehicleFileSummary } from '../lib/vehicle-file-summary.types';
 
 const P259_ENFORCE_CLEAN_EXACT = [
@@ -262,6 +265,8 @@ describe('P2.2.59 rental vehicle documents overview localization', () => {
     expect(resolveVehicleDocumentUiStatusLabel('verified', tEn)).toBe(
       en['vehicleDocuments.status.verified'],
     );
+    expect(uiStatusLabel('verified', false)).toBe(en['vehicleDocuments.status.verified']);
+    expect(uiStatusLabel('verified', true)).toBe(de['vehicleDocuments.status.verified']);
     expect(resolveTimelineKindLabel('service_event', tDe)).toBe(
       de['vehicleDocuments.timelineKind.service_event'],
     );
@@ -269,8 +274,33 @@ describe('P2.2.59 rental vehicle documents overview localization', () => {
     expect(resolveFixedCostStatusLabel('verified', tEn)).toBe(
       en['vehicleDocuments.fixedCostStatus.verified'],
     );
+    expect(resolveFixedCostStatusLabel('not_configured', tEn)).toBe(
+      en['vehicleDocuments.fixedCostStatus.not_configured'],
+    );
     expect(resolveFixedCostStatusLabel('unknown_status_x7', tEn)).toBe(
       en['vehicleDocuments.specs.notProvided'],
+    );
+  });
+
+  it('reuses canonical readiness keys for rental health where exact', () => {
+    expect(resolveRentalHealthLabel('healthy', tEn)).toBe(en['vehicle.overview.readiness.ready']);
+    expect(resolveRentalHealthLabel('healthy', tDe)).toBe(de['vehicle.overview.readiness.ready']);
+    expect(resolveRentalHealthLabel('unknown', tEn)).toBe(en['vehicle.overview.readiness.unknown']);
+    expect(resolveRentalHealthLabel('warning', tEn)).toBe(en['vehicleDocuments.rentalHealth.warning']);
+    expect(resolveRentalHealthLabel('warning', tEn)).not.toBe(en['vehicle.overview.readiness.attention']);
+    expect(resolveRentalHealthLabel('blocked', tDe)).toBe(de['vehicleDocuments.rentalHealth.blocked']);
+    expect(resolveRentalHealthLabel('blocked', tDe)).not.toBe(de['vehicle.overview.readiness.blocked']);
+  });
+
+  it('uses proof-category empty-hint template with localized short titles', () => {
+    expect(resolveVehicleDocumentCategoryEmptyHint('service_proof', tEn)).toBe(
+      'No Service evidence on file yet.',
+    );
+    expect(resolveVehicleDocumentCategoryEmptyHint('service_proof', tDe)).toBe(
+      'Noch keine Service-Nachweise hinterlegt.',
+    );
+    expect(resolveVehicleDocumentCategoryEmptyHint('repair_proof', tEn)).toBe(
+      en['vehicleDocuments.category.repair_proof.emptyHint'],
     );
   });
 
@@ -350,17 +380,25 @@ describe('P2.2.59 rental vehicle documents overview localization', () => {
     container.remove();
   });
 
-  it('preserves category and timeline order across locale switches', async () => {
+  it('preserves category machine order across locale switches', async () => {
     writePersistedLocale('de');
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root: Root = createRoot(container);
+    const expectedCategoryOrder = sortDocumentCategories(mockSummary.documentCategories).map(
+      (cat) => cat.id,
+    );
 
     function LocaleSurface() {
       const { setLocale } = useLanguage();
       return createElement(
         'div',
         null,
+        createElement('button', {
+          type: 'button',
+          'data-testid': 'locale-de',
+          onClick: () => setLocale('de'),
+        }),
         createElement('button', {
           type: 'button',
           'data-testid': 'locale-en',
@@ -376,31 +414,97 @@ describe('P2.2.59 rental vehicle documents overview localization', () => {
     await act(async () => {
       root.render(createElement(LanguageProvider, null, createElement(LocaleSurface)));
     });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
 
-    const categoryIdsDe = ['insurance', 'other', 'registration'];
-    const titlesDe = Array.from(container.querySelectorAll('article h3')).map((el) =>
-      el.textContent?.trim(),
-    );
-    expect(titlesDe).toEqual([
-      de['vehicleDocuments.category.insurance.shortTitle'],
-      de['vehicleDocuments.category.other.shortTitle'],
-      de['vehicleDocuments.category.registration.shortTitle'],
-    ]);
-    expect(categoryIdsDe).toEqual(['insurance', 'other', 'registration']);
+    const readCategoryIds = () =>
+      Array.from(container.querySelectorAll('[data-category-id]')).map((el) =>
+        el.getAttribute('data-category-id'),
+      );
+
+    const categoryIdsDe = readCategoryIds();
+    expect(categoryIdsDe).toEqual(expectedCategoryOrder);
 
     await act(async () => {
       container.querySelector('[data-testid="locale-en"]')?.dispatchEvent(
         new MouseEvent('click', { bubbles: true }),
       );
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    const titlesEn = Array.from(container.querySelectorAll('article h3')).map((el) =>
-      el.textContent?.trim(),
-    );
-    expect(titlesEn).toEqual([
-      en['vehicleDocuments.category.insurance.shortTitle'],
-      en['vehicleDocuments.category.other.shortTitle'],
-      en['vehicleDocuments.category.registration.shortTitle'],
-    ]);
+    const categoryIdsEn = readCategoryIds();
+    expect(categoryIdsEn).toEqual(expectedCategoryOrder);
+
+    await act(async () => {
+      container.querySelector('[data-testid="locale-de"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(readCategoryIds()).toEqual(expectedCategoryOrder);
+
+    root.unmount();
+    container.remove();
+  });
+
+  it('preserves timeline machine order across locale switches', async () => {
+    writePersistedLocale('de');
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root: Root = createRoot(container);
+    const expectedTimelineOrder = mockSummary.timeline.map((item) => item.id);
+
+    function LocaleSurface() {
+      const { setLocale } = useLanguage();
+      return createElement(
+        'div',
+        null,
+        createElement('button', {
+          type: 'button',
+          'data-testid': 'locale-de',
+          onClick: () => setLocale('de'),
+        }),
+        createElement('button', {
+          type: 'button',
+          'data-testid': 'locale-en',
+          onClick: () => setLocale('en'),
+        }),
+        createElement(DocumentsView, {
+          vehicle: { id: 'veh-x7', make: 'Provider', model: 'Model X7', license: RAW_LICENSE } as never,
+          onOpenLinkedTask: vi.fn(),
+        }),
+      );
+    }
+
+    await act(async () => {
+      root.render(createElement(LanguageProvider, null, createElement(LocaleSurface)));
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const readTimelineIds = () =>
+      Array.from(container.querySelectorAll('[data-timeline-id]')).map((el) =>
+        el.getAttribute('data-timeline-id'),
+      );
+
+    expect(readTimelineIds()).toEqual(expectedTimelineOrder);
+
+    await act(async () => {
+      container.querySelector('[data-testid="locale-en"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(readTimelineIds()).toEqual(expectedTimelineOrder);
+
+    await act(async () => {
+      container.querySelector('[data-testid="locale-de"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(readTimelineIds()).toEqual(expectedTimelineOrder);
 
     root.unmount();
     container.remove();

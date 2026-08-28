@@ -40,7 +40,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.987',
     title: 'Platform i18n — P2.2.59 Vehicle Documents Read-Only Overview',
     summary: [
-      'Localized production-mounted Vehicle Documents overview/list slice (`DocumentsView`, `DocumentComplianceSummaryCard`) via new `rental-vehicle-documents-i18n.ts`; +133 `vehicleDocuments.*` keys (8954→9087 EN+DE).',
+      'Localized production-mounted Vehicle Documents overview/list slice (`DocumentsView`, `DocumentComplianceSummaryCard`) via new `rental-vehicle-documents-i18n.ts`; +128 `vehicleDocuments.*` keys (8954→9082 EN+DE) after canonical reuse correction.',
       'Category/status/timeline-kind/fixed-cost/source machines mapped through adapter; raw timeline titles, filenames, linked-task titles, backend errors, and spec values preserved.',
       'P259 enforce-clean exact scope (2 paths) — 0 findings; reuses `common.retry`. True same-mount DE→EN→DE test. Upload Drawer deferred. Category E=0.',
     ],

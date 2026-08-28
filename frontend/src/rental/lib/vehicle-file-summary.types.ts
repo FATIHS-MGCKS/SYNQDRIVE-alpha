@@ -1,4 +1,7 @@
 import { getFormattingLocale } from '../../i18n/locales';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 export type VehicleDocumentUiStatus =
   | 'missing'
@@ -133,20 +136,10 @@ export function formatEuroAmount(value: number | null | undefined, formattingLoc
   }).format(value);
 }
 
-export function uiStatusLabel(status: VehicleDocumentUiStatus, de: boolean): string {
-  const map: Record<VehicleDocumentUiStatus, [string, string]> = {
-    missing: ['Missing', 'Fehlt'],
-    uploaded: ['Uploaded', 'Hochgeladen'],
-    processing: ['Processing', 'Verarbeitung'],
-    needs_review: ['Needs review', 'Review nötig'],
-    verified: ['Verified', 'Verifiziert'],
-    applied: ['Applied', 'Angewendet'],
-    expiring_soon: ['Expiring soon', 'Läuft ab'],
-    expired: ['Expired', 'Abgelaufen'],
-    error: ['Error', 'Fehler'],
-    archived: ['Archived', 'Archiviert'],
-  };
-  return de ? map[status][1] : map[status][0];
+export function uiStatusLabel(status: VehicleDocumentUiStatus, deLocale: boolean): string {
+  const dict = deLocale ? de : en;
+  const key = `vehicleDocuments.status.${status}` as TranslationKey;
+  return dict[key] ?? status;
 }
 
 export function uiStatusTone(

@@ -63,13 +63,24 @@ Data: `useVehicleFileSummary(vehicleId)` → vehicle file summary API
 | Metric | Value |
 |--------|-------|
 | Baseline EN/DE | 8954 |
-| Final EN/DE | 9087 |
-| New keys | 133 |
-| Reused | `common.retry` |
+| Final EN/DE | 9082 |
+| New keys | 128 |
+| Removed (correction) | 7 (`rentalHealthPrefix`, `rentalHealth.healthy`, `rentalHealth.unknown`, 4 proof `emptyHint`) |
+| Added (correction) | 2 (`category.emptyHintProof`, `fixedCostStatus.not_configured`) |
+| Reused canonical | `common.retry`, `bookings.detail.rentalHealth`, `vehicle.overview.readiness.ready`, `vehicle.overview.readiness.unknown` |
 | Parity | 100% |
 | Orphans | 0 |
 
-> Key count exceeds pre-flight ~18–22 **scanner-finding** estimate because 13 category × (shortTitle + description + emptyHint) plus status/source/timeline machines require full dictionary coverage. Justified: overview cannot localize without category metadata.
+> Original implementation added 133 keys. Post-reassessment correction reduced to **128** via canonical reuse and proof-category empty-hint template consolidation. Pre-flight ~18–22 counted scanner findings, not dictionary keys; hidden `CATEGORY_UI_META` (39 strings) drove the honest irreducible floor.
+
+### Correction details (2026-08-28)
+
+- **Rental health prefix:** `bookings.detail.rentalHealth` reused (−1)
+- **Rental health status:** `healthy`/`unknown` → `vehicle.overview.readiness.*` where exact (−2); `warning` kept (≠ `attention`); `blocked` kept (DE `Gesperrt` ≠ `Blockiert`)
+- **UI status taxonomy:** `uiStatusLabel()` now delegates to `vehicleDocuments.status.*` (single display authority)
+- **Empty hints:** 4 proof categories (`service_proof`, `tire_proof`, `brake_proof`, `battery_proof`) use `category.emptyHintProof` template (−3 net)
+- **Fixed-cost status:** explicit `not_configured` key (+1)
+- **Tests:** category/timeline machine-order assertions via `data-category-id` / `data-timeline-id`
 
 ## Scanner accounting
 
@@ -96,8 +107,8 @@ All semantic categories = 0 (presentation-only).
 
 ## Verdict
 
-**B — IMPLEMENTATION COMPLETE WITH NON-BLOCKING OBSERVATIONS — READY FOR RE-AUDIT**
+**A — P259 KEY MODEL CORRECTED — READY FOR FINAL INDEPENDENT RE-AUDIT**
 
-Observation: dictionary key count (133) exceeds ideal ≤22 gate due to required category metadata coverage; scanner debt closed as scoped.
+Correction applied per reassessment PR #1392: canonical reuse, status taxonomy dedup, proof empty-hint template, explicit `not_configured`, order-test hardening. Final key count: **128**.
 
 **VEHICLE DOCUMENTS UPLOAD DRAWER REMAINS DEFERRED.**

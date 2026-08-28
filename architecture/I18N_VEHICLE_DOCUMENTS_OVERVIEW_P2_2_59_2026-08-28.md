@@ -9,9 +9,9 @@
 
 ## Keys
 
-+133 EN+DE `vehicleDocuments.*` (8954→9087); reuses `common.retry`.
++128 EN+DE `vehicleDocuments.*` (8954→9082); reuses `common.retry`, `bookings.detail.rentalHealth`, `vehicle.overview.readiness.ready/unknown`.
 
-Groups: header/overview, section chrome, category metadata (13 IDs × 3 fields), status machine, timeline kind, fixed-cost status, status source, rental health, specs/variable/timeline/compliance.
+Groups: header/overview, section chrome, category metadata (13 IDs × shortTitle/description + 9 category-specific emptyHints + 1 proof template), status machine (canonical via `uiStatusLabel` + `resolveVehicleDocumentUiStatusLabel`), timeline kind, fixed-cost status (incl. `not_configured`), status source, rental health (warning/critical/blocked only), specs/variable/timeline/compliance.
 
 ## Machine values (frozen)
 
@@ -31,7 +31,7 @@ P258 Tenant Billing Add-ons, P257 payment method, P216–P257 rental billing/ope
 
 ## Tests
 
-`rental-vehicle-documents-localization.test.tsx` — true same-mount DE→EN→DE, raw DOM fixtures, machine mappings, unknown fallbacks, category order, React identity.
+`rental-vehicle-documents-localization.test.tsx` — true same-mount DE→EN→DE, raw DOM fixtures, machine mappings, unknown fallbacks, **category/timeline machine-order via data attributes**, React identity.
 
 ## Deferred
 

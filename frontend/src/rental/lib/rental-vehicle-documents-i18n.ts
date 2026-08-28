@@ -16,6 +16,13 @@ import type {
 
 type Translate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
+const EMPTY_HINT_PROOF_TEMPLATE_IDS: VehicleDocumentCategoryId[] = [
+  'service_proof',
+  'tire_proof',
+  'brake_proof',
+  'battery_proof',
+];
+
 const CATEGORY_IDS: VehicleDocumentCategoryId[] = [
   'registration',
   'insurance',
@@ -75,6 +82,11 @@ export function resolveVehicleDocumentCategoryEmptyHint(
   t: Translate,
 ): string {
   if (isKnownCategoryId(categoryId)) {
+    if (EMPTY_HINT_PROOF_TEMPLATE_IDS.includes(categoryId)) {
+      return t('vehicleDocuments.category.emptyHintProof', {
+        categoryShortTitle: t(categoryKey(categoryId, 'shortTitle')),
+      });
+    }
     return t(categoryKey(categoryId, 'emptyHint'));
   }
   return '';
@@ -101,6 +113,7 @@ export function resolveTimelineKindLabel(kind: string | undefined, t: Translate)
 export function resolveFixedCostStatusLabel(status: string, t: Translate): string {
   if (status === 'verified') return t('vehicleDocuments.fixedCostStatus.verified');
   if (status === 'missing_evidence') return t('vehicleDocuments.fixedCostStatus.missing_evidence');
+  if (status === 'not_configured') return t('vehicleDocuments.fixedCostStatus.not_configured');
   return t('vehicleDocuments.specs.notProvided');
 }
 
@@ -117,7 +130,7 @@ export function resolveRentalHealthLabel(
 ): string {
   switch (status) {
     case 'healthy':
-      return t('vehicleDocuments.rentalHealth.healthy');
+      return t('vehicle.overview.readiness.ready');
     case 'warning':
       return t('vehicleDocuments.rentalHealth.warning');
     case 'critical':
@@ -125,7 +138,7 @@ export function resolveRentalHealthLabel(
     case 'blocked':
       return t('vehicleDocuments.rentalHealth.blocked');
     default:
-      return t('vehicleDocuments.rentalHealth.unknown');
+      return t('vehicle.overview.readiness.unknown');
   }
 }
 

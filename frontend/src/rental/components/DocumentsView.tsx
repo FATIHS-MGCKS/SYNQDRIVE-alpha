@@ -255,7 +255,7 @@ export function DocumentsView({ vehicle, onOpenLinkedTask }: DocumentsViewProps)
                   }
                   className="!text-[10px]"
                 >
-                  {t('vehicleDocuments.header.rentalHealthPrefix')}{' '}
+                  {t('bookings.detail.rentalHealth')}:{' '}
                   {resolveRentalHealthLabel(summary.canonicalStatus.rentalHealthStatus, t)}
                 </StatusChip>
                 {missingMandatory != null && missingMandatory > 0 ? (
@@ -629,6 +629,7 @@ function DocumentCategoryCard({
 
   return (
     <article
+      data-category-id={category.id}
       className={`group surface-elevated flex flex-col rounded-xl border surface-premium p-3 transition-all duration-200 hover:border-border hover:bg-muted/20 ${
         isPriority ? 'border-[color:var(--status-watch)]/35' : 'border-border/70'
       } ${isCompact ? 'opacity-95' : ''}`}
