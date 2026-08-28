@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'energy-events-e3a-production-dry-run-gate-2026-08-28',
+    version: '4.9.978',
+    title: 'Energy Events E3A — production dry-run gate hardening (PR #1373)',
+    summary: [
+      'Conservative same-ID dedup: MANUAL_REVIEW_REQUIRED wins across windows; `same_id_material_payload_mismatch` on divergent payloads.',
+      'FULL mode requires per-vehicle `dbVehicleMapped`; synthetic dry-run IDs never write targets.',
+      'Expanded `isMateriallyIdentical` to match production upsert (coords, odometer, rawDetectionMeta).',
+      'Standalone DIMO fetch isolates per-mechanism network failures; QUICK windows bounded ≤24h.',
+      'Separate artifacts: `energy-events-recovery-quick-evidence-2026-08.json` + `energy-events-recovery-full-db-preview-2026-08.json`; GPS stripped from committed artifacts.',
+    ],
+    reason:
+      'E3A final production-dry-run gate: close recovery correctness gaps before first real DB-backed FULL read-only preview.',
+    previousBehavior:
+      'Same-ID dedup could downgrade MANUAL_REVIEW; FULL mode could use synthetic vehicle IDs; material identity compared partial fields; multi-week QUICK windows.',
+    details:
+      'backend: energy-events-recovery-reconcile.ts, energy-events-recovery-read.repository.ts, energy-events.pipeline.ts, energy-events-standalone-dimo-fetch.ts, energy-events-recovery.constants.ts, energy-events-recovery-runner.ts. 47 focused tests. docs/architecture/ENERGY_EVENTS_E3A_OBSERVABILITY_RECOVERY_DRY_RUN_2026-08.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T09:55:00.000Z',
+  },
+  {
     id: 'energy-events-e3a-observability-recovery-dry-run-2026-08-28',
     version: '4.9.977',
     title: 'Energy Events E3A — observability + read-only historical recovery dry-run',

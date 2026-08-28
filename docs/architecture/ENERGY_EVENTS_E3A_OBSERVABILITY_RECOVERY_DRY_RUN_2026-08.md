@@ -13,6 +13,13 @@
 | Full-mode DB gate | `dbComparisonEnabled=true` required; otherwise `NOT READY` + `DB_COMPARISON_UNAVAILABLE` |
 | Request accounting | Mechanism-aware queries; telemetry GraphQL requests counted per mechanism (not per wrapper) |
 | Cross-window dedup | Global reconciliation by `dimoSegmentId`, overlap detection, existing-DB overlap flags |
+| Conservative same-ID dedup | If any window occurrence is `MANUAL_REVIEW_REQUIRED` or payloads differ → stays MR; merges reasons; `same_id_material_payload_mismatch` |
+| Per-vehicle DB mapping | `dbVehicleMapped` required in FULL mode; synthetic `dry-run-token-*` never eligible for writes |
+| Material identity | `isMateriallyIdentical` matches full production upsert payload (kind, mechanism, coords, odometer, rawDetectionMeta) |
+| Network isolation | Standalone fetch isolates per-mechanism thrown errors; request accounting preserved |
+| Quick windows | `QUICK_ACCEPTANCE_WINDOWS` each ≤24h (KS MX Aug 23, Tesla Jun 15/17) |
+| Artifact privacy | Committed artifacts strip `startLatitude`/`startLongitude`; `codeShaUnderTest` + `baseMainSha` provenance |
+| Fuel quality flag | `fuel_signal_contradiction` surfaced in preview without changing persist gate |
 | No-write proof | `EnergyEventsRecoveryReadRepository` + mutation-guarded Prisma client |
 | Fetch failure gate | Any unresolved `FETCH_FAILED` in FULL mode → `NOT READY` |
 | Fleet inventory | VW Golf `190497` included as `DIMO_ACCESS_FAILED` (known HTTP 403) |
@@ -127,12 +134,15 @@ VehicleEnergyDetectionStatus
 
 ## 8. Tests
 
-43 focused tests pass:
+47 focused tests pass:
 
 - E1 mechanism isolation in dry-run
 - Full mode without DB → NOT READY
-- QUICK mode never write-back ready
-- Cross-window dedup + overlap flags
+- QUICK mode never write-back ready; bounded ≤24h windows
+- Conservative same-ID dedup + cross-window overlap flags
+- FULL-mode `DB_VEHICLE_MAPPING_MISSING` for unmapped fleet
+- Material identity vs production upsert payload
+- Standalone per-mechanism network failure isolation
 - Mutation-guarded repository path
 - Mechanism-aware request accounting
 - E1 prune + E2 KS MX regressions
@@ -141,7 +151,8 @@ VehicleEnergyDetectionStatus
 
 ## 9. Artifacts
 
-- `artifacts/energy-events-recovery-dry-run-2026-08.json` (sanitized coordinates, no auth secrets)
-- Run on VPS with `DATABASE_URL` for production `ALREADY_IDENTICAL` comparison
+- `artifacts/energy-events-recovery-quick-evidence-2026-08.json` (QUICK acceptance, no coordinates)
+- `artifacts/energy-events-recovery-full-db-preview-2026-08.json` (FULL DB-backed read-only preview)
+- Prior branch commit `dd9ed2f8d` contained precise GPS coordinates in artifacts (removed; history not rewritten)
 
 **No historical backfill executed.**

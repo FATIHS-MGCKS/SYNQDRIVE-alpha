@@ -31,6 +31,7 @@ export interface EnergyRecoveryVehicleInventoryRow {
   provider: string;
   powertrain: 'ICE' | 'EV' | 'UNKNOWN';
   dimoAccessAvailable: boolean;
+  dbVehicleMapped: boolean;
   relativeFuelAvailable: boolean;
   absoluteFuelAvailable: boolean;
   rechargeSocAvailable: boolean;
@@ -53,8 +54,8 @@ export interface EnergyRecoveryCandidate {
   fuelDeltaPercent: number | null;
   socDeltaPercent: number | null;
   energyDeltaKwh: number | null;
-  startLatitude: number | null;
-  startLongitude: number | null;
+  odometerStartKm?: number | null;
+  odometerEndKm?: number | null;
   confidence: EnergyEventConfidence;
   detectorConfigVersion: string;
   manualReviewReasons: string[];
@@ -77,8 +78,10 @@ export interface ManualReviewEntry {
   fuelDeltaPercent: number | null;
   socDeltaPercent: number | null;
   energyDeltaKwh: number | null;
+  odometerDeltaKm: number | null;
   confidence: EnergyEventConfidence;
   plausibilityReasons: string[];
+  telemetryEvidenceNotes: string[];
   overlapRelation: string | null;
   existingDbRelation: string | null;
   existingRowId: string | null;
@@ -95,18 +98,20 @@ export interface DimoRequestAccounting {
 
 export interface EnergyRecoveryDryRunReport {
   generatedAt: string;
-  mainSha: string;
-  baseSha: string;
+  codeShaUnderTest: string;
+  baseMainSha: string;
   detectorConfigVersion: string;
   refuelDetectorConfig: { minIncreasePercent: number };
   rechargeDetectorConfig: 'default';
   outageStart: string;
   recoveryCutoff: string;
   windowSizeHours: number;
+  windowSizesHours: number[];
   windowSemantics: string;
   mode: 'full' | 'quick';
   dbComparisonEnabled: boolean;
   dbComparisonStatus: DbComparisonStatus;
+  dbVehicleMappingFailures: number;
   vehicles: EnergyRecoveryVehicleInventoryRow[];
   requestAccounting: DimoRequestAccounting;
   refuelDetections: number;
@@ -167,13 +172,22 @@ export interface EnergyRecoverySimulateInput {
     id: string;
     dimoSegmentId: string;
     kind: string;
+    detectionMechanism: string;
     startTime: Date;
     endTime: Date;
+    durationSeconds: number;
+    startLatitude: number | null;
+    startLongitude: number | null;
+    endLatitude: number | null;
+    endLongitude: number | null;
     fuelDeltaLiters: number | null;
     fuelDeltaPercent: number | null;
     socDeltaPercent: number | null;
     energyDeltaKwh: number | null;
+    odometerStartKm: number | null;
+    odometerEndKm: number | null;
     confidence: EnergyEventConfidence;
+    rawDetectionMeta: unknown;
   }>;
   detectorConfigVersion: string;
 }

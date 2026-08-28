@@ -7,6 +7,28 @@ import {
 
 export type DbComparisonStatus = 'ok' | 'DB_COMPARISON_UNAVAILABLE';
 
+export interface RecoveryExistingEnergyEvent {
+  id: string;
+  dimoSegmentId: string;
+  kind: string;
+  detectionMechanism: string;
+  startTime: Date;
+  endTime: Date;
+  durationSeconds: number;
+  startLatitude: number | null;
+  startLongitude: number | null;
+  endLatitude: number | null;
+  endLongitude: number | null;
+  fuelDeltaLiters: number | null;
+  fuelDeltaPercent: number | null;
+  socDeltaPercent: number | null;
+  energyDeltaKwh: number | null;
+  odometerStartKm: number | null;
+  odometerEndKm: number | null;
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  rawDetectionMeta: unknown;
+}
+
 export interface EnergyEventsRecoveryReadRepository {
   loadVehiclesForRecovery(options: {
     outageStart: Date;
@@ -18,13 +40,22 @@ const EXISTING_EVENT_SELECT = {
   id: true,
   dimoSegmentId: true,
   kind: true,
+  detectionMechanism: true,
   startTime: true,
   endTime: true,
+  durationSeconds: true,
+  startLatitude: true,
+  startLongitude: true,
+  endLatitude: true,
+  endLongitude: true,
   fuelDeltaLiters: true,
   fuelDeltaPercent: true,
   socDeltaPercent: true,
   energyDeltaKwh: true,
+  odometerStartKm: true,
+  odometerEndKm: true,
   confidence: true,
+  rawDetectionMeta: true,
 } as const;
 
 function resolveSignalProfile(tokenId: number): AuditedFleetSignalProfile | undefined {
@@ -38,18 +69,7 @@ function mapDbRowToRecoveryVehicle(
     vehicleName: string | null;
     hardwareType: string | null;
     dimoVehicle: { tokenId: number } | null;
-    energyEvents: Array<{
-      id: string;
-      dimoSegmentId: string;
-      kind: string;
-      startTime: Date;
-      endTime: Date;
-      fuelDeltaLiters: number | null;
-      fuelDeltaPercent: number | null;
-      socDeltaPercent: number | null;
-      energyDeltaKwh: number | null;
-      confidence: 'HIGH' | 'MEDIUM' | 'LOW';
-    }>;
+    energyEvents: RecoveryExistingEnergyEvent[];
   },
   dimoAccessAvailable: boolean,
 ): RecoveryVehicleInput | null {
@@ -67,6 +87,7 @@ function mapDbRowToRecoveryVehicle(
     absoluteFuelAvailable: profile?.absoluteFuel ?? false,
     rechargeSocAvailable: profile?.rechargeSoc ?? false,
     dimoAccessAvailable,
+    dbVehicleMapped: true,
     existingEvents: row.energyEvents,
   };
 }
@@ -109,10 +130,6 @@ const FORBIDDEN_MUTATIONS = [
   'createMany',
 ] as const;
 
-/**
- * Wraps Prisma so any VehicleEnergyEvent mutation throws immediately.
- * Used to prove recovery dry-run paths cannot write.
- */
 export function createMutationGuardedPrismaClient(
   prisma: PrismaClient,
 ): PrismaClient {
@@ -164,6 +181,50 @@ export function buildFleetFallbackVehicles(
     absoluteFuelAvailable: profile.absoluteFuel,
     rechargeSocAvailable: profile.rechargeSoc,
     dimoAccessAvailable: dimoAccessByTokenId[profile.tokenId] ?? false,
+    dbVehicleMapped: false,
     existingEvents: [],
   }));
+}
+
+export function mergeAuditedFleetIntoDbVehicles(
+  dbVehicles: RecoveryVehicleInput[],
+  dimoAccessByTokenId: Record<number, boolean>,
+  fullMode: boolean,
+): RecoveryVehicleInput[] {
+  const byToken = new Map(
+    dbVehicles.map((vehicle) => [
+      vehicle.tokenId,
+      {
+        ...vehicle,
+        dbVehicleMapped: true,
+        dimoAccessAvailable: dimoAccessByTokenId[vehicle.tokenId] ?? vehicle.dimoAccessAvailable,
+      },
+    ]),
+  );
+  const fallback = buildFleetFallbackVehicles(dimoAccessByTokenId);
+
+  for (const vehicle of fallback) {
+    const existing = byToken.get(vehicle.tokenId);
+    if (existing) {
+      existing.dimoAccessAvailable = dimoAccessByTokenId[vehicle.tokenId] ?? false;
+      existing.relativeFuelAvailable = vehicle.relativeFuelAvailable;
+      existing.absoluteFuelAvailable = vehicle.absoluteFuelAvailable;
+      existing.rechargeSocAvailable = vehicle.rechargeSocAvailable;
+      existing.powertrain = vehicle.powertrain;
+      existing.dbVehicleMapped = true;
+      continue;
+    }
+
+    if (fullMode) {
+      byToken.set(vehicle.tokenId, {
+        ...vehicle,
+        dbVehicleMapped: false,
+      });
+      continue;
+    }
+
+    byToken.set(vehicle.tokenId, vehicle);
+  }
+
+  return [...byToken.values()].sort((a, b) => a.label.localeCompare(b.label));
 }

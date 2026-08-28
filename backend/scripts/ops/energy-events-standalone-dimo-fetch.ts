@@ -16,6 +16,7 @@ import type { EnergyMechanismFetchOutcome } from '../../src/modules/dimo/energy-
 import { parseDimoEnergyEventSegment } from '../../src/modules/dimo/energy-events/parse-energy-event-segment';
 import { mapRechargeSegmentToEnergyEvent } from '../../src/modules/dimo/recharge-segments/dimo-recharge-segments.mapper';
 import { normalizeDimoRechargeSegments } from '../../src/modules/dimo/recharge-segments/dimo-recharge-segments.normalizer';
+import { isRetryableDimoAxiosError } from '../../src/modules/dimo/recharge-segments/dimo-recharge-segments.graphql';
 import {
   mechanismsForEnergyClass,
   type AuditedFleetSignalProfile,
@@ -212,9 +213,46 @@ export async function fetchEnergyEventSegmentsStandalone(
             detectorConfig: DIMO_PRODUCTION_RECHARGE_DETECTOR_CONFIG,
           });
 
-    accounting.telemetryGraphqlRequests += 1;
-    const response = await gql(vehicleJwt, query);
-    if (response.httpStatus !== 200 || response.errors) {
+    try {
+      accounting.telemetryGraphqlRequests += 1;
+      const response = await gql(vehicleJwt, query);
+      if (response.httpStatus !== 200 || response.errors) {
+        outcomes.push({
+          mechanism,
+          status: 'FAILED',
+          segments: [],
+          windowFrom,
+          windowTo,
+          tokenId,
+          error: {
+            message: JSON.stringify(response.errors ?? response.httpStatus),
+            httpStatus: response.httpStatus,
+            retryable: response.httpStatus === 429,
+          },
+        });
+        continue;
+      }
+
+      const rawSegments = (response.data as { segments?: unknown[] })?.segments ?? [];
+      const parsed =
+        mechanism === 'refuel'
+          ? rawSegments
+              .map((segment) => parseDimoEnergyEventSegment(tokenId, mechanism, segment))
+              .filter((s): s is DimoEnergyEventSegment => s != null)
+          : normalizeDimoRechargeSegments(tokenId, rawSegments).map(
+              mapRechargeSegmentToEnergyEvent,
+            );
+
+      outcomes.push({
+        mechanism,
+        status: classifyMechanismFetchStatus(parsed, false),
+        segments: parsed,
+        windowFrom,
+        windowTo,
+        tokenId,
+      });
+      segments.push(...parsed);
+    } catch (error) {
       outcomes.push({
         mechanism,
         status: 'FAILED',
@@ -223,33 +261,11 @@ export async function fetchEnergyEventSegmentsStandalone(
         windowTo,
         tokenId,
         error: {
-          message: JSON.stringify(response.errors ?? response.httpStatus),
-          httpStatus: response.httpStatus,
-          retryable: response.httpStatus === 429,
+          message: error instanceof Error ? error.message : String(error),
+          retryable: isRetryableDimoAxiosError(error),
         },
       });
-      continue;
     }
-
-    const rawSegments = (response.data as { segments?: unknown[] })?.segments ?? [];
-    const parsed =
-      mechanism === 'refuel'
-        ? rawSegments
-            .map((segment) => parseDimoEnergyEventSegment(tokenId, mechanism, segment))
-            .filter((s): s is DimoEnergyEventSegment => s != null)
-        : normalizeDimoRechargeSegments(tokenId, rawSegments).map(
-            mapRechargeSegmentToEnergyEvent,
-          );
-
-    outcomes.push({
-      mechanism,
-      status: classifyMechanismFetchStatus(parsed, false),
-      segments: parsed,
-      windowFrom,
-      windowTo,
-      tokenId,
-    });
-    segments.push(...parsed);
   }
 
   return { segments, outcomes, accounting };

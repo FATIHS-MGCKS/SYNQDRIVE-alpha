@@ -273,14 +273,23 @@ export function collectReplaceableSubSegmentIds(
 
 export function isMateriallyIdentical(
   existing: {
+    kind: string;
+    detectionMechanism?: string | null;
     startTime: Date;
     endTime: Date;
-    kind: string;
+    durationSeconds?: number | null;
+    startLatitude?: number | null;
+    startLongitude?: number | null;
+    endLatitude?: number | null;
+    endLongitude?: number | null;
     fuelDeltaLiters: number | null;
     fuelDeltaPercent: number | null;
     socDeltaPercent: number | null;
     energyDeltaKwh: number | null;
+    odometerStartKm?: number | null;
+    odometerEndKm?: number | null;
     confidence: string;
+    rawDetectionMeta?: unknown;
   },
   payload: EnergyEventUpsertPayload,
 ): boolean {
@@ -288,14 +297,72 @@ export function isMateriallyIdentical(
     existing.startTime.getTime() === payload.startTime.getTime() &&
     existing.endTime.getTime() === payload.endTime.getTime();
   const sameKind = existing.kind === payload.kind;
+  const sameMechanism =
+    (existing.detectionMechanism ?? payload.detectionMechanism) ===
+    payload.detectionMechanism;
+  const sameDuration =
+    (existing.durationSeconds ?? payload.durationSeconds) === payload.durationSeconds;
+  const sameCoords =
+    (existing.startLatitude ?? null) === payload.startLatitude &&
+    (existing.startLongitude ?? null) === payload.startLongitude &&
+    (existing.endLatitude ?? null) === payload.endLatitude &&
+    (existing.endLongitude ?? null) === payload.endLongitude;
   const sameFuel =
     (existing.fuelDeltaLiters ?? null) === (payload.fuelDeltaLiters ?? null) &&
     (existing.fuelDeltaPercent ?? null) === (payload.fuelDeltaPercent ?? null);
   const sameSoc =
     (existing.socDeltaPercent ?? null) === (payload.socDeltaPercent ?? null) &&
     (existing.energyDeltaKwh ?? null) === (payload.energyDeltaKwh ?? null);
+  const sameOdometer =
+    (existing.odometerStartKm ?? null) === (payload.odometerStartKm ?? null) &&
+    (existing.odometerEndKm ?? null) === (payload.odometerEndKm ?? null);
   const sameConfidence = existing.confidence === payload.confidence;
-  return sameTime && sameKind && sameFuel && sameSoc && sameConfidence;
+  const sameMeta = normalizedRawDetectionMetaEquals(
+    existing.rawDetectionMeta,
+    payload.rawDetectionMeta,
+  );
+  return (
+    sameTime &&
+    sameKind &&
+    sameMechanism &&
+    sameDuration &&
+    sameCoords &&
+    sameFuel &&
+    sameSoc &&
+    sameOdometer &&
+    sameConfidence &&
+    sameMeta
+  );
+}
+
+function normalizedRawDetectionMetaEquals(
+  left: unknown,
+  right: Record<string, unknown>,
+): boolean {
+  return (
+    JSON.stringify(normalizeRawDetectionMeta(left)) ===
+    JSON.stringify(normalizeRawDetectionMeta(right))
+  );
+}
+
+function normalizeRawDetectionMeta(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+    a.localeCompare(b),
+  );
+  const normalized: Record<string, unknown> = {};
+  for (const [key, entryValue] of entries) {
+    if (Array.isArray(entryValue)) {
+      normalized[key] = [...entryValue].map((item) =>
+        typeof item === 'string' ? item : item,
+      );
+      continue;
+    }
+    normalized[key] = entryValue;
+  }
+  return normalized;
 }
 
 function haversineMeters(

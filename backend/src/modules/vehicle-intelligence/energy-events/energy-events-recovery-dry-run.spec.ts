@@ -4,20 +4,23 @@ import {
   simulateRecoveryWindow,
   summarizeClassifications,
 } from './energy-events-recovery-dry-run';
-import { isSegmentPersistable, coalesceSegments } from './energy-events.pipeline';
+import { buildUpsertPayload, coalesceSegments, isMateriallyIdentical, isSegmentPersistable } from './energy-events.pipeline';
 import { splitRecoveryQueryWindows } from './energy-events-window.util';
 import {
   ENERGY_EVENTS_OUTAGE_START_ISO,
   ENERGY_EVENTS_RECOVERY_CUTOFF_ISO,
   ENERGY_EVENTS_RECOVERY_WINDOW_MS,
+  QUICK_ACCEPTANCE_WINDOWS,
 } from './energy-events-recovery.constants';
 import { reconcileRecoveryCandidates } from './energy-events-recovery-reconcile';
 import { runEnergyEventsRecoveryDryRun } from './energy-events-recovery-runner';
 import {
   createMutationGuardedPrismaClient,
   createPrismaRecoveryReadRepository,
+  mergeAuditedFleetIntoDbVehicles,
 } from './energy-events-recovery-read.repository';
 import { PrismaClient } from '@prisma/client';
+import { assessPlausibilityFlags } from './energy-events-plausibility';
 
 const VEHICLE_ID = 'clveh1234567890123456789012';
 
@@ -48,6 +51,64 @@ function buildRefuel(overrides: Partial<DimoEnergyEventSegment> = {}): DimoEnerg
     energyStartKwh: null,
     energyEndKwh: null,
     energyDeltaKwh: null,
+    ...overrides,
+  };
+}
+
+function buildMatchingExistingEvent(
+  refuel: DimoEnergyEventSegment,
+  overrides: Record<string, unknown> = {},
+) {
+  const coalesced = coalesceSegments([refuel])[0];
+  const payload = buildUpsertPayload(VEHICLE_ID, coalesced);
+  return {
+    id: 'evt-1',
+    dimoSegmentId: payload.dimoSegmentId,
+    kind: payload.kind,
+    detectionMechanism: payload.detectionMechanism,
+    startTime: payload.startTime,
+    endTime: payload.endTime,
+    durationSeconds: payload.durationSeconds,
+    startLatitude: payload.startLatitude,
+    startLongitude: payload.startLongitude,
+    endLatitude: payload.endLatitude,
+    endLongitude: payload.endLongitude,
+    fuelDeltaLiters: payload.fuelDeltaLiters,
+    fuelDeltaPercent: payload.fuelDeltaPercent,
+    socDeltaPercent: payload.socDeltaPercent,
+    energyDeltaKwh: payload.energyDeltaKwh,
+    odometerStartKm: payload.odometerStartKm,
+    odometerEndKm: payload.odometerEndKm,
+    confidence: payload.confidence,
+    rawDetectionMeta: payload.rawDetectionMeta,
+    ...overrides,
+  };
+}
+
+function buildRecoveryCandidate(
+  overrides: Partial<import('./energy-events-recovery.types').EnergyRecoveryCandidate> = {},
+) {
+  return {
+    classification: 'WOULD_CREATE' as const,
+    mechanism: 'refuel' as const,
+    vehicleId: VEHICLE_ID,
+    tokenId: 187336,
+    label: 'KS MX 2024',
+    dimoSegmentId: 'dimo-refuel-187336-1',
+    coalescedFromSegmentIds: ['dimo-refuel-187336-1'],
+    startTime: '2026-08-23T16:15:15.000Z',
+    endTime: '2026-08-23T16:23:16.000Z',
+    durationSeconds: 481,
+    fuelDeltaLiters: 16,
+    fuelDeltaPercent: 29,
+    socDeltaPercent: null,
+    energyDeltaKwh: null,
+    confidence: EnergyEventConfidence.HIGH,
+    detectorConfigVersion: 'e2-2026-08',
+    manualReviewReasons: [],
+    existingRowId: null,
+    windowFrom: '2026-08-22T00:00:00.000Z',
+    windowTo: '2026-08-23T00:00:00.000Z',
     ...overrides,
   };
 }
@@ -98,22 +159,21 @@ describe('energy-events-recovery dry-run classification', () => {
     const result = simulateRecoveryWindow({
       ...baseInput,
       segments: [refuel],
-      existingEvents: [
-        {
-          id: 'evt-1',
-          dimoSegmentId: refuel.segmentId,
-          kind: 'REFUEL',
-          startTime: new Date(refuel.startTime),
-          endTime: new Date(refuel.endTime!),
-          fuelDeltaLiters: 18,
-          fuelDeltaPercent: 29,
-          socDeltaPercent: null,
-          energyDeltaKwh: null,
-          confidence: EnergyEventConfidence.HIGH,
-        },
-      ],
+      existingEvents: [buildMatchingExistingEvent(refuel)],
     });
     expect(result.candidates.some((c) => c.classification === 'ALREADY_IDENTICAL')).toBe(true);
+  });
+
+  it('2b. same ID changed odometer → WOULD_UPDATE', () => {
+    const refuel = buildRefuel();
+    const result = simulateRecoveryWindow({
+      ...baseInput,
+      segments: [refuel],
+      existingEvents: [
+        buildMatchingExistingEvent(refuel, { odometerEndKm: 99999 }),
+      ],
+    });
+    expect(result.candidates.some((c) => c.classification === 'WOULD_UPDATE')).toBe(true);
   });
 
   it('3. existing same ID with changed data → WOULD_UPDATE', () => {
@@ -122,18 +182,11 @@ describe('energy-events-recovery dry-run classification', () => {
       ...baseInput,
       segments: [refuel],
       existingEvents: [
-        {
-          id: 'evt-1',
-          dimoSegmentId: refuel.segmentId,
-          kind: 'REFUEL',
-          startTime: new Date(refuel.startTime),
-          endTime: new Date(refuel.endTime!),
+        buildMatchingExistingEvent(refuel, {
           fuelDeltaLiters: 10,
           fuelDeltaPercent: 15,
-          socDeltaPercent: null,
-          energyDeltaKwh: null,
           confidence: EnergyEventConfidence.MEDIUM,
-        },
+        }),
       ],
     });
     expect(result.candidates.some((c) => c.classification === 'WOULD_UPDATE')).toBe(true);
@@ -171,18 +224,11 @@ describe('energy-events-recovery dry-run classification', () => {
       ...baseInput,
       segments: [sub1, sub2],
       existingEvents: [
-        {
+        buildMatchingExistingEvent(sub1, {
           id: 'legacy-1',
           dimoSegmentId: 'dimo-refuel-187336-111',
-          kind: 'REFUEL',
-          startTime: new Date(sub1.startTime),
-          endTime: new Date(sub1.endTime!),
-          fuelDeltaLiters: 5,
-          fuelDeltaPercent: 10,
-          socDeltaPercent: null,
-          energyDeltaKwh: null,
           confidence: EnergyEventConfidence.LOW,
-        },
+        }),
       ],
     });
     expect(
@@ -233,34 +279,32 @@ describe('energy-events-recovery dry-run classification', () => {
     });
     expect(result.candidates.some((c) => c.classification === 'MANUAL_REVIEW_REQUIRED')).toBe(true);
   });
+
+  it('7b. fuel signal contradiction → MANUAL_REVIEW_REQUIRED', () => {
+    const contradictory = buildRefuel({
+      fuelDeltaLiters: 1.5,
+      fuelDeltaPercent: 35,
+      fuelStartLiters: 10,
+      fuelEndLiters: 11.5,
+    });
+    expect(assessPlausibilityFlags(contradictory)).toContain('fuel_signal_contradiction');
+    const result = simulateRecoveryWindow({
+      ...baseInput,
+      segments: [contradictory],
+      existingEvents: [],
+    });
+    expect(result.candidates.some((c) => c.classification === 'MANUAL_REVIEW_REQUIRED')).toBe(true);
+    expect(
+      result.candidates.some((c) =>
+        c.manualReviewReasons.includes('fuel_signal_contradiction'),
+      ),
+    ).toBe(true);
+  });
 });
 
 describe('energy-events recovery reconciliation', () => {
   it('5. cross-window duplicate same ID is deduplicated', () => {
-    const candidate = {
-      classification: 'WOULD_CREATE' as const,
-      mechanism: 'refuel' as const,
-      vehicleId: VEHICLE_ID,
-      tokenId: 187336,
-      label: 'KS MX 2024',
-      dimoSegmentId: 'dimo-refuel-187336-1',
-      coalescedFromSegmentIds: ['dimo-refuel-187336-1'],
-      startTime: '2026-08-23T16:15:15.000Z',
-      endTime: '2026-08-23T16:23:16.000Z',
-      durationSeconds: 481,
-      fuelDeltaLiters: 16,
-      fuelDeltaPercent: 29,
-      socDeltaPercent: null,
-      energyDeltaKwh: null,
-      startLatitude: null,
-      startLongitude: null,
-      confidence: EnergyEventConfidence.HIGH,
-      detectorConfigVersion: 'e2-2026-08',
-      manualReviewReasons: [],
-      existingRowId: null,
-      windowFrom: '2026-08-22T00:00:00.000Z',
-      windowTo: '2026-08-23T00:00:00.000Z',
-    };
+    const candidate = buildRecoveryCandidate();
     const result = reconcileRecoveryCandidates(
       [
         candidate,
@@ -272,31 +316,47 @@ describe('energy-events recovery reconciliation', () => {
     expect(result.candidates).toHaveLength(1);
   });
 
+  it('5b. conservative dedup keeps MANUAL_REVIEW_REQUIRED over WOULD_CREATE', () => {
+    const create = buildRecoveryCandidate({ classification: 'WOULD_CREATE' });
+    const manual = buildRecoveryCandidate({
+      classification: 'MANUAL_REVIEW_REQUIRED',
+      manualReviewReasons: ['refuel_duration_very_long'],
+    });
+    const result = reconcileRecoveryCandidates(
+      [
+        create,
+        { ...manual, windowFrom: '2026-08-23T00:00:00.000Z', windowTo: '2026-08-24T00:00:00.000Z' },
+      ],
+      new Map(),
+    );
+    expect(result.candidates).toHaveLength(1);
+    expect(result.candidates[0].classification).toBe('MANUAL_REVIEW_REQUIRED');
+    expect(result.candidates[0].manualReviewReasons).toContain('refuel_duration_very_long');
+  });
+
+  it('5c. same ID material payload mismatch → MANUAL_REVIEW_REQUIRED', () => {
+    const left = buildRecoveryCandidate({ classification: 'WOULD_CREATE', fuelDeltaLiters: 16 });
+    const right = buildRecoveryCandidate({
+      classification: 'WOULD_CREATE',
+      fuelDeltaLiters: 22,
+      windowFrom: '2026-08-23T00:00:00.000Z',
+      windowTo: '2026-08-24T00:00:00.000Z',
+    });
+    const result = reconcileRecoveryCandidates([left, right], new Map());
+    expect(result.candidates[0].classification).toBe('MANUAL_REVIEW_REQUIRED');
+    expect(result.candidates[0].manualReviewReasons).toContain(
+      'same_id_material_payload_mismatch',
+    );
+  });
+
   it('6. overlapping different IDs → MANUAL_REVIEW_REQUIRED', () => {
-    const left = {
-      classification: 'WOULD_CREATE' as const,
-      mechanism: 'refuel' as const,
-      vehicleId: VEHICLE_ID,
-      tokenId: 187336,
-      label: 'KS MX 2024',
+    const left = buildRecoveryCandidate({
       dimoSegmentId: 'dimo-refuel-187336-left',
       coalescedFromSegmentIds: ['dimo-refuel-187336-left'],
       startTime: '2026-08-23T16:10:00.000Z',
       endTime: '2026-08-23T16:25:00.000Z',
       durationSeconds: 900,
-      fuelDeltaLiters: 16,
-      fuelDeltaPercent: 29,
-      socDeltaPercent: null,
-      energyDeltaKwh: null,
-      startLatitude: null,
-      startLongitude: null,
-      confidence: EnergyEventConfidence.HIGH,
-      detectorConfigVersion: 'e2-2026-08',
-      manualReviewReasons: [],
-      existingRowId: null,
-      windowFrom: '2026-08-22T00:00:00.000Z',
-      windowTo: '2026-08-23T00:00:00.000Z',
-    };
+    });
     const right = {
       ...left,
       dimoSegmentId: 'dimo-refuel-187336-right',
@@ -311,30 +371,11 @@ describe('energy-events recovery reconciliation', () => {
   });
 
   it('7. existing DB overlap different ID → MANUAL_REVIEW_REQUIRED', () => {
-    const candidate = {
-      classification: 'WOULD_CREATE' as const,
-      mechanism: 'refuel' as const,
-      vehicleId: VEHICLE_ID,
-      tokenId: 187336,
-      label: 'KS MX 2024',
+    const candidate = buildRecoveryCandidate({
       dimoSegmentId: 'dimo-refuel-187336-new',
       coalescedFromSegmentIds: ['dimo-refuel-187336-new'],
-      startTime: '2026-08-23T16:15:15.000Z',
-      endTime: '2026-08-23T16:23:16.000Z',
-      durationSeconds: 481,
-      fuelDeltaLiters: 16,
-      fuelDeltaPercent: 29,
-      socDeltaPercent: null,
-      energyDeltaKwh: null,
-      startLatitude: null,
-      startLongitude: null,
-      confidence: EnergyEventConfidence.HIGH,
-      detectorConfigVersion: 'e2-2026-08',
-      manualReviewReasons: [],
-      existingRowId: null,
-      windowFrom: '2026-08-22T00:00:00.000Z',
       windowTo: '2026-08-24T00:00:00.000Z',
-    };
+    });
     const existing = new Map([
       [
         VEHICLE_ID,
@@ -369,6 +410,7 @@ describe('energy-events recovery runner gates', () => {
     absoluteFuelAvailable: true,
     rechargeSocAvailable: false,
     dimoAccessAvailable: true,
+    dbVehicleMapped: true,
     existingEvents: [],
   };
 
@@ -499,6 +541,25 @@ describe('energy-events recovery runner gates', () => {
     expect(report.requestAccounting.mechanismRequests).toBe(1);
     expect(report.trafficBudget.expectedTelemetryGraphqlRequests).toBe(1);
   });
+
+  it('11. FULL mode unmapped vehicle → DB_VEHICLE_MAPPING_MISSING gate', async () => {
+    const unmapped = mergeAuditedFleetIntoDbVehicles([], { 187336: true }, true).find(
+      (v) => v.tokenId === 187336,
+    )!;
+    expect(unmapped.dbVehicleMapped).toBe(false);
+
+    const report = await runEnergyEventsRecoveryDryRun([unmapped], {
+      fetchSegments: fetchOk,
+      interRequestDelayMs: 0,
+      windowsOverride: [{ from: new Date('2026-08-22T00:00:00.000Z'), to: new Date('2026-08-24T00:00:00.000Z') }],
+      mode: 'full',
+      dbComparisonEnabled: true,
+      dbComparisonStatus: 'ok',
+    });
+    expect(report.backfillGate).toBe('NOT READY');
+    expect(report.gateBlockers).toContain('DB_VEHICLE_MAPPING_MISSING:1');
+    expect(report.summary.WOULD_CREATE).toBe(0);
+  });
 });
 
 describe('energy-events window util', () => {
@@ -516,6 +577,31 @@ describe('energy-events window util', () => {
     for (let i = 1; i < windows.length; i++) {
       expect(windows[i].from.getTime()).toBe(windows[i - 1].to.getTime());
     }
+  });
+
+  it('quick acceptance windows are each <= 24h', () => {
+    for (const window of QUICK_ACCEPTANCE_WINDOWS) {
+      const hours =
+        (new Date(window.to).getTime() - new Date(window.from).getTime()) /
+        (60 * 60 * 1000);
+      expect(hours).toBeLessThanOrEqual(24);
+    }
+  });
+});
+
+describe('energy-events pipeline material identity', () => {
+  it('matches production upsert payload for identical persisted row', () => {
+    const refuel = buildRefuel();
+    const payload = buildUpsertPayload(VEHICLE_ID, coalesceSegments([refuel])[0]);
+    const existing = buildMatchingExistingEvent(refuel);
+    expect(isMateriallyIdentical(existing, payload)).toBe(true);
+  });
+
+  it('detects coordinate drift as material change', () => {
+    const refuel = buildRefuel();
+    const payload = buildUpsertPayload(VEHICLE_ID, coalesceSegments([refuel])[0]);
+    const existing = buildMatchingExistingEvent(refuel, { startLatitude: 0.1 });
+    expect(isMateriallyIdentical(existing, payload)).toBe(false);
   });
 });
 

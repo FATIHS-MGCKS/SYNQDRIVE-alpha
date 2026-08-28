@@ -36,10 +36,59 @@ function rangesSubstantiallyOverlap(
   return overlap / shorter >= SUBSTANTIAL_OVERLAP_RATIO;
 }
 
-function preferCandidate(
+function hasMaterialPayloadMismatch(
+  left: EnergyRecoveryCandidate,
+  right: EnergyRecoveryCandidate,
+): boolean {
+  return (
+    left.startTime !== right.startTime ||
+    left.endTime !== right.endTime ||
+    left.durationSeconds !== right.durationSeconds ||
+    left.fuelDeltaLiters !== right.fuelDeltaLiters ||
+    left.fuelDeltaPercent !== right.fuelDeltaPercent ||
+    left.socDeltaPercent !== right.socDeltaPercent ||
+    left.energyDeltaKwh !== right.energyDeltaKwh ||
+    left.confidence !== right.confidence ||
+    (left.odometerStartKm ?? null) !== (right.odometerStartKm ?? null) ||
+    (left.odometerEndKm ?? null) !== (right.odometerEndKm ?? null)
+  );
+}
+
+function mergeManualReviewReasons(
+  left: EnergyRecoveryCandidate,
+  right: EnergyRecoveryCandidate,
+  extra: string[] = [],
+): string[] {
+  return [...new Set([...left.manualReviewReasons, ...right.manualReviewReasons, ...extra])];
+}
+
+function mergeSameIdCandidates(
   current: EnergyRecoveryCandidate,
   incoming: EnergyRecoveryCandidate,
 ): EnergyRecoveryCandidate {
+  const payloadMismatch = hasMaterialPayloadMismatch(current, incoming);
+  const reasons = mergeManualReviewReasons(
+    current,
+    incoming,
+    payloadMismatch ? ['same_id_material_payload_mismatch'] : [],
+  );
+
+  const requiresManualReview =
+    current.classification === 'MANUAL_REVIEW_REQUIRED' ||
+    incoming.classification === 'MANUAL_REVIEW_REQUIRED' ||
+    payloadMismatch;
+
+  if (requiresManualReview) {
+    return {
+      ...incoming,
+      classification: 'MANUAL_REVIEW_REQUIRED',
+      manualReviewReasons: reasons,
+      overlapRelation: current.overlapRelation ?? incoming.overlapRelation,
+      existingDbRelation: current.existingDbRelation ?? incoming.existingDbRelation,
+      existingRowId: current.existingRowId ?? incoming.existingRowId,
+    };
+  }
+
   const rank = (candidate: EnergyRecoveryCandidate): number => {
     switch (candidate.classification) {
       case 'ALREADY_IDENTICAL':
@@ -48,15 +97,14 @@ function preferCandidate(
         return 5;
       case 'WOULD_UPDATE':
         return 4;
-      case 'MANUAL_REVIEW_REQUIRED':
-        return 3;
       case 'WOULD_SKIP_NOT_PERSISTABLE':
         return 2;
       default:
         return 1;
     }
   };
-  return rank(incoming) > rank(current) ? incoming : current;
+
+  return rank(incoming) >= rank(current) ? incoming : current;
 }
 
 function markManualReview(
@@ -120,7 +168,7 @@ export function reconcileRecoveryCandidates(
     deduplicatedCount += 1;
     byDimoSegmentId.set(
       candidate.dimoSegmentId,
-      preferCandidate(existing, candidate),
+      mergeSameIdCandidates(existing, candidate),
     );
   }
 

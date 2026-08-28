@@ -10,6 +10,21 @@ export function assessPlausibilityFlags(
     const percent = segment.fuelDeltaPercent ?? 0;
     if (liters > 100) flags.push('refuel_liters_implausibly_large');
     if (percent > 90) flags.push('refuel_percent_implausibly_large');
+    if (
+      liters > 2 &&
+      percent > 20 &&
+      liters < percent / 10
+    ) {
+      flags.push('fuel_signal_contradiction');
+    }
+    if (
+      percent > 20 &&
+      liters > 0 &&
+      liters < 2 &&
+      (segment.fuelStartLiters != null || segment.fuelEndLiters != null)
+    ) {
+      flags.push('fuel_signal_contradiction');
+    }
     if (segment.durationSeconds > 2 * 60 * 60) {
       flags.push('refuel_duration_very_long');
     }

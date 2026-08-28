@@ -10,6 +10,9 @@ export function deriveManualReviewDisposition(
   if (reasons.some((reason) => reason.includes('implausibly_large'))) {
     return 'EXCLUDE_FROM_BACKFILL';
   }
+  if (reasons.includes('fuel_signal_contradiction')) {
+    return 'NEEDS_FURTHER_EVIDENCE';
+  }
   if (
     reasons.some((reason) =>
       [
@@ -19,6 +22,7 @@ export function deriveManualReviewDisposition(
         'overlapping_duplicate_session',
         'cross_window_overlapping_different_id',
         'existing_db_overlap_different_id',
+        'same_id_material_payload_mismatch',
       ].includes(reason),
     )
   ) {
@@ -31,6 +35,36 @@ export function deriveManualReviewDisposition(
     return 'NEEDS_FURTHER_EVIDENCE';
   }
   return 'NEEDS_FURTHER_EVIDENCE';
+}
+
+function buildTelemetryEvidenceNotes(
+  candidate: EnergyRecoveryCandidate,
+): string[] {
+  const notes: string[] = [];
+  if (candidate.mechanism === 'refuel' && candidate.durationSeconds > 2 * 60 * 60) {
+    notes.push('long_duration_refuel_review_odometer_and_stationary_evidence');
+  }
+  if (
+    candidate.odometerStartKm != null &&
+    candidate.odometerEndKm != null &&
+    Math.abs(candidate.odometerEndKm - candidate.odometerStartKm) > 5
+  ) {
+    notes.push(
+      `odometer_delta_km=${Math.abs(candidate.odometerEndKm - candidate.odometerStartKm).toFixed(1)}`,
+    );
+  }
+  if (
+    candidate.fuelDeltaLiters != null &&
+    candidate.fuelDeltaPercent != null
+  ) {
+    notes.push(
+      `fuel_delta_liters=${candidate.fuelDeltaLiters} fuel_delta_percent=${candidate.fuelDeltaPercent}`,
+    );
+  }
+  if (candidate.manualReviewReasons.includes('fuel_signal_contradiction')) {
+    notes.push('relative_and_absolute_fuel_signals_contradictory');
+  }
+  return notes;
 }
 
 export function buildManualReviewReport(
@@ -49,8 +83,13 @@ export function buildManualReviewReport(
       fuelDeltaPercent: candidate.fuelDeltaPercent,
       socDeltaPercent: candidate.socDeltaPercent,
       energyDeltaKwh: candidate.energyDeltaKwh,
+      odometerDeltaKm:
+        candidate.odometerStartKm != null && candidate.odometerEndKm != null
+          ? Math.abs(candidate.odometerEndKm - candidate.odometerStartKm)
+          : null,
       confidence: candidate.confidence,
       plausibilityReasons: candidate.manualReviewReasons,
+      telemetryEvidenceNotes: buildTelemetryEvidenceNotes(candidate),
       overlapRelation: candidate.overlapRelation ?? null,
       existingDbRelation: candidate.existingDbRelation ?? null,
       existingRowId: candidate.existingRowId,

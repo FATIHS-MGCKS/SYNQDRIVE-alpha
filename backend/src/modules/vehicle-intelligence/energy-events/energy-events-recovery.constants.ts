@@ -97,6 +97,16 @@ export const AUDITED_FLEET_SIGNAL_PROFILES: AuditedFleetSignalProfile[] = [
   },
 ];
 
+/** Quick acceptance windows — each <= 24h. */
+export const QUICK_ACCEPTANCE_WINDOWS: Array<{ from: string; to: string }> = [
+  { from: '2026-08-23T00:00:00.000Z', to: '2026-08-24T00:00:00.000Z' },
+  { from: '2026-06-15T00:00:00.000Z', to: '2026-06-16T00:00:00.000Z' },
+  { from: '2026-06-17T00:00:00.000Z', to: '2026-06-18T00:00:00.000Z' },
+];
+
+export const QUICK_ARTIFACT_FILENAME = 'energy-events-recovery-quick-evidence-2026-08.json';
+export const FULL_DB_ARTIFACT_FILENAME = 'energy-events-recovery-full-db-preview-2026-08.json';
+
 export function mechanismsForEnergyClass(
   energyClass:
     | 'REFUEL_CANDIDATE'

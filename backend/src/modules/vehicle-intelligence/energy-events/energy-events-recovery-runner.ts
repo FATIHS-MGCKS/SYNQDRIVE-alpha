@@ -26,7 +26,7 @@ import {
   buildManualReviewReport,
 } from './energy-events-recovery-manual-review';
 import { reconcileRecoveryCandidates } from './energy-events-recovery-reconcile';
-import type { DbComparisonStatus } from './energy-events-recovery-read.repository';
+import type { DbComparisonStatus, RecoveryExistingEnergyEvent } from './energy-events-recovery-read.repository';
 import type {
   DimoRequestAccounting,
   EnergyRecoveryCandidate,
@@ -45,18 +45,8 @@ export interface RecoveryVehicleInput {
   absoluteFuelAvailable: boolean;
   rechargeSocAvailable: boolean;
   dimoAccessAvailable: boolean;
-  existingEvents: Array<{
-    id: string;
-    dimoSegmentId: string;
-    kind: string;
-    startTime: Date;
-    endTime: Date;
-    fuelDeltaLiters: number | null;
-    fuelDeltaPercent: number | null;
-    socDeltaPercent: number | null;
-    energyDeltaKwh: number | null;
-    confidence: 'HIGH' | 'MEDIUM' | 'LOW';
-  }>;
+  dbVehicleMapped: boolean;
+  existingEvents: RecoveryExistingEnergyEvent[];
 }
 
 export interface RecoveryDryRunDeps {
@@ -117,6 +107,7 @@ export async function runEnergyEventsRecoveryDryRun(
     provider: v.provider,
     powertrain: v.powertrain,
     dimoAccessAvailable: v.dimoAccessAvailable,
+    dbVehicleMapped: v.dbVehicleMapped,
     relativeFuelAvailable: v.relativeFuelAvailable,
     absoluteFuelAvailable: v.absoluteFuelAvailable,
     rechargeSocAvailable: v.rechargeSocAvailable,
@@ -126,8 +117,10 @@ export async function runEnergyEventsRecoveryDryRun(
 
   const eligible = vehicles.filter((v) => {
     const energyClass = classifyVehicle(v);
+    const mappingOk = deps.mode === 'quick' || v.dbVehicleMapped;
     return (
       v.dimoAccessAvailable &&
+      mappingOk &&
       energyClass !== 'NO_ENERGY_SIGNAL' &&
       energyClass !== 'DIMO_ACCESS_FAILED'
     );
@@ -135,6 +128,15 @@ export async function runEnergyEventsRecoveryDryRun(
   const inaccessibleVehicles = vehicles.filter(
     (v) => !v.dimoAccessAvailable || classifyVehicle(v) === 'DIMO_ACCESS_FAILED',
   );
+  const unmappedVehicles = vehicles.filter((v) => {
+    const energyClass = classifyVehicle(v);
+    return (
+      deps.mode === 'full' &&
+      !v.dbVehicleMapped &&
+      energyClass !== 'NO_ENERGY_SIGNAL' &&
+      energyClass !== 'DIMO_ACCESS_FAILED'
+    );
+  });
 
   const requestAccounting = emptyAccounting();
   const windowCandidates: EnergyRecoveryCandidate[] = [];
@@ -279,6 +281,10 @@ export async function runEnergyEventsRecoveryDryRun(
   if (manualReviewCount > 0 && !allManualReviewsResolved(manualReviewReport)) {
     gateBlockersRaw.push(`MANUAL_REVIEW_REQUIRED:${manualReviewCount}`);
   }
+  if (deps.mode === 'full' && unmappedVehicles.length > 0) {
+    gateBlockersRaw.push(`DB_VEHICLE_MAPPING_MISSING:${unmappedVehicles.length}`);
+  }
+
   if (!ksMxCandidate || ksMxCandidate.classification === 'FETCH_FAILED') {
     gateBlockersRaw.push('KS_MX_CANONICAL_MISSING');
   }
@@ -294,6 +300,10 @@ export async function runEnergyEventsRecoveryDryRun(
   } else if (gateBlockers.includes('DB_COMPARISON_UNAVAILABLE')) {
     backfillGate = 'NOT READY';
   } else if (
+    gateBlockers.some((blocker) => blocker.startsWith('DB_VEHICLE_MAPPING_MISSING'))
+  ) {
+    backfillGate = 'NOT READY';
+  } else if (
     gateBlockers.some((blocker) => blocker.startsWith('UNRESOLVED_FETCH_FAILED'))
   ) {
     backfillGate = 'NOT READY';
@@ -307,30 +317,36 @@ export async function runEnergyEventsRecoveryDryRun(
     backfillGate = 'NOT READY';
   }
 
-  let mainSha = 'unknown';
-  let baseSha = 'unknown';
+  let codeShaUnderTest = 'unknown';
+  let baseMainSha = 'unknown';
   try {
-    mainSha = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
-    baseSha = execSync('git merge-base HEAD main', { encoding: 'utf8' }).trim();
+    codeShaUnderTest = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
+    baseMainSha = execSync('git merge-base HEAD main', { encoding: 'utf8' }).trim();
   } catch {
     // non-git environment
   }
 
+  const windowSizesHours = windows.map(
+    (window) => (window.to.getTime() - window.from.getTime()) / (60 * 60 * 1000),
+  );
+
   return {
     generatedAt: new Date().toISOString(),
-    mainSha,
-    baseSha,
+    codeShaUnderTest,
+    baseMainSha,
     detectorConfigVersion: DIMO_ENERGY_DETECTOR_CONFIG_VERSION,
     refuelDetectorConfig: DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG,
     rechargeDetectorConfig: 'default',
     outageStart: ENERGY_EVENTS_OUTAGE_START_ISO,
     recoveryCutoff: ENERGY_EVENTS_RECOVERY_CUTOFF_ISO,
     windowSizeHours: ENERGY_EVENTS_RECOVERY_WINDOW_MS / (60 * 60 * 1000),
+    windowSizesHours,
     windowSemantics:
       'Non-overlapping [from, to) windows; inclusive start, exclusive end at recovery cutoff. DIMO segments with startedBeforeRange=true may appear in the first window that contains their start timestamp; global dedup keeps one candidate per dimoSegmentId.',
     mode: deps.mode,
     dbComparisonEnabled: deps.dbComparisonEnabled,
     dbComparisonStatus: deps.dbComparisonStatus,
+    dbVehicleMappingFailures: unmappedVehicles.length,
     vehicles: inventory,
     requestAccounting,
     refuelDetections,

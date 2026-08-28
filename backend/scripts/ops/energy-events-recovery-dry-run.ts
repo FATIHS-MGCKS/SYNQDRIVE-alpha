@@ -15,6 +15,9 @@ import { PrismaClient } from '@prisma/client';
 import {
   ENERGY_EVENTS_OUTAGE_START_ISO,
   ENERGY_EVENTS_RECOVERY_CUTOFF_ISO,
+  FULL_DB_ARTIFACT_FILENAME,
+  QUICK_ACCEPTANCE_WINDOWS,
+  QUICK_ARTIFACT_FILENAME,
 } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery.constants';
 import {
   runEnergyEventsRecoveryDryRun,
@@ -24,6 +27,7 @@ import {
   buildFleetFallbackVehicles,
   createMutationGuardedPrismaClient,
   createPrismaRecoveryReadRepository,
+  mergeAuditedFleetIntoDbVehicles,
   type DbComparisonStatus,
 } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-read.repository';
 import {
@@ -43,14 +47,12 @@ import {
 
 const QUICK_MODE = process.argv.includes('--quick');
 
-function sanitizeCandidate(candidate: Record<string, unknown>): Record<string, unknown> {
+function sanitizeArtifactCandidate(
+  candidate: Record<string, unknown>,
+): Record<string, unknown> {
   const copy = { ...candidate };
-  if (typeof copy.startLatitude === 'number') {
-    copy.startLatitude = Number(copy.startLatitude.toFixed(3));
-  }
-  if (typeof copy.startLongitude === 'number') {
-    copy.startLongitude = Number(copy.startLongitude.toFixed(3));
-  }
+  delete copy.startLatitude;
+  delete copy.startLongitude;
   return copy;
 }
 
@@ -88,14 +90,14 @@ async function loadVehiclesForMode(): Promise<{
       recoveryCutoff,
     });
     const dimoAccessByTokenId = await probeFleetDimoAccess();
-    const merged = mergeAuditedFleetIntoDbVehicles(vehicles, dimoAccessByTokenId);
+    const merged = mergeAuditedFleetIntoDbVehicles(vehicles, dimoAccessByTokenId, true);
     await prisma.$disconnect();
     return {
       vehicles: merged,
       dbComparisonEnabled: true,
       dbComparisonStatus: 'ok',
     };
-  } catch (error) {
+  } catch {
     await prisma.$disconnect();
     const dimoAccessByTokenId = await probeFleetDimoAccess();
     return {
@@ -104,27 +106,6 @@ async function loadVehiclesForMode(): Promise<{
       dbComparisonStatus: 'DB_COMPARISON_UNAVAILABLE',
     };
   }
-}
-
-function mergeAuditedFleetIntoDbVehicles(
-  dbVehicles: RecoveryVehicleInput[],
-  dimoAccessByTokenId: Record<number, boolean>,
-): RecoveryVehicleInput[] {
-  const byToken = new Map(dbVehicles.map((vehicle) => [vehicle.tokenId, vehicle]));
-  const fallback = buildFleetFallbackVehicles(dimoAccessByTokenId);
-  for (const vehicle of fallback) {
-    const existing = byToken.get(vehicle.tokenId);
-    if (existing) {
-      existing.dimoAccessAvailable = dimoAccessByTokenId[vehicle.tokenId] ?? false;
-      existing.relativeFuelAvailable = vehicle.relativeFuelAvailable;
-      existing.absoluteFuelAvailable = vehicle.absoluteFuelAvailable;
-      existing.rechargeSocAvailable = vehicle.rechargeSocAvailable;
-      existing.powertrain = vehicle.powertrain;
-      continue;
-    }
-    byToken.set(vehicle.tokenId, vehicle);
-  }
-  return [...byToken.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
 async function main() {
@@ -136,21 +117,21 @@ async function main() {
   const { vehicles, dbComparisonEnabled, dbComparisonStatus } = await loadVehiclesForMode();
 
   if (QUICK_MODE) {
-    console.error('[dry-run] QUICK mode: KS MX canonical + Tesla Jun windows only');
+    console.error('[dry-run] QUICK mode: bounded <=24h acceptance windows only');
   } else if (!dbComparisonEnabled) {
     console.error('[dry-run] FULL mode without DB comparison — gate will be NOT READY');
   }
+
+  const quickWindows = QUICK_ACCEPTANCE_WINDOWS.map((window) => ({
+    from: new Date(window.from),
+    to: new Date(window.to),
+  }));
 
   const report = await runEnergyEventsRecoveryDryRun(vehicles, {
     fetchSegments: (tokenId, from, to, energyClass) =>
       fetchEnergyEventSegmentsStandalone(tokenId, from, to, energyClass),
     interRequestDelayMs: QUICK_MODE ? 200 : 500,
-    windowsOverride: QUICK_MODE
-      ? [
-          { from: new Date('2026-08-22T00:00:00.000Z'), to: new Date('2026-08-24T00:00:00.000Z') },
-          { from: new Date('2026-06-15T00:00:00.000Z'), to: new Date('2026-07-16T00:00:00.000Z') },
-        ]
-      : undefined,
+    windowsOverride: QUICK_MODE ? quickWindows : undefined,
     mode: QUICK_MODE ? 'quick' : 'full',
     dbComparisonEnabled,
     dbComparisonStatus,
@@ -158,11 +139,12 @@ async function main() {
 
   const artifactDir = path.resolve(__dirname, '..', '..', '..', 'artifacts');
   fs.mkdirSync(artifactDir, { recursive: true });
-  const outPath = path.join(artifactDir, 'energy-events-recovery-dry-run-2026-08.json');
+  const artifactFilename = QUICK_MODE ? QUICK_ARTIFACT_FILENAME : FULL_DB_ARTIFACT_FILENAME;
+  const outPath = path.join(artifactDir, artifactFilename);
   const payload = {
     ...report,
     candidates: report.candidates.map((candidate) =>
-      sanitizeCandidate(candidate as unknown as Record<string, unknown>),
+      sanitizeArtifactCandidate(candidate as unknown as Record<string, unknown>),
     ),
     candidateCount: report.candidates.length,
   };
@@ -174,7 +156,7 @@ async function main() {
     candidatesTruncated: payload.candidates.length > 50,
   };
   console.log(JSON.stringify(summaryOnly, null, 2));
-  console.error(`[dry-run] Full artifact: ${outPath}`);
+  console.error(`[dry-run] Artifact: ${outPath}`);
   console.error(
     `[dry-run] dbComparisonEnabled=${report.dbComparisonEnabled} dbComparisonStatus=${report.dbComparisonStatus} telemetryRequests=${report.requestAccounting.telemetryGraphqlRequests} gate=${report.backfillGate}`,
   );

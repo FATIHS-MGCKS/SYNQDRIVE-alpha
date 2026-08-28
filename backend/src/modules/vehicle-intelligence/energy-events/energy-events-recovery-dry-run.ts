@@ -119,8 +119,6 @@ export function simulateRecoveryWindow(
       fuelDeltaPercent: existing.fuelDeltaPercent,
       socDeltaPercent: existing.socDeltaPercent,
       energyDeltaKwh: existing.energyDeltaKwh,
-      startLatitude: null,
-      startLongitude: null,
       confidence: existing.confidence,
       detectorConfigVersion: input.detectorConfigVersion,
       manualReviewReasons: ['legacy_subsegment_superseded_by_coalesced'],
@@ -157,8 +155,6 @@ function buildFetchFailedCandidate(
     fuelDeltaPercent: null,
     socDeltaPercent: null,
     energyDeltaKwh: null,
-    startLatitude: null,
-    startLongitude: null,
     confidence: 'LOW',
     detectorConfigVersion: input.detectorConfigVersion,
     manualReviewReasons: [
@@ -208,8 +204,8 @@ function buildSegmentCandidate(
     fuelDeltaPercent: segment.fuelDeltaPercent,
     socDeltaPercent: segment.socDeltaPercent,
     energyDeltaKwh: segment.energyDeltaKwh,
-    startLatitude: segment.startLatitude,
-    startLongitude: segment.startLongitude,
+    odometerStartKm: segment.odometerStartKm,
+    odometerEndKm: segment.odometerEndKm,
     confidence: payload.confidence,
     detectorConfigVersion:
       input.detectorConfigVersion || DIMO_ENERGY_DETECTOR_CONFIG_VERSION,
