@@ -896,6 +896,41 @@ export const de: Record<TranslationKey, string> = {
   'tenantBilling.tariff.changes.emptyTitle': 'Noch keine Fahrzeugänderungen',
   'tenantBilling.tariff.changes.prorationLabel': 'Anteilige Berechnung',
 
+  // ─── Tenant Billing Invoices (P2.2.56) ───
+  'tenantBilling.invoices.list.title': 'Rechnungen',
+  'tenantBilling.invoices.list.updating': 'Aktualisiere…',
+  'tenantBilling.invoices.list.loadErrorTitle': 'Rechnungen konnten nicht geladen werden',
+  'tenantBilling.invoices.list.searchPlaceholder': 'Rechnungsnummer suchen…',
+  'tenantBilling.invoices.list.empty.title': 'Noch keine Rechnungen vorhanden.',
+  'tenantBilling.invoices.list.empty.filtered': 'Passe Suche oder Filter an.',
+  'tenantBilling.invoices.list.doc.online': 'Online',
+  'tenantBilling.invoices.status.open': 'Offen',
+  'tenantBilling.invoices.status.uncollectible': 'Uneinbringlich',
+  'tenantBilling.invoices.paymentStatus.pending': 'Ausstehend',
+  'tenantBilling.invoices.paymentStatus.succeeded': 'Erfolgreich',
+  'tenantBilling.invoices.paymentStatus.failed': 'Zahlung fehlgeschlagen',
+  'tenantBilling.invoices.paymentStatus.refunded': 'Erstattet',
+  'tenantBilling.invoices.paymentStatus.partiallyRefunded': 'Teilweise erstattet',
+  'tenantBilling.invoices.paymentStatus.cancelled': 'Storniert',
+  'tenantBilling.invoices.paymentStatus.fallback': 'Zahlung',
+  'tenantBilling.invoices.detail.title': 'Rechnung {number}',
+  'tenantBilling.invoices.detail.description': 'Rechnungsdetails und Zahlungsverlauf',
+  'tenantBilling.invoices.detail.loadErrorTitle': 'Rechnungsdetails konnten nicht geladen werden',
+  'tenantBilling.invoices.detail.lineQty': '{qty} × {unit} = {total}',
+  'tenantBilling.invoices.detail.paymentFailed.title': 'Zahlung fehlgeschlagen',
+  'tenantBilling.invoices.detail.failedAttempt.fallback':
+    'Für diese Rechnung liegt eine fehlgeschlagene Zahlung vor.',
+  'tenantBilling.invoices.detail.managePaymentMethod': 'Zahlungsmethode aktualisieren',
+  'tenantBilling.invoices.detail.payments.title': 'Zahlungsverlauf',
+  'tenantBilling.invoices.detail.payments.loadErrorTitle':
+    'Zahlungsverlauf konnte nicht geladen werden',
+  'tenantBilling.invoices.detail.payments.empty':
+    'Für diese Rechnung liegt noch kein Zahlungsverlauf vor.',
+  'tenantBilling.invoices.detail.payments.refunded': 'Erstattet: {amount}',
+  'tenantBilling.invoices.detail.actions.opening': 'Wird geöffnet…',
+  'tenantBilling.invoices.detail.actions.hostedInvoice': 'Online-Rechnung',
+  'tenantBilling.invoices.document.unavailable': 'Dokument ist derzeit nicht verfügbar.',
+
   'finance.separationHint':
     'Kundenzahlungen und Auszahlungen sind getrennt von Ihrem SynqDrive-Abonnement. Ihre Abo-Zahlungsmethode ist nicht dasselbe wie Ihr Auszahlungskonto.',
   'finance.customerPayments.pageTitle': 'Kundenzahlungen & Auszahlungen',

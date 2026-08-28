@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, getErrorMessage } from '../../../lib/api';
+import { api } from '../../../lib/api';
 import type {
   TenantInvoiceDetailDto,
   TenantInvoicePaymentHistoryDto,
@@ -84,22 +84,24 @@ export function useBillingInvoiceDetail(
   };
 }
 
+export type InvoiceDocumentActionError = 'unavailable' | 'openFailed';
+
 export function useInvoiceDocumentAction() {
   const [loadingHosted, setLoadingHosted] = useState(false);
   const [loadingPdf, setLoadingPdf] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<InvoiceDocumentActionError | null>(null);
 
   const openUrl = async (fetcher: () => Promise<string | null>) => {
     setError(null);
     try {
       const url = await fetcher();
       if (!url) {
-        setError('Dokument ist derzeit nicht verfügbar.');
+        setError('unavailable');
         return;
       }
       window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (caught) {
-      setError(getErrorMessage(caught, 'Dokument konnte nicht geöffnet werden.'));
+    } catch {
+      setError('openFailed');
     }
   };
 

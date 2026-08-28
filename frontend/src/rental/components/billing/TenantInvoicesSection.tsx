@@ -3,15 +3,17 @@ import type { TenantInvoiceListItemDto } from '../../types/billing.types';
 import { EmptyState, ErrorState, SkeletonCard } from '../../../components/patterns/states';
 import { Button } from '../../../components/ui/button';
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { BillingInvoicesQuery } from './useBillingInvoices';
 import type { BillingPaginatedMeta } from './billing-query.utils';
-import { formatDateDe } from './billing.utils';
 import {
-  formatOpenAmount,
-  mapInvoiceStatusFilter,
+  formatRentalTenantBillingDate,
+  resolveTenantInvoiceFilterStatusLabel,
+  resolveTenantInvoiceMachineStatus,
   resolveTenantInvoiceStatusLabel,
-  tenantInvoiceStatusTone,
-} from './tenant-invoices.utils';
+  resolveTenantInvoiceStatusTone,
+} from '../../lib/rental-tenant-billing-i18n';
+import { formatOpenAmount, mapInvoiceStatusFilter } from './tenant-invoices.utils';
 import { TenantInvoiceDetailDrawer } from './TenantInvoiceDetailDrawer';
 
 interface TenantInvoicesSectionProps {
@@ -29,6 +31,22 @@ interface TenantInvoicesSectionProps {
 
 type StatusFilter = 'all' | 'PAID' | 'OPEN' | 'OVERDUE' | 'VOID' | 'DRAFT';
 
+const STATUS_FILTERS: StatusFilter[] = ['all', 'DRAFT', 'OPEN', 'OVERDUE', 'PAID', 'VOID'];
+
+const LIST_COLUMN_IDS = [
+  'number',
+  'date',
+  'period',
+  'net',
+  'tax',
+  'gross',
+  'outstanding',
+  'status',
+  'due',
+  'paid',
+  'documents',
+] as const;
+
 const inputClass =
   'w-full px-3 py-2.5 rounded-xl border border-border/70 bg-background text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]';
 
@@ -44,6 +62,7 @@ export function TenantInvoicesSection({
   canWrite = false,
   onManagePaymentMethod,
 }: TenantInvoicesSectionProps) {
+  const { t, locale } = useLanguage();
   const [search, setSearch] = useState(query?.search ?? '');
   const [status, setStatus] = useState<StatusFilter>(() => {
     const raw = query?.status;
@@ -68,10 +87,31 @@ export function TenantInvoicesSection({
     return () => window.clearTimeout(timer);
   }, [search, status, onQueryChange]);
 
-  const totalLabel = useMemo(() => {
-    const total = meta?.total ?? invoices.length;
-    return `${invoices.length} von ${total} Rechnungen`;
-  }, [invoices.length, meta?.total]);
+  const totalLabel = useMemo(
+    () =>
+      t('invoices.list.filters.showing', {
+        visible: invoices.length,
+        total: meta?.total ?? invoices.length,
+      }),
+    [invoices.length, meta?.total, t],
+  );
+
+  const columnLabels = useMemo(
+    () => ({
+      number: t('invoices.list.col.invoiceNumber'),
+      date: t('invoices.list.col.date'),
+      period: t('bookings.period'),
+      net: t('invoiceLineItem.summary.net'),
+      tax: t('invoiceLineItem.summary.tax'),
+      gross: t('invoiceLineItem.summary.gross'),
+      outstanding: t('invoiceLineItem.summary.outstanding'),
+      status: t('invoices.list.col.status'),
+      due: t('invoices.list.col.dueDate'),
+      paid: t('bookingPayment.field.paidAt'),
+      documents: t('invoices.list.col.document'),
+    }),
+    [t],
+  );
 
   if (loading && invoices.length === 0) {
     return <SkeletonCard className="h-56 rounded-2xl" />;
@@ -80,10 +120,10 @@ export function TenantInvoicesSection({
   if (error) {
     return (
       <ErrorState
-        title="Rechnungen konnten nicht geladen werden"
+        title={t('tenantBilling.invoices.list.loadErrorTitle')}
         description={error}
         onRetry={onRetry ? () => void onRetry() : undefined}
-        retryLabel="Erneut versuchen"
+        retryLabel={t('common.retry')}
       />
     );
   }
@@ -94,11 +134,15 @@ export function TenantInvoicesSection({
         <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
           <div>
             <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">
-              Rechnungen
+              {t('tenantBilling.invoices.list.title')}
             </h3>
             <p className="text-[12px] mt-0.5 text-muted-foreground">{totalLabel}</p>
           </div>
-          {loading ? <span className="text-[11px] text-muted-foreground">Aktualisiere…</span> : null}
+          {loading ? (
+            <span className="text-[11px] text-muted-foreground">
+              {t('tenantBilling.invoices.list.updating')}
+            </span>
+          ) : null}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_220px] gap-3 mb-4">
@@ -110,7 +154,7 @@ export function TenantInvoicesSection({
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Rechnungsnummer suchen…"
+              placeholder={t('tenantBilling.invoices.list.searchPlaceholder')}
               className={`${inputClass} !pl-9`}
             />
           </div>
@@ -119,12 +163,11 @@ export function TenantInvoicesSection({
             onChange={(event) => setStatus(event.target.value as StatusFilter)}
             className={inputClass}
           >
-            <option value="all">Alle Status</option>
-            <option value="DRAFT">Entwurf</option>
-            <option value="OPEN">Offen</option>
-            <option value="OVERDUE">Überfällig</option>
-            <option value="PAID">Bezahlt</option>
-            <option value="VOID">Storniert</option>
+            {STATUS_FILTERS.map((filter) => (
+              <option key={filter} value={filter}>
+                {resolveTenantInvoiceFilterStatusLabel(filter, t)}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -132,39 +175,32 @@ export function TenantInvoicesSection({
           <EmptyState
             compact
             icon={<Icon name="file-text" className="w-5 h-5" />}
-            title="Noch keine Rechnungen vorhanden."
-            description={search || status !== 'all' ? 'Passe Suche oder Filter an.' : undefined}
+            title={t('tenantBilling.invoices.list.empty.title')}
+            description={
+              search || status !== 'all'
+                ? t('tenantBilling.invoices.list.empty.filtered')
+                : undefined
+            }
           />
         ) : (
           <div className="overflow-x-auto rounded-xl border border-border/60">
             <table className="w-full min-w-[1080px]" data-testid="tenant-invoices-table">
               <thead>
                 <tr className="bg-muted/40">
-                  {[
-                    'Nummer',
-                    'Datum',
-                    'Zeitraum',
-                    'Netto',
-                    'Steuer',
-                    'Brutto',
-                    'Offen',
-                    'Status',
-                    'Fällig',
-                    'Bezahlt',
-                    'Dokumente',
-                  ].map((label) => (
+                  {LIST_COLUMN_IDS.map((columnId) => (
                     <th
-                      key={label}
+                      key={columnId}
                       className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground last:text-right"
                     >
-                      {label}
+                      {columnLabels[columnId]}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {invoices.map((invoice) => {
-                  const statusLabel = resolveTenantInvoiceStatusLabel(invoice);
+                  const machineStatus = resolveTenantInvoiceMachineStatus(invoice);
+                  const statusLabel = resolveTenantInvoiceStatusLabel(invoice, t);
                   return (
                     <tr
                       key={invoice.id}
@@ -175,10 +211,11 @@ export function TenantInvoicesSection({
                         {invoice.invoiceNumberLabel}
                       </td>
                       <td className="px-3 py-2.5 text-[12px] tabular-nums">
-                        {formatDateDe(invoice.invoiceDate)}
+                        {formatRentalTenantBillingDate(locale, invoice.invoiceDate)}
                       </td>
                       <td className="px-3 py-2.5 text-[12px] text-muted-foreground">
-                        {formatDateDe(invoice.periodStart)} – {formatDateDe(invoice.periodEnd)}
+                        {formatRentalTenantBillingDate(locale, invoice.periodStart)} –{' '}
+                        {formatRentalTenantBillingDate(locale, invoice.periodEnd)}
                       </td>
                       <td className="px-3 py-2.5 text-[12px] tabular-nums">
                         {invoice.netAmount.formatted}
@@ -194,20 +231,20 @@ export function TenantInvoicesSection({
                       </td>
                       <td className="px-3 py-2.5">
                         <span
-                          className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold ${tenantInvoiceStatusTone(statusLabel)}`}
+                          className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold ${resolveTenantInvoiceStatusTone(machineStatus)}`}
                         >
                           {statusLabel}
                         </span>
                       </td>
                       <td className="px-3 py-2.5 text-[12px] tabular-nums">
-                        {formatDateDe(invoice.dueDate)}
+                        {formatRentalTenantBillingDate(locale, invoice.dueDate)}
                       </td>
                       <td className="px-3 py-2.5 text-[12px] tabular-nums">
-                        {formatDateDe(invoice.paidAt)}
+                        {formatRentalTenantBillingDate(locale, invoice.paidAt)}
                       </td>
                       <td className="px-3 py-2.5 text-right text-[11px] text-muted-foreground">
                         {invoice.hasPdf ? 'PDF' : '—'}
-                        {invoice.hasHostedInvoice ? ' · Online' : ''}
+                        {invoice.hasHostedInvoice ? ` · ${t('tenantBilling.invoices.list.doc.online')}` : ''}
                       </td>
                     </tr>
                   );
@@ -231,10 +268,13 @@ export function TenantInvoicesSection({
                 })
               }
             >
-              Zurück
+              {t('common.back')}
             </Button>
             <span className="text-[11px] text-muted-foreground">
-              Seite {meta.page} von {meta.totalPages}
+              {t('tenantBilling.tariff.pagination.pageOf', {
+                page: meta.page,
+                totalPages: meta.totalPages,
+              })}
             </span>
             <Button
               type="button"
@@ -248,7 +288,7 @@ export function TenantInvoicesSection({
                 })
               }
             >
-              Weiter
+              {t('common.next')}
             </Button>
           </div>
         ) : null}
