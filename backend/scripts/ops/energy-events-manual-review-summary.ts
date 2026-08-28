@@ -17,6 +17,21 @@ import {
 
 const PLAN_PATH = process.env.ENERGY_EVENTS_RECOVERY_PLAN_PATH?.trim();
 
+/** Coarse buckets keep the shared summary free of per-event identifiers. */
+function durationBucket(durationSeconds: number): string {
+  if (durationSeconds < 15 * 60) return '<15m';
+  if (durationSeconds < 60 * 60) return '15m-1h';
+  if (durationSeconds < 4 * 60 * 60) return '1h-4h';
+  return '>4h';
+}
+
+function fuelDeltaBucket(fuelDeltaLiters: number | null): string {
+  if (fuelDeltaLiters == null) return 'none';
+  if (fuelDeltaLiters < 5) return '<5L';
+  if (fuelDeltaLiters < 20) return '5-20L';
+  return '>20L';
+}
+
 async function main() {
   const recoveryPlan = parseEnergyEventsRecoveryPlan(
     JSON.parse(fs.readFileSync(PLAN_PATH!, 'utf8')),
@@ -65,9 +80,9 @@ async function main() {
         excludeCount: exclude.length,
         needsProfiles: needs.map((entry) => ({
           mechanism: entry.mechanism,
-          month: entry.month,
-          durationBucket: entry.durationBucket,
-          fuelDeltaBucket: entry.fuelDeltaBucket,
+          month: entry.startTime.slice(0, 7),
+          durationBucket: durationBucket(entry.durationSeconds),
+          fuelDeltaBucket: fuelDeltaBucket(entry.fuelDeltaLiters),
           confidence: entry.confidence,
           plausibilityReasons: entry.plausibilityReasons,
         })),
