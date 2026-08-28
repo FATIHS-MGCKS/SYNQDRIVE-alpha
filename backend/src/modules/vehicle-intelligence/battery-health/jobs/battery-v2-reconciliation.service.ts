@@ -35,7 +35,6 @@ import {
   BatteryMeasurementSessionType,
   BatteryMeasurementType,
   Prisma,
-  TripDetectionState,
   TripStatus,
 } from '@prisma/client';
 import { buildLvRestWindowIdempotencyKey, LvRestWindowState } from '../battery-v2-domain';
@@ -54,8 +53,6 @@ const ASSESSMENT_STALE_MS = 6 * 3600_000;
 const LV_REST_SESSION_LOOKBACK_MS = 24 * 3600_000;
 /** Grace before recovery kicks in — lets the primary finalize path land first. */
 const LV_REST_SESSION_SETTLE_MS = 2 * 60_000;
-/** Anchor tolerance between det-state lastActivityAt and trip.endTime. */
-const LV_REST_ANCHOR_TOLERANCE_MS = 120_000;
 
 export interface BatteryV2ReconciliationResult {
   observationClassify: number;
@@ -281,15 +278,13 @@ export class BatteryV2ReconciliationService {
   }
 
   /**
-   * Self-healing recovery for the trip-finalization liveness gap: when Trip
-   * Detection persisted a COMPLETED trip and transitioned to RESTING but no
-   * LV_REST_WINDOW session exists for the canonical trip-end anchor (e.g. the
-   * primary BATTERY_LV_REST_SESSION_OPEN job was lost, or the deploy predates
-   * the primary path), re-enqueue the same canonical idempotent session-open
-   * job. Recovery converges on the identical job identity
-   * (`lv-rest-open:{vehicleId}:{anchorMs}`) and the identical canonical
-   * operation, so racing with the primary path, repeated reconciliation runs,
-   * and worker restarts cannot create duplicate sessions or targets.
+   * Self-healing recovery for the trip-finalization liveness gap.
+   *
+   * Scans authoritative COMPLETED trips (not the vehicle's transient
+   * TripDetectionState) so a missed primary enqueue is still repaired after
+   * the vehicle starts a subsequent trip or leaves RESTING. Each candidate
+   * uses durable identity `trip.endTime` as the anchor — no ±120s fuzzy
+   * matching. Converges on `lv-rest-open:{vehicleId}:{anchorMs}`.
    */
   private async reconcileMissingLvRestSessions(batch: number): Promise<number> {
     if (!isBatteryV2RestShadowEnabled()) {
@@ -300,63 +295,40 @@ export class BatteryV2ReconciliationService {
     const lookbackFrom = new Date(now - LV_REST_SESSION_LOOKBACK_MS);
     const settleBefore = new Date(now - LV_REST_SESSION_SETTLE_MS);
 
-    // Canonical Trip Detection is the authority: vehicle currently RESTING,
-    // no active trip, rest anchor recent enough that temporal targets are
-    // still meaningful (≤ FSM max rest window).
-    const detStates = await this.prisma.vehicleTripDetectionState.findMany({
+    const trips = await this.prisma.vehicleTrip.findMany({
       where: {
-        state: TripDetectionState.RESTING,
-        activeTripId: null,
-        lastActivityAt: { gte: lookbackFrom, lte: settleBefore },
+        tripStatus: TripStatus.COMPLETED,
+        endTime: {
+          not: null,
+          gte: lookbackFrom,
+          lte: settleBefore,
+        },
       },
       take: batch,
+      orderBy: { endTime: 'desc' },
       select: {
+        id: true,
         vehicleId: true,
-        organizationId: true,
-        lastActivityAt: true,
+        endTime: true,
         vehicle: { select: { organizationId: true } },
       },
     });
 
     let enqueued = 0;
-    for (const det of detStates) {
-      const organizationId = det.organizationId ?? det.vehicle.organizationId;
-      if (!organizationId || !det.lastActivityAt) continue;
+    for (const trip of trips) {
+      if (!trip.endTime) continue;
+      const organizationId = trip.vehicle.organizationId;
+      if (!organizationId) continue;
 
-      // Authoritative finalized trip whose endTime matches the rest anchor
-      // (same ±120s tolerance the FSM trip-end consistency gate applies).
-      // Discarded/cancelled trips deliberately do not match — canonical
-      // finalized trips are the only source of truth for recovered anchors.
-      const trip = await this.prisma.vehicleTrip.findFirst({
-        where: {
-          vehicleId: det.vehicleId,
-          tripStatus: TripStatus.COMPLETED,
-          endTime: {
-            gte: new Date(
-              det.lastActivityAt.getTime() - LV_REST_ANCHOR_TOLERANCE_MS,
-            ),
-            lte: new Date(
-              det.lastActivityAt.getTime() + LV_REST_ANCHOR_TOLERANCE_MS,
-            ),
-          },
-        },
-        orderBy: { endTime: 'desc' },
-        select: { id: true, endTime: true },
-      });
-      if (!trip?.endTime) continue;
-
-      // Any session (open or terminal) for the canonical anchor means the
-      // window was already opened/adjudicated — recovery is only for the
-      // missing-session condition.
       const windowId = buildLvRestWindowIdempotencyKey(
-        det.vehicleId,
+        trip.vehicleId,
         trip.endTime,
       );
       const existingSession =
         await this.prisma.batteryMeasurementSession.findFirst({
           where: {
             organizationId,
-            vehicleId: det.vehicleId,
+            vehicleId: trip.vehicleId,
             type: BatteryMeasurementSessionType.LV_REST_WINDOW,
             idempotencyKey: windowId,
           },
@@ -367,10 +339,10 @@ export class BatteryV2ReconciliationService {
       const jobId =
         await this.lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip({
           organizationId,
-          vehicleId: det.vehicleId,
+          vehicleId: trip.vehicleId,
           tripId: trip.id,
           tripEndedAt: trip.endTime,
-          correlationId: `reconcile:lv-rest-open:${det.vehicleId}:${trip.endTime.toISOString()}`,
+          correlationId: `reconcile:lv-rest-open:${trip.vehicleId}:${trip.endTime.toISOString()}`,
         });
       if (jobId) enqueued += 1;
     }

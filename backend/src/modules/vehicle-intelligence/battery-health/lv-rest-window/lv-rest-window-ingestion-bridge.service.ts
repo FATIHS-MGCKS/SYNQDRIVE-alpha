@@ -154,18 +154,38 @@ export class LvRestWindowIngestionBridgeService {
     vehicleId: string,
     lastActivityAt: Date,
   ): Promise<{ id: string } | null> {
-    return this.prisma.vehicleTrip.findFirst({
+    const anchorMs = lastActivityAt.getTime();
+    const candidates = await this.prisma.vehicleTrip.findMany({
       where: {
         vehicleId,
         tripStatus: TripStatus.COMPLETED,
         endTime: {
-          gte: new Date(lastActivityAt.getTime() - TRIP_END_ANCHOR_TOLERANCE_MS),
-          lte: new Date(lastActivityAt.getTime() + TRIP_END_ANCHOR_TOLERANCE_MS),
+          gte: new Date(anchorMs - TRIP_END_ANCHOR_TOLERANCE_MS),
+          lte: new Date(anchorMs + TRIP_END_ANCHOR_TOLERANCE_MS),
         },
       },
+      select: { id: true, endTime: true },
       orderBy: { endTime: 'desc' },
-      select: { id: true },
+      take: 10,
     });
+    if (candidates.length === 0) return null;
+    if (candidates.length === 1) {
+      return { id: candidates[0].id };
+    }
+    // When multiple trips fall inside the tolerance window, bind the anchor
+    // to the trip whose endTime is closest to lastActivityAt — not merely
+    // the latest endTime, which can belong to a different rest period.
+    let best = candidates[0];
+    let bestDelta = Math.abs(best.endTime!.getTime() - anchorMs);
+    for (const trip of candidates.slice(1)) {
+      if (!trip.endTime) continue;
+      const delta = Math.abs(trip.endTime.getTime() - anchorMs);
+      if (delta < bestDelta) {
+        best = trip;
+        bestDelta = delta;
+      }
+    }
+    return { id: best.id };
   }
 
   private buildOverridesFromSnapshotContext(

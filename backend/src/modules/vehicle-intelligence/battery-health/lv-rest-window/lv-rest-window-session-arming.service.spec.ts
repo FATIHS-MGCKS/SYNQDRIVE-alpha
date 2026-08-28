@@ -418,6 +418,26 @@ describe('LvRestWindowSessionArmingService (finalized-trip liveness fix)', () =>
       expect(result.outcome).toBe('not_eligible');
       expect(result.reason).toBe('anchor_in_future');
     });
+
+    it('rejects payload tripEndedAt that disagrees with authoritative trip.endTime (Phase 8)', async () => {
+      const wrongAnchor = new Date(ANCHOR.getTime() + 60_000);
+      const result = await ensure({
+        payloadTripEndedAt: wrongAnchor.toISOString(),
+      });
+
+      expect(result.outcome).toBe('not_eligible');
+      expect(result.reason).toBe('payload_anchor_mismatch');
+      expect(sessions.size).toBe(0);
+    });
+
+    it('accepts payload tripEndedAt when it matches authoritative trip.endTime', async () => {
+      const result = await ensure({
+        payloadTripEndedAt: ANCHOR.toISOString(),
+      });
+
+      expect(result.outcome).toBe('opened');
+      expect(sessions.size).toBe(1);
+    });
   });
 
   describe('late arming after elapsed temporal targets (L/M)', () => {

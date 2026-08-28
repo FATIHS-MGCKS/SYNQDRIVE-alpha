@@ -170,21 +170,21 @@ describe('BatteryV2ReconciliationService', () => {
     );
   });
 
-  it('repairs a missing LV rest session for a finalized RESTING trip (scenario C)', async () => {
+  it('repairs a missing LV rest session from authoritative COMPLETED trips (scenario C)', async () => {
     const anchor = new Date(Date.now() - 10 * 60_000);
-    prisma.vehicleTripDetectionState.findMany.mockResolvedValueOnce([
-      {
-        vehicleId: VEH,
-        organizationId: ORG,
-        lastActivityAt: anchor,
-        vehicle: { organizationId: ORG },
-      },
-    ]);
-    prisma.vehicleTrip.findFirst.mockResolvedValueOnce({
-      id: 'trip-1',
-      endTime: anchor,
+    prisma.vehicleTrip.findMany.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
+      if (args.where?.endTime != null && args.where?.tripStatus === 'COMPLETED') {
+        return [
+          {
+            id: 'trip-1',
+            vehicleId: VEH,
+            endTime: anchor,
+            vehicle: { organizationId: ORG },
+          },
+        ];
+      }
+      return [];
     });
-    // No LV_REST_WINDOW session exists for the canonical anchor.
     prisma.batteryMeasurementSession.findFirst.mockResolvedValue(null);
 
     const result = await service.reconcileAll();
@@ -202,19 +202,62 @@ describe('BatteryV2ReconciliationService', () => {
     );
   });
 
+  it('repairs trip A even when the vehicle has already started trip B (Phase 3 adversarial)', async () => {
+    const anchorA = new Date(Date.now() - 10 * 60_000);
+    const anchorB = new Date(Date.now() - 3 * 60_000);
+    prisma.vehicleTrip.findMany.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
+      if (args.where?.endTime != null && args.where?.tripStatus === 'COMPLETED') {
+        return [
+          {
+            id: 'trip-b',
+            vehicleId: VEH,
+            endTime: anchorB,
+            vehicle: { organizationId: ORG },
+          },
+          {
+            id: 'trip-a',
+            vehicleId: VEH,
+            endTime: anchorA,
+            vehicle: { organizationId: ORG },
+          },
+        ];
+      }
+      return [];
+    });
+    prisma.batteryMeasurementSession.findFirst.mockImplementation(async ({ where }: any) => {
+      if (where.idempotencyKey === `lv-rest:${VEH}:${anchorB.getTime()}`) {
+        return { id: 'sess-b' };
+      }
+      return null;
+    });
+
+    const result = await service.reconcileAll();
+
+    expect(result.restSessions).toBe(1);
+    expect(lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip).toHaveBeenCalledTimes(1);
+    expect(lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tripId: 'trip-a',
+        tripEndedAt: anchorA,
+      }),
+    );
+    expect(prisma.vehicleTripDetectionState.findMany).not.toHaveBeenCalled();
+  });
+
   it('does not re-enqueue session open when the canonical session already exists (E)', async () => {
     const anchor = new Date(Date.now() - 10 * 60_000);
-    prisma.vehicleTripDetectionState.findMany.mockResolvedValueOnce([
-      {
-        vehicleId: VEH,
-        organizationId: ORG,
-        lastActivityAt: anchor,
-        vehicle: { organizationId: ORG },
-      },
-    ]);
-    prisma.vehicleTrip.findFirst.mockResolvedValueOnce({
-      id: 'trip-1',
-      endTime: anchor,
+    prisma.vehicleTrip.findMany.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
+      if (args.where?.endTime != null && args.where?.tripStatus === 'COMPLETED') {
+        return [
+          {
+            id: 'trip-1',
+            vehicleId: VEH,
+            endTime: anchor,
+            vehicle: { organizationId: ORG },
+          },
+        ];
+      }
+      return [];
     });
     prisma.batteryMeasurementSession.findFirst.mockResolvedValueOnce({
       id: 'sess-existing',
@@ -228,17 +271,13 @@ describe('BatteryV2ReconciliationService', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('skips missing-session recovery when no finalized trip matches the rest anchor', async () => {
-    const anchor = new Date(Date.now() - 10 * 60_000);
-    prisma.vehicleTripDetectionState.findMany.mockResolvedValueOnce([
-      {
-        vehicleId: VEH,
-        organizationId: ORG,
-        lastActivityAt: anchor,
-        vehicle: { organizationId: ORG },
-      },
-    ]);
-    prisma.vehicleTrip.findFirst.mockResolvedValueOnce(null);
+  it('skips missing-session recovery when no completed trips are in the settle window', async () => {
+    prisma.vehicleTrip.findMany.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
+      if (args.where?.endTime != null && args.where?.tripStatus === 'COMPLETED') {
+        return [];
+      }
+      return [];
+    });
 
     const result = await service.reconcileAll();
 

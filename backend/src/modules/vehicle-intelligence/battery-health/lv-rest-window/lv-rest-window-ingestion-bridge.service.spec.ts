@@ -49,6 +49,7 @@ describe('LvRestWindowIngestionBridgeService', () => {
     },
     vehicleTrip: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
     },
   };
   const fsm = {
@@ -81,7 +82,7 @@ describe('LvRestWindowIngestionBridgeService', () => {
     });
     // No canonical finalized trip for the anchor by default → legacy
     // direct TRIP_ENDED emission path (anchor without trip linkage).
-    prisma.vehicleTrip.findFirst.mockResolvedValue(null);
+    prisma.vehicleTrip.findMany.mockResolvedValue([]);
     sessionArming.ensureLvRestWindowForFinalizedTrip.mockResolvedValue({
       outcome: 'opened',
       reason: 'opened_candidate',
@@ -231,7 +232,7 @@ describe('LvRestWindowIngestionBridgeService', () => {
   });
 
   it('converges on canonical session arming when a finalized trip matches the anchor', async () => {
-    prisma.vehicleTrip.findFirst.mockResolvedValue({ id: 'trip-fin-1' });
+    prisma.vehicleTrip.findMany.mockResolvedValue([{ id: 'trip-fin-1', endTime: TRIP_END }]);
 
     await bridge.processObservationCycle(ORG, VEHICLE, baseCtx());
 
@@ -246,6 +247,37 @@ describe('LvRestWindowIngestionBridgeService', () => {
         ([, , event]) => event.type === LvRestWindowEventType.TRIP_ENDED,
       ),
     ).toBe(false);
+  });
+
+  it('binds the closest completed trip when multiple trips fall inside ±120s (Phase 4)', async () => {
+    const anchor = TRIP_END;
+    const closerTripId = 'trip-closer';
+    const fartherTripId = 'trip-farther';
+    prisma.vehicleTrip = {
+      findFirst: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([
+        {
+          id: fartherTripId,
+          endTime: new Date(anchor.getTime() + 90_000),
+        },
+        {
+          id: closerTripId,
+          endTime: new Date(anchor.getTime() + 5_000),
+        },
+      ]),
+    };
+    bridge = new LvRestWindowIngestionBridgeService(
+      prisma as any,
+      fsm as any,
+      policyProfiles as any,
+      sessionArming as any,
+    );
+
+    await bridge.processObservationCycle(ORG, VEHICLE, baseCtx());
+
+    expect(sessionArming.ensureLvRestWindowForFinalizedTrip).toHaveBeenCalledWith(
+      expect.objectContaining({ tripId: closerTripId }),
+    );
   });
 
   it('reads trip detection state only (H)', async () => {

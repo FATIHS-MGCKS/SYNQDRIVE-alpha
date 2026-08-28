@@ -35,6 +35,7 @@ export class BatteryLvRestSessionOpenHandler
       organizationId: payload.organizationId,
       vehicleId: payload.vehicleId,
       tripId: payload.tripId,
+      payloadTripEndedAt: payload.tripEndedAt,
     });
 
     // not_eligible/already_exists complete without error: eligibility is

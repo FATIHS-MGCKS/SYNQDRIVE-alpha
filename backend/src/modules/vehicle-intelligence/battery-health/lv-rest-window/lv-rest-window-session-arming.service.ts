@@ -22,6 +22,11 @@ export interface EnsureLvRestWindowForFinalizedTripInput {
   organizationId: string;
   vehicleId: string;
   tripId: string;
+  /**
+   * When supplied (durable job payload), must equal authoritative trip.endTime.
+   * Persisted trip.endTime remains the anchor authority either way.
+   */
+  payloadTripEndedAt?: string;
   /** Injection point for deterministic tests only. */
   now?: Date;
 }
@@ -123,6 +128,21 @@ export class LvRestWindowSessionArmingService {
 
     const anchorAt = trip.endTime;
     const windowId = buildLvRestWindowIdempotencyKey(input.vehicleId, anchorAt);
+
+    if (input.payloadTripEndedAt != null) {
+      const payloadAnchor = new Date(input.payloadTripEndedAt);
+      if (
+        Number.isNaN(payloadAnchor.getTime()) ||
+        payloadAnchor.getTime() !== anchorAt.getTime()
+      ) {
+        return {
+          outcome: 'not_eligible',
+          reason: 'payload_anchor_mismatch',
+          windowId,
+          anchorAt,
+        };
+      }
+    }
 
     const policy = buildLvRestWindowPolicyContext(
       await this.policyProfiles.resolveForVehicle(input.vehicleId),

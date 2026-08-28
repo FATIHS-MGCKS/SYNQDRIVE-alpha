@@ -89,10 +89,21 @@ export class BatteryV2IdempotentExecutionService {
       case 'BATTERY_LV_REST_SESSION_OPEN': {
         const openPayload =
           payload as BatteryV2JobPayload<'BATTERY_LV_REST_SESSION_OPEN'>;
-        const anchor = new Date(openPayload.tripEndedAt);
-        if (Number.isNaN(anchor.getTime())) return false;
-        // A session for the canonical anchor (open or terminal) means the
-        // window was already opened/adjudicated once — replay-safe skip.
+        const trip = await this.prisma.vehicleTrip.findFirst({
+          where: {
+            id: openPayload.tripId,
+            vehicleId,
+            vehicle: { organizationId },
+          },
+          select: { endTime: true },
+        });
+        const anchor =
+          trip?.endTime ??
+          (() => {
+            const fromPayload = new Date(openPayload.tripEndedAt);
+            return Number.isNaN(fromPayload.getTime()) ? null : fromPayload;
+          })();
+        if (!anchor) return false;
         const existing = await this.prisma.batteryMeasurementSession.findFirst({
           where: {
             organizationId,

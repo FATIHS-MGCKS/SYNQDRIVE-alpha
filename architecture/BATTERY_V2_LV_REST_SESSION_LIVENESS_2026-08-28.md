@@ -30,9 +30,12 @@ Three convergent paths, ONE canonical open operation:
    transition are persisted. Consumed by `BatteryLvRestSessionOpenHandler`.
    Enqueue failure never affects trip lifecycle.
 3. **Self-healing recovery** —
-   `BatteryV2ReconciliationService.reconcileMissingLvRestSessions()`:
-   RESTING det-state + finalized trip matching the anchor (±120s) + no
-   session → re-enqueue the same job identity.
+   `BatteryV2ReconciliationService.reconcileMissingLvRestSessions()` scans
+   authoritative `COMPLETED` trips in the lookback/settle window whose
+   canonical `trip.endTime` anchor has no `LV_REST_WINDOW` session — **not**
+   the vehicle's transient `TripDetectionState`. This repairs missed primary
+   enqueues even after a subsequent trip has started. Re-enqueues the same
+   job identity.
 4. **Observation bridge convergence** — when a finalized trip matches the
    det-state anchor, the bridge delegates to the canonical arming operation
    (trip-linked, `trip.endTime` anchor); the direct `TRIP_ENDED` emission

@@ -34,7 +34,7 @@ describe('LvRestWindowIngestionBridgeService FSM integration', () => {
   const prisma: {
     vehicleTripDetectionState: { findUnique: jest.Mock };
     vehicle: { findUnique: jest.Mock };
-    vehicleTrip: { findFirst: jest.Mock };
+    vehicleTrip: { findFirst: jest.Mock; findMany: jest.Mock };
   } = {
     vehicleTripDetectionState: {
       findUnique: jest.fn(),
@@ -44,6 +44,7 @@ describe('LvRestWindowIngestionBridgeService FSM integration', () => {
     },
     vehicleTrip: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
     },
   };
 
@@ -180,7 +181,7 @@ describe('LvRestWindowIngestionBridgeService FSM integration', () => {
       },
     });
 
-    prisma.vehicleTrip.findFirst.mockResolvedValue(null);
+    prisma.vehicleTrip.findMany.mockResolvedValue([]);
 
     bridge = new LvRestWindowIngestionBridgeService(
       prisma as any,
