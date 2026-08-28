@@ -26,6 +26,7 @@ import type {
   EnergyRecoveryDryRunReport,
   EnergyVehicleEnergyClass,
 } from './energy-events-recovery.types';
+import type { RecoveryExistingEnergyEvent } from './energy-events-recovery-read.repository';
 
 export const APPROVED_PRE_WRITE_COUNTS = {
   WOULD_CREATE: 3,
@@ -147,6 +148,58 @@ export async function captureRollbackPlan(
   }
 
   return plan;
+}
+
+const EXISTING_EVENT_SELECT = {
+  id: true,
+  vehicleId: true,
+  dimoSegmentId: true,
+  kind: true,
+  detectionMechanism: true,
+  startTime: true,
+  endTime: true,
+  durationSeconds: true,
+  startLatitude: true,
+  startLongitude: true,
+  endLatitude: true,
+  endLongitude: true,
+  fuelDeltaLiters: true,
+  fuelDeltaPercent: true,
+  socDeltaPercent: true,
+  energyDeltaKwh: true,
+  odometerStartKm: true,
+  odometerEndKm: true,
+  confidence: true,
+  rawDetectionMeta: true,
+} as const;
+
+export async function refreshVehicleExistingEvents(
+  prisma: PrismaClient,
+  vehicles: RecoveryVehicleInput[],
+): Promise<RecoveryVehicleInput[]> {
+  const outageStart = new Date(ENERGY_EVENTS_OUTAGE_START_ISO);
+  const recoveryCutoff = new Date(ENERGY_EVENTS_RECOVERY_CUTOFF_ISO);
+  const vehicleIds = vehicles.map((vehicle) => vehicle.vehicleId);
+  const events = await prisma.vehicleEnergyEvent.findMany({
+    where: {
+      vehicleId: { in: vehicleIds },
+      startTime: { gte: outageStart, lt: recoveryCutoff },
+    },
+    select: EXISTING_EVENT_SELECT,
+  });
+
+  const eventsByVehicle = new Map<string, RecoveryExistingEnergyEvent[]>();
+  for (const event of events) {
+    const bucket = eventsByVehicle.get(event.vehicleId) ?? [];
+    const { vehicleId: _vehicleId, ...existingEvent } = event;
+    bucket.push(existingEvent as RecoveryExistingEnergyEvent);
+    eventsByVehicle.set(event.vehicleId, bucket);
+  }
+
+  return vehicles.map((vehicle) => ({
+    ...vehicle,
+    existingEvents: eventsByVehicle.get(vehicle.vehicleId) ?? [],
+  }));
 }
 
 function sleep(ms: number): Promise<void> {
@@ -594,7 +647,11 @@ export async function executeControlledWriteBackfill(options: {
   }
 
   const postWriteSnapshot = await captureEnergyEventsTableSnapshot(options.prisma);
-  const postWriteReport = await runEnergyEventsRecoveryDryRun(options.vehicles, {
+  const vehiclesAfterWrite = await refreshVehicleExistingEvents(
+    options.prisma,
+    options.vehicles,
+  );
+  const postWriteReport = await runEnergyEventsRecoveryDryRun(vehiclesAfterWrite, {
     fetchSegments: options.fetchSegments,
     interRequestDelayMs: delayMs,
     mode: 'full',
@@ -632,7 +689,7 @@ export async function executeControlledWriteBackfill(options: {
       }
     }
 
-    idempotencyReport = await runEnergyEventsRecoveryDryRun(options.vehicles, {
+    idempotencyReport = await runEnergyEventsRecoveryDryRun(vehiclesAfterWrite, {
       fetchSegments: options.fetchSegments,
       interRequestDelayMs: delayMs,
       mode: 'full',
