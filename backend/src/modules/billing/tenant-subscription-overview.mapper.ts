@@ -207,6 +207,7 @@ export function resolveAddOnDtos(entitlements: BillingEntitlementSnapshot): Tena
     .map((addon) => ({
       key: addon.addonKey,
       name: ADDON_LABELS[addon.addonKey] ?? addon.addonKey,
+      status: addon.status,
       statusLabel:
         ADDON_STATUS_LABELS[addon.status as keyof typeof ADDON_STATUS_LABELS] ?? addon.status,
       active: addon.active,

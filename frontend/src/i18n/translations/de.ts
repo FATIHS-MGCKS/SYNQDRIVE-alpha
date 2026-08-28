@@ -968,6 +968,20 @@ export const de: Record<TranslationKey, string> = {
   'tenantBilling.paymentMethod.error.portalOpenFailed':
     'Das Zahlungsportal konnte nicht geöffnet werden.',
 
+  'tenantBilling.addons.loadErrorTitle': 'Zusatzmodule konnten nicht geladen werden',
+  'tenantBilling.addons.empty.title': 'Noch keine Zusatzmodule aktiv',
+  'tenantBilling.addons.empty.body':
+    'Optionale Erweiterungen wie Sprachassistent oder KI-Pakete können später hier verwaltet werden. Aktuell ist kein Zusatzmodul für Ihr Abo hinterlegt.',
+  'tenantBilling.addons.key.VOICE_AGENT': 'Sprachassistent',
+  'tenantBilling.addons.key.AI_PACKAGE': 'KI-Paket',
+  'tenantBilling.addons.key.WHATSAPP': 'WhatsApp',
+  'tenantBilling.addons.status.ACTIVE': 'Aktiv',
+  'tenantBilling.addons.status.TRIALING': 'Testphase',
+  'tenantBilling.addons.status.GRACE_PERIOD': 'Karenzzeit',
+  'tenantBilling.addons.status.SCHEDULED_CANCEL': 'Kündigung geplant',
+  'tenantBilling.addons.status.PAUSED': 'Pausiert',
+  'tenantBilling.addons.status.INACTIVE': 'Inaktiv',
+
   'finance.separationHint':
     'Kundenzahlungen und Auszahlungen sind getrennt von Ihrem SynqDrive-Abonnement. Ihre Abo-Zahlungsmethode ist nicht dasselbe wie Ihr Auszahlungskonto.',
   'finance.customerPayments.pageTitle': 'Kundenzahlungen & Auszahlungen',

@@ -91,6 +91,7 @@ export interface TenantSubscriptionPaymentMethodDto {
 export interface TenantSubscriptionAddOnDto {
   key: string;
   name: string;
+  status: string;
   statusLabel: string;
   active: boolean;
 }

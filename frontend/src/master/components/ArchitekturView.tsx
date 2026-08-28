@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Tenant Billing Add-ons (P2.2.58 — V4.9.986)', icon: Globe,
+    endpoint: 'Settings → Billing → Add-ons',
+    service: '**Locale flow:** `useLanguage().locale` → extended `rental-tenant-billing-i18n.ts` → `resolveTenantBillingAddonName` / `resolveTenantBillingAddonStatusLabel`. **Keys:** +12 EN+DE `tenantBilling.addons.*` (8942→8954); reuses `common.retry`, `tenantBilling.tab.addons`. **Machine values:** add-on `key`, backend `status` machine, `active` filter, overview fetch frozen; unknown name/statusLabel remain raw. **Guardrails:** P258 enforce-clean exact (1 path) — 0 findings. **Frozen:** P257 payment method, P256 invoices, P255A/B tariff/vehicles, P254 overview/shell, dead legacy cards. **Tests:** `rental-tenant-billing-addons-localization.test.tsx`, backend `resolveAddOnDtos` spec. **Semantics:** presentation-only; Category E=0; active mounted Tenant Billing complete.',
+    dataSource: 'architecture/I18N_TENANT_BILLING_ADDONS_P2_2_58_2026-08-28.md' },
   { name: 'Platform i18n Rental Tenant Billing Payment Method (P2.2.57 — V4.9.985)', icon: Globe,
     endpoint: 'Settings → Billing → Payment method',
     service: '**Locale flow:** `useLanguage().locale` → extended `rental-tenant-billing-i18n.ts` → `resolvePaymentMethodBillingStateLabel` / `formatPaymentMethodDisplayLocalized` / `resolveStripeStateLabel/Hint` / detach+portal error resolvers. **Keys:** +27 EN+DE `tenantBilling.paymentMethod.*` (8915→8942); reuses `common.retry`, `common.loading`, `common.remove`, `tenantBilling.problem.openPortal`. **Machine values:** payment method IDs, brand/last4/typeLabel/bank/mandate raw fields, billingState/default machines, mutation payloads, portal URL/return URL frozen. **Guardrails:** P257 enforce-clean exact (6 paths) — 0 findings. **Frozen:** P256 invoices, P255A/B tariff/vehicles, P254 overview/shell, dead legacy payment cards, Add-ons. **Tests:** `rental-tenant-billing-payment-method-localization.test.tsx`, hook mutation tests. **Semantics:** presentation-only; Category E=0.',
