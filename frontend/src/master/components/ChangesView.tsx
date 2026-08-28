@@ -36,6 +36,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'connectivity-diagnostic-hardening-2026-08-28',
+    version: '4.9.977',
+    title: 'Connectivity Diagnostic Hardening — Provider erreichbar vs. Fahrzeugdaten veraltet',
+    summary: [
+      'Neue Master-Admin-Diagnosedimension `ConnectivityDiagnosticState`: `PROVIDER_REACHABLE_DATA_FRESH` / `_STALE`, `PROVIDER_UNREACHABLE`, `AUTH_OR_BINDING_ERROR`, `UNKNOWN` — abgeleitet aus bestehenden autoritativen Feldern.',
+      'Trennt Provider-Erreichbarkeit (`provider_fetched_at` → `lastReceivedAt`) von echter Fahrzeugbeobachtung (`source_timestamp` → `lastTelemetryAt`). Kanonische Freshness bleibt unverändert.',
+      'Kritischer Fall `PROVIDER_REACHABLE_DATA_STALE`: Provider antwortet (~30s Poll), aber `source_timestamp` ist ≥ 24h eingefroren — Signatur des Vorfalls KS MX 2024 (deaktivierte DIMO-SIM, ~27h).',
+      'Schwellwerte wiederverwendet (15 min / 24h / 48h) — keine zweite Freshness-Policy. `standby` gilt nicht als stale (DIMO-Heartbeat 1–4h); `no_signal` → `UNKNOWN` statt erfundener Staleness.',
+      'Master-Admin-Panel in „Technische Diagnostik" (Connected Vehicles Drawer): letzte Provider-Abfrage vs. letzte Fahrzeugbeobachtung, Beobachtungsstatus, Bindung, Consent, Verbindungsstatus. Rohdaten hinter Disclosure.',
+      'Fleet-/Org-DTO unverändert — Diagnosedimension bewusst aus `VehicleConnectivityRuntimeStateDto` ausgeschlossen (Regressionstest).',
+      'Observability: zwei Counter mit Low-Cardinality-Labels, nur bei Zustandsübergang (Transition-Tracker) — kein 30s-Log-Rauschen.',
+      '39 neue Tests (29 Backend, 10 Frontend) inkl. Regressionstest „erfolgreicher Provider-Fetch verjüngt Telemetrie-Freshness nicht".',
+    ],
+    reason:
+      'Diagnoselücke aus der Produktionsuntersuchung: erfolgreiches DIMO-Polling verdeckte ein Fahrzeug, das keine neue Telemetrie mehr lieferte. `provider_fetched_at` als Fahrzeug-Freshness zu verwenden wäre falsch.',
+    previousBehavior:
+      'Nur `telemetryState` verfügbar — korrekt stale, aber ohne Unterscheidung zwischen „Provider nicht erreichbar", „Auth/Bindung defekt" und „Provider erreichbar, Gerät sendet nicht".',
+    details:
+      'backend: connectivity/domain/connectivity-diagnostic-state.ts (Klassifikator), connectivity-domain.types.ts (`diagnostic`), vehicle-connectivity-runtime-state.builder.ts, connectivity-diagnostic.admin-dto.ts, vehicles.service.ts (`getFleetConnectivityAdminDiagnostics`, geteilter Detail-Builder = eine Projektion), vehicles-operational.service.ts, dimo/connectivity/connectivity-diagnostic-transition.tracker.ts, connectivity-observability.service.ts, connectivity-prometheus.metrics.ts, observability/trip-metrics.service.ts, dimo.module.ts. frontend: lib/api.ts, master/connected-vehicles/connectivity-diagnostic.presentation.ts, ConnectivityDiagnosticPanel.tsx, ConnectedVehicleDetailDrawer.tsx. architecture/CONNECTIVITY_DIAGNOSTIC_HARDENING_2026-08-28.md. Unverändert: Battery V2, Trip Detection FSM, DIMO-Polling-Kadenz, soft-offline/offline-Grenzen.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T10:30:00.000Z',
+  },
+  {
     id: 'energy-events-e2-detector-calibration-2026-08-28',
     version: '4.9.976',
     title: 'Energy Events E2 — DIMO refuel/recharge detector calibration',

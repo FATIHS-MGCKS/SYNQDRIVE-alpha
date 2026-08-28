@@ -1,0 +1,81 @@
+/**
+ * Master-Admin connectivity diagnostic panel.
+ *
+ * Makes the "provider responds, vehicle does not" gap readable at a glance by
+ * showing the last provider fetch and the last real vehicle observation side by
+ * side — the two timestamps that must never be conflated.
+ */
+import { StatusChip } from '../../components/patterns';
+import type { ConnectivityDiagnosticAdmin } from '../../lib/api';
+import { buildConnectivityDiagnosticView } from './connectivity-diagnostic.presentation';
+import { formatDateTimeDe } from './cv.utils';
+
+export function ConnectivityDiagnosticPanel({
+  diagnostic,
+}: {
+  diagnostic: ConnectivityDiagnosticAdmin;
+}) {
+  const view = buildConnectivityDiagnosticView(diagnostic);
+
+  return (
+    <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusChip tone={view.tone} dot className="text-xs">
+          {view.headline}
+        </StatusChip>
+        <span className="text-xs text-muted-foreground">{view.providerLabel}</span>
+      </div>
+
+      {view.hint ? (
+        <p className="text-xs text-muted-foreground">{view.hint}</p>
+      ) : null}
+
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+        <DiagnosticRow
+          label="Letzte Provider-Abfrage"
+          value={view.lastProviderFetchLabel}
+          title={formatTimestampTitle(diagnostic.lastProviderFetchAt)}
+        />
+        <DiagnosticRow
+          label="Letzte Fahrzeugbeobachtung"
+          value={view.lastObservationLabel}
+          title={formatTimestampTitle(diagnostic.lastVehicleObservationAt)}
+        />
+        <DiagnosticRow label="Provider-API" value={view.providerApiLabel} />
+        <DiagnosticRow label="Beobachtungsstatus" value={view.observationStateLabel} />
+        <DiagnosticRow label="Bindung" value={view.bindingLabel} />
+        <DiagnosticRow label="Consent" value={view.consentLabel} />
+        <DiagnosticRow label="Verbindungsstatus" value={view.connectionStatusLabel} />
+        {view.providerErrorCategory ? (
+          <DiagnosticRow label="Fehlerkategorie" value={view.providerErrorCategory} />
+        ) : null}
+        {view.deviceBindingRef ? (
+          <DiagnosticRow label="Bindungs-Referenz" value={view.deviceBindingRef} />
+        ) : null}
+      </dl>
+    </div>
+  );
+}
+
+function DiagnosticRow({
+  label,
+  value,
+  title,
+}: {
+  label: string;
+  value: string;
+  title?: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className="truncate text-sm" title={title}>
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function formatTimestampTitle(iso: string | null): string | undefined {
+  return iso ? formatDateTimeDe(iso) : undefined;
+}

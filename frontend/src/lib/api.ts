@@ -3877,7 +3877,9 @@ export const api = {
     operationalUnregisteredDetail: (dimoVehicleId: string) =>
       get<any>(`/admin/vehicles/unregistered/${dimoVehicleId}/operational`),
     operationalDiagnostics: (vehicleId: string, organizationId: string) =>
-      get<any>(`/admin/vehicles/${vehicleId}/operational/diagnostics?organizationId=${encodeURIComponent(organizationId)}`),
+      get<ConnectivityAdminDiagnosticsResponse>(
+        `/admin/vehicles/${vehicleId}/operational/diagnostics?organizationId=${encodeURIComponent(organizationId)}`,
+      ),
     importPreflight: (organizationId: string, dimoVehicleId: string) =>
       get<any>(
         `/admin/vehicles/import-preflight?organizationId=${encodeURIComponent(organizationId)}&dimoVehicleId=${encodeURIComponent(dimoVehicleId)}`,
@@ -10443,6 +10445,48 @@ export interface FleetConnectivityDetail extends FleetConnectivityListItem {
   webhook: FleetConnectivityWebhookSummary;
   odometerKm: number | null;
   hasLocation: boolean;
+}
+
+/**
+ * Connectivity diagnostic dimension — Master Admin only.
+ *
+ * Separates provider API reachability from real vehicle observation freshness.
+ * A provider can be reachable while the vehicle observation is stale (device or
+ * SIM not transmitting), which canonical `telemetryState` alone cannot express.
+ *
+ * Served only by `/admin/vehicles/:vehicleId/operational/diagnostics`. Never
+ * present on tenant-facing connectivity payloads.
+ */
+export type ConnectivityDiagnosticState =
+  | 'PROVIDER_REACHABLE_DATA_FRESH'
+  | 'PROVIDER_REACHABLE_DATA_STALE'
+  | 'PROVIDER_UNREACHABLE'
+  | 'AUTH_OR_BINDING_ERROR'
+  | 'UNKNOWN';
+
+export type ConnectivityTriState = 'ACTIVE' | 'INACTIVE' | 'UNKNOWN';
+
+export interface ConnectivityDiagnosticAdmin {
+  provider: string | null;
+  diagnosticState: ConnectivityDiagnosticState;
+  providerApiReachable: boolean | null;
+  /** Provider response receipt time — never vehicle freshness. */
+  lastProviderFetchAt: string | null;
+  lastProviderFetchAgeMs: number | null;
+  /** Real vehicle observation time — drives canonical freshness. */
+  lastVehicleObservationAt: string | null;
+  lastVehicleObservationAgeMs: number | null;
+  observationState: FleetTelemetryFreshness;
+  bindingState: ConnectivityTriState;
+  consentState: ConnectivityTriState;
+  connectionStatus: string | null;
+  deviceBindingRef: string | null;
+  providerErrorCategory: ConnectivityReasonCode | null;
+  calculatedAt: string;
+}
+
+export interface ConnectivityAdminDiagnosticsResponse extends FleetConnectivityDetail {
+  connectivityDiagnostic: ConnectivityDiagnosticAdmin;
 }
 
 /** Canonical fleet connectivity KPI summary (API v2). */

@@ -9,6 +9,7 @@ import {
   CvIntegrityChip,
   CvTelemetryChip,
 } from './ConnectedVehicleStatusChips';
+import { ConnectivityDiagnosticPanel } from './ConnectivityDiagnosticPanel';
 import { formatDateTimeDe } from './cv.utils';
 
 interface ConnectedVehicleDetailDrawerProps {
@@ -249,9 +250,21 @@ export function ConnectedVehicleDetailDrawer({
                     {diagnosticsError}
                   </p>
                 ) : diagnostics ? (
-                  <pre className="text-xs bg-muted/40 rounded-xl p-3 overflow-x-auto max-h-64">
-                    {JSON.stringify(diagnostics, null, 2)}
-                  </pre>
+                  <div className="space-y-3">
+                    {diagnostics.connectivityDiagnostic ? (
+                      <ConnectivityDiagnosticPanel
+                        diagnostic={diagnostics.connectivityDiagnostic}
+                      />
+                    ) : null}
+                    <details>
+                      <summary className="cursor-pointer text-xs text-muted-foreground">
+                        Rohdaten anzeigen
+                      </summary>
+                      <pre className="mt-2 text-xs bg-muted/40 rounded-xl p-3 overflow-x-auto max-h-64">
+                        {JSON.stringify(diagnostics, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">Keine Diagnostikdaten.</p>
                 )
