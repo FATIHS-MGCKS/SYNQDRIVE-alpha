@@ -37,6 +37,11 @@ export function isSpeedAtRest(speedKmh: number | null): boolean {
   return speedKmh == null || speedKmh <= 0.5;
 }
 
+/** Physically plausible 12V system voltage — guards against sensor garbage. */
+export function isPlausibleLvVoltage(v: number | null | undefined): boolean {
+  return v != null && v >= 9.0 && v <= 16.0;
+}
+
 export function isEngineOffForRest(
   signal: LvRestWindowSignalContext,
   restRequiresEngineOff: boolean,

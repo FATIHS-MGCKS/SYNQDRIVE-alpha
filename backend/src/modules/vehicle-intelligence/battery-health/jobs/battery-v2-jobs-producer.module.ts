@@ -7,6 +7,7 @@ import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 import { BatteryV2ReconciliationService } from './battery-v2-reconciliation.service';
 import { BatteryV2SnapshotObservationProducer } from './battery-v2-snapshot-observation.producer';
 import { BatteryV2TripStartProducer } from './battery-v2-trip-start.producer';
+import { BatteryV2LvRestSessionProducer } from './battery-v2-lv-rest-session.producer';
 import { BatteryV2RestTargetProducer } from './battery-v2-rest-target.producer';
 import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 import { BatteryCapabilityRefreshService } from '../capability-preflight/battery-capability-refresh.service';
@@ -21,6 +22,7 @@ import { BatteryV2JobObservabilityService } from './battery-v2-job-observability
     BatteryV2JobProducerService,
     BatteryV2SnapshotObservationProducer,
     BatteryV2TripStartProducer,
+    BatteryV2LvRestSessionProducer,
     BatteryV2RestTargetProducer,
     HvRechargeSessionReconcileProducerService,
     BatteryCapabilityRefreshService,
@@ -32,6 +34,7 @@ import { BatteryV2JobObservabilityService } from './battery-v2-job-observability
     BatteryV2JobProducerService,
     BatteryV2SnapshotObservationProducer,
     BatteryV2TripStartProducer,
+    BatteryV2LvRestSessionProducer,
     BatteryV2RestTargetProducer,
     HvRechargeSessionReconcileProducerService,
     BatteryCapabilityRefreshService,

@@ -21,6 +21,7 @@ import {
   buildBatteryRestTargetJobIdempotencyKey,
   buildCapabilityRefreshJobIdempotencyKey,
   buildHvCapacityJobIdempotencyKey,
+  buildLvRestSessionOpenJobIdempotencyKey,
   buildPublicationJobIdempotencyKey,
   buildStartProxyJobIdempotencyKey,
 } from './battery-v2-job-idempotency.policy';
@@ -120,6 +121,13 @@ function directEnqueueInput(jobType: BatteryV2JobType, idempotencyKey: string) {
   };
 
   switch (jobType) {
+    case 'BATTERY_LV_REST_SESSION_OPEN':
+      return {
+        ...base,
+        tripId: TRIP,
+        tripEndedAt: FIXED_AT,
+        sourceEntityId: TRIP,
+      };
     case 'BATTERY_REST_TARGET_EVALUATE':
       return {
         ...base,
@@ -161,6 +169,10 @@ function directEnqueueInput(jobType: BatteryV2JobType, idempotencyKey: string) {
 
 const JOB_TYPE_IDEMPOTENCY_KEYS: Record<BatteryV2JobType, string> = {
   BATTERY_OBSERVATION_CLASSIFY: 'hv-snap:2026-07-16T12:00:00.000Z:72',
+  BATTERY_LV_REST_SESSION_OPEN: buildLvRestSessionOpenJobIdempotencyKey({
+    vehicleId: VEH,
+    anchorAt: new Date(FIXED_AT),
+  }),
   BATTERY_REST_TARGET_EVALUATE: buildBatteryRestTargetJobIdempotencyKey({
     vehicleId: VEH,
     restWindowId: REST_WINDOW_ID,

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HvCapacityMethod } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { buildLvRestWindowIdempotencyKey } from '../battery-v2-domain';
 import { buildStartProxySessionIdempotencyKey } from '../lv-start-proxy/battery-start-proxy.policy';
 import type { BatteryV2JobPayload, BatteryV2JobType } from './battery-v2-job.types';
 import { validateBatteryV2JobIdempotencyKey } from './battery-v2-job-idempotency.validation';
@@ -85,6 +86,34 @@ export class BatteryV2IdempotentExecutionService {
           return lv != null;
         }
         return false;
+      case 'BATTERY_LV_REST_SESSION_OPEN': {
+        const openPayload =
+          payload as BatteryV2JobPayload<'BATTERY_LV_REST_SESSION_OPEN'>;
+        const trip = await this.prisma.vehicleTrip.findFirst({
+          where: {
+            id: openPayload.tripId,
+            vehicleId,
+            vehicle: { organizationId },
+          },
+          select: { endTime: true },
+        });
+        const anchor =
+          trip?.endTime ??
+          (() => {
+            const fromPayload = new Date(openPayload.tripEndedAt);
+            return Number.isNaN(fromPayload.getTime()) ? null : fromPayload;
+          })();
+        if (!anchor) return false;
+        const existing = await this.prisma.batteryMeasurementSession.findFirst({
+          where: {
+            organizationId,
+            vehicleId,
+            idempotencyKey: buildLvRestWindowIdempotencyKey(vehicleId, anchor),
+          },
+          select: { id: true },
+        });
+        return existing != null;
+      }
       case 'BATTERY_START_PROXY_EXTRACT': {
         const tripId = (payload as BatteryV2JobPayload<'BATTERY_START_PROXY_EXTRACT'>).tripId;
         const existing = await this.prisma.batteryMeasurementSession.findFirst({

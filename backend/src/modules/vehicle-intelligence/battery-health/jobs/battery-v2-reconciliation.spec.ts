@@ -91,7 +91,11 @@ describe('BatteryV2ReconciliationService', () => {
       update: jest.fn().mockResolvedValue({}),
     },
     batteryMeasurement: { findFirst: jest.fn().mockResolvedValue(null) },
-    vehicleTrip: { findMany: jest.fn().mockResolvedValue([]) },
+    vehicleTrip: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    vehicleTripDetectionState: { findMany: jest.fn().mockResolvedValue([]) },
     vehicleEnergyEvent: { findMany: jest.fn().mockResolvedValue([]) },
     hvChargeSession: { findUnique: jest.fn() },
     batteryAssessment: { findFirst: jest.fn() },
@@ -133,6 +137,10 @@ describe('BatteryV2ReconciliationService', () => {
     getRest60mDelayMs: jest.fn().mockReturnValue(60 * 60_000),
     getRest6hDelayMs: jest.fn().mockReturnValue(6 * 60 * 60_000),
   };
+  const lvRestSessionProducer = {
+    enqueueSessionOpenForFinalizedTrip: jest.fn().mockResolvedValue('job-id'),
+    canEnqueueForVehicle: jest.fn().mockResolvedValue(true),
+  };
   const tripStartProducer = { enqueueStartProxy: jest.fn().mockResolvedValue('job-id') };
   const rechargeReconcileProducer = {
     reconcilePeriodic: jest.fn().mockResolvedValue(0),
@@ -155,9 +163,153 @@ describe('BatteryV2ReconciliationService', () => {
       observationProducer as any,
       deadLetters as any,
       capabilityRefresh as any,
+      lvRestSessionProducer as any,
       restTargetProducer as any,
       tripStartProducer as any,
       rechargeReconcileProducer as any,
+    );
+  });
+
+  it('repairs a missing LV rest session from authoritative COMPLETED trips (scenario C)', async () => {
+    const anchor = new Date(Date.now() - 10 * 60_000);
+    prisma.vehicleTrip.findMany.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
+      if (args.where?.endTime != null && args.where?.tripStatus === 'COMPLETED') {
+        return [
+          {
+            id: 'trip-1',
+            vehicleId: VEH,
+            endTime: anchor,
+            vehicle: { organizationId: ORG },
+          },
+        ];
+      }
+      return [];
+    });
+    prisma.batteryMeasurementSession.findFirst.mockResolvedValue(null);
+
+    const result = await service.reconcileAll();
+
+    expect(result.restSessions).toBe(1);
+    expect(
+      lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: ORG,
+        vehicleId: VEH,
+        tripId: 'trip-1',
+        tripEndedAt: anchor,
+      }),
+    );
+  });
+
+  it('repairs trip A even when the vehicle has already started trip B (Phase 3 adversarial)', async () => {
+    const anchorA = new Date(Date.now() - 10 * 60_000);
+    const anchorB = new Date(Date.now() - 3 * 60_000);
+    prisma.vehicleTrip.findMany.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
+      if (args.where?.endTime != null && args.where?.tripStatus === 'COMPLETED') {
+        return [
+          {
+            id: 'trip-b',
+            vehicleId: VEH,
+            endTime: anchorB,
+            vehicle: { organizationId: ORG },
+          },
+          {
+            id: 'trip-a',
+            vehicleId: VEH,
+            endTime: anchorA,
+            vehicle: { organizationId: ORG },
+          },
+        ];
+      }
+      return [];
+    });
+    prisma.batteryMeasurementSession.findFirst.mockImplementation(async ({ where }: any) => {
+      if (where.idempotencyKey === `lv-rest:${VEH}:${anchorB.getTime()}`) {
+        return { id: 'sess-b' };
+      }
+      return null;
+    });
+
+    const result = await service.reconcileAll();
+
+    expect(result.restSessions).toBe(1);
+    expect(lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip).toHaveBeenCalledTimes(1);
+    expect(lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tripId: 'trip-a',
+        tripEndedAt: anchorA,
+      }),
+    );
+    expect(prisma.vehicleTripDetectionState.findMany).not.toHaveBeenCalled();
+  });
+
+  it('does not re-enqueue session open when the canonical session already exists (E)', async () => {
+    const anchor = new Date(Date.now() - 10 * 60_000);
+    prisma.vehicleTrip.findMany.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
+      if (args.where?.endTime != null && args.where?.tripStatus === 'COMPLETED') {
+        return [
+          {
+            id: 'trip-1',
+            vehicleId: VEH,
+            endTime: anchor,
+            vehicle: { organizationId: ORG },
+          },
+        ];
+      }
+      return [];
+    });
+    prisma.batteryMeasurementSession.findFirst.mockResolvedValueOnce({
+      id: 'sess-existing',
+    });
+
+    const result = await service.reconcileAll();
+
+    expect(result.restSessions).toBe(0);
+    expect(
+      lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('skips missing-session recovery when no completed trips are in the settle window', async () => {
+    prisma.vehicleTrip.findMany.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
+      if (args.where?.endTime != null && args.where?.tripStatus === 'COMPLETED') {
+        return [];
+      }
+      return [];
+    });
+
+    const result = await service.reconcileAll();
+
+    expect(result.restSessions).toBe(0);
+    expect(
+      lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('schedules targets for PLANNED (candidate) LV rest sessions armed without promotion', async () => {
+    const startedAt = new Date(Date.now() - 2 * 60 * 60_000);
+    const windowId = `lv-rest:${VEH}:${startedAt.getTime()}`;
+    prisma.batteryMeasurementSession.findMany.mockResolvedValueOnce([
+      {
+        id: 'sess-candidate',
+        organizationId: ORG,
+        vehicleId: VEH,
+        startedAt,
+        idempotencyKey: windowId,
+        metadata: { lvRestWindowState: 'CANDIDATE' },
+        status: 'PLANNED',
+      },
+    ]);
+
+    const result = await service.reconcileAll();
+
+    expect(result.restTargets).toBe(1);
+    expect(restTargetProducer.scheduleRest60m).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restWindowId: windowId,
+        sessionId: 'sess-candidate',
+      }),
     );
   });
 

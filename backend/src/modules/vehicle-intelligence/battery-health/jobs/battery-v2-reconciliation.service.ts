@@ -18,6 +18,7 @@ import {
 import { BATTERY_V2_JOB_MODEL_VERSION_DEFAULT } from './battery-v2-job.types';
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { BatteryV2LvRestSessionProducer } from './battery-v2-lv-rest-session.producer';
 import { BatteryV2RestTargetProducer } from './battery-v2-rest-target.producer';
 import { BatteryV2SnapshotObservationProducer } from './battery-v2-snapshot-observation.producer';
 import { BatteryCapabilityRefreshService } from '../capability-preflight/battery-capability-refresh.service';
@@ -34,6 +35,7 @@ import {
   BatteryMeasurementSessionType,
   BatteryMeasurementType,
   Prisma,
+  TripStatus,
 } from '@prisma/client';
 import { buildLvRestWindowIdempotencyKey, LvRestWindowState } from '../battery-v2-domain';
 import { measurementTypeForRestTarget } from '../lv-rest-window/battery-rest-target-evaluation';
@@ -47,9 +49,14 @@ import { formatBatteryV2PipelineLog } from '../observability/battery-v2-pipeline
 
 const TRIP_LOOKBACK_MS = 7 * 24 * 3600_000;
 const ASSESSMENT_STALE_MS = 6 * 3600_000;
+/** Max age of a rest anchor still worth arming (FSM max rest window). */
+const LV_REST_SESSION_LOOKBACK_MS = 24 * 3600_000;
+/** Grace before recovery kicks in — lets the primary finalize path land first. */
+const LV_REST_SESSION_SETTLE_MS = 2 * 60_000;
 
 export interface BatteryV2ReconciliationResult {
   observationClassify: number;
+  restSessions: number;
   restTargets: number;
   tripStarts: number;
   rechargeSegments: number;
@@ -68,6 +75,7 @@ export class BatteryV2ReconciliationService {
     private readonly observationProducer: BatteryV2SnapshotObservationProducer,
     private readonly deadLetters: BatteryV2JobDeadLetterService,
     private readonly capabilityRefresh: BatteryCapabilityRefreshService,
+    private readonly lvRestSessionProducer: BatteryV2LvRestSessionProducer,
     private readonly restTargetProducer: BatteryV2RestTargetProducer,
     private readonly tripStartProducer: BatteryV2TripStartProducer,
     private readonly rechargeReconcileProducer: HvRechargeSessionReconcileProducerService,
@@ -78,6 +86,7 @@ export class BatteryV2ReconciliationService {
     const batch = getBatteryV2ReconciliationBatchSize();
     const result: BatteryV2ReconciliationResult = {
       observationClassify: 0,
+      restSessions: 0,
       restTargets: 0,
       tripStarts: 0,
       rechargeSegments: 0,
@@ -87,6 +96,7 @@ export class BatteryV2ReconciliationService {
     };
 
     result.observationClassify = await this.reconcileMissingObservations(batch);
+    result.restSessions = await this.reconcileMissingLvRestSessions(batch);
     result.restTargets = await this.reconcileRestTargets(batch);
     result.tripStarts = await this.reconcileTripStarts(batch);
     result.rechargeSegments = await this.reconcileRechargeSegments(batch);
@@ -98,6 +108,7 @@ export class BatteryV2ReconciliationService {
 
     const total =
       result.observationClassify +
+      result.restSessions +
       result.restTargets +
       result.tripStarts +
       result.rechargeSegments +
@@ -122,6 +133,7 @@ export class BatteryV2ReconciliationService {
     if (!this.metrics) return;
     const entries: Array<[BatteryV2ReconciliationCategory, number]> = [
       ['observation_classify', result.observationClassify],
+      ['rest_sessions', result.restSessions],
       ['rest_targets', result.restTargets],
       ['trip_starts', result.tripStarts],
       ['recharge_segments', result.rechargeSegments],
@@ -265,6 +277,79 @@ export class BatteryV2ReconciliationService {
     };
   }
 
+  /**
+   * Self-healing recovery for the trip-finalization liveness gap.
+   *
+   * Scans authoritative COMPLETED trips (not the vehicle's transient
+   * TripDetectionState) so a missed primary enqueue is still repaired after
+   * the vehicle starts a subsequent trip or leaves RESTING. Each candidate
+   * uses durable identity `trip.endTime` as the anchor — no ±120s fuzzy
+   * matching. Converges on `lv-rest-open:{vehicleId}:{anchorMs}`.
+   */
+  private async reconcileMissingLvRestSessions(batch: number): Promise<number> {
+    if (!isBatteryV2RestShadowEnabled()) {
+      return 0;
+    }
+
+    const now = Date.now();
+    const lookbackFrom = new Date(now - LV_REST_SESSION_LOOKBACK_MS);
+    const settleBefore = new Date(now - LV_REST_SESSION_SETTLE_MS);
+
+    const trips = await this.prisma.vehicleTrip.findMany({
+      where: {
+        tripStatus: TripStatus.COMPLETED,
+        endTime: {
+          not: null,
+          gte: lookbackFrom,
+          lte: settleBefore,
+        },
+      },
+      take: batch,
+      orderBy: { endTime: 'desc' },
+      select: {
+        id: true,
+        vehicleId: true,
+        endTime: true,
+        vehicle: { select: { organizationId: true } },
+      },
+    });
+
+    let enqueued = 0;
+    for (const trip of trips) {
+      if (!trip.endTime) continue;
+      const organizationId = trip.vehicle.organizationId;
+      if (!organizationId) continue;
+
+      const windowId = buildLvRestWindowIdempotencyKey(
+        trip.vehicleId,
+        trip.endTime,
+      );
+      const existingSession =
+        await this.prisma.batteryMeasurementSession.findFirst({
+          where: {
+            organizationId,
+            vehicleId: trip.vehicleId,
+            type: BatteryMeasurementSessionType.LV_REST_WINDOW,
+            idempotencyKey: windowId,
+          },
+          select: { id: true },
+        });
+      if (existingSession) continue;
+
+      const jobId =
+        await this.lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip({
+          organizationId,
+          vehicleId: trip.vehicleId,
+          tripId: trip.id,
+          tripEndedAt: trip.endTime,
+          correlationId: `reconcile:lv-rest-open:${trip.vehicleId}:${trip.endTime.toISOString()}`,
+        });
+      if (jobId) enqueued += 1;
+    }
+
+    return enqueued;
+  }
+
   private async reconcileRestTargets(batch: number): Promise<number> {
     const lvSessions = await this.reconcileLvRestWindowTargets(batch);
     const legacy = await this.reconcileLegacyRestTargets(batch);
@@ -285,6 +370,13 @@ export class BatteryV2ReconciliationService {
         type: BatteryMeasurementSessionType.LV_REST_WINDOW,
         status: {
           in: [
+            // PLANNED = FSM CANDIDATE: a window armed from a finalized trip
+            // whose CANDIDATE → RESTING promotion never happened (no post-
+            // anchor observation). Its temporal targets must still reach
+            // evaluation — the evaluation quality policy adjudicates the
+            // outcome (VALID from real in-window observations, contaminated,
+            // or MISSED). Skipping PLANNED here would silently drop targets.
+            BatteryMeasurementSessionStatus.PLANNED,
             BatteryMeasurementSessionStatus.ACTIVE,
             BatteryMeasurementSessionStatus.COMPLETED,
           ],
