@@ -14,6 +14,12 @@ export function deriveManualReviewDisposition(
     return 'NEEDS_FURTHER_EVIDENCE';
   }
   if (
+    reasons.includes('refuel_high_odometer_movement') ||
+    reasons.includes('refuel_elevated_movement_during_refuel')
+  ) {
+    return 'EXCLUDE_FROM_BACKFILL';
+  }
+  if (
     reasons.some((reason) =>
       [
         'refuel_missing_fuel_evidence',
@@ -31,12 +37,6 @@ export function deriveManualReviewDisposition(
   }
   if (reasons.includes('refuel_duration_very_long')) {
     return 'NEEDS_FURTHER_EVIDENCE';
-  }
-  if (
-    reasons.includes('refuel_high_odometer_movement') ||
-    reasons.includes('refuel_elevated_movement_during_refuel')
-  ) {
-    return 'EXCLUDE_FROM_BACKFILL';
   }
   if (reasons.includes('refuel_odometer_movement_during_event')) {
     return 'NEEDS_FURTHER_EVIDENCE';

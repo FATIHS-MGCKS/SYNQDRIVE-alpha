@@ -291,6 +291,12 @@ export function reconcileRecoveryCandidates(
         )
       ) {
         if (
+          candidate.existingRowId &&
+          existing.dimoSegmentId !== candidate.dimoSegmentId
+        ) {
+          continue;
+        }
+        if (
           isSubsumedExistingSubsegmentOverlap(
             candidate,
             existing.startTime,

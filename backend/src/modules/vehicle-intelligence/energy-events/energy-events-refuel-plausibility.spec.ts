@@ -190,4 +190,49 @@ describe('energy-events Tesla recharge sub-segment overlap', () => {
     expect(result.candidates[0].classification).toBe('WOULD_UPDATE');
     expect(result.candidates[0].manualReviewReasons).toEqual([]);
   });
+
+  it('7b. same dimoSegmentId update ignores overlapping legacy sub-segments', () => {
+    const candidate = {
+      classification: 'WOULD_UPDATE' as const,
+      mechanism: 'recharge' as const,
+      vehicleId: VEHICLE_ID,
+      tokenId: 186946,
+      label: 'KS FH 660E',
+      dimoSegmentId: 'dimo-recharge-186946-1784220138893',
+      coalescedFromSegmentIds: ['dimo-recharge-186946-1784220138893'],
+      startTime: '2026-07-16T16:42:18.893Z',
+      endTime: '2026-07-16T23:54:02.926Z',
+      durationSeconds: 25904,
+      fuelDeltaLiters: null,
+      fuelDeltaPercent: null,
+      socDeltaPercent: 23.6,
+      energyDeltaKwh: 11.88,
+      odometerStartKm: 179360.33,
+      odometerEndKm: 179360.33,
+      confidence: EnergyEventConfidence.HIGH,
+      detectorConfigVersion: 'e2-2026-08',
+      manualReviewReasons: [],
+      existingRowId: 'ddb44b81-c475-4c2a-9c70-950470f60f93',
+      windowFrom: '2026-07-16T00:00:00.000Z',
+      windowTo: '2026-07-17T00:00:00.000Z',
+    };
+    const existing = new Map([
+      [
+        VEHICLE_ID,
+        [
+          {
+            id: '54ad6102-b1c8-4159-8266-2850570caf1a',
+            dimoSegmentId: 'dimo-recharge-186946-1784244182926',
+            kind: 'RECHARGE',
+            startTime: new Date('2026-07-16T22:00:00.000Z'),
+            endTime: new Date('2026-07-16T23:00:00.000Z'),
+            socDeltaPercent: 2,
+            energyDeltaKwh: 1,
+          },
+        ],
+      ],
+    ]);
+    const result = reconcileRecoveryCandidates([candidate], existing);
+    expect(result.candidates[0].classification).toBe('WOULD_UPDATE');
+  });
 });
