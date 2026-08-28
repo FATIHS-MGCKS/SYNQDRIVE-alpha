@@ -7900,6 +7900,13 @@ model RpmWebhookCandidate {
   @@index([observedAt])
   @@index([status])
   @@index([tripId])
+  // Event -> Trip reconciliation reads
+  // `vehicle_id = ? AND observed_at BETWEEN ? AND ? AND trip_id IS NULL`
+  // on every trip finalization and on every tiered reconciliation tick.
+  // The composite bounds the scan to the reconciliation window instead of the
+  // vehicle's full candidate history; `trip_id IS NULL` filters the already
+  // converged rows inside that range.
+  @@index([vehicleId, observedAt])
   @@map("rpm_webhook_candidates")
 }
 
