@@ -471,3 +471,94 @@ subsegments so one physical session does not leave duplicate logical rows.
 deletes without explicit reconcile plan. **Re-run safety:** dry-run + write paths
 share material identity checks; a second write pass should be idempotent on
 `dimoSegmentId`.
+
+---
+
+## 13. E3A partial write-backfill + WOULD_UPDATE forensic closure (2026-08-28)
+
+### Partial production apply (observed)
+
+| Step | Result |
+|------|--------|
+| Pre-backfill rows | 130 |
+| Approved CREATEs applied | +3 (canonical refuel + 2 EV recharge sessions) |
+| Proven legacy recharge prune | −1 |
+| Post-apply rows | 132 (130 + 3 − 1) |
+| Post-apply FULL recovery | `WOULD_UPDATE=3`, `WOULD_CREATE=0`, `legacySubsegmentsWouldReplace=0` |
+| Gate | `MANUAL_REVIEW_UNRESOLVED:1` (outage open) |
+
+### Three `WOULD_UPDATE` candidates — forensic disposition (read-only, secured infra)
+
+All three classified **C** — already materially correct; perpetual `WOULD_UPDATE`
+was a canonical equality defect (float8 / driver truncation past 16 significant
+digits), not a semantic data change.
+
+| Alias | Mechanism | Duration | Drift fields (pre-fix) | Post-fix (branch code) |
+|-------|-----------|----------|------------------------|-------------------------|
+| R1 | RECHARGE | ~26 268 s (Jul-17 overnight) | `energyDeltaKwh`, `odometerStartKm`, `odometerEndKm` | `ALREADY_IDENTICAL` |
+| R2 | RECHARGE | ~7 439 s (Jul-18 session) | `socDeltaPercent` | `ALREADY_IDENTICAL` |
+| F1 | REFUEL | 481 s (Aug canonical refuel) | `rawDetectionMeta.fuelStartPercent` only | `ALREADY_IDENTICAL` |
+
+**R1/R2:** Independent physical recharge sessions (created during approved
+backfill). DIMO now returns `coalescedFromCount=1` consolidated segments.
+Rows must be **preserved** — no prune authority applies to the rows themselves.
+
+**F1:** Canonical refuel positive control. All business fields identical;
+only nested metadata percent differed at the 17th decimal digit.
+
+### `legacySubsegmentsWouldReplace=0` — root cause
+
+Current DIMO historical fetch returns **already-consolidated** single segments
+(`coalescedFromCount=1`, `coalescedFromSegmentIds=[own id]`). The production
+prune path requires explicit multi-segment coalesce provenance
+(`coalescedFromSegmentIds.length > 1`) naming constituent subsegments. Sixteen
+legacy Jul-16 sliding-window recharge singletons in DB each claim
+`coalescedFromCount=1` with only their own `dimoSegmentId` — written before the
+coalescing layer. Temporal overlap alone does **not** grant delete authority.
+
+`assessOverlapPopulation` (forensics layer) proves the 16-row population is
+internally inconsistent (24 pairwise overlaps, aggregate SOC/energy gain exceeds
+the consolidated candidate) but sets `pruneAuthority=false` when provenance is
+absent.
+
+### Historical prune authority — cannot be reconstructed safely
+
+No durable evidence links legacy singleton `dimoSegmentId`s to a canonical
+parent's `coalescedFromSegmentIds`. One legacy row was already proven subsumed
+and safely pruned via canonical production semantics during partial apply. The
+remaining 16 overlapping rows require **explicit operator disposition** — not
+automated delete from overlap or aggregate over-counting alone.
+
+### `MANUAL_REVIEW_UNRESOLVED:1` — cause
+
+**Not** one of the three `WOULD_UPDATE` rows. A **new** Jul-16 consolidated
+recharge session (~25 904 s, +23.6 % SOC) detected after backfill with reason
+`existing_db_overlap_different_id` — overlaps the 16 legacy singleton population
+without matching `dimoSegmentId`. Existed as `MANUAL_REVIEW_REQUIRED` in the
+original pre-write dry-run but was not in the approved 4-candidate write set;
+became the sole unresolved gate blocker after partial apply changed DB state.
+Classification: **E** — genuine ambiguity; outage cannot close without operator
+disposition (`EXCLUDE_FROM_BACKFILL` or explicit prune authorization).
+
+### Canonical equality fix (general, not row-specific)
+
+`energy-events.pipeline.ts`: `CANONICAL_MEASUREMENT_PRECISION_DIGITS=15`,
+`canonicalMeasurementEquals`, recursive `normalizeRawDetectionMeta` for comparison.
+`energy-events-recovery-forensics.ts`: `STORAGE_PRECISION_DRIFT` attribution,
+`unexplainedVerdict` self-check, `assessOverlapPopulation`.
+Ops: `energy-events-forensic-closure.ts`, `energy-events-storage-precision-probe.ts`.
+
+Read-only post-fix re-validation: `WOULD_UPDATE` 3→0, table digest unchanged,
+`MANUAL_REVIEW_UNRESOLVED:1` deliberately preserved. **166** energy-events tests
+pass.
+
+### Authorized next mutations (not executed in this phase)
+
+1. **Deploy** precision-fix branch to production (stops perpetual UPDATE churn).
+2. **Re-run** read-only FULL forensic closure — expect `WOULD_UPDATE=0`,
+   `ALREADY_IDENTICAL=3`, gate still blocked on manual review.
+3. **Operator disposition** for M1 (Jul-16 consolidated recharge vs 16 legacy
+   singletons) via recovery plan entry — only path to clear
+   `MANUAL_REVIEW_UNRESOLVED:1`.
+4. **No** broad completion run, **no** E3B, **no** merge of PR #1395 until gate
+   policy satisfied.

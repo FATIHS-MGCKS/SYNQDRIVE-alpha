@@ -63,6 +63,28 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-08-28T21:00:00.000Z',
   },
   {
+    id: 'energy-events-canonical-storage-precision-equality-2026-08-28',
+    version: '4.9.993',
+    title: 'Energy Events — canonical measurements compared at storage precision (E3A WOULD_UPDATE closed)',
+    summary: [
+      'Root cause: the database driver serializes doubles with at most 16 significant decimal digits, so a measurement needing 17 digits is stored as a neighbouring double. Bitwise comparison of stored vs freshly detected values never converged.',
+      '`isMateriallyIdentical` now compares numeric measurements — and numbers nested in `rawDetectionMeta` — at 15 significant digits, far finer than any SOC, energy, fuel, odometer or GPS resolution.',
+      'Read-only ops probe `energy-events-storage-precision-probe.ts` proves the truncation through a driver parameter round-trip (`2.2399999499320984` arrives as `2.239999949932098`).',
+      'Recovery forensics now report every representation difference instead of swallowing metadata drift, classify storage-precision drift as non-semantic on both columns and metadata, and flag any verdict the reported diffs cannot account for.',
+      'New `assessOverlapPopulation` proves an overlapping persisted population is internally inconsistent (pairwise overlap, aggregate gain above the candidate) while granting prune authority only when coalesce provenance names every overlapping row.',
+      'Production read-only re-validation: `WOULD_UPDATE` 3 → 0, `ALREADY_IDENTICAL` 0 → 3, table digest unchanged (zero writes). `MANUAL_REVIEW_UNRESOLVED:1` deliberately preserved — one Jul-16 recharge session still needs operator disposition.',
+    ],
+    reason:
+      'Three E3A recovery rows were re-written on every detection run and never converged, so the outage gate could not close and each run churned production data.',
+    previousBehavior:
+      'Stored and detected measurements were compared bitwise, so a value that lost its 17th significant digit on write was permanently classified `WOULD_UPDATE`; the forensic diff hid the drift and reported an unexplainable verdict.',
+    details:
+      'backend: energy-events.pipeline.ts (canonical measurement precision), energy-events-recovery-forensics.ts (diff attribution + overlap population), scripts/ops/energy-events-storage-precision-probe.ts, scripts/ops/energy-events-forensic-closure.ts. 166 energy-events tests pass.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T20:55:00.000Z',
+  },
+  {
     id: 'energy-events-e3a-controlled-write-backfill-partial-2026-08-28',
     version: '4.9.992',
     title: 'Energy Events E3A — controlled write-backfill executor (partial production recovery)',
