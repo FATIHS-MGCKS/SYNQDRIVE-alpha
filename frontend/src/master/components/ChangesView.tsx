@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'energy-events-e1-restoration-2026-08-27',
+    version: '4.9.975',
+    title: 'Energy Events E1 — restore refuel/recharge detection transport + safe prune',
+    summary: [
+      'Fixed fleet-wide energy-event outage since 2026-07-17: recharge GraphQL query from commit 79e381069 used unsupported `id`, `limit`, `after` → HTTP 422.',
+      'Decoupled refuel/recharge fetches — one mechanism failing no longer discards the other.',
+      'Safe prune: no deletion on fetch failure or empty detection; only raw sub-segment rows explicitly listed in `coalescedFromSegmentIds` of a successfully persisted multi-segment coalesced event may be pruned — absence from the current detector response is never prune evidence.',
+      'Added schema fixture validator + EnergyEventsService regression tests.',
+      'Live DIMO validation: refuel + recharge return HTTP 200 for tokenIds 187336, 186946.',
+    ],
+    reason:
+      'P0 production-correctness repair per audit docs/audits/trip-enrichment-driver-score-energy-events-audit-2026-08.md.',
+    previousBehavior:
+      'Recharge 422 aborted shared fetch; EnergyEventsService returned empty; prune-on-empty could delete existing events once fetch was fixed.',
+    details:
+      'backend: dimo-recharge-segments.query/client/graphql, dimo-segments.service fetch isolation, energy-events.service safe prune, validate-dimo-segments-query, ks-mx-2024-refuel.fixture. docs/architecture/ENERGY_EVENTS_E1_RESTORATION_2026-08-27.md. KS MX 2024 refuel sensitivity still requires E2 minIncreasePercent tuning.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T23:45:00.000Z',
+  },
+  {
     id: 'vehicle-cross-surface-stage-5-final-closure-2026-08-27',
     version: '4.9.974',
     title: 'Cross-Surface Vehicle State/Health — Stage 5 final closure + bounded legacy cleanup',

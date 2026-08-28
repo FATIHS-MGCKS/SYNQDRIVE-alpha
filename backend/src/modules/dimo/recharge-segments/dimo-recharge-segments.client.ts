@@ -2,17 +2,18 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoAuthService } from '../dimo-auth.service';
 import { DimoTelemetryService } from '../dimo-telemetry.service';
-import { executeDimoRechargeSegmentsGraphQL } from './dimo-recharge-segments.graphql';
+import {
+  buildDimoRechargeFetchError,
+  executeDimoRechargeSegmentsGraphQL,
+} from './dimo-recharge-segments.graphql';
 import { buildDimoRechargeSegmentsQuery } from './dimo-recharge-segments.query';
 import { normalizeDimoRechargeSegments } from './dimo-recharge-segments.normalizer';
 import { splitDimoRechargeQueryWindows } from './dimo-recharge-segments.window';
-import {
-  DIMO_RECHARGE_SEGMENT_DEFAULT_PAGE_LIMIT,
-  DIMO_RECHARGE_SEGMENT_MAX_PAGES,
-  type DimoRechargeSegmentFetchOptions,
-  type DimoRechargeSegmentFetchResult,
-  type DimoRechargeSegmentTenantContext,
-  type NormalizedDimoRechargeSegment,
+import type {
+  DimoRechargeSegmentFetchOptions,
+  DimoRechargeSegmentFetchResult,
+  DimoRechargeSegmentTenantContext,
+  NormalizedDimoRechargeSegment,
 } from './dimo-recharge-segments.types';
 
 @Injectable()
@@ -70,31 +71,23 @@ export class DimoRechargeSegmentsClient {
           requestedFrom: from.toISOString(),
           requestedTo: to.toISOString(),
           windowsQueried: 0,
-          pagesFetched: 0,
+          queriesExecuted: 0,
           sourceFilterApplied: options?.sourceFilter ?? null,
           sourceFilterDropped: false,
           retries: 0,
-          truncated: false,
+          status: 'SUCCESS',
         },
       };
     }
 
-    const pageLimit = options?.pageLimit ?? DIMO_RECHARGE_SEGMENT_DEFAULT_PAGE_LIMIT;
-    const maxPagesPerWindow = options?.maxPagesPerWindow ?? DIMO_RECHARGE_SEGMENT_MAX_PAGES;
     const windows = splitDimoRechargeQueryWindows(from, to);
-
     const collected: NormalizedDimoRechargeSegment[] = [];
-    let pagesFetched = 0;
+    let queriesExecuted = 0;
     let retries = 0;
     let sourceFilterDropped = false;
-    let truncated = false;
 
     for (const window of windows) {
-      let afterIso: string | null = null;
-      let pagesInWindow = 0;
-
-      while (pagesInWindow < maxPagesPerWindow) {
-        const includeSourceFilter = !sourceFilterDropped;
+      try {
         const pageResult = await executeDimoRechargeSegmentsGraphQL(
           this.dimoTelemetry,
           this.logger,
@@ -105,8 +98,6 @@ export class DimoRechargeSegmentsClient {
               tokenId,
               fromIso: window.from.toISOString(),
               toIso: window.to.toISOString(),
-              afterIso,
-              limit: pageLimit,
               sourceFilter: withSourceFilter ? options?.sourceFilter : null,
             }),
         );
@@ -121,23 +112,27 @@ export class DimoRechargeSegmentsClient {
           pageResult.data.segments,
         );
         collected.push(...normalized);
-        pagesFetched += 1;
-        pagesInWindow += 1;
-
-        if (normalized.length < pageLimit) {
-          break;
-        }
-
-        const last = normalized[normalized.length - 1];
-        afterIso = last?.startAt ?? null;
-        if (!afterIso) break;
-      }
-
-      if (pagesInWindow >= maxPagesPerWindow) {
-        truncated = true;
+        queriesExecuted += 1;
+      } catch (error) {
+        const fetchError = buildDimoRechargeFetchError(error);
         this.logger.warn(
-          `DIMO recharge segments pagination truncated tokenId=${tokenId} window=${window.from.toISOString()}..${window.to.toISOString()}`,
+          `DIMO recharge segments window failed tokenId=${tokenId} mechanism=recharge window=${window.from.toISOString()}..${window.to.toISOString()} httpStatus=${fetchError.httpStatus ?? 'n/a'} retryable=${fetchError.retryable}`,
         );
+        return {
+          segments: [],
+          meta: {
+            tokenId,
+            requestedFrom: from.toISOString(),
+            requestedTo: to.toISOString(),
+            windowsQueried: windows.length,
+            queriesExecuted,
+            sourceFilterApplied: sourceFilterDropped ? null : options?.sourceFilter ?? null,
+            sourceFilterDropped,
+            retries,
+            status: 'FAILED',
+          },
+          error: fetchError,
+        };
       }
     }
 
@@ -150,11 +145,11 @@ export class DimoRechargeSegmentsClient {
         requestedFrom: from.toISOString(),
         requestedTo: to.toISOString(),
         windowsQueried: windows.length,
-        pagesFetched,
+        queriesExecuted,
         sourceFilterApplied: sourceFilterDropped ? null : options?.sourceFilter ?? null,
         sourceFilterDropped,
         retries,
-        truncated,
+        status: 'SUCCESS',
       },
     };
   }

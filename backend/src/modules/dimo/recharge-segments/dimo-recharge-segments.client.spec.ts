@@ -4,6 +4,7 @@ import { executeDimoRechargeSegmentsGraphQL } from './dimo-recharge-segments.gra
 import { buildDimoRechargeSegmentsQuery } from './dimo-recharge-segments.query';
 import { normalizeDimoRechargeSegment } from './dimo-recharge-segments.normalizer';
 import { splitDimoRechargeQueryWindows } from './dimo-recharge-segments.window';
+import { validateDimoSegmentsQuery } from '../queries/validate-dimo-segments-query';
 import {
   TESLA_RECHARGE_AUDIT_ONGOING_SEGMENT,
   TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1,
@@ -75,22 +76,25 @@ describe('dimo-recharge-segments window splitting', () => {
 });
 
 describe('dimo-recharge-segments query builder', () => {
-  it('includes mechanism recharge, pagination, and HV aggregates', () => {
+  it('matches live schema: no id/limit/after and valid mechanism/window/config structure', () => {
     const query = buildDimoRechargeSegmentsQuery({
       tokenId: 186946,
       fromIso: '2026-06-15T00:00:00.000Z',
       toIso: '2026-07-16T00:00:00.000Z',
-      afterIso: '2026-06-18T05:05:33.000Z',
-      limit: 50,
       sourceFilter: 'tesla',
     });
 
+    const validation = validateDimoSegmentsQuery(query);
+    expect(validation.valid).toBe(true);
     expect(query).toContain('mechanism: recharge');
-    expect(query).toContain('after: "2026-06-18T05:05:33.000Z"');
-    expect(query).toContain('limit: 50');
+    expect(query).toContain('from: "2026-06-15T00:00:00.000Z"');
+    expect(query).toContain('to: "2026-07-16T00:00:00.000Z"');
     expect(query).toContain('signalFilter: { source: { eq: "tesla" } }');
     expect(query).toContain('powertrainTractionBatteryChargingAddedEnergy');
     expect(query).toContain('powertrainTractionBatteryChargingIsCharging');
+    expect(query).not.toMatch(/\blimit\s*:/);
+    expect(query).not.toMatch(/\bafter\s*:/);
+    expect(query).not.toMatch(/\bid\b/);
   });
 });
 
@@ -123,6 +127,32 @@ describe('executeDimoRechargeSegmentsGraphQL', () => {
     expect(result.retries).toBe(1);
     expect(result.data.segments).toHaveLength(3);
     expect(telemetry.queryGraphQL).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry HTTP 422', async () => {
+    const telemetry = {
+      queryGraphQL: jest.fn().mockRejectedValue({
+        response: { status: 422, data: { errors: [{ message: 'validation failed' }] } },
+        message: 'Request failed with status code 422',
+      }),
+    } as unknown as DimoTelemetryService;
+
+    await expect(
+      executeDimoRechargeSegmentsGraphQL(
+        telemetry,
+        logger,
+        vehicleJwt,
+        TESLA_RECHARGE_AUDIT_TOKEN_ID,
+        () =>
+          buildDimoRechargeSegmentsQuery({
+            tokenId: TESLA_RECHARGE_AUDIT_TOKEN_ID,
+            fromIso: '2026-06-15T00:00:00.000Z',
+            toIso: '2026-07-16T00:00:00.000Z',
+          }),
+        { baseDelayMs: 1, maxRetries: 2 },
+      ),
+    ).rejects.toBeDefined();
+    expect(telemetry.queryGraphQL).toHaveBeenCalledTimes(1);
   });
 
   it('drops unsupported source filter and retries without it', async () => {
@@ -164,10 +194,10 @@ describe('DimoRechargeSegmentsClient', () => {
     dimoAuth.getVehicleJwt.mockResolvedValue('vehicle-jwt');
   });
 
-  it('paginates recharge segments across pages', async () => {
-    dimoTelemetry.queryGraphQL
-      .mockResolvedValueOnce(TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1)
-      .mockResolvedValueOnce(TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_2);
+  it('aggregates recharge segments in a single query per window (no pagination)', async () => {
+    dimoTelemetry.queryGraphQL.mockResolvedValueOnce(
+      TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1,
+    );
 
     const { DimoRechargeSegmentsClient } = await import('./dimo-recharge-segments.client');
     const client = new DimoRechargeSegmentsClient(
@@ -180,13 +210,36 @@ describe('DimoRechargeSegmentsClient', () => {
       TESLA_RECHARGE_AUDIT_TOKEN_ID,
       new Date('2026-06-15T00:00:00.000Z'),
       new Date('2026-07-16T00:00:00.000Z'),
-      { pageLimit: 3 },
     );
 
-    expect(result.segments).toHaveLength(4);
-    expect(result.meta.pagesFetched).toBe(2);
-    expect(result.segments[3].soc.delta).toBeCloseTo(27.4, 1);
-    expect(dimoTelemetry.queryGraphQL).toHaveBeenCalledTimes(2);
+    expect(result.segments).toHaveLength(3);
+    expect(result.meta.queriesExecuted).toBe(1);
+    expect(result.meta.status).toBe('SUCCESS');
+    expect(dimoTelemetry.queryGraphQL).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns FAILED status instead of throwing on HTTP 422', async () => {
+    dimoTelemetry.queryGraphQL.mockRejectedValue({
+      response: { status: 422 },
+      message: 'Request failed with status code 422',
+    });
+
+    const { DimoRechargeSegmentsClient } = await import('./dimo-recharge-segments.client');
+    const client = new DimoRechargeSegmentsClient(
+      prisma as never,
+      dimoAuth as never,
+      dimoTelemetry as never,
+    );
+
+    const result = await client.fetchForToken(
+      TESLA_RECHARGE_AUDIT_TOKEN_ID,
+      new Date('2026-06-15T00:00:00.000Z'),
+      new Date('2026-07-16T00:00:00.000Z'),
+    );
+
+    expect(result.meta.status).toBe('FAILED');
+    expect(result.error?.httpStatus).toBe(422);
+    expect(result.segments).toEqual([]);
   });
 
   it('returns null for tenant vehicle without DIMO token', async () => {

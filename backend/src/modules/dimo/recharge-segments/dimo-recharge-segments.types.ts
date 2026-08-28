@@ -1,6 +1,18 @@
 export const DIMO_RECHARGE_SEGMENT_MAX_WINDOW_MS = 31 * 24 * 60 * 60 * 1000;
+
+/** @deprecated Pagination is unsupported on live DIMO Segment API (E1). */
 export const DIMO_RECHARGE_SEGMENT_DEFAULT_PAGE_LIMIT = 50;
+/** @deprecated Pagination is unsupported on live DIMO Segment API (E1). */
 export const DIMO_RECHARGE_SEGMENT_MAX_PAGES = 200;
+
+export type DimoRechargeSegmentFetchStatus = 'SUCCESS' | 'FAILED';
+
+export interface DimoRechargeSegmentFetchError {
+  message: string;
+  httpStatus?: number;
+  retryable: boolean;
+  graphqlErrors?: Array<{ message?: string }>;
+}
 
 export type DimoRechargeSegmentAggregation = 'MIN' | 'MAX' | 'LAST';
 
@@ -12,9 +24,7 @@ export interface DimoRechargeSegmentQueryWindow {
 export interface DimoRechargeSegmentFetchOptions {
   /** Optional provider source filter (e.g. `tesla`). Omitted when unsupported. */
   sourceFilter?: string | null;
-  pageLimit?: number;
   includeOngoing?: boolean;
-  maxPagesPerWindow?: number;
 }
 
 export interface DimoRechargeSegmentTenantContext {
@@ -77,16 +87,17 @@ export interface DimoRechargeSegmentFetchMeta {
   requestedFrom: string;
   requestedTo: string;
   windowsQueried: number;
-  pagesFetched: number;
+  queriesExecuted: number;
   sourceFilterApplied: string | null;
   sourceFilterDropped: boolean;
   retries: number;
-  truncated: boolean;
+  status: DimoRechargeSegmentFetchStatus;
 }
 
 export interface DimoRechargeSegmentFetchResult {
   segments: NormalizedDimoRechargeSegment[];
   meta: DimoRechargeSegmentFetchMeta;
+  error?: DimoRechargeSegmentFetchError;
 }
 
 export interface DimoRechargeSegmentGraphQLPage {
