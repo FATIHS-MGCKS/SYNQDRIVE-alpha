@@ -1,5 +1,5 @@
 /**
- * Rental Tenant Billing presentation adapter (P2.2.54 overview + shell; P2.2.55A tariff summary/breakdown/tier ladder; P2.2.55B billable vehicles + vehicle changes).
+ * Rental Tenant Billing presentation adapter (P2.2.54 overview + shell; P2.2.55A tariff summary/breakdown/tier ladder; P2.2.55B billable vehicles + vehicle changes; P2.2.56 tenant billing invoices list + detail).
  * Locale-aware display helpers and static TranslationKeys only.
  */
 import {
@@ -223,4 +223,97 @@ export function resolveVehicleChangeTypeLabel(
   if (changeType === 'ADDED') return t('rentalRules.workflow.publish.kindAdded');
   if (changeType === 'REMOVED') return t('rentalRules.workflow.publish.kindRemoved');
   return t('rentalRules.workflow.publish.kindChanged');
+}
+
+export function resolveTenantInvoiceMachineStatus(invoice: {
+  status?: string | null;
+  dueDate?: string | null;
+}): string {
+  const status = (invoice.status ?? '').toUpperCase();
+  if (status === 'OPEN' && invoice.dueDate && new Date(invoice.dueDate) < new Date()) {
+    return 'OVERDUE';
+  }
+  return status || 'OPEN';
+}
+
+export function resolveTenantInvoiceStatusFallbackLabel(
+  machineStatus: string,
+  t: Translate,
+): string {
+  switch (machineStatus.toUpperCase()) {
+    case 'DRAFT':
+      return t('invoices.list.status.DRAFT');
+    case 'OPEN':
+      return t('tenantBilling.invoices.status.open');
+    case 'OVERDUE':
+      return t('invoices.list.status.OVERDUE');
+    case 'PAID':
+      return t('invoices.list.status.PAID');
+    case 'VOID':
+      return t('invoices.list.status.VOID');
+    case 'UNCOLLECTIBLE':
+      return t('tenantBilling.invoices.status.uncollectible');
+    default:
+      return t('tenantBilling.invoices.status.open');
+  }
+}
+
+export function resolveTenantInvoiceStatusLabel(
+  invoice: {
+    status?: string | null;
+    statusLabel?: string | null;
+    dueDate?: string | null;
+  },
+  t: Translate,
+): string {
+  if (invoice.statusLabel?.trim()) return invoice.statusLabel.trim();
+  return resolveTenantInvoiceStatusFallbackLabel(resolveTenantInvoiceMachineStatus(invoice), t);
+}
+
+export function resolveTenantInvoiceStatusTone(machineStatus: string): string {
+  switch (machineStatus.toUpperCase()) {
+    case 'PAID':
+      return 'sq-tone-success';
+    case 'DRAFT':
+    case 'VOID':
+      return 'sq-tone-neutral';
+    case 'OVERDUE':
+    case 'UNCOLLECTIBLE':
+      return 'sq-tone-critical';
+    case 'OPEN':
+    default:
+      return 'sq-tone-warning';
+  }
+}
+
+export function resolveTenantInvoiceFilterStatusLabel(
+  filter: 'all' | 'DRAFT' | 'OPEN' | 'OVERDUE' | 'PAID' | 'VOID',
+  t: Translate,
+): string {
+  if (filter === 'all') return t('invoices.list.filters.allStatuses');
+  return resolveTenantInvoiceStatusFallbackLabel(filter, t);
+}
+
+export function resolveTenantPaymentStatusLabel(
+  status: string,
+  statusLabel: string | null | undefined,
+  t: Translate,
+): string {
+  if (statusLabel?.trim()) return statusLabel.trim();
+  switch (status.toUpperCase()) {
+    case 'PENDING':
+      return t('tenantBilling.invoices.paymentStatus.pending');
+    case 'SUCCEEDED':
+      return t('tenantBilling.invoices.paymentStatus.succeeded');
+    case 'FAILED':
+      return t('tenantBilling.invoices.paymentStatus.failed');
+    case 'REFUNDED':
+      return t('tenantBilling.invoices.paymentStatus.refunded');
+    case 'PARTIALLY_REFUNDED':
+      return t('tenantBilling.invoices.paymentStatus.partiallyRefunded');
+    case 'CANCELLED':
+      return t('tenantBilling.invoices.paymentStatus.cancelled');
+    default:
+      return t('tenantBilling.invoices.paymentStatus.fallback');
+  }
 }

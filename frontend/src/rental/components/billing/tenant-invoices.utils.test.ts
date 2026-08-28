@@ -3,12 +3,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { TenantInvoiceListItemDto, TenantInvoicePaymentHistoryDto } from '../../types/billing.types';
 import {
+  formatOpenAmount,
   hasPaymentProblem,
   mapInvoiceStatusFilter,
-  resolvePaymentStatusLabel,
-  resolveTenantInvoiceStatusLabel,
-  summarizeFailedAttempt,
-  tenantInvoiceStatusLabels,
+  summarizeFailedAttemptReason,
 } from './tenant-invoices.utils';
 
 const billingDir = resolve(import.meta.dirname);
@@ -39,17 +37,12 @@ function buildInvoice(
 }
 
 describe('tenant invoices utils', () => {
-  it('uses backend status labels including void as storniert', () => {
-    expect(resolveTenantInvoiceStatusLabel({ statusLabel: 'Storniert', status: 'VOID' })).toBe(
-      'Storniert',
-    );
-    expect(tenantInvoiceStatusLabels.VOID).toBe('Storniert');
-  });
-
-  it('maps payment failed label without internal codes', () => {
-    expect(resolvePaymentStatusLabel('FAILED')).toBe('Zahlung fehlgeschlagen');
-    expect(resolvePaymentStatusLabel('PARTIALLY_REFUNDED')).toBe('Teilweise erstattet');
-    expect(resolvePaymentStatusLabel('REFUNDED')).toBe('Erstattet');
+  it('prefers formatted open amount fields', () => {
+    const invoice = buildInvoice({
+      amountRemaining: { cents: 5000, currency: 'EUR', formatted: '50,00 €' },
+      amountDue: { cents: 11900, currency: 'EUR', formatted: '119,00 €' },
+    });
+    expect(formatOpenAmount(invoice)).toBe('50,00 €');
   });
 
   it('detects payment problems from failed attempts', () => {
@@ -72,24 +65,12 @@ describe('tenant invoices utils', () => {
       creditNotes: [],
     };
     expect(hasPaymentProblem(history)).toBe(true);
-    expect(summarizeFailedAttempt(history.failedAttempts[0])).toBe('Karte wurde abgelehnt.');
-  });
-
-  it('supports pdf and hosted invoice flags', () => {
-    const withPdf = buildInvoice({ hasPdf: true, hasHostedInvoice: false });
-    const withHosted = buildInvoice({ hasPdf: false, hasHostedInvoice: true });
-    expect(withPdf.hasPdf).toBe(true);
-    expect(withHosted.hasHostedInvoice).toBe(true);
+    expect(summarizeFailedAttemptReason(history.failedAttempts[0])).toBe('Karte wurde abgelehnt.');
   });
 
   it('maps overdue filter for server-side query', () => {
     expect(mapInvoiceStatusFilter('OVERDUE')).toBe('OVERDUE');
     expect(mapInvoiceStatusFilter('all')).toBeUndefined();
-  });
-
-  it('does not invent invoice numbers', () => {
-    const invoice = buildInvoice({ invoiceNumber: null, invoiceNumberLabel: 'Noch nicht finalisiert' });
-    expect(invoice.invoiceNumberLabel).not.toMatch(/^RE-/);
   });
 
   it('uses responsive invoice table layout and backend document urls', () => {

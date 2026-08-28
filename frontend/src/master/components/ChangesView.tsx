@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-tenant-billing-invoices-p2-2-56-2026-08-28',
+    version: '4.9.984',
+    title: 'Platform i18n — P2.2.56 Rental Tenant Billing Invoices List + Detail',
+    summary: [
+      'Localized production-mounted invoices list and detail drawer via extended `rental-tenant-billing-i18n.ts`; 30 `tenantBilling.invoices.*` keys (8885→8915 EN+DE).',
+      'P256 enforce-clean exact scope (4 paths) — 0 findings; reuses `common.*`, `invoices.list.*`, `invoiceLineItem.*`, `bookings.period`, `bookingPayment.field.paidAt`.',
+      'Invoice identity, status machines, statusLabel/payment raw labels, money.formatted precedence, filter/search/pagination, document URLs frozen. Status tone migrated to machine-based mapping. Category E=0.',
+    ],
+    reason:
+      'P2.2.56 bounded implementation after P255B merge (#1368) per #1371 pre-flight verdict A.',
+    previousBehavior:
+      'Tenant invoices list and detail drawer used hardcoded German strings; status tone inferred from German label substrings.',
+    details:
+      'Presentation-only adapter extensions (`resolveTenantInvoiceStatusLabel/Tone`, `resolveTenantPaymentStatusLabel`). Dead legacy `BillingInvoiceSection`/`BillingInvoiceDetailDrawer` untouched. Payment Method and Add-ons deferred.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-28T00:00:00.000Z',
+  },
+  {
     id: 'i18n-rental-tenant-billing-billable-vehicles-changes-p2-2-55b-2026-08-28',
     version: '4.9.983',
     title: 'Platform i18n — P2.2.55B Rental Tenant Billing Billable Vehicles + Vehicle Changes',

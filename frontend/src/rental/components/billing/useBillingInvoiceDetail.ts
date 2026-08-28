@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, getErrorMessage } from '../../../lib/api';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type {
   TenantInvoiceDetailDto,
   TenantInvoicePaymentHistoryDto,
@@ -84,22 +85,51 @@ export function useBillingInvoiceDetail(
   };
 }
 
+export type InvoiceDocumentActionError =
+  | {
+      kind: 'host';
+      code: 'unavailable' | 'openFailed';
+    }
+  | {
+      kind: 'raw';
+      message: string;
+    };
+
+type Translate = (key: TranslationKey) => string;
+
+export function resolveInvoiceDocumentActionErrorMessage(
+  error: InvoiceDocumentActionError | null,
+  t: Translate,
+): string | null {
+  if (!error) return null;
+  if (error.kind === 'raw') return error.message;
+  if (error.code === 'unavailable') {
+    return t('tenantBilling.invoices.document.unavailable');
+  }
+  return t('invoices.list.error.openFailed');
+}
+
 export function useInvoiceDocumentAction() {
   const [loadingHosted, setLoadingHosted] = useState(false);
   const [loadingPdf, setLoadingPdf] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<InvoiceDocumentActionError | null>(null);
 
   const openUrl = async (fetcher: () => Promise<string | null>) => {
     setError(null);
     try {
       const url = await fetcher();
       if (!url) {
-        setError('Dokument ist derzeit nicht verfügbar.');
+        setError({ kind: 'host', code: 'unavailable' });
         return;
       }
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (caught) {
-      setError(getErrorMessage(caught, 'Dokument konnte nicht geöffnet werden.'));
+      const message = getErrorMessage(caught, '').trim();
+      if (message) {
+        setError({ kind: 'raw', message });
+      } else {
+        setError({ kind: 'host', code: 'openFailed' });
+      }
     }
   };
 

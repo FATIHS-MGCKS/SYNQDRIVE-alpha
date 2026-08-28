@@ -2,15 +2,17 @@ import { DetailDrawer } from '../../../components/patterns/detail-drawer';
 import { Button } from '../../../components/ui/button';
 import { ErrorState } from '../../../components/patterns/states';
 import type { TenantInvoiceListItemDto } from '../../types/billing.types';
-import { formatDateDe } from './billing.utils';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
-  hasPaymentProblem,
-  resolvePaymentStatusLabel,
+  formatRentalTenantBillingDate,
+  resolveTenantInvoiceMachineStatus,
   resolveTenantInvoiceStatusLabel,
-  summarizeFailedAttempt,
-  tenantInvoiceStatusTone,
-} from './tenant-invoices.utils';
+  resolveTenantInvoiceStatusTone,
+  resolveTenantPaymentStatusLabel,
+} from '../../lib/rental-tenant-billing-i18n';
+import { hasPaymentProblem, summarizeFailedAttemptReason } from './tenant-invoices.utils';
 import {
+  resolveInvoiceDocumentActionErrorMessage,
   useBillingInvoiceDetail,
   useInvoiceDocumentAction,
 } from './useBillingInvoiceDetail';
@@ -33,6 +35,7 @@ export function TenantInvoiceDetailDrawer({
   canWrite,
   onManagePaymentMethod,
 }: TenantInvoiceDetailDrawerProps) {
+  const { t, locale } = useLanguage();
   const {
     detail,
     payments,
@@ -51,18 +54,22 @@ export function TenantInvoiceDetailDrawer({
   if (!invoice) return null;
 
   const display = detail ?? invoice;
-  const statusLabel = resolveTenantInvoiceStatusLabel(display);
+  const machineStatus = resolveTenantInvoiceMachineStatus(display);
+  const statusLabel = resolveTenantInvoiceStatusLabel(display, t);
   const showProblem = hasPaymentProblem(payments);
+  const documentErrorMessage = resolveInvoiceDocumentActionErrorMessage(documents.error, t);
 
   return (
     <DetailDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title={`Rechnung ${display.invoiceNumberLabel}`}
-      description="Rechnungsdetails und Zahlungsverlauf"
+      title={t('tenantBilling.invoices.detail.title', {
+        number: display.invoiceNumberLabel,
+      })}
+      description={t('tenantBilling.invoices.detail.description')}
       status={
         <span
-          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${tenantInvoiceStatusTone(statusLabel)}`}
+          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${resolveTenantInvoiceStatusTone(machineStatus)}`}
         >
           {statusLabel}
         </span>
@@ -79,7 +86,9 @@ export function TenantInvoiceDetailDrawer({
               onClick={() => void documents.openHosted(() => openHostedInvoice())}
             >
               <Icon name="external-link" className="w-3.5 h-3.5" />
-              {documents.loadingHosted ? 'Wird geöffnet…' : 'Online-Rechnung'}
+              {documents.loadingHosted
+                ? t('tenantBilling.invoices.detail.actions.opening')
+                : t('tenantBilling.invoices.detail.actions.hostedInvoice')}
             </Button>
           ) : null}
           {display.hasPdf ? (
@@ -91,15 +100,17 @@ export function TenantInvoiceDetailDrawer({
               onClick={() => void documents.openPdf(() => openInvoicePdf())}
             >
               <Icon name="download" className="w-3.5 h-3.5" />
-              {documents.loadingPdf ? 'Wird geöffnet…' : 'PDF'}
+              {documents.loadingPdf
+                ? t('tenantBilling.invoices.detail.actions.opening')
+                : 'PDF'}
             </Button>
           ) : null}
         </div>
       }
     >
       <div className="space-y-4">
-        {documents.error ? (
-          <p className="text-xs sq-tone-warning px-2 py-1 rounded">{documents.error}</p>
+        {documentErrorMessage ? (
+          <p className="text-xs sq-tone-warning px-2 py-1 rounded">{documentErrorMessage}</p>
         ) : null}
 
         {detailLoading && !detail ? (
@@ -107,50 +118,57 @@ export function TenantInvoiceDetailDrawer({
         ) : detailError ? (
           <ErrorState
             compact
-            title="Rechnungsdetails konnten nicht geladen werden"
+            title={t('tenantBilling.invoices.detail.loadErrorTitle')}
             description={detailError}
             onRetry={() => void reloadDetail()}
-            retryLabel="Erneut versuchen"
+            retryLabel={t('common.retry')}
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[12px]">
             <div>
-              <p className="text-muted-foreground">Rechnungsdatum</p>
-              <p className="font-semibold mt-0.5 tabular-nums">{formatDateDe(display.invoiceDate)}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Leistungszeitraum</p>
+              <p className="text-muted-foreground">{t('invoices.list.col.date')}</p>
               <p className="font-semibold mt-0.5 tabular-nums">
-                {formatDateDe(display.periodStart)} – {formatDateDe(display.periodEnd)}
+                {formatRentalTenantBillingDate(locale, display.invoiceDate)}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground">Netto</p>
+              <p className="text-muted-foreground">{t('bookings.period')}</p>
+              <p className="font-semibold mt-0.5 tabular-nums">
+                {formatRentalTenantBillingDate(locale, display.periodStart)} –{' '}
+                {formatRentalTenantBillingDate(locale, display.periodEnd)}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">{t('invoiceLineItem.summary.net')}</p>
               <p className="font-semibold mt-0.5 tabular-nums">{display.netAmount.formatted}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Steuer</p>
+              <p className="text-muted-foreground">{t('invoiceLineItem.summary.tax')}</p>
               <p className="font-semibold mt-0.5 tabular-nums">
                 {display.taxAmount?.formatted ?? '—'}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground">Brutto</p>
+              <p className="text-muted-foreground">{t('invoiceLineItem.summary.gross')}</p>
               <p className="font-semibold mt-0.5 tabular-nums">{display.grossAmount.formatted}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Offen</p>
+              <p className="text-muted-foreground">{t('invoiceLineItem.summary.outstanding')}</p>
               <p className="font-semibold mt-0.5 tabular-nums">
                 {display.amountRemaining?.formatted ?? display.amountDue?.formatted ?? '—'}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground">Fälligkeit</p>
-              <p className="font-semibold mt-0.5 tabular-nums">{formatDateDe(display.dueDate)}</p>
+              <p className="text-muted-foreground">{t('invoices.list.col.dueDate')}</p>
+              <p className="font-semibold mt-0.5 tabular-nums">
+                {formatRentalTenantBillingDate(locale, display.dueDate)}
+              </p>
             </div>
             <div>
-              <p className="text-muted-foreground">Bezahlt am</p>
-              <p className="font-semibold mt-0.5 tabular-nums">{formatDateDe(display.paidAt)}</p>
+              <p className="text-muted-foreground">{t('bookingPayment.field.paidAt')}</p>
+              <p className="font-semibold mt-0.5 tabular-nums">
+                {formatRentalTenantBillingDate(locale, display.paidAt)}
+              </p>
             </div>
           </div>
         )}
@@ -158,14 +176,18 @@ export function TenantInvoiceDetailDrawer({
         {detail?.lines?.length ? (
           <div>
             <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">
-              Positionen
+              {t('invoiceLineItem.section.title')}
             </p>
             <div className="space-y-2">
               {detail.lines.map((line, index) => (
                 <div key={`${line.description}-${index}`} className="rounded-xl border border-border/60 p-3">
                   <p className="text-[12px] font-semibold">{line.description}</p>
                   <p className="text-[11px] mt-1 text-muted-foreground">
-                    {line.quantity} × {line.unitAmount?.formatted ?? '—'} = {line.grossAmount.formatted}
+                    {t('tenantBilling.invoices.detail.lineQty', {
+                      qty: line.quantity,
+                      unit: line.unitAmount?.formatted ?? '—',
+                      total: line.grossAmount.formatted,
+                    })}
                   </p>
                 </div>
               ))}
@@ -175,20 +197,22 @@ export function TenantInvoiceDetailDrawer({
 
         {showProblem ? (
           <div className="rounded-xl border border-border/60 px-3.5 py-3 sq-tone-critical text-xs space-y-2">
-            <p className="font-semibold">Zahlung fehlgeschlagen</p>
+            <p className="font-semibold">{t('tenantBilling.invoices.detail.paymentFailed.title')}</p>
             <p className="text-muted-foreground">
               {payments?.failedAttempts[0]
-                ? summarizeFailedAttempt(payments.failedAttempts[0])
-                : 'Für diese Rechnung liegt eine fehlgeschlagene Zahlung vor.'}
+                ? summarizeFailedAttemptReason(payments.failedAttempts[0]) ??
+                  t('tenantBilling.invoices.detail.failedAttempt.fallback')
+                : t('tenantBilling.invoices.detail.failedAttempt.fallback')}
             </p>
             {payments?.amountRemaining ? (
               <p>
-                Offener Betrag: <strong>{payments.amountRemaining.formatted}</strong>
+                {t('invoiceLineItem.summary.outstanding')}:{' '}
+                <strong>{payments.amountRemaining.formatted}</strong>
               </p>
             ) : null}
             {canWrite && onManagePaymentMethod ? (
               <Button type="button" size="sm" variant="outline" onClick={onManagePaymentMethod}>
-                Zahlungsmethode aktualisieren
+                {t('tenantBilling.invoices.detail.managePaymentMethod')}
               </Button>
             ) : null}
           </div>
@@ -197,19 +221,19 @@ export function TenantInvoiceDetailDrawer({
         <div>
           <div className="flex items-center justify-between gap-2 mb-2">
             <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">
-              Zahlungsverlauf
+              {t('tenantBilling.invoices.detail.payments.title')}
             </p>
             {paymentsLoading ? (
-              <span className="text-[10px] text-muted-foreground">Lade…</span>
+              <span className="text-[10px] text-muted-foreground">{t('common.loading')}</span>
             ) : null}
           </div>
           {paymentsError ? (
             <ErrorState
               compact
-              title="Zahlungsverlauf konnte nicht geladen werden"
+              title={t('tenantBilling.invoices.detail.payments.loadErrorTitle')}
               description={paymentsError}
               onRetry={() => void reloadPayments()}
-              retryLabel="Erneut versuchen"
+              retryLabel={t('common.retry')}
             />
           ) : payments && payments.payments.length > 0 ? (
             <div className="space-y-2">
@@ -223,16 +247,25 @@ export function TenantInvoiceDetailDrawer({
                       <p className="font-semibold">{payment.amount.formatted}</p>
                       <p className="text-muted-foreground mt-0.5">
                         {payment.providerLabel} ·{' '}
-                        {resolvePaymentStatusLabel(payment.status, payment.statusLabel)}
+                        {resolveTenantPaymentStatusLabel(
+                          payment.status,
+                          payment.statusLabel,
+                          t,
+                        )}
                       </p>
                     </div>
                     <p className="text-muted-foreground tabular-nums">
-                      {formatDateDe(payment.succeededAt ?? payment.failedAt)}
+                      {formatRentalTenantBillingDate(
+                        locale,
+                        payment.succeededAt ?? payment.failedAt,
+                      )}
                     </p>
                   </div>
                   {payment.refundedAmount ? (
                     <p className="mt-1 text-muted-foreground">
-                      Erstattet: {payment.refundedAmount.formatted}
+                      {t('tenantBilling.invoices.detail.payments.refunded', {
+                        amount: payment.refundedAmount.formatted,
+                      })}
                     </p>
                   ) : null}
                 </div>
@@ -240,7 +273,7 @@ export function TenantInvoiceDetailDrawer({
             </div>
           ) : !paymentsLoading ? (
             <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border/70 p-3">
-              Für diese Rechnung liegt noch kein Zahlungsverlauf vor.
+              {t('tenantBilling.invoices.detail.payments.empty')}
             </p>
           ) : null}
         </div>
