@@ -91,6 +91,64 @@ export interface ControlledWriteBackfillResult {
   idempotencyVerified: boolean;
 }
 
+export interface RollbackPlanEntry {
+  alias: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE_LEGACY';
+  dimoSegmentId: string;
+  rowId: string | null;
+  priorRow: Record<string, unknown> | null;
+}
+
+export async function captureRollbackPlan(
+  prisma: PrismaClient,
+  writeSet: WriteSetEntry[],
+): Promise<RollbackPlanEntry[]> {
+  const plan: RollbackPlanEntry[] = [];
+
+  for (const entry of writeSet) {
+    if (entry.requestedAction === 'CREATE') {
+      plan.push({
+        alias: entry.alias,
+        action: 'CREATE',
+        dimoSegmentId: entry.dimoSegmentId,
+        rowId: null,
+        priorRow: null,
+      });
+      continue;
+    }
+
+    if (entry.existingRowId) {
+      const priorRow = await prisma.vehicleEnergyEvent.findUnique({
+        where: { id: entry.existingRowId },
+      });
+      plan.push({
+        alias: entry.alias,
+        action: 'UPDATE',
+        dimoSegmentId: entry.dimoSegmentId,
+        rowId: entry.existingRowId,
+        priorRow: priorRow ? (priorRow as unknown as Record<string, unknown>) : null,
+      });
+    }
+
+    for (const subId of entry.legacySubsegmentIds) {
+      const priorRow = await prisma.vehicleEnergyEvent.findUnique({
+        where: { dimoSegmentId: subId },
+      });
+      if (priorRow) {
+        plan.push({
+          alias: `${entry.alias}_LEGACY`,
+          action: 'DELETE_LEGACY',
+          dimoSegmentId: subId,
+          rowId: priorRow.id,
+          priorRow: priorRow as unknown as Record<string, unknown>,
+        });
+      }
+    }
+  }
+
+  return plan;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -265,7 +323,7 @@ export function buildWriteSet(
     return {
       alias: aliasForCandidate(candidate, report),
       mechanism: candidate.mechanism,
-      classification: candidate.classification,
+      classification: candidate.classification as 'WOULD_CREATE' | 'WOULD_UPDATE',
       requestedAction:
         candidate.classification === 'WOULD_CREATE' ? 'CREATE' : 'UPDATE',
       dimoSegmentId: candidate.dimoSegmentId,

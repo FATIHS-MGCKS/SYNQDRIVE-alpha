@@ -27,7 +27,9 @@ import {
   createPrismaRecoveryReadRepository,
 } from '../../src/modules/vehicle-intelligence/energy-events/energy-events-recovery-read.repository';
 import {
+  buildWriteSet,
   captureEnergyEventsTableSnapshot,
+  captureRollbackPlan,
   executeControlledWriteBackfill,
   validateIdempotencyReport,
   validatePostWriteReport,
@@ -177,6 +179,38 @@ async function main() {
       path.join(OUTPUT_DIR, 'pre-write-snapshot-private.json'),
       JSON.stringify(preSnapshot, null, 2),
     );
+
+    if (APPLY) {
+      const preflightReport = await runEnergyEventsRecoveryDryRun(vehicles, {
+        fetchSegments: (tokenId, from, to, energyClass) =>
+          fetchEnergyEventSegmentsStandalone(tokenId, from, to, energyClass),
+        interRequestDelayMs: 500,
+        mode: 'full',
+        dbComparisonEnabled: true,
+        dbComparisonStatus: 'ok',
+        recoveryPlan,
+      });
+      validatePreWriteReport(preflightReport);
+      const writeSet = buildWriteSet(preflightReport);
+      const rollbackPlan = await captureRollbackPlan(prisma, writeSet);
+      fs.writeFileSync(
+        path.join(OUTPUT_DIR, 'rollback-plan-private.json'),
+        JSON.stringify(
+          {
+            capturedAt: new Date().toISOString(),
+            codeSha,
+            recoveryPlanVersion: recoveryPlan.planVersion,
+            entries: rollbackPlan.length,
+          },
+          null,
+          2,
+        ),
+      );
+      fs.writeFileSync(
+        path.join(OUTPUT_DIR, 'rollback-plan-private-full.json'),
+        JSON.stringify(rollbackPlan, null, 2),
+      );
+    }
 
     const result = await executeControlledWriteBackfill({
       prisma,
