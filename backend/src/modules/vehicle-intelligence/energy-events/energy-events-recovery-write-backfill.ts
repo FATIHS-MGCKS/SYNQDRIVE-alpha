@@ -369,14 +369,44 @@ export function buildWriteSet(
 export function buildRemainingWriteSet(
   report: EnergyRecoveryDryRunReport,
 ): WriteSetEntry[] {
-  return buildWriteSetFromCandidates(
+  const staleSubsegmentIds = new Set(report.legacySubsegmentsWouldReplace);
+  const entries = buildWriteSetFromCandidates(
     report,
-    (candidate) =>
-      candidate.classification === 'WOULD_CREATE' ||
-      candidate.classification === 'WOULD_UPDATE',
+    (candidate) => {
+      if (candidate.classification !== 'WOULD_CREATE' &&
+          candidate.classification !== 'WOULD_UPDATE') {
+        return false;
+      }
+      if (
+        candidate.classification === 'WOULD_UPDATE' &&
+        candidate.mechanism === 'recharge' &&
+        (candidate.coalescedFromSegmentIds.length === 1 ||
+          staleSubsegmentIds.has(candidate.dimoSegmentId))
+      ) {
+        return false;
+      }
+      return true;
+    },
     undefined,
     true,
   );
+
+  return entries.sort((left, right) => {
+    const leftParentScore =
+      left.mechanism === 'recharge' && left.legacySubsegmentIds.length > 0 ? 0 : 1;
+    const rightParentScore =
+      right.mechanism === 'recharge' && right.legacySubsegmentIds.length > 0 ? 0 : 1;
+    if (leftParentScore !== rightParentScore) {
+      return leftParentScore - rightParentScore;
+    }
+    if (left.mechanism === 'recharge' && right.mechanism !== 'recharge') {
+      return -1;
+    }
+    if (right.mechanism === 'recharge' && left.mechanism !== 'recharge') {
+      return 1;
+    }
+    return 0;
+  });
 }
 
 function buildWriteSetFromCandidates(
@@ -815,11 +845,11 @@ export async function executeControlledWriteBackfill(options: {
   }
 
   const postWriteSnapshot = await captureEnergyEventsTableSnapshot(options.prisma);
-  const vehiclesAfterWrite = await refreshVehicleExistingEvents(
+  let vehiclesAfterWrite = await refreshVehicleExistingEvents(
     options.prisma,
     options.vehicles,
   );
-  const postWriteReport = await runEnergyEventsRecoveryDryRun(vehiclesAfterWrite, {
+  let postWriteReport = await runEnergyEventsRecoveryDryRun(vehiclesAfterWrite, {
     fetchSegments: options.fetchSegments,
     interRequestDelayMs: delayMs,
     mode: 'full',
@@ -827,6 +857,27 @@ export async function executeControlledWriteBackfill(options: {
     dbComparisonStatus: 'ok',
     recoveryPlan: options.recoveryPlan,
   });
+
+  if (options.completeRemaining) {
+    legacySubsegmentsReconciledTotal += await reconcileCanonicalRechargeWindowsFromReport({
+      prisma: options.prisma,
+      report: postWriteReport,
+      vehiclesById,
+      fetchSegments: options.fetchSegments,
+    });
+    vehiclesAfterWrite = await refreshVehicleExistingEvents(
+      options.prisma,
+      options.vehicles,
+    );
+    postWriteReport = await runEnergyEventsRecoveryDryRun(vehiclesAfterWrite, {
+      fetchSegments: options.fetchSegments,
+      interRequestDelayMs: delayMs,
+      mode: 'full',
+      dbComparisonEnabled: true,
+      dbComparisonStatus: 'ok',
+      recoveryPlan: options.recoveryPlan,
+    });
+  }
 
   validatePostWriteCompletionReport(postWriteReport);
 

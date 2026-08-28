@@ -7,6 +7,7 @@ import {
   pruneStaleCoalescedSubSegments,
 } from './energy-events.pipeline';
 import {
+  buildRemainingWriteSet,
   reconcileCanonicalRechargeWindowsFromReport,
   validatePostWriteCompletionReport,
 } from './energy-events-recovery-write-backfill';
@@ -535,6 +536,87 @@ describe('reconcileCanonicalRechargeWindowsFromReport', () => {
     expect(reconciled).toBe(3);
     expect(store.energyEvents).toHaveLength(1);
     expect(store.energyEvents[0].dimoSegmentId).toBe(parent.coalescedSegmentId);
+  });
+});
+
+describe('buildRemainingWriteSet', () => {
+  it('excludes singleton recharge WOULD_UPDATE rows handled by canonical prune', () => {
+    const report = buildCompletionReport({
+      legacySubsegmentsWouldReplace: ['legacy-sub-a'],
+      vehicles: [
+        {
+          vehicleId: VEHICLE_ID,
+          label: 'TEST_EV',
+          tokenId: TOKEN_ID,
+          provider: 'LTE_R1',
+          powertrain: 'EV',
+          dimoAccessAvailable: true,
+          dbVehicleMapped: true,
+          refuelApplicability: 'APPLICABLE',
+          rechargeApplicability: 'APPLICABLE',
+          relativeFuelAvailable: false,
+          absoluteFuelAvailable: false,
+          rechargeSocAvailable: true,
+          capabilityLookupStatus: 'ok',
+          existingEventCountInWindow: 2,
+          energyClass: 'BOTH',
+        },
+      ],
+      candidates: [
+        {
+          classification: 'WOULD_UPDATE',
+          mechanism: 'recharge',
+          vehicleId: VEHICLE_ID,
+          tokenId: TOKEN_ID,
+          label: 'TEST_EV',
+          dimoSegmentId: 'legacy-sub-a',
+          coalescedFromSegmentIds: ['legacy-sub-a'],
+          startTime: '2026-07-16T08:00:00.000Z',
+          endTime: '2026-07-16T18:00:00.000Z',
+          durationSeconds: 36000,
+          fuelDeltaLiters: null,
+          fuelDeltaPercent: null,
+          socDeltaPercent: 10,
+          energyDeltaKwh: 5,
+          odometerStartKm: 1000,
+          odometerEndKm: 1000,
+          confidence: EnergyEventConfidence.HIGH,
+          detectorConfigVersion: 'e2-2026-08',
+          manualReviewReasons: [],
+          existingRowId: 'legacy-row',
+          windowFrom: WINDOW_FROM.toISOString(),
+          windowTo: WINDOW_TO.toISOString(),
+        },
+        {
+          classification: 'WOULD_UPDATE',
+          mechanism: 'refuel',
+          vehicleId: VEHICLE_ID,
+          tokenId: TOKEN_ID,
+          label: 'TEST_EV',
+          dimoSegmentId: 'canonical-refuel',
+          coalescedFromSegmentIds: ['canonical-refuel'],
+          startTime: '2026-08-23T16:15:15.000Z',
+          endTime: '2026-08-23T16:23:16.000Z',
+          durationSeconds: 481,
+          fuelDeltaLiters: 16,
+          fuelDeltaPercent: 29,
+          socDeltaPercent: null,
+          energyDeltaKwh: null,
+          odometerStartKm: 1000,
+          odometerEndKm: 1000,
+          confidence: EnergyEventConfidence.HIGH,
+          detectorConfigVersion: 'e2-2026-08',
+          manualReviewReasons: [],
+          existingRowId: 'refuel-row',
+          windowFrom: WINDOW_FROM.toISOString(),
+          windowTo: WINDOW_TO.toISOString(),
+        },
+      ],
+    });
+
+    const writeSet = buildRemainingWriteSet(report);
+    expect(writeSet).toHaveLength(1);
+    expect(writeSet[0].mechanism).toBe('refuel');
   });
 });
 
