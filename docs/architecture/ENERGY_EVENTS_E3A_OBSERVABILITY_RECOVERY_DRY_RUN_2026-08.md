@@ -57,34 +57,71 @@ Window semantics: non-overlapping `[from, to)` 24h windows. DIMO may return `sta
 
 FULL mode loads real vehicles from the database at runtime. Committed documentation and artifacts use aliases only:
 
-| Alias | Class | DIMO access |
-|-------|-------|-------------|
-| `CANONICAL_REFUEL_CASE` | REFUEL_CANDIDATE | yes |
-| `ICE_A` | REFUEL_CANDIDATE | yes |
-| `ICE_B` | REFUEL_CANDIDATE | yes |
-| `ICE_C` | REFUEL_CANDIDATE | yes |
-| `EV_A` | RECHARGE_CANDIDATE | yes |
-| `INACCESSIBLE_ICE` | DIMO_ACCESS_FAILED | no |
+### 3.1 Vehicle-slot aliases
+
+One alias per inventory slot. Every energy class has an alias prefix, so a `BOTH`
+vehicle can never fall through to `UNKNOWN` merely because of its class.
+
+| Class | Prefix | Example |
+|-------|--------|---------|
+| `REFUEL_CANDIDATE` | `ICE` | `ICE_A` |
+| `RECHARGE_CANDIDATE` | `EV` | `EV_A` |
+| `BOTH` | `PHEV` | `PHEV_A` |
+| `NO_ENERGY_SIGNAL` | `NO_ENERGY_SIGNAL` | `NO_ENERGY_SIGNAL_A` |
+| `DIMO_ACCESS_FAILED` | `INACCESSIBLE` | `INACCESSIBLE_A` |
+| `CAPABILITY_UNKNOWN` | `CAPABILITY_UNKNOWN` | `CAPABILITY_UNKNOWN_A` |
+
+### 3.2 Canonical roles are event-scoped, not vehicle-scoped
+
+`CANONICAL_REFUEL_CASE` and `CANONICAL_RECHARGE_OVERLAP_CASE` name a single
+acceptance *event*, not a vehicle slot. Sibling events on the same vehicle keep
+the vehicle alias, so two independent `WOULD_CREATE` recharge sessions on the
+same EV stay `EV_A` while only the overlap `WOULD_UPDATE` event wears the
+canonical role. Every sanitized event also carries `vehicleAlias`, which always
+holds the slot alias.
+
+Role matching uses an in-process candidate identity (`mechanism` +
+`dimoSegmentId`) that is only a map key — the segment id never reaches a
+committed artifact.
 
 Alias assignment is deterministic by inventory order and energy class at artifact-sanitization time. No production tokenId ↔ alias mapping is stored in git.
 
 ---
 
-## 4. Request accounting (corrected)
+## 4. Request accounting (single run-level authority)
 
-Per eligible vehicle/window, only required mechanisms are queried:
+`energy-events-recovery-accounting.ts` owns one `DimoRequestAccounting` record
+per run. The dry-run script creates it, capability discovery records into it, and
+the recovery loop merges its deltas into the same record. Previously the
+capability-probe helpers built local accounting objects that were discarded, so
+committed evidence reported mechanism-only traffic as if it were the total and
+showed `tokenExchangeRequests=0`.
+
+Per eligible vehicle/window, only *applicable* mechanisms are queried:
 
 - `REFUEL_CANDIDATE` → refuel only (1 telemetry GraphQL request)
 - `RECHARGE_CANDIDATE` → recharge only (1 request)
-- `BOTH` → refuel + recharge (2 requests)
+- `BOTH` (PHEV) → refuel + recharge (2 requests)
 
-**Full fleet budget (5 eligible × 44 windows):**
+### Reported fields
 
-| Metric | Value |
-|--------|-------|
-| Expected telemetry GraphQL requests | **220** (not 440) |
-| Token exchange requests | ≤5 (cached per tokenId) |
-| Worst case with retries (×3) | 660 |
+| Field | Meaning |
+|-------|---------|
+| `telemetryGraphqlRequests` | **TOTAL** — capability probes + mechanism requests |
+| `capabilityProbeRequests` | `availableSignals` GraphQL probes |
+| `mechanismRequests` | refuel + recharge segment requests |
+| `refuelSegmentRequests` / `rechargeSegmentRequests` | per-mechanism split |
+| `tokenExchangeRequests` | per-tokenId vehicle JWT exchanges |
+| `developerAuthRequests` | developer JWT acquisitions |
+| `retries` | retried requests |
+
+`isTelemetryTotalConsistent()` asserts
+`telemetryGraphqlRequests === capabilityProbeRequests + mechanismRequests`; the
+dry-run script exits non-zero if that invariant breaks, so mechanism-only traffic
+can never again be published as the total.
+
+Budget figures in `trafficBudget` are derived from the resolved per-vehicle
+applicability at runtime, not hardcoded.
 
 ---
 
@@ -151,7 +188,8 @@ VehicleEnergyDetectionStatus
 
 ## 8. Tests
 
-Focused energy-events tests (83) plus E3A privacy regression checks:
+Focused energy-events tests (101, of which 70 are net-new versus `main`) plus
+E3A privacy regression checks:
 
 - E1 mechanism isolation in dry-run
 - Full mode without DB → NOT READY
@@ -167,6 +205,9 @@ Focused energy-events tests (83) plus E3A privacy regression checks:
 - Sanitized artifact builder (inventory-order aliases, no forbidden identifier fields)
 - Privacy regression scan of committed artifacts + architecture doc
 - Capability discovery regression (ICE/EV zero-event probe, CAPABILITY_UNKNOWN gate, synthetic QUICK FULL isolation)
+- Canonical powertrain applicability: ICE listing traction SOC stays `REFUEL_CANDIDATE`; EV with a stray fuel signal stays `RECHARGE_CANDIDATE`; PHEV with both capabilities is `BOTH`; PHEV taxonomy never flattened to ICE; `UNKNOWN` without sufficient evidence is `CAPABILITY_UNKNOWN`
+- Run-level accounting: `availableSignals` probes contribute to the TOTAL telemetry count; token-exchange and developer-auth accounting is not silently lost; per-mechanism split merges additively
+- Sanitizer alias correctness: canonical recharge role applies only to the overlap update event; sibling recharge sessions on the same EV remain `EV_A`; `BOTH` inventory aliases never fall through to `UNKNOWN`
 
 ---
 
@@ -194,35 +235,97 @@ Both contain aliases (`ICE_A`, `EV_A`, `CANONICAL_REFUEL_CASE`, …), coarse dur
 
 FULL DB-backed read-only run executed on secured production infrastructure with production `DATABASE_URL`, `dbComparisonEnabled=true`, `dbComparisonStatus=ok`, mutation-guarded Prisma, zero writes. **Clean branch execution** (`codeShaUnderTest` = clean PR HEAD, not legacy #1373).
 
-### Capability discovery (clean PR fix)
+### Capability discovery: applicability vs. availability
 
-FULL mode resolves energy capability from canonical runtime sources — **not** from existing `VehicleEnergyEvent` history:
+FULL mode resolves two independent dimensions and never conflates them.
 
-1. `Vehicle.fuelType` → powertrain class
-2. `VehicleBatteryCapability` → recharge/SOC (`dimo.segments.recharge`, `hv.soc`)
-3. DIMO `availableSignals` probe → fuel + supplemental recharge listing
-4. Existing outage-window events → **supplemental only**
+**A) Applicability** — from the canonical fleet authority
+`resolveFleetPowertrainClass()`. Recovery does not define its own taxonomy, and
+`PHEV` is preserved rather than flattened into `ICE`.
 
-`CAPABILITY_UNKNOWN` when probe fails without canonical DB coverage; FULL gate `NOT READY`. Synthetic QUICK profiles (tokenIds 100001–100099) cannot enter FULL inventory.
+| Powertrain | refuel | recharge |
+|------------|--------|----------|
+| `ICE` | `APPLICABLE` | `NOT_APPLICABLE` |
+| `EV` | `NOT_APPLICABLE` | `APPLICABLE` |
+| `PHEV` | `APPLICABLE` | `APPLICABLE` |
+| `UNKNOWN` | `UNKNOWN` | `UNKNOWN` |
 
-### After refuel plausibility hardening + runtime capability discovery
+**B) Provider signal availability** — from runtime evidence, never from the
+absence of energy-event history:
+
+1. DIMO `availableSignals` probe (authoritative runtime source)
+2. `VehicleBatteryCapability` rows (`dimo.segments.recharge`, `hv.soc`)
+3. Existing outage-window events — **supplemental only**
+
+Availability can only *confirm* an applicable mechanism. It can never make an
+inapplicable mechanism applicable. Claims against an inapplicable mechanism are
+recorded as *suppressed* evidence so the provenance stays auditable.
+
+`CAPABILITY_UNKNOWN` when the probe fails and no canonical source covers an
+applicable mechanism (and always when the powertrain itself is `UNKNOWN`); FULL
+gate `NOT READY`. Synthetic QUICK profiles (tokenIds 100001–100099) cannot enter
+FULL inventory.
+
+### Why ICE vehicles previously reported `rechargeSocAvailable=true`
+
+The earlier clean FULL artifact classified reachable ICE vehicles as
+`energyClass=BOTH`. Runtime audit (`energy-events-capability-source-audit.ts`,
+private evidence only) attributed every ICE recharge claim to **stale/overbroad
+`VehicleBatteryCapability` rows** — cause **(B)**:
+
+- `dimo.segments.recharge` rows persisted with a *listed* status on ICE vehicles.
+  The battery-capability preflight records **endpoint listing**, not powertrain
+  applicability, so an ICE vehicle whose recharge-segments endpoint answers with
+  zero segments still stores a listed row.
+- DIMO `availableSignals` contributed **zero** ICE recharge claims
+  (`suppressedRechargeSourceCounts.DIMO_AVAILABLE_SIGNALS = 0`), so cause (A) is
+  excluded.
+- `fuelType` was correct on every vehicle (5 ICE / 1 EV, zero `UNKNOWN`), so
+  cause (C) is excluded.
+- `hv.soc` rows were `NOT_LISTED` and correctly ignored.
+
+The status filter was therefore left canonical — it reuses
+`isCapabilityMeasurementEnabled()` from the battery-capability authority rather
+than narrowing `AVAILABLE_NULL` locally, which would have forked the taxonomy.
+The applicability matrix is the single suppression point.
+
+### FULL run evidence
 
 | Metric | Value |
 |--------|-------|
-| `codeShaUnderTest` | clean PR HEAD (runtime git SHA) |
-| Telemetry GraphQL requests | **396** (5 BOTH-class eligible × 44 windows × 2 mechanisms; +5 `availableSignals` preflight probes) |
+| `codeShaUnderTest` | `dace008c12b385ab4ce6ccfa68fc224b46ff5615` |
+| `baseMainSha` | `5037c543f17b719575e55433e70fcc3808db517c` |
+| `dbComparisonEnabled` / `dbComparisonStatus` | `true` / `ok` |
+| Telemetry GraphQL requests (TOTAL) | **225** |
+| — capability probes | 5 |
+| — mechanism requests | 220 (refuel 176 + recharge 44) |
+| Token exchange requests | 6 |
+| Developer auth requests | 1 |
+| Retries | 0 |
+| Vehicle classes | 4 ICE/refuel eligible + 1 EV/recharge + 1 inaccessible (ICE); 0 PHEV, 0 UNKNOWN, 0 `CAPABILITY_UNKNOWN` |
 | Refuel detections | 18 |
 | Recharge detections | 3 |
 | WOULD_CREATE | 3 (`CANONICAL_REFUEL_CASE` + 2 `EV_A` recharge) |
 | WOULD_UPDATE | 1 (`CANONICAL_RECHARGE_OVERLAP_CASE`) |
+| WOULD_SKIP_NOT_PERSISTABLE | 2 |
 | MANUAL_REVIEW_REQUIRED | 15 (13 `EXCLUDE_FROM_BACKFILL` + 2 `NEEDS_FURTHER_EVIDENCE`) |
-| Unresolved manual review | 2 (`NEEDS_FURTHER_EVIDENCE` only) |
 | FETCH_FAILED | 0 |
-| `CAPABILITY_UNKNOWN` | 0 |
+| DB vehicle mapping failures | 0 |
+| `dbWritesPerformed` | `false` |
 | `CANONICAL_REFUEL_CASE` | `WOULD_CREATE` (Aug 2026) |
 | Gate | `READY AFTER MANUAL REVIEW OF 2 EVENTS` (`MANUAL_REVIEW_UNRESOLVED:2`) |
 
-**Telemetry note:** Prior #1373 evidence reported 220 requests when fleet was classified REFUEL/RECHARGE-only. Runtime `availableSignals` probe correctly surfaces BOTH on several ICE vehicles (fuel + recharge SOC listed), increasing mechanism queries to 396 while **detection and classification counts remain identical**.
+**Telemetry note:** mechanism traffic moved 396 → 220 because canonical
+applicability stops recharge-segment queries on ICE vehicles that merely had a
+listed recharge-segments capability row. `availableSignals` probes (5) are now
+included in the reported total, so `telemetryGraphqlRequests` is 225 rather than
+mechanism-only 220. **All detection and classification counts are unchanged**,
+which is the semantic-equivalence result: the fix removed wasted provider traffic
+and a misleading vehicle classification without moving a single recovery outcome.
+
+**Provenance note:** `codeShaUnderTest` is the code commit the run executed. The
+commit that carries this artifact necessarily follows it, so the artifact commit
+SHA differs from `codeShaUnderTest` by design.
 
 4 refuel candidates reclassified from WOULD_CREATE → MANUAL_REVIEW (`refuel_high_odometer_movement`). Sole refuel WOULD_CREATE: `CANONICAL_REFUEL_CASE` (+16 L bucket, ~6 km bucket).
 

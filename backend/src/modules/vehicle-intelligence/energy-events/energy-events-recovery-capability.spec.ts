@@ -158,14 +158,28 @@ describe('energy-events recovery capability discovery', () => {
     );
   });
 
+  // Asserted structurally rather than against known production tokenIds, so the
+  // guard itself does not commit the very identifiers it forbids.
   it('H. privacy regression — capability module has no production token fixtures', () => {
     const source = require('fs').readFileSync(
       require('path').join(__dirname, 'energy-events-recovery-capability.ts'),
       'utf8',
     );
-    expect(source).not.toMatch(/\b192922\b/);
-    expect(source).not.toMatch(/\b186946\b/);
+
+    const numericLiterals = (source.match(/\b\d[\d_]*\b/g) ?? []).map(
+      (literal: string) => Number(literal.replace(/_/g, '')),
+    );
+    const productionShapedTokenIds = numericLiterals.filter(
+      (value: number) =>
+        Number.isInteger(value) &&
+        value >= 100_000 &&
+        value <= 9_999_999 &&
+        !isSyntheticQuickTokenId(value),
+    );
+
+    expect(productionShapedTokenIds).toEqual([]);
     expect(source).not.toMatch(/licensePlate/);
+    expect(source).not.toMatch(/\b[A-ZÄÖÜ]{1,3}[ -][A-Z]{1,2}[ -]?\d{1,4}\b/);
   });
 });
 

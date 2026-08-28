@@ -46,6 +46,9 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'UNKNOWN powertrain without sufficient runtime capability evidence fails closed → `CAPABILITY_UNKNOWN` → FULL gate NOT READY.',
       'One run-level DIMO accounting authority: capability probe + token exchange traffic is no longer discarded; TOTAL `telemetryGraphqlRequests` includes `availableSignals` probes.',
       'Sanitizer aliases cover all energy classes (no BOTH → UNKNOWN fallthrough) and canonical roles are event-specific, not vehicle-slot-wide.',
+      'Root cause of ICE recharge capability: stale/overbroad `VehicleBatteryCapability` rows for `dimo.segments.recharge` — the preflight records endpoint listing, not powertrain applicability. DIMO `availableSignals` contributed zero ICE recharge claims and `fuelType` was correct on every vehicle.',
+      'Battery-capability listed-status check now delegates to the canonical `isCapabilityMeasurementEnabled()` authority instead of restating the enum, so recovery cannot fork the status taxonomy.',
+      'Re-ran FULL DB-backed read-only preview: mechanism traffic 396 → 220 (no recharge queries on ICE), TOTAL telemetry 225 incl. 5 capability probes, tokenExchange 6, retries 0 — all recovery counts unchanged (18 refuel / 3 recharge / 3 CREATE / 1 UPDATE / 2 SKIP / 15 MANUAL_REVIEW = 13 EXCLUDE + 2 NEEDS), zero writes.',
       'Rebased onto current main (Connectivity Diagnostic Hardening) — no PR #1373 ancestry. Zero historical writes; E2 detector config unchanged.',
     ],
     reason:
@@ -181,7 +184,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Prometheus metrics for energy-event detection via existing TripMetrics registry (`detector_config_version=e2-2026-08`).',
       'Read-only Jul→Aug outage dry-run: 24h bounded windows, production E2 detector config, zero VehicleEnergyEvent writes.',
       'Safety: E1 mechanism isolation in dry-run, fail-closed FULL-mode DB comparison gate, mechanism-aware request accounting (220 telemetry requests), cross-window dedup, mutation-guarded read repository.',
-      'Fleet inventory includes VW Golf 190497 as DIMO_ACCESS_FAILED; KS MX canonical refuel verified; Tesla recharge sessions verified.',
+      'Fleet inventory covers one DIMO_ACCESS_FAILED vehicle; canonical refuel case and EV recharge sessions verified via runtime aliases only.',
       'Artifact `artifacts/energy-events-recovery-dry-run-2026-08.json`; FULL mode requires DATABASE_URL or gate stays NOT READY.',
     ],
     reason:

@@ -1,9 +1,9 @@
 {
   "artifactKind": "sanitized_full_summary",
   "privacyPolicy": "Repository-safe aggregate evidence only. Raw FULL DB preview reports with operational identifiers are generated on secured infrastructure and must not be committed.",
-  "generatedAt": "2026-08-28T12:10:34.238Z",
-  "codeShaUnderTest": "81a8ef04f0d1272d656141fdc8e21563f07c2531",
-  "baseMainSha": "unknown",
+  "generatedAt": "2026-08-28T13:14:56.190Z",
+  "codeShaUnderTest": "dace008c12b385ab4ce6ccfa68fc224b46ff5615",
+  "baseMainSha": "5037c543f17b719575e55433e70fcc3808db517c",
   "detectorConfigVersion": "e2-2026-08",
   "refuelDetectorConfig": {
     "minIncreasePercent": 5
@@ -18,76 +18,131 @@
   "dbVehicleMappingFailures": 0,
   "vehicles": [
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_B",
       "powertrain": "ICE",
-      "energyClass": "BOTH",
+      "energyClass": "REFUEL_CANDIDATE",
+      "refuelApplicability": "APPLICABLE",
+      "rechargeApplicability": "NOT_APPLICABLE",
       "dimoAccessAvailable": true,
       "dbVehicleMapped": true,
+      "capabilityLookupStatus": "ok",
       "relativeFuelAvailable": true,
       "absoluteFuelAvailable": true,
-      "rechargeSocAvailable": true,
+      "rechargeSocAvailable": false,
       "existingEventCountInWindow": 0
     },
     {
-      "alias": "CANONICAL_RECHARGE_OVERLAP_CASE",
+      "alias": "EV_A",
       "powertrain": "EV",
       "energyClass": "RECHARGE_CANDIDATE",
+      "refuelApplicability": "NOT_APPLICABLE",
+      "rechargeApplicability": "APPLICABLE",
       "dimoAccessAvailable": true,
       "dbVehicleMapped": true,
+      "capabilityLookupStatus": "ok",
       "relativeFuelAvailable": false,
       "absoluteFuelAvailable": false,
       "rechargeSocAvailable": true,
       "existingEventCountInWindow": 18
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_D",
       "powertrain": "ICE",
-      "energyClass": "BOTH",
+      "energyClass": "REFUEL_CANDIDATE",
+      "refuelApplicability": "APPLICABLE",
+      "rechargeApplicability": "NOT_APPLICABLE",
       "dimoAccessAvailable": true,
       "dbVehicleMapped": true,
+      "capabilityLookupStatus": "ok",
       "relativeFuelAvailable": false,
       "absoluteFuelAvailable": true,
-      "rechargeSocAvailable": true,
+      "rechargeSocAvailable": false,
       "existingEventCountInWindow": 0
     },
     {
-      "alias": "CANONICAL_REFUEL_CASE",
+      "alias": "ICE_C",
       "powertrain": "ICE",
-      "energyClass": "BOTH",
+      "energyClass": "REFUEL_CANDIDATE",
+      "refuelApplicability": "APPLICABLE",
+      "rechargeApplicability": "NOT_APPLICABLE",
       "dimoAccessAvailable": true,
       "dbVehicleMapped": true,
+      "capabilityLookupStatus": "ok",
       "relativeFuelAvailable": true,
       "absoluteFuelAvailable": true,
-      "rechargeSocAvailable": true,
+      "rechargeSocAvailable": false,
       "existingEventCountInWindow": 0
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_A",
       "powertrain": "ICE",
-      "energyClass": "BOTH",
+      "energyClass": "REFUEL_CANDIDATE",
+      "refuelApplicability": "APPLICABLE",
+      "rechargeApplicability": "NOT_APPLICABLE",
       "dimoAccessAvailable": true,
       "dbVehicleMapped": true,
+      "capabilityLookupStatus": "ok",
       "relativeFuelAvailable": true,
       "absoluteFuelAvailable": true,
-      "rechargeSocAvailable": true,
+      "rechargeSocAvailable": false,
       "existingEventCountInWindow": 0
     },
     {
-      "alias": "INACCESSIBLE_ICE",
+      "alias": "INACCESSIBLE_A",
       "powertrain": "ICE",
       "energyClass": "DIMO_ACCESS_FAILED",
+      "refuelApplicability": "APPLICABLE",
+      "rechargeApplicability": "NOT_APPLICABLE",
       "dimoAccessAvailable": false,
       "dbVehicleMapped": true,
+      "capabilityLookupStatus": "ok",
       "relativeFuelAvailable": false,
       "absoluteFuelAvailable": false,
       "rechargeSocAvailable": false,
       "existingEventCountInWindow": 0
     }
   ],
+  "capabilityEvidenceAggregate": {
+    "vehiclesByPowertrain": {
+      "ICE": 5,
+      "EV": 1,
+      "PHEV": 0,
+      "UNKNOWN": 0
+    },
+    "confirmedFuelSourceCounts": {
+      "DIMO_AVAILABLE_SIGNALS": 4,
+      "VEHICLE_BATTERY_CAPABILITY": 0,
+      "SUPPLEMENTAL_WINDOW_EVENTS": 0
+    },
+    "confirmedRechargeSourceCounts": {
+      "DIMO_AVAILABLE_SIGNALS": 1,
+      "VEHICLE_BATTERY_CAPABILITY": 1,
+      "SUPPLEMENTAL_WINDOW_EVENTS": 1
+    },
+    "suppressedFuelSourceCounts": {
+      "DIMO_AVAILABLE_SIGNALS": 0,
+      "VEHICLE_BATTERY_CAPABILITY": 0,
+      "SUPPLEMENTAL_WINDOW_EVENTS": 0
+    },
+    "suppressedRechargeSourceCounts": {
+      "DIMO_AVAILABLE_SIGNALS": 0,
+      "VEHICLE_BATTERY_CAPABILITY": 4,
+      "SUPPLEMENTAL_WINDOW_EVENTS": 0
+    },
+    "vehiclesWithSuppressedRechargeEvidence": 4,
+    "vehiclesWithSuppressedFuelEvidence": 0,
+    "availableSignalsProbeOk": 5,
+    "availableSignalsProbeFailed": 0,
+    "availableSignalsProbeNotAttempted": 1
+  },
   "requestAccounting": {
-    "telemetryGraphqlRequests": 396,
-    "tokenExchangeRequests": 0,
-    "mechanismRequests": 396,
+    "telemetryGraphqlRequests": 225,
+    "capabilityProbeRequests": 5,
+    "mechanismRequests": 220,
+    "refuelSegmentRequests": 176,
+    "rechargeSegmentRequests": 44,
+    "tokenExchangeRequests": 6,
+    "developerAuthRequests": 1,
     "retries": 0
   },
   "refuelDetections": 18,
@@ -143,6 +198,7 @@
   "candidateEvidence": [
     {
       "alias": "CANONICAL_RECHARGE_OVERLAP_CASE",
+      "vehicleAlias": "EV_A",
       "classification": "WOULD_UPDATE",
       "mechanism": "recharge",
       "month": "2026-07",
@@ -155,7 +211,8 @@
       "existingDbRelation": null
     },
     {
-      "alias": "CANONICAL_RECHARGE_OVERLAP_CASE",
+      "alias": "EV_A",
+      "vehicleAlias": "EV_A",
       "classification": "WOULD_CREATE",
       "mechanism": "recharge",
       "month": "2026-07",
@@ -168,7 +225,8 @@
       "existingDbRelation": null
     },
     {
-      "alias": "CANONICAL_RECHARGE_OVERLAP_CASE",
+      "alias": "EV_A",
+      "vehicleAlias": "EV_A",
       "classification": "WOULD_CREATE",
       "mechanism": "recharge",
       "month": "2026-07",
@@ -182,6 +240,7 @@
     },
     {
       "alias": "CANONICAL_REFUEL_CASE",
+      "vehicleAlias": "ICE_C",
       "classification": "WOULD_CREATE",
       "mechanism": "refuel",
       "month": "2026-08",
@@ -196,7 +255,8 @@
   ],
   "manualReviewEvidence": [
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_B",
+      "vehicleAlias": "ICE_B",
       "mechanism": "refuel",
       "month": "2026-07",
       "durationBucket": "over_4h",
@@ -210,7 +270,8 @@
       "disposition": "EXCLUDE_FROM_BACKFILL"
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_B",
+      "vehicleAlias": "ICE_B",
       "mechanism": "refuel",
       "month": "2026-07",
       "durationBucket": "15m_to_2h",
@@ -223,7 +284,8 @@
       "disposition": "EXCLUDE_FROM_BACKFILL"
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_B",
+      "vehicleAlias": "ICE_B",
       "mechanism": "refuel",
       "month": "2026-07",
       "durationBucket": "over_4h",
@@ -237,7 +299,8 @@
       "disposition": "EXCLUDE_FROM_BACKFILL"
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_B",
+      "vehicleAlias": "ICE_B",
       "mechanism": "refuel",
       "month": "2026-07",
       "durationBucket": "2h_to_4h",
@@ -251,7 +314,8 @@
       "disposition": "EXCLUDE_FROM_BACKFILL"
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_B",
+      "vehicleAlias": "ICE_B",
       "mechanism": "refuel",
       "month": "2026-07",
       "durationBucket": "2h_to_4h",
@@ -265,7 +329,8 @@
       "disposition": "EXCLUDE_FROM_BACKFILL"
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_B",
+      "vehicleAlias": "ICE_B",
       "mechanism": "refuel",
       "month": "2026-07",
       "durationBucket": "2h_to_4h",
@@ -279,7 +344,8 @@
       "disposition": "EXCLUDE_FROM_BACKFILL"
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_B",
+      "vehicleAlias": "ICE_B",
       "mechanism": "refuel",
       "month": "2026-08",
       "durationBucket": "15m_to_2h",
@@ -292,7 +358,8 @@
       "disposition": "EXCLUDE_FROM_BACKFILL"
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_A",
+      "vehicleAlias": "ICE_A",
       "mechanism": "refuel",
       "month": "2026-07",
       "durationBucket": "2h_to_4h",
@@ -306,7 +373,8 @@
       "disposition": "EXCLUDE_FROM_BACKFILL"
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_A",
+      "vehicleAlias": "ICE_A",
       "mechanism": "refuel",
       "month": "2026-07",
       "durationBucket": "15m_to_2h",
@@ -319,7 +387,8 @@
       "disposition": "EXCLUDE_FROM_BACKFILL"
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_A",
+      "vehicleAlias": "ICE_A",
       "mechanism": "refuel",
       "month": "2026-07",
       "durationBucket": "under_15m",
@@ -333,7 +402,8 @@
       "disposition": "NEEDS_FURTHER_EVIDENCE"
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_A",
+      "vehicleAlias": "ICE_A",
       "mechanism": "refuel",
       "month": "2026-07",
       "durationBucket": "2h_to_4h",
@@ -347,7 +417,8 @@
       "disposition": "EXCLUDE_FROM_BACKFILL"
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_A",
+      "vehicleAlias": "ICE_A",
       "mechanism": "refuel",
       "month": "2026-07",
       "durationBucket": "under_15m",
@@ -360,7 +431,8 @@
       "disposition": "NEEDS_FURTHER_EVIDENCE"
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_A",
+      "vehicleAlias": "ICE_A",
       "mechanism": "refuel",
       "month": "2026-07",
       "durationBucket": "2h_to_4h",
@@ -374,7 +446,8 @@
       "disposition": "EXCLUDE_FROM_BACKFILL"
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_A",
+      "vehicleAlias": "ICE_A",
       "mechanism": "refuel",
       "month": "2026-07",
       "durationBucket": "15m_to_2h",
@@ -387,7 +460,8 @@
       "disposition": "EXCLUDE_FROM_BACKFILL"
     },
     {
-      "alias": "UNKNOWN",
+      "alias": "ICE_A",
+      "vehicleAlias": "ICE_A",
       "mechanism": "refuel",
       "month": "2026-07",
       "durationBucket": "2h_to_4h",
@@ -421,12 +495,14 @@
     "inaccessibleVehicles": 1,
     "capabilityUnknownVehicles": 0,
     "windowsPerVehicle": 44,
-    "mechanismsPerWindowAverage": 1.8,
-    "expectedTelemetryGraphqlRequests": 396,
-    "worstCaseWithRetries": 1188,
+    "mechanismsPerWindowAverage": 1,
+    "expectedMechanismRequests": 220,
+    "expectedCapabilityProbeRequests": 5,
+    "expectedTelemetryGraphqlRequests": 225,
+    "worstCaseWithRetries": 675,
     "proposedConcurrency": 2,
     "interRequestDelayMs": 500,
-    "estimatedRuntimeMinutes": 2
+    "estimatedRuntimeMinutes": 1
   },
   "fetchFailures": 0,
   "dbWritesPerformed": false,
