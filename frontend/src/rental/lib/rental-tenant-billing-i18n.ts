@@ -1,5 +1,5 @@
 /**
- * Rental Tenant Billing presentation adapter (P2.2.54 overview + shell; P2.2.55A tariff summary/breakdown/tier ladder; P2.2.55B billable vehicles + vehicle changes; P2.2.56 tenant billing invoices list + detail).
+ * Rental Tenant Billing presentation adapter (P2.2.54 overview + shell; P2.2.55A tariff summary/breakdown/tier ladder; P2.2.55B billable vehicles + vehicle changes; P2.2.56 tenant billing invoices list + detail; P2.2.57 tenant billing payment method).
  * Locale-aware display helpers and static TranslationKeys only.
  */
 import {
@@ -10,7 +10,9 @@ import {
 import type { TranslationKey } from '../../i18n/translations/en';
 import { formatInvoiceListAmount } from './invoice-list-i18n';
 import type { TenantSubscriptionSubTab } from '../components/billing/tenant-billing-navigation';
+import type { BillingStripeUiState } from '../components/billing/billing-stripe-ui';
 import type {
+  TenantPaymentMethodDto,
   TenantSubscriptionTariffDetailsDto,
   TenantSubscriptionTariffPricingDto,
   TenantVehicleBillingChangeDto,
@@ -316,4 +318,138 @@ export function resolveTenantPaymentStatusLabel(
     default:
       return t('tenantBilling.invoices.paymentStatus.fallback');
   }
+}
+
+export function resolvePaymentMethodBillingStateLabel(
+  state: TenantPaymentMethodDto['billingState'],
+  t: Translate,
+): string {
+  switch (state) {
+    case 'READY':
+      return t('tenantBilling.paymentMethod.state.ready');
+    case 'MISSING':
+      return t('tenantBilling.paymentMethod.state.missing');
+    case 'REQUIRES_ACTION':
+      return t('tenantBilling.paymentMethod.state.requiresAction');
+    case 'FAILED':
+      return t('tenantBilling.paymentMethod.state.failed');
+    default:
+      return t('tenantBilling.paymentMethod.state.missing');
+  }
+}
+
+export function resolveStripeStateLabel(state: BillingStripeUiState, t: Translate): string {
+  switch (state) {
+    case 'configured':
+      return t('tenantBilling.paymentMethod.stripe.configured.label');
+    case 'prepared':
+      return t('tenantBilling.paymentMethod.stripe.prepared.label');
+    default:
+      return t('tenantBilling.paymentMethod.stripe.notConfigured.label');
+  }
+}
+
+export function resolveStripeStateHint(state: BillingStripeUiState, t: Translate): string {
+  switch (state) {
+    case 'configured':
+      return t('tenantBilling.paymentMethod.stripe.configured.hint');
+    case 'prepared':
+      return t('tenantBilling.paymentMethod.stripe.prepared.hint');
+    default:
+      return t('tenantBilling.paymentMethod.stripe.notConfigured.hint');
+  }
+}
+
+export function formatPaymentMethodDisplayLocalized(
+  method: TenantPaymentMethodDto,
+  t: Translate,
+): {
+  title: string;
+  subtitle: string;
+  detail: string | null;
+} {
+  if (method.type === 'SEPA_DEBIT') {
+    const bank = method.bankName ?? t('tenantBilling.paymentMethod.display.fallback.bankAccount');
+    const last4 = method.last4 ? ` •••• ${method.last4}` : '';
+    return {
+      title: `${bank}${last4}`,
+      subtitle: method.typeLabel,
+      detail: method.mandateStatusLabel
+        ? `${t('tenantBilling.paymentMethod.display.mandatePrefix')}${method.mandateStatusLabel}`
+        : null,
+    };
+  }
+
+  const brand = method.brand ?? t('tenantBilling.paymentMethod.display.fallback.card');
+  const last4 = method.last4 ? ` •••• ${method.last4}` : '';
+  const expiry =
+    method.expMonth && method.expYear
+      ? `${t('tenantBilling.paymentMethod.display.expiryPrefix')}${String(method.expMonth).padStart(2, '0')}/${method.expYear}`
+      : null;
+
+  return {
+    title: `${brand}${last4}`,
+    subtitle: method.typeLabel,
+    detail: expiry,
+  };
+}
+
+export type PaymentMethodDetachError =
+  | {
+      kind: 'host';
+      code: 'detachFailed';
+    }
+  | {
+      kind: 'raw';
+      message: string;
+    };
+
+export type PaymentMethodActionError =
+  | {
+      source: 'setDefault';
+      message: string;
+    }
+  | {
+      source: 'detach';
+      error: PaymentMethodDetachError;
+    };
+
+export function resolvePaymentMethodDetachErrorMessage(
+  error: PaymentMethodDetachError | null,
+  t: Translate,
+): string | null {
+  if (!error) return null;
+  if (error.kind === 'raw') return error.message;
+  return t('tenantBilling.paymentMethod.error.detachFailed');
+}
+
+export function resolvePaymentMethodActionErrorMessage(
+  error: PaymentMethodActionError | null,
+  t: Translate,
+): string | null {
+  if (!error) return null;
+  if (error.source === 'setDefault') return error.message;
+  return resolvePaymentMethodDetachErrorMessage(error.error, t);
+}
+
+export type StripePortalActionError =
+  | {
+      kind: 'host';
+      code: 'notConfigured' | 'openFailed';
+    }
+  | {
+      kind: 'raw';
+      message: string;
+    };
+
+export function resolveStripePortalActionErrorMessage(
+  error: StripePortalActionError | null,
+  t: Translate,
+): string | null {
+  if (!error) return null;
+  if (error.kind === 'raw') return error.message;
+  if (error.code === 'notConfigured') {
+    return t('tenantBilling.paymentMethod.error.portalNotConfigured');
+  }
+  return t('tenantBilling.paymentMethod.error.portalOpenFailed');
 }

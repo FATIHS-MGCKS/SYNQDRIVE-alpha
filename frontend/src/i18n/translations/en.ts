@@ -830,6 +830,41 @@ export const en = {
   'tenantBilling.invoices.detail.actions.hostedInvoice': 'Online invoice',
   'tenantBilling.invoices.document.unavailable': 'Document is not available right now.',
 
+  // ─── Tenant Billing Payment Method (P2.2.57) ───
+  'tenantBilling.paymentMethod.section.title': 'Payment methods',
+  'tenantBilling.paymentMethod.section.subtitle':
+    'Manage your card or SEPA direct debit for your SynqDrive subscription.',
+  'tenantBilling.paymentMethod.header.defaultConfigured': 'Default on file',
+  'tenantBilling.paymentMethod.empty.title': 'No payment method on file',
+  'tenantBilling.paymentMethod.empty.body':
+    'Add a payment method in the secure customer portal.',
+  'tenantBilling.paymentMethod.action.add': 'Add payment method',
+  'tenantBilling.paymentMethod.action.setDefault': 'Set as default',
+  'tenantBilling.paymentMethod.badge.default': 'Default',
+  'tenantBilling.paymentMethod.attention.updateRequired':
+    'This payment method needs to be updated.',
+  'tenantBilling.paymentMethod.loadErrorTitle': 'Payment methods could not be loaded',
+  'tenantBilling.paymentMethod.state.ready': 'On file',
+  'tenantBilling.paymentMethod.state.missing': 'Not on file',
+  'tenantBilling.paymentMethod.state.requiresAction': 'Confirmation required',
+  'tenantBilling.paymentMethod.state.failed': 'Invalid or expired',
+  'tenantBilling.paymentMethod.stripe.configured.label': 'Payments active',
+  'tenantBilling.paymentMethod.stripe.prepared.label': 'Online payment is being prepared',
+  'tenantBilling.paymentMethod.stripe.notConfigured.label': 'Online payment not active',
+  'tenantBilling.paymentMethod.stripe.configured.hint':
+    'Payment methods and invoices are managed in the secure customer portal.',
+  'tenantBilling.paymentMethod.stripe.prepared.hint':
+    'Online payment is being prepared. Payment actions are not available yet.',
+  'tenantBilling.paymentMethod.stripe.notConfigured.hint':
+    'Online payments are not enabled for this organization yet.',
+  'tenantBilling.paymentMethod.display.expiryPrefix': 'Valid until ',
+  'tenantBilling.paymentMethod.display.mandatePrefix': 'Mandate: ',
+  'tenantBilling.paymentMethod.display.fallback.card': 'Card',
+  'tenantBilling.paymentMethod.display.fallback.bankAccount': 'Bank account',
+  'tenantBilling.paymentMethod.error.detachFailed': 'Payment method could not be removed.',
+  'tenantBilling.paymentMethod.error.portalNotConfigured': 'Stripe payments are not available right now.',
+  'tenantBilling.paymentMethod.error.portalOpenFailed': 'The payment portal could not be opened.',
+
   'finance.separationHint':
     'Customer payments and payouts are separate from your SynqDrive subscription. Your subscription card is not the same as your payout bank account.',
   'finance.customerPayments.pageTitle': 'Customer payments & payouts',

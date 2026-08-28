@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { api, getErrorMessage } from '../../../lib/api';
+import type { StripePortalActionError } from '../../lib/rental-tenant-billing-i18n';
 import type { BillingStripeUiState } from './billing-stripe-ui';
 
 export function useBillingStripeActions(
@@ -8,7 +9,7 @@ export function useBillingStripeActions(
   canWrite = false,
 ) {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<StripePortalActionError | null>(null);
 
   const canUseStripePayments = stripeState === 'configured' && Boolean(orgId) && canWrite;
 
@@ -30,7 +31,7 @@ export function useBillingStripeActions(
         window.location.assign(res.url);
         return;
       }
-      setError('Das Zahlungsportal konnte nicht geöffnet werden.');
+      setError({ kind: 'host', code: 'openFailed' });
     } catch (e) {
       const msg = getErrorMessage(e, '');
       const lower = msg.toLowerCase();
@@ -39,9 +40,9 @@ export function useBillingStripeActions(
         lower.includes('not configured') ||
         lower.includes('501')
       ) {
-        setError('Stripe-Zahlungen sind derzeit nicht verfügbar.');
+        setError({ kind: 'host', code: 'notConfigured' });
       } else {
-        setError('Das Zahlungsportal konnte nicht geöffnet werden.');
+        setError({ kind: 'host', code: 'openFailed' });
       }
     } finally {
       setLoading(false);

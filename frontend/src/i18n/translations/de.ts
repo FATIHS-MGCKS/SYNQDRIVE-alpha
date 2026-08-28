@@ -931,6 +931,43 @@ export const de: Record<TranslationKey, string> = {
   'tenantBilling.invoices.detail.actions.hostedInvoice': 'Online-Rechnung',
   'tenantBilling.invoices.document.unavailable': 'Dokument ist derzeit nicht verfügbar.',
 
+  // ─── Tenant Billing Payment Method (P2.2.57) ───
+  'tenantBilling.paymentMethod.section.title': 'Zahlungsmethoden',
+  'tenantBilling.paymentMethod.section.subtitle':
+    'Verwalten Sie Karte oder SEPA-Lastschrift für Ihr SynqDrive-Abo.',
+  'tenantBilling.paymentMethod.header.defaultConfigured': 'Standard hinterlegt',
+  'tenantBilling.paymentMethod.empty.title': 'Keine Zahlungsmethode hinterlegt',
+  'tenantBilling.paymentMethod.empty.body':
+    'Hinterlegen Sie eine Zahlungsmethode im sicheren Kundenbereich.',
+  'tenantBilling.paymentMethod.action.add': 'Zahlungsmethode hinzufügen',
+  'tenantBilling.paymentMethod.action.setDefault': 'Als Standard setzen',
+  'tenantBilling.paymentMethod.badge.default': 'Standard',
+  'tenantBilling.paymentMethod.attention.updateRequired':
+    'Diese Zahlungsmethode erfordert eine Aktualisierung.',
+  'tenantBilling.paymentMethod.loadErrorTitle': 'Zahlungsmethoden konnten nicht geladen werden',
+  'tenantBilling.paymentMethod.state.ready': 'Hinterlegt',
+  'tenantBilling.paymentMethod.state.missing': 'Nicht hinterlegt',
+  'tenantBilling.paymentMethod.state.requiresAction': 'Bestätigung erforderlich',
+  'tenantBilling.paymentMethod.state.failed': 'Ungültig oder abgelaufen',
+  'tenantBilling.paymentMethod.stripe.configured.label': 'Zahlungen aktiv',
+  'tenantBilling.paymentMethod.stripe.prepared.label': 'Online-Zahlung wird vorbereitet',
+  'tenantBilling.paymentMethod.stripe.notConfigured.label': 'Online-Zahlung nicht aktiv',
+  'tenantBilling.paymentMethod.stripe.configured.hint':
+    'Zahlungsmethoden und Rechnungen werden im sicheren Kundenbereich verwaltet.',
+  'tenantBilling.paymentMethod.stripe.prepared.hint':
+    'Die Online-Zahlung wird vorbereitet. Zahlungsaktionen sind noch nicht verfügbar.',
+  'tenantBilling.paymentMethod.stripe.notConfigured.hint':
+    'Online-Zahlungen sind für diese Organisation noch nicht freigeschaltet.',
+  'tenantBilling.paymentMethod.display.expiryPrefix': 'Gültig bis ',
+  'tenantBilling.paymentMethod.display.mandatePrefix': 'Mandat: ',
+  'tenantBilling.paymentMethod.display.fallback.card': 'Karte',
+  'tenantBilling.paymentMethod.display.fallback.bankAccount': 'Bankkonto',
+  'tenantBilling.paymentMethod.error.detachFailed': 'Zahlungsmethode konnte nicht entfernt werden.',
+  'tenantBilling.paymentMethod.error.portalNotConfigured':
+    'Stripe-Zahlungen sind derzeit nicht verfügbar.',
+  'tenantBilling.paymentMethod.error.portalOpenFailed':
+    'Das Zahlungsportal konnte nicht geöffnet werden.',
+
   'finance.separationHint':
     'Kundenzahlungen und Auszahlungen sind getrennt von Ihrem SynqDrive-Abonnement. Ihre Abo-Zahlungsmethode ist nicht dasselbe wie Ihr Auszahlungskonto.',
   'finance.customerPayments.pageTitle': 'Kundenzahlungen & Auszahlungen',

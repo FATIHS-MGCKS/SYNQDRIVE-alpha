@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
 import { api, getErrorMessage } from '../../../lib/api';
+import type { PaymentMethodActionError } from '../../lib/rental-tenant-billing-i18n';
 import { mapBillingLoadError } from './billing-load.utils';
 
 export function useBillingPaymentMethodActions(orgId: string | undefined, canWrite: boolean) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<PaymentMethodActionError | null>(null);
 
   const setDefault = useCallback(
     async (paymentMethodId: string) => {
@@ -15,7 +16,7 @@ export function useBillingPaymentMethodActions(orgId: string | undefined, canWri
         await api.billing.orgPaymentMethodSetDefault(orgId, paymentMethodId);
         return true;
       } catch (caught) {
-        setError(mapBillingLoadError(caught));
+        setError({ source: 'setDefault', message: mapBillingLoadError(caught) });
         return false;
       } finally {
         setLoadingId(null);
@@ -33,7 +34,12 @@ export function useBillingPaymentMethodActions(orgId: string | undefined, canWri
         await api.billing.orgPaymentMethodDetach(orgId, paymentMethodId);
         return true;
       } catch (caught) {
-        setError(getErrorMessage(caught, 'Zahlungsmethode konnte nicht entfernt werden.'));
+        const message = getErrorMessage(caught, '').trim();
+        setError(
+          message
+            ? { source: 'detach', error: { kind: 'raw', message } }
+            : { source: 'detach', error: { kind: 'host', code: 'detachFailed' } },
+        );
         return false;
       } finally {
         setLoadingId(null);
