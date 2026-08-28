@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'energy-events-e3a-observability-recovery-dry-run-2026-08-28',
+    version: '4.9.977',
+    title: 'Energy Events E3A — observability + read-only historical recovery dry-run',
+    summary: [
+      'Prometheus metrics for energy-event detection via existing TripMetrics registry (`detector_config_version=e2-2026-08`).',
+      'Read-only Jul→Aug outage dry-run: 24h bounded windows, production E2 detector config, zero VehicleEnergyEvent writes.',
+      'Full fleet preview (5 vehicles, 220 DIMO requests): 8 WOULD_CREATE, 11 MANUAL_REVIEW_REQUIRED, 0 FETCH_FAILED.',
+      'KS MX 2024 canonical refuel (23-Aug 16:15:15Z) → WOULD_CREATE; Tesla KS FH 660E → 3 recharge sessions.',
+      'Artifact `artifacts/energy-events-recovery-dry-run-2026-08.json`; gate: READY AFTER MANUAL REVIEW OF 11 EVENTS.',
+    ],
+    reason:
+      'E3A per audit: Jul outage had no strong operational alarm; need deterministic recovery preview before any historical write-back.',
+    previousBehavior:
+      'No Prometheus energy-event metrics; no bounded-window recovery preview; pipeline observability limited to debug logs.',
+    details:
+      'backend: energy-events.pipeline.ts, energy-events-metrics.service.ts, energy-events-recovery-*.ts, scripts/ops/energy-events-recovery-dry-run.ts. docs/architecture/ENERGY_EVENTS_E3A_OBSERVABILITY_RECOVERY_DRY_RUN_2026-08.md. E1/E2 detector config unchanged.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T08:55:00.000Z',
+  },
+  {
     id: 'energy-events-e2-detector-calibration-2026-08-28',
     version: '4.9.976',
     title: 'Energy Events E2 — DIMO refuel/recharge detector calibration',
