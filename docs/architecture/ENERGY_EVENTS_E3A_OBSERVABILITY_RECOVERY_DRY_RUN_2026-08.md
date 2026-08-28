@@ -148,7 +148,7 @@ VehicleEnergyDetectionStatus
 
 ## 8. Tests
 
-Focused energy-events tests plus E3A privacy regression checks:
+Focused energy-events tests (74) plus E3A privacy regression checks:
 
 - E1 mechanism isolation in dry-run
 - Full mode without DB → NOT READY
