@@ -361,6 +361,48 @@ export async function pruneStaleCoalescedSubSegments(
   return { prunedCount, authorization };
 }
 
+/**
+ * Canonical precision for persisted telemetry measurements.
+ *
+ * The database driver serializes doubles with at most 16 significant decimal
+ * digits, so a measurement that needs 17 digits is stored as a neighbouring
+ * double (proven read-only by `scripts/ops/energy-events-storage-precision-probe.ts`:
+ * `SELECT $1::float8::text` returns `2.239999949932098` for input
+ * `2.2399999499320984`). Comparing stored against freshly detected values
+ * bitwise therefore never converges, which kept semantically identical events
+ * permanently classified as UPDATE and re-written on every detection run.
+ *
+ * 15 significant digits sits below the driver's precision while remaining many
+ * orders of magnitude finer than any SOC, energy, fuel, odometer or GPS
+ * resolution, so genuine measurement changes still compare as different.
+ */
+export const CANONICAL_MEASUREMENT_PRECISION_DIGITS = 15;
+
+export function roundToCanonicalMeasurementPrecision(value: number): number {
+  if (!Number.isFinite(value)) return value;
+  if (value === 0) return 0;
+  return Number(value.toPrecision(CANONICAL_MEASUREMENT_PRECISION_DIGITS));
+}
+
+/** Storage-precision equality for a nullable telemetry measurement. */
+export function canonicalMeasurementEquals(
+  left: number | null | undefined,
+  right: number | null | undefined,
+): boolean {
+  const leftValue = left ?? null;
+  const rightValue = right ?? null;
+  if (leftValue === null || rightValue === null) {
+    return leftValue === rightValue;
+  }
+  if (!Number.isFinite(leftValue) || !Number.isFinite(rightValue)) {
+    return leftValue === rightValue;
+  }
+  return (
+    roundToCanonicalMeasurementPrecision(leftValue) ===
+    roundToCanonicalMeasurementPrecision(rightValue)
+  );
+}
+
 export function isMateriallyIdentical(
   existing: {
     kind: string;
@@ -393,19 +435,19 @@ export function isMateriallyIdentical(
   const sameDuration =
     (existing.durationSeconds ?? payload.durationSeconds) === payload.durationSeconds;
   const sameCoords =
-    (existing.startLatitude ?? null) === payload.startLatitude &&
-    (existing.startLongitude ?? null) === payload.startLongitude &&
-    (existing.endLatitude ?? null) === payload.endLatitude &&
-    (existing.endLongitude ?? null) === payload.endLongitude;
+    canonicalMeasurementEquals(existing.startLatitude, payload.startLatitude) &&
+    canonicalMeasurementEquals(existing.startLongitude, payload.startLongitude) &&
+    canonicalMeasurementEquals(existing.endLatitude, payload.endLatitude) &&
+    canonicalMeasurementEquals(existing.endLongitude, payload.endLongitude);
   const sameFuel =
-    (existing.fuelDeltaLiters ?? null) === (payload.fuelDeltaLiters ?? null) &&
-    (existing.fuelDeltaPercent ?? null) === (payload.fuelDeltaPercent ?? null);
+    canonicalMeasurementEquals(existing.fuelDeltaLiters, payload.fuelDeltaLiters) &&
+    canonicalMeasurementEquals(existing.fuelDeltaPercent, payload.fuelDeltaPercent);
   const sameSoc =
-    (existing.socDeltaPercent ?? null) === (payload.socDeltaPercent ?? null) &&
-    (existing.energyDeltaKwh ?? null) === (payload.energyDeltaKwh ?? null);
+    canonicalMeasurementEquals(existing.socDeltaPercent, payload.socDeltaPercent) &&
+    canonicalMeasurementEquals(existing.energyDeltaKwh, payload.energyDeltaKwh);
   const sameOdometer =
-    (existing.odometerStartKm ?? null) === (payload.odometerStartKm ?? null) &&
-    (existing.odometerEndKm ?? null) === (payload.odometerEndKm ?? null);
+    canonicalMeasurementEquals(existing.odometerStartKm, payload.odometerStartKm) &&
+    canonicalMeasurementEquals(existing.odometerEndKm, payload.odometerEndKm);
   const sameConfidence = existing.confidence === payload.confidence;
   const sameMeta = normalizedRawDetectionMetaEquals(
     existing.rawDetectionMeta,
@@ -435,24 +477,40 @@ function normalizedRawDetectionMetaEquals(
   );
 }
 
-function normalizeRawDetectionMeta(value: unknown): Record<string, unknown> {
+/**
+ * Comparison-only canonical form of `rawDetectionMeta`. `jsonb` does not
+ * preserve key order and stored measurements carry only storage precision, so
+ * keys are sorted and numbers are reduced to canonical precision. Array order
+ * stays significant: the coalescer emits constituent ids in a deterministic
+ * order, so a reordering is a real provenance change.
+ */
+export function normalizeRawDetectionMeta(
+  value: unknown,
+): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return {};
   }
-  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
-    a.localeCompare(b),
-  );
-  const normalized: Record<string, unknown> = {};
-  for (const [key, entryValue] of entries) {
-    if (Array.isArray(entryValue)) {
-      normalized[key] = [...entryValue].map((item) =>
-        typeof item === 'string' ? item : item,
-      );
-      continue;
-    }
-    normalized[key] = entryValue;
+  return canonicalizeMetaValue(value) as Record<string, unknown>;
+}
+
+function canonicalizeMetaValue(value: unknown): unknown {
+  if (typeof value === 'number') {
+    return roundToCanonicalMeasurementPrecision(value);
   }
-  return normalized;
+  if (Array.isArray(value)) {
+    return value.map(canonicalizeMetaValue);
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).sort(
+      ([left], [right]) => left.localeCompare(right),
+    );
+    const normalized: Record<string, unknown> = {};
+    for (const [key, entryValue] of entries) {
+      normalized[key] = canonicalizeMetaValue(entryValue);
+    }
+    return normalized;
+  }
+  return value;
 }
 
 function haversineMeters(
