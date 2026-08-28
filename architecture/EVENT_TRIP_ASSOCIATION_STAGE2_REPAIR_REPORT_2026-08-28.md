@@ -1,7 +1,13 @@
 # Stage 2 — Historical RPM Candidate Repair Report (READ-ONLY)
 
+> **EXECUTED 2026-08-28.** This document is the pre-execution proposal and is kept
+> for provenance. The authorized run, its guards, verification and rollback record
+> are in `EVENT_TRIP_ASSOCIATION_STAGE2_EXECUTION_RECORD_2026-08-28.md`. All 7
+> proposals below were applied; the end state is 7 `CORRECT` and 5
+> `NULL_UNRESOLVABLE`, matching the expectation in §7 of this report.
+
 Date: 2026-08-28
-Status: **proposal only — no production data was modified**
+Status: **proposal only — no production data was modified** (superseded: see banner)
 Source: production PostgreSQL (`synqdrive`), read-only `SELECT` queries
 Input for: controlled historical repair, to be authorized separately after
 Stage 1 is merged and deployed.
