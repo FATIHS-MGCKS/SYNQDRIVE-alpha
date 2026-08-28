@@ -3,6 +3,7 @@
  */
 import { expect, type Page } from '@playwright/test';
 
+import type { VehicleConnectivityRuntimeState } from '../src/lib/api';
 import { assertNoHorizontalOverflow } from './document-upload-fixtures';
 import { fleetCommandPanel } from './fleet-operational-fixtures';
 
@@ -75,6 +76,56 @@ function isoAgo(ms: number) {
   return new Date(Date.now() - ms).toISOString();
 }
 
+/** Canonical P1.4 connectivity runtime for fleet-map E2E rows (legacy freshness fields are ignored). */
+function buildConnectivityRuntime(
+  vehicleId: string,
+  scenario: TelemetryScenario,
+  signalAgeMs: number,
+): VehicleConnectivityRuntimeState {
+  const observedAt = isoAgo(signalAgeMs);
+  const base: VehicleConnectivityRuntimeState = {
+    vehicleId,
+    organizationId: TEST_ORG_ID,
+    overallState: 'TELEMETRY_ACTIVE',
+    providerLinkState: 'ACTIVE',
+    telemetryState: 'live',
+    physicalDeviceState: 'PLUGGED_CONFIRMED',
+    dataCoverageState: 'GOOD',
+    attentionState: 'NONE',
+    reasonCodes: [],
+    recommendedAction: 'NONE',
+    requiresAction: false,
+    lastTelemetryAt: observedAt,
+    lastProviderObservedAt: observedAt,
+    lastReceivedAt: observedAt,
+    deviceBindingId: null,
+    activeEpisodeId: null,
+    evidence: {},
+    calculatedAt: new Date().toISOString(),
+    stateVersion: 1,
+  };
+
+  if (scenario === 'standby' || scenario === 'last_known') {
+    return { ...base, overallState: 'STANDBY', telemetryState: 'standby' };
+  }
+  if (scenario === 'signal_delayed') {
+    return {
+      ...base,
+      overallState: 'SOFT_OFFLINE',
+      telemetryState: 'signal_delayed',
+      attentionState: 'WATCH',
+    };
+  }
+  if (scenario === 'offline' || scenario === 'no_signal') {
+    return { ...base, overallState: 'OFFLINE', telemetryState: 'offline' };
+  }
+  if (scenario === 'no_position') {
+    return { ...base, overallState: 'OFFLINE', telemetryState: 'no_signal' };
+  }
+
+  return base;
+}
+
 export function resetVehicleDetailMockState(
   profile: VehicleDetailE2EProfile = 'default',
   telemetryScenario: TelemetryScenario = 'live',
@@ -140,17 +191,16 @@ function scenarioForVehicle(vehicleId: string): TelemetryScenario {
   return map[vehicleId] ?? state.telemetryScenario;
 }
 
+function signalAgeMsForScenario(scenario: TelemetryScenario): number {
+  if (scenario === 'live') return MS.live;
+  if (scenario === 'standby' || scenario === 'last_known') return MS.standby;
+  if (scenario === 'signal_delayed') return MS.signal_delayed;
+  if (scenario === 'offline') return MS.offline;
+  return 999_999_999;
+}
+
 function buildFleetRow(id: string, license: string, scenario: TelemetryScenario = 'live') {
-  const signalAgeMs =
-    scenario === 'live'
-      ? 60_000
-      : scenario === 'standby' || scenario === 'last_known'
-        ? MS.standby
-        : scenario === 'signal_delayed'
-          ? MS.signal_delayed
-          : scenario === 'offline'
-            ? MS.offline
-            : 999_999_999;
+  const signalAgeMs = signalAgeMsForScenario(scenario);
 
   const hasCoords = scenario !== 'no_position';
   const onlineStatus =
@@ -239,6 +289,7 @@ function buildFleetRow(id: string, license: string, scenario: TelemetryScenario 
     nextBookingPickupAt: null,
     nextBookingPickupStationName: null,
     futureBookingCount: 0,
+    connectivityRuntime: buildConnectivityRuntime(id, scenario, signalAgeMs),
   };
 }
 
@@ -550,6 +601,8 @@ function deviceConnectionPayload(vehicleId: string) {
     return { vehicleId, lteR1Capable: false, recentEvents: [], currentDeviceConnectionStatus: 'unknown', severity: null, openUnpluggedEpisode: false };
   }
   if (vehicleId === VEH_DEVICE_ERR) throw new Error('device connection failed');
+  const scenario = scenarioForVehicle(vehicleId);
+  const signalAgeMs = signalAgeMsForScenario(scenario);
   return {
     vehicleId,
     lteR1Capable: true,
@@ -560,7 +613,7 @@ function deviceConnectionPayload(vehicleId: string) {
     severity: 'info',
     openUnpluggedEpisode: false,
     recentEvents: [{ id: 'evt-1', eventType: 'OBD_DEVICE_PLUGGED_IN', observedAt: isoAgo(120_000), receivedAt: isoAgo(115_000) }],
-    connectivityRuntime: { lastProviderObservedAt: isoAgo(90_000), lastReceivedAt: isoAgo(60_000), telemetryState: 'live', overallState: 'TELEMETRY_ACTIVE' },
+    connectivityRuntime: buildConnectivityRuntime(vehicleId, scenario, signalAgeMs),
   };
 }
 
