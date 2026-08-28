@@ -10,8 +10,10 @@ import {
   type IntakeProcessingStepId,
 } from '../../lib/document-intake-processing-steps';
 import { DocumentIntakeProcessingSteps } from './DocumentIntakeProcessingSteps';
-import { FLOW_STATUS_LABEL_DE, type FlowStatus } from './document-extraction.shared';
+import type { FlowStatus } from './document-extraction.shared';
 import { DocumentUploadDuplicatePanel } from './DocumentUploadDuplicatePanel';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { resolveFlowStatusLabel } from '../../lib/document-intake-i18n';
 
 interface Props {
   flow: FlowStatus;
@@ -56,18 +58,22 @@ export function DocumentExtractionFlowStatus({
   processingStepLabels,
   awaitingTypeDetail,
   retryDetail,
-  elapsedPrefix = 'Laufzeit',
+  elapsedPrefix,
   longRunningHint,
   safeLeaveHint,
   networkWarning,
   isDarkMode = false,
-  flowStatusLabel = (status) => FLOW_STATUS_LABEL_DE[status] ?? status,
+  flowStatusLabel: flowStatusLabelProp,
   onRetry,
   onReset,
   onCancel,
   onAuthorizedReupload,
   children,
 }: Props) {
+  const { t } = useLanguage();
+  const flowStatusLabel = flowStatusLabelProp ?? ((status: FlowStatus) => resolveFlowStatusLabel(status, t));
+  const elapsedPrefixLabel = elapsedPrefix ?? t('docUpload.processingElapsed');
+
   const uploadContextLabel = formatUploadContextBanner(uploadContext ?? null);
   const uploadContextConflict = hasUploadContextConflict(uploadContext ?? null);
 
@@ -120,8 +126,8 @@ export function DocumentExtractionFlowStatus({
       (record?.queuedAt ? Date.parse(record.queuedAt) : null) ??
       (record?.createdAt ? Date.parse(record.createdAt) : null);
     if (!started || Number.isNaN(started)) return null;
-    return `${elapsedPrefix}: ${formatProcessingElapsed(Date.now() - started)}`;
-  }, [elapsedPrefix, processingStartedAt, record?.createdAt, record?.queuedAt]);
+    return `${elapsedPrefixLabel}: ${formatProcessingElapsed(Date.now() - started)}`;
+  }, [elapsedPrefixLabel, processingStartedAt, record?.createdAt, record?.queuedAt]);
 
   if (validationError && flow === 'idle') {
     return <p className="text-[11px] text-[color:var(--status-critical)]">{validationError}</p>;
@@ -142,11 +148,8 @@ export function DocumentExtractionFlowStatus({
       <div className="space-y-3">
         {contextBanner}
         <div className="rounded-xl border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.05] p-4">
-          <p className="text-[12px] font-semibold text-foreground">Mögliches Business-Duplikat</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Rechnungs- oder Aktenzeichen-Hinweis passt zu einem bestehenden Dokument in dieser Organisation.
-            Der Upload wurde dennoch gestartet.
-          </p>
+          <p className="text-[12px] font-semibold text-foreground">{t('docUpload.businessDuplicate.title')}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{t('docUpload.businessDuplicate.body')}</p>
         </div>
         {children}
       </div>
@@ -165,7 +168,9 @@ export function DocumentExtractionFlowStatus({
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground"
             >
               <Icon name="rotate-ccw" className="h-4 w-4" />
-              {retryDetail && failedStep ? `Erneut ab „${failedStep.label}“` : 'Erneut versuchen'}
+              {retryDetail && failedStep
+                ? t('docUpload.retryFromStep', { step: failedStep.label })
+                : t('docUpload.retryTryAgain')}
             </button>
           ) : null}
           {onReset ? (
@@ -176,7 +181,7 @@ export function DocumentExtractionFlowStatus({
                 isDarkMode ? 'border-neutral-700 text-gray-300' : 'border-gray-200 text-gray-600'
               }`}
             >
-              Abbrechen
+              {t('common.cancel')}
             </button>
           ) : null}
         </div>
@@ -188,7 +193,7 @@ export function DocumentExtractionFlowStatus({
             isDarkMode ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-600'
           }`}
         >
-          Abbrechen
+          {t('common.cancel')}
         </button>
       ) : null;
 
@@ -204,6 +209,7 @@ export function DocumentExtractionFlowStatus({
           networkWarning={pollNetworkWarning ? networkWarning ?? undefined : undefined}
           isDarkMode={isDarkMode}
           footerSlot={footerSlot}
+          progressAriaLabel={t('docUpload.processingProgressAria')}
         />
       </div>
     );
@@ -223,7 +229,7 @@ export function DocumentExtractionFlowStatus({
               className="sq-press inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-[11px] font-semibold text-primary-foreground"
             >
               <Icon name="rotate-ccw" className="w-3.5 h-3.5" />
-              Erneut versuchen
+              {t('docUpload.retryTryAgain')}
             </button>
           ) : null}
           {onReset ? (
@@ -232,7 +238,7 @@ export function DocumentExtractionFlowStatus({
               onClick={onReset}
               className="sq-press rounded-lg border border-border px-3 py-2 text-[11px] font-semibold text-muted-foreground"
             >
-              Abbrechen
+              {t('common.cancel')}
             </button>
           ) : null}
         </div>

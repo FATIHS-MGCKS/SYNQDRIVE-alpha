@@ -7,10 +7,7 @@ import { useDocumentExtractionFlow } from '../../hooks/useDocumentExtractionFlow
 import { useDocumentFollowUpSuggestions } from '../../hooks/useDocumentFollowUpSuggestions';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
-import {
-  DOC_TYPE_LABELS,
-  FLOW_STATUS_LABEL_DE,
-} from './document-extraction.shared';
+import type { FlowStatus } from './document-extraction.shared';
 import { DocumentExtractionFlowStatus } from './DocumentExtractionFlowStatus';
 import { DocumentExtractionReviewPanel } from './DocumentExtractionReviewPanel';
 import { DocumentApplyResultPanel } from './DocumentApplyResultPanel';
@@ -19,6 +16,14 @@ import { DocumentIntakeUploadZone } from './DocumentIntakeUploadZone';
 import { DocumentClassificationResultPanel } from './DocumentClassificationResultPanel';
 import { canShowApplyDone } from '../../lib/document-apply-result';
 import type { VehicleDocumentCategoryId } from '../../lib/vehicle-file-summary.types';
+import {
+  resolveDocumentTypeLabel,
+  resolveFlowStatusLabel,
+  resolveHostErrorMessage,
+  resolveProcessingStepLabels,
+  resolveSupportedFormatsLabel,
+  resolveValidationMessage,
+} from '../../lib/document-intake-i18n';
 
 export type DocumentDrawerMode = 'upload' | 'review' | 'view';
 
@@ -65,8 +70,8 @@ export function VehicleDocumentUploadDrawer({
   });
 
   const originContextHint = useMemo(
-    () => buildOriginContextHint(vehicleLabel, 'Fahrzeugdetail'),
-    [vehicleLabel],
+    () => buildOriginContextHint(vehicleLabel, t('docUpload.drawer.originSurface')),
+    [t, vehicleLabel],
   );
 
   const docTypeOptions = useMemo(() => {
@@ -84,6 +89,49 @@ export function VehicleDocumentUploadDrawer({
     },
     [t],
   );
+
+  const flowStatusLabel = useCallback(
+    (status: FlowStatus) => resolveFlowStatusLabel(status, t),
+    [t],
+  );
+
+  const processingStepLabels = useMemo(() => resolveProcessingStepLabels(t), [t]);
+
+  const validationError = useMemo(
+    () =>
+      flow.validationErrorCode
+        ? resolveValidationMessage(flow.validationErrorCode, t, flow.metadata?.maxUploadMb ?? 10)
+        : null,
+    [flow.metadata?.maxUploadMb, flow.validationErrorCode, t],
+  );
+
+  const resolvedErrorMessage = useMemo(
+    () =>
+      resolveHostErrorMessage(
+        flow.hostErrorKey,
+        flow.errorMessage,
+        t,
+        flow.actionPlanBlockedReason,
+      ),
+    [flow.actionPlanBlockedReason, flow.errorMessage, flow.hostErrorKey, t],
+  );
+
+  const drawerTitle = useMemo(() => {
+    if (mode === 'review') return t('docUpload.drawer.title.review');
+    if (mode === 'view') return t('docUpload.drawer.title.view');
+    return t('docUpload.drawer.title.upload');
+  }, [mode, t]);
+
+  const supportedFormatsLabel = useMemo(() => {
+    if (flow.metadata?.extensions?.length) {
+      return resolveSupportedFormatsLabel(
+        flow.metadata.extensions,
+        flow.metadata.maxUploadMb ?? 10,
+        t,
+      );
+    }
+    return t('docUpload.supportedFormats');
+  }, [flow.metadata, t]);
 
   useEffect(() => {
     if (flow.flow === 'awaiting_type' && flow.record?.detectedDocumentType) {
@@ -150,7 +198,7 @@ export function VehicleDocumentUploadDrawer({
         onClick={close}
         className="sq-press rounded-lg bg-primary px-3 py-2 text-[11px] font-semibold text-primary-foreground"
       >
-        Fertig
+        {t('docUpload.done')}
       </button>
     ) : undefined;
 
@@ -167,13 +215,13 @@ export function VehicleDocumentUploadDrawer({
     <DetailDrawer
       open={open}
       onOpenChange={onOpenChange}
-      eyebrow="AI Document Upload"
-      title={mode === 'review' ? 'Dokument prüfen' : mode === 'view' ? 'Dokument ansehen' : 'Dokument hochladen'}
-      description="KI-gestützter Dokumenten-Upload"
+      eyebrow={t('docUpload.drawer.eyebrow')}
+      title={drawerTitle}
+      description={t('docUpload.drawer.description')}
       widthClassName="sm:max-w-xl"
       status={
         <StatusChip tone={flow.flow === 'failed' ? 'critical' : flow.flow === 'duplicate_blocked' ? 'watch' : flow.flow === 'ready' ? 'watch' : 'info'}>
-          {FLOW_STATUS_LABEL_DE[flow.flow]}
+          {flowStatusLabel(flow.flow)}
         </StatusChip>
       }
       footer={footer}
@@ -182,19 +230,15 @@ export function VehicleDocumentUploadDrawer({
         {mode === 'upload' && flow.flow === 'idle' && (
           <DocumentIntakeUploadZone
             acceptAttr={flow.acceptAttr}
-            supportedFormatsLabel={
-              flow.metadata
-                ? `${(flow.metadata.extensions ?? []).map((e) => e.replace(/^\./, '').toUpperCase()).join(', ')} · max. ${flow.metadata.maxUploadMb ?? 10} MB`
-                : 'PDF, JPG, PNG, WebP, TXT · max. 10 MB'
-            }
+            supportedFormatsLabel={supportedFormatsLabel}
             onFilesSelected={(files) => {
               const file = Array.from(files)[0];
               if (file) void flow.handleFile(file);
             }}
-            dropzoneLabel="Datei hier ablegen oder klicken"
-            dropzoneActiveLabel="Datei hier ablegen..."
-            browseLabel="Datei auswählen"
-            validationError={flow.validationError}
+            dropzoneLabel={t('docUpload.dropzone')}
+            dropzoneActiveLabel={t('docUpload.dropzoneActive')}
+            browseLabel={t('docUpload.browse')}
+            validationError={validationError}
             contextHint={originContextHint}
             compact
           />
@@ -203,8 +247,8 @@ export function VehicleDocumentUploadDrawer({
         <DocumentExtractionFlowStatus
           flow={flow.flow}
           uploadedFileName={flow.uploadedFileName}
-          errorMessage={flow.errorMessage}
-          validationError={flow.validationError}
+          errorMessage={resolvedErrorMessage}
+          validationError={validationError}
           uploadContext={flow.uploadContext}
           record={flow.record}
           duplicateBlocked={flow.duplicateBlocked}
@@ -212,20 +256,18 @@ export function VehicleDocumentUploadDrawer({
           pollNetworkWarning={flow.pollNetworkWarning}
           showLongRunningHint={flow.showLongRunningHint}
           processingStartedAt={flow.processingStartedAt}
-          processingStepLabels={{
-            file_check: 'Datei wird geprüft',
-            file_stored: 'Datei wurde sicher gespeichert',
-            text_recognition: 'Text wird erkannt',
-            classification: 'Dokument wird eingeordnet',
-            data_preparation: 'Daten und Zuordnungen werden vorbereitet',
-            ready_for_review: 'Bereit zur Prüfung',
-          }}
-          awaitingTypeDetail="Dokumenttyp erforderlich — bitte auswählen, um fortzufahren."
-          retryDetail={flow.flow === 'retrying' ? 'Verarbeitung wird erneut gestartet…' : 'Fehler an diesem Schritt — erneut versuchen.'}
-          elapsedPrefix="Laufzeit"
-          longRunningHint="Die Analyse dauert länger als erwartet."
-          safeLeaveHint="Sie können die Seite sicher verlassen — die Verarbeitung läuft serverseitig weiter."
-          networkWarning="Vorübergehende Verbindungsprobleme beim Statusabruf."
+          processingStepLabels={processingStepLabels}
+          awaitingTypeDetail={t('docUpload.awaitingTypeStepDetail')}
+          retryDetail={
+            flow.flow === 'retrying'
+              ? t('docUpload.retryStepDetail')
+              : t('docUpload.retryAtFailedStep')
+          }
+          elapsedPrefix={t('docUpload.processingElapsed')}
+          longRunningHint={t('docUpload.longRunningHint')}
+          safeLeaveHint={t('docUpload.safeLeaveHint')}
+          networkWarning={t('docUpload.networkWarning')}
+          flowStatusLabel={flowStatusLabel}
           onRetry={() => void flow.handleRetry()}
           onReset={flow.handleReset}
           onAuthorizedReupload={(reason) => void flow.handleAuthorizedReupload(reason)}
@@ -254,15 +296,15 @@ export function VehicleDocumentUploadDrawer({
             <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2">
               <Icon name="file-text" className="w-4 h-4 shrink-0 text-muted-foreground" />
               <span className="min-w-0 truncate text-[12px] font-medium text-foreground">
-                {flow.uploadedFileName || 'Dokument'}
+                {flow.uploadedFileName || t('docUpload.drawer.documentFallback')}
               </span>
               <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
-                {DOC_TYPE_LABELS[flow.confirmedDocType] || flow.confirmedDocType}
+                {resolveDocumentTypeLabel(flow.confirmedDocType, t)}
               </span>
             </div>
 
-            {flow.errorMessage ? (
-              <p className="text-[11px] text-[color:var(--status-critical)]">{flow.errorMessage}</p>
+            {resolvedErrorMessage ? (
+              <p className="text-[11px] text-[color:var(--status-critical)]">{resolvedErrorMessage}</p>
             ) : null}
 
             <DocumentExtractionReviewPanel
@@ -273,6 +315,8 @@ export function VehicleDocumentUploadDrawer({
               editingFields={flow.editingFields}
               readOnly={flow.flow !== 'ready'}
               canEdit={flow.flow === 'ready'}
+              fieldsTitle={t('docUpload.detectedFields')}
+              plausibilityTitle={t('docUpload.plausibilityTitle')}
               onToggleEdit={() => flow.setEditingFields(!flow.editingFields)}
               entityReviewOrgId={flow.record?.organizationId ?? ''}
               entityReviewVehicleId={vehicleId}
@@ -329,7 +373,7 @@ export function VehicleDocumentUploadDrawer({
             <Icon name="check-circle" className="mx-auto mb-2 h-8 w-8 text-[color:var(--status-success)]" />
             <p className="text-[13px] font-semibold text-foreground">{t('vehicle.documents.applied')}</p>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              {DOC_TYPE_LABELS[flow.confirmedDocType] || flow.confirmedDocType}
+              {resolveDocumentTypeLabel(flow.confirmedDocType, t)}
             </p>
             {orgId ? (
               <div className="mt-4 text-left">

@@ -1,5 +1,7 @@
 import type { PublicDocumentExtraction } from '../lib/document-extraction.types';
 import type { FlowStatus, Plausibility, ReviewField } from '../components/documents/document-extraction.shared';
+import type { DocumentIntakeHostErrorKey } from '../lib/document-intake-i18n';
+import type { UploadValidationCode } from '../lib/document-extraction-validation';
 
 export type DocumentIntakeFlowMode = 'embedded' | 'page';
 
@@ -31,7 +33,8 @@ export interface DocumentIntakeFlowState {
   confirmedDocType: string;
   uploadedFileName: string;
   errorMessage: string | null;
-  validationError: string | null;
+  hostErrorKey: DocumentIntakeHostErrorKey | null;
+  validationErrorCode: UploadValidationCode | null;
   editingFields: boolean;
   editedFields: ReviewField[];
   plausibility: Plausibility | null;

@@ -37,6 +37,7 @@ export interface DocumentIntakeProcessingStepsProps {
   networkWarning?: string | null;
   isDarkMode?: boolean;
   footerSlot?: ReactNode;
+  progressAriaLabel?: string;
 }
 
 export function DocumentIntakeProcessingSteps({
@@ -48,10 +49,11 @@ export function DocumentIntakeProcessingSteps({
   networkWarning,
   isDarkMode = false,
   footerSlot,
+  progressAriaLabel,
 }: DocumentIntakeProcessingStepsProps) {
   return (
     <div className="min-w-0 text-left">
-      <ol className="space-y-2" aria-label="Verarbeitungsfortschritt">
+      <ol className="space-y-2" {...(progressAriaLabel ? { 'aria-label': progressAriaLabel } : {})}>
         {steps.map((step) => (
           <li
             key={step.id}

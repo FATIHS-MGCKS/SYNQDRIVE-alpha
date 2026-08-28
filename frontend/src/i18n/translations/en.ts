@@ -45,6 +45,7 @@ import { vendorsDirectoryEn } from './vendors.directory.en';
 import { supportOpsEn } from './support.ops.en';
 import { whatsappEn } from './whatsapp.en';
 import { rentalVehicleDocumentsEn } from './rental.vehicleDocuments.en';
+import { rentalDocumentIntakeEn } from './rental.documentIntake.en';
 
 export const en = {
   // ─── Navigation / Sidebar ───
@@ -5820,6 +5821,7 @@ export const en = {
   ...operatorMoreEn,
   ...vendorsDirectoryEn,
   ...rentalVehicleDocumentsEn,
+  ...rentalDocumentIntakeEn,
 } as const;
 
 export type TranslationKey = keyof typeof en;

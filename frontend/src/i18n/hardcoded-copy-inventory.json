@@ -48,7 +48,6 @@
         "rental/components/service-center/",
         "rental/components/vehicle-bookings/",
         "rental/components/rental-health/",
-        "rental/components/documents/VehicleDocumentUploadDrawer.tsx",
         "rental/lib/vehicle-",
         "rental/lib/fleet",
         "rental/lib/health-",
@@ -111,27 +110,26 @@
     }
   },
   "summary": {
-    "total": 1382,
+    "total": 1375,
     "bySurface": {
       "MASTER": 1049,
       "OPERATOR": 22,
-      "RENTAL": 285,
+      "RENTAL": 278,
       "SHARED": 1,
       "SHELL": 25
     },
     "byCategory": {
       "ARIA": 48,
       "TITLE": 189,
-      "TEXT": 989,
-      "LABEL": 85,
-      "PLACEHOLDER": 63,
+      "TEXT": 984,
+      "LABEL": 84,
+      "PLACEHOLDER": 62,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
       "other Rental areas": 239,
       "Finance/Billing": 25,
       "Tasks": 13,
-      "Documents": 7,
       "App / routing shell": 1
     },
     "enforceCleanRemaining": 0
@@ -14898,7 +14896,7 @@
     },
     {
       "file": "operator/ai-upload/OperatorAiUploadFlow.tsx",
-      "line": 196,
+      "line": 222,
       "surface": "OPERATOR",
       "module": null,
       "category": "TEXT",
@@ -14912,7 +14910,7 @@
     },
     {
       "file": "operator/ai-upload/OperatorAiUploadFlow.tsx",
-      "line": 442,
+      "line": 468,
       "surface": "OPERATOR",
       "module": null,
       "category": "TEXT",
@@ -14926,7 +14924,7 @@
     },
     {
       "file": "operator/ai-upload/OperatorAiUploadFlow.tsx",
-      "line": 427,
+      "line": 453,
       "surface": "OPERATOR",
       "module": null,
       "category": "TEXT",
@@ -14954,7 +14952,7 @@
     },
     {
       "file": "operator/ai-upload/OperatorAiUploadFlow.tsx",
-      "line": 492,
+      "line": 518,
       "surface": "OPERATOR",
       "module": null,
       "category": "TEXT",
@@ -14996,7 +14994,7 @@
     },
     {
       "file": "operator/ai-upload/OperatorAiUploadFlow.tsx",
-      "line": 392,
+      "line": 418,
       "surface": "OPERATOR",
       "module": null,
       "category": "TEXT",
@@ -15025,7 +15023,7 @@
     },
     {
       "file": "operator/ai-upload/OperatorAiUploadFlow.tsx",
-      "line": 391,
+      "line": 417,
       "surface": "OPERATOR",
       "module": null,
       "category": "TEXT",
@@ -15109,7 +15107,7 @@
     },
     {
       "file": "operator/ai-upload/OperatorAiUploadFlow.tsx",
-      "line": 418,
+      "line": 444,
       "surface": "OPERATOR",
       "module": null,
       "category": "TEXT",
@@ -15123,7 +15121,7 @@
     },
     {
       "file": "operator/ai-upload/OperatorAiUploadFlow.tsx",
-      "line": 240,
+      "line": 266,
       "surface": "OPERATOR",
       "module": null,
       "category": "TEXT",
@@ -15137,7 +15135,7 @@
     },
     {
       "file": "operator/ai-upload/OperatorAiUploadFlow.tsx",
-      "line": 205,
+      "line": 231,
       "surface": "OPERATOR",
       "module": null,
       "category": "ARIA",
@@ -15151,7 +15149,7 @@
     },
     {
       "file": "operator/ai-upload/OperatorAiUploadFlow.tsx",
-      "line": 264,
+      "line": 290,
       "surface": "OPERATOR",
       "module": null,
       "category": "TEXT",
@@ -15193,7 +15191,7 @@
     },
     {
       "file": "operator/ai-upload/OperatorAiUploadFlow.tsx",
-      "line": 407,
+      "line": 433,
       "surface": "OPERATOR",
       "module": null,
       "category": "TEXT",
@@ -15739,34 +15737,6 @@
       "files": [
         "rental/components/users-roles/CreateUserWizard.tsx",
         "rental/components/users-roles/UserDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/documents/DocumentUploadDuplicatePanel.tsx",
-      "line": 53,
-      "surface": "RENTAL",
-      "module": "Documents",
-      "category": "TEXT",
-      "sample": "Begründung für erneuten Upload",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/documents/DocumentUploadDuplicatePanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/documents/DocumentUploadDuplicatePanel.tsx",
-      "line": 53,
-      "surface": "RENTAL",
-      "module": "Documents",
-      "category": "LABEL",
-      "sample": "Begründung für erneuten Upload",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/documents/DocumentUploadDuplicatePanel.tsx"
       ]
     },
     {
@@ -16404,20 +16374,6 @@
       ]
     },
     {
-      "file": "rental/components/documents/DocumentUploadDuplicatePanel.tsx",
-      "line": 28,
-      "surface": "RENTAL",
-      "module": "Documents",
-      "category": "TEXT",
-      "sample": "Dokument bereits vorhanden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/documents/DocumentUploadDuplicatePanel.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
       "line": 156,
       "surface": "RENTAL",
@@ -16471,20 +16427,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/RolesTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/documents/DocumentUploadDuplicatePanel.tsx",
-      "line": 29,
-      "surface": "RENTAL",
-      "module": "Documents",
-      "category": "TEXT",
-      "sample": "Ein identischer Upload existiert bereits in dieser Organisation. Es wurde nichts gelöscht.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/documents/DocumentUploadDuplicatePanel.tsx"
       ]
     },
     {
@@ -16670,10 +16612,9 @@
       "sample": "Erneut versuchen",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/billing/BillableVehiclesDrawer.tsx",
-        "rental/components/documents/DocumentExtractionFlowStatus.tsx"
+        "rental/components/billing/BillableVehiclesDrawer.tsx"
       ]
     },
     {
@@ -17574,20 +17515,6 @@
       ]
     },
     {
-      "file": "rental/components/documents/DocumentUploadDuplicatePanel.tsx",
-      "line": 76,
-      "surface": "RENTAL",
-      "module": "Documents",
-      "category": "TEXT",
-      "sample": "Mit Begründung erneut hochladen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/documents/DocumentUploadDuplicatePanel.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/CreateUserWizard.tsx",
       "line": 298,
       "surface": "RENTAL",
@@ -17613,20 +17540,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/documents/DocumentExtractionFlowStatus.tsx",
-      "line": 145,
-      "surface": "RENTAL",
-      "module": "Documents",
-      "category": "TEXT",
-      "sample": "Mögliches Business-Duplikat",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/documents/DocumentExtractionFlowStatus.tsx"
       ]
     },
     {
@@ -19196,20 +19109,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/MarkRepairedDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/documents/DocumentUploadDuplicatePanel.tsx",
-      "line": 58,
-      "surface": "RENTAL",
-      "module": "Documents",
-      "category": "PLACEHOLDER",
-      "sample": "z. B. korrigierte Scanqualität, zweite Archivkopie, Buchhaltung angefordert",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/documents/DocumentUploadDuplicatePanel.tsx"
       ]
     },
     {
