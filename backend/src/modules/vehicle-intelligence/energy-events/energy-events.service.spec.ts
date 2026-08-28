@@ -140,6 +140,7 @@ function createPrismaMock(store: {
           where: {
             vehicleId: string;
             startTime?: { gte?: Date; lte?: Date };
+            dimoSegmentId?: { in: string[] };
           };
         }) =>
           store.energyEvents.filter((row) => {
@@ -147,6 +148,12 @@ function createPrismaMock(store: {
             const startTime = new Date(row.startTime as string);
             if (where.startTime?.gte && startTime < where.startTime.gte) return false;
             if (where.startTime?.lte && startTime > where.startTime.lte) return false;
+            if (
+              where.dimoSegmentId?.in &&
+              !where.dimoSegmentId.in.includes(row.dimoSegmentId as string)
+            ) {
+              return false;
+            }
             return true;
           }),
       ),
@@ -300,34 +307,31 @@ describe('EnergyEventsService.detectEnergyEvents', () => {
     expect(store.energyEvents).toHaveLength(1);
   });
 
-  it('prunes stale sub-segments only for mechanisms with persisted events', async () => {
-    const refuel = buildRefuelSegment();
-    const persistedId = refuel.segmentId;
+  it('does not prune unrelated refuel A when detector returns only refuel B', async () => {
+    const refuelAId = 'dimo-refuel-187336-1111111111000';
+    const refuelB = buildRefuelSegment({
+      segmentId: 'dimo-refuel-187336-2222222222000',
+      startTime: '2026-08-23T14:00:00.000Z',
+      endTime: '2026-08-23T14:08:00.000Z',
+    });
     const store = {
       vehicles: [{ id: VEHICLE_ID, dimoVehicle: { tokenId: KS_MX_2024_TOKEN_ID } }],
       energyEvents: [
         {
-          id: 'stale-subsegment',
+          id: 'existing-refuel-a',
           vehicleId: VEHICLE_ID,
-          dimoSegmentId: 'dimo-refuel-old-subsegment',
+          dimoSegmentId: refuelAId,
           kind: EnergyEventKind.REFUEL,
-          startTime: refuel.startTime,
-        },
-        {
-          id: 'recharge-keep',
-          vehicleId: VEHICLE_ID,
-          dimoSegmentId: 'dimo-recharge-keep',
-          kind: EnergyEventKind.RECHARGE,
-          startTime: '2026-08-23T08:00:00.000Z',
+          startTime: '2026-08-23T10:00:00.000Z',
         },
       ],
     };
 
     dimoSegments.fetchEnergyEventSegments.mockResolvedValue({
       tokenId: KS_MX_2024_TOKEN_ID,
-      segments: [refuel],
+      segments: [refuelB],
       outcomes: [
-        outcome('refuel', 'SUCCESS_WITH_EVENTS', [refuel]),
+        outcome('refuel', 'SUCCESS_WITH_EVENTS', [refuelB]),
         outcome('recharge', 'SUCCESS_EMPTY', []),
       ],
     });
@@ -335,17 +339,166 @@ describe('EnergyEventsService.detectEnergyEvents', () => {
     const service = createService(store);
     const result = await service.detectEnergyEvents(VEHICLE_ID, { from: FROM, to: TO });
 
-    expect(result.created).toBe(1);
-    expect(result.prunedStale).toBe(1);
-    expect(
-      store.energyEvents.some((row) => row.dimoSegmentId === 'dimo-recharge-keep'),
-    ).toBe(true);
-    expect(
-      store.energyEvents.some((row) => row.dimoSegmentId === persistedId),
-    ).toBe(true);
-    expect(
-      store.energyEvents.some((row) => row.dimoSegmentId === 'dimo-refuel-old-subsegment'),
-    ).toBe(false);
+    expect(result.prunedStale).toBe(0);
+    expect(store.energyEvents.some((row) => row.dimoSegmentId === refuelAId)).toBe(true);
+    expect(store.energyEvents.some((row) => row.dimoSegmentId === refuelB.segmentId)).toBe(
+      true,
+    );
+  });
+
+  it('prunes raw recharge subsegments replaced by a coalesced event in this run', async () => {
+    const subA = buildRechargeSegment(Date.parse('2026-08-23T10:00:00.000Z'));
+    const subB = buildRechargeSegment(Date.parse('2026-08-23T10:20:00.000Z'));
+    const subC = buildRechargeSegment(Date.parse('2026-08-23T10:40:00.000Z'));
+    const store = {
+      vehicles: [{ id: VEHICLE_ID, dimoVehicle: { tokenId: KS_MX_2024_TOKEN_ID } }],
+      energyEvents: [
+        {
+          id: 'raw-a',
+          vehicleId: VEHICLE_ID,
+          dimoSegmentId: subA.segmentId,
+          kind: EnergyEventKind.RECHARGE,
+          startTime: subA.startTime,
+        },
+        {
+          id: 'raw-b',
+          vehicleId: VEHICLE_ID,
+          dimoSegmentId: subB.segmentId,
+          kind: EnergyEventKind.RECHARGE,
+          startTime: subB.startTime,
+        },
+        {
+          id: 'raw-c',
+          vehicleId: VEHICLE_ID,
+          dimoSegmentId: subC.segmentId,
+          kind: EnergyEventKind.RECHARGE,
+          startTime: subC.startTime,
+        },
+      ],
+    };
+
+    dimoSegments.fetchEnergyEventSegments.mockResolvedValue({
+      tokenId: KS_MX_2024_TOKEN_ID,
+      segments: [subA, subB, subC],
+      outcomes: [
+        outcome('refuel', 'SUCCESS_EMPTY', []),
+        outcome('recharge', 'SUCCESS_WITH_EVENTS', [subA, subB, subC]),
+      ],
+    });
+
+    const service = createService(store);
+    const result = await service.detectEnergyEvents(VEHICLE_ID, { from: FROM, to: TO });
+
+    const coalescedId = `dimo-recharge-coalesced-${KS_MX_2024_TOKEN_ID}-${Date.parse(subA.startTime)}`;
+    expect(result.prunedStale).toBe(3);
+    expect(store.energyEvents.some((row) => row.dimoSegmentId === coalescedId)).toBe(true);
+    expect(store.energyEvents.some((row) => row.dimoSegmentId === subA.segmentId)).toBe(
+      false,
+    );
+    expect(store.energyEvents.some((row) => row.dimoSegmentId === subB.segmentId)).toBe(
+      false,
+    );
+    expect(store.energyEvents.some((row) => row.dimoSegmentId === subC.segmentId)).toBe(
+      false,
+    );
+  });
+
+  it('does not prune unrelated recharge D when coalesced event replaces A/B/C', async () => {
+    const subA = buildRechargeSegment(Date.parse('2026-08-23T10:00:00.000Z'));
+    const subB = buildRechargeSegment(Date.parse('2026-08-23T10:20:00.000Z'));
+    const subC = buildRechargeSegment(Date.parse('2026-08-23T10:40:00.000Z'));
+    const unrelatedDId = 'dimo-recharge-187336-9999999999000';
+    const store = {
+      vehicles: [{ id: VEHICLE_ID, dimoVehicle: { tokenId: KS_MX_2024_TOKEN_ID } }],
+      energyEvents: [
+        {
+          id: 'raw-a',
+          vehicleId: VEHICLE_ID,
+          dimoSegmentId: subA.segmentId,
+          kind: EnergyEventKind.RECHARGE,
+          startTime: subA.startTime,
+        },
+        {
+          id: 'raw-b',
+          vehicleId: VEHICLE_ID,
+          dimoSegmentId: subB.segmentId,
+          kind: EnergyEventKind.RECHARGE,
+          startTime: subB.startTime,
+        },
+        {
+          id: 'raw-c',
+          vehicleId: VEHICLE_ID,
+          dimoSegmentId: subC.segmentId,
+          kind: EnergyEventKind.RECHARGE,
+          startTime: subC.startTime,
+        },
+        {
+          id: 'unrelated-d',
+          vehicleId: VEHICLE_ID,
+          dimoSegmentId: unrelatedDId,
+          kind: EnergyEventKind.RECHARGE,
+          startTime: '2026-08-23T18:00:00.000Z',
+        },
+      ],
+    };
+
+    dimoSegments.fetchEnergyEventSegments.mockResolvedValue({
+      tokenId: KS_MX_2024_TOKEN_ID,
+      segments: [subA, subB, subC],
+      outcomes: [
+        outcome('refuel', 'SUCCESS_EMPTY', []),
+        outcome('recharge', 'SUCCESS_WITH_EVENTS', [subA, subB, subC]),
+      ],
+    });
+
+    const service = createService(store);
+    const result = await service.detectEnergyEvents(VEHICLE_ID, { from: FROM, to: TO });
+
+    expect(result.prunedStale).toBe(3);
+    expect(store.energyEvents.some((row) => row.dimoSegmentId === unrelatedDId)).toBe(true);
+  });
+
+  it('does not prune when mechanism fetch failed even if coalescing would replace subsegments', async () => {
+    const subA = buildRechargeSegment(Date.parse('2026-08-23T10:00:00.000Z'));
+    const subB = buildRechargeSegment(Date.parse('2026-08-23T10:20:00.000Z'));
+    const store = {
+      vehicles: [{ id: VEHICLE_ID, dimoVehicle: { tokenId: KS_MX_2024_TOKEN_ID } }],
+      energyEvents: [
+        {
+          id: 'raw-a',
+          vehicleId: VEHICLE_ID,
+          dimoSegmentId: subA.segmentId,
+          kind: EnergyEventKind.RECHARGE,
+          startTime: subA.startTime,
+        },
+        {
+          id: 'raw-b',
+          vehicleId: VEHICLE_ID,
+          dimoSegmentId: subB.segmentId,
+          kind: EnergyEventKind.RECHARGE,
+          startTime: subB.startTime,
+        },
+      ],
+    };
+
+    dimoSegments.fetchEnergyEventSegments.mockResolvedValue({
+      tokenId: KS_MX_2024_TOKEN_ID,
+      segments: [],
+      outcomes: [
+        outcome('refuel', 'SUCCESS_EMPTY', []),
+        outcome('recharge', 'FAILED', [], {
+          message: '422',
+          httpStatus: 422,
+          retryable: false,
+        }),
+      ],
+    });
+
+    const service = createService(store);
+    const result = await service.detectEnergyEvents(VEHICLE_ID, { from: FROM, to: TO });
+
+    expect(result.prunedStale).toBe(0);
+    expect(store.energyEvents).toHaveLength(2);
   });
 
   it('is idempotent across repeated execution', async () => {

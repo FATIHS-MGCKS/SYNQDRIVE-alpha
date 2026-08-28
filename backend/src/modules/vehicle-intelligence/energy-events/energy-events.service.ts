@@ -170,18 +170,10 @@ export class EnergyEventsService {
     let created = 0;
     let updated = 0;
     const persistedRows: VehicleEnergyEvent[] = [];
-    const persistedSegmentIdsByMechanism = new Map<
-      DimoEnergyEventSegment['mechanism'],
-      Set<string>
-    >();
 
     for (const group of coalesced) {
       const { row, wasCreated } = await this.upsertSegment(vehicleId, group);
       persistedRows.push(row);
-      const keepSet =
-        persistedSegmentIdsByMechanism.get(group.mechanism) ?? new Set<string>();
-      keepSet.add(group.coalescedSegmentId);
-      persistedSegmentIdsByMechanism.set(group.mechanism, keepSet);
       if (wasCreated) created++;
       else updated++;
     }
@@ -191,7 +183,7 @@ export class EnergyEventsService {
       options.from,
       options.to,
       mechanismOutcomes,
-      persistedSegmentIdsByMechanism,
+      coalesced,
     );
 
     return {
@@ -480,21 +472,18 @@ export class EnergyEventsService {
   }
 
   /**
-   * Delete legacy sub-segment rows that would otherwise live alongside a
-   * freshly persisted coalesced event. E1 safety invariants:
+   * Delete legacy raw sub-segment rows superseded by a coalesced event persisted
+   * in this run. E1 safety invariants:
    * - never prune when any mechanism fetch failed
-   * - never prune when a mechanism returned zero persistable events
-   * - only prune rows for mechanisms that succeeded with events
+   * - never prune unless coalescedFromSegmentIds proves replacement
+   * - absence from the current detector response is NOT prune evidence
    */
   private async pruneStaleSubSegments(
     vehicleId: string,
     from: Date,
     to: Date,
     mechanismOutcomes: EnergyMechanismFetchOutcome[],
-    persistedSegmentIdsByMechanism: Map<
-      DimoEnergyEventSegment['mechanism'],
-      Set<string>
-    >,
+    persistedCoalescedGroups: CoalescedEnergySegment[],
   ): Promise<number> {
     if (mechanismOutcomes.some((outcome) => outcome.status === 'FAILED')) {
       this.logger.debug(
@@ -503,43 +492,49 @@ export class EnergyEventsService {
       return 0;
     }
 
-    const candidates = await this.prisma.vehicleEnergyEvent.findMany({
-      where: {
-        vehicleId,
-        startTime: { gte: from, lte: to },
-      },
-      select: { id: true, dimoSegmentId: true, kind: true },
-    });
-
-    const stale: Array<{ id: string }> = [];
-
-    for (const row of candidates) {
-      const mechanism =
-        row.kind === EnergyEventKind.REFUEL ? 'refuel' : 'recharge';
+    const replacedSubSegmentIds = new Set<string>();
+    for (const group of persistedCoalescedGroups) {
       const outcome = mechanismOutcomes.find(
-        (entry) => entry.mechanism === mechanism,
+        (entry) => entry.mechanism === group.mechanism,
       );
       if (!outcome || outcome.status !== 'SUCCESS_WITH_EVENTS') {
         continue;
       }
 
-      const keepIds = persistedSegmentIdsByMechanism.get(mechanism);
-      if (!keepIds || keepIds.size === 0) {
+      // Only multi-sub-segment coalescing produces raw rows that are explicitly
+      // replaced by the newly persisted coalesced event in this run.
+      if (group.coalescedFromSegmentIds.length <= 1) {
         continue;
       }
 
-      if (!keepIds.has(row.dimoSegmentId)) {
-        stale.push({ id: row.id });
+      for (const subSegmentId of group.coalescedFromSegmentIds) {
+        if (subSegmentId !== group.coalescedSegmentId) {
+          replacedSubSegmentIds.add(subSegmentId);
+        }
       }
     }
 
-    if (stale.length === 0) return 0;
+    if (replacedSubSegmentIds.size === 0) {
+      return 0;
+    }
+
+    const candidates = await this.prisma.vehicleEnergyEvent.findMany({
+      where: {
+        vehicleId,
+        startTime: { gte: from, lte: to },
+        dimoSegmentId: { in: [...replacedSubSegmentIds] },
+      },
+      select: { id: true, dimoSegmentId: true },
+    });
+
+    if (candidates.length === 0) return 0;
+
     const result = await this.prisma.vehicleEnergyEvent.deleteMany({
-      where: { id: { in: stale.map((row) => row.id) } },
+      where: { id: { in: candidates.map((row) => row.id) } },
     });
     if (result.count > 0) {
       this.logger.debug(
-        `Pruned ${result.count} stale energy-event sub-segments for vehicle=${vehicleId} window=[${from.toISOString()}, ${to.toISOString()}]`,
+        `Pruned ${result.count} replaced energy-event sub-segments for vehicle=${vehicleId} window=[${from.toISOString()}, ${to.toISOString()}] replacedIds=${[...replacedSubSegmentIds].join(',')}`,
       );
     }
     return result.count;

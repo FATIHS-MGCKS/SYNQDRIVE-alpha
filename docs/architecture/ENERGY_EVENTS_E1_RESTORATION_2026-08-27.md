@@ -25,11 +25,13 @@ A recharge failure no longer prevents refuel persistence (and vice versa).
 
 ## Prune hazard (fixed)
 
-`pruneStaleSubSegments` previously deleted all rows in the detection window when the keep-set was empty. E1 invariants:
+`pruneStaleSubSegments` previously deleted rows merely because they were absent from the current detector response. E1 invariants:
 
 1. Never prune when any mechanism fetch failed
-2. Never prune when a mechanism returned zero persistable events
-3. Only prune rows for mechanisms that succeeded with events
+2. Never prune on absence from detector response alone
+3. Only delete rows whose `dimoSegmentId` is explicitly listed in `coalescedFromSegmentIds` of a **multi-sub-segment** coalesced event persisted in this run
+
+Prune predicate: `dimoSegmentId ∈ replacedSubSegmentIds` where `replacedSubSegmentIds` = ⋃ (`coalescedFromSegmentIds \ {coalescedSegmentId}`) for each persisted coalesced group with `coalescedFromSegmentIds.length > 1`, scoped to `(vehicleId, startTime ∈ [from, to])`.
 
 ## Recharge query repair
 
