@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-ice-rest-opening-policy-2026-08-28',
+    version: '4.9.988',
+    title: 'Battery V2 Stage 1 — ICE rest-window opening policy hardening',
+    summary: [
+      'Opening gate: ignition-off + speed at rest now outrank transitional OBD engine_load when deciding whether to open an LV_REST_WINDOW candidate.',
+      'New isEngineOffForRestWindowOpening() used by canOpenRestWindowCandidate and isValidRestSnapshot; downstream isEngineOffForRest() unchanged for REST_60M/6H measurement quality.',
+      'Fixes production trip 61715ecd shape (ignition off, speed 0, engine_load 10.196 at anchor) without weakening charging/wake/active-trip gates or #1383 liveness/idempotency.',
+    ],
+    reason:
+      'Adversarial audit proved residual engine_load at key-off blocked session opening despite authoritative ignition-off evidence; not a stale-timestamp artifact.',
+    previousBehavior:
+      'engineRunning = engine_load > 5 rejected opening even when ignitionOn === false and the vehicle was stationary at trip end.',
+    details:
+      'backend: lv-rest-window.policy.ts (+ spec), lv-rest-window-session-arming.service.spec.ts. architecture/BATTERY_V2_ICE_REST_OPENING_POLICY_2026-08-28.md. No flag/schema/deploy changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T17:30:00.000Z',
+  },
+  {
     id: 'event-trip-association-stage2-historical-repair-2026-08-28',
     version: '4.9.987',
     title: 'Event ↔ Trip Association Stage 2 — historical RPM candidate repair (production)',

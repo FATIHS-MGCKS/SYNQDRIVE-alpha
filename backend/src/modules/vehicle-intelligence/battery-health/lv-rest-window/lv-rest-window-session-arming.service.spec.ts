@@ -286,6 +286,26 @@ describe('LvRestWindowSessionArmingService (finalized-trip liveness fix)', () =>
       const session = [...sessions.values()][0];
       expect(session.metadata.anchorAt).toBe(ANCHOR.toISOString());
     });
+
+    it('production trip 61715ecd — residual engine_load at key-off no longer blocks opening', async () => {
+      latestStates.set(VEHICLE, {
+        ...frozenAtAnchorLatestState(),
+        engineLoad: 10.19607843137255,
+        lvBatteryVoltage: 12.39,
+      });
+
+      const result = await ensure();
+
+      expect(result.outcome).toBe('opened');
+      expect(result.reason).not.toBe('engine_not_off');
+      expect(result.promotedToResting).toBe(true);
+      expect(sessions.size).toBe(1);
+      const session = [...sessions.values()][0];
+      expect(session.tripId).toBe(TRIP_ID);
+      expect(session.metadata.lvRestWindowState).toBe(LvRestWindowState.RESTING);
+      expect(restTargetProducer.scheduleRest60m).toHaveBeenCalledTimes(1);
+      expect(restTargetProducer.scheduleRest6h).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('stalled pre-anchor telemetry (B variant)', () => {

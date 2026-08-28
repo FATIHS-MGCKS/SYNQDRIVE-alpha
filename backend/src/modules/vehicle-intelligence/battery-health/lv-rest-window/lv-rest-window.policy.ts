@@ -42,12 +42,47 @@ export function isPlausibleLvVoltage(v: number | null | undefined): boolean {
   return v != null && v >= 9.0 && v <= 16.0;
 }
 
+/**
+ * Conservative engine-off check for REST target measurement quality and
+ * in-window observation eligibility. Residual OBD engine_load may still
+ * reject here when it implies `engineRunning` — opening and measurement paths
+ * are intentionally split (see `isEngineOffForRestWindowOpening`).
+ */
 export function isEngineOffForRest(
   signal: LvRestWindowSignalContext,
   restRequiresEngineOff: boolean,
 ): boolean {
   if (!restRequiresEngineOff) return true;
   if (signal.ignitionOn === true) return false;
+  if (signal.engineRunning === true) return false;
+  return true;
+}
+
+/**
+ * Opening-gate engine-off check for LV_REST_WINDOW candidate creation and
+ * at-anchor REST_SNAPSHOT promotion.
+ *
+ * Evidence precedence when `restRequiresEngineOff` is true:
+ * - Strong RUNNING: explicit ignition on → reject.
+ * - Strong OFF (opening): ignition off + measured speed at rest (non-null,
+ *   `<= 0.5` km/h) → accept even when transitional OBD engine_load implies
+ *   `engineRunning`. Missing speed is not treated as stationary evidence.
+ * - Ambiguous: unknown ignition or missing speed with engine_running proxy →
+ *   conservative reject.
+ */
+export function isEngineOffForRestWindowOpening(
+  signal: LvRestWindowSignalContext,
+  restRequiresEngineOff: boolean,
+): boolean {
+  if (!restRequiresEngineOff) return true;
+  if (signal.ignitionOn === true) return false;
+  if (
+    signal.ignitionOn === false &&
+    signal.speedKmh != null &&
+    isSpeedAtRest(signal.speedKmh)
+  ) {
+    return true;
+  }
   if (signal.engineRunning === true) return false;
   return true;
 }
@@ -114,7 +149,7 @@ export function canOpenRestWindowCandidate(
   if (isChargingContext(signal)) {
     return { ok: false, reason: 'charging_context' };
   }
-  if (!isEngineOffForRest(signal, policy.restRequiresEngineOff)) {
+  if (!isEngineOffForRestWindowOpening(signal, policy.restRequiresEngineOff)) {
     return { ok: false, reason: 'engine_not_off' };
   }
   if (isWakeVoltage(signal.lvVoltage, policy.wakeVoltageThreshold)) {
@@ -143,7 +178,7 @@ export function isValidRestSnapshot(
   if (!isSpeedAtRest(signal.speedKmh)) {
     return { ok: false, reason: 'speed_not_zero' };
   }
-  if (!isEngineOffForRest(signal, policy.restRequiresEngineOff)) {
+  if (!isEngineOffForRestWindowOpening(signal, policy.restRequiresEngineOff)) {
     return { ok: false, reason: 'engine_not_off' };
   }
   if (isWakeVoltage(signal.lvVoltage, policy.wakeVoltageThreshold)) {
