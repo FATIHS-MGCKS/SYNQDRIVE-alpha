@@ -335,3 +335,75 @@ export async function probeFleetDimoAccess(
     accounting,
   );
 }
+
+export interface RefuelEvidenceSample {
+  timestamp: string;
+  fuelAbsoluteLiters: number | null;
+  fuelRelativePercent: number | null;
+  speedKmh: number | null;
+  odometerKm: number | null;
+  ignitionOn: boolean | null;
+}
+
+/**
+ * Bounded read-only fuel/movement samples for manual-review evidence inspection.
+ * Ops-only — output must not be committed to the repository.
+ */
+export async function fetchRefuelEvidenceSignalsStandalone(
+  tokenId: number,
+  from: Date,
+  to: Date,
+  accounting?: DimoRequestAccounting,
+): Promise<RefuelEvidenceSample[]> {
+  recordCapabilityProbeRequest(accounting);
+  const jwt = await getVehicleJwt(tokenId, accounting);
+  const query = `
+    query RefuelEvidenceSignals {
+      signals(
+        tokenId: ${tokenId}
+        from: "${from.toISOString()}"
+        to: "${to.toISOString()}"
+        interval: "20s"
+      ) {
+        timestamp
+        isIgnitionOn(agg: MAX)
+        speed(agg: AVG)
+        powertrainTransmissionTravelledDistance(agg: MAX)
+        powertrainFuelSystemAbsoluteLevel(agg: AVG)
+        powertrainFuelSystemRelativeLevel(agg: AVG)
+      }
+    }
+  `.trim();
+
+  const result = await gql(jwt, query);
+  const signals: any[] = Array.isArray(result.data?.signals)
+    ? result.data.signals
+    : [];
+
+  return signals
+    .filter((sample) => typeof sample?.timestamp === 'string')
+    .map((sample) => ({
+      timestamp: sample.timestamp,
+      fuelAbsoluteLiters:
+        typeof sample.powertrainFuelSystemAbsoluteLevel === 'number'
+          ? sample.powertrainFuelSystemAbsoluteLevel
+          : null,
+      fuelRelativePercent:
+        typeof sample.powertrainFuelSystemRelativeLevel === 'number'
+          ? sample.powertrainFuelSystemRelativeLevel
+          : null,
+      speedKmh: typeof sample.speed === 'number' ? sample.speed : null,
+      odometerKm:
+        typeof sample.powertrainTransmissionTravelledDistance === 'number'
+          ? sample.powertrainTransmissionTravelledDistance
+          : null,
+      ignitionOn:
+        typeof sample.isIgnitionOn === 'number'
+          ? sample.isIgnitionOn >= 0.5
+          : null,
+    }))
+    .sort(
+      (left, right) =>
+        new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime(),
+    );
+}

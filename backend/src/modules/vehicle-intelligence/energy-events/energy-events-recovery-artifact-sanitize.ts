@@ -368,6 +368,17 @@ export function buildSanitizedFullSummaryArtifact(
     gateBlockers: report.gateBlockers,
     zeroWriteStatus: report.dbWritesPerformed === false,
     finalGate: report.backfillGate,
+    recoveryPlan: report.recoveryPlan
+      ? {
+          supplied: true,
+          planVersion: report.recoveryPlan.planVersion,
+          reviewProvenance: report.recoveryPlan.reviewProvenance,
+          reviewedDispositionCount: report.recoveryPlan.reviewedDispositionCount,
+          appliedCount: report.recoveryPlan.appliedCount,
+          unmatchedCount: report.recoveryPlan.unmatchedCount,
+          ambiguousCount: report.recoveryPlan.ambiguousCount,
+        }
+      : { supplied: false },
   };
 }
 

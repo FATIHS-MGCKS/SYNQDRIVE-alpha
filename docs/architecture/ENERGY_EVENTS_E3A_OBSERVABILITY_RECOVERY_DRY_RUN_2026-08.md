@@ -188,7 +188,7 @@ VehicleEnergyDetectionStatus
 
 ## 8. Tests
 
-Focused energy-events tests (101, of which 70 are net-new versus `main`) plus
+Focused energy-events tests (110) plus
 E3A privacy regression checks:
 
 - E1 mechanism isolation in dry-run
@@ -202,6 +202,8 @@ E3A privacy regression checks:
 - Mechanism-aware request accounting
 - Refuel movement plausibility (canonical positive control + false-positive exclusions)
 - Manual-review disposition resolution (`EXCLUDE` counts as resolved)
+- Privacy-safe manual-review fingerprint overrides (secured evidence → EXCLUDE without committing identifiers)
+- Recovery-plan authority: event-specific dimoSegmentId matching, fail-closed, no global defaults in generic runner
 - Sanitized artifact builder (inventory-order aliases, no forbidden identifier fields)
 - Privacy regression scan of committed artifacts + architecture doc
 - Capability discovery regression (ICE/EV zero-event probe, CAPABILITY_UNKNOWN gate, synthetic QUICK FULL isolation)
@@ -346,3 +348,126 @@ FULL prod dry-run exposed DIMO RefuelDetector false positives: large fuel increa
 **Production recommendation:** Apply same movement plausibility to live `EnergyEventsService.detectEnergyEvents` after recovery gate validates — DIMO false positives can occur in production too. **Not changed in this PR** (recovery-only hardening).
 
 **Recharge overlap:** Extended recharge → `WOULD_UPDATE` on existing DB row (same physical session, expanded detector window). No duplicate create. Before write-back: reconcile overlapping legacy recharge subsegments (see write-phase invariant above).
+
+---
+
+## 12. Manual-review resolution (post-merge, 2026-08-28)
+
+After E3A clean merge (#1380), two `ICE_A` July 2026 refuel candidates remained
+`NEEDS_FURTHER_EVIDENCE` (both: `under_15m`, `11_to_50km` odometer bucket,
+`under_10L` fuel bucket). Secured production DIMO telemetry was inspected in a
+bounded ±30 minute window around each candidate (read-only; raw evidence retained
+off-repo only).
+
+### Evidence summary (repository-safe categories only)
+
+| Case | Confidence | Reasons | Evidence category | Disposition |
+|------|------------|---------|-------------------|-------------|
+| A | MEDIUM | `fuel_signal_contradiction`, `refuel_odometer_movement_during_event` | `continuous_driving_irreconcilable_fuel_signals_no_stationary_refuel` | `EXCLUDE_FROM_BACKFILL` |
+| B | LOW | `refuel_odometer_movement_during_event` | `dimo_segment_padding_unsustained_micro_fuel_bump_during_driving` | `EXCLUDE_FROM_BACKFILL` |
+
+**Case A:** No stable pre-event fuel baseline; no discrete sustained upward fuel
+step; absolute vs relative signals irreconcilable at the transition (segment-level
+claim did not match largest raw step); continuous driving at highway speeds with
+no ignition-off stationary interval consistent with refueling.
+
+**Case B:** DIMO segment-level odometer spread overstated movement relative to the
+true fuel-transition window (segment padding); micro fuel bump unsustained;
+continuous driving — not a genuine refuel.
+
+Neither candidate was a real refuel. Segment padding did mislead segment-level
+movement for Case B.
+
+### Privacy-safe override mechanism
+
+`energy-events-recovery-plan.ts` applies human-reviewed dispositions only when an
+**explicit recovery plan** is supplied at runtime (`recoveryPlan` on
+`runEnergyEventsRecoveryDryRun` deps, or `ENERGY_EVENTS_RECOVERY_PLAN_PATH` for
+the ops dry-run script). Each reviewed entry binds to **one candidate** via
+`dimoSegmentId` + `mechanism` — never coarse bucket fingerprints.
+
+Bucket fingerprints (`buildManualReviewBucketFingerprint`) remain for sanitized
+reporting and aggregate grouping only.
+
+Fail-closed match semantics:
+
+| Matches | Behavior |
+|---------|----------|
+| 0 | `UNMATCHED_REVIEWED_DISPOSITION` → gate NOT READY |
+| 1 | apply disposition |
+| >1 | `AMBIGUOUS_MANUAL_REVIEW_MATCH` → gate NOT READY |
+
+No global/hidden defaults: omitting `recoveryPlan` leaves derived recommendations
+unchanged; an explicit empty `reviewedDispositions` array applies nothing.
+
+Private E3A plan JSON (operational `dimoSegmentId` values) stays on secured
+infrastructure only. Build via `energy-events-build-e3a-recovery-plan.ts` from
+private evidence output. Repository tests use synthetic segment ids only
+(`energy-events-recovery-plan.fixture.ts`).
+
+The ops evidence script (`energy-events-manual-review-evidence.ts`) is an analyst
+aid only — E2 remains canonical; `suggestedDisposition` is advisory and never
+feeds writes automatically.
+
+### FULL re-run after resolution (observed on hardened code)
+
+Executed on secured production infrastructure via the established Cloud Agent SSH
+path (`cloud-agent-verify-vps.sh` → `synqdrive-admin@` VPS), sourcing
+`/opt/synqdrive/shared/backend.env` for the read-only `DATABASE_URL` and DIMO
+credentials. The private recovery plan was supplied through
+`ENERGY_EVENTS_RECOVERY_PLAN_PATH` and never committed.
+
+**Runtime manual-review authority evidence (observed):**
+
+| Metric | Observed |
+|--------|----------|
+| `recoveryPlan.supplied` | `true` (`planVersion=e3a-2026-08`) |
+| `reviewedDispositionCount` | 2 |
+| `appliedCount` (exact single matches) | 2 |
+| `unmatchedCount` | 0 |
+| `ambiguousCount` | 0 |
+| Derived-EXCLUDE rows needing no human input | 13 (unchanged) |
+| Derived-NEEDS rows changed by plan | 2 |
+| Unexpected disposition changes | 0 |
+| Bucket fingerprint present in artifact | no |
+
+| Metric | Value |
+|--------|-------|
+| `codeShaUnderTest` | `b292a14c0b7ed5c958849e49b583a017a0b195c1` |
+| `baseMainSha` | `6c38d8c26d81aeb3ea5e3589e11a46625e016ed5` |
+| `dbComparisonEnabled` / `dbComparisonStatus` | `true` / `ok` |
+| Telemetry GraphQL requests (TOTAL) | **225** (probes 5 + mechanism 220) |
+| Token exchange / developer auth / retries | 6 / 1 / 0 |
+| Refuel / recharge detections | 18 / 3 |
+| WOULD_CREATE / WOULD_UPDATE / WOULD_SKIP | 3 / 1 / 2 |
+| Manual review | **15 total — 15 `EXCLUDE_FROM_BACKFILL`, 0 `NEEDS_FURTHER_EVIDENCE`** |
+| FETCH_FAILED / DB mapping failures / CAPABILITY_UNKNOWN | 0 / 0 / 0 |
+| `dbWritesPerformed` | `false` |
+| `CANONICAL_REFUEL_CASE` | `WOULD_CREATE` |
+| `CANONICAL_RECHARGE_OVERLAP_CASE` | `WOULD_UPDATE` |
+| Gate | **`READY FOR CONTROLLED WRITE BACKFILL`** (`gateBlockers: []`) |
+
+**Zero-write proof (observed):** `vehicle_energy_events` row count (130), newest
+`created_at` / `updated_at`, and a SHA-256 digest over `(id, dimo_segment_id,
+updated_at)` for all rows were captured before and after the run and are
+byte-identical. No INSERT / UPDATE / DELETE / UPSERT occurred.
+
+**No historical backfill executed.** Write-back remains a separate controlled phase.
+
+### Recommended next phase: controlled write-backfill (not executed here)
+
+| Classification | Count | Write behavior |
+|----------------|-------|----------------|
+| `WOULD_CREATE` | 3 | Insert (`CANONICAL_REFUEL_CASE` + 2 EV recharge sessions) |
+| `WOULD_UPDATE` | 1 | Expand canonical recharge overlap (`CANONICAL_RECHARGE_OVERLAP_CASE`) |
+| `EXCLUDE_FROM_BACKFILL` | 15 | Never written (resolved manual-review skips) |
+| `WOULD_SKIP_NOT_PERSISTABLE` | 2 | No-op |
+
+**Idempotency:** upsert key `dimoSegmentId`. **Reconciliation:** before updating
+the canonical Jul-16 recharge parent, reconcile overlapping legacy recharge
+subsegments so one physical session does not leave duplicate logical rows.
+**Concurrency:** respect existing traffic budget (`proposedConcurrency: 2`,
+`interRequestDelayMs: 500`). **Rollback:** re-run FULL dry-run; no destructive
+deletes without explicit reconcile plan. **Re-run safety:** dry-run + write paths
+share material identity checks; a second write pass should be idempotent on
+`dimoSegmentId`.

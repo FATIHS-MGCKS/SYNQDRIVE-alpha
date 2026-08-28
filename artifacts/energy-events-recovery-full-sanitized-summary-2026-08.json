@@ -1,9 +1,9 @@
 {
   "artifactKind": "sanitized_full_summary",
   "privacyPolicy": "Repository-safe aggregate evidence only. Raw FULL DB preview reports with operational identifiers are generated on secured infrastructure and must not be committed.",
-  "generatedAt": "2026-08-28T13:14:56.190Z",
-  "codeShaUnderTest": "dace008c12b385ab4ce6ccfa68fc224b46ff5615",
-  "baseMainSha": "5037c543f17b719575e55433e70fcc3808db517c",
+  "generatedAt": "2026-08-28T14:51:55.712Z",
+  "codeShaUnderTest": "b292a14c0b7ed5c958849e49b583a017a0b195c1",
+  "baseMainSha": "6c38d8c26d81aeb3ea5e3589e11a46625e016ed5",
   "detectorConfigVersion": "e2-2026-08",
   "refuelDetectorConfig": {
     "minIncreasePercent": 5
@@ -173,8 +173,7 @@
     "refuel_odometer_movement_during_event": 2
   },
   "dispositionCounts": {
-    "EXCLUDE_FROM_BACKFILL": 13,
-    "NEEDS_FURTHER_EVIDENCE": 2
+    "EXCLUDE_FROM_BACKFILL": 15
   },
   "manualReviewResolvedSemantics": {
     "APPROVE_FOR_BACKFILL": "eligible_for_write",
@@ -190,10 +189,10 @@
   },
   "manualReviewAggregate": {
     "total": 15,
-    "resolved": 13,
-    "unresolved": 2,
-    "excludeFromBackfill": 13,
-    "needsFurtherEvidence": 2
+    "resolved": 15,
+    "unresolved": 0,
+    "excludeFromBackfill": 15,
+    "needsFurtherEvidence": 0
   },
   "candidateEvidence": [
     {
@@ -399,7 +398,7 @@
         "fuel_signal_contradiction",
         "refuel_odometer_movement_during_event"
       ],
-      "disposition": "NEEDS_FURTHER_EVIDENCE"
+      "disposition": "EXCLUDE_FROM_BACKFILL"
     },
     {
       "alias": "ICE_A",
@@ -428,7 +427,7 @@
       "plausibilityReasons": [
         "refuel_odometer_movement_during_event"
       ],
-      "disposition": "NEEDS_FURTHER_EVIDENCE"
+      "disposition": "EXCLUDE_FROM_BACKFILL"
     },
     {
       "alias": "ICE_A",
@@ -506,11 +505,18 @@
   },
   "fetchFailures": 0,
   "dbWritesPerformed": false,
-  "backfillGate": "READY AFTER MANUAL REVIEW OF 2 EVENTS",
+  "backfillGate": "READY FOR CONTROLLED WRITE BACKFILL",
   "manualReviewCount": 15,
-  "gateBlockers": [
-    "MANUAL_REVIEW_UNRESOLVED:2"
-  ],
+  "gateBlockers": [],
   "zeroWriteStatus": true,
-  "finalGate": "READY AFTER MANUAL REVIEW OF 2 EVENTS"
+  "finalGate": "READY FOR CONTROLLED WRITE BACKFILL",
+  "recoveryPlan": {
+    "supplied": true,
+    "planVersion": "e3a-2026-08",
+    "reviewProvenance": "secured-production-telemetry-inspection-2026-08-28",
+    "reviewedDispositionCount": 2,
+    "appliedCount": 2,
+    "unmatchedCount": 0,
+    "ambiguousCount": 0
+  }
 }

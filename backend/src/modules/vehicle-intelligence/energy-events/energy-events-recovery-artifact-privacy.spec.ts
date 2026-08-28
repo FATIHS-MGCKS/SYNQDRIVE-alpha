@@ -239,6 +239,7 @@ describe('energy-events-recovery-artifact-sanitize', () => {
       backfillGate: 'NOT READY',
       manualReviewCount: 0,
       gateBlockers: [],
+      recoveryPlan: null,
     } as EnergyRecoveryDryRunReport;
 
     const ctx = buildSanitizationContext(report);

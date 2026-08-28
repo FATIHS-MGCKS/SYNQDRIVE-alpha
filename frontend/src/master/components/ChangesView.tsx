@@ -36,6 +36,53 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'energy-events-e3a-recovery-plan-authority-hardening-2026-08-28',
+    version: '4.9.985',
+    title: 'Energy Events E3A — recovery-plan manual-review authority hardening',
+    summary: [
+      'Removed coarse bucket fingerprints as authoritative event identity for human dispositions — fingerprints remain reporting/grouping only.',
+      'Human-reviewed decisions are explicit recovery-plan input (`dimoSegmentId` + mechanism), not hardcoded August-2026 defaults in `runEnergyEventsRecoveryDryRun()`.',
+      'Fail-closed matching: 0 matches → UNMATCHED_REVIEWED_DISPOSITION; >1 → AMBIGUOUS_MANUAL_REVIEW_MATCH; both block gate.',
+      'Explicit empty `reviewedDispositions` applies no overrides; omitting `recoveryPlan` leaves NEEDS candidates unchanged.',
+      'Ops evidence script: `suggestedDisposition` advisory only — E2 detector remains canonical; analyst aid does not feed writes.',
+      'Private E3A plan built on secured infra via `ENERGY_EVENTS_RECOVERY_PLAN_PATH`; synthetic fixtures for repository tests only.',
+      'Observed secured FULL DB-backed validation on the hardened code: plan applied 2/2 exact single matches, 0 unmatched, 0 ambiguous, 13 derived-EXCLUDE rows untouched, 0 unexpected changes.',
+      'Observed gate: manual review 15 total / 15 EXCLUDE / 0 NEEDS, 3 WOULD_CREATE, 1 WOULD_UPDATE, 2 WOULD_SKIP, FETCH_FAILED 0, gateBlockers [], READY FOR CONTROLLED WRITE BACKFILL.',
+      'Zero-write proof: vehicle_energy_events row count and table digest byte-identical before/after the run.',
+    ],
+    reason:
+      'Bucket fingerprints are privacy-safe but not unique — one human decision must not fan out to every candidate sharing the same coarse signature.',
+    previousBehavior:
+      '`applyManualReviewOverrides()` matched bucket fingerprints with global E3A defaults even when `overrides=[]`.',
+    details:
+      'backend: energy-events-recovery-plan.ts, energy-events-recovery-manual-review-reporting.ts, energy-events-recovery-runner.ts, scripts/ops/energy-events-build-e3a-recovery-plan.ts. Removed energy-events-recovery-manual-review-overrides.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T14:45:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-manual-review-resolution-gate-2026-08-28',
+    version: '4.9.984',
+    title: 'Energy Events E3A — resolve final 2 manual-review refuel candidates (gate READY)',
+    summary: [
+      'Secured production DIMO telemetry inspection (bounded ±30 min, read-only) resolved the last 2 ICE_A Jul-2026 under_15m refuel NEEDS_FURTHER_EVIDENCE entries.',
+      'Case A (MEDIUM, fuel_signal_contradiction + movement): EXCLUDE — continuous driving, irreconcilable absolute/relative fuel signals, no stationary refuel interval.',
+      'Case B (LOW, movement only): EXCLUDE — DIMO segment padding inflated odometer spread; unsustained micro fuel bump during driving.',
+      'Privacy-safe fingerprint overrides in energy-events-recovery-manual-review-overrides.ts; private ops evidence script never committed.',
+      'FULL DB dry-run re-run: manual review 15 total / 15 EXCLUDE / 0 NEEDS; gate READY FOR CONTROLLED WRITE BACKFILL; counts unchanged (3 CREATE, 1 UPDATE, 2 SKIP); dbWritesPerformed=false.',
+      'No historical writes; E2 detector thresholds unchanged; E3B not started.',
+    ],
+    reason:
+      'E3A merge left 2 refuel manual-review blockers; write-back gate required zero unresolved NEEDS_FURTHER_EVIDENCE before controlled write phase.',
+    previousBehavior:
+      'Gate READY AFTER MANUAL REVIEW OF 2 EVENTS (MANUAL_REVIEW_UNRESOLVED:2); both ICE_A under_15m Jul refuels stayed NEEDS_FURTHER_EVIDENCE.',
+    details:
+      'backend: energy-events-recovery-manual-review-overrides.ts, energy-events-recovery-runner.ts, scripts/ops/energy-events-manual-review-evidence.ts, scripts/ops/energy-events-standalone-dimo-fetch.ts (bounded fetch). Artifact: energy-events-recovery-full-sanitized-summary-2026-08.json updated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T14:30:00.000Z',
+  },
+  {
     id: 'energy-events-e3a-powertrain-accounting-merge-gate-2026-08-28',
     version: '4.9.983',
     title: 'Energy Events E3A — canonical powertrain applicability + real request accounting',

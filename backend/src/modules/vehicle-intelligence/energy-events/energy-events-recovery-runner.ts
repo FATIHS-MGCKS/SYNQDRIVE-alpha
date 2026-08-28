@@ -20,10 +20,14 @@ import {
   summarizeClassifications,
 } from './energy-events-recovery-dry-run';
 import {
-  allManualReviewsResolved,
   countUnresolvedManualReviews,
   buildManualReviewReport,
 } from './energy-events-recovery-manual-review';
+import {
+  applyRecoveryPlanManualReview,
+  summarizeRecoveryPlanMatchFailures,
+  type EnergyEventsRecoveryPlan,
+} from './energy-events-recovery-plan';
 import { reconcileRecoveryCandidates } from './energy-events-recovery-reconcile';
 import type { DbComparisonStatus, RecoveryExistingEnergyEvent } from './energy-events-recovery-read.repository';
 import {
@@ -87,6 +91,13 @@ export interface RecoveryDryRunDeps {
   accounting?: DimoRequestAccounting;
   /** Overrides `git merge-base HEAD main` when the checkout has no `main` ref. */
   baseMainShaOverride?: string;
+  /**
+   * Optional explicit historical recovery plan with human-reviewed dispositions.
+   * When omitted, manual-review candidates keep their derived recommendations.
+   * When supplied (including an empty reviewedDispositions array), only
+   * event-specific dimoSegmentId matches from the plan are applied — no global defaults.
+   */
+  recoveryPlan?: EnergyEventsRecoveryPlan;
 }
 
 export async function runEnergyEventsRecoveryDryRun(
@@ -270,7 +281,29 @@ export async function runEnergyEventsRecoveryDryRun(
   );
   const candidates = reconciled.candidates;
   const summary = summarizeClassifications(candidates);
-  const manualReviewReport = buildManualReviewReport(candidates);
+  const manualReviewBase = buildManualReviewReport(candidates);
+  let manualReviewReport = manualReviewBase;
+  let recoveryPlanSummary: EnergyRecoveryDryRunReport['recoveryPlan'] = null;
+
+  if (deps.recoveryPlan) {
+    const planResult = applyRecoveryPlanManualReview(
+      manualReviewBase,
+      deps.recoveryPlan,
+    );
+    manualReviewReport = planResult.entries;
+    const failureCounts = summarizeRecoveryPlanMatchFailures(
+      planResult.matchFailures,
+    );
+    recoveryPlanSummary = {
+      supplied: true,
+      planVersion: deps.recoveryPlan.planVersion,
+      reviewProvenance: deps.recoveryPlan.reviewProvenance,
+      reviewedDispositionCount: deps.recoveryPlan.reviewedDispositions.length,
+      appliedCount: planResult.appliedCount,
+      unmatchedCount: failureCounts.unmatched,
+      ambiguousCount: failureCounts.ambiguous,
+    };
+  }
   const manualReviewCount = summary.MANUAL_REVIEW_REQUIRED;
   const unresolvedManualReviewCount =
     countUnresolvedManualReviews(manualReviewReport);
@@ -320,6 +353,16 @@ export async function runEnergyEventsRecoveryDryRun(
       `MANUAL_REVIEW_UNRESOLVED:${unresolvedManualReviewCount}`,
     );
   }
+  if (recoveryPlanSummary?.unmatchedCount) {
+    gateBlockersRaw.push(
+      `UNMATCHED_REVIEWED_DISPOSITION:${recoveryPlanSummary.unmatchedCount}`,
+    );
+  }
+  if (recoveryPlanSummary?.ambiguousCount) {
+    gateBlockersRaw.push(
+      `AMBIGUOUS_MANUAL_REVIEW_MATCH:${recoveryPlanSummary.ambiguousCount}`,
+    );
+  }
   if (deps.mode === 'full' && unmappedVehicles.length > 0) {
     gateBlockersRaw.push(`DB_VEHICLE_MAPPING_MISSING:${unmappedVehicles.length}`);
   }
@@ -362,6 +405,15 @@ export async function runEnergyEventsRecoveryDryRun(
     gateBlockers.some((blocker) => blocker.startsWith('MANUAL_REVIEW_UNRESOLVED'))
   ) {
     backfillGate = `READY AFTER MANUAL REVIEW OF ${unresolvedManualReviewCount} EVENTS` as EnergyRecoveryDryRunReport['backfillGate'];
+  } else if (
+    gateBlockers.some((blocker) =>
+      blocker.startsWith('UNMATCHED_REVIEWED_DISPOSITION'),
+    ) ||
+    gateBlockers.some((blocker) =>
+      blocker.startsWith('AMBIGUOUS_MANUAL_REVIEW_MATCH'),
+    )
+  ) {
+    backfillGate = 'NOT READY';
   } else if (gateBlockers.length === 0) {
     backfillGate = 'READY FOR CONTROLLED WRITE BACKFILL';
   } else {
@@ -444,6 +496,7 @@ export async function runEnergyEventsRecoveryDryRun(
     backfillGate,
     manualReviewCount,
     gateBlockers,
+    recoveryPlan: recoveryPlanSummary,
   };
 }
 
