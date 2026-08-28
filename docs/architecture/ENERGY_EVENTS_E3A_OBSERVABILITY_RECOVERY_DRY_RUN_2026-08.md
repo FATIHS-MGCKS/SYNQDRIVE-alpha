@@ -156,3 +156,26 @@ VehicleEnergyDetectionStatus
 - Prior branch commit `dd9ed2f8d` contained precise GPS coordinates in artifacts (removed; history not rewritten)
 
 **No historical backfill executed.**
+
+---
+
+## 10. FULL DB-backed preview (VPS production, 2026-08-28)
+
+Executed on `srv1374778.hstgr.cloud` with production `DATABASE_URL`, `dbComparisonEnabled=true`, `dbComparisonStatus=ok`, mutation-guarded Prisma, zero writes.
+
+| Metric | Value |
+|--------|-------|
+| Telemetry GraphQL requests | 220 |
+| Token exchanges | 0 (cached) |
+| Refuel detections | 18 |
+| Recharge detections | 3 |
+| Deduplicated candidates | 21 |
+| WOULD_CREATE | 7 |
+| MANUAL_REVIEW_REQUIRED | 12 |
+| FETCH_FAILED | 0 |
+| DB mapping failures | 0 |
+| KS MX canonical | WOULD_CREATE @ 2026-08-23T16:15:15Z |
+| Tesla recharge | 3 detected, 2 WOULD_CREATE, 1 MR |
+| Gate | `READY AFTER MANUAL REVIEW OF 12 EVENTS` |
+
+All 12 manual-review entries: `NEEDS_FURTHER_EVIDENCE` (11 long-duration refuels + 1 Tesla existing-DB overlap).
