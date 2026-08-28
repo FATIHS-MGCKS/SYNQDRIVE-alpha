@@ -36,6 +36,57 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'event-trip-association-stage2-historical-repair-2026-08-28',
+    version: '4.9.987',
+    title: 'Event ↔ Trip Association Stage 2 — historical RPM candidate repair (production)',
+    summary: [
+      'One-off authorized repair of the historical rpm_webhook_candidates backlog; Stage 1 runtime reconciliation cannot fix it because it never overwrites a non-null trip_id.',
+      'Classification decisions came from the deployed EventTripAssociationService itself (compiled service instantiated against production Prisma), not from a SQL re-implementation.',
+      'Each candidate was resolved twice before becoming eligible; an unstable result would have been skipped. No candidate was unstable.',
+      'Applied 7 row repairs in one transaction: 5 NULL backfills and 2 wrong-association corrections. Zero non-null → NULL mutations.',
+      'Both wrong links pointed at CANCELLED trip ba613969 (end_time NULL, started 6 days before the events); corrected to COMPLETED trip 8f88b0de which contains both.',
+      'Forensic candidate 941382ca linked to canonical trip 61715ecd via FINALIZED_WINDOW_MATCH.',
+      'Write guards: concurrency check vs dry-run value, in-transaction resolver re-derivation, target must be non-CANCELLED + same vehicle + contain observed_at, UPDATE guarded by PK and expected old trip_id, affected_rows must equal exactly 1.',
+      'Before 5 NULL_RESOLVABLE / 5 NULL_UNRESOLVABLE / 2 WRONG / 0 AMBIGUOUS / 0 CORRECT → after 0 / 5 / 0 / 0 / 7.',
+      'Post-write: 12 rows, 12 distinct ids, 0 links to CANCELLED, 0 orphan FKs, all links contain the event; observed_at/observed_value/threshold/created_at/status byte-identical for all 12 rows.',
+      'Idempotency re-run yields PROPOSED_MUTATIONS = 0. Row-level rollback record generated before any write. No restart required; API 200 throughout.',
+    ],
+    reason:
+      'Stage 1 made the resolver correct going forward but deliberately left history untouched; two candidates still pointed at a stale CANCELLED trip that never contained their events.',
+    previousBehavior:
+      'Legacy predicate `end_time IS NULL OR end_time >= observed_at` with `ORDER BY start_time DESC LIMIT 1` let a CANCELLED trip with an open end outrank the real trip; 5 further candidates stayed orphaned at NULL.',
+    details:
+      'Production data repair only — no application code changed. architecture/EVENT_TRIP_ASSOCIATION_STAGE2_EXECUTION_RECORD_2026-08-28.md documents baseline, mutation set, guards, verification, rollback, read-path and driver-score impact.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T16:45:00.000Z',
+  },
+  {
+    id: 'event-trip-association-stage1-resolver-hardening-2026-08-28',
+    version: '4.9.986',
+    title: 'Event ↔ Trip Association Stage 1 — canonical resolver + reconciliation (PR #1385)',
+    summary: [
+      'New canonical EventTripAssociationService owns event → trip resolution for RPM webhook candidates.',
+      'Precedence, first tier yielding exactly one trip wins: ACTIVE_TRIP_MATCH (vehicle_trip_detection_states.active_trip_id), ONGOING_TRIP_MATCH (upper boundary OPEN), FINALIZED_WINDOW_MATCH (COMPLETED containment).',
+      'Root cause fixed: while a trip is ONGOING the tracking FSM rewrites end_time = now every ~30s, so end_time is a rolling cursor, not a boundary. Treating it as a boundary orphaned events landing between ticks.',
+      'CANCELLED trips are filtered out before any tier runs; more than one plausible trip yields AMBIGUOUS_TRIPS with a null trip_id rather than a guess.',
+      'Two convergence paths, both idempotent and neither overwriting a non-null trip_id: post-finalization reconciliation via TripPostFinalizeAnalysisProducer, and a bounded delayed sweep as step 6 of TripReconciliationService.reconcileWindow.',
+      'Idempotency from `trip_id IS NULL` in both the scan filter and the updateMany predicate; delayed sweep skips candidates younger than 60s so it cannot race intake.',
+      'New composite index rpm_webhook_candidates(vehicle_id, observed_at) bounds reconciliation scans to the window.',
+      'Observability: synqdrive_event_trip_associations_total{stage,reason} plus a structured EVENT_TRIP_ASSOCIATION log on non-routine outcomes.',
+      '22 new regression tests (A–J matrix) plus an end-to-end intake regression asserting the trip_id actually written to the candidate row.',
+    ],
+    reason:
+      'Production candidate 941382ca (RPM 5213) was orphaned because the live trip’s rolling end_time was 9 seconds stale at intake; a stale CANCELLED row could additionally outrank the real trip.',
+    previousBehavior:
+      'RpmWebhookCandidateService applied one predicate to every trip state: `start_time <= observed_at AND (end_time IS NULL OR end_time >= observed_at) ORDER BY start_time DESC LIMIT 1`.',
+    details:
+      'backend: trips/event-association/{domain,service,module,types}.ts, rpm-webhook-candidate.service.ts, trip-post-finalize-analysis.producer.ts, trip-reconciliation.service.ts, trip-metrics.service.ts, dimo.module.ts, vehicle-intelligence.module.ts, prisma migration 20260828120000_rpm_candidate_event_trip_reconciliation_index.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T15:09:00.000Z',
+  },
+  {
     id: 'energy-events-e3a-recovery-plan-authority-hardening-2026-08-28',
     version: '4.9.985',
     title: 'Energy Events E3A — recovery-plan manual-review authority hardening',
