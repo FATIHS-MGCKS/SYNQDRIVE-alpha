@@ -625,3 +625,25 @@ Pre-mutation backup artifact with full payloads for all 16 prune IDs. Restore:
 | Idempotency re-run | No repeat CREATE/UPDATE/DELETE; gate clear |
 
 Private manifest, backup, and row UUIDs remain on secured operational storage only — not in git.
+
+---
+
+## 16. E3A outage recovery CLOSED — final post-mutation closure gate (2026-08-29)
+
+**Status:** **CLOSED** — read-only closure gate §§2–9 passed; no further E3A mutations.
+
+| Gate | Result |
+|------|--------|
+| Final row count | **119** (= expected 119) |
+| M1 present | **1** (canonical Jul-16 consolidated recharge) |
+| 16 legacy prune IDs | **Absent** |
+| Excluded overlap tail | **Present** |
+| R1 / R2 | **Present** |
+| First forensic pass | `WOULD_CREATE=0`, `WOULD_UPDATE=0`, `ALREADY_IDENTICAL=4`, `FETCH_FAILED=0`, `MANUAL_REVIEW_UNRESOLVED=0`, `gateBlockers=[]` |
+| Second independent pass | Identical convergence — no CREATE/UPDATE; M1/R1/R2/F1 `ALREADY_IDENTICAL`; legacy rows not recreated |
+| Validation writes | **None** (`dbWritesPerformed=false`; table digest stable across validation) |
+| `pruneAuthority` | **false** throughout (operator closed-set only) |
+| Secured backup | Retained on VPS operational storage (16 rows, readable) |
+| E3B | **Not started** |
+
+M1 canonical values match reviewed manifest: duration ~25 904 s (~7.2 h), SOC delta ~23.60 %, energy ~11.88 kWh, HIGH confidence, stationary odometer. The 16 removed legacy sliding-window fragments no longer contribute to canonical/UI representation.
