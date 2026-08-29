@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'snapshot-polling-p1-2-post-merge-production-cutover-2026-08-29',
+    version: '4.9.1001',
+    title: 'P1.2 POST-MERGE — Production cutover PASS (PR #1409 merged + deployed)',
+    summary: [
+      'PR #1409 merged to main (d221e766) and deployed to production release 20260829171441_v4994.',
+      'Production topology reconfirmed: single PM2 fork synqdrive, Redis localhost, PostgreSQL operational.',
+      'Env updated pre-deploy: WORKER_SNAPSHOT_CONCURRENCY=8, TRIP_PARTIAL_BOUNDARY_REPAIR_ENABLED=true, WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED=true.',
+      'Startup fleet envelope OK: connected=6, snapshotConcurrency=8 (within certified N≤100).',
+      'Queues stable post-deploy; no sustained backlog growth; activity-tier polling active (DimoPollLog + scheduler ticks).',
+      'Verdict: P1.2 PRODUCTION CUTOVER PASS WITH OBSERVATIONS — follow-up on isolated DIMO 403 for one vehicle.',
+      'P1.2 closed for current production envelope; N≈1000 remains P1.3.',
+    ],
+    reason:
+      'Post-merge production verification and cutover for P1.2 activity-tier snapshot polling + canonical partial-trip boundary repair.',
+    previousBehavior:
+      'Production on ea65d8b without P1.2 env tuning (WORKER_SNAPSHOT_CONCURRENCY=5, feature flags unset).',
+    details:
+      'architecture/SNAPSHOT_POLLING_P1_2_POST_MERGE_PRODUCTION_CUTOVER_2026-08-29.md. Deploy via cloud-agent-deploy.sh → vps-deploy-release.sh.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T17:25:00.000Z',
+  },
+  {
     id: 'snapshot-polling-p1-2-final6-current-prod-release-gate-2026-08-29',
     version: '4.9.1000',
     title: 'P1.2 FINAL-6 — Current-production release gate (SAFE TO MERGE current prod)',
