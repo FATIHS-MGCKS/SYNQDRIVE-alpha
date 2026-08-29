@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'snapshot-activity-tier-polling-p1-2-2026-08-29',
+    version: '4.9.996',
+    title: 'P1.2 — Activity-tier DIMO snapshot polling (scalability)',
+    summary: [
+      'Replaced naive O(N) fleet-wide 30s snapshot enqueue with canonical activity-tier scheduling while preserving ACTIVE_DRIVING 30s cadence.',
+      'Tiers: ACTIVE_DRIVING (FSM active trip), RECENTLY_ACTIVE (live telemetry / movement), RESTING_STANDBY (<24h), LONG_IDLE (>24h), OFFLINE / HARD_OFFLINE (no normal polling).',
+      'Single canonical `deriveSnapshotPollingTier()` reuses `classifyTelemetryFreshness`, VLS `sourceTimestamp`, trip FSM, and DIMO connection status — no competing freshness model.',
+      'Demotion hysteresis (default 90s hold) prevents tier flapping; `providerFetchedAt` gates due vehicles per tier interval.',
+      'Deterministic org round-robin interleaving before enqueue; `jobId=snapshot-{vehicleId}` dedup unchanged.',
+      'Rollback: `WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE=true` restores pre-P1.2 behavior without DB migration.',
+      'Mixed-fleet simulation (5/15/60/20): N=1000 drops from ~2000 to ~377 jobs/min modeled steady-state.',
+    ],
+    reason:
+      'P1.1 audit: O(N) 30s polling produces ~2N snapshot jobs/min at N=1000 vs ~100/min consumer capacity (c=5). Activity-tier polling reduces demand before P1.3 provider semaphore.',
+    previousBehavior:
+      'Every DIMO-connected AVAILABLE/RENTED vehicle enqueued on every 30s scheduler tick regardless of activity.',
+    details:
+      'backend: workers/schedulers/snapshot-polling/*, dimo-snapshot.scheduler.ts. Env: WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED, WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE, WORKER_SNAPSHOT_TIER_*_MS. architecture/SNAPSHOT_ACTIVITY_TIER_POLLING_P1_2_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T09:30:00.000Z',
+  },
+  {
     id: 'energy-events-e3a-option-b-m1-mutation-executed-2026-08-29',
     version: '4.9.995',
     title: 'Energy Events E3A Option B — M1 canonicalization executed (closed-set CREATE + 16-ID DELETE)',
