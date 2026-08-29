@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-provider-concurrency-p1-3-s2-redis-shadow-limiter-2026-08-29',
+    version: '4.9.1004',
+    title: 'P1.3-S2 — Redis-backed DIMO provider limiter (shadow mode)',
+    summary: [
+      'Redis-backed global DIMO provider limiter behind DimoProviderGateway — SHADOW mode default.',
+      'Hybrid model: per-second rate counter (internal 20/s + burst 5) + in-flight ZSET leases (max 40, 45s TTL).',
+      'Shadow evaluates ALLOW / WOULD_WAIT / WOULD_REJECT without blocking provider traffic; enforce only when DIMO_PROVIDER_LIMITER_MODE=enforce.',
+      'Redis failure fail-open — telemetry continues; synqdrive_dimo_provider_limiter_redis_errors_total.',
+      'Prometheus: requests, in-flight, shadow decisions, rate budget usage, 403/429/5xx/timeout, duration histogram.',
+      'Operation categories + P0–P3 priority classes prepared for S3 backpressure.',
+      'Gateway coverage guard preserved; trip/snapshot/reconciliation semantics unchanged.',
+    ],
+    reason:
+      'P1.3-S2 — introduce process-independent provider coordination infrastructure in non-behavioral shadow mode before S3 enforcement.',
+    previousBehavior:
+      'P1.3-S1 gateway pass-through only; no global rate or in-flight coordination across replicas.',
+    details:
+      'backend: dimo-provider-limiter.*, dimo-provider-metrics.service.ts, dimo-provider-http-classifier.ts, gateway integration. architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S2_REDIS_SHADOW_LIMITER_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T20:35:00.000Z',
+  },
+  {
     id: 'dimo-provider-concurrency-p1-3-s1-gateway-2026-08-29',
     version: '4.9.1003',
     title: 'P1.3-S1 — Canonical DIMO provider gateway foundation (pass-through)',

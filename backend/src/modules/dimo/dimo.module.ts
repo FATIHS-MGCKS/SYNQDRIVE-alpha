@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import dimoConfig from '@config/dimo.config';
+import dimoProviderLimiterConfig from '@config/dimo-provider-limiter.config';
 import deviceConnectionWebhookInboxConfig from '@config/device-connection-webhook-inbox.config';
 import connectivityRecoveryConfig from '@config/connectivity-recovery.config';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
@@ -10,6 +11,8 @@ import { DimoController } from './dimo.controller';
 import { DimoWebhookController } from './dimo-webhook.controller';
 import { DimoAuthService } from './dimo-auth.service';
 import { DimoProviderGateway } from './provider/dimo-provider-gateway.service';
+import { DimoProviderLimiterService } from './provider/dimo-provider-limiter.service';
+import { DimoProviderMetricsService } from './provider/dimo-provider-metrics.service';
 import { DimoTelemetryService } from './dimo-telemetry.service';
 import { DimoVehicleSyncService } from './dimo-vehicle-sync.service';
 import { DimoApiSyncService } from './dimo-api-sync.service';
@@ -45,6 +48,7 @@ import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-lin
 @Module({
   imports: [
     ConfigModule.forFeature(dimoConfig),
+    ConfigModule.forFeature(dimoProviderLimiterConfig),
     ConfigModule.forFeature(deviceConnectionWebhookInboxConfig),
     ConfigModule.forFeature(deviceConnectionEpisodeResolutionOutboxConfig),
     ConfigModule.forFeature(connectivityRecoveryConfig),
@@ -58,6 +62,8 @@ import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-lin
   controllers: [DimoController, DimoWebhookController, DeviceConnectionWebhookInboxController],
   providers: [
     DimoProviderGateway,
+    DimoProviderLimiterService,
+    DimoProviderMetricsService,
     DimoAuthService,
     DimoTelemetryService,
     DimoVehicleSyncService,

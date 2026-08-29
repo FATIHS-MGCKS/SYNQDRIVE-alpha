@@ -1,6 +1,10 @@
+import type {
+  DimoProviderRequestCategory,
+  DimoProviderRequestPriority,
+} from './dimo-provider-limiter.types';
+
 /**
  * P1.3 canonical DIMO provider operation classification.
- * S1: classification + extension point only — no limiter behavior.
  */
 export enum DimoProviderOperation {
   /** Telemetry GraphQL POST /query (vehicle JWT). */
@@ -26,5 +30,9 @@ export interface DimoProviderRequestContext {
 export interface DimoProviderExecuteParams<T> {
   operation: DimoProviderOperation;
   requestContext?: DimoProviderRequestContext;
+  /** Bounded-cardinality operation label for metrics/limiter (S2+). */
+  category?: DimoProviderRequestCategory;
+  /** Priority class for future backpressure (S3). */
+  priority?: DimoProviderRequestPriority;
   invoke: () => Promise<T>;
 }
