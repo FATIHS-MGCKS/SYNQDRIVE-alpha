@@ -815,3 +815,90 @@ Dry-run must output histogram without calling Mapbox.
 
 - **Added:** this document (`architecture/TRIP_ROUTE_ARCHITECTURE_V2_AUDIT_2026-08-29.md`)
 - **No runtime code, schema, Mapbox, database, backfill, or UI changes in Stage R0**
+
+---
+
+## Stage R1 implementation record (2026-08-29)
+
+**Status:** MERGED TO MAIN VIA PR (R1 slice)  
+**Mapbox runtime:** UNCHANGED  
+**Frontend:** UNCHANGED  
+**Backfill:** NONE  
+**Artifact population:** NONE (schema + domain only)
+
+### Final schema
+
+- **Enum:** `RouteQuality` = `MATCHED` | `FILTERED` | `RAW`
+- **Model:** `VehicleTripRouteArtifact` → table `vehicle_trip_route_artifacts`
+- **1:1:** `tripId` `@unique` with optional `VehicleTrip.routeArtifact` relation
+- **Geometry JSON:** `matchedGeometryJson`, `filteredGeometryJson` as `[longitude, latitude][]`
+- **No `rawGeometryJson`** — `VehicleTripWaypoint` remains canonical RAW source
+- **Tenant fields:** denormalized `organizationId`, `vehicleId` + DB scope guard trigger
+- **Cascade:** `ON DELETE CASCADE` from `vehicle_trips` and `vehicles`
+
+### Route quality enum semantics
+
+| Value | Persisted geometry requirement |
+|-------|-------------------------------|
+| `MATCHED` | `matchedGeometryJson` ≥ 2 valid `[lng,lat]` pairs |
+| `FILTERED` | `filteredGeometryJson` ≥ 2 valid `[lng,lat]` pairs |
+| `RAW` | No artifact geometry required; waypoints are authoritative |
+
+### RAW storage decision
+
+**VehicleTripWaypoint** remains the persisted measured-route source. The artifact stores MATCHED/FILTERED geometry and metadata only. RAW display is materialized from waypoints (or live DIMO re-fetch) in later stages.
+
+### Processing-status decision
+
+**No separate `RouteProcessingStatus` field in R1.**
+
+Rationale: `DrivingIntelligenceJob` + `DrivingAnalysisStage.ROUTE` already track durable execution. The artifact uses `processedAt` (nullable until written) and `failureReason` for last outcome diagnostics. Absence of an artifact row means Route V2 has not been materialized for that trip.
+
+### Fingerprint contract
+
+- **Algorithm:** SHA-256 over canonical JSON
+- **Input:** `tripId`, `algorithmVersion`, ordered `{ lat, lng, t }` (6-decimal coords, ISO timestamps)
+- **Excluded:** speed, DB timestamps, Mapbox output, UI state
+- **Helper:** `computeTripRouteInputFingerprint()` in `trip-route-input-fingerprint.ts`
+
+### Algorithm version
+
+`TRIP_ROUTE_ALGORITHM_VERSION = 'route-v2-r1'`
+
+### Migration
+
+`prisma/migrations/20260829140000_vehicle_trip_route_artifact/migration.sql`
+
+- Additive `RouteQuality` enum + `vehicle_trip_route_artifacts` table
+- Unique `trip_id`, indexes on `(organization_id, vehicle_id)`, `input_fingerprint`, `algorithm_version`
+- Scope guard trigger `vehicle_trip_route_artifact_scope_guard_trg`
+
+### Domain module
+
+`backend/src/modules/vehicle-intelligence/trips/route-artifact/`
+
+- `VehicleTripRouteArtifactRepository` — `getRouteArtifact`, `upsertRouteArtifact` (idempotent UNCHANGED on same fingerprint)
+- `validateTripRouteArtifactWrite` — MATCHED/FILTERED/RAW invariants, confidence/coverage bounds, chunk counts
+- `parseTripRouteGeometryJson` / `serializeTripRouteGeometry` — `[lng, lat][]` contract
+
+### Runtime wiring
+
+**NONE.** `DrivingRouteEnrichJobHandler`, `TripsService.enrichTrip`, `GET /route`, and frontend hooks are unchanged. Repository is registered in `VehicleIntelligenceModule` for DI only.
+
+### Tests (25)
+
+- `trip-route-input-fingerprint.spec.ts` — determinism, coordinate/order/version sensitivity
+- `trip-route-geometry.spec.ts` — `[lng,lat]` contract, rejection of invalid coords
+- `trip-route-artifact.validation.spec.ts` — MATCHED/FILTERED/RAW rules, bounds, counts
+- `vehicle-trip-route-artifact.repository.spec.ts` — upsert, tenant scope, trips list guard
+- `vehicle-trip-route-artifact.schema.spec.ts` — prisma validate, migration SQL
+
+### Deviations from R0
+
+- None on architecture decisions. R1 implements the R0-recommended `VehicleTripRouteArtifact` shape without `rawGeometryJson`.
+- Added DB scope guard trigger (matches `TireTripUsageLedger` pattern).
+
+### Explicit statement
+
+**Mapbox matching behavior, frontend route enrichment, and historical trip data are unchanged in R1.**
+

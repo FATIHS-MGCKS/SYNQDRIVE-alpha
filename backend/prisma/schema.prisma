@@ -2962,6 +2962,7 @@ model Vehicle {
   exteriorImages                         VehicleExteriorImage[]
   rentalDrivingAnalyses                  RentalDrivingAnalysis[]
   trips                                  VehicleTrip[]
+  tripRouteArtifacts                     VehicleTripRouteArtifact[]
   rpmWebhookCandidates                   RpmWebhookCandidate[]
   dimoBrakingEventIntakes                DimoBrakingEventIntake[]
   brakingEventLedgerEntries              BrakingEventLedger[]
@@ -9543,6 +9544,14 @@ enum TripBookingLinkSource {
   TIME_WINDOW
 }
 
+/// Canonical persisted route display quality (Trip Route Architecture V2).
+/// Distinct from processing/job lifecycle — see DrivingIntelligenceJob for execution state.
+enum RouteQuality {
+  MATCHED
+  FILTERED
+  RAW
+}
+
 model VehicleTrip {
   id                    String                     @id @default(uuid())
   vehicleId             String                     @map("vehicle_id")
@@ -9700,6 +9709,7 @@ model VehicleTrip {
   batteryMeasurementSessions BatteryMeasurementSession[]
   dimoBrakingEventIntakes    DimoBrakingEventIntake[]
   brakingEventLedgerEntries  BrakingEventLedger[]
+  routeArtifact              VehicleTripRouteArtifact?
 
   @@index([vehicleId])
   @@index([startTime])
@@ -9732,6 +9742,49 @@ model VehicleTripWaypoint {
   @@index([tripId])
   @@index([recordedAt])
   @@map("vehicle_trip_waypoints")
+}
+
+/// Canonical 1:1 route geometry artifact per completed trip (Route V2).
+/// Geometry is stored as JSON arrays of [longitude, latitude] pairs.
+/// RAW observations remain on VehicleTripWaypoint — not duplicated here unless quality is RAW-only metadata row.
+model VehicleTripRouteArtifact {
+  id                   String       @id @default(uuid())
+  organizationId       String       @map("organization_id")
+  vehicleId            String       @map("vehicle_id")
+  tripId               String       @unique @map("trip_id")
+
+  routeQuality         RouteQuality @map("route_quality")
+
+  matchedGeometryJson  Json?        @map("matched_geometry_json")
+  filteredGeometryJson Json?        @map("filtered_geometry_json")
+
+  matchConfidence      Float?       @map("match_confidence")
+  matchCoverage        Float?       @map("match_coverage")
+
+  provider             String?      @map("provider")
+  algorithmVersion     String       @map("algorithm_version")
+  inputFingerprint     String       @map("input_fingerprint")
+
+  sourcePointCount     Int          @map("source_point_count")
+  filteredPointCount   Int          @default(0) @map("filtered_point_count")
+  matchedPointCount    Int?         @map("matched_point_count")
+  chunkCount           Int?         @map("chunk_count")
+  failedChunkCount     Int?         @map("failed_chunk_count")
+
+  processedAt          DateTime?    @map("processed_at")
+  failureReason        String?      @map("failure_reason")
+  diagnosticsJson      Json?        @map("diagnostics_json")
+
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
+
+  trip    VehicleTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  vehicle Vehicle     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, vehicleId])
+  @@index([inputFingerprint])
+  @@index([algorithmVersion])
+  @@map("vehicle_trip_route_artifacts")
 }
 
 // ── Vehicle Energy Events (Refuel + Recharge, detected via DIMO segments) ──
