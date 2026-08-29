@@ -75,7 +75,7 @@
     "test:vehicle-detail:verify": "bash scripts/test/vehicle-detail-backend-verify.sh all",
     "test:vehicle-detail:verify:unit": "bash scripts/test/vehicle-detail-backend-verify.sh unit",
     "test:boundary-repair:postgres": "BOUNDARY_REPAIR_POSTGRES_INTEGRATION=1 jest boundary-repair.postgres.integration --runInBand",
-    "test:dimo-provider-limiter:redis": "DIMO_PROVIDER_LIMITER_REDIS_INTEGRATION=1 jest dimo-provider-limiter.redis.integration --runInBand",
+    "test:dimo-provider-limiter:redis": "DIMO_PROVIDER_LIMITER_REDIS_INTEGRATION=1 jest dimo-provider-limiter.redis.integration --runInBand --forceExit",
     "test:p12:scale": "jest --testPathPattern='p12-final4|p12-final5|p12-final6|fast-reconciliation-cohort|snapshot-throughput|partial-boundary|boundary-repair.state|trip-reconciliation.scheduler' --passWithNoTests",
     "test:evaluations": "NODE_OPTIONS='--max-old-space-size=8192' jest --runInBand --testPathPattern='business-insights|financial-insights\\.logic|data-analyse\\.utils|dashboard-insights|insight-health-gate|misuse-cases\\.service|evaluations-baseline|evaluations-metric\\.registry|evaluations-calculation-provenance|evaluations-metric-calculation-versions|evaluations-period\\.resolver|evaluations-metric-response|evaluations-shared-contract-mirror|evaluations-analytics|evaluations-finance|evaluations-money|evaluations-fx|evaluations-recommendations' --testPathIgnorePatterns='integration|live'",
     "prisma:validate": "DATABASE_URL=${DATABASE_URL:-postgresql://synqdrive:synqdrive@localhost:5432/synqdrive} prisma validate",

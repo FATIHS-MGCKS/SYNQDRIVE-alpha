@@ -245,14 +245,11 @@ function baseBeginInput(
     });
 
     it('H: Redis failure fail-open on real limiter boundary', async () => {
-      const brokenRedis = new RedisService({
-        host: '127.0.0.1',
-        port: 6399,
-        password: undefined,
-        db: redisConnectionOptions().db,
-      });
-      const brokenLimiter = new DimoProviderLimiterService(brokenRedis);
-      const begin = await brokenLimiter.begin(baseBeginInput());
+      const { limiter, redis } = createLimiterReplica();
+      await redis.ping();
+      redis.disconnect(false);
+
+      const begin = await limiter.begin(baseBeginInput());
       expect(begin.redisFailOpen).toBe(true);
       expect(begin.rateDecision).toBe(DimoProviderLimiterDecision.ERROR_FAIL_OPEN);
 
@@ -261,7 +258,7 @@ function baseBeginInput(
         enabled: true,
         mode: 'shadow',
       };
-      const gateway = new DimoProviderGateway(config, brokenLimiter);
+      const gateway = new DimoProviderGateway(config, limiter);
       const invoke = jest.fn().mockResolvedValue(99);
       await expect(
         gateway.execute({
@@ -269,7 +266,6 @@ function baseBeginInput(
           invoke,
         }),
       ).resolves.toBe(99);
-      await brokenRedis.quit();
     });
 
     it('rate window: per-second bucket TTL and clean next window', async () => {
