@@ -8,6 +8,8 @@ import {
   buildBatteryCapabilityPreflightQuery,
   buildRechargeSegmentsProbeQuery,
 } from './queries/battery-capability-preflight.query';
+import { DimoProviderGateway } from './provider/dimo-provider-gateway.service';
+import { DimoProviderOperation } from './provider/dimo-provider-gateway.types';
 
 export interface BatteryCapabilityPreflightSnapshot {
   availableSignals: string[] | null;
@@ -39,7 +41,10 @@ export class DimoTelemetryService {
   private readonly logger = new Logger(DimoTelemetryService.name);
   private readonly client: AxiosInstance;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly providerGateway: DimoProviderGateway,
+  ) {
     const telemetryApiUrl =
       this.configService.get<string>('dimo.telemetryApiUrl') ??
       'https://telemetry-api.dimo.zone/query';
@@ -167,6 +172,17 @@ export class DimoTelemetryService {
     query: string,
     variables?: Record<string, any>,
   ): Promise<any> {
+    return this.providerGateway.execute({
+      operation: DimoProviderOperation.TELEMETRY_GRAPHQL,
+      invoke: () => this.postGraphQL(vehicleJwt, query, variables),
+    });
+  }
+
+  private async postGraphQL(
+    vehicleJwt: string,
+    query: string,
+    variables?: Record<string, any>,
+  ): Promise<any> {
     const body: Record<string, unknown> = { query };
     if (variables) body.variables = variables;
     // Keep this tighter than the BullMQ lockDuration on the snapshot worker
@@ -215,11 +231,16 @@ export class DimoTelemetryService {
       }
     `.trim();
 
-    const response = await this.client.post(
-      '',
-      { query },
-      { headers: { Authorization: `Bearer ${vehicleJwt}` } },
-    );
+    const response = await this.providerGateway.execute({
+      operation: DimoProviderOperation.TELEMETRY_VEHICLE_SUMMARY,
+      requestContext: { tokenId },
+      invoke: () =>
+        this.client.post(
+          '',
+          { query },
+          { headers: { Authorization: `Bearer ${vehicleJwt}` } },
+        ),
+    });
 
     const signals = response.data?.data?.signalsLatest as
       | Record<string, unknown>
@@ -269,11 +290,16 @@ export class DimoTelemetryService {
     `.trim();
 
     try {
-      const response = await this.client.post(
-        '',
-        { query },
-        { headers: { Authorization: `Bearer ${vehicleJwt}` } },
-      );
+      const response = await this.providerGateway.execute({
+        operation: DimoProviderOperation.TELEMETRY_VEHICLE_VIN,
+        requestContext: { tokenId },
+        invoke: () =>
+          this.client.post(
+            '',
+            { query },
+            { headers: { Authorization: `Bearer ${vehicleJwt}` } },
+          ),
+      });
       const vin = response.data?.data?.vinVCLatest?.vin as string | undefined;
       return vin ?? null;
     } catch {
