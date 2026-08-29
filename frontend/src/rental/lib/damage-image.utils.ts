@@ -6,14 +6,25 @@ export const ALLOWED_DAMAGE_IMAGE_MIME = new Set([
   'image/gif',
 ]);
 
-export function validateDamageImageFile(file: File): string | null {
+export type DamageImageValidationCode = 'PHOTO_UNSUPPORTED_FORMAT' | 'PHOTO_TOO_LARGE';
+
+export function validateDamageImageCode(file: File): DamageImageValidationCode | null {
   if (!ALLOWED_DAMAGE_IMAGE_MIME.has(file.type)) {
-    return 'Unsupported format. Use JPG, PNG, WebP, or GIF.';
+    return 'PHOTO_UNSUPPORTED_FORMAT';
   }
   if (file.size > MAX_DAMAGE_IMAGE_BYTES) {
-    return `File too large (max ${(MAX_DAMAGE_IMAGE_BYTES / 1024 / 1024).toFixed(0)} MB). Compress before upload.`;
+    return 'PHOTO_TOO_LARGE';
   }
   return null;
+}
+
+export function validateDamageImageFile(file: File): string | null {
+  const code = validateDamageImageCode(file);
+  if (!code) return null;
+  if (code === 'PHOTO_UNSUPPORTED_FORMAT') {
+    return 'Unsupported format. Use JPG, PNG, WebP, or GIF.';
+  }
+  return `File too large (max ${(MAX_DAMAGE_IMAGE_BYTES / 1024 / 1024).toFixed(0)} MB). Compress before upload.`;
 }
 
 export function readFileAsDataUrl(file: File): Promise<string> {

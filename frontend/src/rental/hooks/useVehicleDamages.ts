@@ -2,13 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import type { DamageResponse, DamageStatsResponse } from '../lib/damage.types';
 import { parseDamageList } from '../lib/damage.types';
+import type { VehicleDamageHostErrorKey } from '../lib/rental-vehicle-damages-i18n';
 
 export function useVehicleDamages(vehicleId: string | undefined | null) {
   const [damages, setDamages] = useState<DamageResponse[]>([]);
   const [stats, setStats] = useState<DamageStatsResponse | null>(null);
   const [statsUnavailable, setStatsUnavailable] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [hostErrorKey, setHostErrorKey] = useState<VehicleDamageHostErrorKey | null>(null);
 
   const applyPayload = useCallback(
     (damageRows: unknown, statsRow: DamageStatsResponse | null, statsFailed: boolean) => {
@@ -24,11 +25,11 @@ export function useVehicleDamages(vehicleId: string | undefined | null) {
       setDamages([]);
       setStats(null);
       setStatsUnavailable(false);
-      setError(null);
+      setHostErrorKey(null);
       return;
     }
     setLoading(true);
-    setError(null);
+    setHostErrorKey(null);
     try {
       const [damageRows, statsResult] = await Promise.all([
         api.vehicleIntelligence.getVehicleDamages(vehicleId),
@@ -36,7 +37,7 @@ export function useVehicleDamages(vehicleId: string | undefined | null) {
       ]);
       applyPayload(damageRows, statsResult, statsResult == null);
     } catch {
-      setError('Damages could not be refreshed. Your last loaded data is still shown.');
+      setHostErrorKey('vehicleDamages.hostError.refreshFailed');
       // Preserve existing damages/stats — mutation may have succeeded server-side.
     } finally {
       setLoading(false);
@@ -49,11 +50,11 @@ export function useVehicleDamages(vehicleId: string | undefined | null) {
       setDamages([]);
       setStats(null);
       setStatsUnavailable(false);
-      setError(null);
+      setHostErrorKey(null);
       return;
     }
     setLoading(true);
-    setError(null);
+    setHostErrorKey(null);
     Promise.all([
       api.vehicleIntelligence.getVehicleDamages(vehicleId),
       api.vehicleIntelligence.getDamageStats(vehicleId).catch(() => null),
@@ -67,7 +68,7 @@ export function useVehicleDamages(vehicleId: string | undefined | null) {
           setDamages([]);
           setStats(null);
           setStatsUnavailable(false);
-          setError('Damages could not be loaded. Please try again.');
+          setHostErrorKey('vehicleDamages.hostError.loadFailed');
         }
       })
       .finally(() => {
@@ -78,5 +79,5 @@ export function useVehicleDamages(vehicleId: string | undefined | null) {
     };
   }, [applyPayload, vehicleId]);
 
-  return { damages, stats, statsUnavailable, loading, error, reload };
+  return { damages, stats, statsUnavailable, loading, hostErrorKey, reload };
 }
