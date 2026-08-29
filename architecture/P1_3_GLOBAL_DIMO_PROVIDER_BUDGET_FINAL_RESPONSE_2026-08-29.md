@@ -539,7 +539,7 @@ WORKER_SNAPSHOT_MAX_ENQUEUE_PER_TICK=0
 MERGE_RECOMMENDATION = **APPROVE_WITH_CONDITIONS**
 
 **Reason:**
-- P1.3 implementation complete; GitHub CI **SUCCESS** on final HEAD (`5aa2de1a`).
+- P1.3 implementation complete; GitHub CI **SUCCESS** on final HEAD (`11926f56f`).
 - Trip-loss regression covered by CI (boundary repair PostgreSQL, unit, integration, E2E).
 - Fail-closed semantics proven in unit tests; typecheck fix (`dimo-triggers.service.spec.ts` mock executor) verified in CI.
 - **Conditions:**
@@ -558,7 +558,7 @@ MERGE_RECOMMENDATION = **APPROVE_WITH_CONDITIONS**
 | Run | HEAD | Event | Status | Notes |
 |-----|------|-------|--------|-------|
 | `33265303743` / `33265303767` | `9e4211c1a` | pull_request (open) | **FAILURE** | Typecheck: `dimo-triggers.service.spec.ts` missing 3rd constructor arg — fixed in `6e22fda18` |
-| `33274949622` / `33274949612` | `5aa2de1a` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Final artifact HEAD — 25/25 jobs green |
+| `33275495416` / `33275495403` | `11926f56f` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Final artifact HEAD — 25/25 jobs green |
 | `33274639031` / `33274638870` | `fc0a13568` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Prior artifact sync — 25/25 jobs green |
 | `33268961626` / `33268961607` | `5db28f771` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | CI infra enablement — 25/25 jobs green |
 
