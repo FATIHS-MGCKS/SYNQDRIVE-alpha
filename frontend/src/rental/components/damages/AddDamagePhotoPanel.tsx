@@ -104,7 +104,7 @@ export function AddDamagePhotoPanel({ busy, onUpload }: AddDamagePhotoPanelProps
               onClick={() => void handleUpload()}
               className="sq-cta px-3 py-1.5 rounded-lg text-[11px] font-semibold disabled:opacity-50"
             >
-              {uploading ? t('vehicleDamages.photo.uploading') : t('vehicleDamages.photo.upload')}
+              {uploading ? t('docUpload.flow.uploading') : t('vehicleDamages.photo.upload')}
             </button>
             <button
               type="button"
@@ -112,7 +112,7 @@ export function AddDamagePhotoPanel({ busy, onUpload }: AddDamagePhotoPanelProps
               onClick={handleClear}
               className="sq-press px-3 py-1.5 rounded-lg text-[11px] font-semibold border border-border/70"
             >
-              {t('vehicleDamages.photo.clear')}
+              {t('fleet.shell.clear')}
             </button>
           </div>
         </div>

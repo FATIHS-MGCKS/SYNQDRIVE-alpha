@@ -40,7 +40,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.989',
     title: 'Platform i18n — P2.2.61 Rental Vehicle Damages',
     summary: [
-      'Localized the full rental vehicle damages mounted stack via `rental-vehicle-damages-i18n.ts` and `rental.vehicleDamages.{en,de}.ts`; +328 `vehicleDamages.*` keys (9239→9567 EN/DE) with `operator.damageCapture.*` reuse for damage type, severity, rental impact, and source; final correction consolidates 22 audit-certified exact reuses into `tasks.*`/`health.*`/`common.*`/`vehicle.*`, canonical `getFormattingLocale`, pickup-context contract cleanup, deterministic same-mount DE→EN→DE test, and hook mutation payload tests.',
+      'Localized the full rental vehicle damages mounted stack via `rental-vehicle-damages-i18n.ts` and `rental.vehicleDamages.{en,de}.ts`; +325 `vehicleDamages.*` keys (9239→9564 EN/DE) with `operator.damageCapture.*` reuse for damage type, severity, rental impact, and source; final closeout consolidates 25 audit-certified exact reuses into `tasks.*`/`health.*`/`common.*`/`vehicle.*`/`stations.*`/`fleet.*`/`docUpload.*`, canonical `getFormattingLocale`, pickup-context contract cleanup, deterministic same-mount DE→EN→DE test, and hook mutation payload tests.',
       'Presentation-only: queue/canvas/drawer/dialogs, insights, pickup context reason codes, host error keys, and toast messages. Raw descriptions, liability notes, task titles, filenames, and backend errors preserved.',
       'P261 enforce-clean exact scope (23 paths) — 0 findings target after inventory refresh. Machines unchanged in payloads.',
     ],

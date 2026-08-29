@@ -148,7 +148,6 @@ export const rentalVehicleDamagesEn = {
   'vehicleDamages.drawer.photoFallback': 'Photo',
   'vehicleDamages.drawer.evidenceAlt': 'Damage evidence',
   'vehicleDamages.drawer.placeOnVehicle': 'Place on vehicle',
-  'vehicleDamages.drawer.archive': 'Archive',
   'vehicleDamages.drawer.timeline.recorded': 'Damage recorded',
   'vehicleDamages.drawer.timeline.photoAdded': 'Photo added',
   'vehicleDamages.drawer.timeline.additionalPhoto': 'Additional photo',
@@ -247,8 +246,6 @@ export const rentalVehicleDamagesEn = {
   'vehicleDamages.photo.previewAlt': 'Upload preview',
   'vehicleDamages.photo.captionPlaceholder': 'Caption (optional)',
   'vehicleDamages.photo.upload': 'Upload photo',
-  'vehicleDamages.photo.uploading': 'Uploading…',
-  'vehicleDamages.photo.clear': 'Clear',
   'vehicleDamages.photo.hint': 'JPG, PNG, WebP or GIF · max 6 MB',
 
   'vehicleDamages.aiIntake.title': 'Analyze exterior photos',

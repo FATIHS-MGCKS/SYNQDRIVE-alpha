@@ -316,7 +316,7 @@ export function DamageDetailDrawer({
           {active && status !== 'ARCHIVED' && (
             <ActionButton
               icon="file-text"
-              label={t('vehicleDamages.drawer.archive')}
+              label={t('stations.action.archive')}
               disabled={busy}
               onClick={() => void run(() => onArchive(damage))}
             />

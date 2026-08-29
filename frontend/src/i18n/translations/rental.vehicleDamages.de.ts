@@ -148,7 +148,6 @@ export const rentalVehicleDamagesDe = {
   'vehicleDamages.drawer.photoFallback': 'Foto',
   'vehicleDamages.drawer.evidenceAlt': 'Schadensnachweis',
   'vehicleDamages.drawer.placeOnVehicle': 'Auf Fahrzeug platzieren',
-  'vehicleDamages.drawer.archive': 'Archivieren',
   'vehicleDamages.drawer.timeline.recorded': 'Schaden erfasst',
   'vehicleDamages.drawer.timeline.photoAdded': 'Foto hinzugefügt',
   'vehicleDamages.drawer.timeline.additionalPhoto': 'Weiteres Foto',
@@ -247,8 +246,6 @@ export const rentalVehicleDamagesDe = {
   'vehicleDamages.photo.previewAlt': 'Upload-Vorschau',
   'vehicleDamages.photo.captionPlaceholder': 'Bildunterschrift (optional)',
   'vehicleDamages.photo.upload': 'Foto hochladen',
-  'vehicleDamages.photo.uploading': 'Wird hochgeladen…',
-  'vehicleDamages.photo.clear': 'Leeren',
   'vehicleDamages.photo.hint': 'JPG, PNG, WebP oder GIF · max. 6 MB',
 
   'vehicleDamages.aiIntake.title': 'Außenfotos analysieren',
