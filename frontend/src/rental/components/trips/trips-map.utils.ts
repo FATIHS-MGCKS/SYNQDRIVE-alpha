@@ -1,7 +1,12 @@
 import type { TripBehaviorEvent } from '../../../lib/api';
+import type {
+  CanonicalRouteQuality,
+  RouteContinuityStatus,
+  RouteProcessingState,
+} from '../../../lib/api';
 import { getStressLabel, resolveDrivingStressScore } from '../../lib/scoreFormat';
+import { ROUTE_QUALITY_COPY } from './trips-view-ui';
 import type { TripMapQualityFlags, TripMapTripData } from './trips-map.types';
-import type { TripEnrichment } from './trips-map.types';
 import {
   formatTripDistance,
   formatTripDuration,
@@ -22,33 +27,59 @@ export function countTripEvents(trip: TripMapTripData): number | null {
   return (trip.harshBrakeCount ?? 0) + (trip.harshAccelCount ?? 0) + (trip.harshCornerCount ?? 0);
 }
 
+export function routeQualityLabel(routeQuality: CanonicalRouteQuality | null): string | null {
+  if (!routeQuality) return null;
+  return ROUTE_QUALITY_COPY[routeQuality];
+}
+
+export function continuityStatusLabel(status: RouteContinuityStatus): string | null {
+  return ROUTE_QUALITY_COPY.continuity[status];
+}
+
+export function processingStateLabel(state: RouteProcessingState): string | null {
+  return ROUTE_QUALITY_COPY.processing[state];
+}
+
 export function deriveTripMapQuality(
   trip: TripMapTripData | null,
-  enrichment: TripEnrichment | undefined,
-  routePointsCount: number,
-  routeError: string | null,
-  behaviorLoading: boolean,
+  input: {
+    routeQuality: CanonicalRouteQuality | null;
+    matchConfidence: number | null;
+    matchCoverage: number | null;
+    continuityStatus: RouteContinuityStatus;
+    processingState: RouteProcessingState;
+    routeProcessedAt: string | null;
+    segmentCount: number;
+    routeError: string | null;
+    behaviorLoading: boolean;
+  },
 ): TripMapQualityFlags {
-  const routeAvailable = routePointsCount > 0 && !routeError;
-  const matchConfidence = enrichment?.mapMatchConfidence ?? 0;
-  const hasMatched = (enrichment?.matchedGeometry?.length ?? 0) > 1;
+  const routeReady = input.processingState === 'READY';
+  const routeAvailable = routeReady && input.segmentCount > 0 && !input.routeError;
   const hfStatus = trip?.behaviorEnrichmentStatus;
 
   return {
     routeAvailable,
-    routeIncomplete: Boolean(routeError || trip?.detailsLimited || (routeAvailable && routePointsCount < 3)),
-    mapMatched: matchConfidence > 0.5 && hasMatched,
-    mapMatchConfidence: matchConfidence > 0 ? matchConfidence : null,
+    routeIncomplete:
+      Boolean(input.routeError) ||
+      input.continuityStatus === 'GAPS_PRESENT' ||
+      input.continuityStatus === 'INSUFFICIENT_DATA' ||
+      Boolean(trip?.detailsLimited) ||
+      (routeAvailable && input.segmentCount < 1),
+    routeQuality: input.routeQuality,
+    matchConfidence: input.matchConfidence,
+    matchCoverage: input.matchCoverage,
+    continuityStatus: input.continuityStatus,
+    processingState: input.processingState,
     hfAvailable: trip?.behaviorReady === true,
     hfLimited: hfStatus === 'SKIPPED_NO_HF_DATA' || trip?.detailsLimited === true,
     hfUnavailable: hfStatus === 'SKIPPED_NO_HF_DATA',
     hfAnalyzing:
-      behaviorLoading ||
+      input.behaviorLoading ||
       trip?.analysisInProgress === true ||
       trip?.behaviorReady === false,
-    gpsGap: Boolean(trip?.gapEnded),
-    routeUpdatedAt: enrichment?.enrichedAt ?? trip?.enrichedAt ?? null,
-    hasMatchedGeometry: hasMatched,
+    gpsGap: input.continuityStatus === 'GAPS_PRESENT' || Boolean(trip?.gapEnded),
+    routeUpdatedAt: input.routeProcessedAt ?? trip?.enrichedAt ?? null,
   };
 }
 

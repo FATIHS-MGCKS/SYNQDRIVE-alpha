@@ -1,5 +1,5 @@
 import { Icon } from '../ui/Icon';
-import type { TripBehaviorEvent, TripEnrichment } from './timeline.types';
+import type { TripBehaviorEvent } from './timeline.types';
 import type { TripTimelineItem, TripTimelineTrip } from './timeline.types';
 import { TripTimelineCard } from './TripTimelineCard';
 import { TripTimelineEmptyState, type TripTimelineEmptyVariant } from './TripTimelineEmptyState';
@@ -28,8 +28,6 @@ export interface TripTimelineProps {
   routePointsCount: number;
   routeLoading: boolean;
   routeError: string | null;
-  enrichments: Record<string, TripEnrichment>;
-  enrichingId: string | null;
   behaviorEvents: Record<string, TripBehaviorEvent[]>;
   behaviorLoadingId: string | null;
   selectedBehaviorEventId: string | null;
@@ -68,8 +66,6 @@ export function TripTimeline({
   routePointsCount,
   routeLoading,
   routeError,
-  enrichments,
-  enrichingId,
   behaviorEvents,
   behaviorLoadingId,
   selectedBehaviorEventId,
@@ -195,8 +191,6 @@ export function TripTimeline({
                           isDark={isDark}
                           orgId={orgId}
                           vehicleId={vehicleId}
-                          enrichment={enrichments[trip.id]}
-                          enriching={enrichingId === trip.id}
                           detailLoading={detailLoadingId === trip.id}
                           detailError={detailErrorId === trip.id}
                           behaviorEvents={behaviorEvents[trip.id] ?? []}

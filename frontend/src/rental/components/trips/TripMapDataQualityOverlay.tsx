@@ -1,6 +1,12 @@
 import { Icon } from '../ui/Icon';
 import { LiquidGlassLens } from '../../../components/surface';
+import { ROUTE_QUALITY_COPY } from './trips-view-ui';
 import type { TripMapQualityFlags } from './trips-map.types';
+import {
+  continuityStatusLabel,
+  processingStateLabel,
+  routeQualityLabel,
+} from './trips-map.utils';
 
 interface TripMapDataQualityOverlayProps {
   quality: TripMapQualityFlags;
@@ -39,28 +45,45 @@ export function TripMapDataQualityOverlay({ quality, routeLoading }: TripMapData
   const chips: Array<{ key: string; tone: 'ok' | 'watch' | 'muted' | 'danger'; label: string; icon: string }> = [];
 
   if (routeLoading) {
-    chips.push({ key: 'route-load', tone: 'muted', label: 'Route lädt…', icon: 'loader-2' });
-  } else if (!quality.routeAvailable) {
-    chips.push({ key: 'route-missing', tone: 'watch', label: 'Route unvollständig', icon: 'route' });
-  } else if (quality.routeIncomplete) {
-    chips.push({ key: 'route-partial', tone: 'watch', label: 'Route unvollständig', icon: 'route' });
-  } else {
-    chips.push({ key: 'route-ok', tone: 'ok', label: 'Route verfügbar', icon: 'route' });
-  }
-
-  if (quality.mapMatched) {
-    const pct = quality.mapMatchConfidence != null ? Math.round(quality.mapMatchConfidence * 100) : null;
+    chips.push({ key: 'route-load', tone: 'muted', label: ROUTE_QUALITY_COPY.processing.PROCESSING, icon: 'loader-2' });
+  } else if (quality.processingState !== 'READY') {
+    const processingLabel = processingStateLabel(quality.processingState) ?? ROUTE_QUALITY_COPY.routeFailed;
     chips.push({
-      key: 'matched',
-      tone: 'ok',
-      label: pct != null ? `Route abgeglichen · ${pct}%` : 'Route abgeglichen',
-      icon: 'check-circle',
+      key: 'route-processing',
+      tone: quality.processingState === 'FAILED' ? 'danger' : 'watch',
+      label: processingLabel,
+      icon: quality.processingState === 'RETRYING' ? 'refresh-cw' : 'route',
     });
-  } else if (quality.routeAvailable) {
-    chips.push({ key: 'unmatched', tone: 'muted', label: 'Nicht abgeglichen', icon: 'map' });
+  } else if (!quality.routeAvailable) {
+    chips.push({ key: 'route-missing', tone: 'watch', label: ROUTE_QUALITY_COPY.routeIncomplete, icon: 'route' });
+  } else if (quality.routeIncomplete) {
+    chips.push({ key: 'route-partial', tone: 'watch', label: ROUTE_QUALITY_COPY.routeIncomplete, icon: 'route' });
+  } else {
+    chips.push({ key: 'route-ok', tone: 'ok', label: ROUTE_QUALITY_COPY.routeAvailable, icon: 'route' });
   }
 
-  if (quality.gpsGap) {
+  const qualityLabel = routeQualityLabel(quality.routeQuality);
+  if (qualityLabel && quality.processingState === 'READY') {
+    const pct = quality.matchConfidence != null ? Math.round(quality.matchConfidence * 100) : null;
+    chips.push({
+      key: 'route-quality',
+      tone: quality.routeQuality === 'MATCHED' ? 'ok' : 'muted',
+      label:
+        quality.routeQuality === 'MATCHED' && pct != null
+          ? `${qualityLabel} · ${pct}%`
+          : qualityLabel,
+      icon: quality.routeQuality === 'MATCHED' ? 'check-circle' : 'map',
+    });
+  }
+
+  if (quality.continuityStatus === 'GAPS_PRESENT') {
+    const continuityLabel = continuityStatusLabel(quality.continuityStatus);
+    if (continuityLabel) {
+      chips.push({ key: 'continuity-gap', tone: 'watch', label: continuityLabel, icon: 'alert-triangle' });
+    }
+  }
+
+  if (quality.gpsGap && quality.continuityStatus !== 'GAPS_PRESENT') {
     chips.push({ key: 'gps-gap', tone: 'watch', label: 'GPS-Lücke', icon: 'alert-triangle' });
   }
 

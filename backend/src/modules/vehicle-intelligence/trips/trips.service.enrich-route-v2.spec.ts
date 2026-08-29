@@ -2,6 +2,9 @@ import { DrivingIntelligenceJobRetryableError } from '../driving-intelligence-jo
 import { TripsService } from './trips.service';
 
 describe('TripsService.enrichTrip — Route V2 wiring (R3)', () => {
+  const routeCanonicalRead = {
+    getCanonicalRouteForTrip: jest.fn(),
+  };
   it('AW — canonical path no longer calls legacy global routeMapMatcher', async () => {
     const routePoints = [
       { latitude: 52.52, longitude: 13.4, speedKmh: 50, timestamp: '2026-08-01T10:00:00.000Z' },
@@ -79,6 +82,7 @@ describe('TripsService.enrichTrip — Route V2 wiring (R3)', () => {
       segments as any,
       mapbox as any,
       routeArtifactMaterializer as any,
+      routeCanonicalRead as any,
     );
 
     await service.enrichTrip('org-1', 'veh-1', 'trip-1');
@@ -169,6 +173,7 @@ describe('TripsService.enrichTrip — Route V2 wiring (R3)', () => {
           matchResult,
         }),
       } as any,
+      routeCanonicalRead as any,
     );
 
     const result = await service.enrichTrip('org-1', 'veh-1', 'trip-1');
@@ -226,6 +231,7 @@ describe('TripsService.enrichTrip — Route V2 wiring (R3)', () => {
       } as any,
       { deriveRoadTypeDistribution: jest.fn(), analyzeSpeedingSections: jest.fn() } as any,
       routeArtifactMaterializer as any,
+      routeCanonicalRead as any,
     );
 
     await expect(service.enrichTrip('org-1', 'veh-1', 'trip-1')).rejects.toBeInstanceOf(

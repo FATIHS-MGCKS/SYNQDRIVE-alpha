@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { RouteContinuityStatus, RouteProcessingState } from '../../../lib/api';
 import { Icon } from '../ui/Icon';
 import { LiquidGlassLens } from '../../../components/surface';
 import { useAddress } from '../../../lib/useAddress';
 import { TRIPS_COPY, tv } from './trips-view-ui';
-import type { TripBehaviorEvent, TripEnrichment } from './trips-map.types';
+import type { TripBehaviorEvent } from './trips-map.types';
 import type { TripMapLayerState, TripMapPopoverState, TripMapRoutePoint, TripMapTripData } from './trips-map.types';
 import { TripMapDataQualityOverlay } from './TripMapDataQualityOverlay';
 import { TripMapLayerControls } from './TripMapLayerControls';
@@ -19,10 +20,15 @@ export interface TripsMapCardProps {
   vehicleId?: string;
   selectedTrip: TripMapTripData | null;
   routePoints: TripMapRoutePoint[];
+  routeSegments: [number, number][][];
+  routeQuality: import('../../../lib/api').CanonicalRouteQuality | null;
+  processingState: RouteProcessingState;
+  continuityStatus: RouteContinuityStatus;
+  matchConfidence: number | null;
+  routeProcessedAt: string | null;
+  matchCoverage: number | null;
   routeLoading: boolean;
   routeError: string | null;
-  enrichment?: TripEnrichment;
-  enrichingTrip: boolean;
   behaviorEvents: TripBehaviorEvent[];
   behaviorLoading: boolean;
   syncing: boolean;
@@ -41,10 +47,15 @@ export function TripsMapCard({
   vehicleId,
   selectedTrip,
   routePoints,
+  routeSegments,
+  routeQuality,
+  processingState,
+  continuityStatus,
+  matchConfidence,
+  matchCoverage,
+  routeProcessedAt,
   routeLoading,
   routeError,
-  enrichment,
-  enrichingTrip,
   behaviorEvents,
   behaviorLoading,
   syncing,
@@ -70,8 +81,30 @@ export function TripsMapCard({
   );
 
   const quality = useMemo(
-    () => deriveTripMapQuality(selectedTrip, enrichment, routePoints.length, routeError, behaviorLoading),
-    [selectedTrip, enrichment, routePoints.length, routeError, behaviorLoading],
+    () =>
+      deriveTripMapQuality(selectedTrip, {
+        routeQuality,
+        matchConfidence,
+        matchCoverage,
+        continuityStatus,
+        processingState,
+        routeProcessedAt,
+        segmentCount: routeSegments.length,
+        routeError,
+        behaviorLoading,
+      }),
+    [
+      selectedTrip,
+      routeQuality,
+      matchConfidence,
+      matchCoverage,
+      continuityStatus,
+      processingState,
+      routeProcessedAt,
+      routeSegments.length,
+      routeError,
+      behaviorLoading,
+    ],
   );
 
   const handleEventSelect = useCallback(
@@ -95,20 +128,13 @@ export function TripsMapCard({
     vehicleId,
     selectedTrip,
     routePoints,
-    enrichment,
+    routeSegments,
     behaviorEvents,
     layers,
     onEventSelect: handleEventSelect,
     selectedBehaviorEventId,
     endpointLabels,
   });
-
-  // Reset matched-route toggle when enrichment arrives
-  useEffect(() => {
-    if (quality.hasMatchedGeometry) {
-      setLayers((prev) => ({ ...prev, showMatchedRoute: true }));
-    }
-  }, [quality.hasMatchedGeometry, selectedTrip?.id]);
 
   // Keep popover anchored on map move/zoom
   useEffect(() => {
@@ -136,7 +162,7 @@ export function TripsMapCard({
     setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const hasRoute = routePoints.length > 0 && !routeError;
+  const hasRoute = quality.routeAvailable && !routeError;
   const frameHeight = selectedTrip
     ? 'h-[min(40vh,380px)] sm:h-[min(44vh,420px)] xl:h-auto xl:flex-1 xl:min-h-[360px]'
     : 'h-[200px] sm:h-[240px] xl:h-auto xl:flex-1 xl:min-h-[300px]';
@@ -226,15 +252,6 @@ export function TripsMapCard({
           </div>
         )}
 
-        {enrichingTrip && mapLoaded && !mapError && !routeLoading && (
-          <div className={`${tv.overlay} z-20 bg-background/25`}>
-            <div className="sq-map-liquid-loading flex flex-col items-center gap-2">
-              <Icon name="loader-2" className={`w-5 h-5 animate-spin ${isDark ? 'text-foreground' : 'text-status-info'}`} />
-              <span className="text-xs font-medium text-muted-foreground">{TRIPS_COPY.enrichingTrip}</span>
-            </div>
-          </div>
-        )}
-
         {selectedTrip && mapLoaded && !mapError && (
           <>
             <TripMapSummaryOverlay trip={selectedTrip} isDark={isDark} />
@@ -246,7 +263,6 @@ export function TripsMapCard({
           <>
             <TripMapLayerControls
               layers={layers}
-              hasMatchedGeometry={quality.hasMatchedGeometry}
               hasRoute={hasRoute}
               onToggle={toggleLayer}
             />

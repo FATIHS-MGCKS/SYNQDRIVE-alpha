@@ -145,6 +145,8 @@ export class TripMetricsService implements OnModuleInit {
   readonly tripRouteV2MatchCoverage: Histogram<string>;
   readonly tripRouteV2MatchConfidence: Histogram<string>;
   readonly tripRouteV2MatchDurationMs: Histogram<string>;
+  readonly tripRouteV2CanonicalReadTotal: Counter<string>;
+  readonly tripRouteV2CanonicalSegmentCount: Histogram<string>;
 
   /** Battery V2 — low-cardinality labels only (Prompt 68). */
   readonly batteryProviderObservationTotal: Counter<string>;
@@ -1175,6 +1177,20 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_trip_route_v2_match_duration_ms',
       help: 'Trip Route V2 matching pipeline duration in milliseconds',
       buckets: [100, 500, 1000, 2500, 5000, 15000, 30000, 60000],
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2CanonicalReadTotal = new Counter({
+      name: 'synqdrive_trip_route_v2_canonical_read_total',
+      help: 'Canonical trip route read-model responses by processing state and quality',
+      labelNames: ['processing_state', 'route_quality', 'ready'],
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2CanonicalSegmentCount = new Histogram({
+      name: 'synqdrive_trip_route_v2_canonical_segment_count',
+      help: 'Segment count returned by canonical trip route reads',
+      buckets: [1, 2, 3, 5, 10, 20],
       registers: [this.registry],
     });
 

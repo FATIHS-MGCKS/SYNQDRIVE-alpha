@@ -1,4 +1,9 @@
-import type { TripBehaviorEvent, TripEnrichment } from '../../../lib/api';
+import type { TripBehaviorEvent } from '../../../lib/api';
+import type {
+  CanonicalRouteQuality,
+  RouteContinuityStatus,
+  RouteProcessingState,
+} from '../../../lib/api';
 
 export interface TripMapRoutePoint {
   latitude: number;
@@ -57,21 +62,22 @@ export interface TripMapLayerState {
   showStops: boolean;
   showDrivingEvents: boolean;
   showAbuseEvents: boolean;
-  showMatchedRoute: boolean;
 }
 
 export interface TripMapQualityFlags {
   routeAvailable: boolean;
   routeIncomplete: boolean;
-  mapMatched: boolean;
-  mapMatchConfidence: number | null;
+  routeQuality: CanonicalRouteQuality | null;
+  matchConfidence: number | null;
+  matchCoverage: number | null;
+  continuityStatus: RouteContinuityStatus;
+  processingState: RouteProcessingState;
   hfAvailable: boolean;
   hfLimited: boolean;
   hfUnavailable: boolean;
   hfAnalyzing: boolean;
   gpsGap: boolean;
   routeUpdatedAt: string | null;
-  hasMatchedGeometry: boolean;
 }
 
 export interface TripMapPopoverState {
@@ -80,4 +86,4 @@ export interface TripMapPopoverState {
   y: number;
 }
 
-export type { TripEnrichment, TripBehaviorEvent };
+export type { TripBehaviorEvent };

@@ -1096,3 +1096,121 @@ Distance-weighted aggregation over successful chunks (see `aggregateChunkMetrics
 | `MULTIPLE_MATCHINGS_POLICY` | Select highest `confidence`; tie-break by `distance` |
 | `TIMESTAMP_POLICY` | Include only when all present, valid, strictly increasing; else omit for chunk |
 | `QUALITY_METRIC_SEGMENT_SEMANTICS` | Seam/jump/distance/coverage/confidence never cross UNKNOWN gaps; overlap deduped in weights |
+
+---
+
+## Stage R4 — Canonical Route API + Frontend Consumer Cutover
+
+**Status:** IMPLEMENTED (PR pending merge)  
+**Base commit:** `65c5824a8` (R3 merged #1415)  
+**Algorithm version (read):** uses persisted artifact `algorithmVersion` (`route-v2-r3` when matched)
+
+### Hard gates
+
+| Gate | Status |
+|------|--------|
+| MAPBOX_BEHAVIOR_CHANGE | NONE |
+| BACKFILL | NONE |
+| SECOND_SCHEDULER | NONE |
+| PRODUCTION_MUTATIONS | NONE |
+
+### Canonical route endpoint
+
+Evolved existing endpoint in place (no `/route/v2`):
+
+`GET /vehicles/:vehicleId/trips/:tripId/route` → `CanonicalTripRouteResponse`
+
+Implemented by `TripRouteCanonicalReadService` (`trip-route-canonical-read.service.ts`).
+
+**Versioning decision:** in-place evolution — grep shows rental Trips tab is the only runtime consumer.
+
+### API contract (read model)
+
+```typescript
+CanonicalTripRouteResponse {
+  tripId, vehicleId
+  routeQuality: 'MATCHED' | 'FILTERED' | 'RAW' | null
+  geometry: { type: 'MultiLineString', coordinates: [segment][] } | null
+  source: { provider, algorithmVersion, processedAt }
+  quality: { matchConfidence, matchCoverage }
+  counts: { sourcePointCount, filteredPointCount, matchedPointCount }
+  continuity: { status: COMPLETE | GAPS_PRESENT | INSUFFICIENT_DATA, hasUnknownGaps, gapCount }
+  status: { processingState: READY | PROCESSING | RETRYING | FAILED | UNAVAILABLE, ready, retryableFailure, failureReason? }
+  speedPoints: measured overlay source (VehicleTripWaypoint)
+  points: deprecated alias of speedPoints for cutover compatibility
+}
+```
+
+`routeQuality` is display quality only — **not** processing state.
+
+### Server fallback resolution
+
+Precedence when artifact is READY:
+
+1. **MATCHED** — `matchedGeometryJson` split by `diagnostics.r3.matchedSegmentBoundaries`
+2. **FILTERED** — `filteredGeometryJson` split by `diagnostics.gaps`
+3. **RAW** — reconstruct from `VehicleTripWaypoint`, gap-split via diagnostics or ≥180s timestamp gaps
+
+Invalid MATCHED geometry (e.g. `<2` coords) safely falls back to FILTERED → RAW. No frontend geometry validity decisions.
+
+### Segment / gap contract
+
+- Response geometry is always segment-aware `MultiLineString` (one ring per continuous segment, min 2 coords).
+- UNKNOWN gaps never rendered as connecting lines.
+- Utilities: `trip-route-segment-geometry.ts` (`splitMatchedGeometryByBoundaries`, `splitFilteredGeometryByGaps`).
+
+### Processing state derivation
+
+No new DB lifecycle field. Derived from:
+
+- `VehicleTripRouteArtifact.processedAt` → **READY**
+- Latest `DrivingIntelligenceJob` (`DRIVING_ROUTE_ENRICH`)
+- Latest `DrivingAnalysisStage` (`ROUTE`) on newest analysis run
+
+While not READY: `routeQuality = null`, `geometry = null` (no premature RAW display).
+
+### Frontend hook cutover
+
+- `useTripRoute` consumes canonical response only (5 min in-memory cache per vehicle/trip, poll while PROCESSING/RETRYING).
+- Map renders one GeoJSON `LineString` feature per segment — no concatenation, no `densifyRoute` on canonical geometry.
+- `useAutoTripEnrichment` removed from Trips tab; trip selection does **not** POST `/enrich`.
+
+### Legacy POST `/enrich`
+
+Retained for durable `DRIVING_ROUTE_ENRICH` / admin manual re-analysis. No automatic UI trigger on trip selection after R4.
+
+### Quality / continuity / processing UI
+
+Separate dimensions in `TripMapDataQualityOverlay`:
+
+| Dimension | Source |
+|-----------|--------|
+| Quality | `routeQuality` — Straßenabgleich / GPS-bereinigt / Telemetrie roh |
+| Continuity | `continuity.status` — Route unvollständig when gaps |
+| Processing | `status.processingState` — loading/retry/failed badges |
+
+Removed `showMatchedRoute` toggle (canonical route is single truth).
+
+### Speed overlay truth model
+
+Speed coloring uses `speedPoints` from measured `VehicleTripWaypoint` path only — **not** index-aligned onto MATCHED vertices.
+
+### Stop / event markers
+
+Behavior event markers remain at measured/provider coordinates; independent of matched geometry.
+
+### Caching
+
+- Frontend: module cache keyed `vehicleId:tripId`, TTL 5 min; reload bypasses cache.
+- Trip list queries unchanged — no artifact geometry in list projection.
+- Backend: stateless GET; observability via `synqdrive_trip_route_v2_canonical_read_total`.
+
+### Tests
+
+Backend: segment geometry, processing derivation, canonical read service (MATCHED/FILTERED/RAW, gaps, processing, malformed MATCHED fallback).
+
+Frontend: `trips-route-canonical.test.ts` (quality/continuity/processing separation).
+
+### Explicit statement
+
+**Mapbox matching unchanged. No backfill. No second scheduler. No splines.**
