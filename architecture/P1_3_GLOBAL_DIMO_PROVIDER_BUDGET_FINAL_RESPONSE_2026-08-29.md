@@ -7,7 +7,7 @@
 
 PR = #1417  
 BRANCH = `cursor/p13-global-dimo-provider-budget`  
-HEAD_COMMIT = `9e4211c1a` (pre-final-response-doc; see commit after this file is added)  
+HEAD_COMMIT = `6e22fda18e3234d44f7f3e64d7fb1965bb3ac5ed`  
 BASE_MAIN_COMMIT = `d221e766374dea2360b2e19636504882d5d662ce` (P1.2 FINAL-6 merged via #1409)  
 STATUS = **DRAFT PR — NOT MERGED — PRODUCTION_MUTATIONS = NONE**
 
