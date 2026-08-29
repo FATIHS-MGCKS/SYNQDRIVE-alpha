@@ -3,8 +3,11 @@ import { REPAIR_STATUS } from './reconciliation.types';
 import { TripOverlapDetector } from '../detectors/trip-overlap.detector';
 
 /**
- * Section G — prove repaired trips enqueue the same post-finalize enrichment
- * chain as live-finalized trips (post-finalize analysis + behavior enrichment).
+ * Section G — repair enrichment orchestration (unit-style integration).
+ *
+ * Classification: orchestration/unit-style integration test.
+ * Mocks TripDecisionEngine persistence — does NOT exercise real Prisma writes,
+ * BullMQ, or Driver Score computation. Proves enqueue wiring only.
  */
 
 const T0 = Date.parse('2026-08-01T08:00:00.000Z');

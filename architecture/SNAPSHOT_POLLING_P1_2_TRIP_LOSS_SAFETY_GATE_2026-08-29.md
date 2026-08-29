@@ -203,9 +203,10 @@ gaps filled by reconciliation — not permanent loss.
 
 ## Verdict
 
-**SAFE TO MERGE P1.2**
+**DO NOT MERGE — see FINAL-2 gate**
 
-Blocker resolved: promotion bypass cadence leak fixed with explicit tier-transition
-semantics. No credible permanent trip-loss path identified across audited scenarios.
+Prior gate (`SNAPSHOT_POLLING_P1_2_TRIP_LOSS_SAFETY_GATE_2026-08-29.md`) addressed
+permanent total trip loss. FINAL-2 (`SNAPSHOT_POLLING_P1_2_FINAL2_PARTIAL_TRIP_SAFETY_GATE_2026-08-29.md`)
+identified delayed-start truncation and fragmented reconciliation blockers.
 
 P1.3+ untouched.

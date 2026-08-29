@@ -36,6 +36,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'snapshot-polling-p1-2-final2-partial-trip-safety-gate-2026-08-29',
+    version: '4.9.998',
+    title: 'P1.2 FINAL-2 — Partial-trip / delayed-start safety gate (DO NOT MERGE)',
+    summary: [
+      'FINAL-2 verdict: DO NOT MERGE — delayed-start truncation + fragmented reconciliation blockers.',
+      'LONG_IDLE 30min poll + 5min start lookback → live trips lose up to ~29min physical prefix (A2/A3 executable tests).',
+      'RESTING 5min poll + confirmation delay → up to ~5min prefix truncation (A1).',
+      'Default shadow reconciliation suppresses full DIMO repair when suffix live trip overlaps — original start not recovered.',
+      'Enforce mode creates prefix + suffix canonical trips (fragments one physical drive).',
+      'P1.2 ~377 jobs/min at N=1000 is throughput-negative with concurrency=5 (capacity ~20–40/min).',
+      'Fast reconciliation cohort corrected: providerFetchedAt refresh makes ~100% of fleet fast-eligible, not 15–25%.',
+      '27 new executable safety-gate tests. Minimum safe path: cap LONG_IDLE cadence OR implement boundary-extend repair.',
+    ],
+    reason:
+      'PR #1409 FINAL-2 gate — prove P1.2 cannot silently truncate or fragment canonical trips when first observation is delayed by tier polling.',
+    previousBehavior:
+      'Prior gate addressed permanent total loss; did not test delayed-start partial trips or one-drive-one-canonical invariant.',
+    details:
+      'backend: start-boundary-window.util.ts, *safety-gate.spec.ts, fast-reconciliation-cohort.spec.ts, snapshot-throughput-capacity.spec.ts. architecture/SNAPSHOT_POLLING_P1_2_FINAL2_PARTIAL_TRIP_SAFETY_GATE_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T11:35:00.000Z',
+  },
+  {
     id: 'snapshot-polling-p1-2-trip-loss-safety-gate-2026-08-29',
     version: '4.9.997',
     title: 'P1.2 FINAL — Trip-loss safety gate (promotion cadence fix + audit)',

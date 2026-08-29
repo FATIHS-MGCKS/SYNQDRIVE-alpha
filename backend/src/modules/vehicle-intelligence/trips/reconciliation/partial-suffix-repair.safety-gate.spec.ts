@@ -1,0 +1,270 @@
+import { TripOverlapDetector, type TripOverlapEvidence } from '../detectors/trip-overlap.detector';
+import { assessCoverage } from '../detectors/trip-coverage.util';
+import { TripReconciliationService } from './trip-reconciliation.service';
+import { TripOverlapDetector as OverlapCtor } from '../detectors/trip-overlap.detector';
+import { REPAIR_STATUS } from './reconciliation.types';
+
+/**
+ * FINAL-2 safety gate — partial suffix live trip vs full DIMO segment (B, C, E4–E7).
+ */
+
+const T0 = Date.parse('2026-08-29T12:00:00.000Z');
+const at = (minutes: number) => new Date(T0 + minutes * 60_000);
+
+const row = (id: string, startMin: number, endMin: number) => ({
+  id,
+  startTime: at(startMin),
+  endTime: at(endMin),
+  tripStatus: 'COMPLETED',
+});
+
+function overlapEvidence(
+  mode: 'legacy' | 'shadow' | 'enforce',
+  existingTrips: ReturnType<typeof row>[],
+  candidateStartMin = 1,
+  candidateEndMin = 50,
+): Promise<TripOverlapEvidence> {
+  const findMany = jest.fn().mockResolvedValue(existingTrips);
+  const detector = new TripOverlapDetector({ vehicleTrip: { findMany } } as never);
+  return detector
+    .evaluate({
+      vehicleId: 'veh-1',
+      dimoTokenId: 1,
+      profile: 'ICE',
+      phase: 'duplicate_or_overlap_check',
+      candidateStart: at(candidateStartMin),
+      candidateEnd: at(candidateEndMin),
+      coverageMode: mode,
+    } as never)
+    .then((f) => f.evidence as TripOverlapEvidence);
+}
+
+const candidate = (startMin = 1, endMin = 50) => ({
+  source: 'DIMO_SEGMENT' as const,
+  segmentId: 'seg-full',
+  startTime: at(startMin),
+  endTime: at(endMin),
+  confidence: 'HIGH' as const,
+  reason: 'DIMO segment without canonical trip',
+  startDetectionMode: 'DIMO_IGNITION_REPAIR',
+  endDetectionMode: 'DIMO_IGNITION_REPAIR',
+  startLatitude: 51.1,
+  startLongitude: 9.2,
+  endLatitude: 51.3,
+  endLongitude: 9.4,
+  distanceKm: 42,
+  detectorEvidence: { detector: 'DimoSegmentFallback' },
+});
+
+function buildReconciliationHarness(mode: 'legacy' | 'shadow' | 'enforce', trips: ReturnType<typeof row>[]) {
+  const tripRepair = {
+    findUnique: jest.fn().mockResolvedValue(null),
+    create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+      id: data.id,
+      status: data.status,
+    })),
+    update: jest.fn(async () => undefined),
+  };
+
+  const prisma = {
+    vehicle: {
+      findUnique: jest.fn().mockResolvedValue({
+        organizationId: 'org-1',
+        dimoVehicle: { tokenId: 77 },
+        tripDetectionState: { detectionProfile: 'ICE' },
+      }),
+    },
+    vehicleTrip: { findMany: jest.fn().mockResolvedValue(trips) },
+    tripRepair,
+  };
+
+  const decisionEngine = {
+    createRepairedTrip: jest.fn(async (input: Record<string, unknown>) => ({
+      id: `trip-${String(input.startTime)}`,
+      startTime: input.startTime,
+      endTime: null,
+    })),
+    finalizeRepairedTrip: jest.fn(async () => undefined),
+  };
+
+  const configService = {
+    get: jest.fn((key: string) =>
+      key === 'worker.tripRepairCoverageMode' ? mode : undefined,
+    ),
+  };
+
+  const tripMetrics = {
+    duplicateCandidates: { inc: jest.fn() },
+    repairActions: { inc: jest.fn() },
+  };
+
+  const service = new TripReconciliationService(
+    prisma as never,
+    decisionEngine as never,
+    {} as never,
+    new OverlapCtor(prisma as never),
+    {} as never,
+    undefined as never,
+    undefined as never,
+    undefined as never,
+    undefined,
+    undefined,
+    tripMetrics as never,
+    configService as never,
+  );
+
+  (service as never as Record<string, unknown>).collectRepairCandidates = jest
+    .fn()
+    .mockResolvedValue([candidate()]);
+  (service as never as Record<string, unknown>).resolveEffectiveConfidence = jest
+    .fn()
+    .mockResolvedValue('HIGH');
+
+  return { service, decisionEngine, tripRepair, prisma };
+}
+
+describe('partial suffix live trip vs full DIMO segment (B)', () => {
+  const existingSuffix = [row('live-suffix', 30, 50)];
+
+  it.each(['legacy', 'shadow', 'enforce'] as const)(
+    '%s mode — overlap evidence for DIMO 12:01–12:50 vs live 12:30–12:50',
+    async (mode) => {
+      const evidence = await overlapEvidence(mode, existingSuffix);
+
+      expect(evidence.coverageVerdict).toBe('PARTIALLY_COVERED');
+      expect(evidence.coverage.prefixMissingSeconds).toBe(29 * 60);
+      expect(evidence.coverage.suffixMissingSeconds).toBe(0);
+      expect(evidence.repairableSpans).toEqual([
+        { start: at(1).toISOString(), end: at(30).toISOString() },
+      ]);
+
+      if (mode === 'legacy' || mode === 'shadow') {
+        expect(evidence.legacyVerdict).toBe('TRIGGERED');
+        expect(evidence.effectiveDecision).toBe('SUPPRESS');
+        expect(evidence.decisionSource).toBe('legacy');
+      } else {
+        expect(evidence.effectiveDecision).toBe('ACCEPT');
+        expect(evidence.decisionSource).toBe('coverage');
+      }
+    },
+  );
+
+  it('shadow reconciliation suppresses repair — original 12:01 start NOT recovered', async () => {
+    const h = buildReconciliationHarness('shadow', existingSuffix);
+    const result = await (
+      h.service as never as {
+        detectAndRepairMissingTrips: (
+          vehicleId: string,
+          from: Date,
+          to: Date,
+          options?: { useDimoSegmentFallback?: boolean },
+        ) => Promise<{ proposed: number; applied: number; rejected: number }>;
+      }
+    ).detectAndRepairMissingTrips('veh-1', at(-10), at(60), {
+      useDimoSegmentFallback: true,
+    });
+
+    expect(result.applied).toBe(0);
+    expect(h.decisionEngine.createRepairedTrip).not.toHaveBeenCalled();
+    expect(h.tripRepair.create.mock.calls[0][0].data.status).toBe(REPAIR_STATUS.SUPPRESSED);
+  });
+
+  it('enforce reconciliation creates prefix trip — TWO canonical trips, not one', async () => {
+    const h = buildReconciliationHarness('enforce', existingSuffix);
+    const result = await (
+      h.service as never as {
+        detectAndRepairMissingTrips: (
+          vehicleId: string,
+          from: Date,
+          to: Date,
+          options?: { useDimoSegmentFallback?: boolean },
+        ) => Promise<{ proposed: number; applied: number }>;
+      }
+    ).detectAndRepairMissingTrips('veh-1', at(-10), at(60), {
+      useDimoSegmentFallback: true,
+    });
+
+    expect(result.applied).toBe(1);
+    expect(h.decisionEngine.createRepairedTrip).toHaveBeenCalledTimes(1);
+    expect(h.decisionEngine.finalizeRepairedTrip).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ endTime: at(30) }),
+    );
+  });
+});
+
+describe('one physical drive = one canonical trip invariant (C)', () => {
+  it('assessCoverage shows suffix-only canonical trip leaves 29min prefix uncovered', () => {
+    const assessment = assessCoverage(at(1), at(50), [
+      {
+        id: 'live-suffix',
+        startTime: at(30),
+        endTime: at(50),
+        tripStatus: 'COMPLETED',
+      },
+    ]);
+
+    expect(assessment.verdict).toBe('PARTIALLY_COVERED');
+    expect(assessment.repairableSpans).toHaveLength(1);
+    expect(assessment.repairableSpans[0]).toEqual({ start: at(1), end: at(30) });
+  });
+
+  it('no current mode produces a single merged canonical trip for suffix partial + full DIMO segment', async () => {
+    const shadow = await overlapEvidence('shadow', [row('live', 30, 50)]);
+    const enforce = await overlapEvidence('enforce', [row('live', 30, 50)]);
+
+    expect(shadow.effectiveDecision).toBe('SUPPRESS');
+    expect(enforce.repairableSpans).toHaveLength(1);
+    expect(enforce.repairableSpans[0].start).toBe(at(1).toISOString());
+    // Enforce repairs prefix only — live suffix trip remains → 2 trips total.
+  });
+});
+
+describe('executable regression matrix (E4–E7)', () => {
+  it('E4/E5 — partial suffix + full DIMO segment in shadow vs enforce', async () => {
+    const shadow = buildReconciliationHarness('shadow', [row('live', 30, 50)]);
+    const enforce = buildReconciliationHarness('enforce', [row('live', 30, 50)]);
+
+    const shadowResult = await (
+      shadow.service as never as {
+        detectAndRepairMissingTrips: (
+          a: string,
+          b: Date,
+          c: Date,
+          o?: { useDimoSegmentFallback?: boolean },
+        ) => Promise<{ applied: number }>;
+      }
+    ).detectAndRepairMissingTrips('veh-1', at(-10), at(60), { useDimoSegmentFallback: true });
+
+    const enforceResult = await (
+      enforce.service as never as {
+        detectAndRepairMissingTrips: (
+          a: string,
+          b: Date,
+          c: Date,
+          o?: { useDimoSegmentFallback?: boolean },
+        ) => Promise<{ applied: number }>;
+      }
+    ).detectAndRepairMissingTrips('veh-1', at(-10), at(60), { useDimoSegmentFallback: true });
+
+    expect(shadowResult.applied).toBe(0);
+    expect(enforceResult.applied).toBe(1);
+  });
+
+  it('E6 — partial prefix live trip + full DIMO segment is also fragmented under enforce', async () => {
+    const evidence = await overlapEvidence('enforce', [row('live-prefix', 1, 20)]);
+    expect(evidence.repairableSpans).toEqual([
+      { start: at(20).toISOString(), end: at(50).toISOString() },
+    ]);
+  });
+
+  it('E7 — interior gap leaves repairable interior span only', async () => {
+    const evidence = await overlapEvidence('enforce', [
+      row('t1', 1, 10),
+      row('t2', 40, 50),
+    ]);
+    expect(evidence.repairableSpans).toEqual([
+      { start: at(10).toISOString(), end: at(40).toISOString() },
+    ]);
+  });
+});
