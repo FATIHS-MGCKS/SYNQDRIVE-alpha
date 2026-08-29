@@ -13,6 +13,7 @@ on:
     branches:
       - main
       - 'cursor/legal-docs-*'
+      - 'cursor/p13-global-dimo-provider-budget'
 
 concurrency:
   group: legal-docs-ci-${{ github.ref }}
