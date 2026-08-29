@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'energy-events-e3a-outage-recovery-closed-2026-08-29',
+    version: '4.9.996',
+    title: 'Energy Events E3A — outage recovery CLOSED (final post-mutation closure gate)',
+    summary: [
+      'Read-only final closure gate §§2–9 passed on production after Option B mutation: row count 119 (= expected), M1 present exactly once, 16 reviewed legacy fragments absent, excluded overlap tail + R1 + R2 preserved, no unauthorized removals.',
+      'First forensic pass: WOULD_CREATE=0, WOULD_UPDATE=0, ALREADY_IDENTICAL=4, FETCH_FAILED=0, MANUAL_REVIEW_UNRESOLVED=0, gateBlockers=[].',
+      'Second independent forensic pass: identical convergence — no CREATE/UPDATE, M1/R1/R2/F1 all ALREADY_IDENTICAL, 16 legacy rows not recreated.',
+      'Validation passes were read-only (mutation guard + before/after table digest unchanged). Secured pre-mutation backup retained. automatic pruneAuthority remained false.',
+      'E3A outage recovery is CLOSED. E3B not started.',
+    ],
+    reason:
+      'Operator-authorized Option B mutation completed; mandatory post-mutation forensic closure and second-run idempotency proof required before closing the Jul–Aug energy-events outage.',
+    previousBehavior:
+      'Outage gate open on MANUAL_REVIEW_UNRESOLVED:1; Jul-16 recharge fragmented across 16 legacy singleton rows without canonical M1.',
+    details:
+      'Ops: energy-events-forensic-closure.ts, e3a-closure-gate-verify.ts (read-only). Private manifest/backup on secured VPS storage only.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T08:02:00.000Z',
+  },
+  {
     id: 'energy-events-e3a-option-b-m1-mutation-executed-2026-08-29',
     version: '4.9.995',
     title: 'Energy Events E3A Option B — M1 canonicalization executed (closed-set CREATE + 16-ID DELETE)',
