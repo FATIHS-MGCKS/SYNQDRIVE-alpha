@@ -7,7 +7,7 @@
 
 PR = #1417  
 BRANCH = `cursor/p13-global-dimo-provider-budget`  
-HEAD_COMMIT = `2d86751345478b77050a33b47b136da02bd6ec9a`  
+HEAD_COMMIT = `92ed6dc645746fae2d84dc895850eac633ddf9c4`  
 BASE_MAIN_COMMIT = `d221e766374dea2360b2e19636504882d5d662ce` (P1.2 FINAL-6 merged via #1409)  
 STATUS = **OPEN — READY FOR REVIEW — NOT MERGED — PRODUCTION_MUTATIONS = NONE**
 
@@ -42,8 +42,8 @@ N1000_RECOMMENDED_CONFIG = **See §12**
 PROVIDER_CEILING_VERIFIED = **NO**  
 N1000_CERTIFICATION = **CONDITIONALLY_CERTIFIED** (software architecture + tests; provider quota externally unverified)  
 PRODUCTION_MUTATIONS = **NONE**  
-TESTS = **GitHub CI (HEAD `2d8675134`) — 25/25 SUCCESS** — Vehicle Detail CI gate 12/12 + Legal Documents CI gate 13/13 (Install, Lint, Typecheck, Backend unit, Backend security, Backend boundary repair PostgreSQL, Backend integration, Migration PostgreSQL, Prisma validate, Frontend component, Playwright E2E, Accessibility axe, Security scan, Production build, CI gate)  
-CI_STATUS = **SUCCESS** — runs `33270526417` (Vehicle Detail) + `33270526422` (Legal Documents) on `cursor/p13-global-dimo-provider-budget` @ `2d8675134` (push event)  
+TESTS = **GitHub CI (HEAD `92ed6dc64`) — 25/25 SUCCESS** — Vehicle Detail CI gate 12/12 + Legal Documents CI gate 13/13  
+CI_STATUS = **SUCCESS** — runs `33271115433` (Vehicle Detail) + `33271115435` (Legal Documents) on `cursor/p13-global-dimo-provider-budget` @ `92ed6dc64` (push event)  
 NEXT_STAGE = **P1.7** (scheduler leader election before horizontal PM2 scale) **then** **P1.4** (reconciliation mutex/pacing under burst)
 
 ---
@@ -539,7 +539,7 @@ WORKER_SNAPSHOT_MAX_ENQUEUE_PER_TICK=0
 MERGE_RECOMMENDATION = **APPROVE_WITH_CONDITIONS**
 
 **Reason:**
-- P1.3 implementation complete; GitHub CI **SUCCESS** on final HEAD (`2d8675134`).
+- P1.3 implementation complete; GitHub CI **SUCCESS** on final HEAD (`92ed6dc64`).
 - Trip-loss regression covered by CI (boundary repair PostgreSQL, unit, integration, E2E).
 - Fail-closed semantics proven in unit tests; typecheck fix (`dimo-triggers.service.spec.ts` mock executor) verified in CI.
 - **Conditions:**
@@ -558,7 +558,8 @@ MERGE_RECOMMENDATION = **APPROVE_WITH_CONDITIONS**
 | Run | HEAD | Event | Status | Notes |
 |-----|------|-------|--------|-------|
 | `33265303743` / `33265303767` | `9e4211c1a` | pull_request (open) | **FAILURE** | Typecheck: `dimo-triggers.service.spec.ts` missing 3rd constructor arg — fixed in `6e22fda18` |
-| `33270526417` / `33270526422` | `2d8675134` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Final artifact HEAD — 25/25 jobs green |
+| `33271115433` / `33271115435` | `92ed6dc64` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Final HEAD — 25/25 jobs green |
+| `33270526417` / `33270526422` | `2d8675134` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Artifact sync — 25/25 jobs green |
 | `33270215235` / `33270215225` | `962d7377d` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | CI recovery commit — 25/25 jobs green |
 | `33269591547` / `33269591549` | `28e08868b` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Artifact CI sync — 25/25 jobs green |
 | `33268961626` / `33268961607` | `5db28f771` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | CI infra enablement — 25/25 jobs green |
