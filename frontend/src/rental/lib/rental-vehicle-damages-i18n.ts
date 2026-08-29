@@ -40,16 +40,25 @@ export type VehicleDamageHostErrorKey =
 
 export type VehicleDamageToastSuccessKey =
   | 'vehicleDamages.toast.damageRecorded'
+  | 'vehicleDamages.toast.damageRecordedDescription'
   | 'vehicleDamages.toast.damagePositioned'
+  | 'vehicleDamages.toast.damagePositionedDescription'
   | 'vehicleDamages.toast.photoAdded'
+  | 'vehicleDamages.toast.photoAddedDescription'
   | 'vehicleDamages.toast.markedInRepair'
   | 'vehicleDamages.toast.markedRepaired'
+  | 'vehicleDamages.toast.markedRepairedDescription'
   | 'vehicleDamages.toast.archived'
   | 'vehicleDamages.toast.liabilityUpdated'
+  | 'vehicleDamages.toast.liabilityUpdatedDescription'
   | 'vehicleDamages.toast.depositPrepared'
+  | 'vehicleDamages.toast.depositPreparedDescription'
   | 'vehicleDamages.toast.chargePrepared'
+  | 'vehicleDamages.toast.chargePreparedDescription'
   | 'vehicleDamages.toast.repairTaskCreated'
-  | 'vehicleDamages.toast.damagesCreated';
+  | 'vehicleDamages.toast.repairTaskCreatedDescription'
+  | 'vehicleDamages.toast.damagesCreated'
+  | 'vehicleDamages.toast.damagesCreatedDescription';
 
 export type VehicleDamageToastErrorKey =
   | 'vehicleDamages.toast.actionFailed'

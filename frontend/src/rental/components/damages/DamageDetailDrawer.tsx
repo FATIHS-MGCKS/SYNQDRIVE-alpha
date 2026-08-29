@@ -12,7 +12,7 @@ import { canCreateRepairTaskForDamage } from '../../lib/damage-repair-task';
 import {
   formatDamageDateLocale,
   formatDamageEuroCents,
-  resolveDamageEvidenceStatusLabel,
+  resolveEvidenceStatusLabel,
   resolveDamageLocationViewLabel,
   resolveDamageSeverityLabel,
   resolveDamageSourceLabel,
@@ -221,7 +221,7 @@ export function DamageDetailDrawer({
           />
           <InfoTile
             label={t('vehicleDamages.drawer.field.evidence')}
-            value={resolveDamageEvidenceStatusLabel(t, damage.evidenceStatus)}
+            value={resolveEvidenceStatusLabel(t, damage.evidenceStatus)}
           />
           <InfoTile label={t('vehicleDamages.drawer.field.source')} value={resolveDamageSourceLabel(t, damage.source)} />
         </section>
