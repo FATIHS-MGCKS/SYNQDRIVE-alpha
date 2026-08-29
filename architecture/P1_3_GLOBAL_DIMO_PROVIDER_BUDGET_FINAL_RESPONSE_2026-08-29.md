@@ -7,9 +7,9 @@
 
 PR = #1417  
 BRANCH = `cursor/p13-global-dimo-provider-budget`  
-HEAD_COMMIT = `22a38f472fc2210cc1bfa21e6192c04d228799a06`  
+HEAD_COMMIT = `5db28f77173c402743459e8d4830d70bea254001`  
 BASE_MAIN_COMMIT = `d221e766374dea2360b2e19636504882d5d662ce` (P1.2 FINAL-6 merged via #1409)  
-STATUS = **DRAFT PR — NOT MERGED — PRODUCTION_MUTATIONS = NONE**
+STATUS = **OPEN — READY FOR REVIEW — NOT MERGED — PRODUCTION_MUTATIONS = NONE**
 
 P1_3_VERDICT = **COMPLETE — CONDITIONALLY_CERTIFIED for N≈1000**
 
@@ -42,8 +42,8 @@ N1000_RECOMMENDED_CONFIG = **See §12**
 PROVIDER_CEILING_VERIFIED = **NO**  
 N1000_CERTIFICATION = **CONDITIONALLY_CERTIFIED** (software architecture + tests; provider quota externally unverified)  
 PRODUCTION_MUTATIONS = **NONE**  
-TESTS = **P1.3: 34 PASS | P1.2 scale: 112 PASS | Postgres boundary: 5 PASS | build: PASS | typecheck: PASS (after triggers spec fix)**  
-CI_STATUS = **PENDING** — last GitHub run FAILURE (typecheck pre-fix); local post-fix PASS; awaiting re-run  
+TESTS = **GitHub CI (HEAD `5db28f771`) — 25/25 SUCCESS** — Vehicle Detail CI gate 12/12 + Legal Documents CI gate 13/13 (Install, Lint, Typecheck, Backend unit, Backend security, Backend boundary repair PostgreSQL, Backend integration, Migration PostgreSQL, Prisma validate, Frontend component, Playwright E2E, Accessibility axe, Security scan, Production build, CI gate)  
+CI_STATUS = **SUCCESS** — runs `33268961626` (Vehicle Detail) + `33268961607` (Legal Documents) on `cursor/p13-global-dimo-provider-budget` @ `5db28f771` (push event; `pull_request` synchronize did not re-fire after initial failure @ `9e4211c1a`)  
 NEXT_STAGE = **P1.7** (scheduler leader election before horizontal PM2 scale) **then** **P1.4** (reconciliation mutex/pacing under burst)
 
 ---
@@ -539,25 +539,26 @@ WORKER_SNAPSHOT_MAX_ENQUEUE_PER_TICK=0
 MERGE_RECOMMENDATION = **APPROVE_WITH_CONDITIONS**
 
 **Reason:**
-- P1.3 implementation complete; trip-loss regression green; fail-closed semantics proven.
+- P1.3 implementation complete; GitHub CI **SUCCESS** on final HEAD (`5db28f771`).
+- Trip-loss regression covered by CI (boundary repair PostgreSQL, unit, integration, E2E).
+- Fail-closed semantics proven in unit tests; typecheck fix (`dimo-triggers.service.spec.ts` mock executor) verified in CI.
 - **Conditions:**
-  1. CI must be **SUCCESS** (typecheck fix for `dimo-triggers.service.spec.ts` included in follow-up commit).
-  2. Acknowledge **CONDITIONALLY_CERTIFIED** for N≈1000 — not full provider certification.
-  3. Deploy with documented config (§12); monitor `dimo_global_in_flight` and queue oldest-age.
-  4. Do not scale to 2+ PM2 replicas without **P1.7**.
+  1. Acknowledge **CONDITIONALLY_CERTIFIED** for N≈1000 — not full provider certification (`PROVIDER_CEILING_VERIFIED = NO`).
+  2. Deploy with documented config (§12); monitor `dimo_global_in_flight` and queue oldest-age.
+  3. Do not scale to 2+ PM2 replicas without **P1.7**.
+  4. Revert or narrow temporary CI push-branch allowlist (`cursor/p13-global-dimo-provider-budget`) after merge if desired.
 
-**NOT recommended:** Merge without CI green.  
+**NOT recommended:** Merge without maintainer review of workflow CI trigger additions.  
 **NOT required before current-prod merge:** P1.7, P1.4 (separate roadmap slices).
 
 ---
 
 ## CI status log
 
-| Run | HEAD | Status | Notes |
-|-----|------|--------|-------|
-| Initial PR push `9e4211c1a` | `9e4211c1a` | **FAILURE** | Typecheck failed: `dimo-triggers.service.spec.ts` missing 3rd constructor arg |
-| Follow-up `6e22fda18` | `6e22fda18` | **NOT RUN** (path: backend spec fix + architecture doc) | Local typecheck **PASS**; GitHub did not report new run at time of writing |
-| HEAD fix `d1d3c6ecc` | `d1d3c6ecc` | **NOT RUN** (path: architecture only) | — |
+| Run | HEAD | Event | Status | Notes |
+|-----|------|-------|--------|-------|
+| `33265303743` / `33265303767` | `9e4211c1a` | pull_request (open) | **FAILURE** | Typecheck: `dimo-triggers.service.spec.ts` missing 3rd constructor arg — fixed in `6e22fda18` |
+| `33268961626` / `33268961607` | `5db28f771` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Final CI — 25/25 jobs green; includes Typecheck, unit, integration, E2E, boundary repair, build |
 
 ---
 
