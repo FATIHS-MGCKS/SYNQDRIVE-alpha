@@ -8,6 +8,9 @@ import {
   buildBatteryCapabilityPreflightQuery,
   buildRechargeSegmentsProbeQuery,
 } from './queries/battery-capability-preflight.query';
+import { DimoRequestExecutor } from './provider-budget/dimo-request-executor.service';
+import type { DimoProviderCategory } from './provider-budget/dimo-provider-category.types';
+import { getDimoRequestContext } from './provider-budget/dimo-request-context';
 
 export interface BatteryCapabilityPreflightSnapshot {
   availableSignals: string[] | null;
@@ -39,7 +42,10 @@ export class DimoTelemetryService {
   private readonly logger = new Logger(DimoTelemetryService.name);
   private readonly client: AxiosInstance;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly dimoRequestExecutor: DimoRequestExecutor,
+  ) {
     const telemetryApiUrl =
       this.configService.get<string>('dimo.telemetryApiUrl') ??
       'https://telemetry-api.dimo.zone/query';
@@ -166,31 +172,41 @@ export class DimoTelemetryService {
     vehicleJwt: string,
     query: string,
     variables?: Record<string, any>,
+    category?: DimoProviderCategory,
   ): Promise<any> {
-    const body: Record<string, unknown> = { query };
-    if (variables) body.variables = variables;
-    // Keep this tighter than the BullMQ lockDuration on the snapshot worker
-    // (60s) so that a single hung DIMO round-trip can never outlive the
-    // worker lock and cause a "job stalled" failure that later blocks the
-    // per-vehicle jobId.
-    const response = await this.client.post('', body, {
-      headers: { Authorization: `Bearer ${vehicleJwt}` },
-      timeout: 15000,
+    const ctx = getDimoRequestContext();
+    const resolvedCategory = category ?? ctx.category;
+
+    return this.dimoRequestExecutor.execute({
+      category: resolvedCategory,
+      priority: ctx.priority,
+      execute: async () => {
+        const body: Record<string, unknown> = { query };
+        if (variables) body.variables = variables;
+        // Keep this tighter than the BullMQ lockDuration on the snapshot worker
+        // (60s) so that a single hung DIMO round-trip can never outlive the
+        // worker lock and cause a "job stalled" failure that later blocks the
+        // per-vehicle jobId.
+        const response = await this.client.post('', body, {
+          headers: { Authorization: `Bearer ${vehicleJwt}` },
+          timeout: 15000,
+        });
+
+        const gqlErrors = response.data?.errors;
+        if (Array.isArray(gqlErrors) && gqlErrors.length > 0) {
+          const messages = gqlErrors
+            .map((e: any) => e?.message ?? JSON.stringify(e))
+            .join('; ');
+          this.logger.warn(`GraphQL response contains errors: ${messages}`);
+
+          if (!response.data?.data) {
+            throw new Error(`DIMO GraphQL error: ${messages}`);
+          }
+        }
+
+        return response.data;
+      },
     });
-
-    const gqlErrors = response.data?.errors;
-    if (Array.isArray(gqlErrors) && gqlErrors.length > 0) {
-      const messages = gqlErrors
-        .map((e: any) => e?.message ?? JSON.stringify(e))
-        .join('; ');
-      this.logger.warn(`GraphQL response contains errors: ${messages}`);
-
-      if (!response.data?.data) {
-        throw new Error(`DIMO GraphQL error: ${messages}`);
-      }
-    }
-
-    return response.data;
   }
 
   /**
@@ -215,11 +231,15 @@ export class DimoTelemetryService {
       }
     `.trim();
 
-    const response = await this.client.post(
-      '',
-      { query },
-      { headers: { Authorization: `Bearer ${vehicleJwt}` } },
-    );
+    const response = await this.dimoRequestExecutor.execute({
+      category: 'IDENTITY',
+      execute: () =>
+        this.client.post(
+          '',
+          { query },
+          { headers: { Authorization: `Bearer ${vehicleJwt}` } },
+        ),
+    });
 
     const signals = response.data?.data?.signalsLatest as
       | Record<string, unknown>
@@ -269,11 +289,15 @@ export class DimoTelemetryService {
     `.trim();
 
     try {
-      const response = await this.client.post(
-        '',
-        { query },
-        { headers: { Authorization: `Bearer ${vehicleJwt}` } },
-      );
+      const response = await this.dimoRequestExecutor.execute({
+        category: 'IDENTITY',
+        execute: () =>
+          this.client.post(
+            '',
+            { query },
+            { headers: { Authorization: `Bearer ${vehicleJwt}` } },
+          ),
+      });
       const vin = response.data?.data?.vinVCLatest?.vin as string | undefined;
       return vin ?? null;
     } catch {

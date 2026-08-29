@@ -6,6 +6,7 @@ import { QUEUE_NAMES } from '../queues/queue-names';
 import { TripEnrichmentOrchestratorService } from '../../modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service';
 import { TripMetricsService } from '../../modules/observability/trip-metrics.service';
 import { observeQueueLag } from '../../modules/observability/queue-lag.util';
+import { runWithDimoRequestContext } from '@modules/dimo/provider-budget/dimo-request-context';
 
 export interface TripBehaviorEnrichmentJobData {
   tripId: string;
@@ -35,6 +36,13 @@ export class TripBehaviorEnrichmentProcessor extends WorkerHost {
   }
 
   async process(job: Job<TripBehaviorEnrichmentJobData>): Promise<void> {
+    return runWithDimoRequestContext(
+      { category: 'POST_TRIP_ENRICHMENT', priority: 'NORMAL' },
+      () => this.processEnrichmentJob(job),
+    );
+  }
+
+  private async processEnrichmentJob(job: Job<TripBehaviorEnrichmentJobData>): Promise<void> {
     observeQueueLag(this.tripMetrics, QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT, job);
     const { tripId, vehicleId, organizationId } = job.data;
 
