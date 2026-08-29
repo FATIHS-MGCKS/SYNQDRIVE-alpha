@@ -7,7 +7,7 @@
 
 PR = #1417  
 BRANCH = `cursor/p13-global-dimo-provider-budget`  
-HEAD_COMMIT = `6e22fda18e3234d44f7f3e64d7fb1965bb3ac5ed`  
+HEAD_COMMIT = `d1d3c6eccf8f4d23dc5749334ab778ec3f94eb1c`  
 BASE_MAIN_COMMIT = `d221e766374dea2360b2e19636504882d5d662ce` (P1.2 FINAL-6 merged via #1409)  
 STATUS = **DRAFT PR — NOT MERGED — PRODUCTION_MUTATIONS = NONE**
 
@@ -43,7 +43,7 @@ PROVIDER_CEILING_VERIFIED = **NO**
 N1000_CERTIFICATION = **CONDITIONALLY_CERTIFIED** (software architecture + tests; provider quota externally unverified)  
 PRODUCTION_MUTATIONS = **NONE**  
 TESTS = **P1.3: 34 PASS | P1.2 scale: 112 PASS | Postgres boundary: 5 PASS | build: PASS | typecheck: PASS (after triggers spec fix)**  
-CI_STATUS = **See end of document — updated after final push**  
+CI_STATUS = **PENDING** — last GitHub run FAILURE (typecheck pre-fix); local post-fix PASS; awaiting re-run  
 NEXT_STAGE = **P1.7** (scheduler leader election before horizontal PM2 scale) **then** **P1.4** (reconciliation mutex/pacing under burst)
 
 ---
@@ -556,9 +556,8 @@ MERGE_RECOMMENDATION = **APPROVE_WITH_CONDITIONS**
 | Run | HEAD | Status | Notes |
 |-----|------|--------|-------|
 | Initial PR push `9e4211c1a` | `9e4211c1a` | **FAILURE** | Typecheck failed: `dimo-triggers.service.spec.ts` missing 3rd constructor arg |
-| Follow-up (final-response doc + spec fix) | *see git HEAD after push* | *updated below* | |
-
-CI_STATUS = **PENDING** (awaiting follow-up push CI)
+| Follow-up `6e22fda18` | `6e22fda18` | **NOT RUN** (path: backend spec fix + architecture doc) | Local typecheck **PASS**; GitHub did not report new run at time of writing |
+| HEAD fix `d1d3c6ecc` | `d1d3c6ecc` | **NOT RUN** (path: architecture only) | — |
 
 ---
 
