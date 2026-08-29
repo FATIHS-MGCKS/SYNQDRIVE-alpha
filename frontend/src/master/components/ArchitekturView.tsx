@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental IAM Member Management (P2.2.62 — V4.9.990)', icon: Globe,
+    endpoint: 'Settings → Users & Roles → Team tab',
+    service: '**Locale flow:** `useLanguage().locale` → `rental-organization-users-roles-i18n.ts` → Team tab, invite wizard, member drawer, mounted permission preview. **Keys:** +90 EN+DE `iam.member.*`/`iam.wizard.*`/`iam.audit.*`/`iam.permission.*` (9564→9654); reuses `common.*`, `nav.*`, existing `iam.*`. **Fetch:** locale-independent `[orgId]` callbacks; host error keys at render. **Payloads:** `iam-member-payload.ts`. **Guardrails:** P262 enforce-clean exact (11 paths) — 0 findings. **Deferred:** P263 full RolesAccessTab/SecurityAuditTab/custom-role CRUD/permission matrix. **Tests:** true-topology same-mount, wizard→API parity, permission preview. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_RENTAL_IAM_MEMBER_MANAGEMENT_P2_2_62_2026-08-29.md' },
   { name: 'Platform i18n Rental Vehicle Damages (P2.2.61 — V4.9.989)', icon: Globe,
     endpoint: 'Vehicle detail → Damages tab (complete mounted stack)',
     service: '**Locale flow:** `useLanguage().locale` → `rental-vehicle-damages-i18n.ts` → queue/canvas/drawer/dialogs/insights/pickup context. **Keys:** +325 EN+DE `vehicleDamages.*` (9239→9564); reuses `operator.damageCapture.*` for damage type/severity/rental impact/source + `tasks.*`/`health.*`/`common.*`/`vehicle.*`/`stations.*`/`fleet.*`/`docUpload.*` exact reuses. **Machine values:** status, severity, rental impact, evidence, liability, source, queue filters, mutation payloads frozen; raw description/liability note/task titles/filenames/backend errors preserved. **Guardrails:** P261 enforce-clean exact (23 paths) — 0 findings. **Frozen:** P260 Vehicle Documents, P216–P260, Data Analyse deferred. **Tests:** `rental-vehicle-damages-localization.test.tsx` (deterministic same-mount DE→EN→DE, machines, filters). **Semantics:** presentation-only; Category E=0; active mounted Vehicle Damages i18n coverage complete.',

@@ -6,19 +6,19 @@ import {
   type OrganizationRoleDto,
   type Station,
 } from '../../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
+import {
+  buildCreateUserPayload,
+  buildInviteUserPayload,
+} from './iam-member-payload';
+import { resolveWizardStepLabel } from '../../lib/rental-organization-users-roles-i18n';
 import { permissionsFromRoleTemplate } from './constants';
 import { PermissionPreview } from './PermissionEditor';
 import type { CreateUserFormState, WizardStep } from './types';
 import { generatePassword, isValidEmail } from './utils';
 
 const STEPS: WizardStep[] = ['person', 'role', 'access', 'invite', 'summary'];
-const STEP_LABELS: Record<WizardStep, string> = {
-  person: 'Person',
-  role: 'Rolle',
-  access: 'Zugriff',
-  invite: 'Einladung',
-  summary: 'Zusammenfassung',
-};
 
 const EMPTY_FORM: CreateUserFormState = {
   firstName: '',
@@ -45,11 +45,13 @@ interface CreateUserWizardProps {
 }
 
 export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose, onDone, onError }: CreateUserWizardProps) {
+  const { t } = useLanguage();
   const [step, setStep] = useState<WizardStep>('person');
   const [form, setForm] = useState<CreateUserFormState>({ ...EMPTY_FORM, accountMethod: 'invite', password: '' });
   const [roles, setRoles] = useState<OrganizationRoleDto[]>([]);
   const [rolesLoading, setRolesLoading] = useState(true);
   const [rolesError, setRolesError] = useState<string | null>(null);
+  const [rolesErrorHostKey, setRolesErrorHostKey] = useState<TranslationKey | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -60,14 +62,24 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
         const list = await api.organizationRoles.list(orgId);
         setRoles(Array.isArray(list) ? list : []);
         setRolesError(null);
+        setRolesErrorHostKey(null);
       } catch (err) {
         setRoles([]);
-        setRolesError(err instanceof Error ? err.message : 'Rollen konnten nicht geladen werden.');
+        if (err instanceof Error && err.message) {
+          setRolesError(err.message);
+          setRolesErrorHostKey(null);
+        } else {
+          setRolesError(null);
+          setRolesErrorHostKey('iam.member.error.rolesLoadFailed');
+        }
       } finally {
         setRolesLoading(false);
       }
     })();
   }, [orgId]);
+
+  const rolesErrorMessage =
+    rolesError ?? (rolesErrorHostKey ? t(rolesErrorHostKey) : null);
 
   const selectedRole = useMemo(
     () => roles.find((r) => r.id === form.organizationRoleId) ?? null,
@@ -80,6 +92,7 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
   }, [selectedRole]);
 
   const stepIndex = STEPS.indexOf(step);
+  const currentStepLabel = resolveWizardStepLabel(step, t);
 
   const patch = (partial: Partial<CreateUserFormState>) =>
     setForm((prev) => ({ ...prev, ...partial }));
@@ -110,44 +123,18 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
   const handleSubmit = async () => {
     setSaving(true);
     try {
-      const stationScope =
-        form.stationMode === 'all'
-          ? undefined
-          : stations.find((s) => s.id === form.stationIds[0])?.name;
-      const stationIds = form.stationMode === 'selected' ? form.stationIds : undefined;
+      const payloadInput = {
+        orgId,
+        form,
+        selectedRole,
+        stations,
+        previewPermissions,
+      };
 
       if (form.accountMethod === 'invite') {
-        await api.organizationInvites.create(orgId, {
-          email: form.email.trim(),
-          organizationRoleId: form.organizationRoleId,
-          membershipRole: selectedRole?.membershipRole,
-          permissions: previewPermissions ?? undefined,
-          stationScope,
-          stationIds,
-          fieldAgentAccess: form.fieldAgentAccess,
-          department: form.department.trim() || undefined,
-          position: form.position.trim() || undefined,
-          roleLabel: selectedRole?.name,
-          firstName: form.firstName.trim(),
-          lastName: form.lastName.trim(),
-        });
+        await api.organizationInvites.create(orgId, buildInviteUserPayload(payloadInput));
       } else {
-        await api.users.createByOrg(orgId, {
-          email: form.email.trim(),
-          firstName: form.firstName.trim(),
-          lastName: form.lastName.trim(),
-          role: selectedRole?.membershipRole ?? 'WORKER',
-          organizationRoleId: form.organizationRoleId,
-          password: form.password,
-          phone: form.phone.trim() || undefined,
-          department: form.department.trim() || undefined,
-          position: form.position.trim() || undefined,
-          roleLabel: selectedRole?.name,
-          stationScope,
-          stationIds,
-          permissions: selectedRole?.membershipRole === 'ORG_ADMIN' ? undefined : previewPermissions ?? undefined,
-          fieldAgentAccess: form.fieldAgentAccess,
-        });
+        await api.users.createByOrg(orgId, buildCreateUserPayload({ ...payloadInput, password: form.password }));
       }
       onDone();
     } catch (err) {
@@ -162,12 +149,16 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
       <div className="surface-premium w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-[var(--shadow-2)] p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-            <h3 className="text-[16px] font-semibold text-foreground">Benutzer einladen</h3>
+            <h3 className="text-[16px] font-semibold text-foreground">{t('iam.action.invite')}</h3>
             <p className="text-[12px] text-muted-foreground mt-0.5">
-              Schritt {stepIndex + 1} von {STEPS.length} — {STEP_LABELS[step]}
+              {t('iam.wizard.stepProgress', {
+                current: stepIndex + 1,
+                total: STEPS.length,
+                step: currentStepLabel,
+              })}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-muted/60 text-muted-foreground">
+          <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-muted/60 text-muted-foreground" aria-label={t('common.cancel')}>
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -195,23 +186,23 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
 
         {step === 'person' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Vorname *" value={form.firstName} onChange={(v) => patch({ firstName: v })} />
-            <Field label="Nachname *" value={form.lastName} onChange={(v) => patch({ lastName: v })} />
+            <Field label={t('iam.wizard.field.firstName')} value={form.firstName} onChange={(v) => patch({ firstName: v })} />
+            <Field label={t('iam.wizard.field.lastName')} value={form.lastName} onChange={(v) => patch({ lastName: v })} />
             <div className="sm:col-span-2">
-              <Field label="E-Mail *" value={form.email} onChange={(v) => patch({ email: v })} type="email" />
+              <Field label={t('iam.wizard.field.email')} value={form.email} onChange={(v) => patch({ email: v })} type="email" />
             </div>
-            <Field label="Telefon" value={form.phone} onChange={(v) => patch({ phone: v })} />
-            <Field label="Abteilung" value={form.department} onChange={(v) => patch({ department: v })} />
-            <Field label="Position" value={form.position} onChange={(v) => patch({ position: v })} />
+            <Field label={t('iam.wizard.field.phone')} value={form.phone} onChange={(v) => patch({ phone: v })} />
+            <Field label={t('iam.wizard.field.department')} value={form.department} onChange={(v) => patch({ department: v })} />
+            <Field label={t('iam.wizard.field.position')} value={form.position} onChange={(v) => patch({ position: v })} />
           </div>
         )}
 
         {step === 'role' && (
           <div className="space-y-3">
             {rolesLoading ? (
-              <p className="text-[13px] text-muted-foreground">Rollen werden geladen…</p>
+              <p className="text-[13px] text-muted-foreground">{t('iam.wizard.rolesLoading')}</p>
             ) : roles.length === 0 ? (
-              <p className="text-[13px] text-muted-foreground">Keine Rollenvorlagen verfügbar.</p>
+              <p className="text-[13px] text-muted-foreground">{rolesErrorMessage ?? t('iam.wizard.rolesEmpty')}</p>
             ) : (
               roles.map((role) => (
                 <button
@@ -233,7 +224,7 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
                     </div>
                     {role.isSystemTemplate && (
                       <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        System
+                        {t('iam.wizard.systemRole')}
                       </span>
                     )}
                   </div>
@@ -241,7 +232,7 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
               ))
             )}
             {previewPermissions && (
-              <PermissionPreview permissions={previewPermissions} title="Vorschau für diese Rolle" />
+              <PermissionPreview permissions={previewPermissions} title={t('iam.wizard.rolePreview')} />
             )}
           </div>
         )}
@@ -254,22 +245,22 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
                 onClick={() => patch({ stationMode: 'all', stationIds: [] })}
                 className={`p-3 rounded-xl border text-left ${form.stationMode === 'all' ? 'border-[var(--brand)] bg-[var(--brand-soft)]' : 'border-border'}`}
               >
-                <p className="text-[13px] font-semibold">Alle Stationen</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Organisationsweiter Zugriff</p>
+                <p className="text-[13px] font-semibold">{t('iam.wizard.access.allStations')}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{t('iam.wizard.access.allStationsHint')}</p>
               </button>
               <button
                 type="button"
                 onClick={() => patch({ stationMode: 'selected' })}
                 className={`p-3 rounded-xl border text-left ${form.stationMode === 'selected' ? 'border-[var(--brand)] bg-[var(--brand-soft)]' : 'border-border'}`}
               >
-                <p className="text-[13px] font-semibold">Ausgewählte Stationen</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Zugriff auf bestimmte Standorte</p>
+                <p className="text-[13px] font-semibold">{t('iam.wizard.access.selectedStations')}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{t('iam.wizard.access.selectedStationsHint')}</p>
               </button>
             </div>
             {form.stationMode === 'selected' && (
               <div className="rounded-xl border border-border p-3 max-h-48 overflow-y-auto space-y-1">
                 {stations.length === 0 ? (
-                  <p className="text-[12px] text-muted-foreground">Keine Stationen konfiguriert.</p>
+                  <p className="text-[12px] text-muted-foreground">{t('iam.wizard.access.noStations')}</p>
                 ) : (
                   stations.map((s) => {
                     const checked = form.stationIds.includes(s.id);
@@ -294,8 +285,8 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
             )}
             <label className="flex items-center justify-between gap-3 p-3 rounded-xl border border-border">
               <div>
-                <p className="text-[13px] font-semibold">Field Agent / Übergabe</p>
-                <p className="text-[11px] text-muted-foreground">Mobiler Zugriff für Übergabeprozesse</p>
+                <p className="text-[13px] font-semibold">{t('iam.wizard.access.fieldAgent')}</p>
+                <p className="text-[11px] text-muted-foreground">{t('iam.wizard.access.fieldAgentHint')}</p>
               </div>
               <input
                 type="checkbox"
@@ -316,8 +307,8 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
                 className={`p-4 rounded-xl border text-left ${form.accountMethod === 'invite' ? 'border-[var(--brand)] bg-[var(--brand-soft)]' : 'border-border'}`}
               >
                 <Mail className="w-5 h-5 mb-2 text-[var(--brand)]" />
-                <p className="text-[13px] font-semibold">Einladung per E-Mail</p>
-                <p className="text-[11px] text-muted-foreground mt-1">Empfohlen — sicherer Onboarding-Flow</p>
+                <p className="text-[13px] font-semibold">{t('iam.wizard.invite.emailMethod')}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">{t('iam.wizard.invite.emailMethodHint')}</p>
               </button>
               <button
                 type="button"
@@ -325,15 +316,15 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
                 className={`p-4 rounded-xl border text-left ${form.accountMethod === 'password' ? 'border-[var(--brand)] bg-[var(--brand-soft)]' : 'border-border'}`}
               >
                 <Key className="w-5 h-5 mb-2 text-muted-foreground" />
-                <p className="text-[13px] font-semibold">Passwort manuell setzen</p>
-                <p className="text-[11px] text-muted-foreground mt-1">Erweitert — nur bei Bedarf</p>
+                <p className="text-[13px] font-semibold">{t('iam.wizard.invite.passwordMethod')}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">{t('iam.wizard.invite.passwordMethodHint')}</p>
               </button>
             </div>
             )}
             {!inviteOnly && form.accountMethod === 'password' && (
               <div className="rounded-xl border border-border p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                  Einmal-Passwort
+                  {t('iam.wizard.invite.oneTimePassword')}
                 </p>
                 <div className="flex gap-2">
                   <code className="flex-1 px-3 py-2 rounded-lg bg-muted text-[12px] font-mono">{form.password}</code>
@@ -357,7 +348,7 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
                   </button>
                 </div>
                 <p className="text-[11px] text-amber-600 mt-2">
-                  Der Benutzer muss dieses Passwort beim ersten Login ändern.
+                  {t('iam.wizard.invite.passwordChangeRequired')}
                 </p>
               </div>
             )}
@@ -366,21 +357,21 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
 
         {step === 'summary' && (
           <div className="rounded-xl border border-border p-4 space-y-2 text-[13px]">
-            <Row label="Name" value={`${form.firstName} ${form.lastName}`} />
-            <Row label="E-Mail" value={form.email} />
-            <Row label="Rolle" value={selectedRole?.name ?? '—'} />
+            <Row label={t('iam.wizard.step.person')} value={`${form.firstName} ${form.lastName}`} />
+            <Row label={t('iam.wizard.field.email').replace(' *', '')} value={form.email} />
+            <Row label={t('iam.wizard.step.role')} value={selectedRole?.name ?? '—'} />
             <Row
-              label="Stationen"
+              label={t('iam.wizard.step.access')}
               value={
                 form.stationMode === 'all'
-                  ? 'Alle Stationen'
-                  : `${form.stationIds.length} ausgewählt`
+                  ? t('iam.wizard.access.allStations')
+                  : t('iam.wizard.summary.stationsSelected', { count: form.stationIds.length })
               }
             />
-            <Row label="Field Agent" value={form.fieldAgentAccess ? 'Ja' : 'Nein'} />
+            <Row label={t('iam.wizard.access.fieldAgent')} value={form.fieldAgentAccess ? t('common.yes') : t('common.no')} />
             <Row
-              label="Vorgehen"
-              value={form.accountMethod === 'invite' ? 'Einladung senden' : 'Benutzer mit Passwort erstellen'}
+              label={t('iam.wizard.summary.approach')}
+              value={form.accountMethod === 'invite' ? t('iam.wizard.submit.sendInvite') : t('iam.wizard.submit.createUser')}
             />
           </div>
         )}
@@ -392,25 +383,27 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
             onClick={() => (stepIndex > 0 ? setStep(STEPS[stepIndex - 1]) : onClose())}
           >
             <ChevronLeft className="w-4 h-4" />
-            {stepIndex > 0 ? 'Zurück' : 'Abbrechen'}
+            {stepIndex > 0 ? t('common.back') : t('common.cancel')}
           </button>
           {stepIndex < STEPS.length - 1 ? (
             <button
               type="button"
+              data-testid="wizard-next"
               disabled={!canNext}
               className="sq-3d-btn sq-3d-btn--primary text-xs flex items-center gap-1 disabled:opacity-50"
               onClick={() => setStep(STEPS[stepIndex + 1])}
             >
-              Weiter <ChevronRight className="w-4 h-4" />
+              {t('common.next')} <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
             <button
               type="button"
+              data-testid="wizard-submit"
               disabled={saving}
               className="sq-3d-btn sq-3d-btn--primary text-xs"
               onClick={() => void handleSubmit()}
             >
-              {form.accountMethod === 'invite' ? 'Einladung senden' : 'Benutzer erstellen'}
+              {form.accountMethod === 'invite' ? t('iam.wizard.submit.sendInvite') : t('iam.wizard.submit.createUser')}
             </button>
           )}
         </div>

@@ -14,6 +14,7 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { CreateUserWizard } from './CreateUserWizard';
 import { MfaStateBadge, RiskBadge } from './IamBadges';
+import { resolveMembershipStatusLabel } from '../../lib/rental-organization-users-roles-i18n';
 import { formatDateTime, getInitials } from './iam-team.utils';
 import { TeamMemberDrawer } from './TeamMemberDrawer';
 import type { IamTeamKpisDto } from '../../../lib/api';
@@ -87,7 +88,7 @@ export function TeamTab({
         <div className="space-y-1">
           <MfaStateBadge state={row.mfaState} />
           <div className="text-[11px] text-muted-foreground">
-            {row.activeSessionCount} sessions
+            {t('iam.member.sessions', { count: row.activeSessionCount })}
           </div>
         </div>
       ),
@@ -115,7 +116,9 @@ export function TeamTab({
             {t('iam.action.open')}
           </button>
         ) : (
-          <span className="text-[12px] text-muted-foreground">{row.membershipStatus}</span>
+          <span className="text-[12px] text-muted-foreground">
+            {resolveMembershipStatusLabel(row.membershipStatus, t)}
+          </span>
         ),
     },
   ];
@@ -232,6 +235,7 @@ export function TeamTab({
                     <button
                       type="button"
                       className="text-[var(--brand)] font-medium"
+                      aria-label={t('iam.member.resendInvite')}
                       onClick={() => void api.organizationInvites.resend(orgId, inv.inviteId!)}
                     >
                       <MoreHorizontal className="h-4 w-4" />

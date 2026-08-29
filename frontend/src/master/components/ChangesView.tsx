@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-iam-member-management-p2-2-62-2026-08-29',
+    version: '4.9.990',
+    title: 'Platform i18n — P2.2.62 Users & Roles Member Management',
+    summary: [
+      'Localized P262 Member Management slice via `rental-organization-users-roles-i18n.ts` and `rental.iamMember.{en,de}.ts`; +90 keys (9564→9654 EN/DE) after audit correction; reuses `common.*`, `nav.*`, and existing `iam.*` shell keys.',
+      'Correction: locale-independent fetch identity in `useIamTeam`/wizard/drawer; payload builders moved to `iam-member-payload.ts`; mounted `PermissionPreview`/`CollapsiblePermissions` localized; true-topology same-mount + wizard→API parity tests.',
+      'P262 enforce-clean exact scope (11 paths) — 0 findings. Full permission-management taxonomy deferred to P2.2.63.',
+    ],
+    reason:
+      'P2.2.62 strict mutation-safe implementation for Users & Roles Member Management from P261 merge baseline per preflight verdict B (split).',
+    previousBehavior:
+      'Team tab, invite wizard, and member drawer used hardcoded German/English strings; audit labels from `AUDIT_ACTION_LABELS` constant; status labels inline.',
+    details:
+      'Adapter resolvers for membership status, audit actions, wizard steps, permission preview labels, locale-aware dates; mutation payloads in `iam-member-payload.ts`. Same-mount `UsersRolesTab` DE→EN→DE with zero locale refetch; wizard invite/create API parity.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-29T20:20:00.000Z',
+  },
+  {
     id: 'i18n-rental-vehicle-damages-p2-2-61-2026-08-29',
     version: '4.9.989',
     title: 'Platform i18n — P2.2.61 Rental Vehicle Damages',

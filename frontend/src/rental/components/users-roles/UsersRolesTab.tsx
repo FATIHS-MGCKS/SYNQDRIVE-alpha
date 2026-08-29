@@ -18,6 +18,7 @@ export function UsersRolesTab({ orgId }: UsersRolesTabProps) {
     security,
     loading,
     error,
+    errorHostKey,
     loadTeam,
     refreshAll,
     openMember,
@@ -26,7 +27,7 @@ export function UsersRolesTab({ orgId }: UsersRolesTabProps) {
   if (!orgId?.trim()) {
     return (
       <div className="max-w-[1600px] mx-auto py-12 text-center text-[13px] text-muted-foreground">
-        No organization loaded.
+        {t('iam.member.noOrg')}
       </div>
     );
   }
@@ -70,7 +71,7 @@ export function UsersRolesTab({ orgId }: UsersRolesTabProps) {
             team={team}
             kpis={kpis}
             loading={loading}
-            error={error}
+            error={error ?? (errorHostKey ? t(errorHostKey) : null)}
             onSearch={(q) => loadTeam(q)}
             onRefresh={refreshAll}
             onOpenMember={openMember}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   api,
@@ -9,13 +9,25 @@ import {
   type IamTeamListItemDto,
   type IamTeamMemberDetailDto,
 } from '../../../lib/api';
+import { translateKey, useLanguage, type SupportedLocale } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 
-function extractError(err: unknown, fallback: string): string {
+function resolveHostToastMessage(
+  err: unknown,
+  hostKey: TranslationKey,
+  locale: SupportedLocale,
+): string {
   if (err instanceof Error && err.message) return err.message;
-  return fallback;
+  return translateKey(locale, hostKey).text;
 }
 
 export function useIamTeam(orgId: string | undefined) {
+  const { locale } = useLanguage();
+  const localeRef = useRef(locale);
+  useEffect(() => {
+    localeRef.current = locale;
+  }, [locale]);
+
   const [kpis, setKpis] = useState<IamTeamKpisDto | null>(null);
   const [team, setTeam] = useState<IamTeamListItemDto[]>([]);
   const [roles, setRoles] = useState<IamRoleListItemDto[]>([]);
@@ -26,12 +38,14 @@ export function useIamTeam(orgId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [memberLoading, setMemberLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorHostKey, setErrorHostKey] = useState<TranslationKey | null>(null);
 
   const loadTeam = useCallback(
     async (search?: string) => {
       if (!orgId?.trim()) return;
       setLoading(true);
       setError(null);
+      setErrorHostKey(null);
       try {
         const [kpiData, teamData, roleData] = await Promise.all([
           api.iam.teamKpis(orgId),
@@ -42,7 +56,13 @@ export function useIamTeam(orgId: string | undefined) {
         setTeam(Array.isArray(teamData) ? teamData : []);
         setRoles(Array.isArray(roleData) ? roleData : []);
       } catch (err) {
-        setError(extractError(err, 'Failed to load team'));
+        if (err instanceof Error && err.message) {
+          setError(err.message);
+          setErrorHostKey(null);
+        } else {
+          setError(null);
+          setErrorHostKey('iam.member.error.loadTeam');
+        }
       } finally {
         setLoading(false);
       }
@@ -56,7 +76,7 @@ export function useIamTeam(orgId: string | undefined) {
       const data = await api.iam.securityOverview(orgId);
       setSecurity(data);
     } catch (err) {
-      toast.error(extractError(err, 'Failed to load security overview'));
+      toast.error(resolveHostToastMessage(err, 'iam.member.error.loadSecurity', localeRef.current));
     }
   }, [orgId]);
 
@@ -68,7 +88,7 @@ export function useIamTeam(orgId: string | undefined) {
         const detail = await api.iam.teamMember(orgId, membershipId);
         setSelectedMember(detail);
       } catch (err) {
-        toast.error(extractError(err, 'Failed to load member'));
+        toast.error(resolveHostToastMessage(err, 'iam.member.error.loadMember', localeRef.current));
       } finally {
         setMemberLoading(false);
       }
@@ -83,7 +103,7 @@ export function useIamTeam(orgId: string | undefined) {
         const detail = await api.iam.roleDetail(orgId, roleId);
         setSelectedRole(detail);
       } catch (err) {
-        toast.error(extractError(err, 'Failed to load role'));
+        toast.error(resolveHostToastMessage(err, 'iam.member.error.loadRole', localeRef.current));
       }
     },
     [orgId],
@@ -108,6 +128,7 @@ export function useIamTeam(orgId: string | undefined) {
     loading,
     memberLoading,
     error,
+    errorHostKey,
     loadTeam,
     loadSecurity,
     openMember,
