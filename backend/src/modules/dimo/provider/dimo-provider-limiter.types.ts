@@ -1,4 +1,7 @@
-import type { DimoProviderLimiterMode } from '@config/dimo-provider-limiter.config';
+import type {
+  DimoProviderLimiterMode,
+  DimoProviderRateAlgorithm,
+} from '@config/dimo-provider-limiter.config';
 
 export enum DimoProviderLimiterDecision {
   ALLOW = 'allow',
@@ -41,6 +44,7 @@ export interface DimoProviderLimiterBeginInput {
   priority: DimoProviderRequestPriority;
   rateLimitPerSecond: number;
   rateBurst: number;
+  rateAlgorithm: DimoProviderRateAlgorithm;
   maxInFlight: number;
   inFlightLeaseMs: number;
   reservedHighPrioritySlots: number;
@@ -58,6 +62,9 @@ export interface DimoProviderLimiterBeginResult {
   inFlightCount: number;
   inFlightLimit: number;
   redisFailOpen: boolean;
+  /** Remaining tokens after rate decision (token bucket only). */
+  tokensRemaining?: number;
+  rateAlgorithm?: DimoProviderRateAlgorithm;
   /** Estimated wait if decision is WOULD_WAIT (cooldown or contention). */
   wouldDelayMs?: number;
   providerCooldownActive?: boolean;

@@ -15,12 +15,17 @@ import {
 } from './dimo-provider-http-classifier';
 import type { DimoProviderLimiterBeginResult } from './dimo-provider-limiter.types';
 import { DimoProviderLimiterDecision } from './dimo-provider-limiter.types';
+import {
+  isCanaryEnforcedRequest,
+  resolveEffectiveLimiterMode,
+  resolveRolloutState,
+} from './dimo-provider-rollout.util';
 
 /**
  * Canonical outbound DIMO provider gateway (P1.3).
  *
- * S3: priority-aware admission with bounded backpressure in enforce mode.
- * Default remains shadow — no production throttling unless explicitly configured.
+ * S4: token-bucket rate smoothing + org-scoped canary enforce rollout.
+ * Default remains shadow — no global production throttling unless configured.
  */
 @Injectable()
 export class DimoProviderGateway implements OnModuleInit {
@@ -35,19 +40,26 @@ export class DimoProviderGateway implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
+    const rollout = resolveRolloutState(this.limiterConfig);
     this.logger.log(
-      `DIMO provider limiter mode=${this.limiterConfig.mode} enabled=${this.limiterConfig.enabled} ` +
+      `DIMO provider limiter rollout=${rollout} mode=${this.limiterConfig.mode} ` +
+        `enabled=${this.limiterConfig.enabled} algorithm=${this.limiterConfig.rateAlgorithm} ` +
         `rate=${this.limiterConfig.rateLimitPerSecond}/s+burst${this.limiterConfig.rateBurst} ` +
         `maxInFlight=${this.limiterConfig.maxInFlight} reservedHigh=${this.limiterConfig.reservedHighPrioritySlots} ` +
-        `maxWaitMs=${this.limiterConfig.maxWaitMs}`,
+        `canaryOrgs=${this.limiterConfig.canaryEnforceOrgIds.size} maxWaitMs=${this.limiterConfig.maxWaitMs}`,
     );
   }
 
   async execute<T>(params: DimoProviderExecuteParams<T>): Promise<T> {
     const category = resolveProviderCategory(params.operation, params.category);
     const priority = params.priority ?? defaultProviderPriority(category);
-    const mode = this.limiterConfig.enabled ? this.limiterConfig.mode : 'off';
+    const organizationId = params.requestContext?.organizationId;
+    const mode = resolveEffectiveLimiterMode(this.limiterConfig, organizationId);
+    const rolloutState = resolveRolloutState(this.limiterConfig);
+    const canaryMatch = isCanaryEnforcedRequest(this.limiterConfig, organizationId);
     const startedAt = Date.now();
+    const capacity =
+      this.limiterConfig.rateLimitPerSecond + this.limiterConfig.rateBurst;
 
     let begin: DimoProviderLimiterBeginResult = {
       leaseId: null,
@@ -56,10 +68,11 @@ export class DimoProviderGateway implements OnModuleInit {
       rateDecision: DimoProviderLimiterDecision.BYPASS,
       inFlightDecision: DimoProviderLimiterDecision.BYPASS,
       rateWindowCount: 0,
-      rateWindowLimit: this.limiterConfig.rateLimitPerSecond + this.limiterConfig.rateBurst,
+      rateWindowLimit: capacity,
       inFlightCount: 0,
       inFlightLimit: this.limiterConfig.maxInFlight,
       redisFailOpen: false,
+      rateAlgorithm: this.limiterConfig.rateAlgorithm,
     };
 
     const beginInput = {
@@ -68,6 +81,7 @@ export class DimoProviderGateway implements OnModuleInit {
       priority,
       rateLimitPerSecond: this.limiterConfig.rateLimitPerSecond,
       rateBurst: this.limiterConfig.rateBurst,
+      rateAlgorithm: this.limiterConfig.rateAlgorithm,
       maxInFlight: this.limiterConfig.maxInFlight,
       inFlightLeaseMs: this.limiterConfig.inFlightLeaseMs,
       reservedHighPrioritySlots: this.limiterConfig.reservedHighPrioritySlots,
@@ -83,6 +97,8 @@ export class DimoProviderGateway implements OnModuleInit {
         category,
         priority,
         mode,
+        rolloutState,
+        canaryMatch,
         begin,
         durationMs: Date.now() - startedAt,
         http: successHttpObservation(),
@@ -110,6 +126,8 @@ export class DimoProviderGateway implements OnModuleInit {
         category,
         priority,
         mode,
+        rolloutState,
+        canaryMatch,
         begin,
         durationMs: Date.now() - startedAt,
         http,

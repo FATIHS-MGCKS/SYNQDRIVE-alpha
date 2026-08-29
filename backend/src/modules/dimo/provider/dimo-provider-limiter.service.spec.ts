@@ -3,8 +3,10 @@ import {
   DIMO_PROVIDER_INFLIGHT_ACQUIRE_SCRIPT,
   DIMO_PROVIDER_INFLIGHT_RELEASE_SCRIPT,
   DIMO_PROVIDER_RATE_SCRIPT,
+  DIMO_PROVIDER_TOKEN_BUCKET_SCRIPT,
   dimoProviderInflightKey,
   dimoProviderRateKey,
+  dimoProviderTokenBucketKey,
 } from './dimo-provider-limiter.redis-scripts';
 import {
   DimoProviderLimiterDecision,
@@ -15,10 +17,11 @@ import { inflightMember, parseInflightMember } from './dimo-provider-priority.mo
 type Store = {
   strings: Map<string, string>;
   zsets: Map<string, Map<string, number>>;
+  hashes: Map<string, Map<string, string>>;
 };
 
 function createInMemoryRedis(): { redis: { eval: jest.Mock; get: jest.Mock }; store: Store } {
-  const store: Store = { strings: new Map(), zsets: new Map() };
+  const store: Store = { strings: new Map(), zsets: new Map(), hashes: new Map() };
 
   const evalFn = jest.fn(async (script: string, numKeys: number, ...args: string[]) => {
     if (script === DIMO_PROVIDER_RATE_SCRIPT) {
@@ -28,6 +31,29 @@ function createInMemoryRedis(): { redis: { eval: jest.Mock; get: jest.Mock }; st
       store.strings.set(key, String(current));
       const decision = current > maxAllowed ? 'would_reject' : 'allow';
       return [current, maxAllowed, decision];
+    }
+
+    if (script === DIMO_PROVIDER_TOKEN_BUCKET_SCRIPT) {
+      const key = args[0];
+      const nowMs = Number.parseInt(args[1], 10);
+      const refillRate = Number.parseFloat(args[2]);
+      const capacity = Number.parseFloat(args[3]);
+      const hash = store.hashes.get(key) ?? new Map<string, string>();
+      let tokens = Number.parseFloat(hash.get('tokens') ?? String(capacity));
+      let lastRefill = Number.parseInt(hash.get('last_refill_ms') ?? String(nowMs), 10);
+      const elapsedMs = Math.max(0, nowMs - lastRefill);
+      tokens = Math.min(capacity, tokens + (elapsedMs * refillRate) / 1000);
+      lastRefill = nowMs;
+      let decision = 'allow';
+      if (tokens < 1) {
+        decision = 'would_reject';
+      } else {
+        tokens -= 1;
+      }
+      hash.set('tokens', String(tokens));
+      hash.set('last_refill_ms', String(lastRefill));
+      store.hashes.set(key, hash);
+      return [capacity - tokens, capacity, decision, tokens];
     }
 
     if (script === DIMO_PROVIDER_INFLIGHT_ACQUIRE_SCRIPT) {
@@ -87,6 +113,7 @@ describe('DimoProviderLimiterService (distributed semantics)', () => {
     priority: DimoProviderRequestPriority.P3_NORMAL,
     rateLimitPerSecond: 5,
     rateBurst: 0,
+    rateAlgorithm: 'token_bucket' as const,
     maxInFlight: 2,
     inFlightLeaseMs: 30_000,
     reservedHighPrioritySlots: 1,
@@ -107,8 +134,7 @@ describe('DimoProviderLimiterService (distributed semantics)', () => {
       (r) => r.rateDecision === DimoProviderLimiterDecision.WOULD_REJECT,
     );
     expect(rejects.length).toBeGreaterThan(0);
-    const epochSecond = Math.floor(Date.now() / 1000);
-    expect(store.strings.get(dimoProviderRateKey(epochSecond))).toBe('6');
+    expect(store.hashes.get(dimoProviderTokenBucketKey())?.get('tokens')).toBeDefined();
   });
 
   it('in-flight leases are global across replicas', async () => {

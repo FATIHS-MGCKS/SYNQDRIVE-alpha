@@ -36,6 +36,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-provider-concurrency-p1-3-s4-production-canary-2026-08-30',
+    version: '4.9.1006',
+    title: 'P1.3-S4 — DIMO provider production canary, rate smoothing & rollout safety',
+    summary: [
+      'Token-bucket rate smoothing (default) replaces per-second boundary bursts — same 20/s+burst5 budget.',
+      'Org-scoped canary enforce via DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS — deterministic, no random sampling.',
+      'Rollout states: OFF / SHADOW / CANARY_ENFORCE / GLOBAL_ENFORCE derived from existing DIMO_PROVIDER_LIMITER_MODE.',
+      'organizationId threaded from snapshot processor → telemetry → gateway for canary decisions.',
+      'Enhanced metrics: rollout_state, canary_match, token bucket tokens, admitted requests.',
+      'Config-only kill switch: GLOBAL_ENFORCE or CANARY → SHADOW without migration.',
+      'Production default remains shadow — global enforce NOT enabled.',
+      'PERMANENT_TRIP_LOSS=NO; trip/snapshot/reconciliation semantics unchanged.',
+    ],
+    reason:
+      'P1.3-S4 — make DIMO provider enforcement safe to canary in production without global throttle activation.',
+    previousBehavior:
+      'P1.3-S3 enforce required global mode=enforce; per-second rate counter caused boundary bursts.',
+    details:
+      'backend: token bucket Lua, dimo-provider-rollout.util.ts, gateway canary resolution, metrics. architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S4_PRODUCTION_CANARY_2026-08-30.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T23:10:00.000Z',
+  },
+  {
     id: 'dimo-provider-concurrency-p1-3-s3-priority-backpressure-2026-08-30',
     version: '4.9.1005',
     title: 'P1.3-S3 — Priority-aware DIMO provider enforcement / backpressure',

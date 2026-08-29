@@ -8,6 +8,7 @@ import {
   dimoProviderCooldownKey,
   dimoProviderInflightKey,
   dimoProviderRateKey,
+  dimoProviderTokenBucketKey,
 } from './dimo-provider-limiter.redis-scripts';
 import {
   DimoProviderLimiterDecision,
@@ -60,14 +61,20 @@ function createAdmissionReplica(
 
 function createGatewayReplica(
   config: DimoProviderLimiterConfigShape,
-): { gateway: DimoProviderGateway; limiter: DimoProviderLimiterService; redis: RedisService } {
+): {
+  gateway: DimoProviderGateway;
+  admission: DimoProviderAdmissionService;
+  limiter: DimoProviderLimiterService;
+  redis: RedisService;
+} {
   const { admission, limiter, redis } = createAdmissionReplica(config);
-  return { gateway: new DimoProviderGateway(config, admission, limiter), limiter, redis };
+  return { gateway: new DimoProviderGateway(config, admission, limiter), admission, limiter, redis };
 }
 
 async function cleanupLimiterKeys(redis: RedisService): Promise<void> {
   await redis.del(dimoProviderInflightKey());
   await redis.del(dimoProviderCooldownKey());
+  await redis.del(dimoProviderTokenBucketKey());
   const epochSecond = Math.floor(Date.now() / 1000);
   for (let offset = -2; offset <= 2; offset += 1) {
     await redis.del(dimoProviderRateKey(epochSecond + offset));
@@ -83,6 +90,7 @@ function baseBeginInput(
     priority: DimoProviderRequestPriority.P3_NORMAL,
     rateLimitPerSecond: 5,
     rateBurst: 0,
+    rateAlgorithm: 'token_bucket' as const,
     maxInFlight: 2,
     inFlightLeaseMs: 30_000,
     reservedHighPrioritySlots: 1,
@@ -123,7 +131,7 @@ function baseBeginInput(
       expect(redisOk).toBe(true);
     });
 
-    it('A: two replicas share one global rate budget', async () => {
+    it('A: two replicas share one global token bucket budget', async () => {
       const input = baseBeginInput({ rateLimitPerSecond: 3, rateBurst: 0, maxInFlight: 100 });
       const results = [];
       for (let i = 0; i < 5; i += 1) {
@@ -139,10 +147,6 @@ function baseBeginInput(
       );
       expect(rateAllows).toHaveLength(3);
       expect(rateRejects).toHaveLength(2);
-
-      const epochSecond = Math.floor(Date.now() / 1000);
-      const count = await replicaA.redis.get(dimoProviderRateKey(epochSecond));
-      expect(Number.parseInt(count ?? '0', 10)).toBe(5);
     });
 
     it('B: two replicas share global in-flight leases', async () => {
@@ -365,32 +369,45 @@ function baseBeginInput(
       await limiter.end(granted.inFlightMember);
     });
 
-    it('rate window: per-second bucket TTL and clean next window', async () => {
+    it('rate window: token bucket refills smoothly across time', async () => {
       const input = baseBeginInput({ rateLimitPerSecond: 2, rateBurst: 0, maxInFlight: 100 });
-      const epochSecond = Math.floor(Date.now() / 1000);
-      const rateKey = dimoProviderRateKey(epochSecond);
 
       await replicaA.limiter.begin(input);
       await replicaB.limiter.begin(input);
       const third = await replicaA.limiter.begin(input);
       expect(third.rateDecision).toBe(DimoProviderLimiterDecision.WOULD_REJECT);
 
-      const ttl = await replicaA.redis.ttl(rateKey);
-      expect(ttl).toBeGreaterThan(0);
-      expect(ttl).toBeLessThanOrEqual(3);
-
-      const keysBefore = await replicaA.redis.keys('dimo:provider:limiter:rate:*');
-      expect(keysBefore.length).toBeLessThanOrEqual(3);
-
-      await new Promise((resolve) => setTimeout(resolve, 1_100));
-      await cleanupLimiterKeys(replicaA.redis);
+      await new Promise((resolve) => setTimeout(resolve, 600));
 
       const fresh = await replicaB.limiter.begin(input);
       expect(fresh.rateDecision).toBe(DimoProviderLimiterDecision.ALLOW);
-      expect(fresh.rateWindowCount).toBe(1);
+    });
 
-      const keysAfter = await replicaB.redis.keys('dimo:provider:limiter:*');
-      expect(keysAfter.length).toBeLessThanOrEqual(3);
+    it('L: canary gateway enforces only allowlisted org', async () => {
+      const config: DimoProviderLimiterConfigShape = {
+        ...resolveDimoProviderLimiterConfig({
+          DIMO_PROVIDER_LIMITER_MODE: 'shadow',
+          DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS: 'org-canary',
+        }),
+        enabled: true,
+        mode: 'shadow',
+      };
+      const { gateway, admission } = createGatewayReplica(config);
+      const acquireSpy = jest.spyOn(admission, 'acquire');
+
+      await gateway.execute({
+        operation: DimoProviderOperation.TELEMETRY_GRAPHQL,
+        requestContext: { organizationId: 'org-canary' },
+        invoke: async () => 'canary-ok',
+      });
+      expect(acquireSpy.mock.calls[0][0].mode).toBe('enforce');
+
+      await gateway.execute({
+        operation: DimoProviderOperation.TELEMETRY_GRAPHQL,
+        requestContext: { organizationId: 'org-other' },
+        invoke: async () => 'shadow-ok',
+      });
+      expect(acquireSpy.mock.calls[1][0].mode).toBe('shadow');
     });
 
     it('C-rate: concurrent acquisitions respect global rate budget atomically', async () => {

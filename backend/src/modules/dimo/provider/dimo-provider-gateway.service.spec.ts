@@ -16,6 +16,7 @@ function baseConfig(mode: DimoProviderLimiterConfigShape['mode']): DimoProviderL
     mode,
     rateLimitPerSecond: 20,
     rateBurst: 5,
+    rateAlgorithm: 'token_bucket',
     maxInFlight: 40,
     inFlightLeaseMs: 45_000,
     reservedHighPrioritySlots: 12,
@@ -30,6 +31,7 @@ function baseConfig(mode: DimoProviderLimiterConfigShape['mode']): DimoProviderL
     admissionPollMinMs: 25,
     admissionPollMaxMs: 250,
     retryAfterMaxSeconds: 120,
+    canaryEnforceOrgIds: new Set<string>(),
     documentedCoreRatePerSecond: 25,
   };
 }
@@ -176,7 +178,7 @@ describe('DimoProviderGateway (S2/S3)', () => {
     expect(invoke).not.toHaveBeenCalled();
   });
 
-  it('records provider cooldown on HTTP 429', async () => {
+    it('records provider cooldown on HTTP 429', async () => {
     const limiter = {
       begin: jest.fn().mockResolvedValue({
         leaseId: 'lease-1',
@@ -207,5 +209,53 @@ describe('DimoProviderGateway (S2/S3)', () => {
       }),
     ).rejects.toBe(err);
     expect(limiter.setProviderCooldown).toHaveBeenCalledWith(3, 120);
+  });
+
+  it('S4 — canary org uses enforce while others remain shadow', async () => {
+    const config = {
+      ...baseConfig('shadow'),
+      canaryEnforceOrgIds: new Set(['org-canary']),
+    };
+    const limiter = {
+      begin: jest.fn().mockResolvedValue({
+        leaseId: 'lease-1',
+        inFlightMember: '3:lease-1',
+        mode: 'enforce',
+        rateDecision: DimoProviderLimiterDecision.ALLOW,
+        inFlightDecision: DimoProviderLimiterDecision.ALLOW,
+        rateWindowCount: 1,
+        rateWindowLimit: 25,
+        inFlightCount: 1,
+        inFlightLimit: 40,
+        redisFailOpen: false,
+      }),
+      end: jest.fn(),
+      setProviderCooldown: jest.fn(),
+    } as unknown as DimoProviderLimiterService;
+    const admission = {
+      acquire: jest.fn().mockImplementation((input) => limiter.begin(input)),
+    } as unknown as DimoProviderAdmissionService;
+    const gateway = new DimoProviderGateway(config, admission, limiter);
+    gateway.onModuleInit();
+
+    await gateway.execute({
+      operation: DimoProviderOperation.TELEMETRY_GRAPHQL,
+      requestContext: { organizationId: 'org-canary' },
+      invoke: async () => 'ok',
+    });
+    expect(admission.acquire).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: 'enforce' }),
+      expect.any(Object),
+    );
+
+    await gateway.execute({
+      operation: DimoProviderOperation.TELEMETRY_GRAPHQL,
+      requestContext: { organizationId: 'org-other' },
+      invoke: async () => 'ok',
+    });
+    expect(admission.acquire).toHaveBeenLastCalledWith(
+      expect.objectContaining({ mode: 'shadow' }),
+      expect.any(Object),
+    );
   });
 });

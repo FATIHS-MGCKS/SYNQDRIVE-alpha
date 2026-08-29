@@ -17,6 +17,7 @@ function createOffGateway(): DimoProviderGateway {
     mode: 'off',
     rateLimitPerSecond: 20,
     rateBurst: 5,
+    rateAlgorithm: 'token_bucket',
     maxInFlight: 40,
     inFlightLeaseMs: 45_000,
     reservedHighPrioritySlots: 12,
@@ -31,6 +32,7 @@ function createOffGateway(): DimoProviderGateway {
     admissionPollMinMs: 25,
     admissionPollMaxMs: 250,
     retryAfterMaxSeconds: 120,
+    canaryEnforceOrgIds: new Set<string>(),
     documentedCoreRatePerSecond: 25,
   };
   const limiter = {

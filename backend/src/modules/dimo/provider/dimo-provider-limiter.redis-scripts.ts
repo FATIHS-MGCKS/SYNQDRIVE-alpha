@@ -1,9 +1,8 @@
 /**
  * Atomic Redis scripts for global DIMO provider limiter.
- * KEYS[1] rate counter key (per-second bucket)
- * ARGV[1] max allowed (limit + burst)
- * Returns {count, maxAllowed, decision}
  */
+
+/** Legacy per-second fixed window (S2) — retained for explicit fixed_window algorithm only. */
 export const DIMO_PROVIDER_RATE_SCRIPT = `
 local current = redis.call('INCR', KEYS[1])
 if current == 1 then
@@ -15,6 +14,47 @@ if current > maxAllowed then
   decision = 'would_reject'
 end
 return {current, maxAllowed, decision}
+`;
+
+/**
+ * S4 token bucket — global smoothed rate limit.
+ * KEYS[1] hash: tokens, last_refill_ms
+ * ARGV[1] nowMs
+ * ARGV[2] refillRatePerSecond (sustained budget)
+ * ARGV[3] capacity (rate + burst)
+ * Returns {used, capacity, decision, tokensRemaining}
+ */
+export const DIMO_PROVIDER_TOKEN_BUCKET_SCRIPT = `
+local nowMs = tonumber(ARGV[1])
+local refillRate = tonumber(ARGV[2])
+local capacity = tonumber(ARGV[3])
+
+local bucket = redis.call('HMGET', KEYS[1], 'tokens', 'last_refill_ms')
+local tokens = tonumber(bucket[1])
+local lastRefill = tonumber(bucket[2])
+
+if tokens == nil then
+  tokens = capacity
+  lastRefill = nowMs
+end
+
+local elapsedMs = math.max(0, nowMs - lastRefill)
+local refill = (elapsedMs * refillRate) / 1000.0
+tokens = math.min(capacity, tokens + refill)
+lastRefill = nowMs
+
+local decision = 'allow'
+if tokens < 1.0 then
+  decision = 'would_reject'
+else
+  tokens = tokens - 1.0
+end
+
+redis.call('HMSET', KEYS[1], 'tokens', tokens, 'last_refill_ms', lastRefill)
+redis.call('PEXPIRE', KEYS[1], 120000)
+
+local used = capacity - tokens
+return {used, capacity, decision, tokens}
 `;
 
 /**
@@ -77,6 +117,10 @@ export const DIMO_PROVIDER_KEY_PREFIX = 'dimo:provider:limiter';
 
 export function dimoProviderRateKey(epochSecond: number): string {
   return `${DIMO_PROVIDER_KEY_PREFIX}:rate:${epochSecond}`;
+}
+
+export function dimoProviderTokenBucketKey(): string {
+  return `${DIMO_PROVIDER_KEY_PREFIX}:token_bucket`;
 }
 
 export function dimoProviderInflightKey(): string {

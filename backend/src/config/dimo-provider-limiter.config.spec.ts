@@ -53,4 +53,17 @@ describe('dimo-provider-limiter.config', () => {
     expect(config.admissionPollMinMs).toBe(25);
     expect(config.maxWaitMsByPriority[DimoProviderRequestPriority.P0_CRITICAL]).toBe(16_000);
   });
+
+  it('defaults to token_bucket rate algorithm (S4)', () => {
+    delete process.env.DIMO_PROVIDER_RATE_ALGORITHM;
+    expect(resolveDimoProviderLimiterConfig(process.env).rateAlgorithm).toBe('token_bucket');
+  });
+
+  it('parses canary org allowlist deterministically (S4)', () => {
+    process.env.DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS = ' org-a , org-b ,';
+    const config = resolveDimoProviderLimiterConfig(process.env);
+    expect(config.canaryEnforceOrgIds.has('org-a')).toBe(true);
+    expect(config.canaryEnforceOrgIds.has('org-b')).toBe(true);
+    expect(config.canaryEnforceOrgIds.size).toBe(2);
+  });
 });

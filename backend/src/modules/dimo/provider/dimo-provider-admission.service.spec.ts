@@ -14,6 +14,7 @@ function testConfig(): DimoProviderLimiterConfigShape {
     mode: 'enforce',
     rateLimitPerSecond: 20,
     rateBurst: 0,
+    rateAlgorithm: 'token_bucket',
     maxInFlight: 2,
     inFlightLeaseMs: 30_000,
     reservedHighPrioritySlots: 2,
@@ -28,6 +29,7 @@ function testConfig(): DimoProviderLimiterConfigShape {
     admissionPollMinMs: 10,
     admissionPollMaxMs: 50,
     retryAfterMaxSeconds: 120,
+    canaryEnforceOrgIds: new Set<string>(),
     documentedCoreRatePerSecond: 25,
   };
 }
@@ -39,6 +41,7 @@ describe('DimoProviderAdmissionService', () => {
     priority: DimoProviderRequestPriority.P4_BACKGROUND,
     rateLimitPerSecond: 5,
     rateBurst: 0,
+    rateAlgorithm: 'token_bucket' as const,
     maxInFlight: 1,
     inFlightLeaseMs: 30_000,
     reservedHighPrioritySlots: 1,
