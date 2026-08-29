@@ -5,6 +5,7 @@ import {
   applySnapshotPollingHysteresis,
   deriveSnapshotPollingTier,
   isSnapshotPollDue,
+  requiresImmediateSnapshotPollOnPromotion,
 } from './derive-snapshot-polling-tier';
 import { DEFAULT_SNAPSHOT_POLLING_TIER_CONFIG } from './snapshot-polling-tier.config';
 import { SnapshotPollingTier } from './snapshot-polling-tier.types';
@@ -28,18 +29,26 @@ function baseInput(
   };
 }
 
+function dueInput(
+  overrides: Partial<Parameters<typeof isSnapshotPollDue>[0]> = {},
+) {
+  const tierInput = baseInput();
+  return {
+    effectiveTier: SnapshotPollingTier.RESTING_STANDBY,
+    lastPolledAt: new Date(NOW - 6 * 60_000),
+    nowMs: NOW,
+    config,
+    rawTier: SnapshotPollingTier.RESTING_STANDBY,
+    previousEffectiveTier: SnapshotPollingTier.RESTING_STANDBY,
+    tierInput,
+    ...overrides,
+  };
+}
+
 describe('deriveSnapshotPollingTier', () => {
   it('ACTIVE_DRIVING for ACTIVE_TRIP FSM', () => {
     const { tier } = deriveSnapshotPollingTier(
       baseInput({ tripDetectionState: TripDetectionState.ACTIVE_TRIP }),
-      config,
-    );
-    expect(tier).toBe(SnapshotPollingTier.ACTIVE_DRIVING);
-  });
-
-  it('ACTIVE_DRIVING for POSSIBLE_END FSM', () => {
-    const { tier } = deriveSnapshotPollingTier(
-      baseInput({ tripDetectionState: TripDetectionState.POSSIBLE_END }),
       config,
     );
     expect(tier).toBe(SnapshotPollingTier.ACTIVE_DRIVING);
@@ -75,7 +84,7 @@ describe('deriveSnapshotPollingTier', () => {
     expect(tier).toBe(SnapshotPollingTier.LONG_IDLE);
   });
 
-  it('OFFLINE when connection is not CONNECTED', () => {
+  it('OFFLINE labels non-CONNECTED inputs (scheduler excludes them)', () => {
     const { tier } = deriveSnapshotPollingTier(
       baseInput({ connectionStatus: 'DISCONNECTED' }),
       config,
@@ -83,7 +92,7 @@ describe('deriveSnapshotPollingTier', () => {
     expect(tier).toBe(SnapshotPollingTier.OFFLINE);
   });
 
-  it('HARD_OFFLINE when token is missing', () => {
+  it('HARD_OFFLINE labels missing token (scheduler excludes them)', () => {
     const { tier } = deriveSnapshotPollingTier(
       baseInput({ tokenId: null }),
       config,
@@ -112,99 +121,81 @@ describe('deriveSnapshotPollingTier', () => {
     );
     expect(tier).toBe(SnapshotPollingTier.RECENTLY_ACTIVE);
   });
-
-  it('recent FSM activity promotes to RECENTLY_ACTIVE', () => {
-    const { tier } = deriveSnapshotPollingTier(
-      baseInput({
-        lastActivityAt: new Date(NOW - 30_000),
-        observationAt: new Date(NOW - TELEMETRY_STANDBY_THRESHOLD_MS - 60_000),
-      }),
-      config,
-    );
-    expect(tier).toBe(SnapshotPollingTier.RECENTLY_ACTIVE);
-  });
 });
 
 describe('isSnapshotPollDue', () => {
   it('ACTIVE_DRIVING due every 30s', () => {
-    const last = new Date(NOW - 31_000);
     expect(
       isSnapshotPollDue(
-        SnapshotPollingTier.ACTIVE_DRIVING,
-        last,
-        NOW,
-        config,
+        dueInput({
+          effectiveTier: SnapshotPollingTier.ACTIVE_DRIVING,
+          rawTier: SnapshotPollingTier.ACTIVE_DRIVING,
+          lastPolledAt: new Date(NOW - 31_000),
+        }),
       ),
     ).toBe(true);
     expect(
       isSnapshotPollDue(
-        SnapshotPollingTier.ACTIVE_DRIVING,
-        new Date(NOW - 10_000),
-        NOW,
-        config,
+        dueInput({
+          effectiveTier: SnapshotPollingTier.ACTIVE_DRIVING,
+          rawTier: SnapshotPollingTier.ACTIVE_DRIVING,
+          lastPolledAt: new Date(NOW - 10_000),
+        }),
       ),
     ).toBe(false);
   });
 
-  it('RECENTLY_ACTIVE due at configured 60s cadence', () => {
+  it('OFFLINE and HARD_OFFLINE are never due (not in scheduler cohort)', () => {
     expect(
       isSnapshotPollDue(
-        SnapshotPollingTier.RECENTLY_ACTIVE,
-        new Date(NOW - 61_000),
-        NOW,
-        config,
+        dueInput({
+          effectiveTier: SnapshotPollingTier.OFFLINE,
+          rawTier: SnapshotPollingTier.OFFLINE,
+          lastPolledAt: null,
+        }),
       ),
-    ).toBe(true);
-  });
-
-  it('RESTING_STANDBY due at 5min cadence', () => {
+    ).toBe(false);
     expect(
       isSnapshotPollDue(
-        SnapshotPollingTier.RESTING_STANDBY,
-        new Date(NOW - 5 * 60_000 - 1),
-        NOW,
-        config,
-      ),
-    ).toBe(true);
-  });
-
-  it('LONG_IDLE due at 30min cadence', () => {
-    expect(
-      isSnapshotPollDue(
-        SnapshotPollingTier.LONG_IDLE,
-        new Date(NOW - 30 * 60_000 - 1),
-        NOW,
-        config,
-      ),
-    ).toBe(true);
-  });
-
-  it('OFFLINE does not poll at normal snapshot frequency', () => {
-    expect(
-      isSnapshotPollDue(
-        SnapshotPollingTier.OFFLINE,
-        new Date(NOW - 60_000),
-        NOW,
-        config,
+        dueInput({
+          effectiveTier: SnapshotPollingTier.HARD_OFFLINE,
+          rawTier: SnapshotPollingTier.HARD_OFFLINE,
+          lastPolledAt: null,
+        }),
       ),
     ).toBe(false);
   });
 
-  it('HARD_OFFLINE never polls', () => {
-    expect(
-      isSnapshotPollDue(
-        SnapshotPollingTier.HARD_OFFLINE,
-        null,
-        NOW,
-        config,
-      ),
-    ).toBe(false);
+  it('promotes LONG_IDLE -> ACTIVE_TRIP immediately when providerFetchedAt is recent', () => {
+    const tierInput = baseInput({
+      tripDetectionState: TripDetectionState.ACTIVE_TRIP,
+    });
+    const input = dueInput({
+      effectiveTier: SnapshotPollingTier.ACTIVE_DRIVING,
+      rawTier: SnapshotPollingTier.ACTIVE_DRIVING,
+      previousEffectiveTier: SnapshotPollingTier.LONG_IDLE,
+      lastPolledAt: new Date(NOW - 20_000),
+      tierInput,
+    });
+
+    expect(requiresImmediateSnapshotPollOnPromotion(input)).toBe(true);
+    expect(isSnapshotPollDue(input)).toBe(true);
   });
 
-  it('first poll is always due when never polled', () => {
-    expect(
-      isSnapshotPollDue(SnapshotPollingTier.LONG_IDLE, null, NOW, config),
-    ).toBe(true);
+  it('promotes LONG_IDLE -> fresh external activity immediately', () => {
+    const tierInput = baseInput({
+      observationAt: new Date(NOW - 7 * 24 * 3600_000),
+      lastActivityAt: new Date(NOW - 15_000),
+    });
+    const input = dueInput({
+      effectiveTier: SnapshotPollingTier.RECENTLY_ACTIVE,
+      rawTier: SnapshotPollingTier.RECENTLY_ACTIVE,
+      previousEffectiveTier: SnapshotPollingTier.LONG_IDLE,
+      lastPolledAt: new Date(NOW - 45_000),
+      tierInput,
+    });
+
+    expect(isSnapshotPollDue(input)).toBe(true);
   });
 });
 

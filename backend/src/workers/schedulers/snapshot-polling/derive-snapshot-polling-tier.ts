@@ -40,6 +40,16 @@ export interface SnapshotPollingTierResult {
   reason: string;
 }
 
+export interface SnapshotPollDueInput {
+  effectiveTier: SnapshotPollingTier;
+  lastPolledAt: Date | null;
+  nowMs: number;
+  config: SnapshotPollingTierConfig;
+  rawTier: SnapshotPollingTier;
+  previousEffectiveTier: SnapshotPollingTier | null;
+  tierInput: SnapshotPollingTierInput;
+}
+
 function ageMs(at: Date | null, nowMs: number): number | null {
   if (!at) return null;
   const ms = at.getTime();
@@ -64,11 +74,38 @@ function hasMovementSignals(
   return input.isIgnitionOn === true;
 }
 
+function hasActivityPromotionSignals(
+  input: SnapshotPollingTierInput,
+  config: SnapshotPollingTierConfig,
+): boolean {
+  return (
+    hasRecentActivity(input.lastActivityAt, input.nowMs) ||
+    hasMovementSignals(input, config) ||
+    classifyTelemetryFreshness(input.observationAt, input.nowMs) === 'live'
+  );
+}
+
+export function snapshotPollingIntervalMs(
+  tier: SnapshotPollingTier,
+  config: SnapshotPollingTierConfig,
+): number | null {
+  if (
+    tier === SnapshotPollingTier.OFFLINE ||
+    tier === SnapshotPollingTier.HARD_OFFLINE
+  ) {
+    return null;
+  }
+  return config.intervalMsByTier[
+    tier as keyof typeof config.intervalMsByTier
+  ] ?? null;
+}
+
 /**
  * Canonical, deterministic activity-tier derivation for snapshot polling.
  *
- * Reuses authoritative connectivity and telemetry freshness semantics —
- * no competing offline/freshness model is introduced here.
+ * Reuses authoritative connectivity and telemetry freshness semantics.
+ * OFFLINE/HARD_OFFLINE label inputs outside the CONNECTED scheduler cohort;
+ * DimoSnapshotScheduler excludes those vehicles before calling this function.
  */
 export function deriveSnapshotPollingTier(
   input: SnapshotPollingTierInput,
@@ -133,7 +170,6 @@ export function deriveSnapshotPollingTier(
     };
   }
 
-  // no_signal — connected but never observed, or observation unusable
   const observationAge = ageMs(input.observationAt, input.nowMs);
   if (observationAge != null && observationAge < TELEMETRY_STANDBY_THRESHOLD_MS) {
     return {
@@ -183,29 +219,51 @@ export function applySnapshotPollingHysteresis(
   return input.rawTier;
 }
 
-export function isSnapshotPollDue(
-  tier: SnapshotPollingTier,
-  lastPolledAt: Date | null,
-  nowMs: number,
-  config: SnapshotPollingTierConfig,
+/**
+ * When authoritative activity signals place a vehicle on a faster tier, do not
+ * wait out a recent providerFetchedAt timestamp that predates the promotion.
+ */
+export function requiresImmediateSnapshotPollOnPromotion(
+  input: SnapshotPollDueInput,
 ): boolean {
-  if (tier === SnapshotPollingTier.HARD_OFFLINE) {
+  const intervalMs = snapshotPollingIntervalMs(input.effectiveTier, input.config);
+  if (intervalMs == null || input.lastPolledAt == null) return false;
+
+  const elapsed = input.nowMs - input.lastPolledAt.getTime();
+  if (elapsed >= intervalMs) return false;
+
+  if (input.rawTier === SnapshotPollingTier.ACTIVE_DRIVING) {
+    const fsm = input.tierInput.tripDetectionState;
+    return fsm != null && ACTIVE_DRIVING_FSM_STATES.has(fsm);
+  }
+
+  if (input.rawTier === SnapshotPollingTier.RECENTLY_ACTIVE) {
+    return hasActivityPromotionSignals(input.tierInput, input.config);
+  }
+
+  return false;
+}
+
+/**
+ * Whether a CONNECTED-cohort vehicle should enqueue a snapshot poll now.
+ * OFFLINE/HARD_OFFLINE always return false — those vehicles are excluded
+ * upstream by scheduler eligibility.
+ */
+export function isSnapshotPollDue(input: SnapshotPollDueInput): boolean {
+  if (
+    input.effectiveTier === SnapshotPollingTier.OFFLINE ||
+    input.effectiveTier === SnapshotPollingTier.HARD_OFFLINE
+  ) {
     return false;
   }
 
-  if (tier === SnapshotPollingTier.OFFLINE) {
-    if (lastPolledAt == null) return true;
-    return nowMs - lastPolledAt.getTime() >= config.offlineProbeIntervalMs;
-  }
+  const intervalMs = snapshotPollingIntervalMs(input.effectiveTier, input.config);
+  if (intervalMs == null) return false;
 
-  if (!config.intervalMsByTier[tier as keyof typeof config.intervalMsByTier]) {
-    return false;
-  }
+  if (input.lastPolledAt == null) return true;
 
-  const intervalMs = config.intervalMsByTier[
-    tier as keyof typeof config.intervalMsByTier
-  ];
+  const elapsed = input.nowMs - input.lastPolledAt.getTime();
+  if (elapsed >= intervalMs) return true;
 
-  if (lastPolledAt == null) return true;
-  return nowMs - lastPolledAt.getTime() >= intervalMs;
+  return requiresImmediateSnapshotPollOnPromotion(input);
 }

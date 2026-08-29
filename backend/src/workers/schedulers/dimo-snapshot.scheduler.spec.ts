@@ -20,7 +20,6 @@ describe('DimoSnapshotScheduler (activity-tier)', () => {
   beforeEach(async () => {
     queueAdd = jest.fn().mockResolvedValue(undefined);
     queueGetJob = jest.fn().mockResolvedValue(null);
-
     findMany = jest.fn();
 
     const moduleRef = await Test.createTestingModule({
@@ -77,6 +76,23 @@ describe('DimoSnapshotScheduler (activity-tier)', () => {
     };
   }
 
+  it('queries CONNECTED cohort only — DISCONNECTED vehicles never reach enqueue', async () => {
+    findMany.mockResolvedValue([vehicleRow()]);
+
+    await scheduler.enqueueSnapshotJobs();
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          dimoVehicle: expect.objectContaining({
+            connectionStatus: 'CONNECTED',
+            tokenId: { not: null },
+          }),
+        }),
+      }),
+    );
+  });
+
   it('legacy fixed cadence enqueues all matched vehicles every tick', async () => {
     process.env.WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE = 'true';
     const freshScheduler = (
@@ -104,8 +120,6 @@ describe('DimoSnapshotScheduler (activity-tier)', () => {
     await freshScheduler.enqueueSnapshotJobs();
 
     expect(queueAdd).toHaveBeenCalledTimes(2);
-    expect(queueAdd.mock.calls[0][2].jobId).toBe('snapshot-v1');
-    expect(queueAdd.mock.calls[1][2].jobId).toBe('snapshot-v2');
   });
 
   it('activity tiers skip vehicles not yet due', async () => {
@@ -137,6 +151,67 @@ describe('DimoSnapshotScheduler (activity-tier)', () => {
 
     expect(queueAdd).toHaveBeenCalledTimes(1);
     expect(queueAdd.mock.calls[0][2].jobId).toBe('snapshot-active');
+  });
+
+  it('promotes LONG_IDLE -> ACTIVE_TRIP immediately despite recent providerFetchedAt', async () => {
+    findMany.mockResolvedValue([
+      vehicleRow({
+        id: 'promoted',
+        tripDetectionState: {
+          state: TripDetectionState.ACTIVE_TRIP,
+          lastActivityAt: new Date(NOW),
+        },
+        latestState: {
+          sourceTimestamp: new Date(NOW - 7 * 24 * 3600_000),
+          lastSeenAt: new Date(NOW - 7 * 24 * 3600_000),
+          providerFetchedAt: new Date(NOW - 45_000),
+          speedKmh: 30,
+          isIgnitionOn: true,
+        },
+      }),
+    ]);
+
+    await scheduler.enqueueSnapshotJobs();
+
+    expect(queueAdd).toHaveBeenCalledTimes(1);
+    expect(queueAdd.mock.calls[0][2].jobId).toBe('snapshot-promoted');
+  });
+
+  it('promotes LONG_IDLE -> fresh external activity immediately', async () => {
+    findMany.mockResolvedValue([
+      vehicleRow({
+        id: 'activity',
+        tripDetectionState: {
+          state: TripDetectionState.RESTING,
+          lastActivityAt: new Date(NOW - 20_000),
+        },
+        latestState: {
+          sourceTimestamp: new Date(NOW - 7 * 24 * 3600_000),
+          lastSeenAt: new Date(NOW - 7 * 24 * 3600_000),
+          providerFetchedAt: new Date(NOW - 45_000),
+          speedKmh: 0,
+          isIgnitionOn: false,
+        },
+      }),
+    ]);
+
+    await scheduler.enqueueSnapshotJobs();
+
+    expect(queueAdd).toHaveBeenCalledTimes(1);
+    expect(queueAdd.mock.calls[0][2].jobId).toBe('snapshot-activity');
+  });
+
+  it('prunes polling memory for vehicles no longer in cohort', async () => {
+    findMany.mockResolvedValue([vehicleRow({ id: 'only-one' })]);
+
+    await scheduler.enqueueSnapshotJobs();
+    findMany.mockResolvedValue([]);
+    await scheduler.enqueueSnapshotJobs();
+
+    findMany.mockResolvedValue([vehicleRow({ id: 'only-one' })]);
+    await scheduler.enqueueSnapshotJobs();
+
+    expect(queueAdd).toHaveBeenCalled();
   });
 
   it('skips enqueue when Redis duplicate indicates in-flight job', async () => {

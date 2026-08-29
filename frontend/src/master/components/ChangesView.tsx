@@ -41,7 +41,9 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'P1.2 — Activity-tier DIMO snapshot polling (scalability)',
     summary: [
       'Replaced naive O(N) fleet-wide 30s snapshot enqueue with canonical activity-tier scheduling while preserving ACTIVE_DRIVING 30s cadence.',
-      'Tiers: ACTIVE_DRIVING (FSM active trip), RECENTLY_ACTIVE (live telemetry / movement), RESTING_STANDBY (<24h), LONG_IDLE (>24h), OFFLINE / HARD_OFFLINE (no normal polling).',
+      'Tiers: ACTIVE_DRIVING (FSM active trip), RECENTLY_ACTIVE (live telemetry / movement), RESTING_STANDBY (<24h), LONG_IDLE (>24h). OFFLINE/HARD_OFFLINE are eligibility labels only — scheduler remains CONNECTED+token cohort; recovery owned by DimoVehicleSync/webhooks/episode reconciliation.',
+      'Promotion bypass: faster-tier activity signals enqueue immediately even when providerFetchedAt is inside the previous slow-tier window.',
+      'Polling memory pruned each tick to current cohort; hysteresis state lost on restart is safe.',
       'Single canonical `deriveSnapshotPollingTier()` reuses `classifyTelemetryFreshness`, VLS `sourceTimestamp`, trip FSM, and DIMO connection status — no competing freshness model.',
       'Demotion hysteresis (default 90s hold) prevents tier flapping; `providerFetchedAt` gates due vehicles per tier interval.',
       'Deterministic org round-robin interleaving before enqueue; `jobId=snapshot-{vehicleId}` dedup unchanged.',

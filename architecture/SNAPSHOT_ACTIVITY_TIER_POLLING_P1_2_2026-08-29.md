@@ -14,7 +14,8 @@ N vehicles with c=5 consumers).
 
 ## After
 
-The scheduler tick remains every 30s, but enqueue is **tier-gated**:
+The scheduler tick remains every 30s, but enqueue is **tier-gated** for the
+**CONNECTED + tokenId** cohort only:
 
 | Tier | Condition (canonical) | Default interval |
 |------|----------------------|------------------|
@@ -22,8 +23,21 @@ The scheduler tick remains every 30s, but enqueue is **tier-gated**:
 | `RECENTLY_ACTIVE` | `live` telemetry, movement, recent FSM activity | 60s |
 | `RESTING_STANDBY` | `standby` telemetry (<24h) | 5min |
 | `LONG_IDLE` | `signal_delayed` / `offline` / no signal >24h | 30min |
-| `OFFLINE` | `connectionStatus !== CONNECTED` | sparse probe only |
-| `HARD_OFFLINE` | missing `tokenId` | no polling |
+
+### OFFLINE / HARD_OFFLINE — Option B (not snapshot-polled)
+
+`deriveSnapshotPollingTier()` can label inputs as `OFFLINE` (non-CONNECTED) or
+`HARD_OFFLINE` (missing token), but **`DimoSnapshotScheduler` excludes those
+vehicles at eligibility** — same as pre-P1.2.
+
+Snapshot polling does **not** refresh `DimoVehicle.connectionStatus` (identity field
+updated by `DimoVehicleSyncScheduler` every 24h). Connection recovery is owned by:
+
+- `DimoVehicleSyncScheduler` / `DimoApiSyncService` (identity `connectionStatus`)
+- Device-connection webhooks (OBD plug/unplug)
+- `DeviceConnectionEpisodeResolutionService` (telemetry recovery policy)
+
+There is **no** sparse OFFLINE snapshot probe in P1.2.
 
 ### Canonical derivation
 
@@ -35,18 +49,20 @@ Reuses:
 - `classifyTelemetryFreshness` / `TELEMETRY_*_THRESHOLD_MS` from `vehicle-state-interpreter`
 - `VehicleLatestState.sourceTimestamp` (observation) over `lastSeenAt`
 - `VehicleTripDetectionState` FSM + `lastActivityAt`
-- DIMO `connectionStatus` + `tokenId` (same cohort as pre-P1.2)
+- DIMO `connectionStatus` + `tokenId` (eligibility boundary only)
+
+### Promotion latency
+
+`isSnapshotPollDue()` uses `providerFetchedAt` cadence but **bypasses** the wait
+when a vehicle promotes to a faster tier because of authoritative activity signals
+(FSM active trip, movement, live telemetry, recent `lastActivityAt`).
 
 ### Hysteresis
 
 `applySnapshotPollingHysteresis()` holds `RECENTLY_ACTIVE` cadence for
 `WORKER_SNAPSHOT_ACTIVE_DRIVING_DEMOTION_HOLD_MS` (default 90s) after
-`ACTIVE_DRIVING` ends — prevents single quiet snapshot demotion flapping.
-
-### Due check
-
-`providerFetchedAt` from `VehicleLatestState` — same field used by connectivity
-diagnostics for provider reachability.
+`ACTIVE_DRIVING` ends. `pruneVehiclePollingMemory()` drops entries for vehicles
+no longer in the scheduler cohort.
 
 ### Multi-org fairness
 
@@ -79,6 +95,7 @@ Formula per tier: `count × (tickMs / intervalMs) × ticksPerMinute`.
 - Global DIMO semaphore / token bucket
 - Per-tenant queues
 - Full P1.10 metrics suite
+- OFFLINE sparse snapshot probing
 
 ## Files
 

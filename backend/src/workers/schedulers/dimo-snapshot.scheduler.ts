@@ -14,6 +14,7 @@ import {
   isSnapshotPollDue,
 } from './snapshot-polling/derive-snapshot-polling-tier';
 import { interleaveByOrganization } from './snapshot-polling/interleave-by-organization';
+import { pruneVehiclePollingMemory } from './snapshot-polling/snapshot-polling-memory';
 import {
   loadSnapshotPollingTierConfig,
   type SnapshotPollingTierConfig,
@@ -41,7 +42,14 @@ import {
  * ─── P1.2 ACTIVITY-TIER POLLING ────────────────────────────────────────────
  * When `WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED=true` (default), only
  * vehicles whose tier interval has elapsed since `providerFetchedAt` are
- * enqueued. Tier derivation is canonical via `deriveSnapshotPollingTier`.
+ * enqueued — with promotion bypass when authoritative activity signals move
+ * a vehicle to a faster tier. Tier derivation is canonical via
+ * `deriveSnapshotPollingTier`.
+ *
+ * Scheduler eligibility remains CONNECTED + tokenId (pre-P1.2 cohort).
+ * OFFLINE recovery is owned by DimoVehicleSync (24h identity),
+ * device-connection webhooks, and episode reconciliation — not snapshot polls.
+ *
  * Roll back to legacy O(N) every-tick enqueue with
  * `WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE=true`.
  *
@@ -158,6 +166,9 @@ export class DimoSnapshotScheduler {
       this.tierConfig.activityTierPollingEnabled &&
       !this.tierConfig.legacyFixedCadence;
 
+    const activeVehicleIds = new Set(vehicles.map((v) => v.id));
+    pruneVehiclePollingMemory(this.vehiclePollingMemory, activeVehicleIds);
+
     const tierCounts = new Map<SnapshotPollingTier, number>();
     for (const tier of Object.values(SnapshotPollingTier)) {
       tierCounts.set(tier, 0);
@@ -178,17 +189,19 @@ export class DimoSnapshotScheduler {
       const observationAt =
         v.latestState?.sourceTimestamp ?? v.latestState?.lastSeenAt ?? null;
 
+      const tierInput = {
+        connectionStatus: v.dimoVehicle?.connectionStatus ?? null,
+        tokenId,
+        tripDetectionState: v.tripDetectionState?.state ?? null,
+        observationAt,
+        lastActivityAt: v.tripDetectionState?.lastActivityAt ?? null,
+        speedKmh: v.latestState?.speedKmh ?? null,
+        isIgnitionOn: v.latestState?.isIgnitionOn ?? null,
+        nowMs,
+      };
+
       const { tier: rawTier } = deriveSnapshotPollingTier(
-        {
-          connectionStatus: v.dimoVehicle?.connectionStatus ?? null,
-          tokenId,
-          tripDetectionState: v.tripDetectionState?.state ?? null,
-          observationAt,
-          lastActivityAt: v.tripDetectionState?.lastActivityAt ?? null,
-          speedKmh: v.latestState?.speedKmh ?? null,
-          isIgnitionOn: v.latestState?.isIgnitionOn ?? null,
-          nowMs,
-        },
+        tierInput,
         this.tierConfig,
       );
 
@@ -220,12 +233,15 @@ export class DimoSnapshotScheduler {
 
       const due =
         !useActivityTiers ||
-        isSnapshotPollDue(
+        isSnapshotPollDue({
           effectiveTier,
-          v.latestState?.providerFetchedAt ?? null,
+          lastPolledAt: v.latestState?.providerFetchedAt ?? null,
           nowMs,
-          this.tierConfig,
-        );
+          config: this.tierConfig,
+          rawTier,
+          previousEffectiveTier: memory?.effectiveTier ?? null,
+          tierInput,
+        });
 
       if (!due) continue;
       if (useActivityTiers && !SNAPSHOT_POLLABLE_TIERS.has(effectiveTier)) {

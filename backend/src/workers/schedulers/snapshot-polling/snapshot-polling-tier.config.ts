@@ -12,8 +12,6 @@ export interface SnapshotPollingTierConfig {
     | typeof SnapshotPollingTier.LONG_IDLE,
     number
   >;
-  /** Sparse probe interval for OFFLINE (non-CONNECTED) vehicles when probed. */
-  offlineProbeIntervalMs: number;
   /**
    * After ACTIVE_DRIVING ends, hold at least RECENTLY_ACTIVE cadence for this
    * duration to avoid tier flapping on a single quiet snapshot.
@@ -72,10 +70,6 @@ export function loadSnapshotPollingTierConfig(
         30 * 60_000,
       ),
     },
-    offlineProbeIntervalMs: parsePositiveInt(
-      env.WORKER_SNAPSHOT_TIER_OFFLINE_PROBE_MS,
-      30 * 60_000,
-    ),
     activeDrivingDemotionHoldMs: parsePositiveInt(
       env.WORKER_SNAPSHOT_ACTIVE_DRIVING_DEMOTION_HOLD_MS,
       90_000,
