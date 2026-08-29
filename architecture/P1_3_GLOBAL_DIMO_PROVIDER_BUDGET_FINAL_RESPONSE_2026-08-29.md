@@ -7,7 +7,7 @@
 
 PR = #1417  
 BRANCH = `cursor/p13-global-dimo-provider-budget`  
-HEAD_COMMIT = `5db28f77173c402743459e8d4830d70bea254001`  
+HEAD_COMMIT = `28e08868bb99ab790f93bde5c622dae50fa183c4`  
 BASE_MAIN_COMMIT = `d221e766374dea2360b2e19636504882d5d662ce` (P1.2 FINAL-6 merged via #1409)  
 STATUS = **OPEN — READY FOR REVIEW — NOT MERGED — PRODUCTION_MUTATIONS = NONE**
 
@@ -42,8 +42,8 @@ N1000_RECOMMENDED_CONFIG = **See §12**
 PROVIDER_CEILING_VERIFIED = **NO**  
 N1000_CERTIFICATION = **CONDITIONALLY_CERTIFIED** (software architecture + tests; provider quota externally unverified)  
 PRODUCTION_MUTATIONS = **NONE**  
-TESTS = **GitHub CI (HEAD `5db28f771`) — 25/25 SUCCESS** — Vehicle Detail CI gate 12/12 + Legal Documents CI gate 13/13 (Install, Lint, Typecheck, Backend unit, Backend security, Backend boundary repair PostgreSQL, Backend integration, Migration PostgreSQL, Prisma validate, Frontend component, Playwright E2E, Accessibility axe, Security scan, Production build, CI gate)  
-CI_STATUS = **SUCCESS** — runs `33268961626` (Vehicle Detail) + `33268961607` (Legal Documents) on `cursor/p13-global-dimo-provider-budget` @ `5db28f771` (push event; `pull_request` synchronize did not re-fire after initial failure @ `9e4211c1a`)  
+TESTS = **GitHub CI (HEAD `28e08868b`) — 25/25 SUCCESS** — Vehicle Detail CI gate 12/12 + Legal Documents CI gate 13/13 (Install, Lint, Typecheck, Backend unit, Backend security, Backend boundary repair PostgreSQL, Backend integration, Migration PostgreSQL, Prisma validate, Frontend component, Playwright E2E, Accessibility axe, Security scan, Production build, CI gate)  
+CI_STATUS = **SUCCESS** — runs `33269591547` (Vehicle Detail) + `33269591549` (Legal Documents) on `cursor/p13-global-dimo-provider-budget` @ `28e08868b` (push event)  
 NEXT_STAGE = **P1.7** (scheduler leader election before horizontal PM2 scale) **then** **P1.4** (reconciliation mutex/pacing under burst)
 
 ---
@@ -539,7 +539,7 @@ WORKER_SNAPSHOT_MAX_ENQUEUE_PER_TICK=0
 MERGE_RECOMMENDATION = **APPROVE_WITH_CONDITIONS**
 
 **Reason:**
-- P1.3 implementation complete; GitHub CI **SUCCESS** on final HEAD (`5db28f771`).
+- P1.3 implementation complete; GitHub CI **SUCCESS** on final HEAD (`28e08868b`).
 - Trip-loss regression covered by CI (boundary repair PostgreSQL, unit, integration, E2E).
 - Fail-closed semantics proven in unit tests; typecheck fix (`dimo-triggers.service.spec.ts` mock executor) verified in CI.
 - **Conditions:**
@@ -558,7 +558,9 @@ MERGE_RECOMMENDATION = **APPROVE_WITH_CONDITIONS**
 | Run | HEAD | Event | Status | Notes |
 |-----|------|-------|--------|-------|
 | `33265303743` / `33265303767` | `9e4211c1a` | pull_request (open) | **FAILURE** | Typecheck: `dimo-triggers.service.spec.ts` missing 3rd constructor arg — fixed in `6e22fda18` |
-| `33268961626` / `33268961607` | `5db28f771` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Final CI — 25/25 jobs green; includes Typecheck, unit, integration, E2E, boundary repair, build |
+| `33269591547` / `33269591549` | `28e08868b` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Final artifact-sync HEAD — 25/25 jobs green |
+| `33269308428` / `33269308413` | `acda0a6c6` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Prior artifact commit — 25/25 jobs green |
+| `33268961626` / `33268961607` | `5db28f771` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | CI infra enablement commit — 25/25 jobs green |
 
 ---
 
