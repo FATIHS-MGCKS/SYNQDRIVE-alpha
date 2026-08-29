@@ -287,7 +287,12 @@ Each test creates **two independent `RedisService` instances** (separate ioredis
 
 ### CI evidence
 
-Recorded in closure commit final response file after push.
+| Workflow run ID | Commit | Conclusion |
+|-----------------|--------|------------|
+| **33277760956** | `2aafb82d4` | **success** (Legal Documents — Production Readiness CI) |
+| **33277760955** | `2aafb82d4` | **success** (Vehicle Detail — Production Readiness CI) |
+
+`Backend integration tests` step `npm run test:dimo-provider-limiter:redis`: **success** (~18s, 11 tests).
 
 ---
 
