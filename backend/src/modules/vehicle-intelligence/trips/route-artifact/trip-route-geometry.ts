@@ -49,6 +49,15 @@ export function parseTripRouteGeometryJson(value: unknown): TripRouteLngLat[] | 
   return out;
 }
 
+/** Safe read-path parse — never throws on malformed persisted artifact geometry. */
+export function safeParseTripRouteGeometryJson(value: unknown): TripRouteLngLat[] | null {
+  try {
+    return parseTripRouteGeometryJson(value);
+  } catch {
+    return null;
+  }
+}
+
 /** Serialize domain geometry for Prisma JSON columns. */
 export function serializeTripRouteGeometry(
   geometry: TripRouteLngLat[] | null | undefined,

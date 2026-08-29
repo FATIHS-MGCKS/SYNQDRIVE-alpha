@@ -57,6 +57,7 @@ import { TripBehaviorEnrichmentService } from './trips/trip-behavior-enrichment.
 import { TripEnrichmentOrchestratorService } from './trips/trip-enrichment-orchestrator.service';
 import {
   TripRouteArtifactMaterializerService,
+  TripRouteCanonicalReadService,
   VehicleTripRouteArtifactRepository,
 } from './trips/route-artifact';
 import { MapboxChunkMatchingClientService } from './trips/route-artifact/chunked-matching/mapbox-chunk-matching.client.service';
@@ -316,6 +317,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     TripEnrichmentOrchestratorService,
     VehicleTripRouteArtifactRepository,
     TripRouteArtifactMaterializerService,
+    TripRouteCanonicalReadService,
     MapboxChunkMatchingClientService,
     TripRouteChunkedMatcherService,
     TripAnalysisCoordinatorService,
@@ -516,6 +518,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     TripEnrichmentOrchestratorService,
     VehicleTripRouteArtifactRepository,
     TripRouteArtifactMaterializerService,
+    TripRouteCanonicalReadService,
     MapboxChunkMatchingClientService,
     TripRouteChunkedMatcherService,
     TripAnalysisCoordinatorService,

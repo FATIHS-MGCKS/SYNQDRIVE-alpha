@@ -7118,7 +7118,8 @@ export const api = {
       from: params.from,
       to: params.to,
     })),
-    tripRoute: (vehicleId: string, tripId: string) => get<any[]>(`/vehicles/${vehicleId}/trips/${tripId}/route`),
+    tripRoute: (vehicleId: string, tripId: string) =>
+      get<CanonicalTripRouteResponse>(`/vehicles/${vehicleId}/trips/${tripId}/route`),
     /** @deprecated Use reconcileTrips instead */
     syncTrips: (vehicleId: string, _params?: { from?: string; to?: string }) =>
       post<any>(`/vehicles/${vehicleId}/trips/reconcile`, {}),
@@ -9542,6 +9543,62 @@ export interface SpeedingSection {
   primaryLimitSource: 'mapbox' | 'fallback' | 'mixed';
   severity: SpeedingSeverity;
   coordinates: [number, number][];
+}
+
+export type RouteProcessingState =
+  | 'READY'
+  | 'PROCESSING'
+  | 'RETRYING'
+  | 'FAILED'
+  | 'UNAVAILABLE';
+
+export type RouteContinuityStatus = 'COMPLETE' | 'GAPS_PRESENT' | 'INSUFFICIENT_DATA';
+
+export type CanonicalRouteQuality = 'MATCHED' | 'FILTERED' | 'RAW';
+
+export interface CanonicalTripRouteSpeedPoint {
+  latitude: number;
+  longitude: number;
+  speedKmh: number | null;
+  timestamp: string;
+}
+
+export interface CanonicalTripRouteResponse {
+  tripId: string;
+  vehicleId: string;
+  routeQuality: CanonicalRouteQuality | null;
+  geometry: {
+    type: 'MultiLineString';
+    coordinates: [number, number][][];
+  } | null;
+  source: {
+    provider: string | null;
+    algorithmVersion: string | null;
+    processedAt: string | null;
+  };
+  quality: {
+    matchConfidence: number | null;
+    matchCoverage: number | null;
+  };
+  counts: {
+    sourcePointCount: number;
+    filteredPointCount: number;
+    matchedPointCount: number | null;
+  };
+  continuity: {
+    status: RouteContinuityStatus;
+    hasUnknownGaps: boolean;
+    gapCount: number;
+  };
+  status: {
+    processingState: RouteProcessingState;
+    ready: boolean;
+    retryableFailure: boolean;
+    failureReason: string | null;
+  };
+  speedPoints: CanonicalTripRouteSpeedPoint[];
+  /** @deprecated Not serialized — use speedPoints (measured telemetry, not route geometry). */
+  points?: CanonicalTripRouteSpeedPoint[];
 }
 
 export interface TripEnrichment {

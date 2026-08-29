@@ -16,7 +16,9 @@ import {
 import { resolveEnrichmentDistanceKm } from './trip-distance.helpers';
 import {
   TripRouteArtifactMaterializerService,
+  TripRouteCanonicalReadService,
   selectWaypointsForPersistence,
+  type CanonicalTripRouteResponse,
   type TripRouteWaypointFidelity,
 } from './route-artifact';
 import {
@@ -68,6 +70,7 @@ export class TripsService {
     private readonly segments: DimoSegmentsService,
     private readonly mapbox: MapboxService,
     private readonly routeArtifactMaterializer: TripRouteArtifactMaterializerService,
+    private readonly routeCanonicalRead: TripRouteCanonicalReadService,
   ) {}
 
   // ────────────────────────────────────────────────────────
@@ -124,7 +127,7 @@ export class TripsService {
     organizationId: string,
     vehicleId: string,
     tripId: string,
-  ): Promise<RoutePoint[]> {
+  ): Promise<CanonicalTripRouteResponse> {
     await assertVehicleInOrganization(this.prisma, organizationId, vehicleId);
     const { vehicleId: scopedVehicleId } = await assertTripInOrganization(
       this.prisma,
@@ -132,31 +135,52 @@ export class TripsService {
       tripId,
     );
     if (scopedVehicleId !== vehicleId) {
-      return [];
+      return this.emptyCanonicalRouteResponse(tripId, vehicleId);
     }
 
-    const trip = await this.prisma.vehicleTrip.findFirst({
-      where: { id: tripId, vehicle: { organizationId } },
-    });
-    if (!trip) return [];
-
-    const vehicle = await this.prisma.vehicle.findFirst({
-      where: { id: vehicleId, organizationId },
-      include: { dimoVehicle: true },
-    });
-    const tokenId = vehicle?.dimoVehicle?.tokenId;
-    if (!tokenId) return this.getStoredWaypoints(tripId);
-
-    const endTime = trip.endTime ?? new Date();
-    const points = await this.segments.fetchRouteEnrichment(
-      tokenId,
-      trip.startTime,
-      endTime,
+    return this.routeCanonicalRead.getCanonicalRouteForTrip(
+      organizationId,
+      vehicleId,
+      tripId,
     );
-    if (points.length > 0) {
-      await this.storeWaypoints(tripId, points);
-    }
-    return points.length > 0 ? points : this.getStoredWaypoints(tripId);
+  }
+
+  private emptyCanonicalRouteResponse(
+    tripId: string,
+    vehicleId: string,
+  ): CanonicalTripRouteResponse {
+    return {
+      tripId,
+      vehicleId,
+      routeQuality: null,
+      geometry: null,
+      source: {
+        provider: null,
+        algorithmVersion: null,
+        processedAt: null,
+      },
+      quality: {
+        matchConfidence: null,
+        matchCoverage: null,
+      },
+      counts: {
+        sourcePointCount: 0,
+        filteredPointCount: 0,
+        matchedPointCount: null,
+      },
+      continuity: {
+        status: 'INSUFFICIENT_DATA',
+        hasUnknownGaps: false,
+        gapCount: 0,
+      },
+      status: {
+        processingState: 'UNAVAILABLE',
+        ready: false,
+        retryableFailure: false,
+        failureReason: 'TRIP_VEHICLE_MISMATCH',
+      },
+      speedPoints: [],
+    };
   }
 
   async getStats(organizationId: string, vehicleId: string) {

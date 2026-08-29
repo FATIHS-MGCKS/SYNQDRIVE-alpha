@@ -21,15 +21,13 @@ import { TripDeviceConnectionEvidence } from './TripDeviceConnectionEvidence';
 import { TripRpmCandidatesList } from './TripRpmCandidatesList';
 import { TIMELINE_COPY, RENTAL_COPY, TRIPS_COPY, tv } from './trips-view-ui';
 import type { TripRentalContextView } from './utils/tripRentalContext';
-import type { TripBehaviorEvent, TripEnrichment, TripTimelineTrip } from './timeline.types';
+import type { TripBehaviorEvent, TripTimelineTrip } from './timeline.types';
 
 export interface TripTimelineExpandedProps {
   trip: TripTimelineTrip;
   isDark: boolean;
   orgId?: string;
   vehicleId?: string;
-  enrichment?: TripEnrichment;
-  enriching?: boolean;
   detailLoading?: boolean;
   detailError?: boolean;
   behaviorEvents: TripBehaviorEvent[];
@@ -76,7 +74,6 @@ export function TripTimelineExpanded({
   isDark,
   orgId,
   vehicleId,
-  enriching,
   detailLoading,
   detailError,
   behaviorEvents,
@@ -136,14 +133,6 @@ export function TripTimelineExpanded({
   return (
     <div className="px-4 pb-4 pt-0" onClick={(e) => e.stopPropagation()}>
       <div className="space-y-5 border-t border-border/40 pt-4">
-        {enriching && (
-          <div
-            className={`flex items-center gap-1.5 text-[11px] font-medium ${isDark ? 'text-status-ai' : 'text-status-info'}`}
-          >
-            <Icon name="loader-2" className="h-3.5 w-3.5 animate-spin" /> {TRIPS_COPY.enrichingInline}
-          </div>
-        )}
-
         {detailLoading && (
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <Icon name="loader-2" className="h-3.5 w-3.5 animate-spin" />

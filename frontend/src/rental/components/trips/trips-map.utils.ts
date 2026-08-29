@@ -1,7 +1,16 @@
 import type { TripBehaviorEvent } from '../../../lib/api';
+import type {
+  CanonicalRouteQuality,
+  RouteContinuityStatus,
+  RouteProcessingState,
+} from '../../../lib/api';
 import { getStressLabel, resolveDrivingStressScore } from '../../lib/scoreFormat';
-import type { TripMapQualityFlags, TripMapTripData } from './trips-map.types';
-import type { TripEnrichment } from './trips-map.types';
+import type { TripMapQualityFlags, TripMapRoutePoint, TripMapTripData } from './trips-map.types';
+export {
+  continuityStatusLabel,
+  processingStateLabel,
+  routeQualityLabel,
+} from './trips-route-i18n';
 import {
   formatTripDistance,
   formatTripDuration,
@@ -24,31 +33,44 @@ export function countTripEvents(trip: TripMapTripData): number | null {
 
 export function deriveTripMapQuality(
   trip: TripMapTripData | null,
-  enrichment: TripEnrichment | undefined,
-  routePointsCount: number,
-  routeError: string | null,
-  behaviorLoading: boolean,
+  input: {
+    routeQuality: CanonicalRouteQuality | null;
+    matchConfidence: number | null;
+    matchCoverage: number | null;
+    continuityStatus: RouteContinuityStatus;
+    processingState: RouteProcessingState;
+    routeProcessedAt: string | null;
+    segmentCount: number;
+    routeError: string | null;
+    behaviorLoading: boolean;
+  },
 ): TripMapQualityFlags {
-  const routeAvailable = routePointsCount > 0 && !routeError;
-  const matchConfidence = enrichment?.mapMatchConfidence ?? 0;
-  const hasMatched = (enrichment?.matchedGeometry?.length ?? 0) > 1;
+  const routeReady = input.processingState === 'READY';
+  const routeAvailable = routeReady && input.segmentCount > 0 && !input.routeError;
   const hfStatus = trip?.behaviorEnrichmentStatus;
 
   return {
     routeAvailable,
-    routeIncomplete: Boolean(routeError || trip?.detailsLimited || (routeAvailable && routePointsCount < 3)),
-    mapMatched: matchConfidence > 0.5 && hasMatched,
-    mapMatchConfidence: matchConfidence > 0 ? matchConfidence : null,
+    routeIncomplete:
+      Boolean(input.routeError) ||
+      input.continuityStatus === 'GAPS_PRESENT' ||
+      input.continuityStatus === 'INSUFFICIENT_DATA' ||
+      Boolean(trip?.detailsLimited) ||
+      (routeAvailable && input.segmentCount < 1),
+    routeQuality: input.routeQuality,
+    matchConfidence: input.matchConfidence,
+    matchCoverage: input.matchCoverage,
+    continuityStatus: input.continuityStatus,
+    processingState: input.processingState,
     hfAvailable: trip?.behaviorReady === true,
     hfLimited: hfStatus === 'SKIPPED_NO_HF_DATA' || trip?.detailsLimited === true,
     hfUnavailable: hfStatus === 'SKIPPED_NO_HF_DATA',
     hfAnalyzing:
-      behaviorLoading ||
+      input.behaviorLoading ||
       trip?.analysisInProgress === true ||
       trip?.behaviorReady === false,
-    gpsGap: Boolean(trip?.gapEnded),
-    routeUpdatedAt: enrichment?.enrichedAt ?? trip?.enrichedAt ?? null,
-    hasMatchedGeometry: hasMatched,
+    gpsGap: input.continuityStatus === 'GAPS_PRESENT' || Boolean(trip?.gapEnded),
+    routeUpdatedAt: input.routeProcessedAt ?? trip?.enrichedAt ?? null,
   };
 }
 
@@ -132,6 +154,58 @@ export function bearingBetween(
     Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
     Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lng2 - lng1));
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+export function buildMeasuredSpeedLineFeatures(
+  routePoints: TripMapRoutePoint[],
+  hasUnknownGaps: boolean,
+  gapThresholdSeconds = 180,
+): GeoJSON.Feature<GeoJSON.LineString>[] {
+  if (routePoints.length < 2) return [];
+
+  const segments: TripMapRoutePoint[][] = [];
+  let current: TripMapRoutePoint[] = [routePoints[0]];
+
+  for (let i = 1; i < routePoints.length; i++) {
+    const prev = routePoints[i - 1];
+    const point = routePoints[i];
+    const prevTs = Date.parse(prev.timestamp);
+    const nextTs = Date.parse(point.timestamp);
+    const gapSeconds =
+      Number.isFinite(prevTs) && Number.isFinite(nextTs)
+        ? Math.max(0, (nextTs - prevTs) / 1000)
+        : 0;
+
+    if (hasUnknownGaps && gapSeconds >= gapThresholdSeconds && current.length > 0) {
+      segments.push(current);
+      current = [point];
+      continue;
+    }
+    current.push(point);
+  }
+  if (current.length > 0) segments.push(current);
+
+  const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+  for (const segment of segments) {
+    for (let i = 0; i < segment.length - 1; i++) {
+      const a = segment[i];
+      const b = segment[i + 1];
+      if (a.latitude && a.longitude && b.latitude && b.longitude) {
+        features.push({
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [a.longitude, a.latitude],
+              [b.longitude, b.latitude],
+            ],
+          },
+          properties: { speed: a.speedKmh ?? 0 },
+        });
+      }
+    }
+  }
+  return features;
 }
 
 export function createEventMarkerElement(

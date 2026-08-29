@@ -21,6 +21,26 @@ export {
   TripRouteArtifactTenantMismatchError,
 } from './vehicle-trip-route-artifact.repository';
 export { TripRouteArtifactMaterializerService } from './trip-route-artifact-materializer.service';
+export { TripRouteCanonicalReadService } from './trip-route-canonical-read.service';
+export {
+  splitFilteredGeometryByGaps,
+  splitMatchedGeometryByBoundaries,
+  splitGeometryAtGapBoundaries,
+  splitWaypointGeometryByTimestamps,
+  toMultiLineStringGeometry,
+} from './trip-route-segment-geometry';
+export { deriveRouteProcessingState, ROUTE_JOB_STALE_AFTER_MS } from './trip-route-processing-state';
+export {
+  resolvePersistedGapCount,
+  splitMeasuredPointsByGapAuthority,
+} from './trip-route-gap-authority';
+export type {
+  CanonicalTripRouteResponse,
+  CanonicalTripRouteSpeedPoint,
+  CanonicalTripRouteGeometry,
+  RouteProcessingState,
+  RouteContinuityStatus,
+} from './trip-route-canonical-read.types';
 export type {
   TripRouteArtifactMaterializeInput,
   TripRouteArtifactMaterializeOutcome,

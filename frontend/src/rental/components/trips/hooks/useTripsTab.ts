@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRentalOrg } from '../../../RentalContext';
 import type { TripBehaviorEvent, TripData, TripMapActions, TripsViewProps } from '../trips.types';
 import { isSyncMessageSuccess } from '../utils/tripStatus';
-import { useAutoTripEnrichment, useTripEnrichment } from './useTripEnrichment';
 import { useTripBehaviorEvents } from './useTripBehaviorEvents';
 import { useTripDetail } from './useTripDetail';
 import { useTripRoute } from './useTripRoute';
@@ -29,8 +28,7 @@ export function useTripsTab({
     onTripsLoaded,
   });
 
-  const route = useTripRoute(vehicleId);
-  const enrichment = useTripEnrichment(vehicleId, vehicleTrips.loadTrips);
+  const route = useTripRoute(vehicleId, orgId ?? undefined);
   const tripDetail = useTripDetail(vehicleId);
 
   const rental = useTripsRentalContext({
@@ -48,13 +46,6 @@ export function useTripsTab({
     onTripsReload: vehicleTrips.loadTrips,
     selectGuard,
   });
-
-  useAutoTripEnrichment(
-    selectedTrip,
-    enrichment.enrichments,
-    enrichment.enrichingId,
-    enrichment.enrichTrip,
-  );
 
   // Reset tab-local state when vehicle or filter context changes.
   useEffect(() => {
@@ -120,9 +111,11 @@ export function useTripsTab({
 
   const syncIsSuccess = isSyncMessageSuccess(vehicleTrips.syncMessage);
 
-  const mapRoutePoints = route.isRouteForTrip(selectedTrip?.id ?? null) ? route.routePoints : [];
-  const mapRouteLoading = route.isRouteForTrip(selectedTrip?.id ?? null) && route.routeLoading;
-  const mapRouteError = route.isRouteForTrip(selectedTrip?.id ?? null) ? route.routeError : null;
+  const mapRouteActive = route.isRouteForTrip(selectedTrip?.id ?? null);
+  const mapRoutePoints = mapRouteActive ? route.routePoints : [];
+  const mapSegments = mapRouteActive ? route.segments : [];
+  const mapRouteLoading = mapRouteActive && route.routeLoading;
+  const mapRouteError = mapRouteActive ? route.routeError : null;
 
   const setMapActions = useCallback((actions: TripMapActions | null) => {
     mapActionsRef.current = actions;
@@ -152,11 +145,16 @@ export function useTripsTab({
     detailLoadingId: tripDetail.detailLoadingId,
     detailErrorId: tripDetail.detailErrorId,
     routePoints: mapRoutePoints,
+    routeSegments: mapSegments,
+    routeQuality: mapRouteActive ? route.routeQuality : null,
+    processingState: mapRouteActive ? route.processingState : 'UNAVAILABLE',
+    continuityStatus: mapRouteActive ? route.continuityStatus : 'INSUFFICIENT_DATA',
+    matchConfidence: mapRouteActive ? route.matchConfidence : null,
+    matchCoverage: mapRouteActive ? route.matchCoverage : null,
+    routeProcessedAt: mapRouteActive ? route.processedAt : null,
     routeLoading: mapRouteLoading,
     routeError: mapRouteError,
     routePointsCount: mapRoutePoints.length,
-    enrichments: enrichment.enrichments,
-    enrichingId: enrichment.enrichingId,
     behaviorEvents: behavior.behaviorEvents,
     behaviorLoadingId: behavior.behaviorLoading,
     selectedBehaviorEventId: behavior.selectedBehaviorEventId,
