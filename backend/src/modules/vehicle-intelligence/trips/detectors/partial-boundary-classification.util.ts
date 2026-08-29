@@ -34,6 +34,11 @@ export interface ProviderSegmentBounds {
   endTime: Date;
   isOngoing?: boolean;
   startedBeforeRange?: boolean;
+  startLatitude?: number | null;
+  startLongitude?: number | null;
+  endLatitude?: number | null;
+  endLongitude?: number | null;
+  distanceKm?: number | null;
 }
 
 export interface CanonicalTripBounds {
@@ -41,6 +46,12 @@ export interface CanonicalTripBounds {
   startTime: Date;
   endTime: Date | null;
   tripStatus: string;
+  dimoSegmentId?: string | null;
+  startLatitude?: number | null;
+  startLongitude?: number | null;
+  endLatitude?: number | null;
+  endLongitude?: number | null;
+  distanceKm?: number | null;
 }
 
 export type PartialBoundaryClassification =
@@ -117,6 +128,89 @@ function hasConflictingTripInRange(
     const tripEnd = trip.endTime.getTime();
     return tripStart < endMs - toleranceMs && tripEnd > startMs + toleranceMs;
   });
+}
+
+function coordinatesNear(
+  aLat: number | null | undefined,
+  aLng: number | null | undefined,
+  bLat: number | null | undefined,
+  bLng: number | null | undefined,
+  maxMeters = 500,
+): boolean | null {
+  if (aLat == null || aLng == null || bLat == null || bLng == null) return null;
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLon = toRad(bLng - aLng);
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLon / 2) ** 2;
+  const meters = 2 * R * Math.asin(Math.min(1, Math.sqrt(x)));
+  return meters <= maxMeters;
+}
+
+function assessSamePhysicalDriveEvidence(
+  trip: CanonicalTripBounds,
+  provider: ProviderSegmentBounds,
+  extendStart: boolean,
+  extendEnd: boolean,
+  toleranceMs: number,
+): string | null {
+  const oldStart = trip.startTime;
+  const oldEnd = trip.endTime as Date;
+
+  if (trip.dimoSegmentId && trip.dimoSegmentId === provider.segmentId) {
+    return null;
+  }
+
+  const suffixAligned = withinTolerance(oldEnd, provider.endTime, toleranceMs);
+  const prefixAligned = withinTolerance(oldStart, provider.startTime, toleranceMs);
+
+  if (extendStart && !extendEnd && !suffixAligned) {
+    return 'Suffix-partial trip end does not align with provider segment end';
+  }
+  if (extendEnd && !extendStart && !prefixAligned) {
+    return 'Prefix-partial trip start does not align with provider segment start';
+  }
+  if (!suffixAligned && !prefixAligned) {
+    return 'Canonical trip is interior to provider segment without end alignment';
+  }
+
+  if (extendStart) {
+    const endCoordMatch = coordinatesNear(
+      trip.endLatitude,
+      trip.endLongitude,
+      provider.endLatitude,
+      provider.endLongitude,
+    );
+    if (endCoordMatch === false) {
+      return 'Trip end coordinates contradict provider segment end';
+    }
+  }
+
+  if (extendEnd) {
+    const startCoordMatch = coordinatesNear(
+      trip.startLatitude,
+      trip.startLongitude,
+      provider.startLatitude,
+      provider.startLongitude,
+    );
+    if (startCoordMatch === false) {
+      return 'Trip start coordinates contradict provider segment start';
+    }
+  }
+
+  const providerDistance = provider.distanceKm ?? null;
+  const tripDistance = trip.distanceKm ?? null;
+  if (
+    providerDistance != null &&
+    tripDistance != null &&
+    tripDistance > providerDistance * 1.25
+  ) {
+    return 'Canonical trip distance exceeds provider segment distance';
+  }
+
+  return null;
 }
 
 /**
@@ -267,6 +361,17 @@ export function classifyPartialBoundaryRepair(
         reason: 'Another canonical trip occupies the proposed end extension range',
       };
     }
+  }
+
+  const sameDriveConflict = assessSamePhysicalDriveEvidence(
+    trip,
+    provider,
+    extendStart,
+    extendEnd,
+    toleranceMs,
+  );
+  if (sameDriveConflict) {
+    return { kind: 'AMBIGUOUS', reason: sameDriveConflict };
   }
 
   const confidence: 'MEDIUM' | 'HIGH' =

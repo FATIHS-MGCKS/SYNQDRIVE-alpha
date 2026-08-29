@@ -50,8 +50,8 @@ const candidate = (startMin = 1, endMin = 50) => ({
   endDetectionMode: 'DIMO_IGNITION_REPAIR',
   startLatitude: 51.1,
   startLongitude: 9.2,
-  endLatitude: 51.3,
-  endLongitude: 9.4,
+  endLatitude: 51.25,
+  endLongitude: 9.35,
   distanceKm: 42,
   detectorEvidence: { detector: 'DimoSegmentFallback' },
 });
@@ -78,7 +78,36 @@ function buildReconciliationHarness(
         tripDetectionState: { detectionProfile: 'ICE' },
       }),
     },
-    vehicleTrip: { findMany: jest.fn().mockResolvedValue(trips) },
+    vehicleTrip: {
+      findMany: jest.fn().mockResolvedValue(
+        trips.map((t) => ({
+          ...t,
+          dimoSegmentId: null,
+          startLatitude: 51.2,
+          startLongitude: 9.3,
+          endLatitude: 51.25,
+          endLongitude: 9.35,
+          distanceKm: null,
+          rawDetectionMeta: null,
+        })),
+      ),
+      findUnique: jest.fn().mockImplementation(async ({ where }: { where: { id: string } }) => {
+        const t = trips.find((r) => r.id === where.id);
+        return t
+          ? {
+              ...t,
+              vehicleId: 'veh-1',
+              dimoSegmentId: null,
+              startLatitude: 51.2,
+              startLongitude: 9.3,
+              endLatitude: 51.25,
+              endLongitude: 9.35,
+              rawDetectionMeta: null,
+            }
+          : null;
+      }),
+      update: jest.fn(async () => undefined),
+    },
     tripRepair,
   };
 
@@ -90,6 +119,10 @@ function buildReconciliationHarness(
     })),
     finalizeRepairedTrip: jest.fn(async () => undefined),
     repairTripBoundaries: jest.fn(async () => ({ applied: true, trip: { id: trips[0]?.id } })),
+    repairTripBoundariesWithAudit: jest.fn(async () => ({
+      applied: true,
+      trip: { id: trips[0]?.id },
+    })),
   };
 
   const configService = {
@@ -193,7 +226,7 @@ describe('partial suffix live trip vs full DIMO segment (B)', () => {
       });
 
       expect(result.applied).toBe(1);
-      expect(h.decisionEngine.repairTripBoundaries).toHaveBeenCalled();
+      expect(h.decisionEngine.repairTripBoundariesWithAudit).toHaveBeenCalled();
       expect(h.decisionEngine.createRepairedTrip).not.toHaveBeenCalled();
     }
   });
@@ -252,7 +285,7 @@ describe('one physical drive = one canonical trip invariant (C)', () => {
     ).detectAndRepairMissingTrips('veh-1', at(-10), at(60), { useDimoSegmentFallback: true });
 
     expect(result.applied).toBe(1);
-    expect(shadow.decisionEngine.repairTripBoundaries).toHaveBeenCalled();
+    expect(shadow.decisionEngine.repairTripBoundariesWithAudit).toHaveBeenCalled();
     expect(shadow.decisionEngine.createRepairedTrip).not.toHaveBeenCalled();
   });
 });

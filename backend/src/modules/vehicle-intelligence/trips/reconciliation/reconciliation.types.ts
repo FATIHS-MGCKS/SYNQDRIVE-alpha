@@ -30,6 +30,8 @@ export type RepairType = (typeof REPAIR_TYPES)[keyof typeof REPAIR_TYPES];
 
 export const REPAIR_STATUS = {
   PROPOSED: 'PROPOSED',
+  /** Boundary mutation committed; downstream refresh may still be pending. */
+  BOUNDARY_APPLIED: 'BOUNDARY_APPLIED',
   APPLIED: 'APPLIED',
   REJECTED: 'REJECTED',
   EXPIRED: 'EXPIRED',
@@ -37,6 +39,16 @@ export const REPAIR_STATUS = {
   // window. Distinct from REJECTED, which means an attempted repair failed.
   SUPPRESSED: 'SUPPRESSED',
 } as const;
+
+/** Durable downstream refresh state stored in TripRepair.detectorEvidence. */
+export const BOUNDARY_REFRESH_STATE = {
+  PENDING: 'PENDING',
+  ENQUEUED: 'ENQUEUED',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export type BoundaryRefreshState =
+  (typeof BOUNDARY_REFRESH_STATE)[keyof typeof BOUNDARY_REFRESH_STATE];
 
 export type RepairStatus = (typeof REPAIR_STATUS)[keyof typeof REPAIR_STATUS];
 

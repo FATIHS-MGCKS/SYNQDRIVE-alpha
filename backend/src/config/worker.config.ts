@@ -138,7 +138,7 @@ export function deriveDefaultTripStartBoundaryMaxLookbackMs(
   ];
   const maxPollMs = Math.max(...tiers);
   const confirmationMs = parsePositiveIntEnv(
-    process.env.WORKER_POSSIBLE_START_CONFIRM_MAX_WAIT_MS,
+    env.WORKER_POSSIBLE_START_CONFIRM_MAX_WAIT_MS,
     180_000,
   );
   const safetyBufferMs = 2 * 60_000;

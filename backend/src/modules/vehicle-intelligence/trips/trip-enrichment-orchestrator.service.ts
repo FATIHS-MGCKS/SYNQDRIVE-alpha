@@ -429,6 +429,9 @@ export class TripEnrichmentOrchestratorService {
       },
     });
 
+    // Route/waypoints: replace-by-trip via TripsService.enrichTrip (deleteMany + createMany).
+    await this.runRouteSafetyEnrichment(vehicleId, tripId);
+
     await this.enqueueBehaviorEnrichment(tripId, vehicleId, organizationId, {
       force: true,
       delayMs: 0,

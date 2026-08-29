@@ -129,3 +129,20 @@ export interface RepairTripBoundariesParams {
   source: string;
   coverageMetrics?: Record<string, unknown>;
 }
+
+export interface RepairTripBoundariesAuditParams {
+  auditId: string;
+  repairType: string;
+  windowFrom: Date;
+  windowTo: Date;
+  confidence: string;
+  reason: string;
+  detectorEvidence: Record<string, unknown>;
+}
+
+export class BoundaryRepairConcurrentMutationError extends Error {
+  constructor(tripId: string) {
+    super(`Concurrent boundary repair mutation detected for trip ${tripId}`);
+    this.name = 'BoundaryRepairConcurrentMutationError';
+  }
+}

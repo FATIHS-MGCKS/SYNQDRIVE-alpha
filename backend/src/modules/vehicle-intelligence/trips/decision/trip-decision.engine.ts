@@ -14,7 +14,15 @@ import type {
   SplitTripAtGapParams,
   SplitTripAtGapResult,
   RepairTripBoundariesParams,
+  RepairTripBoundariesAuditParams,
 } from './decision.types';
+import { BoundaryRepairConcurrentMutationError } from './decision.types';
+import {
+  appendBoundaryRepairHistory,
+  buildBoundaryRefreshRecord,
+  readRawDetectionMeta,
+} from '../boundary-repair.state.util';
+import { BOUNDARY_REFRESH_STATE, REPAIR_STATUS } from '../reconciliation/reconciliation.types';
 import { END_DETECTION_MODES, START_DETECTION_MODES } from '../trip-detection.types';
 
 /**
@@ -547,115 +555,179 @@ export class TripDecisionEngine {
    */
   async repairTripBoundaries(
     params: RepairTripBoundariesParams,
+    audit?: RepairTripBoundariesAuditParams,
   ): Promise<{ trip: VehicleTrip; applied: boolean }> {
-    const existing = await this.prisma.vehicleTrip.findUnique({
-      where: { id: params.tripId },
-      select: {
-        id: true,
-        vehicleId: true,
-        tripStatus: true,
-        startTime: true,
-        endTime: true,
-        dimoSegmentId: true,
-        rawDetectionMeta: true,
-      },
+    return this.repairTripBoundariesWithAudit(params, audit);
+  }
+
+  /**
+   * Atomically commits VehicleTrip boundary mutation and TripRepair audit.
+   * Downstream refresh enqueue is intentionally outside this transaction.
+   */
+  async repairTripBoundariesWithAudit(
+    params: RepairTripBoundariesParams,
+    audit?: RepairTripBoundariesAuditParams,
+  ): Promise<{ trip: VehicleTrip; applied: boolean }> {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.vehicleTrip.findUnique({
+        where: { id: params.tripId },
+        select: {
+          id: true,
+          vehicleId: true,
+          tripStatus: true,
+          startTime: true,
+          endTime: true,
+          dimoSegmentId: true,
+          rawDetectionMeta: true,
+        },
+      });
+
+      if (!existing) {
+        throw new Error(`repairTripBoundaries: trip ${params.tripId} not found`);
+      }
+      if (existing.vehicleId !== params.vehicleId) {
+        throw new Error(
+          `repairTripBoundaries: vehicle mismatch trip=${params.tripId} expected=${params.vehicleId}`,
+        );
+      }
+      if (existing.tripStatus === TripStatus.CANCELLED) {
+        throw new Error(
+          `repairTripBoundaries: refused — trip ${params.tripId} is CANCELLED`,
+        );
+      }
+
+      const newStartMs = params.newStartTime.getTime();
+      const newEndMs = params.newEndTime.getTime();
+      if (newEndMs <= newStartMs) {
+        throw new Error('repairTripBoundaries: new end must be after new start');
+      }
+
+      const oldStartMs = existing.startTime.getTime();
+      const oldEndMs = existing.endTime?.getTime() ?? params.oldEndTime.getTime();
+      const boundariesUnchanged =
+        newStartMs === oldStartMs &&
+        newEndMs === oldEndMs &&
+        (params.providerSegmentId == null ||
+          existing.dimoSegmentId === params.providerSegmentId);
+
+      if (boundariesUnchanged) {
+        this.logger.debug(
+          `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Boundary repair no-op — trip ${params.tripId} already at target boundaries`,
+        );
+        return { trip: existing as VehicleTrip, applied: false };
+      }
+
+      const durationMs = newEndMs - newStartMs;
+      const priorMeta = readRawDetectionMeta(existing.rawDetectionMeta);
+
+      const boundaryRepairAudit = {
+        repairType: 'PARTIAL_TRIP_BOUNDARY_EXTENSION',
+        oldStartTime: params.oldStartTime.toISOString(),
+        newStartTime: params.newStartTime.toISOString(),
+        oldEndTime: params.oldEndTime.toISOString(),
+        newEndTime: params.newEndTime.toISOString(),
+        providerSegmentId: params.providerSegmentId,
+        providerMechanism: params.providerMechanism,
+        confidence: params.confidence,
+        reason: params.reason,
+        source: params.source,
+        coverageMetrics: params.coverageMetrics ?? null,
+        appliedAt: new Date().toISOString(),
+      };
+
+      const boundaryRefresh = buildBoundaryRefreshRecord(
+        BOUNDARY_REFRESH_STATE.PENDING,
+        null,
+      );
+
+      const mutation = await tx.vehicleTrip.updateMany({
+        where: {
+          id: params.tripId,
+          startTime: existing.startTime,
+          endTime: existing.endTime,
+          tripStatus: { not: TripStatus.CANCELLED },
+        },
+        data: {
+          startTime: params.newStartTime,
+          endTime: params.newEndTime,
+          startLatitude: params.startLatitude ?? undefined,
+          startLongitude: params.startLongitude ?? undefined,
+          endLatitude: params.endLatitude ?? undefined,
+          endLongitude: params.endLongitude ?? undefined,
+          dimoSegmentId: params.providerSegmentId,
+          durationMinutes: durationMs > 0 ? durationMs / 60_000 : undefined,
+          distanceKm: params.distanceKm ?? undefined,
+          isRepaired: true,
+          qualityStatus: 'VERIFIED',
+          behaviorSummaryStatus: 'PENDING',
+          behaviorEnrichmentStatus: null,
+          drivingImpactStatus: 'PENDING',
+          drivingImpactComputedAt: null,
+          tripAnalysisStatus: 'PENDING',
+          rawDetectionMeta: {
+            ...priorMeta,
+            boundaryRepair: boundaryRepairAudit,
+            boundaryRepairHistory: appendBoundaryRepairHistory(
+              priorMeta,
+              boundaryRepairAudit,
+            ),
+            boundaryRefresh,
+          } as any,
+        },
+      });
+
+      if (mutation.count !== 1) {
+        throw new BoundaryRepairConcurrentMutationError(params.tripId);
+      }
+
+      const trip = await tx.vehicleTrip.findUnique({
+        where: { id: params.tripId },
+      });
+      if (!trip) {
+        throw new Error(`repairTripBoundaries: trip ${params.tripId} missing after update`);
+      }
+
+      if (audit) {
+        const auditEvidence = JSON.parse(
+          JSON.stringify({
+            ...audit.detectorEvidence,
+            boundaryRefreshState: BOUNDARY_REFRESH_STATE.PENDING,
+          }),
+        );
+        await tx.tripRepair.upsert({
+          where: { id: audit.auditId },
+          create: {
+            id: audit.auditId,
+            vehicleId: params.vehicleId,
+            tripId: params.tripId,
+            repairType: audit.repairType,
+            status: REPAIR_STATUS.BOUNDARY_APPLIED,
+            reason: audit.reason,
+            confidence: audit.confidence,
+            windowFrom: audit.windowFrom,
+            windowTo: audit.windowTo,
+            detectorEvidence: auditEvidence,
+            appliedAt: new Date(),
+          },
+          update: {
+            tripId: params.tripId,
+            status: REPAIR_STATUS.BOUNDARY_APPLIED,
+            reason: audit.reason,
+            confidence: audit.confidence,
+            detectorEvidence: auditEvidence,
+            appliedAt: new Date(),
+          },
+        });
+      }
+
+      this.logger.log(
+        `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip BOUNDARY REPAIRED — id=${params.tripId} ` +
+          `start ${params.oldStartTime.toISOString()} → ${params.newStartTime.toISOString()} ` +
+          `end ${params.oldEndTime.toISOString()} → ${params.newEndTime.toISOString()} ` +
+          `provider=${params.providerSegmentId} mechanism=${params.providerMechanism}`,
+      );
+
+      return { trip, applied: true };
     });
-
-    if (!existing) {
-      throw new Error(`repairTripBoundaries: trip ${params.tripId} not found`);
-    }
-    if (existing.vehicleId !== params.vehicleId) {
-      throw new Error(
-        `repairTripBoundaries: vehicle mismatch trip=${params.tripId} expected=${params.vehicleId}`,
-      );
-    }
-    if (existing.tripStatus === TripStatus.CANCELLED) {
-      throw new Error(
-        `repairTripBoundaries: refused — trip ${params.tripId} is CANCELLED`,
-      );
-    }
-
-    const newStartMs = params.newStartTime.getTime();
-    const newEndMs = params.newEndTime.getTime();
-    if (newEndMs <= newStartMs) {
-      throw new Error('repairTripBoundaries: new end must be after new start');
-    }
-
-    const oldStartMs = existing.startTime.getTime();
-    const oldEndMs = existing.endTime?.getTime() ?? params.oldEndTime.getTime();
-    const boundariesUnchanged =
-      newStartMs === oldStartMs &&
-      newEndMs === oldEndMs &&
-      (params.providerSegmentId == null ||
-        existing.dimoSegmentId === params.providerSegmentId);
-
-    if (boundariesUnchanged) {
-      this.logger.debug(
-        `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Boundary repair no-op — trip ${params.tripId} already at target boundaries`,
-      );
-      return { trip: existing as VehicleTrip, applied: false };
-    }
-
-    const durationMs = newEndMs - newStartMs;
-    const priorMeta =
-      existing.rawDetectionMeta != null &&
-      typeof existing.rawDetectionMeta === 'object' &&
-      !Array.isArray(existing.rawDetectionMeta)
-        ? (existing.rawDetectionMeta as Record<string, unknown>)
-        : {};
-
-    const boundaryRepairAudit = {
-      repairType: 'PARTIAL_TRIP_BOUNDARY_EXTENSION',
-      oldStartTime: params.oldStartTime.toISOString(),
-      newStartTime: params.newStartTime.toISOString(),
-      oldEndTime: params.oldEndTime.toISOString(),
-      newEndTime: params.newEndTime.toISOString(),
-      providerSegmentId: params.providerSegmentId,
-      providerMechanism: params.providerMechanism,
-      confidence: params.confidence,
-      reason: params.reason,
-      source: params.source,
-      coverageMetrics: params.coverageMetrics ?? null,
-      appliedAt: new Date().toISOString(),
-    };
-
-    const trip = await this.prisma.vehicleTrip.update({
-      where: { id: params.tripId },
-      data: {
-        startTime: params.newStartTime,
-        endTime: params.newEndTime,
-        startLatitude: params.startLatitude ?? undefined,
-        startLongitude: params.startLongitude ?? undefined,
-        endLatitude: params.endLatitude ?? undefined,
-        endLongitude: params.endLongitude ?? undefined,
-        dimoSegmentId: params.providerSegmentId,
-        durationMinutes: durationMs > 0 ? durationMs / 60_000 : undefined,
-        distanceKm: params.distanceKm ?? undefined,
-        isRepaired: true,
-        qualityStatus: 'VERIFIED',
-        behaviorSummaryStatus: 'PENDING',
-        behaviorEnrichmentStatus: null,
-        drivingImpactStatus: 'PENDING',
-        drivingImpactComputedAt: null,
-        tripAnalysisStatus: 'PENDING',
-        rawDetectionMeta: {
-          ...priorMeta,
-          boundaryRepair: boundaryRepairAudit,
-          boundaryRepairHistory: [
-            ...((priorMeta.boundaryRepairHistory as unknown[]) ?? []),
-            boundaryRepairAudit,
-          ],
-        } as any,
-      },
-    });
-
-    this.logger.log(
-      `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip BOUNDARY REPAIRED — id=${params.tripId} ` +
-        `start ${params.oldStartTime.toISOString()} → ${params.newStartTime.toISOString()} ` +
-        `end ${params.oldEndTime.toISOString()} → ${params.newEndTime.toISOString()} ` +
-        `provider=${params.providerSegmentId} mechanism=${params.providerMechanism}`,
-    );
-
-    return { trip, applied: true };
   }
 }

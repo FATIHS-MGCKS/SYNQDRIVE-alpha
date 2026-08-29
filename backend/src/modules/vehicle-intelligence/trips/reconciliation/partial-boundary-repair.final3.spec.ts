@@ -61,19 +61,42 @@ function buildHarness(trips: ReturnType<typeof row>[]) {
     });
   }
 
-  const prisma = {
-    vehicle: {
-      findUnique: jest.fn().mockResolvedValue({
-        organizationId: 'org-1',
-        dimoVehicle: { tokenId: 77 },
-        tripDetectionState: { detectionProfile: 'ICE' },
-      }),
-    },
+  const txClient = {
     vehicleTrip: {
       findMany: jest.fn().mockImplementation(async () => vehicleTripRows),
       findUnique: jest.fn().mockImplementation(async ({ where }: { where: { id: string } }) => {
         return tripStore.get(where.id) ?? null;
       }),
+      updateMany: jest.fn().mockImplementation(
+        async ({
+          where,
+          data,
+        }: {
+          where: Record<string, unknown>;
+          data: Record<string, unknown>;
+        }) => {
+          const row = tripStore.get(where.id as string);
+          if (!row) return { count: 0 };
+          if (row.startTime !== where.startTime || row.endTime !== where.endTime) {
+            return { count: 0 };
+          }
+          if (where.tripStatus && (where.tripStatus as { not?: string }).not === 'CANCELLED') {
+            if (row.tripStatus === 'CANCELLED') return { count: 0 };
+          }
+          const merged = { ...row, ...data };
+          tripStore.set(where.id as string, merged);
+          const idx = vehicleTripRows.findIndex((r) => r.id === where.id);
+          if (idx >= 0) {
+            vehicleTripRows[idx] = {
+              ...vehicleTripRows[idx],
+              startTime: (merged.startTime as Date) ?? vehicleTripRows[idx].startTime,
+              endTime: (merged.endTime as Date) ?? vehicleTripRows[idx].endTime,
+              tripStatus: (merged.tripStatus as string) ?? vehicleTripRows[idx].tripStatus,
+            };
+          }
+          return { count: 1 };
+        },
+      ),
       update: jest.fn().mockImplementation(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
         const existing = tripStore.get(where.id) ?? {};
         const merged = { ...existing, ...data };
@@ -85,7 +108,7 @@ function buildHarness(trips: ReturnType<typeof row>[]) {
             startTime: (merged.startTime as Date) ?? vehicleTripRows[idx].startTime,
             endTime: (merged.endTime as Date) ?? vehicleTripRows[idx].endTime,
             tripStatus: (merged.tripStatus as string) ?? vehicleTripRows[idx].tripStatus,
-          };
+          } as (typeof vehicleTripRows)[number];
         }
         return merged;
       }),
@@ -93,7 +116,7 @@ function buildHarness(trips: ReturnType<typeof row>[]) {
     tripRepair: {
       findUnique: jest.fn().mockImplementation(async ({ where }: { where: { id: string } }) => {
         const row = tripRepairStore.get(where.id);
-        return row ? { id: where.id, status: row.status } : null;
+        return row ? { id: where.id, ...row } : null;
       }),
       create: jest.fn().mockImplementation(async ({ data }: { data: Record<string, unknown> }) => {
         tripRepairStore.set(String(data.id), data);
@@ -102,8 +125,38 @@ function buildHarness(trips: ReturnType<typeof row>[]) {
       update: jest.fn().mockImplementation(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
         const existing = tripRepairStore.get(where.id) ?? {};
         tripRepairStore.set(where.id, { ...existing, ...data });
+        return { ...existing, ...data };
+      }),
+      upsert: jest.fn().mockImplementation(
+        async ({
+          where,
+          create,
+          update,
+        }: {
+          where: { id: string };
+          create: Record<string, unknown>;
+          update: Record<string, unknown>;
+        }) => {
+          const existing = tripRepairStore.get(where.id);
+          const next = existing ? { ...existing, ...update } : create;
+          tripRepairStore.set(where.id, next);
+          return next;
+        },
+      ),
+    },
+  };
+
+  const prisma = {
+    $transaction: jest.fn(async (fn: (tx: typeof txClient) => Promise<unknown>) => fn(txClient)),
+    vehicle: {
+      findUnique: jest.fn().mockResolvedValue({
+        organizationId: 'org-1',
+        dimoVehicle: { tokenId: 77 },
+        tripDetectionState: { detectionProfile: 'ICE' },
       }),
     },
+    vehicleTrip: txClient.vehicleTrip,
+    tripRepair: txClient.tripRepair,
   };
 
   const decisionEngine = new TripDecisionEngine(prisma as never);
@@ -294,7 +347,9 @@ describe('FINAL-3 partial boundary repair (I1–I15)', () => {
     expect(audits.some((a) => a.repairType === REPAIR_TYPES.PARTIAL_TRIP_BOUNDARY_EXTENSION)).toBe(
       true,
     );
-    expect(audits.some((a) => a.status === REPAIR_STATUS.APPLIED)).toBe(true);
+    expect(audits.some((a) => a.status === REPAIR_STATUS.APPLIED || a.status === REPAIR_STATUS.BOUNDARY_APPLIED)).toBe(
+      true,
+    );
   });
 
   it('I14 — assignment fields on trip row survive boundary repair', async () => {
