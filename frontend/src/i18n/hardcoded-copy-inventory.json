@@ -15720,7 +15720,7 @@
       "sample": "de-DE",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 67,
+      "occurrences": 66,
       "files": [
         "rental/components/BusinessInsightsBox.tsx",
         "rental/components/EntityTasksSection.tsx",
@@ -15763,7 +15763,6 @@
         "rental/lib/document-extraction-field-format.ts",
         "rental/lib/fines-i18n.ts",
         "rental/lib/invoice-list-i18n.ts",
-        "rental/lib/rental-vehicle-damages-i18n.ts",
         "rental/lib/rpm-webhook-ui.ts",
         "rental/lib/task-list.utils.ts",
         "rental/lib/task-operator.utils.ts",
@@ -16003,7 +16002,7 @@
       "sample": "en-GB",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 9,
+      "occurrences": 8,
       "files": [
         "rental/components/price-tariffs/PriceTariffsPage.tsx",
         "rental/components/price-tariffs/PricingSimulatorTab.tsx",
@@ -16012,8 +16011,7 @@
         "rental/components/price-tariffs/tariff-editor/TariffEditorLiveDraftCompare.tsx",
         "rental/components/workflow-automation/workflow-runtime.utils.ts",
         "rental/lib/ai-chat/fleet-chat-response-display.ts",
-        "rental/lib/document-extraction-field-format.ts",
-        "rental/lib/rental-vehicle-damages-i18n.ts"
+        "rental/lib/document-extraction-field-format.ts"
       ]
     },
     {

@@ -80,7 +80,7 @@ export function MarkRepairedDialog({
             onClick={() => void handleConfirm()}
             className="sq-cta px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50"
           >
-            {busy ? t('vehicleDamages.markRepaired.saving') : t('vehicleDamages.markRepaired.confirm')}
+            {busy ? t('common.saving') : t('vehicleDamages.markRepaired.confirm')}
           </button>
         </>
       }

@@ -4,6 +4,7 @@
  */
 import {
   DEFAULT_PRODUCT_LOCALE,
+  getFormattingLocale,
   isSupportedLocale,
   type SupportedLocale,
 } from '../../i18n/locales';
@@ -127,8 +128,7 @@ export function resolveVehicleDamagesLocale(locale: string | null | undefined): 
 }
 
 export function vehicleDamagesFormattingLocale(locale: string | null | undefined): string {
-  const resolved = resolveVehicleDamagesLocale(locale);
-  return resolved === 'de' ? 'de-DE' : 'en-GB';
+  return getFormattingLocale(resolveVehicleDamagesLocale(locale));
 }
 
 function translateWithOperatorReuse(
@@ -171,10 +171,18 @@ export function resolveDamageStatusLabel(t: VehicleDamagesTranslate, value: Dama
   return translated === key ? value : translated;
 }
 
+export function resolveDamageOldestTodayLabel(t: VehicleDamagesTranslate): string {
+  return t('common.today');
+}
+
 export function resolveDamageLocationViewLabel(
   t: VehicleDamagesTranslate,
   value: DamageLocationView | string,
 ): string {
+  if (value === 'UNKNOWN') {
+    const sharedTranslated = t('vehicle.status.unknown');
+    return sharedTranslated === 'vehicle.status.unknown' ? value : sharedTranslated;
+  }
   const key = `vehicleDamages.locationView.${value}` as TranslationKey;
   const translated = t(key);
   return translated === key ? value : translated;
@@ -223,6 +231,7 @@ export function resolveDamageQueueFilterLabel(
   t: VehicleDamagesTranslate,
   filter: DamageQueueFilter,
 ): string {
+  if (filter === 'all') return t('common.all');
   const key = `vehicleDamages.queueFilter.${filter}` as TranslationKey;
   return t(key);
 }
@@ -231,6 +240,14 @@ export function resolveDamageRentalGateLabel(
   t: VehicleDamagesTranslate,
   gate: DamageRentalGate,
 ): string {
+  if (gate === 'WATCH') {
+    const sharedTranslated = t('vehicle.overview.card.watch');
+    return sharedTranslated === 'vehicle.overview.card.watch' ? gate : sharedTranslated;
+  }
+  if (gate === 'RENTAL_BLOCKED') {
+    const sharedTranslated = t('vehicle.overview.rentalBlocked');
+    return sharedTranslated === 'vehicle.overview.rentalBlocked' ? gate : sharedTranslated;
+  }
   const key = `vehicleDamages.rentalGate.${gate}` as TranslationKey;
   const translated = t(key);
   return translated === key ? gate : translated;
@@ -331,6 +348,10 @@ export function resolveMatchConfidenceLabel(
 }
 
 export function resolveRepairTaskPriorityLabel(t: VehicleDamagesTranslate, priority: string): string {
+  if (priority === 'CRITICAL') {
+    const sharedTranslated = t('vehicle.telemetry.critical');
+    return sharedTranslated === 'vehicle.telemetry.critical' ? priority : sharedTranslated;
+  }
   const key = `vehicleDamages.repairTask.priority.${priority}` as TranslationKey;
   const translated = t(key);
   return translated === key ? priority : translated;

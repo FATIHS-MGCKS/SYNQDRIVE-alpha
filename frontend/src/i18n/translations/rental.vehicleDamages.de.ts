@@ -37,7 +37,6 @@ export const rentalVehicleDamagesDe = {
   'vehicleDamages.summary.rentalContext.watch': 'Offene Schäden unter Beobachtung — Vermietung weiterhin möglich.',
   'vehicleDamages.summary.createRepairTask': 'Reparaturauftrag erstellen',
   'vehicleDamages.summary.creatingRepairTask': 'Wird erstellt…',
-  'vehicleDamages.summary.oldestToday': 'Heute',
   'vehicleDamages.summary.oldestOneDay': '1 Tag',
   'vehicleDamages.summary.oldestDays': '{count} Tage',
   'vehicleDamages.summary.zeroCost': '0,00 €',
@@ -128,7 +127,6 @@ export const rentalVehicleDamagesDe = {
   'vehicleDamages.queueFilter.missing_evidence': 'Fehlende Nachweise',
   'vehicleDamages.queueFilter.unplaced': 'Nicht platziert',
   'vehicleDamages.queueFilter.repaired': 'Repariert',
-  'vehicleDamages.queueFilter.all': 'Alle',
 
   'vehicleDamages.drawer.title': 'Schadendetail',
   'vehicleDamages.drawer.noSelection': 'Kein Schaden ausgewählt.',
@@ -188,7 +186,6 @@ export const rentalVehicleDamagesDe = {
   'vehicleDamages.create.locationLabelPlaceholder': 'z. B. Stoßstange vorne links',
   'vehicleDamages.create.photos': 'Fotos (optional)',
   'vehicleDamages.create.addPhotos': 'Fotos hinzufügen',
-  'vehicleDamages.create.removePhoto': 'Entfernen',
   'vehicleDamages.create.photosHint': 'JPG, PNG, WebP bis 6 MB je Datei.',
 
   'vehicleDamages.markRepaired.title': 'Als repariert markieren',
@@ -197,7 +194,6 @@ export const rentalVehicleDamagesDe = {
   'vehicleDamages.markRepaired.descriptionWithLabel':
     'Reparaturabschluss für {label} bestätigen. Der Schaden wird aus der offenen Queue entfernt.',
   'vehicleDamages.markRepaired.confirm': 'Repariert bestätigen',
-  'vehicleDamages.markRepaired.saving': 'Wird gespeichert…',
   'vehicleDamages.markRepaired.field.repairCost': 'Tatsächliche Reparaturkosten (EUR, optional)',
   'vehicleDamages.markRepaired.field.repairCostPlaceholder': 'z. B. 380,00',
   'vehicleDamages.markRepaired.field.note': 'Notiz (optional)',
@@ -219,7 +215,6 @@ export const rentalVehicleDamagesDe = {
   'vehicleDamages.repairTask.loadingVendors': 'Lieferanten werden geladen…',
   'vehicleDamages.repairTask.field.note': 'Zusätzliche Notiz (optional)',
   'vehicleDamages.repairTask.notePlaceholder': 'Anweisungen für Werkstatt oder internes Team',
-  'vehicleDamages.repairTask.priority.CRITICAL': 'Kritisch',
   'vehicleDamages.repairTask.priority.HIGH': 'Hoch',
   'vehicleDamages.repairTask.priority.NORMAL': 'Mittel',
   'vehicleDamages.repairTask.priority.LOW': 'Niedrig',
@@ -237,7 +232,6 @@ export const rentalVehicleDamagesDe = {
   'vehicleDamages.rental.field.protocol': 'Protokoll',
   'vehicleDamages.rental.field.recordedVia': 'Erfasst über',
   'vehicleDamages.rental.field.reportedBy': 'Gemeldet von',
-  'vehicleDamages.rental.field.status': 'Status',
   'vehicleDamages.rental.field.operatorDecision': 'Operator-Entscheidung',
   'vehicleDamages.rental.field.liabilityNote': 'Begründung / Notiz',
   'vehicleDamages.rental.liabilityNotePlaceholder':
@@ -288,7 +282,6 @@ export const rentalVehicleDamagesDe = {
   'vehicleDamages.aiIntake.confirmationWarning':
     'Operator-Bestätigung erforderlich — Vorschläge werden erst nach Bestätigung gespeichert.',
   'vehicleDamages.aiIntake.addPhoto': 'Foto hinzufügen',
-  'vehicleDamages.aiIntake.removePhoto': 'Entfernen',
   'vehicleDamages.aiIntake.analyzing': 'Außenfotos werden analysiert…',
   'vehicleDamages.aiIntake.saving': 'Bestätigte Schäden werden gespeichert…',
   'vehicleDamages.aiIntake.done': 'Bestätigte Schäden wurden im Register gespeichert.',
@@ -315,7 +308,6 @@ export const rentalVehicleDamagesDe = {
   'vehicleDamages.locationView.RIGHT': 'Rechts',
   'vehicleDamages.locationView.REAR': 'Hinten',
   'vehicleDamages.locationView.ROOF': 'Dach',
-  'vehicleDamages.locationView.UNKNOWN': 'Unbekannt',
 
   'vehicleDamages.evidenceStatus.MISSING': 'Fehlt',
   'vehicleDamages.evidenceStatus.PARTIAL': 'Teilweise',
@@ -330,8 +322,6 @@ export const rentalVehicleDamagesDe = {
   'vehicleDamages.liabilityStatus.DISPUTED': 'Strittig',
 
   'vehicleDamages.rentalGate.RENTABLE': 'Fahrzeug vermietbar',
-  'vehicleDamages.rentalGate.WATCH': 'Beobachten',
-  'vehicleDamages.rentalGate.RENTAL_BLOCKED': 'Vermietung blockiert',
   'vehicleDamages.rentalGate.SAFETY_CRITICAL': 'Sicherheitskritisch',
 
   'vehicleDamages.pickupContext.PRE_EXISTING': 'Vorschaden',

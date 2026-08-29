@@ -43,7 +43,6 @@ describe('derivePickupContext', () => {
       new Map(),
     );
     expect(result.context).toBe('PRE_EXISTING');
-    expect(result.label).toBe('PRE_EXISTING');
   });
 
   it('marks return handover damages on pickup protocol as pre-existing', () => {
@@ -84,7 +83,6 @@ describe('derivePickupContext', () => {
       ]),
     );
     expect(result.context).toBe('NEW_SINCE_PICKUP');
-    expect(result.label).toBe('NEW_SINCE_PICKUP');
   });
 
   it('flags uncertain fuzzy match as needs review', () => {

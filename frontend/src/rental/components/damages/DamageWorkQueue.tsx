@@ -233,7 +233,7 @@ function DamageQueueRow({
         : 'neutral';
 
   const pickupLabel =
-    pickupContext?.label && pickupContext.context !== 'NOT_APPLICABLE'
+    pickupContext && pickupContext.context !== 'NOT_APPLICABLE'
       ? resolveDamagePickupContextLabel(t, pickupContext.context)
       : null;
 

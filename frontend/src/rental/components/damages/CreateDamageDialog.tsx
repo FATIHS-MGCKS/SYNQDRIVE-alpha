@@ -369,7 +369,7 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
                     className="text-red-600 shrink-0"
                     onClick={() => set('photoFiles', form.photoFiles.filter((_, idx) => idx !== i))}
                   >
-                    {t('vehicleDamages.create.removePhoto')}
+                    {t('common.remove')}
                   </button>
                 </li>
               ))}

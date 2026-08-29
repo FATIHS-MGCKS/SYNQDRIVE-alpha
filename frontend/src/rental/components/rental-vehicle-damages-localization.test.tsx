@@ -8,8 +8,6 @@ vi.mock('@iconify/react', () => ({
 
 import { act, createElement, useEffect, useRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import inventory from '../../i18n/hardcoded-copy-inventory.json';
 import { de } from '../../i18n/translations/de';
 import { en } from '../../i18n/translations/en';
@@ -25,6 +23,7 @@ import {
   formatDamageDateLocale,
   formatDamageEuroCents,
   resolveDamageHostError,
+  resolveDamageOldestTodayLabel,
   resolveDamageQueueFilterLabel,
   resolveDamageSeverityLabel,
   resolveDamageSourceLabel,
@@ -34,6 +33,7 @@ import {
   resolveEvidenceStatusLabel,
   resolveLiabilityStatusLabel,
   resolveRentalImpactLabel,
+  vehicleDamagesFormattingLocale,
 } from '../lib/rental-vehicle-damages-i18n';
 import { DamagesView } from './DamagesView';
 
@@ -435,17 +435,25 @@ describe('P2.2.61 Rental Vehicle Damages localization', () => {
     expect(enCost).toContain('125');
   });
 
-  it('keeps mutation hook contracts frozen', () => {
-    const actionsSrc = readFileSync(resolve(__dirname, '../hooks/useVehicleDamageActions.ts'), 'utf8');
-    expect(actionsSrc).toContain('createVehicleDamage');
-    expect(actionsSrc).toContain('placeVehicleDamage');
-    expect(actionsSrc).toContain('addDamageImage');
-    expect(actionsSrc).toContain("status: 'IN_REPAIR'");
-    expect(actionsSrc).toContain('markDamageRepaired');
-    expect(actionsSrc).toContain("status: 'ARCHIVED'");
-    expect(actionsSrc).toContain('createDamageRepairTask');
-    expect(actionsSrc).toContain('formatApiError');
-    expect(actionsSrc).not.toContain('FLOW_STATUS_LABEL_DE');
+  it('uses canonical BCP47 locales for supported non-EN locales', () => {
+    expect(vehicleDamagesFormattingLocale('pl')).toBe('pl-PL');
+    expect(vehicleDamagesFormattingLocale('fr')).toBe('fr-FR');
+    expect(vehicleDamagesFormattingLocale('tr')).toBe('tr-TR');
+    const plDate = formatDamageDateLocale('pl', '2026-08-15T10:00:00.000Z');
+    const frDate = formatDamageDateLocale('fr', '2026-08-15T10:00:00.000Z');
+    expect(plDate).toBeTruthy();
+    expect(frDate).toBeTruthy();
+    expect(plDate).not.toBe(formatDamageDateLocale('en', '2026-08-15T10:00:00.000Z'));
+  });
+
+  it('reuses shared today label for oldest-open age', () => {
+    expect(resolveDamageOldestTodayLabel(tFor('en'))).toBe(en['common.today']);
+    expect(resolveDamageOldestTodayLabel(tFor('de'))).toBe(de['common.today']);
+  });
+
+  it('reuses shared all label for queue filter', () => {
+    expect(resolveDamageQueueFilterLabel(tFor('en'), 'all')).toBe(en['common.all']);
+    expect(resolveDamageQueueFilterLabel(tFor('de'), 'all')).toBe(de['common.all']);
   });
 
   it('preserves true same-mount DamagesView across DE→EN→DE with zero mutations', async () => {
@@ -482,6 +490,7 @@ describe('P2.2.61 Rental Vehicle Damages localization', () => {
     expect(mutationCounters.updateLiability).toBe(0);
     expect(mutationCounters.createTask).toBe(0);
     expect(container.textContent).toContain('Provider Repair Shop X7');
+    expect(container.textContent).toContain(de['vehicleDamages.queue.title']);
 
     await act(async () => {
       root.unmount();

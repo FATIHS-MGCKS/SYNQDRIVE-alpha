@@ -17,6 +17,7 @@ import {
 } from '../../lib/damage-rental-impact';
 import {
   formatDamageEuroCents,
+  resolveDamageOldestTodayLabel,
   resolveDamageRentalGateLabel,
   type VehicleDamagesTranslate,
 } from '../../lib/rental-vehicle-damages-i18n';
@@ -196,7 +197,7 @@ export function formatOldestOpenAge(
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return null;
   const days = Math.floor((Date.now() - then) / (1000 * 60 * 60 * 24));
-  if (days <= 0) return t('vehicleDamages.summary.oldestToday');
+  if (days <= 0) return resolveDamageOldestTodayLabel(t);
   if (days === 1) return t('vehicleDamages.summary.oldestOneDay');
   return t('vehicleDamages.summary.oldestDays', { count: days });
 }

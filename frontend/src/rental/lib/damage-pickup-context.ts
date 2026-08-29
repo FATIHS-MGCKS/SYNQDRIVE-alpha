@@ -14,8 +14,6 @@ export interface HandoverProtocolDamageRef {
 
 export interface PickupContextResult {
   context: DamagePickupContext;
-  /** Operator-facing label for queue badges */
-  label: string | null;
   /** Suggested pickup damage id when fuzzy match found — never auto-applied */
   suggestedPickupDamageId: string | null;
   matchConfidence: 'none' | 'low' | 'high';
@@ -90,7 +88,6 @@ export function derivePickupContext(
   if (damage.source === 'PICKUP_HANDOVER') {
     return {
       context: 'PRE_EXISTING',
-      label: 'PRE_EXISTING',
       suggestedPickupDamageId: damage.id,
       matchConfidence: 'high',
       reason: 'PICKUP_HANDOVER_SOURCE',
@@ -107,7 +104,6 @@ export function derivePickupContext(
   if (pickupIds.has(damage.id)) {
     return {
       context: 'PRE_EXISTING',
-      label: 'PRE_EXISTING',
       suggestedPickupDamageId: damage.id,
       matchConfidence: 'high',
       reason: 'PICKUP_PROTOCOL_LISTED',
@@ -117,7 +113,6 @@ export function derivePickupContext(
   if (damage.source !== 'RETURN_HANDOVER' && !returnIds.has(damage.id)) {
     return {
       context: 'NOT_APPLICABLE',
-      label: null,
       suggestedPickupDamageId: null,
       matchConfidence: 'none',
       reason: 'NOT_LINKED_RETURN',
@@ -132,7 +127,6 @@ export function derivePickupContext(
   if (best && best.score >= 6) {
     return {
       context: 'NEEDS_REVIEW',
-      label: 'NEEDS_REVIEW',
       suggestedPickupDamageId: best.id,
       matchConfidence: 'high',
       reason: 'POSSIBLE_PICKUP_MATCH_HIGH',
@@ -141,7 +135,6 @@ export function derivePickupContext(
   if (best && best.score >= 4) {
     return {
       context: 'NEEDS_REVIEW',
-      label: 'NEEDS_REVIEW',
       suggestedPickupDamageId: best.id,
       matchConfidence: 'low',
       reason: 'POSSIBLE_PICKUP_MATCH_LOW',
@@ -150,7 +143,6 @@ export function derivePickupContext(
 
   return {
     context: 'NEW_SINCE_PICKUP',
-    label: 'NEW_SINCE_PICKUP',
     suggestedPickupDamageId: null,
     matchConfidence: 'none',
     reason: 'NEW_SINCE_PICKUP',
@@ -160,7 +152,6 @@ export function derivePickupContext(
 export function emptyPickupContext(): PickupContextResult {
   return {
     context: 'NOT_APPLICABLE',
-    label: null,
     suggestedPickupDamageId: null,
     matchConfidence: 'none',
     reason: 'NO_DAMAGE_SELECTED',

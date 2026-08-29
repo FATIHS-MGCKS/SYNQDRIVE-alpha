@@ -71,7 +71,7 @@ export function DamageControlSummary({
   showRepairTaskCta,
 }: DamageControlSummaryProps) {
   const { t, locale } = useLanguage();
-  const oldestToday = t('vehicleDamages.summary.oldestToday');
+  const oldestToday = t('common.today');
   const oldest = formatOldestOpenAge(stats.oldestOpenDamageAt, t);
   const surfaceTone = damageStatusSurfaceTone(stats);
   const badge = damageStatusBadge(stats, t);

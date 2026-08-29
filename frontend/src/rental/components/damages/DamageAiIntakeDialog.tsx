@@ -177,7 +177,7 @@ export function DamageAiIntakeDialog({
                             type="button"
                             onClick={() => intake.removeFile(slot.view, i)}
                             className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-background border text-[10px]"
-                            aria-label={t('vehicleDamages.aiIntake.removePhoto')}
+                            aria-label={t('common.remove')}
                           >
                             ×
                           </button>

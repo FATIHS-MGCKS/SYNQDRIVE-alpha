@@ -37,7 +37,6 @@ export const rentalVehicleDamagesEn = {
   'vehicleDamages.summary.rentalContext.watch': 'Open damages under watch — rental still allowed.',
   'vehicleDamages.summary.createRepairTask': 'Create repair task',
   'vehicleDamages.summary.creatingRepairTask': 'Creating…',
-  'vehicleDamages.summary.oldestToday': 'Today',
   'vehicleDamages.summary.oldestOneDay': '1 day',
   'vehicleDamages.summary.oldestDays': '{count} days',
   'vehicleDamages.summary.zeroCost': '€0.00',
@@ -128,7 +127,6 @@ export const rentalVehicleDamagesEn = {
   'vehicleDamages.queueFilter.missing_evidence': 'Missing evidence',
   'vehicleDamages.queueFilter.unplaced': 'Unplaced',
   'vehicleDamages.queueFilter.repaired': 'Repaired',
-  'vehicleDamages.queueFilter.all': 'All',
 
   'vehicleDamages.drawer.title': 'Damage detail',
   'vehicleDamages.drawer.noSelection': 'No damage selected.',
@@ -188,7 +186,6 @@ export const rentalVehicleDamagesEn = {
   'vehicleDamages.create.locationLabelPlaceholder': 'e.g. Front bumper left',
   'vehicleDamages.create.photos': 'Photos (optional)',
   'vehicleDamages.create.addPhotos': 'Add photos',
-  'vehicleDamages.create.removePhoto': 'Remove',
   'vehicleDamages.create.photosHint': 'JPG, PNG, WebP up to 6 MB each.',
 
   'vehicleDamages.markRepaired.title': 'Mark as repaired',
@@ -197,7 +194,6 @@ export const rentalVehicleDamagesEn = {
   'vehicleDamages.markRepaired.descriptionWithLabel':
     'Confirm repair completion for {label}. This moves the damage out of the open queue.',
   'vehicleDamages.markRepaired.confirm': 'Confirm repaired',
-  'vehicleDamages.markRepaired.saving': 'Saving…',
   'vehicleDamages.markRepaired.field.repairCost': 'Actual repair cost (EUR, optional)',
   'vehicleDamages.markRepaired.field.repairCostPlaceholder': 'e.g. 380.00',
   'vehicleDamages.markRepaired.field.note': 'Note (optional)',
@@ -219,7 +215,6 @@ export const rentalVehicleDamagesEn = {
   'vehicleDamages.repairTask.loadingVendors': 'Loading vendors…',
   'vehicleDamages.repairTask.field.note': 'Additional note (optional)',
   'vehicleDamages.repairTask.notePlaceholder': 'Instructions for the workshop or internal team',
-  'vehicleDamages.repairTask.priority.CRITICAL': 'Critical',
   'vehicleDamages.repairTask.priority.HIGH': 'High',
   'vehicleDamages.repairTask.priority.NORMAL': 'Medium',
   'vehicleDamages.repairTask.priority.LOW': 'Low',
@@ -237,7 +232,6 @@ export const rentalVehicleDamagesEn = {
   'vehicleDamages.rental.field.protocol': 'Protocol',
   'vehicleDamages.rental.field.recordedVia': 'Recorded via',
   'vehicleDamages.rental.field.reportedBy': 'Reported by',
-  'vehicleDamages.rental.field.status': 'Status',
   'vehicleDamages.rental.field.operatorDecision': 'Operator decision',
   'vehicleDamages.rental.field.liabilityNote': 'Reason / note',
   'vehicleDamages.rental.liabilityNotePlaceholder':
@@ -288,7 +282,6 @@ export const rentalVehicleDamagesEn = {
   'vehicleDamages.aiIntake.confirmationWarning':
     'Needs operator confirmation — suggestions are not saved until you confirm.',
   'vehicleDamages.aiIntake.addPhoto': 'Add photo',
-  'vehicleDamages.aiIntake.removePhoto': 'Remove',
   'vehicleDamages.aiIntake.analyzing': 'Analyzing exterior photos…',
   'vehicleDamages.aiIntake.saving': 'Saving confirmed damages…',
   'vehicleDamages.aiIntake.done': 'Confirmed damages were saved to the register.',
@@ -315,7 +308,6 @@ export const rentalVehicleDamagesEn = {
   'vehicleDamages.locationView.RIGHT': 'Right',
   'vehicleDamages.locationView.REAR': 'Rear',
   'vehicleDamages.locationView.ROOF': 'Roof',
-  'vehicleDamages.locationView.UNKNOWN': 'Unknown',
 
   'vehicleDamages.evidenceStatus.MISSING': 'Missing',
   'vehicleDamages.evidenceStatus.PARTIAL': 'Partial',
@@ -330,8 +322,6 @@ export const rentalVehicleDamagesEn = {
   'vehicleDamages.liabilityStatus.DISPUTED': 'Disputed',
 
   'vehicleDamages.rentalGate.RENTABLE': 'Vehicle rentable',
-  'vehicleDamages.rentalGate.WATCH': 'Watch',
-  'vehicleDamages.rentalGate.RENTAL_BLOCKED': 'Rental blocked',
   'vehicleDamages.rentalGate.SAFETY_CRITICAL': 'Safety critical',
 
   'vehicleDamages.pickupContext.PRE_EXISTING': 'Pre-existing',

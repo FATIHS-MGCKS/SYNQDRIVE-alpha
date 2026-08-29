@@ -145,7 +145,7 @@ export function DamageRentalSections({
         <h4 className="sq-section-label mb-2">{t('vehicleDamages.rental.section.liability')}</h4>
         <div className="rounded-lg border border-border/70 bg-muted/15 px-3 py-2.5 space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[12px] text-muted-foreground">{t('vehicleDamages.rental.field.status')}</span>
+            <span className="text-[12px] text-muted-foreground">{t('common.status')}</span>
             <StatusChip
               tone={
                 damage.liabilityStatus === 'DISPUTED' || damage.liabilityStatus === 'NEEDS_REVIEW'
