@@ -2,6 +2,7 @@ import type { DamageLocationView, DamageVehicleInsights } from './damage.types';
 import {
   formatDamageEuroCents,
   resolveDamageLocationViewLabel,
+  resolveDamageOneDayLabel,
   type VehicleDamagesTranslate,
 } from './rental-vehicle-damages-i18n';
 
@@ -17,7 +18,7 @@ export function formatRepairDurationDays(
 ): string | null {
   if (days == null || sampleSize <= 0) return null;
   if (days < 1) return t('vehicleDamages.insights.repairDuration.lessThanDay');
-  if (days === 1) return t('vehicleDamages.insights.repairDuration.oneDay');
+  if (days === 1) return resolveDamageOneDayLabel(t);
   return t('vehicleDamages.insights.repairDuration.days', { count: days });
 }
 

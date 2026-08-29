@@ -63,7 +63,7 @@ export function useVehicleDamageActions({
     ): Promise<T> => {
       if (!vehicleId) {
         const message = resolveDamageHostError('vehicleDamages.hostError.noVehicle', null, t);
-        toast.error(resolveDamageToastError('vehicleDamages.toast.actionFailed', t), {
+        toast.error(resolveDamageToastError('tasks.detail.toast.actionFailed', t), {
           description: message ?? undefined,
         });
         throw new Error('No vehicle selected.');
@@ -87,7 +87,7 @@ export function useVehicleDamageActions({
         return result;
       } catch (error) {
         const message = formatApiError(error);
-        toast.error(resolveDamageToastError('vehicleDamages.toast.actionFailed', t), {
+        toast.error(resolveDamageToastError('tasks.detail.toast.actionFailed', t), {
           description: message,
         });
         throw error;
@@ -242,7 +242,7 @@ export function useVehicleDamageActions({
     async (damage: DamageResponse, input: CreateRepairTaskInput = {}) => {
       if (!orgId) {
         const message = resolveDamageHostError('vehicleDamages.hostError.orgMissing', null, t);
-        toast.error(resolveDamageToastError('vehicleDamages.toast.actionFailed', t), {
+        toast.error(resolveDamageToastError('tasks.detail.toast.actionFailed', t), {
           description: message ?? undefined,
         });
         throw new Error('No org');

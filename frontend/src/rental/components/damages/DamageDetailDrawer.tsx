@@ -223,7 +223,7 @@ export function DamageDetailDrawer({
             label={t('vehicleDamages.drawer.field.evidence')}
             value={resolveEvidenceStatusLabel(t, damage.evidenceStatus)}
           />
-          <InfoTile label={t('vehicleDamages.drawer.field.source')} value={resolveDamageSourceLabel(t, damage.source)} />
+          <InfoTile label={t('tasks.filter.sourceLabel')} value={resolveDamageSourceLabel(t, damage.source)} />
         </section>
 
         <section>
@@ -292,7 +292,7 @@ export function DamageDetailDrawer({
         </section>
 
         <section>
-          <h4 className="sq-section-label mb-2">{t('vehicleDamages.drawer.section.timeline')}</h4>
+          <h4 className="sq-section-label mb-2">{t('health.timeline')}</h4>
           <Timeline items={timeline} />
         </section>
 

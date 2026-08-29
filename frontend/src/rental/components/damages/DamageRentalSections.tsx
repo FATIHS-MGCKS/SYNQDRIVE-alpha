@@ -87,12 +87,12 @@ export function DamageRentalSections({
         <section>
           <h4 className="sq-section-label mb-2">{t('vehicleDamages.rental.section.context')}</h4>
           <div className="rounded-lg border border-border/70 bg-muted/15 px-3 py-2.5 space-y-2 text-[12px]">
-            <ContextRow label={t('vehicleDamages.drawer.field.source')} value={resolveDamageSourceLabel(t, damage.source)} />
+            <ContextRow label={t('tasks.filter.sourceLabel')} value={resolveDamageSourceLabel(t, damage.source)} />
             {damage.bookingId && (
-              <ContextRow label={t('vehicleDamages.rental.field.booking')} value={damage.bookingId} mono />
+              <ContextRow label={t('tasks.entity.booking')} value={damage.bookingId} mono />
             )}
             {damage.customerId && (
-              <ContextRow label={t('vehicleDamages.rental.field.customer')} value={damage.customerId} mono />
+              <ContextRow label={t('tasks.entity.customer')} value={damage.customerId} mono />
             )}
             {pickupLabel && (
               <div className="flex items-center justify-between gap-2 pt-1">
@@ -322,10 +322,10 @@ export function DamageRentalSections({
             </p>
           )}
           {damage.reportedBy && (
-            <p>{t('vehicleDamages.rental.reportedByLine', { name: damage.reportedBy })}</p>
+            <p>{t('tasks.detail.summary.completedBy', { name: damage.reportedBy })}</p>
           )}
           <p>
-            {t('vehicleDamages.drawer.field.source')}: {resolveDamageSourceLabel(t, damage.source)}
+            {t('tasks.filter.sourceLabel')}: {resolveDamageSourceLabel(t, damage.source)}
           </p>
           {damage.bookingId && (
             <p>{t('vehicleDamages.rental.bookingLine', { id: damage.bookingId.slice(0, 8) })}</p>

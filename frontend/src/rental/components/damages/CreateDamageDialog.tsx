@@ -222,7 +222,7 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
               ))}
             </select>
           </Field>
-          <Field label={t('vehicleDamages.create.field.severity')}>
+          <Field label={t('health.observation.severity')}>
             <select
               value={form.severity}
               onChange={(e) => set('severity', e.target.value as DamageSeverity)}
@@ -251,7 +251,7 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
           </select>
         </Field>
 
-        <Field label={t('vehicleDamages.create.field.description')}>
+        <Field label={t('tasks.form.description')}>
           <textarea
             value={form.description}
             onChange={(e) => set('description', e.target.value)}

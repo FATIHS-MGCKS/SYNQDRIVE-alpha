@@ -45,7 +45,7 @@ export function damageStatusBadge(
   if (stats.missingEvidence > 0 || stats.unplaced > 0) {
     return { label: t('vehicleDamages.summary.badge.needsReview'), tone: 'warning' };
   }
-  return { label: t('vehicleDamages.summary.badge.open'), tone: 'warning' };
+  return { label: t('tasks.view.open'), tone: 'warning' };
 }
 
 export function damageStatusSurfaceTone(

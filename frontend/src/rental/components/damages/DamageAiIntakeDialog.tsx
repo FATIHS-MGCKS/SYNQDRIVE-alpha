@@ -328,7 +328,7 @@ function SuggestionEditor({
       <p className="text-[10px] text-muted-foreground">{suggestion.warning}</p>
       <div className="grid grid-cols-2 gap-2">
         <label className="text-[11px]">
-          {t('vehicleDamages.aiIntake.field.type')}
+          {t('tasks.detail.technical.type')}
           <select
             value={suggestion.suggestedDamageType}
             onChange={(e) => onChange({ suggestedDamageType: e.target.value })}
@@ -423,7 +423,7 @@ function SuggestionEditor({
         </label>
       </div>
       <label className="text-[11px] block">
-        {t('vehicleDamages.aiIntake.field.description')}
+        {t('tasks.form.description')}
         <textarea
           value={suggestion.suggestedDescription ?? ''}
           onChange={(e) => onChange({ suggestedDescription: e.target.value })}

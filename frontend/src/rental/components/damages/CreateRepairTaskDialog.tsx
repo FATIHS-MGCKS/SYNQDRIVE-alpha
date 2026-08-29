@@ -138,13 +138,13 @@ export function CreateRepairTaskDialog({
           )}
 
           <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5 space-y-2">
-            <PreviewRow label={t('vehicleDamages.repairTask.preview.title')} value={prefilled?.title ?? '—'} />
+            <PreviewRow label={t('tasks.form.title')} value={prefilled?.title ?? '—'} />
             <PreviewRow
-              label={t('vehicleDamages.repairTask.preview.priority')}
+              label={t('tasks.filter.sortPriority')}
               value={resolveRepairTaskPriorityLabel(t, prefilled?.priority ?? 'NORMAL')}
             />
             <PreviewRow
-              label={t('vehicleDamages.repairTask.preview.vehicle')}
+              label={t('tasks.filter.vehicleLabel')}
               value={damage.vehicleId.slice(0, 8) + '…'}
               mono
             />

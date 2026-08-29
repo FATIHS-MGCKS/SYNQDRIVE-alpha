@@ -17,6 +17,7 @@ import {
 } from '../../lib/damage-rental-impact';
 import {
   formatDamageEuroCents,
+  resolveDamageOneDayLabel,
   resolveDamageOldestTodayLabel,
   resolveDamageRentalGateLabel,
   type VehicleDamagesTranslate,
@@ -198,7 +199,7 @@ export function formatOldestOpenAge(
   if (Number.isNaN(then)) return null;
   const days = Math.floor((Date.now() - then) / (1000 * 60 * 60 * 24));
   if (days <= 0) return resolveDamageOldestTodayLabel(t);
-  if (days === 1) return t('vehicleDamages.summary.oldestOneDay');
+  if (days === 1) return resolveDamageOneDayLabel(t);
   return t('vehicleDamages.summary.oldestDays', { count: days });
 }
 

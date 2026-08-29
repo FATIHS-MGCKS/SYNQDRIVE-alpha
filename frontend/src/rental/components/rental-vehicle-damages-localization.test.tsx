@@ -462,25 +462,42 @@ describe('P2.2.61 Rental Vehicle Damages localization', () => {
     document.body.appendChild(container);
     const root: Root = createRoot(container);
 
-    function LocaleSwitcher() {
+    function LocaleSurface() {
       const { setLocale } = useLanguage();
-      useEffect(() => {
-        const timer = window.setTimeout(() => setLocale('en'), 20);
-        const timer2 = window.setTimeout(() => setLocale('de'), 40);
-        return () => {
-          window.clearTimeout(timer);
-          window.clearTimeout(timer2);
-        };
-      }, [setLocale]);
-      return createElement(DamagesViewHarness);
+      return createElement(
+        'div',
+        null,
+        createElement('button', {
+          type: 'button',
+          'data-testid': 'locale-de',
+          onClick: () => setLocale('de'),
+        }),
+        createElement('button', {
+          type: 'button',
+          'data-testid': 'locale-en',
+          onClick: () => setLocale('en'),
+        }),
+        createElement(DamagesViewHarness),
+      );
     }
 
     await act(async () => {
-      root.render(createElement(LanguageProvider, null, createElement(LocaleSwitcher)));
-      await new Promise((r) => setTimeout(r, 60));
+      root.render(createElement(LanguageProvider, null, createElement(LocaleSurface)));
     });
 
     expect(damagesViewMountCount).toBe(1);
+    expect(container.textContent).toContain(de['vehicleDamages.queue.title']);
+    expect(container.textContent).toContain('Provider Repair Shop X7');
+
+    await act(async () => {
+      container.querySelector('[data-testid="locale-en"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+    });
+
+    expect(damagesViewMountCount).toBe(1);
+    expect(container.textContent).toContain(en['vehicleDamages.queue.title']);
+    expect(container.textContent).toContain('Provider Repair Shop X7');
     expect(mutationCounters.create).toBe(0);
     expect(mutationCounters.place).toBe(0);
     expect(mutationCounters.addPhoto).toBe(0);
@@ -489,8 +506,17 @@ describe('P2.2.61 Rental Vehicle Damages localization', () => {
     expect(mutationCounters.archive).toBe(0);
     expect(mutationCounters.updateLiability).toBe(0);
     expect(mutationCounters.createTask).toBe(0);
-    expect(container.textContent).toContain('Provider Repair Shop X7');
+    expect(mutationCounters.reload).toBe(0);
+
+    await act(async () => {
+      container.querySelector('[data-testid="locale-de"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+    });
+
+    expect(damagesViewMountCount).toBe(1);
     expect(container.textContent).toContain(de['vehicleDamages.queue.title']);
+    expect(container.textContent).toContain('Provider Repair Shop X7');
 
     await act(async () => {
       root.unmount();

@@ -33,7 +33,6 @@ export type VehicleDamageHostErrorKey =
   | 'vehicleDamages.hostError.refreshFailed'
   | 'vehicleDamages.hostError.noVehicle'
   | 'vehicleDamages.hostError.orgMissing'
-  | 'vehicleDamages.hostError.actionFailed'
   | 'vehicleDamages.hostError.taskAlreadyLinked'
   | 'vehicleDamages.hostError.taskNotEligible'
   | 'vehicleDamages.hostError.aiAnalysisFailed'
@@ -62,7 +61,7 @@ export type VehicleDamageToastSuccessKey =
   | 'vehicleDamages.toast.damagesCreatedDescription';
 
 export type VehicleDamageToastErrorKey =
-  | 'vehicleDamages.toast.actionFailed'
+  | 'tasks.detail.toast.actionFailed'
   | 'vehicleDamages.toast.taskNotCreated';
 
 export type VehicleDamageValidationCode =
@@ -166,6 +165,7 @@ export function resolveDamageSeverityLabel(
 }
 
 export function resolveDamageStatusLabel(t: VehicleDamagesTranslate, value: DamageStatus | string): string {
+  if (value === 'OPEN') return t('tasks.view.open');
   const key = `vehicleDamages.status.${value}` as TranslationKey;
   const translated = t(key);
   return translated === key ? value : translated;
@@ -173,6 +173,10 @@ export function resolveDamageStatusLabel(t: VehicleDamagesTranslate, value: Dama
 
 export function resolveDamageOldestTodayLabel(t: VehicleDamagesTranslate): string {
   return t('common.today');
+}
+
+export function resolveDamageOneDayLabel(t: VehicleDamagesTranslate): string {
+  return t('tasks.form.duration1440');
 }
 
 export function resolveDamageLocationViewLabel(
@@ -232,6 +236,7 @@ export function resolveDamageQueueFilterLabel(
   filter: DamageQueueFilter,
 ): string {
   if (filter === 'all') return t('common.all');
+  if (filter === 'open') return t('tasks.view.open');
   const key = `vehicleDamages.queueFilter.${filter}` as TranslationKey;
   return t(key);
 }
@@ -351,6 +356,9 @@ export function resolveRepairTaskPriorityLabel(t: VehicleDamagesTranslate, prior
   if (priority === 'CRITICAL') {
     const sharedTranslated = t('vehicle.telemetry.critical');
     return sharedTranslated === 'vehicle.telemetry.critical' ? priority : sharedTranslated;
+  }
+  if (priority === 'HIGH' || priority === 'NORMAL' || priority === 'LOW') {
+    return t(`tasks.filter.priority.${priority}` as TranslationKey);
   }
   const key = `vehicleDamages.repairTask.priority.${priority}` as TranslationKey;
   const translated = t(key);
