@@ -1019,3 +1019,80 @@ Matrix A–AD plus pre-merge: >500 canonical persistence, fingerprint reconstruc
 
 **Mapbox `mapMatchRoute` behavior (≤100 global sampling), frontend route APIs, and historical backfill are unchanged in R2.**
 
+
+---
+
+## Stage R3 — Chunked Map Matching + Stitching + MATCHED Quality Gates
+
+**Status:** IMPLEMENTED (PR pending merge)  
+**Base commit:** `92a60a733` (`route-v2-r2` merged #1413)  
+**Algorithm version:** `route-v2-r3`
+
+### Hard gates
+
+| Gate | Status |
+|------|--------|
+| FRONTEND_BEHAVIOR_CHANGE | NONE |
+| BACKFILL | NONE |
+| SECOND_SCHEDULER | FORBIDDEN (unchanged) |
+| PRODUCTION_MUTATIONS | NONE |
+
+### Canonical matcher architecture
+
+```
+DRIVING_ROUTE_ENRICH → TripsService.enrichTrip
+  → preprocessTripRoute() → FILTERED/RAW
+  → splitFilteredPointsByGaps() (R2 UNKNOWN boundaries)
+  → retainTrajectoryPoints() per segment (spacing + bearing anchors)
+  → planRouteChunks() (max 90, overlap 10)
+  → MapboxChunkMatchingClientService.matchChunk() (≤100 coords, no global stride)
+  → stitchChunkGeometries() per segment
+  → evaluateRouteMatchQualityGates()
+  → persist MATCHED or FILTERED fallback artifact
+  → enrichTrip uses materializer matchResult (road type / speeding / distance)
+```
+
+**Legacy `MapboxRouteMatcherService`:** deprecated; retained for `ROUTE_MAP_MATCHER` port only. Canonical path does **not** call it.
+
+### Trajectory retention
+
+Measured vertices only. Always keep segment endpoints. Retain interior points where bearing change ≥ `15°`. On straights, enforce max `120 m` / `45 s` spacing between retained anchors. No global point budget. No synthetic coordinates.
+
+### Chunking
+
+| Constant | Value |
+|----------|-------|
+| `TRIP_ROUTE_CHUNK_MAX_COORDINATES` | 90 |
+| `TRIP_ROUTE_CHUNK_OVERLAP_COORDINATES` | 10 |
+| `TRIP_ROUTE_MAX_MAPBOX_REQUESTS_PER_TRIP` | 200 |
+
+### Mapbox request contract
+
+Profile `mapbox/driving`; `geometries=geojson`; `overview=full`; `annotations=speed,maxspeed,distance`; timestamps when monotonic; static `radiuses=25`; `tidy=false` on chunk path; 30s timeout; 429/5xx/timeout → RETRYABLE.
+
+### Quality gates (all required for MATCHED)
+
+`chunkSuccessRatio === 1`; coverage ≥ 0.85; confidence ≥ 0.5; matched/filtered distance ratio ∈ [0.7, 1.5]; seam ≤ 25 m; valid geometry. **PARTIAL_MATCH_ALLOWED:** NO.
+
+### Confidence / coverage
+
+Distance-weighted aggregation over successful chunks (see `aggregateChunkMetrics` / `computeMatchCoverage`).
+
+### Explicit statement
+
+**No frontend cutover. No backfill. No splines. No second scheduler.**
+
+### R3 pre-merge corrections (PR #1415 review)
+
+| Field | Value |
+|-------|-------|
+| `SEGMENT_DISTANCE_FORMULA` | `matchedRouteDistanceMeters = Σ geometryDistance(segmentGeometry)`; `filteredDistanceMeters = Σ sourceDistance(segmentPoints)` — UNKNOWN gaps excluded |
+| `GEOMETRY_VALIDATION_SCOPE` | Per continuous matched segment only (`assertGeometryValidPerSegment`) |
+| `TRAJECTORY_RETENTION_ALGORITHM` | Endpoints + bearing≥15° anchors + max 120m / 45s spacing walk on straights |
+| `RETENTION_SPACING_LIMIT` | 120 m and 45 s (conservative, deterministic) |
+| `REQUEST_COUNTS_AFTER_RETENTION` | 500→~46 pts (~1 req); 1k→~92 (~2); 2.5k→~227 (~3); 5k→~454 (~6); 10k→~908 (~11) straight dense |
+| `OVERLAP_LEG_DEDUP_STRATEGY` | Trim leading leg distance per chunk by overlap fraction (`aggregateRouteLegsWithoutOverlap`) |
+| `MAPBOX_REQUEST_ATTEMPT_CAP` | Cap enforced before each HTTP attempt; `mapboxRequestAttemptCount` + `retryCount` in diagnostics |
+| `MULTIPLE_MATCHINGS_POLICY` | Select highest `confidence`; tie-break by `distance` |
+| `TIMESTAMP_POLICY` | Include only when all present, valid, strictly increasing; else omit for chunk |
+| `QUALITY_METRIC_SEGMENT_SEMANTICS` | Seam/jump/distance/coverage/confidence never cross UNKNOWN gaps; overlap deduped in weights |
