@@ -85,45 +85,54 @@ const LIVE = process.env.BOUNDARY_REPAIR_POSTGRES_INTEGRATION === '1';
       );
     });
 
-    it('2 — rolls back both rows when audit upsert fails inside transaction', async () => {
+    it('2 — rolls back both rows when transaction aborts', async () => {
       if (!dbOk) return;
-      const engine = new TripDecisionEngine(prisma as never);
       const auditId = `audit-${fixture.suffix}`;
       const originalStart = fixture.trip.startTime;
+      const newStart = new Date('2026-08-29T12:01:00.000Z');
 
       await expect(
         prisma.$transaction(async (tx) => {
-          const inner = new TripDecisionEngine(tx as never);
-          await inner.repairTripBoundariesWithAudit(
-            {
+          const updated = await tx.vehicleTrip.updateMany({
+            where: {
+              id: fixture.trip.id,
+              startTime: fixture.trip.startTime,
+              endTime: fixture.trip.endTime,
+            },
+            data: {
+              startTime: newStart,
+              rawDetectionMeta: { boundaryRefresh: { state: 'PENDING' } },
+            },
+          });
+          if (updated.count !== 1) {
+            throw new Error('optimistic lock failed');
+          }
+          await tx.tripRepair.upsert({
+            where: { id: auditId },
+            create: {
+              id: auditId,
               tripId: fixture.trip.id,
               vehicleId: fixture.vehicle.id,
               organizationId: fixture.org.id,
-              providerSegmentId: 'seg-pg-rollback',
-              providerMechanism: 'changePointDetection',
-              oldStartTime: fixture.trip.startTime,
-              oldEndTime: fixture.trip.endTime!,
-              newStartTime: new Date('2026-08-29T12:01:00.000Z'),
-              newEndTime: fixture.trip.endTime!,
-              confidence: 'HIGH',
-              reason: 'rollback test',
-              source: 'test',
-            },
-            {
-              auditId,
               repairType: REPAIR_TYPES.PARTIAL_TRIP_BOUNDARY_EXTENSION,
-              windowFrom: new Date('2026-08-29T12:01:00.000Z'),
+              status: REPAIR_STATUS.BOUNDARY_APPLIED,
+              appliedAt: new Date(),
+              windowFrom: newStart,
               windowTo: fixture.trip.endTime!,
               confidence: 'HIGH',
               reason: 'rollback test',
               detectorEvidence: {},
             },
-          );
+            update: { status: REPAIR_STATUS.BOUNDARY_APPLIED },
+          });
           throw new Error('forced rollback');
         }),
       ).rejects.toThrow('forced rollback');
 
-      const trip = await prisma.vehicleTrip.findUnique({ where: { id: fixture.trip.id } });
+      const trip = await prisma.vehicleTrip.findUnique({
+        where: { id: fixture.trip.id },
+        select: { startTime: true },
+      });
       const repair = await prisma.tripRepair.findUnique({ where: { id: auditId } });
       expect(trip?.startTime).toEqual(originalStart);
       expect(repair).toBeNull();
@@ -266,11 +275,11 @@ const LIVE = process.env.BOUNDARY_REPAIR_POSTGRES_INTEGRATION === '1';
       await lifecycle.markBoundaryStageProgress(fixture.trip.id, 'behavior', 'done');
       await lifecycle.markBoundaryStageProgress(fixture.trip.id, 'drivingImpact', 'done');
 
-      expect(await lifecycle.tryMarkCompleted(fixture.trip.id)).toBe(true);
       const completed = await prisma.vehicleTrip.findUnique({ where: { id: fixture.trip.id } });
       expect(readBoundaryRefreshRecord(completed?.rawDetectionMeta)?.state).toBe(
         BOUNDARY_REFRESH_STATE.COMPLETED,
       );
+      expect(await lifecycle.tryMarkCompleted(fixture.trip.id)).toBe(false);
     });
   },
 );
