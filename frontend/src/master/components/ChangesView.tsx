@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'energy-events-e3a-option-b-m1-mutation-executed-2026-08-29',
+    version: '4.9.995',
+    title: 'Energy Events E3A Option B — M1 canonicalization executed (closed-set CREATE + 16-ID DELETE)',
+    summary: [
+      'Operator-authorized Option B mutation executed in one atomic transaction after JIT pre-mutation invariant + backup verification.',
+      'CREATE: one canonical Jul-16 consolidated recharge M1 row (HIGH confidence, ~7.2 h, +23.60% SOC, +11.88 kWh).',
+      'DELETE: exactly 16 explicit operator-authorized legacy sliding-window singleton IDs from the reviewed closed-set manifest — no runtime overlap discovery, no automatic pruneAuthority.',
+      'Preserved: excluded overlap tail (ends 3 min after M1), Jul-17 R1, Jul-18 R2, all unrelated refuel/recharge events.',
+      'Pre-mutation row count 134 → post-mutation 119 (= 134 + 1 − 16). Scoped + table digests captured before write; secured backup artifact retained off-repo.',
+      'Post-mutation forensic closure: WOULD_CREATE=0, WOULD_UPDATE=0, ALREADY_IDENTICAL=4, gateBlockers=[], MANUAL_REVIEW_UNRESOLVED=0. Second dry-run idempotent — no repeat CREATE/UPDATE/DELETE.',
+      'automatic pruneAuthority remained false throughout; deletion authority was operator closed-set only.',
+    ],
+    reason:
+      'Post-deploy read-only validation confirmed SAFE FOR EXPLICIT M1 MUTATION; operator explicitly authorized the reviewed closed-set CREATE + 16-ID DELETE only.',
+    previousBehavior:
+      'Jul-16 physical recharge represented as 16 redundant legacy singleton fragments; M1 absent; gate blocked on MANUAL_REVIEW_UNRESOLVED:1.',
+    details:
+      'backend: scripts/ops/energy-events-operator-mutation-execute.ts (secured VPS execution). Private manifest/backup on operational storage only — no production row UUIDs committed.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T01:08:00.000Z',
+  },
+  {
     id: 'energy-events-e3a-m1-operator-disposition-prep-2026-08-28',
     version: '4.9.994',
     title: 'Energy Events — M1 Option B closed-set operator disposition manifest (preparation only)',

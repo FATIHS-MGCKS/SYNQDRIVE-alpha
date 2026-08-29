@@ -604,3 +604,24 @@ after precision-fix deploy. Overlap tail may require follow-up disposition.
 
 Pre-mutation backup artifact with full payloads for all 16 prune IDs. Restore:
 `DELETE_M1_IF_CREATED` → `RESTORE_PRUNED_ROWS`.
+
+---
+
+## 15. Option B operator mutation executed (2026-08-29)
+
+**Status:** **EXECUTED** — operator-authorized closed-set CREATE + DELETE only.
+
+| Item | Result |
+|------|--------|
+| Execution | Single atomic transaction after JIT invariant + backup verification |
+| Pre-mutation row count | **134** |
+| Post-mutation row count | **119** (= 134 + 1 M1 CREATE − 16 explicit DELETE) |
+| M1 CREATE | **1** canonical Jul-16 consolidated recharge (HIGH, ~7.2 h, +23.60% SOC, +11.88 kWh) |
+| Legacy DELETE | **16** explicit closed-set IDs only |
+| Excluded overlap tail | **Preserved** |
+| R1 / R2 | **Preserved** |
+| `pruneAuthority` during execution | **false** (operator closed-set only) |
+| Post-mutation forensic | `WOULD_CREATE=0`, `WOULD_UPDATE=0`, `ALREADY_IDENTICAL=4`, `gateBlockers=[]` |
+| Idempotency re-run | No repeat CREATE/UPDATE/DELETE; gate clear |
+
+Private manifest, backup, and row UUIDs remain on secured operational storage only — not in git.
