@@ -3,12 +3,16 @@ import { DimoProviderRequestPriority } from '@modules/dimo/provider/dimo-provide
 
 export type DimoProviderLimiterMode = 'off' | 'shadow' | 'enforce';
 
+export type DimoProviderRateAlgorithm = 'token_bucket' | 'fixed_window';
+
 export interface DimoProviderLimiterConfigShape {
   enabled: boolean;
   mode: DimoProviderLimiterMode;
   /** Internal safety budget (req/s). DIMO Core documented ceiling is 25 req/s. */
   rateLimitPerSecond: number;
   rateBurst: number;
+  /** Rate smoothing algorithm (S4 default: token_bucket). */
+  rateAlgorithm: DimoProviderRateAlgorithm;
   maxInFlight: number;
   inFlightLeaseMs: number;
   /** In-flight slots reserved for P0/P1 when global cap is reached. */
@@ -23,6 +27,8 @@ export interface DimoProviderLimiterConfigShape {
   admissionPollMaxMs: number;
   /** Upper bound for provider Retry-After seconds stored in Redis cooldown. */
   retryAfterMaxSeconds: number;
+  /** Deterministic canary org allowlist — enforce only for listed orgs when mode=shadow. */
+  canaryEnforceOrgIds: ReadonlySet<string>;
   /** Documented DIMO Core tier ceiling — observability reference only. */
   documentedCoreRatePerSecond: number;
 }
@@ -58,6 +64,23 @@ function parseMode(raw: string | undefined): DimoProviderLimiterMode {
     return normalized;
   }
   return 'shadow';
+}
+
+function parseRateAlgorithm(raw: string | undefined): DimoProviderRateAlgorithm {
+  const normalized = (raw ?? 'token_bucket').trim().toLowerCase();
+  if (normalized === 'fixed_window' || normalized === 'token_bucket') {
+    return normalized;
+  }
+  return 'token_bucket';
+}
+
+function parseCanaryOrgIds(raw: string | undefined): ReadonlySet<string> {
+  if (raw == null || raw.trim() === '') return new Set();
+  const ids = raw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+  return new Set(ids);
 }
 
 function resolveMaxWaitByPriority(
@@ -129,6 +152,7 @@ export function resolveDimoProviderLimiterConfig(
       MAX_RATE,
     ),
     rateBurst: parseBoundedInt(env.DIMO_PROVIDER_RATE_BURST, 5, MIN_BURST, MAX_BURST),
+    rateAlgorithm: parseRateAlgorithm(env.DIMO_PROVIDER_RATE_ALGORITHM),
     maxInFlight,
     inFlightLeaseMs: parseBoundedInt(
       env.DIMO_PROVIDER_INFLIGHT_LEASE_MS,
@@ -147,6 +171,7 @@ export function resolveDimoProviderLimiterConfig(
       1,
       600,
     ),
+    canaryEnforceOrgIds: parseCanaryOrgIds(env.DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS),
     documentedCoreRatePerSecond: 25,
   };
 }

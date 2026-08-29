@@ -6,13 +6,16 @@ import type {
   DimoProviderLimiterBeginResult,
   DimoProviderRequestPriority,
 } from './dimo-provider-limiter.types';
-import { DimoProviderRequestCategory } from './dimo-provider-limiter.types';
+import { DimoProviderLimiterDecision, DimoProviderRequestCategory } from './dimo-provider-limiter.types';
 import type { DimoProviderLimiterMode } from '@config/dimo-provider-limiter.config';
+import type { DimoProviderRolloutState } from './dimo-provider-rollout.util';
 
 export interface DimoProviderMetricsRecordInput {
   category: DimoProviderRequestCategory;
   priority: DimoProviderRequestPriority;
   mode: DimoProviderLimiterMode;
+  rolloutState: DimoProviderRolloutState;
+  canaryMatch: boolean;
   begin: DimoProviderLimiterBeginResult;
   durationMs: number;
   http: DimoProviderHttpObservation;
@@ -52,6 +55,9 @@ export class DimoProviderMetricsService {
   readonly admissionTimeoutsTotal: Counter<string>;
   readonly backpressureTotal: Counter<string>;
   readonly providerCooldownTotal: Counter<string>;
+  readonly admittedRequestsTotal: Counter<string>;
+  readonly tokenBucketTokensGauge: Gauge<string>;
+  readonly cooldownActiveGauge: Gauge<string>;
 
   constructor(private readonly tripMetrics: TripMetricsService) {
     const register = this.tripMetrics.registry;
@@ -59,7 +65,7 @@ export class DimoProviderMetricsService {
     this.requestsTotal = new Counter({
       name: 'synqdrive_dimo_provider_requests_total',
       help: 'DIMO provider gateway requests',
-      labelNames: ['operation', 'mode', 'status_class', 'priority'],
+      labelNames: ['operation', 'mode', 'rollout_state', 'canary_match', 'status_class', 'priority'],
       registers: [register],
     });
 
@@ -79,8 +85,8 @@ export class DimoProviderMetricsService {
 
     this.rateBudgetUsage = new Gauge({
       name: 'synqdrive_dimo_provider_rate_budget_usage',
-      help: 'Current second rate window usage vs configured budget',
-      labelNames: ['mode'],
+      help: 'Token bucket / rate budget utilization (0-1)',
+      labelNames: ['mode', 'rollout_state'],
       registers: [register],
     });
 
@@ -154,15 +160,44 @@ export class DimoProviderMetricsService {
       labelNames: ['operation'],
       registers: [register],
     });
+
+    this.admittedRequestsTotal = new Counter({
+      name: 'synqdrive_dimo_provider_admitted_requests_total',
+      help: 'DIMO provider requests admitted past limiter (not would-reject)',
+      labelNames: ['operation', 'mode', 'rollout_state', 'canary_match', 'priority'],
+      registers: [register],
+    });
+
+    this.tokenBucketTokensGauge = new Gauge({
+      name: 'synqdrive_dimo_provider_token_bucket_tokens_remaining',
+      help: 'Remaining global token-bucket tokens',
+      labelNames: ['mode'],
+      registers: [register],
+    });
+
+    this.cooldownActiveGauge = new Gauge({
+      name: 'synqdrive_dimo_provider_cooldown_active',
+      help: 'Whether provider Retry-After cooldown is active (1/0)',
+      registers: [register],
+    });
   }
 
   recordRequest(input: DimoProviderMetricsRecordInput): void {
     const op = input.category;
     const mode = input.mode;
+    const rollout = input.rolloutState;
+    const canaryMatch = input.canaryMatch ? 'true' : 'false';
     const status = input.http.statusClass;
     const priority = input.priority;
 
-    this.requestsTotal.inc({ operation: op, mode, status_class: status, priority });
+    this.requestsTotal.inc({
+      operation: op,
+      mode,
+      rollout_state: rollout,
+      canary_match: canaryMatch,
+      status_class: status,
+      priority,
+    });
     this.requestDuration.observe(
       { operation: op, status_class: status, priority },
       input.durationMs / 1000,
@@ -175,11 +210,28 @@ export class DimoProviderMetricsService {
     if (mode !== 'off') {
       this.inFlightGauge.set({ mode }, input.begin.inFlightCount);
       this.rateBudgetUsage.set(
-        { mode },
+        { mode, rollout_state: rollout },
         input.begin.rateWindowLimit > 0
           ? input.begin.rateWindowCount / input.begin.rateWindowLimit
           : 0,
       );
+
+      if (input.begin.tokensRemaining != null) {
+        this.tokenBucketTokensGauge.set({ mode }, input.begin.tokensRemaining);
+      }
+
+      if (
+        input.begin.rateDecision === DimoProviderLimiterDecision.ALLOW &&
+        input.begin.inFlightDecision === DimoProviderLimiterDecision.ALLOW
+      ) {
+        this.admittedRequestsTotal.inc({
+          operation: op,
+          mode,
+          rollout_state: rollout,
+          canary_match: canaryMatch,
+          priority,
+        });
+      }
 
       this.shadowDecisionsTotal.inc({
         operation: op,
@@ -235,5 +287,10 @@ export class DimoProviderMetricsService {
 
   recordProviderCooldown(input: DimoProviderCooldownInput): void {
     this.providerCooldownTotal.inc({ operation: input.category });
+    this.cooldownActiveGauge.set(1);
+  }
+
+  recordCooldownCleared(): void {
+    this.cooldownActiveGauge.set(0);
   }
 }

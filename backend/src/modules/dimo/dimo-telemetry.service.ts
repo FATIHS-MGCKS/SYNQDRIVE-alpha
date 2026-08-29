@@ -10,6 +10,7 @@ import {
 } from './queries/battery-capability-preflight.query';
 import { DimoProviderGateway } from './provider/dimo-provider-gateway.service';
 import { DimoProviderOperation } from './provider/dimo-provider-gateway.types';
+import type { DimoProviderRequestContext } from './provider/dimo-provider-gateway.types';
 
 export interface BatteryCapabilityPreflightSnapshot {
   availableSignals: string[] | null;
@@ -61,13 +62,10 @@ export class DimoTelemetryService {
   async fetchLatestVehicleSnapshot(
     vehicleJwt: string,
     tokenId: number,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<unknown> {
-    // Route through queryGraphQL so DIMO GraphQL `errors` are logged and, when
-    // no `data` is returned, surfaced as an exception. Previously these errors
-    // were silently swallowed, causing the snapshot processor to treat a failed
-    // fetch as a no-op and leaving gaps in our live trip detection FSM.
     const query = buildLatestSnapshotQuery(tokenId);
-    const result = await this.queryGraphQL(vehicleJwt, query);
+    const result = await this.queryGraphQL(vehicleJwt, query, undefined, requestContext);
     return result?.data ?? result;
   }
 
@@ -171,9 +169,11 @@ export class DimoTelemetryService {
     vehicleJwt: string,
     query: string,
     variables?: Record<string, any>,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<any> {
     return this.providerGateway.execute({
       operation: DimoProviderOperation.TELEMETRY_GRAPHQL,
+      requestContext,
       invoke: () => this.postGraphQL(vehicleJwt, query, variables),
     });
   }

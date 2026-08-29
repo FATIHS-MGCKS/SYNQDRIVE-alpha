@@ -1,14 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { RedisService } from '@shared/redis/redis.service';
+import type { DimoProviderRateAlgorithm } from '@config/dimo-provider-limiter.config';
 import {
   DIMO_PROVIDER_COOLDOWN_SET_SCRIPT,
   DIMO_PROVIDER_INFLIGHT_ACQUIRE_SCRIPT,
   DIMO_PROVIDER_INFLIGHT_RELEASE_SCRIPT,
   DIMO_PROVIDER_RATE_SCRIPT,
+  DIMO_PROVIDER_TOKEN_BUCKET_SCRIPT,
   dimoProviderCooldownKey,
   dimoProviderInflightKey,
   dimoProviderRateKey,
+  dimoProviderTokenBucketKey,
 } from './dimo-provider-limiter.redis-scripts';
 import {
   inflightMember,
@@ -56,10 +59,8 @@ export class DimoProviderLimiterService {
     const leaseId = randomUUID();
     const nowMs = Date.now();
     const expiryMs = nowMs + input.inFlightLeaseMs;
-    const epochSecond = Math.floor(nowMs / 1000);
-    const rateKey = dimoProviderRateKey(epochSecond);
     const inflightKey = dimoProviderInflightKey();
-    const maxRate = input.rateLimitPerSecond + input.rateBurst;
+    const capacity = input.rateLimitPerSecond + input.rateBurst;
     const priorityRank = providerPriorityRank(input.priority);
 
     try {
@@ -72,35 +73,29 @@ export class DimoProviderLimiterService {
           rateDecision: DimoProviderLimiterDecision.WOULD_WAIT,
           inFlightDecision: DimoProviderLimiterDecision.WOULD_WAIT,
           rateWindowCount: 0,
-          rateWindowLimit: maxRate,
+          rateWindowLimit: capacity,
           inFlightCount: 0,
           inFlightLimit: input.maxInFlight,
           redisFailOpen: false,
           wouldDelayMs: cooldownRemainingMs,
           providerCooldownActive: true,
+          rateAlgorithm: input.rateAlgorithm,
         };
       }
 
-      const [rateRaw, inflightRaw] = await Promise.all([
-        this.redis.eval(
-          DIMO_PROVIDER_RATE_SCRIPT,
-          1,
-          rateKey,
-          String(maxRate),
-        ) as Promise<[number, number, string]>,
-        this.redis.eval(
-          DIMO_PROVIDER_INFLIGHT_ACQUIRE_SCRIPT,
-          1,
-          inflightKey,
-          String(input.maxInFlight),
-          leaseId,
-          String(nowMs),
-          String(expiryMs),
-          input.mode,
-          String(priorityRank),
-          String(input.reservedHighPrioritySlots),
-        ) as Promise<[number, number, string, number, number]>,
-      ]);
+      const rateRaw = await this.acquireRateBudget(input, nowMs, capacity);
+      const inflightRaw = (await this.redis.eval(
+        DIMO_PROVIDER_INFLIGHT_ACQUIRE_SCRIPT,
+        1,
+        inflightKey,
+        String(input.maxInFlight),
+        leaseId,
+        String(nowMs),
+        String(expiryMs),
+        input.mode,
+        String(priorityRank),
+        String(input.reservedHighPrioritySlots),
+      )) as [number, number, string, number, number];
 
       const rateDecision = parseDecision(rateRaw[2]);
       const inFlightDecision = parseDecision(inflightRaw[2]);
@@ -121,6 +116,8 @@ export class DimoProviderLimiterService {
         inFlightCount,
         inFlightLimit: inflightRaw[1],
         redisFailOpen: false,
+        tokensRemaining: rateRaw[3],
+        rateAlgorithm: input.rateAlgorithm,
       };
 
       if (!isAdmitted(result) && input.mode === 'shadow') {
@@ -140,12 +137,41 @@ export class DimoProviderLimiterService {
         rateDecision: DimoProviderLimiterDecision.ERROR_FAIL_OPEN,
         inFlightDecision: DimoProviderLimiterDecision.ERROR_FAIL_OPEN,
         rateWindowCount: 0,
-        rateWindowLimit: maxRate,
+        rateWindowLimit: capacity,
         inFlightCount: 0,
         inFlightLimit: input.maxInFlight,
         redisFailOpen: true,
+        rateAlgorithm: input.rateAlgorithm,
       };
     }
+  }
+
+  private async acquireRateBudget(
+    input: DimoProviderLimiterBeginInput,
+    nowMs: number,
+    capacity: number,
+  ): Promise<[number, number, string, number?]> {
+    if (input.rateAlgorithm === 'fixed_window') {
+      const epochSecond = Math.floor(nowMs / 1000);
+      const rateKey = dimoProviderRateKey(epochSecond);
+      const raw = (await this.redis.eval(
+        DIMO_PROVIDER_RATE_SCRIPT,
+        1,
+        rateKey,
+        String(capacity),
+      )) as [number, number, string];
+      return [raw[0], raw[1], raw[2]];
+    }
+
+    const raw = (await this.redis.eval(
+      DIMO_PROVIDER_TOKEN_BUCKET_SCRIPT,
+      1,
+      dimoProviderTokenBucketKey(),
+      String(nowMs),
+      String(input.rateLimitPerSecond),
+      String(capacity),
+    )) as [number, number, string, number];
+    return [raw[0], raw[1], raw[2], raw[3]];
   }
 
   async end(inFlightMember: string | null): Promise<void> {
@@ -206,6 +232,7 @@ export class DimoProviderLimiterService {
       inFlightCount: 0,
       inFlightLimit: input.maxInFlight,
       redisFailOpen: false,
+      rateAlgorithm: input.rateAlgorithm,
     };
   }
 }
