@@ -36,6 +36,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'snapshot-polling-p1-2-final6-current-prod-release-gate-2026-08-29',
+    version: '4.9.1000',
+    title: 'P1.2 FINAL-6 — Current-production release gate (SAFE TO MERGE current prod)',
+    summary: [
+      'FINAL-6 separates current-production safety from N≈1000 certification.',
+      'CURRENT PRODUCTION: SAFE TO MERGE PR #1409 — single PM2 fork, trip-loss invariants PASS, certified envelope N≤100.',
+      'N≈1000 TARGET: NOT CERTIFIED — P1.3 global DIMO semaphore still required.',
+      'Topology: CURRENT_PROD_REPLICAS=1; CAN_TWO_SCHEDULERS_DURING_DEPLOY=NO (pm2 restart + boot check exits before listen).',
+      'Load table N=10..250: default c=5 stable through N=50; N=100 marginal; recommend WORKER_SNAPSHOT_CONCURRENCY=8 for N≤100.',
+      'Process-local DIMO fan-out bound: 21 concurrent HTTP slots at defaults (not provider-certified).',
+      'Startup fleet-envelope WARN once per boot when fleet exceeds N=100 or concurrency under-provisioned.',
+      'Rollback flags tested: LEGACY_FIXED_CADENCE + PARTIAL_BOUNDARY_REPAIR_ENABLED=false do not orphan trips.',
+    ],
+    reason:
+      'PR #1409 FINAL-6 — certify release safety for actual current production topology independently of N≈1000 scale gate.',
+    previousBehavior:
+      'FINAL-5 mixed current-prod and N≈1000 into one DO NOT MERGE verdict.',
+    details:
+      'backend: current-prod-fleet-envelope.ts, p12-final6-current-prod-release-gate.spec.ts, dimo-snapshot.scheduler fleet WARN. architecture/SNAPSHOT_POLLING_P1_2_FINAL6_CURRENT_PROD_RELEASE_GATE_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T16:20:00.000Z',
+  },
+  {
     id: 'snapshot-polling-p1-2-final5-production-scale-gate-2026-08-29',
     version: '4.9.999',
     title: 'P1.2 FINAL-5 — Production scale gate for PR #1409 (DO NOT MERGE)',

@@ -24,6 +24,8 @@ import {
   SNAPSHOT_POLLABLE_TIERS,
   SnapshotPollingTier,
 } from './snapshot-polling/snapshot-polling-tier.types';
+import { evaluateFleetEnvelope } from './snapshot-polling/current-prod-fleet-envelope';
+import { readWorkerConcurrency } from '@config/worker-concurrency.util';
 
 /**
  * Enqueues DIMO snapshot poll jobs on a fixed 30 s cadence.
@@ -109,6 +111,9 @@ export class DimoSnapshotScheduler {
    */
   private static readonly MAX_BACKFILL_WINDOW_MS = 24 * 3600_000;
 
+  /** Log current-prod fleet envelope assessment once per process boot. */
+  private fleetEnvelopeLogged = false;
+
   constructor(
     @InjectQueue(QUEUE_NAMES.DIMO_SNAPSHOT) private readonly queue: Queue,
     private readonly prisma: PrismaService,
@@ -163,6 +168,28 @@ export class DimoSnapshotScheduler {
         },
       },
     });
+
+    if (!this.fleetEnvelopeLogged) {
+      this.fleetEnvelopeLogged = true;
+      const snapshotConcurrency = readWorkerConcurrency(
+        'WORKER_SNAPSHOT_CONCURRENCY',
+        5,
+      );
+      const evaluation = evaluateFleetEnvelope({
+        connectedVehicleCount: vehicles.length,
+        snapshotConcurrency,
+      });
+      if (evaluation.warnings.length > 0) {
+        this.logger.warn(
+          `Current-prod fleet envelope: ${evaluation.warnings.join('; ')}`,
+        );
+      } else {
+        this.logger.log(
+          `Current-prod fleet envelope OK: connected=${evaluation.connectedVehicleCount} ` +
+            `snapshotConcurrency=${evaluation.snapshotConcurrency}`,
+        );
+      }
+    }
 
     const useActivityTiers =
       this.tierConfig.activityTierPollingEnabled &&
