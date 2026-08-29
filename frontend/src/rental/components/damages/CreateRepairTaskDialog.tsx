@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FormDialog } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { api, type Vendor } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
 import type { DamageResponse } from '../../lib/damage.types';
-import { formatDamageType } from '../../lib/damage.types';
 import {
   buildRepairTaskDescription,
   buildRepairTaskTitle,
   deriveTaskPriorityFromDamage,
   type CreateRepairTaskInput,
 } from '../../lib/damage-repair-task';
+import {
+  resolveDamageTypeLabel,
+  resolveDamageValidationMessage,
+  resolveRepairTaskPriorityLabel,
+} from '../../lib/rental-vehicle-damages-i18n';
 
 interface CreateRepairTaskDialogProps {
   open: boolean;
@@ -19,13 +24,6 @@ interface CreateRepairTaskDialogProps {
   onConfirm: (damage: DamageResponse, input: CreateRepairTaskInput) => Promise<void>;
 }
 
-const PRIORITY_LABEL: Record<string, string> = {
-  CRITICAL: 'Critical',
-  HIGH: 'High',
-  NORMAL: 'Medium',
-  LOW: 'Low',
-};
-
 export function CreateRepairTaskDialog({
   open,
   onOpenChange,
@@ -33,6 +31,7 @@ export function CreateRepairTaskDialog({
   busy,
   onConfirm,
 }: CreateRepairTaskDialogProps) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
   const [dueDate, setDueDate] = useState('');
   const [vendorId, setVendorId] = useState('');
@@ -91,7 +90,7 @@ export function CreateRepairTaskDialog({
       });
       onOpenChange(false);
     } catch {
-      setError('Could not create repair task. Please try again.');
+      setError(resolveDamageValidationMessage('CREATE_TASK_FAILED', t));
     }
   };
 
@@ -99,11 +98,13 @@ export function CreateRepairTaskDialog({
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Create repair task"
+      title={t('vehicleDamages.repairTask.title')}
       description={
         damage
-          ? `Creates an operational repair task linked to this ${formatDamageType(damage.damageType).toLowerCase()} damage.`
-          : 'Select a damage record first.'
+          ? t('vehicleDamages.repairTask.description', {
+              damageType: resolveDamageTypeLabel(t, damage.damageType).toLowerCase(),
+            })
+          : t('vehicleDamages.repairTask.noDamage')
       }
       footer={
         <>
@@ -113,7 +114,7 @@ export function CreateRepairTaskDialog({
             onClick={() => onOpenChange(false)}
             className="sq-press px-3 py-2 rounded-lg text-xs font-semibold border border-border/70"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -121,13 +122,13 @@ export function CreateRepairTaskDialog({
             onClick={() => void handleConfirm()}
             className="sq-cta px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50"
           >
-            {busy ? 'Creating…' : 'Create task'}
+            {busy ? t('vehicleDamages.repairTask.creating') : t('vehicleDamages.repairTask.create')}
           </button>
         </>
       }
     >
       {!damage ? (
-        <p className="text-sm text-muted-foreground">No damage selected.</p>
+        <p className="text-sm text-muted-foreground">{t('vehicleDamages.repairTask.noDamage')}</p>
       ) : (
         <div className="space-y-4">
           {error && (
@@ -137,16 +138,22 @@ export function CreateRepairTaskDialog({
           )}
 
           <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5 space-y-2">
-            <PreviewRow label="Title" value={prefilled?.title ?? '—'} />
+            <PreviewRow label={t('tasks.form.title')} value={prefilled?.title ?? '—'} />
             <PreviewRow
-              label="Priority"
-              value={PRIORITY_LABEL[prefilled?.priority ?? 'NORMAL'] ?? 'Medium'}
+              label={t('tasks.filter.sortPriority')}
+              value={resolveRepairTaskPriorityLabel(t, prefilled?.priority ?? 'NORMAL')}
             />
-            <PreviewRow label="Vehicle" value={damage.vehicleId.slice(0, 8) + '…'} mono />
+            <PreviewRow
+              label={t('tasks.filter.vehicleLabel')}
+              value={damage.vehicleId.slice(0, 8) + '…'}
+              mono
+            />
           </div>
 
           <div>
-            <label className="sq-section-label mb-1.5 block">Description preview</label>
+            <label className="sq-section-label mb-1.5 block">
+              {t('vehicleDamages.repairTask.preview.description')}
+            </label>
             <pre className="text-[11px] text-muted-foreground whitespace-pre-wrap rounded-lg border border-border/60 bg-muted/10 px-3 py-2 max-h-32 overflow-y-auto">
               {prefilled?.description}
             </pre>
@@ -154,7 +161,7 @@ export function CreateRepairTaskDialog({
 
           <div>
             <label htmlFor="repair-task-due" className="sq-section-label mb-1.5 block">
-              Due date (optional)
+              {t('vehicleDamages.repairTask.field.dueDate')}
             </label>
             <input
               id="repair-task-due"
@@ -168,7 +175,7 @@ export function CreateRepairTaskDialog({
           {vendors && vendors.length > 0 && (
             <div>
               <label htmlFor="repair-task-vendor" className="sq-section-label mb-1.5 block">
-                Workshop / vendor (optional)
+                {t('vehicleDamages.repairTask.field.vendor')}
               </label>
               <select
                 id="repair-task-vendor"
@@ -176,7 +183,7 @@ export function CreateRepairTaskDialog({
                 onChange={(e) => setVendorId(e.target.value)}
                 className="w-full rounded-lg border border-border/70 bg-background px-3 py-2 text-sm"
               >
-                <option value="">No vendor selected</option>
+                <option value="">{t('vehicleDamages.repairTask.noVendor')}</option>
                 {vendors.map((vendor) => (
                   <option key={vendor.id} value={vendor.id}>
                     {vendor.name}
@@ -186,12 +193,12 @@ export function CreateRepairTaskDialog({
             </div>
           )}
           {vendorsLoading && (
-            <p className="text-[11px] text-muted-foreground">Loading vendors…</p>
+            <p className="text-[11px] text-muted-foreground">{t('vehicleDamages.repairTask.loadingVendors')}</p>
           )}
 
           <div>
             <label htmlFor="repair-task-note" className="sq-section-label mb-1.5 block">
-              Additional note (optional)
+              {t('vehicleDamages.repairTask.field.note')}
             </label>
             <textarea
               id="repair-task-note"
@@ -199,7 +206,7 @@ export function CreateRepairTaskDialog({
               onChange={(e) => setNote(e.target.value)}
               rows={2}
               className="w-full rounded-lg border border-border/70 bg-background px-3 py-2 text-sm resize-none"
-              placeholder="Instructions for the workshop or internal team"
+              placeholder={t('vehicleDamages.repairTask.notePlaceholder')}
             />
           </div>
         </div>

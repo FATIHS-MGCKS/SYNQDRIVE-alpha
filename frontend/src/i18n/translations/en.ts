@@ -46,6 +46,7 @@ import { supportOpsEn } from './support.ops.en';
 import { whatsappEn } from './whatsapp.en';
 import { rentalVehicleDocumentsEn } from './rental.vehicleDocuments.en';
 import { rentalDocumentIntakeEn } from './rental.documentIntake.en';
+import { rentalVehicleDamagesEn } from './rental.vehicleDamages.en';
 
 export const en = {
   // ─── Navigation / Sidebar ───
@@ -5822,6 +5823,7 @@ export const en = {
   ...vendorsDirectoryEn,
   ...rentalVehicleDocumentsEn,
   ...rentalDocumentIntakeEn,
+  ...rentalVehicleDamagesEn,
 } as const;
 
 export type TranslationKey = keyof typeof en;

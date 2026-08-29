@@ -2,12 +2,18 @@ import { useMemo, useRef, useState } from 'react';
 import type { VehicleExteriorEffectiveImageDto } from '../../../lib/api';
 import type { VehicleExteriorViewKey } from '../../../lib/api';
 import { DataCard } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import type { DamageResponse, HeatmapCell } from '../../lib/damage.types';
-import { formatDamageType, hasValidMapPin, isActiveDamage } from '../../lib/damage.types';
+import { hasValidMapPin, isActiveDamage } from '../../lib/damage.types';
+import {
+  resolveCanvasImageSourceLabel,
+  resolveDamageLocationViewLabel,
+  resolveDamageTypeLabel,
+  resolveRentalImpactLabel,
+} from '../../lib/rental-vehicle-damages-i18n';
 import {
   DAMAGE_MAP_VIEWS,
-  imageSourceLabel,
   pinVariantForDamage,
   PIN_VARIANT_CLASS,
   type PinVisualVariant,
@@ -47,10 +53,12 @@ export function DamageEvidenceCanvas({
   placeBusy,
   heatmapCells = [],
 }: DamageEvidenceCanvasProps) {
+  const { t } = useLanguage();
   const canvasRef = useRef<HTMLDivElement>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const activeImage = exteriorImages[activeView] ?? null;
   const viewConfig = DAMAGE_MAP_VIEWS.find((v) => v.key === activeView) ?? DAMAGE_MAP_VIEWS[0];
+  const viewLabel = resolveDamageLocationViewLabel(t, viewConfig.key);
 
   const imageSource = activeImage
     ? activeImage.source === 'model'
@@ -104,12 +112,12 @@ export function DamageEvidenceCanvas({
 
   return (
     <DataCard
-      title="Evidence canvas"
-      description="Vehicle views with positioned damage evidence. Pins reflect rental impact and repair status."
+      title={t('vehicleDamages.canvas.title')}
+      description={t('vehicleDamages.canvas.description')}
       actions={
         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold sq-tone-neutral border border-border/60 backdrop-blur-sm">
           <Icon name="image" className="w-3 h-3" />
-          {imageSourceLabel(imageSource)}
+          {resolveCanvasImageSourceLabel(t, imageSource)}
         </span>
       }
       bodyClassName="p-0"
@@ -120,8 +128,8 @@ export function DamageEvidenceCanvas({
           <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 flex items-center justify-between gap-2">
             <p className="text-[11px] font-medium text-foreground">
               {canPlaceOnView
-                ? `Click on the ${viewConfig.label.toLowerCase()} photo to place this damage.`
-                : `Upload a ${viewConfig.label.toLowerCase()} vehicle photo before placing (blueprint only).`}
+                ? t('vehicleDamages.canvas.placeOnPhoto', { view: viewLabel })
+                : t('vehicleDamages.canvas.uploadBeforePlace', { view: viewLabel })}
             </p>
             <button
               type="button"
@@ -129,7 +137,7 @@ export function DamageEvidenceCanvas({
               disabled={placeBusy}
               className="sq-press text-[10px] font-semibold px-2 py-1 rounded-lg border border-border/70 disabled:opacity-50"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         )}
@@ -152,7 +160,7 @@ export function DamageEvidenceCanvas({
           {activeImage ? (
             <img
               src={activeImage.imageData}
-              alt={`${viewConfig.label} view`}
+              alt={t('vehicleDamages.canvas.viewAlt', { view: viewLabel })}
               className="absolute inset-0 w-full h-full object-cover pointer-events-none"
               draggable={false}
             />
@@ -188,7 +196,7 @@ export function DamageEvidenceCanvas({
               e.stopPropagation();
               stepView(-1);
             }}
-            aria-label="Previous view"
+            aria-label={t('vehicleDamages.canvas.previousView')}
             className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 bg-black/35 text-white hover:bg-black/50 transition-transform active:scale-95"
           >
             <Icon name="chevron-left" className="w-4 h-4" />
@@ -199,7 +207,7 @@ export function DamageEvidenceCanvas({
               e.stopPropagation();
               stepView(1);
             }}
-            aria-label="Next view"
+            aria-label={t('vehicleDamages.canvas.nextView')}
             className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 bg-black/35 text-white hover:bg-black/50 transition-transform active:scale-95"
           >
             <Icon name="chevron-right" className="w-4 h-4" />
@@ -207,7 +215,7 @@ export function DamageEvidenceCanvas({
 
           <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-semibold bg-black/45 text-white backdrop-blur-sm border border-white/10">
             <Icon name={viewConfig.iconName} className="w-3 h-3" />
-            {viewConfig.label}
+            {viewLabel}
             {pins.length > 0 && <span className="opacity-80">· {pins.length}</span>}
           </div>
 
@@ -215,7 +223,7 @@ export function DamageEvidenceCanvas({
             <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
               <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/55 text-white text-[11px] font-semibold">
                 <span className="w-3 h-3 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
-                Loading photos
+                {t('vehicleDamages.canvas.loadingPhotos')}
               </span>
             </div>
           )}
@@ -238,7 +246,7 @@ export function DamageEvidenceCanvas({
                 }`}
               >
                 <Icon name={v.iconName} className="w-3.5 h-3.5" />
-                <span>{v.label}</span>
+                <span>{resolveDamageLocationViewLabel(t, v.key)}</span>
                 <span
                   className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${
                     has ? 'bg-emerald-500' : 'bg-muted-foreground/30'
@@ -252,10 +260,10 @@ export function DamageEvidenceCanvas({
         {unplacedActive.length > 0 ? (
           <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-3 py-2.5">
             <p className="text-[11px] font-semibold text-foreground">
-              Unplaced damages ({unplacedActive.length})
+              {t('vehicleDamages.canvas.unplacedTitle', { count: unplacedActive.length })}
             </p>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              Open damages without a map position. Place them to appear on the canvas.
+              {t('vehicleDamages.canvas.unplacedDescription')}
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {unplacedActive.map((d) => (
@@ -268,8 +276,8 @@ export function DamageEvidenceCanvas({
                   }`}
                 >
                   <Icon name="map-pin" className="w-3 h-3" />
-                  {formatDamageType(d.damageType)}
-                  <span className="opacity-70">· Place</span>
+                  {resolveDamageTypeLabel(t, d.damageType)}
+                  <span className="opacity-70">· {t('vehicleDamages.canvas.place')}</span>
                 </button>
               ))}
             </div>
@@ -278,7 +286,7 @@ export function DamageEvidenceCanvas({
           damages.some(isActiveDamage) && (
             <p className="text-[10px] text-muted-foreground flex items-center gap-1">
               <Icon name="check-circle-2" className="w-3 h-3 text-emerald-500" />
-              All open damages are positioned on the map.
+              {t('vehicleDamages.canvas.allPositioned')}
             </p>
           )
         )}
@@ -308,8 +316,10 @@ function DamageMapPin({
   onHover: (on: boolean) => void;
   onClick: (e: React.MouseEvent) => void;
 }) {
+  const { t } = useLanguage();
   const pulse = selected || hovered;
   const colorClass = PIN_VARIANT_CLASS[variant];
+  const typeLabel = resolveDamageTypeLabel(t, damage.damageType);
 
   return (
     <div
@@ -324,7 +334,7 @@ function DamageMapPin({
     >
       <button
         type="button"
-        aria-label={`Damage ${formatDamageType(damage.damageType)}`}
+        aria-label={t('vehicleDamages.canvas.pinAria', { type: typeLabel })}
         onClick={onClick}
         className="relative focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
       >
@@ -344,11 +354,9 @@ function DamageMapPin({
       </button>
       {showPreview && (
         <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-20 w-max max-w-[180px] rounded-lg border border-border/80 bg-popover backdrop-blur-md px-2.5 py-1.5 shadow-lg pointer-events-none">
-          <p className="text-[10px] font-semibold text-foreground truncate">
-            {formatDamageType(damage.damageType)}
-          </p>
+          <p className="text-[10px] font-semibold text-foreground truncate">{typeLabel}</p>
           <p className="text-[9px] text-muted-foreground capitalize">
-            {damage.rentalImpact.replace(/_/g, ' ').toLowerCase()}
+            {resolveRentalImpactLabel(t, damage.rentalImpact)}
           </p>
         </div>
       )}
