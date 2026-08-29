@@ -7,7 +7,7 @@
 
 PR = #1417  
 BRANCH = `cursor/p13-global-dimo-provider-budget`  
-HEAD_COMMIT = `9feb878023cd898b1b10f3cf54ec96b114ed1945`  
+HEAD_COMMIT = `fc0a1356851e69194812ff7d5f94f191e5c40b84`  
 BASE_MAIN_COMMIT = `d221e766374dea2360b2e19636504882d5d662ce` (P1.2 FINAL-6 merged via #1409)  
 STATUS = **OPEN — READY FOR REVIEW — NOT MERGED — PRODUCTION_MUTATIONS = NONE**
 
@@ -42,8 +42,8 @@ N1000_RECOMMENDED_CONFIG = **See §12**
 PROVIDER_CEILING_VERIFIED = **NO**  
 N1000_CERTIFICATION = **CONDITIONALLY_CERTIFIED** (software architecture + tests; provider quota externally unverified)  
 PRODUCTION_MUTATIONS = **NONE**  
-TESTS = **GitHub CI (HEAD `9feb8780`) — 25/25 SUCCESS** — Vehicle Detail CI gate 12/12 + Legal Documents CI gate 13/13  
-CI_STATUS = **SUCCESS** — runs `33274219455` (Vehicle Detail) + `33274219450` (Legal Documents) on `cursor/p13-global-dimo-provider-budget` @ `9feb8780` (push event)  
+TESTS = **GitHub CI (HEAD `fc0a13568`) — 25/25 SUCCESS** — Vehicle Detail CI gate 12/12 + Legal Documents CI gate 13/13  
+CI_STATUS = **SUCCESS** — runs `33274639031` (Vehicle Detail) + `33274638870` (Legal Documents) on `cursor/p13-global-dimo-provider-budget` @ `fc0a13568` (push event)  
 NEXT_STAGE = **P1.7** (scheduler leader election before horizontal PM2 scale) **then** **P1.4** (reconciliation mutex/pacing under burst)
 
 ---
@@ -539,7 +539,7 @@ WORKER_SNAPSHOT_MAX_ENQUEUE_PER_TICK=0
 MERGE_RECOMMENDATION = **APPROVE_WITH_CONDITIONS**
 
 **Reason:**
-- P1.3 implementation complete; GitHub CI **SUCCESS** on final HEAD (`9feb8780`).
+- P1.3 implementation complete; GitHub CI **SUCCESS** on final HEAD (`fc0a13568`).
 - Trip-loss regression covered by CI (boundary repair PostgreSQL, unit, integration, E2E).
 - Fail-closed semantics proven in unit tests; typecheck fix (`dimo-triggers.service.spec.ts` mock executor) verified in CI.
 - **Conditions:**
@@ -558,7 +558,8 @@ MERGE_RECOMMENDATION = **APPROVE_WITH_CONDITIONS**
 | Run | HEAD | Event | Status | Notes |
 |-----|------|-------|--------|-------|
 | `33265303743` / `33265303767` | `9e4211c1a` | pull_request (open) | **FAILURE** | Typecheck: `dimo-triggers.service.spec.ts` missing 3rd constructor arg — fixed in `6e22fda18` |
-| `33274219455` / `33274219450` | `9feb8780` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Final HEAD — 25/25 jobs green |
+| `33274639031` / `33274638870` | `fc0a13568` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Final artifact HEAD — 25/25 jobs green |
+| `33274219455` / `33274219450` | `98b8229a5` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | CI recovery — 25/25 jobs green |
 | `33273592593` / `33273592596` | `abf905d76` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Prior artifact sync — 25/25 jobs green |
 | `33268961626` / `33268961607` | `5db28f771` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | CI infra enablement — 25/25 jobs green |
 
