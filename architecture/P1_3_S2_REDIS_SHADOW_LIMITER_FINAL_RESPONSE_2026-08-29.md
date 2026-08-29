@@ -20,7 +20,7 @@ P1.3-S2 is **complete including closure gate**. A process-independent, Redis-bac
 |-------|-------|
 | **MAIN_BASE_SHA** | `87bbaf8bfb035ffef94e1019d3aa5a32e3b75efa` |
 | **S2 IMPLEMENTATION SHA** | `f97b6f67fca3bc42c1b472fd477c7324a95a8f74` |
-| **PR HEAD SHA** | `2aafb82d48077b223f59538ba961413c6eda8cfd` |
+| **PR HEAD SHA** | `4c87efe085ffdcf0682ff5113e9360dd1485c4e3` |
 | **BRANCH** | `cursor/p1-3-s2-redis-shadow-limiter-f21f` |
 | **PR** | https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1423 (DRAFT) |
 | **REPORT FILE** | `architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S2_REDIS_SHADOW_LIMITER_2026-08-29.md` |
@@ -103,16 +103,16 @@ Two separate `RedisService` instances (independent ioredis TCP connections) each
 
 ---
 
-## CI evidence (PR HEAD `2aafb82d4`)
+## CI evidence (PR HEAD `4c87efe08`)
 
 | Workflow run ID | Workflow | Conclusion |
 |-----------------|----------|------------|
-| **33277760956** | Legal Documents — Production Readiness CI | **success** |
-| **33277760955** | Vehicle Detail — Production Readiness CI | **success** |
+| **33278061001** | Legal Documents — Production Readiness CI | **success** |
+| **33278060975** | Vehicle Detail — Production Readiness CI | **success** |
 
-**Backend integration tests** (run 33277760956): `npm run test:dimo-provider-limiter:redis` step **success** (18s).
+**Redis integration proof** (commit `2aafb82d4`, run 33277760956): `npm run test:dimo-provider-limiter:redis` step **success** (~18s, 11 tests).
 
-All checks: **24/24 success**, **0 failed**, **0 pending**.
+All checks on PR HEAD: **25/25 success**, **0 failed**, **0 pending**.
 
 ---
 
