@@ -1,8 +1,8 @@
 # P2.2.62 — Users & Roles Member Management Implementation
 
-**Date:** 2026-08-29  
-**Baseline:** `2bc7fe0f856f365b42f689a54457b5053a6ffe6f` (`p239-p238-merge-baseline-3c10`)  
-**Branch:** `cursor/p2262-member-management-i18n-3c10`  
+**Date:** 2026-08-29
+**Baseline:** `2bc7fe0f856f365b42f689a54457b5053a6ffe6f` (`p239-p238-merge-baseline-3c10`)
+**Branch:** `cursor/p2262-member-management-i18n-3c10`
 **Preflight:** PR #1421 — verdict B (GO, BUT SPLIT)
 
 ## Scope
@@ -96,7 +96,7 @@ Delta attributable to P262 localization of Team tab, wizard, drawer, and adapter
 
 **A — P2.2.62 IMPLEMENTED — READY FOR INDEPENDENT AUDIT**
 
-P2.2.62 Member Management implementation is complete.  
-Permission taxonomy remains deferred to P2.2.63.  
-PR requires independent audit before merge.  
+P2.2.62 Member Management implementation is complete.
+Permission taxonomy remains deferred to P2.2.63.
+PR requires independent audit before merge.
 **DO NOT MERGE YET.**
