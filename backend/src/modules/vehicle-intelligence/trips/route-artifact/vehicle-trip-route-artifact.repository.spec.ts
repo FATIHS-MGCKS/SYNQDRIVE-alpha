@@ -138,7 +138,11 @@ describe('TripsService list path does not include route artifact', () => {
       path.join(__dirname, '../trips.service.ts'),
       'utf8',
     );
-    expect(src).toMatch(/findMany\(\{[\s\S]*?where,/);
-    expect(src).not.toMatch(/routeArtifact/);
+    const findByVehicleBlock = src.match(
+      /async findByVehicle[\s\S]*?return this\.prisma\.vehicleTrip\.findMany\([\s\S]*?\}\);/,
+    )?.[0];
+    expect(findByVehicleBlock).toBeDefined();
+    expect(findByVehicleBlock).not.toMatch(/routeArtifact/);
+    expect(findByVehicleBlock).not.toMatch(/include:/);
   });
 });

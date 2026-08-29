@@ -55,7 +55,10 @@ import { TripsService } from './trips/trips.service';
 import { TripDetectionOrchestrationService } from './trips/trip-detection-orchestration.service';
 import { TripBehaviorEnrichmentService } from './trips/trip-behavior-enrichment.service';
 import { TripEnrichmentOrchestratorService } from './trips/trip-enrichment-orchestrator.service';
-import { VehicleTripRouteArtifactRepository } from './trips/route-artifact';
+import {
+  TripRouteArtifactMaterializerService,
+  VehicleTripRouteArtifactRepository,
+} from './trips/route-artifact';
 import { TripAnalysisCoordinatorService } from './trips/trip-analysis-coordinator.service';
 import { LteR1BehaviorEnrichmentService } from './trips/lte-r1-behavior-enrichment.service';
 import { DimoNativeDrivingEventPersistenceService } from './dimo-native-driving-events/dimo-native-driving-event-persistence.service';
@@ -310,6 +313,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     TripBehaviorEnrichmentService,
     TripEnrichmentOrchestratorService,
     VehicleTripRouteArtifactRepository,
+    TripRouteArtifactMaterializerService,
     TripAnalysisCoordinatorService,
     EventContextEnrichmentService,
     LteR1BehaviorEnrichmentService,
@@ -507,6 +511,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     TripBehaviorEnrichmentService,
     TripEnrichmentOrchestratorService,
     VehicleTripRouteArtifactRepository,
+    TripRouteArtifactMaterializerService,
     TripAnalysisCoordinatorService,
     LteR1BehaviorEnrichmentService,
     DimoNativeDrivingEventPersistenceService,

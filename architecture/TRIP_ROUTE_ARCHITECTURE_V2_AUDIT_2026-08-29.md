@@ -820,7 +820,7 @@ Dry-run must output histogram without calling Mapbox.
 
 ## Stage R1 implementation record (2026-08-29)
 
-**Status:** IMPLEMENTED IN PR #1411 — PENDING MERGE  
+**Status:** MERGED (#1411 @ `6b960e2a9`)  
 **Mapbox runtime:** UNCHANGED  
 **Frontend:** UNCHANGED  
 **Backfill:** NONE  
@@ -913,4 +913,109 @@ This prevents identical fingerprints from representing different computed route 
 ### Explicit statement
 
 **Mapbox matching behavior, frontend route enrichment, and historical trip data are unchanged in R1.**
+
+---
+
+## Stage R2 implementation record (2026-08-29)
+
+**Status:** IMPLEMENTED IN PR #1413 — PENDING MERGE  
+**Merged base:** R1 @ `6b960e2a9`  
+**Mapbox runtime:** UNCHANGED  
+**Frontend:** UNCHANGED  
+**Backfill:** NONE  
+
+### RAW semantics
+
+Measured DIMO route observations only:
+
+- Sort by `recordedAt` ASC; tie-break by original input index
+- Reject non-finite / out-of-bounds / null-island `(0,0)` coordinates
+- Remove exact coordinate+timestamp duplicates
+- No smoothing, interpolation, road assumptions, or synthesized geometry
+- `VehicleTripWaypoint` remains authoritative persisted RAW source (no `rawGeometryJson`)
+
+### FILTERED semantics
+
+Measurement-only subset of RAW:
+
+- Near-duplicate suppression (≤5 m within 30 s)
+- Isolated GPS teleport spike removal (implied speed > 280 km/h with A→C coherence)
+- Stationary cluster collapse (≤15 m span for ≥14 s)
+- Douglas–Peucker simplification on measured vertices only (≥20 points, 8 m tolerance)
+- Long telemetry gaps recorded in diagnostics; continuity between gap endpoints is UNKNOWN (not measured)
+
+### Preprocessing pipeline
+
+`preprocessTripRoute()` in `trip-route-preprocessor.ts`:
+
+1. Canonicalize + sort input
+2. Validate coordinates
+3. Detect telemetry gaps (≥180 s)
+4. Remove exact duplicates
+5. Remove near-duplicates
+6. Remove isolated spikes
+7. Reduce stationary redundancy
+8. Simplify dense straight segments (measured vertices only)
+9. Select quality: `FILTERED` if ≥2 filtered points, else `RAW`
+
+### Thresholds
+
+| Constant | Value | Rationale |
+|----------|-------|-----------|
+| `NEAR_DUPLICATE_METERS` | 5 | GPS jitter margin |
+| `NEAR_DUPLICATE_MAX_SECONDS` | 30 | ~4× DIMO 7s cadence |
+| `GAP_THRESHOLD_SECONDS` | 180 | Aligns with `TRIP_MID_GAP_SPLIT_MS` |
+| `MAX_PLAUSIBLE_SPEED_KMH` | 280 | Autobahn + safety margin |
+| `STATIONARY_CLUSTER_METERS` | 15 | Stationary drift bound |
+| `STATIONARY_MIN_DURATION_SECONDS` | 14 | ~2× DIMO route cadence |
+| `SIMPLIFICATION_TOLERANCE_METERS` | 8 | Preserve urban turns |
+| `SIMPLIFICATION_ACTIVATION_COUNT` | 20 | Only simplify dense routes |
+
+**Production measurements:** not available in this environment; thresholds are conservative with full test matrix coverage.
+
+### Waypoint lineage decision (pre-merge correction)
+
+- **RAW_DURABLE_SOURCE:** `VehicleTripWaypoint` on canonical `enrichTrip` / `DRIVING_ROUTE_ENRICH` path
+- **FULL_FIDELITY_INPUT_PERSISTED:** YES — all measured observations up to `TRIP_ROUTE_CANONICAL_WAYPOINT_MAX` (10_000)
+- **WAYPOINT_STORAGE_POLICY:** `canonical` fidelity on route-enriched trips (full fidelity); `bounded` (≤500) retained for legacy `GET /route` cache path only
+- **RAW_INPUT_RECONSTRUCTABLE:** YES — durable waypoints reproduce exact fingerprint input (tested with 1_200 points)
+- **DB amplification assessed:** ~7 s DIMO cadence → ~514 points/hour/trip; 4 h ≈ 2_057 rows (~200 KB/trip); indexed by `trip_id`; trip list queries do not load waypoints
+
+### Fingerprint / algorithm version
+
+- **OPTION A:** filtering uses coordinates + timestamps only → fingerprint fields unchanged
+- **`TRIP_ROUTE_ALGORITHM_VERSION`:** bumped `route-v2-r1` → **`route-v2-r2`** (output semantics changed)
+- Speed does **not** affect fingerprint in R2
+
+### Artifact persistence
+
+`TripRouteArtifactMaterializerService` → `VehicleTripRouteArtifactRepository.upsertRouteArtifact()`:
+
+- `routeQuality`: `FILTERED` or `RAW` only (never `MATCHED`)
+- `filteredGeometryJson` when `FILTERED`
+- `matchedGeometryJson`: null
+- `provider`: `dimo-route-enrichment`
+- `diagnosticsJson`: counts, gaps, filter reasons (no coordinates)
+
+### Runtime wiring
+
+- **Owner:** `DrivingAnalysisStage.ROUTE` → `DRIVING_ROUTE_ENRICH` → `DrivingRouteEnrichJobHandler` → `TripsService.enrichTrip`
+- **Order:** DIMO fetch → canonical waypoint persist → artifact materialize → legacy Mapbox enrichment
+- **ARTIFACT_FAILURE_SEMANTICS:** retryable persistence failures throw `DrivingIntelligenceJobRetryableError` before Mapbox; job retries via existing `DrivingIntelligenceJob` machinery
+- **ARTIFACT_RETRY_OWNER:** `DRIVING_ROUTE_ENRICH` / `DrivingIntelligenceJobProcessorService` (no second scheduler)
+- **ARTIFACT_FAILURE_CAN_BE_SILENT:** NO — retryable failures propagate; permanent validation failures logged
+
+### Gap / segment contract
+
+- **GAP_CONTINUITY_SEMANTICS:** `filteredGeometryJson` is a flat coordinate array; consecutive points with `gapSeconds ≥ 180` have **UNKNOWN** measured continuity — LineString renderers must not infer travel across the gap
+- **GAP_BOUNDARY_CONTRACT:** `diagnosticsJson.gaps[]` uses `afterFilteredPointIndex` / `beforeFilteredPointIndex` on final filtered geometry; spike removal and simplification run per continuous segment (never across gaps)
+- R3+ must not Mapbox-match across a recorded gap boundary
+
+### Tests (63+ in route-artifact + enrich wiring)
+
+Matrix A–AD plus pre-merge: >500 canonical persistence, fingerprint reconstruction, gap boundary indices, artifact retry/recovery
+
+### Explicit statement
+
+**Mapbox `mapMatchRoute` behavior (≤100 global sampling), frontend route APIs, and historical backfill are unchanged in R2.**
 

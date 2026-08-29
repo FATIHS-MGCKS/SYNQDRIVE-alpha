@@ -15,6 +15,15 @@ import {
   scopedVehicleTripWhere,
 } from '../tenant/vehicle-intelligence-tenant.scope';
 import { resolveEnrichmentDistanceKm } from './trip-distance.helpers';
+import {
+  TripRouteArtifactMaterializerService,
+  selectWaypointsForPersistence,
+  type TripRouteWaypointFidelity,
+} from './route-artifact';
+import {
+  DrivingIntelligenceJobRetryableError,
+  DRIVING_INTELLIGENCE_JOB_ERROR_CODES,
+} from '../driving-intelligence-jobs/driving-intelligence-jobs.errors';
 
 export interface TripEnrichmentResult {
   citySharePercent: number;
@@ -61,6 +70,7 @@ export class TripsService {
     @Inject(ROUTE_MAP_MATCHER)
     private readonly routeMapMatcher: RouteMapMatcher,
     private readonly mapbox: MapboxService,
+    private readonly routeArtifactMaterializer: TripRouteArtifactMaterializerService,
   ) {}
 
   // ────────────────────────────────────────────────────────
@@ -274,9 +284,18 @@ export class TripsService {
       this.segments.fetchPerformance(tokenId, trip.startTime, endTime),
     ]);
 
+    // Route V2 R2: persist canonical measured waypoints first (durable RAW authority),
+    // then materialize artifact. Retryable artifact failures propagate to DRIVING_ROUTE_ENRICH.
     if (routePoints.length > 0) {
-      await this.storeWaypoints(tripId, routePoints);
+      await this.storeWaypoints(tripId, routePoints, { fidelity: 'canonical' });
     }
+
+    await this.materializeRouteArtifact(
+      organizationId,
+      vehicleId,
+      tripId,
+      routePoints,
+    );
 
     const matchResult =
       routePoints.length >= 2
@@ -477,19 +496,49 @@ export class TripsService {
   }
 
   // ────────────────────────────────────────────────────────
+  // ROUTE V2 ARTIFACT (R2)
+  // ────────────────────────────────────────────────────────
+
+  private async materializeRouteArtifact(
+    organizationId: string,
+    vehicleId: string,
+    tripId: string,
+    routePoints: RoutePoint[],
+  ): Promise<void> {
+    const outcome = await this.routeArtifactMaterializer.materializeFromMeasuredRoute({
+      organizationId,
+      vehicleId,
+      tripId,
+      points: routePoints.map((p) => ({
+        latitude: p.latitude,
+        longitude: p.longitude,
+        recordedAt: p.timestamp,
+      })),
+    });
+    if (!outcome.ok) {
+      if (outcome.retryable) {
+        throw new DrivingIntelligenceJobRetryableError(
+          DRIVING_INTELLIGENCE_JOB_ERROR_CODES.HANDLER_TRANSIENT,
+          `Route artifact materialization failed trip=${tripId}: ${outcome.error}`,
+        );
+      }
+      this.logger.error(
+        `Route V2 artifact permanent failure trip=${tripId}: ${outcome.error}`,
+      );
+    }
+  }
+
+  // ────────────────────────────────────────────────────────
   // WAYPOINT STORAGE
   // ────────────────────────────────────────────────────────
 
   private async storeWaypoints(
     tripId: string,
     points: RoutePoint[],
+    options?: { fidelity?: TripRouteWaypointFidelity },
   ): Promise<void> {
-    const sampled =
-      points.length > 500
-        ? points.filter(
-            (_, i) => i % Math.ceil(points.length / 500) === 0,
-          )
-        : points;
+    const fidelity = options?.fidelity ?? 'bounded';
+    const sampled = selectWaypointsForPersistence(points, fidelity);
 
     await this.prisma.vehicleTripWaypoint.deleteMany({
       where: { tripId },
