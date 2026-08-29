@@ -9,6 +9,7 @@ import { SharedGuardsModule } from '@shared/auth/shared-guards.module';
 import { DimoController } from './dimo.controller';
 import { DimoWebhookController } from './dimo-webhook.controller';
 import { DimoAuthService } from './dimo-auth.service';
+import { DimoProviderGateway } from './provider/dimo-provider-gateway.service';
 import { DimoTelemetryService } from './dimo-telemetry.service';
 import { DimoVehicleSyncService } from './dimo-vehicle-sync.service';
 import { DimoApiSyncService } from './dimo-api-sync.service';
@@ -56,6 +57,7 @@ import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-lin
   ],
   controllers: [DimoController, DimoWebhookController, DeviceConnectionWebhookInboxController],
   providers: [
+    DimoProviderGateway,
     DimoAuthService,
     DimoTelemetryService,
     DimoVehicleSyncService,
@@ -85,6 +87,7 @@ import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-lin
     RpmWebhookQueryService,
   ],
   exports: [
+    DimoProviderGateway,
     DimoAuthService,
     DimoTelemetryService,
     DimoVehicleSyncService,

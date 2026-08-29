@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-provider-concurrency-p1-3-s1-gateway-2026-08-29',
+    version: '4.9.1003',
+    title: 'P1.3-S1 — Canonical DIMO provider gateway foundation (pass-through)',
+    summary: [
+      'Introduced DimoProviderGateway as canonical telemetry HTTP control point — S1 pass-through only.',
+      'DimoTelemetryService.queryGraphQL routes through gateway; postGraphQL preserves 15s timeout + GQL error semantics.',
+      'fetchVehicleSummary/fetchVehicleVin wrapped in gateway with legacy 10s timeout and error semantics preserved.',
+      'Static guard: every this.client.post in dimoTelemetryService matches providerGateway.execute count.',
+      'NO limiter, NO Redis, NO backpressure, NO retry/error/JWT/queue/concurrency changes.',
+      'P1.2 trip-loss gates FINAL-3/31/32, FINAL-5/6, dimo-snapshot tests PASS.',
+    ],
+    reason:
+      'P1.3-S1 — establish canonical outbound DIMO telemetry gateway before global limiter (S2).',
+    previousBehavior:
+      'DimoTelemetryService called axios.post directly; fetchVehicleSummary/VIN bypassed queryGraphQL.',
+    details:
+      'backend: provider/dimo-provider-gateway.*, dimo-telemetry.service.ts, dimo-telemetry*.spec.ts. architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S1_GATEWAY_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T19:10:00.000Z',
+  },
+  {
     id: 'dimo-provider-concurrency-p1-3-phase0-audit-2026-08-29',
     version: '4.9.1002',
     title: 'P1.3 PHASE 0 — Global DIMO provider concurrency audit (design only)',
