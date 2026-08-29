@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { FormDialog } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { MarkDamageRepairedInput } from '../../lib/damage.types';
+import { resolveDamageValidationMessage } from '../../lib/rental-vehicle-damages-i18n';
 
 interface MarkRepairedDialogProps {
   open: boolean;
@@ -17,6 +19,7 @@ export function MarkRepairedDialog({
   damageLabel,
   onConfirm,
 }: MarkRepairedDialogProps) {
+  const { t } = useLanguage();
   const [repairCostEuro, setRepairCostEuro] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +38,7 @@ export function MarkRepairedDialog({
     if (repairCostEuro.trim()) {
       const num = Number(repairCostEuro.trim().replace(',', '.'));
       if (!Number.isFinite(num) || num < 0) {
-        setError('Repair cost must be zero or greater.');
+        setError(resolveDamageValidationMessage('REPAIR_COST_INVALID', t));
         return;
       }
       repairCostCents = Math.round(num * 100);
@@ -47,7 +50,7 @@ export function MarkRepairedDialog({
       });
       onOpenChange(false);
     } catch {
-      setError('Could not mark as repaired. Please try again.');
+      setError(resolveDamageValidationMessage('MARK_REPAIRED_FAILED', t));
     }
   };
 
@@ -55,11 +58,11 @@ export function MarkRepairedDialog({
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Mark as repaired"
+      title={t('vehicleDamages.markRepaired.title')}
       description={
         damageLabel
-          ? `Confirm repair completion for ${damageLabel}. This moves the damage out of the open queue.`
-          : 'Confirm repair completion. This moves the damage out of the open queue.'
+          ? t('vehicleDamages.markRepaired.descriptionWithLabel', { label: damageLabel })
+          : t('vehicleDamages.markRepaired.description')
       }
       footer={
         <>
@@ -69,7 +72,7 @@ export function MarkRepairedDialog({
             onClick={() => onOpenChange(false)}
             className="sq-press px-3 py-2 rounded-lg text-xs font-semibold border border-border/70"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -77,7 +80,7 @@ export function MarkRepairedDialog({
             onClick={() => void handleConfirm()}
             className="sq-cta px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50"
           >
-            {busy ? 'Saving…' : 'Confirm repaired'}
+            {busy ? t('vehicleDamages.markRepaired.saving') : t('vehicleDamages.markRepaired.confirm')}
           </button>
         </>
       }
@@ -89,24 +92,28 @@ export function MarkRepairedDialog({
           </p>
         )}
         <label className="block space-y-1">
-          <span className="text-[12px] font-medium text-foreground">Actual repair cost (EUR, optional)</span>
+          <span className="text-[12px] font-medium text-foreground">
+            {t('vehicleDamages.markRepaired.field.repairCost')}
+          </span>
           <input
             type="text"
             inputMode="decimal"
             value={repairCostEuro}
             onChange={(e) => setRepairCostEuro(e.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            placeholder="e.g. 380.00"
+            placeholder={t('vehicleDamages.markRepaired.field.repairCostPlaceholder')}
           />
         </label>
         <label className="block space-y-1">
-          <span className="text-[12px] font-medium text-foreground">Note (optional)</span>
+          <span className="text-[12px] font-medium text-foreground">
+            {t('vehicleDamages.markRepaired.field.note')}
+          </span>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={3}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm resize-none"
-            placeholder="Workshop reference, parts replaced…"
+            placeholder={t('vehicleDamages.markRepaired.notePlaceholder')}
           />
         </label>
       </div>

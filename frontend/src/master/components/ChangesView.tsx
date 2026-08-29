@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-vehicle-damages-p2-2-61-2026-08-29',
+    version: '4.9.989',
+    title: 'Platform i18n — P2.2.61 Rental Vehicle Damages',
+    summary: [
+      'Localized the full rental vehicle damages mounted stack via `rental-vehicle-damages-i18n.ts` and `rental.vehicleDamages.{en,de}.ts`; ~125 new `vehicleDamages.*` keys with `operator.damageCapture.*` reuse for damage type, severity, rental impact, and source.',
+      'Presentation-only: queue/canvas/drawer/dialogs, insights, pickup context reason codes, host error keys, and toast messages. Raw descriptions, liability notes, task titles, filenames, and backend errors preserved.',
+      'P261 enforce-clean exact scope (23 paths) — 0 findings target after inventory refresh. Machines unchanged in payloads.',
+    ],
+    reason:
+      'P2.2.61 strict mutation-safe implementation for the rental vehicle damage control center from P260 merge baseline.',
+    previousBehavior:
+      'Damages tab used hardcoded English presentation strings, `de-DE` date/currency formatting, and inline enum label helpers in `damage.types.ts` formatters.',
+    details:
+      'Adapter resolvers for status, evidence, liability, location view, queue filters, rental gate, pickup context, validation codes, and locale-aware date/currency. Hooks return `hostErrorKey`; actions/intake use `useLanguage` for toasts.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-29T12:55:00.000Z',
+  },
+  {
     id: 'i18n-rental-vehicle-documents-upload-p2-2-60-2026-08-28',
     version: '4.9.988',
     title: 'Platform i18n — P2.2.60 Vehicle Documents Upload / Extraction Flow',

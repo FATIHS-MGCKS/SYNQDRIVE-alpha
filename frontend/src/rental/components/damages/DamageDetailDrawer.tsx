@@ -3,20 +3,25 @@ import { AddDamagePhotoPanel } from './AddDamagePhotoPanel';
 import { DamageRentalSections } from './DamageRentalSections';
 import { DetailDrawer, StatusChip, Timeline } from '../../../components/patterns';
 import type { TimelineItem } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import type { PickupContextResult } from '../../lib/damage-pickup-context';
 import type { DamageLiabilityStatus, DamageResponse } from '../../lib/damage.types';
-import {
-  formatDamageDate,
-  formatDamageType,
-  formatEuroCents,
-  formatSeverity,
-  hasValidMapPin,
-  isActiveDamage,
-  normalizeDamageStatus,
-} from '../../lib/damage.types';
-
+import { hasValidMapPin, isActiveDamage, normalizeDamageStatus } from '../../lib/damage.types';
 import { canCreateRepairTaskForDamage } from '../../lib/damage-repair-task';
+import {
+  formatDamageDateLocale,
+  formatDamageEuroCents,
+  resolveDamageEvidenceStatusLabel,
+  resolveDamageLocationViewLabel,
+  resolveDamageSeverityLabel,
+  resolveDamageSourceLabel,
+  resolveDamageStatusLabel,
+  resolveDamageTypeLabel,
+  resolveDamageValidationMessage,
+  resolveRentalImpactLabel,
+  type VehicleDamagesTranslate,
+} from '../../lib/rental-vehicle-damages-i18n';
 
 interface LinkedRepairTask {
   id: string;
@@ -64,14 +69,18 @@ export function DamageDetailDrawer({
   onPrepareDepositHold,
   onPrepareCustomerCharge,
 }: DamageDetailDrawerProps) {
+  const { t, locale } = useLanguage();
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const timeline = useMemo(() => buildDamageTimeline(damage), [damage]);
+  const timeline = useMemo(
+    () => buildDamageTimeline(damage, locale, t),
+    [damage, locale, t],
+  );
 
   if (!damage) {
     return (
-      <DetailDrawer open={open} onOpenChange={onOpenChange} title="Damage detail" widthClassName="sm:max-w-xl">
-        <p className="text-sm text-muted-foreground">No damage selected.</p>
+      <DetailDrawer open={open} onOpenChange={onOpenChange} title={t('vehicleDamages.drawer.title')} widthClassName="sm:max-w-xl">
+        <p className="text-sm text-muted-foreground">{t('vehicleDamages.drawer.noSelection')}</p>
       </DetailDrawer>
     );
   }
@@ -89,7 +98,7 @@ export function DamageDetailDrawer({
     try {
       await fn();
     } catch {
-      setActionError('Action failed. Please try again.');
+      setActionError(resolveDamageValidationMessage('DRAWER_ACTION_FAILED', t));
     }
   };
 
@@ -97,13 +106,15 @@ export function DamageDetailDrawer({
     <DetailDrawer
       open={open}
       onOpenChange={onOpenChange}
-      eyebrow="Damage record"
-      title={formatDamageType(damage.damageType)}
-      description={damage.description ?? 'No description provided.'}
+      eyebrow={t('vehicleDamages.drawer.eyebrow')}
+      title={resolveDamageTypeLabel(t, damage.damageType)}
+      description={damage.description ?? t('vehicleDamages.drawer.noDescription')}
       widthClassName="sm:max-w-xl"
       status={
         <StatusChip tone={status === 'REPAIRED' ? 'success' : active ? 'warning' : 'neutral'}>
-          {status === 'IN_REPAIR' ? 'In repair' : status.charAt(0) + status.slice(1).toLowerCase()}
+          {status === 'IN_REPAIR'
+            ? t('vehicleDamages.queue.status.inRepair')
+            : resolveDamageStatusLabel(t, status)}
         </StatusChip>
       }
       footer={
@@ -115,7 +126,7 @@ export function DamageDetailDrawer({
               onClick={() => void run(() => onMarkInRepair(damage))}
               className="sq-press px-3 py-2 rounded-lg text-xs font-semibold border border-border/70"
             >
-              Mark in repair
+              {t('vehicleDamages.drawer.markInRepair')}
             </button>
           )}
           {active && (
@@ -125,7 +136,7 @@ export function DamageDetailDrawer({
               onClick={() => onRequestMarkRepaired(damage)}
               className="sq-cta px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50"
             >
-              Mark repaired
+              {t('vehicleDamages.drawer.markRepaired')}
             </button>
           )}
         </div>
@@ -150,11 +161,11 @@ export function DamageDetailDrawer({
             <div className="min-w-0">
               <p className="text-[12px] font-semibold text-foreground">
                 {damage.rentalImpact === 'SAFETY_CRITICAL'
-                  ? 'Safety critical — vehicle must not be rented'
-                  : 'Rental blocked until this damage is resolved'}
+                  ? t('vehicleDamages.drawer.safetyCriticalBanner')
+                  : t('vehicleDamages.drawer.rentalBlockedBanner')}
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Create a repair task to track workshop work and clear the rental gate after repair.
+                {t('vehicleDamages.drawer.rentalBlockedHint')}
               </p>
               {canCreateTask && (
                 <button
@@ -164,7 +175,7 @@ export function DamageDetailDrawer({
                   className="mt-2 sq-press inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border border-border/70"
                 >
                   <Icon name="wrench" className="w-3.5 h-3.5" />
-                  Create repair task
+                  {t('vehicleDamages.summary.createRepairTask')}
                 </button>
               )}
             </div>
@@ -175,14 +186,17 @@ export function DamageDetailDrawer({
           <section className="rounded-lg border border-sky-500/25 bg-sky-500/5 px-3 py-2.5">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-foreground">Repair task linked</p>
+                <p className="text-[11px] font-semibold text-foreground">{t('vehicleDamages.drawer.repairTaskLinked')}</p>
                 <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                  {linkedTask?.title ?? `Task ${damage.taskId?.slice(0, 8)}`}
+                  {linkedTask?.title ??
+                    t('vehicleDamages.drawer.taskFallback', {
+                      id: damage.taskId?.slice(0, 8) ?? '',
+                    })}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 {linkedTask?.status && (
-                  <StatusChip tone="info">{formatDamageType(linkedTask.status)}</StatusChip>
+                  <StatusChip tone="info">{linkedTask.status}</StatusChip>
                 )}
                 {damage.taskId && onOpenLinkedTask && (
                   <button
@@ -190,7 +204,7 @@ export function DamageDetailDrawer({
                     onClick={() => onOpenLinkedTask(damage.taskId!)}
                     className="sq-press text-[11px] font-semibold text-primary px-2 py-1 rounded-lg border border-border/70"
                   >
-                    Open task
+                    {t('vehicleDamages.drawer.openTask')}
                   </button>
                 )}
               </div>
@@ -199,17 +213,24 @@ export function DamageDetailDrawer({
         )}
 
         <section className="grid grid-cols-2 gap-2">
-          <InfoTile label="Severity" value={formatSeverity(damage.severity)} />
-          <InfoTile label="Rental impact" value={formatDamageType(damage.rentalImpact)} highlight={damage.rentalImpact !== 'NONE'} />
-          <InfoTile label="Evidence" value={formatDamageType(damage.evidenceStatus)} />
-          <InfoTile label="Source" value={formatDamageType(damage.source)} />
+          <InfoTile label={t('vehicleDamages.drawer.field.severity')} value={resolveDamageSeverityLabel(t, damage.severity)} />
+          <InfoTile
+            label={t('vehicleDamages.drawer.field.rentalImpact')}
+            value={resolveRentalImpactLabel(t, damage.rentalImpact)}
+            highlight={damage.rentalImpact !== 'NONE'}
+          />
+          <InfoTile
+            label={t('vehicleDamages.drawer.field.evidence')}
+            value={resolveDamageEvidenceStatusLabel(t, damage.evidenceStatus)}
+          />
+          <InfoTile label={t('vehicleDamages.drawer.field.source')} value={resolveDamageSourceLabel(t, damage.source)} />
         </section>
 
         <section>
-          <h4 className="sq-section-label mb-2">Location</h4>
+          <h4 className="sq-section-label mb-2">{t('vehicleDamages.drawer.section.location')}</h4>
           {placed ? (
             <p className="text-[12px] text-foreground">
-              {damage.locationView}
+              {resolveDamageLocationViewLabel(t, damage.locationView)}
               {damage.locationLabel ? ` · ${damage.locationLabel}` : ''}
               <span className="text-muted-foreground">
                 {' '}
@@ -217,7 +238,7 @@ export function DamageDetailDrawer({
               </span>
             </p>
           ) : (
-            <p className="text-[12px] text-muted-foreground">Position missing — not shown on map.</p>
+            <p className="text-[12px] text-muted-foreground">{t('vehicleDamages.drawer.locationMissing')}</p>
           )}
         </section>
 
@@ -233,7 +254,7 @@ export function DamageDetailDrawer({
         )}
 
         <section>
-          <h4 className="sq-section-label mb-2">Evidence photos</h4>
+          <h4 className="sq-section-label mb-2">{t('vehicleDamages.drawer.section.evidencePhotos')}</h4>
           <AddDamagePhotoPanel
             busy={busy}
             onUpload={async (file, caption) => {
@@ -241,22 +262,28 @@ export function DamageDetailDrawer({
               try {
                 await onAddPhoto(damage, file, caption);
               } catch {
-                setActionError('Photo upload failed.');
+                setActionError(resolveDamageValidationMessage('PHOTO_UPLOAD_FAILED', t));
                 throw new Error('upload failed');
               }
             }}
           />
           {damage.images.length === 0 ? (
             <p className="text-[12px] text-muted-foreground rounded-lg border border-dashed border-border/70 px-3 py-4 text-center mt-2">
-              No photos attached yet.
+              {t('vehicleDamages.drawer.noPhotos')}
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-2 mt-2">
               {damage.images.map((img) => (
                 <figure key={img.id} className="rounded-lg border border-border/70 overflow-hidden bg-muted/30">
-                  <img src={img.url} alt={img.caption ?? 'Damage evidence'} className="w-full h-28 object-cover" />
+                  <img
+                    src={img.url}
+                    alt={img.caption ?? t('vehicleDamages.drawer.evidenceAlt')}
+                    className="w-full h-28 object-cover"
+                  />
                   <figcaption className="px-2 py-1 text-[10px] text-muted-foreground truncate">
-                    {img.caption || formatDamageDate(img.createdAt) || 'Photo'}
+                    {img.caption ||
+                      formatDamageDateLocale(locale, img.createdAt) ||
+                      t('vehicleDamages.drawer.photoFallback')}
                   </figcaption>
                 </figure>
               ))}
@@ -265,24 +292,34 @@ export function DamageDetailDrawer({
         </section>
 
         <section>
-          <h4 className="sq-section-label mb-2">Timeline</h4>
+          <h4 className="sq-section-label mb-2">{t('vehicleDamages.drawer.section.timeline')}</h4>
           <Timeline items={timeline} />
         </section>
 
         <section className="flex flex-wrap gap-2 pt-2 border-t border-border/60">
           {!placed && active && (
-            <ActionButton icon="map-pin" label="Place on vehicle" disabled={busy} onClick={() => onPlace(damage)} />
+            <ActionButton
+              icon="map-pin"
+              label={t('vehicleDamages.drawer.placeOnVehicle')}
+              disabled={busy}
+              onClick={() => onPlace(damage)}
+            />
           )}
           {canCreateTask && (
             <ActionButton
               icon="wrench"
-              label="Create repair task"
+              label={t('vehicleDamages.summary.createRepairTask')}
               disabled={busy}
               onClick={() => onRequestCreateRepairTask(damage)}
             />
           )}
           {active && status !== 'ARCHIVED' && (
-            <ActionButton icon="file-text" label="Archive" disabled={busy} onClick={() => void run(() => onArchive(damage))} />
+            <ActionButton
+              icon="file-text"
+              label={t('vehicleDamages.drawer.archive')}
+              disabled={busy}
+              onClick={() => void run(() => onArchive(damage))}
+            />
           )}
         </section>
       </div>
@@ -323,36 +360,43 @@ function ActionButton({
   );
 }
 
-function buildDamageTimeline(damage: DamageResponse | null): TimelineItem[] {
+function buildDamageTimeline(
+  damage: DamageResponse | null,
+  locale: string,
+  t: VehicleDamagesTranslate,
+): TimelineItem[] {
   if (!damage) return [];
   const items: TimelineItem[] = [
     {
       id: 'created',
-      title: 'Damage recorded',
-      time: formatDamageDate(damage.reportedAt) ?? undefined,
+      title: t('vehicleDamages.drawer.timeline.recorded'),
+      time: formatDamageDateLocale(locale, damage.reportedAt) ?? undefined,
       tone: 'neutral',
     },
   ];
   damage.images.forEach((img, i) => {
     items.push({
       id: `img-${img.id}`,
-      title: i === 0 ? 'Photo added' : 'Additional photo',
-      time: formatDamageDate(img.createdAt) ?? undefined,
+      title:
+        i === 0
+          ? t('vehicleDamages.drawer.timeline.photoAdded')
+          : t('vehicleDamages.drawer.timeline.additionalPhoto'),
+      time: formatDamageDateLocale(locale, img.createdAt) ?? undefined,
       tone: 'info',
     });
   });
   if (damage.repairStartedAt) {
     items.push({
       id: 'in-repair',
-      title: 'Marked in repair',
-      time: formatDamageDate(damage.repairStartedAt) ?? undefined,
+      title: t('vehicleDamages.drawer.timeline.inRepair'),
+      time: formatDamageDateLocale(locale, damage.repairStartedAt) ?? undefined,
       tone: 'warning',
     });
   }
   if (damage.taskId) {
     items.push({
       id: 'task',
-      title: 'Repair task linked',
+      title: t('vehicleDamages.drawer.timeline.taskLinked'),
       description: damage.taskId,
       tone: 'info',
     });
@@ -360,11 +404,13 @@ function buildDamageTimeline(damage: DamageResponse | null): TimelineItem[] {
   if (damage.repairedAt) {
     items.push({
       id: 'repaired',
-      title: 'Marked repaired',
-      time: formatDamageDate(damage.repairedAt) ?? undefined,
+      title: t('vehicleDamages.drawer.timeline.repaired'),
+      time: formatDamageDateLocale(locale, damage.repairedAt) ?? undefined,
       description:
         damage.repairCostCents != null
-          ? `Actual repair cost: ${formatEuroCents(damage.repairCostCents) ?? '—'}`
+          ? t('vehicleDamages.drawer.timeline.repairCost', {
+              amount: formatDamageEuroCents(locale, damage.repairCostCents) ?? '—',
+            })
           : undefined,
       tone: 'success',
     });

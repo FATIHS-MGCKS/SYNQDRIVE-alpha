@@ -1,4 +1,5 @@
 import type { DamageResponse } from './damage.types';
+import type { DamagePickupReasonCode } from './rental-vehicle-damages-i18n';
 
 export type DamagePickupContext =
   | 'NOT_APPLICABLE'
@@ -18,7 +19,7 @@ export interface PickupContextResult {
   /** Suggested pickup damage id when fuzzy match found — never auto-applied */
   suggestedPickupDamageId: string | null;
   matchConfidence: 'none' | 'low' | 'high';
-  reason: string;
+  reason: DamagePickupReasonCode;
 }
 
 const COORD_DISTANCE_THRESHOLD = 12;
@@ -89,10 +90,10 @@ export function derivePickupContext(
   if (damage.source === 'PICKUP_HANDOVER') {
     return {
       context: 'PRE_EXISTING',
-      label: 'Pre-existing',
+      label: 'PRE_EXISTING',
       suggestedPickupDamageId: damage.id,
       matchConfidence: 'high',
-      reason: 'Documented at pickup handover.',
+      reason: 'PICKUP_HANDOVER_SOURCE',
     };
   }
 
@@ -106,10 +107,10 @@ export function derivePickupContext(
   if (pickupIds.has(damage.id)) {
     return {
       context: 'PRE_EXISTING',
-      label: 'Pre-existing',
+      label: 'PRE_EXISTING',
       suggestedPickupDamageId: damage.id,
       matchConfidence: 'high',
-      reason: 'Listed on pickup handover protocol.',
+      reason: 'PICKUP_PROTOCOL_LISTED',
     };
   }
 
@@ -119,7 +120,7 @@ export function derivePickupContext(
       label: null,
       suggestedPickupDamageId: null,
       matchConfidence: 'none',
-      reason: 'Not linked to a return handover.',
+      reason: 'NOT_LINKED_RETURN',
     };
   }
 
@@ -131,28 +132,38 @@ export function derivePickupContext(
   if (best && best.score >= 6) {
     return {
       context: 'NEEDS_REVIEW',
-      label: 'Needs review',
+      label: 'NEEDS_REVIEW',
       suggestedPickupDamageId: best.id,
       matchConfidence: 'high',
-      reason: 'Possible match to a pickup damage — confirm with operator.',
+      reason: 'POSSIBLE_PICKUP_MATCH_HIGH',
     };
   }
   if (best && best.score >= 4) {
     return {
       context: 'NEEDS_REVIEW',
-      label: 'Needs review',
+      label: 'NEEDS_REVIEW',
       suggestedPickupDamageId: best.id,
       matchConfidence: 'low',
-      reason: 'Weak match to pickup damage — operator review required.',
+      reason: 'POSSIBLE_PICKUP_MATCH_LOW',
     };
   }
 
   return {
     context: 'NEW_SINCE_PICKUP',
-    label: 'New since pickup',
+    label: 'NEW_SINCE_PICKUP',
     suggestedPickupDamageId: null,
     matchConfidence: 'none',
-    reason: 'Documented at return and not linked to pickup protocol.',
+    reason: 'NEW_SINCE_PICKUP',
+  };
+}
+
+export function emptyPickupContext(): PickupContextResult {
+  return {
+    context: 'NOT_APPLICABLE',
+    label: null,
+    suggestedPickupDamageId: null,
+    matchConfidence: 'none',
+    reason: 'NO_DAMAGE_SELECTED',
   };
 }
 

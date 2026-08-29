@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-28",
+  "generatedAt": "2026-08-29",
   "phases": {
     "P21": {
       "enforceCleanExact": [
@@ -110,26 +110,25 @@
     }
   },
   "summary": {
-    "total": 1375,
+    "total": 1282,
     "bySurface": {
       "MASTER": 1049,
       "OPERATOR": 22,
-      "RENTAL": 278,
+      "RENTAL": 185,
       "SHARED": 1,
       "SHELL": 25
     },
     "byCategory": {
-      "ARIA": 48,
-      "TITLE": 189,
-      "TEXT": 984,
-      "LABEL": 84,
-      "PLACEHOLDER": 62,
+      "ARIA": 43,
+      "TITLE": 178,
+      "TEXT": 918,
+      "LABEL": 80,
+      "PLACEHOLDER": 55,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
-      "other Rental areas": 239,
+      "other Rental areas": 159,
       "Finance/Billing": 25,
-      "Tasks": 13,
       "App / routing shell": 1
     },
     "enforceCleanRemaining": 0
@@ -403,7 +402,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24446,
+      "line": 24465,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -655,7 +654,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28331,
+      "line": 28350,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1604,7 +1603,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28276,
+      "line": 28295,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1759,7 +1758,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24750,
+      "line": 24769,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4105,7 +4104,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 25718,
+      "line": 25737,
       "surface": "MASTER",
       "module": null,
       "category": "FORMAT_LOCALE",
@@ -4640,7 +4639,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28266,
+      "line": 28285,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -5145,7 +5144,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23059,
+      "line": 23078,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5593,7 +5592,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24360,
+      "line": 24379,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7886,7 +7885,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28301,
+      "line": 28320,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8181,7 +8180,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24426,
+      "line": 24445,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8939,7 +8938,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28288,
+      "line": 28307,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8953,7 +8952,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28305,
+      "line": 28324,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9374,7 +9373,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27982,
+      "line": 28001,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12855,7 +12854,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28255,
+      "line": 28274,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13854,7 +13853,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 25720,
+      "line": 25739,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13896,7 +13895,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24446,
+      "line": 24465,
       "surface": "MASTER",
       "module": null,
       "category": "TITLE",
@@ -14375,7 +14374,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24486,
+      "line": 24505,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15218,20 +15217,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/DamageEvidenceCanvas.tsx",
-      "line": 327,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "ARIA",
-      "sample": "`Damage $",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageEvidenceCanvas.tsx"
-      ]
-    },
-    {
       "file": "rental/components/HomeAwayBadge.tsx",
       "line": 135,
       "surface": "RENTAL",
@@ -15359,132 +15344,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/MarkRepairedDialog.tsx",
-      "line": 92,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Actual repair cost (EUR, optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/MarkRepairedDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateDamageDialog.tsx",
-      "line": 175,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Add damage",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateDamageDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageWorkQueue.tsx",
-      "line": 111,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Add damage",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/AddDamagePhotoPanel.tsx",
-      "line": 64,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Add evidence photo",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/AddDamagePhotoPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageWorkQueue.tsx",
-      "line": 151,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Add first damage",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
-      "line": 190,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Add photo",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageAiIntakeDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateDamageDialog.tsx",
-      "line": 341,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Add photos",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateDamageDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
-      "line": 193,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Additional note (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateRepairTaskDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
-      "line": 193,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "LABEL",
-      "sample": "Additional note (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateRepairTaskDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 360,
       "surface": "RENTAL",
@@ -15510,20 +15369,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
-      "line": 307,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "AI suggestion",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageAiIntakeDialog.tsx"
       ]
     },
     {
@@ -15583,20 +15428,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/DamageEvidenceCanvas.tsx",
-      "line": 280,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "All open damages are positioned on the map.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageEvidenceCanvas.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/SecurityActivityTab.tsx",
       "line": 111,
       "surface": "RENTAL",
@@ -15638,62 +15469,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/BillingInvoiceSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
-      "line": 90,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Analyze exterior photos",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageAiIntakeDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageWorkQueue.tsx",
-      "line": 101,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Analyze exterior photos",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageWorkQueue.tsx",
-      "line": 94,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "analyzeExteriorPhotosEnabled ?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
-      "line": 209,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Analyzing exterior photos…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageAiIntakeDialog.tsx"
       ]
     },
     {
@@ -15797,20 +15572,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/DamageWorkQueue.tsx",
-      "line": 257,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Blocks rental",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
       "file": "rental/components/ScheduleBox.tsx",
       "line": 393,
       "surface": "RENTAL",
@@ -15839,20 +15600,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/AddDamagePhotoPanel.tsx",
-      "line": 90,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Caption (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/AddDamagePhotoPanel.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 634,
       "surface": "RENTAL",
@@ -15864,20 +15611,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/AddDamagePhotoPanel.tsx",
-      "line": 66,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Choose file",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/AddDamagePhotoPanel.tsx"
       ]
     },
     {
@@ -15895,34 +15628,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
-      "line": 122,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Confirm selected",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageAiIntakeDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
-      "line": 278,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Confirmed damages were saved to the register.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageAiIntakeDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/VehicleInsightsCard.tsx",
       "line": 292,
       "surface": "RENTAL",
@@ -15934,20 +15639,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VehicleInsightsCard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageRentalSections.tsx",
-      "line": 182,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Cost & deposit",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageRentalSections.tsx"
       ]
     },
     {
@@ -15979,63 +15670,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/DamageDetailDrawer.tsx",
-      "line": 156,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Create a repair task to track workshop work and clear the rental gate after repair.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
-      "line": 102,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TITLE",
-      "sample": "Create repair task",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/damages/CreateRepairTaskDialog.tsx",
-        "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageDetailDrawer.tsx",
-      "line": 166,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Create repair task",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageWorkQueue.tsx",
-      "line": 291,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "ARIA",
-      "sample": "Create repair task",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
       "file": "rental/components/FinancialInsightsView.tsx",
       "line": 633,
       "surface": "RENTAL",
@@ -16064,90 +15698,6 @@
       ]
     },
     {
-      "file": "rental/components/DamagesView.tsx",
-      "line": 252,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Damage control center unavailable",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DamagesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageDetailDrawer.tsx",
-      "line": 73,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Damage detail",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageInsightsSection.tsx",
-      "line": 44,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Damage insights",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageInsightsSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageInsightsSection.tsx",
-      "line": 22,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Damage insights are temporarily unavailable. Queue metrics above still reflect loaded damages.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageInsightsSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageWorkQueue.tsx",
-      "line": 84,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Damage work queue",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageRentalSections.tsx",
-      "line": 219,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "damage.bookingId ?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 618,
       "surface": "RENTAL",
@@ -16170,7 +15720,7 @@
       "sample": "de-DE",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 66,
+      "occurrences": 67,
       "files": [
         "rental/components/BusinessInsightsBox.tsx",
         "rental/components/EntityTasksSection.tsx",
@@ -16213,6 +15763,7 @@
         "rental/lib/document-extraction-field-format.ts",
         "rental/lib/fines-i18n.ts",
         "rental/lib/invoice-list-i18n.ts",
+        "rental/lib/rental-vehicle-damages-i18n.ts",
         "rental/lib/rpm-webhook-ui.ts",
         "rental/lib/task-list.utils.ts",
         "rental/lib/task-operator.utils.ts",
@@ -16245,34 +15796,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/CreateUserWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
-      "line": 149,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Description preview",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateRepairTaskDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
-      "line": 149,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "LABEL",
-      "sample": "Description preview",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateRepairTaskDialog.tsx"
       ]
     },
     {
@@ -16357,62 +15880,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageRentalSections.tsx",
-      "line": 160,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Document operator reasoning — never auto-assigned",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
-      "line": 156,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Due date (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateRepairTaskDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
-      "line": 156,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "LABEL",
-      "sample": "Due date (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateRepairTaskDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateDamageDialog.tsx",
-      "line": 332,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "e.g. Front bumper left",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateDamageDialog.tsx"
       ]
     },
     {
@@ -16536,7 +16003,7 @@
       "sample": "en-GB",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 8,
+      "occurrences": 9,
       "files": [
         "rental/components/price-tariffs/PriceTariffsPage.tsx",
         "rental/components/price-tariffs/PricingSimulatorTab.tsx",
@@ -16545,7 +16012,8 @@
         "rental/components/price-tariffs/tariff-editor/TariffEditorLiveDraftCompare.tsx",
         "rental/components/workflow-automation/workflow-runtime.utils.ts",
         "rental/lib/ai-chat/fleet-chat-response-display.ts",
-        "rental/lib/document-extraction-field-format.ts"
+        "rental/lib/document-extraction-field-format.ts",
+        "rental/lib/rental-vehicle-damages-i18n.ts"
       ]
     },
     {
@@ -16657,62 +16125,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageEvidenceCanvas.tsx",
-      "line": 107,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Evidence canvas",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageEvidenceCanvas.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageRentalSections.tsx",
-      "line": 279,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Evidence package",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageDetailDrawer.tsx",
-      "line": 236,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Evidence photos",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
-      "line": 132,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Exterior photo analysis is not enabled. For structured damage reports (invoices, police reports), use canonical Document",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageAiIntakeDialog.tsx"
       ]
     },
     {
@@ -16842,20 +16254,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/DamageRentalSections.tsx",
-      "line": 111,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Handover context",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
       "file": "rental/components/HelpCenterView.tsx",
       "line": 809,
       "surface": "RENTAL",
@@ -16954,34 +16352,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
-      "line": 202,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "PLACEHOLDER",
-      "sample": "Instructions for the workshop or internal team",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateRepairTaskDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
-      "line": 106,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "intake.enabled ? undefined :",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageAiIntakeDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 913,
       "surface": "RENTAL",
@@ -16993,34 +16363,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/AddDamagePhotoPanel.tsx",
-      "line": 115,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "JPG, PNG, WebP or GIF · max 6 MB",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/AddDamagePhotoPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateDamageDialog.tsx",
-      "line": 369,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "JPG, PNG, WebP up to 6 MB each.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateDamageDialog.tsx"
       ]
     },
     {
@@ -17375,48 +16717,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/DamageEvidenceCanvas.tsx",
-      "line": 217,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Loading photos",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageEvidenceCanvas.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
-      "line": 189,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Loading vendors…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateRepairTaskDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
-      "line": 308,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Low confidence",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageAiIntakeDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 218,
       "surface": "RENTAL",
@@ -17428,76 +16728,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/MarkRepairedDialog.tsx",
-      "line": 58,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Mark as repaired",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/MarkRepairedDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageDetailDrawer.tsx",
-      "line": 117,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Mark in repair",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageDetailDrawer.tsx",
-      "line": 127,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Mark repaired",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageWorkQueue.tsx",
-      "line": 305,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "ARIA",
-      "sample": "Mark repaired",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageWorkQueue.tsx",
-      "line": 304,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Mark repaired",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageWorkQueue.tsx"
       ]
     },
     {
@@ -17557,34 +16787,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/DamageWorkQueue.tsx",
-      "line": 269,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Needs liability review",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageWorkQueue.tsx",
-      "line": 266,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Needs review",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/UsersTab.tsx",
       "line": 566,
       "surface": "RENTAL",
@@ -17599,20 +16801,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/DamageWorkQueue.tsx",
-      "line": 263,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "New since pickup",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
       "file": "rental/components/VehicleInsightsCard.tsx",
       "line": 359,
       "surface": "RENTAL",
@@ -17624,20 +16812,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VehicleInsightsCard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageEvidenceCanvas.tsx",
-      "line": 202,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "ARIA",
-      "sample": "Next view",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageEvidenceCanvas.tsx"
       ]
     },
     {
@@ -17666,21 +16840,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/ScheduleBox.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
-      "line": 130,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "No damage selected.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/damages/CreateRepairTaskDialog.tsx",
-        "rental/components/damages/DamageDetailDrawer.tsx"
       ]
     },
     {
@@ -17740,34 +16899,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/DamageWorkQueue.tsx",
-      "line": 252,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No photos",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageDetailDrawer.tsx",
-      "line": 250,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No photos attached yet.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/RolesAccessTab.tsx",
       "line": 39,
       "surface": "RENTAL",
@@ -17793,20 +16924,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/SecurityAuditTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
-      "line": 179,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "No vendor selected",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateRepairTaskDialog.tsx"
       ]
     },
     {
@@ -17863,34 +16980,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/BillingInvoiceSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageInsightsSection.tsx",
-      "line": 32,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Not enough data yet for damage insights.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageInsightsSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/MarkRepairedDialog.tsx",
-      "line": 103,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Note (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/MarkRepairedDialog.tsx"
       ]
     },
     {
@@ -17961,62 +17050,6 @@
       "occurrences": 2,
       "files": [
         "rental/components/billing/BillingPaymentMethodCard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageEvidenceCanvas.tsx",
-      "line": 257,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Open damages without a map position. Place them to appear on the canvas.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageEvidenceCanvas.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
-      "line": 147,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Open Document Intake (DAMAGE)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageAiIntakeDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageDetailDrawer.tsx",
-      "line": 192,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Open task",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageRentalSections.tsx",
-      "line": 138,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Operator decision",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageRentalSections.tsx"
       ]
     },
     {
@@ -18104,20 +17137,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/DamageRentalSections.tsx",
-      "line": 291,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "PDF export not connected — evidence is shown inline below.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 643,
       "surface": "RENTAL",
@@ -18129,76 +17148,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateDamageDialog.tsx",
-      "line": 340,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Photos (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateDamageDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageRentalSections.tsx",
-      "line": 84,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Pickup context",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
-      "line": 395,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Pin X %",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageAiIntakeDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
-      "line": 410,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Pin Y %",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageAiIntakeDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateDamageDialog.tsx",
-      "line": 295,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Place on vehicle map after create",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateDamageDialog.tsx"
       ]
     },
     {
@@ -18216,20 +17165,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/DamageDetailDrawer.tsx",
-      "line": 220,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Position missing — not shown on map.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillingStatusHero.tsx",
       "line": 134,
       "surface": "RENTAL",
@@ -18241,76 +17176,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/BillingStatusHero.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageRentalSections.tsx",
-      "line": 271,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Prepare customer charge",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageRentalSections.tsx",
-      "line": 223,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Prepare customer charge (€)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageRentalSections.tsx",
-      "line": 252,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Prepare deposit hold",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageRentalSections.tsx",
-      "line": 211,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Prepare deposit hold (€)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageEvidenceCanvas.tsx",
-      "line": 191,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "ARIA",
-      "sample": "Previous view",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageEvidenceCanvas.tsx"
       ]
     },
     {
@@ -18384,20 +17249,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/DamageRentalSections.tsx",
-      "line": 153,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Reason / note",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
       "file": "rental/components/FinancialInsightsView.tsx",
       "line": 777,
       "surface": "RENTAL",
@@ -18454,34 +17305,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/DamageRentalSections.tsx",
-      "line": 77,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Rental context",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
-      "line": 377,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Rental impact",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageAiIntakeDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/App.tsx",
       "line": 1291,
       "surface": "RENTAL",
@@ -18493,20 +17316,6 @@
       "occurrences": 1,
       "files": [
         "rental/App.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageDetailDrawer.tsx",
-      "line": 178,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Repair task linked",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageDetailDrawer.tsx"
       ]
     },
     {
@@ -18580,34 +17389,6 @@
       ]
     },
     {
-      "file": "rental/components/damages/DamageRentalSections.tsx",
-      "line": 174,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Save liability decision",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
-      "line": 271,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Saving confirmed damages…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageAiIntakeDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/FinancialInsightsView.tsx",
       "line": 1045,
       "surface": "RENTAL",
@@ -18647,20 +17428,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/RolesAccessTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/DamagesView.tsx",
-      "line": 244,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Select a vehicle to open the damage control center.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/DamagesView.tsx"
       ]
     },
     {
@@ -18801,20 +17568,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/OrganizationSwitcher.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/DamageWorkQueue.tsx",
-      "line": 278,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Task linked",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/DamageWorkQueue.tsx"
       ]
     },
     {
@@ -19053,62 +17806,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/HelpCenterView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateDamageDialog.tsx",
-      "line": 256,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "What happened, size, context…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateDamageDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
-      "line": 170,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Workshop / vendor (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateRepairTaskDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
-      "line": 170,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "LABEL",
-      "sample": "Workshop / vendor (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/CreateRepairTaskDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/damages/MarkRepairedDialog.tsx",
-      "line": 109,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Workshop reference, parts replaced…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/damages/MarkRepairedDialog.tsx"
       ]
     },
     {

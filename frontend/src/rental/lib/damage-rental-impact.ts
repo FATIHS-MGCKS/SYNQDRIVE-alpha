@@ -1,5 +1,6 @@
 import type { DamageResponse, DamageRentalImpact } from './damage.types';
 import { isActiveDamage } from './damage.types';
+import { resolveDamageRentalGateLabel, type VehicleDamagesTranslate } from './rental-vehicle-damages-i18n';
 
 /**
  * Aggregated rental gate derived from active damages only.
@@ -40,17 +41,8 @@ export function deriveDamageRentalImpact(damages: DamageResponse[]): DamageRenta
   }
 }
 
-export function damageRentalGateLabel(gate: DamageRentalGate): string {
-  switch (gate) {
-    case 'SAFETY_CRITICAL':
-      return 'Safety critical';
-    case 'RENTAL_BLOCKED':
-      return 'Rental blocked';
-    case 'WATCH':
-      return 'Watch';
-    default:
-      return 'Vehicle rentable';
-  }
+export function damageRentalGateLabel(gate: DamageRentalGate, t: VehicleDamagesTranslate): string {
+  return resolveDamageRentalGateLabel(t, gate);
 }
 
 export function damageRentalGateTone(

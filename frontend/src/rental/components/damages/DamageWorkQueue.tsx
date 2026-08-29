@@ -1,31 +1,35 @@
 import { useMemo } from 'react';
 import { DataCard, EmptyState, StatusChip } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import type { PickupContextResult } from '../../lib/damage-pickup-context';
 import { needsLiabilityReview } from '../../lib/damage-pickup-context';
 import type { DamageResponse } from '../../lib/damage.types';
+import { hasValidMapPin, isActiveDamage, normalizeDamageStatus } from '../../lib/damage.types';
 import {
-  formatDamageDate,
-  formatDamageType,
-  formatEuroCents,
-  formatSeverity,
-  hasValidMapPin,
-  isActiveDamage,
-  normalizeDamageStatus,
-} from '../../lib/damage.types';
+  formatDamageDateLocale,
+  formatDamageEuroCents,
+  resolveDamagePickupContextLabel,
+  resolveDamageQueueFilterLabel,
+  resolveDamageSeverityLabel,
+  resolveDamageSourceLabel,
+  resolveDamageStatusLabel,
+  resolveDamageTypeLabel,
+  resolveDamageLocationViewLabel,
+} from '../../lib/rental-vehicle-damages-i18n';
 import {
   filterDamages,
   sortDamagesForQueue,
   type DamageQueueFilter,
 } from './damage-control.utils';
 
-const FILTERS: { id: DamageQueueFilter; label: string }[] = [
-  { id: 'open', label: 'Open' },
-  { id: 'blocking', label: 'Blocking' },
-  { id: 'missing_evidence', label: 'Missing evidence' },
-  { id: 'unplaced', label: 'Unplaced' },
-  { id: 'repaired', label: 'Repaired' },
-  { id: 'all', label: 'All' },
+const FILTERS: DamageQueueFilter[] = [
+  'open',
+  'blocking',
+  'missing_evidence',
+  'unplaced',
+  'repaired',
+  'all',
 ];
 
 interface DamageWorkQueueProps {
@@ -57,6 +61,7 @@ export function DamageWorkQueue({
   analyzeExteriorPhotosEnabled = false,
   analyzeExteriorPhotosDisabledReason,
 }: DamageWorkQueueProps) {
+  const { t, locale } = useLanguage();
   const rows = useMemo(
     () => sortDamagesForQueue(filterDamages(damages, filter)),
     [damages, filter],
@@ -65,24 +70,42 @@ export function DamageWorkQueue({
   const emptyCopy = (() => {
     switch (filter) {
       case 'open':
-        return { title: 'No active damages', desc: 'This vehicle has no open repair work in the queue.' };
+        return {
+          title: t('vehicleDamages.queue.empty.open.title'),
+          desc: t('vehicleDamages.queue.empty.open.description'),
+        };
       case 'blocking':
-        return { title: 'No blocking damages', desc: 'No active damages currently block rental.' };
+        return {
+          title: t('vehicleDamages.queue.empty.blocking.title'),
+          desc: t('vehicleDamages.queue.empty.blocking.description'),
+        };
       case 'missing_evidence':
-        return { title: 'All active damages have evidence', desc: 'Photo evidence is present or not required for active cases.' };
+        return {
+          title: t('vehicleDamages.queue.empty.missing_evidence.title'),
+          desc: t('vehicleDamages.queue.empty.missing_evidence.description'),
+        };
       case 'unplaced':
-        return { title: 'All open damages are positioned', desc: 'Every open damage has a map position.' };
+        return {
+          title: t('vehicleDamages.queue.empty.unplaced.title'),
+          desc: t('vehicleDamages.queue.empty.unplaced.description'),
+        };
       case 'repaired':
-        return { title: 'No repaired damages yet', desc: 'Resolved damages will appear here after repair.' };
+        return {
+          title: t('vehicleDamages.queue.empty.repaired.title'),
+          desc: t('vehicleDamages.queue.empty.repaired.description'),
+        };
       default:
-        return { title: 'No damages recorded', desc: 'This vehicle has no damage history yet.' };
+        return {
+          title: t('vehicleDamages.queue.empty.all.title'),
+          desc: t('vehicleDamages.queue.empty.all.description'),
+        };
     }
   })();
 
   return (
     <DataCard
-      title="Damage work queue"
-      description="Operational list sorted by rental impact, evidence gaps, and recency."
+      title={t('vehicleDamages.queue.title')}
+      description={t('vehicleDamages.queue.description')}
       actions={
         onAddDamage || onAnalyzeExteriorPhotos ? (
           <div className="flex flex-wrap items-center gap-1.5">
@@ -93,13 +116,13 @@ export function DamageWorkQueue({
                 disabled={!analyzeExteriorPhotosEnabled}
                 title={
                   analyzeExteriorPhotosEnabled
-                    ? 'Upload exterior photos for AI-assisted damage suggestions'
+                    ? t('vehicleDamages.queue.analyzeExteriorPhotosTitle')
                     : analyzeExteriorPhotosDisabledReason
                 }
                 className="sq-press inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border border-border/70 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Icon name="sparkles" className="w-3.5 h-3.5" />
-                Analyze exterior photos
+                {t('vehicleDamages.queue.analyzeExteriorPhotos')}
               </button>
             )}
             {onAddDamage && (
@@ -109,7 +132,7 @@ export function DamageWorkQueue({
                 className="sq-press inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold sq-tone-brand"
               >
                 <Icon name="plus" className="w-3.5 h-3.5" />
-                Add damage
+                {t('vehicleDamages.queue.addDamage')}
               </button>
             )}
           </div>
@@ -120,19 +143,19 @@ export function DamageWorkQueue({
     >
       <div className="px-3 pt-3 pb-2 border-b border-border/60">
         <div className="flex gap-1.5 overflow-x-auto pb-1 snap-x snap-mandatory">
-          {FILTERS.map((f) => {
-            const active = filter === f.id;
+          {FILTERS.map((filterId) => {
+            const active = filter === filterId;
             return (
               <button
-                key={f.id}
+                key={filterId}
                 type="button"
-                onClick={() => onFilterChange(f.id)}
+                onClick={() => onFilterChange(filterId)}
                 aria-pressed={active}
                 className={`snap-start shrink-0 px-2.5 py-1.5 rounded-full text-[10px] font-semibold transition-colors sq-press ${
                   active ? 'sq-tone-brand' : 'bg-muted/60 text-muted-foreground hover:bg-muted'
                 }`}
               >
-                {f.label}
+                {resolveDamageQueueFilterLabel(t, filterId)}
               </button>
             );
           })}
@@ -149,7 +172,7 @@ export function DamageWorkQueue({
             action={
               filter === 'all' && onAddDamage ? (
                 <button type="button" onClick={onAddDamage} className="sq-cta px-3 py-2 text-xs font-semibold rounded-lg">
-                  Add first damage
+                  {t('vehicleDamages.queue.addFirstDamage')}
                 </button>
               ) : undefined
             }
@@ -190,10 +213,11 @@ function DamageQueueRow({
   onQuickCreateTask?: (damage: DamageResponse) => void;
   pickupContext?: PickupContextResult;
 }) {
+  const { t, locale } = useLanguage();
   const status = normalizeDamageStatus(damage);
   const placed = hasValidMapPin(damage);
-  const cost = formatEuroCents(damage.estimatedCostCents);
-  const reported = formatDamageDate(damage.reportedAt);
+  const cost = formatDamageEuroCents(locale, damage.estimatedCostCents);
+  const reported = formatDamageDateLocale(locale, damage.reportedAt);
   const canQuickRepair = isActiveDamage(damage) && onQuickRepair;
   const canQuickCreateTask =
     isActiveDamage(damage) &&
@@ -207,6 +231,11 @@ function DamageQueueRow({
       : damage.rentalImpact === 'WATCH'
         ? 'warning'
         : 'neutral';
+
+  const pickupLabel =
+    pickupContext?.label && pickupContext.context !== 'NOT_APPLICABLE'
+      ? resolveDamagePickupContextLabel(t, pickupContext.context)
+      : null;
 
   return (
     <li>
@@ -234,49 +263,55 @@ function DamageQueueRow({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[12px] font-semibold text-foreground truncate">
-                  {formatDamageType(damage.damageType)}
+                  {resolveDamageTypeLabel(t, damage.damageType)}
                 </span>
                 <StatusChip tone={status === 'REPAIRED' ? 'success' : status === 'IN_REPAIR' ? 'info' : 'warning'}>
-                  {status === 'IN_REPAIR' ? 'In repair' : status.charAt(0) + status.slice(1).toLowerCase()}
+                  {status === 'IN_REPAIR'
+                    ? t('vehicleDamages.queue.status.inRepair')
+                    : resolveDamageStatusLabel(t, status)}
                 </StatusChip>
               </div>
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-                <span>{placed ? damage.locationLabel || damage.locationView : 'Position missing'}</span>
-                <span>{formatDamageType(damage.source)}</span>
+                <span>
+                  {placed
+                    ? damage.locationLabel || resolveDamageLocationViewLabel(t, damage.locationView)
+                    : t('vehicleDamages.queue.positionMissing')}
+                </span>
+                <span>{resolveDamageSourceLabel(t, damage.source)}</span>
                 {reported && <span>{reported}</span>}
                 {cost && <span className="tabular-nums">{cost}</span>}
               </div>
               <div className="mt-1.5 flex flex-wrap gap-1">
-                <StatusChip tone="neutral">{formatSeverity(damage.severity)}</StatusChip>
+                <StatusChip tone="neutral">{resolveDamageSeverityLabel(t, damage.severity)}</StatusChip>
                 {damage.evidenceStatus === 'MISSING' && (
                   <StatusChip tone="warning" icon={<Icon name="camera" className="w-3 h-3" />}>
-                    No photos
+                    {t('vehicleDamages.queue.chip.noPhotos')}
                   </StatusChip>
                 )}
                 {damage.rentalImpact === 'BLOCK_RENTAL' && (
-                  <StatusChip tone="critical">Blocks rental</StatusChip>
+                  <StatusChip tone="critical">{t('vehicleDamages.queue.chip.blocksRental')}</StatusChip>
                 )}
-                {pickupContext?.label === 'Pre-existing' && (
-                  <StatusChip tone="neutral">Pre-existing</StatusChip>
+                {pickupContext?.context === 'PRE_EXISTING' && pickupLabel && (
+                  <StatusChip tone="neutral">{pickupLabel}</StatusChip>
                 )}
-                {pickupContext?.label === 'New since pickup' && (
-                  <StatusChip tone="warning">New since pickup</StatusChip>
+                {pickupContext?.context === 'NEW_SINCE_PICKUP' && pickupLabel && (
+                  <StatusChip tone="warning">{pickupLabel}</StatusChip>
                 )}
                 {pickupContext?.context === 'NEEDS_REVIEW' && (
-                  <StatusChip tone="warning">Needs review</StatusChip>
+                  <StatusChip tone="warning">{pickupLabel}</StatusChip>
                 )}
                 {needsLiabilityReview(damage) && (
-                  <StatusChip tone="warning">Needs liability review</StatusChip>
+                  <StatusChip tone="warning">{t('vehicleDamages.queue.chip.needsLiabilityReview')}</StatusChip>
                 )}
                 {damage.liabilityStatus === 'DISPUTED' && (
-                  <StatusChip tone="critical">Disputed</StatusChip>
+                  <StatusChip tone="critical">{t('vehicleDamages.queue.chip.disputed')}</StatusChip>
                 )}
                 {damage.rentalImpact === 'SAFETY_CRITICAL' && (
-                  <StatusChip tone="critical">Safety</StatusChip>
+                  <StatusChip tone="critical">{t('vehicleDamages.queue.chip.safety')}</StatusChip>
                 )}
                 {damage.taskId && (
                   <StatusChip tone="info" icon={<Icon name="wrench" className="w-3 h-3" />}>
-                    Task linked
+                    {t('vehicleDamages.queue.chip.taskLinked')}
                   </StatusChip>
                 )}
               </div>
@@ -287,8 +322,8 @@ function DamageQueueRow({
         {canQuickCreateTask && (
           <button
             type="button"
-            title="Create repair task"
-            aria-label="Create repair task"
+            title={t('vehicleDamages.queue.quickCreateTask')}
+            aria-label={t('vehicleDamages.queue.quickCreateTask')}
             onClick={(e) => {
               e.stopPropagation();
               onQuickCreateTask!(damage);
@@ -301,8 +336,8 @@ function DamageQueueRow({
         {canQuickRepair && (
           <button
             type="button"
-            title="Mark repaired"
-            aria-label="Mark repaired"
+            title={t('vehicleDamages.queue.quickMarkRepaired')}
+            aria-label={t('vehicleDamages.queue.quickMarkRepaired')}
             onClick={(e) => {
               e.stopPropagation();
               onQuickRepair(damage);

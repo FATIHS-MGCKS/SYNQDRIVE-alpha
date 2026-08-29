@@ -1,9 +1,9 @@
 import { StatusChip } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import type { DamageControlStats } from './damage-control.utils';
 import { formatEstimatedOpenCost, formatOldestOpenAge } from './damage-control.utils';
 import {
-  DAMAGE_SUMMARY_COPY,
   damageRentalContextLine,
   damageStatusBadge,
   damageStatusSubtitle,
@@ -70,12 +70,14 @@ export function DamageControlSummary({
   createRepairTaskBusy,
   showRepairTaskCta,
 }: DamageControlSummaryProps) {
-  const oldest = formatOldestOpenAge(stats.oldestOpenDamageAt);
+  const { t, locale } = useLanguage();
+  const oldestToday = t('vehicleDamages.summary.oldestToday');
+  const oldest = formatOldestOpenAge(stats.oldestOpenDamageAt, t);
   const surfaceTone = damageStatusSurfaceTone(stats);
-  const badge = damageStatusBadge(stats);
-  const subtitle = damageStatusSubtitle(stats);
-  const rentalContext = damageRentalContextLine(stats);
-  const costLabel = formatEstimatedOpenCost(stats.estimatedOpenCostCents);
+  const badge = damageStatusBadge(stats, t);
+  const subtitle = damageStatusSubtitle(stats, t);
+  const rentalContext = damageRentalContextLine(stats, t);
+  const costLabel = formatEstimatedOpenCost(stats.estimatedOpenCostCents, locale, t);
   const costSubdued = stats.estimatedOpenCostCents <= 0;
   const oldestSubdued = !oldest;
 
@@ -106,7 +108,7 @@ export function DamageControlSummary({
           </div>
           <div className="min-w-0">
             <p className="text-[12px] font-semibold tracking-[-0.01em] text-foreground sm:text-[13px]">
-              {DAMAGE_SUMMARY_COPY.statusTitle}
+              {t('vehicleDamages.summary.statusTitle')}
             </p>
             <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{subtitle}</p>
             {rentalContext ? (
@@ -126,7 +128,9 @@ export function DamageControlSummary({
               className="sq-cta inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10.5px] font-semibold disabled:opacity-50 sm:text-[11px]"
             >
               <Icon name="wrench" className="h-3.5 w-3.5" />
-              {createRepairTaskBusy ? 'Creating…' : 'Create repair task'}
+              {createRepairTaskBusy
+                ? t('vehicleDamages.summary.creatingRepairTask')
+                : t('vehicleDamages.summary.createRepairTask')}
             </button>
           ) : null}
         </div>
@@ -134,52 +138,52 @@ export function DamageControlSummary({
 
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         <DamageKpiTile
-          label={DAMAGE_SUMMARY_COPY.kpi.open}
+          label={t('vehicleDamages.summary.kpi.open')}
           value={stats.open}
-          hint={DAMAGE_SUMMARY_COPY.kpiHint.open}
+          hint={t('vehicleDamages.summary.kpiHint.open')}
           accent={stats.open > 0 ? 'watch' : 'muted'}
           subdued={stats.open === 0}
         />
         <DamageKpiTile
-          label={DAMAGE_SUMMARY_COPY.kpi.blocking}
+          label={t('vehicleDamages.summary.kpi.blocking')}
           value={stats.blockingRental}
-          hint={DAMAGE_SUMMARY_COPY.kpiHint.blocking}
+          hint={t('vehicleDamages.summary.kpiHint.blocking')}
           accent={stats.blockingRental > 0 ? 'critical' : 'muted'}
           subdued={stats.blockingRental === 0}
         />
         <DamageKpiTile
-          label={DAMAGE_SUMMARY_COPY.kpi.safetyCritical}
+          label={t('vehicleDamages.summary.kpi.safetyCritical')}
           value={stats.safetyCritical}
-          hint={DAMAGE_SUMMARY_COPY.kpiHint.safetyCritical}
+          hint={t('vehicleDamages.summary.kpiHint.safetyCritical')}
           accent={stats.safetyCritical > 0 ? 'critical' : 'muted'}
           subdued={stats.safetyCritical === 0}
         />
         <DamageKpiTile
-          label={DAMAGE_SUMMARY_COPY.kpi.missingEvidence}
+          label={t('vehicleDamages.summary.kpi.missingEvidence')}
           value={stats.missingEvidence}
-          hint={DAMAGE_SUMMARY_COPY.kpiHint.missingEvidence}
+          hint={t('vehicleDamages.summary.kpiHint.missingEvidence')}
           accent={stats.missingEvidence > 0 ? 'watch' : 'muted'}
           subdued={stats.missingEvidence === 0}
         />
         <DamageKpiTile
-          label={DAMAGE_SUMMARY_COPY.kpi.unplaced}
+          label={t('vehicleDamages.summary.kpi.unplaced')}
           value={stats.unplaced}
-          hint={DAMAGE_SUMMARY_COPY.kpiHint.unplaced}
+          hint={t('vehicleDamages.summary.kpiHint.unplaced')}
           accent={stats.unplaced > 0 ? 'watch' : 'muted'}
           subdued={stats.unplaced === 0}
         />
         <DamageKpiTile
-          label={DAMAGE_SUMMARY_COPY.kpi.estimatedCost}
+          label={t('vehicleDamages.summary.kpi.estimatedCost')}
           value={costLabel}
-          hint={DAMAGE_SUMMARY_COPY.kpiHint.estimatedCost}
+          hint={t('vehicleDamages.summary.kpiHint.estimatedCost')}
           accent="muted"
           subdued={costSubdued}
         />
         <DamageKpiTile
-          label={DAMAGE_SUMMARY_COPY.kpi.oldestCase}
+          label={t('vehicleDamages.summary.kpi.oldestCase')}
           value={oldest ?? '—'}
-          hint={DAMAGE_SUMMARY_COPY.kpiHint.oldestCase}
-          accent={oldest && oldest !== 'Today' ? 'watch' : 'muted'}
+          hint={t('vehicleDamages.summary.kpiHint.oldestCase')}
+          accent={oldest && oldest !== oldestToday ? 'watch' : 'muted'}
           subdued={oldestSubdued}
         />
       </div>

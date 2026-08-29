@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { api } from '../../lib/api';
 import type { VehicleExteriorViewKey } from '../../lib/api';
 import { readFileAsDataUrl } from '../lib/damage-image.utils';
@@ -11,6 +12,12 @@ import {
   type AnalyzeExteriorPhotosResponse,
   type EditableAiDamageSuggestion,
 } from '../lib/damage-ai-intake';
+import {
+  resolveDamageHostError,
+  resolveDamageToastError,
+  resolveDamageToastSuccess,
+  resolveDamageValidationMessage,
+} from '../lib/rental-vehicle-damages-i18n';
 
 export type DamageAiIntakeStep = 'upload' | 'analyzing' | 'review' | 'confirming' | 'done';
 
@@ -32,6 +39,7 @@ interface UseDamageAiIntakeOptions {
 }
 
 export function useDamageAiIntake({ vehicleId, onConfirmed }: UseDamageAiIntakeOptions) {
+  const { t } = useLanguage();
   const enabled = isDamageAiIntakeEnabled();
   const [step, setStep] = useState<DamageAiIntakeStep>('upload');
   const [slots, setSlots] = useState<ViewUploadSlot[]>(emptySlots);
@@ -89,7 +97,7 @@ export function useDamageAiIntake({ vehicleId, onConfirmed }: UseDamageAiIntakeO
       }
     }
     if (!payloads.length) {
-      setError('Add at least one exterior photo before analyzing.');
+      setError(resolveDamageValidationMessage('AI_PHOTOS_REQUIRED', t));
       return;
     }
 
@@ -105,12 +113,17 @@ export function useDamageAiIntake({ vehicleId, onConfirmed }: UseDamageAiIntakeO
       setSuggestions(typed.suggestions.map(toEditableSuggestion));
       setStep('review');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Analysis failed.';
+      const message =
+        err instanceof Error
+          ? err.message
+          : resolveDamageHostError('vehicleDamages.hostError.aiAnalysisFailed', null, t);
       setError(message);
       setStep('upload');
-      toast.error('Exterior analysis unavailable', { description: message });
+      toast.error(resolveDamageHostError('vehicleDamages.hostError.aiAnalysisFailed', null, t)!, {
+        description: message,
+      });
     }
-  }, [enabled, slots, vehicleId]);
+  }, [enabled, slots, vehicleId, t]);
 
   const updateSuggestion = useCallback(
     (id: string, patch: Partial<EditableAiDamageSuggestion>) => {
@@ -123,7 +136,7 @@ export function useDamageAiIntake({ vehicleId, onConfirmed }: UseDamageAiIntakeO
     if (!vehicleId) return;
     const accepted = suggestions.filter((s) => s.accepted && !s.rejected);
     if (!accepted.length) {
-      setError('Select at least one suggestion to confirm.');
+      setError(resolveDamageValidationMessage('AI_SELECT_SUGGESTION', t));
       return;
     }
 
@@ -134,18 +147,25 @@ export function useDamageAiIntake({ vehicleId, onConfirmed }: UseDamageAiIntakeO
         const input: CreateVehicleDamageInput = suggestionToCreateInput(suggestion);
         await api.vehicleIntelligence.createVehicleDamage(vehicleId, input);
       }
-      toast.success('Damages created', {
-        description: `${accepted.length} confirmed suggestion(s) saved.`,
+      toast.success(resolveDamageToastSuccess('vehicleDamages.toast.damagesCreated', t), {
+        description: resolveDamageToastSuccess('vehicleDamages.toast.damagesCreatedDescription', t, {
+          count: accepted.length,
+        }),
       });
       setStep('done');
       onConfirmed?.();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not save damages.';
+      const message =
+        err instanceof Error
+          ? err.message
+          : resolveDamageHostError('vehicleDamages.hostError.aiConfirmFailed', null, t);
       setError(message);
       setStep('review');
-      toast.error('Confirmation failed', { description: message });
+      toast.error(resolveDamageHostError('vehicleDamages.hostError.aiConfirmFailed', null, t)!, {
+        description: message,
+      });
     }
-  }, [onConfirmed, suggestions, vehicleId]);
+  }, [onConfirmed, suggestions, vehicleId, t]);
 
   const totalFiles = slots.reduce((n, s) => n + s.files.length, 0);
 

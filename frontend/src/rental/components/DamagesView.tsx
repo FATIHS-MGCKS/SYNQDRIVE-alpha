@@ -7,14 +7,20 @@ import {
   SkeletonMetricGrid,
   SkeletonRows,
 } from '../../components/patterns';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { useVehicleDamages } from '../hooks/useVehicleDamages';
 import { useVehicleDamageActions } from '../hooks/useVehicleDamageActions';
 import type { CreateVehicleDamageInput, DamageResponse } from '../lib/damage.types';
-import { formatDamageType, isActiveDamage } from '../lib/damage.types';
-import { derivePickupContext } from '../lib/damage-pickup-context';
+import { isActiveDamage } from '../lib/damage.types';
+import { derivePickupContext, emptyPickupContext } from '../lib/damage-pickup-context';
 import { canCreateRepairTaskForDamage } from '../lib/damage-repair-task';
 import { useDamageHandoverRefs } from '../hooks/useDamageHandoverRefs';
+import {
+  resolveDamageHostError,
+  resolveDamageLocationViewLabel,
+  resolveDamageTypeLabel,
+} from '../lib/rental-vehicle-damages-i18n';
 import { deriveControlStats, type DamageQueueFilter } from './damages/damage-control.utils';
 import { DamageControlSummary } from './damages/DamageControlSummary';
 import { DamageInsightsSection } from './damages/DamageInsightsSection';
@@ -36,8 +42,9 @@ interface DamagesViewProps {
 type DamageLocationViewAfterCreate = 'FRONT' | 'LEFT' | 'RIGHT' | 'REAR' | 'ROOF';
 
 export function DamagesView({ vehicleId, onOpenVehicleTasks }: DamagesViewProps) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
-  const { damages, stats, statsUnavailable, loading, error, reload } = useVehicleDamages(vehicleId);
+  const { damages, stats, statsUnavailable, loading, hostErrorKey, reload } = useVehicleDamages(vehicleId);
   const actions = useVehicleDamageActions({ vehicleId, orgId, reload });
 
   const [queueFilter, setQueueFilter] = useState<DamageQueueFilter>('open');
@@ -57,7 +64,11 @@ export function DamagesView({ vehicleId, onOpenVehicleTasks }: DamagesViewProps)
   const [exteriorImages, setExteriorImages] = useState<Record<string, VehicleExteriorEffectiveImageDto>>({});
   const [exteriorImagesLoading, setExteriorImagesLoading] = useState(false);
 
-  const controlStats = useMemo(() => deriveControlStats(damages, stats), [damages, stats]);
+  const controlStats = useMemo(() => deriveControlStats(damages, stats, t), [damages, stats, t]);
+  const errorMessage = useMemo(
+    () => resolveDamageHostError(hostErrorKey, null, t),
+    [hostErrorKey, t],
+  );
 
   const selectedDamage = useMemo(
     () => damages.find((d) => d.id === selectedDamageId) ?? null,
@@ -70,15 +81,7 @@ export function DamagesView({ vehicleId, onOpenVehicleTasks }: DamagesViewProps)
 
   const pickupContextForDamage = useCallback(
     (damage: DamageResponse | null) => {
-      if (!damage) {
-        return {
-          context: 'NOT_APPLICABLE' as const,
-          label: null,
-          suggestedPickupDamageId: null,
-          matchConfidence: 'none' as const,
-          reason: 'No damage selected.',
-        };
-      }
+      if (!damage) return emptyPickupContext();
       const handovers = damage.bookingId
         ? handoverRefsByBooking.get(damage.bookingId) ?? []
         : [];
@@ -241,18 +244,18 @@ export function DamagesView({ vehicleId, onOpenVehicleTasks }: DamagesViewProps)
   if (!vehicleId) {
     return (
       <div className="surface-premium rounded-2xl p-6">
-        <p className="text-[12px] text-muted-foreground">Select a vehicle to open the damage control center.</p>
+        <p className="text-[12px] text-muted-foreground">{t('vehicleDamages.noVehicle.description')}</p>
       </div>
     );
   }
 
-  if (error && !loading) {
+  if (errorMessage && !loading) {
     return (
       <ErrorState
-        title="Damage control center unavailable"
-        description={error}
+        title={t('vehicleDamages.error.title')}
+        description={errorMessage}
         onRetry={() => void reload()}
-        retryLabel="Retry"
+        retryLabel={t('common.retry')}
         className="surface-premium rounded-2xl shadow-[var(--shadow-1)]"
       />
     );
@@ -322,13 +325,15 @@ export function DamagesView({ vehicleId, onOpenVehicleTasks }: DamagesViewProps)
           onAddDamage={() => setCreateOpen(true)}
           onAnalyzeExteriorPhotos={() => setAiIntakeOpen(true)}
           analyzeExteriorPhotosEnabled={damageAiIntakeEnabled}
-          analyzeExteriorPhotosDisabledReason="Exterior photo analysis requires VITE_DAMAGE_AI_INTAKE_ENABLED and a deployed vision backend. Use AI Upload (DAMAGE documents) for damage reports."
+          analyzeExteriorPhotosDisabledReason={t('vehicleDamages.aiIntake.disabledReason')}
         />
       </div>
 
       {pendingPlaceView && placingDamageId && (
         <p className="text-[11px] text-muted-foreground px-1">
-          Placement mode active for {pendingPlaceView} view. Select the matching tab if needed, then click the vehicle photo.
+          {t('vehicleDamages.placementMode.hint', {
+            view: resolveDamageLocationViewLabel(t, pendingPlaceView),
+          })}
         </p>
       )}
 
@@ -381,7 +386,7 @@ export function DamagesView({ vehicleId, onOpenVehicleTasks }: DamagesViewProps)
         open={repairDialogOpen}
         onOpenChange={setRepairDialogOpen}
         busy={actions.mutatingAction === 'markRepaired'}
-        damageLabel={repairTarget ? formatDamageType(repairTarget.damageType) : undefined}
+        damageLabel={repairTarget ? resolveDamageTypeLabel(t, repairTarget.damageType) : undefined}
         onConfirm={confirmMarkRepaired}
       />
 

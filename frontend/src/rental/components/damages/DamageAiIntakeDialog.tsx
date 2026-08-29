@@ -1,31 +1,26 @@
 import { useMemo } from 'react';
 import { toast } from 'sonner';
 import { FormDialog, StatusChip } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import { useDamageAiIntake } from '../../hooks/useDamageAiIntake';
-import {
-  AI_DAMAGE_CONFIRMATION_WARNING,
-  isLowConfidenceSuggestion,
-} from '../../lib/damage-ai-intake';
+import { isLowConfidenceSuggestion } from '../../lib/damage-ai-intake';
 import {
   DAMAGE_LOCATION_VIEW_OPTIONS,
   DAMAGE_RENTAL_IMPACT_OPTIONS,
   DAMAGE_TYPE_OPTIONS,
-  formatDamageType,
-  formatSeverity,
   type DamageSeverity,
 } from '../../lib/damage.types';
 import type { VehicleExteriorViewKey } from '../../../lib/api';
-import { validateDamageImageFile } from '../../lib/damage-image.utils';
+import { validateDamageImageCode } from '../../lib/damage-image.utils';
 import { DocumentIntakeLaunchButton } from '../documents/DocumentIntakeLaunchButton';
-
-const VIEW_LABELS: Record<VehicleExteriorViewKey, string> = {
-  FRONT: 'Front',
-  LEFT: 'Left',
-  RIGHT: 'Right',
-  REAR: 'Rear',
-  ROOF: 'Roof',
-};
+import {
+  resolveDamageLocationViewLabel,
+  resolveDamageSeverityLabel,
+  resolveDamageTypeLabel,
+  resolveDamageValidationMessage,
+  resolveRentalImpactLabel,
+} from '../../lib/rental-vehicle-damages-i18n';
 
 interface DamageAiIntakeDialogProps {
   open: boolean;
@@ -40,6 +35,7 @@ export function DamageAiIntakeDialog({
   vehicleId,
   onConfirmed,
 }: DamageAiIntakeDialogProps) {
+  const { t } = useLanguage();
   const intake = useDamageAiIntake({
     vehicleId,
     onConfirmed: () => {
@@ -73,9 +69,11 @@ export function DamageAiIntakeDialog({
     if (!fileList?.length) return;
     const valid: File[] = [];
     for (const file of Array.from(fileList)) {
-      const err = validateDamageImageFile(file);
-      if (err) {
-        toast.error('Invalid image', { description: err });
+      const code = validateDamageImageCode(file);
+      if (code) {
+        toast.error(t('vehicleDamages.aiIntake.invalidImage'), {
+          description: resolveDamageValidationMessage(code, t),
+        });
         continue;
       }
       valid.push(file);
@@ -87,8 +85,8 @@ export function DamageAiIntakeDialog({
     <FormDialog
       open={open}
       onOpenChange={handleClose}
-      title="Analyze exterior photos"
-      description="AI-assisted intake reuses the document-extraction architecture. Suggestions require operator confirmation before any damage is saved."
+      title={t('vehicleDamages.aiIntake.title')}
+      description={t('vehicleDamages.aiIntake.description')}
       maxWidthClassName="sm:max-w-3xl"
       footer={
         <>
@@ -97,21 +95,21 @@ export function DamageAiIntakeDialog({
             onClick={() => handleClose(false)}
             className="sq-press px-3 py-2 rounded-lg text-xs font-semibold border border-border/70"
           >
-            Close
+            {t('common.close')}
           </button>
           {intake.step === 'upload' && (
             <button
               type="button"
               disabled={!intake.enabled || intake.totalFiles === 0}
               title={
-                intake.enabled
-                  ? undefined
-                  : 'Enable VITE_DAMAGE_AI_INTAKE_ENABLED when the analysis backend is deployed'
+                intake.enabled ? undefined : t('vehicleDamages.aiIntake.notAvailableTitle')
               }
               onClick={() => void intake.analyze()}
               className="sq-cta px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50"
             >
-              {intake.enabled ? 'Analyze photos' : 'Analysis not available'}
+              {intake.enabled
+                ? t('vehicleDamages.aiIntake.analyzePhotos')
+                : t('vehicleDamages.aiIntake.notAvailable')}
             </button>
           )}
           {intake.step === 'review' && (
@@ -120,7 +118,7 @@ export function DamageAiIntakeDialog({
               onClick={() => void intake.confirmAccepted()}
               className="sq-cta px-3 py-2 rounded-lg text-xs font-semibold"
             >
-              Confirm selected
+              {t('vehicleDamages.aiIntake.confirmSelected')}
             </button>
           )}
         </>
@@ -129,9 +127,7 @@ export function DamageAiIntakeDialog({
       <div className="space-y-4">
         {!intake.enabled && (
           <div className="text-[12px] rounded-lg border border-amber-500/30 bg-amber-500/8 px-3 py-2 text-amber-800 dark:text-amber-200">
-            <p>
-              Exterior photo analysis is not enabled. For structured damage reports (invoices, police reports), use canonical Document Intake with human confirmation.
-            </p>
+            <p>{t('vehicleDamages.aiIntake.disabledBanner')}</p>
             {vehicleId ? (
               <DocumentIntakeLaunchButton
                 className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-[11px] font-semibold text-brand-foreground"
@@ -145,7 +141,7 @@ export function DamageAiIntakeDialog({
                   documentTab: 'upload',
                 }}
               >
-                Open Document Intake (DAMAGE)
+                {t('vehicleDamages.aiIntake.openDocumentIntake')}
               </DocumentIntakeLaunchButton>
             ) : null}
           </div>
@@ -159,7 +155,7 @@ export function DamageAiIntakeDialog({
 
         {intake.step === 'upload' && (
           <div className="space-y-3">
-            <p className="text-[11px] text-muted-foreground">{AI_DAMAGE_CONFIRMATION_WARNING}</p>
+            <p className="text-[11px] text-muted-foreground">{t('vehicleDamages.aiIntake.confirmationWarning')}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {intake.slots.map((slot) => (
                 <div
@@ -167,7 +163,9 @@ export function DamageAiIntakeDialog({
                   className="rounded-xl border border-border/70 p-3 bg-muted/15 space-y-2"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[12px] font-semibold">{VIEW_LABELS[slot.view]}</span>
+                    <span className="text-[12px] font-semibold">
+                      {resolveDamageLocationViewLabel(t, slot.view)}
+                    </span>
                     <span className="text-[10px] text-muted-foreground">{slot.files.length}/4</span>
                   </div>
                   {slot.previews.length > 0 && (
@@ -179,7 +177,7 @@ export function DamageAiIntakeDialog({
                             type="button"
                             onClick={() => intake.removeFile(slot.view, i)}
                             className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-background border text-[10px]"
-                            aria-label="Remove"
+                            aria-label={t('vehicleDamages.aiIntake.removePhoto')}
                           >
                             ×
                           </button>
@@ -188,7 +186,7 @@ export function DamageAiIntakeDialog({
                     </div>
                   )}
                   <label className="sq-press block text-center px-2 py-2 rounded-lg border border-dashed border-border/70 text-[11px] font-semibold cursor-pointer">
-                    Add photo
+                    {t('vehicleDamages.aiIntake.addPhoto')}
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/gif"
@@ -207,7 +205,7 @@ export function DamageAiIntakeDialog({
         {intake.step === 'analyzing' && (
           <p className="text-sm text-muted-foreground flex items-center gap-2">
             <Icon name="loader-2" className="w-4 h-4 animate-spin" />
-            Analyzing exterior photos…
+            {t('vehicleDamages.aiIntake.analyzing')}
           </p>
         )}
 
@@ -230,7 +228,7 @@ export function DamageAiIntakeDialog({
                         : 'border-border/70'
                     }`}
                   >
-                    {VIEW_LABELS[s.view]}
+                    {resolveDamageLocationViewLabel(t, s.view)}
                   </button>
                 ))}
             </div>
@@ -249,7 +247,7 @@ export function DamageAiIntakeDialog({
                       left: `${s.suggestedLocationX}%`,
                       top: `${s.suggestedLocationY}%`,
                     }}
-                    title={formatDamageType(s.suggestedDamageType)}
+                    title={resolveDamageTypeLabel(t, s.suggestedDamageType)}
                   />
                 ))}
               </div>
@@ -269,14 +267,14 @@ export function DamageAiIntakeDialog({
         {intake.step === 'confirming' && (
           <p className="text-sm text-muted-foreground flex items-center gap-2">
             <Icon name="loader-2" className="w-4 h-4 animate-spin" />
-            Saving confirmed damages…
+            {t('vehicleDamages.aiIntake.saving')}
           </p>
         )}
 
         {intake.step === 'done' && (
           <p className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
             <Icon name="check-circle-2" className="w-4 h-4" />
-            Confirmed damages were saved to the register.
+            {t('vehicleDamages.aiIntake.done')}
           </p>
         )}
       </div>
@@ -291,6 +289,7 @@ function SuggestionEditor({
   suggestion: import('../../lib/damage-ai-intake').EditableAiDamageSuggestion;
   onChange: (patch: Partial<typeof suggestion>) => void;
 }) {
+  const { t } = useLanguage();
   const low = isLowConfidenceSuggestion(suggestion.confidence);
 
   return (
@@ -304,8 +303,8 @@ function SuggestionEditor({
       }`}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <StatusChip tone="info">AI suggestion</StatusChip>
-        {low && <StatusChip tone="warning">Low confidence</StatusChip>}
+        <StatusChip tone="info">{t('vehicleDamages.aiIntake.suggestion')}</StatusChip>
+        {low && <StatusChip tone="warning">{t('vehicleDamages.aiIntake.lowConfidence')}</StatusChip>}
         <span className="text-[10px] text-muted-foreground tabular-nums">
           {(suggestion.confidence * 100).toFixed(0)}%
         </span>
@@ -315,35 +314,35 @@ function SuggestionEditor({
             onClick={() => onChange({ accepted: true, rejected: false })}
             className="sq-press px-2 py-1 text-[10px] rounded border border-border/70"
           >
-            Accept
+            {t('vehicleDamages.aiIntake.accept')}
           </button>
           <button
             type="button"
             onClick={() => onChange({ rejected: true, accepted: false })}
             className="sq-press px-2 py-1 text-[10px] rounded border border-border/70"
           >
-            Reject
+            {t('vehicleDamages.aiIntake.reject')}
           </button>
         </div>
       </div>
       <p className="text-[10px] text-muted-foreground">{suggestion.warning}</p>
       <div className="grid grid-cols-2 gap-2">
         <label className="text-[11px]">
-          Type
+          {t('vehicleDamages.aiIntake.field.type')}
           <select
             value={suggestion.suggestedDamageType}
             onChange={(e) => onChange({ suggestedDamageType: e.target.value })}
             className="mt-0.5 w-full rounded border border-border/70 bg-background px-2 py-1 text-[11px]"
           >
-            {DAMAGE_TYPE_OPTIONS.map((t) => (
-              <option key={t} value={t}>
-                {formatDamageType(t)}
+            {DAMAGE_TYPE_OPTIONS.map((typeOption) => (
+              <option key={typeOption} value={typeOption}>
+                {resolveDamageTypeLabel(t, typeOption)}
               </option>
             ))}
           </select>
         </label>
         <label className="text-[11px]">
-          Severity
+          {t('vehicleDamages.aiIntake.field.severity')}
           <select
             value={suggestion.suggestedSeverity}
             onChange={(e) => onChange({ suggestedSeverity: e.target.value as DamageSeverity })}
@@ -351,13 +350,13 @@ function SuggestionEditor({
           >
             {(['MINOR', 'MODERATE', 'MAJOR', 'CRITICAL'] as const).map((v) => (
               <option key={v} value={v}>
-                {formatSeverity(v)}
+                {resolveDamageSeverityLabel(t, v)}
               </option>
             ))}
           </select>
         </label>
         <label className="text-[11px]">
-          View
+          {t('vehicleDamages.aiIntake.field.view')}
           <select
             value={suggestion.suggestedLocationView}
             onChange={(e) =>
@@ -369,13 +368,13 @@ function SuggestionEditor({
           >
             {DAMAGE_LOCATION_VIEW_OPTIONS.map((v) => (
               <option key={v} value={v}>
-                {v}
+                {resolveDamageLocationViewLabel(t, v)}
               </option>
             ))}
           </select>
         </label>
         <label className="text-[11px]">
-          Rental impact
+          {t('vehicleDamages.aiIntake.field.rentalImpact')}
           <select
             value={suggestion.suggestedRentalImpact}
             onChange={(e) =>
@@ -387,13 +386,13 @@ function SuggestionEditor({
           >
             {DAMAGE_RENTAL_IMPACT_OPTIONS.map((v) => (
               <option key={v} value={v}>
-                {formatDamageType(v)}
+                {resolveRentalImpactLabel(t, v)}
               </option>
             ))}
           </select>
         </label>
         <label className="text-[11px]">
-          Pin X %
+          {t('vehicleDamages.aiIntake.field.pinX')}
           <input
             type="number"
             min={0}
@@ -408,7 +407,7 @@ function SuggestionEditor({
           />
         </label>
         <label className="text-[11px]">
-          Pin Y %
+          {t('vehicleDamages.aiIntake.field.pinY')}
           <input
             type="number"
             min={0}
@@ -424,7 +423,7 @@ function SuggestionEditor({
         </label>
       </div>
       <label className="text-[11px] block">
-        Description
+        {t('vehicleDamages.aiIntake.field.description')}
         <textarea
           value={suggestion.suggestedDescription ?? ''}
           onChange={(e) => onChange({ suggestedDescription: e.target.value })}

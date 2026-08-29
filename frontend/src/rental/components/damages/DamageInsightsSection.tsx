@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../../components/ui/collapsible';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import { buildVehicleInsightCards } from '../../lib/damage-insights';
 import type { DamageVehicleInsights } from '../../lib/damage.types';
@@ -13,14 +14,15 @@ export function DamageInsightsSection({
   insights,
   statsUnavailable,
 }: DamageInsightsSectionProps) {
+  const { t, locale } = useLanguage();
   const [open, setOpen] = useState(false);
-  const cards = buildVehicleInsightCards(insights);
+  const cards = buildVehicleInsightCards(insights, locale, t);
 
   if (statsUnavailable && !cards.length) {
     return (
       <div className="surface-premium rounded-xl border border-amber-500/25 bg-amber-500/5 px-3 py-2.5">
         <p className="text-[11px] text-amber-800 dark:text-amber-200">
-          Damage insights are temporarily unavailable. Queue metrics above still reflect loaded damages.
+          {t('vehicleDamages.insights.unavailable')}
         </p>
       </div>
     );
@@ -29,7 +31,7 @@ export function DamageInsightsSection({
   if (!cards.length) {
     return (
       <div className="surface-premium rounded-xl border border-border/60 px-3 py-2.5">
-        <p className="text-[11px] text-muted-foreground">Not enough data yet for damage insights.</p>
+        <p className="text-[11px] text-muted-foreground">{t('vehicleDamages.insights.notEnoughData')}</p>
       </div>
     );
   }
@@ -41,10 +43,12 @@ export function DamageInsightsSection({
           <div className="flex items-center gap-2 min-w-0">
             <Icon name="bar-chart-3" className="w-4 h-4 text-muted-foreground shrink-0" />
             <div className="min-w-0">
-              <p className="text-[12px] font-semibold text-foreground">Damage insights</p>
+              <p className="text-[12px] font-semibold text-foreground">{t('vehicleDamages.insights.title')}</p>
               <p className="text-[10px] text-muted-foreground truncate">
                 {cards[0].label}: {cards[0].value}
-                {cards.length > 1 ? ` · +${cards.length - 1} more` : ''}
+                {cards.length > 1
+                  ? ` ${t('vehicleDamages.insights.moreCount', { count: cards.length - 1 })}`
+                  : ''}
               </p>
             </div>
           </div>

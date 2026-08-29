@@ -4,7 +4,6 @@ import type {
   DamageStatsResponse,
 } from '../../lib/damage.types';
 import {
-  formatEuroCents,
   hasValidMapPin,
   isActiveDamage,
   isArchivedDamage,
@@ -12,11 +11,15 @@ import {
   normalizeDamageStatus,
 } from '../../lib/damage.types';
 import {
-  damageRentalGateLabel,
   deriveDamageRentalImpact,
   isDamageRentalBlocked,
   type DamageRentalGate,
 } from '../../lib/damage-rental-impact';
+import {
+  formatDamageEuroCents,
+  resolveDamageRentalGateLabel,
+  type VehicleDamagesTranslate,
+} from '../../lib/rental-vehicle-damages-i18n';
 
 export type DamageQueueFilter =
   | 'open'
@@ -44,6 +47,7 @@ export interface DamageControlStats {
 export function deriveControlStats(
   damages: DamageResponse[],
   apiStats: DamageStatsResponse | null,
+  t: VehicleDamagesTranslate,
 ): DamageControlStats {
   const open = apiStats?.active ?? damages.filter(isActiveDamage).length;
   const blockingRental =
@@ -94,7 +98,7 @@ export function deriveControlStats(
     repaired: apiStats?.repaired ?? damages.filter(isSolvedDamage).length,
     rentalGate,
     isRentable: !blocked,
-    rentabilityLabel: damageRentalGateLabel(rentalGate),
+    rentabilityLabel: resolveDamageRentalGateLabel(t, rentalGate),
   };
 }
 
@@ -167,13 +171,13 @@ export const PIN_VARIANT_CLASS: Record<PinVisualVariant, string> = {
   neutral: 'bg-zinc-600 border-zinc-200 shadow-zinc-500/20',
 };
 
-export function imageSourceLabel(
-  source: 'vehicle' | 'model' | 'blueprint',
-): string {
-  if (source === 'vehicle') return 'Vehicle photo';
-  if (source === 'model') return 'Model template';
-  return 'Blueprint fallback';
-}
+export const DAMAGE_MAP_VIEWS: { key: DamageLocationView; iconName: string }[] = [
+  { key: 'FRONT', iconName: 'arrow-up' },
+  { key: 'LEFT', iconName: 'arrow-left' },
+  { key: 'RIGHT', iconName: 'arrow-right' },
+  { key: 'REAR', iconName: 'arrow-down' },
+  { key: 'ROOF', iconName: 'square' },
+];
 
 export function resolveCanvasImageSource(
   hasVehicle: boolean,
@@ -184,24 +188,23 @@ export function resolveCanvasImageSource(
   return 'blueprint';
 }
 
-export function formatOldestOpenAge(iso: string | null): string | null {
+export function formatOldestOpenAge(
+  iso: string | null,
+  t: VehicleDamagesTranslate,
+): string | null {
   if (!iso) return null;
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return null;
   const days = Math.floor((Date.now() - then) / (1000 * 60 * 60 * 24));
-  if (days <= 0) return 'Today';
-  if (days === 1) return '1 day';
-  return `${days} days`;
+  if (days <= 0) return t('vehicleDamages.summary.oldestToday');
+  if (days === 1) return t('vehicleDamages.summary.oldestOneDay');
+  return t('vehicleDamages.summary.oldestDays', { count: days });
 }
 
-export function formatEstimatedOpenCost(cents: number): string {
-  return formatEuroCents(cents) ?? '€0.00';
+export function formatEstimatedOpenCost(
+  cents: number,
+  locale: string,
+  t: VehicleDamagesTranslate,
+): string {
+  return formatDamageEuroCents(locale, cents) ?? t('vehicleDamages.summary.zeroCost');
 }
-
-export const DAMAGE_MAP_VIEWS: { key: DamageLocationView; label: string; iconName: string }[] = [
-  { key: 'FRONT', label: 'Front', iconName: 'arrow-up' },
-  { key: 'LEFT', label: 'Left', iconName: 'arrow-left' },
-  { key: 'RIGHT', label: 'Right', iconName: 'arrow-right' },
-  { key: 'REAR', label: 'Rear', iconName: 'arrow-down' },
-  { key: 'ROOF', label: 'Roof', iconName: 'square' },
-];

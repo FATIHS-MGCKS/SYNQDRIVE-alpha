@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { api } from '../../lib/api';
 import type {
   CreateVehicleDamageInput,
@@ -15,6 +16,14 @@ import {
   canCreateRepairTaskForDamage,
   type CreateRepairTaskInput,
 } from '../lib/damage-repair-task';
+import {
+  resolveDamageHostError,
+  resolveDamageLocationViewLabel,
+  resolveDamageToastError,
+  resolveDamageToastSuccess,
+  type VehicleDamageHostErrorKey,
+  type VehicleDamageToastSuccessKey,
+} from '../lib/rental-vehicle-damages-i18n';
 
 export type DamageMutationAction =
   | 'create'
@@ -39,6 +48,7 @@ export function useVehicleDamageActions({
   orgId,
   reload,
 }: UseVehicleDamageActionsOptions) {
+  const { t } = useLanguage();
   const [mutating, setMutating] = useState(false);
   const [mutatingAction, setMutatingAction] = useState<DamageMutationAction | null>(null);
   const mutationSeq = useRef(0);
@@ -47,13 +57,16 @@ export function useVehicleDamageActions({
     async <T>(
       action: DamageMutationAction,
       fn: () => Promise<T>,
-      successMessage: string,
-      successDescription?: string,
+      successKey: VehicleDamageToastSuccessKey,
+      successDescriptionKey?: VehicleDamageToastSuccessKey,
+      successDescriptionVars?: Record<string, string | number>,
     ): Promise<T> => {
       if (!vehicleId) {
-        const err = new Error('No vehicle selected.');
-        toast.error('Action failed', { description: err.message });
-        throw err;
+        const message = resolveDamageHostError('vehicleDamages.hostError.noVehicle', null, t);
+        toast.error(resolveDamageToastError('vehicleDamages.toast.actionFailed', t), {
+          description: message ?? undefined,
+        });
+        throw new Error('No vehicle selected.');
       }
       const seq = ++mutationSeq.current;
       setMutating(true);
@@ -62,11 +75,21 @@ export function useVehicleDamageActions({
         const result = await fn();
         if (seq !== mutationSeq.current) return result;
         await reload();
-        toast.success(successMessage, successDescription ? { description: successDescription } : undefined);
+        toast.success(resolveDamageToastSuccess(successKey, t), successDescriptionKey
+          ? {
+              description: resolveDamageToastSuccess(
+                successDescriptionKey,
+                t,
+                successDescriptionVars,
+              ),
+            }
+          : undefined);
         return result;
       } catch (error) {
         const message = formatApiError(error);
-        toast.error('Action failed', { description: message });
+        toast.error(resolveDamageToastError('vehicleDamages.toast.actionFailed', t), {
+          description: message,
+        });
         throw error;
       } finally {
         if (seq === mutationSeq.current) {
@@ -75,7 +98,7 @@ export function useVehicleDamageActions({
         }
       }
     },
-    [vehicleId, reload],
+    [vehicleId, reload, t],
   );
 
   const createDamage = useCallback(
@@ -83,8 +106,8 @@ export function useVehicleDamageActions({
       runMutation(
         'create',
         () => api.vehicleIntelligence.createVehicleDamage(vehicleId!, input),
-        'Damage recorded',
-        'Open the detail drawer to add photos or refine placement.',
+        'vehicleDamages.toast.damageRecorded',
+        'vehicleDamages.toast.damageRecordedDescription',
       ),
     [vehicleId, runMutation],
   );
@@ -96,10 +119,15 @@ export function useVehicleDamageActions({
         async () => {
           await api.vehicleIntelligence.placeVehicleDamage(vehicleId!, damageId, input);
         },
-        'Damage positioned',
-        `${input.locationView} view · ${input.locationX.toFixed(0)}%, ${input.locationY.toFixed(0)}%`,
+        'vehicleDamages.toast.damagePositioned',
+        'vehicleDamages.toast.damagePositionedDescription',
+        {
+          view: resolveDamageLocationViewLabel(t, input.locationView),
+          x: input.locationX.toFixed(0),
+          y: input.locationY.toFixed(0),
+        },
       ),
-    [vehicleId, runMutation],
+    [vehicleId, runMutation, t],
   );
 
   const placeDamageOnCanvas = useCallback(
@@ -122,8 +150,8 @@ export function useVehicleDamageActions({
             imageData,
             caption,
           }),
-        'Photo added',
-        'Evidence gallery updated.',
+        'vehicleDamages.toast.photoAdded',
+        'vehicleDamages.toast.photoAddedDescription',
       );
     },
     [vehicleId, runMutation],
@@ -138,7 +166,7 @@ export function useVehicleDamageActions({
             status: 'IN_REPAIR',
             repairStartedAt: new Date().toISOString(),
           }),
-        'Marked in repair',
+        'vehicleDamages.toast.markedInRepair',
       ),
     [vehicleId, runMutation],
   );
@@ -148,8 +176,8 @@ export function useVehicleDamageActions({
       runMutation(
         'markRepaired',
         () => api.vehicleIntelligence.markDamageRepaired(vehicleId!, damageId, input),
-        'Damage marked repaired',
-        'Moved to repaired history.',
+        'vehicleDamages.toast.markedRepaired',
+        'vehicleDamages.toast.markedRepairedDescription',
       ),
     [vehicleId, runMutation],
   );
@@ -162,7 +190,7 @@ export function useVehicleDamageActions({
           api.vehicleIntelligence.updateVehicleDamage(vehicleId!, damageId, {
             status: 'ARCHIVED',
           }),
-        'Damage archived',
+        'vehicleDamages.toast.archived',
       ),
     [vehicleId, runMutation],
   );
@@ -176,8 +204,8 @@ export function useVehicleDamageActions({
             liabilityStatus: input.liabilityStatus,
             liabilityNote: input.liabilityNote ?? null,
           }),
-        'Liability updated',
-        'Operator decision saved — no automatic billing applied.',
+        'vehicleDamages.toast.liabilityUpdated',
+        'vehicleDamages.toast.liabilityUpdatedDescription',
       ),
     [vehicleId, runMutation],
   );
@@ -190,8 +218,8 @@ export function useVehicleDamageActions({
           api.vehicleIntelligence.updateVehicleDamage(vehicleId!, damageId, {
             depositHoldCents,
           }),
-        'Deposit hold prepared',
-        'Amount recorded on damage only — deposit workflow not charged automatically.',
+        'vehicleDamages.toast.depositPrepared',
+        'vehicleDamages.toast.depositPreparedDescription',
       ),
     [vehicleId, runMutation],
   );
@@ -204,8 +232,8 @@ export function useVehicleDamageActions({
           api.vehicleIntelligence.updateVehicleDamage(vehicleId!, damageId, {
             chargedToCustomerCents,
           }),
-        'Customer charge prepared',
-        'Amount recorded on damage only — no invoice generated automatically.',
+        'vehicleDamages.toast.chargePrepared',
+        'vehicleDamages.toast.chargePreparedDescription',
       ),
     [vehicleId, runMutation],
   );
@@ -213,15 +241,21 @@ export function useVehicleDamageActions({
   const createRepairTask = useCallback(
     async (damage: DamageResponse, input: CreateRepairTaskInput = {}) => {
       if (!orgId) {
-        toast.error('Action failed', { description: 'Organization context missing.' });
+        const message = resolveDamageHostError('vehicleDamages.hostError.orgMissing', null, t);
+        toast.error(resolveDamageToastError('vehicleDamages.toast.actionFailed', t), {
+          description: message ?? undefined,
+        });
         throw new Error('No org');
       }
       if (!canCreateRepairTaskForDamage(damage)) {
-        const message = damage.taskId
-          ? 'This damage already has a linked repair task.'
-          : 'This damage cannot receive a repair task.';
-        toast.error('Task not created', { description: message });
-        throw new Error(message);
+        const hostKey: VehicleDamageHostErrorKey = damage.taskId
+          ? 'vehicleDamages.hostError.taskAlreadyLinked'
+          : 'vehicleDamages.hostError.taskNotEligible';
+        const message = resolveDamageHostError(hostKey, null, t);
+        toast.error(resolveDamageToastError('vehicleDamages.toast.taskNotCreated', t), {
+          description: message ?? undefined,
+        });
+        throw new Error(message ?? 'Task not created');
       }
       return runMutation(
         'createTask',
@@ -233,11 +267,11 @@ export function useVehicleDamageActions({
           });
           return { id: result.taskId, damage: result.damage };
         },
-        'Repair task created',
-        'Linked to this damage record.',
+        'vehicleDamages.toast.repairTaskCreated',
+        'vehicleDamages.toast.repairTaskCreatedDescription',
       );
     },
-    [orgId, vehicleId, runMutation],
+    [orgId, vehicleId, runMutation, t],
   );
 
   return {
