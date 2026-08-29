@@ -820,7 +820,7 @@ Dry-run must output histogram without calling Mapbox.
 
 ## Stage R1 implementation record (2026-08-29)
 
-**Status:** MERGED TO MAIN VIA PR (R1 slice)  
+**Status:** IMPLEMENTED IN PR #1411 — PENDING MERGE  
 **Mapbox runtime:** UNCHANGED  
 **Frontend:** UNCHANGED  
 **Backfill:** NONE  
@@ -858,8 +858,20 @@ Rationale: `DrivingIntelligenceJob` + `DrivingAnalysisStage.ROUTE` already track
 
 - **Algorithm:** SHA-256 over canonical JSON
 - **Input:** `tripId`, `algorithmVersion`, ordered `{ lat, lng, t }` (6-decimal coords, ISO timestamps)
-- **Excluded:** speed, DB timestamps, Mapbox output, UI state
+- **Excluded (R1):** `speedKmh` and other waypoint fields not yet used by route output; DB timestamps; Mapbox output; UI state
 - **Helper:** `computeTripRouteInputFingerprint()` in `trip-route-input-fingerprint.ts`
+
+#### Fingerprint completeness invariant
+
+**Any input that affects canonical route output MUST participate in the route input fingerprint.**
+
+R1 intentionally excludes `speedKmh` because no route algorithm consumes it yet. Later stages must not reuse the same fingerprint when additional fields change computed geometry:
+
+- **R2:** May use coordinates + `recordedAt` timestamps without changing the fingerprint contract, provided FILTERED output depends only on those fields.
+- **R2+:** If `speedKmh` or any other waypoint/trajectory field influences FILTERED (or later MATCHED) output, that field **MUST** be added to canonical fingerprint input and `TRIP_ROUTE_ALGORITHM_VERSION` **MUST** be bumped intentionally.
+- **R3+:** Same rule for trajectory retention, chunking boundaries, preprocessing thresholds, or any matching input that changes persisted geometry.
+
+This prevents identical fingerprints from representing different computed route outputs and preserves R4 skip-if-unchanged semantics.
 
 ### Algorithm version
 
