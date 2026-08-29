@@ -1,13 +1,18 @@
 import { ChevronDown } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
-  PERMISSION_GROUPS,
-  PERMISSION_MODULES,
+  buildPermissionPreviewLines,
+  listPermissionGroups,
+  resolvePermissionGroupLabel,
+  resolvePermissionLevelLabel,
+  resolvePermissionModuleLabel,
+} from '../../lib/rental-organization-users-roles-i18n';
+import {
   applyPermissionLevel,
   permissionLevelFrom,
   type PermissionLevel,
 } from './constants';
-import { permissionLevelLabel } from './utils';
 import type { MembershipPermissionsMap } from '../../../lib/api';
 
 const LEVELS: PermissionLevel[] = ['none', 'read', 'write', 'manage'];
@@ -25,17 +30,8 @@ export function PermissionEditor({
   disabled,
   compact,
 }: PermissionEditorProps) {
-  const groups = useMemo(() => {
-    const map = new Map<string, typeof PERMISSION_MODULES>();
-    for (const m of PERMISSION_MODULES) {
-      const list = map.get(m.group) ?? [];
-      list.push(m);
-      map.set(m.group, list);
-    }
-    return PERMISSION_GROUPS.map((g) => ({ group: g, modules: map.get(g) ?? [] })).filter(
-      (g) => g.modules.length > 0,
-    );
-  }, []);
+  const { t } = useLanguage();
+  const groups = useMemo(() => listPermissionGroups(), []);
 
   const setLevel = (key: string, level: PermissionLevel) => {
     if (disabled) return;
@@ -47,7 +43,7 @@ export function PermissionEditor({
       {groups.map(({ group, modules }) => (
         <div key={group} className="rounded-xl border border-border/70 overflow-hidden">
           <div className="px-3 py-2 bg-muted/40 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {group}
+            {resolvePermissionGroupLabel(group, t)}
           </div>
           <div className="divide-y divide-border/50">
             {modules.map((mod) => {
@@ -60,7 +56,9 @@ export function PermissionEditor({
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-[12.5px] text-foreground truncate">{mod.label}</span>
+                    <span className="text-[12.5px] text-foreground truncate">
+                      {resolvePermissionModuleLabel(mod.key, t)}
+                    </span>
                   </div>
                   <select
                     disabled={disabled}
@@ -70,7 +68,7 @@ export function PermissionEditor({
                   >
                     {LEVELS.map((l) => (
                       <option key={l} value={l}>
-                        {permissionLevelLabel(l)}
+                        {resolvePermissionLevelLabel(l, t)}
                       </option>
                     ))}
                   </select>
@@ -86,45 +84,27 @@ export function PermissionEditor({
 
 export function PermissionPreview({
   permissions,
-  title = 'Berechtigungsvorschau',
+  title,
   className,
 }: {
   permissions: MembershipPermissionsMap | null;
   title?: string;
   className?: string;
 }) {
-  const lines = useMemo(() => {
-    if (!permissions) return ['Keine Berechtigungsdaten.'];
-    const result: string[] = [];
-    for (const mod of PERMISSION_MODULES) {
-      const p = permissions[mod.key];
-      const level = permissionLevelFrom(p);
-      if (level === 'none') {
-        result.push(`Darf ${mod.label} nicht nutzen`);
-        continue;
-      }
-      if (level === 'manage') result.push(`Darf ${mod.label} vollständig verwalten`);
-      else if (level === 'write') result.push(`Darf ${mod.label} sehen und bearbeiten`);
-      else result.push(`Darf ${mod.label} nur lesen`);
-    }
-    return result.filter((l) => !l.includes('nicht nutzen')).slice(0, 12);
-  }, [permissions]);
+  const { t } = useLanguage();
+  const lines = useMemo(() => buildPermissionPreviewLines(permissions, t), [permissions, t]);
 
   return (
     <div className={`rounded-xl border border-border/70 bg-muted/20 p-4 ${className ?? ''}`}>
       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-        {title}
+        {title ?? t('iam.wizard.rolePreview')}
       </p>
       <ul className="space-y-1.5">
-        {lines.length ? (
-          lines.map((line) => (
-            <li key={line} className="text-[12.5px] text-foreground leading-snug">
-              {line}
-            </li>
-          ))
-        ) : (
-          <li className="text-[12.5px] text-muted-foreground">Kein Modulzugriff konfiguriert.</li>
-        )}
+        {lines.map((line) => (
+          <li key={line} className="text-[12.5px] text-foreground leading-snug">
+            {line}
+          </li>
+        ))}
       </ul>
     </div>
   );
@@ -139,6 +119,7 @@ export function CollapsiblePermissions({
   onChange?: (p: MembershipPermissionsMap) => void;
   disabled?: boolean;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-xl border border-border/70">
@@ -147,7 +128,9 @@ export function CollapsiblePermissions({
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
       >
-        <span className="text-[13px] font-semibold text-foreground">Erweiterte Berechtigungen</span>
+        <span className="text-[13px] font-semibold text-foreground">
+          {t('iam.permission.collapsible.title')}
+        </span>
         <ChevronDown
           className={`w-4 h-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`}
         />

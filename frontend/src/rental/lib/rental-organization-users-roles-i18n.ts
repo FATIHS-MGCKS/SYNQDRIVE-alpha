@@ -1,6 +1,6 @@
 /**
  * Rental Users & Roles member-management presentation adapter (P2.2.62).
- * Machine values, IDs, payloads, and permission checks stay unchanged.
+ * Presentation-only: labels, formatting, and translation key resolution.
  */
 import {
   DEFAULT_PRODUCT_LOCALE,
@@ -9,8 +9,13 @@ import {
   type SupportedLocale,
 } from '../../i18n/locales';
 import type { TranslationKey } from '../../i18n/translations/en';
-import type { CreateUserFormState } from '../components/users-roles/types';
-import type { MembershipPermissionsMap, OrganizationRoleDto, Station } from '../../lib/api';
+import type { MembershipPermissionsMap } from '../../lib/api';
+import {
+  PERMISSION_GROUPS,
+  PERMISSION_MODULES,
+  permissionLevelFrom,
+  type PermissionLevel,
+} from '../components/users-roles/constants';
 
 export type IamMemberTranslate = (
   key: TranslationKey,
@@ -54,8 +59,77 @@ const WIZARD_STEP_KEYS = {
   summary: 'iam.wizard.step.summary',
 } as const;
 
+const PERMISSION_MODULE_NAV_KEYS: Record<string, TranslationKey> = {
+  dashboard: 'nav.dashboard',
+  bookings: 'nav.bookings',
+  customers: 'nav.customers',
+  fleet: 'nav.fleet',
+  'fleet-condition': 'nav.fleetCondition',
+  'vendor-management': 'nav.vendorManagement',
+  tasks: 'nav.tasks',
+  invoices: 'nav.invoices',
+  payments: 'nav.customerPayments',
+  fines: 'nav.fines',
+  'price-tariffs': 'nav.pricingTariffs',
+  'rental-rules': 'nav.rentalRules',
+  'ai-assistant': 'nav.aiAssistant',
+  'document-upload': 'nav.upload',
+  'legal-documents': 'nav.legalDocuments',
+  'workflow-automation': 'nav.workflowAutomation',
+  'company-info': 'nav.companyInfo',
+  'users-roles': 'nav.usersRoles',
+  stations: 'nav.stations',
+  'data-analyse': 'nav.dataAnalyse',
+  'data-authorization': 'nav.dataAuthorization',
+  billing: 'nav.billingSubscription',
+  support: 'nav.helpCenter',
+  'fleet-connectivity': 'nav.integrations',
+};
+
+const PERMISSION_GROUP_LABEL_KEYS: Record<string, TranslationKey> = {
+  Dashboard: 'nav.dashboard',
+  Buchungen: 'nav.bookings',
+  Kunden: 'nav.customers',
+  Flotte: 'nav.fleet',
+  Health: 'nav.fleetCondition',
+  Service: 'nav.vendorManagement',
+  Aufgaben: 'nav.tasks',
+  Finanzen: 'nav.finance',
+  'Preise & Tarife': 'nav.pricingTariffs',
+  Insights: 'nav.insights',
+  Dokumente: 'nav.upload',
+  Workflow: 'nav.workflowAutomation',
+  Unternehmen: 'nav.companyInfo',
+  'Benutzer & Rollen': 'nav.usersRoles',
+  Stationen: 'nav.stations',
+  Integrationen: 'nav.integrations',
+  Administration: 'nav.administration',
+};
+
+const PERMISSION_MODULE_SPECIFIC_KEYS = {
+  'payments-refund': 'iam.permission.module.payments-refund',
+  'payments-disputes': 'iam.permission.module.payments-disputes',
+  'payments-connect': 'iam.permission.module.payments-connect',
+  'payments-settings': 'iam.permission.module.payments-settings',
+  'rental-rules-publish': 'iam.permission.module.rental-rules-publish',
+  'rental-rules-assign': 'iam.permission.module.rental-rules-assign',
+  'rental-rules-overrides': 'iam.permission.module.rental-rules-overrides',
+  'booking-eligibility': 'iam.permission.module.booking-eligibility',
+  'booking-eligibility-override': 'iam.permission.module.booking-eligibility-override',
+  'fleet-connectivity': 'iam.permission.module.fleet-connectivity',
+} as const satisfies Record<string, TranslationKey>;
+
+const PERMISSION_LEVEL_KEYS: Record<PermissionLevel, TranslationKey> = {
+  none: 'iam.permission.level.none',
+  read: 'iam.permission.level.read',
+  write: 'iam.permission.level.write',
+  manage: 'iam.permission.level.manage',
+};
+
 export function iamMemberFormattingLocale(locale: string): string {
-  return isSupportedLocale(locale) ? getFormattingLocale(locale as SupportedLocale) : DEFAULT_PRODUCT_LOCALE;
+  return isSupportedLocale(locale)
+    ? getFormattingLocale(locale as SupportedLocale)
+    : getFormattingLocale(DEFAULT_PRODUCT_LOCALE);
 }
 
 export function resolveMembershipStatusLabel(
@@ -97,57 +171,58 @@ export function formatIamMemberDateTime(
   }
 }
 
-export interface InviteUserPayloadInput {
-  orgId: string;
-  form: CreateUserFormState;
-  selectedRole: OrganizationRoleDto | null;
-  stations: Station[];
-  previewPermissions: MembershipPermissionsMap | null;
+export function resolvePermissionModuleLabel(moduleKey: string, t: IamMemberTranslate): string {
+  const machine = moduleKey.trim();
+  if (!machine) return '—';
+  const navKey = PERMISSION_MODULE_NAV_KEYS[machine];
+  if (navKey) return t(navKey);
+  const specificKey = PERMISSION_MODULE_SPECIFIC_KEYS[machine as keyof typeof PERMISSION_MODULE_SPECIFIC_KEYS];
+  if (specificKey) return t(specificKey);
+  return machine;
 }
 
-export function buildInviteUserPayload(input: InviteUserPayloadInput) {
-  const { form, selectedRole, stations, previewPermissions } = input;
-  const stationScope =
-    form.stationMode === 'all'
-      ? undefined
-      : stations.find((s) => s.id === form.stationIds[0])?.name;
-  const stationIds = form.stationMode === 'selected' ? form.stationIds : undefined;
-
-  return {
-    email: form.email.trim(),
-    organizationRoleId: form.organizationRoleId,
-    membershipRole: selectedRole?.membershipRole,
-    permissions: previewPermissions ?? undefined,
-    stationScope,
-    stationIds,
-    fieldAgentAccess: form.fieldAgentAccess,
-    department: form.department.trim() || undefined,
-    position: form.position.trim() || undefined,
-    roleLabel: selectedRole?.name,
-    firstName: form.firstName.trim(),
-    lastName: form.lastName.trim(),
-  };
+export function resolvePermissionGroupLabel(group: string, t: IamMemberTranslate): string {
+  const machine = group.trim();
+  if (!machine) return '—';
+  const key = PERMISSION_GROUP_LABEL_KEYS[machine];
+  return key ? t(key) : machine;
 }
 
-export function buildCreateUserPayload(input: InviteUserPayloadInput & { password: string }) {
-  const invitePayload = buildInviteUserPayload(input);
-  return {
-    email: invitePayload.email,
-    firstName: invitePayload.firstName,
-    lastName: invitePayload.lastName,
-    role: input.selectedRole?.membershipRole ?? 'WORKER',
-    organizationRoleId: invitePayload.organizationRoleId,
-    password: input.password,
-    phone: input.form.phone.trim() || undefined,
-    department: invitePayload.department,
-    position: invitePayload.position,
-    roleLabel: invitePayload.roleLabel,
-    stationScope: invitePayload.stationScope,
-    stationIds: invitePayload.stationIds,
-    permissions:
-      input.selectedRole?.membershipRole === 'ORG_ADMIN'
-        ? undefined
-        : invitePayload.permissions ?? undefined,
-    fieldAgentAccess: invitePayload.fieldAgentAccess,
-  };
+export function resolvePermissionLevelLabel(level: PermissionLevel, t: IamMemberTranslate): string {
+  return t(PERMISSION_LEVEL_KEYS[level]);
+}
+
+export function buildPermissionPreviewLines(
+  permissions: MembershipPermissionsMap | null,
+  t: IamMemberTranslate,
+  max = 12,
+): string[] {
+  if (!permissions) return [t('iam.permission.preview.noAccess')];
+  const result: string[] = [];
+  for (const mod of PERMISSION_MODULES) {
+    const level = permissionLevelFrom(permissions[mod.key]);
+    if (level === 'none') continue;
+    const moduleLabel = resolvePermissionModuleLabel(mod.key, t);
+    if (level === 'manage') {
+      result.push(t('iam.permission.preview.manage', { module: moduleLabel }));
+    } else if (level === 'write') {
+      result.push(t('iam.permission.preview.write', { module: moduleLabel }));
+    } else {
+      result.push(t('iam.permission.preview.read', { module: moduleLabel }));
+    }
+    if (result.length >= max) break;
+  }
+  return result.length ? result : [t('iam.permission.preview.noAccess')];
+}
+
+export function listPermissionGroups() {
+  const map = new Map<string, typeof PERMISSION_MODULES>();
+  for (const mod of PERMISSION_MODULES) {
+    const list = map.get(mod.group) ?? [];
+    list.push(mod);
+    map.set(mod.group, list);
+  }
+  return PERMISSION_GROUPS.map((group) => ({ group, modules: map.get(group) ?? [] })).filter(
+    (entry) => entry.modules.length > 0,
+  );
 }

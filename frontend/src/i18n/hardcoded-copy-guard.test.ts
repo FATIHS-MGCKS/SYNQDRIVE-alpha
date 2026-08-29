@@ -589,8 +589,10 @@ const P262_ENFORCE_CLEAN_EXACT = [
   'rental/components/users-roles/TeamTab.tsx',
   'rental/components/users-roles/TeamMemberDrawer.tsx',
   'rental/components/users-roles/CreateUserWizard.tsx',
+  'rental/components/users-roles/PermissionEditor.tsx',
   'rental/components/users-roles/IamBadges.tsx',
   'rental/components/users-roles/iam-team.utils.ts',
+  'rental/components/users-roles/iam-member-payload.ts',
   'rental/components/users-roles/useIamTeam.ts',
   'rental/components/UsersRolesTab.tsx',
   'rental/lib/rental-organization-users-roles-i18n.ts',
@@ -1323,16 +1325,29 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(p262Debt).toHaveLength(0);
   });
 
-  it('keeps rental-organization-users-roles-i18n.ts on canonical translation resolvers', () => {
+  it('keeps rental-organization-users-roles-i18n.ts presentation-only', () => {
     const source = readFileSync(
       join(__dirname, '../rental/lib/rental-organization-users-roles-i18n.ts'),
       'utf8',
     );
     expect(source).toContain('resolveMembershipStatusLabel');
     expect(source).toContain('resolveAuditActionLabel');
-    expect(source).toContain('buildInviteUserPayload');
+    expect(source).toContain('resolvePermissionModuleLabel');
+    expect(source).not.toContain('buildInviteUserPayload');
+    expect(source).not.toContain('buildCreateUserPayload');
     expect(source).not.toMatch(/locale === 'de'/);
     expect(source).not.toMatch(/de-DE/);
+  });
+
+  it('keeps iam-member-payload.ts as mutation payload builder', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/users-roles/iam-member-payload.ts'),
+      'utf8',
+    );
+    expect(source).toContain('buildInviteUserPayload');
+    expect(source).toContain('buildCreateUserPayload');
+    expect(source).not.toContain('useLanguage');
+    expect(source).not.toContain('translateKey');
   });
 
   it('keeps rental-vehicle-damages-i18n.ts on canonical translation resolvers', () => {

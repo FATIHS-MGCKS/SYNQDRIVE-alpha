@@ -1,9 +1,9 @@
 import { Shield, KeyRound, LogOut, PauseCircle, ShieldAlert } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { DetailDrawer, SectionHeader, Timeline } from '../../../components/patterns';
 import { api, type IamTeamMemberDetailDto } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { translateKey, useLanguage } from '../../i18n/LanguageContext';
 import { resolveAuditActionLabel } from '../../lib/rental-organization-users-roles-i18n';
 import { CollapsiblePermissions } from './PermissionEditor';
 import { MfaStateBadge, RiskBadge } from './IamBadges';
@@ -27,6 +27,10 @@ export function TeamMemberDrawer({
   onRefresh,
 }: TeamMemberDrawerProps) {
   const { t, locale } = useLanguage();
+  const localeRef = useRef(locale);
+  useEffect(() => {
+    localeRef.current = locale;
+  }, [locale]);
   const [detail, setDetail] = useState<IamTeamMemberDetailDto | null>(null);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<DrawerTab>('overview');
@@ -39,9 +43,15 @@ export function TeamMemberDrawer({
     void api.iam
       .teamMember(orgId, membershipId)
       .then(setDetail)
-      .catch(() => toast.error(t('iam.member.error.loadMember')))
+      .catch((err) => {
+        const message =
+          err instanceof Error && err.message
+            ? err.message
+            : translateKey(localeRef.current, 'iam.member.error.loadMember').text;
+        toast.error(message);
+      })
       .finally(() => setLoading(false));
-  }, [open, orgId, membershipId, t]);
+  }, [open, orgId, membershipId]);
 
   const tabs: { id: DrawerTab; label: string }[] = [
     { id: 'overview', label: t('iam.drawer.overview') },

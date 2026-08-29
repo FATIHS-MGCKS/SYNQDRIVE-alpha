@@ -7,11 +7,12 @@ import {
   type Station,
 } from '../../../lib/api';
 import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 import {
   buildCreateUserPayload,
   buildInviteUserPayload,
-  resolveWizardStepLabel,
-} from '../../lib/rental-organization-users-roles-i18n';
+} from './iam-member-payload';
+import { resolveWizardStepLabel } from '../../lib/rental-organization-users-roles-i18n';
 import { permissionsFromRoleTemplate } from './constants';
 import { PermissionPreview } from './PermissionEditor';
 import type { CreateUserFormState, WizardStep } from './types';
@@ -50,6 +51,7 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
   const [roles, setRoles] = useState<OrganizationRoleDto[]>([]);
   const [rolesLoading, setRolesLoading] = useState(true);
   const [rolesError, setRolesError] = useState<string | null>(null);
+  const [rolesErrorHostKey, setRolesErrorHostKey] = useState<TranslationKey | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -60,14 +62,24 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
         const list = await api.organizationRoles.list(orgId);
         setRoles(Array.isArray(list) ? list : []);
         setRolesError(null);
+        setRolesErrorHostKey(null);
       } catch (err) {
         setRoles([]);
-        setRolesError(err instanceof Error ? err.message : t('iam.member.error.rolesLoadFailed'));
+        if (err instanceof Error && err.message) {
+          setRolesError(err.message);
+          setRolesErrorHostKey(null);
+        } else {
+          setRolesError(null);
+          setRolesErrorHostKey('iam.member.error.rolesLoadFailed');
+        }
       } finally {
         setRolesLoading(false);
       }
     })();
-  }, [orgId, t]);
+  }, [orgId]);
+
+  const rolesErrorMessage =
+    rolesError ?? (rolesErrorHostKey ? t(rolesErrorHostKey) : null);
 
   const selectedRole = useMemo(
     () => roles.find((r) => r.id === form.organizationRoleId) ?? null,
@@ -190,7 +202,7 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
             {rolesLoading ? (
               <p className="text-[13px] text-muted-foreground">{t('iam.wizard.rolesLoading')}</p>
             ) : roles.length === 0 ? (
-              <p className="text-[13px] text-muted-foreground">{rolesError ?? t('iam.wizard.rolesEmpty')}</p>
+              <p className="text-[13px] text-muted-foreground">{rolesErrorMessage ?? t('iam.wizard.rolesEmpty')}</p>
             ) : (
               roles.map((role) => (
                 <button
@@ -376,6 +388,7 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
           {stepIndex < STEPS.length - 1 ? (
             <button
               type="button"
+              data-testid="wizard-next"
               disabled={!canNext}
               className="sq-3d-btn sq-3d-btn--primary text-xs flex items-center gap-1 disabled:opacity-50"
               onClick={() => setStep(STEPS[stepIndex + 1])}
@@ -385,6 +398,7 @@ export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose,
           ) : (
             <button
               type="button"
+              data-testid="wizard-submit"
               disabled={saving}
               className="sq-3d-btn sq-3d-btn--primary text-xs"
               onClick={() => void handleSubmit()}
