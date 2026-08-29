@@ -36,13 +36,34 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'snapshot-polling-p1-2-trip-loss-safety-gate-2026-08-29',
+    version: '4.9.997',
+    title: 'P1.2 FINAL — Trip-loss safety gate (promotion cadence fix + audit)',
+    summary: [
+      'Fixed promotion bypass: `requiresImmediateSnapshotPollOnPromotion()` now requires strict tier promotion via `isFasterSnapshotPollingTier()` — persistent RECENTLY_ACTIVE/ACTIVE_DRIVING activity no longer bypasses cadence every 30s tick.',
+      'Deterministic timeline tests for RECENTLY_ACTIVE (60s) and ACTIVE_DRIVING (30s) promotion then steady-state cadence.',
+      'Trip-loss safety gate audit (sections A–I): bootstrap sources, worst-case matrix C1–C7, reconciliation cohort independence, connectionStatus writers, vehicle status contract, repair enrichment chain, rollback procedure.',
+      'New tests: trip-reconciliation.scheduler.spec.ts (warm/cold token-only cohort), trip-repair-enrichment-chain.spec.ts (post-finalize + behavior enrichment).',
+      'Verdict: SAFE TO MERGE P1.2. P1.3+ untouched.',
+    ],
+    reason:
+      'PR #1409 final gate — prove P1.2 activity-tier polling cannot introduce permanent missed trips or unacceptable blind spots before merge.',
+    previousBehavior:
+      'Promotion bypass fired on every scheduler tick while activity signals persisted, even when effective tier was unchanged — could over-poll RECENTLY_ACTIVE vehicles.',
+    details:
+      'backend: derive-snapshot-polling-tier.ts, snapshot-polling-tier.types.ts, derive-snapshot-polling-tier.spec.ts, trip-reconciliation.scheduler.spec.ts, trip-repair-enrichment-chain.spec.ts. architecture/SNAPSHOT_POLLING_P1_2_TRIP_LOSS_SAFETY_GATE_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T11:05:00.000Z',
+  },
+  {
     id: 'snapshot-activity-tier-polling-p1-2-2026-08-29',
     version: '4.9.996',
     title: 'P1.2 — Activity-tier DIMO snapshot polling (scalability)',
     summary: [
       'Replaced naive O(N) fleet-wide 30s snapshot enqueue with canonical activity-tier scheduling while preserving ACTIVE_DRIVING 30s cadence.',
       'Tiers: ACTIVE_DRIVING (FSM active trip), RECENTLY_ACTIVE (live telemetry / movement), RESTING_STANDBY (<24h), LONG_IDLE (>24h). OFFLINE/HARD_OFFLINE are eligibility labels only — scheduler remains CONNECTED+token cohort; recovery owned by DimoVehicleSync/webhooks/episode reconciliation.',
-      'Promotion bypass: faster-tier activity signals enqueue immediately even when providerFetchedAt is inside the previous slow-tier window.',
+      'Promotion bypass: one-shot per tier transition (`isFasterSnapshotPollingTier`) — faster-tier activity signals enqueue immediately when promoting; steady-state cadence respected on unchanged tier.',
       'Polling memory pruned each tick to current cohort; hysteresis state lost on restart is safe.',
       'Single canonical `deriveSnapshotPollingTier()` reuses `classifyTelemetryFreshness`, VLS `sourceTimestamp`, trip FSM, and DIMO connection status — no competing freshness model.',
       'Demotion hysteresis (default 90s hold) prevents tier flapping; `providerFetchedAt` gates due vehicles per tier interval.',

@@ -177,18 +177,35 @@ describe('DimoSnapshotScheduler (activity-tier)', () => {
     expect(queueAdd.mock.calls[0][2].jobId).toBe('snapshot-promoted');
   });
 
-  it('promotes LONG_IDLE -> fresh external activity immediately', async () => {
+  it('promotes LONG_IDLE -> fresh external activity on tier transition (not every tick)', async () => {
+    findMany.mockResolvedValue([
+      vehicleRow({
+        id: 'activity',
+        latestState: {
+          sourceTimestamp: new Date(NOW - 7 * 24 * 3600_000),
+          lastSeenAt: new Date(NOW - 7 * 24 * 3600_000),
+          providerFetchedAt: new Date(NOW),
+          speedKmh: 0,
+          isIgnitionOn: false,
+        },
+      }),
+    ]);
+    await scheduler.enqueueSnapshotJobs();
+    queueAdd.mockClear();
+
+    const promotedAt = NOW + 30_000;
+    jest.setSystemTime(promotedAt);
     findMany.mockResolvedValue([
       vehicleRow({
         id: 'activity',
         tripDetectionState: {
           state: TripDetectionState.RESTING,
-          lastActivityAt: new Date(NOW - 20_000),
+          lastActivityAt: new Date(promotedAt - 20_000),
         },
         latestState: {
-          sourceTimestamp: new Date(NOW - 7 * 24 * 3600_000),
-          lastSeenAt: new Date(NOW - 7 * 24 * 3600_000),
-          providerFetchedAt: new Date(NOW - 45_000),
+          sourceTimestamp: new Date(promotedAt - 7 * 24 * 3600_000),
+          lastSeenAt: new Date(promotedAt - 7 * 24 * 3600_000),
+          providerFetchedAt: new Date(NOW),
           speedKmh: 0,
           isIgnitionOn: false,
         },

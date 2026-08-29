@@ -54,8 +54,13 @@ Reuses:
 ### Promotion latency
 
 `isSnapshotPollDue()` uses `providerFetchedAt` cadence but **bypasses** the wait
-when a vehicle promotes to a faster tier because of authoritative activity signals
-(FSM active trip, movement, live telemetry, recent `lastActivityAt`).
+only on a **strict tier promotion** (`isFasterSnapshotPollingTier`) when
+authoritative activity signals move a vehicle to a faster tier (FSM active trip,
+movement, live telemetry, recent `lastActivityAt`). Persistent activity on an
+unchanged tier does not bypass cadence.
+
+See `architecture/SNAPSHOT_POLLING_P1_2_TRIP_LOSS_SAFETY_GATE_2026-08-29.md` for
+the full trip-loss safety gate audit.
 
 ### Hysteresis
 

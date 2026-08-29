@@ -197,6 +197,164 @@ describe('isSnapshotPollDue', () => {
 
     expect(isSnapshotPollDue(input)).toBe(true);
   });
+
+  it('does not bypass RECENTLY_ACTIVE cadence when tier is unchanged', () => {
+    const tierInput = baseInput({
+      observationAt: new Date(NOW - 7 * 24 * 3600_000),
+      lastActivityAt: new Date(NOW - 15_000),
+      speedKmh: 25,
+    });
+    const input = dueInput({
+      effectiveTier: SnapshotPollingTier.RECENTLY_ACTIVE,
+      rawTier: SnapshotPollingTier.RECENTLY_ACTIVE,
+      previousEffectiveTier: SnapshotPollingTier.RECENTLY_ACTIVE,
+      lastPolledAt: new Date(NOW - 30_000),
+      nowMs: NOW,
+      tierInput,
+    });
+
+    expect(requiresImmediateSnapshotPollOnPromotion(input)).toBe(false);
+    expect(isSnapshotPollDue(input)).toBe(false);
+  });
+
+  it('does not bypass ACTIVE_DRIVING cadence when tier is unchanged', () => {
+    const tierInput = baseInput({
+      tripDetectionState: TripDetectionState.ACTIVE_TRIP,
+    });
+    const input = dueInput({
+      effectiveTier: SnapshotPollingTier.ACTIVE_DRIVING,
+      rawTier: SnapshotPollingTier.ACTIVE_DRIVING,
+      previousEffectiveTier: SnapshotPollingTier.ACTIVE_DRIVING,
+      lastPolledAt: new Date(NOW - 15_000),
+      nowMs: NOW,
+      tierInput,
+    });
+
+    expect(requiresImmediateSnapshotPollOnPromotion(input)).toBe(false);
+    expect(isSnapshotPollDue(input)).toBe(false);
+  });
+});
+
+describe('promotion cadence timeline (RECENTLY_ACTIVE)', () => {
+  const T0 = Date.parse('2026-08-29T12:00:00.000Z');
+
+  it('RESTING_STANDBY -> RECENTLY_ACTIVE promotion then 60s cadence', () => {
+    const restingInput = baseInput({
+      observationAt: new Date(T0 - 60 * 60_000),
+      nowMs: T0,
+    });
+    expect(deriveSnapshotPollingTier(restingInput, config).tier).toBe(
+      SnapshotPollingTier.RESTING_STANDBY,
+    );
+
+    const promotedAt = T0 + 30_000;
+    const promotedTierInput = baseInput({
+      observationAt: new Date(promotedAt - 30_000),
+      lastActivityAt: new Date(promotedAt - 5_000),
+      speedKmh: 25,
+      nowMs: promotedAt,
+    });
+    expect(deriveSnapshotPollingTier(promotedTierInput, config).tier).toBe(
+      SnapshotPollingTier.RECENTLY_ACTIVE,
+    );
+
+    const promotionPoll = dueInput({
+      effectiveTier: SnapshotPollingTier.RECENTLY_ACTIVE,
+      rawTier: SnapshotPollingTier.RECENTLY_ACTIVE,
+      previousEffectiveTier: SnapshotPollingTier.RESTING_STANDBY,
+      lastPolledAt: new Date(T0),
+      nowMs: promotedAt,
+      tierInput: promotedTierInput,
+    });
+    expect(isSnapshotPollDue(promotionPoll)).toBe(true);
+
+    const afterPromotionPollAt = promotedAt + 30_000;
+    const steadyTierInput = baseInput({
+      observationAt: new Date(afterPromotionPollAt - 30_000),
+      lastActivityAt: new Date(afterPromotionPollAt - 5_000),
+      speedKmh: 25,
+      nowMs: afterPromotionPollAt,
+    });
+    const tooEarly = dueInput({
+      effectiveTier: SnapshotPollingTier.RECENTLY_ACTIVE,
+      rawTier: SnapshotPollingTier.RECENTLY_ACTIVE,
+      previousEffectiveTier: SnapshotPollingTier.RECENTLY_ACTIVE,
+      lastPolledAt: new Date(promotedAt),
+      nowMs: afterPromotionPollAt,
+      tierInput: steadyTierInput,
+    });
+    expect(isSnapshotPollDue(tooEarly)).toBe(false);
+
+    const nextDueAt = promotedAt + 60_000;
+    const nextDueTierInput = baseInput({
+      observationAt: new Date(nextDueAt - 30_000),
+      lastActivityAt: new Date(nextDueAt - 5_000),
+      speedKmh: 25,
+      nowMs: nextDueAt,
+    });
+    const nextDue = dueInput({
+      effectiveTier: SnapshotPollingTier.RECENTLY_ACTIVE,
+      rawTier: SnapshotPollingTier.RECENTLY_ACTIVE,
+      previousEffectiveTier: SnapshotPollingTier.RECENTLY_ACTIVE,
+      lastPolledAt: new Date(promotedAt),
+      nowMs: nextDueAt,
+      tierInput: nextDueTierInput,
+    });
+    expect(isSnapshotPollDue(nextDue)).toBe(true);
+  });
+});
+
+describe('promotion cadence timeline (ACTIVE_DRIVING)', () => {
+  const T0 = Date.parse('2026-08-29T12:00:00.000Z');
+
+  it('RESTING_STANDBY -> ACTIVE_DRIVING promotion then 30s cadence', () => {
+    const promotedAt = T0 + 30_000;
+    const promotedTierInput = baseInput({
+      tripDetectionState: TripDetectionState.ACTIVE_TRIP,
+      nowMs: promotedAt,
+    });
+    expect(deriveSnapshotPollingTier(promotedTierInput, config).tier).toBe(
+      SnapshotPollingTier.ACTIVE_DRIVING,
+    );
+
+    const promotionPoll = dueInput({
+      effectiveTier: SnapshotPollingTier.ACTIVE_DRIVING,
+      rawTier: SnapshotPollingTier.ACTIVE_DRIVING,
+      previousEffectiveTier: SnapshotPollingTier.RESTING_STANDBY,
+      lastPolledAt: new Date(T0),
+      nowMs: promotedAt,
+      tierInput: promotedTierInput,
+    });
+    expect(isSnapshotPollDue(promotionPoll)).toBe(true);
+
+    const tooEarlyAt = promotedAt + 15_000;
+    const tooEarly = dueInput({
+      effectiveTier: SnapshotPollingTier.ACTIVE_DRIVING,
+      rawTier: SnapshotPollingTier.ACTIVE_DRIVING,
+      previousEffectiveTier: SnapshotPollingTier.ACTIVE_DRIVING,
+      lastPolledAt: new Date(promotedAt),
+      nowMs: tooEarlyAt,
+      tierInput: baseInput({
+        tripDetectionState: TripDetectionState.ACTIVE_TRIP,
+        nowMs: tooEarlyAt,
+      }),
+    });
+    expect(isSnapshotPollDue(tooEarly)).toBe(false);
+
+    const nextDueAt = promotedAt + 30_000;
+    const nextDue = dueInput({
+      effectiveTier: SnapshotPollingTier.ACTIVE_DRIVING,
+      rawTier: SnapshotPollingTier.ACTIVE_DRIVING,
+      previousEffectiveTier: SnapshotPollingTier.ACTIVE_DRIVING,
+      lastPolledAt: new Date(promotedAt),
+      nowMs: nextDueAt,
+      tierInput: baseInput({
+        tripDetectionState: TripDetectionState.ACTIVE_TRIP,
+        nowMs: nextDueAt,
+      }),
+    });
+    expect(isSnapshotPollDue(nextDue)).toBe(true);
+  });
 });
 
 describe('applySnapshotPollingHysteresis', () => {

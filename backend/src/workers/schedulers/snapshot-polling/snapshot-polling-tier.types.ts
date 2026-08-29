@@ -26,6 +26,16 @@ export type SnapshotPollingTier =
 
 export const SNAPSHOT_POLLING_TIERS = Object.values(SnapshotPollingTier);
 
+/** Pollable tiers ordered fastest → slowest for promotion comparisons. */
+export const SNAPSHOT_POLLING_TIER_RANK: Record<SnapshotPollingTier, number> = {
+  [SnapshotPollingTier.ACTIVE_DRIVING]: 0,
+  [SnapshotPollingTier.RECENTLY_ACTIVE]: 1,
+  [SnapshotPollingTier.RESTING_STANDBY]: 2,
+  [SnapshotPollingTier.LONG_IDLE]: 3,
+  [SnapshotPollingTier.OFFLINE]: 4,
+  [SnapshotPollingTier.HARD_OFFLINE]: 5,
+};
+
 /** Tiers the CONNECTED scheduler cohort may enqueue when due. */
 export const SNAPSHOT_POLLABLE_TIERS: ReadonlySet<SnapshotPollingTier> = new Set([
   SnapshotPollingTier.ACTIVE_DRIVING,
@@ -33,3 +43,14 @@ export const SNAPSHOT_POLLABLE_TIERS: ReadonlySet<SnapshotPollingTier> = new Set
   SnapshotPollingTier.RESTING_STANDBY,
   SnapshotPollingTier.LONG_IDLE,
 ]);
+
+/** True when `newTier` is strictly faster than `previousTier`. */
+export function isFasterSnapshotPollingTier(
+  newTier: SnapshotPollingTier,
+  previousTier: SnapshotPollingTier | null,
+): boolean {
+  if (previousTier == null) return false;
+  return (
+    SNAPSHOT_POLLING_TIER_RANK[newTier] < SNAPSHOT_POLLING_TIER_RANK[previousTier]
+  );
+}

@@ -9,7 +9,10 @@ import {
   DEFAULT_SNAPSHOT_POLLING_TIER_CONFIG,
   type SnapshotPollingTierConfig,
 } from './snapshot-polling-tier.config';
-import { SnapshotPollingTier } from './snapshot-polling-tier.types';
+import {
+  isFasterSnapshotPollingTier,
+  SnapshotPollingTier,
+} from './snapshot-polling-tier.types';
 
 /** FSM states treated as active driving — highest polling tier. */
 const ACTIVE_DRIVING_FSM_STATES: ReadonlySet<TripDetectionState> = new Set([
@@ -220,8 +223,12 @@ export function applySnapshotPollingHysteresis(
 }
 
 /**
- * When authoritative activity signals place a vehicle on a faster tier, do not
+ * When authoritative activity signals promote a vehicle to a faster tier, do not
  * wait out a recent providerFetchedAt timestamp that predates the promotion.
+ *
+ * Promotion bypass is one-shot per tier transition: a vehicle that remains on
+ * RECENTLY_ACTIVE or ACTIVE_DRIVING across scheduler ticks must still respect
+ * its tier interval — persistent activity alone must not bypass cadence.
  */
 export function requiresImmediateSnapshotPollOnPromotion(
   input: SnapshotPollDueInput,
@@ -231,6 +238,10 @@ export function requiresImmediateSnapshotPollOnPromotion(
 
   const elapsed = input.nowMs - input.lastPolledAt.getTime();
   if (elapsed >= intervalMs) return false;
+
+  if (!isFasterSnapshotPollingTier(input.rawTier, input.previousEffectiveTier)) {
+    return false;
+  }
 
   if (input.rawTier === SnapshotPollingTier.ACTIVE_DRIVING) {
     const fsm = input.tierInput.tripDetectionState;
