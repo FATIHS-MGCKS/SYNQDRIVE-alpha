@@ -42,6 +42,7 @@ function overlapEvidence(
 const candidate = (startMin = 1, endMin = 50) => ({
   source: 'DIMO_SEGMENT' as const,
   segmentId: 'seg-full',
+  mechanism: 'changePointDetection',
   startTime: at(startMin),
   endTime: at(endMin),
   confidence: 'HIGH' as const,
@@ -102,7 +103,13 @@ function buildReconciliationHarness(
               startLongitude: 9.3,
               endLatitude: 51.25,
               endLongitude: 9.35,
-              rawDetectionMeta: null,
+              rawDetectionMeta: {
+                boundaryRefresh: {
+                  state: 'PENDING',
+                  generation: 'gen-test',
+                  requestedAt: new Date().toISOString(),
+                },
+              },
             }
           : null;
       }),
@@ -138,6 +145,10 @@ function buildReconciliationHarness(
     repairActions: { inc: jest.fn() },
   };
 
+  const enrichmentOrchestrator = {
+    refreshEnrichmentAfterBoundaryRepair: jest.fn().mockResolvedValue(undefined),
+  };
+
   const service = new TripReconciliationService(
     prisma as never,
     decisionEngine as never,
@@ -147,7 +158,7 @@ function buildReconciliationHarness(
     undefined as never,
     undefined as never,
     undefined as never,
-    undefined,
+    enrichmentOrchestrator as never,
     undefined,
     tripMetrics as never,
     configService as never,
