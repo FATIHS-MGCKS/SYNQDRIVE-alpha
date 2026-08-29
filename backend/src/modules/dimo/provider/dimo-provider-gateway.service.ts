@@ -15,16 +15,16 @@ import {
 } from './dimo-provider-http-classifier';
 import type { DimoProviderLimiterBeginResult } from './dimo-provider-limiter.types';
 import { DimoProviderLimiterDecision } from './dimo-provider-limiter.types';
+import { logDimoProviderLimiterEvent } from './dimo-provider-limiter-log.util';
 import {
-  isCanaryEnforcedRequest,
-  resolveEffectiveLimiterMode,
-  resolveRolloutState,
+  isCanaryRolloutConfigured,
+  resolveCanaryEnforcement,
 } from './dimo-provider-rollout.util';
 
 /**
  * Canonical outbound DIMO provider gateway (P1.3).
  *
- * S4: token-bucket rate smoothing + org-scoped canary enforce rollout.
+ * S4: token-bucket rate smoothing + deterministic canary enforce rollout.
  * Default remains shadow — no global production throttling unless configured.
  */
 @Injectable()
@@ -40,23 +40,58 @@ export class DimoProviderGateway implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    const rollout = resolveRolloutState(this.limiterConfig);
+    const rollout = resolveCanaryEnforcement(this.limiterConfig).rolloutState;
+    if (!this.limiterConfig.enabled || this.limiterConfig.mode === 'off') {
+      logDimoProviderLimiterEvent(this.logger, {
+        event: 'limiter_disabled',
+        mode: this.limiterConfig.mode,
+        rolloutState: rollout,
+        message: 'DIMO provider limiter disabled',
+      }, { throttleMs: 0 });
+    }
     this.logger.log(
       `DIMO provider limiter rollout=${rollout} mode=${this.limiterConfig.mode} ` +
         `enabled=${this.limiterConfig.enabled} algorithm=${this.limiterConfig.rateAlgorithm} ` +
         `rate=${this.limiterConfig.rateLimitPerSecond}/s+burst${this.limiterConfig.rateBurst} ` +
         `maxInFlight=${this.limiterConfig.maxInFlight} reservedHigh=${this.limiterConfig.reservedHighPrioritySlots} ` +
-        `canaryOrgs=${this.limiterConfig.canaryEnforceOrgIds.size} maxWaitMs=${this.limiterConfig.maxWaitMs}`,
+        `canaryEnabled=${this.limiterConfig.enforceCanaryEnabled} canaryPercent=${this.limiterConfig.enforceCanaryPercent} ` +
+        `canaryOrgs=${this.limiterConfig.canaryEnforceOrgIds.size} canaryVehicles=${this.limiterConfig.enforceCanaryVehicleIds.size} ` +
+        `maxWaitMs=${this.limiterConfig.maxWaitMs}`,
     );
   }
 
   async execute<T>(params: DimoProviderExecuteParams<T>): Promise<T> {
     const category = resolveProviderCategory(params.operation, params.category);
     const priority = params.priority ?? defaultProviderPriority(category);
-    const organizationId = params.requestContext?.organizationId;
-    const mode = resolveEffectiveLimiterMode(this.limiterConfig, organizationId);
-    const rolloutState = resolveRolloutState(this.limiterConfig);
-    const canaryMatch = isCanaryEnforcedRequest(this.limiterConfig, organizationId);
+    const requestContext = params.requestContext ?? {};
+    const canary = resolveCanaryEnforcement(this.limiterConfig, requestContext);
+    const mode = canary.effectiveMode;
+    const rolloutState = canary.rolloutState;
+    const canaryMatch = canary.canaryMatch;
+
+    if (isCanaryRolloutConfigured(this.limiterConfig)) {
+      this.metrics?.recordCanaryRequest({
+        category,
+        canaryMatch,
+        canaryReason: canary.canaryReason,
+        canaryEnforced: canaryMatch,
+      });
+    }
+
+    if (canaryMatch) {
+      logDimoProviderLimiterEvent(this.logger, {
+        event: 'canary_selected',
+        category,
+        priority,
+        mode,
+        rolloutState,
+        organizationId: requestContext.organizationId,
+        vehicleId: requestContext.vehicleId,
+        canaryReason: canary.canaryReason,
+        canaryHashBucket: canary.canaryHashBucket,
+      });
+    }
+
     const startedAt = Date.now();
     const capacity =
       this.limiterConfig.rateLimitPerSecond + this.limiterConfig.rateBurst;
@@ -107,9 +142,12 @@ export class DimoProviderGateway implements OnModuleInit {
     } catch (error) {
       const http = classifyDimoProviderHttpError(error);
       if (http.retryAfterSeconds != null) {
-        this.logger.debug(
-          `DIMO provider HTTP 429 category=${category} retryAfter=${http.retryAfterSeconds}s`,
-        );
+        logDimoProviderLimiterEvent(this.logger, {
+          event: 'provider_429',
+          category,
+          priority,
+          retryAfterSeconds: http.retryAfterSeconds,
+        });
         await this.limiter.setProviderCooldown(
           http.retryAfterSeconds,
           this.limiterConfig.retryAfterMaxSeconds,
@@ -118,9 +156,19 @@ export class DimoProviderGateway implements OnModuleInit {
           category,
           retryAfterSeconds: http.retryAfterSeconds,
         });
+        logDimoProviderLimiterEvent(this.logger, {
+          event: 'cooldown_activation',
+          category,
+          retryAfterSeconds: http.retryAfterSeconds,
+        });
       }
       if (http.statusClass === 'forbidden') {
-        this.logger.debug(`DIMO provider HTTP 403 category=${category} (non-retryable)`);
+        logDimoProviderLimiterEvent(this.logger, {
+          event: 'provider_403_persistent',
+          category,
+          priority,
+          message: 'DIMO provider HTTP 403 (non-retryable)',
+        }, { level: 'warn' });
       }
       this.metrics?.recordRequest({
         category,

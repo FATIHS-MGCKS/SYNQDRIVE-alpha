@@ -29,6 +29,12 @@ export interface DimoProviderLimiterConfigShape {
   retryAfterMaxSeconds: number;
   /** Deterministic canary org allowlist — enforce only for listed orgs when mode=shadow. */
   canaryEnforceOrgIds: ReadonlySet<string>;
+  /** Opt-in canary enforcement (percent / vehicle targeting). Legacy org list works without this. */
+  enforceCanaryEnabled: boolean;
+  /** Stable-hash percent bucket [0,100) by vehicleId (fallback organizationId). */
+  enforceCanaryPercent: number;
+  /** Explicit vehicle allowlist for canary enforce when enforceCanaryEnabled=true. */
+  enforceCanaryVehicleIds: ReadonlySet<string>;
   /** Documented DIMO Core tier ceiling — observability reference only. */
   documentedCoreRatePerSecond: number;
 }
@@ -74,13 +80,24 @@ function parseRateAlgorithm(raw: string | undefined): DimoProviderRateAlgorithm 
   return 'token_bucket';
 }
 
-function parseCanaryOrgIds(raw: string | undefined): ReadonlySet<string> {
-  if (raw == null || raw.trim() === '') return new Set();
-  const ids = raw
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
-  return new Set(ids);
+function parseIdAllowlist(...raws: Array<string | undefined>): ReadonlySet<string> {
+  const ids = new Set<string>();
+  for (const raw of raws) {
+    if (raw == null || raw.trim() === '') continue;
+    for (const entry of raw.split(',')) {
+      const trimmed = entry.trim();
+      if (trimmed.length > 0) ids.add(trimmed);
+    }
+  }
+  return ids;
+}
+
+function parseOptionalBoolean(raw: string | undefined): boolean | undefined {
+  if (raw == null || raw.trim() === '') return undefined;
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true;
+  if (normalized === 'false' || normalized === '0' || normalized === 'no') return false;
+  return undefined;
 }
 
 function resolveMaxWaitByPriority(
@@ -171,7 +188,19 @@ export function resolveDimoProviderLimiterConfig(
       1,
       600,
     ),
-    canaryEnforceOrgIds: parseCanaryOrgIds(env.DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS),
+    canaryEnforceOrgIds: parseIdAllowlist(
+      env.DIMO_PROVIDER_ENFORCE_CANARY_ORG_IDS,
+      env.DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS,
+    ),
+    enforceCanaryEnabled:
+      parseOptionalBoolean(env.DIMO_PROVIDER_ENFORCE_CANARY_ENABLED) ?? false,
+    enforceCanaryPercent: parseBoundedInt(
+      env.DIMO_PROVIDER_ENFORCE_CANARY_PERCENT,
+      0,
+      0,
+      100,
+    ),
+    enforceCanaryVehicleIds: parseIdAllowlist(env.DIMO_PROVIDER_ENFORCE_CANARY_VEHICLE_IDS),
     documentedCoreRatePerSecond: 25,
   };
 }

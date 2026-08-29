@@ -36,6 +36,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-provider-concurrency-p1-3-s4-readiness-closure-2026-08-30',
+    version: '4.9.1007',
+    title: 'P1.3-S4 readiness closure — percent/vehicle canary, observability, chaos proofs',
+    summary: [
+      'Expanded deterministic canary: org allowlist + vehicle allowlist + stable FNV-1a percent hash by vehicleId.',
+      'New envs: DIMO_PROVIDER_ENFORCE_CANARY_ENABLED/PERCENT/ORG_IDS/VEHICLE_IDS (legacy org alias preserved).',
+      'Structured JSON logs: canary_selected, admission timeout, 429/403, cooldown, redis fail-open (throttled).',
+      'Prometheus: would_reject, enforce_deny, canary_requests, canary_enforced, cooldown_remaining gauges.',
+      'GO/NO-GO gates with concrete thresholds + staged rollout runbook (Stages 0–4, doc only).',
+      'Chaos matrix: 429/5xx/timeout storms, Redis fail-open/reconnect, admission timeout, replica safety.',
+      'Production default remains shadow — global enforce NOT enabled.',
+      'PERMANENT_TRIP_LOSS=NO; 159 unit tests green.',
+    ],
+    reason:
+      'P1.3-S4 readiness gate — complete production canary/enforcement readiness without enabling global enforce.',
+    previousBehavior:
+      'P1.3-S4 initial merge (#1428) had org-only canary and partial observability.',
+    details:
+      'backend: dimo-provider-rollout.util.ts, canary-hash, limiter-log, metrics, chaos spec. architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S4_PRODUCTION_CANARY_2026-08-30.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T23:55:00.000Z',
+  },
+  {
     id: 'dimo-provider-concurrency-p1-3-s4-production-canary-2026-08-30',
     version: '4.9.1006',
     title: 'P1.3-S4 — DIMO provider production canary, rate smoothing & rollout safety',

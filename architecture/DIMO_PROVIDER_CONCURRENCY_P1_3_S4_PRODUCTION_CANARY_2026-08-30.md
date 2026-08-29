@@ -1,9 +1,9 @@
 # P1.3-S4 — DIMO Provider Production Canary, Rate Smoothing & Rollout Safety
 
 **Date:** 2026-08-30  
-**Slice:** P1.3-S4  
+**Slice:** P1.3-S4 (readiness closure)  
 **Status:** Implementation complete — **shadow remains production default**  
-**Main base SHA:** `794bc77ea5933a47263ddf71c206453d19d57a59` (PR #1427 P1.3-S3 merged)
+**Main base SHA:** `dc9ab567d16d62ef118e4fbd076747c9f91eba18` (PR #1428 P1.3-S4 merged)
 
 ---
 
@@ -11,13 +11,14 @@
 
 P1.3-S4 makes DIMO provider enforcement **safe to canary** without enabling global production throttle:
 
-1. **Token-bucket rate smoothing** — replaces per-second boundary bursts with distributed Redis token bucket (same 20/s + burst 5 budget)
-2. **Org-scoped canary enforce** — deterministic allowlist via `DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS`
-3. **Rollout state model** — OFF / SHADOW / CANARY_ENFORCE / GLOBAL_ENFORCE derived from existing `DIMO_PROVIDER_LIMITER_MODE`
-4. **Enhanced observability** — rollout_state, canary_match, token bucket tokens, admitted requests
-5. **Kill switch / rollback** — config-only revert to shadow (no migration, no code deploy)
+1. **Token-bucket rate smoothing** — distributed Redis token bucket (20/s + burst 5); no per-second boundary burst
+2. **Deterministic canary enforce** — org allowlist, vehicle allowlist, stable percent hash by `vehicleId` (fallback `organizationId`)
+3. **Rollout states** — OFF / SHADOW / CANARY_ENFORCE / GLOBAL_ENFORCE
+4. **Production observability** — Prometheus counters/gauges/histograms + structured JSON logs
+5. **GO/NO-GO gates** — concrete thresholds for staged rollout
+6. **One-action rollback** — config-only revert to shadow (no migration)
 
-**Production default after S4: SHADOW** — unchanged.
+**Production default after S4: SHADOW** — global enforce NOT enabled.
 
 ---
 
@@ -25,210 +26,236 @@ P1.3-S4 makes DIMO provider enforcement **safe to canary** without enabling glob
 
 | Check | Result |
 |-------|--------|
-| **MAIN_BASE_SHA** | `794bc77ea5933a47263ddf71c206453d19d57a59` |
-| **PR #1427 present** | YES |
+| **MAIN_BASE_SHA** | `dc9ab567d16d62ef118e4fbd076747c9f91eba18` |
 | **Gateway canonical** | YES — `dimo-telemetry-gateway-coverage.spec.ts` |
-| **Telemetry bypass** | Auth/triggers/sync only (documented, unchanged) |
-| **Priority taxonomy** | P0–P4 canonical (S3) |
-| **Redis global limiter** | YES |
-| **Retry-After cooldown** | YES — global Redis |
 | **Default mode** | shadow |
 | **Trip semantics** | unchanged |
+| **PERMANENT_TRIP_LOSS** | NO |
 
 ---
 
 ## 3. S4.1 — Rate smoothing (token bucket)
 
-### Algorithm
+### Verdict
 
-| Parameter | Value | Source |
-|-----------|-------|--------|
-| Refill rate | `rateLimitPerSecond` (default 20/s) | env |
-| Bucket capacity | `rateLimitPerSecond + rateBurst` (default 25) | env |
-| Redis key | `dimo:provider:limiter:token_bucket` | global |
-| Script | `DIMO_PROVIDER_TOKEN_BUCKET_SCRIPT` | atomic Lua |
+The S2/S3 **fixed-window per-second INCR** could admit up to `capacity` requests at each second boundary (burst-edge). **S4 default `token_bucket` eliminates this** — tokens refill continuously; max burst = `rateLimitPerSecond + rateBurst` (default 25) regardless of wall-clock alignment.
 
-### Behavior
+| Parameter | Value |
+|-----------|-------|
+| Refill rate | 20/s (env) |
+| Capacity | 25 (20+5) |
+| Redis key | `dimo:provider:limiter:token_bucket` |
+| Rollback algorithm | `DIMO_PROVIDER_RATE_ALGORITHM=fixed_window` |
 
-- Tokens refill continuously: `tokens += elapsedMs * refillRate / 1000`, capped at capacity
-- Each admitted request consumes 1 token
-- No synchronized second-boundary burst (unlike S2 fixed-window INCR)
-- Multi-replica safe — single global bucket
-- Budget **not increased** — same 20/s + 5 burst ceiling as S3
-
-### Legacy
-
-`DIMO_PROVIDER_RATE_ALGORITHM=fixed_window` retains S2 per-second counter for rollback/testing.
+Multi-replica safe — single global bucket via atomic Lua.
 
 ---
 
 ## 4. S4.2 — Canary enforcement
 
-### Rollout states (derived)
+### Rollout states
 
 | State | Condition |
 |-------|-----------|
 | **OFF** | `enabled=false` or `mode=off` |
-| **SHADOW** | `mode=shadow`, empty canary list |
-| **CANARY_ENFORCE** | `mode=shadow` + `DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS` non-empty |
+| **SHADOW** | `mode=shadow`, no canary targeting active |
+| **CANARY_ENFORCE** | `mode=shadow` + (org allowlist OR enabled percent/vehicle targeting) |
 | **GLOBAL_ENFORCE** | `mode=enforce` |
 
-### Per-request effective mode
+### Deterministic targeting (no random per-request)
 
-```
-resolveEffectiveLimiterMode(config, organizationId):
-  off → off
-  mode=enforce → enforce (global)
-  mode=shadow + org in canary list → enforce
-  else → shadow
-```
+Priority order in `resolveCanaryEnforcement()`:
 
-### Stable rollout unit
+1. Global `mode=enforce` → enforce all
+2. Org in merged allowlist (`DIMO_PROVIDER_ENFORCE_CANARY_ORG_IDS` ∪ legacy `DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS`)
+3. Vehicle in `DIMO_PROVIDER_ENFORCE_CANARY_VEHICLE_IDS` when `DIMO_PROVIDER_ENFORCE_CANARY_ENABLED=true`
+4. Percent bucket: `stableCanaryHashPercent(vehicleId ?? organizationId) < DIMO_PROVIDER_ENFORCE_CANARY_PERCENT` when enabled
+5. Else shadow
 
-**Organization ID** — available at snapshot processor boundary; threaded via `requestContext.organizationId` on `fetchLatestVehicleSnapshot` → `queryGraphQL` → gateway.
+Same vehicle/org → same bucket across processes/replicas (FNV-1a % 100).
 
-No random sampling. Deterministic org allowlist only.
+### Configuration
+
+| Env | Default | Purpose |
+|-----|---------|---------|
+| `DIMO_PROVIDER_ENFORCE_CANARY_ENABLED` | `false` | Opt-in for percent/vehicle canary |
+| `DIMO_PROVIDER_ENFORCE_CANARY_PERCENT` | `0` | Stable hash percent [0,100) |
+| `DIMO_PROVIDER_ENFORCE_CANARY_ORG_IDS` | (empty) | Org allowlist |
+| `DIMO_PROVIDER_ENFORCE_CANARY_VEHICLE_IDS` | (empty) | Vehicle allowlist |
+| `DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS` | (empty) | Legacy alias (merged) |
+
+`organizationId` + `vehicleId` threaded from snapshot processor → telemetry → gateway.
 
 ---
 
 ## 5. S4.3 — Observability
 
-| Metric | Labels |
-|--------|--------|
-| `synqdrive_dimo_provider_requests_total` | operation, mode, **rollout_state**, **canary_match**, status_class, priority |
-| `synqdrive_dimo_provider_admitted_requests_total` | operation, mode, rollout_state, canary_match, priority |
+### Prometheus metrics
+
+| Metric | Labels / notes |
+|--------|----------------|
+| `synqdrive_dimo_provider_requests_total` | operation, mode, rollout_state, canary_match, status_class, priority |
+| `synqdrive_dimo_provider_admitted_requests_total` | admitted (not would-reject) |
+| `synqdrive_dimo_provider_would_reject_total` | operation, mode, decision_type, priority |
+| `synqdrive_dimo_provider_enforce_deny_total` | admission timeout denials |
+| `synqdrive_dimo_provider_canary_requests_total` | canary_match, canary_reason |
+| `synqdrive_dimo_provider_canary_enforced_requests_total` | canary_reason |
+| `synqdrive_dimo_provider_in_flight` | mode |
+| `synqdrive_dimo_provider_rate_budget_usage` | mode, rollout_state |
 | `synqdrive_dimo_provider_token_bucket_tokens_remaining` | mode |
-| `synqdrive_dimo_provider_cooldown_active` | (gauge 0/1) |
-| (S3 metrics preserved) | admission wait, backpressure, shadow decisions, 403/429/5xx |
+| `synqdrive_dimo_provider_cooldown_active` | 0/1 |
+| `synqdrive_dimo_provider_cooldown_remaining_seconds` | seconds |
+| `synqdrive_dimo_provider_http_429_total` | operation |
+| `synqdrive_dimo_provider_http_403_total` | operation |
+| `synqdrive_dimo_provider_http_5xx_total` | operation |
+| `synqdrive_dimo_provider_timeouts_total` | operation |
+| `synqdrive_dimo_provider_admission_wait_seconds` | histogram |
+| `synqdrive_dimo_provider_admission_timeouts_total` | priority, reason |
+| `synqdrive_dimo_provider_backpressure_total` | priority, reason |
+| `synqdrive_dimo_provider_cooldown_total` | Retry-After activations |
 
-No vehicleId/VIN/tripId labels.
+### Structured logging (`dimo-provider-limiter-log.util.ts`)
 
----
+JSON logs (throttled 60s per event key):
 
-## 6. S4.4 — Go / No-Go gates
-
-### SHADOW → CANARY_ENFORCE
-
-| Gate | Threshold / criterion |
-|------|----------------------|
-| Permanent trip loss | **0** (hard invariant) |
-| P0/P1 starvation | admission timeout rate for P0/P1 < 0.1% over 24h |
-| Admission timeout rate | P3/P4 < 5% over 24h for canary orgs |
-| Provider 429 rate | stable or decreasing vs shadow baseline |
-| Retry-After frequency | < 1/hour fleet-wide |
-| Redis limiter fail-open | < 10/hour |
-| Latency p95 | < +15% vs shadow for canary orgs |
-
-### CANARY_ENFORCE → expanded canary
-
-- All above gates green for 7 days
-- No reconciliation backlog growth attributable to admission timeouts
-- Manual ops approval
-
-### expanded canary → GLOBAL_ENFORCE
-
-- All gates green for 14 days across expanded org set
-- Explicit `DIMO_PROVIDER_LIMITER_MODE=enforce` change with change ticket
-- **Not enabled by this PR**
-
-**Blocker:** automated production dashboards for all gates are not yet wired — classify as ops follow-up before GLOBAL_ENFORCE.
+- `canary_selected` — org/vehicle/percent match
+- `enforce_admission_timeout`
+- `provider_429` / `cooldown_activation`
+- `provider_403_persistent`
+- `redis_fail_open`
+- `limiter_disabled`
 
 ---
 
-## 7. S4.5 — Kill switch / rollback
+## 6. GO / NO-GO gates (concrete thresholds)
 
-| From | To | Config change |
-|------|-----|---------------|
-| GLOBAL_ENFORCE | SHADOW | `DIMO_PROVIDER_LIMITER_MODE=shadow` |
-| CANARY_ENFORCE | SHADOW | Clear `DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS` |
-| Any | OFF | `DIMO_PROVIDER_LIMITER_MODE=off` or `DIMO_PROVIDER_LIMITER_ENABLED=false` |
+### GO — advance to next rollout stage
+
+| Gate | Threshold |
+|------|-----------|
+| Permanent trip loss | **0** events (hard invariant) |
+| Trip enrichment failure rate (canary cohort) | ≤ baseline + **0.5%** absolute over 24h |
+| Provider HTTP 429 rate (fleet) | ≤ **0.5%** of provider requests / 1h |
+| Admission timeout rate (canary enforced) | P0/P1 < **0.1%**; P2–P4 < **5%** / 24h |
+| P0/P1 gateway p95 latency | ≤ shadow baseline + **15%** |
+| Redis limiter fail-open | < **10** events / 1h |
+| Provider 403 rate | ≤ baseline + **0.1%** absolute / 24h |
+| Snapshot queue age p95 | ≤ **120s** (no sustained growth > **2×** baseline) |
+
+### NO-GO — rollback recommendation
+
+| Signal | Threshold |
+|--------|-----------|
+| Sustained 429 spike | > **2%** of requests for **15 min** |
+| Sustained admission timeouts | P0/P1 > **0.5%** for **1h** OR P2–P4 > **10%** for **1h** |
+| P0/P1 starvation | p95 wait > **30s** or timeout rate > **0.5%** |
+| Redis instability | fail-open > **50/h** or alternating fail-open/recover > **5 cycles/h** |
+| Trip/enrichment failures | > baseline + **1%** absolute for **4h** |
+| Provider 403 anomaly | > baseline + **0.5%** absolute for **1h** |
+| Queue backlog | age p95 > **300s** for **30 min** |
+
+---
+
+## 7. Staged rollout runbook (document only — do not execute in agent)
+
+### Stage 0 — Baseline (current production)
+
+```bash
+DIMO_PROVIDER_LIMITER_MODE=shadow
+DIMO_PROVIDER_ENFORCE_CANARY_ENABLED=false
+DIMO_PROVIDER_ENFORCE_CANARY_PERCENT=0
+# clear org/vehicle allowlists
+pm2 restart synqdrive-backend
+```
+
+Observe **24h**. All gates green.
+
+### Stage 1 — 1–5% canary
+
+```bash
+DIMO_PROVIDER_LIMITER_MODE=shadow
+DIMO_PROVIDER_ENFORCE_CANARY_ENABLED=true
+DIMO_PROVIDER_ENFORCE_CANARY_PERCENT=5
+pm2 restart synqdrive-backend
+```
+
+Observe **48h**. Single replica topology (CURRENT_PROD_REPLICAS=1).
+
+### Stage 2 — 10–25% canary
+
+Only if Stage 1 GO gates pass:
+
+```bash
+DIMO_PROVIDER_ENFORCE_CANARY_PERCENT=25
+pm2 restart synqdrive-backend
+```
+
+Observe **7 days**.
+
+### Stage 3 — 50% canary
+
+```bash
+DIMO_PROVIDER_ENFORCE_CANARY_PERCENT=50
+pm2 restart synqdrive-backend
+```
+
+Observe **7 days**.
+
+### Stage 4 — 100% enforce (fleet envelope)
+
+**Requires explicit ops approval + change ticket:**
+
+```bash
+DIMO_PROVIDER_LIMITER_MODE=enforce
+DIMO_PROVIDER_ENFORCE_CANARY_ENABLED=false
+DIMO_PROVIDER_ENFORCE_CANARY_PERCENT=0
+pm2 restart synqdrive-backend
+```
+
+**Not enabled by this slice.**
+
+---
+
+## 8. Rollback (one action)
+
+```bash
+DIMO_PROVIDER_LIMITER_MODE=shadow
+DIMO_PROVIDER_ENFORCE_CANARY_ENABLED=false
+DIMO_PROVIDER_ENFORCE_CANARY_PERCENT=0
+unset DIMO_PROVIDER_ENFORCE_CANARY_ORG_IDS
+unset DIMO_PROVIDER_ENFORCE_CANARY_VEHICLE_IDS
+unset DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS
+pm2 restart synqdrive-backend
+```
 
 - No DB migration
-- No data repair
-- No code redeploy required (env + PM2 restart)
-- Fail-open on Redis outage preserved
+- No stale Redis state blocks traffic (leases expire; cooldown optional TTL)
+- Enforcement stops after config reload/restart
 
 ---
 
-## 8. S4.6 — Test matrix
+## 9. Test matrix
 
-| # | Proof | Test file |
-|---|-------|-----------|
-| 1 | Shadow unchanged | `dimo-provider-limiter-s4.spec.ts` |
-| 2 | Canary org enforce | `dimo-provider-limiter-s4.spec.ts`, redis integration L |
-| 3 | Non-canary shadow | `dimo-provider-limiter-s4.spec.ts` |
-| 4 | Deterministic assignment | `dimo-provider-rollout.util.spec.ts` |
-| 5 | Multi-replica shared bucket | `dimo-provider-limiter-s4.spec.ts`, redis integration A |
-| 6 | No second-boundary burst | `dimo-provider-limiter-s4.spec.ts` |
-| 7–9 | P0/P1, P4, cooldown | S3 redis integration I, J (preserved) |
-| 10 | Redis fail-open | redis integration H |
-| 11–12 | Canary/global rollback | `dimo-provider-limiter-s4.spec.ts` |
-| 13–14 | No trip loss, semantics | load matrix + FINAL-3 suites |
+| Area | Test file |
+|------|-----------|
+| Canary hash / rollout | `dimo-provider-canary-hash.util.spec.ts`, `dimo-provider-rollout.util.spec.ts` |
+| Gateway canary | `dimo-provider-limiter-s4.spec.ts`, `dimo-provider-gateway.service.spec.ts` |
+| Chaos / failure | `dimo-provider-limiter-s4-chaos.spec.ts` |
+| Load / trip safety | `dimo-provider-limiter-s4-load-matrix.spec.ts`, FINAL-3 suites |
+| Real Redis | `dimo-provider-limiter.redis.integration.spec.ts` (incl. test M percent determinism) |
 
-Real Redis CI: `npm run test:dimo-provider-limiter:redis`
-
----
-
-## 9. S4.7 — Adversarial answers
-
-| Question | Answer | Evidence |
-|----------|--------|----------|
-| A. 1000 vehicles violate budget? | NO under shadow; enforce defers | load matrix N=1000 S3 |
-| B. Background starves P0/P1? | NO | redis integration I |
-| C. Retry-After retry storm? | NO | global cooldown J |
-| D. Replicas multiply rate? | NO | shared token bucket A |
-| E. Accidental global enforce? | NO | requires mode=enforce or explicit org list |
-| F. Rollback loses trip data? | NO | config-only; schedulers retry |
+```bash
+cd backend && npm test -- --testPathPattern="dimo-provider|dimo-telemetry|partial-boundary-repair" --runInBand
+cd backend && npm run test:dimo-provider-limiter:redis
+```
 
 **PERMANENT_TRIP_LOSS = NO**
 
 ---
 
-## 10. Configuration
+## 10. Recommendation for P1.3-S5
 
-| Env | Default | Safe range | Production recommendation |
-|-----|---------|------------|---------------------------|
-| `DIMO_PROVIDER_LIMITER_MODE` | shadow | off/shadow/enforce | **shadow** |
-| `DIMO_PROVIDER_RATE_ALGORITHM` | token_bucket | token_bucket/fixed_window | token_bucket |
-| `DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS` | (empty) | UUID list | start empty; add 1–2 pilot orgs |
-| (S3 vars unchanged) | — | — | — |
-
-**Rollback value:** `DIMO_PROVIDER_LIMITER_MODE=shadow`, clear canary list.
-
----
-
-## 11. Files changed
-
-```
-backend/src/config/dimo-provider-limiter.config.ts
-backend/src/config/dimo-provider-limiter.config.spec.ts
-backend/.env.example
-backend/src/modules/dimo/dimo-telemetry.service.ts
-backend/src/modules/dimo/dimo-telemetry.service.spec.ts
-backend/src/modules/dimo/provider/dimo-provider-gateway.service.ts
-backend/src/modules/dimo/provider/dimo-provider-gateway.service.spec.ts
-backend/src/modules/dimo/provider/dimo-provider-limiter.service.ts
-backend/src/modules/dimo/provider/dimo-provider-limiter.types.ts
-backend/src/modules/dimo/provider/dimo-provider-limiter.redis-scripts.ts
-backend/src/modules/dimo/provider/dimo-provider-limiter.service.spec.ts
-backend/src/modules/dimo/provider/dimo-provider-limiter.redis.integration.spec.ts
-backend/src/modules/dimo/provider/dimo-provider-limiter-s4.spec.ts
-backend/src/modules/dimo/provider/dimo-provider-limiter-s4-load-matrix.spec.ts
-backend/src/modules/dimo/provider/dimo-provider-rollout.util.ts
-backend/src/modules/dimo/provider/dimo-provider-rollout.util.spec.ts
-backend/src/modules/dimo/provider/dimo-provider-metrics.service.ts
-backend/src/workers/processors/dimo-snapshot.processor.ts
-architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S4_PRODUCTION_CANARY_2026-08-30.md
-architecture/P1_3_S4_PRODUCTION_CANARY_FINAL_RESPONSE_2026-08-30.md
-frontend/src/master/components/ChangesView.tsx
-frontend/src/master/components/ArchitekturView.tsx
-```
-
----
-
-## 12. Recommendation post-S4
-
-- Wire Go/No-Go dashboards to Prometheus gates
-- Pilot canary with 1–2 low-risk orgs
-- Monitor 7-day window before expanding
-- Do not enable GLOBAL_ENFORCE without explicit ops approval
+- Wire Prometheus alerts to GO/NO-GO thresholds
+- Grafana dashboards: canary cohort vs shadow baseline
+- Pilot Stage 1 with `ENFORCE_CANARY_PERCENT=5` in staging first
+- Do not enable GLOBAL_ENFORCE without Stage 1–3 evidence + ops sign-off

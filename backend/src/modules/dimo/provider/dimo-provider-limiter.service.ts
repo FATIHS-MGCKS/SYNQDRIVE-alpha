@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { RedisService } from '@shared/redis/redis.service';
 import type { DimoProviderRateAlgorithm } from '@config/dimo-provider-limiter.config';
+import { logDimoProviderLimiterEvent } from './dimo-provider-limiter-log.util';
 import {
   DIMO_PROVIDER_COOLDOWN_SET_SCRIPT,
   DIMO_PROVIDER_INFLIGHT_ACQUIRE_SCRIPT,
@@ -127,9 +128,10 @@ export class DimoProviderLimiterService {
 
       return result;
     } catch (err) {
-      this.logger.warn(
-        `DIMO provider limiter Redis error (fail-open): ${(err as Error).message}`,
-      );
+      logDimoProviderLimiterEvent(this.logger, {
+        event: 'redis_fail_open',
+        message: (err as Error).message,
+      }, { level: 'warn' });
       return {
         leaseId: null,
         inFlightMember: null,
