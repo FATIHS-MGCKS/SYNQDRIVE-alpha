@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-iam-member-management-p2-2-62-2026-08-29',
+    version: '4.9.990',
+    title: 'Platform i18n — P2.2.62 Users & Roles Member Management',
+    summary: [
+      'Localized P262 Member Management slice via `rental-organization-users-roles-i18n.ts` and `rental.iamMember.{en,de}.ts`; +70 keys (9564→9634 EN/DE) within budget; reuses `common.*` and existing `iam.*` shell keys.',
+      'Presentation-only: Team tab, invite wizard, member drawer, membership status labels, audit action labels, host error fallbacks. Raw user identity, custom role names, machine role/status values, payloads, and permission checks frozen.',
+      'P262 enforce-clean exact scope (9 paths) — 0 findings. Permission taxonomy deferred to P2.2.63.',
+    ],
+    reason:
+      'P2.2.62 strict mutation-safe implementation for Users & Roles Member Management from P261 merge baseline per preflight verdict B (split).',
+    previousBehavior:
+      'Team tab, invite wizard, and member drawer used hardcoded German/English strings; audit labels from `AUDIT_ACTION_LABELS` constant; status labels inline.',
+    details:
+      'Adapter resolvers for membership status, audit actions, wizard steps, locale-aware dates; payload builders extracted for parity tests. Same-mount DE→EN→DE preserves search and drawer state.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-29T20:20:00.000Z',
+  },
+  {
     id: 'i18n-rental-vehicle-damages-p2-2-61-2026-08-29',
     version: '4.9.989',
     title: 'Platform i18n — P2.2.61 Rental Vehicle Damages',

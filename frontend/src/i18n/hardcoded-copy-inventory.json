@@ -110,24 +110,24 @@
     }
   },
   "summary": {
-    "total": 1282,
+    "total": 1265,
     "bySurface": {
       "MASTER": 1049,
       "OPERATOR": 22,
-      "RENTAL": 185,
+      "RENTAL": 168,
       "SHARED": 1,
       "SHELL": 25
     },
     "byCategory": {
       "ARIA": 43,
-      "TITLE": 178,
-      "TEXT": 918,
-      "LABEL": 80,
+      "TITLE": 177,
+      "TEXT": 903,
+      "LABEL": 79,
       "PLACEHOLDER": 55,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
-      "other Rental areas": 159,
+      "other Rental areas": 142,
       "Finance/Billing": 25,
       "App / routing shell": 1
     },
@@ -15442,17 +15442,16 @@
       ]
     },
     {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 257,
+      "file": "rental/components/users-roles/RolesTab.tsx",
+      "line": 256,
       "surface": "RENTAL",
       "module": "other Rental areas",
       "category": "TEXT",
       "sample": "Alle Stationen",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 3,
+      "occurrences": 2,
       "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx",
         "rental/components/users-roles/RolesTab.tsx",
         "rental/components/users-roles/UserDetailDrawer.tsx"
       ]
@@ -15500,17 +15499,16 @@
       ]
     },
     {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 265,
+      "file": "rental/components/users-roles/UserDetailDrawer.tsx",
+      "line": 316,
       "surface": "RENTAL",
       "module": "other Rental areas",
       "category": "TEXT",
       "sample": "Ausgewählte Stationen",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx",
         "rental/components/users-roles/UserDetailDrawer.tsx"
       ]
     },
@@ -15543,17 +15541,16 @@
       ]
     },
     {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 165,
+      "file": "rental/components/users-roles/UsersTab.tsx",
+      "line": 399,
       "surface": "RENTAL",
       "module": "other Rental areas",
       "category": "TEXT",
       "sample": "Benutzer einladen",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 3,
+      "occurrences": 2,
       "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx",
         "rental/components/users-roles/UsersTab.tsx"
       ]
     },
@@ -15784,20 +15781,6 @@
       ]
     },
     {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 359,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Der Benutzer muss dieses Passwort beim ersten Login ändern.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 226,
       "surface": "RENTAL",
@@ -15924,20 +15907,6 @@
       ]
     },
     {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 319,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Einladung per E-Mail",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/InvitesTab.tsx",
       "line": 202,
       "surface": "RENTAL",
@@ -15963,20 +15932,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/UserDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 320,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Empfohlen — sicherer Onboarding-Flow",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx"
       ]
     },
     {
@@ -16084,20 +16039,6 @@
       ]
     },
     {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 329,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Erweitert — nur bei Bedarf",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/PermissionEditor.tsx",
       "line": 150,
       "surface": "RENTAL",
@@ -16137,34 +16078,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/RentalStressAnalysisCard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 297,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Field Agent / Übergabe",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/users-roles/TeamMemberDrawer.tsx",
-      "line": 151,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Field agent access enabled",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/TeamMemberDrawer.tsx"
       ]
     },
     {
@@ -16532,20 +16445,6 @@
       ]
     },
     {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 214,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Keine Rollenvorlagen verfügbar.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/SecurityActivityTab.tsx",
       "line": 137,
       "surface": "RENTAL",
@@ -16571,20 +16470,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/AccessScopesTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 272,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Keine Stationen konfiguriert.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx"
       ]
     },
     {
@@ -16743,20 +16628,6 @@
       ]
     },
     {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 298,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Mobiler Zugriff für Übergabeprozesse",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 1134,
       "surface": "RENTAL",
@@ -16880,20 +16751,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/BusinessInsightsBox.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/users-roles/UsersRolesTab.tsx",
-      "line": 28,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No organization loaded.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/UsersRolesTab.tsx"
       ]
     },
     {
@@ -17065,34 +16922,6 @@
       ]
     },
     {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 258,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Organisationsweiter Zugriff",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 328,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Passwort manuell setzen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/SecurityActivityTab.tsx",
       "line": 112,
       "surface": "RENTAL",
@@ -17219,34 +17048,6 @@
       ]
     },
     {
-      "file": "rental/components/users-roles/TeamMemberDrawer.tsx",
-      "line": 190,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Reason (required for dangerous actions)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/TeamMemberDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/users-roles/TeamMemberDrawer.tsx",
-      "line": 190,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Reason (required for dangerous actions)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/TeamMemberDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/FinancialInsightsView.tsx",
       "line": 777,
       "surface": "RENTAL",
@@ -17356,20 +17157,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/RolesTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 212,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Rollen werden geladen…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx"
       ]
     },
     {
@@ -17779,20 +17566,6 @@
       ]
     },
     {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 244,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Vorschau für diese Rolle",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/HelpCenterView.tsx",
       "line": 953,
       "surface": "RENTAL",
@@ -17818,20 +17591,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/UserDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/users-roles/CreateUserWizard.tsx",
-      "line": 266,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Zugriff auf bestimmte Standorte",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/users-roles/CreateUserWizard.tsx"
       ]
     },
     {

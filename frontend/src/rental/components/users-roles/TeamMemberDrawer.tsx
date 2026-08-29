@@ -4,10 +4,10 @@ import { toast } from 'sonner';
 import { DetailDrawer, SectionHeader, Timeline } from '../../../components/patterns';
 import { api, type IamTeamMemberDetailDto } from '../../../lib/api';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { resolveAuditActionLabel } from '../../lib/rental-organization-users-roles-i18n';
 import { CollapsiblePermissions } from './PermissionEditor';
 import { MfaStateBadge, RiskBadge } from './IamBadges';
 import { formatDateTime } from './iam-team.utils';
-import { AUDIT_ACTION_LABELS } from './constants';
 
 type DrawerTab = 'overview' | 'access' | 'scope' | 'security' | 'activity';
 
@@ -39,9 +39,9 @@ export function TeamMemberDrawer({
     void api.iam
       .teamMember(orgId, membershipId)
       .then(setDetail)
-      .catch(() => toast.error('Failed to load member'))
+      .catch(() => toast.error(t('iam.member.error.loadMember')))
       .finally(() => setLoading(false));
-  }, [open, orgId, membershipId]);
+  }, [open, orgId, membershipId, t]);
 
   const tabs: { id: DrawerTab; label: string }[] = [
     { id: 'overview', label: t('iam.drawer.overview') },
@@ -69,7 +69,7 @@ export function TeamMemberDrawer({
       const refreshed = await api.iam.teamMember(orgId, membershipId);
       setDetail(refreshed);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Action failed');
+      toast.error(err instanceof Error ? err.message : t('iam.member.error.actionFailed'));
     } finally {
       setPendingAction(null);
       setActionReason('');
@@ -84,7 +84,7 @@ export function TeamMemberDrawer({
       description={detail?.userSummary.email}
     >
       {loading || !detail ? (
-        <div className="py-12 text-center text-muted-foreground text-[13px]">Loading…</div>
+        <div className="py-12 text-center text-muted-foreground text-[13px]">{t('common.loading')}</div>
       ) : (
         <div className="space-y-5">
           <div
@@ -116,7 +116,7 @@ export function TeamMemberDrawer({
               </div>
               <div className="grid grid-cols-2 gap-3 text-[13px]">
                 <div>
-                  <div className="text-muted-foreground">Role</div>
+                  <div className="text-muted-foreground">{t('iam.member.drawer.role')}</div>
                   <div className="font-medium">{detail.effectiveAccess.effectiveRoleLabel}</div>
                 </div>
                 <div>
@@ -146,9 +146,11 @@ export function TeamMemberDrawer({
 
           {tab === 'scope' && (
             <div role="tabpanel" className="space-y-2 text-[13px]">
-              <div>{detail.scope.stationNames.join(', ') || detail.scope.stationScope || 'All stations'}</div>
+              <div>
+                {detail.scope.stationNames.join(', ') || detail.scope.stationScope || t('iam.member.drawer.allStations')}
+              </div>
               {detail.scope.fieldAgentAccess && (
-                <div className="text-muted-foreground">Field agent access enabled</div>
+                <div className="text-muted-foreground">{t('iam.member.drawer.fieldAgentEnabled')}</div>
               )}
             </div>
           )}
@@ -156,11 +158,11 @@ export function TeamMemberDrawer({
           {tab === 'security' && (
             <div role="tabpanel" className="space-y-4">
               <MfaStateBadge state={detail.mfaState} />
-              <SectionHeader title="Sessions" />
+              <SectionHeader title={t('iam.member.drawer.sessionsTitle')} />
               <ul className="space-y-2 text-[12px]">
                 {detail.sessions.items.map((s) => (
                   <li key={s.id} className="rounded-lg border border-border px-3 py-2">
-                    <div>{s.userAgent ?? 'Unknown device'}</div>
+                    <div>{s.userAgent ?? t('iam.member.drawer.unknownDevice')}</div>
                     <div className="text-muted-foreground tabular-nums">{formatDateTime(s.createdAt, locale)}</div>
                   </li>
                 ))}
@@ -173,7 +175,7 @@ export function TeamMemberDrawer({
               <Timeline
                 items={detail.auditTimeline.map((e) => ({
                   id: e.id,
-                  title: (e.auditAction && AUDIT_ACTION_LABELS[e.auditAction]) || e.description,
+                  title: resolveAuditActionLabel(e.auditAction, t) ?? e.description,
                   time: e.createdAt,
                   tone:
                     e.level === 'CRITICAL'
@@ -188,7 +190,7 @@ export function TeamMemberDrawer({
 
           <div className="sticky bottom-0 -mx-4 border-t border-border bg-background/95 backdrop-blur px-4 py-3 space-y-2">
             <label className="block text-[12px] font-medium" htmlFor="iam-action-reason">
-              Reason (required for dangerous actions)
+              {t('iam.member.drawer.actionReason')}
             </label>
             <input
               id="iam-action-reason"

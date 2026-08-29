@@ -584,6 +584,18 @@ const P261_ENFORCE_CLEAN_EXACT = [
   'rental/hooks/useDamageAiIntake.ts',
 ];
 
+const P262_ENFORCE_CLEAN_EXACT = [
+  'rental/components/users-roles/UsersRolesTab.tsx',
+  'rental/components/users-roles/TeamTab.tsx',
+  'rental/components/users-roles/TeamMemberDrawer.tsx',
+  'rental/components/users-roles/CreateUserWizard.tsx',
+  'rental/components/users-roles/IamBadges.tsx',
+  'rental/components/users-roles/iam-team.utils.ts',
+  'rental/components/users-roles/useIamTeam.ts',
+  'rental/components/UsersRolesTab.tsx',
+  'rental/lib/rental-organization-users-roles-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -814,6 +826,10 @@ function isP260EnforceCleanPath(relPath: string): boolean {
 
 function isP261EnforceCleanPath(relPath: string): boolean {
   return P261_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP262EnforceCleanPath(relPath: string): boolean {
+  return P262_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -1298,6 +1314,25 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP261EnforceCleanPath(finding.file),
     );
     expect(p261Debt).toHaveLength(0);
+  });
+
+  it('keeps P262 Users & Roles member management enforce-clean scope at zero findings', () => {
+    const p262Debt = inventory.findings.filter((finding) =>
+      isP262EnforceCleanPath(finding.file),
+    );
+    expect(p262Debt).toHaveLength(0);
+  });
+
+  it('keeps rental-organization-users-roles-i18n.ts on canonical translation resolvers', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/rental-organization-users-roles-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('resolveMembershipStatusLabel');
+    expect(source).toContain('resolveAuditActionLabel');
+    expect(source).toContain('buildInviteUserPayload');
+    expect(source).not.toMatch(/locale === 'de'/);
+    expect(source).not.toMatch(/de-DE/);
   });
 
   it('keeps rental-vehicle-damages-i18n.ts on canonical translation resolvers', () => {

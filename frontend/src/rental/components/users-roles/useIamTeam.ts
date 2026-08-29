@@ -9,6 +9,7 @@ import {
   type IamTeamListItemDto,
   type IamTeamMemberDetailDto,
 } from '../../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 function extractError(err: unknown, fallback: string): string {
   if (err instanceof Error && err.message) return err.message;
@@ -16,6 +17,7 @@ function extractError(err: unknown, fallback: string): string {
 }
 
 export function useIamTeam(orgId: string | undefined) {
+  const { t } = useLanguage();
   const [kpis, setKpis] = useState<IamTeamKpisDto | null>(null);
   const [team, setTeam] = useState<IamTeamListItemDto[]>([]);
   const [roles, setRoles] = useState<IamRoleListItemDto[]>([]);
@@ -42,12 +44,12 @@ export function useIamTeam(orgId: string | undefined) {
         setTeam(Array.isArray(teamData) ? teamData : []);
         setRoles(Array.isArray(roleData) ? roleData : []);
       } catch (err) {
-        setError(extractError(err, 'Failed to load team'));
+        setError(extractError(err, t('iam.member.error.loadTeam')));
       } finally {
         setLoading(false);
       }
     },
-    [orgId],
+    [orgId, t],
   );
 
   const loadSecurity = useCallback(async () => {
@@ -56,9 +58,9 @@ export function useIamTeam(orgId: string | undefined) {
       const data = await api.iam.securityOverview(orgId);
       setSecurity(data);
     } catch (err) {
-      toast.error(extractError(err, 'Failed to load security overview'));
+      toast.error(extractError(err, t('iam.member.error.loadSecurity')));
     }
-  }, [orgId]);
+  }, [orgId, t]);
 
   const openMember = useCallback(
     async (membershipId: string) => {
@@ -68,12 +70,12 @@ export function useIamTeam(orgId: string | undefined) {
         const detail = await api.iam.teamMember(orgId, membershipId);
         setSelectedMember(detail);
       } catch (err) {
-        toast.error(extractError(err, 'Failed to load member'));
+        toast.error(extractError(err, t('iam.member.error.loadMember')));
       } finally {
         setMemberLoading(false);
       }
     },
-    [orgId],
+    [orgId, t],
   );
 
   const openRole = useCallback(
@@ -83,10 +85,10 @@ export function useIamTeam(orgId: string | undefined) {
         const detail = await api.iam.roleDetail(orgId, roleId);
         setSelectedRole(detail);
       } catch (err) {
-        toast.error(extractError(err, 'Failed to load role'));
+        toast.error(extractError(err, t('iam.member.error.loadMember')));
       }
     },
-    [orgId],
+    [orgId, t],
   );
 
   const refreshAll = useCallback(async () => {

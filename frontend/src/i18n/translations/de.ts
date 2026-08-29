@@ -47,6 +47,7 @@ import { vendorsDirectoryDe } from './vendors.directory.de';
 import { rentalVehicleDocumentsDe } from './rental.vehicleDocuments.de';
 import { rentalDocumentIntakeDe } from './rental.documentIntake.de';
 import { rentalVehicleDamagesDe } from './rental.vehicleDamages.de';
+import { rentalIamMemberDe } from './rental.iamMember.de';
 import { supportOpsDe } from './support.ops.de';
 import { whatsappDe } from './whatsapp.de';
 
@@ -5834,4 +5835,5 @@ export const de: Record<TranslationKey, string> = {
   ...rentalVehicleDocumentsDe,
   ...rentalDocumentIntakeDe,
   ...rentalVehicleDamagesDe,
+  ...rentalIamMemberDe,
 } satisfies CompleteTranslationDictionary;

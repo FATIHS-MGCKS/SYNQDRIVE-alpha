@@ -393,6 +393,18 @@ const P261_ENFORCE_CLEAN_EXACT = new Set([
   'rental/hooks/useDamageAiIntake.ts',
 ]);
 
+const P262_ENFORCE_CLEAN_EXACT = new Set([
+  'rental/components/users-roles/UsersRolesTab.tsx',
+  'rental/components/users-roles/TeamTab.tsx',
+  'rental/components/users-roles/TeamMemberDrawer.tsx',
+  'rental/components/users-roles/CreateUserWizard.tsx',
+  'rental/components/users-roles/IamBadges.tsx',
+  'rental/components/users-roles/iam-team.utils.ts',
+  'rental/components/users-roles/useIamTeam.ts',
+  'rental/components/UsersRolesTab.tsx',
+  'rental/lib/rental-organization-users-roles-i18n.ts',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -727,6 +739,10 @@ function isP261EnforceCleanPath(relPath) {
   return P261_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP262EnforceCleanPath(relPath) {
+  return P262_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -779,6 +795,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (isP226EnforceCleanPath(relPath)) return true;
   if (isP260EnforceCleanPath(relPath)) return true;
   if (isP261EnforceCleanPath(relPath)) return true;
+  if (isP262EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -812,6 +829,7 @@ function migrationPhaseFor(relPath, surface) {
   if (isP226EnforceCleanPath(relPath)) return 'P2.2.26';
   if (isP260EnforceCleanPath(relPath)) return 'P2.2.60';
   if (isP261EnforceCleanPath(relPath)) return 'P2.2.61';
+  if (isP262EnforceCleanPath(relPath)) return 'P2.2.62';
   if (isP210EnforceCleanPath(relPath)) return 'P2.2.10';
   if (isP29EnforceCleanPath(relPath)) return 'P2.2.9';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';

@@ -47,6 +47,7 @@ import { whatsappEn } from './whatsapp.en';
 import { rentalVehicleDocumentsEn } from './rental.vehicleDocuments.en';
 import { rentalDocumentIntakeEn } from './rental.documentIntake.en';
 import { rentalVehicleDamagesEn } from './rental.vehicleDamages.en';
+import { rentalIamMemberEn } from './rental.iamMember.en';
 
 export const en = {
   // ─── Navigation / Sidebar ───
@@ -5824,6 +5825,7 @@ export const en = {
   ...rentalVehicleDocumentsEn,
   ...rentalDocumentIntakeEn,
   ...rentalVehicleDamagesEn,
+  ...rentalIamMemberEn,
 } as const;
 
 export type TranslationKey = keyof typeof en;

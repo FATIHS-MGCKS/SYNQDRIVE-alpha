@@ -26,7 +26,7 @@ export function UsersRolesTab({ orgId }: UsersRolesTabProps) {
   if (!orgId?.trim()) {
     return (
       <div className="max-w-[1600px] mx-auto py-12 text-center text-[13px] text-muted-foreground">
-        No organization loaded.
+        {t('iam.member.noOrg')}
       </div>
     );
   }
