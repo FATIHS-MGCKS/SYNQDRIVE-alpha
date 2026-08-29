@@ -1,17 +1,11 @@
 import { randomUUID } from 'crypto';
-import {
-  PrismaClient,
-  TripStatus,
-  type Organization,
-  type Vehicle,
-  type VehicleTrip,
-} from '@prisma/client';
+import { PrismaClient, TripStatus } from '@prisma/client';
 
 export type BoundaryRepairPostgresFixture = {
   suffix: string;
-  org: Organization;
-  vehicle: Vehicle;
-  trip: VehicleTrip;
+  org: { id: string };
+  vehicle: { id: string; organizationId: string };
+  trip: { id: string; startTime: Date; endTime: Date | null };
 };
 
 function uniqueSuffix(): string {
@@ -41,6 +35,7 @@ export async function createBoundaryRepairPostgresFixture(
       businessType: 'RENTAL',
       status: 'ACTIVE',
     },
+    select: { id: true },
   });
 
   const vehicle = await prisma.vehicle.create({
@@ -54,6 +49,7 @@ export async function createBoundaryRepairPostgresFixture(
       fuelType: 'GASOLINE',
       status: 'AVAILABLE',
     },
+    select: { id: true, organizationId: true },
   });
 
   const start = new Date('2026-08-29T12:30:00.000Z');
@@ -70,6 +66,7 @@ export async function createBoundaryRepairPostgresFixture(
       endLongitude: 9.35,
       rawDetectionMeta: {},
     },
+    select: { id: true, startTime: true, endTime: true },
   });
 
   return { suffix, org, vehicle, trip };
