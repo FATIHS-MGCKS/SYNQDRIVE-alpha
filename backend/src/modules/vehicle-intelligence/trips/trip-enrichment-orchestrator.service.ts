@@ -37,6 +37,7 @@ import { TripReconciliationService } from './reconciliation/trip-reconciliation.
 import { TripsService } from './trips.service';
 import { TripAnalysisCoordinatorService } from './trip-analysis-coordinator.service';
 import { MisuseCaseAggregatorService } from '../misuse-cases/misuse-case-aggregator.service';
+import { BoundaryRefreshLifecycleService } from './boundary-refresh-lifecycle.service';
 
 // ── Status constants ────────────────────────────────────────────────────────
 
@@ -131,6 +132,7 @@ export class TripEnrichmentOrchestratorService {
     @Optional() private readonly tripsService?: TripsService,
     @Optional() private readonly analysisCoordinator?: TripAnalysisCoordinatorService,
     @Optional() private readonly misuseCaseAggregator?: MisuseCaseAggregatorService,
+    @Optional() private readonly boundaryRefreshLifecycle?: BoundaryRefreshLifecycleService,
   ) {}
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -418,16 +420,7 @@ export class TripEnrichmentOrchestratorService {
     vehicleId: string,
     organizationId: string,
   ): Promise<void> {
-    await this.prisma.vehicleTrip.update({
-      where: { id: tripId },
-      data: {
-        behaviorEnrichmentStatus: null,
-        behaviorSummaryStatus: 'PENDING',
-        drivingImpactStatus: 'PENDING',
-        drivingImpactComputedAt: null,
-        tripAnalysisStatus: 'PENDING',
-      },
-    });
+    await this.boundaryRefreshLifecycle?.resetForBoundaryRefreshEnqueue(tripId);
 
     // Route/waypoints: replace-by-trip via TripsService.enrichTrip (deleteMany + createMany).
     await this.runRouteSafetyEnrichment(vehicleId, tripId);

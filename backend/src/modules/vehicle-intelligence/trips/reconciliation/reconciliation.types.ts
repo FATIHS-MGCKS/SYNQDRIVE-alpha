@@ -32,6 +32,7 @@ export const REPAIR_STATUS = {
   PROPOSED: 'PROPOSED',
   /** Boundary mutation committed; downstream refresh may still be pending. */
   BOUNDARY_APPLIED: 'BOUNDARY_APPLIED',
+  /** Downstream refresh queue accepted — full lifecycle completion is boundaryRefresh=COMPLETED. */
   APPLIED: 'APPLIED',
   REJECTED: 'REJECTED',
   EXPIRED: 'EXPIRED',

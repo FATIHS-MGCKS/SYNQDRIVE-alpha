@@ -2,9 +2,22 @@ import { TripDecisionEngine } from '../decision/trip-decision.engine';
 import { BoundaryRepairConcurrentMutationError } from '../decision/decision.types';
 import { TripReconciliationService } from './trip-reconciliation.service';
 import { TripOverlapDetector } from '../detectors/trip-overlap.detector';
+import { BoundaryRefreshLifecycleService } from '../boundary-refresh-lifecycle.service';
 import { REPAIR_STATUS, REPAIR_TYPES, BOUNDARY_REFRESH_STATE } from './reconciliation.types';
 import { classifyPartialBoundaryRepair } from '../detectors/partial-boundary-classification.util';
-import { buildBoundaryRefreshRecord, isBoundaryRefreshPending } from '../boundary-repair.state.util';
+import {
+  buildBoundaryRefreshRecord,
+  buildBoundaryRepairGeneration,
+  isBoundaryRefreshRetryable,
+  readBoundaryRefreshRecord,
+} from '../boundary-repair.state.util';
+
+const TEST_GENERATION = buildBoundaryRepairGeneration({
+  auditId: 'audit-1',
+  providerSegmentId: 'seg-1',
+  newStartTime: new Date('2026-08-29T12:01:00.000Z'),
+  newEndTime: new Date('2026-08-29T12:50:00.000Z'),
+});
 
 /**
  * P1.2 FINAL-3.1 — atomicity, refresh retry, concurrency, downstream semantics.
@@ -22,7 +35,24 @@ function makeTransactionalPrisma() {
   const tx = {
     vehicleTrip: {
       findUnique: jest.fn(async ({ where }: { where: { id: string } }) => tripStore.get(where.id) ?? null),
-      findMany: jest.fn(async () => [...tripStore.values()]),
+      findMany: jest.fn(async ({ where }: { where?: Record<string, unknown> }) => {
+        let rows = [...tripStore.values()];
+        if (where?.vehicleId) {
+          rows = rows.filter((r) => r.vehicleId === where.vehicleId);
+        }
+        if (where?.tripStatus) {
+          rows = rows.filter((r) => r.tripStatus === where.tripStatus);
+        }
+        const metaFilter = where?.rawDetectionMeta as
+          | { path?: string[]; equals?: string }
+          | undefined;
+        if (metaFilter?.path?.[0] === 'boundaryRefresh' && metaFilter.path?.[1] === 'state') {
+          rows = rows.filter(
+            (r) => readBoundaryRefreshRecord(r.rawDetectionMeta)?.state === metaFilter.equals,
+          );
+        }
+        return rows;
+      }),
       updateMany: jest.fn(async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
         const row = tripStore.get(where.id as string);
         if (!row) return { count: 0 };
@@ -43,6 +73,15 @@ function makeTransactionalPrisma() {
         const next = existing ? { ...existing, ...update } : create;
         repairStore.set(where.id, next);
         return next;
+      }),
+      findMany: jest.fn(async ({ where }: { where?: Record<string, unknown> }) => {
+        let rows: Array<Record<string, unknown>> = [...repairStore.entries()].map(([id, row]) => ({
+          id,
+          ...row,
+        }));
+        if (where?.tripId) rows = rows.filter((r) => r.tripId === where.tripId);
+        if (where?.repairType) rows = rows.filter((r) => r.repairType === where.repairType);
+        return rows;
       }),
       findUnique: jest.fn(async ({ where }: { where: { id: string } }) => repairStore.get(where.id) ?? null),
       update: jest.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
@@ -151,7 +190,9 @@ describe('FINAL-3.1 boundary repair atomicity', () => {
       startTime: at(1),
       endTime: at(50),
       rawDetectionMeta: {
-        boundaryRefresh: buildBoundaryRefreshRecord('PENDING', null),
+        boundaryRefresh: buildBoundaryRefreshRecord('PENDING', null, undefined, {
+          generation: TEST_GENERATION,
+        }),
       },
     });
 
@@ -159,6 +200,7 @@ describe('FINAL-3.1 boundary repair atomicity', () => {
       refreshEnrichmentAfterBoundaryRepair: jest.fn().mockResolvedValue(undefined),
     };
 
+    const lifecycle = new BoundaryRefreshLifecycleService(h.prisma as never);
     const service = new TripReconciliationService(
       h.prisma as never,
       { repairTripBoundariesWithAudit: jest.fn() } as never,
@@ -172,6 +214,9 @@ describe('FINAL-3.1 boundary repair atomicity', () => {
       undefined,
       undefined,
       { get: jest.fn(() => true) } as never,
+      undefined,
+      undefined,
+      lifecycle,
     );
 
     await (
@@ -339,6 +384,7 @@ function buildReconciliationHarness() {
     }),
   };
   const decisionEngine = new TripDecisionEngine(h.prisma as never);
+  const boundaryRefreshLifecycle = new BoundaryRefreshLifecycleService(h.prisma as never);
   const service = new TripReconciliationService(
     h.prisma as never,
     decisionEngine,
@@ -352,8 +398,11 @@ function buildReconciliationHarness() {
     undefined,
     { repairActions: { inc: jest.fn() }, duplicateCandidates: { inc: jest.fn() } } as never,
     configService as never,
+    undefined,
+    undefined,
+    boundaryRefreshLifecycle,
   );
-  return { ...h, service, enrichment, decisionEngine };
+  return { ...h, service, enrichment, decisionEngine, boundaryRefreshLifecycle };
 }
 
 describe('FINAL-3.1 refresh retry + org safety', () => {
@@ -421,12 +470,19 @@ describe('FINAL-3.1 refresh retry + org safety', () => {
     expect(auditsAfterFirst.some((a) => a.status === REPAIR_STATUS.REJECTED)).toBe(false);
 
     const meta = h.tripStore.get('trip-1')?.rawDetectionMeta as Record<string, unknown>;
-    expect(isBoundaryRefreshPending(meta)).toBe(true);
+    const refreshAfterFailure = readBoundaryRefreshRecord(meta);
+    expect(refreshAfterFailure?.state).toBe(BOUNDARY_REFRESH_STATE.PENDING);
+    expect(refreshAfterFailure?.lastError).toContain('redis down');
+
+    const retryAfterMs = Date.parse(refreshAfterFailure?.retryAfter ?? '0');
+    jest.spyOn(Date, 'now').mockReturnValue(retryAfterMs + 1);
+    expect(isBoundaryRefreshRetryable(refreshAfterFailure)).toBe(true);
 
     await (
       h.service as never as { retryPendingBoundaryRefreshes: (v: string) => Promise<void> }
     ).retryPendingBoundaryRefreshes('veh-1');
 
+    jest.spyOn(Date, 'now').mockRestore();
     expect(h.enrichment.refreshEnrichmentAfterBoundaryRepair).toHaveBeenCalledTimes(2);
   });
 
@@ -439,7 +495,9 @@ describe('FINAL-3.1 refresh retry + org safety', () => {
       startTime: at(1),
       endTime: at(50),
       rawDetectionMeta: {
-        boundaryRefresh: buildBoundaryRefreshRecord('PENDING', null, 'queue lost on restart'),
+        boundaryRefresh: buildBoundaryRefreshRecord('PENDING', null, 'queue lost on restart', {
+          generation: TEST_GENERATION,
+        }),
       },
     });
 
@@ -536,6 +594,9 @@ describe('FINAL-3.1 refresh retry + org safety', () => {
       undefined,
       undefined,
       { enrichTrip: jest.fn().mockResolvedValue({}) } as never,
+      undefined,
+      undefined,
+      new BoundaryRefreshLifecycleService(h.prisma as never),
     );
 
     await orchestrator.refreshEnrichmentAfterBoundaryRepair('trip-1', 'veh-1', 'org-1');

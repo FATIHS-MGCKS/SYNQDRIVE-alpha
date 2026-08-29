@@ -19,6 +19,7 @@ import {
   shouldFullySkipAnalysis,
 } from './trip-analysis-status';
 import { TireTripUsageService } from '../tires/tire-trip-usage.service';
+import { BoundaryRefreshLifecycleService } from './boundary-refresh-lifecycle.service';
 
 export interface AnalysisDiagnosticSnapshot {
   tripId: string;
@@ -45,6 +46,7 @@ export class TripAnalysisCoordinatorService {
     private readonly prisma: PrismaService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
     @Optional() private readonly tireTripUsageService?: TireTripUsageService,
+    @Optional() private readonly boundaryRefreshLifecycle?: BoundaryRefreshLifecycleService,
   ) {}
 
   async onAnalysisEnqueued(tripId: string): Promise<void> {
@@ -147,6 +149,9 @@ export class TripAnalysisCoordinatorService {
         `assessability=${assessability.analysisAssessability}`,
     );
     await this.attributeTireUsageOnCanonicalFinalization(tripId, terminalStatus);
+    await this.boundaryRefreshLifecycle?.onAnalysisStageUpdated(tripId, 'behavior', 'skipped');
+    await this.boundaryRefreshLifecycle?.onAnalysisStageUpdated(tripId, 'route', 'skipped');
+    await this.boundaryRefreshLifecycle?.onAnalysisStageUpdated(tripId, 'drivingImpact', 'skipped');
   }
 
   async onAnalysisFailed(tripId: string, reason: string, stage?: AnalysisStageName): Promise<void> {
@@ -265,6 +270,7 @@ export class TripAnalysisCoordinatorService {
       });
 
       await this.attributeTireUsageOnCanonicalFinalization(tripId, terminalStatus);
+      await this.boundaryRefreshLifecycle?.onAnalysisStageUpdated(tripId, stage, state);
       return;
     } else if (isAnalysisPartiallyReady(stages)) {
       Object.assign(data, {
@@ -287,6 +293,7 @@ export class TripAnalysisCoordinatorService {
       where: { id: tripId },
       data: data as any,
     });
+    await this.boundaryRefreshLifecycle?.onAnalysisStageUpdated(tripId, stage, state);
   }
 
   /**

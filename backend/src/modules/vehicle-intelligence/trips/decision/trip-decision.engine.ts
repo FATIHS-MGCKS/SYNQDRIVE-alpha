@@ -20,6 +20,8 @@ import { BoundaryRepairConcurrentMutationError } from './decision.types';
 import {
   appendBoundaryRepairHistory,
   buildBoundaryRefreshRecord,
+  buildBoundaryRepairGeneration,
+  emptyBoundaryRefreshStages,
   readRawDetectionMeta,
 } from '../boundary-repair.state.util';
 import { BOUNDARY_REFRESH_STATE, REPAIR_STATUS } from '../reconciliation/reconciliation.types';
@@ -622,6 +624,7 @@ export class TripDecisionEngine {
 
       const boundaryRepairAudit = {
         repairType: 'PARTIAL_TRIP_BOUNDARY_EXTENSION',
+        auditId: audit?.auditId ?? null,
         oldStartTime: params.oldStartTime.toISOString(),
         newStartTime: params.newStartTime.toISOString(),
         oldEndTime: params.oldEndTime.toISOString(),
@@ -635,9 +638,18 @@ export class TripDecisionEngine {
         appliedAt: new Date().toISOString(),
       };
 
+      const generation = buildBoundaryRepairGeneration({
+        auditId: audit?.auditId ?? params.tripId,
+        providerSegmentId: params.providerSegmentId,
+        newStartTime: params.newStartTime,
+        newEndTime: params.newEndTime,
+      });
+
       const boundaryRefresh = buildBoundaryRefreshRecord(
         BOUNDARY_REFRESH_STATE.PENDING,
         null,
+        undefined,
+        { generation, stages: emptyBoundaryRefreshStages() },
       );
 
       const mutation = await tx.vehicleTrip.updateMany({
@@ -692,6 +704,7 @@ export class TripDecisionEngine {
           JSON.stringify({
             ...audit.detectorEvidence,
             boundaryRefreshState: BOUNDARY_REFRESH_STATE.PENDING,
+            boundaryRepairGeneration: generation,
           }),
         );
         await tx.tripRepair.upsert({

@@ -56,6 +56,7 @@ import { TripDetectionOrchestrationService } from './trips/trip-detection-orches
 import { TripBehaviorEnrichmentService } from './trips/trip-behavior-enrichment.service';
 import { TripEnrichmentOrchestratorService } from './trips/trip-enrichment-orchestrator.service';
 import { TripAnalysisCoordinatorService } from './trips/trip-analysis-coordinator.service';
+import { BoundaryRefreshLifecycleService } from './trips/boundary-refresh-lifecycle.service';
 import { LteR1BehaviorEnrichmentService } from './trips/lte-r1-behavior-enrichment.service';
 import { DimoNativeDrivingEventPersistenceService } from './dimo-native-driving-events/dimo-native-driving-event-persistence.service';
 import { EventContextEnrichmentService } from './event-context/event-context-enrichment.service';
@@ -309,6 +310,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     TripBehaviorEnrichmentService,
     TripEnrichmentOrchestratorService,
     TripAnalysisCoordinatorService,
+    BoundaryRefreshLifecycleService,
     EventContextEnrichmentService,
     LteR1BehaviorEnrichmentService,
     DimoNativeDrivingEventPersistenceService,
@@ -505,6 +507,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     TripBehaviorEnrichmentService,
     TripEnrichmentOrchestratorService,
     TripAnalysisCoordinatorService,
+    BoundaryRefreshLifecycleService,
     LteR1BehaviorEnrichmentService,
     DimoNativeDrivingEventPersistenceService,
     DrivingAssessmentDeviceQualityService,

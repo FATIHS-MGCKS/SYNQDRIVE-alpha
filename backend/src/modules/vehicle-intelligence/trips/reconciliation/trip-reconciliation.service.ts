@@ -53,10 +53,11 @@ import {
 import { assessCoverage } from '../detectors/trip-coverage.util';
 import {
   buildBoundaryRefreshRecord,
-  isBoundaryRefreshPending,
+  isBoundaryRefreshRetryable,
   readBoundaryRefreshRecord,
   readRawDetectionMeta,
 } from '../boundary-repair.state.util';
+import { BoundaryRefreshLifecycleService } from '../boundary-refresh-lifecycle.service';
 import { BoundaryRepairConcurrentMutationError } from '../decision/decision.types';
 
 interface ReconciliationOptions {
@@ -168,6 +169,7 @@ export class TripReconciliationService {
     @Optional() private readonly configService?: ConfigService,
     @Optional() private readonly energyEventsService?: EnergyEventsService,
     @Optional() private readonly tripAssociation?: EventTripAssociationService,
+    @Optional() private readonly boundaryRefreshLifecycle?: BoundaryRefreshLifecycleService,
   ) {
     this.TRIP_MID_GAP_SPLIT_MS =
       this.configService?.get<number>('worker.tripMidGapSplitMs') ?? 180_000;
@@ -731,32 +733,36 @@ export class TripReconciliationService {
   }
 
   private async retryPendingBoundaryRefreshes(vehicleId: string): Promise<void> {
-    const trips = await this.prisma.vehicleTrip.findMany({
-      where: { vehicleId, tripStatus: TripStatus.COMPLETED },
-      select: {
-        id: true,
-        vehicleId: true,
-        rawDetectionMeta: true,
-        vehicle: { select: { organizationId: true } },
-      },
-      take: 50,
-    });
+    const trips =
+      (await this.boundaryRefreshLifecycle?.findRecoverableTrips(vehicleId)) ?? [];
 
     for (const trip of trips) {
-      if (!isBoundaryRefreshPending(trip.rawDetectionMeta)) continue;
+      const refresh = readBoundaryRefreshRecord(trip.rawDetectionMeta);
+      if (!isBoundaryRefreshRetryable(refresh)) continue;
+
       const organizationId = await this.resolveOrganizationIdForVehicle(
         vehicleId,
-        trip.vehicle?.organizationId ?? null,
+        trip.organizationId,
       );
       try {
         await this.enqueueBoundaryRepairRefresh(trip.id, vehicleId, organizationId);
-        await this.markBoundaryRefreshState(trip.id, BOUNDARY_REFRESH_STATE.ENQUEUED);
+        if (refresh?.generation) {
+          await this.boundaryRefreshLifecycle?.persistBoundaryRefreshState(
+            trip.id,
+            BOUNDARY_REFRESH_STATE.ENQUEUED,
+            undefined,
+            { generation: refresh.generation },
+          );
+        }
       } catch (err: unknown) {
-        await this.markBoundaryRefreshState(
-          trip.id,
-          BOUNDARY_REFRESH_STATE.PENDING,
-          (err as Error).message,
-        );
+        if (refresh?.generation) {
+          await this.boundaryRefreshLifecycle?.persistBoundaryRefreshState(
+            trip.id,
+            BOUNDARY_REFRESH_STATE.PENDING,
+            (err as Error).message,
+            { generation: refresh.generation },
+          );
+        }
         this.logger.warn(
           `Boundary refresh retry failed for trip ${trip.id}: ${(err as Error).message}`,
         );
@@ -769,6 +775,11 @@ export class TripReconciliationService {
     state: (typeof BOUNDARY_REFRESH_STATE)[keyof typeof BOUNDARY_REFRESH_STATE],
     error?: string,
   ): Promise<void> {
+    if (this.boundaryRefreshLifecycle) {
+      await this.boundaryRefreshLifecycle.persistBoundaryRefreshState(tripId, state, error);
+      return;
+    }
+
     const trip = await this.prisma.vehicleTrip.findUnique({
       where: { id: tripId },
       select: { rawDetectionMeta: true },
@@ -777,7 +788,10 @@ export class TripReconciliationService {
 
     const priorMeta = readRawDetectionMeta(trip.rawDetectionMeta);
     const priorRefresh = readBoundaryRefreshRecord(trip.rawDetectionMeta);
-    const boundaryRefresh = buildBoundaryRefreshRecord(state, priorRefresh, error);
+    if (!priorRefresh?.generation) return;
+    const boundaryRefresh = buildBoundaryRefreshRecord(state, priorRefresh, error, {
+      generation: priorRefresh.generation,
+    });
 
     await this.prisma.vehicleTrip.update({
       where: { id: tripId },
@@ -813,29 +827,35 @@ export class TripReconciliationService {
     organizationId: string,
     auditId: string,
   ): Promise<void> {
+    const trip = await this.prisma.vehicleTrip.findUnique({
+      where: { id: tripId },
+      select: { rawDetectionMeta: true },
+    });
+    const refresh = readBoundaryRefreshRecord(trip?.rawDetectionMeta);
+    const generation = refresh?.generation;
+    if (!generation) {
+      throw new Error(`Boundary refresh missing generation for trip ${tripId}`);
+    }
+
     try {
       await this.enqueueBoundaryRepairRefresh(tripId, vehicleId, organizationId);
-      await this.markBoundaryRefreshState(tripId, BOUNDARY_REFRESH_STATE.ENQUEUED);
-      await this.prisma.tripRepair.update({
-        where: { id: auditId },
-        data: {
-          status: REPAIR_STATUS.APPLIED,
-          detectorEvidence: {
-            ...((
-              await this.prisma.tripRepair.findUnique({
-                where: { id: auditId },
-                select: { detectorEvidence: true },
-              })
-            )?.detectorEvidence as Record<string, unknown> | null),
-            boundaryRefreshState: BOUNDARY_REFRESH_STATE.ENQUEUED,
-          } as any,
-        },
-      });
+      await this.boundaryRefreshLifecycle?.persistBoundaryRefreshState(
+        tripId,
+        BOUNDARY_REFRESH_STATE.ENQUEUED,
+        undefined,
+        { generation },
+      );
+      await this.boundaryRefreshLifecycle?.markRepairAuditEnqueued(
+        tripId,
+        auditId,
+        generation,
+      );
     } catch (err: unknown) {
-      await this.markBoundaryRefreshState(
+      await this.boundaryRefreshLifecycle?.persistBoundaryRefreshState(
         tripId,
         BOUNDARY_REFRESH_STATE.PENDING,
         (err as Error).message,
+        { generation },
       );
       this.logger.warn(
         `Boundary refresh enqueue failed for trip ${tripId} (boundary already applied): ` +
@@ -906,7 +926,9 @@ export class TripReconciliationService {
 
     if (classification.kind === 'EXACT_MATCH') {
       const matchedTrip = input.canonicalTrips.find((t) => t.id === classification.tripId);
-      if (matchedTrip && isBoundaryRefreshPending((matchedTrip as { rawDetectionMeta?: unknown }).rawDetectionMeta)) {
+      if (matchedTrip && isBoundaryRefreshRetryable(readBoundaryRefreshRecord(
+        (matchedTrip as { rawDetectionMeta?: unknown }).rawDetectionMeta,
+      ))) {
         try {
           const organizationId = await this.resolveOrganizationIdForVehicle(
             input.vehicleId,
