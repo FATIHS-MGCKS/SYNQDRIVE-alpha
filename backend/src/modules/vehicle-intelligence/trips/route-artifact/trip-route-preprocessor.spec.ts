@@ -136,7 +136,7 @@ describe('trip-route-preprocessor (R2)', () => {
     expect(result.diagnostics.spikeRemovedCount).toBe(0);
   });
 
-  it('M — records 10-minute telemetry gap without fabricating points', () => {
+  it('M — records 10-minute telemetry gap with filtered geometry indices', () => {
     const result = run([
       pt(52.52, 13.4, ts(0)),
       pt(52.53, 13.41, ts(600)),
@@ -144,7 +144,39 @@ describe('trip-route-preprocessor (R2)', () => {
     expect(result.filteredPoints).toHaveLength(2);
     expect(result.diagnostics.gapCount).toBe(1);
     expect(result.diagnostics.largestGapSeconds).toBe(600);
-    expect(result.filteredGeometry).toHaveLength(2);
+    expect(result.diagnostics.gaps[0]).toEqual({
+      afterFilteredPointIndex: 0,
+      beforeFilteredPointIndex: 1,
+      gapSeconds: 600,
+      continuity: 'UNKNOWN',
+    });
+  });
+
+  it('long legitimate movement across telemetry gap is not teleport-filtered', () => {
+    const result = run([
+      pt(52.52, 13.4, ts(0)),
+      pt(52.9, 13.8, ts(600)),
+    ]);
+    expect(result.filteredPoints).toHaveLength(2);
+    expect(result.diagnostics.spikeRemovedCount).toBe(0);
+    expect(result.diagnostics.gapCount).toBe(1);
+  });
+
+  it('simplification cannot erase a gap boundary', () => {
+    const points: TripRouteInputPoint[] = [];
+    for (let i = 0; i < 30; i++) {
+      points.push(pt(52.52 + i * 0.0001, 13.4, ts(i * 7)));
+    }
+    points.push(pt(52.55, 13.45, ts(600)));
+    for (let i = 0; i < 30; i++) {
+      points.push(pt(52.55 + i * 0.0001, 13.45, ts(610 + i * 7)));
+    }
+    const result = run(points);
+    expect(result.diagnostics.gapCount).toBeGreaterThanOrEqual(1);
+    const gap = result.diagnostics.gaps[0];
+    expect(result.filteredPoints[gap.afterFilteredPointIndex]).toBeDefined();
+    expect(result.filteredPoints[gap.beforeFilteredPointIndex]).toBeDefined();
+    expect(gap.continuity).toBe('UNKNOWN');
   });
 
   it('N — preserves sharp urban turn vertices', () => {

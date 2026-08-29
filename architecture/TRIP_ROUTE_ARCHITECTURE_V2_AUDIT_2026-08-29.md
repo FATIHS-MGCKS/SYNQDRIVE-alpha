@@ -918,7 +918,7 @@ This prevents identical fingerprints from representing different computed route 
 
 ## Stage R2 implementation record (2026-08-29)
 
-**Status:** IMPLEMENTED IN PR — PENDING MERGE  
+**Status:** IMPLEMENTED IN PR #1413 — PENDING MERGE  
 **Merged base:** R1 @ `6b960e2a9`  
 **Mapbox runtime:** UNCHANGED  
 **Frontend:** UNCHANGED  
@@ -942,7 +942,7 @@ Measurement-only subset of RAW:
 - Isolated GPS teleport spike removal (implied speed > 280 km/h with A→C coherence)
 - Stationary cluster collapse (≤15 m span for ≥14 s)
 - Douglas–Peucker simplification on measured vertices only (≥20 points, 8 m tolerance)
-- Long telemetry gaps recorded in diagnostics, never bridged with fabricated points
+- Long telemetry gaps recorded in diagnostics; continuity between gap endpoints is UNKNOWN (not measured)
 
 ### Preprocessing pipeline
 
@@ -973,12 +973,13 @@ Measurement-only subset of RAW:
 
 **Production measurements:** not available in this environment; thresholds are conservative with full test matrix coverage.
 
-### Waypoint lineage decision
+### Waypoint lineage decision (pre-merge correction)
 
-- **Preprocessor input:** full-fidelity transient DIMO `routePoints` inside `TripsService.enrichTrip` (before `storeWaypoints` ≤500 sampling)
-- **Fingerprint input:** same full-fidelity points (coordinates + timestamps)
-- **Bounded waypoint storage:** unchanged at ≤500; deferred to later stage
-- **RAW artifact rows:** metadata-only; waypoints remain reconstructable from bounded store
+- **RAW_DURABLE_SOURCE:** `VehicleTripWaypoint` on canonical `enrichTrip` / `DRIVING_ROUTE_ENRICH` path
+- **FULL_FIDELITY_INPUT_PERSISTED:** YES — all measured observations up to `TRIP_ROUTE_CANONICAL_WAYPOINT_MAX` (10_000)
+- **WAYPOINT_STORAGE_POLICY:** `canonical` fidelity on route-enriched trips (full fidelity); `bounded` (≤500) retained for legacy `GET /route` cache path only
+- **RAW_INPUT_RECONSTRUCTABLE:** YES — durable waypoints reproduce exact fingerprint input (tested with 1_200 points)
+- **DB amplification assessed:** ~7 s DIMO cadence → ~514 points/hour/trip; 4 h ≈ 2_057 rows (~200 KB/trip); indexed by `trip_id`; trip list queries do not load waypoints
 
 ### Fingerprint / algorithm version
 
@@ -999,18 +1000,20 @@ Measurement-only subset of RAW:
 ### Runtime wiring
 
 - **Owner:** `DrivingAnalysisStage.ROUTE` → `DRIVING_ROUTE_ENRICH` → `DrivingRouteEnrichJobHandler` → `TripsService.enrichTrip`
-- **R2 step:** `materializeRouteArtifact()` called after DIMO fetch, before waypoint store + Mapbox
-- **Failure isolation:** artifact errors logged, do not block legacy enrichment or Mapbox
+- **Order:** DIMO fetch → canonical waypoint persist → artifact materialize → legacy Mapbox enrichment
+- **ARTIFACT_FAILURE_SEMANTICS:** retryable persistence failures throw `DrivingIntelligenceJobRetryableError` before Mapbox; job retries via existing `DrivingIntelligenceJob` machinery
+- **ARTIFACT_RETRY_OWNER:** `DRIVING_ROUTE_ENRICH` / `DrivingIntelligenceJobProcessorService` (no second scheduler)
+- **ARTIFACT_FAILURE_CAN_BE_SILENT:** NO — retryable failures propagate; permanent validation failures logged
 
 ### Gap / segment contract
 
-- Artifact geometry remains a single measured `LineString` sequence
-- Gaps ≥180 s recorded in `diagnosticsJson.gaps` for R5/R6 rendering decisions
-- No `MultiLineString` in R2; no silent gap bridging
+- **GAP_CONTINUITY_SEMANTICS:** `filteredGeometryJson` is a flat coordinate array; consecutive points with `gapSeconds ≥ 180` have **UNKNOWN** measured continuity — LineString renderers must not infer travel across the gap
+- **GAP_BOUNDARY_CONTRACT:** `diagnosticsJson.gaps[]` uses `afterFilteredPointIndex` / `beforeFilteredPointIndex` on final filtered geometry; spike removal and simplification run per continuous segment (never across gaps)
+- R3+ must not Mapbox-match across a recorded gap boundary
 
-### Tests (55 in route-artifact + enrich wiring)
+### Tests (63+ in route-artifact + enrich wiring)
 
-Matrix A–AD covered in `trip-route-preprocessor.spec.ts`, `trip-route-artifact-materializer.service.spec.ts`, `trips.service.enrich-route-v2.spec.ts`
+Matrix A–AD plus pre-merge: >500 canonical persistence, fingerprint reconstruction, gap boundary indices, artifact retry/recovery
 
 ### Explicit statement
 

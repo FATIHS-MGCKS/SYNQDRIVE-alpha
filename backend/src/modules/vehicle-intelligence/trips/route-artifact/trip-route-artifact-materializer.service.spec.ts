@@ -73,7 +73,7 @@ describe('TripRouteArtifactMaterializerService', () => {
     );
   });
 
-  it('AB — transient repository error does not throw; previous artifact preserved by repository', async () => {
+  it('AB — transient repository error is retryable at materializer layer', async () => {
     repository.upsertRouteArtifact.mockRejectedValue(new Error('db timeout'));
 
     const outcome = await service.materializeFromMeasuredRoute({
@@ -88,6 +88,33 @@ describe('TripRouteArtifactMaterializerService', () => {
       expect(outcome.retryable).toBe(true);
       expect(outcome.error).toMatch(/db timeout/);
     }
+  });
+
+  it('recovery after transient failure produces one canonical artifact write', async () => {
+    repository.upsertRouteArtifact
+      .mockRejectedValueOnce(new Error('db timeout'))
+      .mockResolvedValueOnce({
+        action: 'CREATED',
+        artifact: { id: 'art-1' } as any,
+        previousFingerprint: null,
+      });
+
+    const failed = await service.materializeFromMeasuredRoute({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      tripId: 'trip-1',
+      points: TENANT_POINTS,
+    });
+    expect(failed.ok).toBe(false);
+
+    const recovered = await service.materializeFromMeasuredRoute({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      tripId: 'trip-1',
+      points: TENANT_POINTS,
+    });
+    expect(recovered.ok).toBe(true);
+    expect(repository.upsertRouteArtifact).toHaveBeenCalledTimes(2);
   });
 
   it('never writes MATCHED quality', async () => {

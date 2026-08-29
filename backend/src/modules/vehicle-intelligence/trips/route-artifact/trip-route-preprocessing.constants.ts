@@ -56,5 +56,14 @@ export const TRIP_ROUTE_SIMPLIFICATION_TOLERANCE_METERS = 8;
 /** Skip simplification when point count is at or below this threshold. */
 export const TRIP_ROUTE_SIMPLIFICATION_ACTIVATION_COUNT = 20;
 
+/** Legacy bounded store for non-canonical paths (GET /route display cache). */
+export const TRIP_ROUTE_BOUNDED_WAYPOINT_MAX = 500;
+
+/**
+ * Safety valve for canonical enrichTrip persistence (~19 h at 7 s cadence).
+ * Canonical route-enriched trips persist all measured observations up to this cap.
+ */
+export const TRIP_ROUTE_CANONICAL_WAYPOINT_MAX = 10_000;
+
 /** Measured-route provider identity for R2 artifacts. */
 export const TRIP_ROUTE_MEASURED_PROVIDER = 'dimo-route-enrichment';

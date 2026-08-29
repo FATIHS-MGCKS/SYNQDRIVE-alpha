@@ -99,19 +99,49 @@ function perpendicularDistanceMeters(
   return Math.sqrt(distX * distX + distY * distY);
 }
 
-function detectTelemetryGaps(points: MeasuredRoutePoint[]): TripRouteTelemetryGap[] {
+function gapSecondsBetween(a: MeasuredRoutePoint, b: MeasuredRoutePoint): number {
+  const ms = Date.parse(b.recordedAt) - Date.parse(a.recordedAt);
+  return Number.isFinite(ms) ? ms / 1000 : 0;
+}
+
+function isTelemetryGap(a: MeasuredRoutePoint, b: MeasuredRoutePoint): boolean {
+  return gapSecondsBetween(a, b) >= TRIP_ROUTE_GAP_THRESHOLD_SECONDS;
+}
+
+function splitByTelemetryGaps(points: MeasuredRoutePoint[]): MeasuredRoutePoint[][] {
+  if (points.length === 0) return [];
+  const segments: MeasuredRoutePoint[][] = [[points[0]]];
+  for (let i = 1; i < points.length; i++) {
+    if (isTelemetryGap(points[i - 1], points[i])) {
+      segments.push([points[i]]);
+    } else {
+      segments[segments.length - 1].push(points[i]);
+    }
+  }
+  return segments;
+}
+
+function detectFilteredGeometryGaps(points: MeasuredRoutePoint[]): TripRouteTelemetryGap[] {
   const gaps: TripRouteTelemetryGap[] = [];
   for (let i = 1; i < points.length; i++) {
-    const gapSeconds = (Date.parse(points[i].recordedAt) - Date.parse(points[i - 1].recordedAt)) / 1000;
+    const gapSeconds = gapSecondsBetween(points[i - 1], points[i]);
     if (gapSeconds >= TRIP_ROUTE_GAP_THRESHOLD_SECONDS) {
       gaps.push({
-        afterSourceIndex: points[i - 1].sourceIndex,
-        beforeSourceIndex: points[i].sourceIndex,
+        afterFilteredPointIndex: i - 1,
+        beforeFilteredPointIndex: i,
         gapSeconds: Math.round(gapSeconds),
+        continuity: 'UNKNOWN',
       });
     }
   }
   return gaps;
+}
+
+function processSegments(
+  points: MeasuredRoutePoint[],
+  processor: (segment: MeasuredRoutePoint[]) => MeasuredRoutePoint[],
+): MeasuredRoutePoint[] {
+  return splitByTelemetryGaps(points).flatMap((segment) => processor(segment));
 }
 
 function removeExactDuplicates(
@@ -297,22 +327,27 @@ export function preprocessTripRoute(
     validPoints.push(point);
   }
 
-  const gaps = detectTelemetryGaps(validPoints);
-  const largestGapSeconds = gaps.reduce((max, gap) => Math.max(max, gap.gapSeconds), 0);
-
   let working = removeExactDuplicates(validPoints, reasonCounts);
   const afterExactDuplicates = working.length;
   const duplicateRemovedCount = validPoints.length - afterExactDuplicates;
 
   working = removeNearDuplicates(working, reasonCounts);
-  working = removeIsolatedSpikes(working, reasonCounts, impossibleJumpCount);
-  working = reduceStationaryClusters(working, reasonCounts);
+  working = processSegments(working, (segment) =>
+    removeIsolatedSpikes(segment, reasonCounts, impossibleJumpCount),
+  );
+  working = processSegments(working, (segment) =>
+    reduceStationaryClusters(segment, reasonCounts),
+  );
 
   const beforeSimplify = working.length;
-  working = simplifyMeasuredVertices(working, reasonCounts);
+  working = processSegments(working, (segment) =>
+    simplifyMeasuredVertices(segment, reasonCounts),
+  );
   const simplificationRemovedCount = beforeSimplify - working.length;
 
   const filteredPoints = working;
+  const gaps = detectFilteredGeometryGaps(filteredPoints);
+  const largestGapSeconds = gaps.reduce((max, gap) => Math.max(max, gap.gapSeconds), 0);
   const filteredGeometry =
     filteredPoints.length >= 2 ? toGeometry(filteredPoints) : null;
   const quality = filteredGeometry ? 'FILTERED' : 'RAW';

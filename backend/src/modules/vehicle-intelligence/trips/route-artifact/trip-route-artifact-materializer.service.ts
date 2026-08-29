@@ -35,7 +35,7 @@ export class TripRouteArtifactMaterializerService {
 
   /**
    * Preprocess measured route input and persist canonical RAW/FILTERED artifact.
-   * Failures are isolated — callers should not block legacy enrichment on errors.
+   * Retryable failures return { ok: false, retryable: true } for caller propagation.
    */
   async materializeFromMeasuredRoute(
     input: TripRouteArtifactMaterializeInput,

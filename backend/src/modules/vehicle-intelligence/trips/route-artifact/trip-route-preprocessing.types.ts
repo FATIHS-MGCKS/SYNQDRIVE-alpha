@@ -19,9 +19,13 @@ export type TripRouteFilterReason =
   | 'simplification';
 
 export interface TripRouteTelemetryGap {
-  afterSourceIndex: number;
-  beforeSourceIndex: number;
+  /** Index in final filtered geometry (inclusive endpoint before gap). */
+  afterFilteredPointIndex: number;
+  /** Index in final filtered geometry (inclusive endpoint after gap). */
+  beforeFilteredPointIndex: number;
   gapSeconds: number;
+  /** Measured continuity between endpoints is unknown — do not infer travel. */
+  continuity: 'UNKNOWN';
 }
 
 export interface TripRoutePreprocessingDiagnostics {
