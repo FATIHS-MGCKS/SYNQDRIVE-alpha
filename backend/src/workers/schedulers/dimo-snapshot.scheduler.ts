@@ -1,13 +1,31 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Interval } from '@nestjs/schedule';
+import { ConfigService } from '@nestjs/config';
 import { VehicleStatus } from '@prisma/client';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripReconciliationService } from '@modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
+import {
+  applySnapshotPollingHysteresis,
+  deriveSnapshotPollingTier,
+  isSnapshotPollDue,
+} from './snapshot-polling/derive-snapshot-polling-tier';
+import { interleaveByOrganization } from './snapshot-polling/interleave-by-organization';
+import { pruneVehiclePollingMemory } from './snapshot-polling/snapshot-polling-memory';
+import {
+  loadSnapshotPollingTierConfig,
+  type SnapshotPollingTierConfig,
+} from './snapshot-polling/snapshot-polling-tier.config';
+import {
+  SNAPSHOT_POLLABLE_TIERS,
+  SnapshotPollingTier,
+} from './snapshot-polling/snapshot-polling-tier.types';
+import { evaluateFleetEnvelope } from './snapshot-polling/current-prod-fleet-envelope';
+import { readWorkerConcurrency } from '@config/worker-concurrency.util';
 
 /**
  * Enqueues DIMO snapshot poll jobs on a fixed 30 s cadence.
@@ -23,6 +41,20 @@ import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
  *
  * A separate low-frequency janitor wipes failed jobs older than a grace
  * window as a belt-and-suspenders guard against future anomalies.
+ *
+ * ─── P1.2 ACTIVITY-TIER POLLING ────────────────────────────────────────────
+ * When `WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED=true` (default), only
+ * vehicles whose tier interval has elapsed since `providerFetchedAt` are
+ * enqueued — with promotion bypass when authoritative activity signals move
+ * a vehicle to a faster tier. Tier derivation is canonical via
+ * `deriveSnapshotPollingTier`.
+ *
+ * Scheduler eligibility remains CONNECTED + tokenId (pre-P1.2 cohort).
+ * OFFLINE recovery is owned by DimoVehicleSync (24h identity),
+ * device-connection webhooks, and episode reconciliation — not snapshot polls.
+ *
+ * Roll back to legacy O(N) every-tick enqueue with
+ * `WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE=true`.
  *
  * ─── AUTO-BACKFILL-ON-RESUME GUARD ─────────────────────────────────────────
  * The scheduler also detects host-level suspensions (Windows sleep/hibernate,
@@ -44,6 +76,18 @@ export class DimoSnapshotScheduler {
 
   /** Guards against overlapping backfill passes while one is still running. */
   private backfillInProgress = false;
+
+  private readonly tierConfig: SnapshotPollingTierConfig =
+    loadSnapshotPollingTierConfig();
+
+  /** Per-vehicle hysteresis memory — repopulated each tick, survives between ticks. */
+  private readonly vehiclePollingMemory = new Map<
+    string,
+    {
+      effectiveTier: SnapshotPollingTier;
+      lastActiveDrivingAtMs: number | null;
+    }
+  >();
 
   /**
    * Gap threshold above which we treat the tick delay as a host-level
@@ -67,21 +111,22 @@ export class DimoSnapshotScheduler {
    */
   private static readonly MAX_BACKFILL_WINDOW_MS = 24 * 3600_000;
 
+  /** Log current-prod fleet envelope assessment once per process boot. */
+  private fleetEnvelopeLogged = false;
+
   constructor(
     @InjectQueue(QUEUE_NAMES.DIMO_SNAPSHOT) private readonly queue: Queue,
     private readonly prisma: PrismaService,
     private readonly reconciliation: TripReconciliationService,
+    @Optional() private readonly configService?: ConfigService,
   ) {}
 
   @Interval(30000)
   async enqueueSnapshotJobs(): Promise<void> {
     if (!canEnqueueQueue(this.logger, 'dimo-snapshot')) return;
     const tickStartedAt = new Date();
+    const nowMs = tickStartedAt.getTime();
 
-    // Resume-gap detection runs BEFORE the normal enqueue body so that the
-    // backfill pass observes the same DIMO-connected vehicle set as the
-    // snapshot polling itself, and runs only once per resume (further ticks
-    // will see a fresh lastTickAt and no longer cross the threshold).
     const previousTickAt = this.lastTickAt;
     if (previousTickAt !== null) {
       const gapMs = tickStartedAt.getTime() - previousTickAt.getTime();
@@ -104,24 +149,160 @@ export class DimoSnapshotScheduler {
           tokenId: { not: null },
         },
       },
-      include: { dimoVehicle: true },
+      include: {
+        dimoVehicle: true,
+        latestState: {
+          select: {
+            sourceTimestamp: true,
+            lastSeenAt: true,
+            providerFetchedAt: true,
+            speedKmh: true,
+            isIgnitionOn: true,
+          },
+        },
+        tripDetectionState: {
+          select: {
+            state: true,
+            lastActivityAt: true,
+          },
+        },
+      },
     });
 
-    let enqueued = 0;
-    let recovered = 0;
-    let skipped = 0;
+    if (!this.fleetEnvelopeLogged) {
+      this.fleetEnvelopeLogged = true;
+      const snapshotConcurrency = readWorkerConcurrency(
+        'WORKER_SNAPSHOT_CONCURRENCY',
+        5,
+      );
+      const evaluation = evaluateFleetEnvelope({
+        connectedVehicleCount: vehicles.length,
+        snapshotConcurrency,
+      });
+      if (evaluation.warnings.length > 0) {
+        this.logger.warn(
+          `Current-prod fleet envelope: ${evaluation.warnings.join('; ')}`,
+        );
+      } else {
+        this.logger.log(
+          `Current-prod fleet envelope OK: connected=${evaluation.connectedVehicleCount} ` +
+            `snapshotConcurrency=${evaluation.snapshotConcurrency}`,
+        );
+      }
+    }
+
+    const useActivityTiers =
+      this.tierConfig.activityTierPollingEnabled &&
+      !this.tierConfig.legacyFixedCadence;
+
+    const activeVehicleIds = new Set(vehicles.map((v) => v.id));
+    pruneVehiclePollingMemory(this.vehiclePollingMemory, activeVehicleIds);
+
+    const tierCounts = new Map<SnapshotPollingTier, number>();
+    for (const tier of Object.values(SnapshotPollingTier)) {
+      tierCounts.set(tier, 0);
+    }
+
+    type VehicleRow = (typeof vehicles)[number];
+    const candidates: Array<{
+      vehicle: VehicleRow;
+      tokenId: number;
+      effectiveTier: SnapshotPollingTier;
+      rawTier: SnapshotPollingTier;
+    }> = [];
 
     for (const v of vehicles) {
       const tokenId = v.dimoVehicle?.tokenId;
       if (tokenId == null) continue;
 
+      const observationAt =
+        v.latestState?.sourceTimestamp ?? v.latestState?.lastSeenAt ?? null;
+
+      const tierInput = {
+        connectionStatus: v.dimoVehicle?.connectionStatus ?? null,
+        tokenId,
+        tripDetectionState: v.tripDetectionState?.state ?? null,
+        observationAt,
+        lastActivityAt: v.tripDetectionState?.lastActivityAt ?? null,
+        speedKmh: v.latestState?.speedKmh ?? null,
+        isIgnitionOn: v.latestState?.isIgnitionOn ?? null,
+        nowMs,
+      };
+
+      const { tier: rawTier } = deriveSnapshotPollingTier(
+        tierInput,
+        this.tierConfig,
+      );
+
+      tierCounts.set(rawTier, (tierCounts.get(rawTier) ?? 0) + 1);
+
+      const memory = this.vehiclePollingMemory.get(v.id);
+      const effectiveTier = useActivityTiers
+        ? applySnapshotPollingHysteresis(
+            {
+              rawTier,
+              previousEffectiveTier: memory?.effectiveTier ?? null,
+              lastActiveDrivingAtMs:
+                rawTier === SnapshotPollingTier.ACTIVE_DRIVING
+                  ? nowMs
+                  : memory?.lastActiveDrivingAtMs ?? null,
+              nowMs,
+            },
+            this.tierConfig,
+          )
+        : SnapshotPollingTier.ACTIVE_DRIVING;
+
+      this.vehiclePollingMemory.set(v.id, {
+        effectiveTier,
+        lastActiveDrivingAtMs:
+          rawTier === SnapshotPollingTier.ACTIVE_DRIVING
+            ? nowMs
+            : memory?.lastActiveDrivingAtMs ?? null,
+      });
+
+      const due =
+        !useActivityTiers ||
+        isSnapshotPollDue({
+          effectiveTier,
+          lastPolledAt: v.latestState?.providerFetchedAt ?? null,
+          nowMs,
+          config: this.tierConfig,
+          rawTier,
+          previousEffectiveTier: memory?.effectiveTier ?? null,
+          tierInput,
+        });
+
+      if (!due) continue;
+      if (useActivityTiers && !SNAPSHOT_POLLABLE_TIERS.has(effectiveTier)) {
+        continue;
+      }
+
+      candidates.push({ vehicle: v, tokenId, effectiveTier, rawTier });
+    }
+
+    const ordered = interleaveByOrganization(
+      candidates.map((c) => ({
+        ...c,
+        organizationId: c.vehicle.organizationId,
+      })),
+    );
+
+    const maxEnqueuePerTick =
+      this.configService?.get<number>('worker.snapshotMaxEnqueuePerTick') ?? 0;
+    const enqueueBatch =
+      maxEnqueuePerTick > 0 ? ordered.slice(0, maxEnqueuePerTick) : ordered;
+    const enqueueCapDeferred =
+      maxEnqueuePerTick > 0 ? Math.max(0, ordered.length - enqueueBatch.length) : 0;
+
+    let enqueued = 0;
+    let recovered = 0;
+    let skipped = 0;
+    let notDue = useActivityTiers ? vehicles.length - ordered.length : 0;
+    const enqueuedByTier = new Map<SnapshotPollingTier, number>();
+
+    for (const { vehicle: v, tokenId, effectiveTier } of enqueueBatch) {
       const jobId = `snapshot-${v.id}`;
 
-      // Before re-adding, drop any lingering terminal-state job (failed /
-      // completed that wasn't auto-removed) that would otherwise dedup the
-      // new add into a silent no-op. Active jobs are intentionally left
-      // alone — BullMQ will reject removal of active jobs and we honor
-      // that so we never kill an in-flight snapshot.
       try {
         const existing = await this.queue.getJob(jobId);
         if (existing) {
@@ -148,10 +329,13 @@ export class DimoSnapshotScheduler {
           },
         );
         enqueued += 1;
+        enqueuedByTier.set(
+          effectiveTier,
+          (enqueuedByTier.get(effectiveTier) ?? 0) + 1,
+        );
       } catch (err: unknown) {
         const msg = (err as Error).message ?? '';
         if (msg.toLowerCase().includes('duplicate')) {
-          // An in-flight job still exists — this is healthy, not a problem.
           skipped += 1;
         } else {
           this.logger.warn(`Failed to enqueue snapshot for ${v.id}: ${msg}`);
@@ -160,9 +344,23 @@ export class DimoSnapshotScheduler {
     }
 
     if (vehicles.length > 0) {
+      const tierSummary = [...tierCounts.entries()]
+        .filter(([, n]) => n > 0)
+        .map(([tier, n]) => `${tier}=${n}`)
+        .join(' ');
+
+      const enqueueTierSummary = [...enqueuedByTier.entries()]
+        .map(([tier, n]) => `${tier}=${n}`)
+        .join(' ');
+
       this.logger.debug(
-        `Snapshot tick: matched=${vehicles.length} enqueued=${enqueued} recovered=${recovered} skipped_inflight=${skipped}`,
+        `Snapshot tick: matched=${vehicles.length} enqueued=${enqueued} ` +
+          `not_due=${notDue} recovered=${recovered} skipped_inflight=${skipped} ` +
+          `enqueue_cap_deferred=${enqueueCapDeferred} ` +
+          `activity_tier=${useActivityTiers} tiers{${tierSummary}} ` +
+          (enqueueTierSummary ? `enqueued_tiers{${enqueueTierSummary}}` : ''),
       );
+
       if (recovered > 0) {
         this.logger.log(
           `Snapshot scheduler recovered ${recovered} vehicle(s) from stuck terminal-state jobs`,
@@ -170,20 +368,11 @@ export class DimoSnapshotScheduler {
       }
     }
 
-    // Record completion wall-clock AFTER the tick body so the next tick
-    // measures the true inter-tick gap, not just the scheduler drift.
     this.lastTickAt = new Date();
   }
 
   /**
    * Hourly janitor: sweep any failed jobs older than 10 min out of Redis.
-   *
-   * Even with the per-tick recovery above this is useful for two reasons:
-   *   - if the scheduler tick itself errors between the getJob() and add(),
-   *     the old failed job survives and would keep blocking the next tick;
-   *   - bounds Redis memory over very long runtimes.
-   *
-   * Only the `dimo.snapshot.poll` queue is touched. Age is in ms.
    */
   @Interval(60 * 60 * 1000)
   async sweepFailedJobs(): Promise<void> {
@@ -205,21 +394,6 @@ export class DimoSnapshotScheduler {
     }
   }
 
-  /**
-   * One-shot trip backfill across the resume gap.
-   *
-   * Runs asynchronously (fire-and-forget from the tick) and is guarded by
-   * `backfillInProgress` so that if the host takes multiple ticks to fully
-   * catch up, we don't fan out overlapping reconciliations.
-   *
-   * The window is `[previousTickAt − BACKFILL_LOOKBACK_BUFFER_MS, now]`,
-   * capped to MAX_BACKFILL_WINDOW_MS to avoid absurd fan-outs after a
-   * multi-day outage (the daily cold tier handles that case instead).
-   *
-   * We intentionally target the same vehicle set as the normal snapshot
-   * tick — any vehicle that was AVAILABLE/RENTED and DIMO-connected when we
-   * resumed is a candidate for a missed trip during the freeze.
-   */
   private async runResumeBackfill(
     previousTickAt: Date,
     now: Date,

@@ -90,7 +90,89 @@ export default registerAs('worker', () => ({
   // enforce — the coverage verdict decides.
   // Defaults to shadow: measuring first is the whole point of the mode.
   tripRepairCoverageMode: normalizeCoverageMode(process.env.TRIP_REPAIR_COVERAGE_MODE),
+
+  // ── P1.2 FINAL-3: partial boundary extension repair ──
+  // Rollback without disabling all reconciliation: TRIP_PARTIAL_BOUNDARY_REPAIR_ENABLED=false
+  tripPartialBoundaryRepairEnabled: parseTripPartialBoundaryRepairEnabled(
+    process.env.TRIP_PARTIAL_BOUNDARY_REPAIR_ENABLED,
+  ),
+
+  // Live POSSIBLE_START boundary lookback — derived from max poll interval + confirmation + buffer.
+  // Override only when evidence requires a different ceiling.
+  tripStartBoundaryMaxLookbackMs: parsePositiveIntEnv(
+    process.env.WORKER_TRIP_START_BOUNDARY_MAX_LOOKBACK_MS,
+    deriveDefaultTripStartBoundaryMaxLookbackMs(),
+  ),
+
+  // ── P1.2 FINAL-4: snapshot + reconciliation scale knobs ──
+  snapshotConcurrency: parseBoundedConcurrency(
+    process.env.WORKER_SNAPSHOT_CONCURRENCY,
+    5,
+  ),
+  snapshotMaxEnqueuePerTick: parseNonNegativeIntEnv(
+    process.env.WORKER_SNAPSHOT_MAX_ENQUEUE_PER_TICK,
+    0,
+  ),
+  fastReconciliationRecencyMs: parsePositiveIntEnv(
+    process.env.WORKER_FAST_RECONCILIATION_RECENCY_MS,
+    60 * 60_000,
+  ),
+  fastReconciliationMaxVehiclesPerRun: parseNonNegativeIntEnv(
+    process.env.WORKER_FAST_RECONCILIATION_MAX_VEHICLES_PER_RUN,
+    0,
+  ),
 }));
+
+function parsePositiveIntEnv(raw: string | undefined, fallback: number): number {
+  const parsed = parseInt(raw ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseNonNegativeIntEnv(raw: string | undefined, fallback: number): number {
+  const parsed = parseInt(raw ?? '', 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function parseBoundedConcurrency(raw: string | undefined, fallback: number): number {
+  const parsed = parseInt(raw ?? '', 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, 200);
+}
+
+function parseBoolEnv(raw: string | undefined, fallback: boolean): boolean {
+  if (raw == null || raw.trim() === '') return fallback;
+  const v = raw.trim().toLowerCase();
+  if (v === 'true' || v === '1' || v === 'yes') return true;
+  if (v === 'false' || v === '0' || v === 'no') return false;
+  return fallback;
+}
+
+/** Default enabled for PR testing; disable in production until rollout review. */
+export function parseTripPartialBoundaryRepairEnabled(raw: string | undefined): boolean {
+  return parseBoolEnv(raw, true);
+}
+
+/**
+ * max(poll interval) + confirmation wait + safety buffer.
+ * Worst-case LONG_IDLE poll (30min) + 3min confirmation + 2min buffer ≈ 35min.
+ */
+export function deriveDefaultTripStartBoundaryMaxLookbackMs(
+  env: NodeJS.ProcessEnv = process.env,
+): number {
+  const tiers = [
+    parsePositiveIntEnv(env.WORKER_SNAPSHOT_TIER_ACTIVE_DRIVING_MS, 30_000),
+    parsePositiveIntEnv(env.WORKER_SNAPSHOT_TIER_RECENTLY_ACTIVE_MS, 60_000),
+    parsePositiveIntEnv(env.WORKER_SNAPSHOT_TIER_RESTING_STANDBY_MS, 5 * 60_000),
+    parsePositiveIntEnv(env.WORKER_SNAPSHOT_TIER_LONG_IDLE_MS, 30 * 60_000),
+  ];
+  const maxPollMs = Math.max(...tiers);
+  const confirmationMs = parsePositiveIntEnv(
+    env.WORKER_POSSIBLE_START_CONFIRM_MAX_WAIT_MS,
+    180_000,
+  );
+  const safetyBufferMs = 2 * 60_000;
+  return maxPollMs + confirmationMs + safetyBufferMs;
+}
 
 export type TripRepairCoverageMode = 'legacy' | 'shadow' | 'enforce';
 

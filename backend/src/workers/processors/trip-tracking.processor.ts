@@ -13,7 +13,11 @@ import {
 import { TripMetricsService } from '../../modules/observability/trip-metrics.service';
 import { observeQueueLag } from '../../modules/observability/queue-lag.util';
 
-@Processor(QUEUE_NAMES.TRIP_TRACKING)
+import { readWorkerConcurrency } from '@config/worker-concurrency.util';
+
+@Processor(QUEUE_NAMES.TRIP_TRACKING, {
+  concurrency: readWorkerConcurrency('WORKER_TRIP_TRACKING_CONCURRENCY', 5),
+})
 @Injectable()
 export class TripTrackingProcessor extends WorkerHost {
   private readonly logger = new Logger(TripTrackingProcessor.name);

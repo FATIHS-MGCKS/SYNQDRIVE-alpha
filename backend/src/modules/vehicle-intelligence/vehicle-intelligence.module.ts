@@ -63,6 +63,7 @@ import {
 import { MapboxChunkMatchingClientService } from './trips/route-artifact/chunked-matching/mapbox-chunk-matching.client.service';
 import { TripRouteChunkedMatcherService } from './trips/route-artifact/chunked-matching/trip-route-chunked-matcher.service';
 import { TripAnalysisCoordinatorService } from './trips/trip-analysis-coordinator.service';
+import { BoundaryRefreshLifecycleService } from './trips/boundary-refresh-lifecycle.service';
 import { LteR1BehaviorEnrichmentService } from './trips/lte-r1-behavior-enrichment.service';
 import { DimoNativeDrivingEventPersistenceService } from './dimo-native-driving-events/dimo-native-driving-event-persistence.service';
 import { EventContextEnrichmentService } from './event-context/event-context-enrichment.service';
@@ -321,6 +322,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     MapboxChunkMatchingClientService,
     TripRouteChunkedMatcherService,
     TripAnalysisCoordinatorService,
+    BoundaryRefreshLifecycleService,
     EventContextEnrichmentService,
     LteR1BehaviorEnrichmentService,
     DimoNativeDrivingEventPersistenceService,
@@ -522,6 +524,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     MapboxChunkMatchingClientService,
     TripRouteChunkedMatcherService,
     TripAnalysisCoordinatorService,
+    BoundaryRefreshLifecycleService,
     LteR1BehaviorEnrichmentService,
     DimoNativeDrivingEventPersistenceService,
     DrivingAssessmentDeviceQualityService,

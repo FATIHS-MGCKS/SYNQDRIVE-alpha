@@ -40,6 +40,8 @@ export interface DimoSnapshotJobData {
   dimoTokenId: number;
 }
 
+import { readWorkerConcurrency } from '@config/worker-concurrency.util';
+
 /**
  * BullMQ worker options:
  *  - lockDuration: 60s gives each snapshot up to ~60s of end-to-end work
@@ -48,11 +50,11 @@ export interface DimoSnapshotJobData {
  *    evaluation could overrun the lock and flip the job into a permanent
  *    failed state that silently blocked all future enqueues for that
  *    vehicle (shared jobId = snapshot-<vehicleId>).
- *  - concurrency: 5 keeps queue throughput high without hammering DIMO.
+ *  - concurrency: env WORKER_SNAPSHOT_CONCURRENCY (default 5, max 200).
  */
 @Processor(QUEUE_NAMES.DIMO_SNAPSHOT, {
   lockDuration: 60_000,
-  concurrency: 5,
+  concurrency: readWorkerConcurrency('WORKER_SNAPSHOT_CONCURRENCY', 5),
 })
 export class DimoSnapshotProcessor extends WorkerHost {
   private readonly logger = new Logger(DimoSnapshotProcessor.name);

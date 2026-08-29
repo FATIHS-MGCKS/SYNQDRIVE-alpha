@@ -104,3 +104,45 @@ export interface SplitTripAtGapResult {
   secondTripId: string;
   movedWaypoints: number;
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  PARTIAL BOUNDARY EXTENSION (canonical delayed-start repair)
+// ═══════════════════════════════════════════════════════════════
+
+export interface RepairTripBoundariesParams {
+  tripId: string;
+  vehicleId: string;
+  organizationId: string | null;
+  providerSegmentId: string;
+  providerMechanism: string;
+  oldStartTime: Date;
+  oldEndTime: Date;
+  newStartTime: Date;
+  newEndTime: Date;
+  startLatitude?: number | null;
+  startLongitude?: number | null;
+  endLatitude?: number | null;
+  endLongitude?: number | null;
+  distanceKm?: number | null;
+  confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+  reason: string;
+  source: string;
+  coverageMetrics?: Record<string, unknown>;
+}
+
+export interface RepairTripBoundariesAuditParams {
+  auditId: string;
+  repairType: string;
+  windowFrom: Date;
+  windowTo: Date;
+  confidence: string;
+  reason: string;
+  detectorEvidence: Record<string, unknown>;
+}
+
+export class BoundaryRepairConcurrentMutationError extends Error {
+  constructor(tripId: string) {
+    super(`Concurrent boundary repair mutation detected for trip ${tripId}`);
+    this.name = 'BoundaryRepairConcurrentMutationError';
+  }
+}

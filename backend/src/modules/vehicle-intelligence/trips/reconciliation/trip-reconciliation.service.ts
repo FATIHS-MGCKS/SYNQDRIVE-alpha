@@ -25,6 +25,7 @@ import { ActivityWindowDetector } from '../detectors/activity-window.detector';
 import { DETECTION_PHASES } from '../detectors/detector.interfaces';
 import type { DetectorFinding } from '../detectors/detector.interfaces';
 import {
+  BOUNDARY_REFRESH_STATE,
   REPAIR_TYPES,
   REPAIR_STATUS,
   type ReconciliationResult,
@@ -44,6 +45,20 @@ import { TripEnrichmentOrchestratorService } from '../trip-enrichment-orchestrat
 import { TripPostFinalizeAnalysisProducer } from '../../driving-analysis-init/trip-post-finalize-analysis.producer';
 import { EnergyEventsService } from '../../energy-events/energy-events.service';
 import { EventTripAssociationService } from '../event-association/event-trip-association.service';
+import {
+  classifyPartialBoundaryRepair,
+  type CanonicalTripBounds,
+  type PartialBoundaryClassification,
+} from '../detectors/partial-boundary-classification.util';
+import { assessCoverage } from '../detectors/trip-coverage.util';
+import {
+  buildBoundaryRefreshRecord,
+  isBoundaryRefreshRetryable,
+  readBoundaryRefreshRecord,
+  readRawDetectionMeta,
+} from '../boundary-repair.state.util';
+import { BoundaryRefreshLifecycleService } from '../boundary-refresh-lifecycle.service';
+import { BoundaryRepairConcurrentMutationError } from '../decision/decision.types';
 
 interface ReconciliationOptions {
   useDimoSegmentFallback?: boolean;
@@ -52,6 +67,7 @@ interface ReconciliationOptions {
 interface RepairCandidate {
   source: 'CLICKHOUSE_IGNITION' | 'CLICKHOUSE_MOTION' | 'DIMO_SEGMENT';
   segmentId?: string;
+  mechanism?: string;
   startTime: Date;
   endTime: Date;
   confidence: 'LOW' | 'MEDIUM' | 'HIGH';
@@ -153,6 +169,7 @@ export class TripReconciliationService {
     @Optional() private readonly configService?: ConfigService,
     @Optional() private readonly energyEventsService?: EnergyEventsService,
     @Optional() private readonly tripAssociation?: EventTripAssociationService,
+    @Optional() private readonly boundaryRefreshLifecycle?: BoundaryRefreshLifecycleService,
   ) {
     this.TRIP_MID_GAP_SPLIT_MS =
       this.configService?.get<number>('worker.tripMidGapSplitMs') ?? 180_000;
@@ -199,6 +216,8 @@ export class TripReconciliationService {
       await this.repairStaleOngoingTrips(vehicleId, to);
 
       // ── Step 2: Look for missing trips in the window ────────────────────
+      await this.retryPendingBoundaryRefreshes(vehicleId);
+
       const missingTripRepairs = await this.detectAndRepairMissingTrips(
         vehicleId,
         from,
@@ -479,6 +498,27 @@ export class TripReconciliationService {
       const segStart = candidate.startTime;
       const segEnd = candidate.endTime;
 
+      const canonicalTrips = await this.loadCanonicalTripsForWindow(
+        vehicleId,
+        segStart,
+        segEnd,
+      );
+
+      if (this.isPartialBoundaryRepairEnabled() && candidate.source === 'DIMO_SEGMENT') {
+        const partialOutcome = await this.tryPartialBoundaryExtension({
+          vehicleId,
+          organizationId: vehicle.organizationId ?? null,
+          candidate,
+          canonicalTrips,
+        });
+        if (partialOutcome.handled) {
+          if (partialOutcome.proposed) proposed++;
+          if (partialOutcome.applied) applied++;
+          if (partialOutcome.rejected) rejected++;
+          continue;
+        }
+      }
+
       const overlapFinding = await this.overlapDetector.evaluate({
         vehicleId,
         dimoTokenId,
@@ -612,6 +652,550 @@ export class TripReconciliationService {
       this.configService?.get<string>('worker.tripRepairCoverageMode') ??
         process.env.TRIP_REPAIR_COVERAGE_MODE,
     );
+  }
+
+  private isPartialBoundaryRepairEnabled(): boolean {
+    if (this.configService?.get<boolean>('worker.tripPartialBoundaryRepairEnabled') != null) {
+      return this.configService.get<boolean>('worker.tripPartialBoundaryRepairEnabled') === true;
+    }
+    return process.env.TRIP_PARTIAL_BOUNDARY_REPAIR_ENABLED !== 'false';
+  }
+
+  private async loadCanonicalTripsForWindow(
+    vehicleId: string,
+    from: Date,
+    to: Date,
+  ): Promise<CanonicalTripBounds[]> {
+    const TOLERANCE_MS = 5 * 60_000;
+    const windowStart = new Date(from.getTime() - TOLERANCE_MS);
+    const windowEnd = new Date(to.getTime() + TOLERANCE_MS);
+
+    const rows = await this.prisma.vehicleTrip.findMany({
+      where: {
+        vehicleId,
+        OR: [
+          {
+            endTime: { not: null, gte: windowStart },
+            startTime: { lte: windowEnd },
+          },
+          {
+            endTime: null,
+            startTime: { lte: windowEnd, gte: windowStart },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        startTime: true,
+        endTime: true,
+        tripStatus: true,
+        dimoSegmentId: true,
+        startLatitude: true,
+        startLongitude: true,
+        endLatitude: true,
+        endLongitude: true,
+        distanceKm: true,
+        rawDetectionMeta: true,
+      },
+      take: 201,
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      startTime: row.startTime,
+      endTime: row.endTime,
+      tripStatus: String(row.tripStatus),
+      dimoSegmentId: row.dimoSegmentId,
+      startLatitude: row.startLatitude,
+      startLongitude: row.startLongitude,
+      endLatitude: row.endLatitude,
+      endLongitude: row.endLongitude,
+      distanceKm: row.distanceKm,
+      rawDetectionMeta: row.rawDetectionMeta,
+    }));
+  }
+
+  private async resolveOrganizationIdForVehicle(
+    vehicleId: string,
+    fallback: string | null,
+  ): Promise<string> {
+    if (fallback) return fallback;
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    if (!vehicle?.organizationId) {
+      throw new Error(
+        `Boundary repair refused: vehicle ${vehicleId} has no organizationId`,
+      );
+    }
+    return vehicle.organizationId;
+  }
+
+  private async retryPendingBoundaryRefreshes(vehicleId: string): Promise<void> {
+    const trips =
+      (await this.boundaryRefreshLifecycle?.findRecoverableTrips(vehicleId)) ?? [];
+
+    if (trips.length > 0) {
+      this.logger.debug(
+        `Boundary refresh recovery: vehicle=${vehicleId} recoverable=${trips.length}`,
+      );
+    }
+
+    for (const trip of trips) {
+      const refresh = readBoundaryRefreshRecord(trip.rawDetectionMeta);
+      if (!isBoundaryRefreshRetryable(refresh)) continue;
+
+      const organizationId = await this.resolveOrganizationIdForVehicle(
+        vehicleId,
+        trip.organizationId,
+      );
+      try {
+        await this.enqueueBoundaryRepairRefresh(trip.id, vehicleId, organizationId);
+        if (refresh?.generation) {
+          await this.boundaryRefreshLifecycle?.persistBoundaryRefreshState(
+            trip.id,
+            BOUNDARY_REFRESH_STATE.ENQUEUED,
+            undefined,
+            { generation: refresh.generation },
+          );
+        }
+      } catch (err: unknown) {
+        if (refresh?.generation) {
+          await this.boundaryRefreshLifecycle?.persistBoundaryRefreshState(
+            trip.id,
+            BOUNDARY_REFRESH_STATE.PENDING,
+            (err as Error).message,
+            { generation: refresh.generation },
+          );
+        }
+        this.logger.warn(
+          `Boundary refresh retry failed for trip ${trip.id}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  private async markBoundaryRefreshState(
+    tripId: string,
+    state: (typeof BOUNDARY_REFRESH_STATE)[keyof typeof BOUNDARY_REFRESH_STATE],
+    error?: string,
+  ): Promise<void> {
+    if (this.boundaryRefreshLifecycle) {
+      await this.boundaryRefreshLifecycle.persistBoundaryRefreshState(tripId, state, error);
+      return;
+    }
+
+    const trip = await this.prisma.vehicleTrip.findUnique({
+      where: { id: tripId },
+      select: { rawDetectionMeta: true },
+    });
+    if (!trip) return;
+
+    const priorMeta = readRawDetectionMeta(trip.rawDetectionMeta);
+    const priorRefresh = readBoundaryRefreshRecord(trip.rawDetectionMeta);
+    if (!priorRefresh?.generation) return;
+    const boundaryRefresh = buildBoundaryRefreshRecord(state, priorRefresh, error, {
+      generation: priorRefresh.generation,
+    });
+
+    await this.prisma.vehicleTrip.update({
+      where: { id: tripId },
+      data: {
+        rawDetectionMeta: {
+          ...priorMeta,
+          boundaryRefresh,
+        } as any,
+      },
+    });
+  }
+
+  private buildPartialBoundaryAuditEvidence(input: {
+    candidate: RepairCandidate;
+    classification: PartialBoundaryClassification;
+    coverage: ReturnType<typeof assessCoverage>;
+    boundaryRefreshState?: string;
+  }): Record<string, unknown> {
+    return JSON.parse(
+      JSON.stringify({
+        repairSource: input.candidate.source,
+        partialBoundaryClassification: input.classification,
+        coverageAssessment: input.coverage,
+        dimoSegment: input.candidate.detectorEvidence?.dimoSegment ?? null,
+        boundaryRefreshState: input.boundaryRefreshState ?? null,
+      }),
+    );
+  }
+
+  private async finalizeBoundaryRepairRefresh(
+    tripId: string,
+    vehicleId: string,
+    organizationId: string,
+    auditId: string,
+  ): Promise<void> {
+    const trip = await this.prisma.vehicleTrip.findUnique({
+      where: { id: tripId },
+      select: { rawDetectionMeta: true },
+    });
+    const refresh = readBoundaryRefreshRecord(trip?.rawDetectionMeta);
+    const generation = refresh?.generation;
+    if (!generation) {
+      throw new Error(`Boundary refresh missing generation for trip ${tripId}`);
+    }
+
+    try {
+      await this.enqueueBoundaryRepairRefresh(tripId, vehicleId, organizationId);
+      await this.boundaryRefreshLifecycle?.persistBoundaryRefreshState(
+        tripId,
+        BOUNDARY_REFRESH_STATE.ENQUEUED,
+        undefined,
+        { generation },
+      );
+      await this.boundaryRefreshLifecycle?.markRepairAuditEnqueued(
+        tripId,
+        auditId,
+        generation,
+      );
+    } catch (err: unknown) {
+      await this.boundaryRefreshLifecycle?.persistBoundaryRefreshState(
+        tripId,
+        BOUNDARY_REFRESH_STATE.PENDING,
+        (err as Error).message,
+        { generation },
+      );
+      this.logger.warn(
+        `Boundary refresh enqueue failed for trip ${tripId} (boundary already applied): ` +
+          `${(err as Error).message}`,
+      );
+    }
+  }
+
+  private extractMechanism(candidate: RepairCandidate): string {
+    if (candidate.mechanism) return candidate.mechanism;
+    const dimoSegment = (candidate.detectorEvidence?.dimoSegment ?? null) as
+      | { mechanism?: string }
+      | null;
+    if (dimoSegment?.mechanism) return dimoSegment.mechanism;
+    const mode = candidate.startDetectionMode ?? '';
+    if (mode.includes('changePointDetection')) return 'changePointDetection';
+    if (mode.includes('frequencyAnalysis')) return 'frequencyAnalysis';
+    if (mode.includes('ignitionDetection')) return 'ignitionDetection';
+    return 'changePointDetection';
+  }
+
+  private async tryPartialBoundaryExtension(input: {
+    vehicleId: string;
+    organizationId: string | null;
+    candidate: RepairCandidate;
+    canonicalTrips: CanonicalTripBounds[];
+  }): Promise<{
+    handled: boolean;
+    proposed: boolean;
+    applied: boolean;
+    rejected: boolean;
+  }> {
+    const mechanism = this.extractMechanism(input.candidate);
+    const provider = {
+      segmentId: input.candidate.segmentId ?? `unknown-${input.candidate.startTime.toISOString()}`,
+      mechanism,
+      startTime: input.candidate.startTime,
+      endTime: input.candidate.endTime,
+      isOngoing: false,
+      startedBeforeRange: false,
+      startLatitude: input.candidate.startLatitude,
+      startLongitude: input.candidate.startLongitude,
+      endLatitude: input.candidate.endLatitude,
+      endLongitude: input.candidate.endLongitude,
+      distanceKm: input.candidate.distanceKm,
+    };
+
+    const coverage = assessCoverage(
+      input.candidate.startTime,
+      input.candidate.endTime,
+      input.canonicalTrips,
+    );
+
+    const classification = classifyPartialBoundaryRepair(provider, input.canonicalTrips, {
+      coverage,
+    });
+
+    if (classification.kind === 'MISSING_TRIP') {
+      return { handled: false, proposed: false, applied: false, rejected: false };
+    }
+
+    const auditId = this.buildRepairAuditId(
+      input.vehicleId,
+      REPAIR_TYPES.PARTIAL_TRIP_BOUNDARY_EXTENSION,
+      input.candidate.startTime,
+      input.candidate.endTime,
+    );
+
+    if (classification.kind === 'EXACT_MATCH') {
+      const matchedTrip = input.canonicalTrips.find((t) => t.id === classification.tripId);
+      if (matchedTrip && isBoundaryRefreshRetryable(readBoundaryRefreshRecord(
+        (matchedTrip as { rawDetectionMeta?: unknown }).rawDetectionMeta,
+      ))) {
+        try {
+          const organizationId = await this.resolveOrganizationIdForVehicle(
+            input.vehicleId,
+            input.organizationId,
+          );
+          await this.enqueueBoundaryRepairRefresh(
+            classification.tripId,
+            input.vehicleId,
+            organizationId,
+          );
+          await this.markBoundaryRefreshState(
+            classification.tripId,
+            BOUNDARY_REFRESH_STATE.ENQUEUED,
+          );
+        } catch (err: unknown) {
+          await this.markBoundaryRefreshState(
+            classification.tripId,
+            BOUNDARY_REFRESH_STATE.PENDING,
+            (err as Error).message,
+          );
+        }
+        return { handled: true, proposed: false, applied: false, rejected: false };
+      }
+
+      await this.recordPartialBoundaryRepairAudit({
+        id: auditId,
+        vehicleId: input.vehicleId,
+        tripId: classification.tripId,
+        candidate: input.candidate,
+        classification,
+        coverage,
+        status: REPAIR_STATUS.SUPPRESSED,
+        reason: classification.reason,
+      });
+      return { handled: true, proposed: false, applied: false, rejected: false };
+    }
+
+    if (classification.kind === 'AMBIGUOUS') {
+      await this.recordPartialBoundaryRepairAudit({
+        id: auditId,
+        vehicleId: input.vehicleId,
+        tripId: null,
+        candidate: input.candidate,
+        classification,
+        coverage,
+        status: REPAIR_STATUS.PROPOSED,
+        reason: classification.reason,
+      });
+      return { handled: true, proposed: true, applied: false, rejected: false };
+    }
+
+    // PARTIAL_EXTENSION — atomic boundary mutation + durable refresh semantics
+    const auditEvidence = this.buildPartialBoundaryAuditEvidence({
+      candidate: input.candidate,
+      classification,
+      coverage,
+      boundaryRefreshState: BOUNDARY_REFRESH_STATE.PENDING,
+    });
+
+    try {
+      const organizationId = await this.resolveOrganizationIdForVehicle(
+        input.vehicleId,
+        input.organizationId,
+      );
+
+      const repairResult = await this.decisionEngine.repairTripBoundariesWithAudit(
+        {
+          tripId: classification.tripId,
+          vehicleId: input.vehicleId,
+          organizationId,
+          providerSegmentId: provider.segmentId,
+          providerMechanism: mechanism,
+          oldStartTime: classification.oldStart,
+          oldEndTime: classification.oldEnd,
+          newStartTime: classification.newStart,
+          newEndTime: classification.newEnd,
+          startLatitude: classification.extendStart
+            ? (input.candidate.startLatitude ?? null)
+            : undefined,
+          startLongitude: classification.extendStart
+            ? (input.candidate.startLongitude ?? null)
+            : undefined,
+          endLatitude: classification.extendEnd
+            ? (input.candidate.endLatitude ?? null)
+            : undefined,
+          endLongitude: classification.extendEnd
+            ? (input.candidate.endLongitude ?? null)
+            : undefined,
+          distanceKm: input.candidate.distanceKm ?? null,
+          confidence: classification.confidence,
+          reason: classification.reason,
+          source: 'RECONCILIATION_PARTIAL_BOUNDARY',
+          coverageMetrics: coverage.metrics as unknown as Record<string, unknown>,
+        },
+        {
+          auditId,
+          repairType: REPAIR_TYPES.PARTIAL_TRIP_BOUNDARY_EXTENSION,
+          windowFrom: input.candidate.startTime,
+          windowTo: input.candidate.endTime,
+          confidence: classification.confidence,
+          reason: classification.reason,
+          detectorEvidence: auditEvidence,
+        },
+      );
+
+      if (!repairResult.applied) {
+        await this.recordPartialBoundaryRepairAudit({
+          id: auditId,
+          vehicleId: input.vehicleId,
+          tripId: classification.tripId,
+          candidate: input.candidate,
+          classification,
+          coverage,
+          status: REPAIR_STATUS.SUPPRESSED,
+          reason: 'Boundary repair idempotent no-op — already at target boundaries',
+        });
+        return { handled: true, proposed: false, applied: false, rejected: false };
+      }
+
+      await this.finalizeBoundaryRepairRefresh(
+        classification.tripId,
+        input.vehicleId,
+        organizationId,
+        auditId,
+      );
+
+      this.tripMetrics?.repairActions.inc({
+        type: REPAIR_TYPES.PARTIAL_TRIP_BOUNDARY_EXTENSION,
+        result: 'applied',
+      });
+      this.logger.log(
+        `Partial boundary extension applied for vehicle ${input.vehicleId}: ` +
+          `trip=${classification.tripId} ` +
+          `${classification.oldStart.toISOString()}→${classification.newStart.toISOString()} / ` +
+          `${classification.oldEnd.toISOString()}→${classification.newEnd.toISOString()}`,
+      );
+      return { handled: true, proposed: true, applied: true, rejected: false };
+    } catch (err: unknown) {
+      if (err instanceof BoundaryRepairConcurrentMutationError) {
+        this.logger.debug(
+          `Concurrent boundary repair for trip ${classification.tripId} — safe re-read on next tick`,
+        );
+        return { handled: true, proposed: true, applied: false, rejected: false };
+      }
+
+      const existingAudit = await this.prisma.tripRepair.findUnique({
+        where: { id: auditId },
+        select: { status: true },
+      });
+      if (
+        existingAudit?.status !== REPAIR_STATUS.BOUNDARY_APPLIED &&
+        existingAudit?.status !== REPAIR_STATUS.APPLIED
+      ) {
+        await this.recordPartialBoundaryRepairAudit({
+          id: auditId,
+          vehicleId: input.vehicleId,
+          tripId: classification.tripId,
+          candidate: input.candidate,
+          classification,
+          coverage,
+          status: REPAIR_STATUS.REJECTED,
+          reason: (err as Error).message,
+        });
+        this.tripMetrics?.repairActions.inc({
+          type: REPAIR_TYPES.PARTIAL_TRIP_BOUNDARY_EXTENSION,
+          result: 'rejected',
+        });
+        return { handled: true, proposed: true, applied: false, rejected: true };
+      }
+
+      this.logger.warn(
+        `Boundary applied but post-mutation step failed for trip ${classification.tripId}: ` +
+          `${(err as Error).message}`,
+      );
+      return { handled: true, proposed: true, applied: true, rejected: false };
+    }
+  }
+
+  private async recordPartialBoundaryRepairAudit(input: {
+    id: string;
+    vehicleId: string;
+    tripId: string | null;
+    candidate: RepairCandidate;
+    classification: PartialBoundaryClassification;
+    coverage: ReturnType<typeof assessCoverage>;
+    status: string;
+    reason: string;
+  }): Promise<void> {
+    const confidence =
+      input.classification.kind === 'PARTIAL_EXTENSION'
+        ? input.classification.confidence
+        : input.candidate.confidence;
+
+    const detectorEvidence = JSON.parse(
+      JSON.stringify({
+        repairSource: input.candidate.source,
+        partialBoundaryClassification: input.classification,
+        coverageAssessment: input.coverage,
+        dimoSegment: input.candidate.detectorEvidence?.dimoSegment ?? null,
+      }),
+    );
+
+    const data = {
+      vehicleId: input.vehicleId,
+      tripId: input.tripId,
+      repairType: REPAIR_TYPES.PARTIAL_TRIP_BOUNDARY_EXTENSION,
+      status: input.status,
+      reason: input.reason,
+      confidence,
+      windowFrom: input.candidate.startTime,
+      windowTo: input.candidate.endTime,
+      detectorEvidence,
+    };
+
+    const existing = await this.prisma.tripRepair.findUnique({
+      where: { id: input.id },
+      select: { id: true, status: true },
+    });
+
+    if (!existing) {
+      try {
+        await this.prisma.tripRepair.create({ data: { id: input.id, ...data } });
+      } catch {
+        // concurrent insert race — same deterministic id
+      }
+      return;
+    }
+
+    if (existing.status === REPAIR_STATUS.APPLIED) return;
+    if (existing.status === REPAIR_STATUS.BOUNDARY_APPLIED) return;
+
+    await this.prisma.tripRepair.update({
+      where: { id: input.id },
+      data,
+    });
+  }
+
+  private async enqueueBoundaryRepairRefresh(
+    tripId: string,
+    vehicleId: string,
+    organizationId: string,
+  ): Promise<void> {
+    if (this.postFinalizeAnalysisProducer) {
+      await this.postFinalizeAnalysisProducer.produceAfterPersistedCompletion({
+        tripId,
+        vehicleId,
+        organizationId,
+        source: 'REPAIR_FINALIZE',
+      });
+    }
+
+    if (this.enrichmentOrchestrator?.refreshEnrichmentAfterBoundaryRepair) {
+      await this.enrichmentOrchestrator.refreshEnrichmentAfterBoundaryRepair(
+        tripId,
+        vehicleId,
+        organizationId,
+      );
+      return;
+    }
+
+    await this.enqueueRepairEnrichment(tripId, vehicleId, organizationId);
   }
 
   /**
@@ -915,6 +1499,7 @@ export class TripReconciliationService {
         return {
           source: 'DIMO_SEGMENT' as const,
           segmentId: segment.segmentId,
+          mechanism: segment.mechanism,
           startTime,
           endTime,
           confidence: this.inferDimoSegmentConfidence(segment),
