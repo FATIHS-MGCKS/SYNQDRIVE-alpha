@@ -36,6 +36,31 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'snapshot-polling-p1-2-final5-production-scale-gate-2026-08-29',
+    version: '4.9.999',
+    title: 'P1.2 FINAL-5 — Production scale gate for PR #1409 (DO NOT MERGE)',
+    summary: [
+      'FINAL-5 verdict: DO NOT MERGE PR #1409 for N≈1000 production scale.',
+      'PROVIDER LIMIT UNKNOWN — no authoritative DIMO telemetry rate/concurrency quota in repo or config.',
+      'S1 N=1000: ~377 snapshot enqueues/min; default c=5 capacity ~37.5/min → ~339/min backlog growth.',
+      'Required snapshot concurrency: 51 (P50 8s), 95 (P95 15s), 189 (30s slow) — not certifiable without provider proof.',
+      'Single PM2 replica (synqdrive): leader election not required now; global DIMO semaphore required before N=1000.',
+      'Process-local max concurrent DIMO HTTP: 21 (defaults) to 801 (max env 200+200) — not globally coordinated.',
+      'Trip-loss invariants 1–10 PASS post FINAL-3; backlog degrades freshness, reconciliation repairs.',
+      'PostgreSQL boundary proof CI 5/5; Redis jobId dedup proof not executed.',
+      'Observability gaps: DIMO in-flight, 429/min, queue depth — mandatory before N=1000.',
+    ],
+    reason:
+      'PR #1409 FINAL-5 gate — certify operational safety at production scale without guessing provider limits.',
+    previousBehavior:
+      'FINAL-4 wired concurrency env and fast cohort but did not produce full workload matrices or merge certification.',
+    details:
+      'backend: p12-final5-workload-model.ts, p12-final5-production-scale-gate.spec.ts. architecture/SNAPSHOT_POLLING_P1_2_FINAL5_PRODUCTION_SCALE_GATE_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T15:50:00.000Z',
+  },
+  {
     id: 'snapshot-polling-p1-2-final2-partial-trip-safety-gate-2026-08-29',
     version: '4.9.998',
     title: 'P1.2 FINAL-2 — Partial-trip / delayed-start safety gate (DO NOT MERGE)',
