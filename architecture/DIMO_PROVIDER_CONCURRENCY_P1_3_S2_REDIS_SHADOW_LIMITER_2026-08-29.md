@@ -244,7 +244,50 @@ Internal budget: **25/s peak** (20 + burst 5). Documented Core ceiling: **25/s**
 | `dimo-telemetry-gateway-coverage.spec.ts` | Gateway bypass guard |
 | P1.2 regression | `p12-final*`, `dimo-snapshot*`, `partial-boundary-repair.final3*` — PASS |
 
-**Distributed Redis proof:** PARTIAL — in-memory Redis mock simulates 2 replicas atomically; no dedicated Redis integration test container in CI yet.
+**Distributed Redis proof:** **YES** — see §13.1 Real Redis distributed proof.
+
+---
+
+## 13.1 Real Redis distributed proof
+
+| Item | Value |
+|------|-------|
+| **DISTRIBUTED REDIS PROOF** | **YES** |
+| **Redis version** | `redis:7-alpine` (GitHub Actions service container) |
+| **Test file** | `backend/src/modules/dimo/provider/dimo-provider-limiter.redis.integration.spec.ts` |
+| **CI script** | `npm run test:dimo-provider-limiter:redis` |
+| **CI job** | Legal Documents — Production Readiness CI → `Backend integration tests` |
+| **Env gate** | `DIMO_PROVIDER_LIMITER_REDIS_INTEGRATION=1` |
+| **Test Redis DB** | `REDIS_DB=15` (isolated from default db 0) |
+
+### Two-client architecture
+
+Each test creates **two independent `RedisService` instances** (separate ioredis TCP connections) wrapping the production `DimoProviderLimiterService`. Both clients connect to the **same Redis server** — modeling two application replicas.
+
+### Proofs executed (real Lua, real Redis)
+
+| Proof | Test | Result |
+|-------|------|--------|
+| A. Global rate budget | `two replicas share one global rate budget` | Replica A+B share one per-second counter; 5 requests with limit 3 → 3 ALLOW / 2 WOULD_REJECT |
+| B. Global in-flight | `two replicas share global in-flight leases` | ZCARD global key = 2 at cap; replica B sees replica A leases |
+| C. Atomic concurrent acquire | `concurrent acquisitions cannot oversubscribe` + `C-rate: concurrent rate` | `Promise.all` parallel begins; exactly 3 in-flight ALLOW / 5 WOULD_REJECT; rate 4 ALLOW / 6 WOULD_REJECT |
+| D. Release | `release on replica A restores capacity visible to replica B` | ZREM on A → B acquires ALLOW |
+| E. Double release | `double release is safe` | ZCARD stays 0; subsequent fills work |
+| F. Stale lease recovery | `stale lease expires` (150ms lease, 220ms wait) | ZREMRANGEBYSCORE recovers capacity without manual release |
+| G. Shadow non-behavioral | `shadow WOULD_REJECT does not inflate in-flight` + gateway invoke | ZCARD unchanged on reject; gateway invoke completes <200ms |
+| H. Redis fail-open | `Redis failure fail-open on real limiter boundary` | Broken port 6399 → ERROR_FAIL_OPEN; gateway invoke succeeds |
+| Rate window TTL | `rate window: per-second bucket TTL and clean next window` | TTL 1–3s on rate key; next second window count resets to 1 |
+
+### Key / TTL assertions
+
+- Rate key: `dimo:provider:limiter:rate:{epochSecond}` — TTL ≤ 3s verified via `TTL`
+- In-flight key: `dimo:provider:limiter:inflight` — stale entries removed via ZREMRANGEBYSCORE
+- No unbounded per-request keys (≤ 3 rate keys during boundary test)
+- Test cleanup: deterministic `DEL` on limiter keys in `beforeEach`/`afterEach`
+
+### CI evidence
+
+Recorded in closure commit final response file after push.
 
 ---
 
@@ -272,7 +315,6 @@ Internal budget: **25/s peak** (20 + burst 5). Documented Core ceiling: **25/s**
 
 ## 16. Remaining risks & S3 prerequisites
 
-- Real Redis integration tests under multi-replica CI
 - Priority-aware enforcement and delay queue
 - Provider `Retry-After` driven backoff
 - Route remaining non-telemetry DIMO HTTP through gateway if desired
@@ -288,7 +330,7 @@ backend/src/config/dimo-provider-limiter.config.spec.ts
 backend/src/modules/dimo/provider/dimo-provider-limiter.types.ts
 backend/src/modules/dimo/provider/dimo-provider-limiter.redis-scripts.ts
 backend/src/modules/dimo/provider/dimo-provider-limiter.service.ts
-backend/src/modules/dimo/provider/dimo-provider-limiter.service.spec.ts
+backend/src/modules/dimo/provider/dimo-provider-limiter.redis.integration.spec.ts
 backend/src/modules/dimo/provider/dimo-provider-limiter-shadow-model.spec.ts
 backend/src/modules/dimo/provider/dimo-provider-metrics.service.ts
 backend/src/modules/dimo/provider/dimo-provider-http-classifier.ts
