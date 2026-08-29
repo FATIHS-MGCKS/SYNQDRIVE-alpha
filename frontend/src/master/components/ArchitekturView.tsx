@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Vehicle Damages (P2.2.61 — V4.9.989)', icon: Globe,
+    endpoint: 'Vehicle detail → Damages tab (complete mounted stack)',
+    service: '**Locale flow:** `useLanguage().locale` → `rental-vehicle-damages-i18n.ts` → queue/canvas/drawer/dialogs/insights/pickup context. **Keys:** +328 EN+DE `vehicleDamages.*` (9239→9567); reuses `operator.damageCapture.*` for damage type/severity/rental impact/source + `tasks.*`/`health.*`/`common.*`/`vehicle.*` exact reuses. **Machine values:** status, severity, rental impact, evidence, liability, source, queue filters, mutation payloads frozen; raw description/liability note/task titles/filenames/backend errors preserved. **Guardrails:** P261 enforce-clean exact (23 paths) — 0 findings. **Frozen:** P260 Vehicle Documents, P216–P260, Data Analyse deferred. **Tests:** `rental-vehicle-damages-localization.test.tsx` (deterministic same-mount DE→EN→DE, machines, filters). **Semantics:** presentation-only; Category E=0; active mounted Vehicle Damages i18n coverage complete.',
+    dataSource: 'architecture/I18N_RENTAL_VEHICLE_DAMAGES_P2_2_61_2026-08-29.md' },
   { name: 'Platform i18n Rental Vehicle Documents Upload/Extraction (P2.2.60 — V4.9.988)', icon: Globe,
     endpoint: 'Vehicle detail → Documents → Upload / Review drawer',
     service: '**Locale flow:** `useLanguage().locale` → `document-intake-i18n.ts` → drawer + shared intake stack. **Keys:** +165 EN+DE (9082→9247); `docUpload.*`, `docUpload.extractionField.*`, `documentExtraction.classification.*`; reuses `docUpload.flow.*`, `docUpload.validation.*`, `common.cancel`, `vehicle.documents.*`. **Machine values:** FlowStatus, document types, validation codes, payloads, polling frozen; `categoryId` not consumed; `initialDocType: AUTO`. **Guardrails:** P260 enforce-clean exact (13 paths) — 0 findings; drawer removed from P22 allowlist. **Frozen:** P259 overview, P216–P259. **Tests:** `rental-vehicle-documents-upload-localization.test.tsx`. **Semantics:** presentation-only; Category E=0; active mounted Vehicle Documents i18n coverage complete.',

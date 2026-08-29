@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FormDialog } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type {
   CreateVehicleDamageInput,
   DamageLocationView,
@@ -12,8 +13,15 @@ import {
   DAMAGE_TYPE_OPTIONS,
   DESCRIPTION_MAX_LENGTH,
 } from '../../lib/damage.types';
-import { readFileAsDataUrl, validateDamageImageFile } from '../../lib/damage-image.utils';
-import { formatDamageType } from '../../lib/damage.types';
+import { readFileAsDataUrl, validateDamageImageCode } from '../../lib/damage-image.utils';
+import {
+  resolveDamageLocationViewLabel,
+  resolveDamageSeverityLabel,
+  resolveDamageTypeLabel,
+  resolveDamageValidationMessage,
+  resolveRentalImpactLabel,
+  type VehicleDamageValidationCode,
+} from '../../lib/rental-vehicle-damages-i18n';
 
 export interface CreateDamageFormValues {
   damageType: string;
@@ -59,6 +67,7 @@ function parseEuroToCents(value: string): number | null {
 }
 
 export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: CreateDamageDialogProps) {
+  const { t } = useLanguage();
   const [form, setForm] = useState<CreateDamageFormValues>(DEFAULT_FORM);
   const [error, setError] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -75,24 +84,20 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const validate = (): string | null => {
-    if (!form.damageType) return 'Damage type is required.';
-    if (!form.severity) return 'Severity is required.';
-    if (form.description.length > DESCRIPTION_MAX_LENGTH) {
-      return `Description must be at most ${DESCRIPTION_MAX_LENGTH} characters.`;
-    }
+  const validate = (): VehicleDamageValidationCode | null => {
+    if (!form.damageType) return 'DAMAGE_TYPE_REQUIRED';
+    if (!form.severity) return 'SEVERITY_REQUIRED';
+    if (form.description.length > DESCRIPTION_MAX_LENGTH) return 'DESCRIPTION_TOO_LONG';
     const cents = form.estimatedCostEuro.trim() ? parseEuroToCents(form.estimatedCostEuro) : null;
-    if (form.estimatedCostEuro.trim() && cents === null) {
-      return 'Estimated cost must be zero or greater.';
-    }
+    if (form.estimatedCostEuro.trim() && cents === null) return 'ESTIMATED_COST_INVALID';
     if (form.locationView !== 'UNKNOWN') {
       const x = form.locationX.trim() ? Number(form.locationX) : NaN;
       const y = form.locationY.trim() ? Number(form.locationY) : NaN;
       if (!form.placeAfterCreate && (Number.isNaN(x) || Number.isNaN(y))) {
-        return 'Enter X/Y coordinates (0–100) or choose “Place on map after create”.';
+        return 'COORDINATES_REQUIRED';
       }
       if (!form.placeAfterCreate && (x < 0 || x > 100 || y < 0 || y > 100)) {
-        return 'Coordinates must be between 0 and 100.';
+        return 'COORDINATES_RANGE';
       }
     }
     return null;
@@ -103,9 +108,9 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
     setPhotoError(null);
     const next: File[] = [];
     for (const file of Array.from(files)) {
-      const err = validateDamageImageFile(file);
-      if (err) {
-        setPhotoError(err);
+      const code = validateDamageImageCode(file);
+      if (code) {
+        setPhotoError(resolveDamageValidationMessage(code, t));
         return;
       }
       next.push(file);
@@ -115,9 +120,9 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
 
   const handleSubmit = async () => {
     setError(null);
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
+    const validationCode = validate();
+    if (validationCode) {
+      setError(resolveDamageValidationMessage(validationCode, t));
       return;
     }
 
@@ -161,7 +166,7 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
       await onSubmit(input, { placeAfterCreate });
       onOpenChange(false);
     } catch {
-      setError('Could not create damage. Check the form and try again.');
+      setError(resolveDamageValidationMessage('CREATE_FAILED', t));
     }
   };
 
@@ -172,8 +177,8 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Add damage"
-      description="Record operational damage. You can place it on the vehicle map and add more photos afterwards."
+      title={t('vehicleDamages.create.title')}
+      description={t('vehicleDamages.create.description')}
       maxWidthClassName="sm:max-w-xl"
       footer={
         <>
@@ -183,7 +188,7 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
             disabled={busy}
             className="sq-press px-3 py-2 rounded-lg text-xs font-semibold border border-border/70"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -191,7 +196,7 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
             onClick={() => void handleSubmit()}
             className="sq-cta px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50"
           >
-            {busy ? 'Creating…' : 'Create damage'}
+            {busy ? t('vehicleDamages.create.submitting') : t('vehicleDamages.create.submit')}
           </button>
         </>
       }
@@ -204,20 +209,20 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Damage type *">
+          <Field label={t('vehicleDamages.create.field.damageType')}>
             <select
               value={form.damageType}
               onChange={(e) => set('damageType', e.target.value)}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
             >
-              {DAMAGE_TYPE_OPTIONS.map((t) => (
-                <option key={t} value={t}>
-                  {formatDamageType(t)}
+              {DAMAGE_TYPE_OPTIONS.map((typeOption) => (
+                <option key={typeOption} value={typeOption}>
+                  {resolveDamageTypeLabel(t, typeOption)}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Severity *">
+          <Field label={t('health.observation.severity')}>
             <select
               value={form.severity}
               onChange={(e) => set('severity', e.target.value as DamageSeverity)}
@@ -225,14 +230,14 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
             >
               {(['MINOR', 'MODERATE', 'MAJOR', 'CRITICAL'] as DamageSeverity[]).map((s) => (
                 <option key={s} value={s}>
-                  {formatDamageType(s)}
+                  {resolveDamageSeverityLabel(t, s)}
                 </option>
               ))}
             </select>
           </Field>
         </div>
 
-        <Field label="Rental impact">
+        <Field label={t('vehicleDamages.create.field.rentalImpact')}>
           <select
             value={form.rentalImpact}
             onChange={(e) => set('rentalImpact', e.target.value as DamageRentalImpact)}
@@ -240,38 +245,38 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
           >
             {DAMAGE_RENTAL_IMPACT_OPTIONS.map((r) => (
               <option key={r} value={r}>
-                {formatDamageType(r)}
+                {resolveRentalImpactLabel(t, r)}
               </option>
             ))}
           </select>
         </Field>
 
-        <Field label="Description">
+        <Field label={t('tasks.form.description')}>
           <textarea
             value={form.description}
             onChange={(e) => set('description', e.target.value)}
             rows={3}
             maxLength={DESCRIPTION_MAX_LENGTH}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm resize-none"
-            placeholder="What happened, size, context…"
+            placeholder={t('vehicleDamages.create.field.descriptionPlaceholder')}
           />
           <p className="text-[10px] text-muted-foreground mt-1">
             {form.description.length}/{DESCRIPTION_MAX_LENGTH}
           </p>
         </Field>
 
-        <Field label="Estimated repair cost (EUR)">
+        <Field label={t('vehicleDamages.create.field.estimatedCost')}>
           <input
             type="text"
             inputMode="decimal"
             value={form.estimatedCostEuro}
             onChange={(e) => set('estimatedCostEuro', e.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            placeholder="e.g. 450.00"
+            placeholder={t('vehicleDamages.create.field.estimatedCostPlaceholder')}
           />
         </Field>
 
-        <Field label="Location view">
+        <Field label={t('vehicleDamages.create.field.locationView')}>
           <select
             value={form.locationView}
             onChange={(e) => set('locationView', e.target.value as DamageLocationView)}
@@ -279,7 +284,9 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
           >
             {DAMAGE_LOCATION_VIEW_OPTIONS.map((v) => (
               <option key={v} value={v}>
-                {v === 'UNKNOWN' ? 'Unknown / place later' : formatDamageType(v)}
+                {v === 'UNKNOWN'
+                  ? t('vehicleDamages.create.locationView.unknown')
+                  : resolveDamageLocationViewLabel(t, v)}
               </option>
             ))}
           </select>
@@ -293,11 +300,11 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
                 checked={form.placeAfterCreate}
                 onChange={(e) => set('placeAfterCreate', e.target.checked)}
               />
-              Place on vehicle map after create
+              {t('vehicleDamages.create.placeAfterCreate')}
             </label>
             {!form.placeAfterCreate && (
               <div className="grid grid-cols-2 gap-2">
-                <Field label="X % (0–100)">
+                <Field label={t('vehicleDamages.create.field.coordX')}>
                   <input
                     type="number"
                     min={0}
@@ -307,7 +314,7 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
                   />
                 </Field>
-                <Field label="Y % (0–100)">
+                <Field label={t('vehicleDamages.create.field.coordY')}>
                   <input
                     type="number"
                     min={0}
@@ -321,15 +328,17 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
             )}
             {needsPlacement && (
               <p className="text-[10px] text-muted-foreground">
-                After create, placement mode opens on the {formatDamageType(form.locationView)} view.
+                {t('vehicleDamages.create.placementHint', {
+                  view: resolveDamageLocationViewLabel(t, form.locationView),
+                })}
               </p>
             )}
-            <Field label="Location label (optional)">
+            <Field label={t('vehicleDamages.create.field.locationLabel')}>
               <input
                 value={form.locationLabel}
                 onChange={(e) => set('locationLabel', e.target.value)}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                placeholder="e.g. Front bumper left"
+                placeholder={t('vehicleDamages.create.locationLabelPlaceholder')}
               />
             </Field>
           </div>
@@ -337,9 +346,9 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
 
         <div>
           <div className="flex items-center justify-between gap-2 mb-1">
-            <span className="text-[12px] font-medium text-foreground">Photos (optional)</span>
+            <span className="text-[12px] font-medium text-foreground">{t('vehicleDamages.create.photos')}</span>
             <label className="sq-press text-[11px] font-semibold px-2 py-1 rounded-lg border border-border/70 cursor-pointer">
-              Add photos
+              {t('vehicleDamages.create.addPhotos')}
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/gif"
@@ -360,13 +369,13 @@ export function CreateDamageDialog({ open, onOpenChange, busy, onSubmit }: Creat
                     className="text-red-600 shrink-0"
                     onClick={() => set('photoFiles', form.photoFiles.filter((_, idx) => idx !== i))}
                   >
-                    Remove
+                    {t('common.remove')}
                   </button>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-[10px] text-muted-foreground">JPG, PNG, WebP up to 6 MB each.</p>
+            <p className="text-[10px] text-muted-foreground">{t('vehicleDamages.create.photosHint')}</p>
           )}
         </div>
       </div>

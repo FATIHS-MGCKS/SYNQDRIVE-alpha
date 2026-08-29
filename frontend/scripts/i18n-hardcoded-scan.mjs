@@ -367,6 +367,32 @@ const P260_ENFORCE_CLEAN_EXACT = new Set([
   'rental/components/documents/document-extraction.shared.ts',
 ]);
 
+const P261_ENFORCE_CLEAN_EXACT = new Set([
+  'rental/components/DamagesView.tsx',
+  'rental/components/damages/DamageControlSummary.tsx',
+  'rental/components/damages/DamageInsightsSection.tsx',
+  'rental/components/damages/DamageEvidenceCanvas.tsx',
+  'rental/components/damages/DamageWorkQueue.tsx',
+  'rental/components/damages/DamageDetailDrawer.tsx',
+  'rental/components/damages/CreateDamageDialog.tsx',
+  'rental/components/damages/MarkRepairedDialog.tsx',
+  'rental/components/damages/CreateRepairTaskDialog.tsx',
+  'rental/components/damages/DamageAiIntakeDialog.tsx',
+  'rental/components/damages/AddDamagePhotoPanel.tsx',
+  'rental/components/damages/DamageRentalSections.tsx',
+  'rental/components/damages/DamageMapBlueprint.tsx',
+  'rental/components/damages/DamageHeatmapOverlay.tsx',
+  'rental/components/damages/damage-summary-display.ts',
+  'rental/components/damages/damage-control.utils.ts',
+  'rental/lib/rental-vehicle-damages-i18n.ts',
+  'rental/hooks/useVehicleDamages.ts',
+  'rental/hooks/useVehicleDamageActions.ts',
+  'rental/lib/damage-insights.ts',
+  'rental/lib/damage-rental-impact.ts',
+  'rental/lib/damage-pickup-context.ts',
+  'rental/hooks/useDamageAiIntake.ts',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -697,6 +723,10 @@ function isP260EnforceCleanPath(relPath) {
   return P260_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP261EnforceCleanPath(relPath) {
+  return P261_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -748,6 +778,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (isP225EnforceCleanPath(relPath)) return true;
   if (isP226EnforceCleanPath(relPath)) return true;
   if (isP260EnforceCleanPath(relPath)) return true;
+  if (isP261EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -780,6 +811,7 @@ function migrationPhaseFor(relPath, surface) {
   if (isP225EnforceCleanPath(relPath)) return 'P2.2.25';
   if (isP226EnforceCleanPath(relPath)) return 'P2.2.26';
   if (isP260EnforceCleanPath(relPath)) return 'P2.2.60';
+  if (isP261EnforceCleanPath(relPath)) return 'P2.2.61';
   if (isP210EnforceCleanPath(relPath)) return 'P2.2.10';
   if (isP29EnforceCleanPath(relPath)) return 'P2.2.9';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';

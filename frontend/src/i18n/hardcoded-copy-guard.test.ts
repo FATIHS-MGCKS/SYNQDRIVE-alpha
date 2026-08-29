@@ -558,6 +558,32 @@ const P260_ENFORCE_CLEAN_EXACT = [
   'rental/components/documents/document-extraction.shared.ts',
 ];
 
+const P261_ENFORCE_CLEAN_EXACT = [
+  'rental/components/DamagesView.tsx',
+  'rental/components/damages/DamageControlSummary.tsx',
+  'rental/components/damages/DamageInsightsSection.tsx',
+  'rental/components/damages/DamageEvidenceCanvas.tsx',
+  'rental/components/damages/DamageWorkQueue.tsx',
+  'rental/components/damages/DamageDetailDrawer.tsx',
+  'rental/components/damages/CreateDamageDialog.tsx',
+  'rental/components/damages/MarkRepairedDialog.tsx',
+  'rental/components/damages/CreateRepairTaskDialog.tsx',
+  'rental/components/damages/DamageAiIntakeDialog.tsx',
+  'rental/components/damages/AddDamagePhotoPanel.tsx',
+  'rental/components/damages/DamageRentalSections.tsx',
+  'rental/components/damages/DamageMapBlueprint.tsx',
+  'rental/components/damages/DamageHeatmapOverlay.tsx',
+  'rental/components/damages/damage-summary-display.ts',
+  'rental/components/damages/damage-control.utils.ts',
+  'rental/lib/rental-vehicle-damages-i18n.ts',
+  'rental/hooks/useVehicleDamages.ts',
+  'rental/hooks/useVehicleDamageActions.ts',
+  'rental/lib/damage-insights.ts',
+  'rental/lib/damage-rental-impact.ts',
+  'rental/lib/damage-pickup-context.ts',
+  'rental/hooks/useDamageAiIntake.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -784,6 +810,10 @@ function isP259EnforceCleanPath(relPath: string): boolean {
 
 function isP260EnforceCleanPath(relPath: string): boolean {
   return P260_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP261EnforceCleanPath(relPath: string): boolean {
+  return P261_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -1261,6 +1291,24 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP260EnforceCleanPath(finding.file),
     );
     expect(p260Debt).toHaveLength(0);
+  });
+
+  it('keeps P261 Vehicle Damages enforce-clean scope at zero findings', () => {
+    const p261Debt = inventory.findings.filter((finding) =>
+      isP261EnforceCleanPath(finding.file),
+    );
+    expect(p261Debt).toHaveLength(0);
+  });
+
+  it('keeps rental-vehicle-damages-i18n.ts on canonical translation resolvers', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/rental-vehicle-damages-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('resolveDamageTypeLabel');
+    expect(source).toContain('resolveDamageValidationMessage');
+    expect(source).toContain('resolveDamageHostError');
+    expect(source).not.toMatch(/locale === 'de'/);
   });
 
   it('keeps document-intake-i18n.ts on canonical translation resolvers', () => {

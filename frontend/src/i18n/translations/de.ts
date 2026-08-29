@@ -46,6 +46,7 @@ import { operatorMoreDe } from './operator.more.de';
 import { vendorsDirectoryDe } from './vendors.directory.de';
 import { rentalVehicleDocumentsDe } from './rental.vehicleDocuments.de';
 import { rentalDocumentIntakeDe } from './rental.documentIntake.de';
+import { rentalVehicleDamagesDe } from './rental.vehicleDamages.de';
 import { supportOpsDe } from './support.ops.de';
 import { whatsappDe } from './whatsapp.de';
 
@@ -5832,4 +5833,5 @@ export const de: Record<TranslationKey, string> = {
   ...vendorsDirectoryDe,
   ...rentalVehicleDocumentsDe,
   ...rentalDocumentIntakeDe,
+  ...rentalVehicleDamagesDe,
 } satisfies CompleteTranslationDictionary;

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  damageRentalGateLabel,
   deriveDamageRentalImpact,
   isDamageRentalBlocked,
 } from './damage-rental-impact';
@@ -68,8 +67,7 @@ describe('deriveDamageRentalImpact', () => {
     ).toBe('WATCH');
   });
 
-  it('labels and blocked helper align with gate', () => {
-    expect(damageRentalGateLabel('SAFETY_CRITICAL')).toBe('Safety critical');
+  it('blocked helper aligns with gate', () => {
     expect(isDamageRentalBlocked('RENTAL_BLOCKED')).toBe(true);
     expect(isDamageRentalBlocked('WATCH')).toBe(false);
   });
