@@ -10,7 +10,7 @@ import { QUEUE_NAMES } from '../../../workers/queues/queue-names';
 
 /**
  * Redis-backed global DIMO provider budget (P1.3).
- * Final review artifact: architecture/P1_3_GLOBAL_DIMO_PROVIDER_BUDGET_FINAL_RESPONSE_2026-08-29.md
+ * Final review artifact (PR #1417): architecture/P1_3_GLOBAL_DIMO_PROVIDER_BUDGET_FINAL_RESPONSE_2026-08-29.md
  */
 @Module({
   imports: [
