@@ -60,6 +60,9 @@ movement, live telemetry, recent `lastActivityAt`). Persistent activity on an
 unchanged tier does not bypass cadence.
 
 See `architecture/SNAPSHOT_POLLING_P1_2_TRIP_LOSS_SAFETY_GATE_2026-08-29.md` for
+FINAL-1, `SNAPSHOT_POLLING_P1_2_FINAL2_PARTIAL_TRIP_SAFETY_GATE_2026-08-29.md` for
+FINAL-2, and `SNAPSHOT_POLLING_P1_2_FINAL3_PARTIAL_BOUNDARY_REPAIR_2026-08-29.md` for
+FINAL-3 canonical boundary repair. **FINAL-4 scale closeout required before merge.**
 the full trip-loss safety gate audit.
 
 ### Hysteresis

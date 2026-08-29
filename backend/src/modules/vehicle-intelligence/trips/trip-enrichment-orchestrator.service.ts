@@ -408,6 +408,34 @@ export class TripEnrichmentOrchestratorService {
   }
 
   /**
+   * Re-run downstream enrichment after a canonical boundary extension.
+   *
+   * Behavior enrichment replaces events per tripId (deleteMany + insert).
+   * Driving impact upserts per tripId. Safe to force-refresh the full window.
+   */
+  async refreshEnrichmentAfterBoundaryRepair(
+    tripId: string,
+    vehicleId: string,
+    organizationId: string,
+  ): Promise<void> {
+    await this.prisma.vehicleTrip.update({
+      where: { id: tripId },
+      data: {
+        behaviorEnrichmentStatus: null,
+        behaviorSummaryStatus: 'PENDING',
+        drivingImpactStatus: 'PENDING',
+        drivingImpactComputedAt: null,
+        tripAnalysisStatus: 'PENDING',
+      },
+    });
+
+    await this.enqueueBehaviorEnrichment(tripId, vehicleId, organizationId, {
+      force: true,
+      delayMs: 0,
+    });
+  }
+
+  /**
    * Mark driving impact computation stage (called from DrivingImpactProcessor).
    * Brake-health recalculation stays outside this status — non-blocking follow-up.
    */

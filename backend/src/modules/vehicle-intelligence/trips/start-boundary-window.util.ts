@@ -1,14 +1,25 @@
 import type { DimoTripSegment } from '../../dimo/dimo-segments.service';
+import { deriveDefaultTripStartBoundaryMaxLookbackMs } from '@config/worker.config';
 
-/** Mirrors TripDetectionOrchestrationService constants for testable boundary math. */
+/** @deprecated Use deriveTripStartBoundaryMaxLookbackMs() — kept for test imports. */
 export const START_BOUNDARY_LOOKBACK_MS = 5 * 60_000;
 export const START_BOUNDARY_BACKFILL_MS = 60_000;
 export const POSSIBLE_START_CONFIRM_MAX_WAIT_MS = 180_000;
 
+/**
+ * Canonical live start-boundary lookback ceiling.
+ * Derived from max snapshot poll interval + confirmation wait + safety buffer.
+ */
+export function deriveTripStartBoundaryMaxLookbackMs(
+  env: NodeJS.ProcessEnv = process.env,
+): number {
+  return deriveDefaultTripStartBoundaryMaxLookbackMs(env);
+}
+
 export function computeStartBoundaryWindowFrom(
   candidateStartAt: Date,
   confirmedAt: Date,
-  lookbackMs: number = START_BOUNDARY_LOOKBACK_MS,
+  lookbackMs: number = deriveTripStartBoundaryMaxLookbackMs(),
 ): Date {
   return new Date(
     Math.max(
@@ -21,7 +32,7 @@ export function computeStartBoundaryWindowFrom(
 export function computePossibleStartCoreFetchFrom(
   startAt: Date,
   now: Date,
-  lookbackMs: number = START_BOUNDARY_LOOKBACK_MS,
+  lookbackMs: number = deriveTripStartBoundaryMaxLookbackMs(),
   backfillMs: number = START_BOUNDARY_BACKFILL_MS,
 ): Date {
   return new Date(
@@ -30,8 +41,9 @@ export function computePossibleStartCoreFetchFrom(
 }
 
 /**
- * Pure extraction of `TripDetectionOrchestrationService.selectConfirmedStartSegment`.
- * Segments with `startedBeforeRange=true` are rejected.
+ * Canonical production implementation — also used by TripDetectionOrchestrationService.
+ * Segments with `startedBeforeRange=true` are rejected when the query window does not
+ * reach the physical trip start; widening the lookback is the live-path mitigation.
  */
 export function selectConfirmedStartSegment(
   segments: DimoTripSegment[],
@@ -77,7 +89,9 @@ export function modelDelayedStartLiveBoundary(args: {
   firstDetectionAt: Date;
   confirmationDelayMs: number;
   dimoSegment: DimoTripSegment | null;
+  lookbackMs?: number;
 }): DelayedStartScenarioResult {
+  const lookbackMs = args.lookbackMs ?? deriveTripStartBoundaryMaxLookbackMs();
   const possibleStartAt = args.firstDetectionAt;
   const confirmationTime = new Date(
     args.firstDetectionAt.getTime() + args.confirmationDelayMs,
@@ -85,10 +99,12 @@ export function modelDelayedStartLiveBoundary(args: {
   const boundaryWindowFrom = computeStartBoundaryWindowFrom(
     possibleStartAt,
     confirmationTime,
+    lookbackMs,
   );
   const coreFetchFrom = computePossibleStartCoreFetchFrom(
     possibleStartAt,
     confirmationTime,
+    lookbackMs,
   );
 
   const segmentInWindow =

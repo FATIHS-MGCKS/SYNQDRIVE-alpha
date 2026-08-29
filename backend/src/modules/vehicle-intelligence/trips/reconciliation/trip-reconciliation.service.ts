@@ -44,6 +44,12 @@ import { TripEnrichmentOrchestratorService } from '../trip-enrichment-orchestrat
 import { TripPostFinalizeAnalysisProducer } from '../../driving-analysis-init/trip-post-finalize-analysis.producer';
 import { EnergyEventsService } from '../../energy-events/energy-events.service';
 import { EventTripAssociationService } from '../event-association/event-trip-association.service';
+import {
+  classifyPartialBoundaryRepair,
+  type CanonicalTripBounds,
+  type PartialBoundaryClassification,
+} from '../detectors/partial-boundary-classification.util';
+import { assessCoverage } from '../detectors/trip-coverage.util';
 
 interface ReconciliationOptions {
   useDimoSegmentFallback?: boolean;
@@ -52,6 +58,7 @@ interface ReconciliationOptions {
 interface RepairCandidate {
   source: 'CLICKHOUSE_IGNITION' | 'CLICKHOUSE_MOTION' | 'DIMO_SEGMENT';
   segmentId?: string;
+  mechanism?: string;
   startTime: Date;
   endTime: Date;
   confidence: 'LOW' | 'MEDIUM' | 'HIGH';
@@ -479,6 +486,27 @@ export class TripReconciliationService {
       const segStart = candidate.startTime;
       const segEnd = candidate.endTime;
 
+      const canonicalTrips = await this.loadCanonicalTripsForWindow(
+        vehicleId,
+        segStart,
+        segEnd,
+      );
+
+      if (this.isPartialBoundaryRepairEnabled() && candidate.source === 'DIMO_SEGMENT') {
+        const partialOutcome = await this.tryPartialBoundaryExtension({
+          vehicleId,
+          organizationId: vehicle.organizationId ?? null,
+          candidate,
+          canonicalTrips,
+        });
+        if (partialOutcome.handled) {
+          if (partialOutcome.proposed) proposed++;
+          if (partialOutcome.applied) applied++;
+          if (partialOutcome.rejected) rejected++;
+          continue;
+        }
+      }
+
       const overlapFinding = await this.overlapDetector.evaluate({
         vehicleId,
         dimoTokenId,
@@ -612,6 +640,312 @@ export class TripReconciliationService {
       this.configService?.get<string>('worker.tripRepairCoverageMode') ??
         process.env.TRIP_REPAIR_COVERAGE_MODE,
     );
+  }
+
+  private isPartialBoundaryRepairEnabled(): boolean {
+    if (this.configService?.get<boolean>('worker.tripPartialBoundaryRepairEnabled') != null) {
+      return this.configService.get<boolean>('worker.tripPartialBoundaryRepairEnabled') === true;
+    }
+    return process.env.TRIP_PARTIAL_BOUNDARY_REPAIR_ENABLED !== 'false';
+  }
+
+  private async loadCanonicalTripsForWindow(
+    vehicleId: string,
+    from: Date,
+    to: Date,
+  ): Promise<CanonicalTripBounds[]> {
+    const TOLERANCE_MS = 5 * 60_000;
+    const windowStart = new Date(from.getTime() - TOLERANCE_MS);
+    const windowEnd = new Date(to.getTime() + TOLERANCE_MS);
+
+    const rows = await this.prisma.vehicleTrip.findMany({
+      where: {
+        vehicleId,
+        OR: [
+          {
+            endTime: { not: null, gte: windowStart },
+            startTime: { lte: windowEnd },
+          },
+          {
+            endTime: null,
+            startTime: { lte: windowEnd, gte: windowStart },
+          },
+        ],
+      },
+      select: { id: true, startTime: true, endTime: true, tripStatus: true },
+      take: 201,
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      startTime: row.startTime,
+      endTime: row.endTime,
+      tripStatus: String(row.tripStatus),
+    }));
+  }
+
+  private extractMechanism(candidate: RepairCandidate): string {
+    if (candidate.mechanism) return candidate.mechanism;
+    const dimoSegment = (candidate.detectorEvidence?.dimoSegment ?? null) as
+      | { mechanism?: string }
+      | null;
+    if (dimoSegment?.mechanism) return dimoSegment.mechanism;
+    const mode = candidate.startDetectionMode ?? '';
+    if (mode.includes('changePointDetection')) return 'changePointDetection';
+    if (mode.includes('frequencyAnalysis')) return 'frequencyAnalysis';
+    if (mode.includes('ignitionDetection')) return 'ignitionDetection';
+    return 'changePointDetection';
+  }
+
+  private async tryPartialBoundaryExtension(input: {
+    vehicleId: string;
+    organizationId: string | null;
+    candidate: RepairCandidate;
+    canonicalTrips: CanonicalTripBounds[];
+  }): Promise<{
+    handled: boolean;
+    proposed: boolean;
+    applied: boolean;
+    rejected: boolean;
+  }> {
+    const mechanism = this.extractMechanism(input.candidate);
+    const provider = {
+      segmentId: input.candidate.segmentId ?? `unknown-${input.candidate.startTime.toISOString()}`,
+      mechanism,
+      startTime: input.candidate.startTime,
+      endTime: input.candidate.endTime,
+      isOngoing: false,
+      startedBeforeRange: false,
+    };
+
+    const coverage = assessCoverage(
+      input.candidate.startTime,
+      input.candidate.endTime,
+      input.canonicalTrips,
+    );
+
+    const classification = classifyPartialBoundaryRepair(provider, input.canonicalTrips, {
+      coverage,
+    });
+
+    if (classification.kind === 'MISSING_TRIP') {
+      return { handled: false, proposed: false, applied: false, rejected: false };
+    }
+
+    const auditId = this.buildRepairAuditId(
+      input.vehicleId,
+      REPAIR_TYPES.PARTIAL_TRIP_BOUNDARY_EXTENSION,
+      input.candidate.startTime,
+      input.candidate.endTime,
+    );
+
+    if (classification.kind === 'EXACT_MATCH') {
+      await this.recordPartialBoundaryRepairAudit({
+        id: auditId,
+        vehicleId: input.vehicleId,
+        tripId: classification.tripId,
+        candidate: input.candidate,
+        classification,
+        coverage,
+        status: REPAIR_STATUS.SUPPRESSED,
+        reason: classification.reason,
+      });
+      return { handled: true, proposed: false, applied: false, rejected: false };
+    }
+
+    if (classification.kind === 'AMBIGUOUS') {
+      await this.recordPartialBoundaryRepairAudit({
+        id: auditId,
+        vehicleId: input.vehicleId,
+        tripId: null,
+        candidate: input.candidate,
+        classification,
+        coverage,
+        status: REPAIR_STATUS.PROPOSED,
+        reason: classification.reason,
+      });
+      return { handled: true, proposed: true, applied: false, rejected: false };
+    }
+
+    // PARTIAL_EXTENSION
+    await this.recordPartialBoundaryRepairAudit({
+      id: auditId,
+      vehicleId: input.vehicleId,
+      tripId: classification.tripId,
+      candidate: input.candidate,
+      classification,
+      coverage,
+      status: REPAIR_STATUS.PROPOSED,
+      reason: classification.reason,
+    });
+
+    try {
+      const repairResult = await this.decisionEngine.repairTripBoundaries({
+        tripId: classification.tripId,
+        vehicleId: input.vehicleId,
+        organizationId: input.organizationId,
+        providerSegmentId: provider.segmentId,
+        providerMechanism: mechanism,
+        oldStartTime: classification.oldStart,
+        oldEndTime: classification.oldEnd,
+        newStartTime: classification.newStart,
+        newEndTime: classification.newEnd,
+        startLatitude: classification.extendStart
+          ? (input.candidate.startLatitude ?? null)
+          : undefined,
+        startLongitude: classification.extendStart
+          ? (input.candidate.startLongitude ?? null)
+          : undefined,
+        endLatitude: classification.extendEnd
+          ? (input.candidate.endLatitude ?? null)
+          : undefined,
+        endLongitude: classification.extendEnd
+          ? (input.candidate.endLongitude ?? null)
+          : undefined,
+        distanceKm: input.candidate.distanceKm ?? null,
+        confidence: classification.confidence,
+        reason: classification.reason,
+        source: 'RECONCILIATION_PARTIAL_BOUNDARY',
+        coverageMetrics: coverage.metrics as unknown as Record<string, unknown>,
+      });
+
+      if (repairResult.applied) {
+        await this.prisma.tripRepair.update({
+          where: { id: auditId },
+          data: {
+            tripId: classification.tripId,
+            status: REPAIR_STATUS.APPLIED,
+            appliedAt: new Date(),
+          },
+        });
+
+        if (input.organizationId) {
+          await this.enqueueBoundaryRepairRefresh(
+            classification.tripId,
+            input.vehicleId,
+            input.organizationId,
+          );
+        }
+
+        this.tripMetrics?.repairActions.inc({
+          type: REPAIR_TYPES.PARTIAL_TRIP_BOUNDARY_EXTENSION,
+          result: 'applied',
+        });
+        this.logger.log(
+          `Partial boundary extension applied for vehicle ${input.vehicleId}: ` +
+            `trip=${classification.tripId} ` +
+            `${classification.oldStart.toISOString()}→${classification.newStart.toISOString()} / ` +
+            `${classification.oldEnd.toISOString()}→${classification.newEnd.toISOString()}`,
+        );
+        return { handled: true, proposed: true, applied: true, rejected: false };
+      }
+
+      await this.prisma.tripRepair.update({
+        where: { id: auditId },
+        data: {
+          status: REPAIR_STATUS.SUPPRESSED,
+          reason: 'Boundary repair idempotent no-op — already at target boundaries',
+        },
+      });
+      return { handled: true, proposed: false, applied: false, rejected: false };
+    } catch (err: unknown) {
+      await this.prisma.tripRepair.update({
+        where: { id: auditId },
+        data: {
+          status: REPAIR_STATUS.REJECTED,
+          reason: (err as Error).message,
+        },
+      });
+      this.tripMetrics?.repairActions.inc({
+        type: REPAIR_TYPES.PARTIAL_TRIP_BOUNDARY_EXTENSION,
+        result: 'rejected',
+      });
+      return { handled: true, proposed: true, applied: false, rejected: true };
+    }
+  }
+
+  private async recordPartialBoundaryRepairAudit(input: {
+    id: string;
+    vehicleId: string;
+    tripId: string | null;
+    candidate: RepairCandidate;
+    classification: PartialBoundaryClassification;
+    coverage: ReturnType<typeof assessCoverage>;
+    status: string;
+    reason: string;
+  }): Promise<void> {
+    const confidence =
+      input.classification.kind === 'PARTIAL_EXTENSION'
+        ? input.classification.confidence
+        : input.candidate.confidence;
+
+    const detectorEvidence = JSON.parse(
+      JSON.stringify({
+        repairSource: input.candidate.source,
+        partialBoundaryClassification: input.classification,
+        coverageAssessment: input.coverage,
+        dimoSegment: input.candidate.detectorEvidence?.dimoSegment ?? null,
+      }),
+    );
+
+    const data = {
+      vehicleId: input.vehicleId,
+      tripId: input.tripId,
+      repairType: REPAIR_TYPES.PARTIAL_TRIP_BOUNDARY_EXTENSION,
+      status: input.status,
+      reason: input.reason,
+      confidence,
+      windowFrom: input.candidate.startTime,
+      windowTo: input.candidate.endTime,
+      detectorEvidence,
+    };
+
+    const existing = await this.prisma.tripRepair.findUnique({
+      where: { id: input.id },
+      select: { id: true, status: true },
+    });
+
+    if (!existing) {
+      try {
+        await this.prisma.tripRepair.create({ data: { id: input.id, ...data } });
+      } catch {
+        // concurrent insert race — same deterministic id
+      }
+      return;
+    }
+
+    if (existing.status === REPAIR_STATUS.APPLIED) return;
+
+    await this.prisma.tripRepair.update({
+      where: { id: input.id },
+      data,
+    });
+  }
+
+  private async enqueueBoundaryRepairRefresh(
+    tripId: string,
+    vehicleId: string,
+    organizationId: string,
+  ): Promise<void> {
+    if (this.postFinalizeAnalysisProducer) {
+      await this.postFinalizeAnalysisProducer.produceAfterPersistedCompletion({
+        tripId,
+        vehicleId,
+        organizationId,
+        source: 'REPAIR_FINALIZE',
+      });
+    }
+
+    if (this.enrichmentOrchestrator?.refreshEnrichmentAfterBoundaryRepair) {
+      await this.enrichmentOrchestrator.refreshEnrichmentAfterBoundaryRepair(
+        tripId,
+        vehicleId,
+        organizationId,
+      );
+      return;
+    }
+
+    await this.enqueueRepairEnrichment(tripId, vehicleId, organizationId);
   }
 
   /**
@@ -915,6 +1249,7 @@ export class TripReconciliationService {
         return {
           source: 'DIMO_SEGMENT' as const,
           segmentId: segment.segmentId,
+          mechanism: segment.mechanism,
           startTime,
           endTime,
           confidence: this.inferDimoSegmentConfidence(segment),

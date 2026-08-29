@@ -56,7 +56,11 @@ const candidate = (startMin = 1, endMin = 50) => ({
   detectorEvidence: { detector: 'DimoSegmentFallback' },
 });
 
-function buildReconciliationHarness(mode: 'legacy' | 'shadow' | 'enforce', trips: ReturnType<typeof row>[]) {
+function buildReconciliationHarness(
+  mode: 'legacy' | 'shadow' | 'enforce',
+  trips: ReturnType<typeof row>[],
+  partialBoundaryRepairEnabled = false,
+) {
   const tripRepair = {
     findUnique: jest.fn().mockResolvedValue(null),
     create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => ({
@@ -85,12 +89,15 @@ function buildReconciliationHarness(mode: 'legacy' | 'shadow' | 'enforce', trips
       endTime: null,
     })),
     finalizeRepairedTrip: jest.fn(async () => undefined),
+    repairTripBoundaries: jest.fn(async () => ({ applied: true, trip: { id: trips[0]?.id } })),
   };
 
   const configService = {
-    get: jest.fn((key: string) =>
-      key === 'worker.tripRepairCoverageMode' ? mode : undefined,
-    ),
+    get: jest.fn((key: string) => {
+      if (key === 'worker.tripRepairCoverageMode') return mode;
+      if (key === 'worker.tripPartialBoundaryRepairEnabled') return partialBoundaryRepairEnabled;
+      return undefined;
+    }),
   };
 
   const tripMetrics = {
@@ -149,8 +156,8 @@ describe('partial suffix live trip vs full DIMO segment (B)', () => {
     },
   );
 
-  it('shadow reconciliation suppresses repair — original 12:01 start NOT recovered', async () => {
-    const h = buildReconciliationHarness('shadow', existingSuffix);
+  it('shadow reconciliation suppresses generic missing-trip repair when partial repair disabled', async () => {
+    const h = buildReconciliationHarness('shadow', existingSuffix, false);
     const result = await (
       h.service as never as {
         detectAndRepairMissingTrips: (
@@ -169,8 +176,30 @@ describe('partial suffix live trip vs full DIMO segment (B)', () => {
     expect(h.tripRepair.create.mock.calls[0][0].data.status).toBe(REPAIR_STATUS.SUPPRESSED);
   });
 
-  it('enforce reconciliation creates prefix trip — TWO canonical trips, not one', async () => {
-    const h = buildReconciliationHarness('enforce', existingSuffix);
+  it('FINAL-3 — partial boundary repair extends suffix trip to ONE canonical window (all modes)', async () => {
+    for (const mode of ['legacy', 'shadow', 'enforce'] as const) {
+      const h = buildReconciliationHarness(mode, existingSuffix, true);
+      const result = await (
+        h.service as never as {
+          detectAndRepairMissingTrips: (
+            vehicleId: string,
+            from: Date,
+            to: Date,
+            options?: { useDimoSegmentFallback?: boolean },
+          ) => Promise<{ applied: number }>;
+        }
+      ).detectAndRepairMissingTrips('veh-1', at(-10), at(60), {
+        useDimoSegmentFallback: true,
+      });
+
+      expect(result.applied).toBe(1);
+      expect(h.decisionEngine.repairTripBoundaries).toHaveBeenCalled();
+      expect(h.decisionEngine.createRepairedTrip).not.toHaveBeenCalled();
+    }
+  });
+
+  it('enforce reconciliation creates prefix trip when partial repair disabled — TWO canonical trips', async () => {
+    const h = buildReconciliationHarness('enforce', existingSuffix, false);
     const result = await (
       h.service as never as {
         detectAndRepairMissingTrips: (
@@ -209,14 +238,22 @@ describe('one physical drive = one canonical trip invariant (C)', () => {
     expect(assessment.repairableSpans[0]).toEqual({ start: at(1), end: at(30) });
   });
 
-  it('no current mode produces a single merged canonical trip for suffix partial + full DIMO segment', async () => {
-    const shadow = await overlapEvidence('shadow', [row('live', 30, 50)]);
-    const enforce = await overlapEvidence('enforce', [row('live', 30, 50)]);
+  it('FINAL-3 — one physical drive invariant when partial repair enabled', async () => {
+    const shadow = buildReconciliationHarness('shadow', [row('live', 30, 50)], true);
+    const result = await (
+      shadow.service as never as {
+        detectAndRepairMissingTrips: (
+          a: string,
+          b: Date,
+          c: Date,
+          o?: { useDimoSegmentFallback?: boolean },
+        ) => Promise<{ applied: number }>;
+      }
+    ).detectAndRepairMissingTrips('veh-1', at(-10), at(60), { useDimoSegmentFallback: true });
 
-    expect(shadow.effectiveDecision).toBe('SUPPRESS');
-    expect(enforce.repairableSpans).toHaveLength(1);
-    expect(enforce.repairableSpans[0].start).toBe(at(1).toISOString());
-    // Enforce repairs prefix only — live suffix trip remains → 2 trips total.
+    expect(result.applied).toBe(1);
+    expect(shadow.decisionEngine.repairTripBoundaries).toHaveBeenCalled();
+    expect(shadow.decisionEngine.createRepairedTrip).not.toHaveBeenCalled();
   });
 });
 

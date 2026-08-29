@@ -59,6 +59,11 @@ import { DetectorRegistry } from './detectors/detector.registry';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
 import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
 import { isClickHouseTripAssistEnabled } from '@modules/clickhouse/clickhouse-env.util';
+import {
+  computePossibleStartCoreFetchFrom,
+  computeStartBoundaryWindowFrom,
+  selectConfirmedStartSegment,
+} from './start-boundary-window.util';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
 
@@ -74,7 +79,7 @@ export class TripDetectionOrchestrationService {
   private readonly OVERLAP_ROUTE_MS = 15_000;
   private readonly OVERLAP_PERF_MS = 30_000;
   private readonly CONFIRM_MAX_WAIT_MS = 180_000;
-  private readonly POSSIBLE_START_CONFIRMATION_LOOKBACK_MS = 5 * 60_000;
+  private readonly tripStartBoundaryMaxLookbackMs: number;
 
   // ── Smart cooldown constants (replaces blunt COOLDOWN_MS = 5min) ──
   // After a completed trip: 2 min (vehicle likely still) — configurable
@@ -166,6 +171,8 @@ export class TripDetectionOrchestrationService {
     this.TRIP_MID_GAP_SPLIT_MS = this.configService.get<number>('worker.tripMidGapSplitMs') ?? 180_000;
     this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M = this.configService.get<number>('worker.tripMidGapMaxStationaryDriftM') ?? 200;
     this.TRIP_MID_GAP_MIN_PRE_DURATION_MS = this.configService.get<number>('worker.tripMidGapMinPreDurationMs') ?? 60_000;
+    this.tripStartBoundaryMaxLookbackMs =
+      this.configService.get<number>('worker.tripStartBoundaryMaxLookbackMs') ?? 35 * 60_000;
 
     this.logger.log(
       `Trip end detection config: trackingIntervalMs=${this.TRACKING_INTERVAL_MS} ` +
@@ -689,11 +696,11 @@ export class TripDetectionOrchestrationService {
         return;
       }
 
-      const from = new Date(
-        Math.max(
-          startAt.getTime() - this.BACKFILL_MS,
-          now.getTime() - this.POSSIBLE_START_CONFIRMATION_LOOKBACK_MS,
-        ),
+      const from = computePossibleStartCoreFetchFrom(
+        startAt,
+        now,
+        this.tripStartBoundaryMaxLookbackMs,
+        this.BACKFILL_MS,
       );
 
       const corePoints = await this.segments.fetchRawTripCoreData(
@@ -814,7 +821,7 @@ export class TripDetectionOrchestrationService {
         const startRouteFetchFrom = new Date(
           Math.max(
             effectiveStartAt.getTime() - this.BACKFILL_MS,
-            now.getTime() - this.POSSIBLE_START_CONFIRMATION_LOOKBACK_MS,
+            now.getTime() - this.tripStartBoundaryMaxLookbackMs,
           ),
         );
         const startEvidenceSummary = {
@@ -3034,13 +3041,12 @@ export class TripDetectionOrchestrationService {
     adjustedMs: number;
     dimoSegmentId: string | null;
   }> {
-    const boundaryWindowFrom = new Date(
-      Math.max(
-        input.candidateStartAt.getTime() - this.POSSIBLE_START_CONFIRMATION_LOOKBACK_MS,
-        input.confirmedAt.getTime() - this.POSSIBLE_START_CONFIRMATION_LOOKBACK_MS,
-      ),
+    const boundaryWindowFrom = computeStartBoundaryWindowFrom(
+      input.candidateStartAt,
+      input.confirmedAt,
+      this.tripStartBoundaryMaxLookbackMs,
     );
-    const matchingSegment = this.selectConfirmedStartSegment(
+    const matchingSegment = selectConfirmedStartSegment(
       await this.segments.fetchTripSegments(
         input.dimoTokenId,
         boundaryWindowFrom,
@@ -3078,28 +3084,6 @@ export class TripDetectionOrchestrationService {
       ...refined,
       dimoSegmentId: null,
     };
-  }
-
-  private selectConfirmedStartSegment(
-    segments: DimoTripSegment[],
-    candidateStartAt: Date,
-    confirmedAt: Date,
-  ): DimoTripSegment | null {
-    const candidateMs = candidateStartAt.getTime();
-    const confirmedMs = confirmedAt.getTime();
-
-    return (
-      segments.find((segment) => {
-        if (segment.startedBeforeRange) return false;
-
-        const startMs = new Date(segment.startTime).getTime();
-        const endMs = segment.endTime
-          ? new Date(segment.endTime).getTime()
-          : confirmedMs;
-
-        return startMs <= confirmedMs && endMs >= candidateMs;
-      }) ?? null
-    );
   }
 
   private async fetchAndStoreStartTemperature(

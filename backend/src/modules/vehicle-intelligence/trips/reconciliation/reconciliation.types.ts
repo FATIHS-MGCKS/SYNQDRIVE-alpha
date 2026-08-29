@@ -22,6 +22,8 @@ export const REPAIR_TYPES = {
   // minutes, then restarted). Reconciliation repairs split these into two
   // canonical trips. Complements live FSM detection in processActiveTick.
   INTRA_TRIP_GAP_SPLIT: 'INTRA_TRIP_GAP_SPLIT',
+  /** Extend an existing canonical trip when provider truth proves earlier/later boundaries. */
+  PARTIAL_TRIP_BOUNDARY_EXTENSION: 'PARTIAL_TRIP_BOUNDARY_EXTENSION',
 } as const;
 
 export type RepairType = (typeof REPAIR_TYPES)[keyof typeof REPAIR_TYPES];
