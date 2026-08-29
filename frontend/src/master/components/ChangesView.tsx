@@ -36,6 +36,31 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-provider-concurrency-p1-3-phase0-audit-2026-08-29',
+    version: '4.9.1002',
+    title: 'P1.3 PHASE 0 — Global DIMO provider concurrency audit (design only)',
+    summary: [
+      'Phase 0 audit complete — NO implementation, NO deploy, NO env changes.',
+      'DIMO MCP unavailable; authoritative rate limits from DIMO FAQ: Hobbyist 10/s, Core 25/s per API service per client host.',
+      'No authoritative DIMO concurrency (in-flight) quota found.',
+      'Current global DIMO limiter: NO — process-local BullMQ concurrency only.',
+      'One-replica hot-path theoretical max ~24 concurrent telemetry HTTP (8 snapshot + 15 ACTIVE_TICK + reconcile).',
+      'Multi-replica multiplies in-flight: 4 replicas → ~96 hot-path HTTP without global coordination.',
+      'Production 403 case (tokenId 190497): persistent non-retryable telemetry denial; connectivity degradation gap documented.',
+      'Recommendation: Redis hybrid limiter (semaphore + token bucket) via canonical DimoProviderGateway.',
+      'P1.3 implementation slices P1.3-S1..S8 defined; N≈1000 not certifiable until P1.3 lands.',
+    ],
+    reason:
+      'P1.3 Phase 0 — establish authoritative evidence and architecture for global DIMO provider concurrency control before implementation.',
+    previousBehavior:
+      'P1.2 closed for N≤100 without global DIMO semaphore; FINAL-5/6 documented provider limit unknowns and process-local fan-out bounds.',
+    details:
+      'architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_PHASE0_AUDIT_2026-08-29.md. ArchitekturView SnapshotPollingWorker note updated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T18:30:00.000Z',
+  },
+  {
     id: 'snapshot-polling-p1-2-post-merge-production-cutover-2026-08-29',
     version: '4.9.1001',
     title: 'P1.2 POST-MERGE — Production cutover PASS (PR #1409 merged + deployed)',
