@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Interval } from '@nestjs/schedule';
+import { ConfigService } from '@nestjs/config';
 import { VehicleStatus } from '@prisma/client';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
@@ -112,6 +113,7 @@ export class DimoSnapshotScheduler {
     @InjectQueue(QUEUE_NAMES.DIMO_SNAPSHOT) private readonly queue: Queue,
     private readonly prisma: PrismaService,
     private readonly reconciliation: TripReconciliationService,
+    @Optional() private readonly configService?: ConfigService,
   ) {}
 
   @Interval(30000)
@@ -258,13 +260,20 @@ export class DimoSnapshotScheduler {
       })),
     );
 
+    const maxEnqueuePerTick =
+      this.configService?.get<number>('worker.snapshotMaxEnqueuePerTick') ?? 0;
+    const enqueueBatch =
+      maxEnqueuePerTick > 0 ? ordered.slice(0, maxEnqueuePerTick) : ordered;
+    const enqueueCapDeferred =
+      maxEnqueuePerTick > 0 ? Math.max(0, ordered.length - enqueueBatch.length) : 0;
+
     let enqueued = 0;
     let recovered = 0;
     let skipped = 0;
     let notDue = useActivityTiers ? vehicles.length - ordered.length : 0;
     const enqueuedByTier = new Map<SnapshotPollingTier, number>();
 
-    for (const { vehicle: v, tokenId, effectiveTier } of ordered) {
+    for (const { vehicle: v, tokenId, effectiveTier } of enqueueBatch) {
       const jobId = `snapshot-${v.id}`;
 
       try {
@@ -320,6 +329,7 @@ export class DimoSnapshotScheduler {
       this.logger.debug(
         `Snapshot tick: matched=${vehicles.length} enqueued=${enqueued} ` +
           `not_due=${notDue} recovered=${recovered} skipped_inflight=${skipped} ` +
+          `enqueue_cap_deferred=${enqueueCapDeferred} ` +
           `activity_tier=${useActivityTiers} tiers{${tierSummary}} ` +
           (enqueueTierSummary ? `enqueued_tiers{${enqueueTierSummary}}` : ''),
       );

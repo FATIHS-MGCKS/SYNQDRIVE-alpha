@@ -36,7 +36,7 @@ describe('TripReconciliationScheduler cohort independence', () => {
     scheduler = moduleRef.get(TripReconciliationScheduler);
   });
 
-  it('fast repair does not filter by connectionStatus or vehicle status', async () => {
+  it('fast repair uses activity-based cohort (not providerFetchedAt alone)', async () => {
     await scheduler.fastRepair();
 
     expect(vlsFindMany).toHaveBeenCalledWith(
@@ -44,11 +44,14 @@ describe('TripReconciliationScheduler cohort independence', () => {
         where: expect.objectContaining({
           OR: expect.any(Array),
         }),
+        orderBy: { lastSeenAt: 'desc' },
       }),
     );
     const where = vlsFindMany.mock.calls[0][0].where;
+    expect(JSON.stringify(where)).not.toContain('providerFetchedAt');
+    expect(JSON.stringify(where)).toContain('lastSeenAt');
+    expect(JSON.stringify(where)).toContain('lastActivityAt');
     expect(where).not.toHaveProperty('connectionStatus');
-    expect(where).not.toHaveProperty('vehicle');
     expect(where).not.toHaveProperty('dimoVehicle');
   });
 

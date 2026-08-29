@@ -736,6 +736,12 @@ export class TripReconciliationService {
     const trips =
       (await this.boundaryRefreshLifecycle?.findRecoverableTrips(vehicleId)) ?? [];
 
+    if (trips.length > 0) {
+      this.logger.debug(
+        `Boundary refresh recovery: vehicle=${vehicleId} recoverable=${trips.length}`,
+      );
+    }
+
     for (const trip of trips) {
       const refresh = readBoundaryRefreshRecord(trip.rawDetectionMeta);
       if (!isBoundaryRefreshRetryable(refresh)) continue;

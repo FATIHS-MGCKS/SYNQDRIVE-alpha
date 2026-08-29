@@ -65,7 +65,8 @@ FINAL-2, and `SNAPSHOT_POLLING_P1_2_FINAL3_PARTIAL_BOUNDARY_REPAIR_2026-08-29.md
 FINAL-3 canonical boundary repair, and
 `SNAPSHOT_POLLING_P1_2_FINAL31_BOUNDARY_ATOMICITY_2026-08-29.md` for FINAL-3.1  
 `SNAPSHOT_POLLING_P1_2_FINAL32_BOUNDARY_REFRESH_COMPLETION_2026-08-29.md` for FINAL-3.2
-atomicity + downstream consistency. **FINAL-4 scale closeout required before merge.**
+atomicity + downstream consistency. **FINAL-4 scale closeout** —
+`SNAPSHOT_POLLING_P1_2_FINAL4_SCALE_CLOSEOUT_2026-08-29.md`. Human review required before merge.
 the full trip-loss safety gate audit.
 
 ### Hysteresis

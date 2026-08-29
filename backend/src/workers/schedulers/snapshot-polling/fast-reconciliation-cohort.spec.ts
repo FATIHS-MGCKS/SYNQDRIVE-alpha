@@ -1,51 +1,87 @@
+import {
+  ACTIVE_TRIP_DETECTION_STATES,
+  applyFastReconciliationVehicleCap,
+  buildFastReconciliationWhere,
+  estimateFastReconciliationCohortSize,
+  loadFastReconciliationCohortConfig,
+} from './fast-reconciliation-cohort';
 import { buildAuditMixedFleetDistribution } from './simulate-snapshot-polling-load';
 import { DEFAULT_SNAPSHOT_POLLING_TIER_CONFIG } from './snapshot-polling-tier.config';
+import { TripDetectionState } from '@prisma/client';
 
 /**
- * FINAL-2 section G — fast reconciliation recency model correction.
+ * FINAL-4 — fast reconciliation cohort semantics (corrected).
  *
- * Fast repair selects vehicles where lastSeenAt OR providerFetchedAt is within
- * the last hour. P1.2 LONG_IDLE polls every 30min and always refreshes
- * providerFetchedAt, so essentially the entire CONNECTED scheduler cohort
- * remains fast-reconciliation eligible — NOT 15–25% of fleet.
+ * providerFetchedAt is excluded from fast eligibility because LONG_IDLE polls
+ * every 30min would otherwise keep the entire CONNECTED fleet in the fast cohort.
  */
-describe('fast reconciliation cohort model (G)', () => {
+describe('fast reconciliation cohort model (FINAL-4)', () => {
   const FAST_RECENCY_MS = 60 * 60_000;
   const LONG_IDLE_INTERVAL_MS =
     DEFAULT_SNAPSHOT_POLLING_TIER_CONFIG.intervalMsByTier.LONG_IDLE;
 
-  it('LONG_IDLE providerFetchedAt refresh interval is below fast recency window', () => {
+  it('LONG_IDLE poll interval remains below legacy fast recency window', () => {
     expect(LONG_IDLE_INTERVAL_MS).toBeLessThan(FAST_RECENCY_MS);
   });
 
-  it('at N=1000 mixed fleet, fast cohort ≈ entire pollable CONNECTED fleet', () => {
-    const fleetSize = 1000;
-    const distribution = buildAuditMixedFleetDistribution(fleetSize);
-
-    // Every tier interval is <= 30min, so providerFetchedAt is refreshed within
-    // 30min for all vehicles that remain in the scheduler cohort.
-    const pollableVehicles = fleetSize;
-    const fastEligibleByProviderFetchedAt = pollableVehicles;
-
-    const fastRunsPerHour = 4;
-    const reconcileCallsPerHour = fastEligibleByProviderFetchedAt * fastRunsPerHour;
-
-    expect(fastEligibleByProviderFetchedAt).toBe(1000);
-    expect(fastEligibleByProviderFetchedAt / fleetSize).toBeGreaterThan(0.95);
-    expect(reconcileCallsPerHour).toBe(4000);
-
-    // Prior P1 model assumed f_recent=15–25% → 150–250 vehicles/run.
-    // Runtime semantics yield ~1000 vehicles/run instead.
-    expect(reconcileCallsPerHour).toBeGreaterThan(1500);
+  it('buildFastReconciliationWhere excludes providerFetchedAt-only eligibility', () => {
+    const where = buildFastReconciliationWhere(new Date('2026-08-29T12:00:00.000Z'));
+    expect(JSON.stringify(where)).not.toContain('providerFetchedAt');
+    expect(JSON.stringify(where)).toContain('lastSeenAt');
+    expect(JSON.stringify(where)).toContain('lastActivityAt');
+    expect(JSON.stringify(where)).toContain(TripDetectionState.ACTIVE_TRIP);
   });
 
-  it('documents DIMO segment + energy-event fan-out per fast run at N=1000', () => {
-    const vehiclesPerFastRun = 1000;
-    const dimoSegmentCallsPerRun = vehiclesPerFastRun; // useDimoSegmentFallback=true
-    const energyEventCallsPerRun = vehiclesPerFastRun; // reconcileWindow step 5
-    const fastRunsPerHour = 4;
+  it('active trip FSM states are included for fast eligibility', () => {
+    expect(ACTIVE_TRIP_DETECTION_STATES).toEqual(
+      expect.arrayContaining([
+        TripDetectionState.POSSIBLE_START,
+        TripDetectionState.ACTIVE_TRIP,
+        TripDetectionState.IDLE_WITHIN_TRIP,
+        TripDetectionState.POSSIBLE_END,
+      ]),
+    );
+  });
 
-    expect(dimoSegmentCallsPerRun * fastRunsPerHour).toBe(4000);
-    expect(energyEventCallsPerRun * fastRunsPerHour).toBe(4000);
+  it('at N=1000 mixed fleet, modeled fast cohort is bounded (~20%) not ~100%', () => {
+    const fleetSize = 1000;
+    const estimated = estimateFastReconciliationCohortSize({
+      fleetSize,
+      activeTripFraction: 0.05,
+      recentActivityFraction: 0.15,
+    });
+
+    expect(estimated).toBeLessThanOrEqual(200);
+    expect(estimated / fleetSize).toBeLessThanOrEqual(0.25);
+
+    const fastRunsPerHour = 4;
+    const reconcileCallsPerHour = estimated * fastRunsPerHour;
+    expect(reconcileCallsPerHour).toBeLessThan(1000);
+    expect(reconcileCallsPerHour).toBeGreaterThan(0);
+  });
+
+  it('applyFastReconciliationVehicleCap bounds per-run fan-out', () => {
+    const ids = Array.from({ length: 500 }, (_, i) => `veh-${i}`);
+    expect(applyFastReconciliationVehicleCap(ids, 0)).toHaveLength(500);
+    expect(applyFastReconciliationVehicleCap(ids, 250)).toHaveLength(250);
+    expect(applyFastReconciliationVehicleCap(ids, 1000)).toHaveLength(500);
+  });
+
+  it('loadFastReconciliationCohortConfig reads env overrides', () => {
+    const cfg = loadFastReconciliationCohortConfig({
+      WORKER_FAST_RECONCILIATION_RECENCY_MS: '120000',
+      WORKER_FAST_RECONCILIATION_MAX_VEHICLES_PER_RUN: '150',
+    } as NodeJS.ProcessEnv);
+    expect(cfg.recencyMs).toBe(120_000);
+    expect(cfg.maxVehiclesPerRun).toBe(150);
+  });
+
+  it('documents reduced DIMO fan-out per fast run at N=1000', () => {
+    const distribution = buildAuditMixedFleetDistribution(1000);
+    expect(Object.values(distribution).reduce((a, b) => a + b, 0)).toBe(1000);
+
+    const vehiclesPerFastRun = estimateFastReconciliationCohortSize({ fleetSize: 1000 });
+    const fastRunsPerHour = 4;
+    expect(vehiclesPerFastRun * fastRunsPerHour).toBeLessThan(1000);
   });
 });

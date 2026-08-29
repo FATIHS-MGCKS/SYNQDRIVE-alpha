@@ -103,11 +103,40 @@ export default registerAs('worker', () => ({
     process.env.WORKER_TRIP_START_BOUNDARY_MAX_LOOKBACK_MS,
     deriveDefaultTripStartBoundaryMaxLookbackMs(),
   ),
+
+  // ── P1.2 FINAL-4: snapshot + reconciliation scale knobs ──
+  snapshotConcurrency: parseBoundedConcurrency(
+    process.env.WORKER_SNAPSHOT_CONCURRENCY,
+    5,
+  ),
+  snapshotMaxEnqueuePerTick: parseNonNegativeIntEnv(
+    process.env.WORKER_SNAPSHOT_MAX_ENQUEUE_PER_TICK,
+    0,
+  ),
+  fastReconciliationRecencyMs: parsePositiveIntEnv(
+    process.env.WORKER_FAST_RECONCILIATION_RECENCY_MS,
+    60 * 60_000,
+  ),
+  fastReconciliationMaxVehiclesPerRun: parseNonNegativeIntEnv(
+    process.env.WORKER_FAST_RECONCILIATION_MAX_VEHICLES_PER_RUN,
+    0,
+  ),
 }));
 
 function parsePositiveIntEnv(raw: string | undefined, fallback: number): number {
   const parsed = parseInt(raw ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseNonNegativeIntEnv(raw: string | undefined, fallback: number): number {
+  const parsed = parseInt(raw ?? '', 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function parseBoundedConcurrency(raw: string | undefined, fallback: number): number {
+  const parsed = parseInt(raw ?? '', 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, 200);
 }
 
 function parseBoolEnv(raw: string | undefined, fallback: boolean): boolean {

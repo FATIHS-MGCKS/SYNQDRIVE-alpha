@@ -113,6 +113,41 @@ jobs:
       - run: npm run test:vehicle-detail:security
         working-directory: backend
 
+  backend-boundary-postgres:
+    name: Backend boundary repair PostgreSQL tests
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: synqdrive
+          POSTGRES_PASSWORD: synqdrive
+          POSTGRES_DB: synqdrive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U synqdrive"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate && PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+      - run: npm run test:boundary-repair:postgres
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+          BOUNDARY_REPAIR_POSTGRES_INTEGRATION: '1'
+
   frontend-component:
     name: Frontend component tests
     needs: install-lockfile
@@ -221,6 +256,7 @@ jobs:
       - typecheck
       - backend-unit
       - backend-security
+      - backend-boundary-postgres
       - frontend-component
       - playwright-e2e
       - accessibility
