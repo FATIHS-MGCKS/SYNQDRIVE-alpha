@@ -129,6 +129,7 @@ export function TripsMapCard({
     selectedTrip,
     routePoints,
     routeSegments,
+    hasUnknownGaps: quality.continuityStatus === 'GAPS_PRESENT' || quality.gpsGap,
     behaviorEvents,
     layers,
     onEventSelect: handleEventSelect,

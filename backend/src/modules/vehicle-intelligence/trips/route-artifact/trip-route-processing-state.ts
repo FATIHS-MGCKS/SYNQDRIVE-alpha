@@ -18,6 +18,9 @@ const ACTIVE_STAGE_STATUSES = new Set<DrivingAnalysisStageStatus>([
   'IN_PROGRESS',
 ]);
 
+/** Jobs left PENDING without retry scheduling are considered stale after this window. */
+export const ROUTE_JOB_STALE_AFTER_MS = 30 * 60 * 1000;
+
 export interface RouteProcessingDerivation {
   processingState: RouteProcessingState;
   ready: boolean;
@@ -25,11 +28,34 @@ export interface RouteProcessingDerivation {
   failureReason: string | null;
 }
 
+function isRetryScheduled(job: DrivingIntelligenceJob, now = Date.now()): boolean {
+  return job.nextRetryAt != null && job.nextRetryAt.getTime() > now;
+}
+
+function isStalePendingJob(job: DrivingIntelligenceJob, now = Date.now()): boolean {
+  if (job.status !== 'PENDING') return false;
+  if (isRetryScheduled(job, now)) return false;
+  const anchor = job.lastAttemptAt ?? job.requestedAt;
+  return now - anchor.getTime() > ROUTE_JOB_STALE_AFTER_MS;
+}
+
+function isActiveRouteJob(job: DrivingIntelligenceJob, now = Date.now()): boolean {
+  if (job.status === 'IN_PROGRESS' || job.status === 'ENQUEUED') return true;
+  if (job.status !== 'PENDING') return false;
+  if (isRetryScheduled(job, now)) return true;
+  if (job.attemptCount > 0) return true;
+  return !isStalePendingJob(job, now);
+}
+
 export function deriveRouteProcessingState(input: {
   artifact: VehicleTripRouteArtifact | null;
   routeJob: DrivingIntelligenceJob | null;
   routeStage: DrivingAnalysisStage | null;
+  now?: Date;
 }): RouteProcessingDerivation {
+  const now = input.now ?? new Date();
+
+  // Precedence 1 — durable artifact always wins over historical job noise.
   if (input.artifact?.processedAt) {
     return {
       processingState: 'READY',
@@ -69,50 +95,48 @@ export function deriveRouteProcessingState(input: {
     };
   }
 
-  if (job) {
-    if (job.status === 'FAILED') {
-      const retryable = job.attemptCount < job.maxAttempts;
+  if (job && isActiveRouteJob(job, now.getTime())) {
+    if (job.status === 'PENDING' && (job.attemptCount > 0 || isRetryScheduled(job, now.getTime()))) {
       return {
-        processingState: retryable ? 'RETRYING' : 'FAILED',
+        processingState: 'RETRYING',
         ready: false,
-        retryableFailure: retryable,
-        failureReason: job.errorMessage ?? job.errorCode ?? 'ROUTE_JOB_FAILED',
+        retryableFailure: true,
+        failureReason: job.errorMessage ?? job.errorCode ?? null,
       };
     }
-
-    if (ACTIVE_JOB_STATUSES.has(job.status)) {
-      if (job.status === 'PENDING' && job.attemptCount > 0) {
-        return {
-          processingState: 'RETRYING',
-          ready: false,
-          retryableFailure: true,
-          failureReason: job.errorMessage ?? job.errorCode ?? null,
-        };
-      }
-      return {
-        processingState: 'PROCESSING',
-        ready: false,
-        retryableFailure: false,
-        failureReason: null,
-      };
-    }
-
-    if (job.status === 'COMPLETED' && !input.artifact) {
-      return {
-        processingState: 'UNAVAILABLE',
-        ready: false,
-        retryableFailure: false,
-        failureReason: 'ROUTE_ARTIFACT_MISSING',
-      };
-    }
-  }
-
-  if (stage && ACTIVE_STAGE_STATUSES.has(stage.status)) {
     return {
       processingState: 'PROCESSING',
       ready: false,
       retryableFailure: false,
       failureReason: null,
+    };
+  }
+
+  if (stage && ACTIVE_STAGE_STATUSES.has(stage.status) && job && isActiveRouteJob(job, now.getTime())) {
+    return {
+      processingState: 'PROCESSING',
+      ready: false,
+      retryableFailure: false,
+      failureReason: null,
+    };
+  }
+
+  if (job?.status === 'FAILED') {
+    const retryable = job.attemptCount < job.maxAttempts && isRetryScheduled(job, now.getTime());
+    return {
+      processingState: retryable ? 'RETRYING' : 'FAILED',
+      ready: false,
+      retryableFailure: retryable,
+      failureReason: job.errorMessage ?? job.errorCode ?? 'ROUTE_JOB_FAILED',
+    };
+  }
+
+  if (job?.status === 'COMPLETED') {
+    return {
+      processingState: 'UNAVAILABLE',
+      ready: false,
+      retryableFailure: false,
+      failureReason: 'ROUTE_ARTIFACT_MISSING',
     };
   }
 

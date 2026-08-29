@@ -29,7 +29,11 @@ export {
   splitWaypointGeometryByTimestamps,
   toMultiLineStringGeometry,
 } from './trip-route-segment-geometry';
-export { deriveRouteProcessingState } from './trip-route-processing-state';
+export { deriveRouteProcessingState, ROUTE_JOB_STALE_AFTER_MS } from './trip-route-processing-state';
+export {
+  resolvePersistedGapCount,
+  splitMeasuredPointsByGapAuthority,
+} from './trip-route-gap-authority';
 export type {
   CanonicalTripRouteResponse,
   CanonicalTripRouteSpeedPoint,

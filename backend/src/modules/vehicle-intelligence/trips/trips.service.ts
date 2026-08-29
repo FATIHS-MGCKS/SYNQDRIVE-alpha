@@ -180,7 +180,6 @@ export class TripsService {
         failureReason: 'TRIP_VEHICLE_MISMATCH',
       },
       speedPoints: [],
-      points: [],
     };
   }
 

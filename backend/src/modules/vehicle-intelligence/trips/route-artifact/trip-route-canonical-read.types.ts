@@ -64,8 +64,8 @@ export interface CanonicalTripRouteResponse {
   /** Measured speed overlay source — independent of matched geometry vertices. */
   speedPoints: CanonicalTripRouteSpeedPoint[];
   /**
-   * @deprecated Legacy flat route points for backward compatibility during cutover.
-   * Prefer `geometry` segments + `speedPoints` for map rendering.
+   * @deprecated Removed from API payload in R4 — use `speedPoints` (measured telemetry only).
+   * Not route geometry.
    */
-  points: CanonicalTripRouteSpeedPoint[];
+  points?: CanonicalTripRouteSpeedPoint[];
 }

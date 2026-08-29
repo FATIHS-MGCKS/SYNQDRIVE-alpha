@@ -1,4 +1,5 @@
 import {
+  sanitizeMatchedSegmentBoundaries,
   splitFilteredGeometryByGaps,
   splitGeometryAtGapBoundaries,
   splitMatchedGeometryByBoundaries,
@@ -50,5 +51,43 @@ describe('trip-route-segment-geometry', () => {
       type: 'MultiLineString',
       coordinates: [line.slice(0, 2), line.slice(2)],
     });
+  });
+
+  it('sanitizes invalid matched segment boundaries', () => {
+    const sanitized = sanitizeMatchedSegmentBoundaries(line.length, [
+      {
+        segmentIndex: 0,
+        afterMatchedPointIndex: 2,
+        beforeMatchedPointIndex: 3,
+        gapSeconds: 300,
+        continuity: 'UNKNOWN',
+      },
+      {
+        segmentIndex: 1,
+        afterMatchedPointIndex: 99,
+        beforeMatchedPointIndex: 100,
+        gapSeconds: 300,
+        continuity: 'UNKNOWN',
+      },
+    ]);
+    expect(sanitized).toHaveLength(1);
+    expect(splitMatchedGeometryByBoundaries(line, sanitized)).toEqual([
+      line.slice(0, 3),
+      line.slice(3),
+    ]);
+  });
+
+  it('does not bridge segments across UNKNOWN matched gap', () => {
+    const segments = splitMatchedGeometryByBoundaries(line, [
+      {
+        segmentIndex: 0,
+        afterMatchedPointIndex: 1,
+        beforeMatchedPointIndex: 3,
+        gapSeconds: 600,
+        continuity: 'UNKNOWN',
+      },
+    ]);
+    expect(segments).toHaveLength(2);
+    expect(segments[0][segments[0].length - 1]).not.toEqual(segments[1][0]);
   });
 });

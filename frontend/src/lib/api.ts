@@ -9597,8 +9597,8 @@ export interface CanonicalTripRouteResponse {
     failureReason: string | null;
   };
   speedPoints: CanonicalTripRouteSpeedPoint[];
-  /** @deprecated Prefer geometry segments + speedPoints. */
-  points: CanonicalTripRouteSpeedPoint[];
+  /** @deprecated Not serialized — use speedPoints (measured telemetry, not route geometry). */
+  points?: CanonicalTripRouteSpeedPoint[];
 }
 
 export interface TripEnrichment {

@@ -1137,7 +1137,7 @@ CanonicalTripRouteResponse {
   continuity: { status: COMPLETE | GAPS_PRESENT | INSUFFICIENT_DATA, hasUnknownGaps, gapCount }
   status: { processingState: READY | PROCESSING | RETRYING | FAILED | UNAVAILABLE, ready, retryableFailure, failureReason? }
   speedPoints: measured overlay source (VehicleTripWaypoint)
-  points: deprecated alias of speedPoints for cutover compatibility
+  points: optional deprecated client alias — **not serialized** in R4 API responses
 }
 ```
 
@@ -1201,9 +1201,24 @@ Behavior event markers remain at measured/provider coordinates; independent of m
 
 ### Caching
 
-- Frontend: module cache keyed `vehicleId:tripId`, TTL 5 min; reload bypasses cache.
+- Frontend: module cache keyed `organizationId:vehicleId:tripId`, TTL 5 min; reload bypasses cache.
 - Trip list queries unchanged — no artifact geometry in list projection.
 - Backend: stateless GET; observability via `synqdrive_trip_route_v2_canonical_read_total`.
+
+### R4 pre-merge review contract (2026-08-29)
+
+| Constant | Value |
+|----------|-------|
+| `RAW_GAP_AUTHORITY` | Persisted `diagnostics.gaps` / `gapCount` are authoritative for **continuity metadata** (`gapCount`, `hasUnknownGaps`, `continuity.status`). RAW **segment boundaries** use measured waypoint timestamps (≥180s threshold) via `splitMeasuredPointsByGapAuthority` — never filtered-geometry indices on waypoint arrays. Runtime timestamp derivation is compatibility-only when persisted diagnostics are absent. |
+| `PROCESSING_STATE_PRECEDENCE` | 1) `artifact.processedAt` → **READY** (always wins over historical jobs). 2) Active non-stale `DRIVING_ROUTE_ENRICH` job / active ROUTE stage → PROCESSING or RETRYING. 3) Terminal job/stage failure → FAILED. 4) Otherwise → UNAVAILABLE. Stale PENDING jobs (`ROUTE_JOB_STALE_AFTER_MS` = 30 min, no retry scheduled) are not active work. |
+| `NO_ARTIFACT_NO_JOB_STATE` | **UNAVAILABLE** — historical trips without artifact and without credible active/retrying work must not present as PROCESSING or poll forever. |
+| `POLLING_TERMINATION` | Frontend polls only while `processingState ∈ {PROCESSING, RETRYING}`; stops on READY / FAILED / UNAVAILABLE / unmount / trip switch. One timer per active route; stale responses ignored via request guard + poll seq. |
+| `MATCHED_INVALID_FALLBACK` | Invalid persisted MATCHED (`null`, malformed JSON, `<2` coords, invalid boundaries) → display **FILTERED** if valid → else **RAW** if valid → else null geometry + INSUFFICIENT_DATA. Persisted `routeQuality` on artifact is never mutated; `quality.matchConfidence` / `matchCoverage` cleared when display quality differs (`qualityAdjusted`). |
+| `FILTERED_INVALID_FALLBACK` | Invalid FILTERED → RAW measured waypoints; never returns FILTERED with invalid geometry. |
+| `SPEED_GAP_POLICY` | Speed overlay uses measured `speedPoints` only. When `continuity.hasUnknownGaps`, consecutive speed segments are split at ≥180s timestamp gaps — no cross-gap speed-colored edges. |
+| `I18N_CONTRACT` | New visible route overlay strings use canonical `useLanguage().t` keys under `trips.route.*` in all supported locales: `en`, `de`, `fr`, `nl`, `es`, `it`, `pl`, `cs`. |
+| `POINTS_ALIAS_SEMANTICS` | `points` removed from JSON payload (no duplicate large array). `speedPoints` is the sole measured telemetry field; deprecated `points` type retained only for transitional client typings. |
+| `GET_ROUTE_SIDE_EFFECTS` | **NONE** — read-only resolution of artifact + waypoints + job/stage metadata. No DIMO, Mapbox, enqueue, artifact mutation, or backfill. |
 
 ### Tests
 

@@ -11,6 +11,25 @@ function toRenderableSegments(segments: TripRouteLngLat[][]): TripRouteLngLat[][
   return segments.filter((segment) => segment.length >= 2);
 }
 
+export function sanitizeMatchedSegmentBoundaries(
+  geometryLength: number,
+  boundaries: MatchedSegmentBoundary[],
+): MatchedSegmentBoundary[] {
+  if (geometryLength < 2 || boundaries.length === 0) return [];
+  return boundaries.filter((boundary) => {
+    const after = boundary.afterMatchedPointIndex;
+    const before = boundary.beforeMatchedPointIndex;
+    return (
+      Number.isInteger(after) &&
+      Number.isInteger(before) &&
+      after >= 0 &&
+      before > after &&
+      before < geometryLength &&
+      after < geometryLength - 1
+    );
+  });
+}
+
 /**
  * Split a flat geometry array at explicit gap boundaries.
  * Never connects coordinates across an UNKNOWN gap.
@@ -60,9 +79,10 @@ export function splitMatchedGeometryByBoundaries(
   boundaries: MatchedSegmentBoundary[],
 ): TripRouteLngLat[][] {
   if (geometry.length < 2) return [];
+  const sanitized = sanitizeMatchedSegmentBoundaries(geometry.length, boundaries);
   return splitGeometryAtGapBoundaries(
     geometry,
-    boundaries.map((boundary) => ({
+    sanitized.map((boundary) => ({
       afterIndex: boundary.afterMatchedPointIndex,
       beforeIndex: boundary.beforeMatchedPointIndex,
     })),

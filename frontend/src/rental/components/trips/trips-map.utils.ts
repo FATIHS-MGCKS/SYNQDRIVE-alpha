@@ -5,8 +5,12 @@ import type {
   RouteProcessingState,
 } from '../../../lib/api';
 import { getStressLabel, resolveDrivingStressScore } from '../../lib/scoreFormat';
-import { ROUTE_QUALITY_COPY } from './trips-view-ui';
-import type { TripMapQualityFlags, TripMapTripData } from './trips-map.types';
+import type { TripMapQualityFlags, TripMapRoutePoint, TripMapTripData } from './trips-map.types';
+export {
+  continuityStatusLabel,
+  processingStateLabel,
+  routeQualityLabel,
+} from './trips-route-i18n';
 import {
   formatTripDistance,
   formatTripDuration,
@@ -25,19 +29,6 @@ export function countTripEvents(trip: TripMapTripData): number | null {
     );
   }
   return (trip.harshBrakeCount ?? 0) + (trip.harshAccelCount ?? 0) + (trip.harshCornerCount ?? 0);
-}
-
-export function routeQualityLabel(routeQuality: CanonicalRouteQuality | null): string | null {
-  if (!routeQuality) return null;
-  return ROUTE_QUALITY_COPY[routeQuality];
-}
-
-export function continuityStatusLabel(status: RouteContinuityStatus): string | null {
-  return ROUTE_QUALITY_COPY.continuity[status];
-}
-
-export function processingStateLabel(state: RouteProcessingState): string | null {
-  return ROUTE_QUALITY_COPY.processing[state];
 }
 
 export function deriveTripMapQuality(
@@ -163,6 +154,58 @@ export function bearingBetween(
     Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
     Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lng2 - lng1));
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+export function buildMeasuredSpeedLineFeatures(
+  routePoints: TripMapRoutePoint[],
+  hasUnknownGaps: boolean,
+  gapThresholdSeconds = 180,
+): GeoJSON.Feature<GeoJSON.LineString>[] {
+  if (routePoints.length < 2) return [];
+
+  const segments: TripMapRoutePoint[][] = [];
+  let current: TripMapRoutePoint[] = [routePoints[0]];
+
+  for (let i = 1; i < routePoints.length; i++) {
+    const prev = routePoints[i - 1];
+    const point = routePoints[i];
+    const prevTs = Date.parse(prev.timestamp);
+    const nextTs = Date.parse(point.timestamp);
+    const gapSeconds =
+      Number.isFinite(prevTs) && Number.isFinite(nextTs)
+        ? Math.max(0, (nextTs - prevTs) / 1000)
+        : 0;
+
+    if (hasUnknownGaps && gapSeconds >= gapThresholdSeconds && current.length > 0) {
+      segments.push(current);
+      current = [point];
+      continue;
+    }
+    current.push(point);
+  }
+  if (current.length > 0) segments.push(current);
+
+  const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+  for (const segment of segments) {
+    for (let i = 0; i < segment.length - 1; i++) {
+      const a = segment[i];
+      const b = segment[i + 1];
+      if (a.latitude && a.longitude && b.latitude && b.longitude) {
+        features.push({
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [a.longitude, a.latitude],
+              [b.longitude, b.latitude],
+            ],
+          },
+          properties: { speed: a.speedKmh ?? 0 },
+        });
+      }
+    }
+  }
+  return features;
 }
 
 export function createEventMarkerElement(

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CanonicalTripRouteResponse } from '../../../../lib/api';
 import { api } from '../../../../lib/api';
 import { TRIPS_COPY } from '../trips-view-ui';
@@ -6,16 +6,17 @@ import type { TripData, TripRoutePoint } from '../trips.types';
 import { useRequestGuard } from './useRequestGuard';
 
 const ROUTE_CACHE_TTL_MS = 5 * 60 * 1000;
+const ROUTE_POLL_INTERVAL_MS = 4000;
 
 const routeCache = new Map<string, { fetchedAt: number; route: CanonicalTripRouteResponse }>();
 
-function cacheKey(vehicleId: string, tripId: string): string {
-  return `${vehicleId}:${tripId}`;
+function cacheKey(organizationId: string | undefined, vehicleId: string, tripId: string): string {
+  return `${organizationId ?? 'org'}:${vehicleId}:${tripId}`;
 }
 
 function toRoutePoints(route: CanonicalTripRouteResponse | null): TripRoutePoint[] {
   if (!route) return [];
-  return (route.speedPoints.length > 0 ? route.speedPoints : route.points).map((point) => ({
+  return route.speedPoints.map((point) => ({
     latitude: point.latitude,
     longitude: point.longitude,
     speedKmh: point.speedKmh,
@@ -23,19 +24,42 @@ function toRoutePoints(route: CanonicalTripRouteResponse | null): TripRoutePoint
   }));
 }
 
-export function useTripRoute(vehicleId?: string) {
+function shouldPollRoute(route: CanonicalTripRouteResponse): boolean {
+  return (
+    route.status.processingState === 'PROCESSING' ||
+    route.status.processingState === 'RETRYING'
+  );
+}
+
+export function shouldPollRouteForTesting(route: CanonicalTripRouteResponse): boolean {
+  return shouldPollRoute(route);
+}
+
+export function buildRouteCacheKey(
+  organizationId: string | undefined,
+  vehicleId: string,
+  tripId: string,
+): string {
+  return cacheKey(organizationId, vehicleId, tripId);
+}
+
+export function useTripRoute(vehicleId?: string, organizationId?: string) {
   const [route, setRoute] = useState<CanonicalTripRouteResponse | null>(null);
   const [routeTripId, setRouteTripId] = useState<string | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const routeGuard = useRequestGuard();
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollTripIdRef = useRef<string | null>(null);
+  const pollSeqRef = useRef<number | null>(null);
 
   const clearPoll = useCallback(() => {
     if (pollTimeoutRef.current) {
       clearTimeout(pollTimeoutRef.current);
       pollTimeoutRef.current = null;
     }
+    pollTripIdRef.current = null;
+    pollSeqRef.current = null;
   }, []);
 
   const resetRoute = useCallback(() => {
@@ -47,33 +71,45 @@ export function useTripRoute(vehicleId?: string) {
   }, [clearPoll]);
 
   const applyRoute = useCallback(
-    (tripId: string, nextRoute: CanonicalTripRouteResponse, selectSeq: number, selectGuard: { isCurrent: (seq: number) => boolean }) => {
+    (
+      tripId: string,
+      nextRoute: CanonicalTripRouteResponse,
+      selectSeq: number,
+      selectGuard: { isCurrent: (seq: number) => boolean },
+    ) => {
       if (!selectGuard.isCurrent(selectSeq)) return;
       setRoute(nextRoute);
       setRouteTripId(tripId);
       if (vehicleId) {
-        routeCache.set(cacheKey(vehicleId, tripId), {
+        routeCache.set(cacheKey(organizationId, vehicleId, tripId), {
           fetchedAt: Date.now(),
           route: nextRoute,
         });
       }
 
-      const shouldPoll =
-        nextRoute.status.processingState === 'PROCESSING' ||
-        nextRoute.status.processingState === 'RETRYING';
       clearPoll();
-      if (shouldPoll && vehicleId) {
+      if (shouldPollRoute(nextRoute) && vehicleId) {
+        pollTripIdRef.current = tripId;
+        pollSeqRef.current = selectSeq;
         pollTimeoutRef.current = setTimeout(() => {
           void (async () => {
+            if (
+              pollTripIdRef.current !== tripId ||
+              pollSeqRef.current !== selectSeq ||
+              !selectGuard.isCurrent(selectSeq) ||
+              !vehicleId
+            ) {
+              return;
+            }
             try {
               const refreshed = await api.vehicleIntelligence.tripRoute(vehicleId, tripId);
               if (!selectGuard.isCurrent(selectSeq)) return;
               applyRoute(tripId, refreshed, selectSeq, selectGuard);
             } catch {
-              /* keep current processing state */
+              if (selectGuard.isCurrent(selectSeq)) setRouteLoading(false);
             }
           })();
-        }, 4000);
+        }, ROUTE_POLL_INTERVAL_MS);
       }
 
       if (!nextRoute.status.ready) {
@@ -85,8 +121,10 @@ export function useTripRoute(vehicleId?: string) {
       }
       if (selectGuard.isCurrent(selectSeq)) setRouteLoading(false);
     },
-    [clearPoll, vehicleId],
+    [clearPoll, organizationId, vehicleId],
   );
+
+  useEffect(() => () => clearPoll(), [clearPoll]);
 
   const loadRouteForTrip = useCallback(
     async (tripId: string, selectSeq: number, selectGuard: { isCurrent: (seq: number) => boolean }) => {
@@ -100,7 +138,7 @@ export function useTripRoute(vehicleId?: string) {
       setRouteLoading(true);
       setRouteError(null);
 
-      const cached = routeCache.get(cacheKey(vehicleId, tripId));
+      const cached = routeCache.get(cacheKey(organizationId, vehicleId, tripId));
       if (cached && Date.now() - cached.fetchedAt < ROUTE_CACHE_TTL_MS) {
         applyRoute(tripId, cached.route, selectSeq, selectGuard);
         return;
@@ -117,14 +155,14 @@ export function useTripRoute(vehicleId?: string) {
         if (selectGuard.isCurrent(selectSeq)) setRouteLoading(false);
       }
     },
-    [applyRoute, clearPoll, vehicleId],
+    [applyRoute, clearPoll, organizationId, vehicleId],
   );
 
   const reloadRoute = useCallback(
     async (trip: TripData) => {
       if (!vehicleId) return;
       const seq = routeGuard.next();
-      if (vehicleId) routeCache.delete(cacheKey(vehicleId, trip.id));
+      routeCache.delete(cacheKey(organizationId, vehicleId, trip.id));
       setRouteTripId(trip.id);
       setRouteLoading(true);
       setRouteError(null);
@@ -138,7 +176,7 @@ export function useTripRoute(vehicleId?: string) {
         if (routeGuard.isCurrent(seq)) setRouteLoading(false);
       }
     },
-    [applyRoute, routeGuard, vehicleId],
+    [applyRoute, organizationId, routeGuard, vehicleId],
   );
 
   const isRouteForTrip = useCallback(

@@ -28,7 +28,7 @@ export function useTripsTab({
     onTripsLoaded,
   });
 
-  const route = useTripRoute(vehicleId);
+  const route = useTripRoute(vehicleId, orgId ?? undefined);
   const tripDetail = useTripDetail(vehicleId);
 
   const rental = useTripsRentalContext({

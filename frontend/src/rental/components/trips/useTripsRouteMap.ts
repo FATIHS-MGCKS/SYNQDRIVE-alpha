@@ -5,6 +5,7 @@ import type { TripBehaviorEvent } from '../../../lib/api';
 import type { TripMapLayerState, TripMapPopoverState, TripMapRoutePoint, TripMapTripData } from './trips-map.types';
 import {
   bearingBetween,
+  buildMeasuredSpeedLineFeatures,
   createDirectionMarker,
   createEndpointMarker,
   createEventMarkerElement,
@@ -18,6 +19,7 @@ export interface UseTripsRouteMapOptions {
   selectedTrip: TripMapTripData | null;
   routePoints: TripMapRoutePoint[];
   routeSegments: [number, number][][];
+  hasUnknownGaps: boolean;
   behaviorEvents: TripBehaviorEvent[];
   layers: TripMapLayerState;
   onEventSelect: (state: TripMapPopoverState | null) => void;
@@ -44,6 +46,7 @@ export function useTripsRouteMap({
   selectedTrip,
   routePoints,
   routeSegments,
+  hasUnknownGaps,
   behaviorEvents,
   layers,
   onEventSelect,
@@ -275,22 +278,10 @@ export function useTripsRouteMap({
     if (hasLines) {
       routeSrc.setData(geo.lines);
       if (speedSrc && routePoints.length >= 2) {
-        const speedFeatures: GeoJSON.Feature<GeoJSON.LineString>[] = [];
-        for (let i = 0; i < routePoints.length - 1; i++) {
-          const a = routePoints[i];
-          const b = routePoints[i + 1];
-          if (a.latitude && a.longitude && b.latitude && b.longitude) {
-            speedFeatures.push({
-              type: 'Feature',
-              geometry: {
-                type: 'LineString',
-                coordinates: [[a.longitude, a.latitude], [b.longitude, b.latitude]],
-              },
-              properties: { speed: a.speedKmh ?? 0 },
-            });
-          }
-        }
-        speedSrc.setData({ type: 'FeatureCollection', features: speedFeatures });
+        speedSrc.setData({
+          type: 'FeatureCollection',
+          features: buildMeasuredSpeedLineFeatures(routePoints, hasUnknownGaps),
+        });
       }
       if (stopsSrc && routePoints.length >= 2) {
         const stopFeatures: GeoJSON.Feature<GeoJSON.Point>[] = [];
@@ -323,7 +314,7 @@ export function useTripsRouteMap({
       speedSrc?.setData({ type: 'FeatureCollection', features: [] });
       stopsSrc?.setData({ type: 'FeatureCollection', features: [] });
     }
-  }, [mapGeoJson, routePoints, mapLoaded, selectedTrip?.id]);
+  }, [mapGeoJson, routePoints, hasUnknownGaps, mapLoaded, selectedTrip?.id]);
 
   useEffect(() => {
     fitMapToRoute(false);

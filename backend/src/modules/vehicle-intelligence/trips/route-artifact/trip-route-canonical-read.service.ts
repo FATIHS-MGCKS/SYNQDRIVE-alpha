@@ -10,23 +10,35 @@ import type {
   RouteContinuityStatus,
 } from './trip-route-canonical-read.types';
 import { deriveRouteProcessingState } from './trip-route-processing-state';
-import { parseTripRouteGeometryJson } from './trip-route-geometry';
-import { TRIP_ROUTE_GAP_THRESHOLD_SECONDS } from './trip-route-preprocessing.constants';
+import { safeParseTripRouteGeometryJson } from './trip-route-geometry';
 import type { TripRouteTelemetryGap } from './trip-route-preprocessing.types';
 import type { TripRouteLngLat } from './trip-route-geometry';
 import {
+  resolvePersistedGapCount,
+  splitMeasuredPointsByGapAuthority,
+} from './trip-route-gap-authority';
+import {
+  sanitizeMatchedSegmentBoundaries,
   splitFilteredGeometryByGaps,
   splitMatchedGeometryByBoundaries,
-  splitWaypointGeometryByTimestamps,
   toMultiLineStringGeometry,
 } from './trip-route-segment-geometry';
 import { VehicleTripRouteArtifactRepository } from './vehicle-trip-route-artifact.repository';
 
 interface ArtifactDiagnostics {
   gaps?: TripRouteTelemetryGap[];
+  gapCount?: number;
   r3?: {
     matchedSegmentBoundaries?: MatchedSegmentBoundary[];
   };
+}
+
+interface ResolvedRouteGeometry {
+  routeQuality: RouteQuality | null;
+  geometry: CanonicalTripRouteResponse['geometry'];
+  gapCount: number;
+  continuityStatus: RouteContinuityStatus;
+  qualityAdjusted: boolean;
 }
 
 @Injectable()
@@ -59,7 +71,8 @@ export class TripRouteCanonicalReadService {
       timestamp: point.timestamp,
     }));
 
-    const gapCount = this.resolveGapCount(artifact, speedPoints);
+    const diagnostics = this.parseDiagnostics(artifact?.diagnosticsJson ?? null);
+    const gapCount = this.resolveGapCount(diagnostics, speedPoints, processing.ready);
     const continuityStatus = this.resolveContinuityStatus(processing.ready, gapCount, speedPoints.length);
 
     if (!processing.ready) {
@@ -73,12 +86,13 @@ export class TripRouteCanonicalReadService {
         gapCount,
         continuityStatus,
         processing,
+        qualityAdjusted: false,
       });
       this.recordRead(response);
       return response;
     }
 
-    const resolved = this.resolveCanonicalGeometry(artifact, speedPoints);
+    const resolved = this.resolveCanonicalGeometry(artifact, speedPoints, diagnostics);
     const response = this.buildResponse({
       tripId,
       vehicleId,
@@ -89,6 +103,7 @@ export class TripRouteCanonicalReadService {
       gapCount: resolved.gapCount,
       continuityStatus: resolved.continuityStatus,
       processing,
+      qualityAdjusted: resolved.qualityAdjusted,
     });
     this.recordRead(response);
     return response;
@@ -104,7 +119,15 @@ export class TripRouteCanonicalReadService {
     gapCount: number;
     continuityStatus: RouteContinuityStatus;
     processing: ReturnType<typeof deriveRouteProcessingState>;
+    qualityAdjusted: boolean;
   }): CanonicalTripRouteResponse {
+    const persistedQuality = input.artifact?.routeQuality ?? null;
+    const displayQualityDiffers =
+      input.qualityAdjusted &&
+      persistedQuality != null &&
+      input.routeQuality != null &&
+      persistedQuality !== input.routeQuality;
+
     return {
       tripId: input.tripId,
       vehicleId: input.vehicleId,
@@ -116,8 +139,8 @@ export class TripRouteCanonicalReadService {
         processedAt: input.artifact?.processedAt?.toISOString() ?? null,
       },
       quality: {
-        matchConfidence: input.artifact?.matchConfidence ?? null,
-        matchCoverage: input.artifact?.matchCoverage ?? null,
+        matchConfidence: displayQualityDiffers ? null : input.artifact?.matchConfidence ?? null,
+        matchCoverage: displayQualityDiffers ? null : input.artifact?.matchCoverage ?? null,
       },
       counts: {
         sourcePointCount: input.artifact?.sourcePointCount ?? input.speedPoints.length,
@@ -136,140 +159,152 @@ export class TripRouteCanonicalReadService {
         failureReason: input.processing.failureReason,
       },
       speedPoints: input.speedPoints,
-      points: input.speedPoints,
     };
   }
 
   private resolveCanonicalGeometry(
     artifact: VehicleTripRouteArtifact | null,
     speedPoints: CanonicalTripRouteSpeedPoint[],
-  ): {
-    routeQuality: RouteQuality | null;
-    geometry: CanonicalTripRouteResponse['geometry'];
-    gapCount: number;
-    continuityStatus: RouteContinuityStatus;
-  } {
+    diagnostics: ArtifactDiagnostics,
+  ): ResolvedRouteGeometry {
     if (!artifact) {
-      return this.resolveRawGeometry(speedPoints, []);
+      return { ...this.resolveRawGeometry(speedPoints, diagnostics), qualityAdjusted: false };
     }
 
-    const diagnostics = this.parseDiagnostics(artifact.diagnosticsJson);
     const gaps = diagnostics.gaps ?? [];
     const matchedBoundaries = diagnostics.r3?.matchedSegmentBoundaries ?? [];
 
     if (artifact.routeQuality === 'MATCHED') {
-      const matchedGeometry = parseTripRouteGeometryJson(artifact.matchedGeometryJson);
+      const matchedGeometry = safeParseTripRouteGeometryJson(artifact.matchedGeometryJson);
       if (!matchedGeometry || matchedGeometry.length < 2) {
         this.logger.warn(
           `MATCHED artifact missing valid matchedGeometry trip=${artifact.tripId}; falling back`,
         );
-        return this.resolveFilteredOrRawFallback(artifact, speedPoints, gaps);
+        return {
+          ...this.resolveFilteredOrRawFallback(artifact, speedPoints, diagnostics),
+          qualityAdjusted: true,
+        };
       }
-      const segments = splitMatchedGeometryByBoundaries(matchedGeometry, matchedBoundaries);
+
+      const sanitizedBoundaries = sanitizeMatchedSegmentBoundaries(
+        matchedGeometry.length,
+        matchedBoundaries,
+      );
+      const segments = splitMatchedGeometryByBoundaries(matchedGeometry, sanitizedBoundaries);
+      const geometry = toMultiLineStringGeometry(segments);
+      if (!geometry) {
+        return {
+          ...this.resolveFilteredOrRawFallback(artifact, speedPoints, diagnostics),
+          qualityAdjusted: true,
+        };
+      }
+
       return {
         routeQuality: 'MATCHED',
-        geometry: toMultiLineStringGeometry(segments),
-        gapCount: matchedBoundaries.length,
-        continuityStatus: this.resolveContinuityStatus(true, matchedBoundaries.length, matchedGeometry.length),
+        geometry,
+        gapCount: sanitizedBoundaries.length,
+        continuityStatus: this.resolveContinuityStatus(
+          true,
+          sanitizedBoundaries.length,
+          matchedGeometry.length,
+        ),
+        qualityAdjusted: false,
       };
     }
 
     if (artifact.routeQuality === 'FILTERED') {
-      const filteredGeometry = parseTripRouteGeometryJson(artifact.filteredGeometryJson);
+      const filteredGeometry = safeParseTripRouteGeometryJson(artifact.filteredGeometryJson);
       if (!filteredGeometry || filteredGeometry.length < 2) {
         this.logger.warn(
           `FILTERED artifact missing valid filteredGeometry trip=${artifact.tripId}; falling back to RAW`,
         );
-        return this.resolveRawGeometry(speedPoints, gaps);
+        return { ...this.resolveRawGeometry(speedPoints, diagnostics), qualityAdjusted: true };
       }
       const segments = splitFilteredGeometryByGaps(filteredGeometry, gaps);
+      const geometry = toMultiLineStringGeometry(segments);
+      if (!geometry) {
+        return { ...this.resolveRawGeometry(speedPoints, diagnostics), qualityAdjusted: true };
+      }
       return {
         routeQuality: 'FILTERED',
-        geometry: toMultiLineStringGeometry(segments),
+        geometry,
         gapCount: gaps.length,
         continuityStatus: this.resolveContinuityStatus(true, gaps.length, filteredGeometry.length),
+        qualityAdjusted: false,
       };
     }
 
-    return this.resolveRawGeometry(speedPoints, gaps);
+    return { ...this.resolveRawGeometry(speedPoints, diagnostics), qualityAdjusted: false };
   }
 
   private resolveFilteredOrRawFallback(
     artifact: VehicleTripRouteArtifact,
     speedPoints: CanonicalTripRouteSpeedPoint[],
-    gaps: TripRouteTelemetryGap[],
-  ) {
-    const filteredGeometry = parseTripRouteGeometryJson(artifact.filteredGeometryJson);
+    diagnostics: ArtifactDiagnostics,
+  ): Omit<ResolvedRouteGeometry, 'qualityAdjusted'> {
+    const gaps = diagnostics.gaps ?? [];
+    const filteredGeometry = safeParseTripRouteGeometryJson(artifact.filteredGeometryJson);
     if (filteredGeometry && filteredGeometry.length >= 2) {
       const segments = splitFilteredGeometryByGaps(filteredGeometry, gaps);
-      return {
-        routeQuality: 'FILTERED' as const,
-        geometry: toMultiLineStringGeometry(segments),
-        gapCount: gaps.length,
-        continuityStatus: this.resolveContinuityStatus(true, gaps.length, filteredGeometry.length),
-      };
+      const geometry = toMultiLineStringGeometry(segments);
+      if (geometry) {
+        return {
+          routeQuality: 'FILTERED',
+          geometry,
+          gapCount: gaps.length,
+          continuityStatus: this.resolveContinuityStatus(true, gaps.length, filteredGeometry.length),
+        };
+      }
     }
-    return this.resolveRawGeometry(speedPoints, gaps);
+    return this.resolveRawGeometry(speedPoints, diagnostics);
   }
 
   private resolveRawGeometry(
     speedPoints: CanonicalTripRouteSpeedPoint[],
-    gaps: TripRouteTelemetryGap[],
-  ): {
-    routeQuality: RouteQuality | null;
-    geometry: CanonicalTripRouteResponse['geometry'];
-    gapCount: number;
-    continuityStatus: RouteContinuityStatus;
-  } {
+    diagnostics: ArtifactDiagnostics,
+  ): Omit<ResolvedRouteGeometry, 'qualityAdjusted'> {
     if (speedPoints.length < 2) {
+      const persistedGapCount = resolvePersistedGapCount(diagnostics) ?? 0;
       return {
         routeQuality: 'RAW',
         geometry: null,
-        gapCount: gaps.length,
+        gapCount: persistedGapCount,
         continuityStatus: 'INSUFFICIENT_DATA',
       };
     }
 
     const geometry: TripRouteLngLat[] = speedPoints.map((point) => [point.longitude, point.latitude]);
     const timestamps = speedPoints.map((point) => point.timestamp);
-    const segments =
-      gaps.length > 0
-        ? splitFilteredGeometryByGaps(geometry, gaps)
-        : splitWaypointGeometryByTimestamps(
-            geometry,
-            timestamps,
-            TRIP_ROUTE_GAP_THRESHOLD_SECONDS,
-          );
-    const gapCount =
-      gaps.length > 0
-        ? gaps.length
-        : Math.max(0, segments.length - 1);
+    const split = splitMeasuredPointsByGapAuthority({
+      geometry,
+      timestamps,
+      diagnostics,
+    });
 
     return {
       routeQuality: 'RAW',
-      geometry: toMultiLineStringGeometry(segments),
-      gapCount,
-      continuityStatus: this.resolveContinuityStatus(true, gapCount, speedPoints.length),
+      geometry: toMultiLineStringGeometry(split.segments),
+      gapCount: split.gapCount,
+      continuityStatus: this.resolveContinuityStatus(true, split.gapCount, speedPoints.length),
     };
   }
 
   private resolveGapCount(
-    artifact: VehicleTripRouteArtifact | null,
+    diagnostics: ArtifactDiagnostics,
     speedPoints: CanonicalTripRouteSpeedPoint[],
+    ready: boolean,
   ): number {
-    const diagnostics = this.parseDiagnostics(artifact?.diagnosticsJson ?? null);
-    if (diagnostics.gaps?.length) return diagnostics.gaps.length;
-    if (diagnostics.r3?.matchedSegmentBoundaries?.length) {
-      return diagnostics.r3.matchedSegmentBoundaries.length;
-    }
-    if (speedPoints.length < 2) return 0;
+    const persisted = resolvePersistedGapCount(diagnostics);
+    if (persisted != null) return persisted;
+    if (!ready || speedPoints.length < 2) return 0;
+
     const geometry = speedPoints.map((point) => [point.longitude, point.latitude] as TripRouteLngLat);
-    const segments = splitWaypointGeometryByTimestamps(
+    const split = splitMeasuredPointsByGapAuthority({
       geometry,
-      speedPoints.map((point) => point.timestamp),
-      TRIP_ROUTE_GAP_THRESHOLD_SECONDS,
-    );
-    return Math.max(0, segments.length - 1);
+      timestamps: speedPoints.map((point) => point.timestamp),
+      diagnostics,
+    });
+    return split.gapCount;
   }
 
   private resolveContinuityStatus(

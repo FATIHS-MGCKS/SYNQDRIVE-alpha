@@ -222,5 +222,92 @@ describe('TripRouteCanonicalReadService', () => {
 
     expect(response.routeQuality).toBe('FILTERED');
     expect(response.geometry?.coordinates).toHaveLength(1);
+    expect(response.quality.matchConfidence).toBeNull();
+    expect(response.points).toBeUndefined();
+  });
+
+  it('falls back to RAW when MATCHED and FILTERED geometry are invalid', async () => {
+    artifactRepository.getRouteArtifact.mockResolvedValue({
+      tripId: 'trip-1',
+      routeQuality: 'MATCHED',
+      matchedGeometryJson: 'not-json',
+      filteredGeometryJson: [[13.4, 52.5]],
+      provider: 'mapbox',
+      algorithmVersion: 'route-v2-r3',
+      matchConfidence: 0.9,
+      matchCoverage: 0.86,
+      sourcePointCount: 4,
+      filteredPointCount: 1,
+      matchedPointCount: 1,
+      processedAt: new Date('2026-08-29T12:00:00.000Z'),
+      failureReason: null,
+      diagnosticsJson: { gaps: [] },
+    } as any);
+    prisma.vehicleTripWaypoint.findMany.mockResolvedValue(
+      line(4).map((coord, index) => ({
+        latitude: coord[1],
+        longitude: coord[0],
+        speedKmh: 40,
+        recordedAt: new Date(`2026-08-29T10:00:0${index}.000Z`),
+      })),
+    );
+
+    const response = await service.getCanonicalRouteForTrip('org-1', 'veh-1', 'trip-1');
+
+    expect(response.routeQuality).toBe('RAW');
+    expect(response.geometry?.coordinates).toHaveLength(1);
+  });
+
+  it('uses persisted gap count for RAW continuity without filtered indices on waypoints', async () => {
+    artifactRepository.getRouteArtifact.mockResolvedValue({
+      tripId: 'trip-1',
+      routeQuality: 'RAW',
+      matchedGeometryJson: null,
+      filteredGeometryJson: null,
+      provider: 'dimo-route-enrichment',
+      algorithmVersion: 'route-v2-r2',
+      matchConfidence: null,
+      matchCoverage: null,
+      sourcePointCount: 4,
+      filteredPointCount: 0,
+      matchedPointCount: null,
+      processedAt: new Date('2026-08-29T12:00:00.000Z'),
+      failureReason: null,
+      diagnosticsJson: {
+        gaps: [
+          {
+            afterFilteredPointIndex: 1,
+            beforeFilteredPointIndex: 2,
+            gapSeconds: 600,
+            continuity: 'UNKNOWN',
+          },
+        ],
+      },
+    } as any);
+    prisma.vehicleTripWaypoint.findMany.mockResolvedValue(
+      line(4).map((coord, index) => ({
+        latitude: coord[1],
+        longitude: coord[0],
+        speedKmh: 40,
+        recordedAt: new Date(`2026-08-29T10:00:0${index}.000Z`),
+      })),
+    );
+
+    const response = await service.getCanonicalRouteForTrip('org-1', 'veh-1', 'trip-1');
+
+    expect(response.continuity.gapCount).toBe(1);
+    expect(response.geometry?.coordinates).toHaveLength(1);
+  });
+
+  it('returns UNAVAILABLE without geometry when no artifact and no active job', async () => {
+    artifactRepository.getRouteArtifact.mockResolvedValue(null);
+    prisma.drivingIntelligenceJob.findFirst.mockResolvedValue(null);
+    prisma.vehicleTripWaypoint.findMany.mockResolvedValue([]);
+
+    const response = await service.getCanonicalRouteForTrip('org-1', 'veh-1', 'trip-1');
+
+    expect(response.status.processingState).toBe('UNAVAILABLE');
+    expect(response.routeQuality).toBeNull();
+    expect(response.geometry).toBeNull();
   });
 });
