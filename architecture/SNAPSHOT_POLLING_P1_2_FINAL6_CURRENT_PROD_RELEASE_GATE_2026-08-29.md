@@ -161,11 +161,17 @@ Rollback with active trips, PENDING/ENQUEUED boundary refresh, queued jobs: **no
 
 ## 10. Test / CI proof
 
-| Suite | Result |
-|-------|--------|
-| `npm run test:p12:scale` (FINAL-4/5/6) | Run locally on HEAD |
-| Boundary repair PostgreSQL | `npm run test:boundary-repair:postgres` (gated) |
-| `npm run build` | PASS |
+**HEAD:** `b8a982f1ffe859dd63a1453a7c786d790cfff9ff` (PR #1409)
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| `npm run test:p12:scale` (FINAL-4/5/6 + boundary state) | **112** / 11 suites | **PASS** |
+| FINAL-3 delayed-start / partial-suffix / enrichment chain | **22** / 4 suites | **PASS** |
+| `npm run test:boundary-repair:postgres` | **5** / 1 suite | **PASS** |
+| `npm run build` + `tsc --noEmit` | — | **PASS** |
+| GitHub CI (PR #1409, run `33263332398` / `33263332446`) | 25 checks | **SUCCESS** |
+
+**Total release-gate proof:** **139** automated tests, **0** skipped DB proofs.
 
 ---
 
