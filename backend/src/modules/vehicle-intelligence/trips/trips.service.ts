@@ -15,6 +15,7 @@ import {
   scopedVehicleTripWhere,
 } from '../tenant/vehicle-intelligence-tenant.scope';
 import { resolveEnrichmentDistanceKm } from './trip-distance.helpers';
+import { TripRouteArtifactMaterializerService } from './route-artifact';
 
 export interface TripEnrichmentResult {
   citySharePercent: number;
@@ -61,6 +62,7 @@ export class TripsService {
     @Inject(ROUTE_MAP_MATCHER)
     private readonly routeMapMatcher: RouteMapMatcher,
     private readonly mapbox: MapboxService,
+    private readonly routeArtifactMaterializer: TripRouteArtifactMaterializerService,
   ) {}
 
   // ────────────────────────────────────────────────────────
@@ -274,6 +276,15 @@ export class TripsService {
       this.segments.fetchPerformance(tokenId, trip.startTime, endTime),
     ]);
 
+    // Route V2 R2: materialize RAW/FILTERED artifact from full-fidelity DIMO routePoints
+    // before bounded waypoint persistence. Failures are isolated — legacy enrichment continues.
+    await this.materializeRouteArtifact(
+      organizationId,
+      vehicleId,
+      tripId,
+      routePoints,
+    );
+
     if (routePoints.length > 0) {
       await this.storeWaypoints(tripId, routePoints);
     }
@@ -474,6 +485,33 @@ export class TripsService {
             ) / 10
           : null,
     };
+  }
+
+  // ────────────────────────────────────────────────────────
+  // ROUTE V2 ARTIFACT (R2)
+  // ────────────────────────────────────────────────────────
+
+  private async materializeRouteArtifact(
+    organizationId: string,
+    vehicleId: string,
+    tripId: string,
+    routePoints: RoutePoint[],
+  ): Promise<void> {
+    const outcome = await this.routeArtifactMaterializer.materializeFromMeasuredRoute({
+      organizationId,
+      vehicleId,
+      tripId,
+      points: routePoints.map((p) => ({
+        latitude: p.latitude,
+        longitude: p.longitude,
+        recordedAt: p.timestamp,
+      })),
+    });
+    if (!outcome.ok) {
+      this.logger.warn(
+        `Route V2 artifact not materialized trip=${tripId}: ${outcome.error}`,
+      );
+    }
   }
 
   // ────────────────────────────────────────────────────────

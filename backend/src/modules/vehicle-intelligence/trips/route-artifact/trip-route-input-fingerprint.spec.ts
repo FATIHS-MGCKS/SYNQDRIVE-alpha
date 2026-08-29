@@ -52,10 +52,10 @@ describe('trip-route-input-fingerprint', () => {
 
   it('J — algorithm version bump changes fingerprint', () => {
     const v1 = computeTripRouteInputFingerprint(
-      buildTripRouteInputFingerprintInput('trip-1', TRIP_ROUTE_ALGORITHM_VERSION, BASE_POINTS),
+      buildTripRouteInputFingerprintInput('trip-1', 'route-v2-r1', BASE_POINTS),
     );
     const v2 = computeTripRouteInputFingerprint(
-      buildTripRouteInputFingerprintInput('trip-1', 'route-v2-r2', BASE_POINTS),
+      buildTripRouteInputFingerprintInput('trip-1', TRIP_ROUTE_ALGORITHM_VERSION, BASE_POINTS),
     );
     expect(v2).not.toBe(v1);
   });
