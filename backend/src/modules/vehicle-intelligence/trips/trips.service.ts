@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   DimoSegmentsService,
@@ -7,7 +7,6 @@ import {
   TemperatureReading,
 } from '../../dimo/dimo-segments.service';
 import { MapboxService } from './mapbox.service';
-import { ROUTE_MAP_MATCHER, RouteMapMatcher } from './route-map-matcher.port';
 import {
   assertTripInOrganization,
   assertVehicleInOrganization,
@@ -67,8 +66,6 @@ export class TripsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
-    @Inject(ROUTE_MAP_MATCHER)
-    private readonly routeMapMatcher: RouteMapMatcher,
     private readonly mapbox: MapboxService,
     private readonly routeArtifactMaterializer: TripRouteArtifactMaterializerService,
   ) {}
@@ -290,23 +287,14 @@ export class TripsService {
       await this.storeWaypoints(tripId, routePoints, { fidelity: 'canonical' });
     }
 
-    await this.materializeRouteArtifact(
+    const artifactOutcome = await this.materializeRouteArtifact(
       organizationId,
       vehicleId,
       tripId,
       routePoints,
     );
 
-    const matchResult =
-      routePoints.length >= 2
-        ? await this.routeMapMatcher.matchRoute(
-            routePoints.map((p) => ({
-              longitude: p.longitude,
-              latitude: p.latitude,
-              timestamp: p.timestamp,
-            })),
-          )
-        : null;
+    const matchResult = artifactOutcome?.matchResult ?? null;
 
     const roadDist = matchResult
       ? this.mapbox.deriveRoadTypeDistribution(
@@ -504,7 +492,7 @@ export class TripsService {
     vehicleId: string,
     tripId: string,
     routePoints: RoutePoint[],
-  ): Promise<void> {
+  ): Promise<{ matchResult: import('./mapbox.service').MapMatchResult | null } | null> {
     const outcome = await this.routeArtifactMaterializer.materializeFromMeasuredRoute({
       organizationId,
       vehicleId,
@@ -525,7 +513,9 @@ export class TripsService {
       this.logger.error(
         `Route V2 artifact permanent failure trip=${tripId}: ${outcome.error}`,
       );
+      return null;
     }
+    return { matchResult: outcome.matchResult };
   }
 
   // ────────────────────────────────────────────────────────

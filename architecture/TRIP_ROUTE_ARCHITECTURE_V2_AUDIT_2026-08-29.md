@@ -1019,3 +1019,65 @@ Matrix A–AD plus pre-merge: >500 canonical persistence, fingerprint reconstruc
 
 **Mapbox `mapMatchRoute` behavior (≤100 global sampling), frontend route APIs, and historical backfill are unchanged in R2.**
 
+
+---
+
+## Stage R3 — Chunked Map Matching + Stitching + MATCHED Quality Gates
+
+**Status:** IMPLEMENTED (PR pending merge)  
+**Base commit:** `92a60a733` (`route-v2-r2` merged #1413)  
+**Algorithm version:** `route-v2-r3`
+
+### Hard gates
+
+| Gate | Status |
+|------|--------|
+| FRONTEND_BEHAVIOR_CHANGE | NONE |
+| BACKFILL | NONE |
+| SECOND_SCHEDULER | FORBIDDEN (unchanged) |
+| PRODUCTION_MUTATIONS | NONE |
+
+### Canonical matcher architecture
+
+```
+DRIVING_ROUTE_ENRICH → TripsService.enrichTrip
+  → preprocessTripRoute() → FILTERED/RAW
+  → splitFilteredPointsByGaps() (R2 UNKNOWN boundaries)
+  → retainTrajectoryPoints() per segment (when >90 points)
+  → planRouteChunks() (max 90, overlap 10)
+  → MapboxChunkMatchingClientService.matchChunk() (≤100 coords, no global stride)
+  → stitchChunkGeometries() per segment
+  → evaluateRouteMatchQualityGates()
+  → persist MATCHED or FILTERED fallback artifact
+  → enrichTrip uses materializer matchResult (road type / speeding / distance)
+```
+
+**Legacy `MapboxRouteMatcherService`:** deprecated; retained for `ROUTE_MAP_MATCHER` port only. Canonical path does **not** call it.
+
+### Trajectory retention
+
+Measured vertices only. Always keep segment endpoints. Retain interior points where bearing change ≥ `15°`. Fill remaining budget with deterministic evenly spaced candidates. Applied only when segment length > 90. No synthetic coordinates.
+
+### Chunking
+
+| Constant | Value |
+|----------|-------|
+| `TRIP_ROUTE_CHUNK_MAX_COORDINATES` | 90 |
+| `TRIP_ROUTE_CHUNK_OVERLAP_COORDINATES` | 10 |
+| `TRIP_ROUTE_MAX_MAPBOX_REQUESTS_PER_TRIP` | 200 |
+
+### Mapbox request contract
+
+Profile `mapbox/driving`; `geometries=geojson`; `overview=full`; `annotations=speed,maxspeed,distance`; timestamps when monotonic; static `radiuses=25`; `tidy=false` on chunk path; 30s timeout; 429/5xx/timeout → RETRYABLE.
+
+### Quality gates (all required for MATCHED)
+
+`chunkSuccessRatio === 1`; coverage ≥ 0.85; confidence ≥ 0.5; matched/filtered distance ratio ∈ [0.7, 1.5]; seam ≤ 25 m; valid geometry. **PARTIAL_MATCH_ALLOWED:** NO.
+
+### Confidence / coverage
+
+Distance-weighted aggregation over successful chunks (see `aggregateChunkMetrics` / `computeMatchCoverage`).
+
+### Explicit statement
+
+**No frontend cutover. No backfill. No splines. No second scheduler.**

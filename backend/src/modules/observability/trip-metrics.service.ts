@@ -134,6 +134,18 @@ export class TripMetricsService implements OnModuleInit {
   readonly drivingAnalysisRunsTotal: Counter<string>;
   readonly drivingHealthImpactPublished: Counter<string>;
 
+  /** Trip Route V2 R3 matching — low-cardinality only. */
+  readonly tripRouteV2MatchAttempted: Counter<string>;
+  readonly tripRouteV2MatchSucceeded: Counter<string>;
+  readonly tripRouteV2MatchFallbackFiltered: Counter<string>;
+  readonly tripRouteV2MatchRetryableFailure: Counter<string>;
+  readonly tripRouteV2MatchQualityRejected: Counter<string>;
+  readonly tripRouteV2MatchChunkCount: Histogram<string>;
+  readonly tripRouteV2MatchFailedChunkCount: Histogram<string>;
+  readonly tripRouteV2MatchCoverage: Histogram<string>;
+  readonly tripRouteV2MatchConfidence: Histogram<string>;
+  readonly tripRouteV2MatchDurationMs: Histogram<string>;
+
   /** Battery V2 — low-cardinality labels only (Prompt 68). */
   readonly batteryProviderObservationTotal: Counter<string>;
   readonly batteryProviderDuplicateTotal: Counter<string>;
@@ -1098,6 +1110,71 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_driving_health_impact_published_total',
       help: 'Health impact publish jobs that recalculated brake/tire health',
       labelNames: ['eligibility'],
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchAttempted = new Counter({
+      name: 'synqdrive_trip_route_v2_match_attempted_total',
+      help: 'Trip Route V2 chunked map-matching attempts',
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchSucceeded = new Counter({
+      name: 'synqdrive_trip_route_v2_match_succeeded_total',
+      help: 'Trip Route V2 MATCHED artifact outcomes',
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchFallbackFiltered = new Counter({
+      name: 'synqdrive_trip_route_v2_match_fallback_filtered_total',
+      help: 'Trip Route V2 matching fell back to FILTERED',
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchRetryableFailure = new Counter({
+      name: 'synqdrive_trip_route_v2_match_retryable_failure_total',
+      help: 'Trip Route V2 retryable Mapbox matching failures',
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchQualityRejected = new Counter({
+      name: 'synqdrive_trip_route_v2_match_quality_rejected_total',
+      help: 'Trip Route V2 deterministic quality gate rejections',
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchChunkCount = new Histogram({
+      name: 'synqdrive_trip_route_v2_match_chunk_count',
+      help: 'Trip Route V2 Mapbox chunk count per trip',
+      buckets: [1, 2, 5, 10, 20, 50, 100, 200],
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchFailedChunkCount = new Histogram({
+      name: 'synqdrive_trip_route_v2_match_failed_chunk_count',
+      help: 'Trip Route V2 failed chunk count per trip',
+      buckets: [0, 1, 2, 5, 10, 20],
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchCoverage = new Histogram({
+      name: 'synqdrive_trip_route_v2_match_coverage',
+      help: 'Trip Route V2 match coverage ratio (0..1)',
+      buckets: [0.5, 0.7, 0.85, 0.9, 0.95, 1],
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchConfidence = new Histogram({
+      name: 'synqdrive_trip_route_v2_match_confidence',
+      help: 'Trip Route V2 weighted match confidence (0..1)',
+      buckets: [0.3, 0.5, 0.7, 0.85, 0.95, 1],
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchDurationMs = new Histogram({
+      name: 'synqdrive_trip_route_v2_match_duration_ms',
+      help: 'Trip Route V2 matching pipeline duration in milliseconds',
+      buckets: [100, 500, 1000, 2500, 5000, 15000, 30000, 60000],
       registers: [this.registry],
     });
 
