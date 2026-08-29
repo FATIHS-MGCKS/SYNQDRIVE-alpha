@@ -113,7 +113,6 @@ const LIVE = process.env.BOUNDARY_REPAIR_POSTGRES_INTEGRATION === '1';
               id: auditId,
               tripId: fixture.trip.id,
               vehicleId: fixture.vehicle.id,
-              organizationId: fixture.org.id,
               repairType: REPAIR_TYPES.PARTIAL_TRIP_BOUNDARY_EXTENSION,
               status: REPAIR_STATUS.BOUNDARY_APPLIED,
               appliedAt: new Date(),
