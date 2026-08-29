@@ -4,16 +4,36 @@ import { TripMetricsService } from '@modules/observability/trip-metrics.service'
 import type {
   DimoProviderHttpObservation,
   DimoProviderLimiterBeginResult,
+  DimoProviderRequestPriority,
 } from './dimo-provider-limiter.types';
 import { DimoProviderRequestCategory } from './dimo-provider-limiter.types';
 import type { DimoProviderLimiterMode } from '@config/dimo-provider-limiter.config';
 
 export interface DimoProviderMetricsRecordInput {
   category: DimoProviderRequestCategory;
+  priority: DimoProviderRequestPriority;
   mode: DimoProviderLimiterMode;
   begin: DimoProviderLimiterBeginResult;
   durationMs: number;
   http: DimoProviderHttpObservation;
+}
+
+export interface DimoProviderAdmissionWaitInput {
+  category: DimoProviderRequestCategory;
+  priority: DimoProviderRequestPriority;
+  waitedMs: number;
+  outcome: 'granted' | 'timeout';
+}
+
+export interface DimoProviderBackpressureInput {
+  category: DimoProviderRequestCategory;
+  priority: DimoProviderRequestPriority;
+  reason: 'rate' | 'inflight' | 'cooldown' | 'combined';
+}
+
+export interface DimoProviderCooldownInput {
+  category: DimoProviderRequestCategory;
+  retryAfterSeconds: number;
 }
 
 @Injectable()
@@ -28,6 +48,10 @@ export class DimoProviderMetricsService {
   readonly http5xxTotal: Counter<string>;
   readonly timeoutsTotal: Counter<string>;
   readonly requestDuration: Histogram<string>;
+  readonly admissionWaitDuration: Histogram<string>;
+  readonly admissionTimeoutsTotal: Counter<string>;
+  readonly backpressureTotal: Counter<string>;
+  readonly providerCooldownTotal: Counter<string>;
 
   constructor(private readonly tripMetrics: TripMetricsService) {
     const register = this.tripMetrics.registry;
@@ -35,7 +59,7 @@ export class DimoProviderMetricsService {
     this.requestsTotal = new Counter({
       name: 'synqdrive_dimo_provider_requests_total',
       help: 'DIMO provider gateway requests',
-      labelNames: ['operation', 'mode', 'status_class'],
+      labelNames: ['operation', 'mode', 'status_class', 'priority'],
       registers: [register],
     });
 
@@ -97,8 +121,37 @@ export class DimoProviderMetricsService {
     this.requestDuration = new Histogram({
       name: 'synqdrive_dimo_provider_request_duration_seconds',
       help: 'DIMO provider gateway request duration',
-      labelNames: ['operation', 'status_class'],
+      labelNames: ['operation', 'status_class', 'priority'],
       buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 15, 30],
+      registers: [register],
+    });
+
+    this.admissionWaitDuration = new Histogram({
+      name: 'synqdrive_dimo_provider_admission_wait_seconds',
+      help: 'DIMO provider admission wait before invoke (enforce mode)',
+      labelNames: ['operation', 'priority', 'outcome'],
+      buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30],
+      registers: [register],
+    });
+
+    this.admissionTimeoutsTotal = new Counter({
+      name: 'synqdrive_dimo_provider_admission_timeouts_total',
+      help: 'DIMO provider admission wait budget exceeded',
+      labelNames: ['operation', 'priority', 'reason'],
+      registers: [register],
+    });
+
+    this.backpressureTotal = new Counter({
+      name: 'synqdrive_dimo_provider_backpressure_total',
+      help: 'DIMO provider admission backpressure poll iterations',
+      labelNames: ['operation', 'priority', 'reason'],
+      registers: [register],
+    });
+
+    this.providerCooldownTotal = new Counter({
+      name: 'synqdrive_dimo_provider_cooldown_total',
+      help: 'DIMO provider Retry-After cooldown activations',
+      labelNames: ['operation'],
       registers: [register],
     });
   }
@@ -107,10 +160,11 @@ export class DimoProviderMetricsService {
     const op = input.category;
     const mode = input.mode;
     const status = input.http.statusClass;
+    const priority = input.priority;
 
-    this.requestsTotal.inc({ operation: op, mode, status_class: status });
+    this.requestsTotal.inc({ operation: op, mode, status_class: status, priority });
     this.requestDuration.observe(
-      { operation: op, status_class: status },
+      { operation: op, status_class: status, priority },
       input.durationMs / 1000,
     );
 
@@ -151,5 +205,35 @@ export class DimoProviderMetricsService {
     if (input.http.statusClass === 'timeout') {
       this.timeoutsTotal.inc({ operation: op });
     }
+  }
+
+  recordAdmissionWait(input: DimoProviderAdmissionWaitInput): void {
+    this.admissionWaitDuration.observe(
+      {
+        operation: input.category,
+        priority: input.priority,
+        outcome: input.outcome,
+      },
+      input.waitedMs / 1000,
+    );
+    if (input.outcome === 'timeout') {
+      this.admissionTimeoutsTotal.inc({
+        operation: input.category,
+        priority: input.priority,
+        reason: 'combined',
+      });
+    }
+  }
+
+  recordBackpressure(input: DimoProviderBackpressureInput): void {
+    this.backpressureTotal.inc({
+      operation: input.category,
+      priority: input.priority,
+      reason: input.reason,
+    });
+  }
+
+  recordProviderCooldown(input: DimoProviderCooldownInput): void {
+    this.providerCooldownTotal.inc({ operation: input.category });
   }
 }

@@ -23,10 +23,16 @@ export enum DimoProviderRequestCategory {
 }
 
 export enum DimoProviderRequestPriority {
+  /** Auth recovery / service-critical provider access. */
   P0_CRITICAL = 'p0_critical',
-  P1_HIGH = 'p1_high',
-  P2_NORMAL = 'p2_normal',
-  P3_BACKGROUND = 'p3_background',
+  /** Active-trip / live-driving telemetry. */
+  P1_LIVE = 'p1_live',
+  /** User-triggered interactive vehicle detail / recent telemetry. */
+  P2_INTERACTIVE = 'p2_interactive',
+  /** Regular snapshot polling / normal connected refresh. */
+  P3_NORMAL = 'p3_normal',
+  /** Reconciliation, enrichment, DTC, non-urgent sync. */
+  P4_BACKGROUND = 'p4_background',
 }
 
 export interface DimoProviderLimiterBeginInput {
@@ -37,10 +43,13 @@ export interface DimoProviderLimiterBeginInput {
   rateBurst: number;
   maxInFlight: number;
   inFlightLeaseMs: number;
+  reservedHighPrioritySlots: number;
 }
 
 export interface DimoProviderLimiterBeginResult {
   leaseId: string | null;
+  /** ZSET member for release (rank:leaseId) when lease acquired. */
+  inFlightMember: string | null;
   mode: DimoProviderLimiterMode;
   rateDecision: DimoProviderLimiterDecision;
   inFlightDecision: DimoProviderLimiterDecision;
@@ -49,6 +58,9 @@ export interface DimoProviderLimiterBeginResult {
   inFlightCount: number;
   inFlightLimit: number;
   redisFailOpen: boolean;
+  /** Estimated wait if decision is WOULD_WAIT (cooldown or contention). */
+  wouldDelayMs?: number;
+  providerCooldownActive?: boolean;
 }
 
 export type DimoProviderHttpStatusClass =

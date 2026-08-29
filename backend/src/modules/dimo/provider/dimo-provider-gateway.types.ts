@@ -32,7 +32,9 @@ export interface DimoProviderExecuteParams<T> {
   requestContext?: DimoProviderRequestContext;
   /** Bounded-cardinality operation label for metrics/limiter (S2+). */
   category?: DimoProviderRequestCategory;
-  /** Priority class for future backpressure (S3). */
+  /** Priority class for S3 backpressure (defaults from category). */
   priority?: DimoProviderRequestPriority;
+  /** Optional abort signal — releases lease on cancellation. */
+  signal?: AbortSignal;
   invoke: () => Promise<T>;
 }
