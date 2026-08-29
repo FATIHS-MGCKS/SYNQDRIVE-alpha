@@ -1,7 +1,8 @@
-import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import dimoProviderLimiterConfig from '@config/dimo-provider-limiter.config';
 import type { DimoProviderExecuteParams } from './dimo-provider-gateway.types';
+import { DimoProviderAdmissionService } from './dimo-provider-admission.service';
 import { DimoProviderLimiterService } from './dimo-provider-limiter.service';
 import { DimoProviderMetricsService } from './dimo-provider-metrics.service';
 import {
@@ -18,20 +19,29 @@ import { DimoProviderLimiterDecision } from './dimo-provider-limiter.types';
 /**
  * Canonical outbound DIMO provider gateway (P1.3).
  *
- * S2: Redis-backed limiter in SHADOW mode by default — evaluates rate/in-flight
- * budgets, records observability, but never blocks provider traffic unless
- * DIMO_PROVIDER_LIMITER_MODE=enforce is explicitly set.
+ * S3: priority-aware admission with bounded backpressure in enforce mode.
+ * Default remains shadow — no production throttling unless explicitly configured.
  */
 @Injectable()
-export class DimoProviderGateway {
+export class DimoProviderGateway implements OnModuleInit {
   private readonly logger = new Logger(DimoProviderGateway.name);
 
   constructor(
     @Inject(dimoProviderLimiterConfig.KEY)
     private readonly limiterConfig: ConfigType<typeof dimoProviderLimiterConfig>,
+    private readonly admission: DimoProviderAdmissionService,
     private readonly limiter: DimoProviderLimiterService,
     @Optional() private readonly metrics?: DimoProviderMetricsService,
   ) {}
+
+  onModuleInit(): void {
+    this.logger.log(
+      `DIMO provider limiter mode=${this.limiterConfig.mode} enabled=${this.limiterConfig.enabled} ` +
+        `rate=${this.limiterConfig.rateLimitPerSecond}/s+burst${this.limiterConfig.rateBurst} ` +
+        `maxInFlight=${this.limiterConfig.maxInFlight} reservedHigh=${this.limiterConfig.reservedHighPrioritySlots} ` +
+        `maxWaitMs=${this.limiterConfig.maxWaitMs}`,
+    );
+  }
 
   async execute<T>(params: DimoProviderExecuteParams<T>): Promise<T> {
     const category = resolveProviderCategory(params.operation, params.category);
@@ -41,6 +51,7 @@ export class DimoProviderGateway {
 
     let begin: DimoProviderLimiterBeginResult = {
       leaseId: null,
+      inFlightMember: null,
       mode,
       rateDecision: DimoProviderLimiterDecision.BYPASS,
       inFlightDecision: DimoProviderLimiterDecision.BYPASS,
@@ -51,39 +62,26 @@ export class DimoProviderGateway {
       redisFailOpen: false,
     };
 
-    if (mode !== 'off') {
-      begin = await this.limiter.begin({
-        mode,
-        category,
-        priority,
-        rateLimitPerSecond: this.limiterConfig.rateLimitPerSecond,
-        rateBurst: this.limiterConfig.rateBurst,
-        maxInFlight: this.limiterConfig.maxInFlight,
-        inFlightLeaseMs: this.limiterConfig.inFlightLeaseMs,
-      });
+    const beginInput = {
+      mode,
+      category,
+      priority,
+      rateLimitPerSecond: this.limiterConfig.rateLimitPerSecond,
+      rateBurst: this.limiterConfig.rateBurst,
+      maxInFlight: this.limiterConfig.maxInFlight,
+      inFlightLeaseMs: this.limiterConfig.inFlightLeaseMs,
+      reservedHighPrioritySlots: this.limiterConfig.reservedHighPrioritySlots,
+    };
 
-      if (
-        mode === 'enforce' &&
-        (begin.rateDecision === DimoProviderLimiterDecision.WOULD_REJECT ||
-          begin.inFlightDecision === DimoProviderLimiterDecision.WOULD_REJECT)
-      ) {
-        this.metrics?.recordRequest({
-          category,
-          mode,
-          begin,
-          durationMs: Date.now() - startedAt,
-          http: { statusClass: 'client_error' },
-        });
-        throw new Error(
-          `DIMO provider limiter rejected request category=${category} rate=${begin.rateDecision} inflight=${begin.inFlightDecision}`,
-        );
-      }
+    if (mode !== 'off') {
+      begin = await this.admission.acquire(beginInput, { signal: params.signal });
     }
 
     try {
       const result = await params.invoke();
       this.metrics?.recordRequest({
         category,
+        priority,
         mode,
         begin,
         durationMs: Date.now() - startedAt,
@@ -96,12 +94,21 @@ export class DimoProviderGateway {
         this.logger.debug(
           `DIMO provider HTTP 429 category=${category} retryAfter=${http.retryAfterSeconds}s`,
         );
+        await this.limiter.setProviderCooldown(
+          http.retryAfterSeconds,
+          this.limiterConfig.retryAfterMaxSeconds,
+        );
+        this.metrics?.recordProviderCooldown({
+          category,
+          retryAfterSeconds: http.retryAfterSeconds,
+        });
       }
       if (http.statusClass === 'forbidden') {
         this.logger.debug(`DIMO provider HTTP 403 category=${category} (non-retryable)`);
       }
       this.metrics?.recordRequest({
         category,
+        priority,
         mode,
         begin,
         durationMs: Date.now() - startedAt,
@@ -109,7 +116,7 @@ export class DimoProviderGateway {
       });
       throw error;
     } finally {
-      await this.limiter.end(begin.leaseId);
+      await this.limiter.end(begin.inFlightMember);
     }
   }
 }

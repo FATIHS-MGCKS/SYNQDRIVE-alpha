@@ -6,14 +6,18 @@ import {
   dimoProviderInflightKey,
   dimoProviderRateKey,
 } from './dimo-provider-limiter.redis-scripts';
-import { DimoProviderLimiterDecision } from './dimo-provider-limiter.types';
+import {
+  DimoProviderLimiterDecision,
+  DimoProviderRequestPriority,
+} from './dimo-provider-limiter.types';
+import { inflightMember, parseInflightMember } from './dimo-provider-priority.model';
 
 type Store = {
   strings: Map<string, string>;
   zsets: Map<string, Map<string, number>>;
 };
 
-function createInMemoryRedis(): { redis: { eval: jest.Mock }; store: Store } {
+function createInMemoryRedis(): { redis: { eval: jest.Mock; get: jest.Mock }; store: Store } {
   const store: Store = { strings: new Map(), zsets: new Map() };
 
   const evalFn = jest.fn(async (script: string, numKeys: number, ...args: string[]) => {
@@ -32,46 +36,61 @@ function createInMemoryRedis(): { redis: { eval: jest.Mock }; store: Store } {
       const leaseId = args[2];
       const nowMs = Number.parseInt(args[3], 10);
       const expiryMs = Number.parseInt(args[4], 10);
-      const mode = args[5];
+      const rank = Number.parseInt(args[6], 10);
+      const reserved = Number.parseInt(args[7], 10);
       const zset = store.zsets.get(key) ?? new Map<string, number>();
       for (const [member, score] of [...zset.entries()]) {
         if (score <= nowMs) zset.delete(member);
       }
-      const count = zset.size;
-      const decision = count >= maxInflight ? 'would_reject' : 'allow';
-      if (decision === 'would_reject') {
-        return [count, maxInflight, decision, count];
+      let highCount = 0;
+      for (const member of zset.keys()) {
+        if (parseInflightMember(member).rank <= 1) highCount += 1;
       }
-      zset.set(leaseId, expiryMs);
+      const count = zset.size;
+      let decision = 'allow';
+      if (count >= maxInflight) {
+        decision = rank <= 1 && highCount < reserved ? 'allow' : 'would_reject';
+      }
+      if (decision === 'would_reject') {
+        return [count, maxInflight, decision, count, highCount];
+      }
+      const member = `${rank}:${leaseId}`;
+      zset.set(member, expiryMs);
       store.zsets.set(key, zset);
-      return [count, maxInflight, decision, zset.size];
+      return [count, maxInflight, decision, zset.size, highCount];
     }
 
     if (script === DIMO_PROVIDER_INFLIGHT_RELEASE_SCRIPT) {
       const key = args[0];
-      const leaseId = args[1];
+      const member = args[1];
       const zset = store.zsets.get(key);
       if (!zset) return 0;
-      const existed = zset.delete(leaseId) ? 1 : 0;
-      return existed;
+      return zset.delete(member) ? 1 : 0;
     }
 
     throw new Error(`Unknown script in test store`);
   });
 
-  return { redis: { eval: evalFn }, store };
+  return {
+    redis: {
+      eval: evalFn,
+      get: jest.fn(async () => null),
+    },
+    store,
+  };
 }
 
 describe('DimoProviderLimiterService (distributed semantics)', () => {
   const baseInput = {
     mode: 'shadow' as const,
     category: 'telemetry_graphql' as any,
-    priority: 'p2_normal' as any,
+    priority: DimoProviderRequestPriority.P3_NORMAL,
     rateLimitPerSecond: 5,
     rateBurst: 0,
     maxInFlight: 2,
     inFlightLeaseMs: 30_000,
-  };
+    reservedHighPrioritySlots: 1,
+  } satisfies Parameters<DimoProviderLimiterService['begin']>[0];
 
   it('two replicas share the same rate budget', async () => {
     const { redis, store } = createInMemoryRedis();
@@ -105,7 +124,7 @@ describe('DimoProviderLimiterService (distributed semantics)', () => {
     expect(second.inFlightDecision).toBe(DimoProviderLimiterDecision.ALLOW);
     expect(third.inFlightDecision).toBe(DimoProviderLimiterDecision.WOULD_REJECT);
 
-    await replicaA.end(first.leaseId);
+    await replicaA.end(first.inFlightMember);
     const afterRelease = await replicaB.begin(baseInput);
     expect(afterRelease.inFlightDecision).toBe(DimoProviderLimiterDecision.ALLOW);
   });
@@ -114,17 +133,15 @@ describe('DimoProviderLimiterService (distributed semantics)', () => {
     const { redis } = createInMemoryRedis();
     const svc = new DimoProviderLimiterService(redis as any);
     const begin = await svc.begin(baseInput);
-    await svc.end(begin.leaseId);
-    await svc.end(begin.leaseId);
-    const zset = (redis.eval as jest.Mock).mock.calls.find(
-      (c) => c[0] === DIMO_PROVIDER_INFLIGHT_RELEASE_SCRIPT,
-    );
-    expect(zset).toBeTruthy();
+    await svc.end(begin.inFlightMember);
+    await svc.end(begin.inFlightMember);
+    expect((redis.eval as jest.Mock).mock.calls.some((c) => c[0] === DIMO_PROVIDER_INFLIGHT_RELEASE_SCRIPT)).toBe(true);
   });
 
   it('Redis outage fail-open preserves allow semantics', async () => {
     const redis = {
       eval: jest.fn().mockRejectedValue(new Error('Redis unavailable')),
+      get: jest.fn().mockRejectedValue(new Error('Redis unavailable')),
     };
     const svc = new DimoProviderLimiterService(redis as any);
     const begin = await svc.begin(baseInput);

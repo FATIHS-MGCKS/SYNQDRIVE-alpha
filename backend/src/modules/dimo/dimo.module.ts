@@ -11,6 +11,7 @@ import { DimoController } from './dimo.controller';
 import { DimoWebhookController } from './dimo-webhook.controller';
 import { DimoAuthService } from './dimo-auth.service';
 import { DimoProviderGateway } from './provider/dimo-provider-gateway.service';
+import { DimoProviderAdmissionService } from './provider/dimo-provider-admission.service';
 import { DimoProviderLimiterService } from './provider/dimo-provider-limiter.service';
 import { DimoProviderMetricsService } from './provider/dimo-provider-metrics.service';
 import { DimoTelemetryService } from './dimo-telemetry.service';
@@ -62,6 +63,7 @@ import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-lin
   controllers: [DimoController, DimoWebhookController, DeviceConnectionWebhookInboxController],
   providers: [
     DimoProviderGateway,
+    DimoProviderAdmissionService,
     DimoProviderLimiterService,
     DimoProviderMetricsService,
     DimoAuthService,

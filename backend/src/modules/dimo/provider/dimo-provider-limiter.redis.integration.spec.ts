@@ -1,9 +1,11 @@
 import IORedis from 'ioredis';
 import { RedisService } from '@shared/redis/redis.service';
+import { DimoProviderAdmissionService } from './dimo-provider-admission.service';
 import { DimoProviderLimiterService } from './dimo-provider-limiter.service';
 import { DimoProviderGateway } from './dimo-provider-gateway.service';
 import { DimoProviderOperation } from './dimo-provider-gateway.types';
 import {
+  dimoProviderCooldownKey,
   dimoProviderInflightKey,
   dimoProviderRateKey,
 } from './dimo-provider-limiter.redis-scripts';
@@ -49,8 +51,23 @@ function createLimiterReplica(): { limiter: DimoProviderLimiterService; redis: R
   return { limiter: new DimoProviderLimiterService(redis), redis };
 }
 
+function createAdmissionReplica(
+  config: DimoProviderLimiterConfigShape,
+): { admission: DimoProviderAdmissionService; limiter: DimoProviderLimiterService; redis: RedisService } {
+  const { limiter, redis } = createLimiterReplica();
+  return { admission: new DimoProviderAdmissionService(config, limiter), limiter, redis };
+}
+
+function createGatewayReplica(
+  config: DimoProviderLimiterConfigShape,
+): { gateway: DimoProviderGateway; limiter: DimoProviderLimiterService; redis: RedisService } {
+  const { admission, limiter, redis } = createAdmissionReplica(config);
+  return { gateway: new DimoProviderGateway(config, admission, limiter), limiter, redis };
+}
+
 async function cleanupLimiterKeys(redis: RedisService): Promise<void> {
   await redis.del(dimoProviderInflightKey());
+  await redis.del(dimoProviderCooldownKey());
   const epochSecond = Math.floor(Date.now() / 1000);
   for (let offset = -2; offset <= 2; offset += 1) {
     await redis.del(dimoProviderRateKey(epochSecond + offset));
@@ -59,15 +76,16 @@ async function cleanupLimiterKeys(redis: RedisService): Promise<void> {
 
 function baseBeginInput(
   overrides: Partial<Parameters<DimoProviderLimiterService['begin']>[0]> = {},
-) {
+): Parameters<DimoProviderLimiterService['begin']>[0] {
   return {
     mode: 'shadow' as const,
     category: DimoProviderRequestCategory.TELEMETRY_GRAPHQL,
-    priority: DimoProviderRequestPriority.P2_NORMAL,
+    priority: DimoProviderRequestPriority.P3_NORMAL,
     rateLimitPerSecond: 5,
     rateBurst: 0,
     maxInFlight: 2,
     inFlightLeaseMs: 30_000,
+    reservedHighPrioritySlots: 1,
     ...overrides,
   };
 }
@@ -169,7 +187,7 @@ function baseBeginInput(
       const blocked = await replicaA.limiter.begin(input);
       expect(blocked.inFlightDecision).toBe(DimoProviderLimiterDecision.WOULD_REJECT);
 
-      await replicaA.limiter.end(first.leaseId);
+      await replicaA.limiter.end(first.inFlightMember);
       const recovered = await replicaB.limiter.begin(input);
       expect(recovered.inFlightDecision).toBe(DimoProviderLimiterDecision.ALLOW);
     });
@@ -177,8 +195,8 @@ function baseBeginInput(
     it('E: double release is safe (no negative accounting)', async () => {
       const input = baseBeginInput({ maxInFlight: 2, rateLimitPerSecond: 100, rateBurst: 100 });
       const begin = await replicaA.limiter.begin(input);
-      await replicaA.limiter.end(begin.leaseId);
-      await replicaA.limiter.end(begin.leaseId);
+      await replicaA.limiter.end(begin.inFlightMember);
+      await replicaA.limiter.end(begin.inFlightMember);
 
       expect(await replicaA.redis.zcard(dimoProviderInflightKey())).toBe(0);
 
@@ -208,8 +226,8 @@ function baseBeginInput(
       expect(recovered.inFlightDecision).toBe(DimoProviderLimiterDecision.ALLOW);
       expect(await replicaB.redis.zcard(dimoProviderInflightKey())).toBe(1);
 
-      await replicaB.limiter.end(recovered.leaseId);
-      await replicaA.limiter.end(held.leaseId);
+      await replicaB.limiter.end(recovered.inFlightMember);
+      await replicaA.limiter.end(held.inFlightMember);
     });
 
     it('G: shadow WOULD_REJECT does not inflate in-flight accounting', async () => {
@@ -230,7 +248,7 @@ function baseBeginInput(
         rateLimitPerSecond: 100,
         rateBurst: 100,
       };
-      const gateway = new DimoProviderGateway(config, replicaA.limiter);
+      const { gateway } = createGatewayReplica(config);
       const invoke = jest.fn().mockResolvedValue('provider-ok');
 
       const startedAt = Date.now();
@@ -258,7 +276,7 @@ function baseBeginInput(
         enabled: true,
         mode: 'shadow',
       };
-      const gateway = new DimoProviderGateway(config, limiter);
+      const { gateway } = createGatewayReplica(config);
       const invoke = jest.fn().mockResolvedValue(99);
       await expect(
         gateway.execute({
@@ -266,6 +284,85 @@ function baseBeginInput(
           invoke,
         }),
       ).resolves.toBe(99);
+    });
+
+    it('I: P1 live traffic admitted when background fills in-flight cap', async () => {
+      const bgInput = baseBeginInput({
+        mode: 'enforce',
+        priority: DimoProviderRequestPriority.P4_BACKGROUND,
+        maxInFlight: 2,
+        reservedHighPrioritySlots: 1,
+        rateLimitPerSecond: 100,
+        rateBurst: 100,
+      });
+      const liveInput = {
+        ...bgInput,
+        priority: DimoProviderRequestPriority.P1_LIVE,
+      };
+
+      const bg1 = await replicaA.limiter.begin(bgInput);
+      const bg2 = await replicaB.limiter.begin(bgInput);
+      expect(bg1.inFlightDecision).toBe(DimoProviderLimiterDecision.ALLOW);
+      expect(bg2.inFlightDecision).toBe(DimoProviderLimiterDecision.ALLOW);
+
+      const bgBlocked = await replicaA.limiter.begin(bgInput);
+      expect(bgBlocked.inFlightDecision).toBe(DimoProviderLimiterDecision.WOULD_REJECT);
+
+      const live = await replicaB.limiter.begin(liveInput);
+      expect(live.inFlightDecision).toBe(DimoProviderLimiterDecision.ALLOW);
+
+      await replicaA.limiter.end(bg1.inFlightMember);
+      await replicaA.limiter.end(bg2.inFlightMember);
+      await replicaB.limiter.end(live.inFlightMember);
+    });
+
+    it('J: provider Retry-After cooldown is shared across replicas', async () => {
+      await replicaA.limiter.setProviderCooldown(2, 120);
+      const blocked = await replicaB.limiter.begin(baseBeginInput({ mode: 'enforce' }));
+      expect(blocked.rateDecision).toBe(DimoProviderLimiterDecision.WOULD_WAIT);
+      expect(blocked.inFlightDecision).toBe(DimoProviderLimiterDecision.WOULD_WAIT);
+      expect(blocked.providerCooldownActive).toBe(true);
+      expect(blocked.wouldDelayMs).toBeGreaterThan(0);
+
+      await new Promise((resolve) => setTimeout(resolve, 2_200));
+      const resumed = await replicaA.limiter.begin(baseBeginInput({ mode: 'enforce' }));
+      expect(resumed.providerCooldownActive).toBeUndefined();
+      expect(resumed.rateDecision).toBe(DimoProviderLimiterDecision.ALLOW);
+    });
+
+    it('K: enforce admission waits then grants when capacity frees', async () => {
+      const config: DimoProviderLimiterConfigShape = {
+        ...resolveDimoProviderLimiterConfig({ DIMO_PROVIDER_LIMITER_MODE: 'enforce' }),
+        enabled: true,
+        mode: 'enforce',
+        maxInFlight: 1,
+        maxWaitMs: 2_000,
+        maxWaitMsByPriority: {
+          ...resolveDimoProviderLimiterConfig().maxWaitMsByPriority,
+          [DimoProviderRequestPriority.P3_NORMAL]: 2_000,
+        },
+        admissionPollMinMs: 50,
+        admissionPollMaxMs: 100,
+      };
+      const { admission, limiter } = createAdmissionReplica(config);
+      const input = baseBeginInput({
+        mode: 'enforce',
+        maxInFlight: 1,
+        rateLimitPerSecond: 100,
+        rateBurst: 100,
+      });
+
+      const holder = await limiter.begin(input);
+      expect(holder.inFlightDecision).toBe(DimoProviderLimiterDecision.ALLOW);
+
+      const waiter = admission.acquire(input, { sleep: (ms) => new Promise((r) => setTimeout(r, ms)) });
+      setTimeout(() => {
+        void limiter.end(holder.inFlightMember);
+      }, 150);
+
+      const granted = await waiter;
+      expect(granted.inFlightDecision).toBe(DimoProviderLimiterDecision.ALLOW);
+      await limiter.end(granted.inFlightMember);
     });
 
     it('rate window: per-second bucket TTL and clean next window', async () => {
@@ -293,7 +390,7 @@ function baseBeginInput(
       expect(fresh.rateWindowCount).toBe(1);
 
       const keysAfter = await replicaB.redis.keys('dimo:provider:limiter:*');
-      expect(keysAfter.length).toBeLessThanOrEqual(2);
+      expect(keysAfter.length).toBeLessThanOrEqual(3);
     });
 
     it('C-rate: concurrent acquisitions respect global rate budget atomically', async () => {

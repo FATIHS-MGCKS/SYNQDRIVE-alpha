@@ -1,4 +1,5 @@
 import { resolveDimoProviderLimiterConfig } from './dimo-provider-limiter.config';
+import { DimoProviderRequestPriority } from '@modules/dimo/provider/dimo-provider-limiter.types';
 
 describe('dimo-provider-limiter.config', () => {
   const originalEnv = process.env;
@@ -39,5 +40,17 @@ describe('dimo-provider-limiter.config', () => {
     const config = resolveDimoProviderLimiterConfig(process.env);
     expect(config.rateLimitPerSecond).toBe(20);
     expect(config.maxInFlight).toBe(40);
+  });
+
+  it('parses S3 admission wait and cooldown settings', () => {
+    process.env.DIMO_PROVIDER_MAX_WAIT_MS = '8000';
+    process.env.DIMO_PROVIDER_RESERVED_HIGH_PRIORITY_SLOTS = '8';
+    process.env.DIMO_PROVIDER_RETRY_AFTER_MAX_SECONDS = '90';
+    const config = resolveDimoProviderLimiterConfig(process.env);
+    expect(config.maxWaitMs).toBe(8000);
+    expect(config.reservedHighPrioritySlots).toBe(8);
+    expect(config.retryAfterMaxSeconds).toBe(90);
+    expect(config.admissionPollMinMs).toBe(25);
+    expect(config.maxWaitMsByPriority[DimoProviderRequestPriority.P0_CRITICAL]).toBe(16_000);
   });
 });

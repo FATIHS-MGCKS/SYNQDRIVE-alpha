@@ -4,6 +4,8 @@ import { DimoTelemetryService } from './dimo-telemetry.service';
 import { DimoProviderGateway } from './provider/dimo-provider-gateway.service';
 import { DimoProviderOperation } from './provider/dimo-provider-gateway.types';
 import { DimoProviderLimiterService } from './provider/dimo-provider-limiter.service';
+import { DimoProviderAdmissionService } from './provider/dimo-provider-admission.service';
+import { DimoProviderRequestPriority } from './provider/dimo-provider-limiter.types';
 import type { DimoProviderLimiterConfigShape } from '@config/dimo-provider-limiter.config';
 
 jest.mock('axios');
@@ -17,13 +19,29 @@ function createOffGateway(): DimoProviderGateway {
     rateBurst: 5,
     maxInFlight: 40,
     inFlightLeaseMs: 45_000,
+    reservedHighPrioritySlots: 12,
+    maxWaitMs: 5_000,
+    maxWaitMsByPriority: {
+      [DimoProviderRequestPriority.P0_CRITICAL]: 10_000,
+      [DimoProviderRequestPriority.P1_LIVE]: 10_000,
+      [DimoProviderRequestPriority.P2_INTERACTIVE]: 5_000,
+      [DimoProviderRequestPriority.P3_NORMAL]: 3_750,
+      [DimoProviderRequestPriority.P4_BACKGROUND]: 2_500,
+    },
+    admissionPollMinMs: 25,
+    admissionPollMaxMs: 250,
+    retryAfterMaxSeconds: 120,
     documentedCoreRatePerSecond: 25,
   };
   const limiter = {
     begin: jest.fn(),
     end: jest.fn(),
+    setProviderCooldown: jest.fn(),
   } as unknown as DimoProviderLimiterService;
-  return new DimoProviderGateway(config, limiter);
+  const admission = {
+    acquire: jest.fn().mockImplementation((input) => limiter.begin(input)),
+  } as unknown as DimoProviderAdmissionService;
+  return new DimoProviderGateway(config, admission, limiter);
 }
 
 describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {

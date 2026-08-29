@@ -36,6 +36,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-provider-concurrency-p1-3-s3-priority-backpressure-2026-08-30',
+    version: '4.9.1005',
+    title: 'P1.3-S3 — Priority-aware DIMO provider enforcement / backpressure',
+    summary: [
+      'Canonical P0–P4 provider priority taxonomy with centralized category→priority mapping.',
+      'DimoProviderAdmissionService: bounded backpressure in enforce mode only; shadow remains non-blocking default.',
+      'Priority-aware in-flight admission: reserved high-priority slots protect P0/P1 live traffic under contention.',
+      'Central HTTP 429 Retry-After → Redis provider cooldown shared across replicas.',
+      'DimoProviderAdmissionTimeoutError when max wait exceeded — existing schedulers own retry/defer (no duplicate loops).',
+      'Prometheus: admission wait, backpressure, cooldown, priority-labeled requests.',
+      'Real Redis CI proofs: live-vs-background, shared cooldown, enforce wait→grant.',
+      'PERMANENT_TRIP_LOSS=NO; trip/snapshot/reconciliation semantics unchanged.',
+    ],
+    reason:
+      'P1.3-S3 — first real enforcement layer behind DimoProviderGateway with safe defaults (shadow) before production enforce rollout.',
+    previousBehavior:
+      'P1.3-S2 shadow limiter recorded would-reject without blocking; no priority lanes or Retry-After cooldown.',
+    details:
+      'backend: dimo-provider-admission.*, dimo-provider-priority.model.ts, limiter/gateway/metrics extensions. architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S3_PRIORITY_BACKPRESSURE_2026-08-30.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T22:40:00.000Z',
+  },
+  {
     id: 'dimo-provider-concurrency-p1-3-s2-redis-shadow-limiter-2026-08-29',
     version: '4.9.1004',
     title: 'P1.3-S2 — Redis-backed DIMO provider limiter (shadow mode)',
