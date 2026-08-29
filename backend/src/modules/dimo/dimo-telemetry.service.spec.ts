@@ -3,9 +3,28 @@ import { ConfigService } from '@nestjs/config';
 import { DimoTelemetryService } from './dimo-telemetry.service';
 import { DimoProviderGateway } from './provider/dimo-provider-gateway.service';
 import { DimoProviderOperation } from './provider/dimo-provider-gateway.types';
+import { DimoProviderLimiterService } from './provider/dimo-provider-limiter.service';
+import type { DimoProviderLimiterConfigShape } from '@config/dimo-provider-limiter.config';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+function createOffGateway(): DimoProviderGateway {
+  const config: DimoProviderLimiterConfigShape = {
+    enabled: false,
+    mode: 'off',
+    rateLimitPerSecond: 20,
+    rateBurst: 5,
+    maxInFlight: 40,
+    inFlightLeaseMs: 45_000,
+    documentedCoreRatePerSecond: 25,
+  };
+  const limiter = {
+    begin: jest.fn(),
+    end: jest.fn(),
+  } as unknown as DimoProviderLimiterService;
+  return new DimoProviderGateway(config, limiter);
+}
 
 describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
   let service: DimoTelemetryService;
@@ -17,7 +36,7 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
     postMock.mockReset();
     mockedAxios.create.mockReturnValue({ post: postMock } as any);
 
-    const gateway = new DimoProviderGateway();
+    const gateway = createOffGateway();
     gatewayExecuteSpy = jest.spyOn(gateway, 'execute');
 
     service = new DimoTelemetryService(
