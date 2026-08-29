@@ -7,7 +7,7 @@
 
 PR = #1417  
 BRANCH = `cursor/p13-global-dimo-provider-budget`  
-HEAD_COMMIT = `634405aeb39058ce073c2cd6a613730dfe9c3cb2`  
+HEAD_COMMIT = `6c927ab6bd780374b92fae3d496126616cdae3e9`  
 BASE_MAIN_COMMIT = `d221e766374dea2360b2e19636504882d5d662ce` (P1.2 FINAL-6 merged via #1409)  
 STATUS = **OPEN — READY FOR REVIEW — NOT MERGED — PRODUCTION_MUTATIONS = NONE**
 
@@ -42,8 +42,8 @@ N1000_RECOMMENDED_CONFIG = **See §12**
 PROVIDER_CEILING_VERIFIED = **NO**  
 N1000_CERTIFICATION = **CONDITIONALLY_CERTIFIED** (software architecture + tests; provider quota externally unverified)  
 PRODUCTION_MUTATIONS = **NONE**  
-TESTS = **GitHub CI (HEAD `634405ae`) — 25/25 SUCCESS** — Vehicle Detail CI gate 12/12 + Legal Documents CI gate 13/13  
-CI_STATUS = **SUCCESS** — runs `33272352721` (Vehicle Detail) + `33272352734` (Legal Documents) on `cursor/p13-global-dimo-provider-budget` @ `634405ae` (push event)  
+TESTS = **GitHub CI (HEAD `6c927ab6b`) — 25/25 SUCCESS** — Vehicle Detail CI gate 12/12 + Legal Documents CI gate 13/13  
+CI_STATUS = **SUCCESS** — runs `33272992067` (Vehicle Detail) + `33272992052` (Legal Documents) on `cursor/p13-global-dimo-provider-budget` @ `6c927ab6b` (push event)  
 NEXT_STAGE = **P1.7** (scheduler leader election before horizontal PM2 scale) **then** **P1.4** (reconciliation mutex/pacing under burst)
 
 ---
