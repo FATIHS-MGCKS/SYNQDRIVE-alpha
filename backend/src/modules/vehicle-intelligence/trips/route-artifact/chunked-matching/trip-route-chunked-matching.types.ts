@@ -55,7 +55,11 @@ export interface ChunkedMatchDiagnostics {
   chunkCount: number;
   failedChunkCount: number;
   retainedPointCount: number;
+  /** Logical chunk match operations (one per planned chunk). */
   mapboxRequestCount: number;
+  /** Actual Mapbox HTTP attempts including retries. */
+  mapboxRequestAttemptCount: number;
+  retryCount: number;
   chunkSuccessRatio: number;
   tracepointCoverage: number;
   weightedMatchConfidence: number;

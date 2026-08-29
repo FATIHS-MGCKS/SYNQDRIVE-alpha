@@ -7,11 +7,14 @@ export const TRIP_ROUTE_CHUNK_MAX_COORDINATES = 90;
 /** Deterministic overlap between adjacent chunks within a continuous segment. */
 export const TRIP_ROUTE_CHUNK_OVERLAP_COORDINATES = 10;
 
-/** Max retained measured points per continuous segment before chunking. */
-export const TRIP_ROUTE_TRAJECTORY_RETENTION_MAX = 10_000;
-
 /** Minimum bearing change (degrees) to always retain a trajectory point. */
 export const TRIP_ROUTE_TRAJECTORY_BEARING_THRESHOLD_DEG = 15;
+
+/** Max spacing between retained points on straight dense sections (meters). */
+export const TRIP_ROUTE_RETENTION_MAX_SPACING_METERS = 120;
+
+/** Max spacing between retained points on straight dense sections (seconds). */
+export const TRIP_ROUTE_RETENTION_MAX_SPACING_SECONDS = 45;
 
 /** Max seam distance (m) between stitched chunk boundaries. */
 export const TRIP_ROUTE_SEAM_MAX_DISTANCE_METERS = 25;

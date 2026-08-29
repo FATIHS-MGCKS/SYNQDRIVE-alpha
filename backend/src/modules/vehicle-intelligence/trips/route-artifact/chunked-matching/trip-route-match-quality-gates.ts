@@ -1,4 +1,5 @@
 import {
+  TRIP_ROUTE_CHUNK_OVERLAP_COORDINATES,
   TRIP_ROUTE_MATCH_MAX_DISTANCE_RATIO,
   TRIP_ROUTE_MATCH_MIN_CONFIDENCE,
   TRIP_ROUTE_MATCH_MIN_COVERAGE,
@@ -6,6 +7,7 @@ import {
   TRIP_ROUTE_SEAM_MAX_DISTANCE_METERS,
 } from './trip-route-chunked-matching.constants';
 import type { MapMatchedChunkResult } from './trip-route-chunked-matching.types';
+import { effectiveChunkSourceDistance } from './trip-route-overlap-leg-aggregator';
 
 export interface RouteMatchQualityInput {
   chunkResults: MapMatchedChunkResult[];
@@ -13,7 +15,8 @@ export interface RouteMatchQualityInput {
   matchedDistanceMeters: number;
   maxSeamDistanceMeters: number;
   seamFailures: string[];
-  matchedGeometry: import('../trip-route-geometry').TripRouteLngLat[];
+  geometryFailures: string[];
+  validSegmentCount: number;
 }
 
 export interface RouteMatchQualityEvaluation {
@@ -44,7 +47,16 @@ export function aggregateChunkMetrics(
   let confidenceSum = 0;
 
   for (const chunk of successful) {
-    const weight = Math.max(chunk.sourceDistanceMeters, 1);
+    const priorInSegment = successful.some(
+      (other) =>
+        other.segmentIndex === chunk.segmentIndex &&
+        other.chunkIndex < chunk.chunkIndex,
+    );
+    const weight = effectiveChunkSourceDistance(
+      chunk,
+      TRIP_ROUTE_CHUNK_OVERLAP_COORDINATES,
+      !priorInSegment,
+    );
     weightSum += weight;
     coverageSum += chunk.tracepointCoverage * weight;
     confidenceSum += chunk.confidence * weight;
@@ -90,10 +102,11 @@ export function evaluateRouteMatchQualityGates(
     failures.push('seam_distance_exceeded');
   }
 
-  if (!input.matchedGeometry || input.matchedGeometry.length < 2) {
+  if (input.validSegmentCount === 0) {
     failures.push('matched_geometry_invalid');
   }
 
+  failures.push(...input.geometryFailures);
   failures.push(...input.seamFailures);
 
   return {

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { resolveChunkTimestamps } from './route-artifact/chunked-matching/trip-route-mapbox-timestamps';
 
 export interface MapMatchedLeg {
   distance: number;
@@ -218,8 +219,9 @@ export class MapboxService {
     options: { tidy: boolean; radiusMeters?: number; timeoutMs?: number },
   ): Promise<MapMatchResult | null> {
     const coordStr = sampled.map((c) => `${c.longitude},${c.latitude}`).join(';');
-    const timestamps = sampled.every((c) => c.timestamp)
-      ? `&timestamps=${sampled.map((c) => Math.floor(new Date(c.timestamp!).getTime() / 1000)).join(';')}`
+    const timestampResolution = resolveChunkTimestamps(sampled);
+    const timestamps = timestampResolution.include && timestampResolution.timestamps
+      ? `&timestamps=${timestampResolution.timestamps.join(';')}`
       : '';
     const tidy = options.tidy ? '&tidy=true' : '';
     const radiuses =
@@ -253,7 +255,8 @@ export class MapboxService {
         return null;
       }
 
-      const matching = data.matchings[0];
+      const matching = this.selectCanonicalMatching(data.matchings);
+      if (!matching) return null;
       const matchedGeometry: [number, number][] = matching.geometry?.coordinates ?? [];
 
       const legs: MapMatchedLeg[] = (matching.legs ?? []).map((leg: any) => {
@@ -604,6 +607,28 @@ export class MapboxService {
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
+
+  private selectCanonicalMatching(matchings: any[]): any | null {
+    if (!matchings.length) return null;
+    if (matchings.length === 1) return matchings[0];
+
+    const selected = matchings.reduce((best, current) => {
+      const bestConfidence = best?.confidence ?? 0;
+      const currentConfidence = current?.confidence ?? 0;
+      if (currentConfidence > bestConfidence) return current;
+      if (currentConfidence === bestConfidence) {
+        const bestDistance = best?.distance ?? 0;
+        const currentDistance = current?.distance ?? 0;
+        return currentDistance > bestDistance ? current : best;
+      }
+      return best;
+    }, matchings[0]);
+
+    this.logger.debug(
+      `Mapbox returned ${matchings.length} matchings; selected confidence=${selected?.confidence ?? 0}`,
+    );
+    return selected;
+  }
 
   private inferRoadClassFromSpeed(avgSpeed: number | null, speedLimit: number | null): string {
     const ref = speedLimit ?? avgSpeed;

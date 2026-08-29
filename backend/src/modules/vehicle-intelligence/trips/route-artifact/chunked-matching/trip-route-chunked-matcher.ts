@@ -1,10 +1,8 @@
 import type { MapMatchedLeg, MapMatchResult } from '../../mapbox.service';
-import { MapboxService } from '../../mapbox.service';
 import type { TripRouteLngLat } from '../trip-route-geometry';
 import {
   TRIP_ROUTE_CHUNK_MAX_COORDINATES,
   TRIP_ROUTE_MAX_MAPBOX_REQUESTS_PER_TRIP,
-  TRIP_ROUTE_TRAJECTORY_RETENTION_MAX,
 } from './trip-route-chunked-matching.constants';
 import type {
   ChunkedMatchDiagnostics,
@@ -16,23 +14,37 @@ import { TripRouteMatchRetryableError } from './trip-route-chunked-matching.erro
 import { planRouteChunks } from './trip-route-chunk-planner';
 import { splitFilteredPointsByGaps, mapGapsToMatchedBoundaries } from './trip-route-gap-segments';
 import { retainTrajectoryPoints, sourceDistanceMeters } from './trip-route-trajectory-retention';
-import {
-  geometryDistanceMeters,
-  stitchChunkGeometries,
-} from './trip-route-chunk-stitcher';
+import { stitchChunkGeometries } from './trip-route-chunk-stitcher';
 import { evaluateRouteMatchQualityGates } from './trip-route-match-quality-gates';
+import {
+  aggregateRouteLegsWithoutOverlap,
+  effectiveChunkSourceDistance,
+} from './trip-route-overlap-leg-aggregator';
+import {
+  assertGeometryValidPerSegment,
+  filteredDistanceAcrossSegments,
+  flattenSegmentGeometries,
+  matchedDistanceAcrossSegments,
+  segmentPointCounts,
+} from './trip-route-segment-metrics';
 import type {
   MapboxChunkCoordinate,
   MapboxChunkMatchingClient,
   MapboxChunkMatchResponse,
 } from './mapbox-chunk-matching.client';
+import { TRIP_ROUTE_CHUNK_OVERLAP_COORDINATES } from './trip-route-chunked-matching.constants';
 
 const CHUNK_MAX_RETRIES = 2;
 const CHUNK_RETRY_BASE_MS = 250;
-const MAX_MATCHED_VERTEX_JUMP_METERS = 500;
 
 export interface ChunkedMatcherRunOptions {
   maxMapboxRequests?: number;
+}
+
+interface MapboxRequestBudget {
+  max: number;
+  attempts: number;
+  retries: number;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -83,6 +95,7 @@ async function matchChunkWithRetries(
   client: MapboxChunkMatchingClient,
   coords: MapboxChunkCoordinate[],
   attemptCache: Map<string, MapboxChunkMatchResponse>,
+  budget: MapboxRequestBudget,
 ): Promise<MapboxChunkMatchResponse> {
   const fingerprint = chunkCoordinateFingerprint(coords);
   const cached = attemptCache.get(fingerprint);
@@ -90,6 +103,15 @@ async function matchChunkWithRetries(
 
   let last: MapboxChunkMatchResponse | null = null;
   for (let attempt = 0; attempt <= CHUNK_MAX_RETRIES; attempt++) {
+    if (budget.attempts >= budget.max) {
+      throw new TripRouteMatchRetryableError(
+        `Mapbox request cap exceeded (${budget.max})`,
+      );
+    }
+
+    budget.attempts += 1;
+    if (attempt > 0) budget.retries += 1;
+
     last = await client.matchChunk(coords);
     if (last.ok || last.failureClass === 'NON_RETRYABLE') {
       attemptCache.set(fingerprint, last);
@@ -109,48 +131,29 @@ async function matchChunkWithRetries(
   return response;
 }
 
-function assertGeometryValid(geometry: TripRouteLngLat[]): string[] {
-  const failures: string[] = [];
-  if (geometry.length < 2) {
-    failures.push('matched_geometry_too_short');
-    return failures;
-  }
-  for (let i = 1; i < geometry.length; i++) {
-    const jump = MapboxService.haversineM(
-      geometry[i - 1][1],
-      geometry[i - 1][0],
-      geometry[i][1],
-      geometry[i][0],
-    );
-    if (jump > MAX_MATCHED_VERTEX_JUMP_METERS) {
-      failures.push('impossible_matched_jump');
-      break;
-    }
-  }
-  return failures;
-}
-
-function aggregateLegs(chunks: MapMatchedChunkResult[]): MapMatchedLeg[] {
-  const legs: MapMatchedLeg[] = [];
-  for (const chunk of chunks) {
-    if (chunk.status === 'SUCCESS') {
-      legs.push(...chunk.legs);
-    }
-  }
-  return legs;
-}
-
 function computeMatchCoverage(chunks: MapMatchedChunkResult[]): number {
   let eligible = 0;
   let covered = 0;
+
   for (const chunk of chunks) {
     if (chunk.status === 'SKIPPED') continue;
-    const weight = Math.max(chunk.sourceDistanceMeters, 1);
+    const priorInSegment = chunks.some(
+      (other) =>
+        other.segmentIndex === chunk.segmentIndex &&
+        other.chunkIndex < chunk.chunkIndex &&
+        other.status !== 'SKIPPED',
+    );
+    const weight = effectiveChunkSourceDistance(
+      chunk,
+      TRIP_ROUTE_CHUNK_OVERLAP_COORDINATES,
+      !priorInSegment,
+    );
     eligible += weight;
     if (chunk.status === 'SUCCESS') {
       covered += weight * chunk.tracepointCoverage;
     }
   }
+
   return eligible > 0 ? covered / eligible : 0;
 }
 
@@ -163,7 +166,6 @@ export async function runChunkedMatchPipeline(
   options: ChunkedMatcherRunOptions = {},
 ): Promise<ChunkedMatchPipelineResult> {
   const maxRequests = options.maxMapboxRequests ?? TRIP_ROUTE_MAX_MAPBOX_REQUESTS_PER_TRIP;
-  const filteredDistanceMeters = sourceDistanceMeters(input.filteredPoints);
 
   const emptyDiagnostics = (
     status: ChunkedMatchDiagnostics['matchingStatus'],
@@ -174,6 +176,8 @@ export async function runChunkedMatchPipeline(
     failedChunkCount: 0,
     retainedPointCount: 0,
     mapboxRequestCount: 0,
+    mapboxRequestAttemptCount: 0,
+    retryCount: 0,
     chunkSuccessRatio: 0,
     tracepointCoverage: 0,
     weightedMatchConfidence: 0,
@@ -201,24 +205,23 @@ export async function runChunkedMatchPipeline(
 
   const segments = splitFilteredPointsByGaps(input.filteredPoints, input.gaps);
   const allChunkResults: MapMatchedChunkResult[] = [];
+  const chunksBySegment: MapMatchedChunkResult[][] = [];
   const attemptCache = new Map<string, MapboxChunkMatchResponse>();
+  const budget: MapboxRequestBudget = { max: maxRequests, attempts: 0, retries: 0 };
   let mapboxRequestCount = 0;
   let retainedPointCount = 0;
   const segmentGeometries: TripRouteLngLat[][] = [];
-  const segmentPointCounts: number[] = [];
+  let filteredEligibleDistanceMeters = 0;
   let globalMaxSeam = 0;
   const globalSeamFailures: string[] = [];
 
   for (const segment of segments) {
     if (segment.points.length < 2) continue;
 
-    const retained =
-      segment.points.length > TRIP_ROUTE_CHUNK_MAX_COORDINATES
-        ? retainTrajectoryPoints(segment.points, TRIP_ROUTE_TRAJECTORY_RETENTION_MAX)
-        : segment.points;
+    const retained = retainTrajectoryPoints(segment.points);
     retainedPointCount += retained.length;
+    filteredEligibleDistanceMeters += sourceDistanceMeters(retained);
     const plans = planRouteChunks(retained.length, segment.segmentIndex);
-
     const segmentChunks: MapMatchedChunkResult[] = [];
 
     for (const plan of plans) {
@@ -230,15 +233,9 @@ export async function runChunkedMatchPipeline(
         continue;
       }
 
-      if (mapboxRequestCount >= maxRequests) {
-        throw new TripRouteMatchRetryableError(
-          `Mapbox request cap exceeded (${maxRequests})`,
-        );
-      }
-
-      const coords = toMapboxCoordinates(slice);
-      const response = await matchChunkWithRetries(client, coords, attemptCache);
       mapboxRequestCount += 1;
+      const coords = toMapboxCoordinates(slice);
+      const response = await matchChunkWithRetries(client, coords, attemptCache, budget);
 
       if (!response.ok) {
         if (response.failureClass === 'RETRYABLE') {
@@ -271,27 +268,32 @@ export async function runChunkedMatchPipeline(
     globalMaxSeam = Math.max(globalMaxSeam, stitch.maxSeamDistanceMeters);
     globalSeamFailures.push(...stitch.seamFailures);
     segmentGeometries.push(stitch.geometry);
-    segmentPointCounts.push(stitch.geometry.length);
+    chunksBySegment.push(segmentChunks);
     allChunkResults.push(...segmentChunks);
   }
 
-  const stitchedGeometry = segmentGeometries.flat();
+  const stitchedGeometry = flattenSegmentGeometries(segmentGeometries);
   const chunkCount = allChunkResults.length;
   const failedChunkCount = allChunkResults.filter((c) => c.status === 'FAILED').length;
-  const matchedDistanceMeters = geometryDistanceMeters(stitchedGeometry);
+  const matchedDistanceMeters = matchedDistanceAcrossSegments(segmentGeometries);
   const matchCoverage = computeMatchCoverage(allChunkResults);
-  const geometryFailures = assertGeometryValid(stitchedGeometry);
+  const geometryFailures = assertGeometryValidPerSegment(segmentGeometries);
+  const validSegmentCount = segmentGeometries.filter((geometry) => geometry.length >= 2).length;
 
   const quality = evaluateRouteMatchQualityGates({
     chunkResults: allChunkResults,
-    filteredDistanceMeters,
+    filteredDistanceMeters: filteredEligibleDistanceMeters,
     matchedDistanceMeters,
     maxSeamDistanceMeters: globalMaxSeam,
-    seamFailures: [...globalSeamFailures, ...geometryFailures],
-    matchedGeometry: stitchedGeometry,
+    seamFailures: globalSeamFailures,
+    geometryFailures,
+    validSegmentCount,
   });
 
-  const matchedSegmentBoundaries = mapGapsToMatchedBoundaries(input.gaps, segmentPointCounts);
+  const matchedSegmentBoundaries = mapGapsToMatchedBoundaries(
+    input.gaps,
+    segmentPointCounts(segmentGeometries),
+  );
 
   const diagnostics: ChunkedMatchDiagnostics = {
     segmentCount: segments.length,
@@ -299,6 +301,8 @@ export async function runChunkedMatchPipeline(
     failedChunkCount,
     retainedPointCount,
     mapboxRequestCount,
+    mapboxRequestAttemptCount: budget.attempts,
+    retryCount: budget.retries,
     chunkSuccessRatio: quality.chunkSuccessRatio,
     tracepointCoverage: quality.tracepointCoverage,
     weightedMatchConfidence: quality.weightedMatchConfidence,
@@ -324,7 +328,7 @@ export async function runChunkedMatchPipeline(
     };
   }
 
-  const legs = aggregateLegs(allChunkResults);
+  const legs = aggregateRouteLegsWithoutOverlap(chunksBySegment);
   const matchResult: MapMatchResult = {
     matchedGeometry: stitchedGeometry as [number, number][],
     legs,

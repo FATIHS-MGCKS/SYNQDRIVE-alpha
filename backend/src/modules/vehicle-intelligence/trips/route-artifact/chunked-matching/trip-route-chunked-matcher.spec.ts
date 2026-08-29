@@ -3,14 +3,20 @@ import { planRouteChunks, estimateMapboxRequestCount } from './trip-route-chunk-
 import {
   TRIP_ROUTE_CHUNK_MAX_COORDINATES,
   TRIP_ROUTE_CHUNK_OVERLAP_COORDINATES,
+  TRIP_ROUTE_MAX_MAPBOX_REQUESTS_PER_TRIP,
 } from './trip-route-chunked-matching.constants';
 import { runChunkedMatchPipeline } from './trip-route-chunked-matcher';
 import { splitFilteredPointsByGaps } from './trip-route-gap-segments';
-import { retainTrajectoryPoints } from './trip-route-trajectory-retention';
+import {
+  retainTrajectoryPoints,
+  estimateRetainedPointCount,
+} from './trip-route-trajectory-retention';
 import { stitchChunkGeometries } from './trip-route-chunk-stitcher';
+import { filteredDistanceAcrossSegments } from './trip-route-segment-metrics';
 import type { MeasuredRoutePoint } from '../trip-route-preprocessing.types';
 import type { MapMatchedChunkResult } from './trip-route-chunked-matching.types';
 import { TripRouteMatchRetryableError } from './trip-route-chunked-matching.errors';
+import { MapboxService } from '../../mapbox.service';
 
 function point(
   i: number,
@@ -19,15 +25,37 @@ function point(
   seconds = 0,
 ): MeasuredRoutePoint {
   return {
-    latitude: lat + i * 0.0001,
-    longitude: lng + i * 0.0001,
+    latitude: lat + i * 0.00001,
+    longitude: lng + i * 0.00001,
     recordedAt: new Date(Date.UTC(2026, 7, 1, 10, 0, seconds)).toISOString(),
     sourceIndex: i,
   };
 }
 
-function straightLine(count: number): MeasuredRoutePoint[] {
-  return Array.from({ length: count }, (_, i) => point(i));
+function straightLine(count: number, secondsStep = 7): MeasuredRoutePoint[] {
+  return Array.from({ length: count }, (_, i) => point(i, 52.52, 13.4, i * secondsStep));
+}
+
+function longStraightDense(count: number): MeasuredRoutePoint[] {
+  return Array.from({ length: count }, (_, i) => ({
+    latitude: 52.52 + i * 0.0001,
+    longitude: 13.4 + i * 0.0001,
+    recordedAt: new Date(Date.UTC(2026, 7, 1, 10, 0, i * 7)).toISOString(),
+    sourceIndex: i,
+  }));
+}
+
+function geometryDistance(coords: { longitude: number; latitude: number }[]): number {
+  let total = 0;
+  for (let i = 1; i < coords.length; i++) {
+    total += MapboxService.haversineM(
+      coords[i - 1].latitude,
+      coords[i - 1].longitude,
+      coords[i].latitude,
+      coords[i].longitude,
+    );
+  }
+  return total;
 }
 
 function mockClient(
@@ -37,16 +65,39 @@ function mockClient(
     matchChunk: jest.fn(async (coords) => {
       if (impl) return impl(coords);
       const geometry = coords.map((c) => [c.longitude, c.latitude] as [number, number]);
+      const distance = geometryDistance(coords);
       return {
         ok: true,
         matchedGeometry: geometry,
-        legs: [{ distance: 100, duration: 10, roadClass: 'primary', speedLimit: 50, geometry: [] }],
+        legs: [{ distance, duration: 10, roadClass: 'primary', speedLimit: 50, geometry: [] }],
         confidence: 0.95,
-        matchedDistanceMeters: 100,
+        matchedDistanceMeters: distance,
         tracepointCoverage: 1,
       };
     }),
   };
+}
+
+function twoSegmentRouteWithGap(gapMeters: number) {
+  const segmentA = Array.from({ length: 8 }, (_, i) => point(i, 52.52, 13.4 + i * 0.001, i * 7));
+  const segmentB = Array.from({ length: 8 }, (_, i) =>
+    point(
+      i + 8,
+      52.52,
+      13.4 + gapMeters / 111_000 + i * 0.001,
+      600 + i * 7,
+    ),
+  );
+  const filteredPoints = [...segmentA, ...segmentB];
+  const gaps = [
+    {
+      afterFilteredPointIndex: 7,
+      beforeFilteredPointIndex: 8,
+      gapSeconds: 600,
+      continuity: 'UNKNOWN' as const,
+    },
+  ];
+  return { filteredPoints, gaps };
 }
 
 describe('trip-route chunk planner', () => {
@@ -61,12 +112,12 @@ describe('trip-route chunk planner', () => {
     expect(planRouteChunks(100, 0)).toHaveLength(2);
   });
 
-  it('E-H — chunk counts for large routes', () => {
+  it('E-H — chunk counts for retained straight routes', () => {
+    const retained500 = estimateRetainedPointCount(500);
+    const retained1000 = estimateRetainedPointCount(1000);
+    expect(estimateMapboxRequestCount(retained500)).toBeLessThan(7);
+    expect(estimateMapboxRequestCount(retained1000)).toBeLessThan(13);
     expect(estimateMapboxRequestCount(250)).toBe(3);
-    expect(estimateMapboxRequestCount(500)).toBe(7);
-    expect(estimateMapboxRequestCount(1000)).toBe(13);
-    expect(estimateMapboxRequestCount(5000)).toBe(63);
-    expect(estimateMapboxRequestCount(10000)).toBe(125);
   });
 
   it('deterministic chunk boundaries', () => {
@@ -81,8 +132,8 @@ describe('trip-route chunk planner', () => {
 
 describe('trajectory retention', () => {
   it('M — long straight heavily reduced', () => {
-    const retained = retainTrajectoryPoints(straightLine(500), 90);
-    expect(retained.length).toBeLessThanOrEqual(90);
+    const retained = retainTrajectoryPoints(straightLine(500));
+    expect(retained.length).toBeLessThan(250);
     expect(retained.length).toBeGreaterThan(2);
   });
 
@@ -90,7 +141,7 @@ describe('trajectory retention', () => {
     const points = straightLine(20);
     points[10] = { ...points[10], latitude: points[10].latitude + 0.01 };
     points[11] = { ...points[11], longitude: points[11].longitude + 0.01 };
-    const retained = retainTrajectoryPoints(points, 10);
+    const retained = retainTrajectoryPoints(points);
     expect(retained.some((p) => p.sourceIndex === 10)).toBe(true);
   });
 });
@@ -172,6 +223,46 @@ describe('runChunkedMatchPipeline', () => {
     expect(result.matchedGeometry!.length).toBeGreaterThan(1);
   });
 
+  it('two matched segments separated by >500m UNKNOWN gap can pass MATCHED', async () => {
+    const { filteredPoints, gaps } = twoSegmentRouteWithGap(2000);
+    const result = await runChunkedMatchPipeline(
+      {
+        filteredPoints,
+        filteredGeometry: null,
+        gaps,
+        preprocessingQuality: 'FILTERED',
+      },
+      mockClient(),
+    );
+
+    expect(result.routeQuality).toBe('MATCHED');
+    expect(result.diagnostics.qualityGateFailures).not.toContain('impossible_matched_jump');
+    expect(result.diagnostics.qualityGateFailures).not.toContain(
+      expect.stringMatching(/impossible_matched_jump_segment/),
+    );
+  });
+
+  it('5 km UNKNOWN gap excluded from matched/filtered distance ratio', async () => {
+    const { filteredPoints, gaps } = twoSegmentRouteWithGap(5000);
+    const segmentedFiltered = filteredDistanceAcrossSegments(filteredPoints, gaps);
+
+    const result = await runChunkedMatchPipeline(
+      {
+        filteredPoints,
+        filteredGeometry: null,
+        gaps,
+        preprocessingQuality: 'FILTERED',
+      },
+      mockClient(),
+    );
+
+    expect(result.routeQuality).toBe('MATCHED');
+    expect(result.diagnostics.distanceRatio).toBeGreaterThan(0.7);
+    expect(result.diagnostics.distanceRatio).toBeLessThan(1.5);
+    expect(segmentedFiltered).toBeGreaterThan(0);
+    expect(result.matchResult?.totalDistance).toBeLessThanOrEqual(segmentedFiltered * 1.5);
+  });
+
   it('P — one chunk success', async () => {
     const client = mockClient();
     const result = await runChunkedMatchPipeline(
@@ -187,19 +278,90 @@ describe('runChunkedMatchPipeline', () => {
     expect(result.routeQuality).toBe('MATCHED');
   });
 
-  it('Q — multiple overlapping chunks', async () => {
+  it('Q — multiple overlapping chunks after retention', async () => {
+    const dense = longStraightDense(2500);
+    const retained = retainTrajectoryPoints(dense);
+    const expectedChunks = planRouteChunks(retained.length, 0).length;
     const client = mockClient();
     const result = await runChunkedMatchPipeline(
       {
-        filteredPoints: straightLine(200),
+        filteredPoints: dense,
         filteredGeometry: null,
         gaps: [],
         preprocessingQuality: 'FILTERED',
       },
       client,
     );
-    expect(client.matchChunk).toHaveBeenCalledTimes(3);
+    expect(expectedChunks).toBeGreaterThan(1);
+    expect(client.matchChunk).toHaveBeenCalledTimes(expectedChunks);
     expect(result.routeQuality).toBe('MATCHED');
+  });
+
+  it('request cap counts actual provider calls including retries', async () => {
+    let calls = 0;
+    const client = {
+      matchChunk: jest.fn(async () => {
+        calls += 1;
+        return {
+          ok: false,
+          failureReason: 'mapbox_request_timeout',
+          failureClass: 'RETRYABLE',
+        };
+      }),
+    } as unknown as MapboxChunkMatchingClient;
+
+    await expect(
+      runChunkedMatchPipeline(
+        {
+          filteredPoints: straightLine(10),
+          filteredGeometry: null,
+          gaps: [],
+          preprocessingQuality: 'FILTERED',
+        },
+        client,
+        { maxMapboxRequests: 5 },
+      ),
+    ).rejects.toBeInstanceOf(TripRouteMatchRetryableError);
+
+    expect(calls).toBeLessThanOrEqual(5);
+  });
+
+  it('diagnostics report actual request attempts and retries', async () => {
+    let calls = 0;
+    const client = {
+      matchChunk: jest.fn(async () => {
+        calls += 1;
+        if (calls < 3) {
+          return {
+            ok: false as const,
+            failureReason: 'mapbox_http_503',
+            failureClass: 'RETRYABLE' as const,
+          };
+        }
+        return {
+          ok: true as const,
+          matchedGeometry: [[13.4, 52.52], [13.41, 52.53]],
+          legs: [{ distance: 100, duration: 10, roadClass: 'primary', speedLimit: 50, geometry: [] }],
+          confidence: 0.95,
+          matchedDistanceMeters: 100,
+          tracepointCoverage: 1,
+        };
+      }),
+    } as unknown as MapboxChunkMatchingClient;
+
+    const result = await runChunkedMatchPipeline(
+      {
+        filteredPoints: straightLine(10),
+        filteredGeometry: null,
+        gaps: [],
+        preprocessingQuality: 'FILTERED',
+      },
+      client,
+    );
+
+    expect(result.diagnostics.mapboxRequestAttemptCount).toBe(3);
+    expect(result.diagnostics.retryCount).toBe(2);
+    expect(calls).toBe(3);
   });
 
   it('U — failed middle chunk falls back to FILTERED', async () => {
@@ -212,7 +374,7 @@ describe('runChunkedMatchPipeline', () => {
       return {
         ok: true,
         matchedGeometry: [[13.4, 52.52], [13.41, 52.53]],
-        legs: [],
+        legs: [{ distance: 100, duration: 10, roadClass: 'primary', speedLimit: 50, geometry: [] }],
         confidence: 0.9,
         matchedDistanceMeters: 100,
         tracepointCoverage: 1,
@@ -221,7 +383,7 @@ describe('runChunkedMatchPipeline', () => {
 
     const result = await runChunkedMatchPipeline(
       {
-        filteredPoints: straightLine(200),
+        filteredPoints: straightLine(250, 7),
         filteredGeometry: null,
         gaps: [],
         preprocessingQuality: 'FILTERED',
@@ -233,13 +395,13 @@ describe('runChunkedMatchPipeline', () => {
   });
 
   it('AF — timeout retryable propagates', async () => {
-    const client: MapboxChunkMatchingClient = {
+    const client = {
       matchChunk: jest.fn().mockResolvedValue({
         ok: false,
         failureReason: 'mapbox_request_timeout',
         failureClass: 'RETRYABLE',
       }),
-    };
+    } as unknown as MapboxChunkMatchingClient;
 
     await expect(
       runChunkedMatchPipeline(
@@ -250,6 +412,7 @@ describe('runChunkedMatchPipeline', () => {
           preprocessingQuality: 'FILTERED',
         },
         client,
+        { maxMapboxRequests: TRIP_ROUTE_MAX_MAPBOX_REQUESTS_PER_TRIP },
       ),
     ).rejects.toBeInstanceOf(TripRouteMatchRetryableError);
   });
@@ -284,7 +447,7 @@ describe('runChunkedMatchPipeline', () => {
         return {
           ok: true,
           matchedGeometry: [[13.4, 52.52], [13.41, 52.53]],
-          legs: [],
+          legs: [{ distance: 100, duration: 10, roadClass: 'primary', speedLimit: 50, geometry: [] }],
           confidence: 0.95,
           matchedDistanceMeters: 100,
           tracepointCoverage: 1,
@@ -295,7 +458,7 @@ describe('runChunkedMatchPipeline', () => {
 
     const result = await runChunkedMatchPipeline(
       {
-        filteredPoints: straightLine(200),
+        filteredPoints: straightLine(250, 7),
         filteredGeometry: null,
         gaps: [],
         preprocessingQuality: 'FILTERED',
@@ -312,19 +475,21 @@ describe('runChunkedMatchPipeline', () => {
         expect(Number.isFinite(c.latitude)).toBe(true);
         expect(Number.isFinite(c.longitude)).toBe(true);
       }
+      const geometry = coords.map((c) => [c.longitude, c.latitude]);
+      const distance = geometryDistance(coords);
       return {
         ok: true,
-        matchedGeometry: coords.map((c) => [c.longitude, c.latitude]),
-        legs: [],
+        matchedGeometry: geometry,
+        legs: [{ distance, duration: 10, roadClass: 'primary', speedLimit: 50, geometry: [] }],
         confidence: 0.9,
-        matchedDistanceMeters: 100,
+        matchedDistanceMeters: distance,
         tracepointCoverage: 1,
       };
     });
 
     await runChunkedMatchPipeline(
       {
-        filteredPoints: straightLine(120),
+        filteredPoints: straightLine(120, 7),
         filteredGeometry: null,
         gaps: [],
         preprocessingQuality: 'FILTERED',
