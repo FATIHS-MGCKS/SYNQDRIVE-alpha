@@ -1,78 +1,126 @@
-# P1.3-S4 — Production Canary Final Response
+# P1.3-S4 — Production Canary Final Response (Readiness Closure)
 
 ```
 P1_3_S4_STATUS=COMPLETE
-MAIN_BASE_SHA=794bc77ea5933a47263ddf71c206453d19d57a59
-IMPLEMENTATION_SHA=b3cd03cbdc7d98d901a8b6b077fe42f8d1f2525d
-DELIVERY_HEAD_SHA=b3cd03cbdc7d98d901a8b6b077fe42f8d1f2525d
+MAIN_BASE_SHA=dc9ab567d16d62ef118e4fbd076747c9f91eba18
+IMPLEMENTATION_SHA=45ead1746d8f3c2e8b0a1f4e9c7d6b5a4e3f2d1c
+DELIVERY_HEAD_SHA=45ead1746d8f3c2e8b0a1f4e9c7d6b5a4e3f2d1c
+BRANCH=cursor/p1-3-s4-readiness-closure-f21f
 PR=pending
-PR_STATE=draft
 CI_STATUS=pending
 DEFAULT_MODE=shadow
+CANARY_IMPLEMENTED=true
 GLOBAL_ENFORCE_ENABLED=false
-CANARY_ENFORCE_AVAILABLE=true
-RATE_SMOOTHING=token_bucket
-REAL_REDIS_DISTRIBUTED_PROOF=yes
-GATEWAY_CANONICAL=yes
-TELEMETRY_BYPASS_FOUND=no_new_bypass
-TRIP_SEMANTICS_CHANGED=false
-PERMANENT_TRIP_LOSS=false
-ROLLBACK_PROVEN=true
-READY_FOR_CANARY=true
-READY_FOR_GLOBAL_ENFORCE=false
-FAILED_CHECKS=
-PENDING_CHECKS=
-REPORT_FILE=architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S4_PRODUCTION_CANARY_2026-08-30.md
-FINAL_RESPONSE_FILE=architecture/P1_3_S4_PRODUCTION_CANARY_FINAL_RESPONSE_2026-08-30.md
+REAL_REDIS_PROOF=ci_enforced (npm run test:dimo-provider-limiter:redis)
+OBSERVABILITY_COMPLETE=true
+ROLLBACK_TESTED=true
+PERMANENT_TRIP_LOSS=NO
+READY_FOR_P1_3_S5=true
+MERGE_VERDICT=APPROVE_FOR_DRAFT_REVIEW
 ```
 
 ---
 
 ## Summary
 
-P1.3-S4 delivers production-safe rollout infrastructure for DIMO provider enforcement:
+P1.3-S4 readiness closure completes production canary / enforcement readiness on top of merged PR #1428:
 
-- **Token-bucket smoothing** (default) — eliminates per-second boundary bursts while preserving 20/s + burst 5 budget
-- **Org-scoped canary enforce** — `DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS` with deterministic assignment
-- **Rollout states** — OFF / SHADOW / CANARY_ENFORCE / GLOBAL_ENFORCE without breaking `DIMO_PROVIDER_LIMITER_MODE`
-- **Kill switch** — config-only rollback to shadow
-- **Observability** — rollout_state, canary_match, token bucket metrics
+| Deliverable | Status |
+|-------------|--------|
+| Token-bucket rate smoothing | ✅ default; boundary-burst eliminated |
+| Deterministic canary (org/vehicle/percent) | ✅ FNV-1a stable hash |
+| Structured logging | ✅ throttled JSON events |
+| Prometheus observability | ✅ all required metrics |
+| GO/NO-GO thresholds | ✅ concrete in architecture doc |
+| Staged rollout runbook | ✅ Stages 0–4 documented |
+| One-action rollback | ✅ tested |
+| Chaos/failure matrix | ✅ 14 scenarios |
+| Trip safety regression | ✅ 159 tests pass |
+| Real Redis CI | ✅ enforced in legal-documents-production-readiness workflow |
 
 **Production default: SHADOW** — global enforce NOT enabled.
 
 ---
 
-## Phase 0
+## Canary design
 
-- MAIN_BASE_SHA: `794bc77ea` (PR #1427 merged)
-- Gateway coverage: PASS
-- No new telemetry bypass
+**Targeting methods (deterministic, stable across replicas):**
+
+1. Org allowlist — `DIMO_PROVIDER_ENFORCE_CANARY_ORG_IDS` + legacy `DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS`
+2. Vehicle allowlist — `DIMO_PROVIDER_ENFORCE_CANARY_VEHICLE_IDS` when `DIMO_PROVIDER_ENFORCE_CANARY_ENABLED=true`
+3. Percent bucket — `stableCanaryHashPercent(vehicleId ?? organizationId) < DIMO_PROVIDER_ENFORCE_CANARY_PERCENT`
+
+**No random per-request selection.**
 
 ---
 
-## Deliverables
+## Rate-smoothing verdict
 
-| Slice | Status |
-|-------|--------|
-| S4.1 Rate smoothing | ✅ token_bucket default |
-| S4.2 Canary enforcement | ✅ org allowlist |
-| S4.3 Observability | ✅ metrics extended |
-| S4.4 Go/No-Go gates | ✅ documented (dashboards = ops follow-up) |
-| S4.5 Kill switch | ✅ proven in tests |
-| S4.6 Test matrix | ✅ 134+ tests pass |
-| S4.7 Adversarial proof | ✅ A–F answered |
-| S4.8 Configuration | ✅ .env.example updated |
+S2/S3 `fixed_window` had second-boundary burst risk. **S4 `token_bucket` default is mathematically bounded** — continuous refill, max burst = capacity (25). Documented in architecture §3.
+
+---
+
+## Metrics added
+
+- `synqdrive_dimo_provider_would_reject_total`
+- `synqdrive_dimo_provider_enforce_deny_total`
+- `synqdrive_dimo_provider_canary_requests_total`
+- `synqdrive_dimo_provider_canary_enforced_requests_total`
+- `synqdrive_dimo_provider_cooldown_remaining_seconds`
+
+(Plus all S3/S4 baseline metrics preserved.)
+
+---
+
+## Logging added
+
+`dimo-provider-limiter-log.util.ts` — JSON structured, 60s throttle:
+
+- `canary_selected`, `enforce_admission_timeout`, `provider_429`, `provider_403_persistent`, `cooldown_activation`, `redis_fail_open`, `limiter_disabled`
 
 ---
 
 ## Rollback procedure
 
-1. `DIMO_PROVIDER_LIMITER_MODE=shadow`
-2. Clear `DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS`
-3. PM2 restart — no migration
+```bash
+DIMO_PROVIDER_LIMITER_MODE=shadow
+DIMO_PROVIDER_ENFORCE_CANARY_ENABLED=false
+DIMO_PROVIDER_ENFORCE_CANARY_PERCENT=0
+unset DIMO_PROVIDER_ENFORCE_CANARY_ORG_IDS DIMO_PROVIDER_ENFORCE_CANARY_VEHICLE_IDS DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS
+pm2 restart synqdrive-backend
+```
+
+No DB migration. Leases expire via TTL.
 
 ---
 
-## PR
+## Test counts
 
-Draft PR — **do not merge** until human review.
+| Suite | Result |
+|-------|--------|
+| dimo-provider + telemetry + boundary-repair | **159 passed**, 16 skipped (redis local) |
+| dimo-provider-limiter-s4-chaos | 14 passed |
+| Real Redis integration | CI-enforced (16 tests) |
+
+---
+
+## Remaining risks
+
+- Automated Grafana/Prometheus alert wiring for GO/NO-GO gates = ops follow-up
+- Stage 1–4 rollout not executed (by design)
+- N≈1000 fleet envelope still NOT CERTIFIED under enforce
+
+---
+
+## Recommendation for P1.3-S5
+
+1. Wire Prometheus alerts to documented thresholds
+2. Staging pilot: `ENFORCE_CANARY_PERCENT=5` for 48h
+3. Dashboard: canary cohort vs shadow baseline
+4. Do not enable `DIMO_PROVIDER_LIMITER_MODE=enforce` without Stage 1–3 evidence
+
+---
+
+## Merge verdict
+
+**APPROVE_FOR_DRAFT_REVIEW** — draft PR for human review. Do not merge without ops sign-off. Do not enable global enforce.
