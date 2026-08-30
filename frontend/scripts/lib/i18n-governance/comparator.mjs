@@ -33,7 +33,17 @@ function buildBaselineSet(manifest) {
 }
 
 export function classifyFinding(finding, manifest) {
-  const fingerprint = finding.fingerprint ?? buildFindingFingerprint(finding);
+  const fingerprint =
+    finding.fingerprint ??
+    buildFindingFingerprint({
+      file: finding.file,
+      category: finding.category,
+      presentationOwner: finding.presentationOwner ?? '',
+      sample: finding.sample,
+      kind: finding.kind ?? '',
+      structuralContext: finding.structuralContext ?? 'module',
+      occurrenceOrdinal: finding.occurrenceOrdinal ?? 0,
+    });
   const baseline = buildBaselineSet(manifest);
 
   if (finding.category === 'FORMAT_LOCALE') {
@@ -122,7 +132,17 @@ export function classifyFinding(finding, manifest) {
 }
 
 export function isNewUnclassifiedActiveHostDebt(finding, classification, source, baseline) {
-  const fingerprint = finding.fingerprint ?? buildFindingFingerprint(finding);
+  const fingerprint =
+    finding.fingerprint ??
+    buildFindingFingerprint({
+      file: finding.file,
+      category: finding.category,
+      presentationOwner: finding.presentationOwner ?? '',
+      sample: finding.sample,
+      kind: finding.kind ?? '',
+      structuralContext: finding.structuralContext ?? 'module',
+      occurrenceOrdinal: finding.occurrenceOrdinal ?? 0,
+    });
   if (baseline.has(fingerprint)) return false;
   if (SEMANTIC_CLASSIFICATIONS.has(classification) && source !== 'default') return false;
   return ACTIONABLE_HOST_CLASSIFICATIONS.has(classification);

@@ -30,11 +30,16 @@ P2.3.2 adds enhanced presentation scanning, residual classification manifest, fi
 4. **Narrow semantic rules only** — Data Analyse, IAM RolesTab, Help Center SECTIONS TEXT corpus. No production-root wildcards.
 5. **Enforce-clean override** — broad rules cannot suppress enforce-clean findings; only exact fingerprint entries may classify them.
 
-## Fingerprint v2
+## Fingerprint v3
 
-`file + category + presentationOwner + kind + structuralContext + normalizedLiteral`
+`file + category + presentationOwner + kind + structuralContext + normalizedLiteral + occurrenceOrdinal`
 
-`structuralContext` = nearest enclosing function/component symbol (line-independent).
+- `structuralContext` = nearest enclosing function/component symbol (line-independent).
+- `occurrenceOrdinal` = zero-based index within the stable group  
+  `(file, structuralContext, category, presentationOwner, kind, normalizedLiteral)`, sorted by line/column.
+- `fingerprintVersion: 3` recorded in manifest and `governanceBaseline` metadata.
+
+Duplicate occurrences inside the same structural symbol no longer collapse to one identity. A second identical enforce-clean occurrence that is not in the baseline becomes `NEW_UNCLASSIFIED_ACTIVE_HOST_DEBT`.
 
 ## Inventory ownership
 

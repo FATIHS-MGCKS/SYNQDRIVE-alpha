@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { buildFindingFingerprint } from '../../scripts/lib/i18n-governance/fingerprint.mjs';
+import { buildFindingFingerprint, FINGERPRINT_VERSION } from '../../scripts/lib/i18n-governance/fingerprint.mjs';
 import {
   classifyFinding,
   compareFindingsToManifest,
@@ -94,7 +94,11 @@ describe('i18n governance scanner fixtures', () => {
   });
 });
 
-describe('i18n governance fingerprints v2', () => {
+describe('i18n governance fingerprints v3', () => {
+  it('exposes fingerprint version 3', () => {
+    expect(FINGERPRINT_VERSION).toBe(3);
+  });
+
   it('is deterministic for identical inputs', () => {
     const input = {
       file: 'rental/components/Demo.tsx',
@@ -103,6 +107,7 @@ describe('i18n governance fingerprints v2', () => {
       sample: 'Tooltip',
       kind: 'INDIRECT_PROP',
       structuralContext: 'DemoCard',
+      occurrenceOrdinal: 0,
     };
     expect(buildFindingFingerprint(input)).toBe(buildFindingFingerprint(input));
   });
@@ -118,6 +123,132 @@ function SaveButtonB() { return <button title="Save changes now" />; }
     expect(new Set(titleFindings.map((f) => f.fingerprint)).size).toBeGreaterThanOrEqual(2);
   });
 
+  it('distinguishes duplicate occurrences in the same symbol', () => {
+    const source = `
+function A() {
+  return (
+    <>
+      <button title="Save changes now" />
+      <button title="Save changes now" />
+    </>
+  );
+}
+`;
+    const findings = scanSource('rental/components/Demo.tsx', source, { includeEnhanced: true });
+    const saveFindings = findings.filter(
+      (f) => f.sample === 'Save changes now' && f.category === 'TITLE',
+    );
+    expect(saveFindings).toHaveLength(2);
+    expect(new Set(saveFindings.map((f) => f.fingerprint)).size).toBe(2);
+    expect(saveFindings.map((f) => f.occurrenceOrdinal).sort()).toEqual([0, 1]);
+  });
+
+  it('detects one new debt when a duplicate is inserted before the baseline occurrence', () => {
+    const baselineSource = `
+function A() {
+  return <button title="Save changes now" />;
+}
+`;
+    const modifiedSource = `
+function A() {
+  return (
+    <>
+      <button title="Save changes now" />
+      <button title="Save changes now" />
+    </>
+  );
+}
+`;
+    const baselineFindings = scanSource('rental/components/Demo.tsx', baselineSource, {
+      includeEnhanced: true,
+    });
+    const modifiedFindings = scanSource('rental/components/Demo.tsx', modifiedSource, {
+      includeEnhanced: true,
+    });
+    const manifest = {
+      ...emptyBaselineManifest(),
+      baselineFingerprints: baselineFindings.map((finding) => finding.fingerprint),
+      fingerprintVersion: FINGERPRINT_VERSION,
+    };
+    const comparison = compareFindingsToManifest(modifiedFindings, manifest);
+    expect(baselineFindings).toHaveLength(1);
+    expect(modifiedFindings).toHaveLength(2);
+    expect(comparison.newUnclassifiedActiveHostDebtCount).toBe(1);
+    expect(
+      modifiedFindings.filter((finding) => manifest.baselineFingerprints.includes(finding.fingerprint)),
+    ).toHaveLength(1);
+  });
+
+  it('detects one new debt when a duplicate is inserted after the baseline occurrence', () => {
+    const baselineSource = `
+function A() {
+  return <button title="Save changes now" />;
+}
+`;
+    const modifiedSource = `
+function A() {
+  return (
+    <>
+      <button title="Save changes now" />
+      <button title="Save changes now" />
+    </>
+  );
+}
+`;
+    const baselineFindings = scanSource('rental/components/Demo.tsx', baselineSource, {
+      includeEnhanced: true,
+    });
+    const modifiedFindings = scanSource('rental/components/Demo.tsx', modifiedSource, {
+      includeEnhanced: true,
+    });
+    const manifest = {
+      ...emptyBaselineManifest(),
+      baselineFingerprints: baselineFindings.map((finding) => finding.fingerprint),
+      fingerprintVersion: FINGERPRINT_VERSION,
+    };
+    const comparison = compareFindingsToManifest(modifiedFindings, manifest);
+    expect(comparison.newUnclassifiedActiveHostDebtCount).toBe(1);
+    expect(
+      modifiedFindings.filter((finding) => manifest.baselineFingerprints.includes(finding.fingerprint)),
+    ).toHaveLength(1);
+  });
+
+  it('detects two new debts when three identical occurrences exist against a single baseline occurrence', () => {
+    const baselineSource = `
+function A() {
+  return <button title="Save changes now" />;
+}
+`;
+    const modifiedSource = `
+function A() {
+  return (
+    <>
+      <button title="Save changes now" />
+      <button title="Save changes now" />
+      <button title="Save changes now" />
+    </>
+  );
+}
+`;
+    const baselineFindings = scanSource('rental/components/Demo.tsx', baselineSource, {
+      includeEnhanced: true,
+    });
+    const modifiedFindings = scanSource('rental/components/Demo.tsx', modifiedSource, {
+      includeEnhanced: true,
+    });
+    const manifest = {
+      ...emptyBaselineManifest(),
+      baselineFingerprints: baselineFindings.map((finding) => finding.fingerprint),
+      fingerprintVersion: FINGERPRINT_VERSION,
+    };
+    const comparison = compareFindingsToManifest(modifiedFindings, manifest);
+    expect(modifiedFindings).toHaveLength(3);
+    expect(comparison.newUnclassifiedActiveHostDebtCount).toBe(2);
+    expect(
+      modifiedFindings.filter((finding) => manifest.baselineFingerprints.includes(finding.fingerprint)),
+    ).toHaveLength(1);
+  });
+
   it('distinguishes identical literals with different presentation owners', () => {
     const a = buildFindingFingerprint({
       file: 'rental/components/Demo.tsx',
@@ -126,6 +257,7 @@ function SaveButtonB() { return <button title="Save changes now" />; }
       sample: 'Speichern',
       kind: 'DIRECT_PROP',
       structuralContext: 'Demo',
+      occurrenceOrdinal: 0,
     });
     const b = buildFindingFingerprint({
       file: 'rental/components/Demo.tsx',
@@ -134,6 +266,7 @@ function SaveButtonB() { return <button title="Save changes now" />; }
       sample: 'Speichern',
       kind: 'DIRECT_PROP',
       structuralContext: 'Demo',
+      occurrenceOrdinal: 0,
     });
     expect(a).not.toBe(b);
   });
@@ -153,11 +286,64 @@ function Demo() {
 
 }
 `;
-    const compactFp = scanSource('rental/components/Demo.tsx', compact, { includeEnhanced: true })[0]
-      ?.fingerprint;
-    const shiftedFp = scanSource('rental/components/Demo.tsx', shifted, { includeEnhanced: true })[0]
-      ?.fingerprint;
-    expect(compactFp).toBe(shiftedFp);
+    const compactFindings = scanSource('rental/components/Demo.tsx', compact, { includeEnhanced: true });
+    const shiftedFindings = scanSource('rental/components/Demo.tsx', shifted, { includeEnhanced: true });
+    expect(compactFindings.map((finding) => finding.fingerprint)).toEqual(
+      shiftedFindings.map((finding) => finding.fingerprint),
+    );
+  });
+
+  it('keeps the baseline-known Save fingerprint when unrelated presentation is inserted before it', () => {
+    const baselineSource = `
+function A() {
+  return <button title="Save changes now" />;
+}
+`;
+    const modifiedSource = `
+function A() {
+  return (
+    <>
+      <button title="Different label text" />
+      <button title="Save changes now" />
+    </>
+  );
+}
+`;
+    const baselineFindings = scanSource('rental/components/Demo.tsx', baselineSource, {
+      includeEnhanced: true,
+    });
+    const modifiedFindings = scanSource('rental/components/Demo.tsx', modifiedSource, {
+      includeEnhanced: true,
+    });
+    const manifest = {
+      ...emptyBaselineManifest(),
+      baselineFingerprints: baselineFindings.map((finding) => finding.fingerprint),
+      fingerprintVersion: FINGERPRINT_VERSION,
+    };
+    const comparison = compareFindingsToManifest(modifiedFindings, manifest);
+    const saveFindings = modifiedFindings.filter((finding) => finding.sample === 'Save changes now');
+    expect(saveFindings).toHaveLength(1);
+    expect(manifest.baselineFingerprints).toContain(saveFindings[0]?.fingerprint);
+    expect(comparison.newUnclassifiedActiveHostDebtCount).toBe(1);
+    expect(
+      comparison.newUnclassifiedActiveHostDebt.every((finding) => finding.sample === 'Different label text'),
+    ).toBe(true);
+  });
+
+  it('distinguishes duplicate module-level presentation literals', () => {
+    const source = `
+toast("Save changes now");
+toast("Save changes now");
+export function Demo() {
+  return null;
+}
+`;
+    const findings = scanSource('rental/components/Demo.tsx', source, { includeEnhanced: true });
+    const saveFindings = findings.filter((finding) => finding.sample === 'Save changes now');
+    expect(saveFindings).toHaveLength(2);
+    expect(saveFindings.every((finding) => finding.structuralContext === 'module')).toBe(true);
+    expect(new Set(saveFindings.map((finding) => finding.fingerprint)).size).toBe(2);
+    expect(saveFindings.map((finding) => finding.occurrenceOrdinal).sort()).toEqual([0, 1]);
   });
 
   it('changes when literal changes', () => {
@@ -168,6 +354,7 @@ function Demo() {
       sample: 'Speichern',
       kind: 'DIRECT_PROP',
       structuralContext: 'Demo',
+      occurrenceOrdinal: 0,
     });
     const after = buildFindingFingerprint({
       file: 'rental/components/Demo.tsx',
@@ -176,6 +363,7 @@ function Demo() {
       sample: 'Sichern',
       kind: 'DIRECT_PROP',
       structuralContext: 'Demo',
+      occurrenceOrdinal: 0,
     });
     expect(before).not.toBe(after);
   });

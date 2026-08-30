@@ -81,9 +81,11 @@ Seeded rules (not blanket ignores): master deferred, operator deferred, shell/sh
 
 ## PART G — Fingerprint model
 
-`sha256(file + category + presentationOwner + kind + normalizedLiteral).slice(0,16)`
+**PRE-CORRECTION (v2):** `sha256(file + category + presentationOwner + kind + normalizedLiteral).slice(0,16)`
 
-Line-independent; literal/context change produces new fingerprint.
+**CURRENT STATE (v3):** `sha256(file + category + presentationOwner + kind + structuralContext + normalizedLiteral + occurrenceOrdinal).slice(0,16)`
+
+`occurrenceOrdinal` disambiguates duplicate occurrences within the same structural symbol and signature group. Manifest records `fingerprintVersion: 3`.
 
 ---
 
@@ -115,11 +117,9 @@ Line-independent; literal/context change produces new fingerprint.
 | Rental | 144 | 139 | 312 | toast, indirect props, setError |
 | Finance/Billing | 25 | 24 | 42 | enhanced presentation |
 
-**Newly discovered active host debt (enforce-clean, enhanced): 78**
+**PRE-CORRECTION:** 78 enforce-clean host-presentation findings (primarily toast/setError) for dedicated remediation before P2.3.3.
 
-Top surfaces: `rental/App.tsx` (cleaning toasts), `BookingsView.tsx`, `NewBookingView.tsx`, `BookingDossier.tsx`, customer detail hooks.
-
-**Verdict:** Pre-closeout debt hidden by scanner blind spots (primarily toast/setError/indirect props). **Not remediated in P2.3.2.**
+**CURRENT STATE:** 85 `ACTIVE_REMEDIATION_REQUIRED` enforce-clean findings after fingerprint v3 exposed 6 previously collapsed duplicate occurrences (+68 total enhanced findings, baseline recaptured at 1627).
 
 ---
 
@@ -138,18 +138,18 @@ Deterministic: repeated governance runs produce identical counts and fingerprint
 
 **P2.3.3** — changed-file PR gate using comparator + `NEW_UNCLASSIFIED_ACTIVE_HOST_DEBT` blocking.
 
-**Blocker before P2.3.3:** remediate 79 `ACTIVE_REMEDIATION_REQUIRED` enforce-clean findings (dedicated micro-slice PR).
+**Blocker before P2.3.3:** remediate 85 `ACTIVE_REMEDIATION_REQUIRED` enforce-clean findings (dedicated micro-slice PR).
 
 ---
 
-## Validation
+## Validation (CURRENT STATE)
 
 | Check | Result |
 |-------|--------|
-| `npm run i18n:scanner:test` | PASS (29/29) |
+| `npm run i18n:scanner:test` | PASS (45/45) |
 | `npm run i18n:check` | PASS |
 | `npm run check:surface` | PASS |
-| `npm run i18n:governance` | Exit 2 (expected — reports 79 active debt) |
+| `npm run i18n:governance` | Exit 2 (expected — reports 85 active debt) |
 | Typecheck | PASS |
 | Build | PASS |
 | Category E | 0 |
@@ -173,6 +173,19 @@ Enhanced active remediation findings: **79** (was 78 pre-fingerprint-v2; +1 from
 
 ---
 
+## PART N — Fingerprint v3 occurrence safety (2026-08-30)
+
+| Change | Detail |
+|--------|--------|
+| Fingerprint v3 | Adds `occurrenceOrdinal` within `(file, structuralContext, category, presentationOwner, kind, normalizedLiteral)` |
+| Manifest | `fingerprintVersion: 3`; baseline recaptured (1627 fingerprints) |
+| Duplicate safety | Second identical occurrence in same symbol no longer inherits baseline invisibly |
+| Active remediation | 85 (was 79; +6 previously collapsed duplicate enforce-clean occurrences) |
+| Legacy scanner | Unchanged (1241 / 144 / 25) |
+| Tests | 45/45 including insert-before/after, 1→3 duplicate, blank-line stability |
+
+---
+
 ## Final verdict
 
-**B — P2.3.2 IMPLEMENTED — NEW ACTIVE HOST DEBT DISCOVERED — REMEDIATION REQUIRED BEFORE P2.3.3**
+**B — P2.3.2 IMPLEMENTED — FINGERPRINT V3 DUPLICATE SAFETY COMPLETE — REMEDIATION REQUIRED BEFORE P2.3.3**

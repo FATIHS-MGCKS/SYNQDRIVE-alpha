@@ -6,7 +6,7 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildFindingFingerprint } from './lib/i18n-governance/fingerprint.mjs';
+import { finalizeGovernanceFindings } from './lib/i18n-governance/fingerprint.mjs';
 import { collectIndirectPresentationFindings } from './lib/i18n-governance/presentation-analysis.mjs';
 import { extractStructuralContext } from './lib/i18n-governance/structural-context.mjs';
 
@@ -1019,14 +1019,6 @@ function enrichFinding(finding, source = '') {
   return {
     ...finding,
     structuralContext,
-    fingerprint: buildFindingFingerprint({
-      file: finding.file,
-      category: finding.category,
-      presentationOwner: finding.presentationOwner ?? '',
-      sample: finding.sample,
-      kind: finding.kind ?? '',
-      structuralContext,
-    }),
   };
 }
 
@@ -1077,8 +1069,12 @@ function summarize(findings) {
 
 export function scanSource(relPath, source, options = {}) {
   const fakePath = join(srcRoot, relPath);
-  return dedupeFindings(collectAllFindings(fakePath, source, options), {
-    mode: 'fingerprint',
+  const rawFindings = collectAllFindings(fakePath, source, options);
+  if (options.includeEnhanced) {
+    finalizeGovernanceFindings(rawFindings);
+  }
+  return dedupeFindings(rawFindings, {
+    mode: options.includeEnhanced ? 'fingerprint' : 'legacy',
   });
 }
 
@@ -1090,6 +1086,9 @@ export function scanRepository(options = {}) {
     const source = readFileSync(file, 'utf8');
     return collectAllFindings(file, source, { includeEnhanced });
   });
+  if (includeEnhanced) {
+    finalizeGovernanceFindings(rawFindings);
+  }
   const findings = dedupeFindings(rawFindings, {
     mode: includeEnhanced ? 'fingerprint' : 'legacy',
   });

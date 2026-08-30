@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { isKnownClassification, CLASSIFICATIONS } from './classifications.mjs';
-import { buildFindingFingerprint, buildManifestEntryFingerprint } from './fingerprint.mjs';
+import { buildFindingFingerprint, buildManifestEntryFingerprint, FINGERPRINT_VERSION } from './fingerprint.mjs';
 
 const BROAD_PRODUCTION_ROOT_PATTERNS = [
   /^\^master\/\$$/,
@@ -45,6 +45,15 @@ export function validateManifestSchema(manifest) {
 
   if (manifest.version !== 2) {
     errors.push(`Unsupported manifest version: ${manifest.version}`);
+  }
+
+  if (
+    manifest.fingerprintVersion !== undefined &&
+    manifest.fingerprintVersion !== FINGERPRINT_VERSION
+  ) {
+    errors.push(
+      `Unsupported fingerprint version: ${manifest.fingerprintVersion} (expected ${FINGERPRINT_VERSION})`,
+    );
   }
 
   const seenFingerprints = new Set();

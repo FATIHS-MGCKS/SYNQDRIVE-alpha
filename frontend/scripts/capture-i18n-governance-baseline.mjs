@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanRepository } from './i18n-hardcoded-scan.mjs';
+import { FINGERPRINT_VERSION } from './lib/i18n-governance/fingerprint.mjs';
 import { validateManifestSchema } from './lib/i18n-governance/manifest-validator.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -15,10 +16,12 @@ const manifestPath = join(frontendRoot, 'src/i18n/i18n-debt-classifications.json
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const { findings } = scanRepository({ includeEnhanced: true });
 manifest.baselineFingerprints = findings.map((finding) => finding.fingerprint).sort();
+manifest.fingerprintVersion = FINGERPRINT_VERSION;
 manifest.governanceBaseline = {
   capturedAt: new Date().toISOString().slice(0, 10),
   capturedFromSha: process.env.I18N_BASELINE_SHA ?? '381671605ea1cd55844518312839b0f7d99a48bd',
   mode: 'enhanced',
+  fingerprintVersion: FINGERPRINT_VERSION,
   findingCount: findings.length,
 };
 
