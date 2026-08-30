@@ -25,6 +25,7 @@ import {
   DrivingIntelligenceJobRetryableError,
   DRIVING_INTELLIGENCE_JOB_ERROR_CODES,
 } from '../driving-intelligence-jobs/driving-intelligence-jobs.errors';
+import { buildDimoProviderRequestContext } from '../../dimo/provider/dimo-provider-request-context.util';
 
 export interface TripEnrichmentResult {
   citySharePercent: number;
@@ -294,15 +295,30 @@ export class TripsService {
     if (!tokenId) return null;
 
     const endTime = trip.endTime ?? new Date();
+    const providerContext = buildDimoProviderRequestContext(tokenId, {
+      organizationId,
+      vehicleId,
+    });
 
     const [routePoints, tempReadings, perfReadings] = await Promise.all([
-      this.segments.fetchRouteEnrichment(tokenId, trip.startTime, endTime),
+      this.segments.fetchRouteEnrichment(
+        tokenId,
+        trip.startTime,
+        endTime,
+        providerContext,
+      ),
       this.segments.fetchEnvironmentTemperature(
         tokenId,
         trip.startTime,
         endTime,
+        providerContext,
       ),
-      this.segments.fetchPerformance(tokenId, trip.startTime, endTime),
+      this.segments.fetchPerformance(
+        tokenId,
+        trip.startTime,
+        endTime,
+        providerContext,
+      ),
     ]);
 
     // Route V2 R2: persist canonical measured waypoints first (durable RAW authority),

@@ -29,6 +29,7 @@ import { isPrismaUniqueViolation } from '@shared/database/prisma-error.util';
 import { RedisService } from '@shared/redis/redis.service';
 import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
+import { buildDimoProviderRequestContext } from '@modules/dimo/provider/dimo-provider-request-context.util';
 import { VehicleProviderConsentService } from './vehicle-provider-consent.service';
 import { BatteryCapabilityRefreshService } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-refresh.service';
 import { BatteryCapabilityRefreshTrigger } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-lifecycle.policy';
@@ -1825,9 +1826,17 @@ export class VehiclesService {
         const jwt = await this.dimoAuth.getVehicleJwt(
           vehicle.dimoVehicle!.tokenId!,
         );
+        const liveContext = buildDimoProviderRequestContext(
+          vehicle.dimoVehicle!.tokenId!,
+          {
+            organizationId,
+            vehicleId,
+          },
+        );
         const raw = await this.dimoTelemetry.fetchLastSeenLocation(
           jwt,
           vehicle.dimoVehicle!.tokenId!,
+          liveContext,
         );
         const data = (raw as any)?.data ?? raw;
         const signals = Array.isArray(data?.signalsLatest)
@@ -1946,7 +1955,15 @@ export class VehiclesService {
 
     try {
       const jwt = await this.dimoAuth.getVehicleJwt(tokenId);
-      const raw = await this.dimoTelemetry.fetchLastSeenLocation(jwt, tokenId);
+      const liveContext = buildDimoProviderRequestContext(tokenId, {
+        organizationId,
+        vehicleId,
+      });
+      const raw = await this.dimoTelemetry.fetchLastSeenLocation(
+        jwt,
+        tokenId,
+        liveContext,
+      );
       const data = (raw as any)?.data ?? raw;
       const signals = Array.isArray(data?.signalsLatest)
         ? data.signalsLatest[0]

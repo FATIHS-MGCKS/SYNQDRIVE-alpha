@@ -115,7 +115,13 @@ export class RpmWebhookCandidateService {
         `RPM webhook candidate for vehicle ${input.vehicle.id}: ${input.observedValue} rpm (threshold ${threshold})`,
       );
 
-      const status = await this.enrichCandidateBestEffort(row.id, input.tokenId, input.observedAt);
+      const status = await this.enrichCandidateBestEffort(
+        row.id,
+        input.tokenId,
+        input.observedAt,
+        input.vehicle.organizationId,
+        input.vehicle.id,
+      );
       return { outcome: 'created', candidateId: row.id, status };
     } catch (err: unknown) {
       this.logger.warn(
@@ -131,6 +137,8 @@ export class RpmWebhookCandidateService {
     candidateId: string,
     tokenId: number,
     observedAt: Date,
+    organizationId: string,
+    vehicleId: string,
   ): Promise<RpmWebhookCandidateStatus> {
     if (!this.contextEnrichment) {
       return RpmWebhookCandidateStatus.RECEIVED;
@@ -141,6 +149,8 @@ export class RpmWebhookCandidateService {
         anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT',
         anchorTimestamp: observedAt,
         tokenId,
+        organizationId,
+        vehicleId,
         engineSignalsApplicable: true,
       });
 

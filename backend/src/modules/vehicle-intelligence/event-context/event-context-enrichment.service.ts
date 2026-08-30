@@ -19,6 +19,8 @@ import {
   DimoSegmentsService,
   type HighFrequencyReading,
 } from '../../dimo/dimo-segments.service';
+import type { DimoProviderRequestContext } from '../../dimo/provider/dimo-provider-gateway.types';
+import { buildDimoProviderRequestContext } from '../../dimo/provider/dimo-provider-request-context.util';
 import {
   classifyDrivingIntelligenceJobError,
   DrivingIntelligenceJobRetryableError,
@@ -57,6 +59,8 @@ export interface EnrichAnchorContextInput {
   anchorType: AnchorType;
   anchorTimestamp: Date;
   tokenId: number;
+  organizationId?: string;
+  vehicleId?: string;
   engineSignalsApplicable: boolean;
   anchorEvent?: AnchorEventInfo | null;
   /** When true, HF provider errors propagate for job retry. */
@@ -271,6 +275,8 @@ export class EventContextEnrichmentService {
       anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT',
       anchorTimestamp,
       tokenId,
+      organizationId: event.organizationId ?? undefined,
+      vehicleId: event.vehicleId,
       engineSignalsApplicable: true,
       anchorEvent,
       throwOnProviderError: opts.throwOnProviderError,
@@ -292,7 +298,15 @@ export class EventContextEnrichmentService {
     let readings: HighFrequencyReading[] = [];
     let fetchError: string | null = null;
     try {
-      readings = await this.fetchContextSignals(input.tokenId, window.windowStart, window.windowEnd);
+      readings = await this.fetchContextSignals(
+        input.tokenId,
+        window.windowStart,
+        window.windowEnd,
+        buildDimoProviderRequestContext(input.tokenId, {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+        }),
+      );
     } catch (err) {
       fetchError = err instanceof Error ? err.message : String(err);
       this.logger.warn(
@@ -328,8 +342,14 @@ export class EventContextEnrichmentService {
     tokenId: number,
     windowStart: Date,
     windowEnd: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<HighFrequencyReading[]> {
-    return this.segments.fetchHighFrequency(tokenId, windowStart, windowEnd);
+    return this.segments.fetchHighFrequency(
+      tokenId,
+      windowStart,
+      windowEnd,
+      requestContext,
+    );
   }
 
   computeSignalStats(

@@ -408,6 +408,23 @@ cd backend && npm test -- --testPathPattern="dimo-provider|dimo-telemetry|partia
 - `REAL_WORLD_FUEL_EVENT_PROVEN=NO`
 - `REAL_WORLD_CHARGING_EVENT_PROVEN=NO`
 
+## 16. P1-001 Final Remediation nach Independent Re-Review (2026-08-30)
+
+**Quelle:** `architecture/P1_3_S4_INDEPENDENT_REREVIEW_2026-08-30.md` — P1_001=NOT_FIXED, P1_002=FIXED  
+**Audit:** `architecture/P1_3_S4_P1_001_CALL_SITE_AUDIT.md`
+
+### Warum die erste Remediation unvollständig war
+
+Infrastructure (`buildDimoProviderRequestContext`, Telemetry/Segments gateway wiring) war korrekt, aber **repository-weite Caller** in Trip-/Behavior-Enrichment, Braking-Intake, Shadow-Detector, Event-Context, Misuse-Reconcile, Segment-Validation, Battery-Proxy, Vehicle-Live-GPS und Ops-Skripten fehlten noch.
+
+### Vollständiger Fix (zweite Runde)
+
+- Alle registrierten Fahrzeugpfade propagieren jetzt `{ organizationId, vehicleId, tokenId }` wo verfügbar
+- `CONTEXT_UNAVAILABLE_BUT_REGISTERED_PATH = 0` (49 Call-Sites auditiert)
+- Architektur-Guard: `dimo-provider-call-site-audit.spec.ts` (CI-Fail bei Regression)
+- Canary-Konsistenz-Tests: `dimo-provider-registered-vehicle-context.regression.spec.ts`
+- P1-002 unverändert: `dimo-provider-cooldown-lifecycle.spec.ts` weiterhin PASS
+
 ---
 
 *Ende des Workflow-Handoffs — für unabhängige Nachkontrolle durch Review-Agent.*

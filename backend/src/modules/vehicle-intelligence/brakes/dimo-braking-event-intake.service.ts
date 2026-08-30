@@ -11,6 +11,7 @@ import {
   DimoSegmentsService,
   type DimoVehicleEventRecord,
 } from '../../dimo/dimo-segments.service';
+import type { DimoProviderRequestContext } from '../../dimo/provider/dimo-provider-gateway.types';
 import {
   assessDimoBrakingCapability,
   DIMO_BRAKING_RAW_SOURCE_VERSION,
@@ -72,16 +73,25 @@ export class DimoBrakingEventIntakeService {
     return assessDimoBrakingCapability(input);
   }
 
-  async fetchEventDataSummary(tokenId: number): Promise<DimoEventDataSummaryRow[]> {
-    return this.segments.fetchEventDataSummary(tokenId);
+  async fetchEventDataSummary(
+    tokenId: number,
+    requestContext?: DimoProviderRequestContext,
+  ): Promise<DimoEventDataSummaryRow[]> {
+    return this.segments.fetchEventDataSummary(tokenId, requestContext);
   }
 
   async fetchDrivingEventsPaginated(
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<DimoVehicleEventRecord[]> {
-    return this.segments.fetchDrivingEventsPaginated(tokenId, from, to);
+    return this.segments.fetchDrivingEventsPaginated(
+      tokenId,
+      from,
+      to,
+      requestContext,
+    );
   }
 
   async ingestBrakingEvent(

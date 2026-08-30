@@ -45,6 +45,7 @@ import { TripChEvidenceMirrorCoordinator } from './trip-ch-evidence-mirror.coord
 import { summarizeEvTractionPowerFromHf, type EvTractionPowerTripSummary } from './hf-recuperation';
 import { TripAssignmentService } from './trip-assignment.service';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
+import { buildDimoProviderRequestContext } from '../../dimo/provider/dimo-provider-request-context.util';
 import {
   type AnalysisAssessabilityContext,
   buildAssessabilityForLteR1Completed,
@@ -321,10 +322,16 @@ export class TripBehaviorEnrichmentService {
 
     this.logger.log(`HF enrichment starting for trip ${tripId} (${Math.round(durationMs / 60_000)}min)`);
 
+    const providerContext = buildDimoProviderRequestContext(tokenId, {
+      organizationId,
+      vehicleId,
+    });
+
     const rawReadings = await this.segments.fetchHighFrequency(
       tokenId,
       trip.startTime,
       trip.endTime,
+      providerContext,
     );
 
     if (rawReadings.length < 10) {
@@ -531,6 +538,7 @@ export class TripBehaviorEnrichmentService {
         tokenId,
         trip.startTime,
         trip.endTime,
+        providerContext,
       );
       fuelUpdate = buildFuelTripUpdate(
         trip.distanceKm,
@@ -769,13 +777,23 @@ export class TripBehaviorEnrichmentService {
 
     this.logger.log(`LTE_R1 enrichment starting for trip ${tripId}`);
 
+    const providerContext = buildDimoProviderRequestContext(tokenId, {
+      organizationId,
+      vehicleId,
+    });
+
     // ── 1. Ingest Driving Events from DIMO Telemetry API ─────────────────────
     const drivingResult = await this.lteR1.enrichTrip(tripId);
     const nativeEventCount = drivingResult?.drivingEventsIngested ?? 0;
     const nativeQuerySucceeded = drivingResult !== null;
 
     // ── 2. HF data fetch for abuse-only pipeline ──────────────────────────────
-    const rawReadings = await this.segments.fetchHighFrequency(tokenId, trip.startTime, trip.endTime);
+    const rawReadings = await this.segments.fetchHighFrequency(
+      tokenId,
+      trip.startTime,
+      trip.endTime,
+      providerContext,
+    );
 
     let abuseScore = 0;
     let allAbuse: AbuseEvent[] = [];
@@ -895,6 +913,7 @@ export class TripBehaviorEnrichmentService {
         tokenId,
         trip.startTime,
         trip.endTime,
+        providerContext,
       );
       fuelUpdate = buildFuelTripUpdate(
         trip.distanceKm,

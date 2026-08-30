@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-provider-p1-001-final-remediation-2026-08-30',
+    version: '4.9.1009',
+    title: 'P1.3-S4 P1-001 final remediation — complete registered-vehicle context propagation',
+    summary: [
+      'Repository-wide audit: 49 provider call sites; zero registered-vehicle paths missing org/vehicle context.',
+      'Fixed trip enrichment, behavior enrichment, LTE_R1 braking intake, shadow detector, event-context, misuse reconcile, segment validation, battery proxy, live GPS.',
+      'Architectural guard: dimo-provider-call-site-audit.spec.ts fails CI on new category-C regressions.',
+      'Canary cross-path consistency regression tests for org/vehicle/percent canary.',
+    ],
+    reason:
+      'Independent re-review found P1-001 still NOT_FIXED — first remediation missed enrichment subsystem callers.',
+    previousBehavior:
+      'Percent/vehicle/org canary inconsistent on trip enrichment and related registered-vehicle DIMO paths.',
+    details:
+      'See architecture/P1_3_S4_P1_001_CALL_SITE_AUDIT.md. P1-002 cooldown lifecycle unchanged.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T10:00:00.000Z',
+  },
+  {
     id: 'dimo-provider-concurrency-p1-3-s4-review-remediation-2026-08-30',
     version: '4.9.1008',
     title: 'P1.3-S4 independent review remediation — requestContext + cooldown gauge',

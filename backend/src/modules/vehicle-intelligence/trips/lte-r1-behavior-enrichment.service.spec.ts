@@ -221,10 +221,6 @@ describe('LteR1BehaviorEnrichmentService.scheduleNativeEventContextJobs (P26 job
           { provide: PrismaService, useValue: {} },
           { provide: DimoSegmentsService, useValue: {} },
           {
-            provide: DrivingEventContextJobService,
-            useValue: { scheduleContextEnrichmentForTrip: jest.fn() },
-          },
-          {
             provide: VehicleDrivingCapabilityResolverService,
             useValue: { resolveForVehicle: jest.fn() },
           },
