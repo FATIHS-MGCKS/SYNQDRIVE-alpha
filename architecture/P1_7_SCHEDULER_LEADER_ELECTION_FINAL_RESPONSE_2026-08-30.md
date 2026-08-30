@@ -2,14 +2,8 @@
 
 **Date:** 2026-08-30  
 **Base:** `origin/main` @ implementation time  
-**PR:** TBD
-
----
-
-```
-P1_7_VERDICT = IMPLEMENTED — STAGING VALIDATION REQUIRED BEFORE MULTI-REPLICA PROD
-PR = TBD
-HEAD_COMMIT = TBD
+**PR:** TBD (opening after push)  
+**HEAD_COMMIT:** `89896bc50`
 
 ELECTION_MODEL = ONE_GLOBAL_SCHEDULER_LEADER
 LEASE_BACKEND = Redis SET NX PX + Lua compare-and-PEXPIRE/DEL (RedisDistributedLockService)
