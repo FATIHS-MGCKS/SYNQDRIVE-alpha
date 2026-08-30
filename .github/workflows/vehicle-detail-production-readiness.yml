@@ -13,7 +13,6 @@ on:
     branches:
       - main
       - 'cursor/vehicle-detail-*'
-      - 'cursor/p13-global-dimo-provider-budget'
 
 concurrency:
   group: vehicle-detail-ci-${{ github.ref }}

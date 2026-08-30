@@ -118,6 +118,11 @@ export class DimoSnapshotProcessor extends WorkerHost {
       const raw = await this.dimoTelemetry.fetchLatestVehicleSnapshot(
         vehicleJwt,
         dimoTokenId,
+        {
+          organizationId: vehicle.organizationId,
+          vehicleId,
+          tokenId: dimoTokenId,
+        },
       );
 
       const signals = this.extractSignalsLatest(raw);

@@ -37,7 +37,7 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
     id: 'dimo-global-provider-budget-p1-3-2026-08-29',
-    version: '4.9.1001',
+    version: '4.9.1007',
     title: 'P1.3 — Global DIMO provider budget (Redis lease semaphore)',
     summary: [
       'Redis-backed global DIMO provider budget via DimoProviderBudgetService + DimoRequestExecutor.',
@@ -59,6 +59,147 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-08-29T17:30:00.000Z',
+  },
+  {
+    id: 'dimo-provider-concurrency-p1-3-s4-production-canary-2026-08-30',
+    version: '4.9.1006',
+    title: 'P1.3-S4 — DIMO provider production canary, rate smoothing & rollout safety',
+    summary: [
+      'Token-bucket rate smoothing (default) replaces per-second boundary bursts — same 20/s+burst5 budget.',
+      'Org-scoped canary enforce via DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS — deterministic, no random sampling.',
+      'Rollout states: OFF / SHADOW / CANARY_ENFORCE / GLOBAL_ENFORCE derived from existing DIMO_PROVIDER_LIMITER_MODE.',
+      'organizationId threaded from snapshot processor → telemetry → gateway for canary decisions.',
+      'Enhanced metrics: rollout_state, canary_match, token bucket tokens, admitted requests.',
+      'Config-only kill switch: GLOBAL_ENFORCE or CANARY → SHADOW without migration.',
+      'Production default remains shadow — global enforce NOT enabled.',
+      'PERMANENT_TRIP_LOSS=NO; trip/snapshot/reconciliation semantics unchanged.',
+    ],
+    reason:
+      'P1.3-S4 — make DIMO provider enforcement safe to canary in production without global throttle activation.',
+    previousBehavior:
+      'P1.3-S3 enforce required global mode=enforce; per-second rate counter caused boundary bursts.',
+    details:
+      'backend: token bucket Lua, dimo-provider-rollout.util.ts, gateway canary resolution, metrics. architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S4_PRODUCTION_CANARY_2026-08-30.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T23:10:00.000Z',
+  },
+  {
+    id: 'dimo-provider-concurrency-p1-3-s3-priority-backpressure-2026-08-30',
+    version: '4.9.1005',
+    title: 'P1.3-S3 — Priority-aware DIMO provider enforcement / backpressure',
+    summary: [
+      'Canonical P0–P4 provider priority taxonomy with centralized category→priority mapping.',
+      'DimoProviderAdmissionService: bounded backpressure in enforce mode only; shadow remains non-blocking default.',
+      'Priority-aware in-flight admission: reserved high-priority slots protect P0/P1 live traffic under contention.',
+      'Central HTTP 429 Retry-After → Redis provider cooldown shared across replicas.',
+      'DimoProviderAdmissionTimeoutError when max wait exceeded — existing schedulers own retry/defer (no duplicate loops).',
+      'Prometheus: admission wait, backpressure, cooldown, priority-labeled requests.',
+      'Real Redis CI proofs: live-vs-background, shared cooldown, enforce wait→grant.',
+      'PERMANENT_TRIP_LOSS=NO; trip/snapshot/reconciliation semantics unchanged.',
+    ],
+    reason:
+      'P1.3-S3 — first real enforcement layer behind DimoProviderGateway with safe defaults (shadow) before production enforce rollout.',
+    previousBehavior:
+      'P1.3-S2 shadow limiter recorded would-reject without blocking; no priority lanes or Retry-After cooldown.',
+    details:
+      'backend: dimo-provider-admission.*, dimo-provider-priority.model.ts, limiter/gateway/metrics extensions. architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S3_PRIORITY_BACKPRESSURE_2026-08-30.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T22:40:00.000Z',
+  },
+  {
+    id: 'dimo-provider-concurrency-p1-3-s2-redis-shadow-limiter-2026-08-29',
+    version: '4.9.1004',
+    title: 'P1.3-S2 — Redis-backed DIMO provider limiter (shadow mode)',
+    summary: [
+      'Redis-backed global DIMO provider limiter behind DimoProviderGateway — SHADOW mode default.',
+      'Hybrid model: per-second rate counter (internal 20/s + burst 5) + in-flight ZSET leases (max 40, 45s TTL).',
+      'Shadow evaluates ALLOW / WOULD_WAIT / WOULD_REJECT without blocking provider traffic; enforce only when DIMO_PROVIDER_LIMITER_MODE=enforce.',
+      'Redis failure fail-open — telemetry continues; synqdrive_dimo_provider_limiter_redis_errors_total.',
+      'Prometheus: requests, in-flight, shadow decisions, rate budget usage, 403/429/5xx/timeout, duration histogram.',
+      'Operation categories + P0–P3 priority classes prepared for S3 backpressure.',
+      'Gateway coverage guard preserved; trip/snapshot/reconciliation semantics unchanged.',
+    ],
+    reason:
+      'P1.3-S2 — introduce process-independent provider coordination infrastructure in non-behavioral shadow mode before S3 enforcement.',
+    previousBehavior:
+      'P1.3-S1 gateway pass-through only; no global rate or in-flight coordination across replicas.',
+    details:
+      'backend: dimo-provider-limiter.*, dimo-provider-metrics.service.ts, dimo-provider-http-classifier.ts, gateway integration. architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S2_REDIS_SHADOW_LIMITER_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T20:35:00.000Z',
+  },
+  {
+    id: 'dimo-provider-concurrency-p1-3-s1-gateway-2026-08-29',
+    version: '4.9.1003',
+    title: 'P1.3-S1 — Canonical DIMO provider gateway foundation (pass-through)',
+    summary: [
+      'Introduced DimoProviderGateway as canonical telemetry HTTP control point — S1 pass-through only.',
+      'DimoTelemetryService.queryGraphQL routes through gateway; postGraphQL preserves 15s timeout + GQL error semantics.',
+      'fetchVehicleSummary/fetchVehicleVin wrapped in gateway with legacy 10s timeout and error semantics preserved.',
+      'Static guard: every this.client.post in dimoTelemetryService matches providerGateway.execute count.',
+      'NO limiter, NO Redis, NO backpressure, NO retry/error/JWT/queue/concurrency changes.',
+      'P1.2 trip-loss gates FINAL-3/31/32, FINAL-5/6, dimo-snapshot tests PASS.',
+    ],
+    reason:
+      'P1.3-S1 — establish canonical outbound DIMO telemetry gateway before global limiter (S2).',
+    previousBehavior:
+      'DimoTelemetryService called axios.post directly; fetchVehicleSummary/VIN bypassed queryGraphQL.',
+    details:
+      'backend: provider/dimo-provider-gateway.*, dimo-telemetry.service.ts, dimo-telemetry*.spec.ts. architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S1_GATEWAY_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T19:10:00.000Z',
+  },
+  {
+    id: 'dimo-provider-concurrency-p1-3-phase0-audit-2026-08-29',
+    version: '4.9.1002',
+    title: 'P1.3 PHASE 0 — Global DIMO provider concurrency audit (design only)',
+    summary: [
+      'Phase 0 audit complete — NO implementation, NO deploy, NO env changes.',
+      'DIMO MCP unavailable; authoritative rate limits from DIMO FAQ: Hobbyist 10/s, Core 25/s per API service per client host.',
+      'No authoritative DIMO concurrency (in-flight) quota found.',
+      'Current global DIMO limiter: NO — process-local BullMQ concurrency only.',
+      'One-replica hot-path theoretical max ~24 concurrent telemetry HTTP (8 snapshot + 15 ACTIVE_TICK + reconcile).',
+      'Multi-replica multiplies in-flight: 4 replicas → ~96 hot-path HTTP without global coordination.',
+      'Production 403 case (tokenId 190497): persistent non-retryable telemetry denial; connectivity degradation gap documented.',
+      'Recommendation: Redis hybrid limiter (semaphore + token bucket) via canonical DimoProviderGateway.',
+      'P1.3 implementation slices P1.3-S1..S8 defined; N≈1000 not certifiable until P1.3 lands.',
+    ],
+    reason:
+      'P1.3 Phase 0 — establish authoritative evidence and architecture for global DIMO provider concurrency control before implementation.',
+    previousBehavior:
+      'P1.2 closed for N≤100 without global DIMO semaphore; FINAL-5/6 documented provider limit unknowns and process-local fan-out bounds.',
+    details:
+      'architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_PHASE0_AUDIT_2026-08-29.md. ArchitekturView SnapshotPollingWorker note updated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T18:30:00.000Z',
+  },
+  {
+    id: 'snapshot-polling-p1-2-post-merge-production-cutover-2026-08-29',
+    version: '4.9.1001',
+    title: 'P1.2 POST-MERGE — Production cutover PASS (PR #1409 merged + deployed)',
+    summary: [
+      'PR #1409 merged to main (d221e766) and deployed to production release 20260829171441_v4994.',
+      'Production topology reconfirmed: single PM2 fork synqdrive, Redis localhost, PostgreSQL operational.',
+      'Env updated pre-deploy: WORKER_SNAPSHOT_CONCURRENCY=8, TRIP_PARTIAL_BOUNDARY_REPAIR_ENABLED=true, WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED=true.',
+      'Startup fleet envelope OK: connected=6, snapshotConcurrency=8 (within certified N≤100).',
+      'Queues stable post-deploy; no sustained backlog growth; activity-tier polling active (DimoPollLog + scheduler ticks).',
+      'Verdict: P1.2 PRODUCTION CUTOVER PASS WITH OBSERVATIONS — follow-up on isolated DIMO 403 for one vehicle.',
+      'P1.2 closed for current production envelope; N≈1000 remains P1.3.',
+    ],
+    reason:
+      'Post-merge production verification and cutover for P1.2 activity-tier snapshot polling + canonical partial-trip boundary repair.',
+    previousBehavior:
+      'Production on ea65d8b without P1.2 env tuning (WORKER_SNAPSHOT_CONCURRENCY=5, feature flags unset).',
+    details:
+      'architecture/SNAPSHOT_POLLING_P1_2_POST_MERGE_PRODUCTION_CUTOVER_2026-08-29.md. Deploy via cloud-agent-deploy.sh → vps-deploy-release.sh.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T17:25:00.000Z',
   },
   {
     id: 'snapshot-polling-p1-2-final6-current-prod-release-gate-2026-08-29',

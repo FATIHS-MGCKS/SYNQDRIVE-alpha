@@ -13,7 +13,6 @@ on:
     branches:
       - main
       - 'cursor/legal-docs-*'
-      - 'cursor/p13-global-dimo-provider-budget'
 
 concurrency:
   group: legal-docs-ci-${{ github.ref }}
@@ -193,6 +192,12 @@ jobs:
           DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
       - run: npm run test:legal-documents:integration && npm run test:legal-documents:security
         working-directory: backend
+      - run: npm run test:dimo-provider-limiter:redis
+        working-directory: backend
+        env:
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+          REDIS_DB: 15
       - run: npm run test:legal-documents:postgres
         working-directory: backend
         env:

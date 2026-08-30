@@ -12,6 +12,13 @@ import { DimoRequestExecutor } from './provider-budget/dimo-request-executor.ser
 import type { DimoProviderCategory } from './provider-budget/dimo-provider-category.types';
 import { getDimoRequestContext } from './provider-budget/dimo-request-context';
 
+/** Request context preserved for snapshot canary/org threading (main S4 API). */
+export interface DimoProviderRequestContext {
+  tokenId?: number;
+  vehicleId?: string;
+  organizationId?: string;
+}
+
 export interface BatteryCapabilityPreflightSnapshot {
   availableSignals: string[] | null;
   signalsLatest: Record<string, unknown> | null;
@@ -62,13 +69,15 @@ export class DimoTelemetryService {
   async fetchLatestVehicleSnapshot(
     vehicleJwt: string,
     tokenId: number,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<unknown> {
-    // Route through queryGraphQL so DIMO GraphQL `errors` are logged and, when
-    // no `data` is returned, surfaced as an exception. Previously these errors
-    // were silently swallowed, causing the snapshot processor to treat a failed
-    // fetch as a no-op and leaving gaps in our live trip detection FSM.
     const query = buildLatestSnapshotQuery(tokenId);
-    const result = await this.queryGraphQL(vehicleJwt, query);
+    const result = await this.queryGraphQL(
+      vehicleJwt,
+      query,
+      undefined,
+      requestContext,
+    );
     return result?.data ?? result;
   }
 
@@ -172,48 +181,47 @@ export class DimoTelemetryService {
     vehicleJwt: string,
     query: string,
     variables?: Record<string, any>,
+    requestContext?: DimoProviderRequestContext,
     category?: DimoProviderCategory,
   ): Promise<any> {
+    void requestContext;
     const ctx = getDimoRequestContext();
     const resolvedCategory = category ?? ctx.category;
 
     return this.dimoRequestExecutor.execute({
       category: resolvedCategory,
       priority: ctx.priority,
-      execute: async () => {
-        const body: Record<string, unknown> = { query };
-        if (variables) body.variables = variables;
-        // Keep this tighter than the BullMQ lockDuration on the snapshot worker
-        // (60s) so that a single hung DIMO round-trip can never outlive the
-        // worker lock and cause a "job stalled" failure that later blocks the
-        // per-vehicle jobId.
-        const response = await this.client.post('', body, {
-          headers: { Authorization: `Bearer ${vehicleJwt}` },
-          timeout: 15000,
-        });
-
-        const gqlErrors = response.data?.errors;
-        if (Array.isArray(gqlErrors) && gqlErrors.length > 0) {
-          const messages = gqlErrors
-            .map((e: any) => e?.message ?? JSON.stringify(e))
-            .join('; ');
-          this.logger.warn(`GraphQL response contains errors: ${messages}`);
-
-          if (!response.data?.data) {
-            throw new Error(`DIMO GraphQL error: ${messages}`);
-          }
-        }
-
-        return response.data;
-      },
+      execute: () => this.postGraphQL(vehicleJwt, query, variables),
     });
   }
 
-  /**
-   * Fetch a lightweight summary of key vehicle signals for list-view display.
-   * Returns odometer (km), battery SoC (%), fuel level (%), last signal
-   * timestamp, powertrain type, and current speed.
-   */
+  private async postGraphQL(
+    vehicleJwt: string,
+    query: string,
+    variables?: Record<string, any>,
+  ): Promise<any> {
+    const body: Record<string, unknown> = { query };
+    if (variables) body.variables = variables;
+    const response = await this.client.post('', body, {
+      headers: { Authorization: `Bearer ${vehicleJwt}` },
+      timeout: 15000,
+    });
+
+    const gqlErrors = response.data?.errors;
+    if (Array.isArray(gqlErrors) && gqlErrors.length > 0) {
+      const messages = gqlErrors
+        .map((e: any) => e?.message ?? JSON.stringify(e))
+        .join('; ');
+      this.logger.warn(`GraphQL response contains errors: ${messages}`);
+
+      if (!response.data?.data) {
+        throw new Error(`DIMO GraphQL error: ${messages}`);
+      }
+    }
+
+    return response.data;
+  }
+
   async fetchVehicleSummary(
     vehicleJwt: string,
     tokenId: number,
@@ -271,11 +279,6 @@ export class DimoTelemetryService {
     };
   }
 
-  /**
-   * Fetch VIN from the VIN Verifiable Credential (attestation).
-   * Requires VEHICLE_VIN_CREDENTIAL privilege in the vehicle JWT.
-   * Returns null if not available or if the privilege is missing.
-   */
   async fetchVehicleVin(
     vehicleJwt: string,
     tokenId: number,
