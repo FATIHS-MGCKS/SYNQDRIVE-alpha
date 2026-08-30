@@ -5,6 +5,7 @@ import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
 import { ClickHouseAnalyticsService } from '@modules/clickhouse/clickhouse-analytics.service';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { DocumentExtractionHealthService } from '@modules/document-extraction/document-extraction-health.service';
+import { SchedulerLeaderElectionService } from '@shared/scheduler-leader/scheduler-leader-election.service';
 
 export interface DependencyStatus {
   status: 'ok' | 'error';
@@ -23,21 +24,31 @@ export class HealthService {
     private readonly clickHouse: ClickHouseService,
     private readonly clickHouseAnalytics: ClickHouseAnalyticsService,
     @Optional() private readonly documentExtractionHealth?: DocumentExtractionHealthService,
+    @Optional() private readonly schedulerLeaderElection?: SchedulerLeaderElectionService,
   ) {}
 
   async checkReadiness(): Promise<{
     status: 'ok' | 'degraded';
     checks: Record<string, DependencyStatus>;
   }> {
-    const [postgres, redis, clickhouse, workers, documentExtraction] = await Promise.all([
+    const [postgres, redis, clickhouse, workers, documentExtraction, schedulerLeader] =
+      await Promise.all([
       this.checkPostgres(),
       this.checkRedis(),
       this.checkClickHouse(),
       this.checkWorkerRuntime(),
       this.checkDocumentExtraction(),
+      this.checkSchedulerLeader(),
     ]);
 
-    const checks = { postgres, redis, clickhouse, workers, documentExtraction };
+    const checks = {
+      postgres,
+      redis,
+      clickhouse,
+      workers,
+      documentExtraction,
+      schedulerLeader,
+    };
 
     const hardChecks = [postgres, redis, workers, documentExtraction];
     const allHealthy = hardChecks.every((c) => c.status === 'ok');
@@ -219,5 +230,32 @@ export class HealthService {
         error: err?.message,
       };
     }
+  }
+
+  private async checkSchedulerLeader(): Promise<DependencyStatus> {
+    const start = Date.now();
+    if (!this.schedulerLeaderElection) {
+      return {
+        status: 'ok',
+        responseMs: Date.now() - start,
+        details: { skipped: true },
+      };
+    }
+
+    const state = await this.schedulerLeaderElection.getDiagnosticStateAsync();
+    const status: 'ok' | 'error' =
+      !state.enabled || state.role === 'LEADER' ? 'ok' : 'ok';
+
+    return {
+      status,
+      responseMs: Date.now() - start,
+      details: {
+        enabled: state.enabled,
+        role: state.role,
+        leaseRemainingMs: state.leaseRemainingMs,
+        lastAcquireAt: state.lastAcquireAt,
+        lastRenewAt: state.lastRenewAt,
+      },
+    };
   }
 }

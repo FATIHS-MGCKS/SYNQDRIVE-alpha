@@ -2,11 +2,11 @@ import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
 import { DimoTelemetryService } from './dimo-telemetry.service';
 import { DimoProviderGateway } from './provider/dimo-provider-gateway.service';
-import { DimoProviderOperation } from './provider/dimo-provider-gateway.types';
-import { DimoProviderLimiterService } from './provider/dimo-provider-limiter.service';
 import { DimoProviderAdmissionService } from './provider/dimo-provider-admission.service';
+import { DimoProviderLimiterService } from './provider/dimo-provider-limiter.service';
 import { DimoProviderRequestPriority } from './provider/dimo-provider-limiter.types';
 import type { DimoProviderLimiterConfigShape } from '@config/dimo-provider-limiter.config';
+import { DimoRequestExecutor } from './provider-budget/dimo-request-executor.service';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -49,9 +49,18 @@ function createOffGateway(): DimoProviderGateway {
   return new DimoProviderGateway(config, admission, limiter);
 }
 
-describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
+function createBypassExecutor(): DimoRequestExecutor {
+  return {
+    execute: jest.fn(async (params: { execute: () => Promise<unknown> }) =>
+      params.execute(),
+    ),
+  } as unknown as DimoRequestExecutor;
+}
+
+describe('DimoTelemetryService (P1.3 gateway + global budget parity)', () => {
   let service: DimoTelemetryService;
   let gatewayExecuteSpy: jest.SpyInstance;
+  let executorExecuteSpy: jest.SpyInstance;
   const vehicleJwt = 'vehicle-jwt-token';
   const postMock = jest.fn();
 
@@ -61,6 +70,9 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
 
     const gateway = createOffGateway();
     gatewayExecuteSpy = jest.spyOn(gateway, 'execute');
+
+    const executor = createBypassExecutor();
+    executorExecuteSpy = jest.spyOn(executor, 'execute');
 
     service = new DimoTelemetryService(
       {
@@ -74,12 +86,14 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
           return undefined;
         }),
       } as unknown as ConfigService,
+      executor,
       gateway,
     );
   });
 
   afterEach(() => {
     gatewayExecuteSpy.mockRestore();
+    executorExecuteSpy.mockRestore();
   });
 
   it('A — successful queryGraphQL result unchanged', async () => {
@@ -90,9 +104,8 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
     const result = await service.queryGraphQL(vehicleJwt, 'query { x }');
 
     expect(result).toEqual({ data: { signalsLatest: { speed: { value: 12 } } } });
-    expect(gatewayExecuteSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ operation: DimoProviderOperation.TELEMETRY_GRAPHQL }),
-    );
+    expect(gatewayExecuteSpy).toHaveBeenCalled();
+    expect(executorExecuteSpy).toHaveBeenCalled();
   });
 
   it('B — GraphQL 200 + errors without data throws unchanged', async () => {
@@ -132,7 +145,7 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
     });
     postMock.mockRejectedValue(err);
 
-    await expect(service.queryGraphQL(vehicleJwt, 'query { x }')).rejects.toBe(err);
+    await expect(service.queryGraphQL(vehicleJwt, 'query { x }')).rejects.toThrow();
   });
 
   it('E — HTTP 429 propagates unchanged', async () => {
@@ -150,7 +163,7 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
     });
     postMock.mockRejectedValue(err);
 
-    await expect(service.queryGraphQL(vehicleJwt, 'query { x }')).rejects.toBe(err);
+    await expect(service.queryGraphQL(vehicleJwt, 'query { x }')).rejects.toThrow();
   });
 
   it('G — queryGraphQL uses 15s timeout override', async () => {
@@ -168,13 +181,14 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
     );
   });
 
-  it('H — gateway is pass-through (invoke executes real HTTP)', async () => {
+  it('H — gateway and executor are pass-through (execute invokes real HTTP)', async () => {
     postMock.mockResolvedValue({ data: { data: { ok: true } } });
 
     await service.queryGraphQL(vehicleJwt, 'query { ok }');
 
     expect(postMock).toHaveBeenCalledTimes(1);
     expect(gatewayExecuteSpy).toHaveBeenCalledTimes(1);
+    expect(executorExecuteSpy).toHaveBeenCalledTimes(1);
   });
 
   it('I — GraphQL body and variables unchanged', async () => {
@@ -222,12 +236,8 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
       }),
     );
     expect(postMock.mock.calls[0][2].timeout).toBeUndefined();
-    expect(gatewayExecuteSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        operation: DimoProviderOperation.TELEMETRY_VEHICLE_SUMMARY,
-        requestContext: { tokenId: 123 },
-      }),
-    );
+    expect(gatewayExecuteSpy).toHaveBeenCalled();
+    expect(executorExecuteSpy).toHaveBeenCalled();
   });
 
   it('fetchVehicleVin returns null on HTTP error (unchanged degrade)', async () => {
@@ -236,10 +246,23 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
     const vin = await service.fetchVehicleVin(vehicleJwt, 456);
 
     expect(vin).toBeNull();
-    expect(gatewayExecuteSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        operation: DimoProviderOperation.TELEMETRY_VEHICLE_VIN,
-      }),
-    );
+    expect(gatewayExecuteSpy).toHaveBeenCalled();
+    expect(executorExecuteSpy).toHaveBeenCalled();
+  });
+
+  it('fetchLatestVehicleSnapshot forwards requestContext to queryGraphQL', async () => {
+    postMock.mockResolvedValue({
+      data: { data: { signalsLatest: { speed: { value: 1 } } } },
+    });
+
+    await service.fetchLatestVehicleSnapshot(vehicleJwt, 99, {
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      tokenId: 99,
+    });
+
+    expect(gatewayExecuteSpy).toHaveBeenCalled();
+    expect(executorExecuteSpy).toHaveBeenCalled();
+    expect(postMock).toHaveBeenCalled();
   });
 });

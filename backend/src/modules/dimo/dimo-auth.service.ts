@@ -5,6 +5,7 @@ import { Wallet } from 'ethers';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import dimoConfig from '@config/dimo.config';
+import { DimoRequestExecutor } from './provider-budget/dimo-request-executor.service';
 
 const DEVELOPER_JWT_KEY = 'dimo:developer:jwt';
 const VEHICLE_JWT_PREFIX = 'dimo:vehicle:jwt:';
@@ -105,6 +106,7 @@ export class DimoAuthService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(dimoConfig.KEY) private readonly conf: ConfigType<typeof dimoConfig>,
     private readonly redis: RedisService,
+    private readonly dimoRequestExecutor: DimoRequestExecutor,
   ) {
     if (!this.conf.clientId) {
       this.logger.warn('DIMO_CLIENT_ID not set — DIMO auth will fail until configured');
@@ -257,21 +259,26 @@ export class DimoAuthService implements OnModuleInit, OnModuleDestroy {
 
       // Step 1: Generate challenge — address MUST be the client_id (the developer license address),
       // not the signer's derived address. This is what the official DIMO SDK does.
-      const challengeRes = await axios.post<{ challenge: string; state: string }>(
-        `${authUrl}/auth/web3/generate_challenge`,
-        null,
-        {
-          params: {
-            client_id: clientId,
-            domain,
-            scope: 'openid email',
-            response_type: 'code',
-            address: clientId,
-          },
-          headers: { 'Content-Type': 'application/json' },
-          timeout: requestTimeoutMs,
-        },
-      );
+      const challengeRes = await this.dimoRequestExecutor.execute({
+        category: 'IDENTITY',
+        priority: 'HIGH',
+        execute: () =>
+          axios.post<{ challenge: string; state: string }>(
+            `${authUrl}/auth/web3/generate_challenge`,
+            null,
+            {
+              params: {
+                client_id: clientId,
+                domain,
+                scope: 'openid email',
+                response_type: 'code',
+                address: clientId,
+              },
+              headers: { 'Content-Type': 'application/json' },
+              timeout: requestTimeoutMs,
+            },
+          ),
+      });
 
       const { challenge, state } = challengeRes.data;
       if (!challenge || !state) {
@@ -295,14 +302,19 @@ export class DimoAuthService implements OnModuleInit, OnModuleDestroy {
         signature,
       });
 
-      const submitRes = await axios.post<{ developer_jwt?: string; access_token?: string; token?: string }>(
-        `${authUrl}/auth/web3/submit_challenge`,
-        submitBody.toString(),
-        {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          timeout: requestTimeoutMs,
-        },
-      );
+      const submitRes = await this.dimoRequestExecutor.execute({
+        category: 'IDENTITY',
+        priority: 'HIGH',
+        execute: () =>
+          axios.post<{ developer_jwt?: string; access_token?: string; token?: string }>(
+            `${authUrl}/auth/web3/submit_challenge`,
+            submitBody.toString(),
+            {
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              timeout: requestTimeoutMs,
+            },
+          ),
+      });
 
       const token =
         submitRes.data?.developer_jwt ?? submitRes.data?.access_token ?? submitRes.data?.token;
@@ -438,17 +450,22 @@ export class DimoAuthService implements OnModuleInit, OnModuleDestroy {
       const { requestTimeoutMs } = this.conf;
 
       this.logger.debug(`Exchanging vehicle JWT at ${tokenExchangeUrl} for tokenId=${tokenId}, privileges=[${privileges}]`);
-      const response = await axios.post<{ token?: string; access_token?: string; jwt?: string }>(
-        `${tokenExchangeUrl}/v1/tokens/exchange`,
-        { nftContractAddress: this.conf.vehicleNftContractAddress, privileges, tokenId },
-        {
-          headers: {
-            Authorization: `Bearer ${developerJwt}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: requestTimeoutMs,
-        },
-      );
+      const response = await this.dimoRequestExecutor.execute({
+        category: 'IDENTITY',
+        priority: 'HIGH',
+        execute: () =>
+          axios.post<{ token?: string; access_token?: string; jwt?: string }>(
+            `${tokenExchangeUrl}/v1/tokens/exchange`,
+            { nftContractAddress: this.conf.vehicleNftContractAddress, privileges, tokenId },
+            {
+              headers: {
+                Authorization: `Bearer ${developerJwt}`,
+                'Content-Type': 'application/json',
+              },
+              timeout: requestTimeoutMs,
+            },
+          ),
+      });
 
       const vehicleJwt = response.data?.token ?? response.data?.access_token ?? response.data?.jwt;
       if (!vehicleJwt) {

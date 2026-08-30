@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { BatteryV2RetentionService } from '@modules/vehicle-intelligence/battery-health/retention/battery-v2-retention.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 /**
  * Nightly Battery V2 retention — offset from generic data retention (03:30).
@@ -10,10 +11,14 @@ import { BatteryV2RetentionService } from '@modules/vehicle-intelligence/battery
 export class BatteryV2RetentionScheduler {
   private readonly logger = new Logger(BatteryV2RetentionScheduler.name);
 
-  constructor(private readonly retention: BatteryV2RetentionService) {}
+  constructor(
+    private readonly retention: BatteryV2RetentionService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
+  ) {}
 
   @Cron('0 4 * * *')
   async scheduledRun(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('battery_v2_retention')) return;
     const report = await this.retention.runOnce({ trigger: 'cron' });
     if (report.phases.length > 0) {
       this.logger.log(

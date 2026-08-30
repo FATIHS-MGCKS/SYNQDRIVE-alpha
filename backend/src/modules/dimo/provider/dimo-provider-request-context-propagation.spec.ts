@@ -6,6 +6,7 @@ import { DimoProviderOperation } from './dimo-provider-gateway.types';
 import { resolveDimoProviderLimiterConfig } from '@config/dimo-provider-limiter.config';
 import { DimoProviderAdmissionService } from './dimo-provider-admission.service';
 import { DimoProviderLimiterService } from './dimo-provider-limiter.service';
+import { DimoRequestExecutor } from '../provider-budget/dimo-request-executor.service';
 import {
   DimoProviderLimiterDecision,
   DimoProviderRequestPriority,
@@ -20,6 +21,14 @@ function percentCanaryConfig() {
     DIMO_PROVIDER_ENFORCE_CANARY_ENABLED: 'true',
     DIMO_PROVIDER_ENFORCE_CANARY_PERCENT: '100',
   } as NodeJS.ProcessEnv);
+}
+
+function createBypassExecutor(): DimoRequestExecutor {
+  return {
+    execute: jest.fn(async (params: { execute: () => Promise<unknown> }) =>
+      params.execute(),
+    ),
+  } as unknown as DimoRequestExecutor;
 }
 
 function createPropagationHarness() {
@@ -42,7 +51,11 @@ function createPropagationHarness() {
     post: jest.fn().mockResolvedValue({ data: { data: { signalsLatest: {} } } }),
   } as never);
 
-  const telemetry = new DimoTelemetryService(configService, gateway);
+  const telemetry = new DimoTelemetryService(
+    configService,
+    createBypassExecutor(),
+    gateway,
+  );
   return { telemetry, executeSpy };
 }
 

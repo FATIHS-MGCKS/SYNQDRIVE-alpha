@@ -3,6 +3,7 @@ import { Interval } from '@nestjs/schedule';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { PaymentConnectReconciliationService } from '@modules/payments/payment-connect-reconciliation.service';
 import { formatPaymentLogPayload } from '@modules/payments/utils/payment-log.util';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 /**
  * Periodic Connect payment reconciliation — reprocesses stuck webhooks,
@@ -15,10 +16,12 @@ export class PaymentConnectReconciliationScheduler {
 
   constructor(
     private readonly reconciliation: PaymentConnectReconciliationService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   @Interval(5 * 60_000)
   async runReconciliation(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('payment_connect_reconciliation')) return;
     if (!RuntimeStatusRegistry.getWorkersEnabled()) {
       return;
     }

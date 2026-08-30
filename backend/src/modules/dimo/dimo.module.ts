@@ -45,6 +45,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
 import { EventTripAssociationModule } from '../vehicle-intelligence/trips/event-association/event-trip-association.module';
 import { DimoConnectivityLifecycleDiModule } from './dimo-connectivity-lifecycle-di.module';
 import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-link.service';
+import { DimoProviderBudgetModule } from './provider-budget/dimo-provider-budget.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-lin
     ConfigModule.forFeature(deviceConnectionWebhookInboxConfig),
     ConfigModule.forFeature(deviceConnectionEpisodeResolutionOutboxConfig),
     ConfigModule.forFeature(connectivityRecoveryConfig),
+    DimoProviderBudgetModule,
     DimoConnectivityLifecycleDiModule,
     EventTripAssociationModule,
     ActivityLogModule,

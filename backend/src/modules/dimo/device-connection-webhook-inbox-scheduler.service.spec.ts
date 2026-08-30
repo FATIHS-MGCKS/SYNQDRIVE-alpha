@@ -63,6 +63,7 @@ function buildService(deps: {
       reconcilePersistedEventLifecycle:
         deps.reconcile ?? jest.fn().mockResolvedValue({ outcome: 'reconciled' }),
     } as never,
+    { shouldRun: jest.fn().mockReturnValue(true) } as never,
   );
 }
 

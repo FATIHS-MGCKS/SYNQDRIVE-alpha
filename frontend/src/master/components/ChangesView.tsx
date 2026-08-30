@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-provider-p1-3-s4-main-reconciliation-2026-08-30',
+    version: '4.9.1010',
+    title: 'P1.3-S4 main reconciliation — stacked gateway + global provider budget',
+    summary: [
+      'Merged origin/main (#1417 global budget, #1430 scheduler leader) into PR #1429 without dropping S4 guarantees.',
+      'DimoTelemetryService: DimoProviderGateway (canary/shadow) → DimoRequestExecutor (Redis lease semaphore) → HTTP.',
+      'DimoModule restores S4 gateway providers alongside DimoProviderBudgetModule.',
+      'Repository-wide provider call-site audit re-run post-merge; CATEGORY_C must remain zero.',
+    ],
+    reason:
+      'PR #1429 mergeable_state=dirty — semantic merge preserves P1-001 context propagation and main global budget.',
+    previousBehavior:
+      'Conflicting stacks: S4 branch gateway-only vs main executor-only telemetry wiring.',
+    details:
+      'See architecture/P1_3_S4_MAIN_RECONCILIATION_2026-08-30.md. Production default remains shadow; global enforce OFF.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T12:00:00.000Z',
+  },
+  {
     id: 'dimo-provider-p1-001-final-remediation-2026-08-30',
     version: '4.9.1009',
     title: 'P1.3-S4 P1-001 final remediation — complete registered-vehicle context propagation',
@@ -76,8 +96,33 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-08-30T09:20:00.000Z',
   },
   {
-    id: 'dimo-provider-concurrency-p1-3-s4-readiness-closure-2026-08-30',
+    id: 'dimo-global-provider-budget-p1-3-2026-08-29',
     version: '4.9.1007',
+    title: 'P1.3 — Global DIMO provider budget (Redis lease semaphore)',
+    summary: [
+      'Redis-backed global DIMO provider budget via DimoProviderBudgetService + DimoRequestExecutor.',
+      'All DIMO HTTP paths wrapped: telemetry GraphQL, auth/token exchange, identity sync, triggers REST.',
+      'Lease-based semaphore (ZSET + Lua): atomic acquire/release, TTL crash recovery, multi-replica safe.',
+      'FAIL CLOSED on Redis outage — jobs retry, no provider flood.',
+      '429 Retry-After parsing + provider cooldown; bounded exponential backoff for 5xx/timeouts.',
+      'Category priorities: ACTIVE_TRIP > LIVE_SNAPSHOT > RECONCILIATION > enrichment > HEALTH > IDENTITY.',
+      'Queue backpressure: snapshot enqueue defer when waiting backlog ≥ 500.',
+      'Metrics: synqdrive_dimo_global_in_flight, acquire_wait, 429_total, queue_oldest_job_age.',
+      'N≈1000: CONDITIONALLY_CERTIFIED — architecture proven; provider ceiling still unverified.',
+    ],
+    reason:
+      'P1.3 — make provider concurrency safe as fleet approaches N≈1000 with globally shared budget.',
+    previousBehavior:
+      'P1.2 bounded process-local BullMQ concurrency only; no cross-replica provider coordination.',
+    details:
+      'backend: provider-budget/*, dimo-telemetry/auth/api-sync/triggers integration, queue backpressure. architecture/DIMO_GLOBAL_PROVIDER_BUDGET_P1_3_2026-08-29.md + RUNBOOK.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T17:30:00.000Z',
+  },
+  {
+    id: 'dimo-provider-concurrency-p1-3-s4-readiness-closure-2026-08-30',
+    version: '4.9.1011',
     title: 'P1.3-S4 readiness closure — percent/vehicle canary, observability, chaos proofs',
     summary: [
       'Expanded deterministic canary: org allowlist + vehicle allowlist + stable FNV-1a percent hash by vehicleId.',

@@ -380,6 +380,7 @@ describe('battery-v2 enqueue path audit', () => {
         reconciliation as never,
         observability as never,
         deadLetters as never,
+        { shouldRun: jest.fn().mockReturnValue(true) } as never,
       );
 
       const config = await import('@config/battery-health-v2.config');

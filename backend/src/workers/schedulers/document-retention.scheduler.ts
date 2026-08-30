@@ -1,16 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DocumentRetentionService } from '@modules/document-extraction/document-retention.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 /** Nightly document retention — does not run on deploy; cron only. */
 @Injectable()
 export class DocumentRetentionScheduler {
   private readonly logger = new Logger(DocumentRetentionScheduler.name);
 
-  constructor(private readonly retention: DocumentRetentionService) {}
+  constructor(
+    private readonly retention: DocumentRetentionService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
+  ) {}
 
   @Cron('30 4 * * *')
   async scheduledRun(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('document_retention')) return;
     const report = await this.retention.runOnce({ trigger: 'cron' });
     if (report.phases.length > 0) {
       this.logger.log(

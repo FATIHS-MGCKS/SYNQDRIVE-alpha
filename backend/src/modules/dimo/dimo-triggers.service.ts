@@ -4,6 +4,7 @@ import axios from 'axios';
 import { DimoAuthService } from './dimo-auth.service';
 import dimoConfig from '@config/dimo.config';
 import { isBlockedEngineWebhookSignal } from './dimo-webhook-payload.util';
+import { DimoRequestExecutor } from './provider-budget/dimo-request-executor.service';
 
 /**
  * DIMO Vehicle Triggers API client (ops/helpers only).
@@ -25,6 +26,7 @@ export class DimoTriggersService {
   constructor(
     @Inject(dimoConfig.KEY) private readonly conf: ConfigType<typeof dimoConfig>,
     private readonly auth: DimoAuthService,
+    private readonly dimoRequestExecutor: DimoRequestExecutor,
   ) {
     const env = (this.conf as any).dimoEnv ?? 'production';
     this.triggersApiUrl = env === 'dev'
@@ -44,9 +46,14 @@ export class DimoTriggersService {
   }> {
     try {
       const jwt = await this.auth.getDeveloperJwt();
-      const res = await axios.get(`${this.triggersApiUrl}/v1/webhooks`, {
-        headers: { Authorization: `Bearer ${jwt}` },
-        timeout: this.conf.requestTimeoutMs,
+      const res = await this.dimoRequestExecutor.execute({
+        category: 'ADMIN',
+        priority: 'BACKGROUND',
+        execute: () =>
+          axios.get(`${this.triggersApiUrl}/v1/webhooks`, {
+            headers: { Authorization: `Bearer ${jwt}` },
+            timeout: this.conf.requestTimeoutMs,
+          }),
       });
       const webhooks = res.data?.webhooks ?? res.data ?? [];
       return { webhooks: Array.isArray(webhooks) ? webhooks : [], error: null };
@@ -68,9 +75,14 @@ export class DimoTriggersService {
       const jwt = await this.auth.getDeveloperJwt();
       const contract = this.conf.vehicleNftContractAddress;
       const subject = `did:erc721:137:${contract}:${tokenId}`;
-      const res = await axios.get(`${this.triggersApiUrl}/v1/webhooks/vehicles/${subject}`, {
-        headers: { Authorization: `Bearer ${jwt}` },
-        timeout: this.conf.requestTimeoutMs,
+      const res = await this.dimoRequestExecutor.execute({
+        category: 'ADMIN',
+        priority: 'BACKGROUND',
+        execute: () =>
+          axios.get(`${this.triggersApiUrl}/v1/webhooks/vehicles/${subject}`, {
+            headers: { Authorization: `Bearer ${jwt}` },
+            timeout: this.conf.requestTimeoutMs,
+          }),
       });
       return { subscriptions: res.data, error: null };
     } catch (err: any) {
@@ -86,14 +98,16 @@ export class DimoTriggersService {
   async createWebhook(name: string, callbackUrl: string): Promise<any> {
     try {
       const jwt = await this.auth.getDeveloperJwt();
-      const res = await axios.post(
-        `${this.triggersApiUrl}/v1/webhooks`,
-        {
-          name,
-          url: callbackUrl,
-        },
-        { headers: { Authorization: `Bearer ${jwt}` } },
-      );
+      const res = await this.dimoRequestExecutor.execute({
+        category: 'ADMIN',
+        priority: 'BACKGROUND',
+        execute: () =>
+          axios.post(
+            `${this.triggersApiUrl}/v1/webhooks`,
+            { name, url: callbackUrl },
+            { headers: { Authorization: `Bearer ${jwt}` } },
+          ),
+      });
       this.logger.log(`Created webhook: ${name} -> ${callbackUrl}`);
       return res.data;
     } catch (err: any) {
@@ -105,8 +119,13 @@ export class DimoTriggersService {
   async getAvailableSignalNames(): Promise<string[]> {
     try {
       const jwt = await this.auth.getDeveloperJwt();
-      const res = await axios.get(`${this.triggersApiUrl}/v1/webhooks/signals`, {
-        headers: { Authorization: `Bearer ${jwt}` },
+      const res = await this.dimoRequestExecutor.execute({
+        category: 'ADMIN',
+        priority: 'BACKGROUND',
+        execute: () =>
+          axios.get(`${this.triggersApiUrl}/v1/webhooks/signals`, {
+            headers: { Authorization: `Bearer ${jwt}` },
+          }),
       });
       return res.data?.signals ?? res.data ?? [];
     } catch (err: any) {
@@ -132,11 +151,16 @@ export class DimoTriggersService {
 
     try {
       const jwt = await this.auth.getDeveloperJwt();
-      const res = await axios.post(
-        `${this.triggersApiUrl}/v1/webhooks/${webhookId}/vehicles/${tokenId}`,
-        { signals: allowedSignals },
-        { headers: { Authorization: `Bearer ${jwt}` } },
-      );
+      const res = await this.dimoRequestExecutor.execute({
+        category: 'ADMIN',
+        priority: 'BACKGROUND',
+        execute: () =>
+          axios.post(
+            `${this.triggersApiUrl}/v1/webhooks/${webhookId}/vehicles/${tokenId}`,
+            { signals: allowedSignals },
+            { headers: { Authorization: `Bearer ${jwt}` } },
+          ),
+      });
       this.logger.log(
         `Subscribed vehicle ${tokenId} to webhook ${webhookId} for signals: ${allowedSignals.join(', ')}`,
       );

@@ -12,6 +12,7 @@ import {
 } from '../../modules/vehicle-intelligence/trips/trip-detection.types';
 import { TripReconciliationService } from '../../modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 /** Threshold: a POSSIBLE_END state older than this triggers event-based repair */
 const STUCK_POSSIBLE_END_THRESHOLD_MS = 30 * 60_000; // 30 minutes
@@ -40,6 +41,7 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
     @InjectQueue(QUEUE_NAMES.TRIP_TRACKING)
     private readonly trackingQueue: Queue,
     private readonly prisma: PrismaService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
     @Optional() private readonly reconciliation?: TripReconciliationService,
   ) {}
 
@@ -56,6 +58,7 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
    */
   @Interval(120_000)
   async recoverStaleTripStates(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('trip_tracking_recovery')) return;
     if (!canEnqueueQueue(this.logger, 'trip-tracking-recovery')) return;
     const now = new Date();
 

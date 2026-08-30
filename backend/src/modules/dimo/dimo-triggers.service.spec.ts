@@ -11,9 +11,13 @@ describe('DimoTriggersService', () => {
 
   beforeEach(() => {
     auth = { getDeveloperJwt: jest.fn().mockResolvedValue('jwt') };
+    const executor = {
+      execute: jest.fn(async ({ execute }: { execute: () => Promise<unknown> }) => execute()),
+    };
     service = new DimoTriggersService(
-      { dimoEnv: 'production', webhookBaseUrl: 'https://app.synqdrive.eu' } as any,
+      { dimoEnv: 'production', webhookBaseUrl: 'https://app.synqdrive.eu', requestTimeoutMs: 10000 } as any,
       auth as unknown as DimoAuthService,
+      executor as any,
     );
     jest.clearAllMocks();
   });

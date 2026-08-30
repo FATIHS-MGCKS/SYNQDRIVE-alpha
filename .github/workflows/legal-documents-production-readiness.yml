@@ -8,6 +8,7 @@ on:
       - 'docs/testing/legal-documents-**'
       - 'docs/audits/legal-documents-**'
       - '.github/workflows/legal-documents-production-readiness.yml'
+  workflow_dispatch:
   push:
     branches:
       - main

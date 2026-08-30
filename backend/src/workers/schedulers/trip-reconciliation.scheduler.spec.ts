@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripReconciliationService } from '../../modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
 import { TripReconciliationScheduler } from './trip-reconciliation.scheduler';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 describe('TripReconciliationScheduler cohort independence', () => {
   let scheduler: TripReconciliationScheduler;
@@ -29,6 +30,10 @@ describe('TripReconciliationScheduler cohort independence', () => {
         {
           provide: TripReconciliationService,
           useValue: { reconcileWindow },
+        },
+        {
+          provide: SchedulerLeaderGuardService,
+          useValue: { shouldRun: jest.fn().mockReturnValue(true) },
         },
       ],
     }).compile();

@@ -12,6 +12,11 @@ import { DimoProviderGateway } from './provider/dimo-provider-gateway.service';
 import { DimoProviderOperation } from './provider/dimo-provider-gateway.types';
 import type { DimoProviderRequestContext } from './provider/dimo-provider-gateway.types';
 import { buildDimoProviderRequestContext } from './provider/dimo-provider-request-context.util';
+import { DimoRequestExecutor } from './provider-budget/dimo-request-executor.service';
+import type { DimoProviderCategory } from './provider-budget/dimo-provider-category.types';
+import { getDimoRequestContext } from './provider-budget/dimo-request-context';
+
+export type { DimoProviderRequestContext };
 
 export interface BatteryCapabilityPreflightSnapshot {
   availableSignals: string[] | null;
@@ -45,6 +50,7 @@ export class DimoTelemetryService {
 
   constructor(
     private readonly configService: ConfigService,
+    private readonly dimoRequestExecutor: DimoRequestExecutor,
     private readonly providerGateway: DimoProviderGateway,
   ) {
     const telemetryApiUrl =
@@ -192,14 +198,23 @@ export class DimoTelemetryService {
     query: string,
     variables?: Record<string, any>,
     requestContext?: DimoProviderRequestContext,
+    category?: DimoProviderCategory,
   ): Promise<any> {
     const tokenId =
       requestContext?.tokenId ??
       (typeof variables?.tokenId === 'number' ? variables.tokenId : undefined);
+    const ctx = getDimoRequestContext();
+    const resolvedCategory = category ?? ctx.category;
+
     return this.providerGateway.execute({
       operation: DimoProviderOperation.TELEMETRY_GRAPHQL,
       requestContext: buildDimoProviderRequestContext(tokenId, requestContext),
-      invoke: () => this.postGraphQL(vehicleJwt, query, variables),
+      invoke: () =>
+        this.dimoRequestExecutor.execute({
+          category: resolvedCategory,
+          priority: ctx.priority,
+          execute: () => this.postGraphQL(vehicleJwt, query, variables),
+        }),
     });
   }
 
@@ -210,10 +225,6 @@ export class DimoTelemetryService {
   ): Promise<any> {
     const body: Record<string, unknown> = { query };
     if (variables) body.variables = variables;
-    // Keep this tighter than the BullMQ lockDuration on the snapshot worker
-    // (60s) so that a single hung DIMO round-trip can never outlive the
-    // worker lock and cause a "job stalled" failure that later blocks the
-    // per-vehicle jobId.
     const response = await this.client.post('', body, {
       headers: { Authorization: `Bearer ${vehicleJwt}` },
       timeout: 15000,
@@ -234,11 +245,6 @@ export class DimoTelemetryService {
     return response.data;
   }
 
-  /**
-   * Fetch a lightweight summary of key vehicle signals for list-view display.
-   * Returns odometer (km), battery SoC (%), fuel level (%), last signal
-   * timestamp, powertrain type, and current speed.
-   */
   async fetchVehicleSummary(
     vehicleJwt: string,
     tokenId: number,
@@ -261,11 +267,15 @@ export class DimoTelemetryService {
       operation: DimoProviderOperation.TELEMETRY_VEHICLE_SUMMARY,
       requestContext: buildDimoProviderRequestContext(tokenId, requestContext),
       invoke: () =>
-        this.client.post(
-          '',
-          { query },
-          { headers: { Authorization: `Bearer ${vehicleJwt}` } },
-        ),
+        this.dimoRequestExecutor.execute({
+          category: 'IDENTITY',
+          execute: () =>
+            this.client.post(
+              '',
+              { query },
+              { headers: { Authorization: `Bearer ${vehicleJwt}` } },
+            ),
+        }),
     });
 
     const signals = response.data?.data?.signalsLatest as
@@ -298,11 +308,6 @@ export class DimoTelemetryService {
     };
   }
 
-  /**
-   * Fetch VIN from the VIN Verifiable Credential (attestation).
-   * Requires VEHICLE_VIN_CREDENTIAL privilege in the vehicle JWT.
-   * Returns null if not available or if the privilege is missing.
-   */
   async fetchVehicleVin(
     vehicleJwt: string,
     tokenId: number,
@@ -321,11 +326,15 @@ export class DimoTelemetryService {
         operation: DimoProviderOperation.TELEMETRY_VEHICLE_VIN,
         requestContext: buildDimoProviderRequestContext(tokenId, requestContext),
         invoke: () =>
-          this.client.post(
-            '',
-            { query },
-            { headers: { Authorization: `Bearer ${vehicleJwt}` } },
-          ),
+          this.dimoRequestExecutor.execute({
+            category: 'IDENTITY',
+            execute: () =>
+              this.client.post(
+                '',
+                { query },
+                { headers: { Authorization: `Bearer ${vehicleJwt}` } },
+              ),
+          }),
       });
       const vin = response.data?.data?.vinVCLatest?.vin as string | undefined;
       return vin ?? null;

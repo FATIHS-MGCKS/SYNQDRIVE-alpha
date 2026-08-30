@@ -7,6 +7,7 @@ import { ConnectivityLifecycleRuntimePolicyService } from './connectivity/connec
 import { DeviceConnectionWebhookInboxEnqueueService } from './device-connection-webhook-inbox-enqueue.service';
 import { DeviceConnectionWebhookInboxRepository } from './device-connection-webhook-inbox.repository';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 @Injectable()
 export class DeviceConnectionWebhookInboxSchedulerService {
@@ -20,6 +21,7 @@ export class DeviceConnectionWebhookInboxSchedulerService {
     private readonly enqueueService: DeviceConnectionWebhookInboxEnqueueService,
     private readonly prisma: PrismaService,
     private readonly deviceConnection: DeviceConnectionWebhookService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   async scheduleInboxIds(inboxIds: string[], replay = false): Promise<void> {
@@ -41,6 +43,7 @@ export class DeviceConnectionWebhookInboxSchedulerService {
 
   @Cron('*/30 * * * * *')
   async pollRetryableInbox(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('device_connection_webhook_inbox')) return;
     if (!this.lifecyclePolicy.automaticLifecycleReconciliationEnabled) {
       await this.reportHistoricalOrphansWithoutCutover();
       return;

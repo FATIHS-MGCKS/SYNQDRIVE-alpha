@@ -8,6 +8,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { TripReconciliationService } from '@modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
 import * as queueProducer from '@shared/queue/queue-producer.util';
 import { TELEMETRY_STANDBY_THRESHOLD_MS } from '@modules/vehicles/vehicle-state-interpreter';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 describe('DimoSnapshotScheduler (activity-tier)', () => {
   const NOW = Date.parse('2026-08-29T12:00:00.000Z');
@@ -40,6 +41,10 @@ describe('DimoSnapshotScheduler (activity-tier)', () => {
         {
           provide: TripReconciliationService,
           useValue: { triggerManualReconciliation: jest.fn() },
+        },
+        {
+          provide: SchedulerLeaderGuardService,
+          useValue: { shouldRun: jest.fn().mockReturnValue(true) },
         },
       ],
     }).compile();
@@ -107,6 +112,10 @@ describe('DimoSnapshotScheduler (activity-tier)', () => {
           {
             provide: TripReconciliationService,
             useValue: { triggerManualReconciliation: jest.fn() },
+          },
+          {
+            provide: SchedulerLeaderGuardService,
+            useValue: { shouldRun: jest.fn().mockReturnValue(true) },
           },
         ],
       }).compile()

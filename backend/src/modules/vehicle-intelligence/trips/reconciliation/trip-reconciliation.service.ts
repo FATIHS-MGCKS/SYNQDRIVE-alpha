@@ -19,6 +19,7 @@ import {
   normalizeCoverageMode,
   type TripRepairCoverageMode,
 } from '@config/worker.config';
+import { runWithDimoRequestContext } from '@modules/dimo/provider-budget/dimo-request-context';
 import { IgnitionSegmentDetector } from '../detectors/ignition-segment.detector';
 import { MotionSegmentDetector } from '../detectors/motion-segment.detector';
 import { ActivityWindowDetector } from '../detectors/activity-window.detector';
@@ -200,6 +201,19 @@ export class TripReconciliationService {
    * Called by tiered schedulers (fast/warm/cold) or manual trigger.
    */
   async reconcileWindow(
+    vehicleId: string,
+    from: Date,
+    to: Date,
+    tier: ReconciliationTier,
+    options?: ReconciliationOptions,
+  ): Promise<ReconciliationResult> {
+    return runWithDimoRequestContext(
+      { category: 'RECONCILIATION', priority: 'NORMAL' },
+      () => this.executeReconcileWindow(vehicleId, from, to, tier, options),
+    );
+  }
+
+  private async executeReconcileWindow(
     vehicleId: string,
     from: Date,
     to: Date,
