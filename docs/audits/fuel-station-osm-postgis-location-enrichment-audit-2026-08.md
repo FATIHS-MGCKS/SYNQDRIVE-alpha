@@ -2131,3 +2131,36 @@ Producer + recovery use `VehicleEnergyEvent.startTime >= FUEL_STATION_ENRICHMENT
 ---
 
 *PB-19.1 safety hardening — 2026-08-31.*
+
+---
+
+## PB-19.2 Phase D Lifecycle Hardening (pre-CI)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-08-31 |
+| **PR** | #1453 |
+
+### Lifecycle 1 — FAILED terminal across all automatic entry paths
+
+Producer consults persisted enrichment row before enqueue. `FAILED` + same fingerprint → no enqueue, no BullMQ job remove/recreate. Orchestrator skips automatic reprocessing for terminal FAILED.
+
+### Lifecycle 2 — COMPLETED same-fingerprint no-op
+
+Producer no longer removes completed BullMQ jobs to re-enqueue unchanged inputs. DB `COMPLETED` terminal state is authoritative.
+
+### Lifecycle 3 — NO_COORDINATES idempotency
+
+Orchestrator checks completed fingerprint before persisting `NO_COORDINATES`. Valid coordinates later → new fingerprint → enrichment permitted.
+
+### Lifecycle 4 — Recovery timer fail-closed at startup
+
+Timer starts only when `ENABLED=true` AND `RECOVERY_ENABLED=true` AND valid cutover. Misconfiguration emits one startup warning; no interval created.
+
+### Status
+
+## **PHASE D LIFECYCLE HARDENING COMPLETE — READY FOR NORMAL CI**
+
+---
+
+*PB-19.2 lifecycle hardening — 2026-08-31.*

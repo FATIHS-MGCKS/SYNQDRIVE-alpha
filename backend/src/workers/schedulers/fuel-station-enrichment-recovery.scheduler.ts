@@ -33,8 +33,31 @@ export class FuelStationEnrichmentRecoveryScheduler implements OnModuleInit, OnM
     private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
+  shouldStartRecoveryTimer(): boolean {
+    return (
+      this.config.enabled &&
+      this.config.recoveryEnabled &&
+      hasValidFuelStationEnrichmentCutover(this.config)
+    );
+  }
+
   onModuleInit(): void {
     if (!this.config.recoveryEnabled) return;
+
+    if (!this.shouldStartRecoveryTimer()) {
+      const detail = !this.config.enabled
+        ? 'FUEL_STATION_ENRICHMENT_ENABLED must be true'
+        : describeFuelStationEnrichmentCutoverMisconfiguration(this.config.cutoverState);
+      this.logger.warn(
+        JSON.stringify({
+          event: 'fuel_station_enrichment_recovery_timer_not_started',
+          reason: 'recovery_misconfigured',
+          detail,
+        }),
+      );
+      return;
+    }
+
     const intervalMs = Math.max(60_000, this.config.recoveryIntervalMs);
     this.timer = setInterval(() => {
       void this.recoverMissedEnrichments();

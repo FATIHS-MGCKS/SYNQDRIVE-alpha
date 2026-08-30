@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { ConfigType } from '@nestjs/config';
@@ -10,6 +10,7 @@ import {
   sanitizeBullMqJobId,
 } from '@shared/queue/bullmq-job-id.sanitizer';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
+import { PrismaService } from '@shared/database/prisma.service';
 import type { VehicleEnergyEvent } from '@prisma/client';
 import { deriveCanonicalFuelStationCoordinate } from './fuel-station-enrichment-coordinate.util';
 import {
@@ -25,6 +26,7 @@ import {
   hasValidFuelStationEnrichmentCutover,
   isFuelStationEnrichmentEventAfterCutover,
 } from './fuel-station-enrichment-cutover.util';
+import { getFuelStationEnrichmentAutomaticSkipReason } from './fuel-station-enrichment-lifecycle.policy';
 
 export interface EnqueueFuelStationEnrichmentInput {
   energyEventId: string;
@@ -42,6 +44,7 @@ export class FuelStationEnrichmentProducerService {
     private readonly queue: Queue<RefuelStationEnrichmentJobData>,
     @Inject(fuelStationEnrichmentConfig.KEY)
     private readonly config: ConfigType<typeof fuelStationEnrichmentConfig>,
+    private readonly prisma: PrismaService,
   ) {}
 
   async enqueueAfterPersist(input: EnqueueFuelStationEnrichmentInput): Promise<string | null> {
@@ -86,6 +89,25 @@ export class FuelStationEnrichmentProducerService {
           longitude: 0,
         });
 
+    const enrichment = await this.prisma.vehicleEnergyEventFuelStationEnrichment.findUnique({
+      where: { energyEventId: input.energyEventId },
+    });
+    const terminalSkipReason = getFuelStationEnrichmentAutomaticSkipReason({
+      enrichment,
+      inputFingerprint: fingerprint,
+    });
+    if (terminalSkipReason) {
+      this.logger.debug(
+        JSON.stringify({
+          event: 'fuel_station_enrichment_enqueue_skipped',
+          reason: terminalSkipReason,
+          energyEventId: input.energyEventId,
+          inputFingerprint: fingerprint,
+        }),
+      );
+      return null;
+    }
+
     const idempotencyKey = buildFuelStationEnrichmentJobIdempotencyKey({
       energyEventId: input.energyEventId,
       inputFingerprint: fingerprint,
@@ -95,9 +117,9 @@ export class FuelStationEnrichmentProducerService {
       key: idempotencyKey,
     });
 
-    const existing = await this.queue.getJob(jobId);
-    if (existing) {
-      const state = await existing.getState();
+    const existingJob = await this.queue.getJob(jobId);
+    if (existingJob) {
+      const state = await existingJob.getState();
       if (state === 'waiting' || state === 'delayed' || state === 'active' || state === 'prioritized') {
         this.logger.debug(
           `Fuel station enrichment duplicate suppressed ${formatBullMqJobIdLogContext({
@@ -107,9 +129,6 @@ export class FuelStationEnrichmentProducerService {
           })}`,
         );
         return jobId;
-      }
-      if (state === 'completed' || state === 'failed') {
-        await existing.remove();
       }
     }
 

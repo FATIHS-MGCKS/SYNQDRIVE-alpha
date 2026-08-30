@@ -142,6 +142,22 @@ Recovery (`FuelStationEnrichmentRecoveryScheduler`) sweeps post-cutover REFUEL e
 
 **`FAILED` is terminal** — not eligible for automatic recovery sweeps. Future retry requires a separately authorized manual repair operation.
 
+### Database vs BullMQ authority
+
+Automatic producer/recovery/orchestrator paths consult the persisted
+`VehicleEnergyEventFuelStationEnrichment` row **before** enqueue/reprocess:
+
+| DB state | Same fingerprint + resolverVersion | Automatic behavior |
+|----------|-----------------------------------|--------------------|
+| `FAILED` | yes | no-op (terminal) |
+| `COMPLETED` (non-ERROR resolution) | yes | no-op (terminal) |
+| `COMPLETED` + `ERROR` resolution | yes | retry permitted |
+| fingerprint changed | — | new job/resolution permitted |
+
+BullMQ `getJob()` is used only to suppress duplicate **active** jobs. Completed/failed BullMQ jobs are **not** removed/recreated to bypass terminal DB state.
+
+Recovery timer starts only when `ENABLED=true` AND `RECOVERY_ENABLED=true` AND valid cutover.
+
 ## Concurrency
 
 - Unique `energyEventId` FK enforces 1:1 row

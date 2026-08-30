@@ -50,6 +50,83 @@ describe('FuelStationEnrichmentOrchestratorService', () => {
     expect(prisma.vehicleEnergyEventFuelStationEnrichment.upsert).toHaveBeenCalled();
   });
 
+  it('skips idempotent NO_COORDINATES with same fingerprint', async () => {
+    const noCoordFingerprint = buildFuelStationEnrichmentInputFingerprint({
+      energyEventId: 'evt-1',
+      latitude: 0,
+      longitude: 0,
+    });
+    prisma.vehicleEnergyEvent.findUnique.mockResolvedValue({
+      ...baseEvent,
+      startLatitude: null,
+      startLongitude: null,
+      fuelStationEnrichment: {
+        processingStatus: 'COMPLETED',
+        resolutionStatus: 'NO_COORDINATES',
+        inputFingerprint: noCoordFingerprint,
+        resolverVersion: FUEL_STATION_RESOLVER_VERSION,
+      },
+    });
+
+    const result = await service.processEnergyEvent('evt-1');
+
+    expect(result.skipped).toBe(true);
+    expect(resolver.resolve).not.toHaveBeenCalled();
+    expect(prisma.vehicleEnergyEventFuelStationEnrichment.upsert).not.toHaveBeenCalled();
+  });
+
+  it('runs enrichment when coordinates become valid after NO_COORDINATES', async () => {
+    const noCoordFingerprint = buildFuelStationEnrichmentInputFingerprint({
+      energyEventId: 'evt-1',
+      latitude: 0,
+      longitude: 0,
+    });
+    prisma.vehicleEnergyEvent.findUnique.mockResolvedValue({
+      ...baseEvent,
+      fuelStationEnrichment: {
+        processingStatus: 'COMPLETED',
+        resolutionStatus: 'NO_COORDINATES',
+        inputFingerprint: noCoordFingerprint,
+        resolverVersion: FUEL_STATION_RESOLVER_VERSION,
+      },
+    });
+    prisma.vehicleEnergyEventFuelStationEnrichment.upsert.mockResolvedValue({});
+    resolver.resolve.mockResolvedValue({
+      status: 'MATCHED',
+      confidence: 'HIGH',
+      score: 120,
+      station: { osmType: 'node', osmId: '1', name: 'Esso' },
+      datasetVersion: 'geofabrik-germany-test',
+      resolverVersion: FUEL_STATION_RESOLVER_VERSION,
+    });
+
+    await service.processEnergyEvent('evt-1');
+
+    expect(resolver.resolve).toHaveBeenCalled();
+  });
+
+  it('skips automatic reprocessing when enrichment is FAILED with same fingerprint', async () => {
+    const fingerprint = buildFuelStationEnrichmentInputFingerprint({
+      energyEventId: 'evt-1',
+      latitude: 51.31,
+      longitude: 9.49,
+    });
+    prisma.vehicleEnergyEvent.findUnique.mockResolvedValue({
+      ...baseEvent,
+      fuelStationEnrichment: {
+        processingStatus: 'FAILED',
+        resolutionStatus: 'ERROR',
+        inputFingerprint: fingerprint,
+        resolverVersion: FUEL_STATION_RESOLVER_VERSION,
+      },
+    });
+
+    const result = await service.processEnergyEvent('evt-1');
+
+    expect(result.skipped).toBe(true);
+    expect(resolver.resolve).not.toHaveBeenCalled();
+  });
+
   it('persists MATCHED HIGH result', async () => {
     prisma.vehicleEnergyEvent.findUnique.mockResolvedValue(baseEvent);
     prisma.vehicleEnergyEventFuelStationEnrichment.upsert.mockResolvedValue({});

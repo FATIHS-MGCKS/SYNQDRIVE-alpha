@@ -13,6 +13,7 @@ import type { FuelStationResolveResult } from '../fuel-station-location.types';
 import { deriveCanonicalFuelStationCoordinate } from './fuel-station-enrichment-coordinate.util';
 import { buildFuelStationEnrichmentInputFingerprint } from './fuel-station-enrichment-fingerprint.util';
 import { isRetryableFuelStationResolutionStatus } from './fuel-station-enrichment-trust.policy';
+import { shouldSkipAutomaticFuelStationEnrichment } from './fuel-station-enrichment-lifecycle.policy';
 import { FUEL_STATION_ENRICHMENT_ERROR_CODE } from './fuel-station-enrichment.types';
 
 const MAX_ERROR_MESSAGE_LENGTH = 500;
@@ -51,17 +52,28 @@ export class FuelStationEnrichmentOrchestratorService {
 
     const coordinate = deriveCanonicalFuelStationCoordinate(event);
     if (!coordinate) {
+      const noCoordinateFingerprint = buildFuelStationEnrichmentInputFingerprint({
+        energyEventId: event.id,
+        latitude: 0,
+        longitude: 0,
+      });
+      const existingNoCoordinate = event.fuelStationEnrichment;
+      if (this.shouldSkipAsIdempotent(existingNoCoordinate, noCoordinateFingerprint)) {
+        this.logger.debug(`Fuel station enrichment idempotent NO_COORDINATES skip id=${energyEventId}`);
+        return {
+          skipped: true,
+          reason: 'already_completed',
+          enrichment: existingNoCoordinate ?? undefined,
+        };
+      }
+
       const enrichment = await this.persistTerminalOutcome(event, {
         processingStatus: 'COMPLETED',
         resolutionStatus: 'NO_COORDINATES',
         inputLatitude: null,
         inputLongitude: null,
         inputCoordinateSource: null,
-        inputFingerprint: buildFuelStationEnrichmentInputFingerprint({
-          energyEventId: event.id,
-          latitude: 0,
-          longitude: 0,
-        }),
+        inputFingerprint: noCoordinateFingerprint,
       });
       this.logCompletion(event.id, enrichment, Date.now() - started);
       return { skipped: false, enrichment };
@@ -106,12 +118,11 @@ export class FuelStationEnrichmentOrchestratorService {
     existing: VehicleEnergyEventFuelStationEnrichment | null | undefined,
     inputFingerprint: string,
   ): boolean {
-    if (!existing) return false;
-    if (existing.processingStatus !== 'COMPLETED') return false;
-    if (existing.inputFingerprint !== inputFingerprint) return false;
-    if (existing.resolverVersion !== FUEL_STATION_RESOLVER_VERSION) return false;
-    if (existing.resolutionStatus == null) return false;
-    return !isRetryableFuelStationResolutionStatus(existing.resolutionStatus);
+    return shouldSkipAutomaticFuelStationEnrichment({
+      enrichment: existing,
+      inputFingerprint,
+      resolverVersion: FUEL_STATION_RESOLVER_VERSION,
+    });
   }
 
   private async markProcessing(
