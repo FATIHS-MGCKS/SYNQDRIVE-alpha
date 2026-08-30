@@ -33,6 +33,7 @@ import { BatteryV2Processor } from './processors/battery-v2.processor';
 import { VoiceWebhookProcessor } from './processors/voice-webhook.processor';
 import { DeviceConnectionWebhookProcessor } from './processors/device-connection-webhook.processor';
 import { BookingDocumentGenerationProcessor } from './processors/booking-document-generation.processor';
+import { ClickHouseMirrorRetryProcessor } from './processors/clickhouse-mirror-retry.processor';
 import { RefuelStationEnrichmentProcessor } from './processors/refuel-station-enrichment.processor';
 import { FuelStationEnrichmentRecoveryScheduler } from './schedulers/fuel-station-enrichment-recovery.scheduler';
 
