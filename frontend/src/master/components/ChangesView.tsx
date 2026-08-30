@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'reconciliation-execution-mutex-p1-4-2026-08-30',
+    version: '4.9.1008',
+    title: 'P1.4 — Reconciliation execution mutex / multi-replica safety',
+    summary: [
+      'Redis per-vehicle reconciliation execution mutex via ReconciliationExecutionMutexService.',
+      'Key: synqdrive:reconciliation:lock:{organizationId}:{vehicleId}:trip — serializes trip boundary repair mutations.',
+      'TripReconciliationService.reconcileWindow + onStuckTrip converge through mutex; fail-closed on Redis outage.',
+      'Contention policy SKIPPED_LOCKED — next scheduled tier catches up; no retry storm.',
+      'Token-safe acquire/renew/release using RedisDistributedLockService (P1.7 primitives).',
+      'BullMQ workers remain multi-replica; P1.7 scheduler leader unchanged.',
+      'Metrics: synqdrive_reconciliation_mutex_* (bounded labels).',
+    ],
+    reason:
+      'P1.4 — prevent duplicate concurrent trip reconciliation across replicas after P1.7 scheduler leader election.',
+    previousBehavior:
+      'P1.7 prevented duplicate scheduler ticks only; manual/API/event paths could overlap on same vehicle.',
+    details:
+      'backend: shared/reconciliation-execution-mutex/*, TripReconciliationService integration. architecture/P1_4_RECONCILIATION_EXECUTION_MUTEX_*.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T10:15:00.000Z',
+  },
+  {
     id: 'dimo-global-provider-budget-p1-3-2026-08-29',
     version: '4.9.1007',
     title: 'P1.3 — Global DIMO provider budget (Redis lease semaphore)',

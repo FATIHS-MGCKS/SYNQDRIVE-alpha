@@ -51,6 +51,7 @@ export { default as legalDocumentRetentionConfig } from './legal-document-retent
 export { default as iamDataRetentionConfig } from './iam-data-retention.config';
 export { default as communicationRetentionConfig } from './communication-retention.config';
 export { default as schedulerLeaderElectionConfig } from '../shared/scheduler-leader/scheduler-leader-election.config';
+export { default as reconciliationExecutionMutexConfig } from '../shared/reconciliation-execution-mutex/reconciliation-execution-mutex.config';
 export {
   default as iamConfig,
   IAM_ORG_BOUND_REFRESH_SESSIONS_ENV,

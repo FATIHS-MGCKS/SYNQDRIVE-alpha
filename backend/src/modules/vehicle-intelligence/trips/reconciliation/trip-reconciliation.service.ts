@@ -60,6 +60,7 @@ import {
 } from '../boundary-repair.state.util';
 import { BoundaryRefreshLifecycleService } from '../boundary-refresh-lifecycle.service';
 import { BoundaryRepairConcurrentMutationError } from '../decision/decision.types';
+import { ReconciliationExecutionMutexService } from '@shared/reconciliation-execution-mutex/reconciliation-execution-mutex.service';
 
 interface ReconciliationOptions {
   useDimoSegmentFallback?: boolean;
@@ -171,6 +172,8 @@ export class TripReconciliationService {
     @Optional() private readonly energyEventsService?: EnergyEventsService,
     @Optional() private readonly tripAssociation?: EventTripAssociationService,
     @Optional() private readonly boundaryRefreshLifecycle?: BoundaryRefreshLifecycleService,
+    @Optional()
+    private readonly reconciliationMutex?: ReconciliationExecutionMutexService,
   ) {
     this.TRIP_MID_GAP_SPLIT_MS =
       this.configService?.get<number>('worker.tripMidGapSplitMs') ?? 180_000;
@@ -207,10 +210,56 @@ export class TripReconciliationService {
     tier: ReconciliationTier,
     options?: ReconciliationOptions,
   ): Promise<ReconciliationResult> {
-    return runWithDimoRequestContext(
-      { category: 'RECONCILIATION', priority: 'NORMAL' },
-      () => this.executeReconcileWindow(vehicleId, from, to, tier, options),
+    const startedMs = Date.now();
+    const organizationId = await this.resolveOrganizationId(vehicleId);
+
+    const run = async (): Promise<ReconciliationResult> =>
+      runWithDimoRequestContext(
+        { category: 'RECONCILIATION', priority: 'NORMAL' },
+        () => this.executeReconcileWindow(vehicleId, from, to, tier, options),
+      );
+
+    if (!this.reconciliationMutex) {
+      return run();
+    }
+
+    const mutexResult = await this.reconciliationMutex.execute(
+      { organizationId, vehicleId, reconciliationType: 'trip', tier },
+      run,
     );
+
+    if (mutexResult.status === 'executed') {
+      return mutexResult.value;
+    }
+
+    this.logger.debug(
+      `Trip reconciliation skipped vehicle=${vehicleId} tier=${tier} reason=${mutexResult.reason}`,
+    );
+    return {
+      vehicleId,
+      tier,
+      windowFrom: from,
+      windowTo: to,
+      repairsProposed: 0,
+      repairsApplied: 0,
+      repairsRejected: 0,
+      durationMs: Date.now() - startedMs,
+      skipped: true,
+      skipReason: mutexResult.reason,
+    };
+  }
+
+  private async resolveOrganizationId(vehicleId: string): Promise<string> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    if (!vehicle?.organizationId) {
+      throw new Error(
+        `Cannot reconcile vehicle ${vehicleId}: missing organization scope`,
+      );
+    }
+    return vehicle.organizationId;
   }
 
   private async executeReconcileWindow(
@@ -355,7 +404,24 @@ export class TripReconciliationService {
     const to = new Date();
     const from = new Date(trip.startTime.getTime() - 5 * 60_000);
 
-    await this.repairMissingEnds(vehicleId, from, to);
+    const runRepair = () => this.repairMissingEnds(vehicleId, from, to);
+
+    if (!this.reconciliationMutex) {
+      await runRepair();
+      return;
+    }
+
+    const organizationId = await this.resolveOrganizationId(vehicleId);
+    const mutexResult = await this.reconciliationMutex.execute(
+      { organizationId, vehicleId, reconciliationType: 'trip', tier: 'fast' },
+      runRepair,
+    );
+
+    if (mutexResult.status === 'skipped') {
+      this.logger.debug(
+        `onStuckTrip skipped vehicle=${vehicleId} trip=${tripId} reason=${mutexResult.reason}`,
+      );
+    }
   }
 
   async onEnrichmentFailure(tripId: string): Promise<void> {
