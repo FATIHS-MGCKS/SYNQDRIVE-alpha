@@ -308,15 +308,21 @@ A future profile should be able to express:
 ### 2A Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2a-current-query-surface-audit-2026-08-31.md`
 
-**Exit criteria met (code/schema audit):** 27 productive DIMO queries registered (`DIMO-Q001`–`DIMO-Q027`); exact signal selections, triggers, cadence, windows, persistence, and overlap documented; theoretical scaling computed; 20 runtime probes backlog.
+**Exit criteria met (code/schema audit):** All discovered DIMO query definitions and productive invocation contexts classified — **27 registry entries** (`DIMO-Q001`–`DIMO-Q027`), **22 unique GraphQL definitions**, **16 production-active definitions**, **6 on-demand/diagnostic**, **1 shadow context**, **1 legacy reachable**, **1 dead**, **2 reused invocation contexts**; **41 unique signal field names** inventoried; exact selections, triggers, cadence, windows, persistence, retention semantics, and formula-driven post-trip request models documented; theoretical scaling recomputed (snapshot ACTIVE_DRIVING = 2 calls/**min**, 120/hour, 2,880/day); **20** runtime probes backlog.
 
 **Capability architecture verdict:** `PARTIALLY_CAPABILITY_AWARE` — `availableSignals`/`dataSummary` preflight persists capability probes (7-day gate) but does **not** drive snapshot/live/HF/event query field selection; all driving queries remain static fleet-wide profiles.
 
 **Material Phase 2A findings:**
+- Registry semantics corrected: 27 entries ≠ 27 unique GraphQL operations (22 unique definitions; Q026–Q027 reuse Q009/Q022; Q011 dead; Q024 legacy bypassed by Q025).
+- **41 unique signal field names** queried across builders (not ~52); Q001 = 33 GraphQL selections (32 telemetry + `lastSeen` metadata).
 - REQUESTED_BUCKET (`1s`/`7s`/`15s`/`20s`) ≠ proven OBSERVED_PROVIDER_CADENCE — runtime probes required before treating bucket size as sample frequency.
 - No per-HF-point SynqDrive receive timestamp; provider→SynqDrive latency not measurable for kinematic replay (Phase 3 blocker input).
 - Raw HF not in Postgres; ClickHouse HF mirror optional (`HF_MIRROR_ENABLED=false` default), 6-signal subset — PARTIAL_REPLAY_ONLY.
-- ACTIVE_TICK: 3 parallel DIMO calls every ~30s per active trip dominates burst API load at concurrent-trip scale.
+- ACTIVE_TICK: **3 parallel DIMO calls every ~30s** per active trip (THEORETICAL_MAX = NORMAL_PATH, CONFIRMED) dominates burst API load at concurrent-trip scale.
+- Snapshot ACTIVE_DRIVING tier: **2 calls/min**, 120/hour, **2,880/day** per vehicle (not 2/hour).
+- Post-trip volume is **formula-driven** (not flat 6–8/trip); LTE_R1 runs **two full-trip Q009 HF fetches** per completed trip.
+- VehicleLatestState = **LATEST_STATE_UNTIL_OVERWRITTEN** (not append-only snapshot history); ClickHouse optional `HISTORICAL_TTL_180D`.
+- Provider schema claims limited to **CURRENT_SYNQDRIVE_REFERENCED_DIMO_SURFACE** + `CONFIRMED_FROM_CODE`; no current DIMO introspection artifact verified in this audit.
 - Four 2026-08-30 vehicle inventory files still **not on `main`** — Phase 2B remains blocked on ingestion.
 
 **Phase 2 overall:** IN_PROGRESS (2A done; 2B–2G not started). **Phase 3 remains gated.**
@@ -607,7 +613,7 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Read 2026-08-30 C63 AMG signal gap audit | BLOCKED | exact file not yet on `main` |
 | Read 2026-08-30 Audi A4 signal gap audit | BLOCKED | exact file not yet on `main` |
 | Read 2026-08-30 Arteon signal gap audit | BLOCKED | exact file not yet on `main` |
-| Snapshot query inventory | DONE | Phase 2A audit §4–6 (27 queries total) |
+| Snapshot query inventory | DONE | Phase 2A audit §4–6 (27 registry entries / 22 unique definitions) |
 | Active-trip/live polling query inventory | DONE | Phase 2A audit §7–8 |
 | HF/time-series query inventory | DONE | Phase 2A audit §9–10 |
 | Native event/segment inventory refresh | DONE | Phase 2A audit §12–13 |
