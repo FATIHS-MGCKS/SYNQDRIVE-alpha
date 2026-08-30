@@ -1,5 +1,6 @@
 import {
   isLvRestTargetAlreadyScheduled,
+  isLvRestTargetTerminal,
   LV_REST_TARGET_JOB_STATUS,
   LV_REST_TARGET_TYPES,
   mergeLvRestTargetJobMetadata,
@@ -39,5 +40,32 @@ describe('lv-rest-window-target.metadata', () => {
         },
       }),
     );
+  });
+
+  it('treats ENQUEUED as non-terminal so reconciliation can rescue stuck targets', () => {
+    const metadata = mergeLvRestTargetJobMetadata(null, LV_REST_TARGET_TYPES.REST_60M, {
+      idempotencyKey: 'battery-rest:veh:window:60m',
+      scheduledFor: '2026-07-16T11:00:00.000Z',
+      status: LV_REST_TARGET_JOB_STATUS.ENQUEUED,
+    });
+
+    expect(isLvRestTargetTerminal(metadata, LV_REST_TARGET_TYPES.REST_60M)).toBe(false);
+    expect(isLvRestTargetTerminal(metadata, LV_REST_TARGET_TYPES.REST_6H)).toBe(false);
+  });
+
+  it('treats COMPLETED and MISSED as terminal', () => {
+    const completed = mergeLvRestTargetJobMetadata(null, LV_REST_TARGET_TYPES.REST_60M, {
+      idempotencyKey: 'battery-rest:veh:window:60m',
+      scheduledFor: '2026-07-16T11:00:00.000Z',
+      status: LV_REST_TARGET_JOB_STATUS.COMPLETED,
+    });
+    const missed = mergeLvRestTargetJobMetadata(null, LV_REST_TARGET_TYPES.REST_6H, {
+      idempotencyKey: 'battery-rest:veh:window:6h',
+      scheduledFor: '2026-07-16T16:00:00.000Z',
+      status: LV_REST_TARGET_JOB_STATUS.MISSED,
+    });
+
+    expect(isLvRestTargetTerminal(completed, LV_REST_TARGET_TYPES.REST_60M)).toBe(true);
+    expect(isLvRestTargetTerminal(missed, LV_REST_TARGET_TYPES.REST_6H)).toBe(true);
   });
 });

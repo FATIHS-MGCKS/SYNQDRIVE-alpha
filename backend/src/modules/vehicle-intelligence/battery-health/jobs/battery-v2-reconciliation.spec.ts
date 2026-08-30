@@ -14,9 +14,10 @@ jest.mock('@config/battery-health-v2.config', () => {
 const ORG = 'clorg1234567890123456789012';
 const VEH = 'clveh1234567890123456789012';
 
-function mockDeadLetters(overrides: Partial<{ isDeadLetter: jest.Mock }> = {}) {
+function mockDeadLetters(overrides: Partial<{ isDeadLetter: jest.Mock; clearDeadLetter: jest.Mock }> = {}) {
   return {
     isDeadLetter: jest.fn().mockResolvedValue(false),
+    clearDeadLetter: jest.fn().mockResolvedValue(true),
     ...overrides,
   };
 }
@@ -78,6 +79,34 @@ describe('BatteryV2JobProducerService hardening', () => {
 
     expect(result).toBeNull();
     expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('enqueues when dead letter exists but ignoreDeadLetter recovery flag is set', async () => {
+    const queue = {
+      getJob: jest.fn().mockResolvedValue(null),
+      add: jest.fn().mockResolvedValue({ id: 'job-1' }),
+    };
+    const deadLetters = mockDeadLetters({
+      isDeadLetter: jest.fn().mockResolvedValue(true),
+    });
+    const producer = new BatteryV2JobProducerService(queue as any, deadLetters as any);
+
+    const result = await producer.enqueue(
+      'BATTERY_REST_TARGET_EVALUATE',
+      {
+        organizationId: ORG,
+        vehicleId: VEH,
+        idempotencyKey: `rest-target:${VEH}:REST_60M:123`,
+        restWindowId: `lv-rest:${VEH}:123`,
+        restWindowStartedAt: new Date().toISOString(),
+        restTargetType: 'REST_60M',
+      },
+      { ignoreDeadLetter: true },
+    );
+
+    expect(result).not.toBeNull();
+    expect(deadLetters.isDeadLetter).not.toHaveBeenCalled();
+    expect(queue.add).toHaveBeenCalled();
   });
 });
 
@@ -141,6 +170,16 @@ describe('BatteryV2ReconciliationService', () => {
     enqueueSessionOpenForFinalizedTrip: jest.fn().mockResolvedValue('job-id'),
     canEnqueueForVehicle: jest.fn().mockResolvedValue(true),
   };
+  const sessionArming = {
+    ensureLvRestWindowForFinalizedTrip: jest
+      .fn()
+      .mockResolvedValue({ outcome: 'opened', sessionId: 'sess-new' }),
+  };
+  const sessionRepository = {
+    repairCanonicalTripBindingIfNeeded: jest
+      .fn()
+      .mockImplementation(async (session) => session),
+  };
   const tripStartProducer = { enqueueStartProxy: jest.fn().mockResolvedValue('job-id') };
   const rechargeReconcileProducer = {
     reconcilePeriodic: jest.fn().mockResolvedValue(0),
@@ -155,7 +194,12 @@ describe('BatteryV2ReconciliationService', () => {
     jest.clearAllMocks();
     prisma.batteryFeatures.findMany.mockResolvedValue([]);
     prisma.vehicleEnergyEvent.findMany.mockResolvedValue([]);
-    prisma.batteryMeasurementSession.findMany.mockResolvedValue([]);
+    prisma.batteryMeasurementSession.findMany.mockImplementation(async (args: any) => {
+      if (args?.where?.tripId?.not != null) {
+        return [];
+      }
+      return [];
+    });
     prisma.batteryMeasurement.findFirst.mockResolvedValue(null);
     service = new BatteryV2ReconciliationService(
       prisma as any,
@@ -164,6 +208,8 @@ describe('BatteryV2ReconciliationService', () => {
       deadLetters as any,
       capabilityRefresh as any,
       lvRestSessionProducer as any,
+      sessionArming as any,
+      sessionRepository as any,
       restTargetProducer as any,
       tripStartProducer as any,
       rechargeReconcileProducer as any,
@@ -190,16 +236,16 @@ describe('BatteryV2ReconciliationService', () => {
     const result = await service.reconcileAll();
 
     expect(result.restSessions).toBe(1);
-    expect(
-      lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip,
-    ).toHaveBeenCalledWith(
+    expect(sessionArming.ensureLvRestWindowForFinalizedTrip).toHaveBeenCalledWith(
       expect.objectContaining({
         organizationId: ORG,
         vehicleId: VEH,
         tripId: 'trip-1',
-        tripEndedAt: anchor,
       }),
     );
+    expect(
+      lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip,
+    ).not.toHaveBeenCalled();
   });
 
   it('repairs trip A even when the vehicle has already started trip B (Phase 3 adversarial)', async () => {
@@ -234,13 +280,13 @@ describe('BatteryV2ReconciliationService', () => {
     const result = await service.reconcileAll();
 
     expect(result.restSessions).toBe(1);
-    expect(lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip).toHaveBeenCalledTimes(1);
-    expect(lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip).toHaveBeenCalledWith(
+    expect(sessionArming.ensureLvRestWindowForFinalizedTrip).toHaveBeenCalledTimes(1);
+    expect(sessionArming.ensureLvRestWindowForFinalizedTrip).toHaveBeenCalledWith(
       expect.objectContaining({
         tripId: 'trip-a',
-        tripEndedAt: anchorA,
       }),
     );
+    expect(lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip).not.toHaveBeenCalled();
     expect(prisma.vehicleTripDetectionState.findMany).not.toHaveBeenCalled();
   });
 
@@ -282,25 +328,148 @@ describe('BatteryV2ReconciliationService', () => {
     const result = await service.reconcileAll();
 
     expect(result.restSessions).toBe(0);
+    expect(sessionArming.ensureLvRestWindowForFinalizedTrip).not.toHaveBeenCalled();
     expect(
       lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip,
     ).not.toHaveBeenCalled();
   });
 
+  it('falls back to recovery enqueue when direct arming is not eligible', async () => {
+    const anchor = new Date(Date.now() - 10 * 60_000);
+    prisma.vehicleTrip.findMany.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
+      if (args.where?.endTime != null && args.where?.tripStatus === 'COMPLETED') {
+        return [
+          {
+            id: 'trip-1',
+            vehicleId: VEH,
+            endTime: anchor,
+            vehicle: { organizationId: ORG },
+          },
+        ];
+      }
+      return [];
+    });
+    prisma.batteryMeasurementSession.findFirst.mockResolvedValue(null);
+    sessionArming.ensureLvRestWindowForFinalizedTrip.mockResolvedValueOnce({
+      outcome: 'not_eligible',
+      reason: 'policy_blocked',
+    });
+
+    const result = await service.reconcileAll();
+
+    expect(result.restSessions).toBe(1);
+    expect(lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tripId: 'trip-1',
+        tripEndedAt: anchor,
+        recovery: true,
+      }),
+    );
+  });
+
+  it('repairs mis-bound trip_id when anchor matches a different completed trip', async () => {
+    const anchor = new Date('2026-08-30T12:05:53.000Z');
+    prisma.vehicleTrip.findMany.mockResolvedValue([]);
+    prisma.batteryMeasurementSession.findMany.mockImplementation(async (args: any) => {
+      if (args?.where?.type === 'LV_REST_WINDOW' && args?.where?.tripId) {
+        return [
+          {
+            id: 'sess-misbound',
+            organizationId: ORG,
+            vehicleId: VEH,
+            tripId: 'trip-prev',
+            startedAt: anchor,
+            sourceEntityType: 'trip',
+            sourceEntityId: 'trip-prev',
+          },
+        ];
+      }
+      if (args?.where?.type === 'LV_REST_WINDOW') {
+        return [];
+      }
+      return [];
+    });
+    prisma.vehicleTrip.findFirst
+      .mockResolvedValueOnce({ id: 'trip-prev', endTime: new Date('2026-08-30T11:50:50.000Z') })
+      .mockResolvedValueOnce({ id: 'trip-authoritative' });
+
+    const result = await service.reconcileAll();
+
+    expect(result.restSessions).toBe(1);
+    expect(sessionRepository.repairCanonicalTripBindingIfNeeded).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'sess-misbound' }),
+      expect.objectContaining({
+        tripId: 'trip-authoritative',
+        startedAt: anchor,
+      }),
+    );
+  });
+
+  it('rescues stuck ENQUEUED REST target after PROVIDER_UNAVAILABLE dead letter', async () => {
+    const startedAt = new Date(Date.now() - 2 * 60 * 60_000);
+    const windowId = `lv-rest:${VEH}:${startedAt.getTime()}`;
+    const idempotencyKey = `battery-rest:${VEH}:${windowId}:60m`;
+    prisma.batteryMeasurementSession.findMany.mockImplementation(async (args: any) => {
+      if (args?.where?.tripId?.not != null) {
+        return [];
+      }
+      return [
+        {
+          id: 'sess-stuck',
+          organizationId: ORG,
+          vehicleId: VEH,
+          startedAt,
+          idempotencyKey: windowId,
+          metadata: {
+            lvRestWindowState: 'RESTING',
+            scheduledTargets: {
+              REST_60M: {
+                idempotencyKey,
+                scheduledFor: startedAt.toISOString(),
+                status: 'ENQUEUED',
+              },
+            },
+          },
+          status: 'ACTIVE',
+        },
+      ];
+    });
+    deadLetters.isDeadLetter.mockResolvedValueOnce(true);
+
+    const result = await service.reconcileAll();
+
+    expect(result.restTargets).toBe(1);
+    expect(deadLetters.clearDeadLetter).toHaveBeenCalledWith(
+      'BATTERY_REST_TARGET_EVALUATE',
+      idempotencyKey,
+    );
+    expect(restTargetProducer.scheduleRest60m).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'sess-stuck',
+        recovery: true,
+      }),
+    );
+  });
+
   it('schedules targets for PLANNED (candidate) LV rest sessions armed without promotion', async () => {
     const startedAt = new Date(Date.now() - 2 * 60 * 60_000);
     const windowId = `lv-rest:${VEH}:${startedAt.getTime()}`;
-    prisma.batteryMeasurementSession.findMany.mockResolvedValueOnce([
-      {
-        id: 'sess-candidate',
-        organizationId: ORG,
-        vehicleId: VEH,
-        startedAt,
-        idempotencyKey: windowId,
-        metadata: { lvRestWindowState: 'CANDIDATE' },
-        status: 'PLANNED',
-      },
-    ]);
+    prisma.batteryMeasurementSession.findMany.mockImplementation(async (args: any) => {
+      if (args?.where?.tripId?.not != null) {
+        return [];
+      }
+      return [
+        {
+          id: 'sess-candidate',
+          organizationId: ORG,
+          vehicleId: VEH,
+          startedAt,
+          idempotencyKey: windowId,
+          metadata: { lvRestWindowState: 'CANDIDATE' },
+          status: 'PLANNED',
+        },
+      ];
+    });
 
     const result = await service.reconcileAll();
 
@@ -316,21 +485,44 @@ describe('BatteryV2ReconciliationService', () => {
   it('reconciles LV rest window targets without duplicate schedule metadata', async () => {
     const startedAt = new Date(Date.now() - 2 * 60 * 60_000);
     const windowId = `lv-rest:${VEH}:${startedAt.getTime()}`;
-    prisma.batteryMeasurementSession.findMany
-      .mockResolvedValueOnce([
+    let sessionRow = {
+      id: 'sess-1',
+      organizationId: ORG,
+      vehicleId: VEH,
+      startedAt,
+      idempotencyKey: windowId,
+      metadata: { lvRestWindowState: 'RESTING' } as Record<string, unknown>,
+      status: 'ACTIVE',
+    };
+    prisma.batteryMeasurementSession.findMany.mockImplementation(async (args: any) => {
+      if (args?.where?.tripId?.not != null) {
+        return [];
+      }
+      return [sessionRow];
+    });
+    prisma.batteryMeasurementSession.update.mockImplementation(async ({ data }: any) => {
+      sessionRow = { ...sessionRow, metadata: data.metadata };
+      return sessionRow;
+    });
+
+    const first = await service.reconcileAll();
+    const second = await service.reconcileAll();
+
+    expect(first.restTargets).toBe(1);
+    expect(second.restTargets).toBe(0);
+    expect(restTargetProducer.scheduleRest60m).toHaveBeenCalledTimes(1);
+  });
+
+  it('reconciles REST_6H target after six hours without duplicate metadata', async () => {
+    const startedAt = new Date(Date.now() - 7 * 60 * 60_000);
+    const windowId = `lv-rest:${VEH}:${startedAt.getTime()}`;
+    prisma.batteryMeasurementSession.findMany.mockImplementation(async (args: any) => {
+      if (args?.where?.tripId?.not != null) {
+        return [];
+      }
+      return [
         {
-          id: 'sess-1',
-          organizationId: ORG,
-          vehicleId: VEH,
-          startedAt,
-          idempotencyKey: windowId,
-          metadata: { lvRestWindowState: 'RESTING' },
-          status: 'ACTIVE',
-        },
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: 'sess-1',
+          id: 'sess-6h',
           organizationId: ORG,
           vehicleId: VEH,
           startedAt,
@@ -347,39 +539,8 @@ describe('BatteryV2ReconciliationService', () => {
           },
           status: 'ACTIVE',
         },
-      ]);
-
-    const first = await service.reconcileAll();
-    const second = await service.reconcileAll();
-
-    expect(first.restTargets).toBe(1);
-    expect(second.restTargets).toBe(0);
-    expect(restTargetProducer.scheduleRest60m).toHaveBeenCalledTimes(1);
-  });
-
-  it('reconciles REST_6H target after six hours without duplicate metadata', async () => {
-    const startedAt = new Date(Date.now() - 7 * 60 * 60_000);
-    const windowId = `lv-rest:${VEH}:${startedAt.getTime()}`;
-    prisma.batteryMeasurementSession.findMany.mockResolvedValueOnce([
-      {
-        id: 'sess-6h',
-        organizationId: ORG,
-        vehicleId: VEH,
-        startedAt,
-        idempotencyKey: windowId,
-        metadata: {
-          lvRestWindowState: 'RESTING',
-          scheduledTargets: {
-            REST_60M: {
-              idempotencyKey: `battery-rest:${VEH}:${windowId}:60m`,
-              scheduledFor: startedAt.toISOString(),
-              status: 'ENQUEUED',
-            },
-          },
-        },
-        status: 'ACTIVE',
-      },
-    ]);
+      ];
+    });
 
     const result = await service.reconcileAll();
     expect(result.restTargets).toBe(1);
@@ -399,7 +560,12 @@ describe('BatteryV2ReconciliationService', () => {
       metadata: { lvRestWindowState: 'RESTING' },
       status: 'ACTIVE',
     };
-    prisma.batteryMeasurementSession.findMany.mockResolvedValue([]);
+    prisma.batteryMeasurementSession.findMany.mockImplementation(async (args: any) => {
+      if (args?.where?.tripId?.not != null) {
+        return [];
+      }
+      return [];
+    });
     prisma.batteryMeasurementSession.findFirst.mockResolvedValue(legacySession);
     prisma.batteryMeasurementSession.update.mockImplementation(async ({ data }) => {
       legacySession.metadata = data.metadata as typeof legacySession.metadata;
@@ -437,7 +603,12 @@ describe('BatteryV2ReconciliationService', () => {
 
   it('skips legacy battery_features reconciliation when no LV rest session exists', async () => {
     const startedAt = new Date(Date.now() - 2 * 60 * 60_000);
-    prisma.batteryMeasurementSession.findMany.mockResolvedValue([]);
+    prisma.batteryMeasurementSession.findMany.mockImplementation(async (args: any) => {
+      if (args?.where?.tripId?.not != null) {
+        return [];
+      }
+      return [];
+    });
     prisma.batteryMeasurementSession.findFirst.mockResolvedValue(null);
     prisma.batteryFeatures.findMany.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
       if (args.where?.restWindowStartedAt != null) {

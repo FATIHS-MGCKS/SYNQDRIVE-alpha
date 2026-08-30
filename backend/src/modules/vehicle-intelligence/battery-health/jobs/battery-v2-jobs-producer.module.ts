@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { BatteryPolicyProfileService } from '../../battery-policy-profile/battery-policy-profile.service';
+import { BatteryMeasurementSessionRepository } from '../battery-measurement-session.repository';
+import { LvRestWindowStateMachineService } from '../lv-rest-window/lv-rest-window.service';
+import { LvRestWindowSessionArmingService } from '../lv-rest-window/lv-rest-window-session-arming.service';
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 import { BatteryV2ReconciliationService } from './battery-v2-reconciliation.service';
@@ -18,6 +21,9 @@ import { BatteryV2JobObservabilityService } from './battery-v2-job-observability
   imports: [BullModule.registerQueue({ name: QUEUE_NAMES.BATTERY_V2 })],
   providers: [
     BatteryPolicyProfileService,
+    BatteryMeasurementSessionRepository,
+    LvRestWindowStateMachineService,
+    LvRestWindowSessionArmingService,
     BatteryV2JobDeadLetterService,
     BatteryV2JobProducerService,
     BatteryV2SnapshotObservationProducer,
@@ -35,6 +41,7 @@ import { BatteryV2JobObservabilityService } from './battery-v2-job-observability
     BatteryV2SnapshotObservationProducer,
     BatteryV2TripStartProducer,
     BatteryV2LvRestSessionProducer,
+    LvRestWindowSessionArmingService,
     BatteryV2RestTargetProducer,
     HvRechargeSessionReconcileProducerService,
     BatteryCapabilityRefreshService,

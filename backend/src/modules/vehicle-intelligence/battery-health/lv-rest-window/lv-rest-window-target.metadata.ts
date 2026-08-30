@@ -102,3 +102,18 @@ export function isLvRestTargetAlreadyScheduled(
     entry.status === LV_REST_TARGET_JOB_STATUS.MISSED
   );
 }
+
+/** Terminal target states — reconciliation may schedule when false and no measurement exists. */
+export function isLvRestTargetTerminal(
+  metadata: unknown,
+  targetType: LvRestTargetType,
+): boolean {
+  const entry = readLvRestWindowSessionMetadata(metadata).scheduledTargets?.[targetType];
+  if (!entry) return false;
+  return (
+    entry.status === LV_REST_TARGET_JOB_STATUS.COMPLETED ||
+    entry.status === LV_REST_TARGET_JOB_STATUS.MISSED ||
+    entry.status === LV_REST_TARGET_JOB_STATUS.CANCELLED ||
+    entry.status === LV_REST_TARGET_JOB_STATUS.FAILED
+  );
+}

@@ -143,6 +143,7 @@ describe('LvRestWindowSessionArmingService (finalized-trip liveness fix)', () =>
       idempotencyIndex.set(key, row.id);
       return row;
     }),
+    repairCanonicalTripBindingIfNeeded: jest.fn(async (session: any) => session),
     updateMutable: jest.fn(async ({ sessionId, ...data }: any) => {
       const row = sessions.get(sessionId);
       const updated = { ...row, ...data };

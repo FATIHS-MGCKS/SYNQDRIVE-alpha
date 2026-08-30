@@ -263,7 +263,10 @@ describe('battery-v2 enqueue path audit', () => {
   describe('wrapper producers', () => {
     it('rest-target.scheduleTarget (delayed repeat-safe dedup)', async () => {
       const { producer, captured } = createCapturingProducer();
-      const restProducer = new BatteryV2RestTargetProducer(producer);
+      const restProducer = new BatteryV2RestTargetProducer(
+        producer,
+        { clearDeadLetter: jest.fn().mockResolvedValue(true) } as any,
+      );
       const idempotencyKey = buildBatteryRestTargetJobIdempotencyKey({
         vehicleId: VEH,
         restWindowId: REST_WINDOW_ID,
@@ -375,7 +378,10 @@ describe('battery-v2 enqueue path audit', () => {
     it('reconciliation scheduler delegates to service only', async () => {
       const reconciliation = { reconcileAll: jest.fn().mockResolvedValue({}) };
       const observability = { setDeadLetterBacklog: jest.fn() };
-      const deadLetters = { countBacklog: jest.fn().mockResolvedValue(0) };
+      const deadLetters = {
+        countBacklog: jest.fn().mockResolvedValue(0),
+        clearReplayableDeadLetters: jest.fn().mockResolvedValue(0),
+      };
       const scheduler = new BatteryV2ReconciliationScheduler(
         reconciliation as never,
         observability as never,

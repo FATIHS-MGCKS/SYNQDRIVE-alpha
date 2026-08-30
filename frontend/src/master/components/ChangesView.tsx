@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-stage1-pipeline-defect-closure-2026-08-30',
+    version: '4.9.1014',
+    title: 'Battery V2 Stage 1 — pipeline defect closure (liveness, trip binding, REST temporal)',
+    summary: [
+      'Reconciliation now directly arms missing LV_REST_WINDOW sessions (ea7696b6 liveness gap) before recovery enqueue; transient DLQ rows (LOCK_CONTENTION, PROVIDER_UNAVAILABLE) cleared each tick.',
+      'Session canonical identity: trip_id + anchor must match authoritative trip.endTime; FSM prefers tripEndAt; idempotent create repairs stale trip_id.',
+      'REST target evaluation defers retryable pending evidence (PENDING_EVALUATION) instead of Bull-exhausting in 15s; reconciliation rescues stuck ENQUEUED targets after DLQ.',
+      '#1383 observation-independent opening and #1393 ICE opening policy preserved; shadow only, no Stage 2.',
+    ],
+    reason:
+      'Natural production traffic after #1383/#1393 exposed liveness hole after deploy, cross-trip trip_id mis-binding, and REST_60M/6H stuck ENQUEUED with PROVIDER_UNAVAILABLE dead letters.',
+    previousBehavior:
+      'Reconciliation enqueue-only recovery; DLQ permanently blocked re-enqueue; REST handler threw on retryable evaluation; ENQUEUED metadata blocked reschedule; FSM anchor could follow lastActivityAt ahead of trip.endTime.',
+    details:
+      'backend: reconciliation, handlers, producers, FSM, bridge, repository, scheduler (+ specs). architecture/BATTERY_V2_STAGE1_PIPELINE_DEFECT_CLOSURE_2026-08-30.md. No schema/flag/deploy.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T16:45:00.000Z',
+  },
+  {
     id: 'dimo-provider-p1-3-s4-reconciliation-2-2026-08-30',
     version: '4.9.1013',
     title: 'P1.3-S4 reconciliation #2 — #1440 VPS validation + full S4/P1.3/P1.7/P1.4 stack',

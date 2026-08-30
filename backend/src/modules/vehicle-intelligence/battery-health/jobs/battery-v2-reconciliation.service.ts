@@ -20,11 +20,13 @@ import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.serv
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 import { BatteryV2LvRestSessionProducer } from './battery-v2-lv-rest-session.producer';
 import { BatteryV2RestTargetProducer } from './battery-v2-rest-target.producer';
+import { LvRestWindowSessionArmingService } from '../lv-rest-window/lv-rest-window-session-arming.service';
 import { BatteryV2SnapshotObservationProducer } from './battery-v2-snapshot-observation.producer';
 import { BatteryCapabilityRefreshService } from '../capability-preflight/battery-capability-refresh.service';
 import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 import {
   isLvRestTargetAlreadyScheduled,
+  isLvRestTargetTerminal,
   LV_REST_TARGET_JOB_STATUS,
   LV_REST_TARGET_TYPES,
   mergeLvRestTargetJobMetadata,
@@ -45,6 +47,7 @@ import {
   recordBatteryV2ReconciliationEnqueued,
   type BatteryV2ReconciliationCategory,
 } from '../observability/battery-v2-prometheus.metrics';
+import { BatteryMeasurementSessionRepository } from '../battery-measurement-session.repository';
 import { formatBatteryV2PipelineLog } from '../observability/battery-v2-pipeline-observability.util';
 
 const TRIP_LOOKBACK_MS = 7 * 24 * 3600_000;
@@ -76,6 +79,8 @@ export class BatteryV2ReconciliationService {
     private readonly deadLetters: BatteryV2JobDeadLetterService,
     private readonly capabilityRefresh: BatteryCapabilityRefreshService,
     private readonly lvRestSessionProducer: BatteryV2LvRestSessionProducer,
+    private readonly sessionArming: LvRestWindowSessionArmingService,
+    private readonly sessionRepository: BatteryMeasurementSessionRepository,
     private readonly restTargetProducer: BatteryV2RestTargetProducer,
     private readonly tripStartProducer: BatteryV2TripStartProducer,
     private readonly rechargeReconcileProducer: HvRechargeSessionReconcileProducerService,
@@ -97,6 +102,7 @@ export class BatteryV2ReconciliationService {
 
     result.observationClassify = await this.reconcileMissingObservations(batch);
     result.restSessions = await this.reconcileMissingLvRestSessions(batch);
+    result.restSessions += await this.repairLvRestWindowTripBindings(batch);
     result.restTargets = await this.reconcileRestTargets(batch);
     result.tripStarts = await this.reconcileTripStarts(batch);
     result.rechargeSegments = await this.reconcileRechargeSegments(batch);
@@ -336,6 +342,20 @@ export class BatteryV2ReconciliationService {
         });
       if (existingSession) continue;
 
+      const armingResult =
+        await this.sessionArming.ensureLvRestWindowForFinalizedTrip({
+          organizationId,
+          vehicleId: trip.vehicleId,
+          tripId: trip.id,
+        });
+      if (
+        armingResult.outcome === 'opened' ||
+        armingResult.outcome === 'already_exists'
+      ) {
+        enqueued += 1;
+        continue;
+      }
+
       const jobId =
         await this.lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip({
           organizationId,
@@ -343,11 +363,77 @@ export class BatteryV2ReconciliationService {
           tripId: trip.id,
           tripEndedAt: trip.endTime,
           correlationId: `reconcile:lv-rest-open:${trip.vehicleId}:${trip.endTime.toISOString()}`,
+          recovery: true,
         });
       if (jobId) enqueued += 1;
     }
 
     return enqueued;
+  }
+
+  /**
+   * Repairs sessions whose trip_id does not match the authoritative trip for
+   * session.startedAt (production mis-binding recovery).
+   */
+  private async repairLvRestWindowTripBindings(batch: number): Promise<number> {
+    if (!isBatteryV2RestShadowEnabled()) {
+      return 0;
+    }
+
+    const sessions = await this.prisma.batteryMeasurementSession.findMany({
+      where: {
+        type: BatteryMeasurementSessionType.LV_REST_WINDOW,
+        tripId: { not: null },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: batch,
+      select: {
+        id: true,
+        organizationId: true,
+        vehicleId: true,
+        tripId: true,
+        startedAt: true,
+        sourceEntityType: true,
+        sourceEntityId: true,
+      },
+    });
+
+    let repaired = 0;
+    for (const session of sessions) {
+      if (!session.tripId) continue;
+      const linkedTrip = await this.prisma.vehicleTrip.findFirst({
+        where: { id: session.tripId, vehicleId: session.vehicleId },
+        select: { id: true, endTime: true },
+      });
+      if (
+        linkedTrip?.endTime &&
+        Math.abs(linkedTrip.endTime.getTime() - session.startedAt.getTime()) <
+          1_000
+      ) {
+        continue;
+      }
+
+      const authoritativeTrip = await this.prisma.vehicleTrip.findFirst({
+        where: {
+          vehicleId: session.vehicleId,
+          tripStatus: TripStatus.COMPLETED,
+          endTime: session.startedAt,
+        },
+        select: { id: true },
+      });
+      if (!authoritativeTrip) continue;
+
+      await this.sessionRepository.repairCanonicalTripBindingIfNeeded(session, {
+        organizationId: session.organizationId,
+        tripId: authoritativeTrip.id,
+        startedAt: session.startedAt,
+        sourceEntityType: 'trip',
+        sourceEntityId: authoritativeTrip.id,
+      });
+      repaired += 1;
+    }
+
+    return repaired;
   }
 
   private async reconcileRestTargets(batch: number): Promise<number> {
@@ -418,7 +504,46 @@ export class BatteryV2ReconciliationService {
         if (session.startedAt.getTime() > dueBefore.getTime()) {
           continue;
         }
-        if (isLvRestTargetAlreadyScheduled(sessionMetadata, targetType)) {
+        if (isLvRestTargetTerminal(sessionMetadata, targetType)) {
+          continue;
+        }
+
+        const targetMeta =
+          readLvRestWindowSessionMetadata(sessionMetadata).scheduledTargets?.[
+            targetType
+          ];
+        if (
+          targetMeta?.status === LV_REST_TARGET_JOB_STATUS.ENQUEUED &&
+          targetMeta.idempotencyKey
+        ) {
+          const deadLettered = await this.deadLetters.isDeadLetter(
+            'BATTERY_REST_TARGET_EVALUATE',
+            targetMeta.idempotencyKey,
+          );
+          if (deadLettered) {
+            await this.deadLetters.clearDeadLetter(
+              'BATTERY_REST_TARGET_EVALUATE',
+              targetMeta.idempotencyKey,
+            );
+            sessionMetadata = mergeLvRestTargetJobMetadata(
+              sessionMetadata,
+              targetType,
+              {
+                status: LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION,
+                lastAttemptAt: new Date().toISOString(),
+              },
+            ) as Prisma.JsonValue;
+            await this.prisma.batteryMeasurementSession.update({
+              where: {
+                id: session.id,
+                organizationId: session.organizationId,
+              },
+              data: { metadata: sessionMetadata as Prisma.InputJsonValue },
+            });
+          } else if (isLvRestTargetAlreadyScheduled(sessionMetadata, targetType)) {
+            continue;
+          }
+        } else if (isLvRestTargetAlreadyScheduled(sessionMetadata, targetType)) {
           continue;
         }
 
@@ -441,6 +566,7 @@ export class BatteryV2ReconciliationService {
                 restWindowId: session.idempotencyKey,
                 restWindowStartedAt: session.startedAt,
                 now: new Date(now),
+                recovery: true,
               })
             : await this.restTargetProducer.scheduleRest6h({
                 organizationId: session.organizationId,
@@ -449,6 +575,7 @@ export class BatteryV2ReconciliationService {
                 restWindowId: session.idempotencyKey,
                 restWindowStartedAt: session.startedAt,
                 now: new Date(now),
+                recovery: true,
               });
         if (scheduleResult.scheduled || scheduleResult.bullJobId) {
           const mergedMetadata = mergeLvRestTargetJobMetadata(
@@ -547,7 +674,43 @@ export class BatteryV2ReconciliationService {
       }
 
       for (const restTargetType of targets) {
-        if (isLvRestTargetAlreadyScheduled(sessionMetadata, restTargetType)) {
+        if (isLvRestTargetTerminal(sessionMetadata, restTargetType)) {
+          continue;
+        }
+
+        const targetMeta =
+          readLvRestWindowSessionMetadata(sessionMetadata).scheduledTargets?.[
+            restTargetType
+          ];
+        if (
+          targetMeta?.status === LV_REST_TARGET_JOB_STATUS.ENQUEUED &&
+          targetMeta.idempotencyKey
+        ) {
+          const deadLettered = await this.deadLetters.isDeadLetter(
+            'BATTERY_REST_TARGET_EVALUATE',
+            targetMeta.idempotencyKey,
+          );
+          if (deadLettered) {
+            await this.deadLetters.clearDeadLetter(
+              'BATTERY_REST_TARGET_EVALUATE',
+              targetMeta.idempotencyKey,
+            );
+            sessionMetadata = mergeLvRestTargetJobMetadata(
+              sessionMetadata,
+              restTargetType,
+              {
+                status: LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION,
+                lastAttemptAt: new Date().toISOString(),
+              },
+            ) as Prisma.JsonValue;
+          } else if (
+            isLvRestTargetAlreadyScheduled(sessionMetadata, restTargetType)
+          ) {
+            continue;
+          }
+        } else if (
+          isLvRestTargetAlreadyScheduled(sessionMetadata, restTargetType)
+        ) {
           continue;
         }
 

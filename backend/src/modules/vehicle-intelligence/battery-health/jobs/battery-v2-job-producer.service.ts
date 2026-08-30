@@ -42,6 +42,8 @@ export type BatteryV2JobEnqueueInput<T extends BatteryV2JobType> = Omit<
 
 export interface BatteryV2JobEnqueueOptions {
   delayMs?: number;
+  /** Recovery path: skip DLQ suppression when a missing session/target must be re-armed. */
+  ignoreDeadLetter?: boolean;
 }
 
 export function isDuplicateBatteryV2JobError(err: unknown): boolean {
@@ -90,7 +92,10 @@ export class BatteryV2JobProducerService {
     });
     validateBatteryV2JobIdempotencyKey(jobType, payload.idempotencyKey);
 
-    if (await this.deadLetters.isDeadLetter(jobType, payload.idempotencyKey)) {
+    if (
+      !options.ignoreDeadLetter &&
+      (await this.deadLetters.isDeadLetter(jobType, payload.idempotencyKey))
+    ) {
       this.recordEnqueueSuppressed(jobType, 'dead_letter');
       this.logger.debug(
         formatBatteryV2PipelineLog({

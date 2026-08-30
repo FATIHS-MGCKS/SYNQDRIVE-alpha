@@ -86,7 +86,7 @@ export class BatteryMeasurementSessionRepository {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        return this.prisma.batteryMeasurementSession.findUniqueOrThrow({
+        const existing = await this.prisma.batteryMeasurementSession.findUniqueOrThrow({
           where: {
             vehicleId_idempotencyKey: {
               vehicleId: input.vehicleId,
@@ -94,9 +94,49 @@ export class BatteryMeasurementSessionRepository {
             },
           },
         });
+        return this.repairCanonicalTripBindingIfNeeded(existing, input);
       }
       throw error;
     }
+  }
+
+  /**
+   * When idempotent create races, ensure session.trip_id matches the authoritative
+   * trip that owns the anchor (trip.endTime === session anchor).
+   */
+  async repairCanonicalTripBindingIfNeeded(
+    session: Pick<
+      BatteryMeasurementSession,
+      'id' | 'organizationId' | 'vehicleId' | 'tripId' | 'startedAt'
+    >,
+    input: Pick<
+      CreateBatteryMeasurementSessionInput,
+      'organizationId' | 'tripId' | 'startedAt' | 'sourceEntityId' | 'sourceEntityType'
+    >,
+  ): Promise<BatteryMeasurementSession> {
+    if (!input.tripId) {
+      return session as BatteryMeasurementSession;
+    }
+    const anchorMs = input.startedAt.getTime();
+    const sessionAnchorMs = session.startedAt.getTime();
+    const anchorMatches = Math.abs(sessionAnchorMs - anchorMs) < 1_000;
+    if (!anchorMatches) {
+      return session as BatteryMeasurementSession;
+    }
+    if (session.tripId === input.tripId) {
+      return session as BatteryMeasurementSession;
+    }
+    return this.prisma.batteryMeasurementSession.update({
+      where: {
+        id: session.id,
+        organizationId: input.organizationId,
+      },
+      data: {
+        tripId: input.tripId,
+        sourceEntityType: input.sourceEntityType ?? 'trip',
+        sourceEntityId: input.tripId,
+      },
+    });
   }
 
   findByIdForOrganization(
