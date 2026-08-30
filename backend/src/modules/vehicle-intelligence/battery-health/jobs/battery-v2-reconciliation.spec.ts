@@ -175,11 +175,6 @@ describe('BatteryV2ReconciliationService', () => {
       .fn()
       .mockResolvedValue({ outcome: 'opened', sessionId: 'sess-new' }),
   };
-  const sessionRepository = {
-    repairCanonicalTripBindingIfNeeded: jest
-      .fn()
-      .mockImplementation(async (session) => session),
-  };
   const tripStartProducer = { enqueueStartProxy: jest.fn().mockResolvedValue('job-id') };
   const rechargeReconcileProducer = {
     reconcilePeriodic: jest.fn().mockResolvedValue(0),
@@ -194,12 +189,7 @@ describe('BatteryV2ReconciliationService', () => {
     jest.clearAllMocks();
     prisma.batteryFeatures.findMany.mockResolvedValue([]);
     prisma.vehicleEnergyEvent.findMany.mockResolvedValue([]);
-    prisma.batteryMeasurementSession.findMany.mockImplementation(async (args: any) => {
-      if (args?.where?.tripId?.not != null) {
-        return [];
-      }
-      return [];
-    });
+    prisma.batteryMeasurementSession.findMany.mockResolvedValue([]);
     prisma.batteryMeasurement.findFirst.mockResolvedValue(null);
     service = new BatteryV2ReconciliationService(
       prisma as any,
@@ -209,7 +199,6 @@ describe('BatteryV2ReconciliationService', () => {
       capabilityRefresh as any,
       lvRestSessionProducer as any,
       sessionArming as any,
-      sessionRepository as any,
       restTargetProducer as any,
       tripStartProducer as any,
       rechargeReconcileProducer as any,
@@ -367,40 +356,43 @@ describe('BatteryV2ReconciliationService', () => {
     );
   });
 
-  it('repairs mis-bound trip_id when anchor matches a different completed trip', async () => {
-    const anchor = new Date('2026-08-30T12:05:53.000Z');
-    prisma.vehicleTrip.findMany.mockResolvedValue([]);
+  it('rescues PENDING_EVALUATION REST_60M target for reconciliation reschedule', async () => {
+    const startedAt = new Date(Date.now() - 2 * 60 * 60_000);
+    const windowId = `lv-rest:${VEH}:${startedAt.getTime()}`;
     prisma.batteryMeasurementSession.findMany.mockImplementation(async (args: any) => {
-      if (args?.where?.type === 'LV_REST_WINDOW' && args?.where?.tripId) {
-        return [
-          {
-            id: 'sess-misbound',
-            organizationId: ORG,
-            vehicleId: VEH,
-            tripId: 'trip-prev',
-            startedAt: anchor,
-            sourceEntityType: 'trip',
-            sourceEntityId: 'trip-prev',
-          },
-        ];
-      }
-      if (args?.where?.type === 'LV_REST_WINDOW') {
+      if (args?.where?.tripId?.not != null) {
         return [];
       }
-      return [];
+      return [
+        {
+          id: 'sess-pending',
+          organizationId: ORG,
+          vehicleId: VEH,
+          startedAt,
+          idempotencyKey: windowId,
+          metadata: {
+            lvRestWindowState: 'RESTING',
+            scheduledTargets: {
+              REST_60M: {
+                idempotencyKey: `battery-rest:${VEH}:${windowId}:60m`,
+                scheduledFor: startedAt.toISOString(),
+                status: 'PENDING_EVALUATION',
+                lastAttemptAt: new Date().toISOString(),
+              },
+            },
+          },
+          status: 'ACTIVE',
+        },
+      ];
     });
-    prisma.vehicleTrip.findFirst
-      .mockResolvedValueOnce({ id: 'trip-prev', endTime: new Date('2026-08-30T11:50:50.000Z') })
-      .mockResolvedValueOnce({ id: 'trip-authoritative' });
 
     const result = await service.reconcileAll();
 
-    expect(result.restSessions).toBe(1);
-    expect(sessionRepository.repairCanonicalTripBindingIfNeeded).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'sess-misbound' }),
+    expect(result.restTargets).toBe(1);
+    expect(restTargetProducer.scheduleRest60m).toHaveBeenCalledWith(
       expect.objectContaining({
-        tripId: 'trip-authoritative',
-        startedAt: anchor,
+        sessionId: 'sess-pending',
+        recovery: true,
       }),
     );
   });

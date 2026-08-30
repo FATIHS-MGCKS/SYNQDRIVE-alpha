@@ -8,7 +8,7 @@ Vehicles: KS MS 661 (`c10351f8-…`), KS MX 2024 (`a60c0749-…`).
 |--------|------------------|-------------------|
 | **A — liveness** | Trip `ea7696b6…` finalized `2026-08-30T13:57:50.848Z`; no `LV_REST_WINDOW` 50+ min later; PM2 restart ~14:53Z | Primary enqueue lost/interrupted; reconciliation only re-enqueued jobs; no direct arming |
 | **B — trip binding** | Sessions `d8b4db92…`, `dde74be4…`: anchor = trip N `endTime`, `trip_id` = trip N-1 | FSM used `lastActivityAt` when `tripEndAt` differed; P2002 idempotent return did not repair `trip_id` |
-| **C — REST temporal** | Session `4d2bef5f…`: REST_60M/6H due, metadata `ENQUEUED`, Bull failed in ~15s, DLQ `PROVIDER_UNAVAILABLE` | Handler threw on retryable pending evidence; Bull exhausted before 30m grace; `ENQUEUED` blocked reconciliation; DLQ blocked re-enqueue |
+| **C — REST temporal** | Session `4d2bef5f…`: REST_60M/6H due, metadata `ENQUEUED`, Bull failed in ~15s, DLQ `PROVIDER_UNAVAILABLE` | Handler threw on retryable pending evidence; Bull exhausted before 30m grace; `ENQUEUED` blocked reconciliation; bulk DLQ clear prevented ENQUEUED+DLQ rescue |
 | **D — LOCK_CONTENTION** | 2× `BATTERY_LV_REST_SESSION_OPEN` DLQ on KS MS 661 | DLQ permanently suppressed producer; replay env-gated |
 
 #1393 opening policy and #1383 observation-independent opening are **preserved**.
@@ -33,7 +33,8 @@ Vehicles: KS MS 661 (`c10351f8-…`), KS MX 2024 (`a60c0749-…`).
 1. Handler threw retryable `BatteryV2ProviderError` → BullMQ 3×5s exhausted (~15s).
 2. Evaluation retry grace (30m) never reached.
 3. Metadata stayed `ENQUEUED`; `isLvRestTargetAlreadyScheduled()` treated that as blocking reconciliation.
-4. `PROVIDER_UNAVAILABLE` DLQ blocked producer re-enqueue.
+4. **`PENDING_EVALUATION` also blocked reconciliation** (same helper returned true).
+5. Scheduler bulk `clearReplayableDeadLetters()` ran before reconcile, defeating per-entity ENQUEUED+DLQ rescue.
 
 ### D — LOCK_CONTENTION permanent loss
 
@@ -57,10 +58,11 @@ Explicit `tripId` from primary/reconciliation/arming **never** replaced by fuzzy
 |-------|-----|-----|
 | Trip finalize | enqueue session-open job | unchanged (primary) |
 | Reconciliation missing session | enqueue-only recovery | **direct `ensureLvRestWindowForFinalizedTrip()`** first; recovery enqueue with `recovery: true` fallback |
-| DLQ transient errors | permanent enqueue block | scheduler **always** clears `LOCK_CONTENTION`, `PROVIDER_UNAVAILABLE`, `TRANSIENT_INFRA`; recovery producers call `clearDeadLetter` + `ignoreDeadLetter` |
-| REST evaluate retryable | throw → Bull exhaust → DLQ → stuck `ENQUEUED` | set `PENDING_EVALUATION`, return; reconciliation reschedules within grace |
-| REST reconcile stuck target | `ENQUEUED` blocks forever | `isLvRestTargetTerminal()` only blocks COMPLETED/MISSED/CANCELLED/FAILED; dead-lettered `ENQUEUED` reset to `PENDING_EVALUATION` and rescheduled with `recovery: true` |
-| Idempotent session race | stale `trip_id` kept | `repairCanonicalTripBindingIfNeeded()` on P2002 and arming `already_exists` |
+| DLQ transient errors | permanent enqueue block / bulk pre-clear broke ENQUEUED rescue | **per-entity** `clearDeadLetter` on `recovery: true` enqueue only |
+| REST evaluate retryable | throw → Bull exhaust → DLQ → stuck `ENQUEUED` | `PENDING_EVALUATION` + return; reconciliation reschedules via `isLvRestTargetAwaitingReconciliationReschedule()` |
+| REST reconcile stuck target | `ENQUEUED` / `PENDING_EVALUATION` blocked by `isLvRestTargetAlreadyScheduled` | terminal-only guard; `ENQUEUED`+DLQ and `PENDING_EVALUATION` reschedule on cadence |
+| Historical mis-binding | recurring reconciliation repair scan | **removed** — creation-time invariant + P2002 race repair at mutation boundary |
+| Idempotent session race | stale `trip_id` kept | `repairCanonicalTripBindingIfNeeded()` verifies authoritative COMPLETED trip |
 
 ### Queue durability semantics
 
@@ -92,7 +94,7 @@ Explicit `tripId` from primary/reconciliation/arming **never** replaced by fuzzy
 
 ## Tests
 
-- `battery-v2-stage1-pipeline-defect-closure.spec.ts` (production-shaped A/B/D)
+- `battery-v2-rest-target-pending-evaluation-liveness.spec.ts` (adversarial PENDING_EVALUATION lifecycle REST_60M/6H)
 - Updated: `battery-v2-reconciliation.spec.ts`, `battery-rest-target-evaluate.handler.spec.ts`, `lv-rest-window-target.metadata.spec.ts`, `lv-rest-window.state-machine.spec.ts`, producer/audit/arming specs
 
 ## Preserved invariants

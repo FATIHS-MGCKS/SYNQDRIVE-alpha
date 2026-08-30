@@ -26,6 +26,7 @@ import { BatteryCapabilityRefreshService } from '../capability-preflight/battery
 import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 import {
   isLvRestTargetAlreadyScheduled,
+  isLvRestTargetAwaitingReconciliationReschedule,
   isLvRestTargetTerminal,
   LV_REST_TARGET_JOB_STATUS,
   LV_REST_TARGET_TYPES,
@@ -47,7 +48,6 @@ import {
   recordBatteryV2ReconciliationEnqueued,
   type BatteryV2ReconciliationCategory,
 } from '../observability/battery-v2-prometheus.metrics';
-import { BatteryMeasurementSessionRepository } from '../battery-measurement-session.repository';
 import { formatBatteryV2PipelineLog } from '../observability/battery-v2-pipeline-observability.util';
 
 const TRIP_LOOKBACK_MS = 7 * 24 * 3600_000;
@@ -80,7 +80,6 @@ export class BatteryV2ReconciliationService {
     private readonly capabilityRefresh: BatteryCapabilityRefreshService,
     private readonly lvRestSessionProducer: BatteryV2LvRestSessionProducer,
     private readonly sessionArming: LvRestWindowSessionArmingService,
-    private readonly sessionRepository: BatteryMeasurementSessionRepository,
     private readonly restTargetProducer: BatteryV2RestTargetProducer,
     private readonly tripStartProducer: BatteryV2TripStartProducer,
     private readonly rechargeReconcileProducer: HvRechargeSessionReconcileProducerService,
@@ -102,7 +101,6 @@ export class BatteryV2ReconciliationService {
 
     result.observationClassify = await this.reconcileMissingObservations(batch);
     result.restSessions = await this.reconcileMissingLvRestSessions(batch);
-    result.restSessions += await this.repairLvRestWindowTripBindings(batch);
     result.restTargets = await this.reconcileRestTargets(batch);
     result.tripStarts = await this.reconcileTripStarts(batch);
     result.rechargeSegments = await this.reconcileRechargeSegments(batch);
@@ -371,71 +369,6 @@ export class BatteryV2ReconciliationService {
     return enqueued;
   }
 
-  /**
-   * Repairs sessions whose trip_id does not match the authoritative trip for
-   * session.startedAt (production mis-binding recovery).
-   */
-  private async repairLvRestWindowTripBindings(batch: number): Promise<number> {
-    if (!isBatteryV2RestShadowEnabled()) {
-      return 0;
-    }
-
-    const sessions = await this.prisma.batteryMeasurementSession.findMany({
-      where: {
-        type: BatteryMeasurementSessionType.LV_REST_WINDOW,
-        tripId: { not: null },
-      },
-      orderBy: { updatedAt: 'desc' },
-      take: batch,
-      select: {
-        id: true,
-        organizationId: true,
-        vehicleId: true,
-        tripId: true,
-        startedAt: true,
-        sourceEntityType: true,
-        sourceEntityId: true,
-      },
-    });
-
-    let repaired = 0;
-    for (const session of sessions) {
-      if (!session.tripId) continue;
-      const linkedTrip = await this.prisma.vehicleTrip.findFirst({
-        where: { id: session.tripId, vehicleId: session.vehicleId },
-        select: { id: true, endTime: true },
-      });
-      if (
-        linkedTrip?.endTime &&
-        Math.abs(linkedTrip.endTime.getTime() - session.startedAt.getTime()) <
-          1_000
-      ) {
-        continue;
-      }
-
-      const authoritativeTrip = await this.prisma.vehicleTrip.findFirst({
-        where: {
-          vehicleId: session.vehicleId,
-          tripStatus: TripStatus.COMPLETED,
-          endTime: session.startedAt,
-        },
-        select: { id: true },
-      });
-      if (!authoritativeTrip) continue;
-
-      await this.sessionRepository.repairCanonicalTripBindingIfNeeded(session, {
-        organizationId: session.organizationId,
-        tripId: authoritativeTrip.id,
-        startedAt: session.startedAt,
-        sourceEntityType: 'trip',
-        sourceEntityId: authoritativeTrip.id,
-      });
-      repaired += 1;
-    }
-
-    return repaired;
-  }
-
   private async reconcileRestTargets(batch: number): Promise<number> {
     const lvSessions = await this.reconcileLvRestWindowTargets(batch);
     const legacy = await this.reconcileLegacyRestTargets(batch);
@@ -512,7 +445,9 @@ export class BatteryV2ReconciliationService {
           readLvRestWindowSessionMetadata(sessionMetadata).scheduledTargets?.[
             targetType
           ];
-        if (
+        if (isLvRestTargetAwaitingReconciliationReschedule(sessionMetadata, targetType)) {
+          // Handler deferred retryable evaluation — reschedule on reconciliation cadence.
+        } else if (
           targetMeta?.status === LV_REST_TARGET_JOB_STATUS.ENQUEUED &&
           targetMeta.idempotencyKey
         ) {
@@ -683,6 +618,13 @@ export class BatteryV2ReconciliationService {
             restTargetType
           ];
         if (
+          isLvRestTargetAwaitingReconciliationReschedule(
+            sessionMetadata,
+            restTargetType,
+          )
+        ) {
+          // fall through to reschedule
+        } else if (
           targetMeta?.status === LV_REST_TARGET_JOB_STATUS.ENQUEUED &&
           targetMeta.idempotencyKey
         ) {

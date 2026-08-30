@@ -43,8 +43,8 @@ describe('Battery V2 Stage 1 pipeline defect closure', () => {
   describe('B — cross-trip session identity (production mis-binding shapes)', () => {
     it('repository repairs trip_id when anchor matches authoritative trip', async () => {
       const anchor = new Date('2026-08-30T12:05:53.000Z');
-      const authoritativeTripId = '435cfbc3-authoritative';
-      const staleTripId = '2795fa9a-stale';
+      const authoritativeTripId = 'cltrip435cfbc3authoritative01';
+      const staleTripId = 'cltrip2795fa9astale00000001';
 
       const existingSession = {
         id: 'd8b4db92-session',
@@ -56,6 +56,12 @@ describe('Battery V2 Stage 1 pipeline defect closure', () => {
       };
 
       const prisma = {
+        vehicleTrip: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: authoritativeTripId,
+            endTime: anchor,
+          }),
+        },
         batteryMeasurementSession: {
           update: jest.fn().mockResolvedValue({
             ...existingSession,
@@ -179,7 +185,6 @@ describe('Battery V2 Stage 1 pipeline defect closure', () => {
           } as any,
           lvRestSessionProducer as any,
           sessionArming as any,
-          { repairCanonicalTripBindingIfNeeded: jest.fn() } as any,
           {
             scheduleRest60m: jest.fn(),
             scheduleRest6h: jest.fn(),

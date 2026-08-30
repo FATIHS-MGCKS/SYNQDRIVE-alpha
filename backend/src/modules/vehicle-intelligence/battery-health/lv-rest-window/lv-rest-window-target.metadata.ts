@@ -97,10 +97,18 @@ export function isLvRestTargetAlreadyScheduled(
     entry.status === LV_REST_TARGET_JOB_STATUS.SCHEDULED ||
     entry.status === LV_REST_TARGET_JOB_STATUS.ENQUEUED ||
     entry.status === LV_REST_TARGET_JOB_STATUS.RUNNING ||
-    entry.status === LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION ||
     entry.status === LV_REST_TARGET_JOB_STATUS.COMPLETED ||
     entry.status === LV_REST_TARGET_JOB_STATUS.MISSED
   );
+}
+
+/** Non-terminal states where reconciliation must reschedule evaluation. */
+export function isLvRestTargetAwaitingReconciliationReschedule(
+  metadata: unknown,
+  targetType: LvRestTargetType,
+): boolean {
+  const entry = readLvRestWindowSessionMetadata(metadata).scheduledTargets?.[targetType];
+  return entry?.status === LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION;
 }
 
 /** Terminal target states — reconciliation may schedule when false and no measurement exists. */

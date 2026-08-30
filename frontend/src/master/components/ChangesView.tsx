@@ -40,10 +40,10 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.1014',
     title: 'Battery V2 Stage 1 — pipeline defect closure (liveness, trip binding, REST temporal)',
     summary: [
-      'Reconciliation now directly arms missing LV_REST_WINDOW sessions (ea7696b6 liveness gap) before recovery enqueue; transient DLQ rows (LOCK_CONTENTION, PROVIDER_UNAVAILABLE) cleared each tick.',
-      'Session canonical identity: trip_id + anchor must match authoritative trip.endTime; FSM prefers tripEndAt; idempotent create repairs stale trip_id.',
-      'REST target evaluation defers retryable pending evidence (PENDING_EVALUATION) instead of Bull-exhausting in 15s; reconciliation rescues stuck ENQUEUED targets after DLQ.',
-      '#1383 observation-independent opening and #1393 ICE opening policy preserved; shadow only, no Stage 2.',
+      'Reconciliation directly arms missing LV_REST_WINDOW sessions; transient DLQ cleared per-entity on recovery enqueue only (no bulk pre-clear).',
+      'PENDING_EVALUATION defers to reconciliation cadence via isLvRestTargetAwaitingReconciliationReschedule — not stuck by isLvRestTargetAlreadyScheduled.',
+      'Session canonical identity at creation: trip_id + anchor = trip.endTime; mutation boundary verifies authoritative COMPLETED trip. No recurring historical backfill.',
+      '#1383/#1393 policies preserved; shadow only.',
     ],
     reason:
       'Natural production traffic after #1383/#1393 exposed liveness hole after deploy, cross-trip trip_id mis-binding, and REST_60M/6H stuck ENQUEUED with PROVIDER_UNAVAILABLE dead letters.',

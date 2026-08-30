@@ -1,5 +1,6 @@
 import {
   isLvRestTargetAlreadyScheduled,
+  isLvRestTargetAwaitingReconciliationReschedule,
   isLvRestTargetTerminal,
   LV_REST_TARGET_JOB_STATUS,
   LV_REST_TARGET_TYPES,
@@ -50,7 +51,26 @@ describe('lv-rest-window-target.metadata', () => {
     });
 
     expect(isLvRestTargetTerminal(metadata, LV_REST_TARGET_TYPES.REST_60M)).toBe(false);
-    expect(isLvRestTargetTerminal(metadata, LV_REST_TARGET_TYPES.REST_6H)).toBe(false);
+    expect(isLvRestTargetAlreadyScheduled(metadata, LV_REST_TARGET_TYPES.REST_60M)).toBe(true);
+    expect(
+      isLvRestTargetAwaitingReconciliationReschedule(metadata, LV_REST_TARGET_TYPES.REST_60M),
+    ).toBe(false);
+  });
+
+  it('PENDING_EVALUATION is not already-scheduled but awaits reconciliation reschedule', () => {
+    const metadata = mergeLvRestTargetJobMetadata(null, LV_REST_TARGET_TYPES.REST_60M, {
+      idempotencyKey: 'battery-rest:veh:window:60m',
+      scheduledFor: '2026-07-16T11:00:00.000Z',
+      status: LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION,
+    });
+
+    expect(isLvRestTargetAlreadyScheduled(metadata, LV_REST_TARGET_TYPES.REST_60M)).toBe(
+      false,
+    );
+    expect(
+      isLvRestTargetAwaitingReconciliationReschedule(metadata, LV_REST_TARGET_TYPES.REST_60M),
+    ).toBe(true);
+    expect(isLvRestTargetTerminal(metadata, LV_REST_TARGET_TYPES.REST_60M)).toBe(false);
   });
 
   it('treats COMPLETED and MISSED as terminal', () => {

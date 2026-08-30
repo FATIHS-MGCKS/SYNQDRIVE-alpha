@@ -9,6 +9,7 @@ import {
   BatteryMeasurementSessionType,
   BatteryMeasurementType,
   Prisma,
+  TripStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 
@@ -117,6 +118,9 @@ export class BatteryMeasurementSessionRepository {
     if (!input.tripId) {
       return session as BatteryMeasurementSession;
     }
+    if (input.organizationId !== session.organizationId) {
+      return session as BatteryMeasurementSession;
+    }
     const anchorMs = input.startedAt.getTime();
     const sessionAnchorMs = session.startedAt.getTime();
     const anchorMatches = Math.abs(sessionAnchorMs - anchorMs) < 1_000;
@@ -126,15 +130,33 @@ export class BatteryMeasurementSessionRepository {
     if (session.tripId === input.tripId) {
       return session as BatteryMeasurementSession;
     }
+
+    const authoritativeTrip = await this.prisma.vehicleTrip.findFirst({
+      where: {
+        id: input.tripId,
+        vehicleId: session.vehicleId,
+        tripStatus: TripStatus.COMPLETED,
+        endTime: { not: null },
+        vehicle: { organizationId: input.organizationId },
+      },
+      select: { id: true, endTime: true },
+    });
+    if (
+      !authoritativeTrip?.endTime ||
+      Math.abs(authoritativeTrip.endTime.getTime() - sessionAnchorMs) >= 1_000
+    ) {
+      return session as BatteryMeasurementSession;
+    }
+
     return this.prisma.batteryMeasurementSession.update({
       where: {
         id: session.id,
         organizationId: input.organizationId,
       },
       data: {
-        tripId: input.tripId,
+        tripId: authoritativeTrip.id,
         sourceEntityType: input.sourceEntityType ?? 'trip',
-        sourceEntityId: input.tripId,
+        sourceEntityId: authoritativeTrip.id,
       },
     });
   }
