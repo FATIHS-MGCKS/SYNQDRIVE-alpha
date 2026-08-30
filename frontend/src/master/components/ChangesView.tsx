@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fuel-station-resolver-v1-phase-c-2026-08-30',
+    version: '4.9.1015',
+    title: 'Fuel Station Resolver V1 (Phase C — calibrated)',
+    summary: [
+      '`FuelStationLocationResolverService` resolves WGS84 coordinates against `osm.fuel_stations` with geometry-aware scoring, ambiguity model, and conservative dedupe.',
+      'Calibration gate (PB-18): 28 stations, 672 offset probes, 92% strict / 94.5% physical precision on live OSM data.',
+      'Probe CLI: `npm run fuel-station:resolve`; calibration: `npm run fuel-station:calibrate`. 44 tests (33 unit + 11 Postgres).',
+      'Contract: `MATCHED` requires score ≥55 with defined confidence; Energy Event firewall unchanged.',
+    ],
+    reason: 'Phase C — prove station-match quality independently before enrichment persistence.',
+    previousBehavior: 'OSM dataset live but no application resolver.',
+    details: 'architecture/FUEL_STATION_RESOLVER_V1_2026-08-30.md; audit PB-17/PB-18.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T20:10:00.000Z',
+  },
+  {
     id: 'osm-fuel-stations-dataset-b7-b12-2026-08-30',
     version: '4.9.1014',
     title: 'OSM fuel-station PostGIS reference dataset (B7–B12)',

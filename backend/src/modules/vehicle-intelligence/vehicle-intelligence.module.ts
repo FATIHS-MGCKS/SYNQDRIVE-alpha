@@ -203,6 +203,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
 import { RentalDrivingAnalysisModule } from '../rental-driving-analysis/rental-driving-analysis.module';
 import { BatteryV2JobsProducerModule } from './battery-health/jobs/battery-v2-jobs-producer.module';
 import { DriveProfileResolverService } from './drive-profile/drive-profile-resolver.service';
+import { FuelStationCandidateRepository } from './fuel-stations/fuel-station-candidate.repository';
+import { FuelStationLocationResolverService } from './fuel-stations/fuel-station-location-resolver.service';
 import { LvBatteryChemistryResolverService } from './lv-battery-chemistry/lv-battery-chemistry-resolver.service';
 import { BatteryPolicyProfileService } from './battery-policy-profile/battery-policy-profile.service';
 import { BatteryCapabilityPreflightRepository } from './battery-health/capability-preflight/battery-capability-preflight.repository';
@@ -376,6 +378,8 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     VehicleBatteryReferenceCapacityRepository,
     VehicleBatteryReferenceCapacityService,
     DriveProfileResolverService,
+    FuelStationCandidateRepository,
+    FuelStationLocationResolverService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,
     BatteryCapabilityPreflightRepository,
@@ -567,6 +571,8 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     VehicleBatteryReferenceCapacityRepository,
     VehicleBatteryReferenceCapacityService,
     DriveProfileResolverService,
+    FuelStationCandidateRepository,
+    FuelStationLocationResolverService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,
     BatteryCapabilityPreflightRepository,

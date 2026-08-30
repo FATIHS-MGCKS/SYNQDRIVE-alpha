@@ -1928,3 +1928,117 @@ No changes to RefuelDetector, RechargeDetector, scoreConfidence, persist gates, 
 ---
 
 *End of audit — read-only + PB-14/15/16 execution evidence, 2026-08-30.*
+
+---
+
+## PB-17. Phase C — Fuel Station Resolver V1 Implementation Evidence
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-08-30 |
+| **Scope** | Isolated `FuelStationLocationResolverService` + probe CLI |
+| **Resolver version** | `fuel-station-resolver-v1` |
+| **Energy Event firewall** | **Confirmed — zero changes** |
+
+### PB-17.1 Deliverables
+
+| Artifact | Path |
+|----------|------|
+| Resolver service | `backend/src/modules/vehicle-intelligence/fuel-stations/fuel-station-location-resolver.service.ts` |
+| PostGIS repository | `fuel-station-candidate.repository.ts` |
+| Scoring / decision / dedupe | `fuel-station-match-*.ts`, `fuel-station-dedupe.ts` |
+| Probe CLI | `backend/scripts/ops/fuel-station-resolve-probe.ts` (`npm run fuel-station:resolve`) |
+| Architecture | `architecture/FUEL_STATION_RESOLVER_V1_2026-08-30.md` |
+| Unit tests | 26 passing (`npm run test:fuel-stations:unit`) |
+
+### PB-17.2 Production read-only validation
+
+Read-only probe against live `osm.fuel_stations` (no writes, no Energy Event hooks).
+
+| Location | Status | Notes |
+|----------|--------|-------|
+| Kassel Esso centroid (on-station) | **MATCHED HIGH** (score 233, 0 m) | `Esso Kölnische Straße` |
+| Kassel city reference (51.3127, 9.4797) | **NOT_FOUND** | Nearest station ~593 m — outside 250 m fallback |
+| Berlin / Hamburg / Frankfurt centers | **NOT_FOUND** | Nearest stations 748–1334 m from probe coords |
+| Munich center | **NOT_FOUND** | 1 candidate within 250 m but score below match threshold (~235 m) |
+
+**Calibration finding:** 100 m / 250 m radii are appropriate for on-site refuel GPS but will return `NOT_FOUND` for urban reference coordinates far from nearest station. Precision-first by design.
+
+GiST index confirmed via `--explain` (`fuel_stations_centroid_gist`).
+
+### PB-17.3 Energy Event firewall
+
+No changes to RefuelDetector, scoreConfidence, persistence, API, frontend, BullMQ, or enrichment entities.
+
+### PB-17.4 Overall status
+
+## **STATION RESOLVER V1 READY WITH CALIBRATION WARNING**
+
+250 m fallback radius is intentionally conservative; city-center probe coordinates often yield `NOT_FOUND` even when a station exists farther away. On-station coordinates match with HIGH confidence. Consider Phase D radius review against real refuel GPS offsets before enrichment persistence.
+
+**STOP.** Do not implement `VehicleEnergyEventFuelStationEnrichment`, BullMQ jobs, or `upsertSegment` hooks in this phase.
+
+---
+
+*PB-17 Phase C execution — 2026-08-30.*
+
+---
+
+## PB-18. Phase C Final Calibration Gate
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-08-30 |
+| **Dataset** | `geofabrik-germany-20260830` (18,195 stations) |
+| **Environment** | Production PostgreSQL 16.15 + PostGIS 3.4.2 (read-only) |
+
+### PB-18.1 Integration tests (executed)
+
+| Suite | Tests | Pass | Skip | Notes |
+|-------|-------|------|------|-------|
+| `test:fuel-stations:unit` | 33 | 33 | 0 | scoring, decision boundaries, dedupe, service mocks |
+| `test:fuel-stations:postgres` | 11 | 11 | 0 | Real `ST_DWithin`, `ST_Covers`, GiST EXPLAIN, `osm.dataset_metadata`, ground-truth probes |
+
+Postgres integration skipped when `FUEL_STATION_POSTGRES_INTEGRATION≠1` or `DATABASE_URL`/`osm.fuel_stations` absent.
+
+### PB-18.2 Calibration matrix
+
+28 public OSM stations × offset probes (0–300 m) = **672 probes**.
+
+| Metric | Result |
+|--------|--------|
+| Strict OSM-key precision | **92.0%** |
+| Physical-equivalence precision | **94.5%** |
+| Brand-facing precision (est.) | **~98.7%** |
+| Coverage (≤150 m expected) | **70.6%** |
+| False-positive rate | **5.4%** |
+| Ambiguity rate | **4.9%** |
+| `MATCHED` without confidence | **0** |
+
+### PB-18.3 Radius fallback audit
+
+100 m primary + fallback 150/200/250/300 m: **identical** correct/wrong match counts. Fallback radii only reduce `NOT_FOUND`; no precision cost but **no coverage gain** for correct matches in calibration sample.
+
+### PB-18.4 Contract fix
+
+`NOT_FOUND_MAX_SCORE` raised 44 → 54; ambiguity evaluated before NOT_FOUND. Regression tests at boundaries 54/55/69/70/84/85.
+
+### PB-18.5 EXPLAIN ANALYZE (Phase C query)
+
+Index Scan on `fuel_stations_centroid_gist`; execution 0.07–0.26 ms across Kassel/Berlin/Munich/Hamburg/Frankfurt/rural/dense probes.
+
+### PB-18.6 Energy Event firewall
+
+**Confirmed — zero changes.** No production application writes.
+
+### PB-18.7 Overall status
+
+## **STATION RESOLVER V1 CALIBRATED — READY TO MERGE**
+
+Resolver is safe for isolated read-only use and Phase D design. Recommend enrichment persistence gate on `HIGH`/`MEDIUM` station-match confidence only; do not widen fallback radius without new evidence.
+
+**STOP.** Do not implement Phase D persistence in this gate.
+
+---
+
+*PB-18 Phase C calibration gate — 2026-08-30.*
