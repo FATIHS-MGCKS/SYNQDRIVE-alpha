@@ -56,7 +56,7 @@ export class SchedulerLeaderElectionService implements OnModuleInit, OnModuleDes
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {}
 
-  onModuleInit(): void {
+  async onModuleInit(): Promise<void> {
     const validationErrors = validateSchedulerLeaderElectionConfig(this.config);
     if (validationErrors.length > 0) {
       throw new Error(
@@ -90,7 +90,7 @@ export class SchedulerLeaderElectionService implements OnModuleInit, OnModuleDes
     );
 
     this.setRole('FOLLOWER');
-    void this.tryAcquireLeader();
+    await this.tryAcquireLeader();
     this.acquireTimer = setInterval(() => {
       void this.tryAcquireLeader();
     }, this.config.acquireIntervalMs);
