@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DimoAuthService } from './dimo-auth.service';
 import { DimoTelemetryService } from './dimo-telemetry.service';
+import type { DimoProviderRequestContext } from './provider/dimo-provider-gateway.types';
+import { buildDimoProviderRequestContext } from './provider/dimo-provider-request-context.util';
 import { buildTripDetectionCoreQuery } from './queries/trip-detection-core.query';
 import { buildRouteEnrichmentQuery } from './queries/route-enrichment.query';
 import { buildEnvironmentTemperatureQuery } from './queries/environment-temperature.query';
@@ -271,6 +273,21 @@ export class DimoSegmentsService {
     private readonly rechargeSegmentsClient: DimoRechargeSegmentsClient,
   ) {}
 
+  private queryGraphQLWithContext(
+    jwt: string,
+    query: string,
+    tokenId: number,
+    requestContext?: DimoProviderRequestContext,
+    variables?: Record<string, unknown>,
+  ): Promise<any> {
+    return this.telemetry.queryGraphQL(
+      jwt,
+      query,
+      variables,
+      buildDimoProviderRequestContext(tokenId, requestContext),
+    );
+  }
+
   // V1 trip detection (fetchAndDetectTrips, detectTrips, finalizeTrip) REMOVED.
   // Replaced by: TripReconciliationService (repair layer) + V2 FSM (live engine).
   // See: trips/reconciliation/trip-reconciliation.service.ts
@@ -280,6 +297,7 @@ export class DimoSegmentsService {
     from: Date,
     to: Date,
     mechanisms: DimoDetectionMechanism[] = this.segmentMechanismFallbackOrder,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<DimoTripSegment[]> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
     if (!jwt) return [];
@@ -291,6 +309,7 @@ export class DimoSegmentsService {
         from,
         to,
         mechanism,
+        requestContext,
       );
       if (segments.length > 0) {
         return segments;
@@ -309,6 +328,7 @@ export class DimoSegmentsService {
     from: Date,
     to: Date,
     mechanism: DimoDetectionMechanism,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<{ segments: DimoTripSegment[]; providerError: string | null }> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
     if (!jwt) {
@@ -316,7 +336,14 @@ export class DimoSegmentsService {
     }
 
     try {
-      const segments = await this.fetchTripSegmentsWithJwt(jwt, tokenId, from, to, mechanism);
+      const segments = await this.fetchTripSegmentsWithJwt(
+        jwt,
+        tokenId,
+        from,
+        to,
+        mechanism,
+        requestContext,
+      );
       return { segments, providerError: null };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -340,6 +367,7 @@ export class DimoSegmentsService {
       'refuel',
       'recharge',
     ],
+    requestContext?: DimoProviderRequestContext,
   ): Promise<FetchEnergyEventSegmentsResult> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
     const windowFrom = from.toISOString();
@@ -371,6 +399,7 @@ export class DimoSegmentsService {
         from,
         to,
         mechanism,
+        requestContext,
       );
       outcomes.push(outcome);
       if (outcome.status !== 'FAILED') {
@@ -394,6 +423,7 @@ export class DimoSegmentsService {
     from: Date,
     to: Date,
     mechanism: EnergyMechanism,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<EnergyMechanismFetchOutcome> {
     const windowFrom = from.toISOString();
     const windowTo = to.toISOString();
@@ -404,6 +434,8 @@ export class DimoSegmentsService {
           tokenId,
           from,
           to,
+          undefined,
+          requestContext,
         );
 
         if (result.meta.status === 'FAILED' || result.error) {
@@ -454,6 +486,7 @@ export class DimoSegmentsService {
         from,
         to,
         mechanism,
+        requestContext,
       );
       return {
         mechanism,
@@ -486,6 +519,7 @@ export class DimoSegmentsService {
     from: Date,
     to: Date,
     mechanism: Extract<DimoDetectionMechanism, 'refuel' | 'recharge'>,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<DimoEnergyEventSegment[]> {
     const query = buildEnergyEventSegmentsQuery(
       tokenId,
@@ -494,7 +528,7 @@ export class DimoSegmentsService {
       mechanism,
       mechanism === 'refuel' ? DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG : undefined,
     );
-    const result = await this.telemetry.queryGraphQL(jwt, query);
+    const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
     const segments: any[] = result?.data?.segments ?? [];
     return segments
       .map((segment) => this.parseEnergyEventSegment(tokenId, mechanism, segment))
@@ -513,10 +547,11 @@ export class DimoSegmentsService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<TripCoreDataPoint[]> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
     if (!jwt) return [];
-    return this.fetchTripCoreData(jwt, tokenId, from, to);
+    return this.fetchTripCoreData(jwt, tokenId, from, to, requestContext);
   }
 
   private async fetchTripCoreData(
@@ -524,10 +559,11 @@ export class DimoSegmentsService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<TripCoreDataPoint[]> {
     const query = buildTripDetectionCoreQuery(tokenId, from, to);
     try {
-      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
       const signals: any[] = result?.data?.signals ?? [];
 
       return signals
@@ -571,10 +607,11 @@ export class DimoSegmentsService {
     from: Date,
     to: Date,
     mechanism: DimoDetectionMechanism,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<DimoTripSegment[]> {
     const query = buildTripSegmentsQuery(tokenId, from, to, mechanism);
     try {
-      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
       const segments: any[] = result?.data?.segments ?? [];
       return segments
         .map((segment) => this.parseTripSegment(tokenId, mechanism, segment))
@@ -684,13 +721,14 @@ export class DimoSegmentsService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<RoutePoint[]> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
     if (!jwt) return [];
 
     const query = buildRouteEnrichmentQuery(tokenId, from, to);
     try {
-      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
       const signals: any[] = result?.data?.signals ?? [];
       return this.parseRoutePoints(signals);
     } catch (err: any) {
@@ -737,13 +775,14 @@ export class DimoSegmentsService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<TemperatureReading[]> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
     if (!jwt) return [];
 
     const query = buildEnvironmentTemperatureQuery(tokenId, from, to);
     try {
-      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
       const signals: any[] = result?.data?.signals ?? [];
       return signals
         .filter(
@@ -774,13 +813,14 @@ export class DimoSegmentsService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<PerformanceReading[]> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
     if (!jwt) return [];
 
     const query = buildPerformanceQuery(tokenId, from, to);
     try {
-      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
       const signals: any[] = result?.data?.signals ?? [];
       return signals
         .filter((s: any) => s.timestamp)
@@ -821,13 +861,14 @@ export class DimoSegmentsService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<TirePressureReading[]> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
     if (!jwt) return [];
 
     const query = buildTirePressureHistoryQuery(tokenId, from, to);
     try {
-      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
       const signals: any[] = result?.data?.signals ?? [];
       return signals
         .filter((s: any) => s.timestamp)
@@ -884,13 +925,14 @@ export class DimoSegmentsService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<HighFrequencyReading[]> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
     if (!jwt) return [];
 
     const query = buildHighFrequencyQuery(tokenId, from, to);
     try {
-      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
       const signals: any[] = result?.data?.signals ?? [];
       return signals
         .filter((s: any) => s.timestamp)
@@ -986,8 +1028,9 @@ export class DimoSegmentsService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<DimoVehicleEventRecord[]> {
-    return this.fetchDrivingEventsPaginated(tokenId, from, to);
+    return this.fetchDrivingEventsPaginated(tokenId, from, to, requestContext);
   }
 
   /**
@@ -998,6 +1041,7 @@ export class DimoSegmentsService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<DimoVehicleEventRecord[]> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
     if (!jwt) return [];
@@ -1006,7 +1050,13 @@ export class DimoSegmentsService {
     const merged: DimoVehicleEventRecord[] = [];
 
     for (const window of windows) {
-      const chunk = await this.fetchDrivingEventsChunkWithRetry(jwt, tokenId, window.from, window.to);
+      const chunk = await this.fetchDrivingEventsChunkWithRetry(
+        jwt,
+        tokenId,
+        window.from,
+        window.to,
+        requestContext,
+      );
       merged.push(...chunk);
     }
 
@@ -1015,13 +1065,16 @@ export class DimoSegmentsService {
     );
   }
 
-  async fetchEventDataSummary(tokenId: number): Promise<DimoEventDataSummaryRow[]> {
+  async fetchEventDataSummary(
+    tokenId: number,
+    requestContext?: DimoProviderRequestContext,
+  ): Promise<DimoEventDataSummaryRow[]> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
     if (!jwt) return [];
 
     const query = buildEventDataSummaryQuery(tokenId);
     try {
-      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
       const rows: any[] = result?.data?.dataSummary?.eventDataSummary ?? [];
       return rows
         .filter((row) => typeof row?.name === 'string')
@@ -1044,13 +1097,14 @@ export class DimoSegmentsService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<DimoVehicleEventRecord[]> {
     const query = buildDrivingEventsQuery(tokenId, from, to);
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt < DIMO_DRIVING_EVENTS_MAX_RETRIES; attempt += 1) {
       try {
-        const result = await this.telemetry.queryGraphQL(jwt, query);
+        const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
         const events: any[] = result?.data?.events ?? [];
         return events
           .filter((e: any) => typeof e?.timestamp === 'string' && typeof e?.name === 'string')
@@ -1081,13 +1135,14 @@ export class DimoSegmentsService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<DimoVehicleEventRecord[]> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
     if (!jwt) return [];
 
     const query = buildDrivingEventsQuery(tokenId, from, to);
     try {
-      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
       const events: any[] = result?.data?.events ?? [];
       return events
         .filter((e: any) => typeof e?.timestamp === 'string' && typeof e?.name === 'string')
@@ -1116,13 +1171,14 @@ export class DimoSegmentsService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<DimoVehicleEventRecord[]> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
     if (!jwt) return [];
 
     const query = buildSafetyEventsQuery(tokenId, from, to);
     try {
-      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
       const events: any[] = result?.data?.events ?? [];
       return events
         .filter((e: any) => typeof e?.timestamp === 'string' && typeof e?.name === 'string')
@@ -1177,6 +1233,7 @@ export class DimoSegmentsService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<DimoFuelSummary> {
     const empty: DimoFuelSummary = {
       startAbsoluteLiters: null,
@@ -1212,7 +1269,7 @@ export class DimoSegmentsService {
 
     let signals: any[] = [];
     try {
-      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
       signals = Array.isArray(result?.data?.signals) ? result.data.signals : [];
     } catch (err: any) {
       this.logger.warn(
@@ -1349,10 +1406,11 @@ export class DimoSegmentsService {
     centreAt: Date,
     lookbackMs = 15 * 60_000,
     lookaheadMs = 5 * 60_000,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<TripCoreDataPoint[]> {
     const from = new Date(centreAt.getTime() - lookbackMs);
     const to = new Date(centreAt.getTime() + lookaheadMs);
-    return this.fetchRawTripCoreData(tokenId, from, to);
+    return this.fetchRawTripCoreData(tokenId, from, to, requestContext);
   }
 
   /**
@@ -1386,13 +1444,14 @@ export class DimoSegmentsService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<CrankDataPoint[]> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
     if (!jwt) return [];
 
     const query = buildBatteryCrankQuery(tokenId, from, to);
     try {
-      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
       const signals: any[] = result?.data?.signals ?? [];
 
       return signals

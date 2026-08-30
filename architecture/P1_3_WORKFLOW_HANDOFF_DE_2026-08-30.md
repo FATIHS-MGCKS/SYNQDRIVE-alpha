@@ -12,7 +12,7 @@
 ```
 PROJEKT_PHASE=P1.3 (DIMO Provider Concurrency)
 AKTUELLER_SLICE=P1.3-S4 (Production Canary / Enforcement Readiness)
-GESAMTSTATUS_S4=IMPLEMENTIERT — DRAFT PR OFFEN
+GESAMTSTATUS_S4=REMEDIATION IMPLEMENTIERT — DRAFT PR OFFEN (RE-REVIEW)
 MAIN_BASE_SHA=dc9ab567d16d62ef118e4fbd076747c9f91eba18
 IMPLEMENTATION_SHA_S4_CLOSURE=45ead17467ed76b4313244955f621413ced843f0
 DELIVERY_HEAD_SHA=e2c68d8e48d6522bb470b6358453182704e483dd
@@ -360,6 +360,53 @@ DimoSnapshotProcessor
 | Production sicher? | Default shadow, kein global enforce, PERMANENT_TRIP_LOSS=NO |
 | Nächster Schritt? | PR #1429 reviewen → mergen → P1.3-S5 (Alerts, Dashboards, Staging-Pilot) |
 | Diese Datei | `architecture/P1_3_WORKFLOW_HANDOFF_DE_2026-08-30.md` |
+
+## 15. P1.3-S4 Independent Review Remediation (2026-08-30)
+
+**Quelle:** Unabhängiger Production-Readiness-Review (`architecture/P1_3_S4_INDEPENDENT_REVIEW_2026-08-30.md`)  
+**PR:** #1429 — `cursor/p1-3-s4-readiness-closure-f21f`  
+**Status:** Remediation implementiert — **nicht gemergt**
+
+### P1-001 — Request-Context-Propagation (BEHOBEN)
+
+**Root Cause:** `resolveCanaryEnforcement()` benötigt `vehicleId` und/oder `organizationId` im `requestContext`. Viele Provider-Pfade reichten nur `{ tokenId }` oder gar keinen Kontext durch — Percent-/Vehicle-Canary war damit inkonsistent (nur Snapshot-Pfad vollständig).
+
+**Betroffene Pfade (Audit + Fix):**
+- `DimoTelemetryService`: alle öffentlichen Fetch-Methoden + `queryGraphQL` mit `buildDimoProviderRequestContext()`
+- `DimoSegmentsService`: alle 13 internen `queryGraphQL`-Aufrufe via `queryGraphQLWithContext()`; optionales `requestContext` auf allen `fetch*` Methoden
+- `executeDimoRechargeSegmentsGraphQL` + `DimoRechargeSegmentsClient`
+- Produktions-Caller: `DimoSnapshotProcessor`, `DimoDtcProcessor`, `EnergyEventsService`, `TripReconciliationService`, `TripDetectionOrchestrationService`, `BatteryCapabilityPreflightService`, `DimoAvailableSignalsPreflightService`, `DimoController` (debug query)
+
+**Fix:** Neues kanonisches Utility `dimo-provider-request-context.util.ts` (`buildDimoProviderRequestContext`, `mergeDimoProviderRequestContext`).
+
+**Regression-Tests:** `dimo-provider-request-context-propagation.spec.ts` (7 Tests — Telemetry + Gateway über mehrere Operationen)
+
+### P1-002 — Cooldown-Gauge-Lifecycle (BEHOBEN)
+
+**Root Cause:** `recordCooldownCleared()` existierte, wurde aber nie aufgerufen. Nach erstem 429 blieb `cooldown_active=1`.
+
+**Fix:**
+- `DimoProviderLimiterService.begin()` synchronisiert Gauge bei jedem Redis-Cooldown-Read (`syncCooldownMetrics`)
+- `setProviderCooldown()` aktualisiert Gauge bei Aktivierung
+- Cooldown-Lua-Script erweitert wiederholte 429s (`max(existingEnd, newEnd)`)
+
+**Regression-Tests:** `dimo-provider-cooldown-lifecycle.spec.ts` (6 Tests A–F)
+
+### Testnachweis Remediation
+
+```bash
+cd backend && npx tsc -p tsconfig.json --noEmit
+cd backend && npm test -- --testPathPattern="dimo-provider|dimo-telemetry|partial-boundary-repair|energy-event" --runInBand
+# Ergebnis: 344 passed, 16 skipped
+```
+
+### Unveränderte Invarianten
+
+- `DIMO_PROVIDER_LIMITER_MODE=shadow` (Production-Default)
+- `GLOBAL_ENFORCE_ACTIVE=NO`
+- `PERMANENT_TRIP_LOSS=NO`
+- `REAL_WORLD_FUEL_EVENT_PROVEN=NO`
+- `REAL_WORLD_CHARGING_EVENT_PROVEN=NO`
 
 ---
 

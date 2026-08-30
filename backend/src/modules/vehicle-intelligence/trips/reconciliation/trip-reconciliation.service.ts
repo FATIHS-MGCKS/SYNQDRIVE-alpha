@@ -1329,6 +1329,12 @@ export class TripReconciliationService {
         dimoTokenId,
         from,
         to,
+        undefined,
+        {
+          organizationId,
+          vehicleId,
+          tokenId: dimoTokenId,
+        },
       );
       const dimoCandidates = this.buildDimoSegmentCandidates(dimoSegments);
       if (dimoCandidates.length > 0) {

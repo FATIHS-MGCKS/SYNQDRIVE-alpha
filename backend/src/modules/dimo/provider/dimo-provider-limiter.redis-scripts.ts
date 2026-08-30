@@ -107,10 +107,24 @@ export const DIMO_PROVIDER_INFLIGHT_RELEASE_SCRIPT = `
 return redis.call('ZREM', KEYS[1], ARGV[1])
 `;
 
-/** KEYS[1] cooldown key; ARGV[1] cooldown end epoch ms; ARGV[2] ttl seconds */
+/** KEYS[1] cooldown key; ARGV[1] cooldown end epoch ms; ARGV[2] ttl seconds; ARGV[3] now epoch ms */
 export const DIMO_PROVIDER_COOLDOWN_SET_SCRIPT = `
-redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2])
-return 1
+local newEndMs = tonumber(ARGV[1])
+local newTtlSec = tonumber(ARGV[2])
+local nowMs = tonumber(ARGV[3])
+local existing = redis.call('GET', KEYS[1])
+if existing then
+  local existingEnd = tonumber(existing)
+  if existingEnd and existingEnd > newEndMs then
+    newEndMs = existingEnd
+  end
+end
+local ttlSec = math.max(newTtlSec, math.ceil((newEndMs - nowMs) / 1000))
+if ttlSec < 1 then
+  ttlSec = 1
+end
+redis.call('SET', KEYS[1], newEndMs, 'EX', ttlSec)
+return newEndMs
 `;
 
 export const DIMO_PROVIDER_KEY_PREFIX = 'dimo:provider:limiter';

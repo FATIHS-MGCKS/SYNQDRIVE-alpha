@@ -343,8 +343,12 @@ export class DimoProviderMetricsService {
 
   recordProviderCooldown(input: DimoProviderCooldownInput): void {
     this.providerCooldownTotal.inc({ operation: input.category });
+    this.recordCooldownActive(input.retryAfterSeconds);
+  }
+
+  recordCooldownActive(remainingSeconds: number): void {
     this.cooldownActiveGauge.set(1);
-    this.cooldownRemainingGauge.set(input.retryAfterSeconds);
+    this.cooldownRemainingGauge.set(remainingSeconds);
   }
 
   recordCooldownCleared(): void {

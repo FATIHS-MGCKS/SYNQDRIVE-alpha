@@ -1,6 +1,8 @@
 import { Logger } from '@nestjs/common';
 import type { AxiosError } from 'axios';
 import type { DimoTelemetryService } from '../dimo-telemetry.service';
+import type { DimoProviderRequestContext } from '../provider/dimo-provider-gateway.types';
+import { buildDimoProviderRequestContext } from '../provider/dimo-provider-request-context.util';
 import type {
   DimoRechargeSegmentFetchError,
   DimoRechargeSegmentGraphQLPage,
@@ -60,6 +62,7 @@ function isSourceFilterGraphQLError(message: string): boolean {
 export interface ExecuteDimoRechargeGraphQLOptions {
   maxRetries?: number;
   baseDelayMs?: number;
+  requestContext?: DimoProviderRequestContext;
 }
 
 export interface ExecuteDimoRechargeGraphQLResult {
@@ -88,7 +91,12 @@ export async function executeDimoRechargeSegmentsGraphQL(
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     try {
       const query = buildQuery(includeSourceFilter);
-      const response = await telemetry.queryGraphQL(vehicleJwt, query);
+      const response = await telemetry.queryGraphQL(
+        vehicleJwt,
+        query,
+        undefined,
+        buildDimoProviderRequestContext(tokenId, options?.requestContext),
+      );
       const segments = Array.isArray(response?.data?.segments)
         ? response.data.segments
         : [];

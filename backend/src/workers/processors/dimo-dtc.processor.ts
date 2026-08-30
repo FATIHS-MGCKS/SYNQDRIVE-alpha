@@ -97,6 +97,11 @@ export class DimoDtcProcessor extends WorkerHost {
         return;
       }
 
+      const vehicle = await this.prisma.vehicle.findUnique({
+        where: { id: vehicleId },
+        select: { organizationId: true },
+      });
+
       // Fetch latest obdDTCList signal via DIMO signalsLatest (SignalCollection format)
       const query = `
         query {
@@ -105,7 +110,11 @@ export class DimoDtcProcessor extends WorkerHost {
           }
         }
       `;
-      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const result = await this.telemetry.queryGraphQL(jwt, query, undefined, {
+        organizationId: vehicle?.organizationId,
+        vehicleId,
+        tokenId,
+      });
 
       // SignalCollection returns obdDTCList as { timestamp, value } object, not a row array
       const dtcSignal = result?.data?.signalsLatest?.obdDTCList ?? null;
@@ -121,10 +130,6 @@ export class DimoDtcProcessor extends WorkerHost {
       const previousCodes = new Set(previousActive.map((e) => e.dtcCode));
       const newCodeSet = new Set(newCodes);
 
-      const vehicle = await this.prisma.vehicle.findUnique({
-        where: { id: vehicleId },
-        select: { organizationId: true },
-      });
       const producerContext = {
         sourceProvider: 'DIMO' as const,
         sourceTimestamp: dtcSignal?.timestamp ? new Date(dtcSignal.timestamp) : now,
