@@ -29,7 +29,7 @@ async function fetchReadiness(port) {
 }
 
 function leaderRole(body) {
-  return body?.dependencies?.schedulerLeader?.details?.role ?? 'UNKNOWN';
+  return body?.checks?.schedulerLeader?.details?.role ?? 'UNKNOWN';
 }
 
 async function pollLeaders() {
@@ -65,10 +65,14 @@ function killPid(pid, signal) {
 async function waitForSingleLeader(maxMs) {
   const start = Date.now();
   while (Date.now() - start < maxMs) {
-    const { leaders, roles } = await pollLeaders();
-    if (leaders === 1) {
-      const leaderPort = roles[0] === 'LEADER' ? PORT_A : PORT_B;
-      return { elapsedMs: Date.now() - start, leaderPort, roles };
+    try {
+      const { leaders, roles } = await pollLeaders();
+      if (leaders === 1) {
+        const leaderPort = roles[0] === 'LEADER' ? PORT_A : PORT_B;
+        return { elapsedMs: Date.now() - start, leaderPort, roles };
+      }
+    } catch {
+      // transient while process restarts
     }
     await sleep(500);
   }
