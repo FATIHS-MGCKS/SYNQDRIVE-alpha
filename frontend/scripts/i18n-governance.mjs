@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanRepository } from './i18n-hardcoded-scan.mjs';
 import { compareFindingsToManifest, formatDiagnostic } from './lib/i18n-governance/comparator.mjs';
+import { CLASSIFICATIONS } from './lib/i18n-governance/classifications.mjs';
 import {
   loadManifest,
   validateManifestAgainstInventory,
@@ -45,6 +46,8 @@ function main() {
   console.log(`Total findings: ${comparison.totalFindings}`);
   console.log(`Classified residual findings: ${comparison.classifiedResidualCount}`);
   console.log(`Unclassified findings: ${comparison.unclassifiedCount}`);
+  console.log(`Baseline residual findings: ${comparison.baselineResidualCount}`);
+  console.log(`Active remediation findings: ${comparison.activeRemediationCount}`);
   console.log(
     `NEW_UNCLASSIFIED_ACTIVE_HOST_DEBT: ${comparison.newUnclassifiedActiveHostDebtCount}`,
   );
@@ -57,7 +60,7 @@ function main() {
   }
 
   if (comparison.newUnclassifiedActiveHostDebtCount > 0) {
-    printSection('Active host debt diagnostics');
+    printSection('New active host debt diagnostics');
     for (const finding of comparison.newUnclassifiedActiveHostDebt.slice(0, 50)) {
       const diagnostic = formatDiagnostic(finding);
       console.log(
@@ -71,6 +74,29 @@ function main() {
     if (comparison.newUnclassifiedActiveHostDebtCount > 50) {
       console.log(`  ... and ${comparison.newUnclassifiedActiveHostDebtCount - 50} more`);
     }
+  }
+
+  if (comparison.activeRemediationCount > 0) {
+    printSection('Active remediation host debt (baseline-known, unresolved)');
+    for (const finding of comparison.activeRemediationFindings.slice(0, 50)) {
+      const diagnostic = formatDiagnostic(finding);
+      console.log(
+        `  ${diagnostic.path}:${diagnostic.line} [${diagnostic.kind}] ${diagnostic.literal}`,
+      );
+      console.log(
+        `    fingerprint=${diagnostic.fingerprint} classification=${diagnostic.classification}`,
+      );
+      console.log(`    action: ${diagnostic.suggestedAction}`);
+    }
+    if (comparison.activeRemediationCount > 50) {
+      console.log(`  ... and ${comparison.activeRemediationCount - 50} more`);
+    }
+  }
+
+  const hasBlockingGovernanceDebt =
+    comparison.newUnclassifiedActiveHostDebtCount > 0 || comparison.activeRemediationCount > 0;
+
+  if (hasBlockingGovernanceDebt) {
     process.exit(2);
   }
 

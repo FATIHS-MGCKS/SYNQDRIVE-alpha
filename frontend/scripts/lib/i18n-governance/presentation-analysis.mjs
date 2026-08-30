@@ -4,6 +4,8 @@
  * known presentation props without whole-program dataflow.
  */
 
+import { extractStructuralContext } from './structural-context.mjs';
+
 export const PRESENTATION_PROPS = new Set([
   'title',
   'aria-label',
@@ -204,6 +206,7 @@ export function collectIndirectPresentationFindings(filePath, source, options) {
       sample: sample.slice(0, 120),
       severity: isEnforcedCleanSurface(surface, relPath) ? 'enforce-clean' : 'debt',
       migrationPhase: migrationPhaseFor(relPath, surface),
+      structuralContext: extractStructuralContext(source, propMatch.index),
     });
   }
 
@@ -229,6 +232,7 @@ export function collectIndirectPresentationFindings(filePath, source, options) {
       sample: sample.slice(0, 120),
       severity: isEnforcedCleanSurface(surface, relPath) ? 'enforce-clean' : 'debt',
       migrationPhase: migrationPhaseFor(relPath, surface),
+      structuralContext: extractStructuralContext(source, objMatch.index),
     });
   }
 
@@ -252,6 +256,7 @@ export function collectIndirectPresentationFindings(filePath, source, options) {
       sample: sample.slice(0, 120),
       severity: isEnforcedCleanSurface(surface, relPath) ? 'enforce-clean' : 'debt',
       migrationPhase: migrationPhaseFor(relPath, surface),
+      structuralContext: extractStructuralContext(source, toastMatch.index),
     });
 
     const descriptionMatch = after.match(/description\s*:\s*(['"`])([\s\S]*?)\1/);
@@ -270,6 +275,7 @@ export function collectIndirectPresentationFindings(filePath, source, options) {
           sample: descriptionSample.slice(0, 120),
           severity: isEnforcedCleanSurface(surface, relPath) ? 'enforce-clean' : 'debt',
           migrationPhase: migrationPhaseFor(relPath, surface),
+          structuralContext: extractStructuralContext(source, toastMatch.index),
         });
       }
     }
@@ -293,6 +299,7 @@ export function collectIndirectPresentationFindings(filePath, source, options) {
       sample: sample.slice(0, 120),
       severity: isEnforcedCleanSurface(surface, relPath) ? 'enforce-clean' : 'debt',
       migrationPhase: migrationPhaseFor(relPath, surface),
+      structuralContext: extractStructuralContext(source, setErrorMatch.index),
     });
   }
 

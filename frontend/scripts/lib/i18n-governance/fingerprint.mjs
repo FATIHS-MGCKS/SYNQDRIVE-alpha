@@ -11,8 +11,8 @@ export function normalizeLiteral(text) {
 }
 
 /**
- * Deterministic finding fingerprint (line-independent).
- * file + category + presentationOwner + normalized literal/sample.
+ * Deterministic finding fingerprint v2 (line-independent).
+ * file + category + presentationOwner + kind + structuralContext + normalized literal.
  */
 export function buildFindingFingerprint({
   file,
@@ -20,12 +20,14 @@ export function buildFindingFingerprint({
   presentationOwner = '',
   sample = '',
   kind = '',
+  structuralContext = 'module',
 }) {
   const payload = [
     file.replace(/\\/g, '/'),
     category,
     presentationOwner,
     kind,
+    structuralContext || 'module',
     normalizeLiteral(sample),
   ].join('|');
   return createHash('sha256').update(payload).digest('hex').slice(0, 16);
@@ -38,5 +40,6 @@ export function buildManifestEntryFingerprint(entry) {
     presentationOwner: entry.presentationOwner ?? '',
     sample: entry.literal ?? entry.sample ?? entry.framing ?? '',
     kind: entry.kind ?? '',
+    structuralContext: entry.structuralContext ?? 'module',
   });
 }

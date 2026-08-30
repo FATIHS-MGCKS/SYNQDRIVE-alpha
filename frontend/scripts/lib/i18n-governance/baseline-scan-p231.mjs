@@ -4,14 +4,11 @@
  * Excludes translation dictionaries, tests, and developer-only strings.
  */
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildFindingFingerprint } from './lib/i18n-governance/fingerprint.mjs';
-import { collectIndirectPresentationFindings } from './lib/i18n-governance/presentation-analysis.mjs';
-import { extractStructuralContext } from './lib/i18n-governance/structural-context.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const frontendRoot = join(__dirname, '..');
+const frontendRoot = join(__dirname, '../../..');
 const srcRoot = join(frontendRoot, 'src');
 const inventoryPath = join(srcRoot, 'i18n/hardcoded-copy-inventory.json');
 
@@ -461,7 +458,7 @@ const P22_ENFORCE_CLEAN_PREFIXES = [
   'lib/formatVehicleDisplay.ts',
 ];
 
-const LEGACY_CATEGORY_PATTERNS = [
+const CATEGORY_PATTERNS = [
   { category: 'ARIA', re: /aria-label\s*=\s*\{?\s*t\(/g, skip: true },
   { category: 'ARIA', re: /aria-label\s*=\s*\{?\s*dt\(/g, skip: true },
   { category: 'ARIA', re: /aria-label\s*=\s*[{'"]([^'"{}]+)/g },
@@ -471,23 +468,6 @@ const LEGACY_CATEGORY_PATTERNS = [
   { category: 'TITLE', re: /title\s*=\s*\{?\s*t\(/g, skip: true },
   { category: 'TITLE', re: /title\s*=\s*\{?\s*dt\(/g, skip: true },
   { category: 'TITLE', re: /title\s*=\s*[{'"]([^'"{}]+)/g },
-  { category: 'TEXT', re: />\s*([A-Za-zÄÖÜäöüß][^<>{}\n]{2,}?)\s*</g },
-  { category: 'LABEL', re: /<label[^>]*>\s*([A-Za-zÄÖÜäöüß][^<]{2,})\s*<\/label>/g },
-  { category: 'FORMAT_LOCALE', re: /['"](de-DE|en-US|en-GB)['"]/g },
-];
-
-const ENHANCED_CATEGORY_PATTERNS = [
-  { category: 'ARIA', re: /aria-label\s*=\s*\{?\s*t\(/g, skip: true },
-  { category: 'ARIA', re: /aria-label\s*=\s*\{?\s*dt\(/g, skip: true },
-  { category: 'ARIA', re: /aria-label\s*=\s*[{'"]([^'"{}]+)/g },
-  { category: 'ARIA', re: /aria-description\s*=\s*[{'"]([^'"{}]+)/g },
-  { category: 'PLACEHOLDER', re: /placeholder\s*=\s*['"]([^'"]+)['"]/g },
-  { category: 'ALT', re: /alt\s*=\s*\{?\s*t\(/g, skip: true },
-  { category: 'ALT', re: /alt\s*=\s*\{?\s*dt\(/g, skip: true },
-  { category: 'ALT', re: /alt\s*=\s*['"]([^'"]+)['"]/g },
-  { category: 'TITLE', re: /title\s*=\s*\{?\s*t\(/g, skip: true },
-  { category: 'TITLE', re: /title\s*=\s*\{?\s*dt\(/g, skip: true },
-  { category: 'TITLE', re: /title\s*=\s*['"]([^'"]+)['"]/g },
   { category: 'TEXT', re: />\s*([A-Za-zÄÖÜäöüß][^<>{}\n]{2,}?)\s*</g },
   { category: 'LABEL', re: /<label[^>]*>\s*([A-Za-zÄÖÜäöüß][^<]{2,})\s*<\/label>/g },
   { category: 'FORMAT_LOCALE', re: /['"](de-DE|en-US|en-GB)['"]/g },
@@ -937,14 +917,13 @@ function normalizeText(text) {
   return text.replace(/\s+/g, ' ').trim();
 }
 
-function collectFindings(filePath, source, options = {}) {
+function collectFindings(filePath, source) {
   const relPath = relative(srcRoot, filePath).replace(/\\/g, '/');
   const surface = classifySurface(filePath);
   const module = surface === 'RENTAL' ? classifyRentalModule(relPath) : null;
   const findings = [];
-  const patterns = options.includeEnhanced ? ENHANCED_CATEGORY_PATTERNS : LEGACY_CATEGORY_PATTERNS;
 
-  for (const pattern of patterns) {
+  for (const pattern of CATEGORY_PATTERNS) {
     const { category, re, skip } = pattern;
     if (skip) continue;
     if ((category === 'TEXT' || category === 'LABEL') && !filePath.endsWith('.tsx')) continue;
@@ -958,86 +937,26 @@ function collectFindings(filePath, source, options = {}) {
       if (!isLikelyUserCopy(sample) && category !== 'FORMAT_LOCALE') continue;
 
       const line = source.slice(0, match.index).split('\n').length;
-      const severity =
-        category === 'FORMAT_LOCALE'
-          ? isEnforcedCleanSurface(surface, relPath)
-            ? 'enforce-clean'
-            : 'debt'
-          : isEnforcedCleanSurface(surface, relPath)
-            ? 'enforce-clean'
-            : 'debt';
-      findings.push(
-        enrichFinding(
-          {
-            file: relPath,
-            line,
-            surface,
-            module,
-            category,
-            sample: sample.slice(0, 120),
-            severity,
-            migrationPhase: migrationPhaseFor(relPath, surface),
-            structuralContext: extractStructuralContext(source, match.index),
-          },
-          source,
-        ),
-      );
+      findings.push({
+        file: relPath,
+        line,
+        surface,
+        module,
+        category,
+        sample: sample.slice(0, 120),
+        severity: isEnforcedCleanSurface(surface, relPath) ? 'enforce-clean' : 'debt',
+        migrationPhase: migrationPhaseFor(relPath, surface),
+      });
     }
   }
 
   return findings;
 }
 
-function collectEnhancedFindings(filePath, source) {
-  const relPath = relative(srcRoot, filePath).replace(/\\/g, '/');
-  const indirectFindings = collectIndirectPresentationFindings(relPath, source, {
-    isLikelyUserCopy,
-    classifySurface: (ctx) => classifySurface(join(srcRoot, ctx.relPath)),
-    classifyRentalModule,
-    isEnforcedCleanSurface,
-    migrationPhaseFor,
-  });
-  return indirectFindings.map((finding) => enrichFinding(finding, source));
-}
-
-function collectAllFindings(filePath, source, options = {}) {
-  const regexFindings = collectFindings(filePath, source, options);
-  if (!options.includeEnhanced) return regexFindings;
-  const enhancedFindings = collectEnhancedFindings(filePath, source);
-  return [...regexFindings, ...enhancedFindings];
-}
-
-function enrichFinding(finding, source = '') {
-  const structuralContext =
-    finding.structuralContext ??
-    (source && typeof finding.line === 'number'
-      ? extractStructuralContext(
-          source,
-          source.split('\n').slice(0, Math.max(0, finding.line - 1)).join('\n').length,
-        )
-      : 'module');
-  return {
-    ...finding,
-    structuralContext,
-    fingerprint: buildFindingFingerprint({
-      file: finding.file,
-      category: finding.category,
-      presentationOwner: finding.presentationOwner ?? '',
-      sample: finding.sample,
-      kind: finding.kind ?? '',
-      structuralContext,
-    }),
-  };
-}
-
-function dedupeFindings(findings, options = {}) {
-  const mode = options.mode ?? 'fingerprint';
+function dedupeFindings(findings) {
   const map = new Map();
   for (const finding of findings) {
-    const key =
-      mode === 'legacy'
-        ? `${finding.surface}|${finding.category}|${finding.sample}`
-        : finding.fingerprint ?? `${finding.surface}|${finding.category}|${finding.sample}|${finding.file}`;
+    const key = `${finding.surface}|${finding.category}|${finding.sample}`;
     const existing = map.get(key);
     if (existing) {
       existing.occurrences = (existing.occurrences ?? 1) + 1;
@@ -1046,13 +965,7 @@ function dedupeFindings(findings, options = {}) {
     }
     map.set(key, { ...finding, occurrences: 1, files: [finding.file] });
   }
-  return [...map.values()].sort(
-    (a, b) =>
-      a.file.localeCompare(b.file) ||
-      a.line - b.line ||
-      a.category.localeCompare(b.category) ||
-      a.sample.localeCompare(b.sample),
-  );
+  return [...map.values()].sort((a, b) => a.surface.localeCompare(b.surface) || a.sample.localeCompare(b.sample));
 }
 
 function summarize(findings) {
@@ -1075,80 +988,13 @@ function summarize(findings) {
   };
 }
 
-export function scanSource(relPath, source, options = {}) {
-  const fakePath = join(srcRoot, relPath);
-  return dedupeFindings(collectAllFindings(fakePath, source, options), {
-    mode: 'fingerprint',
-  });
-}
-
-export function scanRepository(options = {}) {
-  const roots = options.roots ?? SCAN_ROOTS;
-  const includeEnhanced = options.includeEnhanced === true;
-  const files = [...new Set(roots.flatMap((root) => collectFiles(root)))];
+export function scanRepositoryBaseline() {
+  const files = [...new Set(SCAN_ROOTS.flatMap((root) => collectFiles(root)))];
   const rawFindings = files.flatMap((file) => {
     const source = readFileSync(file, 'utf8');
-    return collectAllFindings(file, source, { includeEnhanced });
+    return collectFindings(file, source);
   });
-  const findings = dedupeFindings(rawFindings, {
-    mode: includeEnhanced ? 'fingerprint' : 'legacy',
-  });
+  const findings = dedupeFindings(rawFindings);
   const summary = summarize(findings);
-  return { files, findings, summary, includeEnhanced };
-}
-
-export {
-  collectFindings,
-  collectAllFindings,
-  collectEnhancedFindings,
-  dedupeFindings,
-  summarize,
-  isEnforcedCleanSurface,
-  classifySurface,
-  classifyRentalModule,
-  isLikelyUserCopy,
-  SCAN_ROOTS,
-  srcRoot,
-  frontendRoot,
-};
-
-const isCliMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (!isCliMain) {
-  // imported for tests/governance
-} else {
-const { findings, summary } = scanRepository({ includeEnhanced: false });
-
-const inventory = {
-  version: 3,
-  generatedAt: new Date().toISOString().slice(0, 10),
-  phases: {
-    P21: {
-      enforceCleanExact: [...P21_ENFORCE_CLEAN_EXACT],
-      enforceCleanPrefixes: [...P21_ENFORCE_CLEAN_PREFIXES],
-    },
-    P22: {
-      enforceCleanExact: [...P22_ENFORCE_CLEAN_EXACT],
-      enforceCleanPrefixes: [...P22_ENFORCE_CLEAN_PREFIXES],
-    },
-    P23: {
-      enforceCleanExact: [...P23_ENFORCE_CLEAN_EXACT],
-      enforceCleanPrefixes: [...P23_ENFORCE_CLEAN_PREFIXES],
-    },
-    P24: {
-      enforceCleanExact: [...P24_ENFORCE_CLEAN_EXACT],
-      enforceCleanPrefixes: [...P24_ENFORCE_CLEAN_PREFIXES],
-    },
-  },
-  summary,
-  findings,
-};
-
-writeFileSync(inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`);
-console.log('Hardcoded copy inventory');
-console.log(`Total unique findings: ${summary.total}`);
-console.log('By surface:', summary.bySurface);
-console.log('By category:', summary.byCategory);
-console.log('Rental by module:', summary.byRentalModule);
-console.log(`Enforce-clean surface findings: ${summary.enforceCleanRemaining}`);
-console.log(`Wrote ${relative(frontendRoot, inventoryPath)}`);
+  return { findings, summary };
 }

@@ -1,9 +1,9 @@
 # P2.3.2 — Scanner Coverage & Residual Classification Implementation
 
-**Date:** 2026-08-30  
-**Branch:** `cursor/p232-scanner-classification-3c10`  
-**Baseline strategy:** **A — DIRECT FROM CLOSEOUT BASELINE**  
-**Baseline SHA:** `381671605ea1cd55844518312839b0f7d99a48bd`  
+**Date:** 2026-08-30
+**Branch:** `cursor/p232-scanner-classification-3c10`
+**Baseline strategy:** **A — DIRECT FROM CLOSEOUT BASELINE**
+**Baseline SHA:** `381671605ea1cd55844518312839b0f7d99a48bd`
 **Reason:** Current `main` (`913f028f3`) deleted core i18n scanner/governance files; closeout merge is the authoritative i18n foundation.
 
 ---
@@ -154,6 +154,22 @@ Deterministic: repeated governance runs produce identical counts and fingerprint
 | Build | PASS |
 | Category E | 0 |
 | Product semantic diff | 0 |
+
+---
+
+## PART M — Governance safety correction (2026-08-30)
+
+| Change | Detail |
+|--------|--------|
+| Broad manifest rules | Removed `^master/`, `^operator/`, `^pages/`, `^lib/`, `^rental/`, and whole HelpCenter wildcard rules |
+| Baseline model | `baselineFingerprints` + `PREEXISTING_BASELINE_DEBT` for known residual debt |
+| Fingerprint v2 | Adds `structuralContext` (enclosing symbol) — line-independent, collision-safe |
+| Legacy scanner | Restored exact P2.3.1 legacy regex patterns when `includeEnhanced: false` (1241 / 144 / 25) |
+| Comparator | Enforce-clean cannot be overridden by broad rules; NEW debt only for non-baseline actionable findings |
+| ChangesView | Removed from P2.3.2 diff (production UI semantic diff = 0) |
+| Inventory ownership | `hardcoded-copy-inventory.json` remains legacy-mode output from `i18n:check` only |
+
+Enhanced active remediation findings: **79** (was 78 pre-fingerprint-v2; +1 from structural disambiguation, not localization).
 
 ---
 
