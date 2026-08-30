@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-provider-concurrency-p1-3-s4-review-remediation-2026-08-30',
+    version: '4.9.1008',
+    title: 'P1.3-S4 independent review remediation — requestContext + cooldown gauge',
+    summary: [
+      'P1-001: canonical buildDimoProviderRequestContext() threaded through all DIMO telemetry/segments gateway paths.',
+      'Production callers updated: snapshot, DTC, energy events, trip reconciliation/orchestration, capability preflight, recharge.',
+      'P1-002: cooldown_active gauge syncs on limiter begin(); recordCooldownCleared() on expiry; repeated 429 extends cooldown.',
+      'Regression: dimo-provider-request-context-propagation.spec.ts + dimo-provider-cooldown-lifecycle.spec.ts (13 tests).',
+    ],
+    reason:
+      'Independent production-readiness review (PR #1429) found P1-001 context gaps and P1-002 stuck cooldown gauge.',
+    previousBehavior:
+      'Percent/vehicle canary only reliable on snapshot path; cooldown_active stayed 1 after first 429.',
+    details:
+      'SHA 772757147. Production default remains shadow. No global enforce. See architecture/P1_3_WORKFLOW_HANDOFF_DE_2026-08-30.md §15.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T09:20:00.000Z',
+  },
+  {
     id: 'dimo-provider-concurrency-p1-3-s4-readiness-closure-2026-08-30',
     version: '4.9.1007',
     title: 'P1.3-S4 readiness closure — percent/vehicle canary, observability, chaos proofs',
