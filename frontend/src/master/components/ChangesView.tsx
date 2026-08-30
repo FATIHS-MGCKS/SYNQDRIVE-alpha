@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-provider-p1-3-s4-final-main-reconciliation-2026-08-30',
+    version: '4.9.1012',
+    title: 'P1.3-S4 final main reconciliation — P1.4 mutex + multi-replica gate + S4 stack',
+    summary: [
+      'Merged latest origin/main (#1435 P1.4 reconciliation mutex, #1438 staging multi-replica gate) into PR #1429.',
+      'TripReconciliationService: mutex → runWithDimoRequestContext → DIMO with canonical org/vehicle/token context.',
+      'Preserved stacked DimoProviderGateway → DimoRequestExecutor → HTTP; scheduler leader + mutex + budget coexist.',
+      'Post-merge provider call-site audit re-run; CATEGORY_C must remain zero.',
+    ],
+    reason:
+      'PR #1429 mergeable_state=dirty after main advanced — semantic merge preserves S4, P1.3, P1.7, P1.4, and #1438 validation.',
+    previousBehavior:
+      'PR reconciled only through 9a1f7e3b; P1.4 mutex and staging gate missing on branch.',
+    details:
+      'trip-reconciliation.service.ts auto-merged with mutex + requestContext. See reconciliation commit message.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T11:15:00.000Z',
+  },
+  {
     id: 'dimo-provider-p1-3-s4-main-reconciliation-2026-08-30',
     version: '4.9.1010',
     title: 'P1.3-S4 main reconciliation — stacked gateway + global provider budget',
@@ -76,6 +96,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-08-30T10:00:00.000Z',
   },
   {
+    id: 'staging-multi-replica-validation-p13-p17-p14-2026-08-30',
+    version: '4.9.1009',
+    title: 'Staging multi-replica validation gate — P1.3 + P1.7 + P1.4',
+    summary: [
+      'CONDITIONAL_PASS: 382 local integration tests across scheduler leader, reconciliation mutex, DIMO budget, P1.2 trip-loss, Route V2.',
+      'Cross-system gate spec: staging-multi-replica-p13-p17-p14.gate.spec.ts (leader→mutex→budget).',
+      'TRUE_PROCESS_LEVEL_MULTI_REPLICA=NO — Docker unavailable; logical twin replicas only.',
+      'DUPLICATE_SINGLETON_TICKS=0, DOUBLE_RECONCILIATION_EXECUTION=0, DIMO_LIMIT_BREACHED=NO.',
+      'N1000_CERTIFICATION remains CONDITIONAL — VPS 2-replica soak still required.',
+    ],
+    reason:
+      'Validate merged P1.3/P1.7/P1.4 coordination before staging scale-to-2.',
+    previousBehavior:
+      'Individual stage proofs existed; no combined cross-system validation artifact.',
+    details:
+      'architecture/STAGING_MULTI_REPLICA_VALIDATION_P1_3_P1_7_P1_4_2026-08-30.md; backend/src/shared/staging-multi-replica/*.gate.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T10:36:00.000Z',
+  },
+  {
     id: 'dimo-provider-concurrency-p1-3-s4-review-remediation-2026-08-30',
     version: '4.9.1008',
     title: 'P1.3-S4 independent review remediation — requestContext + cooldown gauge',
@@ -94,6 +135,29 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-08-30T09:20:00.000Z',
+  },
+  {
+    id: 'reconciliation-execution-mutex-p1-4-2026-08-30',
+    version: '4.9.1008',
+    title: 'P1.4 — Reconciliation execution mutex / multi-replica safety',
+    summary: [
+      'Redis per-vehicle reconciliation execution mutex via ReconciliationExecutionMutexService.',
+      'Key: synqdrive:reconciliation:lock:{organizationId}:{vehicleId}:trip — serializes trip boundary repair mutations.',
+      'TripReconciliationService.reconcileWindow + onStuckTrip converge through mutex; fail-closed on Redis outage.',
+      'Contention policy SKIPPED_LOCKED — next scheduled tier catches up; no retry storm.',
+      'Token-safe acquire/renew/release using RedisDistributedLockService (P1.7 primitives).',
+      'BullMQ workers remain multi-replica; P1.7 scheduler leader unchanged.',
+      'Metrics: synqdrive_reconciliation_mutex_* (bounded labels).',
+    ],
+    reason:
+      'P1.4 — prevent duplicate concurrent trip reconciliation across replicas after P1.7 scheduler leader election.',
+    previousBehavior:
+      'P1.7 prevented duplicate scheduler ticks only; manual/API/event paths could overlap on same vehicle.',
+    details:
+      'backend: shared/reconciliation-execution-mutex/*, TripReconciliationService integration. architecture/P1_4_RECONCILIATION_EXECUTION_MUTEX_*.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T10:15:00.000Z',
   },
   {
     id: 'dimo-global-provider-budget-p1-3-2026-08-29',
