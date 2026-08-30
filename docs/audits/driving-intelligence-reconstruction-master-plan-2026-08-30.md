@@ -96,7 +96,15 @@ The new audit must reconcile these as one capability/consumption graph.
 ### 2.9 Current High-Timeframe Rolling Is Model-Aware but Average-Dominant
 `backend/src/modules/vehicle-intelligence/driving-impact-rolling/driving-impact-rolling.ts` provides useful model/profile cohort separation and distance-weighted aggregation, with an explicit `notDriverEvaluation` marker.
 However, a rolling mean alone hides peaks, distributions and temporal clustering. The future engine must retain more information.
-**Audit note to verify later:** `selectRollingCohort()` currently appears to classify non-winning profile cohorts as `PROFILE_INCOMPATIBLE` regardless of the `profilesComparable(...)` branch result. Verify intent and impact during the forensic phase; do not patch opportunistically before the relevant phase.
+**Audit note — CONFIRMED 2026-08-30 (Phase 1.1):** `selectRollingCohort()` classifies all non-winning profile cohorts as `PROFILE_INCOMPATIBLE` regardless of the `profilesComparable(...)` branch result (`driving-impact-rolling.ts:151-155`). `profilesComparable()` is dead code for inclusion. See `docs/audits/driving-intelligence-phase-1-current-state-forensic-audit-2026-08-30.md` §14 (F-02).
+### 2.10 Phase 1.1 Confirmed — Single Production Composite Path
+Forensic audit confirms one active trip composite: `computeDrivingStressScore()` at model `v1.2.0` (weights 0.30/0.35/0.20/0.15). Deprecated `computeSafetyScore()` retained but new writes set `safetyScore: null`. Legacy API aliases (`drivingStyleScore`, `drivingScore`) remain reachable. Full Formula Book in Phase 1 audit §9.
+### 2.11 Phase 1.1 Confirmed — Correlated Penalty Exposure
+A single braking episode can simultaneously influence `hardBrakePer100Km`, `extremeBrakePer100Km`, `fullBrakingPer100Km`, `brakesPer100Km`, `p95NegativeDecel`, `highSpeedBrakeShare`, `meanBrakeEnergyPerKm`, stop density, and three composite components (braking, stop-go, high-speed). Tire wear `behaviorFactor` additionally includes 0.15× composite atop 0.50× longitudinal + 0.35× braking — partial double-count risk (F-04).
+### 2.12 Phase 1.1 Confirmed — Brake vs Tire Input Asymmetry
+Brake health wear accumulation reads per-trip `TripDrivingImpact` since anchor (filtered `analysisStatus IN (COMPLETE, PARTIAL)`). Tire wear `behaviorFactor` reads 30-day rolling `VehicleDrivingImpactCurrent` only; trip ledger stores DI snapshot for fingerprint but not wear formula.
+### 2.13 Phase 1.1 Confirmed — API/UI Semantic Drift (P0/P1)
+`DriverScoreService` + `/trips/driver-score` expose vehicle stress under driver naming (P0). Notifications and several i18n locales still say "Fahrbewertung"/"driver score" while primary de/en UI uses "Fahrbelastung" (P1). Details in Phase 1 audit §17–18, §22.
 ---
 ## 3. New DIMO Vehicle Signal Inventories — Required Inputs
 The following 2026-08-30 vehicle-specific audit documents were supplied as the authoritative next evidence set:
@@ -133,8 +141,8 @@ A current-state dependency map:
 - No unexplained or hidden legacy scoring path remains.
 - Every consumer of `drivingStressScore` is identified.
 ### Status
-**IN PROGRESS**
-Initial architecture/scoring/brake/tire/rolling reconnaissance is complete; exhaustive call graph and formula inventory still required.
+**DONE** (Phase 1.1 forensic call graph & formula inventory complete 2026-08-30)
+Deliverable: `docs/audits/driving-intelligence-phase-1-current-state-forensic-audit-2026-08-30.md`. Exit criteria met: all score formulas traceable, all `drivingStressScore` consumers identified, legacy paths classified, brake/tire/API/UI graphs documented.
 ---
 ## Phase 2 — DIMO Signal Surface, Query Inventory & Capability Expansion Audit
 **This phase was explicitly inserted before the Flight Recorder.**
@@ -571,7 +579,8 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Initial Tire Health architecture review | DONE | Mature lifecycle/config; trip dynamic input is coarse |
 | Initial HF/cadence constraint review | DONE | Existing code already distinguishes ~30s snapshot vs HF eligibility |
 | Initial rolling/high-timeframe review | DONE | Model-aware rolling exists; average-dominant |
-| Exhaustive current-state formula/call-graph inventory | IN_PROGRESS | Phase 1 |
+| Phase 1.1 forensic call graph & formula inventory | DONE | `driving-intelligence-phase-1-current-state-forensic-audit-2026-08-30.md` |
+| Exhaustive current-state formula/call-graph inventory | DONE | Phase 1 exit criteria satisfied |
 | Read 2026-08-30 Tiguan signal gap audit | BLOCKED | exact file not yet on `main` |
 | Read 2026-08-30 C63 AMG signal gap audit | BLOCKED | exact file not yet on `main` |
 | Read 2026-08-30 Audi A4 signal gap audit | BLOCKED | exact file not yet on `main` |
@@ -599,9 +608,9 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | UI/API semantic cutover | NOT_STARTED | Phase 14 |
 ---
 # 6. Immediate Next Actions
-1. Complete Phase 1's exact call/formula/consumer inventory.
+1. ~~Complete Phase 1's exact call/formula/consumer inventory.~~ **Done** — see Phase 1 audit.
 2. Make the four 2026-08-30 vehicle signal-inventory files available on `main` and ingest them into this workstream.
-3. Execute Phase 2A against current code: exact Snapshot / Live Poll / HF / Events query inventories.
+3. Execute Phase 2A against current code: exact Snapshot / Live Poll / HF / Events query inventories (Phase 1 audit §5 handoff lists entry points).
 4. Merge those code findings with the four vehicle-specific capability inventories.
 5. Produce a prioritized `available but unused` signal list and assess incremental value per driving/brake/tire use case.
 6. Only then freeze the Flight Recorder signal manifest and proceed to Phase 3.
