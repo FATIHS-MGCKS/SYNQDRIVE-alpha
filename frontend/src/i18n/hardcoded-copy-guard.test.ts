@@ -610,6 +610,10 @@ const P264_ENFORCE_CLEAN_EXACT = [
   'rental/lib/rental-misuse-stress-i18n.ts',
 ];
 
+const P265_ENFORCE_CLEAN_EXACT = [
+  'rental/components/HelpCenterView.tsx',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -852,6 +856,10 @@ function isP263EnforceCleanPath(relPath: string): boolean {
 
 function isP264EnforceCleanPath(relPath: string): boolean {
   return P264_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP265EnforceCleanPath(relPath: string): boolean {
+  return P265_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -1357,6 +1365,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP264EnforceCleanPath(finding.file),
     );
     expect(p264Debt).toHaveLength(0);
+  });
+
+  it('keeps P265 Help Center shell chrome enforce-clean scope at zero findings', () => {
+    const p265Debt = inventory.findings.filter((finding) =>
+      isP265EnforceCleanPath(finding.file),
+    );
+    expect(p265Debt).toHaveLength(0);
   });
 
   it('keeps rental-misuse-stress-i18n.ts presentation-only', () => {

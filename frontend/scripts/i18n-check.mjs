@@ -54,6 +54,7 @@ const testFiles = [
   'src/rental/components/rental-invoice-detail-header-localization.test.tsx',
   'src/rental/components/rental-tenant-billing-overview-localization.test.tsx',
   'src/rental/components/rental-tenant-billing-tariff-vehicles-localization.test.tsx',
+  'src/rental/components/rental-help-center-shell-localization.test.tsx',
   'src/operator/damages/operator-damage-capture-localization.test.tsx',
   'src/operator/verification/operator-pickup-check-localization.test.tsx',
   'src/operator/tire-measure/operator-tire-measure-localization.test.tsx',

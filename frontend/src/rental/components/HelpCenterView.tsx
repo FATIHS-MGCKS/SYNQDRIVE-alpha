@@ -1,4 +1,5 @@
 import { BarChart3, Bot, Building2, Calendar, Car, FileCheck, FileText, Headphones, HelpCircle, LayoutDashboard, ListTodo, MapPin, Package, Rocket, ShieldCheck, Users, Zap } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from './ui/Icon';
 import { useState, useMemo, useRef, useEffect } from 'react';
 
@@ -756,6 +757,7 @@ export function HelpCenterView({
   isDarkMode: boolean;
   onOpenSupport?: () => void;
 }) {
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedSection, setExpandedSection] = useState<string | null>('getting-started');
   const [expandedArticle, setExpandedArticle] = useState<string | null>('welcome');
@@ -806,13 +808,14 @@ export function HelpCenterView({
             <Icon name="book-open" className="w-5 h-5 text-status-info" />
           </div>
           <div>
-            <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Help Center</h1>
-            <p className={`text-xs ${textSecondary}`}>{SECTIONS.length} Themenbereiche · {totalArticles} Artikel</p>
+            <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">{t('nav.helpCenter')}</h1>
+            <p className={`text-xs ${textSecondary}`}>
+              {t('helpCenter.statsLine', { sectionCount: SECTIONS.length, articleCount: totalArticles })}
+            </p>
           </div>
         </div>
         <p className={`text-sm leading-relaxed mt-3 ${textSecondary}`}>
-          Willkommen im Help Center! Hier finden Sie Erklärungen zu allen Bereichen der Plattform, 
-          Anleitungen für den Arbeitsalltag und wichtige Best Practices für die optimale Nutzung.
+          {t('helpCenter.intro')}
         </p>
         {onOpenSupport && (
           <button
@@ -825,7 +828,7 @@ export function HelpCenterView({
             }`}
           >
             <Headphones className="w-4 h-4" />
-            Problem nicht gelöst? Support-Ticket erstellen
+            {t('helpCenter.supportCta')}
           </button>
         )}
       </div>
@@ -835,14 +838,18 @@ export function HelpCenterView({
         <Icon name="search" className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
         <input
           type="text"
-          placeholder="Nach Themen, Funktionen oder Fragen suchen..."
+          data-testid="help-center-search"
+          placeholder={t('helpCenter.searchPlaceholder')}
+          aria-label={t('helpCenter.searchAria')}
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
           className={`w-full pl-11 pr-4 py-3.5 rounded-xl border text-sm ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-ring' : 'bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-brand'} outline-none transition-all`}
         />
         {searchTerm && (
-          <p className={`text-xs mt-2 ${textMuted}`}>
-            {filteredSections.length === 0 ? 'Keine Ergebnisse gefunden.' : `${filteredSections.length} Themenbereiche gefunden`}
+          <p className={`text-xs mt-2 ${textMuted}`} data-testid="help-center-search-status">
+            {filteredSections.length === 0
+              ? t('helpCenter.noResults')
+              : t('helpCenter.resultsCount', { count: filteredSections.length })}
           </p>
         )}
       </div>
@@ -851,7 +858,7 @@ export function HelpCenterView({
       {!searchTerm && (
         <div className={cardClass}>
           <div className="p-4">
-            <h2 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${textMuted}`}>Schnellnavigation</h2>
+            <h2 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${textMuted}`}>{t('helpCenter.quickNavTitle')}</h2>
             <div className="flex flex-wrap gap-1.5">
               {SECTIONS.map(sec => (
                 <button
@@ -866,7 +873,7 @@ export function HelpCenterView({
                   <sec.icon className="w-3 h-3" />
                   {sec.title}
                   {sec.comingSoon && (
-                    <span className="ml-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-500/15 text-purple-400">Soon</span>
+                    <span className="ml-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-500/15 text-purple-400">{t('helpCenter.comingSoonBadge')}</span>
                   )}
                 </button>
               ))}
@@ -902,10 +909,12 @@ export function HelpCenterView({
                     <h2 className={`text-sm font-bold ${textPrimary}`}>{section.title}</h2>
                     {section.comingSoon && (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/15 text-purple-400">
-                        Demnächst
+                        {t('helpCenter.comingSoonBadge')}
                       </span>
                     )}
-                    <span className={`text-[10px] ${textMuted}`}>{section.articles.length} {section.articles.length === 1 ? 'Artikel' : 'Artikel'}</span>
+                    <span className={`text-[10px] ${textMuted}`}>
+                      {t('helpCenter.articleCount', { count: section.articles.length })}
+                    </span>
                   </div>
                   <p className={`text-xs mt-0.5 ${textSecondary} line-clamp-1`}>{section.description}</p>
                 </div>
@@ -948,10 +957,10 @@ export function HelpCenterView({
       <div className={`${cardClass} p-5 text-center`}>
         <div className="flex items-center justify-center gap-2 mb-2">
           <Icon name="headphones" className={`w-4 h-4 ${isDarkMode ? 'text-brand' : 'text-brand'}`} />
-          <p className={`text-xs font-semibold ${textPrimary}`}>Noch Fragen?</p>
+          <p className={`text-xs font-semibold ${textPrimary}`}>{t('helpCenter.footerTitle')}</p>
         </div>
         <p className={`text-xs ${textSecondary}`}>
-          Wenn Sie hier keine Antwort finden, erstellen Sie gerne ein Support-Ticket – unser Team hilft Ihnen schnell und persönlich weiter.
+          {t('helpCenter.footerBody')}
         </p>
       </div>
     </div>
