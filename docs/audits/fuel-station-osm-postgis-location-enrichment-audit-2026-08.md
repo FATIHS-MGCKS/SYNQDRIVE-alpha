@@ -1701,4 +1701,127 @@ All preflight blockers from PB-12 are **cleared**. PostGIS and osmium are **not 
 
 ---
 
+## PB-15. B0/B1 Production Execution Evidence
+
+| Field | Value |
+|-------|-------|
+| **Executed** | 2026-08-30T17:37–17:39 UTC |
+| **Host** | `srv1374778.hstgr.cloud` |
+| **Operator SSH user** | `synqdrive-admin` (sudo) |
+| **Scope** | B0 backup + B1 package install + PostGIS extension only |
+| **Energy Event pipeline** | **No changes** (repo + production app behavior unchanged) |
+
+### PB-15.1 B0 — Pre-change backup
+
+| Item | Result |
+|------|--------|
+| **Backup path** | `/opt/synqdrive/shared/backups/db-pre-postgis-20260830173730.sql.gz` |
+| **Timestamp (UTC)** | 2026-08-30T17:37:30 |
+| **Size** | **58,589,214 bytes** (~56 MB) |
+| **Permissions** | `600` (`root:root`) |
+| **pg_dump** | Exit **0** |
+| **gzip integrity** | `gzip -t` **PASS** |
+| **Header** | `-- PostgreSQL database dump` |
+| **Disk before** | 97 GB free (50% used) |
+| **Disk after backup** | 97 GB free (50% used) |
+
+### PB-15.2 B1 — Package installation
+
+| Package | Installed version |
+|---------|-------------------|
+| `postgresql-16-postgis-3` | **3.4.2+dfsg-1ubuntu3** |
+| `postgresql-16-postgis-3-scripts` | **3.4.2+dfsg-1ubuntu3** (auto dep) |
+| `osmium-tool` | **1.16.0-1build1** (libosmium 2.20.0) |
+
+| Apt transaction | Result |
+|-----------------|--------|
+| New packages | **54** |
+| Removed packages | **0** |
+| Upgraded packages | **0** (no general upgrade performed) |
+| PostgreSQL major change | **None** |
+| Disk added | ~197 MB |
+| PostgreSQL restart | **No** — `postgresql@16-main` remained active (same PID since 2026-08-29 06:12:10 UTC) |
+
+### PB-15.3 Post-install pre-extension health
+
+| Check | Result |
+|-------|--------|
+| `postgresql@16-main` | **active** |
+| DB connectivity | **OK** |
+| `synqdrive` role | exists, **non-superuser** (`rolsuper=false`) |
+| Existing extensions | `pg_trgm`, `pgcrypto`, `plpgsql` intact |
+| `postgis` in `pg_available_extensions` | **YES** — default **3.4.2** |
+
+### PB-15.4 PostGIS extension enablement
+
+```sql
+-- Executed as postgres superuser on database synqdrive:
+CREATE EXTENSION IF NOT EXISTS postgis;
+-- Result: CREATE EXTENSION
+```
+
+| Item | Value |
+|------|-------|
+| **PostGIS_Version()** | `3.4 USE_GEOS=1 USE_PROJ=1 USE_STATS=1` |
+| **Extension version** | **3.4.2** |
+| **Schema** | `public` |
+| **Owner** | `postgres` |
+| **`synqdrive` granted superuser** | **NO** |
+
+### PB-15.5 Spatial smoke test (non-persistent)
+
+```sql
+SELECT ST_AsText(ST_SetSRID(ST_MakePoint(13.4050, 52.5200), 4326));
+-- POINT(13.405 52.52)
+SELECT ST_SRID(...);
+-- 4326
+SELECT ROUND(ST_Distance(...::geography, ...)::numeric, 2);
+-- 67.88 meters
+```
+
+**Result: PASS**
+
+### PB-15.6 Final health verification
+
+| Check | Before | After |
+|-------|--------|-------|
+| PostgreSQL service | active | **active** |
+| `synqdrive` DB size | 840 MB | **848 MB** (+8 MB extension objects) |
+| Free disk on `/` | 97 GB | **97 GB** (51% used) |
+| Installed extensions | 3 | **4** (+postgis 3.4.2) |
+| App health `GET /api/v1/health` | — | **`{"status":"ok",...}`** |
+
+### PB-15.7 Energy Event firewall
+
+**Confirmed:** No changes to RefuelDetector, RechargeDetector, `scoreConfidence()`, thresholds, persist gates, coalescing, pruning, reconciliation, recovery, timestamps, deltas, coordinates, confidence, API, or frontend. No OSM schema/dataset created. No application code deployed.
+
+### PB-15.8 B0/B1 evidence table
+
+| CHECK | RESULT | STATUS |
+|-------|--------|--------|
+| Pre-change backup | `db-pre-postgis-20260830173730.sql.gz` (56 MB, verified) | ✅ |
+| Backup verification | gzip + dump header OK | ✅ |
+| PostGIS package installation | `postgresql-16-postgis-3` 3.4.2+dfsg-1ubuntu3 | ✅ |
+| osmium installation | `osmium-tool` 1.16.0-1build1 | ✅ |
+| PostgreSQL service health | active, no restart required | ✅ |
+| PostGIS available extension | 3.4.2 in `pg_available_extensions` | ✅ |
+| CREATE EXTENSION | `postgis` 3.4.2 installed | ✅ |
+| PostGIS version | `3.4 USE_GEOS=1 USE_PROJ=1 USE_STATS=1` | ✅ |
+| Spatial smoke test | WGS84 point + geography distance OK | ✅ |
+| Application DB connectivity | `/api/v1/health` → `ok` | ✅ |
+| Free disk after | 97 GB free | ✅ GREEN |
+| Energy Event changes | none | ✅ |
+
+### PB-15.9 Overall status
+
+## **B0/B1 COMPLETE — READY FOR OSM DATASET**
+
+**STOP.** Next phase (separate authorization): isolated `osm` schema, fuel-only import pipeline, validation, atomic refresh. **Do not** download Geofabrik PBF until that phase begins.
+
+---
+
+*PB-15 B0/B1 execution — 2026-08-30T17:39 UTC.*
+
+---
+
 *End of audit — read-only, 2026-08-30.*
