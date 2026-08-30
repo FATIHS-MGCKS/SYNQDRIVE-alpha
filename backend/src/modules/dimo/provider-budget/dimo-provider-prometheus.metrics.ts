@@ -77,8 +77,8 @@ export function registerDimoProviderMetrics(registry: Registry): DimoProviderMet
   });
 
   const providerCooldownActive = new Gauge({
-    name: 'synqdrive_dimo_provider_cooldown_active',
-    help: '1 when provider cooldown is active after 429 pressure',
+    name: 'synqdrive_dimo_global_budget_cooldown_active',
+    help: '1 when global DIMO budget cooldown is active after 429 pressure',
     registers: [registry],
   });
 
