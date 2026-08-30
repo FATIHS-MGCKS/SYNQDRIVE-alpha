@@ -61,6 +61,7 @@ Explicit `tripId` from primary/reconciliation/arming **never** replaced by fuzzy
 | DLQ transient errors | permanent enqueue block / bulk pre-clear broke ENQUEUED rescue | **per-entity** `clearDeadLetter` on `recovery: true` enqueue only |
 | REST evaluate retryable | throw → Bull exhaust → DLQ → stuck `ENQUEUED` | `PENDING_EVALUATION` + return; reconciliation reschedules via `isLvRestTargetAwaitingReconciliationReschedule()` |
 | REST reconcile stuck target | `ENQUEUED` / `PENDING_EVALUATION` blocked by `isLvRestTargetAlreadyScheduled` | terminal-only guard; `ENQUEUED`+DLQ and `PENDING_EVALUATION` reschedule on cadence |
+| Orphaned `ENQUEUED` (no Bull job, no DLQ) | permanent stall — metadata `ENQUEUED` blocked reconciliation forever | `hasLiveJob(idempotencyKey)` on reconciliation cadence; missing job → `PENDING_EVALUATION` + recovery reschedule |
 | Historical mis-binding | recurring reconciliation repair scan | **removed** — creation-time invariant + P2002 race repair at mutation boundary |
 | Idempotent session race | stale `trip_id` kept | `repairCanonicalTripBindingIfNeeded()` verifies authoritative COMPLETED trip |
 
@@ -72,7 +73,7 @@ Explicit `tripId` from primary/reconciliation/arming **never** replaced by fuzzy
 
 ### Retry / dead-letter semantics
 
-- **LOCK_CONTENTION / PROVIDER_UNAVAILABLE / TRANSIENT_INFRA**: replayable each reconciliation tick (max 25/batch).
+- **LOCK_CONTENTION / PROVIDER_UNAVAILABLE / TRANSIENT_INFRA**: cleared per-entity during recovery enqueue (`recovery: true`); no bulk scheduler pre-clear.
 - **REST retryable pending evidence**: handler defers (no throw/DLQ); metadata `PENDING_EVALUATION`; reconciliation reschedules until evaluation grace expires → canonical MISSED.
 - **Non-retryable / grace exhausted**: terminal metadata (`MISSED`, `FAILED`, `CANCELLED`) — reconciliation does not reschedule.
 
@@ -82,18 +83,19 @@ Explicit `tripId` from primary/reconciliation/arming **never** replaced by fuzzy
 - `battery-measurement-session.repository.ts` — trip binding repair on idempotent collision
 - `lv-rest-window-session-arming.service.ts` — repair on `already_exists` / `duplicate_trip_end_event`
 - `lv-rest-window-ingestion-bridge.service.ts` — exact `endTime` match before ±120s fallback
-- `lv-rest-window-target.metadata.ts` — `isLvRestTargetTerminal()`
-- `battery-v2-job-producer.service.ts` — `ignoreDeadLetter` option
+- `lv-rest-window-target.metadata.ts` — `isLvRestTargetTerminal()`, `isLvRestTargetAwaitingReconciliationReschedule()`
+- `battery-v2-job-producer.service.ts` — `ignoreDeadLetter` option; `hasLiveJob()` for reconciliation liveness
 - `battery-v2-job-dead-letter.service.ts` — `clearDeadLetter()`
 - `battery-v2-lv-rest-session.producer.ts` — `recovery` flag + DLQ clear
 - `battery-v2-rest-target.producer.ts` — `recovery` flag + DLQ clear
-- `battery-v2-reconciliation.service.ts` — direct arming, trip binding repair, stuck-target rescue
+- `battery-v2-reconciliation.service.ts` — direct arming, stuck-target rescue (no historical backfill)
 - `battery-rest-target-evaluate.handler.ts` — defer retryable evaluation
-- `battery-v2-reconciliation.scheduler.ts` — always clear replayable DLQ
+- `battery-v2-reconciliation.scheduler.ts` — DLQ backlog metric only (no bulk clear)
 - `battery-v2-jobs-producer.module.ts` — wire arming + session repository for reconciliation
 
 ## Tests
 
+- `battery-v2-rest-target-orphaned-enqueued-liveness.spec.ts` (orphaned ENQUEUED without Bull job / DLQ — REST_60M/6H)
 - `battery-v2-rest-target-pending-evaluation-liveness.spec.ts` (adversarial PENDING_EVALUATION lifecycle REST_60M/6H)
 - Updated: `battery-v2-reconciliation.spec.ts`, `battery-rest-target-evaluate.handler.spec.ts`, `lv-rest-window-target.metadata.spec.ts`, `lv-rest-window.state-machine.spec.ts`, producer/audit/arming specs
 
@@ -106,3 +108,4 @@ Shadow=true, publication=false, readiness=false, Stage 2 disabled, per-vehicle s
 - Pre-existing `battery-v2.service.spec.ts` failures on `main` (unrelated crank deprecation mocks).
 - Stage 1 validation still requires deploy + natural trip observation after this fix lands.
 - Very old anchors (>24h) remain intentionally not armed.
+- Pure `RUNNING` without Bull job (rare crash mid-handler) not covered by this closure — separate edge case.

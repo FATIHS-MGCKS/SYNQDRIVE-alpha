@@ -32,6 +32,8 @@ import {
   LV_REST_TARGET_TYPES,
   mergeLvRestTargetJobMetadata,
   readLvRestWindowSessionMetadata,
+  type LvRestTargetJobMetadata,
+  type LvRestTargetType,
 } from '../lv-rest-window/lv-rest-window-target.metadata';
 import {
   BatteryMeasurementSessionStatus,
@@ -451,31 +453,14 @@ export class BatteryV2ReconciliationService {
           targetMeta?.status === LV_REST_TARGET_JOB_STATUS.ENQUEUED &&
           targetMeta.idempotencyKey
         ) {
-          const deadLettered = await this.deadLetters.isDeadLetter(
-            'BATTERY_REST_TARGET_EVALUATE',
-            targetMeta.idempotencyKey,
+          const enqueuedResolution = await this.resolveEnqueuedRestTargetForReconciliation(
+            sessionMetadata,
+            targetType,
+            targetMeta,
+            session,
           );
-          if (deadLettered) {
-            await this.deadLetters.clearDeadLetter(
-              'BATTERY_REST_TARGET_EVALUATE',
-              targetMeta.idempotencyKey,
-            );
-            sessionMetadata = mergeLvRestTargetJobMetadata(
-              sessionMetadata,
-              targetType,
-              {
-                status: LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION,
-                lastAttemptAt: new Date().toISOString(),
-              },
-            ) as Prisma.JsonValue;
-            await this.prisma.batteryMeasurementSession.update({
-              where: {
-                id: session.id,
-                organizationId: session.organizationId,
-              },
-              data: { metadata: sessionMetadata as Prisma.InputJsonValue },
-            });
-          } else if (isLvRestTargetAlreadyScheduled(sessionMetadata, targetType)) {
+          sessionMetadata = enqueuedResolution.sessionMetadata;
+          if (enqueuedResolution.skip) {
             continue;
           }
         } else if (isLvRestTargetAlreadyScheduled(sessionMetadata, targetType)) {
@@ -628,26 +613,14 @@ export class BatteryV2ReconciliationService {
           targetMeta?.status === LV_REST_TARGET_JOB_STATUS.ENQUEUED &&
           targetMeta.idempotencyKey
         ) {
-          const deadLettered = await this.deadLetters.isDeadLetter(
-            'BATTERY_REST_TARGET_EVALUATE',
-            targetMeta.idempotencyKey,
+          const enqueuedResolution = await this.resolveEnqueuedRestTargetForReconciliation(
+            sessionMetadata,
+            restTargetType,
+            targetMeta,
+            session,
           );
-          if (deadLettered) {
-            await this.deadLetters.clearDeadLetter(
-              'BATTERY_REST_TARGET_EVALUATE',
-              targetMeta.idempotencyKey,
-            );
-            sessionMetadata = mergeLvRestTargetJobMetadata(
-              sessionMetadata,
-              restTargetType,
-              {
-                status: LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION,
-                lastAttemptAt: new Date().toISOString(),
-              },
-            ) as Prisma.JsonValue;
-          } else if (
-            isLvRestTargetAlreadyScheduled(sessionMetadata, restTargetType)
-          ) {
+          sessionMetadata = enqueuedResolution.sessionMetadata;
+          if (enqueuedResolution.skip) {
             continue;
           }
         } else if (
@@ -707,6 +680,58 @@ export class BatteryV2ReconciliationService {
     }
 
     return enqueued;
+  }
+
+  /**
+   * ENQUEUED targets: keep when Bull job is live; recover when DLQ or orphaned metadata.
+   * Returns skip=true only when a live Bull job still owns the target.
+   */
+  private async resolveEnqueuedRestTargetForReconciliation(
+    sessionMetadata: Prisma.JsonValue,
+    targetType: LvRestTargetType,
+    targetMeta: LvRestTargetJobMetadata,
+    session: { id: string; organizationId: string },
+  ): Promise<{ skip: boolean; sessionMetadata: Prisma.JsonValue }> {
+    const deadLettered = await this.deadLetters.isDeadLetter(
+      'BATTERY_REST_TARGET_EVALUATE',
+      targetMeta.idempotencyKey,
+    );
+    if (deadLettered) {
+      await this.deadLetters.clearDeadLetter(
+        'BATTERY_REST_TARGET_EVALUATE',
+        targetMeta.idempotencyKey,
+      );
+      const updated = mergeLvRestTargetJobMetadata(sessionMetadata, targetType, {
+        status: LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION,
+        lastAttemptAt: new Date().toISOString(),
+      });
+      await this.prisma.batteryMeasurementSession.update({
+        where: {
+          id: session.id,
+          organizationId: session.organizationId,
+        },
+        data: { metadata: updated },
+      });
+      return { skip: false, sessionMetadata: updated as Prisma.JsonValue };
+    }
+
+    const hasLiveJob = await this.jobProducer.hasLiveJob(targetMeta.idempotencyKey);
+    if (hasLiveJob) {
+      return { skip: true, sessionMetadata };
+    }
+
+    const updated = mergeLvRestTargetJobMetadata(sessionMetadata, targetType, {
+      status: LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION,
+      lastAttemptAt: new Date().toISOString(),
+    });
+    await this.prisma.batteryMeasurementSession.update({
+      where: {
+        id: session.id,
+        organizationId: session.organizationId,
+      },
+      data: { metadata: updated },
+    });
+    return { skip: false, sessionMetadata: updated as Prisma.JsonValue };
   }
 
   private async reconcileTripStarts(batch: number): Promise<number> {

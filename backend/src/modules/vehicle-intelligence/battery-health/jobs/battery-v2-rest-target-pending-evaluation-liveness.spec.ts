@@ -118,7 +118,7 @@ function buildHandlerAndReconciliation() {
 
   const reconciliation = new BatteryV2ReconciliationService(
     prisma as any,
-    { enqueue: jest.fn() } as any,
+    { enqueue: jest.fn(), hasLiveJob: jest.fn().mockResolvedValue(false) } as any,
     { classifyAndEnqueue: jest.fn() } as any,
     {
       isDeadLetter: jest.fn().mockResolvedValue(false),

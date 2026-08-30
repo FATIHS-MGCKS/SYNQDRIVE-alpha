@@ -42,6 +42,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Reconciliation directly arms missing LV_REST_WINDOW sessions; transient DLQ cleared per-entity on recovery enqueue only (no bulk pre-clear).',
       'PENDING_EVALUATION defers to reconciliation cadence via isLvRestTargetAwaitingReconciliationReschedule — not stuck by isLvRestTargetAlreadyScheduled.',
+      'Orphaned ENQUEUED (no Bull job, no DLQ): reconciliation checks hasLiveJob(idempotencyKey) and transitions to PENDING_EVALUATION + recovery reschedule.',
       'Session canonical identity at creation: trip_id + anchor = trip.endTime; mutation boundary verifies authoritative COMPLETED trip. No recurring historical backfill.',
       '#1383/#1393 policies preserved; shadow only.',
     ],

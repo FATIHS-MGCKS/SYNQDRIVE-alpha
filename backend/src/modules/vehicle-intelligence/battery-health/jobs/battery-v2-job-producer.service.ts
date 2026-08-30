@@ -226,6 +226,23 @@ export class BatteryV2JobProducerService {
     }
   }
 
+  /**
+   * True when a deterministic Bull job for this idempotency key is still queued or running.
+   * Used by reconciliation to distinguish live ENQUEUED metadata from orphaned stale metadata.
+   */
+  async hasLiveJob(idempotencyKey: string): Promise<boolean> {
+    const jobId = buildBatteryV2JobId(idempotencyKey);
+    const job = await this.queue.getJob(jobId);
+    if (!job) return false;
+    const state = await job.getState();
+    return (
+      state === 'waiting' ||
+      state === 'delayed' ||
+      state === 'active' ||
+      state === 'prioritized'
+    );
+  }
+
   private recordEnqueueSuppressed(
     jobType: BatteryV2JobType,
     reason: 'dead_letter' | 'duplicate' | 'workers_disabled',
