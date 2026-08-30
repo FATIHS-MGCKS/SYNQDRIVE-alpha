@@ -1,20 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Counter, Histogram } from 'prom-client';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { DIMO_ENERGY_DETECTOR_CONFIG_VERSION } from '@modules/dimo/energy-events/dimo-energy-detector.config';
 
-export interface EnergyEventsRunMetrics {
-  mechanism: 'refuel' | 'recharge';
-  status: 'SUCCESS_WITH_EVENTS' | 'SUCCESS_EMPTY' | 'FAILED';
-  httpStatus?: number;
-  retryable?: boolean;
-  detectedSegments: number;
-  persistableSegments: number;
-  created: number;
-  updated: number;
-  skipped: number;
-  pruned: number;
-  durationMs: number;
+export interface RefuelDerivationMetricInput {
+  vehicleId: string;
+  eventId?: string;
+  source: 'dimo';
+  detectionWindowSeconds: number;
+  fuelLevelRiseDurationSeconds: number | null;
+  fuelDeltaPercent: number | null;
+  fuelDeltaLiters: number | null;
+  sampleCount: number;
+  derivationReason: string;
 }
 
 /**
@@ -35,6 +33,12 @@ export class EnergyEventsMetricsService {
   readonly dimoRetryableFailuresTotal: Counter<string>;
   readonly detectionDuration: Histogram<string>;
   readonly zeroPersistRunsTotal: Counter<string>;
+  readonly refuelDetectedTotal: Counter<string>;
+  readonly refuelFuelRiseDerivedTotal: Counter<string>;
+  readonly refuelFuelRiseUnavailableTotal: Counter<string>;
+  readonly refuelSiblingReconciledTotal: Counter<string>;
+
+  private readonly logger = new Logger(EnergyEventsMetricsService.name);
 
   constructor(private readonly tripMetrics: TripMetricsService) {
     const register = this.tripMetrics.registry;
@@ -120,6 +124,32 @@ export class EnergyEventsMetricsService {
       labelNames: ['had_fetch_failure'],
       registers: [register],
     });
+
+    this.refuelDetectedTotal = new Counter({
+      name: 'synqdrive_energy_refuel_detected_total',
+      help: 'REFUEL energy events persisted',
+      registers: [register],
+    });
+
+    this.refuelFuelRiseDerivedTotal = new Counter({
+      name: 'synqdrive_energy_refuel_fuel_rise_derived_total',
+      help: 'REFUEL events with derived fuel-level-rise observation',
+      labelNames: ['derivation_reason'],
+      registers: [register],
+    });
+
+    this.refuelFuelRiseUnavailableTotal = new Counter({
+      name: 'synqdrive_energy_refuel_fuel_rise_unavailable_total',
+      help: 'REFUEL events without sufficient fuel-rise telemetry',
+      labelNames: ['derivation_reason'],
+      registers: [register],
+    });
+
+    this.refuelSiblingReconciledTotal = new Counter({
+      name: 'synqdrive_energy_refuel_sibling_reconciled_total',
+      help: 'Superseded overlapping REFUEL singleton siblings removed',
+      registers: [register],
+    });
   }
 
   recordDetectionRun(
@@ -180,6 +210,51 @@ export class EnergyEventsMetricsService {
       this.zeroPersistRunsTotal.inc({
         had_fetch_failure: stats.hadFetchFailure ? 'true' : 'false',
       });
+    }
+  }
+
+  recordRefuelDetected(): void {
+    this.refuelDetectedTotal.inc();
+  }
+
+  recordRefuelFuelRiseObservation(input: RefuelDerivationMetricInput): void {
+    if (input.fuelLevelRiseDurationSeconds != null) {
+      this.refuelFuelRiseDerivedTotal.inc({
+        derivation_reason: input.derivationReason,
+      });
+    } else {
+      this.refuelFuelRiseUnavailableTotal.inc({
+        derivation_reason: input.derivationReason,
+      });
+    }
+
+    this.logger.log(
+      JSON.stringify({
+        event: input.fuelLevelRiseDurationSeconds != null
+          ? 'energy.refuel.fuel_rise_derived'
+          : 'energy.refuel.fuel_rise_unavailable',
+        vehicleId: input.vehicleId,
+        eventId: input.eventId ?? null,
+        source: input.source,
+        detectionWindowSeconds: input.detectionWindowSeconds,
+        fuelLevelRiseDurationSeconds: input.fuelLevelRiseDurationSeconds,
+        fuelDeltaPercent: input.fuelDeltaPercent,
+        fuelDeltaLiters: input.fuelDeltaLiters,
+        sampleCount: input.sampleCount,
+        derivationReason: input.derivationReason,
+      }),
+    );
+  }
+
+  recordRefuelSiblingReconciled(count: number): void {
+    if (count > 0) {
+      this.refuelSiblingReconciledTotal.inc(count);
+      this.logger.log(
+        JSON.stringify({
+          event: 'energy.refuel.sibling_reconciled',
+          reconciledCount: count,
+        }),
+      );
     }
   }
 }

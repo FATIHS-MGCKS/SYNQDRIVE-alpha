@@ -33,6 +33,9 @@ export interface EnergyEventUpsertPayload {
   confidence: EnergyEventConfidence;
   rawDetectionMeta: Record<string, unknown>;
   dimoSegmentId: string;
+  fuelLevelRiseStart: Date | null;
+  fuelLevelRiseEnd: Date | null;
+  fuelLevelRiseDurationSeconds: number | null;
 }
 
 export function isSegmentPersistable(segment: DimoEnergyEventSegment): boolean {
@@ -206,6 +209,11 @@ export function scoreConfidence(
 export function buildUpsertPayload(
   vehicleId: string,
   segment: CoalescedEnergySegment,
+  refuelObservation?: {
+    fuelLevelRiseStart: Date | null;
+    fuelLevelRiseEnd: Date | null;
+    fuelLevelRiseDurationSeconds: number | null;
+  },
 ): EnergyEventUpsertPayload {
   const kind: EnergyEventKind =
     segment.mechanism === 'refuel'
@@ -243,6 +251,18 @@ export function buildUpsertPayload(
       coalescedFromSegmentIds: segment.coalescedFromSegmentIds,
     },
     dimoSegmentId: segment.coalescedSegmentId,
+    fuelLevelRiseStart:
+      segment.mechanism === 'refuel'
+        ? (refuelObservation?.fuelLevelRiseStart ?? null)
+        : null,
+    fuelLevelRiseEnd:
+      segment.mechanism === 'refuel'
+        ? (refuelObservation?.fuelLevelRiseEnd ?? null)
+        : null,
+    fuelLevelRiseDurationSeconds:
+      segment.mechanism === 'refuel'
+        ? (refuelObservation?.fuelLevelRiseDurationSeconds ?? null)
+        : null,
   };
 }
 
@@ -410,6 +430,9 @@ export function isMateriallyIdentical(
     startTime: Date;
     endTime: Date;
     durationSeconds?: number | null;
+    fuelLevelRiseStart?: Date | null;
+    fuelLevelRiseEnd?: Date | null;
+    fuelLevelRiseDurationSeconds?: number | null;
     startLatitude?: number | null;
     startLongitude?: number | null;
     endLatitude?: number | null;
@@ -434,6 +457,13 @@ export function isMateriallyIdentical(
     payload.detectionMechanism;
   const sameDuration =
     (existing.durationSeconds ?? payload.durationSeconds) === payload.durationSeconds;
+  const sameFuelRise =
+    (existing.fuelLevelRiseStart?.getTime() ?? null) ===
+      (payload.fuelLevelRiseStart?.getTime() ?? null) &&
+    (existing.fuelLevelRiseEnd?.getTime() ?? null) ===
+      (payload.fuelLevelRiseEnd?.getTime() ?? null) &&
+    (existing.fuelLevelRiseDurationSeconds ?? null) ===
+      (payload.fuelLevelRiseDurationSeconds ?? null);
   const sameCoords =
     canonicalMeasurementEquals(existing.startLatitude, payload.startLatitude) &&
     canonicalMeasurementEquals(existing.startLongitude, payload.startLongitude) &&
@@ -458,6 +488,7 @@ export function isMateriallyIdentical(
     sameKind &&
     sameMechanism &&
     sameDuration &&
+    sameFuelRise &&
     sameCoords &&
     sameFuel &&
     sameSoc &&

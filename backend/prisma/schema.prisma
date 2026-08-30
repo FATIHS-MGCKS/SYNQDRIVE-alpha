@@ -9826,6 +9826,10 @@ model VehicleEnergyEvent {
   odometerEndKm      Float?                @map("odometer_end_km")
   confidence         EnergyEventConfidence @default(MEDIUM)
   rawDetectionMeta   Json?                 @map("raw_detection_meta")
+  /// REFUEL only: observed material fuel-level transition window (not pump/nozzle duration).
+  fuelLevelRiseStart        DateTime? @map("fuel_level_rise_start")
+  fuelLevelRiseEnd          DateTime? @map("fuel_level_rise_end")
+  fuelLevelRiseDurationSeconds Int?    @map("fuel_level_rise_duration_seconds")
   createdAt          DateTime              @default(now()) @map("created_at")
   updatedAt          DateTime              @updatedAt @map("updated_at")
 

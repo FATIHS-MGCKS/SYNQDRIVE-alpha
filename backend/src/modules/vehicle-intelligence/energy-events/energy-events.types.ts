@@ -17,6 +17,7 @@ export interface EnergyEventDto {
   detectionMechanism: string;
   startTime: string;
   endTime: string;
+  /** Provider/source detection envelope duration (seconds). */
   durationSeconds: number;
   startLatitude: number | null;
   startLongitude: number | null;
@@ -29,6 +30,12 @@ export interface EnergyEventDto {
   odometerStartKm: number | null;
   odometerEndKm: number | null;
   confidence: EnergyEventConfidence;
+  /** REFUEL only: observed material fuel-level-rise start (not pump duration). */
+  fuelLevelRiseStart: string | null;
+  /** REFUEL only: observed material fuel-level-rise end (not pump duration). */
+  fuelLevelRiseEnd: string | null;
+  /** REFUEL only: observed fuel-level-rise duration in seconds; nullable. */
+  fuelLevelRiseDurationSeconds: number | null;
 }
 
 export type TimelineItem =
@@ -56,5 +63,8 @@ export function toEnergyEventDto(row: VehicleEnergyEvent): EnergyEventDto {
     odometerStartKm: row.odometerStartKm,
     odometerEndKm: row.odometerEndKm,
     confidence: row.confidence,
+    fuelLevelRiseStart: row.fuelLevelRiseStart?.toISOString() ?? null,
+    fuelLevelRiseEnd: row.fuelLevelRiseEnd?.toISOString() ?? null,
+    fuelLevelRiseDurationSeconds: row.fuelLevelRiseDurationSeconds ?? null,
   };
 }

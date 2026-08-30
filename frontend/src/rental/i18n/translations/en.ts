@@ -2093,6 +2093,12 @@ export const en = {
   'trips.route.telemetry.analyzing': 'HF analysis running',
   'trips.route.gpsGap': 'GPS gap',
   'trips.route.updatedAt': 'Updated {date}',
+  'trips.energy.refuel.detected': 'Refuel detected',
+  'trips.energy.refuel.kindLabel': 'Refuel',
+  'trips.energy.refuel.signalChangeMinutes': 'Fuel level rise ~{minutes} min',
+  'trips.energy.refuel.detectionWindow': 'Detection window {from}–{to}',
+  'trips.energy.recharge.kindLabel': 'Charging',
+  'trips.energy.recharge.durationMinutes': '{minutes} min',
 
   // ─── Health & Errors ───
   'health.aiHealthCare': 'AI Health Care',

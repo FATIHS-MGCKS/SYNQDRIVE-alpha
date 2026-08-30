@@ -12,6 +12,13 @@ import {
   KS_MX_2024_TUNED_CONFIG_SEGMENT,
 } from '@modules/dimo/fixtures/ks-mx-2024-refuel.fixture';
 import { DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG } from '@modules/dimo/energy-events/dimo-energy-detector.config';
+import { parseDimoEnergyEventSegment } from '@modules/dimo/energy-events/parse-energy-event-segment';
+import {
+  buildKsMx2024Aug28FuelSamples,
+  KS_MX_2024_AUG28_DETECTION,
+  KS_MX_2024_AUG28_DIMO_SEGMENT,
+  KS_MX_2024_AUG28_STALE_SIBLING,
+} from '@modules/dimo/fixtures/ks-mx-2024-aug28-refuel.fixture';
 
 const VEHICLE_ID = 'clveh1234567890123456789012';
 const FROM = new Date('2026-08-22T00:00:00.000Z');
@@ -101,7 +108,11 @@ function outcome(
 }
 
 function createPrismaMock(store: {
-  vehicles: Array<{ id: string; dimoVehicle: { tokenId: number } | null }>;
+  vehicles: Array<{
+    id: string;
+    organizationId?: string;
+    dimoVehicle: { tokenId: number } | null;
+  }>;
   energyEvents: Array<Record<string, unknown>>;
 }) {
   return {
@@ -140,12 +151,16 @@ function createPrismaMock(store: {
         }: {
           where: {
             vehicleId: string;
+            kind?: string;
             startTime?: { gte?: Date; lte?: Date };
             dimoSegmentId?: { in: string[] };
+            id?: { notIn?: string[] };
           };
         }) =>
           store.energyEvents.filter((row) => {
             if (row.vehicleId !== where.vehicleId) return false;
+            if (where.kind && row.kind !== where.kind) return false;
+            if (where.id?.notIn?.includes(row.id as string)) return false;
             const startTime = new Date(row.startTime as string);
             if (where.startTime?.gte && startTime < where.startTime.gte) return false;
             if (where.startTime?.lte && startTime > where.startTime.lte) return false;
@@ -170,10 +185,14 @@ function createPrismaMock(store: {
 }
 
 describe('EnergyEventsService.detectEnergyEvents', () => {
-  const dimoSegments = { fetchEnergyEventSegments: jest.fn() };
+  const dimoSegments = {
+    fetchEnergyEventSegments: jest.fn(),
+    fetchFuelLevelSamples: jest.fn().mockResolvedValue([]),
+  };
 
   beforeEach(() => {
     jest.resetAllMocks();
+    dimoSegments.fetchFuelLevelSamples.mockResolvedValue([]);
   });
 
   function createService(store: {
@@ -559,6 +578,7 @@ describe('EnergyEventsService persist gate (E2 false-positive guard)', () => {
         segments,
         outcomes: [outcome('refuel', 'SUCCESS_WITH_EVENTS', segments)],
       }),
+      fetchFuelLevelSamples: jest.fn().mockResolvedValue([]),
     };
     return {
       service: new EnergyEventsService(
@@ -682,6 +702,7 @@ describe('EnergyEventsService confidence scoring', () => {
         segments: [refuel],
         outcomes: [outcome('refuel', 'SUCCESS_WITH_EVENTS', [refuel])],
       }),
+      fetchFuelLevelSamples: jest.fn().mockResolvedValue([]),
     };
     const store = {
       vehicles: [{ id: VEHICLE_ID, dimoVehicle: { tokenId: KS_MX_2024_TOKEN_ID } }],
@@ -693,5 +714,154 @@ describe('EnergyEventsService confidence scoring', () => {
     );
     const result = await service.detectEnergyEvents(VEHICLE_ID, { from: FROM, to: TO });
     expect(result.events[0].confidence).toBe(EnergyEventConfidence.HIGH);
+  });
+});
+
+describe('EnergyEventsService refuel semantics (P1.3-S5)', () => {
+  const AUG_FROM = new Date('2026-08-28T20:30:00.000Z');
+  const AUG_TO = new Date('2026-08-28T23:00:00.000Z');
+
+  function augOutcome(
+    segments: DimoEnergyEventSegment[],
+  ): EnergyMechanismFetchOutcome {
+    return {
+      mechanism: 'refuel',
+      status: 'SUCCESS_WITH_EVENTS',
+      segments,
+      windowFrom: AUG_FROM.toISOString(),
+      windowTo: AUG_TO.toISOString(),
+      tokenId: KS_MX_2024_TOKEN_ID,
+    };
+  }
+
+  function buildAug28RefuelSegment() {
+    return parseDimoEnergyEventSegment(
+      KS_MX_2024_TOKEN_ID,
+      'refuel',
+      KS_MX_2024_AUG28_DIMO_SEGMENT,
+    )!;
+  }
+
+  it('persists fuel-rise observation separately from detection envelope', async () => {
+    const refuel = buildAug28RefuelSegment();
+    const samples = buildKsMx2024Aug28FuelSamples().map((s) => ({
+      timestamp: new Date(s.timestamp),
+      relativePercent: s.relativePercent,
+      absoluteLiters: null,
+    }));
+    const dimoSegments = {
+      fetchEnergyEventSegments: jest.fn().mockResolvedValue({
+        tokenId: KS_MX_2024_TOKEN_ID,
+        segments: [refuel],
+        outcomes: [augOutcome([refuel])],
+      }),
+      fetchFuelLevelSamples: jest.fn().mockResolvedValue(samples),
+    };
+    const store = {
+      vehicles: [
+        {
+          id: VEHICLE_ID,
+          organizationId: 'org-1',
+          dimoVehicle: { tokenId: KS_MX_2024_TOKEN_ID },
+        },
+      ],
+      energyEvents: [],
+    };
+    const service = new EnergyEventsService(
+      createPrismaMock(store) as never,
+      dimoSegments as never,
+    );
+    const result = await service.detectEnergyEvents(VEHICLE_ID, {
+      from: AUG_FROM,
+      to: AUG_TO,
+    });
+
+    expect(result.created).toBe(1);
+    expect(result.events[0].durationSeconds).toBe(
+      KS_MX_2024_AUG28_DETECTION.durationSeconds,
+    );
+    expect(result.events[0].fuelLevelRiseDurationSeconds).not.toBeNull();
+    expect(result.events[0].fuelLevelRiseDurationSeconds!).toBeGreaterThanOrEqual(240);
+    expect(result.events[0].fuelLevelRiseDurationSeconds!).toBeLessThanOrEqual(320);
+  });
+
+  it('reconciles stale partial refuel sibling when canonical envelope is persisted', async () => {
+    const refuel = buildAug28RefuelSegment();
+    const store = {
+      vehicles: [
+        {
+          id: VEHICLE_ID,
+          organizationId: 'org-1',
+          dimoVehicle: { tokenId: KS_MX_2024_TOKEN_ID },
+        },
+      ],
+      energyEvents: [
+        {
+          id: 'stale-row',
+          vehicleId: VEHICLE_ID,
+          dimoSegmentId: KS_MX_2024_AUG28_STALE_SIBLING.dimoSegmentId,
+          kind: EnergyEventKind.REFUEL,
+          startTime: new Date(KS_MX_2024_AUG28_STALE_SIBLING.startTime),
+          endTime: new Date(KS_MX_2024_AUG28_STALE_SIBLING.endTime),
+          durationSeconds: KS_MX_2024_AUG28_STALE_SIBLING.durationSeconds,
+          fuelDeltaLiters: KS_MX_2024_AUG28_STALE_SIBLING.fuelDeltaLiters,
+          fuelDeltaPercent: KS_MX_2024_AUG28_STALE_SIBLING.fuelDeltaPercent,
+        },
+      ],
+    };
+    const dimoSegments = {
+      fetchEnergyEventSegments: jest.fn().mockResolvedValue({
+        tokenId: KS_MX_2024_TOKEN_ID,
+        segments: [refuel],
+        outcomes: [augOutcome([refuel])],
+      }),
+      fetchFuelLevelSamples: jest.fn().mockResolvedValue([]),
+    };
+    const service = new EnergyEventsService(
+      createPrismaMock(store) as never,
+      dimoSegments as never,
+    );
+    const result = await service.detectEnergyEvents(VEHICLE_ID, {
+      from: AUG_FROM,
+      to: AUG_TO,
+    });
+
+    expect(result.reconciledRefuelSiblings).toBe(1);
+    expect(store.energyEvents).toHaveLength(1);
+    expect(store.energyEvents[0].durationSeconds).toBe(4818);
+  });
+
+  it('does not alter recharge duration semantics when refuel fields are added', async () => {
+    const recharge = buildRechargeSegment(Date.parse('2026-08-28T12:00:00.000Z'), 25);
+    const dimoSegments = {
+      fetchEnergyEventSegments: jest.fn().mockResolvedValue({
+        tokenId: KS_MX_2024_TOKEN_ID,
+        segments: [recharge],
+        outcomes: [outcome('recharge', 'SUCCESS_WITH_EVENTS', [recharge])],
+      }),
+      fetchFuelLevelSamples: jest.fn(),
+    };
+    const store = {
+      vehicles: [
+        {
+          id: VEHICLE_ID,
+          organizationId: 'org-1',
+          dimoVehicle: { tokenId: KS_MX_2024_TOKEN_ID },
+        },
+      ],
+      energyEvents: [],
+    };
+    const service = new EnergyEventsService(
+      createPrismaMock(store) as never,
+      dimoSegments as never,
+    );
+    const result = await service.detectEnergyEvents(VEHICLE_ID, {
+      from: AUG_FROM,
+      to: AUG_TO,
+    });
+
+    expect(dimoSegments.fetchFuelLevelSamples).not.toHaveBeenCalled();
+    expect(result.events[0].durationSeconds).toBe(3600);
+    expect(result.events[0].fuelLevelRiseDurationSeconds).toBeNull();
   });
 });
