@@ -60,7 +60,8 @@ export SCHEDULER_LEADER_RENEW_INTERVAL_MS="${SCHEDULER_LEADER_RENEW_INTERVAL_MS:
 export SCHEDULER_LEADER_ACQUIRE_INTERVAL_MS="${SCHEDULER_LEADER_ACQUIRE_INTERVAL_MS:-1000}"
 export RECONCILIATION_EXECUTION_MUTEX_ENABLED=true
 export DIMO_GLOBAL_BUDGET_ENABLED=true
-export DIMO_GLOBAL_MAX_IN_FLIGHT="${DIMO_GLOBAL_MAX_IN_FLIGHT:-10}"
+# Keep production-equivalent budget sizing; do not downscale max below reserved slots.
+export DIMO_GLOBAL_MAX_IN_FLIGHT="${DIMO_GLOBAL_MAX_IN_FLIGHT:-50}"
 nohup node dist/src/main.js >"${LOG_DIR}/replica-a.log" 2>&1 &
 PID_A=$!
 echo "    REPLICA_A_PID=${PID_A}"
@@ -72,15 +73,15 @@ nohup node dist/src/main.js >"${LOG_DIR}/replica-b.log" 2>&1 &
 PID_B=$!
 echo "    REPLICA_B_PID=${PID_B}"
 
-echo "==> Wait for readiness"
-for i in $(seq 1 60); do
+echo "==> Wait for readiness (up to 180s — full Nest bootstrap)"
+for i in $(seq 1 90); do
   if curl -sf "http://127.0.0.1:${PORT_A}/api/v1/health/readiness" >/dev/null \
     && curl -sf "http://127.0.0.1:${PORT_B}/api/v1/health/readiness" >/dev/null; then
     echo "    both ready after ${i} attempts"
     break
   fi
   sleep 2
-  if [[ "$i" -eq 60 ]]; then
+  if [[ "$i" -eq 90 ]]; then
     echo "!! readiness timeout" >&2
     tail -50 "${LOG_DIR}/replica-a.log" || true
     tail -50 "${LOG_DIR}/replica-b.log" || true
