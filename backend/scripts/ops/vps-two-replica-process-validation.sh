@@ -96,10 +96,12 @@ curl -sf "http://127.0.0.1:${PORT_B}/api/v1/health/readiness" | tee "${LOG_DIR}/
 echo
 
 echo "==> Reconciliation mutex + DIMO budget coordination probe (two forked Node processes)"
+set +u
 set -a
 # shellcheck disable=SC1091
 source "$SHARED_ENV"
 set +a
+set -u
 REDIS_DB="$VALIDATION_REDIS_DB" DIMO_GLOBAL_MAX_IN_FLIGHT="${DIMO_GLOBAL_MAX_IN_FLIGHT:-50}" \
   node scripts/ops/two-replica-coordination-probe.mjs | tee "${LOG_DIR}/coordination-probe.log"
 
