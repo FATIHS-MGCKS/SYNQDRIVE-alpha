@@ -1,10 +1,12 @@
 # P1.7 — Scheduler Leader Election — Final Response
 
 **Date:** 2026-08-30  
-**Base:** `origin/main` @ implementation time  
-**PR:** TBD (opening after push)  
-**HEAD_COMMIT:** `89896bc50`
+**Base:** `origin/main` @ `aafd39d1bc1c768a3cab13454b5f284b2d19fe2a`  
+**PR:** #1430  
+**IMPLEMENTATION_VERIFIED_HEAD:** `1e6bb1e7c62f518ad250459247e49859d78e871b`  
+**FINALIZATION_COMMIT:** `d800cc01eaa31ae8fda7a438a143ca84f55c0e46`
 
+```
 ELECTION_MODEL = ONE_GLOBAL_SCHEDULER_LEADER
 LEASE_BACKEND = Redis SET NX PX + Lua compare-and-PEXPIRE/DEL (RedisDistributedLockService)
 LEASE_KEY = synqdrive:scheduler:leader
@@ -18,7 +20,10 @@ TOKEN_SAFE_RELEASE = YES
 SPLIT_BRAIN_PROTECTION = YES (wrong token cannot renew/release; TTL + renew demotion)
 EXPECTED_CRASH_FAILOVER_MAX = 35000ms (leaseMs + acquireIntervalMs)
 SCHEDULER_CLASSES = SINGLETON_GLOBAL | SAFE_DISTRIBUTED | REPLICA_LOCAL
-SINGLETON_SCHEDULERS = 40 (see scheduler-leader.registry.ts)
+SINGLETON_SCHEDULERS = 42 (see scheduler-leader.registry.ts)
+TOTAL_SINGLETON_GLOBAL = 42
+GUARDED_SINGLETON_GLOBAL = 42
+UNGUARDED_SINGLETON_GLOBAL = 0
 SAFE_DISTRIBUTED_SCHEDULERS = dimo_dtc_bullmq_repeat, dimo_vehicle_sync_bullmq_repeat
 UNGUARDED_SINGLETON_SCHEDULERS = NONE (architecture test enforced)
 BULLMQ_WORKERS_LEADER_ONLY = NO
@@ -35,7 +40,10 @@ PRODUCTION_MUTATIONS = NONE
 P1_4_STILL_REQUIRED = YES (reconciliation execution mutex)
 N1000_CERTIFICATION = NO (P1.3 provider ceiling + P1.4 + observability remain)
 TESTS = scheduler-leader-election.service.spec.ts, multi-replica integration, inventory architecture gate + existing P1.2/P1.3 suites
-CI_STATUS = TBD
+CI_STATUS = SUCCESS
+GITHUB_CI_CHECKS = 25/25 SUCCESS
+MERGEABLE = true
+CURRENT_MAIN_HEAD = aafd39d1bc1c768a3cab13454b5f284b2d19fe2a
 NEXT_STAGE = Staging 2-replica validation → P1.4 reconciliation mutex
 ```
 
@@ -68,7 +76,7 @@ Token-owned `SET NX PX`; renew/release via Lua token match. Crash recovery via T
 
 ## 4. Guard integration
 
-Injected into 40 singleton schedulers across workers + domain modules. Architecture test fails CI if a new `@Cron`/`@Interval` producer lacks guard.
+Injected into 42 singleton schedulers across workers + domain modules. Architecture test fails CI if a new `@Cron`/`@Interval` producer lacks guard.
 
 ## 5. Failover
 
