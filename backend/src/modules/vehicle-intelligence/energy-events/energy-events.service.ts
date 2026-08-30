@@ -102,6 +102,12 @@ export class EnergyEventsService {
       tokenId,
       options.from,
       options.to,
+      undefined,
+      {
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        tokenId,
+      },
     );
     const mechanismOutcomes = fetchResult.outcomes;
     const segments = fetchResult.segments;

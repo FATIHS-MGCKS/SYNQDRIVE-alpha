@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { TripDetectionState } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '../../dimo/dimo-segments.service';
+import { buildDimoProviderRequestContext } from '../../dimo/provider/dimo-provider-request-context.util';
 import { BatteryHealthService } from './battery-health.service';
 import {
   stabilize,
@@ -254,7 +255,21 @@ export class BatteryV2Service {
     const from = new Date(tripStartAt.getTime() - 30_000);
     const to = new Date(tripStartAt.getTime() + 120_000);
 
-    const points = await this.segments.fetchCrankWindow(dimoTokenId, from, to);
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    const providerContext = buildDimoProviderRequestContext(dimoTokenId, {
+      organizationId: vehicle?.organizationId,
+      vehicleId,
+    });
+
+    const points = await this.segments.fetchCrankWindow(
+      dimoTokenId,
+      from,
+      to,
+      providerContext,
+    );
     if (points.length === 0) {
       this.logger.debug(
         `No crank window data for vehicle=${vehicleId} — skipping`,

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { MisuseCaseStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '../../../dimo/dimo-segments.service';
+import { buildDimoProviderRequestContext } from '../../../dimo/provider/dimo-provider-request-context.util';
 import { recalculateMisuseCaseEvidenceCounts } from '../misuse-case-evidence-count/misuse-case-evidence-count';
 import {
   buildMisuseCaseFingerprintPair,
@@ -291,6 +292,10 @@ export class MisuseCaseReconcileService {
             trip.vehicle.dimoVehicle.tokenId,
             trip.startTime,
             trip.endTime,
+            buildDimoProviderRequestContext(trip.vehicle.dimoVehicle.tokenId, {
+              organizationId,
+              vehicleId: trip.vehicleId,
+            }),
           )
         : [];
 

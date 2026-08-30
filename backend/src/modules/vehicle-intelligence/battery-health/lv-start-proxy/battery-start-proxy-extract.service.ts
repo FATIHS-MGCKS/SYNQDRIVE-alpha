@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { DimoSegmentsService } from '../../../dimo/dimo-segments.service';
+import { buildDimoProviderRequestContext } from '../../../dimo/provider/dimo-provider-request-context.util';
 import { BatteryPolicyProfileService } from '../../battery-policy-profile/battery-policy-profile.service';
 import { isStartProxyAllowedForPolicy } from '../../battery-policy-profile/battery-policy-profile.resolver';
 import { BatteryMeasurementSessionService } from '../battery-measurement-session.service';
@@ -89,7 +90,16 @@ export class BatteryStartProxyExtractService {
     }
 
     const { from, to } = computeStartProxyWindow(input.tripStartedAt);
-    const points = await this.fetchCrankWindowStrict(dimoTokenId, from, to);
+    const providerContext = buildDimoProviderRequestContext(dimoTokenId, {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+    });
+    const points = await this.fetchCrankWindowStrict(
+      dimoTokenId,
+      from,
+      to,
+      providerContext,
+    );
 
     const confirmedIceStart = detectConfirmedIceStart(points, input.tripStartedAt);
     const policy = await this.policyProfiles.resolveForVehicle(input.vehicleId, {
@@ -242,9 +252,15 @@ export class BatteryStartProxyExtractService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: ReturnType<typeof buildDimoProviderRequestContext>,
   ): Promise<BatteryStartProxyCrankPoint[]> {
     try {
-      const points = await this.dimoSegments.fetchCrankWindow(tokenId, from, to);
+      const points = await this.dimoSegments.fetchCrankWindow(
+        tokenId,
+        from,
+        to,
+        requestContext,
+      );
       return points.map((point) => ({
         timestamp: point.timestamp,
         voltage: point.voltage,

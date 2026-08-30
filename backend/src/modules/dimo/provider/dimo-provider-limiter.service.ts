@@ -1,7 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { RedisService } from '@shared/redis/redis.service';
 import type { DimoProviderRateAlgorithm } from '@config/dimo-provider-limiter.config';
+import { logDimoProviderLimiterEvent } from './dimo-provider-limiter-log.util';
+import { DimoProviderMetricsService } from './dimo-provider-metrics.service';
 import {
   DIMO_PROVIDER_COOLDOWN_SET_SCRIPT,
   DIMO_PROVIDER_INFLIGHT_ACQUIRE_SCRIPT,
@@ -49,7 +51,10 @@ function isAdmitted(result: DimoProviderLimiterBeginResult): boolean {
 export class DimoProviderLimiterService {
   private readonly logger = new Logger(DimoProviderLimiterService.name);
 
-  constructor(private readonly redis: RedisService) {}
+  constructor(
+    private readonly redis: RedisService,
+    @Optional() private readonly metrics?: DimoProviderMetricsService,
+  ) {}
 
   async begin(input: DimoProviderLimiterBeginInput): Promise<DimoProviderLimiterBeginResult> {
     if (input.mode === 'off') {
@@ -65,6 +70,7 @@ export class DimoProviderLimiterService {
 
     try {
       const cooldownRemainingMs = await this.getProviderCooldownRemainingMs(nowMs);
+      this.syncCooldownMetrics(cooldownRemainingMs);
       if (cooldownRemainingMs > 0) {
         return {
           leaseId: null,
@@ -127,9 +133,10 @@ export class DimoProviderLimiterService {
 
       return result;
     } catch (err) {
-      this.logger.warn(
-        `DIMO provider limiter Redis error (fail-open): ${(err as Error).message}`,
-      );
+      logDimoProviderLimiterEvent(this.logger, {
+        event: 'redis_fail_open',
+        message: (err as Error).message,
+      }, { level: 'warn' });
       return {
         leaseId: null,
         inFlightMember: null,
@@ -192,7 +199,8 @@ export class DimoProviderLimiterService {
 
   async setProviderCooldown(retryAfterSeconds: number, maxSeconds: number): Promise<void> {
     const bounded = Math.max(1, Math.min(retryAfterSeconds, maxSeconds));
-    const endsAtMs = Date.now() + bounded * 1000;
+    const nowMs = Date.now();
+    const endsAtMs = nowMs + bounded * 1000;
     try {
       await this.redis.eval(
         DIMO_PROVIDER_COOLDOWN_SET_SCRIPT,
@@ -200,7 +208,9 @@ export class DimoProviderLimiterService {
         dimoProviderCooldownKey(),
         String(endsAtMs),
         String(bounded),
+        String(nowMs),
       );
+      this.syncCooldownMetrics(bounded * 1000);
     } catch (err) {
       this.logger.warn(
         `DIMO provider cooldown set failed: ${(err as Error).message}`,
@@ -218,6 +228,15 @@ export class DimoProviderLimiterService {
     } catch {
       return 0;
     }
+  }
+
+  private syncCooldownMetrics(remainingMs: number): void {
+    if (!this.metrics) return;
+    if (remainingMs <= 0) {
+      this.metrics.recordCooldownCleared();
+      return;
+    }
+    this.metrics.recordCooldownActive(Math.ceil(remainingMs / 1000));
   }
 
   private bypassResult(input: DimoProviderLimiterBeginInput): DimoProviderLimiterBeginResult {

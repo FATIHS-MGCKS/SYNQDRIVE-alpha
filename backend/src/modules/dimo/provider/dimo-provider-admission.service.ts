@@ -1,4 +1,4 @@
-import { Inject, Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import dimoProviderLimiterConfig from '@config/dimo-provider-limiter.config';
 import { DimoProviderAdmissionTimeoutError } from './dimo-provider-admission.errors';
@@ -7,6 +7,7 @@ import {
   isDimoProviderAdmissionGranted,
 } from './dimo-provider-limiter.service';
 import { DimoProviderMetricsService } from './dimo-provider-metrics.service';
+import { logDimoProviderLimiterEvent } from './dimo-provider-limiter-log.util';
 import {
   DimoProviderLimiterDecision,
   type DimoProviderLimiterBeginInput,
@@ -39,6 +40,8 @@ function admissionRejectionReason(
 
 @Injectable()
 export class DimoProviderAdmissionService {
+  private readonly logger = new Logger(DimoProviderAdmissionService.name);
+
   constructor(
     @Inject(dimoProviderLimiterConfig.KEY)
     private readonly config: ConfigType<typeof dimoProviderLimiterConfig>,
@@ -82,17 +85,31 @@ export class DimoProviderAdmissionService {
       const now = Date.now();
       if (now >= deadline) {
         const waitedMs = now - startedAt;
+        const reason = admissionRejectionReason(begin);
         this.metrics?.recordAdmissionWait({
           category: input.category,
           priority: input.priority,
           waitedMs,
           outcome: 'timeout',
         });
+        this.metrics?.recordEnforceDeny({
+          category: input.category,
+          priority: input.priority,
+          reason,
+        });
+        logDimoProviderLimiterEvent(this.logger, {
+          event: 'enforce_admission_timeout',
+          category: input.category,
+          priority: input.priority,
+          mode: input.mode,
+          waitedMs,
+          reason,
+        }, { level: 'warn' });
         throw new DimoProviderAdmissionTimeoutError(
           input.category,
           input.priority,
           waitedMs,
-          admissionRejectionReason(begin),
+          reason,
         );
       }
 

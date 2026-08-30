@@ -32,6 +32,9 @@ function baseConfig(mode: DimoProviderLimiterConfigShape['mode']): DimoProviderL
     admissionPollMaxMs: 250,
     retryAfterMaxSeconds: 120,
     canaryEnforceOrgIds: new Set<string>(),
+    enforceCanaryEnabled: false,
+    enforceCanaryPercent: 0,
+    enforceCanaryVehicleIds: new Set<string>(),
     documentedCoreRatePerSecond: 25,
   };
 }

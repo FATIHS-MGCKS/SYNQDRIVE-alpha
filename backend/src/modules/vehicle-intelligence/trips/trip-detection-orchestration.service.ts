@@ -8,6 +8,8 @@ import {
   DimoSegmentsService,
   type DimoTripSegment,
 } from '../../dimo/dimo-segments.service';
+import { buildDimoProviderRequestContext } from '../../dimo/provider/dimo-provider-request-context.util';
+import type { DimoProviderRequestContext } from '../../dimo/provider/dimo-provider-gateway.types';
 import { BatteryV2TripStartProducer } from '../battery-health/jobs/battery-v2-trip-start.producer';
 import { BatteryV2LvRestSessionProducer } from '../battery-health/jobs/battery-v2-lv-rest-session.producer';
 import { TripEnrichmentOrchestratorService } from './trip-enrichment-orchestrator.service';
@@ -183,6 +185,17 @@ export class TripDetectionOrchestrationService {
         `timeoutMs=${this.TRIP_END_TIMEOUT_MS} ` +
         `chEndAssistMinStationaryMs=${this.TRIP_END_CH_ASSIST_MIN_STATIONARY_MS}`,
     );
+  }
+
+  private dimoProviderContext(
+    dimoTokenId: number,
+    vehicleId?: string,
+    organizationId?: string | null,
+  ): DimoProviderRequestContext {
+    return buildDimoProviderRequestContext(dimoTokenId, {
+      vehicleId,
+      organizationId: organizationId ?? undefined,
+    });
   }
 
   // ══════════════════════════════════════════════════════════
@@ -707,6 +720,7 @@ export class TripDetectionOrchestrationService {
         dimoTokenId,
         from,
         now,
+        this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
       );
 
       const telemetry = await this.prisma.vehicleLatestState.findUnique({
@@ -812,6 +826,8 @@ export class TripDetectionOrchestrationService {
               : DetectionConfidence.LOW;
         const resolvedStart = await this.resolveConfirmedStartBoundary({
           dimoTokenId,
+          vehicleId,
+          organizationId,
           candidateStartAt: startAt,
           confirmedAt: now,
           corePoints,
@@ -921,6 +937,7 @@ export class TripDetectionOrchestrationService {
             dimoTokenId,
             trip.id,
             effectiveStartAt,
+            this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
           ).catch((e) =>
             this.logger.warn(`Temp fetch failed for trip ${trip.id}: ${e}`),
           );
@@ -930,6 +947,7 @@ export class TripDetectionOrchestrationService {
             trip.id,
             startRouteFetchFrom,
             now,
+            this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
           ).catch((e) =>
             this.logger.warn(
               `Initial route fetch failed for trip ${trip.id}: ${e}`,
@@ -1068,9 +1086,24 @@ export class TripDetectionOrchestrationService {
         : new Date(det.lastDrivingProcessedAt!.getTime() - this.OVERLAP_PERF_MS);
 
       const [corePoints, routePoints, perfReadings] = await Promise.all([
-        this.segments.fetchRawTripCoreData(dimoTokenId, coreFrom, now),
-        this.segments.fetchRouteEnrichment(dimoTokenId, routeFrom, now),
-        this.segments.fetchPerformance(dimoTokenId, perfFrom, now),
+        this.segments.fetchRawTripCoreData(
+          dimoTokenId,
+          coreFrom,
+          now,
+          this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
+        ),
+        this.segments.fetchRouteEnrichment(
+          dimoTokenId,
+          routeFrom,
+          now,
+          this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
+        ),
+        this.segments.fetchPerformance(
+          dimoTokenId,
+          perfFrom,
+          now,
+          this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
+        ),
       ]);
 
       if (corePoints.length === 0) {
@@ -1843,6 +1876,7 @@ export class TripDetectionOrchestrationService {
           dimoTokenId,
           recentFrom,
           now,
+          this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
         );
 
         const activityResumed = await this.checkDimoActivityResumed({
@@ -2077,6 +2111,7 @@ export class TripDetectionOrchestrationService {
         endCandidateAt,
         this.TRIP_END_SEGMENT_LOOKBACK_MS,
         this.TRIP_END_SEGMENT_LOOKAHEAD_MS,
+        this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
       );
 
       this.logger.debug(
@@ -2536,6 +2571,7 @@ export class TripDetectionOrchestrationService {
             params.dimoTokenId,
             recentFrom,
             params.now,
+            this.dimoProviderContext(params.dimoTokenId, params.vehicleId),
           );
 
     const resumeFindings = await this.detectorRegistry.runAll(
@@ -3029,6 +3065,8 @@ export class TripDetectionOrchestrationService {
 
   private async resolveConfirmedStartBoundary(input: {
     dimoTokenId: number;
+    vehicleId: string;
+    organizationId?: string | null;
     candidateStartAt: Date;
     confirmedAt: Date;
     corePoints: Awaited<ReturnType<DimoSegmentsService['fetchRawTripCoreData']>>;
@@ -3046,11 +3084,18 @@ export class TripDetectionOrchestrationService {
       input.confirmedAt,
       this.tripStartBoundaryMaxLookbackMs,
     );
+    const providerContext = this.dimoProviderContext(
+      input.dimoTokenId,
+      input.vehicleId,
+      input.organizationId,
+    );
     const matchingSegment = selectConfirmedStartSegment(
       await this.segments.fetchTripSegments(
         input.dimoTokenId,
         boundaryWindowFrom,
         input.confirmedAt,
+        undefined,
+        providerContext,
       ),
       input.candidateStartAt,
       input.confirmedAt,
@@ -3072,6 +3117,7 @@ export class TripDetectionOrchestrationService {
       input.dimoTokenId,
       boundaryWindowFrom,
       input.confirmedAt,
+      providerContext,
     );
     const refined = refineTripStartBoundary(
       input.candidateStartAt,
@@ -3090,6 +3136,7 @@ export class TripDetectionOrchestrationService {
     tokenId: number,
     tripId: string,
     startTime: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<void> {
     const from = new Date(startTime.getTime() - 5 * 60_000);
     const to = new Date(startTime.getTime() + 5 * 60_000);
@@ -3097,6 +3144,7 @@ export class TripDetectionOrchestrationService {
       tokenId,
       from,
       to,
+      requestContext,
     );
 
     if (readings.length > 0) {
@@ -3121,11 +3169,13 @@ export class TripDetectionOrchestrationService {
     tripId: string,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<void> {
     const routePoints = await this.segments.fetchRouteEnrichment(
       tokenId,
       from,
       to,
+      requestContext,
     );
     if (routePoints.length === 0) return;
 

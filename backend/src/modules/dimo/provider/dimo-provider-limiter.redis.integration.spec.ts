@@ -410,6 +410,36 @@ function baseBeginInput(
       expect(acquireSpy.mock.calls[1][0].mode).toBe('shadow');
     });
 
+    it('M: percent canary is deterministic across two gateway replicas', async () => {
+      const config: DimoProviderLimiterConfigShape = {
+        ...resolveDimoProviderLimiterConfig({
+          DIMO_PROVIDER_LIMITER_MODE: 'shadow',
+          DIMO_PROVIDER_ENFORCE_CANARY_ENABLED: 'true',
+          DIMO_PROVIDER_ENFORCE_CANARY_PERCENT: '50',
+        }),
+        enabled: true,
+        mode: 'shadow',
+      };
+      const { gateway: gatewayA, admission: admissionA } = createGatewayReplica(config);
+      const { gateway: gatewayB, admission: admissionB } = createGatewayReplica(config);
+      const vehicleId = 'veh-redis-canary-determinism';
+      const acquireA = jest.spyOn(admissionA, 'acquire');
+      const acquireB = jest.spyOn(admissionB, 'acquire');
+
+      await gatewayA.execute({
+        operation: DimoProviderOperation.TELEMETRY_GRAPHQL,
+        requestContext: { vehicleId, organizationId: 'org-x' },
+        invoke: async () => 'ok-a',
+      });
+      await gatewayB.execute({
+        operation: DimoProviderOperation.TELEMETRY_GRAPHQL,
+        requestContext: { vehicleId, organizationId: 'org-x' },
+        invoke: async () => 'ok-b',
+      });
+
+      expect(acquireA.mock.calls[0][0].mode).toBe(acquireB.mock.calls[0][0].mode);
+    });
+
     it('C-rate: concurrent acquisitions respect global rate budget atomically', async () => {
       const input = baseBeginInput({ rateLimitPerSecond: 4, rateBurst: 0, maxInFlight: 100 });
       const begins = await Promise.all(

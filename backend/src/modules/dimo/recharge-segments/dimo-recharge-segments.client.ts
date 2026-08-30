@@ -16,6 +16,7 @@ import type {
   DimoRechargeSegmentTenantContext,
   NormalizedDimoRechargeSegment,
 } from './dimo-recharge-segments.types';
+import type { DimoProviderRequestContext } from '../provider/dimo-provider-gateway.types';
 
 @Injectable()
 export class DimoRechargeSegmentsClient {
@@ -54,7 +55,11 @@ export class DimoRechargeSegmentsClient {
       return null;
     }
 
-    return this.fetchForToken(tokenId, from, to, options);
+    return this.fetchForToken(tokenId, from, to, options, {
+      organizationId: context.organizationId,
+      vehicleId: context.vehicleId,
+      tokenId,
+    });
   }
 
   async fetchForToken(
@@ -62,6 +67,7 @@ export class DimoRechargeSegmentsClient {
     from: Date,
     to: Date,
     options?: DimoRechargeSegmentFetchOptions,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<DimoRechargeSegmentFetchResult> {
     const vehicleJwt = await this.dimoAuth.getVehicleJwt(tokenId);
     if (!vehicleJwt) {
@@ -102,6 +108,7 @@ export class DimoRechargeSegmentsClient {
               sourceFilter: withSourceFilter ? options?.sourceFilter : null,
               detectorConfig: DIMO_PRODUCTION_RECHARGE_DETECTOR_CONFIG,
             }),
+          { requestContext },
         );
 
         retries += pageResult.retries;

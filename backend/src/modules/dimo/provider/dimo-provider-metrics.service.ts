@@ -58,6 +58,11 @@ export class DimoProviderMetricsService {
   readonly admittedRequestsTotal: Counter<string>;
   readonly tokenBucketTokensGauge: Gauge<string>;
   readonly cooldownActiveGauge: Gauge<string>;
+  readonly cooldownRemainingGauge: Gauge<string>;
+  readonly wouldRejectTotal: Counter<string>;
+  readonly enforceDenyTotal: Counter<string>;
+  readonly canaryRequestsTotal: Counter<string>;
+  readonly canaryEnforcedRequestsTotal: Counter<string>;
 
   constructor(private readonly tripMetrics: TripMetricsService) {
     const register = this.tripMetrics.registry;
@@ -180,6 +185,40 @@ export class DimoProviderMetricsService {
       help: 'Whether provider Retry-After cooldown is active (1/0)',
       registers: [register],
     });
+
+    this.cooldownRemainingGauge = new Gauge({
+      name: 'synqdrive_dimo_provider_cooldown_remaining_seconds',
+      help: 'Remaining provider Retry-After cooldown seconds',
+      registers: [register],
+    });
+
+    this.wouldRejectTotal = new Counter({
+      name: 'synqdrive_dimo_provider_would_reject_total',
+      help: 'DIMO provider limiter would-reject decisions (shadow + enforce)',
+      labelNames: ['operation', 'mode', 'decision_type', 'priority'],
+      registers: [register],
+    });
+
+    this.enforceDenyTotal = new Counter({
+      name: 'synqdrive_dimo_provider_enforce_deny_total',
+      help: 'DIMO provider enforce-mode admission denials',
+      labelNames: ['operation', 'priority', 'reason'],
+      registers: [register],
+    });
+
+    this.canaryRequestsTotal = new Counter({
+      name: 'synqdrive_dimo_provider_canary_requests_total',
+      help: 'DIMO provider requests under canary rollout configuration',
+      labelNames: ['operation', 'canary_match', 'canary_reason'],
+      registers: [register],
+    });
+
+    this.canaryEnforcedRequestsTotal = new Counter({
+      name: 'synqdrive_dimo_provider_canary_enforced_requests_total',
+      help: 'DIMO provider requests enforced via canary selection',
+      labelNames: ['operation', 'canary_reason'],
+      registers: [register],
+    });
   }
 
   recordRequest(input: DimoProviderMetricsRecordInput): void {
@@ -243,6 +282,23 @@ export class DimoProviderMetricsService {
         decision_type: 'inflight',
         decision: input.begin.inFlightDecision,
       });
+
+      if (input.begin.rateDecision === DimoProviderLimiterDecision.WOULD_REJECT) {
+        this.wouldRejectTotal.inc({
+          operation: op,
+          mode,
+          decision_type: 'rate',
+          priority,
+        });
+      }
+      if (input.begin.inFlightDecision === DimoProviderLimiterDecision.WOULD_REJECT) {
+        this.wouldRejectTotal.inc({
+          operation: op,
+          mode,
+          decision_type: 'inflight',
+          priority,
+        });
+      }
     }
 
     if (input.http.statusClass === 'rate_limited') {
@@ -287,10 +343,47 @@ export class DimoProviderMetricsService {
 
   recordProviderCooldown(input: DimoProviderCooldownInput): void {
     this.providerCooldownTotal.inc({ operation: input.category });
+    this.recordCooldownActive(input.retryAfterSeconds);
+  }
+
+  recordCooldownActive(remainingSeconds: number): void {
     this.cooldownActiveGauge.set(1);
+    this.cooldownRemainingGauge.set(remainingSeconds);
   }
 
   recordCooldownCleared(): void {
     this.cooldownActiveGauge.set(0);
+    this.cooldownRemainingGauge.set(0);
+  }
+
+  recordEnforceDeny(input: {
+    category: DimoProviderRequestCategory;
+    priority: DimoProviderRequestPriority;
+    reason: 'rate' | 'inflight' | 'cooldown' | 'combined';
+  }): void {
+    this.enforceDenyTotal.inc({
+      operation: input.category,
+      priority: input.priority,
+      reason: input.reason,
+    });
+  }
+
+  recordCanaryRequest(input: {
+    category: DimoProviderRequestCategory;
+    canaryMatch: boolean;
+    canaryReason: string;
+    canaryEnforced: boolean;
+  }): void {
+    this.canaryRequestsTotal.inc({
+      operation: input.category,
+      canary_match: input.canaryMatch ? 'true' : 'false',
+      canary_reason: input.canaryReason,
+    });
+    if (input.canaryEnforced) {
+      this.canaryEnforcedRequestsTotal.inc({
+        operation: input.category,
+        canary_reason: input.canaryReason,
+      });
+    }
   }
 }

@@ -8,16 +8,15 @@ import {
   buildBatteryCapabilityPreflightQuery,
   buildRechargeSegmentsProbeQuery,
 } from './queries/battery-capability-preflight.query';
+import { DimoProviderGateway } from './provider/dimo-provider-gateway.service';
+import { DimoProviderOperation } from './provider/dimo-provider-gateway.types';
+import type { DimoProviderRequestContext } from './provider/dimo-provider-gateway.types';
+import { buildDimoProviderRequestContext } from './provider/dimo-provider-request-context.util';
 import { DimoRequestExecutor } from './provider-budget/dimo-request-executor.service';
 import type { DimoProviderCategory } from './provider-budget/dimo-provider-category.types';
 import { getDimoRequestContext } from './provider-budget/dimo-request-context';
 
-/** Request context preserved for snapshot canary/org threading (main S4 API). */
-export interface DimoProviderRequestContext {
-  tokenId?: number;
-  vehicleId?: string;
-  organizationId?: string;
-}
+export type { DimoProviderRequestContext };
 
 export interface BatteryCapabilityPreflightSnapshot {
   availableSignals: string[] | null;
@@ -52,6 +51,7 @@ export class DimoTelemetryService {
   constructor(
     private readonly configService: ConfigService,
     private readonly dimoRequestExecutor: DimoRequestExecutor,
+    private readonly providerGateway: DimoProviderGateway,
   ) {
     const telemetryApiUrl =
       this.configService.get<string>('dimo.telemetryApiUrl') ??
@@ -76,7 +76,7 @@ export class DimoTelemetryService {
       vehicleJwt,
       query,
       undefined,
-      requestContext,
+      buildDimoProviderRequestContext(tokenId, requestContext),
     );
     return result?.data ?? result;
   }
@@ -84,9 +84,15 @@ export class DimoTelemetryService {
   async fetchAvailableSignals(
     vehicleJwt: string,
     tokenId: number,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<string[]> {
     const query = buildAvailableSignalsQuery(tokenId);
-    const result = await this.queryGraphQL(vehicleJwt, query);
+    const result = await this.queryGraphQL(
+      vehicleJwt,
+      query,
+      undefined,
+      buildDimoProviderRequestContext(tokenId, requestContext),
+    );
     const list = result?.data?.availableSignals;
     return Array.isArray(list)
       ? list.filter((entry): entry is string => typeof entry === 'string')
@@ -96,10 +102,12 @@ export class DimoTelemetryService {
   async fetchBatteryCapabilityPreflightSnapshot(
     vehicleJwt: string,
     tokenId: number,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<BatteryCapabilityPreflightSnapshot> {
     const query = buildBatteryCapabilityPreflightQuery(tokenId);
+    const context = buildDimoProviderRequestContext(tokenId, requestContext);
     try {
-      const result = await this.queryGraphQL(vehicleJwt, query);
+      const result = await this.queryGraphQL(vehicleJwt, query, undefined, context);
       const available = result?.data?.availableSignals;
       const availableSignals = Array.isArray(available)
         ? available.filter((entry): entry is string => typeof entry === 'string')
@@ -138,14 +146,16 @@ export class DimoTelemetryService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<RechargeSegmentsProbeSnapshot> {
     const query = buildRechargeSegmentsProbeQuery(
       tokenId,
       from.toISOString(),
       to.toISOString(),
     );
+    const context = buildDimoProviderRequestContext(tokenId, requestContext);
     try {
-      const result = await this.queryGraphQL(vehicleJwt, query);
+      const result = await this.queryGraphQL(vehicleJwt, query, undefined, context);
       const segments = Array.isArray(result?.data?.segments)
         ? (result.data.segments as RechargeSegmentProbeRow[])
         : [];
@@ -171,9 +181,15 @@ export class DimoTelemetryService {
   async fetchLastSeenLocation(
     vehicleJwt: string,
     tokenId: number,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<unknown> {
     const query = buildLastSeenLocationQuery(tokenId);
-    const result = await this.queryGraphQL(vehicleJwt, query);
+    const result = await this.queryGraphQL(
+      vehicleJwt,
+      query,
+      undefined,
+      buildDimoProviderRequestContext(tokenId, requestContext),
+    );
     return result?.data ?? result;
   }
 
@@ -184,14 +200,21 @@ export class DimoTelemetryService {
     requestContext?: DimoProviderRequestContext,
     category?: DimoProviderCategory,
   ): Promise<any> {
-    void requestContext;
+    const tokenId =
+      requestContext?.tokenId ??
+      (typeof variables?.tokenId === 'number' ? variables.tokenId : undefined);
     const ctx = getDimoRequestContext();
     const resolvedCategory = category ?? ctx.category;
 
-    return this.dimoRequestExecutor.execute({
-      category: resolvedCategory,
-      priority: ctx.priority,
-      execute: () => this.postGraphQL(vehicleJwt, query, variables),
+    return this.providerGateway.execute({
+      operation: DimoProviderOperation.TELEMETRY_GRAPHQL,
+      requestContext: buildDimoProviderRequestContext(tokenId, requestContext),
+      invoke: () =>
+        this.dimoRequestExecutor.execute({
+          category: resolvedCategory,
+          priority: ctx.priority,
+          execute: () => this.postGraphQL(vehicleJwt, query, variables),
+        }),
     });
   }
 
@@ -225,6 +248,7 @@ export class DimoTelemetryService {
   async fetchVehicleSummary(
     vehicleJwt: string,
     tokenId: number,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<VehicleSummary> {
     const query = `
       query VehicleSummary {
@@ -239,14 +263,19 @@ export class DimoTelemetryService {
       }
     `.trim();
 
-    const response = await this.dimoRequestExecutor.execute({
-      category: 'IDENTITY',
-      execute: () =>
-        this.client.post(
-          '',
-          { query },
-          { headers: { Authorization: `Bearer ${vehicleJwt}` } },
-        ),
+    const response = await this.providerGateway.execute({
+      operation: DimoProviderOperation.TELEMETRY_VEHICLE_SUMMARY,
+      requestContext: buildDimoProviderRequestContext(tokenId, requestContext),
+      invoke: () =>
+        this.dimoRequestExecutor.execute({
+          category: 'IDENTITY',
+          execute: () =>
+            this.client.post(
+              '',
+              { query },
+              { headers: { Authorization: `Bearer ${vehicleJwt}` } },
+            ),
+        }),
     });
 
     const signals = response.data?.data?.signalsLatest as
@@ -282,6 +311,7 @@ export class DimoTelemetryService {
   async fetchVehicleVin(
     vehicleJwt: string,
     tokenId: number,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<string | null> {
     const query = `
       query VehicleVin {
@@ -292,14 +322,19 @@ export class DimoTelemetryService {
     `.trim();
 
     try {
-      const response = await this.dimoRequestExecutor.execute({
-        category: 'IDENTITY',
-        execute: () =>
-          this.client.post(
-            '',
-            { query },
-            { headers: { Authorization: `Bearer ${vehicleJwt}` } },
-          ),
+      const response = await this.providerGateway.execute({
+        operation: DimoProviderOperation.TELEMETRY_VEHICLE_VIN,
+        requestContext: buildDimoProviderRequestContext(tokenId, requestContext),
+        invoke: () =>
+          this.dimoRequestExecutor.execute({
+            category: 'IDENTITY',
+            execute: () =>
+              this.client.post(
+                '',
+                { query },
+                { headers: { Authorization: `Bearer ${vehicleJwt}` } },
+              ),
+          }),
       });
       const vin = response.data?.data?.vinVCLatest?.vin as string | undefined;
       return vin ?? null;

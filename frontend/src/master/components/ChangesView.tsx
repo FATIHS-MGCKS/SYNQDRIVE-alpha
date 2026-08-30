@@ -36,6 +36,46 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-provider-p1-3-s4-reconciliation-2-2026-08-30',
+    version: '4.9.1013',
+    title: 'P1.3-S4 reconciliation #2 — #1440 VPS validation + full S4/P1.3/P1.7/P1.4 stack',
+    summary: [
+      'Merged origin/main (#1440 TRUE process-level VPS validation) into PR #1429 without dropping S4 guarantees.',
+      'Preserved stacked DimoProviderGateway → DimoRequestExecutor → HTTP; scheduler leader + mutex + budget coexist.',
+      'Changelog merge only in ChangesView; runtime tree auto-merged (trip-reconciliation, ArchitekturView, VPS harness).',
+      'Post-merge provider call-site audit re-run; CATEGORY_C must remain zero.',
+    ],
+    reason:
+      'PR #1429 mergeable_state=dirty after main advanced with #1440 — semantic merge preserves both sides.',
+    previousBehavior:
+      'PR frozen at f1344cb07; main had VPS process-level validation records not on branch.',
+    details:
+      'Merge commit reconciles ChangesView + retains architecture/STAGING_TRUE_MULTI_REPLICA_VALIDATION_*.md from main.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T12:30:00.000Z',
+  },
+  {
+    id: 'dimo-provider-p1-3-s4-main-reconciliation-2026-08-30',
+    version: '4.9.1010',
+    title: 'P1.3-S4 main reconciliation — stacked gateway + global provider budget',
+    summary: [
+      'Merged origin/main (#1417 global budget, #1430 scheduler leader) into PR #1429 without dropping S4 guarantees.',
+      'DimoTelemetryService: DimoProviderGateway (canary/shadow) → DimoRequestExecutor (Redis lease semaphore) → HTTP.',
+      'DimoModule restores S4 gateway providers alongside DimoProviderBudgetModule.',
+      'Repository-wide provider call-site audit re-run post-merge; CATEGORY_C must remain zero.',
+    ],
+    reason:
+      'PR #1429 mergeable_state=dirty — semantic merge preserves P1-001 context propagation and main global budget.',
+    previousBehavior:
+      'Conflicting stacks: S4 branch gateway-only vs main executor-only telemetry wiring.',
+    details:
+      'See architecture/P1_3_S4_MAIN_RECONCILIATION_2026-08-30.md. Production default remains shadow; global enforce OFF.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T12:00:00.000Z',
+  },
+  {
     id: 'staging-true-process-validation-p13-p17-p14-2026-08-30',
     version: '4.9.1010',
     title: 'TRUE process-level multi-replica validation — P1.3 + P1.7 + P1.4 (VPS)',
@@ -58,6 +98,46 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-08-30T11:30:00.000Z',
   },
   {
+    id: 'dimo-provider-p1-3-s4-final-main-reconciliation-2026-08-30',
+    version: '4.9.1012',
+    title: 'P1.3-S4 final main reconciliation — P1.4 mutex + multi-replica gate + S4 stack',
+    summary: [
+      'Merged latest origin/main (#1435 P1.4 reconciliation mutex, #1438 staging multi-replica gate) into PR #1429.',
+      'TripReconciliationService: mutex → runWithDimoRequestContext → DIMO with canonical org/vehicle/token context.',
+      'Preserved stacked DimoProviderGateway → DimoRequestExecutor → HTTP; scheduler leader + mutex + budget coexist.',
+      'Post-merge provider call-site audit re-run; CATEGORY_C must remain zero.',
+    ],
+    reason:
+      'PR #1429 mergeable_state=dirty after main advanced — semantic merge preserves S4, P1.3, P1.7, P1.4, and #1438 validation.',
+    previousBehavior:
+      'PR reconciled only through 9a1f7e3b; P1.4 mutex and staging gate missing on branch.',
+    details:
+      'trip-reconciliation.service.ts auto-merged with mutex + requestContext. See reconciliation commit message.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T11:15:00.000Z',
+  },
+  {
+    id: 'dimo-provider-p1-001-final-remediation-2026-08-30',
+    version: '4.9.1009',
+    title: 'P1.3-S4 P1-001 final remediation — complete registered-vehicle context propagation',
+    summary: [
+      'Repository-wide audit: 49 provider call sites; zero registered-vehicle paths missing org/vehicle context.',
+      'Fixed trip enrichment, behavior enrichment, LTE_R1 braking intake, shadow detector, event-context, misuse reconcile, segment validation, battery proxy, live GPS.',
+      'Architectural guard: dimo-provider-call-site-audit.spec.ts fails CI on new category-C regressions.',
+      'Canary cross-path consistency regression tests for org/vehicle/percent canary.',
+    ],
+    reason:
+      'Independent re-review found P1-001 still NOT_FIXED — first remediation missed enrichment subsystem callers.',
+    previousBehavior:
+      'Percent/vehicle/org canary inconsistent on trip enrichment and related registered-vehicle DIMO paths.',
+    details:
+      'See architecture/P1_3_S4_P1_001_CALL_SITE_AUDIT.md. P1-002 cooldown lifecycle unchanged.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T10:00:00.000Z',
+  },
+  {
     id: 'staging-multi-replica-validation-p13-p17-p14-2026-08-30',
     version: '4.9.1009',
     title: 'Staging multi-replica validation gate — P1.3 + P1.7 + P1.4',
@@ -77,6 +157,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-08-30T10:36:00.000Z',
+  },
+  {
+    id: 'dimo-provider-concurrency-p1-3-s4-review-remediation-2026-08-30',
+    version: '4.9.1008',
+    title: 'P1.3-S4 independent review remediation — requestContext + cooldown gauge',
+    summary: [
+      'P1-001: canonical buildDimoProviderRequestContext() threaded through all DIMO telemetry/segments gateway paths.',
+      'Production callers updated: snapshot, DTC, energy events, trip reconciliation/orchestration, capability preflight, recharge.',
+      'P1-002: cooldown_active gauge syncs on limiter begin(); recordCooldownCleared() on expiry; repeated 429 extends cooldown.',
+      'Regression: dimo-provider-request-context-propagation.spec.ts + dimo-provider-cooldown-lifecycle.spec.ts (13 tests).',
+    ],
+    reason:
+      'Independent production-readiness review (PR #1429) found P1-001 context gaps and P1-002 stuck cooldown gauge.',
+    previousBehavior:
+      'Percent/vehicle canary only reliable on snapshot path; cooldown_active stayed 1 after first 429.',
+    details:
+      'SHA 772757147. Production default remains shadow. No global enforce. See architecture/P1_3_WORKFLOW_HANDOFF_DE_2026-08-30.md §15.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T09:20:00.000Z',
   },
   {
     id: 'reconciliation-execution-mutex-p1-4-2026-08-30',
@@ -125,6 +225,30 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-08-29T17:30:00.000Z',
+  },
+  {
+    id: 'dimo-provider-concurrency-p1-3-s4-readiness-closure-2026-08-30',
+    version: '4.9.1011',
+    title: 'P1.3-S4 readiness closure — percent/vehicle canary, observability, chaos proofs',
+    summary: [
+      'Expanded deterministic canary: org allowlist + vehicle allowlist + stable FNV-1a percent hash by vehicleId.',
+      'New envs: DIMO_PROVIDER_ENFORCE_CANARY_ENABLED/PERCENT/ORG_IDS/VEHICLE_IDS (legacy org alias preserved).',
+      'Structured JSON logs: canary_selected, admission timeout, 429/403, cooldown, redis fail-open (throttled).',
+      'Prometheus: would_reject, enforce_deny, canary_requests, canary_enforced, cooldown_remaining gauges.',
+      'GO/NO-GO gates with concrete thresholds + staged rollout runbook (Stages 0–4, doc only).',
+      'Chaos matrix: 429/5xx/timeout storms, Redis fail-open/reconnect, admission timeout, replica safety.',
+      'Production default remains shadow — global enforce NOT enabled.',
+      'PERMANENT_TRIP_LOSS=NO; 159 unit tests green.',
+    ],
+    reason:
+      'P1.3-S4 readiness gate — complete production canary/enforcement readiness without enabling global enforce.',
+    previousBehavior:
+      'P1.3-S4 initial merge (#1428) had org-only canary and partial observability.',
+    details:
+      'backend: dimo-provider-rollout.util.ts, canary-hash, limiter-log, metrics, chaos spec. architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S4_PRODUCTION_CANARY_2026-08-30.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T23:55:00.000Z',
   },
   {
     id: 'dimo-provider-concurrency-p1-3-s4-production-canary-2026-08-30',

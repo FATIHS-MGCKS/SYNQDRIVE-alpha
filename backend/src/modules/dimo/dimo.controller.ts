@@ -366,7 +366,9 @@ export class DimoController {
     }
     try {
       const jwt = await this.dimoAuth.getVehicleJwt(body.tokenId);
-      const result = await this.dimoTelemetry.queryGraphQL(jwt, body.query);
+      const result = await this.dimoTelemetry.queryGraphQL(jwt, body.query, undefined, {
+        tokenId: body.tokenId,
+      });
       return result;
     } catch (err: any) {
       throw new BadRequestException(err.message || 'GraphQL query failed');

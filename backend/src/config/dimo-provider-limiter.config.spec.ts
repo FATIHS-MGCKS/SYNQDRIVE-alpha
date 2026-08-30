@@ -66,4 +66,24 @@ describe('dimo-provider-limiter.config', () => {
     expect(config.canaryEnforceOrgIds.has('org-b')).toBe(true);
     expect(config.canaryEnforceOrgIds.size).toBe(2);
   });
+
+  it('parses S4 enforce canary env vars with safe defaults', () => {
+    delete process.env.DIMO_PROVIDER_ENFORCE_CANARY_ENABLED;
+    delete process.env.DIMO_PROVIDER_ENFORCE_CANARY_PERCENT;
+    const config = resolveDimoProviderLimiterConfig(process.env);
+    expect(config.enforceCanaryEnabled).toBe(false);
+    expect(config.enforceCanaryPercent).toBe(0);
+    expect(config.enforceCanaryVehicleIds.size).toBe(0);
+  });
+
+  it('parses enforce canary percent and vehicle allowlist', () => {
+    process.env.DIMO_PROVIDER_ENFORCE_CANARY_ENABLED = 'true';
+    process.env.DIMO_PROVIDER_ENFORCE_CANARY_PERCENT = '15';
+    process.env.DIMO_PROVIDER_ENFORCE_CANARY_VEHICLE_IDS = ' veh-1 , veh-2 ';
+    const config = resolveDimoProviderLimiterConfig(process.env);
+    expect(config.enforceCanaryEnabled).toBe(true);
+    expect(config.enforceCanaryPercent).toBe(15);
+    expect(config.enforceCanaryVehicleIds.has('veh-1')).toBe(true);
+    expect(config.enforceCanaryVehicleIds.has('veh-2')).toBe(true);
+  });
 });

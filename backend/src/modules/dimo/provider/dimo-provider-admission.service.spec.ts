@@ -30,6 +30,9 @@ function testConfig(): DimoProviderLimiterConfigShape {
     admissionPollMaxMs: 50,
     retryAfterMaxSeconds: 120,
     canaryEnforceOrgIds: new Set<string>(),
+    enforceCanaryEnabled: false,
+    enforceCanaryPercent: 0,
+    enforceCanaryVehicleIds: new Set<string>(),
     documentedCoreRatePerSecond: 25,
   };
 }

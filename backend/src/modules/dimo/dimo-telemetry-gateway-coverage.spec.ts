@@ -2,10 +2,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 /**
- * Static guard: every telemetry HTTP exit in DimoTelemetryService must route
- * through DimoRequestExecutor.execute (P1.3 canonical global budget coverage).
+ * Static guard: telemetry HTTP exits route through S4 gateway (canary/limiter)
+ * and P1.3 global budget executor (Redis lease semaphore).
  */
-describe('DimoTelemetryService executor coverage guard', () => {
+describe('DimoTelemetryService gateway + executor coverage guard', () => {
   const telemetryServicePath = path.join(__dirname, 'dimo-telemetry.service.ts');
 
   it('wraps each this.client.post in dimoRequestExecutor.execute', () => {
@@ -15,6 +15,13 @@ describe('DimoTelemetryService executor coverage guard', () => {
 
     expect(postCalls.length).toBeGreaterThan(0);
     expect(executorCalls.length).toBe(postCalls.length);
+  });
+
+  it('routes outbound telemetry through providerGateway.execute for canary context', () => {
+    const src = fs.readFileSync(telemetryServicePath, 'utf8');
+    const gatewayCalls = src.match(/this\.providerGateway\.execute/g) ?? [];
+
+    expect(gatewayCalls.length).toBe(3);
   });
 
   it('does not expose queryGraphQL HTTP outside postGraphQL private helper', () => {

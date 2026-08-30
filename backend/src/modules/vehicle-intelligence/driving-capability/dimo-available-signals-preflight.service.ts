@@ -10,6 +10,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DrivingCapabilityStatus } from '@prisma/client';
 import { DimoAuthService } from '../../dimo/dimo-auth.service';
 import { DimoTelemetryService } from '../../dimo/dimo-telemetry.service';
+import { buildDimoProviderRequestContext } from '../../dimo/provider/dimo-provider-request-context.util';
 import { buildAvailableSignalsQuery } from '../../dimo/queries/available-signals.query';
 import {
   buildDataSummaryQuery,
@@ -143,6 +144,11 @@ export class DimoAvailableSignalsPreflightService {
       };
     }
 
+    const providerContext = buildDimoProviderRequestContext(tokenId, {
+      organizationId,
+      vehicleId,
+    });
+
     let availableSignals: string[] = [];
     let dataSummary: DimoDataSummaryPayload | null = null;
     let providerError: Record<string, unknown> | null = null;
@@ -153,8 +159,18 @@ export class DimoAvailableSignalsPreflightService {
         providerError = { providerError: true, providerErrorCode: 'NO_VEHICLE_JWT' };
       } else {
         const [signalsResult, summaryResult] = await Promise.all([
-          this.dimoTelemetry.queryGraphQL(jwt, buildAvailableSignalsQuery(tokenId)),
-          this.dimoTelemetry.queryGraphQL(jwt, buildDataSummaryQuery(tokenId)),
+          this.dimoTelemetry.queryGraphQL(
+            jwt,
+            buildAvailableSignalsQuery(tokenId),
+            undefined,
+            providerContext,
+          ),
+          this.dimoTelemetry.queryGraphQL(
+            jwt,
+            buildDataSummaryQuery(tokenId),
+            undefined,
+            providerContext,
+          ),
         ]);
         availableSignals = Array.isArray(signalsResult?.data?.availableSignals)
           ? (signalsResult.data.availableSignals as string[])
