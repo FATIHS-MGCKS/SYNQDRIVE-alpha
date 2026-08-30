@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-help-center-shell-p2-2-65-2026-08-30',
+    version: '4.9.993',
+    title: 'Platform i18n — P2.2.65 Help Center Shell Chrome',
+    summary: [
+      'Localized Help Center shell chrome in `HelpCenterView.tsx` via `rental.helpCenter.{en,de}.ts`; +12 keys (9706→9718 EN/DE); reuses `nav.helpCenter` for page title.',
+      'Shell-only: header stats/intro, support CTA, search placeholder/aria, results/no-results, quick nav title, coming-soon badge, article count label, footer. `SECTIONS` static corpus (17 sections, 44 articles) intentionally deferred to P266+.',
+      'P265 enforce-clean exact scope (1 path) — 0 findings. True active actionable rental debt −6 (13→7). Same-mount DE→EN→DE; zero business refetch. Category E=0.',
+    ],
+    reason:
+      'P2.2.65 strict shell-only implementation for Help Center chrome per preflight verdict B (split).',
+    previousBehavior:
+      'Help Center header, search, navigation chrome, badges, and footer used hardcoded German/English strings mixed in JSX.',
+    details:
+      'No adapter; inline `useLanguage().t`. Search query/state, section/article IDs, support navigation callback unchanged. Static German article corpus preserved across locale switches.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-30T11:05:00.000Z',
+  },
+  {
     id: 'i18n-rental-vehicle-stress-misuse-p2-2-64-2026-08-30',
     version: '4.9.992',
     title: 'Platform i18n — P2.2.64 Vehicle Rental Stress & Misuse Hints',

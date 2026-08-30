@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Help Center Shell Chrome (P2.2.65 — V4.9.993)', icon: Globe,
+    endpoint: 'Sidebar → Help Center (`help-center` view)',
+    service: '**Locale flow:** `useLanguage().t` → `rental.helpCenter.{en,de}.ts` → `HelpCenterView` shell JSX. **Keys:** +12 EN+DE `helpCenter.*` (9706→9718); reuses `nav.helpCenter`. **Content:** `SECTIONS` static corpus deferred P266+. **Fetch:** NONE. **Guardrails:** P265 enforce-clean (1 path) — 0 findings. **Frozen:** P216–P264, Data Analyse, dead IAM CRUD. **Tests:** `rental-help-center-shell-localization.test.tsx`. **Semantics:** presentation-only; search/navigation identity preserved; Category E=0.',
+    dataSource: 'architecture/I18N_RENTAL_HELP_CENTER_SHELL_P2_2_65_2026-08-30.md' },
   { name: 'Platform i18n Rental Vehicle Stress & Misuse Hints (P2.2.64 — V4.9.992)', icon: Globe,
     endpoint: 'Bookings / Customers / Trips → MisuseCasesPanel + RentalStressAnalysisCard',
     service: '**Locale flow:** `useLanguage()` → `rental-misuse-stress-i18n.ts` → `MisuseCasesPanel`, `RentalStressAnalysisCard`, `misuse-case-lifecycle.ui`. **Keys:** +45 EN+DE `misuseStress.*` (9661→9706); reuses `docUpload.entityReview.confidence.*`, `STRESS_TOOLTIPS.vehicleStress`. **Evidence taxonomy:** DE frozen `trips/*`; EN adapter const maps. **Fetch:** `[orgId, vehicleId, tripId, bookingId, customerId, limit]` — no locale. **Guardrails:** P264 enforce-clean (4 paths) — 0 findings. **Frozen:** P216–P263, Data Analyse, dead IAM CRUD. **Tests:** `rental-vehicle-stress-misuse-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
