@@ -66,6 +66,9 @@ export interface ReconciliationResult {
   repairsApplied: number;
   repairsRejected: number;
   durationMs: number;
+  /** True when execution was skipped due to an active reconciliation mutex or Redis outage. */
+  skipped?: boolean;
+  skipReason?: 'LOCKED' | 'REDIS_UNAVAILABLE';
 }
 
 // ═══════════════════════════════════════════════════════════════
