@@ -7,8 +7,15 @@
 
 PR = #1417  
 BRANCH = `cursor/p13-global-dimo-provider-budget`  
-HEAD_COMMIT = `80052f3d706b7c5b072afb96c28fb3b01f7b11a7`  
-BASE_MAIN_COMMIT = `d221e766374dea2360b2e19636504882d5d662ce` (P1.2 FINAL-6 merged via #1409)  
+HEAD_COMMIT = `a4474b233bde253e49dfca80d2a25b066805b320`  
+BASE_MAIN_COMMIT = `dc9ab567d16d62ef118e4fbd076747c9f91eba18` (P1.3-S4 merged via #1428)  
+POST_CONFLICT_MAIN_HEAD = `dc9ab567d16d62ef118e4fbd076747c9f91eba18`  
+POST_CONFLICT_PR_HEAD = `a4474b233bde253e49dfca80d2a25b066805b320`  
+OLD_P1_3_HEAD = `6874c77e4d981abf7e67e26e391ae0efa279aebc`  
+CONFLICTS_RESOLVED = **YES** — 3 content conflicts + 5 auto-merged files reviewed  
+DIMO_PATHS_REAUDITED = **YES** — post-merge audit §9.1  
+UNBUDGETED_RUNTIME_PATHS = **NONE** (ops/CLI scripts excluded by design)  
+TEMP_CI_ALLOWLIST_STATUS = **REMOVED** — `cursor/p13-global-dimo-provider-budget` dropped from push allowlists; PR `pull_request` CI only  
 STATUS = **OPEN — READY FOR REVIEW — NOT MERGED — PRODUCTION_MUTATIONS = NONE**
 
 P1_3_VERDICT = **COMPLETE — CONDITIONALLY_CERTIFIED for N≈1000**
@@ -42,8 +49,9 @@ N1000_RECOMMENDED_CONFIG = **See §12**
 PROVIDER_CEILING_VERIFIED = **NO**  
 N1000_CERTIFICATION = **CONDITIONALLY_CERTIFIED** (software architecture + tests; provider quota externally unverified)  
 PRODUCTION_MUTATIONS = **NONE**  
-TESTS = **GitHub CI (HEAD `80052f3d7`) — 25/25 SUCCESS** — Vehicle Detail CI gate 12/12 + Legal Documents CI gate 13/13  
-CI_STATUS = **SUCCESS** — runs `33279483320` (Vehicle Detail) + `33279483337` (Legal Documents) on `cursor/p13-global-dimo-provider-budget` @ `80052f3d7` (push event)  
+TESTS = **GitHub CI pending on post-conflict HEAD `a4474b233`** — local: P1.3 34/34 PASS, telemetry 23/23 PASS, typecheck PASS  
+CI_STATUS = **PENDING** — awaiting GitHub CI on post-merge HEAD `a4474b233`  
+MERGEABLE = **PENDING** — awaiting GitHub mergeability recalculation after push  
 NEXT_STAGE = **P1.7** (scheduler leader election before horizontal PM2 scale) **then** **P1.4** (reconciliation mutex/pacing under burst)
 
 ---
@@ -332,6 +340,21 @@ This proves global cap is **not** per-process.
 
 **Uncovered production paths:** None identified in runtime backend. Ops scripts excluded by design.
 
+### 9.1 Post-conflict re-audit (merge `dc9ab567d` → `a4474b233`)
+
+| Path class | Budgeted via `DimoRequestExecutor` | Notes |
+|------------|-----------------------------------|-------|
+| Telemetry GraphQL (all `DimoTelemetryService` HTTP) | **YES** | Executor coverage guard enforced |
+| Segments / recharge / energy (via `DimoTelemetryService.queryGraphQL`) | **YES** | Indirect |
+| Auth challenge/submit/token exchange | **YES** | `dimo-auth.service.ts` |
+| Identity GraphQL sync | **YES** | `dimo-api-sync.service.ts` |
+| Triggers REST | **YES** | `dimo-triggers.service.ts` |
+| Snapshot / trip / reconcile / DTC / enrichment workers | **YES** | `runWithDimoRequestContext` + service paths |
+| Trip Route V2 (route-artifact, chunked matching, canonical GET /route) | **N/A** | No direct DIMO HTTP — uses segments/Mapbox only |
+| Ops CLI (`scripts/probe-dimo-events.ts`, etc.) | **NO** | Out-of-band by design |
+
+**UNBUDGETED_RUNTIME_PATHS = NONE** for normal production runtime.
+
 ---
 
 ## 10. Load model
@@ -539,16 +562,17 @@ WORKER_SNAPSHOT_MAX_ENQUEUE_PER_TICK=0
 MERGE_RECOMMENDATION = **APPROVE_WITH_CONDITIONS**
 
 **Reason:**
-- P1.3 implementation complete; GitHub CI **SUCCESS** on final HEAD (`80052f3d7`).
-- Trip-loss regression covered by CI (boundary repair PostgreSQL, unit, integration, E2E).
-- Fail-closed semantics proven in unit tests; typecheck fix (`dimo-triggers.service.spec.ts` mock executor) verified in CI.
+- P1.3 implementation complete; post-conflict merge with main `dc9ab567d` preserves P1.3 budget invariants and main S1–S4 docs/code coexistence.
+- `DimoRequestExecutor` remains canonical runtime permit owner; main `DimoProviderGateway` stack retained in repo but not wired in `DimoModule`.
+- Trip Route V2 contracts unchanged (no route enrichment regression).
+- Temporary CI push-branch allowlist **removed** — normal PR CI only.
 - **Conditions:**
   1. Acknowledge **CONDITIONALLY_CERTIFIED** for N≈1000 — not full provider certification (`PROVIDER_CEILING_VERIFIED = NO`).
   2. Deploy with documented config (§12); monitor `dimo_global_in_flight` and queue oldest-age.
   3. Do not scale to 2+ PM2 replicas without **P1.7**.
-  4. Revert or narrow temporary CI push-branch allowlist (`cursor/p13-global-dimo-provider-budget`) after merge if desired.
+  4. Await green GitHub CI on post-conflict HEAD `a4474b233` before merge.
 
-**NOT recommended:** Merge without maintainer review of workflow CI trigger additions.  
+**NOT recommended:** Merge before post-conflict GitHub CI is green.  
 **NOT required before current-prod merge:** P1.7, P1.4 (separate roadmap slices).
 
 ---
