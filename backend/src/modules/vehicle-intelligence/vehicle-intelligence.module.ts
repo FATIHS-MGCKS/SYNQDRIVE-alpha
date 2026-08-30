@@ -205,6 +205,8 @@ import { BatteryV2JobsProducerModule } from './battery-health/jobs/battery-v2-jo
 import { DriveProfileResolverService } from './drive-profile/drive-profile-resolver.service';
 import { FuelStationCandidateRepository } from './fuel-stations/fuel-station-candidate.repository';
 import { FuelStationLocationResolverService } from './fuel-stations/fuel-station-location-resolver.service';
+import { FuelStationEnrichmentProducerService } from './fuel-stations/enrichment/fuel-station-enrichment-producer.service';
+import { FuelStationEnrichmentOrchestratorService } from './fuel-stations/enrichment/fuel-station-enrichment-orchestrator.service';
 import { LvBatteryChemistryResolverService } from './lv-battery-chemistry/lv-battery-chemistry-resolver.service';
 import { BatteryPolicyProfileService } from './battery-policy-profile/battery-policy-profile.service';
 import { BatteryCapabilityPreflightRepository } from './battery-health/capability-preflight/battery-capability-preflight.repository';
@@ -258,6 +260,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
       { name: QUEUE_NAMES.DTC_KNOWLEDGE_ENRICHMENT },
       { name: QUEUE_NAMES.BATTERY_V2 },
       { name: QUEUE_NAMES.BRAKE_RECALCULATION },
+      { name: QUEUE_NAMES.ENERGY_REFUEL_STATION_ENRICH },
     ),
   ],
   controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController],
@@ -380,6 +383,8 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     DriveProfileResolverService,
     FuelStationCandidateRepository,
     FuelStationLocationResolverService,
+    FuelStationEnrichmentProducerService,
+    FuelStationEnrichmentOrchestratorService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,
     BatteryCapabilityPreflightRepository,
@@ -573,6 +578,8 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     DriveProfileResolverService,
     FuelStationCandidateRepository,
     FuelStationLocationResolverService,
+    FuelStationEnrichmentProducerService,
+    FuelStationEnrichmentOrchestratorService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,
     BatteryCapabilityPreflightRepository,

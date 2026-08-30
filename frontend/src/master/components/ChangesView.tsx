@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fuel-station-enrichment-phase-d-2026-08-31',
+    version: '4.9.1016',
+    title: 'Fuel Station Enrichment Persistence + Worker V1 (Phase D)',
+    summary: [
+      'Prisma `VehicleEnergyEventFuelStationEnrichment` (1:1, ON DELETE CASCADE) with separate processing vs resolution status.',
+      'BullMQ queue `energy.refuel.station.enrich` + post-persist hook in `EnergyEventsService.upsertSegment()` (REFUEL only, best-effort).',
+      'Trust policy: `MATCHED` + HIGH/MEDIUM only; coordinate V1 = `startLatitude`/`startLongitude`.',
+      'Feature flags: `FUEL_STATION_ENRICHMENT_ENABLED` (default false), cutover + bounded recovery. No API/frontend changes.',
+    ],
+    reason: 'Phase D — async orchestration layer after calibrated resolver; deploy schema/code separately from production enablement.',
+    previousBehavior: 'Resolver V1 read-only; no enrichment persistence or worker.',
+    details: 'architecture/FUEL_STATION_ENRICHMENT_PERSISTENCE_WORKER_V1_2026-08-31.md; audit PB-19.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T21:30:00.000Z',
+  },
+  {
     id: 'fuel-station-resolver-v1-phase-c-2026-08-30',
     version: '4.9.1015',
     title: 'Fuel Station Resolver V1 (Phase C — calibrated)',

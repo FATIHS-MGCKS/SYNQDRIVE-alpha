@@ -9834,11 +9834,74 @@ model VehicleEnergyEvent {
   updatedAt          DateTime              @updatedAt @map("updated_at")
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  fuelStationEnrichment VehicleEnergyEventFuelStationEnrichment?
 
   @@index([vehicleId])
   @@index([vehicleId, startTime])
   @@index([kind])
   @@map("vehicle_energy_events")
+}
+
+/// Async OSM fuel-station resolution for persisted REFUEL energy events (Phase D).
+enum FuelStationEnrichmentProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum FuelStationEnrichmentResolutionStatus {
+  MATCHED
+  AMBIGUOUS
+  NOT_FOUND
+  NO_COORDINATES
+  INVALID_COORDINATES
+  ERROR
+}
+
+enum FuelStationMatchConfidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model VehicleEnergyEventFuelStationEnrichment {
+  id                    String                               @id @default(uuid())
+  energyEventId         String                               @unique @map("energy_event_id")
+  processingStatus      FuelStationEnrichmentProcessingStatus @default(PENDING) @map("processing_status")
+  resolutionStatus      FuelStationEnrichmentResolutionStatus? @map("resolution_status")
+  matchConfidence       FuelStationMatchConfidence?          @map("match_confidence")
+  matchScore            Float?                               @map("match_score")
+  osmType               String?                              @map("osm_type")
+  osmId                 String?                              @map("osm_id")
+  stationName           String?                              @map("station_name")
+  brand                 String?                              @map("brand")
+  operator              String?                              @map("operator")
+  address               String?                              @map("address")
+  stationLatitude       Float?                               @map("station_latitude")
+  stationLongitude      Float?                               @map("station_longitude")
+  distanceMeters        Float?                               @map("distance_meters")
+  inputLatitude         Float?                               @map("input_latitude")
+  inputLongitude        Float?                               @map("input_longitude")
+  inputCoordinateSource String?                              @map("input_coordinate_source")
+  inputFingerprint      String?                              @map("input_fingerprint")
+  resolverVersion       String?                              @map("resolver_version")
+  osmDatasetVersion     String?                              @map("osm_dataset_version")
+  attemptCount          Int                                  @default(0) @map("attempt_count")
+  lastAttemptAt         DateTime?                            @map("last_attempt_at")
+  resolvedAt            DateTime?                            @map("resolved_at")
+  failedAt              DateTime?                            @map("failed_at")
+  errorCode             String?                              @map("error_code")
+  errorMessage          String?                              @map("error_message")
+  createdAt             DateTime                             @default(now()) @map("created_at")
+  updatedAt             DateTime                             @updatedAt @map("updated_at")
+
+  energyEvent VehicleEnergyEvent @relation(fields: [energyEventId], references: [id], onDelete: Cascade)
+
+  @@index([processingStatus])
+  @@index([resolutionStatus])
+  @@index([createdAt])
+  @@map("vehicle_energy_event_fuel_station_enrichments")
 }
 
 // ── Trip Behavior Events (post-trip HF enrichment) ──

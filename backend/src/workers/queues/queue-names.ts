@@ -30,4 +30,6 @@ export const QUEUE_NAMES = {
   CONNECTIVITY_WEBHOOK_PROCESS: 'connectivity.webhook.process',
   /** ClickHouse telemetry mirror write retries (P1-PL1). */
   CLICKHOUSE_MIRROR_RETRY: 'clickhouse.mirror.retry',
+  /** REFUEL energy events — async OSM fuel-station location enrichment (Phase D). */
+  ENERGY_REFUEL_STATION_ENRICH: 'energy.refuel.station.enrich',
 } as const;

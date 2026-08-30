@@ -2042,3 +2042,56 @@ Resolver is safe for isolated read-only use and Phase D design. Recommend enrich
 ---
 
 *PB-18 Phase C calibration gate — 2026-08-30.*
+
+---
+
+## PB-19. Phase D — Enrichment Persistence + Worker V1
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-08-31 |
+| **Branch** | `cursor/fuel-station-enrichment-phase-d-27ba` |
+| **Architecture** | `architecture/FUEL_STATION_ENRICHMENT_PERSISTENCE_WORKER_V1_2026-08-31.md` |
+
+### PB-19.1 Re-audit hook (current main)
+
+Post-persistence hook confirmed at `EnergyEventsService.upsertSegment()` immediately after `vehicleEnergyEvent.create/update`, before refuel metrics. Pattern: `@Optional() FuelStationEnrichmentProducerService` + `void enqueueAfterPersistFromEvent(row).catch(warn)`.
+
+### PB-19.2 Persistence model
+
+Prisma `VehicleEnergyEventFuelStationEnrichment` (1:1, `ON DELETE CASCADE`). Separate processing vs resolution enums. Migration `20260831120000_vehicle_energy_event_fuel_station_enrichment` — additive only.
+
+### PB-19.3 Orchestration
+
+- Queue: `energy.refuel.station.enrich`
+- Job payload: `{ energyEventId }`
+- Job ID: `refuel-station_{energyEventId}:{inputFingerprint}`
+- Worker reloads canonical event; fingerprint staleness guard
+- Recovery scheduler bounded to post-`FUEL_STATION_ENRICHMENT_CUTOVER_AT` events only
+
+### PB-19.4 Trust policy
+
+`isTrustedFuelStationAssignment`: `MATCHED` + (`HIGH`|`MEDIUM`). `LOW` diagnostic only.
+
+### PB-19.5 Coordinate policy V1
+
+`startLatitude` / `startLongitude` (`energy_event_start`) — same as trip timeline display.
+
+### PB-19.6 Energy Event firewall
+
+**Confirmed — detection/persistence unchanged.** Only additive post-persist enqueue hook. Enqueue failure does not fail persistence (regression test).
+
+### PB-19.7 Deployment boundary
+
+- Migration **not** applied to production
+- `FUEL_STATION_ENRICHMENT_ENABLED=false` by default
+- No API/frontend changes
+- No historical backfill
+
+### PB-19.8 Overall status
+
+## **PHASE D READY — MERGE BEFORE DEPLOYMENT**
+
+---
+
+*PB-19 Phase D implementation — 2026-08-31.*
