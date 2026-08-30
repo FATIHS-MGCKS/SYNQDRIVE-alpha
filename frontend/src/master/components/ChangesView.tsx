@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'staging-true-process-validation-p13-p17-p14-2026-08-30',
+    version: '4.9.1010',
+    title: 'TRUE process-level multi-replica validation — P1.3 + P1.7 + P1.4 (VPS)',
+    summary: [
+      'TRUE_PROCESS_LEVEL_MULTI_REPLICA=YES — two real NestJS PIDs on VPS ports 3010/3011 sharing Postgres + Redis DB 15.',
+      'P1.7: leaderCountMax=1, graceful failover 7863ms, crash+restart failover 10257ms, splitBrain=NO.',
+      'P1.4: same-vehicle mutex concurrency=1 via forked OS processes; unrelated vehicles parallel.',
+      'P1.3: global DIMO lease ceiling 10/13 workers — limit not breached (simplified Lua probe).',
+      'CONDITIONALLY_CERTIFIED — Redis DB 15 isolation; N1000/provider ceiling NOT verified; prod PM2 unchanged.',
+      'Harness: backend/scripts/ops/vps-two-replica-process-validation.sh + coordination/leader probes.',
+    ],
+    reason:
+      'Close TRUE_PROCESS_LEVEL_MULTI_REPLICA gap after PR #1438 logical twin validation.',
+    previousBehavior:
+      'PR #1438 CONDITIONAL_PASS with logical twin replicas only (TRUE_PROCESS_LEVEL_MULTI_REPLICA=NO).',
+    details:
+      'architecture/STAGING_TRUE_MULTI_REPLICA_VALIDATION_P1_3_P1_7_P1_4_2026-08-30.md; architecture/STAGING_TRUE_MULTI_REPLICA_VALIDATION_FINAL_RESPONSE_2026-08-30.md; backend/scripts/ops/vps-two-replica-process-validation.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T11:30:00.000Z',
+  },
+  {
     id: 'staging-multi-replica-validation-p13-p17-p14-2026-08-30',
     version: '4.9.1009',
     title: 'Staging multi-replica validation gate — P1.3 + P1.7 + P1.4',
