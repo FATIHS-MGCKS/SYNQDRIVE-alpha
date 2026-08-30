@@ -100,10 +100,14 @@ export class BatteryRestTargetEvaluateHandler
 
     if (!result.ok) {
       if (result.retryable) {
-        throw new BatteryV2ProviderError(
-          `REST target evaluation pending: ${result.reason}`,
-          { retryable: true, jobType: this.jobType },
+        await this.updateTargetMetadata(session, restTargetType, {
+          status: LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION,
+          lastAttemptAt: new Date().toISOString(),
+        });
+        this.logger.debug(
+          `REST target evaluation deferred (pending evidence): vehicle=${payload.vehicleId} window=${restWindowId} type=${restTargetType} reason=${result.reason}`,
         );
+        return;
       }
       if (result.missed) {
         this.recordShadowMetrics(restTargetType, result.quality ?? 'MISSED');

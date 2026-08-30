@@ -55,6 +55,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-08-30T18:47:00.000Z',
   },
   {
+    id: 'battery-v2-stage1-pipeline-defect-closure-2026-08-30',
+    version: '4.9.1014',
+    title: 'Battery V2 Stage 1 — pipeline defect closure (liveness, trip binding, REST temporal)',
+    summary: [
+      'Reconciliation directly arms missing LV_REST_WINDOW sessions; transient DLQ cleared per-entity on recovery enqueue only (no bulk pre-clear).',
+      'PENDING_EVALUATION defers to reconciliation cadence via isLvRestTargetAwaitingReconciliationReschedule — not stuck by isLvRestTargetAlreadyScheduled.',
+      'Orphaned ENQUEUED (no Bull job, no DLQ): reconciliation checks hasLiveJob(idempotencyKey) and transitions to PENDING_EVALUATION + recovery reschedule.',
+      'Session canonical identity at creation: trip_id + anchor = trip.endTime; mutation boundary verifies authoritative COMPLETED trip. No recurring historical backfill.',
+      '#1383/#1393 policies preserved; shadow only.',
+    ],
+    reason:
+      'Natural production traffic after #1383/#1393 exposed liveness hole after deploy, cross-trip trip_id mis-binding, and REST_60M/6H stuck ENQUEUED with PROVIDER_UNAVAILABLE dead letters.',
+    previousBehavior:
+      'Reconciliation enqueue-only recovery; DLQ permanently blocked re-enqueue; REST handler threw on retryable evaluation; ENQUEUED metadata blocked reschedule; FSM anchor could follow lastActivityAt ahead of trip.endTime.',
+    details:
+      'backend: reconciliation, handlers, producers, FSM, bridge, repository, scheduler (+ specs). architecture/BATTERY_V2_STAGE1_PIPELINE_DEFECT_CLOSURE_2026-08-30.md. No schema/flag/deploy.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T16:45:00.000Z',
+  },
+  {
     id: 'dimo-provider-p1-3-s4-reconciliation-2-2026-08-30',
     version: '4.9.1013',
     title: 'P1.3-S4 reconciliation #2 — #1440 VPS validation + full S4/P1.3/P1.7/P1.4 stack',

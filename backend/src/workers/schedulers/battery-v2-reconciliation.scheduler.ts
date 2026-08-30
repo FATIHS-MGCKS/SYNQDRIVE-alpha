@@ -33,12 +33,6 @@ export class BatteryV2ReconciliationScheduler {
     try {
       const backlog = await this.deadLetters.countBacklog();
       this.observability.setDeadLetterBacklog(backlog);
-      if (process.env.BATTERY_V2_DLQ_REPLAY_ENABLED === 'true') {
-        const cleared = await this.deadLetters.clearReplayableDeadLetters(25);
-        if (cleared > 0) {
-          this.logger.log(`Battery V2 DLQ replay: cleared ${cleared} transient dead letters`);
-        }
-      }
       await this.reconciliation.reconcileAll();
     } catch (err) {
       this.logger.warn(

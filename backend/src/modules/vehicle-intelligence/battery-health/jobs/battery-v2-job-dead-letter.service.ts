@@ -63,6 +63,22 @@ export class BatteryV2JobDeadLetterService {
   /**
    * Clear transient DLQ rows so reconciliation can re-enqueue on the next tick.
    */
+  async clearDeadLetter(
+    jobType: BatteryV2JobType,
+    idempotencyKey: string,
+  ): Promise<boolean> {
+    try {
+      await this.prisma.batteryV2JobDeadLetter.delete({
+        where: {
+          jobType_idempotencyKey: { jobType, idempotencyKey },
+        },
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async clearReplayableDeadLetters(limit = 25): Promise<number> {
     const rows = await this.prisma.batteryV2JobDeadLetter.findMany({
       where: {

@@ -169,6 +169,14 @@ export class LvRestWindowIngestionBridgeService {
       take: 10,
     });
     if (candidates.length === 0) return null;
+    const exact = candidates.find(
+      (trip) =>
+        trip.endTime &&
+        Math.abs(trip.endTime.getTime() - anchorMs) < 1_000,
+    );
+    if (exact?.endTime) {
+      return { id: exact.id };
+    }
     if (candidates.length === 1) {
       return { id: candidates[0].id };
     }

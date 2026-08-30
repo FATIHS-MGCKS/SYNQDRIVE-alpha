@@ -11,6 +11,7 @@ import {
   targetSuffixForRestType,
 } from './battery-v2-job-idempotency.policy';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import {
   LV_REST_TARGET_JOB_STATUS,
   LV_REST_TARGET_TYPES,
@@ -26,6 +27,7 @@ export interface ScheduleLvRestTargetJobInput {
   restWindowStartedAt: Date;
   restTargetType: Extract<LvRestTargetType, 'REST_60M' | 'REST_6H'>;
   now?: Date;
+  recovery?: boolean;
 }
 
 export interface ScheduleLvRestTargetJobResult {
@@ -40,7 +42,10 @@ export interface ScheduleLvRestTargetJobResult {
 
 @Injectable()
 export class BatteryV2RestTargetProducer {
-  constructor(private readonly jobProducer: BatteryV2JobProducerService) {}
+  constructor(
+    private readonly jobProducer: BatteryV2JobProducerService,
+    private readonly deadLetters: BatteryV2JobDeadLetterService,
+  ) {}
 
   getRest60mDelayMs(): number {
     return getBatteryRest60mDelayMs();
@@ -117,6 +122,13 @@ export class BatteryV2RestTargetProducer {
       };
     }
 
+    if (input.recovery) {
+      await this.deadLetters.clearDeadLetter(
+        'BATTERY_REST_TARGET_EVALUATE',
+        idempotencyKey,
+      );
+    }
+
     const bullJobId = await this.jobProducer.enqueue(
       'BATTERY_REST_TARGET_EVALUATE',
       {
@@ -128,7 +140,7 @@ export class BatteryV2RestTargetProducer {
         restTargetType: input.restTargetType,
         sourceEntityId: input.sessionId,
       },
-      { delayMs },
+      { delayMs, ignoreDeadLetter: input.recovery === true },
     );
 
     if (!bullJobId) {

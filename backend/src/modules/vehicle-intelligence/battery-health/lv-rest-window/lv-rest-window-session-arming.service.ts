@@ -183,6 +183,13 @@ export class LvRestWindowSessionArmingService {
       windowId,
     );
     if (existing) {
+      await this.sessions.repairCanonicalTripBindingIfNeeded(existing, {
+        organizationId: input.organizationId,
+        tripId: trip.id,
+        startedAt: anchorAt,
+        sourceEntityType: 'trip',
+        sourceEntityId: trip.id,
+      });
       return {
         outcome: 'already_exists',
         reason: 'session_exists',
@@ -252,6 +259,15 @@ export class LvRestWindowSessionArmingService {
         input.vehicleId,
         windowId,
       );
+      if (session) {
+        await this.sessions.repairCanonicalTripBindingIfNeeded(session, {
+          organizationId: input.organizationId,
+          tripId: trip.id,
+          startedAt: anchorAt,
+          sourceEntityType: 'trip',
+          sourceEntityId: trip.id,
+        });
+      }
       return {
         outcome: 'already_exists',
         reason: transition.reason,
