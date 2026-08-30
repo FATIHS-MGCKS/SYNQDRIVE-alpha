@@ -614,6 +614,14 @@ const P265_ENFORCE_CLEAN_EXACT = [
   'rental/components/HelpCenterView.tsx',
 ];
 
+const P266_ENFORCE_CLEAN_EXACT = [
+  'rental/components/OrganizationSwitcher.tsx',
+  'rental/components/AIAssistantView.tsx',
+  'rental/components/HomeAwayBadge.tsx',
+  'rental/components/shared/rental-requirements-ui.tsx',
+  'rental/App.tsx',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -860,6 +868,10 @@ function isP264EnforceCleanPath(relPath: string): boolean {
 
 function isP265EnforceCleanPath(relPath: string): boolean {
   return P265_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP266EnforceCleanPath(relPath: string): boolean {
+  return P266_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -1372,6 +1384,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP265EnforceCleanPath(finding.file),
     );
     expect(p265Debt).toHaveLength(0);
+  });
+
+  it('keeps P266 active rental micro-chrome enforce-clean scope at zero findings', () => {
+    const p266Debt = inventory.findings.filter((finding) =>
+      isP266EnforceCleanPath(finding.file),
+    );
+    expect(p266Debt).toHaveLength(0);
   });
 
   it('keeps rental-misuse-stress-i18n.ts presentation-only', () => {

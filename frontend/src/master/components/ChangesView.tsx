@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-active-micro-chrome-p2-2-66-2026-08-30',
+    version: '4.9.994',
+    title: 'Platform i18n — P2.2.66 Active Rental Micro-Chrome Closeout',
+    summary: [
+      'Localized 7 certified active rental micro-chrome findings across OrganizationSwitcher, AIAssistantView, HomeAwayBadge, rental-requirements-ui, and rental/App shell error boundary via `rental.microChrome.{en,de}.ts`; +9 keys (9718→9727 EN/DE).',
+      'Host chrome only: org switcher aria/header, AI clear-conversation title, compact geofence aria-label, rule-source title template, effective-rules loading aria, rental shell crash fallback. Organization names, AI messages, rule-source machine labels, and raw error.message preserved.',
+      'P266 enforce-clean exact scope (5 paths) — 0 findings. True active actionable rental debt 7→0. Same-mount DE→EN→DE; zero locale business refetch. Category E=0.',
+    ],
+    reason:
+      'P2.2.66 strict closeout for the final certified active-mount rental micro-chrome scanner debt before active-mount technical i18n campaign certification.',
+    previousBehavior:
+      'Organization switcher list aria/header, AI clear button title, compact geofence aria-label, rental requirements host templates, and rental shell crash boundary used hardcoded English strings.',
+    details:
+      'No adapter; inline `useLanguage().t`. `RentalShellErrorBoundary` wrapper in `rental/App.tsx`. Help Center `SECTIONS` corpus unchanged (deferred content localization). Data Analyse and dead IAM CRUD untouched.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-30T16:40:00.000Z',
+  },
+  {
     id: 'i18n-rental-help-center-shell-p2-2-65-2026-08-30',
     version: '4.9.993',
     title: 'Platform i18n — P2.2.65 Help Center Shell Chrome',

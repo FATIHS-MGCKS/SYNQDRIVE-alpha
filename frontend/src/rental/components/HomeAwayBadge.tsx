@@ -1,5 +1,6 @@
 
 import { Icon, type IconName } from './ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { Station } from '../../lib/api';
 import { isVehicleAtHomeStation } from '../../lib/geospatial';
 import type { VehicleData } from '../data/vehicles';
@@ -67,7 +68,10 @@ interface HomeAwayBadgeProps {
   compact?: boolean;
 }
 
+type ChipState = 'home' | 'away' | 'unknown';
+
 export function HomeAwayBadge({ v, stationLookup, isDarkMode, compact = false }: HomeAwayBadgeProps) {
+  const { t } = useLanguage();
   const station = resolveVehicleStation(v, stationLookup);
   const stationName = station?.name ?? v.station ?? null;
 
@@ -84,33 +88,41 @@ export function HomeAwayBadge({ v, stationLookup, isDarkMode, compact = false }:
       : null,
   );
 
-  type ChipState = 'home' | 'away' | 'unknown';
   let state: ChipState;
-  let label: string;
-  let title: string;
+  let detailTitle: string;
   if (isHome === true) {
     state = 'home';
-    label = 'Home';
-    title = `Im Umkreis von „${stationName}"`;
+    detailTitle = t('fleet.geofence.tooltip.home', { stationName });
   } else if (isHome === false) {
     state = 'away';
-    label = 'Away';
-    title = `Außerhalb des Umkreises von „${stationName}"`;
+    detailTitle = t('fleet.geofence.tooltip.away', { stationName });
   } else {
     state = 'unknown';
-    label = '—';
     if (!station) {
-      title = `Station „${stationName}" konnte nicht aufgelöst werden`;
+      detailTitle = t('fleet.geofence.tooltip.stationUnresolved', { stationName });
     } else if (station.latitude == null || station.longitude == null) {
-      title = `„${stationName}" hat noch keine Koordinaten — Standort bearbeiten und Adresse setzen, um den Geofence zu aktivieren`;
+      detailTitle = t('fleet.geofence.tooltip.missingCoordinates', { stationName });
     } else if (station.radiusMeters == null || station.radiusMeters <= 0) {
-      title = `„${stationName}" hat keinen Geofence-Radius`;
+      detailTitle = t('fleet.geofence.tooltip.missingRadius', { stationName });
     } else if (v.lat == null || v.lng == null) {
-      title = `Keine GPS-Position für ${v.license}`;
+      detailTitle = t('fleet.geofence.tooltip.missingGps', { license: v.license });
     } else {
-      title = `Geofence-Status für „${stationName}" unbekannt`;
+      detailTitle = t('fleet.geofence.tooltip.unknown', { stationName });
     }
   }
+
+  const stateLabel =
+    state === 'home'
+      ? t('fleet.geofence.state.home')
+      : state === 'away'
+        ? t('fleet.geofence.state.away')
+        : '—';
+
+  const ariaStatus = state === 'unknown' ? t('fleet.geofence.statusUnknown') : stateLabel;
+  const compactTitle =
+    state === 'unknown'
+      ? `${t('fleet.geofence.statusUnknown')} — ${detailTitle}`
+      : `${stateLabel} — ${detailTitle}`;
 
   const palette =
     state === 'home'
@@ -131,8 +143,8 @@ export function HomeAwayBadge({ v, stationLookup, isDarkMode, compact = false }:
     return (
       <span
         className={`shrink-0 inline-flex items-center justify-center w-[22px] h-[16px] rounded-md ${palette}`}
-        title={`${label === '—' ? 'Geofence-Status unbekannt' : label} — ${title}`}
-        aria-label={`Geofence: ${label === '—' ? 'unbekannt' : label}`}
+        title={compactTitle}
+        aria-label={t('fleet.geofence.ariaLabel', { status: ariaStatus })}
       >
         <Icon name={iconName} className="w-3 h-3 shrink-0" />
       </span>
@@ -142,10 +154,10 @@ export function HomeAwayBadge({ v, stationLookup, isDarkMode, compact = false }:
   return (
     <span
       className={`shrink-0 inline-flex items-center justify-center gap-0.5 w-[56px] px-1 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${palette}`}
-      title={title}
+      title={detailTitle}
     >
       <Icon name={iconName} className="w-2.5 h-2.5 shrink-0" />
-      <span className="leading-none">{label}</span>
+      <span className="leading-none">{stateLabel}</span>
     </span>
   );
 }

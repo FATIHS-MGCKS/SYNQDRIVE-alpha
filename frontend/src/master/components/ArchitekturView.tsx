@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Active Micro-Chrome Closeout (P2.2.66 — V4.9.994)', icon: Globe,
+    endpoint: 'Rental micro-chrome surfaces',
+    service: '**Locale flow:** `useLanguage().t` → `rental.microChrome.{en,de}.ts` → OrganizationSwitcher, AIAssistantView, HomeAwayBadge, rental-requirements-ui, `RentalShellErrorBoundary` in `rental/App.tsx`. **Keys:** +9 EN+DE (9718→9727). **Raw:** org names, AI messages, rule-source machine labels, `error.message` preserved. **Fetch:** NONE added. **Guardrails:** P266 enforce-clean (5 paths) — 0 findings; true active actionable rental debt = 0. **Frozen:** P216–P265, Data Analyse, dead IAM CRUD, Help Center `SECTIONS` corpus. **Tests:** `rental-micro-chrome-localization.test.tsx`. **Semantics:** presentation-only; org switch / AI / requirements / crash behavior unchanged; Category E=0.',
+    dataSource: 'Active-mount technical i18n closeout ready for independent certification' },
   { name: 'Platform i18n Rental Help Center Shell Chrome (P2.2.65 — V4.9.993)', icon: Globe,
     endpoint: 'Sidebar → Help Center (`help-center` view)',
     service: '**Locale flow:** `useLanguage().t` → `rental.helpCenter.{en,de}.ts` → `HelpCenterView` shell JSX. **Keys:** +12 EN+DE `helpCenter.*` (9706→9718); reuses `nav.helpCenter`. **Content:** `SECTIONS` static corpus deferred P266+. **Fetch:** NONE. **Guardrails:** P265 enforce-clean (1 path) — 0 findings. **Frozen:** P216–P264, Data Analyse, dead IAM CRUD. **Tests:** `rental-help-center-shell-localization.test.tsx`. **Semantics:** presentation-only; search/navigation identity preserved; Category E=0.',
