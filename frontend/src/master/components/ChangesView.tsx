@@ -511,6 +511,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-08-29T09:30:00.000Z',
   },
   {
+    id: 'energy-events-p13-s5-refuel-semantics-2026-08-30',
+    version: '4.9.996',
+    title: 'P1.3-S5 — REFUEL detection window vs fuel-level-rise semantics',
+    summary: [
+      'Additive nullable columns: fuelLevelRiseStart/End/DurationSeconds on vehicle_energy_events.',
+      'durationSeconds unchanged (DIMO detection envelope); RECHARGE semantics preserved.',
+      'deriveRefuelFuelLevelRise() from 30s fuel telemetry; conservative null when insufficient evidence.',
+      'REFUEL sibling reconciliation removes superseded overlapping singleton segments on detect.',
+      'TripTimelineEnergyCard: REFUEL shows signal-change minutes + detection window; no envelope-as-pump label.',
+    ],
+    reason:
+      'Production forensic KS MX 2024 Aug-28: 4818s DIMO envelope vs ~280s observed fuel-level rise; UI showed misleading 80 min.',
+    previousBehavior:
+      'REFUEL UI used Math.round(durationSeconds/60) as implicit refuel duration; overlapping DIMO singleton siblings could coexist.',
+    details:
+      'backend: refuel-fuel-rise.ts, refuel-sibling-reconciliation.ts, energy-events.service.ts, migration 20260830140000. frontend: trip-timeline-shared.tsx, trips-energy-i18n.ts. architecture/P1_3_S5_ENERGY_REFUEL_SEMANTICS_2026-08-30.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T13:30:00.000Z',
+  },
+  {
     id: 'energy-events-e3a-option-b-m1-mutation-executed-2026-08-29',
     version: '4.9.995',
     title: 'Energy Events E3A Option B — M1 canonicalization executed (closed-set CREATE + 16-ID DELETE)',

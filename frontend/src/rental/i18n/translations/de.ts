@@ -2193,6 +2193,12 @@ export const de: Record<TranslationKey, string> = {
   'trips.route.telemetry.analyzing': 'HF-Analyse läuft',
   'trips.route.gpsGap': 'GPS-Lücke',
   'trips.route.updatedAt': 'Aktualisiert {date}',
+  'trips.energy.refuel.detected': 'Tankvorgang erkannt',
+  'trips.energy.refuel.kindLabel': 'Tanken',
+  'trips.energy.refuel.signalChangeMinutes': 'Signaländerung ca. {minutes} Min.',
+  'trips.energy.refuel.detectionWindow': 'Erkennungszeitraum {from}–{to}',
+  'trips.energy.recharge.kindLabel': 'Laden',
+  'trips.energy.recharge.durationMinutes': '{minutes} min',
 
   // ─── Health & Errors ───
   'health.aiHealthCare': 'KI-Gesundheitscheck',

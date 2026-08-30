@@ -19,6 +19,11 @@ import {
   type CoalescedEnergySegment,
 } from './energy-events.pipeline';
 import { EnergyEventsMetricsService } from './energy-events-metrics.service';
+import { deriveRefuelFuelLevelRise } from './refuel-fuel-rise';
+import {
+  resolveSupersededRefuelSiblingIds,
+  type RefuelEventWindow,
+} from './refuel-sibling-reconciliation';
 
 export interface DetectEnergyEventsOptions {
   from: Date;
@@ -32,6 +37,7 @@ export interface DetectEnergyEventsResult {
   skipped: number;
   coalescedGroups: number;
   prunedStale: number;
+  reconciledRefuelSiblings: number;
   events: EnergyEventDto[];
   mechanismOutcomes?: EnergyMechanismFetchOutcome[];
 }
@@ -94,20 +100,23 @@ export class EnergyEventsService {
         skipped: 0,
         coalescedGroups: 0,
         prunedStale: 0,
+        reconciledRefuelSiblings: 0,
         events: [],
       };
     }
+
+    const requestContext = {
+      organizationId: vehicle.organizationId,
+      vehicleId,
+      tokenId,
+    };
 
     const fetchResult = await this.dimoSegments.fetchEnergyEventSegments(
       tokenId,
       options.from,
       options.to,
       undefined,
-      {
-        organizationId: vehicle.organizationId,
-        vehicleId,
-        tokenId,
-      },
+      requestContext,
     );
     const mechanismOutcomes = fetchResult.outcomes;
     const segments = fetchResult.segments;
@@ -137,7 +146,12 @@ export class EnergyEventsService {
     const persistedRows: VehicleEnergyEvent[] = [];
 
     for (const group of coalesced) {
-      const { row, wasCreated } = await this.upsertSegment(vehicleId, group);
+      const { row, wasCreated } = await this.upsertSegment(
+        vehicleId,
+        tokenId,
+        group,
+        requestContext,
+      );
       persistedRows.push(row);
       if (wasCreated) created++;
       else updated++;
@@ -149,6 +163,13 @@ export class EnergyEventsService {
       options.to,
       mechanismOutcomes,
       coalesced,
+    );
+
+    const reconciledRefuelSiblings = await this.reconcileSupersededRefuelSiblings(
+      vehicleId,
+      persistedRows.filter((row) => row.kind === EnergyEventKind.REFUEL),
+      options.from,
+      options.to,
     );
 
     const persistableByMechanism: Record<string, number> = {};
@@ -179,6 +200,7 @@ export class EnergyEventsService {
       skipped,
       coalescedGroups: coalesced.length,
       prunedStale,
+      reconciledRefuelSiblings,
       events: persistedRows.map(toEnergyEventDto),
       mechanismOutcomes,
     };
@@ -218,9 +240,24 @@ export class EnergyEventsService {
 
   private async upsertSegment(
     vehicleId: string,
+    tokenId: number,
     segment: CoalescedEnergySegment,
+    requestContext: {
+      organizationId: string;
+      vehicleId: string;
+      tokenId: number;
+    },
   ): Promise<{ row: VehicleEnergyEvent; wasCreated: boolean }> {
-    const payload = buildUpsertPayload(vehicleId, segment);
+    const refuelObservation =
+      segment.mechanism === 'refuel'
+        ? await this.deriveRefuelObservation(segment, tokenId, requestContext)
+        : null;
+
+    const payload = buildUpsertPayload(
+      vehicleId,
+      segment,
+      refuelObservation ?? undefined,
+    );
     const existing = await this.prisma.vehicleEnergyEvent.findUnique({
       where: { dimoSegmentId: payload.dimoSegmentId },
     });
@@ -244,19 +281,123 @@ export class EnergyEventsService {
       odometerEndKm: payload.odometerEndKm,
       confidence: payload.confidence,
       rawDetectionMeta: payload.rawDetectionMeta as object,
+      fuelLevelRiseStart: payload.fuelLevelRiseStart,
+      fuelLevelRiseEnd: payload.fuelLevelRiseEnd,
+      fuelLevelRiseDurationSeconds: payload.fuelLevelRiseDurationSeconds,
     };
 
+    let row: VehicleEnergyEvent;
+    let wasCreated: boolean;
     if (existing) {
-      const row = await this.prisma.vehicleEnergyEvent.update({
+      row = await this.prisma.vehicleEnergyEvent.update({
         where: { id: existing.id },
         data,
       });
-      return { row, wasCreated: false };
+      wasCreated = false;
+    } else {
+      row = await this.prisma.vehicleEnergyEvent.create({
+        data: { ...data, dimoSegmentId: payload.dimoSegmentId },
+      });
+      wasCreated = true;
     }
-    const row = await this.prisma.vehicleEnergyEvent.create({
-      data: { ...data, dimoSegmentId: payload.dimoSegmentId },
+
+    if (segment.mechanism === 'refuel') {
+      this.energyMetrics?.recordRefuelDetected();
+      this.energyMetrics?.recordRefuelFuelRiseObservation({
+        vehicleId,
+        eventId: row.id,
+        source: 'dimo',
+        detectionWindowSeconds: payload.durationSeconds,
+        fuelLevelRiseDurationSeconds: payload.fuelLevelRiseDurationSeconds,
+        fuelDeltaPercent: payload.fuelDeltaPercent,
+        fuelDeltaLiters: payload.fuelDeltaLiters,
+        sampleCount: refuelObservation?.sampleCount ?? 0,
+        derivationReason: refuelObservation?.derivationReason ?? 'insufficient_samples',
+      });
+    }
+
+    return { row, wasCreated };
+  }
+
+  private async deriveRefuelObservation(
+    segment: CoalescedEnergySegment,
+    tokenId: number,
+    requestContext: {
+      organizationId: string;
+      vehicleId: string;
+      tokenId: number;
+    },
+  ) {
+    const windowStart = new Date(segment.startTime);
+    const windowEnd = new Date(segment.endTime as string);
+    const samples = await this.dimoSegments.fetchFuelLevelSamples(
+      tokenId,
+      windowStart,
+      windowEnd,
+      requestContext,
+    );
+    return deriveRefuelFuelLevelRise(samples, windowStart, windowEnd);
+  }
+
+  private async reconcileSupersededRefuelSiblings(
+    vehicleId: string,
+    canonicalRows: VehicleEnergyEvent[],
+    windowFrom: Date,
+    windowTo: Date,
+  ): Promise<number> {
+    if (canonicalRows.length === 0) return 0;
+
+    const canonicalWindows: RefuelEventWindow[] = canonicalRows.map((row) => ({
+      id: row.id,
+      dimoSegmentId: row.dimoSegmentId,
+      startTime: row.startTime,
+      endTime: row.endTime,
+      durationSeconds: row.durationSeconds,
+      fuelDeltaPercent: row.fuelDeltaPercent,
+      fuelDeltaLiters: row.fuelDeltaLiters,
+    }));
+
+    const searchFrom = new Date(
+      Math.min(...canonicalRows.map((r) => r.startTime.getTime())) - 2 * 60 * 60_000,
+    );
+    const searchTo = new Date(
+      Math.max(...canonicalRows.map((r) => r.endTime.getTime())) + 60 * 60_000,
+    );
+
+    const candidates = await this.prisma.vehicleEnergyEvent.findMany({
+      where: {
+        vehicleId,
+        kind: EnergyEventKind.REFUEL,
+        startTime: { gte: searchFrom, lte: searchTo },
+        id: { notIn: canonicalRows.map((row) => row.id) },
+      },
     });
-    return { row, wasCreated: true };
+
+    const siblingIds = resolveSupersededRefuelSiblingIds(
+      canonicalWindows,
+      candidates.map((row) => ({
+        id: row.id,
+        dimoSegmentId: row.dimoSegmentId,
+        startTime: row.startTime,
+        endTime: row.endTime,
+        durationSeconds: row.durationSeconds,
+        fuelDeltaPercent: row.fuelDeltaPercent,
+        fuelDeltaLiters: row.fuelDeltaLiters,
+      })),
+    );
+
+    if (siblingIds.length === 0) return 0;
+
+    const result = await this.prisma.vehicleEnergyEvent.deleteMany({
+      where: { id: { in: siblingIds }, vehicleId },
+    });
+    if (result.count > 0) {
+      this.logger.debug(
+        `Reconciled ${result.count} superseded REFUEL sibling(s) for vehicle=${vehicleId} window=[${windowFrom.toISOString()}, ${windowTo.toISOString()}]`,
+      );
+      this.energyMetrics?.recordRefuelSiblingReconciled(result.count);
+    }
+    return result.count;
   }
 
   private async pruneStaleSubSegments(

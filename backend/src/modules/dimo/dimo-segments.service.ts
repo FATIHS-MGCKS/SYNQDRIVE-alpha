@@ -95,6 +95,12 @@ export interface DimoFuelSummary {
   relativeSampleCount: number;
 }
 
+export interface DimoFuelLevelSample {
+  timestamp: Date;
+  relativePercent: number | null;
+  absoluteLiters: number | null;
+}
+
 export interface CrankDataPoint {
   timestamp: string;
   voltage: number | null;
@@ -1389,6 +1395,63 @@ export class DimoSegmentsService {
       absoluteSampleCount,
       relativeSampleCount,
     };
+  }
+
+  /**
+   * Ordered fuel-level telemetry samples for REFUEL fuel-rise derivation.
+   */
+  async fetchFuelLevelSamples(
+    tokenId: number,
+    from: Date,
+    to: Date,
+    requestContext?: DimoProviderRequestContext,
+  ): Promise<DimoFuelLevelSample[]> {
+    const jwt = await this.auth.getVehicleJwt(tokenId);
+    if (!jwt) return [];
+
+    const query = `
+      query RefuelFuelLevelSamples {
+        signals(
+          tokenId: ${tokenId}
+          from: "${from.toISOString()}"
+          to: "${to.toISOString()}"
+          interval: "30s"
+        ) {
+          timestamp
+          powertrainFuelSystemAbsoluteLevel(agg: AVG)
+          powertrainFuelSystemRelativeLevel(agg: AVG)
+        }
+      }
+    `.trim();
+
+    let signals: any[] = [];
+    try {
+      const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
+      signals = Array.isArray(result?.data?.signals) ? result.data.signals : [];
+    } catch (err: any) {
+      this.logger.warn(
+        `Fuel level sample fetch failed for tokenId=${tokenId}: ${err.message}`,
+      );
+      return [];
+    }
+
+    return signals
+      .filter((s: any) => typeof s?.timestamp === 'string')
+      .map((s: any) => ({
+        timestamp: new Date(s.timestamp),
+        relativePercent:
+          typeof s.powertrainFuelSystemRelativeLevel === 'number'
+            ? s.powertrainFuelSystemRelativeLevel
+            : null,
+        absoluteLiters:
+          typeof s.powertrainFuelSystemAbsoluteLevel === 'number'
+            ? s.powertrainFuelSystemAbsoluteLevel
+            : null,
+      }))
+      .filter(
+        (s) => s.relativePercent != null || s.absoluteLiters != null,
+      )
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }
 
   /**

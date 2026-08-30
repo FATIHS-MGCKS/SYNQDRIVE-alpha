@@ -1928,6 +1928,12 @@ export interface EnergyEvent {
   odometerStartKm: number | null;
   odometerEndKm: number | null;
   confidence: EnergyEventConfidence;
+  /** REFUEL only: observed fuel-level-rise start (ISO); not pump duration. */
+  fuelLevelRiseStart: string | null;
+  /** REFUEL only: observed fuel-level-rise end (ISO); not pump duration. */
+  fuelLevelRiseEnd: string | null;
+  /** REFUEL only: observed fuel-level-rise duration in seconds; nullable. */
+  fuelLevelRiseDurationSeconds: number | null;
 }
 
 export type TripTimelineItem =

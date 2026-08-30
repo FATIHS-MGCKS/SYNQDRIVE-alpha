@@ -1,39 +1,47 @@
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { EnergyEvent } from './timeline.types';
+import {
+  formatRechargeDurationMinutes,
+  formatRefuelSignalChangeMinutes,
+  refuelPrimaryFuelDelta,
+  refuelSecondaryFuelDelta,
+} from './trips-energy-i18n';
 
 export function TripTimelineEnergyCard({ event, isDark }: { event: EnergyEvent; isDark: boolean }) {
+  const { t, locale } = useLanguage();
   const isRefuel = event.kind === 'REFUEL';
   const date = new Date(event.startTime);
   const end = new Date(event.endTime);
-  const dateLabel = date.toLocaleDateString('de-DE', {
+  const dateLabel = date.toLocaleDateString(locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   });
-  const timeLabel = `${date.toLocaleTimeString('de-DE', {
+  const timeLabel = `${date.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
-  })} – ${end.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+  })} – ${end.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
 
-  const durationMin = Math.max(1, Math.round(event.durationSeconds / 60));
+  const primaryDelta = isRefuel
+    ? refuelPrimaryFuelDelta(event)
+    : event.socDeltaPercent != null
+      ? `+${event.socDeltaPercent.toFixed(0)} % SoC`
+      : null;
+  const secondaryDelta = isRefuel
+    ? refuelSecondaryFuelDelta(event)
+    : event.energyDeltaKwh != null
+      ? `+${event.energyDeltaKwh.toFixed(1)} kWh`
+      : null;
 
-  let primaryDelta: string | null = null;
-  let secondaryDelta: string | null = null;
-  if (isRefuel) {
-    if (event.fuelDeltaLiters != null) {
-      primaryDelta = `+${event.fuelDeltaLiters.toFixed(1)} L`;
-    }
-    if (event.fuelDeltaPercent != null) {
-      secondaryDelta = `+${event.fuelDeltaPercent.toFixed(0)} %`;
-    }
-  } else {
-    if (event.socDeltaPercent != null) {
-      primaryDelta = `+${event.socDeltaPercent.toFixed(0)} % SoC`;
-    }
-    if (event.energyDeltaKwh != null) {
-      secondaryDelta = `+${event.energyDeltaKwh.toFixed(1)} kWh`;
-    }
-  }
+  const refuelSignalChangeMinutes =
+    isRefuel && event.fuelLevelRiseDurationSeconds != null
+      ? formatRefuelSignalChangeMinutes(event.fuelLevelRiseDurationSeconds)
+      : null;
+
+  const rechargeDurationMinutes = !isRefuel
+    ? formatRechargeDurationMinutes(event.durationSeconds)
+    : null;
 
   const accentBg = isRefuel
     ? isDark
@@ -73,16 +81,48 @@ export function TripTimelineEnergyCard({ event, isDark }: { event: EnergyEvent; 
             <span className="text-[10px] font-bold text-foreground">{dateLabel}</span>
             <span className="text-[10px] font-medium text-muted-foreground">{timeLabel}</span>
             <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${pillBg}`}>
-              {isRefuel ? 'Tanken' : 'Laden'}
+              {isRefuel ? t('trips.energy.refuel.kindLabel') : t('trips.energy.recharge.kindLabel')}
             </span>
             <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${confidenceTint}`}>
               {event.confidence}
             </span>
           </div>
           <div className="flex items-center gap-3 flex-wrap text-[10px] font-medium text-muted-foreground">
+            {isRefuel && (
+              <span className={`font-semibold ${accentText}`}>
+                {t('trips.energy.refuel.detected')}
+              </span>
+            )}
             {primaryDelta && <span className={`font-semibold ${accentText}`}>{primaryDelta}</span>}
             {secondaryDelta && <span>{secondaryDelta}</span>}
-            <span>{durationMin} min</span>
+            {refuelSignalChangeMinutes != null && (
+              <span>
+                {t('trips.energy.refuel.signalChangeMinutes', {
+                  minutes: refuelSignalChangeMinutes,
+                })}
+              </span>
+            )}
+            {rechargeDurationMinutes != null && (
+              <span>
+                {t('trips.energy.recharge.durationMinutes', {
+                  minutes: rechargeDurationMinutes,
+                })}
+              </span>
+            )}
+            {isRefuel && (
+              <span className="text-[9px] text-muted-foreground/80">
+                {t('trips.energy.refuel.detectionWindow', {
+                  from: date.toLocaleTimeString(locale, {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }),
+                  to: end.toLocaleTimeString(locale, {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }),
+                })}
+              </span>
+            )}
             {event.odometerEndKm != null && (
               <span>@ {Math.round(event.odometerEndKm).toLocaleString()} km</span>
             )}
