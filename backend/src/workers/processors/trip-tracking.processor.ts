@@ -14,6 +14,7 @@ import { TripMetricsService } from '../../modules/observability/trip-metrics.ser
 import { observeQueueLag } from '../../modules/observability/queue-lag.util';
 
 import { readWorkerConcurrency } from '@config/worker-concurrency.util';
+import { runWithDimoRequestContext } from '@modules/dimo/provider-budget/dimo-request-context';
 
 @Processor(QUEUE_NAMES.TRIP_TRACKING, {
   concurrency: readWorkerConcurrency('WORKER_TRIP_TRACKING_CONCURRENCY', 5),
@@ -31,6 +32,20 @@ export class TripTrackingProcessor extends WorkerHost {
   }
 
   async process(job: Job<TripTrackingJobData>): Promise<void> {
+    const { trigger } = job.data;
+    const priority =
+      trigger === TRIP_TRACKING_TRIGGERS.ACTIVE_TICK ||
+      trigger === TRIP_TRACKING_TRIGGERS.FINALIZE
+        ? 'CRITICAL'
+        : 'HIGH';
+
+    return runWithDimoRequestContext(
+      { category: 'ACTIVE_TRIP', priority },
+      () => this.processTripTrackingJob(job),
+    );
+  }
+
+  private async processTripTrackingJob(job: Job<TripTrackingJobData>): Promise<void> {
     const { vehicleId, trigger } = job.data;
     const startedAt = new Date();
     observeQueueLag(this.tripMetrics, QUEUE_NAMES.TRIP_TRACKING, job);

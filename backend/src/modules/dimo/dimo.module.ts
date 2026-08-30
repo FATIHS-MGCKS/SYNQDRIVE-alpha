@@ -1,7 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import dimoConfig from '@config/dimo.config';
-import dimoProviderLimiterConfig from '@config/dimo-provider-limiter.config';
 import deviceConnectionWebhookInboxConfig from '@config/device-connection-webhook-inbox.config';
 import connectivityRecoveryConfig from '@config/connectivity-recovery.config';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
@@ -10,10 +9,6 @@ import { SharedGuardsModule } from '@shared/auth/shared-guards.module';
 import { DimoController } from './dimo.controller';
 import { DimoWebhookController } from './dimo-webhook.controller';
 import { DimoAuthService } from './dimo-auth.service';
-import { DimoProviderGateway } from './provider/dimo-provider-gateway.service';
-import { DimoProviderAdmissionService } from './provider/dimo-provider-admission.service';
-import { DimoProviderLimiterService } from './provider/dimo-provider-limiter.service';
-import { DimoProviderMetricsService } from './provider/dimo-provider-metrics.service';
 import { DimoTelemetryService } from './dimo-telemetry.service';
 import { DimoVehicleSyncService } from './dimo-vehicle-sync.service';
 import { DimoApiSyncService } from './dimo-api-sync.service';
@@ -45,14 +40,15 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
 import { EventTripAssociationModule } from '../vehicle-intelligence/trips/event-association/event-trip-association.module';
 import { DimoConnectivityLifecycleDiModule } from './dimo-connectivity-lifecycle-di.module';
 import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-link.service';
+import { DimoProviderBudgetModule } from './provider-budget/dimo-provider-budget.module';
 
 @Module({
   imports: [
     ConfigModule.forFeature(dimoConfig),
-    ConfigModule.forFeature(dimoProviderLimiterConfig),
     ConfigModule.forFeature(deviceConnectionWebhookInboxConfig),
     ConfigModule.forFeature(deviceConnectionEpisodeResolutionOutboxConfig),
     ConfigModule.forFeature(connectivityRecoveryConfig),
+    DimoProviderBudgetModule,
     DimoConnectivityLifecycleDiModule,
     EventTripAssociationModule,
     ActivityLogModule,
@@ -62,10 +58,6 @@ import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-lin
   ],
   controllers: [DimoController, DimoWebhookController, DeviceConnectionWebhookInboxController],
   providers: [
-    DimoProviderGateway,
-    DimoProviderAdmissionService,
-    DimoProviderLimiterService,
-    DimoProviderMetricsService,
     DimoAuthService,
     DimoTelemetryService,
     DimoVehicleSyncService,
@@ -95,7 +87,6 @@ import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-lin
     RpmWebhookQueryService,
   ],
   exports: [
-    DimoProviderGateway,
     DimoAuthService,
     DimoTelemetryService,
     DimoVehicleSyncService,

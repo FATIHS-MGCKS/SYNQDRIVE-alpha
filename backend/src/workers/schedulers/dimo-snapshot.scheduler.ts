@@ -26,6 +26,7 @@ import {
 } from './snapshot-polling/snapshot-polling-tier.types';
 import { evaluateFleetEnvelope } from './snapshot-polling/current-prod-fleet-envelope';
 import { readWorkerConcurrency } from '@config/worker-concurrency.util';
+import { DimoQueueBackpressureService } from '@modules/dimo/provider-budget/dimo-queue-backpressure.service';
 
 /**
  * Enqueues DIMO snapshot poll jobs on a fixed 30 s cadence.
@@ -119,11 +120,23 @@ export class DimoSnapshotScheduler {
     private readonly prisma: PrismaService,
     private readonly reconciliation: TripReconciliationService,
     @Optional() private readonly configService?: ConfigService,
+    @Optional() private readonly queueBackpressure?: DimoQueueBackpressureService,
   ) {}
 
   @Interval(30000)
   async enqueueSnapshotJobs(): Promise<void> {
     if (!canEnqueueQueue(this.logger, 'dimo-snapshot')) return;
+
+    if (this.queueBackpressure) {
+      const defer = await this.queueBackpressure.shouldDeferSnapshotEnqueue();
+      if (defer) {
+        this.logger.warn(
+          'Snapshot enqueue deferred — dimo.snapshot.poll waiting backlog above threshold',
+        );
+        return;
+      }
+    }
+
     const tickStartedAt = new Date();
     const nowMs = tickStartedAt.getTime();
 

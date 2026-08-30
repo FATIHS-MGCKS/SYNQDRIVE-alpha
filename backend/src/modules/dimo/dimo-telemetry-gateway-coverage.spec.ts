@@ -3,18 +3,18 @@ import * as path from 'path';
 
 /**
  * Static guard: every telemetry HTTP exit in DimoTelemetryService must route
- * through DimoProviderGateway.execute (P1.3-S1 canonical coverage).
+ * through DimoRequestExecutor.execute (P1.3 canonical global budget coverage).
  */
-describe('DimoTelemetryService gateway coverage guard', () => {
+describe('DimoTelemetryService executor coverage guard', () => {
   const telemetryServicePath = path.join(__dirname, 'dimo-telemetry.service.ts');
 
-  it('wraps each this.client.post in providerGateway.execute', () => {
+  it('wraps each this.client.post in dimoRequestExecutor.execute', () => {
     const src = fs.readFileSync(telemetryServicePath, 'utf8');
     const postCalls = src.match(/this\.client\.post/g) ?? [];
-    const gatewayCalls = src.match(/this\.providerGateway\.execute/g) ?? [];
+    const executorCalls = src.match(/this\.dimoRequestExecutor\.execute/g) ?? [];
 
     expect(postCalls.length).toBeGreaterThan(0);
-    expect(gatewayCalls.length).toBe(postCalls.length);
+    expect(executorCalls.length).toBe(postCalls.length);
   });
 
   it('does not expose queryGraphQL HTTP outside postGraphQL private helper', () => {

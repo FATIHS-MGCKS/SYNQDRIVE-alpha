@@ -8,6 +8,7 @@ on:
       - 'docs/audits/vehicle-detail-**'
       - 'docs/testing/vehicle-detail-**'
       - '.github/workflows/vehicle-detail-production-readiness.yml'
+  workflow_dispatch:
   push:
     branches:
       - main

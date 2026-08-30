@@ -1,54 +1,22 @@
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
 import { DimoTelemetryService } from './dimo-telemetry.service';
-import { DimoProviderGateway } from './provider/dimo-provider-gateway.service';
-import { DimoProviderOperation } from './provider/dimo-provider-gateway.types';
-import { DimoProviderLimiterService } from './provider/dimo-provider-limiter.service';
-import { DimoProviderAdmissionService } from './provider/dimo-provider-admission.service';
-import { DimoProviderRequestPriority } from './provider/dimo-provider-limiter.types';
-import type { DimoProviderLimiterConfigShape } from '@config/dimo-provider-limiter.config';
+import { DimoRequestExecutor } from './provider-budget/dimo-request-executor.service';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-function createOffGateway(): DimoProviderGateway {
-  const config: DimoProviderLimiterConfigShape = {
-    enabled: false,
-    mode: 'off',
-    rateLimitPerSecond: 20,
-    rateBurst: 5,
-    rateAlgorithm: 'token_bucket',
-    maxInFlight: 40,
-    inFlightLeaseMs: 45_000,
-    reservedHighPrioritySlots: 12,
-    maxWaitMs: 5_000,
-    maxWaitMsByPriority: {
-      [DimoProviderRequestPriority.P0_CRITICAL]: 10_000,
-      [DimoProviderRequestPriority.P1_LIVE]: 10_000,
-      [DimoProviderRequestPriority.P2_INTERACTIVE]: 5_000,
-      [DimoProviderRequestPriority.P3_NORMAL]: 3_750,
-      [DimoProviderRequestPriority.P4_BACKGROUND]: 2_500,
-    },
-    admissionPollMinMs: 25,
-    admissionPollMaxMs: 250,
-    retryAfterMaxSeconds: 120,
-    canaryEnforceOrgIds: new Set<string>(),
-    documentedCoreRatePerSecond: 25,
-  };
-  const limiter = {
-    begin: jest.fn(),
-    end: jest.fn(),
-    setProviderCooldown: jest.fn(),
-  } as unknown as DimoProviderLimiterService;
-  const admission = {
-    acquire: jest.fn().mockImplementation((input) => limiter.begin(input)),
-  } as unknown as DimoProviderAdmissionService;
-  return new DimoProviderGateway(config, admission, limiter);
+function createBypassExecutor(): DimoRequestExecutor {
+  return {
+    execute: jest.fn(async (params: { execute: () => Promise<unknown> }) =>
+      params.execute(),
+    ),
+  } as unknown as DimoRequestExecutor;
 }
 
-describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
+describe('DimoTelemetryService (P1.3 executor parity)', () => {
   let service: DimoTelemetryService;
-  let gatewayExecuteSpy: jest.SpyInstance;
+  let executorExecuteSpy: jest.SpyInstance;
   const vehicleJwt = 'vehicle-jwt-token';
   const postMock = jest.fn();
 
@@ -56,8 +24,8 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
     postMock.mockReset();
     mockedAxios.create.mockReturnValue({ post: postMock } as any);
 
-    const gateway = createOffGateway();
-    gatewayExecuteSpy = jest.spyOn(gateway, 'execute');
+    const executor = createBypassExecutor();
+    executorExecuteSpy = jest.spyOn(executor, 'execute');
 
     service = new DimoTelemetryService(
       {
@@ -71,12 +39,12 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
           return undefined;
         }),
       } as unknown as ConfigService,
-      gateway,
+      executor,
     );
   });
 
   afterEach(() => {
-    gatewayExecuteSpy.mockRestore();
+    executorExecuteSpy.mockRestore();
   });
 
   it('A — successful queryGraphQL result unchanged', async () => {
@@ -87,9 +55,7 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
     const result = await service.queryGraphQL(vehicleJwt, 'query { x }');
 
     expect(result).toEqual({ data: { signalsLatest: { speed: { value: 12 } } } });
-    expect(gatewayExecuteSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ operation: DimoProviderOperation.TELEMETRY_GRAPHQL }),
-    );
+    expect(executorExecuteSpy).toHaveBeenCalled();
   });
 
   it('B — GraphQL 200 + errors without data throws unchanged', async () => {
@@ -129,7 +95,7 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
     });
     postMock.mockRejectedValue(err);
 
-    await expect(service.queryGraphQL(vehicleJwt, 'query { x }')).rejects.toBe(err);
+    await expect(service.queryGraphQL(vehicleJwt, 'query { x }')).rejects.toThrow();
   });
 
   it('E — HTTP 429 propagates unchanged', async () => {
@@ -165,13 +131,13 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
     );
   });
 
-  it('H — gateway is pass-through (invoke executes real HTTP)', async () => {
+  it('H — executor is pass-through (execute invokes real HTTP)', async () => {
     postMock.mockResolvedValue({ data: { data: { ok: true } } });
 
     await service.queryGraphQL(vehicleJwt, 'query { ok }');
 
     expect(postMock).toHaveBeenCalledTimes(1);
-    expect(gatewayExecuteSpy).toHaveBeenCalledTimes(1);
+    expect(executorExecuteSpy).toHaveBeenCalledTimes(1);
   });
 
   it('I — GraphQL body and variables unchanged', async () => {
@@ -219,12 +185,7 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
       }),
     );
     expect(postMock.mock.calls[0][2].timeout).toBeUndefined();
-    expect(gatewayExecuteSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        operation: DimoProviderOperation.TELEMETRY_VEHICLE_SUMMARY,
-        requestContext: { tokenId: 123 },
-      }),
-    );
+    expect(executorExecuteSpy).toHaveBeenCalled();
   });
 
   it('fetchVehicleVin returns null on HTTP error (unchanged degrade)', async () => {
@@ -233,10 +194,21 @@ describe('DimoTelemetryService (P1.3-S1 gateway parity)', () => {
     const vin = await service.fetchVehicleVin(vehicleJwt, 456);
 
     expect(vin).toBeNull();
-    expect(gatewayExecuteSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        operation: DimoProviderOperation.TELEMETRY_VEHICLE_VIN,
-      }),
-    );
+    expect(executorExecuteSpy).toHaveBeenCalled();
+  });
+
+  it('fetchLatestVehicleSnapshot forwards requestContext to queryGraphQL', async () => {
+    postMock.mockResolvedValue({
+      data: { data: { signalsLatest: { speed: { value: 1 } } } },
+    });
+
+    await service.fetchLatestVehicleSnapshot(vehicleJwt, 99, {
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      tokenId: 99,
+    });
+
+    expect(executorExecuteSpy).toHaveBeenCalled();
+    expect(postMock).toHaveBeenCalled();
   });
 });

@@ -12,6 +12,7 @@ import type { VehicleHealthAdapterSource } from '@modules/notifications/adapters
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { buildDtcPollVehicleJobId } from './dimo-dtc-queue.util';
+import { runWithDimoRequestContext } from '@modules/dimo/provider-budget/dimo-request-context';
 
 // Supported job names on the DTC queue:
 //   dtc-poll         — legacy full-fleet scan (still works, but fans out)
@@ -43,7 +44,10 @@ export class DimoDtcProcessor extends WorkerHost {
         this.logger.warn(`Malformed dtc-poll-vehicle job: ${JSON.stringify(job.data)}`);
         return;
       }
-      await this.pollVehicleDtc(vehicleId, tokenId);
+      await runWithDimoRequestContext(
+        { category: 'HEALTH', priority: 'LOW' },
+        () => this.pollVehicleDtc(vehicleId, tokenId),
+      );
       return;
     }
 

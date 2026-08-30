@@ -36,6 +36,31 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-global-provider-budget-p1-3-2026-08-29',
+    version: '4.9.1007',
+    title: 'P1.3 — Global DIMO provider budget (Redis lease semaphore)',
+    summary: [
+      'Redis-backed global DIMO provider budget via DimoProviderBudgetService + DimoRequestExecutor.',
+      'All DIMO HTTP paths wrapped: telemetry GraphQL, auth/token exchange, identity sync, triggers REST.',
+      'Lease-based semaphore (ZSET + Lua): atomic acquire/release, TTL crash recovery, multi-replica safe.',
+      'FAIL CLOSED on Redis outage — jobs retry, no provider flood.',
+      '429 Retry-After parsing + provider cooldown; bounded exponential backoff for 5xx/timeouts.',
+      'Category priorities: ACTIVE_TRIP > LIVE_SNAPSHOT > RECONCILIATION > enrichment > HEALTH > IDENTITY.',
+      'Queue backpressure: snapshot enqueue defer when waiting backlog ≥ 500.',
+      'Metrics: synqdrive_dimo_global_in_flight, acquire_wait, 429_total, queue_oldest_job_age.',
+      'N≈1000: CONDITIONALLY_CERTIFIED — architecture proven; provider ceiling still unverified.',
+    ],
+    reason:
+      'P1.3 — make provider concurrency safe as fleet approaches N≈1000 with globally shared budget.',
+    previousBehavior:
+      'P1.2 bounded process-local BullMQ concurrency only; no cross-replica provider coordination.',
+    details:
+      'backend: provider-budget/*, dimo-telemetry/auth/api-sync/triggers integration, queue backpressure. architecture/DIMO_GLOBAL_PROVIDER_BUDGET_P1_3_2026-08-29.md + RUNBOOK.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T17:30:00.000Z',
+  },
+  {
     id: 'dimo-provider-concurrency-p1-3-s4-production-canary-2026-08-30',
     version: '4.9.1006',
     title: 'P1.3-S4 — DIMO provider production canary, rate smoothing & rollout safety',

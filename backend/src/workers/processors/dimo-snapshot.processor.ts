@@ -41,6 +41,7 @@ export interface DimoSnapshotJobData {
 }
 
 import { readWorkerConcurrency } from '@config/worker-concurrency.util';
+import { runWithDimoRequestContext } from '@modules/dimo/provider-budget/dimo-request-context';
 
 /**
  * BullMQ worker options:
@@ -78,6 +79,13 @@ export class DimoSnapshotProcessor extends WorkerHost {
   }
 
   async process(job: Job<DimoSnapshotJobData>): Promise<void> {
+    return runWithDimoRequestContext(
+      { category: 'LIVE_SNAPSHOT', priority: 'HIGH' },
+      () => this.processSnapshotJob(job),
+    );
+  }
+
+  private async processSnapshotJob(job: Job<DimoSnapshotJobData>): Promise<void> {
     const { vehicleId, dimoTokenId } = job.data;
     const startedAt = new Date();
     observeQueueLag(this.tripMetrics, QUEUE_NAMES.DIMO_SNAPSHOT, job);
