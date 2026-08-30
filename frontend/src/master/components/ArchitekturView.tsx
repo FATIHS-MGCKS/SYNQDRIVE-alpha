@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Vehicle Stress & Misuse Hints (P2.2.64 — V4.9.992)', icon: Globe,
+    endpoint: 'Bookings / Customers / Trips → MisuseCasesPanel + RentalStressAnalysisCard',
+    service: '**Locale flow:** `useLanguage()` → `rental-misuse-stress-i18n.ts` → `MisuseCasesPanel`, `RentalStressAnalysisCard`, `misuse-case-lifecycle.ui`. **Keys:** +45 EN+DE `misuseStress.*` (9661→9706); reuses `docUpload.entityReview.confidence.*`, `STRESS_TOOLTIPS.vehicleStress`. **Evidence taxonomy:** DE frozen `trips/*`; EN adapter const maps. **Fetch:** `[orgId, vehicleId, tripId, bookingId, customerId, limit]` — no locale. **Guardrails:** P264 enforce-clean (4 paths) — 0 findings. **Frozen:** P216–P263, Data Analyse, dead IAM CRUD. **Tests:** `rental-vehicle-stress-misuse-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_RENTAL_VEHICLE_STRESS_MISUSE_P2_2_64_2026-08-30.md' },
   { name: 'Platform i18n Rental IAM Roles & Security (P2.2.63 — V4.9.991)', icon: Globe,
     endpoint: 'Settings → Users & Roles → Roles & Access / Security & Audit tabs',
     service: '**Locale flow:** `useLanguage().locale` → `rental-organization-users-roles-i18n.ts` → `RolesAccessTab`, `SecurityAuditTab`. **Keys:** +7 EN+DE (9654→9661); reuses P262 `iam.audit.*`, `iam.permission.*`, `nav.*`. **Fetch:** locale-independent; P262 zero-refetch preserved. **Guardrails:** P263 enforce-clean exact (2 paths) — 0 findings; P262 frozen (11 paths). **Excluded:** dead `RolesTab` CRUD. **Tests:** `rental-mounted-roles-security-localization.test.tsx` same-mount + audit resolver. **Semantics:** presentation-only; Category E=0.',

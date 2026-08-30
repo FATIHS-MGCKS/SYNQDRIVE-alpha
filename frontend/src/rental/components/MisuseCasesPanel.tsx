@@ -2,32 +2,35 @@ import { useEffect, useState } from 'react';
 import { api, type MisuseCaseRecord } from '../../lib/api';
 import { StatusChip } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { SupportedLocale } from '../../i18n/locales';
 import {
   formatOperationalIssueEvidence,
   normalizeOperationalIssues,
   sanitizeUserFacingIssueText,
   type OperationalIssue,
 } from '../lib/operational-issues';
-import {
-  confidenceLabel as contextConfidenceLabel,
-  contextClassificationLabel,
-  evidenceGradeLabel,
-} from './trips/event-context-ui';
-import { RENTAL_COPY } from './trips/trips-view-ui';
 import type { TripEvidenceCase, TripEvidenceLevel } from '../../lib/api';
 import {
-  EVIDENCE_LEVEL_LABEL,
-  EVIDENCE_SOURCE_LABEL,
   REVIEW_HINT_DEFAULT,
-  evidenceConfidenceLabel,
   formatEvidenceMeasurements,
   resolveEvidenceCardTitle,
 } from './trips/behavior-ui.utils';
-
 import {
   misuseCaseDecisionHint,
   misuseCaseStatusLabel,
 } from '../lib/misuse-case-lifecycle.ui';
+import {
+  resolveContextClassificationLabel,
+  resolveContextConfidenceLabel,
+  resolveEvidenceConfidenceLabel,
+  resolveEvidenceGradeLabel,
+  resolveEvidenceLevelLabel,
+  resolveEvidenceSourceLabel,
+  resolveMisuseConfidenceLabel,
+  resolveMisuseSeverityLabel,
+  type MisuseStressTranslate,
+} from '../lib/rental-misuse-stress-i18n';
 
 export type { MisuseCaseRecord };
 
@@ -38,14 +41,14 @@ type MisuseCasesPanelProps = {
   bookingId?: string;
   customerId?: string;
   title?: string;
-  /** Calm, positive heading shown when there are no cases (e.g. trip detail). */
   emptyTitle?: string;
-  /** Calm subline shown when there are no cases. */
   emptyDescription?: string;
   compact?: boolean;
   embedded?: boolean;
   limit?: number;
 };
+
+type LoadErrorState = 'load_failed' | null;
 
 function evidenceLevelTone(level: TripEvidenceLevel): StatusTone {
   switch (level) {
@@ -94,40 +97,18 @@ function confidenceTone(confidence: string): StatusTone {
   }
 }
 
-function severityLabel(severity: string): string {
-  switch (severity) {
-    case 'CRITICAL':
-      return 'Kritisch';
-    case 'SEVERE':
-      return 'Schwer';
-    case 'WARNING':
-      return 'Auffällig';
-    default:
-      return 'Hinweis';
-  }
-}
-
-function confidenceLabel(confidence: string): string {
-  switch (confidence) {
-    case 'HIGH':
-      return 'Hohe Sicherheit';
-    case 'MEDIUM':
-      return 'Mittlere Sicherheit';
-    default:
-      return 'Geringe Sicherheit';
-  }
-}
-
 function EmptyMisuseState({
   title,
   emptyTitle,
   emptyDescription,
   embedded,
+  t,
 }: {
   title: string;
   emptyTitle?: string;
   emptyDescription?: string;
   embedded?: boolean;
+  t: MisuseStressTranslate;
 }) {
   if (embedded) return null;
 
@@ -136,9 +117,11 @@ function EmptyMisuseState({
       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
         {title}
       </h3>
-      <p className="text-xs font-medium text-foreground">{emptyTitle ?? 'Unauffällige Fahrt'}</p>
+      <p className="text-xs font-medium text-foreground">
+        {emptyTitle ?? t('misuseStress.empty.calmTitle')}
+      </p>
       <p className="text-xs text-muted-foreground mt-0.5">
-        {emptyDescription ?? 'Keine Hinweise auf Missbrauch oder Schaden für diese Fahrt.'}
+        {emptyDescription ?? t('misuseStress.empty.calmDescription')}
       </p>
     </div>
   );
@@ -196,43 +179,57 @@ function formatWindow(start?: string | null, end?: string | null): string | null
 function MisuseEvidenceDetails({
   evidenceCase,
   contextEvidence,
+  locale,
+  t,
 }: {
   evidenceCase: TripEvidenceCase | null;
   contextEvidence: ContextEvidence | null;
+  locale: SupportedLocale;
+  t: MisuseStressTranslate;
 }) {
   const measurementRows = evidenceCase ? formatEvidenceMeasurements(evidenceCase.measurements) : [];
   const usedSignals = contextEvidence?.usedSignals ?? [];
 
   if (!evidenceCase && !contextEvidence) return null;
 
+  const nativeEventCount = contextEvidence?.sourceAnchors?.drivingEventIds?.length ?? 0;
+  const nativeEventLabel =
+    nativeEventCount === 1
+      ? t('misuseStress.evidence.nativeEventOne')
+      : nativeEventCount > 1
+        ? t('misuseStress.evidence.nativeEventMany', { count: nativeEventCount })
+        : t('misuseStress.evidence.none');
+  const windowLabel = formatWindow(contextEvidence?.windowStart, contextEvidence?.windowEnd);
+
   return (
     <div className="mt-2 rounded-md border border-border/50 bg-muted/30 px-2.5 py-2 space-y-1.5">
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Beweislage
+          {t('misuseStress.evidence.sectionTitle')}
         </span>
         {evidenceCase && (
           <span className="rounded-full border border-border/60 px-1.5 py-0.5 text-[8px] font-medium text-muted-foreground">
-            {EVIDENCE_LEVEL_LABEL[evidenceCase.evidenceLevel]}
+            {resolveEvidenceLevelLabel(locale, evidenceCase.evidenceLevel)}
           </span>
         )}
         {contextEvidence?.evidenceGrade && (
           <span className="rounded-full border border-border/60 px-1.5 py-0.5 text-[8px] font-medium text-muted-foreground">
-            {evidenceGradeLabel(contextEvidence.evidenceGrade)}
+            {resolveEvidenceGradeLabel(locale, contextEvidence.evidenceGrade)}
           </span>
         )}
         {(evidenceCase?.confidence || contextEvidence?.confidence) && (
           <span className="rounded-full border border-border/60 px-1.5 py-0.5 text-[8px] font-medium text-muted-foreground">
             {evidenceCase
-              ? evidenceConfidenceLabel(evidenceCase.confidence)
-              : contextConfidenceLabel(contextEvidence?.confidence ?? '')}
+              ? resolveEvidenceConfidenceLabel(locale, evidenceCase.confidence)
+              : resolveContextConfidenceLabel(locale, contextEvidence?.confidence ?? '')}
           </span>
         )}
       </div>
 
       {(evidenceCase?.reasons.length ?? 0) > 0 && (
         <p className="text-[9px] text-muted-foreground">
-          Gründe: {evidenceCase!.reasons.slice(0, 4).join(' · ')}
+          {t('misuseStress.evidence.reasonsPrefix')}{' '}
+          {evidenceCase!.reasons.slice(0, 4).join(' · ')}
         </p>
       )}
 
@@ -248,9 +245,9 @@ function MisuseEvidenceDetails({
 
       {usedSignals.length > 0 && (
         <p className="text-[9px] text-muted-foreground">
-          Signale: {usedSignals.join(', ')}
+          {t('misuseStress.evidence.signalsPrefix')} {usedSignals.join(', ')}
           {(contextEvidence?.missingSignals?.length ?? 0) > 0
-            ? ` · fehlend: ${contextEvidence!.missingSignals!.join(', ')}`
+            ? `${t('misuseStress.evidence.missingSignals')} ${contextEvidence!.missingSignals!.join(', ')}`
             : ''}
         </p>
       )}
@@ -264,46 +261,35 @@ function MisuseEvidenceDetails({
                   key={c}
                   className="rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-medium text-sky-600 dark:text-status-info"
                 >
-                  {contextClassificationLabel(c)}
+                  {resolveContextClassificationLabel(locale, c)}
                 </span>
               ))}
             </div>
           )}
           <p className="text-[10px] text-muted-foreground">
-            Anker:{' '}
-            {(contextEvidence.sourceAnchors?.drivingEventIds?.length ?? 0) > 0
-              ? `${contextEvidence.sourceAnchors!.drivingEventIds!.length} natives Ereignis${
-                  contextEvidence.sourceAnchors!.drivingEventIds!.length === 1 ? '' : 'se'
-                }`
-              : 'keine'}
-            {formatWindow(contextEvidence.windowStart, contextEvidence.windowEnd)
-              ? ` · Fenster ${formatWindow(contextEvidence.windowStart, contextEvidence.windowEnd)}`
-              : ''}
+            {t('misuseStress.evidence.anchorsPrefix')} {nativeEventLabel}
+            {windowLabel ? `${t('misuseStress.evidence.windowPrefix')}${windowLabel}` : ''}
           </p>
         </>
       )}
 
       {evidenceCase?.source && (
         <p className="text-[9px] text-muted-foreground">
-          Quelle: {EVIDENCE_SOURCE_LABEL[evidenceCase.source]}
+          {t('misuseStress.evidence.sourcePrefix')}{' '}
+          {resolveEvidenceSourceLabel(locale, evidenceCase.source)}
         </p>
       )}
     </div>
   );
 }
 
-/**
- * @deprecated Prefer MisuseEvidenceDetails — kept for backward compatibility during rollout.
- */
-function MisuseContextEvidence({ evidence }: { evidence: ContextEvidence }) {
-  return <MisuseEvidenceDetails evidenceCase={null} contextEvidence={evidence} />;
-}
-
 function issueForCase(
   issue: OperationalIssue,
   raw: MisuseCaseRecord | undefined,
   compact: boolean,
-  embedded?: boolean,
+  embedded: boolean | undefined,
+  locale: SupportedLocale,
+  t: MisuseStressTranslate,
 ) {
   const severity =
     raw?.severity ??
@@ -315,7 +301,8 @@ function issueForCase(
   const showReviewDisclaimer =
     evidenceCase?.requiresHumanReview !== false || !evidenceCase;
   const lifecycleStatus = raw?.lifecycle?.status ?? raw?.status;
-  const lifecycleHint = misuseCaseDecisionHint(raw?.lifecycle?.decisionEligibility);
+  const lifecycleHint = misuseCaseDecisionHint(t, raw?.lifecycle?.decisionEligibility);
+  const resolvedStatusLabel = misuseCaseStatusLabel(t, lifecycleStatus);
 
   return (
     <div
@@ -332,23 +319,23 @@ function issueForCase(
         <span className="text-[11px] font-semibold text-foreground">{cardTitle}</span>
         {evidenceCase ? (
           <StatusChip tone={evidenceLevelTone(evidenceCase.evidenceLevel)} dot className="text-[9px]">
-            {EVIDENCE_LEVEL_LABEL[evidenceCase.evidenceLevel]}
+            {resolveEvidenceLevelLabel(locale, evidenceCase.evidenceLevel)}
           </StatusChip>
         ) : (
           <StatusChip tone={severityTone(severity)} dot className="text-[9px]">
-            {severityLabel(severity)}
+            {resolveMisuseSeverityLabel(t, severity)}
           </StatusChip>
         )}
         {(evidenceCase?.confidence === 'LOW' || confidence === 'LOW' || confidence === 'INSUFFICIENT') && (
           <StatusChip tone={confidenceTone(confidence)} className="text-[9px]">
             {evidenceCase
-              ? evidenceConfidenceLabel(evidenceCase.confidence)
-              : confidenceLabel(confidence)}
+              ? resolveEvidenceConfidenceLabel(locale, evidenceCase.confidence)
+              : resolveMisuseConfidenceLabel(t, confidence)}
           </StatusChip>
         )}
-        {lifecycleStatus && misuseCaseStatusLabel(lifecycleStatus) && (
+        {lifecycleStatus && resolvedStatusLabel && (
           <StatusChip tone="neutral" className="text-[9px]">
-            {misuseCaseStatusLabel(lifecycleStatus)}
+            {resolvedStatusLabel}
           </StatusChip>
         )}
       </div>
@@ -370,16 +357,22 @@ function issueForCase(
         </div>
       ) : null}
       {(evidenceCase || contextEvidence) && (
-        <MisuseEvidenceDetails evidenceCase={evidenceCase} contextEvidence={contextEvidence} />
+        <MisuseEvidenceDetails
+          evidenceCase={evidenceCase}
+          contextEvidence={contextEvidence}
+          locale={locale}
+          t={t}
+        />
       )}
       {showReviewDisclaimer && (
         <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
-          {lifecycleHint ?? RENTAL_COPY.misuseReviewDisclaimer ?? REVIEW_HINT_DEFAULT}
+          {lifecycleHint ?? t('misuseStress.reviewDisclaimer') ?? REVIEW_HINT_DEFAULT}
         </p>
       )}
       {issue.recommendedAction && !compact && !embedded && (
         <p className="text-[10px] text-muted-foreground mt-1">
-          Empfohlen: {sanitizeUserFacingIssueText(issue.recommendedAction)}
+          {t('misuseStress.recommendedPrefix')}{' '}
+          {sanitizeUserFacingIssueText(issue.recommendedAction)}
         </p>
       )}
     </div>
@@ -392,16 +385,18 @@ export function MisuseCasesPanel({
   tripId,
   bookingId,
   customerId,
-  title = 'Prüfhinweise',
+  title,
   emptyTitle,
   emptyDescription,
   compact = false,
   embedded = false,
   limit = 20,
 }: MisuseCasesPanelProps) {
+  const { t, locale } = useLanguage();
+  const resolvedTitle = title ?? t('misuseStress.panel.defaultTitle');
   const [cases, setCases] = useState<MisuseCaseRecord[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<LoadErrorState | string | null>(null);
 
   useEffect(() => {
     if (!orgId) return;
@@ -426,7 +421,7 @@ export function MisuseCasesPanel({
         .catch((err: unknown) => {
           if (cancelled) return;
           setCases([]);
-          setError(err instanceof Error ? err.message : 'Hinweise konnten nicht geladen werden');
+          setError(err instanceof Error ? err.message : 'load_failed');
         })
         .finally(() => {
           if (!cancelled) setLoading(false);
@@ -437,13 +432,20 @@ export function MisuseCasesPanel({
     };
   }, [orgId, vehicleId, tripId, bookingId, customerId, limit]);
 
+  const renderError = () => {
+    if (!error) return null;
+    if (error === 'load_failed') return t('misuseStress.error.loadFailed');
+    return error;
+  };
+
   if (!orgId) {
     return (
       <EmptyMisuseState
-        title={title}
+        title={resolvedTitle}
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
         embedded={embedded}
+        t={t}
       />
     );
   }
@@ -451,7 +453,7 @@ export function MisuseCasesPanel({
   if (loading) {
     return (
       <div className="rounded-lg border border-border surface-premium p-4 text-xs text-muted-foreground">
-        Hinweise werden geladen…
+        {t('misuseStress.panel.loading')}
       </div>
     );
   }
@@ -459,7 +461,7 @@ export function MisuseCasesPanel({
   if (error) {
     return (
       <div className="rounded-lg border border-border surface-premium p-4 text-xs text-muted-foreground">
-        {error}
+        {renderError()}
       </div>
     );
   }
@@ -467,10 +469,11 @@ export function MisuseCasesPanel({
   if (cases.length === 0) {
     return (
       <EmptyMisuseState
-        title={title}
+        title={resolvedTitle}
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
         embedded={embedded}
+        t={t}
       />
     );
   }
@@ -479,15 +482,20 @@ export function MisuseCasesPanel({
   if (issues.length === 0) {
     return (
       <EmptyMisuseState
-        title={title}
+        title={resolvedTitle}
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
         embedded={embedded}
+        t={t}
       />
     );
   }
   const rawById = new Map(cases.map((c) => [c.id, c]));
   const criticalCount = issues.filter((issue) => issue.severity === 'critical' || issue.domain === 'damage').length;
+  const summaryLine =
+    issues.length === 1
+      ? t('misuseStress.summary.countOne')
+      : t('misuseStress.summary.countMany', { count: issues.length });
 
   return (
     <div
@@ -505,16 +513,18 @@ export function MisuseCasesPanel({
               : 'text-xs font-semibold uppercase tracking-wider text-muted-foreground'
           }
         >
-          {title}
+          {resolvedTitle}
         </h3>
         <p className="text-[10px] text-muted-foreground">
-          {issues.length === 1 ? '1 Prüfhinweis' : `${issues.length} Prüfhinweise`}
-          {criticalCount > 0 ? ` · ${criticalCount} mit Schadensbezug` : ''}
+          {summaryLine}
+          {criticalCount > 0
+            ? t('misuseStress.summary.damageRelated', { count: criticalCount })
+            : ''}
         </p>
       </div>
       <div className={embedded ? 'space-y-2' : 'divide-y divide-border'}>
         {issues.map((issue) =>
-          issueForCase(issue, rawById.get(issue.primarySource.sourceId ?? ''), compact, embedded),
+          issueForCase(issue, rawById.get(issue.primarySource.sourceId ?? ''), compact, embedded, locale, t),
         )}
       </div>
     </div>
