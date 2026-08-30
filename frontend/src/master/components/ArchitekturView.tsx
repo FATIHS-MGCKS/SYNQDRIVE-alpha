@@ -1101,7 +1101,8 @@ const INTEGRATIONS: IntegrationEntry[] = [
     color: 'text-[color:var(--status-success)]',
     apis: [
       { label: 'Reference dataset (ops)', detail: 'PostGIS `osm.fuel_stations` — Germany amenity=fuel via Geofabrik PBF + osmium tags-filter + pyosmium lean import. Not Prisma-managed. Refresh: `osm-fuel-stations-refresh.sh`. architecture/OSM_FUEL_STATIONS_DATASET_2026-08-30.md' },
-      { label: 'Energy Event firewall', detail: 'Dataset only — no RefuelDetector/scoreConfidence/persist/API coupling yet. Future FuelStationResolver reads SELECT-only.' },
+      { label: 'Fuel Station Resolver V1 (Phase C)', detail: '`FuelStationLocationResolverService` — geometry-aware coordinate → station match with separate station-match confidence (`fuel-station-resolver-v1`). Probe: `npm run fuel-station:resolve`. architecture/FUEL_STATION_RESOLVER_V1_2026-08-30.md. Read-only — no Energy Event hook yet.' },
+      { label: 'Energy Event firewall', detail: 'Dataset + resolver only — no RefuelDetector/scoreConfidence/persist/API coupling yet. Future enrichment reads resolver output into separate entity (Phase D+).' },
     ],
   },
   {

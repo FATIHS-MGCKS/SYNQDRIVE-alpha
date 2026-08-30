@@ -1928,3 +1928,56 @@ No changes to RefuelDetector, RechargeDetector, scoreConfidence, persist gates, 
 ---
 
 *End of audit — read-only + PB-14/15/16 execution evidence, 2026-08-30.*
+
+---
+
+## PB-17. Phase C — Fuel Station Resolver V1 Implementation Evidence
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-08-30 |
+| **Scope** | Isolated `FuelStationLocationResolverService` + probe CLI |
+| **Resolver version** | `fuel-station-resolver-v1` |
+| **Energy Event firewall** | **Confirmed — zero changes** |
+
+### PB-17.1 Deliverables
+
+| Artifact | Path |
+|----------|------|
+| Resolver service | `backend/src/modules/vehicle-intelligence/fuel-stations/fuel-station-location-resolver.service.ts` |
+| PostGIS repository | `fuel-station-candidate.repository.ts` |
+| Scoring / decision / dedupe | `fuel-station-match-*.ts`, `fuel-station-dedupe.ts` |
+| Probe CLI | `backend/scripts/ops/fuel-station-resolve-probe.ts` (`npm run fuel-station:resolve`) |
+| Architecture | `architecture/FUEL_STATION_RESOLVER_V1_2026-08-30.md` |
+| Unit tests | 26 passing (`npm run test:fuel-stations:unit`) |
+
+### PB-17.2 Production read-only validation
+
+Read-only probe against live `osm.fuel_stations` (no writes, no Energy Event hooks).
+
+| Location | Status | Notes |
+|----------|--------|-------|
+| Kassel Esso centroid (on-station) | **MATCHED HIGH** (score 233, 0 m) | `Esso Kölnische Straße` |
+| Kassel city reference (51.3127, 9.4797) | **NOT_FOUND** | Nearest station ~593 m — outside 250 m fallback |
+| Berlin / Hamburg / Frankfurt centers | **NOT_FOUND** | Nearest stations 748–1334 m from probe coords |
+| Munich center | **NOT_FOUND** | 1 candidate within 250 m but score below match threshold (~235 m) |
+
+**Calibration finding:** 100 m / 250 m radii are appropriate for on-site refuel GPS but will return `NOT_FOUND` for urban reference coordinates far from nearest station. Precision-first by design.
+
+GiST index confirmed via `--explain` (`fuel_stations_centroid_gist`).
+
+### PB-17.3 Energy Event firewall
+
+No changes to RefuelDetector, scoreConfidence, persistence, API, frontend, BullMQ, or enrichment entities.
+
+### PB-17.4 Overall status
+
+## **STATION RESOLVER V1 READY WITH CALIBRATION WARNING**
+
+250 m fallback radius is intentionally conservative; city-center probe coordinates often yield `NOT_FOUND` even when a station exists farther away. On-station coordinates match with HIGH confidence. Consider Phase D radius review against real refuel GPS offsets before enrichment persistence.
+
+**STOP.** Do not implement `VehicleEnergyEventFuelStationEnrichment`, BullMQ jobs, or `upsertSegment` hooks in this phase.
+
+---
+
+*PB-17 Phase C execution — 2026-08-30.*
