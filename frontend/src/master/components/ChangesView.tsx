@@ -36,24 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'dimo-provider-p1-3-s4-final-main-reconciliation-2026-08-30',
-    version: '4.9.1012',
-    title: 'P1.3-S4 final main reconciliation — P1.4 mutex + multi-replica gate + S4 stack',
+    id: 'dimo-provider-p1-3-s4-reconciliation-2-2026-08-30',
+    version: '4.9.1013',
+    title: 'P1.3-S4 reconciliation #2 — #1440 VPS validation + full S4/P1.3/P1.7/P1.4 stack',
     summary: [
-      'Merged latest origin/main (#1435 P1.4 reconciliation mutex, #1438 staging multi-replica gate) into PR #1429.',
-      'TripReconciliationService: mutex → runWithDimoRequestContext → DIMO with canonical org/vehicle/token context.',
+      'Merged origin/main (#1440 TRUE process-level VPS validation) into PR #1429 without dropping S4 guarantees.',
       'Preserved stacked DimoProviderGateway → DimoRequestExecutor → HTTP; scheduler leader + mutex + budget coexist.',
+      'Changelog merge only in ChangesView; runtime tree auto-merged (trip-reconciliation, ArchitekturView, VPS harness).',
       'Post-merge provider call-site audit re-run; CATEGORY_C must remain zero.',
     ],
     reason:
-      'PR #1429 mergeable_state=dirty after main advanced — semantic merge preserves S4, P1.3, P1.7, P1.4, and #1438 validation.',
+      'PR #1429 mergeable_state=dirty after main advanced with #1440 — semantic merge preserves both sides.',
     previousBehavior:
-      'PR reconciled only through 9a1f7e3b; P1.4 mutex and staging gate missing on branch.',
+      'PR frozen at f1344cb07; main had VPS process-level validation records not on branch.',
     details:
-      'trip-reconciliation.service.ts auto-merged with mutex + requestContext. See reconciliation commit message.',
+      'Merge commit reconciles ChangesView + retains architecture/STAGING_TRUE_MULTI_REPLICA_VALIDATION_*.md from main.',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
-    createdAt: '2026-08-30T11:15:00.000Z',
+    createdAt: '2026-08-30T12:30:00.000Z',
   },
   {
     id: 'dimo-provider-p1-3-s4-main-reconciliation-2026-08-30',
@@ -74,6 +74,48 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-08-30T12:00:00.000Z',
+  },
+  {
+    id: 'staging-true-process-validation-p13-p17-p14-2026-08-30',
+    version: '4.9.1010',
+    title: 'TRUE process-level multi-replica validation — P1.3 + P1.7 + P1.4 (VPS)',
+    summary: [
+      'TRUE_PROCESS_LEVEL_MULTI_REPLICA=YES — two real NestJS PIDs on VPS ports 3010/3011 sharing Postgres + Redis DB 15.',
+      'P1.7: leaderCountMax=1, graceful failover 7863ms, crash+restart failover 10257ms, splitBrain=NO.',
+      'P1.4: same-vehicle mutex concurrency=1 via forked OS processes; unrelated vehicles parallel.',
+      'P1.3: global DIMO lease ceiling 10/13 workers — limit not breached (simplified Lua probe).',
+      'CONDITIONALLY_CERTIFIED — Redis DB 15 isolation; N1000/provider ceiling NOT verified; prod PM2 unchanged.',
+      'Harness: backend/scripts/ops/vps-two-replica-process-validation.sh + coordination/leader probes.',
+    ],
+    reason:
+      'Close TRUE_PROCESS_LEVEL_MULTI_REPLICA gap after PR #1438 logical twin validation.',
+    previousBehavior:
+      'PR #1438 CONDITIONAL_PASS with logical twin replicas only (TRUE_PROCESS_LEVEL_MULTI_REPLICA=NO).',
+    details:
+      'architecture/STAGING_TRUE_MULTI_REPLICA_VALIDATION_P1_3_P1_7_P1_4_2026-08-30.md; architecture/STAGING_TRUE_MULTI_REPLICA_VALIDATION_FINAL_RESPONSE_2026-08-30.md; backend/scripts/ops/vps-two-replica-process-validation.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T11:30:00.000Z',
+  },
+  {
+    id: 'dimo-provider-p1-3-s4-final-main-reconciliation-2026-08-30',
+    version: '4.9.1012',
+    title: 'P1.3-S4 final main reconciliation — P1.4 mutex + multi-replica gate + S4 stack',
+    summary: [
+      'Merged latest origin/main (#1435 P1.4 reconciliation mutex, #1438 staging multi-replica gate) into PR #1429.',
+      'TripReconciliationService: mutex → runWithDimoRequestContext → DIMO with canonical org/vehicle/token context.',
+      'Preserved stacked DimoProviderGateway → DimoRequestExecutor → HTTP; scheduler leader + mutex + budget coexist.',
+      'Post-merge provider call-site audit re-run; CATEGORY_C must remain zero.',
+    ],
+    reason:
+      'PR #1429 mergeable_state=dirty after main advanced — semantic merge preserves S4, P1.3, P1.7, P1.4, and #1438 validation.',
+    previousBehavior:
+      'PR reconciled only through 9a1f7e3b; P1.4 mutex and staging gate missing on branch.',
+    details:
+      'trip-reconciliation.service.ts auto-merged with mutex + requestContext. See reconciliation commit message.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T11:15:00.000Z',
   },
   {
     id: 'dimo-provider-p1-001-final-remediation-2026-08-30',
