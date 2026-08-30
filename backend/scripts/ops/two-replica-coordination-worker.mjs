@@ -40,11 +40,14 @@ function redisClient() {
 async function mutexAcquire() {
   const key = `synqdrive:reconciliation:lock:${process.env.ORG}:${process.env.VEHICLE}:trip`;
   const token = randomUUID();
+  const holdMs = Number(process.env.HOLD_MS || 2500);
   const redis = redisClient();
   await redis.connect();
   const ok = await redis.set(key, token, 'PX', 120_000, 'NX');
-  const result = { worker, task, acquired: ok === 'OK', key };
-  if (ok === 'OK') {
+  const acquired = ok === 'OK';
+  const result = { worker, task, acquired, key };
+  if (acquired) {
+    await new Promise((r) => setTimeout(r, holdMs));
     await redis.eval(RELEASE_SCRIPT, 1, key, token);
   }
   await redis.quit();

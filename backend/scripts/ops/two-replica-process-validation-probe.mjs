@@ -113,20 +113,40 @@ async function main() {
   results.gracefulFailoverMs = Date.now() - gracefulStart;
   console.log(JSON.stringify({ phase: 'graceful_failover', ms: results.gracefulFailoverMs, ...failover }, null, 2));
 
-  console.log('==> Phase C: hard-kill remaining leader');
+  console.log('==> Phase C: hard-kill current leader then restart stopped replica');
   const remainingPid = failover.leaderPort === PORT_A ? PID_A : PID_B;
+  const restartPort = failover.leaderPort === PORT_A ? PORT_B : PORT_A;
+  const stoppedPort = failover.leaderPort === PORT_A ? PORT_A : PORT_B;
   const crashStart = Date.now();
   try {
     await killPid(remainingPid, 'KILL');
   } catch {
-    // process may already be gone after graceful phase
+    // process may already be gone
   }
+  await sleep(3000);
+  const restartEnv = {
+    ...process.env,
+    PORT: String(stoppedPort),
+    INSTANCE_ID: stoppedPort === PORT_A ? 'replica-a-restart' : 'replica-b-restart',
+    REDIS_DB: process.env.REDIS_DB || '15',
+    SCHEDULER_LEADER_LEASE_MS: process.env.SCHEDULER_LEADER_LEASE_MS || '10000',
+    SCHEDULER_LEADER_RENEW_INTERVAL_MS: process.env.SCHEDULER_LEADER_RENEW_INTERVAL_MS || '3000',
+    SCHEDULER_LEADER_ACQUIRE_INTERVAL_MS: process.env.SCHEDULER_LEADER_ACQUIRE_INTERVAL_MS || '1000',
+  };
+  const mainJs = process.env.MAIN_JS || 'dist/src/main.js';
+  const child = spawn('node', [mainJs], {
+    env: restartEnv,
+    detached: true,
+    stdio: 'ignore',
+    cwd: process.cwd(),
+  });
+  child.unref();
   try {
-    const crashFailover = await waitForSingleLeader(25_000);
+    const crashFailover = await waitForSingleLeader(45_000);
     results.crashFailoverMs = Date.now() - crashStart;
-    console.log(JSON.stringify({ phase: 'crash_failover', ms: results.crashFailoverMs, ...crashFailover }, null, 2));
+    console.log(JSON.stringify({ phase: 'crash_failover_restart', ms: results.crashFailoverMs, restartedPid: child.pid, restartedPort: stoppedPort, ...crashFailover }, null, 2));
   } catch (err) {
-    console.log(JSON.stringify({ phase: 'crash_failover', error: String(err) }, null, 2));
+    console.log(JSON.stringify({ phase: 'crash_failover_restart', error: String(err) }, null, 2));
   }
 
   console.log('==> FINAL_PROBE_RESULTS');

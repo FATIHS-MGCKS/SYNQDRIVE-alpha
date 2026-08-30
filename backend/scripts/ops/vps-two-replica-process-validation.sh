@@ -107,6 +107,7 @@ REDIS_DB="$VALIDATION_REDIS_DB" DIMO_GLOBAL_MAX_IN_FLIGHT="${DIMO_GLOBAL_MAX_IN_
 
 echo "==> Leader election probe (will terminate replicas)"
 REPLICA_A_PORT="$PORT_A" REPLICA_B_PORT="$PORT_B" REPLICA_A_PID="$PID_A" REPLICA_B_PID="$PID_B" \
+  REDIS_DB="$VALIDATION_REDIS_DB" \
   node scripts/ops/two-replica-process-validation-probe.mjs | tee "${LOG_DIR}/leader-probe.log"
 
 git -C "$VALIDATION_DIR" rev-parse HEAD | tee "${LOG_DIR}/main-head.txt"

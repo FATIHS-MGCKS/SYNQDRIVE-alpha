@@ -33,8 +33,8 @@ function runWorker(payload) {
 async function main() {
   console.log('==> Mutex: two processes same vehicle lock');
   const [m1, m2] = await Promise.all([
-    runWorker({ TASK: 'mutex_acquire', WORKER: 'A', ORG: 'org-val', VEHICLE: 'veh-val' }),
-    runWorker({ TASK: 'mutex_acquire', WORKER: 'B', ORG: 'org-val', VEHICLE: 'veh-val' }),
+    runWorker({ TASK: 'mutex_acquire', WORKER: 'A', ORG: 'org-val', VEHICLE: 'veh-val', HOLD_MS: '3000' }),
+    runWorker({ TASK: 'mutex_acquire', WORKER: 'B', ORG: 'org-val', VEHICLE: 'veh-val', HOLD_MS: '3000' }),
   ]);
   const mutexOut = [m1, m2].map((line) => JSON.parse(line));
   const acquired = mutexOut.filter((r) => r.acquired).length;
