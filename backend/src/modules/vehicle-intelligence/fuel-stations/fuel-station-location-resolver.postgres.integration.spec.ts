@@ -1,8 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-import { FuelStationCandidateRepository } from '../fuel-station-candidate.repository';
-import { FuelStationLocationResolverService } from '../fuel-station-location-resolver.service';
-import { probeFuelStationPostgresDatabase } from './fuel-station-resolver-postgres.integration.harness';
-import { FUEL_STATION_GROUND_TRUTH_CASES } from './fuel-station-ground-truth.fixtures';
+import { FuelStationCandidateRepository } from './fuel-station-candidate.repository';
+import { FuelStationLocationResolverService } from './fuel-station-location-resolver.service';
+import { probeFuelStationPostgresDatabase } from './testing/fuel-station-resolver-postgres.integration.harness';
+import { FUEL_STATION_GROUND_TRUTH_CASES } from './testing/fuel-station-ground-truth.fixtures';
 
 const LIVE = process.env.FUEL_STATION_POSTGRES_INTEGRATION === '1';
 
@@ -40,6 +40,20 @@ const LIVE = process.env.FUEL_STATION_POSTGRES_INTEGRATION === '1';
     expect(plan).toMatch(/fuel_stations_centroid_gist/i);
   });
 
+  it('returns INVALID_COORDINATES for out-of-range latitude', async () => {
+    if (!dbOk) return;
+    const result = await resolver.resolve({ latitude: 95, longitude: 9.4 });
+    expect(result.status).toBe('INVALID_COORDINATES');
+    expect(result.datasetVersion).toBeUndefined();
+  });
+
+  it('returns NOT_FOUND for coordinate with no nearby stations', async () => {
+    if (!dbOk) return;
+    const result = await resolver.resolve({ latitude: 54.9, longitude: 6.2 });
+    expect(result.status).toBe('NOT_FOUND');
+    expect(result.datasetVersion).toMatch(/^geofabrik-germany-/);
+  });
+
   it.each(FUEL_STATION_GROUND_TRUTH_CASES)('resolves ground-truth case $id', async (testCase) => {
     if (!dbOk) return;
     const result = await resolver.resolve({
@@ -56,6 +70,10 @@ const LIVE = process.env.FUEL_STATION_POSTGRES_INTEGRATION === '1';
 
     if (testCase.expectedBrandContains && result.station?.brand) {
       expect(result.station.brand.toLowerCase()).toContain(testCase.expectedBrandContains.toLowerCase());
+    }
+
+    if (result.status === 'MATCHED') {
+      expect(result.confidence).toBeDefined();
     }
   });
 });

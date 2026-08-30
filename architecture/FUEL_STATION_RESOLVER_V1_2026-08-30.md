@@ -99,9 +99,11 @@ Base score components:
 
 | Outcome | Rule |
 |---------|------|
-| `NOT_FOUND` | no candidates, or top score ≤ 44 |
-| `AMBIGUOUS` | ambiguity rules triggered |
-| `MATCHED` | otherwise |
+| `NOT_FOUND` | no candidates, or top score ≤ **54** |
+| `AMBIGUOUS` | ambiguity rules triggered (evaluated before NOT_FOUND) |
+| `MATCHED` | top score ≥ **55** and not ambiguous |
+
+Every `MATCHED` result has defined station-match confidence (`LOW` minimum at score 55).
 
 Station-match confidence:
 
@@ -131,10 +133,59 @@ Empty/missing dataset → `ERROR`.
 
 ## Performance
 
-Production evidence (2026-08-30, existing dataset):
+Production evidence (2026-08-30, `geofabrik-germany-20260830`, 18,195 stations):
 
-- GiST index `fuel_stations_centroid_gist` used for `ST_DWithin` + KNN
-- Kassel 100 m probe EXPLAIN: Index Scan, sub-ms class
+- GiST index `fuel_stations_centroid_gist` used for Phase C resolver query (`ST_DWithin` + KNN `<->`)
+- EXPLAIN ANALYZE (100 m, Phase C query): Index Scan, planning ~2 ms, execution **0.07–0.26 ms** (dense cluster worst case)
+- No sequential scan of full `fuel_stations` table observed
+
+## Phase C final calibration gate (2026-08-30)
+
+Executed against live production `osm.fuel_stations` via read-only `npm run fuel-station:calibrate`.
+
+| Metric | Value |
+|--------|-------|
+| Calibration stations | **28** (Kassel, Berlin, Hamburg, Munich, Frankfurt, rural, motorway, dense/adversarial) |
+| Total offset probes | **672** |
+| Strict OSM-key precision | **92.0%** (415 / 451 `MATCHED`) |
+| Physical-equivalence precision | **94.5%** (same brand ≤20 m or geometry contains) |
+| Estimated brand-facing precision | **~98.7%** (~6 different-brand `MATCHED` of 451) |
+| Coverage (expected ≤150 m offsets) | **70.6%** |
+| False-positive rate (all probes) | **5.4%** |
+| Ambiguity rate | **4.9%** |
+| Contract gaps (`MATCHED` without confidence) | **0** |
+
+### Distance bucket breakdown
+
+| Bucket | Correct | Wrong | Ambiguous | Not found |
+|--------|---------|-------|-----------|-----------|
+| 0–20 m | 324 | 20 | 20 | 0 |
+| 20–50 m | 91 | 15 | 13 | 21 |
+| 50–100 m | 0 | 1 | 0 | 55 |
+| 100–250 m | 0 | 0 | 0 | 84 |
+| >250 m | 0 | 0 | 0 | 28 |
+
+### Radius fallback audit (100 m primary)
+
+| Fallback | Correct matches | Wrong matches | Precision | Extra coverage vs 150 m |
+|----------|-----------------|---------------|-----------|-------------------------|
+| 150 m | 415 | 36 | 92.0% | baseline |
+| 200 m | 415 | 36 | 92.0% | **0** |
+| 250 m | 415 | 36 | 92.0% | **0** |
+| 300 m | 415 | 36 | 92.0% | **0** |
+
+**Finding:** Expanding fallback beyond 100 m changes only `NOT_FOUND` counts — **no additional correct matches** in calibration sample. All 415 correct matches are found within the **100 m primary** radius. Keep 250 m as conservative fallback for sparse areas; Phase D should gate persistence on confidence, not widen radius.
+
+### Threshold change (calibration gate)
+
+| Constant | Before | After | Why |
+|----------|--------|-------|-----|
+| `NOT_FOUND_MAX_SCORE` | 44 | **54** | Prevent `MATCHED` without defined confidence (scores 45–54) |
+| Ambiguity evaluation order | after NOT_FOUND | **before NOT_FOUND** | Close pairs in 45–54 band return `AMBIGUOUS`, not silent weak `MATCHED` |
+
+### Dedupe safety audit
+
+On live dataset: 63 same-brand pairs ≤8 m; 16 same-brand/different-name pairs ≤8 m flagged as potential merge risk. No confirmed false merge of **different-brand** stations in calibration. Wrong OSM-key matches are predominantly same-brand node/polygon siblings.
 
 ## Real-data calibration notes
 
@@ -160,5 +211,6 @@ No changes to RefuelDetector, persistence, scoreConfidence, API, frontend, BullM
 
 ## Tests
 
-- Unit: `npm run test:fuel-stations:unit` (26 tests)
-- Postgres integration (optional): `npm run test:fuel-stations:postgres` with `FUEL_STATION_POSTGRES_INTEGRATION=1`
+- Unit: `npm run test:fuel-stations:unit` (**33 tests**)
+- Postgres integration: `FUEL_STATION_POSTGRES_INTEGRATION=1 npm run test:fuel-stations:postgres` (**11 tests**, real PostGIS + `osm.dataset_metadata` + `osm.fuel_stations`)
+- Calibration gate (read-only): `npm run fuel-station:calibrate`

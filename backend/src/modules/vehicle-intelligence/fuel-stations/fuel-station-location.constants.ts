@@ -17,7 +17,8 @@ export const MATCHED_HIGH_MIN_SCORE = 85;
 export const MATCHED_MEDIUM_MIN_SCORE = 70;
 export const MATCHED_LOW_MIN_SCORE = 55;
 export const AMBIGUOUS_MIN_SCORE = 45;
-export const NOT_FOUND_MAX_SCORE = 44;
+/** Scores <= this are NOT_FOUND; MATCHED requires >= MATCHED_LOW_MIN_SCORE (55) for defined confidence. */
+export const NOT_FOUND_MAX_SCORE = 54;
 
 export const HIGH_CONFIDENCE_MAX_GEOMETRY_DISTANCE_M = 15;
 export const ABSOLUTE_SCORE_GAP_AMBIGUOUS = 20;

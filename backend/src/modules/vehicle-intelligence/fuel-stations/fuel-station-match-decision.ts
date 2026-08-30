@@ -100,20 +100,6 @@ export function decideFuelStationMatch(
   const top = sorted[0];
   const second = sorted[1];
 
-  if (top.score <= NOT_FOUND_MAX_SCORE) {
-    return {
-      status: 'NOT_FOUND',
-      resolverVersion: FUEL_STATION_RESOLVER_VERSION,
-      datasetVersion,
-      candidates: sorted,
-      diagnostics: {
-        ...diagnostics,
-        topScore: top.score,
-        secondScore: second?.score,
-      },
-    };
-  }
-
   if (second && isAmbiguousMatch(top, second)) {
     return {
       status: 'AMBIGUOUS',
@@ -125,6 +111,20 @@ export function decideFuelStationMatch(
         ...diagnostics,
         topScore: top.score,
         secondScore: second.score,
+      },
+    };
+  }
+
+  if (top.score <= NOT_FOUND_MAX_SCORE) {
+    return {
+      status: 'NOT_FOUND',
+      resolverVersion: FUEL_STATION_RESOLVER_VERSION,
+      datasetVersion,
+      candidates: sorted,
+      diagnostics: {
+        ...diagnostics,
+        topScore: top.score,
+        secondScore: second?.score,
       },
     };
   }

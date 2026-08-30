@@ -55,6 +55,59 @@ describe('fuel-station-match-decision', () => {
     expect(result.status).toBe('NOT_FOUND');
   });
 
+  it('does not MATCH without defined confidence for score 45-54', () => {
+    const lone = buildScoredCandidate({ score: 52, features: { geometryDistanceMeters: 95 } });
+    const result = decideFuelStationMatch([lone], 'geofabrik-germany-test', diagnostics);
+    expect(result.status).toBe('NOT_FOUND');
+  });
+
+  it('MATCHED LOW at score boundary 55', () => {
+    const lone = buildScoredCandidate({ score: 55, features: { geometryDistanceMeters: 80 } });
+    const result = decideFuelStationMatch([lone], 'geofabrik-germany-test', diagnostics);
+    expect(result.status).toBe('MATCHED');
+    expect(result.confidence).toBe('LOW');
+  });
+
+  it('NOT_FOUND at score boundary 54', () => {
+    const lone = buildScoredCandidate({ score: 54, features: { geometryDistanceMeters: 80 } });
+    const result = decideFuelStationMatch([lone], 'geofabrik-germany-test', diagnostics);
+    expect(result.status).toBe('NOT_FOUND');
+  });
+
+  it('MATCHED MEDIUM at score boundary 70', () => {
+    const lone = buildScoredCandidate({ score: 70, features: { geometryDistanceMeters: 30 } });
+    const result = decideFuelStationMatch([lone], 'geofabrik-germany-test', diagnostics);
+    expect(result.status).toBe('MATCHED');
+    expect(result.confidence).toBe('MEDIUM');
+  });
+
+  it('MATCHED HIGH at score boundary 85 with close geometry', () => {
+    const lone = buildScoredCandidate({
+      score: 85,
+      features: { geometryDistanceMeters: 12, insideGeometry: false },
+    });
+    const result = decideFuelStationMatch([lone], 'geofabrik-germany-test', diagnostics);
+    expect(result.status).toBe('MATCHED');
+    expect(result.confidence).toBe('HIGH');
+  });
+
+  it('MATCHED MEDIUM not HIGH at score 85 when geometry >15m and not inside', () => {
+    const lone = buildScoredCandidate({
+      score: 85,
+      features: { geometryDistanceMeters: 18, insideGeometry: false },
+    });
+    const result = decideFuelStationMatch([lone], 'geofabrik-germany-test', diagnostics);
+    expect(result.status).toBe('MATCHED');
+    expect(result.confidence).toBe('MEDIUM');
+  });
+
+  it('AMBIGUOUS at score boundary 45-54 with close second candidate', () => {
+    const top = buildScoredCandidate({ score: 58, features: { geometryDistanceMeters: 40 } });
+    const second = buildScoredCandidate({ score: 56, station: { osmId: '2' }, features: { geometryDistanceMeters: 42 } });
+    const result = decideFuelStationMatch([top, second], 'geofabrik-germany-test', diagnostics);
+    expect(result.status).toBe('AMBIGUOUS');
+  });
+
   it('prefers polygon evidence over closer misleading centroid', () => {
     const polygon = buildScoredCandidate({
       score: 130,

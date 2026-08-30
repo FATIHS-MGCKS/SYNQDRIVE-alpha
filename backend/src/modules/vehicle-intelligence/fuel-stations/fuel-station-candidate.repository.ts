@@ -100,7 +100,7 @@ export class FuelStationCandidateRepository {
     longitude: number,
     radiusMeters: number,
   ): Promise<string> {
-    const rows = await this.prisma.$queryRaw<Array<{ plan: string }>>`
+    const rows = await this.prisma.$queryRaw<Array<Record<string, string>>>`
       EXPLAIN (FORMAT TEXT)
       SELECT fs.osm_id
       FROM osm.fuel_stations fs
@@ -112,6 +112,8 @@ export class FuelStationCandidateRepository {
       ORDER BY fs.centroid <-> ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography
       LIMIT 10
     `;
-    return rows.map((row) => row.plan).join('\n');
+    return rows
+      .map((row) => row.plan ?? row['QUERY PLAN'] ?? Object.values(row)[0] ?? '')
+      .join('\n');
   }
 }
