@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'staging-multi-replica-validation-p13-p17-p14-2026-08-30',
+    version: '4.9.1009',
+    title: 'Staging multi-replica validation gate — P1.3 + P1.7 + P1.4',
+    summary: [
+      'CONDITIONAL_PASS: 382 local integration tests across scheduler leader, reconciliation mutex, DIMO budget, P1.2 trip-loss, Route V2.',
+      'Cross-system gate spec: staging-multi-replica-p13-p17-p14.gate.spec.ts (leader→mutex→budget).',
+      'TRUE_PROCESS_LEVEL_MULTI_REPLICA=NO — Docker unavailable; logical twin replicas only.',
+      'DUPLICATE_SINGLETON_TICKS=0, DOUBLE_RECONCILIATION_EXECUTION=0, DIMO_LIMIT_BREACHED=NO.',
+      'N1000_CERTIFICATION remains CONDITIONAL — VPS 2-replica soak still required.',
+    ],
+    reason:
+      'Validate merged P1.3/P1.7/P1.4 coordination before staging scale-to-2.',
+    previousBehavior:
+      'Individual stage proofs existed; no combined cross-system validation artifact.',
+    details:
+      'architecture/STAGING_MULTI_REPLICA_VALIDATION_P1_3_P1_7_P1_4_2026-08-30.md; backend/src/shared/staging-multi-replica/*.gate.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T10:36:00.000Z',
+  },
+  {
     id: 'reconciliation-execution-mutex-p1-4-2026-08-30',
     version: '4.9.1008',
     title: 'P1.4 — Reconciliation execution mutex / multi-replica safety',
