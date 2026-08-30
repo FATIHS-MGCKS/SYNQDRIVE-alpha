@@ -7,10 +7,10 @@
 
 PR = #1417  
 BRANCH = `cursor/p13-global-dimo-provider-budget`  
-HEAD_COMMIT = `a4474b233bde253e49dfca80d2a25b066805b320`  
+HEAD_COMMIT = `9e5af51613983660111c02e46b4a35a662e4c8f9`  
 BASE_MAIN_COMMIT = `dc9ab567d16d62ef118e4fbd076747c9f91eba18` (P1.3-S4 merged via #1428)  
 POST_CONFLICT_MAIN_HEAD = `dc9ab567d16d62ef118e4fbd076747c9f91eba18`  
-POST_CONFLICT_PR_HEAD = `a4474b233bde253e49dfca80d2a25b066805b320`  
+POST_CONFLICT_PR_HEAD = `9e5af51613983660111c02e46b4a35a662e4c8f9`  
 OLD_P1_3_HEAD = `6874c77e4d981abf7e67e26e391ae0efa279aebc`  
 CONFLICTS_RESOLVED = **YES** — 3 content conflicts + 5 auto-merged files reviewed  
 DIMO_PATHS_REAUDITED = **YES** — post-merge audit §9.1  
@@ -49,9 +49,8 @@ N1000_RECOMMENDED_CONFIG = **See §12**
 PROVIDER_CEILING_VERIFIED = **NO**  
 N1000_CERTIFICATION = **CONDITIONALLY_CERTIFIED** (software architecture + tests; provider quota externally unverified)  
 PRODUCTION_MUTATIONS = **NONE**  
-TESTS = **GitHub CI pending on post-conflict HEAD `a4474b233`** — local: P1.3 34/34 PASS, telemetry 23/23 PASS, typecheck PASS  
-CI_STATUS = **PENDING** — awaiting GitHub CI on post-merge HEAD `a4474b233`  
-MERGEABLE = **PENDING** — awaiting GitHub mergeability recalculation after push  
+TESTS = **GitHub CI (HEAD `9e5af5161`) — 25/25 SUCCESS** — Vehicle Detail CI gate 12/12 + Legal Documents CI gate 13/13  
+CI_STATUS = **SUCCESS** — runs `33283058240` (Vehicle Detail) + `33283058204` (Legal Documents) on `cursor/p13-global-dimo-provider-budget` @ `9e5af5161` (pull_request event, post-conflict)  
 NEXT_STAGE = **P1.7** (scheduler leader election before horizontal PM2 scale) **then** **P1.4** (reconciliation mutex/pacing under burst)
 
 ---
@@ -581,6 +580,7 @@ MERGE_RECOMMENDATION = **APPROVE_WITH_CONDITIONS**
 
 | Run | HEAD | Event | Status | Notes |
 |-----|------|-------|--------|-------|
+| `PENDING` / `PENDING` | `a4474b233` | pull_request (post-conflict) | **PENDING** | Post-merge conflict resolution vs `dc9ab567d` |
 | `33265303743` / `33265303767` | `9e4211c1a` | pull_request (open) | **FAILURE** | Typecheck: `dimo-triggers.service.spec.ts` missing 3rd constructor arg — fixed in `6e22fda18` |
 | `33279483320` / `33279483337` | `80052f3d7` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Final artifact HEAD — 25/25 jobs green |
 | `33279260980` / `33279261094` | `21be10d2d` | push (`cursor/p13-global-dimo-provider-budget`) | **SUCCESS** | Artifact HEAD alignment — 25/25 jobs green |
