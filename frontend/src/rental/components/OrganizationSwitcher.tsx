@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Building2, Check, ChevronDown, Loader2 } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 
 export function OrganizationSwitcher() {
+  const { t } = useLanguage();
   const {
     orgId,
     orgName,
@@ -56,10 +58,10 @@ export function OrganizationSwitcher() {
         <div
           className="absolute right-0 top-full mt-2 w-72 rounded-xl border border-border bg-popover shadow-[var(--shadow-2)] z-50 overflow-hidden"
           role="listbox"
-          aria-label="Switch organization"
+          aria-label={t('organization.switcher.listAria')}
         >
           <div className="px-3 py-2 border-b border-border text-[10px] uppercase tracking-wide text-muted-foreground">
-            Active organization
+            {t('organization.switcher.activeLabel')}
           </div>
           {availableOrganizations.map((org) => {
             const active = org.organizationId === orgId;

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { useAppTheme } from '../context/AppThemeContext';
@@ -77,6 +77,7 @@ import { PartsAccessoriesView } from './components/PartsAccessoriesView';
 import { InsurancesView } from './components/InsurancesView';
 import { VoiceAssistantView } from './components/VoiceAssistantView';
 import { AppErrorBoundary } from '../components/AppErrorBoundary';
+import { useLanguage } from '../i18n/LanguageContext';
 import { AppShell } from '../components/shell';
 import {
   VehicleDetailConfirmDialogs,
@@ -1282,17 +1283,26 @@ function RentalAppContent() {
   );
 }
 
+function RentalShellErrorBoundary({ children }: { children: ReactNode }) {
+  const { t } = useLanguage();
+  return (
+    <AppErrorBoundary
+      title={t('rental.shell.errorBoundary.title')}
+      description={t('rental.shell.errorBoundary.description')}
+    >
+      {children}
+    </AppErrorBoundary>
+  );
+}
+
 export default function App() {
   return (
       <RentalProvider>
         <FleetProvider>
           <DashboardInsightsProvider>
-            <AppErrorBoundary
-              title="Rental view crashed"
-              description="A runtime error interrupted the rental interface. Reload and try opening Fleet again."
-            >
+            <RentalShellErrorBoundary>
               <RentalAppContent />
-            </AppErrorBoundary>
+            </RentalShellErrorBoundary>
           </DashboardInsightsProvider>
         </FleetProvider>
       </RentalProvider>

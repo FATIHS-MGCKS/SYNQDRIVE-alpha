@@ -360,7 +360,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
             {messages.length > 0 && (
               <button
                 onClick={handleNewChat}
-                title="Clear conversation"
+                title={t('aiChat.clearConversation')}
                 className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
               >
                 <Icon name="trash-2" className="w-4 h-4" />

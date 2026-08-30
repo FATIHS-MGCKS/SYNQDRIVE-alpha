@@ -1,5 +1,6 @@
 
 import { Icon, type IconName } from './ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { Station } from '../../lib/api';
 import { isVehicleAtHomeStation } from '../../lib/geospatial';
 import type { VehicleData } from '../data/vehicles';
@@ -68,6 +69,7 @@ interface HomeAwayBadgeProps {
 }
 
 export function HomeAwayBadge({ v, stationLookup, isDarkMode, compact = false }: HomeAwayBadgeProps) {
+  const { t } = useLanguage();
   const station = resolveVehicleStation(v, stationLookup);
   const stationName = station?.name ?? v.station ?? null;
 
@@ -132,7 +134,9 @@ export function HomeAwayBadge({ v, stationLookup, isDarkMode, compact = false }:
       <span
         className={`shrink-0 inline-flex items-center justify-center w-[22px] h-[16px] rounded-md ${palette}`}
         title={`${label === '—' ? 'Geofence-Status unbekannt' : label} — ${title}`}
-        aria-label={`Geofence: ${label === '—' ? 'unbekannt' : label}`}
+        aria-label={t('fleet.geofence.ariaLabel', {
+          status: label === '—' ? t('fleet.geofence.statusUnknown') : label,
+        })}
       >
         <Icon name={iconName} className="w-3 h-3 shrink-0" />
       </span>

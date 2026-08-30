@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { StatusChip, type StatusTone } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { RentalRuleSource } from '../settings/rental-rules/rental-rules.types';
 import type { BookingRentalEligibilityStatus } from '../../lib/booking-rental-eligibility.types';
 import type { VehicleRequirementsStatusKind } from '../../lib/vehicle-rental-requirements.utils';
@@ -132,6 +133,7 @@ export function RentalRuleSourceBadge({
   sourceName?: string | null;
   className?: string;
 }) {
+  const { t } = useLanguage();
   const label = labelRuleSource(source ?? null, sourceName ?? null);
   const tone: StatusTone =
     source === 'VEHICLE_OVERRIDE'
@@ -143,7 +145,7 @@ export function RentalRuleSourceBadge({
           : 'neutral';
 
   return (
-    <StatusChip tone={tone} className={className} title={`Rule source: ${label}`}>
+    <StatusChip tone={tone} className={className} title={t('rentalRequirements.ruleSource.title', { label })}>
       {label}
     </StatusChip>
   );
@@ -467,8 +469,9 @@ export function RuleSourcePanel({
 }
 
 export function EffectiveRulesListSkeleton({ rows = 6 }: { rows?: number }) {
+  const { t } = useLanguage();
   return (
-    <div className="space-y-2" aria-busy="true" aria-label="Loading effective rules">
+    <div className="space-y-2" aria-busy="true" aria-label={t('rentalRequirements.loadingEffectiveRules')}>
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
