@@ -136,9 +136,26 @@ async function ensureLocale(container: HTMLElement, locale: 'de' | 'en') {
   }
 }
 
+const RAW_STATION_NAME = 'Provider Station X7';
+const RAW_LICENSE = 'KS MX 2024';
+
+function translateDict(
+  dict: Record<string, string>,
+  key: string,
+  vars?: Record<string, string>,
+): string {
+  let text = dict[key] ?? key;
+  if (vars) {
+    Object.entries(vars).forEach(([name, value]) => {
+      text = text.replace(`{${name}}`, value);
+    });
+  }
+  return text;
+}
+
 const stationFixture = {
   id: 'station-p266',
-  name: 'Provider Station X7',
+  name: RAW_STATION_NAME,
   latitude: 52.52,
   longitude: 13.405,
   radiusMeters: 500,
@@ -146,12 +163,50 @@ const stationFixture = {
 
 const vehicleFixture: VehicleData = {
   id: 'vehicle-p266',
-  license: 'B-XY 266',
+  license: RAW_LICENSE,
   lat: 52.521,
   lng: 13.406,
   stationId: stationFixture.id,
   station: stationFixture.name,
 } as VehicleData;
+
+function buildStationLookup(station: Station) {
+  return {
+    byId: new Map([[station.id, station]]),
+    byName: new Map([[station.name, station]]),
+  };
+}
+
+async function renderHomeAwayBadge(
+  props: {
+    v: VehicleData;
+    stationLookup: ReturnType<typeof buildStationLookup> | null;
+    compact?: boolean;
+  },
+) {
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root: Root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      createElement(
+        LanguageProvider,
+        null,
+        createElement(LocaleHarness, {
+          children: createElement(HomeAwayBadge, {
+            v: props.v,
+            stationLookup: props.stationLookup,
+            isDarkMode: false,
+            compact: props.compact ?? false,
+          }),
+        }),
+      ),
+    );
+  });
+
+  return { container, root };
+}
 
 beforeEach(() => {
   mountCount = 0;
@@ -272,53 +327,156 @@ describe('rental active micro-chrome localization (P2.2.66)', () => {
     container.remove();
   });
 
-  it('localizes HomeAwayBadge compact aria-label without changing machine tone', async () => {
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    const root: Root = createRoot(container);
-    const stationLookup = {
-      byId: new Map([[stationFixture.id, stationFixture]]),
-      byName: new Map([[stationFixture.name, stationFixture]]),
-    };
-
-    await act(async () => {
-      root.render(
-        createElement(
-          LanguageProvider,
-          null,
-          createElement(LocaleHarness, {
-            children: createElement(HomeAwayBadge, {
-              v: vehicleFixture,
-              stationLookup,
-              isDarkMode: false,
-              compact: true,
-            }),
-          }),
-        ),
-      );
+  it('localizes HomeAwayBadge tooltips and labels across HOME, AWAY, and UNKNOWN without changing geofence semantics', async () => {
+    const homeLookup = buildStationLookup(stationFixture);
+    const { container: homeContainer, root: homeRoot } = await renderHomeAwayBadge({
+      v: vehicleFixture,
+      stationLookup: homeLookup,
+      compact: true,
     });
 
-    await ensureLocale(container, 'de');
-
-    const badge = container.querySelector('span[aria-label]') as HTMLSpanElement;
-    expect(badge.getAttribute('aria-label')).toBe(
-      de['fleet.geofence.ariaLabel'].replace('{status}', 'Home'),
+    await ensureLocale(homeContainer, 'de');
+    const homeBadge = homeContainer.querySelector('span[aria-label]') as HTMLSpanElement;
+    const homeDetailDe = translateDict(de, 'fleet.geofence.tooltip.home', { stationName: RAW_STATION_NAME });
+    expect(homeBadge.getAttribute('title')).toBe(
+      `${de['fleet.geofence.state.home']} — ${homeDetailDe}`,
     );
-    expect(badge.className).toContain('bg-emerald-50');
-
-    await act(async () => {
-      (container.querySelector('[data-testid="locale-en"]') as HTMLButtonElement).click();
-    });
-
-    expect(badge.getAttribute('aria-label')).toBe(
-      en['fleet.geofence.ariaLabel'].replace('{status}', 'Home'),
+    expect(homeBadge.getAttribute('aria-label')).toBe(
+      translateDict(de, 'fleet.geofence.ariaLabel', { status: de['fleet.geofence.state.home'] }),
     );
-    expect(badge.className).toContain('bg-emerald-50');
+    expect(homeBadge.className).toContain('bg-emerald-50');
+    expect(homeDetailDe).toContain(RAW_STATION_NAME);
 
     await act(async () => {
-      root.unmount();
+      (homeContainer.querySelector('[data-testid="locale-en"]') as HTMLButtonElement).click();
     });
-    container.remove();
+
+    const homeDetailEn = translateDict(en, 'fleet.geofence.tooltip.home', { stationName: RAW_STATION_NAME });
+    expect(homeBadge.getAttribute('title')).toBe(
+      `${en['fleet.geofence.state.home']} — ${homeDetailEn}`,
+    );
+    expect(homeBadge.getAttribute('aria-label')).toBe(
+      translateDict(en, 'fleet.geofence.ariaLabel', { status: en['fleet.geofence.state.home'] }),
+    );
+    expect(homeBadge.getAttribute('title')).not.toContain('Umkreis');
+    expect(homeDetailEn).toContain(RAW_STATION_NAME);
+
+    await act(async () => {
+      (homeContainer.querySelector('[data-testid="locale-de"]') as HTMLButtonElement).click();
+    });
+    expect(mountCount).toBe(1);
+    await act(async () => {
+      homeRoot.unmount();
+    });
+    homeContainer.remove();
+
+    const awayVehicle = {
+      ...vehicleFixture,
+      lat: 53.0,
+      lng: 14.0,
+    } as VehicleData;
+    const { container: awayContainer, root: awayRoot } = await renderHomeAwayBadge({
+      v: awayVehicle,
+      stationLookup: homeLookup,
+      compact: false,
+    });
+    await ensureLocale(awayContainer, 'de');
+
+    const awayBadge = awayContainer.querySelector('span[title]') as HTMLSpanElement;
+    const awayDetailDe = translateDict(de, 'fleet.geofence.tooltip.away', { stationName: RAW_STATION_NAME });
+    expect(awayBadge.textContent).toContain(de['fleet.geofence.state.away']);
+    expect(awayBadge.getAttribute('title')).toBe(awayDetailDe);
+    expect(awayBadge.className).toContain('bg-gray-100');
+
+    await act(async () => {
+      (awayContainer.querySelector('[data-testid="locale-en"]') as HTMLButtonElement).click();
+    });
+    expect(awayBadge.getAttribute('title')).toBe(
+      translateDict(en, 'fleet.geofence.tooltip.away', { stationName: RAW_STATION_NAME }),
+    );
+    expect(awayBadge.textContent).toContain(en['fleet.geofence.state.away']);
+    await act(async () => {
+      awayRoot.unmount();
+    });
+    awayContainer.remove();
+
+    const unknownCases = [
+      {
+        name: 'station-unresolved',
+        stationLookup: null,
+        vehicle: { ...vehicleFixture, station: RAW_STATION_NAME, stationId: 'missing-station' } as VehicleData,
+        key: 'fleet.geofence.tooltip.stationUnresolved',
+        vars: { stationName: RAW_STATION_NAME },
+      },
+      {
+        name: 'missing-coordinates',
+        stationLookup: buildStationLookup({
+          ...stationFixture,
+          latitude: null,
+          longitude: null,
+        } as Station),
+        vehicle: vehicleFixture,
+        key: 'fleet.geofence.tooltip.missingCoordinates',
+        vars: { stationName: RAW_STATION_NAME },
+      },
+      {
+        name: 'missing-radius',
+        stationLookup: buildStationLookup({
+          ...stationFixture,
+          radiusMeters: null,
+        } as Station),
+        vehicle: vehicleFixture,
+        key: 'fleet.geofence.tooltip.missingRadius',
+        vars: { stationName: RAW_STATION_NAME },
+      },
+      {
+        name: 'missing-gps',
+        stationLookup: homeLookup,
+        vehicle: { ...vehicleFixture, lat: undefined, lng: undefined } as VehicleData,
+        key: 'fleet.geofence.tooltip.missingGps',
+        vars: { license: RAW_LICENSE },
+      },
+      {
+        name: 'generic-unknown',
+        stationLookup: homeLookup,
+        vehicle: { ...vehicleFixture, lat: Number.NaN, lng: Number.NaN } as VehicleData,
+        key: 'fleet.geofence.tooltip.unknown',
+        vars: { stationName: RAW_STATION_NAME },
+      },
+    ] as const;
+
+    for (const unknownCase of unknownCases) {
+      const { container, root } = await renderHomeAwayBadge({
+        v: unknownCase.vehicle,
+        stationLookup: unknownCase.stationLookup,
+        compact: true,
+      });
+      await ensureLocale(container, 'de');
+
+      const badge = container.querySelector('span[aria-label]') as HTMLSpanElement;
+      const detailDe = translateDict(de, unknownCase.key, unknownCase.vars);
+      expect(badge.getAttribute('title')).toContain(detailDe);
+      expect(badge.className).toContain('bg-amber-50');
+
+      await act(async () => {
+        (container.querySelector('[data-testid="locale-en"]') as HTMLButtonElement).click();
+      });
+
+      const detailEn = translateDict(en, unknownCase.key, unknownCase.vars);
+      expect(badge.getAttribute('title')).toContain(detailEn);
+      expect(badge.getAttribute('title')).not.toMatch(/Umkreis|Koordinaten|Geofence-Status/);
+      if ('stationName' in unknownCase.vars) {
+        expect(badge.getAttribute('title')).toContain(RAW_STATION_NAME);
+      }
+      if ('license' in unknownCase.vars) {
+        expect(badge.getAttribute('title')).toContain(RAW_LICENSE);
+      }
+
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+    }
   });
 
   it('localizes rental requirements chrome while preserving machine rule-source labels', async () => {
