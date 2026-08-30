@@ -21,9 +21,9 @@ This audit reconstructs the full current-state calculation and data-flow chain f
 
 | Severity | Count | Headline |
 |----------|-------|----------|
-| P0 | 1 | `DriverScoreService` + `/trips/driver-score` API name implies driver evaluation but aggregates vehicle stress |
-| P1 | 5 | Dead `profilesComparable()` branch; config anchor drift; brake/tire input asymmetry; notification/i18n "Fahrerbewertung" drift |
-| P2 | 4 | Rolling lacks `analysisStatus` filter; subject aggregation lacks quality gate; API legacy aliases; booking `stressLevel` null |
+| P0 | 1 | `DriverScoreService` + `/trips/driver-score` API name implies driver evaluation but aggregates vehicle stress (**SEMANTIC_DEFECT**) |
+| P1 | 2 | Dead `profilesComparable()` branch (**CONFIRMED_DEFECT**); notification/i18n "Fahrbewertung" drift (**SEMANTIC_DEFECT**) |
+| P2 | 7 | Correlated feature exposure; tire composite double-exposure; brake/tire input asymmetry; no guaranteed raw HF replay storage; rolling/subject quality gates; API legacy aliases |
 | P3 | 3 | Unused config anchors; dead frontend API client methods; stale dev documentation |
 
 **Audit coverage (this document):**
@@ -41,6 +41,9 @@ This audit reconstructs the full current-state calculation and data-flow chain f
 | API endpoints exposing driving intelligence | 9 |
 | UI component surfaces | 14 |
 | Legacy / duplicate score paths classified | 16 |
+| Current-State dependency matrix rows (§25) | 22 |
+
+**Evidence review (2026-08-30):** Raw HF replay retention, active-trip→TDI path, and dependency matrix completeness verified against current `main` before merge of PR #1454.
 
 ---
 
@@ -76,6 +79,30 @@ Scopes A–P from Phase 1.1 assignment: acquisition, normalization, events, feat
 | **HISTORICAL_EVIDENCE** | Older audit; may be stale |
 | **INFERENCE** | Logical conclusion, not directly executed |
 | **PROPOSAL** | Future improvement only |
+
+### Provenance / value-type tags (used in §6, §12, §25)
+
+| Tag | Meaning |
+|-----|---------|
+| **DIRECT_MEASUREMENT** | On-vehicle measured signal used directly |
+| **PROVIDER_CLASSIFIED** | Provider-assigned event/classification |
+| **DERIVED_FROM_MEASUREMENT** | Computed from measured samples (e.g. HF speed→decel) |
+| **RECONSTRUCTED** | SynqDrive detector output from telemetry |
+| **ESTIMATED_PROXY** | Proxy when direct kinematics unavailable |
+| **DERIVED_CONTEXT** | Route/map/context inference (not a vehicle sensor) |
+| **CONFIGURED** | Static config anchor or weight |
+| **CALIBRATED** | Anchored to real measurement over time |
+
+### Finding-type tags (§22)
+
+| Tag | Meaning |
+|-----|---------|
+| **CONFIRMED_DEFECT** | Code behaves contrary to apparent intent |
+| **SEMANTIC_DEFECT** | Naming/UI/API contradicts documented domain semantics |
+| **CONFIRMED_ARCHITECTURAL_ASYMMETRY** | Confirmed structural difference; defect status requires product intent |
+| **CONFIRMED_CORRELATED_FEATURE_EXPOSURE** | One episode feeds multiple score terms (not yet quantified) |
+| **CONFIRMED_DOUBLE_EXPOSURE** | Same information enters a formula more than once |
+| **MODEL_RISK_REQUIRES_SENSITIVITY_VALIDATION** | Architectural/correlation concern needing replay/sensitivity proof |
 
 ---
 
@@ -157,14 +184,46 @@ flowchart TB
 | 3 | Native behavior events | DIMO | `LteR1BehaviorEnrichmentService` | `buildDrivingEventsQuery()` — `driving-events.query.ts` | Post-trip per segment window | Event-time | `behavior.harsh*`, `behavior.extreme*`, `behavior.harshCornering`, emergency variants | Provider-classified | Event timestamp | Yes | `DrivingEvent`, trip counters on `VehicleTrip` | Native authority on LTE_R1 for harsh accel/brake/cornering | HF reconstruction for same classes on non-LTE | `nativeEventCount`, `providerClassifiedShare` |
 | 4 | Segments / trip boundaries | DIMO | `DimoSegmentsService` | Segments API | Trip detection / finalize | Segment-based | start/end, distance | — | Segment timestamps | Yes | `VehicleTrip` | All trip-scoped pipelines | Local trip heuristics (out of DI scope) | Trip `source` metadata |
 | 5 | Route / Mapbox context | Mapbox | `TripsService.enrichRoute()` → `MapboxService` | Directions + speed-limit analysis | Post-trip route job | Per trip once | GPS polyline, road class, speed limits | km/h, % shares | Route point timestamps | Yes | `VehicleTrip.citySharePercent`, `highwaySharePercent`, `countrySharePercent`, speeding fields | Stop-go stress, brake/tire usage factors, deprecated safety inputs | Null shares → scorer uses `0` fallback | `hasRouteEnrichment` gate in load components |
-| 6 | Active-trip live polling | DIMO | Core route performance / live bucket reads | Various trip-live services | Active trip only | Sub-minute buckets | speed subset (CONFIRMED_FROM_EXISTING_RUNTIME_EVIDENCE in Aug 2026 trip audit) | — | Live | Partial | Trip state projection | Live UI / performance; limited DI write path | Snapshot | INFERENCE: mostly display not TDI |
-| 7 | ClickHouse telemetry | ClickHouse | HF mirror / analytics readers | CH queries | Analytics / replay tooling | Variable | Mirrored HF/snapshot | — | CH timestamps | Yes | ClickHouse tables | Data-analyse cadence assessment; not primary TDI writer | Postgres HF path | `capabilityVersion` |
+| 6 | Active-trip live polling (`ACTIVE_TICK`) | DIMO | `TripDetectionOrchestrationService.processActiveTick()` | `fetchRawTripCoreData()` (`buildTripDetectionCoreQuery`), `fetchRouteEnrichment()`, `fetchPerformance()` (`buildPerformanceQuery`, **15s** interval) — `dimo-segments.service.ts` | `TripTrackingProcessor` every ~30s while FSM `ACTIVE_TRIP`/`IDLE_WITHIN_TRIP` | ~30s job; perf buckets 15s | core: speed, ignition, odometer; route: lat/lon/speed; perf: RPM, TPS, engine load, ECT | Provider buckets | Provider timestamp | Partial | `VehicleTrip` (distance, avgRpm, avgEngineLoad, avgThrottlePosition, waypoints), detection state cursors | **See §5.1 — not event-counter path** | Post-trip HF/native for events | No DI provenance at live stage |
+| 7 | ClickHouse HF mirror (optional) | ClickHouse | `HfMirrorService.mirrorTripHf()` | `insertHfPoints/Events/Windows` | Post-trip after HF enrich; **only if `HF_MIRROR_ENABLED=true`** | Mirror of in-memory HF batch | Subset: speed, RPM, ECT, TPS, engine load, EV power + derived abuse events | Normalized | Provider timestamp | **Best-effort optional** | `telemetry_hf_*` CH tables | Analytics / cadence reads; **not** Postgres canonical | Re-fetch DIMO HF on re-enrich | Postgres remains canonical |
 | 8 | VehicleLatestState | Internal | `DimoSnapshotProcessor` persist | N/A | Every snapshot | ~30 s | Normalized latest signals | Internal | `lastSeen` | Yes | Postgres + optional CH | Operational state, not trip scoring | — | — |
 | 9 | Braking event ledger | Internal | `BrakingEventLedgerService` | Canonical intake from native/HF | Post enrich | Per event | Braking episodes | m/s² proxy | Event time | Yes | Ledger tables | `brakesPer100Km`, stop density, p95, energy | Trip counters | `brakingProvenance.proxyKinematicShare` |
 | 10 | Event context HF window | DIMO | Event-context jobs | HF `1s` around native anchors | Post native event | 1s requested | speed, accel proxies | — | Aligned window | Partial | Context stats | Enrichment quality, not direct score | — | Cadence caveat in `event-context-stats.ts` |
 | 11 | Shadow detectors | DIMO HF | `shadow-detector/` orchestrator | Parallel HF | Shadow runs | 1–10s effective | throttle/RPM/torque enriched kickdown-like | — | — | No (blocked) | Metrics only | **Not production DI** | — | `publicationBlocked: true` |
 
 **Phase-2 handoff (INFERENCE):** Snapshot query selects operational/health signals but **not** throttle/RPM/yaw for driving score at snapshot cadence; HF query is the primary kinematic surface. Exact per-path field inventory deferred to Phase 2A.
+
+### 5.1 Active-trip live polling → TDI resolution (**CONFIRMED_FROM_CODE**)
+
+**Entry:** `TripDetectionOrchestrationService.processActiveTick()` (`trip-detection-orchestration.service.ts` ~L1041) triggered by `TripTrackingProcessor` on `ACTIVE_TICK` (~30s while trip active).
+
+**Live query chain:**
+
+```
+ACTIVE_TICK
+  → fetchRawTripCoreData (trip core signals)
+  → fetchRouteEnrichment (GPS/route points → VehicleTripWaypoint)
+  → fetchPerformance (15s RPM/TPS/engine load/ECT buckets)
+  → VehicleTrip.update (distance, avgRpm, avgEngineLoad, avgThrottlePosition, speed stats)
+  → (no TripBehaviorEvent / DrivingEvent / TripDrivingImpact writes during live tick)
+```
+
+**Post-trip (separate path):** behavior enrichment re-fetches HF `1s` + native events → counters/events → `DrivingImpactService.computeForTrip()` → TDI.
+
+| Live-persisted artifact | Written during ACTIVE_TICK? | Consumed by TDI? | TDI field / component |
+|-------------------------|----------------------------|------------------|------------------------|
+| `hardAccelerationCount`, `kickdownCount`, braking counters | **No** (post-trip enrich only) | Yes (post-trip) | per-100km → stress components |
+| `TripBehaviorEvent` / `DrivingEvent` | **No** | Yes (post-trip) | p95, energy, classified rows |
+| `avgRpm`, `avgEngineLoad`, `avgThrottlePosition` on `VehicleTrip` | **Yes** (rolling mean from live `fetchPerformance`) | Yes | `loadComponentsJson` engine/transmission load only |
+| `citySharePercent` / highway shares | **No** during live tick (post-trip Mapbox) | Yes | stop-go / high-speed stress |
+| `VehicleTripWaypoint` | Yes | No direct TDI | route context only |
+
+**Overall classification:** **`INDIRECT_TDI_INPUT`**
+
+- Event-based composite inputs (longitudinal/braking/stop-go/high-speed stress): **`LIVE_ONLY_NO_TDI_EFFECT`** during active trip — populated only by post-trip enrichment.
+- Engine load sub-scores: **`INDIRECT_TDI_INPUT`** — live `fetchPerformance` → `VehicleTrip.avg*` → `buildEngineLoad()` / `buildTransmissionLoad()` in load components (**not** composite `drivingStressScore` weights directly).
+
+**Not `UNRESOLVED_REQUIRES_RUNTIME`:** code path from live poll → `VehicleTrip` → TDI engine signals is fully traceable; live poll does **not** write behavior event counters consumed by composite stress.
 
 ---
 
@@ -183,6 +242,7 @@ flowchart TB
 | Decel samples | `p95NegativeDecel` | m/s² | m/s² | `percentile95()` floor index 0.95 | 0 if empty | Braking + thermal stress |
 | Brake rows | `highSpeedBrakeShare` | count ratio | 0–1 | `normalizeEventShare()` cap 100% | 0 | High-speed + thermal |
 | `citySharePercent` | `citySharePct` | % | 0–100 | Pass-through from `VehicleTrip` | null → scorer uses 0 | Stop-go stress |
+| Mapbox road-class shares | `citySharePct`, `highwaySharePct`, `countryRoadSharePct` | % | 0–100 | `MapboxService.deriveRoadTypeDistribution()` | null → 0 in scorer | Stop-go, high-speed, brake/tire usage factors |
 | `obdEngineLoad` / RPM / TPS (HF) | engine signals | % / rpm / % | same | `mapDimoProviderSignalToCanonical()` | null | Engine load component |
 | EV `powertrainTractionBatteryCurrentPower` | kW→W | kW | W | `KW_TO_W=1000` in canonical mapper | null | HF abuse / future regen (not in composite) |
 | Location (snapshot) | lat/lon | deg | deg | `SignalLocation` parse | null | Route enrich input chain |
@@ -191,9 +251,9 @@ flowchart TB
 
 | Value | Classification |
 |-------|----------------|
-| HF speed-derived accel/brake | RECONSTRUCTED |
+| HF speed-derived accel/brake | RECONSTRUCTED / DERIVED_FROM_MEASUREMENT |
 | DIMO `behavior.*` | PROVIDER_CLASSIFIED |
-| Mapbox road shares | MEASURED (route-derived) |
+| Mapbox road shares | **DERIVED_CONTEXT** (GPS + map provider road class — not an on-vehicle sensor) |
 | Native decel proxy | ESTIMATED_PROXY |
 | Kickdown/launch from HF throttle/RPM | RECONSTRUCTED |
 | Trip counters from native | PROVIDER_CLASSIFIED |
@@ -414,7 +474,7 @@ Shared helpers (`driving-impact-scorer.ts`):
 | Physical episode | One HF/native hard brake decel episode |
 | Derived observations | `hardBrakePer100Km`, possibly `extremeBrakePer100Km`, `fullBrakingPer100Km`, `brakesPer100Km`, `p95NegativeDecel`, `highSpeedBrakeShare`, `meanBrakeEnergyPerKm`, stop if end<5 km/h |
 | Score paths | `brakingStressScore` (up to 5 terms), `stopGoStressScore` (brake factor), `highSpeedStressScore` (if start≥80), `thermalBrakeStressScore` (up to 4 terms), composite (via braking+stopGo+highSpeed) |
-| Classification | **STRONGLY_CORRELATED** / **DERIVED_FROM_SAME_EVENT** |
+| Classification | **CONFIRMED_CORRELATED_FEATURE_EXPOSURE** — not a quantified scoring error without sensitivity analysis |
 | Composite exposure | Same episode can influence composite **up to 3 component scores** (braking, stop-go, high-speed) plus tire load blend |
 
 ### Cluster B — Launch-like maneuver
@@ -430,8 +490,8 @@ Shared helpers (`driving-impact-scorer.ts`):
 
 ### Cluster D — `drivingStressScore` in tire behavior factor
 
-| Path | Tire `behaviorFactor` uses 0.50×longitudinal + 0.35×braking + 0.15×**drivingStressScore** (composite of same components) |
-| Classification | **STRONGLY_CORRELATED** — composite partially double-counted inside tire wear |
+| Path | Tire `behaviorFactor` uses 0.50×longitudinal + 0.35×braking + 0.15×**drivingStressScore** (composite of largely the same trip stress components) |
+| Classification | **CONFIRMED_DOUBLE_EXPOSURE** / **MODEL_RISK_REQUIRES_SENSITIVITY_VALIDATION** — correlation confirmed; quantitative wear bias not proven in Phase 1 |
 
 ### Summary table
 
@@ -489,9 +549,60 @@ Shared helpers (`driving-impact-scorer.ts`):
 - Trips `<2 km` skipped
 - Can overwrite prior row (upsert) — **not append-only**
 - Model version stored per row — rolling filters mismatched versions
-- Raw HF/events remain for replay; scored outputs versioned
+- **`DrivingImpactService` recompute reads Postgres only** — does not re-call DIMO during impact recompute
 
-**Determinism:** Fingerprint + sorted rolling cohort → deterministic for same inputs (INFERENCE: confirmed by rolling manifest `recomputeDeterministic: true`).
+**Determinism:** Fingerprint + sorted rolling cohort → deterministic for same persisted inputs (CONFIRMED_FROM_CODE: rolling manifest `recomputeDeterministic: true`).
+
+### 12.1 Storage & replay retention verification (**CONFIRMED_FROM_CODE** / **CONFIRMED_FROM_SCHEMA**)
+
+Distinction between artifact layers:
+
+| Layer | Examples | Postgres | ClickHouse | Re-fetch DIMO on re-enrich? |
+|-------|----------|----------|------------|----------------------------|
+| Original DIMO HF/time-series samples | `signals(interval:"1s")` rows | **Not stored** (no HF raw table in Prisma) | Optional mirror subset if `HF_MIRROR_ENABLED=true` | **Yes** — `fetchHighFrequency()` on behavior re-enrich |
+| Preprocessed HF points | `preprocessHighFrequency()` output | **Not stored** (in-memory only) | Not stored separately | Requires HF re-fetch + re-preprocess |
+| Derived events | `TripBehaviorEvent`, `DrivingEvent` | **Yes** | Optional derived-event mirror | Native events paginated again on re-enrich; HF events re-derived from new HF fetch |
+| Braking ledger | `BrakingEventLedger` rows | **Yes** | — | Rebuilt from canonical events on re-intake |
+| Trip aggregates | `VehicleTrip` counters, `avgRpm`, `behaviorSummaryJson` | **Yes** | — | Counters rewritten on re-enrich |
+| Scored outputs | `TripDrivingImpact`, `VehicleDrivingImpactCurrent` | **Yes** | — | Recomputable from persisted trip inputs via fingerprinted upsert |
+| Route context | Mapbox shares, waypoints | **Yes** (`VehicleTrip`, `VehicleTripWaypoint`) | — | Route job re-run if re-enriched |
+
+#### A. Are full original HF samples persistently stored in Postgres?
+
+**No (CONFIRMED_FROM_SCHEMA).** Prisma has no raw HF/time-series sample model. Post-trip enrichment holds HF readings in memory, then persists **derived** `TripBehaviorEvent` rows and summary stats (`behaviorSummaryJson.hfPointsTotal`, `hfPointsCleaned`) only.
+
+#### B. Are they fully stored in ClickHouse?
+
+**Only partially, and only when enabled (CONFIRMED_FROM_CODE).** `HfMirrorService` mirrors a **subset** of signals (speed, RPM, ECT, TPS, engine load, EV power) plus derived abuse events/windows. Disabled by default (`HF_MIRROR_ENABLED !== 'true'`). Not a complete DIMO HF payload archive.
+
+#### C. Is ClickHouse persistence guaranteed?
+
+**No — optional / best-effort (CONFIRMED_FROM_CODE).** `hf-mirror.service.ts` documents: disabled by default; never throws into enrichment; Postgres is canonical; insert failures are logged and swallowed.
+
+#### D. Which raw/intermediate artifacts actually remain after enrichment?
+
+**Persisted (Postgres):** `TripBehaviorEvent`, `DrivingEvent`, braking ledger (when enabled), `VehicleTrip` behavior counters + engine averages + `behaviorSummaryJson`, route shares/waypoints, `TripDrivingImpact`.
+
+**Not persisted:** original DIMO HF bucket array, preprocessed HF point series, in-flight detector intermediate arrays.
+
+**Optional (ClickHouse):** normalized HF points/events/windows when mirror enabled.
+
+#### E. Which scores are deterministically recomputable from persisted data alone?
+
+**CONFIRMED_FROM_CODE:** `DrivingImpactService.computeForTrip()` reads `VehicleTrip`, `TripBehaviorEvent`/`DrivingEvent`, ledger summary, route shares — **no DIMO call**. Given unchanged persisted inputs, TDI upsert is fingerprint-idempotent.
+
+**Requires re-enrichment / provider re-read if:** behavior events or trip counters must be regenerated (e.g. detector threshold change, HF re-fetch, native event re-pagination).
+
+#### F. Where is provider re-read or a future Flight Recorder required?
+
+| Need | Why persisted storage is insufficient |
+|------|--------------------------------------|
+| Raw HF cadence replay at degraded sampling | No guaranteed Postgres raw series; CH mirror optional/partial |
+| Detector re-run on original kinematic series without DIMO | No canonical raw archive |
+| Sampling-invariance laboratory (Phase 6) | Needs captured evidence store (Phase 3 Flight Recorder) |
+| Full signal-surface audit of unused DIMO fields | Requires live/paged queries (Phase 2) |
+
+**Corrected statement:** Prior draft claim *"Raw HF/events remain for replay"* is **misleading**. **Derived events and trip aggregates persist; original HF time series does not persist in Postgres and is not guaranteed in ClickHouse.**
 
 ---
 
@@ -676,9 +787,9 @@ VehicleDrivingImpactCurrent (30d rolling)
 | Tire health | `tire-health.spec.ts`, `tire-wear-model*.spec.ts` | behaviorFactor, usage |
 | Rental analysis | `rental-driving-analysis.*.spec.ts` | Fingerprint, recompute |
 | Coverage audit | `trip-driving-impact-coverage.spec.ts` | analysisStatus |
-| Replay fixtures | `energy-events` fixtures, shadow fixtures | Partial HF replay |
+| Replay fixtures | `energy-events` fixtures, shadow fixtures | Partial; **no raw HF series fixtures** |
 
-**Gaps (INFERENCE):** No end-to-end sampling-invariance replay tests; sparse HF edge cases partially covered.
+**Gaps (CONFIRMED_FROM_CODE):** No end-to-end sampling-invariance replay; **no guaranteed persisted raw HF time series** for detector replay (§12.1 F-14). TDI fingerprint recompute from Postgres aggregates only.
 
 ---
 
@@ -699,31 +810,34 @@ VehicleDrivingImpactCurrent (30d rolling)
 
 ## 22. Confirmed Problems / Risks
 
-| ID | Severity | Finding | Evidence |
-|----|----------|---------|----------|
-| F-01 | **P0** | Driver-facing API/service naming for vehicle stress aggregate | `driver-score.service.ts`, `/trips/driver-score` |
-| F-02 | **P1** | `profilesComparable()` dead; all non-winning cohorts excluded as PROFILE_INCOMPATIBLE | `driving-impact-rolling.ts:151-155` |
-| F-03 | **P1** | Brake wear uses per-trip TDI; tire wear uses 30d rolling — asymmetric inputs | brake-health vs tire-wear-model services |
-| F-04 | **P1** | Tire `behaviorFactor` includes 0.15× composite of components already in blend | `tire-wear-model.service.ts` |
-| F-05 | **P1** | UI/i18n "Fahrbewertung"/"driver score" vs mechanical load | notifications, i18n keys |
-| F-06 | **P1** | Single brake episode feeds many correlated score terms (see §10) | scorer + normalizer |
-| F-07 | **P2** | Rolling lacks `analysisStatus` filter; brake wear requires COMPLETE/PARTIAL | driving-impact.service vs brake-health |
-| F-08 | **P2** | Subject aggregation lacks analysisStatus / model cohort gates | driver-score.service.ts |
-| F-09 | **P2** | Legacy API aliases (`drivingStyleScore`) still emitted | trip-api.mapper.ts |
-| F-10 | **P2** | Booking detail `stressLevel` always null | bookings.service mapper |
-| F-11 | **P3** | `padHardBrakeAnchors`/`discHardBrakeAnchors` unused; harsh bands used instead | brake-health.config vs service |
-| F-12 | **P3** | Dead frontend API client methods for driver-score/rolling | frontend api.ts |
-| F-13 | **P3** | Config comment vs code on p95 decel in braking score | driving-impact.config vs scorer |
+| ID | Severity | Type | Finding | Evidence |
+|----|----------|------|---------|----------|
+| F-01 | **P0** | SEMANTIC_DEFECT | Driver-facing API/service naming for vehicle stress aggregate | `driver-score.service.ts`, `/trips/driver-score` |
+| F-02 | **P1** | CONFIRMED_DEFECT | `profilesComparable()` dead; both branches push `PROFILE_INCOMPATIBLE` for all non-winning cohorts | `driving-impact-rolling.ts:151-155` |
+| F-03 | **P2** | CONFIRMED_ARCHITECTURAL_ASYMMETRY | Brake wear uses per-trip TDI since anchor; tire wear behavior uses 30d rolling VDIC | `brake-health.service.ts` vs `tire-wear-model.service.ts` — not proven unintentional |
+| F-04 | **P2** | CONFIRMED_DOUBLE_EXPOSURE / MODEL_RISK | Tire `behaviorFactor` adds 0.15× composite atop 0.50×long + 0.35×brake | `tire-wear-model.service.ts` — quantitative bias unproven |
+| F-05 | **P1** | SEMANTIC_DEFECT | UI/i18n "Fahrbewertung"/"driver score" vs mechanical load | notifications, i18n keys |
+| F-06 | **P2** | CONFIRMED_CORRELATED_FEATURE_EXPOSURE | Single brake episode feeds multiple score terms (§10) | scorer + normalizer — weighting not yet sensitivity-validated |
+| F-07 | **P2** | CONFIRMED_ARCHITECTURAL_FACT | Rolling lacks `analysisStatus` filter; brake wear requires COMPLETE/PARTIAL | driving-impact.service vs brake-health |
+| F-08 | **P2** | CONFIRMED_ARCHITECTURAL_FACT | Subject aggregation lacks analysisStatus / model cohort gates | driver-score.service.ts |
+| F-09 | **P2** | SEMANTIC_DEFECT (legacy) | Legacy API aliases (`drivingStyleScore`) still emitted | trip-api.mapper.ts |
+| F-10 | **P2** | CONFIRMED_ARCHITECTURAL_FACT | Booking detail `stressLevel` always null | bookings.service mapper |
+| F-11 | **P3** | CONFIRMED_ARCHITECTURAL_FACT | `padHardBrakeAnchors`/`discHardBrakeAnchors` unused; harsh bands used instead | brake-health.config vs service |
+| F-12 | **P3** | CONFIRMED_ARCHITECTURAL_FACT | Dead frontend API client methods for driver-score/rolling | frontend api.ts |
+| F-13 | **P3** | CONFIRMED_ARCHITECTURAL_FACT | Config comment vs code on p95 decel in braking score | driving-impact.config vs scorer |
+| F-14 | **P2** | CONFIRMED_ARCHITECTURAL_FACT | No guaranteed persistence of original HF time series for replay | No Prisma HF table; CH mirror optional/partial (`hf-mirror.service.ts`) |
 
 ---
 
 ## 23. Open Questions
 
-1. Was PROFILE_INCOMPATIBLE always intended to exclude all non-dominant cohorts regardless of comparability? (Product decision)
-2. Should subject aggregation filter `analysisStatus` and model profile like rolling?
-3. Should tire behavior factor drop composite term to avoid double counting?
+1. Was PROFILE_INCOMPATIBLE always intended to exclude all non-dominant cohorts regardless of comparability? (Product decision — F-02)
+2. Should subject aggregation filter `analysisStatus` and model profile like rolling? (F-08)
+3. Should tire behavior factor drop composite term to avoid double exposure? (F-04 — sensitivity validation first)
 4. When will four 2026-08-30 vehicle signal inventories land on `main`?
-5. Is active-trip live polling writing any counters consumed by TDI? (Phase 2A)
+5. Is brake-vs-tire per-trip/rolling split intentional product architecture? (F-03)
+
+**Resolved in evidence review:** Active-trip live polling → **`INDIRECT_TDI_INPUT`** for engine load sub-scores only; event/composite inputs are post-trip (§5.1).
 
 ---
 
@@ -732,47 +846,67 @@ VehicleDrivingImpactCurrent (30d rolling)
 1. Full snapshot query field inventory vs available-but-not-selected signals (`buildLatestSnapshotQuery`).
 2. HF query field inventory + effective cadence per vehicle (`buildHighFrequencyQuery`).
 3. Native events pagination + per-vehicle availability matrix.
-4. Active-trip live poll inventory (core-route-performance paths).
-5. ClickHouse mirror column map for HF/snapshot.
+4. Active-trip live poll **field/cadence matrix** (Phase 2A detail — TDI impact class resolved in §5.1).
+5. ClickHouse mirror column map for HF/snapshot when mirror enabled.
 6. Merge four vehicle gap-analysis docs when available on `main`.
-7. Candidate signals noticed but not in current DI path: yaw, steering, lateral accel, wheel speeds, brake pedal (listed in chassis catalog, mostly NOT_LISTED LTE_R1).
+7. Candidate signals not in current DI path: yaw, steering, lateral accel, wheel speeds, brake pedal.
+8. **Flight Recorder / Phase 3:** capture raw HF because Postgres does not guarantee kinematic replay (F-14, §12.1).
 
 ---
 
 ## 25. Complete Current-State Dependency Map
 
-### Master dependency matrix (representative rows)
+### Master dependency matrix — all production driving-impact inputs (22 rows)
 
-| Provider signal/event | Acquisition | Cadence | Normalized field | Storage | Detector/feature | Trip metric | Component | Composite | Rolling/Driver | Brake | Tire | API | UI |
-|----------------------|-------------|---------|------------------|---------|------------------|-------------|-----------|-----------|----------------|-------|------|-----|-----|
-| HF speed | signals 1s | ~1s req | speedKmh | TripBehaviorEvent | hf-acceleration/braking | hardAccel/Brake per100 | longitudinal/braking | drivingStressScore | VDIC/DriverScore | harsh bands | behaviorFactor | trips API | stress panel |
-| behavior.harshBraking | events() | event | DrivingEvent | DrivingEvent | native mapper | hardBrakePer100 | braking | composite | rolling | pad/disc factors | behaviorFactor | trips | assessment |
-| HF decel full | signals 1s | ~1s | decel samples | TripBehaviorEvent | hf-abuse full | fullBrakingPer100 | braking+thermal | partial composite | rolling | fullBrake factors | via stress | trips | — |
-| Mapbox road class | route enrich | trip | city/highway % | VehicleTrip | deriveRoadType | citySharePct | stopGo+highSpeed | composite | rolling | usageFactor | usageFactor | trips | — |
-| HF TPS/RPM | signals 1s | ~1s | throttle/rpm | TripBehaviorEvent | kickdown/launch | kickdown/launch per100 | longitudinal | composite | rolling | — | engine proxy | — | — |
-| behavior.harshCornering | events() | event | DrivingEvent | DrivingEvent | native | harshCornerCount | — | — | — | — | trip usage ledger | trips | behavior |
-| Brake energy | HF/native rows | per event | energy/km | TDI | sumBrakeEnergy | meanBrakeEnergyPerKm | thermal | not composite | rolling | discThermal | — | — | — |
-| measurementCoverage | HF stats | trip | 0–1 | TDI provenance | coverage | healthEligibility | assessability | — | rolling merge | gate publish | — | quality API | — |
+Legend: **Comp** = composite `drivingStressScore` contribution. **LC** = load component (may not affect composite). **—** = not consumed on that hop.
 
-*(Full matrix: 11 acquisition paths × multiple signals — expand in Phase 2.)*
+| # | Input / feature family | Provider / source | Acquisition | Normalization | Persisted representation | Detector / feature | TDI field | Score component | Comp | Rolling / subject | Brake Health | Tire Health | API | UI |
+|---|------------------------|-------------------|-------------|---------------|-------------------------|-------------------|-----------|-----------------|------|-----------------|--------------|-------------|-----|-----|
+| 1 | Hard acceleration | Native: `behavior.harshAcceleration`; HF: speed deltas | Native events post-trip; HF `1s` post-trip | per100km cap 200; native severity ≥0.6 | `VehicleTrip.hardAccelerationCount`, `DrivingEvent` or HF `TripBehaviorEvent` | native mapper / `detectAccelerationEvents` HARD | `hardAccelPer100Km` | longitudinal | 0.30×long | VDIC, DriverScore | harsh bands (indirect) | behaviorFactor (via long) | trips | stress |
+| 2 | Extreme acceleration | Native: `behavior.extremeAcceleration`; HF EXTREME class | Same | per100km; EXTREME ≥0.9 / ≥5 m/s² | counts + event rows | native / HF accel | `extremeAccelPer100Km` | longitudinal | 0.30×long | same | — | via long | trips | — |
+| 3 | Kickdown | HF TPS pattern | HF post-trip | per100km | `VehicleTrip.kickdownCount`, `TripBehaviorEvent` ABUSE | `detectKickdown()` | `kickdownPer100Km` | longitudinal | 0.30×long | same | — | engine proxy LC | — | — |
+| 4 | Launch-like | HF standstill burst | HF post-trip | per100km | `TripBehaviorEvent` LAUNCH_* | `detectLaunchLikeStart()` | `launchLikePer100Km` | longitudinal | 0.30×long | same | — | trans proxy LC | — | — |
+| 5 | Hard braking | Native harsh brake; HF HARD | Native + HF post-trip | per100km | counters, `DrivingEvent`/`TripBehaviorEvent`, ledger | native / `detectBrakingEvents` | `hardBrakePer100Km` | braking | 0.35×brake | VDIC | `harshBrakeWearMultiplier` | behaviorFactor | trips | assessment |
+| 6 | Extreme braking | Native extreme; HF EXTREME | Same | per100km | counts + rows | native / HF | `extremeBrakePer100Km` | braking | 0.35×brake | same | harsh bands | via brake | trips | — |
+| 7 | Full braking | HF abuse tier ≥7.5 m/s² | HF post-trip | per100km | `fullBrakingCount`, FULL_BRAKING events | `detectFullBrakingAndImpact()` | `fullBrakingPer100Km` | braking + thermal | brake+thermal | same | fullBrake anchors | via stress | — | — |
+| 8 | Brakes total / brakesPer100Km | Ledger or classified rows | Post-trip | per100km cap 30 ref | ledger / `TripBehaviorEvent` count | `computeBrakingStatistics` | `brakesPer100Km` | braking + stop-go | 0.35×brake + 0.20×stopGo | VDIC | stop density input | — | trips | — |
+| 9 | p95NegativeDecel | HF/native brake row decels | Post-trip | percentile95 | TDI column + braking stats | braking stats | `p95NegativeDecel` | braking + thermal | 0.35×brake + thermal | VDIC | — | — | — | — |
+| 10 | highSpeedBrakeShare | Brake row start speed ≥80 km/h | Post-trip | share 0–1 | derived | tag on brake rows | `highSpeedBrakeShare` | high-speed + thermal | 0.15×HS + thermal | VDIC | discHighSpeedFactor | — | — | — |
+| 11 | meanBrakeEnergyPerKm | Speed deltas on brake rows | Post-trip | energy/km cap | TDI + stats | `sumBrakeEnergy`/km | `meanBrakeEnergyPerKm` | thermal | thermal only | VDIC | discThermal (indirect) | — | — | — |
+| 12 | stopDensity | Stops from brake end speed <5 km/h | Post-trip | cap 12/km | TDI | stop filter on rows | `stopDensity` | stop-go | 0.20×stopGo | VDIC | padStopDensityFactor | — | — | — |
+| 13 | cityShare | Mapbox road class | Post-trip route enrich | DERIVED_CONTEXT % | `VehicleTrip.citySharePercent` | `deriveRoadTypeDistribution` | `citySharePct` | stop-go | 0.20×stopGo | VDIC | pad/disc usage | usageFactor | trips | — |
+| 14 | highwayShare | Mapbox | Post-trip | DERIVED_CONTEXT % | `highwaySharePercent` | same | `highwaySharePct` | high-speed | 0.15×HS | VDIC | usage factors | usageFactor | trips | — |
+| 15 | countryRoadShare | Mapbox | Post-trip | DERIVED_CONTEXT % | `countrySharePercent` | same | `countryRoadSharePct` | — (not in composite blend) | — | VDIC | pad/disc usage | usageFactor | — | — |
+| 16 | avgEngineLoad | OBD engine load | Live `fetchPerformance` 15s + post-trip HF context | capLinear 100 | `VehicleTrip.avgEngineLoad` | mean of perf buckets | LC `engineLoad` | LC only | — | — | — | — | — | — |
+| 17 | avgRpm | Engine speed | Live perf + HF | capLinear 4500 | `VehicleTrip.avgRpm` | mean perf / HF | LC engine | LC only | — | — | — | — | — | — |
+| 18 | avgThrottlePosition | OBD TPS | Live perf + HF | capLinear 100 | `VehicleTrip.avgThrottlePosition` | mean perf | LC engine | LC only | — | — | — | — | — | — |
+| 19 | harshCornering | Native `behavior.harshCornering` | Native post-trip | count | `VehicleTrip.harshCornerCount`, `DrivingEvent` | native mapper | — (not in TDI composite) | — | — | — | — | tire trip usage ledger | trips | behavior |
+| 20 | measurementCoverage / provenance | HF clean/total; event counts | Post-trip enrich | shares 0–1 | TDI provenance cols, `behaviorSummaryJson` | `buildDrivingImpactSourceProvenance` | `measurementCoverage`, shares, `healthEligibility` | assessability / gates | confidence | merged rolling | publish gate | — | quality API | — |
+| 21 | authoritativeDistanceKm | Finalized trip distance | Trip finalize | km | TDI + trip | coverage domain | `authoritativeDistanceKm`, `distanceKm` | normalizer divisor | all per100km | wear allocation | ledger km | — | — |
+| 22 | Composite output | Derived from rows 1–15 | `DrivingImpactService` | model `v1.2.0` | `TripDrivingImpact.drivingStressScore` | `computeDrivingStressScore` | `drivingStressScore` | composite | 1.0 | VDIC, DriverScore, RDA | indirect via per-trip metrics | behaviorFactor 0.15× | all trip APIs | stress panels |
+
+Phase 2 will extend this matrix with **AVAILABLE_NOT_QUERIED** DIMO signals and per-vehicle capability classes. Phase 1 scope is **production inputs only** (table above).
 
 ---
 
 ## 26. Phase-1 Remaining Work
 
-| Item | Status after Phase 1.1 |
-|------|------------------------|
-| Exhaustive call/formula/consumer inventory | **DONE** (this document) |
-| Every `drivingStressScore` consumer identified | **DONE** (42 production + tests/docs listed) |
+| Item | Status after evidence review (2026-08-30) |
+|------|-------------------------------------------|
+| Exhaustive call/formula/consumer inventory | **DONE** |
+| Every `drivingStressScore` consumer identified | **DONE** |
 | All score formulas documented | **DONE** (Formula Book §9) |
+| All **production** scoring inputs in dependency matrix | **DONE** (22 rows, §25) |
+| Active-trip → TDI relationship | **DONE** — `INDIRECT_TDI_INPUT` (§5.1) |
+| Storage / replay claims verified | **DONE** — corrected §12.1 |
 | Brake/tire consumer graphs | **DONE** (§15–16) |
 | API/UI semantic audit | **DONE** (§17–18) |
 | Legacy path search | **DONE** (§19) |
 | Test inventory | **DONE** (§20) |
-| Phase 1 exit: no hidden scoring path | **DONE** — single composite + deprecated safety + aliases |
-| Phase 1.2+ (optional) | Runtime replay spot-checks; ingest four vehicle inventories when on `main` |
+| Phase 1 exit: no hidden scoring path | **DONE** |
+| Phase 2 items (DIMO surface, cadence, unused signals, four vehicle inventories) | **OUT OF SCOPE** — not blockers for Phase 1 DONE |
 
-**Phase 1 overall:** Phase 1.1 forensic inventory **COMPLETE**. Phase 1 master exit criteria satisfied for formula/call-graph/consumer traceability.
+**Phase 1 overall status: DONE** — forensic call graph complete for all production inputs; remaining work is Phase 2+.
 
 ---
 

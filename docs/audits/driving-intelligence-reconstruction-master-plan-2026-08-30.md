@@ -99,12 +99,16 @@ However, a rolling mean alone hides peaks, distributions and temporal clustering
 **Audit note — CONFIRMED 2026-08-30 (Phase 1.1):** `selectRollingCohort()` classifies all non-winning profile cohorts as `PROFILE_INCOMPATIBLE` regardless of the `profilesComparable(...)` branch result (`driving-impact-rolling.ts:151-155`). `profilesComparable()` is dead code for inclusion. See `docs/audits/driving-intelligence-phase-1-current-state-forensic-audit-2026-08-30.md` §14 (F-02).
 ### 2.10 Phase 1.1 Confirmed — Single Production Composite Path
 Forensic audit confirms one active trip composite: `computeDrivingStressScore()` at model `v1.2.0` (weights 0.30/0.35/0.20/0.15). Deprecated `computeSafetyScore()` retained but new writes set `safetyScore: null`. Legacy API aliases (`drivingStyleScore`, `drivingScore`) remain reachable. Full Formula Book in Phase 1 audit §9.
-### 2.11 Phase 1.1 Confirmed — Correlated Penalty Exposure
-A single braking episode can simultaneously influence `hardBrakePer100Km`, `extremeBrakePer100Km`, `fullBrakingPer100Km`, `brakesPer100Km`, `p95NegativeDecel`, `highSpeedBrakeShare`, `meanBrakeEnergyPerKm`, stop density, and three composite components (braking, stop-go, high-speed). Tire wear `behaviorFactor` additionally includes 0.15× composite atop 0.50× longitudinal + 0.35× braking — partial double-count risk (F-04).
-### 2.12 Phase 1.1 Confirmed — Brake vs Tire Input Asymmetry
-Brake health wear accumulation reads per-trip `TripDrivingImpact` since anchor (filtered `analysisStatus IN (COMPLETE, PARTIAL)`). Tire wear `behaviorFactor` reads 30-day rolling `VehicleDrivingImpactCurrent` only; trip ledger stores DI snapshot for fingerprint but not wear formula.
-### 2.13 Phase 1.1 Confirmed — API/UI Semantic Drift (P0/P1)
-`DriverScoreService` + `/trips/driver-score` expose vehicle stress under driver naming (P0). Notifications and several i18n locales still say "Fahrbewertung"/"driver score" while primary de/en UI uses "Fahrbelastung" (P1). Details in Phase 1 audit §17–18, §22.
+### 2.11 Phase 1.1 Confirmed — Correlated Feature Exposure (P2, not quantified defect)
+A single braking episode can feed multiple score terms (F-06 **CONFIRMED_CORRELATED_FEATURE_EXPOSURE**). Tire `behaviorFactor` includes 0.15× composite atop 0.50× longitudinal + 0.35× braking (**CONFIRMED_DOUBLE_EXPOSURE**, F-04 P2) — sensitivity validation required before treating as scoring defect.
+### 2.12 Phase 1.1 Confirmed — Brake vs Tire Input Asymmetry (P2 architectural)
+Brake health wear reads per-trip `TripDrivingImpact` since anchor (`analysisStatus IN (COMPLETE, PARTIAL)`). Tire wear behavior reads 30-day rolling `VehicleDrivingImpactCurrent` only (F-03 **CONFIRMED_ARCHITECTURAL_ASYMMETRY** — intent not proven).
+### 2.13 Phase 1.1 Confirmed — API/UI Semantic Drift
+`DriverScoreService` + `/trips/driver-score` expose vehicle stress under driver naming (**P0 SEMANTIC_DEFECT**). Notifications/i18n still use "Fahrbewertung"/"driver score" (**P1**). See Phase 1 audit §17–18, §22.
+### 2.14 Phase 1.1 Confirmed — Active-Trip Live Polling vs TDI
+`ACTIVE_TICK` live polling (`fetchPerformance` 15s, core/route reads) updates `VehicleTrip` engine averages and waypoints during the trip but **does not** write behavior event counters or TDI. Classification: **`INDIRECT_TDI_INPUT`** for engine/transmission load components only; composite stress inputs are post-trip (§5.1).
+### 2.15 Phase 1.1 Confirmed — No Guaranteed Raw HF Replay Storage (P2)
+Original DIMO HF `1s` samples are **not** persisted in Postgres. ClickHouse mirror is optional (`HF_MIRROR_ENABLED`), best-effort, and partial. TDI recompute is deterministic from persisted aggregates/events; **kinematic replay requires DIMO re-fetch or Phase 3 Flight Recorder** (F-14). Critical input for Phase 3 and Phase 13 governance.
 ---
 ## 3. New DIMO Vehicle Signal Inventories — Required Inputs
 The following 2026-08-30 vehicle-specific audit documents were supplied as the authoritative next evidence set:
@@ -141,8 +145,8 @@ A current-state dependency map:
 - No unexplained or hidden legacy scoring path remains.
 - Every consumer of `drivingStressScore` is identified.
 ### Status
-**DONE** (Phase 1.1 forensic call graph & formula inventory complete 2026-08-30)
-Deliverable: `docs/audits/driving-intelligence-phase-1-current-state-forensic-audit-2026-08-30.md`. Exit criteria met: all score formulas traceable, all `drivingStressScore` consumers identified, legacy paths classified, brake/tire/API/UI graphs documented.
+**DONE** (Phase 1.1 forensic call graph & formula inventory + evidence/completeness review 2026-08-30)
+Deliverable: `docs/audits/driving-intelligence-phase-1-current-state-forensic-audit-2026-08-30.md`. Exit criteria met: all production score inputs traceable (22-row matrix §25), active-trip→TDI resolved (§5.1), storage/replay claims corrected (§12.1), all `drivingStressScore` consumers identified.
 ---
 ## Phase 2 — DIMO Signal Surface, Query Inventory & Capability Expansion Audit
 **This phase was explicitly inserted before the Flight Recorder.**
@@ -307,6 +311,7 @@ The older July DIMO capability audit and current pipeline audits are available. 
 ---
 ## Phase 3 — Telemetry Flight Recorder
 **Goal:** capture raw, timestamped evidence for the signal set selected in Phase 2 without changing scoring behavior.
+**Phase 1 input (F-14):** Postgres does not store original DIMO HF time series; ClickHouse HF mirror is optional/partial. Flight Recorder must close the kinematic replay gap for Phase 6 sampling-invariance and Phase 13 governance.
 ### Recorder requirements
 For each observation retain, where available:
 - vehicle/provider identity,
@@ -579,7 +584,8 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Initial Tire Health architecture review | DONE | Mature lifecycle/config; trip dynamic input is coarse |
 | Initial HF/cadence constraint review | DONE | Existing code already distinguishes ~30s snapshot vs HF eligibility |
 | Initial rolling/high-timeframe review | DONE | Model-aware rolling exists; average-dominant |
-| Phase 1.1 forensic call graph & formula inventory | DONE | `driving-intelligence-phase-1-current-state-forensic-audit-2026-08-30.md` |
+| Phase 1.1 forensic call graph & formula inventory | DONE | Phase 1 audit + evidence review PR #1454 |
+| Phase 1 evidence/completeness review (storage, active-trip, matrix) | DONE | §5.1, §12.1, §25 (22 rows) |
 | Exhaustive current-state formula/call-graph inventory | DONE | Phase 1 exit criteria satisfied |
 | Read 2026-08-30 Tiguan signal gap audit | BLOCKED | exact file not yet on `main` |
 | Read 2026-08-30 C63 AMG signal gap audit | BLOCKED | exact file not yet on `main` |
