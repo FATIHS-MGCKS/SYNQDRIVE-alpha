@@ -95,16 +95,17 @@ echo
 curl -sf "http://127.0.0.1:${PORT_B}/api/v1/health/readiness" | tee "${LOG_DIR}/readiness-b.json"
 echo
 
-echo "==> Leader election probe (will terminate replicas)"
-REPLICA_A_PORT="$PORT_A" REPLICA_B_PORT="$PORT_B" REPLICA_A_PID="$PID_A" REPLICA_B_PID="$PID_B" \
-  node scripts/ops/two-replica-process-validation-probe.mjs | tee "${LOG_DIR}/leader-probe.log"
-
 echo "==> Reconciliation mutex + DIMO budget coordination probe (two forked Node processes)"
 set -a
 # shellcheck disable=SC1091
 source "$SHARED_ENV"
 set +a
-REDIS_DB="$VALIDATION_REDIS_DB" node scripts/ops/two-replica-coordination-probe.mjs | tee "${LOG_DIR}/coordination-probe.log"
+REDIS_DB="$VALIDATION_REDIS_DB" DIMO_GLOBAL_MAX_IN_FLIGHT="${DIMO_GLOBAL_MAX_IN_FLIGHT:-50}" \
+  node scripts/ops/two-replica-coordination-probe.mjs | tee "${LOG_DIR}/coordination-probe.log"
+
+echo "==> Leader election probe (will terminate replicas)"
+REPLICA_A_PORT="$PORT_A" REPLICA_B_PORT="$PORT_B" REPLICA_A_PID="$PID_A" REPLICA_B_PID="$PID_B" \
+  node scripts/ops/two-replica-process-validation-probe.mjs | tee "${LOG_DIR}/leader-probe.log"
 
 git -C "$VALIDATION_DIR" rev-parse HEAD | tee "${LOG_DIR}/main-head.txt"
 echo "{\"validationId\":\"${VALIDATION_ID}\",\"pidA\":${PID_A},\"pidB\":${PID_B},\"portA\":${PORT_A},\"portB\":${PORT_B},\"redisDb\":${VALIDATION_REDIS_DB}}" >"$RESULT_FILE"

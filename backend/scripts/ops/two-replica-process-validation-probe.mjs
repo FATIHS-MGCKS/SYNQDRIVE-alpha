@@ -32,13 +32,22 @@ function leaderRole(body) {
   return body?.checks?.schedulerLeader?.details?.role ?? 'UNKNOWN';
 }
 
+async function readinessRole(port) {
+  try {
+    const body = await fetchReadiness(port);
+    return { port, role: leaderRole(body), body, reachable: true };
+  } catch {
+    return { port, role: 'UNREACHABLE', body: null, reachable: false };
+  }
+}
+
 async function pollLeaders() {
-  const [a, b] = await Promise.all([fetchReadiness(PORT_A), fetchReadiness(PORT_B)]);
-  const roles = [leaderRole(a), leaderRole(b)];
+  const [ra, rb] = await Promise.all([readinessRole(PORT_A), readinessRole(PORT_B)]);
+  const roles = [ra.role, rb.role];
   const leaders = roles.filter((r) => r === 'LEADER').length;
   results.leaderCountMax = Math.max(results.leaderCountMax, leaders);
   if (leaders > 1) results.splitBrainFound = true;
-  return { roles, leaders, a, b };
+  return { roles, leaders, a: ra.body, b: rb.body, reachable: [ra.reachable, rb.reachable] };
 }
 
 async function waitForBothReady(maxMs = 120_000) {
@@ -68,8 +77,10 @@ async function waitForSingleLeader(maxMs) {
     try {
       const { leaders, roles } = await pollLeaders();
       if (leaders === 1) {
-        const leaderPort = roles[0] === 'LEADER' ? PORT_A : PORT_B;
-        return { elapsedMs: Date.now() - start, leaderPort, roles };
+        const leaderPort = roles[0] === 'LEADER' ? PORT_A : roles[1] === 'LEADER' ? PORT_B : null;
+        if (leaderPort) {
+          return { elapsedMs: Date.now() - start, leaderPort, roles };
+        }
       }
     } catch {
       // transient while process restarts
