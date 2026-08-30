@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-vehicle-stress-misuse-p2-2-64-2026-08-30',
+    version: '4.9.992',
+    title: 'Platform i18n — P2.2.64 Vehicle Rental Stress & Misuse Hints',
+    summary: [
+      'Localized production-mounted misuse hints panel and rental stress analysis card via `rental-misuse-stress-i18n.ts` and `rental.misuseStress.{en,de}.ts`; +45 keys (9661→9706 EN/DE); reuses `docUpload.entityReview.confidence.*` and `STRESS_TOOLTIPS.vehicleStress`.',
+      'MisuseCasesPanel + RentalStressAnalysisCard host copy (title, loading, empty, severity/status/eligibility, evidence chrome, stress sections). Evidence taxonomy EN via adapter const maps; DE delegates to frozen `trips/*` modules. Wear impact + data confidence via adapter maps (not dictionary).',
+      'P264 enforce-clean exact scope (4 paths) — 0 findings. True active actionable rental debt −6 (19→13). Same-mount DE→EN→DE; zero locale business refetch. Category E=0.',
+    ],
+    reason:
+      'P2.2.64 strict presentation-only implementation for Vehicle Rental Stress & Misuse Hints per preflight verdict A (one slice complete).',
+    previousBehavior:
+      'MisuseCasesPanel and RentalStressAnalysisCard used hardcoded German strings; lifecycle labels in `misuse-case-lifecycle.ui.ts` were DE-only constants.',
+    details:
+      'Adapter resolvers for severity, status, eligibility, evidence presentation, wear impact, data confidence; raw backend summaries/watchpoints/areas/signals preserved. Fetch identity excludes locale.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-30T10:05:00.000Z',
+  },
+  {
     id: 'i18n-rental-iam-roles-security-p2-2-63-2026-08-30',
     version: '4.9.991',
     title: 'Platform i18n — P2.2.63 Mounted Roles Access & Security Audit',
