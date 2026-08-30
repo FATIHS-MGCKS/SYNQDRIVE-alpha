@@ -56,7 +56,7 @@ Migration: `20260831120000_vehicle_energy_event_fuel_station_enrichment` (additi
 |------------|------------|---------|
 | `COMPLETED` | `MATCHED` / `AMBIGUOUS` / `NOT_FOUND` / `NO_COORDINATES` / `INVALID_COORDINATES` | Terminal business outcome |
 | `PROCESSING` | `ERROR` | Retryable infrastructure/resolver failure in flight |
-| `FAILED` | `ERROR` | Max BullMQ retries exhausted |
+| `FAILED` | `ERROR` | Max BullMQ retries exhausted — **terminal for automatic recovery** |
 
 `NOT_FOUND` with `COMPLETED` is success — not a failed job.
 
@@ -119,12 +119,28 @@ Producer is `@Optional()` — enqueue failure never throws into persistence.
 | Env | Default | Purpose |
 |-----|---------|---------|
 | `FUEL_STATION_ENRICHMENT_ENABLED` | `false` | Master switch (producer + worker) |
-| `FUEL_STATION_ENRICHMENT_CUTOVER_AT` | unset | Only events with `createdAt >= cutover` are enqueued/recovered |
-| `FUEL_STATION_ENRICHMENT_RECOVERY_ENABLED` | `false` | Bounded missed-enqueue recovery |
+| `FUEL_STATION_ENRICHMENT_CUTOVER_AT` | unset | **Required** when enabled — eligibility uses `VehicleEnergyEvent.startTime >= cutover` (not `createdAt`) |
+| `FUEL_STATION_ENRICHMENT_RECOVERY_ENABLED` | `false` | Bounded missed-enqueue recovery (**requires valid cutover**) |
 | `FUEL_STATION_ENRICHMENT_RECOVERY_INTERVAL_MS` | `300000` | Recovery cadence |
 | `FUEL_STATION_ENRICHMENT_RECOVERY_BATCH_SIZE` | `50` | Recovery batch cap |
 
-Recovery (`FuelStationEnrichmentRecoveryScheduler`) sweeps post-cutover REFUEL events missing enrichment or stuck `PENDING`/`FAILED`/stale `PROCESSING`. **No historical backfill.**
+### Cutover authority (V1)
+
+`FUEL_STATION_ENRICHMENT_CUTOVER_AT` applies to **`VehicleEnergyEvent.startTime`** (event occurrence), not database `createdAt`.
+
+Example: `startTime=2026-08-20`, `createdAt=2026-09-02`, `cutover=2026-09-01` → **not eligible** (historical refuel persisted later).
+
+Producer and recovery scheduler share the same rule via `fuel-station-enrichment-cutover.util.ts`.
+
+If recovery is enabled without a valid cutover timestamp, recovery **fails closed** (no query, structured warning, returns 0).
+
+Recovery (`FuelStationEnrichmentRecoveryScheduler`) sweeps post-cutover REFUEL events with:
+
+- missing enrichment row
+- `PENDING` never finished
+- stale `PROCESSING` (>15 min)
+
+**`FAILED` is terminal** — not eligible for automatic recovery sweeps. Future retry requires a separately authorized manual repair operation.
 
 ## Concurrency
 

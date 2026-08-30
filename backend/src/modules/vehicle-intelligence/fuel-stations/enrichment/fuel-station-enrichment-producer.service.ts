@@ -20,10 +20,15 @@ import {
   FUEL_STATION_ENRICHMENT_JOB_NAME,
   type RefuelStationEnrichmentJobData,
 } from './fuel-station-enrichment.types';
+import {
+  describeFuelStationEnrichmentCutoverMisconfiguration,
+  hasValidFuelStationEnrichmentCutover,
+  isFuelStationEnrichmentEventAfterCutover,
+} from './fuel-station-enrichment-cutover.util';
 
 export interface EnqueueFuelStationEnrichmentInput {
   energyEventId: string;
-  eventCreatedAt: Date;
+  eventStartTime: Date;
   startLatitude: number | null;
   startLongitude: number | null;
 }
@@ -44,7 +49,19 @@ export class FuelStationEnrichmentProducerService {
       return null;
     }
 
-    if (!this.isAfterCutover(input.eventCreatedAt)) {
+    if (!hasValidFuelStationEnrichmentCutover(this.config)) {
+      this.logger.warn(
+        JSON.stringify({
+          event: 'fuel_station_enrichment_enqueue_skipped',
+          reason: 'cutover_not_configured',
+          detail: describeFuelStationEnrichmentCutoverMisconfiguration(this.config.cutoverState),
+          energyEventId: input.energyEventId,
+        }),
+      );
+      return null;
+    }
+
+    if (!this.isEventEligibleForEnrichment(input.eventStartTime)) {
       return null;
     }
 
@@ -120,16 +137,13 @@ export class FuelStationEnrichmentProducerService {
   enqueueAfterPersistFromEvent(event: VehicleEnergyEvent): Promise<string | null> {
     return this.enqueueAfterPersist({
       energyEventId: event.id,
-      eventCreatedAt: event.createdAt,
+      eventStartTime: event.startTime,
       startLatitude: event.startLatitude,
       startLongitude: event.startLongitude,
     });
   }
 
-  isAfterCutover(eventCreatedAt: Date): boolean {
-    if (!this.config.cutoverAt) {
-      return true;
-    }
-    return eventCreatedAt.getTime() >= this.config.cutoverAt.getTime();
+  isEventEligibleForEnrichment(eventStartTime: Date): boolean {
+    return isFuelStationEnrichmentEventAfterCutover(eventStartTime, this.config.cutoverAt);
   }
 }

@@ -7,10 +7,17 @@ import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { FuelStationEnrichmentProducerService } from '@modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-producer.service';
 import { EnergyEventKind } from '@prisma/client';
+import {
+  describeFuelStationEnrichmentCutoverMisconfiguration,
+  hasValidFuelStationEnrichmentCutover,
+} from '@modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-cutover.util';
+
+const STALE_PROCESSING_MS = 15 * 60_000;
 
 /**
- * Bounded recovery for REFUEL events created after cutover with missing/stale enrichment.
- * Does NOT sweep historical pre-cutover events.
+ * Bounded recovery for REFUEL events whose startTime is after cutover and whose
+ * enrichment is missing or stuck. Does NOT sweep historical pre-cutover events.
+ * FAILED rows are terminal and never automatically requeued.
  */
 @Injectable()
 export class FuelStationEnrichmentRecoveryScheduler implements OnModuleInit, OnModuleDestroy {
@@ -48,14 +55,25 @@ export class FuelStationEnrichmentRecoveryScheduler implements OnModuleInit, OnM
     if (!canEnqueueQueue(this.logger, 'fuel-station-enrichment-recovery')) return 0;
     if (this.inProgress) return 0;
 
+    if (!hasValidFuelStationEnrichmentCutover(this.config)) {
+      this.logger.warn(
+        JSON.stringify({
+          event: 'fuel_station_enrichment_recovery_disabled',
+          reason: 'cutover_not_configured',
+          detail: describeFuelStationEnrichmentCutoverMisconfiguration(this.config.cutoverState),
+        }),
+      );
+      return 0;
+    }
+
+    const cutoverAt = this.config.cutoverAt as Date;
     this.inProgress = true;
     let recovered = 0;
     try {
-      const cutoverAt = this.config.cutoverAt;
       const candidates = await this.prisma.vehicleEnergyEvent.findMany({
         where: {
           kind: EnergyEventKind.REFUEL,
-          ...(cutoverAt ? { createdAt: { gte: cutoverAt } } : {}),
+          startTime: { gte: cutoverAt },
           OR: [
             { fuelStationEnrichment: { is: null } },
             {
@@ -63,10 +81,9 @@ export class FuelStationEnrichmentRecoveryScheduler implements OnModuleInit, OnM
                 is: {
                   OR: [
                     { processingStatus: 'PENDING' },
-                    { processingStatus: 'FAILED' },
                     {
                       processingStatus: 'PROCESSING',
-                      lastAttemptAt: { lt: new Date(Date.now() - 15 * 60_000) },
+                      lastAttemptAt: { lt: new Date(Date.now() - STALE_PROCESSING_MS) },
                     },
                   ],
                 },
@@ -74,7 +91,7 @@ export class FuelStationEnrichmentRecoveryScheduler implements OnModuleInit, OnM
             },
           ],
         },
-        orderBy: { createdAt: 'asc' },
+        orderBy: { startTime: 'asc' },
         take: this.config.recoveryBatchSize,
       });
 

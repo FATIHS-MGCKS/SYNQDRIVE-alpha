@@ -2095,3 +2095,39 @@ Prisma `VehicleEnergyEventFuelStationEnrichment` (1:1, `ON DELETE CASCADE`). Sep
 ---
 
 *PB-19 Phase D implementation — 2026-08-31.*
+
+---
+
+## PB-19.1 Phase D Safety Hardening (pre-CI)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-08-31 |
+| **PR** | #1453 |
+
+### Hardening 1 — FAILED terminal for automatic recovery
+
+`FAILED` removed from recovery eligibility. Automatic recovery limited to: missing enrichment, `PENDING`, stale `PROCESSING`. Max BullMQ retries → `FAILED` remains terminal.
+
+### Hardening 2 — Recovery fail-closed without valid cutover
+
+`FUEL_STATION_ENRICHMENT_RECOVERY_ENABLED=true` without valid `FUEL_STATION_ENRICHMENT_CUTOVER_AT` → no query, structured warning, returns 0. Invalid timestamp treated as misconfiguration (not “no cutover”).
+
+### Hardening 3 — Cutover uses event occurrence (`startTime`)
+
+Producer + recovery use `VehicleEnergyEvent.startTime >= FUEL_STATION_ENRICHMENT_CUTOVER_AT` (not `createdAt`). Prevents late-persisted historical refuels from becoming eligible.
+
+### Regression evidence
+
+- Recovery scheduler tests: FAILED excluded, missing/invalid cutover fail-closed, `startTime` filter
+- Producer tests: startTime cutover, late-created historical event blocked, fingerprint idempotency preserved
+- Processor test: max retries → `markFailedAfterMaxRetries`
+- Energy Event firewall unchanged
+
+### Status
+
+## **PHASE D SAFETY HARDENING COMPLETE — READY FOR NORMAL CI**
+
+---
+
+*PB-19.1 safety hardening — 2026-08-31.*
