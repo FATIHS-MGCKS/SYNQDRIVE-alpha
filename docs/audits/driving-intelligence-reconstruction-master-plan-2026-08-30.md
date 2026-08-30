@@ -305,9 +305,25 @@ A future profile should be able to express:
 9. proposed Flight Recorder signal manifest.
 ### 2H. Gate to Phase 3
 **Do not design/freeze the Flight Recorder until Phase 2 is complete.**
-### Status
-**NEXT / BLOCKED PARTIALLY ON INPUT AVAILABILITY**
-The older July DIMO capability audit and current pipeline audits are available. The four exact 2026-08-30 vehicle inventories are not yet on `main` at the time this document was created.
+### 2A Status — DONE (2026-08-31)
+Deliverable: `docs/audits/dimo-phase-2a-current-query-surface-audit-2026-08-31.md`
+
+**Exit criteria met (code/schema audit):** 27 productive DIMO queries registered (`DIMO-Q001`–`DIMO-Q027`); exact signal selections, triggers, cadence, windows, persistence, and overlap documented; theoretical scaling computed; 20 runtime probes backlog.
+
+**Capability architecture verdict:** `PARTIALLY_CAPABILITY_AWARE` — `availableSignals`/`dataSummary` preflight persists capability probes (7-day gate) but does **not** drive snapshot/live/HF/event query field selection; all driving queries remain static fleet-wide profiles.
+
+**Material Phase 2A findings:**
+- REQUESTED_BUCKET (`1s`/`7s`/`15s`/`20s`) ≠ proven OBSERVED_PROVIDER_CADENCE — runtime probes required before treating bucket size as sample frequency.
+- No per-HF-point SynqDrive receive timestamp; provider→SynqDrive latency not measurable for kinematic replay (Phase 3 blocker input).
+- Raw HF not in Postgres; ClickHouse HF mirror optional (`HF_MIRROR_ENABLED=false` default), 6-signal subset — PARTIAL_REPLAY_ONLY.
+- ACTIVE_TICK: 3 parallel DIMO calls every ~30s per active trip dominates burst API load at concurrent-trip scale.
+- Four 2026-08-30 vehicle inventory files still **not on `main`** — Phase 2B remains blocked on ingestion.
+
+**Phase 2 overall:** IN_PROGRESS (2A done; 2B–2G not started). **Phase 3 remains gated.**
+
+### Status (Phase 2 overall)
+**IN_PROGRESS — 2A DONE; 2B BLOCKED ON FOUR VEHICLE INVENTORY FILES**
+The older July DIMO capability audit is HISTORICAL_EVIDENCE only. The four exact 2026-08-30 vehicle inventories are still not on `main` as of 2026-08-31.
 ---
 ## Phase 3 — Telemetry Flight Recorder
 **Goal:** capture raw, timestamped evidence for the signal set selected in Phase 2 without changing scoring behavior.
@@ -591,11 +607,12 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Read 2026-08-30 C63 AMG signal gap audit | BLOCKED | exact file not yet on `main` |
 | Read 2026-08-30 Audi A4 signal gap audit | BLOCKED | exact file not yet on `main` |
 | Read 2026-08-30 Arteon signal gap audit | BLOCKED | exact file not yet on `main` |
-| Snapshot query inventory | NEXT | Phase 2A |
-| Active-trip/live polling query inventory | NEXT | Phase 2A |
-| HF/time-series query inventory | NEXT | Phase 2A |
-| Native event/segment inventory refresh | NEXT | Phase 2A |
-| Four-vehicle capability matrix | NOT_STARTED | waits on new audit docs |
+| Snapshot query inventory | DONE | Phase 2A audit §4–6 (27 queries total) |
+| Active-trip/live polling query inventory | DONE | Phase 2A audit §7–8 |
+| HF/time-series query inventory | DONE | Phase 2A audit §9–10 |
+| Native event/segment inventory refresh | DONE | Phase 2A audit §12–13 |
+| Phase 2A query-surface audit | DONE | `dimo-phase-2a-current-query-surface-audit-2026-08-31.md` |
+| Four-vehicle capability matrix | NOT_STARTED | waits on new audit docs (Phase 2B) |
 | Available-but-unused DIMO signal matrix | NOT_STARTED | Phase 2 |
 | Prioritized query expansion proposal | NOT_STARTED | no production change yet |
 | Flight Recorder manifest | NOT_STARTED | Phase 2 exit deliverable |
@@ -616,8 +633,8 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 # 6. Immediate Next Actions
 1. ~~Complete Phase 1's exact call/formula/consumer inventory.~~ **Done** — see Phase 1 audit.
 2. Make the four 2026-08-30 vehicle signal-inventory files available on `main` and ingest them into this workstream.
-3. Execute Phase 2A against current code: exact Snapshot / Live Poll / HF / Events query inventories (Phase 1 audit §5 handoff lists entry points).
-4. Merge those code findings with the four vehicle-specific capability inventories.
+3. ~~Execute Phase 2A against current code: exact Snapshot / Live Poll / HF / Events query inventories.~~ **Done** — see Phase 2A audit.
+4. Execute Phase 2B: merge Phase 2A code findings with the four vehicle-specific capability inventories (blocked until files on `main`).
 5. Produce a prioritized `available but unused` signal list and assess incremental value per driving/brake/tire use case.
 6. Only then freeze the Flight Recorder signal manifest and proceed to Phase 3.
 ---
