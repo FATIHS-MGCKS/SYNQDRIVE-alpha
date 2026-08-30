@@ -2042,3 +2042,125 @@ Resolver is safe for isolated read-only use and Phase D design. Recommend enrich
 ---
 
 *PB-18 Phase C calibration gate — 2026-08-30.*
+
+---
+
+## PB-19. Phase D — Enrichment Persistence + Worker V1
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-08-31 |
+| **Branch** | `cursor/fuel-station-enrichment-phase-d-27ba` |
+| **Architecture** | `architecture/FUEL_STATION_ENRICHMENT_PERSISTENCE_WORKER_V1_2026-08-31.md` |
+
+### PB-19.1 Re-audit hook (current main)
+
+Post-persistence hook confirmed at `EnergyEventsService.upsertSegment()` immediately after `vehicleEnergyEvent.create/update`, before refuel metrics. Pattern: `@Optional() FuelStationEnrichmentProducerService` + `void enqueueAfterPersistFromEvent(row).catch(warn)`.
+
+### PB-19.2 Persistence model
+
+Prisma `VehicleEnergyEventFuelStationEnrichment` (1:1, `ON DELETE CASCADE`). Separate processing vs resolution enums. Migration `20260831120000_vehicle_energy_event_fuel_station_enrichment` — additive only.
+
+### PB-19.3 Orchestration
+
+- Queue: `energy.refuel.station.enrich`
+- Job payload: `{ energyEventId }`
+- Job ID: `refuel-station_{energyEventId}:{inputFingerprint}`
+- Worker reloads canonical event; fingerprint staleness guard
+- Recovery scheduler bounded to post-`FUEL_STATION_ENRICHMENT_CUTOVER_AT` events only
+
+### PB-19.4 Trust policy
+
+`isTrustedFuelStationAssignment`: `MATCHED` + (`HIGH`|`MEDIUM`). `LOW` diagnostic only.
+
+### PB-19.5 Coordinate policy V1
+
+`startLatitude` / `startLongitude` (`energy_event_start`) — same as trip timeline display.
+
+### PB-19.6 Energy Event firewall
+
+**Confirmed — detection/persistence unchanged.** Only additive post-persist enqueue hook. Enqueue failure does not fail persistence (regression test).
+
+### PB-19.7 Deployment boundary
+
+- Migration **not** applied to production
+- `FUEL_STATION_ENRICHMENT_ENABLED=false` by default
+- No API/frontend changes
+- No historical backfill
+
+### PB-19.8 Overall status
+
+## **PHASE D READY — MERGE BEFORE DEPLOYMENT**
+
+---
+
+*PB-19 Phase D implementation — 2026-08-31.*
+
+---
+
+## PB-19.1 Phase D Safety Hardening (pre-CI)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-08-31 |
+| **PR** | #1453 |
+
+### Hardening 1 — FAILED terminal for automatic recovery
+
+`FAILED` removed from recovery eligibility. Automatic recovery limited to: missing enrichment, `PENDING`, stale `PROCESSING`. Max BullMQ retries → `FAILED` remains terminal.
+
+### Hardening 2 — Recovery fail-closed without valid cutover
+
+`FUEL_STATION_ENRICHMENT_RECOVERY_ENABLED=true` without valid `FUEL_STATION_ENRICHMENT_CUTOVER_AT` → no query, structured warning, returns 0. Invalid timestamp treated as misconfiguration (not “no cutover”).
+
+### Hardening 3 — Cutover uses event occurrence (`startTime`)
+
+Producer + recovery use `VehicleEnergyEvent.startTime >= FUEL_STATION_ENRICHMENT_CUTOVER_AT` (not `createdAt`). Prevents late-persisted historical refuels from becoming eligible.
+
+### Regression evidence
+
+- Recovery scheduler tests: FAILED excluded, missing/invalid cutover fail-closed, `startTime` filter
+- Producer tests: startTime cutover, late-created historical event blocked, fingerprint idempotency preserved
+- Processor test: max retries → `markFailedAfterMaxRetries`
+- Energy Event firewall unchanged
+
+### Status
+
+## **PHASE D SAFETY HARDENING COMPLETE — READY FOR NORMAL CI**
+
+---
+
+*PB-19.1 safety hardening — 2026-08-31.*
+
+---
+
+## PB-19.2 Phase D Lifecycle Hardening (pre-CI)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-08-31 |
+| **PR** | #1453 |
+
+### Lifecycle 1 — FAILED terminal across all automatic entry paths
+
+Producer consults persisted enrichment row before enqueue. `FAILED` + same fingerprint → no enqueue, no BullMQ job remove/recreate. Orchestrator skips automatic reprocessing for terminal FAILED.
+
+### Lifecycle 2 — COMPLETED same-fingerprint no-op
+
+Producer no longer removes completed BullMQ jobs to re-enqueue unchanged inputs. DB `COMPLETED` terminal state is authoritative.
+
+### Lifecycle 3 — NO_COORDINATES idempotency
+
+Orchestrator checks completed fingerprint before persisting `NO_COORDINATES`. Valid coordinates later → new fingerprint → enrichment permitted.
+
+### Lifecycle 4 — Recovery timer fail-closed at startup
+
+Timer starts only when `ENABLED=true` AND `RECOVERY_ENABLED=true` AND valid cutover. Misconfiguration emits one startup warning; no interval created.
+
+### Status
+
+## **PHASE D LIFECYCLE HARDENING COMPLETE — READY FOR NORMAL CI**
+
+---
+
+*PB-19.2 lifecycle hardening — 2026-08-31.*

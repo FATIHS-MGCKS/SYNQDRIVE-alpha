@@ -19,6 +19,7 @@ import {
   type CoalescedEnergySegment,
 } from './energy-events.pipeline';
 import { EnergyEventsMetricsService } from './energy-events-metrics.service';
+import { FuelStationEnrichmentProducerService } from '../fuel-stations/enrichment/fuel-station-enrichment-producer.service';
 import { deriveRefuelFuelLevelRise } from './refuel-fuel-rise';
 import {
   resolveSupersededRefuelSiblingIds,
@@ -53,6 +54,8 @@ export class EnergyEventsService {
     private readonly prisma: PrismaService,
     private readonly dimoSegments: DimoSegmentsService,
     @Optional() private readonly energyMetrics?: EnergyEventsMetricsService,
+    @Optional()
+    private readonly fuelStationEnrichmentProducer?: FuelStationEnrichmentProducerService,
   ) {}
 
   async listEnergyEvents(
@@ -302,6 +305,16 @@ export class EnergyEventsService {
     }
 
     if (segment.mechanism === 'refuel') {
+      void this.fuelStationEnrichmentProducer
+        ?.enqueueAfterPersistFromEvent(row)
+        .catch((error: unknown) => {
+          this.logger.warn(
+            `Fuel station enrichment enqueue failed for energyEventId=${row.id}: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        });
+
       this.energyMetrics?.recordRefuelDetected();
       this.energyMetrics?.recordRefuelFuelRiseObservation({
         vehicleId,
