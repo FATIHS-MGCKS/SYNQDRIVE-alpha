@@ -34,13 +34,15 @@ load_database_url() {
   fi
   local backend_env="${BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
   if [[ -r "$backend_env" ]]; then
+    set +u
     # shellcheck disable=SC1090
     set -a
     source "$backend_env"
     set +a
+    set -u
     export DATABASE_URL
-  elif [[ -r "/opt/synqdrive/shared/backend.env" ]] || sudo test -r "/opt/synqdrive/shared/backend.env" 2>/dev/null; then
-    DATABASE_URL="$(sudo bash -lc 'set -a; source /opt/synqdrive/shared/backend.env; printf "%s" "$DATABASE_URL"')"
+  elif sudo test -r "/opt/synqdrive/shared/backend.env" 2>/dev/null; then
+    DATABASE_URL="$(sudo bash -lc 'set +u; set -a; source /opt/synqdrive/shared/backend.env; printf "%s" "$DATABASE_URL"')"
     export DATABASE_URL
   fi
   [[ -n "${DATABASE_URL:-}" ]] || die "DATABASE_URL not set (export or set BACKEND_ENV)"
@@ -91,15 +93,22 @@ sha256_file() {
 
 verify_geofabrik_checksum() {
   local pbf="$1"
-  local expected actual
-  if ! curl -sfL --max-time 120 "$GEOFABRIK_SHA256_URL" -o "${WORK_DIR}/germany-latest.osm.pbf.sha256"; then
+  local sidecar="${WORK_DIR}/germany-latest.osm.pbf.sha256"
+  local expected actual sidecar_size
+  if ! curl -sfL --max-time 120 "$GEOFABRIK_SHA256_URL" -o "$sidecar"; then
     log "WARN: could not download Geofabrik sha256 sidecar — continuing with size/osmium checks only"
     return 0
   fi
-  expected="$(awk '{print $1}' "${WORK_DIR}/germany-latest.osm.pbf.sha256")"
+  sidecar_size="$(stat -c%s "$sidecar")"
+  if [[ "$sidecar_size" -gt 4096 ]]; then
+    log "WARN: sha256 sidecar unexpectedly large (${sidecar_size} bytes) — skipping checksum verify"
+    rm -f "$sidecar"
+    return 0
+  fi
+  expected="$(tr -d '\r\n' < "$sidecar" | awk '{print $1}')"
   actual="$(sha256_file "$pbf")"
-  if [[ "$expected" != "$actual" ]]; then
-    die "PBF sha256 mismatch (expected ${expected}, got ${actual})"
+  if [[ -z "$expected" || "$expected" != "$actual" ]]; then
+    die "PBF sha256 mismatch (expected ${expected:-<empty>}, got ${actual})"
   fi
   log "PBF sha256 verified against Geofabrik sidecar"
 }
@@ -187,10 +196,15 @@ main() {
   local pbf="${WORK_DIR}/germany-latest.osm.pbf"
   local filtered="${WORK_DIR}/germany-fuel.osm.pbf"
 
-  if [[ "$SKIP_DOWNLOAD" == "1" && -f "$filtered" ]]; then
-    log "OSM_FUEL_SKIP_DOWNLOAD=1 and filtered PBF exists — reusing ${filtered}"
+  if [[ -f "$filtered" ]]; then
+    log "reusing existing filtered PBF: ${filtered}"
   else
-    download_pbf "$pbf"
+    if [[ -f "$pbf" ]]; then
+      log "reusing existing downloaded PBF: ${pbf}"
+      osmium fileinfo -e "$pbf" >/dev/null || die "existing PBF failed osmium fileinfo"
+    else
+      download_pbf "$pbf"
+    fi
     filter_fuel_pbf "$pbf" "$filtered"
     log "deleting full Germany PBF to reclaim disk"
     rm -f "$pbf" "${WORK_DIR}/germany-latest.osm.pbf.sha256"

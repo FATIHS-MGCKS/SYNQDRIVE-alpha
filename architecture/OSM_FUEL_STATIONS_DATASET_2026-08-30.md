@@ -4,7 +4,23 @@
 |-------|-------|
 | **Date** | 2026-08-30 |
 | **Phase** | B7–B12 — isolated geographic reference data only |
-| **Status** | Production infrastructure (no Energy Event coupling) |
+| **Status** | Production dataset live (`geofabrik-germany-20260830`) |
+
+## Production evidence (2026-08-30)
+
+| Metric | Value |
+|--------|-------|
+| Dataset version | `geofabrik-germany-20260830` |
+| Station count | **18,195** |
+| Named stations | **91.3%** (16,616) |
+| Branded stations | **71.2%** (12,960) |
+| With address fields | **64.0%** (11,643) |
+| Import + promote (reuse filtered PBF) | ~6 s DB phase |
+| End-to-end refresh (incl. download) | ~8 min observed |
+| Peak RSS (filter stage) | ~2.0 GB |
+| Disk before / after | 97 GB free → 97 GB free (51% used) |
+| GiST index used | `fuel_stations_centroid_gist` (EXPLAIN ANALYZE 0.13 ms) |
+| App health after | `/api/v1/health` → ok |
 
 ## Purpose
 

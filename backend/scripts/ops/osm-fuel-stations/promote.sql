@@ -6,8 +6,18 @@ BEGIN;
 -- Drop previous retention table if present (from last successful swap).
 DROP TABLE IF EXISTS osm.fuel_stations_old;
 
--- If first run, live table may be empty shell — still rename for uniform path.
-ALTER TABLE IF EXISTS osm.fuel_stations RENAME TO fuel_stations_old;
+-- First import: empty live shell is dropped instead of renamed (avoids index name collision).
+DO $$
+DECLARE
+  live_count bigint;
+BEGIN
+  SELECT COUNT(*) INTO live_count FROM osm.fuel_stations;
+  IF live_count = 0 THEN
+    DROP TABLE IF EXISTS osm.fuel_stations CASCADE;
+  ELSE
+    ALTER TABLE osm.fuel_stations RENAME TO fuel_stations_old;
+  END IF;
+END $$;
 
 ALTER TABLE osm.fuel_stations_staging RENAME TO fuel_stations;
 

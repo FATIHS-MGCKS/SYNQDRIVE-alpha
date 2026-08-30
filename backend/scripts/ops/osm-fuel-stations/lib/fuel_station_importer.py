@@ -69,7 +69,10 @@ class FuelStationCollector(osmium.SimpleHandler):
         fields = extract_station_fields(tags)
         source_ts = None
         if timestamp:
-            source_ts = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+            if isinstance(timestamp, datetime):
+                source_ts = timestamp if timestamp.tzinfo else timestamp.replace(tzinfo=timezone.utc)
+            else:
+                source_ts = datetime.fromtimestamp(timestamp, tz=timezone.utc)
         self.rows.append(
             {
                 'osm_type': osm_type,

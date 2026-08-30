@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'osm-fuel-stations-dataset-b7-b12-2026-08-30',
+    version: '4.9.1014',
+    title: 'OSM fuel-station PostGIS reference dataset (B7–B12)',
+    summary: [
+      'Isolated `osm` schema + Geofabrik DE → osmium fuel-only filter → pyosmium lean import → validation gates → atomic promotion.',
+      'Production dataset `geofabrik-germany-20260830`: 18,195 stations; GiST indexes verified; nearest-station spatial queries use `fuel_stations_centroid_gist`.',
+      'Ops: `backend/scripts/ops/osm-fuel-stations/osm-fuel-stations-refresh.sh`, runbook `docs/runbooks/osm-fuel-stations-import.md`.',
+      'Energy Event firewall: no RefuelDetector, scoreConfidence, persist gates, API, or frontend changes.',
+    ],
+    reason:
+      'Phase B dataset layer only — geographic reference data for a future FuelStationResolver; audit docs/audits/fuel-station-osm-postgis-location-enrichment-audit-2026-08.md.',
+    previousBehavior: 'PostGIS enabled (B0/B1) but no `osm.fuel_stations` dataset.',
+    details:
+      'architecture/OSM_FUEL_STATIONS_DATASET_2026-08-30.md; audit PB-16. Dev Docker Postgres → postgis/postgis:16-3.4-alpine.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T18:47:00.000Z',
+  },
+  {
     id: 'dimo-provider-p1-3-s4-reconciliation-2-2026-08-30',
     version: '4.9.1013',
     title: 'P1.3-S4 reconciliation #2 — #1440 VPS validation + full S4/P1.3/P1.7/P1.4 stack',

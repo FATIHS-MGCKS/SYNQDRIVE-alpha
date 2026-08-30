@@ -1092,6 +1092,15 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'OpenStreetMap / Geofabrik (Fuel Stations V1)',
+    icon: Fuel,
+    color: 'text-[color:var(--status-success)]',
+    apis: [
+      { label: 'Reference dataset (ops)', detail: 'PostGIS `osm.fuel_stations` — Germany amenity=fuel via Geofabrik PBF + osmium tags-filter + pyosmium lean import. Not Prisma-managed. Refresh: `osm-fuel-stations-refresh.sh`. architecture/OSM_FUEL_STATIONS_DATASET_2026-08-30.md' },
+      { label: 'Energy Event firewall', detail: 'Dataset only — no RefuelDetector/scoreConfidence/persist/API coupling yet. Future FuelStationResolver reads SELECT-only.' },
+    ],
+  },
+  {
     name: 'Stripe — V4.9.434 Connect verification',
     icon: Zap,
     color: 'text-[color:var(--status-ai)]',

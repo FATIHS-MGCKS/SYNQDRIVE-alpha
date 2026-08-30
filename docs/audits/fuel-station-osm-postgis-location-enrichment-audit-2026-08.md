@@ -1824,4 +1824,107 @@ SELECT ROUND(ST_Distance(...::geography, ...)::numeric, 2);
 
 ---
 
-*End of audit — read-only, 2026-08-30.*
+## PB-16. OSM Dataset Layer — B7–B12 Implementation & Production Evidence
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-08-30 |
+| **Scope** | Isolated `osm` schema, fuel-only import pipeline, validation, atomic refresh, initial prod dataset |
+| **PR** | #1447 (`cursor/osm-fuel-dataset-27ba`) |
+| **Energy Event firewall** | **Confirmed — zero changes** |
+
+### PB-16.1 B-step mapping (audited B0–B12)
+
+| Step | Audit action | This phase |
+|------|--------------|------------|
+| B0–B3 | Backup, PostGIS, verify | ✅ PB-15 (prior) |
+| B4 | `osm` schema DDL | ✅ `schema.sql` applied on prod |
+| B5–B6 | Dev Docker PostGIS parity | ✅ `postgis/postgis:16-3.4-alpine` |
+| B7 | Import/refresh script | ✅ `osm-fuel-stations-refresh.sh` + pyosmium importer |
+| B8 | Dev test with real extract | ⚠️ Unit tests only in agent env (no local pyosmium); prod import validates pipeline |
+| B9 | Runbook | ✅ `docs/runbooks/osm-fuel-stations-import.md` |
+| B10 | Prod import | ✅ `geofabrik-germany-20260830` |
+| B11 | Post-import backup | ⏭️ Not run (optional; pre-PostGIS backup exists) |
+| B12 | Architecture record | ✅ `architecture/OSM_FUEL_STATIONS_DATASET_2026-08-30.md` |
+
+**Justified deviations:**
+
+- **B8:** Full Geofabrik dev-docker test deferred; production controlled import used as pipeline validation (audit allowed B10 after B7).
+- **Checksum:** Geofabrik `.sha256` URL can redirect to full PBF; script skips verify when sidecar >4 KB (size guard).
+- **First promotion:** Empty live shell dropped (`DROP CASCADE`) instead of rename to avoid `fuel_stations_pkey` collision.
+
+### PB-16.2 Schema & indexes (implemented)
+
+```sql
+-- osm.fuel_stations (live), osm.fuel_stations_staging (UNLOGGED), osm.dataset_metadata
+-- Unique (osm_type, osm_id); GiST on centroid + geom
+```
+
+Representative point: `ST_PointOnSurface` (polygons), line midpoint, point identity.
+
+### PB-16.3 Production import results
+
+| Check | Result |
+|-------|--------|
+| Dataset version | `geofabrik-germany-20260830` |
+| Source | `https://download.geofabrik.de/europe/germany-latest.osm.pbf` (2026-08-29 extract) |
+| Filtered PBF | 1.8 MB; 67,936 nodes + 6,960 ways + 34 relations (fuel tag objects: 18,195) |
+| `osmium check-refs` | ✅ pass |
+| Validation gates A–L | ✅ all critical passed |
+| Station count | **18,195** |
+| Named % | **91.3%** |
+| Branded % | **71.2%** |
+| Address fields % | **64.0%** |
+| SRID / validity | 4326; 0 invalid geom |
+| Germany envelope | 100% centroids in DE bbox |
+
+### PB-16.4 Sample nearest-station queries (read-only)
+
+| Location | Nearest station | Brand | Distance |
+|----------|-----------------|-------|----------|
+| Kassel (9.4797, 51.3127) | Esso Kölnische Straße | Esso | 592.8 m |
+| Berlin (13.405, 52.52) | Aral | Aral | 1334.2 m |
+| Munich (11.582, 48.1351) | BK | BK | 234.7 m |
+| Hamburg (9.9937, 53.5511) | OIL! | OIL! | 748.9 m |
+| Frankfurt (8.6821, 50.1109) | Aral | Aral | 1296.6 m |
+
+### PB-16.5 Spatial index verification
+
+`EXPLAIN ANALYZE` on 500 m `ST_DWithin` near Kassel:
+
+- **Index Scan** using `fuel_stations_centroid_gist`
+- Execution time: **0.130 ms**
+
+### PB-16.6 Resource usage
+
+| Resource | Observed |
+|----------|----------|
+| Disk before | 97 GB free (50% used) |
+| Disk after | 97 GB free (51% used) |
+| Download | ~4.83 GB PBF (~105 s) |
+| Filter peak RSS | ~2.0 GB |
+| App health | ok before and after |
+
+### PB-16.7 Files delivered
+
+- `backend/scripts/ops/osm-fuel-stations/` — schema, refresh, importer, validation, promote, tests
+- `docs/runbooks/osm-fuel-stations-import.md`
+- `architecture/OSM_FUEL_STATIONS_DATASET_2026-08-30.md`
+
+### PB-16.8 Energy Event firewall (reconfirmed)
+
+No changes to RefuelDetector, RechargeDetector, scoreConfidence, persist gates, coalescing, pruning, reconciliation, recovery, coordinates, confidence, API, or frontend.
+
+### PB-16.9 Overall status
+
+## **OSM DATASET READY — PROCEED TO STATION RESOLVER**
+
+**STOP.** Next authorized phase: `FuelStationLocationResolverService` + independent station-match confidence — **not** implemented here.
+
+---
+
+*PB-16 OSM dataset execution — 2026-08-30T18:47 UTC.*
+
+---
+
+*End of audit — read-only + PB-14/15/16 execution evidence, 2026-08-30.*
