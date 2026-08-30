@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p18-production-scale-to-2-readiness-2026-08-30',
+    version: '4.9.1011',
+    title: 'P1.8 — Production scale-to-2 readiness gate',
+    summary: [
+      'SCALE_TO_2_VERDICT=GO_WITH_CONDITIONS — architecture ready; prod deploy + conditions before PM2 scale.',
+      'TRUE_PROCESS_LEVEL_MULTI_REPLICA=YES (VPS NestJS PIDs 1664262/1664263).',
+      'REDIS_DB0_NAMESPACE_SAFE=YES — non-destructive audit; 0 key collisions.',
+      'Scheduler: leaderCountMax=1, graceful 8373ms, crash 10203ms, splitBrain=NO.',
+      'PROVIDER_CEILING_VERIFIED=NO — N1000 remains CONDITIONAL.',
+      'PRODUCTION_MUTATIONS=NONE — replica count unchanged at 1.',
+    ],
+    reason:
+      'Final pre-production gate before PM2 scale-to-2 after PR #1440 TRUE process-level validation.',
+    previousBehavior:
+      'TRUE_PROCESS_LEVEL_MULTI_REPLICA proven on Redis DB 15; DB 0 namespace and scale decision undocumented.',
+    details:
+      'architecture/P1_8_PRODUCTION_SCALE_TO_2_READINESS_2026-08-30.md; p18-production-scale-to-2-readiness.sh; redis-db0-namespace-audit.mjs',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T12:00:00.000Z',
+  },
+  {
     id: 'staging-true-process-validation-p13-p17-p14-2026-08-30',
     version: '4.9.1010',
     title: 'TRUE process-level multi-replica validation — P1.3 + P1.7 + P1.4 (VPS)',
