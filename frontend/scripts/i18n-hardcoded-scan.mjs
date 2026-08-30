@@ -419,6 +419,10 @@ const P264_ENFORCE_CLEAN_EXACT = new Set([
   'rental/lib/rental-misuse-stress-i18n.ts',
 ]);
 
+const P265_ENFORCE_CLEAN_EXACT = new Set([
+  'rental/components/HelpCenterView.tsx',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -765,6 +769,10 @@ function isP264EnforceCleanPath(relPath) {
   return P264_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP265EnforceCleanPath(relPath) {
+  return P265_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -820,6 +828,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (isP262EnforceCleanPath(relPath)) return true;
   if (isP263EnforceCleanPath(relPath)) return true;
   if (isP264EnforceCleanPath(relPath)) return true;
+  if (isP265EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -856,6 +865,7 @@ function migrationPhaseFor(relPath, surface) {
   if (isP262EnforceCleanPath(relPath)) return 'P2.2.62';
   if (isP263EnforceCleanPath(relPath)) return 'P2.2.63';
   if (isP264EnforceCleanPath(relPath)) return 'P2.2.64';
+  if (isP265EnforceCleanPath(relPath)) return 'P2.2.65';
   if (isP210EnforceCleanPath(relPath)) return 'P2.2.10';
   if (isP29EnforceCleanPath(relPath)) return 'P2.2.9';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';
