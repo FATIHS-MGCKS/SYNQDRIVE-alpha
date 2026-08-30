@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { BillingReconciliationService } from '@modules/billing/billing-reconciliation.service';
 import { BillingMonitoringService } from '@modules/billing/billing-monitoring.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 const DEFAULT_BILLING_RECONCILIATION_INTERVAL_MS = 6 * 60 * 60_000;
 
@@ -16,10 +17,12 @@ export class BillingReconciliationScheduler {
     private readonly reconciliation: BillingReconciliationService,
     private readonly monitoring: BillingMonitoringService,
     private readonly configService: ConfigService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   @Interval(DEFAULT_BILLING_RECONCILIATION_INTERVAL_MS)
   async runScheduledReconciliation(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('billing_reconciliation')) return;
     if (!this.isEnabled()) {
       return;
     }

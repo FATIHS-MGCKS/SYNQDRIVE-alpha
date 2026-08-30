@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { IamDataRetentionWorkerService } from '../../modules/iam-data-retention/iam-data-retention-worker.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 @Injectable()
 export class IamDataRetentionScheduler {
@@ -10,10 +11,12 @@ export class IamDataRetentionScheduler {
   constructor(
     private readonly worker: IamDataRetentionWorkerService,
     private readonly config: ConfigService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   @Cron('0 4 * * *')
   async handleCron(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('iam_data_retention')) return;
     const enabled = this.config.get<boolean>('iamDataRetention.enabled');
     if (!enabled) {
       return;

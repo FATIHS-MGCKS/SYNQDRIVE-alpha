@@ -8,6 +8,7 @@ import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { BatteryV2ReconciliationService } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-reconciliation.service';
 import { BatteryV2JobObservabilityService } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-observability.service';
 import { BatteryV2JobDeadLetterService } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-dead-letter.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 @Injectable()
 export class BatteryV2ReconciliationScheduler {
@@ -18,10 +19,12 @@ export class BatteryV2ReconciliationScheduler {
     private readonly reconciliation: BatteryV2ReconciliationService,
     private readonly observability: BatteryV2JobObservabilityService,
     private readonly deadLetters: BatteryV2JobDeadLetterService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   @Interval(getBatteryV2ReconciliationIntervalMs())
   async reconcileBatteryV2Pipeline(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('battery_v2_reconciliation')) return;
     if (!isBatteryV2ReconciliationEnabled()) return;
     if (!canEnqueueQueue(this.logger, 'battery-v2-reconciliation')) return;
     if (this.reconcileInProgress) return;

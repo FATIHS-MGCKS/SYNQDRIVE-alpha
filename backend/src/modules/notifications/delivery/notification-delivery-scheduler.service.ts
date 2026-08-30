@@ -10,6 +10,7 @@ import { buildDeliveryJobId, buildDeliveryJobOptions } from './notification-deli
 import notificationDeliveryConfig from '@config/notification-delivery.config';
 import { ConfigType } from '@nestjs/config';
 import { Inject } from '@nestjs/common';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 @Injectable()
 export class NotificationDeliverySchedulerService {
@@ -21,6 +22,7 @@ export class NotificationDeliverySchedulerService {
     private readonly enqueueService: NotificationDeliveryEnqueueService,
     private readonly outboxRepo: NotificationDeliveryOutboxRepository,
     private readonly observability: NotificationDeliveryObservabilityService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   async scheduleOutboxIds(outboxIds: string[]): Promise<void> {
@@ -48,6 +50,7 @@ export class NotificationDeliverySchedulerService {
 
   @Cron('*/30 * * * * *')
   async pollPendingOutbox(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('notification_delivery')) return;
     if (!this.enqueueService.isDeliveryEnabled()) return;
 
     const pending = await this.outboxRepo.findPendingBatch(this.config.pollBatchSize);

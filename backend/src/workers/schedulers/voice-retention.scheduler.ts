@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { VoiceRetentionService } from '@modules/voice-assistant/security/voice-retention.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 @Injectable()
 export class VoiceRetentionScheduler {
@@ -11,10 +12,12 @@ export class VoiceRetentionScheduler {
   constructor(
     private readonly retention: VoiceRetentionService,
     private readonly config: ConfigService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   @Cron('15 4 * * *')
   async scheduledRun(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('voice_retention')) return;
     if (!this.config.get<boolean>('voice.retention.enabled', true)) {
       return;
     }

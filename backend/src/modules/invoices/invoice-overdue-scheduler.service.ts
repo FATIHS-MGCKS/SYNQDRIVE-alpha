@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '@shared/database/prisma.service';
 import { InvoicePaymentTaskService } from './invoice-payment-task.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 /**
  * Persists overdue invoice status so eligibility queries and notifications
@@ -14,11 +15,13 @@ export class InvoiceOverdueSchedulerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly invoicePaymentTasks: InvoicePaymentTaskService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   /** Daily at 01:15 UTC — transition open invoices past due date to OVERDUE. */
   @Cron('15 1 * * *')
   async markOverdueInvoices(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('invoice_overdue_mark')) return;
     const now = new Date();
     const result = await this.prisma.orgInvoice.updateMany({
       where: {
@@ -37,6 +40,7 @@ export class InvoiceOverdueSchedulerService {
   /** Revert OVERDUE when fully paid (safety net after manual payment sync). */
   @Cron('45 1 * * *')
   async reconcileStaleOverdue(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('invoice_overdue_reconcile_stale')) return;
     const result = await this.prisma.orgInvoice.updateMany({
       where: {
         status: 'OVERDUE',
@@ -52,6 +56,7 @@ export class InvoiceOverdueSchedulerService {
   /** Hourly refresh of open payment-check task timing/priority (due-today escalation). */
   @Cron('15 * * * *')
   async refreshOpenPaymentCheckTasks(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('invoice_overdue_refresh_payment_tasks')) return;
     const count = await this.invoicePaymentTasks.refreshOpenPaymentCheckTasks();
     if (count > 0) {
       this.logger.log(`Refreshed ${count} invoice payment-check task(s)`);
