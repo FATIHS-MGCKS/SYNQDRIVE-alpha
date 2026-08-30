@@ -117,6 +117,7 @@ const PERMISSION_MODULE_SPECIFIC_KEYS = {
   'booking-eligibility': 'iam.permission.module.booking-eligibility',
   'booking-eligibility-override': 'iam.permission.module.booking-eligibility-override',
   'fleet-connectivity': 'iam.permission.module.fleet-connectivity',
+  'legal-documents-audit': 'iam.permission.module.legal-documents-audit',
 } as const satisfies Record<string, TranslationKey>;
 
 const PERMISSION_LEVEL_KEYS: Record<PermissionLevel, TranslationKey> = {
@@ -150,6 +151,19 @@ export function resolveAuditActionLabel(
   if (!machine) return null;
   const key = AUDIT_ACTION_KEYS[machine as keyof typeof AUDIT_ACTION_KEYS];
   return key ? t(key) : null;
+}
+
+export function resolveAuditEventTitle(
+  action: string | null | undefined,
+  description: string | null | undefined,
+  t: IamMemberTranslate,
+): string {
+  const localized = resolveAuditActionLabel(action, t);
+  if (localized) return localized;
+  const raw = description?.trim();
+  if (raw) return raw;
+  const machine = action?.trim();
+  return machine || '—';
 }
 
 export function resolveWizardStepLabel(step: keyof typeof WIZARD_STEP_KEYS, t: IamMemberTranslate): string {

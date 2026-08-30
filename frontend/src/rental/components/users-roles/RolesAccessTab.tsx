@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { EmptyState, ErrorState, SkeletonRows } from '../../../components/patterns';
+import { EmptyState, SkeletonRows } from '../../../components/patterns';
 import { api, type IamRoleListItemDto, type IamRoleDetailDto } from '../../../lib/api';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { CollapsiblePermissions } from './PermissionEditor';
@@ -36,7 +36,7 @@ export function RolesAccessTab({ orgId, roles, loading }: RolesAccessTabProps) {
     <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
       <div className="space-y-2">
         {roles.length === 0 ? (
-          <EmptyState title="No roles" />
+          <EmptyState title={t('iam.roles.empty.title')} />
         ) : (
           roles.map((role) => (
             <button
@@ -53,8 +53,8 @@ export function RolesAccessTab({ orgId, roles, loading }: RolesAccessTabProps) {
               </div>
               <div className="mt-1 text-[12px] text-muted-foreground">
                 {role.assignmentCount} {t('iam.roles.assignments')}
-                {role.pinned ? ' · pinned' : ''}
-                {role.followsLatest ? ' · follows latest' : ''}
+                {role.pinned ? ` · ${t('iam.roles.meta.pinned')}` : ''}
+                {role.followsLatest ? ` · ${t('iam.roles.meta.followsLatest')}` : ''}
               </div>
             </button>
           ))
@@ -63,7 +63,7 @@ export function RolesAccessTab({ orgId, roles, loading }: RolesAccessTabProps) {
 
       <div className="rounded-2xl border border-border p-5 min-h-[320px]">
         {!selectedId ? (
-          <div className="text-[13px] text-muted-foreground">Select a role</div>
+          <div className="text-[13px] text-muted-foreground">{t('iam.roles.selectPrompt')}</div>
         ) : detailLoading || !detail ? (
           <SkeletonRows rows={5} />
         ) : (
@@ -85,7 +85,9 @@ export function RolesAccessTab({ orgId, roles, loading }: RolesAccessTabProps) {
             <div className="rounded-xl bg-muted/40 p-3 text-[12px]">
               <div className="font-semibold mb-1">{t('iam.roles.impact')}</div>
               <div>{detail.impactPreview.privilegedCapabilities.join(', ') || '—'}</div>
-              <div className="text-muted-foreground mt-1">Scope: {detail.impactPreview.stationScopeImpact}</div>
+              <div className="text-muted-foreground mt-1">
+                {t('iam.roles.impact.scope', { value: detail.impactPreview.stationScopeImpact })}
+              </div>
             </div>
             <CollapsiblePermissions permissions={detail.effectivePermissions ?? {}} disabled />
           </div>

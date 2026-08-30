@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-iam-roles-security-p2-2-63-2026-08-30',
+    version: '4.9.991',
+    title: 'Platform i18n — P2.2.63 Mounted Roles Access & Security Audit',
+    summary: [
+      'Localized mounted P263 Roles & Security tabs via extended `rental-organization-users-roles-i18n.ts` and `rental.iamMember.{en,de}.ts`; +7 keys (9654→9661 EN/DE); reuses P262 `iam.audit.*`, `iam.permission.*`, `nav.*`.',
+      'RolesAccessTab: empty/select/meta/scope host copy. SecurityAuditTab: empty state + `resolveAuditEventTitle` for known audit machines with raw unknown fallback. Custom role names/descriptions remain RAW.',
+      'P263 enforce-clean exact scope (2 paths) — 0 findings. Dead custom-role CRUD (`RolesTab`) excluded — deferred product wiring.',
+    ],
+    reason:
+      'P2.2.63 Phase 1 strict presentation-only implementation for mounted IAM roles read surface and security audit tab per preflight verdict B (split).',
+    previousBehavior:
+      'RolesAccessTab and SecurityAuditTab used hardcoded English strings; audit feed showed raw descriptions only.',
+    details:
+      'Adapter `resolveAuditEventTitle`; +1 permission module key (`legal-documents-audit`). Same-mount UsersRolesTab DE→EN→DE with roles/security tab state; zero locale refetch.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-30T01:30:00.000Z',
+  },
+  {
     id: 'i18n-rental-iam-member-management-p2-2-62-2026-08-29',
     version: '4.9.990',
     title: 'Platform i18n — P2.2.62 Users & Roles Member Management',

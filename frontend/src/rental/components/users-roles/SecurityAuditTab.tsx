@@ -1,6 +1,7 @@
 import { EmptyState, MetricCard, SkeletonMetricGrid } from '../../../components/patterns';
 import type { IamSecurityOverviewDto } from '../../../lib/api';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { resolveAuditEventTitle } from '../../lib/rental-organization-users-roles-i18n';
 import { MfaStateBadge, RiskBadge } from './IamBadges';
 import { formatDateTime } from './iam-team.utils';
 import type { IamMfaState } from '../../../lib/api';
@@ -27,7 +28,7 @@ export function SecurityAuditTab({ security, loading }: SecurityAuditTabProps) {
   }
 
   if (!security) {
-    return <EmptyState title="No security data" />;
+    return <EmptyState title={t('iam.security.empty.title')} />;
   }
 
   return (
@@ -78,7 +79,9 @@ export function SecurityAuditTab({ security, loading }: SecurityAuditTabProps) {
         <ul className="space-y-2 max-h-[360px] overflow-y-auto">
           {security.iamAudit.map((row) => (
             <li key={row.id} className="text-[12px] border-b border-border/60 pb-2">
-              <div className="font-medium">{row.description}</div>
+              <div className="font-medium">
+                {resolveAuditEventTitle(row.auditAction, row.description, t)}
+              </div>
               <div className="text-muted-foreground tabular-nums">{formatDateTime(row.createdAt, locale)}</div>
             </li>
           ))}
