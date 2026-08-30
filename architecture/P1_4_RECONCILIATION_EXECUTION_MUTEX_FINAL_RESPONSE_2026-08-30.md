@@ -1,9 +1,9 @@
 # P1.4 — Reconciliation Execution Mutex — Final Response
 
 **Date:** 2026-08-30  
-**PR:** TBD (opening after push)  
-**BASE_MAIN_COMMIT:** TBD  
-**HEAD_COMMIT:** TBD
+**PR:** #TBD  
+**BASE_MAIN_COMMIT:** `9a1f7e3b123ba9093db184fad01f55a55d310e73`  
+**HEAD_COMMIT:** `95b8ef7bb8040e5346858dd44987cdc97b6395b7`
 
 ```
 P1_4_VERDICT = IMPLEMENTED
