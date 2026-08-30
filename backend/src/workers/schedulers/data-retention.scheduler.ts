@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 /**
  * DataRetentionScheduler
@@ -38,6 +39,7 @@ export class DataRetentionScheduler implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   onModuleInit(): void {
@@ -56,6 +58,7 @@ export class DataRetentionScheduler implements OnModuleInit {
   // Daily at 03:30 — offset from trip reconciliation cold repair (03:00).
   @Cron('30 3 * * *')
   async scheduledRun(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('data_retention')) return;
     await this.runOnce('cron');
   }
 

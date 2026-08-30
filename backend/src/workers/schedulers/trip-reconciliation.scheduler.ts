@@ -8,6 +8,7 @@ import {
   buildFastReconciliationWhere,
   loadFastReconciliationCohortConfig,
 } from './snapshot-polling/fast-reconciliation-cohort';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 /**
  * TripReconciliationScheduler
@@ -28,6 +29,7 @@ export class TripReconciliationScheduler {
   constructor(
     private readonly prisma: PrismaService,
     private readonly reconciliation: TripReconciliationService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
     @Optional() private readonly configService?: ConfigService,
   ) {}
 
@@ -35,6 +37,7 @@ export class TripReconciliationScheduler {
 
   @Interval(15 * 60_000)
   async fastRepair(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('trip_reconciliation_fast')) return;
     const to = new Date();
     const from = new Date(to.getTime() - 45 * 60_000);
 
@@ -87,6 +90,7 @@ export class TripReconciliationScheduler {
 
   @Interval(4 * 3600_000)
   async warmRepair(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('trip_reconciliation_warm')) return;
     this.logger.log('Warm reconciliation starting…');
     const to = new Date();
     const from = new Date(to.getTime() - 12 * 3600_000);
@@ -116,6 +120,7 @@ export class TripReconciliationScheduler {
 
   @Cron('0 3 * * *')
   async coldRepair(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('trip_reconciliation_cold')) return;
     this.logger.log('Cold reconciliation starting…');
     const to = new Date();
     const from = new Date(to.getTime() - 7 * 24 * 3600_000);

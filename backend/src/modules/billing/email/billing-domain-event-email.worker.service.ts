@@ -4,16 +4,21 @@ import { randomUUID } from 'crypto';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { BILLING_OUTBOX_WORKER_INTERVAL_MS } from '../domain/billing-outbox';
 import { BillingDomainEventEmailProcessorService } from './billing-domain-event-email.processor.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 @Injectable()
 export class BillingDomainEventEmailWorkerService {
   private readonly logger = new Logger(BillingDomainEventEmailWorkerService.name);
   private running = false;
 
-  constructor(private readonly processor: BillingDomainEventEmailProcessorService) {}
+  constructor(
+    private readonly processor: BillingDomainEventEmailProcessorService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
+  ) {}
 
   @Interval(BILLING_OUTBOX_WORKER_INTERVAL_MS)
   async runScheduled(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('billing_domain_event_email')) return;
     if (!RuntimeStatusRegistry.getWorkersEnabled()) {
       return;
     }

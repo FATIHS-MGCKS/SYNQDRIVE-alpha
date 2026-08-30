@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { TripEnrichmentOrchestratorService } from '../../modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 /**
  * Recovery scheduler for post-trip analysis stages left pending after process restarts.
@@ -14,6 +15,7 @@ export class TripAnalysisRecoveryScheduler implements OnModuleInit {
   private readonly logger = new Logger(TripAnalysisRecoveryScheduler.name);
 
   constructor(
+    private readonly leaderGuard: SchedulerLeaderGuardService,
     @Optional() private readonly orchestrator?: TripEnrichmentOrchestratorService,
   ) {}
 
@@ -24,6 +26,7 @@ export class TripAnalysisRecoveryScheduler implements OnModuleInit {
 
   @Interval(300_000)
   async recoverStuckMisuseStages(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('trip_analysis_recovery')) return;
     if (!this.orchestrator) return;
     try {
       const recovered = await this.orchestrator.recoverStuckMisuseStages(50);
