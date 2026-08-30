@@ -110,24 +110,24 @@
     }
   },
   "summary": {
-    "total": 1260,
+    "total": 1254,
     "bySurface": {
       "MASTER": 1049,
       "OPERATOR": 22,
-      "RENTAL": 163,
+      "RENTAL": 157,
       "SHARED": 1,
       "SHELL": 25
     },
     "byCategory": {
       "ARIA": 43,
-      "TITLE": 175,
-      "TEXT": 900,
+      "TITLE": 172,
+      "TEXT": 897,
       "LABEL": 79,
       "PLACEHOLDER": 55,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
-      "other Rental areas": 137,
+      "other Rental areas": 131,
       "Finance/Billing": 25,
       "App / routing shell": 1
     },
@@ -16053,20 +16053,6 @@
       ]
     },
     {
-      "file": "rental/components/RentalStressAnalysisCard.tsx",
-      "line": 28,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Fahrbelastung der Miete",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/RentalStressAnalysisCard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/RolesTab.tsx",
       "line": 270,
       "surface": "RENTAL",
@@ -16123,20 +16109,6 @@
       ]
     },
     {
-      "file": "rental/components/RentalStressAnalysisCard.tsx",
-      "line": 73,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Gesamteinschätzung",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/RentalStressAnalysisCard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/insights/InsightsCockpit.tsx",
       "line": 340,
       "surface": "RENTAL",
@@ -16176,20 +16148,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/MisuseCasesPanel.tsx",
-      "line": 453,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Hinweise werden geladen…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/MisuseCasesPanel.tsx"
       ]
     },
     {
@@ -16740,20 +16698,6 @@
       ]
     },
     {
-      "file": "rental/components/RentalStressAnalysisCard.tsx",
-      "line": 40,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Noch keine Fahrbelastungsauswertung",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/RentalStressAnalysisCard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillableVehiclesDrawer.tsx",
       "line": 96,
       "surface": "RENTAL",
@@ -16975,20 +16919,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/MisuseCasesPanel.tsx",
-      "line": 395,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Prüfhinweise",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/MisuseCasesPanel.tsx"
       ]
     },
     {
@@ -17465,20 +17395,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/RentalStressAnalysisCard.tsx",
-      "line": 82,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Verschleißrelevanz",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/RentalStressAnalysisCard.tsx"
       ]
     },
     {

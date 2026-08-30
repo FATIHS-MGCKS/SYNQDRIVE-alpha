@@ -603,6 +603,13 @@ const P263_ENFORCE_CLEAN_EXACT = [
   'rental/components/users-roles/SecurityAuditTab.tsx',
 ];
 
+const P264_ENFORCE_CLEAN_EXACT = [
+  'rental/components/MisuseCasesPanel.tsx',
+  'rental/components/RentalStressAnalysisCard.tsx',
+  'rental/lib/misuse-case-lifecycle.ui.ts',
+  'rental/lib/rental-misuse-stress-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -841,6 +848,10 @@ function isP262EnforceCleanPath(relPath: string): boolean {
 
 function isP263EnforceCleanPath(relPath: string): boolean {
   return P263_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP264EnforceCleanPath(relPath: string): boolean {
+  return P264_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -1339,6 +1350,24 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP263EnforceCleanPath(finding.file),
     );
     expect(p263Debt).toHaveLength(0);
+  });
+
+  it('keeps P264 vehicle stress & misuse hints enforce-clean scope at zero findings', () => {
+    const p264Debt = inventory.findings.filter((finding) =>
+      isP264EnforceCleanPath(finding.file),
+    );
+    expect(p264Debt).toHaveLength(0);
+  });
+
+  it('keeps rental-misuse-stress-i18n.ts presentation-only', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/rental-misuse-stress-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('resolveMisuseSeverityLabel');
+    expect(source).toContain('resolveEvidenceLevelLabel');
+    expect(source).not.toContain('api.misuseCases');
+    expect(source).not.toContain('normalizeOperationalIssues');
   });
 
   it('keeps rental-organization-users-roles-i18n.ts presentation-only', () => {

@@ -48,6 +48,7 @@ import { rentalVehicleDocumentsEn } from './rental.vehicleDocuments.en';
 import { rentalDocumentIntakeEn } from './rental.documentIntake.en';
 import { rentalVehicleDamagesEn } from './rental.vehicleDamages.en';
 import { rentalIamMemberEn } from './rental.iamMember.en';
+import { rentalMisuseStressEn } from './rental.misuseStress.en';
 
 export const en = {
   // ─── Navigation / Sidebar ───
@@ -5826,6 +5827,7 @@ export const en = {
   ...rentalDocumentIntakeEn,
   ...rentalVehicleDamagesEn,
   ...rentalIamMemberEn,
+  ...rentalMisuseStressEn,
 } as const;
 
 export type TranslationKey = keyof typeof en;
