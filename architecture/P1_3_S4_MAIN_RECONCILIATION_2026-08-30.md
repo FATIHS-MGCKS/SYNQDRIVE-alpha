@@ -32,7 +32,12 @@ DimoTelemetryService.queryGraphQL / fetchVehicleSummary / fetchVehicleVin
 
 Production defaults unchanged: `DIMO_PROVIDER_LIMITER_MODE=shadow`, global enforce OFF, `PERMANENT_TRIP_LOSS=NO`.
 
-## Energy boundary
+## Post-push validation (2026-08-30)
 
-`REAL_WORLD_FUEL_EVENT_PROVEN=NO`  
-`REAL_WORLD_CHARGING_EVENT_PROVEN=NO`
+| Field | Value |
+|-------|-------|
+| NEW_PR_HEAD_SHA | `68c0806e1dac3348e78cb2e7b444f1cf17a35ad0` |
+| PR_MERGEABLE | YES (`mergeStateStatus=CLEAN`) |
+| CI_RUN_FOUND_FOR_NEW_HEAD | YES (runs `33306460429`, `33306460457`) |
+| CI_STATUS | PASS (all 16 required checks green) |
+| Post-merge audit | TOTAL=49, FULL_CONTEXT=43, TOKEN_ONLY=6, CATEGORY_C=0 |
