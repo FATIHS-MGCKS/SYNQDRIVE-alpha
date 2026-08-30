@@ -89,4 +89,11 @@ export const rentalIamMemberEn = {
   'iam.permission.module.booking-eligibility': 'Check booking eligibility',
   'iam.permission.module.booking-eligibility-override': 'Booking eligibility exceptions',
   'iam.permission.module.fleet-connectivity': 'Fleet connectivity',
+  'iam.permission.module.legal-documents-audit': 'Legal text audit',
+  'iam.roles.empty.title': 'No roles',
+  'iam.roles.selectPrompt': 'Select a role',
+  'iam.roles.meta.pinned': 'pinned',
+  'iam.roles.meta.followsLatest': 'follows latest',
+  'iam.roles.impact.scope': 'Scope: {value}',
+  'iam.security.empty.title': 'No security data',
 } as const;

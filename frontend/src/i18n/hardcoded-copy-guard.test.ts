@@ -598,6 +598,11 @@ const P262_ENFORCE_CLEAN_EXACT = [
   'rental/lib/rental-organization-users-roles-i18n.ts',
 ];
 
+const P263_ENFORCE_CLEAN_EXACT = [
+  'rental/components/users-roles/RolesAccessTab.tsx',
+  'rental/components/users-roles/SecurityAuditTab.tsx',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -832,6 +837,10 @@ function isP261EnforceCleanPath(relPath: string): boolean {
 
 function isP262EnforceCleanPath(relPath: string): boolean {
   return P262_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP263EnforceCleanPath(relPath: string): boolean {
+  return P263_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -1323,6 +1332,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP262EnforceCleanPath(finding.file),
     );
     expect(p262Debt).toHaveLength(0);
+  });
+
+  it('keeps P263 mounted Roles Access + Security Audit enforce-clean scope at zero findings', () => {
+    const p263Debt = inventory.findings.filter((finding) =>
+      isP263EnforceCleanPath(finding.file),
+    );
+    expect(p263Debt).toHaveLength(0);
   });
 
   it('keeps rental-organization-users-roles-i18n.ts presentation-only', () => {

@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental IAM Roles & Security (P2.2.63 — V4.9.991)', icon: Globe,
+    endpoint: 'Settings → Users & Roles → Roles & Access / Security & Audit tabs',
+    service: '**Locale flow:** `useLanguage().locale` → `rental-organization-users-roles-i18n.ts` → `RolesAccessTab`, `SecurityAuditTab`. **Keys:** +7 EN+DE (9654→9661); reuses P262 `iam.audit.*`, `iam.permission.*`, `nav.*`. **Fetch:** locale-independent; P262 zero-refetch preserved. **Guardrails:** P263 enforce-clean exact (2 paths) — 0 findings; P262 frozen (11 paths). **Excluded:** dead `RolesTab` CRUD. **Tests:** `rental-mounted-roles-security-localization.test.tsx` same-mount + audit resolver. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'architecture/I18N_RENTAL_IAM_ROLES_SECURITY_P2_2_63_2026-08-30.md' },
   { name: 'Platform i18n Rental IAM Member Management (P2.2.62 — V4.9.990)', icon: Globe,
     endpoint: 'Settings → Users & Roles → Team tab',
     service: '**Locale flow:** `useLanguage().locale` → `rental-organization-users-roles-i18n.ts` → Team tab, invite wizard, member drawer, mounted permission preview. **Keys:** +90 EN+DE `iam.member.*`/`iam.wizard.*`/`iam.audit.*`/`iam.permission.*` (9564→9654); reuses `common.*`, `nav.*`, existing `iam.*`. **Fetch:** locale-independent `[orgId]` callbacks; host error keys at render. **Payloads:** `iam-member-payload.ts`. **Guardrails:** P262 enforce-clean exact (11 paths) — 0 findings. **Deferred:** P263 full RolesAccessTab/SecurityAuditTab/custom-role CRUD/permission matrix. **Tests:** true-topology same-mount, wizard→API parity, permission preview. **Semantics:** presentation-only; Category E=0.',
