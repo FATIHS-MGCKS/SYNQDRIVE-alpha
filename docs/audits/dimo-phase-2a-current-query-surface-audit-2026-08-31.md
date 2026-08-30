@@ -8,19 +8,23 @@
 
 ## 1. Executive Summary
 
-Phase 2A reconstructs SynqDrive's **complete current DIMO query/acquisition surface** from code. The audit maintains **27 registry entries** (`DIMO-Q001`–`DIMO-Q027`) for cross-reference, but distinguishes **22 unique GraphQL query definitions** from **8 invocation contexts that reuse existing definitions** (Q026–Q027) and **1 dead definition** (Q011).
+Phase 2A reconstructs SynqDrive's **complete current DIMO query/acquisition surface** from code. The audit maintains **27 registry entries** (`DIMO-Q001`–`DIMO-Q027`) for cross-reference. Each entry has exactly **one primary class** (mutually exclusive):
 
-**Registry classification (see §3.0):**
-| Count type | N |
-|---|---:|
-| A. Registry entries | 27 |
-| B. Unique GraphQL query definitions | 22 |
-| C. Production-active definitions | 16 |
-| D. On-demand / diagnostic definitions | 6 |
-| E. Shadow-only invocation contexts | 1 (Q026) |
-| F. Legacy reachable (not prod recharge path) | 1 (Q024) |
-| G. Defined but unused | 1 (Q011) |
-| H. Reused invocation contexts | 2 (Q026, Q027) |
+**Registry classification (see §3.0 — arithmetic verified):**
+
+| Primary class | Sub-class | N | IDs |
+|---|---|---:|---|
+| **A. UNIQUE_QUERY_DEFINITION** | PRODUCTION_ACTIVE_DEFINITION | 13 | Q001, Q005–Q010, Q012–Q013, Q015, Q017, Q023, Q025 |
+| | PRODUCTION_ON_DEMAND_DEFINITION | 4 | Q002–Q004, Q022 |
+| | CAPABILITY_DIAGNOSTIC_DEFINITION | 4 | Q018–Q021 |
+| | DEFINED_BUT_UNUSED_DEFINITION | 1 | Q011 |
+| **B. NON_DEFINITION_INVOCATION_CONTEXT** | PRODUCTION_INVOCATION_CONTEXT | 3 | Q014, Q016, Q027 |
+| | LEGACY_INVOCATION_CONTEXT | 1 | Q024 |
+| | SHADOW_INVOCATION_CONTEXT | 1 | Q026 |
+| | **Subtotal B** | **5** | reuses Q009/Q013/Q015/Q022/Q023 builders |
+| | **Total registry entries** | **27** | Q001–Q027 |
+
+**Check:** 22 unique definitions + 5 invocation contexts = **27**. No additive overlap across primary classes.
 
 **Capability architecture verdict: `PARTIALLY_CAPABILITY_AWARE`.** SynqDrive runs periodic `availableSignals` + `dataSummary` preflight (7-day gate) and battery-specific capability probes, persisting capability rows — but **all driving acquisition queries use static, fleet-wide field lists**. Preflight results do not gate or reshape snapshot/live/HF/event query selection.
 
@@ -83,37 +87,41 @@ Stable IDs for Phase 2B/2C and future Flight Recorder cross-reference.
 
 ### 3.0 Registry classification summary
 
-| ID | Name | Classification | Reuses |
-|---|---|---|---|
-| Q001 | LatestVehicleSnapshot | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ACTIVE** | — |
-| Q002 | LastSeenLocation | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ON_DEMAND** | — |
-| Q003 | VehicleSummary | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ON_DEMAND** | — |
-| Q004 | VehicleVin | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ON_DEMAND** | — |
-| Q005 | GetLatestDTCs | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ACTIVE** (scheduled ~3h) | — |
-| Q006 | TripDetectionCore | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ACTIVE** | — |
-| Q007 | RouteEnrichment | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ACTIVE** | — |
-| Q008 | Performance | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ACTIVE** | — |
-| Q009 | HighFrequency | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ACTIVE** | — |
-| Q010 | EnvironmentTemperature | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ACTIVE** | — |
-| Q011 | TirePressureHistory | **UNIQUE_QUERY_DEFINITION** + **DEFINED_BUT_UNUSED** | — |
-| Q012 | BatteryCrankWindow | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ACTIVE** (ICE trip-start) | — |
-| Q013 | TripFuelSummary | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ACTIVE** | — |
-| Q014 | RefuelFuelLevelSamples | **INVOCATION_CONTEXT** (same GraphQL shape as Q013) | Q013 |
-| Q015 | DrivingEvents | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ACTIVE** (LTE_R1) | — |
-| Q016 | SafetyEvents | **INVOCATION_CONTEXT** (same `buildDimoEventsQuery`, different filter) | Q015 builder |
-| Q017 | EventDataSummary | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ACTIVE** (LTE_R1 pre-check) | — |
-| Q018 | DataSummary | **UNIQUE_QUERY_DEFINITION** + **CAPABILITY_DIAGNOSTIC** | — |
-| Q019 | AvailableSignals | **UNIQUE_QUERY_DEFINITION** + **CAPABILITY_DIAGNOSTIC** | — |
-| Q020 | BatteryCapabilityPreflight | **UNIQUE_QUERY_DEFINITION** + **CAPABILITY_DIAGNOSTIC** | — |
-| Q021 | RechargeSegmentsProbe | **UNIQUE_QUERY_DEFINITION** + **CAPABILITY_DIAGNOSTIC** | — |
-| Q022 | TripSegments | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ON_DEMAND** (repair/validation/shadow) | — |
-| Q023 | EnergyEventSegments refuel | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ACTIVE** | — |
-| Q024 | EnergyEventSegments recharge | **LEGACY_REACHABLE** — builder exists; **production recharge uses Q025** (`fetchEnergyEventMechanism` intercepts `recharge`) | Q023 builder |
-| Q025 | DimoRechargeSegments | **UNIQUE_QUERY_DEFINITION** + **PRODUCTION_ACTIVE** | — |
-| Q026 | ShadowDetector context | **INVOCATION_CONTEXT_REUSING_QUERY** + **SHADOW_ONLY** | Q009 + Q022 |
-| Q027 | EventContext HF window | **INVOCATION_CONTEXT_REUSING_QUERY** + **PRODUCTION_ACTIVE** (conditional) | Q009 |
+Each registry ID has **one primary class**. Sub-classes are mutually exclusive within their primary bucket.
 
-**Terminology:** “Registry entry” ≠ “unique GraphQL operation”. Q014 shares Q013's inline query. Q016 shares Q015's builder. Q024 shares Q023's builder but is bypassed for production recharge. Q026–Q027 add no new GraphQL definitions.
+| ID | Name | Primary class | Sub-class | Reuses definition |
+|---|---|---|---|---|
+| Q001 | LatestVehicleSnapshot | UNIQUE_QUERY_DEFINITION | PRODUCTION_ACTIVE_DEFINITION | — |
+| Q002 | LastSeenLocation | UNIQUE_QUERY_DEFINITION | PRODUCTION_ON_DEMAND_DEFINITION | — |
+| Q003 | VehicleSummary | UNIQUE_QUERY_DEFINITION | PRODUCTION_ON_DEMAND_DEFINITION | — |
+| Q004 | VehicleVin | UNIQUE_QUERY_DEFINITION | PRODUCTION_ON_DEMAND_DEFINITION | — |
+| Q005 | GetLatestDTCs | UNIQUE_QUERY_DEFINITION | PRODUCTION_ACTIVE_DEFINITION | — |
+| Q006 | TripDetectionCore | UNIQUE_QUERY_DEFINITION | PRODUCTION_ACTIVE_DEFINITION | — |
+| Q007 | RouteEnrichment | UNIQUE_QUERY_DEFINITION | PRODUCTION_ACTIVE_DEFINITION | — |
+| Q008 | Performance | UNIQUE_QUERY_DEFINITION | PRODUCTION_ACTIVE_DEFINITION | — |
+| Q009 | HighFrequency | UNIQUE_QUERY_DEFINITION | PRODUCTION_ACTIVE_DEFINITION | — |
+| Q010 | EnvironmentTemperature | UNIQUE_QUERY_DEFINITION | PRODUCTION_ACTIVE_DEFINITION | — |
+| Q011 | TirePressureHistory | UNIQUE_QUERY_DEFINITION | DEFINED_BUT_UNUSED_DEFINITION | — |
+| Q012 | BatteryCrankWindow | UNIQUE_QUERY_DEFINITION | PRODUCTION_ACTIVE_DEFINITION | — |
+| Q013 | TripFuelSummary | UNIQUE_QUERY_DEFINITION | PRODUCTION_ACTIVE_DEFINITION | — |
+| Q014 | RefuelFuelLevelSamples | NON_DEFINITION_INVOCATION_CONTEXT | PRODUCTION_INVOCATION_CONTEXT | Q013 inline GraphQL |
+| Q015 | DrivingEvents | UNIQUE_QUERY_DEFINITION | PRODUCTION_ACTIVE_DEFINITION | — |
+| Q016 | SafetyEvents | NON_DEFINITION_INVOCATION_CONTEXT | PRODUCTION_INVOCATION_CONTEXT | Q015 `buildDimoEventsQuery` |
+| Q017 | EventDataSummary | UNIQUE_QUERY_DEFINITION | PRODUCTION_ACTIVE_DEFINITION | — |
+| Q018 | DataSummary | UNIQUE_QUERY_DEFINITION | CAPABILITY_DIAGNOSTIC_DEFINITION | — |
+| Q019 | AvailableSignals | UNIQUE_QUERY_DEFINITION | CAPABILITY_DIAGNOSTIC_DEFINITION | — |
+| Q020 | BatteryCapabilityPreflight | UNIQUE_QUERY_DEFINITION | CAPABILITY_DIAGNOSTIC_DEFINITION | — |
+| Q021 | RechargeSegmentsProbe | UNIQUE_QUERY_DEFINITION | CAPABILITY_DIAGNOSTIC_DEFINITION | — |
+| Q022 | TripSegments | UNIQUE_QUERY_DEFINITION | PRODUCTION_ON_DEMAND_DEFINITION | — |
+| Q023 | EnergyEventSegments refuel | UNIQUE_QUERY_DEFINITION | PRODUCTION_ACTIVE_DEFINITION | — |
+| Q024 | EnergyEventSegments recharge | NON_DEFINITION_INVOCATION_CONTEXT | LEGACY_INVOCATION_CONTEXT | Q023 builder (prod recharge uses Q025) |
+| Q025 | DimoRechargeSegments | UNIQUE_QUERY_DEFINITION | PRODUCTION_ACTIVE_DEFINITION | — |
+| Q026 | ShadowDetector context | NON_DEFINITION_INVOCATION_CONTEXT | SHADOW_INVOCATION_CONTEXT | Q009 + Q022 |
+| Q027 | EventContext HF window | NON_DEFINITION_INVOCATION_CONTEXT | PRODUCTION_INVOCATION_CONTEXT | Q009 |
+
+**Arithmetic:** UNIQUE_QUERY_DEFINITIONS **22** (13+4+4+1) + NON_DEFINITION_INVOCATION_CONTEXTS **5** (3+1+1) = **27** registry entries.
+
+**Terminology:** Q014/Q016/Q024/Q026/Q027 are **not** unique GraphQL definitions — they are caller/orchestration contexts that reuse an existing builder/inline query shape.
 
 ### DIMO-Q001 — LatestVehicleSnapshot
 | Field | Value |
@@ -275,10 +283,13 @@ Stable IDs for Phase 2B/2C and future Flight Recorder cross-reference.
 ### DIMO-Q014 — RefuelFuelLevelSamples (inline)
 | Field | Value |
 |---|---|
+| **Primary class** | NON_DEFINITION_INVOCATION_CONTEXT · PRODUCTION_INVOCATION_CONTEXT |
+| **Reuses** | Q013 inline GraphQL (`RefuelFuelLevelSamples`) |
 | **Domain** | Energy events |
 | **Operation** | inline `RefuelFuelLevelSamples` |
 | **Requested interval** | `30s` |
 | **Caller(s)** | `fetchFuelLevelSamples` ← `EnergyEventsService` |
+| **Retention** | `EVENT_HISTORY_PERSISTED` (energy event samples) |
 | **Evidence** | CONFIRMED_FROM_CODE |
 
 ### DIMO-Q015 — DrivingEvents (native)
@@ -297,11 +308,14 @@ Stable IDs for Phase 2B/2C and future Flight Recorder cross-reference.
 ### DIMO-Q016 — SafetyEvents
 | Field | Value |
 |---|---|
+| **Primary class** | NON_DEFINITION_INVOCATION_CONTEXT · PRODUCTION_INVOCATION_CONTEXT |
+| **Reuses** | Q015 `buildDimoEventsQuery` (filter: `safety.collision` only) |
 | **Domain** | Native events |
 | **Builder** | `buildSafetyEventsQuery` |
-| **Filter** | `safety.collision` only |
+| **Filter** | `safety.collision` only (**Q016_ADDITIONAL_UNIQUE_EVENT_NAMES = 0**; overlaps Q015) |
 | **Caller(s)** | `MisuseCaseReconcileService` |
-| **Persistence** | Misuse aggregation (not DrivingEvent rows) |
+| **Persistence** | Misuse aggregation (`AGGREGATE_RECORD_PERSISTED`) |
+| **Consumer** | **ABUSE_OR_CONTEXT_ONLY** — not composite |
 | **Evidence** | CONFIRMED_FROM_CODE |
 
 ### DIMO-Q017 — EventDataSummary
@@ -371,9 +385,9 @@ Stable IDs for Phase 2B/2C and future Flight Recorder cross-reference.
 ### DIMO-Q024 — EnergyEventSegments (recharge legacy)
 | Field | Value |
 |---|---|
-| **Builder** | `buildEnergyEventSegmentsQuery` mechanism `recharge` |
+| **Primary class** | NON_DEFINITION_INVOCATION_CONTEXT · LEGACY_INVOCATION_CONTEXT |
+| **Reuses** | Q023 `buildEnergyEventSegmentsQuery` mechanism `recharge` |
 | **Production path** | **Not used for recharge** — `fetchEnergyEventMechanism` routes `recharge` → `DimoRechargeSegmentsClient` (Q025) **CONFIRMED_FROM_CODE** |
-| **Classification** | LEGACY_REACHABLE (builder + private method remain; prod recharge bypasses) |
 | **Evidence** | CONFIRMED_FROM_CODE |
 
 ### DIMO-Q025 — DimoRechargeSegments (canonical recharge client)
@@ -388,22 +402,26 @@ Stable IDs for Phase 2B/2C and future Flight Recorder cross-reference.
 ### DIMO-Q026 — ShadowDetector invocation context
 | Field | Value |
 |---|---|
-| **Classification** | **INVOCATION_CONTEXT_REUSING_QUERY** · **SHADOW_ONLY** |
-| **Caller(s)** | `ShadowDetectorEnrichmentService` |
+| **Primary class** | NON_DEFINITION_INVOCATION_CONTEXT · SHADOW_INVOCATION_CONTEXT |
 | **Reuses** | Q009 (`fetchHighFrequency`) + Q022 (`fetchTripSegmentsForMechanism`) |
+| **Caller(s)** | `ShadowDetectorEnrichmentService` |
 | **Trigger** | Shadow misuse-case analysis pipeline (non-scoring research path) |
+| **Retention** | `TRANSIENT_ONLY` |
 | **Evidence** | CONFIRMED_FROM_CODE |
 
 ### DIMO-Q027 — EventContext HF invocation context
 | Field | Value |
 |---|---|
-| **Classification** | **INVOCATION_CONTEXT_REUSING_QUERY** · **PRODUCTION_ACTIVE** (conditional) |
-| **Caller(s)** | `EventContextEnrichmentService` via per-event jobs (`DrivingEventContextJobService`) |
+| **Primary class** | NON_DEFINITION_INVOCATION_CONTEXT · PRODUCTION_INVOCATION_CONTEXT |
 | **Reuses** | Q009 — one HF fetch per eligible native event context window (not full trip) |
+| **Caller(s)** | `EventContextEnrichmentService` via per-event jobs (`DrivingEventContextJobService`) |
 | **Conditions** | ICE-capable LTE_R1/UNKNOWN ICE via `shouldRunIceEventContextEnrichment`; not SMART5/EV |
+| **QUERY_HAS_COMPOSITE_RELEVANT_OUTPUT** | **no** — Phase 1: enrichment quality, not direct score |
+| **Consumer** | **ABUSE_OR_CONTEXT_ONLY** (context stats) |
+| **Retention** | `DERIVED_ONLY` |
 | **Evidence** | CONFIRMED_FROM_CODE |
 
-**Registry totals:** 27 entries · 22 unique GraphQL definitions · 16 production-active definitions · 6 on-demand/diagnostic · 1 dead (Q011) · 1 legacy reachable (Q024) · 2 reused invocation contexts (Q026–Q027)
+**Registry totals:** 27 entries = 22 UNIQUE_QUERY_DEFINITIONS + 5 NON_DEFINITION_INVOCATION_CONTEXTS (§3.0 arithmetic).
 
 ---
 
@@ -482,17 +500,17 @@ Signals present in catalog/types/docs but **not** in `buildLatestSnapshotQuery` 
 
 **ClickHouse `telemetry_snapshots`:** append-style historical mirror when CH configured; TTL **180d** (`HISTORICAL_TTL_180D`) **CONFIRMED_FROM_CODE**.
 
-| DIMO signal | Query | Normalized | VLS column / JSON | CH column | TDI consumer class | Other consumers |
+| DIMO signal | Query | Normalized | VLS column / JSON | CH column | Signal-level consumer | Other consumers |
 |---|---|---|---|---|---|---|
-| speed | Q001 | km/h | `speed_kmh` | `speed_kmh` | **NO_CURRENT_TDI_CONSUMER** (snapshot) | UI_OPERATIONAL_INPUT, TRIP_FSM_INPUT (indirect via trip start) |
-| odometer | Q001 | km | `odometer_km` | — | NO_CURRENT_TDI_CONSUMER | UI_OPERATIONAL_INPUT, trips |
-| ignition | Q001 | bool/null | `is_ignition_on` | state_changes | NO_CURRENT_TDI_CONSUMER | **TRIP_FSM_INPUT** |
-| engine load | Q001 | % | `engine_load` | `engine_load` | **NO_CURRENT_TDI_CONSUMER** (HF/live used for stress; not snapshot) | UI_OPERATIONAL_INPUT, HEALTH_INPUT (operational display) |
-| LV voltage | Q001 | V | battery JSON | — | NO_CURRENT_TDI_CONSUMER | **HEALTH_INPUT** (battery) |
-| tire pressures | Q001 | kPa normalized | tire fields | — | NO_CURRENT_TDI_CONSUMER | **HEALTH_INPUT** (tire) |
-| EV/HV fields | Q001 | various | VLS + mapper | partial | NO_CURRENT_TDI_CONSUMER | UI_OPERATIONAL_INPUT, HEALTH_INPUT |
+| speed | Q001 | km/h | `speed_kmh` | `speed_kmh` | **UI_OPERATIONAL_INPUT** / **TRIP_FSM_INPUT** (snapshot) | not composite |
+| odometer | Q001 | km | `odometer_km` | — | **NO_CURRENT_DRIVING_IMPACT_CONSUMER** | UI_OPERATIONAL_INPUT, trips |
+| ignition | Q001 | bool/null | `is_ignition_on` | state_changes | **TRIP_FSM_INPUT** | Trip FSM |
+| engine load | Q001 | % | `engine_load` | `engine_load` | **UI_OPERATIONAL_INPUT** (snapshot only) | not HF/live stress path |
+| LV voltage | Q001 | V | battery JSON | — | **HEALTH_INPUT** | Battery health |
+| tire pressures | Q001 | kPa normalized | tire fields | — | **HEALTH_INPUT** | Tire health |
+| EV/HV fields | Q001 | various | VLS + mapper | partial | **UI_OPERATIONAL_INPUT** / **HEALTH_INPUT** | Energy UI |
 
-Phase 1 authority preserved: composite TDI stress inputs are **post-trip**; live perf (Q008) provides **INDIRECT_TRIP_INPUT** to engine/transmission load only. Snapshot speed/engineLoad must **not** be documented as direct composite score inputs.
+Phase 1 authority preserved: composite stress inputs are **post-trip**; live perf (Q008) → **LOAD_COMPONENT_ONLY** (not composite weights). Snapshot fields must **not** be labeled **DIRECT_COMPOSITE_FEATURE_SOURCE**.
 
 ---
 
@@ -644,9 +662,9 @@ Snapshot CH (`telemetry_snapshots`, `telemetry_state_changes`): active when CH c
 
 ### 12.1 REQUESTED_EVENT_NAMES (query selection)
 
-**Q015 `buildDrivingEventsQuery`** — server-side `name { in: [...] }` filter **CONFIRMED_FROM_CODE**:
+**Q015_UNIQUE_REQUESTED_EVENT_NAMES = 8** — server-side `name { in: [...] }` filter in `buildDrivingEventsQuery` **CONFIRMED_FROM_CODE**:
 
-| DIMO event name | In Q015 filter | Also Q016 | Mapped internal type |
+| DIMO event name | In Q015 filter | In Q016 filter | Mapped internal type |
 |---|---|---|---|
 | `behavior.harshBraking` | yes | no | HARSH_BRAKING |
 | `behavior.extremeBraking` | yes | no | EXTREME_BRAKING |
@@ -655,11 +673,13 @@ Snapshot CH (`telemetry_snapshots`, `telemetry_state_changes`): active when CH c
 | `behavior.harshCornering` | yes | no | HARSH_CORNERING |
 | `behavior.extremeEmergency` | yes | no | EXTREME_BRAKING |
 | `behavior.extremeEmergencyBraking` | yes | no | EXTREME_BRAKING |
-| `safety.collision` | yes | yes (Q016 only filter) | SAFETY_COLLISION |
+| `safety.collision` | yes | yes | SAFETY_COLLISION |
 
-**Q016 `buildSafetyEventsQuery`:** requests **`safety.collision` only** — used by `MisuseCaseReconcileService` for misuse aggregation (not persisted as `DrivingEvent` rows) **CONFIRMED_FROM_CODE**.
+**Q016_REQUESTED_EVENT_NAMES = 1** (`safety.collision` only) — `buildSafetyEventsQuery` → `MisuseCaseReconcileService` (misuse aggregation, not `DrivingEvent` rows) **CONFIRMED_FROM_CODE**.
 
-**Q015 collision overlap:** `safety.collision` may be ingested via LTE_R1 path (Q015) **and** fetched again via Q016 for misuse evaluation — **POTENTIAL_QUERY_DUPLICATION** (different consumers).
+**Q016_ADDITIONAL_UNIQUE_EVENT_NAMES = 0** — Q016 adds no event name beyond the Q015 set.
+
+**Q015_Q016_OVERLAP = `safety.collision`** — may be fetched via LTE_R1 Q015 path **and** again via Q016 for misuse evaluation (**POTENTIAL_QUERY_DUPLICATION**, different consumers).
 
 ### 12.2 MAPPER_FALLBACKS (not query-selected)
 
@@ -734,23 +754,65 @@ SynqDrive code references these DIMO Telemetry API query families in production 
 
 ---
 
-## 16. Signal Canonicalization
+## 16. Signal Canonicalization & TDI Consumer Taxonomy
 
-| DIMO field | Canonical | Unit conversion | Storage | Consumer | Redundancy role |
+Phase 1 audit (`driving-intelligence-phase-1-current-state-forensic-audit-2026-08-30.md`) remains authority for score/consumer graph. Phase 2A uses a **precise consumer taxonomy** — do not label load-component or abuse-only paths as composite inputs.
+
+### 16.1 Consumer classes (signal-level)
+
+| Class | Meaning |
+|---|---|
+| **DIRECT_COMPOSITE_FEATURE_SOURCE** | Value feeds a composite stress feature/counter used in `computeDrivingStressScore()` (e.g. native harsh-event counters → per100km inputs) |
+| **INDIRECT_COMPOSITE_VIA_DETECTOR** | Raw signal → reconstructed event/counter → composite (e.g. HF speed → hard accel; HF TPS → kickdown/launch) |
+| **LOAD_COMPONENT_ONLY** | Feeds engine/transmission load sub-scores only — **not** composite `drivingStressScore` weights (Phase 1 §5.1, §9.9) |
+| **ABUSE_OR_CONTEXT_ONLY** | Abuse tiers, misuse, or enrichment context — not current composite |
+| **ENRICHMENT_GATE_ONLY** | Decides whether an enrichment path runs; not a score value |
+| **TRIP_FSM_INPUT** | Trip boundary / detection state |
+| **HEALTH_INPUT** | Battery/tire/DTC/service health modules |
+| **UI_OPERATIONAL_INPUT** | Display/ops only |
+| **NO_CURRENT_DRIVING_IMPACT_CONSUMER** | Persisted/used elsewhere with no current driving-score path |
+
+### 16.2 Query-level vs signal-level (no inheritance)
+
+| Query-level flag | Meaning |
+|---|---|
+| **QUERY_HAS_COMPOSITE_RELEVANT_OUTPUT = yes** | At least one signal/event from this query can reach composite stress features (directly or via detector) |
+| **QUERY_HAS_COMPOSITE_RELEVANT_OUTPUT = no** | No path to composite stress features |
+
+**Rule:** Q009 `QUERY_HAS_COMPOSITE_RELEVANT_OUTPUT = yes` does **not** imply all 15 HF signals are composite-relevant. Classify **per signal** in Appendix B.
+
+| Query | QUERY_HAS_COMPOSITE_RELEVANT_OUTPUT | Query-level consumer note |
+|---|---|---|
+| Q009 HighFrequency | **yes** (partial) | Subset via detectors; many signals abuse/context only |
+| Q015 DrivingEvents | **yes** | Native harsh events → composite counters |
+| Q008 Performance | **no** | Live avgs → LOAD_COMPONENT_ONLY only |
+| Q017 EventDataSummary | **no** | **ENRICHMENT_GATE_ONLY** |
+| Q027 EventContext HF | **no** | Phase 1 § acquisition table row 10: enrichment quality, **not direct score** |
+
+### 16.3 Canonical field mapping (selected)
+
+| DIMO field | Canonical | Unit conversion | Storage | Signal-level consumer | Redundancy role |
 |---|---|---|---|---|---|
-| speed | speedKmh | none | VLS, waypoints, HF | **INDIRECT_TRIP_INPUT** / UI | PARALLEL across surfaces |
-| powertrainCombustionEngineSpeed | rpm | none | trip avgs, HF | **INDIRECT_TRIP_INPUT** (live avg → engine load) | CURRENT_PRIMARY (HF/live) |
-| obdEngineLoad | engineLoad | none | VLS snapshot, HF, live avg | **INDIRECT_TRIP_INPUT** via live/HF; snapshot → UI only | PARALLEL snapshot+HF |
-| obdThrottlePosition | throttlePosition | none | trip avgs, HF | TDI transmission load | CURRENT_PRIMARY |
-| powertrainCombustionEngineECT | engineCoolantTempC | none | HF, snapshot ECT | Abuse detectors | PARALLEL |
-| powertrainTractionBatteryCurrentPower | tractionBatteryPowerKw | ÷1000 in parser | HF | EV regen summary | CURRENT_PRIMARY |
-| lowVoltageBatteryCurrentVoltage | lvBatteryVoltage | mapper | VLS | Battery health | CURRENT_PRIMARY |
+| speed (HF) | speedKmh | none | HF-derived events | **INDIRECT_COMPOSITE_VIA_DETECTOR** | HF primary for kinematic reconstruction |
+| speed (live/snapshot) | speedKmh | none | VLS, waypoints | **TRIP_FSM_INPUT** / **UI_OPERATIONAL_INPUT** | PARALLEL across surfaces |
+| powertrainCombustionEngineSpeed (live avg) | rpm | none | trip avgs | **LOAD_COMPONENT_ONLY** | LC fallback input |
+| powertrainCombustionEngineSpeed (HF) | rpm | none | HF | **ABUSE_OR_CONTEXT_ONLY** | LC proxy fallback only |
+| obdEngineLoad (live avg) | engineLoad | none | trip avgs | **LOAD_COMPONENT_ONLY** | Phase 1 §9.9 |
+| obdEngineLoad (HF) | engineLoad | none | HF abuse | **ABUSE_OR_CONTEXT_ONLY** | not composite direct |
+| obdEngineLoad (snapshot) | engineLoad | none | VLS | **UI_OPERATIONAL_INPUT** | not launch/HF proxy |
+| obdThrottlePosition (HF) | throttlePosition | none | HF | **INDIRECT_COMPOSITE_VIA_DETECTOR** (kickdown/launch) | detector primary |
+| obdThrottlePosition (live avg) | throttlePosition | none | trip avgs | **LOAD_COMPONENT_ONLY** | PARALLEL |
+| powertrainCombustionEngineECT | engineCoolantTempC | none | HF, snapshot | **ABUSE_OR_CONTEXT_ONLY** | cold-engine abuse tiers |
+| obdRunTime / torque* / gear / altitude | various | none | HF-derived | **ABUSE_OR_CONTEXT_ONLY** | misuse/context; not composite |
+| exteriorAirTemperature | exteriorAirTempC | none | trip meta, HF | **ABUSE_OR_CONTEXT_ONLY** | context modeling |
+| powertrainTractionBatteryCurrentPower | tractionBatteryPowerKw | ÷1000 in parser | HF | **ABUSE_OR_CONTEXT_ONLY** | EV regen context |
+| lowVoltageBatteryCurrentVoltage | lvBatteryVoltage | mapper | VLS, crank | **HEALTH_INPUT** | Battery SOH pipeline |
+| native behavior.* (Q015) | mapped enum | n/a | DrivingEvent | **DIRECT_COMPOSITE_FEATURE_SOURCE** | LTE_R1 composite authority |
+| safety.collision (Q016 path) | SAFETY_COLLISION | n/a | misuse agg | **ABUSE_OR_CONTEXT_ONLY** | not composite |
+
+Odometer: `powertrainTransmissionTravelledDistance` — trip distance only (**NO_CURRENT_DRIVING_IMPACT_CONSUMER** for composite).
 
 Engine load variants: only `obdEngineLoad` queried (no `powertrainCombustionEngineLoad` in current builders).
-
-Odometer: `powertrainTransmissionTravelledDistance` — CURRENT_PRIMARY.
-
----
 
 ## 17. Query Overlap / Redundancy
 
@@ -883,7 +945,9 @@ Do **not** treat “6–8 queries/trip” as canonical — use formulas above.
 | **UNIQUE_SIGNAL_FIELD_NAMES** | **41** |
 | **SIGNAL_FAMILIES** (grouped, e.g. 4 tire wheels → 1 family) | **34** |
 | **REQUESTED_EVENT_NAMES** (Q015 filter) | **8** |
-| **REQUESTED_EVENT_NAMES** (Q016 only) | **1** (`safety.collision`, subset of Q015) |
+| **REQUESTED_EVENT_NAMES** (Q016 filter) | **1** |
+| **Q016_ADDITIONAL_UNIQUE_EVENT_NAMES** | **0** |
+| **Q015_Q016_OVERLAP** | **`safety.collision`** |
 | **SEGMENT_MECHANISMS** referenced | **6** |
 | **METADATA_FIELDS** (Q001 `lastSeen`; not counted in signal fields) | **1** |
 
@@ -893,7 +957,7 @@ Do **not** treat “6–8 queries/trip” as canonical — use formulas above.
 
 | ID | Type | Severity | Summary |
 |---|---|---|---|
-| F2A-01 | QUERY_SURFACE_FACT | — | 27 registry entries; 22 unique GraphQL definitions; 16 production-active |
+| F2A-01 | QUERY_SURFACE_FACT | — | 27 registry = 22 unique definitions + 5 invocation contexts (§3.0) |
 | F2A-10 | QUERY_REDUNDANCY | P2 | LTE_R1 runs **two full-trip Q009 HF fetches** per completed trip |
 | F2A-02 | CAPABILITY_ARCHITECTURE_GAP | P2 | Preflight does not drive acquisition queries |
 | F2A-03 | TIMESTAMP_GAP | P2 | No HF/live receive timestamp; latency not measurable per sample |
@@ -960,35 +1024,37 @@ Recorder should align to **27 registry IDs / 22 unique definitions**, prioritizi
 
 ## Appendix A — Master Query Matrix
 
-| Query ID | Classification | Surface | Trigger | Call cadence | Requested interval | Signals (count) | Aggregation | Window | Persistence | Retention | TDI consumer class | Brake | Tire | API/UI | Rate-volume | Evidence |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Q001 | PROD_ACTIVE | Snapshot | Tier scheduler | 30s–30m | latest | 32 tel + 1 meta | point | n/a | VLS+CH | VLS: `LATEST_STATE_UNTIL_OVERWRITTEN`; CH: `HISTORICAL_TTL_180D` | NO_CURRENT_TDI_CONSUMER (snapshot) | HEALTH_INPUT | HEALTH_INPUT | yes | HIGH | CODE |
-| Q002 | ON_DEMAND | Snapshot | On-demand | ad hoc | latest | 3 | point | n/a | none | TRANSIENT | — | — | UI_OPERATIONAL | yes | LOW | CODE |
-| Q003 | ON_DEMAND | Snapshot | Sync | ad hoc | latest | 6 | point | n/a | sync | SYNC_METADATA | — | — | — | admin | LOW | CODE |
-| Q004 | ON_DEMAND | Identity | Sync | ad hoc | n/a | vin | n/a | n/a | vehicle | VEHICLE_RECORD | — | — | — | admin | LOW | CODE |
-| Q005 | PROD_ACTIVE | Snapshot | DTC 3h | 3h | latest | 1 | point | n/a | DTC | LATEST_STATE_UNTIL_OVERWRITTEN | NO_CURRENT_TDI_CONSUMER | — | — | health | LOW | CODE |
-| Q006 | PROD_ACTIVE | Live | ACTIVE_TICK | 30s | 20s | 5 | mixed | overlap | FSM | TRIP_DURATION | TRIP_FSM_INPUT | — | — | trips | HIGH active | CODE |
-| Q007 | PROD_ACTIVE | Live | ACTIVE_TICK | 30s | 7s | 2 | RAND/AVG | overlap | waypoints | TRIP_DURATION | INDIRECT_TRIP_INPUT | — | — | map | HIGH active | CODE |
-| Q008 | PROD_ACTIVE | Live | ACTIVE_TICK | 30s | 15s | 4 | AVG | overlap | trip avgs | TRIP_DURATION | INDIRECT_TRIP_INPUT | — | — | trips | HIGH active | CODE |
-| Q009 | PROD_ACTIVE | HF | Post-finalize | per trip/window | 1s | 15 | AVG | trip/±window | derived | TRANSIENT (derived PG) | DIRECT_COMPOSITE_INPUT | abuse | abuse | analyse | MOD | CODE |
-| Q010 | PROD_ACTIVE | Historical | Finalize/enrich | per trip | 2m | 1 | AVG | trip | trip meta | TRIP_DURATION | INDIRECT_TRIP_INPUT | — | — | trips | LOW | CODE |
-| Q011 | DEAD | Historical | — | unused | 3m | 4 | AVG | — | none | — | — | — | tire (unused) | — | — | CODE |
-| Q012 | PROD_ACTIVE | Historical | Trip start | per start | 5s | 2 | MIN/MAX | ~150s | battery | LATEST_STATE_UNTIL_OVERWRITTEN | NO_CURRENT_TDI_CONSUMER | — | — | battery | LOW | CODE |
-| Q013 | PROD_ACTIVE | Historical | Post-trip | per trip | 30s | 2 | AVG | trip | fuel fields | TRIP_DURATION | NO_CURRENT_TDI_CONSUMER | — | — | trips | LOW | CODE |
-| Q014 | ON_DEMAND | Historical | Energy | per event | 30s | 2 | AVG | window | energy | LATEST_STATE_UNTIL_OVERWRITTEN | NO_CURRENT_TDI_CONSUMER | — | — | energy | LOW | CODE |
-| Q015 | PROD_ACTIVE | Events | Post-trip LTE | per trip | n/a | 8 event names | n/a | 6h pages | DrivingEvent | LATEST_STATE_UNTIL_OVERWRITTEN | DIRECT_COMPOSITE_INPUT | yes | indirect | trips | MOD | CODE |
-| Q016 | PROD_ACTIVE | Events | Misuse | reconcile | n/a | 1 event name | n/a | trip | misuse | LATEST_STATE_UNTIL_OVERWRITTEN | NO_CURRENT_TDI_CONSUMER | — | — | internal | LOW | CODE |
-| Q017 | PROD_ACTIVE | Capability | Pre-enrich | per trip | n/a | summary | n/a | n/a | transient | TRANSIENT | INDIRECT_TRIP_INPUT | yes | — | — | LOW | CODE |
-| Q018 | DIAGNOSTIC | Capability | Preflight 7d | 7d | n/a | summary | n/a | n/a | capability | LATEST_STATE_UNTIL_OVERWRITTEN | — | — | — | internal | LOW | CODE |
-| Q019 | DIAGNOSTIC | Capability | Preflight 7d | 7d | n/a | list | n/a | n/a | capability | LATEST_STATE_UNTIL_OVERWRITTEN | — | — | — | internal | LOW | CODE |
-| Q020 | DIAGNOSTIC | Capability | Battery | on demand | latest+list | battery set | point | n/a | capability | LATEST_STATE_UNTIL_OVERWRITTEN | — | HEALTH_INPUT | — | battery | LOW | CODE |
-| Q021 | DIAGNOSTIC | Segments | Battery probe | on demand | n/a | recharge | n/a | probe | transient | TRANSIENT | — | HEALTH_INPUT | — | battery | LOW | CODE |
-| Q022 | ON_DEMAND | Segments | Repair | episodic | n/a | 3 req | MIN/MAX | lookback | repair | LATEST_STATE_UNTIL_OVERWRITTEN | TRIP_FSM_INPUT | — | — | internal | LOW | CODE |
-| Q023 | PROD_ACTIVE | Segments | Energy | scheduled | periodic | refuel | MIN/MAX | window | energy | LATEST_STATE_UNTIL_OVERWRITTEN | NO_CURRENT_TDI_CONSUMER | — | — | energy | LOW | CODE |
-| Q024 | LEGACY | Segments | Energy (bypassed) | legacy reachable | periodic | recharge | MIN/MAX | window | energy | LATEST_STATE_UNTIL_OVERWRITTEN | NO_CURRENT_TDI_CONSUMER | — | — | energy | LOW | CODE |
-| Q025 | PROD_ACTIVE | Segments | Energy | recharge client | windowed | recharge+10 | MIN/MAX | chunked | energy | LATEST_STATE_UNTIL_OVERWRITTEN | NO_CURRENT_TDI_CONSUMER | — | — | energy | MOD | CODE |
-| Q026 | SHADOW_CTX | HF+Seg | Shadow | analysis | per run | reuses Q009+Q022 | mixed | trip | shadow | TRANSIENT | research | — | — | internal | LOW | CODE |
-| Q027 | PROD_CTX | HF | Event context | per event batch | 1s | reuses Q009 (15) | AVG | ±window | context | LATEST_STATE_UNTIL_OVERWRITTEN | DIRECT_COMPOSITE_INPUT | yes | — | internal | MOD | CODE |
+**Retention legend:** `LATEST_STATE_UNTIL_OVERWRITTEN` = single latest row upsert; `EVENT_HISTORY_PERSISTED` = append-style event/history rows; `TRIP_SCOPED_PERSISTED` = trip-bound rows; `DERIVED_ONLY` = derived aggregates/events, raw series discarded; `CAPABILITY_STATE_UPSERT` = capability probe rows; `TRANSIENT_ONLY` = no durable persistence.
+
+| Query ID | Primary class | Sub-class | Surface | Trigger | Call cadence | Signals (count) | Persistence | Retention | QUERY_HAS_COMPOSITE_RELEVANT_OUTPUT | Query-level consumer note | Rate-volume | Evidence |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Q001 | UNIQUE_DEF | PROD_ACTIVE | Snapshot | Tier scheduler | 30s–30m | 32 tel + 1 meta | VLS+CH | VLS: `LATEST_STATE_UNTIL_OVERWRITTEN`; CH: `HISTORICAL_TTL_180D` | no | UI/health/FSM only | HIGH | CODE |
+| Q002 | UNIQUE_DEF | ON_DEMAND | Snapshot | On-demand | ad hoc | 3 | none | `TRANSIENT_ONLY` | no | UI map fallback | LOW | CODE |
+| Q003 | UNIQUE_DEF | ON_DEMAND | Snapshot | Sync | ad hoc | 6 | sync | `TRANSIENT_ONLY` | no | admin/sync | LOW | CODE |
+| Q004 | UNIQUE_DEF | ON_DEMAND | Identity | Sync | ad hoc | vin | vehicle | vehicle record | no | admin | LOW | CODE |
+| Q005 | UNIQUE_DEF | PROD_ACTIVE | Snapshot | DTC 3h | 3h | 1 | DTC tables | `EVENT_HISTORY_PERSISTED` | no | **HEALTH_INPUT** | LOW | CODE |
+| Q006 | UNIQUE_DEF | PROD_ACTIVE | Live | ACTIVE_TICK | 30s | 5 | FSM state | `TRIP_SCOPED_PERSISTED` | no | **TRIP_FSM_INPUT** | HIGH active | CODE |
+| Q007 | UNIQUE_DEF | PROD_ACTIVE | Live | ACTIVE_TICK | 30s | 2 | waypoints | `TRIP_SCOPED_PERSISTED` | no | route → post-trip context (cityShare indirect) | HIGH active | CODE |
+| Q008 | UNIQUE_DEF | PROD_ACTIVE | Live | ACTIVE_TICK | 30s | 4 | trip avgs | `TRIP_SCOPED_PERSISTED` | no | **LOAD_COMPONENT_ONLY** avgs | HIGH active | CODE |
+| Q009 | UNIQUE_DEF | PROD_ACTIVE | HF | Post-finalize | per trip/window | 15 | derived events | `DERIVED_ONLY` | **yes (partial)** | subset → detectors → composite; many signals abuse-only | MOD | CODE |
+| Q010 | UNIQUE_DEF | PROD_ACTIVE | Historical | Finalize/enrich | per trip | 1 | trip meta | `TRIP_SCOPED_PERSISTED` | no | **ABUSE_OR_CONTEXT_ONLY** | LOW | CODE |
+| Q011 | UNIQUE_DEF | DEAD | Historical | — | unused | 4 | none | — | no | unused | — | CODE |
+| Q012 | UNIQUE_DEF | PROD_ACTIVE | Historical | Trip start | per start | 2 | battery features | `AGGREGATE_RECORD_PERSISTED` | no | **HEALTH_INPUT** | LOW | CODE |
+| Q013 | UNIQUE_DEF | PROD_ACTIVE | Historical | Post-trip | per trip | 2 | fuel fields | `TRIP_SCOPED_PERSISTED` | no | fuel/energy UI | LOW | CODE |
+| Q014 | **INVOC_CTX** | **PROD** | Historical | Energy | per event | 2 (reuses Q013) | energy samples | `EVENT_HISTORY_PERSISTED` | no | energy domain | LOW | CODE |
+| Q015 | UNIQUE_DEF | PROD_ACTIVE | Events | Post-trip LTE | per trip | 8 event names | DrivingEvent | `EVENT_HISTORY_PERSISTED` | **yes** | native harsh → composite counters | MOD | CODE |
+| Q016 | **INVOC_CTX** | **PROD** | Events | Misuse | reconcile | 1 (reuses Q015) | misuse agg | `AGGREGATE_RECORD_PERSISTED` | no | **ABUSE_OR_CONTEXT_ONLY** | LOW | CODE |
+| Q017 | UNIQUE_DEF | PROD_ACTIVE | Capability | Pre-enrich | per trip | summary | transient | `TRANSIENT_ONLY` | no | **ENRICHMENT_GATE_ONLY** | LOW | CODE |
+| Q018 | UNIQUE_DEF | DIAGNOSTIC | Capability | Preflight 7d | 7d | summary | capability | `CAPABILITY_STATE_UPSERT` | no | preflight | LOW | CODE |
+| Q019 | UNIQUE_DEF | DIAGNOSTIC | Capability | Preflight 7d | 7d | list | capability | `CAPABILITY_STATE_UPSERT` | no | preflight | LOW | CODE |
+| Q020 | UNIQUE_DEF | DIAGNOSTIC | Capability | Battery | on demand | battery set | capability | `CAPABILITY_STATE_UPSERT` | no | **HEALTH_INPUT** probe | LOW | CODE |
+| Q021 | UNIQUE_DEF | DIAGNOSTIC | Segments | Battery probe | on demand | recharge | transient | `TRANSIENT_ONLY` | no | probe | LOW | CODE |
+| Q022 | UNIQUE_DEF | ON_DEMAND | Segments | Repair | episodic | 3 req | repair | `AGGREGATE_RECORD_PERSISTED` | no | **TRIP_FSM_INPUT** (repair) | LOW | CODE |
+| Q023 | UNIQUE_DEF | PROD_ACTIVE | Segments | Energy | scheduled | refuel | energy events | `EVENT_HISTORY_PERSISTED` | no | energy domain | LOW | CODE |
+| Q024 | **INVOC_CTX** | **LEGACY** | Segments | Energy (bypassed) | legacy | recharge (reuses Q023) | energy | `EVENT_HISTORY_PERSISTED` | no | bypassed by Q025 | LOW | CODE |
+| Q025 | UNIQUE_DEF | PROD_ACTIVE | Segments | Energy | recharge client | recharge+10 | energy events | `EVENT_HISTORY_PERSISTED` | no | energy domain | MOD | CODE |
+| Q026 | **INVOC_CTX** | **SHADOW** | HF+Seg | Shadow | analysis | reuses Q009+Q022 | shadow | `TRANSIENT_ONLY` | no | research only | LOW | CODE |
+| Q027 | **INVOC_CTX** | **PROD** | HF | Event context | per event | reuses Q009 (15) | context stats | `DERIVED_ONLY` | **no** | Phase 1: enrichment quality, not direct score | MOD | CODE |
 
 ---
 
@@ -996,47 +1062,47 @@ Recorder should align to **27 registry IDs / 22 unique definitions**, prioritizi
 
 **Columns:** ✓ = field selected in that query/surface. Native Events = `events(...)` filter only (Q015/Q016). Historical Context = non-event `signals(...)` at post-trip or episodic intervals (Q010–Q014). Segments = segment `signalRequests` (Q022–Q025).
 
-| DIMO signal / event | Snap Latest | Live Core | Live Route | Live Perf | HF 1s | Hist Context | Native Events | Segments | Persisted where | TDI consumer class | Canonical field |
+| DIMO signal / event | Snap Latest | Live Core | Live Route | Live Perf | HF 1s | Hist Context | Native Events | Segments | Persisted where | Signal-level consumer | Canonical field |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| speed | ✓ | ✓ | ✓ | — | ✓ | — | — | — | VLS/waypoints/HF-derived | INDIRECT_TRIP_INPUT | speedKmh |
+| speed | ✓ | ✓ | ✓ | — | ✓ | — | — | — | VLS/waypoints/HF-derived | live: **TRIP_FSM_INPUT**; HF: **INDIRECT_COMPOSITE_VIA_DETECTOR** | speedKmh |
 | isIgnitionOn | ✓ | ✓ | — | — | ✓ | — | — | ignitionDetection | VLS/FSM | TRIP_FSM_INPUT | isIgnitionOn |
-| powertrainTransmissionTravelledDistance | ✓ | ✓ | — | — | — | — | — | — | VLS/trip | NO_CURRENT_TDI_CONSUMER | odometerKm |
-| powertrainFuelSystemRelativeLevel | ✓ | — | — | — | — | ✓(30s Q013/Q014) | — | ✓ refuel MIN/MAX | trip fuel/energy | NO_CURRENT_TDI_CONSUMER | fuel % |
-| powertrainFuelSystemAbsoluteLevel | ✓ | ✓ | — | — | — | ✓(30s Q013/Q014) | — | ✓ refuel MIN/MAX | trip fuel/energy | NO_CURRENT_TDI_CONSUMER | liters |
-| powertrainTractionBatteryStateOfChargeCurrent | ✓ | — | — | — | ✓ | — | — | — | VLS/HF | NO_CURRENT_TDI_CONSUMER | socPct |
-| powertrainTractionBatteryStateOfChargeCurrentEnergy | ✓ | ✓ | — | — | — | — | — | — | trip EV | NO_CURRENT_TDI_CONSUMER | kWh |
+| powertrainTransmissionTravelledDistance | ✓ | ✓ | — | — | — | — | — | — | VLS/trip | **NO_CURRENT_DRIVING_IMPACT_CONSUMER** | odometerKm |
+| powertrainFuelSystemRelativeLevel | ✓ | — | — | — | — | ✓(30s Q013/Q014) | — | ✓ refuel MIN/MAX | trip fuel/energy | **NO_CURRENT_DRIVING_IMPACT_CONSUMER** | fuel % |
+| powertrainFuelSystemAbsoluteLevel | ✓ | ✓ | — | — | — | ✓(30s Q013/Q014) | — | ✓ refuel MIN/MAX | trip fuel/energy | **NO_CURRENT_DRIVING_IMPACT_CONSUMER** | liters |
+| powertrainTractionBatteryStateOfChargeCurrent | ✓ | — | — | — | ✓ | — | — | — | VLS/HF | **NO_CURRENT_DRIVING_IMPACT_CONSUMER** | socPct |
+| powertrainTractionBatteryStateOfChargeCurrentEnergy | ✓ | ✓ | — | — | — | — | — | — | trip EV | **NO_CURRENT_DRIVING_IMPACT_CONSUMER** | kWh |
 | powertrainTractionBatteryStateOfHealth | ✓ | — | — | — | — | — | — | — | VLS | HEALTH_INPUT | soh |
-| powertrainTractionBatteryCurrentPower | ✓ | — | — | — | ✓ | — | — | recharge seg | VLS/HF | NO_CURRENT_TDI_CONSUMER | tractionBatteryPowerKw |
+| powertrainTractionBatteryCurrentPower | ✓ | — | — | — | ✓ | — | — | recharge seg | VLS/HF | **ABUSE_OR_CONTEXT_ONLY** | tractionBatteryPowerKw |
 | powertrainTractionBatteryCurrentVoltage | ✓ | — | — | — | — | — | — | — | VLS | HEALTH_INPUT | hv voltage |
 | powertrainTractionBatteryTemperatureAverage | ✓ | — | — | — | ✓ | — | — | — | VLS/HF | HEALTH_INPUT | tractionBatteryTemperatureC |
-| powertrainTractionBattery charging fields (×6) | ✓ | — | — | — | — | — | — | recharge seg | VLS/energy | NO_CURRENT_TDI_CONSUMER | various |
+| powertrainTractionBattery charging fields (×6) | ✓ | — | — | — | — | — | — | recharge seg | VLS/energy | **NO_CURRENT_DRIVING_IMPACT_CONSUMER** | various |
 | powertrainTractionBatteryRange / GrossCapacity | ✓ | — | — | — | — | — | — | — | VLS | UI_OPERATIONAL_INPUT | range/capacity |
 | powertrainCombustionEngineEngineOilRelativeLevel | ✓ | — | — | — | — | — | — | — | VLS | HEALTH_INPUT | oil level |
 | powertrainCombustionEngineDieselExhaustFluidLevel | ✓ | — | — | — | — | — | — | — | VLS | HEALTH_INPUT | DEF |
-| powertrainCombustionEngineECT | ✓ | — | — | ✓ | ✓ | — | — | — | trip avg/HF/VLS | DIRECT_COMPOSITE_INPUT (HF) | engineCoolantTempC |
-| powertrainCombustionEngineSpeed | — | — | — | ✓ | ✓ | ✓(5s Q012) | — | — | trip avg/HF/battery | INDIRECT_TRIP_INPUT | rpm |
-| obdThrottlePosition | — | — | — | ✓ | ✓ | — | — | — | trip avg/HF | DIRECT_COMPOSITE_INPUT | throttlePosition |
-| obdEngineLoad | ✓ | — | — | ✓ | ✓ | — | — | — | VLS/trip avg/HF | DIRECT_COMPOSITE_INPUT (HF/live); snapshot → UI only | engineLoad |
-| obdRunTime | — | — | — | — | ✓ | — | — | — | HF-derived | DIRECT_COMPOSITE_INPUT | engineRuntimeSec |
-| powertrainCombustionEngineTorque | — | — | — | — | ✓ | — | — | — | HF-derived | DIRECT_COMPOSITE_INPUT | engineTorqueNm |
-| powertrainCombustionEngineTorquePercent | — | — | — | — | ✓ | — | — | — | HF-derived | DIRECT_COMPOSITE_INPUT | engineTorquePct |
-| exteriorAirTemperature | — | — | — | — | ✓ | ✓(2m Q010) | — | — | trip meta/HF | INDIRECT_TRIP_INPUT | exteriorAirTempC |
-| currentLocationAltitude | — | — | — | — | ✓ | — | — | — | HF-derived | INDIRECT_TRIP_INPUT | altitudeM |
-| powertrainTransmissionCurrentGear | — | — | — | — | ✓ | — | — | — | HF-derived | DIRECT_COMPOSITE_INPUT | currentGear |
+| powertrainCombustionEngineECT | ✓ | — | — | ✓ | ✓ | — | — | — | trip avg/HF/VLS | **ABUSE_OR_CONTEXT_ONLY** | engineCoolantTempC |
+| powertrainCombustionEngineSpeed | — | — | — | ✓ | ✓ | ✓(5s Q012) | — | — | trip avg/HF/battery | live avg: **LOAD_COMPONENT_ONLY**; HF: **ABUSE_OR_CONTEXT_ONLY**; crank: **HEALTH_INPUT** | rpm |
+| obdThrottlePosition | — | — | — | ✓ | ✓ | — | — | — | trip avg/HF | live avg: **LOAD_COMPONENT_ONLY**; HF: **INDIRECT_COMPOSITE_VIA_DETECTOR** | throttlePosition |
+| obdEngineLoad | ✓ | — | — | ✓ | ✓ | — | — | — | VLS/trip avg/HF | live avg: **LOAD_COMPONENT_ONLY**; HF: **ABUSE_OR_CONTEXT_ONLY**; snapshot: **UI_OPERATIONAL_INPUT** | engineLoad |
+| obdRunTime | — | — | — | — | ✓ | — | — | — | HF-derived | **ABUSE_OR_CONTEXT_ONLY** | engineRuntimeSec |
+| powertrainCombustionEngineTorque | — | — | — | — | ✓ | — | — | — | HF-derived | **ABUSE_OR_CONTEXT_ONLY** | engineTorqueNm |
+| powertrainCombustionEngineTorquePercent | — | — | — | — | ✓ | — | — | — | HF-derived | **ABUSE_OR_CONTEXT_ONLY** | engineTorquePct |
+| exteriorAirTemperature | — | — | — | — | ✓ | ✓(2m Q010) | — | — | trip meta/HF | **ABUSE_OR_CONTEXT_ONLY** | exteriorAirTempC |
+| currentLocationAltitude | — | — | — | — | ✓ | — | — | — | HF-derived | **ABUSE_OR_CONTEXT_ONLY** | altitudeM |
+| powertrainTransmissionCurrentGear | — | — | — | — | ✓ | — | — | — | HF-derived | **ABUSE_OR_CONTEXT_ONLY** | currentGear |
 | currentLocationCoordinates | ✓ | — | ✓ | — | — | — | — | CPD seg | waypoints/VLS | UI_OPERATIONAL_INPUT | lat/lng |
 | lowVoltageBatteryCurrentVoltage | ✓ | — | — | — | — | ✓(5s Q012) | — | — | VLS/battery | HEALTH_INPUT | lv voltage |
 | chassisAxleRow* TirePressure (×4 wheels) | ✓ | — | — | — | — | ✓(3m Q011 unused) | — | — | VLS | HEALTH_INPUT | tire kPa |
 | chassisTireSystemIsWarningOn | ✓ | — | — | — | — | — | — | — | VLS | HEALTH_INPUT | warning flag |
-| obdIsPluggedIn | ✓ | — | — | — | — | — | — | — | VLS | NO_CURRENT_TDI_CONSUMER | connectivity |
-| connectivityCellularIsJammingDetected | ✓ | — | — | — | — | — | — | — | VLS | NO_CURRENT_TDI_CONSUMER | connectivity |
-| powertrainType | ✓ | — | — | — | — | — | — | — | VLS | NO_CURRENT_TDI_CONSUMER | powertrain class |
-| obdDTCList | Q005 | — | — | — | — | — | — | — | DTC tables | NO_CURRENT_TDI_CONSUMER | codes |
-| behavior.harshBraking / extremeBraking / harshAcceleration / extremeAcceleration / harshCornering / extremeEmergency* | — | — | — | — | — | — | ✓ Q015 | — | DrivingEvent | DIRECT_COMPOSITE_INPUT | mapped enum |
-| safety.collision | — | — | — | — | — | — | ✓ Q015 + Q016 | — | DrivingEvent / misuse | DIRECT_COMPOSITE_INPUT (Q015); misuse only (Q016) | SAFETY_COLLISION |
+| obdIsPluggedIn | ✓ | — | — | — | — | — | — | — | VLS | **NO_CURRENT_DRIVING_IMPACT_CONSUMER** | connectivity |
+| connectivityCellularIsJammingDetected | ✓ | — | — | — | — | — | — | — | VLS | **NO_CURRENT_DRIVING_IMPACT_CONSUMER** | connectivity |
+| powertrainType | ✓ | — | — | — | — | — | — | — | VLS | **NO_CURRENT_DRIVING_IMPACT_CONSUMER** | powertrain class |
+| obdDTCList | Q005 | — | — | — | — | — | — | — | DTC tables | **HEALTH_INPUT** | codes |
+| behavior.harshBraking / extremeBraking / harshAcceleration / extremeAcceleration / harshCornering / extremeEmergency* | — | — | — | — | — | — | ✓ Q015 | — | DrivingEvent | **DIRECT_COMPOSITE_FEATURE_SOURCE** | mapped enum |
+| safety.collision | — | — | — | — | — | — | ✓ Q015 (+ Q016 ctx) | — | DrivingEvent / misuse | **ABUSE_OR_CONTEXT_ONLY** (both paths) | SAFETY_COLLISION |
 
-**Matrix rows:** **35** (includes 6-row charging-field family, 4-wheel tire family, 7-row native-event family; **41 unique signal field names** counted individually in §22.3).
+**Matrix rows:** **35** (includes grouped families; **41 unique signal field names** in §22.3).
 
-**Corrections applied:** `exteriorAirTemperature` is **Historical Context (Q010, 2m)** and **HF 1s (Q009)** — not a Native Event. Snapshot `obdEngineLoad` / `speed` are **not** direct composite TDI inputs (Phase 1 preserved).
+**Phase 1 alignment:** No snapshot field is **DIRECT_COMPOSITE_FEATURE_SOURCE**. Q027 EventContext HF is **not** composite-relevant (Appendix A). Q009 composite relevance is **partial** — per-signal rows above.
 
 ---
 
@@ -1060,7 +1126,7 @@ Recorder should align to **27 registry IDs / 22 unique definitions**, prioritizi
 
 | Criterion | Status |
 |---|---|
-| All discovered DIMO query definitions and productive invocation contexts classified | ✓ 27 registry / 22 unique / 8 context buckets (§3.0) |
+| All discovered DIMO query definitions and invocation contexts classified | ✓ 27 = 22 UNIQUE_QUERY_DEFINITIONS + 5 NON_DEFINITION_INVOCATION_CONTEXTS (§3.0) |
 | Exact signal selection documented | ✓ 41 unique signal fields (§22.3) |
 | Trigger/cadence/window known | ✓ (OBSERVED cadence flagged UNKNOWN) |
 | Persistence/retention known | ✓ VLS overwrite vs CH TTL documented (§5) |

@@ -308,13 +308,14 @@ A future profile should be able to express:
 ### 2A Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2a-current-query-surface-audit-2026-08-31.md`
 
-**Exit criteria met (code/schema audit):** All discovered DIMO query definitions and productive invocation contexts classified — **27 registry entries** (`DIMO-Q001`–`DIMO-Q027`), **22 unique GraphQL definitions**, **16 production-active definitions**, **6 on-demand/diagnostic**, **1 shadow context**, **1 legacy reachable**, **1 dead**, **2 reused invocation contexts**; **41 unique signal field names** inventoried; exact selections, triggers, cadence, windows, persistence, retention semantics, and formula-driven post-trip request models documented; theoretical scaling recomputed (snapshot ACTIVE_DRIVING = 2 calls/**min**, 120/hour, 2,880/day); **20** runtime probes backlog.
+**Exit criteria met (code/schema audit):** All discovered DIMO query definitions and invocation contexts classified — **27 registry entries** (`DIMO-Q001`–`DIMO-Q027`) = **22 UNIQUE_QUERY_DEFINITIONS** (13 production-active + 4 on-demand + 4 diagnostic + 1 dead) + **5 NON_DEFINITION_INVOCATION_CONTEXTS** (3 production + 1 legacy + 1 shadow); **41 unique signal field names** inventoried; TDI consumer taxonomy aligned with Phase 1 (query-level vs signal-level separated); retention classes per domain; formula-driven post-trip request models documented; theoretical scaling recomputed (snapshot ACTIVE_DRIVING = 2 calls/**min**, 120/hour, 2,880/day); **20** runtime probes backlog.
 
 **Capability architecture verdict:** `PARTIALLY_CAPABILITY_AWARE` — `availableSignals`/`dataSummary` preflight persists capability probes (7-day gate) but does **not** drive snapshot/live/HF/event query field selection; all driving queries remain static fleet-wide profiles.
 
 **Material Phase 2A findings:**
-- Registry semantics corrected: 27 entries ≠ 27 unique GraphQL operations (22 unique definitions; Q026–Q027 reuse Q009/Q022; Q011 dead; Q024 legacy bypassed by Q025).
-- **41 unique signal field names** queried across builders (not ~52); Q001 = 33 GraphQL selections (32 telemetry + `lastSeen` metadata).
+- Registry semantics (mutually exclusive): **27 = 22 unique definitions + 5 invocation contexts** (Q014/Q016/Q024/Q026/Q027 reuse Q013/Q015/Q023/Q009/Q022 builders — not separate GraphQL definitions).
+- **41 unique signal field names** queried across builders; Q001 = 33 GraphQL selections (32 telemetry + `lastSeen` metadata).
+- TDI taxonomy corrected per Phase 1: **DIRECT_COMPOSITE_FEATURE_SOURCE** only for native harsh events + HF detector paths; **LOAD_COMPONENT_ONLY** for live perf avgs; Q027 EventContext = enrichment quality, **not** composite; query-level `QUERY_HAS_COMPOSITE_RELEVANT_OUTPUT` separated from signal-level classes.
 - REQUESTED_BUCKET (`1s`/`7s`/`15s`/`20s`) ≠ proven OBSERVED_PROVIDER_CADENCE — runtime probes required before treating bucket size as sample frequency.
 - No per-HF-point SynqDrive receive timestamp; provider→SynqDrive latency not measurable for kinematic replay (Phase 3 blocker input).
 - Raw HF not in Postgres; ClickHouse HF mirror optional (`HF_MIRROR_ENABLED=false` default), 6-signal subset — PARTIAL_REPLAY_ONLY.
