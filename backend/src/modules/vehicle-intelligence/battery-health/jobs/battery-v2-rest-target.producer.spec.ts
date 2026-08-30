@@ -13,6 +13,10 @@ describe('BatteryV2RestTargetProducer', () => {
     enqueue: jest.fn().mockResolvedValue('battery-v2-job-1'),
   };
 
+  const deadLetters = {
+    clearDeadLetter: jest.fn().mockResolvedValue(true),
+  };
+
   let producer: BatteryV2RestTargetProducer;
   const originalEnv = process.env.BATTERY_V2_REST_SHADOW_ENABLED;
 
@@ -20,7 +24,10 @@ describe('BatteryV2RestTargetProducer', () => {
     jest.clearAllMocks();
     process.env.BATTERY_V2_REST_SHADOW_ENABLED = 'true';
     jest.spyOn(RuntimeStatusRegistry, 'getWorkersEnabled').mockReturnValue(true);
-    producer = new BatteryV2RestTargetProducer(jobProducer as unknown as BatteryV2JobProducerService);
+    producer = new BatteryV2RestTargetProducer(
+      jobProducer as unknown as BatteryV2JobProducerService,
+      deadLetters as any,
+    );
   });
 
   afterEach(() => {
@@ -51,7 +58,7 @@ describe('BatteryV2RestTargetProducer', () => {
         restTargetType: 'REST_60M',
         idempotencyKey: `battery-rest:${VEH}:${WINDOW_ID}:60m`,
       }),
-      { delayMs: 30 * 60_000 },
+      { delayMs: 30 * 60_000, ignoreDeadLetter: false },
     );
   });
 
@@ -74,7 +81,7 @@ describe('BatteryV2RestTargetProducer', () => {
         restTargetType: 'REST_6H',
         idempotencyKey: `battery-rest:${VEH}:${WINDOW_ID}:6h`,
       }),
-      { delayMs: 4 * 60 * 60_000 },
+      { delayMs: 4 * 60 * 60_000, ignoreDeadLetter: false },
     );
   });
 

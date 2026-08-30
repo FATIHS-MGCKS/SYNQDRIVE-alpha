@@ -134,7 +134,7 @@ describe('BatteryRestTargetEvaluateHandler', () => {
     );
   });
 
-  it('retries when evaluation is not yet ready', async () => {
+  it('defers retryable evaluation without throwing (reconciliation grace path)', async () => {
     prisma.batteryMeasurementSession.findFirst.mockResolvedValue({
       id: SESSION,
       organizationId: ORG,
@@ -149,9 +149,21 @@ describe('BatteryRestTargetEvaluateHandler', () => {
       missed: false,
     });
 
-    await expect(handler.handle(basePayload('REST_60M'))).rejects.toMatchObject({
-      retryable: true,
-    });
+    await handler.handle(basePayload('REST_60M'));
+
+    expect(prisma.batteryMeasurementSession.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          metadata: expect.objectContaining({
+            scheduledTargets: expect.objectContaining({
+              REST_60M: expect.objectContaining({
+                status: LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION,
+              }),
+            }),
+          }),
+        }),
+      }),
+    );
   });
 
   it('marks target MISSED when retry window is exhausted', async () => {

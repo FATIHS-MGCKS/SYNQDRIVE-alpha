@@ -20,15 +20,20 @@ import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.serv
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 import { BatteryV2LvRestSessionProducer } from './battery-v2-lv-rest-session.producer';
 import { BatteryV2RestTargetProducer } from './battery-v2-rest-target.producer';
+import { LvRestWindowSessionArmingService } from '../lv-rest-window/lv-rest-window-session-arming.service';
 import { BatteryV2SnapshotObservationProducer } from './battery-v2-snapshot-observation.producer';
 import { BatteryCapabilityRefreshService } from '../capability-preflight/battery-capability-refresh.service';
 import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 import {
   isLvRestTargetAlreadyScheduled,
+  isLvRestTargetAwaitingReconciliationReschedule,
+  isLvRestTargetTerminal,
   LV_REST_TARGET_JOB_STATUS,
   LV_REST_TARGET_TYPES,
   mergeLvRestTargetJobMetadata,
   readLvRestWindowSessionMetadata,
+  type LvRestTargetJobMetadata,
+  type LvRestTargetType,
 } from '../lv-rest-window/lv-rest-window-target.metadata';
 import {
   BatteryMeasurementSessionStatus,
@@ -76,6 +81,7 @@ export class BatteryV2ReconciliationService {
     private readonly deadLetters: BatteryV2JobDeadLetterService,
     private readonly capabilityRefresh: BatteryCapabilityRefreshService,
     private readonly lvRestSessionProducer: BatteryV2LvRestSessionProducer,
+    private readonly sessionArming: LvRestWindowSessionArmingService,
     private readonly restTargetProducer: BatteryV2RestTargetProducer,
     private readonly tripStartProducer: BatteryV2TripStartProducer,
     private readonly rechargeReconcileProducer: HvRechargeSessionReconcileProducerService,
@@ -336,6 +342,20 @@ export class BatteryV2ReconciliationService {
         });
       if (existingSession) continue;
 
+      const armingResult =
+        await this.sessionArming.ensureLvRestWindowForFinalizedTrip({
+          organizationId,
+          vehicleId: trip.vehicleId,
+          tripId: trip.id,
+        });
+      if (
+        armingResult.outcome === 'opened' ||
+        armingResult.outcome === 'already_exists'
+      ) {
+        enqueued += 1;
+        continue;
+      }
+
       const jobId =
         await this.lvRestSessionProducer.enqueueSessionOpenForFinalizedTrip({
           organizationId,
@@ -343,6 +363,7 @@ export class BatteryV2ReconciliationService {
           tripId: trip.id,
           tripEndedAt: trip.endTime,
           correlationId: `reconcile:lv-rest-open:${trip.vehicleId}:${trip.endTime.toISOString()}`,
+          recovery: true,
         });
       if (jobId) enqueued += 1;
     }
@@ -418,7 +439,31 @@ export class BatteryV2ReconciliationService {
         if (session.startedAt.getTime() > dueBefore.getTime()) {
           continue;
         }
-        if (isLvRestTargetAlreadyScheduled(sessionMetadata, targetType)) {
+        if (isLvRestTargetTerminal(sessionMetadata, targetType)) {
+          continue;
+        }
+
+        const targetMeta =
+          readLvRestWindowSessionMetadata(sessionMetadata).scheduledTargets?.[
+            targetType
+          ];
+        if (isLvRestTargetAwaitingReconciliationReschedule(sessionMetadata, targetType)) {
+          // Handler deferred retryable evaluation — reschedule on reconciliation cadence.
+        } else if (
+          targetMeta?.status === LV_REST_TARGET_JOB_STATUS.ENQUEUED &&
+          targetMeta.idempotencyKey
+        ) {
+          const enqueuedResolution = await this.resolveEnqueuedRestTargetForReconciliation(
+            sessionMetadata,
+            targetType,
+            targetMeta,
+            session,
+          );
+          sessionMetadata = enqueuedResolution.sessionMetadata;
+          if (enqueuedResolution.skip) {
+            continue;
+          }
+        } else if (isLvRestTargetAlreadyScheduled(sessionMetadata, targetType)) {
           continue;
         }
 
@@ -441,6 +486,7 @@ export class BatteryV2ReconciliationService {
                 restWindowId: session.idempotencyKey,
                 restWindowStartedAt: session.startedAt,
                 now: new Date(now),
+                recovery: true,
               })
             : await this.restTargetProducer.scheduleRest6h({
                 organizationId: session.organizationId,
@@ -449,6 +495,7 @@ export class BatteryV2ReconciliationService {
                 restWindowId: session.idempotencyKey,
                 restWindowStartedAt: session.startedAt,
                 now: new Date(now),
+                recovery: true,
               });
         if (scheduleResult.scheduled || scheduleResult.bullJobId) {
           const mergedMetadata = mergeLvRestTargetJobMetadata(
@@ -547,7 +594,38 @@ export class BatteryV2ReconciliationService {
       }
 
       for (const restTargetType of targets) {
-        if (isLvRestTargetAlreadyScheduled(sessionMetadata, restTargetType)) {
+        if (isLvRestTargetTerminal(sessionMetadata, restTargetType)) {
+          continue;
+        }
+
+        const targetMeta =
+          readLvRestWindowSessionMetadata(sessionMetadata).scheduledTargets?.[
+            restTargetType
+          ];
+        if (
+          isLvRestTargetAwaitingReconciliationReschedule(
+            sessionMetadata,
+            restTargetType,
+          )
+        ) {
+          // fall through to reschedule
+        } else if (
+          targetMeta?.status === LV_REST_TARGET_JOB_STATUS.ENQUEUED &&
+          targetMeta.idempotencyKey
+        ) {
+          const enqueuedResolution = await this.resolveEnqueuedRestTargetForReconciliation(
+            sessionMetadata,
+            restTargetType,
+            targetMeta,
+            session,
+          );
+          sessionMetadata = enqueuedResolution.sessionMetadata;
+          if (enqueuedResolution.skip) {
+            continue;
+          }
+        } else if (
+          isLvRestTargetAlreadyScheduled(sessionMetadata, restTargetType)
+        ) {
           continue;
         }
 
@@ -602,6 +680,58 @@ export class BatteryV2ReconciliationService {
     }
 
     return enqueued;
+  }
+
+  /**
+   * ENQUEUED targets: keep when Bull job is live; recover when DLQ or orphaned metadata.
+   * Returns skip=true only when a live Bull job still owns the target.
+   */
+  private async resolveEnqueuedRestTargetForReconciliation(
+    sessionMetadata: Prisma.JsonValue,
+    targetType: LvRestTargetType,
+    targetMeta: LvRestTargetJobMetadata,
+    session: { id: string; organizationId: string },
+  ): Promise<{ skip: boolean; sessionMetadata: Prisma.JsonValue }> {
+    const deadLettered = await this.deadLetters.isDeadLetter(
+      'BATTERY_REST_TARGET_EVALUATE',
+      targetMeta.idempotencyKey,
+    );
+    if (deadLettered) {
+      await this.deadLetters.clearDeadLetter(
+        'BATTERY_REST_TARGET_EVALUATE',
+        targetMeta.idempotencyKey,
+      );
+      const updated = mergeLvRestTargetJobMetadata(sessionMetadata, targetType, {
+        status: LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION,
+        lastAttemptAt: new Date().toISOString(),
+      });
+      await this.prisma.batteryMeasurementSession.update({
+        where: {
+          id: session.id,
+          organizationId: session.organizationId,
+        },
+        data: { metadata: updated },
+      });
+      return { skip: false, sessionMetadata: updated as Prisma.JsonValue };
+    }
+
+    const hasLiveJob = await this.jobProducer.hasLiveJob(targetMeta.idempotencyKey);
+    if (hasLiveJob) {
+      return { skip: true, sessionMetadata };
+    }
+
+    const updated = mergeLvRestTargetJobMetadata(sessionMetadata, targetType, {
+      status: LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION,
+      lastAttemptAt: new Date().toISOString(),
+    });
+    await this.prisma.batteryMeasurementSession.update({
+      where: {
+        id: session.id,
+        organizationId: session.organizationId,
+      },
+      data: { metadata: updated },
+    });
+    return { skip: false, sessionMetadata: updated as Prisma.JsonValue };
   }
 
   private async reconcileTripStarts(batch: number): Promise<number> {

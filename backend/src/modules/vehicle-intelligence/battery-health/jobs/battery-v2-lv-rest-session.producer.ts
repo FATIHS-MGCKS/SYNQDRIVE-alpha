@@ -3,6 +3,7 @@ import { isBatteryV2RestShadowEnabled } from '../../../../config/battery-health-
 import { BatteryPolicyProfileService } from '../../battery-policy-profile/battery-policy-profile.service';
 import { isLvRestWindowPolicySupported } from '../lv-rest-window/lv-rest-window.policy';
 import { buildLvRestSessionOpenJobIdempotencyKey } from './battery-v2-job-idempotency.policy';
+import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 
 /**
@@ -17,6 +18,7 @@ export class BatteryV2LvRestSessionProducer {
   constructor(
     private readonly jobProducer: BatteryV2JobProducerService,
     private readonly policyProfiles: BatteryPolicyProfileService,
+    private readonly deadLetters: BatteryV2JobDeadLetterService,
   ) {}
 
   async canEnqueueForVehicle(vehicleId: string): Promise<boolean> {
@@ -30,6 +32,7 @@ export class BatteryV2LvRestSessionProducer {
     tripId: string;
     tripEndedAt: Date;
     correlationId?: string;
+    recovery?: boolean;
   }): Promise<string | null> {
     if (!isBatteryV2RestShadowEnabled()) {
       return null;
@@ -39,6 +42,18 @@ export class BatteryV2LvRestSessionProducer {
       return null;
     }
 
+    const idempotencyKey = buildLvRestSessionOpenJobIdempotencyKey({
+      vehicleId: input.vehicleId,
+      anchorAt: input.tripEndedAt,
+    });
+
+    if (input.recovery) {
+      await this.deadLetters.clearDeadLetter(
+        'BATTERY_LV_REST_SESSION_OPEN',
+        idempotencyKey,
+      );
+    }
+
     return this.jobProducer.enqueue(
       'BATTERY_LV_REST_SESSION_OPEN',
       {
@@ -46,13 +61,11 @@ export class BatteryV2LvRestSessionProducer {
         vehicleId: input.vehicleId,
         tripId: input.tripId,
         tripEndedAt: input.tripEndedAt.toISOString(),
-        idempotencyKey: buildLvRestSessionOpenJobIdempotencyKey({
-          vehicleId: input.vehicleId,
-          anchorAt: input.tripEndedAt,
-        }),
+        idempotencyKey,
         sourceEntityId: input.tripId,
         correlationId: input.correlationId,
       },
+      { ignoreDeadLetter: input.recovery === true },
     );
   }
 }
