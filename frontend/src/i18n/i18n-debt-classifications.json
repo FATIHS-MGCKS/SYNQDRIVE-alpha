@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "description": "Residual i18n scanner finding classifications (P2.3.2). Rules classify justified deferred debt; entries pin specific fingerprints when needed.",
+  "rules": [
+    {
+      "id": "master-deferred",
+      "classification": "LEGACY_DEAD",
+      "surface": "MASTER",
+      "pathPattern": "^master/",
+      "owner": "platform-frontend",
+      "reason": "Master admin surfaces are outside the P2.2 active-mount rental campaign and remain a separate workstream.",
+      "introducedAt": "2026-08-19",
+      "reviewAt": "2026-12-01",
+      "surfaceStatus": "mounted"
+    },
+    {
+      "id": "operator-deferred",
+      "classification": "OTHER_JUSTIFIED",
+      "surface": "OPERATOR",
+      "pathPattern": "^operator/",
+      "owner": "platform-frontend",
+      "reason": "Operator residual scanner findings are certified separately from P2.2 rental enforce-clean scope.",
+      "introducedAt": "2026-08-30",
+      "reviewAt": "2026-12-01",
+      "surfaceStatus": "mounted"
+    },
+    {
+      "id": "shell-non-login-deferred",
+      "classification": "OTHER_JUSTIFIED",
+      "surface": "SHELL",
+      "pathPattern": "^pages/",
+      "owner": "platform-frontend",
+      "reason": "Non-login shell pages outside P2.2 enforce-clean rental scope.",
+      "introducedAt": "2026-08-19",
+      "reviewAt": "2026-12-01",
+      "surfaceStatus": "mounted"
+    },
+    {
+      "id": "shared-deferred",
+      "classification": "OTHER_JUSTIFIED",
+      "surface": "SHARED",
+      "pathPattern": "^lib/",
+      "owner": "platform-frontend",
+      "reason": "Shared library residual findings outside P2.2 rental enforce-clean surfaces.",
+      "introducedAt": "2026-08-30",
+      "reviewAt": "2026-12-01",
+      "surfaceStatus": "mounted"
+    },
+    {
+      "id": "data-analyse-planned-removal",
+      "classification": "DATA_ANALYSE_PLANNED_REMOVAL",
+      "pathPattern": "DataAnalyse|data-analyse|financial-insight|FinancialInsight",
+      "owner": "platform-frontend",
+      "reason": "Data Analyse module is frozen for planned removal and excluded from P2.2 localization scope.",
+      "introducedAt": "2026-08-19",
+      "reviewAt": "2026-12-01",
+      "surfaceStatus": "mounted"
+    },
+    {
+      "id": "iam-roles-tab-wiring",
+      "classification": "IAM_PRODUCT_WIRING_REQUIRED",
+      "pathPattern": "users-roles/RolesTab",
+      "owner": "platform-frontend",
+      "reason": "Dead custom-role CRUD surface awaiting IAM product wiring.",
+      "introducedAt": "2026-08-30",
+      "reviewAt": "2026-12-01",
+      "surfaceStatus": "unmounted"
+    },
+    {
+      "id": "rental-residual-debt",
+      "classification": "OTHER_JUSTIFIED",
+      "surface": "RENTAL",
+      "severity": "debt",
+      "pathPattern": "^rental/",
+      "owner": "platform-frontend",
+      "reason": "Certified P2.2 rental residual scanner inventory outside enforce-clean mounted surfaces.",
+      "introducedAt": "2026-08-30",
+      "reviewAt": "2026-12-01",
+      "surfaceStatus": "mixed"
+    },
+    {
+      "id": "help-center-editorial-shell",
+      "classification": "EDITORIAL_CONTENT",
+      "pathPattern": "HelpCenterView|helpCenter",
+      "severity": "debt",
+      "owner": "platform-frontend",
+      "reason": "Help Center shell may contain editorial content boundaries tracked separately from technical rental i18n.",
+      "introducedAt": "2026-08-30",
+      "reviewAt": "2026-12-01",
+      "surfaceStatus": "mounted"
+    }
+  ],
+  "entries": []
+}

@@ -4,8 +4,10 @@
  * Excludes translation dictionaries, tests, and developer-only strings.
  */
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildFindingFingerprint } from './lib/i18n-governance/fingerprint.mjs';
+import { collectIndirectPresentationFindings } from './lib/i18n-governance/presentation-analysis.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const frontendRoot = join(__dirname, '..');
@@ -463,11 +465,13 @@ const CATEGORY_PATTERNS = [
   { category: 'ARIA', re: /aria-label\s*=\s*\{?\s*dt\(/g, skip: true },
   { category: 'ARIA', re: /aria-label\s*=\s*[{'"]([^'"{}]+)/g },
   { category: 'ARIA', re: /aria-description\s*=\s*[{'"]([^'"{}]+)/g },
-  { category: 'PLACEHOLDER', re: /placeholder\s*=\s*\{?\s*t\(/g, skip: true },
-  { category: 'PLACEHOLDER', re: /placeholder\s*=\s*[{'"]([^'"{}]+)/g },
+  { category: 'PLACEHOLDER', re: /placeholder\s*=\s*['"]([^'"]+)['"]/g },
+  { category: 'ALT', re: /alt\s*=\s*\{?\s*t\(/g, skip: true },
+  { category: 'ALT', re: /alt\s*=\s*\{?\s*dt\(/g, skip: true },
+  { category: 'ALT', re: /alt\s*=\s*['"]([^'"]+)['"]/g },
   { category: 'TITLE', re: /title\s*=\s*\{?\s*t\(/g, skip: true },
   { category: 'TITLE', re: /title\s*=\s*\{?\s*dt\(/g, skip: true },
-  { category: 'TITLE', re: /title\s*=\s*[{'"]([^'"{}]+)/g },
+  { category: 'TITLE', re: /title\s*=\s*['"]([^'"]+)['"]/g },
   { category: 'TEXT', re: />\s*([A-Za-zÄÖÜäöüß][^<>{}\n]{2,}?)\s*</g },
   { category: 'LABEL', re: /<label[^>]*>\s*([A-Za-zÄÖÜäöüß][^<]{2,})\s*<\/label>/g },
   { category: 'FORMAT_LOCALE', re: /['"](de-DE|en-US|en-GB)['"]/g },
@@ -937,26 +941,70 @@ function collectFindings(filePath, source) {
       if (!isLikelyUserCopy(sample) && category !== 'FORMAT_LOCALE') continue;
 
       const line = source.slice(0, match.index).split('\n').length;
-      findings.push({
-        file: relPath,
-        line,
-        surface,
-        module,
-        category,
-        sample: sample.slice(0, 120),
-        severity: isEnforcedCleanSurface(surface, relPath) ? 'enforce-clean' : 'debt',
-        migrationPhase: migrationPhaseFor(relPath, surface),
-      });
+      const severity =
+        category === 'FORMAT_LOCALE'
+          ? 'debt'
+          : isEnforcedCleanSurface(surface, relPath)
+            ? 'enforce-clean'
+            : 'debt';
+      findings.push(
+        enrichFinding({
+          file: relPath,
+          line,
+          surface,
+          module,
+          category,
+          sample: sample.slice(0, 120),
+          severity,
+          migrationPhase: migrationPhaseFor(relPath, surface),
+        }),
+      );
     }
   }
 
   return findings;
 }
 
-function dedupeFindings(findings) {
+function collectEnhancedFindings(filePath, source) {
+  const relPath = relative(srcRoot, filePath).replace(/\\/g, '/');
+  const indirectFindings = collectIndirectPresentationFindings(relPath, source, {
+    isLikelyUserCopy,
+    classifySurface: (ctx) => classifySurface(join(srcRoot, ctx.relPath)),
+    classifyRentalModule,
+    isEnforcedCleanSurface,
+    migrationPhaseFor,
+  });
+  return indirectFindings.map((finding) => enrichFinding(finding));
+}
+
+function collectAllFindings(filePath, source, options = {}) {
+  const regexFindings = collectFindings(filePath, source);
+  if (!options.includeEnhanced) return regexFindings;
+  const enhancedFindings = collectEnhancedFindings(filePath, source);
+  return [...regexFindings, ...enhancedFindings];
+}
+
+function enrichFinding(finding) {
+  return {
+    ...finding,
+    fingerprint: buildFindingFingerprint({
+      file: finding.file,
+      category: finding.category,
+      presentationOwner: finding.presentationOwner ?? '',
+      sample: finding.sample,
+      kind: finding.kind ?? '',
+    }),
+  };
+}
+
+function dedupeFindings(findings, options = {}) {
+  const mode = options.mode ?? 'fingerprint';
   const map = new Map();
   for (const finding of findings) {
-    const key = `${finding.surface}|${finding.category}|${finding.sample}`;
+    const key =
+      mode === 'legacy'
+        ? `${finding.surface}|${finding.category}|${finding.sample}`
+        : finding.fingerprint ?? `${finding.surface}|${finding.category}|${finding.sample}|${finding.file}`;
     const existing = map.get(key);
     if (existing) {
       existing.occurrences = (existing.occurrences ?? 1) + 1;
@@ -965,7 +1013,13 @@ function dedupeFindings(findings) {
     }
     map.set(key, { ...finding, occurrences: 1, files: [finding.file] });
   }
-  return [...map.values()].sort((a, b) => a.surface.localeCompare(b.surface) || a.sample.localeCompare(b.sample));
+  return [...map.values()].sort(
+    (a, b) =>
+      a.file.localeCompare(b.file) ||
+      a.line - b.line ||
+      a.category.localeCompare(b.category) ||
+      a.sample.localeCompare(b.sample),
+  );
 }
 
 function summarize(findings) {
@@ -988,16 +1042,51 @@ function summarize(findings) {
   };
 }
 
-const files = [...new Set(SCAN_ROOTS.flatMap((root) => collectFiles(root)))];
-const rawFindings = files.flatMap((file) => {
-  const source = readFileSync(file, 'utf8');
-  return collectFindings(file, source);
-});
-const findings = dedupeFindings(rawFindings);
-const summary = summarize(findings);
+export function scanSource(relPath, source, options = {}) {
+  const fakePath = join(srcRoot, relPath);
+  return dedupeFindings(collectAllFindings(fakePath, source, options), {
+    mode: 'fingerprint',
+  });
+}
+
+export function scanRepository(options = {}) {
+  const roots = options.roots ?? SCAN_ROOTS;
+  const includeEnhanced = options.includeEnhanced === true;
+  const files = [...new Set(roots.flatMap((root) => collectFiles(root)))];
+  const rawFindings = files.flatMap((file) => {
+    const source = readFileSync(file, 'utf8');
+    return collectAllFindings(file, source, { includeEnhanced });
+  });
+  const findings = dedupeFindings(rawFindings, {
+    mode: includeEnhanced ? 'fingerprint' : 'legacy',
+  });
+  const summary = summarize(findings);
+  return { files, findings, summary, includeEnhanced };
+}
+
+export {
+  collectFindings,
+  collectAllFindings,
+  collectEnhancedFindings,
+  dedupeFindings,
+  summarize,
+  isEnforcedCleanSurface,
+  classifySurface,
+  classifyRentalModule,
+  isLikelyUserCopy,
+  SCAN_ROOTS,
+  srcRoot,
+  frontendRoot,
+};
+
+const isCliMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (!isCliMain) {
+  // imported for tests/governance
+} else {
+const { findings, summary } = scanRepository({ includeEnhanced: false });
 
 const inventory = {
-  version: 2,
+  version: 3,
   generatedAt: new Date().toISOString().slice(0, 10),
   phases: {
     P21: {
@@ -1029,3 +1118,4 @@ console.log('By category:', summary.byCategory);
 console.log('Rental by module:', summary.byRentalModule);
 console.log(`Enforce-clean surface findings: ${summary.enforceCleanRemaining}`);
 console.log(`Wrote ${relative(frontendRoot, inventoryPath)}`);
+}

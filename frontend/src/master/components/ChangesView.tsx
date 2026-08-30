@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-governance-scanner-classification-p2-3-2-2026-08-30',
+    version: '4.9.995',
+    title: 'Platform i18n — P2.3.2 Scanner Coverage & Residual Classification',
+    summary: [
+      'Added enhanced governance scanner (indirect presentation props, toast/setError, template literals, config labels) with fingerprinted residual classification manifest and comparator (`NEW_UNCLASSIFIED_ACTIVE_HOST_DEBT`).',
+      'Legacy `i18n:check` inventory mode preserved for P2.2 enforce-clean semantics; `npm run i18n:governance` runs enhanced scan + manifest validation.',
+      'Enhanced scan discovered 78 previously undetected enforce-clean host-presentation findings (primarily toast/setError). Remediation deferred to pre-P2.3.3 micro-slice. Category E=0.',
+    ],
+    reason:
+      'P2.3.2 governance foundation after P2.2 closeout — regression-prevention tooling, not another localization sweep.',
+    previousBehavior:
+      'Scanner missed HomeAwayBadge-class indirect title props and toast/setError host copy; no committed residual classification manifest.',
+    details:
+      'frontend/scripts/lib/i18n-governance/*; i18n-debt-classifications.json; i18n-governance.mjs; adversarial fixtures; architecture/I18N_GOVERNANCE_SCANNER_CLASSIFICATION_P2_3_2_2026-08-30.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-30T20:00:00.000Z',
+  },
+  {
     id: 'i18n-rental-active-micro-chrome-p2-2-66-2026-08-30',
     version: '4.9.994',
     title: 'Platform i18n — P2.2.66 Active Rental Micro-Chrome Closeout',
