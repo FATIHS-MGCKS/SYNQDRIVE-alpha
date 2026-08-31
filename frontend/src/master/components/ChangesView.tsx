@@ -36,6 +36,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p1-8-1-pre-scale-remediation-2026-08-31',
+    version: '4.9.1017',
+    title: 'P1.8.1 Pre-Scale Remediation — orphan validation cleanup + battery.v2 forensics',
+    summary: [
+      'Orphan Node on port 3010 (Redis DB 15) traced to Phase C detached restart in `two-replica-process-validation-probe.mjs`; production orphan removed; harness trap now kills tracked PIDs + port listeners.',
+      '67 `battery.v2` failed jobs classified: 43 legacy `missing restWindowId`, 18 REST pending false-failures (7 in soak), 2 lock contention, 4 Prisma — soak failures were not primarily LOCK_CONTENTION.',
+      'REST pending liveness fix already on main (#1445); production deploy at replica=1 required before scale-to-2. No queue purge / no scale in this task.',
+    ],
+    reason: 'P1.8 GO_WITH_CONDITIONS gate — resolve P2 findings before controlled PM2 scale-to-2.',
+    previousBehavior: 'Validation harness could leave detached NestJS on 3010; deployed SHA threw on retryable REST pending → BullMQ FAILED.',
+    details: 'architecture/P1_8_1_PRE_SCALE_REMEDIATION_2026-08-31.md; harness: validation-process-tracked-pids.util.mjs.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T18:15:00.000Z',
+  },
+  {
     id: 'p1-8-24h-single-replica-soak-audit-2026-08-31',
     version: '4.9.1017',
     title: 'P1.8 — 24h single-replica soak retrospective audit + scale-to-2 gate',

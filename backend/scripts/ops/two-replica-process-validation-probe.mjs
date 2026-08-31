@@ -5,6 +5,7 @@
  */
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { recordTrackedPid } from './validation-process-tracked-pids.util.mjs';
 
 const PORT_A = Number(process.env.REPLICA_A_PORT || 3010);
 const PORT_B = Number(process.env.REPLICA_B_PORT || 3011);
@@ -140,11 +141,27 @@ async function main() {
     stdio: 'ignore',
     cwd: process.cwd(),
   });
+  if (child.pid) {
+    recordTrackedPid(child.pid, 'phase-c-restart');
+  }
   child.unref();
   try {
     const crashFailover = await waitForSingleLeader(45_000);
     results.crashFailoverMs = Date.now() - crashStart;
-    console.log(JSON.stringify({ phase: 'crash_failover_restart', ms: results.crashFailoverMs, restartedPid: child.pid, restartedPort: stoppedPort, ...crashFailover }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          phase: 'crash_failover_restart',
+          ms: results.crashFailoverMs,
+          restartedPid: child.pid ?? null,
+          restartedPort: stoppedPort,
+          trackedForCleanup: Boolean(child.pid),
+          ...crashFailover,
+        },
+        null,
+        2,
+      ),
+    );
   } catch (err) {
     console.log(JSON.stringify({ phase: 'crash_failover_restart', error: String(err) }, null, 2));
   }
