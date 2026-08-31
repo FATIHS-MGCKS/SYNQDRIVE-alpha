@@ -20,8 +20,47 @@ PORT_B="${PORT_B:-3011}"
 VALIDATION_REDIS_DB="${VALIDATION_REDIS_DB:-15}"
 LOG_DIR="/opt/synqdrive/validation-process/logs/${VALIDATION_ID}"
 RESULT_FILE="${LOG_DIR}/validation-results.json"
+TRACKED_PIDS_FILE="${LOG_DIR}/tracked-pids.txt"
 
 mkdir -p "$LOG_DIR"
+touch "$TRACKED_PIDS_FILE"
+export VALIDATION_TRACKED_PIDS_FILE="$TRACKED_PIDS_FILE"
+
+kill_pid_gracefully() {
+  local pid="$1"
+  [[ -z "$pid" || "$pid" -le 0 ]] && return 0
+  if kill -0 "$pid" 2>/dev/null; then
+    kill "$pid" 2>/dev/null || true
+    sleep 2
+    if kill -0 "$pid" 2>/dev/null; then
+      kill -9 "$pid" 2>/dev/null || true
+    fi
+  fi
+}
+
+kill_listeners_on_port() {
+  local port="$1"
+  [[ -z "$port" ]] && return 0
+  if command -v fuser >/dev/null 2>&1; then
+    fuser -k "${port}/tcp" >/dev/null 2>&1 || true
+    return 0
+  fi
+  if command -v lsof >/dev/null 2>&1; then
+    local pids
+    pids="$(lsof -ti "tcp:${port}" -sTCP:LISTEN 2>/dev/null || true)"
+    for pid in $pids; do
+      kill_pid_gracefully "$pid"
+    done
+  fi
+}
+
+kill_tracked_probe_pids() {
+  [[ ! -f "$TRACKED_PIDS_FILE" ]] && return 0
+  while IFS=$'\t' read -r pid _label; do
+    [[ -z "$pid" ]] && continue
+    kill_pid_gracefully "$pid"
+  done <"$TRACKED_PIDS_FILE"
+}
 
 echo "==> Two-replica PROCESS validation ${VALIDATION_ID}"
 echo "    branch=${GIT_BRANCH}"
@@ -31,12 +70,12 @@ echo "    validation REDIS_DB=${VALIDATION_REDIS_DB} (production synqdrive on db
 
 cleanup() {
   echo "==> Cleanup"
-  if [[ -n "${PID_A:-}" ]] && kill -0 "$PID_A" 2>/dev/null; then kill "$PID_A" 2>/dev/null || true; fi
-  if [[ -n "${PID_B:-}" ]] && kill -0 "$PID_B" 2>/dev/null; then kill "$PID_B" 2>/dev/null || true; fi
-  sleep 2
-  if [[ -n "${PID_A:-}" ]] && kill -0 "$PID_A" 2>/dev/null; then kill -9 "$PID_A" 2>/dev/null || true; fi
-  if [[ -n "${PID_B:-}" ]] && kill -0 "$PID_B" 2>/dev/null; then kill -9 "$PID_B" 2>/dev/null || true; fi
-  # Clear validation redis db keys
+  kill_tracked_probe_pids
+  kill_pid_gracefully "${PID_A:-}"
+  kill_pid_gracefully "${PID_B:-}"
+  kill_listeners_on_port "$PORT_A"
+  kill_listeners_on_port "$PORT_B"
+  # Clear validation redis db keys (isolated DB only — never DB 0)
   if command -v redis-cli >/dev/null 2>&1; then
     redis-cli -n "$VALIDATION_REDIS_DB" FLUSHDB >/dev/null 2>&1 || true
   fi

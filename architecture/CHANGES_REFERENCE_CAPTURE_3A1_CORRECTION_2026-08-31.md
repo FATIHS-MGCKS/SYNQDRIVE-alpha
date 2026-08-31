@@ -27,3 +27,10 @@
 **Phase 3A.1:** DONE  
 **READY_FOR_DEPLOYMENT_PREFLIGHT:** true when runtime readiness checks pass (minus vehicle canary)  
 **REFERENCE_DRIVE_READINESS:** BLOCKED until post-deploy vehicle canary
+
+## Main reconciliation (2026-08-31)
+
+- Incorporated `origin/main` at `bfcf9ddb7` (P1.8 soak #1469 + P1.8.1 remediation #1470).
+- Single conflict: `ChangesView.tsx` — kept all changelog entries (Phase 3A.1 + P1.8.1 + P1.8).
+- `ArchitekturView.tsx` auto-merged with all entries intact.
+- Phase 3A.1 invariants and migration `20260831210000` (`--` comment) unchanged.

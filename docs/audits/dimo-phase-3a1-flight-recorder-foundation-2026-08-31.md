@@ -19,6 +19,22 @@
 
 ---
 
+## Main reconciliation (2026-08-31)
+
+| Item | Value |
+|------|-------|
+| **Main SHA incorporated** | `bfcf9ddb7e18b04d57e9b241883457ec9864ebc5` |
+| **PR head before reconciliation** | `53061268f0fd1e90fcc117e7e9c6c4a8508c936f` |
+| **Merge-base** | `1474bc7d98652b41291159d9bd987e9cb064201b` |
+| **Conflicted files** | `frontend/src/master/components/ChangesView.tsx` only |
+| **Resolution** | Semantic union: preserve P1.8.1 + P1.8 soak entries from main and Phase 3A.1 entry from #1468 (newest-first in `FALLBACK_ENTRIES`) |
+| **ArchitekturView** | Auto-merged cleanly — all three workstream entries present |
+| **Migration `20260831210000`** | PostgreSQL `--` comment preserved; no regression |
+
+Main commits incorporated: #1469 (P1.8 soak audit), #1470 (P1.8.1 remediation).
+
+---
+
 ## 1. Purpose
 
 First **implementation** phase of the Driving Intelligence Reconstruction workstream. Delivers an isolated DIMO LTE_R1 reference-capture (Flight Recorder) foundation with:
