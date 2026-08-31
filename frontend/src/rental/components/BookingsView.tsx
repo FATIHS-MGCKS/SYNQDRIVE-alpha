@@ -588,7 +588,7 @@ export function BookingsView({
     if (cleanEdit.includedKm != null) patch.kmIncluded = Number(cleanEdit.includedKm);
 
     if (Object.keys(patch).length === 0) {
-      toast.error('Keine speicherbaren Änderungen');
+      toast.error(t('bookings.toast.noSavableChanges'));
       return;
     }
 
@@ -604,7 +604,7 @@ export function BookingsView({
             ? booking.vehicleId
             : undefined,
       });
-      toast.success('Buchung gespeichert', {
+      toast.success(t('bookings.toast.saved'), {
         description: `${cleanEdit.vehicle || booking.vehicle} · ${cleanEdit.customer || booking.customer}`,
       });
       setIsEditMode(false);
@@ -612,7 +612,7 @@ export function BookingsView({
       setActiveDropdown(null);
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Speichern fehlgeschlagen';
-      toast.error('Buchung konnte nicht gespeichert werden', { description: String(msg) });
+      toast.error(t('bookings.toast.saveFailed'), { description: String(msg) });
     }
   };
 
@@ -770,7 +770,7 @@ export function BookingsView({
 
       setLocalEdits(prev => ({ ...prev, [editingBooking.id]: editForm }));
       onBookingUpdated?.(updatedBooking);
-      toast.success('Buchung aktualisiert', {
+      toast.success(t('bookings.toast.updated'), {
         description: `${editForm.vehicle || editingBooking.vehicle} • ${editForm.customer || editingBooking.customer}`,
         duration: 3000,
       });
@@ -805,7 +805,7 @@ export function BookingsView({
       setNoShowSubmitting(true);
       await api.bookings.markNoShow(orgId, noShowConfirmId, noShowReason.trim() || null);
       onBookingCancelled?.(noShowConfirmId, { vehicleId: booking?.vehicleId ?? null });
-      toast.success('Als No-Show markiert', {
+      toast.success(t('operator.bookings.cancelNoShow.toast.noShowMarked'), {
         description: booking ? `${booking.vehicle} • ${booking.customer}` : undefined,
         duration: 3000,
       });
@@ -817,7 +817,7 @@ export function BookingsView({
       setNoShowReason('');
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'No-Show konnte nicht gesetzt werden';
-      toast.error('Fehler beim Markieren als No-Show', { description: String(msg) });
+      toast.error(t('bookings.toast.noShowFailed'), { description: String(msg) });
     } finally {
       setNoShowSubmitting(false);
     }
@@ -834,14 +834,14 @@ export function BookingsView({
       }
       setLocalCancelled(prev => [...prev, cancelConfirmId]);
       onBookingCancelled?.(cancelConfirmId, { vehicleId: booking?.vehicleId ?? null });
-      toast.success('Buchung storniert', {
+      toast.success(t('operator.bookings.cancelNoShow.toast.cancelled'), {
         description: booking ? `${booking.vehicle} • ${booking.customer}` : undefined,
         duration: 3000,
       });
       loadBookings();
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Stornieren fehlgeschlagen';
-      toast.error('Fehler beim Stornieren', { description: String(msg) });
+      toast.error(t('bookings.toast.cancelFailed'), { description: String(msg) });
       setCancelConfirmId(null);
       return;
     }
@@ -1767,7 +1767,7 @@ export function BookingsView({
         title={t('bookings.cancelBooking')}
         description="Möchten Sie diese Buchung wirklich stornieren? Diese Aktion kann nicht rückgängig gemacht werden."
         confirmLabel="Stornieren"
-        cancelLabel="Zurück"
+        cancelLabel={t('common.back')}
         tone="critical"
         onConfirm={executeCancel}
       >

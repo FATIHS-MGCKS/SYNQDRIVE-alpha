@@ -76,14 +76,14 @@ export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEd
     }
 
     if (Object.keys(patch).length === 0) {
-      toast.error('Keine Änderungen zum Speichern');
+      toast.error(t('bookings.edit.toast.noChanges'));
       return;
     }
 
     setSaving(true);
     try {
       await api.bookings.update(orgId, detail.core.bookingId, patch);
-      toast.success('Buchung gespeichert');
+      toast.success(t('bookings.toast.saved'));
       onSaved();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Speichern fehlgeschlagen';

@@ -1,4 +1,5 @@
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { MobileBookingFooterProps } from './types';
 
 export function MobileBookingFooter({
@@ -9,6 +10,7 @@ export function MobileBookingFooter({
   onNextStep,
   onConfirm,
 }: MobileBookingFooterProps) {
+  const { t } = useLanguage();
   return (
     <div className="sticky bottom-0 z-10 flex w-full min-w-0 max-w-full gap-3 border-t border-border/40 surface-frosted pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-3 lg:static lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
       {currentStep > 1 && (
@@ -18,7 +20,7 @@ export function MobileBookingFooter({
           className="sq-3d-btn sq-3d-btn--neutral flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs"
         >
           <Icon name="arrow-left" className="h-5 w-5" />
-          Zurück
+          {t('common.back')}
         </button>
       )}
       {currentStep < 5 ? (

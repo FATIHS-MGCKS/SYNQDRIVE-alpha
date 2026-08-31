@@ -73,7 +73,7 @@ export function BookingDossier({
         break;
       case 'final_invoice':
         setActiveTab('finance_documents');
-        toast.info('Schlussrechnung im Tab Zahlung & Dokumente erstellen');
+        toast.info(t('bookings.dossier.toast.finalInvoiceHint'));
         break;
       default:
         break;
@@ -98,7 +98,7 @@ export function BookingDossier({
     setSubmitting(true);
     try {
       await api.bookings.cancel(orgId, bookingId);
-      toast.success('Buchung storniert');
+      toast.success(t('operator.bookings.cancelNoShow.toast.cancelled'));
       onBookingCancelled?.(bookingId);
       onRefreshList?.();
       setCancelOpen(false);
@@ -116,7 +116,7 @@ export function BookingDossier({
     setSubmitting(true);
     try {
       await api.bookings.markNoShow(orgId, bookingId, noShowReason.trim() || null);
-      toast.success('Als No-Show markiert');
+      toast.success(t('operator.bookings.cancelNoShow.toast.noShowMarked'));
       onBookingCancelled?.(bookingId);
       onRefreshList?.();
       setNoShowOpen(false);
@@ -197,7 +197,7 @@ export function BookingDossier({
           isDarkMode={isDarkMode}
           onRefresh={refresh}
           onRecordManualPayment={() => {
-            toast.info('Manuelle Zahlung bitte in der Rechnungsansicht erfassen.');
+            toast.info(t('bookings.dossier.toast.manualPaymentHint'));
           }}
         />
       )}
@@ -313,6 +313,7 @@ function ConfirmModal({
   onConfirm: () => void;
   children?: React.ReactNode;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 overlay-scrim" />
@@ -334,7 +335,7 @@ function ConfirmModal({
               onClick={onClose}
               className="flex-1 px-3 py-2.5 rounded-lg text-xs border surface-premium border-border hover:bg-muted"
             >
-              Zurück
+              {t('common.back')}
             </button>
             <button
               type="button"
