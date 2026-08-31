@@ -23,6 +23,10 @@ export const voiceAssistantEn = {
   'voice.builder.placeholder.additionalForbidden': 'Any additional restrictions…',
   'voice.builder.placeholder.systemPrompt':
     'Leave empty to auto-build from identity, company context, rules, and snippets…',
+  'voice.builder.placeholder.businessRules':
+    '• Minimum rental age is 21 with a valid license\n• Returns must be at the agreed station\n• Extensions require staff approval',
+  'voice.builder.placeholder.knowledgeSnippets':
+    "Q: What documents do I need?\nA: Valid driver's license and credit card…\n\nQ: Is fuel included?\nA: Vehicles are provided with a full tank…",
   'voice.builder.forbiddenActions': 'Forbidden actions',
   'voice.builder.forbiddenActionsHint':
     'Critical guardrails for rental operations. Recommended rules are pre-defined for fleet safety.',
@@ -48,6 +52,8 @@ export const voiceAssistantEn = {
   'voice.conversations.bookingLinkSoon': 'Booking link API coming soon',
   'voice.conversations.customerLinkSoon': 'Customer link API coming soon',
   'voice.conversations.trainingExample': 'Training example',
+  'voice.conversations.toast.taskCreated': 'Task created from call',
+  'voice.conversations.toast.taskCreateFailed': 'Could not create task',
 
   'voice.analytics.avgDuration': 'Avg Duration',
   'voice.analytics.callsByOutcome': 'Calls by outcome',

@@ -270,7 +270,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
     if (!validateStep(addStep)) return;
     if (addStep === 1) {
       if (!orgId) {
-        toast.error('Keine Organisation geladen');
+        toast.error(t('settings.company.toast.noOrg'));
         return;
       }
       setIsEnsuringDraft(true);
@@ -284,7 +284,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
             ?.message ||
           (err as Error)?.message ||
           'Kunde konnte nicht vorbereitet werden';
-        toast.error('Didit-Vorbereitung fehlgeschlagen', { description: String(msg), duration: 5000 });
+        toast.error(t('customers.toast.diditPrepFailed'), { description: String(msg), duration: 5000 });
       } finally {
         setIsEnsuringDraft(false);
       }
@@ -295,7 +295,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
 
   const handleSubmitCustomer = async () => {
     if (!orgId) {
-      toast.error('Keine Organisation geladen');
+      toast.error(t('settings.company.toast.noOrg'));
       return;
     }
     setIsSavingCustomer(true);

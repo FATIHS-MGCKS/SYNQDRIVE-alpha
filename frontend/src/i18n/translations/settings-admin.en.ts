@@ -349,12 +349,21 @@ export const settingsAdminEn = {
   'settings.company.toast.logoRemoved': 'Logo removed',
   'settings.company.toast.logoRemoveFailed': 'Could not remove logo',
   'settings.company.toast.noOrg': 'No organization loaded.',
+  'settings.company.toast.invalidImageType':
+    'Only PNG, JPG/JPEG and WebP are allowed (no SVG or GIF).',
+  'settings.company.toast.fileTooLarge': 'File is too large. Maximum 2 MB allowed.',
 
   // ─── Data authorization ───
   'settings.dataAuth.page.title': 'Data Authorization & Consent Center',
   'settings.dataAuth.page.description':
     'Manage data processing authorizations, consents, and partner access.',
   'settings.dataAuth.loadFailed': 'Load failed',
+  'settings.dataAuth.error.loadFailed': 'Could not load data authorizations.',
+  'settings.dataAuth.toast.approved': 'Authorization approved',
+  'settings.dataAuth.toast.revoked': 'Authorization revoked',
+  'settings.dataAuth.toast.synced': 'System authorizations synchronized',
+  'settings.dataAuth.toast.createdPending': 'Authorization created — status: Pending',
+  'settings.dataAuth.error.auditLoadFailed': 'Could not load audit history.',
   'settings.dataAuth.syncSystem': 'Sync system authorizations',
   'settings.dataAuth.create': 'Create authorization',
   'settings.dataAuth.filters.title': 'Filter & search',

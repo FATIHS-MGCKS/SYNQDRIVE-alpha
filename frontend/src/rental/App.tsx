@@ -191,6 +191,7 @@ function readPersistedSettingsView(): boolean {
 }
 
 function RentalAppContent() {
+  const { t } = useLanguage();
   const { orgId, hasPermission } = useRentalOrg();
   const { fleetVehicles, loading: fleetLoading, refresh: refreshFleetVehicles } = useFleetVehicles();
   const { uiEnabled: stationsUiEnabled, loading: stationsFlagsLoading } = useStationsV2FeatureFlags();
@@ -464,39 +465,41 @@ function RentalAppContent() {
         const action = res.cleaningTask?.action;
         if (apiStatus === 'NEEDS_CLEANING') {
           if (action === 'created') {
-            toast.success('Reinigungsaufgabe erstellt', {
-              description: 'Die Aufgabe erscheint im Task-Tab dieses Fahrzeugs.',
+            toast.success(t('rental.shell.cleaning.toast.taskCreated'), {
+              description: t('rental.shell.cleaning.toast.taskCreatedDescription'),
             });
             if (res.cleaningTask?.taskId) {
               setHighlightedVehicleTaskId(res.cleaningTask.taskId);
               setCurrentView('vehicle-tasks');
             }
           } else if (action === 'existing') {
-            toast.info('Offene Reinigungsaufgabe bereits vorhanden', {
-              description: 'Es wurde keine Duplikat-Aufgabe erstellt.',
+            toast.info(t('rental.shell.cleaning.toast.duplicateTask'), {
+              description: t('rental.shell.cleaning.toast.duplicateTaskDescription'),
             });
             if (res.cleaningTask?.taskId) {
               setHighlightedVehicleTaskId(res.cleaningTask.taskId);
               setCurrentView('vehicle-tasks');
             }
           } else {
-            toast.warning('Reinigungsstatus gespeichert', {
-              description: 'Die Reinigungsaufgabe konnte nicht angelegt werden.',
+            toast.warning(t('rental.shell.cleaning.toast.statusSavedWarning'), {
+              description: t('rental.shell.cleaning.toast.taskCreateFailedDescription'),
             });
           }
         } else if (action === 'completed') {
-          toast.success('Reinigungsaufgabe abgeschlossen', {
+          toast.success(t('rental.shell.cleaning.toast.taskCompleted'), {
             description:
               (res.cleaningTask?.completedCount ?? 0) > 1
-                ? `${res.cleaningTask?.completedCount} offene Reinigungsaufgaben wurden abgeschlossen.`
-                : 'Fahrzeug als sauber markiert.',
+                ? t('rental.shell.cleaning.toast.taskCompletedMultipleDescription', {
+                    count: res.cleaningTask?.completedCount ?? 0,
+                  })
+                : t('rental.shell.cleaning.toast.taskCompletedSingleDescription'),
           });
         } else {
-          toast.success('Fahrzeug als sauber markiert');
+          toast.success(t('rental.shell.cleaning.toast.vehicleMarkedClean'));
         }
       } catch (err) {
         recordVehicleDetailClientSignal('status_mutation_error');
-        toast.error('Reinigungsstatus konnte nicht gespeichert werden', {
+        toast.error(t('rental.shell.cleaning.toast.statusSaveFailed'), {
           description: err instanceof Error ? err.message : 'Unbekannter Fehler',
         });
         throw err;
@@ -504,7 +507,7 @@ function RentalAppContent() {
         setCleaningStatusBusy(false);
       }
     },
-    [cleaningStatusBusy, orgId, selectedVehicle?.id],
+    [cleaningStatusBusy, orgId, selectedVehicle?.id, t],
   );
 
   const handleCleaningStatusChange = (newStatus: 'Clean' | 'Needs Cleaning') => {
@@ -597,7 +600,7 @@ function RentalAppContent() {
           setCurrentView('overview');
           return;
         }
-        toast.info('Fahrzeug konnte nicht geöffnet werden.');
+        toast.info(t('rental.shell.toast.vehicleOpenFailed'));
       },
       openBookingById: (bookingId) => {
         setPendingBookingDetailId(bookingId);

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { rentalHostPresentationEn } from '../src/i18n/translations/rental.hostPresentation.en';
 import {
   FOREIGN_ORG_ID,
   backToFleet,
@@ -21,6 +22,9 @@ import {
   visibleLiveBadge,
   waitForTelemetryPolls,
 } from './vehicle-detail-fixtures';
+
+const CLEANING_STATUS_SAVE_FAILED_TITLE =
+  rentalHostPresentationEn['rental.shell.cleaning.toast.statusSaveFailed'];
 
 test.describe('Vehicle Detail — flows (mocked API)', () => {
   test.describe.configure({ mode: 'serial', timeout: 120_000 });
@@ -92,9 +96,11 @@ test.describe('Vehicle Detail — flows (mocked API)', () => {
     await openVehicleFromFleet(page, 'VD-LIVE');
     await selectCleaningStatus(page, 'Needs Cleaning');
     await confirmCleaningNeedsCleaning(page);
-    await expect(
-      page.getByText(/Reinigungsstatus konnte nicht gespeichert werden|Missing permission: fleet\.write/i).first(),
-    ).toBeVisible({
+    await expect(page.getByText(CLEANING_STATUS_SAVE_FAILED_TITLE, { exact: true }).first()).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText('Status update failed').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('vehicle-detail-cleaning-trigger')).toContainText('Clean', {
       timeout: 15_000,
     });
   });
@@ -115,9 +121,13 @@ test.describe('Vehicle Detail — flows (mocked API)', () => {
     await openVehicleFromFleet(page, 'VD-LIVE');
     await selectCleaningStatus(page, 'Needs Cleaning');
     await confirmCleaningNeedsCleaning(page);
-    await expect(
-      page.getByText(/Reinigungsstatus konnte nicht gespeichert werden|Missing permission: fleet\.write/i).first(),
-    ).toBeVisible({
+    await expect(page.getByText(CLEANING_STATUS_SAVE_FAILED_TITLE, { exact: true }).first()).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText('Missing permission: fleet.write').first()).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByTestId('vehicle-detail-cleaning-trigger')).toContainText('Clean', {
       timeout: 15_000,
     });
   });

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { api } from '../../../lib/api';
 import {
   diditCompleteMessage,
@@ -13,6 +14,7 @@ export function useCustomerVerification(
   customerId: string | undefined,
   bookingId?: string,
 ) {
+  const { t } = useLanguage();
   const [eligibility, setEligibility] = useState<CustomerVerificationEligibility | null>(null);
   const [checks, setChecks] = useState<CustomerVerificationCheckRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,7 +57,7 @@ export function useCustomerVerification(
       if (!customerId) return;
       setStartingKind(kind);
       try {
-        toast.info('Didit öffnet sich in einem neuen Fenster…');
+        toast.info(t('customers.toast.diditWindow'));
         await startDiditVerificationSession(customerId, bookingId, kind, async (status) => {
           toast.info(diditCompleteMessage(status));
           await refresh();
@@ -66,7 +68,7 @@ export function useCustomerVerification(
         setStartingKind(null);
       }
     },
-    [customerId, bookingId, refresh],
+    [customerId, bookingId, refresh, t],
   );
 
   return {

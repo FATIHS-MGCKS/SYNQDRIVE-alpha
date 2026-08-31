@@ -51,6 +51,7 @@ import { rentalIamMemberDe } from './rental.iamMember.de';
 import { rentalMisuseStressDe } from './rental.misuseStress.de';
 import { rentalHelpCenterDe } from './rental.helpCenter.de';
 import { rentalMicroChromeDe } from './rental.microChrome.de';
+import { rentalHostPresentationDe } from './rental.hostPresentation.de';
 import { supportOpsDe } from './support.ops.de';
 import { whatsappDe } from './whatsapp.de';
 
@@ -5842,4 +5843,5 @@ export const de: Record<TranslationKey, string> = {
   ...rentalMisuseStressDe,
   ...rentalHelpCenterDe,
   ...rentalMicroChromeDe,
+  ...rentalHostPresentationDe,
 } satisfies CompleteTranslationDictionary;

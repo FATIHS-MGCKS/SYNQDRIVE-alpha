@@ -23,6 +23,10 @@ export const voiceAssistantDe = {
   'voice.builder.placeholder.additionalForbidden': 'Weitere Einschränkungen…',
   'voice.builder.placeholder.systemPrompt':
     'Leer lassen, um automatisch aus Identität, Unternehmenskontext, Regeln und Bausteinen zu erstellen…',
+  'voice.builder.placeholder.businessRules':
+    '• Mindestmietalter 21 Jahre mit gültigem Führerschein\n• Rückgabe an der vereinbarten Station\n• Verlängerungen erfordern Mitarbeiterfreigabe',
+  'voice.builder.placeholder.knowledgeSnippets':
+    'F: Welche Dokumente brauche ich?\nA: Gültiger Führerschein und Kreditkarte…\n\nF: Ist Kraftstoff inklusive?\nA: Fahrzeuge werden mit vollem Tank übergeben…',
   'voice.builder.forbiddenActions': 'Verbotene Aktionen',
   'voice.builder.forbiddenActionsHint':
     'Kritische Leitplanken für den Mietbetrieb. Empfohlene Regeln sind für die Flottensicherheit vordefiniert.',
@@ -49,6 +53,8 @@ export const voiceAssistantDe = {
   'voice.conversations.bookingLinkSoon': 'Buchungsverknüpfung-API demnächst',
   'voice.conversations.customerLinkSoon': 'Kundenverknüpfung-API demnächst',
   'voice.conversations.trainingExample': 'Trainingsbeispiel',
+  'voice.conversations.toast.taskCreated': 'Aufgabe aus Anruf erstellt',
+  'voice.conversations.toast.taskCreateFailed': 'Aufgabe konnte nicht erstellt werden',
 
   'voice.analytics.avgDuration': 'Ø Dauer',
   'voice.analytics.callsByOutcome': 'Anrufe nach Ergebnis',

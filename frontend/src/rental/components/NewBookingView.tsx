@@ -375,7 +375,7 @@ export function NewBookingView({
     if (!validateAddStep(addStep)) return;
     if (addStep === 1) {
       if (!orgId) {
-        toast.error('Keine Organisation geladen');
+        toast.error(t('settings.company.toast.noOrg'));
         return;
       }
       setIsEnsuringDraft(true);
@@ -389,7 +389,7 @@ export function NewBookingView({
             ?.message ||
           (err as Error)?.message ||
           'Customer could not be prepared';
-        toast.error('Didit preparation failed', { description: String(msg) });
+        toast.error(t('newBooking.toast.diditPrepFailed'), { description: String(msg) });
       } finally {
         setIsEnsuringDraft(false);
       }
@@ -430,12 +430,12 @@ export function NewBookingView({
           notes: newCustomer.notes || undefined,
         });
       }
-      toast.success('Kunde gespeichert', { description: bookingCustomer.name });
+      toast.success(t('customers.wizard.createdToast'), { description: bookingCustomer.name });
       setIsAddCustomerOpen(false);
       resetAddCustomerForm();
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Kunde konnte nicht gespeichert werden';
-      toast.error('Fehler beim Anlegen', { description: String(msg) });
+      toast.error(t('customers.wizard.createFailed'), { description: String(msg) });
     } finally {
       setIsSavingCustomer(false);
     }
@@ -992,14 +992,14 @@ export function NewBookingView({
     if (isSavingBooking) return;
 
     if (!orgId || !selectedVehicle || !selectedCustomer || !pickupDate || !returnDate) {
-      toast.error('Buchung unvollständig', {
-        description: 'Fahrzeug, Kunde, Abhol- und Rückgabedatum werden benötigt.',
+      toast.error(t('newBooking.toast.incomplete'), {
+        description: t('newBooking.toast.requiredFieldsDescription'),
       });
       return;
     }
 
     if (!priceSim?.quoteId || !pricingContext || !priceSim || grandTotal == null) {
-      toast.error('Preis nicht verfügbar', {
+      toast.error(t('newBooking.toast.priceUnavailable'), {
         description:
           priceError ||
           'Die serverseitige Preisquote fehlt oder ist ungültig. Bitte Preisberechnung aktualisieren.',
@@ -1009,14 +1009,14 @@ export function NewBookingView({
 
     const effectiveReturnStationId = sameReturnStation ? pickupStationId : returnStationId;
     if (!pickupStationId || !effectiveReturnStationId) {
-      toast.error('Stationen fehlen', {
-        description: 'Bitte Abhol- und Rückgabestation auswählen.',
+      toast.error(t('newBooking.toast.stationsMissing'), {
+        description: t('newBooking.toast.stationsRequiredDescription'),
       });
       return;
     }
 
     if (!draftBookingId) {
-      toast.error('Dokumente werden vorbereitet', {
+      toast.error(t('newBooking.toast.documentsPreparing'), {
         description: draftBundleError || 'Bitte warten, bis die Checkout-Dokumente erstellt wurden.',
       });
       return;
@@ -1024,8 +1024,8 @@ export function NewBookingView({
 
     if (canReviewEligibility) {
       if (rentalEligibilityLoading || !wizardEligibilityPreview) {
-        toast.error('Eligibility-Prüfung läuft', {
-          description: 'Bitte warten, bis die serverseitige Freigabe-Prüfung abgeschlossen ist.',
+        toast.error(t('newBooking.toast.eligibilityRunning'), {
+          description: t('newBooking.toast.waitEligibilityDescription'),
         });
         return;
       }
@@ -1098,7 +1098,7 @@ export function NewBookingView({
       }
       setCreatedBookingRef(uiBooking.bookingRef ?? uiBooking.id ?? null);
       setBookingConfirmed(true);
-      toast.success('Buchung erfolgreich erstellt!', {
+      toast.success(t('newBooking.success.title'), {
         description: `${buildMMY(selectedVehicle)} • ${selectedCustomer.name} • ${rentalDays} Tage`,
         duration: 5000,
       });
@@ -1171,14 +1171,14 @@ export function NewBookingView({
           }
         }
       } else if (code === 'VEHICLE_RENTAL_BLOCKED' && reasons.length > 0) {
-        toast.error('Fahrzeug nicht vermietbar', {
+        toast.error(t('newBooking.toast.vehicleNotRentable'), {
           description: reasons.join(' · '),
           duration: 8000,
         });
       } else if (code === 'VEHICLE_HEALTH_GATE_UNAVAILABLE') {
         // Health gate failed technically — never a silent fail-open. The
         // operator is told the check could not run, not that the car is fine.
-        toast.error('Health-Prüfung nicht verfügbar', {
+        toast.error(t('newBooking.toast.healthCheckUnavailable'), {
           description:
             body?.message ||
             'Fahrzeug-Gesundheit konnte nicht geprüft werden — manuelle Prüfung erforderlich. Buchung wurde nicht freigegeben.',
@@ -1190,19 +1190,19 @@ export function NewBookingView({
           code === 'CUSTOMER_PICKUP_BLOCKED') &&
         reasons.length > 0
       ) {
-        toast.error('Kunde nicht freigegeben', {
+        toast.error(t('newBooking.toast.customerNotCleared'), {
           description: reasons.join(' · '),
           duration: 8000,
         });
       } else {
         const msg = parseApiError(err);
         if (isPricingQuoteStaleError(err)) {
-          toast.error('Preis veraltet', {
+          toast.error(t('newBooking.toast.priceStale'), {
             description: msg,
             duration: 9000,
           });
         } else {
-          toast.error('Fehler beim Speichern', { description: msg });
+          toast.error(t('newBooking.toast.saveFailed'), { description: msg });
         }
       }
       setIsSavingBooking(false);

@@ -185,7 +185,7 @@ export function VehicleAssignmentDrawer({
 
       await onSave(selected);
 
-      toast.success('Vehicle assignment updated');
+      toast.success(t('rental.vehicleAssignments.toast.updated'));
 
       onOpenChange(false);
 

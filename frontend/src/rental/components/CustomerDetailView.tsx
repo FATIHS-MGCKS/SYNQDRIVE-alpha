@@ -417,7 +417,7 @@ export function CustomerDetailView({
 
     } catch (err: unknown) {
 
-      const msg = getErrorMessage(err, 'Status konnte nicht gespeichert werden');
+      const msg = getErrorMessage(err, t('customers.toast.statusSaveFailed'));
 
       toast.error('Fehler', { description: msg });
 
@@ -491,7 +491,7 @@ export function CustomerDetailView({
 
       await api.customers.customerTimeline.addNote(orgId, customer.id, { note, title });
 
-      toast.success('Notiz gespeichert');
+      toast.success(t('customers.toast.noteSaved'));
 
       setNoteModalOpen(false);
 

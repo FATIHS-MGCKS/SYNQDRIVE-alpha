@@ -349,12 +349,21 @@ export const settingsAdminDe = {
   'settings.company.toast.logoRemoved': 'Logo entfernt',
   'settings.company.toast.logoRemoveFailed': 'Logo konnte nicht entfernt werden',
   'settings.company.toast.noOrg': 'Keine Organisation geladen.',
+  'settings.company.toast.invalidImageType':
+    'Nur PNG, JPG/JPEG und WebP sind erlaubt (kein SVG oder GIF).',
+  'settings.company.toast.fileTooLarge': 'Die Datei ist zu groß. Maximal 2 MB erlaubt.',
 
   // ─── Data authorization ───
   'settings.dataAuth.page.title': 'Data Authorization & Consent Center',
   'settings.dataAuth.page.description':
     'Datenverarbeitungsfreigaben, Einwilligungen und Partnerzugriffe verwalten.',
   'settings.dataAuth.loadFailed': 'Laden fehlgeschlagen',
+  'settings.dataAuth.error.loadFailed': 'Datenfreigaben konnten nicht geladen werden.',
+  'settings.dataAuth.toast.approved': 'Freigabe genehmigt',
+  'settings.dataAuth.toast.revoked': 'Freigabe widerrufen',
+  'settings.dataAuth.toast.synced': 'Systemfreigaben synchronisiert',
+  'settings.dataAuth.toast.createdPending': 'Freigabe erstellt — Status: Ausstehend',
+  'settings.dataAuth.error.auditLoadFailed': 'Audit-Verlauf konnte nicht geladen werden.',
   'settings.dataAuth.syncSystem': 'Systemfreigaben synchronisieren',
   'settings.dataAuth.create': 'Freigabe anlegen',
   'settings.dataAuth.filters.title': 'Filter & Suche',

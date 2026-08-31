@@ -41,6 +41,7 @@ import {
 } from './tasks/VehicleTaskActionCenter';
 import { VehicleTaskDetailDrawer } from './tasks/VehicleTaskDetailDrawer';
 import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { Icon } from './ui/Icon';
 
 interface VehicleTasksViewProps {
@@ -92,7 +93,7 @@ export function VehicleTasksView({
   const [filter, setFilter] = useState<VehicleTaskFilter>('all');
   const [rows, setRows] = useState<ApiTask[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<TranslationKey | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -125,21 +126,23 @@ export function VehicleTasksView({
   const loadTasks = useCallback(async (opts?: { silent?: boolean }) => {
     if (!orgId || !vehicle?.id) {
       setRows([]);
-      setError(null);
+      setErrorKey(null);
       return;
     }
     if (!opts?.silent) setLoading(true);
-    setError(null);
+    setErrorKey(null);
     try {
       const res = await api.tasks.forVehicle(orgId, vehicle.id);
       setRows(Array.isArray(res) ? res : []);
     } catch {
       setRows([]);
-      setError('Aufgaben für dieses Fahrzeug konnten nicht geladen werden.');
+      setErrorKey('rental.vehicleTasks.error.loadFailed');
     } finally {
       if (!opts?.silent) setLoading(false);
     }
   }, [orgId, vehicle?.id]);
+
+  const error = errorKey ? t(errorKey) : null;
 
   useEffect(() => {
     void loadTasks();
