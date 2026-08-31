@@ -71,6 +71,11 @@ function parseArgs(argv) {
       index += 1;
       continue;
     }
+    if (token === '--manifest-path') {
+      args.manifestPath = argv[index + 1];
+      index += 1;
+      continue;
+    }
     throw new Error(`Unknown argument: ${token}`);
   }
 
@@ -220,17 +225,7 @@ function printSummary(summary) {
 }
 
 function runGate(options) {
-  const relevance = classifyPrRelevance(options);
-  if (!relevance.relevant) {
-    const summary = buildNoOpSummary(options.baseSha, options.headSha);
-    printSummary(summary);
-    writeStepSummary(summary, []);
-    return summary;
-  }
-
-  const manifest = loadManifest(options.manifestPath);
-  const { diffEntries } = loadDiffContext(options);
-  const changedPaths = relevance.changedPaths;
+  const { diffEntries, changedPaths } = loadDiffContext(options);
   const partitions = partitionChangedPaths(changedPaths, isScannerEligibleRelativePath);
   const authority = evaluateGovernanceAuthorityPolicy({
     authorityPaths: partitions.authorityPaths,
@@ -258,6 +253,14 @@ function runGate(options) {
     return summary;
   }
 
+  if (!hasI18nRelevantChanges(changedPaths)) {
+    const summary = buildNoOpSummary(options.baseSha, options.headSha);
+    printSummary(summary);
+    writeStepSummary(summary, []);
+    return summary;
+  }
+
+  const manifest = loadManifest(options.manifestPath);
   if (partitions.ungovernedProductionPaths.length > 0 || partitions.unsupportedProductionPaths.length > 0) {
     const summary = buildGateSummary({
       baseSha: options.baseSha,

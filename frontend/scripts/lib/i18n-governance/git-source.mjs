@@ -22,6 +22,10 @@ export function readSourceAtRef(gitExec, repo, ref, repoPath, { mustExist = true
   if (!repoPath) {
     return null;
   }
+  const forceFail = process.env.I18N_PR_GATE_TEST_FORCE_READ_FAIL;
+  if (forceFail && repoPath.includes(forceFail)) {
+    throw new GitSourceReadFailureError(repoPath, ref, new Error('forced test read failure'));
+  }
   try {
     return gitExec(repo, ['show', `${ref}:${repoPath}`]);
   } catch (error) {

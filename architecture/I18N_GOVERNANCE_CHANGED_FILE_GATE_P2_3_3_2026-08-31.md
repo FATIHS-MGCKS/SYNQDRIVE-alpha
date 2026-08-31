@@ -99,13 +99,34 @@ Unsupported `frontend/src/**/*.js(x)` fails with `UNSUPPORTED_GOVERNED_SOURCE_EX
 - Base authority: `github.event.pull_request.base.sha`
 - **No top-level `paths:` filter** — the check always materializes for every `pull_request` event (`opened`, `synchronize`, `reopened`, `ready_for_review`, `labeled`, `unlabeled`).
 
+### Two-layer required-check security model
+
+**Layer A — trusted workflow bootstrap (no PR-head governance JS execution)**
+
+Before `npm ci` or any governance JavaScript runs, `.github/scripts/i18n-pr-bootstrap-relevance.sh` classifies changed paths using **Git only**:
+
+```bash
+git diff --name-only -z "${BASE_SHA}...${HEAD_SHA}"
+```
+
+- Does **not** execute `i18n-pr-gate.mjs`, `pr-gate-policy.mjs`, or other mutable PR-head governance modules for the relevance decision.
+- Fail-closed: invalid/missing SHAs, `git diff` failure, or NUL parse failure → workflow **FAIL** (never `relevant=false` fallback).
+- Outputs `relevant=true|false` directly to `$GITHUB_OUTPUT`.
+- Simple bootstrap relevance rule (intentionally duplicated from canonical JS policy contract for trust separation).
+
+**Layer B — full P2.3.3 gate (PR-head code, authority-gated)**
+
+After Layer A selects the relevant path: `npm ci` → scanner tests → read-only `i18n:check:ci` → `i18n:pr-gate`.
+
+`runGate` evaluates governance authority **before** any irrelevant no-op return, so malicious classifier weakening cannot bypass authority policy.
+
 ### Required-check materialization + relevance no-op
 
-1. Classify changed paths vs exact PR base via `hasI18nRelevantChanges()` in `pr-gate-policy.mjs`.
+1. **Layer A** classifies changed paths vs exact PR base via trusted bootstrap shell (not PR-head JS).
 2. **Irrelevant PR** (e.g. backend-only): emit `I18N_PR_GATE=PASS`, `I18N_PR_GATE_REASON=NO_I18N_RELEVANT_CHANGES`, `I18N_RELEVANT_CHANGES=NO`; skip `npm ci`, scanner tests, dictionary suite, and full gate.
-3. **Relevant PR**: run full validation including read-only `npm run i18n:check:ci`.
+3. **Relevant PR**: run Layer B including read-only `npm run i18n:check:ci`.
 
-Canonical relevance surface:
+Canonical relevance surface (Layer A bootstrap + Layer B contract):
 
 - `frontend/src/**`
 - `frontend/scripts/i18n-*.mjs`
@@ -136,6 +157,26 @@ Unexpected `git show` failure for a must-exist source → `GIT_SOURCE_READ_FAILU
 Supported Git statuses: **A, M, D, R, C only**. `T`/`U`/`X`/`B` → `UNSUPPORTED_GIT_STATUS` (fail closed).
 
 Single canonical NUL parser: `parseNameStatusZGit` (`git diff --name-status -z -M`).
+
+### Governance authority scope (executable gate control)
+
+Authority paths (require label `i18n-governance-authority-change` or `--authority-approved`):
+
+- `frontend/scripts/i18n-pr-gate.mjs`
+- `frontend/scripts/i18n-hardcoded-scan.mjs`
+- `frontend/scripts/i18n-governance.mjs`
+- `frontend/scripts/i18n-check.mjs` (controls read-only CI dictionary/structural validation)
+- `frontend/scripts/i18n-shim-inventory.mjs`
+- `frontend/scripts/lib/i18n-governance/**`
+- `frontend/package.json` / `frontend/package-lock.json` (control `npm run` governance commands)
+- `frontend/src/i18n/i18n-debt-classifications.json`
+- `.github/workflows/i18n-governance-new-debt.yml`
+
+Mixed authority + governed production changes fail closed even with approval.
+
+### Workflow self-modification caveat
+
+A PR may modify its own workflow definition (Layer A bootstrap script/YAML) because checkout is the PR head. **Tamper-resistant enforcement** of workflow-authority changes requires repository-level protection (CODEOWNERS / rulesets / protected workflow governance). That protection is **not activated** in P2.3.3 — documented for post-merge activation slice.
 
 ### Bootstrap label lifecycle
 

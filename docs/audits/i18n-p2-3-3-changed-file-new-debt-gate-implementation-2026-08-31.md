@@ -97,9 +97,11 @@ Help Center enforce-clean editorial ambiguity: **fail closed**.
 
 ## PART I — Adversarial tests
 
-`npm run i18n:pr-gate:test` — **43 tests PASS**
+`npm run i18n:pr-gate:test` — **65 tests PASS** (authoritative current count).
 
-Covers: translated pass, direct/indirect host fail, duplicates 1→2/1→3, insert before/after, refactor pass, rename pass/fail, copy fail, deletion pass, wording change, reintroduction, unchanged residual, Data Analyse/IAM new-copy block, machine/raw pass, Help Center shell fail, editorial fail-closed, parser statuses, authority policy, ungoverned/unsupported paths, determinism.
+Covers: translated pass, direct/indirect host fail, duplicates, refactor pass, rename pass/fail, copy fail, deletion pass, wording change, dedicated historical reintroduction proof, Data Analyse/IAM new-copy block, machine/raw pass, Help Center shell fail, editorial fail-closed, parser statuses, authority policy (package.json, i18n-check, mixed authority/product), trusted bootstrap bypass resistance, real Git integration, CLI exit-5 witness, determinism.
+
+> PRE-CORRECTION HISTORICAL RECORD: initial implementation shipped with 43 tests; first correction raised this to 56.
 
 ---
 
@@ -142,7 +144,7 @@ Added `isScannerEligibleRelativePath` export only; no scan semantic drift.
 | Command | Result |
 |---------|--------|
 | `npm run i18n:scanner:test` | PASS (45/45) |
-| `npm run i18n:pr-gate:test` | PASS (43/43) |
+| `npm run i18n:pr-gate:test` | PASS (**65/65**) |
 | `npm run i18n:check` | PASS (EN=DE=9803) |
 | `npm run i18n:governance` | PASS |
 | `npm run check:surface` | PASS |
@@ -202,6 +204,50 @@ Workflow asserts empty `git status --porcelain` after relevant-path CI.
 
 Label `i18n-governance-authority-change` creation/application attempted on PR #1464; see final report for permission status.
 
-### Updated test count
+### Updated test count (correction 1)
 
 `npm run i18n:pr-gate:test` — **56 tests** (was 43).
+
+---
+
+## CORRECTION 2 — Trusted bootstrap / authority anti-bypass (2026-08-31)
+
+### A. PR-head relevance classifier bypass
+
+Workflow previously executed PR-head `i18n-pr-gate.mjs --classify-relevance-only` before authority evaluation. **Fixed:** Layer A trusted bootstrap shell (Git-only).
+
+### B. Trusted bootstrap implementation
+
+`.github/scripts/i18n-pr-bootstrap-relevance.sh` uses `git diff --name-only -z` only. Fail-closed on Git errors. No PR-head governance JS execution for relevance.
+
+### C. Expanded governance authority
+
+`package.json`, `package-lock.json`, `i18n-check.mjs`, `i18n-shim-inventory.mjs` added to authority set.
+
+### D. Authority-before-no-op ordering
+
+`runGate` evaluates authority policy before irrelevant no-op return.
+
+### E. Adversarial bypass tests
+
+Malicious `i18n-pr-gate.mjs` / `pr-gate-policy.mjs` changes cannot force bootstrap `relevant=false`.
+
+### F. Real rename+addition witness
+
+Single-commit `R*` rename with spaces + one new host occurrence → `NEW_PR_ACTIONABLE_HOST_DEBT=1`, exit 2.
+
+### G. CLI exit-5 witness
+
+Spawned `node scripts/i18n-pr-gate.mjs` proves `GIT_SOURCE_READ_FAILURE` exit 5.
+
+### H. Worktree cleanliness on gate failure
+
+`if: always() && relevant` ensures cleanliness check runs even when gate exits 3.
+
+### I. Workflow self-modification caveat
+
+Documented CODEOWNERS/ruleset requirement for post-merge activation.
+
+### Authoritative final test count
+
+`npm run i18n:pr-gate:test` — **65 tests**.

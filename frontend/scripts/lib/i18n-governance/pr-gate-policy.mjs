@@ -2,12 +2,31 @@ import { normalizeRepoPath, toSrcRelativePath } from './git-diff.mjs';
 
 export const GOVERNANCE_AUTHORITY_PREFIXES = [
   'frontend/scripts/i18n-hardcoded-scan.mjs',
+  'frontend/scripts/i18n-check.mjs',
   'frontend/scripts/i18n-governance.mjs',
   'frontend/scripts/i18n-pr-gate.mjs',
+  'frontend/scripts/i18n-shim-inventory.mjs',
   'frontend/scripts/lib/i18n-governance/',
+  'frontend/package.json',
+  'frontend/package-lock.json',
   'frontend/src/i18n/i18n-debt-classifications.json',
   '.github/workflows/i18n-governance-new-debt.yml',
 ];
+
+/** Layer A bootstrap relevance contract — must stay aligned with .github/scripts/i18n-pr-bootstrap-relevance.sh */
+export const BOOTSTRAP_RELEVANT_PATH_CONTRACT = {
+  prefixes: [
+    'frontend/src/',
+    'frontend/scripts/i18n-',
+    'frontend/scripts/lib/i18n-governance/',
+  ],
+  exact: [
+    'frontend/package.json',
+    'frontend/package-lock.json',
+    '.github/workflows/i18n-governance-new-debt.yml',
+  ],
+  scriptSuffix: '.mjs',
+};
 
 export const GOVERNANCE_AUTHORITY_LABEL = 'i18n-governance-authority-change';
 

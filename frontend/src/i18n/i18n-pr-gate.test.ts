@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -25,14 +25,18 @@ import {
   isI18nRelevantPath,
   partitionChangedPaths,
   EXIT_CODES,
+  GOVERNANCE_AUTHORITY_PREFIXES,
+  BOOTSTRAP_RELEVANT_PATH_CONTRACT,
 } from '../../scripts/lib/i18n-governance/pr-gate-policy.mjs';
-import { classifyPrRelevance, gitExec, runGate } from '../../scripts/i18n-pr-gate.mjs';
+import { gitExec, runGate } from '../../scripts/i18n-pr-gate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const manifestPath = join(__dirname, 'i18n-debt-classifications.json');
 const manifest = loadManifest(manifestPath);
 const fixtureRoot = join(__dirname, '__fixtures__/governance-adversarial');
 const repoRoot = join(__dirname, '../../..');
+const bootstrapScriptPath = join(repoRoot, '.github/scripts/i18n-pr-bootstrap-relevance.sh');
+const prGateCliPath = join(repoRoot, 'frontend/scripts/i18n-pr-gate.mjs');
 
 function scanFixture(fileName, relDir = 'i18n/__fixtures__/governance-adversarial') {
   const source = readFileSync(join(fixtureRoot, fileName), 'utf8');
@@ -74,6 +78,24 @@ function seedGovernanceManifest(repoDir: string) {
     join(repoDir, 'frontend/src/i18n/i18n-debt-classifications.json'),
     readFileSync(manifestPath, 'utf8'),
   );
+}
+
+function runTrustedBootstrap(repoDir: string, baseSha: string, headSha: string) {
+  const output = execFileSync('bash', [bootstrapScriptPath, baseSha, headSha, repoDir], {
+    encoding: 'utf8',
+  });
+  return {
+    relevant: /I18N_RELEVANT_CHANGES=YES/.test(output),
+    output,
+  };
+}
+
+function bootstrapRelevantFromPath(path: string) {
+  if (path.startsWith('frontend/src/')) return true;
+  if (path.startsWith('frontend/scripts/i18n-') && path.endsWith('.mjs')) return true;
+  if (path.startsWith('frontend/scripts/lib/i18n-governance/')) return true;
+  if (BOOTSTRAP_RELEVANT_PATH_CONTRACT.exact.includes(path)) return true;
+  return false;
 }
 
 describe('P2.3.3 PR gate — parser and policy', () => {
@@ -136,6 +158,43 @@ describe('P2.3.3 PR gate — parser and policy', () => {
     expect(result.ok).toBe(false);
     expect(result.reason).toBe('MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE');
     expect(result.exitCode).toBe(EXIT_CODES.GOVERNANCE_AUTHORITY_POLICY_FAILURE);
+  });
+
+  it('flags mixed package.json authority and product changes even when approved', () => {
+    const result = evaluateGovernanceAuthorityPolicy({
+      authorityPaths: ['frontend/package.json'],
+      governedProductionPaths: ['frontend/src/rental/components/Foo.tsx'],
+      authorityApproved: true,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe('MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE');
+    expect(result.exitCode).toBe(EXIT_CODES.GOVERNANCE_AUTHORITY_POLICY_FAILURE);
+  });
+
+  it('requires approval for package.json-only changes', () => {
+    const unapproved = evaluateGovernanceAuthorityPolicy({
+      authorityPaths: ['frontend/package.json'],
+      governedProductionPaths: [],
+      authorityApproved: false,
+    });
+    expect(unapproved.ok).toBe(false);
+    expect(unapproved.exitCode).toBe(EXIT_CODES.GOVERNANCE_AUTHORITY_POLICY_FAILURE);
+    const approved = evaluateGovernanceAuthorityPolicy({
+      authorityPaths: ['frontend/package.json'],
+      governedProductionPaths: [],
+      authorityApproved: true,
+    });
+    expect(approved.ok).toBe(true);
+  });
+
+  it('requires approval for i18n-check-only changes', () => {
+    const unapproved = evaluateGovernanceAuthorityPolicy({
+      authorityPaths: ['frontend/scripts/i18n-check.mjs'],
+      governedProductionPaths: [],
+      authorityApproved: false,
+    });
+    expect(unapproved.ok).toBe(false);
+    expect(unapproved.exitCode).toBe(EXIT_CODES.GOVERNANCE_AUTHORITY_POLICY_FAILURE);
   });
 
   it('requires approval for authority-only changes', () => {
@@ -489,20 +548,100 @@ function compareFixtureDelta(baseFixture, headFixture) {
   return compareSources(baseSource, headSource, rel);
 }
 
-describe('P2.3.3 PR gate — relevance classification', () => {
-  it('backend-only PR paths are irrelevant', () => {
-    expect(isI18nRelevantPath('backend/src/modules/example/example.service.ts')).toBe(false);
-    expect(hasI18nRelevantChanges(['backend/src/modules/example/example.service.ts'])).toBe(false);
+describe('P2.3.3 PR gate — trusted bootstrap relevance', { timeout: 20000 }, () => {
+  it('bootstrap contract stays aligned with canonical JS relevance policy', () => {
+    const samples = [
+      'backend/src/modules/example/example.service.ts',
+      'frontend/src/rental/components/Foo.tsx',
+      'frontend/scripts/i18n-pr-gate.mjs',
+      'frontend/scripts/lib/i18n-governance/pr-gate-policy.mjs',
+      'frontend/package.json',
+      '.github/workflows/i18n-governance-new-debt.yml',
+      'docs/readme.md',
+    ];
+    for (const path of samples) {
+      expect(isI18nRelevantPath(path)).toBe(bootstrapRelevantFromPath(path));
+    }
   });
 
-  it('frontend product paths are relevant', () => {
-    expect(isI18nRelevantPath('frontend/src/rental/components/Foo.tsx')).toBe(true);
-    expect(hasI18nRelevantChanges(['frontend/src/rental/components/Foo.tsx'])).toBe(true);
+  it('backend-only real git repo classifies as irrelevant via trusted bootstrap', () => {
+    const { dir, runGit } = createTempGitRepo();
+    writeFileSync(join(dir, 'README.md'), 'seed\n');
+    const baseSha = commitAll(runGit, 'base');
+    mkdirSync(join(dir, 'backend/src/modules/example'), { recursive: true });
+    writeFileSync(
+      join(dir, 'backend/src/modules/example/example.service.ts'),
+      'export class ExampleService {}\n',
+    );
+    const headSha = commitAll(runGit, 'head');
+    const bootstrap = runTrustedBootstrap(dir, baseSha, headSha);
+    expect(bootstrap.relevant).toBe(false);
+    expect(bootstrap.output).toContain('I18N_RELEVANT_CHANGES=NO');
   });
 
-  it('governance authority paths are relevant', () => {
-    expect(isI18nRelevantPath('frontend/scripts/i18n-pr-gate.mjs')).toBe(true);
-    expect(hasI18nRelevantChanges(['frontend/scripts/i18n-pr-gate.mjs'])).toBe(true);
+  it('frontend-only real git repo classifies as relevant via trusted bootstrap', () => {
+    const { dir, runGit } = createTempGitRepo();
+    writeFileSync(join(dir, 'README.md'), 'seed\n');
+    const baseSha = commitAll(runGit, 'base');
+    mkdirSync(join(dir, 'frontend/src/rental/components'), { recursive: true });
+    writeFileSync(join(dir, 'frontend/src/rental/components/Foo.tsx'), 'export const Foo = null;\n');
+    const headSha = commitAll(runGit, 'head');
+    const bootstrap = runTrustedBootstrap(dir, baseSha, headSha);
+    expect(bootstrap.relevant).toBe(true);
+    expect(bootstrap.output).toContain('I18N_RELEVANT_CHANGES=YES');
+  });
+
+  it('malicious i18n-pr-gate relevance bypass cannot force bootstrap no-op', () => {
+    const { dir, runGit } = createTempGitRepo();
+    mkdirSync(join(dir, 'frontend/scripts'), { recursive: true });
+    writeFileSync(join(dir, 'frontend/scripts/i18n-pr-gate.mjs'), 'export const ok = true;\n');
+    const baseSha = commitAll(runGit, 'base');
+    writeFileSync(
+      join(dir, 'frontend/scripts/i18n-pr-gate.mjs'),
+      'console.log("I18N_RELEVANT_CHANGES=NO");\nexport const ok = false;\n',
+    );
+    const headSha = commitAll(runGit, 'malicious');
+    const bootstrap = runTrustedBootstrap(dir, baseSha, headSha);
+    expect(bootstrap.relevant).toBe(true);
+  });
+
+  it('malicious pr-gate-policy change still classifies as relevant via trusted bootstrap', () => {
+    const { dir, runGit } = createTempGitRepo();
+    mkdirSync(join(dir, 'frontend/scripts/lib/i18n-governance'), { recursive: true });
+    writeFileSync(
+      join(dir, 'frontend/scripts/lib/i18n-governance/pr-gate-policy.mjs'),
+      'export const ok = true;\n',
+    );
+    const baseSha = commitAll(runGit, 'base');
+    writeFileSync(
+      join(dir, 'frontend/scripts/lib/i18n-governance/pr-gate-policy.mjs'),
+      'export function hasI18nRelevantChanges() { return false; }\n',
+    );
+    const headSha = commitAll(runGit, 'malicious-policy');
+    const bootstrap = runTrustedBootstrap(dir, baseSha, headSha);
+    expect(bootstrap.relevant).toBe(true);
+  });
+
+  it('workflow self-change classifies as relevant via trusted bootstrap', () => {
+    const { dir, runGit } = createTempGitRepo();
+    mkdirSync(join(dir, '.github/workflows'), { recursive: true });
+    writeFileSync(join(dir, '.github/workflows/i18n-governance-new-debt.yml'), 'name: seed\n');
+    const baseSha = commitAll(runGit, 'base');
+    writeFileSync(join(dir, '.github/workflows/i18n-governance-new-debt.yml'), 'name: changed\n');
+    const headSha = commitAll(runGit, 'workflow');
+    const bootstrap = runTrustedBootstrap(dir, baseSha, headSha);
+    expect(bootstrap.relevant).toBe(true);
+  });
+
+  it('expanded governance authority paths include package.json and i18n-check', () => {
+    expect(GOVERNANCE_AUTHORITY_PREFIXES).toContain('frontend/package.json');
+    expect(GOVERNANCE_AUTHORITY_PREFIXES).toContain('frontend/scripts/i18n-check.mjs');
+    expect(partitionChangedPaths(['frontend/package.json'], isScannerEligibleRelativePath).authorityPaths).toEqual([
+      'frontend/package.json',
+    ]);
+    expect(
+      partitionChangedPaths(['frontend/scripts/i18n-check.mjs'], isScannerEligibleRelativePath).authorityPaths,
+    ).toEqual(['frontend/scripts/i18n-check.mjs']);
   });
 });
 
@@ -521,9 +660,79 @@ describe('P2.3.3 PR gate — git source read fail-closed', () => {
       }),
     ).toThrow(GitSourceReadFailureError);
   });
+
+  it('runGate surfaces GIT_SOURCE_READ_FAILURE with exit 5', () => {
+    const { dir, runGit } = createTempGitRepo();
+    seedGovernanceManifest(dir);
+    const relDir = join(dir, 'frontend/src/rental/components');
+    mkdirSync(relDir, { recursive: true });
+    const filePath = join(relDir, 'Widget.tsx');
+    writeFileSync(filePath, `export function Widget() { return <div>{t('common.ok')}</div>; }`);
+    const baseSha = commitAll(runGit, 'base');
+    writeFileSync(
+      filePath,
+      `export function Widget() { return <button title="Bitte speichern">Save</button>; }`,
+    );
+    const headSha = commitAll(runGit, 'head');
+    const previous = process.env.I18N_PR_GATE_TEST_FORCE_READ_FAIL;
+    process.env.I18N_PR_GATE_TEST_FORCE_READ_FAIL = 'frontend/src/rental/components/Widget.tsx';
+    try {
+      expect(() =>
+        runGate({
+          baseSha,
+          headSha,
+          authorityApproved: false,
+          repoRoot: dir,
+          manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+        }),
+      ).toThrow(GitSourceReadFailureError);
+    } finally {
+      if (previous === undefined) delete process.env.I18N_PR_GATE_TEST_FORCE_READ_FAIL;
+      else process.env.I18N_PR_GATE_TEST_FORCE_READ_FAIL = previous;
+    }
+  });
+
+  it('CLI maps GIT_SOURCE_READ_FAILURE to exit 5', () => {
+    const { dir, runGit } = createTempGitRepo();
+    seedGovernanceManifest(dir);
+    const relDir = join(dir, 'frontend/src/rental/components');
+    mkdirSync(relDir, { recursive: true });
+    const filePath = join(relDir, 'Widget.tsx');
+    writeFileSync(filePath, `export function Widget() { return <div>{t('common.ok')}</div>; }`);
+    const baseSha = commitAll(runGit, 'base');
+    writeFileSync(
+      filePath,
+      `export function Widget() { return <button title="Bitte speichern">Save</button>; }`,
+    );
+    const headSha = commitAll(runGit, 'head');
+    const result = spawnSync(
+      process.execPath,
+      [
+        prGateCliPath,
+        '--base-sha',
+        baseSha,
+        '--head-sha',
+        headSha,
+        '--repo-root',
+        dir,
+        '--manifest-path',
+        join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+      ],
+      {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          I18N_PR_GATE_TEST_FORCE_READ_FAIL: 'frontend/src/rental/components/Widget.tsx',
+        },
+      },
+    );
+    expect(result.status).toBe(EXIT_CODES.INVALID_BASE_OR_GIT);
+    expect(result.stderr).toContain('I18N_PR_GATE=FAIL');
+    expect(result.stderr).toContain('I18N_PR_GATE_REASON=GIT_SOURCE_READ_FAILURE');
+  });
 });
 
-describe('P2.3.3 PR gate — real git integration', () => {
+describe('P2.3.3 PR gate — real git integration', { timeout: 20000 }, () => {
   it('hardcoded host addition in temp repo fails gate', () => {
     const { dir, runGit } = createTempGitRepo();
     seedGovernanceManifest(dir);
@@ -603,24 +812,43 @@ describe('P2.3.3 PR gate — real git integration', () => {
     expect(summary.pass).toBe(true);
   });
 
-  it('post-rename path addition of one host occurrence fails +1', () => {
+  it('real rename with spaces plus one host occurrence in one commit fails +1', () => {
     const { dir, runGit } = createTempGitRepo();
     seedGovernanceManifest(dir);
+    const oldDir = join(dir, 'frontend/src/rental/components/old path');
+    mkdirSync(oldDir, { recursive: true });
+    const oldPath = join(oldDir, 'Foo Bar.tsx');
+    writeFileSync(
+      oldPath,
+      `/** Rental widget fixture with stable boilerplate for rename lineage tests. */
+const CONFIG = { mode: 'rental', surface: 'operator', version: 3, padding: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' };
+export function FooBar() {
+  return <button title="German tooltip text">A</button>;
+}
+`,
+    );
+    const baseSha = commitAll(runGit, 'base');
     const newDir = join(dir, 'frontend/src/rental/components/new path');
     mkdirSync(newDir, { recursive: true });
     const newPath = join(newDir, 'Foo Bar.tsx');
+    runGit(['mv', oldPath, newPath]);
     writeFileSync(
       newPath,
-      `export function FooBar() { return <button title="German tooltip text">A</button>; }`,
+      `/** Rental widget fixture with stable boilerplate for rename lineage tests. */
+const CONFIG = { mode: 'rental', surface: 'operator', version: 3, padding: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' };
+export function FooBar() {
+  return (<><button title="German tooltip text">A</button><button title="German tooltip text">B</button></>);
+}
+`,
     );
-    const baseSha = commitAll(runGit, 'renamed-base');
-    writeFileSync(
-      newPath,
-      `export function FooBar() {
-        return (<><button title="German tooltip text">A</button><button title="German tooltip text">B</button></>);
-      }`,
+    const headSha = commitAll(runGit, 'rename-plus-one');
+    const diffBuffer = execFileSync(
+      'git',
+      ['diff', '--name-status', '-z', '-M', `${baseSha}...${headSha}`],
+      { cwd: dir },
     );
-    const headSha = commitAll(runGit, 'add-one');
+    const diffEntries = parseNameStatusZGit(diffBuffer);
+    expect(diffEntries.some((entry) => entry.status === 'R')).toBe(true);
     const summary = runGate({
       baseSha,
       headSha,
@@ -630,10 +858,11 @@ describe('P2.3.3 PR gate — real git integration', () => {
     });
     expect(summary.newPrActionableHostDebt).toBe(1);
     expect(summary.pass).toBe(false);
+    expect(summary.exitCode).toBe(EXIT_CODES.NEW_ACTIONABLE_HOST_DEBT);
   });
 });
 
-describe('P2.3.3 PR gate — repository integration', () => {
+describe('P2.3.3 PR gate — repository integration', { timeout: 20000 }, () => {
   const baseSha = '021f6a22b66cc69b28291a15d7f4055e3977e33d';
   const headSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
 
@@ -666,33 +895,28 @@ describe('P2.3.3 PR gate — repository integration', () => {
     expect(summary.governanceAuthorityChanged).toBe('YES');
   });
 
-  it('69c backend-only diff classifies as irrelevant no-op', () => {
-    const relevance = classifyPrRelevance({
-      baseSha,
-      headSha: baseSha,
-      repoRoot,
-      manifestPath,
-    });
-    const synthetic = classifyPrRelevance({
-      baseSha,
-      headSha,
-      repoRoot,
-      manifestPath,
-    });
-    expect(synthetic.relevant).toBe(true);
-    expect(
-      hasI18nRelevantChanges(['backend/src/modules/example/example.service.ts']),
-    ).toBe(false);
+  it('69c backend-only diff no-ops only after authority precheck via trusted bootstrap', () => {
+    const { dir, runGit } = createTempGitRepo();
+    writeFileSync(join(dir, 'README.md'), 'seed\n');
+    const baseSha = commitAll(runGit, 'base');
+    mkdirSync(join(dir, 'backend/src/modules/example'), { recursive: true });
+    writeFileSync(
+      join(dir, 'backend/src/modules/example/example.service.ts'),
+      'export class ExampleService {}\n',
+    );
+    const headSha = commitAll(runGit, 'backend-only');
+    const bootstrap = runTrustedBootstrap(dir, baseSha, headSha);
+    expect(bootstrap.relevant).toBe(false);
+    seedGovernanceManifest(dir);
     const noOp = runGate({
       baseSha,
-      headSha: baseSha,
+      headSha,
       authorityApproved: false,
-      repoRoot,
-      manifestPath,
+      repoRoot: dir,
+      manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
     });
     expect(noOp.pass).toBe(true);
     expect(noOp.noOp).toBe(true);
-    expect(relevance.changedPaths.length).toBeGreaterThanOrEqual(0);
   });
 
   it('70 controlled red synthetic host literal would fail', () => {
