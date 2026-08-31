@@ -35,7 +35,7 @@ P2.3.2 adds enhanced presentation scanning, residual classification manifest, fi
 `file + category + presentationOwner + kind + structuralContext + normalizedLiteral + occurrenceOrdinal`
 
 - `structuralContext` = nearest enclosing function/component symbol (line-independent).
-- `occurrenceOrdinal` = zero-based index within the stable group  
+- `occurrenceOrdinal` = zero-based index within the stable group
   `(file, structuralContext, category, presentationOwner, kind, normalizedLiteral)`, sorted by line/column.
 - `fingerprintVersion: 3` recorded in manifest and `governanceBaseline` metadata.
 
