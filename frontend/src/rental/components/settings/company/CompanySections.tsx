@@ -293,11 +293,11 @@ export function CompanyBrandingSection({
   const handleFile = async (file: File) => {
     const mime = file.type.toLowerCase();
     if (!ALLOWED_LOGO.includes(mime)) {
-      toast.error('Nur PNG, JPG/JPEG und WebP sind erlaubt (kein SVG oder GIF).');
+      toast.error(t('settings.company.toast.invalidImageType'));
       return;
     }
     if (file.size > MAX_LOGO_BYTES) {
-      toast.error('Die Datei ist zu groß. Maximal 2 MB erlaubt.');
+      toast.error(t('settings.company.toast.fileTooLarge'));
       return;
     }
     await onUpload(file);

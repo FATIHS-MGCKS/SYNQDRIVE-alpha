@@ -291,7 +291,7 @@ export function VoiceAssistantBuilder({
                 value={textField('businessRules')}
                 onChange={v => setTextField('businessRules', v)}
                 rows={5}
-                placeholder={'• Minimum rental age is 21 with a valid license\n• Returns must be at the agreed station\n• Extensions require staff approval'}
+                placeholder={t('voice.builder.placeholder.businessRules')}
               />
             </BuilderField>
 
@@ -427,7 +427,7 @@ export function VoiceAssistantBuilder({
                 value={textField('knowledgeSnippets')}
                 onChange={v => setTextField('knowledgeSnippets', v)}
                 rows={6}
-                placeholder={"Q: What documents do I need?\nA: Valid driver's license and credit card…\n\nQ: Is fuel included?\nA: Vehicles are provided with a full tank…"}
+                placeholder={t('voice.builder.placeholder.knowledgeSnippets')}
               />
             </BuilderField>
           </DataCard>

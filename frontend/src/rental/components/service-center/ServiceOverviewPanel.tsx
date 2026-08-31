@@ -148,12 +148,12 @@ export function ServiceOverviewPanel({
         .catch((err) => {
           const message = err instanceof Error ? err.message : 'Aufgabe konnte nicht geladen werden';
           setCompleteError(message);
-          toast.error('Abschluss nicht möglich', { description: message });
+          toast.error(t('rental.service.toast.cannotComplete'), { description: message });
           setCompleteDialogOpen(false);
         })
         .finally(() => setCompleteLoading(false));
     },
-    [orgId],
+    [orgId, t],
   );
 
   const submitComplete = useCallback(
@@ -174,7 +174,7 @@ export function ServiceOverviewPanel({
               : t,
           ),
         );
-        toast.success('Aufgabe abgeschlossen');
+        toast.success(t('rental.service.toast.taskCompleted'));
         setCompleteDialogOpen(false);
         setCompleteDetail(null);
         onReload?.();
@@ -185,7 +185,7 @@ export function ServiceOverviewPanel({
         setCompleteLoading(false);
       }
     },
-    [orgId, completeDetail, onReload],
+    [orgId, completeDetail, onReload, t],
   );
 
   const selectedVehicle = useMemo(() => {

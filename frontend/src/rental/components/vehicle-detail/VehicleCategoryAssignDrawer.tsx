@@ -160,7 +160,7 @@ export function VehicleCategoryAssignDrawer({
 
       );
 
-      toast.success('Category assigned');
+      toast.success(t('rental.vehicleAssignments.toast.categoryAssigned'));
 
       onAssigned();
 

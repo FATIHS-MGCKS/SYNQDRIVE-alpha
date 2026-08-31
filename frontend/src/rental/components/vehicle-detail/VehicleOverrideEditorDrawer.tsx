@@ -74,7 +74,7 @@ export function VehicleOverrideEditorDrawer({
             withExpectedVersion({}, overrideVersion),
           );
         }
-        toast.success('Overrides cleared — using inherited rules');
+        toast.success(t('rental.vehicleAssignments.toast.overridesCleared'));
         onSaved();
         onOpenChange(false);
       } catch (e: unknown) {
@@ -107,7 +107,7 @@ export function VehicleOverrideEditorDrawer({
         `/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/overrides`,
         withExpectedVersion(payload, overrideVersion),
       );
-      toast.success('Vehicle overrides saved');
+      toast.success(t('rental.vehicleAssignments.toast.overridesSaved'));
       onSaved();
       onOpenChange(false);
     } catch (e: unknown) {

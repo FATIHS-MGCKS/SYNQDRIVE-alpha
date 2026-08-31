@@ -135,11 +135,11 @@ export function VehicleTasksView({
       setRows(Array.isArray(res) ? res : []);
     } catch {
       setRows([]);
-      setError('Aufgaben für dieses Fahrzeug konnten nicht geladen werden.');
+      setError(t('rental.vehicleTasks.error.loadFailed'));
     } finally {
       if (!opts?.silent) setLoading(false);
     }
-  }, [orgId, vehicle?.id]);
+  }, [orgId, t, vehicle?.id]);
 
   useEffect(() => {
     void loadTasks();

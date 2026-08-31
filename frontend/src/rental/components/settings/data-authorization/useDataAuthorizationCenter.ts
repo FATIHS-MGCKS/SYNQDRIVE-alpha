@@ -7,6 +7,7 @@ import {
   type DataAuthorizationDto,
   type DataAuthorizationStatsDto,
 } from '../../../../lib/api';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { DataAuthorizationFilters } from './data-authorization.utils';
 import { serverListParams } from './data-authorization.utils';
 
@@ -19,6 +20,7 @@ function extractErrorMessage(err: unknown): string {
 }
 
 export function useDataAuthorizationCenter(orgId: string | null) {
+  const { t } = useLanguage();
   const [authorizations, setAuthorizations] = useState<DataAuthorizationDto[]>([]);
   const [stats, setStats] = useState<DataAuthorizationStatsDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,13 +48,13 @@ export function useDataAuthorizationCenter(orgId: string | null) {
       } catch (err) {
         setAuthorizations([]);
         setStats(null);
-        setError('Datenfreigaben konnten nicht geladen werden.');
+        setError(t('settings.dataAuth.error.loadFailed'));
         toast.error(extractErrorMessage(err));
       } finally {
         setLoading(false);
       }
     },
-    [orgId],
+    [orgId, t],
   );
 
   const reload = useCallback(async () => {
@@ -69,7 +71,7 @@ export function useDataAuthorizationCenter(orgId: string | null) {
           id,
           notes ? { notes } : undefined,
         );
-        toast.success('Freigabe genehmigt');
+        toast.success(t('settings.dataAuth.toast.approved'));
         await reload();
         return updated;
       } catch (err) {
@@ -79,7 +81,7 @@ export function useDataAuthorizationCenter(orgId: string | null) {
         setActionId(null);
       }
     },
-    [orgId, reload],
+    [orgId, reload, t],
   );
 
   const revoke = useCallback(
@@ -92,7 +94,7 @@ export function useDataAuthorizationCenter(orgId: string | null) {
           id,
           reason ? { reason } : undefined,
         );
-        toast.success('Freigabe widerrufen');
+        toast.success(t('settings.dataAuth.toast.revoked'));
         await reload();
         return updated;
       } catch (err) {
@@ -102,7 +104,7 @@ export function useDataAuthorizationCenter(orgId: string | null) {
         setActionId(null);
       }
     },
-    [orgId, reload],
+    [orgId, reload, t],
   );
 
   const syncSystem = useCallback(async () => {
@@ -111,7 +113,7 @@ export function useDataAuthorizationCenter(orgId: string | null) {
     try {
       await api.dataAuthorizations.syncSystem(orgId);
       await reload();
-      toast.success('Systemfreigaben synchronisiert');
+      toast.success(t('settings.dataAuth.toast.synced'));
       return true;
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -119,7 +121,7 @@ export function useDataAuthorizationCenter(orgId: string | null) {
     } finally {
       setActionId(null);
     }
-  }, [orgId, reload]);
+  }, [orgId, reload, t]);
 
   const create = useCallback(
     async (payload: CreateDataAuthorizationPayload) => {
@@ -127,7 +129,7 @@ export function useDataAuthorizationCenter(orgId: string | null) {
       setActionId('create');
       try {
         const created = await api.dataAuthorizations.create(orgId, payload);
-        toast.success('Freigabe erstellt — Status: Ausstehend');
+        toast.success(t('settings.dataAuth.toast.createdPending'));
         await reload();
         return created;
       } catch (err) {
@@ -137,7 +139,7 @@ export function useDataAuthorizationCenter(orgId: string | null) {
         setActionId(null);
       }
     },
-    [orgId, reload],
+    [orgId, reload, t],
   );
 
   const loadAuditLog = useCallback(
@@ -146,11 +148,11 @@ export function useDataAuthorizationCenter(orgId: string | null) {
       try {
         return await api.dataAuthorizations.auditLog(orgId, limit);
       } catch (err) {
-        toast.error('Audit-Verlauf konnte nicht geladen werden.');
+        toast.error(t('settings.dataAuth.error.auditLoadFailed'));
         return [];
       }
     },
-    [orgId],
+    [orgId, t],
   );
 
   const fetchById = useCallback(

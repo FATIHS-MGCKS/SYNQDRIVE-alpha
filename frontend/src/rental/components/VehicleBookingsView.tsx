@@ -155,11 +155,11 @@ export function VehicleBookingsView({
       setBookings(parsed);
     } catch {
       setBookings([]);
-      setError('Buchungen für dieses Fahrzeug konnten nicht geladen werden.');
+      setError(t('rental.vehicleBookings.error.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [horizon.fromIso, horizon.toIso, orgId, vehicle?.id]);
+  }, [horizon.fromIso, horizon.toIso, orgId, t, vehicle?.id]);
 
   const handleRangeModeChange = useCallback((mode: TimelineRangeMode) => {
     setRangeMode(mode);

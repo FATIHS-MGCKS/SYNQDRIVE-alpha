@@ -139,9 +139,9 @@ export function VoiceConversationsPanel({
         },
         sourceKey: 'VOICE_ASSISTANT',
       });
-      toast.success('Task created from call');
+      toast.success(t('voice.conversations.toast.taskCreated'));
     } catch (err) {
-      toast.error('Could not create task', { description: getErrorMessage(err) });
+      toast.error(t('voice.conversations.toast.taskCreateFailed'), { description: getErrorMessage(err) });
     } finally {
       setCreatingTaskId(null);
     }
