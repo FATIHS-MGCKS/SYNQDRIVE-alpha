@@ -697,7 +697,7 @@ Deliverable: `docs/audits/dimo-phase-2a-current-query-surface-audit-2026-08-31.m
 - Provider schema claims limited to **CURRENT_SYNQDRIVE_REFERENCED_DIMO_SURFACE** + `CONFIRMED_FROM_CODE`; no current DIMO introspection artifact verified in this audit.
 - Four vehicle inventory files **PRESENT_ON_MAIN_AFTER_MERGE** (PR #1458); Phase 2B synthesis complete and reproducible from `main`.
 
-**Phase 2 overall:** IN_PROGRESS (2A+2B+2C+2D.0+2D done; **2E NEXT**; 2F–2I not started). Validation uses **profile-scoped gates** (§1.6.8a).
+**Phase 2 overall:** IN_PROGRESS (2A+2B+2C+2D.0+2D+**2E** done; **2F NEXT**; 2F.1–2I not started). Validation uses **profile-scoped gates** (§1.6.8a).
 
 ### 2B Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2b-four-vehicle-capability-gap-matrix-2026-08-31.md` (+ four vehicle inventory source docs in same PR)
@@ -763,8 +763,22 @@ Deliverable: `docs/audits/dimo-phase-2d-signal-value-physics-matrix-2026-08-31.m
 - **Phase 2E handoff groups:** throttle/TPS · gear parallel fields · brake episode paths · wheel speed hierarchy · tire pressure vs warning · battery/regen · temperatures
 - **Phase 3A remains `GATED_ON_LTE_R1_MANIFEST`** — 2D complete is prerequisite **1 of 4** for LTE_R1 manifest path (still requires 2E + 2F + 2F.1)
 
-### 2E Status — NEXT
-**DIMO REDUNDANCY / CANONICALIZATION** — resolve parallel-signal groups identified in Phase 2D (§34 handoff). No production changes.
+### 2E Status — DONE (2026-08-31)
+Deliverable: `docs/audits/dimo-phase-2e-redundancy-canonicalization-2026-08-31.md`
+
+**Exit criteria met (documentation analysis):** Phase-2D handoff groups classified; L0–L4 layer model; **38** canonical signal keys; **16** redundancy groups; relationship + source-authority taxonomies; brake/accel/cornering evidence hierarchies; **`PHYSICAL_EPISODE_IDENTITY`** (8 episode types); episode evidence/dedup model; fallback/precedence matrices; provenance contract; acquisition lineage; double-counting + cross-domain rules; legacy impact map; Phase 2F handoff; **24** decisions — **no production changes**.
+
+**Material Phase 2E findings:**
+- **Canonical signals:** **38** `CAN_*` keys · **16** redundancy groups (`D2E-R01`…`R16`)
+- **Pending equivalences:** **5** (throttle pair, CurrentGear↔ActualGear, torque pair, etc.) — **`PROVISIONAL_REQUIRES_RUNTIME_VALIDATION`**
+- **`NO_VALID_FALLBACK` families:** **6** (hydraulic pressure, yaw, wheel speeds, tire pressure group, battery regen HF, native cornering on Smart5)
+- **Physical episode types:** **8** — braking multichannel → **1** canonical episode (not 7 offenses)
+- **Major double-counting risks:** LTE_R1 native `DrivingEvent` + HF reconstructed/abuse on same trip · brake C1/C2 must not double-weight
+- **Throttle rule preserved:** `THROTTLE_POSITION != ACCELERATOR_PEDAL_POSITION`
+- **Phase 3A remains `GATED_ON_LTE_R1_MANIFEST`** — 2E complete is prerequisite **2 of 4** (still requires 2F + 2F.1)
+
+### 2F Status — NEXT
+**DIMO CAPABILITY-FIRST ACQUISITION** — design connection-profile-aware query profiles using Phase 2E canonical registry + precedence + eligibility rules. No implementation until approved.
 
 ### Status (Phase 2 overall)
 **IN_PROGRESS**
@@ -776,8 +790,8 @@ Deliverable: `docs/audits/dimo-phase-2d-signal-value-physics-matrix-2026-08-31.m
 | 2C | DONE |
 | 2D.0 | DONE |
 | **2D** | **DONE** |
-| **2E** | **NEXT** |
-| 2F | NOT_STARTED |
+| **2E** | **DONE** |
+| **2F** | **NEXT** |
 | **2F.1** LTE_R1 manifest | **NOT_STARTED** |
 | 2G | NOT_STARTED |
 | 2H | NOT_STARTED |
@@ -1137,8 +1151,8 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Phase 2C schema expansion audit | DONE | `dimo-phase-2c-current-schema-signal-expansion-audit-2026-08-31.md` — 117 schema fields |
 | Phase 2D.0 connection/powertrain stratification baseline | DONE | Master Plan §1.6 — taxonomy frozen (architecture only) |
 | Phase 2D signal value/physics matrix | DONE | `dimo-phase-2d-signal-value-physics-matrix-2026-08-31.md` — Tier A: **8** · cadence-critical: **6** · latency-critical: **2** · `TARGET_LE_1S_EXACT_COUNT=8` · QA pass complete |
-| Phase 2E DIMO redundancy / canonicalization | NEXT | Parallel-signal groups from Phase 2D §34 |
-| Phase 2F DIMO capability-first acquisition | NOT_STARTED | Connection-profile-aware query profiles |
+| Phase 2E DIMO redundancy / canonicalization | DONE | `dimo-phase-2e-redundancy-canonicalization-2026-08-31.md` — **38** canonical keys · **16** groups · **8** episode types |
+| Phase 2F DIMO capability-first acquisition | NEXT | Connection-profile-aware query profiles |
 | Phase 2F.1 DIMO LTE_R1 reference manifest | NOT_STARTED | Ungates Phase 3A only |
 | Phase 2G DIMO connection-variant audit | NOT_STARTED | Smart5 + Tesla Direct vs LTE R1; profile manifests |
 | Phase 2H High Mobility provider/OEM audit | NOT_STARTED | No DIMO assumptions; does not block LTE R1 |
@@ -1170,8 +1184,8 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 5. ~~Execute Phase 2C: CURRENT DIMO SIGNAL/SCHEMA EXPANSION AUDIT.~~ **Done** — see Phase 2C audit (`117` schema fields; introspection authority).
 6. ~~Execute Phase 2D.0: Connection & Powertrain Stratification Baseline.~~ **Done** — see Master Plan §1.6 (architecture amendment 2026-08-31).
 7. ~~Execute Phase 2D: Signal value / physics matrix.~~ **Done** — see Phase 2D audit (`20` main-track candidates scored).
-8. **Execute Phase 2E:** DIMO redundancy / canonicalization (Phase 2D handoff groups).
-9. **Execute Phase 2F:** DIMO capability-first acquisition strategy.
+8. ~~Execute Phase 2E: DIMO redundancy / canonicalization (Phase 2D handoff groups).~~ **Done** — see Phase 2E audit (`38` canonical keys, `PHYSICAL_EPISODE_IDENTITY`).
+9. **Execute Phase 2F:** DIMO capability-first acquisition strategy (Phase 2E handoff).
 10. **Execute Phase 2F.1:** `DIMO_LTE_R1` reference manifest → **ungate Phase 3A** LTE R1 Reference Program.
 11. **Execute Phase 3A** (LTE R1) — primary validation/calibration track. **Does not wait** for steps 12–14.
 12. **Execute Phase 2G:** Smart5 + Tesla Direct connection-variant audits + profile manifests → ungate 3B/3C when ready.
