@@ -45,6 +45,250 @@ A distance-weighted 30-day mean is useful but insufficient. Future high-timefram
 - event rate,
 - cumulative component load/wear dose,
 - data-quality evolution.
+### 1.6 Connection Profile and Powertrain Profile Are Independent First-Class Axes
+SynqDrive Driving Intelligence must model two **independent stratification axes**:
+
+- **A. CONNECTION / ACQUISITION PROFILE** — how telemetry is acquired.
+- **B. POWERTRAIN / ENERGY PROFILE** — how the vehicle converts and stores energy.
+
+These axes must **not** be conflated. A single **Provider** label alone is insufficient for capability, provenance, or validation planning.
+
+#### 1.6.1 Connection / Acquisition Profiles
+Canonical connection profiles (minimum set):
+
+**`DIMO_LTE_R1`**
+
+| Attribute | Value |
+|-----------|-------|
+| **Provider** | DIMO |
+| **Connection class** | Hardware / OBD dongle (LTE R1) |
+| **Current project role** | **PRIMARY DIMO REFERENCE PROFILE** |
+
+Important characteristics:
+
+- Vehicle telemetry through LTE R1 OBD hardware.
+- DIMO native behavior events **may** be available (e.g. harsh acceleration/braking/cornering depending on vehicle/provider).
+- Current four primary DIMO audit vehicles use this connection profile per project-owner baseline.
+- Primary Flight Recorder / ground-truth reference track.
+
+Do **not** assume every event exists on every vehicle. Capability remains vehicle-specific.
+
+**`DIMO_SMART5`**
+
+| Attribute | Value |
+|-----------|-------|
+| **Provider** | DIMO |
+| **Connection class** | Hardwired in-vehicle telematics hardware |
+
+Important characteristics:
+
+- Signal surface expected to be closely related to DIMO LTE R1.
+- **NO native DIMO behavior-event channel** per current project baseline — reconstructed detectors must **not** depend on native events.
+- Two digital outputs available for operational/control use (e.g. relay/ignition control).
+
+**Control-plane rule:** Digital outputs are **CONTROL-PLANE** capabilities. They are **NOT** driving-score inputs.
+
+Smart5 must **not** receive worse Driver Quality / Vehicle Load scores merely because native behavior events are unavailable. Native-event absence must instead affect **source provenance**, **detector strategy**, and **confidence / assessability** until reconstructed-event equivalence is validated.
+
+Smart5 signal/cadence equivalence with LTE R1 must later be **empirically verified** (Phase 2G).
+
+**`DIMO_TESLA_DIRECT`**
+
+| Attribute | Value |
+|-----------|-------|
+| **Provider** | DIMO |
+| **Connection class** | Software-only direct Tesla integration |
+
+Important characteristics:
+
+- No external DIMO hardware.
+- Signal availability/cadence must be audited separately.
+- Do **not** inherit LTE R1 or Smart5 signal assumptions.
+- Native-event availability unknown until tested.
+- Historical/latest/HF behavior must be independently measured.
+- A real Tesla is available in the project fleet for the later test workstream.
+
+This is a **separate DIMO acquisition profile**, not a variant of LTE R1.
+
+**`HIGH_MOBILITY_API_MQTT`**
+
+| Attribute | Value |
+|-----------|-------|
+| **Provider** | High Mobility |
+| **Connection class** | Software-only OEM/cloud integration |
+| **Transport** | API / MQTT as applicable |
+
+Important characteristics:
+
+- No aftermarket vehicle hardware.
+- Highly manufacturer/model dependent.
+- Signal availability differs by OEM.
+- Update intervals/cadence differ strongly by OEM/signal.
+- Permission/scopes may affect availability.
+- Latest/state/event behavior may differ from DIMO.
+- Must **NOT** inherit DIMO assumptions.
+
+High Mobility requires its **own provider audit** (Phase 2H) before production Driving Intelligence assumptions are made.
+
+#### 1.6.2 Provider ≠ Connection Profile
+**Provider alone is insufficient.**
+
+Example — **Provider = DIMO** can mean:
+
+- `DIMO_LTE_R1`
+- `DIMO_SMART5`
+- `DIMO_TESLA_DIRECT`
+
+Future SynqDrive integration configuration must identify at minimum:
+
+- `provider`
+- `connectionProfile`
+
+Do **not** treat all DIMO vehicles as one homogeneous acquisition profile.
+
+#### 1.6.3 Powertrain / Energy Profiles
+First-class powertrain profiles:
+
+| Profile | Status |
+|---------|--------|
+| `ICE_GASOLINE` | Required for current validation program |
+| `ICE_DIESEL` | Required for current validation program |
+| `PHEV` | Required for current validation program |
+| `BEV` | Required for current validation program |
+| `HEV` | Optional reserve — not required for current validation program |
+
+Powertrain profile is **independent** of connection profile. Only valid real-world combinations are instantiated, e.g.:
+
+- `DIMO_LTE_R1` + `ICE_GASOLINE`
+- `DIMO_LTE_R1` + `ICE_DIESEL`
+- `DIMO_SMART5` + `ICE_DIESEL`
+- `DIMO_TESLA_DIRECT` + `BEV`
+- `HIGH_MOBILITY_API_MQTT` + `PHEV`
+- `HIGH_MOBILITY_API_MQTT` + `BEV`
+
+#### 1.6.4 Why Powertrain Stratification Is Required
+The four independent Driving Intelligence **output domains** remain:
+
+- **A. Driver Quality**
+- **B. Vehicle Load**
+- **C. Brake Physics / Brake Load**
+- **D. Tire Dynamic Load**
+
+Plus orthogonal:
+
+- **E. Data Confidence / Assessability**
+
+But their **physical inputs differ by powertrain**.
+
+**`ICE_GASOLINE` / `ICE_DIESEL`** may involve: engine RPM, engine load, throttle, torque, engine braking, transmission state, coolant/oil/transmission temperature, fuel/powertrain load.
+
+**`PHEV`** may additionally involve: traction battery power, electrical propulsion, regen, blended friction/regenerative braking, ICE-on / ICE-off state.
+
+**`BEV`** may involve: traction battery power, motor/electrical load, regen, thermal state, friction-vs-regenerative braking split.
+
+Do **not** simply apply static EV multipliers when direct/reconstructed regen evidence becomes available in the future.
+
+#### 1.6.5 Provider-Neutral Canonical Intelligence
+**Connection Profile determines:**
+
+- acquisition method,
+- available signals,
+- timestamps,
+- cadence,
+- provider events,
+- provenance,
+- detector eligibility,
+- confidence ceiling.
+
+**Connection Profile should NOT directly determine:**
+
+- whether a driver is “good” or “bad”,
+- arbitrary score offsets,
+- different semantic score directions.
+
+**Future canonical architecture:**
+
+```
+Provider / Connection Profile
+  → Provider Adapter
+  → Canonical Signals
+  → Driving Reconstruction
+  → Canonical Behaviour / Physics Features
+  → independent outputs:
+       Driver Quality
+       Vehicle Load
+       Brake Load
+       Tire Load
+  + Data Confidence
+```
+
+Where a signal is missing: use validated fallback/proxy if available; otherwise lower assessability/confidence. **Do not manufacture equivalent precision.**
+
+#### 1.6.6 Scoring / Physics Implications
+- **Driver Quality** should remain as provider-neutral as evidence permits.
+- **Vehicle Load** requires powertrain-aware physical subcomponents.
+- **Brake Physics** must distinguish ICE/PHEV/BEV, engine braking, regenerative braking, and friction braking where evidence supports it.
+- **Tire Dynamic Load** must remain powertrain-aware for mass, driven axle, torque delivery, regen/braking distribution, and vehicle-specific tire configuration — **without** allowing connection method itself to bias the score.
+
+**LOW CONFIDENCE ≠ BAD DRIVING** · **LOW CONFIDENCE ≠ LOW/HIGH VEHICLE LOAD**
+
+#### 1.6.7 SynqDrive Integration Model Requirement (future — not implemented in this amendment)
+When a vehicle/integration is onboarded, SynqDrive must know which acquisition/connection method is active.
+
+At minimum persist or derive:
+
+- `provider`
+- `connectionProfile`
+
+And maintain separately:
+
+- `powertrainProfile`
+
+**Do not implement this in documentation-only tasks.** Later implementation design must audit the existing integration schema before adding new fields.
+
+#### 1.6.8 Validation Test Matrix Concept
+Canonical matrix: **Connection Profile × Powertrain Profile × Vehicle**
+
+Each real tested combination gets an evidence status:
+
+| Status | Meaning |
+|--------|---------|
+| `UNTESTED` | No runtime evidence |
+| `SCHEMA_ONLY` | Provider/schema documentation only |
+| `VEHICLE_CAPABILITY_CONFIRMED` | Signals observed on reference vehicle |
+| `CADENCE_CONFIRMED` | Effective cadence measured |
+| `GROUND_TRUTH_VALIDATED` | Reference-drive alignment completed |
+| `CALIBRATED` | Scoring/detector calibration anchored |
+
+This prevents SynqDrive from treating an untested connection/powertrain combination as fully validated.
+
+All reference-drive / replay / calibration work must tag:
+
+- `connectionProfile`
+- `powertrainProfile`
+- `vehicle`
+- `provider`
+- `hardwareProfile` (if applicable)
+- `modelVersion`
+
+Required current powertrain test classes: `ICE_GASOLINE`, `ICE_DIESEL`, `PHEV`, `BEV`.
+
+If a physical test vehicle for a class is unavailable, mark that profile **`PENDING_REFERENCE_VEHICLE`**. Do **not** silently generalize calibration from another powertrain.
+
+#### 1.6.9 Critical Terminology (do not conflate)
+Use consistently and distinctly:
+
+| Term | Meaning |
+|------|---------|
+| **Provider** | Telemetry platform/vendor (e.g. DIMO, High Mobility) |
+| **Connection Profile** | Acquisition path within a provider (e.g. `DIMO_LTE_R1`) |
+| **Hardware Profile** | Physical device/installation class where applicable |
+| **Powertrain Profile** | Energy conversion class (e.g. `ICE_GASOLINE`, `BEV`) |
+| **Vehicle Capability** | What a specific vehicle actually publishes |
+| **Signal Capability** | Which signals are available for a vehicle/profile |
+| **Cadence Capability** | Effective update frequency for signals |
+| **Native Event Capability** | Provider-classified behavior events availability |
+| **Data Confidence** | Orthogonal assessability/reliability — not a driving-quality score |
 ---
 ## 2. Current-State Findings Already Established
 ### 2.1 Current Driver Score Is Not Driver Quality
@@ -261,6 +505,19 @@ The audit must actively look for newly available signals relevant to:
 - location/heading,
 - trip/segment context.
 This list is a search framework, not an assumption that DIMO exposes every item on every vehicle.
+### 2D.0. Connection & Powertrain Stratification Baseline
+**Goal:** Freeze the provider/connection/powertrain taxonomy before Signal Value / Physics evaluation.
+
+**Required deliverables:**
+- canonical connection-profile taxonomy,
+- canonical powertrain taxonomy,
+- provider vs connection distinction,
+- capability/provenance rules,
+- validation matrix structure,
+- test-profile matrix,
+- Flight Recorder profile dimensions.
+
+**Status:** **DONE** (2026-08-31) — architectural baseline established in Master Plan §1.6 via documentation amendment. Runtime capability statements remain subject to provider/vehicle testing.
 ### 2D. Value/Potential Matrix
 For every candidate signal, grade its incremental value for:
 - Driver Quality,
@@ -277,34 +534,74 @@ Also grade:
 - redundancy/correlation,
 - query/storage cost,
 - privacy sensitivity if applicable.
-### 2E. Signal Redundancy and Canonicalization
+### 2E. DIMO Redundancy / Canonicalization
 Where multiple fields represent similar physical concepts (e.g. OBD throttle vs engine TPS), determine:
 - preferred canonical source,
 - fallback hierarchy,
 - cross-signal consistency checks,
 - whether both add information or merely duplicate a penalty.
-### 2F. Capability-First Query Strategy
-Produce a proposal for per-vehicle/per-provider query profiles rather than a single fleet-wide hard-coded assumption.
+Scope: primarily DIMO connection profiles; do not assume cross-provider equivalence without proof.
+### 2F. DIMO Capability-First Acquisition Strategy
+Produce a proposal for per-vehicle/per-provider **connection-profile-aware** query profiles rather than a single fleet-wide hard-coded assumption.
 A future profile should be able to express:
 - vehicle capability manifest,
+- connection profile (`DIMO_LTE_R1`, `DIMO_SMART5`, `DIMO_TESLA_DIRECT`),
 - signal acquisition tier,
 - required/optional signals,
 - detector eligibility,
 - expected cadence,
 - fallback source,
 - confidence ceiling.
-### 2G. Phase Deliverables
-1. Current Snapshot Query Inventory.
-2. Current Active-Trip Live Poll Inventory.
-3. Current HF/Time-Series Query Inventory.
-4. Native Event/Segment Inventory.
-5. Four-Vehicle 2026-08-30 Capability Matrix.
-6. `available but unused` gap matrix.
-7. prioritized signal expansion proposal.
-8. query/storage/cost impact assessment.
-9. proposed Flight Recorder signal manifest.
-### 2H. Gate to Phase 3
-**Do not design/freeze the Flight Recorder until Phase 2 is complete.**
+**No implementation until approved.**
+### 2G. DIMO Connection Variant Audit
+Explicitly audit **`DIMO_SMART5`** and **`DIMO_TESLA_DIRECT`** against **`DIMO_LTE_R1`** (primary DIMO reference baseline):
+- signal surface,
+- actual values,
+- cadence,
+- timestamp behavior,
+- historical availability,
+- provider events / native-event capability,
+- detector implications,
+- confidence / assessability implications.
+LTE R1 remains the **primary DIMO reference baseline**.
+### 2H. High Mobility Provider Surface / OEM Capability Audit
+Perform for **High Mobility** the same class of work already done for DIMO:
+- current API/MQTT acquisition surface,
+- signal catalog,
+- event/state surfaces,
+- timestamp semantics,
+- effective cadence,
+- retention,
+- OEM/model variance,
+- permission/scope variance,
+- vehicle-specific inventories,
+- available-but-unused signals,
+- query/subscription scaling,
+- persistence,
+- downstream consumers,
+- capability matrix.
+**No DIMO assumptions may be reused without proof.**
+### 2I. Cross-Provider Canonical Signal Contract & Flight Recorder Manifests
+Unify **`DIMO_LTE_R1`**, **`DIMO_SMART5`**, **`DIMO_TESLA_DIRECT`**, and **High Mobility** into provider-neutral canonical signal/feature contracts.
+
+Produce provider-specific Flight Recorder manifests.
+
+**Phase 2 deliverables (consolidated):**
+1. Current Snapshot Query Inventory. *(2A — DONE)*
+2. Current Active-Trip Live Poll Inventory. *(2A — DONE)*
+3. Current HF/Time-Series Query Inventory. *(2A — DONE)*
+4. Native Event/Segment Inventory. *(2A — DONE)*
+5. Four-Vehicle 2026-08-30 Capability Matrix. *(2B — DONE)*
+6. Current schema expansion audit. *(2C — DONE)*
+7. Signal value/physics matrix. *(2D — NEXT)*
+8. Connection/powertrain stratification baseline. *(2D.0 — DONE via this amendment)*
+9. DIMO canonicalization + capability-first acquisition proposals. *(2E–2F)*
+10. DIMO connection-variant + High Mobility audits. *(2G–2H)*
+11. Cross-provider canonical contracts + Flight Recorder manifests. *(2I)*
+12. Prioritized query expansion proposal + query/storage/cost impact assessment.
+### 2J. Gate to Phase 3
+**Do not design/freeze the Flight Recorder until Phase 2I manifests exist for the target test profile.**
+Phase 3 remains **GATED** until the required provider manifest for a test profile is defined.
 ### 2A Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2a-current-query-surface-audit-2026-08-31.md`
 
@@ -326,7 +623,7 @@ Deliverable: `docs/audits/dimo-phase-2a-current-query-surface-audit-2026-08-31.m
 - Provider schema claims limited to **CURRENT_SYNQDRIVE_REFERENCED_DIMO_SURFACE** + `CONFIRMED_FROM_CODE`; no current DIMO introspection artifact verified in this audit.
 - Four vehicle inventory files **PRESENT_ON_MAIN_AFTER_MERGE** (PR #1458); Phase 2B synthesis complete and reproducible from `main`.
 
-**Phase 2 overall:** IN_PROGRESS (2A+2B+2C done; **2D NEXT** = signal value/physics matrix; 2E–2G not started). **Phase 3 remains gated.**
+**Phase 2 overall:** IN_PROGRESS (2A+2B+2C+2D.0 done; **2D NEXT** = signal value/physics matrix; 2E–2I not started). **Phase 3 remains gated.**
 
 ### 2B Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2b-four-vehicle-capability-gap-matrix-2026-08-31.md` (+ four vehicle inventory source docs in same PR)
@@ -359,19 +656,84 @@ Deliverable: `docs/audits/dimo-phase-2c-current-schema-signal-expansion-audit-20
 - SDK **1.6.0** vs **1.7.0** — no embedded schema types; introspection authoritative.
 - **Output-domain schema ceiling:** Driver Quality, Vehicle Load, Brake Physics / Brake Load, Tire Dynamic Load each **MODERATE** at schema layer — **LOWER** on four-vehicle layer for brake/tire/driver dynamics. Four **independent** output domains; **no** cross-domain weighting or global composite defined. Data Confidence remains **orthogonal** (Master Plan §1.1).
 
+### 2D.0 Status — DONE (2026-08-31)
+**Connection & Powertrain Stratification Baseline** — architectural taxonomy frozen via this Master Plan amendment (§1.6; documentation-only; no runtime validation yet).
+
+**Goal:** Freeze provider/connection/powertrain taxonomy before Signal Value / Physics evaluation.
+
+**Deliverables (this amendment):**
+- Canonical connection-profile taxonomy: `DIMO_LTE_R1`, `DIMO_SMART5`, `DIMO_TESLA_DIRECT`, `HIGH_MOBILITY_API_MQTT`
+- Canonical powertrain taxonomy: `ICE_GASOLINE`, `ICE_DIESEL`, `PHEV`, `BEV` (+ optional `HEV` reserve)
+- Provider vs connection-profile distinction (§1.6.2)
+- Capability/provenance rules + provider-neutral canonical intelligence pipeline (§1.6.5)
+- Validation matrix structure + evidence statuses (§1.6.8)
+- Test-profile matrix dimensions (`connectionProfile` × `powertrainProfile` × `vehicle`)
+- Flight Recorder profile dimensions for future Phase 3A–3D tracks
+
+**Important:** Every runtime capability statement remains subject to provider/vehicle testing. This phase establishes **architecture**, not measured equivalence.
+
 ### 2D Status — NEXT
 **SIGNAL VALUE / PHYSICS MATRIX** — for each of Phase 2C’s **20 unique main-track candidates** (+ secondary assessability/context + commercial axle RP-37 track), grade incremental value **per dimension**: Driver Quality · Vehicle Load · Brake Physics / Brake Load · Tire Load · validation/assessability · cadence · coverage · redundancy · cost. **No** global mega-score. **No** production changes.
 
 ### Status (Phase 2 overall)
-**IN_PROGRESS — 2A DONE; 2B DONE; 2C DONE; 2D NEXT (value/physics); 2E Canonicalization; 2F Capability-first profiles; 2G Phase-2 closure + Flight Recorder manifest**
+**IN_PROGRESS — 2A DONE; 2B DONE; 2C DONE; 2D.0 DONE; 2D NEXT (value/physics); 2E DIMO canonicalization; 2F DIMO capability-first acquisition; 2G DIMO connection-variant audit; 2H High Mobility audit; 2I cross-provider manifests**
 The older July DIMO capability audit is HISTORICAL_EVIDENCE only.
 ---
 ## Phase 3 — Telemetry Flight Recorder
 **Goal:** capture raw, timestamped evidence for the signal set selected in Phase 2 without changing scoring behavior.
+
+**Gate:** Phase 3 remains **GATED** until Phase 2I defines the required provider-specific Flight Recorder manifest for the target test profile.
+
+**Provider-profile validation tracks:**
+
+### Phase 3A — DIMO LTE_R1 Reference Program
+**PRIMARY** calibration/reference workstream.
+
+Use real LTE R1 vehicles for:
+- raw telemetry capture,
+- cluster/video synchronization,
+- cadence measurement,
+- event reconstruction,
+- native-event comparison,
+- sampling invariance.
+
+Current four primary DIMO audit vehicles align with this profile per project baseline.
+
+### Phase 3B — DIMO Tesla Direct Reference Program
+Use real Tesla direct connection (`DIMO_TESLA_DIRECT` + `BEV`).
+
+Measure independently:
+- signal set,
+- cadence,
+- latency,
+- historical behavior,
+- EV/regen observability,
+- reconstruction quality.
+
+Do **not** inherit LTE R1 assumptions.
+
+### Phase 3C — DIMO Smart5 Compatibility Program
+When a Smart5-equipped reference vehicle is available (`DIMO_SMART5`):
+
+Validate:
+- signal equivalence/divergence vs LTE R1,
+- cadence,
+- timestamp behavior,
+- absence of native events,
+- reconstructed-event performance,
+- confidence/assessability impact (not score penalty for missing native events).
+
+### Phase 3D — High Mobility OEM-specific Reference Program
+Run only after Phase 2H.
+
+Validation must be **OEM/model-specific** where capabilities differ. No DIMO assumptions without proof.
+
 **Phase 1 input (F-14):** Postgres does not store original DIMO HF time series; ClickHouse HF mirror is optional/partial. Flight Recorder must close the kinematic replay gap for Phase 6 sampling-invariance and Phase 13 governance.
 ### Recorder requirements
 For each observation retain, where available:
 - vehicle/provider identity,
+- **connectionProfile**,
+- **powertrainProfile**,
 - trip/run id,
 - signal name,
 - provider timestamp,
@@ -405,7 +767,7 @@ Compute at minimum:
 ### Exit criteria
 A measured, per-vehicle/per-signal cadence and reliability report exists and can be used to design detectors.
 ### Status
-**NOT STARTED — waiting for Phase 2 gate**
+**NOT STARTED — GATED on Phase 2I provider manifest for target test profile**
 ---
 ## Phase 4 — Instrumented Reference Drive
 **Goal:** create an external reference timeline against which SynqDrive telemetry and detectors can be measured.
@@ -657,9 +1019,15 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Four-vehicle capability matrix | DONE | Phase 2B deliverable (70 rows) |
 | Available-but-unused DIMO signal matrix | DONE | Phase 2B §8 — 15 signals (Phase-2A driving acquisition) |
 | Phase 2C schema expansion audit | DONE | `dimo-phase-2c-current-schema-signal-expansion-audit-2026-08-31.md` — 117 schema fields |
+| Phase 2D.0 connection/powertrain stratification baseline | DONE | Master Plan §1.6 — taxonomy frozen (architecture only) |
 | Phase 2D signal value/physics matrix | NEXT | Grade **20** unique Phase-2C candidates per output dimension + assessability (no global composite) |
+| Phase 2E DIMO redundancy / canonicalization | NOT_STARTED | Parallel-signal semantics |
+| Phase 2F DIMO capability-first acquisition | NOT_STARTED | Connection-profile-aware query profiles |
+| Phase 2G DIMO connection-variant audit | NOT_STARTED | Smart5 + Tesla Direct vs LTE R1 |
+| Phase 2H High Mobility provider/OEM audit | NOT_STARTED | No DIMO assumptions without proof |
+| Phase 2I cross-provider manifests | NOT_STARTED | Canonical contracts + Flight Recorder manifests |
 | Prioritized query expansion proposal | NOT_STARTED | Phase 2D+ |
-| Flight Recorder manifest | NOT_STARTED | Phase 2 exit deliverable |
+| Flight Recorder manifest | NOT_STARTED | Phase 2I deliverable; gated |
 | Flight Recorder implementation | NOT_STARTED | gated on Phase 2 |
 | Instrumented reference drive | NOT_STARTED | gated on Flight Recorder |
 | Ground-truth synchronization | NOT_STARTED | Phase 5 |
@@ -680,8 +1048,9 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 3. ~~Execute Phase 2A against current code.~~ **Done** — see Phase 2A audit.
 4. ~~Execute Phase 2B: merge Phase 2A with four vehicle capability inventories.~~ **Done** — see Phase 2B audit.
 5. ~~Execute Phase 2C: CURRENT DIMO SIGNAL/SCHEMA EXPANSION AUDIT.~~ **Done** — see Phase 2C audit (`117` schema fields; introspection authority).
-6. **Execute Phase 2D:** Signal value / physics matrix (score Phase 2C candidate set).
-7. Phase 2E–2G: canonicalization, capability-first profiles, Flight Recorder manifest — then ungate Phase 3.
+6. ~~Execute Phase 2D.0: Connection & Powertrain Stratification Baseline.~~ **Done** — see Master Plan §1.6 (architecture amendment 2026-08-31).
+7. **Execute Phase 2D:** Signal value / physics matrix (score Phase 2C candidate set per output dimension).
+8. Phase 2E–2I: DIMO canonicalization, capability-first acquisition, connection-variant audit, High Mobility audit, cross-provider manifests — then ungate Phase 3 for target profile.
 ---
 # 7. Agent Handoff Protocol
 Any agent continuing this workstream should:
