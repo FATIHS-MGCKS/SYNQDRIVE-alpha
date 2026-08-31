@@ -595,7 +595,7 @@ A future profile should be able to express:
 
 **Prerequisites (LTE_R1 manifest inputs):** Phase 2D Signal Value / Physics Matrix · Phase 2E DIMO Redundancy / Canonicalization · Phase 2F DIMO Capability-First Acquisition Strategy.
 
-**Status:** **NOT_STARTED**
+**Status:** **NEXT** (Phase 2F design authority complete; manifest freeze pending)
 
 **Gate:** Completion of **2F.1** ungates **Phase 3A only** — not 3B/3C/3D.
 
@@ -665,12 +665,13 @@ Provider-specific reference testing (3A–3D) may **already have started** befor
 6. Current schema expansion audit. *(2C — DONE)*
 7. Signal value/physics matrix. *(2D — DONE)*
 8. Connection/powertrain stratification baseline. *(2D.0 — DONE via amendment)*
-9. DIMO canonicalization + capability-first acquisition proposals. *(2E–2F)*
-10. **`DIMO_LTE_R1` reference manifest.** *(2F.1 — NOT_STARTED; ungates 3A)*
-11. DIMO connection-variant audits + Smart5/Tesla manifests. *(2G)*
-12. High Mobility OEM/profile audits + HM manifests. *(2H)*
-13. Cross-provider canonical consolidation / parity governance. *(2I)*
-14. Prioritized query expansion proposal + query/storage/cost impact assessment.
+9. DIMO canonicalization. *(2E — DONE)*
+10. DIMO capability-first acquisition strategy. *(2F — DONE)*
+11. **`DIMO_LTE_R1` reference manifest.** *(2F.1 — NEXT; ungates 3A)*
+12. DIMO connection-variant audits + Smart5/Tesla manifests. *(2G)*
+13. High Mobility OEM/profile audits + HM manifests. *(2H)*
+14. Cross-provider canonical consolidation / parity governance. *(2I)*
+15. Prioritized query expansion proposal + query/storage/cost impact assessment.
 
 ### 2J. Profile-Scoped Validation Gates (not a global Phase 3 gate)
 Use **`PROFILE_SCOPED_VALIDATION_GATES`** (§1.6.8a). A connection/powertrain combination may start its own Flight Recorder / Reference Program once the **target-profile** provider/signal/physics/manifest work is complete.
@@ -697,7 +698,7 @@ Deliverable: `docs/audits/dimo-phase-2a-current-query-surface-audit-2026-08-31.m
 - Provider schema claims limited to **CURRENT_SYNQDRIVE_REFERENCED_DIMO_SURFACE** + `CONFIRMED_FROM_CODE`; no current DIMO introspection artifact verified in this audit.
 - Four vehicle inventory files **PRESENT_ON_MAIN_AFTER_MERGE** (PR #1458); Phase 2B synthesis complete and reproducible from `main`.
 
-**Phase 2 overall:** IN_PROGRESS (2A+2B+2C+2D.0+2D+**2E** done; **2F NEXT**; 2F.1–2I not started). Validation uses **profile-scoped gates** (§1.6.8a).
+**Phase 2 overall:** IN_PROGRESS (2A+2B+2C+2D.0+2D+2E+**2F** done; **2F.1 NEXT**; 2G–2I not started). Validation uses **profile-scoped gates** (§1.6.8a).
 
 ### 2B Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2b-four-vehicle-capability-gap-matrix-2026-08-31.md` (+ four vehicle inventory source docs in same PR)
@@ -779,8 +780,21 @@ Deliverable: `docs/audits/dimo-phase-2e-redundancy-canonicalization-2026-08-31.m
 - **Throttle rule preserved:** `THROTTLE_POSITION != ACCELERATOR_PEDAL_POSITION`
 - **Phase 3A remains `GATED_ON_LTE_R1_MANIFEST`** — 2E complete is prerequisite **2 of 4** (still requires 2F + 2F.1)
 
-### 2F Status — NEXT
-**DIMO CAPABILITY-FIRST ACQUISITION** — design connection-profile-aware query profiles using Phase 2E canonical registry + precedence + eligibility rules. No implementation until approved.
+### 2F Status — DONE (2026-08-31)
+Deliverable: `docs/audits/dimo-phase-2f-capability-first-acquisition-strategy-2026-08-31.md`
+
+**Exit criteria met (documentation design):** VCM contract deterministic; provider/connection/powertrain independently represented; capability state machine (10 states); CAN-001…CAN-033 acquisition matrix; signal existence vs temporal usability separated; acquisition tiers T0–T7; 5 analysis requirement profiles; 14-step query planner; fallback hierarchy explicit; native vs reconstructed evidence strategy; detector/feature eligibility + confidence ceilings; powertrain-specific acquisition; scaling scenarios; cache/revalidation/invalidation; versioning/reproducibility; 2F.1 handoff contract; **47** runtime probes backlog — **no production changes**.
+
+**Material Phase 2F findings:**
+- **Vehicle Capability Manifest (VCM v1):** per-vehicle JSON contract extending `VehicleDrivingCapability` — identity, provider capability, temporal capability, acquisition capability, quality, analysis/detector eligibility, fallback, retention
+- **Capability state machine:** `UNKNOWN` → `SCHEMA_SUPPORTED` → `LISTED_AVAILABLE` → `OBSERVED_NON_NULL` → `TEMPORALLY_CHARACTERIZED` → `CADENCE_VALIDATED` / `SOURCE_VALIDATED` → `ANALYSIS_ELIGIBLE` | `DEGRADED_ELIGIBLE` | `NOT_AVAILABLE` | `INAPPLICABLE_POWERTRAIN` | `STALE_VALIDATION` — **`availableSignals` alone does not prove cadence or detector suitability**
+- **Acquisition tiers T0–T7:** T0 operational latest → T7 validation Flight Recorder (manifest selection deferred to 2F.1)
+- **Analysis requirement profiles:** DRIVER_QUALITY · VEHICLE_LOAD · BRAKE_PHYSICS · TIRE_DYNAMIC_LOAD · GROUND_TRUTH_VALIDATION — physical need, not query names
+- **Query planner:** 14-step deterministic algorithm — resolve provider/profile/powertrain → load VCM → intersect requirements → source hierarchy → cadence → surface → dedupe → gate detectors → fallbacks → confidence ceiling → acquisition plan
+- **Current-state gap (CONFIRMED_FROM_CODE):** static fleet-wide query builders; preflight persists but **does not gate** productive field selection; ACTIVE_TICK = **3 parallel GraphQL calls / ~30s**; HF 1s **POST_TRIP_ONLY**
+- **Scaling (theoretical):** Q001-shaped snapshot −40% fields target; measured API cost reduction **`UNKNOWN_REQUIRES_MEASUREMENT`**
+- **Phase 2E invariants preserved:** throttle ≠ pedal; torque complementary; brake `CIRCUIT_COMPLEMENT`; six `NO_VALID_FALLBACK` families; native events ≠ physical maneuver identity
+- **Phase 3A remains `GATED_ON_LTE_R1_MANIFEST`** — 2F complete is prerequisite **3 of 4** (still requires 2F.1 manifest freeze)
 
 ### Status (Phase 2 overall)
 **IN_PROGRESS**
@@ -793,8 +807,8 @@ Deliverable: `docs/audits/dimo-phase-2e-redundancy-canonicalization-2026-08-31.m
 | 2D.0 | DONE |
 | **2D** | **DONE** |
 | **2E** | **DONE** |
-| **2F** | **NEXT** |
-| **2F.1** LTE_R1 manifest | **NOT_STARTED** |
+| **2F** | **DONE** |
+| **2F.1** LTE_R1 manifest | **NEXT** |
 | 2G | NOT_STARTED |
 | 2H | NOT_STARTED |
 | 2I | NOT_STARTED |
@@ -1154,8 +1168,8 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Phase 2D.0 connection/powertrain stratification baseline | DONE | Master Plan §1.6 — taxonomy frozen (architecture only) |
 | Phase 2D signal value/physics matrix | DONE | `dimo-phase-2d-signal-value-physics-matrix-2026-08-31.md` — Tier A: **8** · cadence-critical: **6** · latency-critical: **2** · `TARGET_LE_1S_EXACT_COUNT=8` · QA pass complete |
 | Phase 2E DIMO redundancy / canonicalization | DONE | `dimo-phase-2e-redundancy-canonicalization-2026-08-31.md` — **33** canonical keys · **16** groups · episode taxonomy QA pass |
-| Phase 2F DIMO capability-first acquisition | NEXT | Connection-profile-aware query profiles |
-| Phase 2F.1 DIMO LTE_R1 reference manifest | NOT_STARTED | Ungates Phase 3A only |
+| Phase 2F DIMO capability-first acquisition | DONE | `dimo-phase-2f-capability-first-acquisition-strategy-2026-08-31.md` — VCM · T0–T7 · 14-step planner · **47** runtime probes |
+| Phase 2F.1 DIMO LTE_R1 reference manifest | NEXT | Ungates Phase 3A only |
 | Phase 2G DIMO connection-variant audit | NOT_STARTED | Smart5 + Tesla Direct vs LTE R1; profile manifests |
 | Phase 2H High Mobility provider/OEM audit | NOT_STARTED | No DIMO assumptions; does not block LTE R1 |
 | Phase 2I cross-provider consolidation | NOT_STARTED | Parity/governance after provider-specific knowledge |
@@ -1187,7 +1201,7 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 6. ~~Execute Phase 2D.0: Connection & Powertrain Stratification Baseline.~~ **Done** — see Master Plan §1.6 (architecture amendment 2026-08-31).
 7. ~~Execute Phase 2D: Signal value / physics matrix.~~ **Done** — see Phase 2D audit (`20` main-track candidates scored).
 8. ~~Execute Phase 2E: DIMO redundancy / canonicalization (Phase 2D handoff groups).~~ **Done** — see Phase 2E audit (`33` canonical keys, `PHYSICAL_EPISODE_IDENTITY`).
-9. **Execute Phase 2F:** DIMO capability-first acquisition strategy (Phase 2E handoff).
+9. ~~**Execute Phase 2F:** DIMO capability-first acquisition strategy (Phase 2E handoff).~~ **Done** — see Phase 2F audit (VCM contract, T0–T7 tiers, query planner, CAN-001…CAN-033 matrix).
 10. **Execute Phase 2F.1:** `DIMO_LTE_R1` reference manifest → **ungate Phase 3A** LTE R1 Reference Program.
 11. **Execute Phase 3A** (LTE R1) — primary validation/calibration track. **Does not wait** for steps 12–14.
 12. **Execute Phase 2G:** Smart5 + Tesla Direct connection-variant audits + profile manifests → ungate 3B/3C when ready.
