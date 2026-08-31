@@ -867,31 +867,28 @@ The older July DIMO capability audit is HISTORICAL_EVIDENCE only.
 **Provider-profile validation tracks:**
 
 ### Phase 3A — DIMO LTE_R1 Reference Program
-**PRIMARY** calibration/reference workstream · **`READY_TO_START_IMPLEMENTATION`** (not started)
+**PRIMARY** calibration/reference workstream · **Phase 3A.1 DONE** (2026-08-31)
 
 **May start when:** the **`DIMO_LTE_R1`** two-layer reference manifest (Phase **2F.1** v1.1.0) is frozen. **Condition satisfied 2026-08-31.**
 
-**Reference drive:** **`NOT_READY_FOR_REFERENCE_DRIVE`** until PRE_RECORDER_BLOCKER probes (RP-010, RP-039, RP-040, RP-044, RP-045) resolved during Phase 3A implementation/preflight.
+**Reference drive:** **`REFERENCE_DRIVE_READINESS = BLOCKED`** until post-deploy vehicle canary. **`READY_FOR_DEPLOYMENT_PREFLIGHT`** when runtime readiness checks pass at preflight.
 
-**LTE_R1 manifest prerequisites (all satisfied):**
-- Phase 2D Signal Value / Physics Matrix ✓
-- Phase 2E DIMO Redundancy / Canonicalization ✓
-- Phase 2F DIMO Capability-First Acquisition Strategy ✓
-- **`DIMO_LTE_R1` reference manifest v1.1.0 (2F.1)** ✓
+**Phase 3A.1 deliverable:** `docs/audits/dimo-phase-3a1-flight-recorder-foundation-2026-08-31.md` + `architecture/DIMO_LTE_R1_FLIGHT_RECORDER_REFERENCE_CAPTURE_2026-08-31.md` + `architecture/CHANGES_REFERENCE_CAPTURE_3A1_CORRECTION_2026-08-31.md`
 
-**Does NOT require:** Smart5 runtime audit · Tesla Direct audit · High Mobility audit · full cross-provider Phase 2I closure.
+**Implementation (3A.1 correction):**
+- Module: `backend/src/modules/vehicle-intelligence/reference-capture/`
+- Persistence: `reference_capture_sessions` + `reference_capture_observations`
+- Feature gate: `REFERENCE_CAPTURE_ENABLED` (default false)
+- Wire contract: envelope v1.0.0
+- Broad capture: dynamic query builder (`buildBroadReferenceSignalsLatestQuery`) — NOT static production snapshot
+- Temporal surfaces: LATEST_LIVE / HF_HISTORICAL / LATEST_SLOW / NATIVE_EVENT_INCREMENTAL
+- Autonomous runner: BullMQ unique cycle jobIds (`refcap-cycle_*`); STARTING compensated start; session-status-authoritative stop
+- Readiness: `deploymentPreflightReady` vs blocked `referenceDriveReady` (vehicle canary required)
+- HF physical sample fingerprint + schema quarantine for unknown provider fields
+- **42 reference-capture unit tests passing** (+ env-gated Redis integration)
+- **No scoring formula changes; no production scheduler replacement**
 
-Use real LTE R1 vehicles for:
-- raw telemetry capture,
-- cluster/video synchronization,
-- cadence measurement,
-- event reconstruction,
-- native-event comparison,
-- sampling invariance.
-
-Current four primary DIMO audit vehicles align with this profile per project baseline.
-
-**Status:** **NOT_STARTED — `READY_TO_START_IMPLEMENTATION`** (2F.1 v1.1.0 frozen; Flight Recorder not implemented; reference drive not ready)
+**Status:** **3A.1 DONE** · **3A Ground Truth / reference drive execution NOT STARTED**
 
 ### Phase 3B — DIMO Tesla Direct Reference Program
 **`GATED_ON_TESLA_DIRECT_MANIFEST`**

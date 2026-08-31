@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-phase-3a1-flight-recorder-foundation-2026-08-31',
+    version: '4.9.1017',
+    title: 'Phase 3A.1 — DIMO LTE_R1 Flight Recorder foundation + pre-recorder preflight',
+    summary: [
+      'Isolated reference-capture module under `vehicle-intelligence/reference-capture/` gated by `REFERENCE_CAPTURE_ENABLED` (default false).',
+      'Postgres tables `reference_capture_sessions` + `reference_capture_observations` with envelope v1.0.0 (nullable canonicalKey, DIMO:: rawIdentity for unmapped fields).',
+      'Dynamic broad per-vehicle discovery from `availableSignals` + `signalsLatest`; broad native events via unfiltered DIMO `events` query.',
+      'Session lifecycle CREATED→PREFLIGHT→READY→RECORDING→COMPLETED; `queryGraphQLWithIngressTiming` captures synqReceivedAt at HTTP ingress (RP-039).',
+      'PRE_RECORDER_BLOCKER resolved: RP-010 batch/backpressure, RP-040 wire contract, RP-044 mass binding, RP-045 180d retention policy.',
+    ],
+    reason: 'First implementation phase of Driving Intelligence Reconstruction Phase 3A — measurement/evidence infrastructure before reference drive.',
+    previousBehavior: 'Phase 2F.1 manifest frozen; no Flight Recorder code or persistence.',
+    details: 'architecture/DIMO_LTE_R1_FLIGHT_RECORDER_REFERENCE_CAPTURE_2026-08-31.md; docs/audits/dimo-phase-3a1-flight-recorder-foundation-2026-08-31.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T22:00:00.000Z',
+  },
+  {
     id: 'p1-8-2-controlled-production-scale-to-2-2026-08-31',
     version: '4.9.1017',
     title: 'P1.8.2 — Controlled production scale-to-2 + multi-replica validation',
