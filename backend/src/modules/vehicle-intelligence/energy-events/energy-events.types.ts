@@ -2,7 +2,12 @@ import type {
   EnergyEventKind,
   EnergyEventConfidence,
   VehicleEnergyEvent,
+  VehicleEnergyEventFuelStationEnrichment,
 } from '@prisma/client';
+import {
+  type EnergyEventStationEnrichmentDto,
+  toStationEnrichmentDto,
+} from './energy-events-station-enrichment.dto';
 
 // ── Canonical shapes for the Trips-Tab timeline ───────────────────────────
 // Kept intentionally distinct from `VehicleTrip` so the frontend can render a
@@ -36,14 +41,23 @@ export interface EnergyEventDto {
   fuelLevelRiseEnd: string | null;
   /** REFUEL only: observed fuel-level-rise duration in seconds; nullable. */
   fuelLevelRiseDurationSeconds: number | null;
+  /**
+   * REFUEL only: persisted fuel-station enrichment (Phase E read projection).
+   * Omitted when no enrichment row exists or event is not REFUEL.
+   */
+  stationEnrichment?: EnergyEventStationEnrichmentDto;
 }
+
+export type VehicleEnergyEventRow = VehicleEnergyEvent & {
+  fuelStationEnrichment?: VehicleEnergyEventFuelStationEnrichment | null;
+};
 
 export type TimelineItem =
   | ({ itemType: 'trip' } & Record<string, unknown>)
   | ({ itemType: 'energy-event' } & EnergyEventDto);
 
-export function toEnergyEventDto(row: VehicleEnergyEvent): EnergyEventDto {
-  return {
+export function toEnergyEventDto(row: VehicleEnergyEventRow): EnergyEventDto {
+  const dto: EnergyEventDto = {
     id: row.id,
     vehicleId: row.vehicleId,
     dimoSegmentId: row.dimoSegmentId,
@@ -67,4 +81,10 @@ export function toEnergyEventDto(row: VehicleEnergyEvent): EnergyEventDto {
     fuelLevelRiseEnd: row.fuelLevelRiseEnd?.toISOString() ?? null,
     fuelLevelRiseDurationSeconds: row.fuelLevelRiseDurationSeconds ?? null,
   };
+
+  if (row.kind === 'REFUEL' && row.fuelStationEnrichment) {
+    dto.stationEnrichment = toStationEnrichmentDto(row.fuelStationEnrichment);
+  }
+
+  return dto;
 }
