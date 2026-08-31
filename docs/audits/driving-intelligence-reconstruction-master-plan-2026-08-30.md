@@ -340,7 +340,7 @@ Deliverable: `docs/audits/dimo-phase-2b-four-vehicle-capability-gap-matrix-2026-
 - Hardware profile → signal capability **NOT_ESTABLISHED_FROM_THIS_FOUR_VEHICLE_SET** (3/4 profiles UNKNOWN).
 - Provider native events **0 / 34 / 0 / 50** per 30d; **CURRENT_SCORE_CONSUMPTION** UNKNOWN for C63 (RP-25).
 - **NO_DIMO** tire/brake/yaw/lateral/long-accel signals in four inventories (≠ physical vehicle equipment claims).
-- Q009: **9/15** vehicle-observed, **3/15** powertrain-inapplicable, **3/15** queried-not-observed (possible gear alias gap on Tiguan).
+- Q009: **9/15** vehicle-observed, **3/15** powertrain-inapplicable, **3/15** queried-not-observed (Tiguan exposes `ActualGear` while Q009 queries `CurrentGear` — **PARALLEL_GEAR_FIELD_GAP**, not proven alias).
 
 ### 2C Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2c-current-schema-signal-expansion-audit-2026-08-31.md`
@@ -357,10 +357,10 @@ Deliverable: `docs/audits/dimo-phase-2c-current-schema-signal-expansion-audit-20
 - **NO_GENERIC_MASS_SIGNAL_CONFIRMED** for Pkw; commercial axle-row weights only (`Row3/4/5`).
 - **OPEN_ENDED_EVENT_NAME_SURFACE** — Q015 filters (8) ≠ exhaustive event catalog; `CURRENT_GLOBAL_EVENT_NAME_COUNT = UNKNOWN_OPEN_ENDED`.
 - SDK **1.6.0** vs **1.7.0** — no embedded schema types; introspection authoritative.
-- **Physics ceiling (global schema):** Driver Quality, Vehicle Load, Brake Physics, Tire Dynamic Load each **MODERATE** at schema layer — **LOWER** on four-vehicle layer for brake/tire/driver dynamics.
+- **Output-domain schema ceiling:** Driver Quality, Vehicle Load, Brake Physics / Brake Load, Tire Dynamic Load each **MODERATE** at schema layer — **LOWER** on four-vehicle layer for brake/tire/driver dynamics. Four **independent** output domains; **no** cross-domain weighting or global composite defined. Data Confidence remains **orthogonal** (Master Plan §1.1).
 
 ### 2D Status — NEXT
-**SIGNAL VALUE / PHYSICS MATRIX** — score Phase 2C **20** candidates (+ secondary context/validation + commercial axle RP-37 track) across **Driver Quality**, **Vehicle Load**, **Brake Physics**, **Tire Dynamic Load**, and **Data Confidence** with equal domain weighting. No production changes.
+**SIGNAL VALUE / PHYSICS MATRIX** — for each of Phase 2C’s **20 unique main-track candidates** (+ secondary assessability/context + commercial axle RP-37 track), grade incremental value **per dimension**: Driver Quality · Vehicle Load · Brake Physics / Brake Load · Tire Load · validation/assessability · cadence · coverage · redundancy · cost. **No** global mega-score. **No** production changes.
 
 ### Status (Phase 2 overall)
 **IN_PROGRESS — 2A DONE; 2B DONE; 2C DONE; 2D NEXT (value/physics); 2E Canonicalization; 2F Capability-first profiles; 2G Phase-2 closure + Flight Recorder manifest**
@@ -657,7 +657,7 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Four-vehicle capability matrix | DONE | Phase 2B deliverable (70 rows) |
 | Available-but-unused DIMO signal matrix | DONE | Phase 2B §8 — 15 signals (Phase-2A driving acquisition) |
 | Phase 2C schema expansion audit | DONE | `dimo-phase-2c-current-schema-signal-expansion-audit-2026-08-31.md` — 117 schema fields |
-| Phase 2D signal value/physics matrix | NEXT | Score **20** Phase-2C candidates across 4 domains + validation |
+| Phase 2D signal value/physics matrix | NEXT | Grade **20** unique Phase-2C candidates per output dimension + assessability (no global composite) |
 | Prioritized query expansion proposal | NOT_STARTED | Phase 2D+ |
 | Flight Recorder manifest | NOT_STARTED | Phase 2 exit deliverable |
 | Flight Recorder implementation | NOT_STARTED | gated on Phase 2 |

@@ -32,19 +32,21 @@ Phase 2C establishes a three-layer separation:
 | Current official segment mechanisms | **6** |
 | SynqDrive Q015 filter names (not exhaustive event catalog) | **8** |
 | Current global event name count | **UNKNOWN_OPEN_ENDED** |
-| High-value Phase 2D technical candidates | **20** |
+| High-value Phase 2D technical candidates | **20** unique main-track signals |
 | New runtime probes (RP-32–RP-39) | **8** |
 
 **Authority quality:** **HIGH** — read-only GraphQL introspection at `https://telemetry-api.dimo.zone/query` on 2026-08-31 succeeded without vehicle-data mutation.
 
-**Physics ceiling (global schema vs four vehicles):**
+**Schema ceiling — four driving-intelligence output domains (global schema vs four vehicles):**
 
-| Domain | Global schema ceiling | Four-vehicle ceiling |
+| Output domain | Global schema ceiling | Four-vehicle ceiling |
 |--------|----------------------|----------------------|
-| Driver Quality | **MODERATE** | **LOW–MODERATE** |
-| Vehicle Load | **MODERATE** | **MODERATE** |
-| Brake Physics | **MODERATE** | **LOW** |
-| Tire Physics | **MODERATE** | **LOW** |
+| **Driver Quality** | **MODERATE** | **LOW–MODERATE** |
+| **Vehicle Load** | **MODERATE** | **MODERATE** |
+| **Brake Physics / Brake Load** | **MODERATE** | **LOW** |
+| **Tire Dynamic Load** | **MODERATE** | **LOW** |
+
+**Orthogonal (not an output-domain score):** **Data Confidence / Assessability** — limits precision, coverage, and claim strength; does not substitute for or invert any output domain. **LOW CONFIDENCE ≠ bad driving** · **LOW CONFIDENCE ≠ low/high vehicle load**.
 
 **Top findings:** (1) **117** schema fields vs **41** queried — large expansion surface; (2) **no** longitudinal/lateral acceleration or steering-angle fields in current schema; (3) brake hydraulics + yaw + **front wheel-speed pair only** in schema, **zero** on four vehicles; (4) **parallel gear fields** (`CurrentGear` / `ActualGear` / `SelectedGear`) coexist — semantic equivalence **not proven** (RP-35); (5) **REGEN_CANDIDATE** = **positive** `powertrainTractionBatteryCurrentPower` during synchronized deceleration — **not** negative power; (6) event name surface is **open-ended** — Q015’s 8 filters ≠ exhaustive official catalog.
 
@@ -415,33 +417,57 @@ Deprecated telemetry fields: **0**.
 
 ## 32. High-Value Phase-2D Candidates
 
-**20** technical candidates after physics/taxonomy correction (schema exists, SynqDrive not queried, semantics validated). **No value scores** — Phase 2D scores all four domains **equally**: Driver Quality · Vehicle Load · Brake Physics · Tire Dynamic Load · plus Data Confidence/Validation.
+**20 UNIQUE_MAIN_TRACK_CANDIDATES** — distinct signal/event fields after physics/taxonomy correction (schema exists, SynqDrive not queried, semantics validated). **No value scores in Phase 2C.**
 
-| Category | Count | Fields / notes |
+The table below uses **primary-domain emphasis** for discovery only. Candidates are **not** exclusively owned by one domain. Phase 2D must evaluate **each unique candidate on all dimensions**: Driver Quality value · Vehicle Load value · Brake Physics value · Tire Load value · validation/assessability · cadence requirement · coverage · redundancy · cost.
+
+| Primary emphasis (non-exclusive) | Count | Fields / notes |
 |----------|------:|----------------|
-| **DRIVER_QUALITY_CANDIDATE** | 7 | `angularVelocityYaw`; front wheel speeds ×2; `powertrainCombustionEngineTPS`; `powertrainTransmissionActualGear`; `ActualGearRatio`; `SelectedGear` |
-| **VEHICLE_LOAD_CANDIDATE** | 4 | `powertrainCombustionEngineTorque`; `TorquePercent`; `MAF`; `powertrainTransmissionTemperature` |
-| **BRAKE_LOAD_CANDIDATE** | 4 | `chassisBrakeIsPedalPressed`; `PedalPosition`; `Circuit1PressurePrimary`; `Circuit2PressurePrimary` |
-| **TIRE_LOAD_CANDIDATE** | 4 | four per-wheel tire pressure fields |
-| **REGEN_CANDIDATE** | 1 | `powertrainTractionBatteryCurrentPower` |
-| **CONTEXT / VALIDATION (Phase 2D secondary track)** | 7 | heading, intake/oil/barometric temp, DTC count, MIL distance, tire warning — scored under Data Confidence |
+| **DRIVER_QUALITY emphasis** | 7 | `angularVelocityYaw`; front wheel speeds ×2; `powertrainCombustionEngineTPS`; `powertrainTransmissionActualGear`; `ActualGearRatio`; `SelectedGear` |
+| **VEHICLE_LOAD emphasis** | 4 | `powertrainCombustionEngineTorque`; `TorquePercent`; `MAF`; `powertrainTransmissionTemperature` |
+| **BRAKE_LOAD emphasis** | 4 | `chassisBrakeIsPedalPressed`; `PedalPosition`; `Circuit1PressurePrimary`; `Circuit2PressurePrimary` |
+| **TIRE_LOAD emphasis** | 4 | four per-wheel tire pressure fields |
+| **REGEN emphasis** | 1 | `powertrainTractionBatteryCurrentPower` |
+| **CONTEXT / VALIDATION (secondary track)** | 7 | heading, intake/oil/barometric temp, DTC count, MIL distance, tire warning — assessability/provenance inputs |
 | **COMMERCIAL_ONLY (RP-37)** | 3 | `chassisAxleRow3/4/5Weight` — excluded from main **20** |
+
+**Multi-domain value examples (non-exhaustive):**
+
+| Candidate | Also valuable for |
+|-----------|-------------------|
+| `angularVelocityYaw` | Tire Dynamic Load (cornering dynamics) |
+| Brake pedal/pressure fields | Driver Quality (behaviour context) |
+| `powertrainTractionBatteryCurrentPower` | Vehicle Load · Brake Physics / regen split |
 
 **Vehicle Load families preserved for Phase 2D:** RPM, engine load (queried), torque, throttle/TPS, gear/shift, transmission temp, coolant/oil temp, battery power, yaw/wheel dynamics, speed exposure, mass/spec context (metadata), stop-go cycling (derived).
 
 ---
 
-## 33. Physics Ceiling Verdict
+## 33. Schema Ceiling Verdict — Four Independent Output Domains
 
-All four scoring domains remain **first-class** — none subsumed into another.
+**FOUR_INDEPENDENT_ANALYSIS_DOMAINS_RETAINED** — also **FOUR_COEQUAL_OUTPUT_DOMAINS** in the sense of **fachliche Bedeutung / product priority**, **not** numeric weighting. The four domains are **independent first-class outputs**. **No cross-domain weighting or global composite has been defined.**
 
-| Domain | GLOBAL_SCHEMA_CEILING | CURRENT_FOUR_VEHICLE_CEILING | Key schema limiter |
+1. **Driver Quality** — `100 = excellent driving`
+2. **Vehicle Load** — `100 = very high vehicle load`
+3. **Brake Physics / Brake Load** — `100 = very high brake load / thermal-mechanical dose`
+4. **Tire Dynamic Load** — `100 = very high tire dynamic/wear load`
+
+**Do not design** a global mega-score such as `GlobalDrivingScore = DriverQuality + VehicleLoad + BrakeLoad + TireLoad` (or any weighted/inverted variant). Outputs have **different semantics and direction** and must remain separable and explainable.
+
+| Output domain | GLOBAL_SCHEMA_CEILING | CURRENT_FOUR_VEHICLE_CEILING | Key schema limiter |
 |--------|----------------------|-------------------------------|-------------------|
 | **Driver Quality** | MODERATE | LOW–MODERATE | No long/lat accel; yaw/wheel speeds unobserved; events sparse |
 | **Vehicle Load** | MODERATE | MODERATE | Torque/MAF/trans temp in schema; generic mass not in telemetry |
 | **Brake Physics / Brake Load** | MODERATE | LOW | Hydraulic inputs in schema; zero on four; no ABS/ESC intervention signals |
 | **Tire Dynamic Load** | MODERATE | LOW | DIRECT_TIRE_PRESSURE in schema; zero on four; no tire temp |
-| **Data Confidence / Validation** | MODERATE | MODERATE | Health/context signals available; cadence unproven |
+
+**E. DATA CONFIDENCE / ASSESSABILITY (orthogonal)** — independent telemetry/data-confidence dimension. Evaluates measurement vs reconstruction vs provider classification vs proxy; signal coverage; cadence; freshness; dropout; provenance; vehicle capability; reconstruction reliability.
+
+Data Confidence **may**: lower confidence · lower assessability · trigger `INSUFFICIENT_DATA` · limit precision/claim strength.
+
+Data Confidence **must not automatically**: worsen Driver Quality · raise/lower Vehicle Load · raise/lower Brake Load · raise/lower Tire Load **solely because telemetry is sparse or low quality**.
+
+**LOW CONFIDENCE ≠ BAD DRIVING** · **LOW CONFIDENCE ≠ LOW/HIGH VEHICLE LOAD**
 
 ---
 
@@ -486,7 +512,28 @@ Phase 2B probes RP-21, RP-25, RP-26, RP-29, RP-31 remain open.
 
 ## 36. Phase-2D Handoff
 
-Phase 2D scores **20** candidates (+ commercial axle-weight RP-37 track) across **Driver Quality**, **Vehicle Load**, **Brake Physics**, **Tire Dynamic Load**, and **Data Confidence/Validation** with equal domain weighting. Inputs: appendices below, Gold Signals §30, SET diffs §7–8, RP-32–39 §34.
+**SynqDrive target causal chain (preserve):**
+
+```
+TELEMETRY + CONTEXT
+  → DRIVING RECONSTRUCTION
+  → DRIVER BEHAVIOUR FEATURES
+```
+
+Evaluated in parallel as **four independent driving-intelligence output domains**:
+
+- **A. Driver Quality**
+- **B. Vehicle Load**
+- **C. Brake Physics / Brake Load**
+- **D. Tire Dynamic Load**
+
+Plus **orthogonal**:
+
+- **E. Data Confidence / Assessability**
+
+**Core product question:** *How was the vehicle driven, and what effects did that driving behaviour have on vehicle, brakes, and tires?*
+
+Phase 2D scores **20 unique main-track candidates** (+ commercial axle-weight RP-37 track + 7 secondary assessability/context signals) **per candidate, per dimension** — not as a single blended domain score and **not** as a global composite. Inputs: appendices below, Gold Signals §30, SET diffs §7–8, RP-32–39 §34, Master Plan §2D Value/Potential Matrix.
 
 ---
 
@@ -669,7 +716,7 @@ Event payload fields (all): `timestamp`, `name`, `source`, `durationNs`, `metada
 | SynqDrive Q015 filter names | **8** |
 | Current global event name count | **UNKNOWN_OPEN_ENDED** |
 | Current official segment mechanisms | **6** |
-| High-value Phase-2D candidates (main track) | **20** |
+| High-value Phase-2D candidates (20 unique main-track signals) | **20** |
 | New runtime probes RP-32–RP-39 | **8** |
 | Newly present vs July historical subset | **94** |
 
