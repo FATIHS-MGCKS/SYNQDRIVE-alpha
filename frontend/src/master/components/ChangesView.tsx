@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-phase-3a2-production-preflight-canary-2026-08-31',
+    version: '4.9.1017',
+    title: 'Phase 3A.2 — Production deploy + runtime preflight + controlled LTE_R1 canary',
+    summary: [
+      'Deployed Phase 3A.1 (#1468) to production with deploy fixes: WorkersModule DI export (`b88da0c9a`) and DIMO dataSummary schema field names (`d6cbcd842`).',
+      'Migrations applied; `reference_capture_sessions` + `reference_capture_observations` live. `REFERENCE_CAPTURE_ENABLED=true` enabled after health check.',
+      'Stationary controlled canary on VW Tiguan LTE_R1: 5 autonomous BullMQ cycles, 52 observations (33 mapped / 18 unmapped), timestamp contract 52/52 pass, clean STOP.',
+      'Surfaces: LATEST_LIVE + LATEST_SLOW DATA_CAPTURED; HF_HISTORICAL + NATIVE_EVENT_INCREMENTAL SUPPORTED_NO_DATA (stationary). Production topology preserved (single PM2 fork).',
+      'Verdict: Phase 3A.2 DONE · REFERENCE_DRIVE_READY=YES. Instrumented reference drive explicitly NOT executed.',
+    ],
+    reason: 'Validate Flight Recorder foundation in production before instrumented reference drive.',
+    previousBehavior: 'Phase 3A.1 merged but not deployed; no production runtime evidence.',
+    details: 'docs/audits/dimo-phase-3a2-production-preflight-canary-2026-08-31.md; session e8613cc7-223b-4436-8f30-0f8002ff8919',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T21:30:00.000Z',
+  },
+  {
     id: 'dimo-phase-3a1-flight-recorder-foundation-2026-08-31',
     version: '4.9.1017',
     title: 'Phase 3A.1 — DIMO LTE_R1 Flight Recorder foundation + pre-recorder preflight',
