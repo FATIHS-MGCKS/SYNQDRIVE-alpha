@@ -2,68 +2,14 @@
  * Deterministic Git name-status (-z) parsing for PR gate change discovery.
  */
 
-const KNOWN_STATUSES = new Set(['A', 'M', 'D', 'R', 'C', 'T', 'U', 'X', 'B']);
-
-/**
- * Parse NUL-delimited `git diff --name-status -z` output.
- * @param {Buffer|string} buffer
- * @returns {Array<{status: string, oldPath: string|null, newPath: string|null}>}
- */
-export function parseNameStatusZ(buffer) {
-  const raw = Buffer.isBuffer(buffer) ? buffer : Buffer.from(String(buffer ?? ''), 'utf8');
-  const parts = raw.toString('utf8').split('\0').filter((part) => part.length > 0);
-  const entries = [];
-  let index = 0;
-
-  while (index < parts.length) {
-    const token = parts[index];
-    index += 1;
-    if (!token) continue;
-
-    const status = token.length > 1 && KNOWN_STATUSES.has(token[0]) ? token[0] : token;
-  const remainder = token.length > 1 && KNOWN_STATUSES.has(token[0]) ? token.slice(1) : '';
-
-    if (status === 'R' || status === 'C') {
-      const similarity = remainder || parts[index] || '';
-      if (remainder) {
-        // token like R100path — rare combined form; treat remainder as similarity only when numeric
-      }
-      const oldPath = remainder && !/^\d+$/.test(remainder) ? remainder : parts[index++];
-      const similarityScore = /^\d+$/.test(String(oldPath)) ? oldPath : parts[index++];
-      const newPath = /^\d+$/.test(String(oldPath)) ? parts[index++] : parts[index++];
-      if (!oldPath || !newPath) {
-        throw new Error(`Malformed rename/copy entry near index ${index}`);
-      }
-      entries.push({
-        status,
-        similarity: Number(/^\d+$/.test(String(similarityScore)) ? similarityScore : similarity) || null,
-        oldPath: String(/^\d+$/.test(String(oldPath)) ? newPath : oldPath),
-        newPath: String(/^\d+$/.test(String(oldPath)) ? parts[index - 1] : newPath),
-      });
-      continue;
-    }
-
-    if (!KNOWN_STATUSES.has(status)) {
-      throw new Error(`Unknown git name-status token: ${token}`);
-    }
-
-    const path = remainder || parts[index++];
-    if (!path) {
-      throw new Error(`Missing path for status ${status}`);
-    }
-    entries.push({
-      status,
-      oldPath: status === 'A' ? null : path,
-      newPath: status === 'D' ? null : path,
-    });
-  }
-
-  return entries;
-}
+const SUPPORTED_STATUSES = new Set(['A', 'M', 'D', 'R', 'C']);
+const UNSUPPORTED_STATUSES = new Set(['T', 'U', 'X', 'B']);
 
 /**
  * Parse standard `git diff --name-status -z -M` output where rename lines are:
  * R<score>\0<old>\0<new>
+ * @param {Buffer|string} buffer
+ * @returns {Array<{status: string, oldPath: string|null, newPath: string|null, similarity?: number|null}>}
  */
 export function parseNameStatusZGit(buffer) {
   const raw = Buffer.isBuffer(buffer) ? buffer : Buffer.from(String(buffer ?? ''), 'utf8');
@@ -78,7 +24,11 @@ export function parseNameStatusZGit(buffer) {
     const status = token[0];
     const rest = token.slice(1);
 
-    if (!KNOWN_STATUSES.has(status)) {
+    if (UNSUPPORTED_STATUSES.has(status)) {
+      throw new Error(`UNSUPPORTED_GIT_STATUS: ${status}`);
+    }
+
+    if (!SUPPORTED_STATUSES.has(status)) {
       throw new Error(`Unknown git name-status token: ${token}`);
     }
 
@@ -99,7 +49,7 @@ export function parseNameStatusZGit(buffer) {
 
     const path = rest || parts[index++];
     if (!path) {
-      throw new Error(`Missing path for status ${status}`);
+      throw new Error(`Malformed git name-status stream near status ${status}`);
     }
     entries.push({
       status,

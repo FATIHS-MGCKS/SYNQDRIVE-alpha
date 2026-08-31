@@ -97,6 +97,49 @@ Unsupported `frontend/src/**/*.js(x)` fails with `UNSUPPORTED_GOVERNED_SOURCE_EX
 - Job/check: `i18n-new-debt-gate`
 - Checkout: exact `github.event.pull_request.head.sha`, `fetch-depth: 0`
 - Base authority: `github.event.pull_request.base.sha`
+- **No top-level `paths:` filter** — the check always materializes for every `pull_request` event (`opened`, `synchronize`, `reopened`, `ready_for_review`, `labeled`, `unlabeled`).
+
+### Required-check materialization + relevance no-op
+
+1. Classify changed paths vs exact PR base via `hasI18nRelevantChanges()` in `pr-gate-policy.mjs`.
+2. **Irrelevant PR** (e.g. backend-only): emit `I18N_PR_GATE=PASS`, `I18N_PR_GATE_REASON=NO_I18N_RELEVANT_CHANGES`, `I18N_RELEVANT_CHANGES=NO`; skip `npm ci`, scanner tests, dictionary suite, and full gate.
+3. **Relevant PR**: run full validation including read-only `npm run i18n:check:ci`.
+
+Canonical relevance surface:
+
+- `frontend/src/**`
+- `frontend/scripts/i18n-*.mjs`
+- `frontend/scripts/lib/i18n-governance/**`
+- `frontend/package.json`, `frontend/package-lock.json`
+- `.github/workflows/i18n-governance-new-debt.yml`
+
+### Read-only CI validation
+
+- `i18n-hardcoded-scan.mjs --no-write` — scan without mutating `hardcoded-copy-inventory.json`
+- `npm run i18n:check:ci` — read-only scanner + structural/dictionary validation
+- Workflow asserts `git status --porcelain` is empty after relevant-path CI
+
+### Git source read fail-closed
+
+Expected source absence is derived from Git diff status (`A`/`M`/`D`/`R`/`C`) before `git show`:
+
+| Status | Base source | Head source |
+|--------|-------------|-------------|
+| `A` | absent | must exist |
+| `M` | must exist | must exist |
+| `D` | must exist | absent |
+| `R` | old must exist | new must exist |
+| `C` | absent (new lineage) | destination must exist |
+
+Unexpected `git show` failure for a must-exist source → `GIT_SOURCE_READ_FAILURE`, exit `5`.
+
+Supported Git statuses: **A, M, D, R, C only**. `T`/`U`/`X`/`B` → `UNSUPPORTED_GIT_STATUS` (fail closed).
+
+Single canonical NUL parser: `parseNameStatusZGit` (`git diff --name-status -z -M`).
+
+### Bootstrap label lifecycle
+
+Authority-only governance PRs require GitHub label `i18n-governance-authority-change` (or local `--authority-approved` for validation). Label `labeled`/`unlabeled` events retrigger the workflow.
 
 Branch protection activation is **out of scope** for P2.3.3 implementation; enable only after independent audit certification.
 

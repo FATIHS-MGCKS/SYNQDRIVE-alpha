@@ -1136,6 +1136,7 @@ export {
 };
 
 const isCliMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const noWrite = process.argv.includes('--no-write');
 if (!isCliMain) {
   // imported for tests/governance
 } else {
@@ -1166,12 +1167,18 @@ const inventory = {
   findings,
 };
 
-writeFileSync(inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`);
+if (!noWrite) {
+  writeFileSync(inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`);
+}
 console.log('Hardcoded copy inventory');
 console.log(`Total unique findings: ${summary.total}`);
 console.log('By surface:', summary.bySurface);
 console.log('By category:', summary.byCategory);
 console.log('Rental by module:', summary.byRentalModule);
 console.log(`Enforce-clean surface findings: ${summary.enforceCleanRemaining}`);
-console.log(`Wrote ${relative(frontendRoot, inventoryPath)}`);
+if (!noWrite) {
+  console.log(`Wrote ${relative(frontendRoot, inventoryPath)}`);
+} else {
+  console.log('Read-only scan mode: inventory not written');
+}
 }

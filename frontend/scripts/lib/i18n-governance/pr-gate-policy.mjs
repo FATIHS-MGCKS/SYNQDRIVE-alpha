@@ -11,6 +11,13 @@ export const GOVERNANCE_AUTHORITY_PREFIXES = [
 
 export const GOVERNANCE_AUTHORITY_LABEL = 'i18n-governance-authority-change';
 
+/** Canonical i18n relevance surface for required-check preclassification. */
+export const I18N_RELEVANT_EXACT_PATHS = new Set([
+  'frontend/package.json',
+  'frontend/package-lock.json',
+  '.github/workflows/i18n-governance-new-debt.yml',
+]);
+
 export const EXIT_CODES = Object.freeze({
   PASS: 0,
   NEW_ACTIONABLE_HOST_DEBT: 2,
@@ -31,6 +38,21 @@ export function isIntentionallyExcludedFromGovernance(repoPath) {
   if (INTENTIONALLY_EXCLUDED_REL_RE.test(rel)) return true;
   if (INTENTIONALLY_EXCLUDED_DIR_RE.test(`/${rel}/`)) return true;
   return false;
+}
+
+export function isI18nRelevantPath(repoPath) {
+  const normalized = normalizeRepoPath(repoPath);
+  if (normalized.startsWith('frontend/src/')) return true;
+  if (normalized.startsWith('frontend/scripts/i18n-') && normalized.endsWith('.mjs')) {
+    return true;
+  }
+  if (normalized.startsWith('frontend/scripts/lib/i18n-governance/')) return true;
+  if (I18N_RELEVANT_EXACT_PATHS.has(normalized)) return true;
+  return false;
+}
+
+export function hasI18nRelevantChanges(changedPaths) {
+  return changedPaths.some((repoPath) => isI18nRelevantPath(repoPath));
 }
 
 export function isGovernanceAuthorityPath(repoPath) {

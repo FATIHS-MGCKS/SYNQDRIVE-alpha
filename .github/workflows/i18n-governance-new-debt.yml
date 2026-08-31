@@ -3,13 +3,6 @@ name: i18n Governance — New Debt Gate
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
-    paths:
-      - 'frontend/src/**'
-      - 'frontend/scripts/i18n-*.mjs'
-      - 'frontend/scripts/lib/i18n-governance/**'
-      - 'frontend/package.json'
-      - 'frontend/package-lock.json'
-      - '.github/workflows/i18n-governance-new-debt.yml'
 
 permissions:
   contents: read
@@ -28,7 +21,32 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
+      - name: Classify PR relevance
+        id: relevance
+        run: |
+          set -euo pipefail
+          node scripts/i18n-pr-gate.mjs \
+            --classify-relevance-only \
+            --base-sha "${{ github.event.pull_request.base.sha }}" \
+            --head-sha "${{ github.event.pull_request.head.sha }}" \
+            | tee /tmp/i18n-relevance.log
+          if grep -q 'I18N_RELEVANT_CHANGES=YES' /tmp/i18n-relevance.log; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Irrelevant PR no-op pass
+        if: steps.relevance.outputs.relevant != 'true'
+        run: |
+          echo "I18N_PR_GATE=PASS"
+          echo "I18N_PR_GATE_REASON=NO_I18N_RELEVANT_CHANGES"
+          echo "BASE_SHA=${{ github.event.pull_request.base.sha }}"
+          echo "HEAD_SHA=${{ github.event.pull_request.head.sha }}"
+          echo "I18N_RELEVANT_CHANGES=NO"
+
       - name: Setup Node.js
+        if: steps.relevance.outputs.relevant == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -36,15 +54,19 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
+        if: steps.relevance.outputs.relevant == 'true'
         run: npm ci
 
       - name: Scanner tests
+        if: steps.relevance.outputs.relevant == 'true'
         run: npm run i18n:scanner:test
 
-      - name: Dictionary check
-        run: npm run i18n:check
+      - name: Dictionary check (read-only)
+        if: steps.relevance.outputs.relevant == 'true'
+        run: npm run i18n:check:ci
 
       - name: PR new-debt gate
+        if: steps.relevance.outputs.relevant == 'true'
         env:
           AUTHORITY_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'i18n-governance-authority-change') }}
         run: |
@@ -53,3 +75,15 @@ jobs:
             ARGS+=(--authority-approved)
           fi
           npm run i18n:pr-gate -- "${ARGS[@]}"
+
+      - name: Assert worktree clean after CI validation
+        if: steps.relevance.outputs.relevant == 'true'
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "WORKTREE_DIRTY_AFTER_CI"
+            git status --porcelain
+            exit 1
+          fi
+          echo "WORKTREE_CLEAN_AFTER_CI=YES"

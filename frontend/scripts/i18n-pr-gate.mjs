@@ -18,9 +18,15 @@ import {
 import {
   EXIT_CODES,
   evaluateGovernanceAuthorityPolicy,
+  hasI18nRelevantChanges,
   partitionChangedPaths,
 } from './lib/i18n-governance/pr-gate-policy.mjs';
 import { parseNameStatusZGit, collectChangedPaths } from './lib/i18n-governance/git-diff.mjs';
+import {
+  GitSourceReadFailureError,
+  readSourceAtRef,
+  resolveSourceExpectations,
+} from './lib/i18n-governance/git-source.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const frontendRoot = join(__dirname, '..');
@@ -35,6 +41,7 @@ function parseArgs(argv) {
     baseSha: null,
     headSha: null,
     authorityApproved: false,
+    classifyRelevanceOnly: false,
     repoRoot,
     manifestPath,
   };
@@ -53,6 +60,10 @@ function parseArgs(argv) {
     }
     if (token === '--authority-approved') {
       args.authorityApproved = true;
+      continue;
+    }
+    if (token === '--classify-relevance-only') {
+      args.classifyRelevanceOnly = true;
       continue;
     }
     if (token === '--repo-root') {
@@ -87,16 +98,61 @@ function validateSha(repo, sha, label) {
   }
 }
 
-function readSourceAtRef(repo, ref, repoPath) {
-  try {
-    return gitExec(repo, ['show', `${ref}:${repoPath}`]);
-  } catch {
-    return null;
-  }
+function loadDiffContext(options) {
+  validateSha(options.repoRoot, options.baseSha, 'Base');
+  validateSha(options.repoRoot, options.headSha, 'Head');
+
+  const diffBuffer = execFileSync(
+    'git',
+    ['diff', '--name-status', '-z', '-M', `${options.baseSha}...${options.headSha}`],
+    { cwd: options.repoRoot },
+  );
+  const diffEntries = parseNameStatusZGit(diffBuffer);
+  const changedPaths = collectChangedPaths(diffEntries);
+  const relevant = hasI18nRelevantChanges(changedPaths);
+
+  return {
+    diffEntries,
+    changedPaths,
+    relevant,
+  };
 }
 
-function scanAtRef(ref, relPath, repoPath, repo) {
-  const source = readSourceAtRef(repo, ref, repoPath);
+export function classifyPrRelevance(options) {
+  const context = loadDiffContext(options);
+  return {
+    baseSha: options.baseSha,
+    headSha: options.headSha,
+    changedPaths: context.changedPaths,
+    relevant: context.relevant,
+  };
+}
+
+function buildNoOpSummary(baseSha, headSha) {
+  return {
+    pass: true,
+    exitCode: EXIT_CODES.PASS,
+    baseSha,
+    headSha,
+    changedGovernedProductionFiles: 0,
+    newPrActionableHostDebt: 0,
+    reintroducedHistoricalDebt: 0,
+    unchangedPreexistingResidualDebt: 0,
+    allowedNewSemanticFindings: 0,
+    ungovernedProductionPaths: [],
+    unsupportedProductionPaths: [],
+    governanceAuthorityChanged: 'NO',
+    mixedAuthorityProductChange: 'NO',
+    authorityApproved: false,
+    blockingFindings: [],
+    reintroducedFindings: [],
+    noOp: true,
+    reason: 'NO_I18N_RELEVANT_CHANGES',
+  };
+}
+
+function scanAtRef(ref, relPath, repoPath, repo, mustExist) {
+  const source = readSourceAtRef(gitExec, repo, ref, repoPath, { mustExist });
   if (source == null) return [];
   return scanSource(relPath, source, { includeEnhanced: true });
 }
@@ -130,6 +186,9 @@ function writeStepSummary(summary, diagnostics) {
     `- **Mixed authority/product:** ${summary.mixedAuthorityProductChange}`,
     ``,
   ];
+  if (summary.reason) {
+    lines.push(`- **Reason:** ${summary.reason}`);
+  }
   if (diagnostics.length > 0) {
     lines.push('### Blocking diagnostics');
     for (const diagnostic of diagnostics.slice(0, 20)) {
@@ -143,8 +202,12 @@ function writeStepSummary(summary, diagnostics) {
 
 function printSummary(summary) {
   console.log(`I18N_PR_GATE=${summary.pass ? 'PASS' : 'FAIL'}`);
+  if (summary.reason) {
+    console.log(`I18N_PR_GATE_REASON=${summary.reason}`);
+  }
   console.log(`BASE_SHA=${summary.baseSha}`);
   console.log(`HEAD_SHA=${summary.headSha}`);
+  console.log(`I18N_RELEVANT_CHANGES=${summary.noOp ? 'NO' : 'YES'}`);
   console.log(`CHANGED_GOVERNED_PRODUCTION_FILES=${summary.changedGovernedProductionFiles}`);
   console.log(`NEW_PR_ACTIONABLE_HOST_DEBT=${summary.newPrActionableHostDebt}`);
   console.log(`REINTRODUCED_HISTORICAL_DEBT=${summary.reintroducedHistoricalDebt}`);
@@ -157,17 +220,17 @@ function printSummary(summary) {
 }
 
 function runGate(options) {
-  const manifest = loadManifest(options.manifestPath);
-  validateSha(options.repoRoot, options.baseSha, 'Base');
-  validateSha(options.repoRoot, options.headSha, 'Head');
+  const relevance = classifyPrRelevance(options);
+  if (!relevance.relevant) {
+    const summary = buildNoOpSummary(options.baseSha, options.headSha);
+    printSummary(summary);
+    writeStepSummary(summary, []);
+    return summary;
+  }
 
-  const diffBuffer = execFileSync(
-    'git',
-    ['diff', '--name-status', '-z', '-M', `${options.baseSha}...${options.headSha}`],
-    { cwd: options.repoRoot },
-  );
-  const diffEntries = parseNameStatusZGit(diffBuffer);
-  const changedPaths = collectChangedPaths(diffEntries);
+  const manifest = loadManifest(options.manifestPath);
+  const { diffEntries } = loadDiffContext(options);
+  const changedPaths = relevance.changedPaths;
   const partitions = partitionChangedPaths(changedPaths, isScannerEligibleRelativePath);
   const authority = evaluateGovernanceAuthorityPolicy({
     authorityPaths: partitions.authorityPaths,
@@ -231,15 +294,28 @@ function runGate(options) {
   );
 
   const perFileResults = scanUnits.map((unit) => {
+    const expectations = resolveSourceExpectations(unit);
     const baseRepoPath = unit.baseRelPath ? `frontend/src/${unit.baseRelPath}` : null;
     const headRepoPath = unit.headRelPath ? `frontend/src/${unit.headRelPath}` : null;
     const baseFindings =
       unit.baseRelPath && baseRepoPath
-        ? scanAtRef(options.baseSha, unit.baseRelPath, baseRepoPath, options.repoRoot)
+        ? scanAtRef(
+            options.baseSha,
+            unit.baseRelPath,
+            baseRepoPath,
+            options.repoRoot,
+            expectations.baseMustExist,
+          )
         : [];
     const headFindings =
       unit.headRelPath && headRepoPath
-        ? scanAtRef(options.headSha, unit.headRelPath, headRepoPath, options.repoRoot)
+        ? scanAtRef(
+            options.headSha,
+            unit.headRelPath,
+            headRepoPath,
+            options.repoRoot,
+            expectations.headMustExist,
+          )
         : [];
     return compareBaseAndHeadFindings({
       baseFindings,
@@ -283,6 +359,19 @@ function main() {
   try {
     const args = parseArgs(process.argv);
     const headSha = args.headSha ?? gitExec(args.repoRoot, ['rev-parse', 'HEAD']).trim();
+
+    if (args.classifyRelevanceOnly) {
+      const relevance = classifyPrRelevance({ ...args, headSha });
+      console.log(`I18N_RELEVANT_CHANGES=${relevance.relevant ? 'YES' : 'NO'}`);
+      console.log(`BASE_SHA=${relevance.baseSha}`);
+      console.log(`HEAD_SHA=${relevance.headSha}`);
+      if (!relevance.relevant) {
+        const summary = buildNoOpSummary(relevance.baseSha, relevance.headSha);
+        printSummary(summary);
+      }
+      process.exit(0);
+    }
+
     const summary = runGate({
       ...args,
       headSha,
@@ -290,6 +379,11 @@ function main() {
     process.exit(summary.exitCode);
   } catch (error) {
     console.error(`I18N_PR_GATE=FAIL`);
+    if (error instanceof GitSourceReadFailureError) {
+      console.error(`I18N_PR_GATE_REASON=${error.code}`);
+      console.error(error.message);
+      process.exit(EXIT_CODES.INVALID_BASE_OR_GIT);
+    }
     console.error(error instanceof Error ? error.message : String(error));
     process.exit(EXIT_CODES.INVALID_BASE_OR_GIT);
   }
@@ -300,4 +394,4 @@ if (isCliMain) {
   main();
 }
 
-export { runGate, parseArgs, scanAtRef };
+export { runGate, parseArgs, scanAtRef, gitExec };

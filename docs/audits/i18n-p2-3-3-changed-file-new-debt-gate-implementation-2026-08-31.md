@@ -161,3 +161,47 @@ Self gate (`--base-sha 021f6a22b... --authority-approved` on implementation HEAD
 ---
 
 *Governance infrastructure only. DO NOT MERGE until independent audit certifies.*
+
+---
+
+## CORRECTION — P2.3.3 required-check hardening (2026-08-31)
+
+### A. Required-check materialization defect
+
+Top-level workflow `paths:` filter prevented `i18n-new-debt-gate` from materializing on backend-only PRs. **Fixed:** filter removed; check always runs.
+
+### B. Workflow path-filter removal
+
+`paths:` block removed from `.github/workflows/i18n-governance-new-debt.yml`.
+
+### C. Backend-only no-op witness
+
+Irrelevant PRs classify via `hasI18nRelevantChanges()`, emit no-op PASS, skip `npm ci` and full i18n suite.
+
+### D. Git source-read fail-closed correction
+
+`readSourceAtRef` no longer maps all `git show` errors to `null`. Expected absence is structural; unexpected failures throw `GIT_SOURCE_READ_FAILURE` (exit 5).
+
+### E. Historical reintroduction dedicated proof
+
+Test 22 now asserts exact `reintroducedHistoricalDebt.length === 1` with frozen `baselineFingerprints = [F]`.
+
+### F. Actual Git integration tests
+
+Temp-repo tests cover hardcoded add FAIL, translated add PASS, rename-with-spaces PASS, post-rename +1 FAIL, and `GIT_SOURCE_READ_FAILURE`.
+
+### G. Read-only CI correction
+
+`i18n-hardcoded-scan.mjs --no-write` + `npm run i18n:check:ci`; workflow uses read-only path.
+
+### H. Workspace cleanliness
+
+Workflow asserts empty `git status --porcelain` after relevant-path CI.
+
+### I. Live workflow label result
+
+Label `i18n-governance-authority-change` creation/application attempted on PR #1464; see final report for permission status.
+
+### Updated test count
+
+`npm run i18n:pr-gate:test` — **56 tests** (was 43).

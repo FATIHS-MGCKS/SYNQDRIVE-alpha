@@ -8,8 +8,14 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const frontendRoot = join(__dirname, '..');
+const readOnly = process.argv.includes('--read-only');
 
-const scanResult = spawnSync('node', ['scripts/i18n-hardcoded-scan.mjs'], {
+const scanArgs = ['scripts/i18n-hardcoded-scan.mjs'];
+if (readOnly) {
+  scanArgs.push('--no-write');
+}
+
+const scanResult = spawnSync('node', scanArgs, {
   cwd: frontendRoot,
   stdio: 'inherit',
   shell: false,
@@ -109,6 +115,14 @@ if (coverageResult.status !== 0) {
 }
 
 console.log('');
-console.log('HARDCODED COPY: inventory refreshed; enforce-clean surfaces guarded');
+if (readOnly) {
+  console.log('HARDCODED COPY: read-only scan completed; inventory not written');
+} else {
+  console.log('HARDCODED COPY: inventory refreshed; enforce-clean surfaces guarded');
+}
 console.log('');
-console.log('i18n structural + coverage + hardcoded checks passed (P2.1 + P2.2.1 guardrails).');
+console.log(
+  readOnly
+    ? 'i18n structural + coverage + hardcoded checks passed (read-only CI mode).'
+    : 'i18n structural + coverage + hardcoded checks passed (P2.1 + P2.2.1 guardrails).',
+);

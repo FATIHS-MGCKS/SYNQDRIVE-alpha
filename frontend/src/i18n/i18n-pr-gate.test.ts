@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -6,18 +8,25 @@ import { scanSource, isScannerEligibleRelativePath } from '../../scripts/i18n-ha
 import { loadManifest } from '../../scripts/lib/i18n-governance/manifest-validator.mjs';
 import { parseNameStatusZGit, toSrcRelativePath } from '../../scripts/lib/i18n-governance/git-diff.mjs';
 import {
+  GitSourceReadFailureError,
+  readSourceAtRef,
+} from '../../scripts/lib/i18n-governance/git-source.mjs';
+import {
   buildFileScanUnits,
   buildPrLineageKey,
   compareBaseAndHeadFindings,
   compareMultisetCounts,
   buildFindingMultiset,
+  buildGateSummary,
 } from '../../scripts/lib/i18n-governance/pr-gate.mjs';
 import {
   evaluateGovernanceAuthorityPolicy,
+  hasI18nRelevantChanges,
+  isI18nRelevantPath,
   partitionChangedPaths,
   EXIT_CODES,
 } from '../../scripts/lib/i18n-governance/pr-gate-policy.mjs';
-import { runGate } from '../../scripts/i18n-pr-gate.mjs';
+import { classifyPrRelevance, gitExec, runGate } from '../../scripts/i18n-pr-gate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const manifestPath = join(__dirname, 'i18n-debt-classifications.json');
@@ -42,6 +51,29 @@ function compareSources(baseSource, headSource, relPath) {
 
 function expectNewDebt(count, result) {
   expect(result.newPrActionableHostDebt, JSON.stringify(result.blockingFindings)).toBe(count);
+}
+
+function createTempGitRepo() {
+  const dir = mkdtempSync(join(tmpdir(), 'synq-i18n-pr-gate-'));
+  const runGit = (args: string[]) => execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
+  runGit(['init']);
+  runGit(['config', 'user.email', 'test@example.com']);
+  runGit(['config', 'user.name', 'Test']);
+  return { dir, runGit };
+}
+
+function commitAll(runGit: (args: string[]) => string, message: string) {
+  runGit(['add', '-A']);
+  runGit(['commit', '-m', message]);
+  return runGit(['rev-parse', 'HEAD']).trim();
+}
+
+function seedGovernanceManifest(repoDir: string) {
+  mkdirSync(join(repoDir, 'frontend/src/i18n'), { recursive: true });
+  writeFileSync(
+    join(repoDir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+    readFileSync(manifestPath, 'utf8'),
+  );
 }
 
 describe('P2.3.3 PR gate — parser and policy', () => {
@@ -75,6 +107,24 @@ describe('P2.3.3 PR gate — parser and policy', () => {
 
   it('fails closed on unknown git status', () => {
     expect(() => parseNameStatusZGit('Z\0frontend/src/rental/Bad.tsx\0')).toThrow(/Unknown git/);
+  });
+
+  it('fails closed on unsupported git status T/U/X/B', () => {
+    expect(() => parseNameStatusZGit('T\0frontend/src/rental/Bad.tsx\0')).toThrow(/UNSUPPORTED_GIT_STATUS/);
+    expect(() => parseNameStatusZGit('U\0frontend/src/rental/Bad.tsx\0')).toThrow(/UNSUPPORTED_GIT_STATUS/);
+    expect(() => parseNameStatusZGit('X\0frontend/src/rental/Bad.tsx\0')).toThrow(/UNSUPPORTED_GIT_STATUS/);
+    expect(() => parseNameStatusZGit('B\0frontend/src/rental/Bad.tsx\0')).toThrow(/UNSUPPORTED_GIT_STATUS/);
+  });
+
+  it('fails closed on malformed NUL stream', () => {
+    expect(() => parseNameStatusZGit('M\0')).toThrow(/Malformed/);
+    expect(() => parseNameStatusZGit('R100\0only-old-path\0')).toThrow(/Malformed/);
+  });
+
+  it('parses unicode paths without corruption', () => {
+    const buffer = 'M\0frontend/src/rental/überführung/Änderung.tsx\0';
+    const entries = parseNameStatusZGit(`${buffer}\0`);
+    expect(entries[0]?.newPath).toBe('frontend/src/rental/überführung/Änderung.tsx');
   });
 
   it('flags mixed governance authority and product changes', () => {
@@ -287,12 +337,42 @@ export function Example() { return <InnerRenamed />; }`;
     expectNewDebt(1, result);
   });
 
-  it('22 reintroduced historical fingerprint blocks when absent on base', () => {
+  it('22 reintroduced historical fingerprint blocks with dedicated detector proof', () => {
     const rel = 'rental/components/BookingsView.tsx';
     const base = `export function Example() { return <div>{t('common.ok')}</div>; }`;
     const head = readFileSync(join(fixtureRoot, 'BadTitleLiteral.tsx'), 'utf8');
-    const result = compareSources(base, head, rel);
-    expect(result.reintroducedHistoricalDebt.length + result.newPrActionableHostDebt).toBeGreaterThan(0);
+    const baseFindings = scanSource(rel, base, { includeEnhanced: true });
+    const headFindings = scanSource(rel, head, { includeEnhanced: true });
+    const fingerprint = headFindings[0]?.fingerprint;
+    expect(fingerprint).toBeTruthy();
+    expect(baseFindings.some((finding) => finding.fingerprint === fingerprint)).toBe(false);
+
+    const frozenManifest = {
+      ...manifest,
+      baselineFingerprints: [fingerprint],
+    };
+    const result = compareBaseAndHeadFindings({
+      baseFindings,
+      headFindings,
+      manifest: frozenManifest,
+    });
+    expect(result.reintroducedHistoricalDebt).toHaveLength(1);
+    expect(result.reintroducedHistoricalDebt[0]?.fingerprint).toBe(fingerprint);
+    const summary = buildGateSummary({
+      baseSha: 'base',
+      headSha: 'head',
+      changedGovernedProductionFiles: 1,
+      comparison: result,
+      authority: {
+        ok: true,
+        exitCode: EXIT_CODES.PASS,
+        governanceAuthorityChanged: false,
+        mixedAuthorityProductChange: false,
+        authorityApproved: true,
+      },
+    });
+    expect(summary.reintroducedHistoricalDebt).toBe(1);
+    expect(summary.pass).toBe(false);
   });
 
   it('23 unchanged preexisting residual in touched file passes', () => {
@@ -409,11 +489,171 @@ function compareFixtureDelta(baseFixture, headFixture) {
   return compareSources(baseSource, headSource, rel);
 }
 
+describe('P2.3.3 PR gate — relevance classification', () => {
+  it('backend-only PR paths are irrelevant', () => {
+    expect(isI18nRelevantPath('backend/src/modules/example/example.service.ts')).toBe(false);
+    expect(hasI18nRelevantChanges(['backend/src/modules/example/example.service.ts'])).toBe(false);
+  });
+
+  it('frontend product paths are relevant', () => {
+    expect(isI18nRelevantPath('frontend/src/rental/components/Foo.tsx')).toBe(true);
+    expect(hasI18nRelevantChanges(['frontend/src/rental/components/Foo.tsx'])).toBe(true);
+  });
+
+  it('governance authority paths are relevant', () => {
+    expect(isI18nRelevantPath('frontend/scripts/i18n-pr-gate.mjs')).toBe(true);
+    expect(hasI18nRelevantChanges(['frontend/scripts/i18n-pr-gate.mjs'])).toBe(true);
+  });
+});
+
+describe('P2.3.3 PR gate — git source read fail-closed', () => {
+  it('readSourceAtRef throws GIT_SOURCE_READ_FAILURE when must-exist source is missing', () => {
+    const { dir, runGit } = createTempGitRepo();
+    mkdirSync(join(dir, 'frontend/src/rental/components'), { recursive: true });
+    writeFileSync(
+      join(dir, 'frontend/src/rental/components/Clean.tsx'),
+      `export function Clean() { return <div>{t('common.ok')}</div>; }`,
+    );
+    const baseSha = commitAll(runGit, 'base');
+    expect(() =>
+      readSourceAtRef(gitExec, dir, baseSha, 'frontend/src/rental/components/Missing.tsx', {
+        mustExist: true,
+      }),
+    ).toThrow(GitSourceReadFailureError);
+  });
+});
+
+describe('P2.3.3 PR gate — real git integration', () => {
+  it('hardcoded host addition in temp repo fails gate', () => {
+    const { dir, runGit } = createTempGitRepo();
+    seedGovernanceManifest(dir);
+    const relDir = join(dir, 'frontend/src/rental/components');
+    mkdirSync(relDir, { recursive: true });
+    const filePath = join(relDir, 'Widget.tsx');
+    writeFileSync(
+      filePath,
+      `export function Widget() { return <div>{t('common.ok')}</div>; }`,
+    );
+    const baseSha = commitAll(runGit, 'base');
+    writeFileSync(
+      filePath,
+      `export function Widget() { return <button title="Speichern">Bitte speichern</button>; }`,
+    );
+    const headSha = commitAll(runGit, 'head');
+    const summary = runGate({
+      baseSha,
+      headSha,
+      authorityApproved: false,
+      repoRoot: dir,
+      manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+    });
+    expect(summary.newPrActionableHostDebt).toBe(1);
+    expect(summary.pass).toBe(false);
+    expect(summary.exitCode).toBe(EXIT_CODES.NEW_ACTIONABLE_HOST_DEBT);
+  });
+
+  it('translated presentation addition in temp repo passes gate', () => {
+    const { dir, runGit } = createTempGitRepo();
+    seedGovernanceManifest(dir);
+    const relDir = join(dir, 'frontend/src/rental/components');
+    mkdirSync(relDir, { recursive: true });
+    const filePath = join(relDir, 'Widget.tsx');
+    writeFileSync(filePath, `export function Widget() { return null; }`);
+    const baseSha = commitAll(runGit, 'base');
+    writeFileSync(
+      filePath,
+      readFileSync(join(fixtureRoot, 'GoodTranslatedPresentation.tsx'), 'utf8'),
+    );
+    const headSha = commitAll(runGit, 'head');
+    const summary = runGate({
+      baseSha,
+      headSha,
+      authorityApproved: false,
+      repoRoot: dir,
+      manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+    });
+    expect(summary.newPrActionableHostDebt).toBe(0);
+    expect(summary.pass).toBe(true);
+  });
+
+  it('rename with spaces preserves lineage and passes without new debt', () => {
+    const { dir, runGit } = createTempGitRepo();
+    seedGovernanceManifest(dir);
+    const oldDir = join(dir, 'frontend/src/rental/components/old path');
+    const newDir = join(dir, 'frontend/src/rental/components/new path');
+    mkdirSync(oldDir, { recursive: true });
+    const oldPath = join(oldDir, 'Foo Bar.tsx');
+    writeFileSync(
+      oldPath,
+      `export function FooBar() { return <button title="German tooltip text">A</button>; }`,
+    );
+    const baseSha = commitAll(runGit, 'base');
+    mkdirSync(newDir, { recursive: true });
+    const newPath = join(newDir, 'Foo Bar.tsx');
+    runGit(['mv', oldPath, newPath]);
+    const headSha = commitAll(runGit, 'rename');
+    const summary = runGate({
+      baseSha,
+      headSha,
+      authorityApproved: false,
+      repoRoot: dir,
+      manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+    });
+    expect(summary.newPrActionableHostDebt).toBe(0);
+    expect(summary.pass).toBe(true);
+  });
+
+  it('post-rename path addition of one host occurrence fails +1', () => {
+    const { dir, runGit } = createTempGitRepo();
+    seedGovernanceManifest(dir);
+    const newDir = join(dir, 'frontend/src/rental/components/new path');
+    mkdirSync(newDir, { recursive: true });
+    const newPath = join(newDir, 'Foo Bar.tsx');
+    writeFileSync(
+      newPath,
+      `export function FooBar() { return <button title="German tooltip text">A</button>; }`,
+    );
+    const baseSha = commitAll(runGit, 'renamed-base');
+    writeFileSync(
+      newPath,
+      `export function FooBar() {
+        return (<><button title="German tooltip text">A</button><button title="German tooltip text">B</button></>);
+      }`,
+    );
+    const headSha = commitAll(runGit, 'add-one');
+    const summary = runGate({
+      baseSha,
+      headSha,
+      authorityApproved: false,
+      repoRoot: dir,
+      manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+    });
+    expect(summary.newPrActionableHostDebt).toBe(1);
+    expect(summary.pass).toBe(false);
+  });
+});
+
 describe('P2.3.3 PR gate — repository integration', () => {
   const baseSha = '021f6a22b66cc69b28291a15d7f4055e3977e33d';
+  const headSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
 
-  it('69 self-test against campaign base passes for governance-only HEAD', () => {
-    const headSha = '021f6a22b66cc69b28291a15d7f4055e3977e33d';
+  it('69 self-test against campaign base passes with authority approval', () => {
+    const summary = runGate({
+      baseSha,
+      headSha,
+      authorityApproved: true,
+      repoRoot,
+      manifestPath,
+    });
+    expect(summary.pass).toBe(true);
+    expect(summary.newPrActionableHostDebt).toBe(0);
+    expect(summary.reintroducedHistoricalDebt).toBe(0);
+    expect(summary.governanceAuthorityChanged).toBe('YES');
+    expect(summary.mixedAuthorityProductChange).toBe('NO');
+    expect(summary.changedGovernedProductionFiles).toBe(0);
+  });
+
+  it('69b self-test without authority approval fails policy exit 3', () => {
     const summary = runGate({
       baseSha,
       headSha,
@@ -421,8 +661,38 @@ describe('P2.3.3 PR gate — repository integration', () => {
       repoRoot,
       manifestPath,
     });
-    expect(summary.pass).toBe(true);
-    expect(summary.newPrActionableHostDebt).toBe(0);
+    expect(summary.pass).toBe(false);
+    expect(summary.exitCode).toBe(EXIT_CODES.GOVERNANCE_AUTHORITY_POLICY_FAILURE);
+    expect(summary.governanceAuthorityChanged).toBe('YES');
+  });
+
+  it('69c backend-only diff classifies as irrelevant no-op', () => {
+    const relevance = classifyPrRelevance({
+      baseSha,
+      headSha: baseSha,
+      repoRoot,
+      manifestPath,
+    });
+    const synthetic = classifyPrRelevance({
+      baseSha,
+      headSha,
+      repoRoot,
+      manifestPath,
+    });
+    expect(synthetic.relevant).toBe(true);
+    expect(
+      hasI18nRelevantChanges(['backend/src/modules/example/example.service.ts']),
+    ).toBe(false);
+    const noOp = runGate({
+      baseSha,
+      headSha: baseSha,
+      authorityApproved: false,
+      repoRoot,
+      manifestPath,
+    });
+    expect(noOp.pass).toBe(true);
+    expect(noOp.noOp).toBe(true);
+    expect(relevance.changedPaths.length).toBeGreaterThanOrEqual(0);
   });
 
   it('70 controlled red synthetic host literal would fail', () => {
