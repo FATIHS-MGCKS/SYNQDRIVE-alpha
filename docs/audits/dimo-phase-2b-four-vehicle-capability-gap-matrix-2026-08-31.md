@@ -2,7 +2,11 @@
 **Date:** 2026-08-31  
 **Repository:** `FATIHS-MGCKS/SYNQDRIVE-alpha`  
 **Scope:** Forensic synthesis — cross-vehicle DIMO signal/event/segment capability vs SynqDrive Phase-2A query surface. Documentation only; no production changes.  
-**Authority:** Phase 2A (`dimo-phase-2a-current-query-surface-audit-2026-08-31.md`) for query registry Q001–Q027, 41 unique signal fields, 8 events, 6 segments. Vehicle inventories from git commits `0bab8a4d3`, `5a440c60d`, `caeaa3aa4`, `c2a0e1c5e` (not on `main` at audit time; ingested from `/tmp/phase2b-inventories/`).
+**Authority:** Phase 2A (`dimo-phase-2a-current-query-surface-audit-2026-08-31.md`) for query registry Q001–Q027, 41 unique signal fields, 8 events, 6 segments. Vehicle inventories (canonical repo paths, sourced from commits `0bab8a4d3`, `5a440c60d`, `caeaa3aa4`, `c2a0e1c5e` in PR #1458):
+- `docs/audits/dimo-wob-l-7503-signal-inventory-gap-analysis-2026-08-30.md`
+- `docs/audits/dimo-ks-mx-2024-signal-inventory-gap-analysis-2026-08-30.md`
+- `docs/audits/dimo-ks-ms-661-signal-inventory-gap-analysis-2026-08-30.md`
+- `docs/audits/dimo-hmue-c-215-signal-inventory-gap-analysis-2026-08-30.md`
 
 ---
 
@@ -18,20 +22,20 @@ Phase 2B closes the vehicle-capability gap left open in Phase 2A by cross-refere
 | On exactly 1 vehicle | **4** (gear×2 Tiguan; `obdDTCList`+DEF A4) | CONFIRMED_FROM_VEHICLE_INVENTORY |
 | On exactly 3 vehicles | **1** (`powertrainFuelSystemRelativeLevel` — missing A4) | CONFIRMED_FROM_VEHICLE_INVENTORY |
 | Phase-2A queried signal fields | **41** | CONFIRMED_FROM_CODE (Phase 2A §22.3) |
-| Available on vehicles, not in any SynqDrive query | **15** | CONFIRMED_FROM_VEHICLE_INVENTORY |
+| Available on vehicles, not in Phase-2A driving acquisition queries | **15** | CONFIRMED_FROM_VEHICLE_INVENTORY |
 | Master matrix rows | **70** = 41 + 15 + 8 + 6 | arithmetic |
-| Q001 snapshot waste (per ICE vehicle) | **32** requested, **11** available, **21** wasted (**65.6%**) | CONFIRMED_FROM_VEHICLE_INVENTORY |
-| `availableSignals` listed = working (latest poll) | **100%** all 4 | CONFIRMED_FROM_RUNTIME_EVIDENCE |
+| Q001 static selection mismatch (per ICE vehicle) | **32** requested, **11** observed, **21** null/inapplicable (**65.6%** `STATIC_SELECTION_MISMATCH_RATE`) | CONFIRMED_FROM_VEHICLE_INVENTORY |
+| `LISTED_NON_NULL_AT_AUDIT` (all four inventories) | **100%** (31/31, 29/29, 30/30, 29/29) | CONFIRMED_FROM_RUNTIME_EVIDENCE |
 | Segments audited in inventories | **0** — all **UNKNOWN** | CONFIRMED_FROM_VEHICLE_INVENTORY |
 
 **Architecture verdicts (Phase 2B):**
 
 | Question | Verdict | Rationale |
 |----------|---------|-----------|
-| Hardware profile predicts capability? | **PARTIAL** | LTE_R1 Arteon emits native events (50/30d) while SMART5 not in set; gear signals vary within ICE (Tiguan only). Hardware gates enrichment paths, not GraphQL field lists. |
-| `availableSignals` alone drives query profiles? | **PARTIAL** | 100% listed→working on latest poll, but static Q001 still requests 21 null fields per ICE vehicle; torque/gear/currentGear queried (Q009) but **NOT_OBSERVED_IN_THESE_FOUR_VEHICLE_INVENTORIES**. |
+| Hardware profile predicts real signal capability (four-vehicle evidence)? | **NOT_ESTABLISHED_FROM_THIS_FOUR_VEHICLE_SET** | Only Arteon has `LTE_R1` in inventory; Tiguan/C63/A4 profiles **UNKNOWN**. Cannot score profile→signalset from this set. **CONFIRMED_FROM_CODE:** profile gates enrichment/authority paths — not static GraphQL lists. |
+| `availableSignals` alone drives future query profiles? | **PARTIAL** | `LISTED_NON_NULL_AT_AUDIT` = 100% at audit only — not freshness, cadence, historical support, or per-field alignment (C63 mixed timestamps). Capability manifest needs null evidence, cadence, historical support, provider profile, stability, fallback. |
 
-**Top findings:** (1) **VERY_HIGH** static snapshot waste on every ICE vehicle; (2) high-value driving signals (RPM, TPS/throttle, gear) live on DIMO but absent from VLS snapshot path; (3) native event emission is **vehicle-specific** (0–50/30d) not predictable from hardware alone; (4) segments **not runtime-validated** in inventories; (5) queried-not-persisted HF kinematics and torque/gear fields; (6) persisted-not-consumed odometer/fuel/EV/tire fields on ICE fleet.
+**Top findings:** (1) **VERY_HIGH** Q001 `STATIC_SELECTION_MISMATCH_RATE` (**65.6%**) — **CONFIRMED_ARCHITECTURAL_INEFFICIENCY**; provider/payload cost **SCALING_IMPACT_REQUIRES_MEASUREMENT**; (2) RPM/TPS/throttle on DIMO, absent from snapshot/VLS; (3) native **provider** events 0–50/30d — **≠** confirmed composite consumption (C63: RP-25); (4) segments UNKNOWN in inventories; (5) Q009 **9/3/3** breakdown; (6) NO_DIMO brake/yaw/lateral/long-accel/tire-pressure signals on four inventories.
 
 **Phase 2B status: DONE** (synthesis complete from authoritative inputs; segment columns remain UNKNOWN until runtime probe).
 
@@ -44,11 +48,10 @@ Phase 2B closes the vehicle-capability gap left open in Phase 2A by cross-refere
 | Source | Role | Tag |
 |--------|------|-----|
 | `docs/audits/dimo-phase-2a-current-query-surface-audit-2026-08-31.md` | Query registry Q001–Q027, 41 signals, 8 events, 6 segments | CONFIRMED_FROM_CODE |
-| `/tmp/phase2b-inventories/tiguan.md` | WOB L 7503, tokenId 192922, live 2026-08-30 | CONFIRMED_FROM_VEHICLE_INVENTORY |
-| `/tmp/phase2b-inventories/c63.md` | KS MX 2024, tokenId 187336 | CONFIRMED_FROM_VEHICLE_INVENTORY |
-| `/tmp/phase2b-inventories/a4.md` | KS MS 661, tokenId 187361 | CONFIRMED_FROM_VEHICLE_INVENTORY |
-| `/tmp/phase2b-inventories/arteon.md` | HMÜ C 215, tokenId 187784, LTE_R1 | CONFIRMED_FROM_VEHICLE_INVENTORY |
-| Git commits `0bab8a4d3`, `5a440c60d`, `caeaa3aa4`, `c2a0e1c5e` | Inventory doc provenance (not on `main`) | CONFIRMED_FROM_CODE |
+| `docs/audits/dimo-wob-l-7503-signal-inventory-gap-analysis-2026-08-30.md` | WOB L 7503, tokenId 192922, live 2026-08-30 | CONFIRMED_FROM_VEHICLE_INVENTORY |
+| `docs/audits/dimo-ks-mx-2024-signal-inventory-gap-analysis-2026-08-30.md` | KS MX 2024, tokenId 187336 | CONFIRMED_FROM_VEHICLE_INVENTORY |
+| `docs/audits/dimo-ks-ms-661-signal-inventory-gap-analysis-2026-08-30.md` | KS MS 661, tokenId 187361 | CONFIRMED_FROM_VEHICLE_INVENTORY |
+| `docs/audits/dimo-hmue-c-215-signal-inventory-gap-analysis-2026-08-30.md` | HMÜ C 215, tokenId 187784, LTE_R1 | CONFIRMED_FROM_VEHICLE_INVENTORY |
 
 ### 2.2 Evidence tags
 
@@ -68,6 +71,16 @@ Phase 2B closes the vehicle-capability gap left open in Phase 2A by cross-refere
 | `NOT_AVAILABLE_ON_VEHICLE` | Not in `availableSignals`; SynqDrive may still query (null) |
 | `NOT_OBSERVED_IN_THESE_FOUR_VEHICLE_INVENTORIES` | Queried by SynqDrive but absent from all four inventories |
 | `UNKNOWN_NEEDS_RUNTIME_PROBE` | Segments / cadence / mechanism yield not inventory-audited |
+| `AVAILABLE_NOT_IN_PHASE2A_DRIVING_ACQUISITION` | In vehicle inventory; not selected in Phase-2A driving query builders (Q001–Q025, Q014/Q016/Q027 contexts) |
+| `LISTED_NON_NULL_AT_AUDIT` | `availableSignals` listed + `signalsLatest` non-null at inventory audit observation (does not imply freshness/cadence/historical support) |
+| `STATIC_SELECTION_MISMATCH_RATE` | Share of Q001 telemetry selections null/inapplicable on vehicle at audit (≠ measured API cost waste) |
+| `PROVIDER_EVENT_OBSERVED` | Native DIMO event seen in inventory window |
+| `SYNQDRIVE_QUERY_CAN_REQUEST` | Q015/Q016 filter includes event name |
+| `CURRENT_PROFILE_PATH_ELIGIBILITY` | Code path may fetch event (profile-gated) — **INFERENCE** unless confirmed |
+| `CURRENT_SCORE_CONSUMPTION_CONFIRMED` | Event reaches composite/TDI counter — requires profile resolution (RP-25) |
+| `OBSERVED_30D` / `OBSERVED_HISTORICAL` / `ZERO_IN_WINDOW` / `UNKNOWN_SUPPORT` | Native event inventory states (mutually scoped) |
+
+**Scope note — `AVAILABLE_NOT_QUERIED`:** Phase 2B counts signals **not in Phase-2A driving acquisition** (§8). A signal may still appear in other repo paths (e.g. `currentLocationHeading` in `vehicles.service.ts` detail/raw parsing, preflight classifier) — that is **not** Phase-2A driving acquisition.
 
 ### 2.4 Out of scope
 
@@ -90,7 +103,7 @@ Runtime cadence histograms (RP-01–04), segment mechanism yields, Flight Record
 | Unique signals | `powertrainTransmissionActualGear`, `powertrainTransmissionActualGearRatio` |
 | Native events (30d) | **0** (historical July: harshAccel 404, harshCorner 13) |
 | VLS alignment | Live — recovery from Aug-27 stale observation |
-| Q001 effectiveness | 32 req / 11 avail / 21 wasted (**65.6%**) |
+| Q001 effectiveness | 32 req / 11 avail / 21 null/inapplicable (**65.6%** `STATIC_SELECTION_MISMATCH_RATE`) |
 
 ### 3.2 KS MX 2024 (C63) — tokenId **187336**
 
@@ -104,7 +117,7 @@ Runtime cadence histograms (RP-01–04), segment mechanism yields, Flight Record
 | Native events (30d) | **34** (21 harshAccel, 12 harshCorner, 1 extremeBraking) |
 | VLS | Aligned 2026-08-29T22:28:19Z; recovery after Aug-26 freeze |
 | Mixed timestamps | RPM/fuel older (28.08.) than GPS (29.08.) |
-| Q001 effectiveness | 32 req / 11 avail / 21 wasted (**65.6%**) |
+| Q001 effectiveness | 32 req / 11 avail / 21 null/inapplicable (**65.6%** `STATIC_SELECTION_MISMATCH_RATE`) |
 
 ### 3.3 KS MS 661 (A4) — tokenId **187361**
 
@@ -118,7 +131,7 @@ Runtime cadence histograms (RP-01–04), segment mechanism yields, Flight Record
 | Missing vs gasoline ICE | `powertrainFuelSystemRelativeLevel` (not listed) |
 | Native events (30d) | **0** despite same-day trip |
 | DEF in snapshot | **CONSUMED** — mapped to VLS `def_level` |
-| Q001 effectiveness | 32 req / 11 avail / 21 wasted (**65.6%**) |
+| Q001 effectiveness | 32 req / 11 avail / 21 null/inapplicable (**65.6%** `STATIC_SELECTION_MISMATCH_RATE`) |
 
 ### 3.4 HMÜ C 215 (Arteon) — tokenId **187784**
 
@@ -132,7 +145,7 @@ Runtime cadence histograms (RP-01–04), segment mechanism yields, Flight Record
 | Native events (30d) | **50** (46 harshCornering, 1 harshAccel, 3 extremeBraking) |
 | No gear, no `obdDTCList` | DTC count only (`obdStatusDTCCount`=0) |
 | Connectivity history | July unplug + recovery; `obdIsPluggedIn`=1 at audit |
-| Q001 effectiveness | 32 req / 11 avail / 21 wasted (**65.6%**) |
+| Q001 effectiveness | 32 req / 11 avail / 21 null/inapplicable (**65.6%** `STATIC_SELECTION_MISMATCH_RATE`) |
 
 ---
 
@@ -142,7 +155,7 @@ Full registry in Phase 2A §3. Registry arithmetic: **27** = 22 unique definitio
 
 | Cluster | Query IDs | Vehicle relevance (Phase 2B) |
 |---------|-----------|------------------------------|
-| Snapshot superset | Q001 | **65.6% waste** on all four ICE vehicles |
+| Snapshot superset | Q001 | **65.6%** `STATIC_SELECTION_MISMATCH_RATE` on all four ICE vehicles |
 | Live active trip | Q006–Q008 | Speed/GPS/ignition/fuel/odometer **AVAILABLE**; overlaps snapshot |
 | HF post-trip | Q009 | 15 fields; torque/gear **NOT_OBSERVED** on four vehicles |
 | Native events | Q015, Q016 (ctx), Q027 (ctx) | Emission rate **vehicle-specific** (0–50/30d) |
@@ -193,13 +206,13 @@ Full registry in Phase 2A §3. Registry arithmetic: **27** = 22 unique definitio
 | 30 | `powertrainTransmissionCurrentGear` | transmission | Q009 | — | — | — | — | NOT_OBSERVED; QUERIED HF; QUERIED_NOT_PERSISTED |
 | 31 | `currentLocationCoordinates` | position | Q001,Q007 | ✓ | ✓ | ✓ | ✓ | AVAILABLE_AND_QUERIED; CONSUMED |
 | 32 | `lowVoltageBatteryCurrentVoltage` | electrical | Q001,Q012 | ✓ | ✓ | ✓ | ✓ | AVAILABLE_AND_QUERIED; HEALTH_INPUT |
-| 33 | `chassisAxleRow1WheelLeftTirePressure` | tire | Q001,Q011 | — | — | — | — | NOT_AVAILABLE (no TPMS); QUERIED ∅ |
-| 34 | `chassisAxleRow1WheelRightTirePressure` | tire | Q001,Q011 | — | — | — | — | NOT_AVAILABLE; QUERIED ∅ |
-| 35 | `chassisAxleRow2WheelLeftTirePressure` | tire | Q001,Q011 | — | — | — | — | NOT_AVAILABLE; QUERIED ∅ |
-| 36 | `chassisAxleRow2WheelRightTirePressure` | tire | Q001,Q011 | — | — | — | — | NOT_AVAILABLE; QUERIED ∅ |
-| 37 | `chassisTireSystemIsWarningOn` | tire | Q001 | — | — | — | — | NOT_AVAILABLE; QUERIED ∅ |
+| 33 | `chassisAxleRow1WheelLeftTirePressure` | tire | Q001,Q011 | — | — | — | — | NO_DIMO_TIRE_PRESSURE_SIGNALS_OBSERVED; QUERIED ∅ |
+| 34 | `chassisAxleRow1WheelRightTirePressure` | tire | Q001,Q011 | — | — | — | — | NO_DIMO_TIRE_PRESSURE_SIGNALS_OBSERVED; QUERIED ∅ |
+| 35 | `chassisAxleRow2WheelLeftTirePressure` | tire | Q001,Q011 | — | — | — | — | NO_DIMO_TIRE_PRESSURE_SIGNALS_OBSERVED; QUERIED ∅ |
+| 36 | `chassisAxleRow2WheelRightTirePressure` | tire | Q001,Q011 | — | — | — | — | NO_DIMO_TIRE_PRESSURE_SIGNALS_OBSERVED; QUERIED ∅ |
+| 37 | `chassisTireSystemIsWarningOn` | tire | Q001 | — | — | — | — | NO_DIMO_TIRE_PRESSURE_SIGNALS_OBSERVED; QUERIED ∅ |
 | 38 | `obdIsPluggedIn` | connectivity | Q001 | ✓ | ✓ | ✓ | ✓ | AVAILABLE_AND_QUERIED; connectivity path |
-| 39 | `connectivityCellularIsJammingDetected` | connectivity | Q001 | — | — | — | — | NOT_AVAILABLE; QUERIED ∅ |
+| 39 | `connectivityCellularIsJammingDetected` | connectivity | Q001 | — | — | — | — | NO_DIMO_TIRE_PRESSURE_SIGNALS_OBSERVED; QUERIED ∅ |
 | 40 | `powertrainType` | meta | Q001 | ✓ | ✓ | ✓ | ✓ | AVAILABLE_AND_QUERIED; raw_payload |
 | 41 | `obdDTCList` | health | Q005 | — | — | ✓ | — | A4 only; AVAILABLE via Q005 not Q001 |
 | 42 | `currentLocationHeading` | position | — | ✓ | ✓ | ✓ | ✓ | AVAILABLE_NOT_QUERIED |
@@ -217,14 +230,14 @@ Full registry in Phase 2A §3. Registry arithmetic: **27** = 22 unique definitio
 | 54 | `powertrainCombustionEngineTPS` | engine | — | ✓ | ✓ | ✓ | ✓ | AVAILABLE_NOT_QUERIED (alias family vs `obdThrottlePosition`) |
 | 55 | `powertrainTransmissionActualGear` | transmission | — | ✓ | — | — | — | Tiguan only; AVAILABLE_NOT_QUERIED |
 | 56 | `powertrainTransmissionActualGearRatio` | transmission | — | ✓ | — | — | — | Tiguan only; AVAILABLE_NOT_QUERIED |
-| 57 | `behavior.harshBraking` | native event | Q015 | HIST | ✓ | — | HIST | Event filter; vehicle-specific emission |
-| 58 | `behavior.extremeBraking` | native event | Q015 | — | ✓ | — | ✓ | C63+Arteon 30d |
-| 59 | `behavior.harshAcceleration` | native event | Q015 | HIST | ✓ | — | ✓ | |
-| 60 | `behavior.extremeAcceleration` | native event | Q015 | — | — | — | — | In Q015 filter; not in 30d samples |
-| 61 | `behavior.harshCornering` | native event | Q015 | HIST | ✓ | — | ✓ | Arteon dominant (46/50) |
-| 62 | `behavior.extremeEmergency` | native event | Q015 | — | — | — | — | In filter; not in 30d samples |
-| 63 | `behavior.extremeEmergencyBraking` | native event | Q015 | — | — | — | — | In filter; not in 30d samples |
-| 64 | `safety.collision` | native event | Q015,Q016 | ? | ? | ? | ? | In filter; UNKNOWN emission on four |
+| 57 | `behavior.harshBraking` | native event | Q015 | Z; OH (Arteon hist.) | Z | Z | OH | Provider observed; score consumption UNKNOWN |
+| 58 | `behavior.extremeBraking` | native event | Q015 | Z | O30 (1) | Z | O30 (3) | C63/Arteon provider 30d |
+| 59 | `behavior.harshAcceleration` | native event | Q015 | OH; Z | O30 (21) | Z | O30 (1) | Tiguan historical only in window |
+| 60 | `behavior.extremeAcceleration` | native event | Q015 | Z | Z | Z | Z | In Q015 filter; ZERO_IN_WINDOW |
+| 61 | `behavior.harshCornering` | native event | Q015 | OH; Z | O30 (12) | Z | O30 (46) | Provider variance; consumption UNKNOWN (C63) |
+| 62 | `behavior.extremeEmergency` | native event | Q015 | Z | Z | Z | Z | In filter; ZERO_IN_WINDOW |
+| 63 | `behavior.extremeEmergencyBraking` | native event | Q015 | Z | Z | Z | Z | In filter; ZERO_IN_WINDOW |
+| 64 | `safety.collision` | native event | Q015,Q016 | ? | ? | ? | ? | UNKNOWN_SUPPORT on four |
 | 65 | `changePointDetection` | segment | Q022 | ? | ? | ? | ? | UNKNOWN_NEEDS_RUNTIME_PROBE |
 | 66 | `ignitionDetection` | segment | Q022 | ? | ? | ? | ? | UNKNOWN_NEEDS_RUNTIME_PROBE |
 | 67 | `frequencyAnalysis` | segment | Q022 | ? | ? | ? | ? | UNKNOWN_NEEDS_RUNTIME_PROBE |
@@ -232,9 +245,9 @@ Full registry in Phase 2A §3. Registry arithmetic: **27** = 22 unique definitio
 | 69 | `refuel` | segment | Q023 | ? | ? | ? | ? | UNKNOWN_NEEDS_RUNTIME_PROBE |
 | 70 | `recharge` | segment | Q025 | — | — | — | — | ICE N/A; mechanism UNKNOWN on ICE |
 
-**HIST** = historical `eventDataSummary` only, 0 in last 30d window.
+**Event column codes:** `O30` = OBSERVED_30D · `OH` = OBSERVED_HISTORICAL · `Z` = ZERO_IN_WINDOW · `?` = UNKNOWN_SUPPORT
 
-**Signals NOT observed in any inventory (SynqDrive still queries):** longitudinal/lateral acceleration, yaw (`angularVelocityYaw`), steering angle, wheel speed, brake pedal/pressure, ABS/ESC status, `powertrainCombustionEngineTorque*`, `powertrainTransmissionCurrentGear`.
+**NO_DIMO_SIGNAL_OBSERVED_IN_THESE_FOUR_INVENTORIES** (SynqDrive still queries): longitudinal acceleration, lateral acceleration, yaw (`angularVelocityYaw`), steering angle, individual wheel speed, brake pedal/pressure, ABS/ESC activity, `powertrainCombustionEngineTorque*`, `powertrainTransmissionCurrentGear` (Tiguan has `ActualGear` — possible alias gap).
 
 ---
 
@@ -244,12 +257,12 @@ Rows for production-active / invocation-context queries referenced in Phase 2B s
 
 | Query | Surface | Signals/events | Tiguan | C63 | A4 | Arteon | Effectiveness | Waste class |
 |-------|---------|----------------|--------|-----|-----|--------|---------------|-------------|
-| **Q001** | Snapshot | 32 tel | 11/32 avail | 11/32 | 11/32 | 11/32 | **65.6% wasted** | VERY_HIGH |
+| **Q001** | Snapshot | 32 tel | 11/32 observed | 11/32 | 11/32 | 11/32 | **65.6%** `STATIC_SELECTION_MISMATCH_RATE` | VERY_HIGH |
 | **Q005** | DTC | `obdDTCList` | — | — | ✓ P0675 | — | Partial vehicle fit | LOW |
 | **Q006** | Live core | 5 | ✓ core set | ✓ | ✓ | ✓ | HIGH fit | LOW |
 | **Q007** | Live route | 2 | ✓ GPS,speed | ✓ | ✓ | ✓ | HIGH fit | LOW |
 | **Q008** | Live perf | 4 | ✓ RPM,TPS,load,ECT | ✓ | ✓ | ✓ | HIGH fit (post-trip overlap) | MODERATE |
-| **Q009** | HF 1s | 15 | 9/15 observed | 9/15 | 9/15 | 9/15 | **6 fields NOT_OBSERVED** (torque×2, gear, + not in HF list but queried) | HIGH |
+| **Q009** | HF 1s | 15 | **9/15** vehicle-observed | **9/15** | **9/15** | **9/15** | **3/15** powertrain-inapplicable (EV SOC/power/temp); **3/15** NOT_OBSERVED (torque×2, `currentGear`) | MODERATE mismatch |
 | **Q010** | Env 2m | 1 ext temp | ✓ | ✓ | ✓ | ✓ | HIGH fit | LOW |
 | **Q012** | Crank 5s | 2 | ✓ LV,RPM | ✓ | ✓ | ✓ | HIGH fit | LOW |
 | **Q013** | Fuel 30s | 2 | ✓ rel+abs | ✓ | abs only | ✓ | A4: rel ∅ | MODERATE |
@@ -261,45 +274,80 @@ Rows for production-active / invocation-context queries referenced in Phase 2B s
 | **Q025** | Recharge seg | mechanism | — ICE | — | — | — | N/A ICE | N/A |
 | **Q027** | Event HF ctx | reuses Q009 | 0 events | 34 eligible | 0 events | 50 eligible | Gated by Q015 yield | VARIABLE |
 
-**Q001 detail (all ICE):** 11 available = coordinates, speed, odometer, fuel (rel or abs+DEF), ECT, ignition, engine load, LV voltage, plugged, type (+ rel fuel except A4 counts DEF instead).
+**Q009 breakdown (15 HF fields, all four ICE vehicles):**
+
+| Class | Count | Fields |
+|-------|------:|--------|
+| **VEHICLE-OBSERVED** | **9** | `speed`, `powertrainCombustionEngineECT`, `powertrainCombustionEngineSpeed`, `obdThrottlePosition`, `obdEngineLoad`, `obdRunTime`, `exteriorAirTemperature`, `currentLocationAltitude`, `isIgnitionOn` |
+| **POWERTRAIN_INAPPLICABLE_ON_ICE** | **3** | `powertrainTractionBatteryStateOfChargeCurrent`, `powertrainTractionBatteryCurrentPower`, `powertrainTractionBatteryTemperatureAverage` |
+| **QUERIED_BUT_NOT_OBSERVED_ON_AUDIT_SET** | **3** | `powertrainCombustionEngineTorque`, `powertrainCombustionEngineTorquePercent`, `powertrainTransmissionCurrentGear` |
+
+**Alias note:** Tiguan has `powertrainTransmissionActualGear` in inventory but Q009 requests `powertrainTransmissionCurrentGear` — possible field-shape/alias gap (**PROPOSAL_FOR_PHASE_2C**), not proof of global DIMO non-support.
+
+**Q001 detail (all ICE):** 11 observed = coordinates, speed, odometer, fuel (rel or abs+DEF), ECT, ignition, engine load, LV voltage, plugged, type.
 
 ---
 
-## 7. Static Superset Query Waste
+## 7. Static Superset Query Selection Mismatch
 
-| Query pattern | Requested fields | Typical ICE avail | Waste % | Classification |
-|---------------|------------------|-------------------|---------|----------------|
-| Q001 snapshot | 32 telemetry | 11 | **65.6%** | VERY_HIGH |
-| Q001 EV/HV block | 13 | 0 | 100% on ICE | EXPECTED_NULL |
-| Q001 tire block | 5 | 0 | 100% (no TPMS) | EXPECTED_NULL |
-| Q009 HF torque/gear | 3 | 0 observed | 100% on four | QUERIED_DEAD_FIELDS |
-| Q001 oil/DEF/jamming | 3 | 0–1 | 67–100% | PARTIAL (A4 DEF) |
+**Terminology:** `STATIC_SELECTION_MISMATCH_RATE` = share of Q001 telemetry GraphQL selections that are null/inapplicable on the vehicle at audit. This is **not** measured API request-count waste, response-payload waste, or provider-compute cost (all **UNKNOWN_REQUIRES_MEASUREMENT**).
 
-**Verdict:** Fleet-wide static GraphQL field lists dominate request volume; preflight **does not trim** Q001/Q009. Scaling risk from Phase 2A §6 remains **HIGH** at fleet scale with unchanged architecture.
+| Dimension | Q001 ICE audit set | Notes |
+|-----------|-------------------|-------|
+| **REQUEST_COUNT** | 1 GraphQL op per snapshot tick | Unchanged by field selection until implementation changes |
+| **GRAPHQL_SELECTION_COMPLEXITY** | 32 telemetry fields + `lastSeen` | Static fleet-wide list |
+| **RESPONSE_PAYLOAD** | Proportional to non-null returned fields | Not measured in Phase 2B |
+| **NULL_SELECTION_SHARE** | **65.6%** (21/32) per ICE vehicle | CONFIRMED_FROM_VEHICLE_INVENTORY |
+| **PROVIDER_COMPUTE_COST** | **UNKNOWN** | No latency/payload/cost probes |
+
+### Q001 inapplicable field breakdown (21 selections per ICE vehicle)
+
+| Class | Count | Fields | Gasoline ICE (Tiguan/C63/Arteon) | A4 diesel |
+|-------|------:|--------|----------------------------------|-----------|
+| **POWERTRAIN_INAPPLICABLE** | **13** | All `powertrainTractionBattery*` + charging block | ✓ null | ✓ null |
+| **CAPABILITY_ABSENT** | **5** | `chassisAxleRow* TirePressure` ×4 + `chassisTireSystemIsWarningOn` | ✓ | ✓ |
+| **CAPABILITY_ABSENT** | **1** | `powertrainCombustionEngineEngineOilRelativeLevel` | ✓ | ✓ |
+| **CAPABILITY_ABSENT** | **1** | `connectivityCellularIsJammingDetected` | ✓ | ✓ |
+| **VEHICLE_SPECIFIC / fuel shape** | **1** | `powertrainCombustionEngineDieselExhaustFluidLevel` (gasoline: absent) **or** `powertrainFuelSystemRelativeLevel` (A4: absent) | DEF absent | rel fuel absent |
+| **Total null/inapplicable** | **21** | | **65.6%** mismatch | **65.6%** mismatch |
+
+**Classification:** **CONFIRMED_ARCHITECTURAL_INEFFICIENCY** + **SCALING_IMPACT_REQUIRES_MEASUREMENT** (not a proven P1 provider-cost defect).
+
+| Query pattern | Requested fields | Observed on ICE | NULL_SELECTION_SHARE | Notes |
+|---------------|------------------|-----------------|---------------------|-------|
+| Q001 snapshot | 32 telemetry | 11 | **65.6%** | VERY_HIGH mismatch |
+| Q001 EV/HV block | 13 | 0 | 100% | POWERTRAIN_INAPPLICABLE on ICE |
+| Q001 tire block | 5 | 0 | 100% | CAPABILITY_ABSENT (no DIMO tire pressure observed) |
+| Q009 HF | 15 | 9 vehicle-observed | 40% null/inapplicable+unobserved | See §6 Q009 breakdown |
+| Q009 torque/gear | 3 | 0 observed | 3 NOT_OBSERVED; possible alias gap (`ActualGear` on Tiguan) | Not global dead fields |
+
+**Verdict:** Fleet-wide static GraphQL field lists dominate **selection complexity**; preflight **does not trim** Q001/Q009. Request **volume** scaling from Phase 2A §6 remains a separate concern from selection mismatch.
 
 ---
 
-## 8. Available But Not Queried (15 rows — FULL)
+## 8. Available But Not Queried in Phase-2A Driving Acquisition (15 rows — FULL)
 
-Signals present on vehicles, **not** in Q001 snapshot (most also absent from entire Phase-2A query surface).
+**Definition:** Signals in vehicle `availableSignals` that are **not selected in Phase-2A driving acquisition query builders** (Q001–Q025 and production invocation contexts Q014/Q016/Q027). Count = **15** (unchanged after repo check).
 
-| # | Signal | Tiguan | C63 | A4 | Arteon | In any SynqDrive query? | Priority |
-|---|--------|--------|-----|-----|--------|-------------------------|----------|
-| 1 | `currentLocationHeading` | ✓ | ✓ | ✓ | ✓ | No (detail API only) | P2 route context |
-| 2 | `obdBarometricPressure` | ✓ | ✓ | ✓ | ✓ | No | P3 |
-| 3 | `obdDistanceWithMIL` | ✓ | ✓ | ✓ | ✓ | No | P2 health (A4: 3426 km) |
-| 4 | `obdFuelRailPressure` | ✓ | ✓ | ✓ | ✓ | No | P3 |
-| 5 | `obdFuelTypeName` | ✓ | ✓ | ✓ | ✓ | No | P2 classification |
-| 6 | `obdIntakeTemp` | ✓ | ✓ | ✓ | ✓ | No | P2 cold-engine |
-| 7 | `obdLongTermFuelTrim1` | ✓ | ✓ | ✓ | ✓ | No | P3 |
-| 8 | `obdLongTermFuelTrim2` | ✓ | ✓ | ✓ | ✓ | No | P3 |
-| 9 | `obdMAP` | ✓ | ✓ | ✓ | ✓ | No | P3 |
-| 10 | `obdMaxMAF` | ✓ | ✓ | ✓ | ✓ | No | P3 |
-| 11 | `obdOilTemperature` | ✓ | ✓ | ✓ | ✓ | No | P2 thermal |
-| 12 | `obdStatusDTCCount` | ✓ | ✓ | ✓ | ✓ | No | **P1** health |
-| 13 | `powertrainCombustionEngineTPS` | ✓ | ✓ | ✓ | ✓ | No (`obdThrottlePosition` in HF/live) | P1 alias gap |
-| 14 | `powertrainTransmissionActualGear` | ✓ | — | — | — | No | P1 Tiguan-only |
-| 15 | `powertrainTransmissionActualGearRatio` | ✓ | — | — | — | No | P1 Tiguan-only |
+**Not the same as:** `NOT_QUERIED_ANYWHERE_IN_REPO`. Example: `currentLocationHeading` is parsed in `vehicles.service.ts` detail/raw paths and listed in preflight classifier config — but **not** in Q001–Q025 driving acquisition.
+
+| # | Signal | Tiguan | C63 | A4 | Arteon | In Phase-2A driving acquisition? | Other repo paths? |
+|---|--------|--------|-----|-----|--------|----------------------------------|-------------------|
+| 1 | `currentLocationHeading` | ✓ | ✓ | ✓ | ✓ | **No** | Yes — detail/raw parse, preflight classifier |
+| 2 | `obdBarometricPressure` | ✓ | ✓ | ✓ | ✓ | **No** | — |
+| 3 | `obdDistanceWithMIL` | ✓ | ✓ | ✓ | ✓ | **No** | — |
+| 4 | `obdFuelRailPressure` | ✓ | ✓ | ✓ | ✓ | **No** | — |
+| 5 | `obdFuelTypeName` | ✓ | ✓ | ✓ | ✓ | **No** | — |
+| 6 | `obdIntakeTemp` | ✓ | ✓ | ✓ | ✓ | **No** | — |
+| 7 | `obdLongTermFuelTrim1` | ✓ | ✓ | ✓ | ✓ | **No** | — |
+| 8 | `obdLongTermFuelTrim2` | ✓ | ✓ | ✓ | ✓ | **No** | — |
+| 9 | `obdMAP` | ✓ | ✓ | ✓ | ✓ | **No** | — |
+| 10 | `obdMaxMAF` | ✓ | ✓ | ✓ | ✓ | **No** | — |
+| 11 | `obdOilTemperature` | ✓ | ✓ | ✓ | ✓ | **No** | — |
+| 12 | `obdStatusDTCCount` | ✓ | ✓ | ✓ | ✓ | **No** | — |
+| 13 | `powertrainCombustionEngineTPS` | ✓ | ✓ | ✓ | ✓ | **No** (`obdThrottlePosition` in HF/live) | preflight classifier |
+| 14 | `powertrainTransmissionActualGear` | ✓ | — | — | — | **No** | Tiguan-only |
+| 15 | `powertrainTransmissionActualGearRatio` | ✓ | — | — | — | **No** | Tiguan-only |
 
 **Note:** `powertrainCombustionEngineSpeed`, `obdThrottlePosition`, `exteriorAirTemperature`, `currentLocationAltitude`, `obdRunTime` are available on all four but queried only outside snapshot (HF/live/env) — counted in §5 matrix rows, not this 15-row supplement.
 
@@ -318,17 +366,29 @@ Signals present on vehicles, **not** in Q001 snapshot (most also absent from ent
 | Live core/route raw buckets | Q006,Q007 | Watermark overlap discarded |
 | Q027 per-event HF windows | Q027 | DERIVED_ONLY context stats |
 
-### B. PERSISTED_NOT_CONSUMED
+### B. PERSISTED_NOT_DRIVING_CONSUMED (individual signal fields)
 
-| Field | Persistence | Consumer gap |
-|-------|-------------|--------------|
-| Odometer | VLS, trip | NO_CURRENT_DRIVING_IMPACT_CONSUMER (composite) |
-| Fuel relative/absolute | VLS, trip | UI/trip evidence; not stress score |
-| EV/HV snapshot fields | VLS | ICE fleet: always null, occasional JSON noise |
-| Tire pressures | VLS query | NOT_AVAILABLE_ON_VEHICLE (no TPMS on four) |
-| `engine_load` snapshot | VLS | UI only; not HF stress path |
+| Field | Persistence | Consumer gap | On four ICE at audit? |
+|-------|-------------|--------------|------------------------|
+| `powertrainTransmissionTravelledDistance` | VLS, trip | NO_CURRENT_DRIVING_IMPACT_CONSUMER | **Yes** — persisted |
+| `powertrainFuelSystemRelativeLevel` | VLS, trip (3/4) | Trip evidence; not stress score | Where listed |
+| `powertrainFuelSystemAbsoluteLevel` | VLS, trip | Trip evidence; not stress score | **Yes** |
+| `obdEngineLoad` (snapshot) | VLS | UI/trip detection; not HF stress composite | **Yes** |
 
-### C. POTENTIAL_QUERY_DUPLICATION
+**`PERSISTED_NOT_DRIVING_CONSUMED_FIELD_COUNT` = 4** distinct signal fields.
+
+### C. UNDERUSED_DATA_PATHS
+
+| Path | Issue |
+|------|-------|
+| Q001 EV/HV selections (13) | Queried; null on ICE — not meaningfully persisted |
+| Q001 tire selections (5) | Queried; NO_DIMO tire pressure signals observed — null |
+| HF raw 1s series (Q009) | QUERIED_NOT_PERSISTED |
+| Live bucket overlap (Q006–Q008) | Partial duplication with post-trip |
+
+**`UNDERUSED_DATA_PATH_COUNT` = 4** data paths.
+
+### D. POTENTIAL_QUERY_DUPLICATION
 
 | Pattern | Queries | Notes |
 |---------|---------|-------|
@@ -365,8 +425,8 @@ Signals present on vehicles, **not** in Q001 snapshot (most also absent from ent
 | OBD diagnostic | 15+ OBD scalars | DTC list (Q005), engine load | most OBD not queried |
 | Thermal | ECT, ext temp, oil, intake | ECT, ext (HF/env) | oil/intake not queried |
 | Electrical | LV voltage | LV | CONSUMED health |
-| EV/HV | — on four ICE | 13 fields Q001 | 100% waste ICE |
-| Tire/chassis | — (no TPMS) | 5 tire Q001 | 100% waste |
+| EV/HV | — on four ICE | 13 fields Q001 | 100% POWERTRAIN_INAPPLICABLE selections |
+| Tire/chassis | NO_DIMO tire pressure observed | 5 tire Q001 | 100% CAPABILITY_ABSENT selections |
 | Connectivity | plugged | plugged, jamming | jamming not available |
 | Native events | 8 names in filter | 8 | emission 0–50/30d |
 | Segments | 6 mechanisms | 6 | UNKNOWN yield |
@@ -383,7 +443,7 @@ Signals present on vehicles, **not** in Q001 snapshot (most also absent from ent
 | `obdThrottlePosition` / TPS | ✓ | ✓ | ✓ | ✓ | Live avg + HF | HIGH kickdown/launch |
 | RPM | ✓ | ✓ | ✓ | ✓ | Live/HF not snapshot | MODERATE live |
 | Gear (Tiguan) | ✓ | — | — | — | Not queried | PROPOSAL_FOR_PHASE_2C |
-| **Missing:** yaw, lateral/long accel | — | — | — | — | Not on DIMO four | Gap remains |
+| **Missing:** yaw, lateral/long accel | NO_DIMO_YAW/LATERAL/LONG_ACCEL_SIGNAL_OBSERVED | — | — | — | Not in four inventories | Gap remains |
 
 ---
 
@@ -403,14 +463,14 @@ Signals present on vehicles, **not** in Q001 snapshot (most also absent from ent
 
 | Signal / event | Four-vehicle reality | SynqDrive | Potential |
 |----------------|---------------------|-----------|-----------|
-| `chassisBrakeIsPedalPressed` | NOT_AVAILABLE | Not queried | — |
-| `chassisBrakePedalPosition` | NOT_AVAILABLE | Not queried | — |
-| ABS/ESC signals | NOT_AVAILABLE | Not queried | — |
+| `chassisBrakeIsPedalPressed` | NO_DIMO_BRAKE_PEDAL_SIGNAL_OBSERVED | Not queried | — |
+| `chassisBrakePedalPosition` | NO_DIMO_BRAKE_PEDAL_SIGNAL_OBSERVED | Not queried | — |
+| ABS/ESC signals | NO_DIMO_ABS_ESC_SIGNAL_OBSERVED | Not queried | — |
 | `behavior.harshBraking` | HIST/sparse | Q015 | HIGH when native |
 | `behavior.extremeBraking` | C63, Arteon | Q015 | HIGH LTE_R1 |
 | HF speed-only reconstruction | 4/4 | Q009 detectors | MODERATE fallback |
 
-**Verdict:** Brake domain on these four vehicles is **native-event-dependent** (LTE_R1); no pedal pressure path.
+**Verdict:** Brake observability on these four inventories is **native-event-dependent** where provider emits events; **NO_DIMO_BRAKE_PEDAL_SIGNAL_OBSERVED**; composite consumption UNKNOWN for C63 (RP-25).
 
 ---
 
@@ -418,7 +478,7 @@ Signals present on vehicles, **not** in Q001 snapshot (most also absent from ent
 
 | Signal | Four vehicles | Q001 | Potential |
 |--------|---------------|------|-----------|
-| Tire pressures ×4 | NOT_AVAILABLE | Queried ∅ | None without TPMS |
+| Tire pressures ×4 | NOT_AVAILABLE | Queried ∅ | None — no DIMO tire pressure signals observed on four |
 | `chassisTireSystemIsWarningOn` | NOT_AVAILABLE | Queried ∅ | None |
 | Q011 tire history | — | DEFINED_BUT_UNUSED | Dead query |
 
@@ -476,22 +536,30 @@ Signals present on vehicles, **not** in Q001 snapshot (most also absent from ent
 | UNKNOWN | A4 | 0 | — | No events despite trip |
 | **LTE_R1** | Arteon | **50** | — | Native event authority path |
 
-**Verdict: PARTIAL** — LTE_R1 Arteon shows rich native events, but C63 (34 events) lacks LTE_R1 label in inventory; Tiguan has gear but no recent events. **SMART5 not in audit set** — cannot confirm SMART5 vs LTE_R1 split from these four alone.
+**Vehicle-evidence verdict: NOT_ESTABLISHED_FROM_THIS_FOUR_VEHICLE_SET** — only Arteon has confirmed `LTE_R1`; three vehicles have **UNKNOWN** hardware profile in inventories. Observed variance (events, gear) cannot be attributed to profile vs vehicle/provider factors from this set alone.
 
-**CONFIRMED_FROM_CODE:** Same static GraphQL lists for all hardware profiles; gates affect enrichment services only.
+**CONFIRMED_FROM_CODE:** Profile/hardware gates enrichment authority paths (LTE_R1 vs SMART5 service split) — not static Q001/Q009 field lists.
+
+**UNKNOWN_FROM_CURRENT_VEHICLE_EVIDENCE:** How reliably hardware profile explains real DIMO signal/event capability.
+
+**RP-31 (new):** Resolve authoritative hardware profile for all four audit vehicles before Phase 2F capability-profile design. C63 native events with UNKNOWN profile are **not** proof that hardware profile is irrelevant.
 
 ---
 
 ## 19. `availableSignals` Reliability
 
-| Vehicle | Listed | Working (latest) | Rate | Historical notes |
-|---------|--------|------------------|------|------------------|
-| Tiguan | 31 | 31 | **100%** | Live 2026-08-30 |
-| C63 | 29 | 29 | **100%** | Mixed per-signal timestamps |
+| Vehicle | Listed | Non-null at audit (`signalsLatest`) | `LISTED_NON_NULL_AT_AUDIT` | Caveats |
+|---------|--------|-------------------------------------|----------------------------|---------|
+| Tiguan | 31 | 31 | **100%** | Live poll 2026-08-30 |
+| C63 | 29 | 29 | **100%** | **Mixed per-signal timestamps** (RPM/fuel 28.08 vs GPS 29.08) — freshness not uniform |
 | A4 | 30 | 30 | **100%** | Aligned VLS |
 | Arteon | 29 | 29 | **100%** | Recovery post-stale |
 
-**Verdict:** `availableSignals` is a **reliable enumeration** for these vehicles at audit time (listed = working). It does **not** imply SynqDrive queries match list (static superset persists).
+**What `LISTED_NON_NULL_AT_AUDIT` = 100% proves:** enumeration consistency at audit observation — listed signals returned non-null in `signalsLatest`.
+
+**What it does NOT prove:** freshness uniformity, sufficient cadence, continuous availability, historical queryability, detector suitability, or that SynqDrive queries match the list (static superset persists).
+
+**Verdict for future query profiles:** `availableSignals` can inform **selection candidates** only (**PARTIAL**). Capability manifest requires null/non-null evidence, freshness, cadence, historical support, provider profile, stability, and fallback hierarchy.
 
 **INFERENCE:** 7-day preflight gate may miss short-lived signal changes.
 
@@ -514,19 +582,25 @@ No runtime interval histograms — **HISTORICAL_EVIDENCE / inventory sample coun
 
 ## 21. Native Events Matrix (8 × 4)
 
-| Event (Q015 filter) | Tiguan 30d | C63 30d | A4 30d | Arteon 30d | Historical note |
-|---------------------|------------|---------|--------|------------|-----------------|
-| `behavior.harshBraking` | 0 | 0 | 0 | 0 | Arteon 721 total hist |
-| `behavior.extremeBraking` | 0 | 1 | 0 | 3 | |
-| `behavior.harshAcceleration` | 0 | 21 | 0 | 1 | Tiguan 404 total |
-| `behavior.extremeAcceleration` | 0 | 0 | 0 | 0 | In filter only |
-| `behavior.harshCornering` | 0 | 12 | 0 | **46** | Tiguan 13; Arteon 3142 total |
-| `behavior.extremeEmergency` | 0 | 0 | 0 | 0 | In filter only |
-| `behavior.extremeEmergencyBraking` | 0 | 0 | 0 | 0 | In filter only |
-| `safety.collision` | ? | ? | ? | ? | UNKNOWN emission |
-| **Total 30d** | **0** | **34** | **0** | **50** | |
+**Separation:** `PROVIDER_EVENT_OBSERVED` (inventory) ≠ `CURRENT_SCORE_CONSUMPTION_CONFIRMED` (production composite path). Q015 filter = `SYNQDRIVE_QUERY_CAN_REQUEST`. Profile eligibility = `CURRENT_PROFILE_PATH_ELIGIBILITY` (**INFERENCE** / RP-25).
 
-**A4 anomaly:** Same-day trip 2026-08-30, **0** events — warrants RP-21.
+| Event (Q015 filter) | Tiguan provider | C63 provider | A4 provider | Arteon provider | Q015 can request | Profile eligibility | Score consumption |
+|---------------------|-----------------|--------------|-------------|-----------------|------------------|---------------------|-------------------|
+| `behavior.harshBraking` | ZERO_IN_WINDOW; OBSERVED_HISTORICAL (Arteon 721 total only) | ZERO_IN_WINDOW | ZERO_IN_WINDOW | OBSERVED_HISTORICAL (721 total); 0 in 30d | yes | UNKNOWN (Tiguan); UNKNOWN (C63); UNKNOWN (A4); INFERENCE LTE_R1 (Arteon) | UNKNOWN_REQUIRES_PROFILE_RESOLUTION |
+| `behavior.extremeBraking` | ZERO_IN_WINDOW | OBSERVED_30D (1) | ZERO_IN_WINDOW | OBSERVED_30D (3) | yes | UNKNOWN (C63); INFERENCE LTE_R1 (Arteon) | UNKNOWN (C63); INFERENCE composite (Arteon) |
+| `behavior.harshAcceleration` | OBSERVED_HISTORICAL (404 total); ZERO_IN_WINDOW | OBSERVED_30D (21) | ZERO_IN_WINDOW | OBSERVED_30D (1) | yes | UNKNOWN (Tiguan/C63/A4); INFERENCE LTE_R1 (Arteon) | UNKNOWN (C63); INFERENCE (Arteon); UNKNOWN (Tiguan hist.) |
+| `behavior.extremeAcceleration` | ZERO_IN_WINDOW | ZERO_IN_WINDOW | ZERO_IN_WINDOW | ZERO_IN_WINDOW | yes | UNKNOWN | UNKNOWN |
+| `behavior.harshCornering` | OBSERVED_HISTORICAL (13 total); ZERO_IN_WINDOW | OBSERVED_30D (12) | ZERO_IN_WINDOW | OBSERVED_30D (46) | yes | UNKNOWN (C63); INFERENCE LTE_R1 (Arteon) | UNKNOWN (C63); INFERENCE (Arteon) |
+| `behavior.extremeEmergency` | ZERO_IN_WINDOW | ZERO_IN_WINDOW | ZERO_IN_WINDOW | ZERO_IN_WINDOW | yes | UNKNOWN | UNKNOWN |
+| `behavior.extremeEmergencyBraking` | ZERO_IN_WINDOW | ZERO_IN_WINDOW | ZERO_IN_WINDOW | ZERO_IN_WINDOW | yes | UNKNOWN | UNKNOWN |
+| `safety.collision` | UNKNOWN_SUPPORT | UNKNOWN_SUPPORT | UNKNOWN_SUPPORT | UNKNOWN_SUPPORT | yes | UNKNOWN | UNKNOWN |
+| **Total OBSERVED_30D** | **0** | **34** | **0** | **50** | | | |
+
+**A4:** Same-day trip with **ZERO_IN_WINDOW** events = **OBSERVED_ZERO_IN_WINDOW** — not `NOT_SUPPORTED`.
+
+**C63:** **34** provider events with **UNKNOWN** hardware profile — **do not claim** LTE_R1 composite consumption until RP-25.
+
+**Arteon:** Provider events strong; composite consumption **INFERENCE** via LTE_R1 enrichment path — not inventory-proven.
 
 ---
 
@@ -554,8 +628,8 @@ No runtime interval histograms — **HISTORICAL_EVIDENCE / inventory sample coun
 | Kinematics | **Strong** (live GPS, speed) | Heading not queried |
 | Engine load/RPM | **Partial** (HF/live only) | Snapshot miss |
 | Native events | **Weak recent** (0/30d) | LTE_R1 path may not run |
-| Brake | **Weak** | No pedal; no recent native brake events |
-| Tire | **None** | No TPMS |
+| Brake | **Weak** | NO_DIMO_BRAKE_PEDAL_SIGNAL_OBSERVED; no recent native brake events |
+| Tire | **None** | NO_DIMO_TIRE_PRESSURE_SIGNALS_OBSERVED |
 | Health DTC | **Partial** | DTC list not on vehicle |
 | Gear context | **Unique** | ActualGear avail, not queried |
 
@@ -565,9 +639,9 @@ No runtime interval histograms — **HISTORICAL_EVIDENCE / inventory sample coun
 |--------|----------|-----|
 | Kinematics | **Strong** | |
 | Engine | **Strong** historical | Snapshot miss |
-| Native events | **Moderate** (34/30d) | Not labeled LTE_R1 |
-| Brake | **Moderate** native | |
-| Tire | **None** | |
+| Native events | **Moderate provider** (34/30d) | Profile UNKNOWN; score consumption UNKNOWN (RP-25) |
+| Brake | Provider events only | NO_DIMO_BRAKE_PEDAL_SIGNAL_OBSERVED; consumption UNKNOWN |
+| Tire | **None** | NO_DIMO_TIRE_PRESSURE_SIGNALS_OBSERVED |
 | Timestamp freshness | **Risk** | Mixed signal ages |
 
 ### A4 (KS MS 661)
@@ -587,10 +661,10 @@ No runtime interval histograms — **HISTORICAL_EVIDENCE / inventory sample coun
 |--------|----------|-----|
 | Kinematics | **Strong** | |
 | Engine | **Strong** historical | Snapshot miss |
-| Native events | **Strong** (50/30d, cornering) | Q015 primary path |
-| Brake | **Moderate** native | |
+| Native events | **Strong provider** (50/30d) | INFERENCE LTE_R1 enrichment eligibility; consumption not inventory-proven |
+| Brake | Provider events (extremeBraking) | NO_DIMO_BRAKE_PEDAL_SIGNAL_OBSERVED |
 | Connectivity | **Recovered** | Historical unplug |
-| Tire | **None** | |
+| Tire | **None** | NO_DIMO_TIRE_PRESSURE_SIGNALS_OBSERVED |
 
 ---
 
@@ -605,7 +679,7 @@ No runtime interval histograms — **HISTORICAL_EVIDENCE / inventory sample coun
 | RP-03 | Live 7s route cadence | **OPEN** |
 | RP-04 | Live 20s core cadence | **OPEN** |
 | RP-05 | Snapshot latency | **PARTIAL** — VLS/DIMO alignment on 3/4 |
-| RP-06 | listed-but-null | **CLOSED** for four vehicles at audit (100% working) |
+| RP-06 | listed-but-null | **PARTIALLY_RESOLVED** — `LISTED_NON_NULL_AT_AUDIT` = 100% at audit; does not prove ongoing null rate |
 | RP-07 | Native event rate | **PARTIAL** — 0/34/0/50 documented |
 | RP-08 | safety.collision | **OPEN** |
 | RP-09 | Segment yield | **OPEN** — not inventory-audited |
@@ -616,7 +690,7 @@ No runtime interval histograms — **HISTORICAL_EVIDENCE / inventory sample coun
 | RP-14 | Ignition null EV | **N/A** ICE four |
 | RP-15 | RAND coords | **OPEN** |
 | RP-16 | Event vs HF alignment | **OPEN** |
-| RP-17 | availableSignals stability | **PARTIAL** — 100% at poll |
+| RP-17 | availableSignals stability | **PARTIALLY_RESOLVED** — enumeration consistent at audit; stability over time unknown |
 | RP-18 | Crank 5s | **OPEN** |
 | RP-19 | Long-trip HF limits | **OPEN** |
 | RP-20 | SMART5 vs HF | **OPEN** — no SMART5 in set |
@@ -634,7 +708,8 @@ No runtime interval histograms — **HISTORICAL_EVIDENCE / inventory sample coun
 | **RP-27** | `powertrainCombustionEngineTPS` vs `obdThrottlePosition` divergence | 4/4 | P2 |
 | **RP-28** | A4 P0675 — `obdDistanceWithMIL` 3426 km correlation | A4 | P2 health |
 | **RP-29** | Arteon cornering event rate vs HF-only cornering detection | Arteon | P1 |
-| **RP-30** | Dynamic Q001 from `availableSignals` — waste reduction measurement | fleet | P1 Phase 2C |
+| **RP-30** | Measure Q001 selection mismatch reduction if profiles change | fleet | P1 Phase 2F |
+| **RP-31** | Resolve authoritative hardware profile for all four audit vehicles | 4 vehicles | P1 before Phase 2F |
 
 ---
 
@@ -643,21 +718,21 @@ No runtime interval histograms — **HISTORICAL_EVIDENCE / inventory sample coun
 | ID | Type | Severity | Summary |
 |----|------|----------|---------|
 | F2B-01 | CAPABILITY_FACT | — | Union 33 vehicle signals; common core 28 |
-| F2B-02 | QUERY_WASTE | **P1** | Q001 **65.6%** field waste on every ICE audit vehicle |
-| F2B-03 | QUERY_WASTE | P2 | Q009 queries torque/gear/currentGear **NOT_OBSERVED** on four |
+| F2B-02 | SELECTION_MISMATCH | P2 | Q001 **65.6%** `STATIC_SELECTION_MISMATCH_RATE` — **CONFIRMED_ARCHITECTURAL_INEFFICIENCY**; provider cost unmeasured |
+| F2B-03 | SELECTION_MISMATCH | P2 | Q009 **9/3/3** — 3 powertrain-inapplicable + 3 NOT_OBSERVED (possible gear alias gap) |
 | F2B-04 | ACQUISITION_GAP | **P1** | RPM, throttle/TPS live on DIMO, absent from snapshot/VLS |
-| F2B-05 | ACQUISITION_GAP | P2 | 15 signals **AVAILABLE_NOT_QUERIED** including DTC count |
-| F2B-06 | EVENT_VARIANCE | **P1** | Native events 0–50/30d; not predicted by hardware alone |
-| F2B-07 | EVENT_ANOMALY | P2 | A4 trip same day, **0** events (RP-21) |
-| F2B-08 | CAPABILITY_ARCHITECTURE | P2 | `availableSignals` reliable but **does not drive** queries |
-| F2B-09 | HARDWARE_VERDICT | — | Hardware predicts capability **PARTIAL** |
+| F2B-05 | ACQUISITION_GAP | P2 | 15 signals **AVAILABLE_NOT_IN_PHASE2A_DRIVING_ACQUISITION** |
+| F2B-06 | EVENT_VARIANCE | **P1** | Provider native events 0–50/30d; consumption path UNKNOWN (C63 RP-25) |
+| F2B-07 | EVENT_ANOMALY | P2 | A4 **OBSERVED_ZERO_IN_WINDOW** despite same-day trip (RP-21) |
+| F2B-08 | CAPABILITY_ARCHITECTURE | P2 | `LISTED_NON_NULL_AT_AUDIT` consistent; queries still static superset |
+| F2B-09 | HARDWARE_VERDICT | — | Hardware→signal capability **NOT_ESTABLISHED_FROM_THIS_FOUR_VEHICLE_SET** |
 | F2B-10 | SEGMENT_UNKNOWN | P2 | All six segment mechanisms **UNKNOWN** on four vehicles |
 | F2B-11 | PERSISTENCE_GAP | P2 | HF raw **QUERIED_NOT_PERSISTED**; odometer/fuel **PERSISTED_NOT_CONSUMED** |
-| F2B-12 | TIRE_DEAD_PATH | P3 | No TPMS on four; Q001+Q011 tire queries pure waste |
-| F2B-13 | EV_WASTE | P2 | 13 EV fields queried on 100% ICE audit set |
+| F2B-12 | TIRE_SELECTION_MISMATCH | P3 | NO_DIMO tire pressure signals on four; Q001+Q011 null selections |
+| F2B-13 | EV_SELECTION_MISMATCH | P2 | 13 EV Q001 selections POWERTRAIN_INAPPLICABLE on ICE audit set |
 | F2B-14 | ALIAS_GAP | P2 | `powertrainCombustionEngineTPS` on 4/4, not queried |
 | F2B-15 | VEHICLE_SPECIFIC | P3 | Gear signals Tiguan-only; DEF+DTC A4-only |
-| F2B-16 | PROVENANCE | — | Inventory docs not on `main`; commits 0bab8a4d3…c2a0e1c5e |
+| F2B-16 | PROVENANCE | — | Inventory docs canonical in PR #1458 (commits 0bab8a4d3…c2a0e1c5e) |
 
 ---
 
@@ -672,41 +747,56 @@ No runtime interval histograms — **HISTORICAL_EVIDENCE / inventory sample coun
 | Signals on exactly 3 vehicles | **1** | `powertrainFuelSystemRelativeLevel` (missing A4 diesel) |
 | Signals on exactly 4 vehicles | **28** | ICE common core |
 | Signals currently queried by SynqDrive (Phase 2A) | **41** | §22.3 Phase 2A |
-| Available-not-queried signals (union, not in 41) | **15** | §8 |
-| Queried-not-persisted signal/data paths (§9A rows) | **6** | HF series, currentGear, torque×2, live buckets, Q027 windows |
-| Persisted-not-consumed fields (§9B rows) | **5** | odometer, fuel×2, EV snapshot, tire query, engine_load snapshot |
-| Native event types in Q015 filter | **8** | Phase 2A §22.3 |
-| Native event capability matrix rows | **8** | §21 |
+| Available-not-queried in Phase-2A driving acquisition (§8) | **15** | §8 definition |
+| Queried-not-persisted data paths (§9A) | **6** | HF series, currentGear, torque×2, live buckets, Q027 |
+| `PERSISTED_NOT_DRIVING_CONSUMED_FIELD_COUNT` | **4** | §9B individual fields |
+| `UNDERUSED_DATA_PATH_COUNT` | **4** | §9C paths |
+| Native event matrix rows | **8** | §21 |
 | Segment mechanism rows | **6** | §22 (all UNKNOWN) |
-| Master cross-vehicle matrix rows | **70** | 41 + 15 + 8 + 8 events + 6 segments − overlap check: 41+15+8+6=70 |
-| Q001 queried-but-null/unsupported per ICE vehicle | **21** | 32 − 11 available |
-| Runtime probes RP-01–RP-20 resolved by inventory | **1** | RP-06 CLOSED |
-| Runtime probes partially resolved | **3** | RP-05, RP-07, RP-17 |
+| Master cross-vehicle matrix rows | **70** | **41** Phase-2A signal rows + **15** additional vehicle signal rows + **8** native event rows + **6** segment rows |
+| Q001 null/inapplicable selections per ICE vehicle | **21** | 32 − 11 observed |
+| Runtime probes RP-01–RP-20 resolved by inventory | **0** fully closed | RP-06/17 partially only |
+| Runtime probes partially resolved | **4** | RP-05, RP-06, RP-07, RP-17 |
 | Runtime probes no longer relevant (ICE four) | **2** | RP-10, RP-14 |
 | Runtime probes still required | **14** | RP-01–04,08–09,11–13,15–16,18–20 |
-| New runtime probes RP-21+ | **10** | RP-21–RP-30 |
+| New runtime probes RP-21+ | **11** | RP-21–RP-31 |
 
 ---
 
-## 27. Phase-2C Handoff
+## 27. Phase-2C Handoff — CURRENT DIMO SIGNAL/SCHEMA EXPANSION AUDIT
 
-### Top candidates
+**Phase 2C scope (master plan):** Determine which DIMO signals, events, and schema families exist **today** in current provider schema / official surface — **including signals none of the four vehicles deliver**. Phase 2A deliberately did **not** confirm current global DIMO schema authority.
 
-| Rank | Candidate | Category | Rationale |
-|------|-----------|----------|-----------|
-| **A** | Dynamic snapshot from `availableSignals` | Architecture | Cut **~65%** Q001 waste; preflight already lists signals |
-| **B** | Add RPM + throttle/TPS to snapshot or VLS JSON | Acquisition | **P0** in all inventories; driving behavior |
-| **C** | `obdStatusDTCCount` + conditional `obdDTCList` in snapshot/Q005 cadence | Health | A4 active P0675; count on 4/4 |
-| **D** | Native event path audit (A4 zero-event, C63 non-LTE_R1) | Runtime | RP-21, RP-25 before scoring reliance |
-| **E** | Segment runtime probe pack (RP-26) | Validation | All UNKNOWN; trip repair dependency |
+**Phase 2C does NOT:** implement queries, change production, execute all runtime probes, or finalize query expansion.
 
-### Deliverables for Phase 2C
+### Search families (Phase 2C checklist)
 
-1. Query profile manifest keyed by `availableSignals` ∩ org vehicle profile.
-2. Execute RP-21, RP-25, RP-26, RP-29, RP-30 first.
-3. Merge inventory docs to `docs/audits/` on `main`.
-4. TPS/throttle alias normalization in mapper layer.
-5. Remove or gate EV/tire fields for ICE capability class.
+Longitudinal/lateral acceleration · yaw rate · steering angle · wheel speeds · brake pedal/pressure · ABS · ESC · traction control · pedal position · torque/requested torque · gear aliases · transmission temperature · tire pressure/temperature · EV regen signals · battery power/current/voltage · thermal signals · additional `behavior.*` / `safety.*` events · newer DIMO signal families.
+
+### Vehicle-observed inputs from Phase 2B (`VEHICLE_OBSERVED_PHASE_2C_INPUT` — not final recommendations)
+
+| Signal / topic | Four-vehicle evidence | Tag |
+|----------------|----------------------|-----|
+| `powertrainCombustionEngineSpeed`, `obdThrottlePosition` | 4/4 listed non-null; not in Q001 snapshot | VEHICLE_OBSERVED_PHASE_2C_INPUT |
+| `powertrainCombustionEngineTPS` | 4/4; alias gap vs `obdThrottlePosition` | VEHICLE_OBSERVED_PHASE_2C_INPUT |
+| `powertrainTransmissionActualGear` | Tiguan only | VEHICLE_OBSERVED_PHASE_2C_INPUT |
+| `currentLocationHeading` | 4/4; not in Phase-2A driving acquisition | VEHICLE_OBSERVED_PHASE_2C_INPUT |
+| `obdOilTemperature`, `obdStatusDTCCount` | 4/4 | VEHICLE_OBSERVED_PHASE_2C_INPUT |
+| Native provider events | 0/34/0/50 per 30d; consumption UNKNOWN | VEHICLE_OBSERVED_PHASE_2C_INPUT + RP-21/25 |
+
+### Runtime probe backlog (input to Phase 2C — selective execution)
+
+Priority probes: **RP-21** (A4 zero events), **RP-25** (C63 profile path), **RP-26** (segments), **RP-29** (Arteon cornering), **RP-31** (hardware profile resolution). RP-01–04 cadence probes may remain Phase 2C/3.
+
+### Downstream phases (unchanged sequence)
+
+| Phase | Status | Focus |
+|-------|--------|-------|
+| **2D** | NOT_STARTED | Signal value / physics matrix |
+| **2E** | NOT_STARTED | Redundancy / canonicalization |
+| **2F** | NOT_STARTED | Capability-first query strategy |
+| **2G** | NOT_STARTED | Phase-2 closure + Flight Recorder manifest |
+| **3** | GATED | Flight Recorder implementation |
 
 ---
 
@@ -717,12 +807,12 @@ Minimum observation record per Phase 2A §26, plus Phase 2B extensions:
 | Field | Why (Phase 2B) |
 |-------|----------------|
 | `availableSignals` snapshot at fetch time | Prove capability vs query mismatch |
-| Vehicle-specific null vs not-listed | Distinguish waste classes |
+| Vehicle-specific null vs not-listed | Distinguish selection-mismatch classes |
 | Native event count per trip window | Correlate with HF-only paths |
 | Segment mechanism results | Close UNKNOWN column |
 | Alias resolution (`TPS` vs `obdThrottlePosition`) | Parser audit trail |
 
-Recorder should prioritize vehicles with **divergent event profiles** (A4 vs Arteon) and **Q001 waste** measurement before/after dynamic profiles.
+Recorder should prioritize vehicles with **divergent event profiles** (A4 vs Arteon) and **Q001 selection mismatch** measurement before/after profile changes (Phase 2F).
 
 ---
 
@@ -788,13 +878,13 @@ dtcCount,obdStatusDTCCount,health,none,LISTED_AND_WORKING,LISTED_AND_WORKING,LIS
 throttlePositionTps,powertrainCombustionEngineTPS,engine,none,LISTED_AND_WORKING,LISTED_AND_WORKING,LISTED_AND_WORKING,LISTED_AND_WORKING,no,no,no,HIGH,HIGH,none,none,CONFIRMED_FROM_VEHICLE_INVENTORY
 actualGear,powertrainTransmissionActualGear,transmission,none,LISTED_AND_WORKING,NOT_AVAILABLE,NOT_AVAILABLE,NOT_AVAILABLE,no,no,no,MODERATE,MODERATE,none,none,CONFIRMED_FROM_VEHICLE_INVENTORY
 actualGearRatio,powertrainTransmissionActualGearRatio,transmission,none,LISTED_AND_WORKING,NOT_AVAILABLE,NOT_AVAILABLE,NOT_AVAILABLE,no,no,no,LOW,MODERATE,none,none,CONFIRMED_FROM_VEHICLE_INVENTORY
-harshBraking,behavior.harshBraking,native_event,Q015,HISTORICAL,HISTORICAL,NOT_30D,HISTORICAL,yes,yes,MODERATE,HIGH,HIGH,none,none,CONFIRMED_FROM_VEHICLE_INVENTORY
-extremeBraking,behavior.extremeBraking,native_event,Q015,NOT_30D,LISTED_30D,NOT_30D,LISTED_30D,yes,yes,yes,HIGH,HIGH,HIGH,none,CONFIRMED_FROM_VEHICLE_INVENTORY
-harshAcceleration,behavior.harshAcceleration,native_event,Q015,HISTORICAL,LISTED_30D,NOT_30D,LISTED_30D,yes,yes,yes,HIGH,HIGH,none,none,CONFIRMED_FROM_VEHICLE_INVENTORY
-extremeAcceleration,behavior.extremeAcceleration,native_event,Q015,NOT_30D,NOT_30D,NOT_30D,NOT_30D,yes,no,LOW,HIGH,HIGH,none,none,CONFIRMED_FROM_CODE
-harshCornering,behavior.harshCornering,native_event,Q015,HISTORICAL,LISTED_30D,NOT_30D,LISTED_30D,yes,yes,yes,HIGH,MODERATE,MODERATE,none,CONFIRMED_FROM_VEHICLE_INVENTORY
-extremeEmergency,behavior.extremeEmergency,native_event,Q015,NOT_30D,NOT_30D,NOT_30D,NOT_30D,yes,no,LOW,HIGH,HIGH,HIGH,none,CONFIRMED_FROM_CODE
-extremeEmergencyBraking,behavior.extremeEmergencyBraking,native_event,Q015,NOT_30D,NOT_30D,NOT_30D,NOT_30D,yes,no,LOW,HIGH,HIGH,HIGH,none,CONFIRMED_FROM_CODE
+harshBraking,behavior.harshBraking,native_event,Q015,ZERO_IN_WINDOW,ZERO_IN_WINDOW,ZERO_IN_WINDOW,OBSERVED_HISTORICAL,yes,yes,unknown,MODERATE,HIGH,HIGH,none,none,CONFIRMED_FROM_VEHICLE_INVENTORY
+extremeBraking,behavior.extremeBraking,native_event,Q015,ZERO_IN_WINDOW,OBSERVED_30D,ZERO_IN_WINDOW,OBSERVED_30D,yes,yes,unknown,HIGH,HIGH,HIGH,none,none,CONFIRMED_FROM_VEHICLE_INVENTORY
+harshAcceleration,behavior.harshAcceleration,native_event,Q015,OBSERVED_HISTORICAL,OBSERVED_30D,ZERO_IN_WINDOW,OBSERVED_30D,yes,yes,unknown,HIGH,HIGH,none,none,CONFIRMED_FROM_VEHICLE_INVENTORY
+extremeAcceleration,behavior.extremeAcceleration,native_event,Q015,ZERO_IN_WINDOW,ZERO_IN_WINDOW,ZERO_IN_WINDOW,ZERO_IN_WINDOW,yes,no,unknown,HIGH,HIGH,none,none,CONFIRMED_FROM_CODE
+harshCornering,behavior.harshCornering,native_event,Q015,OBSERVED_HISTORICAL,OBSERVED_30D,ZERO_IN_WINDOW,OBSERVED_30D,yes,yes,unknown,HIGH,MODERATE,MODERATE,none,none,CONFIRMED_FROM_VEHICLE_INVENTORY
+extremeEmergency,behavior.extremeEmergency,native_event,Q015,ZERO_IN_WINDOW,ZERO_IN_WINDOW,ZERO_IN_WINDOW,ZERO_IN_WINDOW,yes,no,unknown,HIGH,HIGH,HIGH,none,CONFIRMED_FROM_CODE
+extremeEmergencyBraking,behavior.extremeEmergencyBraking,native_event,Q015,ZERO_IN_WINDOW,ZERO_IN_WINDOW,ZERO_IN_WINDOW,ZERO_IN_WINDOW,yes,no,unknown,HIGH,HIGH,HIGH,none,CONFIRMED_FROM_CODE
 safetyCollision,safety.collision,native_event,Q015;Q016,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,yes,partial,MODERATE,LOW,LOW,HIGH,none,UNKNOWN_REQUIRES_RUNTIME_PROBE
 segmentCpd,changePointDetection,segment,Q022,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,yes,partial,LOW,LOW,none,none,UNKNOWN_REQUIRES_RUNTIME_PROBE
 segmentIgnition,ignitionDetection,segment,Q022,UNKNOWN,UNKNOWN,UNKNOWN,UNKNOWN,yes,partial,LOW,LOW,none,none,UNKNOWN_REQUIRES_RUNTIME_PROBE
@@ -806,6 +896,6 @@ segmentRecharge,recharge,segment,Q025,NOT_APPLICABLE,NOT_APPLICABLE,NOT_APPLICAB
 
 ---
 
-**Phase 2B exit:** Cross-vehicle capability matrix complete (70 rows). Segment and cadence columns remain **UNKNOWN** until runtime probes. Inventory docs should be merged to `main` under `docs/audits/`.
+**Phase 2B exit:** Cross-vehicle capability matrix complete (70 rows). Segment and cadence columns remain **UNKNOWN** until runtime probes. All four vehicle inventory source documents are included in PR #1458 under canonical `docs/audits/` paths.
 
 **Changes / Architektur:** Not updated — documentation-only audit synthesis; no code or architecture implementation change.
