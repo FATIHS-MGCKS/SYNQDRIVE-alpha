@@ -3,7 +3,7 @@ import { ReferenceCaptureSessionService } from './reference-capture-session.serv
 import { ReferenceCaptureConfig } from './reference-capture.config';
 
 describe('ReferenceCaptureSessionService lifecycle', () => {
-  function makeService(overrides?: Partial<Record<string, unknown>>) {
+  function makeService() {
     const config = {
       isEnabled: () => true,
       isTripDetectionAffected: () => false,
@@ -16,7 +16,9 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       create: jest.fn(),
       findById: jest.fn(),
       updateStatus: jest.fn(),
+      updateStatusIfCurrent: jest.fn(),
       updateReadiness: jest.fn().mockResolvedValue({}),
+      updateRunnerJobId: jest.fn().mockResolvedValue({}),
     };
     const observationRepo = { findBySession: jest.fn(), countBySession: jest.fn() };
     const massBinding = { resolveMassBinding: jest.fn().mockResolvedValue({ effectiveMassKg: 1500 }) };
@@ -29,17 +31,19 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
     };
     const readiness = {
       assessSessionReadiness: jest.fn().mockResolvedValue({
-        referenceDriveReady: true,
-        blockers: [],
+        deploymentPreflightReady: true,
+        referenceDriveReady: false,
+        blockers: ['reference_drive_canary_not_executed'],
         warnings: [],
         checks: {},
         assessedAt: new Date().toISOString(),
       }),
     };
     const runner = {
-      startRunner: jest.fn().mockResolvedValue(undefined),
+      startRunner: jest.fn().mockResolvedValue('refcap-cycle-s1-1-uuid'),
       stopRunner: jest.fn().mockResolvedValue(undefined),
-      isRunnerOperational: () => true,
+      cancelPendingCycleJob: jest.fn().mockResolvedValue({ cancelled: true, jobId: 'pending' }),
+      sessionRunnerKey: jest.fn().mockReturnValue('refcap-session-s1'),
     };
 
     const service = new ReferenceCaptureSessionService(
@@ -54,7 +58,7 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       runner as never,
     );
 
-    return { service, sessionRepo, preflight, acquisition, writer, readiness, runner, ...overrides };
+    return { service, sessionRepo, preflight, acquisition, writer, readiness, runner };
   }
 
   it('blocks when feature gate disabled', async () => {
@@ -75,7 +79,7 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
     ).rejects.toThrow('Reference capture is disabled');
   });
 
-  it('transitions CREATED → PREFLIGHT → READY when readiness passes', async () => {
+  it('transitions CREATED → PREFLIGHT → READY when deployment preflight passes', async () => {
     const { service, sessionRepo, preflight, readiness } = makeService();
     sessionRepo.findById.mockResolvedValue({
       id: 's1',
@@ -106,7 +110,7 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       broadObservationFieldCount: 42,
       massBindingJson: {},
       preflightJson: {},
-      readinessJson: { referenceDriveReady: true },
+      readinessJson: { deploymentPreflightReady: true },
       failureReason: null,
       startedAt: null,
       stoppedAt: null,
@@ -118,14 +122,9 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
     const view = await service.runPreflight('org', 's1');
     expect(view.status).toBe(ReferenceCaptureSessionStatus.READY);
     expect(readiness.assessSessionReadiness).toHaveBeenCalled();
-    expect(sessionRepo.updateStatus).toHaveBeenCalledWith(
-      'org',
-      's1',
-      ReferenceCaptureSessionStatus.PREFLIGHT,
-    );
   });
 
-  it('starts autonomous runner on startRecording', async () => {
+  it('uses STARTING compensated transition before RECORDING', async () => {
     const { service, sessionRepo, runner } = makeService();
     sessionRepo.findById.mockResolvedValue({
       id: 's1',
@@ -136,38 +135,71 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       powertrainProfile: 'ICE_GASOLINE',
       massBindingJson: {},
       preflightJson: {},
-      readinessJson: { referenceDriveReady: true },
+      readinessJson: { deploymentPreflightReady: true },
     });
-    sessionRepo.updateStatus.mockResolvedValue({
+    sessionRepo.updateStatusIfCurrent
+      .mockResolvedValueOnce({ id: 's1', status: ReferenceCaptureSessionStatus.STARTING })
+      .mockResolvedValueOnce({ id: 's1', status: ReferenceCaptureSessionStatus.RECORDING });
+
+    await service.startRecording('org', 's1');
+    expect(sessionRepo.updateStatusIfCurrent).toHaveBeenNthCalledWith(
+      1,
+      'org',
+      's1',
+      ReferenceCaptureSessionStatus.READY,
+      ReferenceCaptureSessionStatus.STARTING,
+      expect.any(Object),
+    );
+    expect(runner.startRunner).toHaveBeenCalled();
+  });
+
+  it('K — reverts STARTING to READY when runner enqueue fails', async () => {
+    const { service, sessionRepo, runner } = makeService();
+    sessionRepo.findById.mockResolvedValue({
       id: 's1',
       organizationId: 'org',
       vehicleId: 'veh',
-      status: ReferenceCaptureSessionStatus.RECORDING,
-      connectionProfile: 'DIMO_LTE_R1',
-      powertrainProfile: 'ICE_GASOLINE',
-      hardwareProfile: 'LTE_R1',
-      manifestId: 'DIMO_LTE_R1_REFERENCE_MANIFEST',
+      status: ReferenceCaptureSessionStatus.READY,
       manifestVersion: '1.1.0',
-      recorderSoftwareVersion: '3A.1.0',
-      broadObservationFieldCount: 10,
+      powertrainProfile: 'ICE_GASOLINE',
       massBindingJson: {},
       preflightJson: {},
-      readinessJson: { referenceDriveReady: true },
-      failureReason: null,
-      startedAt: new Date(),
-      stoppedAt: null,
-      completedAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      readinessJson: { deploymentPreflightReady: true },
+    });
+    sessionRepo.updateStatusIfCurrent.mockResolvedValueOnce({
+      id: 's1',
+      status: ReferenceCaptureSessionStatus.STARTING,
+    });
+    runner.startRunner.mockRejectedValue(new Error('redis unavailable'));
+    sessionRepo.updateStatus.mockResolvedValue({
+      id: 's1',
+      status: ReferenceCaptureSessionStatus.READY,
+      failureReason: 'redis unavailable',
+      runnerJobId: null,
+      pendingCycleJobId: null,
     });
 
-    await service.startRecording('org', 's1');
-    expect(runner.startRunner).toHaveBeenCalledWith(
-      expect.objectContaining({ sessionId: 's1', organizationId: 'org' }),
+    await expect(service.startRecording('org', 's1')).rejects.toThrow(
+      'Failed to start reference capture runner',
     );
+    expect(runner.stopRunner).toHaveBeenCalledWith('org', 's1');
+    expect(sessionRepo.updateStatus).toHaveBeenCalledWith(
+      'org',
+      's1',
+      ReferenceCaptureSessionStatus.READY,
+      expect.objectContaining({
+        runnerJobId: null,
+        pendingCycleJobId: null,
+      }),
+    );
+    expect(
+      sessionRepo.updateStatusIfCurrent.mock.calls.some(
+        (call) => call[3] === ReferenceCaptureSessionStatus.RECORDING,
+      ),
+    ).toBe(false);
   });
 
-  it('supports abort from active states and stops runner', async () => {
+  it('stop cancels pending cycle without requiring active job removal', async () => {
     const { service, sessionRepo, writer, runner } = makeService();
     sessionRepo.findById.mockResolvedValue({
       id: 's1',
@@ -193,13 +225,18 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
     });
     sessionRepo.updateStatus.mockResolvedValue({
       ...sessionRepo.findById.mock.results[0]?.value,
-      status: ReferenceCaptureSessionStatus.ABORTED,
+      status: ReferenceCaptureSessionStatus.COMPLETED,
     });
 
-    await service.abortSession('org', 's1', 'operator_cancel');
-    expect(runner.stopRunner).toHaveBeenCalledWith('org', 's1');
+    await service.stopRecording('org', 's1');
+    expect(sessionRepo.updateStatus).toHaveBeenCalledWith(
+      'org',
+      's1',
+      ReferenceCaptureSessionStatus.STOPPING,
+      expect.any(Object),
+    );
+    expect(runner.cancelPendingCycleJob).toHaveBeenCalledWith('org', 's1');
     expect(writer.flush).toHaveBeenCalledWith('s1');
-    expect(writer.clearSession).toHaveBeenCalledWith('s1');
   });
 });
 

@@ -2,8 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { HardwareType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { loadFrozenReferenceManifest } from './reference-capture-manifest.loader';
+import { compileReferenceCaptureQueryPlans } from './reference-capture-query-builder';
 import { ReferenceCaptureConfig } from './reference-capture.config';
 import { REFERENCE_CAPTURE_CONNECTION_PROFILE } from './reference-capture.constants';
+import { ReferenceCaptureRunnerService } from './reference-capture-runner.service';
+import { ReferenceCaptureRuntimeHealthService } from './reference-capture-runtime-health.service';
 import type {
   ReferenceCapturePreflightResult,
   ReferenceCaptureReadinessReport,
@@ -15,6 +18,8 @@ export class ReferenceCaptureReadinessService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ReferenceCaptureConfig,
+    private readonly runnerService: ReferenceCaptureRunnerService,
+    private readonly runtimeHealth: ReferenceCaptureRuntimeHealthService,
   ) {}
 
   async assessSessionReadiness(input: {
@@ -22,7 +27,6 @@ export class ReferenceCaptureReadinessService {
     vehicleId: string;
     preflight: ReferenceCapturePreflightResult | null;
     massBinding: VehicleMassBinding | null;
-    runnerOperational: boolean;
   }): Promise<ReferenceCaptureReadinessReport> {
     const blockers: string[] = [];
     const warnings: string[] = [];
@@ -31,14 +35,19 @@ export class ReferenceCaptureReadinessService {
     checks.featureGateEnabled = this.config.isEnabled();
     if (!checks.featureGateEnabled) blockers.push('REFERENCE_CAPTURE_ENABLED=false');
 
-    let manifest;
+    let manifestVersion: string | null = null;
     try {
-      manifest = loadFrozenReferenceManifest();
+      const manifest = loadFrozenReferenceManifest();
+      manifestVersion = manifest.manifestVersion;
       checks.manifestLoaded = true;
       checks.manifestVersionMatches =
         input.preflight?.manifestVersion === manifest.manifestVersion;
+      if (!checks.manifestVersionMatches) {
+        blockers.push('manifest_version_mismatch');
+      }
     } catch {
       checks.manifestLoaded = false;
+      checks.manifestVersionMatches = false;
       blockers.push('manifest_load_failed');
     }
 
@@ -64,10 +73,33 @@ export class ReferenceCaptureReadinessService {
     checks.broadPlanNonEmpty = (input.preflight?.broadObservationFieldCount ?? 0) > 0;
     if (!checks.broadPlanNonEmpty) blockers.push('broad_observation_plan_empty');
 
-    checks.autonomousRunnerOperational = input.runnerOperational;
-    if (!checks.autonomousRunnerOperational) blockers.push('autonomous_runner_not_operational');
+    const queryPlans =
+      input.preflight && input.preflight.broadObservationFields.length > 0
+        ? compileReferenceCaptureQueryPlans(
+            input.preflight.broadObservationFields.map((f) => f.providerField),
+          )
+        : [];
+    checks.queryPlanCompilable =
+      queryPlans.length > 0 && queryPlans.every((p) => p.latestSelectionLines.length > 0);
+    if (!checks.queryPlanCompilable) blockers.push('query_plan_compile_failed');
 
-    checks.timestampInstrumentationAvailable = true;
+    const runtime = await this.runtimeHealth.assessRuntimeHealth(input.preflight);
+    checks.queueReachable = runtime.queueReachable;
+    checks.storageReadable = runtime.storageReadable;
+    checks.storageWritable = runtime.storageWritable;
+    checks.timestampInstrumentationVerified = runtime.timestampInstrumentationVerified;
+    checks.workerQueueRegistered = runtime.workerQueueRegistered;
+
+    if (!checks.queueReachable) blockers.push('redis_queue_unreachable');
+    if (!checks.storageReadable) blockers.push('postgres_storage_unreadable');
+    if (!checks.storageWritable) blockers.push('postgres_storage_unwritable');
+    if (!checks.timestampInstrumentationVerified) {
+      blockers.push('timestamp_instrumentation_unavailable');
+    }
+    if (!checks.workerQueueRegistered) blockers.push('reference_capture_queue_not_registered');
+
+    checks.runnerQueueProducerHealthy = await this.runnerService.isQueueReachable();
+    if (!checks.runnerQueueProducerHealthy) blockers.push('runner_queue_producer_unhealthy');
 
     checks.massBindingExplicit = input.massBinding != null;
     checks.massAvailable = (input.massBinding?.effectiveMassKg ?? 0) > 0;
@@ -75,10 +107,15 @@ export class ReferenceCaptureReadinessService {
       warnings.push('curb_weight_missing_brake_kinetic_assessability_limited');
     }
 
-    const referenceDriveReady = blockers.length === 0;
+    blockers.push('reference_drive_canary_not_executed');
+
+    const deploymentPreflightReady = blockers.filter(
+      (b) => b !== 'reference_drive_canary_not_executed',
+    ).length === 0;
 
     return {
-      referenceDriveReady,
+      deploymentPreflightReady,
+      referenceDriveReady: false,
       blockers,
       warnings,
       checks,

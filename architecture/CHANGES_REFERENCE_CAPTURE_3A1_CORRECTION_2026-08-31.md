@@ -1,28 +1,29 @@
-# Changes — Phase 3A.1 Flight Recorder correction pass (2026-08-31)
+# Changes — Phase 3A.1 Flight Recorder correction pass 2 (2026-08-31)
 
 ## Changes
 
-- **Dynamic reference query builder** replaces static `buildLatestSnapshotQuery()` ceiling for preflight and acquisition (`reference-capture-query-builder.ts`, `reference-capture-signal-schema.registry.ts`).
-- **Temporal acquisition planner** drives real surface execution: `LATEST_LIVE`, `HF_HISTORICAL`, `LATEST_SLOW`, `NATIVE_EVENT_INCREMENTAL` (`reference-capture-acquisition-planner.ts`).
-- **Autonomous BullMQ runner** (`reference.capture.recording` queue, `ReferenceCaptureProcessor`, `ReferenceCaptureRunnerService`) — recording continues without manual `/tick`.
-- **Session-scoped event watermark** + SHA256 `providerEventFingerprint`; no 24h pre-session import; duplicate retrieval flagged in provenance.
-- **HTTP ingress timing** at Axios response boundary (`postGraphQLWithHttpTiming`); `synqReceivedAt = httpResponseReceivedAt`.
-- **Durable writer** with retry/backoff; terminal persist failure → session FAILED.
-- **Evidence-based readiness** (`ReferenceCaptureReadinessService`) gates READY status.
-- **Retention math corrected** (~147 MB/h logical, ~368 MB/h Postgres @ 80 signals); optional `ReferenceCaptureRetentionScheduler`.
-- **Migration** `20260831200000_reference_capture_runner_state` — `event_watermark_at`, `acquisition_state_json`, `readiness_json`, `runner_job_id`, `provider_event_fingerprint`, `created_at` index.
-- **Integration tests A–G** in `reference-capture-integration.spec.ts` (32 tests passing in reference-capture suite).
+- **BullMQ cycle identity fix** — colon-free job IDs via `sanitizeBullMqJobId`; unique `refcap-cycle_{session}_{n}_{uuid}` per physical cycle; session runner key `refcap-session_{session}` traceability only.
+- **Autonomous chain** — each cycle schedules next cycle with new jobId after completion; pending job tracked in `pending_cycle_job_id`.
+- **STARTING compensated start** — READY → STARTING → enqueue → RECORDING; revert to READY on enqueue failure.
+- **Stop/abort race safety** — session status authoritative; cancel pending delayed/waiting jobs only; active cycle completes without scheduling next.
+- **Transient failure policy** — classify provider/rate-limit/auth/schema/persistence failures; bounded retry with backoff; terminal FAILED on exhaustion; PROBE_RESULT provenance.
+- **Runtime readiness** — queue reachability, Postgres canary, query plan compile, manifest version match, timestamp instrumentation verification; separate `deploymentPreflightReady` vs `referenceDriveReady`.
+- **Schema quarantine** — unknown fields latest-only (`SCHEMA_UNKNOWN_QUARANTINED`); excluded from HF historical until confirmed.
+- **HF physical sample identity** — `physicalSampleFingerprint` + `duplicateRetrieval` provenance; collapse helper for unique physical samples.
+- **Per-session serialization** — DB cycle lock (`activeCycleJobId`) with acquire/release CAS; processor concurrency=1.
+- **Migration** `20260831210000_reference_capture_starting_and_cycle_jobs` — STARTING status, pending_cycle_job_id, physical_sample_fingerprint.
+- **Tests H–R** + env-gated Redis integration (`REFERENCE_CAPTURE_REDIS_INTEGRATION=1`).
 
 ## Architektur
 
-| Delta | Detail |
-|-------|--------|
-| Acquisition path | Preflight + capture use `buildBroadReferenceSignalsLatestQuery(fields[])` — per-vehicle dynamic, schema-validated |
-| Runner | Isolated queue `reference.capture.recording`; self-rescheduling job; no production scheduler coupling |
-| Event flow | Incremental from `sessionStartedAt` / `eventWatermarkAt`; identity separate from retrieval |
-| Timestamps | RP-039 at HTTP client boundary; cycle/request IDs for traceability |
-| Persistence | Failure-safe flush; session FAILED on terminal DB error |
-| Retention | `created_at` index; purge manual or via optional cron when scheduler enabled |
+| Invariant | Implementation |
+|-----------|----------------|
+| ONE SESSION → ONE ACTIVE CYCLE | `tryAcquireCycleLock` / `releaseCycleLockAndUpdateState` |
+| BullMQ recurring chain | unique cycle jobIds + self-schedule after successful cycle |
+| Stop | STOPPING first → cancel pending delayed job → flush once |
+| Readiness vs reference drive | code proves deployment preflight; vehicle canary required for reference drive |
+| HF overlap | physical sample fingerprint distinct from retrieval observation |
 
 **Phase 3A.1:** DONE  
-**REFERENCE_DRIVE_READINESS:** READY (when feature enabled + preflight passes)
+**READY_FOR_DEPLOYMENT_PREFLIGHT:** true when runtime readiness checks pass (minus vehicle canary)  
+**REFERENCE_DRIVE_READINESS:** BLOCKED until post-deploy vehicle canary

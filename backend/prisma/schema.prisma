@@ -10225,6 +10225,7 @@ enum ReferenceCaptureSessionStatus {
   CREATED
   PREFLIGHT
   READY
+  STARTING
   RECORDING
   STOPPING
   COMPLETED
@@ -10261,6 +10262,7 @@ model ReferenceCaptureSession {
   acquisitionStateJson       Json?                         @map("acquisition_state_json")
   readinessJson              Json?                         @map("readiness_json")
   runnerJobId                String?                       @map("runner_job_id")
+  pendingCycleJobId          String?                       @map("pending_cycle_job_id")
   startedAt                  DateTime?                     @map("started_at")
   stoppedAt                  DateTime?                     @map("stopped_at")
   completedAt                DateTime?                     @map("completed_at")
@@ -10273,6 +10275,7 @@ model ReferenceCaptureSession {
 
   @@index([organizationId, vehicleId, status])
   @@index([vehicleId, createdAt])
+  @@index([pendingCycleJobId])
   @@map("reference_capture_sessions")
 }
 
@@ -10305,6 +10308,7 @@ model ReferenceCaptureObservation {
   capabilityState      String?                         @map("capability_state")
   provenanceJson       Json?                           @map("provenance_json")
   providerEventFingerprint String?                     @map("provider_event_fingerprint")
+  physicalSampleFingerprint String?                    @map("physical_sample_fingerprint")
   createdAt            DateTime                        @default(now()) @map("created_at")
 
   session      ReferenceCaptureSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -10314,6 +10318,7 @@ model ReferenceCaptureObservation {
   @@index([sessionId, synqReceivedAt])
   @@index([sessionId, providerField])
   @@index([sessionId, providerEventFingerprint])
+  @@index([sessionId, physicalSampleFingerprint])
   @@index([organizationId, vehicleId])
   @@index([createdAt])
   @@map("reference_capture_observations")

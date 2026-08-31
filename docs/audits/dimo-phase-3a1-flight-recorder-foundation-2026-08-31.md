@@ -12,7 +12,8 @@
 | Flag | Value |
 |------|-------|
 | **Phase 3A.1** | **DONE** |
-| **REFERENCE_DRIVE_READINESS** | **READY** (evidence-based; requires `REFERENCE_CAPTURE_ENABLED=true`, workers running, successful preflight) |
+| **READY_FOR_DEPLOYMENT_PREFLIGHT** | **READY** (when runtime readiness checks pass at preflight) |
+| **REFERENCE_DRIVE_READINESS** | **BLOCKED** (requires post-deploy vehicle canary — not executed in this PR) |
 
 **No reference drive executed.** No scoring formula changes.
 
@@ -46,7 +47,7 @@ First **implementation** phase of the Driving Intelligence Reconstruction workst
 | Readiness | `reference-capture-readiness.service.ts` |
 | Env config | `backend/src/config/reference-capture.config.ts` |
 | Prisma models | `ReferenceCaptureSession`, `ReferenceCaptureObservation` |
-| Migrations | `20260831180000_*`, `20260831200000_reference_capture_runner_state` |
+| Migrations | `20260831180000_*`, `20260831200000_*`, `20260831210000_*` |
 | DIMO category | `REFERENCE_CAPTURE` in `dimo-provider-category.types.ts` |
 | Ingress timing | `DimoTelemetryService.postGraphQLWithHttpTiming()` → `synqReceivedAt = httpResponseReceivedAt` |
 | Frozen manifest | `docs/audits/manifests/dimo-lte-r1-reference-manifest-v1.json` |
@@ -73,18 +74,19 @@ Schema-validated GraphQL selections only (`reference-capture-signal-schema.regis
 
 `requestedCadenceMs` and `requestedInterval` preserved separately from empirical provider cadence.
 
-### 3.3 Autonomous runner
+### 3.3 Autonomous runner (correction 2)
 
-```
-POST /start → RECORDING → ReferenceCaptureRunnerService.startRunner()
-  → BullMQ job reference-capture:{sessionId}
-  → ReferenceCaptureProcessor.processCycle()
-  → executeAcquisitionCycle()
-  → scheduleNextCycle(delay=cycleIntervalMs)
-until STOP | ABORT | FAILED | maxRecordingDuration
-```
+| Property | Value |
+|----------|-------|
+| Session runner key | `refcap-session_{sessionId}` (traceability only — never reused as cycle jobId) |
+| Cycle job ID | `refcap-cycle_{sessionId}_{cycleNumber}_{uuid}` — unique per physical cycle |
+| Pending job | `pending_cycle_job_id` on session |
+| Chain | cycle completes → schedule next with **new** jobId + delay |
+| Concurrency | processor concurrency=1; DB `activeCycleJobId` lock |
+| Start | READY → **STARTING** → enqueue → RECORDING (compensated on failure) |
+| Stop | STOPPING (authoritative) → cancel pending delayed job → flush → COMPLETED |
 
-Manual `POST /tick` remains an internal diagnostic endpoint only.
+Manual `POST /tick` remains diagnostic only.
 
 ### 3.4 Event watermark / dedup
 
@@ -127,7 +129,12 @@ Purge: `ReferenceCaptureRetentionService.purgeExpiredObservations()` with `creat
 
 ### 3.9 Evidence-based readiness
 
-`ReferenceCaptureReadinessService.assessSessionReadiness()` gates READY status. Blockers include: feature off, non-LTE_R1, missing DIMO token, empty broad plan, runner not operational, manifest load failure. Missing curb weight → warning (brake kinetic assessability limited), not invented mass.
+`ReferenceCaptureReadinessService` + `ReferenceCaptureRuntimeHealthService`:
+
+- **deploymentPreflightReady** — gates session READY (queue, Postgres, manifest match, query compile, instrumentation)
+- **referenceDriveReady** — always false until post-deploy vehicle canary (`reference_drive_canary_not_executed` blocker)
+
+Mass absence → warning only unless brake-kinetic validation explicitly required.
 
 ---
 
@@ -147,7 +154,8 @@ Purge: `ReferenceCaptureRetentionService.purgeExpiredObservations()` with `creat
 
 | Test file | Coverage |
 |-----------|----------|
-| `reference-capture-integration.spec.ts` | Tests A–G: broad field, snapshot regression, temporal surfaces, autonomous runner, event identity, DB failure |
+| `reference-capture-correction-2.spec.ts` | Tests H–R: BullMQ IDs, transient retry, schema quarantine, HF identity, serialization |
+| `reference-capture-runner.live.integration.spec.ts` | TEST H Redis/BullMQ lifecycle (`REFERENCE_CAPTURE_REDIS_INTEGRATION=1`) |
 | `reference-capture-ingress-timing.spec.ts` | TEST F: HTTP boundary |
 | `reference-capture.contract.spec.ts` | Wire format, unmapped retention |
 | `reference-capture-preflight.service.spec.ts` | Dynamic broad discovery |
@@ -156,29 +164,14 @@ Purge: `ReferenceCaptureRetentionService.purgeExpiredObservations()` with `creat
 | `reference-capture-session.service.spec.ts` | Lifecycle, readiness, runner start/stop |
 | `reference-capture-mass-binding.service.spec.ts` | RP-044 |
 
-**32 tests passing** (reference-capture suite).
-
----
-
-## 6. Remaining limitations
-
-1. **Cadence distribution metrics** (P50/P95 delta-t) — timestamps captured; computation deferred to post-capture analysis
-2. **Continuous schema probes** — classification types defined; unsupported-field polling not implemented
-3. **ClickHouse mirror** — not used; Postgres canonical for Phase 3A.1
-4. **Reference drive execution** — not performed; ready for Phase 3A.2+ controlled drive
-5. **Retention scheduler** — off by default; must enable `REFERENCE_CAPTURE_RETENTION_SCHEDULER_ENABLED`
-6. **PHEV/BEV GT vehicles** — mass binding works; GT sync vehicle binding remains manifest `PENDING_REFERENCE_VEHICLE`
+**42 unit tests passing** (+1 env-gated Redis integration test).
 
 ---
 
 ## 7. Readiness
 
-**REFERENCE_DRIVE_READINESS = READY**
+**READY_FOR_DEPLOYMENT_PREFLIGHT = READY** when runtime infrastructure checks pass at preflight.
 
-All correction-pass criteria satisfied in code and tests. Controlled reference drive may proceed when:
-
-- `REFERENCE_CAPTURE_ENABLED=true`
-- Workers process `reference.capture.recording` queue
-- Vehicle passes evidence-based preflight → READY
+**REFERENCE_DRIVE_READINESS = BLOCKED** until post-deploy vehicle canary confirms ≥3 autonomous cycles on actual LTE_R1 hardware.
 
 **Phase status:** Phase 3A.1 **DONE** · Phase 3A Ground Truth reference drive execution **NOT STARTED**

@@ -79,6 +79,7 @@ export type ReferenceCaptureObservationEnvelope = {
   sequenceNumber?: number | null;
   capabilityState?: string | null;
   providerEventFingerprint?: string | null;
+  physicalSampleFingerprint?: string | null;
   provenance?: Record<string, unknown> | null;
 };
 
@@ -118,10 +119,19 @@ export type ReferenceCaptureAcquisitionState = {
   hfWatermarkAt: string | null;
   eventWatermarkAt: string | null;
   seenEventFingerprints: string[];
+  seenPhysicalSampleFingerprints?: string[];
   lastSequenceNumber?: number;
+  activeCycleJobId?: string | null;
+  quarantinedProviderFields?: string[];
+  consecutiveTransientFailures?: number;
+  lastFailureClass?: string | null;
+  lastFailureAt?: string | null;
 };
 
 export type ReferenceCaptureReadinessReport = {
+  /** Code/runtime infrastructure ready for deployment preflight (not a real vehicle drive). */
+  deploymentPreflightReady: boolean;
+  /** Requires post-deploy vehicle canary — never true from code alone. */
   referenceDriveReady: boolean;
   blockers: string[];
   warnings: string[];

@@ -3,6 +3,7 @@ import {
   buildLatestSelectionForField,
   filterSchemaValidProviderFields,
   isValidGraphqlFieldName,
+  partitionFieldsForReferenceCapture,
 } from './reference-capture-signal-schema.registry';
 
 export type ReferenceCaptureQueryPlan = {
@@ -10,23 +11,35 @@ export type ReferenceCaptureQueryPlan = {
   rejectedFields: string[];
   latestSelectionLines: string[];
   historicalSelectionLines: string[];
+  quarantinedFields: string[];
+  historicalFields: string[];
 };
 
 export function planReferenceCaptureQuery(providerFields: string[]): ReferenceCaptureQueryPlan {
   const rejectedFields = providerFields.filter((f) => !isValidGraphqlFieldName(f));
-  const validFields = filterSchemaValidProviderFields(providerFields);
+  const partition = partitionFieldsForReferenceCapture(providerFields);
 
-  const latestSelectionLines = ['lastSeen', ...validFields.map(buildLatestSelectionForField)];
-  const historicalSelectionLines = validFields
+  const latestSelectionLines = ['lastSeen', ...partition.latestFields.map(buildLatestSelectionForField)];
+  const historicalSelectionLines = partition.historicalFields
     .map(buildHistoricalSelectionForField)
     .filter((line): line is string => line != null);
 
   return {
-    providerFields: validFields,
+    providerFields: partition.latestFields,
     rejectedFields,
     latestSelectionLines,
     historicalSelectionLines,
+    quarantinedFields: partition.quarantinedFields,
+    historicalFields: partition.historicalFields,
   };
+}
+
+export function compileReferenceCaptureQueryPlans(providerFields: string[]): ReferenceCaptureQueryPlan[] {
+  const valid = filterSchemaValidProviderFields(providerFields);
+  if (valid.length === 0) {
+    return [planReferenceCaptureQuery([])];
+  }
+  return [planReferenceCaptureQuery(valid)];
 }
 
 /** Dynamic broad signalsLatest — NOT the static production snapshot query. */

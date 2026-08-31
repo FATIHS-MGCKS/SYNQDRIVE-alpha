@@ -47,6 +47,11 @@ export default registerAs('referenceCapture', () => ({
     process.env[REFERENCE_CAPTURE_RETENTION_SCHEDULER_ENABLED_ENV],
     false,
   ),
+  maxTransientRetries: parseIntEnv(process.env.REFERENCE_CAPTURE_MAX_TRANSIENT_RETRIES, 5),
+  transientRetryBaseDelayMs: parseIntEnv(
+    process.env.REFERENCE_CAPTURE_TRANSIENT_RETRY_BASE_DELAY_MS,
+    2000,
+  ),
   /** Estimated PostgreSQL storage multiplier over logical JSON envelope size. */
   postgresStorageMultiplier: 2.5,
 }));

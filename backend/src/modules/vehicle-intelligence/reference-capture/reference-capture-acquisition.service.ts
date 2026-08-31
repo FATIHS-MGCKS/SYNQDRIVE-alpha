@@ -14,6 +14,7 @@ import {
 } from './reference-capture.constants';
 import { buildRawIdentity } from './reference-capture.contract';
 import { buildProviderEventFingerprint } from './reference-capture-event-identity.util';
+import { buildPhysicalSampleFingerprint } from './reference-capture-physical-sample-identity.util';
 import { resolveCanonicalKeyForProviderField } from './reference-capture-manifest.loader';
 import {
   buildBroadReferenceEventsQuery,
@@ -26,7 +27,7 @@ import {
 } from './reference-capture-acquisition-planner';
 import { resolveDimoSignalSchemaEntry } from './reference-capture-signal-schema.registry';
 import { ReferenceCaptureObservationWriterService } from './reference-capture-observation-writer.service';
-import { ReferenceCaptureSessionRepository } from './reference-capture-session.repository';
+import { ReferenceCaptureSessionRepository, parseAcquisitionState } from './reference-capture-session.repository';
 import type {
   ReferenceCaptureAcquisitionState,
   ReferenceCapturePreflightResult,
@@ -79,7 +80,26 @@ export class ReferenceCaptureAcquisitionService {
     const session = await this.sessionRepository.findById(input.organizationId, input.sessionId);
     if (!session) throw new Error('Session not found');
 
-    const state = parseAcquisitionState(session.acquisitionStateJson);
+    const lock = await this.sessionRepository.tryAcquireCycleLock(
+      input.organizationId,
+      input.sessionId,
+      input.cycleJobId,
+    );
+    if (!lock.acquired) {
+      return {
+        captureCycleId: this.observationWriter.createCaptureCycleId(),
+        cycleNumber: parseAcquisitionState(session.acquisitionStateJson).cycleCount,
+        signalPoints: 0,
+        nativeEvents: 0,
+        newEventIdentities: 0,
+        duplicateEventRetrievals: 0,
+        flushed: 0,
+        surfacesExecuted: [],
+        skippedConcurrentCycle: true,
+      };
+    }
+
+    const state = lock.state ?? parseAcquisitionState(session.acquisitionStateJson);
     const cycleNumber = state.cycleCount + 1;
     const captureCycleId = this.observationWriter.createCaptureCycleId();
 
@@ -104,7 +124,7 @@ export class ReferenceCaptureAcquisitionService {
       vehicleId: input.vehicleId,
     });
 
-    let sequenceNumber = state.lastSequenceNumber;
+    let sequenceNumber = state.lastSequenceNumber ?? 0;
     let signalPoints = 0;
     let nativeEvents = 0;
     let newEventIdentities = 0;
@@ -164,28 +184,39 @@ export class ReferenceCaptureAcquisitionService {
           hfWatermarkAt: state.hfWatermarkAt,
           sessionStartedAt: session.startedAt ?? new Date(),
           sequenceStart: sequenceNumber,
+          seenPhysicalSampleFingerprints: state.seenPhysicalSampleFingerprints ?? [],
         });
         sequenceNumber = hfResult.nextSequenceNumber;
         signalPoints += hfResult.points;
         state.hfWatermarkAt = hfResult.hfWatermarkAt;
+        state.seenPhysicalSampleFingerprints = hfResult.seenPhysicalSampleFingerprints;
       }
     }
 
     const flushed = await this.observationWriter.flush(input.sessionId);
 
-    const nextState: ReferenceCaptureAcquisitionState & { lastSequenceNumber: number } = {
+    const nextState: ReferenceCaptureAcquisitionState = {
       cycleCount: cycleNumber,
       lastCycleAt: new Date().toISOString(),
       hfWatermarkAt: state.hfWatermarkAt,
       eventWatermarkAt: state.eventWatermarkAt,
       seenEventFingerprints: state.seenEventFingerprints.slice(-5000),
+      seenPhysicalSampleFingerprints: (state.seenPhysicalSampleFingerprints ?? []).slice(-20_000),
       lastSequenceNumber: sequenceNumber,
+      activeCycleJobId: null,
+      quarantinedProviderFields: state.quarantinedProviderFields ?? [],
+      consecutiveTransientFailures: 0,
+      lastFailureClass: null,
+      lastFailureAt: null,
     };
 
-    await this.sessionRepository.updateAcquisitionState(input.organizationId, input.sessionId, {
-      acquisitionStateJson: nextState,
-      eventWatermarkAt: state.eventWatermarkAt ? new Date(state.eventWatermarkAt) : session.eventWatermarkAt,
-    });
+    await this.sessionRepository.releaseCycleLockAndUpdateState(
+      input.organizationId,
+      input.sessionId,
+      input.cycleJobId,
+      nextState,
+      state.eventWatermarkAt ? new Date(state.eventWatermarkAt) : session.eventWatermarkAt,
+    );
 
     return {
       captureCycleId,
@@ -196,6 +227,7 @@ export class ReferenceCaptureAcquisitionService {
       duplicateEventRetrievals,
       flushed,
       surfacesExecuted: cyclePlan.surfaces.map((s) => s.surface),
+      skippedConcurrentCycle: false,
     };
   }
 
@@ -296,7 +328,13 @@ export class ReferenceCaptureAcquisitionService {
     hfWatermarkAt: string | null;
     sessionStartedAt: Date;
     sequenceStart: number;
-  }): Promise<{ points: number; nextSequenceNumber: number; hfWatermarkAt: string }> {
+    seenPhysicalSampleFingerprints: string[];
+  }): Promise<{
+    points: number;
+    nextSequenceNumber: number;
+    hfWatermarkAt: string;
+    seenPhysicalSampleFingerprints: string[];
+  }> {
     const now = new Date();
     const from = args.hfWatermarkAt
       ? new Date(new Date(args.hfWatermarkAt).getTime() - EVENT_OVERLAP_MS)
@@ -314,6 +352,7 @@ export class ReferenceCaptureAcquisitionService {
         points: 0,
         nextSequenceNumber: args.sequenceStart,
         hfWatermarkAt: now.toISOString(),
+        seenPhysicalSampleFingerprints: args.seenPhysicalSampleFingerprints,
       };
     }
 
@@ -329,15 +368,28 @@ export class ReferenceCaptureAcquisitionService {
     const rows = (timed.result?.data?.signals ?? []) as Array<Record<string, unknown>>;
     let sequenceNumber = args.sequenceStart;
     let points = 0;
+    const seenPhysical = new Set(args.seenPhysicalSampleFingerprints);
 
     for (const row of rows) {
       const providerTimestamp = extractProviderTimestamp(row);
+      const providerTimestampIso = providerTimestamp?.toISOString() ?? null;
       for (const providerField of args.surfacePlan.providerFields) {
         if (!(providerField in row)) continue;
         const rawPayload = row[providerField];
         if (rawPayload == null) continue;
 
         const field = args.fieldLookup.get(providerField);
+        const normalizedValue = rawPayload;
+        const physicalSampleFingerprint = buildPhysicalSampleFingerprint({
+          providerField,
+          providerTimestamp: providerTimestampIso,
+          normalizedValue,
+        });
+        const duplicateRetrieval = seenPhysical.has(physicalSampleFingerprint);
+        if (!duplicateRetrieval) {
+          seenPhysical.add(physicalSampleFingerprint);
+        }
+
         sequenceNumber += 1;
         points += 1;
 
@@ -358,7 +410,7 @@ export class ReferenceCaptureAcquisitionService {
             acquisitionTier: 'T5',
             temporalClass: field?.temporalClass ?? null,
             rawValue: rawPayload,
-            normalizedValue: rawPayload,
+            normalizedValue,
             providerTimestamp: providerTimestamp ?? extractProviderTimestamp({ timestamp: row.timestamp }),
             synqReceivedAt: timed.timing.synqReceivedAt,
             acquisitionRequestedAt: timed.timing.acquisitionRequestedAt,
@@ -370,6 +422,7 @@ export class ReferenceCaptureAcquisitionService {
             requestCorrelationId,
             captureCycleId: args.captureCycleId,
             sequenceNumber,
+            physicalSampleFingerprint,
             provenance: {
               manifestVersion: args.input.manifestVersion,
               captureSessionId: args.input.sessionId,
@@ -378,6 +431,9 @@ export class ReferenceCaptureAcquisitionService {
               hfWindowFrom: from.toISOString(),
               hfWindowTo: now.toISOString(),
               sequenceScope: REFERENCE_CAPTURE_SEQUENCE_SCOPE,
+              physicalSampleIdentity: physicalSampleFingerprint,
+              hfRetrievalObservation: true,
+              duplicateRetrieval,
             },
           },
         );
@@ -388,6 +444,7 @@ export class ReferenceCaptureAcquisitionService {
       points,
       nextSequenceNumber: sequenceNumber,
       hfWatermarkAt: now.toISOString(),
+      seenPhysicalSampleFingerprints: [...seenPhysical],
     };
   }
 
@@ -516,6 +573,7 @@ export type AcquisitionCycleInput = {
   organizationId: string;
   vehicleId: string;
   sessionId: string;
+  cycleJobId: string;
   preflight: ReferenceCapturePreflightResult;
   manifestVersion: string;
   powertrainProfile: string | null;
@@ -532,18 +590,6 @@ export type AcquisitionCycleResult = {
   duplicateEventRetrievals: number;
   flushed: number;
   surfacesExecuted: string[];
+  skippedConcurrentCycle: boolean;
 };
 
-function parseAcquisitionState(raw: unknown): ReferenceCaptureAcquisitionState & {
-  lastSequenceNumber: number;
-} {
-  const base = (raw ?? {}) as Partial<ReferenceCaptureAcquisitionState & { lastSequenceNumber?: number }>;
-  return {
-    cycleCount: base.cycleCount ?? 0,
-    lastCycleAt: base.lastCycleAt ?? null,
-    hfWatermarkAt: base.hfWatermarkAt ?? null,
-    eventWatermarkAt: base.eventWatermarkAt ?? null,
-    seenEventFingerprints: base.seenEventFingerprints ?? [],
-    lastSequenceNumber: base.lastSequenceNumber ?? 0,
-  };
-}

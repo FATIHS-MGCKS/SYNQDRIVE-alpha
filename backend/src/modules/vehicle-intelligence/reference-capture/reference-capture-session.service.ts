@@ -34,6 +34,7 @@ const ACTIVE_STATUSES: ReferenceCaptureSessionStatus[] = [
   ReferenceCaptureSessionStatus.CREATED,
   ReferenceCaptureSessionStatus.PREFLIGHT,
   ReferenceCaptureSessionStatus.READY,
+  ReferenceCaptureSessionStatus.STARTING,
   ReferenceCaptureSessionStatus.RECORDING,
   ReferenceCaptureSessionStatus.STOPPING,
 ];
@@ -103,12 +104,11 @@ export class ReferenceCaptureSessionService {
         vehicleId: session.vehicleId,
         preflight,
         massBinding,
-        runnerOperational: this.runnerService.isRunnerOperational(),
       });
 
       await this.sessionRepository.updateReadiness(organizationId, sessionId, readiness);
 
-      if (!readiness.referenceDriveReady) {
+      if (!readiness.deploymentPreflightReady) {
         const failed = await this.sessionRepository.updateStatus(
           organizationId,
           sessionId,
@@ -161,31 +161,71 @@ export class ReferenceCaptureSessionService {
     }
 
     const readiness = session.readinessJson as ReferenceCaptureReadinessReport | null;
-    if (!readiness?.referenceDriveReady) {
-      throw new BadRequestException('Session is not reference-drive ready — re-run preflight');
+    if (!readiness?.deploymentPreflightReady) {
+      throw new BadRequestException('Session is not deployment-preflight ready — re-run preflight');
     }
 
-    const updated = await this.sessionRepository.updateStatus(
+    const starting = await this.sessionRepository.updateStatusIfCurrent(
       organizationId,
       sessionId,
-      ReferenceCaptureSessionStatus.RECORDING,
+      ReferenceCaptureSessionStatus.READY,
+      ReferenceCaptureSessionStatus.STARTING,
       { startedAt: new Date() },
     );
+    if (!starting) {
+      throw new BadRequestException('Concurrent start request — session no longer READY');
+    }
 
-    await this.runnerService.startRunner({
-      organizationId,
-      vehicleId: session.vehicleId,
-      sessionId,
-      manifestVersion: session.manifestVersion,
-      powertrainProfile: session.powertrainProfile,
-    });
+    try {
+      const firstCycleJobId = await this.runnerService.startRunner({
+        organizationId,
+        vehicleId: session.vehicleId,
+        sessionId,
+        manifestVersion: session.manifestVersion,
+        powertrainProfile: session.powertrainProfile,
+      });
 
-    return this.toView(
-      updated,
-      session.massBindingJson as never,
-      session.preflightJson as never,
-      readiness,
-    );
+      const recording = await this.sessionRepository.updateStatusIfCurrent(
+        organizationId,
+        sessionId,
+        ReferenceCaptureSessionStatus.STARTING,
+        ReferenceCaptureSessionStatus.RECORDING,
+        {
+          runnerJobId: this.runnerService.sessionRunnerKey(sessionId),
+          pendingCycleJobId: firstCycleJobId,
+        },
+      );
+
+      if (!recording) {
+        await this.runnerService.stopRunner(organizationId, sessionId);
+        throw new BadRequestException('Failed to transition session to RECORDING after runner enqueue');
+      }
+
+      return this.toView(
+        recording,
+        session.massBindingJson as never,
+        session.preflightJson as never,
+        readiness,
+      );
+    } catch (error) {
+      await this.runnerService.stopRunner(organizationId, sessionId);
+      const failed = await this.sessionRepository.updateStatus(
+        organizationId,
+        sessionId,
+        ReferenceCaptureSessionStatus.READY,
+        {
+          failureReason:
+            error instanceof Error ? error.message : 'runner_start_failed',
+          runnerJobId: null,
+          pendingCycleJobId: null,
+        },
+      );
+      throw error instanceof BadRequestException
+        ? error
+        : new BadRequestException(
+            `Failed to start reference capture runner: ${failed.failureReason ?? 'unknown'}`,
+          );
+    }
   }
 
   async captureTick(organizationId: string, sessionId: string): Promise<{
@@ -211,6 +251,7 @@ export class ReferenceCaptureSessionService {
         organizationId,
         vehicleId: session.vehicleId,
         sessionId,
+        cycleJobId: `diagnostic-${sessionId}-${Date.now()}`,
         preflight,
         manifestVersion: session.manifestVersion,
         powertrainProfile: session.powertrainProfile,
@@ -251,14 +292,15 @@ export class ReferenceCaptureSessionService {
       throw new BadRequestException(`Cannot stop recording from status ${session.status}`);
     }
 
-    await this.runnerService.stopRunner(organizationId, sessionId);
-
     await this.sessionRepository.updateStatus(
       organizationId,
       sessionId,
       ReferenceCaptureSessionStatus.STOPPING,
       { stoppedAt: new Date() },
     );
+
+    await this.runnerService.cancelPendingCycleJob(organizationId, sessionId);
+    await this.sessionRepository.updateRunnerJobId(organizationId, sessionId, null);
 
     try {
       await this.observationWriter.flush(sessionId);
@@ -306,7 +348,17 @@ export class ReferenceCaptureSessionService {
       throw new BadRequestException(`Cannot abort from status ${session.status}`);
     }
 
-    await this.runnerService.stopRunner(organizationId, sessionId);
+    if (session.status === ReferenceCaptureSessionStatus.RECORDING) {
+      await this.sessionRepository.updateStatus(
+        organizationId,
+        sessionId,
+        ReferenceCaptureSessionStatus.STOPPING,
+        { stoppedAt: new Date() },
+      );
+    }
+
+    await this.runnerService.cancelPendingCycleJob(organizationId, sessionId);
+    await this.sessionRepository.updateRunnerJobId(organizationId, sessionId, null);
 
     try {
       await this.observationWriter.flush(sessionId);

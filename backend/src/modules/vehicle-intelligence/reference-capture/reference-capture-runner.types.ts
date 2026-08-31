@@ -4,4 +4,7 @@ export type ReferenceCaptureJobData = {
   sessionId: string;
   manifestVersion: string;
   powertrainProfile: string | null;
+  cycleNumber: number;
+  cycleUuid: string;
+  transientRetryCount?: number;
 };

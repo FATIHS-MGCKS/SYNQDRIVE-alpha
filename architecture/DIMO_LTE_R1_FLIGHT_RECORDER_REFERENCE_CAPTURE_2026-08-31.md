@@ -42,17 +42,19 @@ Unknown provider fields: retained with `canonicalKey: null`, `rawIdentity: DIMO:
 
 Broad observation breadth ≠ uniform cadence. See `reference-capture-acquisition-planner.ts`.
 
-## Autonomous runner
+## Autonomous runner (correction 2)
 
 | Property | Value |
 |----------|-------|
 | Queue | `reference.capture.recording` |
-| Job name | `reference-capture-cycle` |
-| Job ID | `reference-capture:{sessionId}` |
-| Reschedule delay | `REFERENCE_CAPTURE_CYCLE_INTERVAL_MS` (default 5000) |
-| Safety stop | `REFERENCE_CAPTURE_MAX_DURATION_MS` (default 4h) |
+| Session key | `refcap-session_{sessionId}` (traceability) |
+| Cycle job ID | `refcap-cycle_{sessionId}_{cycleNumber}_{uuid}` — unique, colon-free |
+| Pending tracking | `reference_capture_sessions.pending_cycle_job_id` |
+| Serialization | `activeCycleJobId` DB lock + processor concurrency=1 |
+| Start flow | READY → STARTING → enqueue → RECORDING |
+| Stop flow | STOPPING → cancel pending delayed job → flush → terminal |
 
-Restart-safe: job checks session status each cycle; stale jobs no-op if session not RECORDING.
+Restart-safe: stale jobs no-op when session not RECORDING; active cycle does not schedule next after STOPPING.
 
 ## Event identity
 

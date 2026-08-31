@@ -184,6 +184,7 @@ import { ReferenceCaptureMassBindingService } from './reference-capture/referenc
 import { ReferenceCaptureRetentionService } from './reference-capture/reference-capture-retention.service';
 import { ReferenceCaptureReadinessService } from './reference-capture/reference-capture-readiness.service';
 import { ReferenceCaptureRunnerService } from './reference-capture/reference-capture-runner.service';
+import { ReferenceCaptureRuntimeHealthService } from './reference-capture/reference-capture-runtime-health.service';
 import { TripDrivingImpactBackfillService } from './driving-impact/trip-driving-impact-backfill.service';
 import { BrakingEventLedgerService } from './brakes/braking-event-ledger.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
@@ -448,6 +449,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ReferenceCaptureRetentionService,
     ReferenceCaptureReadinessService,
     ReferenceCaptureRunnerService,
+    ReferenceCaptureRuntimeHealthService,
     TripAssessabilityRepository,
     TripAssessabilityService,
     TripAssessabilityInputLoader,

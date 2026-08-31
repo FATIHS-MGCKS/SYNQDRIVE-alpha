@@ -41,6 +41,14 @@ export class ReferenceCaptureConfig {
     return this.configService.get<boolean>('referenceCapture.retentionSchedulerEnabled') === true;
   }
 
+  getMaxTransientRetries(): number {
+    return this.configService.get<number>('referenceCapture.maxTransientRetries') ?? 5;
+  }
+
+  getTransientRetryBaseDelayMs(): number {
+    return this.configService.get<number>('referenceCapture.transientRetryBaseDelayMs') ?? 2000;
+  }
+
   /** Hard invariant: reference capture must never affect live trip FSM. */
   isTripDetectionAffected(): boolean {
     return false;

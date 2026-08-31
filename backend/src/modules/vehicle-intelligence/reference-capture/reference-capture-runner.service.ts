@@ -5,6 +5,11 @@ import { Queue } from 'bullmq';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { REFERENCE_CAPTURE_JOB_NAME } from './reference-capture.constants';
 import { ReferenceCaptureConfig } from './reference-capture.config';
+import {
+  buildReferenceCaptureCycleJobId,
+  buildReferenceCaptureSessionRunnerKey,
+  createReferenceCaptureCycleUuid,
+} from './reference-capture-queue.util';
 import { ReferenceCaptureSessionRepository } from './reference-capture-session.repository';
 import type { ReferenceCaptureJobData } from './reference-capture-runner.types';
 
@@ -19,57 +24,116 @@ export class ReferenceCaptureRunnerService {
     private readonly sessionRepository: ReferenceCaptureSessionRepository,
   ) {}
 
-  jobIdForSession(sessionId: string): string {
-    return `reference-capture:${sessionId}`;
+  sessionRunnerKey(sessionId: string): string {
+    return buildReferenceCaptureSessionRunnerKey(sessionId);
   }
 
-  async startRunner(input: ReferenceCaptureJobData): Promise<void> {
-    const jobId = this.jobIdForSession(input.sessionId);
-    await this.queue.add(REFERENCE_CAPTURE_JOB_NAME, input, {
+  buildCycleJobData(
+    input: Omit<ReferenceCaptureJobData, 'cycleNumber' | 'cycleUuid' | 'transientRetryCount'>,
+    cycleNumber: number,
+    cycleUuid: string = createReferenceCaptureCycleUuid(),
+    transientRetryCount = 0,
+  ): ReferenceCaptureJobData {
+    return {
+      ...input,
+      cycleNumber,
+      cycleUuid,
+      transientRetryCount,
+    };
+  }
+
+  cycleJobId(sessionId: string, cycleNumber: number, cycleUuid: string): string {
+    return buildReferenceCaptureCycleJobId(sessionId, cycleNumber, cycleUuid);
+  }
+
+  async enqueueCycleJob(
+    data: ReferenceCaptureJobData,
+    options?: { delayMs?: number },
+  ): Promise<string> {
+    const jobId = this.cycleJobId(data.sessionId, data.cycleNumber, data.cycleUuid);
+    await this.queue.add(REFERENCE_CAPTURE_JOB_NAME, data, {
       jobId,
-      delay: 0,
+      delay: options?.delayMs ?? 0,
       removeOnComplete: true,
-      removeOnFail: 20,
+      removeOnFail: 50,
     });
-    await this.sessionRepository.updateRunnerJobId(
-      input.organizationId,
-      input.sessionId,
+    await this.sessionRepository.updatePendingCycleJobId(
+      data.organizationId,
+      data.sessionId,
       jobId,
     );
-    this.logger.log(`Started reference capture runner session=${input.sessionId} jobId=${jobId}`);
+    return jobId;
   }
 
-  async scheduleNextCycle(input: ReferenceCaptureJobData): Promise<void> {
-    const jobId = this.jobIdForSession(input.sessionId);
-    const delayMs = this.config.getCycleIntervalMs();
-    try {
-      await this.queue.add(REFERENCE_CAPTURE_JOB_NAME, input, {
-        jobId,
-        delay: delayMs,
-        removeOnComplete: true,
-        removeOnFail: 20,
-      });
-    } catch (error) {
-      const message = (error as Error).message ?? '';
-      if (message.toLowerCase().includes('already exists')) {
-        this.logger.debug(`Runner cycle already queued session=${input.sessionId}`);
-        return;
-      }
-      throw error;
+  async startRunner(input: Omit<ReferenceCaptureJobData, 'cycleNumber' | 'cycleUuid'>): Promise<string> {
+    const runnerKey = this.sessionRunnerKey(input.sessionId);
+    const firstCycle = this.buildCycleJobData(input, 1);
+    const jobId = await this.enqueueCycleJob(firstCycle, { delayMs: 0 });
+    await this.sessionRepository.updateRunnerJobId(input.organizationId, input.sessionId, runnerKey);
+    this.logger.log(
+      `Started reference capture runner session=${input.sessionId} runnerKey=${runnerKey} firstCycleJobId=${jobId}`,
+    );
+    return jobId;
+  }
+
+  async scheduleNextCycle(
+    current: ReferenceCaptureJobData,
+    options?: { delayMs?: number; transientRetryCount?: number },
+  ): Promise<string | null> {
+    const session = await this.sessionRepository.findById(
+      current.organizationId,
+      current.sessionId,
+    );
+    if (!session || session.status !== ReferenceCaptureSessionStatus.RECORDING) {
+      return null;
     }
+
+    const next = this.buildCycleJobData(
+      current,
+      current.cycleNumber + 1,
+      createReferenceCaptureCycleUuid(),
+      options?.transientRetryCount ?? 0,
+    );
+    const delayMs = options?.delayMs ?? this.config.getCycleIntervalMs();
+    return this.enqueueCycleJob(next, { delayMs });
+  }
+
+  async cancelPendingCycleJob(
+    organizationId: string,
+    sessionId: string,
+  ): Promise<{ cancelled: boolean; jobId: string | null }> {
+    const session = await this.sessionRepository.findById(organizationId, sessionId);
+    const pendingJobId = session?.pendingCycleJobId ?? null;
+    if (!pendingJobId) {
+      return { cancelled: false, jobId: null };
+    }
+
+    const job = await this.queue.getJob(pendingJobId);
+    if (job) {
+      const state = await job.getState();
+      if (state === 'delayed' || state === 'waiting') {
+        await job.remove();
+        this.logger.debug(`Cancelled pending cycle job ${pendingJobId} session=${sessionId}`);
+      }
+    }
+
+    await this.sessionRepository.updatePendingCycleJobId(organizationId, sessionId, null);
+    return { cancelled: true, jobId: pendingJobId };
   }
 
   async stopRunner(organizationId: string, sessionId: string): Promise<void> {
-    const jobId = this.jobIdForSession(sessionId);
-    const job = await this.queue.getJob(jobId);
-    if (job) {
-      await job.remove();
-    }
+    await this.cancelPendingCycleJob(organizationId, sessionId);
     await this.sessionRepository.updateRunnerJobId(organizationId, sessionId, null);
   }
 
-  isRunnerOperational(): boolean {
-    return this.config.isEnabled();
+  async isQueueReachable(): Promise<boolean> {
+    if (!this.config.isEnabled()) return false;
+    try {
+      await this.queue.getJobCounts('waiting', 'delayed', 'active');
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async shouldContinueRecording(

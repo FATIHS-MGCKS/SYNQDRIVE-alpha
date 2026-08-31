@@ -64,7 +64,11 @@ describe('Reference Capture integration (Phase 3A.1 correction)', () => {
           eventWatermarkAt: null,
           acquisitionStateJson: {},
         }),
-        updateAcquisitionState: jest.fn().mockResolvedValue({}),
+        tryAcquireCycleLock: jest.fn().mockResolvedValue({
+          acquired: true,
+          state: { cycleCount: 0, seenEventFingerprints: [], lastSequenceNumber: 0 },
+        }),
+        releaseCycleLockAndUpdateState: jest.fn().mockResolvedValue(true),
       };
       const dimoAuth = { getVehicleJwt: jest.fn().mockResolvedValue('jwt') };
       const prisma = {
@@ -119,6 +123,7 @@ describe('Reference Capture integration (Phase 3A.1 correction)', () => {
         organizationId: 'org',
         vehicleId: 'veh',
         sessionId: 'sess',
+        cycleJobId: 'refcap-cycle-test',
         preflight,
         manifestVersion: '1.1.0',
         powertrainProfile: 'ICE_GASOLINE',
@@ -204,6 +209,8 @@ describe('Reference Capture integration (Phase 3A.1 correction)', () => {
         getCycleIntervalMs: () => 5000,
         getSlowCycleEvery: () => 6,
         getMaxRecordingDurationMs: () => 3_600_000,
+        getMaxTransientRetries: () => 5,
+        getTransientRetryBaseDelayMs: () => 1000,
       };
       const sessionRepo = {
         findById: jest.fn().mockResolvedValue({
@@ -214,6 +221,7 @@ describe('Reference Capture integration (Phase 3A.1 correction)', () => {
             broadObservationFieldCount: 1,
             manifestVersion: '1.1.0',
           },
+          acquisitionStateJson: { cycleCount: 1 },
         }),
         updateStatus: jest.fn(),
       };
@@ -222,29 +230,37 @@ describe('Reference Capture integration (Phase 3A.1 correction)', () => {
           signalPoints: 1,
           nativeEvents: 0,
           flushed: 1,
+          cycleNumber: 1,
+          skippedConcurrentCycle: false,
         }),
       };
       const runner = {
         shouldContinueRecording: jest.fn().mockResolvedValue(true),
-        scheduleNextCycle: jest.fn().mockResolvedValue(undefined),
+        scheduleNextCycle: jest.fn().mockResolvedValue('next-job'),
         stopRunner: jest.fn(),
+        cancelPendingCycleJob: jest.fn(),
+        cycleJobId: () => 'refcap-cycle-sess1-1-uuid',
       };
+      const writer = { clearSession: jest.fn(), enqueueAndMaybeFlush: jest.fn(), flush: jest.fn() };
 
       const processor = new ReferenceCaptureProcessor(
         config as never,
         sessionRepo as never,
         acquisition as never,
         runner as never,
+        writer as never,
       );
 
       await processor.process({
-        id: 'reference-capture:sess1',
+        id: 'refcap-cycle-sess1-1-uuid',
         data: {
           organizationId: 'org',
           vehicleId: 'veh',
           sessionId: 'sess1',
           manifestVersion: '1.1.0',
           powertrainProfile: 'ICE_GASOLINE',
+          cycleNumber: 1,
+          cycleUuid: 'uuid-1',
         },
       } as never);
 
@@ -252,12 +268,12 @@ describe('Reference Capture integration (Phase 3A.1 correction)', () => {
       expect(runner.scheduleNextCycle).toHaveBeenCalledTimes(1);
     });
 
-    it('startRunner enqueues BullMQ job with session-scoped jobId', async () => {
-      const queue = {
-        add: jest.fn().mockResolvedValue({ id: 'reference-capture:s1' }),
-        getJob: jest.fn(),
+    it('startRunner enqueues first cycle with unique colon-free jobId', async () => {
+      const queue = { add: jest.fn().mockResolvedValue({ id: 'job' }) };
+      const sessionRepo = {
+        updateRunnerJobId: jest.fn().mockResolvedValue({}),
+        updatePendingCycleJobId: jest.fn().mockResolvedValue({}),
       };
-      const sessionRepo = { updateRunnerJobId: jest.fn().mockResolvedValue({}) };
       const config = { isEnabled: () => true, getCycleIntervalMs: () => 5000 };
 
       const runner = new ReferenceCaptureRunnerService(
@@ -266,7 +282,7 @@ describe('Reference Capture integration (Phase 3A.1 correction)', () => {
         sessionRepo as never,
       );
 
-      await runner.startRunner({
+      const jobId = await runner.startRunner({
         organizationId: 'org',
         vehicleId: 'veh',
         sessionId: 's1',
@@ -276,9 +292,10 @@ describe('Reference Capture integration (Phase 3A.1 correction)', () => {
 
       expect(queue.add).toHaveBeenCalledWith(
         'reference-capture-cycle',
-        expect.objectContaining({ sessionId: 's1' }),
-        expect.objectContaining({ jobId: 'reference-capture:s1' }),
+        expect.objectContaining({ sessionId: 's1', cycleNumber: 1 }),
+        expect.objectContaining({ jobId: expect.not.stringContaining(':') }),
       );
+      expect(jobId).not.toContain(':');
     });
   });
 

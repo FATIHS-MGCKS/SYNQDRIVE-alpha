@@ -871,7 +871,7 @@ The older July DIMO capability audit is HISTORICAL_EVIDENCE only.
 
 **May start when:** the **`DIMO_LTE_R1`** two-layer reference manifest (Phase **2F.1** v1.1.0) is frozen. **Condition satisfied 2026-08-31.**
 
-**Reference drive:** **`REFERENCE_DRIVE_READINESS = READY`** — correction pass (2026-08-31) resolved broad-acquisition ceiling, temporal surfaces, autonomous runner, event watermark, HTTP ingress boundary, writer durability, evidence-based readiness. Requires `REFERENCE_CAPTURE_ENABLED=true` + successful preflight. **No reference drive executed in 3A.1.**
+**Reference drive:** **`REFERENCE_DRIVE_READINESS = BLOCKED`** until post-deploy vehicle canary. **`READY_FOR_DEPLOYMENT_PREFLIGHT`** when runtime readiness checks pass at preflight.
 
 **Phase 3A.1 deliverable:** `docs/audits/dimo-phase-3a1-flight-recorder-foundation-2026-08-31.md` + `architecture/DIMO_LTE_R1_FLIGHT_RECORDER_REFERENCE_CAPTURE_2026-08-31.md` + `architecture/CHANGES_REFERENCE_CAPTURE_3A1_CORRECTION_2026-08-31.md`
 
@@ -882,12 +882,10 @@ The older July DIMO capability audit is HISTORICAL_EVIDENCE only.
 - Wire contract: envelope v1.0.0
 - Broad capture: dynamic query builder (`buildBroadReferenceSignalsLatestQuery`) — NOT static production snapshot
 - Temporal surfaces: LATEST_LIVE / HF_HISTORICAL / LATEST_SLOW / NATIVE_EVENT_INCREMENTAL
-- Autonomous runner: BullMQ `reference.capture.recording` (manual `/tick` diagnostic only)
-- Timestamps: `synqReceivedAt` at Axios HTTP response boundary (RP-039)
-- Event identity: session watermark + `providerEventFingerprint`
-- Readiness: evidence-based via `ReferenceCaptureReadinessService`
-- Session lifecycle: CREATED → PREFLIGHT → READY → RECORDING → COMPLETED
-- **32 reference-capture unit/integration tests passing**
+- Autonomous runner: BullMQ unique cycle jobIds (`refcap-cycle_*`); STARTING compensated start; session-status-authoritative stop
+- Readiness: `deploymentPreflightReady` vs blocked `referenceDriveReady` (vehicle canary required)
+- HF physical sample fingerprint + schema quarantine for unknown provider fields
+- **42 reference-capture unit tests passing** (+ env-gated Redis integration)
 - **No scoring formula changes; no production scheduler replacement**
 
 **Status:** **3A.1 DONE** · **3A Ground Truth / reference drive execution NOT STARTED**
