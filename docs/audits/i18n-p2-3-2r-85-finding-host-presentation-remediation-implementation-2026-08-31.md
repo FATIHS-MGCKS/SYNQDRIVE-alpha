@@ -1,9 +1,9 @@
 # P2.3.2R — Certified 85-Finding Host-Presentation Remediation
 
-**Date:** 2026-08-31  
-**Mode:** STRICT IMPLEMENTATION  
-**Base branch:** `p239-p238-merge-baseline-3c10`  
-**Base SHA:** `fd78c422d205c08ef5759f37bc2f21d73a601123`  
+**Date:** 2026-08-31
+**Mode:** STRICT IMPLEMENTATION
+**Base branch:** `p239-p238-merge-baseline-3c10`
+**Base SHA:** `fd78c422d205c08ef5759f37bc2f21d73a601123`
 **Governance foundation:** PR #1450 (merged)
 
 ---
@@ -25,7 +25,7 @@
 
 ## PART B — Authoritative 85 inventory
 
-All 85 fingerprints were `ACTIVE_REMEDIATION_REQUIRED` / `TRUE_HOST_PRESENTATION` per audits #1455 and #1457.  
+All 85 fingerprints were `ACTIVE_REMEDIATION_REQUIRED` / `TRUE_HOST_PRESENTATION` per audits #1455 and #1457.
 Pre-implementation reproduction: `ACTIVE_REMEDIATION_REQUIRED = 85`, `NEW_UNCLASSIFIED_ACTIVE_HOST_DEBT = 0`.
 
 ---
@@ -174,5 +174,5 @@ See Part D. `npm run i18n:check` reports `Canonical keys: 9803`, EN/DE 100% comp
 
 ## PART N — P2.3.3 readiness
 
-Governance foundation merged (#1450). Active remediation denominator cleared.  
+Governance foundation merged (#1450). Active remediation denominator cleared.
 **Independent remediation audit required before merge.** Do not merge on self-certification alone.
