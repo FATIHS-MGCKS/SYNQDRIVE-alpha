@@ -5,7 +5,7 @@
 **Scope:** `DIMO_LTE_R1` reference capture manifest · timestamp contract · native-event contract · Ground Truth sync · probe reclassification  
 **Repository:** `FATIHS-MGCKS/SYNQDRIVE-alpha`  
 **Machine-readable artifact:** `docs/audits/manifests/dimo-lte-r1-reference-manifest-v1.json`  
-**Phase gate:** Phase 2F.1 **DONE** · Phase 3A **READY / UNGATED_TO_START** (not started)
+**Phase gate:** Phase 2F.1 **DONE** (v1.1.0 broad-capture amendment) · Phase 3A **READY_TO_START_IMPLEMENTATION** · reference drive **NOT_READY_FOR_REFERENCE_DRIVE**
 
 ---
 
@@ -16,15 +16,16 @@ Phase 2F.1 **freezes** the **`DIMO_LTE_R1` reference manifest** — the normativ
 | Metric | Value | Evidence |
 |--------|------:|----------|
 | Connection profile | **`DIMO_LTE_R1`** only | Master Plan §1.6 |
-| Canonical registry version | **`CAN-33-2026-08-31`** | Phase 2E Appendix B |
-| Manifest version | **`1.0.0`** | This deliverable |
-| Canonical signals assessed | **33 / 33** | Explicit decision per `CAN_*` |
-| Full reference manifest signals | **33** | All keys in full set |
-| Minimum viable manifest signals | **17** | Pareto core + brake/tire attempt |
-| Optional high-value extensions | **14** | Physics/context enrichments |
-| Native-event contract | **Frozen** | T4 · PROVIDER_CLASSIFIED |
+| Manifest version | **`1.1.0`** (broad-capture amendment) | JSON artifact |
+| **Canonical analysis set (`CAN_*`)** | **33** keys | Phase 2E Appendix B — **not** full observation universe |
+| **Minimum reference set** | **17** canonical keys | Pareto fallback when broad capture unavailable |
+| **Broad reference observation set** | **Dynamic per vehicle** | Capability-discovered provider fields — **not** hard-coded 33 or 117 |
+| Global DIMO schema reference | **117** fields | Phase 2C — **not** continuously polled @ 1 Hz |
+| Four-vehicle union observed | **33** fields | Phase 2B — example only (N₁≠N₂) |
+| Optional high-value canonical extensions | **14** keys | CAN-33 prioritization — non-listed available fields still captured in broad mode |
+| Native-event contract | **Frozen** | Known analysis set + **broad provider event observation** |
 | Timestamp contract | **Frozen** | Receive-time requirement explicit |
-| Raw + normalized retention | **Frozen** | Architectural requirement |
+| Raw + normalized + **unmapped provider** retention | **Frozen** | `DIMO::<field>` when `canonicalKey=null` |
 | Ground Truth sync contract | **Frozen** | Phase 3A input |
 | Runtime probes reclassified | **47** | A/B/C/D taxonomy |
 | Production code changed | **0** | Docs + JSON only |
@@ -43,8 +44,9 @@ Phase 2F.1 **freezes** the **`DIMO_LTE_R1` reference manifest** — the normativ
 
 ### 2.1 In scope
 
-- Full + minimum + optional-extension manifest sets for `DIMO_LTE_R1`
-- Per-signal normative contract for all 33 `CAN_*` keys
+- Two-layer manifest: **`CANONICAL_ANALYSIS_SET`** (33) + **`BROAD_REFERENCE_OBSERVATION_SET`** (dynamic per vehicle)
+- Per-signal normative contract for all 33 `CAN_*` keys (analysis layer)
+- Unmapped provider retention · broad native events · segment observation policies
 - Capture class taxonomy
 - Timestamp, raw/normalized retention, native-event, GT sync contracts
 - Powertrain overlays (ICE gasoline, ICE diesel, PHEV, BEV)
@@ -71,7 +73,7 @@ Phase 2F.1 **freezes** the **`DIMO_LTE_R1` reference manifest** — the normativ
 
 ---
 
-## 3. North Star (Preserved)
+## 3. North Star & Reference Pipeline (Preserved)
 
 ```
 RAW PROVIDER OBSERVATION → CANONICAL SIGNAL (CAN_*) → PHYSICAL EPISODE → CANONICAL FEATURE
@@ -79,33 +81,181 @@ RAW PROVIDER OBSERVATION → CANONICAL SIGNAL (CAN_*) → PHYSICAL EPISODE → C
 + orthogonal Data Confidence / Assessability
 ```
 
-**Invariants preserved from Phase 2E:**
+**Phase 3A reference-program pipeline (distinct from production acquisition):**
 
-- One physical maneuver → one physical episode → multiple evidence channels  
-- Native events = **PROVIDER_CLASSIFIED**; reconstructed = **SYNQDRIVE_DERIVED** — compare, do not blindly sum  
-- Throttle ≠ pedal · torque Nm ≠ torque % (complementary) · brake C1/C2 = **CIRCUIT_COMPLEMENT**  
-- Heading ≠ yaw · tire warning ≠ pressure · battery power alone ≠ friction/regen split  
-- Positive traction-battery power = energy **into** battery (Phase 2C/2D)
+```
+DISCOVER EVERYTHING AVAILABLE → CAPTURE BROAD → CHARACTERIZE → CANONICALIZE
+→ RECONSTRUCT → VALIDATE → SELECT FEATURES → SCORE
+```
 
----
-
-## 4. Manifest Design Principles
-
-1. **Scientific sufficiency, not query maximalism** — capture what Phase 3A needs to measure cadence, latency, dynamics, native vs reconstructed episodes, and GT alignment.  
-2. **Capability-first shaping** — do not force all 33 fields into every vehicle query; record **if capability exists** where appropriate.  
-3. **Powertrain independence** — ICE-only fields must not penalize BEV confidence; BEV-only fields must not penalize ICE.  
-4. **Existence ≠ temporal usability** — requested `interval:"1s"` is **not** observed 1 Hz.  
-5. **Raw evidence for replay** — retain provider + normalized forms; never persist only final scores.  
-6. **Connection profile scoped** — this manifest is **`DIMO_LTE_R1` only**; Smart5/Tesla/HM have separate tracks.
+The **33 `CAN_*` keys** are the **current canonical analysis registry**. They are **not** the complete provider-observation universe for reference capture.
 
 ---
 
-## 5. Frozen Manifest Metadata
+## 4. Two Manifest Layers (Critical Distinction)
+
+### 4.1 Layer A — Canonical Analysis Manifest
+
+| Term | Definition |
+|------|------------|
+| **`CANONICAL_ANALYSIS_SET`** | **33** frozen `CAN_*` keys from Phase 2E |
+| Role | Authoritative for **currently understood** Driver Quality, Vehicle Load, Brake Physics, Tire Dynamic Load, and context concepts |
+| Scope | Analysis alignment, redundancy rules, episode identity, detector design inputs |
+| **Not** | The complete provider telemetry universe · **do not inflate CAN-33** to represent unknown provider fields |
+
+Per-signal normative contracts for all 33 keys remain in JSON `canonicalSignals[]` and §9 below.
+
+### 4.2 Layer B — Broad Reference Observation Manifest
+
+| Term | Definition |
+|------|------------|
+| **`BROAD_REFERENCE_OBSERVATION_SET`** | All empirically/capability-discovered provider telemetry signals retrievable for the **concrete vehicle/session** on `DIMO_LTE_R1` |
+| Count policy | **`DYNAMIC_PER_VEHICLE`** — **must not** hard-code globally as 33 or 117 |
+| Hierarchy | 117 schema surface → per-vehicle capability discovery → vehicle-supported fields → **broad capture** → canonical map where exists → raw `DIMO::<field>` where unmapped |
+
+**Includes fields that:**
+
+- Already map to `CAN_*` · do not yet map · appear irrelevant to scoring today  
+- Are diagnostic/context/body/service · redundant candidates · unknown scientific value/cadence/stability  
+
+**Purpose:** discovery and future offline analysis — **not** pre-deciding that only today's 33 signals are worth retaining.
+
+### 4.3 Layer C — Minimum Reference Set (Pareto fallback)
+
+| Term | Definition |
+|------|------------|
+| **`MINIMUM_REFERENCE_SET`** | **17** canonical keys — core Pareto when broad capture is constrained |
+| Role | Fallback/science floor — **not** the Phase 3A research capture target |
+
+### 4.4 Optional high-value canonical extensions
+
+**`OPTIONAL_HIGH_VALUE_CANONICAL_EXTENSIONS`** = **14** keys — CAN-33 prioritization for analysis focus. **Must not** imply non-selected **available provider signals** are discarded from broad research capture.
+
+---
+
+## 5. Manifest Design Principles
+
+1. **Broad scientific observation with temporally efficient acquisition** — maximize **information coverage** of the vehicle-supported provider surface; **not** query count or uniform polling frequency. *(Supersedes misread of "scientific sufficiency, not query maximalism" as intentionally narrow reference capture.)*  
+2. **Two-layer separation** — CAN-33 = analysis registry; broad observation = Phase 3A research capture surface.  
+3. **Capability-driven breadth** — `availableSignals` seeds the broad candidate set; empirical characterization follows in Flight Recorder.  
+4. **Cadence ≠ breadth** — retain all available signals; assign **temporal acquisition class** per signal (§6). **Not** 117 fields @ 1 Hz.  
+5. **Powertrain independence** — suppress inherently inapplicable fields once known; retain all other available provider fields in broad capture.  
+6. **Raw evidence for replay** — retain provider-native unmapped fields (`canonicalKey: null`); never persist only final scores.  
+7. **Connection profile scoped** — `DIMO_LTE_R1` only; model extensible to Smart5/Tesla/HM later.
+
+**Master Plan lifecycle (frozen):**
+
+| Mode | Strategy |
+|------|----------|
+| **REFERENCE MODE** | **BROAD CAPTURE FIRST** |
+| **PRODUCTION MODE** | **CAPABILITY-SHAPED MINIMUM/OPTIMAL ACQUISITION AFTER VALIDATION** |
+
+Reference/research capture may intentionally collect **significantly more** data than eventual production acquisition.
+
+---
+
+## 6. Temporal Acquisition Classes (Breadth ≠ Cadence)
+
+Broad observation and acquisition cadence are **separate decisions**.
+
+| Class | Cadence intent | Examples |
+|-------|----------------|----------|
+| **WAVEFORM_DYNAMICS** | Maximum useful/provider-supported | speed HF, yaw, brake pressure, wheel speeds |
+| **POWERTRAIN_DYNAMIC** | High when scientifically useful | RPM, throttle, torque, battery power |
+| **SPATIAL_ROUTE** | Route-suitable | lat, lon, heading route buckets |
+| **SLOW_PHYSICAL_CONTEXT** | Slow | ambient, coolant snapshot, tire pressure |
+| **HEALTH_DIAGNOSTIC** | Slow / on-change | DTC, warnings, fluid levels |
+| **EVENT** | Event-driven | native provider events, segment triggers |
+| **SESSION_METADATA** | Session / request level | captureSessionId, manifestVersion, request timing |
+
+**Rule:** Requested `interval:"1s"` is **never** observed 1 Hz without empirical validation.
+
+---
+
+## 7. Raw Unmapped Provider Signal Contract
+
+Provider-native fields **without** current `CAN_*` mapping **must** be retained in reference capture.
+
+```
+provider = DIMO
+providerField = <exact DIMO field>
+canonicalKey = null   (when not mapped)
+rawIdentity = DIMO::<exact-provider-field>
+```
+
+**Do not invent a `CAN_*` key merely because a field is captured.**
+
+Required provenance (minimum): provider · connectionProfile · vehicleId · captureSessionId · providerField · canonicalKey (nullable) · raw value · raw unit · normalized when defined · providerTimestamp · synqReceivedAt · request timing · acquisition surface/tier · capability state · manifestVersion.
+
+---
+
+## 8. `availableSignals` Role & Controlled Probing
+
+**`availableSignals` IS:** capability-discovery evidence for the **initial broad per-vehicle capture candidate set**.
+
+**`availableSignals` IS NOT proof of:** cadence · freshness · historical queryability · waveform quality · detector suitability.
+
+**Flight Recorder must empirically characterize:** observed non-null delivery · P50/P95/P99 Δt · max gap · jitter · duplicates · out-of-order · provider→SynqDrive latency · quantization · null behavior · historical availability · surface differences.
+
+**Controlled direct probe** (schema fields not in `availableSignals` but scientifically high-value): probe **once/diagnostically** where safe — **not** blind continuous polling of all unsupported fields.
+
+| Result state | Meaning |
+|--------------|---------|
+| `SCHEMA_SUPPORTED` | In global schema |
+| `LISTED_AVAILABLE` | In vehicle availableSignals |
+| `OBSERVED_NON_NULL` | Empirically delivered |
+| `LISTED_BUT_NULL` | Listed but null at observation |
+| `DIRECT_PROBE_SUPPORTED` | Probe returned data |
+| `DIRECT_PROBE_NULL` | Probe legal but null |
+| `NOT_AVAILABLE_ON_VEHICLE` | Confirmed absent |
+| `UNKNOWN` | Requires further validation |
+
+Schema existence ≠ vehicle capability.
+
+---
+
+## 9. Native Events — Broad Observation
+
+| Set | Definition |
+|-----|------------|
+| **`KNOWN_ANALYSIS_EVENT_SET`** | Eight behavior.* names aligned with current Q015 minimum filters |
+| **`BROAD_PROVIDER_EVENT_OBSERVATION_SET`** | **All** provider events returned for reference session when API permits |
+
+**Rule:** Do **not** drop events because the name is outside the Q015 filter. Unknown event names remain **provider-native evidence**.
+
+Per-event retention: exact name · full metadata · provider timestamp · synqReceivedAt · session/trip · provenance · manifestVersion.
+
+Episode rule preserved: **one physical maneuver → one episode → multiple evidence channels**; native vs reconstructed compared, not blindly summed.
+
+---
+
+## 10. Segments & Auxiliary Surfaces
+
+If segment/auxiliary DIMO surfaces can be safely queried for the reference session, **retain results for research/validation** even when no current score consumes them. Do **not** promote to `CAN_*` without semantic justification.
+
+---
+
+## 11. Analysis Eligibility vs Reference Capture Eligibility
+
+| Concept | Meaning |
+|---------|---------|
+| **`analysisEligibility`** | Current use in DQ / VL / BK / TR scoring & detector design |
+| **`referenceCaptureEligibility`** | Must retain in Phase 3A broad capture when vehicle/provider permits |
+
+**Rules:**
+
+- `DIAGNOSTIC_ONLY` = current **analysis** use — **not** "do not observe" in reference mode  
+- `EXCLUDED_FROM_SCORING` ≠ `EXCLUDED_FROM_REFERENCE_OBSERVATION`  
+- Context/diagnostic **available** signals captured at appropriate temporal class  
+
+---
+
+## 12. Frozen Manifest Metadata
 
 | Field | Value |
 |-------|-------|
 | `manifestId` | `DIMO_LTE_R1_REFERENCE_MANIFEST` |
-| `manifestVersion` | `1.0.0` |
+| `manifestVersion` | **`1.1.0`** (broad-capture amendment) |
 | `manifestStatus` | `FROZEN` |
 | `frozenAt` | `2026-08-31T00:00:00.000Z` |
 | `canonicalRegistryVersion` | `CAN-33-2026-08-31` |
@@ -127,69 +277,53 @@ RAW PROVIDER OBSERVATION → CANONICAL SIGNAL (CAN_*) → PHYSICAL EPISODE → C
 
 ---
 
-## 6. Capture Class Taxonomy
+## 13. Capture Class Taxonomy (Canonical Analysis Layer)
 
-| Class | Meaning | Manifest decision |
-|-------|---------|-------------------|
-| `CORE_REFERENCE_REQUIRED` | Minimum scientifically necessary on LTE_R1 reference sessions | **record** |
-| `CAPABILITY_CONDITIONAL` | Record when vehicle capability confirms delivery | **record_if_capability_exists** |
-| `POWERTRAIN_CONDITIONAL` | Applicable only to listed powertrain profiles | **record_only_for_specific_powertrain** |
-| `PHYSICS_HIGH_FREQUENCY` | Waveform-grade physics (brake/yaw/wheel) | **record_if_capability_exists** @ T5/T7 |
-| `NATIVE_EVENT_EVIDENCE` | Provider behavior events (T4) | **record** (channel-level) |
-| `CONTEXT_ONLY` | Thermal/heading/altitude context | **record** (lower cadence OK) |
-| `DIAGNOSTIC_ONLY` | Warning/selected gear — not primary physics | **diagnostic_only** |
-| `GROUND_TRUTH_SYNC` | Session/video sync metadata | **record** (session envelope) |
-| `EXCLUDED_FROM_REFERENCE_CAPTURE` | Not part of LTE_R1 reference capture | **excluded** |
+Capture classes describe **canonical analysis alignment** and default temporal intent. In **reference mode**, `DIAGNOSTIC_ONLY` and `CONTEXT_ONLY` still permit broad capture at appropriate cadence (§11).
 
-No canonical key is silently omitted — see §8 and JSON `canonicalSignals[]`.
+| Class | Analysis role | Reference capture |
+|-------|---------------|-------------------|
+| `CORE_REFERENCE_REQUIRED` | Core analysis anchor | Capture when vehicle permits |
+| `CAPABILITY_CONDITIONAL` | Analysis when capable | Broad capture if available |
+| `POWERTRAIN_CONDITIONAL` | Powertrain-specific analysis | Broad capture per overlay |
+| `PHYSICS_HIGH_FREQUENCY` | Waveform physics | Broad capture @ waveform class |
+| `NATIVE_EVENT_EVIDENCE` | Provider events | Broad **all returned events** |
+| `CONTEXT_ONLY` | Context normalization | Broad capture @ slow class |
+| `DIAGNOSTIC_ONLY` | Not primary analysis input | **Still observe** in reference mode |
+| `GROUND_TRUTH_SYNC` | Session sync | Always record in reference sessions |
+| `EXCLUDED_FROM_REFERENCE_CAPTURE` | Not in reference plan | Exclude only when justified |
 
----
-
-## 7. Manifest Sets: Full · Minimum · Optional Extensions
-
-### 7.1 Full LTE_R1 reference manifest
-
-**Count: 33 canonical keys** — all assessed; none excluded from assessment.
-
-Includes capability-conditional physics signals (yaw, wheel speeds, brake hydraulics) **in the capture plan** so Phase 3A can measure availability and cadence when vehicles support them.
-
-### 7.2 Minimum viable reference manifest (Pareto)
-
-**Count: 17 canonical keys**
-
-| Key | Rationale |
-|-----|-----------|
-| CAN-001 speed | Core kinematics, all domains |
-| CAN-005 throttle | ICE/PHEV modulation evidence |
-| CAN-007 RPM | ICE/PHEV load context |
-| CAN-008 engine load | Vehicle load / modulation |
-| CAN-012 current gear | Shift/load context |
-| CAN-017–020 brake cluster | Brake physics baseline attempt |
-| CAN-021–024 tire pressures | Tire load baseline attempt |
-| CAN-028 ambient | Thermal/context normalization |
-| CAN-029 coolant | ICE/PHEV thermal exposure |
-| CAN-032 heading | Cornering/context (not yaw substitute) |
-| CAN-033 altitude | Grade/brake energy context |
-
-**Plus (not CAN keys):** supplemental operational fields `currentLocationLatitude`, `currentLocationLongitude`, `isIgnitionOn`, `lastSeen` — `CONFIRMED_FROM_CODE` as trip/FSM/GT necessities.
-
-**Plus:** native-event channel T4 (behavior.* filters) when provider emits.
-
-**Powertrain overlay adjustments:**
-
-- **BEV minimum:** replace CAN-005/007/008/029 with CAN-026/027; suppress ICE keys — see JSON `manifestSets.powertrainOverlays.BEV`  
-- **PHEV minimum:** union ICE core + CAN-026/027  
-- **PHEV/BEV GT:** `PENDING_REFERENCE_VEHICLE`
-
-### 7.3 Optional high-value extensions (14 keys)
-
-CAN-002, CAN-003, CAN-004, CAN-006, CAN-009, CAN-010, CAN-011, CAN-013, CAN-014, CAN-015, CAN-016, CAN-025, CAN-030, CAN-031
-
-These enrich physics validation when capability exists but are not required for minimum Pareto reference capture.
+All **33** `CAN_*` keys assessed — see §15 and JSON `canonicalSignals[]`.
 
 ---
 
-## 8. All 33 Canonical Keys — LTE_R1 Manifest Decisions
+## 14. Manifest Set Terminology (Corrected)
+
+### 14.1 `CANONICAL_ANALYSIS_SET` — 33 keys
+
+The **current canonical analysis registry** (Phase 2E). Explicit per-key LTE_R1 analysis contracts. **Not** the broad observation universe.
+
+### 14.2 `MINIMUM_REFERENCE_SET` — 17 keys
+
+Pareto science floor when broad capture is constrained:
+
+CAN-001, CAN-005, CAN-007, CAN-008, CAN-012, CAN-017–020, CAN-021–024, CAN-028, CAN-029, CAN-032, CAN-033
+
+**Plus:** supplemental lat/lon/ignition/lastSeen · **`BROAD_PROVIDER_EVENT_OBSERVATION_SET`** · unmapped provider fields when returned.
+
+### 14.3 `BROAD_REFERENCE_OBSERVATION_SET` — dynamic per vehicle
+
+**Count: `DYNAMIC_PER_VEHICLE`** — examples: global schema **117** · four-vehicle union **33** · concrete session **N**.
+
+Includes all capability-discovered/observed provider telemetry + session metadata + segments/events when retrievable.
+
+### 14.4 `OPTIONAL_HIGH_VALUE_CANONICAL_EXTENSIONS` — 14 keys
+
+CAN-33 prioritization for analysis focus. **Does not** authorize discarding other available provider signals from research capture.
+
+---
+
+## 15. All 33 Canonical Keys — Analysis Decisions
 
 **Authority:** JSON `canonicalSignals[]` is normative for field-level contract. Summary:
 
@@ -228,89 +362,46 @@ These enrich physics validation when capability exists but are not required for 
 
 ---
 
-## 9. Acquisition Tier & Surface Mapping
+## 16. Acquisition Tier & Surface Mapping
 
-| Tier | Surface | Manifest usage |
-|------|---------|----------------|
-| T0 | Snapshot ~30s (Q001 shaped) | Speed, load, tire, thermal context |
-| T1 | Active trip 20s (Q006 shaped) | Trip FSM, distance, fuel/energy |
-| T2 | Active trip 7s/15s (Q007/Q008 shaped) | Route, perf dynamics |
-| T3 | Post-trip HF 1s (Q009 shaped) | Waveform reconstruction |
-| T4 | Native events (Q015) | Provider-classified behavior |
-| T5 | Future physics HF query | Yaw, wheel, brake hydraulics when capable |
-| T6 | Health/context snapshot | Tire warning, slow thermal |
-| T7 | Flight Recorder session | **Full manifest capture per this contract** |
+| Tier | Surface | Broad reference usage |
+|------|---------|----------------------|
+| T0 | Snapshot ~30s | Operational + slow context fields |
+| T1 | Active trip 20s | Trip FSM base |
+| T2 | Active trip 7s/15s | Route/perf dynamics |
+| T3 | Post-trip HF 1s | Waveform reconstruction |
+| T4 | Native events | **Broad all returned events** + known analysis set |
+| T5 | Future physics HF | Yaw, wheel, brake hydraulics when capable |
+| T6 | Health/context | Diagnostic/context @ slow class |
+| T7 | Flight Recorder session | **Broad reference observation capture** per vehicle capability |
 
-**Design-only mapping:** existing queries are **reference surfaces** to extend/shape in Phase 3A — **no builder changes in 2F.1**.
-
----
-
-## 10. Timestamp Contract (Frozen)
-
-**Problem (CONFIRMED_FROM_CODE):** Current pipeline lacks consistent `synqReceivedAt` on HF points — blocks precise provider→SynqDrive latency analysis.
-
-**Frozen requirement — every captured observation where technically possible:**
-
-| Field | Role |
-|-------|------|
-| `providerTimestamp` | Provider sample time |
-| `synqReceivedAt` | SynqDrive ingress receive time (**REQUIRED**) |
-| `requestStartedAt` | Query/request start |
-| `responseReceivedAt` | Query response complete |
-| `decodeNormalizedAt` | Optional normalization timestamp |
-| `requestCorrelationId` | Tie request/response pairs |
-| `captureSessionId` | Reference session identity |
-| `tripOrRunId` | Trip/run binding |
-| `vehicleId` | Tenant-scoped vehicle |
-| `manifestVersion` | Reproducibility |
-| `connectionProfile` | `DIMO_LTE_R1` |
-| `powertrainProfile` | ICE/PHEV/BEV overlay |
-| `acquisitionTier` | T0–T7 |
-| `requestedInterval` | Requested bucket — **not observed cadence** |
-
-**Three-clock distinction (mandatory documentation):**
-
-1. **PROVIDER SAMPLE TIME** — when provider claims sample occurred  
-2. **SYNQDRIVE RECEIVE TIME** — when SynqDrive received payload  
-3. **QUERY/RESPONSE TIMING** — API round-trip only  
+**Design-only:** existing queries are reference surfaces — **no builder changes in 2F.1**. Broad capture uses capability-discovered field lists, not static Q001 alone.
 
 ---
 
-## 11. Raw + Normalized Retention (Frozen)
+## 17. Timestamp Contract (Frozen — see also JSON)
 
-Reference capture **must retain:**
+Unchanged from v1.0.0: `providerTimestamp` · **`synqReceivedAt` REQUIRED** · `requestStartedAt` · `responseReceivedAt` · `requestCorrelationId` · session/trip/vehicle/manifest/tier/requestedInterval.
 
-| Layer | Content |
-|-------|---------|
-| A | Raw provider representation (as returned) |
-| B | Canonical normalized representation (`CAN_*` mapping) |
-| C | Full timestamp envelope (§10) |
-| D | Provenance envelope (manifest version, tier, capability state, fallback) |
-| E | Query/request identity |
-| F | Manifest/version identity |
-
-**Must NOT persist only:** final event counters, composite scores, precomputed episode labels.
-
-**TTL:** `PROPOSAL_TO_BE_FROZEN_BEFORE_PRODUCTION` — but raw reference data **must survive** capture → validation → replay → sampling-invariance → calibration cycle.
+**Three clocks:** provider sample time · SynqDrive receive time · query/response timing. Requested interval ≠ observed cadence.
 
 ---
 
-## 12. Native DIMO Events — LTE_R1 (Frozen)
+## 18. Raw + Normalized + Unmapped Retention (Frozen)
 
-| Attribute | Requirement |
-|-----------|-------------|
-| Tier | T4 |
-| Provenance | `PROVIDER_CLASSIFIED` |
-| Required fields | event name/type, provider timestamp, synqReceivedAt, metadata payload, vehicle, captureSessionId, trip association, manifestVersion |
-| Minimum filters | behavior.acceleration/braking/cornering/extremeBraking/harsh* /speeding (see JSON) |
-| Episode rule | Same maneuver may appear as native event **and** reconstructed waveform — **one episode, multiple channels** |
-| Reconciliation | Phase 3A compares native vs reconstructed — **no blind summation** |
+Retain: raw provider representation · canonical normalized when mapped · **`DIMO::<field>` unmapped namespace** · full timestamp envelope · provenance · query identity · manifest version.
 
-**Four-vehicle native yield (30d, CONFIRMED_FROM_VEHICLE_INVENTORY):** Tiguan 0 · C63 34 · A4 0 · Arteon 50 — vehicle-specific, not guaranteed.
+Must **not** persist only scores/counters/labels. TTL `PROPOSAL_TO_BE_FROZEN_BEFORE_PRODUCTION`; lifecycle must survive capture → calibration cycle.
 
 ---
 
-## 13. Driver Quality Evidence Requirements (Frozen)
+## 19. Native Events Summary (see §9)
+
+`KNOWN_ANALYSIS_EVENT_SET` (8 behavior.*) + **`BROAD_PROVIDER_EVENT_OBSERVATION_SET`** (all returned). Four-vehicle yield: 0/34/0/50 per 30d — not guaranteed.
+
+---
+
+## 20. Driver Quality Evidence Requirements (Frozen)
 
 Reference manifest must preserve evidence to later validate (weights **not** defined here):
 
@@ -319,11 +410,11 @@ Reference manifest must preserve evidence to later validate (weights **not** def
 - Accel→brake reversals · unnecessary cycling · speed behavior · anticipation proxies  
 - Consistency · mechanical sympathy · context normalization  
 
-**Minimum manifest coverage:** speed, throttle, RPM, load, gear, brake cluster attempt, heading, ambient.
+**Broad capture note:** DQ validation may require **unmapped provider fields** discovered during reference sessions — not limited to CAN-33.
 
 ---
 
-## 14. Vehicle Load Evidence Requirements (Frozen)
+## 21. Vehicle Load Evidence Requirements (Frozen)
 
 Preserve evidence for: longitudinal load · braking load · stop-go exposure · high-speed exposure · powertrain load · engine/electrical load · transmission load · thermal exposure · dynamic maneuver load.
 
@@ -331,7 +422,7 @@ Preserve evidence for: longitudinal load · braking load · stop-go exposure · 
 
 ---
 
-## 15. Brake Physics Evidence Requirements (Frozen)
+## 22. Brake Physics Evidence Requirements (Frozen)
 
 Target physics (Phase 3A validation, not 2F.1 scoring):
 
@@ -353,7 +444,7 @@ E_friction ≈ E_kin - E_regen - E_drag - E_rolling - E_grade   (where evidence 
 
 ---
 
-## 16. Tire Dynamic Load Evidence Requirements (Frozen)
+## 23. Tire Dynamic Load Evidence Requirements (Frozen)
 
 Preserve: longitudinal/lateral demand proxies · combined demand · wheel-speed consistency/slip proxy · tire pressures · speed exposure · brake/accel episodes · driven axle context · ambient/thermal · vehicle/tire spec · mass context.
 
@@ -361,7 +452,7 @@ Preserve: longitudinal/lateral demand proxies · combined demand · wheel-speed 
 
 ---
 
-## 17. Powertrain-Specific Overlays (Frozen)
+## 24. Powertrain-Specific Overlays (Frozen)
 
 | Profile | Additional required | Suppressed | GT status |
 |---------|--------------------|-----------:|-----------|
@@ -370,11 +461,11 @@ Preserve: longitudinal/lateral demand proxies · combined demand · wheel-speed 
 | PHEV | ICE core + CAN-026/027 | — | `PENDING_REFERENCE_VEHICLE` |
 | BEV | CAN-001, CAN-026/027, CAN-012, CAN-028, CAN-032/033 | ICE engine cluster | `PENDING_REFERENCE_VEHICLE` |
 
-**Regen rule:** positive battery power = into battery; synchronized decel context required; no ICE regen assumptions.
+Distinguish **analysis-required** vs **broad observation** signals per overlay (JSON `powertrainOverlayPolicy`).
 
 ---
 
-## 18. Ground Truth Synchronization Contract (Frozen)
+## 25. Ground Truth Synchronization Contract (Frozen)
 
 Phase 3A must be able to compute latency, onset error, duration error, MAE, RMSE, bias, timestamp offset/drift.
 
@@ -390,7 +481,7 @@ Phase 3A must be able to compute latency, onset error, duration error, MAE, RMSE
 
 ---
 
-## 19. Runtime Probe Backlog Reclassification (47 items)
+## 26. Runtime Probe Backlog Reclassification (47 items)
 
 **Rule:** Do not manually resolve weeks of cadence/latency questions before Flight Recorder — classify what FR should measure.
 
@@ -409,7 +500,7 @@ Full table: JSON `runtimeProbeBacklog[]` and Appendix A below.
 
 ---
 
-## 20. Manifest-Shaped vs Static Query A/B (Design Only)
+## 27. Manifest-Shaped vs Static Query A/B (Design Only)
 
 **Do not execute in 2F.1.** Phase 3A design:
 
@@ -425,7 +516,7 @@ Full table: JSON `runtimeProbeBacklog[]` and Appendix A below.
 
 ---
 
-## 21. Phase 2F Consistency Corrections
+## 28. Phase 2F Consistency Corrections
 
 Phase 2F §22.2–§23 incorrectly implied 2F.1 would implement production services. **Corrected separation:**
 
@@ -448,7 +539,7 @@ See corrected Phase 2F §22–23 in same PR.
 
 ---
 
-## 22. Proposed Phase 3A Implementation Boundaries (Preview Only)
+## 29. Proposed Phase 3A Implementation Boundaries (Preview Only)
 
 Phase 3A **may** implement (not started):
 
@@ -462,14 +553,22 @@ Phase 3A **must not** change production scoring formulas without later phase gat
 
 ---
 
-## 23. Exit Criteria
+| Gate | Status |
+|------|--------|
+| Phase 2F.1 two-layer manifest | **DONE** (v1.1.0) |
+| Phase 3A implementation start | **READY_TO_START_IMPLEMENTATION** |
+| Reference drive execution | **NOT_READY_FOR_REFERENCE_DRIVE** until PRE_RECORDER_BLOCKER items resolved in 3A preflight |
+
+---
+
+## 30. Exit Criteria
 
 | # | Criterion | Status |
 |---|-----------|:------:|
 | 1 | LTE_R1 reference manifest complete | ✓ |
 | 2 | All 33 CAN_* explicit decisions | ✓ |
 | 3 | Machine-readable JSON exists | ✓ |
-| 4 | Full + minimum/Pareto defined | ✓ |
+| 4 | Full + minimum/Pareto + **broad dynamic** sets defined | ✓ |
 | 5 | Powertrain overlays ICE/PHEV/BEV/diesel | ✓ |
 | 6 | Native-event contract frozen | ✓ |
 | 7 | Timestamp contract frozen | ✓ |
@@ -487,15 +586,19 @@ Phase 3A **must not** change production scoring formulas without later phase gat
 | 19 | Master Plan updated | ✓ |
 | 20 | No production code changed | ✓ |
 
-**Phase 2F.1: DONE** · **Phase 3A: READY / UNGATED_TO_START** (not started)
+| 21 | CAN-33 ≠ provider observation universe | ✓ |
+| 22 | Unmapped provider retention explicit | ✓ |
+| 23 | Broad events/segments/diagnostic capture explicit | ✓ |
+
+**Phase 2F.1: DONE (v1.1.0)** · **Phase 3A: READY_TO_START_IMPLEMENTATION** · **Reference drive: NOT_READY**
 
 ---
 
-## 24. Final Verdict
+## 31. Final Verdict
 
-The **`DIMO_LTE_R1` reference manifest v1.0.0** is **frozen** as the authoritative capture contract for Phase 3A. All 33 canonical signals have explicit LTE_R1 decisions; minimum Pareto set (17 keys) preserves scientific sufficiency without query maximalism; timestamp, retention, native-event, and GT contracts are explicit; 47 runtime probes are reclassified so Flight Recorder work measures what should be measured rather than blocking on manual pre-work.
+The **`DIMO_LTE_R1` reference manifest v1.1.0** freezes a **two-layer contract**: **`CANONICAL_ANALYSIS_SET` (33)** for current analysis semantics, and **`BROAD_REFERENCE_OBSERVATION_SET` (dynamic per vehicle)** for Phase 3A research capture including unmapped provider fields, all returned native events, and auxiliary segments when available — with **temporally efficient acquisition** rather than uniform 1 Hz polling of 117 schema fields.
 
-**Next phase:** Phase **3A** — implement LTE_R1 Flight Recorder / reference program **using this manifest** (do not start in this task).
+**Next:** Phase **3A** — implement Flight Recorder **using this manifest** (implementation may start; reference drive awaits PRE_RECORDER_BLOCKER resolution).
 
 ---
 
