@@ -345,19 +345,22 @@ Deliverable: `docs/audits/dimo-phase-2b-four-vehicle-capability-gap-matrix-2026-
 ### 2C Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2c-current-schema-signal-expansion-audit-2026-08-31.md`
 
-**Exit criteria met (schema forensics):** Tier-1 read-only GraphQL introspection at `https://telemetry-api.dimo.zone/query` (2026-08-31); official DIMO docs cross-checked; **117** current telemetry signal fields cataloged; SynqDrive vs schema vs four-vehicle diffs complete; driving/brake/tire/EV/regen intensive search; events/segments/aliases/SDK lag assessed; Gold Signals Matrix + **24** Phase-2D technical candidates; RP-32–RP-39 added.
+**Exit criteria met (schema forensics):** Tier-1 read-only GraphQL introspection at `https://telemetry-api.dimo.zone/query` (2026-08-31); official DIMO docs cross-checked; **117** current telemetry signal fields cataloged; SynqDrive vs schema vs four-vehicle diffs complete; driving/brake/tire/EV/regen intensive search; events/segments/parallel-signal taxonomy/SDK lag assessed; Gold Signals Matrix + **20** Phase-2D technical candidates; RP-32–RP-39 added.
 
 **Material Phase 2C findings:**
 - **GLOBAL_PROVIDER_SCHEMA_CAPABILITY = 117** telemetry fields (0 deprecated in introspection snapshot).
-- SynqDrive queries **41/117 (35%)**; **76** schema fields never selected; **SET 5 stale references = 0**.
+- SynqDrive queries **41/117 (35%)**; **76** schema fields never selected; **SET 5 stale references = 0**; **SET 4 = 15** `VEHICLE_OBSERVED_NOT_IN_PHASE2A_DRIVING_ACQUISITION` (not blanket “aliases”).
 - Four-vehicle union **33/117**; **84** schema fields not observed on audit set — global schema ≠ vehicle delivery.
-- **No** longitudinal/lateral acceleration or steering-angle fields in current schema; **`angularVelocityYaw`** + wheel speeds + full brake cluster **exist in schema**, none on four ICE inventories.
-- **ALIAS_GAP confirmed in schema:** `powertrainTransmissionCurrentGear` vs `powertrainTransmissionActualGear`; `obdThrottlePosition` vs `powertrainCombustionEngineTPS`.
-- SDK `@dimo-network/data-sdk` **1.6.0** locked vs npm **1.7.0** — no embedded schema types; introspection authoritative.
-- **Physics ceiling (global schema):** Driver Quality **MODERATE**, Vehicle Load **MODERATE**, Brake **MODERATE**, Tire **MODERATE** — all **LOWER** on four-vehicle layer for brake/tire/driver dynamics.
+- **No** longitudinal/lateral acceleration or steering-angle fields; **`angularVelocityYaw`** + **front wheel-speed pair only** + four **hydraulic** brake inputs in schema — none on four ICE inventories.
+- **PARALLEL_GEAR_FIELD_GAP** / **PARALLEL_THROTTLE_SIGNALS** — coexistence in schema ≠ proven interchangeability (RP-35).
+- **REGEN_SIGN_SEMANTICS:** `powertrainTractionBatteryCurrentPower` **positive = into battery**; regen candidate requires synchronized decel context — not negative power.
+- **NO_GENERIC_MASS_SIGNAL_CONFIRMED** for Pkw; commercial axle-row weights only (`Row3/4/5`).
+- **OPEN_ENDED_EVENT_NAME_SURFACE** — Q015 filters (8) ≠ exhaustive event catalog; `CURRENT_GLOBAL_EVENT_NAME_COUNT = UNKNOWN_OPEN_ENDED`.
+- SDK **1.6.0** vs **1.7.0** — no embedded schema types; introspection authoritative.
+- **Physics ceiling (global schema):** Driver Quality, Vehicle Load, Brake Physics, Tire Dynamic Load each **MODERATE** at schema layer — **LOWER** on four-vehicle layer for brake/tire/driver dynamics.
 
 ### 2D Status — NEXT
-**SIGNAL VALUE / PHYSICS MATRIX** — score Phase 2C candidate set (24 fields + event/segment context) on Driver Quality, Vehicle Load, Brake, Tire, cadence, redundancy, coverage, cost. No production changes.
+**SIGNAL VALUE / PHYSICS MATRIX** — score Phase 2C **20** candidates (+ secondary context/validation + commercial axle RP-37 track) across **Driver Quality**, **Vehicle Load**, **Brake Physics**, **Tire Dynamic Load**, and **Data Confidence** with equal domain weighting. No production changes.
 
 ### Status (Phase 2 overall)
 **IN_PROGRESS — 2A DONE; 2B DONE; 2C DONE; 2D NEXT (value/physics); 2E Canonicalization; 2F Capability-first profiles; 2G Phase-2 closure + Flight Recorder manifest**
@@ -654,7 +657,7 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Four-vehicle capability matrix | DONE | Phase 2B deliverable (70 rows) |
 | Available-but-unused DIMO signal matrix | DONE | Phase 2B §8 — 15 signals (Phase-2A driving acquisition) |
 | Phase 2C schema expansion audit | DONE | `dimo-phase-2c-current-schema-signal-expansion-audit-2026-08-31.md` — 117 schema fields |
-| Phase 2D signal value/physics matrix | NEXT | Score 24 Phase-2C candidates |
+| Phase 2D signal value/physics matrix | NEXT | Score **20** Phase-2C candidates across 4 domains + validation |
 | Prioritized query expansion proposal | NOT_STARTED | Phase 2D+ |
 | Flight Recorder manifest | NOT_STARTED | Phase 2 exit deliverable |
 | Flight Recorder implementation | NOT_STARTED | gated on Phase 2 |

@@ -28,10 +28,11 @@ Phase 2C establishes a three-layer separation:
 | Observed on four audit vehicles | **33** |
 | Current schema signals not observed on any of four | **84** |
 | SynqDrive-referenced fields missing from current schema | **0** |
-| Vehicle-observed alias fields not queried | **15** |
+| Vehicle-observed not in Phase-2A driving acquisition (SET 4) | **15** |
 | Current official segment mechanisms | **6** |
-| SynqDrive-filtered native event names | **8** |
-| High-value Phase 2D technical candidates | **24** |
+| SynqDrive Q015 filter names (not exhaustive event catalog) | **8** |
+| Current global event name count | **UNKNOWN_OPEN_ENDED** |
+| High-value Phase 2D technical candidates | **20** |
 | New runtime probes (RP-32–RP-39) | **8** |
 
 **Authority quality:** **HIGH** — read-only GraphQL introspection at `https://telemetry-api.dimo.zone/query` on 2026-08-31 succeeded without vehicle-data mutation.
@@ -45,7 +46,7 @@ Phase 2C establishes a three-layer separation:
 | Brake Physics | **MODERATE** | **LOW** |
 | Tire Physics | **MODERATE** | **LOW** |
 
-**Top findings:** (1) **117** schema fields vs **41** queried — large expansion surface; (2) **no** longitudinal/lateral acceleration or steering-angle fields in current schema; (3) **six** brake + **yaw/wheel-speed** fields in schema, **zero** on four vehicles; (4) **CurrentGear vs ActualGear** alias gap confirmed in schema; (5) SDK **1.6.0** vs npm **1.7.0** — no embedded schema types in either version.
+**Top findings:** (1) **117** schema fields vs **41** queried — large expansion surface; (2) **no** longitudinal/lateral acceleration or steering-angle fields in current schema; (3) brake hydraulics + yaw + **front wheel-speed pair only** in schema, **zero** on four vehicles; (4) **parallel gear fields** (`CurrentGear` / `ActualGear` / `SelectedGear`) coexist — semantic equivalence **not proven** (RP-35); (5) **REGEN_CANDIDATE** = **positive** `powertrainTractionBatteryCurrentPower` during synchronized deceleration — **not** negative power; (6) event name surface is **open-ended** — Q015’s 8 filters ≠ exhaustive official catalog.
 
 ---
 
@@ -110,25 +111,30 @@ See **§31 appendix** (117 rows). Families include OBD (28), cabin (15), EV/HV (
 | SET 1 — schema ∩ SynqDrive queried | 41 | All Phase 2A fields exist in schema |
 | SET 2 — schema not queried | **76** | Expansion opportunity |
 | SET 3 — schema not on four vehicles | **84** | Global vs vehicle gap |
-| SET 4 — vehicle alias not queried | **15** | See list below |
+| SET 4 — `VEHICLE_OBSERVED_NOT_IN_PHASE2A_DRIVING_ACQUISITION` | **15** | Observed on ≥1 audit vehicle; not in Phase 2A query surface |
 | SET 5 — SynqDrive refs missing in schema | **0** | No stale field references |
 
-SET 4 fields:
-- `currentLocationHeading`
-- `obdBarometricPressure`
-- `obdDistanceWithMIL`
-- `obdFuelRailPressure`
-- `obdFuelTypeName`
-- `obdIntakeTemp`
-- `obdLongTermFuelTrim1`
-- `obdLongTermFuelTrim2`
-- `obdMAP`
-- `obdMaxMAF`
-- `obdOilTemperature`
-- `obdStatusDTCCount`
-- `powertrainCombustionEngineTPS`
-- `powertrainTransmissionActualGear`
-- `powertrainTransmissionActualGearRatio`
+**SET 4 — full list (15):**
+
+| Field | Subclass |
+|-------|----------|
+| `currentLocationHeading` | CONTEXT_SIGNAL |
+| `obdBarometricPressure` | CONTEXT_SIGNAL |
+| `obdDistanceWithMIL` | HEALTH_SIGNAL |
+| `obdFuelRailPressure` | ADDITIONAL_SIGNAL |
+| `obdFuelTypeName` | ADDITIONAL_SIGNAL |
+| `obdIntakeTemp` | CONTEXT_SIGNAL |
+| `obdLongTermFuelTrim1` | ADDITIONAL_SIGNAL |
+| `obdLongTermFuelTrim2` | ADDITIONAL_SIGNAL |
+| `obdMAP` | ADDITIONAL_SIGNAL |
+| `obdMaxMAF` | ADDITIONAL_SIGNAL |
+| `obdOilTemperature` | CONTEXT_SIGNAL |
+| `obdStatusDTCCount` | HEALTH_SIGNAL |
+| `powertrainCombustionEngineTPS` | PARALLEL_SEMANTIC_CANDIDATE (vs `obdThrottlePosition`) |
+| `powertrainTransmissionActualGear` | PARALLEL_GEAR_FIELD_GAP (vs `powertrainTransmissionCurrentGear`) |
+| `powertrainTransmissionActualGearRatio` | PARALLEL_GEAR_FIELD_GAP (companion to ActualGear) |
+
+**Not SET 4 alias blanket:** 12/15 are additional/context/health signals — not naming aliases.
 
 ---
 
@@ -148,7 +154,11 @@ Representative additions vs July: brake cluster, yaw, wheel speeds, axle weights
 
 ## 10. Longitudinal Dynamics
 
-No dedicated longitudinal acceleration/deceleration fields in schema. Proxies: `speed`, signed `powertrainTractionBatteryCurrentPower`, torque, native braking events.
+No dedicated longitudinal acceleration/deceleration fields in schema.
+
+**Proxies (none are direct long-accel):** `speed`, native braking events, engine torque context.
+
+**REGEN_CANDIDATE (EV/HV only):** `powertrainTractionBatteryCurrentPower` per official DIMO semantics — **positive** = energy flowing **into** battery; **negative** = energy flowing **out** (e.g. during driving). A **positive** spike during synchronized vehicle deceleration/braking context *may* indicate recuperation, but battery power alone does **not** prove friction-vs-regen allocation. Later validation must synchronize at minimum: speed/deceleration, brake pedal/pressure when available, traction battery power, vehicle/powertrain state — and account for parasitic/other battery flows. **No exact regen fraction without runtime validation.**
 
 ---
 
@@ -160,25 +170,73 @@ No `lateralAcceleration`. **`angularVelocityYaw`** exists (not queried, not on f
 
 ## 12. Steering / Wheel Dynamics
 
-`chassisAxleRow1WheelLeftSpeed`, `chassisAxleRow1WheelRightSpeed` in schema (front pair only). No steering-angle or wheel-slip fields.
+**FRONT_WHEEL_SPEED_PAIR_ONLY:** schema exposes only:
+
+- `chassisAxleRow1WheelLeftSpeed`
+- `chassisAxleRow1WheelRightSpeed`
+
+No rear wheel-speed fields in current catalog. No steering-angle or dedicated wheel-slip fields.
+
+**Potential (limited):** wheel-to-vehicle-speed consistency check, limited slip proxy, front-axle asymmetry.
+
+**Not supported by this pair alone:** full four-wheel slip model, guaranteed driven-axle slip, substitute for longitudinal/lateral acceleration.
 
 ---
 
-## 13. Driver Inputs
+## 13. Driver Inputs — Gear & Throttle Fields
 
-Both **`obdThrottlePosition`** and **`powertrainCombustionEngineTPS`** active. Both **`powertrainTransmissionCurrentGear`** and **`powertrainTransmissionActualGear`** (+ ratio) active with distinct semantics — SynqDrive queries CurrentGear only (**ALIAS_GAP**).
+### Parallel gear fields (schema coexistence ≠ interchangeability)
+
+| Field | Official schema semantics (introspection) | SynqDrive queried? | Four-vehicle observed? |
+|-------|----------------------------------------|--------------------|------------------------|
+| `powertrainTransmissionCurrentGear` | 0=Neutral, ±N=Forward/Reverse | yes (Q009) | no |
+| `powertrainTransmissionActualGear` | 0=neutral, 1–15=gear number | no | Tiguan only |
+| `powertrainTransmissionSelectedGear` | 0=Neutral, ±N gears, **126=Park** | no | no |
+| `powertrainTransmissionActualGearRatio` | Actual transmission gear ratio | no | Tiguan only |
+
+**Classification:** **PARALLEL_GEAR_FIELD_GAP** / **SEMANTIC_EQUIVALENCE_REQUIRES_RUNTIME_PROBE (RP-35)** — not confirmed alias. Phase 2D/2E must later pick canonical source, fallback, cross-signal consistency.
+
+### Parallel throttle signals
+
+| Field | Role | Classification |
+|-------|------|----------------|
+| `obdThrottlePosition` | OBD PID 11 throttle % | SynqDrive HF path — **queried** |
+| `powertrainCombustionEngineTPS` | Engine TPS % | Observed on four — **not queried** |
+
+**Classification:** **PARALLEL_THROTTLE_SIGNALS** — may describe overlapping physical range but different source/PID/semantics/cadence. Interchangeability **unknown** until Phase 2E / runtime evidence.
 
 ---
 
 ## 14. Brake System
 
-Six schema fields: pedal pressed, pedal position, circuit pressures ×2, ABS warning, parking brake. None observed on four ICE inventories. Native `behavior.*` braking events partial.
+Six brake-related schema fields with **distinct physics roles:**
+
+| Field | Class | Phase-2D role |
+|-------|-------|---------------|
+| `chassisBrakeIsPedalPressed` | **DYNAMIC / HYDRAULIC BRAKE INPUT** | DIRECT_HYDRAULIC_BRAKE_INPUT |
+| `chassisBrakePedalPosition` | **DYNAMIC / HYDRAULIC BRAKE INPUT** | DIRECT_HYDRAULIC_BRAKE_INPUT |
+| `chassisBrakeCircuit1PressurePrimary` | **DYNAMIC / HYDRAULIC BRAKE INPUT** | DIRECT_HYDRAULIC_BRAKE_INPUT |
+| `chassisBrakeCircuit2PressurePrimary` | **DYNAMIC / HYDRAULIC BRAKE INPUT** | DIRECT_HYDRAULIC_BRAKE_INPUT |
+| `chassisBrakeABSIsWarningOn` | **DIAGNOSTIC_ONLY** | validation context — **not** ABS intervention |
+| `chassisParkingBrakeIsEngaged` | **PARKING_CONTEXT** | not dynamic brake-load input |
+
+None observed on four ICE inventories. Native `behavior.*` braking events partial.
+
+**Important:** brake pressure/pedal = **DIRECT_HYDRAULIC_BRAKE_INPUT** — **not** direct measured friction brake energy, pad wear, disc temperature, or brake torque without later vehicle/system calibration.
 
 ---
 
 ## 15. Stability Systems
 
-ABS **warning** signal only. No ESC/ESP/traction-control state signals in schema.
+| Capability | In current schema? |
+|------------|-------------------|
+| ABS **warning telltale** | yes (`chassisBrakeABSIsWarningOn`) — **DIAGNOSTIC_ONLY** |
+| **NO_CONFIRMED_ABS_INTERVENTION_SIGNAL** | — |
+| **NO_CONFIRMED_ESC_INTERVENTION_SIGNAL** | — |
+| **NO_CONFIRMED_TRACTION_CONTROL_INTERVENTION_SIGNAL** | — |
+| `safety.collision` event tag | documented — event surface only |
+
+ABS warning ≠ ABS activity/intervention.
 
 ---
 
@@ -190,7 +248,16 @@ Full ICE cluster in schema; SynqDrive uses RPM/load/throttle/torque subset. Many
 
 ## 17. EV / Hybrid / Regen
 
-15 HV/charging fields. Regen: **indirect** via negative `powertrainTractionBatteryCurrentPower`; no dedicated regen signal. Segment `recharge` mechanism confirmed.
+**15** HV/charging-related schema fields. Separate semantics:
+
+| Signal class | Representative field | Driving/regen relevance |
+|--------------|---------------------|-------------------------|
+| **TRACTION_BATTERY_POWER** | `powertrainTractionBatteryCurrentPower` | **REGEN_CANDIDATE** — positive during deceleration context; see §10 |
+| **TRACTION_BATTERY_VOLTAGE** | `powertrainTractionBatteryCurrentVoltage` | EV context / validation |
+| **AC_CHARGING_CURRENT_ONLY** | `powertrainTractionBatteryChargingChargeCurrentAC` | AC inlet RMS current — **not** pack current while driving; **not** brake/regen input |
+| Charging session | `powertrainTractionBatteryChargingPower`, `…IsCharging`, etc. | energy events — not driving regen proxy |
+
+No dedicated regen signal field. Segment `recharge` mechanism confirmed for SOC-increase windows.
 
 ---
 
@@ -202,13 +269,24 @@ ECT, EOT, oil/intake temps, transmission temp, HV battery temp, exterior air —
 
 ## 19. Tire / Chassis
 
-Four tire-pressure fields + warning in schema (DIRECT_TIRE). No tire temperature. Wheel speeds = DYNAMIC_TIRE_PROXY. Axle weights = CONTEXT_SIGNAL.
+| Class | Fields | Notes |
+|-------|--------|-------|
+| **DIRECT_TIRE_PRESSURE** | `chassisAxleRow1/2 Wheel* TirePressure` ×4 | per-wheel kPa — not equivalent to warning |
+| **DIAGNOSTIC_TIRE_CONTEXT** | `chassisTireSystemIsWarningOn` | TPMS warning telltale — validation/context only |
+| **No current schema** | tire temperature | — |
+| **FRONT_WHEEL_SPEED_PAIR_ONLY** | `chassisAxleRow1WheelLeft/RightSpeed` | limited slip proxy — see §12 |
 
 ---
 
 ## 20. Vehicle Mass / Load
 
-`chassisAxleRow3/4/5Weight` in schema (kg). No curb/GVW/payload telemetry fields. `obdEngineLoad` indirect proxy already used.
+| Mass/load concept | Current telemetry schema? | Notes |
+|-------------------|--------------------------|-------|
+| **Generic passenger vehicle mass / curb weight / payload** | **NO_GENERIC_MASS_SIGNAL_CONFIRMED** | Use vehicle specs / VIN metadata / config until runtime evidence |
+| **Commercial/heavy axle-row weight** | **YES_CONFIRMED** | `chassisAxleRow3Weight`, `chassisAxleRow4Weight`, `chassisAxleRow5Weight` — official docs: measured load on axle rows (commercial/heavy bias) |
+| Engine load proxy | yes | `obdEngineLoad` — already used; not vehicle mass |
+
+**Do not assume** Row3/4/5 weight = usable passenger-car mass/payload. Critical for **Vehicle Load**, **Brake Physics**, **Tire Load** planning.
 
 ---
 
@@ -218,9 +296,19 @@ GPS, altitude, heading, exterior temp native. No road grade, weather, speed-limi
 
 ---
 
-## 22. Current Event Catalog
+## 22. Current Event Catalog — Open-Ended Surface
 
-R1 LTE documented tags: `behavior.harshAcceleration`, `behavior.harshBraking`, `behavior.harshCornering`, `safety.collision` (+ ExtremeBraking in glossary). SynqDrive Q015 filters **8** names. See §32 appendix.
+Official DIMO `events` API: `name` is a **String** filter; events are **provider/data-connection defined** — **not enum-exhaustive** in schema.
+
+| Layer | Content | Count |
+|-------|---------|------:|
+| **OFFICIAL_R1_GLOSSARY_NAMES** | ExtremeBraking, HarshAcceleration, HarshBraking, HarshCornering | 4 |
+| **OFFICIAL_DOCUMENTED_EVENT_TAGS** | `behavior.harshAcceleration`, `behavior.harshBraking`, `behavior.harshCornering`, `safety.collision` | 4 |
+| **SYNQDRIVE_Q015_FILTER_NAMES** | 8 behavior/safety strings in Q015 filter | 8 |
+| **PROVIDER_EVENT_NAME_SURFACE** | Open / not enum-exhaustive | **UNKNOWN_OPEN_ENDED** |
+| **CURRENT_GLOBAL_EVENT_NAME_COUNT** | — | **UNKNOWN_OPEN_ENDED** |
+
+Q015’s eight filters are **SynqDrive query surface**, not a complete current official DIMO event catalog. See §32 appendix for crosswalk — not exhaustive enumeration.
 
 ---
 
@@ -258,8 +346,8 @@ FloatAggregation enum confirmed. Interval on `signals` uses duration strings —
 
 | Old/current field | Current status | Replacement / parallel | SynqDrive uses | Migration risk |
 |---|---|---|---|---|
-| `powertrainTransmissionCurrentGear` | ACTIVE | `powertrainTransmissionActualGear` | Q009 CurrentGear | ALIAS_GAP |
-| `obdThrottlePosition` | ACTIVE | `powertrainCombustionEngineTPS` | HF OBD throttle | ALIAS_OR_RENAMED |
+| `powertrainTransmissionCurrentGear` | ACTIVE | parallel `ActualGear` / `SelectedGear` | Q009 CurrentGear | PARALLEL_GEAR_FIELD_GAP |
+| `obdThrottlePosition` | ACTIVE | parallel `powertrainCombustionEngineTPS` | HF OBD throttle | PARALLEL_THROTTLE_SIGNALS |
 | `powertrainCombustionEngineEngineOilLevel` | ACTIVE | `…EngineOilRelativeLevel` | Q001 RelativeLevel | PARALLEL_SEMANTICS |
 | Segment example `HarshBraking` | DOC_EXAMPLE | `behavior.harshBraking` | Q015 dotted names | INFERENCE |
 
@@ -281,27 +369,29 @@ Deprecated telemetry fields: **0**.
 | Lateral acceleration | NO_NOT_IN_CURRENT_SCHEMA | no | no | N/A | N/A | N/A | Cornering, tire load |
 | Yaw rate | YES_CONFIRMED | no | no | BOTH | BOTH | no | Cornering validation |
 | Steering angle | NO_NOT_IN_CURRENT_SCHEMA | no | no | N/A | N/A | N/A | Lateral dynamics |
-| Wheel speeds (FL/FR) | YES_CONFIRMED | no | no | BOTH | BOTH | no | Slip proxy |
+| Wheel speeds (FL/FR front pair) | YES_CONFIRMED | no | no | BOTH | BOTH | no | Limited slip proxy — FRONT_WHEEL_SPEED_PAIR_ONLY |
 | Wheel slip | NO_NOT_IN_CURRENT_SCHEMA | no | no | N/A | N/A | N/A | Traction |
-| Brake pedal pressed | YES_CONFIRMED | no | no | BOTH | BOTH | no | Brake load direct |
-| Brake pressure (circuit 1) | YES_CONFIRMED | no | no | BOTH | BOTH | no | Brake load direct |
-| ABS warning | YES_CONFIRMED | no | no | BOTH | BOTH | no | Stability context |
-| ESC / ESP | NO_NOT_IN_CURRENT_SCHEMA | no | no | N/A | N/A | N/A | Stability |
-| Traction control | NO_NOT_IN_CURRENT_SCHEMA | no | no | N/A | N/A | N/A | Stability |
-| Accelerator / throttle | ALIAS_OR_RENAMED | partial | partial | BOTH | BOTH | no | Driver input |
-| Engine RPM | YES_CONFIRMED | partial | yes | BOTH | BOTH | no | Load proxy |
-| Engine torque | YES_CONFIRMED | partial | no | BOTH | BOTH | no | Load |
+| Brake pedal pressed | YES_CONFIRMED | no | no | BOTH | BOTH | no | DIRECT_HYDRAULIC_BRAKE_INPUT |
+| Brake pressure (circuit 1) | YES_CONFIRMED | no | no | BOTH | BOTH | no | DIRECT_HYDRAULIC_BRAKE_INPUT — not friction energy |
+| ABS warning | YES_CONFIRMED | no | no | BOTH | BOTH | no | DIAGNOSTIC_ONLY — not intervention |
+| ESC / ESP intervention | NO_NOT_IN_CURRENT_SCHEMA | no | no | N/A | N/A | N/A | Stability |
+| Traction control intervention | NO_NOT_IN_CURRENT_SCHEMA | no | no | N/A | N/A | N/A | Stability |
+| Accelerator / throttle | PARALLEL_THROTTLE_SIGNALS | partial | partial | BOTH | BOTH | no | `obdThrottlePosition` queried; TPS observed |
+| Engine RPM | YES_CONFIRMED | partial | yes | BOTH | BOTH | no | Vehicle load proxy |
+| Engine torque | YES_CONFIRMED | partial | no | BOTH | BOTH | no | Vehicle load |
 | Requested torque | NO_NOT_IN_CURRENT_SCHEMA | no | no | N/A | N/A | N/A | Load |
-| Current gear | YES_CONFIRMED | partial | no | BOTH | BOTH | no | Context |
-| Actual gear | YES_CONFIRMED | no | partial | BOTH | BOTH | no | ALIAS_GAP Tiguan |
-| Transmission temperature | YES_CONFIRMED | no | no | BOTH | BOTH | no | Thermal/load |
-| Battery power (HV) | YES_CONFIRMED | partial | no | BOTH | BOTH | no | EV/regen indirect |
-| Battery current (AC charge) | YES_CONFIRMED | no | no | BOTH | BOTH | no | EV charging |
-| Battery voltage (HV) | YES_CONFIRMED | partial | no | BOTH | BOTH | no | EV context |
-| Regen (via HV power sign) | YES_CONFIRMED | partial | no | BOTH | BOTH | no | Indirect regen |
-| Tire pressure (per wheel) | YES_CONFIRMED | partial | no | BOTH | BOTH | no | Direct tire |
+| Current gear | YES_CONFIRMED | partial | no | BOTH | BOTH | no | PARALLEL_GEAR_FIELD_GAP |
+| Actual gear | YES_CONFIRMED | no | partial | BOTH | BOTH | no | PARALLEL_GEAR_FIELD_GAP — RP-35 |
+| Selected gear | YES_CONFIRMED | no | no | BOTH | BOTH | no | Includes Park=126 semantics |
+| Transmission temperature | YES_CONFIRMED | no | no | BOTH | BOTH | no | Vehicle load thermal |
+| Traction battery power (HV) | YES_CONFIRMED | partial | no | BOTH | BOTH | no | REGEN_CANDIDATE — positive=in per DIMO |
+| AC charging current (inlet) | YES_CONFIRMED | no | no | BOTH | BOTH | no | AC_CHARGING_CURRENT_ONLY — not driving pack current |
+| Traction battery voltage (HV) | YES_CONFIRMED | partial | no | BOTH | BOTH | no | EV context |
+| Regen recuperation | REGEN_CANDIDATE | partial | no | BOTH | BOTH | no | Positive HV power in decel context — not proven allocation |
+| Tire pressure (per wheel) | YES_CONFIRMED | partial | no | BOTH | BOTH | no | DIRECT_TIRE_PRESSURE |
 | Tire temperature | NO_NOT_IN_CURRENT_SCHEMA | no | no | N/A | N/A | N/A | Tire thermal |
-| Vehicle mass / axle load | YES_CONFIRMED | no | no | BOTH | BOTH | no | Load context |
+| Generic passenger vehicle mass | NO_GENERIC_MASS_SIGNAL_CONFIRMED | no | no | N/A | N/A | N/A | Vehicle load / brake / tire |
+| Commercial axle-row weight (Row3/4/5) | YES_CONFIRMED | no | no | BOTH | BOTH | no | Commercial/heavy only — not Pkw payload |
 
 ---
 
@@ -314,9 +404,9 @@ Deprecated telemetry fields: **0**.
 | `chassisBrakeIsPedalPressed` | yes | no | no | no | no | no | SCHEMA_EXISTS_VEHICLES_NOT_EXPOSING |
 | `chassisBrakePedalPosition` | yes | no | no | no | no | no | SCHEMA_EXISTS_VEHICLES_NOT_EXPOSING |
 | `powertrainTransmissionCurrentGear` | yes | yes | no | no | no | no | SCHEMA_EXISTS_BUT_UNUSED_ON_FOUR |
-| `powertrainTransmissionActualGear` | yes | no | yes | no | no | no | VEHICLE_ALIAS_GAP |
+| `powertrainTransmissionActualGear` | yes | no | yes | no | no | no | PARALLEL_GEAR_FIELD_GAP |
 | `obdThrottlePosition` | yes | yes | yes | yes | yes | yes | SCHEMA_EXISTS_AND_USED |
-| `powertrainCombustionEngineTPS` | yes | no | yes | yes | yes | yes | VEHICLE_ALIAS_GAP |
+| `powertrainCombustionEngineTPS` | yes | no | yes | yes | yes | yes | PARALLEL_THROTTLE_SIGNALS |
 | `chassisAxleRow1WheelLeftTirePressure` | yes | yes | no | no | no | no | SCHEMA_EXISTS_BUT_UNUSED_ON_FOUR |
 | `powertrainTractionBatteryCurrentPower` | yes | yes | no | no | no | no | SCHEMA_EXISTS_BUT_UNUSED_ON_FOUR |
 | `chassisAxleRow3Weight` | yes | no | no | no | no | no | SCHEMA_EXISTS_VEHICLES_NOT_EXPOSING |
@@ -325,18 +415,33 @@ Deprecated telemetry fields: **0**.
 
 ## 32. High-Value Phase-2D Candidates
 
-**24** technical candidates (schema exists, SynqDrive not queried): yaw, wheel speeds, brake cluster, tire pressures, TPS/torque/gears, axle weights, heading/OBD context signals, native events context. **No value scores** — Phase 2D scope.
+**20** technical candidates after physics/taxonomy correction (schema exists, SynqDrive not queried, semantics validated). **No value scores** — Phase 2D scores all four domains **equally**: Driver Quality · Vehicle Load · Brake Physics · Tire Dynamic Load · plus Data Confidence/Validation.
+
+| Category | Count | Fields / notes |
+|----------|------:|----------------|
+| **DRIVER_QUALITY_CANDIDATE** | 7 | `angularVelocityYaw`; front wheel speeds ×2; `powertrainCombustionEngineTPS`; `powertrainTransmissionActualGear`; `ActualGearRatio`; `SelectedGear` |
+| **VEHICLE_LOAD_CANDIDATE** | 4 | `powertrainCombustionEngineTorque`; `TorquePercent`; `MAF`; `powertrainTransmissionTemperature` |
+| **BRAKE_LOAD_CANDIDATE** | 4 | `chassisBrakeIsPedalPressed`; `PedalPosition`; `Circuit1PressurePrimary`; `Circuit2PressurePrimary` |
+| **TIRE_LOAD_CANDIDATE** | 4 | four per-wheel tire pressure fields |
+| **REGEN_CANDIDATE** | 1 | `powertrainTractionBatteryCurrentPower` |
+| **CONTEXT / VALIDATION (Phase 2D secondary track)** | 7 | heading, intake/oil/barometric temp, DTC count, MIL distance, tire warning — scored under Data Confidence |
+| **COMMERCIAL_ONLY (RP-37)** | 3 | `chassisAxleRow3/4/5Weight` — excluded from main **20** |
+
+**Vehicle Load families preserved for Phase 2D:** RPM, engine load (queried), torque, throttle/TPS, gear/shift, transmission temp, coolant/oil temp, battery power, yaw/wheel dynamics, speed exposure, mass/spec context (metadata), stop-go cycling (derived).
 
 ---
 
 ## 33. Physics Ceiling Verdict
 
-| Domain | GLOBAL_SCHEMA_CEILING | CURRENT_FOUR_VEHICLE_CEILING |
-|--------|----------------------|-------------------------------|
-| Driver Quality | MODERATE | LOW–MODERATE |
-| Vehicle Load | MODERATE | MODERATE |
-| Brake Physics | MODERATE | LOW |
-| Tire Physics | MODERATE | LOW |
+All four scoring domains remain **first-class** — none subsumed into another.
+
+| Domain | GLOBAL_SCHEMA_CEILING | CURRENT_FOUR_VEHICLE_CEILING | Key schema limiter |
+|--------|----------------------|-------------------------------|-------------------|
+| **Driver Quality** | MODERATE | LOW–MODERATE | No long/lat accel; yaw/wheel speeds unobserved; events sparse |
+| **Vehicle Load** | MODERATE | MODERATE | Torque/MAF/trans temp in schema; generic mass not in telemetry |
+| **Brake Physics / Brake Load** | MODERATE | LOW | Hydraulic inputs in schema; zero on four; no ABS/ESC intervention signals |
+| **Tire Dynamic Load** | MODERATE | LOW | DIRECT_TIRE_PRESSURE in schema; zero on four; no tire temp |
+| **Data Confidence / Validation** | MODERATE | MODERATE | Health/context signals available; cadence unproven |
 
 ---
 
@@ -347,10 +452,10 @@ Deprecated telemetry fields: **0**.
 | RP-32 | Confirm `angularVelocityYaw` delivery on compatible OEM/provider | P1 |
 | RP-33 | Confirm wheel speed pair on OEM paths | P1 |
 | RP-34 | Brake pedal/pressure fields — null vs permission vs not-listed | P1 |
-| RP-35 | `powertrainTransmissionCurrentGear` vs `ActualGear` alias probe | P1 |
+| RP-35 | Parallel gear fields — time-aligned `CurrentGear` vs `ActualGear` vs `SelectedGear` on one vehicle | P1 |
 | RP-36 | Tire pressure schema fields — vehicle delivery vs NO_DIMO inventory | P2 |
-| RP-37 | Axle weight signals applicability to passenger fleet | P2 |
-| RP-38 | Regen via signed HV power on EV/HV vehicle | P2 |
+| RP-37 | Commercial axle-row weight signals — applicability to passenger fleet | P2 |
+| RP-38 | Signed **traction battery power** during known deceleration/braking episodes — test **positive=in / negative=out** DIMO semantics; check positive spikes vs deceleration, latency, cadence, stability; whether brake pedal/pressure separates friction vs regen | P2 |
 | RP-39 | Event payload `metadata` JSON schema for behavior.* | P2 |
 
 Phase 2B probes RP-21, RP-25, RP-26, RP-29, RP-31 remain open.
@@ -364,21 +469,24 @@ Phase 2B probes RP-21, RP-25, RP-26, RP-29, RP-31 remain open.
 | F2C-01 | CURRENT_SCHEMA_FACT | 117 telemetry fields in live schema |
 | F2C-02 | SCHEMA_EXPANSION_OPPORTUNITY | 76 fields not queried |
 | F2C-03 | GLOBAL_VS_VEHICLE_CAPABILITY_GAP | 84 schema fields absent from four-vehicle union |
-| F2C-04 | ALIAS_GAP | CurrentGear/ActualGear; TPS/obdThrottlePosition |
-| F2C-05 | DRIVING_DYNAMICS_OPPORTUNITY | Yaw + wheel speeds in schema; long/lat accel absent |
-| F2C-06 | BRAKE_OBSERVABILITY_GAP | Six brake schema fields; zero four-vehicle observation |
-| F2C-07 | TIRE_OBSERVABILITY_GAP | TPMS schema fields; zero four-vehicle observation |
-| F2C-08 | EVENT_SURFACE_EXPANSION | Generic events API; R1 behavior subset documented |
+| F2C-04 | PARALLEL_SIGNAL_GAP | Gear fields + throttle pairs — semantic equivalence unproven (RP-35) |
+| F2C-05 | DRIVING_DYNAMICS_OPPORTUNITY | Yaw + front wheel-speed pair; long/lat accel absent |
+| F2C-06 | BRAKE_OBSERVABILITY_GAP | Four hydraulic brake inputs in schema; zero four-vehicle observation |
+| F2C-07 | TIRE_OBSERVABILITY_GAP | DIRECT_TIRE_PRESSURE in schema; zero four-vehicle observation |
+| F2C-08 | OPEN_ENDED_EVENT_NAME_SURFACE | Provider-defined event names; Q015 filters ≠ exhaustive catalog |
 | F2C-09 | SEGMENT_SURFACE_EXPANSION | Six mechanisms confirmed |
 | F2C-10 | SDK_LAG | 1.6.0 vs 1.7.0 — no schema impact |
 | F2C-11 | SCHEMA_DRIFT | Zero deprecated fields |
 | F2C-12 | UNKNOWN_REQUIRES_RUNTIME_PROBE | Event metadata, availableSignals staleness |
+| F2C-13 | REGEN_SIGN_SEMANTICS | Positive HV power = into battery; regen candidate requires synchronized decel context |
+| F2C-14 | ABS_WARNING_NOT_INTERVENTION | `chassisBrakeABSIsWarningOn` diagnostic only |
+| F2C-15 | COMMERCIAL_AXLE_WEIGHT_LIMITATION | Row3/4/5 weight — commercial/heavy; not generic Pkw mass |
 
 ---
 
 ## 36. Phase-2D Handoff
 
-Phase 2D scores **24** candidates + events/segments on value, cadence, redundancy, coverage, cost. Inputs: appendices below, Gold Signals §30, SET diffs §7–8, RP-32–39 §34.
+Phase 2D scores **20** candidates (+ commercial axle-weight RP-37 track) across **Driver Quality**, **Vehicle Load**, **Brake Physics**, **Tire Dynamic Load**, and **Data Confidence/Validation** with equal domain weighting. Inputs: appendices below, Gold Signals §30, SET diffs §7–8, RP-32–39 §34.
 
 ---
 
@@ -506,18 +614,26 @@ Phase 2D scores **24** candidates + events/segments on value, cadence, redundanc
 
 ---
 
-## Appendix B — Event Catalog
+## Appendix B — Event Catalog Crosswalk (not exhaustive)
 
-| eventName | family | currentOfficial | queriedBySynqDrive | observedPhase2B | payloadFields | evidence |
-|---|---|---|---|---|---|---|
-| behavior.harshBraking | behavior | yes | Arteon historical | timestamp,name,source,durationNs,metadata | CONFIRMED_FROM_CURRENT_DIMO_OFFICIAL_DOCS |
-| behavior.extremeBraking | behavior | yes | C63/Arteon 30d | timestamp,name,source,durationNs,metadata | CONFIRMED_FROM_CURRENT_DIMO_OFFICIAL_DOCS |
-| behavior.harshAcceleration | behavior | yes | Tiguan/C63/Arteon | timestamp,name,source,durationNs,metadata | CONFIRMED_FROM_CURRENT_DIMO_OFFICIAL_DOCS |
-| behavior.extremeAcceleration | behavior | partial | none 30d four | timestamp,name,source,durationNs,metadata | CONFIRMED_FROM_SYNQDRIVE_CODE |
-| behavior.harshCornering | behavior | yes | Tiguan/C63/Arteon | timestamp,name,source,durationNs,metadata | CONFIRMED_FROM_CURRENT_DIMO_OFFICIAL_DOCS |
-| behavior.extremeEmergency | behavior | partial | none 30d four | timestamp,name,source,durationNs,metadata | CONFIRMED_FROM_SYNQDRIVE_CODE |
-| behavior.extremeEmergencyBraking | behavior | partial | none 30d four | timestamp,name,source,durationNs,metadata | CONFIRMED_FROM_SYNQDRIVE_CODE |
-| safety.collision | safety | yes | UNKNOWN four | timestamp,name,source,durationNs,metadata | CONFIRMED_FROM_CURRENT_DIMO_OFFICIAL_DOCS |
+**Note:** `CURRENT_GLOBAL_EVENT_NAME_COUNT = UNKNOWN_OPEN_ENDED`. Below maps known layers only.
+
+| Layer | Name | Family | SynqDrive Q015? | Observed Phase 2B | Evidence |
+|-------|------|--------|-----------------|-------------------|----------|
+| OFFICIAL_R1_GLOSSARY | ExtremeBraking | behavior | partial (`behavior.extremeBraking`) | C63/Arteon | CONFIRMED_FROM_CURRENT_DIMO_OFFICIAL_DOCS |
+| OFFICIAL_R1_GLOSSARY | HarshAcceleration | behavior | yes | Tiguan/C63/Arteon | CONFIRMED_FROM_CURRENT_DIMO_OFFICIAL_DOCS |
+| OFFICIAL_R1_GLOSSARY | HarshBraking | behavior | yes | Arteon historical | CONFIRMED_FROM_CURRENT_DIMO_OFFICIAL_DOCS |
+| OFFICIAL_R1_GLOSSARY | HarshCornering | behavior | yes | Tiguan/C63/Arteon | CONFIRMED_FROM_CURRENT_DIMO_OFFICIAL_DOCS |
+| OFFICIAL_DOCUMENTED_TAG | `behavior.harshAcceleration` | behavior | yes | Tiguan/C63/Arteon | CONFIRMED_FROM_CURRENT_DIMO_OFFICIAL_DOCS |
+| OFFICIAL_DOCUMENTED_TAG | `behavior.harshBraking` | behavior | yes | Arteon historical | CONFIRMED_FROM_CURRENT_DIMO_OFFICIAL_DOCS |
+| OFFICIAL_DOCUMENTED_TAG | `behavior.harshCornering` | behavior | yes | Tiguan/C63/Arteon | CONFIRMED_FROM_CURRENT_DIMO_OFFICIAL_DOCS |
+| OFFICIAL_DOCUMENTED_TAG | `safety.collision` | safety | yes | UNKNOWN four | CONFIRMED_FROM_CURRENT_DIMO_OFFICIAL_DOCS |
+| SYNQDRIVE_Q015_ONLY | `behavior.extremeBraking` | behavior | yes | C63/Arteon 30d | CONFIRMED_FROM_SYNQDRIVE_CODE |
+| SYNQDRIVE_Q015_ONLY | `behavior.extremeAcceleration` | behavior | yes | none 30d four | CONFIRMED_FROM_SYNQDRIVE_CODE |
+| SYNQDRIVE_Q015_ONLY | `behavior.extremeEmergency` | behavior | yes | none 30d four | CONFIRMED_FROM_SYNQDRIVE_CODE |
+| SYNQDRIVE_Q015_ONLY | `behavior.extremeEmergencyBraking` | behavior | yes | none 30d four | CONFIRMED_FROM_SYNQDRIVE_CODE |
+
+Event payload fields (all): `timestamp`, `name`, `source`, `durationNs`, `metadata` (opaque).
 
 ---
 
@@ -543,15 +659,17 @@ Phase 2D scores **24** candidates + events/segments on value, cadence, redundanc
 | Schema signals not queried | **76** |
 | Observed in four vehicles | **33** |
 | Schema signals not on any of four | **84** |
-| Vehicle-observed aliases not queried | **15** |
+| Vehicle-observed not in Phase-2A driving acquisition (SET 4) | **15** |
 | SynqDrive refs missing/deprecated in schema | **0** |
 | Driving-dynamics-related schema fields | **20** |
-| Brake-related schema fields | **6** |
-| Tire/chassis pressure+warning fields | **5** |
-| EV/HV/regen-related schema fields | **15** |
-| SynqDrive-tracked native event filter names | **8** |
+| Brake-related schema fields | **6** (4 hydraulic + 1 diagnostic + 1 parking) |
+| DIRECT_TIRE_PRESSURE fields | **4** |
+| DIAGNOSTIC_TIRE_CONTEXT fields | **1** |
+| EV/HV-related schema fields | **15** |
+| SynqDrive Q015 filter names | **8** |
+| Current global event name count | **UNKNOWN_OPEN_ENDED** |
 | Current official segment mechanisms | **6** |
-| High-value Phase-2D candidates | **24** |
+| High-value Phase-2D candidates (main track) | **20** |
 | New runtime probes RP-32–RP-39 | **8** |
 | Newly present vs July historical subset | **94** |
 
