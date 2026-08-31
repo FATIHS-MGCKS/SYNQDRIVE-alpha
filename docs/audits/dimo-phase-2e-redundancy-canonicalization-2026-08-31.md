@@ -1,7 +1,7 @@
 # DIMO Phase 2E — Redundancy / Canonicalization / Evidence Hierarchy
 
 **Date:** 2026-08-31  
-**Status:** DONE  
+**Status:** DONE (final consistency / episode taxonomy / registry arithmetic QA pass)  
 **Scope:** Redundancy analysis · canonical signal design · evidence hierarchy · physical episode identity · fallback/provenance design (documentation only)  
 **Repository:** `FATIHS-MGCKS/SYNQDRIVE-alpha`  
 **Phase gate:** Phase 2E **DONE** · Phase 2F **NEXT** · Phase 2F.1 **NOT_STARTED** · Phase 3A **`GATED_ON_LTE_R1_MANIFEST`**
@@ -14,17 +14,23 @@ Phase 2E resolves Phase-2D handoff groups into a **provider-neutral canonical la
 
 | Metric | Count |
 |--------|------:|
-| Canonical signal keys (`CAN_*`) | **38** |
+| **`CANONICAL_SIGNAL_COUNT`** (Appendix B authority) | **33** |
 | Redundancy / correlation groups (`D2E-R01`…`R16`) | **16** |
-| `EXACT_ALIAS` relationships | **1** (speed naming only — same DIMO field) |
-| `SEMANTIC_EQUIVALENT_PENDING_VALIDATION` | **5** |
-| `POSITIONAL_COMPLEMENT` groups | **3** |
-| `CAUSAL_CHAIN_COMPLEMENT` groups | **2** |
-| `NO_SUBSTITUTION_ALLOWED` families | **4** |
+| `EXACT_ALIAS` (provider `speed` → storage `speedKmh` only) | **1** |
+| `PENDING_EQUIVALENCE` groups | **2** |
+| `POSITIONAL_COMPLEMENT` groups | **2** |
+| `CIRCUIT_COMPLEMENT` groups | **1** |
+| `CAUSAL_CHAIN_COMPLEMENT` groups | **3** |
+| `NO_SUBSTITUTION` groups | **4** |
 | `NO_VALID_FALLBACK` canonical families | **6** |
-| Physical episode types defined | **8** |
+| Base maneuver episodes | **3** |
+| Composite / sequence episodes | **2** |
+| Exposure / state intervals | **2** |
+| Context subtype classifications (non-peer episodes) | **1** |
 | Canonical decisions (`D2E-D001`…`D2E-D024`) | **24** |
 | Legacy impact items flagged | **12** |
+
+**Count authority:** Appendix B expanded rows. Summary metrics are derived — not copied from prior PR text.
 
 **North star preserved:** RAW PROVIDER OBSERVATION → CANONICAL SIGNAL → PHYSICAL EPISODE → CANONICAL FEATURE → independent outputs (Driver Quality · Vehicle Load · Brake Physics · Tire Load) + orthogonal Data Confidence.
 
@@ -88,7 +94,8 @@ Production logic · query changes · scheduler changes · runtime probes · DB m
 | `EXACT_ALIAS` | Same provider field / naming lineage only | `speed` → `speedKmh` code alias |
 | `SEMANTIC_EQUIVALENT_PENDING_VALIDATION` | Possibly same semantics — not proven | OBD throttle vs engine TPS; CurrentGear vs ActualGear |
 | `COMPLEMENTARY` | Different information, same domain | torque + MAF |
-| `POSITIONAL_COMPLEMENT` | Distinct positions, not duplicates | FL/FR wheel speed; FL/FR/RL/RR tire pressure |
+| `POSITIONAL_COMPLEMENT` | Distinct wheel/position addresses, not duplicates | FL/FR wheel speed; FL/FR/RL/RR tire pressure |
+| `CIRCUIT_COMPLEMENT` | Parallel hydraulic/system channels, not spatial positions | brake circuit C1 + C2 → one `BRAKE_HYDRAULIC_EVIDENCE` |
 | `CAUSAL_CHAIN_COMPLEMENT` | Different stages of one chain | pedal → pressure → deceleration |
 | `AGGREGATE_DIAGNOSTIC` | Summary/warning over detailed state | TPMS warning vs four pressures |
 | `DERIVED_FROM` | Computed from other observations | speed-derived decel; regen candidate |
@@ -118,21 +125,23 @@ Production logic · query changes · scheduler changes · runtime probes · DB m
 
 ## 7. Canonical Signal Registry
 
-**38 stable keys** (Appendix B). Grouped by family:
+**`CANONICAL_SIGNAL_COUNT = 33`** — fully expanded in **Appendix B** (one row per unique `CAN_*` key; four tire-pressure keys explicit).
 
-**Kinematics:** `CAN_VEHICLE_SPEED`, `CAN_YAW_RATE`, `CAN_WHEEL_SPEED_FL`, `CAN_WHEEL_SPEED_FR`, `CAN_LOCATION_HEADING`, `CAN_ALTITUDE`
+Grouped by family:
 
-**Powertrain ICE/combustion:** `CAN_ENGINE_THROTTLE_POSITION`, `CAN_ENGINE_TPS`, `CAN_ENGINE_RPM`, `CAN_ENGINE_LOAD`, `CAN_ENGINE_TORQUE`, `CAN_ENGINE_TORQUE_PERCENT`, `CAN_ENGINE_MAF`
+**Kinematics (6):** `CAN_VEHICLE_SPEED` · `CAN_YAW_RATE` · `CAN_WHEEL_SPEED_FL` · `CAN_WHEEL_SPEED_FR` · `CAN_LOCATION_HEADING` · `CAN_ALTITUDE`
 
-**Transmission:** `CAN_TRANSMISSION_CURRENT_GEAR`, `CAN_TRANSMISSION_ACTUAL_GEAR`, `CAN_TRANSMISSION_SELECTED_GEAR`, `CAN_TRANSMISSION_GEAR_RATIO`, `CAN_TRANSMISSION_TEMPERATURE`
+**Powertrain ICE/combustion (7):** `CAN_ENGINE_THROTTLE_POSITION` · `CAN_ENGINE_TPS` · `CAN_ENGINE_RPM` · `CAN_ENGINE_LOAD` · `CAN_ENGINE_TORQUE` · `CAN_ENGINE_TORQUE_PERCENT` · `CAN_ENGINE_MAF`
 
-**Brake:** `CAN_BRAKE_PEDAL_STATE`, `CAN_BRAKE_PEDAL_POSITION`, `CAN_BRAKE_PRESSURE_C1`, `CAN_BRAKE_PRESSURE_C2`
+**Transmission (5):** `CAN_TRANSMISSION_CURRENT_GEAR` · `CAN_TRANSMISSION_ACTUAL_GEAR` · `CAN_TRANSMISSION_SELECTED_GEAR` · `CAN_TRANSMISSION_GEAR_RATIO` · `CAN_TRANSMISSION_TEMPERATURE`
 
-**Tire:** `CAN_TIRE_PRESSURE_FL/FR/RL/RR`, `CAN_TIRE_WARNING_STATE`
+**Brake (4):** `CAN_BRAKE_PEDAL_STATE` · `CAN_BRAKE_PEDAL_POSITION` · `CAN_BRAKE_PRESSURE_C1` · `CAN_BRAKE_PRESSURE_C2`
 
-**Energy:** `CAN_TRACTION_BATTERY_POWER`, `CAN_TRACTION_BATTERY_SOC` *(context)*
+**Tire (5):** `CAN_TIRE_PRESSURE_FL` · `CAN_TIRE_PRESSURE_FR` · `CAN_TIRE_PRESSURE_RL` · `CAN_TIRE_PRESSURE_RR` · `CAN_TIRE_WARNING_STATE`
 
-**Thermal/context:** `CAN_AMBIENT_TEMPERATURE`, `CAN_COOLANT_TEMPERATURE`, `CAN_OIL_TEMPERATURE`, `CAN_INTAKE_TEMPERATURE`
+**Energy (2):** `CAN_TRACTION_BATTERY_POWER` · `CAN_TRACTION_BATTERY_SOC`
+
+**Thermal/context (4):** `CAN_AMBIENT_TEMPERATURE` · `CAN_COOLANT_TEMPERATURE` · `CAN_OIL_TEMPERATURE` · `CAN_INTAKE_TEMPERATURE`
 
 Keys are **not** created for unavailable schema scope (e.g. no four-wheel speed keys beyond audited front pair in 2D main track).
 
@@ -175,7 +184,13 @@ DIMO signalsLatest.speed / signals.speed
   → trip route/segment enrichment → VehicleTrip.maxSpeedKmh (LF, separate pipeline)
 ```
 
-**Relationship class:** `EXACT_ALIAS` for code/storage naming only — **one physical source**, multiple names.
+**Relationship class:**
+
+| Representation | Class | Notes |
+|----------------|-------|-------|
+| DIMO `speed` → `speedKmh` | `EXACT_ALIAS` | Same underlying provider sample; naming only |
+| `speedKmh` → `speedMs` | `UNIT_CONVERTED_REPRESENTATION` | km/h ÷ 3.6 — not a second provider source |
+| Trip `maxSpeedKmh` | `AGGREGATE_DERIVED` | LF route/segment aggregate — not waveform fallback |
 
 **Decision:** Never create a second canonical speed from alias duplication. LF `maxSpeedKmh` is a **trip aggregate**, not a substitute high-frequency speed stream.
 
@@ -225,7 +240,13 @@ DIMO signalsLatest.speed / signals.speed
 
 **Verdict:** High correlation **does not** justify collapsing to one "engine stress signal." Each retains distinct canonical semantics.
 
-**Torque pair:** `CAN_ENGINE_TORQUE` primary · `CAN_ENGINE_TORQUE_PERCENT` secondary/context — `SEMANTIC_EQUIVALENT_PENDING_VALIDATION` for redundancy, not duplicate penalties.
+**Torque pair (corrected):** `CAN_ENGINE_TORQUE` (`REPORTED_ENGINE_TORQUE`) and `CAN_ENGINE_TORQUE_PERCENT` (`REPORTED_TORQUE_PERCENT`) are **`COMPLEMENTARY`** — different physical semantics and potentially different reference bases. **Not** `SEMANTIC_EQUIVALENT_PENDING_VALIDATION` and **not** interchangeable substitutes.
+
+If a deterministic Nm↔% conversion becomes possible later, it requires a known reference basis (e.g. peak torque, ECU reference torque):
+
+**`DERIVABLE_ONLY_IF_REFERENCE_BASIS_KNOWN`**
+
+Absolute torque physics must **not** silently consume percent torque as Nm.
 
 **Phase 2F implication:** HF post-trip already queries torque pair; canonicalization keeps both L0, one episode-level powertrain load feature set later.
 
@@ -279,7 +300,9 @@ DIMO signalsLatest.speed / signals.speed
 
 **Family:** `FAM_BRAKE_PRESSURE` · L3 source `HYDRAULIC_BRAKE_DEMAND`
 
-**Relationship:** `POSITIONAL_COMPLEMENT` / dual-circuit hydraulic evidence — **not** two independent braking events.
+**Relationship:** `CIRCUIT_COMPLEMENT` — two parallel hydraulic **system channels**, not spatial/wheel positions. Both map to one future `BRAKE_HYDRAULIC_EVIDENCE` structure.
+
+**Do not assume** which wheel/axle each circuit represents without provider documentation.
 
 **Design concept:** future `BRAKE_HYDRAULIC_EVIDENCE` retains circuit1, circuit2, agreement/delta, availability flags, quality.
 
@@ -304,7 +327,8 @@ DIMO signalsLatest.speed / signals.speed
 | **C — Vehicle response** | speed-derived deceleration | kinematic response |
 | **D — Energy / powertrain** | battery power, RPM/gear/retardation context | regen/friction split context |
 | **E — Provider classification** | `behavior.harshBraking`, `behavior.extremeBraking`, emergency variants | classified evidence |
-| **F — Derived classification** | HF braking detector, FULL_BRAKING abuse, high-speed brake class | reconstructed/classified |
+| **F — Derived classification** | HF braking detector, FULL_BRAKING abuse | `EPISODE_CLASSIFICATION` / `DERIVED_FEATURE` |
+| **Context subtype** | high-speed-brake classification | `EPISODE_CLASSIFICATION` on `BRAKING` — not a separate raw channel |
 
 **These are not eight independent brake offenses.**
 
@@ -350,7 +374,7 @@ DIMO signalsLatest.speed / signals.speed
 
 ## 18. Tire Pressure Group (`D2E-R10`)
 
-**Canonical keys:** `CAN_TIRE_PRESSURE_FL/FR/RL/RR`
+**Canonical keys:** `CAN_TIRE_PRESSURE_FL` · `CAN_TIRE_PRESSURE_FR` · `CAN_TIRE_PRESSURE_RL` · `CAN_TIRE_PRESSURE_RR` (Appendix B: four explicit rows)
 
 **Relationship:** `POSITIONAL_COMPLEMENT` — distinct wheel-position states, not redundant duplicates.
 
@@ -397,12 +421,12 @@ DIMO signalsLatest.speed / signals.speed
 
 | Field | Canonical key | Domain |
 |-------|---------------|--------|
-| `exteriorAirTemperature` / HF exterior | `CAN_AMBIENT_TEMPERATURE` | context for all |
-| `powertrainCombustionEngineECT` / coolant paths | `CAN_COOLANT_TEMPERATURE` | engine thermal |
+| `exteriorAirTemperature` | `CAN_AMBIENT_TEMPERATURE` | context for all |
+| `powertrainCombustionEngineECT` | `CAN_COOLANT_TEMPERATURE` | engine thermal |
 | `obdOilTemperature` | `CAN_OIL_TEMPERATURE` | lubrication thermal |
 | `obdIntakeTemp` | `CAN_INTAKE_TEMPERATURE` | intake/air thermal |
 | `powertrainTransmissionTemperature` | `CAN_TRANSMISSION_TEMPERATURE` | transmission thermal |
-| traction battery temp (when present) | separate EV thermal context | electrified |
+| `powertrainTractionBatteryTemperatureAverage` (HF path) | EV battery thermal context | electrified — **not** merged into ambient/coolant |
 
 **Do not collapse** oil vs trans vs coolant vs ambient — missing one **must not** silently substitute another.
 
@@ -439,20 +463,51 @@ episodeId, tripId, episodeType, startTime, endTime, peakTime,
 evidenceChannels[], canonicalFeatures{}, context{}, provenance{}, assessability{}
 ```
 
-### 23.2 Episode types defined (8)
+### 23.2 Episode taxonomy (separated concepts)
+
+**Base maneuver episodes (3)** — one physical maneuver identity each:
 
 | Type | Description |
 |------|-------------|
-| `ACCELERATION` | Positive longitudinal demand episode |
-| `BRAKING` | Deceleration / brake demand episode |
-| `CORNERING` | Lateral demand episode |
-| `ACCEL_BRAKE_REVERSAL` | Linked accel→brake sequence |
-| `HIGH_SPEED_BRAKING` | Braking with high initial speed context |
-| `STOP_GO_CYCLE` | Stop-go cycling exposure |
+| `ACCELERATION` | Positive longitudinal demand maneuver |
+| `BRAKING` | Deceleration / brake-demand maneuver |
+| `CORNERING` | Lateral-demand maneuver |
+
+**Composite / sequence episodes (2)** — reference base episodes; do not auto-multiply penalties:
+
+| Type | Description | Linkage |
+|------|-------------|---------|
+| `ACCEL_BRAKE_REVERSAL` | Accel→brake sequence | may reference `sourceAccelerationEpisodeId` + `sourceBrakingEpisodeId` |
+| `STOP_GO_CYCLE` | Stop-go cycling pattern | sequence over multiple base episodes |
+
+**Exposure / state intervals (2)** — not behavior offenses by default:
+
+| Type | Description |
+|------|-------------|
 | `POWERTRAIN_LOAD` | Sustained propulsion/load exposure |
 | `THERMAL_EXPOSURE` | Thermal time-above-threshold / dose exposure |
 
-### 23.3 Matching principles (future — no fixed canonical windows)
+**Context / subtype classification (1)** — enriches a base episode; **not** a peer maneuver count:
+
+| Classification | Preferred attachment |
+|----------------|---------------------|
+| `HIGH_SPEED_BRAKING` | `BRAKING` episode `context.highSpeed = true` or `classification = HIGH_SPEED_BRAKING` — **not** a second independent braking episode for the same maneuver |
+
+### 23.3 Physical episode identity invariants
+
+**INVARIANT A:** One physical braking maneuver normally owns **one** `BRAKING` base-episode identity.
+
+**INVARIANT B:** Additional evidence channels enrich that identity; they do not multiply it.
+
+**INVARIANT C:** Contextual classifications such as `HIGH_SPEED_BRAKING` do **not** create a second independent maneuver count.
+
+**INVARIANT D:** Composite sequences may reference base episodes without consuming them twice by default (no automatic accel + brake + reversal triple penalty in one domain).
+
+**INVARIANT E:** Exposure states (`POWERTRAIN_LOAD`, `THERMAL_EXPOSURE`) are not automatically behavior offenses.
+
+**INVARIANT F:** The same base episode may feed Driver Quality · Vehicle Load · Brake Load · Tire Load with different features — that is **not** cross-domain double counting.
+
+### 23.4 Matching principles (future — no fixed canonical windows)
 
 Combine: same trip · compatible maneuver type · temporal overlap · causal ordering · sign consistency · shared speed interval · peak neighborhood · compatible context.
 
@@ -462,21 +517,50 @@ Combine: same trip · compatible maneuver type · temporal overlap · causal ord
 
 ## 24. Acceleration Episode
 
-**Evidence channels (examples):** HF speed-derived accel · native `harshAcceleration`/`extremeAcceleration` · TPS/RPM/torque/load context · launch-like behavior events.
+### Observation channels (`OBSERVATION_CHANNEL`)
 
-**Identity rule:** one physical acceleration maneuver → **one** `ACCELERATION` episode regardless of native + reconstructed + context channel count.
+- native `behavior.harshAcceleration` / `behavior.extremeAcceleration` (`PROVIDER_CLASSIFIED`)
+- vehicle speed time series (`REPORTED_STATE` / kinematic enabler)
+- TPS / RPM / torque / load (`REPORTED_STATE` context)
 
-**Features (L3):** onset · peak · duration · smoothness · reversal linkage — consumed by DQ/Vehicle Load separately.
+### Derived features / classifications (`DERIVED_FEATURE` / `EPISODE_CLASSIFICATION`)
+
+- HF speed-derived acceleration (`RECONSTRUCTED_KINEMATIC`)
+- launch-like / kickdown classifications (detector output)
+- smoothness, peak, duration, ramp (L3 features)
+
+**Identity rule:** one physical acceleration maneuver → **one** `ACCELERATION` base episode regardless of channel count.
 
 ---
 
 ## 25. Braking Episode
 
-**Evidence channels:** native harsh/extreme/emergency · speed decel · pedal · C1/C2 pressure · battery regen candidate · stop-go · FULL_BRAKING abuse · high-speed brake class.
+### Observation channels (`OBSERVATION_CHANNEL`)
 
-**Identity rule:** **one maneuver → one `BRAKING` episode** (Appendix E).
+| Channel | Class |
+|---------|-------|
+| native `behavior.harshBraking` / `extremeBraking` / emergency variants | `PROVIDER_CLASSIFIED` |
+| vehicle speed trajectory | `REPORTED_STATE` |
+| brake pedal state / position | `REPORTED_STATE` |
+| hydraulic pressure C1 / C2 | `REPORTED_STATE` |
+| traction battery power | `REPORTED_STATE` |
 
-**Brake Load derives:** kinetic demand · regen candidate · friction estimate · thermal/wear dose — **not** four independent loads from pedal/pressure/decel/native.
+### Derived features / classifications (`DERIVED_FEATURE` / `EPISODE_CLASSIFICATION`)
+
+| Output | Class | Notes |
+|--------|-------|-------|
+| speed-derived deceleration | `RECONSTRUCTED_KINEMATIC` | from speed series |
+| HF HARD/EXTREME braking detector output | `EPISODE_CLASSIFICATION` | reconstructed severity |
+| FULL_BRAKING / abuse classifications | `EPISODE_CLASSIFICATION` | separate threshold bands — CURRENT production |
+| `HIGH_SPEED_BRAKING` | `EPISODE_CLASSIFICATION` | **subtype** of `BRAKING` — not raw observation |
+| regen candidate · kinetic energy demand · thermal dose | `DERIVED_PHYSICS` | L3 features |
+
+### Sequence / exposure (not raw channels of one maneuver)
+
+- `STOP_GO_CYCLE` → `SEQUENCE_RELATION` / composite pattern over episodes
+- preceding acceleration context → linked episode reference, not a raw brake channel
+
+**Identity rule:** **one maneuver → one `BRAKING` base episode** (Appendix E).
 
 ---
 
@@ -492,24 +576,34 @@ Combine: same trip · compatible maneuver type · temporal overlap · causal ord
 
 ## 27. Accel→Brake Reversal Episode
 
-**Type:** `ACCEL_BRAKE_REVERSAL`
+**Type:** `ACCEL_BRAKE_REVERSAL` (composite / sequence — not a third peer maneuver by default)
 
-**Evidence:** preceding acceleration episode + following braking episode + TPS/brake/speed sequence context.
+**Structure:** may reference `sourceAccelerationEpisodeId` + `sourceBrakingEpisodeId` + sequence context.
 
-**Not:** separate penalties for accel channel and brake channel without sequence linkage.
+**Not:** automatic accel penalty + brake penalty + reversal penalty inside the same output dimension without an explicit later model decision.
 
 ---
 
 ## 28. Evidence Channel Model
 
-Each channel in `evidenceChannels[]` classified:
+### 28.1 Layered evidence taxonomy
+
+| Layer | Purpose | Examples |
+|-------|---------|----------|
+| `OBSERVATION_CHANNEL` | Raw/reported/provider observation attached to episode | speed series, pedal, pressure, native event |
+| `DERIVED_FEATURE` | Computed physics/kinematics from observations | decel, regen candidate, kinetic delta |
+| `EPISODE_CLASSIFICATION` | Severity/subtype label on an episode | HARD/EXTREME, `HIGH_SPEED_BRAKING` |
+| `SEQUENCE_RELATION` | Links episodes in time | accel→brake reversal, stop-go pattern |
+| `EXPOSURE_STATE` | Interval/dose state | thermal exposure, powertrain load interval |
+
+### 28.2 Observation channel classes
 
 | Class | Examples |
 |-------|----------|
 | `MEASURED_DIRECT` | tire pressure, yaw (when available) |
-| `REPORTED_STATE` | pedal, gear, battery power |
+| `REPORTED_STATE` | pedal, gear, battery power, speed |
 | `PROVIDER_CLASSIFIED` | native behavior.* |
-| `RECONSTRUCTED_KINEMATIC` | speed-derived decel/accel |
+| `RECONSTRUCTED_KINEMATIC` | speed-derived decel/accel (derived feature source) |
 | `DERIVED_PHYSICS` | regen candidate, wheel consistency proxy |
 | `CONTEXT` | ambient, heading |
 | `DIAGNOSTIC` | TPMS warning, DTC |
@@ -535,10 +629,10 @@ Each channel in `evidenceChannels[]` classified:
 
 | Fallback type | Count |
 |---------------|------:|
-| `EXACT_FALLBACK` | **1** (speed naming paths → same `CAN_VEHICLE_SPEED`) |
-| `SEMANTIC_FALLBACK` | **3** (throttle pair; CurrentGear↔ActualGear; torque↔torque%) |
-| `DEGRADED_PROXY` | **5** (pressure→decel; pedal→decel; yaw→heading deriv; MAF/load proxies; warning→pressure context) |
-| `NO_VALID_FALLBACK` | **6** (hydraulic pressure, yaw, wheel speeds, four tire pressures as group, battery regen HF, native cornering on Smart5) |
+| `EXACT_FALLBACK` | **1** | same semantic via alternate storage path for `speed` → `speedKmh` only |
+| `SEMANTIC_FALLBACK` | **2** | OBD throttle ↔ engine TPS (pending); CurrentGear ↔ ActualGear (pending) |
+| `DEGRADED_PROXY` | **5** | pressure→decel; pedal→decel; yaw→heading deriv; MAF/load proxies; warning→pressure context |
+| `NO_VALID_FALLBACK` | **6** | hydraulic pressure, yaw, wheel speeds, four tire pressures as group, battery regen HF, native cornering on Smart5 |
 
 Full matrix: Appendix C.
 
@@ -599,9 +693,7 @@ Appendix B includes applicability column.
 | `DIMO_LTE_R1` | Primary validation target |
 | `DIMO_SMART5` | `UNVERIFIED_UNTIL_PHASE_2G` — canonical semantics allowed, availability not |
 | `DIMO_TESLA_DIRECT` | `UNVERIFIED_UNTIL_PHASE_2G` |
-| High Mobility | `OUT_OF_SCOPE_PROVIDER` — Phase 2I |
-
-Cross-provider consolidation → Phase 2I.
+| High Mobility | `OUT_OF_SCOPE_PROVIDER` for Phase 2E — provider/OEM audit → **Phase 2H**; cross-provider canonical consolidation → **Phase 2I** |
 
 ---
 
@@ -668,7 +760,7 @@ One hard braking maneuver remains **one episode** even if five underlying channe
 
 Phase 2F designs **capability-first acquisition**. Phase 2E delivers:
 
-- canonical signal registry (38 keys)
+- canonical signal registry (**33** keys)
 - provisional source precedence + fallback matrix
 - no-substitution rules
 - required vs enrichment families (from Phase 2D tiers)
@@ -707,7 +799,7 @@ Advisory labels only — **not** Phase 2F.1 manifest.
 | F2E-04 | P1 | Gear parallel fields — semantic equivalence unproven |
 | F2E-05 | P1 | Hydraulic brake family 0/4 — canonical design ahead of acquisition |
 | F2E-06 | P1 | Cornering Smart5 gap — native-only vs reconstructed policy required |
-| F2E-07 | P2 | Torque/load cluster correlation — must not collapse to one stress signal |
+| F2E-07 | P2 | Torque vs torque-% — complementary, not interchangeable; DERIVABLE_ONLY_IF_REFERENCE_BASIS_KNOWN |
 | F2E-08 | P2 | Wheel speed vs vehicle speed — slip proxy naming debt |
 | F2E-09 | P2 | Warning vs pressure — diagnostic cannot replace state |
 | F2E-10 | P2 | Temperature domains must remain separate |
@@ -724,7 +816,7 @@ Advisory labels only — **not** Phase 2F.1 manifest.
 - D002 Gear: semantic separation Actual/Selected/Ratio
 - D003 CurrentGear vs ActualGear: pending validation
 - D004 Brake episode: one identity, multichannel evidence
-- D005 Hydraulic circuits: dual retain, no double count
+- D005 Hydraulic circuits: `CIRCUIT_COMPLEMENT`; dual retain, no double count
 - D006 Native events: evidence not identity
 - D007 Smart5: reconstructed required, native optional
 - D008 Speed: single canonical, alias lineage only
@@ -753,7 +845,14 @@ Advisory labels only — **not** Phase 2F.1 manifest.
 |-----------|--------|
 | All Phase-2D handoff groups classified | ✓ |
 | Layer model complete | ✓ |
-| Canonical registry complete (38 keys) | ✓ |
+| Canonical registry complete (**33** keys, Appendix B authority) | ✓ |
+| Episode taxonomy separated (base / composite / exposure / context) | ✓ |
+| Torque vs torque-% not interchangeable | ✓ |
+| Brake circuits `CIRCUIT_COMPLEMENT`, not positional | ✓ |
+| Observation vs derived feature explicit | ✓ |
+| Episode invariants A–F documented | ✓ |
+| Speed alias / unit / aggregate semantics separated | ✓ |
+| High Mobility → 2H / 2I pointer correct | ✓ |
 | No unsupported aliases introduced | ✓ |
 | Throttle ≠ accelerator preserved | ✓ |
 | Gear semantics distinct | ✓ |
@@ -792,8 +891,8 @@ Advisory labels only — **not** Phase 2F.1 manifest.
 | D2E-R02 | GEAR_PARALLEL | Current/Actual/Selected/Ratio | PENDING_EQUIVALENCE + COMPLEMENTARY | `CAN_TRANSMISSION_*` | NO_SUBSTITUTION | LOW | Time-aligned gear audit | HF profile expansion |
 | D2E-R03 | TORQUE_LOAD_CLUSTER | RPM, load, torque, %, MAF, TPS | COMPLEMENTARY | distinct CAN keys | CONTEXTUAL only | MODERATE if collapsed | Powertrain validation | Keep all in HF tier |
 | D2E-R04 | BRAKE_PEDAL | pressed, position | COMPLEMENTARY | pedal state/position | DEGRADED→decel | LOW | Hydraulic era | Acquire when 2F enables |
-| D2E-R05 | BRAKE_PRESSURE_CIRCUITS | C1, C2 | POSITIONAL_COMPLEMENT | `CAN_BRAKE_PRESSURE_C1/C2` | retain both | **HIGH** if double-weighted | Agreement audit | Tier A acquisition |
-| D2E-R06 | BRAKING_MULTICHANNEL | native, decel, pedal, pressure, abuse, stop-go | CAUSAL_CHAIN + PROVIDER + DERIVED | `BRAKING_EPISODE` | hierarchy §15 | **HIGH** | Episode matching | Episode engine |
+| D2E-R05 | BRAKE_PRESSURE_CIRCUITS | C1, C2 | CIRCUIT_COMPLEMENT | `CAN_BRAKE_PRESSURE_C1/C2` | retain both | **HIGH** if double-weighted | Agreement audit | Tier A acquisition |
+| D2E-R06 | BRAKING_MULTICHANNEL | native, speed, pedal, pressure, derived decel/classifications | CAUSAL_CHAIN + PROVIDER + DERIVED | `BRAKING` base episode | hierarchy §15 | **HIGH** | Episode matching | Episode engine |
 | D2E-R07 | WHEEL_SPEED_PAIR | FL, FR | POSITIONAL_COMPLEMENT | `CAN_WHEEL_SPEED_FL/FR` | both retain | LOW | Consistency proxy | Tier A when enabled |
 | D2E-R08 | WHEEL_VS_VEHICLE_SPEED | wheel speeds, vehicle speed | CAUSAL_CHAIN | speed + consistency proxy | NO slip substitution | MODERATE | Slip model OOS | Separate canonical keys |
 | D2E-R09 | YAW_HEADING_TRAJECTORY | yaw, heading, GPS | NOT_COMPARABLE | `CAN_YAW_RATE`, `CAN_LOCATION_HEADING` | DEGRADED heading deriv | MODERATE | Cadence/sync | Yaw acquisition |
@@ -802,47 +901,86 @@ Advisory labels only — **not** Phase 2F.1 manifest.
 | D2E-R12 | BATTERY_POWER_REGEN | traction power, decel, brake | DERIVED_FROM + COMPLEMENTARY | `CAN_TRACTION_BATTERY_POWER`, `REGEN_CANDIDATE` | NO_VALID_FALLBACK for split | MODERATE | Regen validation | PHEV/BEV tier |
 | D2E-R13 | TEMPERATURES | ambient, coolant, oil, intake, trans | COMPLEMENTARY / CONTEXT | separate CAN keys | NO cross-substitution | LOW | Plausibility later | Context tier |
 | D2E-R14 | NATIVE_VS_RECONSTRUCTED | behavior.*, HF detectors | PROVIDER vs RECONSTRUCTED | episode attachment | profile-specific | **HIGH** | Smart5 parity | Dual-path policy |
-| D2E-R15 | ACCEL_MULTICHANNEL | native accel, HF accel, TPS/RPM | CAUSAL_CHAIN | `ACCELERATION_EPISODE` | hierarchy | **HIGH** | Episode matching | Episode engine |
-| D2E-R16 | SPEED_ALIASES | speed, speedKmh, speedMs, maxSpeedKmh | EXACT_ALIAS / aggregate | `CAN_VEHICLE_SPEED` | EXACT path selection | LOW | LF vs HF peaks | Single field query |
+| D2E-R15 | ACCEL_MULTICHANNEL | native accel, HF accel, TPS/RPM | CAUSAL_CHAIN | `ACCELERATION` base episode | hierarchy | **HIGH** | Episode matching | Episode engine |
+| D2E-R16 | SPEED_ALIASES | speed, speedKmh, speedMs, maxSpeedKmh | EXACT_ALIAS + UNIT_REPRESENTATION + AGGREGATE | `CAN_VEHICLE_SPEED` | path selection only | LOW | LF vs HF peaks | Single provider field |
 
 ---
 
-## Appendix B — Canonical Signal Registry Matrix
+## Appendix B — Canonical Signal Registry Matrix (count authority)
 
-| Canonical key | Physical semantic | Provider field(s) | Relation | Current path | Powertrain | Preferred authority | Fallback | Validation status | Consumers / use cases |
-|---------------|-------------------|-------------------|----------|--------------|------------|---------------------|----------|-------------------|----------------------|
-| CAN_VEHICLE_SPEED | Vehicle speed | `speed` | EXACT_ALIAS lineage | SNAPSHOT+HF+LF agg | ALL | PRIMARY validated | none | PROVISIONAL | detectors, impact, health |
-| CAN_YAW_RATE | Body yaw rate | `angularVelocityYaw` | — | NONE | ALL | PRIMARY if validated | heading deriv DEGRADED | UNVALIDATED | cornering proxy |
-| CAN_WHEEL_SPEED_FL | Front-left wheel speed | `chassisAxleRow1WheelLeftSpeed` | POSITIONAL | NONE | ALL | PRIMARY if validated | none | UNVALIDATED | consistency proxy |
-| CAN_WHEEL_SPEED_FR | Front-right wheel speed | `chassisAxleRow1WheelRightSpeed` | POSITIONAL | NONE | ALL | PRIMARY if validated | none | UNVALIDATED | consistency proxy |
-| CAN_ENGINE_THROTTLE_POSITION | OBD throttle % | `obdThrottlePosition` | PENDING vs TPS | HF_POST_TRIP | ICE/PHEV | PRIMARY today | TPS semantic pending | PROVISIONAL | accel context |
-| CAN_ENGINE_TPS | Engine TPS % | `powertrainCombustionEngineTPS` | PENDING vs OBD | NONE | ICE/PHEV | COMPLEMENTARY | OBD semantic pending | UNVALIDATED | future DQ proxy |
-| CAN_ENGINE_RPM | Engine RPM | `powertrainCombustionEngineRPM` | COMPLEMENTARY | HF_POST_TRIP | ICE/PHEV | PRIMARY | none | PROVISIONAL | load context |
-| CAN_ENGINE_LOAD | Engine load % | `obdEngineLoad` | COMPLEMENTARY | HF+SNAPSHOT | ICE/PHEV | PRIMARY | none | PROVISIONAL | VLS/HF |
-| CAN_ENGINE_TORQUE | Reported torque | `powertrainCombustionEngineTorque` | COMPLEMENTARY | HF_POST_TRIP | ICE/PHEV | PRIMARY | torque% pending | UNVALIDATED | powertrain load |
-| CAN_ENGINE_TORQUE_PERCENT | Torque % | `powertrainCombustionEngineTorquePercent` | PENDING vs torque | HF_POST_TRIP | ICE/PHEV | SECONDARY | torque primary | UNVALIDATED | validation |
-| CAN_ENGINE_MAF | Air mass flow | `powertrainCombustionEngineMAF` | COMPLEMENTARY | NONE | ICE/PHEV | PRIMARY if acquired | load proxy DEGRADED | UNVALIDATED | vehicle load |
-| CAN_TRANSMISSION_CURRENT_GEAR | Current gear | `powertrainTransmissionCurrentGear` | PENDING vs Actual | HF_POST_TRIP | ALL | PROVISIONAL | Actual pending | UNVALIDATED | load context |
-| CAN_TRANSMISSION_ACTUAL_GEAR | Actual gear | `powertrainTransmissionActualGear` | PENDING vs Current | NONE | ALL | COMPLEMENTARY | Current provisional | UNVALIDATED | shift validation |
-| CAN_TRANSMISSION_SELECTED_GEAR | Selected gear | `powertrainTransmissionSelectedGear` | COMPLEMENTARY | NONE | ALL | COMPLEMENTARY | none | UNVALIDATED | shift context |
-| CAN_TRANSMISSION_GEAR_RATIO | Gear ratio | `powertrainTransmissionActualGearRatio` | COMPLEMENTARY | NONE | ALL | COMPLEMENTARY | none | UNVALIDATED | ratio context |
-| CAN_TRANSMISSION_TEMPERATURE | Trans temp | `powertrainTransmissionTemperature` | — | NONE | ALL | PRIMARY if acquired | none | UNVALIDATED | thermal exposure |
-| CAN_BRAKE_PEDAL_STATE | Pedal switch | `chassisBrakeIsPedalPressed` | COMPLEMENTARY | NONE | ALL | PRIMARY if acquired | decel DEGRADED | UNVALIDATED | brake demand |
-| CAN_BRAKE_PEDAL_POSITION | Pedal position | `chassisBrakePedalPosition` | COMPLEMENTARY | NONE | ALL | PRIMARY if acquired | decel DEGRADED | UNVALIDATED | brake shape |
-| CAN_BRAKE_PRESSURE_C1 | Hydraulic C1 | `chassisBrakeCircuit1PressurePrimary` | POSITIONAL | NONE | ALL | PRIMARY if acquired | decel MAJOR DEGRADED | UNVALIDATED | brake physics |
-| CAN_BRAKE_PRESSURE_C2 | Hydraulic C2 | `chassisBrakeCircuit2PressurePrimary` | POSITIONAL | NONE | ALL | PRIMARY if acquired | decel MAJOR DEGRADED | UNVALIDATED | brake physics |
-| CAN_TIRE_PRESSURE_FL/FR/RL/RR | Tire pressure | four chassis fields | POSITIONAL | SNAPSHOT | ALL | PRIMARY | warning DIAG only | PROVISIONAL | tire health |
-| CAN_TIRE_WARNING_STATE | TPMS warning | `chassisTireSystemIsWarningOn` | AGGREGATE | SNAPSHOT | ALL | DIAGNOSTIC | not pressure substitute | PROVISIONAL | tire diagnostic |
-| CAN_TRACTION_BATTERY_POWER | Pack power | `powertrainTractionBatteryCurrentPower` | — | MULTIPLE | PHEV/BEV | PRIMARY | none NO_VALID | PROVISIONAL | regen candidate |
-| CAN_TRACTION_BATTERY_SOC | Pack SOC | HV SOC fields | CONTEXT | SNAPSHOT+HF | PHEV/BEV | CONTEXT | — | PROVISIONAL | energy context |
-| CAN_AMBIENT_TEMPERATURE | Ambient | exterior temp fields | CONTEXT | HF/snapshot | ALL | CONTEXT | — | PROVISIONAL | thermal context |
-| CAN_COOLANT_TEMPERATURE | Coolant/ECT | ECT fields | — | SNAPSHOT+HF | ICE/PHEV | PRIMARY | none cross | PROVISIONAL | thermal |
-| CAN_OIL_TEMPERATURE | Oil temp | `obdOilTemperature` | — | SNAPSHOT | ICE/PHEV | PRIMARY | none cross | PROVISIONAL | thermal |
-| CAN_INTAKE_TEMPERATURE | Intake temp | `obdIntakeTemp` | — | SNAPSHOT | ICE/PHEV | CONTEXT | — | PROVISIONAL | context |
-| CAN_LOCATION_HEADING | Heading | `currentLocationHeading` | NOT yaw | SNAPSHOT | ALL | CONTEXT | yaw DEGRADED | PROVISIONAL | context |
-| CAN_ALTITUDE | Altitude | altitude HF fields | CONTEXT | HF | ALL | CONTEXT | — | PROVISIONAL | grade context |
+**Invariant:** `CANONICAL_SIGNAL_COUNT = COUNT(DISTINCT fully-expanded CAN_* keys in this appendix)` = **33**.
 
-*(38 keys — SOC counted; four tire keys counted as 4 in registry total)*
+| Enum | Canonical key | Physical semantic | Provider field(s) | Relation | Current path | Powertrain | Preferred authority | Fallback | Validation | Use cases |
+|------|---------------|-------------------|-------------------|----------|--------------|------------|---------------------|----------|------------|-----------|
+| CAN-001 | `CAN_VEHICLE_SPEED` | Vehicle speed | `speed` | EXACT_ALIAS_LINEAGE | SNAPSHOT+HF+ACTIVE_TRIP | ALL | CANONICAL_PRIMARY_IF_VALIDATED | NONE | PROVISIONAL | detectors, impact, health |
+| CAN-002 | `CAN_YAW_RATE` | Body yaw rate | `angularVelocityYaw` | — | NONE | ALL | CANONICAL_PRIMARY_IF_VALIDATED | heading deriv DEGRADED | UNVALIDATED | cornering proxy |
+| CAN-003 | `CAN_WHEEL_SPEED_FL` | Front-left wheel speed | `chassisAxleRow1WheelLeftSpeed` | POSITIONAL_COMPLEMENT | NONE | ALL | CANONICAL_PRIMARY_IF_VALIDATED | NONE | UNVALIDATED | consistency proxy |
+| CAN-004 | `CAN_WHEEL_SPEED_FR` | Front-right wheel speed | `chassisAxleRow1WheelRightSpeed` | POSITIONAL_COMPLEMENT | NONE | ALL | CANONICAL_PRIMARY_IF_VALIDATED | NONE | UNVALIDATED | consistency proxy |
+| CAN-005 | `CAN_ENGINE_THROTTLE_POSITION` | OBD throttle position % | `obdThrottlePosition` | PENDING_EQUIVALENCE vs TPS | HF_POST_TRIP | ICE/PHEV | CANONICAL_PRIMARY_IF_VALIDATED | TPS SEMANTIC pending | PROVISIONAL | accel context |
+| CAN-006 | `CAN_ENGINE_TPS` | Engine-reported TPS % | `powertrainCombustionEngineTPS` | PENDING_EQUIVALENCE vs OBD | NONE | ICE/PHEV | COMPLEMENTARY_EVIDENCE | OBD primary today | UNVALIDATED | future proxy |
+| CAN-007 | `CAN_ENGINE_RPM` | Engine rotational speed | `powertrainCombustionEngineSpeed` | COMPLEMENTARY | HF_POST_TRIP | ICE/PHEV | CANONICAL_PRIMARY_IF_VALIDATED | NONE | PROVISIONAL | load context |
+| CAN-008 | `CAN_ENGINE_LOAD` | Normalized engine load % | `obdEngineLoad` | COMPLEMENTARY | HF_POST_TRIP+SNAPSHOT | ICE/PHEV | CANONICAL_PRIMARY_IF_VALIDATED | NONE | PROVISIONAL | VLS/HF |
+| CAN-009 | `CAN_ENGINE_TORQUE` | Reported engine torque | `powertrainCombustionEngineTorque` | COMPLEMENTARY | HF_POST_TRIP | ICE/PHEV | CANONICAL_PRIMARY_IF_VALIDATED | NO percent substitute | UNVALIDATED | powertrain load |
+| CAN-010 | `CAN_ENGINE_TORQUE_PERCENT` | Reported torque percent | `powertrainCombustionEngineTorquePercent` | COMPLEMENTARY; DERIVABLE_ONLY_IF_REFERENCE_BASIS_KNOWN | HF_POST_TRIP | ICE/PHEV | COMPLEMENTARY_EVIDENCE | NO Nm substitution | UNVALIDATED | validation/context |
+| CAN-011 | `CAN_ENGINE_MAF` | Air mass flow | `powertrainCombustionEngineMAF` | COMPLEMENTARY | NONE | ICE/PHEV | CANONICAL_PRIMARY_IF_VALIDATED | load proxy DEGRADED | UNVALIDATED | vehicle load |
+| CAN-012 | `CAN_TRANSMISSION_CURRENT_GEAR` | Transmission current gear | `powertrainTransmissionCurrentGear` | PENDING_EQUIVALENCE vs Actual | HF_POST_TRIP | ALL | PROVISIONAL_REQUIRES_RUNTIME_VALIDATION | Actual pending | UNVALIDATED | load context |
+| CAN-013 | `CAN_TRANSMISSION_ACTUAL_GEAR` | Transmission actual gear | `powertrainTransmissionActualGear` | PENDING_EQUIVALENCE vs Current | NONE | ALL | COMPLEMENTARY_EVIDENCE | Current provisional | UNVALIDATED | shift validation |
+| CAN-014 | `CAN_TRANSMISSION_SELECTED_GEAR` | Transmission selected gear | `powertrainTransmissionSelectedGear` | COMPLEMENTARY | NONE | ALL | COMPLEMENTARY_EVIDENCE | NONE | UNVALIDATED | shift context |
+| CAN-015 | `CAN_TRANSMISSION_GEAR_RATIO` | Transmission gear ratio | `powertrainTransmissionActualGearRatio` | COMPLEMENTARY | NONE | ALL | COMPLEMENTARY_EVIDENCE | NONE | UNVALIDATED | ratio context |
+| CAN-016 | `CAN_TRANSMISSION_TEMPERATURE` | Transmission temperature | `powertrainTransmissionTemperature` | — | NONE | ALL | CANONICAL_PRIMARY_IF_VALIDATED | NONE cross-domain | UNVALIDATED | thermal exposure |
+| CAN-017 | `CAN_BRAKE_PEDAL_STATE` | Brake pedal switch | `chassisBrakeIsPedalPressed` | COMPLEMENTARY | NONE | ALL | CANONICAL_PRIMARY_IF_VALIDATED | decel DEGRADED | UNVALIDATED | brake demand |
+| CAN-018 | `CAN_BRAKE_PEDAL_POSITION` | Brake pedal position | `chassisBrakePedalPosition` | COMPLEMENTARY | NONE | ALL | CANONICAL_PRIMARY_IF_VALIDATED | decel DEGRADED | UNVALIDATED | brake shape |
+| CAN-019 | `CAN_BRAKE_PRESSURE_C1` | Hydraulic brake circuit 1 | `chassisBrakeCircuit1PressurePrimary` | CIRCUIT_COMPLEMENT | NONE | ALL | CANONICAL_PRIMARY_IF_VALIDATED | decel MAJOR DEGRADED | UNVALIDATED | brake physics |
+| CAN-020 | `CAN_BRAKE_PRESSURE_C2` | Hydraulic brake circuit 2 | `chassisBrakeCircuit2PressurePrimary` | CIRCUIT_COMPLEMENT | NONE | ALL | CANONICAL_PRIMARY_IF_VALIDATED | decel MAJOR DEGRADED | UNVALIDATED | brake physics |
+| CAN-021 | `CAN_TIRE_PRESSURE_FL` | Tire pressure FL | `chassisAxleRow1WheelLeftTirePressure` | POSITIONAL_COMPLEMENT | SNAPSHOT | ALL | CANONICAL_PRIMARY_IF_VALIDATED | warning DIAG only | PROVISIONAL | tire health |
+| CAN-022 | `CAN_TIRE_PRESSURE_FR` | Tire pressure FR | `chassisAxleRow1WheelRightTirePressure` | POSITIONAL_COMPLEMENT | SNAPSHOT | ALL | CANONICAL_PRIMARY_IF_VALIDATED | warning DIAG only | PROVISIONAL | tire health |
+| CAN-023 | `CAN_TIRE_PRESSURE_RL` | Tire pressure RL | `chassisAxleRow2WheelLeftTirePressure` | POSITIONAL_COMPLEMENT | SNAPSHOT | ALL | CANONICAL_PRIMARY_IF_VALIDATED | warning DIAG only | PROVISIONAL | tire health |
+| CAN-024 | `CAN_TIRE_PRESSURE_RR` | Tire pressure RR | `chassisAxleRow2WheelRightTirePressure` | POSITIONAL_COMPLEMENT | SNAPSHOT | ALL | CANONICAL_PRIMARY_IF_VALIDATED | warning DIAG only | PROVISIONAL | tire health |
+| CAN-025 | `CAN_TIRE_WARNING_STATE` | TPMS warning aggregate | `chassisTireSystemIsWarningOn` | AGGREGATE_DIAGNOSTIC | SNAPSHOT | ALL | DIAGNOSTIC_ONLY | not pressure substitute | PROVISIONAL | tire diagnostic |
+| CAN-026 | `CAN_TRACTION_BATTERY_POWER` | Traction battery power | `powertrainTractionBatteryCurrentPower` | — | SNAPSHOT+HF_POST_TRIP | PHEV/BEV | CANONICAL_PRIMARY_IF_VALIDATED | NO_VALID_FALLBACK | PROVISIONAL | regen candidate input |
+| CAN-027 | `CAN_TRACTION_BATTERY_SOC` | Traction battery SOC | `powertrainTractionBatteryStateOfChargeCurrent` | CONTEXT | SNAPSHOT+HF_POST_TRIP | PHEV/BEV | CONTEXT_ONLY | — | PROVISIONAL | energy context |
+| CAN-028 | `CAN_AMBIENT_TEMPERATURE` | Ambient/exterior temperature | `exteriorAirTemperature` | CONTEXT | HF_POST_TRIP (+ env query) | ALL | CONTEXT_ONLY | NONE cross | PROVISIONAL | thermal context |
+| CAN-029 | `CAN_COOLANT_TEMPERATURE` | Engine coolant / ECT | `powertrainCombustionEngineECT` | — | SNAPSHOT+HF_POST_TRIP | ICE/PHEV | CANONICAL_PRIMARY_IF_VALIDATED | NONE cross | PROVISIONAL | thermal |
+| CAN-030 | `CAN_OIL_TEMPERATURE` | Engine oil temperature | `obdOilTemperature` | — | SNAPSHOT | ICE/PHEV | CANONICAL_PRIMARY_IF_VALIDATED | NONE cross | PROVISIONAL | thermal |
+| CAN-031 | `CAN_INTAKE_TEMPERATURE` | Intake air temperature | `obdIntakeTemp` | CONTEXT | SNAPSHOT | ICE/PHEV | CONTEXT_ONLY | — | PROVISIONAL | context |
+| CAN-032 | `CAN_LOCATION_HEADING` | Location heading | `currentLocationHeading` | NOT_COMPARABLE vs yaw | SNAPSHOT | ALL | CONTEXT_ONLY | yaw DEGRADED | PROVISIONAL | context |
+| CAN-033 | `CAN_ALTITUDE` | Location altitude | `currentLocationAltitude` | CONTEXT | HF_POST_TRIP | ALL | CONTEXT_ONLY | — | PROVISIONAL | grade context |
+
+### Expanded enumeration (deterministic)
+
+- **CAN-001** `CAN_VEHICLE_SPEED`
+- **CAN-002** `CAN_YAW_RATE`
+- **CAN-003** `CAN_WHEEL_SPEED_FL`
+- **CAN-004** `CAN_WHEEL_SPEED_FR`
+- **CAN-005** `CAN_ENGINE_THROTTLE_POSITION`
+- **CAN-006** `CAN_ENGINE_TPS`
+- **CAN-007** `CAN_ENGINE_RPM`
+- **CAN-008** `CAN_ENGINE_LOAD`
+- **CAN-009** `CAN_ENGINE_TORQUE`
+- **CAN-010** `CAN_ENGINE_TORQUE_PERCENT`
+- **CAN-011** `CAN_ENGINE_MAF`
+- **CAN-012** `CAN_TRANSMISSION_CURRENT_GEAR`
+- **CAN-013** `CAN_TRANSMISSION_ACTUAL_GEAR`
+- **CAN-014** `CAN_TRANSMISSION_SELECTED_GEAR`
+- **CAN-015** `CAN_TRANSMISSION_GEAR_RATIO`
+- **CAN-016** `CAN_TRANSMISSION_TEMPERATURE`
+- **CAN-017** `CAN_BRAKE_PEDAL_STATE`
+- **CAN-018** `CAN_BRAKE_PEDAL_POSITION`
+- **CAN-019** `CAN_BRAKE_PRESSURE_C1`
+- **CAN-020** `CAN_BRAKE_PRESSURE_C2`
+- **CAN-021** `CAN_TIRE_PRESSURE_FL`
+- **CAN-022** `CAN_TIRE_PRESSURE_FR`
+- **CAN-023** `CAN_TIRE_PRESSURE_RL`
+- **CAN-024** `CAN_TIRE_PRESSURE_RR`
+- **CAN-025** `CAN_TIRE_WARNING_STATE`
+- **CAN-026** `CAN_TRACTION_BATTERY_POWER`
+- **CAN-027** `CAN_TRACTION_BATTERY_SOC`
+- **CAN-028** `CAN_AMBIENT_TEMPERATURE`
+- **CAN-029** `CAN_COOLANT_TEMPERATURE`
+- **CAN-030** `CAN_OIL_TEMPERATURE`
+- **CAN-031** `CAN_INTAKE_TEMPERATURE`
+- **CAN-032** `CAN_LOCATION_HEADING`
+- **CAN-033** `CAN_ALTITUDE`
 
 ---
 
@@ -887,7 +1025,8 @@ Advisory labels only — **not** Phase 2F.1 manifest.
 
 | Physical episode | Observed channels | Canonical episode count | Rule |
 |------------------|-------------------|------------------------:|------|
-| One braking maneuver | native + decel + pedal + C1 + C2 + stop-go + abuse | **1** | `PHYSICAL_EPISODE_IDENTITY` |
+| One braking maneuver | native + speed + pedal + C1 + C2 + derived classifications | **1** | `PHYSICAL_EPISODE_IDENTITY` |
+| Stop-go pattern | multiple base episodes linked | **1** `STOP_GO_CYCLE` composite | sequence, not raw brake channel |
 | One acceleration | native + HF accel + TPS context | **1** | same |
 | One corner | native + yaw (future) | **1** | same |
 | Accel→brake reversal | accel episode + brake episode linked | **1** reversal episode | sequence linkage |
@@ -934,7 +1073,7 @@ Advisory labels only — **not** Phase 2F.1 manifest.
 | D2E-D002 | Parallel gear fields | Distinct Actual/Selected/Ratio semantics | HIGH semantic | Current=Actual | Time-aligned compare | HF expansion | Validation |
 | D2E-D003 | CurrentGear vs ActualGear | PENDING_EQUIVALENCE | LOW | Interchangeable | RP-35 style audit | Don't merge queries | — |
 | D2E-D004 | Braking multichannel | One BRAKING episode | HIGH architecture | Channel=offense | Episode matcher | Episode engine | Scoring |
-| D2E-D005 | Dual brake circuits | Retain C1+C2; no double weight | HIGH | Independent maneuvers | Agreement study | Both in manifest | BK validation |
+| D2E-D005 | Dual brake circuits | `CIRCUIT_COMPLEMENT`; retain C1+C2 in one hydraulic evidence object | HIGH | Independent maneuvers / spatial positions | Agreement study | Both in manifest | BK validation |
 | D2E-D006 | Native events | Evidence attachment | HIGH | Ground truth | Smart5 parity test | Profile policy | Reference drive |
 | D2E-D007 | Smart5 no native | Reconstructed primary | HIGH policy | LTE_R1 parity | 2G audit | HF required | 3C gate |
 | D2E-D008 | Speed aliases | Single CAN_VEHICLE_SPEED | HIGH | Multiple physics sources | LF vs HF peaks | One query field | Sync test |
@@ -957,18 +1096,26 @@ Advisory labels only — **not** Phase 2F.1 manifest.
 
 ---
 
-**Verified constants**
+**Verified constants (derived from appendices)**
 
 ```
-CANONICAL_SIGNAL_COUNT = 38
+CANONICAL_SIGNAL_COUNT = 33
 REDUNDANCY_GROUP_COUNT = 16
-PHYSICAL_EPISODE_TYPE_COUNT = 8
+BASE_MANEUVER_EPISODE_COUNT = 3
+COMPOSITE_SEQUENCE_EPISODE_COUNT = 2
+EXPOSURE_STATE_EPISODE_COUNT = 2
+CONTEXT_CLASSIFICATION_COUNT = 1
 DECISION_COUNT = 24
 EXACT_ALIAS_COUNT = 1
-PENDING_EQUIVALENCE_COUNT = 5
+PENDING_EQUIVALENCE_COUNT = 2
+POSITIONAL_COMPLEMENT_GROUP_COUNT = 2
+CIRCUIT_COMPLEMENT_GROUP_COUNT = 1
+CAUSAL_CHAIN_COMPLEMENT_GROUP_COUNT = 3
+NO_SUBSTITUTION_GROUP_COUNT = 4
 NO_VALID_FALLBACK_COUNT = 6
-SEMANTIC_FALLBACK_COUNT = 3
+SEMANTIC_FALLBACK_COUNT = 2
 DEGRADED_PROXY_COUNT = 5
+EXACT_FALLBACK_COUNT = 1
 ```
 
 **Phase 2E: DONE** · **Phase 2F: NEXT** · **Phase 2F.1: NOT_STARTED** · **Phase 3A: GATED_ON_LTE_R1_MANIFEST**

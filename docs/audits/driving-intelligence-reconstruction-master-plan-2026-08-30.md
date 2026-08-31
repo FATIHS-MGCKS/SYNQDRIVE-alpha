@@ -766,11 +766,13 @@ Deliverable: `docs/audits/dimo-phase-2d-signal-value-physics-matrix-2026-08-31.m
 ### 2E Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2e-redundancy-canonicalization-2026-08-31.md`
 
-**Exit criteria met (documentation analysis):** Phase-2D handoff groups classified; L0–L4 layer model; **38** canonical signal keys; **16** redundancy groups; relationship + source-authority taxonomies; brake/accel/cornering evidence hierarchies; **`PHYSICAL_EPISODE_IDENTITY`** (8 episode types); episode evidence/dedup model; fallback/precedence matrices; provenance contract; acquisition lineage; double-counting + cross-domain rules; legacy impact map; Phase 2F handoff; **24** decisions — **no production changes**.
+**Exit criteria met (documentation analysis):** Phase-2D handoff groups classified; L0–L4 layer model; **33** canonical signal keys (Appendix B authority); **16** redundancy groups; relationship + source-authority taxonomies; episode taxonomy separated (3 base · 2 composite · 2 exposure · 1 context subtype); **`PHYSICAL_EPISODE_IDENTITY`** invariants; episode evidence/dedup model; fallback/precedence matrices; provenance contract; acquisition lineage; double-counting + cross-domain rules; legacy impact map; Phase 2F handoff; **24** decisions — **no production changes**.
 
 **Material Phase 2E findings:**
-- **Canonical signals:** **38** `CAN_*` keys · **16** redundancy groups (`D2E-R01`…`R16`)
-- **Pending equivalences:** **5** (throttle pair, CurrentGear↔ActualGear, torque pair, etc.) — **`PROVISIONAL_REQUIRES_RUNTIME_VALIDATION`**
+- **Canonical signals:** **33** expanded `CAN_*` keys · **16** redundancy groups (`D2E-R01`…`R16`)
+- **Pending equivalences:** **2** (throttle pair · CurrentGear↔ActualGear) — torque vs torque-% **complementary**, not pending equivalence
+- **`NO_VALID_FALLBACK` families:** **6**
+- **Episode taxonomy:** **3** base maneuvers · **2** composite/sequence · **2** exposure states · **1** context subtype (`HIGH_SPEED_BRAKING` on `BRAKING`, not peer episode)
 - **`NO_VALID_FALLBACK` families:** **6** (hydraulic pressure, yaw, wheel speeds, tire pressure group, battery regen HF, native cornering on Smart5)
 - **Physical episode types:** **8** — braking multichannel → **1** canonical episode (not 7 offenses)
 - **Major double-counting risks:** LTE_R1 native `DrivingEvent` + HF reconstructed/abuse on same trip · brake C1/C2 must not double-weight
@@ -1151,7 +1153,7 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Phase 2C schema expansion audit | DONE | `dimo-phase-2c-current-schema-signal-expansion-audit-2026-08-31.md` — 117 schema fields |
 | Phase 2D.0 connection/powertrain stratification baseline | DONE | Master Plan §1.6 — taxonomy frozen (architecture only) |
 | Phase 2D signal value/physics matrix | DONE | `dimo-phase-2d-signal-value-physics-matrix-2026-08-31.md` — Tier A: **8** · cadence-critical: **6** · latency-critical: **2** · `TARGET_LE_1S_EXACT_COUNT=8` · QA pass complete |
-| Phase 2E DIMO redundancy / canonicalization | DONE | `dimo-phase-2e-redundancy-canonicalization-2026-08-31.md` — **38** canonical keys · **16** groups · **8** episode types |
+| Phase 2E DIMO redundancy / canonicalization | DONE | `dimo-phase-2e-redundancy-canonicalization-2026-08-31.md` — **33** canonical keys · **16** groups · episode taxonomy QA pass |
 | Phase 2F DIMO capability-first acquisition | NEXT | Connection-profile-aware query profiles |
 | Phase 2F.1 DIMO LTE_R1 reference manifest | NOT_STARTED | Ungates Phase 3A only |
 | Phase 2G DIMO connection-variant audit | NOT_STARTED | Smart5 + Tesla Direct vs LTE R1; profile manifests |
@@ -1184,7 +1186,7 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 5. ~~Execute Phase 2C: CURRENT DIMO SIGNAL/SCHEMA EXPANSION AUDIT.~~ **Done** — see Phase 2C audit (`117` schema fields; introspection authority).
 6. ~~Execute Phase 2D.0: Connection & Powertrain Stratification Baseline.~~ **Done** — see Master Plan §1.6 (architecture amendment 2026-08-31).
 7. ~~Execute Phase 2D: Signal value / physics matrix.~~ **Done** — see Phase 2D audit (`20` main-track candidates scored).
-8. ~~Execute Phase 2E: DIMO redundancy / canonicalization (Phase 2D handoff groups).~~ **Done** — see Phase 2E audit (`38` canonical keys, `PHYSICAL_EPISODE_IDENTITY`).
+8. ~~Execute Phase 2E: DIMO redundancy / canonicalization (Phase 2D handoff groups).~~ **Done** — see Phase 2E audit (`33` canonical keys, `PHYSICAL_EPISODE_IDENTITY`).
 9. **Execute Phase 2F:** DIMO capability-first acquisition strategy (Phase 2E handoff).
 10. **Execute Phase 2F.1:** `DIMO_LTE_R1` reference manifest → **ungate Phase 3A** LTE R1 Reference Program.
 11. **Execute Phase 3A** (LTE R1) — primary validation/calibration track. **Does not wait** for steps 12–14.
