@@ -116,8 +116,8 @@ The following 2026-08-30 vehicle-specific audit documents were supplied as the a
 2. C63 AMG — `docs/audits/dimo-ks-mx-2024-signal-inventory-gap-analysis-2026-08-30.md`
 3. Audi A4 — `docs/audits/dimo-ks-ms-661-signal-inventory-gap-analysis-2026-08-30.md`
 4. VW Arteon — `docs/audits/dimo-hmue-c-215-signal-inventory-gap-analysis-2026-08-30.md`
-### Availability note — 2026-08-30
-At creation time of this master document, these exact four paths were **not present on the repository default branch (`main`)**. They must be ingested immediately once pushed/merged or otherwise made available. Do not silently substitute the older July capability audit for these four documents.
+### Availability note — updated 2026-08-31 (Phase 2B, PR #1458)
+The four inventory documents are **canonical in-repo** under `docs/audits/` (included in PR #1458; **PRESENT_ON_MAIN_AFTER_MERGE**). Source commits: `0bab8a4d3`, `5a440c60d`, `caeaa3aa4`, `c2a0e1c5e`. Do not substitute the older July capability audit (`dimo-driving-signals-capability.md`) for these four documents.
 ---
 # 4. Master Workstream
 ## Phase 1 — Current-State Forensic Driving-Analysis Audit
@@ -324,13 +324,30 @@ Deliverable: `docs/audits/dimo-phase-2a-current-query-surface-audit-2026-08-31.m
 - Post-trip volume is **formula-driven** (not flat 6–8/trip); LTE_R1 runs **two full-trip Q009 HF fetches** per completed trip.
 - VehicleLatestState = **LATEST_STATE_UNTIL_OVERWRITTEN** (not append-only snapshot history); ClickHouse optional `HISTORICAL_TTL_180D`.
 - Provider schema claims limited to **CURRENT_SYNQDRIVE_REFERENCED_DIMO_SURFACE** + `CONFIRMED_FROM_CODE`; no current DIMO introspection artifact verified in this audit.
-- Four 2026-08-30 vehicle inventory files still **not on `main`** — Phase 2B remains blocked on ingestion.
+- Four vehicle inventory files **PRESENT_ON_MAIN_AFTER_MERGE** (PR #1458); Phase 2B synthesis complete and reproducible from `main`.
 
-**Phase 2 overall:** IN_PROGRESS (2A done; 2B–2G not started). **Phase 3 remains gated.**
+**Phase 2 overall:** IN_PROGRESS (2A+2B done; **2C NEXT** = current DIMO signal/schema expansion audit; 2D–2G not started). **Phase 3 remains gated.**
+
+### 2B Status — DONE (2026-08-31)
+Deliverable: `docs/audits/dimo-phase-2b-four-vehicle-capability-gap-matrix-2026-08-31.md` (+ four vehicle inventory source docs in same PR)
+
+**Exit criteria met (forensic synthesis):** All four vehicle inventories ingested from canonical repo paths; **70-row** cross-vehicle capability matrix; query effectiveness and **static selection mismatch** quantified; `LISTED_NON_NULL_AT_AUDIT` assessed (not over-claimed as full reliability); provider vs score consumption separated for native events; RP-01–RP-20 reconciled + **11** new probes (RP-21–RP-31).
+
+**Material Phase 2B findings (evidence-corrected):**
+- Union **33** vehicle signals; **28** common; **15** `AVAILABLE_NOT_IN_PHASE2A_DRIVING_ACQUISITION`.
+- Q001 **`STATIC_SELECTION_MISMATCH_RATE` = 65.6%** (21/32 null/inapplicable selections) — **CONFIRMED_ARCHITECTURAL_INEFFICIENCY**; provider/payload cost **UNKNOWN_REQUIRES_MEASUREMENT**.
+- `LISTED_NON_NULL_AT_AUDIT` = 100% at audit observation — does **not** prove freshness/cadence/historical support (C63 mixed timestamps).
+- Hardware profile → signal capability **NOT_ESTABLISHED_FROM_THIS_FOUR_VEHICLE_SET** (3/4 profiles UNKNOWN).
+- Provider native events **0 / 34 / 0 / 50** per 30d; **CURRENT_SCORE_CONSUMPTION** UNKNOWN for C63 (RP-25).
+- **NO_DIMO** tire/brake/yaw/lateral/long-accel signals in four inventories (≠ physical vehicle equipment claims).
+- Q009: **9/15** vehicle-observed, **3/15** powertrain-inapplicable, **3/15** queried-not-observed (possible gear alias gap on Tiguan).
+
+### 2C Status — NEXT
+**CURRENT DIMO SIGNAL/SCHEMA EXPANSION AUDIT** — determine today's provider schema/signal/event families (including signals no audit vehicle delivers). No production changes. Runtime probes selective (RP-21, RP-25, RP-26, RP-29, RP-31 among inputs).
 
 ### Status (Phase 2 overall)
-**IN_PROGRESS — 2A DONE; 2B BLOCKED ON FOUR VEHICLE INVENTORY FILES**
-The older July DIMO capability audit is HISTORICAL_EVIDENCE only. The four exact 2026-08-30 vehicle inventories are still not on `main` as of 2026-08-31.
+**IN_PROGRESS — 2A DONE; 2B DONE; 2C NEXT (schema expansion); 2D Value/Physics; 2E Canonicalization; 2F Capability-first profiles; 2G Phase-2 closure + Flight Recorder manifest**
+The older July DIMO capability audit is HISTORICAL_EVIDENCE only.
 ---
 ## Phase 3 — Telemetry Flight Recorder
 **Goal:** capture raw, timestamped evidence for the signal set selected in Phase 2 without changing scoring behavior.
@@ -610,18 +627,20 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Phase 1.1 forensic call graph & formula inventory | DONE | Phase 1 audit + evidence review PR #1454 |
 | Phase 1 evidence/completeness review (storage, active-trip, matrix) | DONE | §5.1, §12.1, §25 (22 rows) |
 | Exhaustive current-state formula/call-graph inventory | DONE | Phase 1 exit criteria satisfied |
-| Read 2026-08-30 Tiguan signal gap audit | BLOCKED | exact file not yet on `main` |
-| Read 2026-08-30 C63 AMG signal gap audit | BLOCKED | exact file not yet on `main` |
-| Read 2026-08-30 Audi A4 signal gap audit | BLOCKED | exact file not yet on `main` |
-| Read 2026-08-30 Arteon signal gap audit | BLOCKED | exact file not yet on `main` |
+| Read 2026-08-30 Tiguan signal gap audit | DONE | Phase 2B — git commit `0bab8a4d3` |
+| Read 2026-08-30 C63 AMG signal gap audit | DONE | Phase 2B — git commit `5a440c60d` |
+| Read 2026-08-30 Audi A4 signal gap audit | DONE | Phase 2B — git commit `caeaa3aa4` |
+| Read 2026-08-30 Arteon signal gap audit | DONE | Phase 2B — git commit `c2a0e1c5e` |
 | Snapshot query inventory | DONE | Phase 2A audit §4–6 (27 registry entries / 22 unique definitions) |
 | Active-trip/live polling query inventory | DONE | Phase 2A audit §7–8 |
 | HF/time-series query inventory | DONE | Phase 2A audit §9–10 |
 | Native event/segment inventory refresh | DONE | Phase 2A audit §12–13 |
 | Phase 2A query-surface audit | DONE | `dimo-phase-2a-current-query-surface-audit-2026-08-31.md` |
-| Four-vehicle capability matrix | NOT_STARTED | waits on new audit docs (Phase 2B) |
-| Available-but-unused DIMO signal matrix | NOT_STARTED | Phase 2 |
-| Prioritized query expansion proposal | NOT_STARTED | no production change yet |
+| Phase 2B four-vehicle capability matrix | DONE | `dimo-phase-2b-four-vehicle-capability-gap-matrix-2026-08-31.md` + 4 inventory docs |
+| Four-vehicle capability matrix | DONE | Phase 2B deliverable (70 rows) |
+| Available-but-unused DIMO signal matrix | DONE | Phase 2B §8 — 15 signals (Phase-2A driving acquisition) |
+| Phase 2C schema expansion audit | NEXT | Current DIMO signal/schema authority |
+| Prioritized query expansion proposal | NOT_STARTED | Phase 2D+ |
 | Flight Recorder manifest | NOT_STARTED | Phase 2 exit deliverable |
 | Flight Recorder implementation | NOT_STARTED | gated on Phase 2 |
 | Instrumented reference drive | NOT_STARTED | gated on Flight Recorder |
@@ -639,11 +658,12 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 ---
 # 6. Immediate Next Actions
 1. ~~Complete Phase 1's exact call/formula/consumer inventory.~~ **Done** — see Phase 1 audit.
-2. Make the four 2026-08-30 vehicle signal-inventory files available on `main` and ingest them into this workstream.
-3. ~~Execute Phase 2A against current code: exact Snapshot / Live Poll / HF / Events query inventories.~~ **Done** — see Phase 2A audit.
-4. Execute Phase 2B: merge Phase 2A code findings with the four vehicle-specific capability inventories (blocked until files on `main`).
-5. Produce a prioritized `available but unused` signal list and assess incremental value per driving/brake/tire use case.
-6. Only then freeze the Flight Recorder signal manifest and proceed to Phase 3.
+2. ~~Merge the four 2026-08-30 vehicle signal-inventory files to `main` under `docs/audits/`.~~ **Done in PR #1458** — PRESENT_ON_MAIN_AFTER_MERGE.
+3. ~~Execute Phase 2A against current code.~~ **Done** — see Phase 2A audit.
+4. ~~Execute Phase 2B: merge Phase 2A with four vehicle capability inventories.~~ **Done** — see Phase 2B audit.
+5. **Execute Phase 2C:** CURRENT DIMO SIGNAL/SCHEMA EXPANSION AUDIT — today's provider schema/event families (including signals no audit vehicle delivers). Selective runtime probes as input only. No production changes.
+6. Phase 2D: Signal value / physics matrix (after 2C).
+7. Phase 2E–2G: canonicalization, capability-first profiles, Flight Recorder manifest — then ungate Phase 3.
 ---
 # 7. Agent Handoff Protocol
 Any agent continuing this workstream should:
