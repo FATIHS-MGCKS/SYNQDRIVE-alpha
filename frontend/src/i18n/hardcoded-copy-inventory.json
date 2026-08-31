@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "generatedAt": "2026-08-30",
+  "generatedAt": "2026-08-31",
   "phases": {
     "P21": {
       "enforceCleanExact": [
@@ -16913,12 +16913,10 @@
       "severity": "debt",
       "migrationPhase": "P2.2",
       "structuralContext": "BillingInvoiceSection",
-      "occurrences": 4,
+      "occurrences": 2,
       "files": [
         "rental/components/billing/BillingInvoiceSection.tsx",
-        "rental/components/booking-detail/BookingDossier.tsx",
-        "rental/components/invoices/InvoiceDetail.tsx",
-        "rental/components/new-booking/MobileBookingFooter.tsx"
+        "rental/components/invoices/InvoiceDetail.tsx"
       ]
     },
     {

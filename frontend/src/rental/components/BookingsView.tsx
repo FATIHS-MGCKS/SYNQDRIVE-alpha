@@ -778,7 +778,7 @@ export function BookingsView({
       loadBookings();
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Buchung konnte nicht gespeichert werden';
-      toast.error('Fehler beim Speichern', { description: String(msg) });
+      toast.error(t('newBooking.toast.saveFailed'), { description: String(msg) });
     }
   };
 
