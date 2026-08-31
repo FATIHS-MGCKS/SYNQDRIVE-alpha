@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { api, getErrorMessage } from '../../../lib/api';
 import type { CustomerDocumentRecord } from '../CustomerDocumentUploadBox';
 import type {
@@ -39,39 +40,39 @@ export function useCustomerDocumentStatus(orgId: string | null | undefined, cust
   const { t } = useLanguage();
   const [status, setStatus] = useState<import('../../../lib/api').CustomerDocumentVerificationStatusDto | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<TranslationKey | null>(null);
 
   const refresh = useCallback(() => {
     if (!orgId || !customerId) return;
     setLoading(true);
-    setError(null);
+    setErrorKey(null);
     api.customers.customerDocuments
       .status(orgId, customerId)
       .then(setStatus)
       .catch(() => {
         setStatus(null);
-        setError(t('customers.error.documentStatusLoad'));
+        setErrorKey('customers.error.documentStatusLoad');
       })
       .finally(() => setLoading(false));
-  }, [orgId, customerId, t]);
+  }, [orgId, customerId]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  return { status, loading, error, refresh };
+  return { status, loading, error: errorKey ? t(errorKey) : null, refresh };
 }
 
 export function useCustomerDocuments(orgId: string | null | undefined, customerId: string) {
   const { t } = useLanguage();
   const [documents, setDocuments] = useState<CustomerDocumentRecord[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<TranslationKey | null>(null);
 
   const refresh = useCallback(() => {
     if (!orgId || !customerId) return;
     setLoading(true);
-    setError(null);
+    setErrorKey(null);
     api.customers.customerDocuments
       .list(orgId, customerId)
       .then((rows) =>
@@ -79,16 +80,16 @@ export function useCustomerDocuments(orgId: string | null | undefined, customerI
       )
       .catch(() => {
         setDocuments([]);
-        setError(t('customers.error.documentsLoad'));
+        setErrorKey('customers.error.documentsLoad');
       })
       .finally(() => setLoading(false));
-  }, [orgId, customerId, t]);
+  }, [orgId, customerId]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  return { documents, loading, error, refresh };
+  return { documents, loading, error: errorKey ? t(errorKey) : null, refresh };
 }
 
 export function useCustomerEligibility(orgId: string | null | undefined, customerId: string) {
@@ -126,34 +127,34 @@ export function useCustomerTimeline(orgId: string | null | undefined, customerId
   const { t } = useLanguage();
   const [events, setEvents] = useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<TranslationKey | null>(null);
 
   const refresh = useCallback(() => {
     if (!orgId || !customerId) return;
     setLoading(true);
-    setError(null);
+    setErrorKey(null);
     api.customers.customerTimeline
       .list(orgId, customerId, { limit: 50 })
       .then((res) => setEvents(res.data ?? []))
       .catch(() => {
         setEvents([]);
-        setError(t('customers.error.timelineLoad'));
+        setErrorKey('customers.error.timelineLoad');
       })
       .finally(() => setLoading(false));
-  }, [orgId, customerId, t]);
+  }, [orgId, customerId]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  return { events, loading, error, refresh };
+  return { events, loading, error: errorKey ? t(errorKey) : null, refresh };
 }
 
 export function useCustomerFines(orgId: string | null | undefined, customerId: string) {
   const { t } = useLanguage();
   const [fines, setFines] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<TranslationKey | null>(null);
 
   useEffect(() => {
     if (!orgId || !customerId) return;
@@ -163,19 +164,19 @@ export function useCustomerFines(orgId: string | null | undefined, customerId: s
       .then((rows) => setFines(Array.isArray(rows) ? rows : []))
       .catch(() => {
         setFines([]);
-        setError(t('customers.error.finesLoad'));
+        setErrorKey('customers.error.finesLoad');
       })
       .finally(() => setLoading(false));
-  }, [orgId, customerId, t]);
+  }, [orgId, customerId]);
 
-  return { fines, loading, error };
+  return { fines, loading, error: errorKey ? t(errorKey) : null };
 }
 
 export function useCustomerInvoices(orgId: string | null | undefined, customerId: string) {
   const { t } = useLanguage();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<TranslationKey | null>(null);
 
   useEffect(() => {
     if (!orgId || !customerId) return;
@@ -185,12 +186,12 @@ export function useCustomerInvoices(orgId: string | null | undefined, customerId
       .then((rows) => setInvoices(Array.isArray(rows) ? rows : []))
       .catch(() => {
         setInvoices([]);
-        setError(t('customers.error.invoicesLoad'));
+        setErrorKey('customers.error.invoicesLoad');
       })
       .finally(() => setLoading(false));
-  }, [orgId, customerId, t]);
+  }, [orgId, customerId]);
 
-  return { invoices, loading, error };
+  return { invoices, loading, error: errorKey ? t(errorKey) : null };
 }
 
 export function useCustomerDrivingAggregate(

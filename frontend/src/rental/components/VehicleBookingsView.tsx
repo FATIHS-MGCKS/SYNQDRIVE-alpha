@@ -19,6 +19,7 @@ import {
   unwrapBookingListResponse,
 } from './bookings/bookingUtils';
 import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { Icon } from './ui/Icon';
 import { VehicleAvailabilityTimeline } from './vehicle-bookings/VehicleAvailabilityTimeline';
 import { VehicleBookingQuickDrawer } from './vehicle-bookings/VehicleBookingQuickDrawer';
@@ -108,7 +109,7 @@ export function VehicleBookingsView({
   const { orgId } = useRentalOrg();
   const [bookings, setBookings] = useState<VehicleBookingRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<TranslationKey | null>(null);
   const [truncated, setTruncated] = useState(false);
   const [rangeMode, setRangeMode] = useState<TimelineRangeMode>(DEFAULT_RANGE_MODE);
   const [rangeAnchor, setRangeAnchor] = useState(() => resolveHorizonAnchorForMode(DEFAULT_RANGE_MODE));
@@ -123,13 +124,13 @@ export function VehicleBookingsView({
   const loadBookings = useCallback(async () => {
     if (!orgId || !vehicle?.id) {
       setBookings([]);
-      setError(null);
+      setErrorKey(null);
       setTruncated(false);
       return;
     }
 
     setLoading(true);
-    setError(null);
+    setErrorKey(null);
     setTruncated(false);
 
     try {
@@ -155,11 +156,13 @@ export function VehicleBookingsView({
       setBookings(parsed);
     } catch {
       setBookings([]);
-      setError(t('rental.vehicleBookings.error.loadFailed'));
+      setErrorKey('rental.vehicleBookings.error.loadFailed');
     } finally {
       setLoading(false);
     }
-  }, [horizon.fromIso, horizon.toIso, orgId, t, vehicle?.id]);
+  }, [horizon.fromIso, horizon.toIso, orgId, vehicle?.id]);
+
+  const error = errorKey ? t(errorKey) : null;
 
   const handleRangeModeChange = useCallback((mode: TimelineRangeMode) => {
     setRangeMode(mode);

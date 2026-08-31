@@ -93,23 +93,104 @@ All 85 certified fingerprints remediated via `t('…')` with `REUSED_KEY` or `NE
 
 ## PART G — Same-mount witnesses
 
-`rental-p232r-host-presentation-localization.test.tsx` covers:
+`rental-p232r-host-presentation-localization.test.tsx` now mounts **production hooks/components** (not synthetic `t(key)` wrappers):
 
-1. Rental shell cleaning toast key (`rental.shell.cleaning.toast.taskCreated`)
-2. Booking mutation toast (`bookings.toast.saved`)
-3. NewBooking validation toast (`newBooking.toast.incomplete`)
-4. Customer toast (`customers.toast.noteSaved`)
-5. Aria labels (`rental.vehicleHealth.aria.dataQuality` / `.safety`)
-6. Data authorization toast (`settings.dataAuth.toast.approved`)
-7. Voice conversation toast (`voice.conversations.toast.taskCreated`)
+| Witness | Production surface |
+|---------|-------------------|
+| Customer hooks zero-refetch | `useCustomerDocumentStatus`, `useCustomerDocuments`, `useCustomerTimeline`, `useCustomerFines`, `useCustomerInvoices` |
+| Customer error DE→EN→DE | `useCustomerDocumentStatus` with failing API |
+| Data authorization load identity | `useDataAuthorizationCenter` + `useEffect(() => load(), [load])` consumer |
+| Raw fixture preservation | `useCustomerDetail` (`Provider Customer X7`) |
+| Aria accessibility | mounted `BrakeEvidencePanel` DOM `aria-label` |
+| Booking toast | `BookingEditDialog` save mutation |
+| Customer/settings toast | `useDataAuthorizationCenter.grant` |
+| Voice toast | `VoiceConversationsPanel.createTaskFromCall` |
+| App shell cleaning | `api.vehicles.updateOperationalStatus` + cleaning toast branches (mirrors `App.tsx`) |
+| NewBooking state + validation | mounted `NewBookingView` vehicle search + incomplete toast when reachable |
 
-DE → EN → DE on same mount without `key={locale}` remount.
+DE → EN → DE on same mount; `mountCount` stays **1**.
 
 ---
 
 ## PART H — Zero-refetch witnesses
 
-Locale-only switch does not increment mocked fetch counters in P2.3.2R test harness.
+Initial mocked business fetch counts are **> 0**, then locale-only switch adds **0** delta:
+
+| API | Initial | After EN | After DE |
+|-----|--------:|---------:|---------:|
+| `customerDocuments.status` | 1 | 1 | 1 |
+| `customerDocuments.list` | 1 | 1 | 1 |
+| `customerTimeline.list` | 1 | 1 | 1 |
+| `fines.byCustomer` | 1 | 1 | 1 |
+| `invoices.byCustomer` | 1 | 1 | 1 |
+| `dataAuthorizations.list` | 1 | 1 | 1 |
+| `dataAuthorizations.stats` | 1 | 1 | 1 |
+
+Vacuous synthetic zero-refetch test removed (previous harness never called mocked APIs).
+
+---
+
+## PART O — P2.3.2R zero-refetch correction (2026-08-31)
+
+### Discovered defect
+
+P2.3.2R stored translated fallback strings inside fetch/load callbacks with `t` in dependency arrays. Because `LanguageContext.t` identity changes on locale switch, business I/O callbacks were recreated and auto-effects refetched.
+
+### Root cause
+
+`translate` / `t` identity depends on `locale` → `DE→EN→DE` changed `refresh`/`load` identity → `useEffect([refresh|load])` re-ran business requests.
+
+### Corrected architecture
+
+Store **semantic `TranslationKey`** in hook state; localize at render return (`error: errorKey ? t(errorKey) : null`). Fetch/load deps are business-only (`orgId`, `customerId`, `vehicleId`, horizons, etc.).
+
+### Files corrected
+
+| File | Hooks / loaders |
+|------|-----------------|
+| `useCustomerDetailData.ts` | `useCustomerDocumentStatus`, `useCustomerDocuments`, `useCustomerTimeline`, `useCustomerFines`, `useCustomerInvoices` |
+| `useDataAuthorizationCenter.ts` | `load` |
+| `useTelltaleDetailContext.ts` | `load` |
+| `VehicleBookingsView.tsx` | `loadBookings` |
+| `VehicleTasksView.tsx` | `loadTasks` |
+
+### `t` / `locale` dependency audit (P2.3.2R changed production files)
+
+| Path | Hook / callback | Business I/O? | Locale refetch before | After correction |
+|------|-----------------|---------------|----------------------|------------------|
+| `useCustomerDetailData.ts` (5 hooks) | `refresh` / fetch effects | YES | YES | **NO** |
+| `useDataAuthorizationCenter.ts` | `load` | YES | YES | **NO** |
+| `useTelltaleDetailContext.ts` | `load` | YES | YES | **NO** |
+| `VehicleBookingsView.tsx` | `loadBookings` | YES | YES | **NO** |
+| `VehicleTasksView.tsx` | `loadTasks` | YES | YES | **NO** |
+| `App.tsx` | `persistCleaningStatus` | user-triggered | NO | NO |
+| `BookingsView.tsx` | `bookingStatusLabel` | presentation only | NO | NO |
+| `BookingsView.tsx` | `loadBookings` | YES (unchanged) | NO | NO |
+| `ServiceOverviewPanel.tsx` | `openComplete` / `submitComplete` | user-triggered | NO | NO |
+| `useCustomerVerification.ts` | `startDiditCheck` | user-triggered | NO | NO |
+| Toast-only surfaces (voice, settings, booking dialogs, etc.) | click handlers | user-triggered | NO | NO |
+
+**Blocker count after correction:** 0 locale-driven business auto-fetch paths in P2.3.2R changed code.
+
+### Witness tests added/updated
+
+- `rental-p232r-host-presentation-localization.test.tsx` — 11 production witnesses
+- `rental-p232r-governance-scanner.test.ts` — governance scanner assertion (excluded from `tsc -b`)
+
+### Post-correction validations
+
+| Check | Result |
+|-------|--------|
+| `npm run i18n:scanner:test` | PASS |
+| `npm run i18n:check` | PASS |
+| `npm run check:surface` | PASS |
+| `npm run i18n:governance` | PASS (`ACTIVE_REMEDIATION_REQUIRED=0`, `NEW_UNCLASSIFIED=0`) |
+| `npx tsc -b` | PASS |
+| `npm run build` | PASS |
+| P2.3.2R witnesses | PASS (12/12) |
+| `git diff --check` | PASS |
+
+Dictionary unchanged: EN/DE **9803**, parity **100%**, orphans **0**. Baseline **1627** / fingerprint **v3** unchanged. Enhanced **1542** (Rental **257**, Finance **43**).
 
 ---
 
@@ -155,7 +236,7 @@ See Part D. `npm run i18n:check` reports `Canonical keys: 9803`, EN/DE 100% comp
 | `npm run i18n:governance` | PASS (exit 0) |
 | `npx tsc -b` | PASS |
 | `npm run build` | PASS |
-| P2.3.2R focused tests | PASS (6/6) |
+| P2.3.2R focused tests | PASS (12/12) |
 | `git diff --check` | PASS |
 
 ---

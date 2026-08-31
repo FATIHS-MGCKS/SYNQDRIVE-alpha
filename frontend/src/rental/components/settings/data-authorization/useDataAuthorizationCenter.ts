@@ -8,6 +8,7 @@ import {
   type DataAuthorizationStatsDto,
 } from '../../../../lib/api';
 import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { DataAuthorizationFilters } from './data-authorization.utils';
 import { serverListParams } from './data-authorization.utils';
 
@@ -24,7 +25,7 @@ export function useDataAuthorizationCenter(orgId: string | null) {
   const [authorizations, setAuthorizations] = useState<DataAuthorizationDto[]>([]);
   const [stats, setStats] = useState<DataAuthorizationStatsDto | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<TranslationKey | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
   const lastFiltersRef = useRef<DataAuthorizationFilters | undefined>(undefined);
 
@@ -36,7 +37,7 @@ export function useDataAuthorizationCenter(orgId: string | null) {
         return;
       }
       setLoading(true);
-      setError(null);
+      setErrorKey(null);
       try {
         const params = filters ? serverListParams(filters) : undefined;
         const [list, st] = await Promise.all([
@@ -48,13 +49,13 @@ export function useDataAuthorizationCenter(orgId: string | null) {
       } catch (err) {
         setAuthorizations([]);
         setStats(null);
-        setError(t('settings.dataAuth.error.loadFailed'));
+        setErrorKey('settings.dataAuth.error.loadFailed');
         toast.error(extractErrorMessage(err));
       } finally {
         setLoading(false);
       }
     },
-    [orgId, t],
+    [orgId],
   );
 
   const reload = useCallback(async () => {
@@ -172,7 +173,7 @@ export function useDataAuthorizationCenter(orgId: string | null) {
     authorizations,
     stats,
     loading,
-    error,
+    error: errorKey ? t(errorKey) : null,
     actionId,
     load,
     reload,
