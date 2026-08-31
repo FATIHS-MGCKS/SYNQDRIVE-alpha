@@ -54,6 +54,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-08-31T22:00:00.000Z',
   },
   {
+    id: 'p1-8-2-controlled-production-scale-to-2-2026-08-31',
+    version: '4.9.1017',
+    title: 'P1.8.2 — Controlled production scale-to-2 + multi-replica validation',
+    summary: [
+      'Production scaled PM2 fork ×1 → ×2: `synqdrive` port 3001 + `synqdrive-b` port 3002, same SHA `bfcf9ddb7`, shared Postgres/Redis DB 0.',
+      'nginx dual upstream (`synqdrive_backend` 3001+3002); singleton scheduler leader verified (9×5s ticks); controlled failover 32s (A stop → B leader → A restart).',
+      'Coordination probe on Redis DB 0: mutex same-vehicle concurrency=1, DIMO global ceiling 50/45 observed, no limit breach. Queues stable; battery.v2 failed=65 unchanged.',
+      'Verdict SCALE_TO_2_SUCCESS. Next: P1.8.3 post-scale retrospective audit.',
+    ],
+    reason: 'P1.8.2 gate — execute authorized controlled scale with active validation (not soak).',
+    previousBehavior: 'Production replica=1 only; nginx single upstream 3001; scale deferred until P1.8.2 pre-scale deploy PASS.',
+    details:
+      'architecture/P1_8_2_CONTROLLED_PRODUCTION_SCALE_TO_2_2026-08-31.md; VPS log p182-scale-to-2-20260831194121.log.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T19:45:00.000Z',
+  },
+  {
     id: 'p1-8-1-pre-scale-remediation-2026-08-31',
     version: '4.9.1017',
     title: 'P1.8.1 Pre-Scale Remediation — orphan validation cleanup + battery.v2 forensics',

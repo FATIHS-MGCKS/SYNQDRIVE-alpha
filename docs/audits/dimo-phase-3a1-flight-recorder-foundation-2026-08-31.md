@@ -31,7 +31,9 @@
 | **ArchitekturView** | Auto-merged cleanly — all three workstream entries present |
 | **Migration `20260831210000`** | PostgreSQL `--` comment preserved; no regression |
 
-Main commits incorporated: #1469 (P1.8 soak audit), #1470 (P1.8.1 remediation).
+Main commits incorporated: #1469 (P1.8 soak audit), #1470 (P1.8.1 remediation), #1471 (P1.8.2 scale-to-2).
+
+**Second reconciliation (post-#1471):** merged `58c7d8777` — single conflict in `ChangesView.tsx` (semantic union: Phase 3A.1 + P1.8.2 + P1.8.1 + P1.8 soak). `ArchitekturView.tsx` auto-merged with all four entries.
 
 ---
 

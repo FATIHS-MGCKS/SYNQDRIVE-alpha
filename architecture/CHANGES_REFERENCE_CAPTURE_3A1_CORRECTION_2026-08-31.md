@@ -34,3 +34,5 @@
 - Single conflict: `ChangesView.tsx` — kept all changelog entries (Phase 3A.1 + P1.8.1 + P1.8).
 - `ArchitekturView.tsx` auto-merged with all entries intact.
 - Phase 3A.1 invariants and migration `20260831210000` (`--` comment) unchanged.
+
+**Second reconciliation (post-#1471):** incorporated `origin/main` at `58c7d8777` (P1.8.2 scale-to-2 #1471). Conflict: `ChangesView.tsx` only — kept Phase 3A.1 + P1.8.2 + P1.8.1 + P1.8 entries.
