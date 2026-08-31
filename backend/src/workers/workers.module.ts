@@ -36,6 +36,8 @@ import { BookingDocumentGenerationProcessor } from './processors/booking-documen
 import { ClickHouseMirrorRetryProcessor } from './processors/clickhouse-mirror-retry.processor';
 import { RefuelStationEnrichmentProcessor } from './processors/refuel-station-enrichment.processor';
 import { FuelStationEnrichmentRecoveryScheduler } from './schedulers/fuel-station-enrichment-recovery.scheduler';
+import { ReferenceCaptureProcessor } from './processors/reference-capture.processor';
+import { ReferenceCaptureRetentionScheduler } from './schedulers/reference-capture-retention.scheduler';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { DimoDtcScheduler } from './schedulers/dimo-dtc.scheduler';
@@ -81,6 +83,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
       { name: QUEUE_NAMES.BOOKING_DOCUMENT_GENERATION },
       { name: QUEUE_NAMES.CLICKHOUSE_MIRROR_RETRY },
       { name: QUEUE_NAMES.ENERGY_REFUEL_STATION_ENRICH },
+      { name: QUEUE_NAMES.REFERENCE_CAPTURE },
     ),
     DimoModule,
     VehicleIntelligenceModule,
@@ -119,6 +122,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     BookingDocumentGenerationProcessor,
     ClickHouseMirrorRetryProcessor,
     RefuelStationEnrichmentProcessor,
+    ReferenceCaptureProcessor,
 
     // Schedulers
     DimoSnapshotScheduler,
@@ -140,6 +144,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     VoiceRetentionScheduler,
     IamDataRetentionScheduler,
     FuelStationEnrichmentRecoveryScheduler,
+    ReferenceCaptureRetentionScheduler,
   ],
 })
 export class WorkersModule {}

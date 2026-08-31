@@ -46,6 +46,7 @@ export const SINGLETON_GLOBAL_SCHEDULER_NAMES = [
   'booking_eligibility_recheck',
   'billing_domain_event_outbox',
   'billing_domain_event_email',
+  'reference_capture_retention',
 ] as const;
 
 export type SingletonGlobalSchedulerName =
