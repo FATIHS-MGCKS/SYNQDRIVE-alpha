@@ -1,4 +1,4 @@
-# Phase 3A.1 correction 2 — STARTING state + pending cycle job tracking.
+-- Phase 3A.1 correction 2 — STARTING state + pending cycle job tracking.
 
 ALTER TYPE "ReferenceCaptureSessionStatus" ADD VALUE 'STARTING';
 
