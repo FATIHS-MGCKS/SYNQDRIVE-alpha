@@ -4,7 +4,7 @@
 **Status:** DONE (design authority complete; no production implementation)  
 **Scope:** Capability-first signal acquisition architecture · per-vehicle manifest contract · query planner design · tier taxonomy · scaling model · LTE_R1 2F.1 handoff  
 **Repository:** `FATIHS-MGCKS/SYNQDRIVE-alpha`  
-**Phase gate:** Phase 2F **DONE** · Phase 2F.1 **NEXT** · Phase 3A **`GATED_ON_LTE_R1_MANIFEST`**
+**Phase gate:** Phase 2F **DONE** · Phase 2F.1 **DONE** · Phase 3A **READY / UNGATED_TO_START**
 
 ---
 
@@ -60,7 +60,7 @@ RAW PROVIDER OBSERVATION → CANONICAL SIGNAL (CAN_*) → PHYSICAL EPISODE → C
 4. **Hardware routing preserved** — LTE_R1 native events primary; SMART5 HF reconstruction required; no false cross-profile substitution.
 5. **Phase 2E invariants frozen** — throttle ≠ pedal; torque complementary not interchangeable; brake `CIRCUIT_COMPLEMENT`; six `NO_VALID_FALLBACK` families.
 
-**Phase 2F status: DONE** · **Phase 2F.1: NEXT** · **Phase 3A: GATED_ON_LTE_R1_MANIFEST**
+**Phase 2F status: DONE** · **Phase 2F.1: DONE** · **Phase 3A: READY / UNGATED_TO_START**
 
 ---
 
@@ -589,7 +589,7 @@ Each profile defines **minimum canonical key sets**, **minimum capability state*
 | Cornering GT | `CAN_YAW_RATE` or native `harshCornering` | ANALYSIS_ELIGIBLE | LTE_R1 native interim |
 | Brake GT | `CAN_BRAKE_PRESSURE_C1/C2` | CADENCE_VALIDATED | Hydraulic ground truth |
 
-**Gate:** Phase 3A **`GATED_ON_LTE_R1_MANIFEST`** — GT profile must be `ANALYSIS_ELIGIBLE` on manifest before validation flights.
+**Gate:** Phase **3A** may start — LTE_R1 manifest v1.0.0 frozen (2F.1). GT profile `CADENCE_VALIDATED` on Tier-A physics keys remains a **Phase 3A runtime outcome**, not a 2F.1 documentation gate.
 
 ---
 
@@ -1081,61 +1081,82 @@ VLS snapshot upsert already uses monotonic merge for `lastSeen`. Manifest must r
 | LTE_R1 native + HF abuse dual path | Phase 2F §12 | DONE |
 | Postgres `VehicleDrivingCapability` as row store | Existing code | DONE |
 
-### 22.2 Manifest decisions (deferred to 2F.1)
+### 22.2 Manifest decisions (completed in Phase 2F.1)
 
-| Item | 2F.1 deliverable |
-|------|------------------|
-| VCM JSON schema publication | `schemas/vcm/v1/manifest.schema.json` |
-| Manifest materialization service | `VehicleCapabilityManifestService` |
-| Planner integration in `DimoTelemetryService` | Shaped query builders |
-| Flight Recorder (T7) wire format | FR manifest + capture |
-| Reference drive replay tooling | GT profile activation |
-| LTE_R1 golden vehicle manifest | Arteon tokenId 187784 template |
+| Item | Owner phase | Status |
+|------|-------------|--------|
+| LTE_R1 reference manifest JSON (`dimo-lte-r1-reference-manifest-v1.json`) | **2F.1** | **DONE** |
+| Full + minimum + optional-extension manifest sets | **2F.1** | **DONE** |
+| Timestamp / retention / native-event / GT sync contracts | **2F.1** | **DONE** |
+| Runtime probe reclassification (47 items) | **2F.1** | **DONE** |
+| VCM JSON schema publication (`schemas/vcm/v1/…`) | Implementation workstream | NOT_STARTED |
+| Manifest materialization service | Implementation workstream | NOT_STARTED |
+| Planner integration in `DimoTelemetryService` | **Phase 3A+** | NOT_STARTED |
+| Flight Recorder (T7) runtime capture | **Phase 3A** | NOT_STARTED |
+| Reference drive replay tooling | **Phase 3A** | NOT_STARTED |
 
-### 22.3 2F.1 entry criteria
+### 22.3 Phase 2F.1 entry criteria (historical)
 
 - [x] Phase 2F design document approved
-- [ ] Phase 2F.1 implementation branch opened
-- [ ] RP-2F-01 cadence probe pilot on Arteon
-- [ ] Schema file committed
+- [x] Phase 2F.1 documentation branch opened
+- [x] LTE_R1 reference manifest frozen (`manifestVersion 1.0.0`)
 
-### 22.4 2F.1 exit criteria (preview)
+**Note:** Cadence pilot execution (formerly listed here) is **RECORDER_MEASURED** in Phase 3A — not a 2F.1 documentation gate.
 
-- [ ] `CapabilityQueryPlannerService` unit tests with manifest fixtures
-- [ ] Q001 shaped — field count ≤18 for Arteon manifest
-- [ ] No regression in trip FSM active tick
-- [ ] Provenance envelope persisted on HF upsert
-- [ ] Flight Recorder captures one reference trip
+### 22.4 Phase 2F.1 exit criteria (achieved — documentation freeze)
+
+- [x] All 33 `CAN_*` keys have explicit LTE_R1 manifest decisions
+- [x] Machine-readable manifest JSON committed
+- [x] Full + minimum/Pareto manifest sets defined
+- [x] Timestamp, retention, native-event, GT contracts frozen
+- [x] Phase 3A ungated to start (implementation not started)
+
+**Implementation exit criteria** (shaped queries, FR capture, provenance on HF upsert) belong to **Phase 3A**, not 2F.1.
 
 ---
 
 ## 23. Proposed Future Implementation Boundaries
 
-### 23.1 In scope for 2F.1 implementation
+### 23.1 Completed in Phase 2F.1 (documentation freeze)
+
+- **`DIMO_LTE_R1` reference manifest v1.0.0** — `docs/audits/manifests/dimo-lte-r1-reference-manifest-v1.json`
+- Phase 2F.1 audit — `docs/audits/dimo-phase-2f1-lte-r1-reference-manifest-2026-08-31.md`
+- Timestamp, raw/normalized retention, native-event, and Ground Truth synchronization contracts
+- Runtime probe reclassification (47 items → A/B/C/D)
+
+### 23.2 In scope for Phase 3A (Flight Recorder / reference program — NOT STARTED)
+
+- Flight Recorder capture service conforming to frozen manifest
+- Receive-timestamp injection at ingress (`synqReceivedAt`)
+- T7 reference capture sessions + provenance envelope persistence
+- Reference drive execution + GT synchronization per manifest §18
+- Native vs reconstructed episode comparison harness
+- Cadence/latency measurement probes classified as **RECORDER_MEASURED**
+
+### 23.3 Later implementation workstream (not 2F.1, not required to start 3A)
 
 - `CapabilityQueryPlannerService` (pure function + NestJS wrapper)
-- Extend query builders with optional `fields[]` parameter (default: current static list for backward compat)
-- `VehicleCapabilityManifestService` — materialize VCM from `VehicleDrivingCapability` rows
+- Extend query builders with optional `fields[]` (backward-compatible defaults)
+- `VehicleCapabilityManifestService` — materialize VCM from capability rows
 - Feature flag: `CAPABILITY_SHAPED_QUERIES_ENABLED` per org
-- Provenance envelope on new acquisitions
+- Production cadence validation at fleet scale
 
-### 23.2 Explicitly out of scope for 2F.1
+### 23.4 Explicitly out of scope for near-term tracks
 
-- Score formula changes
+- Score formula changes (Phases 8–11)
 - Episode engine rewrite
-- ClickHouse schema expansion
-- Smart5/Tesla profile validation
-- Production cadence validation (Phase 3A)
-- Removing static query fallback (dual-path until proven)
+- ClickHouse schema expansion (unless required by 3A FR storage decision)
+- Smart5/Tesla profile validation (Phase 2G)
+- High Mobility audit (Phase 2H)
 
-### 23.3 Module ownership
+### 23.5 Module ownership (proposed — Phase 3A+ engineering)
 
 | Component | Module path (proposed) |
 |-----------|---------------------|
+| Flight Recorder | `vehicle-intelligence/reference-capture/` (TBD in 3A design) |
 | Planner | `vehicle-intelligence/driving-capability/capability-query-planner.service.ts` |
-| Manifest | `vehicle-intelligence/driving-capability/vehicle-capability-manifest.service.ts` |
+| Manifest materialization | `vehicle-intelligence/driving-capability/vehicle-capability-manifest.service.ts` |
 | Shaped builders | `dimo/queries/*.query.ts` (extend signatures) |
-| Feature flag | `platform-admin` or env `CAPABILITY_SHAPED_QUERIES_ENABLED` |
 
 ---
 
@@ -1187,9 +1208,9 @@ Phase 2F delivers the **capability-first acquisition strategy** required to evol
 - Scaling model with explicit THEORETICAL vs MEASURED separation
 - 2F.1 handoff contract for implementation
 
-**Next:** Phase **2F.1** — manifest materialization, planner integration, Flight Recorder (T7), Arteon golden manifest.
+**Next:** Phase **3A** — implement LTE_R1 Flight Recorder / reference program using frozen manifest v1.0.0.
 
-**Gated:** Phase **3A** — `GATED_ON_LTE_R1_MANIFEST` and GT profile `CADENCE_VALIDATED` on Tier-A physics keys.
+**Phase 3A:** **READY / UNGATED_TO_START** — manifest frozen; GT profile `CADENCE_VALIDATED` on Tier-A physics keys is a **Phase 3A runtime outcome**.
 
 ---
 
@@ -1328,4 +1349,4 @@ THEORETICAL_FIELD_REDUCTION_TARGET = 0.40
 
 ---
 
-*Changes / Architektur: This phase is documentation-only. No SynqDrive Code → Changes or Architektur entries required for implementation artifacts. Phase 2F.1 implementation will require both.*
+*Changes / Architektur: Phase 2F and 2F.1 are documentation-only. Phase 3A Flight Recorder implementation will require both.*
