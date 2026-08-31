@@ -8,12 +8,15 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       isEnabled: () => true,
       isTripDetectionAffected: () => false,
       replacesProductionScheduler: () => false,
+      getCycleIntervalMs: () => 5000,
+      getSlowCycleEvery: () => 6,
     } as ReferenceCaptureConfig;
 
     const sessionRepo = {
       create: jest.fn(),
       findById: jest.fn(),
       updateStatus: jest.fn(),
+      updateReadiness: jest.fn().mockResolvedValue({}),
     };
     const observationRepo = { findBySession: jest.fn(), countBySession: jest.fn() };
     const massBinding = { resolveMassBinding: jest.fn().mockResolvedValue({ effectiveMassKg: 1500 }) };
@@ -24,6 +27,20 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       clearSession: jest.fn(),
       enqueueAndMaybeFlush: jest.fn(),
     };
+    const readiness = {
+      assessSessionReadiness: jest.fn().mockResolvedValue({
+        referenceDriveReady: true,
+        blockers: [],
+        warnings: [],
+        checks: {},
+        assessedAt: new Date().toISOString(),
+      }),
+    };
+    const runner = {
+      startRunner: jest.fn().mockResolvedValue(undefined),
+      stopRunner: jest.fn().mockResolvedValue(undefined),
+      isRunnerOperational: () => true,
+    };
 
     const service = new ReferenceCaptureSessionService(
       config,
@@ -33,9 +50,11 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       preflight as never,
       acquisition as never,
       writer as never,
+      readiness as never,
+      runner as never,
     );
 
-    return { service, sessionRepo, preflight, acquisition, writer, ...overrides };
+    return { service, sessionRepo, preflight, acquisition, writer, readiness, runner, ...overrides };
   }
 
   it('blocks when feature gate disabled', async () => {
@@ -48,14 +67,16 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
+      {} as never,
     );
     await expect(
       service.createSession({ organizationId: 'org', vehicleId: 'veh' }),
     ).rejects.toThrow('Reference capture is disabled');
   });
 
-  it('transitions CREATED → PREFLIGHT → READY', async () => {
-    const { service, sessionRepo, preflight } = makeService();
+  it('transitions CREATED → PREFLIGHT → READY when readiness passes', async () => {
+    const { service, sessionRepo, preflight, readiness } = makeService();
     sessionRepo.findById.mockResolvedValue({
       id: 's1',
       organizationId: 'org',
@@ -85,6 +106,7 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       broadObservationFieldCount: 42,
       massBindingJson: {},
       preflightJson: {},
+      readinessJson: { referenceDriveReady: true },
       failureReason: null,
       startedAt: null,
       stoppedAt: null,
@@ -95,6 +117,7 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
 
     const view = await service.runPreflight('org', 's1');
     expect(view.status).toBe(ReferenceCaptureSessionStatus.READY);
+    expect(readiness.assessSessionReadiness).toHaveBeenCalled();
     expect(sessionRepo.updateStatus).toHaveBeenCalledWith(
       'org',
       's1',
@@ -102,8 +125,50 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
     );
   });
 
-  it('supports abort from active states', async () => {
-    const { service, sessionRepo, writer } = makeService();
+  it('starts autonomous runner on startRecording', async () => {
+    const { service, sessionRepo, runner } = makeService();
+    sessionRepo.findById.mockResolvedValue({
+      id: 's1',
+      organizationId: 'org',
+      vehicleId: 'veh',
+      status: ReferenceCaptureSessionStatus.READY,
+      manifestVersion: '1.1.0',
+      powertrainProfile: 'ICE_GASOLINE',
+      massBindingJson: {},
+      preflightJson: {},
+      readinessJson: { referenceDriveReady: true },
+    });
+    sessionRepo.updateStatus.mockResolvedValue({
+      id: 's1',
+      organizationId: 'org',
+      vehicleId: 'veh',
+      status: ReferenceCaptureSessionStatus.RECORDING,
+      connectionProfile: 'DIMO_LTE_R1',
+      powertrainProfile: 'ICE_GASOLINE',
+      hardwareProfile: 'LTE_R1',
+      manifestId: 'DIMO_LTE_R1_REFERENCE_MANIFEST',
+      manifestVersion: '1.1.0',
+      recorderSoftwareVersion: '3A.1.0',
+      broadObservationFieldCount: 10,
+      massBindingJson: {},
+      preflightJson: {},
+      readinessJson: { referenceDriveReady: true },
+      failureReason: null,
+      startedAt: new Date(),
+      stoppedAt: null,
+      completedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await service.startRecording('org', 's1');
+    expect(runner.startRunner).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 's1', organizationId: 'org' }),
+    );
+  });
+
+  it('supports abort from active states and stops runner', async () => {
+    const { service, sessionRepo, writer, runner } = makeService();
     sessionRepo.findById.mockResolvedValue({
       id: 's1',
       organizationId: 'org',
@@ -111,6 +176,7 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       status: ReferenceCaptureSessionStatus.RECORDING,
       massBindingJson: {},
       preflightJson: {},
+      readinessJson: {},
       manifestVersion: '1.1.0',
       connectionProfile: 'DIMO_LTE_R1',
       powertrainProfile: null,
@@ -131,6 +197,7 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
     });
 
     await service.abortSession('org', 's1', 'operator_cancel');
+    expect(runner.stopRunner).toHaveBeenCalledWith('org', 's1');
     expect(writer.flush).toHaveBeenCalledWith('s1');
     expect(writer.clearSession).toHaveBeenCalledWith('s1');
   });

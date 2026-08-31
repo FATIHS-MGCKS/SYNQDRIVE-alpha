@@ -18,8 +18,19 @@ import { getDimoRequestContext } from './provider-budget/dimo-request-context';
 
 export type { DimoProviderRequestContext };
 
+export interface DimoGraphQLHttpTiming {
+  acquisitionRequestedAt: Date;
+  httpRequestStartedAt: Date;
+  httpResponseReceivedAt: Date;
+  processingCompletedAt: Date;
+  /** Earliest defensible SynqDrive receipt of provider HTTP response (RP-039). */
+  synqReceivedAt: Date;
+}
+
 export interface DimoGraphQLIngressTimingResult {
   result: any;
+  timing: DimoGraphQLHttpTiming;
+  /** Alias fields for backward compatibility */
   requestStartedAt: Date;
   requestCompletedAt: Date;
   synqReceivedAt: Date;
@@ -226,8 +237,7 @@ export class DimoTelemetryService {
   }
 
   /**
-   * GraphQL query with explicit ingress timing (RP-039).
-   * synqReceivedAt is captured at axios response boundary — not DB insert time.
+   * GraphQL query with explicit ingress timing captured at the Axios HTTP boundary (RP-039).
    */
   async queryGraphQLWithIngressTiming(
     vehicleJwt: string,
@@ -236,34 +246,48 @@ export class DimoTelemetryService {
     requestContext?: DimoProviderRequestContext,
     category?: DimoProviderCategory,
   ): Promise<DimoGraphQLIngressTimingResult> {
-    const requestStartedAt = new Date();
-    const result = await this.queryGraphQL(
-      vehicleJwt,
-      query,
-      variables,
-      requestContext,
-      category,
-    );
-    const requestCompletedAt = new Date();
+    const acquisitionRequestedAt = new Date();
+    const tokenId =
+      requestContext?.tokenId ??
+      (typeof variables?.tokenId === 'number' ? variables.tokenId : undefined);
+    const ctx = getDimoRequestContext();
+    const resolvedCategory = category ?? ctx.category;
+
+    const posted = await this.providerGateway.execute({
+      operation: DimoProviderOperation.TELEMETRY_GRAPHQL,
+      requestContext: buildDimoProviderRequestContext(tokenId, requestContext),
+      invoke: () =>
+        this.dimoRequestExecutor.execute({
+          category: resolvedCategory,
+          priority: ctx.priority,
+          execute: () => this.postGraphQLWithHttpTiming(vehicleJwt, query, variables, acquisitionRequestedAt),
+        }),
+    });
+
     return {
-      result,
-      requestStartedAt,
-      requestCompletedAt,
-      synqReceivedAt: requestCompletedAt,
+      result: posted.data,
+      timing: posted.timing,
+      requestStartedAt: acquisitionRequestedAt,
+      requestCompletedAt: posted.timing.processingCompletedAt,
+      synqReceivedAt: posted.timing.synqReceivedAt,
     };
   }
 
-  private async postGraphQL(
+  private async postGraphQLWithHttpTiming(
     vehicleJwt: string,
     query: string,
     variables?: Record<string, any>,
-  ): Promise<any> {
+    acquisitionRequestedAt: Date = new Date(),
+  ): Promise<{ data: any; timing: DimoGraphQLHttpTiming }> {
     const body: Record<string, unknown> = { query };
     if (variables) body.variables = variables;
+
+    const httpRequestStartedAt = new Date();
     const response = await this.client.post('', body, {
       headers: { Authorization: `Bearer ${vehicleJwt}` },
       timeout: 15000,
     });
+    const httpResponseReceivedAt = new Date();
 
     const gqlErrors = response.data?.errors;
     if (Array.isArray(gqlErrors) && gqlErrors.length > 0) {
@@ -277,7 +301,26 @@ export class DimoTelemetryService {
       }
     }
 
-    return response.data;
+    const processingCompletedAt = new Date();
+    return {
+      data: response.data,
+      timing: {
+        acquisitionRequestedAt,
+        httpRequestStartedAt,
+        httpResponseReceivedAt,
+        processingCompletedAt,
+        synqReceivedAt: httpResponseReceivedAt,
+      },
+    };
+  }
+
+  private async postGraphQL(
+    vehicleJwt: string,
+    query: string,
+    variables?: Record<string, any>,
+  ): Promise<any> {
+    const posted = await this.postGraphQLWithHttpTiming(vehicleJwt, query, variables);
+    return posted.data;
   }
 
   async fetchVehicleSummary(

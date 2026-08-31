@@ -68,11 +68,17 @@ export type ReferenceCaptureObservationEnvelope = {
   normalizedUnit?: string | null;
   providerTimestamp?: Date | string | null;
   synqReceivedAt: Date | string;
+  acquisitionRequestedAt?: Date | string | null;
+  httpRequestStartedAt?: Date | string | null;
+  httpResponseReceivedAt?: Date | string | null;
   requestStartedAt?: Date | string | null;
   requestCompletedAt?: Date | string | null;
+  processingCompletedAt?: Date | string | null;
   requestCorrelationId?: string | null;
+  captureCycleId?: string | null;
   sequenceNumber?: number | null;
   capabilityState?: string | null;
+  providerEventFingerprint?: string | null;
   provenance?: Record<string, unknown> | null;
 };
 
@@ -97,6 +103,7 @@ export type ReferenceCaptureSessionView = {
   broadObservationFieldCount: number | null;
   massBinding: VehicleMassBinding | null;
   preflight: ReferenceCapturePreflightResult | null;
+  readiness: ReferenceCaptureReadinessReport | null;
   failureReason: string | null;
   startedAt: Date | null;
   stoppedAt: Date | null;
@@ -105,18 +112,40 @@ export type ReferenceCaptureSessionView = {
   updatedAt: Date;
 };
 
+export type ReferenceCaptureAcquisitionState = {
+  cycleCount: number;
+  lastCycleAt: string | null;
+  hfWatermarkAt: string | null;
+  eventWatermarkAt: string | null;
+  seenEventFingerprints: string[];
+  lastSequenceNumber?: number;
+};
+
+export type ReferenceCaptureReadinessReport = {
+  referenceDriveReady: boolean;
+  blockers: string[];
+  warnings: string[];
+  checks: Record<string, boolean>;
+  assessedAt: string;
+};
+
 export type ReferenceCaptureRetentionPolicy = {
   retentionDays: number;
   justification: string;
-  estimatedBytesPerObservation: number;
+  estimatedLogicalBytesPerObservation: number;
+  estimatedPostgresBytesPerObservation: number;
   estimatedObservationsPerMinutePerSignal: number;
-  estimatedBytesPerHourBroadCapture: number;
+  estimatedLogicalBytesPerHourBroadCapture: number;
+  estimatedPostgresBytesPerHourBroadCapture: number;
+  retentionPurgeMechanism: string;
+  retentionIndexStrategy: string;
 };
 
 export type ReferenceCaptureStressEstimate = {
   observationsPerMinute: number;
   observationsPerHour: number;
-  estimatedBytesPerHour: number;
+  estimatedLogicalBytesPerHour: number;
+  estimatedPostgresBytesPerHour: number;
   batchSize: number;
   maxPendingObservations: number;
   backpressureStrategy: string;

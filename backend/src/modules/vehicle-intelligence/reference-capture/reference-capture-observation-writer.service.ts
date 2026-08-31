@@ -15,6 +15,13 @@ export class ReferenceCaptureBackpressureError extends Error {
   }
 }
 
+export class ReferenceCapturePersistenceError extends Error {
+  constructor(message: string, readonly cause?: unknown) {
+    super(message);
+    this.name = 'ReferenceCapturePersistenceError';
+  }
+}
+
 @Injectable()
 export class ReferenceCaptureObservationWriterService {
   private readonly logger = new Logger(ReferenceCaptureObservationWriterService.name);
@@ -54,21 +61,48 @@ export class ReferenceCaptureObservationWriterService {
     this.pendingBySession.set(sessionId, pending);
   }
 
-  async flush(sessionId: string): Promise<number> {
+  async flush(sessionId: string, options?: { maxAttempts?: number }): Promise<number> {
     const pending = this.pendingBySession.get(sessionId) ?? [];
     if (pending.length === 0) return 0;
 
     const batchSize = this.config.getBatchSize();
+    const maxAttempts = options?.maxAttempts ?? 3;
     let flushed = 0;
 
     while (pending.length > 0) {
-      const batch = pending.splice(0, batchSize);
-      await this.observationRepository.appendMany(batch);
-      flushed += batch.length;
+      const batch = pending.slice(0, batchSize);
+      let attempt = 0;
+      let persisted = false;
+
+      while (!persisted && attempt < maxAttempts) {
+        attempt += 1;
+        try {
+          await this.observationRepository.appendMany(batch);
+          persisted = true;
+          pending.splice(0, batch.length);
+          flushed += batch.length;
+        } catch (error) {
+          const delayMs = Math.min(1000 * 2 ** (attempt - 1), 8000);
+          this.logger.warn(
+            `Observation batch persist failed session=${sessionId} attempt=${attempt}/${maxAttempts}: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+          if (attempt >= maxAttempts) {
+            throw new ReferenceCapturePersistenceError(
+              `Failed to persist observation batch for session ${sessionId}`,
+              error,
+            );
+          }
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+      }
     }
 
     this.pendingBySession.set(sessionId, pending);
-    this.logger.debug(`Flushed ${flushed} observations for session ${sessionId}`);
+    if (flushed > 0) {
+      this.logger.debug(`Flushed ${flushed} observations for session ${sessionId}`);
+    }
     return flushed;
   }
 
@@ -95,6 +129,10 @@ export class ReferenceCaptureObservationWriterService {
   }
 
   createRequestCorrelationId(): string {
+    return randomUUID();
+  }
+
+  createCaptureCycleId(): string {
     return randomUUID();
   }
 }

@@ -16,22 +16,36 @@ export class ReferenceCaptureRetentionService {
 
   getRetentionPolicy(broadFieldCount = 80): ReferenceCaptureRetentionPolicy {
     const retentionDays = this.config.getRetentionDays();
-    const estimatedBytesPerObservation = 512;
+    const postgresMultiplier = this.config.getPostgresStorageMultiplier();
+    const estimatedLogicalBytesPerObservation = 512;
     const estimatedObservationsPerMinutePerSignal = 60;
     const signals = Math.max(broadFieldCount, 1);
-    const estimatedBytesPerHourBroadCapture =
-      estimatedBytesPerObservation *
-      estimatedObservationsPerMinutePerSignal *
-      60 *
-      signals;
+    const observationsPerHour = estimatedObservationsPerMinutePerSignal * 60 * signals;
+    const estimatedLogicalBytesPerHourBroadCapture =
+      estimatedLogicalBytesPerObservation * observationsPerHour;
+    const estimatedPostgresBytesPerObservation = Math.round(
+      estimatedLogicalBytesPerObservation * postgresMultiplier,
+    );
+    const estimatedPostgresBytesPerHourBroadCapture = Math.round(
+      estimatedLogicalBytesPerHourBroadCapture * postgresMultiplier,
+    );
+
+    const schedulerEnabled = this.config.isRetentionSchedulerEnabled();
 
     return {
       retentionDays,
       justification:
         '180-day default aligns with manifest retentionRequirement for reference validation → replay → calibration cycle; configurable via REFERENCE_CAPTURE_RETENTION_DAYS',
-      estimatedBytesPerObservation,
+      estimatedLogicalBytesPerObservation,
+      estimatedPostgresBytesPerObservation,
       estimatedObservationsPerMinutePerSignal,
-      estimatedBytesPerHourBroadCapture,
+      estimatedLogicalBytesPerHourBroadCapture,
+      estimatedPostgresBytesPerHourBroadCapture,
+      retentionPurgeMechanism: schedulerEnabled
+        ? 'ReferenceCaptureRetentionScheduler cron (04:30 UTC) → purgeExpiredObservations'
+        : 'ReferenceCaptureRetentionService.purgeExpiredObservations — manual/on-demand only until REFERENCE_CAPTURE_RETENTION_SCHEDULER_ENABLED=true',
+      retentionIndexStrategy:
+        'reference_capture_observations.created_at B-tree index (migration 20260831200000); deleteMany WHERE created_at < cutoff',
     };
   }
 
@@ -44,11 +58,12 @@ export class ReferenceCaptureRetentionService {
     return {
       observationsPerMinute,
       observationsPerHour,
-      estimatedBytesPerHour: policy.estimatedBytesPerHourBroadCapture,
+      estimatedLogicalBytesPerHour: policy.estimatedLogicalBytesPerHourBroadCapture,
+      estimatedPostgresBytesPerHour: policy.estimatedPostgresBytesPerHourBroadCapture,
       batchSize: this.config.getBatchSize(),
       maxPendingObservations: this.config.getMaxPendingObservations(),
       backpressureStrategy:
-        'In-memory pending queue capped at maxPendingObservations; flush in batchSize chunks via createMany; reject new enqueue when cap exceeded',
+        'In-memory pending queue capped at maxPendingObservations; durable flush in batchSize chunks with retry/backoff; reject new enqueue when cap exceeded; session FAILED on terminal persist failure',
     };
   }
 

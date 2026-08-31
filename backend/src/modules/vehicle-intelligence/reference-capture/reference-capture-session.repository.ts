@@ -86,4 +86,45 @@ export class ReferenceCaptureSessionRepository {
       },
     });
   }
+
+  updateAcquisitionState(
+    organizationId: string,
+    sessionId: string,
+    patch: {
+      acquisitionStateJson: unknown;
+      eventWatermarkAt?: Date | null;
+    },
+  ): Promise<ReferenceCaptureSession> {
+    return this.prisma.referenceCaptureSession.update({
+      where: { id: sessionId, organizationId },
+      data: {
+        acquisitionStateJson: patch.acquisitionStateJson as object,
+        ...(patch.eventWatermarkAt !== undefined
+          ? { eventWatermarkAt: patch.eventWatermarkAt }
+          : {}),
+      },
+    });
+  }
+
+  updateReadiness(
+    organizationId: string,
+    sessionId: string,
+    readinessJson: unknown,
+  ): Promise<ReferenceCaptureSession> {
+    return this.prisma.referenceCaptureSession.update({
+      where: { id: sessionId, organizationId },
+      data: { readinessJson: readinessJson as object },
+    });
+  }
+
+  updateRunnerJobId(
+    organizationId: string,
+    sessionId: string,
+    runnerJobId: string | null,
+  ): Promise<ReferenceCaptureSession> {
+    return this.prisma.referenceCaptureSession.update({
+      where: { id: sessionId, organizationId },
+      data: { runnerJobId },
+    });
+  }
 }

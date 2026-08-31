@@ -10257,6 +10257,10 @@ model ReferenceCaptureSession {
   preflightJson              Json?                         @map("preflight_json")
   broadObservationFieldCount Int?                          @map("broad_observation_field_count")
   failureReason              String?                       @map("failure_reason")
+  eventWatermarkAt           DateTime?                     @map("event_watermark_at")
+  acquisitionStateJson       Json?                         @map("acquisition_state_json")
+  readinessJson              Json?                         @map("readiness_json")
+  runnerJobId                String?                       @map("runner_job_id")
   startedAt                  DateTime?                     @map("started_at")
   stoppedAt                  DateTime?                     @map("stopped_at")
   completedAt                DateTime?                     @map("completed_at")
@@ -10300,6 +10304,7 @@ model ReferenceCaptureObservation {
   sequenceNumber       Int?                            @map("sequence_number")
   capabilityState      String?                         @map("capability_state")
   provenanceJson       Json?                           @map("provenance_json")
+  providerEventFingerprint String?                     @map("provider_event_fingerprint")
   createdAt            DateTime                        @default(now()) @map("created_at")
 
   session      ReferenceCaptureSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -10308,7 +10313,9 @@ model ReferenceCaptureObservation {
 
   @@index([sessionId, synqReceivedAt])
   @@index([sessionId, providerField])
+  @@index([sessionId, providerEventFingerprint])
   @@index([organizationId, vehicleId])
+  @@index([createdAt])
   @@map("reference_capture_observations")
 }
 

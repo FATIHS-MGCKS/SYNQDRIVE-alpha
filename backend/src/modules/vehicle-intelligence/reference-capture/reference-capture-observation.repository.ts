@@ -41,6 +41,7 @@ export class ReferenceCaptureObservationRepository {
         requestCorrelationId: o.requestCorrelationId ?? null,
         sequenceNumber: o.sequenceNumber ?? null,
         capabilityState: o.capabilityState ?? null,
+        providerEventFingerprint: o.providerEventFingerprint ?? null,
         provenanceJson: o.provenance ? (o.provenance as Prisma.InputJsonValue) : undefined,
       })),
     });

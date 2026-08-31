@@ -21,6 +21,26 @@ export class ReferenceCaptureConfig {
     return this.configService.get<number>('referenceCapture.maxPendingObservations') ?? 5000;
   }
 
+  getCycleIntervalMs(): number {
+    return this.configService.get<number>('referenceCapture.cycleIntervalMs') ?? 5000;
+  }
+
+  getMaxRecordingDurationMs(): number {
+    return this.configService.get<number>('referenceCapture.maxRecordingDurationMs') ?? 14_400_000;
+  }
+
+  getSlowCycleEvery(): number {
+    return this.configService.get<number>('referenceCapture.slowCycleEvery') ?? 6;
+  }
+
+  getPostgresStorageMultiplier(): number {
+    return this.configService.get<number>('referenceCapture.postgresStorageMultiplier') ?? 2.5;
+  }
+
+  isRetentionSchedulerEnabled(): boolean {
+    return this.configService.get<boolean>('referenceCapture.retentionSchedulerEnabled') === true;
+  }
+
   /** Hard invariant: reference capture must never affect live trip FSM. */
   isTripDetectionAffected(): boolean {
     return false;

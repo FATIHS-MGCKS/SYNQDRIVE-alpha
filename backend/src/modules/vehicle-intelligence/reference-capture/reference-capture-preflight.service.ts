@@ -4,7 +4,6 @@ import { DimoAuthService } from '../../dimo/dimo-auth.service';
 import { DimoTelemetryService } from '../../dimo/dimo-telemetry.service';
 import { buildDimoProviderRequestContext } from '../../dimo/provider/dimo-provider-request-context.util';
 import { buildAvailableSignalsQuery } from '../../dimo/queries/available-signals.query';
-import { buildLatestSnapshotQuery } from '../../dimo/queries/latest-vehicle-snapshot.query';
 import {
   buildDataSummaryQuery,
   parseDataSummaryResponse,
@@ -13,12 +12,12 @@ import { PrismaService } from '@shared/database/prisma.service';
 import {
   REFERENCE_CAPTURE_ACQUISITION_TIER,
   REFERENCE_CAPTURE_CONNECTION_PROFILE,
-  REFERENCE_CAPTURE_PROVIDER,
 } from './reference-capture.constants';
 import {
   buildCanonicalKeyLookup,
   loadFrozenReferenceManifest,
 } from './reference-capture-manifest.loader';
+import { buildBroadReferenceSignalsLatestQuery } from './reference-capture-query-builder';
 import { inferTemporalClass } from './reference-capture-temporal.util';
 import { buildRawIdentity } from './reference-capture.contract';
 import type {
@@ -102,10 +101,13 @@ export class ReferenceCapturePreflightService {
         )
       : [];
 
-    const dataSummary = parseDataSummaryResponse(dataSummaryTimed.result?.data);
+    parseDataSummaryResponse(dataSummaryTimed.result?.data);
+
+    // Reference mode uses dynamic broad query — NOT static production snapshot ceiling.
+    const broadDiscoveryQuery = buildBroadReferenceSignalsLatestQuery(tokenId, availableSignals);
     const snapshotTimed = await this.dimoTelemetry.queryGraphQLWithIngressTiming(
       jwt,
-      buildLatestSnapshotQuery(tokenId),
+      broadDiscoveryQuery,
       undefined,
       providerContext,
       'REFERENCE_CAPTURE',
@@ -114,7 +116,7 @@ export class ReferenceCapturePreflightService {
       string,
       unknown
     >;
-    const latestFields = Object.keys(signalsLatest);
+    const latestFields = Object.keys(signalsLatest).filter((k) => k !== 'lastSeen');
 
     const broadFieldSet = new Set<string>([...availableSignals, ...latestFields]);
     const canonicalLookup = buildCanonicalKeyLookup();
@@ -139,6 +141,10 @@ export class ReferenceCapturePreflightService {
           capabilityState,
         };
       });
+
+    this.logger.log(
+      `Preflight broad observation plan: ${broadObservationFields.length} fields for vehicle ${vehicleId}`,
+    );
 
     return {
       availableSignals,

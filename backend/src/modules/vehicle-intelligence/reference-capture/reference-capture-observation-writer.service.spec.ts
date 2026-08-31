@@ -1,5 +1,5 @@
 import { ReferenceCaptureObservationWriterService } from './reference-capture-observation-writer.service';
-import { ReferenceCaptureBackpressureError } from './reference-capture-observation-writer.service';
+import { ReferenceCaptureBackpressureError, ReferenceCapturePersistenceError } from './reference-capture-observation-writer.service';
 import { ReferenceCaptureObservationKind } from '@prisma/client';
 import { REFERENCE_CAPTURE_ENVELOPE_VERSION } from './reference-capture.constants';
 import { buildRawIdentity } from './reference-capture.contract';
@@ -58,5 +58,14 @@ describe('ReferenceCaptureObservationWriterService (RP-010)', () => {
     await writer.flush('s1');
     expect(repo.appendMany).toHaveBeenCalledTimes(1);
     expect(repo.appendMany.mock.calls[0][0]).toHaveLength(3);
+  });
+
+  it('does not lose pending batch when appendMany fails (TEST G)', async () => {
+    const { writer, repo } = makeWriter(2, 10);
+    repo.appendMany.mockRejectedValue(new Error('db unavailable'));
+    writer.enqueue('s1', 'org', 'veh', envelope);
+    writer.enqueue('s1', 'org', 'veh', envelope);
+    await expect(writer.flush('s1', { maxAttempts: 2 })).rejects.toThrow(ReferenceCapturePersistenceError);
+    expect(writer.getPendingCount('s1')).toBe(2);
   });
 });

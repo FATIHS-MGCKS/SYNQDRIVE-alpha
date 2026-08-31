@@ -13,6 +13,11 @@ export const REFERENCE_CAPTURE_RECORDER_SOFTWARE_VERSION = '3A.1.0';
 export const REFERENCE_CAPTURE_ACQUISITION_TIER = 'T7';
 export const REFERENCE_CAPTURE_ACQUISITION_SURFACE = 'VALIDATION_FLIGHT_RECORDER';
 
+export const REFERENCE_CAPTURE_JOB_NAME = 'reference-capture-cycle';
+
+/** Sequence numbers are session-global monotonic per observation envelope. */
+export const REFERENCE_CAPTURE_SEQUENCE_SCOPE = 'SESSION_GLOBAL' as const;
+
 export const REFERENCE_CAPTURE_RAW_IDENTITY_PREFIX = 'DIMO::';
 
 /** Known analysis events — minimum set, not observation ceiling. */

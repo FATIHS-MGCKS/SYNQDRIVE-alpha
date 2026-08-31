@@ -14,13 +14,20 @@ import { ReferenceCaptureConfig } from './reference-capture.config';
 import { ReferenceCaptureMassBindingService } from './reference-capture-mass-binding.service';
 import { ReferenceCapturePreflightService } from './reference-capture-preflight.service';
 import { ReferenceCaptureAcquisitionService } from './reference-capture-acquisition.service';
-import { ReferenceCaptureObservationWriterService } from './reference-capture-observation-writer.service';
+import {
+  ReferenceCaptureObservationWriterService,
+  ReferenceCapturePersistenceError,
+} from './reference-capture-observation-writer.service';
 import { ReferenceCaptureObservationRepository } from './reference-capture-observation.repository';
 import { ReferenceCaptureSessionRepository } from './reference-capture-session.repository';
+import { ReferenceCaptureReadinessService } from './reference-capture-readiness.service';
+import { ReferenceCaptureRunnerService } from './reference-capture-runner.service';
 import type {
   CreateReferenceCaptureSessionInput,
   ReferenceCapturePreflightResult,
+  ReferenceCaptureReadinessReport,
   ReferenceCaptureSessionView,
+  VehicleMassBinding,
 } from './reference-capture.types';
 
 const ACTIVE_STATUSES: ReferenceCaptureSessionStatus[] = [
@@ -41,6 +48,8 @@ export class ReferenceCaptureSessionService {
     private readonly preflightService: ReferenceCapturePreflightService,
     private readonly acquisitionService: ReferenceCaptureAcquisitionService,
     private readonly observationWriter: ReferenceCaptureObservationWriterService,
+    private readonly readinessService: ReferenceCaptureReadinessService,
+    private readonly runnerService: ReferenceCaptureRunnerService,
   ) {}
 
   private assertEnabled(): void {
@@ -69,7 +78,7 @@ export class ReferenceCaptureSessionService {
       groundTruthVideoRef: input.groundTruthVideoRef ?? null,
     });
 
-    return this.toView(session, massBinding, null);
+    return this.toView(session, massBinding, null, null);
   }
 
   async runPreflight(organizationId: string, sessionId: string): Promise<ReferenceCaptureSessionView> {
@@ -87,6 +96,33 @@ export class ReferenceCaptureSessionService {
 
     try {
       const preflight = await this.preflightService.runPreflight(organizationId, session.vehicleId);
+      const massBinding = (session.massBindingJson ?? null) as VehicleMassBinding | null;
+
+      const readiness = await this.readinessService.assessSessionReadiness({
+        organizationId,
+        vehicleId: session.vehicleId,
+        preflight,
+        massBinding,
+        runnerOperational: this.runnerService.isRunnerOperational(),
+      });
+
+      await this.sessionRepository.updateReadiness(organizationId, sessionId, readiness);
+
+      if (!readiness.referenceDriveReady) {
+        const failed = await this.sessionRepository.updateStatus(
+          organizationId,
+          sessionId,
+          ReferenceCaptureSessionStatus.FAILED,
+          {
+            preflightJson: preflight,
+            broadObservationFieldCount: preflight.broadObservationFieldCount,
+            failureReason: `preflight_readiness_blocked: ${readiness.blockers.join(', ')}`,
+            powertrainProfile: preflight.powertrainProfile,
+            hardwareProfile: preflight.hardwareProfile,
+          },
+        );
+        return this.toView(failed, massBinding, preflight, readiness);
+      }
 
       const updated = await this.sessionRepository.updateStatus(
         organizationId,
@@ -103,7 +139,7 @@ export class ReferenceCaptureSessionService {
 
       await this.recordSessionMetadataObservation(organizationId, sessionId, updated.vehicleId, preflight, 'PREFLIGHT_COMPLETE');
 
-      return this.toView(updated, session.massBindingJson as never, preflight);
+      return this.toView(updated, massBinding, preflight, readiness);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const failed = await this.sessionRepository.updateStatus(
@@ -112,7 +148,7 @@ export class ReferenceCaptureSessionService {
         ReferenceCaptureSessionStatus.FAILED,
         { failureReason: message },
       );
-      return this.toView(failed, session.massBindingJson as never, null);
+      return this.toView(failed, session.massBindingJson as never, null, null);
     }
   }
 
@@ -124,6 +160,11 @@ export class ReferenceCaptureSessionService {
       throw new BadRequestException(`Cannot start recording from status ${session.status}`);
     }
 
+    const readiness = session.readinessJson as ReferenceCaptureReadinessReport | null;
+    if (!readiness?.referenceDriveReady) {
+      throw new BadRequestException('Session is not reference-drive ready — re-run preflight');
+    }
+
     const updated = await this.sessionRepository.updateStatus(
       organizationId,
       sessionId,
@@ -131,7 +172,20 @@ export class ReferenceCaptureSessionService {
       { startedAt: new Date() },
     );
 
-    return this.toView(updated, session.massBindingJson as never, session.preflightJson as never);
+    await this.runnerService.startRunner({
+      organizationId,
+      vehicleId: session.vehicleId,
+      sessionId,
+      manifestVersion: session.manifestVersion,
+      powertrainProfile: session.powertrainProfile,
+    });
+
+    return this.toView(
+      updated,
+      session.massBindingJson as never,
+      session.preflightJson as never,
+      readiness,
+    );
   }
 
   async captureTick(organizationId: string, sessionId: string): Promise<{
@@ -152,19 +206,41 @@ export class ReferenceCaptureSessionService {
       throw new BadRequestException('Session preflight missing — run preflight first');
     }
 
-    const result = await this.acquisitionService.captureTick({
-      organizationId,
-      vehicleId: session.vehicleId,
-      sessionId,
-      preflight,
-      manifestVersion: session.manifestVersion,
-      powertrainProfile: session.powertrainProfile,
-    });
+    try {
+      const result = await this.acquisitionService.captureTick({
+        organizationId,
+        vehicleId: session.vehicleId,
+        sessionId,
+        preflight,
+        manifestVersion: session.manifestVersion,
+        powertrainProfile: session.powertrainProfile,
+        cycleIntervalMs: this.config.getCycleIntervalMs(),
+        slowCycleEvery: this.config.getSlowCycleEvery(),
+      });
 
-    return {
-      session: this.toView(session, session.massBindingJson as never, preflight),
-      ...result,
-    };
+      return {
+        session: this.toView(
+          session,
+          session.massBindingJson as never,
+          preflight,
+          session.readinessJson as ReferenceCaptureReadinessReport | null,
+        ),
+        signalPoints: result.signalPoints,
+        nativeEvents: result.nativeEvents,
+        flushed: result.flushed,
+      };
+    } catch (error) {
+      if (error instanceof ReferenceCapturePersistenceError) {
+        await this.sessionRepository.updateStatus(organizationId, sessionId, ReferenceCaptureSessionStatus.FAILED, {
+          failureReason: error.message,
+          stoppedAt: new Date(),
+          completedAt: new Date(),
+        });
+        await this.runnerService.stopRunner(organizationId, sessionId);
+        this.observationWriter.clearSession(sessionId);
+      }
+      throw error;
+    }
   }
 
   async stopRecording(organizationId: string, sessionId: string): Promise<ReferenceCaptureSessionView> {
@@ -175,6 +251,8 @@ export class ReferenceCaptureSessionService {
       throw new BadRequestException(`Cannot stop recording from status ${session.status}`);
     }
 
+    await this.runnerService.stopRunner(organizationId, sessionId);
+
     await this.sessionRepository.updateStatus(
       organizationId,
       sessionId,
@@ -182,7 +260,26 @@ export class ReferenceCaptureSessionService {
       { stoppedAt: new Date() },
     );
 
-    await this.observationWriter.flush(sessionId);
+    try {
+      await this.observationWriter.flush(sessionId);
+    } catch (error) {
+      if (error instanceof ReferenceCapturePersistenceError) {
+        const failed = await this.sessionRepository.updateStatus(
+          organizationId,
+          sessionId,
+          ReferenceCaptureSessionStatus.FAILED,
+          { failureReason: error.message, completedAt: new Date() },
+        );
+        this.observationWriter.clearSession(sessionId);
+        return this.toView(
+          failed,
+          session.massBindingJson as never,
+          session.preflightJson as never,
+          session.readinessJson as ReferenceCaptureReadinessReport | null,
+        );
+      }
+      throw error;
+    }
 
     const completed = await this.sessionRepository.updateStatus(
       organizationId,
@@ -193,7 +290,12 @@ export class ReferenceCaptureSessionService {
 
     this.observationWriter.clearSession(sessionId);
 
-    return this.toView(completed, session.massBindingJson as never, session.preflightJson as never);
+    return this.toView(
+      completed,
+      session.massBindingJson as never,
+      session.preflightJson as never,
+      session.readinessJson as ReferenceCaptureReadinessReport | null,
+    );
   }
 
   async abortSession(organizationId: string, sessionId: string, reason?: string): Promise<ReferenceCaptureSessionView> {
@@ -204,7 +306,13 @@ export class ReferenceCaptureSessionService {
       throw new BadRequestException(`Cannot abort from status ${session.status}`);
     }
 
-    await this.observationWriter.flush(sessionId);
+    await this.runnerService.stopRunner(organizationId, sessionId);
+
+    try {
+      await this.observationWriter.flush(sessionId);
+    } catch {
+      // Best-effort flush on abort — runner already stopped.
+    }
     this.observationWriter.clearSession(sessionId);
 
     const aborted = await this.sessionRepository.updateStatus(
@@ -218,13 +326,23 @@ export class ReferenceCaptureSessionService {
       },
     );
 
-    return this.toView(aborted, session.massBindingJson as never, session.preflightJson as never);
+    return this.toView(
+      aborted,
+      session.massBindingJson as never,
+      session.preflightJson as never,
+      session.readinessJson as ReferenceCaptureReadinessReport | null,
+    );
   }
 
   async getSession(organizationId: string, sessionId: string): Promise<ReferenceCaptureSessionView> {
     this.assertEnabled();
     const session = await this.requireSession(organizationId, sessionId);
-    return this.toView(session, session.massBindingJson as never, session.preflightJson as never);
+    return this.toView(
+      session,
+      session.massBindingJson as never,
+      session.preflightJson as never,
+      session.readinessJson as ReferenceCaptureReadinessReport | null,
+    );
   }
 
   async listObservations(
@@ -279,6 +397,7 @@ export class ReferenceCaptureSessionService {
     session: Awaited<ReturnType<ReferenceCaptureSessionRepository['findById']>> & object,
     massBinding: ReferenceCaptureSessionView['massBinding'],
     preflight: ReferenceCapturePreflightResult | null,
+    readiness: ReferenceCaptureReadinessReport | null,
   ): ReferenceCaptureSessionView {
     return {
       id: session.id,
@@ -294,6 +413,7 @@ export class ReferenceCaptureSessionService {
       broadObservationFieldCount: session.broadObservationFieldCount,
       massBinding: massBinding ?? (session.massBindingJson as ReferenceCaptureSessionView['massBinding']),
       preflight: preflight ?? (session.preflightJson as ReferenceCapturePreflightResult | null),
+      readiness: readiness ?? (session.readinessJson as ReferenceCaptureReadinessReport | null),
       failureReason: session.failureReason,
       startedAt: session.startedAt,
       stoppedAt: session.stoppedAt,

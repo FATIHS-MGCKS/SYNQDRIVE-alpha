@@ -1,9 +1,20 @@
 # Phase 3A.1 — DIMO LTE_R1 Flight Recorder Foundation + Pre-Recorder Preflight
 
 **Date:** 2026-08-31  
-**Status:** DONE (implementation)  
+**Status:** DONE (correction pass complete)  
 **Authority:** `DIMO_LTE_R1_REFERENCE_MANIFEST` v1.1.0  
 **Branch:** `cursor/dimo-phase-3a1-flight-recorder-foundation-7d78`
+
+---
+
+## Status summary
+
+| Flag | Value |
+|------|-------|
+| **Phase 3A.1** | **DONE** |
+| **REFERENCE_DRIVE_READINESS** | **READY** (evidence-based; requires `REFERENCE_CAPTURE_ENABLED=true`, workers running, successful preflight) |
+
+**No reference drive executed.** No scoring formula changes.
 
 ---
 
@@ -11,13 +22,14 @@
 
 First **implementation** phase of the Driving Intelligence Reconstruction workstream. Delivers an isolated DIMO LTE_R1 reference-capture (Flight Recorder) foundation with:
 
-- Dynamic broad per-vehicle observation discovery
-- Versioned wire/storage contract
-- Replayable Postgres persistence
-- Session lifecycle (no production trip coupling)
-- PRE_RECORDER_BLOCKER resolution (RP-010, RP-039, RP-040, RP-044, RP-045)
-
-**No reference drive executed.** No scoring formula changes.
+- Dynamic broad per-vehicle observation discovery **and** matching dynamic acquisition
+- Temporal-class-driven acquisition surfaces (not uniform 1 Hz polling)
+- Autonomous BullMQ recording runner (not manual `/tick` as primary mechanism)
+- Session-scoped incremental native event watermark + stable provider event identity
+- True HTTP ingress timing at Axios response boundary (RP-039)
+- Durable observation writer with retry and session FAILED on terminal persist failure
+- Evidence-based session readiness assessment
+- Versioned wire/storage contract + replayable Postgres persistence
 
 ---
 
@@ -28,105 +40,94 @@ First **implementation** phase of the Driving Intelligence Reconstruction workst
 | Module root | `backend/src/modules/vehicle-intelligence/reference-capture/` |
 | REST API | `GET/POST …/organizations/:orgId/vehicles/:vehicleId/reference-capture/…` |
 | Feature gate | `REFERENCE_CAPTURE_ENABLED` (default `false`) |
+| Autonomous runner | `reference.capture.recording` BullMQ queue + `ReferenceCaptureProcessor` |
+| Dynamic query builder | `reference-capture-query-builder.ts` |
+| Temporal planner | `reference-capture-acquisition-planner.ts` |
+| Readiness | `reference-capture-readiness.service.ts` |
 | Env config | `backend/src/config/reference-capture.config.ts` |
 | Prisma models | `ReferenceCaptureSession`, `ReferenceCaptureObservation` |
-| Migration | `backend/prisma/migrations/20260831180000_reference_capture_sessions_and_observations/` |
+| Migrations | `20260831180000_*`, `20260831200000_reference_capture_runner_state` |
 | DIMO category | `REFERENCE_CAPTURE` in `dimo-provider-category.types.ts` |
-| Ingress timing | `DimoTelemetryService.queryGraphQLWithIngressTiming()` |
+| Ingress timing | `DimoTelemetryService.postGraphQLWithHttpTiming()` → `synqReceivedAt = httpResponseReceivedAt` |
 | Frozen manifest | `docs/audits/manifests/dimo-lte-r1-reference-manifest-v1.json` |
 
 ---
 
-## 3. Architecture
+## 3. Architecture (correction pass)
 
-### 3.1 Isolation
+### 3.1 Broad discovery → broad acquisition
 
-- Gated by `REFERENCE_CAPTURE_ENABLED` — default off
-- Uses dedicated DIMO budget category `REFERENCE_CAPTURE` (BACKGROUND priority)
-- Does **not** modify: snapshot scheduler, active-trip tick, enrichment, native event pipeline, driver/vehicle scores, brake/tire health
-- `ReferenceCaptureConfig.isTripDetectionAffected()` = **false**
-- `ReferenceCaptureConfig.replacesProductionScheduler()` = **false**
+Preflight discovers `availableSignals` + dynamic `signalsLatest` keys via **`buildBroadReferenceSignalsLatestQuery()`** — not `buildLatestSnapshotQuery()`.
 
-### 3.2 Two-layer capture model (manifest v1.1.0)
+Acquisition uses the same dynamic builder per temporal surface. Fields absent from the static production snapshot (yaw, wheel speed, brake pressure, RPM, throttle, torque, gear, battery power, tire pressure, unknown future fields) are capturable when DIMO lists them.
 
-| Layer | Scope |
-|-------|--------|
-| `CANONICAL_ANALYSIS_SET` | 33 `CAN_*` keys — mapped where manifest defines `providerField` |
-| `BROAD_REFERENCE_OBSERVATION_SET` | **DYNAMIC_PER_VEHICLE** — all `availableSignals` + observed `signalsLatest` fields |
+Schema-validated GraphQL selections only (`reference-capture-signal-schema.registry.ts`).
 
-Unmapped fields: `canonicalKey: null`, `rawIdentity: DIMO::<providerField>`
+### 3.2 Temporal acquisition execution
 
-### 3.3 Session lifecycle
+| Temporal class | Surfaces | Cadence |
+|----------------|----------|---------|
+| WAVEFORM_DYNAMICS, POWERTRAIN_DYNAMIC | `LATEST_LIVE` + `HF_HISTORICAL` | Every runner cycle |
+| SLOW_PHYSICAL_CONTEXT, HEALTH_DIAGNOSTIC, SPATIAL_ROUTE | `LATEST_SLOW` | Every N cycles (`REFERENCE_CAPTURE_SLOW_CYCLE_EVERY`, default 6) |
+| EVENT | `NATIVE_EVENT_INCREMENTAL` | Every runner cycle, session-scoped watermark |
+
+`requestedCadenceMs` and `requestedInterval` preserved separately from empirical provider cadence.
+
+### 3.3 Autonomous runner
 
 ```
-CREATED → PREFLIGHT → READY → RECORDING → STOPPING → COMPLETED
-                              ↘ FAILED / ABORTED
+POST /start → RECORDING → ReferenceCaptureRunnerService.startRunner()
+  → BullMQ job reference-capture:{sessionId}
+  → ReferenceCaptureProcessor.processCycle()
+  → executeAcquisitionCycle()
+  → scheduleNextCycle(delay=cycleIntervalMs)
+until STOP | ABORT | FAILED | maxRecordingDuration
 ```
 
-Endpoints:
+Manual `POST /tick` remains an internal diagnostic endpoint only.
 
-- `POST …/sessions` — create (CREATED)
-- `POST …/sessions/:id/preflight` — broad discovery (READY or FAILED)
-- `POST …/sessions/:id/start` — RECORDING
-- `POST …/sessions/:id/tick` — single acquisition tick (server-side, no long-lived agent)
-- `POST …/sessions/:id/stop` — STOPPING → COMPLETED
-- `POST …/sessions/:id/abort` — ABORTED
+### 3.4 Event watermark / dedup
 
-### 3.4 Wire/storage contract (RP-040)
+- First event window: `sessionStartedAt` (no 24h pre-roll)
+- Incremental: `eventWatermarkAt - 2s overlap`
+- Stable identity: SHA256 fingerprint (`providerEventFingerprint`)
+- Duplicate retrievals flagged in provenance (`duplicateRetrieval: true`) — not counted as new physical events
 
-- `envelopeVersion`: **`1.0.0`**
-- Validated by `reference-capture.contract.ts`
-- Nullable `canonicalKey`; required `rawIdentity`, `rawValue`, `synqReceivedAt`
-- Separate `providerTimestamp` (never overwritten by receive time)
+### 3.5 Request identity
 
-### 3.5 Timestamp contract (RP-039)
+| ID | Scope |
+|----|-------|
+| `captureCycleId` | One acquisition cycle (may include multiple HTTP requests) |
+| `requestCorrelationId` | Per provider HTTP request (snapshot, HF, events) |
+| `sequenceNumber` | Session-global monotonic (`REFERENCE_CAPTURE_SEQUENCE_SCOPE = SESSION_GLOBAL`) |
 
-Every observation preserves:
+### 3.6 Timestamp contract (RP-039)
 
-- `providerTimestamp` — from provider sample when available
-- `synqReceivedAt` — captured at GraphQL HTTP response boundary via `queryGraphQLWithIngressTiming`
-- `requestStartedAt` / `requestCompletedAt` — DIMO API latency bounds
-- `requestCorrelationId`, `sequenceNumber` where applicable
+- `synqReceivedAt` = `httpResponseReceivedAt` at Axios `client.post()` return
+- `processingCompletedAt` / `requestCompletedAt` tracked separately
+- Not DB insert time
 
-**Not** using DB `createdAt` as `synqReceivedAt`.
+### 3.7 Writer durability
 
-### 3.6 Event capture
+- `flush()` retries with exponential backoff; batch not spliced until persist succeeds
+- Terminal failure → `ReferenceCapturePersistenceError` → session **FAILED**
 
-- Broad native events via unfiltered `events(tokenId, from, to)` query
-- Known analysis events (`behavior.*`) are minimum, not ceiling
-- Unknown event names retained with `canonicalKey: null`
-- `observationKind: NATIVE_EVENT`, `temporalClass: EVENT`
+### 3.8 Retention / storage (corrected arithmetic)
 
-### 3.7 Persistence
+**Logical envelope estimate** (80 signals @ 1 Hz, 512 B/observation):
 
-**Postgres only** (replayable historical evidence):
+- 80 × 60 obs/min × 60 min = **288,000 observations/hour**
+- 512 × 288,000 = **147,456,000 bytes ≈ 147 MB/hour** (not ~1.4 GB)
 
-- `reference_capture_sessions` — session metadata, preflight JSON, mass binding
-- `reference_capture_observations` — append-only observation envelopes
+**PostgreSQL physical estimate** (multiplier ~2.5× for tuple/JSONB/index overhead):
 
-Indexes: `(session_id, synq_received_at)`, `(session_id, provider_field)`, org/vehicle scoping.
+- ≈ **368 MB/hour** at same assumptions
 
-**Not** using `VehicleLatestState` as historical storage.
+Purge: `ReferenceCaptureRetentionService.purgeExpiredObservations()` with `created_at` index. Scheduled purge only when `REFERENCE_CAPTURE_RETENTION_SCHEDULER_ENABLED=true` (cron 04:30 UTC).
 
-### 3.8 Retention (RP-045)
+### 3.9 Evidence-based readiness
 
-- Default **180 days** (`REFERENCE_CAPTURE_RETENTION_DAYS`)
-- Justification: manifest validation → replay → calibration cycle
-- Volume estimate (80 signals @ ~1 Hz): ~512 B/obs × 4800 obs/min × 60 ≈ **~1.4 GB/hour** broad upper bound
-- `ReferenceCaptureRetentionService.purgeExpiredObservations()` for lifecycle enforcement
-
-### 3.9 Long-session stress (RP-010)
-
-- Batch writes: `REFERENCE_CAPTURE_BATCH_SIZE` (default 250)
-- Backpressure: `REFERENCE_CAPTURE_MAX_PENDING` (default 5000) — throws `ReferenceCaptureBackpressureError`
-- Synthetic stress validated in unit tests (no hours-long drive required)
-
-### 3.10 Vehicle mass binding (RP-044)
-
-- Reads `Vehicle.curbWeightKg` + `frontWeightDistributionPct`
-- `massSource: MANUFACTURER_CURB_WEIGHT` when present
-- Does **not** invent passenger/cargo mass
-- Persisted in `ReferenceCaptureSession.massBindingJson`
+`ReferenceCaptureReadinessService.assessSessionReadiness()` gates READY status. Blockers include: feature off, non-LTE_R1, missing DIMO token, empty broad plan, runner not operational, manifest load failure. Missing curb weight → warning (brake kinetic assessability limited), not invented mass.
 
 ---
 
@@ -134,11 +135,11 @@ Indexes: `(session_id, synq_received_at)`, `(session_id, provider_field)`, org/v
 
 | ID | Status | Evidence |
 |----|--------|----------|
-| **RP-010** | **RESOLVED** | Batch writer + max pending cap + stress unit tests; volume estimates in retention service |
-| **RP-039** | **RESOLVED** | `queryGraphQLWithIngressTiming` + contract tests requiring distinct `synqReceivedAt` |
-| **RP-040** | **RESOLVED** | Envelope v1.0.0 + `reference-capture.contract.spec.ts` fixtures |
-| **RP-044** | **RESOLVED** | `ReferenceCaptureMassBindingService` + unit tests; no invented runtime mass |
-| **RP-045** | **RESOLVED** | 180-day policy + volume justification + purge API |
+| **RP-010** | **RESOLVED** | Durable batch writer + backpressure + corrected volume math + integration TEST G |
+| **RP-039** | **RESOLVED** | Axios HTTP boundary in `postGraphQLWithHttpTiming` + ingress timing spec |
+| **RP-040** | **RESOLVED** | Envelope v1.0.0 + contract spec |
+| **RP-044** | **RESOLVED** | Mass binding service; no invented runtime mass |
+| **RP-045** | **RESOLVED** | 180-day policy + corrected estimates + optional retention scheduler |
 
 ---
 
@@ -146,53 +147,38 @@ Indexes: `(session_id, synq_received_at)`, `(session_id, provider_field)`, org/v
 
 | Test file | Coverage |
 |-----------|----------|
-| `reference-capture.contract.spec.ts` | Wire format, timestamps, unmapped retention |
-| `reference-capture-preflight.service.spec.ts` | Dynamic broad discovery, temporal classes |
-| `reference-capture-observation-writer.service.spec.ts` | Batching, backpressure, duplicate/out-of-order |
+| `reference-capture-integration.spec.ts` | Tests A–G: broad field, snapshot regression, temporal surfaces, autonomous runner, event identity, DB failure |
+| `reference-capture-ingress-timing.spec.ts` | TEST F: HTTP boundary |
+| `reference-capture.contract.spec.ts` | Wire format, unmapped retention |
+| `reference-capture-preflight.service.spec.ts` | Dynamic broad discovery |
+| `reference-capture-observation-writer.service.spec.ts` | Batching, backpressure, persist failure |
+| `reference-capture-retention.service.spec.ts` | Corrected arithmetic, purge |
+| `reference-capture-session.service.spec.ts` | Lifecycle, readiness, runner start/stop |
 | `reference-capture-mass-binding.service.spec.ts` | RP-044 |
-| `reference-capture-retention.service.spec.ts` | RP-045, RP-010 estimates |
-| `reference-capture-session.service.spec.ts` | Lifecycle, feature gate, abort |
-| `reference-capture-ingress-timing.spec.ts` | RP-039 |
+
+**32 tests passing** (reference-capture suite).
 
 ---
 
-## 6. Known limitations
+## 6. Remaining limitations
 
-1. **Cadence measurement metrics** (P50/P95 delta-t, jitter, latency distributions) — data model supports timestamps; computation deferred to post-capture analysis phase
-2. **Controlled schema probes** — classification types defined; continuous unsupported-field polling not implemented
-3. **ClickHouse mirror** — not used; Postgres is canonical Flight Recorder store for Phase 3A.1
-4. **Reference drive** — not executed; `captureTick` is manual/operator-triggered
-5. **PHEV/BEV GT vehicles** — mass binding works; reference vehicle binding for GT sync remains `PENDING_REFERENCE_VEHICLE` per manifest
-
----
-
-## 7. Exit criteria
-
-| Criterion | Met |
-|-----------|-----|
-| Flight Recorder implementation exists | ✅ |
-| DIMO_LTE_R1 only | ✅ (hardwareType gate in preflight) |
-| Isolated from production | ✅ |
-| Dynamic broad capture | ✅ |
-| Unmapped fields retained | ✅ |
-| Broad provider events | ✅ |
-| providerTimestamp retained | ✅ |
-| synqReceivedAt at ingress | ✅ |
-| Versioned wire contract | ✅ |
-| Replayable persistence | ✅ |
-| Session lifecycle | ✅ |
-| Temporal acquisition classes | ✅ |
-| RP-010..RP-045 resolved | ✅ |
-| Automated tests | ✅ |
-| No scoring changes | ✅ |
-| No reference drive | ✅ |
+1. **Cadence distribution metrics** (P50/P95 delta-t) — timestamps captured; computation deferred to post-capture analysis
+2. **Continuous schema probes** — classification types defined; unsupported-field polling not implemented
+3. **ClickHouse mirror** — not used; Postgres canonical for Phase 3A.1
+4. **Reference drive execution** — not performed; ready for Phase 3A.2+ controlled drive
+5. **Retention scheduler** — off by default; must enable `REFERENCE_CAPTURE_RETENTION_SCHEDULER_ENABLED`
+6. **PHEV/BEV GT vehicles** — mass binding works; GT sync vehicle binding remains manifest `PENDING_REFERENCE_VEHICLE`
 
 ---
 
-## 8. Readiness
+## 7. Readiness
 
 **REFERENCE_DRIVE_READINESS = READY**
 
-All PRE_RECORDER_BLOCKER items resolved. System ready for controlled reference drive operation (Phase 3A.2+), not executed in 3A.1.
+All correction-pass criteria satisfied in code and tests. Controlled reference drive may proceed when:
 
-**Phase status:** Phase 3A.1 **DONE** · Phase 3A Ground Truth analysis **NOT STARTED**
+- `REFERENCE_CAPTURE_ENABLED=true`
+- Workers process `reference.capture.recording` queue
+- Vehicle passes evidence-based preflight → READY
+
+**Phase status:** Phase 3A.1 **DONE** · Phase 3A Ground Truth reference drive execution **NOT STARTED**

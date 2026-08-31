@@ -182,6 +182,8 @@ import { ReferenceCaptureAcquisitionService } from './reference-capture/referenc
 import { ReferenceCaptureObservationWriterService } from './reference-capture/reference-capture-observation-writer.service';
 import { ReferenceCaptureMassBindingService } from './reference-capture/reference-capture-mass-binding.service';
 import { ReferenceCaptureRetentionService } from './reference-capture/reference-capture-retention.service';
+import { ReferenceCaptureReadinessService } from './reference-capture/reference-capture-readiness.service';
+import { ReferenceCaptureRunnerService } from './reference-capture/reference-capture-runner.service';
 import { TripDrivingImpactBackfillService } from './driving-impact/trip-driving-impact-backfill.service';
 import { BrakingEventLedgerService } from './brakes/braking-event-ledger.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
@@ -271,6 +273,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
       { name: QUEUE_NAMES.BATTERY_V2 },
       { name: QUEUE_NAMES.BRAKE_RECALCULATION },
       { name: QUEUE_NAMES.ENERGY_REFUEL_STATION_ENRICH },
+      { name: QUEUE_NAMES.REFERENCE_CAPTURE },
     ),
   ],
   controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController, ReferenceCaptureController],
@@ -443,6 +446,8 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ReferenceCaptureObservationWriterService,
     ReferenceCaptureMassBindingService,
     ReferenceCaptureRetentionService,
+    ReferenceCaptureReadinessService,
+    ReferenceCaptureRunnerService,
     TripAssessabilityRepository,
     TripAssessabilityService,
     TripAssessabilityInputLoader,
