@@ -750,15 +750,16 @@ Deliverable: `docs/audits/dimo-phase-2c-current-schema-signal-expansion-audit-20
 ### 2D Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2d-signal-value-physics-matrix-2026-08-31.md`
 
-**Exit criteria met (documentation analysis):** **20** main-track + **7** secondary + **3** commercial candidates reconciled; every unique candidate scored across Driver Quality · Vehicle Load · Brake Physics · Tire Load · Validation (**no mega-score**); incremental information gain · physics directness · cadence/latency/sync · powertrain applicability · derived-feature opportunities · signal chains · double-counting map · priority tiers · Pareto set · Phase 2E handoff complete.
+**Exit criteria met (documentation analysis):** **20** main-track + **7** secondary + **3** commercial candidates reconciled; every unique candidate scored across Driver Quality · Vehicle Load · Brake Physics · Tire Load · Validation (**no mega-score**); incremental information gain · physics directness · cadence/latency/sync · powertrain applicability · derived-feature opportunities · signal chains · double-counting map · priority tiers · Pareto set · **`PHYSICAL_EPISODE_IDENTITY`** handoff · final consistency/evidence/physics QA pass complete.
 
 **Material Phase 2D findings:**
 - **Tier A foundational:** **8** (`D2D-001` yaw · `D2D-002/003` wheel speeds · `D2D-012–015` brake hydraulics · `D2D-020` battery power)
-- **Cadence-critical:** **6** · **Latency-critical:** **2** (brake circuit pressure) · **Target ≤1s:** **9**
+- **Cadence-critical:** **6** · **Latency-critical:** **2** (`D2D-014/015` only; `LATENCY_HIGH_OR_CRITICAL_COUNT=8`) · **`TARGET_LE_1S_EXACT_COUNT=8`** · **Target ≤500ms:** **8**
 - **Top physics gap:** no direct long/lat accel — speed+yaw derived proposals required
 - **Highest incremental gain:** brake hydraulics (**VERY_HIGH**) — SynqDrive has no direct hydraulic input today; **0/4** audit coverage
 - **PHEV/BEV regen:** `powertrainTractionBatteryCurrentPower` **PRIMARY** — positive = into battery; synchronized decel context required
-- **Double-counting risk:** one braking episode observable via native event + speed decel + pedal + pressure + stop-go (**HIGH**)
+- **Double-counting / episode identity:** one braking episode = multiple evidence channels — Phase 2E must canonicalize under **`PHYSICAL_EPISODE_IDENTITY`** (not seven independent offenses)
+- **TPS semantics:** `THROTTLE_POSITION != ACCELERATOR_PEDAL_POSITION` — empirical reconstruction confidence **`UNKNOWN_UNTIL_GROUND_TRUTH_VALIDATION`**
 - **Phase 2E handoff groups:** throttle/TPS · gear parallel fields · brake episode paths · wheel speed hierarchy · tire pressure vs warning · battery/regen · temperatures
 - **Phase 3A remains `GATED_ON_LTE_R1_MANIFEST`** — 2D complete is prerequisite **1 of 4** for LTE_R1 manifest path (still requires 2E + 2F + 2F.1)
 
@@ -1135,7 +1136,7 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Available-but-unused DIMO signal matrix | DONE | Phase 2B §8 — 15 signals (Phase-2A driving acquisition) |
 | Phase 2C schema expansion audit | DONE | `dimo-phase-2c-current-schema-signal-expansion-audit-2026-08-31.md` — 117 schema fields |
 | Phase 2D.0 connection/powertrain stratification baseline | DONE | Master Plan §1.6 — taxonomy frozen (architecture only) |
-| Phase 2D signal value/physics matrix | DONE | `dimo-phase-2d-signal-value-physics-matrix-2026-08-31.md` — Tier A: **8** · cadence-critical: **6** |
+| Phase 2D signal value/physics matrix | DONE | `dimo-phase-2d-signal-value-physics-matrix-2026-08-31.md` — Tier A: **8** · cadence-critical: **6** · latency-critical: **2** · `TARGET_LE_1S_EXACT_COUNT=8` · QA pass complete |
 | Phase 2E DIMO redundancy / canonicalization | NEXT | Parallel-signal groups from Phase 2D §34 |
 | Phase 2F DIMO capability-first acquisition | NOT_STARTED | Connection-profile-aware query profiles |
 | Phase 2F.1 DIMO LTE_R1 reference manifest | NOT_STARTED | Ungates Phase 3A only |
