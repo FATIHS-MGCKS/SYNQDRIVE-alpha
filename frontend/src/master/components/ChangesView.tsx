@@ -36,6 +36,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p1-8-2-pre-scale-production-deploy-2026-08-31',
+    version: '4.9.1018',
+    title: 'P1.8.2 Pre-Scale Production Deploy — single-replica verification',
+    summary: [
+      'Deployed merged main `bfcf9ddb7` (#1469+#1470) to release `20260831190223_v4994` at PM2 fork ×1 port 3001.',
+      'Post-deploy: health/readiness PASS, scheduler LEADER, DIMO budget healthy, no orphan :3010, no Prometheus duplicate metric, no restart loop.',
+      '`battery.v2` failed 65 (was 67; 2 cleared by #1445 runtime — no queue mutation). Gate READY_FOR_CONTROLLED_SCALE_TO_2. SCALE_TO_2_EXECUTED=NO.',
+    ],
+    reason: 'P1.8.2 gate — deploy current main at replica=1 before controlled scale-to-2 execution.',
+    previousBehavior: 'Production on SHA 3874360e0 without #1469/#1470 harness fix and REST pending liveness fix.',
+    details: 'architecture/P1_8_2_PRE_SCALE_PRODUCTION_DEPLOY_SINGLE_REPLICA_2026-08-31.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T19:15:00.000Z',
+  },
+  {
     id: 'p1-8-1-pre-scale-remediation-2026-08-31',
     version: '4.9.1017',
     title: 'P1.8.1 Pre-Scale Remediation — orphan validation cleanup + battery.v2 forensics',
