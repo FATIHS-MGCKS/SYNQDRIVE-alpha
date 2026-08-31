@@ -50,6 +50,8 @@
     "check:surface": "bash scripts/check-surface-legacy.sh",
     "i18n:check": "node scripts/i18n-check.mjs",
     "i18n:scanner:test": "vitest run src/i18n/i18n-governance-scanner.test.ts",
+    "i18n:pr-gate": "node scripts/i18n-pr-gate.mjs",
+    "i18n:pr-gate:test": "vitest run src/i18n/i18n-pr-gate.test.ts",
     "i18n:governance": "node scripts/i18n-governance.mjs"
   },
   "dependencies": {

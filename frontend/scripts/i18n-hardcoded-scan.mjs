@@ -915,6 +915,30 @@ function migrationPhaseFor(relPath, surface) {
   return 'P2.2.2';
 }
 
+function relPathUnderScanRoot(relPath) {
+  const normalized = String(relPath ?? '').replace(/\\/g, '/');
+  for (const root of SCAN_ROOTS) {
+    const rootRel = relative(srcRoot, root).replace(/\\/g, '/');
+    if (!rootRel) continue;
+    if (normalized === rootRel) return true;
+    if (rootRel.endsWith('.ts') || rootRel.endsWith('.tsx')) continue;
+    if (normalized.startsWith(`${rootRel}/`)) return true;
+  }
+  return false;
+}
+
+/**
+ * Reproduce scanner inclusion/exclusion semantics for a src-relative path.
+ */
+export function isScannerEligibleRelativePath(relPath) {
+  const normalized = String(relPath ?? '').replace(/\\/g, '/');
+  if (!normalized) return false;
+  if (!/\.(ts|tsx)$/.test(normalized)) return false;
+  if (SKIP_FILE_RE.test(normalized)) return false;
+  if (SKIP_DIR_RE.test(`/${normalized}/`)) return false;
+  return relPathUnderScanRoot(normalized);
+}
+
 function collectFiles(target, files = []) {
   if (/\.(tsx|ts)$/.test(target)) {
     if (!SKIP_FILE_RE.test(target)) files.push(target);
