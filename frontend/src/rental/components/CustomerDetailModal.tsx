@@ -150,7 +150,7 @@ export function CustomerDetailModal({
       toast.success(`Status: ${customerStatusUiLabel(mappedStatus, locale)}`);
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Fehler beim Speichern');
-      toast.error('Status konnte nicht gespeichert werden', { description: msg });
+      toast.error(t('customers.toast.statusSaveFailed'), { description: msg });
     } finally {
       setStatusSaving(false);
     }

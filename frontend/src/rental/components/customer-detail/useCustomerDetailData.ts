@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { api, getErrorMessage } from '../../../lib/api';
 import type { CustomerDocumentRecord } from '../CustomerDocumentUploadBox';
 import type {
@@ -35,6 +36,7 @@ export function useCustomerDetail(orgId: string | null | undefined, customerId: 
 }
 
 export function useCustomerDocumentStatus(orgId: string | null | undefined, customerId: string) {
+  const { t } = useLanguage();
   const [status, setStatus] = useState<import('../../../lib/api').CustomerDocumentVerificationStatusDto | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,10 +50,10 @@ export function useCustomerDocumentStatus(orgId: string | null | undefined, cust
       .then(setStatus)
       .catch(() => {
         setStatus(null);
-        setError('Dokumentenstatus konnte nicht geladen werden');
+        setError(t('customers.error.documentStatusLoad'));
       })
       .finally(() => setLoading(false));
-  }, [orgId, customerId]);
+  }, [orgId, customerId, t]);
 
   useEffect(() => {
     refresh();
@@ -61,6 +63,7 @@ export function useCustomerDocumentStatus(orgId: string | null | undefined, cust
 }
 
 export function useCustomerDocuments(orgId: string | null | undefined, customerId: string) {
+  const { t } = useLanguage();
   const [documents, setDocuments] = useState<CustomerDocumentRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,10 +79,10 @@ export function useCustomerDocuments(orgId: string | null | undefined, customerI
       )
       .catch(() => {
         setDocuments([]);
-        setError('Dokumente konnten nicht geladen werden');
+        setError(t('customers.error.documentsLoad'));
       })
       .finally(() => setLoading(false));
-  }, [orgId, customerId]);
+  }, [orgId, customerId, t]);
 
   useEffect(() => {
     refresh();
@@ -120,6 +123,7 @@ export function useCustomerEligibility(orgId: string | null | undefined, custome
 }
 
 export function useCustomerTimeline(orgId: string | null | undefined, customerId: string) {
+  const { t } = useLanguage();
   const [events, setEvents] = useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,10 +137,10 @@ export function useCustomerTimeline(orgId: string | null | undefined, customerId
       .then((res) => setEvents(res.data ?? []))
       .catch(() => {
         setEvents([]);
-        setError('Timeline konnte nicht geladen werden');
+        setError(t('customers.error.timelineLoad'));
       })
       .finally(() => setLoading(false));
-  }, [orgId, customerId]);
+  }, [orgId, customerId, t]);
 
   useEffect(() => {
     refresh();
@@ -146,6 +150,7 @@ export function useCustomerTimeline(orgId: string | null | undefined, customerId
 }
 
 export function useCustomerFines(orgId: string | null | undefined, customerId: string) {
+  const { t } = useLanguage();
   const [fines, setFines] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -158,15 +163,16 @@ export function useCustomerFines(orgId: string | null | undefined, customerId: s
       .then((rows) => setFines(Array.isArray(rows) ? rows : []))
       .catch(() => {
         setFines([]);
-        setError('Bußgelder konnten nicht geladen werden');
+        setError(t('customers.error.finesLoad'));
       })
       .finally(() => setLoading(false));
-  }, [orgId, customerId]);
+  }, [orgId, customerId, t]);
 
   return { fines, loading, error };
 }
 
 export function useCustomerInvoices(orgId: string | null | undefined, customerId: string) {
+  const { t } = useLanguage();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -179,10 +185,10 @@ export function useCustomerInvoices(orgId: string | null | undefined, customerId
       .then((rows) => setInvoices(Array.isArray(rows) ? rows : []))
       .catch(() => {
         setInvoices([]);
-        setError('Rechnungen konnten nicht geladen werden');
+        setError(t('customers.error.invoicesLoad'));
       })
       .finally(() => setLoading(false));
-  }, [orgId, customerId]);
+  }, [orgId, customerId, t]);
 
   return { invoices, loading, error };
 }

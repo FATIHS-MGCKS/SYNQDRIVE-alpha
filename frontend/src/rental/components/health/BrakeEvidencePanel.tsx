@@ -1,4 +1,5 @@
 import type { BrakeHealthSummary } from '../../../lib/api';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { getFormattingLocale } from '../../../i18n/locales';
 import { StatusDot } from '../../../components/patterns';
 import {
@@ -72,6 +73,7 @@ export function BrakeEvidencePanel({
   onAction,
   className = '',
 }: BrakeEvidencePanelProps) {
+  const { t } = useLanguage();
   const components = brakeComponentLines(summary);
   const dataQuality = brakeActiveDataQuality(summary, locale);
   const safety = brakeActiveSafety(summary, locale);
@@ -172,9 +174,9 @@ export function BrakeEvidencePanel({
       </div>
 
       {dataQuality.length > 0 && (
-        <section aria-label={locale === 'de' ? 'Datenqualität' : 'Data quality'}>
+        <section aria-label={t('rental.vehicleHealth.aria.dataQuality')}>
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-            {locale === 'de' ? 'Datenqualität' : 'Data quality'}
+            {t('rental.vehicleHealth.aria.dataQuality')}
           </h3>
           <ul className="space-y-1.5">
             {dataQuality.map((item) => (
@@ -188,9 +190,9 @@ export function BrakeEvidencePanel({
       )}
 
       {safety.length > 0 && (
-        <section aria-label={locale === 'de' ? 'Sicherheit' : 'Safety'}>
+        <section aria-label={t('rental.vehicleHealth.aria.safety')}>
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-            {locale === 'de' ? 'Sicherheit' : 'Safety'}
+            {t('rental.vehicleHealth.aria.safety')}
           </h3>
           <ul className="space-y-1.5">
             {safety.map((item) => (

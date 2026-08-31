@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { api, type VehicleTripAnalytics } from '../../../lib/api';
 import { unwrapBookingListResponse } from '../bookings/bookingUtils';
 import {
@@ -20,6 +21,7 @@ export function useTelltaleDetailContext({
   vehicleId,
   enabled,
 }: UseTelltaleDetailContextOptions) {
+  const { t } = useLanguage();
   const [bookings, setBookings] = useState<TripBookingRef[]>([]);
   const [trips, setTrips] = useState<VehicleTripAnalytics[]>([]);
   const [loading, setLoading] = useState(false);
@@ -51,12 +53,12 @@ export function useTelltaleDetailContext({
       setTrips(Array.isArray(tripRes) ? tripRes : []);
     } catch {
       if (!guard.isCurrent(seq)) return;
-      setError('Buchungs- und Fahrtkontext konnten nicht geladen werden.');
+      setError(t('rental.telltale.error.contextLoadFailed'));
       setBookings([]);
       setTrips([]);
     }
     if (guard.isCurrent(seq)) setLoading(false);
-  }, [enabled, orgId, vehicleId, guard]);
+  }, [enabled, orgId, vehicleId, guard, t]);
 
   useEffect(() => {
     void load();
