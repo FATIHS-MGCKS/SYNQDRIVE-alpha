@@ -82,15 +82,17 @@ Do **not** assume every event exists on every vehicle. Capability remains vehicl
 
 Important characteristics:
 
-- Signal surface expected to be closely related to DIMO LTE R1.
+- Signal surface expected to be closely related to DIMO LTE R1 — **`UNVERIFIED_UNTIL_PHASE_2G`**.
 - **NO native DIMO behavior-event channel** per current project baseline — reconstructed detectors must **not** depend on native events.
 - Two digital outputs available for operational/control use (e.g. relay/ignition control).
+
+**Equivalence rule:** Signal equivalence, cadence equivalence, and timestamp equivalence remain **runtime questions**. LTE R1 calibration may provide a useful comparison baseline but **cannot automatically certify Smart5**.
 
 **Control-plane rule:** Digital outputs are **CONTROL-PLANE** capabilities. They are **NOT** driving-score inputs.
 
 Smart5 must **not** receive worse Driver Quality / Vehicle Load scores merely because native behavior events are unavailable. Native-event absence must instead affect **source provenance**, **detector strategy**, and **confidence / assessability** until reconstructed-event equivalence is validated.
 
-Smart5 signal/cadence equivalence with LTE R1 must later be **empirically verified** (Phase 2G).
+Smart5 signal/cadence/timestamp equivalence with LTE R1 must later be **empirically verified** (Phase 2G). Until then: **`UNVERIFIED_UNTIL_PHASE_2G`**.
 
 **`DIMO_TESLA_DIRECT`**
 
@@ -128,7 +130,9 @@ Important characteristics:
 - Latest/state/event behavior may differ from DIMO.
 - Must **NOT** inherit DIMO assumptions.
 
-High Mobility requires its **own provider audit** (Phase 2H) before production Driving Intelligence assumptions are made.
+High Mobility requires its **own provider audit** (Phase 2H) before production Driving Intelligence assumptions are made for **High Mobility target profiles**.
+
+**Important:** High Mobility completion is **NOT** a prerequisite for **`DIMO_LTE_R1`** Ground Truth validation. High Mobility is manufacturer/model/scope/cadence dependent and may require substantially more audit work than unrelated DIMO tracks.
 
 #### 1.6.2 Provider ≠ Connection Profile
 **Provider alone is insufficient.**
@@ -262,6 +266,24 @@ Each real tested combination gets an evidence status:
 
 This prevents SynqDrive from treating an untested connection/powertrain combination as fully validated.
 
+**Profile-scoped rule:** A `GROUND_TRUTH_VALIDATED` or `CALIBRATED` status applies **only** to the tested `connectionProfile` × `powertrainProfile` × `vehicle`/`modelVersion` context. Do **not** propagate validation automatically to another provider, connection profile, powertrain, or OEM/model.
+
+**Powertrain independence:** Powertrain validation can progress independently. We do **not** need all four powertrain classes available before starting the first LTE R1 reference drive. Example: `DIMO_LTE_R1` + `ICE_DIESEL` may reach `GROUND_TRUTH_VALIDATED` while `HIGH_MOBILITY_API_MQTT` + `PHEV` remains `UNTESTED` — valid and expected. No silent cross-powertrain calibration transfer.
+
+#### 1.6.8a Profile-Scoped Validation Gates (`PROFILE_SCOPED_VALIDATION_GATES`)
+There is **no global Phase 3 gate** on full cross-provider closure. Each connection/powertrain validation track may start once the **target-profile prerequisites** for that track are complete — unrelated providers need not wait.
+
+| Validation track | Required gate |
+|------------------|---------------|
+| **Phase 3A — DIMO LTE_R1** | Phase 2D + 2E + 2F + **`DIMO_LTE_R1` reference manifest (Phase 2F.1)** |
+| **Phase 3B — DIMO Tesla Direct** | Tesla Direct capability/cadence audit (Phase 2G) + **`DIMO_TESLA_DIRECT` Flight Recorder manifest** |
+| **Phase 3C — DIMO Smart5** | Smart5 capability/cadence audit (Phase 2G) + **`DIMO_SMART5` Flight Recorder manifest** |
+| **Phase 3D — High Mobility** | Relevant High Mobility OEM/profile audit (Phase 2H) + **HM profile-specific manifest** |
+
+Powertrain requirements remain an **additional independent dimension** on top of connection-profile gates (e.g. `DIMO_LTE_R1` + `ICE_DIESEL` may validate before `DIMO_LTE_R1` + `PHEV` if reference vehicle pending).
+
+**Phase 3A does NOT require:** Smart5 runtime audit completion · Tesla Direct audit completion · High Mobility audit completion · full cross-provider Phase 2I closure.
+
 All reference-drive / replay / calibration work must tag:
 
 - `connectionProfile`
@@ -273,7 +295,7 @@ All reference-drive / replay / calibration work must tag:
 
 Required current powertrain test classes: `ICE_GASOLINE`, `ICE_DIESEL`, `PHEV`, `BEV`.
 
-If a physical test vehicle for a class is unavailable, mark that profile **`PENDING_REFERENCE_VEHICLE`**. Do **not** silently generalize calibration from another powertrain.
+If a physical test vehicle for a class is unavailable, mark that profile **`PENDING_REFERENCE_VEHICLE`**. Do **not** silently generalize calibration from another powertrain. Example: `DIMO_LTE_R1` + `ICE_DIESEL` may be validated first while `DIMO_LTE_R1` + `PHEV` remains pending.
 
 #### 1.6.9 Critical Terminology (do not conflate)
 Use consistently and distinctly:
@@ -553,6 +575,30 @@ A future profile should be able to express:
 - fallback source,
 - confidence ceiling.
 **No implementation until approved.**
+
+### 2F.1. DIMO LTE_R1 Reference Manifest
+**Goal:** Freeze the **`DIMO_LTE_R1`** Flight Recorder / reference-program signal manifest — the first ungating deliverable for Phase 3A.
+
+**Output must specify:**
+- canonical signals to record,
+- raw provider fields to retain,
+- provider timestamp,
+- receive timestamp,
+- cadence target,
+- query/source surface,
+- native-event capture,
+- required powertrain context,
+- fallback/proxy signals,
+- provenance,
+- retention,
+- Ground Truth synchronization fields.
+
+**Prerequisites (LTE_R1 manifest inputs):** Phase 2D Signal Value / Physics Matrix · Phase 2E DIMO Redundancy / Canonicalization · Phase 2F DIMO Capability-First Acquisition Strategy.
+
+**Status:** **NOT_STARTED**
+
+**Gate:** Completion of **2F.1** ungates **Phase 3A only** — not 3B/3C/3D.
+
 ### 2G. DIMO Connection Variant Audit
 Explicitly audit **`DIMO_SMART5`** and **`DIMO_TESLA_DIRECT`** against **`DIMO_LTE_R1`** (primary DIMO reference baseline):
 - signal surface,
@@ -563,7 +609,16 @@ Explicitly audit **`DIMO_SMART5`** and **`DIMO_TESLA_DIRECT`** against **`DIMO_L
 - provider events / native-event capability,
 - detector implications,
 - confidence / assessability implications.
-LTE R1 remains the **primary DIMO reference baseline**.
+
+LTE R1 remains the **primary DIMO reference baseline**. Neither Smart5 nor Tesla Direct audit blocks LTE R1 Phase 3A.
+
+**Profile-scoped outputs:**
+
+| Profile | Audit output | Manifest | Ungates |
+|---------|--------------|----------|---------|
+| **Smart5** | Smart5 capability/cadence/timestamp audit vs LTE R1 (equivalence **not assumed**) | `DIMO_SMART5` Flight Recorder manifest | **Phase 3C** |
+| **Tesla Direct** | Tesla Direct capability/cadence/latency/HF audit (independent) | `DIMO_TESLA_DIRECT` Flight Recorder manifest | **Phase 3B** |
+
 ### 2H. High Mobility Provider Surface / OEM Capability Audit
 Perform for **High Mobility** the same class of work already done for DIMO:
 - current API/MQTT acquisition surface,
@@ -580,11 +635,26 @@ Perform for **High Mobility** the same class of work already done for DIMO:
 - persistence,
 - downstream consumers,
 - capability matrix.
-**No DIMO assumptions may be reused without proof.**
-### 2I. Cross-Provider Canonical Signal Contract & Flight Recorder Manifests
-Unify **`DIMO_LTE_R1`**, **`DIMO_SMART5`**, **`DIMO_TESLA_DIRECT`**, and **High Mobility** into provider-neutral canonical signal/feature contracts.
 
-Produce provider-specific Flight Recorder manifests.
+**No DIMO assumptions may be reused without proof.**
+
+High Mobility must produce **OEM/profile-specific manifests**. Only **High Mobility target validation tracks** (Phase 3D) are gated by Phase 2H and corresponding manifests.
+
+**High Mobility completion is NOT a prerequisite for `DIMO_LTE_R1` Ground Truth validation.**
+
+### 2I. Cross-Provider Canonical Contract Consolidation / Provider Parity & Governance
+**Role correction:** Phase 2I is **not** the universal prerequisite for all Phase 3 reference programs.
+
+After provider-specific knowledge exists, Phase 2I reconciles **`DIMO_LTE_R1`**, **`DIMO_SMART5`**, **`DIMO_TESLA_DIRECT`**, and **High Mobility** for:
+
+- final cross-provider canonical contracts,
+- equivalence classes,
+- fallback hierarchy across providers,
+- cross-provider confidence policy,
+- parity gaps,
+- common reporting semantics.
+
+Provider-specific reference testing (3A–3D) may **already have started** before complete cross-provider closure. Profile-specific manifests are owned by **2F.1 / 2G / 2H**, not deferred exclusively to 2I.
 
 **Phase 2 deliverables (consolidated):**
 1. Current Snapshot Query Inventory. *(2A — DONE)*
@@ -594,14 +664,18 @@ Produce provider-specific Flight Recorder manifests.
 5. Four-Vehicle 2026-08-30 Capability Matrix. *(2B — DONE)*
 6. Current schema expansion audit. *(2C — DONE)*
 7. Signal value/physics matrix. *(2D — NEXT)*
-8. Connection/powertrain stratification baseline. *(2D.0 — DONE via this amendment)*
+8. Connection/powertrain stratification baseline. *(2D.0 — DONE via amendment)*
 9. DIMO canonicalization + capability-first acquisition proposals. *(2E–2F)*
-10. DIMO connection-variant + High Mobility audits. *(2G–2H)*
-11. Cross-provider canonical contracts + Flight Recorder manifests. *(2I)*
-12. Prioritized query expansion proposal + query/storage/cost impact assessment.
-### 2J. Gate to Phase 3
-**Do not design/freeze the Flight Recorder until Phase 2I manifests exist for the target test profile.**
-Phase 3 remains **GATED** until the required provider manifest for a test profile is defined.
+10. **`DIMO_LTE_R1` reference manifest.** *(2F.1 — NOT_STARTED; ungates 3A)*
+11. DIMO connection-variant audits + Smart5/Tesla manifests. *(2G)*
+12. High Mobility OEM/profile audits + HM manifests. *(2H)*
+13. Cross-provider canonical consolidation / parity governance. *(2I)*
+14. Prioritized query expansion proposal + query/storage/cost impact assessment.
+
+### 2J. Profile-Scoped Validation Gates (not a global Phase 3 gate)
+Use **`PROFILE_SCOPED_VALIDATION_GATES`** (§1.6.8a). A connection/powertrain combination may start its own Flight Recorder / Reference Program once the **target-profile** provider/signal/physics/manifest work is complete.
+
+**Do not** block **`DIMO_LTE_R1`** Phase 3A on Smart5 audit · Tesla Direct audit · High Mobility audit · or full Phase 2I cross-provider closure.
 ### 2A Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2a-current-query-surface-audit-2026-08-31.md`
 
@@ -623,7 +697,7 @@ Deliverable: `docs/audits/dimo-phase-2a-current-query-surface-audit-2026-08-31.m
 - Provider schema claims limited to **CURRENT_SYNQDRIVE_REFERENCED_DIMO_SURFACE** + `CONFIRMED_FROM_CODE`; no current DIMO introspection artifact verified in this audit.
 - Four vehicle inventory files **PRESENT_ON_MAIN_AFTER_MERGE** (PR #1458); Phase 2B synthesis complete and reproducible from `main`.
 
-**Phase 2 overall:** IN_PROGRESS (2A+2B+2C+2D.0 done; **2D NEXT** = signal value/physics matrix; 2E–2I not started). **Phase 3 remains gated.**
+**Phase 2 overall:** IN_PROGRESS (2A+2B+2C+2D.0 done; **2D NEXT**; 2E–2I not started). Validation uses **profile-scoped gates** (§1.6.8a) — no global Phase 3 gate on 2I.
 
 ### 2B Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2b-four-vehicle-capability-gap-matrix-2026-08-31.md` (+ four vehicle inventory source docs in same PR)
@@ -669,6 +743,7 @@ Deliverable: `docs/audits/dimo-phase-2c-current-schema-signal-expansion-audit-20
 - Validation matrix structure + evidence statuses (§1.6.8)
 - Test-profile matrix dimensions (`connectionProfile` × `powertrainProfile` × `vehicle`)
 - Flight Recorder profile dimensions for future Phase 3A–3D tracks
+- **`PROFILE_SCOPED_VALIDATION_GATES`** — no global Phase 3 gate on 2I (§1.6.8a)
 
 **Important:** Every runtime capability statement remains subject to provider/vehicle testing. This phase establishes **architecture**, not measured equivalence.
 
@@ -676,18 +751,43 @@ Deliverable: `docs/audits/dimo-phase-2c-current-schema-signal-expansion-audit-20
 **SIGNAL VALUE / PHYSICS MATRIX** — for each of Phase 2C’s **20 unique main-track candidates** (+ secondary assessability/context + commercial axle RP-37 track), grade incremental value **per dimension**: Driver Quality · Vehicle Load · Brake Physics / Brake Load · Tire Load · validation/assessability · cadence · coverage · redundancy · cost. **No** global mega-score. **No** production changes.
 
 ### Status (Phase 2 overall)
-**IN_PROGRESS — 2A DONE; 2B DONE; 2C DONE; 2D.0 DONE; 2D NEXT (value/physics); 2E DIMO canonicalization; 2F DIMO capability-first acquisition; 2G DIMO connection-variant audit; 2H High Mobility audit; 2I cross-provider manifests**
+**IN_PROGRESS**
+
+| Subphase | Status |
+|----------|--------|
+| 2A | DONE |
+| 2B | DONE |
+| 2C | DONE |
+| 2D.0 | DONE |
+| **2D** | **NEXT** |
+| 2E | NOT_STARTED |
+| 2F | NOT_STARTED |
+| **2F.1** LTE_R1 manifest | **NOT_STARTED** |
+| 2G | NOT_STARTED |
+| 2H | NOT_STARTED |
+| 2I | NOT_STARTED |
+
 The older July DIMO capability audit is HISTORICAL_EVIDENCE only.
 ---
 ## Phase 3 — Telemetry Flight Recorder
 **Goal:** capture raw, timestamped evidence for the signal set selected in Phase 2 without changing scoring behavior.
 
-**Gate:** Phase 3 remains **GATED** until Phase 2I defines the required provider-specific Flight Recorder manifest for the target test profile.
+**Gating model:** **`PROFILE_SCOPED_VALIDATION_GATES`** (§1.6.8a) — **no global gate** on Phase 2I or High Mobility completion. Each reference program ungates when its **target-profile manifest** is frozen.
 
 **Provider-profile validation tracks:**
 
 ### Phase 3A — DIMO LTE_R1 Reference Program
-**PRIMARY** calibration/reference workstream.
+**PRIMARY** calibration/reference workstream · **`GATED_ON_LTE_R1_MANIFEST`**
+
+**May start when:** the **`DIMO_LTE_R1`** target-profile manifest (Phase **2F.1**) is frozen.
+
+**LTE_R1 manifest prerequisites:**
+- Phase 2D Signal Value / Physics Matrix
+- Phase 2E DIMO Redundancy / Canonicalization
+- Phase 2F DIMO Capability-First Acquisition Strategy
+- **`DIMO_LTE_R1`-specific Flight Recorder signal manifest (2F.1)**
+
+**Does NOT require:** Smart5 runtime audit · Tesla Direct audit · High Mobility audit · full cross-provider Phase 2I closure.
 
 Use real LTE R1 vehicles for:
 - raw telemetry capture,
@@ -699,34 +799,34 @@ Use real LTE R1 vehicles for:
 
 Current four primary DIMO audit vehicles align with this profile per project baseline.
 
+**Status:** **NOT_STARTED — `GATED_ON_LTE_R1_MANIFEST`**
+
 ### Phase 3B — DIMO Tesla Direct Reference Program
-Use real Tesla direct connection (`DIMO_TESLA_DIRECT` + `BEV`).
+**`GATED_ON_TESLA_DIRECT_MANIFEST`**
 
-Measure independently:
-- signal set,
-- cadence,
-- latency,
-- historical behavior,
-- EV/regen observability,
-- reconstruction quality.
+**May start when:** Tesla Direct capability/cadence audit (Phase 2G) + **`DIMO_TESLA_DIRECT` Flight Recorder manifest** are complete. Does **not** block Phase 3A.
 
-Do **not** inherit LTE R1 assumptions.
+Use real Tesla direct connection (`DIMO_TESLA_DIRECT` + `BEV`). Measure independently: signal set, cadence, latency, historical behavior, EV/regen observability, reconstruction quality. Do **not** inherit LTE R1 assumptions.
+
+**Status:** **NOT_STARTED — `GATED_ON_TESLA_DIRECT_MANIFEST`**
 
 ### Phase 3C — DIMO Smart5 Compatibility Program
-When a Smart5-equipped reference vehicle is available (`DIMO_SMART5`):
+**`GATED_ON_SMART5_MANIFEST`**
 
-Validate:
-- signal equivalence/divergence vs LTE R1,
-- cadence,
-- timestamp behavior,
-- absence of native events,
-- reconstructed-event performance,
-- confidence/assessability impact (not score penalty for missing native events).
+**May start when:** Smart5 capability/cadence audit (Phase 2G) + **`DIMO_SMART5` Flight Recorder manifest** are complete. Does **not** block Phase 3A.
+
+When a Smart5-equipped reference vehicle is available (`DIMO_SMART5`): validate signal/cadence/timestamp divergence vs LTE R1 (equivalence **not assumed**), absence of native events, reconstructed-event performance, confidence/assessability impact (not score penalty for missing native events).
+
+**Status:** **NOT_STARTED — `GATED_ON_SMART5_MANIFEST`**
 
 ### Phase 3D — High Mobility OEM-specific Reference Program
-Run only after Phase 2H.
+**`GATED_ON_HIGH_MOBILITY_PROFILE_MANIFEST`**
+
+**May start when:** relevant High Mobility OEM/profile audit (Phase 2H) + **HM profile-specific manifest** are complete. Does **not** block Phase 3A. High Mobility completion is **NOT** a prerequisite for DIMO LTE R1 Ground Truth validation.
 
 Validation must be **OEM/model-specific** where capabilities differ. No DIMO assumptions without proof.
+
+**Status:** **NOT_STARTED — `GATED_ON_HIGH_MOBILITY_PROFILE_MANIFEST`**
 
 **Phase 1 input (F-14):** Postgres does not store original DIMO HF time series; ClickHouse HF mirror is optional/partial. Flight Recorder must close the kinematic replay gap for Phase 6 sampling-invariance and Phase 13 governance.
 ### Recorder requirements
@@ -766,8 +866,8 @@ Compute at minimum:
 - No assumption that requested `1s` means effective 1 Hz.
 ### Exit criteria
 A measured, per-vehicle/per-signal cadence and reliability report exists and can be used to design detectors.
-### Status
-**NOT STARTED — GATED on Phase 2I provider manifest for target test profile**
+### Status (Phase 3 overall)
+Each sub-track has its **own profile-scoped gate** (§1.6.8a). See 3A–3D status above. **No single global “Phase 3 gated on 2I” statement.**
 ---
 ## Phase 4 — Instrumented Reference Drive
 **Goal:** create an external reference timeline against which SynqDrive telemetry and detectors can be measured.
@@ -1023,12 +1123,16 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Phase 2D signal value/physics matrix | NEXT | Grade **20** unique Phase-2C candidates per output dimension + assessability (no global composite) |
 | Phase 2E DIMO redundancy / canonicalization | NOT_STARTED | Parallel-signal semantics |
 | Phase 2F DIMO capability-first acquisition | NOT_STARTED | Connection-profile-aware query profiles |
-| Phase 2G DIMO connection-variant audit | NOT_STARTED | Smart5 + Tesla Direct vs LTE R1 |
-| Phase 2H High Mobility provider/OEM audit | NOT_STARTED | No DIMO assumptions without proof |
-| Phase 2I cross-provider manifests | NOT_STARTED | Canonical contracts + Flight Recorder manifests |
+| Phase 2F.1 DIMO LTE_R1 reference manifest | NOT_STARTED | Ungates Phase 3A only |
+| Phase 2G DIMO connection-variant audit | NOT_STARTED | Smart5 + Tesla Direct vs LTE R1; profile manifests |
+| Phase 2H High Mobility provider/OEM audit | NOT_STARTED | No DIMO assumptions; does not block LTE R1 |
+| Phase 2I cross-provider consolidation | NOT_STARTED | Parity/governance after provider-specific knowledge |
 | Prioritized query expansion proposal | NOT_STARTED | Phase 2D+ |
-| Flight Recorder manifest | NOT_STARTED | Phase 2I deliverable; gated |
-| Flight Recorder implementation | NOT_STARTED | gated on Phase 2 |
+| Phase 3A DIMO LTE_R1 reference program | NOT_STARTED | `GATED_ON_LTE_R1_MANIFEST` (2D+2E+2F+2F.1) |
+| Phase 3B DIMO Tesla Direct reference program | NOT_STARTED | `GATED_ON_TESLA_DIRECT_MANIFEST` |
+| Phase 3C DIMO Smart5 compatibility program | NOT_STARTED | `GATED_ON_SMART5_MANIFEST` |
+| Phase 3D High Mobility OEM reference program | NOT_STARTED | `GATED_ON_HIGH_MOBILITY_PROFILE_MANIFEST` |
+| Flight Recorder implementation | NOT_STARTED | Profile-scoped; first track: 3A after 2F.1 |
 | Instrumented reference drive | NOT_STARTED | gated on Flight Recorder |
 | Ground-truth synchronization | NOT_STARTED | Phase 5 |
 | Detector validation | NOT_STARTED | Phase 6 |
@@ -1050,7 +1154,13 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 5. ~~Execute Phase 2C: CURRENT DIMO SIGNAL/SCHEMA EXPANSION AUDIT.~~ **Done** — see Phase 2C audit (`117` schema fields; introspection authority).
 6. ~~Execute Phase 2D.0: Connection & Powertrain Stratification Baseline.~~ **Done** — see Master Plan §1.6 (architecture amendment 2026-08-31).
 7. **Execute Phase 2D:** Signal value / physics matrix (score Phase 2C candidate set per output dimension).
-8. Phase 2E–2I: DIMO canonicalization, capability-first acquisition, connection-variant audit, High Mobility audit, cross-provider manifests — then ungate Phase 3 for target profile.
+8. **Execute Phase 2E:** DIMO redundancy / canonicalization.
+9. **Execute Phase 2F:** DIMO capability-first acquisition strategy.
+10. **Execute Phase 2F.1:** `DIMO_LTE_R1` reference manifest → **ungate Phase 3A** LTE R1 Reference Program.
+11. **Execute Phase 3A** (LTE R1) — primary validation/calibration track. **Does not wait** for steps 12–14.
+12. **Execute Phase 2G:** Smart5 + Tesla Direct connection-variant audits + profile manifests → ungate 3B/3C when ready.
+13. **Execute Phase 2H:** High Mobility OEM/profile audit + manifests → ungate 3D when ready.
+14. **Execute Phase 2I:** Cross-provider canonical consolidation / parity governance (after provider-specific knowledge exists).
 ---
 # 7. Agent Handoff Protocol
 Any agent continuing this workstream should:
