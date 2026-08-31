@@ -663,7 +663,7 @@ Provider-specific reference testing (3A–3D) may **already have started** befor
 4. Native Event/Segment Inventory. *(2A — DONE)*
 5. Four-Vehicle 2026-08-30 Capability Matrix. *(2B — DONE)*
 6. Current schema expansion audit. *(2C — DONE)*
-7. Signal value/physics matrix. *(2D — NEXT)*
+7. Signal value/physics matrix. *(2D — DONE)*
 8. Connection/powertrain stratification baseline. *(2D.0 — DONE via amendment)*
 9. DIMO canonicalization + capability-first acquisition proposals. *(2E–2F)*
 10. **`DIMO_LTE_R1` reference manifest.** *(2F.1 — NOT_STARTED; ungates 3A)*
@@ -697,7 +697,7 @@ Deliverable: `docs/audits/dimo-phase-2a-current-query-surface-audit-2026-08-31.m
 - Provider schema claims limited to **CURRENT_SYNQDRIVE_REFERENCED_DIMO_SURFACE** + `CONFIRMED_FROM_CODE`; no current DIMO introspection artifact verified in this audit.
 - Four vehicle inventory files **PRESENT_ON_MAIN_AFTER_MERGE** (PR #1458); Phase 2B synthesis complete and reproducible from `main`.
 
-**Phase 2 overall:** IN_PROGRESS (2A+2B+2C+2D.0 done; **2D NEXT**; 2E–2I not started). Validation uses **profile-scoped gates** (§1.6.8a) — no global Phase 3 gate on 2I.
+**Phase 2 overall:** IN_PROGRESS (2A+2B+2C+2D.0+2D done; **2E NEXT**; 2F–2I not started). Validation uses **profile-scoped gates** (§1.6.8a).
 
 ### 2B Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2b-four-vehicle-capability-gap-matrix-2026-08-31.md` (+ four vehicle inventory source docs in same PR)
@@ -747,8 +747,24 @@ Deliverable: `docs/audits/dimo-phase-2c-current-schema-signal-expansion-audit-20
 
 **Important:** Every runtime capability statement remains subject to provider/vehicle testing. This phase establishes **architecture**, not measured equivalence.
 
-### 2D Status — NEXT
-**SIGNAL VALUE / PHYSICS MATRIX** — for each of Phase 2C’s **20 unique main-track candidates** (+ secondary assessability/context + commercial axle RP-37 track), grade incremental value **per dimension**: Driver Quality · Vehicle Load · Brake Physics / Brake Load · Tire Load · validation/assessability · cadence · coverage · redundancy · cost. **No** global mega-score. **No** production changes.
+### 2D Status — DONE (2026-08-31)
+Deliverable: `docs/audits/dimo-phase-2d-signal-value-physics-matrix-2026-08-31.md`
+
+**Exit criteria met (documentation analysis):** **20** main-track + **7** secondary + **3** commercial candidates reconciled; every unique candidate scored across Driver Quality · Vehicle Load · Brake Physics · Tire Load · Validation (**no mega-score**); incremental information gain · physics directness · cadence/latency/sync · powertrain applicability · derived-feature opportunities · signal chains · double-counting map · priority tiers · Pareto set · **`PHYSICAL_EPISODE_IDENTITY`** handoff · final consistency/evidence/physics QA pass complete.
+
+**Material Phase 2D findings:**
+- **Tier A foundational:** **8** (`D2D-001` yaw · `D2D-002/003` wheel speeds · `D2D-012–015` brake hydraulics · `D2D-020` battery power)
+- **Cadence-critical:** **6** · **Latency-critical:** **2** (`D2D-014/015` only; `LATENCY_HIGH_OR_CRITICAL_COUNT=8`) · **`TARGET_LE_1S_EXACT_COUNT=8`** · **Target ≤500ms:** **8**
+- **Top physics gap:** no direct long/lat accel — speed+yaw derived proposals required
+- **Highest incremental gain:** brake hydraulics (**VERY_HIGH**) — SynqDrive has no direct hydraulic input today; **0/4** audit coverage
+- **PHEV/BEV regen:** `powertrainTractionBatteryCurrentPower` **PRIMARY** — positive = into battery; synchronized decel context required
+- **Double-counting / episode identity:** one braking episode = multiple evidence channels — Phase 2E must canonicalize under **`PHYSICAL_EPISODE_IDENTITY`** (not seven independent offenses)
+- **TPS semantics:** `THROTTLE_POSITION != ACCELERATOR_PEDAL_POSITION` — empirical reconstruction confidence **`UNKNOWN_UNTIL_GROUND_TRUTH_VALIDATION`**
+- **Phase 2E handoff groups:** throttle/TPS · gear parallel fields · brake episode paths · wheel speed hierarchy · tire pressure vs warning · battery/regen · temperatures
+- **Phase 3A remains `GATED_ON_LTE_R1_MANIFEST`** — 2D complete is prerequisite **1 of 4** for LTE_R1 manifest path (still requires 2E + 2F + 2F.1)
+
+### 2E Status — NEXT
+**DIMO REDUNDANCY / CANONICALIZATION** — resolve parallel-signal groups identified in Phase 2D (§34 handoff). No production changes.
 
 ### Status (Phase 2 overall)
 **IN_PROGRESS**
@@ -759,8 +775,8 @@ Deliverable: `docs/audits/dimo-phase-2c-current-schema-signal-expansion-audit-20
 | 2B | DONE |
 | 2C | DONE |
 | 2D.0 | DONE |
-| **2D** | **NEXT** |
-| 2E | NOT_STARTED |
+| **2D** | **DONE** |
+| **2E** | **NEXT** |
 | 2F | NOT_STARTED |
 | **2F.1** LTE_R1 manifest | **NOT_STARTED** |
 | 2G | NOT_STARTED |
@@ -1120,8 +1136,8 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Available-but-unused DIMO signal matrix | DONE | Phase 2B §8 — 15 signals (Phase-2A driving acquisition) |
 | Phase 2C schema expansion audit | DONE | `dimo-phase-2c-current-schema-signal-expansion-audit-2026-08-31.md` — 117 schema fields |
 | Phase 2D.0 connection/powertrain stratification baseline | DONE | Master Plan §1.6 — taxonomy frozen (architecture only) |
-| Phase 2D signal value/physics matrix | NEXT | Grade **20** unique Phase-2C candidates per output dimension + assessability (no global composite) |
-| Phase 2E DIMO redundancy / canonicalization | NOT_STARTED | Parallel-signal semantics |
+| Phase 2D signal value/physics matrix | DONE | `dimo-phase-2d-signal-value-physics-matrix-2026-08-31.md` — Tier A: **8** · cadence-critical: **6** · latency-critical: **2** · `TARGET_LE_1S_EXACT_COUNT=8` · QA pass complete |
+| Phase 2E DIMO redundancy / canonicalization | NEXT | Parallel-signal groups from Phase 2D §34 |
 | Phase 2F DIMO capability-first acquisition | NOT_STARTED | Connection-profile-aware query profiles |
 | Phase 2F.1 DIMO LTE_R1 reference manifest | NOT_STARTED | Ungates Phase 3A only |
 | Phase 2G DIMO connection-variant audit | NOT_STARTED | Smart5 + Tesla Direct vs LTE R1; profile manifests |
@@ -1153,8 +1169,8 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 4. ~~Execute Phase 2B: merge Phase 2A with four vehicle capability inventories.~~ **Done** — see Phase 2B audit.
 5. ~~Execute Phase 2C: CURRENT DIMO SIGNAL/SCHEMA EXPANSION AUDIT.~~ **Done** — see Phase 2C audit (`117` schema fields; introspection authority).
 6. ~~Execute Phase 2D.0: Connection & Powertrain Stratification Baseline.~~ **Done** — see Master Plan §1.6 (architecture amendment 2026-08-31).
-7. **Execute Phase 2D:** Signal value / physics matrix (score Phase 2C candidate set per output dimension).
-8. **Execute Phase 2E:** DIMO redundancy / canonicalization.
+7. ~~Execute Phase 2D: Signal value / physics matrix.~~ **Done** — see Phase 2D audit (`20` main-track candidates scored).
+8. **Execute Phase 2E:** DIMO redundancy / canonicalization (Phase 2D handoff groups).
 9. **Execute Phase 2F:** DIMO capability-first acquisition strategy.
 10. **Execute Phase 2F.1:** `DIMO_LTE_R1` reference manifest → **ungate Phase 3A** LTE R1 Reference Program.
 11. **Execute Phase 3A** (LTE R1) — primary validation/calibration track. **Does not wait** for steps 12–14.
