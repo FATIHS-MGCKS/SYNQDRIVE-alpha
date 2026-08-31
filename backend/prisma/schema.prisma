@@ -1678,6 +1678,8 @@ model Organization {
   rentalContracts                        RentalContract[]
   misuseCases                            MisuseCase[]
   vehicleDrivingCapabilities             VehicleDrivingCapability[]
+  referenceCaptureSessions               ReferenceCaptureSession[]
+  referenceCaptureObservations           ReferenceCaptureObservation[]
   tripAssessabilities                    TripAssessability[]
   drivingEvidence                        DrivingEvidence[]
   drivingAnalysisRuns                    DrivingAnalysisRun[]
@@ -2998,6 +3000,8 @@ model Vehicle {
   billingBillableVehicleAssignments      BillingBillableVehicleAssignment[]
   billingQuantityEvents                  BillingQuantityEvent[]
   vehicleDrivingCapabilities             VehicleDrivingCapability[]
+  referenceCaptureSessions               ReferenceCaptureSession[]
+  referenceCaptureObservations           ReferenceCaptureObservation[]
   tripAssessabilities                    TripAssessability[]
   drivingEvidence                        DrivingEvidence[]
   drivingAnalysisRuns                    DrivingAnalysisRun[]
@@ -10214,6 +10218,98 @@ model VehicleDrivingCapability {
   @@index([vehicleId, checkedAt])
   @@index([providerSource, capabilityKey])
   @@map("vehicle_driving_capabilities")
+}
+
+/// Phase 3A.1 — DIMO LTE_R1 Flight Recorder reference capture session (isolated from production trips).
+enum ReferenceCaptureSessionStatus {
+  CREATED
+  PREFLIGHT
+  READY
+  RECORDING
+  STOPPING
+  COMPLETED
+  FAILED
+  ABORTED
+}
+
+enum ReferenceCaptureObservationKind {
+  SIGNAL_POINT
+  NATIVE_EVENT
+  SEGMENT
+  SESSION_METADATA
+  PROBE_RESULT
+}
+
+model ReferenceCaptureSession {
+  id                         String                        @id @default(uuid())
+  organizationId             String                        @map("organization_id")
+  vehicleId                  String                        @map("vehicle_id")
+  connectionProfile          String                        @map("connection_profile")
+  powertrainProfile          String?                       @map("powertrain_profile")
+  hardwareProfile            String?                       @map("hardware_profile")
+  manifestId                 String                        @map("manifest_id")
+  manifestVersion            String                        @map("manifest_version")
+  status                     ReferenceCaptureSessionStatus @default(CREATED)
+  recorderSoftwareVersion    String?                       @map("recorder_software_version")
+  groundTruthVideoRef        String?                       @map("ground_truth_video_ref")
+  syncMarkerJson             Json?                         @map("sync_marker_json")
+  massBindingJson            Json?                         @map("mass_binding_json")
+  preflightJson              Json?                         @map("preflight_json")
+  broadObservationFieldCount Int?                          @map("broad_observation_field_count")
+  failureReason              String?                       @map("failure_reason")
+  startedAt                  DateTime?                     @map("started_at")
+  stoppedAt                  DateTime?                     @map("stopped_at")
+  completedAt                DateTime?                     @map("completed_at")
+  createdAt                  DateTime                      @default(now()) @map("created_at")
+  updatedAt                  DateTime                      @updatedAt @map("updated_at")
+
+  organization Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle                       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  observations ReferenceCaptureObservation[]
+
+  @@index([organizationId, vehicleId, status])
+  @@index([vehicleId, createdAt])
+  @@map("reference_capture_sessions")
+}
+
+model ReferenceCaptureObservation {
+  id                   String                          @id @default(uuid())
+  sessionId            String                          @map("session_id")
+  organizationId       String                          @map("organization_id")
+  vehicleId            String                          @map("vehicle_id")
+  envelopeVersion      String                          @map("envelope_version")
+  observationKind      ReferenceCaptureObservationKind @map("observation_kind")
+  provider             String
+  connectionProfile    String                          @map("connection_profile")
+  powertrainProfile    String?                         @map("powertrain_profile")
+  providerField        String?                         @map("provider_field")
+  canonicalKey         String?                         @map("canonical_key")
+  rawIdentity          String                          @map("raw_identity")
+  acquisitionSurface   String?                         @map("acquisition_surface")
+  acquisitionTier      String?                         @map("acquisition_tier")
+  temporalClass        String?                         @map("temporal_class")
+  rawValueJson         Json                            @map("raw_value_json")
+  rawUnit              String?                         @map("raw_unit")
+  normalizedValueJson  Json?                           @map("normalized_value_json")
+  normalizedUnit       String?                         @map("normalized_unit")
+  providerTimestamp    DateTime?                       @map("provider_timestamp")
+  synqReceivedAt       DateTime                        @map("synq_received_at")
+  requestStartedAt     DateTime?                       @map("request_started_at")
+  requestCompletedAt   DateTime?                       @map("request_completed_at")
+  requestCorrelationId String?                         @map("request_correlation_id")
+  sequenceNumber       Int?                            @map("sequence_number")
+  capabilityState      String?                         @map("capability_state")
+  provenanceJson       Json?                           @map("provenance_json")
+  createdAt            DateTime                        @default(now()) @map("created_at")
+
+  session      ReferenceCaptureSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, synqReceivedAt])
+  @@index([sessionId, providerField])
+  @@index([organizationId, vehicleId])
+  @@map("reference_capture_observations")
 }
 
 /// Per-dimension trip analysis gate (Driving Intelligence V2 P14).

@@ -18,6 +18,13 @@ import { getDimoRequestContext } from './provider-budget/dimo-request-context';
 
 export type { DimoProviderRequestContext };
 
+export interface DimoGraphQLIngressTimingResult {
+  result: any;
+  requestStartedAt: Date;
+  requestCompletedAt: Date;
+  synqReceivedAt: Date;
+}
+
 export interface BatteryCapabilityPreflightSnapshot {
   availableSignals: string[] | null;
   signalsLatest: Record<string, unknown> | null;
@@ -216,6 +223,34 @@ export class DimoTelemetryService {
           execute: () => this.postGraphQL(vehicleJwt, query, variables),
         }),
     });
+  }
+
+  /**
+   * GraphQL query with explicit ingress timing (RP-039).
+   * synqReceivedAt is captured at axios response boundary — not DB insert time.
+   */
+  async queryGraphQLWithIngressTiming(
+    vehicleJwt: string,
+    query: string,
+    variables?: Record<string, any>,
+    requestContext?: DimoProviderRequestContext,
+    category?: DimoProviderCategory,
+  ): Promise<DimoGraphQLIngressTimingResult> {
+    const requestStartedAt = new Date();
+    const result = await this.queryGraphQL(
+      vehicleJwt,
+      query,
+      variables,
+      requestContext,
+      category,
+    );
+    const requestCompletedAt = new Date();
+    return {
+      result,
+      requestStartedAt,
+      requestCompletedAt,
+      synqReceivedAt: requestCompletedAt,
+    };
   }
 
   private async postGraphQL(
