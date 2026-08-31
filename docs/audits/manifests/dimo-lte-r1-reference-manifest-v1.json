@@ -1,0 +1,2912 @@
+{
+  "manifestId": "DIMO_LTE_R1_REFERENCE_MANIFEST",
+  "manifestVersion": "1.1.0",
+  "manifestStatus": "FROZEN",
+  "frozenAt": "2026-08-31T00:00:00.000Z",
+  "createdAt": "2026-08-31T00:00:00.000Z",
+  "canonicalRegistryVersion": "CAN-33-2026-08-31",
+  "provider": "DIMO",
+  "connectionProfile": "DIMO_LTE_R1",
+  "hardwareProfile": "LTE_R1_OBD_DONGLE",
+  "applicablePowertrainProfiles": [
+    "ICE_GASOLINE",
+    "ICE_DIESEL",
+    "PHEV",
+    "BEV"
+  ],
+  "authorityDocuments": [
+    "docs/audits/driving-intelligence-reconstruction-master-plan-2026-08-30.md",
+    "docs/audits/dimo-phase-2a-current-query-surface-audit-2026-08-31.md",
+    "docs/audits/dimo-phase-2b-four-vehicle-capability-gap-matrix-2026-08-31.md",
+    "docs/audits/dimo-phase-2c-current-schema-signal-expansion-audit-2026-08-31.md",
+    "docs/audits/dimo-phase-2d-signal-value-physics-matrix-2026-08-31.md",
+    "docs/audits/dimo-phase-2e-redundancy-canonicalization-2026-08-31.md",
+    "docs/audits/dimo-phase-2f-capability-first-acquisition-strategy-2026-08-31.md",
+    "docs/audits/dimo-phase-2f1-lte-r1-reference-manifest-2026-08-31.md"
+  ],
+  "manifestPurpose": "FROZEN_TWO_LAYER_REFERENCE_CONTRACT_CANONICAL_ANALYSIS_PLUS_BROAD_OBSERVATION_NOT_PRODUCTION_CONFIG",
+  "acquisitionTiers": {
+    "T0": "OPERATIONAL_LATEST",
+    "T1": "ACTIVE_TRIP_BASE",
+    "T2": "ACTIVE_TRIP_DYNAMICS",
+    "T3": "POST_TRIP_HF_RECONSTRUCTION",
+    "T4": "NATIVE_EVENT_EVIDENCE",
+    "T5": "PHYSICS_HIGH_FREQUENCY",
+    "T6": "HEALTH_CONTEXT",
+    "T7": "VALIDATION_FLIGHT_RECORDER"
+  },
+  "timestampContract": {
+    "requiredOnEveryCapturedObservation": [
+      "providerTimestamp",
+      "synqReceivedAt",
+      "requestStartedAt",
+      "responseReceivedAt",
+      "captureSessionId",
+      "tripOrRunId",
+      "vehicleId",
+      "manifestVersion",
+      "connectionProfile",
+      "powertrainProfile",
+      "acquisitionTier",
+      "requestedInterval",
+      "requestCorrelationId"
+    ],
+    "optionalWhenAvailable": [
+      "decodeNormalizedAt"
+    ],
+    "semantics": {
+      "providerSampleTime": "Provider-reported sample timestamp on signal or event",
+      "synqReceiveTime": "SynqDrive ingress timestamp at HTTP/MQTT receive boundary",
+      "queryResponseTiming": "requestStartedAt/responseReceivedAt bound DIMO API latency only",
+      "requestedIntervalNotObservedCadence": "Requested interval bucket is NOT proof of observed Hz"
+    },
+    "evidenceState": "PROPOSAL frozen as architectural requirement; current pipeline lacks full receive-time capture CONFIRMED_FROM_CODE"
+  },
+  "rawNormalizedRetentionContract": {
+    "mustRetain": [
+      "rawProviderRepresentation",
+      "canonicalNormalizedRepresentation",
+      "timestamps",
+      "provenanceEnvelope",
+      "queryRequestIdentity",
+      "manifestVersionIdentity"
+    ],
+    "mustNotPersistOnly": [
+      "finalEventCounters",
+      "compositeScores",
+      "precomputedEpisodeLabels"
+    ],
+    "retentionTtlPolicy": "PROPOSAL_TO_BE_FROZEN_BEFORE_PRODUCTION",
+    "minimumLifecycleRequirement": "Raw reference data MUST survive capture \u2192 validation \u2192 replay \u2192 sampling-invariance \u2192 calibration cycle",
+    "evidenceState": "PROPOSAL"
+  },
+  "nativeEventContract": {
+    "captureClass": "NATIVE_EVENT_EVIDENCE",
+    "acquisitionTier": "T4",
+    "provider": "DIMO",
+    "connectionProfile": "DIMO_LTE_R1",
+    "requiredFields": [
+      "providerEventName",
+      "providerEventTimestamp",
+      "synqReceivedAt",
+      "eventMetadataPayload",
+      "vehicleId",
+      "captureSessionId",
+      "tripAssociation",
+      "providerProvenance",
+      "manifestVersion"
+    ],
+    "episodeIdentityRule": "ONE_PHYSICAL_MANEUVER_ONE_PHYSICAL_EPISODE_MULTIPLE_EVIDENCE_CHANNELS",
+    "nativeEventProvenanceClass": "PROVIDER_CLASSIFIED",
+    "reconstructedProvenanceClass": "SYNQDRIVE_DERIVED",
+    "mustNotBlindlySum": true,
+    "evidenceState": "CONFIRMED_FROM_AUDIT",
+    "broadObservationRule": "Retain all provider-returned events for reference session; knownAnalysisEventSet is minimum not maximum",
+    "knownAnalysisEventSet": [
+      "behavior.acceleration",
+      "behavior.braking",
+      "behavior.cornering",
+      "behavior.extremeBraking",
+      "behavior.harshAcceleration",
+      "behavior.harshBraking",
+      "behavior.harshCornering",
+      "behavior.speeding"
+    ]
+  },
+  "groundTruthSynchronizationContract": {
+    "requiredSessionMetadata": [
+      "captureSessionId",
+      "sessionStartUtc",
+      "sessionEndUtc",
+      "vehicleId",
+      "connectionProfile",
+      "powertrainProfile",
+      "manifestVersion",
+      "referenceVideoIdentifier",
+      "synchronizationMarkerEvent",
+      "telemetryTimelineAnchor"
+    ],
+    "requiredTimingFields": [
+      "providerTimestamps",
+      "synqReceivedAtSeries",
+      "clockOffsetEstimationMethod",
+      "driftEstimationRequirement"
+    ],
+    "phase3aMetrics": [
+      "latency",
+      "onsetError",
+      "durationError",
+      "mae",
+      "rmse",
+      "bias",
+      "timestampOffset",
+      "drift"
+    ],
+    "referenceVideoRole": "REFERENCE_CHANNEL_NOT_PERFECT_GROUND_TRUTH_SENSOR",
+    "evidenceState": "PROPOSAL"
+  },
+  "provenanceRequirements": {
+    "envelopeFields": [
+      "manifestVersion",
+      "canonicalRegistryVersion",
+      "connectionProfile",
+      "powertrainProfile",
+      "acquisitionTier",
+      "captureClass",
+      "providerField",
+      "canonicalKey",
+      "sourceQueryOrSurface",
+      "capabilityStateAtCapture",
+      "fallbackApplied",
+      "confidenceCeiling"
+    ],
+    "evidenceState": "PROPOSAL"
+  },
+  "supplementalOperationalFields": [
+    {
+      "field": "currentLocationLatitude",
+      "purpose": "route reconstruction and GT sync",
+      "tier": [
+        "T1",
+        "T2",
+        "T7"
+      ],
+      "evidenceState": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "field": "currentLocationLongitude",
+      "purpose": "route reconstruction and GT sync",
+      "tier": [
+        "T1",
+        "T2",
+        "T7"
+      ],
+      "evidenceState": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "field": "isIgnitionOn",
+      "purpose": "trip FSM alignment",
+      "tier": [
+        "T0",
+        "T1",
+        "T7"
+      ],
+      "evidenceState": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "field": "lastSeen",
+      "purpose": "freshness and latency proxy",
+      "tier": [
+        "T0",
+        "T7"
+      ],
+      "evidenceState": "CONFIRMED_FROM_CODE"
+    }
+  ],
+  "captureClasses": [
+    "CORE_REFERENCE_REQUIRED",
+    "CAPABILITY_CONDITIONAL",
+    "POWERTRAIN_CONDITIONAL",
+    "NATIVE_EVENT_EVIDENCE",
+    "PHYSICS_HIGH_FREQUENCY",
+    "CONTEXT_ONLY",
+    "GROUND_TRUTH_SYNC",
+    "DIAGNOSTIC_ONLY",
+    "EXCLUDED_FROM_REFERENCE_CAPTURE"
+  ],
+  "runtimeProbeClassificationSummary": {
+    "totalProbes": 47,
+    "PRE_RECORDER_BLOCKER": 5,
+    "RECORDER_MEASURED": 29,
+    "POST_CAPTURE_VALIDATION": 11,
+    "PROFILE_OTHER": 2
+  },
+  "runtimeProbeBacklog": [
+    {
+      "probeId": "RP-001",
+      "description": "Effective cadence histogram all interval buckets (HF 1s, live 20s/15s/7s)",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2A/2F"
+    },
+    {
+      "probeId": "RP-002",
+      "description": "Provider\u2192SynqDrive latency distribution (snapshot + HF + live)",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2A"
+    },
+    {
+      "probeId": "RP-003",
+      "description": "listed-but-null vs availableSignals stability",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2A/2B"
+    },
+    {
+      "probeId": "RP-004",
+      "description": "Native event emission rate vs trip duration LTE_R1",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2A/2B/2F"
+    },
+    {
+      "probeId": "RP-005",
+      "description": "safety.collision and rare event availability",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2A"
+    },
+    {
+      "probeId": "RP-006",
+      "description": "Segment mechanism yield per trip",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2A/2B"
+    },
+    {
+      "probeId": "RP-007",
+      "description": "Fuel 30s bucket timestamp spacing ICE",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2A"
+    },
+    {
+      "probeId": "RP-008",
+      "description": "RAND coordinate bucket spatial semantics",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2A"
+    },
+    {
+      "probeId": "RP-009",
+      "description": "Crank 5s MIN/MAX voltage preservation",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2A"
+    },
+    {
+      "probeId": "RP-010",
+      "description": "Long-trip HF payload timeout/cap stress",
+      "classification": "PRE_RECORDER_BLOCKER",
+      "sourcePhase": "2A/3A design"
+    },
+    {
+      "probeId": "RP-011",
+      "description": "Event timestamp vs HF waveform alignment \u0394t",
+      "classification": "POST_CAPTURE_VALIDATION",
+      "sourcePhase": "2A/3A"
+    },
+    {
+      "probeId": "RP-012",
+      "description": "ClickHouse HF mirror completeness vs raw FR",
+      "classification": "POST_CAPTURE_VALIDATION",
+      "sourcePhase": "2A/3A"
+    },
+    {
+      "probeId": "RP-013",
+      "description": "DIMO rate-limit 429/503 patterns at scale",
+      "classification": "POST_CAPTURE_VALIDATION",
+      "sourcePhase": "2A external"
+    },
+    {
+      "probeId": "RP-014",
+      "description": "A4 zero native events despite same-day trip",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2B"
+    },
+    {
+      "probeId": "RP-015",
+      "description": "Tiguan historical events vs 0/30d window",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2B"
+    },
+    {
+      "probeId": "RP-016",
+      "description": "ActualGear + gear ratio correlation Tiguan",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2B/2C"
+    },
+    {
+      "probeId": "RP-017",
+      "description": "C63 mixed per-signal lastSeen timestamps FSM impact",
+      "classification": "POST_CAPTURE_VALIDATION",
+      "sourcePhase": "2B"
+    },
+    {
+      "probeId": "RP-018",
+      "description": "C63 native events without LTE_R1 label \u2014 enrichment path",
+      "classification": "POST_CAPTURE_VALIDATION",
+      "sourcePhase": "2B"
+    },
+    {
+      "probeId": "RP-019",
+      "description": "Arteon cornering native rate vs HF-only detection",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2B"
+    },
+    {
+      "probeId": "RP-020",
+      "description": "Authoritative hardware profile all four audit vehicles",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2B"
+    },
+    {
+      "probeId": "RP-021",
+      "description": "angularVelocityYaw OEM delivery beyond audit set",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2C/2F"
+    },
+    {
+      "probeId": "RP-022",
+      "description": "Front wheel speed pair OEM delivery",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2C/2F"
+    },
+    {
+      "probeId": "RP-023",
+      "description": "Brake pedal/pressure null vs permission vs not-listed",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2C/2F"
+    },
+    {
+      "probeId": "RP-024",
+      "description": "Parallel gear Current vs Actual vs Selected time-aligned",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2C/2F"
+    },
+    {
+      "probeId": "RP-025",
+      "description": "Tire pressure schema fields vs vehicle delivery",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2C/2F"
+    },
+    {
+      "probeId": "RP-026",
+      "description": "TPS vs OBD throttle divergence correlation",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2B/2C/2F"
+    },
+    {
+      "probeId": "RP-027",
+      "description": "Torque Nm vs torque % complementary validation",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2C/2F"
+    },
+    {
+      "probeId": "RP-028",
+      "description": "MAF availability and cadence ICE",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2C/2F"
+    },
+    {
+      "probeId": "RP-029",
+      "description": "Transmission temperature availability",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2C/2F"
+    },
+    {
+      "probeId": "RP-030",
+      "description": "Signed battery power during decel (positive=in semantics)",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2C/2F PHEV/BEV"
+    },
+    {
+      "probeId": "RP-031",
+      "description": "Native event metadata JSON schema completeness",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2C"
+    },
+    {
+      "probeId": "RP-032",
+      "description": "Yaw rate unit normalization deg/s vs rad/s",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2F"
+    },
+    {
+      "probeId": "RP-033",
+      "description": "Brake hydraulic pressure unit bar/Pa",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2F"
+    },
+    {
+      "probeId": "RP-034",
+      "description": "TPMS warning semantics per OEM",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2F"
+    },
+    {
+      "probeId": "RP-035",
+      "description": "Q001 static vs manifest-shaped field/payload A/B",
+      "classification": "POST_CAPTURE_VALIDATION",
+      "sourcePhase": "2B/2F/3A"
+    },
+    {
+      "probeId": "RP-036",
+      "description": "Post-trip duplicate full-trip HF read cost",
+      "classification": "RECORDER_MEASURED",
+      "sourcePhase": "2A"
+    },
+    {
+      "probeId": "RP-037",
+      "description": "Route+perf live poll dedup opportunity",
+      "classification": "POST_CAPTURE_VALIDATION",
+      "sourcePhase": "2A/2F"
+    },
+    {
+      "probeId": "RP-038",
+      "description": "Sampling invariance replay 1s vs 2s vs 5s",
+      "classification": "POST_CAPTURE_VALIDATION",
+      "sourcePhase": "2F/3A"
+    },
+    {
+      "probeId": "RP-039",
+      "description": "Receive timestamp injection at ingress boundary",
+      "classification": "PRE_RECORDER_BLOCKER",
+      "sourcePhase": "2F.1 contract"
+    },
+    {
+      "probeId": "RP-040",
+      "description": "Reference capture wire format conformance",
+      "classification": "PRE_RECORDER_BLOCKER",
+      "sourcePhase": "2F.1 contract"
+    },
+    {
+      "probeId": "RP-041",
+      "description": "Video-reference clock offset and drift estimation",
+      "classification": "POST_CAPTURE_VALIDATION",
+      "sourcePhase": "3A GT"
+    },
+    {
+      "probeId": "RP-042",
+      "description": "PHEV/BEV friction vs regen energy split under GT",
+      "classification": "POST_CAPTURE_VALIDATION",
+      "sourcePhase": "3A PHEV/BEV"
+    },
+    {
+      "probeId": "RP-043",
+      "description": "Native vs reconstructed same-maneuver episode disagreement",
+      "classification": "POST_CAPTURE_VALIDATION",
+      "sourcePhase": "3A"
+    },
+    {
+      "probeId": "RP-044",
+      "description": "Vehicle mass/spec binding for E_kin brake physics",
+      "classification": "PRE_RECORDER_BLOCKER",
+      "sourcePhase": "3A design"
+    },
+    {
+      "probeId": "RP-045",
+      "description": "Retention TTL scientific justification",
+      "classification": "PRE_RECORDER_BLOCKER",
+      "sourcePhase": "PROPOSAL pre-prod"
+    },
+    {
+      "probeId": "RP-046",
+      "description": "SMART5 HF density and native-event absence",
+      "classification": "PROFILE_OTHER",
+      "sourcePhase": "2G"
+    },
+    {
+      "probeId": "RP-047",
+      "description": "Tesla Direct + High Mobility provider surfaces",
+      "classification": "PROFILE_OTHER",
+      "sourcePhase": "2G/2H"
+    }
+  ],
+  "canonicalSignals": [
+    {
+      "canonicalId": "CAN-001",
+      "canonicalKey": "CAN_VEHICLE_SPEED",
+      "providerField": "speed",
+      "physicalMeaning": "Vehicle speed",
+      "providerUnit": "km/h",
+      "canonicalUnit": "km/h",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record",
+      "captureClass": "CORE_REFERENCE_REQUIRED",
+      "acquisitionTiers": [
+        "T0",
+        "T1",
+        "T2",
+        "T3",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q001,Q006,Q009",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "5s",
+      "cadenceSensitivity": "HIGH",
+      "latencySensitivity": "MEDIUM",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "NONE",
+      "fallbackClass": "NONE",
+      "provenanceClass": "CANONICAL_PRIMARY",
+      "analysisDomains": [
+        "DRIVER_QUALITY",
+        "VEHICLE_LOAD",
+        "BRAKE_PHYSICS",
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": true,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "OBSERVED",
+        "C63": "OBSERVED",
+        "A4": "OBSERVED",
+        "Arteon": "OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-01",
+        "RP-04",
+        "RP-2F-01",
+        "RP-2F-19"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "DRIVER_QUALITY",
+        "VEHICLE_LOAD",
+        "BRAKE_PHYSICS",
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-002",
+      "canonicalKey": "CAN_YAW_RATE",
+      "providerField": "angularVelocityYaw",
+      "physicalMeaning": "Body yaw rate",
+      "providerUnit": "deg/s",
+      "canonicalUnit": "deg/s",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record_if_capability_exists",
+      "captureClass": "PHYSICS_HIGH_FREQUENCY",
+      "acquisitionTiers": [
+        "T3",
+        "T5",
+        "T7"
+      ],
+      "queryRegistryRelation": "future T5 / Q009 ext",
+      "captureSurfaces": {
+        "fullManifest": false,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "2s",
+      "cadenceSensitivity": "CRITICAL",
+      "latencySensitivity": "HIGH",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "heading derived",
+      "fallbackClass": "DEGRADED_DERIVATION",
+      "provenanceClass": "CANONICAL_PRIMARY_IF_VALIDATED",
+      "analysisDomains": [
+        "DRIVER_QUALITY",
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": true,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-02",
+        "RP-2F-17",
+        "RP-32"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "DRIVER_QUALITY",
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-003",
+      "canonicalKey": "CAN_WHEEL_SPEED_FL",
+      "providerField": "chassisAxleRow1WheelLeftSpeed",
+      "physicalMeaning": "Front-left wheel speed",
+      "providerUnit": "km/h",
+      "canonicalUnit": "km/h",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record_if_capability_exists",
+      "captureClass": "PHYSICS_HIGH_FREQUENCY",
+      "acquisitionTiers": [
+        "T5",
+        "T7"
+      ],
+      "queryRegistryRelation": "future T5",
+      "captureSurfaces": {
+        "fullManifest": false,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "2s",
+      "cadenceSensitivity": "CRITICAL",
+      "latencySensitivity": "HIGH",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "NONE",
+      "fallbackClass": "NO_VALID_FALLBACK",
+      "provenanceClass": "CANONICAL_PRIMARY_IF_VALIDATED",
+      "analysisDomains": [
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": true,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-04",
+        "RP-33"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-004",
+      "canonicalKey": "CAN_WHEEL_SPEED_FR",
+      "providerField": "chassisAxleRow1WheelRightSpeed",
+      "physicalMeaning": "Front-right wheel speed",
+      "providerUnit": "km/h",
+      "canonicalUnit": "km/h",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record_if_capability_exists",
+      "captureClass": "PHYSICS_HIGH_FREQUENCY",
+      "acquisitionTiers": [
+        "T5",
+        "T7"
+      ],
+      "queryRegistryRelation": "future T5",
+      "captureSurfaces": {
+        "fullManifest": false,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "2s",
+      "cadenceSensitivity": "CRITICAL",
+      "latencySensitivity": "HIGH",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "NONE",
+      "fallbackClass": "NO_VALID_FALLBACK",
+      "provenanceClass": "CANONICAL_PRIMARY_IF_VALIDATED",
+      "analysisDomains": [
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": true,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-04",
+        "RP-33"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-005",
+      "canonicalKey": "CAN_ENGINE_THROTTLE_POSITION",
+      "providerField": "obdThrottlePosition",
+      "physicalMeaning": "OBD throttle position",
+      "providerUnit": "%",
+      "canonicalUnit": "%",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ICE_GASOLINE,ICE_DIESEL,PHEV",
+      "manifestDecision": "record",
+      "captureClass": "CORE_REFERENCE_REQUIRED",
+      "acquisitionTiers": [
+        "T2",
+        "T3",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q008,Q009",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "5s",
+      "cadenceSensitivity": "HIGH",
+      "latencySensitivity": "MEDIUM",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "TPS complementary",
+      "fallbackClass": "COMPLEMENTARY_NOT_SUBSTITUTE",
+      "provenanceClass": "CANONICAL_PRIMARY_PROVISIONAL",
+      "analysisDomains": [
+        "DRIVER_QUALITY",
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": true,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "OBSERVED",
+        "C63": "OBSERVED",
+        "A4": "OBSERVED",
+        "Arteon": "OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-05",
+        "RP-27",
+        "RP-35"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "DRIVER_QUALITY",
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-006",
+      "canonicalKey": "CAN_ENGINE_TPS",
+      "providerField": "powertrainCombustionEngineTPS",
+      "physicalMeaning": "Engine-reported TPS",
+      "providerUnit": "%",
+      "canonicalUnit": "%",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ICE_GASOLINE,ICE_DIESEL,PHEV",
+      "manifestDecision": "record_if_capability_exists",
+      "captureClass": "CAPABILITY_CONDITIONAL",
+      "acquisitionTiers": [
+        "T3",
+        "T5",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q009 ext / future T5",
+      "captureSurfaces": {
+        "fullManifest": false,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "5s",
+      "cadenceSensitivity": "HIGH",
+      "latencySensitivity": "MEDIUM",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "OBD throttle primary",
+      "fallbackClass": "COMPLEMENTARY_NOT_SUBSTITUTE",
+      "provenanceClass": "COMPLEMENTARY_EVIDENCE",
+      "analysisDomains": [
+        "DRIVER_QUALITY",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": true,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-05",
+        "RP-27"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "DRIVER_QUALITY",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-007",
+      "canonicalKey": "CAN_ENGINE_RPM",
+      "providerField": "powertrainCombustionEngineSpeed",
+      "physicalMeaning": "Engine RPM",
+      "providerUnit": "rpm",
+      "canonicalUnit": "rpm",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ICE_GASOLINE,ICE_DIESEL,PHEV",
+      "manifestDecision": "record",
+      "captureClass": "CORE_REFERENCE_REQUIRED",
+      "acquisitionTiers": [
+        "T2",
+        "T3",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q008,Q009",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "5s",
+      "cadenceSensitivity": "HIGH",
+      "latencySensitivity": "MEDIUM",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "NONE",
+      "fallbackClass": "NONE",
+      "provenanceClass": "CANONICAL_PRIMARY",
+      "analysisDomains": [
+        "DRIVER_QUALITY",
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": true,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "OBSERVED",
+        "C63": "OBSERVED",
+        "A4": "OBSERVED",
+        "Arteon": "OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-02",
+        "RP-2F-01"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "DRIVER_QUALITY",
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-008",
+      "canonicalKey": "CAN_ENGINE_LOAD",
+      "providerField": "obdEngineLoad",
+      "physicalMeaning": "Normalized engine load",
+      "providerUnit": "%",
+      "canonicalUnit": "%",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ICE_GASOLINE,ICE_DIESEL,PHEV",
+      "manifestDecision": "record",
+      "captureClass": "CORE_REFERENCE_REQUIRED",
+      "acquisitionTiers": [
+        "T0",
+        "T2",
+        "T3",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q001,Q008,Q009",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "10s",
+      "cadenceSensitivity": "MEDIUM",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "NONE",
+      "fallbackClass": "NONE",
+      "provenanceClass": "CANONICAL_PRIMARY",
+      "analysisDomains": [
+        "DRIVER_QUALITY",
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "OBSERVED",
+        "C63": "OBSERVED",
+        "A4": "OBSERVED",
+        "Arteon": "OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-01"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "DRIVER_QUALITY",
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-009",
+      "canonicalKey": "CAN_ENGINE_TORQUE",
+      "providerField": "powertrainCombustionEngineTorque",
+      "physicalMeaning": "Engine torque",
+      "providerUnit": "Nm",
+      "canonicalUnit": "Nm",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ICE_GASOLINE,ICE_DIESEL,PHEV",
+      "manifestDecision": "record_if_capability_exists",
+      "captureClass": "CAPABILITY_CONDITIONAL",
+      "acquisitionTiers": [
+        "T3",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q009",
+      "captureSurfaces": {
+        "fullManifest": false,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "5s",
+      "cadenceSensitivity": "HIGH",
+      "latencySensitivity": "MEDIUM",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "torque percent complementary",
+      "fallbackClass": "COMPLEMENTARY_NOT_SUBSTITUTE",
+      "provenanceClass": "CANONICAL_PRIMARY_IF_VALIDATED",
+      "analysisDomains": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-01"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-010",
+      "canonicalKey": "CAN_ENGINE_TORQUE_PERCENT",
+      "providerField": "powertrainCombustionEngineTorquePercent",
+      "physicalMeaning": "Engine torque percent",
+      "providerUnit": "%",
+      "canonicalUnit": "%",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ICE_GASOLINE,ICE_DIESEL,PHEV",
+      "manifestDecision": "record_if_capability_exists",
+      "captureClass": "CAPABILITY_CONDITIONAL",
+      "acquisitionTiers": [
+        "T3",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q009",
+      "captureSurfaces": {
+        "fullManifest": false,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "5s",
+      "cadenceSensitivity": "HIGH",
+      "latencySensitivity": "MEDIUM",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "torque Nm complementary",
+      "fallbackClass": "COMPLEMENTARY_NOT_SUBSTITUTE",
+      "provenanceClass": "COMPLEMENTARY_EVIDENCE",
+      "analysisDomains": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-01"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-011",
+      "canonicalKey": "CAN_ENGINE_MAF",
+      "providerField": "powertrainCombustionEngineMAF",
+      "physicalMeaning": "Air mass flow",
+      "providerUnit": "g/s",
+      "canonicalUnit": "g/s",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ICE_GASOLINE,ICE_DIESEL,PHEV",
+      "manifestDecision": "record_if_capability_exists",
+      "captureClass": "CAPABILITY_CONDITIONAL",
+      "acquisitionTiers": [
+        "T5",
+        "T7"
+      ],
+      "queryRegistryRelation": "future T5",
+      "captureSurfaces": {
+        "fullManifest": false,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "5s",
+      "cadenceSensitivity": "MEDIUM",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "engine load degraded",
+      "fallbackClass": "DEGRADED_PROXY",
+      "provenanceClass": "CANONICAL_PRIMARY_IF_VALIDATED",
+      "analysisDomains": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-07"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-012",
+      "canonicalKey": "CAN_TRANSMISSION_CURRENT_GEAR",
+      "providerField": "powertrainTransmissionCurrentGear",
+      "physicalMeaning": "Transmission current gear",
+      "providerUnit": "gear",
+      "canonicalUnit": "gear",
+      "valueType": "integer",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record",
+      "captureClass": "CORE_REFERENCE_REQUIRED",
+      "acquisitionTiers": [
+        "T3",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q009",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "5s",
+      "cadenceSensitivity": "MEDIUM",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "ActualGear pending",
+      "fallbackClass": "PENDING_EQUIVALENCE",
+      "provenanceClass": "PROVISIONAL_REQUIRES_RUNTIME_VALIDATION",
+      "analysisDomains": [
+        "DRIVER_QUALITY",
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-06",
+        "RP-35"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "DRIVER_QUALITY",
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-013",
+      "canonicalKey": "CAN_TRANSMISSION_ACTUAL_GEAR",
+      "providerField": "powertrainTransmissionActualGear",
+      "physicalMeaning": "Transmission actual gear",
+      "providerUnit": "gear",
+      "canonicalUnit": "gear",
+      "valueType": "integer",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record_if_capability_exists",
+      "captureClass": "CAPABILITY_CONDITIONAL",
+      "acquisitionTiers": [
+        "T5",
+        "T7"
+      ],
+      "queryRegistryRelation": "future T5",
+      "captureSurfaces": {
+        "fullManifest": false,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "5s",
+      "cadenceSensitivity": "MEDIUM",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "CurrentGear provisional",
+      "fallbackClass": "PENDING_EQUIVALENCE",
+      "provenanceClass": "COMPLEMENTARY_EVIDENCE",
+      "analysisDomains": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-23",
+        "RP-2F-06",
+        "RP-35"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-014",
+      "canonicalKey": "CAN_TRANSMISSION_SELECTED_GEAR",
+      "providerField": "powertrainTransmissionSelectedGear",
+      "physicalMeaning": "Transmission selected gear",
+      "providerUnit": "gear",
+      "canonicalUnit": "gear",
+      "valueType": "integer",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "diagnostic_only",
+      "captureClass": "DIAGNOSTIC_ONLY",
+      "acquisitionTiers": [
+        "T7"
+      ],
+      "queryRegistryRelation": "future T5",
+      "captureSurfaces": {
+        "fullManifest": false,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "10s",
+      "cadenceSensitivity": "LOW",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "NONE",
+      "fallbackClass": "NONE",
+      "provenanceClass": "COMPLEMENTARY_EVIDENCE",
+      "analysisDomains": [
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "90d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-35"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": "DIAGNOSTIC_ONLY",
+      "referenceCaptureEligibility": "CAPTURE_AT_APPROPRIATE_TEMPORAL_CLASS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-015",
+      "canonicalKey": "CAN_TRANSMISSION_GEAR_RATIO",
+      "providerField": "powertrainTransmissionActualGearRatio",
+      "physicalMeaning": "Transmission gear ratio",
+      "providerUnit": "ratio",
+      "canonicalUnit": "ratio",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record_if_capability_exists",
+      "captureClass": "CAPABILITY_CONDITIONAL",
+      "acquisitionTiers": [
+        "T5",
+        "T7"
+      ],
+      "queryRegistryRelation": "future T5",
+      "captureSurfaces": {
+        "fullManifest": false,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "10s",
+      "cadenceSensitivity": "LOW",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "NONE",
+      "fallbackClass": "NONE",
+      "provenanceClass": "COMPLEMENTARY_EVIDENCE",
+      "analysisDomains": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-23"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-016",
+      "canonicalKey": "CAN_TRANSMISSION_TEMPERATURE",
+      "providerField": "powertrainTransmissionTemperature",
+      "physicalMeaning": "Transmission temperature",
+      "providerUnit": "C",
+      "canonicalUnit": "C",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record",
+      "captureClass": "CONTEXT_ONLY",
+      "acquisitionTiers": [
+        "T6",
+        "T7"
+      ],
+      "queryRegistryRelation": "future T5",
+      "captureSurfaces": {
+        "fullManifest": false,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "30s",
+      "minimumAcceptableCadence": "60s",
+      "cadenceSensitivity": "LOW",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "NONE",
+      "fallbackClass": "NONE",
+      "provenanceClass": "CANONICAL_PRIMARY_IF_VALIDATED",
+      "analysisDomains": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-08"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-017",
+      "canonicalKey": "CAN_BRAKE_PEDAL_STATE",
+      "providerField": "chassisBrakeIsPedalPressed",
+      "physicalMeaning": "Brake pedal switch",
+      "providerUnit": "boolean",
+      "canonicalUnit": "boolean",
+      "valueType": "boolean",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record_if_capability_exists",
+      "captureClass": "PHYSICS_HIGH_FREQUENCY",
+      "acquisitionTiers": [
+        "T5",
+        "T7"
+      ],
+      "queryRegistryRelation": "future T5",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "2s",
+      "cadenceSensitivity": "CRITICAL",
+      "latencySensitivity": "HIGH",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "decel derived",
+      "fallbackClass": "DEGRADED_DERIVATION",
+      "provenanceClass": "CANONICAL_PRIMARY_IF_VALIDATED",
+      "analysisDomains": [
+        "DRIVER_QUALITY",
+        "BRAKE_PHYSICS",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": true,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-09",
+        "RP-34"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "DRIVER_QUALITY",
+        "BRAKE_PHYSICS",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-018",
+      "canonicalKey": "CAN_BRAKE_PEDAL_POSITION",
+      "providerField": "chassisBrakePedalPosition",
+      "physicalMeaning": "Brake pedal position",
+      "providerUnit": "%",
+      "canonicalUnit": "%",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record_if_capability_exists",
+      "captureClass": "PHYSICS_HIGH_FREQUENCY",
+      "acquisitionTiers": [
+        "T5",
+        "T7"
+      ],
+      "queryRegistryRelation": "future T5",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "2s",
+      "cadenceSensitivity": "CRITICAL",
+      "latencySensitivity": "HIGH",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "decel derived",
+      "fallbackClass": "DEGRADED_DERIVATION",
+      "provenanceClass": "CANONICAL_PRIMARY_IF_VALIDATED",
+      "analysisDomains": [
+        "DRIVER_QUALITY",
+        "BRAKE_PHYSICS",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": true,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-09",
+        "RP-34"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "DRIVER_QUALITY",
+        "BRAKE_PHYSICS",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-019",
+      "canonicalKey": "CAN_BRAKE_PRESSURE_C1",
+      "providerField": "chassisBrakeCircuit1PressurePrimary",
+      "physicalMeaning": "Brake hydraulic circuit 1",
+      "providerUnit": "bar",
+      "canonicalUnit": "bar",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record_if_capability_exists",
+      "captureClass": "PHYSICS_HIGH_FREQUENCY",
+      "acquisitionTiers": [
+        "T5",
+        "T7"
+      ],
+      "queryRegistryRelation": "future T5",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "500ms",
+      "cadenceSensitivity": "CRITICAL",
+      "latencySensitivity": "CRITICAL",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "decel MAJOR degraded",
+      "fallbackClass": "NO_VALID_FALLBACK",
+      "provenanceClass": "CANONICAL_PRIMARY_IF_VALIDATED",
+      "analysisDomains": [
+        "BRAKE_PHYSICS",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": true,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-03",
+        "RP-2F-18",
+        "RP-34"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "BRAKE_PHYSICS",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-020",
+      "canonicalKey": "CAN_BRAKE_PRESSURE_C2",
+      "providerField": "chassisBrakeCircuit2PressurePrimary",
+      "physicalMeaning": "Brake hydraulic circuit 2",
+      "providerUnit": "bar",
+      "canonicalUnit": "bar",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record_if_capability_exists",
+      "captureClass": "PHYSICS_HIGH_FREQUENCY",
+      "acquisitionTiers": [
+        "T5",
+        "T7"
+      ],
+      "queryRegistryRelation": "future T5",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "500ms",
+      "cadenceSensitivity": "CRITICAL",
+      "latencySensitivity": "CRITICAL",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "C1 circuit complement",
+      "fallbackClass": "CIRCUIT_COMPLEMENT",
+      "provenanceClass": "CANONICAL_PRIMARY_IF_VALIDATED",
+      "analysisDomains": [
+        "BRAKE_PHYSICS",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": true,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-03",
+        "RP-2F-18",
+        "RP-34"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "BRAKE_PHYSICS",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-021",
+      "canonicalKey": "CAN_TIRE_PRESSURE_FL",
+      "providerField": "chassisAxleRow1WheelLeftTirePressure",
+      "physicalMeaning": "Tire pressure FL",
+      "providerUnit": "kPa",
+      "canonicalUnit": "kPa",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record",
+      "captureClass": "CORE_REFERENCE_REQUIRED",
+      "acquisitionTiers": [
+        "T0",
+        "T6",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q001",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "30s",
+      "minimumAcceptableCadence": "300s",
+      "cadenceSensitivity": "LOW",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "warning diagnostic only",
+      "fallbackClass": "DIAGNOSTIC_NOT_SUBSTITUTE",
+      "provenanceClass": "CANONICAL_PRIMARY_IF_VALIDATED",
+      "analysisDomains": [
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-36",
+        "RP-2F-16"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-022",
+      "canonicalKey": "CAN_TIRE_PRESSURE_FR",
+      "providerField": "chassisAxleRow1WheelRightTirePressure",
+      "physicalMeaning": "Tire pressure FR",
+      "providerUnit": "kPa",
+      "canonicalUnit": "kPa",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record",
+      "captureClass": "CORE_REFERENCE_REQUIRED",
+      "acquisitionTiers": [
+        "T0",
+        "T6",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q001",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "30s",
+      "minimumAcceptableCadence": "300s",
+      "cadenceSensitivity": "LOW",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "warning diagnostic only",
+      "fallbackClass": "DIAGNOSTIC_NOT_SUBSTITUTE",
+      "provenanceClass": "CANONICAL_PRIMARY_IF_VALIDATED",
+      "analysisDomains": [
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-36",
+        "RP-2F-16"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-023",
+      "canonicalKey": "CAN_TIRE_PRESSURE_RL",
+      "providerField": "chassisAxleRow2WheelLeftTirePressure",
+      "physicalMeaning": "Tire pressure RL",
+      "providerUnit": "kPa",
+      "canonicalUnit": "kPa",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record",
+      "captureClass": "CORE_REFERENCE_REQUIRED",
+      "acquisitionTiers": [
+        "T0",
+        "T6",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q001",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "30s",
+      "minimumAcceptableCadence": "300s",
+      "cadenceSensitivity": "LOW",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "warning diagnostic only",
+      "fallbackClass": "DIAGNOSTIC_NOT_SUBSTITUTE",
+      "provenanceClass": "CANONICAL_PRIMARY_IF_VALIDATED",
+      "analysisDomains": [
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-36",
+        "RP-2F-16"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-024",
+      "canonicalKey": "CAN_TIRE_PRESSURE_RR",
+      "providerField": "chassisAxleRow2WheelRightTirePressure",
+      "physicalMeaning": "Tire pressure RR",
+      "providerUnit": "kPa",
+      "canonicalUnit": "kPa",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record",
+      "captureClass": "CORE_REFERENCE_REQUIRED",
+      "acquisitionTiers": [
+        "T0",
+        "T6",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q001",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "30s",
+      "minimumAcceptableCadence": "300s",
+      "cadenceSensitivity": "LOW",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "warning diagnostic only",
+      "fallbackClass": "DIAGNOSTIC_NOT_SUBSTITUTE",
+      "provenanceClass": "CANONICAL_PRIMARY_IF_VALIDATED",
+      "analysisDomains": [
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-36",
+        "RP-2F-16"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-025",
+      "canonicalKey": "CAN_TIRE_WARNING_STATE",
+      "providerField": "chassisTireSystemIsWarningOn",
+      "physicalMeaning": "TPMS warning aggregate",
+      "providerUnit": "boolean",
+      "canonicalUnit": "boolean",
+      "valueType": "boolean",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "diagnostic_only",
+      "captureClass": "DIAGNOSTIC_ONLY",
+      "acquisitionTiers": [
+        "T0",
+        "T6",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q001",
+      "captureSurfaces": {
+        "fullManifest": false,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "30s",
+      "minimumAcceptableCadence": "300s",
+      "cadenceSensitivity": "LOW",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "not pressure substitute",
+      "fallbackClass": "DIAGNOSTIC_NOT_SUBSTITUTE",
+      "provenanceClass": "DIAGNOSTIC_ONLY",
+      "analysisDomains": [
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "90d",
+      "fourVehicleObservationState": {
+        "Tiguan": "NOT_OBSERVED",
+        "C63": "NOT_OBSERVED",
+        "A4": "NOT_OBSERVED",
+        "Arteon": "NOT_OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-16"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": "DIAGNOSTIC_ONLY",
+      "referenceCaptureEligibility": "CAPTURE_AT_APPROPRIATE_TEMPORAL_CLASS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-026",
+      "canonicalKey": "CAN_TRACTION_BATTERY_POWER",
+      "providerField": "powertrainTractionBatteryCurrentPower",
+      "physicalMeaning": "Traction battery power",
+      "providerUnit": "kW",
+      "canonicalUnit": "kW",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "PHEV,BEV",
+      "manifestDecision": "record_only_for_specific_powertrain",
+      "captureClass": "POWERTRAIN_CONDITIONAL",
+      "acquisitionTiers": [
+        "T0",
+        "T3",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q001,Q009",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "5s",
+      "cadenceSensitivity": "HIGH",
+      "latencySensitivity": "MEDIUM",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "NO_VALID_FALLBACK",
+      "fallbackClass": "NO_VALID_FALLBACK",
+      "provenanceClass": "CANONICAL_PRIMARY_IF_VALIDATED",
+      "analysisDomains": [
+        "BRAKE_PHYSICS",
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": true,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "INAPPLICABLE",
+        "C63": "INAPPLICABLE",
+        "A4": "INAPPLICABLE",
+        "Arteon": "INAPPLICABLE"
+      },
+      "runtimeProbeIds": [
+        "RP-38",
+        "RP-2F-15"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "BRAKE_PHYSICS",
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-027",
+      "canonicalKey": "CAN_TRACTION_BATTERY_SOC",
+      "providerField": "powertrainTractionBatteryStateOfChargeCurrent",
+      "physicalMeaning": "Traction battery SOC",
+      "providerUnit": "%",
+      "canonicalUnit": "%",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "PHEV,BEV",
+      "manifestDecision": "record_only_for_specific_powertrain",
+      "captureClass": "POWERTRAIN_CONDITIONAL",
+      "acquisitionTiers": [
+        "T0",
+        "T3",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q001,Q009",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "30s",
+      "minimumAcceptableCadence": "60s",
+      "cadenceSensitivity": "LOW",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "NONE",
+      "fallbackClass": "NONE",
+      "provenanceClass": "CONTEXT_ONLY",
+      "analysisDomains": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "INAPPLICABLE",
+        "C63": "INAPPLICABLE",
+        "A4": "INAPPLICABLE",
+        "Arteon": "INAPPLICABLE"
+      },
+      "runtimeProbeIds": [
+        "RP-38"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-028",
+      "canonicalKey": "CAN_AMBIENT_TEMPERATURE",
+      "providerField": "exteriorAirTemperature",
+      "physicalMeaning": "Ambient/exterior temperature",
+      "providerUnit": "C",
+      "canonicalUnit": "C",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record",
+      "captureClass": "CONTEXT_ONLY",
+      "acquisitionTiers": [
+        "T3",
+        "T6",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q009,Q010",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "60s",
+      "cadenceSensitivity": "LOW",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "NONE",
+      "fallbackClass": "NONE",
+      "provenanceClass": "CONTEXT_ONLY",
+      "analysisDomains": [
+        "VEHICLE_LOAD",
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "OBSERVED",
+        "C63": "OBSERVED",
+        "A4": "OBSERVED",
+        "Arteon": "OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-01"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "VEHICLE_LOAD",
+        "TIRE_DYNAMIC_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-029",
+      "canonicalKey": "CAN_COOLANT_TEMPERATURE",
+      "providerField": "powertrainCombustionEngineECT",
+      "physicalMeaning": "Engine coolant temperature",
+      "providerUnit": "C",
+      "canonicalUnit": "C",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ICE_GASOLINE,ICE_DIESEL,PHEV",
+      "manifestDecision": "record",
+      "captureClass": "CORE_REFERENCE_REQUIRED",
+      "acquisitionTiers": [
+        "T0",
+        "T2",
+        "T3",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q001,Q008,Q009",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "30s",
+      "cadenceSensitivity": "MEDIUM",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "NONE",
+      "fallbackClass": "NONE",
+      "provenanceClass": "CANONICAL_PRIMARY",
+      "analysisDomains": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "OBSERVED",
+        "C63": "OBSERVED",
+        "A4": "OBSERVED",
+        "Arteon": "OBSERVED"
+      },
+      "runtimeProbeIds": [
+        "RP-2F-01"
+      ],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-030",
+      "canonicalKey": "CAN_OIL_TEMPERATURE",
+      "providerField": "obdOilTemperature",
+      "physicalMeaning": "Engine oil temperature",
+      "providerUnit": "C",
+      "canonicalUnit": "C",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ICE_GASOLINE,ICE_DIESEL,PHEV",
+      "manifestDecision": "record",
+      "captureClass": "CONTEXT_ONLY",
+      "acquisitionTiers": [
+        "T0",
+        "T6",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q001",
+      "captureSurfaces": {
+        "fullManifest": false,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "30s",
+      "minimumAcceptableCadence": "60s",
+      "cadenceSensitivity": "LOW",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "NONE",
+      "fallbackClass": "NONE",
+      "provenanceClass": "CANONICAL_PRIMARY",
+      "analysisDomains": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "OBSERVED",
+        "C63": "OBSERVED",
+        "A4": "OBSERVED",
+        "Arteon": "OBSERVED"
+      },
+      "runtimeProbeIds": [],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-031",
+      "canonicalKey": "CAN_INTAKE_TEMPERATURE",
+      "providerField": "obdIntakeTemp",
+      "physicalMeaning": "Intake air temperature",
+      "providerUnit": "C",
+      "canonicalUnit": "C",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ICE_GASOLINE,ICE_DIESEL,PHEV",
+      "manifestDecision": "record",
+      "captureClass": "CONTEXT_ONLY",
+      "acquisitionTiers": [
+        "T0",
+        "T6",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q001",
+      "captureSurfaces": {
+        "fullManifest": false,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "30s",
+      "minimumAcceptableCadence": "60s",
+      "cadenceSensitivity": "LOW",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "NONE",
+      "fallbackClass": "NONE",
+      "provenanceClass": "CONTEXT_ONLY",
+      "analysisDomains": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": false,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "OBSERVED",
+        "C63": "OBSERVED",
+        "A4": "OBSERVED",
+        "Arteon": "OBSERVED"
+      },
+      "runtimeProbeIds": [],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "VEHICLE_LOAD",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-032",
+      "canonicalKey": "CAN_LOCATION_HEADING",
+      "providerField": "currentLocationHeading",
+      "physicalMeaning": "Location heading",
+      "providerUnit": "deg",
+      "canonicalUnit": "deg",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record",
+      "captureClass": "CONTEXT_ONLY",
+      "acquisitionTiers": [
+        "T0",
+        "T6",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q001",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "30s",
+      "minimumAcceptableCadence": "60s",
+      "cadenceSensitivity": "LOW",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "yaw not substitute",
+      "fallbackClass": "NOT_COMPARABLE",
+      "provenanceClass": "CONTEXT_ONLY",
+      "analysisDomains": [
+        "DRIVER_QUALITY",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": true,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "OBSERVED",
+        "C63": "OBSERVED",
+        "A4": "OBSERVED",
+        "Arteon": "OBSERVED"
+      },
+      "runtimeProbeIds": [],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "DRIVER_QUALITY",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    },
+    {
+      "canonicalId": "CAN-033",
+      "canonicalKey": "CAN_ALTITUDE",
+      "providerField": "currentLocationAltitude",
+      "physicalMeaning": "Location altitude",
+      "providerUnit": "m",
+      "canonicalUnit": "m",
+      "valueType": "float",
+      "connectionProfile": "DIMO_LTE_R1",
+      "powertrainApplicability": "ALL",
+      "manifestDecision": "record",
+      "captureClass": "CONTEXT_ONLY",
+      "acquisitionTiers": [
+        "T3",
+        "T6",
+        "T7"
+      ],
+      "queryRegistryRelation": "Q009",
+      "captureSurfaces": {
+        "fullManifest": true,
+        "minimumManifest": false,
+        "optionalHighValueExtension": false
+      },
+      "targetCadence": "1s",
+      "minimumAcceptableCadence": "30s",
+      "cadenceSensitivity": "MEDIUM",
+      "latencySensitivity": "LOW",
+      "providerTimestampAvailable": true,
+      "synqReceivedAtRequired": true,
+      "rawProviderValueRetained": true,
+      "normalizedValueRetained": true,
+      "nullSemantics": "missing_not_zero",
+      "capabilityStateRequirement": "OBSERVED_NON_NULL for physics tiers; LISTED_AVAILABLE for context tiers",
+      "fallback": "NONE",
+      "fallbackClass": "NONE",
+      "provenanceClass": "CONTEXT_ONLY",
+      "analysisDomains": [
+        "BRAKE_PHYSICS",
+        "VALIDATION"
+      ],
+      "groundTruthRelevance": true,
+      "retentionRequirement": "180d",
+      "fourVehicleObservationState": {
+        "Tiguan": "OBSERVED",
+        "C63": "OBSERVED",
+        "A4": "OBSERVED",
+        "Arteon": "OBSERVED"
+      },
+      "runtimeProbeIds": [],
+      "confidenceImpact": "LOW if missing for context; HIGH if missing for physics tier",
+      "scientificLimitations": "Phase 2E no-substitution rules apply",
+      "evidenceState": "CONFIRMED_FROM_AUDIT",
+      "analysisEligibility": [
+        "BRAKE_PHYSICS",
+        "VALIDATION"
+      ],
+      "referenceCaptureEligibility": "CAPTURE_IF_VEHICLE_CAPABILITY_PERMITS",
+      "broadObservationNote": "CAN_* registry entry; broad capture may also retain unmapped provider fields separately"
+    }
+  ],
+  "manifestAmendment": "2026-08-31-broad-reference-observation-contract",
+  "manifestLayers": {
+    "canonicalAnalysisManifest": {
+      "description": "Current 33-key CAN_* registry for understood Driver Quality, Vehicle Load, Brake Physics, Tire Dynamic Load and context. NOT the complete provider-observation universe.",
+      "canonicalRegistryVersion": "CAN-33-2026-08-31",
+      "canonicalAnalysisSetCount": 33,
+      "minimumReferenceSetCount": 17,
+      "optionalHighValueCanonicalExtensionCount": 14,
+      "minimumReferenceSetKeys": [
+        "CAN-001",
+        "CAN-005",
+        "CAN-007",
+        "CAN-008",
+        "CAN-012",
+        "CAN-017",
+        "CAN-018",
+        "CAN-019",
+        "CAN-020",
+        "CAN-021",
+        "CAN-022",
+        "CAN-023",
+        "CAN-024",
+        "CAN-028",
+        "CAN-029",
+        "CAN-032",
+        "CAN-033"
+      ],
+      "optionalHighValueCanonicalExtensionKeys": [
+        "CAN-002",
+        "CAN-003",
+        "CAN-004",
+        "CAN-006",
+        "CAN-009",
+        "CAN-010",
+        "CAN-011",
+        "CAN-013",
+        "CAN-014",
+        "CAN-015",
+        "CAN-016",
+        "CAN-025",
+        "CAN-030",
+        "CAN-031"
+      ],
+      "powertrainOverlays": {
+        "ICE_GASOLINE": {
+          "requiredCore": [
+            "CAN-001",
+            "CAN-005",
+            "CAN-007",
+            "CAN-008",
+            "CAN-012",
+            "CAN-029",
+            "CAN-028",
+            "CAN-032",
+            "CAN-033"
+          ],
+          "suppress": [
+            "CAN-026",
+            "CAN-027"
+          ]
+        },
+        "ICE_DIESEL": {
+          "requiredCore": [
+            "CAN-001",
+            "CAN-005",
+            "CAN-007",
+            "CAN-008",
+            "CAN-012",
+            "CAN-029",
+            "CAN-028",
+            "CAN-032",
+            "CAN-033"
+          ],
+          "suppress": [
+            "CAN-026",
+            "CAN-027"
+          ],
+          "notes": "DEF level operational field outside 33-key set"
+        },
+        "PHEV": {
+          "requiredCore": [
+            "CAN-001",
+            "CAN-005",
+            "CAN-007",
+            "CAN-008",
+            "CAN-012",
+            "CAN-026",
+            "CAN-027",
+            "CAN-029",
+            "CAN-028",
+            "CAN-032",
+            "CAN-033"
+          ],
+          "notes": "PENDING_REFERENCE_VEHICLE for GT"
+        },
+        "BEV": {
+          "requiredCore": [
+            "CAN-001",
+            "CAN-026",
+            "CAN-027",
+            "CAN-012",
+            "CAN-028",
+            "CAN-032",
+            "CAN-033"
+          ],
+          "suppress": [
+            "CAN-005",
+            "CAN-007",
+            "CAN-008",
+            "CAN-029",
+            "CAN-030",
+            "CAN-031"
+          ],
+          "notes": "PENDING_REFERENCE_VEHICLE for GT"
+        }
+      },
+      "note": "CAN-33 prioritization for analysis alignment; does NOT limit Phase 3A reference capture breadth."
+    },
+    "broadReferenceObservationManifest": {
+      "description": "Phase 3A research capture surface: all empirically/capability-discovered provider telemetry signals retrievable for the concrete vehicle/session on DIMO_LTE_R1.",
+      "observationCountPolicy": "DYNAMIC_PER_VEHICLE",
+      "globalDimoSchemaFieldCountReference": 117,
+      "fourVehicleUnionObservedCountReference": 33,
+      "hardCodedObservationCount": null,
+      "doesNotRequireContinuousPollOfAllSchemaFields": true,
+      "hierarchy": [
+        "117-current-DIMO-schema-surface (global reference only)",
+        "per-vehicle capability discovery (availableSignals + empirical observation)",
+        "vehicle-supported / empirically observable provider fields",
+        "BROAD_REFERENCE_CAPTURE",
+        "canonical mapping where CAN_* exists",
+        "raw provider namespace DIMO::<field> where unmapped"
+      ],
+      "referencePipeline": [
+        "DISCOVER_EVERYTHING_AVAILABLE",
+        "CAPTURE_BROAD",
+        "CHARACTERIZE",
+        "CANONICALIZE",
+        "RECONSTRUCT",
+        "VALIDATE",
+        "SELECT_FEATURES",
+        "SCORE"
+      ],
+      "evidenceState": "PROPOSAL frozen as architectural requirement"
+    }
+  },
+  "broadReferenceObservationPolicy": {
+    "rule": "For each reference vehicle/session, capture EVERY provider telemetry signal that is capability-discovered or empirically observed as available where DIMO acquisition surface permits retrieval.",
+    "includesUnmappedProviderFields": true,
+    "includesDiagnosticContextBodyServiceFields": true,
+    "includesRedundantCandidates": true,
+    "includesUnknownScientificValueFields": true,
+    "excludesOnlyWhen": [
+      "powertrain_inherent_inapplicability_after_capability_known",
+      "provider_surface_cannot_retrieve_field_for_vehicle",
+      "explicitly_unsafe_or_disallowed_probe"
+    ],
+    "doesNotEquateTo117FieldsAt1Hz": true,
+    "evidenceState": "PROPOSAL"
+  },
+  "providerNativeUnmappedRetentionPolicy": {
+    "required": true,
+    "rawIdentityPattern": "DIMO::{exact-provider-field}",
+    "canonicalKeyWhenUnmapped": null,
+    "mustRetainFields": [
+      "provider",
+      "connectionProfile",
+      "vehicleId",
+      "captureSessionId",
+      "providerField",
+      "canonicalKey",
+      "rawValue",
+      "rawUnitOrRepresentation",
+      "normalizedRepresentationWhenDefined",
+      "providerTimestamp",
+      "synqReceivedAt",
+      "requestStartedAt",
+      "responseReceivedAt",
+      "requestCorrelationId",
+      "acquisitionSurface",
+      "acquisitionTier",
+      "temporalAcquisitionClass",
+      "capabilityState",
+      "manifestVersion"
+    ],
+    "doNotInventCanonicalKeyWithoutSemanticJustification": true,
+    "evidenceState": "PROPOSAL"
+  },
+  "capabilityDiscoveryPolicy": {
+    "availableSignalsRole": {
+      "is": "capability_discovery_evidence_for_initial_broad_candidate_set",
+      "isNotProofOf": [
+        "cadence",
+        "freshness",
+        "historical_queryability",
+        "waveform_quality",
+        "detector_suitability"
+      ]
+    },
+    "empiricalCharacterizationRequired": [
+      "observed_non_null_delivery",
+      "cadence_p50_p95_p99",
+      "max_gap",
+      "jitter",
+      "duplicates",
+      "out_of_order",
+      "provider_to_synq_latency",
+      "quantization_resolution",
+      "null_behavior",
+      "historical_availability",
+      "surface_differences"
+    ],
+    "controlledDirectProbeMechanism": {
+      "purpose": "Probe schema-supported fields not listed in availableSignals once/diagnostically when scientifically high-value",
+      "mustNot": "blindly_query_all_unsupported_fields_continuously",
+      "resultStates": [
+        "SCHEMA_SUPPORTED",
+        "LISTED_AVAILABLE",
+        "OBSERVED_NON_NULL",
+        "LISTED_BUT_NULL",
+        "DIRECT_PROBE_SUPPORTED",
+        "DIRECT_PROBE_NULL",
+        "NOT_AVAILABLE_ON_VEHICLE",
+        "UNKNOWN"
+      ]
+    },
+    "evidenceState": "CONFIRMED_FROM_AUDIT"
+  },
+  "temporalAcquisitionClasses": {
+    "principle": "Broad observation breadth is independent of acquisition cadence. Retain all available signals; assign temporal class per signal.",
+    "classes": {
+      "WAVEFORM_DYNAMICS": {
+        "cadenceIntent": "maximum_useful_provider_supported",
+        "examples": [
+          "speed HF",
+          "yaw",
+          "brake pressure",
+          "wheel speeds"
+        ]
+      },
+      "POWERTRAIN_DYNAMIC": {
+        "cadenceIntent": "high_when_scientifically_useful",
+        "examples": [
+          "RPM",
+          "throttle",
+          "torque",
+          "battery power"
+        ]
+      },
+      "SPATIAL_ROUTE": {
+        "cadenceIntent": "route_suitable",
+        "examples": [
+          "lat",
+          "lon",
+          "heading route buckets"
+        ]
+      },
+      "SLOW_PHYSICAL_CONTEXT": {
+        "cadenceIntent": "slow",
+        "examples": [
+          "ambient",
+          "coolant snapshot",
+          "tire pressure"
+        ]
+      },
+      "HEALTH_DIAGNOSTIC": {
+        "cadenceIntent": "slow_or_on_change",
+        "examples": [
+          "DTC",
+          "warnings",
+          "fluid levels"
+        ]
+      },
+      "EVENT": {
+        "cadenceIntent": "event_driven",
+        "examples": [
+          "native provider events",
+          "segments triggers"
+        ]
+      },
+      "SESSION_METADATA": {
+        "cadenceIntent": "session_or_request_level",
+        "examples": [
+          "captureSessionId",
+          "manifestVersion",
+          "request timing"
+        ]
+      }
+    },
+    "requestedIntervalNotObservedCadence": true,
+    "evidenceState": "PROPOSAL"
+  },
+  "broadNativeEventObservationPolicy": {
+    "knownAnalysisEventSet": {
+      "description": "Minimum known behavioral filters aligned with current Q015 scoring surface",
+      "eventNames": [
+        "behavior.acceleration",
+        "behavior.braking",
+        "behavior.cornering",
+        "behavior.extremeBraking",
+        "behavior.harshAcceleration",
+        "behavior.harshBraking",
+        "behavior.harshCornering",
+        "behavior.speeding"
+      ]
+    },
+    "broadProviderEventObservationSet": {
+      "rule": "Retain ALL provider events actually returned for reference vehicle/session when event API permits \u2014 do not drop unknown event names",
+      "dynamicPerVehicle": true,
+      "hardCodedEventCount": null
+    },
+    "requiredPerEventFields": [
+      "providerEventName",
+      "providerEventTimestamp",
+      "synqReceivedAt",
+      "eventMetadataPayload",
+      "vehicleId",
+      "captureSessionId",
+      "tripAssociation",
+      "providerProvenance",
+      "manifestVersion"
+    ],
+    "unknownEventNames": "retain_as_provider_native_evidence",
+    "evidenceState": "PROPOSAL"
+  },
+  "segmentObservationPolicy": {
+    "rule": "If segment mechanism can be safely queried/captured for vehicle/session, retain results for research/validation even if no current score consumes them",
+    "doNotPromoteToCanonicalWithoutSemanticMapping": true,
+    "evidenceState": "PROPOSAL"
+  },
+  "analysisEligibilityVsReferenceCaptureEligibility": {
+    "analysisEligibility": "Whether signal/event participates in current Driver Quality, Vehicle Load, Brake Physics, Tire Dynamic Load scoring/detector design",
+    "referenceCaptureEligibility": "Whether signal/event MUST be retained in Phase 3A broad reference capture when vehicle/provider permits retrieval",
+    "rules": [
+      "DIAGNOSTIC_ONLY describes current analysis use \u2014 NOT do-not-observe in reference mode",
+      "EXCLUDED_FROM_SCORING != EXCLUDED_FROM_REFERENCE_OBSERVATION",
+      "CONTEXT_ONLY fields remain reference-capturable at appropriate temporal class",
+      "CAN_* mapped signals follow canonical analysis contract PLUS broad capture when available"
+    ],
+    "evidenceState": "PROPOSAL"
+  },
+  "powertrainOverlayPolicy": {
+    "distinguish": [
+      "analysis_required_signals",
+      "broad_observation_signals"
+    ],
+    "suppressFromQueryWhenInherentInapplicabilityKnown": true,
+    "example": "Do not query BEV-only fields on ICE once capability confirms absence; retain all other available ICE/provider fields in broad capture",
+    "phevBevGroundTruth": "PENDING_REFERENCE_VEHICLE \u2014 do not fabricate evidence",
+    "evidenceState": "CONFIRMED_FROM_AUDIT"
+  },
+  "designPrinciples": {
+    "primary": "BROAD_SCIENTIFIC_OBSERVATION_WITH_TEMPORALLY_EFFICIENT_ACQUISITION",
+    "meaning": "Maximize information coverage of the vehicle-supported provider surface \u2014 not query count or uniform polling frequency",
+    "supersedes": "Scientific sufficiency, not query maximalism (misread as narrow capture)",
+    "referenceMode": "BROAD_CAPTURE_FIRST",
+    "productionMode": "CAPABILITY_SHAPED_MINIMUM_OPTIMAL_ACQUISITION_AFTER_VALIDATION",
+    "evidenceState": "PROPOSAL"
+  },
+  "phase3AGate": {
+    "phase2F1Documentation": "DONE",
+    "implementationStart": "READY_TO_START_IMPLEMENTATION",
+    "referenceDriveExecution": "NOT_READY_FOR_REFERENCE_DRIVE",
+    "referenceDriveBlockedBy": "PRE_RECORDER_BLOCKER probes resolved during Phase 3A implementation/preflight (RP-010, RP-039, RP-040, RP-044, RP-045)",
+    "note": "Two-layer manifest distinction must be frozen before implementation \u2014 satisfied in manifest v1.1.0",
+    "evidenceState": "PROPOSAL"
+  }
+}

@@ -311,6 +311,28 @@ Use consistently and distinctly:
 | **Cadence Capability** | Effective update frequency for signals |
 | **Native Event Capability** | Provider-classified behavior events availability |
 | **Data Confidence** | Orthogonal assessability/reliability — not a driving-quality score |
+
+#### 1.6.10 Reference vs Production Acquisition Modes (frozen Phase 2F.1 v1.1.0)
+
+Two manifest layers must **never** be conflated:
+
+| Layer | Term | Count | Role |
+|-------|------|-------|------|
+| **Canonical analysis** | `CANONICAL_ANALYSIS_SET` | **33** `CAN_*` keys | Current understood DQ / VL / BK / TR analysis registry — **not** the provider observation universe |
+| **Broad reference observation** | `BROAD_REFERENCE_OBSERVATION_SET` | **`DYNAMIC_PER_VEHICLE`** | Phase 3A research capture: all capability-discovered/observed provider telemetry retrievable for the concrete vehicle/session, including unmapped `DIMO::<field>` signals |
+| **Minimum reference fallback** | `MINIMUM_REFERENCE_SET` | **17** canonical keys | Pareto science floor — not the research capture target |
+
+**Lifecycle (critical):**
+
+| Mode | Strategy |
+|------|----------|
+| **REFERENCE MODE** (Phase 3A Flight Recorder / reference program) | **BROAD CAPTURE FIRST** — discover → capture broad → characterize → canonicalize → validate |
+| **PRODUCTION MODE** (post-validation fleet acquisition) | **CAPABILITY-SHAPED MINIMUM/OPTIMAL ACQUISITION AFTER VALIDATION** |
+
+Reference/research capture may intentionally collect **significantly more** data than eventual production acquisition. Broad observation breadth is **independent** of cadence — retain all available signals with **temporal acquisition classes**; do **not** equate to 117 schema fields @ 1 Hz continuous polling.
+
+**Phase 3A gate (post-2F.1 v1.1.0):** `READY_TO_START_IMPLEMENTATION` · reference drive `NOT_READY_FOR_REFERENCE_DRIVE` until PRE_RECORDER_BLOCKER items resolved during 3A implementation/preflight.
+
 ---
 ## 2. Current-State Findings Already Established
 ### 2.1 Current Driver Score Is Not Driver Quality
@@ -595,9 +617,16 @@ A future profile should be able to express:
 
 **Prerequisites (LTE_R1 manifest inputs):** Phase 2D Signal Value / Physics Matrix · Phase 2E DIMO Redundancy / Canonicalization · Phase 2F DIMO Capability-First Acquisition Strategy.
 
-**Status:** **NEXT** (Phase 2F design authority complete; manifest freeze pending)
+**Status:** **DONE** (2026-08-31) — manifest **v1.1.0** (two-layer broad-capture contract) · Phase 3A **`READY_TO_START_IMPLEMENTATION`** · reference drive **`NOT_READY_FOR_REFERENCE_DRIVE`**
 
-**Gate:** Completion of **2F.1** ungates **Phase 3A only** — not 3B/3C/3D.
+**Deliverables:** `dimo-phase-2f1-lte-r1-reference-manifest-2026-08-31.md` · `manifests/dimo-lte-r1-reference-manifest-v1.json`
+
+**Two-layer freeze:**
+- **`CANONICAL_ANALYSIS_SET`** — 33 `CAN_*` keys (analysis registry)
+- **`BROAD_REFERENCE_OBSERVATION_SET`** — dynamic per vehicle (includes unmapped provider fields, all returned native events, segments when available)
+- **`MINIMUM_REFERENCE_SET`** — 17-key Pareto fallback
+
+**Gate:** Completion of **2F.1** (including broad-capture distinction) ungates **Phase 3A implementation start** — **satisfied 2026-08-31** — not 3B/3C/3D. Reference drives remain gated on PRE_RECORDER_BLOCKER resolution in 3A.
 
 ### 2G. DIMO Connection Variant Audit
 Explicitly audit **`DIMO_SMART5`** and **`DIMO_TESLA_DIRECT`** against **`DIMO_LTE_R1`** (primary DIMO reference baseline):
@@ -667,7 +696,7 @@ Provider-specific reference testing (3A–3D) may **already have started** befor
 8. Connection/powertrain stratification baseline. *(2D.0 — DONE via amendment)*
 9. DIMO canonicalization. *(2E — DONE)*
 10. DIMO capability-first acquisition strategy. *(2F — DONE)*
-11. **`DIMO_LTE_R1` reference manifest.** *(2F.1 — NEXT; ungates 3A)*
+11. **`DIMO_LTE_R1` reference manifest.** *(2F.1 — DONE; ungates 3A)*
 12. DIMO connection-variant audits + Smart5/Tesla manifests. *(2G)*
 13. High Mobility OEM/profile audits + HM manifests. *(2H)*
 14. Cross-provider canonical consolidation / parity governance. *(2I)*
@@ -698,7 +727,7 @@ Deliverable: `docs/audits/dimo-phase-2a-current-query-surface-audit-2026-08-31.m
 - Provider schema claims limited to **CURRENT_SYNQDRIVE_REFERENCED_DIMO_SURFACE** + `CONFIRMED_FROM_CODE`; no current DIMO introspection artifact verified in this audit.
 - Four vehicle inventory files **PRESENT_ON_MAIN_AFTER_MERGE** (PR #1458); Phase 2B synthesis complete and reproducible from `main`.
 
-**Phase 2 overall:** IN_PROGRESS (2A+2B+2C+2D.0+2D+2E+**2F** done; **2F.1 NEXT**; 2G–2I not started). Validation uses **profile-scoped gates** (§1.6.8a).
+**Phase 2 overall:** IN_PROGRESS (2A+2B+2C+2D.0+2D+2E+2F+**2F.1** done; **3A READY_TO_START_IMPLEMENTATION**; 2G–2I not started). Validation uses **profile-scoped gates** (§1.6.8a).
 
 ### 2B Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2b-four-vehicle-capability-gap-matrix-2026-08-31.md` (+ four vehicle inventory source docs in same PR)
@@ -762,7 +791,7 @@ Deliverable: `docs/audits/dimo-phase-2d-signal-value-physics-matrix-2026-08-31.m
 - **Double-counting / episode identity:** one braking episode = multiple evidence channels — Phase 2E must canonicalize under **`PHYSICAL_EPISODE_IDENTITY`** (not seven independent offenses)
 - **TPS semantics:** `THROTTLE_POSITION != ACCELERATOR_PEDAL_POSITION` — empirical reconstruction confidence **`UNKNOWN_UNTIL_GROUND_TRUTH_VALIDATION`**
 - **Phase 2E handoff groups:** throttle/TPS · gear parallel fields · brake episode paths · wheel speed hierarchy · tire pressure vs warning · battery/regen · temperatures
-- **Phase 3A remains `GATED_ON_LTE_R1_MANIFEST`** — 2D complete is prerequisite **1 of 4** for LTE_R1 manifest path (still requires 2E + 2F + 2F.1)
+- **Phase 3A ungated by 2F.1 manifest freeze (2026-08-31)** — was prerequisite **1 of 4** for LTE_R1 path (now satisfied)
 
 ### 2E Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2e-redundancy-canonicalization-2026-08-31.md`
@@ -778,7 +807,7 @@ Deliverable: `docs/audits/dimo-phase-2e-redundancy-canonicalization-2026-08-31.m
 - **Physical episode types:** **8** — braking multichannel → **1** canonical episode (not 7 offenses)
 - **Major double-counting risks:** LTE_R1 native `DrivingEvent` + HF reconstructed/abuse on same trip · brake C1/C2 must not double-weight
 - **Throttle rule preserved:** `THROTTLE_POSITION != ACCELERATOR_PEDAL_POSITION`
-- **Phase 3A remains `GATED_ON_LTE_R1_MANIFEST`** — 2E complete is prerequisite **2 of 4** (still requires 2F + 2F.1)
+- **Phase 3A ungated by 2F.1 manifest freeze (2026-08-31)** — was prerequisite **2 of 4** (now satisfied)
 
 ### 2F Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2f-capability-first-acquisition-strategy-2026-08-31.md`
@@ -794,10 +823,25 @@ Deliverable: `docs/audits/dimo-phase-2f-capability-first-acquisition-strategy-20
 - **Current-state gap (CONFIRMED_FROM_CODE):** static fleet-wide query builders; preflight persists but **does not gate** productive field selection; ACTIVE_TICK = **3 parallel GraphQL calls / ~30s**; HF 1s **POST_TRIP_ONLY**
 - **Scaling (theoretical):** Q001-shaped snapshot −40% fields target; measured API cost reduction **`UNKNOWN_REQUIRES_MEASUREMENT`**
 - **Phase 2E invariants preserved:** throttle ≠ pedal; torque complementary; brake `CIRCUIT_COMPLEMENT`; six `NO_VALID_FALLBACK` families; native events ≠ physical maneuver identity
-- **Phase 3A remains `GATED_ON_LTE_R1_MANIFEST`** — 2F complete is prerequisite **3 of 4** (still requires 2F.1 manifest freeze)
+- **Phase 3A:** **READY_TO_START_IMPLEMENTATION** — 2F.1 v1.1.0 two-layer manifest frozen 2026-08-31
+
+### 2F.1 Status — DONE (2026-08-31)
+Deliverable: `docs/audits/dimo-phase-2f1-lte-r1-reference-manifest-2026-08-31.md` + `docs/audits/manifests/dimo-lte-r1-reference-manifest-v1.json`
+
+**Exit criteria met (manifest freeze):** All 33 `CAN_*` explicit LTE_R1 decisions · full (33) + minimum (17) + optional-extension (14) sets · powertrain overlays ICE/PHEV/BEV/diesel · native-event contract · timestamp contract · raw+normalized retention · GT sync contract · DQ/VL/BK/TR evidence requirements · 47 runtime probes reclassified (A:5 · B:29 · C:11 · D:2) · Phase 2F §22–23 corrected · **no production changes**.
+
+**Material Phase 2F.1 findings:**
+- **Frozen manifest:** `DIMO_LTE_R1_REFERENCE_MANIFEST` v**1.1.0** · `CAN-33-2026-08-31`
+- **Two layers:** canonical analysis (**33**) vs broad reference observation (**dynamic per vehicle**)
+- **Minimum Pareto:** **17** canonical keys + unmapped provider retention + broad native events
+- **Reference vs production:** BROAD CAPTURE FIRST (reference) vs capability-shaped minimum/optimal (production)
+- **Physics conditional:** yaw, wheel speeds, brake hydraulics — 0/4 on audit fleet but broad capture when capable
+- **Timestamp gap (CONFIRMED_FROM_CODE):** `synqReceivedAt` required in FR contract
+- **PHEV/BEV GT:** `PENDING_REFERENCE_VEHICLE`
+- **Phase 3A:** **READY_TO_START_IMPLEMENTATION** — reference drive **NOT_READY** until PRE_RECORDER_BLOCKER resolved in 3A
 
 ### Status (Phase 2 overall)
-**IN_PROGRESS**
+**IN_PROGRESS** (Phase 3A ready; profile audits 2G–2I pending)
 
 | Subphase | Status |
 |----------|--------|
@@ -808,7 +852,7 @@ Deliverable: `docs/audits/dimo-phase-2f-capability-first-acquisition-strategy-20
 | **2D** | **DONE** |
 | **2E** | **DONE** |
 | **2F** | **DONE** |
-| **2F.1** LTE_R1 manifest | **NEXT** |
+| **2F.1** LTE_R1 manifest | **DONE** |
 | 2G | NOT_STARTED |
 | 2H | NOT_STARTED |
 | 2I | NOT_STARTED |
@@ -823,15 +867,17 @@ The older July DIMO capability audit is HISTORICAL_EVIDENCE only.
 **Provider-profile validation tracks:**
 
 ### Phase 3A — DIMO LTE_R1 Reference Program
-**PRIMARY** calibration/reference workstream · **`GATED_ON_LTE_R1_MANIFEST`**
+**PRIMARY** calibration/reference workstream · **`READY_TO_START_IMPLEMENTATION`** (not started)
 
-**May start when:** the **`DIMO_LTE_R1`** target-profile manifest (Phase **2F.1**) is frozen.
+**May start when:** the **`DIMO_LTE_R1`** two-layer reference manifest (Phase **2F.1** v1.1.0) is frozen. **Condition satisfied 2026-08-31.**
 
-**LTE_R1 manifest prerequisites:**
-- Phase 2D Signal Value / Physics Matrix
-- Phase 2E DIMO Redundancy / Canonicalization
-- Phase 2F DIMO Capability-First Acquisition Strategy
-- **`DIMO_LTE_R1`-specific Flight Recorder signal manifest (2F.1)**
+**Reference drive:** **`NOT_READY_FOR_REFERENCE_DRIVE`** until PRE_RECORDER_BLOCKER probes (RP-010, RP-039, RP-040, RP-044, RP-045) resolved during Phase 3A implementation/preflight.
+
+**LTE_R1 manifest prerequisites (all satisfied):**
+- Phase 2D Signal Value / Physics Matrix ✓
+- Phase 2E DIMO Redundancy / Canonicalization ✓
+- Phase 2F DIMO Capability-First Acquisition Strategy ✓
+- **`DIMO_LTE_R1` reference manifest v1.1.0 (2F.1)** ✓
 
 **Does NOT require:** Smart5 runtime audit · Tesla Direct audit · High Mobility audit · full cross-provider Phase 2I closure.
 
@@ -845,7 +891,7 @@ Use real LTE R1 vehicles for:
 
 Current four primary DIMO audit vehicles align with this profile per project baseline.
 
-**Status:** **NOT_STARTED — `GATED_ON_LTE_R1_MANIFEST`**
+**Status:** **NOT_STARTED — `READY_TO_START_IMPLEMENTATION`** (2F.1 v1.1.0 frozen; Flight Recorder not implemented; reference drive not ready)
 
 ### Phase 3B — DIMO Tesla Direct Reference Program
 **`GATED_ON_TESLA_DIRECT_MANIFEST`**
@@ -1169,16 +1215,16 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Phase 2D signal value/physics matrix | DONE | `dimo-phase-2d-signal-value-physics-matrix-2026-08-31.md` — Tier A: **8** · cadence-critical: **6** · latency-critical: **2** · `TARGET_LE_1S_EXACT_COUNT=8` · QA pass complete |
 | Phase 2E DIMO redundancy / canonicalization | DONE | `dimo-phase-2e-redundancy-canonicalization-2026-08-31.md` — **33** canonical keys · **16** groups · episode taxonomy QA pass |
 | Phase 2F DIMO capability-first acquisition | DONE | `dimo-phase-2f-capability-first-acquisition-strategy-2026-08-31.md` — VCM · T0–T7 · 14-step planner · **47** runtime probes |
-| Phase 2F.1 DIMO LTE_R1 reference manifest | NEXT | Ungates Phase 3A only |
+| Phase 2F.1 DIMO LTE_R1 reference manifest | DONE | v1.1.0 two-layer broad-capture contract — ungates 3A implementation |
 | Phase 2G DIMO connection-variant audit | NOT_STARTED | Smart5 + Tesla Direct vs LTE R1; profile manifests |
 | Phase 2H High Mobility provider/OEM audit | NOT_STARTED | No DIMO assumptions; does not block LTE R1 |
 | Phase 2I cross-provider consolidation | NOT_STARTED | Parity/governance after provider-specific knowledge |
 | Prioritized query expansion proposal | NOT_STARTED | Phase 2D+ |
-| Phase 3A DIMO LTE_R1 reference program | NOT_STARTED | `GATED_ON_LTE_R1_MANIFEST` (2D+2E+2F+2F.1) |
+| Phase 3A DIMO LTE_R1 reference program | NOT_STARTED | **READY_TO_START_IMPLEMENTATION**; reference drive NOT_READY |
 | Phase 3B DIMO Tesla Direct reference program | NOT_STARTED | `GATED_ON_TESLA_DIRECT_MANIFEST` |
 | Phase 3C DIMO Smart5 compatibility program | NOT_STARTED | `GATED_ON_SMART5_MANIFEST` |
 | Phase 3D High Mobility OEM reference program | NOT_STARTED | `GATED_ON_HIGH_MOBILITY_PROFILE_MANIFEST` |
-| Flight Recorder implementation | NOT_STARTED | Profile-scoped; first track: 3A after 2F.1 |
+| Flight Recorder implementation | NOT_STARTED | Profile-scoped; first track: 3A (manifest frozen, not started) |
 | Instrumented reference drive | NOT_STARTED | gated on Flight Recorder |
 | Ground-truth synchronization | NOT_STARTED | Phase 5 |
 | Detector validation | NOT_STARTED | Phase 6 |
@@ -1202,8 +1248,8 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 7. ~~Execute Phase 2D: Signal value / physics matrix.~~ **Done** — see Phase 2D audit (`20` main-track candidates scored).
 8. ~~Execute Phase 2E: DIMO redundancy / canonicalization (Phase 2D handoff groups).~~ **Done** — see Phase 2E audit (`33` canonical keys, `PHYSICAL_EPISODE_IDENTITY`).
 9. ~~**Execute Phase 2F:** DIMO capability-first acquisition strategy (Phase 2E handoff).~~ **Done** — see Phase 2F audit (VCM contract, T0–T7 tiers, query planner, CAN-001…CAN-033 matrix).
-10. **Execute Phase 2F.1:** `DIMO_LTE_R1` reference manifest → **ungate Phase 3A** LTE R1 Reference Program.
-11. **Execute Phase 3A** (LTE R1) — primary validation/calibration track. **Does not wait** for steps 12–14.
+10. ~~**Execute Phase 2F.1:** `DIMO_LTE_R1` reference manifest.~~ **Done** — v1.1.0 two-layer broad-capture contract frozen.
+11. **Execute Phase 3A** (LTE R1) — Flight Recorder implementation using frozen manifest. Reference drive after PRE_RECORDER_BLOCKER preflight.
 12. **Execute Phase 2G:** Smart5 + Tesla Direct connection-variant audits + profile manifests → ungate 3B/3C when ready.
 13. **Execute Phase 2H:** High Mobility OEM/profile audit + manifests → ungate 3D when ready.
 14. **Execute Phase 2I:** Cross-provider canonical consolidation / parity governance (after provider-specific knowledge exists).
