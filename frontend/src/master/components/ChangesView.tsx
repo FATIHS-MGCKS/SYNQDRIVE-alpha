@@ -52,6 +52,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-08-31T18:15:00.000Z',
   },
   {
+    id: 'p1-8-24h-single-replica-soak-audit-2026-08-31',
+    version: '4.9.1017',
+    title: 'P1.8 — 24h single-replica soak retrospective audit + scale-to-2 gate',
+    summary: [
+      'Retrospective production audit for soak window 2026-08-30T14:58:42Z → 2026-08-31T14:58:42Z on SHA 3874360e0 (PM2 fork ×1, Redis DB 0).',
+      'Verdict GO_WITH_CONDITIONS: stable 27h runtime, no post-soak PM2 restarts, scheduler leader singleton, mutex/DIMO budget healthy, no route/energy/trip-loss regression.',
+      'Pre-soak Prometheus duplicate-metric incident (85c3cd8e0) remediated; 0 recurrences during soak. Recommend CI SYNQDRIVE_BOOT_CHECK=1 gate.',
+      'Conditions: terminate orphan validation Node :3010 (Redis DB 15); review battery.v2 failed backlog (67). SCALE_TO_2 not executed.',
+    ],
+    reason: 'P1.8 gate — evidence-based scale-to-2 decision from logs, PM2, Prometheus, Redis, Postgres; no production mutations.',
+    previousBehavior: 'P1.3-S6 left soak running; scale-to-2 deferred pending 24h evidence.',
+    details:
+      'architecture/P1_8_24H_SINGLE_REPLICA_SOAK_RETROSPECTIVE_AUDIT_2026-08-31.md. ArchitekturView P1.8 entry.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T18:05:00.000Z',
+  },
+  {
     id: 'fuel-station-enrichment-phase-d-2026-08-31',
     version: '4.9.1016',
     title: 'Fuel Station Enrichment Persistence + Worker V1 (Phase D)',

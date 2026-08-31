@@ -191,11 +191,11 @@ npm test -- --testPathPattern='battery-v2-(job-error|idempotent-execution|rest-t
 
 | PR | Purpose | Action |
 |----|---------|--------|
-| #1469 | P1.8 soak audit (draft) | Merge when ready — historical record |
-| P1.8.1 remediation PR | Harness cleanup + this doc | Merge before next validation run |
+| #1469 | P1.8 soak audit | **Merged** into `main` (`0dd1b6bbf`) — historical record |
+| P1.8.1 remediation PR (#1470) | Harness cleanup + this doc | Merge before next validation run |
 | Deploy | `main` → VPS | Required for REST pending fix (#1445) before scale-to-2 |
 
-**Recommended merge order:** #1469 (docs) → P1.8.1 remediation PR → deploy `main` → controlled scale-to-2 gate.
+**Recommended merge order:** ~~#1469~~ → **#1470** → deploy `main` → controlled scale-to-2 gate.
 
 ---
 
