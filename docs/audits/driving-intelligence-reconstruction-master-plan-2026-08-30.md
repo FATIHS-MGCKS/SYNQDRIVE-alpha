@@ -326,7 +326,7 @@ Deliverable: `docs/audits/dimo-phase-2a-current-query-surface-audit-2026-08-31.m
 - Provider schema claims limited to **CURRENT_SYNQDRIVE_REFERENCED_DIMO_SURFACE** + `CONFIRMED_FROM_CODE`; no current DIMO introspection artifact verified in this audit.
 - Four vehicle inventory files **PRESENT_ON_MAIN_AFTER_MERGE** (PR #1458); Phase 2B synthesis complete and reproducible from `main`.
 
-**Phase 2 overall:** IN_PROGRESS (2A+2B done; **2C NEXT** = current DIMO signal/schema expansion audit; 2D–2G not started). **Phase 3 remains gated.**
+**Phase 2 overall:** IN_PROGRESS (2A+2B+2C done; **2D NEXT** = signal value/physics matrix; 2E–2G not started). **Phase 3 remains gated.**
 
 ### 2B Status — DONE (2026-08-31)
 Deliverable: `docs/audits/dimo-phase-2b-four-vehicle-capability-gap-matrix-2026-08-31.md` (+ four vehicle inventory source docs in same PR)
@@ -340,13 +340,30 @@ Deliverable: `docs/audits/dimo-phase-2b-four-vehicle-capability-gap-matrix-2026-
 - Hardware profile → signal capability **NOT_ESTABLISHED_FROM_THIS_FOUR_VEHICLE_SET** (3/4 profiles UNKNOWN).
 - Provider native events **0 / 34 / 0 / 50** per 30d; **CURRENT_SCORE_CONSUMPTION** UNKNOWN for C63 (RP-25).
 - **NO_DIMO** tire/brake/yaw/lateral/long-accel signals in four inventories (≠ physical vehicle equipment claims).
-- Q009: **9/15** vehicle-observed, **3/15** powertrain-inapplicable, **3/15** queried-not-observed (possible gear alias gap on Tiguan).
+- Q009: **9/15** vehicle-observed, **3/15** powertrain-inapplicable, **3/15** queried-not-observed (Tiguan exposes `ActualGear` while Q009 queries `CurrentGear` — **PARALLEL_GEAR_FIELD_GAP**, not proven alias).
 
-### 2C Status — NEXT
-**CURRENT DIMO SIGNAL/SCHEMA EXPANSION AUDIT** — determine today's provider schema/signal/event families (including signals no audit vehicle delivers). No production changes. Runtime probes selective (RP-21, RP-25, RP-26, RP-29, RP-31 among inputs).
+### 2C Status — DONE (2026-08-31)
+Deliverable: `docs/audits/dimo-phase-2c-current-schema-signal-expansion-audit-2026-08-31.md`
+
+**Exit criteria met (schema forensics):** Tier-1 read-only GraphQL introspection at `https://telemetry-api.dimo.zone/query` (2026-08-31); official DIMO docs cross-checked; **117** current telemetry signal fields cataloged; SynqDrive vs schema vs four-vehicle diffs complete; driving/brake/tire/EV/regen intensive search; events/segments/parallel-signal taxonomy/SDK lag assessed; Gold Signals Matrix + **20** Phase-2D technical candidates; RP-32–RP-39 added.
+
+**Material Phase 2C findings:**
+- **GLOBAL_PROVIDER_SCHEMA_CAPABILITY = 117** telemetry fields (0 deprecated in introspection snapshot).
+- SynqDrive queries **41/117 (35%)**; **76** schema fields never selected; **SET 5 stale references = 0**; **SET 4 = 15** `VEHICLE_OBSERVED_NOT_IN_PHASE2A_DRIVING_ACQUISITION` (not blanket “aliases”).
+- Four-vehicle union **33/117**; **84** schema fields not observed on audit set — global schema ≠ vehicle delivery.
+- **No** longitudinal/lateral acceleration or steering-angle fields; **`angularVelocityYaw`** + **front wheel-speed pair only** + four **hydraulic** brake inputs in schema — none on four ICE inventories.
+- **PARALLEL_GEAR_FIELD_GAP** / **PARALLEL_THROTTLE_SIGNALS** — coexistence in schema ≠ proven interchangeability (RP-35).
+- **REGEN_SIGN_SEMANTICS:** `powertrainTractionBatteryCurrentPower` **positive = into battery**; regen candidate requires synchronized decel context — not negative power.
+- **NO_GENERIC_MASS_SIGNAL_CONFIRMED** for Pkw; commercial axle-row weights only (`Row3/4/5`).
+- **OPEN_ENDED_EVENT_NAME_SURFACE** — Q015 filters (8) ≠ exhaustive event catalog; `CURRENT_GLOBAL_EVENT_NAME_COUNT = UNKNOWN_OPEN_ENDED`.
+- SDK **1.6.0** vs **1.7.0** — no embedded schema types; introspection authoritative.
+- **Output-domain schema ceiling:** Driver Quality, Vehicle Load, Brake Physics / Brake Load, Tire Dynamic Load each **MODERATE** at schema layer — **LOWER** on four-vehicle layer for brake/tire/driver dynamics. Four **independent** output domains; **no** cross-domain weighting or global composite defined. Data Confidence remains **orthogonal** (Master Plan §1.1).
+
+### 2D Status — NEXT
+**SIGNAL VALUE / PHYSICS MATRIX** — for each of Phase 2C’s **20 unique main-track candidates** (+ secondary assessability/context + commercial axle RP-37 track), grade incremental value **per dimension**: Driver Quality · Vehicle Load · Brake Physics / Brake Load · Tire Load · validation/assessability · cadence · coverage · redundancy · cost. **No** global mega-score. **No** production changes.
 
 ### Status (Phase 2 overall)
-**IN_PROGRESS — 2A DONE; 2B DONE; 2C NEXT (schema expansion); 2D Value/Physics; 2E Canonicalization; 2F Capability-first profiles; 2G Phase-2 closure + Flight Recorder manifest**
+**IN_PROGRESS — 2A DONE; 2B DONE; 2C DONE; 2D NEXT (value/physics); 2E Canonicalization; 2F Capability-first profiles; 2G Phase-2 closure + Flight Recorder manifest**
 The older July DIMO capability audit is HISTORICAL_EVIDENCE only.
 ---
 ## Phase 3 — Telemetry Flight Recorder
@@ -639,7 +656,8 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Phase 2B four-vehicle capability matrix | DONE | `dimo-phase-2b-four-vehicle-capability-gap-matrix-2026-08-31.md` + 4 inventory docs |
 | Four-vehicle capability matrix | DONE | Phase 2B deliverable (70 rows) |
 | Available-but-unused DIMO signal matrix | DONE | Phase 2B §8 — 15 signals (Phase-2A driving acquisition) |
-| Phase 2C schema expansion audit | NEXT | Current DIMO signal/schema authority |
+| Phase 2C schema expansion audit | DONE | `dimo-phase-2c-current-schema-signal-expansion-audit-2026-08-31.md` — 117 schema fields |
+| Phase 2D signal value/physics matrix | NEXT | Grade **20** unique Phase-2C candidates per output dimension + assessability (no global composite) |
 | Prioritized query expansion proposal | NOT_STARTED | Phase 2D+ |
 | Flight Recorder manifest | NOT_STARTED | Phase 2 exit deliverable |
 | Flight Recorder implementation | NOT_STARTED | gated on Phase 2 |
@@ -661,8 +679,8 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 2. ~~Merge the four 2026-08-30 vehicle signal-inventory files to `main` under `docs/audits/`.~~ **Done in PR #1458** — PRESENT_ON_MAIN_AFTER_MERGE.
 3. ~~Execute Phase 2A against current code.~~ **Done** — see Phase 2A audit.
 4. ~~Execute Phase 2B: merge Phase 2A with four vehicle capability inventories.~~ **Done** — see Phase 2B audit.
-5. **Execute Phase 2C:** CURRENT DIMO SIGNAL/SCHEMA EXPANSION AUDIT — today's provider schema/event families (including signals no audit vehicle delivers). Selective runtime probes as input only. No production changes.
-6. Phase 2D: Signal value / physics matrix (after 2C).
+5. ~~Execute Phase 2C: CURRENT DIMO SIGNAL/SCHEMA EXPANSION AUDIT.~~ **Done** — see Phase 2C audit (`117` schema fields; introspection authority).
+6. **Execute Phase 2D:** Signal value / physics matrix (score Phase 2C candidate set).
 7. Phase 2E–2G: canonicalization, capability-first profiles, Flight Recorder manifest — then ungate Phase 3.
 ---
 # 7. Agent Handoff Protocol
