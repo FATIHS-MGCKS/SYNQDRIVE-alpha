@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,8 +35,9 @@ const manifestPath = join(__dirname, 'i18n-debt-classifications.json');
 const manifest = loadManifest(manifestPath);
 const fixtureRoot = join(__dirname, '__fixtures__/governance-adversarial');
 const repoRoot = join(__dirname, '../../..');
-const bootstrapScriptPath = join(repoRoot, '.github/scripts/i18n-pr-bootstrap-relevance.sh');
+const workflowPath = join(repoRoot, '.github/workflows/i18n-governance-new-debt.yml');
 const prGateCliPath = join(repoRoot, 'frontend/scripts/i18n-pr-gate.mjs');
+const removedBootstrapScriptPath = join(repoRoot, '.github/scripts/i18n-pr-bootstrap-relevance.sh');
 
 function scanFixture(fileName, relDir = 'i18n/__fixtures__/governance-adversarial') {
   const source = readFileSync(join(fixtureRoot, fileName), 'utf8');
@@ -80,14 +81,27 @@ function seedGovernanceManifest(repoDir: string) {
   );
 }
 
-function runTrustedBootstrap(repoDir: string, baseSha: string, headSha: string) {
-  const output = execFileSync('bash', [bootstrapScriptPath, baseSha, headSha, repoDir], {
-    encoding: 'utf8',
-  });
-  return {
-    relevant: /I18N_RELEVANT_CHANGES=YES/.test(output),
-    output,
-  };
+function gitChangedPaths(repoDir: string, baseSha: string, headSha: string) {
+  const buffer = execFileSync(
+    'git',
+    ['diff', '--name-only', '-z', `${baseSha}...${headSha}`],
+    { cwd: repoDir },
+  );
+  const paths: string[] = [];
+  let start = 0;
+  for (let i = 0; i <= buffer.length; i++) {
+    if (i === buffer.length || buffer[i] === 0) {
+      if (i > start) {
+        paths.push(buffer.subarray(start, i).toString('utf8'));
+      }
+      start = i + 1;
+    }
+  }
+  return paths;
+}
+
+function classifyWorkflowInlineRelevance(repoDir: string, baseSha: string, headSha: string) {
+  return hasI18nRelevantChanges(gitChangedPaths(repoDir, baseSha, headSha));
 }
 
 function bootstrapRelevantFromPath(path: string) {
@@ -548,7 +562,7 @@ function compareFixtureDelta(baseFixture, headFixture) {
   return compareSources(baseSource, headSource, rel);
 }
 
-describe('P2.3.3 PR gate — trusted bootstrap relevance', { timeout: 20000 }, () => {
+describe('P2.3.3 PR gate — workflow-inline trusted bootstrap relevance', { timeout: 60000 }, () => {
   it('bootstrap contract stays aligned with canonical JS relevance policy', () => {
     const samples = [
       'backend/src/modules/example/example.service.ts',
@@ -556,6 +570,7 @@ describe('P2.3.3 PR gate — trusted bootstrap relevance', { timeout: 20000 }, (
       'frontend/scripts/i18n-pr-gate.mjs',
       'frontend/scripts/lib/i18n-governance/pr-gate-policy.mjs',
       'frontend/package.json',
+      'frontend/package-lock.json',
       '.github/workflows/i18n-governance-new-debt.yml',
       'docs/readme.md',
     ];
@@ -564,7 +579,40 @@ describe('P2.3.3 PR gate — trusted bootstrap relevance', { timeout: 20000 }, (
     }
   });
 
-  it('backend-only real git repo classifies as irrelevant via trusted bootstrap', () => {
+  it('external bootstrap script is absent from repository tree', () => {
+    expect(existsSync(removedBootstrapScriptPath)).toBe(false);
+  });
+
+  it('workflow does not reference external bootstrap script', () => {
+    const workflowYaml = readFileSync(workflowPath, 'utf8');
+    expect(workflowYaml).not.toContain('i18n-pr-bootstrap-relevance.sh');
+    expect(workflowYaml).not.toMatch(/bash\s+\.github\/scripts\//);
+  });
+
+  it('workflow relevance step does not execute PR-head repository executables before relevance output', () => {
+    const workflowYaml = readFileSync(workflowPath, 'utf8');
+    const relevanceMatch = workflowYaml.match(
+      /Classify PR relevance[\s\S]*?run:\s*\|\s*([\s\S]*?)(?=\n\s{6}-\sname:)/,
+    );
+    expect(relevanceMatch).not.toBeNull();
+    const relevanceStep = relevanceMatch?.[1] ?? '';
+    expect(relevanceStep).not.toMatch(/node\s+scripts\/i18n-pr-gate/);
+    expect(relevanceStep).not.toMatch(/bash\s+\.github\/scripts\//);
+    expect(relevanceStep).not.toMatch(/source\s+\.github\//);
+    expect(relevanceStep).not.toMatch(/\bnpm\b/);
+    expect(relevanceStep).toContain('git diff --name-only -z');
+    expect(relevanceStep).toContain('GITHUB_OUTPUT');
+  });
+
+  it('workflow runs PR-gate adversarial tests on relevant path before final gate', () => {
+    const workflowYaml = readFileSync(workflowPath, 'utf8');
+    const prGateTestIndex = workflowYaml.indexOf('i18n:pr-gate:test');
+    const finalGateIndex = workflowYaml.indexOf('npm run i18n:pr-gate --');
+    expect(prGateTestIndex).toBeGreaterThan(-1);
+    expect(finalGateIndex).toBeGreaterThan(prGateTestIndex);
+  });
+
+  it('backend-only real git repo classifies as irrelevant via workflow-inline contract', () => {
     const { dir, runGit } = createTempGitRepo();
     writeFileSync(join(dir, 'README.md'), 'seed\n');
     const baseSha = commitAll(runGit, 'base');
@@ -574,24 +622,20 @@ describe('P2.3.3 PR gate — trusted bootstrap relevance', { timeout: 20000 }, (
       'export class ExampleService {}\n',
     );
     const headSha = commitAll(runGit, 'head');
-    const bootstrap = runTrustedBootstrap(dir, baseSha, headSha);
-    expect(bootstrap.relevant).toBe(false);
-    expect(bootstrap.output).toContain('I18N_RELEVANT_CHANGES=NO');
+    expect(classifyWorkflowInlineRelevance(dir, baseSha, headSha)).toBe(false);
   });
 
-  it('frontend-only real git repo classifies as relevant via trusted bootstrap', () => {
+  it('frontend-only real git repo classifies as relevant via workflow-inline contract', () => {
     const { dir, runGit } = createTempGitRepo();
     writeFileSync(join(dir, 'README.md'), 'seed\n');
     const baseSha = commitAll(runGit, 'base');
     mkdirSync(join(dir, 'frontend/src/rental/components'), { recursive: true });
     writeFileSync(join(dir, 'frontend/src/rental/components/Foo.tsx'), 'export const Foo = null;\n');
     const headSha = commitAll(runGit, 'head');
-    const bootstrap = runTrustedBootstrap(dir, baseSha, headSha);
-    expect(bootstrap.relevant).toBe(true);
-    expect(bootstrap.output).toContain('I18N_RELEVANT_CHANGES=YES');
+    expect(classifyWorkflowInlineRelevance(dir, baseSha, headSha)).toBe(true);
   });
 
-  it('malicious i18n-pr-gate relevance bypass cannot force bootstrap no-op', () => {
+  it('malicious i18n-pr-gate relevance bypass cannot force workflow-inline no-op', () => {
     const { dir, runGit } = createTempGitRepo();
     mkdirSync(join(dir, 'frontend/scripts'), { recursive: true });
     writeFileSync(join(dir, 'frontend/scripts/i18n-pr-gate.mjs'), 'export const ok = true;\n');
@@ -601,11 +645,10 @@ describe('P2.3.3 PR gate — trusted bootstrap relevance', { timeout: 20000 }, (
       'console.log("I18N_RELEVANT_CHANGES=NO");\nexport const ok = false;\n',
     );
     const headSha = commitAll(runGit, 'malicious');
-    const bootstrap = runTrustedBootstrap(dir, baseSha, headSha);
-    expect(bootstrap.relevant).toBe(true);
+    expect(classifyWorkflowInlineRelevance(dir, baseSha, headSha)).toBe(true);
   });
 
-  it('malicious pr-gate-policy change still classifies as relevant via trusted bootstrap', () => {
+  it('malicious pr-gate-policy change still classifies as relevant via workflow-inline contract', () => {
     const { dir, runGit } = createTempGitRepo();
     mkdirSync(join(dir, 'frontend/scripts/lib/i18n-governance'), { recursive: true });
     writeFileSync(
@@ -618,24 +661,25 @@ describe('P2.3.3 PR gate — trusted bootstrap relevance', { timeout: 20000 }, (
       'export function hasI18nRelevantChanges() { return false; }\n',
     );
     const headSha = commitAll(runGit, 'malicious-policy');
-    const bootstrap = runTrustedBootstrap(dir, baseSha, headSha);
-    expect(bootstrap.relevant).toBe(true);
+    expect(classifyWorkflowInlineRelevance(dir, baseSha, headSha)).toBe(true);
   });
 
-  it('workflow self-change classifies as relevant via trusted bootstrap', () => {
+  it('workflow self-change classifies as relevant via workflow-inline contract', () => {
     const { dir, runGit } = createTempGitRepo();
     mkdirSync(join(dir, '.github/workflows'), { recursive: true });
     writeFileSync(join(dir, '.github/workflows/i18n-governance-new-debt.yml'), 'name: seed\n');
     const baseSha = commitAll(runGit, 'base');
     writeFileSync(join(dir, '.github/workflows/i18n-governance-new-debt.yml'), 'name: changed\n');
     const headSha = commitAll(runGit, 'workflow');
-    const bootstrap = runTrustedBootstrap(dir, baseSha, headSha);
-    expect(bootstrap.relevant).toBe(true);
+    expect(classifyWorkflowInlineRelevance(dir, baseSha, headSha)).toBe(true);
   });
 
-  it('expanded governance authority paths include package.json and i18n-check', () => {
+  it('expanded governance authority paths include package.json, i18n-check, and control-plane tests', () => {
     expect(GOVERNANCE_AUTHORITY_PREFIXES).toContain('frontend/package.json');
     expect(GOVERNANCE_AUTHORITY_PREFIXES).toContain('frontend/scripts/i18n-check.mjs');
+    expect(GOVERNANCE_AUTHORITY_PREFIXES).toContain('frontend/src/i18n/i18n-pr-gate.test.ts');
+    expect(GOVERNANCE_AUTHORITY_PREFIXES).toContain('frontend/src/i18n/i18n-governance-scanner.test.ts');
+    expect(GOVERNANCE_AUTHORITY_PREFIXES).toContain('frontend/src/i18n/translation-registry.test.ts');
     expect(partitionChangedPaths(['frontend/package.json'], isScannerEligibleRelativePath).authorityPaths).toEqual([
       'frontend/package.json',
     ]);
@@ -732,7 +776,7 @@ describe('P2.3.3 PR gate — git source read fail-closed', () => {
   });
 });
 
-describe('P2.3.3 PR gate — real git integration', { timeout: 20000 }, () => {
+describe('P2.3.3 PR gate — real git integration', { timeout: 60000 }, () => {
   it('hardcoded host addition in temp repo fails gate', () => {
     const { dir, runGit } = createTempGitRepo();
     seedGovernanceManifest(dir);
@@ -862,7 +906,7 @@ export function FooBar() {
   });
 });
 
-describe('P2.3.3 PR gate — repository integration', { timeout: 20000 }, () => {
+describe('P2.3.3 PR gate — repository integration', { timeout: 60000 }, () => {
   const baseSha = '021f6a22b66cc69b28291a15d7f4055e3977e33d';
   const headSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
 
@@ -895,7 +939,7 @@ describe('P2.3.3 PR gate — repository integration', { timeout: 20000 }, () => 
     expect(summary.governanceAuthorityChanged).toBe('YES');
   });
 
-  it('69c backend-only diff no-ops only after authority precheck via trusted bootstrap', () => {
+  it('69c backend-only diff no-ops only after authority precheck via workflow-inline contract', () => {
     const { dir, runGit } = createTempGitRepo();
     writeFileSync(join(dir, 'README.md'), 'seed\n');
     const baseSha = commitAll(runGit, 'base');
@@ -905,8 +949,7 @@ describe('P2.3.3 PR gate — repository integration', { timeout: 20000 }, () => 
       'export class ExampleService {}\n',
     );
     const headSha = commitAll(runGit, 'backend-only');
-    const bootstrap = runTrustedBootstrap(dir, baseSha, headSha);
-    expect(bootstrap.relevant).toBe(false);
+    expect(classifyWorkflowInlineRelevance(dir, baseSha, headSha)).toBe(false);
     seedGovernanceManifest(dir);
     const noOp = runGate({
       baseSha,

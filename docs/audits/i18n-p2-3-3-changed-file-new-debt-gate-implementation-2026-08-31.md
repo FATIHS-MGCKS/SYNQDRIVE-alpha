@@ -97,11 +97,11 @@ Help Center enforce-clean editorial ambiguity: **fail closed**.
 
 ## PART I — Adversarial tests
 
-`npm run i18n:pr-gate:test` — **65 tests PASS** (authoritative current count).
+`npm run i18n:pr-gate:test` — **69 tests PASS** (authoritative current count).
 
-Covers: translated pass, direct/indirect host fail, duplicates, refactor pass, rename pass/fail, copy fail, deletion pass, wording change, dedicated historical reintroduction proof, Data Analyse/IAM new-copy block, machine/raw pass, Help Center shell fail, editorial fail-closed, parser statuses, authority policy (package.json, i18n-check, mixed authority/product), trusted bootstrap bypass resistance, real Git integration, CLI exit-5 witness, determinism.
+Covers: translated pass, direct/indirect host fail, duplicates, refactor pass, rename pass/fail, copy fail, deletion pass, wording change, dedicated historical reintroduction proof, Data Analyse/IAM new-copy block, machine/raw pass, Help Center shell fail, editorial fail-closed, parser statuses, authority policy (package.json, i18n-check, control-plane tests, mixed authority/product), workflow-inline bootstrap contract parity, workflow security static assertions, external bootstrap absence regression, real Git integration, CLI exit-5 witness, determinism.
 
-> PRE-CORRECTION HISTORICAL RECORD: initial implementation shipped with 43 tests; first correction raised this to 56.
+> PRE-CORRECTION HISTORY: initial implementation shipped with 43 tests; correction 1 raised this to 56; correction 2 raised this to 65.
 
 ---
 
@@ -248,6 +248,46 @@ Spawned `node scripts/i18n-pr-gate.mjs` proves `GIT_SOURCE_READ_FAILURE` exit 5.
 
 Documented CODEOWNERS/ruleset requirement for post-merge activation.
 
-### Authoritative final test count
+### Authoritative final test count (correction 2)
 
 `npm run i18n:pr-gate:test` — **65 tests**.
+
+---
+
+## CORRECTION 3 — Final trust-boundary closure (2026-08-31)
+
+### A. External PR-head bootstrap executable circular trust defect
+
+Correction 2 still executed `.github/scripts/i18n-pr-bootstrap-relevance.sh` from PR HEAD. A malicious PR could modify that script to emit `relevant=false` and force no-op before governance runs. **Fixed:** script deleted; relevance logic inlined into workflow YAML.
+
+### B. Workflow-inline trusted bootstrap
+
+`Classify PR relevance` step uses only Git + Bash builtins (`set -euo pipefail`, `git cat-file`, NUL-safe `git diff --name-only -z` loop). Writes `relevant=true|false` directly to `$GITHUB_OUTPUT`. Zero PR-head repository executables before relevance decision.
+
+### C. Live PR-gate adversarial suite
+
+Workflow now runs `npm run i18n:pr-gate:test` on every relevant PR after scanner tests and before read-only dictionary check + final gate.
+
+### D. Control-plane test authority
+
+Added to governance authority set:
+
+| File | Authority | Rationale |
+|------|-----------|-----------|
+| `i18n-pr-gate.test.ts` | **YES** | Adversarial PR-gate assurance suite; independent runtime safety net for `pr-gate.mjs` / policy modules |
+| `i18n-governance-scanner.test.ts` | **YES** | Scanner assurance suite executed by live `i18n:scanner:test`; weakening could bypass scanner firewall |
+| `translation-registry.test.ts` | **YES** | Canonical key/parity/coverage contract exercised by `i18n:check:ci`; not an ordinary localization component test |
+
+Ordinary localization component tests and dictionary files remain **non-authority**.
+
+### E. Workflow self-modification prerequisite
+
+`WORKFLOW_SELF_MODIFICATION = POST_MERGE_REPOSITORY_PROTECTION_REQUIRED`. CODEOWNERS/ruleset protection for `.github/workflows/i18n-governance-new-debt.yml` required before required-check activation. Not activated in P2.3.3.
+
+### F. Contract parity + security assertions
+
+Deterministic bootstrap/policy contract test + static workflow-security assertion (no `node`/`npm`/`bash .github/scripts/` before relevance) + external bootstrap absence regression.
+
+### Authoritative final test count
+
+`npm run i18n:pr-gate:test` — **69 tests**.

@@ -21,14 +21,34 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
-      - name: Classify PR relevance (trusted bootstrap)
+      - name: Classify PR relevance (workflow-inline trusted bootstrap)
         id: relevance
         working-directory: ${{ github.workspace }}
         run: |
-          bash .github/scripts/i18n-pr-bootstrap-relevance.sh \
-            "${{ github.event.pull_request.base.sha }}" \
-            "${{ github.event.pull_request.head.sha }}" \
-            "${{ github.workspace }}"
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          git cat-file -e "${BASE_SHA}^{commit}"
+          git cat-file -e "${HEAD_SHA}^{commit}"
+
+          relevant=false
+          while IFS= read -r -d '' path; do
+            if [[ -z "$path" ]]; then
+              continue
+            fi
+            case "$path" in
+              frontend/src/*|frontend/scripts/i18n-*.mjs|frontend/scripts/lib/i18n-governance/*|frontend/package.json|frontend/package-lock.json|.github/workflows/i18n-governance-new-debt.yml)
+                relevant=true
+                break
+                ;;
+            esac
+          done < <(git diff --name-only -z "${BASE_SHA}...${HEAD_SHA}")
+
+          echo "relevant=${relevant}" >> "$GITHUB_OUTPUT"
+          echo "I18N_RELEVANT_CHANGES=$([[ "$relevant" == true ]] && echo YES || echo NO)"
+          echo "BASE_SHA=${BASE_SHA}"
+          echo "HEAD_SHA=${HEAD_SHA}"
 
       - name: Irrelevant PR no-op pass
         if: steps.relevance.outputs.relevant != 'true'
@@ -54,6 +74,10 @@ jobs:
       - name: Scanner tests
         if: steps.relevance.outputs.relevant == 'true'
         run: npm run i18n:scanner:test
+
+      - name: PR-gate adversarial tests
+        if: steps.relevance.outputs.relevant == 'true'
+        run: npm run i18n:pr-gate:test
 
       - name: Dictionary check (read-only)
         if: steps.relevance.outputs.relevant == 'true'

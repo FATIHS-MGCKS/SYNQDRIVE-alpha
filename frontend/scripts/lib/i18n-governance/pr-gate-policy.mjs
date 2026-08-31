@@ -10,10 +10,13 @@ export const GOVERNANCE_AUTHORITY_PREFIXES = [
   'frontend/package.json',
   'frontend/package-lock.json',
   'frontend/src/i18n/i18n-debt-classifications.json',
+  'frontend/src/i18n/i18n-pr-gate.test.ts',
+  'frontend/src/i18n/i18n-governance-scanner.test.ts',
+  'frontend/src/i18n/translation-registry.test.ts',
   '.github/workflows/i18n-governance-new-debt.yml',
 ];
 
-/** Layer A bootstrap relevance contract — must stay aligned with .github/scripts/i18n-pr-bootstrap-relevance.sh */
+/** Layer A bootstrap relevance contract — must stay aligned with workflow-inline Classify PR relevance step */
 export const BOOTSTRAP_RELEVANT_PATH_CONTRACT = {
   prefixes: [
     'frontend/src/',
