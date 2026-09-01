@@ -10,7 +10,7 @@
 ```
 WORKSTREAM = SCALING_PROCESS
 AUTHORITY_STATUS = BOOTSTRAP_ESTABLISHED
-CURRENT_MAIN_SHA = c5dce7a9de130e4785a707c5175c1b7fb3dc8302
+CURRENT_MAIN_SHA = 4843a4ebc60f38237f9184d47b1da731e426b7b3
 CURRENT_PRODUCTION_SHA = e76ada3d8885f8eeb7f2e6c6c50be115d0758c2c
 CURRENT_PRODUCTION_REPLICA_COUNT = 1
 REPLICA_A = synqdrive @ 3001 ONLINE LEADER
@@ -19,8 +19,8 @@ NGINX_DUAL_UPSTREAM = YES (configured) / EFFECTIVE = DEGRADED (3002 unreachable)
 SCHEDULER_SINGLE_LEADER = YES (port 3001 role=LEADER)
 DIMO_GLOBAL_BUDGET = ENABLED (limit 50 per architecture; not re-verified live metrics this snapshot)
 RECONCILIATION_MUTEX = ENABLED (per architecture; not stress-tested this snapshot)
-ROLLING_DEPLOYMENT = NO on main (P1.8.2.1 #1472 not merged)
-MIXED_SHA_PROTECTION = NO on main deploy path
+ROLLING_DEPLOYMENT = NO on main (P1.8.2.1 #1472 rebased 2026-09-01, pending merge)
+MIXED_SHA_PROTECTION = NO on main deploy path (YES in #1472 branch after merge)
 PROVIDER_CEILING_VERIFIED = NO
 N1000_CERTIFICATION = CONDITIONAL (software only)
 OPEN_P0 = 0 (no new scaling P0 identified this snapshot)

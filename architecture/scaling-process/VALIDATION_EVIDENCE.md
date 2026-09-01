@@ -101,7 +101,10 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 |-------|-------|-----|----------|--------|------------|
 | Rolling deploy implemented | P1.8.2.1 | #1472 | branch code | Implemented | HIGH |
 | Unit tests | P1.8.2.1 | #1472 | 7/7 util tests | PASS | HIGH |
-| Merged to main | P1.8.2.1 | #1472 | — | **NO** (open) | HIGH |
+| Shell syntax + selftest | P1.8.2.1 | #1472 | `bash -n`, selftest | PASS | HIGH |
+| Rebase onto main | P1.8.2.1 | #1472 | merge gate 2026-09-01 | 2 conflicts resolved | HIGH |
+| Coordination regression suite | P1.8.2.1 | #1472 | 56 tests (leader/mutex/budget/gate) | PASS | HIGH |
+| Merged to main | P1.8.2.1 | #1472 | — | **NO** (pending human merge) | HIGH |
 | Production deploy test | P1.8.2.1 | — | — | NOT RUN | HIGH |
 
 ---

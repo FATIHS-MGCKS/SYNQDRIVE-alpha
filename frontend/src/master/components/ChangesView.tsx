@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p1-8-2-1-multi-replica-deploy-lifecycle-2026-08-31',
+    version: '4.9.1017',
+    title: 'P1.8.2.1 — Multi-replica deployment lifecycle hardening',
+    summary: [
+      '`vps-deploy-release.sh` now performs rolling restart of `synqdrive` (3001) and `synqdrive-b` (3002) via `pm2.production-ecosystem.config.cjs` with per-replica health/readiness verification.',
+      'Mixed-SHA protection: deploy fails + auto-rollback if secondary not restarted, health fails, scheduler leader ≠ 1, or nginx dual-upstream missing.',
+      'New `vps-rollback-production-release.sh` restores coherent same-SHA two-replica topology from captured deploy state.',
+      'Unit tests for deploy invariants (`vps-multi-replica-deploy.util.test.mjs`). No production deploy executed in this task.',
+    ],
+    reason: 'P1.8.2 left Replica B stale on future deploys — two-replica production must be a first-class deploy invariant.',
+    previousBehavior: 'Deploy restarted only `synqdrive`; health check polled 3001 only; no multi-replica rollback.',
+    details:
+      'architecture/P1_8_2_1_MULTI_REPLICA_DEPLOYMENT_LIFECYCLE_HARDENING_2026-08-31.md; lib/vps-production-replica.lib.sh.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T20:15:00.000Z',
+  },
+  {
     id: 'scaling-process-knowledge-graph-bootstrap-2026-09-01',
     version: '4.9.1017',
     title: 'Scaling Process — canonical knowledge graph & architecture authority bootstrap',

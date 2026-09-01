@@ -31,7 +31,7 @@ capture DB backup
 
 ## Intended model (P1.8.2.1 — PR #1472)
 
-**TYPE: DECISION** (branch `cursor/p1-8-2-1-multi-replica-deploy-83be`, **not merged**)
+**TYPE: DECISION** (branch `cursor/p1-8-2-1-multi-replica-deploy-83be`, PR #1472 — **rebased 2026-09-01 onto `4843a4ebc`, pending human merge**)
 
 ```
 1. vps_replica_capture_deploy_state (previous release, SHA, PM2 dump)

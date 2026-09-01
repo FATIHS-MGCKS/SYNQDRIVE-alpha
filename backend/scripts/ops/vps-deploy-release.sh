@@ -82,27 +82,42 @@ if ! SYNQDRIVE_BOOT_CHECK=1 timeout 120 node dist/src/main.js; then
   exit 1
 fi
 
-echo "==> Switch current + restart pm2"
-ln -sfn "$RELEASE_DIR" /opt/synqdrive/current
-cd /opt/synqdrive/current/backend
-pm2 restart synqdrive --update-env
-pm2 save
+echo "==> Switch current + rolling multi-replica restart"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=vps-production-replica-topology.config.sh
+source "${SCRIPT_DIR}/vps-production-replica-topology.config.sh"
+# shellcheck source=lib/vps-production-replica.lib.sh
+source "${SCRIPT_DIR}/lib/vps-production-replica.lib.sh"
 
-echo "==> Health check"
-HEALTH_OK=0
-for _ in $(seq 1 30); do
-  if curl -sf http://127.0.0.1:3001/api/v1/health; then
-    echo
-    HEALTH_OK=1
-    break
+TARGET_SHA="$(vps_replica_release_sha "$RELEASE_DIR")"
+DEPLOY_STATE_FILE="${SYNQDRIVE_DEPLOY_STATE_DIR}/last-deploy-state.env"
+ROLLBACK_ON_FAIL=1
+
+vps_replica_capture_deploy_state "$DEPLOY_STATE_FILE"
+
+ln -sfn "$RELEASE_DIR" /opt/synqdrive/current
+
+if ! vps_replica_rolling_deploy "$RELEASE_DIR" "$TARGET_SHA"; then
+  echo "!! ABORT: multi-replica rolling deploy failed for ${RELEASE_ID}" >&2
+  if [[ "$ROLLBACK_ON_FAIL" -eq 1 ]]; then
+    echo "==> Rolling back to previous release"
+    vps_replica_rollback "$DEPLOY_STATE_FILE" || true
   fi
-  sleep 2
-done
-if [[ "$HEALTH_OK" -ne 1 ]]; then
-  echo "!! ABORT: ${RELEASE_ID} is not serving /health after restart" >&2
   exit 1
 fi
-pm2 list
+
+if ! vps_replica_verify_post_deploy "$RELEASE_DIR" "$TARGET_SHA"; then
+  echo "!! ABORT: post-deploy multi-replica verification failed for ${RELEASE_ID}" >&2
+  if [[ "$ROLLBACK_ON_FAIL" -eq 1 ]]; then
+    echo "==> Rolling back to previous release"
+    vps_replica_rollback "$DEPLOY_STATE_FILE" || true
+  fi
+  exit 1
+fi
+
+echo "==> Multi-replica deploy verification PASS"
+echo "    TARGET_SHA=${TARGET_SHA}"
+echo "    REPLICA_COUNT=${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}"
 echo "Deployed release: ${RELEASE_ID} ($(git -C "$RELEASE_DIR" rev-parse --short HEAD))"
 
 if [[ "${MONITORING_AUTO_REFRESH:-auto}" == "auto" ]]; then
