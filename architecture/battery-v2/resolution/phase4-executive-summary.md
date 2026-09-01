@@ -14,7 +14,7 @@
 
 ## DO NOW (highest leverage — after spec sign-off)
 
-1. **PKG-01 + PKG-02** — Resolve `inputVersion` + `publicationVersion` specs, then implement LV handoffs (P0 activation blockers)
+1. **PKG-01 + PKG-02** — Resolve `inputVersion`, **assessment-track selection authority**, and `publicationVersion` specs, then implement LV handoffs (P0 activation blockers)
 2. **PKG-09** — Execute post-#1445 natural soak (initial smoke tranche — not strong validation)
 
 ## VALIDATE NOW (no runtime change)
@@ -30,7 +30,9 @@
 2. **Timestamp provenance enum** — approve PKG-03 target model (measurement only; not session opening)
 3. **Stage 2 cutover policy** — when to enable handoff flags
 4. **PKG-01 inputVersion** — measurement.id vs observedAt vs composite
-5. **PKG-02 publicationVersion** — authoritative source for canonical handoff
+5. **PKG-02 assessment-track selection** — WORKSHOP_OVERRIDE vs TELEMETRY when both publicationEligible (DECISION_NOT_READY)
+6. **PKG-02 publicationVersion** — authoritative source for canonical handoff
+7. **PKG-01 crash boundary** — existing-measurement branch handoff vs reconcile-only
 
 ## DEFER
 
@@ -50,19 +52,21 @@
 1. `lv-assess:` job identity — use `assess:` builder
 2. `battery-v2-lv-assessment.producer.ts` — file does not exist
 3. Publication enqueue gated on `publicationEligible` in assessment handler
-4. Signal-timestamp gate on primary trip-finalization REST opening
-5. Current SQL provenance distribution claims
-6. "10 trips = 95% reliability" statistical framing
-7. 30m session-arm SLA (30m is REST target grace)
-8. Invented threshold provenance (DOMAIN-HEURISTIC / CODE-CONVENIENCE without citation)
-9. Bridge measurement rebinding / historical mutation
-10. Reconciliation-only LV publication as sole solution
-11. Status quo HEV side-effect without read alignment
-12. Implementing GROSS_CAPACITY before reference model
+4. **“Enqueue every persistedAssessmentId”** as settled PKG-02 architecture
+5. Signal-timestamp gate on primary trip-finalization REST opening
+6. Current SQL provenance distribution claims
+7. "10 trips = 95% reliability" statistical framing
+8. 30m session-arm SLA (30m is REST target grace)
+9. Invented threshold provenance (DOMAIN-HEURISTIC / CODE-CONVENIENCE without citation)
+10. Bridge measurement rebinding / historical mutation
+11. Reconciliation-only LV publication as sole solution
+12. Status quo HEV side-effect without read alignment
+13. Implementing GROSS_CAPACITY before reference model
+14. Invented DB table names in soak protocol (`Trip`, `BatteryLvRestSession`)
 
 ## Top 5 next actions
 
-1. Sign off PKG-01 `inputVersion` + PKG-02 `publicationVersion` specs
+1. Sign off PKG-01 `inputVersion` + PKG-02 **assessment-track selection** + `publicationVersion` specs
 2. Implement PKG-01 + PKG-02 behind feature flags
 3. Run PKG-09 initial smoke tranche (≥10 trips / 14 days — not strong validation)
 4. Product decision on HEV Option A layering (DECISION_NOT_READY)

@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-01 — Phase 4 final merge-gate micro-correction
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | PKG-02 implied "enqueue every persistedAssessmentId"; soak protocol used invented table names; CHANGE_LEDGER OBSERVED_EFFECT contradicted VALIDATION; production evidence column mixed code facts. |
+| **OBSERVATION** | AUTO track may persist WORKSHOP_OVERRIDE + TELEMETRY; publication policy has no track ordering; REST handler `hasMeasurement` early return creates assessment handoff crash boundary. |
+| **HYPOTHESIS** | Documenting assessment-selection authority as SPEC REQUIRED closes final PKG-02 semantic blocker without runtime changes. |
+| **CHANGE** | PKG-02 assessment-track selection authority (DECISION_NOT_READY); REST crash boundary; Prisma model names in soak protocol + eligibility preconditions; Production evidence / Code evidence columns; 13.2V vs 13.25V threshold split; DEC-PH4 summary corrected; integrated latest main (scaling #1490 only). |
+| **WHY** | Final documentation merge gate — prevent runtime agents from implementing order-dependent multi-track publication. |
+| **EXPECTED_EFFECT** | PKG-02 blocked on assessment-selection + publicationVersion specs; soak protocol uses verified schema terminology. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh` |
+| **OBSERVED_EFFECT** | Validator PASS; 20 open gaps; 23 planning items; 121 nodes / 108 edges / 11 invariants; consistency checks PASS; latest main integrated (`2a2fe5ac`); no `architecture/battery-v2/**` drift on main. |
+| **NON_EFFECTS** | No runtime; no flags; no deploy; gaps remain open; DEC-PH4 PROPOSED. |
+| **REGRESSIONS_OR_TRADEOFFS** | PKG-02 readiness remains IMPLEMENTATION_SPEC_REQUIRED |
+| **REMAINING_GAPS** | assessment-track selection authority; publicationVersion; inputVersion; all 20 gaps open |
+| **DECISION_STATUS** | VALIDATED (documentation only; NOT PRODUCTION_VALIDATED) |
+| **AFFECTED_GRAPH** | 121 / 108 / 11 (DEC-PH4 summary text) |
+| **EVIDENCE** | `lv-estimated-health-assessment.policy.ts`, `battery-rest-target-evaluate.handler.ts`, `lv-canonical-battery.resolver.ts`, Prisma `VehicleTrip` / `BatteryMeasurementSession` |
+
+---
+
 ## CL-2026-09-01 — Phase 4 resolution plan integrity correction
 
 | Field | Content |
@@ -17,7 +38,7 @@ Append-only scientific record. Newest entries first.
 | **WHY** | Implementation-readiness must not overstate authority; Phase 4 is knowledge authority only. |
 | **EXPECTED_EFFECT** | Runtime agents have explicit spec gaps instead of inventing semantics; executive docs agree on counts and readiness. |
 | **VALIDATION** | `validate-graph.sh` PASS; consistency checks (20 gaps, 23 planning items, single PRIMARY per gap, P0/P1 rationale, no false SQL/provenance claims). |
-| **OBSERVED_EFFECT** | Pending validator run in this commit. |
+| **OBSERVED_EFFECT** | Superseded by micro-correction entry above — validator PASS at integrity-correction commit `77b45df`. |
 | **NON_EFFECTS** | No runtime fixes; no feature flags; no deploy; no production data; no backfill; gaps remain open; DEC-PH4 remains PROPOSED. |
 | **REGRESSIONS_OR_TRADEOFFS** | Planning surface more verbose; PKG-01/02 blocked on spec sign-off |
 | **REMAINING_GAPS** | All 20 `BAT-V2-GAP-*` remain open; inputVersion and publicationVersion specs unresolved |

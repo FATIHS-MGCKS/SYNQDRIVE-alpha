@@ -29,9 +29,10 @@ Epistemic source of the value. **Default UNKNOWN** unless cited evidence exists.
 |-----------|-------|------|------------|--------|
 | Speed at rest | 0.5 km/h | REST window detection | UNKNOWN | — |
 | Engine load proxy | >5% | Wake proxy | UNKNOWN | — |
-| LV charging voltage | 13.25 V | Charging detection | UNKNOWN | — |
+| LV charging voltage (REST window) | 13.25 V | REST charging detection (`DEFAULT_LV_CHARGING_VOLTAGE_THRESHOLD_V`) | UNKNOWN | — |
+| Canonical live charging safety | 13.2 V | Live-voltage decision safety (`lv-canonical-battery.resolver.ts` `CHARGING_VOLTAGE_THRESHOLD`; legacy contamination `LV_REST_CONTAMINATION_THRESHOLD_V`) | UNKNOWN | — |
+| Max resting voltage band | 13.2 V | Policy default `maxRestingV` / plausible resting ceiling | UNKNOWN | — |
 | Wake threshold | max(rest+0.5, 13.8) V | Wake detection | UNKNOWN | — |
-| Plausible LV band | 9–16 V | Quality gate | UNKNOWN | — |
 | Stability dwell | 5 min | REST stability | UNKNOWN | — |
 | Max rest window | 24 h | Window cap | UNKNOWN | — |
 | Trip bridge tolerance | 120 s | Bridge fallback bind | UNKNOWN | — |

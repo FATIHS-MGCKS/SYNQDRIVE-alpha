@@ -10,16 +10,52 @@ Determine whether #1445 liveness fixes eliminate REST stall class on **natural**
 
 **This protocol provides INITIAL SMOKE EVIDENCE for liveness — not STRONG PRODUCTION VALIDATION.**
 
-## Observation capture (per natural trip)
+## Authoritative persistence models (Prisma)
+
+| Concept | Prisma model / enum | Notes |
+|---------|---------------------|-------|
+| Trip | `VehicleTrip` | `tripStatus = COMPLETED`; anchor = `endTime` |
+| LV REST session | `BatteryMeasurementSession` | `type = BatteryMeasurementSessionType.LV_REST_WINDOW` |
+| REST measurement | `BatteryMeasurement` | Types `REST_60M` / `REST_6H` |
+| Session anchor | `BatteryMeasurementSession.idempotencyKey` | Trip-end anchor ms encoded in key |
+| REST target metadata | `BatteryMeasurementSession.metadata` | JSON — target status timeline |
+
+**Do not use** conceptual names `Trip`, `BatteryLvRestSession`, or `anchorAt` — they are not Prisma fields.
+
+## Trip eligibility (exposure preconditions)
+
+A trip counts toward post-#1445 evidence **only** when exposure is known. Classify each candidate:
+
+| Status | Meaning |
+|--------|---------|
+| **ELIGIBLE** | All preconditions verified |
+| **INELIGIBLE** | Failed precondition — exclude from evidence |
+| **EXPOSURE_UNKNOWN** | Deployment/flag exposure not verified — do not count as clean negative evidence |
+
+### Minimum preconditions (verify/record per trip)
+
+| # | Precondition |
+|---|--------------|
+| 1 | Trip `endTime` after relevant #1445 deploy SHA was **actually running** on target environment |
+| 2 | `BATTERY_V2_REST_SHADOW_ENABLED` (or documented equivalent) was **ON** for vehicle/org |
+| 3 | `VehicleTrip.tripStatus = COMPLETED` with authoritative `endTime` |
+| 4 | REST session opening path was eligible (trip-finalization or documented reconciliation) |
+| 5 | REST_60M target opportunity existed (record separately from REST_6H) |
+| 6 | REST_6H opportunity recorded separately when applicable |
+| 7 | Telemetry availability recorded **separately** from lifecycle liveness |
+
+Trips with **EXPOSURE_UNKNOWN** must not be used to claim liveness success or failure.
+
+## Observation capture (per eligible trip)
 
 | Field | Source |
 |-------|--------|
-| vehicleId | Trip record |
-| tripId | COMPLETED trip |
-| tripEndAt | Authoritative anchor |
-| sessionId | `BatteryLvRestSession` |
-| session anchor ms | Idempotency key component |
-| REST target ids | REST_60M / REST_6H metadata |
+| vehicleId | `VehicleTrip.vehicleId` |
+| tripId | `VehicleTrip.id` |
+| tripEndAt | `VehicleTrip.endTime` |
+| sessionId | `BatteryMeasurementSession.id` where `type = LV_REST_WINDOW` |
+| session idempotencyKey | Anchor component for `lv-rest-open:{vehicleId}:{anchorMs}` |
+| REST target ids | Session `metadata` — REST_60M / REST_6H |
 | target status timeline | ENQUEUED → RUNNING/PENDING_EVALUATION → COMPLETED/MISSED |
 | Bull job ids | Queue inspection (read-only) |
 | DLQ entries | `battery.v2` failed set cardinality + sample |
@@ -28,8 +64,9 @@ Determine whether #1445 liveness fixes eliminate REST stall class on **natural**
 | replica identity | PM2 instance if observable |
 | final measurement | `BatteryMeasurement` REST row |
 | assessment row | If exists (may be absent pre-PKG-01) |
+| eligibility status | ELIGIBLE / INELIGIBLE / EXPOSURE_UNKNOWN |
 
-Record **actual session-arm latency** descriptively (trip end → session created). Do not treat 30m as session-opening SLA — 30m is REST **target retry grace**, not session-arm SLA.
+Record **actual session-arm latency** descriptively (`VehicleTrip.endTime` → `BatteryMeasurementSession.createdAt`). Do not treat 30m as session-opening SLA — 30m is REST **target retry grace**, not session-arm SLA.
 
 ## Outcome dimensions (do not collapse)
 
@@ -42,7 +79,7 @@ Record **actual session-arm latency** descriptively (trip end → session create
 
 A legitimate **MISSED** target may be: **LIFECYCLE_LIVENESS PASS** + **MEASUREMENT NOT AVAILABLE** (telemetry gap) — not an overall FAIL.
 
-## Pass criteria (single natural trip)
+## Pass criteria (single eligible trip)
 
 | Behavior | LIVENESS | MEASUREMENT | Notes |
 |----------|----------|-------------|-------|
@@ -59,7 +96,7 @@ If per-trip failure probability were 30%, observing **zero failures in 10 trips*
 
 | Tranche | Purpose | Minimum guidance |
 |---------|---------|------------------|
-| **Initial smoke** | First observation after #1445 | ≥10 natural ICE/HEV trips, ≥3 vehicles, 14 days — **smoke only** |
+| **Initial smoke** | First observation after #1445 | ≥10 **ELIGIBLE** natural ICE/HEV trips, ≥3 vehicles, 14 days — **smoke only** |
 | **Strong validation** | Upgrade hypothesis beyond UNKNOWN | Plan by failure mode: REST_60M/REST_6H exposure opportunities, multi-day parking patterns, reconciliation/restart exposure, multi-replica when relevant — sample size derived from target failure rate, not fixed "10 = 95%" |
 
 Expand sample if any **liveness FAIL** in first tranche.
@@ -71,17 +108,39 @@ Expand sample if any **liveness FAIL** in first tranche.
 - Multi-replica deploy (separate scaling workstream)
 - Statistical proof of fleet-wide reliability from 10 trips
 
-## Query plan (read-only — when authorized)
+## Query plan (PSEUDO-QUERY — adapt to verified production schema)
 
-Session/target liveness queries on existing schema — illustrative:
+**DO NOT EXECUTE VERBATIM.** Adapt table/column names to verified Prisma mappings.
+
+```typescript
+// Illustrative Prisma-style plan — operator must verify schema
+await prisma.vehicleTrip.findMany({
+  where: {
+    tripStatus: 'COMPLETED',
+    endTime: { gt: deploy1445At },
+  },
+  include: {
+    batteryMeasurementSessions: {
+      where: { type: 'LV_REST_WINDOW' },
+    },
+  },
+  orderBy: { endTime: 'desc' },
+  take: 50,
+});
+```
+
+Equivalent SQL pseudo-shape (adapt joins):
 
 ```sql
-SELECT v.id, t.id, t."endTime", s.id, s."anchorAt"
-FROM "Trip" t
-JOIN "Vehicle" v ON ...
-LEFT JOIN "BatteryLvRestSession" s ON ...
-WHERE t.status = 'COMPLETED' AND t."endTime" > :deploy_1445_at
-ORDER BY t."endTime" DESC LIMIT 50;
+-- PSEUDO-QUERY: DO NOT EXECUTE VERBATIM
+SELECT vt.id, vt.end_time, bms.id, bms.idempotency_key, bms.metadata
+FROM vehicle_trips vt
+JOIN battery_measurement_sessions bms
+  ON bms.trip_id = vt.id AND bms.type = 'LV_REST_WINDOW'
+WHERE vt.trip_status = 'COMPLETED'
+  AND vt.end_time > :deploy_1445_at
+ORDER BY vt.end_time DESC
+LIMIT 50;
 ```
 
 ## GRAPH IDS

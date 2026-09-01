@@ -29,6 +29,7 @@
 | **Test scope** | Handler unit + integration |
 | **Production validation** | Assessment row within 24h of REST on canary org (flags ON) |
 | **Blocked by** | inputVersion authority |
+| **Crash boundary** | `hasMeasurement` early return — post-persist/pre-enqueue crash needs reconcile or branch handoff (SPEC) |
 | **Does not solve** | Publication, timestamp provenance, readiness |
 
 ## PKG-02 — LV publication handoff
@@ -36,17 +37,18 @@
 | Field | Value |
 |-------|-------|
 | **Dependencies (dev)** | PKG-01 code may proceed in parallel for handler wiring; e2e needs both |
-| **Dependencies (enablement)** | PKG-01 assessment persist path; `publicationVersion` spec; `BATTERY_V2_PUBLICATION_ENABLED` |
-| **Modules** | `battery-assessment-recompute.handler`, `BatteryV2JobProducerService`, `battery-v2-reconciliation.service`, `BatteryPublicationUpdateHandler` |
+| **Dependencies (enablement)** | PKG-01 assessment persist path; **assessment-track selection authority**; `publicationVersion` spec; `BATTERY_V2_PUBLICATION_ENABLED` |
+| **Modules** | `battery-assessment-recompute.handler`, `BatteryV2JobProducerService`, `battery-v2-reconciliation.service`, `BatteryPublicationUpdateHandler`, `BatteryPublicationService` |
 | **DB migration** | No |
 | **Feature flag** | `BATTERY_V2_PUBLICATION_ENABLED` + handoff flag |
 | **Job identity** | `buildPublicationJobIdempotencyKey` → `pub:{assessmentId}:v{publicationVersion}` |
-| **Handoff** | One `BATTERY_PUBLICATION_UPDATE` per `persistedAssessmentId`; policy in `BatteryPublicationService` only |
+| **Handoff** | Publication enqueue after deterministic assessment selection; policy in `BatteryPublicationService` only — **not** “enqueue every persistedAssessmentId” |
+| **Assessment-track authority** | **SPEC REQUIRED** — AUTO may persist WORKSHOP_OVERRIDE + TELEMETRY; publication policy has no track ordering |
 | **publicationVersion** | **SPEC REQUIRED** — current default `1` in repository if omitted |
 | **Rollback** | Disable publication flag |
-| **Test scope** | E2E REST→assess→pub |
+| **Test scope** | E2E REST→assess→pub with multi-track scenarios |
 | **Production validation** | `battery_publications` row on canary when policy passes |
-| **Blocked by** | PKG-01 enablement + publicationVersion authority |
+| **Blocked by** | PKG-01 enablement + assessment-selection authority + publicationVersion authority |
 | **Does not solve** | HV publication, readiness auto-enable |
 
 ## PKG-03 — Timestamp provenance

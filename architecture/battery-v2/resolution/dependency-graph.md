@@ -48,7 +48,7 @@ What must be true before Stage-2+ flags go ON in production.
 
 | Gate | Requires |
 |------|----------|
-| **Stage-2 LV e2e** | PKG-01 + PKG-02 implemented; `inputVersion` + `publicationVersion` specs signed off; integration tests pass |
+| **Stage-2 LV e2e** | PKG-01 + PKG-02 implemented; `inputVersion` + **assessment-track selection** + `publicationVersion` specs signed off |
 | **Strict timestamp policy (optional)** | PKG-03 decision + migration **before** Stage-2 if selected as safety policy |
 | **HEV write-gate changes** | PKG-05 product decision — not Phase 4 |
 | **Stage-3 readiness** | PKG-02 publication confidence + separate readiness policy |

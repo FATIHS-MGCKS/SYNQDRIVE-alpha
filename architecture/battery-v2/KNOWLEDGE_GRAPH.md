@@ -43,7 +43,7 @@ This Human View is a high-level projection of current machine authority. It must
 [Consumers]  rental health, API, tasks, insights
 ```
 
-**Umbrella gap:** `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001` — canonical REST → assessment → publication is **not e2e reachable** today. Phase 4 PROPOSED target: `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (hybrid handoff; `assess:`/`pub:` canonical keys; inputVersion + publicationVersion SPEC REQUIRED — gap remains open; P0_ACTIVATION_BLOCKER only).
+**Umbrella gap:** `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001` — canonical REST → assessment → publication is **not e2e reachable** today. Phase 4 PROPOSED target: `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (hybrid handoff; `assess:`/`pub:` keys; inputVersion + publicationVersion + **assessment-track selection** SPEC REQUIRED — gap remains open; P0_ACTIVATION_BLOCKER only).
 
 **Flag note:** `BATTERY_V2_REST_SHADOW_ENABLED` (historical name) enables canonical REST ingestion when ON. It does **not** block publication. Publication is separately gated by `BATTERY_V2_PUBLICATION_ENABLED` plus missing handoffs.
 

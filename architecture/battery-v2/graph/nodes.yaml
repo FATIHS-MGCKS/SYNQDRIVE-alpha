@@ -189,9 +189,10 @@ nodes:
     summary: >
       Hybrid direct enqueue + reconciliation safety net for canonical REST → assessment → publication.
       Assessment: buildAssessmentJobIdempotencyKey (assess: prefix); inputVersion SPEC REQUIRED.
-      Publication: BATTERY_PUBLICATION_UPDATE per persistedAssessmentId; policy in BatteryPublicationService only;
-      buildPublicationJobIdempotencyKey; publicationVersion SPEC REQUIRED. P0_ACTIVATION_BLOCKER not active outage.
-      NOT implemented; NOT VALIDATED; three LV gaps remain open.
+      Publication: BATTERY_PUBLICATION_UPDATE after deterministic assessment-selection authority (SPEC REQUIRED);
+      policy in BatteryPublicationService only; buildPublicationJobIdempotencyKey; publicationVersion SPEC REQUIRED.
+      Multi-track recompute (WORKSHOP_OVERRIDE + TELEMETRY) requires track authority — not "publish every assessment".
+      P0_ACTIVATION_BLOCKER not active outage. NOT implemented; NOT VALIDATED; three LV gaps remain open.
     source_paths:
       - architecture/battery-v2/resolution/lv-publication-chain-resolution.md
     non_effects:
