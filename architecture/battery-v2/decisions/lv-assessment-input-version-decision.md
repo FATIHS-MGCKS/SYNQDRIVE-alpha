@@ -52,11 +52,39 @@ The persisted measurement is the **trigger authority**.
 | Criterion | Rationale |
 |-----------|-----------|
 | **A — Unique / stable** | `BatteryMeasurement.id` uniquely identifies the persisted input |
-| **B — Retry safe** | Normal path and retry/reconciliation derive the same assessment job identity for the same measurement |
-| **C — Multi-replica safe** | Workers observing the same persisted measurement derive the same idempotency key |
+| **B — Retry identity safe / in-flight dedupe safe** | Normal handoff and reconciliation derive the **same** assessment job identity for the same measurement; concurrent/in-flight duplicate enqueue converges via producer dedupe |
+| **C — Cross-replica identity safe** | Workers on different replicas observing the same persisted measurement derive the **same** idempotency key |
 | **D — Timestamp-independent** | Job identity does not depend on `observedAt` — timestamp provenance remains independent PKG-03 decision |
 | **E — Multiple REST targets** | REST_60M and REST_6H may produce distinct measurements; each gets its own assessment trigger |
 | **F — No migration** | Stable measurement primary key already exists |
+
+### Identity guarantees vs execution limits
+
+`BatteryMeasurement.id` as `inputVersion` guarantees:
+
+- **Deterministic job identity** — `assess:{vehicleId}:LV_HEALTH:{measurementId}`
+- **Same key** for normal handoff and reconciliation repair enqueue
+- **Concurrent / in-flight duplicate convergence** — same deterministic job ID under parallel enqueue attempts
+- **Same key across replicas** observing the same persisted measurement
+
+**D1 defines trigger / job identity — not durable exactly-once side-effect semantics.**
+
+Current `BatteryV2JobProducerService` behavior (`addIdempotent`):
+
+| Existing job state | Enqueue behavior |
+|--------------------|------------------|
+| `waiting` / `delayed` / `active` / `prioritized` | Duplicate **suppressed** (returns same job id) |
+| `completed` / `failed` | Existing job **removed**; same deterministic job id may be **re-added** |
+
+Therefore: identity-safe and in-flight dedupe-safe — **not** unconditional retry-safe or exactly-once-safe for assessment side effects.
+
+### Handler computation scope (not frozen snapshot)
+
+`BatteryAssessmentRecomputeHandler` does **not** use `inputVersion` to bind calculation to a frozen measurement snapshot.
+
+`recomputeLvEstimatedHealth()` reads the **current** eligible LV measurement set at execution time. A later re-enqueue of the same measurement trigger can execute a **fresh** recomputation.
+
+Whether / when reconciliation may re-enqueue an already-completed trigger belongs to **D2 crash-boundary / recovery authority** — not resolved in D1.
 
 ## CURRENT RUNTIME COMPATIBILITY
 
@@ -111,7 +139,8 @@ PKG-01 `inputVersion` blocker closed. Runtime agents implementing canonical hand
 | Risk | Mitigation |
 |------|------------|
 | Reconciliation scan must use same `inputVersion` rule when repairing missed handoffs | Document in PKG-01 implementation; reconcile must key on measurement id |
-| Crash boundary before enqueue | Separate PKG-01 blocker — not resolved by D1 |
+| Crash boundary before enqueue | **D2** authority — not resolved by D1 |
+| Re-enqueue after completed/failed job may re-run assessment computation | D1 identity only; D2 defines when reconciliation may re-trigger |
 
 ## STATUS
 

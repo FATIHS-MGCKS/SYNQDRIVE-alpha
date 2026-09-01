@@ -214,7 +214,8 @@ nodes:
       PKG-01 inputVersion = persisted BatteryMeasurement.id for canonical REST → assessment handoff.
       Job identity: assess:{vehicleId}:LV_HEALTH:{measurementId} via buildAssessmentJobIdempotencyKey.
       inputVersion is trigger authority for the persisted measurement, not model version, timestamp provenance,
-      trip, or rest-window identity. Rejected: observedAt, trip/session/window alone, composite rest binding.
+      trip, or rest-window identity. Identity/retry-in-flight-dedupe safe — not durable exactly-once execution.
+      Rejected: observedAt, trip/session/window alone, composite rest binding.
       Legacy snapshot path may keep capture.capturedAt.getTime() — no re-keying. NOT PRODUCTION_VALIDATED.
     source_paths:
       - architecture/battery-v2/decisions/lv-assessment-input-version-decision.md
@@ -226,7 +227,8 @@ nodes:
     non_effects:
       - Does not implement assessment enqueue
       - Does not close BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
-      - Does not resolve crash-boundary or configuration invariant
+      - Does not resolve crash-boundary (D2) or configuration invariant (D3)
+      - Does not guarantee durable exactly-once assessment execution
       - No migration, flags, backfill, or production mutation
 
   # --- Gaps ---
