@@ -439,7 +439,8 @@ nodes:
     source_type: PR_HISTORY
     summary: Merge record for observation-independent LV Rest session opening.
     source_locator: "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1383"
-    verified_ref: "7556a5119"
+    verified_ref: "f104f522ec22c37f22398eab997f229517748028"
+    verified_at: "2026-08-28T14:47:39Z"
 
   - id: BAT-V2-EVID-PR-1393-001
     type: evidence
@@ -448,6 +449,8 @@ nodes:
     source_type: PR_HISTORY
     summary: Merge record for ICE rest-window opening policy hardening.
     source_locator: "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1393"
+    verified_ref: "65d2242c346a785bcdd75296433175d4700b6cb3"
+    verified_at: "2026-08-28T19:17:14Z"
 
   - id: BAT-V2-EVID-PR-1445-001
     type: evidence
@@ -456,7 +459,8 @@ nodes:
     source_type: PR_HISTORY
     summary: Merge record for Stage 1 pipeline defect closure.
     source_locator: "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1445"
-    verified_ref: "7556a5119"
+    verified_ref: "7556a5119ae0bd376e4a508071aa0095a6a4bb3c"
+    verified_at: "2026-08-30T17:37:35Z"
 
   - id: BAT-V2-EVID-PROD-EA7696B6-001
     type: evidence

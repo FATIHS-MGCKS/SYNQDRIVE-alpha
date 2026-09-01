@@ -36,3 +36,5 @@ backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-reconcil
 ```
 
 Optional: `source_locator`, `verified_ref`, `verified_at` for PR/commit provenance.
+
+`verified_ref` must be the full merge commit OID verified against GitHub (or equivalent) for that exact PR. Partial SHAs and cross-PR copy-paste are prohibited. Graph validator PASS does not prove Git provenance correctness.

@@ -147,6 +147,8 @@ Evidence and test_evidence nodes require machine-readable `source_type`:
 
 Optional provenance: `source_paths`, `source_locator`, `verified_ref`, `verified_at`.
 
+`verified_ref` means manually or externally verified repository provenance (e.g. GitHub PR merge commit OID). Schema validity alone does not establish provenance correctness — the graph validator does not verify that a SHA semantically belongs to a PR. If a ref cannot be verified, omit `verified_ref` rather than guessing.
+
 Evidence node existence and claim confidence are separate concepts.
 
 ## Epistemic honesty
