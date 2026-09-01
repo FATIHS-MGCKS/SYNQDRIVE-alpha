@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p1-8-3-1-production-validation-2026-09-01',
+    version: '4.9.1022',
+    title: 'P1.8.3.1 — Production validation: scheduler convergence gate + INC-06 CLOSED',
+    summary: [
+      'First authoritative production validation of P1.8.3.1 deploy leader-convergence gate on SHA `3772d992d`.',
+      'Attempt 3: 6× transient `leaderCount=0` tolerated → converged to `leaderCount=1` in 14s → deploy PASS. No split brain.',
+      'INC-06 CLOSED. Attempts 1–2 false-aborted due to OQ-18 bootstrap (stale current entry script); mitigated via RELEASE_OPS_DIR sourcing + cloud-agent-deploy bootstrap.',
+      'Post-deploy: N=2 SHA-coherent, nginx dual-upstream live, queues stable, no pipeline regression.',
+    ],
+    reason: 'Close INC-06 with production evidence that bounded convergence gate works without weakening split-brain detection.',
+    previousBehavior: 'P1.8.3.1 merged but not production-validated; deploy from stale current still used old verify path.',
+    details:
+      'architecture/P1_8_3_1_DEPLOY_LEADER_WAIT_PRODUCTION_VALIDATION_2026-09-01.md; architecture/scaling-process/',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T11:50:00.000Z',
+  },
+  {
     id: 'p1-8-3-1-deploy-leader-wait-hardening-2026-09-01',
     version: '4.9.1021',
     title: 'P1.8.3.1 — Deploy scheduler leader convergence gate (INC-06 remediation)',

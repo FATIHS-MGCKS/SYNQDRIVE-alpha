@@ -66,11 +66,13 @@ preflight_git() {
 
 run_remote_deploy() {
   echo "[cloud-agent] Deploying via SSH ${SSH_USER}@${VPS_HOST}:${SSH_PORT} ..."
-  # The release script owns root-only paths (/opt/synqdrive, pm2 daemon, postgres).
-  # -H keeps HOME=/root so pm2 resolves the same daemon it was started under.
-  local remote_cmd="bash ${DEPLOY_SCRIPT}"
+  # Bootstrap deploy entrypoint from GitHub main — not stale /opt/synqdrive/current copy
+  # (OQ-18 / P1.8.3.3: pre-success current may lack P1.8.3.1 convergence + RELEASE_OPS_DIR sourcing).
+  local git_repo="${CLOUD_AGENT_GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
+  local remote_inner="set -euo pipefail; TMP=\$(mktemp -d); trap 'rm -rf \"\$TMP\"' EXIT; git clone --depth 1 --branch ${GIT_BRANCH} ${git_repo} \"\$TMP\"; bash \"\$TMP/backend/scripts/ops/vps-deploy-release.sh\""
+  local remote_cmd="bash -c $(printf '%q' "$remote_inner")"
   if [[ "${SSH_USER}" != "root" ]]; then
-    remote_cmd="sudo -n -H bash ${DEPLOY_SCRIPT}"
+    remote_cmd="sudo -n -H bash -c $(printf '%q' "$remote_inner")"
   fi
   ssh -p "$SSH_PORT" -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=20 \
     "${SSH_USER}@${VPS_HOST}" "$remote_cmd"

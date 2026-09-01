@@ -43,7 +43,7 @@ Scaling Process
 │   ├── Redis outage → fail-closed (leader, mutex, budget)
 │   ├── Leader crash → TTL failover ~35s
 │   ├── Deploy single-replica restart → SUPERSEDED by #1472
-│   ├── Deploy leader-timing false-abort → INC-06 (P1.8.3) — fix P1.8.3.1 pending prod validation
+│   ├── Deploy leader-timing false-abort → INC-06 (P1.8.3) — **CLOSED** P1.8.3.1 prod validation
 │   └── nginx dual-upstream with dead backend
 │
 ├── Scaling Envelopes

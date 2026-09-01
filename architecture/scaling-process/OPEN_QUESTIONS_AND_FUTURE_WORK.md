@@ -25,7 +25,7 @@ Do **not** treat items here as current production architecture.
 | OQ-05 | ~~Restore production replica B~~ | **CLOSED** | P1.8.3 2026-09-01 |
 | OQ-06 | ~~Merge #1472 before next deploy~~ | **CLOSED** | Merged d6884ce |
 | OQ-17 | Deploy leader-election wait in verify | **IMPLEMENTED** | P1.8.3.1; prod validation pending |
-| OQ-18 | Bootstrap deploy uses old script from current | OPEN_QUESTION | First post-merge deploy caveat |
+| OQ-18 | Bootstrap deploy uses old script from current | **MITIGATED** | RELEASE_OPS_DIR sourcing + cloud-agent bootstrap; current now 3772d992d |
 | OQ-07 | Replica count > 2 | FUTURE_OPTION | Not authorized |
 | OQ-08 | Separate scheduler / API / worker processes | FUTURE_OPTION | Architecture split |
 | OQ-09 | Kubernetes / Docker orchestration | FUTURE_OPTION | Explicitly out of scope P1.8.2.1 |

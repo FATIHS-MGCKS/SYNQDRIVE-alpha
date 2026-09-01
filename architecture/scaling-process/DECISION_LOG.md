@@ -178,6 +178,19 @@ Format: Decision ID | Date/Phase | Status
 | **WHY** | Preserve INV-01 without blind sleep; observable diagnostics; no split-brain tolerance |
 | **PARAMETERS** | poll=2000ms, timeout=44000ms, stableObs=2 |
 | **TIMEOUT_FORMULA** | `(2×replicaCount+2)×acquireInterval + 2×poll + margin` |
-| **STATUS** | **ACTIVE** — implemented; production validation pending |
-| **EVIDENCE** | P1.8.3 deploy logs; `vps-multi-replica-deploy.util.test.mjs` 18/18 |
+| **STATUS** | **ACTIVE** — production verified P1.8.3.1 |
+| **EVIDENCE** | P1.8.3.1 production validation attempt 3 |
 | **SUPERSEDES** | immediate single-snapshot leader check as sole deploy gate |
+
+---
+
+## DEC-015: Source deploy ops libs from promoted release (P1.8.3.1 bootstrap)
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-09-01 |
+| **PROBLEM** | OQ-18: `vps-deploy-release.sh` sourced libs from stale `current` before switch — P1.8.3.1 gate not active on first deploy |
+| **DECISION** | Source topology + lib from `RELEASE_DIR/backend/scripts/ops`; cloud-agent-deploy bootstraps entry script from GitHub main |
+| **WHY** | Entry script path is always pre-switch `current`; promoted release contains intended verify logic |
+| **STATUS** | **ACTIVE** — verified attempt 3 PASS |
+| **EVIDENCE** | Deploy attempts 1–2 FAIL, attempt 3 PASS; `3772d992d` |
