@@ -91,7 +91,7 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | Scale executed | P1.8.2 | #1471 | VPS log | SCALE_TO_2_SUCCESS | HIGH |
 | Scheduler failover | P1.8.2 | #1471 | 32s test | PASS | HIGH |
 | nginx dual upstream | P1.8.2 | #1471 | config | PASS | HIGH |
-| Sustained N=2 after | Post | — | 2026-09-01 introspection | **FAIL** (drift) | HIGH |
+| Sustained N=2 after | Post | — | P1.8.3 introspection | **PASS** (restored) | HIGH |
 
 ---
 
@@ -104,8 +104,39 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | Shell syntax + selftest | P1.8.2.1 | #1472 | `bash -n`, selftest | PASS | HIGH |
 | Rebase onto main | P1.8.2.1 | #1472 | merge gate 2026-09-01 | 2 conflicts resolved | HIGH |
 | Coordination regression suite | P1.8.2.1 | #1472 | 56 tests (leader/mutex/budget/gate) | PASS | HIGH |
-| Merged to main | P1.8.2.1 | #1472 | — | **NO** (pending human merge) | HIGH |
-| Production deploy test | P1.8.2.1 | — | — | NOT RUN | HIGH |
+| Merged to main | P1.8.2.1 | #1472 | — | YES (d6884ce) | HIGH |
+| Production deploy test | P1.8.2.1 | #1472 | P1.8.3 | Rolling path exercised | MEDIUM |
+
+---
+
+## P1.8.3 — Post-merge verification
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| #1472 merged to main | P1.8.3 | d6884ce | git log | YES | HIGH |
+| Production N=2 restored | P1.8.3 | — | SSH audit 10:25Z | PASS | HIGH |
+| SHA match both replicas | P1.8.3 | — | d6884ce | PASS | HIGH |
+| Scheduler leader = 1 | P1.8.3 | — | readiness after 35s | PASS | HIGH |
+| nginx dual upstream live | P1.8.3 | — | config + ports | PASS | HIGH |
+| Rolling deploy exercised | P1.8.3 | — | deploy2.log | PASS_WITH_FINDINGS | MEDIUM |
+| Deploy auto-gate pass | P1.8.3 | — | leader timing abort | FAIL then recovered | MEDIUM |
+| INC-05 closed | P1.8.3 | — | N=2 coherent | CLOSED | HIGH |
+| Queue stability | P1.8.3 | — | failed counts unchanged | PASS | HIGH |
+| Trip/route/energy regression | P1.8.3 | — | no new failures | PASS | MEDIUM |
+
+---
+
+## P1.8.3.1 — Deploy leader-wait hardening
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Convergence state machine | P1.8.3.1 | — | `vps-multi-replica-deploy.util.mjs` | IMPLEMENTED | HIGH |
+| Cases A–H unit tests | P1.8.3.1 | — | 18/18 PASS | PASS | HIGH |
+| Shell integration | P1.8.3.1 | — | `vps-production-replica.lib.sh` | IMPLEMENTED | HIGH |
+| No blind fixed sleep | P1.8.3.1 | — | poll loop | YES | HIGH |
+| Split-brain immediate fail | P1.8.3.1 | — | CASE E/G tests | PASS | HIGH |
+| Production deploy exercise | P1.8.3.1 | — | not executed | PENDING | — |
+| INC-06 closed | P1.8.3.1 | — | — | IMPLEMENTED_PENDING_PRODUCTION_VALIDATION | — |
 
 ---
 
@@ -125,4 +156,4 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 1. No 24h soak at N=2 in production
 2. No provider ceiling verification at N≈1000
 3. Staging validation Redis DB ≠ production DB
-4. Deploy hardening not on main — explains replica B loss
+4. Deploy leader-wait implemented — production validation pending (P1.8.3.1)

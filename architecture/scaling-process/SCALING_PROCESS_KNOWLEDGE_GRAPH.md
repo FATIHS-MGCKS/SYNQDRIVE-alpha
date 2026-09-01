@@ -12,7 +12,7 @@ Scaling Process
 ├── Production Topology
 │   ├── PM2 (fork, not cluster)
 │   │   ├── synqdrive :3001  [Replica A]
-│   │   └── synqdrive-b :3002 [Replica B — intended; see CURRENT_STATE drift]
+│   │   └── synqdrive-b :3002 [Replica B — ONLINE P1.8.3]
 │   ├── nginx
 │   │   └── upstream synqdrive_backend → 3001 + 3002
 │   ├── Redis DB 0 (leases, BullMQ, mutex, DIMO budget)
@@ -33,20 +33,22 @@ Scaling Process
 │
 ├── Deployment
 │   ├── vps-deploy-release.sh
-│   ├── Rolling Deploy (P1.8.2.1 — #1472)
+│   ├── Rolling Deploy (P1.8.2.1 — #1472 MERGED)
 │   ├── SHA Coherency
 │   ├── Health / Readiness Verification
+│   ├── Scheduler Convergence Gate (P1.8.3.1 — leader-wait)
 │   └── Rollback (vps-rollback-production-release.sh — #1472)
 │
 ├── Failure Domains
 │   ├── Redis outage → fail-closed (leader, mutex, budget)
 │   ├── Leader crash → TTL failover ~35s
-│   ├── Deploy single-replica restart → mixed SHA / lost replica B
+│   ├── Deploy single-replica restart → SUPERSEDED by #1472
+│   ├── Deploy leader-timing false-abort → INC-06 (P1.8.3) — fix P1.8.3.1 pending prod validation
 │   └── nginx dual-upstream with dead backend
 │
 ├── Scaling Envelopes
 │   ├── N=1 PROVEN (soak)
-│   ├── N=2 PROVEN (controlled scale 2026-08-31) + CURRENT DRIFT
+│   ├── N=2 CONDITIONALLY CERTIFIED (P1.8.2 + P1.8.3 restore)
 │   └── N≈1000 CONDITIONAL
 │
 └── Evidence / Decisions / Open Work
@@ -107,13 +109,15 @@ EVIDENCE → P1.7 final response, staging validation
 ### Deployment Lifecycle
 
 ```
-TYPE: DECISION (P1.8.2.1 — pending merge #1472)
+TYPE: DECISION (P1.8.2.1 — merged #1472; P1.8.3.1 convergence gate)
 MUST_PRESERVE → replica SHA equality after deploy
 MUST_PRESERVE → exactly one scheduler leader
 MUST_PRESERVE → both replicas registered when REPLICA_COUNT=2
 MUST_PRESERVE → nginx upstream matches live processes
+CONVERGENCE_GATE → leaderCount=0 transient retry; >1 immediate FAIL_SPLIT_BRAIN; 2 stable obs of 1
 SUPERSEDES → single `pm2 restart synqdrive` only model
-EVIDENCE → P1.8.2.1 architecture doc; CURRENT_STATE drift without it
+SUPERSEDES → immediate single-snapshot leader check (INC-06)
+EVIDENCE → P1.8.2.1 architecture doc; P1.8.3 deploy false-abort; P1.8.3.1 unit tests
 ```
 
 ### Snapshot Polling (P1.2)
@@ -154,7 +158,8 @@ EVIDENCE → SNAPSHOT_POLLING_P1_2_* gates, soak trip pipeline PASS
   → #1469 P1.8 soak audit
   → #1470 P1.8.1 remediation
   → #1471 P1.8.2 scale-to-2 (docs + runtime)
-  → #1472 P1.8.2.1 deploy hardening (OPEN)
+  → #1472 P1.8.2.1 deploy hardening (MERGED)
+  → P1.8.3.1 leader-wait convergence gate (INC-06 remediation)
 ```
 
 ---
@@ -169,5 +174,6 @@ EVIDENCE → SNAPSHOT_POLLING_P1_2_* gates, soak trip pipeline PASS
 | Why reconciliation mutex? | [RECONCILIATION_EXECUTION_MUTEX.md](./RECONCILIATION_EXECUTION_MUTEX.md) |
 | Why workers on all replicas? | [BULLMQ_AND_WORKER_MODEL.md](./BULLMQ_AND_WORKER_MODEL.md) |
 | How to deploy safely? | [MULTI_REPLICA_DEPLOYMENT.md](./MULTI_REPLICA_DEPLOYMENT.md) |
+| Why does deploy wait on 0 leaders? | [P1_8_3_1_DEPLOY_LEADER_WAIT_HARDENING_2026-09-01.md](../P1_8_3_1_DEPLOY_LEADER_WAIT_HARDENING_2026-09-01.md) |
 | What failed historically? | [FAILURE_AND_RECOVERY_MODEL.md](./FAILURE_AND_RECOVERY_MODEL.md) |
 | What is certified at N=2? | [SCALING_ENVELOPES.md](./SCALING_ENVELOPES.md) |
