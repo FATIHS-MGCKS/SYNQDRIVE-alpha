@@ -2,7 +2,7 @@
 
 **Gaps:** `BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001`, `BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001`, `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001`  
 **Priority:** P0_ACTIVATION_BLOCKER (Stage-2 cutover — **not** proven active production outage while flags default OFF)  
-**Readiness:** IMPLEMENTATION_SPEC_REQUIRED (`inputVersion`, `publicationVersion`, **assessment-track selection authority** unresolved)  
+**Readiness:** IMPLEMENTATION_SPEC_REQUIRED — PKG-01 blockers: `inputVersion`, REST post-persist/pre-enqueue crash-boundary handling, `CONFIGURATION_INVARIANT_SPEC_REQUIRED`; PKG-02 blockers: assessment-track selection authority, `publicationVersion`, `CONFIGURATION_INVARIANT_SPEC_REQUIRED`  
 **Proposed decision:** `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (PROPOSED — gaps remain open)
 
 ## CURRENT STATE

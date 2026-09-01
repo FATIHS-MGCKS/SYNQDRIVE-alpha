@@ -4,7 +4,9 @@ Two explicit views — **development** vs **production enablement**. Do not enco
 
 ## DEVELOPMENT DEPENDENCIES
 
-What can be coded/reviewed/tested in isolation.
+What can be coded/reviewed/tested in isolation **after** package spec sign-off and separate runtime authorization.
+
+**Precondition:** A development lane becomes executable only after that package's `IMPLEMENTATION_SPEC_REQUIRED` blockers are signed off **and** runtime work is separately authorized. "May develop in parallel" does **not** mean safe to implement before spec sign-off.
 
 ```
                     ┌─────────────────────────────────────┐
@@ -48,7 +50,7 @@ What must be true before Stage-2+ flags go ON in production.
 
 | Gate | Requires |
 |------|----------|
-| **Stage-2 LV e2e** | PKG-01 + PKG-02 implemented; `inputVersion` + **assessment-track selection** + `publicationVersion` specs signed off; **`CONFIGURATION_INVARIANT_SPEC_REQUIRED` settled** (no unsafe REST_SHADOW=ON + PUBLICATION=ON + HANDOFF=OFF steady state) |
+| **Stage-2 LV e2e** | PKG-01 + PKG-02 implemented; **all** IMPLEMENTATION_SPEC_REQUIRED blockers signed off (PKG-01: `inputVersion`, crash-boundary, configuration invariant; PKG-02: assessment-track selection, `publicationVersion`, configuration invariant); separate runtime implementation authorization; no unsafe REST_SHADOW=ON + PUBLICATION=ON + HANDOFF=OFF steady state |
 | **Stage-2 canary** | **Canary deployment/environment** — not per-org process.env flags (org allowlist **SPEC REQUIRED** if desired) |
 | **Strict timestamp policy (optional)** | PKG-03 decision + migration **before** Stage-2 if selected as safety policy |
 | **HEV write-gate changes** | PKG-05 product decision — not Phase 4 |
@@ -67,7 +69,7 @@ PKG-05 ──► HEV write-gate prod changes (independent of LV chain)
 
 | Lane | Packages |
 |------|----------|
-| **A — LV cutover dev** | PKG-01, PKG-02 (parallel dev; sequential e2e) |
+| **A — LV cutover dev** | PKG-01, PKG-02 (parallel dev after full spec sign-off + runtime authorization; sequential e2e) |
 | **B — LV cutover enablement** | PKG-01 + PKG-02 → Stage-2; PKG-03 optional gate |
 | **C — HV read quality** | PKG-04 |
 | **D — Product policy** | PKG-05 |

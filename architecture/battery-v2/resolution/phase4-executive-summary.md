@@ -12,10 +12,13 @@
 
 **P0_ACTIVATION_BLOCKER ≠ P0_ACTIVE_PRODUCTION_INCIDENT.** Canonical REST and publication flags default OFF — LV handoffs block Stage-2 cutover, not proven live-customer publication outages.
 
-## DO NOW (highest leverage — after spec sign-off)
+## DO NOW (highest leverage — documentation / validation only)
 
-1. **PKG-01 + PKG-02** — Resolve `inputVersion`, **assessment-track selection authority**, and `publicationVersion` specs, then implement LV handoffs (P0 activation blockers)
-2. **PKG-09** — Execute post-#1445 natural soak (initial smoke tranche — not strong validation)
+1. **PKG-09** — Execute post-#1445 natural soak (initial smoke tranche — not strong validation)
+2. **Spec sign-off gate (PKG-01/02)** — Complete **all** IMPLEMENTATION_SPEC_REQUIRED blockers before any runtime implementation authorization:
+   - **PKG-01:** `inputVersion`; REST crash-boundary handling (A/B/C); `CONFIGURATION_INVARIANT_SPEC_REQUIRED`
+   - **PKG-02:** assessment-track selection authority; `publicationVersion`; `CONFIGURATION_INVARIANT_SPEC_REQUIRED`
+3. **Runtime implementation** — PKG-01 + PKG-02 code changes require **separate explicit authorization** after full spec sign-off. **Phase-4 documentation merge is not runtime authorization.**
 
 ## VALIDATE NOW (no runtime change)
 
@@ -33,7 +36,7 @@
 5. **PKG-02 assessment-track selection** — WORKSHOP_OVERRIDE vs TELEMETRY when both publicationEligible (DECISION_NOT_READY)
 6. **PKG-02 publicationVersion** — authoritative source for canonical handoff
 7. **PKG-01 crash boundary** — existing-measurement branch handoff vs reconcile-only
-8. **Provider VLS SOH gap** — accept current non-decision-fresh semantics vs new VLS timestamp spec (DECISION_REQUIRED — not PKG-04)
+8. **Provider VLS SOH gap** — **RECOMMENDED/PROPOSED:** retain current non-decision-fresh VLS-only semantics unless product authority requires decision-capable VLS SOH (separate spec) — **DECISION_REQUIRED**, pending sign-off; not PKG-04
 9. **Canary scope** — deployment/environment isolation; org allowlist **SPEC REQUIRED** if desired
 
 ## DEFER
@@ -74,8 +77,8 @@
 
 ## Top 5 next actions
 
-1. Sign off PKG-01 `inputVersion` + PKG-02 **assessment-track selection** + `publicationVersion` specs
-2. Implement PKG-01 + PKG-02 behind feature flags
-3. Run PKG-09 initial smoke tranche (≥10 trips / 14 days — not strong validation)
+1. Sign off **all** PKG-01 blockers (`inputVersion`, crash-boundary, configuration invariant) **and** PKG-02 blockers (assessment-track selection, `publicationVersion`, configuration invariant)
+2. Obtain **separate runtime implementation authorization** for PKG-01 + PKG-02 (Phase-4 merge alone does not authorize)
+3. Run PKG-09 initial smoke tranche (≥10 trips / 14 days — not strong validation; profile-stratified)
 4. Product decision on HEV Option A layering (DECISION_NOT_READY)
 5. Approve timestamp provenance schema (PKG-03) before Stage-2 prod if strict policy selected

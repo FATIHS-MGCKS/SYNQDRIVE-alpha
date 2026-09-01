@@ -23,7 +23,7 @@ providerSohUsable =
 
 VLS-only SOH without evidence `observedAt` → `providerSohObservedAt = null` → **not decision-fresh** → `providerSohUsable = false`. This is **current behavior**, not a future PKG-04 implementation.
 
-**Gap readiness:** `BAT-V2-GAP-HV-PROVIDER-SOH-LATESTSTATE-TIMESTAMP-001` → **DECISION_REQUIRED** (accept current semantics vs require VLS decision-capable timestamps). Remaining questions: production frequency + product tolerance (**PRODUCTION_VALIDATION_ONLY** / **RESEARCH_REQUIRED**). Option B (make VLS decision-capable) requires separate spec — **not** IMPLEMENTATION_READY and **must not** ride inside PKG-04.
+**Gap readiness:** `BAT-V2-GAP-HV-PROVIDER-SOH-LATESTSTATE-TIMESTAMP-001` → **DECISION_REQUIRED**. **RECOMMENDED/PROPOSED:** retain current non-decision-fresh VLS-only semantics unless product authority requires decision-capable VLS SOH — **pending product/architecture sign-off**. Remaining: production frequency (**PRODUCTION_VALIDATION_ONLY** / **RESEARCH_REQUIRED**). If decision-capable VLS SOH is required → separate timestamp/evidence-materialization spec — **not** IMPLEMENTATION_READY and **must not** ride inside PKG-04.
 
 ## TIE MECHANISM (demonstrated reachable case)
 
@@ -61,7 +61,7 @@ if (hvSohWinner?.id === 'provider-soh' && providerSohUsable) { ... }
 
 **Option B** for `canonical.hv.providerSoh` **winner selection iteration only** (PKG-04). Preserve conflict ranking order; after winner fails usability, try next ranked candidate. Log skipped candidates for audit.
 
-**Provider LatestState timestamp gap:** handled separately — **accept current semantics** unless product requires Option B (VLS decision-capable) via new spec.
+**Provider LatestState timestamp gap:** handled separately — **RECOMMENDED/PROPOSED:** retain current non-decision-fresh VLS-only semantics unless product authority requires decision-capable VLS SOH (separate spec). **Pending sign-off** — not PKG-04.
 
 ## TRUTH TABLE (target — PKG-04 iteration)
 
