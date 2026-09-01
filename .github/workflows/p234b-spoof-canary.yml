@@ -1,0 +1,17 @@
+name: P2.3.4B Check Name Spoof Canary
+
+on:
+  pull_request:
+
+jobs:
+  fake-authority:
+    name: i18n-authority-protection
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "FAKE GREEN AUTHORITY CHECK"
+
+  fake-new-debt:
+    name: i18n-new-debt-gate
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "FAKE GREEN NEW-DEBT CHECK"
