@@ -149,10 +149,12 @@ for (const d of decisionNodes) {
   }
 }
 
-// GRAPH.yaml authority gate
+// GRAPH.yaml authority lifecycle gate
 const graphManifest = yaml.load(
   fs.readFileSync(path.join(kgDir, 'GRAPH.yaml'), 'utf8'),
 );
+const lifecycleStates = new Set(schema.authority_lifecycle_states ?? []);
+
 if (!graphManifest.authority_review?.artifact) {
   fail('GRAPH.yaml missing authority_review.artifact gate');
 }
@@ -160,7 +162,41 @@ const reviewArtifact = path.join(repo, graphManifest.authority_review.artifact);
 if (!fs.existsSync(reviewArtifact)) {
   fail(`Missing authority review artifact: ${graphManifest.authority_review.artifact}`);
 }
-console.log('==> Authority review gate: OK');
+
+const status = graphManifest.status;
+const authorityState = graphManifest.authority_state ?? graphManifest.status;
+if (!lifecycleStates.has(status)) {
+  fail(`GRAPH.yaml status invalid lifecycle state: ${status}`);
+}
+if (!lifecycleStates.has(authorityState)) {
+  fail(`GRAPH.yaml authority_state invalid lifecycle state: ${authorityState}`);
+}
+if (status !== authorityState) {
+  fail(`GRAPH.yaml status (${status}) must match authority_state (${authorityState})`);
+}
+
+// Pre-merge: CANONICAL is forbidden until merged to main
+if (status === 'CANONICAL') {
+  if (authorityState !== 'CANONICAL') {
+    fail('status CANONICAL requires authority_state CANONICAL');
+  }
+} else if (status === 'APPROVED_FOR_CANONICAL_MERGE') {
+  if (!graphManifest.authority_review?.verdict) {
+    fail('APPROVED_FOR_CANONICAL_MERGE requires authority_review.verdict');
+  }
+  if (!graphManifest.authority_closure?.artifact) {
+    fail('APPROVED_FOR_CANONICAL_MERGE requires authority_closure.artifact');
+  }
+  const closureArtifact = path.join(repo, graphManifest.authority_closure.artifact);
+  if (!fs.existsSync(closureArtifact)) {
+    fail(`Missing authority closure artifact: ${graphManifest.authority_closure.artifact}`);
+  }
+} else {
+  fail(
+    `GRAPH.yaml status must be APPROVED_FOR_CANONICAL_MERGE (pre-merge) or CANONICAL (post-merge); got ${status}`,
+  );
+}
+console.log(`==> Authority lifecycle gate: ${status} OK`);
 
 console.log('==> Node checks:', nodes.length, 'nodes');
 

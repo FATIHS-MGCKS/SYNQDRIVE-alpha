@@ -49,6 +49,28 @@ decision_status_permitted_types:
   - decision
   - historical_incident
 
+# Workstream authority lifecycle (GRAPH.yaml status + authority_state must align)
+authority_lifecycle_states:
+  - DISCOVERY
+  - DRAFT
+  - AUTHORITY_REVIEWED
+  - APPROVED_FOR_CANONICAL_MERGE
+  - CANONICAL
+  - SUPERSEDED
+
+# Valid pre-merge closure: APPROVED_FOR_CANONICAL_MERGE + authority_review + authority_closure artifacts
+authority_lifecycle_valid_combinations:
+  - status: APPROVED_FOR_CANONICAL_MERGE
+    authority_state: APPROVED_FOR_CANONICAL_MERGE
+    requires:
+      - authority_review.verdict
+      - authority_closure.artifact
+  - status: CANONICAL
+    authority_state: CANONICAL
+    requires:
+      - main_sha_at_canonicalization
+    note: Post-merge only — set after PR merges to main
+
 evidence_maturity_values:
   - PROVEN_IN_CODE
   - PROVEN_BY_TEST

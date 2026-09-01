@@ -1,20 +1,29 @@
 # KG-EED — Energy Event Detection Knowledge Graph
-# Canonical authority for REFUEL/RECHARGE detection and semantics.
+# Repository authority for REFUEL/RECHARGE detection and semantics.
 
 version: "1.0.0"
 workstream_id: KG-EED
 title: Energy Event Detection
-status: CANONICAL
+# Pre-merge: APPROVED_FOR_CANONICAL_MERGE. Post-merge follow-up sets CANONICAL.
+status: APPROVED_FOR_CANONICAL_MERGE
+authority_state: APPROVED_FOR_CANONICAL_MERGE
 created: "2026-09-01"
 main_sha_at_canonicalization: "da959784f835a31482852d506daa137c90389b87"
 
-# CANONICAL status is authority-gated: requires completed independent review artifact.
 authority_review:
   required: true
   artifact: architecture/KG_EED_INDEPENDENT_AUTHORITY_REVIEW_2026-09-01.md
   completed_at: "2026-09-01"
   verdict: APPROVE_WITH_DOCUMENTED_OPEN_QUESTIONS
   reviewed_against_sha: "da959784f835a31482852d506daa137c90389b87"
+  post_review_head_sha: "6e9e65c63610ba64fdc08f8fa671b3330a9c335a"
+
+authority_closure:
+  required: true
+  artifact: architecture/KG_EED_FINAL_AUTHORITY_CLOSURE_2026-09-01.md
+  completed_at: "2026-09-01"
+  reconciled_main_sha: "814a7e00924474d95622e4ff67b0c2b86d0712ef"
+  post_reconcile_head_sha: "f90b8c72c2d641c65f666f05ac50119f177763e9"
 
 scope:
   owns:
@@ -62,7 +71,7 @@ cross_graph_refs:
     relation: MAY_TRIGGER detectEnergyEvents from reconcile step 5
   - id: EXT-KG-SCALING
     path: architecture/scaling-process/
-    relation: DIMO provider gateway/budget dependency
+    relation: DIMO provider gateway/budget + scheduler leader (external authority)
   - id: EXT-BAT-V2
     path: architecture/battery-v2/
     relation: Orthogonal HV charge sessions; no automatic RECHARGE linkage

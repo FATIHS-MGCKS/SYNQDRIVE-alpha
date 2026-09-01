@@ -1,5 +1,17 @@
 # KG-EED Changelog
 
+## 2026-09-01 — Phase 2B.2 final authority closure
+
+- Merged `origin/main` @ `814a7e009` (P1.8.3.1 scaling #1487) — no EED runtime delta
+- `status` / `authority_state` → `APPROVED_FOR_CANONICAL_MERGE` (pre-merge)
+- Severity register corrected (P0=0, P1=4, P2=5, P3=1, total 10)
+- Added `architecture/KG_EED_FINAL_AUTHORITY_CLOSURE_2026-09-01.md`
+- Validator: lifecycle + closure artifact gates
+
+**Verdict:** READY_TO_MERGE (human merge pending)
+
+---
+
 ## 2026-09-01 — Phase 2B.1 independent authority review
 
 **Reviewer:** adversarial gate (not implementation agent)  

@@ -1,9 +1,11 @@
 # KG-EED — Energy Event Detection Knowledge Graph
 
-**Status:** CANONICAL  
+**Authority state:** `APPROVED_FOR_CANONICAL_MERGE` (pre-merge PR #1486)  
 **Workstream ID:** KG-EED  
 **Canonicalized:** 2026-09-01 @ `da959784f`  
 **Discovery source:** `architecture/knowledge-graphs/discovery/ENERGY_EVENT_DETECTION_DISCOVERY_2026-09-01.md`
+
+> **Lifecycle:** `CANONICAL` is reserved for post-merge `main` authority. Unmerged PRs must use `APPROVED_FOR_CANONICAL_MERGE` until merged. See `GRAPH.yaml` and `architecture/KG_EED_FINAL_AUTHORITY_CLOSURE_2026-09-01.md`.
 
 ## Purpose
 
@@ -57,17 +59,16 @@ energy-event-detection/
 5. After code changes affecting EED, update graph + evidence + changelog in same workstream
 6. Run: `node architecture/knowledge-graphs/energy-event-detection/scripts/validate-graph.mjs`
 
-## Discovery → canonical audit (Phase 2B)
+## Discovery → canonical audit (staged)
 
-| Metric | Discovery | Canonical |
-|--------|----------:|----------:|
-| Components (signals + pipeline + API + UI) | 52 | 58 operational nodes |
-| Evidence nodes | 26 cited | 24 |
-| Decisions | 14 | 12 canonical decision nodes |
-| Invariants | — | 13 |
-| Open questions | 12 | 12 (classified) |
+| Stage | Nodes | Edges | Evidence | Decisions | Invariants |
+|-------|------:|------:|---------:|----------:|-----------:|
+| Discovery inventory | 52 components | — | 26 cited | 14 | — |
+| **INITIAL_PHASE_2B** | 93 | 78 | 24 | 12 | 13 |
+| **POST_PHASE_2B_1** | 97 | 81 | 25 | 12 | 13 |
+| **FINAL_PHASE_2B_2** | 97 | 81 | 25 | 12 | 13 |
 
-See `history/CHANGELOG.md` for merge/reclassify accounting.
+See `history/CHANGELOG.md` and `architecture/KG_EED_FINAL_AUTHORITY_CLOSURE_2026-09-01.md`.
 
 ## Deferred topics (do not expand here)
 

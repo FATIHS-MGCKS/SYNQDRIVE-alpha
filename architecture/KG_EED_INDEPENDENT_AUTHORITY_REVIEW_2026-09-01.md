@@ -145,7 +145,36 @@ Same entry → fetchEnergyEventSegments → DimoRechargeSegmentsClient (default 
 
 ---
 
-## 10. Findings severity summary
+## 10. Finding register (complete — severity corrected in 2B.2)
+
+**Previous severity aggregate (§10 legacy table below) was internally inconsistent** — it claimed P0=2 without mapping findings to IDs. Corrected register:
+
+| ID | Title | Sev | Status | Origin | Correction commit |
+|----|-------|-----|--------|--------|-------------------|
+| EED-FIND-001 | Premature `status: CANONICAL` on unmerged PR | P1 | CLOSED | Candidate A | `6e9e65c63` → `f90b8c72c` (2B.2 lifecycle) |
+| EED-FIND-002 | `EED-EV-0022` / `EED-EXT-003` epistemic contradiction | P1 | CLOSED | Candidate B | `6e9e65c63` |
+| EED-FIND-003 | Architecture docs classified as PROVEN_IN_CODE | P1 | CLOSED | Candidate C | `6e9e65c63` |
+| EED-FIND-004 | KS MX fixture conflated with production evidence | P1 | CLOSED | Candidate D | `6e9e65c63` |
+| EED-FIND-005 | Open-question accounting inconsistent | P2 | CLOSED | Candidate E | `6e9e65c63` |
+| EED-FIND-006 | Validator semantic checks insufficient | P2 | CLOSED | Candidate F | `6e9e65c63` |
+| EED-FIND-007 | Missing `@Optional` energyEventsService skip path | P2 | CLOSED | Review | `6e9e65c63` |
+| EED-FIND-008 | Missing fuel-station enrichment post-persist node | P2 | CLOSED | Review | `6e9e65c63` |
+| EED-FIND-009 | Canonicalization report stale edge count | P3 | CLOSED | Review | noted |
+| EED-FIND-010 | `EED-DEC-009` PRODUCTION_VALIDATED without strong evidence | P2 | CLOSED | Review | `6e9e65c63` |
+
+### Corrected severity totals
+
+| Severity | Count |
+|----------|------:|
+| P0 | 0 |
+| P1 | 4 |
+| P2 | 5 |
+| P3 | 1 |
+| **Total** | **10** |
+
+**UNRESOLVED_P0=0, UNRESOLVED_P1=0**
+
+### Legacy aggregate (superseded — do not use)
 
 | Severity | Count |
 |----------|------:|
@@ -153,4 +182,32 @@ Same entry → fetchEnergyEventSegments → DimoRechargeSegmentsClient (default 
 | P1 | 3 |
 | P2 | 3 |
 | P3 | 1 |
-| **Total** | **9** |
+
+*This table lacked explicit finding IDs and incorrectly assigned P0 without register entries.*
+
+---
+
+## 11. Post-review main reconciliation (Phase 2B.2)
+
+| Field | SHA |
+|-------|-----|
+| **REVIEWED_RUNTIME_SHA** | `da959784f835a31482852d506daa137c90389b87` |
+| **POST_REVIEW_HEAD_SHA** | `6e9e65c63610ba64fdc08f8fa671b3330a9c335a` |
+| **CURRENT_MAIN_AT_RECONCILE** | `814a7e00924474d95622e4ff67b0c2b86d0712ef` |
+| **POST_RECONCILE_HEAD_SHA** | `f90b8c72c2d641c65f666f05ac50119f177763e9` |
+
+**Main delta:** #1487 P1.8.3.1 scaling deploy leader convergence — **EED_RUNTIME_RELEVANT=0 files**.
+
+**Conclusion:** Phase 2B.1 reconstruction remains valid. No EED graph semantic updates required for #1487.
+
+**Closure artifact:** `architecture/KG_EED_FINAL_AUTHORITY_CLOSURE_2026-09-01.md`
+
+---
+
+## 12. Merge recommendation (supersedes §9 for 2B.2 gate)
+
+### **APPROVE_WITH_DOCUMENTED_OPEN_QUESTIONS** (Phase 2B.1)
+
+**Phase 2B.2 final gate:** `READY_TO_MERGE` — see `architecture/KG_EED_FINAL_AUTHORITY_CLOSURE_2026-09-01.md`
+
+**CANONICAL_AUTHORITY_CONFIDENCE:** `MEDIUM`

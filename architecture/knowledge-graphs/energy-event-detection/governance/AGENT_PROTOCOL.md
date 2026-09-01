@@ -2,7 +2,20 @@
 
 **Purpose:** Make this graph safe for future independent agents changing Energy Event Detection architecture.
 
-## Before any EED architecture change
+## Authority lifecycle
+
+| State | When |
+|-------|------|
+| `DISCOVERY` | Pre-canonical discovery docs only |
+| `DRAFT` | Graph under construction |
+| `AUTHORITY_REVIEWED` | Review in progress |
+| `APPROVED_FOR_CANONICAL_MERGE` | **Pre-merge** — independent review + closure complete |
+| `CANONICAL` | **Post-merge to `main` only** |
+| `SUPERSEDED` | Replaced by newer authority |
+
+Pre-merge PRs must **not** use `status: CANONICAL`. Validator enforces `APPROVED_FOR_CANONICAL_MERGE` + review + closure artifacts.
+
+Post-merge: set `status` and `authority_state` to `CANONICAL` and update `main_sha_at_canonicalization`.
 
 1. **Read** `GRAPH.yaml` — scope, cross-graph refs, validation command
 2. **Read** `governance/AUTHORITY_BOUNDARIES.md` — confirm change is EED-owned
