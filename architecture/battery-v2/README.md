@@ -51,7 +51,7 @@ bash architecture/battery-v2/scripts/validate-graph.sh
 # or: node architecture/battery-v2/scripts/validate-graph.mjs
 ```
 
-Validates YAML syntax, unique stable IDs, edge/node references, and referenced source paths.
+Validates YAML syntax, unique stable IDs, required fields, type/prefix alignment, epistemic/decision status, evidence `source_type`, edge/node references, invariant evidence, source paths, and canonical GAP/HYP/CONTRA index resolution.
 
 ## Related legacy architecture documents
 
