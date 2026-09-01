@@ -129,7 +129,8 @@ Format: Decision ID | Date/Phase | Status
 | **PROBLEM** | Single `pm2 restart synqdrive` leaves replica B stale/absent |
 | **DECISION** | Rolling A→B restart, SHA invariant, auto-rollback |
 | **WHY** | INC-05 topology drift |
-| **STATUS** | **PROPOSED** — #1472 open, not merged |
+| **STATUS** | **ACTIVE** — merged #1472 (d6884ce); production verified P1.8.3 |
+| **EVIDENCE** | P1.8.3 deploy logs; CURRENT_STATE |
 | **SUPERSEDES** | implicit single-restart deploy model |
 
 ---

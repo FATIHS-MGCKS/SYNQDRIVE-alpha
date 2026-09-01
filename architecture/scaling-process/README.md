@@ -49,6 +49,7 @@ Do not present **FUTURE_OPTION** or **OPEN_QUESTION** as production **FACT**.
 |----------|---------|
 | [CURRENT_STATE.md](./CURRENT_STATE.md) | Machine-friendly snapshot of runtime truth **now** |
 | [SCALING_PROCESS_KNOWLEDGE_GRAPH.md](./SCALING_PROCESS_KNOWLEDGE_GRAPH.md) | Navigable graph + dependency edges |
+| [graph/nodes.yaml](./graph/nodes.yaml) | Machine-readable graph nodes (P1.8.3) |
 | [SYSTEM_TOPOLOGY.md](./SYSTEM_TOPOLOGY.md) | PM2, nginx, Redis, PostgreSQL production layout |
 | [SCHEDULER_LEADER_ELECTION.md](./SCHEDULER_LEADER_ELECTION.md) | P1.7 singleton scheduler producer model |
 | [DIMO_GLOBAL_PROVIDER_BUDGET.md](./DIMO_GLOBAL_PROVIDER_BUDGET.md) | P1.3 global provider HTTP ceiling |

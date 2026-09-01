@@ -1,7 +1,7 @@
 # SCALING PROCESS — Current State
 
-**Last verified:** 2026-09-01T09:02Z (read-only VPS introspection + `origin/main`)  
-**Verifier:** Scaling Process bootstrap agent (no production mutations)
+**Last verified:** 2026-09-01T10:25Z (P1.8.3 post-merge production verification)  
+**Verifier:** P1.8.3 agent (production deploy + read-only audit)
 
 ---
 
@@ -9,82 +9,73 @@
 
 ```
 WORKSTREAM = SCALING_PROCESS
-AUTHORITY_STATUS = BOOTSTRAP_ESTABLISHED
-CURRENT_MAIN_SHA = 4843a4ebc60f38237f9184d47b1da731e426b7b3
-CURRENT_PRODUCTION_SHA = e76ada3d8885f8eeb7f2e6c6c50be115d0758c2c
-CURRENT_PRODUCTION_REPLICA_COUNT = 1
+AUTHORITY_STATUS = ACTIVE_VERIFIED
+CURRENT_MAIN_SHA = d6884ce6030cafcb9a39fa422359eb8345496913
+CURRENT_PRODUCTION_SHA = d6884ce6030cafcb9a39fa422359eb8345496913
+CURRENT_PRODUCTION_REPLICA_COUNT = 2
 REPLICA_A = synqdrive @ 3001 ONLINE LEADER
-REPLICA_B = synqdrive-b @ 3002 ABSENT (PM2 not registered; port not listening)
-NGINX_DUAL_UPSTREAM = YES (configured) / EFFECTIVE = DEGRADED (3002 unreachable)
-SCHEDULER_SINGLE_LEADER = YES (port 3001 role=LEADER)
-DIMO_GLOBAL_BUDGET = ENABLED (limit 50 per architecture; not re-verified live metrics this snapshot)
-RECONCILIATION_MUTEX = ENABLED (per architecture; not stress-tested this snapshot)
-ROLLING_DEPLOYMENT = NO on main (P1.8.2.1 #1472 rebased 2026-09-01, pending merge)
-MIXED_SHA_PROTECTION = NO on main deploy path (YES in #1472 branch after merge)
+REPLICA_B = synqdrive-b @ 3002 ONLINE FOLLOWER
+NGINX_DUAL_UPSTREAM = YES (configured) / EFFECTIVE = HEALTHY (both upstreams live)
+SCHEDULER_SINGLE_LEADER = YES (port 3001 role=LEADER, count=1)
+DIMO_GLOBAL_BUDGET = ENABLED (limit 50 per architecture; leases key present)
+RECONCILIATION_MUTEX = ENABLED (architecture; no stress probe this snapshot)
+ROLLING_DEPLOYMENT = YES (#1472 merged; exercised 2026-09-01)
+MIXED_SHA_PROTECTION = YES (verified on rolling deploy attempt)
 PROVIDER_CEILING_VERIFIED = NO
 N1000_CERTIFICATION = CONDITIONAL (software only)
-OPEN_P0 = 0 (no new scaling P0 identified this snapshot)
-OPEN_P1 = 1 (production replica B missing while nginx dual-upstream remains)
-OPEN_P2 = historical battery.v2 failed=64; nginx/backend topology drift
-NEXT_ARCHITECTURE_STAGE = P1.8.3 post-scale retrospective + restore 2-replica OR merge #1472 before next deploy
+OPEN_P0 = 0
+OPEN_P1 = 0
+OPEN_P2 = 2 (deploy leader-election timing false-abort; bootstrap deploy uses pre-merge script from current symlink)
+NEXT_ARCHITECTURE_STAGE = P1.8.3.1 deploy script leader-wait hardening; sustained N=2 soak
 ```
 
 ---
 
-## TYPE: FACT — Production topology (2026-09-01)
+## TYPE: FACT — Production topology (2026-09-01 P1.8.3)
 
 | Component | Observed state | Evidence |
 |-----------|----------------|----------|
-| Host | `srv1374778.hstgr.cloud` / `app.synqdrive.eu` | SSH read-only |
-| PM2 `synqdrive` | online, PID 2168457, ~3.5h uptime, 22 restarts cumulative | `pm2 list` |
-| PM2 `synqdrive-b` | **not present** | `pm2 list` |
-| Port 3001 | listening | `ss -tlnp` |
-| Port 3002 | **not listening** | `ss -tlnp` |
+| Host | `srv1374778.hstgr.cloud` / `app.synqdrive.eu` | SSH |
+| Release | `20260901100147_v4994` | `readlink -f /opt/synqdrive/current` |
+| PM2 `synqdrive` | online, port 3001, LEADER | `pm2 list`, readiness |
+| PM2 `synqdrive-b` | online, port 3002, FOLLOWER | `pm2 list`, readiness |
+| Port 3001 / 3002 | both listening | `ss -tlnp` |
 | nginx upstream | `synqdrive_backend { 3001; 3002 }` | `/etc/nginx/sites-enabled/synqdrive` |
 | External health | PASS | `https://app.synqdrive.eu/api/v1/health` |
-| Scheduler role :3001 | LEADER | readiness endpoint |
-| Scheduler role :3002 | UNREACHABLE | readiness endpoint |
-| Redis DB | 0 (production) | architecture + prior audits |
-| `synqdrive:scheduler:leader` | present, TTL ~22s | `redis-cli` |
-| `battery.v2` failed (BullMQ) | 64 | `ZCARD bull:battery.v2:failed` |
-| Deployed release SHA | `e76ada3d8` | `git -C /opt/synqdrive/current rev-parse HEAD` |
+| Scheduler leader | 1 (A=LEADER, B=FOLLOWER) | readiness @ 10:24:50Z |
+| Redis DB | 0 | `redis-cli -n 0 PING` |
+| `synqdrive:scheduler:leader` | present, TTL ~28s | `redis-cli` |
+| `battery.v2` failed (BullMQ) | 64 (unchanged) | `ZCARD bull:battery.v2:failed` |
+| Queue wait/active | 0 on sampled queues | Redis LLEN |
 
 ---
 
-## TYPE: INCIDENT — Topology regression after P1.8.2
+## TYPE: FACT — P1.8.3 deploy sequence
 
-**STATUS:** ACTIVE_DRIFT  
-**SOURCE:** P1.8.2 scale-to-2 report (#1471) documented 2 replicas; 2026-09-01 introspection shows 1.
+1. **Bootstrap deploy** (10:01Z): `cloud-agent-deploy.sh` ran **pre-#1472** script from old `current` symlink → single `pm2 restart synqdrive` only; promoted SHA `d6884ce` on replica A only.
+2. **Multi-replica deploy** (10:17Z): second deploy exercised **#1472 rolling path** — started `synqdrive-b`, rolling A→B, SHA invariant PASS; **scheduler leader check failed** (0 leaders at T+15s) → auto-rollback to same SHA release; rollback rolling restart left **both replicas online**.
+3. **Post-audit** (10:24Z): after leader election window (~35s), **N=2 coherent**, leader count=1, SHA match.
 
-**RATIONALE:** Subsequent production deploys (`vps-deploy-release.sh` on **main**) restart only `synqdrive`. They do not preserve or restart `synqdrive-b`. PR #1472 (P1.8.2.1 rolling multi-replica deploy) is **not merged** as of this snapshot.
-
-**RISK_IF_CHANGED:** nginx may route traffic to dead upstream 3002 (intermittent 502/timeout depending on load-balancing).
-
-See [FAILURE_AND_RECOVERY_MODEL.md](./FAILURE_AND_RECOVERY_MODEL.md) § topology drift.
+**EVIDENCE:** `/opt/cursor/artifacts/p183_deploy_bootstrap.log`, `p183_deploy_multi_replica.log`
 
 ---
 
-## TYPE: FACT — Canonical *intended* two-replica topology
+## TYPE: INCIDENT — INC-05 status
 
-Established by P1.8.2 (historical evidence, 2026-08-31):
-
-| Replica | PM2 | Port | Env |
-|---------|-----|------|-----|
-| A | `synqdrive` | 3001 | `PORT=3001` via `backend.env` |
-| B | `synqdrive-b` | 3002 | `PORT=3002`, `INSTANCE_ID=replica-b` |
-
-**CURRENT runtime does not match intended topology** until replica B is restored and deploy hardening (#1472) is merged.
+**STATUS:** CLOSED (2026-09-01 P1.8.3)  
+**RATIONALE:** Replica B restored; both replicas on `d6884ce`; nginx dual-upstream healthy; rolling deploy path exercised.  
+**RESIDUAL:** Deploy script leader verification may false-abort before election completes (see OPEN P2).
 
 ---
 
-## TYPE: DECISION — Coordination layers (code on main)
+## TYPE: DECISION — Coordination layers (main @ d6884ce)
 
-| Layer | Status on main | Introduced by |
-|-------|----------------|---------------|
-| Scheduler leader election (P1.7) | Merged #1430 | `scheduler-leader/*` |
-| DIMO global provider budget (P1.3) | Merged #1417 | `provider-budget/*` |
-| Reconciliation mutex (P1.4) | Merged #1435 | `reconciliation-execution-mutex/*` |
-| Multi-replica deploy hardening (P1.8.2.1) | **Open** #1472 | branch only |
+| Layer | Status | Introduced by |
+|-------|--------|---------------|
+| Scheduler leader election (P1.7) | ACTIVE | #1430 |
+| DIMO global provider budget (P1.3) | ACTIVE | #1417 |
+| Reconciliation mutex (P1.4) | ACTIVE | #1435 |
+| Multi-replica deploy hardening (P1.8.2.1) | **MERGED** #1472 | rolling deploy |
 
 ---
 
@@ -93,6 +84,7 @@ Established by P1.8.2 (historical evidence, 2026-08-31):
 | Check | Result |
 |-------|--------|
 | Application externally reachable | PASS |
-| Single scheduler leader | PASS (trivially — one process) |
-| Two-replica production invariant | **FAIL** (replica B absent) |
-| Deploy path preserves 2 replicas | **NO** (until #1472) |
+| Single scheduler leader | PASS |
+| Two-replica production invariant | **PASS** |
+| Deploy path preserves 2 replicas | **YES** (after #1472 on current) |
+| Automated deploy gate | PASS_WITH_FINDINGS (leader timing) |

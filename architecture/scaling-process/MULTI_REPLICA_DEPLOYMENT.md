@@ -1,13 +1,13 @@
 # Multi-Replica Deployment
 
 **TYPE:** ARCHITECTURE + INCIDENT_HISTORY  
-**SOURCES:** `vps-deploy-release.sh`, P1.8.2 reports, P1.8.2.1 (#1472 open)
+**SOURCES:** `vps-deploy-release.sh`, P1.8.2 reports, P1.8.2.1 (#1472 merged), P1.8.3 verification
 
 ---
 
-## Historical model (SUPERSEDED on main until #1472 merges)
+## Historical model (SUPERSEDED)
 
-**TYPE: SUPERSEDED_DECISION**
+**TYPE: SUPERSEDED_DECISION** — superseded by #1472 merge 2026-09-01
 
 ```
 capture DB backup
@@ -29,9 +29,9 @@ capture DB backup
 
 ---
 
-## Intended model (P1.8.2.1 — PR #1472)
+## Canonical model (P1.8.2.1 — #1472 MERGED)
 
-**TYPE: DECISION** (branch `cursor/p1-8-2-1-multi-replica-deploy-83be`, PR #1472 — **rebased 2026-09-01 onto `4843a4ebc`, pending human merge**)
+**TYPE: DECISION** — merged #1472; first production exercise P1.8.3 (2026-09-01)
 
 ```
 1. vps_replica_capture_deploy_state (previous release, SHA, PM2 dump)
@@ -63,7 +63,7 @@ capture DB backup
 
 ## Mixed-SHA protection
 
-**TYPE: INVARIANT** (when #1472 merged)
+**TYPE: INVARIANT** (merged #1472)
 
 ```
 REPLICA_A effective build == TARGET_SHA
@@ -107,12 +107,26 @@ Git preflight: local HEAD must match `origin/main` (VPS clones GitHub main).
 
 ---
 
-## Operator actions (current drift)
+## Bootstrap caveat (P1.8.3 finding)
 
-**TYPE: OPEN_QUESTION** — Until #1472 merged and replica B restored:
+**TYPE: LIMITATION**
 
-1. Re-apply P1.8.2 scale procedure OR manually start `synqdrive-b` on :3002
-2. Merge #1472 before next production deploy
-3. Consider temporary nginx single-upstream if staying at N=1 intentionally
+The remote deploy entrypoint runs `bash /opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh`. The **first** deploy after merging #1472 still executes the **pre-merge** script until `current` is switched. A **second** deploy (or manual run from new `current`) is required to exercise rolling multi-replica logic.
 
-**Do not execute in bootstrap task** — documented only.
+**EVIDENCE:** P1.8.3 bootstrap deploy log showed `==> Switch current + restart pm2` (old); second deploy showed `rolling multi-replica restart`.
+
+---
+
+## Deploy verification timing (P1.8.3 finding)
+
+**TYPE: OPEN_QUESTION / P2**
+
+`vps_replica_verify_scheduler_leaders` runs immediately after per-replica health checks. Leader acquisition may take up to `acquireIntervalMs` (5s) after restart. P1.8.3 deploy **false-aborted** with `leaders=0` at T+15s; production reached `leaders=1` at T+35s.
+
+**RECOMMENDED_FOLLOWUP:** Add leader-election wait/retry in deploy verification (P1.8.3.1).
+
+---
+
+## Operator actions
+
+**TYPE: FACT** — As of P1.8.3, production is N=2 on `d6884ce`. Future deploys use merged script from `current`.

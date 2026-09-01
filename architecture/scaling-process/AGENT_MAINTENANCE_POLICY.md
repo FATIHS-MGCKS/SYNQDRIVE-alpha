@@ -29,6 +29,23 @@ A dated memo in `architecture/P1_*` alone is **supporting evidence**, not a subs
 
 ---
 
+## Agent onboarding (mandatory)
+
+Every scaling-related agent **must**:
+
+1. Read **[CURRENT_STATE.md](./CURRENT_STATE.md)** first before production actions
+2. Distinguish **historical evidence** from **current production truth**
+3. Update **[DECISION_LOG.md](./DECISION_LOG.md)** when architecture **choices** change (with rationale)
+4. Append **[VALIDATION_EVIDENCE.md](./VALIDATION_EVIDENCE.md)** for new tests/soaks/deploys
+5. Update **[SCALING_PROCESS_KNOWLEDGE_GRAPH.md](./SCALING_PROCESS_KNOWLEDGE_GRAPH.md)** and **`graph/nodes.yaml`** when relationships change
+6. **Never silently overwrite** prior decisions — mark **SUPERSEDED**
+7. **Preserve superseded decisions** with rationale and links
+8. Record **incidents** in **[FAILURE_AND_RECOVERY_MODEL.md](./FAILURE_AND_RECOVERY_MODEL.md)**
+9. Mark **unknown/unverified** state explicitly (no FACT without evidence)
+10. **Never claim certification** beyond [SCALING_ENVELOPES.md](./SCALING_ENVELOPES.md) evidence levels
+
+---
+
 ## Completion checklist
 
 No architecture change is **complete** until:
@@ -42,7 +59,8 @@ No architecture change is **complete** until:
 7. **[OPEN_QUESTIONS_AND_FUTURE_WORK.md](./OPEN_QUESTIONS_AND_FUTURE_WORK.md)** updated if gaps closed or new gaps found
 8. **Subsystem doc** updated (`SCHEDULER_*`, `DIMO_*`, etc.) when that subsystem changed
 9. **[FAILURE_AND_RECOVERY_MODEL.md](./FAILURE_AND_RECOVERY_MODEL.md)** updated for new incidents
-10. **ChangesView / ArchitekturView** updated per project convention (`Architectur-Updates` rule)
+10. **`graph/nodes.yaml`** updated when graph nodes/relationships change
+11. **ChangesView / ArchitekturView** updated per project convention (`Architectur-Updates` rule)
 
 ---
 
