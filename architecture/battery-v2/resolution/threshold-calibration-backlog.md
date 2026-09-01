@@ -3,66 +3,75 @@
 **Gap:** `BAT-V2-GAP-THRESHOLD-PROVENANCE-001`  
 **Readiness:** RESEARCH_REQUIRED — backlog only
 
-## Classification legend
+## Classification axes (separate)
 
-| Class | Meaning |
-|-------|---------|
-| CODE-CONVENIENCE | Round number / implementation default |
-| DOMAIN-HEURISTIC | Engineering judgment, undocumented |
-| HISTORICAL | Legacy carry-over |
-| EXTERNALLY-SOURCED | OEM/manual reference (not in repo) |
-| TEST-DERIVED | From test fixtures |
-| UNKNOWN | Not classified |
+### IMPLEMENTATION_ROLE
+
+Where the threshold is used in code (policy, ingestion, job, display).
+
+### PROVENANCE
+
+Epistemic source of the value. **Default UNKNOWN** unless cited evidence exists.
+
+| Provenance | Meaning | Evidence required |
+|------------|---------|-------------------|
+| `CONFIRMED_DOMAIN_RATIONALE` | Documented engineering/domain decision in repo | PR, commit, architecture doc, code comment with rationale |
+| `EXTERNALLY_SOURCED` | OEM/manual/industry reference | External doc citation |
+| `TEST_DERIVED` | From test fixtures or calibration run | Test file / experiment record |
+| `HISTORICAL_DECISION` | Inherited from prior system with traceable decision | Commit / migration note |
+| `UNKNOWN` | No verified source found | — |
+
+**Rejected invented classes:** `DOMAIN-HEURISTIC`, `CODE-CONVENIENCE` without citation — round numbers and technical plausibility are **not** evidence.
 
 ## LV REST / opening
 
-| Threshold | Value | Class |
-|-----------|-------|-------|
-| Speed at rest | 0.5 km/h | DOMAIN-HEURISTIC |
-| Engine load proxy | >5% | DOMAIN-HEURISTIC |
-| LV charging voltage | 13.25 V | DOMAIN-HEURISTIC |
-| Wake threshold | max(rest+0.5, 13.8) V | DOMAIN-HEURISTIC |
-| Plausible LV band | 9–16 V | DOMAIN-HEURISTIC |
-| Stability dwell | 5 min | DOMAIN-HEURISTIC |
-| Max rest window | 24 h | CODE-CONVENIENCE |
-| Trip bridge tolerance | 120 s | DOMAIN-HEURISTIC |
-| REST_60M delay | 60 min | CODE-CONVENIENCE |
-| REST_6H delay | 6 h | CODE-CONVENIENCE |
-| REST grace | 30 min | CODE-CONVENIENCE |
-| REST_60M window | ±15 min | UNKNOWN (was ±30 in unrelated domains) |
-| REST_6H window | ±30 min | DOMAIN-HEURISTIC |
+| Threshold | Value | Role | Provenance | Source |
+|-----------|-------|------|------------|--------|
+| Speed at rest | 0.5 km/h | REST window detection | UNKNOWN | — |
+| Engine load proxy | >5% | Wake proxy | UNKNOWN | — |
+| LV charging voltage | 13.25 V | Charging detection | UNKNOWN | — |
+| Wake threshold | max(rest+0.5, 13.8) V | Wake detection | UNKNOWN | — |
+| Plausible LV band | 9–16 V | Quality gate | UNKNOWN | — |
+| Stability dwell | 5 min | REST stability | UNKNOWN | — |
+| Max rest window | 24 h | Window cap | UNKNOWN | — |
+| Trip bridge tolerance | 120 s | Bridge fallback bind | UNKNOWN | — |
+| REST_60M delay | 60 min | Target schedule | UNKNOWN | — |
+| REST_6H delay | 6 h | Target schedule | UNKNOWN | — |
+| REST grace | 30 min | Target retry grace (not session SLA) | UNKNOWN | — |
+| REST_60M window | ±15 min | Evaluation window | UNKNOWN | — |
+| REST_6H window | ±30 min | Evaluation window | UNKNOWN | — |
 
 ## HV M2/M3 (from hv-capacity.md)
 
-| Threshold | Class |
-|-----------|-------|
-| M2 outlier 15% | DOMAIN-HEURISTIC |
-| M3 conflict 10% | DOMAIN-HEURISTIC |
-| Cross-session CV 3% | DOMAIN-HEURISTIC |
-| Intra-session CV 2% | DOMAIN-HEURISTIC |
+| Threshold | Role | Provenance | Source |
+|-----------|------|------------|--------|
+| M2 outlier 15% | M2 gate | UNKNOWN | — |
+| M3 conflict 10% | M3 gate | UNKNOWN | — |
+| Cross-session CV 3% | Cross-session | UNKNOWN | — |
+| Intra-session CV 2% | Intra-session | UNKNOWN | — |
 
 ## Freshness / readiness
 
-| Threshold | Class |
-|-----------|-------|
-| Provider SOH 45d | DOMAIN-HEURISTIC |
-| Reported SOH 365d | DOMAIN-HEURISTIC |
-| Readiness SOH 70% | DOMAIN-HEURISTIC / product policy |
+| Threshold | Role | Provenance | Source |
+|-----------|------|------------|--------|
+| Provider SOH 45d | Freshness | UNKNOWN | — |
+| Reported SOH 365d | Freshness | UNKNOWN | — |
+| Readiness SOH 70% | Readiness | UNKNOWN | — |
 
 ## Execution
 
-| Threshold | Class |
-|-----------|-------|
-| Redis lock TTL 120s | CODE-CONVENIENCE |
-| Start proxy 90s | DOMAIN-HEURISTIC |
-| Snapshot stale 5min | CODE-CONVENIENCE |
+| Threshold | Role | Provenance | Source |
+|-----------|------|------------|--------|
+| Redis lock TTL 120s | Lock scope | UNKNOWN | — |
+| Start proxy 90s | Start proxy window | UNKNOWN | — |
+| Snapshot stale 5min | Snapshot freshness | UNKNOWN | — |
 
 ## Calibration backlog actions
 
-1. Workshop with domain expert for ICE rest voltage thresholds
+1. Workshop with domain expert — cite decisions into repo or mark UNKNOWN
 2. DIMO signal documentation cross-check for HV CV gates
-3. A/B not planned in Phase 4 — documentation only
+3. No threshold value changes in Phase 4
 
 ## NON-EFFECTS
 
-No threshold value changes in Phase 4.
+No threshold value changes in Phase 4. Gap `BAT-V2-GAP-THRESHOLD-PROVENANCE-001` remains open.

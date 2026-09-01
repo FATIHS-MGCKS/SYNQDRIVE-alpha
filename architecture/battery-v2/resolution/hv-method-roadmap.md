@@ -11,8 +11,8 @@
 | Valuable? | Potentially — independent charge-boundary capacity |
 | Signal authority reliable? | **UNKNOWN** — DIMO session boundaries vs native recharge |
 | Duplicates M2/M3? | Partial overlap |
-| Recommendation | **PLANNED** — remove from user-facing eligibility until compute exists |
-| Status | DEFERRED |
+| Recommendation | **PLANNED** — remove from **advertised/supported runtime method eligibility** until compute exists |
+| Status | DEFERRED / RESEARCH_REQUIRED |
 
 ## GROSS_CAPACITY_REFERENCE
 
@@ -25,7 +25,7 @@
 
 ## DESIGN ALTERNATIVE
 
-Remove unimplemented methods from capability advertisement (`BAT-V2-AUTH-HV-METHOD-PROFILE-001` materialization) to prevent false "supported" UX.
+Remove unimplemented methods from **advertised/supported runtime method eligibility** (`BAT-V2-AUTH-HV-METHOD-PROFILE-001` materialization). Phase 2 proved method-profile eligibility — **not** necessarily direct customer UI exposure unless consumer trace confirms it.
 
 ## NON-EFFECTS
 

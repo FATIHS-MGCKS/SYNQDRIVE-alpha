@@ -188,8 +188,10 @@ nodes:
     decision_status: PROPOSED
     summary: >
       Hybrid direct enqueue + reconciliation safety net for canonical REST → assessment → publication.
-      Assessment handoff from REST target handler; publication handoff from assessment handler;
-      reconcile scans canonical measurements and publishable assessments. NOT implemented; NOT VALIDATED.
+      Assessment: buildAssessmentJobIdempotencyKey (assess: prefix); inputVersion SPEC REQUIRED.
+      Publication: BATTERY_PUBLICATION_UPDATE per persistedAssessmentId; policy in BatteryPublicationService only;
+      buildPublicationJobIdempotencyKey; publicationVersion SPEC REQUIRED. P0_ACTIVATION_BLOCKER not active outage.
+      NOT implemented; NOT VALIDATED; three LV gaps remain open.
     source_paths:
       - architecture/battery-v2/resolution/lv-publication-chain-resolution.md
     non_effects:

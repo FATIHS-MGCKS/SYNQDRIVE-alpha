@@ -4,8 +4,8 @@
 
 | Package | Title | Readiness | Priority |
 |---------|-------|-----------|----------|
-| `BAT-V2-RUNTIME-PKG-01` | LV canonical assessment handoff | IMPLEMENTATION_READY | P0 |
-| `BAT-V2-RUNTIME-PKG-02` | LV publication handoff + reconcile | IMPLEMENTATION_READY | P0 |
+| `BAT-V2-RUNTIME-PKG-01` | LV canonical assessment handoff | IMPLEMENTATION_SPEC_REQUIRED | P0_ACTIVATION_BLOCKER |
+| `BAT-V2-RUNTIME-PKG-02` | LV publication handoff + reconcile | IMPLEMENTATION_SPEC_REQUIRED | P0_ACTIVATION_BLOCKER |
 | `BAT-V2-RUNTIME-PKG-03` | Timestamp provenance model | DECISION_REQUIRED | P1 |
 | `BAT-V2-RUNTIME-PKG-04` | HV SOH usable-candidate iteration | IMPLEMENTATION_READY | P2 |
 | `BAT-V2-RUNTIME-PKG-05` | HEV product-policy alignment | DECISION_REQUIRED | P1 |
@@ -18,48 +18,56 @@
 
 | Field | Value |
 |-------|-------|
-| **Dependencies** | None hard; soft: timestamp PKG-03 before Stage 2 prod |
-| **Modules** | `battery-rest-target-evaluate.handler`, producers, reconciliation |
+| **Dependencies (dev)** | None hard |
+| **Dependencies (enablement)** | `inputVersion` spec sign-off; soft: PKG-03 before Stage-2 prod if strict timestamp policy selected |
+| **Modules** | `battery-rest-target-evaluate.handler`, `BatteryV2JobProducerService`, `battery-v2-reconciliation.service` |
 | **DB migration** | Optional index for reconcile |
-| **Feature flag** | `BATTERY_V2_LV_HANDOFF_ENABLED` (recommended) |
+| **Feature flag** | `BATTERY_V2_LV_HANDOFF_ENABLED` (recommended) + `BATTERY_V2_REST_SHADOW_ENABLED` |
+| **Job identity** | `buildAssessmentJobIdempotencyKey` → `assess:{vehicleId}:LV_HEALTH:{inputVersion}` — **not** `lv-assess:` |
+| **inputVersion** | **SPEC REQUIRED** — candidate: `persistedMeasurement.id` (see lv-publication-chain dossier) |
 | **Rollback** | Disable flag |
 | **Test scope** | Handler unit + integration |
-| **Production validation** | Assessment row within 1h of REST on canary org |
-| **Blocked by** | None |
+| **Production validation** | Assessment row within 24h of REST on canary org (flags ON) |
+| **Blocked by** | inputVersion authority |
 | **Does not solve** | Publication, timestamp provenance, readiness |
 
 ## PKG-02 — LV publication handoff
 
 | Field | Value |
 |-------|-------|
-| **Dependencies** | PKG-01 |
-| **Modules** | `battery-assessment-recompute.handler`, publication producer, reconcile |
+| **Dependencies (dev)** | PKG-01 code may proceed in parallel for handler wiring; e2e needs both |
+| **Dependencies (enablement)** | PKG-01 assessment persist path; `publicationVersion` spec; `BATTERY_V2_PUBLICATION_ENABLED` |
+| **Modules** | `battery-assessment-recompute.handler`, `BatteryV2JobProducerService`, `battery-v2-reconciliation.service`, `BatteryPublicationUpdateHandler` |
 | **DB migration** | No |
 | **Feature flag** | `BATTERY_V2_PUBLICATION_ENABLED` + handoff flag |
+| **Job identity** | `buildPublicationJobIdempotencyKey` → `pub:{assessmentId}:v{publicationVersion}` |
+| **Handoff** | One `BATTERY_PUBLICATION_UPDATE` per `persistedAssessmentId`; policy in `BatteryPublicationService` only |
+| **publicationVersion** | **SPEC REQUIRED** — current default `1` in repository if omitted |
 | **Rollback** | Disable publication flag |
-| **Test scope** | E2E REST→pub |
-| **Production validation** | `battery_publications` row on canary |
-| **Blocked by** | PKG-01 |
+| **Test scope** | E2E REST→assess→pub |
+| **Production validation** | `battery_publications` row on canary when policy passes |
+| **Blocked by** | PKG-01 enablement + publicationVersion authority |
 | **Does not solve** | HV publication, readiness auto-enable |
 
 ## PKG-03 — Timestamp provenance
 
 | Field | Value |
 |-------|-------|
-| **Dependencies** | Product decision on REST eligibility |
-| **Modules** | Mapper, ingestion, REST eval, Prisma |
-| **DB migration** | Yes — provenance enum |
+| **Dependencies (dev)** | Does **not** block PKG-01/02 development |
+| **Dependencies (enablement)** | Must precede production Stage-2 if strict measurement provenance policy selected |
+| **Modules** | Mapper, ingestion, REST eval, Prisma `BatteryMeasurement` |
+| **DB migration** | Yes — provenance enum on measurement carrier |
 | **Feature flag** | Strict mode flag |
 | **Rollback** | Flag OFF preserves legacy accept |
 | **Blocked by** | DECISION on provenance table |
-| **Does not solve** | LV handoffs |
+| **Does not solve** | LV handoffs; does not gate primary REST session opening |
 
 ## PKG-04 — HV SOH iteration
 
 | Field | Value |
 |-------|-------|
 | **Dependencies** | Independent |
-| **Modules** | `canonical-battery-health.service.ts` |
+| **Modules** | `canonical-battery-health.service.ts`, `battery-evidence-strength.policy.ts` |
 | **DB migration** | No |
 | **Feature flag** | Optional behavior flag |
 | **Blocked by** | None |
@@ -69,9 +77,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Dependencies** | Product workshop |
+| **Dependencies** | Product workshop; blocks `hvPipelineAllowed` decision |
 | **Modules** | Ingestion gates, policy materialization, possibly snapshot service |
-| **Blocked by** | Fleet audit |
+| **Blocked by** | Fleet audit; DECISION_NOT_READY |
 | **Does not solve** | PHEV paths |
 
 ## PKG-09 — Post-#1445 soak
@@ -82,3 +90,4 @@
 | **Runtime change** | NO |
 | **Blocked by** | Natural trip volume |
 | **Does not solve** | Publication chain |
+| **Evidence strength** | Initial smoke only — not strong statistical validation |

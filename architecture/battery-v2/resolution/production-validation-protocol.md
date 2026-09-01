@@ -8,6 +8,8 @@
 
 Determine whether #1445 liveness fixes eliminate REST stall class on **natural** post-deploy trips — without backfill, manufactured sessions, or data mutation.
 
+**This protocol provides INITIAL SMOKE EVIDENCE for liveness — not STRONG PRODUCTION VALIDATION.**
+
 ## Observation capture (per natural trip)
 
 | Field | Source |
@@ -27,38 +29,53 @@ Determine whether #1445 liveness fixes eliminate REST stall class on **natural**
 | final measurement | `BatteryMeasurement` REST row |
 | assessment row | If exists (may be absent pre-PKG-01) |
 
+Record **actual session-arm latency** descriptively (trip end → session created). Do not treat 30m as session-opening SLA — 30m is REST **target retry grace**, not session-arm SLA.
+
+## Outcome dimensions (do not collapse)
+
+| Dimension | Question |
+|-----------|------------|
+| **LIFECYCLE_LIVENESS** | Did session + targets reach terminal lifecycle without unexplained stall? |
+| **MEASUREMENT_QUALIFICATION** | Was a valid REST measurement produced when telemetry supported it? |
+| **ASSESSMENT_AVAILABILITY** | Assessment row exists (may be N/A pre-PKG-01) |
+| **RECOVERY_BEHAVIOR** | Reconcile/DLQ/restart recovered stuck states? |
+
+A legitimate **MISSED** target may be: **LIFECYCLE_LIVENESS PASS** + **MEASUREMENT NOT AVAILABLE** (telemetry gap) — not an overall FAIL.
+
 ## Pass criteria (single natural trip)
 
-| Behavior | PASS | PARTIAL | FAIL | INCONCLUSIVE |
-|----------|------|---------|------|--------------|
-| Session arms within 30m of trip end | ✓ | delayed >30m | no session | trip not suitable |
-| REST_60M reaches terminal state | COMPLETED/MISSED | stuck ENQUEUED recovered | permanent ENQUEUED+DLQ | insufficient telemetry |
-| No orphan ENQUEUED without live job | ✓ | recovered via reconcile | stuck | — |
-| Measurement when telemetry exists | ✓ | MISSED with valid reason | fabricated zero | no REST window |
-| PENDING_EVALUATION resolves | ✓ | — | permanent | — |
+| Behavior | LIVENESS | MEASUREMENT | Notes |
+|----------|----------|-------------|-------|
+| Session created by trip-finalization or reconciliation path | PASS / PARTIAL / FAIL | — | Record latency; no fixed SLA |
+| REST_60M reaches terminal state | PASS | PASS if COMPLETED with valid measurement | MISSED may be liveness PASS |
+| No orphan ENQUEUED without live job | PASS | — | |
+| PENDING_EVALUATION resolves | PASS | — | |
 
-## Production confidence (not single trip)
+## Sample planning (not convenience statistics)
 
-Recommend **minimum 10 natural ICE/HEV trips** across ≥3 vehicles with REST shadow ON, over **14 days**, before upgrading hypothesis to INFERRED success. Rationale: #1445 addressed deploy-interrupt and anchor classes — recurrence may be vehicle-specific or telemetry-sparse.
+**Do not** claim "10 trips ≈ 95% reliability."
 
-**Do not** invent a fleet-wide percentage without data.
+If per-trip failure probability were 30%, observing **zero failures in 10 trips** yields approximate 95% **upper bound** on failure rate ≈ 30% (rule of three: `3/n`). That demonstrates absence of **frequent** failure in a small sample — not strong validation.
 
-## Sample size rationale
+| Tranche | Purpose | Minimum guidance |
+|---------|---------|------------------|
+| **Initial smoke** | First observation after #1445 | ≥10 natural ICE/HEV trips, ≥3 vehicles, 14 days — **smoke only** |
+| **Strong validation** | Upgrade hypothesis beyond UNKNOWN | Plan by failure mode: REST_60M/REST_6H exposure opportunities, multi-day parking patterns, reconciliation/restart exposure, multi-replica when relevant — sample size derived from target failure rate, not fixed "10 = 95%" |
 
-- 10 trips: catches common path at ~95% if per-trip success ≥70% (binomial)
-- 14 days: covers weekend parking + weekday commute diversity
-- Expand if any FAIL in first 5
+Expand sample if any **liveness FAIL** in first tranche.
 
 ## What this does NOT validate
 
 - LV publication chain (handoffs still missing)
 - Stage 2 cutover safety
 - Multi-replica deploy (separate scaling workstream)
+- Statistical proof of fleet-wide reliability from 10 trips
 
 ## Query plan (read-only — when authorized)
 
+Session/target liveness queries on existing schema — illustrative:
+
 ```sql
--- Illustrative; adapt to prod schema
 SELECT v.id, t.id, t."endTime", s.id, s."anchorAt"
 FROM "Trip" t
 JOIN "Vehicle" v ON ...
@@ -69,4 +86,4 @@ ORDER BY t."endTime" DESC LIMIT 50;
 
 ## GRAPH IDS
 
-Hypothesis remains until evidence recorded as `BAT-V2-EVID-PROD-*`.
+Hypothesis remains until evidence recorded as `BAT-V2-EVID-PROD-*`. Not PRODUCTION_VALIDATED.

@@ -15,14 +15,38 @@
 | BatteryMeasurement HV | ICE forbidden |
 | Canonical read | `isEv=false` → no `canonical.hv` |
 
+**Side-effect / read-model divergence:** HV pipeline side-effects may persist while `canonical.hv` remains absent for HEV.
+
+## PHASE-3 LAYERING (preserve)
+
+| Layer | Role |
+|-------|------|
+| **D1** RAW HV SNAPSHOT / EVIDENCE | Observation-driven; potential diagnostic carrier |
+| **D2** CHARGE SESSION DERIVATION | Recharge/fallback flags + capability |
+| **D3** CAPACITY / SOH COMPUTATION | Capacity-shadow gates |
+| **E** CANONICAL READ | Current HYBRID excluded (`isEv=false`) |
+
 ## DESIGN OPTIONS — HEV
 
 | Option | Summary | Customer usefulness | False-health risk | Verdict |
 |--------|---------|---------------------|-------------------|---------|
-| **A LV-only canonical** | HV telemetry diagnostic only; stop HV side-effect writes or gate them | Medium (honest) | Low | **RECOMMENDED default** |
+| **A LV-only canonical** | Canonical health = LV; HV layers TBD per evidence | Medium (honest) | Low if D2/D3 gated | **PROPOSED default** — layers not finalized |
 | **B Full HV when capable** | `isEv=true` for HEV with signals | High if signals good | High (small pack semantics) | Needs fleet audit |
 | **C Hybrid authority model** | Separate `canonical.hybrid` slice | High complexity | Medium | Research |
-| **D Status quo** | Side-effects without read | Low trust | High | **REJECT** |
+| **D Status quo** | Side-effects without read alignment | Low trust | High | **REJECT** |
+
+### HEV Option A — explicit layering (no internal contradiction)
+
+Option A does **not** mean "HV telemetry diagnostic only" while simultaneously gating D1/D2/D3 in one sentence. Layering decision:
+
+| Layer | Option A direction | Status |
+|-------|-------------------|--------|
+| **D1** | May retain raw diagnostic telemetry (observation-driven evidence) | **PROPOSED** — pending fleet/provider evidence |
+| **D2** | Disabled or non-decision-capable for HEV | **PROPOSED** |
+| **D3** | Disabled or non-decision-capable for HEV | **PROPOSED** |
+| **E** | `canonical.hv` absent (`isEv=false`) | **CONFIRMED** current read |
+
+**DECISION_NOT_READY** until fleet/provider/product evidence exists. Do not implement write-gate changes in Phase 4.
 
 ## PHEV (separate)
 
@@ -30,7 +54,7 @@
 
 ## RECOMMENDED OPTION (PROPOSED)
 
-**HEV Option A:** Canonical health = LV only. Gate D1/D2/D3 HV writes for `HYBRID` unless product later proves Option B with fleet evidence. Align `materializePolicy.hvPipelineAllowed` with actual consumers or remove dead flag (`BAT-V2-GAP-HV-PIPELINE-ALLOWED-DEAD-001`).
+**HEV Option A** as default product direction: canonical health = LV only; align D1/D2/D3 write gates with read model after evidence workshop. `materializePolicy.hvPipelineAllowed` decision deferred to PKG-05 (`BAT-V2-GAP-HV-PIPELINE-ALLOWED-DEAD-001` — **DECISION_REQUIRED**, not IMPLEMENTATION_READY).
 
 ## EVIDENCE REQUIRED BEFORE IMPLEMENTATION
 
@@ -40,8 +64,8 @@
 
 ## EVIDENCE REQUIRED AFTER
 
-- No orphan HV assessments for HEV in canonical-disabled mode
-- Diagnostic panels still show raw HV signals if needed
+- No unintended HV assessments affecting canonical read for HEV in LV-only mode
+- Diagnostic panels still show raw HV signals if D1 retained
 
 ## NON-EFFECTS
 
