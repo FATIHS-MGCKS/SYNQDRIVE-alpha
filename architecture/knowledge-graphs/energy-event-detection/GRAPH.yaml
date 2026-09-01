@@ -22,8 +22,8 @@ authority_closure:
   required: true
   artifact: architecture/KG_EED_FINAL_AUTHORITY_CLOSURE_2026-09-01.md
   completed_at: "2026-09-01"
-  reconciled_main_sha: "03a7cdb5d0f71f10a47dd4d2541b6b012d7e99de"
-  post_reconcile_head_sha: "97320a6b7b9fa9ac94663fae9fc500deefc43ee9"
+  reconciled_main_sha: "3772d992dae012bc9d794184e05e8ad39db09df4"
+  post_reconcile_head_sha: "633d60e78325989f8200ff6992c2385085d67c53"
 
 scope:
   owns:

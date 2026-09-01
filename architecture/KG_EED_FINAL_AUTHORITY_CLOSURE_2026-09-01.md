@@ -10,7 +10,7 @@
 
 | Field | SHA / value |
 |-------|-------------|
-| **CURRENT_MAIN_SHA** | `03a7cdb5d0f71f10a47dd4d2541b6b012d7e99de` |
+| **CURRENT_MAIN_SHA** | `3772d992dae012bc9d794184e05e8ad39db09df4` |
 | **PR_1486_HEAD_SHA (before 2B.2)** | `6e9e65c63610ba64fdc08f8fa671b3330a9c335a` |
 | **POST_RECONCILE_HEAD_SHA** | `97320a6b7b9fa9ac94663fae9fc500deefc43ee9` |
 | **MERGE_BASE_SHA** | `da959784f835a31482852d506daa137c90389b87` |
@@ -190,3 +190,47 @@ Main delta did not touch `energy-events/` — extended suite not required.
 **Human action:** merge PR #1486, then post-merge set `GRAPH.yaml` `status`/`authority_state` to `CANONICAL`.
 
 **Do not merge in this agent turn.**
+
+---
+
+## 12. FINAL_DELTA_SYNC (2026-09-01)
+
+Delta-only synchronization after Phase 2B.2 closure. No architecture review reopened.
+
+| Field | SHA / value |
+|-------|-------------|
+| **Previous reconciled main** | `03a7cdb5d0f71f10a47dd4d2541b6b012d7e99de` |
+| **New current main** | `3772d992dae012bc9d794184e05e8ad39db09df4` |
+| **Delta commit count** | 1 |
+| **POST_SYNC_HEAD_SHA (merge)** | `0b01c1501b524e9fd132b095440d2e36bd4dbb0b` |
+| **POST_SYNC_HEAD_SHA (branch)** | `f229273da341dc3a6cde9602e0d3bcbe35eabc15` (metadata commit) |
+
+### New delta commit(s)
+
+| SHA | Summary | Classification |
+|-----|---------|----------------|
+| `3772d992d` | fix(ops): source multi-replica deploy libs from new release, not old current | **EED_IRRELEVANT** (deploy bootstrap path in `vps-deploy-release.sh`) |
+
+### Classification
+
+| Category | Files | EED impact |
+|----------|-------|------------|
+| **EED_RUNTIME_RELEVANT** | *(none)* | No changes |
+| **EED_EXTERNAL_AUTHORITY_RELEVANT** | `backend/scripts/ops/vps-deploy-release.sh` | Scaling Process / multi-replica deploy infrastructure only |
+| **EED_IRRELEVANT** | — | — |
+
+### Verified unchanged
+
+- `EnergyEventsService`, `energy-events/` pipeline, refuel-fuel-rise, sibling reconciliation
+- DIMO energy detector config, `DimoSegmentsService`, `DimoRechargeSegmentsClient`
+- `VehicleEnergyEvent` schema, energy-event API DTO, trip timeline REFUEL/RECHARGE UI
+- ATE `detectEnergyEvents` invocation
+
+| Verdict | Value |
+|---------|-------|
+| **LATEST_MAIN_DELTA_EED_RUNTIME_IMPACT** | NO |
+| **LATEST_MAIN_DELTA_EED_SEMANTIC_IMPACT** | NO |
+| **LATEST_MAIN_DELTA_EXTERNAL_AUTHORITY_ONLY** | YES |
+| **KG_EED_REVIEW_STILL_VALID** | YES |
+
+**MERGE_CONFLICTS:** None. Phase 2B / 2B.1 / 2B.2 history preserved.
