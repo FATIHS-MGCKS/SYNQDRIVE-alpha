@@ -1,7 +1,7 @@
 # Battery V2 — Living Architecture Authority
 
-**Status:** Phase 3 reachability pass (2026-09-01)  
-**Maturity:** Incremental / open scientific workstream  
+**Status:** Phase 4 resolution planning (2026-09-01)  
+**Maturity:** Incremental / open scientific workstream — implementation packages defined, gaps remain open  
 **Runtime impact:** None (documentation and knowledge graph only)
 
 ## What this is
@@ -48,6 +48,9 @@ It is **not** a finalized static architecture document. It is a continuously evo
 | [consumers/api-authority.md](./consumers/api-authority.md) | API route authority |
 | [consumers/frontend-authority.md](./consumers/frontend-authority.md) | Frontend consumers |
 | [consumers/decision-surfaces.md](./consumers/decision-surfaces.md) | Battery influence on readiness/tasks/UI |
+| [resolution/README.md](./resolution/README.md) | **Phase 4** — gap resolution planning & implementation readiness |
+| [resolution/RESOLUTION_PRIORITY_MATRIX.md](./resolution/RESOLUTION_PRIORITY_MATRIX.md) | Master gap priority table |
+| [resolution/phase4-executive-summary.md](./resolution/phase4-executive-summary.md) | DO NOW / DECIDE NOW ranking |
 | [research/CHANGE_LEDGER.md](./research/CHANGE_LEDGER.md) | Scientific change history |
 | [graph/nodes.yaml](./graph/nodes.yaml) | Machine-readable node catalog |
 | [graph/edges.yaml](./graph/edges.yaml) | Machine-readable relationships |

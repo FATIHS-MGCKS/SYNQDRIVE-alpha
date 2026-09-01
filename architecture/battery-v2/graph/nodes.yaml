@@ -181,6 +181,22 @@ nodes:
       - Historical backfill
       - Proof all natural post-fix trips succeed
 
+  - id: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
+    type: decision
+    title: LV canonical handoff architecture (Phase 4 PROPOSED)
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: >
+      Hybrid direct enqueue + reconciliation safety net for canonical REST → assessment → publication.
+      Assessment handoff from REST target handler; publication handoff from assessment handler;
+      reconcile scans canonical measurements and publishable assessments. NOT implemented; NOT VALIDATED.
+    source_paths:
+      - architecture/battery-v2/resolution/lv-publication-chain-resolution.md
+    non_effects:
+      - Does not enable readiness or Stage 3
+      - Does not fix timestamp provenance
+      - Does not resolve open gaps until runtime merged
+
   # --- Gaps ---
   - id: BAT-V2-GAP-RUNNING-ORPHAN-001
     type: gap
