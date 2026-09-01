@@ -351,10 +351,6 @@ edges:
     relation: refines
     to: BAT-V2-CONTRA-HEV-HV-AUTHORITY-001
   - from: BAT-V2-GAP-PUB-READINESS-001
-    relation: gates
+    relation: refines
     to: BAT-V2-AUTH-CANONICAL-READ-001
-    notes: Publication flags default OFF — assessments may exist without user-visible publication
-  - from: BAT-V2-CONS-BATTERY-TASK-001
-    relation: consumed_by
-    to: BAT-V2-GAP-PUB-READINESS-001
-    notes: Tasks use canonical summary; blocksVehicleAvailability=false
+    notes: Enablement/readiness gaps refine what canonical read exposes; gap is not runtime authority

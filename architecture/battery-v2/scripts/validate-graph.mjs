@@ -25,6 +25,14 @@ function load(name) {
   return yaml.load(fs.readFileSync(path.join(graphDir, name), 'utf8'));
 }
 
+function collectStableIdsFromFile(filePath, pattern) {
+  const ids = new Set();
+  if (!fs.existsSync(filePath)) return ids;
+  const text = fs.readFileSync(filePath, 'utf8');
+  for (const m of text.matchAll(pattern)) ids.add(m[0]);
+  return ids;
+}
+
 function collectStableIdsFromMarkdown(dir, pattern) {
   const ids = new Set();
   const walk = (d) => {
@@ -139,6 +147,34 @@ for (const e of edges) {
       fail(`MISSING ${end}=${e[end]} in edge ${e.from} -${e.relation}-> ${e.to}`);
     }
   }
+
+  const fromNode = nodeById.get(e.from);
+  const toNode = nodeById.get(e.to);
+  const invalidGateSources = new Set([
+    'gap',
+    'hypothesis',
+    'contradiction',
+    'evidence',
+    'test_evidence',
+    'consumer',
+  ]);
+  const invalidConsumedByTargets = new Set([
+    'gap',
+    'hypothesis',
+    'contradiction',
+    'evidence',
+    'test_evidence',
+  ]);
+  if (e.relation === 'gates' && fromNode && invalidGateSources.has(fromNode.type)) {
+    fail(
+      `Invalid gates source type ${fromNode.type}: ${e.from} -gates-> ${e.to}`,
+    );
+  }
+  if (e.relation === 'consumed_by' && toNode && invalidConsumedByTargets.has(toNode.type)) {
+    fail(
+      `Invalid consumed_by target type ${toNode.type}: ${e.from} -consumed_by-> ${e.to}`,
+    );
+  }
 }
 console.log('==> Edge references:', edges.length, 'OK');
 
@@ -190,6 +226,46 @@ console.log(
   `GAP=${indexedGaps.size}`,
   `HYP=${indexedHyps.size}`,
   `CONTRA=${indexedContras.size}`,
+);
+
+// OPEN_QUESTIONS ↔ KNOWLEDGE_GAPS set equality (AGENT_CONTRACT)
+const knowledgeGapsPath = path.join(batteryV2Dir, 'contradictions/KNOWLEDGE_GAPS.md');
+const openQuestionsPath = path.join(batteryV2Dir, 'research/OPEN_QUESTIONS.md');
+const gapsInKnowledgeGaps = collectStableIdsFromFile(knowledgeGapsPath, gapPattern);
+const gapsInOpenQuestions = collectStableIdsFromFile(openQuestionsPath, gapPattern);
+for (const id of gapsInKnowledgeGaps) {
+  if (!gapsInOpenQuestions.has(id)) {
+    fail(`GAP ${id} in KNOWLEDGE_GAPS.md missing from OPEN_QUESTIONS.md`);
+  }
+}
+for (const id of gapsInOpenQuestions) {
+  if (!gapsInKnowledgeGaps.has(id)) {
+    fail(`GAP ${id} in OPEN_QUESTIONS.md missing from KNOWLEDGE_GAPS.md`);
+  }
+}
+console.log(
+  '==> OPEN_QUESTIONS ↔ KNOWLEDGE_GAPS:',
+  gapsInKnowledgeGaps.size === gapsInOpenQuestions.size ? 'OK' : 'FAIL',
+  `(${gapsInKnowledgeGaps.size} gaps)`,
+);
+
+// Evidence stable ID references in canonical markdown
+const evidPattern = /BAT-V2-EVID-[A-Z0-9]+(?:-[A-Z0-9]+)*/g;
+const referencedEvidence = collectStableIdsFromMarkdown(batteryV2Dir, evidPattern);
+const evidenceNodeIds = new Set(
+  nodes.filter((n) => n.type === 'evidence' || n.type === 'test_evidence').map((n) => n.id),
+);
+for (const id of referencedEvidence) {
+  if (id.endsWith('-') || id.includes('*') || id.split('-').length < 5) continue;
+  if (!evidenceNodeIds.has(id)) {
+    fail(`Referenced evidence ${id} missing from graph evidence/test_evidence nodes`);
+  }
+}
+console.log(
+  '==> Evidence reference resolution:',
+  referencedEvidence.size,
+  'refs',
+  'OK',
 );
 
 // CURRENT_STATE declared graph counts (optional consistency check)

@@ -18,7 +18,7 @@
 
 | Flag | Default | Effect when OFF |
 |------|---------|-----------------|
-| `BATTERY_V2_REST_SHADOW_ENABLED` | **false** | No REST shadow pipeline |
+| `BATTERY_V2_REST_SHADOW_ENABLED` | **false** | No canonical REST ingestion pipeline |
 | `BATTERY_V2_PUBLICATION_ENABLED` | **false** | No LV publication persist |
 | `BATTERY_V2_READINESS_ENABLED` | **false** | Readiness returns READY noop |
 | `BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED` | **false** | No HV shadow recompute |
@@ -81,10 +81,18 @@ battery-publication-update.handler (BATTERY_PUBLICATION_UPDATE)
 - No HV `battery_publications` consumer path identified.
 - `BATTERY_V2_HV_SOH_PUBLICATION_ENABLED` unblocks internal `sohGatePassed` only.
 
-## Readiness
+## Readiness (`battery-readiness.policy.ts`)
 
-**Inputs:** canonical publication maturity, `summary.lv` aggregate, warning light, DTC, HV provider SOH.
+When `BATTERY_V2_READINESS_ENABLED` is ON, **independent** hard-block-capable inputs:
 
-**Important:** `blocksVehicleAvailability: false` on battery tasks.
+- confirmed workshop defect
+- battery warning light
+- safety-critical battery DTC
+- stable qualified critical LV evidence
+- fresh provider SOH below readiness threshold (with required confidence)
 
-Production enablement checklist — **not PRODUCTION_VALIDATED**.
+**Non-hard-blocking:** proxy/shadow/live-only paths. Readiness does **not** globally require STABLE LV publication.
+
+**Consumer:** `RentalHealthService.evaluateBattery`. Tasks: `blocksVehicleAvailability: false`.
+
+Production enablement — **not PRODUCTION_VALIDATED**.

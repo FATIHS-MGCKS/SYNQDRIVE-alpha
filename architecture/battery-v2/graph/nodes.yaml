@@ -441,7 +441,9 @@ nodes:
     summary: >
       materializePolicy sets hvPipelineAllowed=true for HEV via isHvMeasurementSupported override. Repo-wide
       current-code audit found no runtime reader of policy.hvPipelineAllowed outside resolver/tests/catalog.
-      Actual HV write gate is forbiddenMeasurementTypes + canonical isEv + capability paths.
+      Write gates are separate: (1) BatteryMeasurement — forbiddenMeasurementTypes per policy;
+      (2) HV snapshots — observation-driven recordSnapshot; (3) charge sessions/capacity shadow — flags +
+      capability/method profile; (4) canonical read — isEv (ELECTRIC/PLUGIN_HYBRID only; HYBRID excluded).
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.resolver.ts
     evidence:

@@ -31,7 +31,7 @@ It is **not** a finalized static architecture document. It is a continuously evo
 | File | Purpose |
 |------|---------|
 | [CURRENT_STATE.md](./CURRENT_STATE.md) | Best-known snapshot of Battery V2 today |
-| [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md) | Human-readable graph overview |
+| [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md) | Human-readable graph overview (must align with machine graph) |
 | [AGENT_CONTRACT.md](./AGENT_CONTRACT.md) | **Mandatory rules for future agents** |
 | [purpose/profile-matrix.md](./purpose/profile-matrix.md) | ICE/HEV/PHEV/BEV profile behavior |
 | [purpose/runtime-reachability-matrix.md](./purpose/runtime-reachability-matrix.md) | Phase 3 DEFINED→USER_VISIBLE decision matrix |

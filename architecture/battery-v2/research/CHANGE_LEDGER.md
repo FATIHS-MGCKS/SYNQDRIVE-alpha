@@ -2,7 +2,28 @@
 
 Append-only scientific record. Newest entries first.
 
-**Template fields:** BEFORE | OBSERVATION | HYPOTHESIS | CHANGE | WHY | EXPECTED_EFFECT | VALIDATION | OBSERVED_EFFECT | NON_EFFECTS | REMAINING_GAPS | EVIDENCE | DECISION_STATUS | AFFECTED_GRAPH
+**Template fields:** BEFORE | OBSERVATION | HYPOTHESIS | CHANGE | WHY | EXPECTED_EFFECT | VALIDATION | OBSERVED_EFFECT | NON_EFFECTS | REGRESSIONS_OR_TRADEOFFS | REMAINING_GAPS | DECISION_STATUS | AFFECTED_GRAPH | EVIDENCE
+
+---
+
+## CL-2026-09-01 — Phase 3 final authority consistency pass
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | `KNOWLEDGE_GRAPH.md` stale; invalid graph edges (gap gates canonical read); OPEN_QUESTIONS gap set incomplete; matrix overstated REST_SHADOW as publication blocker; HEV gates conflated. |
+| **OBSERVATION** | Human↔machine authority audit against final Phase 3 graph. |
+| **HYPOTHESIS** | Remaining inconsistencies are documentation-only and fixable without runtime changes. |
+| **CHANGE** | Updated Human View, validator semantic checks, graph edge semantics, matrix/readiness/publication wording, OPEN_QUESTIONS coverage, CHANGE_LEDGER compliance. |
+| **WHY** | Final consistency before merge — prevent stale Human View from contradicting machine authority. |
+| **EXPECTED_EFFECT** | Human and machine authority align; validator catches gap/question drift and invalid relations. |
+| **VALIDATION** | `validate-graph.sh` PASS |
+| **OBSERVED_EFFECT** | Validator PASS with semantic checks |
+| **NON_EFFECTS** | No runtime, flag, deploy, backfill, or production data changes |
+| **REGRESSIONS_OR_TRADEOFFS** | Validator stricter — may require OPEN_QUESTIONS updates when gaps added |
+| **REMAINING_GAPS** | All open gaps unchanged |
+| **DECISION_STATUS** | VALIDATED (documentation reconstruction only; runtime behavior unchanged/unvalidated) |
+| **AFFECTED_GRAPH** | 120 nodes / 106 edges / 11 invariants (was 120/107/11); −1 invalid edge (net) |
+| **EVIDENCE** | This PR only |
 
 ---
 
@@ -12,12 +33,18 @@ Append-only scientific record. Newest entries first.
 |-------|---------|
 | **BEFORE** | Phase 3 initially overgeneralized PHEV completeness ("full chain"), represented RUNNING/SKIPPED as HISTORICAL, under-specified canonical LV publication handoffs, overstated bridge idempotency protection, used weak writer-absence claims. |
 | **OBSERVATION** | Adversarial code audit: git log -S/-G, ripgrep, enqueue-path audit inventory, handler path verification. |
+| **HYPOTHESIS** | Reachability claims need auditable negative-evidence provenance. |
 | **CHANGE** | Corrected reachability matrix (ICE/HEV/PHEV LV REST; PHEV implemented paths only; HEV storage layers); fixed RUNNING/SKIPPED epistemics; full commit SHA; split LV handoff gaps; dedicated bridge evidence; audit provenance on negative claims; renamed HEV gap to SIDE-EFFECT-READ-DIVERGENCE. |
 | **WHY** | Prevent incomplete/negative claims from becoming canonical agent truth. |
-| **OBSERVED_EFFECT** | Knowledge graph reproducible at execution-path level with auditable absence claims. |
+| **EXPECTED_EFFECT** | Knowledge graph reproducible at execution-path level with auditable absence claims. |
+| **VALIDATION** | `validate-graph.sh` PASS |
+| **OBSERVED_EFFECT** | Knowledge graph corrected; validator PASS |
 | **NON_EFFECTS** | No runtime fix; no Stage 2; no publication wiring; no HEV fix; no timestamp fix; no bridge fix; no production validation |
-| **EVIDENCE** | `BAT-V2-EVID-AUDIT-RUNNING-SKIPPED-WRITER-ABSENCE-001`, `BAT-V2-EVID-CODE-BRIDGE-REACHABILITY-001`, `BAT-V2-EVID-AUDIT-PUBLICATION-ENQUEUE-ABSENCE-001`, `BAT-V2-EVID-AUDIT-HV-PIPELINE-ALLOWED-ABSENCE-001` |
+| **REGRESSIONS_OR_TRADEOFFS** | More precise wording may read as "less complete" than initial Phase 3 draft |
+| **REMAINING_GAPS** | All prior gaps remain open unless refined |
+| **DECISION_STATUS** | VALIDATED (documentation reconstruction only; runtime behavior unchanged/unvalidated) |
 | **AFFECTED_GRAPH** | 120 nodes / 107 edges / 11 invariants (was 114/98/11); +6 nodes, +9 edges; 1 gap renamed |
+| **EVIDENCE** | `BAT-V2-EVID-AUDIT-RUNNING-SKIPPED-WRITER-ABSENCE-001`, `BAT-V2-EVID-CODE-BRIDGE-REACHABILITY-001`, `BAT-V2-EVID-AUDIT-PUBLICATION-ENQUEUE-ABSENCE-001`, `BAT-V2-EVID-AUDIT-HV-PIPELINE-ALLOWED-ABSENCE-001` |
 
 ---
 
@@ -25,18 +52,20 @@ Append-only scientific record. Newest entries first.
 
 | Field | Content |
 |-------|---------|
-| **BEFORE** | Phase 2 answered "what does the architecture contain?" Authority indexes still had stale UNKNOWN wording for HV/consumer authority. CURRENT_STATE graph counts drifted (105/80 vs actual 107/83). Publication, HEV, readiness reachability not traced end-to-end. |
-| **OBSERVATION** | Read-only code trace of flags, job chains, HEV/PHEV paths, publication/readiness, tasks, SOH winner-usability, provider timestamp, LV timestamp, bridge, RUNNING/SKIPPED git history, consumer surfaces. Validator enhanced for graph count self-consistency. |
-| **HYPOTHESIS** | Many "contradictions" may be theoretical or partially reachable — Phase 3 must distinguish DEFINED vs USER_VISIBLE. |
-| **CHANGE** | Added reachability matrix, publication-readiness, SOH truth table, decision-surfaces, bridge-reachability, rest-target-status-history docs. Refined gaps/contras/hypotheses. Added 3 gaps, 3 evidence nodes, 15 edges. Recorded PR #1480 evidence node. |
+| **BEFORE** | Phase 2 answered "what does the architecture contain?" Authority indexes had stale UNKNOWN wording. CURRENT_STATE graph counts drifted. Publication, HEV, readiness reachability not traced end-to-end. |
+| **OBSERVATION** | Read-only code trace of flags, job chains, HEV/PHEV paths, publication/readiness, tasks, SOH, timestamps, bridge, RUNNING/SKIPPED history, consumer surfaces. |
+| **HYPOTHESIS** | Many contradictions may be theoretical or partially reachable — Phase 3 must distinguish DEFINED vs USER_VISIBLE. |
+| **CHANGE** | Added reachability matrix, publication-readiness, SOH truth table, decision-surfaces, bridge-reachability, rest-target-status-history docs. Refined gaps/contras/hypotheses. Added gaps and evidence nodes. Recorded PR #1480 evidence node. |
 | **WHY** | Future agents need execution truth — which paths run under current flags, which are hidden, which job chains are broken. |
 | **EXPECTED_EFFECT** | Decision matrix becomes primary enablement artifact; HEV/PHEV/publication reachability explicit. |
 | **VALIDATION** | `validate-graph.sh` PASS; CURRENT_STATE counts match graph |
-| **OBSERVED_EFFECT** | Validator PASS at 114/98/11; self-consistency rule in AGENT_CONTRACT |
-| **NON_EFFECTS** | No runtime, flag, deploy, backfill, or production data changes. No PRODUCTION_VALIDATED promotions. No threshold calibration. No HEV/PHEV behavior fixes. LV publication job chain not wired. Stage 2 not enabled. |
+| **OBSERVED_EFFECT** | Validator PASS; self-consistency rule in AGENT_CONTRACT |
+| **NON_EFFECTS** | No runtime, flag, deploy, backfill, or production data changes. No PRODUCTION_VALIDATED promotions. |
+| **REGRESSIONS_OR_TRADEOFFS** | Increased graph complexity; more gaps documented |
 | **REMAINING_GAPS** | All prior gaps remain open unless refined; production frequency UNKNOWN for most reachability findings |
-| **EVIDENCE** | `BAT-V2-EVID-PR-1480-001`, `BAT-V2-EVID-GIT-RUNNING-SKIPPED-ENUM-001`, `BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001`, `BAT-V2-EVID-CODE-HEV-SNAPSHOT-ORPHAN-001`, Phase 3 code traces |
+| **DECISION_STATUS** | VALIDATED (documentation reconstruction only; runtime behavior unchanged/unvalidated) |
 | **AFFECTED_GRAPH** | 114 nodes / 98 edges / 11 invariants (was 107/83/11); +7 nodes, +15 edges |
+| **EVIDENCE** | `BAT-V2-EVID-PR-1480-001`, `BAT-V2-EVID-GIT-RUNNING-SKIPPED-ENUM-001`, `BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001`, `BAT-V2-EVID-CODE-HEV-SIDE-EFFECT-READ-DIVERGENCE-001` (supersedes draft `HEV-SNAPSHOT-ORPHAN` precursor), Phase 3 code traces |
 
 ---
 

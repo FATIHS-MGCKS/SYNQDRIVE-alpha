@@ -1,39 +1,35 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-01 (Phase 3 correction pass)  
-**Graph:** 120 nodes / 107 edges / 11 invariants (validated 2026-09-01, Phase 3 correction pass)  
-**Knowledge maturity:** Bootstrap + Phase 2 reconstruction + Phase 3 reachability (corrected)
+**Snapshot date:** 2026-09-01 (Phase 3 final consistency pass)  
+**Graph:** 120 nodes / 106 edges / 11 invariants (validated 2026-09-01)  
+**Knowledge maturity:** Phase 2+3 substantially reconstructed; open gaps remain
 
 ## Executive summary
 
-Battery V2 Stage 1 LV REST shadow remains the strongest reconstructed area. Phase 3 traces execution reachability under current flags. **Correction pass:** PHEV wording narrowed to implemented paths; HEV storage layers distinguished; RUNNING/SKIPPED epistemics fixed; canonical LV assessment/publication handoffs documented; bridge identity semantics corrected; negative claims carry audit provenance.
+Battery V2 authority is substantially reconstructed through Phase 2 (HV/persistence/consumers) and Phase 3 (reachability/enablement). LV canonical REST pipeline is traced but **not e2e reachable** to publication due to two missing automatic handoffs. HEV exhibits write/side-effect/read divergence. PHEV supports parallel **implemented** LV+HV paths — not all advertised HV methods have compute.
+
+## Production validation maturity
+
+| Item | Status |
+|------|--------|
+| #1383, #1393, #1445 | **VALIDATED** (code + tests) — **not PRODUCTION_VALIDATED** unless post-change evidence exists |
+| `BAT-V2-HYP-POST-1445-SOAK-001` | **AWAITING** — no qualifying post-change production soak in repository |
+| PR #1480 | Documentation/knowledge evolution only — **not** production behavioral validation |
+| PR #1488 (this pass) | Documentation/knowledge consistency only — **not** production behavioral validation |
 
 ## Strong-confidence areas (CONFIRMED)
 
-- LV REST lifecycle for ICE/HEV/PHEV (BEV forbidden) when policy gates pass
-- HV M2/M3/cross-session **implemented** paths (not all advertised HV methods)
-- PHEV: parallel implemented LV+HV when flags+capabilities pass; `isEv=true`
-- HEV: write/compute/read divergence — BatteryMeasurement HV blocked; side-effect snapshots/evidence/sessions possible; `canonical.hv` absent
-- LV canonical REST → assessment → publication: **NOT e2e reachable** (two missing handoffs)
-- RUNNING: current enum + reader; no writer in audited history
+- LV REST canonical pipeline for ICE/HEV/PHEV (BEV forbidden) when `REST_SHADOW` on
+- HV M2/M3/cross-session **implemented** paths; SESSION_CHARGE/GROSS_CAPACITY unimplemented
+- PHEV parallel implemented LV+HV; `isEv=true`
+- HEV: separate write gates vs `isEv` read gate (`BAT-V2-GAP-HEV-SIDE-EFFECT-READ-DIVERGENCE-001`)
+- LV publication eligibility: PROVISIONAL or STABLE per policy (not STABLE-only)
+- Readiness: multiple independent block paths when flag on
 - Primary API + rental health → canonical read model
 
-## Unresolved gaps (explicit)
+## Unresolved gaps
 
-| ID | Summary |
-|----|---------|
-| `BAT-V2-GAP-HEV-IS-EV-001` | HEV fuelType vs canonical isEv |
-| `BAT-V2-GAP-HEV-SIDE-EFFECT-READ-DIVERGENCE-001` | HEV side-effect writes vs canonical read absence |
-| `BAT-V2-GAP-HV-PIPELINE-ALLOWED-DEAD-001` | `hvPipelineAllowed` no runtime consumer (audited) |
-| `BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001` | REST complete → assessment enqueue missing |
-| `BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001` | Assessment complete → publication enqueue missing |
-| `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001` | Umbrella: canonical LV pipeline not e2e reachable |
-| `BAT-V2-GAP-HV-SESSION-CHARGE-METHOD-001` | SESSION_CHARGE_CAPACITY no compute |
-| `BAT-V2-GAP-HV-GROSS-CAPACITY-METHOD-001` | GROSS_CAPACITY no compute |
-| `BAT-V2-GAP-PUB-READINESS-001` | Publication/readiness enablement |
-| `BAT-V2-GAP-RUNNING-ORPHAN-001` | RUNNING enum — reader exists; no audited writer |
-| `BAT-V2-GAP-SKIPPED-REST-001` | SKIPPED enum — no audited writer/lifecycle |
-| (prior gaps) | See `contradictions/KNOWLEDGE_GAPS.md` |
+See `contradictions/KNOWLEDGE_GAPS.md` (20 gaps) and `research/OPEN_QUESTIONS.md` (matching set).
 
 ## Contradictions
 
@@ -44,4 +40,4 @@ Battery V2 Stage 1 LV REST shadow remains the strongest reconstructed area. Phas
 
 ## Explicit non-claims
 
-Battery V2 is **not complete**. Phase 3 corrections are documentation only — no runtime fixes.
+Battery V2 is **not complete**. Documentation-only passes do not change runtime behavior.

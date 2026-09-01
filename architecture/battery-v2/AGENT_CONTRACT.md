@@ -132,11 +132,14 @@ A knowledge reconstruction PR is **incomplete** if any of the following disagree
 |----------|-----------------|
 | `CURRENT_STATE.md` graph counts | Actual `nodes.yaml` / `edges.yaml` / `invariants.yaml` (run `validate-graph.sh`) |
 | `contradictions/KNOWLEDGE_GAPS.md` | Graph `BAT-V2-GAP-*` nodes (title, epistemic status, maturity) |
-| `research/OPEN_QUESTIONS.md` | Same stable IDs; questions must reflect current reconstruction state |
+| `research/OPEN_QUESTIONS.md` | Same stable IDs as `KNOWLEDGE_GAPS.md`; questions must reflect current reconstruction state |
+| `KNOWLEDGE_GRAPH.md` | High-level human projection of current graph authority; no stale "NOT YET RECONSTRUCTED" for substantially reconstructed areas |
 | `contradictions/OPEN_CONTRADICTIONS.md` | Graph `BAT-V2-CONTRA-*` nodes |
 | `research/OPEN_HYPOTHESES.md` | Graph `BAT-V2-HYP-*` nodes |
 
 Do not leave bootstrap wording (e.g. "HV authority UNKNOWN") when Phase documentation has substantially reconstructed the area. Distinguish **reconstruction maturity** from **remaining unknowns** (production frequency, enablement, product intent).
+
+`KNOWLEDGE_GRAPH.md` must remain conceptually consistent with the machine graph. It need not list every node, but must not claim areas are unreconstructed when Phase 2/3 documentation and graph nodes establish substantial authority.
 
 After editing the graph, run `bash architecture/battery-v2/scripts/validate-graph.sh` and update `CURRENT_STATE.md` counts from validator output.
 
