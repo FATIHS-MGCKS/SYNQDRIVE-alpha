@@ -45,7 +45,9 @@ nodes:
     epistemic_status: CONFIRMED
     summary: >
       Single canonical entry for enqueueBehaviorEnrichment, runEnrichmentSync,
-      enqueueDrivingImpact, enqueueRepairEnrichment, and backfill.
+      enqueueDrivingImpact, backfillUnenrichedTrips, and
+      refreshEnrichmentAfterBoundaryRepair. Repair enqueue is owned by
+      TripReconciliationService.enqueueRepairEnrichment (calls this service).
     authority_class: ATE_OWNS
     source_paths:
       - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
@@ -161,6 +163,44 @@ nodes:
       - backend/src/workers/processors/trip-behavior-enrichment.processor.ts
     evidence: [ATE-EV-0013, ATE-EV-0014]
     discovery_ref: ATE-N05
+
+  - id: ATE-SVC-015
+    type: service
+    title: refreshEnrichmentAfterBoundaryRepair
+    epistemic_status: CONFIRMED
+    summary: >
+      Force re-enrichment after boundary extension: reset boundary-refresh lease,
+      route enrich, enqueueBehaviorEnrichment(force=true, delayMs=0).
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+    evidence: [ATE-EV-0035]
+
+  - id: ATE-SVC-016
+    type: service
+    title: BoundaryRefreshLifecycleService
+    epistemic_status: CONFIRMED
+    summary: >
+      Boundary-refresh lease/stage acknowledgement after partial boundary repairs;
+      coordinates mandatory downstream stage completion.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/boundary-refresh-lifecycle.service.ts
+    evidence: [ATE-EV-0035]
+
+  - id: ATE-SVC-017
+    type: service
+    title: DrivingImpactComputeJobHandler (DI V2)
+    epistemic_status: CONFIRMED
+    summary: >
+      Parallel DI V2 durable job path to DrivingImpactService.computeForTrip;
+      distinct from trip.driving-impact.compute queue enqueued by orchestrator.
+    authority_class: ATE_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence-jobs/handlers/driving-impact-compute.handler.ts
+    evidence: [ATE-EV-0036]
+    notes: Both paths upsert TripDrivingImpact; parallel architecture until V2 supersedes legacy queue.
 
   - id: ATE-SVC-014
     type: service
@@ -356,9 +396,12 @@ nodes:
     type: state
     title: behaviorEnrichmentStatus FSM
     epistemic_status: CONFIRMED
-    summary: null→PENDING→IN_PROGRESS→COMPLETED|SKIPPED_NO_HF_DATA|FAILED_*.
+    summary: >
+      null→PENDING→IN_PROGRESS→COMPLETED|SKIPPED_NO_HF_DATA|FAILED_TRANSIENT|FAILED_PERMANENT.
+      FAILED_TRANSIENT is re-enqueueable (backfill). force=true bypasses terminal guards.
+      UI may show optimistic IN_PROGRESS before server transition.
     authority_class: ATE_OWNS
-    evidence: [ATE-EV-0001]
+    evidence: [ATE-EV-0001, ATE-EV-0024, ATE-EV-0037]
 
   - id: ATE-ST-002
     type: state
@@ -422,6 +465,16 @@ nodes:
       - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
     evidence: [ATE-EV-0023]
     discovery_ref: ATE-N17
+
+  - id: ATE-TRIG-005
+    type: trigger
+    title: Boundary repair refresh enrichment
+    epistemic_status: CONFIRMED
+    summary: Partial boundary repair success calls refreshEnrichmentAfterBoundaryRepair.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+    evidence: [ATE-EV-0035]
 
   - id: ATE-TRIG-004
     type: trigger
@@ -503,9 +556,47 @@ nodes:
     type: failure_mode
     title: Queue enqueue failure revert
     epistemic_status: CONFIRMED
-    summary: On queue failure, behaviorEnrichmentStatus reverted to null.
+    summary: On BullMQ add exception (non-duplicate), behaviorEnrichmentStatus reverted to null.
     authority_class: ATE_OWNS
     evidence: [ATE-EV-0005]
+
+  - id: ATE-FM-007
+    type: failure_mode
+    title: Workers-disabled stuck PENDING
+    epistemic_status: CONFIRMED
+    summary: >
+      If canEnqueueQueue returns false after status set to PENDING, enqueue returns
+      false without reverting status — trip may remain PENDING with no job.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+      - backend/src/shared/queue/queue-producer.util.ts
+    evidence: [ATE-EV-0037]
+    notes: Runtime defect documented; recovery via backfill or manual re-trigger.
+
+  - id: ATE-FM-008
+    type: failure_mode
+    title: UI optimistic IN_PROGRESS without server ack
+    epistemic_status: CONFIRMED
+    summary: >
+      useTripBehaviorEvents patches client state to IN_PROGRESS before POST completes;
+      server status may still be null until runEnrichmentSync starts.
+    authority_class: ATE_OWNS
+    source_paths:
+      - frontend/src/rental/components/trips/hooks/useTripBehaviorEvents.ts
+    evidence: [ATE-EV-0025]
+
+  - id: ATE-FM-009
+    type: failure_mode
+    title: Reconciliation mutex disabled overlap risk
+    epistemic_status: CONFIRMED
+    summary: >
+      RECONCILIATION_EXECUTION_MUTEX_ENABLED=false allows overlapping reconcileWindow
+      on multiple replicas — unsafe at scale-to-2 without mutex.
+    authority_class: SHARED_INFRASTRUCTURE
+    source_paths:
+      - backend/src/shared/reconciliation-execution-mutex/reconciliation-execution-mutex.service.ts
+    evidence: [ATE-EV-0038]
 
   # ── Components (grouping) ──────────────────────────────────────────────────
   - id: ATE-COMP-001
@@ -640,6 +731,22 @@ nodes:
     summary: synqdrive_dimo_global_budget_cooldown_active vs provider collision.
     evidence: [ATE-EV-0033]
 
+  - id: ATE-DEC-013
+    type: decision
+    title: Energy Event Detection separated from ATE
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: EED owns detect + semantics; ATE reconcile step 5 MAY_TRIGGER only.
+    evidence: [ATE-EV-0011, ATE-EV-0034]
+
+  - id: ATE-DEC-014
+    type: decision
+    title: Driving Intelligence remains separate authority
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: ATE enqueues legacy queue; DI V2 owns staged jobs and scoring semantics.
+    evidence: [ATE-EV-0004, ATE-EV-0036]
+
   # ── Production proof & historical ──────────────────────────────────────────
   - id: ATE-PP-001
     type: production_proof
@@ -697,6 +804,15 @@ nodes:
     epistemic_status: UNKNOWN
     summary: Proposed; fallback still active in useTripBehaviorEvents.
     evidence: [ATE-EV-0025]
+
+  - id: ATE-OQ-013
+    type: open_question
+    title: Dual driving-impact compute paths convergence
+    epistemic_status: UNKNOWN
+    summary: >
+      Legacy trip.driving-impact.compute queue and DI V2 DRIVING_IMPACT_COMPUTE job both
+      call DrivingImpactService.computeForTrip; supersede timeline unclear.
+    evidence: [ATE-EV-0036]
 
   # ── Evidence nodes (registry detail in evidence/EVIDENCE_REGISTRY.md) ───────
   - id: ATE-EV-0001
@@ -1039,4 +1155,46 @@ nodes:
     source_paths:
       - architecture/knowledge-graphs/discovery/ATE_EED_BOUNDARY_MAP_2026-09-01.md
     summary: 18 cross-graph relations; 0 authority conflicts.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0035
+    type: evidence
+    title: Boundary repair refresh enrichment chain
+    epistemic_status: CONFIRMED
+    source_type: TEST
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/partial-boundary-repair.final31.spec.ts
+    summary: refreshEnrichmentAfterBoundaryRepair called after partial boundary repair.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0036
+    type: evidence
+    title: Dual driving-impact compute paths
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/workers/processors/driving-impact.processor.ts
+      - backend/src/modules/vehicle-intelligence/driving-intelligence-jobs/handlers/driving-impact-compute.handler.ts
+    summary: Both paths invoke DrivingImpactService.computeForTrip (upsert idempotent).
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0037
+    type: evidence
+    title: canEnqueueQueue stuck PENDING defect
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+      - backend/src/shared/queue/queue-producer.util.ts
+    summary: PENDING set before canEnqueueQueue check; false return without revert.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0038
+    type: evidence
+    title: Reconciliation mutex disable warning
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/shared/reconciliation-execution-mutex/reconciliation-execution-mutex.service.ts
+    summary: Mutex disabled allows overlapping reconciliation across replicas.
     verified_at: "2026-09-01"

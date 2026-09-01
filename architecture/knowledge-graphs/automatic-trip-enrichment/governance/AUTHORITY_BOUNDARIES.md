@@ -27,7 +27,7 @@
 | Trip persistence / FSM | ATE_REFERENCES_EXTERNAL | TripDecisionEngine | Repairs go through engine | Direct DB trip mutation bypass |
 | Telemetry ingestion (snapshots) | ATE_REFERENCES_EXTERNAL | DIMO snapshot pipeline | Orthogonal to enrichment queue | Snapshot poll cadence ownership |
 | Battery V2 HV sessions | OUT_OF_SCOPE | Battery V2 KG | — | RECHARGE vs HV session mapping |
-| UI timeline shell | ATE_OWNS (layout) | KG-ATE | Trip detail surfaces | EED card content semantics |
+| UI timeline layout | AMBIGUOUS | Frontend rental trips UI | Trip detail surfaces reference enrichment status | Full timeline composition spans EED/DI cards — not fully modeled in KG-ATE |
 | ClickHouse evidence mirror | OUT_OF_SCOPE | Analytics/telemetry | CH fallback in repair if used | CH adoption policy |
 
 **AUTHORITY_CONFLICTS: 0** (explicit assignment; see `ATE-EV-0034`)

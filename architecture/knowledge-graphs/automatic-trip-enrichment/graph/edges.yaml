@@ -141,6 +141,38 @@ edges:
     relation: PERSISTS
     to: ATE-DO-003
 
+  - from: ATE-TRIG-005
+    relation: CALLS
+    to: ATE-SVC-015
+
+  - from: ATE-SVC-015
+    relation: CALLS
+    to: ATE-SVC-003
+
+  - from: ATE-SVC-016
+    relation: CALLS
+    to: ATE-SVC-003
+    notes: resetForBoundaryRefreshEnqueue before force re-enrich
+
+  - from: ATE-SVC-002
+    relation: PARALLEL_TO
+    to: ATE-SVC-017
+    notes: DI V2 DRIVING_IMPACT_COMPUTE vs legacy queue — both may run until supersede
+
+  - from: ATE-SVC-003
+    relation: ENQUEUES
+    to: ATE-QUE-002
+    notes: legacy trip.driving-impact.compute path after behavior COMPLETED
+
+  - from: ATE-FM-007
+    relation: SKIPS_ON
+    to: ATE-QUE-001
+
+  - from: ATE-TRIG-004
+    relation: CALLS
+    to: ATE-SVC-003
+    notes: backfillUnenrichedTrips
+
   # ── Failure / retry / skip paths ───────────────────────────────────────────
   - from: ATE-FM-001
     relation: RETRIES_VIA
