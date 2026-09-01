@@ -42,7 +42,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'First authoritative production validation of P1.8.3.1 deploy leader-convergence gate on SHA `3772d992d`.',
       'Attempt 3: 6× transient `leaderCount=0` tolerated → converged to `leaderCount=1` in 14s → deploy PASS. No split brain.',
-      'INC-06 CLOSED. Attempts 1–2 false-aborted due to OQ-18 bootstrap (stale current entry script); mitigated via RELEASE_OPS_DIR sourcing + cloud-agent-deploy bootstrap.',
+      'INC-06 CLOSED. Attempts 1–2 rolled back (OQ-18 bootstrap); attempt 3 PASS. Authority pass: OQ IDs canonicalized, rollback semantics corrected, DEC-016 exact-SHA provenance implemented.',
       'Post-deploy: N=2 SHA-coherent, nginx dual-upstream live, queues stable, no pipeline regression.',
     ],
     reason: 'Close INC-06 with production evidence that bounded convergence gate works without weakening split-brain detection.',

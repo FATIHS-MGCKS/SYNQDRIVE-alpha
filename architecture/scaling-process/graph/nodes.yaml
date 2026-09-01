@@ -197,7 +197,7 @@ nodes:
     related_incidents: [INC_06]
     introduced_by: "P1.8.3 deploy 2026-09-01"
     remediated_by: "P1.8.3.1 leader-wait convergence gate"
-    closed_by: "P1.8.3.1 production validation 2026-09-01"
+    closed_by: "P1.8.3.1 production validation attempt 3 2026-09-01"
     last_verified_at: "2026-09-01T11:48:00Z"
     confidence: HIGH
 
@@ -209,7 +209,18 @@ nodes:
     protects: [INV_01]
     introduced_by: "P1.8.3.1"
     related_incidents: [INC_06]
-    validated_by: ["vps-multi-replica-deploy.util.test.mjs 18/18", "P1.8.3.1 prod deploy attempt 3"]
+    validated_by: ["vps-multi-replica-deploy.util.test.mjs", "P1.8.3.1 prod deploy attempt 3"]
     last_verified_sha: 3772d992dae012bc9d794184e05e8ad39db09df4
     last_verified_at: "2026-09-01T11:48:00Z"
+    confidence: HIGH
+
+  - id: EXACT_SHA_DEPLOY_PROVENANCE
+    type: DEPLOYMENT
+    status: IMPLEMENTED_PENDING_PRODUCTION_VALIDATION
+    description: Pin SYNQDRIVE_REQUESTED_DEPLOY_SHA through bootstrap, release clone, and replica verify
+    depends_on: [MULTI_REPLICA_DEPLOYMENT]
+    introduced_by: "DEC-016"
+    related_incidents: [INC_06]
+    validated_by: ["assertDeployShaProvenance unit tests"]
+    last_verified_at: "2026-09-01T12:00:00Z"
     confidence: HIGH

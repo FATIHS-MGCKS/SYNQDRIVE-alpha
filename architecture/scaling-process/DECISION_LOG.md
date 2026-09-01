@@ -192,5 +192,19 @@ Format: Decision ID | Date/Phase | Status
 | **PROBLEM** | OQ-18: `vps-deploy-release.sh` sourced libs from stale `current` before switch — P1.8.3.1 gate not active on first deploy |
 | **DECISION** | Source topology + lib from `RELEASE_DIR/backend/scripts/ops`; cloud-agent-deploy bootstraps entry script from GitHub main |
 | **WHY** | Entry script path is always pre-switch `current`; promoted release contains intended verify logic |
-| **STATUS** | **ACTIVE** — verified attempt 3 PASS |
-| **EVIDENCE** | Deploy attempts 1–2 FAIL, attempt 3 PASS; `3772d992d` |
+| **STATUS** | **ACTIVE** — RELEASE_OPS_DIR production verified attempt 3; cloud-agent exact-SHA bootstrap pending observation |
+
+---
+
+## DEC-016: Exact-SHA deployment provenance (P1.8.3.1 authority pass)
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-09-01 |
+| **PROBLEM** | Mutable `main` branch between local preflight, remote bootstrap clone, and release clone can cause TOCTOU drift |
+| **DECISION** | Resolve one `SYNQDRIVE_REQUESTED_DEPLOY_SHA` and verify it end-to-end |
+| **INVARIANT** | `REQUESTED_DEPLOY_SHA == BOOTSTRAP_SCRIPT_SHA == RELEASE_SOURCE_SHA == TARGET_SHA == REPLICA_A_SHA == REPLICA_B_SHA` |
+| **FAILURE** | Any mismatch → abort; rollback if promotion began |
+| **WHY** | Guarantees authorized artifact is promoted; prevents branch-tip drift |
+| **STATUS** | **IMPLEMENTED** — unit tests; **PRODUCTION_VALIDATION_PENDING** for cloud-agent bootstrap path |
+| **EVIDENCE** | `vps-deploy-release.sh`, `cloud-agent-deploy.sh`, `assertDeployShaProvenance` tests |

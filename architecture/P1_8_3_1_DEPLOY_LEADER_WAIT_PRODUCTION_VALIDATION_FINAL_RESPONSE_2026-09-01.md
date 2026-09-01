@@ -3,6 +3,7 @@
 ```
 P1_8_3_1_PRODUCTION_VALIDATION_VERDICT = PASS
 INC_06_STATUS = CLOSED
+OQ_18_STATUS = MITIGATED_PENDING_PRODUCTION_VALIDATION
 
 CURRENT_MAIN_SHA = 3772d992dae012bc9d794184e05e8ad39db09df4
 DEPLOYED_SHA = 3772d992dae012bc9d794184e05e8ad39db09df4
@@ -35,24 +36,25 @@ TRIP_PIPELINE_HEALTH = PASS
 ROUTE_V2_REGRESSION = NO
 ENERGY_PIPELINE_HEALTH = NEUTRAL
 
-ROLLBACK_EXECUTED = NO
+ANY_ROLLBACK_EXECUTED = YES
+ROLLBACK_ATTEMPT_COUNT = 2
+ATTEMPT_1_RESULT = ROLLBACK
+ATTEMPT_2_RESULT = ROLLBACK
+ATTEMPT_3_RESULT = PASS
+FINAL_ATTEMPT_ROLLBACK_EXECUTED = NO
+FINAL_PRODUCTION_STATE_HEALTHY = YES
+
+ROLLBACK_HISTORY_CORRECT = YES
 
 NEW_P0_COUNT = 0
 NEW_P1_COUNT = 0
 NEW_P2_COUNT = 1
 NEW_P3_COUNT = 0
 
-SCALING_PROCESS_CURRENT_STATE_UPDATED = YES
-SCALING_PROCESS_KNOWLEDGE_GRAPH_UPDATED = YES
-DECISION_LOG_UPDATED = YES
-VALIDATION_EVIDENCE_UPDATED = YES
-FAILURE_MODEL_UPDATED = YES
-GRAPH_NODES_UPDATED = YES
-
 PRODUCTION_MUTATIONS_OUTSIDE_DEPLOYMENT = NO
 BLOCKERS = none
-RESIDUAL_FINDINGS = OQ-18 deploy entrypoint bootstrap mitigated via cloud-agent-deploy.sh + current now at 3772d992d
-NEXT_STAGE = sustained N=2 soak; monitor deploy path on next routine release
+RESIDUAL_FINDINGS = OQ-18 RELEASE_OPS_DIR production-proven; exact-SHA cloud-agent bootstrap pending next routine deploy
+NEXT_STAGE = sustained N=2 soak; observe OQ-18 on next intentional deploy
 ```
 
-**NEW_P2:** OQ-18 bootstrap — first deploy from stale `current` used old entry script/libs until successful promotion (attempts 1–2). Sourcing fix + cloud-agent bootstrap applied.
+**NEW_P2:** OQ-18 bootstrap — attempts 1–2 rolled back due to stale `current` entry/libs; RELEASE_OPS_DIR + attempt 3 PASS. Cloud-agent exact-SHA bootstrap (DEC-016) implemented in PR #1490 but not yet production-observed.

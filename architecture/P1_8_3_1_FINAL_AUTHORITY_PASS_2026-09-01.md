@@ -1,0 +1,41 @@
+# P1.8.3.1 Final Authority Pass — 2026-09-01
+
+Authority consistency pass on PR #1490 after successful production validation.
+
+```
+P1_8_3_1_FINAL_AUTHORITY_PASS = PASS
+
+INC_06_STATUS = CLOSED
+OQ_18_STATUS = MITIGATED_PENDING_PRODUCTION_VALIDATION
+
+OQ_IDS_GLOBALLY_UNIQUE = YES
+STALE_PRODUCTION_PENDING_CLAIMS = REMOVED
+
+ROLLBACK_HISTORY_CORRECT = YES
+ATTEMPT_1_ROLLBACK = YES
+ATTEMPT_2_ROLLBACK = YES
+FINAL_ATTEMPT_ROLLBACK = NO
+
+EXACT_SHA_DEPLOY_PROVENANCE_REQUIRED = YES
+EXACT_SHA_DEPLOY_PROVENANCE_IMPLEMENTED = YES
+REQUESTED_SHA_PINNED = YES
+BOOTSTRAP_SHA_PINNED = YES
+RELEASE_SHA_PINNED = YES
+REPLICA_SHA_INVARIANT_ENFORCED = YES
+
+DEC_016_CREATED = YES
+DEC_015_STATUS = ACTIVE_PRODUCTION_VERIFIED_RELEASE_OPS_DIR
+DEPLOY_SKILL_UPDATED = YES
+
+PRODUCTION_DEPLOY_EXECUTED = NO
+PRODUCTION_RUNTIME_MUTATION_EXECUTED = NO
+```
+
+## OQ ID remapping
+
+| Old duplicate | New canonical ID | Meaning |
+|---------------|------------------|---------|
+| OQ-17 (deploy maturity) | **OQ-28** | P1.8.3 post-scale retrospective / sustained N=2 soak |
+| OQ-18 (deploy maturity) | **OQ-29** | Automated deploy CI for ops scripts |
+| OQ-17 (replica topology) | **OQ-17** | Deploy scheduler leader convergence — **CLOSED** |
+| OQ-18 (replica topology) | **OQ-18** | Bootstrap stale `current` — **MITIGATED_PENDING_PRODUCTION_VALIDATION** |

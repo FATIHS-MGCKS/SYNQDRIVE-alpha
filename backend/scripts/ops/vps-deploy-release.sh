@@ -1,6 +1,31 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+GIT_REPO="${SYNQDRIVE_GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
+REQUESTED_SHA="${SYNQDRIVE_REQUESTED_DEPLOY_SHA:-}"
+
+vps_clone_release_at_sha() {
+  local dest=$1
+  local sha=$2
+  if [[ -z "$sha" ]]; then
+    echo "!! ABORT: SYNQDRIVE_REQUESTED_DEPLOY_SHA is required (DEC-016 exact-SHA deploy provenance)" >&2
+    exit 1
+  fi
+  rm -rf "$dest"
+  mkdir -p "$dest"
+  git -C "$dest" init -q
+  git -C "$dest" remote add origin "$GIT_REPO"
+  git -C "$dest" fetch --depth 1 origin "$sha"
+  git -C "$dest" checkout -q FETCH_HEAD
+  local actual
+  actual="$(git -C "$dest" rev-parse HEAD)"
+  if [[ "$actual" != "$sha" ]]; then
+    echo "!! ABORT: release source SHA ${actual} != requested ${sha}" >&2
+    exit 1
+  fi
+  echo "==> Release source SHA verified: ${sha:0:12}"
+}
+
 RELEASE_ID="$(date -u +%Y%m%d%H%M%S)_v4994"
 RELEASE_DIR="/opt/synqdrive/releases/${RELEASE_ID}"
 BACKUP_DIR="/opt/synqdrive/shared/backups"
@@ -24,7 +49,7 @@ if [[ -x /opt/synqdrive/current/backend/scripts/ops/vps-backup-status-textfile.s
 fi
 
 echo "==> Clone release ${RELEASE_ID}"
-git clone --depth 1 --branch main https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git "$RELEASE_DIR"
+vps_clone_release_at_sha "$RELEASE_DIR" "$REQUESTED_SHA"
 
 echo "==> Link shared env/uploads"
 ln -sfn /opt/synqdrive/shared/backend.env "$RELEASE_DIR/backend/.env"
@@ -93,6 +118,11 @@ source "${RELEASE_OPS_DIR}/vps-production-replica-topology.config.sh"
 source "${RELEASE_OPS_DIR}/lib/vps-production-replica.lib.sh"
 
 TARGET_SHA="$(vps_replica_release_sha "$RELEASE_DIR")"
+if [[ "$TARGET_SHA" != "$REQUESTED_SHA" ]]; then
+  echo "!! ABORT: TARGET_SHA ${TARGET_SHA} != REQUESTED_SHA ${REQUESTED_SHA}" >&2
+  exit 1
+fi
+echo "==> Deploy provenance: REQUESTED_SHA=${REQUESTED_SHA:0:12} TARGET_SHA=${TARGET_SHA:0:12}"
 DEPLOY_STATE_FILE="${SYNQDRIVE_DEPLOY_STATE_DIR}/last-deploy-state.env"
 ROLLBACK_ON_FAIL=1
 

@@ -135,19 +135,32 @@ attempt 8:   leaderCount=1 CANDIDATE PASS (stable=2)
 
 | Attempt | ROLLBACK_EXECUTED | Reason |
 |---------|-------------------|--------|
-| 1 | YES | leaders=0 immediate abort (bootstrap) |
+| 1 | YES | leaders=0 immediate abort (OQ-18 bootstrap — stale current lib) |
 | 2 | YES | same |
 | 3 | NO | PASS |
+
+**Rollback semantics:**
+
+```
+ANY_ROLLBACK_EXECUTED = YES
+ROLLBACK_ATTEMPT_COUNT = 2
+ATTEMPT_1_RESULT = ROLLBACK
+ATTEMPT_2_RESULT = ROLLBACK
+ATTEMPT_3_RESULT = PASS
+FINAL_ATTEMPT_ROLLBACK_EXECUTED = NO
+FINAL_PRODUCTION_STATE_HEALTHY = YES
+```
 
 ---
 
 ## Phase 9 — INC-06 decision
 
-**INC_06_STATUS = CLOSED**
+**INC_06_STATUS = CLOSED** (attempt 3 production proof)
 
-Production proved P1.8.3.1 convergence gate is active and correct when deploy sources libs from the promoted release. Historical P1.8.3 false-abort preserved in evidence.
+**OQ_18_STATUS = MITIGATED_PENDING_PRODUCTION_VALIDATION**
 
-**Residual:** OQ-18 — deploy entrypoint bootstrap (mitigated: `cloud-agent-deploy.sh` updated to clone main entry script; production `current` now at `3772d992d`).
+- RELEASE_OPS_DIR sourcing: production-proven (attempt 3)
+- Cloud-agent exact-SHA bootstrap (DEC-016): implemented in PR #1490, not yet observed on routine deploy
 
 ---
 

@@ -26,9 +26,12 @@ PROVIDER_CEILING_VERIFIED = NO
 N1000_CERTIFICATION = CONDITIONAL (software only)
 OPEN_P0 = 0
 OPEN_P1 = 0
-OPEN_P2 = 1 (OQ-18 deploy entrypoint bootstrap — mitigated)
+OPEN_P2 = 1 (OQ-18 cloud-agent exact-SHA bootstrap pending routine deploy observation)
 INC_06 = CLOSED
-NEXT_ARCHITECTURE_STAGE = sustained N=2 soak
+OQ_17 = CLOSED
+OQ_18 = MITIGATED_PENDING_PRODUCTION_VALIDATION
+DEPLOY_LEADER_CONVERGENCE_GATE = VERIFIED_PRODUCTION
+NEXT_ARCHITECTURE_STAGE = sustained N=2 soak; observe OQ-18 on next routine deploy
 ```
 
 ---

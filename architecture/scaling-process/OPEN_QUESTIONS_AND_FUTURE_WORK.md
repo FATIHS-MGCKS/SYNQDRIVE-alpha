@@ -5,6 +5,8 @@
 
 Do **not** treat items here as current production architecture.
 
+**Validation:** `node architecture/scaling-process/scripts/validate-open-questions.mjs` — fails on duplicate OQ IDs.
+
 ---
 
 ## Provider and fleet scale
@@ -24,11 +26,18 @@ Do **not** treat items here as current production architecture.
 |----|-------|----------|-------|
 | OQ-05 | ~~Restore production replica B~~ | **CLOSED** | P1.8.3 2026-09-01 |
 | OQ-06 | ~~Merge #1472 before next deploy~~ | **CLOSED** | Merged d6884ce |
-| OQ-17 | Deploy leader-election wait in verify | **IMPLEMENTED** | P1.8.3.1; prod validation pending |
-| OQ-18 | Bootstrap deploy uses old script from current | **MITIGATED** | RELEASE_OPS_DIR sourcing + cloud-agent bootstrap; current now 3772d992d |
 | OQ-07 | Replica count > 2 | FUTURE_OPTION | Not authorized |
 | OQ-08 | Separate scheduler / API / worker processes | FUTURE_OPTION | Architecture split |
 | OQ-09 | Kubernetes / Docker orchestration | FUTURE_OPTION | Explicitly out of scope P1.8.2.1 |
+
+---
+
+## Deploy lifecycle and provenance
+
+| ID | Topic | Category | Notes |
+|----|-------|----------|-------|
+| OQ-17 | Deploy scheduler leader convergence / leader-election wait | **CLOSED** | P1.8.3.1 production verified; INC-06 CLOSED; `DEPLOY_LEADER_CONVERGENCE_GATE=VERIFIED_PRODUCTION` |
+| OQ-18 | Bootstrap deploy can execute stale logic from pre-success `current` | **MITIGATED_PENDING_PRODUCTION_VALIDATION** | RELEASE_OPS_DIR sourcing production-proven (attempt 3); exact-SHA + cloud-agent bootstrap path in PR #1490 not yet observed on routine deploy |
 
 ---
 
@@ -57,9 +66,9 @@ Do **not** treat items here as current production architecture.
 
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
-| OQ-17 | P1.8.3 post-scale retrospective audit | OPEN_QUESTION | NEXT_STAGE from P1.8.2 |
-| OQ-18 | Automated deploy CI for ops scripts | FUTURE_OPTION | Shell tests exist |
 | OQ-19 | nginx upstream auto-sync with PM2 | FUTURE_OPTION | Manual/config today |
+| OQ-28 | P1.8.3 post-scale retrospective / sustained N=2 soak | OPEN_QUESTION | NEXT_STAGE after P1.8.3.1 validation |
+| OQ-29 | Automated deploy CI for ops scripts | FUTURE_OPTION | Shell + unit tests exist; exact-SHA tests added |
 
 ---
 

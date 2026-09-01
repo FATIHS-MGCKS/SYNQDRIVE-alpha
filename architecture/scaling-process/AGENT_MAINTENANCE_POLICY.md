@@ -57,10 +57,11 @@ No architecture change is **complete** until:
 5. **[SCALING_PROCESS_KNOWLEDGE_GRAPH.md](./SCALING_PROCESS_KNOWLEDGE_GRAPH.md)** updated if relationships changed
 6. **[VALIDATION_EVIDENCE.md](./VALIDATION_EVIDENCE.md)** updated with new evidence
 7. **[OPEN_QUESTIONS_AND_FUTURE_WORK.md](./OPEN_QUESTIONS_AND_FUTURE_WORK.md)** updated if gaps closed or new gaps found
-8. **Subsystem doc** updated (`SCHEDULER_*`, `DIMO_*`, etc.) when that subsystem changed
-9. **[FAILURE_AND_RECOVERY_MODEL.md](./FAILURE_AND_RECOVERY_MODEL.md)** updated for new incidents
-10. **`graph/nodes.yaml`** updated when graph nodes/relationships change
-11. **ChangesView / ArchitekturView** updated per project convention (`Architectur-Updates` rule)
+8. Run **`node architecture/scaling-process/scripts/validate-open-questions.mjs`** when editing OQ IDs
+9. **Subsystem doc** updated (`SCHEDULER_*`, `DIMO_*`, etc.) when that subsystem changed
+10. **[FAILURE_AND_RECOVERY_MODEL.md](./FAILURE_AND_RECOVERY_MODEL.md)** updated for new incidents
+11. **`graph/nodes.yaml`** updated when graph nodes/relationships change
+12. **ChangesView / ArchitekturView** updated per project convention (`Architectur-Updates` rule)
 
 ---
 

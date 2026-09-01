@@ -62,14 +62,20 @@ preflight_git() {
   fi
 
   echo "[cloud-agent] Git preflight OK: ${LOCAL_HEAD:0:7} on ${GIT_REMOTE}/${GIT_BRANCH}."
+  export CLOUD_AGENT_REQUESTED_DEPLOY_SHA="$LOCAL_HEAD"
 }
 
 run_remote_deploy() {
+  if [[ -z "${CLOUD_AGENT_REQUESTED_DEPLOY_SHA:-}" ]]; then
+    echo "[cloud-agent] ERROR: CLOUD_AGENT_REQUESTED_DEPLOY_SHA unset — run preflight_git first." >&2
+    exit 1
+  fi
+  local requested_sha="${CLOUD_AGENT_REQUESTED_DEPLOY_SHA}"
   echo "[cloud-agent] Deploying via SSH ${SSH_USER}@${VPS_HOST}:${SSH_PORT} ..."
-  # Bootstrap deploy entrypoint from GitHub main — not stale /opt/synqdrive/current copy
-  # (OQ-18 / P1.8.3.3: pre-success current may lack P1.8.3.1 convergence + RELEASE_OPS_DIR sourcing).
+  echo "[cloud-agent] REQUESTED_DEPLOY_SHA=${requested_sha}"
+  # Bootstrap entry script from exact SHA — not stale /opt/synqdrive/current (OQ-18).
   local git_repo="${CLOUD_AGENT_GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
-  local remote_inner="set -euo pipefail; TMP=\$(mktemp -d); trap 'rm -rf \"\$TMP\"' EXIT; git clone --depth 1 --branch ${GIT_BRANCH} ${git_repo} \"\$TMP\"; bash \"\$TMP/backend/scripts/ops/vps-deploy-release.sh\""
+  local remote_inner="set -euo pipefail; TMP=\$(mktemp -d); trap 'rm -rf \"\$TMP\"' EXIT; git init -q \"\$TMP\"; git -C \"\$TMP\" remote add origin ${git_repo}; git -C \"\$TMP\" fetch --depth 1 origin ${requested_sha}; git -C \"\$TMP\" checkout -q FETCH_HEAD; ACTUAL=\$(git -C \"\$TMP\" rev-parse HEAD); test \"\$ACTUAL\" = \"${requested_sha}\"; SYNQDRIVE_REQUESTED_DEPLOY_SHA=${requested_sha} bash \"\$TMP/backend/scripts/ops/vps-deploy-release.sh\""
   local remote_cmd="bash -c $(printf '%q' "$remote_inner")"
   if [[ "${SSH_USER}" != "root" ]]; then
     remote_cmd="sudo -n -H bash -c $(printf '%q' "$remote_inner")"
