@@ -124,13 +124,25 @@ MULTI_REPLICA_ROLLBACK_SUPPORTED = YES
 
 ## Phase 6 — GitHub CI
 
-*Updated after push — see FINAL_PR_HEAD below.*
+```
+FINAL_PR_HEAD = 5dd40076ce9658d7a4588b167e2cfffda9432c81
+GITHUB_CHECKS_TOTAL = 25 (across 2 workflow runs)
+GITHUB_CHECKS_SUCCESS = 25
+GITHUB_CHECKS_FAILED = 0
+GITHUB_CHECKS_PENDING = 0
+GITHUB_CI_STATUS = ALL_PASS (including CI gate)
+```
 
 ---
 
 ## Phase 7 — Mergeability
 
-*Updated after push.*
+```
+MERGEABLE = YES
+MERGEABLE_STATE = CLEAN
+PR_DRAFT_STATUS = false (ready for review)
+PR_READY_FOR_REVIEW = YES
+```
 
 ---
 
