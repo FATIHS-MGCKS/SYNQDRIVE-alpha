@@ -2,7 +2,7 @@
 
 **Gaps:** `BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001`, `BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001`, `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001`  
 **Priority:** P0_ACTIVATION_BLOCKER (Stage-2 cutover — **not** proven active production outage while flags default OFF)  
-**Readiness:** IMPLEMENTATION_SPEC_REQUIRED — PKG-01 blockers: `inputVersion`, REST post-persist/pre-enqueue crash-boundary handling, `CONFIGURATION_INVARIANT_SPEC_REQUIRED`; PKG-02 blockers: assessment-track selection authority, `publicationVersion`, `CONFIGURATION_INVARIANT_SPEC_REQUIRED`  
+**Readiness:** IMPLEMENTATION_SPEC_REQUIRED — PKG-01 blockers: REST post-persist/pre-enqueue crash-boundary handling, `CONFIGURATION_INVARIANT_SPEC_REQUIRED` (`inputVersion` = `BatteryMeasurement.id` — **VALIDATED** `BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001`); PKG-02 blockers: assessment-track selection authority, `publicationVersion`, `CONFIGURATION_INVARIANT_SPEC_REQUIRED`  
 **Proposed decision:** `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (PROPOSED — gaps remain open)
 
 ## CURRENT STATE
@@ -185,18 +185,24 @@ Validation requires `BATTERY_ASSESSMENT_RECOMPUTE` keys to use the `assess:` pre
 
 `BatteryAssessmentRecomputeHandler` does **not** consume `inputVersion` for computation — it triggers full `recomputeLvEstimatedHealth()`. `inputVersion` is the **idempotency / dedup anchor** for job identity and replay semantics.
 
-### PROPOSED canonical REST handoff (SPEC REQUIRED)
+### Canonical REST handoff — inputVersion (VALIDATED)
 
-| Field | Proposal | Status |
-|-------|----------|--------|
+**Decision:** `BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001` — `inputVersion = persisted BatteryMeasurement.id`
+
+| Field | Value | Status |
+|-------|-------|--------|
 | `assessmentType` | `LV_HEALTH` | **CONFIRMED** — matches legacy + reconciliation |
-| `inputVersion` | **Candidate A:** `persistedMeasurement.id` (unique per REST completion) | **PROPOSED** — best deterministic replay per measurement |
-| | **Candidate B:** `persistedMeasurement.observedAt.getTime()` | **PROPOSED** — aligns with legacy capture-time pattern; collision risk if multiple same-ms |
-| | **Candidate C:** composite `{restWindowId}:{targetSuffix}:{measurement.id}` encoded as string | **PROPOSED** — explicit REST anchor binding |
+| `inputVersion` | `persistedMeasurement.id` | **VALIDATED** (D1) — one job per canonical REST measurement |
 
-**Recommendation pending spec sign-off:** Candidate A (`measurement.id`) — preserves one-job-per-canonical-REST-measurement without inventing a new prefix or assessment type. Reconciliation must use a consistent rule when scanning stale measurements.
+**Semantic contract:** `inputVersion` is the stable identity of the concrete persisted `BatteryMeasurement` whose successful creation triggered assessment recompute — **not** model version, timestamp provenance, trip identity, or rest-window identity.
 
-**Why:** Assessment recomputation reads all LV measurements; `inputVersion` only names the triggering input change for idempotent enqueue. Using the persisted measurement primary key matches the atomic unit of REST completion.
+**Rejected for job identity:** `measurement.observedAt`; `tripId` / `sessionId` / `restWindowId` alone; composite `restWindowId + target + measurementId`.
+
+**Legacy path:** snapshot ingestion may continue `capture.capturedAt.getTime()` for existing identities — no re-keying.
+
+**Runtime availability:** `BatteryRestTargetEvaluateHandler` receives `result.measurementId` from `evaluateAndPersist()` at the intended handoff boundary (enqueue not implemented).
+
+See `decisions/lv-assessment-input-version-decision.md`.
 
 ## PUBLICATION JOB IDENTITY
 
@@ -389,7 +395,6 @@ Does not enable readiness; does not fix timestamp provenance; does not fix HEV a
 
 ## OPEN QUESTIONS
 
-- Final `inputVersion` candidate selection (A vs B vs C)
 - **Canonical publication assessment-track selection authority** (WORKSHOP_OVERRIDE vs TELEMETRY when both publicationEligible)
 - Authoritative `publicationVersion` for canonical handoff
 - REST handler crash boundary: existing-measurement branch handoff vs reconcile-only (A/B/C)

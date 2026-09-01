@@ -1,7 +1,7 @@
 # Phase 4 Executive Summary
 
-**Date:** 2026-09-01 (activation-semantics correction pass)  
-**Verdict:** Phase 4 planning complete — gaps remain open; PKG-01/02 blocked on spec + configuration invariant
+**Date:** 2026-09-01 (D1 inputVersion decision)  
+**Verdict:** Phase 4 planning complete — gaps remain open; PKG-01 `inputVersion` closed (D1 VALIDATED)
 
 ## Planning accounting
 
@@ -15,8 +15,8 @@
 ## DO NOW (highest leverage — documentation / validation only)
 
 1. **PKG-09** — Execute post-#1445 natural soak (initial smoke tranche — not strong validation)
-2. **Spec sign-off gate (PKG-01/02)** — Complete **all** IMPLEMENTATION_SPEC_REQUIRED blockers before any runtime implementation authorization:
-   - **PKG-01:** `inputVersion`; REST crash-boundary handling (A/B/C); `CONFIGURATION_INVARIANT_SPEC_REQUIRED`
+2. **Spec sign-off gate (PKG-01/02)** — Complete remaining **IMPLEMENTATION_SPEC_REQUIRED** blockers before any runtime implementation authorization:
+   - **PKG-01:** REST crash-boundary handling (A/B/C); `CONFIGURATION_INVARIANT_SPEC_REQUIRED` (`inputVersion` = `BatteryMeasurement.id` — **VALIDATED** D1)
    - **PKG-02:** assessment-track selection authority; `publicationVersion`; `CONFIGURATION_INVARIANT_SPEC_REQUIRED`
 3. **Runtime implementation** — PKG-01 + PKG-02 code changes require **separate explicit authorization** after full spec sign-off. **Phase-4 documentation merge is not runtime authorization.**
 
@@ -32,12 +32,11 @@
 1. **HEV canonical model** — Option A direction (LV canonical; D1/D2/D3 layering) — DECISION_NOT_READY
 2. **Timestamp provenance enum** — approve PKG-03 target model (measurement only; not session opening)
 3. **Stage 2 cutover policy** — when to enable handoff flags; **`CONFIGURATION_INVARIANT_SPEC_REQUIRED`** (unsafe REST_SHADOW=ON + PUBLICATION=ON + HANDOFF=OFF trap)
-4. **PKG-01 inputVersion** — measurement.id vs observedAt vs composite
-5. **PKG-02 assessment-track selection** — WORKSHOP_OVERRIDE vs TELEMETRY when both publicationEligible (DECISION_NOT_READY)
-6. **PKG-02 publicationVersion** — authoritative source for canonical handoff
-7. **PKG-01 crash boundary** — existing-measurement branch handoff vs reconcile-only
-8. **Provider VLS SOH gap** — **RECOMMENDED/PROPOSED:** retain current non-decision-fresh VLS-only semantics unless product authority requires decision-capable VLS SOH (separate spec) — **DECISION_REQUIRED**, pending sign-off; not PKG-04
-9. **Canary scope** — deployment/environment isolation; org allowlist **SPEC REQUIRED** if desired
+4. **PKG-02 assessment-track selection** — WORKSHOP_OVERRIDE vs TELEMETRY when both publicationEligible (DECISION_NOT_READY)
+5. **PKG-02 publicationVersion** — authoritative source for canonical handoff
+6. **PKG-01 crash boundary** — existing-measurement branch handoff vs reconcile-only
+7. **Provider VLS SOH gap** — **RECOMMENDED/PROPOSED:** retain current non-decision-fresh VLS-only semantics unless product authority requires decision-capable VLS SOH (separate spec) — **DECISION_REQUIRED**, pending sign-off; not PKG-04
+8. **Canary scope** — deployment/environment isolation; org allowlist **SPEC REQUIRED** if desired
 
 ## DEFER
 
@@ -77,7 +76,7 @@
 
 ## Top 5 next actions
 
-1. Sign off **all** PKG-01 blockers (`inputVersion`, crash-boundary, configuration invariant) **and** PKG-02 blockers (assessment-track selection, `publicationVersion`, configuration invariant)
+1. Sign off remaining PKG-01 blockers (crash-boundary, configuration invariant) **and** PKG-02 blockers (assessment-track selection, `publicationVersion`, configuration invariant) — **D1 `inputVersion` already VALIDATED**
 2. Obtain **separate runtime implementation authorization** for PKG-01 + PKG-02 (Phase-4 merge alone does not authorize)
 3. Run PKG-09 initial smoke tranche (≥10 trips / 14 days — not strong validation; profile-stratified)
 4. Product decision on HEV Option A layering (DECISION_NOT_READY)
