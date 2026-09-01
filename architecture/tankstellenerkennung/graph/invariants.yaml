@@ -1,0 +1,195 @@
+# Tankstellenerkennung Knowledge Graph — Invariants (bootstrap V1)
+
+invariants:
+  - id: FST-INV-NO-DETECTION-001
+    kind: CONFIRMED_INVARIANT
+    title: Tankstellenerkennung never determines whether REFUEL happened
+    epistemic_status: CONFIRMED
+    statement: >
+      REFUEL detection is upstream in Energy Event subsystem. Enrichment only runs for persisted
+      kind=REFUEL rows after detection.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+    evidence:
+      - FST-EVID-CODE-BOUNDARY-001
+
+  - id: FST-INV-CONFIDENCE-SEPARATE-001
+    kind: CONFIRMED_INVARIANT
+    title: Detection confidence != station match confidence
+    epistemic_status: CONFIRMED
+    statement: >
+      VehicleEnergyEvent.confidence and stationEnrichment.matchConfidence are independent domains.
+      UI may show detection HIGH while station is possible/non-trusted.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events-station-enrichment.dto.ts
+      - frontend/src/rental/components/trips/trips-fuel-station-enrichment-ui.test.tsx
+    evidence:
+      - FST-TEST-UI-REGRESSION-001
+
+  - id: FST-INV-RECHARGE-NO-ENRICH-001
+    kind: CONFIRMED_INVARIANT
+    title: RECHARGE is not station-enriched
+    epistemic_status: CONFIRMED
+    statement: Producer, API DTO, and UI ignore station enrichment for RECHARGE events.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.types.ts
+      - frontend/src/rental/components/trips/trips-fuel-station-enrichment.ts
+    evidence:
+      - FST-TEST-UI-REGRESSION-001
+
+  - id: FST-INV-NO-PRECUTOVER-001
+    kind: CONFIRMED_INVARIANT
+    title: No pre-cutover REFUEL automatic enrichment
+    epistemic_status: CONFIRMED
+    statement: Events with startTime before FUEL_STATION_ENRICHMENT_CUTOVER_AT are not enqueued.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-cutover.util.ts
+    evidence:
+      - FST-EVID-CODE-CUTOVER-001
+
+  - id: FST-INV-CUTOVER-STARTTIME-001
+    kind: CONFIRMED_INVARIANT
+    title: Cutover authority is startTime not createdAt
+    epistemic_status: CONFIRMED
+    statement: createdAt must not override event occurrence cutover semantics.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-cutover.util.ts
+
+  - id: FST-INV-NO-BACKFILL-001
+    kind: CONFIRMED_INVARIANT
+    title: No historical automatic backfill
+    epistemic_status: CONFIRMED
+    statement: Deploy/recovery must not enrich pre-cutover REFUEL rows.
+    evidence:
+      - FST-EVID-PROD-DEPLOY-001
+
+  - id: FST-INV-ONE-ROW-001
+    kind: CONFIRMED_INVARIANT
+    title: One enrichment row per Energy Event
+    epistemic_status: CONFIRMED
+    statement: energyEventId is unique on vehicle_energy_event_fuel_station_enrichments.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: FST-INV-DB-LIFECYCLE-001
+    kind: CONFIRMED_INVARIANT
+    title: DB lifecycle state outranks BullMQ history
+    epistemic_status: CONFIRMED
+    statement: Automatic paths consult enrichment row + fingerprint, not job completion history alone.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-lifecycle.policy.ts
+    evidence:
+      - FST-EVID-CODE-LIFECYCLE-001
+
+  - id: FST-INV-FAILED-TERMINAL-001
+    kind: CONFIRMED_INVARIANT
+    title: FAILED same fingerprint/version is automatically terminal
+    epistemic_status: CONFIRMED
+    statement: terminal_failed skip reason blocks automatic producer/recovery re-enqueue.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-lifecycle.policy.ts
+
+  - id: FST-INV-COMPLETED-IDEMPOTENT-001
+    kind: CONFIRMED_INVARIANT
+    title: COMPLETED non-error same fingerprint is idempotent no-op
+    epistemic_status: CONFIRMED
+    statement: terminal_completed skip for non-retryable resolution statuses.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-lifecycle.policy.ts
+
+  - id: FST-INV-FINGERPRINT-CHANGE-001
+    kind: CONDITIONAL_INVARIANT
+    title: Changed coordinate or resolver version may yield new fingerprint
+    epistemic_status: CONFIRMED
+    statement: Input fingerprint incorporates coordinates; resolverVersion mismatch bypasses terminal skip.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-fingerprint.util.ts
+
+  - id: FST-INV-TRUST-HIGH-MEDIUM-001
+    kind: CONFIRMED_INVARIANT
+    title: Only MATCHED HIGH/MEDIUM is trusted
+    epistemic_status: CONFIRMED
+    statement: trusted flag false for LOW; UI trusted mode requires trusted=true.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-trust.policy.ts
+
+  - id: FST-INV-LOW-NOT-AUTHORITATIVE-001
+    kind: CONFIRMED_INVARIANT
+    title: MATCHED LOW is not authoritative
+    epistemic_status: CONFIRMED
+    statement: UI uses possible mode; coordinates remain visible.
+    source_paths:
+      - frontend/src/rental/components/trips/trips-fuel-station-enrichment.ts
+
+  - id: FST-INV-API-NO-RESOLVER-001
+    kind: CONFIRMED_INVARIANT
+    title: API does not invoke resolver/PostGIS on read
+    epistemic_status: CONFIRMED
+    statement: HTTP handlers include persisted fuelStationEnrichment relation only.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+    evidence:
+      - FST-EVID-CODE-API-READ-001
+
+  - id: FST-INV-NO-NPLUS1-001
+    kind: CONFIRMED_INVARIANT
+    title: List path must remain N+1-free
+    epistemic_status: CONFIRMED
+    statement: Single query includes fuelStationEnrichment for energy event lists.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events-list-station-enrichment.spec.ts
+
+  - id: FST-INV-UI-NO-PROMOTE-LOW-001
+    kind: CONFIRMED_INVARIANT
+    title: UI must not promote AMBIGUOUS/LOW to authoritative station
+    epistemic_status: CONFIRMED
+    statement: possible/ambiguous modes use muted or message-only presentation.
+    source_paths:
+      - frontend/src/rental/components/trips/trips-fuel-station-enrichment.ts
+    evidence:
+      - FST-TEST-UI-REGRESSION-001
+
+  - id: FST-INV-PROVENANCE-001
+    kind: CONFIRMED_INVARIANT
+    title: Resolver and OSM dataset versions preserved as provenance
+    epistemic_status: CONFIRMED
+    statement: resolverVersion and osmDatasetVersion stored on enrichment row and exposed in DTO.
+    source_paths:
+      - backend/prisma/schema.prisma
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events-station-enrichment.dto.ts
+
+  - id: FST-INV-NO-SYNTHETIC-PROD-REFUEL-001
+    kind: CONFIRMED_INVARIANT
+    title: No synthetic production REFUEL for validation
+    epistemic_status: CONFIRMED
+    statement: Production validation must not manufacture REFUEL events or enrichment rows.
+    source_paths:
+      - architecture/tankstellenerkennung/AGENT_CONTRACT.md
+      - architecture/tankstellenerkennung/decisions/DECISION_REGISTER.md
+
+  - id: FST-INV-RECOVERY-SINGLETON-001
+    kind: CONFIRMED_INVARIANT
+    title: Recovery scheduler executes only on elected cluster leader when election enabled
+    epistemic_status: CONFIRMED
+    statement: >
+      fuel_station_enrichment_recovery is SINGLETON_GLOBAL. recoverMissedEnrichments() must run
+      only when SchedulerLeaderGuardService grants leadership via the scheduler leader election
+      lease. SCHEDULER_LEADER_ELECTION_ENABLED=true is required for multi-replica singleton safety.
+      When leader election is disabled, every replica behaves as leader and duplicate recovery
+      sweeps are possible — singleton execution is NOT guaranteed across replicas in that mode.
+      This governs recovery scheduler tick ownership only; BullMQ enrichment worker concurrency
+      is not singleton-gated by this mechanism.
+    source_paths:
+      - backend/src/workers/schedulers/fuel-station-enrichment-recovery.scheduler.ts
+      - backend/src/shared/scheduler-leader/scheduler-leader-guard.service.ts
+      - backend/src/shared/scheduler-leader/scheduler-leader-election.service.ts
+      - backend/src/shared/scheduler-leader/scheduler-leader-election.config.ts
+      - backend/src/shared/scheduler-leader/scheduler-leader.registry.ts
+
+  - id: FST-INV-FALLBACK-EMPTY-ONLY-001
+    kind: CONFIRMED_INVARIANT
+    title: 250m fallback only when primary returns zero candidates
+    epistemic_status: CONFIRMED
+    statement: Fallback radius not used when any primary candidate exists.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/fuel-station-location-resolver.service.ts
