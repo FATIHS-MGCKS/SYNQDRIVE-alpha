@@ -1,14 +1,14 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-01 (D1 inputVersion decision)  
-**Graph:** 124 nodes / 110 edges / 11 invariants (validated 2026-09-01)  
-**Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 1 VALIDATED D1 decision (`BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001`)
+**Snapshot date:** 2026-09-01 (D2 crash-boundary contract precision pass)  
+**Graph:** 131 nodes / 113 edges / 11 invariants (validated 2026-09-01)  
+**Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 2 VALIDATED PKG-01 spec decisions (D1 `inputVersion`, D2 crash-boundary recovery)
 
 ## Executive summary
 
 Battery V2 authority is substantially reconstructed (Phase 2–3) and Phase 4 defines **how to resolve** remaining gaps without implementing runtime fixes. Highest-priority work: **LV publication chain handoffs** (P0_ACTIVATION_BLOCKER — Stage-2 cutover blockers, **not** proven active production incidents while flags default OFF). PKG-01/02 are **IMPLEMENTATION_SPEC_REQUIRED** pending:
 
-- **PKG-01:** REST handler crash-boundary spec (A/B/C); `CONFIGURATION_INVARIANT_SPEC_REQUIRED` (REST_SHADOW + PUBLICATION + HANDOFF combinatorics). **`inputVersion` closed** — `BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001` (`BatteryMeasurement.id`)
+- **PKG-01:** `CONFIGURATION_INVARIANT_SPEC_REQUIRED` only (REST_SHADOW + PUBLICATION + HANDOFF combinatorics). **`inputVersion` closed (D1)** — `BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001` (`BatteryMeasurement.id`). **Crash-boundary closed (D2)** — `BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001` (Hybrid C+)
 - **PKG-02:** assessment-track selection authority; `publicationVersion` authority; same configuration invariant
 
 Post-#1445 soak is **PRODUCTION_VALIDATION_ONLY** (initial smoke, not strong validation; profile-stratified — ICE/HEV/PHEV as exposed). HEV product authority remains **DECISION_NOT_READY**. Provider LatestState SOH gap is **DECISION_REQUIRED** (current runtime already non-decision-fresh for VLS-only) — **not** IMPLEMENTATION_READY / not PKG-04 scope.
@@ -44,7 +44,7 @@ See `resolution/` — priority matrix, implementation packages, dependency graph
 - HEV: separate write gates vs `isEv` read gate; side-effect / read-model divergence
 - LV publication eligibility: evaluated in `BatteryPublicationService` / `evaluateLvPublicationPolicy()`
 - HV SOH gate execution under `HV_CAPACITY_SHADOW`; publication-intent separate
-- Assessment job identity: `assess:{vehicleId}:{assessmentType}:{inputVersion}` — canonical REST handoff `inputVersion` = `BatteryMeasurement.id` (`BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001`)
+- Assessment job identity: `assess:{vehicleId}:{assessmentType}:{inputVersion}` — canonical REST handoff `inputVersion` = `BatteryMeasurement.id` (D1); canonical correlation `sourceEntityId` = `BatteryMeasurement.id` (D2); handoff only for measurements with `provenance.sourceObservationId` (selected-observation path)
 - Publication job identity: `pub:{assessmentId}:v{publicationVersion}`
 - Primary API + rental health → canonical read model
 
