@@ -76,6 +76,39 @@ function parseKnowledgeGraphDecisionTable(filePath) {
   return map;
 }
 
+function parseDecisionRegisterEvidenceFields(filePath) {
+  const entries = [];
+  if (!fs.existsSync(filePath)) return entries;
+  const text = fs.readFileSync(filePath, 'utf8');
+  const sectionRe = /## (FST-DEC-[A-Z0-9-]+)[^\n]*\n([\s\S]*?)(?=\n## FST-DEC-|\n*$)/g;
+  for (const m of text.matchAll(sectionRe)) {
+    const decisionId = m[1];
+    const body = m[2];
+    const evidenceMatch = body.match(/\| \*\*EVIDENCE\*\* \| ([^|]+) \|/);
+    if (!evidenceMatch) continue;
+    const raw = evidenceMatch[1];
+    const refs = [...raw.matchAll(/FST-[A-Z0-9-]+/g)].map((x) => x[0]);
+    entries.push({ decisionId, raw, refs });
+  }
+  return entries;
+}
+
+function assertEvidenceReferenceAllowed(ownerLabel, ref, nodeById, evidenceRefTypes) {
+  const node = nodeById.get(ref);
+  if (!node) {
+    fail(`${ownerLabel} references missing node ${ref}`);
+    return;
+  }
+  if (!evidenceRefTypes.includes(node.type)) {
+    fail(
+      `${ownerLabel} evidence ref ${ref} has invalid type ${node.type}; permitted: ${evidenceRefTypes.join(', ')}`,
+    );
+  }
+  if (!ref.startsWith('FST-EVID-') && !ref.startsWith('FST-TEST-')) {
+    fail(`${ownerLabel} evidence ref ${ref} must use FST-EVID-* or FST-TEST-* prefix`);
+  }
+}
+
 function typeOf(nodeById, id) {
   return nodeById.get(id)?.type;
 }
@@ -407,6 +440,25 @@ for (const [id, status] of registerStatuses) {
   }
 }
 console.log('==> Decision status consistency:', registerStatuses.size, 'register entries checked');
+
+const registerEvidence = parseDecisionRegisterEvidenceFields(
+  path.join(authorityDir, 'decisions/DECISION_REGISTER.md'),
+);
+for (const entry of registerEvidence) {
+  if (entry.refs.length === 0) {
+    fail(`DECISION_REGISTER ${entry.decisionId} EVIDENCE field has no FST-* references`);
+    continue;
+  }
+  for (const ref of entry.refs) {
+    assertEvidenceReferenceAllowed(
+      `DECISION_REGISTER ${entry.decisionId} EVIDENCE`,
+      ref,
+      nodeById,
+      evidenceRefTypes,
+    );
+  }
+}
+console.log('==> Decision Register EVIDENCE field checks:', registerEvidence.length, 'records OK');
 
 if (errors.length) {
   console.error('\n==> VALIDATION FAILED');

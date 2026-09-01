@@ -9,6 +9,7 @@ Canonical evidence nodes (`FST-EVID-*`, `FST-TEST-*`). See also `graph/nodes.yam
 | FST-EVID-CALIBRATION-001 | CALIBRATION_RUN | FUEL_STATION_RESOLVER_V1 + calibration gate | 28 stations, 672 probes; radius widen rejected |
 | FST-EVID-CODE-RESOLVER-001 | CURRENT_CODE | location.constants.ts | Radii, scores, thresholds verified |
 | FST-EVID-PROD-DEPLOY-001 | PRODUCTION_OBSERVATION | evidence/PRODUCTION_DEPLOYMENT_EF_2026-09-01.md | Scoped infra/negative-path deploy observation |
+| FST-EVID-GOV-REAL-REFUEL-E2E-001 | ARCHITECTURE_DOCUMENT | AGENT_CONTRACT + FST-INV-NO-SYNTHETIC-PROD-REFUEL-001 | Owner-confirmed natural-REFUEL E2E governance |
 | FST-EVID-PR-1447-001 | PR_HISTORY | #1447 | OSM dataset |
 | FST-EVID-PR-1451-001 | PR_HISTORY | #1451 | Resolver V1 |
 | FST-EVID-PR-1453-001 | PR_HISTORY | #1453 | Enrichment persistence + worker |

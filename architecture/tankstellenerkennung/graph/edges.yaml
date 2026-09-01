@@ -198,6 +198,9 @@ edges:
   - from: FST-EVID-PROD-DEPLOY-001
     relation: supports
     to: FST-GAP-REAL-POST-CUTOVER-REFUEL-001
+  - from: FST-EVID-GOV-REAL-REFUEL-E2E-001
+    relation: supports
+    to: FST-DEC-REAL-REFUEL-E2E-001
   - from: FST-EVID-CODE-CUTOVER-001
     relation: supports
     to: FST-DEC-STARTTIME-CUTOVER-001

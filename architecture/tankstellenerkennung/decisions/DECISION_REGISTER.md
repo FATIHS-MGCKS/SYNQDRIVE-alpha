@@ -252,4 +252,4 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 | **NON_EFFECTS** | Does not block deployed architecture |
 | **TRADEOFFS** | Validation latency for full E2E path |
 | **REMAINING_GAPS** | FST-GAP-REAL-POST-CUTOVER-REFUEL-001 — natural positive production REFUEL not observed |
-| **EVIDENCE** | FST-REJECT-SYNTHETIC-PROD-REFUEL-001 (governance edge); not production observation |
+| **EVIDENCE** | FST-EVID-GOV-REAL-REFUEL-E2E-001 |

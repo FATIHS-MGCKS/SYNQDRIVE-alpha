@@ -1,7 +1,28 @@
 # Tankstellenerkennung — Current State
 
-**As-of:** 2026-09-01 (main `c5dce7a9d` and prior Phase B–F merges)  
 **Reconstruction maturity:** SUBSTANTIAL (code + architecture memos; natural E2E production match not yet observed)
+
+## Audited baselines (separate — do not conflate)
+
+| Baseline | Value | Notes |
+|----------|-------|-------|
+| **Authority code baseline audited** | `bd25f17d43c644781317552d06cca27a06fe0bcb` (`origin/main` at 2026-09-01 sync) | Runtime semantics reviewed against Tankstellenerkennung modules; no domain delta from main sync |
+| **Production observation baseline** | `FST-EVID-PROD-DEPLOY-001` | Phase E+F deploy SHA `e76ada3d8885f8eeb7f2e6c6c50be115d0758c2c`; cutover preserved; zero enrichment rows; no post-cutover REFUEL observed |
+
+Historical branch origin: `c5dce7a9de130e4785a707c5175c1b7fb3dc8302`. Main has advanced; production evidence is not rewritten by main movement.
+
+## Main sync audit (2026-09-01)
+
+Commits on `origin/main` since branch origin (`c5dce7a9d`) reviewed for Tankstellenerkennung domain impact:
+
+- `7e8bfca53` — ATE/EED knowledge-graph discovery artifacts (documentation only)
+- `4843a4ebc` — Scaling Process canonical knowledge graph (documentation only)
+- `d6884ce60` — P1.8.2.1 multi-replica deploy lifecycle hardening (ops/deploy scripts)
+- `bd25f17d4` — ATE Phase 2A canonical knowledge graph (documentation only)
+
+**NO TANKSTELLENERKENNUNG RUNTIME SEMANTIC DELTA FROM MAIN SYNC**
+
+No changes to REFUEL persistence, coordinates, startTime, resolver, OSM dataset, enrichment producer/worker/orchestrator, recovery, lifecycle/trust policies, API projection, or trips timeline UI code paths.
 
 ## Executive summary
 

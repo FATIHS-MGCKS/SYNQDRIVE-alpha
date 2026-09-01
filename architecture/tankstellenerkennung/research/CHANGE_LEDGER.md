@@ -66,6 +66,23 @@ Scientific history of the fuel-station identification workstream. Epistemic rigo
 | **NON_EFFECTS** | No runtime changes |
 | **STATUS** | Documentation only |
 
+## 2026-09-01 — Final canonical semantic integrity pass (PR #1482)
+
+| Field | Detail |
+|-------|--------|
+| **CHANGE** | startTime overclaim fix; resolutionStatus enum complete; FST-SUPERSEDED taxonomy; edge semantics; evidence-ref type safety; validator semantic contracts |
+| **NON_EFFECTS** | No runtime changes |
+| **STATUS** | Documentation only |
+
+## 2026-09-01 — Final main sync + authority contract gate (PR #1482)
+
+| Field | Detail |
+|-------|--------|
+| **CHANGE** | Merged `origin/main` (`bd25f17d`); governance evidence node; Decision Register evidence validation |
+| **MAIN DELTA** | NO TANKSTELLENERKENNUNG RUNTIME SEMANTIC DELTA FROM MAIN SYNC |
+| **NON_EFFECTS** | No runtime changes |
+| **STATUS** | Documentation only; authority ready for merge review |
+
 ## Open epistemic gate
 
 **FST-GAP-REAL-POST-CUTOVER-REFUEL-001** — ARCHITECTURE DEPLOYED ≠ natural positive-path PRODUCTION_VALIDATED.

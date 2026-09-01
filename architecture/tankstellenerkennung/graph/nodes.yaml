@@ -486,10 +486,24 @@ nodes:
     decision_status: VALIDATED
     summary: >
       Owner-confirmed governance: do not fabricate synthetic production REFUEL events.
-      Policy validated via Agent Contract and FST-INV-NO-SYNTHETIC-PROD-REFUEL-001.
+      Policy validated via FST-EVID-GOV-REAL-REFUEL-E2E-001 and FST-INV-NO-SYNTHETIC-PROD-REFUEL-001.
       Production evidence gap remains FST-GAP-REAL-POST-CUTOVER-REFUEL-001.
+    evidence:
+      - FST-EVID-GOV-REAL-REFUEL-E2E-001
 
   # --- Evidence ---
+  - id: FST-EVID-GOV-REAL-REFUEL-E2E-001
+    type: evidence
+    title: Governance — natural post-cutover REFUEL required for full E2E validation
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: >
+      Owner-confirmed governance requires a natural post-cutover REFUEL for full positive-path
+      production validation and prohibits synthetic production REFUEL fabrication.
+    source_paths:
+      - architecture/tankstellenerkennung/AGENT_CONTRACT.md
+      - architecture/tankstellenerkennung/graph/invariants.yaml
+
   - id: FST-EVID-CODE-BOUNDARY-001
     type: evidence
     title: Code boundary — enrichment after REFUEL persist
