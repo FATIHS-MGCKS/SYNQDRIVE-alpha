@@ -1,6 +1,6 @@
 # Battery V2 — Knowledge Graph (Human View)
 
-**Last updated:** 2026-09-01 (D2 crash-boundary decision)  
+**Last updated:** 2026-09-01 (D2 crash-boundary contract precision pass)  
 **Maturity:** Phase 2+3 substantially reconstructed — open gaps remain  
 Machine-readable source: [graph/nodes.yaml](./graph/nodes.yaml), [graph/edges.yaml](./graph/edges.yaml)
 
@@ -129,6 +129,8 @@ BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001 (D2)
     └── refines ──► BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
     └── refines ──► BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
     └── refines ──► BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001
+    └── handoff eligibility: provenance.sourceObservationId (not any-measurement bool)
+    └── correlation: sourceEntityId = measurement.id; monotonic MISSING<ENQUEUED<EXECUTED
 ```
 
 ## Still open (use `BAT-V2-GAP-*` — do not invent detail)

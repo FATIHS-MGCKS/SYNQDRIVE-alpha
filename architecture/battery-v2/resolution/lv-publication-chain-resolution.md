@@ -143,47 +143,61 @@ Evaluate against: evidence strength, publication semantics, hysteresis, superses
 Current handler behavior (insufficient):
 
 ```typescript
-if (hasMeasurement) {
+if (hasMeasurement) {  // bool — any BatteryMeasurement of target type
   await this.updateTargetMetadata(session, restTargetType, { status: COMPLETED, ... });
-  return; // no assessment handoff ensure
+  return; // no row load, no handoff ensure, may overwrite MISSED/FAILED
 }
 ```
 
-**Failure mode:** measurement persisted → process crashes before assessment enqueue → REST job retries → `hasMeasurement === true` → returns without creating missing assessment job.
+**Failure mode:** handoff-eligible measurement persisted → crash before enqueue → retry → bool true → COMPLETED without handoff.
+
+**Current code risk:** synthetic terminal measurements (`persistMissedMeasurement`, `persistStatusMeasurement`) also satisfy `hasMeasurement` — replay must not hand off or convert MISSED/FAILED → COMPLETED. Production frequency UNKNOWN.
 
 ### SELECTED architecture (Hybrid C+)
 
-1. **Direct normal handoff** — primary low-latency path after successful measurement persist  
-2. **Direct retry repair** — existing-measurement branch ensures handoff before COMPLETED return  
-3. **Periodic reconciliation safety net** — independent eventual repair (same D1 identity)  
-4. **Durable target-scoped handoff state** — LV REST session/target metadata (not `BatteryMeasurement`)
+1. **Direct normal handoff** — primary path after **handoff-eligible** measurement persist  
+2. **Direct retry repair** — load row; handoff only if `CANONICAL_ASSESSMENT_HANDOFF_ELIGIBLE_MEASUREMENT` (`provenance.sourceObservationId` present)  
+3. **Periodic reconciliation safety net** — same D1 identity + `sourceEntityId` correlation  
+4. **Durable target-scoped handoff state** — monotonic `MISSING < ENQUEUED < EXECUTED`; concurrency-safe merge
 
-Reconciliation is **not** the primary delivery mechanism.
+### Handoff eligibility
+
+| Path | `sourceObservationId` | Handoff? |
+|------|----------------------|----------|
+| Selected-observation `evaluateAndPersist` | present | YES |
+| `persistMissedMeasurement` | absent | NO → preserve MISSED |
+| `persistStatusMeasurement` (unsupported) | absent | NO → preserve FAILED |
+
+`quality === MISSED` alone does not prove synthetic terminal — use provenance.
 
 ### Retry path contract
 
 ```
-existing measurement found
-  → resolve persisted measurement.id for this target
-  → ensureAssessmentHandoff(measurement.id)   // assess:{vehicleId}:LV_HEALTH:{measurementId}
-  → maintain/mark target COMPLETED
-  → return
+load BatteryMeasurement row
+  → if handoff-eligible: ensureAssessmentHandoff(measurement.id) → COMPLETED
+  → if synthetic missed: preserve MISSED, no handoff
+  → if synthetic unsupported: preserve FAILED, no handoff
 ```
 
-### Reconciliation contract
+### Canonical correlation (D1 + D2)
 
-- Same D1 identity: `inputVersion = BatteryMeasurement.id`  
-- No reconciliation-specific job identity  
-- Repair when durable handoff state indicates execution incomplete — **not** when assessment policy legitimately skipped  
-- Current code gap: `reconcilePendingAssessments` scans `batteryFeatures`, not canonical REST measurements — implementation must extend per D2
+```typescript
+inputVersion: measurement.id      // job identity (D1)
+sourceEntityId: measurement.id  // handoff ack correlation (D2)
+```
 
-### Durable handoff state (target-scoped)
+Assessment handler: `sourceEntityId` → load measurement → verify org/vehicle → resolve session + REST target → write EXECUTED outcome. Legacy jobs without measurement `sourceEntityId` must not mutate canonical handoff metadata.
 
-Per REST target in session metadata: `IMPLICIT | ENQUEUED | EXECUTED` with outcomes `ASSESSMENT_PERSISTED | POLICY_SKIPPED | UNSUPPORTED`. Policy skip ≠ liveness failure.
+### Monotonic state + concurrency
 
-### Exactly-once verdict
+- `EXECUTED` terminal — never regress to ENQUEUED/MISSING  
+- Late ENQUEUED no-op when already EXECUTED (worker may beat producer)  
+- Target-scoped concurrency-safe metadata merge required for multi-replica safety
 
-**At-least-once** + deterministic job identity + idempotent persistence + durable EXECUTED outcome + reconciliation. **Do not claim exactly-once.**
+### ENQUEUED / EXECUTED ack
+
+- **ENQUEUED:** only after producer success or confirmed in-flight duplicate (`jobId` returned — not `null`)  
+- **EXECUTED:** after `recomputeLvEstimatedHealth()` — `ASSESSMENT_PERSISTED` | `POLICY_SKIPPED` | `UNSUPPORTED`
 
 See `decisions/lv-assessment-crash-boundary-decision.md`.
 

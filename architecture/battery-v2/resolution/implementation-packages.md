@@ -26,10 +26,10 @@
 | **Job identity** | `buildAssessmentJobIdempotencyKey` → `assess:{vehicleId}:LV_HEALTH:{measurementId}` — **not** `lv-assess:` |
 | **inputVersion** | **VALIDATED** — `persisted BatteryMeasurement.id` (`BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001`) |
 | **Rollback** | **Safe order (current runtime):** disable `BATTERY_V2_PUBLICATION_ENABLED` first → verify legacy capture restored → then disable handoff flag. `HANDOFF OFF` alone unsafe while `PUBLICATION` ON |
-| **Test scope** | Handler unit + integration |
+| **Test scope** | Handler unit + integration; **concurrency/monotonic handoff tests:** (A) EXECUTED before late ENQUEUED → final EXECUTED; (B) concurrent REST_60M + REST_6H metadata writes preserve siblings; (C) reconciliation + direct handler concurrent repair converges without regression; eligibility + terminal-outcome replay cases |
 | **Production validation** | Canary **deployment/environment** (not per-org flags). Validate `HANDOFF_ENQUEUE` + `HANDOFF_EXECUTION` + `ASSESSMENT_POLICY_OUTCOME`; `ASSESSMENT_ROW` only when policy requires persist. Observation window for correlation — **not** PASS/FAIL SLA |
 | **Blocked by** | `CONFIGURATION_INVARIANT_SPEC_REQUIRED` only |
-| **Crash boundary** | **VALIDATED (D2)** — Hybrid C+: direct normal + direct retry repair (`ensureAssessmentHandoff` on `hasMeasurement`) + reconciliation safety net + durable target-scoped handoff metadata |
+| **Crash boundary** | **VALIDATED (D2)** — Hybrid C+: direct normal + eligibility-gated retry repair + reconciliation safety net + durable monotonic target-scoped handoff metadata (`sourceEntityId` correlation; concurrency-safe merge) |
 | **Does not solve** | Publication, timestamp provenance, readiness |
 
 ## PKG-02 — LV publication handoff

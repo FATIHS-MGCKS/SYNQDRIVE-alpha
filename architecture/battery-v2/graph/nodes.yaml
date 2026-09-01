@@ -238,16 +238,20 @@ nodes:
     decision_status: VALIDATED
     summary: >
       Hybrid C+ crash recovery for canonical REST to assessment handoff: direct normal path, direct retry repair
-      on hasMeasurement branch, periodic reconciliation safety net, durable target-scoped handoff state in LV REST
-      session/target metadata (not BatteryMeasurement). Same D1 identity (measurement.id). Distinguish handoff liveness
-      from assessment policy outcome; POLICY_SKIPPED/UNSUPPORTED not liveness failure. At-least-once plus deterministic
-      identity plus durable EXECUTED outcome — not exactly-once. Reconciliation not primary path. NOT PRODUCTION_VALIDATED.
+      for handoff-eligible measurements only (provenance.sourceObservationId — not any-measurement bool), periodic
+      reconciliation safety net, durable target-scoped handoff state in LV REST session/target metadata (not
+      BatteryMeasurement). Same D1 identity (measurement.id); canonical correlation sourceEntityId=measurement.id.
+      Monotonic MISSING<ENQUEUED<EXECUTED; late ENQUEUED no-op when EXECUTED; concurrency-safe target merge required.
+      Terminal synthetic missed/unsupported measurements preserve MISSED/FAILED — no handoff. Distinguish handoff
+      liveness from policy outcome. At-least-once — not exactly-once. NOT PRODUCTION_VALIDATED.
     source_paths:
       - architecture/battery-v2/decisions/lv-assessment-crash-boundary-decision.md
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-reconciliation.service.ts
     evidence:
       - BAT-V2-EVID-CODE-REST-HAS-MEASUREMENT-EARLY-RETURN-001
+      - BAT-V2-EVID-CODE-REST-SYNTHETIC-MEASUREMENT-PERSISTENCE-001
+      - BAT-V2-EVID-CODE-REST-TARGET-METADATA-RMW-001
       - BAT-V2-EVID-CODE-RECONCILE-NO-CANONICAL-REST-001
       - BAT-V2-EVID-CODE-ASSESSMENT-POLICY-SKIP-001
       - BAT-V2-EVID-CODE-JOB-PRODUCER-INFLIGHT-DEDUPE-001
@@ -1440,14 +1444,41 @@ nodes:
 
   - id: BAT-V2-EVID-CODE-REST-HAS-MEASUREMENT-EARLY-RETURN-001
     type: evidence
-    title: REST handler hasMeasurement early return without handoff ensure
+    title: REST handler hasMeasurement bool early return without row eligibility or handoff ensure
     epistemic_status: CONFIRMED
     source_type: CURRENT_CODE
     summary: >
-      BatteryRestTargetEvaluateHandler when hasMeasurement true updates target metadata to COMPLETED and returns
-      without assessment enqueue or handoff ensure. Crash after persist before enqueue leaves handoff missing on retry.
+      hasTargetMeasurement returns true for any BatteryMeasurement of target type (bool only — ignores quality and
+      provenance). Replay branch updates target to COMPLETED and returns without loading row, handoff ensure, or
+      preserving terminal MISSED/FAILED outcomes. Crash after eligible persist before enqueue leaves handoff missing.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
+
+  - id: BAT-V2-EVID-CODE-REST-SYNTHETIC-MEASUREMENT-PERSISTENCE-001
+    type: evidence
+    title: Synthetic REST terminal measurements persist with measurementId but no sourceObservationId
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      persistMissedMeasurement and persistStatusMeasurement create BatteryMeasurement rows with measurementId but
+      provenance lacks sourceObservationId. Selected-observation evaluateAndPersist success path includes
+      provenance.sourceObservationId. ok=true may still use quality MISSED when observation selected after grace.
+      measurementId exists does not imply assessment handoff eligibility.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/battery-rest-target-evaluation.service.ts
+
+  - id: BAT-V2-EVID-CODE-REST-TARGET-METADATA-RMW-001
+    type: evidence
+    title: REST target metadata update is read-modify-write over loaded session.metadata snapshot
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      BatteryRestTargetEvaluateHandler updateTargetMetadata merges into session.metadata snapshot then Prisma-updates
+      full metadata JSON. Pattern does not by itself prove multi-replica lost-update safety for concurrent target or
+      sibling REST_60M/REST_6H handoff writers.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window-target.metadata.ts
 
   - id: BAT-V2-EVID-CODE-RECONCILE-NO-CANONICAL-REST-001
     type: evidence

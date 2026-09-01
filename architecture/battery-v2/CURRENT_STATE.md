@@ -1,7 +1,7 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-01 (D2 crash-boundary decision)  
-**Graph:** 129 nodes / 113 edges / 11 invariants (validated 2026-09-01)  
+**Snapshot date:** 2026-09-01 (D2 crash-boundary contract precision pass)  
+**Graph:** 131 nodes / 113 edges / 11 invariants (validated 2026-09-01)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 2 VALIDATED PKG-01 spec decisions (D1 `inputVersion`, D2 crash-boundary recovery)
 
 ## Executive summary
@@ -44,7 +44,7 @@ See `resolution/` — priority matrix, implementation packages, dependency graph
 - HEV: separate write gates vs `isEv` read gate; side-effect / read-model divergence
 - LV publication eligibility: evaluated in `BatteryPublicationService` / `evaluateLvPublicationPolicy()`
 - HV SOH gate execution under `HV_CAPACITY_SHADOW`; publication-intent separate
-- Assessment job identity: `assess:{vehicleId}:{assessmentType}:{inputVersion}` — canonical REST handoff `inputVersion` = `BatteryMeasurement.id` (`BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001`)
+- Assessment job identity: `assess:{vehicleId}:{assessmentType}:{inputVersion}` — canonical REST handoff `inputVersion` = `BatteryMeasurement.id` (D1); canonical correlation `sourceEntityId` = `BatteryMeasurement.id` (D2); handoff only for measurements with `provenance.sourceObservationId` (selected-observation path)
 - Publication job identity: `pub:{assessmentId}:v{publicationVersion}`
 - Primary API + rental health → canonical read model
 
