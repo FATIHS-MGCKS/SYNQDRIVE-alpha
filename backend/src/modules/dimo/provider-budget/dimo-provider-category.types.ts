@@ -11,6 +11,7 @@ export const DIMO_PROVIDER_CATEGORIES = [
   'IDENTITY',
   'ENERGY',
   'ADMIN',
+  'REFERENCE_CAPTURE',
 ] as const;
 
 export type DimoProviderCategory = (typeof DIMO_PROVIDER_CATEGORIES)[number];
@@ -43,6 +44,7 @@ export const DEFAULT_CATEGORY_PRIORITY: Record<DimoProviderCategory, DimoProvide
   IDENTITY: 'BACKGROUND',
   ENERGY: 'NORMAL',
   ADMIN: 'BACKGROUND',
+  REFERENCE_CAPTURE: 'BACKGROUND',
 };
 
 export interface DimoRequestContext {

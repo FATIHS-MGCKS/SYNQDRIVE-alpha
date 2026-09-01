@@ -10,8 +10,12 @@ export interface DimoEventDataSummaryRow {
 
 export interface DimoDataSummaryPayload {
   numberOfSignals?: number | null;
+  /** @deprecated DIMO schema uses firstSeen */
   firstSignalSeen?: string | null;
+  /** @deprecated DIMO schema uses lastSeen */
   lastSignalSeen?: string | null;
+  firstSeen?: string | null;
+  lastSeen?: string | null;
   eventDataSummary?: DimoEventDataSummaryRow[] | null;
 }
 
@@ -20,8 +24,8 @@ export function buildDataSummaryQuery(tokenId: number): string {
     query DataSummary {
       dataSummary(tokenId: ${tokenId}) {
         numberOfSignals
-        firstSignalSeen
-        lastSignalSeen
+        firstSeen
+        lastSeen
         eventDataSummary {
           name
           numberOfEvents
@@ -38,5 +42,10 @@ export function parseDataSummaryResponse(data: unknown): DimoDataSummaryPayload 
   const root = data as Record<string, unknown>;
   const summary = root.dataSummary;
   if (!summary || typeof summary !== 'object') return null;
-  return summary as DimoDataSummaryPayload;
+  const row = summary as DimoDataSummaryPayload;
+  return {
+    ...row,
+    firstSignalSeen: row.firstSignalSeen ?? row.firstSeen ?? null,
+    lastSignalSeen: row.lastSignalSeen ?? row.lastSeen ?? null,
+  };
 }

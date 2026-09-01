@@ -43,6 +43,7 @@ export {
   parseConnectivityRecoveryBoolean,
 } from './connectivity-recovery.config';
 export { default as drivingIntelligenceV2Config } from './driving-intelligence-v2.config';
+export { default as referenceCaptureConfig } from './reference-capture.config';
 export { default as stationsV2Config } from './stations-v2.config';
 export { default as batteryHealthV2Config } from './battery-health-v2.config';
 export { default as batteryV2RetentionConfig } from './battery-v2-retention.config';

@@ -6,6 +6,9 @@ export const TRIPS_ENERGY_I18N_KEYS = [
   'trips.energy.refuel.signalChangeMinutes',
   'trips.energy.refuel.detectionWindow',
   'trips.energy.refuel.kindLabel',
+  'trips.energy.refuel.stationPossible',
+  'trips.energy.refuel.stationAmbiguous',
+  'trips.energy.refuel.stationResolving',
   'trips.energy.recharge.kindLabel',
   'trips.energy.recharge.durationMinutes',
 ] as const satisfies readonly TranslationKey[];

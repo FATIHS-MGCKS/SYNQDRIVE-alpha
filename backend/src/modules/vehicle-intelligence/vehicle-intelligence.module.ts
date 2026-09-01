@@ -172,6 +172,19 @@ import { DrivingDecisionSummaryComputeJobHandler } from './driving-intelligence-
 import { DrivingHealthImpactPublishJobHandler } from './driving-intelligence-jobs/handlers/driving-health-impact-publish.handler';
 import { DrivingDecisionsService } from './driving-decisions/driving-decisions.service';
 import { DrivingDecisionsController } from './driving-decisions/driving-decisions.controller';
+import { ReferenceCaptureController } from './reference-capture/reference-capture.controller';
+import { ReferenceCaptureConfig } from './reference-capture/reference-capture.config';
+import { ReferenceCaptureSessionService } from './reference-capture/reference-capture-session.service';
+import { ReferenceCaptureSessionRepository } from './reference-capture/reference-capture-session.repository';
+import { ReferenceCaptureObservationRepository } from './reference-capture/reference-capture-observation.repository';
+import { ReferenceCapturePreflightService } from './reference-capture/reference-capture-preflight.service';
+import { ReferenceCaptureAcquisitionService } from './reference-capture/reference-capture-acquisition.service';
+import { ReferenceCaptureObservationWriterService } from './reference-capture/reference-capture-observation-writer.service';
+import { ReferenceCaptureMassBindingService } from './reference-capture/reference-capture-mass-binding.service';
+import { ReferenceCaptureRetentionService } from './reference-capture/reference-capture-retention.service';
+import { ReferenceCaptureReadinessService } from './reference-capture/reference-capture-readiness.service';
+import { ReferenceCaptureRunnerService } from './reference-capture/reference-capture-runner.service';
+import { ReferenceCaptureRuntimeHealthService } from './reference-capture/reference-capture-runtime-health.service';
 import { TripDrivingImpactBackfillService } from './driving-impact/trip-driving-impact-backfill.service';
 import { BrakingEventLedgerService } from './brakes/braking-event-ledger.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
@@ -261,9 +274,10 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
       { name: QUEUE_NAMES.BATTERY_V2 },
       { name: QUEUE_NAMES.BRAKE_RECALCULATION },
       { name: QUEUE_NAMES.ENERGY_REFUEL_STATION_ENRICH },
+      { name: QUEUE_NAMES.REFERENCE_CAPTURE },
     ),
   ],
-  controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController],
+  controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController, ReferenceCaptureController],
   providers: [
     VehicleIntelligencePermissionGuard,
     BatteryService,
@@ -424,6 +438,18 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     DrivingIntelligenceV2Config,
     DimoTripSegmentValidationService,
     DimoTripSegmentValidateJobHandler,
+    ReferenceCaptureConfig,
+    ReferenceCaptureSessionRepository,
+    ReferenceCaptureObservationRepository,
+    ReferenceCaptureSessionService,
+    ReferenceCapturePreflightService,
+    ReferenceCaptureAcquisitionService,
+    ReferenceCaptureObservationWriterService,
+    ReferenceCaptureMassBindingService,
+    ReferenceCaptureRetentionService,
+    ReferenceCaptureReadinessService,
+    ReferenceCaptureRunnerService,
+    ReferenceCaptureRuntimeHealthService,
     TripAssessabilityRepository,
     TripAssessabilityService,
     TripAssessabilityInputLoader,
@@ -613,6 +639,12 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ShadowDetectorEnrichmentService,
     DrivingIntelligenceV2Config,
     DimoTripSegmentValidationService,
+    ReferenceCaptureConfig,
+    ReferenceCaptureSessionRepository,
+    ReferenceCaptureAcquisitionService,
+    ReferenceCaptureObservationWriterService,
+    ReferenceCaptureRunnerService,
+    ReferenceCaptureRetentionService,
     TripAssessabilityRepository,
     TripAssessabilityService,
     DrivingEvidenceRepository,

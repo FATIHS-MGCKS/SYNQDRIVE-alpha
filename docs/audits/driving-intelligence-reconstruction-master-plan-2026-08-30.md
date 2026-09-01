@@ -867,31 +867,37 @@ The older July DIMO capability audit is HISTORICAL_EVIDENCE only.
 **Provider-profile validation tracks:**
 
 ### Phase 3A — DIMO LTE_R1 Reference Program
-**PRIMARY** calibration/reference workstream · **`READY_TO_START_IMPLEMENTATION`** (not started)
+**PRIMARY** calibration/reference workstream · **Phase 3A.1 DONE** (2026-08-31)
 
 **May start when:** the **`DIMO_LTE_R1`** two-layer reference manifest (Phase **2F.1** v1.1.0) is frozen. **Condition satisfied 2026-08-31.**
 
-**Reference drive:** **`NOT_READY_FOR_REFERENCE_DRIVE`** until PRE_RECORDER_BLOCKER probes (RP-010, RP-039, RP-040, RP-044, RP-045) resolved during Phase 3A implementation/preflight.
+**Reference drive:** **`REFERENCE_DRIVE_READINESS = BLOCKED`** until post-deploy vehicle canary. **`READY_FOR_DEPLOYMENT_PREFLIGHT`** when runtime readiness checks pass at preflight.
 
-**LTE_R1 manifest prerequisites (all satisfied):**
-- Phase 2D Signal Value / Physics Matrix ✓
-- Phase 2E DIMO Redundancy / Canonicalization ✓
-- Phase 2F DIMO Capability-First Acquisition Strategy ✓
-- **`DIMO_LTE_R1` reference manifest v1.1.0 (2F.1)** ✓
+**Phase 3A.1 deliverable:** `docs/audits/dimo-phase-3a1-flight-recorder-foundation-2026-08-31.md` + `architecture/DIMO_LTE_R1_FLIGHT_RECORDER_REFERENCE_CAPTURE_2026-08-31.md` + `architecture/CHANGES_REFERENCE_CAPTURE_3A1_CORRECTION_2026-08-31.md`
 
-**Does NOT require:** Smart5 runtime audit · Tesla Direct audit · High Mobility audit · full cross-provider Phase 2I closure.
+**Implementation (3A.1 correction):**
+- Module: `backend/src/modules/vehicle-intelligence/reference-capture/`
+- Persistence: `reference_capture_sessions` + `reference_capture_observations`
+- Feature gate: `REFERENCE_CAPTURE_ENABLED` (default false)
+- Wire contract: envelope v1.0.0
+- Broad capture: dynamic query builder (`buildBroadReferenceSignalsLatestQuery`) — NOT static production snapshot
+- Temporal surfaces: LATEST_LIVE / HF_HISTORICAL / LATEST_SLOW / NATIVE_EVENT_INCREMENTAL
+- Autonomous runner: BullMQ unique cycle jobIds (`refcap-cycle_*`); STARTING compensated start; session-status-authoritative stop
+- Readiness: `deploymentPreflightReady` vs blocked `referenceDriveReady` (vehicle canary required)
+- HF physical sample fingerprint + schema quarantine for unknown provider fields
+- **42 reference-capture unit tests passing** (+ env-gated Redis integration)
+- **No scoring formula changes; no production scheduler replacement**
 
-Use real LTE R1 vehicles for:
-- raw telemetry capture,
-- cluster/video synchronization,
-- cadence measurement,
-- event reconstruction,
-- native-event comparison,
-- sampling invariance.
+**Status:** **3A.1 DONE** · **Phase 3A.2 DONE** (2026-08-31) · **Instrumented reference drive NEXT / READY (NOT STARTED)**
 
-Current four primary DIMO audit vehicles align with this profile per project baseline.
+### Phase 3A.2 — Production deployment + runtime preflight + controlled LTE_R1 canary
+**Status:** **DONE** (2026-08-31)
 
-**Status:** **NOT_STARTED — `READY_TO_START_IMPLEMENTATION`** (2F.1 v1.1.0 frozen; Flight Recorder not implemented; reference drive not ready)
+Deployed merged Phase 3A.1 (#1468) + deploy fixes (`b88da0c9a` WorkersModule DI, `d6cbcd842` dataSummary schema) to production. Enabled `REFERENCE_CAPTURE_ENABLED=true` after general runtime health passed. Stationary controlled canary on VW Tiguan LTE_R1 (`19fedd4b-c4e8-4de8-a125-dab293326e7e`): session `e8613cc7-223b-4436-8f30-0f8002ff8919`, 5 autonomous BullMQ cycles, 52 observations, clean STOP. **Not** the instrumented reference drive.
+
+**Reference drive:** **`REFERENCE_DRIVE_READY = YES`** — gated instrumented drive may proceed when scheduled; no drive executed in 3A.2.
+
+**Audit:** `docs/audits/dimo-phase-3a2-production-preflight-canary-2026-08-31.md`
 
 ### Phase 3B — DIMO Tesla Direct Reference Program
 **`GATED_ON_TESLA_DIRECT_MANIFEST`**
@@ -1220,12 +1226,15 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Phase 2H High Mobility provider/OEM audit | NOT_STARTED | No DIMO assumptions; does not block LTE R1 |
 | Phase 2I cross-provider consolidation | NOT_STARTED | Parity/governance after provider-specific knowledge |
 | Prioritized query expansion proposal | NOT_STARTED | Phase 2D+ |
-| Phase 3A DIMO LTE_R1 reference program | NOT_STARTED | **READY_TO_START_IMPLEMENTATION**; reference drive NOT_READY |
+| Phase 3A.1 Flight Recorder foundation | DONE | #1468 merged — `reference-capture` module + migrations |
+| Phase 3A.2 production deploy + runtime canary | DONE | Deploy + stationary LTE_R1 canary passed — session `e8613cc7-…`, 5 cycles, 52 obs |
+| Phase 3A DIMO LTE_R1 reference program | IN_PROGRESS | 3A.1+3A.2 DONE; instrumented reference drive NEXT (not started) |
 | Phase 3B DIMO Tesla Direct reference program | NOT_STARTED | `GATED_ON_TESLA_DIRECT_MANIFEST` |
 | Phase 3C DIMO Smart5 compatibility program | NOT_STARTED | `GATED_ON_SMART5_MANIFEST` |
 | Phase 3D High Mobility OEM reference program | NOT_STARTED | `GATED_ON_HIGH_MOBILITY_PROFILE_MANIFEST` |
-| Flight Recorder implementation | NOT_STARTED | Profile-scoped; first track: 3A (manifest frozen, not started) |
-| Instrumented reference drive | NOT_STARTED | gated on Flight Recorder |
+| Flight Recorder implementation (LTE_R1) | DONE (3A.1+3A.2) | `reference-capture` deployed + production canary validated |
+| Instrumented reference drive | NEXT / READY | `REFERENCE_DRIVE_READY=YES`; not started — schedule when ready |
+| Evidence & documentation governance | DONE | `driving-intelligence-evidence-governance-2026-09-01.md` + registry seeded |
 | Ground-truth synchronization | NOT_STARTED | Phase 5 |
 | Detector validation | NOT_STARTED | Phase 6 |
 | Sampling-invariance replay | NOT_STARTED | Phase 6 |
@@ -1249,23 +1258,83 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 8. ~~Execute Phase 2E: DIMO redundancy / canonicalization (Phase 2D handoff groups).~~ **Done** — see Phase 2E audit (`33` canonical keys, `PHYSICAL_EPISODE_IDENTITY`).
 9. ~~**Execute Phase 2F:** DIMO capability-first acquisition strategy (Phase 2E handoff).~~ **Done** — see Phase 2F audit (VCM contract, T0–T7 tiers, query planner, CAN-001…CAN-033 matrix).
 10. ~~**Execute Phase 2F.1:** `DIMO_LTE_R1` reference manifest.~~ **Done** — v1.1.0 two-layer broad-capture contract frozen.
-11. **Execute Phase 3A** (LTE R1) — Flight Recorder implementation using frozen manifest. Reference drive after PRE_RECORDER_BLOCKER preflight.
+11. ~~**Execute Phase 3A.1–3A.2** (LTE R1) — Flight Recorder foundation + production canary.~~ **Done** — 3A.1 #1468 merged; 3A.2 production canary passed (`REFERENCE_DRIVE_READY=YES`). **Next:** instrumented reference drive (explicitly scheduled; not started).
 12. **Execute Phase 2G:** Smart5 + Tesla Direct connection-variant audits + profile manifests → ungate 3B/3C when ready.
 13. **Execute Phase 2H:** High Mobility OEM/profile audit + manifests → ungate 3D when ready.
 14. **Execute Phase 2I:** Cross-provider canonical consolidation / parity governance (after provider-specific knowledge exists).
 ---
-# 7. Agent Handoff Protocol
+# 7. Repository Evidence & Documentation Governance
+
+**Normative document:** `docs/audits/driving-intelligence-evidence-governance-2026-09-01.md`  
+**Evidence registry:** `docs/audits/driving-intelligence-evidence-registry.md`
+
+### Core principle
+
+**REPOSITORY = CANONICAL KNOWLEDGE AND EVIDENCE AUTHORITY.**
+
+Chat conversations, agent summaries, and temporary scratchpads are **not** canonical project authority. Every material result must ultimately be represented in repository files.
+
+Cumulative refinement model: **OBSERVE → MEASURE → DOCUMENT → CHALLENGE → IMPROVE → VALIDATE AGAIN**
+
+### Mandatory rules
+
+| Rule | Requirement |
+|------|-------------|
+| Material findings | Require repository artifacts with evidence maturity class |
+| Definition of Done | Not satisfied by code alone, chat claims, or single-pass tests — see governance §15 |
+| Negative evidence | FAILED / NULL / UNSUPPORTED / CONTRADICTORY results are retained permanently |
+| Independent review | Creates **separate** review artifact; never silently rewrite original audit |
+| Historical evidence | **Superseded**, not deleted |
+| Large raw data | Telemetry/video may live outside Git; durable provenance + checksum + export procedure required in Git |
+| Canonical reference TTL | Designated reference datasets must reach `SEALED_EXPORT_AVAILABLE` / `ARCHIVED` before production retention purge |
+| Agent onboarding | Every future agent must read governance + registry before material DI work |
+| Phase / experiment completion | Must update Master Plan **and** evidence registry |
+
+### Templates
+
+- Experiment report: `docs/audits/templates/driving-intelligence-experiment-report-template.md`
+- Independent review: `docs/audits/templates/driving-intelligence-independent-review-template.md`
+
+### First reference drive artifact contract
+
+After the first instrumented `DIMO_LTE_R1` reference drive, require at minimum:
+
+1. `dimo-lte-r1-reference-drive-001-capture-report-YYYY-MM-DD.md`
+2. Machine-readable session summary JSON
+3. Signal-quality metrics JSON/CSV (post-analysis)
+4. Video / external Ground Truth evidence index
+5. Later: Ground Truth alignment report + independent review(s) when requested
+
+**Do not create fake result files before the drive occurs.**
+
+### Phase 3A readiness (unchanged)
+
+| Item | Status |
+|------|--------|
+| Phase 3A.1 | **DONE** |
+| Phase 3A.2 | **DONE** |
+| Instrumented LTE_R1 reference drive | **NEXT / READY** |
+| Reference drive itself | **NOT STARTED** |
+| `REFERENCE_DRIVE_READY` | **YES** |
+
+---
+# 8. Agent Handoff Protocol
 Any agent continuing this workstream should:
 1. Read this file first.
-2. Read the latest linked/source audit docs for the phase being worked.
-3. Verify current `main` before relying on historical audit conclusions.
-4. Update the Progress Tracker and material decisions in this file when a phase or subphase changes state.
-5. Distinguish clearly between `confirmed from code`, `confirmed from runtime/provider`, `inference`, and `proposal`.
-6. Do not make production scoring changes before the relevant phase gate is satisfied.
-7. Preserve model/version/provenance semantics; never present proxy-derived values as direct measurements.
-8. Prefer explicit `INSUFFICIENT_DATA` / lower confidence over invented precision when signal/cadence evidence is inadequate.
+2. Read `docs/audits/driving-intelligence-evidence-governance-2026-09-01.md`.
+3. Read `docs/audits/driving-intelligence-evidence-registry.md` and relevant Evidence IDs.
+4. Read the latest linked/source audit docs for the phase being worked.
+5. Verify current `main` before relying on historical audit conclusions.
+6. Update the Progress Tracker and material decisions in this file when a phase or subphase changes state.
+7. Add or update evidence registry entries for material new artifacts (assign new `DI-EV-xxxx`; never reuse IDs).
+8. Distinguish clearly between evidence maturity classes (`CONFIRMED_FROM_CODE`, `CONFIRMED_FROM_RUNTIME`, `INFERENCE`, `PROPOSAL`, etc.).
+9. Do not make production scoring changes before the relevant phase gate is satisfied.
+10. Preserve model/version/provenance semantics; never present proxy-derived values as direct measurements.
+11. Prefer explicit `INSUFFICIENT_DATA` / lower confidence over invented precision when signal/cadence evidence is inadequate.
+12. Record negative and contradictory evidence; do not hide failed hypotheses.
+13. Supersede prior artifacts instead of deleting them when conclusions change.
 ---
-# 8. Definition of Success
+# 9. Definition of Success
 This workstream is complete when SynqDrive can explain, for an individual trip and over rolling timeframes, with traceable evidence:
 - how the driver behaved,
 - how much the vehicle was loaded,
