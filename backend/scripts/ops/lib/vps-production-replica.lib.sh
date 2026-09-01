@@ -170,6 +170,57 @@ vps_replica_wait_healthy() {
   return 1
 }
 
+vps_replica_collect_scheduler_roles() {
+  local role_a role_b
+  role_a="$(vps_replica_readiness_role "${SYNQDRIVE_REPLICA_A_PORT}")"
+  if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
+    role_b="$(vps_replica_readiness_role "${SYNQDRIVE_REPLICA_B_PORT}")"
+  else
+    role_b="N/A"
+  fi
+  printf '%s %s' "$role_a" "$role_b"
+}
+
+vps_replica_count_scheduler_leaders() {
+  local role_a role_b leader_count=0
+  role_a="$(vps_replica_readiness_role "${SYNQDRIVE_REPLICA_A_PORT}")"
+  if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
+    role_b="$(vps_replica_readiness_role "${SYNQDRIVE_REPLICA_B_PORT}")"
+  else
+    role_b="N/A"
+  fi
+
+  [[ "$role_a" == "LEADER" ]] && leader_count=$((leader_count + 1))
+  [[ "$role_b" == "LEADER" ]] && leader_count=$((leader_count + 1))
+  echo "$leader_count"
+}
+
+vps_replica_wait_scheduler_leader_convergence() {
+  local wait_script="${SYNQDRIVE_CURRENT_LINK}/backend/scripts/ops/vps-scheduler-leader-convergence-wait.mjs"
+  if [[ ! -f "$wait_script" ]]; then
+    vps_replica_log "ABORT: missing scheduler convergence script ${wait_script}"
+    return 1
+  fi
+
+  vps_replica_log "scheduler convergence gate: timeoutMs=${SYNQDRIVE_SCHEDULER_LEADER_CONVERGENCE_TIMEOUT_MS} pollMs=${SYNQDRIVE_SCHEDULER_LEADER_POLL_INTERVAL_MS} stable=${SYNQDRIVE_SCHEDULER_LEADER_STABLE_OBSERVATIONS}"
+
+  local output
+  if ! output="$(node "$wait_script" \
+    --port-a "${SYNQDRIVE_REPLICA_A_PORT}" \
+    --port-b "${SYNQDRIVE_REPLICA_B_PORT}" \
+    --replica-count "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" \
+    --poll-interval-ms "${SYNQDRIVE_SCHEDULER_LEADER_POLL_INTERVAL_MS}" \
+    --timeout-ms "${SYNQDRIVE_SCHEDULER_LEADER_CONVERGENCE_TIMEOUT_MS}" \
+    --stable-observations "${SYNQDRIVE_SCHEDULER_LEADER_STABLE_OBSERVATIONS}" 2>&1)"; then
+    vps_replica_log "ABORT: scheduler convergence failed"
+    vps_replica_log "$output"
+    return 1
+  fi
+
+  vps_replica_log "scheduler convergence PASS: ${output}"
+  return 0
+}
+
 vps_replica_verify_scheduler_leaders() {
   local expected=${1:-1}
   local role_a role_b leader_count=0
@@ -306,6 +357,7 @@ vps_replica_verify_post_deploy() {
   local target_sha=$2
 
   vps_replica_verify_no_mixed_sha "$target_sha" || return 1
+  vps_replica_wait_scheduler_leader_convergence || return 1
   vps_replica_verify_scheduler_leaders 1 || return 1
   vps_replica_nginx_dual_upstream_ok || return 1
 

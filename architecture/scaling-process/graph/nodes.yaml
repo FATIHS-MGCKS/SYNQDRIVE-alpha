@@ -1,0 +1,213 @@
+# Scaling Process — machine-readable knowledge graph nodes
+# Schema: id, type, status, description, depends_on, protects, validated_by,
+#         introduced_by, related_incidents, last_verified_sha, last_verified_at, confidence
+
+nodes:
+  - id: SCALING_PROCESS
+    type: WORKSTREAM
+    status: ACTIVE
+    description: Canonical authority for SynqDrive horizontal scaling and multi-replica coordination
+    last_verified_sha: d6884ce6030cafcb9a39fa422359eb8345496913
+    last_verified_at: "2026-09-01T10:25:00Z"
+    confidence: HIGH
+
+  - id: PRODUCTION_TOPOLOGY
+    type: TOPOLOGY
+    status: VERIFIED_N2
+    description: Production VPS two-replica PM2 + nginx dual upstream
+    depends_on: [PM2, NGINX, REDIS, POSTGRES]
+    last_verified_sha: d6884ce6030cafcb9a39fa422359eb8345496913
+    last_verified_at: "2026-09-01T10:25:00Z"
+    confidence: HIGH
+
+  - id: REPLICA_A
+    type: REPLICA
+    status: ONLINE
+    owner: synqdrive
+    description: Primary replica synqdrive port 3001
+    last_verified_sha: d6884ce6030cafcb9a39fa422359eb8345496913
+    last_verified_at: "2026-09-01T10:25:00Z"
+    confidence: HIGH
+
+  - id: REPLICA_B
+    type: REPLICA
+    status: ONLINE
+    owner: synqdrive-b
+    description: Secondary replica synqdrive-b port 3002 INSTANCE_ID=replica-b
+    last_verified_sha: d6884ce6030cafcb9a39fa422359eb8345496913
+    last_verified_at: "2026-09-01T10:25:00Z"
+    confidence: HIGH
+
+  - id: PM2
+    type: RUNTIME
+    status: ACTIVE
+    description: Process manager; pm2.production-ecosystem.config.cjs defines two fork apps
+    introduced_by: "#1472"
+    last_verified_at: "2026-09-01T10:25:00Z"
+    confidence: HIGH
+
+  - id: NGINX
+    type: LOAD_BALANCER
+    status: DUAL_UPSTREAM
+    description: synqdrive_backend upstream 3001+3002
+    protects: [PRODUCTION_TOPOLOGY]
+    last_verified_at: "2026-09-01T10:25:00Z"
+    confidence: HIGH
+
+  - id: REDIS
+    type: DATASTORE
+    status: HEALTHY
+    description: Production DB 0; leader lease, mutex, DIMO budget, BullMQ
+    last_verified_at: "2026-09-01T10:25:00Z"
+    confidence: HIGH
+
+  - id: POSTGRES
+    type: DATASTORE
+    status: HEALTHY
+    description: synqdrive database; canonical trip/vehicle state
+    last_verified_at: "2026-09-01T10:25:00Z"
+    confidence: HIGH
+
+  - id: SCHEDULER_LEADER_ELECTION
+    type: COORDINATION
+    status: ACTIVE
+    description: Redis lease singleton producer; 42 guarded schedulers
+    depends_on: [REDIS]
+    protects: [BULLMQ]
+    introduced_by: "#1430"
+    validated_by: ["P1.8.2 failover 32s", "P1.8.3 post-deploy leader=1"]
+    last_verified_sha: d6884ce6030cafcb9a39fa422359eb8345496913
+    last_verified_at: "2026-09-01T10:25:00Z"
+    confidence: HIGH
+
+  - id: DIMO_GLOBAL_PROVIDER_BUDGET
+    type: COORDINATION
+    status: ACTIVE
+    description: Redis ZSET lease semaphore; global HTTP ceiling across replicas
+    depends_on: [REDIS]
+    introduced_by: "#1417"
+    validated_by: ["P1.8 soak", "P1.8.2 probe"]
+    last_verified_at: "2026-09-01T10:25:00Z"
+    confidence: MEDIUM
+
+  - id: RECONCILIATION_MUTEX
+    type: COORDINATION
+    status: ACTIVE
+    description: Per org+vehicle Redis lock for reconciliation mutations
+    depends_on: [REDIS]
+    introduced_by: "#1435"
+    validated_by: ["P1.8 soak", "staging #1440"]
+    last_verified_at: "2026-09-01T10:25:00Z"
+    confidence: MEDIUM
+
+  - id: BULLMQ
+    type: PROCESSING
+    status: ACTIVE
+    description: Multi-replica consumers; idempotent job handling
+    depends_on: [REDIS]
+    validated_by: ["P1.8 queue stability"]
+    last_verified_at: "2026-09-01T10:25:00Z"
+    confidence: HIGH
+
+  - id: MULTI_REPLICA_DEPLOYMENT
+    type: DEPLOYMENT
+    status: MERGED_VERIFIED
+    description: Rolling A→B deploy with SHA/health/leader convergence/nginx invariants
+    depends_on: [PM2, NGINX, SCHEDULER_LEADER_ELECTION, DEPLOY_LEADER_CONVERGENCE_GATE]
+    introduced_by: "#1472"
+    validated_by: ["P1.8.3 deploy 2026-09-01", "P1.8.3.1 unit tests"]
+    related_incidents: [INC_05, INC_06]
+    last_verified_sha: d6884ce6030cafcb9a39fa422359eb8345496913
+    last_verified_at: "2026-09-01T10:23:00Z"
+    confidence: MEDIUM
+
+  - id: ROLLBACK
+    type: DEPLOYMENT
+    status: ACTIVE
+    description: vps-rollback-production-release.sh + auto-rollback on deploy failure
+    introduced_by: "#1472"
+    validated_by: ["P1.8.3 auto-rollback 2026-09-01"]
+    last_verified_at: "2026-09-01T10:23:00Z"
+    confidence: MEDIUM
+
+  - id: SCALING_ENVELOPE_N1
+    type: ENVELOPE
+    status: PROVEN
+    description: Single replica production soak P1.8
+    validated_by: ["#1469"]
+    confidence: HIGH
+
+  - id: SCALING_ENVELOPE_N2
+    type: ENVELOPE
+    status: CONDITIONALLY_CERTIFIED
+    description: Two-replica production; scale P1.8.2 + restore P1.8.3; no 24h N=2 soak
+    validated_by: ["#1471", "P1.8.3 2026-09-01"]
+    confidence: MEDIUM
+
+  - id: SCALING_ENVELOPE_N100
+    type: ENVELOPE
+    status: NOT_CERTIFIED
+    description: Software gates only; no production fleet at N≤100
+    confidence: HIGH
+
+  - id: SCALING_ENVELOPE_N1000
+    type: ENVELOPE
+    status: CONDITIONAL
+    description: Provider ceiling unverified; software coordination only
+    confidence: LOW
+
+  - id: INC_01
+    type: INCIDENT
+    status: CLOSED
+    description: Prometheus duplicate metric startup failure
+    related_incidents: [INC_01]
+    confidence: HIGH
+
+  - id: INC_02
+    type: INCIDENT
+    status: CLOSED
+    description: Validation orphan :3010 / Redis DB 15
+    confidence: HIGH
+
+  - id: INC_03
+    type: INCIDENT
+    status: CLOSED
+    description: Battery V2 failed-job misclassification during soak
+    confidence: HIGH
+
+  - id: INC_04
+    type: INCIDENT
+    status: CLOSED
+    description: P1.8.2 nginx upstream placement failure
+    confidence: HIGH
+
+  - id: INC_05
+    type: INCIDENT
+    status: CLOSED
+    description: Post-scale topology drift to N=1; remediated P1.8.3
+    related_incidents: [INC_05]
+    supersedes: null
+    last_verified_at: "2026-09-01T10:25:00Z"
+    confidence: HIGH
+
+  - id: INC_06
+    type: INCIDENT
+    status: IMPLEMENTED_PENDING_PRODUCTION_VALIDATION
+    description: Deploy false-abort on leaderCount=0 before election converged (P1.8.3)
+    related_incidents: [INC_06]
+    introduced_by: "P1.8.3 deploy 2026-09-01"
+    remediated_by: "P1.8.3.1 leader-wait convergence gate"
+    last_verified_at: "2026-09-01T12:00:00Z"
+    confidence: HIGH
+
+  - id: DEPLOY_LEADER_CONVERGENCE_GATE
+    type: DEPLOYMENT
+    status: IMPLEMENTED_PENDING_PRODUCTION_VALIDATION
+    description: Bounded scheduler leader convergence poll during deploy (0=retry, >1=fail)
+    depends_on: [SCHEDULER_LEADER_ELECTION, MULTI_REPLICA_DEPLOYMENT]
+    protects: [INV_01]
+    introduced_by: "P1.8.3.1"
+    related_incidents: [INC_06]
+    validated_by: ["vps-multi-replica-deploy.util.test.mjs 18/18"]
+    last_verified_at: "2026-09-01T12:00:00Z"
+    confidence: HIGH

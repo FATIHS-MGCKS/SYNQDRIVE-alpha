@@ -13,7 +13,8 @@
 | Leader graceful stop | Brief gap | Failover ~32s prod (P1.8.2) | Automatic |
 | Mutex contention | Second worker skips | Expected | None |
 | DIMO 429 | Cooldown + retry | Bounded backoff | Automatic |
-| Deploy partial | Mixed SHA / missing B | **Should** rollback (#1472) | Manual until #1472 |
+| Deploy partial | Mixed SHA / missing B | Rollback (#1472) | Auto + manual |
+| Deploy leader timing | False abort leaders=0 | Rollback attempted; may leave N=2 | **FIXED P1.8.3.1** (pending prod validation) |
 | nginx + dead upstream | Intermittent 5xx | External errors | Fix PM2 / nginx |
 
 ---
@@ -77,16 +78,33 @@
 
 ---
 
-### INC-05: Topology drift — replica B lost post-scale (ACTIVE)
+### INC-05: Topology drift — replica B lost post-scale
 
 | Field | Value |
 |-------|-------|
-| **TYPE** | INCIDENT / DISCOVERED_INCONSISTENCY |
-| **DATE** | Observed 2026-09-01 |
+| **TYPE** | INCIDENT |
+| **DATE** | Observed 2026-09-01; closed 2026-09-01 P1.8.3 |
 | **SYMPTOM** | PM2 only `synqdrive`; :3002 down; nginx still dual-upstream |
 | **ROOT_CAUSE** | Deploys used pre-#1472 `vps-deploy-release.sh` (single restart) |
-| **SEVERITY** | P1 — scaling invariant violated; degraded nginx |
-| **RECOMMENDED_FOLLOWUP** | Merge #1472; restore replica B; P1.8.3 audit |
+| **SEVERITY** | P1 (while active) |
+| **RESOLUTION** | #1472 merged; P1.8.3 second deploy restored `synqdrive-b`; N=2 verified |
+| **STATUS** | **CLOSED** |
+| **EVIDENCE** | P1.8.3 audit 2026-09-01T10:25Z; `CURRENT_STATE.md` |
+
+---
+
+### INC-06: Deploy leader-election timing false-abort (P1.8.3)
+
+| Field | Value |
+|-------|-------|
+| **TYPE** | INCIDENT (P2 deploy friction) |
+| **DATE** | 2026-09-01 multi-replica deploy attempt |
+| **SYMPTOM** | `ABORT: expected 1 scheduler leader(s), got 0` → auto-rollback triggered |
+| **IMPACT** | Deploy reported failure; production recovered to N=2 same SHA after rollback rolling restart |
+| **ROOT_CAUSE** | Leader verification before election acquire window elapsed |
+| **STATUS** | **IMPLEMENTED_PENDING_PRODUCTION_VALIDATION** (P1.8.3.1) |
+| **REMEDIATION** | `vps_replica_wait_scheduler_leader_convergence` — bounded poll gate |
+| **EVIDENCE** | P1.8.3 deploy log; `architecture/P1_8_3_1_DEPLOY_LEADER_WAIT_HARDENING_2026-09-01.md` |
 
 ---
 

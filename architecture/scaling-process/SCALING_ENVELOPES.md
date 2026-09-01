@@ -39,10 +39,11 @@ Certification levels:
 | DIMO global budget | PROVEN | limit 50, no breach in probe |
 | nginx dual upstream | PROVEN (configured) | P1.8.2 |
 | Sustained 24h at N=2 | **NOT YET** | Only active validation window |
-| Deploy preserves N=2 | **NOT on main** | #1472 open; drift 2026-09-01 |
-| Current production N=2 | **NO** (drift) | CURRENT_STATE 2026-09-01 |
+| Deploy preserves N=2 | **PROVEN** | #1472 merged; P1.8.3 rolling deploy exercised |
+| Current production N=2 | **YES** | P1.8.3 audit 2026-09-01 |
+| 24h sustained N=2 soak | **NOT YET** | Only post-restore validation window |
 
-**Verdict:** Architecture **proven** 2026-08-31; **runtime currently at N=1** until restored.
+**Verdict:** **CONDITIONALLY CERTIFIED** — N=2 restored and deploy path verified; sustained soak pending.
 
 ---
 

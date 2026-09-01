@@ -36,6 +36,42 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p1-8-3-1-deploy-leader-wait-hardening-2026-09-01',
+    version: '4.9.1021',
+    title: 'P1.8.3.1 — Deploy scheduler leader convergence gate (INC-06 remediation)',
+    summary: [
+      'Bounded scheduler leader convergence gate in multi-replica deploy lifecycle: `leaderCount=0` transient retry, `>1` immediate FAIL_SPLIT_BRAIN, 2 stable observations of `leaderCount=1` required.',
+      'Parameters: poll=2000ms, timeout=44000ms (formula-based, not blind sleep). Pure state machine + CLI (`vps-scheduler-leader-convergence-wait.mjs`) + shell integration.',
+      'Unit tests Cases A–H: 18/18 PASS. No production deploy executed.',
+      'INC-06 status: IMPLEMENTED_PENDING_PRODUCTION_VALIDATION.',
+    ],
+    reason: 'P1.8.3 deploy false-aborted on scheduler leader=0 at T+15s before election converged at T+35s; preserve INV-01 without weakening split-brain detection.',
+    previousBehavior: 'Single snapshot leader check immediately after replica health; no retry on transient zero leaders.',
+    details:
+      'architecture/P1_8_3_1_DEPLOY_LEADER_WAIT_HARDENING_2026-09-01.md; backend/scripts/ops/vps-multi-replica-deploy.util.mjs; vps-scheduler-leader-convergence-wait.mjs',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T12:00:00.000Z',
+  },
+  {
+    id: 'p1-8-3-post-merge-multi-replica-verification-2026-09-01',
+    version: '4.9.1020',
+    title: 'P1.8.3 — Post-merge multi-replica deploy verification + Scaling Process update',
+    summary: [
+      'First production exercise of merged #1472 multi-replica deploy path: restored N=2 (`synqdrive` :3001 LEADER + `synqdrive-b` :3002 FOLLOWER) on SHA `d6884ce`.',
+      'INC-05 CLOSED. Deploy auto-gate false-aborted on scheduler leader timing (0 leaders at T+15s); production healthy at T+35s (INC-06 P2 finding).',
+      'Updated `architecture/scaling-process/` CURRENT_STATE, envelopes, incidents, validation evidence; added `graph/nodes.yaml`.',
+      'Drift recurrence risk LOW for topology; deploy leader-wait hardening recommended (P1.8.3.1).',
+    ],
+    reason: 'Verify #1472 closes INC-05 and update canonical Scaling Process authority with live production evidence.',
+    previousBehavior: 'Production N=1 drift; #1472 merged but not yet deployed; scaling docs stale.',
+    details:
+      'architecture/P1_8_3_POST_MERGE_MULTI_REPLICA_VERIFICATION_2026-09-01.md; architecture/scaling-process/',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T10:30:00.000Z',
+  },
+  {
     id: 'p1-8-2-1-multi-replica-deploy-lifecycle-2026-08-31',
     version: '4.9.1017',
     title: 'P1.8.2.1 — Multi-replica deployment lifecycle hardening',
