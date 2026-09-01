@@ -1,40 +1,52 @@
-# KG-EED Open Questions — Classification (Phase 2B)
+# KG-EED Open Questions — Classification (Phase 2B.1)
 
-All 12 discovery open questions classified. **Do not force-close without evidence.**
+All 12 discovery open questions classified. **Separate current-state facts from future architecture questions.**
 
-| ID | Original question | Classification | Answer / status | Evidence | Blocks authority? | Production safety? | Owning workstream |
-|----|-------------------|----------------|-----------------|----------|-------------------|--------------------|-------------------|
-| EED-OQ-001 | Dedicated energy BullMQ scheduler vs reconciliation coupling? | **OPEN** | No dedicated energy scheduler. Detect cadence inherits trip reconciliation fast/warm/cold tiers. | EED-EV-0001 | NO — documented coupling | LOW — detect delayed if reconcile skipped | KG-EED / future platform |
-| EED-OQ-002 | Safe automated backfill for NULL fuelLevelRise rows? | **RESOLVED** (policy) | Product owner: **no fleet backfill required**. Forward-correct only. | EED-EV-0017, EED-DEC-009 | NO | NO — NULL is acceptable | KG-EED (closed as policy) |
-| EED-OQ-003 | Persist recharge `isCharging` / `addedEnergy` on VehicleEnergyEvent? | **OPEN** | Normalizer fetches; not persisted on row today. | EED-EV-0009 | NO | LOW | KG-EED |
-| EED-OQ-004 | Link VehicleEnergyEvent RECHARGE to HvChargeSession? | **OUT_OF_SCOPE** | Battery V2 owns HV session lifecycle. No auto-link. | EED-EV-0022 | NO | NO | Battery V2 + KG-EED future |
-| EED-OQ-005 | `detectorVersion` column for forensic replay? | **OPEN** | Version in logs/rawDetectionMeta only; no DB column. | EED-EV-0013 | NO | LOW | KG-EED |
-| EED-OQ-006 | Plausibility flags in production rows vs recovery-only? | **PARTIALLY_RESOLVED** | Odometer plausibility in recovery tooling; not on canonical row. | discovery C2 | NO | LOW | KG-EED recovery |
-| EED-OQ-007 | Fleet-wide overlapping sibling inventory (3 pairs) remediation? | **OPEN** | Sibling reconcile works at runtime; fleet inventory policy undecided. | EED-EV-0011 | NO | LOW — guarded deletes | KG-EED ops |
-| EED-OQ-008 | Frontend POST detect — should UI ever call it? | **OPEN** | API exists; rental UI does not expose. | EED-EV-0012 | NO | LOW | KG-EED / frontend |
-| EED-OQ-009 | Fuel station enrichment card vs EED semantics alignment? | **OPEN** | Phase F enrichment separate; EED consumes read projection. | discovery | NO | LOW | KG-EED + enrichment |
-| EED-OQ-010 | ClickHouse mirror for fuel samples long-term? | **OUT_OF_SCOPE** | Analytics/telemetry authority; EED fetches live DIMO today. | EED-EV-0007 | NO | NO | Analytics platform |
-| EED-OQ-011 | RECHARGE duration UI when coalesced multi-hour sessions? | **OPEN** | Coalesce may produce long envelopes; UI copy adequacy unproven at scale. | EED-EV-0006 | NO | LOW | KG-EED / frontend |
-| EED-OQ-012 | Energy observability SLOs for derivation null rate? | **OPEN** | Metrics exist; no formal SLO thresholds. | EED-EV-0020 | NO | LOW — observability gap | KG-EED / SRE |
+## Current-state facts (CONFIRMED — not open questions)
 
-## Deferred (reference only — do not expand in KG-EED)
+| Fact | Node | Evidence |
+|------|------|----------|
+| No dedicated BullMQ energy scheduler today | `EED-ST-001` | EED-EV-0001 |
+| Detect runs at reconciliation step 5 (when service injected) | `EED-ST-001`, `EED-FB-001` | EED-EV-0001 |
+| Manual POST detect and ops scripts exist as alternate triggers | `EED-RETRY-001`, `EED-JOB-001` | EED-EV-0012 |
 
-| Topic | Classification | Notes |
-|-------|----------------|-------|
-| KG-ATE FM-007 (workers-disabled stuck PENDING) | **DEFERRED** | ATE runtime defect; not EED authority |
-| KG-ATE multi-replica assumptions | **DEFERRED** | ATE open questions; EED inherits indirect cadence only |
+## Open question table
 
-## Summary
+| ID | Question | Classification | Status | Blocks authority? | Production safety? |
+|----|----------|----------------|--------|-------------------|------------------|
+| EED-OQ-001 | Should EED get dedicated BullMQ scheduler? | **OPEN** | Future architecture only; current state in EED-ST-001 | NO | LOW |
+| EED-OQ-002 | Safe automated backfill for NULL fuelLevelRise rows? | **RESOLVED** (policy) | EED-DEC-009: no fleet backfill | NO | NO |
+| EED-OQ-003 | Persist recharge charging flags on VehicleEnergyEvent? | **OPEN** | Fetched in normalizer; not persisted | NO | LOW |
+| EED-OQ-004 | Link RECHARGE to HvChargeSession? | **OUT_OF_SCOPE** | Battery V2 owns HV sessions; INFERRED orthogonality | NO | NO |
+| EED-OQ-005 | detectorVersion DB column? | **OPEN** | Version in logs/meta only | NO | LOW |
+| EED-OQ-006 | Plausibility flags on production rows? | **PARTIALLY_RESOLVED** | Recovery tooling only today | NO | LOW |
+| EED-OQ-007 | Fleet overlapping sibling remediation policy? | **OPEN** | Runtime guard works; ~3 pairs inventory | NO | LOW |
+| EED-OQ-008 | Should UI call POST detect? | **OPEN** | API exists; UI does not expose | NO | LOW |
+| EED-OQ-009 | Fuel station enrichment vs EED semantics? | **OPEN** | Separate module; EED consumes projection | NO | LOW |
+| EED-OQ-010 | ClickHouse fuel sample mirror? | **OUT_OF_SCOPE** | Analytics authority | NO | NO |
+| EED-OQ-011 | RECHARGE UI for multi-hour coalesced sessions? | **OPEN** | Copy adequacy unproven at scale | NO | LOW |
+| EED-OQ-012 | Observability SLOs for rise null rate? | **OPEN** | Metrics exist; no SLO thresholds | NO | LOW |
+
+## Deferred (reference only)
+
+| Topic | Classification |
+|-------|----------------|
+| KG-ATE FM-007 | **DEFERRED** — not EED authority |
+| KG-ATE multi-replica | **DEFERRED** — indirect cadence only |
+
+## Summary (corrected in 2B.1 review)
 
 | Metric | Count |
 |--------|------:|
 | Total discovery questions | 12 |
-| RESOLVED (policy or code) | 2 (OQ-002, OQ-006 partial) |
-| OPEN | 7 |
+| RESOLVED (policy) | 1 (OQ-002) |
+| PARTIALLY_RESOLVED | 1 (OQ-006) |
+| OPEN | 8 |
 | OUT_OF_SCOPE | 2 |
-| DEFERRED (ATE cross-ref) | 2 (not counted in EED-OQ nodes) |
+| Current-state facts extracted | 3 (scheduler coupling — not counted as open) |
 
-**OPEN_QUESTIONS_RESOLVED:** 2  
-**OPEN_QUESTIONS_REMAINING:** 10 (7 OPEN + 2 OUT_OF_SCOPE tracked + 1 PARTIALLY_RESOLVED counted open for SLO/inventory)
+**OPEN_QUESTIONS_RESOLVED:** 1  
+**OPEN_QUESTIONS_PARTIALLY_RESOLVED:** 1  
+**OPEN_QUESTIONS_REMAINING:** 10 (8 OPEN + 2 OUT_OF_SCOPE)
 
-Graph nodes EED-OQ-001 … EED-OQ-012 remain for traceability even when policy-resolved (OQ-002 documented in EED-DEC-009).
+Graph nodes EED-OQ-001 … EED-OQ-012 retained for traceability.

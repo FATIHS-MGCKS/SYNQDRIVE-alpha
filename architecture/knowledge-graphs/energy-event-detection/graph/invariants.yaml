@@ -9,7 +9,7 @@ invariants:
       For REFUEL events, durationSeconds and startTime/endTime represent the DIMO
       detection envelope preserved through parse, coalesce, and persistence. They
       must not be interpreted as physical pump/nozzle duration.
-    evidence: [EED-EV-0004, EED-EV-0015, EED-EV-0018]
+    evidence: [EED-EV-0008, EED-EV-0010, EED-EV-0015, EED-EV-0016]
     source_paths:
       - backend/src/modules/vehicle-intelligence/energy-events/energy-events.types.ts
       - architecture/P1_3_S5_ENERGY_REFUEL_SEMANTICS_2026-08-30.md
@@ -155,7 +155,7 @@ invariants:
       When coalesceSegments receives a single segment in a group, durationSeconds
       and boundaries pass through unchanged from the DIMO segment. Long envelopes
       like KS MX 4818s are not created by coalescing alone.
-    evidence: [EED-EV-0006, EED-EV-0018]
+    evidence: [EED-EV-0006, EED-EV-0018, EED-EV-0025]
     source_paths:
       - backend/src/modules/vehicle-intelligence/energy-events/energy-events.pipeline.ts
       - backend/src/modules/dimo/fixtures/ks-mx-2024-aug28-refuel.fixture.ts

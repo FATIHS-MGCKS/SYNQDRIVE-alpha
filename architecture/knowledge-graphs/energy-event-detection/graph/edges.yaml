@@ -270,7 +270,13 @@ edges:
   # ── Historical incident evidence chain ─────────────────────────────────────────
   - from: EED-HI-001
     relation: PROVEN_BY
+    to: EED-EV-0025
+    notes: Production reprocess primary provenance
+
+  - from: EED-HI-001
+    relation: PROVEN_BY
     to: EED-EV-0018
+    notes: Fixture reproduction only
 
   - from: EED-HI-001
     relation: MUST_NOT_INTERPRET_AS
@@ -319,7 +325,17 @@ edges:
   # ── Open questions reference areas ─────────────────────────────────────────────
   - from: EED-OQ-001
     relation: REFERENCES
-    to: EED-SCH-001
+    to: EED-ST-001
+
+  - from: EED-SVC-001
+    relation: CALLS
+    to: EED-COMP-008
+    notes: Optional post-REFUEL fuel station enrichment enqueue
+
+  - from: EED-EXT-001
+    relation: SKIPS_ON
+    to: EED-FB-001
+    notes: When EnergyEventsService not injected
 
   - from: EED-OQ-002
     relation: REFERENCES

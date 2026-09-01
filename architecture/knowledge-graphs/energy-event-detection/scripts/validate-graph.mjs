@@ -99,6 +99,21 @@ for (const n of nodes) {
     if (!/^EED-EV-\d{4}$/.test(n.id)) {
       fail(`Evidence node ${n.id} has malformed evidence ID`);
     }
+    // Architecture docs alone cannot be CONFIRMED runtime facts
+    if (
+      n.source_type === 'ARCHITECTURE_DOC' &&
+      n.epistemic_status === 'CONFIRMED' &&
+      !(n.source_paths ?? []).some((p) => /\.(ts|tsx|js|mjs)$/.test(p))
+    ) {
+      fail(
+        `Evidence ${n.id}: ARCHITECTURE_DOC with epistemic_status CONFIRMED — downgrade to INFERRED/HISTORICAL or add code path`,
+      );
+    }
+    if (n.source_type === 'PRODUCTION' && n.epistemic_status === 'CONFIRMED') {
+      fail(
+        `Evidence ${n.id}: PRODUCTION source_type should use epistemic_status HISTORICAL, not CONFIRMED`,
+      );
+    }
   }
 
   if (n.type === 'open_question' && n.epistemic_status === 'CONFIRMED') {
@@ -115,6 +130,37 @@ for (const n of nodes) {
     if (!nodeIds.has(ref)) fail(`Node ${n.id} references missing evidence ${ref}`);
   }
 }
+
+// PRODUCTION_VALIDATED decisions need production or code/test evidence (not doc-only)
+const evidenceById = new Map(nodes.filter((n) => n.type === 'evidence').map((n) => [n.id, n]));
+const productionEvidenceTypes = new Set(['PRODUCTION', 'CODE', 'TEST', 'INCIDENT']);
+for (const d of decisionNodes) {
+  if (d.decision_status === 'PRODUCTION_VALIDATED') {
+    const refs = d.evidence ?? [];
+    const hasStrong = refs.some((id) => {
+      const ev = evidenceById.get(id);
+      return ev && productionEvidenceTypes.has(ev.source_type);
+    });
+    if (!hasStrong) {
+      fail(
+        `Decision ${d.id} PRODUCTION_VALIDATED without PRODUCTION/CODE/TEST/INCIDENT evidence`,
+      );
+    }
+  }
+}
+
+// GRAPH.yaml authority gate
+const graphManifest = yaml.load(
+  fs.readFileSync(path.join(kgDir, 'GRAPH.yaml'), 'utf8'),
+);
+if (!graphManifest.authority_review?.artifact) {
+  fail('GRAPH.yaml missing authority_review.artifact gate');
+}
+const reviewArtifact = path.join(repo, graphManifest.authority_review.artifact);
+if (!fs.existsSync(reviewArtifact)) {
+  fail(`Missing authority review artifact: ${graphManifest.authority_review.artifact}`);
+}
+console.log('==> Authority review gate: OK');
 
 console.log('==> Node checks:', nodes.length, 'nodes');
 
@@ -207,6 +253,8 @@ const requiredNodePrefixes = [
   'EED-DEC-009',
   'EED-UI-001',
   'EED-UI-002',
+  'EED-ST-001',
+  'EED-FB-001',
 ];
 for (const id of requiredNodePrefixes) {
   if (!nodeIds.has(id)) fail(`Missing required area node: ${id}`);

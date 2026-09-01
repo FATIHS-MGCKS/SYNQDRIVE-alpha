@@ -448,6 +448,32 @@ nodes:
     evidence: [EED-EV-0002]
     discovery_ref: failure
 
+  - id: EED-FB-001
+    type: fallback
+    title: Optional EnergyEventsService injection skip
+    epistemic_status: CONFIRMED
+    summary: >
+      TripReconciliationService uses @Optional() energyEventsService; if module not
+      booted, step 5 is silently skipped (no detect).
+    authority_class: EED_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+    evidence: [EED-EV-0001]
+    discovery_ref: failure
+
+  - id: EED-COMP-008
+    type: component
+    title: FuelStationEnrichmentProducer (post-REFUEL persist)
+    epistemic_status: CONFIRMED
+    summary: >
+      Optional fire-and-forget enqueue after REFUEL upsert. Separate enrichment
+      module; EED consumes read projection only on API.
+    authority_class: EED_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+    evidence: [EED-EV-0002]
+    discovery_ref: EED-OQ-09
+
   # ── Observability ────────────────────────────────────────────────────────────
   - id: EED-OBS-001
     type: observability
@@ -498,13 +524,14 @@ nodes:
   - id: EED-EXT-003
     type: external_authority
     title: Battery V2 / HvChargeSession
-    epistemic_status: CONFIRMED
+    epistemic_status: INFERRED
     summary: >
-      Orthogonal HV charge session lifecycle. No automatic linkage to VehicleEnergyEvent RECHARGE.
+      Separate HV charge session lifecycle (HvChargeSession). No code linkage to
+      VehicleEnergyEvent RECHARGE today; orthogonality inferred from parallel paths.
     authority_class: OUT_OF_SCOPE
     source_paths:
-      - architecture/battery-v2/
-    evidence: [EED-EV-0022]
+      - architecture/battery-v2/lifecycle/hv-charge-sessions.md
+    evidence: [EED-EV-0022, EED-EV-0025]
 
   - id: EED-EXT-004
     type: external_authority
@@ -529,9 +556,10 @@ nodes:
       Coalescing did NOT create long envelope. Parser preserved upstream durationSeconds.
     authority_class: EED_OWNS
     source_paths:
-      - backend/src/modules/dimo/fixtures/ks-mx-2024-aug28-refuel.fixture.ts
+      - architecture/P1_3_S6_PRODUCTION_DEPLOY_SINGLE_REPLICA_2026-08-30.md
       - architecture/P1_3_S5_ENERGY_REFUEL_SEMANTICS_2026-08-30.md
-    evidence: [EED-EV-0018, EED-EV-0011]
+      - backend/src/modules/dimo/fixtures/ks-mx-2024-aug28-refuel.fixture.ts
+    evidence: [EED-EV-0025, EED-EV-0018, EED-EV-0011, EED-EV-0024]
     discovery_ref: EED-DEC-KS-MX-2024-001
 
   # ── Decisions (canonical nodes) ────────────────────────────────────────────────
@@ -616,14 +644,14 @@ nodes:
       ~80 min from DIMO envelope not SynqDrive expansion. Single-segment coalesce
       preserved 4818s. Sibling 685s reconciled post-reprocess.
     authority_class: EED_OWNS
-    evidence: [EED-EV-0018, EED-EV-0011]
+    evidence: [EED-EV-0025, EED-EV-0018, EED-EV-0011, EED-EV-0006]
     discovery_ref: EED-DEC-KS-MX-2024-001
 
   - id: EED-DEC-009
     type: decision
     title: No historical backfill policy
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
+    decision_status: VALIDATED
     summary: >
       Forward-correct behavior only. NULL historical fuelLevelRise* acceptable.
       No fleet-wide rewrite required.
@@ -662,13 +690,28 @@ nodes:
     discovery_ref: EED-DEC-E1-001
 
   # ── Open questions ───────────────────────────────────────────────────────────
+  - id: EED-ST-001
+    type: state
+    title: Energy detection coupled to trip reconciliation (current)
+    epistemic_status: CONFIRMED
+    summary: >
+      No dedicated BullMQ energy scheduler exists. detectEnergyEvents runs only when
+      TripReconciliationService step 5 executes (or manual POST detect / ops scripts).
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+    evidence: [EED-EV-0001]
+    discovery_ref: EED-OQ-01 current-state
+
   - id: EED-OQ-001
     type: open_question
-    title: Dedicated energy BullMQ scheduler vs reconciliation coupling
+    title: Should EED get a dedicated BullMQ scheduler decoupled from reconciliation?
     epistemic_status: UNKNOWN
-    summary: No dedicated energy scheduler today; detect cadence inherits reconcile tiers.
+    summary: >
+      Future architecture question only. Current state documented in EED-ST-001.
     authority_class: EED_OWNS
-    discovery_ref: EED-OQ-01
+    evidence: [EED-EV-0001]
+    discovery_ref: EED-OQ-01 future
 
   - id: EED-OQ-002
     type: open_question
@@ -916,17 +959,19 @@ nodes:
   - id: EED-EV-0016
     type: evidence
     title: P1.3-S5 refuel semantics architecture doc
-    epistemic_status: CONFIRMED
+    epistemic_status: HISTORICAL
     source_type: ARCHITECTURE_DOC
     source_paths:
       - architecture/P1_3_S5_ENERGY_REFUEL_SEMANTICS_2026-08-30.md
-    summary: Canonical duration vs rise semantics; additive migration policy.
+    summary: >
+      Normative semantics record (duration vs rise). Cross-check code via EED-EV-0008,
+      EED-EV-0010, EED-EV-0015; doc alone is not runtime proof.
     verified_at: "2026-09-01"
 
   - id: EED-EV-0017
     type: evidence
     title: No historical backfill product decision
-    epistemic_status: CONFIRMED
+    epistemic_status: HISTORICAL
     source_type: ARCHITECTURE_DOC
     source_paths:
       - architecture/knowledge-graphs/discovery/ENERGY_EVENT_DETECTION_DISCOVERY_2026-09-01.md
@@ -935,19 +980,20 @@ nodes:
 
   - id: EED-EV-0018
     type: evidence
-    title: KS MX production forensic values
-    epistemic_status: HISTORICAL
-    source_type: INCIDENT
+    title: KS MX fixture reproduction (test harness)
+    epistemic_status: CONFIRMED
+    source_type: TEST
     source_paths:
       - backend/src/modules/dimo/fixtures/ks-mx-2024-aug28-refuel.fixture.ts
-      - docs/audits/trip-enrichment-driver-score-energy-events-audit-2026-08.md
-    summary: durationSeconds=4818; rise~280s; envelope not expanded by parser/coalesce.
+    summary: >
+      Fixture encodes 4818s envelope, 685s stale sibling, ~280s rise band for unit tests.
+      NOT production observation by itself.
     verified_at: "2026-09-01"
 
   - id: EED-EV-0019
     type: evidence
-    title: ATE/EED boundary map
-    epistemic_status: CONFIRMED
+    title: ATE/EED boundary map (discovery)
+    epistemic_status: INFERRED
     source_type: ARCHITECTURE_DOC
     source_paths:
       - architecture/knowledge-graphs/discovery/ATE_EED_BOUNDARY_MAP_2026-09-01.md
@@ -967,7 +1013,7 @@ nodes:
   - id: EED-EV-0021
     type: evidence
     title: DIMO provider budget external authority
-    epistemic_status: CONFIRMED
+    epistemic_status: INFERRED
     source_type: ARCHITECTURE_DOC
     source_paths:
       - architecture/scaling-process/DIMO_GLOBAL_PROVIDER_BUDGET.md
@@ -976,13 +1022,27 @@ nodes:
 
   - id: EED-EV-0022
     type: evidence
-    title: Battery V2 orthogonal to RECHARGE timeline
-    epistemic_status: CONFIRMED
+    title: Battery V2 HV sessions parallel to EED RECHARGE
+    epistemic_status: INFERRED
     source_type: ARCHITECTURE_DOC
     source_paths:
-      - architecture/battery-v2/
+      - architecture/battery-v2/lifecycle/hv-charge-sessions.md
       - architecture/knowledge-graphs/discovery/ENERGY_EVENT_DETECTION_DISCOVERY_2026-09-01.md
-    summary: HvChargeSession separate authority; no auto-link to VehicleEnergyEvent.
+    summary: >
+      Battery V2 owns HvChargeSession ingest; no documented auto-link to
+      VehicleEnergyEvent. Orthogonality inferred — Battery V2 does not cite EED rows.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0025
+    type: evidence
+    title: KS MX 2024 production reprocess (P1.3-S6)
+    epistemic_status: HISTORICAL
+    source_type: PRODUCTION
+    source_paths:
+      - architecture/P1_3_S6_PRODUCTION_DEPLOY_SINGLE_REPLICA_2026-08-30.md
+    summary: >
+      Production controlled reprocess: durationSeconds=4818, rise=330s derived,
+      stale 685s sibling deleted. Application path detectEnergyEvents.
     verified_at: "2026-09-01"
 
   - id: EED-EV-0023

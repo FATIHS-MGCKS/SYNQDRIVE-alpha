@@ -170,7 +170,7 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | Field | Value |
 |-------|-------|
 | **ID** | EED-DEC-009 |
-| **Status** | PRODUCTION_VALIDATED |
+| **Status** | VALIDATED |
 | **Date** | 2026-08-30 |
 | **Question** | Must fleet-wide historical rows be rewritten for fuelLevelRise*? |
 | **Decision** | No. Forward-correct behavior only. NULL historical rise fields acceptable. |

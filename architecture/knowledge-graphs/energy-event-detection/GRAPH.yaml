@@ -8,6 +8,14 @@ status: CANONICAL
 created: "2026-09-01"
 main_sha_at_canonicalization: "da959784f835a31482852d506daa137c90389b87"
 
+# CANONICAL status is authority-gated: requires completed independent review artifact.
+authority_review:
+  required: true
+  artifact: architecture/KG_EED_INDEPENDENT_AUTHORITY_REVIEW_2026-09-01.md
+  completed_at: "2026-09-01"
+  verdict: APPROVE_WITH_DOCUMENTED_OPEN_QUESTIONS
+  reviewed_against_sha: "da959784f835a31482852d506daa137c90389b87"
+
 scope:
   owns:
     - REFUEL detection semantics
