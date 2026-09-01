@@ -10,20 +10,20 @@ Append-only scientific record. Newest entries first.
 
 | Field | Content |
 |-------|---------|
-| **BEFORE** | PKG-02 implied "enqueue every persistedAssessmentId"; soak protocol used invented table names; CHANGE_LEDGER OBSERVED_EFFECT contradicted VALIDATION; production evidence column mixed code facts. |
-| **OBSERVATION** | AUTO track may persist WORKSHOP_OVERRIDE + TELEMETRY; publication policy has no track ordering; REST handler `hasMeasurement` early return creates assessment handoff crash boundary. |
-| **HYPOTHESIS** | Documenting assessment-selection authority as SPEC REQUIRED closes final PKG-02 semantic blocker without runtime changes. |
-| **CHANGE** | PKG-02 assessment-track selection authority (DECISION_NOT_READY); REST crash boundary; Prisma model names in soak protocol + eligibility preconditions; Production evidence / Code evidence columns; 13.2V vs 13.25V threshold split; DEC-PH4 summary corrected; integrated latest main (scaling #1490 only). |
-| **WHY** | Final documentation merge gate — prevent runtime agents from implementing order-dependent multi-track publication. |
-| **EXPECTED_EFFECT** | PKG-02 blocked on assessment-selection + publicationVersion specs; soak protocol uses verified schema terminology. |
+| **BEFORE** | PKG-02 implied "enqueue every persistedAssessmentId"; soak protocol conflated `lv-rest-open:*` job identity with `lv-rest:*` session identity; RUNNING shown as normal lifecycle; PUB-READINESS had unsupported PARTIAL_POST_CHANGE production evidence; publication rollback claimed append-only. |
+| **OBSERVATION** | AUTO track may persist WORKSHOP_OVERRIDE + TELEMETRY; publication policy has no track ordering; REST handler `hasMeasurement` early return creates assessment handoff crash boundary; session-open job id ≠ persisted session idempotency key. |
+| **HYPOTHESIS** | Final authority cleanup closes remaining factual inconsistencies before Phase-4 documentation merge. |
+| **CHANGE** | PKG-02 assessment-track selection authority (DECISION_NOT_READY); REST crash boundary; Prisma model names + dual session identities in soak protocol; RUNNING as investigation-only; Production/Code evidence columns; PUB-READINESS production evidence → NONE; 13.2V vs 13.25V threshold split; periodic reconcile cadence SPEC REQUIRED; publication supersession semantics; DEC-PH4 summary; integrated latest main (`2a2fe5ac`, scaling #1490 only). |
+| **WHY** | Final documentation merge gate — prevent runtime agents from implementing order-dependent multi-track publication or conflating identities. |
+| **EXPECTED_EFFECT** | PKG-02 blocked on assessment-selection + publicationVersion specs; soak protocol uses verified schema terminology and correct identity separation. |
 | **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh` |
-| **OBSERVED_EFFECT** | Validator PASS; 20 open gaps; 23 planning items; 121 nodes / 108 edges / 11 invariants; consistency checks PASS; latest main integrated (`2a2fe5ac`); no `architecture/battery-v2/**` drift on main. |
+| **OBSERVED_EFFECT** | Validator PASS; 20 open gaps; 23 planning items; 121 nodes / 108 edges / 11 invariants; authority-cleanup consistency checks PASS; main at `2a2fe5ac` (no Battery V2 drift). |
 | **NON_EFFECTS** | No runtime; no flags; no deploy; gaps remain open; DEC-PH4 PROPOSED. |
 | **REGRESSIONS_OR_TRADEOFFS** | PKG-02 readiness remains IMPLEMENTATION_SPEC_REQUIRED |
 | **REMAINING_GAPS** | assessment-track selection authority; publicationVersion; inputVersion; all 20 gaps open |
 | **DECISION_STATUS** | VALIDATED (documentation only; NOT PRODUCTION_VALIDATED) |
 | **AFFECTED_GRAPH** | 121 / 108 / 11 (DEC-PH4 summary text) |
-| **EVIDENCE** | `lv-estimated-health-assessment.policy.ts`, `battery-rest-target-evaluate.handler.ts`, `lv-canonical-battery.resolver.ts`, Prisma `VehicleTrip` / `BatteryMeasurementSession` |
+| **EVIDENCE** | `battery-v2-job-idempotency.policy.ts`, `battery-v2-domain.ts`, `lv-rest-window-session-arming.service.ts`, `lv-estimated-health-assessment.policy.ts`, `battery-publication.repository.ts` |
 
 ---
 

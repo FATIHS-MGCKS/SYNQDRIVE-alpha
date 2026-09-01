@@ -60,7 +60,7 @@ Plus reconciliation safety net for crash boundaries.
 | **A** Direct enqueue from REST handler | Simplest | `buildAssessmentJobIdempotencyKey` | Handler commit → enqueue gap | Standard retry | Good normal path |
 | **B** Domain event on measurement create | Decoupled | Event outbox pattern | Needs outbox or txn | Consumer workers | Higher complexity |
 | **C** Reconciliation-only | No direct enqueue | Reconcile scans measurements | Delayed | Batch | Too slow alone |
-| **D Hybrid** A + C | Direct + nightly reconcile | Both paths idempotent | Reconcile repairs misses | Mixed | **RECOMMENDED** |
+| **D Hybrid** A + C | Direct + periodic reconciliation safety net (cadence SPEC REQUIRED) | Both paths idempotent | Reconcile repairs misses | Mixed | **RECOMMENDED** |
 
 ## OPTIONS — Publication handoff
 
@@ -239,7 +239,7 @@ Until `publicationVersion` source is authoritative for canonical handoff, PKG-02
 | Module | Role |
 |--------|------|
 | `battery-rest-target-evaluate.handler.ts` | Enqueue assessment after measurement persist |
-| `battery-assessment-recompute.handler.ts` | Enqueue publication per `persistedAssessmentId` (new) |
+| `battery-assessment-recompute.handler.ts` | Candidate publication handoff after deterministic assessment-selection authority (SPEC REQUIRED; new) |
 | `battery-v2-reconciliation.service.ts` | Canonical measurement scan + publication reconcile |
 | `BatteryV2JobProducerService` | Shared enqueue (`enqueue('BATTERY_ASSESSMENT_RECOMPUTE' \| 'BATTERY_PUBLICATION_UPDATE', ...)`) |
 | `BatteryV2SnapshotIngestionService.enqueueLvAssessmentRecompute()` | Reference pattern for assessment enqueue (private) |
@@ -271,7 +271,7 @@ Stage 2 canary: 1–2 orgs, observe assessment + publication rows within 24h of 
 
 ## ROLLBACK PLAN
 
-Disable handoff flag; revert to manual/reconcile-only; publication rows unchanged (append-only).
+Disable handoff flag; revert to manual/reconcile-only. Rollback does **not** delete historical `BatteryPublication` rows — records remain audit-preserved. Supersession may **UPDATE** an existing publication row's `reason` metadata per current `markPublicationSuperseded()` repository behavior. Do **not** describe `BatteryPublication` as strictly append-only.
 
 ## OBSERVABILITY
 

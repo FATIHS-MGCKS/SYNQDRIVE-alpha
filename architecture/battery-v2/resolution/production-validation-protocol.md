@@ -17,8 +17,11 @@ Determine whether #1445 liveness fixes eliminate REST stall class on **natural**
 | Trip | `VehicleTrip` | `tripStatus = COMPLETED`; anchor = `endTime` |
 | LV REST session | `BatteryMeasurementSession` | `type = BatteryMeasurementSessionType.LV_REST_WINDOW` |
 | REST measurement | `BatteryMeasurement` | Types `REST_60M` / `REST_6H` |
-| Session anchor | `BatteryMeasurementSession.idempotencyKey` | Trip-end anchor ms encoded in key |
+| Session domain identity | `BatteryMeasurementSession.idempotencyKey` | `buildLvRestWindowIdempotencyKey()` → `lv-rest:{vehicleId}:{anchorMs}` |
+| Session-open job identity | Bull `BATTERY_LV_REST_SESSION_OPEN` job idempotency | `buildLvRestSessionOpenJobIdempotencyKey()` → `lv-rest-open:{vehicleId}:{anchorMs}` |
 | REST target metadata | `BatteryMeasurementSession.metadata` | JSON — target status timeline |
+
+**Do not conflate** queue-job identity (`lv-rest-open:*`) with persisted session/window identity (`lv-rest:*`). They share the same `{vehicleId}:{anchorMs}` suffix but use different prefixes.
 
 **Do not use** conceptual names `Trip`, `BatteryLvRestSession`, or `anchorAt` — they are not Prisma fields.
 
@@ -37,7 +40,7 @@ A trip counts toward post-#1445 evidence **only** when exposure is known. Classi
 | # | Precondition |
 |---|--------------|
 | 1 | Trip `endTime` after relevant #1445 deploy SHA was **actually running** on target environment |
-| 2 | `BATTERY_V2_REST_SHADOW_ENABLED` (or documented equivalent) was **ON** for vehicle/org |
+| 2 | `BATTERY_V2_REST_SHADOW_ENABLED` was **ON** in the runtime environment / instance processing the Battery V2 path (process env — not per-vehicle/org storage). Where multiple replicas exist, configuration consistency across relevant replicas must be known. Vehicle battery policy/profile eligibility is a **separate** condition. |
 | 3 | `VehicleTrip.tripStatus = COMPLETED` with authoritative `endTime` |
 | 4 | REST session opening path was eligible (trip-finalization or documented reconciliation) |
 | 5 | REST_60M target opportunity existed (record separately from REST_6H) |
@@ -54,9 +57,11 @@ Trips with **EXPOSURE_UNKNOWN** must not be used to claim liveness success or fa
 | tripId | `VehicleTrip.id` |
 | tripEndAt | `VehicleTrip.endTime` |
 | sessionId | `BatteryMeasurementSession.id` where `type = LV_REST_WINDOW` |
-| session idempotencyKey | Anchor component for `lv-rest-open:{vehicleId}:{anchorMs}` |
+| `SESSION_IDEMPOTENCY_KEY` | `BatteryMeasurementSession.idempotencyKey` — domain identity `lv-rest:{vehicleId}:{anchorMs}` via `buildLvRestWindowIdempotencyKey()` |
+| `SESSION_OPEN_JOB_ID` | Bull job idempotency for `BATTERY_LV_REST_SESSION_OPEN` — `lv-rest-open:{vehicleId}:{anchorMs}` via `buildLvRestSessionOpenJobIdempotencyKey()` |
 | REST target ids | Session `metadata` — REST_60M / REST_6H |
-| target status timeline | ENQUEUED → RUNNING/PENDING_EVALUATION → COMPLETED/MISSED |
+| target status timeline | Observe known statuses: `SCHEDULED`, `ENQUEUED`, `PENDING_EVALUATION`, `COMPLETED`, `MISSED`, `CANCELLED`, `FAILED` |
+| `RUNNING` observation | **Not** expected normal progression — no audited writer assigns `RUNNING` to REST target metadata (`BAT-V2-GAP-RUNNING-ORPHAN-001`). If observed, record as investigation event. Absence of `RUNNING` is **not** failure. |
 | Bull job ids | Queue inspection (read-only) |
 | DLQ entries | `battery.v2` failed set cardinality + sample |
 | reconciliation runs | Logs if available |
