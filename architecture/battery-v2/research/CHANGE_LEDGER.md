@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-01 — D2 canonical LV assessment crash-boundary decision
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | PKG-01 crash-boundary remained SPEC REQUIRED (A/B/C alternatives). Initial D2 Hybrid C+ selected architecture but retry contract treated any persisted measurement as handoff-eligible; terminal synthetic measurements risked COMPLETED overwrite; no sourceEntityId ack contract; no monotonic/concurrency metadata invariant; enqueue/EXECUTED ack semantics underspecified. |
+| **OBSERVATION** | `hasTargetMeasurement` bool ignores quality/provenance; `persistMissedMeasurement`/`persistStatusMeasurement` return `measurementId` without `sourceObservationId`; selected-observation path includes `sourceObservationId` (ok=true may still be quality MISSED); metadata update is RMW over loaded snapshot; `BatteryV2JobPayloadBase` already has `sourceEntityId`; producer returns `null` vs `jobId`; `recomputeLvEstimatedHealth` maps to persisted/unsupported/skipped. |
+| **HYPOTHESIS** | Precision pass on Hybrid C+ closes implementation-contract holes without runtime change: eligibility gate, terminal outcome preservation, sourceEntityId correlation, monotonic state, concurrency-safe merge, enqueue/EXECUTED ack rules. |
+| **CHANGE** | Amended `BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001` dossier with HANDOFF_ELIGIBILITY (`CANONICAL_ASSESSMENT_HANDOFF_ELIGIBLE_MEASUREMENT` via `provenance.sourceObservationId`), terminal retry semantics (MISSED/FAILED preservation), `sourceEntityId=measurement.id` correlation, monotonic `MISSING<ENQUEUED<EXECUTED` + late ENQUEUED no-op, concurrency-safe target metadata invariant + PKG-01 test scope, ENQUEUED/EXECUTED ack semantics. Updated graph decision summary; expanded `BAT-V2-EVID-CODE-REST-HAS-MEASUREMENT-EARLY-RETURN-001`; added `BAT-V2-EVID-CODE-REST-SYNTHETIC-MEASUREMENT-PERSISTENCE-001`, `BAT-V2-EVID-CODE-REST-TARGET-METADATA-RMW-001`. Updated CURRENT_STATE, KNOWLEDGE_GRAPH, implementation-packages, lv-publication-chain dossier. |
+| **WHY** | Any-measurement handoff rule is incorrect for synthetic terminal rows; bool replay risks MISSED/FAILED→COMPLETED; assessment ack needs measurement correlation not correlationId parsing; worker/producer race requires monotonic EXECUTED; multi-replica safety needs qualified concurrency contract. |
+| **EXPECTED_EFFECT** | Runtime agents implement eligibility-gated Hybrid C+ with sourceEntityId ack and monotonic concurrency-safe metadata; PKG-01 remains IMPLEMENTATION_SPEC_REQUIRED (D3 only); assessment-handoff gap stays open. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh`; code cites `battery-rest-target-evaluate.handler.ts`, `battery-rest-target-evaluation.service.ts`, `battery-v2-job-producer.service.ts`, `battery-assessment.service.ts`, `battery-v2-job.types.ts` |
+| **OBSERVED_EFFECT** | Validator PASS; 20 open gaps; 23 planning items; 131 nodes / 113 edges / 11 invariants (was 129/113/11 before precision pass; was 124/110/11 before initial D2). |
+| **NON_EFFECTS** | No runtime implementation; no assessment enqueue added; no reconciliation code changed; no DB migration; no feature flags; no production mutation; no backfill; no deploy; assessment-handoff gap remains open; PKG-01 not yet IMPLEMENTATION_READY. |
+| **REGRESSIONS_OR_TRADEOFFS** | At-least-once not exactly-once; implementation must add concurrency-safe merge (not yet in code); eligibility adds replay branch complexity |
+| **REMAINING_GAPS** | All 20 `BAT-V2-GAP-*` open; PKG-01 configuration invariant (D3); PKG-02 blockers unchanged |
+| **DECISION_STATUS** | VALIDATED (architecture / code-authority — NOT PRODUCTION_VALIDATED) |
+| **AFFECTED_GRAPH** | +2 evidence nodes; expanded 1 evidence + decision summary — see validator counts |
+| **EVIDENCE** | `BAT-V2-EVID-CODE-REST-HAS-MEASUREMENT-EARLY-RETURN-001`, `BAT-V2-EVID-CODE-REST-SYNTHETIC-MEASUREMENT-PERSISTENCE-001`, `BAT-V2-EVID-CODE-REST-TARGET-METADATA-RMW-001`, `BAT-V2-EVID-CODE-RECONCILE-NO-CANONICAL-REST-001`, `BAT-V2-EVID-CODE-ASSESSMENT-POLICY-SKIP-001`, `BAT-V2-EVID-CODE-JOB-PRODUCER-INFLIGHT-DEDUPE-001` |
+
+---
+
 ## CL-2026-09-01 — D1 canonical LV assessment inputVersion decision
 
 | Field | Content |

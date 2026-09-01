@@ -85,6 +85,20 @@ edges:
     to: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
     notes: Closes PKG-01 inputVersion blocker within Phase 4 handoff architecture
 
+  # D2 — canonical LV assessment crash-boundary recovery (PKG-01 spec closure)
+  - from: BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001
+    relation: refines
+    to: BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
+    notes: Hybrid C+ — handoff gap remains open until runtime implementation
+  - from: BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001
+    relation: refines
+    to: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
+    notes: Closes PKG-01 crash-boundary blocker within Phase 4 handoff architecture
+  - from: BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001
+    relation: refines
+    to: BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001
+    notes: D2 operationalizes D1 identity under crash/retry/reconcile paths
+
   # Failed → superseded by decisions / liveness
   - from: BAT-V2-DEC-1445-001
     relation: does_not_solve

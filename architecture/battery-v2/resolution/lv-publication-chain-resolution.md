@@ -2,7 +2,7 @@
 
 **Gaps:** `BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001`, `BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001`, `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001`  
 **Priority:** P0_ACTIVATION_BLOCKER (Stage-2 cutover — **not** proven active production outage while flags default OFF)  
-**Readiness:** IMPLEMENTATION_SPEC_REQUIRED — PKG-01 blockers: REST post-persist/pre-enqueue crash-boundary handling, `CONFIGURATION_INVARIANT_SPEC_REQUIRED` (`inputVersion` = `BatteryMeasurement.id` — **VALIDATED** `BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001`); PKG-02 blockers: assessment-track selection authority, `publicationVersion`, `CONFIGURATION_INVARIANT_SPEC_REQUIRED`  
+**Readiness:** IMPLEMENTATION_SPEC_REQUIRED — PKG-01 blockers: `CONFIGURATION_INVARIANT_SPEC_REQUIRED` only (`inputVersion` = `BatteryMeasurement.id` — **VALIDATED** D1; crash-boundary — **VALIDATED** D2 Hybrid C+); PKG-02 blockers: assessment-track selection authority, `publicationVersion`, `CONFIGURATION_INVARIANT_SPEC_REQUIRED`  
 **Proposed decision:** `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (PROPOSED — gaps remain open)
 
 ## CURRENT STATE
@@ -136,30 +136,70 @@ Evaluate against: evidence strength, publication semantics, hysteresis, superses
 
 **Not settled:** which assessment(s) receive publication enqueue when recompute yields multiple tracks.
 
-## REST HANDLER CRASH BOUNDARY (PKG-01)
+## REST HANDLER CRASH BOUNDARY (PKG-01 — VALIDATED D2)
 
-`BatteryRestTargetEvaluateHandler` early return when measurement already exists:
+**Decision:** `BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001` — **Hybrid C+ crash recovery** (not `PRODUCTION_VALIDATED`)
+
+Current handler behavior (insufficient):
 
 ```typescript
-if (hasMeasurement) {
+if (hasMeasurement) {  // bool — any BatteryMeasurement of target type
   await this.updateTargetMetadata(session, restTargetType, { status: COMPLETED, ... });
-  return; // no assessment enqueue
+  return; // no row load, no handoff ensure, may overwrite MISSED/FAILED
 }
 ```
 
-**Failure mode:** measurement persisted → process crashes before assessment enqueue → REST job retries → `hasMeasurement === true` → returns without creating missing assessment job.
+**Failure mode:** handoff-eligible measurement persisted → crash before enqueue → retry → bool true → COMPLETED without handoff.
 
-**Mitigation (planned):** reconciliation safety net scans canonical measurements without recent assessment.
+**Current code risk:** synthetic terminal measurements (`persistMissedMeasurement`, `persistStatusMeasurement`) also satisfy `hasMeasurement` — replay must not hand off or convert MISSED/FAILED → COMPLETED. Production frequency UNKNOWN.
 
-**Target alternatives (SPEC REQUIRED):**
+### SELECTED architecture (Hybrid C+)
 
-| Alt | Description |
-|-----|-------------|
-| **A** | Existing-measurement branch also ensures assessment handoff idempotently |
-| **B** | Reconciliation alone repairs post-persist/pre-enqueue crash |
-| **C** | Both A + B |
+1. **Direct normal handoff** — primary path after **handoff-eligible** measurement persist  
+2. **Direct retry repair** — load row; handoff only if `CANONICAL_ASSESSMENT_HANDOFF_ELIGIBLE_MEASUREMENT` (`provenance.sourceObservationId` present)  
+3. **Periodic reconciliation safety net** — same D1 identity + `sourceEntityId` correlation  
+4. **Durable target-scoped handoff state** — monotonic `MISSING < ENQUEUED < EXECUTED`; concurrency-safe merge
 
-Do not redesign in Phase 4 — document boundary only.
+### Handoff eligibility
+
+| Path | `sourceObservationId` | Handoff? |
+|------|----------------------|----------|
+| Selected-observation `evaluateAndPersist` | present | YES |
+| `persistMissedMeasurement` | absent | NO → preserve MISSED |
+| `persistStatusMeasurement` (unsupported) | absent | NO → preserve FAILED |
+
+`quality === MISSED` alone does not prove synthetic terminal — use provenance.
+
+### Retry path contract
+
+```
+load BatteryMeasurement row
+  → if handoff-eligible: ensureAssessmentHandoff(measurement.id) → COMPLETED
+  → if synthetic missed: preserve MISSED, no handoff
+  → if synthetic unsupported: preserve FAILED, no handoff
+```
+
+### Canonical correlation (D1 + D2)
+
+```typescript
+inputVersion: measurement.id      // job identity (D1)
+sourceEntityId: measurement.id  // handoff ack correlation (D2)
+```
+
+Assessment handler: `sourceEntityId` → load measurement → verify org/vehicle → resolve session + REST target → write EXECUTED outcome. Legacy jobs without measurement `sourceEntityId` must not mutate canonical handoff metadata.
+
+### Monotonic state + concurrency
+
+- `EXECUTED` terminal — never regress to ENQUEUED/MISSING  
+- Late ENQUEUED no-op when already EXECUTED (worker may beat producer)  
+- Target-scoped concurrency-safe metadata merge required for multi-replica safety
+
+### ENQUEUED / EXECUTED ack
+
+- **ENQUEUED:** only after producer success or confirmed in-flight duplicate (`jobId` returned — not `null`)  
+- **EXECUTED:** after `recomputeLvEstimatedHealth()` — `ASSESSMENT_PERSISTED` | `POLICY_SKIPPED` | `UNSUPPORTED`
+
+See `decisions/lv-assessment-crash-boundary-decision.md`.
 
 ## ASSESSMENT JOB IDENTITY (canonical — do not invent `lv-assess:`)
 
@@ -397,8 +437,7 @@ Does not enable readiness; does not fix timestamp provenance; does not fix HEV a
 
 - **Canonical publication assessment-track selection authority** (WORKSHOP_OVERRIDE vs TELEMETRY when both publicationEligible)
 - Authoritative `publicationVersion` for canonical handoff
-- REST handler crash boundary: existing-measurement branch handoff vs reconcile-only (A/B/C)
-- **Configuration invariant** for REST_SHADOW + PUBLICATION + HANDOFF combinatorics (`CONFIGURATION_INVARIANT_SPEC_REQUIRED`)
+- **Configuration invariant** for REST_SHADOW + PUBLICATION + HANDOFF combinatorics (`CONFIGURATION_INVARIANT_SPEC_REQUIRED`) — crash-boundary closed **VALIDATED** D2 (`BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001`)
 - Exact reconcile cadence vs #1445 reconciliation load
 - Whether handoff flag merges into publication flag after soak
 - Org-scoped rollout targeting (if desired) — **SPEC REQUIRED**; not available via current flags
