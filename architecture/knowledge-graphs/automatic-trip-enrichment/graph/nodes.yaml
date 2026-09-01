@@ -1,0 +1,1042 @@
+# KG-ATE canonical nodes
+# Verified against main @ 4843a4ebc (2026-09-01)
+
+nodes:
+  # ── Workstream ─────────────────────────────────────────────────────────────
+  - id: ATE-WORKSTREAM-001
+    type: workstream
+    title: Automatic Trip Enrichment
+    epistemic_status: CONFIRMED
+    summary: >
+      Post-finalize automatic trip behavior enrichment, route/safety enrichment,
+      misuse trigger, and driving-impact enqueue — without requiring UI interaction.
+    authority_class: ATE_OWNS
+    evidence: [ATE-EV-0001, ATE-EV-0002]
+    discovery_ref: ATE-N01..ATE-N20 aggregate
+
+  # ── Core services ──────────────────────────────────────────────────────────
+  - id: ATE-SVC-001
+    type: service
+    title: TripDetectionOrchestrationService.processFinalize
+    epistemic_status: CONFIRMED
+    summary: V2 FSM finalizes trip to COMPLETED; triggers post-finalize producer and behavior enqueue.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+    evidence: [ATE-EV-0003]
+    discovery_ref: ATE-N01
+
+  - id: ATE-SVC-002
+    type: service
+    title: TripPostFinalizeAnalysisProducer
+    epistemic_status: CONFIRMED
+    summary: >
+      After persisted COMPLETED trip, reconciles event associations and initializes
+      Driving Intelligence V2 durable jobs (parallel track, not behavior queue).
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-analysis-init/trip-post-finalize-analysis.producer.ts
+    evidence: [ATE-EV-0004]
+    discovery_ref: ATE-N02
+
+  - id: ATE-SVC-003
+    type: service
+    title: TripEnrichmentOrchestratorService
+    epistemic_status: CONFIRMED
+    summary: >
+      Single canonical entry for enqueueBehaviorEnrichment, runEnrichmentSync,
+      enqueueDrivingImpact, enqueueRepairEnrichment, and backfill.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+    evidence: [ATE-EV-0001, ATE-EV-0005]
+    discovery_ref: ATE-N03, ATE-N06, ATE-N11
+
+  - id: ATE-SVC-004
+    type: service
+    title: TripBehaviorEnrichmentService
+    epistemic_status: CONFIRMED
+    summary: Hardware-routed behavior enrichment; SMART5 HF detectors vs LTE_R1 delegation.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-behavior-enrichment.service.ts
+    evidence: [ATE-EV-0006]
+    discovery_ref: ATE-N07, ATE-N08a
+
+  - id: ATE-SVC-005
+    type: service
+    title: LteR1BehaviorEnrichmentService
+    epistemic_status: CONFIRMED
+    summary: LTE_R1 native DIMO events + HF abuse secondary path; capability gating.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/lte-r1-behavior-enrichment.service.ts
+    evidence: [ATE-EV-0007]
+    discovery_ref: ATE-N08b
+
+  - id: ATE-SVC-006
+    type: service
+    title: TripsService.enrichTrip (route/safety)
+    epistemic_status: CONFIRMED
+    summary: Route, road distribution, speeding, temperature after behavior COMPLETED.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trips.service.ts
+    evidence: [ATE-EV-0008]
+    discovery_ref: ATE-N09
+
+  - id: ATE-SVC-007
+    type: service
+    title: MisuseCaseAggregatorService.evaluateTrip
+    epistemic_status: CONFIRMED
+    summary: Fire-and-forget misuse case aggregation after behavior enrichment.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/misuse-cases/misuse-case-aggregator.service.ts
+    evidence: [ATE-EV-0009]
+    discovery_ref: ATE-N10
+
+  - id: ATE-SVC-008
+    type: service
+    title: TripReconciliationService.reconcileWindow
+    epistemic_status: CONFIRMED
+    summary: >
+      Repair stale/missing trips; mutex-wrapped; step 5 MAY_TRIGGER EED detectEnergyEvents.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+    evidence: [ATE-EV-0010, ATE-EV-0011]
+    discovery_ref: ATE-N13
+
+  - id: ATE-SVC-009
+    type: service
+    title: DrivingAnalysisInitService
+    epistemic_status: CONFIRMED
+    summary: DI V2 run initialization for completed trips; separate from behavior queue.
+    authority_class: ATE_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-analysis-init/driving-analysis-init.service.ts
+    evidence: [ATE-EV-0004]
+    notes: Scoring semantics owned by KG-Driving-Intelligence
+    discovery_ref: ATE-N04
+
+  - id: ATE-SVC-010
+    type: service
+    title: TripAnalysisCoordinatorService
+    epistemic_status: CONFIRMED
+    summary: Coordinates tripAnalysisStatus stages (behavior, route, misuse, drivingImpact).
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-analysis-coordinator.service.ts
+    evidence: [ATE-EV-0012]
+
+  - id: ATE-SVC-011
+    type: service
+    title: TripDecisionEngine
+    epistemic_status: CONFIRMED
+    summary: Trip lifecycle authority for repairs; reconciliation writes only via engine.
+    authority_class: ATE_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/decision/trip-decision.engine.ts
+    evidence: [ATE-EV-0010]
+
+  - id: ATE-SVC-012
+    type: service
+    title: EventTripAssociationService
+    epistemic_status: CONFIRMED
+    summary: Post-finalize association convergence; called before DI V2 init.
+    authority_class: ATE_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/event-association/event-trip-association.service.ts
+    evidence: [ATE-EV-0004]
+
+  # ── Processors ─────────────────────────────────────────────────────────────
+  - id: ATE-SVC-013
+    type: service
+    title: TripBehaviorEnrichmentProcessor
+    epistemic_status: CONFIRMED
+    summary: BullMQ worker; wraps runWithDimoRequestContext then runEnrichmentSync.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/workers/processors/trip-behavior-enrichment.processor.ts
+    evidence: [ATE-EV-0013, ATE-EV-0014]
+    discovery_ref: ATE-N05
+
+  - id: ATE-SVC-014
+    type: service
+    title: DrivingImpactProcessor
+    epistemic_status: CONFIRMED
+    summary: Computes TripDrivingImpact; scoring owned by Driving Intelligence.
+    authority_class: ATE_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/src/workers/processors/driving-impact.processor.ts
+    evidence: [ATE-EV-0015]
+    discovery_ref: ATE-N12
+
+  # ── Queues & jobs ──────────────────────────────────────────────────────────
+  - id: ATE-QUE-001
+    type: queue
+    title: trip.behavior.enrichment
+    epistemic_status: CONFIRMED
+    summary: Primary automatic behavior enrichment queue; jobId hf-enrich-${tripId}.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/workers/queues/queue-names.ts
+    evidence: [ATE-EV-0005]
+    discovery_ref: ATE-N03
+
+  - id: ATE-QUE-002
+    type: queue
+    title: trip.driving-impact.compute
+    epistemic_status: CONFIRMED
+    summary: Downstream driving impact compute; jobId driving-impact-${tripId}.
+    authority_class: ATE_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/src/workers/queues/queue-names.ts
+    evidence: [ATE-EV-0015]
+    discovery_ref: ATE-N11
+
+  - id: ATE-QUE-003
+    type: queue
+    title: driving.intelligence.jobs
+    epistemic_status: CONFIRMED
+    summary: DI V2 staged jobs from post-finalize producer.
+    authority_class: ATE_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/src/workers/queues/queue-names.ts
+    evidence: [ATE-EV-0004]
+
+  - id: ATE-JOB-001
+    type: job
+    title: hf-enrich
+    epistemic_status: CONFIRMED
+    summary: Behavior enrichment job; 3 attempts, exponential backoff 10s, 5s default delay.
+    authority_class: ATE_OWNS
+    evidence: [ATE-EV-0005]
+
+  - id: ATE-JOB-002
+    type: job
+    title: driving-impact-compute
+    epistemic_status: CONFIRMED
+    summary: Enqueued after behavior COMPLETED; removeOnFail 3.
+    authority_class: ATE_REFERENCES_EXTERNAL
+    evidence: [ATE-EV-0015]
+
+  # ── Schedulers ─────────────────────────────────────────────────────────────
+  - id: ATE-SCH-001
+    type: scheduler
+    title: TripReconciliationScheduler (fast/warm/cold)
+    epistemic_status: CONFIRMED
+    summary: 15m/4h/daily tiers; leader-gated; per-vehicle mutex before reconcileWindow.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/workers/schedulers/trip-reconciliation.scheduler.ts
+    evidence: [ATE-EV-0016, ATE-EV-0017]
+    discovery_ref: ATE-N14
+
+  - id: ATE-SCH-002
+    type: scheduler
+    title: TripAnalysisRecoveryScheduler
+    epistemic_status: CONFIRMED
+    summary: Recovers stuck misuse stages via orchestrator.recoverStuckMisuseStages.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/workers/schedulers/trip-analysis-recovery.scheduler.ts
+    evidence: [ATE-EV-0018]
+
+  - id: ATE-SCH-003
+    type: scheduler
+    title: DrivingAnalysisReconciliationScheduler
+    epistemic_status: CONFIRMED
+    summary: V2 parallel reconciliation; separate from behaviorEnrichmentStatus.
+    authority_class: ATE_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/src/workers/schedulers/driving-analysis-reconciliation.scheduler.ts
+    evidence: [ATE-EV-0019]
+
+  - id: ATE-SCH-004
+    type: scheduler
+    title: TripTrackingRecoveryScheduler
+    epistemic_status: CONFIRMED
+    summary: Trip tracking FSM recovery; leader-gated trip_tracking_recovery.
+    authority_class: ATE_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/src/workers/schedulers/trip-tracking-recovery.scheduler.ts
+    evidence: [ATE-EV-0020]
+
+  - id: ATE-SCH-005
+    type: scheduler
+    title: DimoSnapshotScheduler
+    epistemic_status: CONFIRMED
+    summary: 30s tick + janitor; leader-gated dimo_snapshot_tick / dimo_snapshot_janitor.
+    authority_class: SHARED_INFRASTRUCTURE
+    source_paths:
+      - backend/src/workers/schedulers/dimo-snapshot.scheduler.ts
+    evidence: [ATE-EV-0021]
+    notes: Resolves discovery ATE-OQ-03; leader election present at main SHA.
+
+  # ── Shared infrastructure (referenced) ─────────────────────────────────────
+  - id: ATE-EXT-001
+    type: external_authority
+    title: SchedulerLeaderGuardService
+    epistemic_status: CONFIRMED
+    summary: Redis lease leader election; shouldRun(name) gates schedulers.
+    authority_class: SHARED_INFRASTRUCTURE
+    source_paths:
+      - backend/src/shared/scheduler-leader/scheduler-leader-guard.service.ts
+      - architecture/scaling-process/SCHEDULER_LEADER_ELECTION.md
+    evidence: [ATE-EV-0016]
+    discovery_ref: ATE-N15
+
+  - id: ATE-EXT-002
+    type: external_authority
+    title: ReconciliationExecutionMutexService
+    epistemic_status: CONFIRMED
+    summary: Per-vehicle Redis lock during reconcileWindow; skip on contention.
+    authority_class: SHARED_INFRASTRUCTURE
+    source_paths:
+      - backend/src/shared/reconciliation-execution-mutex/reconciliation-execution-mutex.service.ts
+      - architecture/scaling-process/RECONCILIATION_EXECUTION_MUTEX.md
+    evidence: [ATE-EV-0017]
+    discovery_ref: ATE-N16
+
+  - id: ATE-EXT-003
+    type: external_authority
+    title: DIMO Provider Gateway / Budget
+    epistemic_status: CONFIRMED
+    summary: Global in-flight budget and gateway admission for DIMO calls.
+    authority_class: SHARED_INFRASTRUCTURE
+    source_paths:
+      - backend/src/modules/dimo/provider-budget/
+      - architecture/scaling-process/DIMO_GLOBAL_PROVIDER_BUDGET.md
+    evidence: [ATE-EV-0014, ATE-EV-0022]
+
+  - id: ATE-EXT-004
+    type: external_authority
+    title: runWithDimoRequestContext
+    epistemic_status: CONFIRMED
+    summary: AsyncLocalStorage propagation of org/vehicle/token for provider governance.
+    authority_class: SHARED_INFRASTRUCTURE
+    source_paths:
+      - backend/src/modules/dimo/provider-budget/dimo-request-context.ts
+    evidence: [ATE-EV-0014]
+
+  - id: ATE-EXT-005
+    type: external_authority
+    title: DimoSegmentsService
+    epistemic_status: CONFIRMED
+    summary: HF fetch, native events, segment fetch; ATE uses for enrichment/repair only.
+    authority_class: SHARED_INFRASTRUCTURE
+    source_paths:
+      - backend/src/modules/dimo/dimo-segments.service.ts
+    evidence: [ATE-EV-0006, ATE-EV-0007]
+
+  - id: ATE-EXT-006
+    type: external_authority
+    title: KG-EED Energy Event Detection
+    epistemic_status: CONFIRMED
+    summary: Owns REFUEL/RECHARGE semantics; ATE step 5 MAY_TRIGGER only.
+    authority_class: OUT_OF_SCOPE
+    source_paths:
+      - architecture/knowledge-graphs/discovery/ENERGY_EVENT_DETECTION_DISCOVERY_2026-09-01.md
+    evidence: [ATE-EV-0011]
+
+  - id: ATE-EXT-007
+    type: external_authority
+    title: KG-Driving-Intelligence
+    epistemic_status: CONFIRMED
+    summary: Owns V2 scoring, assessability, driving impact model semantics.
+    authority_class: OUT_OF_SCOPE
+    source_paths:
+      - docs/architecture/driving-intelligence-v2.md
+    evidence: [ATE-EV-0004, ATE-EV-0015]
+
+  # ── States & data objects ──────────────────────────────────────────────────
+  - id: ATE-ST-001
+    type: state
+    title: behaviorEnrichmentStatus FSM
+    epistemic_status: CONFIRMED
+    summary: null→PENDING→IN_PROGRESS→COMPLETED|SKIPPED_NO_HF_DATA|FAILED_*.
+    authority_class: ATE_OWNS
+    evidence: [ATE-EV-0001]
+
+  - id: ATE-ST-002
+    type: state
+    title: tripAnalysisStatus stages
+    epistemic_status: CONFIRMED
+    summary: Coordinator tracks behavior/route/misuse/drivingImpact stages independently.
+    authority_class: ATE_OWNS
+    evidence: [ATE-EV-0012]
+
+  - id: ATE-DO-001
+    type: data_object
+    title: VehicleTrip
+    epistemic_status: CONFIRMED
+    summary: Canonical trip row; behaviorEnrichmentStatus, waypoints, counters.
+    authority_class: ATE_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/prisma/schema.prisma
+    evidence: [ATE-EV-0001]
+
+  - id: ATE-DO-002
+    type: data_object
+    title: TripBehaviorEvent
+    epistemic_status: CONFIRMED
+    summary: HF-derived and unified behavior event storage.
+    authority_class: ATE_OWNS
+    evidence: [ATE-EV-0006]
+
+  - id: ATE-DO-003
+    type: data_object
+    title: TripRepair
+    epistemic_status: CONFIRMED
+    summary: Deterministic repair audit IDs; overlap suppression.
+    authority_class: ATE_OWNS
+    evidence: [ATE-EV-0010]
+
+  # ── Triggers & API/UI surfaces ─────────────────────────────────────────────
+  - id: ATE-TRIG-001
+    type: trigger
+    title: Auto post-finalize trigger
+    epistemic_status: CONFIRMED
+    summary: processFinalize → enqueueBehaviorEnrichment + postFinalizeAnalysisProducer.
+    authority_class: ATE_OWNS
+    evidence: [ATE-EV-0003]
+    discovery_ref: ATE-N01→N03
+
+  - id: ATE-TRIG-002
+    type: trigger
+    title: Repair enrichment trigger
+    epistemic_status: CONFIRMED
+    summary: enqueueRepairEnrichment after reconciliation finalize repairs.
+    authority_class: ATE_OWNS
+    evidence: [ATE-EV-0010]
+
+  - id: ATE-TRIG-003
+    type: trigger
+    title: POST trips/:tripId/behavior-enrich
+    epistemic_status: CONFIRMED
+    summary: Manual/ops sync path through runEnrichmentSync; no public force query param.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+    evidence: [ATE-EV-0023]
+    discovery_ref: ATE-N17
+
+  - id: ATE-TRIG-004
+    type: trigger
+    title: Admin backfill-enrichment
+    epistemic_status: CONFIRMED
+    summary: Platform admin backfill; 90d cutoff, max 200 per call.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/platform-admin/platform-admin.controller.ts
+    evidence: [ATE-EV-0024]
+    discovery_ref: ATE-N20
+
+  - id: ATE-FB-001
+    type: fallback
+    title: UI useTripBehaviorEvents auto-fallback
+    epistemic_status: CONFIRMED
+    summary: >
+      When COMPLETED trip has null behaviorEnrichmentStatus, UI POSTs behavior-enrich once.
+      Fallback only — not primary authority.
+    authority_class: ATE_OWNS
+    source_paths:
+      - frontend/src/rental/components/trips/hooks/useTripBehaviorEvents.ts
+    evidence: [ATE-EV-0025]
+    discovery_ref: ATE-N19
+
+  - id: ATE-FB-002
+    type: fallback
+    title: UI useTripEnrichment manual route
+    epistemic_status: CONFIRMED
+    summary: Manual POST route enrich only; server owns route via automatic pipeline.
+    authority_class: ATE_OWNS
+    source_paths:
+      - frontend/src/rental/components/trips/hooks/useTripEnrichment.ts
+    evidence: [ATE-EV-0026]
+    discovery_ref: ATE-N18
+
+  # ── Failure modes ──────────────────────────────────────────────────────────
+  - id: ATE-FM-001
+    type: failure_mode
+    title: FAILED_TRANSIENT enrichment
+    epistemic_status: CONFIRMED
+    summary: BullMQ retries; transient network/timeout errors.
+    authority_class: ATE_OWNS
+    evidence: [ATE-EV-0005]
+
+  - id: ATE-FM-002
+    type: failure_mode
+    title: FAILED_PERMANENT enrichment
+    epistemic_status: CONFIRMED
+    summary: Terminal; notifies reconciliation.onEnrichmentFailure (log-only today).
+    authority_class: ATE_OWNS
+    evidence: [ATE-EV-0027]
+
+  - id: ATE-FM-003
+    type: failure_mode
+    title: Mutex skip during reconcile
+    epistemic_status: CONFIRMED
+    summary: reconcileWindow skipped when per-vehicle lock held; no trip deletion.
+    authority_class: SHARED_INFRASTRUCTURE
+    evidence: [ATE-EV-0017]
+
+  - id: ATE-FM-004
+    type: failure_mode
+    title: Non-leader scheduler skip
+    epistemic_status: CONFIRMED
+    summary: shouldRun returns false; tick skipped without error.
+    authority_class: SHARED_INFRASTRUCTURE
+    evidence: [ATE-EV-0016]
+
+  - id: ATE-FM-005
+    type: failure_mode
+    title: Provider budget deferral
+    epistemic_status: CONFIRMED
+    summary: DIMO calls blocked or deferred via provider budget; must not lose trip.
+    authority_class: SHARED_INFRASTRUCTURE
+    evidence: [ATE-EV-0022]
+
+  - id: ATE-FM-006
+    type: failure_mode
+    title: Queue enqueue failure revert
+    epistemic_status: CONFIRMED
+    summary: On queue failure, behaviorEnrichmentStatus reverted to null.
+    authority_class: ATE_OWNS
+    evidence: [ATE-EV-0005]
+
+  # ── Components (grouping) ──────────────────────────────────────────────────
+  - id: ATE-COMP-001
+    type: component
+    title: Post-finalize enrichment pipeline
+    epistemic_status: CONFIRMED
+    summary: FSM finalize → orchestrator enqueue → worker sync → route → misuse → DI enqueue.
+    authority_class: ATE_OWNS
+    evidence: [ATE-EV-0001, ATE-EV-0003]
+
+  - id: ATE-COMP-002
+    type: component
+    title: Reconciliation repair pipeline
+    epistemic_status: CONFIRMED
+    summary: Leader → mutex → reconcileWindow → repair → enqueueRepairEnrichment.
+    authority_class: ATE_OWNS
+    evidence: [ATE-EV-0010]
+
+  - id: ATE-COMP-003
+    type: component
+    title: Hardware routing layer
+    epistemic_status: CONFIRMED
+    summary: SMART5 HF vs LTE_R1 native selection in TripBehaviorEnrichmentService.
+    authority_class: ATE_OWNS
+    evidence: [ATE-EV-0006, ATE-EV-0007]
+
+  - id: ATE-COMP-004
+    type: component
+    title: Observability metrics
+    epistemic_status: CONFIRMED
+    summary: enrichmentPending, enrichmentFailed, queue lag observers.
+    authority_class: ATE_OWNS
+    source_paths:
+      - backend/src/modules/observability/trip-metrics.service.ts
+    evidence: [ATE-EV-0028]
+
+  # ── Decisions (graph nodes; detail in decisions/DECISIONS.md) ─────────────
+  - id: ATE-DEC-001
+    type: decision
+    title: Document fragmented enrichment / dual truth
+    epistemic_status: HISTORICAL
+    decision_status: VALIDATED
+    summary: Trip system audit identified V1/V2 overlap and enrichment fragmentation.
+    evidence: [ATE-EV-0030]
+    discovery_ref: ATE-DEC-001
+
+  - id: ATE-DEC-002
+    type: decision
+    title: LTE_R1 canonical events query (422 fix)
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: Use events(behavior.*) instead of invalid safetySystem signals.
+    evidence: [ATE-EV-0007]
+
+  - id: ATE-DEC-003
+    type: decision
+    title: LTE_R1 assessability — native primary, HF abuse secondary
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Native events primary; HF abuse path secondary for LTE_R1.
+    evidence: [ATE-EV-0007]
+
+  - id: ATE-DEC-004
+    type: decision
+    title: DI V2 normative contract; orchestrator remains behavior write path
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: V2 parallel init; behavior enrichment queue not yet superseded.
+    evidence: [ATE-EV-0004]
+
+  - id: ATE-DEC-005
+    type: decision
+    title: Auto post-finalize primary; UI fallback documented
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: Click-only enrichment insufficient for fleet operations.
+    evidence: [ATE-EV-0025, ATE-EV-0031]
+
+  - id: ATE-DEC-006
+    type: decision
+    title: Coverage-aware overlap + deterministic repair IDs
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Prevents repair duplicate flooding.
+    evidence: [ATE-EV-0010]
+
+  - id: ATE-DEC-007
+    type: decision
+    title: Global DIMO provider budget (P1.3)
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: Bounded concurrent DIMO access across replicas.
+    evidence: [ATE-EV-0022]
+
+  - id: ATE-DEC-008
+    type: decision
+    title: Scheduler leader election (P1.7)
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Prevents duplicate scheduled work across replicas.
+    evidence: [ATE-EV-0016]
+
+  - id: ATE-DEC-009
+    type: decision
+    title: Per-vehicle reconciliation execution mutex (P1.4)
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Prevents overlapping reconcile on same vehicle.
+    evidence: [ATE-EV-0017]
+
+  - id: ATE-DEC-010
+    type: decision
+    title: Scale-to-2 GO_WITH_CONDITIONS; single-replica soak first
+    epistemic_status: CONFIRMED
+    decision_status: EXPERIMENTAL
+    summary: Production deploy single replica; 24h soak gate active.
+    evidence: [ATE-EV-0032]
+
+  - id: ATE-DEC-011
+    type: decision
+    title: Single canonical orchestrator for all enrichment paths
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: TripEnrichmentOrchestratorService mandatory entry point.
+    evidence: [ATE-EV-0001]
+
+  - id: ATE-DEC-012
+    type: decision
+    title: Prometheus gauge rename hotfix (deploy crash)
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: synqdrive_dimo_global_budget_cooldown_active vs provider collision.
+    evidence: [ATE-EV-0033]
+
+  # ── Production proof & historical ──────────────────────────────────────────
+  - id: ATE-PP-001
+    type: production_proof
+    title: P1.3-S6 single-replica production deploy
+    epistemic_status: CONFIRMED
+    summary: Deploy 20260830145314_v4994; health PASS; single PM2 fork.
+    evidence: [ATE-EV-0032]
+
+  - id: ATE-HE-001
+    type: historical_event
+    title: Deploy metric collision rollback
+    epistemic_status: HISTORICAL
+    summary: Duplicate Prometheus gauge prevented startup; hotfix 3874360e0.
+    evidence: [ATE-EV-0033]
+
+  # ── Open questions (detail in open-questions/OPEN_QUESTIONS.md) ────────────
+  - id: ATE-OQ-001
+    type: open_question
+    title: V2 supersede timeline for trip.behavior.enrichment
+    epistemic_status: UNKNOWN
+    summary: No code switch yet; producer comment says legacy queues remain.
+    evidence: [ATE-EV-0004]
+
+  - id: ATE-OQ-002
+    type: open_question
+    title: Cold-tier re-enqueue for FAILED_PERMANENT
+    epistemic_status: UNKNOWN
+    summary: onEnrichmentFailure is log-only; cold repair policy undecided.
+    evidence: [ATE-EV-0027]
+
+  - id: ATE-OQ-004
+    type: open_question
+    title: HTTP force re-enrichment for ops
+    epistemic_status: UNKNOWN
+    summary: force exists internally on enqueueBehaviorEnrichment opts; not exposed on HTTP.
+    evidence: [ATE-EV-0023]
+
+  - id: ATE-OQ-007
+    type: open_question
+    title: 24h soak completion criteria for scale-to-2
+    epistemic_status: UNKNOWN
+    summary: Active production gate; criteria in scaling-process docs.
+    evidence: [ATE-EV-0032]
+
+  - id: ATE-OQ-011
+    type: open_question
+    title: Permanent trip loss proof under mutex skip
+    epistemic_status: UNKNOWN
+    summary: Code skips reconcile; no formal loss proof artifact.
+    evidence: [ATE-EV-0017]
+
+  - id: ATE-OQ-012
+    type: open_question
+    title: UI fallback removal after backlog cleared
+    epistemic_status: UNKNOWN
+    summary: Proposed; fallback still active in useTripBehaviorEvents.
+    evidence: [ATE-EV-0025]
+
+  # ── Evidence nodes (registry detail in evidence/EVIDENCE_REGISTRY.md) ───────
+  - id: ATE-EV-0001
+    type: evidence
+    title: Orchestrator header and status machine
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+    summary: Single canonical entry; behaviorEnrichmentStatus FSM documented in file header.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0002
+    type: evidence
+    title: Discovery flow reconstruction
+    epistemic_status: INFERRED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - architecture/knowledge-graphs/discovery/AUTOMATIC_TRIP_ENRICHMENT_DISCOVERY_2026-09-01.md
+    summary: Hypothesis baseline; superseded by code verification at 4843a4ebc.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0003
+    type: evidence
+    title: processFinalize enqueue calls
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+    summary: Calls postFinalizeAnalysisProducer and enqueueBehaviorEnrichment on finalize.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0004
+    type: evidence
+    title: Post-finalize producer V2 init
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-analysis-init/trip-post-finalize-analysis.producer.ts
+    summary: Legacy enrichment queues remain separate until fully replaced.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0005
+    type: evidence
+    title: Enqueue idempotency and job options
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+    summary: jobId hf-enrich-${tripId}; terminal guards; queue fail reverts status.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0006
+    type: evidence
+    title: SMART5 HF enrichment path
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-behavior-enrichment.service.ts
+    summary: Hardware routing to HF detectors for SMART5.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0007
+    type: evidence
+    title: LTE_R1 native enrichment
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/lte-r1-behavior-enrichment.service.ts
+    summary: Native events + HF abuse; capability gating.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0008
+    type: evidence
+    title: Route enrichment in orchestrator
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+    summary: runRouteSafetyEnrichment after behavior COMPLETED.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0009
+    type: evidence
+    title: Misuse schedule after behavior
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+    summary: scheduleMisuseCaseAggregation fire-and-forget.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0010
+    type: evidence
+    title: Reconciliation repair pipeline
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+    summary: reconcileWindow steps; TripDecisionEngine authority; enqueueRepairEnrichment.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0011
+    type: evidence
+    title: Energy detect step 5 invocation
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+    summary: detectEnergyEvents in isolated try/catch; semantics owned by EED.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0012
+    type: evidence
+    title: TripAnalysisCoordinator stages
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-analysis-coordinator.service.ts
+    summary: Independent stage tracking for route/misuse/drivingImpact.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0013
+    type: evidence
+    title: Behavior enrichment processor
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/workers/processors/trip-behavior-enrichment.processor.ts
+    summary: Delegates to orchestrator.runEnrichmentSync.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0014
+    type: evidence
+    title: runWithDimoRequestContext in processor
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/workers/processors/trip-behavior-enrichment.processor.ts
+    summary: Provider context wraps enrichment worker execution.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0015
+    type: evidence
+    title: Driving impact enqueue
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+    summary: jobId driving-impact-${tripId}; scoring in processor/DI.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0016
+    type: evidence
+    title: Scheduler leader guard usage
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/workers/schedulers/trip-reconciliation.scheduler.ts
+      - backend/src/workers/schedulers/dimo-snapshot.scheduler.ts
+    summary: trip_reconciliation_* and dimo_snapshot_* gated by shouldRun.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0017
+    type: evidence
+    title: Reconciliation mutex
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/shared/reconciliation-execution-mutex/reconciliation-execution-mutex.service.ts
+    summary: Per-vehicle lock; skip on contention without deletion.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0018
+    type: evidence
+    title: Trip analysis recovery scheduler
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/workers/schedulers/trip-analysis-recovery.scheduler.ts
+    summary: Leader-gated; recovers stuck misuse stages.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0019
+    type: evidence
+    title: DI reconciliation scheduler separate track
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/workers/schedulers/driving-analysis-reconciliation.scheduler.ts
+    summary: driving_analysis_reconciliation leader key; parallel to behavior status.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0020
+    type: evidence
+    title: Trip tracking recovery scheduler
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/workers/schedulers/trip-tracking-recovery.scheduler.ts
+    summary: trip_tracking_recovery leader-gated.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0021
+    type: evidence
+    title: DimoSnapshotScheduler leader gating
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/workers/schedulers/dimo-snapshot.scheduler.ts
+    summary: Resolves discovery concern ATE-OQ-03; leader present at main SHA.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0022
+    type: evidence
+    title: DIMO provider budget
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - architecture/scaling-process/DIMO_GLOBAL_PROVIDER_BUDGET.md
+    summary: Global budget authority external to ATE graph.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0023
+    type: evidence
+    title: Manual behavior-enrich HTTP
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+    summary: POST behavior-enrich calls runEnrichmentSync; no force query param.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0024
+    type: evidence
+    title: Backfill limits
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+    summary: BACKFILL_CUTOFF_DAYS=90; BACKFILL_DEFAULT_LIMIT=200.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0025
+    type: evidence
+    title: UI behavior auto-fallback
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - frontend/src/rental/components/trips/hooks/useTripBehaviorEvents.ts
+    summary: Triggers only when behaviorEnrichmentStatus is null on COMPLETED trip.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0026
+    type: evidence
+    title: Route GET vs POST enrich
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+      - frontend/src/rental/components/trips/hooks/useTripEnrichment.ts
+    summary: GET /route read-only; automatic route via orchestrator.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0027
+    type: evidence
+    title: onEnrichmentFailure stub
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+    summary: Log-only; future cold repair flag proposed not implemented.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0028
+    type: evidence
+    title: Trip metrics observability
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/observability/trip-metrics.service.ts
+    summary: enrichmentPending and enrichmentFailed gauges.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0030
+    type: evidence
+    title: Trip system audit 2026-04-10
+    epistemic_status: HISTORICAL
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - architecture/TRIP_SYSTEM_AUDIT_2026-04-10.md
+    summary: Identified fragmented enrichment and dual truth.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0031
+    type: evidence
+    title: Trip enrichment driver score audit
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - docs/audits/trip-enrichment-driver-score-energy-events-audit-2026-08.md
+    summary: UI click was fallback; auto post-finalize is primary.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0032
+    type: evidence
+    title: P1.3-S6 production deploy doc
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION
+    source_paths:
+      - architecture/P1_3_S6_PRODUCTION_DEPLOY_SINGLE_REPLICA_2026-08-30.md
+    summary: Single-replica deploy; soak gate for scale-to-2.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0033
+    type: evidence
+    title: Prometheus gauge hotfix commit
+    epistemic_status: CONFIRMED
+    source_type: HISTORICAL_PR
+    source_paths:
+      - architecture/P1_3_S6_PRODUCTION_DEPLOY_SINGLE_REPLICA_2026-08-30.md
+    summary: 3874360e0 renamed budget cooldown gauge.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0029
+    type: evidence
+    title: Trip repair enrichment chain test
+    epistemic_status: CONFIRMED
+    source_type: TEST
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-repair-enrichment-chain.spec.ts
+    summary: Asserts enqueueBehaviorEnrichment called on repair finalize.
+    verified_at: "2026-09-01"
+
+  - id: ATE-EV-0034
+    type: evidence
+    title: ATE-EED boundary map
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - architecture/knowledge-graphs/discovery/ATE_EED_BOUNDARY_MAP_2026-09-01.md
+    summary: 18 cross-graph relations; 0 authority conflicts.
+    verified_at: "2026-09-01"

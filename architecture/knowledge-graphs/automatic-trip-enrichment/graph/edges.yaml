@@ -1,0 +1,290 @@
+# KG-ATE canonical edges — execution, repair, fallback, and cross-authority
+
+edges:
+  # ── Primary automatic path ─────────────────────────────────────────────────
+  - from: ATE-TRIG-001
+    relation: TRIGGERS
+    to: ATE-SVC-001
+    notes: V2 FSM processFinalize on trip completion
+
+  - from: ATE-SVC-001
+    relation: TRIGGERS
+    to: ATE-SVC-002
+    notes: produceAfterPersistedCompletion (parallel DI V2 track)
+
+  - from: ATE-SVC-001
+    relation: ENQUEUES
+    to: ATE-QUE-001
+    notes: via ATE-SVC-003.enqueueBehaviorEnrichment
+
+  - from: ATE-SVC-003
+    relation: ENQUEUES
+    to: ATE-QUE-001
+
+  - from: ATE-SVC-003
+    relation: WRITES
+    to: ATE-ST-001
+    notes: Sets PENDING before queue add
+
+  - from: ATE-QUE-001
+    relation: PROCESSES
+    to: ATE-SVC-013
+
+  - from: ATE-SVC-013
+    relation: CALLS
+    to: ATE-SVC-003
+    notes: runEnrichmentSync
+
+  - from: ATE-SVC-013
+    relation: BUDGETED_BY
+    to: ATE-EXT-004
+    notes: runWithDimoRequestContext wrapper
+
+  - from: ATE-SVC-003
+    relation: CALLS
+    to: ATE-SVC-004
+    notes: enrichTrip hardware routing
+
+  - from: ATE-SVC-004
+    relation: CALLS
+    to: ATE-SVC-005
+    notes: LTE_R1 branch
+
+  - from: ATE-SVC-004
+    relation: PERSISTS
+    to: ATE-DO-002
+
+  - from: ATE-SVC-003
+    relation: CALLS
+    to: ATE-SVC-006
+    notes: runRouteSafetyEnrichment after COMPLETED
+
+  - from: ATE-SVC-003
+    relation: CALLS
+    to: ATE-SVC-007
+    notes: scheduleMisuseCaseAggregation
+
+  - from: ATE-SVC-003
+    relation: ENQUEUES
+    to: ATE-QUE-002
+    notes: enqueueDrivingImpact
+
+  - from: ATE-QUE-002
+    relation: PROCESSES
+    to: ATE-SVC-014
+
+  - from: ATE-SVC-003
+    relation: WRITES
+    to: ATE-DO-001
+
+  - from: ATE-SVC-010
+    relation: WRITES
+    to: ATE-ST-002
+
+  - from: ATE-SVC-002
+    relation: ENQUEUES
+    to: ATE-QUE-003
+    notes: DI V2 staged jobs
+
+  - from: ATE-SVC-002
+    relation: CALLS
+    to: ATE-SVC-012
+    notes: reconcileEventAssociations before V2 init
+
+  - from: ATE-SVC-002
+    relation: CALLS
+    to: ATE-SVC-009
+
+  - from: ATE-SVC-002
+    relation: PARALLEL_TO
+    to: ATE-QUE-001
+    notes: V2 init parallel to behavior queue; not a replacement yet
+
+  # ── Reconciliation / repair path ───────────────────────────────────────────
+  - from: ATE-SCH-001
+    relation: GUARDED_BY
+    to: ATE-EXT-001
+
+  - from: ATE-SCH-001
+    relation: TRIGGERS
+    to: ATE-SVC-008
+
+  - from: ATE-SVC-008
+    relation: LOCKED_BY
+    to: ATE-EXT-002
+
+  - from: ATE-SVC-008
+    relation: CALLS
+    to: ATE-SVC-011
+    notes: TripDecisionEngine for all repairs
+
+  - from: ATE-SVC-008
+    relation: MAY_TRIGGER
+    to: ATE-EXT-006
+    notes: Step 5 detectEnergyEvents — EED owns semantics
+
+  - from: ATE-SVC-008
+    relation: BUDGETED_BY
+    to: ATE-EXT-003
+    notes: DIMO fetches via runWithDimoRequestContext
+
+  - from: ATE-SVC-008
+    relation: TRIGGERS
+    to: ATE-TRIG-002
+
+  - from: ATE-TRIG-002
+    relation: CALLS
+    to: ATE-SVC-003
+    notes: enqueueRepairEnrichment
+
+  - from: ATE-SVC-008
+    relation: PERSISTS
+    to: ATE-DO-003
+
+  # ── Failure / retry / skip paths ───────────────────────────────────────────
+  - from: ATE-FM-001
+    relation: RETRIES_VIA
+    to: ATE-QUE-001
+    notes: BullMQ 3 attempts exponential backoff
+
+  - from: ATE-FM-002
+    relation: CALLS
+    to: ATE-SVC-008
+    notes: onEnrichmentFailure notification (log-only)
+
+  - from: ATE-FM-003
+    relation: SKIPS_ON
+    to: ATE-SVC-008
+
+  - from: ATE-FM-004
+    relation: SKIPS_ON
+    to: ATE-SCH-001
+
+  - from: ATE-FM-005
+    relation: SKIPS_ON
+    to: ATE-EXT-005
+    notes: Provider budget may defer DIMO calls
+
+  - from: ATE-FM-006
+    relation: WRITES
+    to: ATE-ST-001
+    notes: Reverts to null on queue infrastructure failure
+
+  # ── Fallback / manual paths ────────────────────────────────────────────────
+  - from: ATE-FB-001
+    relation: FALLBACK_TO
+    to: ATE-TRIG-003
+    notes: Only when behaviorEnrichmentStatus null
+
+  - from: ATE-TRIG-003
+    relation: CALLS
+    to: ATE-SVC-003
+
+  - from: ATE-FB-002
+    relation: CALLS
+    to: ATE-SVC-006
+    notes: Manual route only; not behavior
+
+  - from: ATE-TRIG-004
+    relation: ENQUEUES
+    to: ATE-QUE-001
+
+  # ── Recovery schedulers ─────────────────────────────────────────────────────
+  - from: ATE-SCH-002
+    relation: GUARDED_BY
+    to: ATE-EXT-001
+
+  - from: ATE-SCH-002
+    relation: CALLS
+    to: ATE-SVC-003
+    notes: recoverStuckMisuseStages
+
+  - from: ATE-SCH-003
+    relation: GUARDED_BY
+    to: ATE-EXT-001
+
+  - from: ATE-SCH-005
+    relation: GUARDED_BY
+    to: ATE-EXT-001
+
+  # ── External authority dependencies ────────────────────────────────────────
+  - from: ATE-WORKSTREAM-001
+    relation: DEPENDS_ON
+    to: ATE-EXT-001
+
+  - from: ATE-WORKSTREAM-001
+    relation: DEPENDS_ON
+    to: ATE-EXT-002
+
+  - from: ATE-WORKSTREAM-001
+    relation: DEPENDS_ON
+    to: ATE-EXT-003
+
+  - from: ATE-SVC-014
+    relation: OWNED_BY
+    to: ATE-EXT-007
+    notes: Scoring semantics not ATE
+
+  - from: ATE-EXT-006
+    relation: MUST_NOT_INTERPRET_AS
+    to: ATE-ST-001
+    notes: Energy events independent of behavior enrichment status
+
+  # ── Component grouping ───────────────────────────────────────────────────────
+  - from: ATE-COMP-001
+    relation: PRODUCES
+    to: ATE-DO-002
+
+  - from: ATE-COMP-002
+    relation: TRIGGERS
+    to: ATE-COMP-001
+
+  - from: ATE-COMP-003
+    relation: CALLS
+    to: ATE-EXT-005
+
+  - from: ATE-COMP-004
+    relation: CONSUMES
+    to: ATE-SVC-003
+
+  # ── Decision provenance ────────────────────────────────────────────────────
+  - from: ATE-DEC-011
+    relation: PROVEN_BY
+    to: ATE-EV-0001
+
+  - from: ATE-DEC-005
+    relation: PROVEN_BY
+    to: ATE-EV-0031
+
+  - from: ATE-DEC-008
+    relation: PROVEN_BY
+    to: ATE-EV-0016
+
+  - from: ATE-DEC-009
+    relation: PROVEN_BY
+    to: ATE-EV-0017
+
+  - from: ATE-DEC-007
+    relation: PROVEN_BY
+    to: ATE-EV-0022
+
+  - from: ATE-DEC-012
+    relation: PROVEN_BY
+    to: ATE-EV-0033
+
+  # ── Workstream anchor ──────────────────────────────────────────────────────
+  - from: ATE-WORKSTREAM-001
+    relation: OWNED_BY
+    to: ATE-COMP-001
+
+  - from: ATE-WORKSTREAM-001
+    relation: OWNED_BY
+    to: ATE-COMP-002
+
+  - from: ATE-WORKSTREAM-001
+    relation: REFERENCES
+    to: ATE-EXT-006
+
+  - from: ATE-WORKSTREAM-001
+    relation: REFERENCES
+    to: ATE-EXT-007
