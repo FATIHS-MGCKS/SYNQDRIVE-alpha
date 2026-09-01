@@ -2097,6 +2097,9 @@ export const en = {
   'trips.energy.refuel.kindLabel': 'Refuel',
   'trips.energy.refuel.signalChangeMinutes': 'Fuel level rise ~{minutes} min',
   'trips.energy.refuel.detectionWindow': 'Detection window {from}–{to}',
+  'trips.energy.refuel.stationPossible': 'Possible fuel station',
+  'trips.energy.refuel.stationAmbiguous': 'Fuel station not uniquely identified',
+  'trips.energy.refuel.stationResolving': 'Station identification pending',
   'trips.energy.recharge.kindLabel': 'Charging',
   'trips.energy.recharge.durationMinutes': '{minutes} min',
 
