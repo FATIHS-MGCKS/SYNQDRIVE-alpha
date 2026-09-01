@@ -72,6 +72,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-08-31T22:00:00.000Z',
   },
   {
+    id: 'fuel-station-enrichment-phase-e-api-2026-08-31',
+    version: '4.9.1018',
+    title: 'Fuel Station Enrichment Phase E — read-only API exposure on Energy Events',
+    summary: [
+      'Extended existing `GET /vehicles/:id/energy-events` and `trips-timeline` Energy Event DTO with optional `stationEnrichment` nested projection.',
+      'Single Prisma `findMany` include on `fuelStationEnrichment` — no N+1, no resolver/PostGIS on HTTP path.',
+      '`trusted` reuses Phase D `isTrustedFuelStationAssignment` (MATCHED + HIGH/MEDIUM). Detection `confidence` remains separate from `matchConfidence`.',
+      'Read-only — no worker/resolver/detection changes; no backfill; no frontend (Phase F).',
+    ],
+    reason: 'Phase E — expose persisted fuel-station enrichment to API consumers via existing Fahrverlauf timeline path.',
+    previousBehavior: 'Energy Event API returned detection fields only; enrichment rows existed in DB but were not exposed.',
+    details:
+      'architecture/FUEL_STATION_ENRICHMENT_API_EXPOSURE_PHASE_E_2026-08-31.md; backend energy-events-station-enrichment.dto.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T20:15:00.000Z',
+  },
+  {
     id: 'p1-8-2-controlled-production-scale-to-2-2026-08-31',
     version: '4.9.1017',
     title: 'P1.8.2 — Controlled production scale-to-2 + multi-replica validation',

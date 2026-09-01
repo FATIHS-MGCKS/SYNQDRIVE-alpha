@@ -74,6 +74,9 @@ export class EnergyEventsService {
             }
           : {}),
       },
+      include: {
+        fuelStationEnrichment: true,
+      },
       orderBy: { startTime: 'asc' },
     });
     return rows.map(toEnergyEventDto);
