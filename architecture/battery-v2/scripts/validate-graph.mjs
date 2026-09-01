@@ -274,6 +274,50 @@ console.log(
   'OK',
 );
 
+// CHANGE_LEDGER newest record — mandatory scientific-record fields (AGENT_CONTRACT)
+const ledgerPath = path.join(batteryV2Dir, 'research/CHANGE_LEDGER.md');
+const REQUIRED_LEDGER_FIELDS = [
+  'BEFORE',
+  'OBSERVATION',
+  'HYPOTHESIS',
+  'CHANGE',
+  'WHY',
+  'EXPECTED_EFFECT',
+  'VALIDATION',
+  'OBSERVED_EFFECT',
+  'NON_EFFECTS',
+  'REGRESSIONS_OR_TRADEOFFS',
+  'REMAINING_GAPS',
+  'DECISION_STATUS',
+  'AFFECTED_GRAPH',
+  'EVIDENCE',
+];
+if (fs.existsSync(ledgerPath)) {
+  const ledgerText = fs.readFileSync(ledgerPath, 'utf8');
+  const firstClIdx = ledgerText.search(/^## CL-/m);
+  if (firstClIdx === -1) {
+    fail('CHANGE_LEDGER.md has no CL- entry');
+  } else {
+    const rest = ledgerText.slice(firstClIdx);
+    const entryEnd = rest.search(/\n---\n\n## CL-/);
+    const entryBlock = entryEnd === -1 ? rest : rest.slice(0, entryEnd);
+    const missing = REQUIRED_LEDGER_FIELDS.filter(
+      (field) => !entryBlock.includes(`**${field}**`),
+    );
+    if (missing.length > 0) {
+      fail(
+        `CHANGE_LEDGER newest record missing mandatory fields: ${missing.join(', ')}`,
+      );
+    } else {
+      console.log(
+        `==> CHANGE_LEDGER newest record contract: OK (${REQUIRED_LEDGER_FIELDS.length} fields)`,
+      );
+    }
+  }
+} else {
+  fail('CHANGE_LEDGER.md not found');
+}
+
 // CURRENT_STATE declared graph counts (optional consistency check)
 const currentStatePath = path.join(batteryV2Dir, 'CURRENT_STATE.md');
 if (fs.existsSync(currentStatePath)) {
