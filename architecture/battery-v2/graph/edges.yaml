@@ -1,0 +1,115 @@
+# Battery V2 Knowledge Graph — Edges (bootstrap seed)
+
+edges:
+  # Evidence → decisions
+  - from: BAT-V2-EVID-PROD-61715ECD-001
+    relation: supports
+    to: BAT-V2-DEC-1383-001
+  - from: BAT-V2-EVID-PROD-61715ECD-001
+    relation: supports
+    to: BAT-V2-DEC-1393-001
+  - from: BAT-V2-EVID-PROD-EA7696B6-001
+    relation: supports
+    to: BAT-V2-DEC-1445-001
+  - from: BAT-V2-EVID-PROD-4D2BEF5F-001
+    relation: supports
+    to: BAT-V2-DEC-1445-001
+  - from: BAT-V2-EVID-TEST-ORPHAN-ENQ-001
+    relation: supports
+    to: BAT-V2-DEC-1445-001
+  - from: BAT-V2-EVID-TEST-PEND-EVAL-001
+    relation: supports
+    to: BAT-V2-DEC-1445-001
+  - from: BAT-V2-EVID-PR-1383-001
+    relation: supports
+    to: BAT-V2-DEC-1383-001
+  - from: BAT-V2-EVID-PR-1393-001
+    relation: supports
+    to: BAT-V2-DEC-1393-001
+  - from: BAT-V2-EVID-PR-1445-001
+    relation: supports
+    to: BAT-V2-DEC-1445-001
+
+  # Decisions → authorities / liveness
+  - from: BAT-V2-DEC-1393-001
+    relation: refines
+    to: BAT-V2-AUTH-LV-OPEN-001
+  - from: BAT-V2-DEC-1393-001
+    relation: refines
+    to: BAT-V2-POL-OPEN-VS-MEASURE-001
+  - from: BAT-V2-DEC-1445-001
+    relation: refines
+    to: BAT-V2-LIVE-ORPHAN-ENQ-001
+  - from: BAT-V2-DEC-1445-001
+    relation: refines
+    to: BAT-V2-LIVE-PEND-EVAL-001
+  - from: BAT-V2-DEC-1445-001
+    relation: refines
+    to: BAT-V2-LIVE-SESSION-RECON-001
+  - from: BAT-V2-DEC-1383-001
+    relation: refines
+    to: BAT-V2-JOB-LV-SESSION-OPEN-001
+
+  # Failed → superseded by decisions
+  - from: BAT-V2-FAIL-OBS-ONLY-OPEN-001
+    relation: superseded_by
+    to: BAT-V2-DEC-1383-001
+  - from: BAT-V2-FAIL-ENQUEUE-ONLY-RECON-001
+    relation: superseded_by
+    to: BAT-V2-DEC-1445-001
+  - from: BAT-V2-FAIL-ENQ-META-LIVENESS-001
+    relation: superseded_by
+    to: BAT-V2-LIVE-ORPHAN-ENQ-001
+  - from: BAT-V2-FAIL-BULL-SHORT-RETRY-001
+    relation: superseded_by
+    to: BAT-V2-LIVE-PEND-EVAL-001
+  - from: BAT-V2-FAIL-BULK-DLQ-001
+    relation: superseded_by
+    to: BAT-V2-DEC-1445-001
+  - from: BAT-V2-FAIL-HISTORICAL-REPAIR-SCAN-001
+    relation: superseded_by
+    to: BAT-V2-DEC-1445-001
+
+  # Authority chain
+  - from: BAT-V2-AUTH-TRIP-END-001
+    relation: gates
+    to: BAT-V2-JOB-LV-SESSION-OPEN-001
+  - from: BAT-V2-JOB-LV-SESSION-OPEN-001
+    relation: schedules
+    to: BAT-V2-JOB-REST-EVAL-001
+  - from: BAT-V2-AUTH-REST-EVAL-001
+    relation: evaluates
+    to: BAT-V2-STATE-REST-TARGET-001
+  - from: BAT-V2-SIG-LV-VOLTAGE-001
+    relation: contributes_to
+    to: BAT-V2-AUTH-REST-EVAL-001
+
+  # Liveness
+  - from: BAT-V2-LIVE-ORPHAN-ENQ-001
+    relation: recovers
+    to: BAT-V2-STATE-REST-TARGET-001
+  - from: BAT-V2-EVID-CODE-HAS-LIVE-JOB-001
+    relation: supports
+    to: BAT-V2-LIVE-ORPHAN-ENQ-001
+  - from: BAT-V2-EVID-CODE-ANCHOR-001
+    relation: supports
+    to: BAT-V2-AUTH-TRIP-END-001
+
+  # Gaps limited by decisions
+  - from: BAT-V2-GAP-RUNNING-ORPHAN-001
+    relation: limited_by
+    to: BAT-V2-DEC-1445-001
+    notes: Explicitly documented as remaining risk / non-effect of #1445
+
+  # Policy protection
+  - from: BAT-V2-POL-NO-FABRICATE-001
+    relation: protected_by
+    to: BAT-V2-AUTH-REST-EVAL-001
+
+  # Tests
+  - from: BAT-V2-EVID-TEST-ORPHAN-ENQ-001
+    relation: tested_by
+    to: BAT-V2-LIVE-ORPHAN-ENQ-001
+  - from: BAT-V2-EVID-TEST-PEND-EVAL-001
+    relation: tested_by
+    to: BAT-V2-LIVE-PEND-EVAL-001

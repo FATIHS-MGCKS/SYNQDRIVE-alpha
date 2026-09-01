@@ -1,0 +1,87 @@
+# Battery V2 Knowledge Graph — Invariants (bootstrap seed)
+
+invariants:
+  - id: BAT-V2-INV-TRIP-BIND-001
+    kind: CONDITIONAL_INVARIANT
+    title: Canonical trip binding when authoritative finalized trip is known
+    epistemic_status: CONFIRMED
+    condition: >
+      When an authoritative finalized trip is supplied at session creation/arming time
+    statement: >
+      session.trip_id === trip.id AND session anchor === trip.endTime AND
+      idempotencyKey === lv-rest:{vehicleId}:{trip.endTime ms}
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-measurement-session.repository.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window.state-machine.ts
+    evidence:
+      - BAT-V2-EVID-ARCH-PIPELINE-CLOSURE-001
+    notes: Bridge-only paths without authoritative trip are out of scope for this invariant.
+
+  - id: BAT-V2-INV-REST-WINDOW-ID-001
+    kind: CONFIRMED_INVARIANT
+    title: Deterministic LV rest window identity
+    epistemic_status: CONFIRMED
+    statement: >
+      Window idempotencyKey = lv-rest:{vehicleId}:{anchorMs} with DB unique (vehicleId, idempotencyKey).
+      Bull session-open job id = lv-rest-open:{vehicleId}:{anchorMs}.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-lv-rest-session.producer.ts
+    evidence:
+      - BAT-V2-EVID-ARCH-LIVENESS-001
+
+  - id: BAT-V2-INV-NO-FABRICATE-001
+    kind: CONFIRMED_INVARIANT
+    title: No fabricated REST measurements on missing evidence
+    epistemic_status: CONFIRMED
+    statement: >
+      REST evaluation must not synthesize numeric measurements when required telemetry
+      is absent; MISSED / pending deferral instead.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
+    evidence:
+      - BAT-V2-POL-NO-FABRICATE-001
+
+  - id: BAT-V2-INV-TRIP-LIFECYCLE-ISO-001
+    kind: CONFIRMED_INVARIANT
+    title: Battery enqueue failure does not roll back trip finalization
+    epistemic_status: CONFIRMED
+    statement: >
+      LV rest session open enqueue at trip finalization is try/catch warn-only
+      after COMPLETED trip and RESTING transition are persisted.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+    evidence:
+      - BAT-V2-EVID-ARCH-LIVENESS-001
+
+  - id: BAT-V2-INV-ENQ-NOT-LIVE-001
+    kind: CONFIRMED_INVARIANT
+    title: ENQUEUED metadata is not queue liveness proof
+    epistemic_status: CONFIRMED
+    statement: >
+      Reconciliation must verify Bull job existence via hasLiveJob before skipping
+      orphaned ENQUEUED targets.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-reconciliation.service.ts
+    evidence:
+      - BAT-V2-LIVE-ORPHAN-ENQ-001
+      - BAT-V2-EVID-TEST-ORPHAN-ENQ-001
+
+  - id: BAT-V2-INV-NO-HIST-BACKFILL-001
+    kind: CONFIRMED_INVARIANT
+    title: No recurring historical trip-binding repair scan in reconciliation
+    epistemic_status: CONFIRMED
+    statement: >
+      reconcileAll() does not run repairLvRestWindowTripBindings or equivalent
+      historical backfill scan (post-#1445).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-reconciliation.service.ts
+    evidence:
+      - BAT-V2-DEC-1445-001
+
+  - id: BAT-V2-INV-ALL-SESSIONS-HAVE-TRIP-001
+    kind: DISPROVEN_OR_CONTRADICTED
+    title: All LV rest sessions always have a finalized trip binding
+    epistemic_status: HISTORICAL
+    statement: >
+      Universal claim disproven by bridge-only paths and historical mis-binding defects.
+    notes: Replaced by conditional BAT-V2-INV-TRIP-BIND-001.
