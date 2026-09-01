@@ -17,7 +17,7 @@ Append-only scientific record. Newest entries first.
 | **WHY** | Prevent unsafe Stage-2 activation, false rollback confidence, and incorrect handoff validation before PKG-01/02 implementation. |
 | **EXPECTED_EFFECT** | Runtime agents cannot treat HANDOFF OFF as rollback while PUBLICATION ON; cannot claim per-org canary; cannot require publication rows when policy skips; PKG-01/02 remain IMPLEMENTATION_SPEC_REQUIRED until invariant settled. |
 | **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh` |
-| **OBSERVED_EFFECT** | Pending validator run this commit. |
+| **OBSERVED_EFFECT** | Validator PASS; 20 open gaps; 23 planning items; 121 nodes / 108 edges / 11 invariants; main at `2a2fe5ac` (no Battery V2 drift since prior sync). |
 | **NON_EFFECTS** | No runtime; no flags; no deploy; no production data; gaps remain open; DEC-PH4 PROPOSED. |
 | **REGRESSIONS_OR_TRADEOFFS** | Planning surface more verbose; additional spec gates before IMPLEMENTATION_READY |
 | **REMAINING_GAPS** | All 20 `BAT-V2-GAP-*` open; configuration invariant; inputVersion; assessment-track selection; publicationVersion; provider VLS product/frequency decision |
