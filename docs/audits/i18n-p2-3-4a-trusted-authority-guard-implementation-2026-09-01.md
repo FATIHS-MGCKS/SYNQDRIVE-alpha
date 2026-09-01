@@ -70,8 +70,11 @@ Suggested label metadata:
 | PR-head code execution | **0** |
 | Secrets referenced | **0** |
 | Changed-file API | `gh api --paginate --slurp repos/{owner}/{repo}/pulls/{number}/files` |
-| Enumeration completeness | `ENUMERATED == github.event.pull_request.changed_files` else `INCOMPLETE_PR_FILE_ENUMERATION` |
+| Path extraction | `filename` **and** `previous_filename` (when present) |
+| Enumeration completeness | `ENUMERATED_FILE_COUNT == changed_files` (not path count) |
+| Classification path count | `CLASSIFIED_PATH_COUNT` (filename + previous_filename identities) |
 | NUL-safe consumption | `while IFS= read -r -d '' path` from `${RUNNER_TEMP}` |
+| Approval provenance | **Exact `labeled` event only** — passive label presence insufficient |
 
 `HEAD_SHA` is recorded as PR metadata only; it is **not** used for checkout.
 
@@ -124,6 +127,8 @@ Non-`frontend/src` paths (backend, `docs/`, `architecture/`) do **not** trigger 
 | Mixed authority + product blocks regardless of label | **YES** |
 | Trusted owner actor (`FATIHS-MGCKS`) on `labeled` | **YES** |
 | Stale label invalidated on `synchronize` | **YES** |
+| Passive label presence cannot approve | **YES** (exact `labeled` event required) |
+| Rename pre-image (`previous_filename`) classified | **YES** |
 | Enumeration fail-closed | **YES** |
 | Live default-branch certification | **PENDING** (workflow not on `main` until merge + P2.3.4B canary) |
 
@@ -153,8 +158,24 @@ Harness: `.cursor/scripts/ephemeral-i18n-authority-protection-harness.sh` (local
 | 16 | enumeration count mismatch | FAIL / `INCOMPLETE_PR_FILE_ENUMERATION` |
 | 17 | zero changed files | PASS / `NO_GOVERNANCE_AUTHORITY_CHANGE` |
 | 18 | API enumeration failure (workflow) | FAIL / `PR_FILE_ENUMERATION_FAILED` (code review) |
+| 19 | opened with stale label | FAIL / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
+| 20 | reopened with stale label | FAIL / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
+| 21 | ready_for_review with stale label | FAIL / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
+| 22 | rename workflow away (pre-image) | FAIL / authority detected via `previous_filename` |
+| 23 | rename pr-gate script away | FAIL / authority detected via `previous_filename` |
+| 24 | rename product → authority | FAIL / `MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE` |
+| 25 | rename authority → product | FAIL / `MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE` |
+| 26 | delete authority file | FAIL / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
+| 27 | add new authority file | FAIL / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
 
-**Harness result:** `17/17` classification cases PASS (case 18 verified by workflow code review).
+**Harness result:** `26/26` classification cases PASS (case 18 verified by workflow code review).
+
+### Security corrections (post-#1489 review)
+
+| Finding | Fix |
+|---------|-----|
+| **A — rename-away bypass** | Classify both `filename` and `previous_filename` |
+| **B — passive label approval** | Approve only on exact trusted `labeled` event |
 
 ---
 

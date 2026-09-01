@@ -55,6 +55,33 @@ jobs:
 
           AUTHORITY_PATHS_REPORT=""
           PRODUCT_PATHS_REPORT=""
+          CLASSIFIED_PATH_COUNT=0
+
+          classify_path_identity() {
+            local path="$1"
+            if [ -z "$path" ]; then
+              return 0
+            fi
+            CLASSIFIED_PATH_COUNT=$((CLASSIFIED_PATH_COUNT + 1))
+            if is_authority_path "$path"; then
+              AUTHORITY_CHANGED=true
+              AUTHORITY_PATH_COUNT=$((AUTHORITY_PATH_COUNT + 1))
+              if [ -z "$AUTHORITY_PATHS_REPORT" ]; then
+                AUTHORITY_PATHS_REPORT="$path"
+              else
+                AUTHORITY_PATHS_REPORT="${AUTHORITY_PATHS_REPORT},${path}"
+              fi
+            fi
+            if is_product_or_presentation_path "$path"; then
+              PRODUCT_OR_PRESENTATION_CHANGED=true
+              PRODUCT_OR_PRESENTATION_PATH_COUNT=$((PRODUCT_OR_PRESENTATION_PATH_COUNT + 1))
+              if [ -z "$PRODUCT_PATHS_REPORT" ]; then
+                PRODUCT_PATHS_REPORT="$path"
+              else
+                PRODUCT_PATHS_REPORT="${PRODUCT_PATHS_REPORT},${path}"
+              fi
+            fi
+          }
 
           is_authority_path() {
             local path="$1"
@@ -106,6 +133,7 @@ jobs:
             echo "EVENT_ACTION=${EVENT_ACTION}"
             echo "CHANGED_FILES_EVENT_COUNT=${EVENT_CHANGED_FILES}"
             echo "CHANGED_FILES_ENUMERATED=${ENUMERATED_FILE_COUNT:-0}"
+            echo "CLASSIFIED_PATH_COUNT=${CLASSIFIED_PATH_COUNT:-0}"
             echo "AUTHORITY_CHANGED=$([[ "$AUTHORITY_CHANGED" == true ]] && echo YES || echo NO)"
             echo "AUTHORITY_PATH_COUNT=${AUTHORITY_PATH_COUNT}"
             echo "PRODUCT_OR_PRESENTATION_CHANGED=$([[ "$PRODUCT_OR_PRESENTATION_CHANGED" == true ]] && echo YES || echo NO)"
@@ -137,7 +165,12 @@ jobs:
             exit 1
           fi
 
-          if ! jq -j '.[][] | .filename, "\u0000"' "${FILES_JSON}" > "${PATHS_FILE}"; then
+          if ! jq -j '
+            .[][] |
+            [.filename, (.previous_filename // empty)][] |
+            select(type == "string" and length > 0) |
+            ., "\u0000"
+          ' "${FILES_JSON}" > "${PATHS_FILE}"; then
             ENUMERATED_FILE_COUNT=0
             fail_authority_gate "PR_FILE_PATH_EXTRACTION_FAILED"
             emit_diagnostics
@@ -153,27 +186,7 @@ jobs:
           fi
 
           while IFS= read -r -d '' path; do
-            if [ -z "$path" ]; then
-              continue
-            fi
-            if is_authority_path "$path"; then
-              AUTHORITY_CHANGED=true
-              AUTHORITY_PATH_COUNT=$((AUTHORITY_PATH_COUNT + 1))
-              if [ -z "$AUTHORITY_PATHS_REPORT" ]; then
-                AUTHORITY_PATHS_REPORT="$path"
-              else
-                AUTHORITY_PATHS_REPORT="${AUTHORITY_PATHS_REPORT},${path}"
-              fi
-            fi
-            if is_product_or_presentation_path "$path"; then
-              PRODUCT_OR_PRESENTATION_CHANGED=true
-              PRODUCT_OR_PRESENTATION_PATH_COUNT=$((PRODUCT_OR_PRESENTATION_PATH_COUNT + 1))
-              if [ -z "$PRODUCT_PATHS_REPORT" ]; then
-                PRODUCT_PATHS_REPORT="$path"
-              else
-                PRODUCT_PATHS_REPORT="${PRODUCT_PATHS_REPORT},${path}"
-              fi
-            fi
+            classify_path_identity "$path"
           done < "${PATHS_FILE}"
 
           if [ "${HAS_AUTHORITY_LABEL}" = "true" ]; then
@@ -182,6 +195,7 @@ jobs:
 
           if [ "${EVENT_ACTION}" = "labeled" ] && [ "${{ github.event.label.name }}" = "${AUTHORITY_LABEL}" ]; then
             LABEL_ACTOR="${{ github.event.sender.login }}"
+            AUTHORITY_LABEL_PRESENT=true
             if [ "${LABEL_ACTOR}" != "${TRUSTED_AUTHORITY_ACTOR}" ]; then
               gh api --method DELETE \
                 "repos/${REPO}/issues/${PR_NUMBER}/labels/${AUTHORITY_LABEL}" \
@@ -191,7 +205,6 @@ jobs:
               emit_diagnostics
               exit 1
             fi
-            AUTHORITY_LABEL_PRESENT=true
           fi
 
           if [ "${EVENT_ACTION}" = "synchronize" ] && [ "$AUTHORITY_CHANGED" = true ] && [ "$AUTHORITY_LABEL_PRESENT" = true ]; then
@@ -218,21 +231,12 @@ jobs:
             exit 1
           fi
 
-          if [ "$AUTHORITY_LABEL_PRESENT" = true ]; then
-            if [ "${EVENT_ACTION}" = "labeled" ] && [ "${{ github.event.label.name }}" = "${AUTHORITY_LABEL}" ]; then
-              AUTHORITY_APPROVED=true
-              RESULT=PASS
-              REASON=GOVERNANCE_AUTHORITY_APPROVED
-              emit_diagnostics
-              exit 0
-            fi
-            if [ "${EVENT_ACTION}" != "synchronize" ]; then
-              AUTHORITY_APPROVED=true
-              RESULT=PASS
-              REASON=GOVERNANCE_AUTHORITY_APPROVED
-              emit_diagnostics
-              exit 0
-            fi
+          if [ "${EVENT_ACTION}" = "labeled" ] && [ "${{ github.event.label.name }}" = "${AUTHORITY_LABEL}" ]; then
+            AUTHORITY_APPROVED=true
+            RESULT=PASS
+            REASON=GOVERNANCE_AUTHORITY_APPROVED
+            emit_diagnostics
+            exit 0
           fi
 
           fail_authority_gate "GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL"

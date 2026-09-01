@@ -107,6 +107,23 @@ Enumeration completeness is verified against
 
 Paths are consumed NUL-delimited from `${RUNNER_TEMP}`.
 
+### Rename pre-image hardening
+
+For every PR file record, Layer 0 classifies **both**:
+
+- `filename` (post-image / destination)
+- `previous_filename` (pre-image / source), when present
+
+A protected governance path cannot escape authority classification by being
+renamed away.
+
+Enumeration metrics are split:
+
+| Metric | Meaning |
+|--------|---------|
+| `CHANGED_FILES_ENUMERATED` | PR file **records** (`== changed_files`) |
+| `CLASSIFIED_PATH_COUNT` | Path identities consumed (`filename` + `previous_filename`) |
+
 ---
 
 ## 6. Trusted governance authority path census
@@ -187,7 +204,8 @@ No label can override this.
 |-----------|--------|
 | No authority change | `PASS` / `NO_GOVERNANCE_AUTHORITY_CHANGE` |
 | Authority only, no label | `FAIL` / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
-| Authority only, trusted label | `PASS` / `GOVERNANCE_AUTHORITY_APPROVED` |
+| Authority only, trusted label on **`labeled` event** | `PASS` / `GOVERNANCE_AUTHORITY_APPROVED` |
+| Authority only, label merely present (opened/reopened/ready_for_review) | `FAIL` / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
 | Authority + product | `FAIL` / `MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE` |
 | Untrusted label actor | label removed / `FAIL` / `UNTRUSTED_AUTHORITY_APPROVAL_ACTOR` |
 | `synchronize` with stale label | label removed / `FAIL` / `AUTHORITY_REAPPROVAL_REQUIRED_AFTER_HEAD_CHANGE` |
@@ -197,6 +215,12 @@ No label can override this.
 Governance approval must **not** survive new commits. On `synchronize`
 when authority paths changed and the label is present, the trusted
 workflow removes the label and fails the new HEAD.
+
+**Approval provenance:** passive label presence on PR metadata is **not**
+sufficient. `AUTHORITY_APPROVED=YES` is granted only on an exact
+`pull_request_target / labeled` event where
+`github.event.label.name == i18n-governance-authority-change` and
+`github.event.sender.login == FATIHS-MGCKS`, with authority-only scope.
 
 The existing P2.3.3 `pull_request` workflow may momentarily observe a
 stale label during synchronize. That does **not** authorize merge because
