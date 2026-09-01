@@ -1908,6 +1908,45 @@ export type TripAssignmentSubjectType = 'DRIVER' | 'BOOKING_CUSTOMER';
 export type EnergyEventKind = 'REFUEL' | 'RECHARGE';
 export type EnergyEventConfidence = 'HIGH' | 'MEDIUM' | 'LOW';
 
+export type FuelStationEnrichmentProcessingStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'FAILED';
+
+export type FuelStationEnrichmentResolutionStatus =
+  | 'MATCHED'
+  | 'AMBIGUOUS'
+  | 'NOT_FOUND'
+  | 'NO_COORDINATES'
+  | 'INVALID_COORDINATES'
+  | 'ERROR';
+
+export type FuelStationMatchConfidence = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export interface EnergyEventStation {
+  osmType: string | null;
+  osmId: string | null;
+  name: string | null;
+  brand: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  distanceMeters: number | null;
+}
+
+export interface EnergyEventStationEnrichment {
+  processingStatus: FuelStationEnrichmentProcessingStatus;
+  resolutionStatus: FuelStationEnrichmentResolutionStatus | null;
+  trusted: boolean;
+  matchConfidence: FuelStationMatchConfidence | null;
+  score: number | null;
+  station?: EnergyEventStation;
+  resolverVersion: string | null;
+  osmDatasetVersion: string | null;
+  resolvedAt: string | null;
+}
+
 export interface EnergyEvent {
   id: string;
   vehicleId: string;
@@ -1934,6 +1973,8 @@ export interface EnergyEvent {
   fuelLevelRiseEnd: string | null;
   /** REFUEL only: observed fuel-level-rise duration in seconds; nullable. */
   fuelLevelRiseDurationSeconds: number | null;
+  /** REFUEL only: persisted fuel-station enrichment (Phase E API). */
+  stationEnrichment?: EnergyEventStationEnrichment;
 }
 
 export type TripTimelineItem =

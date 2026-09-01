@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fuel-station-enrichment-phase-f-ui-2026-09-01',
+    version: '4.9.1019',
+    title: 'Fuel Station Enrichment Phase F — trip timeline UI integration',
+    summary: [
+      'Extended existing `TripTimelineEnergyCard` to present persisted `stationEnrichment` on REFUEL events from the trips-timeline payload.',
+      'Deterministic trust-aware presentation: confirmed station identity (MATCHED+trusted), possible/ambiguous/resolving states, coordinate fallback preserved.',
+      'Detection `confidence` pill unchanged; station match confidence never conflated. i18n across all rental locales.',
+      'Zero extra HTTP requests — reads Phase E nested DTO only. No resolver/worker/detection changes.',
+    ],
+    reason: 'Phase F — make post-cutover tank events operationally useful in Fahrverlauf without a parallel timeline.',
+    previousBehavior: 'REFUEL cards showed detection metrics and raw coordinates only; enrichment API field was ignored.',
+    details:
+      'architecture/FUEL_STATION_ENRICHMENT_UI_PHASE_F_2026-09-01.md; trips-fuel-station-enrichment.ts, trip-timeline-shared.tsx.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T03:35:00.000Z',
+  },
+  {
     id: 'dimo-phase-3a2-production-preflight-canary-2026-08-31',
     version: '4.9.1017',
     title: 'Phase 3A.2 — Production deploy + runtime preflight + controlled LTE_R1 canary',

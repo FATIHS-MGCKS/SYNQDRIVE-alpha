@@ -1109,7 +1109,8 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'Fuel Station Resolver V1 (Phase C)', detail: '`FuelStationLocationResolverService` — geometry-aware coordinate → station match with separate station-match confidence (`fuel-station-resolver-v1`). Probe: `npm run fuel-station:resolve`. architecture/FUEL_STATION_RESOLVER_V1_2026-08-30.md.' },
       { label: 'Fuel Station Enrichment V1 (Phase D)', detail: 'Post-persist REFUEL hook → BullMQ `energy.refuel.station.enrich` → `VehicleEnergyEventFuelStationEnrichment`. Trust: MATCHED+HIGH/MEDIUM. Disabled by default (`FUEL_STATION_ENRICHMENT_ENABLED`). architecture/FUEL_STATION_ENRICHMENT_PERSISTENCE_WORKER_V1_2026-08-31.md.' },
       { label: 'Fuel Station Enrichment API (Phase E)', detail: 'Read-only `stationEnrichment` nested DTO on `EnergyEventDto` via existing `trips-timeline` / `energy-events` endpoints. Single Prisma include, no resolver on HTTP path. architecture/FUEL_STATION_ENRICHMENT_API_EXPOSURE_PHASE_E_2026-08-31.md.' },
-      { label: 'Energy Event firewall', detail: 'Phase D adds post-persist enqueue only — RefuelDetector, scoreConfidence, persist gates, coordinates unchanged. Phase E adds optional read projection only.' },
+      { label: 'Fuel Station Enrichment UI (Phase F)', detail: 'Trust-aware station presentation on existing `TripTimelineEnergyCard` — confirmed/possible/ambiguous/resolving states, coordinate fallback, zero extra requests. architecture/FUEL_STATION_ENRICHMENT_UI_PHASE_F_2026-09-01.md.' },
+      { label: 'Energy Event firewall', detail: 'Phase D enqueue only; Phase E read projection; Phase F frontend presentation only — detection/resolver/worker unchanged.' },
     ],
   },
   {

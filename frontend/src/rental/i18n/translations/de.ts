@@ -2197,6 +2197,9 @@ export const de: Record<TranslationKey, string> = {
   'trips.energy.refuel.kindLabel': 'Tanken',
   'trips.energy.refuel.signalChangeMinutes': 'Signaländerung ca. {minutes} Min.',
   'trips.energy.refuel.detectionWindow': 'Erkennungszeitraum {from}–{to}',
+  'trips.energy.refuel.stationPossible': 'Mögliche Tankstelle',
+  'trips.energy.refuel.stationAmbiguous': 'Tankstelle nicht eindeutig',
+  'trips.energy.refuel.stationResolving': 'Tankstellenerkennung ausstehend',
   'trips.energy.recharge.kindLabel': 'Laden',
   'trips.energy.recharge.durationMinutes': '{minutes} min',
 
