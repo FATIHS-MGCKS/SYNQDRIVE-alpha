@@ -1,0 +1,128 @@
+# Scaling Process — Validation Evidence
+
+**TYPE:** EVIDENCE_INDEX  
+Map claims → evidence with confidence.
+
+Confidence: **HIGH** | **MEDIUM** | **LOW**
+
+---
+
+## P1.2 — Snapshot polling / trip loss
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Trip-loss safety gates | P1.2 | #1409 | `SNAPSHOT_POLLING_P1_2_*`, Jest suites | PASS | HIGH |
+| Partial boundary repair | P1.2 FINAL-3 | #1409 | architecture docs | Merged | HIGH |
+| Production cutover | P1.2 | — | post-merge audit | PASS | MEDIUM |
+
+---
+
+## P1.3 — DIMO global provider budget
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| Global limit enforced | P1.3 | #1417 | unit + multi-instance tests | PASS | HIGH |
+| No double acquire | P1.3 | #1417 | executor specs | PASS | HIGH |
+| Fail-closed Redis | P1.3 | #1417 | service specs | PASS | HIGH |
+| Production soak budget | P1.8 | — | 24h audit metrics | 0 breaches | HIGH |
+| Multi-replica budget | P1.8.2 | — | coordination probe DB 0 | 45/50 max | HIGH |
+| N1000 provider ceiling | P1.3 | — | — | NOT VERIFIED | HIGH (that it's unverified) |
+
+---
+
+## P1.7 — Scheduler leader election
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| Single leader steady | Staging | #1440 | leader probe | leaderCountMax=1 | HIGH |
+| Graceful failover | Staging | #1440 | VPS | 7.9s | HIGH |
+| Crash failover | Staging | #1440 | VPS | 10.3s | HIGH |
+| Production soak | P1.8 | #1469 | 24h audit | leader max=1 | HIGH |
+| Production failover | P1.8.2 | #1471 | controlled test | 32s | HIGH |
+| 42 schedulers guarded | P1.7 | #1430 | registry + arch test | PASS | HIGH |
+
+---
+
+## P1.4 — Reconciliation mutex
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| Same-vehicle concurrency=1 | Staging | #1440 | coordination probe | PASS | HIGH |
+| No double execution soak | P1.8 | #1469 | audit | PASS | HIGH |
+| Production probe | P1.8.2 | #1471 | DB 0 probe | PASS | HIGH |
+
+---
+
+## Staging multi-replica
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| Logical twin validation | Staging | #1438 | Jest gate 382 tests | CONDITIONAL_PASS | HIGH |
+| True process-level | Staging | #1440 | VPS 3010/3011 | CONDITIONALLY_CERTIFIED | HIGH |
+| Redis DB 15 not DB 0 | Staging | #1440 | doc limitation | Acknowledged | HIGH |
+
+---
+
+## P1.8 — 24h single-replica soak
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| 24h window complete | P1.8 | #1469 | retrospective audit | YES | HIGH |
+| GO_WITH_CONDITIONS | P1.8 | #1469 | machine block | YES | HIGH |
+| Trip pipeline | P1.8 | — | 11 COMPLETED | PASS | MEDIUM |
+| Route V2 | P1.8 | — | metrics | NO regression | MEDIUM |
+| Energy refuel | P1.8 | — | 0 new events | NEUTRAL | HIGH |
+
+---
+
+## P1.8.1 — Remediation
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| Orphan 3010 removed | P1.8.1 | #1470 | VPS + harness fix | PASS | HIGH |
+| Battery.v2 forensics | P1.8.1 | #1470 | classification doc | PASS | HIGH |
+
+---
+
+## P1.8.2 — Controlled scale-to-2
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| Scale executed | P1.8.2 | #1471 | VPS log | SCALE_TO_2_SUCCESS | HIGH |
+| Scheduler failover | P1.8.2 | #1471 | 32s test | PASS | HIGH |
+| nginx dual upstream | P1.8.2 | #1471 | config | PASS | HIGH |
+| Sustained N=2 after | Post | — | 2026-09-01 introspection | **FAIL** (drift) | HIGH |
+
+---
+
+## P1.8.2.1 — Deploy hardening
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| Rolling deploy implemented | P1.8.2.1 | #1472 | branch code | Implemented | HIGH |
+| Unit tests | P1.8.2.1 | #1472 | 7/7 util tests | PASS | HIGH |
+| Shell syntax + selftest | P1.8.2.1 | #1472 | `bash -n`, selftest | PASS | HIGH |
+| Rebase onto main | P1.8.2.1 | #1472 | merge gate 2026-09-01 | 2 conflicts resolved | HIGH |
+| Coordination regression suite | P1.8.2.1 | #1472 | 56 tests (leader/mutex/budget/gate) | PASS | HIGH |
+| Merged to main | P1.8.2.1 | #1472 | — | **NO** (pending human merge) | HIGH |
+| Production deploy test | P1.8.2.1 | — | — | NOT RUN | HIGH |
+
+---
+
+## CI / build evidence
+
+| Suite | Typical gate | Confidence |
+|-------|--------------|------------|
+| GitHub CI on scaling PRs | 25/25 workflows | HIGH |
+| P1.2 regression | 112+ tests | HIGH |
+| P1.3 + P1.7 + P1.4 gate | 36+ tests | HIGH |
+| `SYNQDRIVE_BOOT_CHECK=1` | VPS deploy | HIGH |
+
+---
+
+## Evidence gaps (explicit)
+
+1. No 24h soak at N=2 in production
+2. No provider ceiling verification at N≈1000
+3. Staging validation Redis DB ≠ production DB
+4. Deploy hardening not on main — explains replica B loss
