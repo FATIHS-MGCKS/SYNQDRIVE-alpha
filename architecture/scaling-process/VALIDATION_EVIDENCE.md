@@ -151,12 +151,17 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | N=2 topology stable (snapshot) | P1.8.3.2 | — | SSH audit 14:26Z | SNAPSHOT_PASS | HIGH |
 | Scheduler singleton (snapshot) | P1.8.3.2 | — | `/api/v1/health/readiness` schedulerLeader | SNAPSHOT_PASS | HIGH |
 | Split brain post-stable | P1.8.3.2 | — | limited PM2 log grep | NO_SIGNAL_IN_LIMITED_SAMPLE | MEDIUM |
-| Queue depths (snapshot) | P1.8.3.2 | — | Redis BullMQ | SNAPSHOT_PASS | HIGH |
-| battery.v2 delta in window | P1.8.3.2 | — | failed ZSET scores | VERIFIED_ZERO_DELTA | HIGH |
+| Queue depths (snapshot) | P1.8.3.2 | — | Redis BullMQ | PASS (idle at audit) | HIGH |
+| battery.v2 delta in window | P1.8.3.2 | — | failed ZSET scores | VERIFIED_ZERO_DELTA (64→64) | HIGH |
+| battery.v2 backlog reclassification | P1.8.3.2 | — | audit scope | NOT_RECLASSIFIED | HIGH |
 | Trip duplicates in window | P1.8.3.2 | — | SQL `vehicle_id,start_time` | VERIFIED_ZERO | HIGH |
 | Trip/route volume | P1.8.3.2 | — | 2 trips, 2 routes | LOW_VOLUME_NEUTRAL | MEDIUM |
-| DIMO max in-flight (window) | P1.8.3.2 | — | — | NOT_MEASURED | HIGH |
-| Mutex overlap (window) | P1.8.3.2 | — | — | NOT_MEASURED | HIGH |
+| DIMO in-flight at audit | P1.8.3.2 | — | Redis snapshot | 0 at audit | MEDIUM |
+| DIMO max in-flight (window) | P1.8.3.2 | — | — | UNAVAILABLE | HIGH |
+| Mutex overlap (window) | P1.8.3.2 | — | — | UNAVAILABLE | HIGH |
+| Mutex certification | P1.8.3.2 | — | snapshot only | PARTIAL | MEDIUM |
+| ATE multi-replica | P1.8.3.2 | — | zero jobs in window | UNEXERCISED / NEUTRAL | HIGH |
+| Observational notes (FIND-01..03) | P1.8.3.2 | — | audit Phase 18 | 3 notes; NEW_P3=0 | HIGH |
 | 24h soak certification | P1.8.3.2 | — | window 9532s | NOT_MET | HIGH |
 | Evidence precision | P1.8.3.2 | — | v2 correction pass | CORRECTED | HIGH |
 | N2 retrospective verdict | P1.8.3.2 | — | audit artifact | EARLY_PASS | HIGH |
