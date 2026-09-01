@@ -1,0 +1,581 @@
+# Tankstellenerkennung Knowledge Graph — Nodes (bootstrap V1)
+# Validate: bash architecture/tankstellenerkennung/scripts/validate-graph.sh
+
+nodes:
+  # --- Domain ---
+  - id: FST-DOM-TANKSTELLENERKENNUNG-001
+    type: domain
+    title: Tankstellenerkennung domain boundary
+    epistemic_status: CONFIRMED
+    summary: >
+      Identifies fuel stations for persisted REFUEL VehicleEnergyEvents only.
+      Does not decide whether refueling happened. Begins after Energy Event persistence.
+    source_paths:
+      - architecture/tankstellenerkennung/README.md
+    evidence:
+      - FST-EVID-CODE-BOUNDARY-001
+
+  # --- Upstream event (dependency, not owned) ---
+  - id: FST-EVT-REFUEL-PERSISTED-001
+    type: event
+    title: Persisted REFUEL VehicleEnergyEvent
+    epistemic_status: CONFIRMED
+    summary: >
+      Canonical input to enrichment. Carries detection confidence and start coordinates.
+      Owned by Energy Event subsystem.
+    source_paths:
+      - backend/prisma/schema.prisma
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+
+  - id: FST-CONF-DETECTION-001
+    type: confidence
+    title: REFUEL detection confidence
+    epistemic_status: CONFIRMED
+    summary: VehicleEnergyEvent.confidence — confidence that refueling happened, not station identity.
+    source_paths:
+      - backend/prisma/schema.prisma
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.types.ts
+
+  - id: FST-CONF-MATCH-001
+    type: confidence
+    title: Station match confidence
+    epistemic_status: CONFIRMED
+    summary: matchConfidence on enrichment row — HIGH/MEDIUM/LOW for MATCHED resolver outcomes only.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/fuel-station-match-decision.ts
+
+  - id: FST-AUTH-TRUST-001
+    type: authority
+    title: Trusted station assignment policy
+    epistemic_status: CONFIRMED
+    summary: trusted=true only for MATCHED + HIGH or MEDIUM matchConfidence. Separate from detection confidence.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-trust.policy.ts
+
+  # --- OSM data ---
+  - id: FST-DATA-OSM-001
+    type: data
+    title: OSM fuel_stations reference dataset
+    epistemic_status: CONFIRMED
+    summary: >
+      Local PostGIS table osm.fuel_stations with dataset_version metadata.
+      Live calibration/production version geofabrik-germany-20260830, 18195 stations.
+    source_paths:
+      - backend/scripts/ops/osm-fuel-stations/schema.sql
+      - architecture/OSM_FUEL_STATIONS_DATASET_2026-08-30.md
+    evidence:
+      - FST-EVID-ARCH-OSM-001
+      - FST-EVID-CALIBRATION-001
+
+  - id: FST-IDX-POSTGIS-001
+    type: index
+    title: PostGIS GiST indexes on fuel_stations
+    epistemic_status: CONFIRMED
+    summary: centroid/geom GiST indexes support ST_DWithin and KNN ordering.
+    source_paths:
+      - backend/scripts/ops/osm-fuel-stations/build_staging_indexes.sql
+
+  # --- Resolver pipeline ---
+  - id: FST-RES-V1-001
+    type: resolver
+    title: FuelStationLocationResolver V1
+    epistemic_status: CONFIRMED
+    summary: >
+      fuel-station-resolver-v1. Primary 100m query; 250m fallback only if primary returns zero candidates.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/fuel-station-location-resolver.service.ts
+      - backend/src/modules/vehicle-intelligence/fuel-stations/fuel-station-location.constants.ts
+    evidence:
+      - FST-EVID-CODE-RESOLVER-001
+
+  - id: FST-QUERY-ST-DWITH-001
+    type: query
+    title: ST_DWithin bounded candidate filter
+    epistemic_status: CONFIRMED
+    summary: Filters osm.fuel_stations by centroid geography within search radius.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/fuel-station-candidate.repository.ts
+
+  - id: FST-QUERY-KNN-001
+    type: query
+    title: KNN ordering centroid <-> point
+    epistemic_status: CONFIRMED
+    summary: ORDER BY centroid <-> query_geog LIMIT 10 for deterministic nearest-first retrieval.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/fuel-station-candidate.repository.ts
+
+  - id: FST-SCORE-V1-001
+    type: score
+    title: V1 candidate scoring function
+    epistemic_status: CONFIRMED
+    summary: >
+      Inside geometry 100; geometry distance tiers 70/60/45/25; point tiers 55/35;
+      metadata bonus 8/4. See fuel-station-location.constants.ts.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/fuel-station-match-scorer.ts
+      - backend/src/modules/vehicle-intelligence/fuel-stations/fuel-station-location.constants.ts
+
+  - id: FST-DEDUPE-V1-001
+    type: dedupe
+    title: Conservative candidate deduplication
+    epistemic_status: CONFIRMED
+    summary: Merges same-brand/same-station proximity duplicates before match decision.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/fuel-station-dedupe.ts
+
+  - id: FST-AMB-DECISION-001
+    type: ambiguity
+    title: Ambiguity decision rules
+    epistemic_status: CONFIRMED
+    summary: >
+      AMBIGUOUS when top candidates too close in score (<20 gap), geometry (<15m with conditions),
+      or relative gap <15% below HIGH threshold.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/fuel-station-match-decision.ts
+
+  - id: FST-CONF-THRESHOLDS-001
+    type: confidence
+    title: Match confidence thresholds
+    epistemic_status: CONFIRMED
+    summary: HIGH >=85 + inside/<=15m geometry; MEDIUM >=70; LOW >=55; NOT_FOUND <=54.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/fuel-station-match-decision.ts
+
+  # --- Enrichment orchestration ---
+  - id: FST-PIPE-POST-PERSIST-001
+    type: pipeline
+    title: Post-persist enrichment producer hook
+    epistemic_status: CONFIRMED
+    summary: EnergyEventsService calls enqueueAfterPersistFromEvent after REFUEL upsert/create.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-producer.service.ts
+
+  - id: FST-POL-CUTOVER-STARTTIME-001
+    type: policy
+    title: startTime cutover authority
+    epistemic_status: CONFIRMED
+    summary: Eligibility uses VehicleEnergyEvent.startTime >= FUEL_STATION_ENRICHMENT_CUTOVER_AT, not createdAt.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-cutover.util.ts
+    evidence:
+      - FST-DEC-STARTTIME-CUTOVER-001
+
+  - id: FST-POL-NO-BACKFILL-001
+    type: policy
+    title: No historical automatic backfill
+    epistemic_status: CONFIRMED
+    summary: Pre-cutover REFUEL events are never automatically enriched by deploy or recovery.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-producer.service.ts
+    evidence:
+      - FST-DEC-NO-BACKFILL-001
+      - FST-EVID-PROD-DEPLOY-001
+
+  - id: FST-QUEUE-ENRICH-001
+    type: queue
+    title: BullMQ energy.refuel.station.enrich
+    epistemic_status: CONFIRMED
+    summary: Async queue for refuel station enrichment jobs; idempotent job keys via fingerprint.
+    source_paths:
+      - backend/src/workers/queues/queue-names.ts
+      - backend/src/workers/processors/refuel-station-enrichment.processor.ts
+
+  - id: FST-WORK-PROCESSOR-001
+    type: worker
+    title: RefuelStationEnrichmentProcessor
+    epistemic_status: CONFIRMED
+    summary: Worker invokes FuelStationEnrichmentOrchestrator for each job.
+    source_paths:
+      - backend/src/workers/processors/refuel-station-enrichment.processor.ts
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-orchestrator.service.ts
+
+  - id: FST-REC-SCHEDULER-001
+    type: recovery
+    title: Fuel station enrichment recovery scheduler
+    epistemic_status: CONFIRMED
+    summary: Periodic recovery re-enqueues eligible non-terminal enrichment rows; respects FAILED terminality.
+    source_paths:
+      - backend/src/workers/schedulers/fuel-station-enrichment-recovery.scheduler.ts
+
+  - id: FST-STATE-LIFECYCLE-001
+    type: state
+    title: DB-authoritative enrichment lifecycle
+    epistemic_status: CONFIRMED
+    summary: >
+      vehicle_energy_event_fuel_station_enrichments processingStatus/resolutionStatus govern automatic
+      skip/retry; BullMQ history is not business source of truth.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-lifecycle.policy.ts
+    evidence:
+      - FST-DEC-DB-LIFECYCLE-001
+
+  - id: FST-PERSIST-ENRICHMENT-001
+    type: persist
+    title: VehicleEnergyEventFuelStationEnrichment persistence
+    epistemic_status: CONFIRMED
+    summary: One enrichment row per energy event; stores resolver provenance and station fields.
+    source_paths:
+      - backend/prisma/schema.prisma
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-orchestrator.service.ts
+
+  - id: FST-POL-TRUST-HIGH-MEDIUM-001
+    type: policy
+    title: Trusted = MATCHED HIGH/MEDIUM only
+    epistemic_status: CONFIRMED
+    summary: LOW matches are diagnostic; not authoritative in API trusted flag or UI trusted mode.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-trust.policy.ts
+    evidence:
+      - FST-DEC-TRUST-HIGH-MEDIUM-001
+
+  # --- API / UI ---
+  - id: FST-API-TRIPS-TIMELINE-001
+    type: api
+    title: trips-timeline Energy Event projection
+    epistemic_status: CONFIRMED
+    summary: GET vehicles/:id/trips-timeline includes optional stationEnrichment on REFUEL events.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+    evidence:
+      - FST-DEC-EXTEND-API-001
+
+  - id: FST-DTO-STATION-001
+    type: dto
+    title: stationEnrichment DTO mapping
+    epistemic_status: CONFIRMED
+    summary: toStationEnrichmentDto / toEnergyEventDto; trusted derived; no resolver on read.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events-station-enrichment.dto.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.types.ts
+    evidence:
+      - FST-DEC-READ-PERSISTED-001
+
+  - id: FST-CONS-TIMELINE-CARD-001
+    type: consumer
+    title: TripTimelineEnergyCard presentation
+    epistemic_status: CONFIRMED
+    summary: >
+      resolveRefuelFuelStationPresentation modes trusted/possible/ambiguous/resolving/none.
+      Detection HIGH badge independent from station trust.
+    source_paths:
+      - frontend/src/rental/components/trips/trip-timeline-shared.tsx
+      - frontend/src/rental/components/trips/trips-fuel-station-enrichment.ts
+    evidence:
+      - FST-DEC-EXTEND-TIMELINE-UI-001
+      - FST-TEST-UI-REGRESSION-001
+
+  # --- Decisions (graph nodes; full register in decisions/) ---
+  - id: FST-DEC-OSM-DATASET-001
+    type: decision
+    title: Local versioned OSM/PostGIS dataset
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: Offline Geofabrik DE import with atomic promotion instead of per-request online geocoding.
+    evidence:
+      - FST-EVID-ARCH-OSM-001
+      - FST-EVID-PR-1447-001
+
+  - id: FST-DEC-PRECISION-RESOLVER-001
+    type: decision
+    title: Precision-first bounded resolver V1
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: 100m primary; 250m fallback only when empty; scoring + ambiguity instead of forced nearest.
+    evidence:
+      - FST-EVID-CALIBRATION-001
+      - FST-EVID-PR-1451-001
+
+  - id: FST-DEC-DETECTION-VS-MATCH-001
+    type: decision
+    title: Separate detection and station-match confidence
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: Three domains documented and enforced in API/UI; never conflated.
+    evidence:
+      - FST-EVID-CODE-BOUNDARY-001
+      - FST-TEST-UI-REGRESSION-001
+
+  - id: FST-DEC-ASYNC-ENRICH-001
+    type: decision
+    title: Async post-persist station enrichment
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: BullMQ worker resolves after REFUEL persist; HTTP path never blocks on resolver.
+    evidence:
+      - FST-EVID-PR-1453-001
+      - FST-EVID-PROD-DEPLOY-001
+
+  - id: FST-DEC-STARTTIME-CUTOVER-001
+    type: decision
+    title: startTime is cutover authority
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: Event occurrence time gates enrichment; createdAt cannot override cutover semantics.
+    evidence:
+      - FST-EVID-CODE-CUTOVER-001
+
+  - id: FST-DEC-NO-BACKFILL-001
+    type: decision
+    title: Explicit no-historical-backfill policy
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: Pre-cutover REFUEL rows never auto-enriched; deploy verified zero enrichment delta.
+    evidence:
+      - FST-EVID-PROD-DEPLOY-001
+
+  - id: FST-DEC-DB-LIFECYCLE-001
+    type: decision
+    title: DB enrichment row is lifecycle source of truth
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Terminal COMPLETED/FAILED with same fingerprint blocks automatic re-enqueue.
+    evidence:
+      - FST-EVID-CODE-LIFECYCLE-001
+
+  - id: FST-DEC-FAILED-TERMINAL-001
+    type: decision
+    title: FAILED is terminal for automatic recovery
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Same fingerprint + resolverVersion FAILED rows skip automatic producer/recovery paths.
+    evidence:
+      - FST-EVID-CODE-LIFECYCLE-001
+
+  - id: FST-DEC-TRUST-HIGH-MEDIUM-001
+    type: decision
+    title: Only MATCHED HIGH/MEDIUM is trusted
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: LOW shown as possible/non-authoritative; AMBIGUOUS never promoted.
+    evidence:
+      - FST-TEST-UI-REGRESSION-001
+
+  - id: FST-DEC-EXTEND-API-001
+    type: decision
+    title: Extend existing Energy Event API
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: No parallel station endpoint; optional stationEnrichment on existing DTOs.
+    evidence:
+      - FST-EVID-PR-1473-001
+
+  - id: FST-DEC-READ-PERSISTED-001
+    type: decision
+    title: HTTP read uses persisted enrichment only
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: list/find includes fuelStationEnrichment; no PostGIS/resolver per HTTP request.
+    evidence:
+      - FST-EVID-CODE-API-READ-001
+
+  - id: FST-DEC-EXTEND-TIMELINE-UI-001
+    type: decision
+    title: Extend TripTimelineEnergyCard for station presentation
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: Phase F inline enrichment on existing Tankvorgang card; zero extra HTTP requests.
+    evidence:
+      - FST-EVID-PR-1475-001
+
+  - id: FST-DEC-RECHARGE-UNTOUCHED-001
+    type: decision
+    title: RECHARGE semantics untouched
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: RECHARGE events ignore station enrichment in API and UI.
+    evidence:
+      - FST-TEST-UI-REGRESSION-001
+
+  - id: FST-DEC-REAL-REFUEL-E2E-001
+    type: decision
+    title: Natural post-cutover REFUEL required for full E2E production validation
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: Do not fabricate synthetic production REFUEL events for validation.
+    evidence:
+      - FST-GAP-REAL-POST-CUTOVER-REFUEL-001
+
+  # --- Evidence ---
+  - id: FST-EVID-CODE-BOUNDARY-001
+    type: evidence
+    title: Code boundary — enrichment after REFUEL persist
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: enqueueAfterPersistFromEvent only for mechanism refuel after upsert.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+
+  - id: FST-EVID-ARCH-OSM-001
+    type: evidence
+    title: OSM dataset architecture memo
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: PR #1447 dataset pipeline and 18195 station count.
+    source_paths:
+      - architecture/OSM_FUEL_STATIONS_DATASET_2026-08-30.md
+
+  - id: FST-EVID-CALIBRATION-001
+    type: evidence
+    title: Phase C calibration gate results
+    epistemic_status: CONFIRMED
+    source_type: CALIBRATION_RUN
+    summary: >
+      28 stations, 672 probes; strict precision 92.0%; widening fallback 150-300m added zero correct matches.
+    source_paths:
+      - architecture/FUEL_STATION_RESOLVER_V1_2026-08-30.md
+      - backend/scripts/ops/fuel-station-calibration-gate.ts
+
+  - id: FST-EVID-CODE-RESOLVER-001
+    type: evidence
+    title: Resolver implementation constants
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Verified radii, scoring, ambiguity thresholds in constants + decision modules.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/fuel-station-location.constants.ts
+
+  - id: FST-EVID-PROD-DEPLOY-001
+    type: evidence
+    title: Phase E+F production deployment observation
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: >
+      Deploy e76ada3d; cutover preserved; zero enrichment rows; zero DB delta; queue empty;
+      no post-cutover REFUEL observed.
+    source_paths:
+      - architecture/FUEL_STATION_ENRICHMENT_API_EXPOSURE_PHASE_E_2026-08-31.md
+      - architecture/FUEL_STATION_ENRICHMENT_UI_PHASE_F_2026-09-01.md
+
+  - id: FST-EVID-PR-1447-001
+    type: evidence
+    title: PR #1447 OSM fuel-station dataset
+    epistemic_status: INFERRED
+    source_type: PR_HISTORY
+    summary: Introduced osm.fuel_stations PostGIS reference dataset.
+
+  - id: FST-EVID-PR-1451-001
+    type: evidence
+    title: PR #1451 FuelStationLocationResolver V1
+    epistemic_status: INFERRED
+    source_type: PR_HISTORY
+    summary: Isolated resolver + calibration gate.
+
+  - id: FST-EVID-PR-1453-001
+    type: evidence
+    title: PR #1453 enrichment persistence + worker
+    epistemic_status: INFERRED
+    source_type: PR_HISTORY
+    summary: Phase D async enrichment, lifecycle hardening, cutover.
+
+  - id: FST-EVID-PR-1473-001
+    type: evidence
+    title: PR #1473 Phase E API exposure
+    epistemic_status: INFERRED
+    source_type: PR_HISTORY
+    summary: stationEnrichment on EnergyEventDto via existing endpoints.
+
+  - id: FST-EVID-PR-1475-001
+    type: evidence
+    title: PR #1475 Phase F UI integration
+    epistemic_status: INFERRED
+    source_type: PR_HISTORY
+    summary: TripTimelineEnergyCard presentation policy.
+
+  - id: FST-EVID-CODE-CUTOVER-001
+    type: evidence
+    title: Cutover util tests and implementation
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: startTime-based eligibility; invalid/missing cutover blocks enqueue.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-cutover.util.spec.ts
+
+  - id: FST-EVID-CODE-LIFECYCLE-001
+    type: evidence
+    title: Lifecycle policy tests
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Terminal FAILED/COMPLETED skip automatic paths for same fingerprint.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-lifecycle.policy.spec.ts
+
+  - id: FST-EVID-CODE-API-READ-001
+    type: evidence
+    title: API list includes enrichment without N+1
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: energy-events list/timeline tests for stationEnrichment projection.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events-list-station-enrichment.spec.ts
+
+  - id: FST-TEST-UI-REGRESSION-001
+    type: test_evidence
+    title: Phase F UI regression tests
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Trusted/possible/ambiguous/resolving/historical/recharge regression coverage.
+    source_paths:
+      - frontend/src/rental/components/trips/trips-fuel-station-enrichment-ui.test.tsx
+
+  # --- Gaps / hypotheses / failures ---
+  - id: FST-GAP-REAL-POST-CUTOVER-REFUEL-001
+    type: gap
+    title: No natural post-cutover REFUEL E2E observed in production
+    epistemic_status: CONFIRMED
+    summary: >
+      Architecture deployed; zero enrichment rows; zero post-cutover REFUEL at last production snapshot.
+      Full match path not production-validated on real event.
+    evidence:
+      - FST-EVID-PROD-DEPLOY-001
+
+  - id: FST-HYP-GPS-OFFSET-001
+    type: hypothesis
+    title: Production GPS offset may differ from calibration probes
+    epistemic_status: UNKNOWN
+    summary: Real refuel coordinates may show wider offset distribution than calibration set.
+
+  - id: FST-HYP-OSM-REFRESH-001
+    type: hypothesis
+    title: OSM refresh may require re-enrichment policy
+    epistemic_status: UNKNOWN
+    summary: New dataset_version may need explicit re-resolve rules for existing enrichment rows.
+
+  - id: FST-FAIL-MAPBOX-LAZY-BACKFILL-001
+    type: failed_approach
+    title: Mapbox reverse-geocoded Energy Event location + lazy read backfill
+    epistemic_status: HISTORICAL
+    summary: >
+      Early generic geocoded location on energy events (PR #31 era). Superseded by local OSM dataset
+      and async enrichment with explicit match confidence and no HTTP read resolver.
+    notes: Classified HISTORICAL/SUPERSEDED — not a runtime failure of current system.
+
+  - id: FST-REJECT-WIDEN-RADIUS-001
+    type: rejected_approach
+    title: Widen search radius to improve match count
+    epistemic_status: CONFIRMED
+    decision_status: REJECTED
+    summary: >
+      Calibration showed 150/200/250/300m fallback added zero correct matches beyond 100m primary.
+      Rejected as quality solution; 250m kept only as sparse-area empty-primary fallback.
+    evidence:
+      - FST-EVID-CALIBRATION-001
+
+  - id: FST-FAIL-CREATEDAT-CUTOVER-001
+    type: failed_approach
+    title: Using createdAt as cutover authority
+    epistemic_status: HISTORICAL
+    summary: Would misclassify late-ingested historical events; rejected in favor of startTime.
+
+  - id: FST-FAIL-BULLMQ-LIFECYCLE-001
+    type: failed_approach
+    title: BullMQ job history as business lifecycle authority
+    epistemic_status: HISTORICAL
+    summary: Superseded by DB row processingStatus/resolutionStatus + fingerprint terminality.
+
+  - id: FST-FAIL-HTTP-RESOLVER-READ-001
+    type: failed_approach
+    title: Invoke resolver/PostGIS on HTTP or card read
+    epistemic_status: HISTORICAL
+    summary: Rejected — reads use persisted enrichment only; prevents N+1 and latency spikes.
