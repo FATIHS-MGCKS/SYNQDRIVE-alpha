@@ -197,6 +197,16 @@ edges:
   - from: BAT-V2-EVID-CODE-HV-SOH-WINNER-FLOW-001
     relation: supports
     to: BAT-V2-GAP-HV-SOH-WINNER-USABILITY-001
+  - from: BAT-V2-EVID-CODE-HV-SELECTED-SOH-DTO-001
+    relation: supports
+    to: BAT-V2-AUTH-HV-SELECTED-SOH-001
+  - from: BAT-V2-EVID-CODE-HV-SELECTED-SOH-DTO-001
+    relation: supports
+    to: BAT-V2-GAP-HV-SELECTED-SOH-DTO-NAMING-001
+  - from: BAT-V2-GAP-HV-SELECTED-SOH-DTO-NAMING-001
+    relation: refines
+    to: BAT-V2-AUTH-HV-SELECTED-SOH-001
+    notes: Naming debt on canonical.hv.providerSoh carrier for multi-source selected SOH
   - from: BAT-V2-AUTH-HV-SELECTED-SOH-001
     relation: consumed_by
     to: BAT-V2-AUTH-CANONICAL-READ-001

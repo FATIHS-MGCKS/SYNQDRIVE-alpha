@@ -16,7 +16,7 @@
 ## Canonical read
 
 - Exposed as `lv.estimatedHealth` in `CanonicalBatteryDto`
-- Separate from `hv.providerSoh` and shadow HV SOH gate
+- Separate from `canonical.hv.providerSoh` (selected SOH — check `.source`) and shadow HV SOH gate (`canonical.hv.sohAssessment`)
 
 ## Invariant
 

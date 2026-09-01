@@ -17,7 +17,7 @@ Battery V2 Stage 1 LV REST shadow pipeline remains the strongest reconstructed a
 - Cross-session HV capacity assessment (≥3 qualified sessions) — **SUBSTANTIAL** reconstruction
 - Native recharge segment supersedes fallback sessions
 - HV SOH evidence-strength + freshness conflict policy (workshop/document outrank provider at equal freshness)
-- Selected HV SOH vs `canonical.hv.sohAssessment` — separate canonical concepts
+- Selected HV SOH vs `canonical.hv.sohAssessment` — separate canonical concepts; selected SOH carrier is `canonical.hv.providerSoh` (check `.source`)
 - No fabricated HV SOH / LV-not-SOH invariants
 - Primary API + rental health tab → canonical read model
 - REST_60M ±15 min / REST_6H ±30 min quality windows
@@ -40,6 +40,7 @@ Battery V2 Stage 1 LV REST shadow pipeline remains the strongest reconstructed a
 | `BAT-V2-GAP-HEV-IS-EV-001` | HEV fuelType vs canonical isEv (linked to HEV contradiction) |
 | `BAT-V2-GAP-HV-PROVIDER-SOH-LATESTSTATE-TIMESTAMP-001` | LatestState SOH value without evidence timestamp |
 | `BAT-V2-GAP-HV-SOH-WINNER-USABILITY-001` | No second-candidate fallback after winner fails usability |
+| `BAT-V2-GAP-HV-SELECTED-SOH-DTO-NAMING-001` | Selected SOH uses `providerSoh`-named DTO carrier |
 | `BAT-V2-GAP-HV-SESSION-CHARGE-METHOD-001` | SESSION_CHARGE_CAPACITY no compute |
 | `BAT-V2-GAP-HV-GROSS-CAPACITY-METHOD-001` | GROSS_CAPACITY no compute |
 | `BAT-V2-GAP-TIMESTAMP-FALLBACK-001` | LV timestamp production reachability |

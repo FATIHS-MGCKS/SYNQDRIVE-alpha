@@ -332,6 +332,24 @@ nodes:
     evidence:
       - BAT-V2-EVID-CODE-HV-SOH-WINNER-FLOW-001
 
+  - id: BAT-V2-GAP-HV-SELECTED-SOH-DTO-NAMING-001
+    type: gap
+    title: Selected HV SOH uses providerSoh-named DTO carrier
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      CanonicalBatteryHvProviderSoh.source supports PROVIDER, DOCUMENT, MANUAL, CAPACITY_ESTIMATE.
+      buildCanonicalBatteryDto maps selected hvProviderSoh into canonical.hv.providerSoh. No
+      canonical.hv.healthPercent field exists. Field name is legacy/misleading — agents may treat
+      providerSoh as provider-only. Whether runtime DTO should be renamed UNKNOWN. Contract/naming
+      ambiguity only — no production impact claim.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery/canonical-battery.types.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery/canonical-battery.builder.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HV-SELECTED-SOH-DTO-001
+
   - id: BAT-V2-GAP-HV-SESSION-CHARGE-METHOD-001
     type: gap
     title: SESSION_CHARGE_CAPACITY method has no compute implementation
@@ -443,12 +461,16 @@ nodes:
     title: Selected HV health/SOH in canonical read model
     epistemic_status: CONFIRMED
     summary: >
-      Canonical hvHealthPercent/hvSohSource from conflict winner + winner-specific usability checks.
-      Separate from canonical.hv.sohAssessment shadow gate assessment.
+      Internal: hvHealthPercent/hvSohSource from conflict winner + usability checks. Canonical DTO carrier:
+      canonical.hv.providerSoh (NOT canonical.hv.healthPercent). .source identifies actual authority
+      (PROVIDER|DOCUMENT|MANUAL|CAPACITY_ESTIMATE). Separate from canonical.hv.sohAssessment.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery/canonical-battery.builder.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery/canonical-battery.types.ts
     evidence:
       - BAT-V2-EVID-CODE-HV-SOH-WINNER-FLOW-001
+      - BAT-V2-EVID-CODE-HV-SELECTED-SOH-DTO-001
 
   - id: BAT-V2-AUTH-HV-PROVIDER-SOH-001
     type: authority
@@ -1063,3 +1085,17 @@ nodes:
       12 HV + 1 LV mapped fields; powertrainTractionBatteryCurrentVoltage mapped without registry key.
     source_paths:
       - backend/src/modules/dimo/mappers/dimo-battery-signal.mapper.ts
+
+  - id: BAT-V2-EVID-CODE-HV-SELECTED-SOH-DTO-001
+    type: evidence
+    title: Selected HV SOH canonical DTO mapping
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      CanonicalBatteryHvSection has providerSoh (not healthPercent). CanonicalBatteryHvProviderSoh.source
+      supports PROVIDER|DOCUMENT|MANUAL|CAPACITY_ESTIMATE. buildCanonicalBatteryDto maps input.hvProviderSoh
+      to canonical.hv.providerSoh. liveState.hv.values.providerSohPercent is separate live signal.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery/canonical-battery.types.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery/canonical-battery.builder.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts

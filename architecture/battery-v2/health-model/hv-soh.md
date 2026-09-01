@@ -1,16 +1,70 @@
 # Battery V2 — HV SOH Authority
 
 **Reconstruction maturity:** SUBSTANTIAL (selected SOH conflict path + shadow SOH gate path traced)  
-**Epistemic:** CONFIRMED from `battery-evidence-strength.policy.ts` and `canonical-battery-health.service.ts`
+**Epistemic:** CONFIRMED from `battery-evidence-strength.policy.ts`, `canonical-battery-health.service.ts`, `canonical-battery.types.ts`, `canonical-battery.builder.ts`
 
-## Two separate canonical concepts (do not collapse)
+## Three separate canonical concepts (do not collapse)
 
-| Concept | Graph ID | DTO field | Role |
-|---------|----------|-----------|------|
-| **Selected HV health / SOH** | `BAT-V2-AUTH-HV-SELECTED-SOH-001` | `canonical.hv.healthPercent`, `hvSohSource`, etc. | User-facing selected SOH % from evidence-strength + freshness conflict resolution |
-| **HV SOH gate assessment** | `BAT-V2-ASSESS-HV-SOH-GATE-001` | `canonical.hv.sohAssessment` | Shadow cross-session capacity → verified reference → gate assessment; **not overwritten** by provider SOH |
+| Concept | Graph ID | Canonical DTO path | Role |
+|---------|----------|-------------------|------|
+| **Live provider SOH signal** | (live telemetry) | `canonical.liveState.hv.values.providerSohPercent` | Raw/latest provider SOH % from telemetry or latest state — **not** conflict-resolved |
+| **Selected HV SOH** | `BAT-V2-AUTH-HV-SELECTED-SOH-001` | `canonical.hv.providerSoh` | Conflict-resolved selected SOH; authority identified by `.source` |
+| **HV SOH gate assessment** | `BAT-V2-ASSESS-HV-SOH-GATE-001` | `canonical.hv.sohAssessment` | Shadow cross-session capacity → verified reference → gate assessment |
 
-Provider SOH and SOH gate assessment **may coexist** in the canonical DTO. Provider SOH does **not** `authoritative_over` the SOH gate assessment node.
+There is **no** `canonical.hv.healthPercent` field on `CanonicalBatteryDto`.
+
+Selected SOH, live provider signal, and SOH gate assessment **may coexist** in the canonical DTO. None of them `authoritative_over` the others.
+
+## A) Selected HV SOH
+
+**Internal computation** (`CanonicalBatteryHealthService`):
+
+- `hvHealthPercent` — selected % after conflict + usability
+- `hvSohSource` — `PROVIDER` | `DOCUMENT` | `MANUAL` | `CAPACITY_ESTIMATE` | null
+
+**Canonical DTO carrier:**
+
+```typescript
+canonical.hv.providerSoh: CanonicalBatteryHvProviderSoh
+```
+
+Mapped via `buildCanonicalBatteryDto({ hvProviderSoh: input.hvProviderSoh })` where:
+
+```typescript
+hvProviderSoh: {
+  percent: hvHealthPercent,
+  source: hvSohSource,
+  observedAt: hvLastObservedAt,
+  decisionFresh: ...,
+  evidenceType: hvSourceType,
+}
+```
+
+**Naming debt:** The property name `providerSoh` is semantically narrower than the data it carries. `.source` may be `DOCUMENT`, `MANUAL`, `CAPACITY_ESTIMATE`, or `PROVIDER`. See `BAT-V2-GAP-HV-SELECTED-SOH-DTO-NAMING-001`.
+
+**Key fields:**
+
+| Field | Meaning |
+|-------|---------|
+| `canonical.hv.providerSoh.percent` | Selected conflict-resolved SOH % |
+| `canonical.hv.providerSoh.source` | Actual selected authority |
+| `canonical.hv.providerSoh.observedAt` | Observation timestamp for selected value |
+| `canonical.hv.providerSoh.decisionFresh` | Whether selected value passes decision-fresh gate |
+| `canonical.hv.providerSoh.evidenceType` | Underlying evidence type string |
+
+## B) Live provider SOH signal
+
+**Canonical DTO path:** `canonical.liveState.hv.values.providerSohPercent`
+
+Populated from `hvLive.providerSohPercent` in the builder — sourced from unresolved `providerSoh` (evidence value or `VehicleLatestState.tractionBatterySohPercent`). This is the **live/raw provider signal**, not the conflict-resolved selected SOH.
+
+When workshop/document wins the conflict, `canonical.hv.providerSoh.percent` and `canonical.liveState.hv.values.providerSohPercent` **may differ**.
+
+## C) HV SOH gate assessment
+
+**Canonical DTO path:** `canonical.hv.sohAssessment`
+
+Loaded independently via `findLatestHvSohGateAssessment()` and mapped by `canonical-battery.builder.ts`. Not overwritten by selected SOH.
 
 ## Evidence-strength + freshness conflict policy
 
@@ -86,8 +140,6 @@ else if (hvSohWinner?.id === 'capacity-estimate' && hvMeasuredSoh != null) { ...
 
 **Publication:** `BATTERY_V2_HV_SOH_PUBLICATION_ENABLED` (default OFF). Assessments carry `publicationEligible: false`.
 
-Loaded independently via `findLatestHvSohGateAssessment()` and mapped to `canonical.hv.sohAssessment` by `canonical-battery.builder.ts`.
-
 ## No fabricated HV SOH invariant
 
 **CONFIRMED** in code:
@@ -109,3 +161,4 @@ Loaded independently via `findLatestHvSohGateAssessment()` and mapped to `canoni
 - PHEV-specific provider SOH behavior — **UNKNOWN**
 - `BAT-V2-GAP-HV-PROVIDER-SOH-LATESTSTATE-TIMESTAMP-001` — latestState value without evidence timestamp
 - `BAT-V2-GAP-HV-SOH-WINNER-USABILITY-001` — no fallback after winner fails usability
+- `BAT-V2-GAP-HV-SELECTED-SOH-DTO-NAMING-001` — selected SOH uses `providerSoh`-named DTO carrier

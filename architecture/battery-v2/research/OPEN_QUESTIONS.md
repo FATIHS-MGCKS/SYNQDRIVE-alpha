@@ -33,6 +33,7 @@ Stable gap IDs (`BAT-V2-GAP-*`). Machine nodes in `graph/nodes.yaml`.
 | `BAT-V2-GAP-HEV-IS-EV-001` | Do HEV vehicles with fuelType HYBRID receive canonical HV slice? | UNKNOWN (see `BAT-V2-CONTRA-HEV-HV-AUTHORITY-001`) |
 | `BAT-V2-GAP-HV-PROVIDER-SOH-LATESTSTATE-TIMESTAMP-001` | How often does production have latestState SOH without evidence observedAt? | CONFIRMED code behavior; UNKNOWN frequency |
 | `BAT-V2-GAP-HV-SOH-WINNER-USABILITY-001` | Does production reach winner-selected-but-unusable SOH combinations? | CONFIRMED control flow; UNKNOWN frequency |
+| `BAT-V2-GAP-HV-SELECTED-SOH-DTO-NAMING-001` | Should `canonical.hv.providerSoh` be renamed/generalized for multi-source selected SOH? | CONFIRMED naming debt; UNKNOWN future rename |
 | `BAT-V2-GAP-HV-SESSION-CHARGE-METHOD-001` | Will SESSION_CHARGE_CAPACITY get a compute implementation? | UNKNOWN |
 | `BAT-V2-GAP-HV-GROSS-CAPACITY-METHOD-001` | Will GROSS_CAPACITY_REFERENCE get a compute implementation? | UNKNOWN |
 
