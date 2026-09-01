@@ -8,7 +8,7 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 
 | Field | Value |
 |-------|-------|
-| **STATUS** | PRODUCTION_VALIDATED (dataset infrastructure) |
+| **STATUS** | PRODUCTION_VALIDATED (scoped: dataset infrastructure live in production) |
 | **BEFORE** | Generic reverse-geocoded Energy Event locations (Mapbox-era, PR #31) |
 | **WHY** | Deterministic offline matching, tenant-safe, no per-read external geocoding dependency |
 | **CHANGE** | `osm.fuel_stations` + import/refresh pipeline (PR #1447) |
@@ -44,13 +44,13 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 
 | Field | Value |
 |-------|-------|
-| **STATUS** | PRODUCTION_VALIDATED (contract deployed) |
+| **STATUS** | VALIDATED |
 | **BEFORE** | Risk of conflating event confidence with station identity |
 | **WHY** | Operators must see refuel certainty separately from station assignment quality |
 | **CHANGE** | Three domains documented; API `trusted` derived; UI independent badges |
 | **EXPECTED_EFFECT** | HIGH detection + LOW station never looks confirmed |
 | **VALIDATION** | DTO tests + Phase F UI regression tests |
-| **OBSERVED_EFFECT** | Contract live in production build; no natural enriched row yet to observe in prod UI |
+| **OBSERVED_EFFECT** | Contract in deployed code; **no natural enriched REFUEL row in production to observe** |
 | **NON_EFFECTS** | Does not improve resolver precision |
 | **TRADEOFFS** | More complex operator mental model |
 | **REMAINING_GAPS** | Production UI observation on real enriched REFUEL |
@@ -62,13 +62,13 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 
 | Field | Value |
 |-------|-------|
-| **STATUS** | PRODUCTION_VALIDATED (infra deployed) |
+| **STATUS** | VALIDATED |
 | **BEFORE** | Resolver isolated read-only only (Phase C) |
 | **WHY** | PostGIS work must not block HTTP or detection path |
 | **CHANGE** | Producer hook + BullMQ + orchestrator + Prisma row (PR #1453, Phase D) |
 | **EXPECTED_EFFECT** | REFUEL persist returns immediately; enrichment resolves asynchronously |
 | **VALIDATION** | Worker/producer/orchestrator specs; production deploy health |
-| **OBSERVED_EFFECT** | Queue reachable, zero backlog; no enrichment rows yet (no eligible events) |
+| **OBSERVED_EFFECT** | Infra deployed: queue reachable, zero backlog; **no enrichment job exercised** (zero post-cutover REFUEL) |
 | **NON_EFFECTS** | Does not backfill historical events |
 | **TRADEOFFS** | Eventual consistency in UI |
 | **REMAINING_GAPS** | First natural post-cutover REFUEL |
@@ -80,7 +80,7 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 
 | Field | Value |
 |-------|-------|
-| **STATUS** | PRODUCTION_VALIDATED |
+| **STATUS** | PRODUCTION_VALIDATED (scoped: cutover preserved; historical firewall intact) |
 | **BEFORE** | Risk of using createdAt for eligibility |
 | **WHY** | Event occurrence time is the operational truth for historical firewall |
 | **CHANGE** | `isFuelStationEnrichmentEventAfterCutover(eventStartTime, cutoverAt)` |
@@ -98,7 +98,7 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 
 | Field | Value |
 |-------|-------|
-| **STATUS** | PRODUCTION_VALIDATED |
+| **STATUS** | PRODUCTION_VALIDATED (scoped: zero enrichment delta across Phase E+F deploy) |
 | **BEFORE** | N/A (greenfield enrichment) |
 | **WHY** | Avoid retroactive mutation of historical operational records |
 | **CHANGE** | Cutover gate + no recovery for pre-cutover + deploy verification |
@@ -122,7 +122,7 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 | **CHANGE** | lifecycle.policy terminal skip reasons |
 | **EXPECTED_EFFECT** | Idempotent automatic paths |
 | **VALIDATION** | lifecycle.policy.spec.ts, producer.spec.ts |
-| **OBSERVED_EFFECT** | UNKNOWN in production (no rows yet) |
+| **OBSERVED_EFFECT** | UNKNOWN in production (no rows yet). Code: FAILED → terminal_failed; COMPLETED non-retryable → terminal_completed; COMPLETED ERROR/null → retry permitted |
 | **NON_EFFECTS** | Manual repair path not implemented |
 | **TRADEOFFS** | Requires careful fingerprint/version semantics |
 | **REMAINING_GAPS** | Manual FAILED repair workflow |
@@ -170,13 +170,13 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 
 | Field | Value |
 |-------|-------|
-| **STATUS** | PRODUCTION_VALIDATED (deploy) |
+| **STATUS** | VALIDATED |
 | **BEFORE** | No station enrichment in API |
 | **WHY** | Avoid parallel endpoint and N+1 resolver calls |
 | **CHANGE** | Optional `stationEnrichment` on EnergyEventDto (PR #1473) |
 | **EXPECTED_EFFECT** | Backward compatible timeline payloads |
-| **VALIDATION** | DTO specs; production deploy |
-| **OBSERVED_EFFECT** | API read path returns null enrichment for historical REFUEL |
+| **VALIDATION** | DTO specs; production deploy backward-compat check |
+| **OBSERVED_EFFECT** | API returns null enrichment for historical REFUEL; **no enriched payload in production** |
 | **NON_EFFECTS** | Does not create enrichment rows |
 | **TRADEOFFS** | Larger payload when enrichment present |
 | **REMAINING_GAPS** | Positive match payload not observed in prod |
@@ -206,13 +206,13 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 
 | Field | Value |
 |-------|-------|
-| **STATUS** | PRODUCTION_VALIDATED (deploy) |
+| **STATUS** | VALIDATED |
 | **BEFORE** | Coordinates-only Tankvorgang card |
 | **WHY** | Operators need station identity without nested modules |
 | **CHANGE** | Phase F presentation policy + i18n (PR #1475) |
 | **EXPECTED_EFFECT** | Inline trusted/possible/ambiguous/resolving states |
-| **VALIDATION** | 27 frontend tests; visual acceptance PASS |
-| **OBSERVED_EFFECT** | Bundle deployed; historical cards unchanged |
+| **VALIDATION** | 27 frontend tests; visual acceptance PASS (fixtures) |
+| **OBSERVED_EFFECT** | Bundle deployed; historical cards unchanged; **no trusted-match UI on real production data** |
 | **NON_EFFECTS** | Does not fetch extra HTTP per card |
 | **TRADEOFFS** | Card height variability with long addresses |
 | **REMAINING_GAPS** | Production observation of trusted match UI |
@@ -242,13 +242,13 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 
 | Field | Value |
 |-------|-------|
-| **STATUS** | PROPOSED |
+| **STATUS** | VALIDATED (owner-confirmed governance policy) |
 | **BEFORE** | Architecture deployed without natural positive path observation |
 | **WHY** | Epistemic rigor — no synthetic production events |
-| **CHANGE** | Canonical gap FST-GAP-REAL-POST-CUTOVER-REFUEL-001 |
+| **CHANGE** | Canonical gap FST-GAP-REAL-POST-CUTOVER-REFUEL-001; reject FST-REJECT-SYNTHETIC-PROD-REFUEL-001 |
 | **EXPECTED_EFFECT** | Full path promoted to PRODUCTION_VALIDATED only after real event |
 | **VALIDATION** | Await natural post-cutover REFUEL with enrichment row |
-| **OBSERVED_EFFECT** | Not yet observed |
+| **OBSERVED_EFFECT** | Policy confirmed; real event not yet observed |
 | **NON_EFFECTS** | Does not block deployed architecture |
 | **TRADEOFFS** | Validation latency |
 | **REMAINING_GAPS** | This is the gap |

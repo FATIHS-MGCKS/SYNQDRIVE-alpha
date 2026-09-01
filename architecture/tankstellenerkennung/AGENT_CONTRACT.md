@@ -92,6 +92,28 @@ Never conflate in code, API, or UI:
 - Index gaps/hypotheses/contradictions in `contradictions/` and `research/`
 - Run `bash architecture/tankstellenerkennung/scripts/validate-graph.sh` before merge
 
+### Edge relation semantics (direction: `from` → `relation` → `to`)
+
+| Relation | Direction meaning |
+|----------|-------------------|
+| `queries` | Query or resolver **queries** dataset (not dataset → query) |
+| `supports` | Evidence **supports** decision, gap, or claim |
+| `tested_by` | Component/consumer **tested_by** test_evidence |
+| `governs` | Decision or policy **governs** component behavior |
+| `consumed_by` | Queue **consumed_by** worker |
+| `enqueues` | Producer **enqueues** to queue |
+| `processes` | Worker **processes** via orchestrator |
+| `enriches` | Orchestrator **enriches** via resolver pipeline |
+| `persists` | Orchestrator **persists** enrichment row (not resolver directly) |
+| `derives` | Authority/policy **derives** downstream field semantics |
+| `projects_to` | Persist store **projects_to** DTO |
+| `gates` | Policy **gates** pipeline stage |
+| `recovers` | Recovery scheduler **recovers** via queue |
+| `superseded_by` | Historical approach **superseded_by** current decision |
+| `validates` | Governance decision **validates** (policy over) evidence gap |
+
+Do not invert evidence, test, or query directions for validator convenience.
+
 ## Related upstream authority
 
 REFUEL detection changes belong to Energy Event / DIMO documentation — not this domain. When detection coordinate or timestamp contracts change, record cross-domain impact here as a gap or contradiction.

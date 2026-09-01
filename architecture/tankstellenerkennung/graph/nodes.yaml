@@ -185,10 +185,93 @@ nodes:
     type: worker
     title: RefuelStationEnrichmentProcessor
     epistemic_status: CONFIRMED
-    summary: Worker invokes FuelStationEnrichmentOrchestrator for each job.
+    summary: BullMQ worker delegates each job to FuelStationEnrichmentOrchestratorService.
     source_paths:
       - backend/src/workers/processors/refuel-station-enrichment.processor.ts
+
+  - id: FST-ORCH-ENRICH-001
+    type: orchestrator
+    title: FuelStationEnrichmentOrchestratorService
+    epistemic_status: CONFIRMED
+    summary: >
+      Coordinates coordinate derivation, fingerprint, lifecycle gates, resolver invocation,
+      and enrichment row persistence. Does not perform PostGIS queries directly.
+    source_paths:
       - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-orchestrator.service.ts
+
+  - id: FST-AUTH-COORD-START-001
+    type: authority
+    title: Canonical enrichment coordinate authority
+    epistemic_status: CONFIRMED
+    summary: >
+      startLatitude/startLongitude from VehicleEnergyEvent; source energy_event_start.
+      V1 does not use end coordinates or route inference.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-coordinate.util.ts
+
+  - id: FST-AUTH-FINGERPRINT-001
+    type: authority
+    title: Input fingerprint authority
+    epistemic_status: CONFIRMED
+    summary: >
+      SHA-256 over energyEventId + rounded lat/lon + resolverVersion.
+      Governs idempotency keys and terminal skip matching.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-fingerprint.util.ts
+
+  - id: FST-STATE-PROCESSING-001
+    type: state
+    title: processingStatus state machine
+    epistemic_status: CONFIRMED
+    summary: PENDING → PROCESSING → COMPLETED | FAILED. DB-authoritative for automatic paths.
+    source_paths:
+      - backend/prisma/schema.prisma
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-orchestrator.service.ts
+
+  - id: FST-STATE-RESOLUTION-001
+    type: state
+    title: resolutionStatus state machine
+    epistemic_status: CONFIRMED
+    summary: >
+      MATCHED | AMBIGUOUS | NOT_FOUND | NO_COORDINATES | ERROR (retryable).
+      ERROR permits automatic retry; other terminal resolutions block re-resolution when fingerprint matches.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-trust.policy.ts
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-lifecycle.policy.ts
+
+  - id: FST-POL-LIFECYCLE-SKIP-001
+    type: policy
+    title: Automatic lifecycle skip and terminal policy
+    epistemic_status: CONFIRMED
+    summary: >
+      FAILED + same fingerprint + resolverVersion → terminal_failed (automatic paths).
+      COMPLETED + same fingerprint + resolverVersion + non-retryable resolution → terminal_completed.
+      COMPLETED + resolutionStatus=ERROR → retry permitted. COMPLETED + resolutionStatus=null → retry permitted.
+      Changed fingerprint or resolverVersion → re-resolution may be permitted.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-lifecycle.policy.ts
+    evidence:
+      - FST-EVID-CODE-LIFECYCLE-001
+
+  - id: FST-POL-RECOVERY-ELIGIBILITY-001
+    type: policy
+    title: Recovery eligibility policy
+    epistemic_status: CONFIRMED
+    summary: >
+      Recovery sweeps post-cutover REFUEL with missing/stale PENDING|PROCESSING enrichment only.
+      Pre-cutover never swept. FAILED terminal rows never auto-requeued.
+    source_paths:
+      - backend/src/workers/schedulers/fuel-station-enrichment-recovery.scheduler.ts
+
+  - id: FST-POL-FEATURE-ENABLE-001
+    type: policy
+    title: Feature and cutover enablement authority
+    epistemic_status: CONFIRMED
+    summary: >
+      FUEL_STATION_ENRICHMENT_ENABLED, FUEL_STATION_ENRICHMENT_RECOVERY_ENABLED,
+      FUEL_STATION_ENRICHMENT_CUTOVER_AT env/config gates producer, worker, and recovery.
+    source_paths:
+      - backend/src/config/fuel-station-enrichment.config.ts
 
   - id: FST-REC-SCHEDULER-001
     type: recovery
@@ -272,7 +355,9 @@ nodes:
     title: Local versioned OSM/PostGIS dataset
     epistemic_status: CONFIRMED
     decision_status: PRODUCTION_VALIDATED
-    summary: Offline Geofabrik DE import with atomic promotion instead of per-request online geocoding.
+    summary: >
+      PRODUCTION_VALIDATED scope: dataset infrastructure live in production
+      (geofabrik-germany-20260830, 18195 stations). Does not validate match outcomes.
     evidence:
       - FST-EVID-ARCH-OSM-001
       - FST-EVID-PR-1447-001
@@ -291,8 +376,10 @@ nodes:
     type: decision
     title: Separate detection and station-match confidence
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
-    summary: Three domains documented and enforced in API/UI; never conflated.
+    decision_status: VALIDATED
+    summary: >
+      Three domains documented and enforced in code/tests. Production deploy does not prove
+      separation on a real enriched REFUEL row — no post-cutover match observed yet.
     evidence:
       - FST-EVID-CODE-BOUNDARY-001
       - FST-TEST-UI-REGRESSION-001
@@ -301,8 +388,10 @@ nodes:
     type: decision
     title: Async post-persist station enrichment
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
-    summary: BullMQ worker resolves after REFUEL persist; HTTP path never blocks on resolver.
+    decision_status: VALIDATED
+    summary: >
+      BullMQ worker + orchestrator deployed; queue healthy. No production job exercised
+      resolver → persist path — zero post-cutover REFUEL at observation time.
     evidence:
       - FST-EVID-PR-1453-001
       - FST-EVID-PROD-DEPLOY-001
@@ -312,16 +401,21 @@ nodes:
     title: startTime is cutover authority
     epistemic_status: CONFIRMED
     decision_status: PRODUCTION_VALIDATED
-    summary: Event occurrence time gates enrichment; createdAt cannot override cutover semantics.
+    summary: >
+      PRODUCTION_VALIDATED scope: cutover timestamp preserved across deploy;
+      16 pre-cutover REFUEL, 0 enrichment rows — historical firewall intact.
     evidence:
       - FST-EVID-CODE-CUTOVER-001
+      - FST-EVID-PROD-DEPLOY-001
 
   - id: FST-DEC-NO-BACKFILL-001
     type: decision
     title: Explicit no-historical-backfill policy
     epistemic_status: CONFIRMED
     decision_status: PRODUCTION_VALIDATED
-    summary: Pre-cutover REFUEL rows never auto-enriched; deploy verified zero enrichment delta.
+    summary: >
+      PRODUCTION_VALIDATED scope: zero enrichment delta across Phase E+F deploy;
+      pre-cutover REFUEL count unchanged; no automatic backfill observed.
     evidence:
       - FST-EVID-PROD-DEPLOY-001
 
@@ -330,7 +424,10 @@ nodes:
     title: DB enrichment row is lifecycle source of truth
     epistemic_status: CONFIRMED
     decision_status: VALIDATED
-    summary: Terminal COMPLETED/FAILED with same fingerprint blocks automatic re-enqueue.
+    summary: >
+      DB processingStatus/resolutionStatus + fingerprint govern automatic skip.
+      FAILED → terminal_failed; COMPLETED non-retryable → terminal_completed;
+      COMPLETED ERROR/null → retry permitted. BullMQ history is not authority.
     evidence:
       - FST-EVID-CODE-LIFECYCLE-001
 
@@ -356,10 +453,13 @@ nodes:
     type: decision
     title: Extend existing Energy Event API
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
-    summary: No parallel station endpoint; optional stationEnrichment on existing DTOs.
+    decision_status: VALIDATED
+    summary: >
+      Optional stationEnrichment on existing DTOs; deployed with backward-compat null for
+      historical REFUEL. No enriched payload observed in production.
     evidence:
       - FST-EVID-PR-1473-001
+      - FST-EVID-PROD-DEPLOY-001
 
   - id: FST-DEC-READ-PERSISTED-001
     type: decision
@@ -374,10 +474,13 @@ nodes:
     type: decision
     title: Extend TripTimelineEnergyCard for station presentation
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
-    summary: Phase F inline enrichment on existing Tankvorgang card; zero extra HTTP requests.
+    decision_status: VALIDATED
+    summary: >
+      Phase F presentation policy deployed in bundle. No trusted-match UI observed on
+      real production data — zero enrichment rows.
     evidence:
       - FST-EVID-PR-1475-001
+      - FST-TEST-UI-REGRESSION-001
 
   - id: FST-DEC-RECHARGE-UNTOUCHED-001
     type: decision
@@ -392,8 +495,10 @@ nodes:
     type: decision
     title: Natural post-cutover REFUEL required for full E2E production validation
     epistemic_status: CONFIRMED
-    decision_status: PROPOSED
-    summary: Do not fabricate synthetic production REFUEL events for validation.
+    decision_status: VALIDATED
+    summary: >
+      Owner-confirmed governance: do not fabricate synthetic production REFUEL events.
+      Separate from evidence gap FST-GAP-REAL-POST-CUTOVER-REFUEL-001 (no real event yet).
     evidence:
       - FST-GAP-REAL-POST-CUTOVER-REFUEL-001
 
@@ -443,10 +548,9 @@ nodes:
     source_type: PRODUCTION_OBSERVATION
     summary: >
       Deploy e76ada3d; cutover preserved; zero enrichment rows; zero DB delta; queue empty;
-      no post-cutover REFUEL observed.
+      no post-cutover REFUEL observed. Scoped infra/negative-path evidence only.
     source_paths:
-      - architecture/FUEL_STATION_ENRICHMENT_API_EXPOSURE_PHASE_E_2026-08-31.md
-      - architecture/FUEL_STATION_ENRICHMENT_UI_PHASE_F_2026-09-01.md
+      - architecture/tankstellenerkennung/evidence/PRODUCTION_DEPLOYMENT_EF_2026-09-01.md
 
   - id: FST-EVID-PR-1447-001
     type: evidence
@@ -454,6 +558,9 @@ nodes:
     epistemic_status: INFERRED
     source_type: PR_HISTORY
     summary: Introduced osm.fuel_stations PostGIS reference dataset.
+    source_locator: https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1447
+    verified_ref: 913f028f332c957d2c688bcd6da316656bc2a2b9
+    verified_at: "2026-09-01"
 
   - id: FST-EVID-PR-1451-001
     type: evidence
@@ -461,6 +568,9 @@ nodes:
     epistemic_status: INFERRED
     source_type: PR_HISTORY
     summary: Isolated resolver + calibration gate.
+    source_locator: https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1451
+    verified_ref: a1e5fdfdb702888218f2d068e3f9b5c47e31546e
+    verified_at: "2026-09-01"
 
   - id: FST-EVID-PR-1453-001
     type: evidence
@@ -468,6 +578,9 @@ nodes:
     epistemic_status: INFERRED
     source_type: PR_HISTORY
     summary: Phase D async enrichment, lifecycle hardening, cutover.
+    source_locator: https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1453
+    verified_ref: 52ec8341c4bbe0d0bee0e71c8bdab3d364094bef
+    verified_at: "2026-09-01"
 
   - id: FST-EVID-PR-1473-001
     type: evidence
@@ -475,6 +588,9 @@ nodes:
     epistemic_status: INFERRED
     source_type: PR_HISTORY
     summary: stationEnrichment on EnergyEventDto via existing endpoints.
+    source_locator: https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1473
+    verified_ref: ee7701209aebfea0cb53337755b54656a6c31ebb
+    verified_at: "2026-09-01"
 
   - id: FST-EVID-PR-1475-001
     type: evidence
@@ -482,6 +598,21 @@ nodes:
     epistemic_status: INFERRED
     source_type: PR_HISTORY
     summary: TripTimelineEnergyCard presentation policy.
+    source_locator: https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1475
+    verified_ref: e76ada3d8885f8eeb7f2e6c6c50be115d0758c2c
+    verified_at: "2026-09-01"
+
+  - id: FST-EVID-PR-31-001
+    type: evidence
+    title: PR #31 Mapbox reverse-geocode era (OPEN, not merged)
+    epistemic_status: HISTORICAL
+    source_type: PR_HISTORY
+    summary: >
+      Early generic geocoded Energy Event location proposal. OPEN — no merge commit.
+      Historical reference for superseded architecture, not empirical runtime failure.
+    source_locator: https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/31
+    verified_at: "2026-09-01"
+    notes: verified_ref omitted — PR state OPEN, mergeCommit null
 
   - id: FST-EVID-CODE-CUTOVER-001
     type: evidence
@@ -497,7 +628,9 @@ nodes:
     title: Lifecycle policy tests
     epistemic_status: CONFIRMED
     source_type: CURRENT_TEST
-    summary: Terminal FAILED/COMPLETED skip automatic paths for same fingerprint.
+    summary: >
+      terminal_failed for FAILED; terminal_completed only for COMPLETED non-retryable;
+      COMPLETED ERROR/null permits retry; fingerprint/version mismatch permits re-resolution.
     source_paths:
       - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-lifecycle.policy.spec.ts
 
@@ -526,9 +659,51 @@ nodes:
     epistemic_status: CONFIRMED
     summary: >
       Architecture deployed; zero enrichment rows; zero post-cutover REFUEL at last production snapshot.
-      Full match path not production-validated on real event.
+      Full match → persist → API → UI path not production-validated on real event.
     evidence:
       - FST-EVID-PROD-DEPLOY-001
+
+  - id: FST-GAP-GERMANY-SCOPE-001
+    type: gap
+    title: Germany-only geographic scope / international expansion
+    epistemic_status: UNKNOWN
+    summary: OSM dataset is Geofabrik DE extract only; tenant international scope not validated.
+
+  - id: FST-GAP-MANUAL-FAILED-REPAIR-001
+    type: gap
+    title: Manual repair path for terminal FAILED enrichment rows
+    epistemic_status: UNKNOWN
+    summary: FAILED + same fingerprint is terminal for automatic paths; no ops repair workflow defined.
+
+  - id: FST-GAP-SINGLE-COORD-POLICY-001
+    type: gap
+    title: Single start-coordinate policy / future multi-coordinate evidence
+    epistemic_status: UNKNOWN
+    summary: V1 uses energy_event_start only; multi-point or end-coordinate policy undecided.
+
+  - id: FST-GAP-OSM-DATA-QUALITY-001
+    type: gap
+    title: OSM relation/multipolygon/data-quality edge cases in production
+    epistemic_status: UNKNOWN
+    summary: Calibration used point/geometry stations; relation/multipolygon anomalies unobserved in prod.
+
+  - id: FST-GAP-PRODUCTION-SLO-001
+    type: gap
+    title: Production SLO / alerting thresholds for enrichment
+    epistemic_status: UNKNOWN
+    summary: No defined SLOs for backlog, FAILED rate, or recovery lag.
+
+  - id: FST-GAP-UPSTREAM-COORD-CONTRACT-001
+    type: gap
+    title: Explicit upstream coordinate/timestamp contract with Energy Events
+    epistemic_status: INFERRED
+    summary: startLatitude/startLongitude assumed from detection; formal cross-domain contract not documented.
+
+  - id: FST-GAP-PRE-PHASE-B-DISCOVERY-001
+    type: gap
+    title: Pre-Phase-B discovery history reconstruction
+    epistemic_status: UNKNOWN
+    summary: Decision trail before OSM dataset PR #1447 not reconstructed in this authority.
 
   - id: FST-HYP-GPS-OFFSET-001
     type: hypothesis
@@ -547,9 +722,12 @@ nodes:
     title: Mapbox reverse-geocoded Energy Event location + lazy read backfill
     epistemic_status: HISTORICAL
     summary: >
-      Early generic geocoded location on energy events (PR #31 era). Superseded by local OSM dataset
-      and async enrichment with explicit match confidence and no HTTP read resolver.
-    notes: Classified HISTORICAL/SUPERSEDED — not a runtime failure of current system.
+      Early generic geocoded location on energy events (PR #31 era, OPEN/unmerged).
+      Superseded by local OSM dataset + async enrichment + persisted read model.
+      Not an empirical runtime failure of the current system.
+    notes: HISTORICAL + SUPERSEDED — not classified as empirical FAILED
+    evidence:
+      - FST-EVID-PR-31-001
 
   - id: FST-REJECT-WIDEN-RADIUS-001
     type: rejected_approach
@@ -566,7 +744,7 @@ nodes:
     type: failed_approach
     title: Using createdAt as cutover authority
     epistemic_status: HISTORICAL
-    summary: Would misclassify late-ingested historical events; rejected in favor of startTime.
+    summary: Would misclassify late-ingested historical events; superseded by startTime authority.
 
   - id: FST-FAIL-BULLMQ-LIFECYCLE-001
     type: failed_approach
@@ -578,4 +756,36 @@ nodes:
     type: failed_approach
     title: Invoke resolver/PostGIS on HTTP or card read
     epistemic_status: HISTORICAL
-    summary: Rejected — reads use persisted enrichment only; prevents N+1 and latency spikes.
+    summary: Superseded — reads use persisted enrichment only; prevents N+1 and latency spikes.
+
+  - id: FST-FAIL-FORCED-NEAREST-001
+    type: failed_approach
+    title: Forced nearest station without confidence gates
+    epistemic_status: HISTORICAL
+    summary: >
+      Design anti-pattern rejected during resolver design. Would present false certainty;
+      calibration FP rate 5.4% under strict matching.
+
+  - id: FST-FAIL-INFINITE-FAILED-RETRY-001
+    type: failed_approach
+    title: Automatically recovering FAILED enrichment forever
+    epistemic_status: HISTORICAL
+    summary: Retry storms on permanent failures; superseded by terminal_failed policy.
+
+  - id: FST-REJECT-HISTORICAL-BACKFILL-001
+    type: rejected_approach
+    title: Historical REFUEL automatic backfill
+    epistemic_status: CONFIRMED
+    decision_status: REJECTED
+    summary: Governance rejection — mutates historical operational record semantics.
+    evidence:
+      - FST-DEC-NO-BACKFILL-001
+
+  - id: FST-REJECT-SYNTHETIC-PROD-REFUEL-001
+    type: rejected_approach
+    title: Synthetic production REFUEL for validation
+    epistemic_status: CONFIRMED
+    decision_status: REJECTED
+    summary: Owner-confirmed governance — do not manufacture production REFUEL events or rows.
+    evidence:
+      - FST-DEC-REAL-REFUEL-E2E-001

@@ -77,9 +77,12 @@ Vehicle telemetry
 | Pre-cutover REFUEL | No automatic enrichment |
 | Historical backfill | Explicitly forbidden |
 | DB source of truth | `vehicle_energy_event_fuel_station_enrichments` |
-| FAILED + same fingerprint | Terminal for automatic paths |
-| COMPLETED + same fingerprint | Idempotent no-op |
-| Recovery scheduler | Re-enqueues eligible non-terminal rows on interval |
+| FAILED + same fingerprint + resolverVersion | Terminal for automatic paths (`terminal_failed`) |
+| COMPLETED + same fingerprint + resolverVersion + non-retryable resolution | Idempotent no-op (`terminal_completed`) |
+| COMPLETED + resolutionStatus=ERROR | Retry permitted |
+| COMPLETED + resolutionStatus=null | Retry permitted |
+| Changed fingerprint or resolverVersion | Re-resolution may be permitted |
+| Recovery scheduler | Re-enqueues eligible non-terminal rows on interval; FAILED never auto-requeued |
 
 ## API / UI (CONFIRMED)
 
@@ -105,8 +108,17 @@ Vehicle telemetry
 
 ## What is explicitly NOT solved
 
-- Real-world GPS offset distribution at production refuel sites
-- OSM refresh semantics for already-enriched historical rows
-- Manual repair workflow for terminal FAILED rows
-- Multi-coordinate evidence policy (single start coordinate today)
-- Operational SLOs / alerting thresholds for enrichment failures
+See canonical gap nodes in `graph/nodes.yaml` and `contradictions/KNOWLEDGE_GAPS.md`:
+
+| ID | Gap |
+|----|-----|
+| FST-GAP-REAL-POST-CUTOVER-REFUEL-001 | No natural post-cutover REFUEL E2E in production |
+| FST-GAP-GERMANY-SCOPE-001 | Germany-only dataset; international expansion unknown |
+| FST-GAP-MANUAL-FAILED-REPAIR-001 | No manual repair workflow for terminal FAILED rows |
+| FST-GAP-SINGLE-COORD-POLICY-001 | Single start-coordinate policy; multi-point evidence undecided |
+| FST-GAP-OSM-DATA-QUALITY-001 | OSM relation/multipolygon production edge cases |
+| FST-GAP-PRODUCTION-SLO-001 | No production SLO / alerting thresholds |
+| FST-GAP-UPSTREAM-COORD-CONTRACT-001 | Upstream coordinate/timestamp contract not fully documented |
+| FST-GAP-PRE-PHASE-B-DISCOVERY-001 | Pre-Phase-B discovery history not reconstructed |
+
+Hypotheses FST-HYP-GPS-OFFSET-001 and FST-HYP-OSM-REFRESH-001 remain open.

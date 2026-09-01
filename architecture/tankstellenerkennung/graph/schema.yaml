@@ -10,6 +10,7 @@ node_types:
   - data
   - index
   - pipeline
+  - orchestrator
   - query
   - resolver
   - score
@@ -106,12 +107,35 @@ relation_types:
   - does_not_solve
   - gates
   - validates
+  - derives
+  - derives
+
+# Edge direction semantics (from → relation → to)
+# queries:        query/resolver → dataset (lookup against reference data)
+# supports:       evidence → decision/claim/gap (epistemic support)
+# tested_by:      component/consumer → test_evidence (subject validated by test)
+# governs:        decision/policy → component (authority over behavior)
+# consumed_by:    queue → worker (worker pulls jobs)
+# enqueues:       producer → queue
+# processes:      worker → orchestrator (delegates business logic)
+# enriches:       orchestrator → resolver (invokes match pipeline)
+# persists:       orchestrator → persist store (writes enrichment row)
+# derives:        authority/policy → downstream field (coordinate, trust, fingerprint)
+# projects_to:    persist → dto (read-model mapping)
+# consumed_by:    api → consumer (UI reads API)
+# presents:       consumer → (terminal presentation; use consumer as subject)
+# gates:          policy → pipeline stage (eligibility filter)
+# recovers:       recovery → queue (re-enqueue eligible rows)
+# superseded_by:  historical approach → current decision
+# validates:      decision/policy → gap (governance over evidence requirement)
+relation_semantics_doc: architecture/tankstellenerkennung/AGENT_CONTRACT.md
 
 id_prefixes:
   domain: FST-DOM-
   data: FST-DATA-
   index: FST-IDX-
   pipeline: FST-PIPE-
+  orchestrator: FST-ORCH-
   query: FST-QUERY-
   resolver: FST-RES-
   score: FST-SCORE-

@@ -41,6 +41,32 @@ function collectStableIdsFromMarkdown(dir, pattern) {
   return ids;
 }
 
+function parseDecisionStatusesFromMarkdown(filePath, pattern) {
+  const map = new Map();
+  if (!fs.existsSync(filePath)) return map;
+  const text = fs.readFileSync(filePath, 'utf8');
+  const sectionRe = /## (FST-DEC-[A-Z0-9-]+)[^\n]*\n[\s\S]*?\| \*\*STATUS\*\* \| ([^|]+) \|/g;
+  for (const m of text.matchAll(sectionRe)) {
+    const id = m[1];
+    const status = m[2].trim().replace(/\s*\([^)]*\)\s*/g, '').trim();
+    map.set(id, status);
+  }
+  return map;
+}
+
+function parseKnowledgeGraphDecisionTable(filePath) {
+  const map = new Map();
+  if (!fs.existsSync(filePath)) return map;
+  const text = fs.readFileSync(filePath, 'utf8');
+  const rowRe = /\| (FST-DEC-[A-Z0-9-]+) \|[^|]+\| ([A-Z_]+(?: \([^)]+\))?) \|/g;
+  for (const m of text.matchAll(rowRe)) {
+    const id = m[1];
+    const status = m[2].trim().replace(/\s*\([^)]*\)\s*/g, '').trim();
+    map.set(id, status);
+  }
+  return map;
+}
+
 console.log('==> YAML syntax');
 const schema = load('schema.yaml');
 for (const name of ['nodes.yaml', 'edges.yaml', 'invariants.yaml']) {
@@ -53,6 +79,7 @@ const edges = load('edges.yaml').edges ?? [];
 const invariants = load('invariants.yaml').invariants ?? [];
 
 const nodeIds = new Set();
+const nodeById = new Map();
 for (const n of nodes) {
   if (!n?.id) {
     fail('Node missing id');
@@ -60,6 +87,7 @@ for (const n of nodes) {
   }
   if (nodeIds.has(n.id)) fail(`Duplicate node id: ${n.id}`);
   nodeIds.add(n.id);
+  nodeById.set(n.id, n);
 
   for (const field of schema.node_fields?.required ?? []) {
     if (n[field] === undefined || n[field] === null || n[field] === '') {
@@ -87,6 +115,12 @@ for (const n of nodes) {
     const permitted = schema.decision_status_permitted_types ?? ['decision'];
     if (!permitted.includes(n.type)) {
       fail(`Node ${n.id} (type=${n.type}) must not carry decision_status`);
+    }
+  }
+
+  if (n.reconstruction_maturity !== undefined) {
+    if (!schema.reconstruction_maturity_values?.includes(n.reconstruction_maturity)) {
+      fail(`Node ${n.id} has invalid reconstruction_maturity: ${n.reconstruction_maturity}`);
     }
   }
 
@@ -122,8 +156,12 @@ for (const e of edges) {
 }
 console.log('==> Edge references:', edges.length, 'OK');
 
+const invIds = new Set();
 for (const inv of invariants) {
   if (!inv.id) fail('Invariant missing id');
+  if (invIds.has(inv.id)) fail(`Duplicate invariant id: ${inv.id}`);
+  invIds.add(inv.id);
+
   if (!inv.id.startsWith('FST-INV-')) fail(`Invariant ${inv.id} must use FST-INV- prefix`);
   if (!schema.invariant_kinds?.includes(inv.kind)) {
     fail(`Invariant ${inv.id} has invalid kind: ${inv.kind}`);
@@ -147,10 +185,14 @@ console.log('==> Source paths:', paths.size, missingPaths.length ? 'FAIL' : 'OK'
 const gapPattern = /FST-GAP-[A-Z0-9-]+/g;
 const hypPattern = /FST-HYP-[A-Z0-9-]+/g;
 const contraPattern = /FST-CONTRA-[A-Z0-9-]+/g;
+const failPattern = /FST-FAIL-[A-Z0-9-]+/g;
+const rejectPattern = /FST-REJECT-[A-Z0-9-]+/g;
 
 const indexedGaps = collectStableIdsFromMarkdown(authorityDir, gapPattern);
 const indexedHyps = collectStableIdsFromMarkdown(authorityDir, hypPattern);
 const indexedContras = collectStableIdsFromMarkdown(authorityDir, contraPattern);
+const indexedFails = collectStableIdsFromMarkdown(authorityDir, failPattern);
+const indexedRejects = collectStableIdsFromMarkdown(authorityDir, rejectPattern);
 
 for (const id of indexedGaps) {
   if (!nodeIds.has(id)) fail(`Indexed GAP ${id} missing from graph nodes`);
@@ -161,12 +203,53 @@ for (const id of indexedHyps) {
 for (const id of indexedContras) {
   if (!nodeIds.has(id)) fail(`Indexed CONTRA ${id} missing from graph nodes`);
 }
+for (const id of indexedFails) {
+  if (!nodeIds.has(id)) fail(`Indexed FAIL ${id} missing from graph nodes`);
+}
+for (const id of indexedRejects) {
+  if (!nodeIds.has(id)) fail(`Indexed REJECT ${id} missing from graph nodes`);
+}
 console.log(
   '==> Canonical index resolution:',
   `GAP=${indexedGaps.size}`,
   `HYP=${indexedHyps.size}`,
   `CONTRA=${indexedContras.size}`,
+  `FAIL=${indexedFails.size}`,
+  `REJECT=${indexedRejects.size}`,
 );
+
+// Decision status consistency: nodes.yaml vs DECISION_REGISTER.md vs KNOWLEDGE_GRAPH.md
+const registerStatuses = parseDecisionStatusesFromMarkdown(
+  path.join(authorityDir, 'decisions/DECISION_REGISTER.md'),
+);
+const kgStatuses = parseKnowledgeGraphDecisionTable(
+  path.join(authorityDir, 'KNOWLEDGE_GRAPH.md'),
+);
+
+for (const n of nodes) {
+  if (n.type !== 'decision' || !n.decision_status) continue;
+  const reg = registerStatuses.get(n.id);
+  if (reg && reg !== n.decision_status) {
+    fail(
+      `Decision ${n.id} status mismatch: nodes.yaml=${n.decision_status} vs DECISION_REGISTER.md=${reg}`,
+    );
+  }
+  const kg = kgStatuses.get(n.id);
+  if (kg && kg !== n.decision_status) {
+    fail(`Decision ${n.id} status mismatch: nodes.yaml=${n.decision_status} vs KNOWLEDGE_GRAPH.md=${kg}`);
+  }
+}
+
+for (const [id, status] of registerStatuses) {
+  const node = nodeById.get(id);
+  if (!node) fail(`DECISION_REGISTER.md references ${id} missing from graph nodes`);
+  else if (node.decision_status !== status) {
+    fail(
+      `Decision ${id} status mismatch: nodes.yaml=${node.decision_status} vs DECISION_REGISTER.md=${status}`,
+    );
+  }
+}
+console.log('==> Decision status consistency:', registerStatuses.size, 'register entries checked');
 
 if (errors.length) {
   console.error('\n==> VALIDATION FAILED');

@@ -1,4 +1,4 @@
-# Tankstellenerkennung Knowledge Graph — Edges (bootstrap V1)
+# Tankstellenerkennung Knowledge Graph — Edges (bootstrap V1, epistemic correction)
 
 edges:
   # Upstream boundary
@@ -12,10 +12,13 @@ edges:
     to: FST-EVT-REFUEL-PERSISTED-001
     notes: Detection confidence on event row — not station match
 
-  # Data → resolver
-  - from: FST-DATA-OSM-001
+  # Resolver pipeline (query → dataset direction)
+  - from: FST-QUERY-ST-DWITH-001
     relation: queries
-    to: FST-QUERY-ST-DWITH-001
+    to: FST-DATA-OSM-001
+  - from: FST-QUERY-KNN-001
+    relation: queries
+    to: FST-DATA-OSM-001
   - from: FST-IDX-POSTGIS-001
     relation: supports
     to: FST-QUERY-ST-DWITH-001
@@ -41,28 +44,59 @@ edges:
     relation: governs
     to: FST-CONF-MATCH-001
 
-  # Enrichment pipeline
+  # Enrichment pipeline (full canonical flow)
   - from: FST-PIPE-POST-PERSIST-001
     relation: gates
     to: FST-POL-CUTOVER-STARTTIME-001
+  - from: FST-POL-FEATURE-ENABLE-001
+    relation: gates
+    to: FST-PIPE-POST-PERSIST-001
   - from: FST-POL-CUTOVER-STARTTIME-001
     relation: gates
+    to: FST-POL-LIFECYCLE-SKIP-001
+  - from: FST-POL-LIFECYCLE-SKIP-001
+    relation: gates
+    to: FST-QUEUE-ENRICH-001
+  - from: FST-PIPE-POST-PERSIST-001
+    relation: enqueues
     to: FST-QUEUE-ENRICH-001
   - from: FST-QUEUE-ENRICH-001
-    relation: processes
+    relation: consumed_by
     to: FST-WORK-PROCESSOR-001
   - from: FST-WORK-PROCESSOR-001
+    relation: processes
+    to: FST-ORCH-ENRICH-001
+  - from: FST-AUTH-COORD-START-001
+    relation: derives
+    to: FST-ORCH-ENRICH-001
+  - from: FST-AUTH-FINGERPRINT-001
+    relation: derives
+    to: FST-ORCH-ENRICH-001
+  - from: FST-ORCH-ENRICH-001
     relation: enriches
     to: FST-RES-V1-001
   - from: FST-RES-V1-001
+    relation: consumed_by
+    to: FST-ORCH-ENRICH-001
+    notes: Resolver returns match decision to orchestrator; orchestrator persists
+  - from: FST-ORCH-ENRICH-001
     relation: persists
     to: FST-PERSIST-ENRICHMENT-001
-  - from: FST-STATE-LIFECYCLE-001
+  - from: FST-STATE-PROCESSING-001
+    relation: governs
+    to: FST-PERSIST-ENRICHMENT-001
+  - from: FST-STATE-RESOLUTION-001
+    relation: governs
+    to: FST-PERSIST-ENRICHMENT-001
+  - from: FST-POL-LIFECYCLE-SKIP-001
     relation: governs
     to: FST-PIPE-POST-PERSIST-001
   - from: FST-REC-SCHEDULER-001
     relation: recovers
     to: FST-QUEUE-ENRICH-001
+  - from: FST-POL-RECOVERY-ELIGIBILITY-001
+    relation: governs
+    to: FST-REC-SCHEDULER-001
   - from: FST-POL-NO-BACKFILL-001
     relation: governs
     to: FST-PIPE-POST-PERSIST-001
@@ -70,7 +104,7 @@ edges:
     relation: governs
     to: FST-AUTH-TRUST-001
   - from: FST-AUTH-TRUST-001
-    relation: downstream_of
+    relation: derives
     to: FST-CONF-MATCH-001
 
   # API / UI projection
@@ -81,7 +115,7 @@ edges:
     relation: consumed_by
     to: FST-API-TRIPS-TIMELINE-001
   - from: FST-API-TRIPS-TIMELINE-001
-    relation: presents
+    relation: consumed_by
     to: FST-CONS-TIMELINE-CARD-001
 
   # Decisions govern components
@@ -100,6 +134,9 @@ edges:
   - from: FST-DEC-ASYNC-ENRICH-001
     relation: governs
     to: FST-QUEUE-ENRICH-001
+  - from: FST-DEC-ASYNC-ENRICH-001
+    relation: governs
+    to: FST-ORCH-ENRICH-001
   - from: FST-DEC-STARTTIME-CUTOVER-001
     relation: governs
     to: FST-POL-CUTOVER-STARTTIME-001
@@ -109,9 +146,12 @@ edges:
   - from: FST-DEC-DB-LIFECYCLE-001
     relation: governs
     to: FST-STATE-LIFECYCLE-001
+  - from: FST-DEC-DB-LIFECYCLE-001
+    relation: governs
+    to: FST-POL-LIFECYCLE-SKIP-001
   - from: FST-DEC-FAILED-TERMINAL-001
     relation: governs
-    to: FST-STATE-LIFECYCLE-001
+    to: FST-POL-LIFECYCLE-SKIP-001
   - from: FST-DEC-TRUST-HIGH-MEDIUM-001
     relation: governs
     to: FST-POL-TRUST-HIGH-MEDIUM-001
@@ -131,7 +171,7 @@ edges:
     relation: validates
     to: FST-GAP-REAL-POST-CUTOVER-REFUEL-001
 
-  # Evidence supports
+  # Evidence supports (evidence → claim/decision)
   - from: FST-EVID-CALIBRATION-001
     relation: supports
     to: FST-DEC-PRECISION-RESOLVER-001
@@ -140,18 +180,54 @@ edges:
     to: FST-REJECT-WIDEN-RADIUS-001
   - from: FST-EVID-PROD-DEPLOY-001
     relation: supports
+    to: FST-DEC-STARTTIME-CUTOVER-001
+  - from: FST-EVID-PROD-DEPLOY-001
+    relation: supports
+    to: FST-DEC-NO-BACKFILL-001
+  - from: FST-EVID-PROD-DEPLOY-001
+    relation: supports
     to: FST-GAP-REAL-POST-CUTOVER-REFUEL-001
-  - from: FST-TEST-UI-REGRESSION-001
+  - from: FST-CONS-TIMELINE-CARD-001
     relation: tested_by
-    to: FST-CONS-TIMELINE-CARD-001
+    to: FST-TEST-UI-REGRESSION-001
 
-  # Superseded / rejected
+  # Hypothesis → gap links
+  - from: FST-HYP-GPS-OFFSET-001
+    relation: validates
+    to: FST-GAP-REAL-POST-CUTOVER-REFUEL-001
+    notes: Hypothesis testable only after real post-cutover REFUEL observed
+  - from: FST-HYP-OSM-REFRESH-001
+    relation: validates
+    to: FST-GAP-OSM-DATA-QUALITY-001
+
+  # Superseded / rejected historical approaches
   - from: FST-FAIL-MAPBOX-LAZY-BACKFILL-001
     relation: superseded_by
     to: FST-DEC-OSM-DATASET-001
+  - from: FST-FAIL-MAPBOX-LAZY-BACKFILL-001
+    relation: superseded_by
+    to: FST-DEC-ASYNC-ENRICH-001
   - from: FST-FAIL-HTTP-RESOLVER-READ-001
     relation: superseded_by
     to: FST-DEC-READ-PERSISTED-001
+  - from: FST-FAIL-CREATEDAT-CUTOVER-001
+    relation: superseded_by
+    to: FST-DEC-STARTTIME-CUTOVER-001
+  - from: FST-FAIL-BULLMQ-LIFECYCLE-001
+    relation: superseded_by
+    to: FST-DEC-DB-LIFECYCLE-001
+  - from: FST-FAIL-FORCED-NEAREST-001
+    relation: superseded_by
+    to: FST-DEC-PRECISION-RESOLVER-001
+  - from: FST-FAIL-INFINITE-FAILED-RETRY-001
+    relation: superseded_by
+    to: FST-DEC-FAILED-TERMINAL-001
+  - from: FST-REJECT-HISTORICAL-BACKFILL-001
+    relation: governs
+    to: FST-POL-NO-BACKFILL-001
+  - from: FST-REJECT-SYNTHETIC-PROD-REFUEL-001
+    relation: governs
+    to: FST-DEC-REAL-REFUEL-E2E-001
   - from: FST-REJECT-WIDEN-RADIUS-001
     relation: governs
     to: FST-RES-V1-001

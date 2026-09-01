@@ -8,12 +8,13 @@ Canonical evidence nodes (`FST-EVID-*`, `FST-TEST-*`). See also `graph/nodes.yam
 | FST-EVID-ARCH-OSM-001 | ARCHITECTURE_DOCUMENT | OSM_FUEL_STATIONS_DATASET | 18,195 DE stations, import pipeline |
 | FST-EVID-CALIBRATION-001 | CALIBRATION_RUN | FUEL_STATION_RESOLVER_V1 + calibration gate | 28 stations, 672 probes; radius widen rejected |
 | FST-EVID-CODE-RESOLVER-001 | CURRENT_CODE | location.constants.ts | Radii, scores, thresholds verified |
-| FST-EVID-PROD-DEPLOY-001 | PRODUCTION_OBSERVATION | Phase E+F deploy report | Zero enrichment delta; cutover preserved |
+| FST-EVID-PROD-DEPLOY-001 | PRODUCTION_OBSERVATION | evidence/PRODUCTION_DEPLOYMENT_EF_2026-09-01.md | Scoped infra/negative-path deploy observation |
 | FST-EVID-PR-1447-001 | PR_HISTORY | #1447 | OSM dataset |
 | FST-EVID-PR-1451-001 | PR_HISTORY | #1451 | Resolver V1 |
 | FST-EVID-PR-1453-001 | PR_HISTORY | #1453 | Enrichment persistence + worker |
 | FST-EVID-PR-1473-001 | PR_HISTORY | #1473 | Phase E API |
-| FST-EVID-PR-1475-001 | PR_HISTORY | #1475 | Phase F UI |
+| FST-EVID-PR-1475-001 | PR_HISTORY | #1475 (merge e76ada3d) | Phase F UI |
+| FST-EVID-PR-31-001 | PR_HISTORY | #31 OPEN (no merge) | Mapbox era — historical only |
 | FST-EVID-CODE-CUTOVER-001 | CURRENT_TEST | cutover.util.spec.ts | startTime eligibility |
 | FST-EVID-CODE-LIFECYCLE-001 | CURRENT_TEST | lifecycle.policy.spec.ts | Terminal skip semantics |
 | FST-EVID-CODE-API-READ-001 | CURRENT_TEST | list-station-enrichment.spec.ts | Include without N+1 |
@@ -33,8 +34,8 @@ Canonical evidence nodes (`FST-EVID-*`, `FST-TEST-*`). See also `graph/nodes.yam
 
 | Reference | Classification | Notes |
 |-----------|----------------|-------|
-| PR #31 (Mapbox reverse-geocode on Energy Events) | HISTORICAL | See FST-FAIL-MAPBOX-LAZY-BACKFILL-001 |
+| PR #31 (Mapbox reverse-geocode on Energy Events) | HISTORICAL + SUPERSEDED | FST-FAIL-MAPBOX-LAZY-BACKFILL-001, FST-EVID-PR-31-001 |
 
 ## Pre-Phase-B discovery
 
-**UNKNOWN** — explicit discovery history before OSM dataset PR #1447 is not reconstructed in this bootstrap.
+**UNKNOWN** — see FST-GAP-PRE-PHASE-B-DISCOVERY-001.
