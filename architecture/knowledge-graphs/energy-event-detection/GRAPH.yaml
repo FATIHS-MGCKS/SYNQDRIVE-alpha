@@ -1,0 +1,72 @@
+# KG-EED — Energy Event Detection Knowledge Graph
+# Canonical authority for REFUEL/RECHARGE detection and semantics.
+
+version: "1.0.0"
+workstream_id: KG-EED
+title: Energy Event Detection
+status: CANONICAL
+created: "2026-09-01"
+main_sha_at_canonicalization: "da959784f835a31482852d506daa137c90389b87"
+
+scope:
+  owns:
+    - REFUEL detection semantics
+    - RECHARGE detection semantics
+    - DIMO energy-event segment ingestion and parsing
+    - Persistability gates and coalescing
+    - fuelLevelRise derivation (REFUEL only)
+    - REFUEL sibling reconciliation
+    - VehicleEnergyEvent persistence and API DTO semantics
+    - Trip timeline energy card UI semantics
+    - Energy detection observability
+  does_not_own:
+    - Trip reconciliation scheduler cadence → KG-ATE (MAY_TRIGGER only)
+    - Scheduler leader / reconciliation mutex → KG-Scaling-Process
+    - DIMO provider budget algorithm → KG-Scaling-Process
+    - HV charge session lifecycle → Battery V2
+    - Fuel station enrichment trust policy detail → separate enrichment module (EED consumes)
+
+discovery_source:
+  path: architecture/knowledge-graphs/discovery/ENERGY_EVENT_DETECTION_DISCOVERY_2026-09-01.md
+  boundary_map: architecture/knowledge-graphs/discovery/ATE_EED_BOUNDARY_MAP_2026-09-01.md
+
+graph_files:
+  schema: graph/schema.yaml
+  nodes: graph/nodes.yaml
+  edges: graph/edges.yaml
+  invariants: graph/invariants.yaml
+
+governance:
+  agent_protocol: governance/AGENT_PROTOCOL.md
+  authority_boundaries: governance/AUTHORITY_BOUNDARIES.md
+  decisions: decisions/DECISIONS.md
+  evidence_registry: evidence/EVIDENCE_REGISTRY.md
+  open_questions: open-questions/OPEN_QUESTIONS.md
+  changelog: history/CHANGELOG.md
+
+validation:
+  script: scripts/validate-graph.mjs
+  command: node architecture/knowledge-graphs/energy-event-detection/scripts/validate-graph.mjs
+
+cross_graph_refs:
+  - id: EXT-KG-ATE
+    path: architecture/knowledge-graphs/automatic-trip-enrichment/
+    relation: MAY_TRIGGER detectEnergyEvents from reconcile step 5
+  - id: EXT-KG-SCALING
+    path: architecture/scaling-process/
+    relation: DIMO provider gateway/budget dependency
+  - id: EXT-BAT-V2
+    path: architecture/battery-v2/
+    relation: Orthogonal HV charge sessions; no automatic RECHARGE linkage
+
+cross_graph_contract:
+  ate_may_trigger:
+    - EnergyEventsService.detectEnergyEvents
+  eed_owns:
+    - REFUEL durationSeconds semantics (detection envelope)
+    - RECHARGE durationSeconds semantics (charging envelope)
+    - fuelLevelRise* semantics (REFUEL only)
+    - sibling reconciliation rules
+    - coalescing rules
+  ate_must_not_own:
+    - Any energy-event field semantics listed above

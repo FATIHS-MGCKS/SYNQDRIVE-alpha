@@ -1,0 +1,160 @@
+# KG-EED graph schema
+
+version: "1.0"
+description: Canonical schema for Energy Event Detection knowledge graph.
+
+node_types:
+  - system
+  - component
+  - service
+  - scheduler
+  - queue
+  - job
+  - signal
+  - provider
+  - api_endpoint
+  - database_entity
+  - state
+  - fsm_state
+  - decision
+  - invariant
+  - evidence
+  - failure_mode
+  - fallback
+  - retry_path
+  - ui_semantic
+  - configuration
+  - migration
+  - observability
+  - external_authority
+  - open_question
+  - historical_incident
+
+epistemic_status_values:
+  - CONFIRMED
+  - INFERRED
+  - HISTORICAL
+  - UNKNOWN
+  - CONTRADICTED
+
+decision_status_values:
+  - PROPOSED
+  - EXPERIMENTAL
+  - VALIDATED
+  - PRODUCTION_VALIDATED
+  - REJECTED
+  - SUPERSEDED
+
+decision_status_permitted_types:
+  - decision
+  - historical_incident
+
+evidence_maturity_values:
+  - PROVEN_IN_CODE
+  - PROVEN_BY_TEST
+  - PROVEN_IN_PRODUCTION
+  - PROVEN_HISTORICALLY
+  - INFERENCE
+  - UNVERIFIED
+
+invariant_kinds:
+  - CONFIRMED_INVARIANT
+  - CONDITIONAL_INVARIANT
+  - CANDIDATE_INVARIANT
+  - DISPROVEN_OR_CONTRADICTED
+
+evidence_source_types:
+  - CODE
+  - TEST
+  - CI
+  - PRODUCTION
+  - ARCHITECTURE_DOC
+  - HISTORICAL_PR
+  - INCIDENT
+  - NEGATIVE_RESULT
+  - MANUAL_OBSERVATION
+
+relation_types:
+  - TRIGGERS
+  - INVOKES
+  - CALLS
+  - FETCHES
+  - PARSES
+  - FILTERS
+  - COALESCES
+  - DERIVES
+  - PERSISTS
+  - READS
+  - WRITES
+  - RECONCILES
+  - PRUNES
+  - EXPOSES
+  - RENDERS
+  - GUARDED_BY
+  - BUDGETED_BY
+  - DEPENDS_ON
+  - MAY_TRIGGER
+  - MUST_NOT_INTERPRET_AS
+  - OWNED_BY
+  - PROVEN_BY
+  - REFERENCES
+  - PARALLEL_TO
+  - SKIPS_ON
+  - RETRIES_VIA
+
+id_prefixes:
+  system: EED-SYS-
+  component: EED-COMP-
+  service: EED-SVC-
+  scheduler: EED-SCH-
+  queue: EED-QUE-
+  job: EED-JOB-
+  signal: EED-SIG-
+  provider: EED-PRV-
+  api_endpoint: EED-API-
+  database_entity: EED-DB-
+  state: EED-ST-
+  fsm_state: EED-FSM-
+  decision: EED-DEC-
+  invariant: EED-INV-
+  evidence: EED-EV-
+  failure_mode: EED-FM-
+  fallback: EED-FB-
+  retry_path: EED-RETRY-
+  ui_semantic: EED-UI-
+  configuration: EED-CFG-
+  migration: EED-MIG-
+  observability: EED-OBS-
+  external_authority: EED-EXT-
+  open_question: EED-OQ-
+  historical_incident: EED-HI-
+
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+    - summary
+  optional:
+    - decision_status
+    - authority_class
+    - source_paths
+    - evidence
+    - evidence_maturity
+    - notes
+    - discovery_ref
+
+authority_classes:
+  - EED_OWNS
+  - EED_REFERENCES_EXTERNAL
+  - SHARED_INFRASTRUCTURE
+  - OUT_OF_SCOPE
+
+edge_fields:
+  required:
+    - from
+    - relation
+    - to
+  optional:
+    - notes

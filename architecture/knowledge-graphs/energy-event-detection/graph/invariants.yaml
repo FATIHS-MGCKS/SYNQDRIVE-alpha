@@ -1,0 +1,161 @@
+# KG-EED invariants — verified against main @ da959784f
+
+invariants:
+  - id: EED-INV-001
+    kind: CONFIRMED_INVARIANT
+    title: REFUEL durationSeconds is detection envelope, not pump duration
+    epistemic_status: CONFIRMED
+    statement: >
+      For REFUEL events, durationSeconds and startTime/endTime represent the DIMO
+      detection envelope preserved through parse, coalesce, and persistence. They
+      must not be interpreted as physical pump/nozzle duration.
+    evidence: [EED-EV-0004, EED-EV-0015, EED-EV-0018]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.types.ts
+      - architecture/P1_3_S5_ENERGY_REFUEL_SEMANTICS_2026-08-30.md
+
+  - id: EED-INV-002
+    kind: CONFIRMED_INVARIANT
+    title: fuelLevelRiseDurationSeconds is observed telemetry transition only
+    epistemic_status: CONFIRMED
+    statement: >
+      fuelLevelRiseStart, fuelLevelRiseEnd, and fuelLevelRiseDurationSeconds
+      represent the telemetry-visible fuel-level transition derived from sampled
+      signals inside the detection window. They are additive REFUEL-only fields.
+    evidence: [EED-EV-0008, EED-EV-0015]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/refuel-fuel-rise.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.types.ts
+
+  - id: EED-INV-003
+    kind: CONFIRMED_INVARIANT
+    title: Physical pump duration must never be fabricated
+    epistemic_status: CONFIRMED
+    statement: >
+      When telemetry evidence is insufficient, fuelLevelRise* fields resolve to
+      null. SynqDrive must not estimate or invent physical nozzle/pump duration.
+    evidence: [EED-EV-0008, EED-EV-0015]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/refuel-fuel-rise.ts
+
+  - id: EED-INV-004
+    kind: CONFIRMED_INVARIANT
+    title: RECHARGE duration semantics independent from REFUEL fuel-rise
+    epistemic_status: CONFIRMED
+    statement: >
+      RECHARGE events use durationSeconds as charging/detection envelope semantics.
+      fuelLevelRise* fields are always null for RECHARGE and must not reinterpret
+      charging duration.
+    evidence: [EED-EV-0009, EED-EV-0010]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.pipeline.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.types.ts
+
+  - id: EED-INV-005
+    kind: CONFIRMED_INVARIANT
+    title: Sibling reconciliation never deletes another vehicle's event
+    epistemic_status: CONFIRMED
+    statement: >
+      Stale REFUEL sibling deletion is scoped by vehicleId in deleteMany and
+      requires matching tokenId extracted from dimoSegmentId on both rows.
+    evidence: [EED-EV-0011]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/refuel-sibling-reconciliation.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+
+  - id: EED-INV-006
+    kind: CONFIRMED_INVARIANT
+    title: Sibling reconciliation never deletes RECHARGE rows
+    epistemic_status: CONFIRMED
+    statement: >
+      reconcileSupersededRefuelSiblings operates only on persisted REFUEL rows.
+      RECHARGE events are excluded from sibling reconciliation delete scope.
+    evidence: [EED-EV-0011, EED-EV-0002]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/refuel-sibling-reconciliation.ts
+
+  - id: EED-INV-007
+    kind: CONFIRMED_INVARIANT
+    title: Reprocessing is idempotent for same canonical dimoSegmentId
+    epistemic_status: CONFIRMED
+    statement: >
+      VehicleEnergyEvent upsert uses unique dimoSegmentId as idempotency key.
+      Re-running detectEnergyEvents for the same window updates in place rather
+      than creating duplicate canonical rows.
+    evidence: [EED-EV-0002, EED-EV-0012]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+
+  - id: EED-INV-008
+    kind: CONFIRMED_INVARIANT
+    title: Missing fuel-rise evidence resolves to null
+    epistemic_status: CONFIRMED
+    statement: >
+      deriveRefuelFuelLevelRise returns null fuelLevelRise* when sample count,
+      material delta, rise shape, or duration thresholds are not met.
+    evidence: [EED-EV-0008]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/refuel-fuel-rise.ts
+
+  - id: EED-INV-009
+    kind: CONFIRMED_INVARIANT
+    title: Historical rows are not auto-backfilled for NULL fuelLevelRise*
+    epistemic_status: CONFIRMED
+    statement: >
+      Additive fuelLevelRise* migration does not require fleet-wide historical
+      rewrite. NULL historical rise fields are acceptable evidence gaps, not
+      defects requiring mutation.
+    evidence: [EED-EV-0016, EED-EV-0017]
+    source_paths:
+      - architecture/P1_3_S5_ENERGY_REFUEL_SEMANTICS_2026-08-30.md
+
+  - id: EED-INV-010
+    kind: CONFIRMED_INVARIANT
+    title: ATE may trigger EED but does not own EED semantics
+    epistemic_status: CONFIRMED
+    statement: >
+      TripReconciliationService step 5 MAY_TRIGGER detectEnergyEvents in isolated
+      try/catch. KG-ATE documents invocation only; all REFUEL/RECHARGE semantics
+      are owned by KG-EED.
+    evidence: [EED-EV-0001, EED-EV-0019]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+      - architecture/knowledge-graphs/discovery/ATE_EED_BOUNDARY_MAP_2026-09-01.md
+
+  - id: EED-INV-011
+    kind: CONFIRMED_INVARIANT
+    title: Mechanism fetch outcomes are isolated
+    epistemic_status: CONFIRMED
+    statement: >
+      REFUEL and RECHARGE DIMO segment fetches return per-mechanism outcomes.
+      Failure of one mechanism must not block persistence of the other.
+    evidence: [EED-EV-0003, EED-EV-0013]
+    source_paths:
+      - backend/src/modules/dimo/dimo-segments.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+
+  - id: EED-INV-012
+    kind: CONFIRMED_INVARIANT
+    title: Coalesce prune requires coalesce provenance
+    epistemic_status: CONFIRMED
+    statement: >
+      pruneStaleCoalescedSubSegments deletes only sub-segments with provenance
+      from the current coalesce run (coalescedFromSegmentIds length > 1).
+      Overlapping segments without coalesce metadata are not auto-pruned.
+    evidence: [EED-EV-0006, EED-EV-0014]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.pipeline.ts
+
+  - id: EED-INV-013
+    kind: CONDITIONAL_INVARIANT
+    title: Single-segment coalesce preserves upstream envelope unchanged
+    epistemic_status: CONFIRMED
+    statement: >
+      When coalesceSegments receives a single segment in a group, durationSeconds
+      and boundaries pass through unchanged from the DIMO segment. Long envelopes
+      like KS MX 4818s are not created by coalescing alone.
+    evidence: [EED-EV-0006, EED-EV-0018]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.pipeline.ts
+      - backend/src/modules/dimo/fixtures/ks-mx-2024-aug28-refuel.fixture.ts
