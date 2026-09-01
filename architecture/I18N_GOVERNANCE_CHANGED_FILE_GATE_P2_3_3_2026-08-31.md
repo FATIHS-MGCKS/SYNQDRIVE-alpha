@@ -1,7 +1,7 @@
 # P2.3.3 — Changed-File / New-Debt PR Gate
 
-**Date:** 2026-08-31  
-**Campaign branch:** `p239-p238-merge-baseline-3c10`  
+**Date:** 2026-08-31
+**Campaign branch:** `p239-p238-merge-baseline-3c10`
 **Foundation:** P2.3.2 scanner governance (#1450), P2.3.2R remediation (#1460)
 
 ## Purpose

@@ -1,8 +1,8 @@
 # P2.3.3 — Changed-File / New-Debt PR Gate — Implementation Audit
 
-**Date:** 2026-08-31  
-**Branch:** `cursor/p233-i18n-new-debt-pr-gate-3c10`  
-**Base SHA:** `021f6a22b66cc69b28291a15d7f4055e3977e33d`  
+**Date:** 2026-08-31
+**Branch:** `cursor/p233-i18n-new-debt-pr-gate-3c10`
+**Base SHA:** `021f6a22b66cc69b28291a15d7f4055e3977e33d`
 **Mode:** Governance-only implementation slice
 
 ---
