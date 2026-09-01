@@ -124,6 +124,22 @@ PRODUCTION_OBSERVATION --supports--> DECISION --governs--> AUTHORITY/POLICY --ga
 | Contradiction found | `contradictions/OPEN_CONTRADICTIONS.md` + `BAT-V2-CONTRA-*` nodes |
 | Snapshot shift | `CURRENT_STATE.md` (date + maturity notes) |
 
+## Knowledge authority self-consistency (mandatory)
+
+A knowledge reconstruction PR is **incomplete** if any of the following disagree:
+
+| Artifact | Must align with |
+|----------|-----------------|
+| `CURRENT_STATE.md` graph counts | Actual `nodes.yaml` / `edges.yaml` / `invariants.yaml` (run `validate-graph.sh`) |
+| `contradictions/KNOWLEDGE_GAPS.md` | Graph `BAT-V2-GAP-*` nodes (title, epistemic status, maturity) |
+| `research/OPEN_QUESTIONS.md` | Same stable IDs; questions must reflect current reconstruction state |
+| `contradictions/OPEN_CONTRADICTIONS.md` | Graph `BAT-V2-CONTRA-*` nodes |
+| `research/OPEN_HYPOTHESES.md` | Graph `BAT-V2-HYP-*` nodes |
+
+Do not leave bootstrap wording (e.g. "HV authority UNKNOWN") when Phase documentation has substantially reconstructed the area. Distinguish **reconstruction maturity** from **remaining unknowns** (production frequency, enablement, product intent).
+
+After editing the graph, run `bash architecture/battery-v2/scripts/validate-graph.sh` and update `CURRENT_STATE.md` counts from validator output.
+
 ## No silent history rewrites
 
 Decisions are **append-only** from a historical perspective.

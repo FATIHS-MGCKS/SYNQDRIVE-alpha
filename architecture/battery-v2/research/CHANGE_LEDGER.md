@@ -6,6 +6,25 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-01 — Phase 3 decision surfaces, reachability & enablement
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Phase 2 answered "what does the architecture contain?" Authority indexes still had stale UNKNOWN wording for HV/consumer authority. CURRENT_STATE graph counts drifted (105/80 vs actual 107/83). Publication, HEV, readiness reachability not traced end-to-end. |
+| **OBSERVATION** | Read-only code trace of flags, job chains, HEV/PHEV paths, publication/readiness, tasks, SOH winner-usability, provider timestamp, LV timestamp, bridge, RUNNING/SKIPPED git history, consumer surfaces. Validator enhanced for graph count self-consistency. |
+| **HYPOTHESIS** | Many "contradictions" may be theoretical or partially reachable — Phase 3 must distinguish DEFINED vs USER_VISIBLE. |
+| **CHANGE** | Added reachability matrix, publication-readiness, SOH truth table, decision-surfaces, bridge-reachability, rest-target-status-history docs. Refined gaps/contras/hypotheses. Added 3 gaps, 3 evidence nodes, 15 edges. Recorded PR #1480 evidence node. |
+| **WHY** | Future agents need execution truth — which paths run under current flags, which are hidden, which job chains are broken. |
+| **EXPECTED_EFFECT** | Decision matrix becomes primary enablement artifact; HEV/PHEV/publication reachability explicit. |
+| **VALIDATION** | `validate-graph.sh` PASS; CURRENT_STATE counts match graph |
+| **OBSERVED_EFFECT** | Validator PASS at 114/98/11; self-consistency rule in AGENT_CONTRACT |
+| **NON_EFFECTS** | No runtime, flag, deploy, backfill, or production data changes. No PRODUCTION_VALIDATED promotions. No threshold calibration. No HEV/PHEV behavior fixes. LV publication job chain not wired. Stage 2 not enabled. |
+| **REMAINING_GAPS** | All prior gaps remain open unless refined; production frequency UNKNOWN for most reachability findings |
+| **EVIDENCE** | `BAT-V2-EVID-PR-1480-001`, `BAT-V2-EVID-GIT-RUNNING-SKIPPED-ENUM-001`, `BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001`, `BAT-V2-EVID-CODE-HEV-SNAPSHOT-ORPHAN-001`, Phase 3 code traces |
+| **AFFECTED_GRAPH** | 114 nodes / 98 edges / 11 invariants (was 107/83/11); +7 nodes, +15 edges |
+
+---
+
 ## CL-2026-09-01 — Phase 2 selected SOH canonical DTO semantic correction
 
 | Field | Content |

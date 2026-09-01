@@ -52,6 +52,11 @@ const nodes = load('nodes.yaml').nodes ?? [];
 const edges = load('edges.yaml').edges ?? [];
 const invariants = load('invariants.yaml').invariants ?? [];
 
+console.log('==> Graph inventory');
+console.log(`  nodes: ${nodes.length}`);
+console.log(`  edges: ${edges.length}`);
+console.log(`  invariants: ${invariants.length}`);
+
 const nodeIds = new Set();
 const nodeById = new Map();
 for (const n of nodes) {
@@ -186,6 +191,40 @@ console.log(
   `HYP=${indexedHyps.size}`,
   `CONTRA=${indexedContras.size}`,
 );
+
+// CURRENT_STATE declared graph counts (optional consistency check)
+const currentStatePath = path.join(batteryV2Dir, 'CURRENT_STATE.md');
+if (fs.existsSync(currentStatePath)) {
+  const currentStateText = fs.readFileSync(currentStatePath, 'utf8');
+  const countMatch = currentStateText.match(
+    /\*\*Graph:\*\*\s*(\d+)\s*nodes\s*\/\s*(\d+)\s*edges\s*\/\s*(\d+)\s*invariants/i,
+  );
+  if (countMatch) {
+    const [, declaredNodes, declaredEdges, declaredInvariants] = countMatch;
+    let countsOk = true;
+    if (Number(declaredNodes) !== nodes.length) {
+      fail(
+        `CURRENT_STATE.md declares ${declaredNodes} nodes but graph has ${nodes.length}`,
+      );
+      countsOk = false;
+    }
+    if (Number(declaredEdges) !== edges.length) {
+      fail(
+        `CURRENT_STATE.md declares ${declaredEdges} edges but graph has ${edges.length}`,
+      );
+      countsOk = false;
+    }
+    if (Number(declaredInvariants) !== invariants.length) {
+      fail(
+        `CURRENT_STATE.md declares ${declaredInvariants} invariants but graph has ${invariants.length}`,
+      );
+      countsOk = false;
+    }
+    if (countsOk) console.log('==> CURRENT_STATE graph counts: OK');
+  } else {
+    console.log('==> CURRENT_STATE graph counts: not declared (skip)');
+  }
+}
 
 if (errors.length) {
   console.error('\n==> VALIDATION FAILED');
