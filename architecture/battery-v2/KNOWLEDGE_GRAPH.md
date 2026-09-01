@@ -1,6 +1,6 @@
 # Battery V2 — Knowledge Graph (Human View)
 
-**Last updated:** 2026-09-01 (Phase 3 final consistency pass)  
+**Last updated:** 2026-09-01 (Phase 3 graph contract integrity pass)  
 **Maturity:** Phase 2+3 substantially reconstructed — open gaps remain  
 Machine-readable source: [graph/nodes.yaml](./graph/nodes.yaml), [graph/edges.yaml](./graph/edges.yaml)
 
@@ -63,14 +63,12 @@ This Human View is a high-level projection of current machine authority. It must
         ▼
 [HV SOH evidence conflict]  BAT-V2-AUTH-HV-SOH-CONFLICT-001
         │
-        ├── Selected SOH ──► canonical.hv.providerSoh
-        └── SOH gate assessment ──► canonical.hv.sohAssessment (shadow/internal; execution: HV_CAPACITY_SHADOW flag)
-        │
-        ▼
-[Publication-intent only]  BAT-V2-PUB-HV-SOH-001  —  BATTERY_V2_HV_SOH_PUBLICATION_ENABLED
-        │  (reason metadata; publicationEligible=false always; no HV customer publication path)
-        ▼
-[Canonical read]  canonical.hv  →  consumers (rental health, API, tasks)
+        ├── Selected SOH ──────────► canonical.hv.providerSoh ──┐
+        └── SOH gate assessment ─► canonical.hv.sohAssessment ┼──► [Canonical read]  canonical.hv  →  consumers
+                                                               │
+        ┌── publication-intent metadata (lateral; does NOT gate canonical read)
+        └── BAT-V2-PUB-HV-SOH-001 — BATTERY_V2_HV_SOH_PUBLICATION_ENABLED
+            (publicationEligible=false always; no HV customer publication path)
 ```
 
 **Remaining gaps (not reconstructed as working paths):**
@@ -86,10 +84,11 @@ This Human View is a high-level projection of current machine authority. It must
 
 | Gate layer | HEV (`HYBRID`) behavior |
 |------------|-------------------------|
-| **BatteryMeasurement HV writes** | ICE policy → `UNSUPPORTED_PROFILE` |
-| **HV snapshot ingestion** | `recordSnapshot` when `evSoc` present — not fuelType gated |
-| **HV charge sessions / capacity shadow** | feature flags + capability/method profile |
-| **Canonical read (`isEv`)** | `HYBRID` excluded → `canonical.hv` absent |
+| **BatteryMeasurement HV writes (Layer A)** | ICE policy → `UNSUPPORTED_PROFILE` |
+| **HV snapshot/evidence (Layer D1)** | `recordSnapshot` when `evSoc` present — observation-driven; not fuelType gated |
+| **HV charge sessions (Layer D2)** | Recharge/fallback feature flags + method/capability conditions |
+| **HV capacity shadow (Layer D3)** | `BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED` + eligible completed session |
+| **Canonical read (Layer E)** | `HYBRID` excluded → `canonical.hv` absent |
 
 Gap: `BAT-V2-GAP-HEV-SIDE-EFFECT-READ-DIVERGENCE-001`
 

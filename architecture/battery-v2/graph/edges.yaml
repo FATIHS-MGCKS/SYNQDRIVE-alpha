@@ -134,19 +134,21 @@ edges:
     to: BAT-V2-AUTH-REST-EVAL-001
     notes: REST evaluation requires providerTimestamp as provider-observation evidence
   - from: BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001
-    relation: supports
+    relation: refines
     to: BAT-V2-GAP-TIMESTAMP-FALLBACK-001
+    notes: Contradiction narrows timestamp-fallback production-frequency gap
 
-  # Hypothesis links
+  # Hypothesis links (refines — not supports; hypotheses are not evidence)
   - from: BAT-V2-HYP-RUNNING-ORPHAN-001
-    relation: supports
+    relation: refines
     to: BAT-V2-GAP-RUNNING-ORPHAN-001
-  - from: BAT-V2-HYP-POST-1445-SOAK-001
-    relation: supports
-    to: BAT-V2-DEC-1445-001
+    notes: Orphan-hypothesis narrows RUNNING gap scope
   - from: BAT-V2-HYP-BRIDGE-120S-001
-    relation: supports
+    relation: refines
     to: BAT-V2-GAP-BRIDGE-FALLBACK-001
+    notes: Bridge mis-bind hypothesis narrows bridge-fallback gap
+  # BAT-V2-HYP-POST-1445-SOAK-001: intentionally no edge to BAT-V2-DEC-1445-001 —
+  # hypothesis awaits post-change production validation; it is not evidence that #1445 succeeded.
 
   # Phase 2 — HV authority chain
   - from: BAT-V2-EVID-CODE-HV-METHOD-PROFILE-001

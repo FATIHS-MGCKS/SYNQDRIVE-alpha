@@ -91,19 +91,29 @@ Do **not** use `PARTIAL`, `GAP`, `LOW`, `MEDIUM`, or `HIGH` as epistemic statuse
 
 ## Graph relation taxonomy
 
-Canonical directional relations (see `graph/schema.yaml`):
+**Authoritative allowlist:** `graph/schema.yaml` → `relation_types` (complete set of permitted edge relations).
+
+**This section:** core semantic constraints for agents — not an exhaustive relation catalog.
 
 | Relation | Direction | Meaning |
 |----------|-----------|---------|
-| `supports` | evidence → claim/decision/gap | Evidence backs a node |
-| `governs` | decision → authority/policy/liveness | Decision establishes governance |
-| `gates` | authority → job/transition | Authority controls entry |
+| `supports` | evidence / test_evidence → claim, decision, gap, authority, policy, liveness, etc. | Evidence backs a node — **only** `evidence` or `test_evidence` sources |
+| `refines` | narrower concept → broader concept | A gap, contradiction, or hypothesis narrows or contextualizes a broader knowledge node without constituting evidence |
+| `governs` | decision → authority / policy / liveness | Decision establishes governance |
+| `gates` | authority → job / transition | Authority controls entry |
+| `consumed_by` | authority / assessment / publication → consumer or canonical read | Downstream read/consumption (not gap→authority) |
 | `tested_by` | liveness_rule → test_evidence | Liveness rule covered by test |
 | `does_not_solve` | decision → gap | Explicit non-effect / remaining limitation |
 | `superseded_by` | old → new | Historical replacement |
 | `contradicts` | contradiction → affected node | Unresolved tension |
 
 Do not document unsupported relation aliases. `limited_by` is **not** a canonical relation — use `does_not_solve` from decision to gap.
+
+**Anti-patterns (validator-enforced where noted):**
+
+- hypothesis / contradiction / gap → `supports` → anything (**invalid** — use `refines` or remove)
+- gap → `gates` → canonical read (**invalid**)
+- assessment → `consumed_by` → gap (**invalid** — `consumed_by` direction is authority→consumer)
 
 Evidence chain pattern:
 

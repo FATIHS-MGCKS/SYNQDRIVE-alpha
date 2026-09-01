@@ -1,7 +1,7 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-01 (Phase 3 final consistency pass)  
-**Graph:** 120 nodes / 106 edges / 11 invariants (validated 2026-09-01)  
+**Snapshot date:** 2026-09-01 (Phase 3 graph contract integrity pass)  
+**Graph:** 120 nodes / 105 edges / 11 invariants (validated 2026-09-01)  
 **Knowledge maturity:** Phase 2+3 substantially reconstructed; open gaps remain
 
 ## Executive summary

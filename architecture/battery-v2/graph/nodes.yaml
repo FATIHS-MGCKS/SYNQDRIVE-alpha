@@ -375,10 +375,12 @@ nodes:
     reconstruction_maturity: SUBSTANTIAL
     summary: >
       Layer A — policy-gated BatteryMeasurement HV types: inherited ICE policy forbids HV_ALL_MEASUREMENT_TYPES
-      → measurements can become UNSUPPORTED_PROFILE. Layer B — HvBatteryHealthSnapshot, BatteryEvidence,
-      HvChargeSession: capability/flag-driven paths without universal fuelType gate can still write.
-      Canonical read: FuelType.HYBRID → isEv=false → canonical.hv absent. Write/compute/read authority
-      divergence — not necessarily database-orphaned rows. Production frequency UNKNOWN.
+      → measurements can become UNSUPPORTED_PROFILE. Layer D1 — snapshot/evidence: observation-driven
+      recordSnapshot when evSoc present; no universal fuelType gate. Layer D2 — charge-session paths:
+      recharge/fallback flags + method/capability conditions. Layer D3 — capacity shadow:
+      BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED + eligible completed session. Layer E — canonical read:
+      FuelType.HYBRID → isEv=false → canonical.hv absent. Write/compute/read authority divergence —
+      not necessarily database-orphaned rows. Production frequency UNKNOWN.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/hv-battery-health.service.ts
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-snapshot-ingestion.service.ts
@@ -846,9 +848,10 @@ nodes:
     epistemic_status: CONTRADICTED
     summary: >
       isHvMeasurementSupported(HEV)=true; materializePolicy sets hvPipelineAllowed=true (no runtime consumer);
-      ICE catalog forbids HV_ALL_MEASUREMENT_TYPES for BatteryMeasurement; side-effect HV snapshots/evidence/
-      sessions can still write; canonical isEv excludes HYBRID → canonical.hv absent. PARTIALLY REACHABLE:
-      write/compute/read divergence (BAT-V2-GAP-HEV-SIDE-EFFECT-READ-DIVERGENCE-001). Resolution UNRESOLVED.
+      ICE catalog forbids HV_ALL_MEASUREMENT_TYPES for BatteryMeasurement; D1 snapshot/evidence writes
+      are observation-driven (evSoc); D2 charge-session paths are flag/capability gated; D3 capacity shadow
+      requires HV_CAPACITY_SHADOW flag + eligible session; canonical isEv excludes HYBRID → canonical.hv
+      absent. PARTIALLY REACHABLE: write/compute/read divergence (BAT-V2-GAP-HEV-SIDE-EFFECT-READ-DIVERGENCE-001). Resolution UNRESOLVED.
     source_paths:
       - backend/src/modules/vehicle-intelligence/drive-profile/drive-profile-resolver.ts
       - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.resolver.ts

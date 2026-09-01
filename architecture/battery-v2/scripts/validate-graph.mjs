@@ -175,6 +175,12 @@ for (const e of edges) {
       `Invalid consumed_by target type ${toNode.type}: ${e.from} -consumed_by-> ${e.to}`,
     );
   }
+  const evidenceSourceTypes = new Set(['evidence', 'test_evidence']);
+  if (e.relation === 'supports' && fromNode && !evidenceSourceTypes.has(fromNode.type)) {
+    fail(
+      `Invalid supports source type ${fromNode.type}: ${e.from} -supports-> ${e.to} (supports requires evidence or test_evidence source)`,
+    );
+  }
 }
 console.log('==> Edge references:', edges.length, 'OK');
 

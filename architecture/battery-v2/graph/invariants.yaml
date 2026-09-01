@@ -127,7 +127,7 @@ invariants:
 
   - id: BAT-V2-INV-SHADOW-NO-AUTO-PUBLISH-001
     kind: CONFIRMED_INVARIANT
-    title: Shadow assessments cannot auto-publish without flags
+    title: Shadow assessments are not automatically customer-published
     epistemic_status: CONFIRMED
     statement: >
       HV capacity shadow and SOH gate assessments default publicationEligible false (SOH gate: false
