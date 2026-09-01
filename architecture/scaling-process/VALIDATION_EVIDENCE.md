@@ -148,13 +148,17 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 
 | Claim | Phase | PR/Commit | Evidence | Result | Confidence |
 |-------|-------|-----------|----------|--------|------------|
-| N=2 topology stable | P1.8.3.2 | — | SSH audit 14:26Z | PASS | HIGH |
-| Scheduler singleton post-stable | P1.8.3.2 | — | readiness A=FOLLOWER B=LEADER | PASS | HIGH |
-| No split brain post-stable | P1.8.3.2 | — | PM2 log grep | PASS | HIGH |
-| Queue regression | P1.8.3.2 | — | Redis BullMQ | PASS | HIGH |
-| battery.v2 delta in window | P1.8.3.2 | — | failed=64 unchanged | PASS | HIGH |
-| Trip/route pipeline | P1.8.3.2 | — | 2 trips, 2 routes, 0 dup signal | PASS | MEDIUM |
-| 24h soak certification | P1.8.3.2 | — | window 9532s | NOT MET | HIGH |
+| N=2 topology stable (snapshot) | P1.8.3.2 | — | SSH audit 14:26Z | SNAPSHOT_PASS | HIGH |
+| Scheduler singleton (snapshot) | P1.8.3.2 | — | `/api/v1/health/readiness` schedulerLeader | SNAPSHOT_PASS | HIGH |
+| Split brain post-stable | P1.8.3.2 | — | limited PM2 log grep | NO_SIGNAL_IN_LIMITED_SAMPLE | MEDIUM |
+| Queue depths (snapshot) | P1.8.3.2 | — | Redis BullMQ | SNAPSHOT_PASS | HIGH |
+| battery.v2 delta in window | P1.8.3.2 | — | failed ZSET scores | VERIFIED_ZERO_DELTA | HIGH |
+| Trip duplicates in window | P1.8.3.2 | — | SQL `vehicle_id,start_time` | VERIFIED_ZERO | HIGH |
+| Trip/route volume | P1.8.3.2 | — | 2 trips, 2 routes | LOW_VOLUME_NEUTRAL | MEDIUM |
+| DIMO max in-flight (window) | P1.8.3.2 | — | — | NOT_MEASURED | HIGH |
+| Mutex overlap (window) | P1.8.3.2 | — | — | NOT_MEASURED | HIGH |
+| 24h soak certification | P1.8.3.2 | — | window 9532s | NOT_MET | HIGH |
+| Evidence precision | P1.8.3.2 | — | v2 correction pass | CORRECTED | HIGH |
 | N2 retrospective verdict | P1.8.3.2 | — | audit artifact | EARLY_PASS | HIGH |
 
 ---

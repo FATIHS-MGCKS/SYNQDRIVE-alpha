@@ -43,7 +43,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Read-only retrospective audit of production N=2 during ~2h39m continuous window after P1.8.3.1 attempt 3 PASS.',
       'Topology: 2 replicas on SHA `3772d992d`, nginx dual-upstream healthy, scheduler A=FOLLOWER B=LEADER, no split brain.',
       'Queues stable; battery.v2 failed=64 unchanged (0 delta); 2 new trips + 2 route artifacts; no duplicate-work signals.',
-      'Verdict EARLY_PASS — healthy short window; insufficient for 24h soak certification. OQ-18 / DEC-016 prod validation still pending.',
+      'Verdict EARLY_PASS — HEALTHY_EARLY snapshot signal; INSUFFICIENT_WINDOW for retrospective coordination metrics. Evidence precision corrected (v2): replica SHA release-inferred, duplicate-trip SQL verified, Redis clients fixed. OQ-18 / DEC-016 prod validation still pending.',
     ],
     reason: 'Establish first post-P1.8.3.1 N=2 stability evidence without live soak or production mutation.',
     previousBehavior: 'P1.8.3.1 validated deploy gate; sustained N=2 runtime stability not yet retrospectively audited.',

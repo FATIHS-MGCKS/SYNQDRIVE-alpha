@@ -3,6 +3,9 @@
 **DATE:** 2026-09-01  
 **AUDITOR:** Cursor Cloud Agent (read-only retrospective)  
 **VERDICT:** `EARLY_PASS`  
+**RUNTIME_N2_SIGNAL:** `HEALTHY_EARLY`  
+**SCALING_DEFECT_FOUND:** `NO`  
+**EVIDENCE_PRECISION:** `CORRECTED` (see §Evidence precision corrections)  
 **METHOD:** Read-only SSH inspection of production VPS — no deploy, no PM2 restart, no Redis/Postgres mutation
 
 ---
@@ -52,16 +55,16 @@ Earlier N=2 periods (P1.8.3 ~10:24Z) excluded — intervening deploy rollbacks b
 | REPLICA_B_STATUS | ONLINE (synqdrive-b, port 3002) |
 | REPLICA_A_PORT | 3001 |
 | REPLICA_B_PORT | 3002 |
-| REPLICA_A_SHA | `3772d992dae012bc9d794184e05e8ad39db09df4` |
-| REPLICA_B_SHA | `3772d992dae012bc9d794184e05e8ad39db09df4` |
-| REPLICA_SHA_MATCH | YES |
+| REPLICA_A_SHA | `3772d992dae012bc9d794184e05e8ad39db09df4` (inferred — shared `current` release; no per-process SHA endpoint) |
+| REPLICA_B_SHA | `3772d992dae012bc9d794184e05e8ad39db09df4` (inferred — shared `current` release; no per-process SHA endpoint) |
+| REPLICA_SHA_MATCH | YES (inferred from single promoted release symlink) |
 | RELEASE | `20260901114113_v4994` |
 | NGINX_DUAL_UPSTREAM_CONFIGURED | YES (`3001; 3002`) |
 | NGINX_UPSTREAM_A_LIVE | 200 |
 | NGINX_UPSTREAM_B_LIVE | 200 |
 | EXTERNAL_HEALTH | PASS (`https://app.synqdrive.eu/api/v1/health`) |
-| READINESS_A | PASS — role `FOLLOWER` |
-| READINESS_B | PASS — role `LEADER`, lease renewing |
+| READINESS_A | PASS — `/api/v1/health/readiness` → `schedulerLeader.role=FOLLOWER` |
+| READINESS_B | PASS — `/api/v1/health/readiness` → `schedulerLeader.role=LEADER`, lease renewing |
 | VALIDATION_ORPHAN_FOUND | NO (ports 3010/3011 not listening) |
 
 ---
@@ -78,24 +81,47 @@ Earlier N=2 periods (P1.8.3 ~10:24Z) excluded — intervening deploy rollbacks b
 | Memory | ~388 MB | ~437 MB |
 | OOM events | 0 | 0 |
 
-**Classification:** Cumulative restart counts include **expected rolling-deploy SIGINT exits** earlier on 2026-09-01. After stable window start (`11:47:23Z`): **0 unexpected exits**, **0 crash loops**. Last PM2 exits were controlled deploy restarts at `11:46:54` / `11:46:59`.
+**Classification:** Cumulative restart counts (30 / 7) include **expected rolling-deploy SIGINT exits** earlier on 2026-09-01 — not interpreted as runtime instability. After stable window start (`11:47:23Z`): **no PM2 errored exits observed** in `pm2.log` sample; **retrospective restart enumeration over full window not performed**.
+
+---
+
+## Evidence precision — corrections (v2)
+
+Initial draft overstated retrospective coverage. Corrected epistemic labels:
+
+| Domain | Original claim | Corrected precision | Notes |
+|--------|----------------|---------------------|-------|
+| Replica SHA | Per-replica verified | **RELEASE_INFERRED** | Both processes use `/opt/synqdrive/current` → same git HEAD |
+| Scheduler max leader (window) | `max=1` retrospective | **SNAPSHOT_ONLY** | Point-in-time readiness + limited log grep; continuous window trace not retained |
+| Split brain | `0 events` | **NO_SIGNAL_IN_LIMITED_SAMPLE** | No `leaderCount>1` in PM2 grep; not exhaustive log scan |
+| DIMO in-flight max | `0` retrospective | **SNAPSHOT_ONLY** | `dimo:provider:budget:leases` absent/empty at audit; historical max not measured |
+| Reconciliation mutex | `PASS` retrospective | **SNAPSHOT_ONLY** | No held mutex keys at audit; overlap not traceable without app logs |
+| Duplicate trips | `NO` (initial) | **VERIFIED_ZERO** | Corrected SQL on `vehicle_id,start_time` → `0` duplicates |
+| Redis clients | `19` (initial) | **257 connected_clients** | Prior value was Postgres `pg_stat_activity`, not Redis |
+| Queue health | `PASS` retrospective | **SNAPSHOT_PASS** | BullMQ depths at audit; no historical throughput series |
+| battery.v2 delta | `0` | **VERIFIED** | Redis failed ZSET scores: all 64 pre-window; 0 new in window |
+| PM2 unexpected restarts | `0` post-stable | **LIMITED_LOG_SAMPLE** | No errored exits after 11:47 in sampled `pm2.log`; not full PM2 event history |
+
+**Rule:** In `INSUFFICIENT_WINDOW`, only **SNAPSHOT** and **VERIFIED_SQL/REDIS** claims are HIGH confidence. Retrospective coordination claims default to **NOT_MEASURED** unless continuous telemetry exists.
 
 ---
 
 ## Phase 4 — Scheduler singleton
 
-| Metric | Value |
-|--------|-------|
-| SCHEDULER_MAX_LEADER_COUNT (audit snapshot) | 1 |
-| SCHEDULER_SPLIT_BRAIN_EVENTS | 0 (no log evidence) |
-| SCHEDULER_ZERO_LEADER_ANOMALIES | 0 post-stable-window |
-| SCHEDULER_EXPECTED_CONVERGENCE_ZERO_PERIODS | 1 (deploy attempt 3, documented) |
-| SCHEDULER_LEADER_FLAPS | 0 observed post-stable |
-| DUPLICATE_SINGLETON_TICKS | 0 signal |
-| LEADER_RENEW_FAILURES | 0 |
-| Current roles | A=FOLLOWER, B=LEADER |
-| Leader lease last renew | `2026-09-01T14:26:15Z` (B) |
-| SCHEDULER_HEALTH | **PASS** |
+| Metric | Value | Precision |
+|--------|-------|-----------|
+| SCHEDULER_MAX_LEADER_COUNT (audit snapshot) | 1 | SNAPSHOT |
+| SCHEDULER_MAX_LEADER_COUNT (full window) | NOT_MEASURED | — |
+| SCHEDULER_SPLIT_BRAIN_EVENTS | NO_SIGNAL_IN_LIMITED_SAMPLE | LIMITED_LOG |
+| SCHEDULER_ZERO_LEADER_ANOMALIES | NOT_MEASURED post-stable | — |
+| SCHEDULER_EXPECTED_CONVERGENCE_ZERO_PERIODS | 1 (deploy attempt 3, documented) | PRIOR_ARTIFACT |
+| SCHEDULER_LEADER_FLAPS | NOT_MEASURED | — |
+| DUPLICATE_SINGLETON_TICKS | NO_SIGNAL | LIMITED_LOG |
+| LEADER_RENEW_FAILURES | 0 at snapshot | SNAPSHOT |
+| Current roles | A=FOLLOWER, B=LEADER | SNAPSHOT |
+| Leader acquired | `2026-09-01T11:47:20.601Z` (B) | SNAPSHOT |
+| Leader last renew | `2026-09-01T14:58:46Z` (B, re-audit) | SNAPSHOT |
+| SCHEDULER_HEALTH | **SNAPSHOT_PASS** | — |
 
 Scheduler singleton ticks observed only on replica B (leader) in PM2 logs — **NORMAL_MULTI_REPLICA_BEHAVIOR**.
 
@@ -103,19 +129,20 @@ Scheduler singleton ticks observed only on replica B (leader) in PM2 logs — **
 
 ## Phase 5 — DIMO global provider budget
 
-| Metric | Value |
-|--------|-------|
-| DIMO_GLOBAL_LIMIT | 50 (architecture) |
-| MAX_DIMO_GLOBAL_IN_FLIGHT_OBSERVED | 0 (leases hash empty at audit) |
-| DIMO_LIMIT_BREACH_COUNT | 0 |
-| DIMO_429_COUNT | 0 (no cooldown/429 window keys active) |
-| DIMO_ACQUIRE_TIMEOUT_COUNT | 0 signal |
-| DIMO_STALE_LEASE_COUNT | 0 |
-| DIMO_BUDGET_BYPASS_FOUND | NO |
-| DIMO_STARVATION_SIGNAL | NO |
-| DIMO_RETRY_AMPLIFICATION | NO |
-| Token bucket tokens remaining | 24 |
-| DIMO_GLOBAL_BUDGET_HEALTH | **PASS** |
+| Metric | Value | Precision |
+|--------|-------|-----------|
+| DIMO_GLOBAL_LIMIT | 50 (architecture) | DOCUMENTED |
+| MAX_DIMO_GLOBAL_IN_FLIGHT_OBSERVED | 0 at snapshot | SNAPSHOT_ONLY |
+| MAX_DIMO_GLOBAL_IN_FLIGHT (full window) | NOT_MEASURED | — |
+| DIMO_LIMIT_BREACH_COUNT | NOT_MEASURED | — |
+| DIMO_429_COUNT | 0 active keys at snapshot | SNAPSHOT |
+| DIMO_ACQUIRE_TIMEOUT_COUNT | NOT_MEASURED | — |
+| DIMO_STALE_LEASE_COUNT | 0 (`dimo:provider:budget:leases` absent/empty) | SNAPSHOT |
+| DIMO_BUDGET_BYPASS_FOUND | NO signal | LIMITED |
+| DIMO_STARVATION_SIGNAL | NO signal | LIMITED |
+| DIMO_RETRY_AMPLIFICATION | NO signal | LIMITED |
+| Token bucket tokens remaining | 24 | SNAPSHOT |
+| DIMO_GLOBAL_BUDGET_HEALTH | **SNAPSHOT_PASS** | — |
 
 **Note:** Retrospective in-flight max over window not available from Prometheus TSDB on VPS; point-in-time Redis state clean.
 
@@ -123,16 +150,16 @@ Scheduler singleton ticks observed only on replica B (leader) in PM2 logs — **
 
 ## Phase 6 — Reconciliation mutex
 
-| Metric | Value |
-|--------|-------|
-| MAX_SAME_SCOPE_CONCURRENCY | Not directly measurable retrospectively; no overlap signal |
-| DOUBLE_RECONCILIATION_FOUND | NO |
-| MUTEX_CONTENTION_COUNT | 0 keys held at audit |
-| MUTEX_RENEW_FAILURES | 0 |
-| STALE_MUTEX_LOCKS_FOUND | NO |
-| MUTEX_BYPASS_FOUND | NO |
-| MUTEX_RETRY_AMPLIFICATION | NO |
-| RECONCILIATION_MUTEX_HEALTH | **PASS** |
+| Metric | Value | Precision |
+|--------|-------|-----------|
+| MAX_SAME_SCOPE_CONCURRENCY | NOT_MEASURED | — |
+| DOUBLE_RECONCILIATION_FOUND | NO signal at snapshot | SNAPSHOT |
+| MUTEX_CONTENTION_COUNT | 0 keys held at audit | SNAPSHOT |
+| MUTEX_RENEW_FAILURES | NOT_MEASURED | — |
+| STALE_MUTEX_LOCKS_FOUND | NO at snapshot | SNAPSHOT |
+| MUTEX_BYPASS_FOUND | NO signal | LIMITED |
+| MUTEX_RETRY_AMPLIFICATION | NO signal | LIMITED |
+| RECONCILIATION_MUTEX_HEALTH | **SNAPSHOT_PASS** | — |
 
 ---
 
@@ -154,7 +181,7 @@ Scheduler singleton ticks observed only on replica B (leader) in PM2 logs — **
 | QUEUE_STALLED_REGRESSION | NO (stalled-check keys present — normal BullMQ housekeeping) |
 | QUEUE_DUPLICATE_PROCESSING_SIGNAL | NO |
 | QUEUE_RETRY_AMPLIFICATION | NO |
-| QUEUE_MULTI_CONSUMER_HEALTH | **PASS** |
+| QUEUE_MULTI_CONSUMER_HEALTH | **SNAPSHOT_PASS** | — |
 
 ---
 
@@ -162,7 +189,7 @@ Scheduler singleton ticks observed only on replica B (leader) in PM2 logs — **
 
 | Metric | Value |
 |--------|-------|
-| BATTERY_FAILED_AT_WINDOW_START | 64 |
+| BATTERY_FAILED_AT_WINDOW_START | 64 (from P1.8.3.1 baseline + Redis score analysis) | VERIFIED |
 | BATTERY_FAILED_NOW | 64 |
 | BATTERY_FAILED_DELTA | **0** |
 | BATTERY_V2_NEW_FAILED_COUNT | 0 |
@@ -179,12 +206,12 @@ Scheduler singleton ticks observed only on replica B (leader) in PM2 logs — **
 |--------|-------|
 | NEW_TRIPS_IN_WINDOW | 2 |
 | ROUTE_ARTIFACTS_IN_WINDOW | 2 |
-| DUPLICATE_TRIP_SIGNAL | NO |
+| DUPLICATE_TRIP_SIGNAL | NO (SQL: `vehicle_id,start_time` dupes = 0) | VERIFIED |
 | PERMANENT_TRIP_LOSS_SIGNAL | NO |
 | DUPLICATE_FINALIZATION_SIGNAL | NO |
 | TRIP_RECONCILIATION_ERRORS | 0 |
 | TRIP_ENRICHMENT_DUPLICATES | 0 |
-| TRIP_PIPELINE_HEALTH | **PASS** |
+| TRIP_PIPELINE_HEALTH | **SNAPSHOT_PASS** (low volume window) | — |
 
 TripTrackingRecoveryScheduler re-enqueued stale tracking jobs on leader — **EXPECTED_BEHAVIOR** (recovery, not duplication).
 
@@ -220,7 +247,7 @@ TripTrackingRecoveryScheduler re-enqueued stale tracking jobs on leader — **EX
 | ATE_ACTIVE | Workers enabled on both replicas; `trip.behavior.enrichment` queue idle |
 | ATE_JOBS_IN_WINDOW | 0 backlog / 0 failed |
 | ATE_DUPLICATE_JOB_SIGNAL | NO |
-| ATE_MULTI_REPLICA_HEALTH | **PASS** (idle; no amplification signal) |
+| ATE_MULTI_REPLICA_HEALTH | **SNAPSHOT_PASS** (idle queue; amplification not measured) | — |
 
 ---
 
@@ -228,7 +255,7 @@ TripTrackingRecoveryScheduler re-enqueued stale tracking jobs on leader — **EX
 
 | Metric | Value |
 |--------|-------|
-| REDIS_HEALTH | PASS (PONG, 19 connections via Postgres proxy context) |
+| REDIS_HEALTH | PASS (PONG; `connected_clients=257` at re-audit) | SNAPSHOT |
 | used_memory | 16.01M |
 | evicted_keys | 0 |
 | blocked_clients | 0 |
@@ -306,7 +333,30 @@ DEC_016_PRODUCTION_VALIDATED = NO
 N2_RETROSPECTIVE_VERDICT = EARLY_PASS
 ```
 
-**Rationale:** All observed N=2 invariants healthy during ~2h 39m continuous window. No split brain, no queue regression, no battery.v2 delta, no duplicate-work signals. Window too short for `PASS` (24h) or `N2_PRODUCTION_CERTIFICATION = VERIFIED`.
+**Rationale:** Snapshot and verified point checks healthy during ~2h 39m window. **No scaling defect signal found**, but retrospective coordination metrics (DIMO max in-flight, mutex overlap, scheduler max over window) were **not continuously measured**. Window too short for `PASS` (24h) or `N2_PRODUCTION_CERTIFICATION = VERIFIED`.
+
+---
+
+## Machine-readable summary (corrected)
+
+```
+RUNTIME_N2_SIGNAL = HEALTHY_EARLY
+SCALING_DEFECT_FOUND = NO
+EVIDENCE_PRECISION = CORRECTED
+
+AUDIT_WINDOW_CLASS = INSUFFICIENT_WINDOW
+N2_RETROSPECTIVE_VERDICT = EARLY_PASS
+
+N2_PRODUCTION_CERTIFICATION = EARLY
+N3_PLUS_CERTIFICATION = UNVERIFIED
+N1000_CERTIFICATION = CONDITIONAL
+
+INC_06_STATUS = CLOSED
+OQ_18_STATUS = MITIGATED_PENDING_PRODUCTION_VALIDATION
+OQ_28_STATUS = PARTIAL
+
+MERGE_RECOMMENDATION = MERGE (documentation/evidence PR after precision correction)
+```
 
 ---
 

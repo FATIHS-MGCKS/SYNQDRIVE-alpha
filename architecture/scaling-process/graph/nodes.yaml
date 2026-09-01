@@ -234,4 +234,4 @@ nodes:
     last_verified_sha: 3772d992dae012bc9d794184e05e8ad39db09df4
     last_verified_at: "2026-09-01T14:26:15Z"
     confidence: MEDIUM
-    notes: "Window INSUFFICIENT for 24h certification; no scaling defects observed"
+    notes: "Window INSUFFICIENT for 24h certification; SNAPSHOT_PASS only; evidence precision corrected v2"
