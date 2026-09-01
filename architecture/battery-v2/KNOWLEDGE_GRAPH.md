@@ -1,34 +1,96 @@
 # Battery V2 — Knowledge Graph (Human View)
 
-**Bootstrap date:** 2026-09-01  
+**Last updated:** 2026-09-01 (Phase 3 graph contract integrity pass)  
+**Maturity:** Phase 2+3 substantially reconstructed — open gaps remain  
 Machine-readable source: [graph/nodes.yaml](./graph/nodes.yaml), [graph/edges.yaml](./graph/edges.yaml)
 
-## Major chain (partially reconstructed)
+This Human View is a high-level projection of current machine authority. It must not contradict `CURRENT_STATE.md`, the reachability matrix, or the machine graph.
+
+## LV canonical chain (substantially reconstructed)
 
 ```
-[Authoritative trip finalization]
-        │  BAT-V2-AUTH-TRIP-END-001
+[Trip finalization]  BAT-V2-AUTH-TRIP-END-001
+        │
         ▼
-[trip.endTime anchor]
-        │  gates
+[Canonical LV REST session arming]  ← reconciliation self-heal
+        │
         ▼
-[LV Rest Window session arming]  ←── reconciliation self-heal
-        │  BAT-V2-JOB-LV-SESSION-OPEN-001
+[REST_60M / REST_6H targets]  → metadata + Bull evaluate jobs
+        │
         ▼
-[REST_60M / REST_6H target schedule]
-        │  metadata ENQUEUED + Bull job
-        ▼
-[LIVE_VOLTAGE observations in target window]
-        │  BAT-V2-AUTH-LV-MEASURE-001 (conservative quality)
+[LIVE_VOLTAGE in target window]  BAT-V2-AUTH-LV-MEASURE-001
+        │
         ▼
 [BATTERY_REST_TARGET_EVALUATE]
-        │  PENDING_EVALUATION if retryable missing evidence
+        │
         ▼
 [BatteryMeasurement]  ── BAT-V2-POL-NO-FABRICATE-001
         │
+        ╳  MISSING automatic handoff  BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
+        │
         ▼
-[Assessment / publication / read model]  ← NOT YET RECONSTRUCTED
+[BatteryAssessment]  (when assessment job runs — legacy/reconcile paths)
+        │
+        ╳  MISSING automatic handoff  BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
+        │
+        ▼
+[BatteryPublication]  (when flag on + updateLvPublication invoked)
+        │
+        ▼
+[Canonical read]  BAT-V2-AUTH-CANONICAL-READ-001
+        │
+        ▼
+[Consumers]  rental health, API, tasks, insights
 ```
+
+**Umbrella gap:** `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001` — canonical REST → assessment → publication is **not e2e reachable** today.
+
+**Flag note:** `BATTERY_V2_REST_SHADOW_ENABLED` (historical name) enables canonical REST ingestion when ON. It does **not** block publication. Publication is separately gated by `BATTERY_V2_PUBLICATION_ENABLED` plus missing handoffs.
+
+## HV branch (implemented paths + remaining gaps)
+
+```
+[DIMO HV signals]  BAT-V2-SIG-HV-*
+        │
+        ▼
+[Capability preflight + HV method profile]  BAT-V2-AUTH-HV-METHOD-PROFILE-001
+        │
+        ├── M2 shadow ──► hv_capacity_observations
+        ├── M3 validation (VALIDATION_ONLY)
+        ├── Native recharge segments ──► HvChargeSession
+        └── Cross-session capacity (≥3 sessions) ──► battery_assessments
+        │
+        ▼
+[HV SOH evidence conflict]  BAT-V2-AUTH-HV-SOH-CONFLICT-001
+        │
+        ├── Selected SOH ──────────► canonical.hv.providerSoh ──┐
+        └── SOH gate assessment ─► canonical.hv.sohAssessment ┼──► [Canonical read]  canonical.hv  →  consumers
+                                                               │
+        ┌── publication-intent metadata (lateral; does NOT gate canonical read)
+        └── BAT-V2-PUB-HV-SOH-001 — BATTERY_V2_HV_SOH_PUBLICATION_ENABLED
+            (publicationEligible=false always; no HV customer publication path)
+```
+
+**Remaining gaps (not reconstructed as working paths):**
+
+- `BAT-V2-GAP-HV-SESSION-CHARGE-METHOD-001` — SESSION_CHARGE_CAPACITY compute missing
+- `BAT-V2-GAP-HV-GROSS-CAPACITY-METHOD-001` — GROSS_CAPACITY compute missing
+- `BAT-V2-CONTRA-HEV-HV-AUTHORITY-001` — HEV write/side-effect/read divergence
+- `BAT-V2-GAP-PUB-READINESS-001` — HV SOH execution vs publication-intent flags traced; no HV customer publication carrier; production enablement UNKNOWN
+
+**PHEV:** parallel **implemented** LV + HV paths when flags and capabilities pass; not all advertised HV methods have compute.
+
+## HEV write / side-effect / read (separate gates)
+
+| Gate layer | HEV (`HYBRID`) behavior |
+|------------|-------------------------|
+| **BatteryMeasurement HV writes (Layer A)** | ICE policy → `UNSUPPORTED_PROFILE` |
+| **HV snapshot/evidence (Layer D1)** | `recordSnapshot` when `evSoc` present — observation-driven; not fuelType gated |
+| **HV charge sessions (Layer D2)** | Recharge/fallback feature flags + method/capability conditions |
+| **HV capacity shadow (Layer D3)** | `BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED` + eligible completed session |
+| **Canonical read (Layer E)** | `HYBRID` excluded → `canonical.hv` absent |
+
+Gap: `BAT-V2-GAP-HEV-SIDE-EFFECT-READ-DIVERGENCE-001`
 
 ## Opening vs measurement (parallel authorities)
 
@@ -36,57 +98,42 @@ Machine-readable source: [graph/nodes.yaml](./graph/nodes.yaml), [graph/edges.ya
                     ┌── BAT-V2-AUTH-LV-OPEN-001 (opening gate)
 [DIMO / latest state] ──┤     isEngineOffForRestWindowOpening
                     └── BAT-V2-AUTH-LV-MEASURE-001 (measurement quality)
-                          isEngineOffForRest
 ```
-
-These are **intentionally different**. Production ICE trip `61715ecd` motivated the split (#1393).
 
 ## Liveness subgraph (REST targets)
 
 ```
-[Target metadata status]
-        │
-        ├─ ENQUEUED ──► hasLiveJob()? ──no──► PENDING_EVALUATION ──► recovery schedule
-        │                    │
-        │                   yes → keep ENQUEUED (skip reconcile)
-        │
-        ├─ PENDING_EVALUATION ──► reconciliation reschedule (cadence)
-        │
-        └─ terminal (COMPLETED|MISSED|FAILED|CANCELLED) → stop
+ENQUEUED ──► hasLiveJob()? ──no──► PENDING_EVALUATION ──► recovery
+RUNNING ──► read as already-scheduled (no audited writer)
+SKIPPED ──► enum only (no audited writer)
 ```
 
-**Key invariant:** metadata `ENQUEUED` alone is **not** proof of queue liveness (`BAT-V2-LIVE-ORPHAN-ENQ-001`).
-
-## Session opening convergence (not four independent creators)
-
-| Entry path | Converges on |
-|------------|--------------|
-| Trip finalization enqueue | `LvRestWindowSessionArmingService.ensureLvRestWindowForFinalizedTrip()` |
-| Reconciliation missing session | same arming operation (+ recovery enqueue fallback) |
-| Observation bridge | delegates to arming when finalized trip matches anchor |
-| `BATTERY_LV_REST_SESSION_OPEN` handler | FSM via existing session machinery |
-
-Do **not** model these as four parallel session-creation implementations.
-
-## Decision lineage (seeded)
+## Decision lineage (matches machine graph)
 
 ```
 BAT-V2-EVID-PROD-61715ECD-001
-    └── supports ──► BAT-V2-DEC-1393-001 (ICE opening hardening)
+    ├── supports ──► BAT-V2-DEC-1383-001
+    └── supports ──► BAT-V2-DEC-1393-001
 
 BAT-V2-EVID-PROD-EA7696B6-001
-    └── supports ──► BAT-V2-DEC-1383-001 (observation-independent opening)
+    └── supports ──► BAT-V2-DEC-1445-001
 
-BAT-V2-EVID-PROD-4D2BEF5F-001 + tests
-    └── supports ──► BAT-V2-DEC-1445-001 (Stage 1 pipeline defect closure)
+BAT-V2-EVID-PROD-4D2BEF5F-001
+    └── supports ──► BAT-V2-DEC-1445-001
 ```
 
-## Not yet reconstructed
+## Still open (use `BAT-V2-GAP-*` — do not invent detail)
 
-- Full HV recharge / PHEV authority chain
-- Publication and readiness consumer mapping
-- Complete legacy `battery_features` → canonical migration story
-- All timestamp fallback paths in LV live ingestion
-- Redis lock fail-open rationale (if applicable to Battery V2 paths)
+- Bridge anchor identity risk (`BAT-V2-GAP-BRIDGE-FALLBACK-001`)
+- LV timestamp fallback production frequency (`BAT-V2-GAP-TIMESTAMP-FALLBACK-001`, `BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001`)
+- Threshold calibration rationale (`BAT-V2-GAP-THRESHOLD-PROVENANCE-001`)
+- Redis lock fail-open rationale (`BAT-V2-GAP-LOCK-FAILOPEN-001`)
+- Remaining consumer surfaces (`BAT-V2-GAP-CONSUMER-READ-001`)
+- Post-#1445 production soak (`BAT-V2-HYP-POST-1445-SOAK-001`)
 
-Mark new discoveries with `BAT-V2-GAP-*` rather than inventing detail.
+## Substantially reconstructed (no longer "NOT YET RECONSTRUCTED")
+
+- HV signals, methods (implemented paths), persistence, canonical read model
+- Publication/readiness **policy** and flag wiring (enablement UNKNOWN)
+- Primary consumer mapping (rental health, API, tasks)
+- LV timestamp fallback **code reachability** (production frequency UNKNOWN)

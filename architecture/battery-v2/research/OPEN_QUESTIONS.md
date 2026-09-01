@@ -1,45 +1,50 @@
 # Battery V2 — Open Questions
 
-Stable gap IDs (`BAT-V2-GAP-*`). Machine nodes in `graph/nodes.yaml`.
+Stable gap IDs (`BAT-V2-GAP-*`). Must match `contradictions/KNOWLEDGE_GAPS.md` set exactly.
 
 ## Liveness / lifecycle
 
 | ID | Question | Epistemic status |
 |----|----------|------------------|
-| `BAT-V2-GAP-RUNNING-ORPHAN-001` | What is the intended recovery for `RUNNING` target metadata when Bull job is gone after handler crash? | CONFIRMED — no current writer; enum debt |
-| `BAT-V2-GAP-SKIPPED-REST-001` | When is `SKIPPED` set and is it terminal for reconciliation? | CONFIRMED — no writer found |
-| `BAT-V2-GAP-TIMESTAMP-FALLBACK-001` | Is `lvBatteryObservedAt` absent on reachable classify payloads; do fallback rows enter REST evaluation? | UNKNOWN |
+| `BAT-V2-GAP-RUNNING-ORPHAN-001` | Do orphan RUNNING rows exist in production DB from unknown origin? | CONFIRMED enum+reader; INFERRED orphan hypothesis |
+| `BAT-V2-GAP-SKIPPED-REST-001` | Should SKIPPED be implemented or deprecated? | CONFIRMED — no audited writer |
+| `BAT-V2-GAP-BRIDGE-FALLBACK-001` | Production frequency of bridge vs canonical session identity divergence? | CONFIRMED code path; UNKNOWN frequency |
+| `BAT-V2-GAP-TIMESTAMP-FALLBACK-001` | Production frequency of fallback LV timestamps entering REST eval? | CONFIRMED code reachability; UNKNOWN frequency |
 
-## Trip binding / bridge
-
-| ID | Question | Epistemic status |
-|----|----------|------------------|
-| `BAT-V2-GAP-BRIDGE-FALLBACK-001` | Full semantics when no authoritative finalized trip — ±120s resolution edge cases | INFERRED (architecture memo only) |
-| `BAT-V2-GAP-HV-AUTHORITY-001` | HV/PHEV signal authority and assessment model | UNKNOWN |
-| `BAT-V2-GAP-CONSUMER-READ-001` | Which UI/API paths read canonical vs legacy battery data | UNKNOWN |
-
-## Execution / policy
+## Authority / consumers / policy
 
 | ID | Question | Epistemic status |
 |----|----------|------------------|
-| `BAT-V2-GAP-LOCK-FAILOPEN-001` | Redis lock fail-open rationale on Battery V2 enqueue paths | UNKNOWN |
-| `BAT-V2-GAP-THRESHOLD-PROVENANCE-001` | Provenance for physical/policy thresholds (speed 0.5, load 5, grace 30m) | UNKNOWN |
+| `BAT-V2-GAP-HV-AUTHORITY-001` | PHEV mixed-powertrain edge cases; production HV capability mix | INFERRED — core paths traced |
+| `BAT-V2-GAP-CONSUMER-READ-001` | Will master/operator battery panels wire to canonical? | INFERRED — rental path traced |
+| `BAT-V2-GAP-LOCK-FAILOPEN-001` | Redis lock fail-open rationale | CONFIRMED behavior; rationale UNKNOWN |
+| `BAT-V2-GAP-THRESHOLD-PROVENANCE-001` | Provenance for physical/policy thresholds | UNKNOWN |
 
-## Stage 2 / HV methods
-
-| ID | Question | Epistemic status |
-|----|----------|------------------|
-| `BAT-V2-GAP-PUB-READINESS-001` | Exact gates for enabling publication/readiness in production | INFERRED from flags |
-| `BAT-V2-GAP-HEV-IS-EV-001` | Do HEV vehicles with fuelType HYBRID receive canonical HV slice? | UNKNOWN (see `BAT-V2-CONTRA-HEV-HV-AUTHORITY-001`) |
-| `BAT-V2-GAP-HV-PROVIDER-SOH-LATESTSTATE-TIMESTAMP-001` | How often does production have latestState SOH without evidence observedAt? | CONFIRMED code behavior; UNKNOWN frequency |
-| `BAT-V2-GAP-HV-SOH-WINNER-USABILITY-001` | Does production reach winner-selected-but-unusable SOH combinations? | CONFIRMED control flow; UNKNOWN frequency |
-| `BAT-V2-GAP-HV-SELECTED-SOH-DTO-NAMING-001` | Should `canonical.hv.providerSoh` be renamed/generalized for multi-source selected SOH? | CONFIRMED naming debt; UNKNOWN future rename |
-| `BAT-V2-GAP-HV-SESSION-CHARGE-METHOD-001` | Will SESSION_CHARGE_CAPACITY get a compute implementation? | UNKNOWN |
-| `BAT-V2-GAP-HV-GROSS-CAPACITY-METHOD-001` | Will GROSS_CAPACITY_REFERENCE get a compute implementation? | UNKNOWN |
-
-## Contradictions
+## Publication / LV handoffs
 
 | ID | Question | Epistemic status |
 |----|----------|------------------|
-| `BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001` | Does LV timestamp fallback violate REST providerTimestamp evidence semantics in production? | CONTRADICTED / UNRESOLVED |
-| `BAT-V2-CONTRA-HEV-HV-AUTHORITY-001` | Which layer should govern HEV HV eligibility — policy, drive profile, or canonical isEv? | CONTRADICTED / UNRESOLVED |
+| `BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001` | Should REST target completion enqueue assessment? | CONFIRMED gap |
+| `BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001` | Should assessment completion enqueue publication? | CONFIRMED gap |
+| `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001` | What wiring establishes e2e canonical pipeline? | CONFIRMED not e2e today |
+| `BAT-V2-GAP-PUB-READINESS-001` | Production enablement timing for publication/readiness; HV SOH execution (`HV_CAPACITY_SHADOW`) vs publication-intent flag; no HV customer publication carrier | CONFIRMED defaults OFF; enablement UNKNOWN |
+
+## HEV / PHEV / HV methods
+
+| ID | Question | Epistemic status |
+|----|----------|------------------|
+| `BAT-V2-GAP-HEV-IS-EV-001` | Should HEV receive canonical HV slice? | CONFIRMED `isEv=false`; product UNRESOLVED |
+| `BAT-V2-GAP-HEV-SIDE-EFFECT-READ-DIVERGENCE-001` | Production frequency of HEV side-effect rows with absent canonical.hv | CONFIRMED code path; UNKNOWN frequency |
+| `BAT-V2-GAP-HV-PIPELINE-ALLOWED-DEAD-001` | Should `hvPipelineAllowed` gate producers or be removed? | CONFIRMED no runtime consumer (audited) |
+| `BAT-V2-GAP-HV-PROVIDER-SOH-LATESTSTATE-TIMESTAMP-001` | Production frequency of VLS-only SOH without evidence timestamp | CONFIRMED code path; UNKNOWN frequency |
+| `BAT-V2-GAP-HV-SOH-WINNER-USABILITY-001` | Production frequency of winner-unusable despite alternate candidate | CONFIRMED control flow; UNKNOWN frequency |
+| `BAT-V2-GAP-HV-SELECTED-SOH-DTO-NAMING-001` | Should `canonical.hv.providerSoh` be renamed? | CONFIRMED naming debt |
+| `BAT-V2-GAP-HV-SESSION-CHARGE-METHOD-001` | Will SESSION_CHARGE_CAPACITY get compute? | UNKNOWN |
+| `BAT-V2-GAP-HV-GROSS-CAPACITY-METHOD-001` | Will GROSS_CAPACITY get compute? | UNKNOWN |
+
+## Contradictions (indexed separately in OPEN_CONTRADICTIONS.md)
+
+| ID | Question | Epistemic status |
+|----|----------|------------------|
+| `BAT-V2-CONTRA-HEV-HV-AUTHORITY-001` | Which layer governs HEV HV? | CONTRADICTED / UNRESOLVED |
+| `BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001` | Production impact of timestamp fallback | CONTRADICTED / UNRESOLVED |

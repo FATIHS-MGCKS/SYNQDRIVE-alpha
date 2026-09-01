@@ -91,19 +91,29 @@ Do **not** use `PARTIAL`, `GAP`, `LOW`, `MEDIUM`, or `HIGH` as epistemic statuse
 
 ## Graph relation taxonomy
 
-Canonical directional relations (see `graph/schema.yaml`):
+**Authoritative allowlist:** `graph/schema.yaml` → `relation_types` (complete set of permitted edge relations).
+
+**This section:** core semantic constraints for agents — not an exhaustive relation catalog.
 
 | Relation | Direction | Meaning |
 |----------|-----------|---------|
-| `supports` | evidence → claim/decision/gap | Evidence backs a node |
-| `governs` | decision → authority/policy/liveness | Decision establishes governance |
-| `gates` | authority → job/transition | Authority controls entry |
+| `supports` | evidence / test_evidence → claim, decision, gap, authority, policy, liveness, etc. | Evidence backs a node — **only** `evidence` or `test_evidence` sources |
+| `refines` | narrower concept → broader concept | A gap, contradiction, or hypothesis narrows or contextualizes a broader knowledge node without constituting evidence |
+| `governs` | decision → authority / policy / liveness | Decision establishes governance |
+| `gates` | authority → job / transition | Authority controls entry |
+| `consumed_by` | authority / assessment / publication → consumer or canonical read | Downstream read/consumption (not gap→authority) |
 | `tested_by` | liveness_rule → test_evidence | Liveness rule covered by test |
 | `does_not_solve` | decision → gap | Explicit non-effect / remaining limitation |
 | `superseded_by` | old → new | Historical replacement |
 | `contradicts` | contradiction → affected node | Unresolved tension |
 
 Do not document unsupported relation aliases. `limited_by` is **not** a canonical relation — use `does_not_solve` from decision to gap.
+
+**Anti-patterns (validator-enforced where noted):**
+
+- hypothesis / contradiction / gap → `supports` → anything (**invalid** — use `refines` or remove)
+- gap → `gates` → canonical read (**invalid**)
+- assessment → `consumed_by` → gap (**invalid** — `consumed_by` direction is authority→consumer)
 
 Evidence chain pattern:
 
@@ -123,6 +133,25 @@ PRODUCTION_OBSERVATION --supports--> DECISION --governs--> AUTHORITY/POLICY --ga
 | Superseded decision | `decisions/` entry; mark old `BAT-V2-DEC-*` as `SUPERSEDED` with `superseded_by` edge |
 | Contradiction found | `contradictions/OPEN_CONTRADICTIONS.md` + `BAT-V2-CONTRA-*` nodes |
 | Snapshot shift | `CURRENT_STATE.md` (date + maturity notes) |
+
+## Knowledge authority self-consistency (mandatory)
+
+A knowledge reconstruction PR is **incomplete** if any of the following disagree:
+
+| Artifact | Must align with |
+|----------|-----------------|
+| `CURRENT_STATE.md` graph counts | Actual `nodes.yaml` / `edges.yaml` / `invariants.yaml` (run `validate-graph.sh`) |
+| `contradictions/KNOWLEDGE_GAPS.md` | Graph `BAT-V2-GAP-*` nodes (title, epistemic status, maturity) |
+| `research/OPEN_QUESTIONS.md` | Same stable IDs as `KNOWLEDGE_GAPS.md`; questions must reflect current reconstruction state |
+| `KNOWLEDGE_GRAPH.md` | High-level human projection of current graph authority; no stale "NOT YET RECONSTRUCTED" for substantially reconstructed areas |
+| `contradictions/OPEN_CONTRADICTIONS.md` | Graph `BAT-V2-CONTRA-*` nodes |
+| `research/OPEN_HYPOTHESES.md` | Graph `BAT-V2-HYP-*` nodes |
+
+Do not leave bootstrap wording (e.g. "HV authority UNKNOWN") when Phase documentation has substantially reconstructed the area. Distinguish **reconstruction maturity** from **remaining unknowns** (production frequency, enablement, product intent).
+
+`KNOWLEDGE_GRAPH.md` must remain conceptually consistent with the machine graph. It need not list every node, but must not claim areas are unreconstructed when Phase 2/3 documentation and graph nodes establish substantial authority.
+
+After editing the graph, run `bash architecture/battery-v2/scripts/validate-graph.sh` and update `CURRENT_STATE.md` counts from validator output.
 
 ## No silent history rewrites
 

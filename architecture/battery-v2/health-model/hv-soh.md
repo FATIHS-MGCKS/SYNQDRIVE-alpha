@@ -134,11 +134,21 @@ else if (hvSohWinner?.id === 'capacity-estimate' && hvMeasuredSoh != null) { ...
 ## Calculated SOH (shadow SOH gate) — separate path
 
 **Service:** `hv-soh-gate-assessment.service.ts` + `hv-soh-gate.policy.ts`  
-**Requires:** VERIFIED `VehicleBatteryReferenceCapacity` + compatible `capacityType` + cross-session capacity input.
+**Requires:** VERIFIED `VehicleBatteryReferenceCapacity` + compatible `capacityType` + cross-session capacity input.  
+**Execution authority:** `BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED` — handler + service return null when OFF. Invoked from `HvCapacityShadowService.recomputeM2ForSession()` after M2/M3/cross-session chain.
 
 **Formula:** `estimatedSohPct = (estimatedCapacityKwh / referenceCapacityKwh) * 100` (with gate policies).
 
-**Publication:** `BATTERY_V2_HV_SOH_PUBLICATION_ENABLED` (default OFF). Assessments carry `publicationEligible: false`.
+### Execution flag vs publication-intent flag (do not conflate)
+
+| Flag | Role |
+|------|------|
+| `BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED` | **Execution gate** — enables HV capacity shadow recompute job chain including SOH gate assessment persistence |
+| `BATTERY_V2_HV_SOH_PUBLICATION_ENABLED` | **Publication-intent / reason metadata** — passed as `sohPublicationEnabled`; when OFF adds `PUBLICATION_DISABLED` to `gateReasonCodes` |
+
+**`PUBLICATION_DISABLED` does not block internal SOH computation / `sohGatePassed`.** `sohGatePassed` may be true while the publication-intent flag is OFF.
+
+**`publicationEligible` (CONFIRMED):** `hv-soh-gate.policy.ts` returns `publicationEligible: false` on SOH gate assessments **regardless of** `sohPublicationEnabled`. No HV `BatteryPublication` / customer-publication carrier has been identified. Enabling `BATTERY_V2_HV_SOH_PUBLICATION_ENABLED` alone does **not** create customer-visible HV SOH publication — do **not** describe it as a working publication pipeline.
 
 ## No fabricated HV SOH invariant
 

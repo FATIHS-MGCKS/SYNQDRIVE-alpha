@@ -1,6 +1,6 @@
 # Battery V2 — Living Architecture Authority
 
-**Status:** Bootstrap (2026-09-01)  
+**Status:** Phase 3 reachability pass (2026-09-01)  
 **Maturity:** Incremental / open scientific workstream  
 **Runtime impact:** None (documentation and knowledge graph only)
 
@@ -31,17 +31,23 @@ It is **not** a finalized static architecture document. It is a continuously evo
 | File | Purpose |
 |------|---------|
 | [CURRENT_STATE.md](./CURRENT_STATE.md) | Best-known snapshot of Battery V2 today |
-| [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md) | Human-readable graph overview |
+| [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md) | Human-readable graph overview (must align with machine graph) |
 | [AGENT_CONTRACT.md](./AGENT_CONTRACT.md) | **Mandatory rules for future agents** |
 | [purpose/profile-matrix.md](./purpose/profile-matrix.md) | ICE/HEV/PHEV/BEV profile behavior |
+| [purpose/runtime-reachability-matrix.md](./purpose/runtime-reachability-matrix.md) | Phase 3 DEFINED→USER_VISIBLE decision matrix |
 | [signals/hv-signal-authority.md](./signals/hv-signal-authority.md) | HV DIMO signal catalog |
 | [signals/threshold-catalog.md](./signals/threshold-catalog.md) | Threshold CODE FACT catalog |
 | [health-model/hv-capacity.md](./health-model/hv-capacity.md) | M2/M3/cross-session methods |
 | [health-model/hv-soh.md](./health-model/hv-soh.md) | Provider SOH + SOH gate |
+| [health-model/hv-soh-selection-truth-table.md](./health-model/hv-soh-selection-truth-table.md) | HV SOH winner-usability truth table |
+| [health-model/publication-readiness.md](./health-model/publication-readiness.md) | Publication vs readiness reachability |
 | [lifecycle/hv-charge-sessions.md](./lifecycle/hv-charge-sessions.md) | Native vs fallback recharge |
+| [lifecycle/bridge-reachability.md](./lifecycle/bridge-reachability.md) | LV REST bridge fallback reachability |
+| [execution/rest-target-status-history.md](./execution/rest-target-status-history.md) | RUNNING/SKIPPED git history |
 | [persistence/models.md](./persistence/models.md) | Prisma persistence model |
 | [consumers/api-authority.md](./consumers/api-authority.md) | API route authority |
 | [consumers/frontend-authority.md](./consumers/frontend-authority.md) | Frontend consumers |
+| [consumers/decision-surfaces.md](./consumers/decision-surfaces.md) | Battery influence on readiness/tasks/UI |
 | [research/CHANGE_LEDGER.md](./research/CHANGE_LEDGER.md) | Scientific change history |
 | [graph/nodes.yaml](./graph/nodes.yaml) | Machine-readable node catalog |
 | [graph/edges.yaml](./graph/edges.yaml) | Machine-readable relationships |
