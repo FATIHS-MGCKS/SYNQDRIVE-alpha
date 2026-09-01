@@ -167,6 +167,19 @@ invariants:
       - architecture/tankstellenerkennung/AGENT_CONTRACT.md
       - architecture/tankstellenerkennung/decisions/DECISION_REGISTER.md
 
+  - id: FST-INV-RECOVERY-SINGLETON-001
+    kind: CONFIRMED_INVARIANT
+    title: Recovery scheduler executes only on elected cluster leader
+    epistemic_status: CONFIRMED
+    statement: >
+      fuel_station_enrichment_recovery is SINGLETON_GLOBAL. recoverMissedEnrichments() must run
+      only when SchedulerLeaderGuardService grants leadership; follower replicas skip the tick.
+      This governs recovery scheduler execution ownership, not BullMQ worker concurrency.
+    source_paths:
+      - backend/src/workers/schedulers/fuel-station-enrichment-recovery.scheduler.ts
+      - backend/src/shared/scheduler-leader/scheduler-leader-guard.service.ts
+      - backend/src/shared/scheduler-leader/scheduler-leader.registry.ts
+
   - id: FST-INV-FALLBACK-EMPTY-ONLY-001
     kind: CONFIRMED_INVARIANT
     title: 250m fallback only when primary returns zero candidates

@@ -214,6 +214,20 @@ nodes:
     source_paths:
       - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-fingerprint.util.ts
 
+  - id: FST-AUTH-RECOVERY-LEADER-001
+    type: authority
+    title: Recovery scheduler cluster leader authority
+    epistemic_status: CONFIRMED
+    summary: >
+      Fuel-station enrichment recovery sweep execution is SINGLETON_GLOBAL.
+      SchedulerLeaderGuardService ensures only the elected cluster scheduler leader
+      runs recoverMissedEnrichments(); follower replicas skip the tick.
+      Applies to the recovery scheduler tick only — not BullMQ worker concurrency.
+    source_paths:
+      - backend/src/workers/schedulers/fuel-station-enrichment-recovery.scheduler.ts
+      - backend/src/shared/scheduler-leader/scheduler-leader-guard.service.ts
+      - backend/src/shared/scheduler-leader/scheduler-leader.registry.ts
+
   - id: FST-STATE-PROCESSING-001
     type: state
     title: processingStatus state machine
@@ -274,7 +288,9 @@ nodes:
     type: recovery
     title: Fuel station enrichment recovery scheduler
     epistemic_status: CONFIRMED
-    summary: Periodic recovery re-enqueues eligible non-terminal enrichment rows; respects FAILED terminality.
+    summary: >
+      Periodic recovery re-enqueues eligible non-terminal enrichment rows; respects FAILED terminality.
+      Timer may exist on every backend replica, but sweep execution is leader-gated (SINGLETON_GLOBAL).
     source_paths:
       - backend/src/workers/schedulers/fuel-station-enrichment-recovery.scheduler.ts
 

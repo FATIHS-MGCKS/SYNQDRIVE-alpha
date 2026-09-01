@@ -103,7 +103,20 @@ Vehicle telemetry
 | COMPLETED + resolutionStatus=ERROR | Retry permitted |
 | COMPLETED + resolutionStatus=null | Retry permitted |
 | Changed fingerprint or resolverVersion | Re-resolution may be permitted |
-| Recovery scheduler | Re-enqueues eligible non-terminal rows on interval; FAILED never auto-requeued |
+| Recovery scheduler | Re-enqueues eligible non-terminal rows on interval; **SINGLETON_GLOBAL leader-gated** — only elected scheduler leader executes sweep tick; followers skip |
+
+### Multi-replica recovery leader ownership
+
+`FuelStationEnrichmentRecoveryScheduler` may be registered on every backend replica, but
+`recoverMissedEnrichments()` calls `leaderGuard.shouldRun('fuel_station_enrichment_recovery')`.
+The scheduler registry classifies this name as **SINGLETON_GLOBAL** — only the elected
+cluster scheduler leader executes the recovery sweep; follower replicas skip the tick.
+This prevents duplicate cluster-wide recovery scans/enqueues.
+
+This requirement applies to the **recovery scheduler tick** only. The BullMQ enrichment
+worker (`RefuelStationEnrichmentProcessor`) is not singleton-gated by this mechanism.
+
+See `FST-AUTH-RECOVERY-LEADER-001`, `FST-INV-RECOVERY-SINGLETON-001`.
 
 ## API / UI (CONFIRMED)
 

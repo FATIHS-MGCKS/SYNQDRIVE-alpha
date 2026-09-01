@@ -74,6 +74,14 @@ Scientific history of the fuel-station identification workstream. Epistemic rigo
 | **NON_EFFECTS** | No runtime changes |
 | **STATUS** | Documentation only |
 
+## 2026-09-01 — Final merge-gate correction: recovery leader authority
+
+| Field | Detail |
+|-------|--------|
+| **CHANGE** | `FST-AUTH-RECOVERY-LEADER-001`, `FST-INV-RECOVERY-SINGLETON-001`; AGENT_CONTRACT evidence wording; Decision Register EVIDENCE completeness validation |
+| **NON_EFFECTS** | No runtime changes; no main re-sync; no production status changes |
+| **STATUS** | Documentation only |
+
 ## 2026-09-01 — Final main sync + authority contract gate (PR #1482)
 
 | Field | Detail |

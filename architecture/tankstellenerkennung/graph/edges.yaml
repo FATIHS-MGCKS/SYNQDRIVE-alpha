@@ -104,6 +104,9 @@ edges:
     relation: governs
     to: FST-REC-SCHEDULER-001
   - from: FST-REC-SCHEDULER-001
+    relation: uses
+    to: FST-AUTH-RECOVERY-LEADER-001
+  - from: FST-REC-SCHEDULER-001
     relation: recovers
     to: FST-QUEUE-ENRICH-001
 

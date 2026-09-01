@@ -85,12 +85,22 @@ function parseDecisionRegisterEvidenceFields(filePath) {
     const decisionId = m[1];
     const body = m[2];
     const evidenceMatch = body.match(/\| \*\*EVIDENCE\*\* \| ([^|]+) \|/);
-    if (!evidenceMatch) continue;
-    const raw = evidenceMatch[1];
-    const refs = [...raw.matchAll(/FST-[A-Z0-9-]+/g)].map((x) => x[0]);
-    entries.push({ decisionId, raw, refs });
+    entries.push({
+      decisionId,
+      hasEvidenceField: Boolean(evidenceMatch),
+      raw: evidenceMatch?.[1] ?? null,
+      refs: evidenceMatch ? [...evidenceMatch[1].matchAll(/FST-[A-Z0-9-]+/g)].map((x) => x[0]) : [],
+    });
   }
   return entries;
+}
+
+function parseDecisionRegisterSectionIds(filePath) {
+  const ids = [];
+  if (!fs.existsSync(filePath)) return ids;
+  const text = fs.readFileSync(filePath, 'utf8');
+  for (const m of text.matchAll(/## (FST-DEC-[A-Z0-9-]+)/g)) ids.push(m[1]);
+  return ids;
 }
 
 function assertEvidenceReferenceAllowed(ownerLabel, ref, nodeById, evidenceRefTypes) {
@@ -179,8 +189,8 @@ function validateSemanticEdge(e, nodeById) {
       }
       break;
     case 'uses':
-      if (!isType(nodeById, from, ['orchestrator', 'worker', 'pipeline'])) {
-        fail(`Edge ${from} -uses-> ${to}: from must be orchestrator|worker|pipeline (got ${ft})`);
+      if (!isType(nodeById, from, ['orchestrator', 'worker', 'pipeline', 'recovery'])) {
+        fail(`Edge ${from} -uses-> ${to}: from must be orchestrator|worker|pipeline|recovery (got ${ft})`);
       }
       if (!isType(nodeById, to, ['authority'])) {
         fail(`Edge ${from} -uses-> ${to}: to must be authority (got ${tt})`);
@@ -444,21 +454,53 @@ console.log('==> Decision status consistency:', registerStatuses.size, 'register
 const registerEvidence = parseDecisionRegisterEvidenceFields(
   path.join(authorityDir, 'decisions/DECISION_REGISTER.md'),
 );
-for (const entry of registerEvidence) {
+const registerDecisionIds = parseDecisionRegisterSectionIds(
+  path.join(authorityDir, 'decisions/DECISION_REGISTER.md'),
+);
+const graphDecisionIds = nodes.filter((n) => n.type === 'decision').map((n) => n.id).sort();
+const registerEvidenceById = new Map(registerEvidence.map((e) => [e.decisionId, e]));
+
+for (const decisionId of registerDecisionIds) {
+  const entry = registerEvidenceById.get(decisionId);
+  if (!entry) {
+    fail(`DECISION_REGISTER ${decisionId} section missing from evidence parser output`);
+    continue;
+  }
+  if (!entry.hasEvidenceField) {
+    fail(`DECISION_REGISTER ${decisionId} missing required EVIDENCE field`);
+    continue;
+  }
   if (entry.refs.length === 0) {
-    fail(`DECISION_REGISTER ${entry.decisionId} EVIDENCE field has no FST-* references`);
+    fail(`DECISION_REGISTER ${decisionId} EVIDENCE field has no FST-* references`);
     continue;
   }
   for (const ref of entry.refs) {
     assertEvidenceReferenceAllowed(
-      `DECISION_REGISTER ${entry.decisionId} EVIDENCE`,
+      `DECISION_REGISTER ${decisionId} EVIDENCE`,
       ref,
       nodeById,
       evidenceRefTypes,
     );
   }
 }
-console.log('==> Decision Register EVIDENCE field checks:', registerEvidence.length, 'records OK');
+
+if (registerDecisionIds.length !== graphDecisionIds.length) {
+  fail(
+    `DECISION_REGISTER decision count (${registerDecisionIds.length}) != graph decision nodes (${graphDecisionIds.length})`,
+  );
+}
+for (const id of graphDecisionIds) {
+  if (!registerDecisionIds.includes(id)) {
+    fail(`Graph decision ${id} missing from DECISION_REGISTER.md`);
+  }
+}
+console.log(
+  '==> Decision Register EVIDENCE field checks:',
+  registerDecisionIds.length,
+  'decisions,',
+  registerEvidence.filter((e) => e.hasEvidenceField).length,
+  'with EVIDENCE',
+);
 
 if (errors.length) {
   console.error('\n==> VALIDATION FAILED');

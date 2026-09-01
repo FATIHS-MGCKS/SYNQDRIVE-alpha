@@ -59,7 +59,7 @@ A natural post-cutover REFUEL exercising match → persistence → API → UI is
 | **TRADEOFFS** | Complexity, risks, downsides |
 | **REMAINING_GAPS** | Follow-up work |
 | **STATUS** | decision_status |
-| **EVIDENCE** | FST-EVID-* node references |
+| **EVIDENCE** | `FST-EVID-*` and/or `FST-TEST-*` node references (types `evidence` \| `test_evidence` only) |
 
 ## Prohibited silent changes
 
@@ -104,7 +104,7 @@ Never conflate in code, API, or UI:
 | `enqueues` | Pipeline **enqueues** to queue |
 | `consumed_by` | Queue→worker, api→consumer, query→resolver, dto→api |
 | `processes` | Worker **processes** via orchestrator |
-| `uses` | Orchestrator **uses** authority (coordinate, fingerprint) |
+| `uses` | Orchestrator/recovery **uses** authority (coordinate, fingerprint, leader guard) |
 | `invokes` | Orchestrator **invokes** resolver |
 | `input_to` | Authority/event coordinate **input_to** resolver/orchestrator |
 | `returns_to` | Resolver **returns_to** orchestrator |
@@ -117,8 +117,16 @@ Never conflate in code, API, or UI:
 
 ### Node `evidence:` arrays
 
-May reference only `evidence` and `test_evidence` node types.
-Use graph edges for decision↔gap, policy↔decision, and other semantic links.
+May reference only `evidence` and `test_evidence` node types (`FST-EVID-*`, `FST-TEST-*`).
+Use graph edges for decision↔gap, policy↔decision, rejected/superseded approaches, and other semantic links.
+
+### Recovery scheduler leader ownership
+
+`FuelStationEnrichmentRecoveryScheduler` may be instantiated on every backend replica, but
+`recoverMissedEnrichments()` is **SINGLETON_GLOBAL** via `SchedulerLeaderGuardService`.
+Only the elected cluster scheduler leader executes the recovery sweep tick; followers skip.
+This invariant applies to the **recovery scheduler tick**, not to BullMQ enrichment worker concurrency.
+See `FST-AUTH-RECOVERY-LEADER-001` and `FST-INV-RECOVERY-SINGLETON-001`.
 
 ## Related upstream authority
 
