@@ -83,11 +83,14 @@ if ! SYNQDRIVE_BOOT_CHECK=1 timeout 120 node dist/src/main.js; then
 fi
 
 echo "==> Switch current + rolling multi-replica restart"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Source ops libs from the NEW release being promoted — not the pre-switch current
+# symlink copy of this script (P1.8.3 / OQ-18 bootstrap caveat: old current would
+# load pre-P1.8.3.1 verify_post_deploy without the convergence gate).
+RELEASE_OPS_DIR="${RELEASE_DIR}/backend/scripts/ops"
 # shellcheck source=vps-production-replica-topology.config.sh
-source "${SCRIPT_DIR}/vps-production-replica-topology.config.sh"
+source "${RELEASE_OPS_DIR}/vps-production-replica-topology.config.sh"
 # shellcheck source=lib/vps-production-replica.lib.sh
-source "${SCRIPT_DIR}/lib/vps-production-replica.lib.sh"
+source "${RELEASE_OPS_DIR}/lib/vps-production-replica.lib.sh"
 
 TARGET_SHA="$(vps_replica_release_sha "$RELEASE_DIR")"
 DEPLOY_STATE_FILE="${SYNQDRIVE_DEPLOY_STATE_DIR}/last-deploy-state.env"
