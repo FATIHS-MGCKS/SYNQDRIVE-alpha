@@ -9,7 +9,7 @@ Append-only decision registry. Stable IDs in `graph/nodes.yaml`.
 | `BAT-V2-DEC-1445-001` | Stage 1 pipeline defect closure | `VALIDATED` | PR #1445 (2026-08-30) | Builds on #1383, #1393 |
 | `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` | LV canonical handoff architecture (Phase 4) | `PROPOSED` | PR #1499 (2026-09-01) | Planning only — gaps open |
 | `BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001` | Canonical LV REST assessment `inputVersion` (D1) | `VALIDATED` | PR #1501 (2026-09-01) | PKG-01 spec closure; refines PH4 + assessment-handoff gap |
-| `BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001` | Canonical LV REST assessment crash-boundary recovery (D2) | `VALIDATED` | PR TBD (2026-09-01) | Hybrid C+; refines D1 + PH4 + assessment-handoff gap; PKG-01 crash-boundary spec closure |
+| `BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001` | Canonical LV REST assessment crash-boundary recovery (D2) | `VALIDATED` | PR #1503 (2026-09-01) | Hybrid C+; refines D1 + PH4 + assessment-handoff gap; PKG-01 crash-boundary spec closure |
 
 ## Validation semantics
 
