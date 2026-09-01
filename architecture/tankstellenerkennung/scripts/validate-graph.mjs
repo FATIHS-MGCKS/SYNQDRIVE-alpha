@@ -25,6 +25,15 @@ function load(name) {
   return yaml.load(fs.readFileSync(path.join(graphDir, name), 'utf8'));
 }
 
+function assertNoDuplicateEnumValues(schema, key, label) {
+  const values = schema[key] ?? [];
+  const seen = new Set();
+  for (const v of values) {
+    if (seen.has(v)) fail(`Duplicate ${label} value: ${v}`);
+    seen.add(v);
+  }
+}
+
 function collectStableIdsFromMarkdown(dir, pattern) {
   const ids = new Set();
   const walk = (d) => {
@@ -41,7 +50,7 @@ function collectStableIdsFromMarkdown(dir, pattern) {
   return ids;
 }
 
-function parseDecisionStatusesFromMarkdown(filePath, pattern) {
+function parseDecisionStatusesFromMarkdown(filePath) {
   const map = new Map();
   if (!fs.existsSync(filePath)) return map;
   const text = fs.readFileSync(filePath, 'utf8');
@@ -67,6 +76,130 @@ function parseKnowledgeGraphDecisionTable(filePath) {
   return map;
 }
 
+function typeOf(nodeById, id) {
+  return nodeById.get(id)?.type;
+}
+
+function isType(nodeById, id, types) {
+  return types.includes(typeOf(nodeById, id));
+}
+
+function validateSemanticEdge(e, nodeById) {
+  const { from, relation, to } = e;
+  const ft = typeOf(nodeById, from);
+  const tt = typeOf(nodeById, to);
+
+  switch (relation) {
+    case 'queries':
+      if (!isType(nodeById, from, ['query', 'resolver'])) {
+        fail(`Edge ${from} -queries-> ${to}: from must be query|resolver (got ${ft})`);
+      }
+      if (!isType(nodeById, to, ['data'])) {
+        fail(`Edge ${from} -queries-> ${to}: to must be data (got ${tt})`);
+      }
+      break;
+    case 'supports':
+      if (!isType(nodeById, from, ['evidence', 'test_evidence'])) {
+        fail(`Edge ${from} -supports-> ${to}: from must be evidence|test_evidence (got ${ft})`);
+      }
+      break;
+    case 'tested_by':
+      if (!isType(nodeById, to, ['test_evidence'])) {
+        fail(`Edge ${from} -tested_by-> ${to}: to must be test_evidence (got ${tt})`);
+      }
+      break;
+    case 'gates':
+      if (!isType(nodeById, from, ['policy'])) {
+        fail(`Edge ${from} -gates-> ${to}: from must be policy (got ${ft})`);
+      }
+      if (!isType(nodeById, to, ['pipeline', 'orchestrator', 'queue'])) {
+        fail(`Edge ${from} -gates-> ${to}: to must be pipeline|orchestrator|queue (got ${tt})`);
+      }
+      break;
+    case 'enqueues':
+      if (!isType(nodeById, from, ['pipeline'])) {
+        fail(`Edge ${from} -enqueues-> ${to}: from must be pipeline (got ${ft})`);
+      }
+      if (!isType(nodeById, to, ['queue'])) {
+        fail(`Edge ${from} -enqueues-> ${to}: to must be queue (got ${tt})`);
+      }
+      break;
+    case 'consumed_by': {
+      const ok =
+        (ft === 'queue' && tt === 'worker') ||
+        (ft === 'api' && tt === 'consumer') ||
+        (ft === 'query' && tt === 'resolver') ||
+        (ft === 'dto' && tt === 'api');
+      if (!ok) {
+        fail(
+          `Edge ${from} -consumed_by-> ${to}: allowed patterns queue→worker, api→consumer, query→resolver, dto→api`,
+        );
+      }
+      break;
+    }
+    case 'persists':
+      if (!isType(nodeById, from, ['orchestrator'])) {
+        fail(`Edge ${from} -persists-> ${to}: from must be orchestrator (got ${ft})`);
+      }
+      if (!isType(nodeById, to, ['persist'])) {
+        fail(`Edge ${from} -persists-> ${to}: to must be persist (got ${tt})`);
+      }
+      break;
+    case 'uses':
+      if (!isType(nodeById, from, ['orchestrator', 'worker', 'pipeline'])) {
+        fail(`Edge ${from} -uses-> ${to}: from must be orchestrator|worker|pipeline (got ${ft})`);
+      }
+      if (!isType(nodeById, to, ['authority'])) {
+        fail(`Edge ${from} -uses-> ${to}: to must be authority (got ${tt})`);
+      }
+      break;
+    case 'invokes':
+      if (!isType(nodeById, from, ['orchestrator'])) {
+        fail(`Edge ${from} -invokes-> ${to}: from must be orchestrator (got ${ft})`);
+      }
+      if (!isType(nodeById, to, ['resolver'])) {
+        fail(`Edge ${from} -invokes-> ${to}: to must be resolver (got ${tt})`);
+      }
+      break;
+    case 'input_to':
+      if (!isType(nodeById, from, ['authority', 'event'])) {
+        fail(`Edge ${from} -input_to-> ${to}: from must be authority|event (got ${ft})`);
+      }
+      if (!isType(nodeById, to, ['resolver', 'orchestrator'])) {
+        fail(`Edge ${from} -input_to-> ${to}: to must be resolver|orchestrator (got ${tt})`);
+      }
+      break;
+    case 'returns_to':
+      if (!isType(nodeById, from, ['resolver'])) {
+        fail(`Edge ${from} -returns_to-> ${to}: from must be resolver (got ${ft})`);
+      }
+      if (!isType(nodeById, to, ['orchestrator'])) {
+        fail(`Edge ${from} -returns_to-> ${to}: to must be orchestrator (got ${tt})`);
+      }
+      break;
+    case 'derives_from':
+      if (!isType(nodeById, from, ['authority', 'dto'])) {
+        fail(`Edge ${from} -derives_from-> ${to}: from must be authority|dto (got ${ft})`);
+      }
+      if (!isType(nodeById, to, ['state', 'confidence', 'authority'])) {
+        fail(`Edge ${from} -derives_from-> ${to}: to must be state|confidence|authority (got ${tt})`);
+      }
+      break;
+    case 'superseded_by':
+      if (!isType(nodeById, from, ['superseded_approach', 'rejected_approach'])) {
+        fail(
+          `Edge ${from} -superseded_by-> ${to}: from must be superseded_approach|rejected_approach (got ${ft})`,
+        );
+      }
+      if (!isType(nodeById, to, ['decision'])) {
+        fail(`Edge ${from} -superseded_by-> ${to}: to must be decision (got ${tt})`);
+      }
+      break;
+    default:
+      break;
+  }
+}
+
 console.log('==> YAML syntax');
 const schema = load('schema.yaml');
 for (const name of ['nodes.yaml', 'edges.yaml', 'invariants.yaml']) {
@@ -74,9 +207,21 @@ for (const name of ['nodes.yaml', 'edges.yaml', 'invariants.yaml']) {
   console.log('  OK architecture/tankstellenerkennung/graph/' + name);
 }
 
+for (const [key, label] of [
+  ['node_types', 'node_types'],
+  ['epistemic_status_values', 'epistemic_status_values'],
+  ['decision_status_values', 'decision_status_values'],
+  ['relation_types', 'relation_types'],
+  ['invariant_kinds', 'invariant_kinds'],
+  ['evidence_source_types', 'evidence_source_types'],
+]) {
+  assertNoDuplicateEnumValues(schema, key, label);
+}
+
 const nodes = load('nodes.yaml').nodes ?? [];
 const edges = load('edges.yaml').edges ?? [];
 const invariants = load('invariants.yaml').invariants ?? [];
+const evidenceRefTypes = schema.evidence_reference_permitted_types ?? ['evidence', 'test_evidence'];
 
 const nodeIds = new Set();
 const nodeById = new Map();
@@ -136,10 +281,16 @@ for (const n of nodes) {
 for (const n of nodes) {
   for (const ref of n.evidence ?? []) {
     if (!nodeIds.has(ref)) fail(`Node ${n.id} references missing evidence ${ref}`);
+    const refType = nodeById.get(ref)?.type;
+    if (!evidenceRefTypes.includes(refType)) {
+      fail(
+        `Node ${n.id} evidence ref ${ref} has invalid type ${refType}; permitted: ${evidenceRefTypes.join(', ')}`,
+      );
+    }
   }
 }
 
-console.log('==> Node field / prefix / status checks:', nodes.length, 'nodes');
+console.log('==> Node field / prefix / status / evidence-ref checks:', nodes.length, 'nodes');
 
 for (const e of edges) {
   for (const field of schema.edge_fields?.required ?? ['from', 'relation', 'to']) {
@@ -153,8 +304,9 @@ for (const e of edges) {
       fail(`MISSING ${end}=${e[end]} in edge ${e.from} -${e.relation}-> ${e.to}`);
     }
   }
+  validateSemanticEdge(e, nodeById);
 }
-console.log('==> Edge references:', edges.length, 'OK');
+console.log('==> Edge references + semantic checks:', edges.length, 'OK');
 
 const invIds = new Set();
 for (const inv of invariants) {
@@ -171,6 +323,12 @@ for (const inv of invariants) {
   }
   for (const ref of inv.evidence ?? []) {
     if (!nodeIds.has(ref)) fail(`Invariant ${inv.id} references missing evidence ${ref}`);
+    const refType = nodeById.get(ref)?.type;
+    if (!evidenceRefTypes.includes(refType)) {
+      fail(
+        `Invariant ${inv.id} evidence ref ${ref} has invalid type ${refType}; permitted: ${evidenceRefTypes.join(', ')}`,
+      );
+    }
   }
 }
 console.log('==> Invariant checks:', invariants.length, 'OK');
@@ -185,13 +343,13 @@ console.log('==> Source paths:', paths.size, missingPaths.length ? 'FAIL' : 'OK'
 const gapPattern = /FST-GAP-[A-Z0-9-]+/g;
 const hypPattern = /FST-HYP-[A-Z0-9-]+/g;
 const contraPattern = /FST-CONTRA-[A-Z0-9-]+/g;
-const failPattern = /FST-FAIL-[A-Z0-9-]+/g;
+const supersededPattern = /FST-SUPERSEDED-[A-Z0-9-]+/g;
 const rejectPattern = /FST-REJECT-[A-Z0-9-]+/g;
 
 const indexedGaps = collectStableIdsFromMarkdown(authorityDir, gapPattern);
 const indexedHyps = collectStableIdsFromMarkdown(authorityDir, hypPattern);
 const indexedContras = collectStableIdsFromMarkdown(authorityDir, contraPattern);
-const indexedFails = collectStableIdsFromMarkdown(authorityDir, failPattern);
+const indexedSuperseded = collectStableIdsFromMarkdown(authorityDir, supersededPattern);
 const indexedRejects = collectStableIdsFromMarkdown(authorityDir, rejectPattern);
 
 for (const id of indexedGaps) {
@@ -203,8 +361,8 @@ for (const id of indexedHyps) {
 for (const id of indexedContras) {
   if (!nodeIds.has(id)) fail(`Indexed CONTRA ${id} missing from graph nodes`);
 }
-for (const id of indexedFails) {
-  if (!nodeIds.has(id)) fail(`Indexed FAIL ${id} missing from graph nodes`);
+for (const id of indexedSuperseded) {
+  if (!nodeIds.has(id)) fail(`Indexed SUPERSEDED ${id} missing from graph nodes`);
 }
 for (const id of indexedRejects) {
   if (!nodeIds.has(id)) fail(`Indexed REJECT ${id} missing from graph nodes`);
@@ -214,11 +372,10 @@ console.log(
   `GAP=${indexedGaps.size}`,
   `HYP=${indexedHyps.size}`,
   `CONTRA=${indexedContras.size}`,
-  `FAIL=${indexedFails.size}`,
+  `SUPERSEDED=${indexedSuperseded.size}`,
   `REJECT=${indexedRejects.size}`,
 );
 
-// Decision status consistency: nodes.yaml vs DECISION_REGISTER.md vs KNOWLEDGE_GRAPH.md
 const registerStatuses = parseDecisionStatusesFromMarkdown(
   path.join(authorityDir, 'decisions/DECISION_REGISTER.md'),
 );

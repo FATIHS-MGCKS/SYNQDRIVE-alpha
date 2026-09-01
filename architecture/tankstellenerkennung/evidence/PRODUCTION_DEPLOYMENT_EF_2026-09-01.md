@@ -9,7 +9,7 @@
 | Field | Verified value |
 |-------|----------------|
 | **Deployed main SHA** | `e76ada3d8885f8eeb7f2e6c6c50be115d0758c2c` |
-| **Previous production SHA** | `d6cbcd842` |
+| **Previous production SHA** | `d6cbcd842e42f4aeaefc792b639a4d8a90154c7c` |
 | **New production release** | `20260901052629_v4994` |
 | **Deployment method** | `bash .cursor/scripts/cloud-agent-deploy.sh` → VPS `backend/scripts/ops/vps-deploy-release.sh` (clone `main` from GitHub, build, migrate, PM2 restart) |
 | **Health check** | `https://app.synqdrive.eu/api/v1/health` — **PASS** |

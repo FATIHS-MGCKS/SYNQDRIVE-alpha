@@ -163,8 +163,9 @@ invariants:
     title: No synthetic production REFUEL for validation
     epistemic_status: CONFIRMED
     statement: Production validation must not manufacture REFUEL events or enrichment rows.
-    evidence:
-      - FST-DEC-REAL-REFUEL-E2E-001
+    source_paths:
+      - architecture/tankstellenerkennung/AGENT_CONTRACT.md
+      - architecture/tankstellenerkennung/decisions/DECISION_REGISTER.md
 
   - id: FST-INV-FALLBACK-EMPTY-ONLY-001
     kind: CONFIRMED_INVARIANT

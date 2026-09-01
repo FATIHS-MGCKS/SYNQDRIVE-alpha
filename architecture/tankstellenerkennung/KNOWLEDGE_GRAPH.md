@@ -44,7 +44,7 @@ Example invariant: detection `HIGH` + match `LOW` → station must **not** look 
 | Candidate query | FST-QUERY-ST-DWITH-001, FST-QUERY-KNN-001 |
 | Scoring / dedupe / ambiguity | FST-SCORE-V1-001, FST-DEDUPE-V1-001, FST-AMB-DECISION-001 |
 | Orchestration | FST-ORCH-ENRICH-001, FST-AUTH-COORD-START-001, FST-AUTH-FINGERPRINT-001 |
-| Lifecycle / recovery | FST-STATE-PROCESSING-001, FST-STATE-RESOLUTION-001, FST-POL-LIFECYCLE-SKIP-001, FST-POL-RECOVERY-ELIGIBILITY-001 |
+| Lifecycle / recovery | FST-STATE-PROCESSING-001, FST-STATE-RESOLUTION-001 (MATCHED, AMBIGUOUS, NOT_FOUND, NO_COORDINATES, INVALID_COORDINATES, ERROR), FST-POL-LIFECYCLE-SKIP-001, FST-POL-RECOVERY-ELIGIBILITY-001 |
 | Queue/worker | FST-QUEUE-ENRICH-001, FST-WORK-PROCESSOR-001 |
 | Recovery | FST-REC-SCHEDULER-001 |
 | Cutover / feature flags | FST-POL-CUTOVER-STARTTIME-001, FST-POL-FEATURE-ENABLE-001 |
@@ -61,7 +61,7 @@ Full scientific record: [decisions/DECISION_REGISTER.md](./decisions/DECISION_RE
 | FST-DEC-PRECISION-RESOLVER-001 | Precision-first bounded resolver | VALIDATED |
 | FST-DEC-DETECTION-VS-MATCH-001 | Separate detection vs station-match confidence | VALIDATED |
 | FST-DEC-ASYNC-ENRICH-001 | Async post-persist enrichment | VALIDATED |
-| FST-DEC-STARTTIME-CUTOVER-001 | startTime cutover authority | PRODUCTION_VALIDATED |
+| FST-DEC-STARTTIME-CUTOVER-001 | startTime cutover authority | VALIDATED |
 | FST-DEC-NO-BACKFILL-001 | No historical backfill | PRODUCTION_VALIDATED |
 | FST-DEC-DB-LIFECYCLE-001 | DB row is lifecycle source of truth | VALIDATED |
 | FST-DEC-FAILED-TERMINAL-001 | FAILED terminal for automatic recovery | VALIDATED |

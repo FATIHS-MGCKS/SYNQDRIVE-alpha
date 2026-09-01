@@ -34,7 +34,7 @@ Canonical evidence nodes (`FST-EVID-*`, `FST-TEST-*`). See also `graph/nodes.yam
 
 | Reference | Classification | Notes |
 |-----------|----------------|-------|
-| PR #31 (Mapbox reverse-geocode on Energy Events) | HISTORICAL + SUPERSEDED | FST-FAIL-MAPBOX-LAZY-BACKFILL-001, FST-EVID-PR-31-001 |
+| PR #31 (Mapbox reverse-geocode on Energy Events) | HISTORICAL + SUPERSEDED | FST-SUPERSEDED-MAPBOX-LAZY-BACKFILL-001, FST-EVID-PR-31-001 |
 
 ## Pre-Phase-B discovery
 

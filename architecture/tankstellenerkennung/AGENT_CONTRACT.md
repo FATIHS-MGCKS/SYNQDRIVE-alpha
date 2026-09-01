@@ -96,23 +96,29 @@ Never conflate in code, API, or UI:
 
 | Relation | Direction meaning |
 |----------|-------------------|
-| `queries` | Query or resolver **queries** dataset (not dataset → query) |
-| `supports` | Evidence **supports** decision, gap, or claim |
+| `queries` | Query/resolver **queries** dataset |
+| `supports` | Evidence **supports** decision/gap/claim |
 | `tested_by` | Component/consumer **tested_by** test_evidence |
-| `governs` | Decision or policy **governs** component behavior |
-| `consumed_by` | Queue **consumed_by** worker |
-| `enqueues` | Producer **enqueues** to queue |
+| `governs` | Decision/policy **governs** component |
+| `gates` | Policy **gates** pipeline/orchestrator/queue stage |
+| `enqueues` | Pipeline **enqueues** to queue |
+| `consumed_by` | Queue→worker, api→consumer, query→resolver, dto→api |
 | `processes` | Worker **processes** via orchestrator |
-| `enriches` | Orchestrator **enriches** via resolver pipeline |
-| `persists` | Orchestrator **persists** enrichment row (not resolver directly) |
-| `derives` | Authority/policy **derives** downstream field semantics |
+| `uses` | Orchestrator **uses** authority (coordinate, fingerprint) |
+| `invokes` | Orchestrator **invokes** resolver |
+| `input_to` | Authority/event coordinate **input_to** resolver/orchestrator |
+| `returns_to` | Resolver **returns_to** orchestrator |
+| `persists` | Orchestrator **persists** enrichment row |
+| `derives_from` | Trust authority **derives_from** resolution state + match confidence |
 | `projects_to` | Persist store **projects_to** DTO |
-| `gates` | Policy **gates** pipeline stage |
 | `recovers` | Recovery scheduler **recovers** via queue |
-| `superseded_by` | Historical approach **superseded_by** current decision |
-| `validates` | Governance decision **validates** (policy over) evidence gap |
+| `superseded_by` | Superseded/rejected approach **superseded_by** current decision |
+| `validates` | Hypothesis **validates** (testability linkage to) gap |
 
-Do not invert evidence, test, or query directions for validator convenience.
+### Node `evidence:` arrays
+
+May reference only `evidence` and `test_evidence` node types.
+Use graph edges for decision↔gap, policy↔decision, and other semantic links.
 
 ## Related upstream authority
 

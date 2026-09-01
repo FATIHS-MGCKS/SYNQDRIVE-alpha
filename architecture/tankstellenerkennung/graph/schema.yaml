@@ -1,6 +1,6 @@
 # Tankstellenerkennung Knowledge Graph — Schema
 
-version: "1.0"
+version: "1.1"
 description: >
   Schema for Tankstellenerkennung living architecture authority.
   Maintained incrementally by agents per AGENT_CONTRACT.md.
@@ -37,6 +37,7 @@ node_types:
   - contradiction
   - failed_approach
   - rejected_approach
+  - superseded_approach
 
 epistemic_status_values:
   - CONFIRMED
@@ -81,6 +82,11 @@ evidence_source_types:
   - DOMAIN_REASONING
   - CALIBRATION_RUN
 
+# Node evidence: arrays may reference only these types (see validate-graph.mjs)
+evidence_reference_permitted_types:
+  - evidence
+  - test_evidence
+
 relation_types:
   - produced_by
   - consumed_by
@@ -90,7 +96,10 @@ relation_types:
   - scores
   - dedupes
   - decides
-  - enriches
+  - invokes
+  - uses
+  - input_to
+  - returns_to
   - persists
   - enqueues
   - processes
@@ -107,27 +116,9 @@ relation_types:
   - does_not_solve
   - gates
   - validates
-  - derives
-  - derives
+  - derives_from
+  - enables
 
-# Edge direction semantics (from → relation → to)
-# queries:        query/resolver → dataset (lookup against reference data)
-# supports:       evidence → decision/claim/gap (epistemic support)
-# tested_by:      component/consumer → test_evidence (subject validated by test)
-# governs:        decision/policy → component (authority over behavior)
-# consumed_by:    queue → worker (worker pulls jobs)
-# enqueues:       producer → queue
-# processes:      worker → orchestrator (delegates business logic)
-# enriches:       orchestrator → resolver (invokes match pipeline)
-# persists:       orchestrator → persist store (writes enrichment row)
-# derives:        authority/policy → downstream field (coordinate, trust, fingerprint)
-# projects_to:    persist → dto (read-model mapping)
-# consumed_by:    api → consumer (UI reads API)
-# presents:       consumer → (terminal presentation; use consumer as subject)
-# gates:          policy → pipeline stage (eligibility filter)
-# recovers:       recovery → queue (re-enqueue eligible rows)
-# superseded_by:  historical approach → current decision
-# validates:      decision/policy → gap (governance over evidence requirement)
 relation_semantics_doc: architecture/tankstellenerkennung/AGENT_CONTRACT.md
 
 id_prefixes:
@@ -162,6 +153,7 @@ id_prefixes:
   contradiction: FST-CONTRA-
   failed_approach: FST-FAIL-
   rejected_approach: FST-REJECT-
+  superseded_approach: FST-SUPERSEDED-
 
 node_fields:
   required:

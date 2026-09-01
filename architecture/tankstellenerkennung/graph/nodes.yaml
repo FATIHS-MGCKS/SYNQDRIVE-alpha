@@ -158,8 +158,6 @@ nodes:
     summary: Eligibility uses VehicleEnergyEvent.startTime >= FUEL_STATION_ENRICHMENT_CUTOVER_AT, not createdAt.
     source_paths:
       - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-cutover.util.ts
-    evidence:
-      - FST-DEC-STARTTIME-CUTOVER-001
 
   - id: FST-POL-NO-BACKFILL-001
     type: policy
@@ -168,9 +166,6 @@ nodes:
     summary: Pre-cutover REFUEL events are never automatically enriched by deploy or recovery.
     source_paths:
       - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-producer.service.ts
-    evidence:
-      - FST-DEC-NO-BACKFILL-001
-      - FST-EVID-PROD-DEPLOY-001
 
   - id: FST-QUEUE-ENRICH-001
     type: queue
@@ -233,9 +228,13 @@ nodes:
     title: resolutionStatus state machine
     epistemic_status: CONFIRMED
     summary: >
-      MATCHED | AMBIGUOUS | NOT_FOUND | NO_COORDINATES | ERROR (retryable).
-      ERROR permits automatic retry; other terminal resolutions block re-resolution when fingerprint matches.
+      Runtime enum: MATCHED | AMBIGUOUS | NOT_FOUND | NO_COORDINATES | INVALID_COORDINATES | ERROR.
+      NO_COORDINATES set by orchestrator when canonical coordinate missing.
+      INVALID_COORDINATES mapped from resolver. ERROR is retryable; other terminal resolutions
+      block automatic re-resolution when fingerprint matches.
     source_paths:
+      - backend/prisma/schema.prisma
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-orchestrator.service.ts
       - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-trust.policy.ts
       - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-lifecycle.policy.ts
 
@@ -250,8 +249,6 @@ nodes:
       Changed fingerprint or resolverVersion → re-resolution may be permitted.
     source_paths:
       - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-lifecycle.policy.ts
-    evidence:
-      - FST-EVID-CODE-LIFECYCLE-001
 
   - id: FST-POL-RECOVERY-ELIGIBILITY-001
     type: policy
@@ -290,8 +287,6 @@ nodes:
       skip/retry; BullMQ history is not business source of truth.
     source_paths:
       - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-lifecycle.policy.ts
-    evidence:
-      - FST-DEC-DB-LIFECYCLE-001
 
   - id: FST-PERSIST-ENRICHMENT-001
     type: persist
@@ -309,8 +304,6 @@ nodes:
     summary: LOW matches are diagnostic; not authoritative in API trusted flag or UI trusted mode.
     source_paths:
       - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-trust.policy.ts
-    evidence:
-      - FST-DEC-TRUST-HIGH-MEDIUM-001
 
   # --- API / UI ---
   - id: FST-API-TRIPS-TIMELINE-001
@@ -321,8 +314,6 @@ nodes:
     source_paths:
       - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
       - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
-    evidence:
-      - FST-DEC-EXTEND-API-001
 
   - id: FST-DTO-STATION-001
     type: dto
@@ -332,8 +323,6 @@ nodes:
     source_paths:
       - backend/src/modules/vehicle-intelligence/energy-events/energy-events-station-enrichment.dto.ts
       - backend/src/modules/vehicle-intelligence/energy-events/energy-events.types.ts
-    evidence:
-      - FST-DEC-READ-PERSISTED-001
 
   - id: FST-CONS-TIMELINE-CARD-001
     type: consumer
@@ -346,7 +335,6 @@ nodes:
       - frontend/src/rental/components/trips/trip-timeline-shared.tsx
       - frontend/src/rental/components/trips/trips-fuel-station-enrichment.ts
     evidence:
-      - FST-DEC-EXTEND-TIMELINE-UI-001
       - FST-TEST-UI-REGRESSION-001
 
   # --- Decisions (graph nodes; full register in decisions/) ---
@@ -400,13 +388,13 @@ nodes:
     type: decision
     title: startTime is cutover authority
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
+    decision_status: VALIDATED
     summary: >
-      PRODUCTION_VALIDATED scope: cutover timestamp preserved across deploy;
-      16 pre-cutover REFUEL, 0 enrichment rows — historical firewall intact.
+      Cutover eligibility uses VehicleEnergyEvent.startTime, not createdAt.
+      Validated in code/tests. Production deploy preserved cutover timestamp and
+      historical firewall, but did not observe a late-persisted REFUEL classified by startTime.
     evidence:
       - FST-EVID-CODE-CUTOVER-001
-      - FST-EVID-PROD-DEPLOY-001
 
   - id: FST-DEC-NO-BACKFILL-001
     type: decision
@@ -498,9 +486,8 @@ nodes:
     decision_status: VALIDATED
     summary: >
       Owner-confirmed governance: do not fabricate synthetic production REFUEL events.
-      Separate from evidence gap FST-GAP-REAL-POST-CUTOVER-REFUEL-001 (no real event yet).
-    evidence:
-      - FST-GAP-REAL-POST-CUTOVER-REFUEL-001
+      Policy validated via Agent Contract and FST-INV-NO-SYNTHETIC-PROD-REFUEL-001.
+      Production evidence gap remains FST-GAP-REAL-POST-CUTOVER-REFUEL-001.
 
   # --- Evidence ---
   - id: FST-EVID-CODE-BOUNDARY-001
@@ -660,8 +647,6 @@ nodes:
     summary: >
       Architecture deployed; zero enrichment rows; zero post-cutover REFUEL at last production snapshot.
       Full match → persist → API → UI path not production-validated on real event.
-    evidence:
-      - FST-EVID-PROD-DEPLOY-001
 
   - id: FST-GAP-GERMANY-SCOPE-001
     type: gap
@@ -717,17 +702,14 @@ nodes:
     epistemic_status: UNKNOWN
     summary: New dataset_version may need explicit re-resolve rules for existing enrichment rows.
 
-  - id: FST-FAIL-MAPBOX-LAZY-BACKFILL-001
-    type: failed_approach
+  - id: FST-SUPERSEDED-MAPBOX-LAZY-BACKFILL-001
+    type: superseded_approach
     title: Mapbox reverse-geocoded Energy Event location + lazy read backfill
     epistemic_status: HISTORICAL
     summary: >
-      Early generic geocoded location on energy events (PR #31 era, OPEN/unmerged).
-      Superseded by local OSM dataset + async enrichment + persisted read model.
-      Not an empirical runtime failure of the current system.
-    notes: HISTORICAL + SUPERSEDED — not classified as empirical FAILED
-    evidence:
-      - FST-EVID-PR-31-001
+      Historical Mapbox proposal / PR #31 (OPEN, unmerged). Production adoption of this
+      architecture not established in current reconstruction. Superseded by local OSM dataset,
+      async enrichment, and persisted read model.
 
   - id: FST-REJECT-WIDEN-RADIUS-001
     type: rejected_approach
@@ -740,37 +722,44 @@ nodes:
     evidence:
       - FST-EVID-CALIBRATION-001
 
-  - id: FST-FAIL-CREATEDAT-CUTOVER-001
-    type: failed_approach
+  - id: FST-REJECT-CREATEDAT-CUTOVER-001
+    type: rejected_approach
     title: Using createdAt as cutover authority
     epistemic_status: HISTORICAL
-    summary: Would misclassify late-ingested historical events; superseded by startTime authority.
+    decision_status: REJECTED
+    summary: Design alternative rejected — would misclassify late-ingested historical events.
 
-  - id: FST-FAIL-BULLMQ-LIFECYCLE-001
-    type: failed_approach
+  - id: FST-REJECT-BULLMQ-LIFECYCLE-001
+    type: rejected_approach
     title: BullMQ job history as business lifecycle authority
     epistemic_status: HISTORICAL
-    summary: Superseded by DB row processingStatus/resolutionStatus + fingerprint terminality.
+    decision_status: REJECTED
+    summary: Design alternative rejected — jobs can be lost; DB row is lifecycle authority.
 
-  - id: FST-FAIL-HTTP-RESOLVER-READ-001
-    type: failed_approach
+  - id: FST-REJECT-HTTP-RESOLVER-READ-001
+    type: rejected_approach
     title: Invoke resolver/PostGIS on HTTP or card read
     epistemic_status: HISTORICAL
-    summary: Superseded — reads use persisted enrichment only; prevents N+1 and latency spikes.
+    decision_status: REJECTED
+    summary: Design alternative rejected — reads use persisted enrichment only.
 
-  - id: FST-FAIL-FORCED-NEAREST-001
-    type: failed_approach
+  - id: FST-REJECT-FORCED-NEAREST-001
+    type: rejected_approach
     title: Forced nearest station without confidence gates
     epistemic_status: HISTORICAL
+    decision_status: REJECTED
     summary: >
-      Design anti-pattern rejected during resolver design. Would present false certainty;
-      calibration FP rate 5.4% under strict matching.
+      Design alternative rejected during resolver design. Calibration FP rate 5.4%
+      under strict matching; would present false certainty.
+    evidence:
+      - FST-EVID-CALIBRATION-001
 
-  - id: FST-FAIL-INFINITE-FAILED-RETRY-001
-    type: failed_approach
+  - id: FST-REJECT-INFINITE-FAILED-RETRY-001
+    type: rejected_approach
     title: Automatically recovering FAILED enrichment forever
     epistemic_status: HISTORICAL
-    summary: Retry storms on permanent failures; superseded by terminal_failed policy.
+    decision_status: REJECTED
+    summary: Design alternative rejected — retry storms on permanent failures.
 
   - id: FST-REJECT-HISTORICAL-BACKFILL-001
     type: rejected_approach
@@ -778,8 +767,6 @@ nodes:
     epistemic_status: CONFIRMED
     decision_status: REJECTED
     summary: Governance rejection — mutates historical operational record semantics.
-    evidence:
-      - FST-DEC-NO-BACKFILL-001
 
   - id: FST-REJECT-SYNTHETIC-PROD-REFUEL-001
     type: rejected_approach
@@ -787,5 +774,3 @@ nodes:
     epistemic_status: CONFIRMED
     decision_status: REJECTED
     summary: Owner-confirmed governance — do not manufacture production REFUEL events or rows.
-    evidence:
-      - FST-DEC-REAL-REFUEL-E2E-001

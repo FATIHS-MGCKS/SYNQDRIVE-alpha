@@ -12,5 +12,5 @@ Hypotheses are not decisions. Promote to decision only after explicit validation
 | Hypothesis | Outcome | Reference |
 |------------|---------|-----------|
 | Widening fallback radius beyond 100m improves correct match count | **Rejected** by calibration | FST-REJECT-WIDEN-RADIUS-001 |
-| createdAt can serve as cutover authority | **Failed** approach | FST-FAIL-CREATEDAT-CUTOVER-001 |
-| Forced nearest station without confidence gates improves UX | **Failed** approach (historical) | See FAILED_APPROACHES.md |
+| createdAt can serve as cutover authority | **Rejected** | FST-REJECT-CREATEDAT-CUTOVER-001 |
+| Forced nearest station without confidence gates improves UX | **Rejected** | FST-REJECT-FORCED-NEAREST-001 |

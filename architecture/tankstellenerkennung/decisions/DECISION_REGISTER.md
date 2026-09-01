@@ -9,7 +9,7 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 | Field | Value |
 |-------|-------|
 | **STATUS** | PRODUCTION_VALIDATED (scoped: dataset infrastructure live in production) |
-| **BEFORE** | Generic reverse-geocoded Energy Event locations (Mapbox-era, PR #31) |
+| **BEFORE** | Historical Mapbox reverse-geocode proposal (PR #31, OPEN/unmerged); production adoption not established in current reconstruction |
 | **WHY** | Deterministic offline matching, tenant-safe, no per-read external geocoding dependency |
 | **CHANGE** | `osm.fuel_stations` + import/refresh pipeline (PR #1447) |
 | **EXPECTED_EFFECT** | Bounded PostGIS queries with versioned dataset metadata |
@@ -80,16 +80,16 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 
 | Field | Value |
 |-------|-------|
-| **STATUS** | PRODUCTION_VALIDATED (scoped: cutover preserved; historical firewall intact) |
+| **STATUS** | VALIDATED |
 | **BEFORE** | Risk of using createdAt for eligibility |
 | **WHY** | Event occurrence time is the operational truth for historical firewall |
 | **CHANGE** | `isFuelStationEnrichmentEventAfterCutover(eventStartTime, cutoverAt)` |
 | **EXPECTED_EFFECT** | Late-ingested old trips remain non-enriched |
-| **VALIDATION** | cutover.util.spec.ts; production cutover `2026-08-31T19:47:39.000Z` preserved |
-| **OBSERVED_EFFECT** | 16 pre-cutover REFUEL, 0 enrichment rows |
-| **NON_EFFECTS** | Does not change detection timestamps |
+| **VALIDATION** | cutover.util.spec.ts; production cutover `2026-08-31T19:47:39.000Z` preserved across deploy |
+| **OBSERVED_EFFECT** | Cutover timestamp preserved; 16 pre-cutover REFUEL, 0 enrichment rows. **No observed late-persisted REFUEL classified by startTime in production.** |
+| **NON_EFFECTS** | Does not prove startTime classification on a real late-persisted production event |
 | **TRADEOFFS** | Requires correct upstream startTime |
-| **REMAINING_GAPS** | Upstream coordinate/timestamp contract documentation |
+| **REMAINING_GAPS** | FST-GAP-UPSTREAM-COORD-CONTRACT-001 |
 | **EVIDENCE** | FST-EVID-CODE-CUTOVER-001 |
 
 ---
@@ -247,9 +247,9 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 | **WHY** | Epistemic rigor — no synthetic production events |
 | **CHANGE** | Canonical gap FST-GAP-REAL-POST-CUTOVER-REFUEL-001; reject FST-REJECT-SYNTHETIC-PROD-REFUEL-001 |
 | **EXPECTED_EFFECT** | Full path promoted to PRODUCTION_VALIDATED only after real event |
-| **VALIDATION** | Await natural post-cutover REFUEL with enrichment row |
-| **OBSERVED_EFFECT** | Policy confirmed; real event not yet observed |
+| **VALIDATION** | Owner-confirmed governance + Agent Contract + FST-INV-NO-SYNTHETIC-PROD-REFUEL-001 |
+| **OBSERVED_EFFECT** | Policy active; synthetic production mutation prohibited |
 | **NON_EFFECTS** | Does not block deployed architecture |
-| **TRADEOFFS** | Validation latency |
-| **REMAINING_GAPS** | This is the gap |
-| **EVIDENCE** | FST-GAP-REAL-POST-CUTOVER-REFUEL-001 |
+| **TRADEOFFS** | Validation latency for full E2E path |
+| **REMAINING_GAPS** | FST-GAP-REAL-POST-CUTOVER-REFUEL-001 — natural positive production REFUEL not observed |
+| **EVIDENCE** | FST-REJECT-SYNTHETIC-PROD-REFUEL-001 (governance edge); not production observation |

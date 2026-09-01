@@ -73,7 +73,7 @@ Vehicle telemetry
 
 | Aspect | Behavior |
 |--------|----------|
-| Cutover authority | `VehicleEnergyEvent.startTime` (not `createdAt`) |
+| Cutover authority | `VehicleEnergyEvent.startTime` (not `createdAt`) — invariant preserved; production proof of late-persist classification not yet observed |
 | Pre-cutover REFUEL | No automatic enrichment |
 | Historical backfill | Explicitly forbidden |
 | DB source of truth | `vehicle_energy_event_fuel_station_enrichments` |
