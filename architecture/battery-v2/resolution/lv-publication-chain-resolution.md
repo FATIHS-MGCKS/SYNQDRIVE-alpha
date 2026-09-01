@@ -2,7 +2,7 @@
 
 **Gaps:** `BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001`, `BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001`, `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001`  
 **Priority:** P0_ACTIVATION_BLOCKER (Stage-2 cutover — **not** proven active production outage while flags default OFF)  
-**Readiness:** IMPLEMENTATION_SPEC_REQUIRED — PKG-01 blockers: REST post-persist/pre-enqueue crash-boundary handling, `CONFIGURATION_INVARIANT_SPEC_REQUIRED` (`inputVersion` = `BatteryMeasurement.id` — **VALIDATED** `BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001`); PKG-02 blockers: assessment-track selection authority, `publicationVersion`, `CONFIGURATION_INVARIANT_SPEC_REQUIRED`  
+**Readiness:** IMPLEMENTATION_SPEC_REQUIRED — PKG-01 blockers: `CONFIGURATION_INVARIANT_SPEC_REQUIRED` only (`inputVersion` = `BatteryMeasurement.id` — **VALIDATED** D1; crash-boundary — **VALIDATED** D2 Hybrid C+); PKG-02 blockers: assessment-track selection authority, `publicationVersion`, `CONFIGURATION_INVARIANT_SPEC_REQUIRED`  
 **Proposed decision:** `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (PROPOSED — gaps remain open)
 
 ## CURRENT STATE
@@ -136,30 +136,56 @@ Evaluate against: evidence strength, publication semantics, hysteresis, superses
 
 **Not settled:** which assessment(s) receive publication enqueue when recompute yields multiple tracks.
 
-## REST HANDLER CRASH BOUNDARY (PKG-01)
+## REST HANDLER CRASH BOUNDARY (PKG-01 — VALIDATED D2)
 
-`BatteryRestTargetEvaluateHandler` early return when measurement already exists:
+**Decision:** `BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001` — **Hybrid C+ crash recovery** (not `PRODUCTION_VALIDATED`)
+
+Current handler behavior (insufficient):
 
 ```typescript
 if (hasMeasurement) {
   await this.updateTargetMetadata(session, restTargetType, { status: COMPLETED, ... });
-  return; // no assessment enqueue
+  return; // no assessment handoff ensure
 }
 ```
 
 **Failure mode:** measurement persisted → process crashes before assessment enqueue → REST job retries → `hasMeasurement === true` → returns without creating missing assessment job.
 
-**Mitigation (planned):** reconciliation safety net scans canonical measurements without recent assessment.
+### SELECTED architecture (Hybrid C+)
 
-**Target alternatives (SPEC REQUIRED):**
+1. **Direct normal handoff** — primary low-latency path after successful measurement persist  
+2. **Direct retry repair** — existing-measurement branch ensures handoff before COMPLETED return  
+3. **Periodic reconciliation safety net** — independent eventual repair (same D1 identity)  
+4. **Durable target-scoped handoff state** — LV REST session/target metadata (not `BatteryMeasurement`)
 
-| Alt | Description |
-|-----|-------------|
-| **A** | Existing-measurement branch also ensures assessment handoff idempotently |
-| **B** | Reconciliation alone repairs post-persist/pre-enqueue crash |
-| **C** | Both A + B |
+Reconciliation is **not** the primary delivery mechanism.
 
-Do not redesign in Phase 4 — document boundary only.
+### Retry path contract
+
+```
+existing measurement found
+  → resolve persisted measurement.id for this target
+  → ensureAssessmentHandoff(measurement.id)   // assess:{vehicleId}:LV_HEALTH:{measurementId}
+  → maintain/mark target COMPLETED
+  → return
+```
+
+### Reconciliation contract
+
+- Same D1 identity: `inputVersion = BatteryMeasurement.id`  
+- No reconciliation-specific job identity  
+- Repair when durable handoff state indicates execution incomplete — **not** when assessment policy legitimately skipped  
+- Current code gap: `reconcilePendingAssessments` scans `batteryFeatures`, not canonical REST measurements — implementation must extend per D2
+
+### Durable handoff state (target-scoped)
+
+Per REST target in session metadata: `IMPLICIT | ENQUEUED | EXECUTED` with outcomes `ASSESSMENT_PERSISTED | POLICY_SKIPPED | UNSUPPORTED`. Policy skip ≠ liveness failure.
+
+### Exactly-once verdict
+
+**At-least-once** + deterministic job identity + idempotent persistence + durable EXECUTED outcome + reconciliation. **Do not claim exactly-once.**
+
+See `decisions/lv-assessment-crash-boundary-decision.md`.
 
 ## ASSESSMENT JOB IDENTITY (canonical — do not invent `lv-assess:`)
 
@@ -397,8 +423,7 @@ Does not enable readiness; does not fix timestamp provenance; does not fix HEV a
 
 - **Canonical publication assessment-track selection authority** (WORKSHOP_OVERRIDE vs TELEMETRY when both publicationEligible)
 - Authoritative `publicationVersion` for canonical handoff
-- REST handler crash boundary: existing-measurement branch handoff vs reconcile-only (A/B/C)
-- **Configuration invariant** for REST_SHADOW + PUBLICATION + HANDOFF combinatorics (`CONFIGURATION_INVARIANT_SPEC_REQUIRED`)
+- **Configuration invariant** for REST_SHADOW + PUBLICATION + HANDOFF combinatorics (`CONFIGURATION_INVARIANT_SPEC_REQUIRED`) — crash-boundary closed **VALIDATED** D2 (`BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001`)
 - Exact reconcile cadence vs #1445 reconciliation load
 - Whether handoff flag merges into publication flag after soak
 - Org-scoped rollout targeting (if desired) — **SPEC REQUIRED**; not available via current flags

@@ -50,7 +50,7 @@ What must be true before Stage-2+ flags go ON in production.
 
 | Gate | Requires |
 |------|----------|
-| **Stage-2 LV e2e** | PKG-01 + PKG-02 implemented; **all** IMPLEMENTATION_SPEC_REQUIRED blockers signed off (PKG-01: crash-boundary, configuration invariant — `inputVersion` VALIDATED D1; PKG-02: assessment-track selection, `publicationVersion`, configuration invariant); separate runtime implementation authorization; no unsafe REST_SHADOW=ON + PUBLICATION=ON + HANDOFF=OFF steady state |
+| **Stage-2 LV e2e** | PKG-01 + PKG-02 implemented; **all** IMPLEMENTATION_SPEC_REQUIRED blockers signed off (PKG-01: configuration invariant only — `inputVersion` VALIDATED D1; crash-boundary VALIDATED D2; PKG-02: assessment-track selection, `publicationVersion`, configuration invariant); separate runtime implementation authorization; no unsafe REST_SHADOW=ON + PUBLICATION=ON + HANDOFF=OFF steady state |
 | **Stage-2 canary** | **Canary deployment/environment** — not per-org process.env flags (org allowlist **SPEC REQUIRED** if desired) |
 | **Strict timestamp policy (optional)** | PKG-03 decision + migration **before** Stage-2 if selected as safety policy |
 | **HEV write-gate changes** | PKG-05 product decision — not Phase 4 |

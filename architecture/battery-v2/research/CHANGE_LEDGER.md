@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-01 — D2 canonical LV assessment crash-boundary decision
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | PKG-01 crash-boundary remained SPEC REQUIRED (A/B/C alternatives). `hasMeasurement` early return marks COMPLETED without handoff ensure. Reconciliation scans `batteryFeatures`, not canonical REST measurements. Assessment-row absence could be misread as handoff failure. |
+| **OBSERVATION** | `BatteryRestTargetEvaluateHandler` returns on `hasMeasurement` without enqueue; crash after persist strands handoff on retry. `reconcilePendingAssessments` uses `updatedAt.getTime()` not `measurement.id`. `recomputeLvEstimatedHealth()` may return empty `persistedAssessmentIds`. Producer `addIdempotent` suppresses in-flight duplicates. |
+| **HYPOTHESIS** | Selecting Hybrid C+ (direct normal + direct retry repair + reconciliation safety net + durable target-scoped handoff metadata) closes PKG-01 crash-boundary spec without runtime change or migration. |
+| **CHANGE** | Created `BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001` (VALIDATED — not PRODUCTION_VALIDATED); dossier `decisions/lv-assessment-crash-boundary-decision.md`; graph decision node + 4 evidence nodes + refines edges to assessment-handoff gap, PH4 decision, D1; updated PKG-01 authority across CURRENT_STATE, KNOWLEDGE_GRAPH, implementation-packages, lv-publication-chain dossier, executive summary, dependency graph, priority matrix, decisions README. |
+| **WHY** | Direct-only cannot recover stranded measurements; reconciliation-only adds latency; transactional outbox disproportionate; Hybrid C+ preserves low-latency path, retry self-heal, eventual recovery, policy-skip vs liveness distinction, reuses existing reconciliation architecture, no mandatory DB migration. |
+| **EXPECTED_EFFECT** | Runtime agents implement Hybrid C+ with same D1 identity; durable handoff state in target metadata; PKG-01 remains IMPLEMENTATION_SPEC_REQUIRED (configuration invariant only); assessment-handoff gap stays open. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh`; code cites `battery-rest-target-evaluate.handler.ts`, `battery-v2-reconciliation.service.ts`, `battery-assessment.service.ts`, `battery-v2-job-producer.service.ts` |
+| **OBSERVED_EFFECT** | Validator PASS; 20 open gaps; 23 planning items; 129 nodes / 113 edges / 11 invariants (was 124/110/11). |
+| **NON_EFFECTS** | No runtime implementation; no assessment enqueue added; no reconciliation code changed; no DB migration; no feature flags; no production mutation; no backfill; no deploy; assessment-handoff gap remains open; PKG-01 not yet IMPLEMENTATION_READY. |
+| **REGRESSIONS_OR_TRADEOFFS** | At-least-once not exactly-once; reconciliation must use durable EXECUTED outcome not assessment-row absence |
+| **REMAINING_GAPS** | All 20 `BAT-V2-GAP-*` open; PKG-01 configuration invariant (D3); PKG-02 blockers unchanged |
+| **DECISION_STATUS** | VALIDATED (architecture / code-authority — NOT PRODUCTION_VALIDATED) |
+| **AFFECTED_GRAPH** | +1 decision, +4 evidence, +3 refines edges — see validator counts |
+| **EVIDENCE** | `BAT-V2-EVID-CODE-REST-HAS-MEASUREMENT-EARLY-RETURN-001`, `BAT-V2-EVID-CODE-RECONCILE-NO-CANONICAL-REST-001`, `BAT-V2-EVID-CODE-ASSESSMENT-POLICY-SKIP-001`, `BAT-V2-EVID-CODE-JOB-PRODUCER-INFLIGHT-DEDUPE-001` |
+
+---
+
 ## CL-2026-09-01 — D1 canonical LV assessment inputVersion decision
 
 | Field | Content |

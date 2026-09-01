@@ -19,7 +19,7 @@
 | Field | Value |
 |-------|-------|
 | **Dependencies (dev)** | None hard |
-| **Dependencies (enablement)** | D1 `inputVersion` (`BatteryMeasurement.id` — VALIDATED); soft: PKG-03 before Stage-2 prod if strict timestamp policy selected |
+| **Dependencies (enablement)** | D1 `inputVersion` + D2 crash-boundary (both VALIDATED); soft: PKG-03 before Stage-2 prod if strict timestamp policy selected |
 | **Modules** | `battery-rest-target-evaluate.handler`, `BatteryV2JobProducerService`, `battery-v2-reconciliation.service` |
 | **DB migration** | Optional index for reconcile |
 | **Feature flag** | `BATTERY_V2_LV_HANDOFF_ENABLED` (recommended, PROPOSED) + `BATTERY_V2_REST_SHADOW_ENABLED` — **deployment-scoped process.env only** |
@@ -28,8 +28,8 @@
 | **Rollback** | **Safe order (current runtime):** disable `BATTERY_V2_PUBLICATION_ENABLED` first → verify legacy capture restored → then disable handoff flag. `HANDOFF OFF` alone unsafe while `PUBLICATION` ON |
 | **Test scope** | Handler unit + integration |
 | **Production validation** | Canary **deployment/environment** (not per-org flags). Validate `HANDOFF_ENQUEUE` + `HANDOFF_EXECUTION` + `ASSESSMENT_POLICY_OUTCOME`; `ASSESSMENT_ROW` only when policy requires persist. Observation window for correlation — **not** PASS/FAIL SLA |
-| **Blocked by** | REST crash-boundary spec (A/B/C); `CONFIGURATION_INVARIANT_SPEC_REQUIRED` |
-| **Crash boundary** | `hasMeasurement` early return — post-persist/pre-enqueue crash needs reconcile or branch handoff (SPEC) |
+| **Blocked by** | `CONFIGURATION_INVARIANT_SPEC_REQUIRED` only |
+| **Crash boundary** | **VALIDATED (D2)** — Hybrid C+: direct normal + direct retry repair (`ensureAssessmentHandoff` on `hasMeasurement`) + reconciliation safety net + durable target-scoped handoff metadata |
 | **Does not solve** | Publication, timestamp provenance, readiness |
 
 ## PKG-02 — LV publication handoff
