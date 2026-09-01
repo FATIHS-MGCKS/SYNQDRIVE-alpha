@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'scaling-process-knowledge-graph-bootstrap-2026-09-01',
+    version: '4.9.1017',
+    title: 'Scaling Process — canonical knowledge graph & architecture authority bootstrap',
+    summary: [
+      'Established `architecture/scaling-process/` as living authority for horizontal scaling: topology, P1.2–P1.8.2.1 phases, coordination layers (scheduler leader, DIMO budget, reconciliation mutex), BullMQ model, deploy lifecycle, incidents, scaling envelopes, decision log, validation evidence.',
+      'Read-only production snapshot 2026-09-01: effective N=1 (`synqdrive-b` absent) while nginx retains dual-upstream — documents INC-05 / validates need for P1.8.2.1 (#1472).',
+      'No runtime changes. Agent maintenance policy requires future scaling work to update this authority.',
+    ],
+    reason: 'Enable independent agents to understand scaling architecture without reconstructing full PR history.',
+    previousBehavior: 'Scaling knowledge scattered across P1_* memos, ChangesView, and phase reports without unified graph.',
+    details:
+      'architecture/scaling-process/; SCALING_PROCESS_BOOTSTRAP_FINAL_RESPONSE_2026-09-01.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T09:15:00.000Z',
+  },
+  {
     id: 'fuel-station-enrichment-phase-f-ui-2026-09-01',
     version: '4.9.1019',
     title: 'Fuel Station Enrichment Phase F — trip timeline UI integration',

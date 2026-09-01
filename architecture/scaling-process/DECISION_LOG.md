@@ -1,0 +1,166 @@
+# Scaling Process — Decision Log
+
+**TYPE:** DECISION_AUTHORITY  
+Format: Decision ID | Date/Phase | Status
+
+---
+
+## DEC-001: Global scheduler leader (P1.7)
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-08-30 |
+| **CONTEXT** | Multi-replica deploy planned after P1.3 |
+| **PROBLEM** | Duplicate cron/interval producers |
+| **DECISION** | One global leader via Redis lease; 42 singleton schedulers guarded |
+| **WHY** | Minimal change; reuses Redis; tested failover |
+| **ALTERNATIVES** | PM2 cluster; host cron; DB locks — rejected/deferred |
+| **TRADE-OFF** | ~35s max failover gap |
+| **EVIDENCE** | #1430, staging #1438/#1440 |
+| **STATUS** | ACTIVE |
+| **INTRODUCED_BY** | #1430 |
+
+---
+
+## DEC-002: BullMQ consumers on all replicas
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-08-30 |
+| **PROBLEM** | Throughput vs safety |
+| **DECISION** | Workers not leader-guarded |
+| **WHY** | BullMQ designed for multi-consumer; safety via idempotency + mutex + budget |
+| **STATUS** | ACTIVE |
+| **INTRODUCED_BY** | P1.7 design |
+
+---
+
+## DEC-003: Global DIMO provider budget (P1.3)
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-08-29 |
+| **PROBLEM** | Per-process concurrency does not cap provider HTTP across replicas |
+| **DECISION** | Redis ZSET lease semaphore; limit 50 default; `DimoRequestExecutor` mandatory |
+| **WHY** | Provider 429 prevention; priority + starvation handling |
+| **ALTERNATIVES** | Rate limit per replica — **rejected** (multiplies ceiling) |
+| **STATUS** | ACTIVE |
+| **INTRODUCED_BY** | #1417 |
+
+---
+
+## DEC-004: Reconciliation execution mutex (P1.4)
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-08-30 |
+| **PROBLEM** | Leader election does not serialize per-vehicle reconciliation |
+| **DECISION** | Redis lock per org+vehicle trip scope |
+| **WHY** | API + worker paths bypass scheduler leader |
+| **STATUS** | ACTIVE |
+| **INTRODUCED_BY** | #1435 |
+
+---
+
+## DEC-005: Fail-closed on Redis outage
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-08-29–30 |
+| **DECISION** | Leader, mutex, budget all fail-closed |
+| **WHY** | Prefer known degradation over duplicate side effects |
+| **STATUS** | ACTIVE |
+| **INTRODUCED_BY** | P1.3, P1.4, P1.7 |
+
+---
+
+## DEC-006: Controlled scale-to-2 before higher N
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-08-31 |
+| **DECISION** | Production scale 1→2 only after soak + remediation gates |
+| **WHY** | Evidence-based; avoid leap to N>2 without prod DB 0 proof |
+| **EVIDENCE** | #1469 GO_WITH_CONDITIONS, #1470, #1471 |
+| **STATUS** | EXECUTED (2026-08-31); **runtime drift 2026-09-01** |
+
+---
+
+## DEC-007: Retrospective soak audit (not agent 24h wait)
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-08-31 |
+| **DECISION** | Agent performs retrospective audit, not live 24h observation |
+| **WHY** | Soak already occurred; audit is evidence synthesis |
+| **STATUS** | ACTIVE |
+| **INTRODUCED_BY** | #1469 |
+
+---
+
+## DEC-008: Validation ports 3010/3011 isolated
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-08-30 |
+| **DECISION** | Process validation uses Redis DB 15, not production DB 0 |
+| **WHY** | Safe VPS testing without touching prod leases |
+| **LIMITATION** | Coordination semantics identical; namespace differs |
+| **STATUS** | ACTIVE |
+
+---
+
+## DEC-009: Do not mutate historical failed jobs
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-08-31 |
+| **DECISION** | Scaling tasks do not purge/retry historical BullMQ failed sets |
+| **WHY** | Forensics + avoid unintended side effects |
+| **STATUS** | ACTIVE |
+
+---
+
+## DEC-010: Rolling multi-replica deploy (P1.8.2.1)
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-08-31 |
+| **PROBLEM** | Single `pm2 restart synqdrive` leaves replica B stale/absent |
+| **DECISION** | Rolling A→B restart, SHA invariant, auto-rollback |
+| **WHY** | INC-05 topology drift |
+| **STATUS** | **PROPOSED** — #1472 open, not merged |
+| **SUPERSEDES** | implicit single-restart deploy model |
+
+---
+
+## DEC-011: PM2 fork not cluster
+
+| Field | Value |
+|-------|-------|
+| **DECISION** | Independent fork processes per replica |
+| **WHY** | Explicit ports, health per replica, matches validation harness model |
+| **STATUS** | ACTIVE |
+
+---
+
+## DEC-012: No physical refuel duration fabrication
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-08-30 |
+| **CONTEXT** | P1.3 energy/refuel semantics |
+| **DECISION** | Do not fabricate physical refuel duration from detection window |
+| **STATUS** | ACTIVE |
+| **SOURCE** | P1.3-S5 energy semantics docs |
+
+---
+
+## DEC-013: SYNQDRIVE_BOOT_CHECK before release promotion
+
+| Field | Value |
+|-------|-------|
+| **DATE** | Post INC-01 |
+| **DECISION** | Boot check builds full module graph before `current` switch |
+| **WHY** | Catch Prometheus duplicate registration |
+| **STATUS** | ACTIVE |
