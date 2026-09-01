@@ -20,6 +20,21 @@ HEALTH_URL="${CLOUD_AGENT_HEALTH_URL:-https://app.synqdrive.eu/api/v1/health}"
 GIT_REMOTE="${CLOUD_AGENT_GIT_REMOTE:-origin}"
 GIT_BRANCH="${CLOUD_AGENT_GIT_BRANCH:-main}"
 
+validate_requested_deploy_sha() {
+  local sha=$1
+  if ! node --input-type=module -e "
+import { assertValidDeploySha } from '${ROOT}/backend/scripts/ops/deploy-sha-provenance.mjs';
+const r = assertValidDeploySha(process.argv[1]);
+if (!r.ok) {
+  console.error('[cloud-agent] ERROR: invalid REQUESTED_DEPLOY_SHA:', r.reason);
+  process.exit(1);
+}
+process.stdout.write(r.sha);
+" "$sha"; then
+    exit 1
+  fi
+}
+
 ensure_ssh_key() {
   if [[ -f "$SSH_KEY" ]]; then
     return 0
@@ -34,6 +49,14 @@ ensure_ssh_key() {
 preflight_git() {
   if [[ "${CLOUD_AGENT_SKIP_GIT_PREFLIGHT:-0}" == "1" ]]; then
     echo "[cloud-agent] Skipping git preflight (CLOUD_AGENT_SKIP_GIT_PREFLIGHT=1)."
+    if [[ -z "${CLOUD_AGENT_REQUESTED_DEPLOY_SHA:-}" ]]; then
+      echo "[cloud-agent] ERROR: CLOUD_AGENT_SKIP_GIT_PREFLIGHT=1 requires explicit CLOUD_AGENT_REQUESTED_DEPLOY_SHA." >&2
+      echo "[cloud-agent] Refusing to auto-resolve an unverified SHA in skip mode." >&2
+      exit 1
+    fi
+    CLOUD_AGENT_REQUESTED_DEPLOY_SHA="$(validate_requested_deploy_sha "${CLOUD_AGENT_REQUESTED_DEPLOY_SHA}")"
+    export CLOUD_AGENT_REQUESTED_DEPLOY_SHA
+    echo "[cloud-agent] Using explicit REQUESTED_DEPLOY_SHA=${CLOUD_AGENT_REQUESTED_DEPLOY_SHA:0:12} (skip preflight)."
     return 0
   fi
 
@@ -57,20 +80,22 @@ preflight_git() {
   REMOTE_HEAD="$(git rev-parse "${GIT_REMOTE}/${GIT_BRANCH}")"
   if [[ "$LOCAL_HEAD" != "$REMOTE_HEAD" ]]; then
     echo "[cloud-agent] ERROR: local HEAD (${LOCAL_HEAD:0:7}) != ${GIT_REMOTE}/${GIT_BRANCH} (${REMOTE_HEAD:0:7})." >&2
-    echo "[cloud-agent] Push to ${GIT_REMOTE} before deploy — VPS clones from GitHub ${GIT_BRANCH}." >&2
+    echo "[cloud-agent] Push to ${GIT_REMOTE} before deploy — deploy uses exact REQUESTED_DEPLOY_SHA (DEC-016)." >&2
     exit 1
   fi
 
   echo "[cloud-agent] Git preflight OK: ${LOCAL_HEAD:0:7} on ${GIT_REMOTE}/${GIT_BRANCH}."
-  export CLOUD_AGENT_REQUESTED_DEPLOY_SHA="$LOCAL_HEAD"
+  CLOUD_AGENT_REQUESTED_DEPLOY_SHA="$(validate_requested_deploy_sha "$LOCAL_HEAD")"
+  export CLOUD_AGENT_REQUESTED_DEPLOY_SHA
 }
 
 run_remote_deploy() {
   if [[ -z "${CLOUD_AGENT_REQUESTED_DEPLOY_SHA:-}" ]]; then
-    echo "[cloud-agent] ERROR: CLOUD_AGENT_REQUESTED_DEPLOY_SHA unset — run preflight_git first." >&2
+    echo "[cloud-agent] ERROR: CLOUD_AGENT_REQUESTED_DEPLOY_SHA unset — run preflight_git first or set explicitly with skip preflight." >&2
     exit 1
   fi
   local requested_sha="${CLOUD_AGENT_REQUESTED_DEPLOY_SHA}"
+  validate_requested_deploy_sha "$requested_sha" >/dev/null
   echo "[cloud-agent] Deploying via SSH ${SSH_USER}@${VPS_HOST}:${SSH_PORT} ..."
   echo "[cloud-agent] REQUESTED_DEPLOY_SHA=${requested_sha}"
   # Bootstrap entry script from exact SHA — not stale /opt/synqdrive/current (OQ-18).

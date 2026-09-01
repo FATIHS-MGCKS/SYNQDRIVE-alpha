@@ -190,9 +190,10 @@ Format: Decision ID | Date/Phase | Status
 |-------|-------|
 | **DATE** | 2026-09-01 |
 | **PROBLEM** | OQ-18: `vps-deploy-release.sh` sourced libs from stale `current` before switch — P1.8.3.1 gate not active on first deploy |
-| **DECISION** | Source topology + lib from `RELEASE_DIR/backend/scripts/ops`; cloud-agent-deploy bootstraps entry script from GitHub main |
-| **WHY** | Entry script path is always pre-switch `current`; promoted release contains intended verify logic |
-| **STATUS** | **ACTIVE** — RELEASE_OPS_DIR production verified attempt 3; cloud-agent exact-SHA bootstrap pending observation |
+| **DECISION** | Source topology + lib from `RELEASE_DIR/backend/scripts/ops` (RELEASE_OPS_DIR) — verification logic belongs to the release being promoted |
+| **WHY** | Pre-switch `current` symlink may contain stale ops libs; promoted release must own verify_post_deploy semantics |
+| **RELATED** | DEC-016 handles exact-SHA bootstrap of deploy entry script and release clone — distinct from RELEASE_OPS_DIR sourcing |
+| **STATUS** | **ACTIVE** — RELEASE_OPS_DIR production verified (P1.8.3.1 attempt 3) |
 
 ---
 
@@ -206,5 +207,5 @@ Format: Decision ID | Date/Phase | Status
 | **INVARIANT** | `REQUESTED_DEPLOY_SHA == BOOTSTRAP_SCRIPT_SHA == RELEASE_SOURCE_SHA == TARGET_SHA == REPLICA_A_SHA == REPLICA_B_SHA` |
 | **FAILURE** | Any mismatch → abort; rollback if promotion began |
 | **WHY** | Guarantees authorized artifact is promoted; prevents branch-tip drift |
-| **STATUS** | **IMPLEMENTED** — unit tests; **PRODUCTION_VALIDATION_PENDING** for cloud-agent bootstrap path |
+| **STATUS** | **IMPLEMENTED** — unit tests; **PRODUCTION_VALIDATION_PENDING** for cloud-agent exact-SHA bootstrap path (OQ-18) |
 | **EVIDENCE** | `vps-deploy-release.sh`, `cloud-agent-deploy.sh`, `assertDeployShaProvenance` tests |

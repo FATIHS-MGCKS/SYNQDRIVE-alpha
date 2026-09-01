@@ -103,7 +103,7 @@ Restores:
 
 **TYPE: FACT** — `.cursor/scripts/cloud-agent-deploy.sh` → SSH → `vps-deploy-release.sh` → external health URL.
 
-Git preflight: local HEAD must match `origin/main` (VPS clones GitHub main).
+Git preflight: local HEAD must match `origin/main`; deploy transports one immutable `REQUESTED_DEPLOY_SHA` end-to-end (DEC-016).
 
 ---
 

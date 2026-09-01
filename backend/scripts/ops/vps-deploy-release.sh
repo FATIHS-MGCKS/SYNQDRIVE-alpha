@@ -4,9 +4,18 @@ set -euo pipefail
 GIT_REPO="${SYNQDRIVE_GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
 REQUESTED_SHA="${SYNQDRIVE_REQUESTED_DEPLOY_SHA:-}"
 
+vps_validate_requested_deploy_sha() {
+  local sha=$1
+  if [[ ! "$sha" =~ ^[0-9a-fA-F]{40}$ ]]; then
+    echo "!! ABORT: invalid SYNQDRIVE_REQUESTED_DEPLOY_SHA (must be 40-char hex commit)" >&2
+    exit 1
+  fi
+}
+
 vps_clone_release_at_sha() {
   local dest=$1
   local sha=$2
+  vps_validate_requested_deploy_sha "$sha"
   if [[ -z "$sha" ]]; then
     echo "!! ABORT: SYNQDRIVE_REQUESTED_DEPLOY_SHA is required (DEC-016 exact-SHA deploy provenance)" >&2
     exit 1
