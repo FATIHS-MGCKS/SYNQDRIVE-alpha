@@ -1,0 +1,1066 @@
+# KG-EED canonical nodes
+# Verified against main @ da959784f (2026-09-01)
+
+nodes:
+  # ── System ─────────────────────────────────────────────────────────────────
+  - id: EED-SYS-001
+    type: system
+    title: Energy Event Detection
+    epistemic_status: CONFIRMED
+    summary: >
+      Canonical SynqDrive authority for REFUEL and RECHARGE detection, parsing,
+      persistence, API, and UI semantics. Invoked primarily from trip reconciliation.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0001, EED-EV-0002]
+    discovery_ref: EED discovery aggregate
+
+  # ── Services ───────────────────────────────────────────────────────────────
+  - id: EED-SVC-001
+    type: service
+    title: EnergyEventsService.detectEnergyEvents
+    epistemic_status: CONFIRMED
+    summary: >
+      Canonical orchestration: fetch → persist gate → coalesce → upsert → prune →
+      sibling reconcile. Returns DetectEnergyEventsResult with mechanism outcomes.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+    evidence: [EED-EV-0002]
+    discovery_ref: EED-N-RF-06
+
+  - id: EED-SVC-002
+    type: service
+    title: DimoSegmentsService.fetchEnergyEventSegments
+    epistemic_status: CONFIRMED
+    summary: >
+      Fetches REFUEL and RECHARGE segments via DIMO GraphQL with per-mechanism
+      isolated outcomes and optional requestContext for provider budget.
+    authority_class: SHARED_INFRASTRUCTURE
+    source_paths:
+      - backend/src/modules/dimo/dimo-segments.service.ts
+    evidence: [EED-EV-0003]
+    discovery_ref: EED-N-RF-01
+
+  - id: EED-SVC-003
+    type: service
+    title: EnergyEventsService.listEnergyEvents / buildTripsTimeline
+    epistemic_status: CONFIRMED
+    summary: >
+      Read paths for persisted VehicleEnergyEvent rows and merged trips timeline.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+    evidence: [EED-EV-0010]
+    discovery_ref: EED-N-RF-09
+
+  - id: EED-SVC-004
+    type: service
+    title: EnergyEventsMetricsService
+    epistemic_status: CONFIRMED
+    summary: >
+      Structured metrics for detection runs, mechanism outcomes, persist stats.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events-metrics.service.ts
+    evidence: [EED-EV-0020]
+    discovery_ref: observability
+
+  # ── Components ───────────────────────────────────────────────────────────────
+  - id: EED-COMP-001
+    type: component
+    title: parseDimoEnergyEventSegment
+    epistemic_status: CONFIRMED
+    summary: >
+      Maps DIMO segment GraphQL response to DimoEnergyEventSegment DTO with
+      posDelta MIN/MAX for fuel, SOC, energy, odometer.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/dimo/energy-events/parse-energy-event-segment.ts
+    evidence: [EED-EV-0004]
+    discovery_ref: EED-N-RF-02
+
+  - id: EED-COMP-002
+    type: component
+    title: energy-events.pipeline (persist gate, coalesce, prune)
+    epistemic_status: CONFIRMED
+    summary: >
+      isSegmentPersistable, coalesceSegments, mergeGroup, buildUpsertPayload,
+      pruneStaleCoalescedSubSegments. REFUEL gap 300s; RECHARGE gap 1800s; geo 250m.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.pipeline.ts
+    evidence: [EED-EV-0005, EED-EV-0006]
+    discovery_ref: EED-N-RF-03, EED-N-RF-04, EED-N-RF-08
+
+  - id: EED-COMP-003
+    type: component
+    title: deriveRefuelFuelLevelRise
+    epistemic_status: CONFIRMED
+    summary: >
+      Derives observed fuel-level-rise interval from ≥3 telemetry samples.
+      Conservative null when insufficient evidence. NOT pump duration.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/refuel-fuel-rise.ts
+    evidence: [EED-EV-0008]
+    discovery_ref: EED-N-RF-05
+
+  - id: EED-COMP-004
+    type: component
+    title: refuel-sibling-reconciliation
+    epistemic_status: CONFIRMED
+    summary: >
+      shouldSupersedeRefuelSibling + resolveSupersededRefuelSiblingIds. Token match,
+      overlap/containment, compatible fuel delta. REFUEL-only deletion.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/refuel-sibling-reconciliation.ts
+    evidence: [EED-EV-0011]
+    discovery_ref: EED-N-RF-07
+
+  - id: EED-COMP-005
+    type: component
+    title: DimoRechargeSegmentsClient
+    epistemic_status: CONFIRMED
+    summary: >
+      RECHARGE-specific DIMO segment fetch with 31-day window chunking and
+      default detector config (no minIncreasePercent override).
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/dimo/recharge-segments/dimo-recharge-segments.client.ts
+    evidence: [EED-EV-0009]
+    discovery_ref: EED-SIG-RC-001
+
+  - id: EED-COMP-006
+    type: component
+    title: toEnergyEventDto
+    epistemic_status: CONFIRMED
+    summary: >
+      Maps VehicleEnergyEvent row to EnergyEventDto with durationSeconds envelope
+      semantics and additive fuelLevelRise* for REFUEL only.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.types.ts
+    evidence: [EED-EV-0010]
+    discovery_ref: EED-N-RF-09
+
+  - id: EED-COMP-007
+    type: component
+    title: fetchFuelLevelSamples
+    epistemic_status: CONFIRMED
+    summary: >
+      Fetches 30s-interval powertrainFuelSystemRelativeLevel/AbsoluteLevel samples
+      inside detection window for fuel-rise derivation.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/dimo/dimo-segments.service.ts
+    evidence: [EED-EV-0007]
+    discovery_ref: EED-SIG-RF-006
+
+  # ── Schedulers / triggers ────────────────────────────────────────────────────
+  - id: EED-SCH-001
+    type: scheduler
+    title: Trip reconciliation schedulers (indirect EED cadence)
+    epistemic_status: CONFIRMED
+    summary: >
+      fast/warm/cold trip reconciliation tiers indirectly schedule energy detection.
+      Leader-gated via KG-Scaling-Process; EED inherits cadence, does not own it.
+    authority_class: EED_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/src/workers/schedulers/trip-reconciliation.scheduler.ts
+    evidence: [EED-EV-0001]
+    discovery_ref: triggers
+
+  - id: EED-RETRY-001
+    type: retry_path
+    title: POST /energy-events/detect manual reprocessing
+    epistemic_status: CONFIRMED
+    summary: >
+      On-demand detectEnergyEvents for ops/recovery. Default window last 30 days.
+      Idempotent upsert by dimoSegmentId.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+    evidence: [EED-EV-0012]
+    discovery_ref: triggers
+
+  - id: EED-JOB-001
+    type: job
+    title: Ops energy-events scripts
+    epistemic_status: CONFIRMED
+    summary: >
+      backend/scripts/ops/energy-events-* for controlled reprocess, calibration,
+      and forensic validation. Not fleet-wide auto-backfill.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/scripts/ops/
+    evidence: [EED-EV-0017]
+    discovery_ref: triggers
+
+  # ── Signals (REFUEL) ───────────────────────────────────────────────────────
+  - id: EED-SIG-001
+    type: signal
+    title: DIMO refuel segment envelope
+    epistemic_status: CONFIRMED
+    summary: >
+      segments(mechanism:refuel, config:{minIncreasePercent:5}). Provides
+      startTime, endTime, durationSeconds detection envelope.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/dimo/energy-events/dimo-energy-detector.config.ts
+    evidence: [EED-EV-0013]
+    discovery_ref: EED-SIG-RF-001
+
+  - id: EED-SIG-002
+    type: signal
+    title: powertrainFuelSystemRelativeLevel MIN/MAX
+    epistemic_status: CONFIRMED
+    summary: fuelDeltaPercent and fuel-rise derivation input.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0004]
+    discovery_ref: EED-SIG-RF-002
+
+  - id: EED-SIG-003
+    type: signal
+    title: powertrainFuelSystemAbsoluteLevel MIN/MAX
+    epistemic_status: CONFIRMED
+    summary: fuelDeltaLiters; persist gate requires > 1.0 L for REFUEL.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0005]
+    discovery_ref: EED-SIG-RF-003
+
+  - id: EED-SIG-004
+    type: signal
+    title: 30s fuel level telemetry samples
+    epistemic_status: CONFIRMED
+    summary: >
+      signals(interval:"30s") for fuelLevelRise* derivation. ≥3 samples required.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0007, EED-EV-0008]
+    discovery_ref: EED-SIG-RF-006
+
+  - id: EED-SIG-005
+    type: signal
+    title: Segment lat/lon start/end
+    epistemic_status: CONFIRMED
+    summary: Geo coalesce constraint ≤250m between adjacent segments.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0006]
+    discovery_ref: EED-SIG-RF-005
+
+  # ── Signals (RECHARGE) ───────────────────────────────────────────────────────
+  - id: EED-SIG-006
+    type: signal
+    title: DIMO recharge segment envelope
+    epistemic_status: CONFIRMED
+    summary: >
+      segments(mechanism:recharge) with DIMO default detector. durationSeconds
+      retains charging envelope semantics.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0009]
+    discovery_ref: EED-SIG-RC-001
+
+  - id: EED-SIG-007
+    type: signal
+    title: powertrainTractionBatteryStateOfChargeCurrent MIN/MAX
+    epistemic_status: CONFIRMED
+    summary: socDeltaPercent; persist if ≥1%.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0005]
+    discovery_ref: EED-SIG-RC-002
+
+  - id: EED-SIG-008
+    type: signal
+    title: powertrainTractionBatteryStateOfChargeCurrentEnergy MIN/MAX
+    epistemic_status: CONFIRMED
+    summary: energyDeltaKwh with 15-digit canonical equality fix.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0005]
+    discovery_ref: EED-SIG-RC-003
+
+  # ── Provider ─────────────────────────────────────────────────────────────────
+  - id: EED-PRV-001
+    type: provider
+    title: DIMO Telemetry GraphQL segments API
+    epistemic_status: CONFIRMED
+    summary: >
+      External authority for native refuel/recharge segment detection. SynqDrive
+      preserves upstream envelope; does not expand detection windows.
+    authority_class: EED_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/src/modules/dimo/
+    evidence: [EED-EV-0003, EED-EV-0018]
+    discovery_ref: EED-N-RF-01
+
+  # ── API endpoints ────────────────────────────────────────────────────────────
+  - id: EED-API-001
+    type: api_endpoint
+    title: GET /vehicles/:vehicleId/energy-events
+    epistemic_status: CONFIRMED
+    summary: List persisted energy events for vehicle + time range.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+    evidence: [EED-EV-0010]
+
+  - id: EED-API-002
+    type: api_endpoint
+    title: POST /vehicles/:vehicleId/energy-events/detect
+    epistemic_status: CONFIRMED
+    summary: On-demand detectEnergyEvents trigger.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+    evidence: [EED-EV-0012]
+
+  - id: EED-API-003
+    type: api_endpoint
+    title: GET /vehicles/:vehicleId/trips-timeline
+    epistemic_status: CONFIRMED
+    summary: Merged trips + energy events timeline for rental UI.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+    evidence: [EED-EV-0010]
+
+  # ── Database ─────────────────────────────────────────────────────────────────
+  - id: EED-DB-001
+    type: database_entity
+    title: VehicleEnergyEvent
+    epistemic_status: CONFIRMED
+    summary: >
+      vehicle_energy_events table. Unique dimoSegmentId. Nullable additive
+      fuelLevelRise* fields. rawDetectionMeta Json for coalesce provenance.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/prisma/schema.prisma
+    evidence: [EED-EV-0014, EED-EV-0016]
+    discovery_ref: persistence
+
+  # ── Configuration ──────────────────────────────────────────────────────────────
+  - id: EED-CFG-001
+    type: configuration
+    title: DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG minIncreasePercent 5
+    epistemic_status: CONFIRMED
+    summary: >
+      Production refuel sensitivity. Fixes KS MX default-blind case. Live sweep
+      Aug 2026: thresholds 2–10 identical on tested windows.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/dimo/energy-events/dimo-energy-detector.config.ts
+    evidence: [EED-EV-0013]
+    discovery_ref: EED-DEC-E2-001
+
+  - id: EED-CFG-002
+    type: configuration
+    title: COALESCE_GAP_SECONDS_REFUEL 300
+    epistemic_status: CONFIRMED
+    summary: 5-minute gap budget for REFUEL coalescing.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.pipeline.ts
+    evidence: [EED-EV-0006]
+
+  - id: EED-CFG-003
+    type: configuration
+    title: COALESCE_GAP_SECONDS_RECHARGE 1800
+    epistemic_status: CONFIRMED
+    summary: 30-minute gap budget for RECHARGE coalescing.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.pipeline.ts
+    evidence: [EED-EV-0006]
+
+  - id: EED-CFG-004
+    type: configuration
+    title: COALESCE_GEO_RADIUS_M 250
+    epistemic_status: CONFIRMED
+    summary: Maximum haversine distance for adjacent segment coalescing.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.pipeline.ts
+    evidence: [EED-EV-0006]
+
+  - id: EED-CFG-005
+    type: configuration
+    title: REFUEL persist gate fuelDeltaLiters > 1.0
+    epistemic_status: CONFIRMED
+    summary: Rejects sensor-noise refuel segments below 1 liter material delta.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.pipeline.ts
+    evidence: [EED-EV-0005]
+
+  # ── UI semantics ───────────────────────────────────────────────────────────────
+  - id: EED-UI-001
+    type: ui_semantic
+    title: TripTimelineEnergyCard REFUEL presentation
+    epistemic_status: CONFIRMED
+    summary: >
+      Shows "Refuel detected", fuel delta, detection window time range, and
+      optional "Signal change ~N min" from fuelLevelRiseDurationSeconds. Must NOT
+      present bare durationSeconds as pump time.
+    authority_class: EED_OWNS
+    source_paths:
+      - frontend/src/rental/components/trips/trip-timeline-shared.tsx
+    evidence: [EED-EV-0015]
+    discovery_ref: EED-N-RF-10
+
+  - id: EED-UI-002
+    type: ui_semantic
+    title: TripTimelineEnergyCard RECHARGE presentation
+    epistemic_status: CONFIRMED
+    summary: >
+      Uses durationSeconds for charging duration minutes. fuelLevelRise* not used.
+    authority_class: EED_OWNS
+    source_paths:
+      - frontend/src/rental/components/trips/trip-timeline-shared.tsx
+    evidence: [EED-EV-0015]
+    discovery_ref: RECHARGE UI
+
+  # ── Failure modes ──────────────────────────────────────────────────────────────
+  - id: EED-FM-001
+    type: failure_mode
+    title: DIMO mechanism fetch failure (partial)
+    epistemic_status: CONFIRMED
+    summary: >
+      One mechanism FAILED does not block other. Logged with detectorConfigVersion.
+      Metrics record partial_failure.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0003]
+    discovery_ref: failure
+
+  - id: EED-FM-002
+    type: failure_mode
+    title: Insufficient fuel-rise telemetry samples
+    epistemic_status: CONFIRMED
+    summary: fuelLevelRise* null; derivationReason logged. Not a persistence failure.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0008]
+    discovery_ref: failure
+
+  - id: EED-FM-003
+    type: failure_mode
+    title: No DIMO tokenId skip
+    epistemic_status: CONFIRMED
+    summary: detectEnergyEvents returns empty result when vehicle lacks tokenId.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0002]
+    discovery_ref: failure
+
+  - id: EED-FB-001
+    type: fallback
+    title: Optional EnergyEventsService injection skip
+    epistemic_status: CONFIRMED
+    summary: >
+      TripReconciliationService uses @Optional() energyEventsService; if module not
+      booted, step 5 is silently skipped (no detect).
+    authority_class: EED_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+    evidence: [EED-EV-0001]
+    discovery_ref: failure
+
+  - id: EED-COMP-008
+    type: component
+    title: FuelStationEnrichmentProducer (post-REFUEL persist)
+    epistemic_status: CONFIRMED
+    summary: >
+      Optional fire-and-forget enqueue after REFUEL upsert. Separate enrichment
+      module; EED consumes read projection only on API.
+    authority_class: EED_REFERENCES_EXTERNAL
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+    evidence: [EED-EV-0002]
+    discovery_ref: EED-OQ-09
+
+  # ── Observability ────────────────────────────────────────────────────────────
+  - id: EED-OBS-001
+    type: observability
+    title: Energy event structured logs and metrics
+    epistemic_status: CONFIRMED
+    summary: >
+      Per-mechanism fetch outcomes, persist stats, detection run duration,
+      pruned/reconciled counts. Privacy: vehicleId/tokenId in logs.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events-metrics.service.ts
+    evidence: [EED-EV-0020]
+
+  # ── Migration ────────────────────────────────────────────────────────────────
+  - id: EED-MIG-001
+    type: migration
+    title: fuelLevelRise* additive columns migration
+    epistemic_status: CONFIRMED
+    summary: >
+      Nullable additive fields on VehicleEnergyEvent. No rewrite of durationSeconds.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/prisma/schema.prisma
+    evidence: [EED-EV-0016, EED-EV-0014]
+    discovery_ref: EED-DEC-S5-001
+
+  # ── External authorities ─────────────────────────────────────────────────────
+  - id: EED-EXT-001
+    type: external_authority
+    title: KG-ATE (Automatic Trip Enrichment)
+    epistemic_status: CONFIRMED
+    summary: MAY_TRIGGER detectEnergyEvents from reconciliation step 5. Does not own EED semantics.
+    authority_class: EED_REFERENCES_EXTERNAL
+    source_paths:
+      - architecture/knowledge-graphs/automatic-trip-enrichment/
+    evidence: [EED-EV-0001, EED-EV-0019]
+
+  - id: EED-EXT-002
+    type: external_authority
+    title: DIMO Provider Gateway / Budget
+    epistemic_status: CONFIRMED
+    summary: Global Redis lease semaphore for DIMO fetches. Algorithm owned by KG-Scaling-Process.
+    authority_class: SHARED_INFRASTRUCTURE
+    source_paths:
+      - architecture/scaling-process/
+    evidence: [EED-EV-0021]
+
+  - id: EED-EXT-003
+    type: external_authority
+    title: Battery V2 / HvChargeSession
+    epistemic_status: INFERRED
+    summary: >
+      Separate HV charge session lifecycle (HvChargeSession). No code linkage to
+      VehicleEnergyEvent RECHARGE today; orthogonality inferred from parallel paths.
+    authority_class: OUT_OF_SCOPE
+    source_paths:
+      - architecture/battery-v2/lifecycle/hv-charge-sessions.md
+    evidence: [EED-EV-0022, EED-EV-0025]
+
+  - id: EED-EXT-004
+    type: external_authority
+    title: Scheduler leader + reconciliation mutex
+    epistemic_status: CONFIRMED
+    summary: Indirect cadence and per-vehicle lock during detect. Owned by KG-Scaling-Process / ATE infra.
+    authority_class: SHARED_INFRASTRUCTURE
+    source_paths:
+      - backend/src/shared/scheduler-leader/
+      - backend/src/shared/reconciliation-execution-mutex/
+    evidence: [EED-EV-0001]
+
+  # ── Historical incident ────────────────────────────────────────────────────────
+  - id: EED-HI-001
+    type: historical_incident
+    title: KS MX 2024 refuel duration mislabeling (2026-08-28)
+    epistemic_status: HISTORICAL
+    decision_status: PRODUCTION_VALIDATED
+    summary: >
+      tokenId 187336. DIMO envelope 4818s (~80 min). Observed fuel rise ~280–330s.
+      Stale sibling 685s reconciled. UI previously mislabeled envelope as pump time.
+      Coalescing did NOT create long envelope. Parser preserved upstream durationSeconds.
+    authority_class: EED_OWNS
+    source_paths:
+      - architecture/P1_3_S6_PRODUCTION_DEPLOY_SINGLE_REPLICA_2026-08-30.md
+      - architecture/P1_3_S5_ENERGY_REFUEL_SEMANTICS_2026-08-30.md
+      - backend/src/modules/dimo/fixtures/ks-mx-2024-aug28-refuel.fixture.ts
+    evidence: [EED-EV-0025, EED-EV-0018, EED-EV-0011, EED-EV-0024]
+    discovery_ref: EED-DEC-KS-MX-2024-001
+
+  # ── Decisions (canonical nodes) ────────────────────────────────────────────────
+  - id: EED-DEC-001
+    type: decision
+    title: Preserve durationSeconds backward compatibility
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: >
+      durationSeconds remains provider detection envelope for API/clients. Semantic
+      correction via additive fields, not breaking rename.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0010, EED-EV-0016]
+    discovery_ref: EED-DEC-S5-001
+
+  - id: EED-DEC-002
+    type: decision
+    title: Introduce additive fuelLevelRise* fields
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: Nullable REFUEL-only fields for observed telemetry transition.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0008, EED-EV-0016]
+    discovery_ref: EED-DEC-S5-001
+
+  - id: EED-DEC-003
+    type: decision
+    title: Refuse to call observed fuel-level rise pump duration
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: UI and API docs explicitly separate detection window from signal change.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0015, EED-EV-0008]
+    discovery_ref: EED-DEC-S5-003
+
+  - id: EED-DEC-004
+    type: decision
+    title: Preserve independent RECHARGE duration semantics
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: RECHARGE uses durationSeconds; fuelLevelRise* always null.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0009, EED-EV-0010]
+    discovery_ref: EED-DEC-S5-001
+
+  - id: EED-DEC-005
+    type: decision
+    title: 5-minute REFUEL coalescing gap
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: COALESCE_GAP_SECONDS_REFUEL = 300 with 250m geo radius.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0006]
+    discovery_ref: coalesce
+
+  - id: EED-DEC-006
+    type: decision
+    title: 30-minute RECHARGE coalescing gap
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: COALESCE_GAP_SECONDS_RECHARGE = 1800 for AC pause/reconnect patterns.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0006]
+    discovery_ref: coalesce
+
+  - id: EED-DEC-007
+    type: decision
+    title: Stale REFUEL sibling reconciliation
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: Token-scoped overlap guard deletes superseded partial refuel rows.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0011]
+    discovery_ref: EED-DEC-S5-002
+
+  - id: EED-DEC-008
+    type: decision
+    title: KS MX 2024 interpretation
+    epistemic_status: HISTORICAL
+    decision_status: PRODUCTION_VALIDATED
+    summary: >
+      ~80 min from DIMO envelope not SynqDrive expansion. Single-segment coalesce
+      preserved 4818s. Sibling 685s reconciled post-reprocess.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0025, EED-EV-0018, EED-EV-0011, EED-EV-0006]
+    discovery_ref: EED-DEC-KS-MX-2024-001
+
+  - id: EED-DEC-009
+    type: decision
+    title: No historical backfill policy
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: >
+      Forward-correct behavior only. NULL historical fuelLevelRise* acceptable.
+      No fleet-wide rewrite required.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0017]
+    discovery_ref: EED-DEC-S5-004
+
+  - id: EED-DEC-010
+    type: decision
+    title: ATE/EED authority separation
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: ATE MAY_TRIGGER; EED OWNS all detection semantics. Firewall documented in boundary map.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0001, EED-EV-0019]
+    discovery_ref: boundary map
+
+  - id: EED-DEC-011
+    type: decision
+    title: Production minIncreasePercent 5 for REFUEL
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: Fixes default-blind KS MX case without adding segments vs 2–10% sweep.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0013]
+    discovery_ref: EED-DEC-E2-001
+
+  - id: EED-DEC-012
+    type: decision
+    title: Mechanism fetch isolation (E1 restoration)
+    epistemic_status: CONFIRMED
+    decision_status: PRODUCTION_VALIDATED
+    summary: REFUEL and RECHARGE fetch outcomes decoupled; recharge 422 no longer blocks refuel.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0003]
+    discovery_ref: EED-DEC-E1-001
+
+  # ── Open questions ───────────────────────────────────────────────────────────
+  - id: EED-ST-001
+    type: state
+    title: Energy detection coupled to trip reconciliation (current)
+    epistemic_status: CONFIRMED
+    summary: >
+      No dedicated BullMQ energy scheduler exists. detectEnergyEvents runs only when
+      TripReconciliationService step 5 executes (or manual POST detect / ops scripts).
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+    evidence: [EED-EV-0001]
+    discovery_ref: EED-OQ-01 current-state
+
+  - id: EED-OQ-001
+    type: open_question
+    title: Should EED get a dedicated BullMQ scheduler decoupled from reconciliation?
+    epistemic_status: UNKNOWN
+    summary: >
+      Future architecture question only. Current state documented in EED-ST-001.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0001]
+    discovery_ref: EED-OQ-01 future
+
+  - id: EED-OQ-002
+    type: open_question
+    title: Safe automated backfill for NULL fuelLevelRise rows
+    epistemic_status: UNKNOWN
+    summary: Product owner declined fleet backfill; 13 NULL rise rows inventory exists.
+    authority_class: EED_OWNS
+    discovery_ref: EED-OQ-02
+
+  - id: EED-OQ-003
+    type: open_question
+    title: Persist recharge isCharging / addedEnergy on VehicleEnergyEvent
+    epistemic_status: UNKNOWN
+    summary: Normalizer fetches flags but does not persist to energy event row.
+    authority_class: EED_OWNS
+    discovery_ref: EED-OQ-03
+
+  - id: EED-OQ-004
+    type: open_question
+    title: Link VehicleEnergyEvent RECHARGE to HvChargeSession
+    epistemic_status: UNKNOWN
+    summary: Battery V2 orthogonal; no automatic linkage implemented.
+    authority_class: OUT_OF_SCOPE
+    discovery_ref: EED-OQ-04
+
+  - id: EED-OQ-005
+    type: open_question
+    title: detectorVersion column for forensic replay
+    epistemic_status: UNKNOWN
+    summary: DIMO_ENERGY_DETECTOR_CONFIG_VERSION in logs/meta only; no DB column yet.
+    authority_class: EED_OWNS
+    discovery_ref: EED-OQ-05
+
+  - id: EED-OQ-006
+    type: open_question
+    title: Plausibility flags in production rows vs recovery-only
+    epistemic_status: UNKNOWN
+    summary: Odometer plausibility in recovery tooling; not persisted on canonical row.
+    authority_class: EED_OWNS
+    discovery_ref: EED-OQ-06
+
+  - id: EED-OQ-007
+    type: open_question
+    title: Fleet-wide overlapping sibling inventory remediation
+    epistemic_status: UNKNOWN
+    summary: ~3 overlapping pairs identified; policy for automated remediation undecided.
+    authority_class: EED_OWNS
+    discovery_ref: EED-OQ-07
+
+  - id: EED-OQ-008
+    type: open_question
+    title: Frontend POST detect — should UI ever call it
+    epistemic_status: UNKNOWN
+    summary: API exists; rental UI does not expose detect trigger today.
+    authority_class: EED_OWNS
+    discovery_ref: EED-OQ-08
+
+  - id: EED-OQ-009
+    type: open_question
+    title: Fuel station enrichment card vs EED semantics alignment
+    epistemic_status: UNKNOWN
+    summary: Phase F station enrichment separate trust policy; EED consumes read projection.
+    authority_class: EED_OWNS
+    discovery_ref: EED-OQ-09
+
+  - id: EED-OQ-010
+    type: open_question
+    title: ClickHouse mirror for fuel samples long-term
+    epistemic_status: UNKNOWN
+    summary: Samples fetched live from DIMO today; CH mirror not EED authority.
+    authority_class: OUT_OF_SCOPE
+    discovery_ref: EED-OQ-10
+
+  - id: EED-OQ-011
+    type: open_question
+    title: RECHARGE duration UI when coalesced multi-hour sessions
+    epistemic_status: UNKNOWN
+    summary: Coalesced envelope may span hours; UI copy adequacy unverified at scale.
+    authority_class: EED_OWNS
+    discovery_ref: EED-OQ-11
+
+  - id: EED-OQ-012
+    type: open_question
+    title: Energy observability SLOs for derivation null rate
+    epistemic_status: UNKNOWN
+    summary: Metrics exist; formal SLO thresholds for fuelLevelRise null rate not defined.
+    authority_class: EED_OWNS
+    discovery_ref: EED-OQ-12
+
+  # ── Evidence nodes ───────────────────────────────────────────────────────────
+  - id: EED-EV-0001
+    type: evidence
+    title: ATE reconciliation step 5 MAY_TRIGGER
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+    summary: detectEnergyEvents in isolated try/catch; failures do not abort reconcile.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0002
+    type: evidence
+    title: EnergyEventsService detect pipeline
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+    summary: Full orchestration order and upsert idempotency by dimoSegmentId.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0003
+    type: evidence
+    title: Per-mechanism fetch isolation
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/dimo/dimo-segments.service.ts
+    summary: EnergyMechanismFetchOutcome per refuel/recharge; partial failure tolerated.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0004
+    type: evidence
+    title: parseDimoEnergyEventSegment
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/dimo/energy-events/parse-energy-event-segment.ts
+    summary: posDelta MIN/MAX parsing; preserves segment durationSeconds from DIMO.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0005
+    type: evidence
+    title: Persistability gates
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.pipeline.ts
+    summary: REFUEL liters>1.0; RECHARGE soc≥1 or energy>0; rejects ongoing/zero duration.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0006
+    type: evidence
+    title: Coalesce constants and merge behavior
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.pipeline.ts
+    summary: REFUEL 300s, RECHARGE 1800s, geo 250m; single-segment pass-through.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0007
+    type: evidence
+    title: fetchFuelLevelSamples 30s interval
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/dimo/dimo-segments.service.ts
+    summary: Telemetry sample fetch for fuel-rise derivation inside detection window.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0008
+    type: evidence
+    title: deriveRefuelFuelLevelRise algorithm
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/refuel-fuel-rise.ts
+    summary: ≥3 samples; conservative null; NOT pump duration.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0009
+    type: evidence
+    title: RECHARGE default detector path
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/dimo/energy-events/dimo-energy-detector.config.ts
+      - backend/src/modules/dimo/recharge-segments/dimo-recharge-segments.client.ts
+    summary: DIMO default recharge config; 31-day window chunking.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0010
+    type: evidence
+    title: EnergyEventDto contract
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.types.ts
+    summary: durationSeconds envelope comment; fuelLevelRise* REFUEL only.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0011
+    type: evidence
+    title: Sibling reconciliation rules and KS MX fixture
+    epistemic_status: CONFIRMED
+    source_type: TEST
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/refuel-sibling-reconciliation.spec.ts
+      - backend/src/modules/dimo/fixtures/ks-mx-2024-aug28-refuel.fixture.ts
+    summary: 685s stale sibling superseded by 4818s canonical; token match required.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0012
+    type: evidence
+    title: Manual detect API and service spec idempotency
+    epistemic_status: CONFIRMED
+    source_type: TEST
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.spec.ts
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+    summary: detectEnergyEvents re-run updates not duplicates.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0013
+    type: evidence
+    title: minIncreasePercent 5 production config
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/dimo/energy-events/dimo-energy-detector.config.ts
+    summary: E2 calibration; KS MX detection fix.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0014
+    type: evidence
+    title: Prisma VehicleEnergyEvent schema
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/prisma/schema.prisma
+    summary: Unique dimoSegmentId; nullable fuelLevelRise*; rawDetectionMeta Json.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0015
+    type: evidence
+    title: UI semantic split REFUEL vs RECHARGE
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - frontend/src/rental/components/trips/trip-timeline-shared.tsx
+      - frontend/src/rental/components/trips/trips-energy-timeline.test.tsx
+    summary: REFUEL uses fuelLevelRiseDurationSeconds; RECHARGE uses durationSeconds.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0016
+    type: evidence
+    title: P1.3-S5 refuel semantics architecture doc
+    epistemic_status: HISTORICAL
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - architecture/P1_3_S5_ENERGY_REFUEL_SEMANTICS_2026-08-30.md
+    summary: >
+      Normative semantics record (duration vs rise). Cross-check code via EED-EV-0008,
+      EED-EV-0010, EED-EV-0015; doc alone is not runtime proof.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0017
+    type: evidence
+    title: No historical backfill product decision
+    epistemic_status: HISTORICAL
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - architecture/knowledge-graphs/discovery/ENERGY_EVENT_DETECTION_DISCOVERY_2026-09-01.md
+    summary: Forward-correct only; backfill inventory separate from requirement.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0018
+    type: evidence
+    title: KS MX fixture reproduction (test harness)
+    epistemic_status: CONFIRMED
+    source_type: TEST
+    source_paths:
+      - backend/src/modules/dimo/fixtures/ks-mx-2024-aug28-refuel.fixture.ts
+    summary: >
+      Fixture encodes 4818s envelope, 685s stale sibling, ~280s rise band for unit tests.
+      NOT production observation by itself.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0019
+    type: evidence
+    title: ATE/EED boundary map (discovery)
+    epistemic_status: INFERRED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - architecture/knowledge-graphs/discovery/ATE_EED_BOUNDARY_MAP_2026-09-01.md
+    summary: 18 cross-graph relations; zero authority conflicts.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0020
+    type: evidence
+    title: Energy events metrics service
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events-metrics.service.ts
+    summary: Detection run, mechanism outcome, persist stat recording.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0021
+    type: evidence
+    title: DIMO provider budget external authority
+    epistemic_status: INFERRED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - architecture/scaling-process/DIMO_GLOBAL_PROVIDER_BUDGET.md
+    summary: EED fetches budgeted via shared gateway; algorithm not owned by EED.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0022
+    type: evidence
+    title: Battery V2 HV sessions parallel to EED RECHARGE
+    epistemic_status: INFERRED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - architecture/battery-v2/lifecycle/hv-charge-sessions.md
+      - architecture/knowledge-graphs/discovery/ENERGY_EVENT_DETECTION_DISCOVERY_2026-09-01.md
+    summary: >
+      Battery V2 owns HvChargeSession ingest; no documented auto-link to
+      VehicleEnergyEvent. Orthogonality inferred — Battery V2 does not cite EED rows.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0025
+    type: evidence
+    title: KS MX 2024 production reprocess (P1.3-S6)
+    epistemic_status: HISTORICAL
+    source_type: PRODUCTION
+    source_paths:
+      - architecture/P1_3_S6_PRODUCTION_DEPLOY_SINGLE_REPLICA_2026-08-30.md
+    summary: >
+      Production controlled reprocess: durationSeconds=4818, rise=330s derived,
+      stale 685s sibling deleted. Application path detectEnergyEvents.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0023
+    type: evidence
+    title: Discovery baseline inventory
+    epistemic_status: INFERRED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - architecture/knowledge-graphs/discovery/ENERGY_EVENT_DETECTION_DISCOVERY_2026-09-01.md
+    summary: 52 components, 14 decisions, 12 open questions — verified/corrected at canonicalization.
+    verified_at: "2026-09-01"
+
+  - id: EED-EV-0024
+    type: evidence
+    title: refuel-fuel-rise unit tests including KS MX samples
+    epistemic_status: CONFIRMED
+    source_type: TEST
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/refuel-fuel-rise.spec.ts
+    summary: KS MX sample fixture yields derived rise in expected band.
+    verified_at: "2026-09-01"

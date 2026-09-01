@@ -10,6 +10,16 @@ import { AppModule } from '../../src/app.module';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ReferenceCaptureSessionService } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-session.service';
 import { parseAcquisitionState } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-session.repository';
+import {
+  ACQUISITION_SURFACES,
+  analyzeSignalGroup,
+  auditFingerprintSemantics,
+  buildCoverageWindows,
+  buildSurfaceCoverage,
+  classifyBrakeEvidence,
+  hasNonNullValue,
+  OUT_OF_ORDER_PREVIOUS_INVALIDATED_NOTE,
+} from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-signal-metrics';
 
 const ORG_ID = 'faa710c9-6d91-4079-a7d5-91fdccdec14a';
 const SESSION_ID = '06638509-6213-419b-9df4-3def6c024f41';
@@ -26,24 +36,6 @@ function loadEnv(): void {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
-}
-
-function percentile(sorted: number[], p: number): number | null {
-  if (sorted.length === 0) return null;
-  const idx = Math.ceil((p / 100) * sorted.length) - 1;
-  return sorted[Math.max(0, Math.min(sorted.length - 1, idx))];
-}
-
-function mean(nums: number[]): number | null {
-  if (!nums.length) return null;
-  return nums.reduce((a, b) => a + b, 0) / nums.length;
-}
-
-function stddev(nums: number[]): number | null {
-  if (nums.length < 2) return null;
-  const m = mean(nums)!;
-  const v = nums.reduce((s, n) => s + (n - m) ** 2, 0) / (nums.length - 1);
-  return Math.sqrt(v);
 }
 
 type ObsRow = {
@@ -64,77 +56,6 @@ type ObsRow = {
   provenanceJson: unknown;
   createdAt: Date;
 };
-
-function hasNonNullValue(raw: unknown): boolean {
-  if (raw == null) return false;
-  if (typeof raw === 'object' && raw !== null && 'value' in (raw as object)) {
-    return (raw as { value?: unknown }).value != null;
-  }
-  return true;
-}
-
-function analyzeSignalSeries(rows: ObsRow[]) {
-  const withTs = rows
-    .filter((r) => r.providerTimestamp)
-    .sort((a, b) => a.providerTimestamp!.getTime() - b.providerTimestamp!.getTime());
-  const nonNull = rows.filter((r) => hasNonNullValue(r.rawValueJson));
-  const uniqueTs = new Set(withTs.map((r) => r.providerTimestamp!.toISOString()));
-  const dts: number[] = [];
-  for (let i = 1; i < withTs.length; i++) {
-    dts.push((withTs[i].providerTimestamp!.getTime() - withTs[i - 1].providerTimestamp!.getTime()) / 1000);
-  }
-  const sortedDts = [...dts].sort((a, b) => a - b);
-  let outOfOrder = 0;
-  for (let i = 1; i < withTs.length; i++) {
-    if (withTs[i].providerTimestamp!.getTime() < withTs[i - 1].providerTimestamp!.getTime()) outOfOrder++;
-  }
-  const dupTs = withTs.length - uniqueTs.size;
-  const phys = rows.map((r) => r.physicalSampleFingerprint).filter(Boolean) as string[];
-  const uniquePhys = new Set(phys);
-  const ingressMs = withTs
-    .filter((r) => r.synqReceivedAt && r.providerTimestamp)
-    .map((r) => r.synqReceivedAt.getTime() - r.providerTimestamp!.getTime());
-  const sortedIngress = [...ingressMs].sort((a, b) => a - b);
-  const gapCounts = { gt2s: 0, gt5s: 0, gt10s: 0, gt30s: 0 };
-  for (const dt of dts) {
-    if (dt > 2) gapCounts.gt2s++;
-    if (dt > 5) gapCounts.gt5s++;
-    if (dt > 10) gapCounts.gt10s++;
-    if (dt > 30) gapCounts.gt30s++;
-  }
-  const jitter = stddev(dts);
-  return {
-    observationCount: rows.length,
-    uniqueProviderTimestampCount: uniqueTs.size,
-    nonNullCount: nonNull.length,
-    nullRate: rows.length ? (rows.length - nonNull.length) / rows.length : null,
-    deltaTSeconds: {
-      min: sortedDts.length ? sortedDts[0] : null,
-      p50: percentile(sortedDts, 50),
-      p90: percentile(sortedDts, 90),
-      p95: percentile(sortedDts, 95),
-      p99: percentile(sortedDts, 99),
-      max: sortedDts.length ? sortedDts[sortedDts.length - 1] : null,
-      mean: mean(dts),
-      stdDev: jitter,
-    },
-    jitterSeconds: jitter,
-    duplicateProviderTimestamps: dupTs,
-    duplicatePhysicalSamples: phys.length - uniquePhys.size,
-    outOfOrderCount: outOfOrder,
-    outOfOrderRate: withTs.length > 1 ? outOfOrder / (withTs.length - 1) : 0,
-    maxGapSeconds: sortedDts.length ? sortedDts[sortedDts.length - 1] : null,
-    gapCountsAbove: gapCounts,
-    ingressLatencyMs: {
-      p50: percentile(sortedIngress, 50),
-      p95: percentile(sortedIngress, 95),
-      p99: percentile(sortedIngress, 99),
-      max: sortedIngress.length ? sortedIngress[sortedIngress.length - 1] : null,
-    },
-    firstProviderTimestamp: withTs[0]?.providerTimestamp?.toISOString() ?? null,
-    lastProviderTimestamp: withTs[withTs.length - 1]?.providerTimestamp?.toISOString() ?? null,
-  };
-}
 
 async function snapshotSession(prisma: PrismaService, redisCli: string) {
   const session = await prisma.referenceCaptureSession.findUnique({ where: { id: SESSION_ID } });
@@ -265,22 +186,76 @@ async function main(): Promise<void> {
 
     const surfaces: Record<string, number> = {};
     const byField: Record<string, ObsRow[]> = {};
+    const byFieldSurface: Record<string, Record<string, ObsRow[]>> = {};
     for (const o of signalObs) {
       const s = o.acquisitionSurface ?? 'UNKNOWN';
       surfaces[s] = (surfaces[s] ?? 0) + 1;
       const f = o.providerField ?? 'UNKNOWN';
       if (!byField[f]) byField[f] = [];
       byField[f].push(o);
+      if (!byFieldSurface[f]) byFieldSurface[f] = {};
+      if (!byFieldSurface[f][s]) byFieldSurface[f][s] = [];
+      byFieldSurface[f][s].push(o);
     }
 
-    const uniquePhys = new Set(signalObs.map((o) => o.physicalSampleFingerprint).filter(Boolean));
+    const firstSignal = [...signalObs]
+      .filter((o) => o.requestStartedAt)
+      .sort((a, b) => a.requestStartedAt!.getTime() - b.requestStartedAt!.getTime())[0];
+    const lastSignal = [...signalObs]
+      .filter((o) => o.synqReceivedAt)
+      .sort((a, b) => b.synqReceivedAt.getTime() - a.synqReceivedAt.getTime())[0];
+
+    const sessionStartedAt = session?.startedAt?.toISOString() ?? null;
+    const firstActualCaptureAt = firstSignal?.requestStartedAt?.toISOString() ?? null;
+    const lastActualCaptureAt = lastSignal?.synqReceivedAt?.toISOString() ?? null;
+    const acquisitionGapMs =
+      session?.startedAt && firstSignal?.requestStartedAt
+        ? firstSignal.requestStartedAt.getTime() - session.startedAt.getTime()
+        : null;
+
+    const capabilityDiscovered = new Set(preflight?.availableSignals ?? []);
+    const actuallyObserved = new Set(Object.keys(byField));
     const mapped = signalObs.filter((o) => o.canonicalKey).length;
     const unmapped = signalObs.filter((o) => !o.canonicalKey && o.providerField).length;
 
-    const signalQuality: Record<string, ReturnType<typeof analyzeSignalSeries>> = {};
-    for (const [field, rows] of Object.entries(byField)) {
-      signalQuality[field] = analyzeSignalSeries(rows);
+    const ctx = {
+      sessionStartedAtMs: session?.startedAt?.getTime() ?? null,
+      firstAcquisitionMs: firstSignal?.requestStartedAt?.getTime() ?? null,
+    };
+
+    const perFieldSurface: Array<{
+      providerField: string;
+      acquisitionSurface: string;
+      metrics: ReturnType<typeof analyzeSignalGroup>;
+    }> = [];
+    for (const [field, surfaceMap] of Object.entries(byFieldSurface)) {
+      for (const [surface, rows] of Object.entries(surfaceMap)) {
+        perFieldSurface.push({ providerField: field, acquisitionSurface: surface, metrics: analyzeSignalGroup(rows, ctx) });
+      }
     }
+
+    const fingerprintAudit = auditFingerprintSemantics(allObs);
+    const coverageWindows = buildCoverageWindows({
+      sessionStartedAt,
+      sessionCompletedAt: session?.completedAt?.toISOString() ?? null,
+      rows: allObs,
+    });
+    const surfaceCoverage = buildSurfaceCoverage(signalObs);
+    const brakeEvidence = classifyBrakeEvidence([...capabilityDiscovered], Object.keys(byField));
+    const signalDynamicsCounts = Object.values(
+      Object.fromEntries(
+        Object.entries(byField).map(([field, rows]) => [
+          field,
+          analyzeSignalGroup(rows, ctx).dynamics.classification,
+        ]),
+      ),
+    ).reduce(
+      (acc: Record<string, number>, c) => {
+        acc[c] = (acc[c] ?? 0) + 1;
+        return acc;
+      },
+      {},
+    );
 
     const priorityFields = [
       'speed',
@@ -305,32 +280,25 @@ async function main(): Promise<void> {
     }
 
     const cycleJobs = new Set<string>();
-    const cycleWindows: Array<{ jobId?: string; start?: number; end?: number }> = [];
     for (const o of signalObs) {
       const prov = o.provenanceJson as { cycleJobId?: string; captureCycleId?: string } | null;
       if (prov?.cycleJobId) cycleJobs.add(prov.cycleJobId);
     }
 
-    const firstSignal = [...signalObs]
-      .filter((o) => o.requestStartedAt)
-      .sort((a, b) => a.requestStartedAt!.getTime() - b.requestStartedAt!.getTime())[0];
-    const lastSignal = [...signalObs]
-      .filter((o) => o.synqReceivedAt)
-      .sort((a, b) => b.synqReceivedAt.getTime() - a.synqReceivedAt.getTime())[0];
-
-    const sessionStartedAt = session?.startedAt?.toISOString() ?? null;
-    const firstActualCaptureAt = firstSignal?.requestStartedAt?.toISOString() ?? null;
-    const lastActualCaptureAt = lastSignal?.synqReceivedAt?.toISOString() ?? null;
-    const acquisitionGapMs =
-      session?.startedAt && firstSignal?.requestStartedAt
-        ? firstSignal.requestStartedAt.getTime() - session.startedAt.getTime()
-        : null;
-
-    const capabilityDiscovered = new Set(preflight?.availableSignals ?? []);
-    const actuallyObserved = new Set(Object.keys(byField));
-    const withUsefulData = Object.entries(byField)
-      .filter(([, rows]) => rows.some((r) => hasNonNullValue(r.rawValueJson)))
-      .map(([f]) => f);
+    const hfHistorical = {
+      totalRows: hfRows.length,
+      fields: hfByField,
+      perField: Object.fromEntries(
+        Object.keys(hfByField).map((f) => [
+          f,
+          analyzeSignalGroup(
+            hfRows.filter((r) => r.providerField === f),
+            ctx,
+          ),
+        ]),
+      ),
+      requestedIntervalNote: 'HF planner requests 1s interval — this is NOT observed cadence',
+    };
 
     const sessionSummary = {
       referenceDriveId: REFERENCE_DRIVE_ID,
@@ -363,12 +331,24 @@ async function main(): Promise<void> {
       signalObservations: signalObs.length,
       nativeEvents: eventObs.length,
       metadataObservations: metaObs.length,
-      uniquePhysicalSamples: uniquePhys.size,
+      uniquePhysicalSamplesNote:
+        'Counts unique physicalSampleFingerprint values where populated (RD001: HF_HISTORICAL only, 38.6% row coverage).',
+      uniquePhysicalSamples: fingerprintAudit.uniqueFingerprintsAllSurfaces,
+      fingerprintAudit,
       mappedObservations: mapped,
       unmappedObservations: unmapped,
       surfaces,
       hfObservationCount: hfRows.length,
       hfFields: hfByField,
+      coverageWindows,
+      surfaceCoverage,
+      signalDynamicsCounts,
+      brakeEvidence,
+      metricsMethodologyVersion: '2026-09-01-corrected',
+      RD001_METRICS_CORRECTION: 'COMPLETE',
+      nextRequiredPhase: 'PHASE_3A.3.1_FAST_ARM_WORKFLOW',
+      ARM_WORKFLOW_REMEDIATION_REQUIRED: true,
+      outOfOrderPreviousResultInvalidated: true,
       videoGroundTruthAvailable: false,
       rawEvidenceExport: {
         path: exportPath,
@@ -397,55 +377,81 @@ async function main(): Promise<void> {
       referenceDriveId: REFERENCE_DRIVE_ID,
       sessionId: SESSION_ID,
       generatedAt: new Date().toISOString(),
-      perField: signalQuality,
-      priority: Object.fromEntries(priorityFields.map((f) => [f, signalQuality[f] ?? null])),
-      hfHistorical: {
-        totalRows: hfRows.length,
-        fields: hfByField,
-        perFieldMetrics: Object.fromEntries(
-          Object.keys(hfByField).map((f) => [f, analyzeSignalSeries(hfRows.filter((r) => r.providerField === f))]),
-        ),
-        requestedIntervalNote: 'HF planner requests 1s interval — this is NOT observed cadence',
+      methodologyVersion: '2026-09-01-corrected',
+      previousAnalysisInvalidations: {
+        outOfOrderZeroResult: OUT_OF_ORDER_PREVIOUS_INVALIDATED_NOTE,
       },
-      nativeEvents: eventObs.map((e) => ({
-        rawIdentity: e.rawIdentity,
-        providerField: e.providerField,
-        providerTimestamp: e.providerTimestamp?.toISOString(),
-        fingerprint: e.providerEventFingerprint,
-        provenance: e.provenanceJson,
-        rawValueJson: e.rawValueJson,
-      })),
+      coverageWindows,
+      surfaceCoverage,
+      fingerprintAudit,
+      perFieldSurface,
+      hfHistorical,
+      nativeEvents: {
+        count: eventObs.length,
+        verdict: 'DIMO returned no native events for the captured session/window',
+        inferenceNote:
+          'Does not infer that no harsh physical maneuver occurred; does not infer provider event detector quality from one zero-event drive.',
+        events: eventObs.map((e) => ({
+          rawIdentity: e.rawIdentity,
+          providerField: e.providerField,
+          providerTimestamp: e.providerTimestamp?.toISOString(),
+          fingerprint: e.providerEventFingerprint,
+          provenance: e.provenanceJson,
+          rawValueJson: e.rawValueJson,
+        })),
+      },
       capabilityVsObserved: {
         discovered: [...capabilityDiscovered].sort(),
         actuallyObserved: [...actuallyObserved].sort(),
-        withUsefulDynamicData: withUsefulData.sort(),
+        observedNonNull: Object.entries(byField)
+          .filter(([, rows]) => rows.some((r) => hasNonNullValue(r.rawValueJson)))
+          .map(([f]) => f)
+          .sort(),
+        signalDynamicsCounts,
       },
+      brakeEvidence,
       dualReplicaSerialization: {
-        verdict: 'INFERENCE — cycleCount monotonic; activeCycleJobId null at rest; no overlapping cycleJobId windows detected in provenance sample; worker process identity not logged — true cross-replica contention not independently proven',
+        verdict: 'INFERENCE',
+        reason:
+          'cycleCount monotonic; activeCycleJobId null at rest; worker/process identity not recorded — true cross-replica contention not independently proven',
+        missingEvidenceForConfirmation: ['workerId', 'processId/replicaId', 'cycleJobId', 'cycleExecutionStartEnd'],
         uniqueCycleJobIds: cycleJobs.size,
         cycleCount: parseAcquisitionState(session?.acquisitionStateJson).cycleCount,
       },
+      acquisitionSurfaces: ACQUISITION_SURFACES,
+      priority: Object.fromEntries(
+        priorityFields.map((f) => [
+          f,
+          perFieldSurface.filter((r) => r.providerField === f),
+        ]),
+      ),
     };
 
     fs.writeFileSync(path.join(outDir, 'session-summary.json'), JSON.stringify(sessionSummary, null, 2));
     fs.writeFileSync(path.join(outDir, 'signal-quality-metrics.json'), JSON.stringify(metricsOut, null, 2));
 
-    const csvLines = ['providerField,surface,observationCount,nonNullCount,nullRate,p50_dt_s,p95_dt_s,p99_dt_s,max_gap_s,ingress_p50_ms,ingress_p95_ms'];
-    for (const [field, m] of Object.entries(signalQuality)) {
-      const surface = byField[field]?.[0]?.acquisitionSurface ?? '';
+    const csvLines = [
+      'providerField,acquisitionSurface,observationCount,uniqueProviderTimestamps,positiveDeltaTSamples,p50_dt_s,p90_dt_s,p95_dt_s,p99_dt_s,max_gap_s,outOfOrderCount,outOfOrderRate,providerSampleAge_p50_ms,httpRequest_p50_ms,dynamicsClassification',
+    ];
+    for (const row of perFieldSurface) {
+      const m = row.metrics;
       csvLines.push(
         [
-          field,
-          surface,
+          row.providerField,
+          row.acquisitionSurface,
           m.observationCount,
-          m.nonNullCount,
-          m.nullRate?.toFixed(4) ?? '',
-          m.deltaTSeconds.p50 ?? '',
-          m.deltaTSeconds.p95 ?? '',
-          m.deltaTSeconds.p99 ?? '',
-          m.maxGapSeconds ?? '',
-          m.ingressLatencyMs.p50 ?? '',
-          m.ingressLatencyMs.p95 ?? '',
+          m.providerCadence.uniqueProviderTimestampCount,
+          m.providerCadence.positiveDeltaTSampleCount,
+          m.providerCadence.deltaTSeconds.p50 ?? '',
+          m.providerCadence.deltaTSeconds.p90 ?? '',
+          m.providerCadence.deltaTSeconds.p95 ?? '',
+          m.providerCadence.deltaTSeconds.p99 ?? '',
+          m.providerCadence.maxGapSeconds ?? '',
+          m.outOfOrder.outOfOrderCount,
+          m.outOfOrder.outOfOrderRate.toFixed(6),
+          m.latency.providerSampleAgeAtIngressMs.p50 ?? '',
+          m.latency.httpRequestDurationMs.p50 ?? '',
+          m.dynamics.classification,
         ].join(','),
       );
     }

@@ -903,6 +903,20 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 
 **Deliverables:** `dimo-lte-r1-reference-drive-001-capture-report-2026-09-01.md` (DI-EV-0016) · session summary JSON (DI-EV-0017) · signal-quality metrics (DI-EV-0018) · GT evidence index (DI-EV-0019) · sealed raw export on VPS (`PURGE_BLOCKED_REFERENCE_EVIDENCE`).
 
+**Metrics correction (2026-09-01):** `RD001_METRICS_CORRECTION=COMPLETE` — methodology bugs fixed in analysis layer (out-of-order detection, unique-timestamp cadence, per-surface separation, latency terminology, dynamics classification). Sealed raw export SHA unchanged.
+
+### Phase 3A.3.1 — FAST PRE-ARM / GO workflow remediation
+**Status:** **NEXT REQUIRED BEFORE RD002** (not started)
+
+**Problem:** RD001 ARM path bootstrapped full Nest context; owner waited ~704 s before first acquisition while session was already `RECORDING`.
+
+**Target design (proposal only — not implemented in 3A.3 correction pass):**
+- **PRE-ARM:** health + create session + preflight → `READY` before owner needs GO.
+- **FAST GO:** `START` against existing `READY` session via production API/service — avoid second Nest bootstrap for GO only.
+- **Hard gate:** if first autonomous cycle not confirmed within ~10–15 s, return `READY_TO_DRIVE=NO` — do not silently recover for 12+ minutes.
+
+`ARM_WORKFLOW_REMEDIATION_REQUIRED=YES`
+
 ### Phase 3A.2 — Production deployment + runtime preflight + controlled LTE_R1 canary
 **Status:** **DONE** (2026-08-31)
 
@@ -1329,7 +1343,9 @@ After the first instrumented `DIMO_LTE_R1` reference drive, require at minimum:
 | Phase 3A.1 | **DONE** |
 | Phase 3A.2 | **DONE** |
 | Phase 3A.3 Reference Drive #001 | **DONE** — capture COMPLETED; telemetry analysis available |
+| RD001 metrics correction | **COMPLETE** (`RD001_METRICS_CORRECTION`) |
 | Reference Drive #001 Ground Truth | **NOT_AVAILABLE** (video not captured) |
+| Next: Phase 3A.3.1 FAST ARM workflow | **REQUIRED BEFORE RD002** |
 | Next: Reference Drive #002 (video GT) | **NOT STARTED** |
 | `REFERENCE_DRIVE_READY` | **YES** (for telemetry); video GT requires RD002 + ARM remediation |
 

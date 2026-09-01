@@ -11,6 +11,7 @@ import { ReferenceCaptureSessionService } from '../../src/modules/vehicle-intell
 import { ReferenceCaptureObservationRepository } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-observation.repository';
 import { ReferenceCaptureSessionRepository } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-session.repository';
 import { buildAcquisitionCyclePlan } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-acquisition-planner';
+import { isBrakeCaptureEligible } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-signal-metrics';
 
 const REFERENCE_DRIVE_ID = 'DIMO_LTE_R1_REFERENCE_DRIVE_001';
 
@@ -60,7 +61,7 @@ function classifyEligibility(availableSignals: string[]) {
       'transmission',
       'gear',
     ]),
-    brakeCaptureEligible: hasSignal(availableSignals, ['brake', 'pedal', 'pressure']),
+    brakeCaptureEligible: isBrakeCaptureEligible(availableSignals),
     yawLateralCaptureEligible: hasSignal(availableSignals, [
       'yaw',
       'angularvelocity',

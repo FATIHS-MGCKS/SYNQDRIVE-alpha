@@ -1,0 +1,362 @@
+# KG-EED canonical edges
+
+edges:
+  # ── Invocation / trigger ownership ───────────────────────────────────────────
+  - from: EED-EXT-001
+    relation: MAY_TRIGGER
+    to: EED-SVC-001
+    notes: TripReconciliationService step 5; isolated try/catch
+
+  - from: EED-SCH-001
+    relation: TRIGGERS
+    to: EED-EXT-001
+    notes: Indirect cadence via reconcile schedulers
+
+  - from: EED-RETRY-001
+    relation: INVOKES
+    to: EED-SVC-001
+    notes: Manual on-demand detect
+
+  - from: EED-JOB-001
+    relation: INVOKES
+    to: EED-SVC-001
+    notes: Ops controlled reprocess scripts
+
+  # ── DIMO request path ────────────────────────────────────────────────────────
+  - from: EED-SVC-001
+    relation: CALLS
+    to: EED-SVC-002
+
+  - from: EED-SVC-002
+    relation: FETCHES
+    to: EED-PRV-001
+
+  - from: EED-SVC-002
+    relation: GUARDED_BY
+    to: EED-EXT-002
+    notes: Provider budget via requestContext
+
+  - from: EED-SVC-002
+    relation: PARSES
+    to: EED-COMP-001
+
+  - from: EED-COMP-005
+    relation: FETCHES
+    to: EED-PRV-001
+    notes: RECHARGE mechanism path
+
+  # ── REFUEL detection chain ───────────────────────────────────────────────────
+  - from: EED-SVC-002
+    relation: FETCHES
+    to: EED-SIG-001
+
+  - from: EED-COMP-001
+    relation: READS
+    to: EED-SIG-002
+
+  - from: EED-COMP-001
+    relation: READS
+    to: EED-SIG-003
+
+  - from: EED-COMP-001
+    relation: READS
+    to: EED-SIG-005
+
+  - from: EED-SIG-001
+    relation: GUARDED_BY
+    to: EED-CFG-001
+
+  - from: EED-SVC-001
+    relation: FILTERS
+    to: EED-COMP-002
+    notes: isSegmentPersistable gate
+
+  - from: EED-COMP-002
+    relation: GUARDED_BY
+    to: EED-CFG-005
+
+  - from: EED-SVC-001
+    relation: COALESCES
+    to: EED-COMP-002
+
+  - from: EED-COMP-002
+    relation: GUARDED_BY
+    to: EED-CFG-002
+
+  - from: EED-COMP-002
+    relation: GUARDED_BY
+    to: EED-CFG-004
+
+  - from: EED-SVC-001
+    relation: CALLS
+    to: EED-COMP-007
+    notes: fetchFuelLevelSamples before upsert
+
+  - from: EED-COMP-007
+    relation: FETCHES
+    to: EED-SIG-004
+
+  - from: EED-SVC-001
+    relation: DERIVES
+    to: EED-COMP-003
+
+  - from: EED-COMP-003
+    relation: READS
+    to: EED-SIG-004
+
+  - from: EED-SVC-001
+    relation: PERSISTS
+    to: EED-DB-001
+
+  - from: EED-SVC-001
+    relation: RECONCILES
+    to: EED-COMP-004
+
+  - from: EED-COMP-004
+    relation: PRUNES
+    to: EED-DB-001
+    notes: Deletes stale REFUEL siblings only; vehicle-scoped
+
+  - from: EED-SVC-001
+    relation: PRUNES
+    to: EED-COMP-002
+    notes: pruneStaleCoalescedSubSegments with coalesce provenance
+
+  # ── RECHARGE detection chain ─────────────────────────────────────────────────
+  - from: EED-SVC-002
+    relation: FETCHES
+    to: EED-SIG-006
+
+  - from: EED-COMP-001
+    relation: READS
+    to: EED-SIG-007
+
+  - from: EED-COMP-001
+    relation: READS
+    to: EED-SIG-008
+
+  - from: EED-SVC-001
+    relation: COALESCES
+    to: EED-CFG-003
+    notes: RECHARGE 1800s gap via pipeline
+
+  - from: EED-SVC-001
+    relation: MUST_NOT_INTERPRET_AS
+    to: EED-COMP-003
+    notes: RECHARGE never uses fuel-rise derivation
+
+  # ── API / UI ─────────────────────────────────────────────────────────────────
+  - from: EED-API-001
+    relation: READS
+    to: EED-SVC-003
+
+  - from: EED-API-002
+    relation: INVOKES
+    to: EED-SVC-001
+
+  - from: EED-API-003
+    relation: READS
+    to: EED-SVC-003
+
+  - from: EED-SVC-003
+    relation: EXPOSES
+    to: EED-COMP-006
+
+  - from: EED-COMP-006
+    relation: RENDERS
+    to: EED-UI-001
+    notes: REFUEL kind
+
+  - from: EED-COMP-006
+    relation: RENDERS
+    to: EED-UI-002
+    notes: RECHARGE kind
+
+  - from: EED-UI-001
+    relation: MUST_NOT_INTERPRET_AS
+    to: EED-SIG-001
+    notes: durationSeconds not shown as pump time
+
+  - from: EED-UI-001
+    relation: READS
+    to: EED-COMP-003
+    notes: fuelLevelRiseDurationSeconds for signal change label
+
+  # ── Persistence / migration ──────────────────────────────────────────────────
+  - from: EED-MIG-001
+    relation: WRITES
+    to: EED-DB-001
+
+  - from: EED-SVC-001
+    relation: PERSISTS
+    to: EED-DB-001
+
+  # ── Observability ────────────────────────────────────────────────────────────
+  - from: EED-SVC-001
+    relation: DEPENDS_ON
+    to: EED-OBS-001
+
+  - from: EED-OBS-001
+    relation: REFERENCES
+    to: EED-FM-001
+
+  - from: EED-OBS-001
+    relation: REFERENCES
+    to: EED-FM-002
+
+  # ── Failure / fallback paths ─────────────────────────────────────────────────
+  - from: EED-SVC-001
+    relation: SKIPS_ON
+    to: EED-FM-003
+
+  - from: EED-COMP-003
+    relation: SKIPS_ON
+    to: EED-FM-002
+
+  - from: EED-SVC-002
+    relation: SKIPS_ON
+    to: EED-FM-001
+    notes: Partial mechanism failure
+
+  # ── Decisions bound to components ────────────────────────────────────────────
+  - from: EED-DEC-001
+    relation: OWNED_BY
+    to: EED-COMP-006
+
+  - from: EED-DEC-002
+    relation: OWNED_BY
+    to: EED-MIG-001
+
+  - from: EED-DEC-003
+    relation: OWNED_BY
+    to: EED-COMP-003
+
+  - from: EED-DEC-004
+    relation: OWNED_BY
+    to: EED-SIG-006
+
+  - from: EED-DEC-005
+    relation: OWNED_BY
+    to: EED-CFG-002
+
+  - from: EED-DEC-006
+    relation: OWNED_BY
+    to: EED-CFG-003
+
+  - from: EED-DEC-007
+    relation: OWNED_BY
+    to: EED-COMP-004
+
+  - from: EED-DEC-008
+    relation: PROVEN_BY
+    to: EED-HI-001
+
+  - from: EED-DEC-009
+    relation: OWNED_BY
+    to: EED-SYS-001
+
+  - from: EED-DEC-010
+    relation: REFERENCES
+    to: EED-EXT-001
+
+  - from: EED-DEC-011
+    relation: OWNED_BY
+    to: EED-CFG-001
+
+  - from: EED-DEC-012
+    relation: OWNED_BY
+    to: EED-SVC-002
+
+  # ── Historical incident evidence chain ─────────────────────────────────────────
+  - from: EED-HI-001
+    relation: PROVEN_BY
+    to: EED-EV-0025
+    notes: Production reprocess primary provenance
+
+  - from: EED-HI-001
+    relation: PROVEN_BY
+    to: EED-EV-0018
+    notes: Fixture reproduction only
+
+  - from: EED-HI-001
+    relation: MUST_NOT_INTERPRET_AS
+    to: EED-COMP-002
+    notes: Coalescing did not create 4818s envelope
+
+  - from: EED-HI-001
+    relation: RECONCILES
+    to: EED-COMP-004
+    notes: 685s stale sibling removed
+
+  # ── External authority references ──────────────────────────────────────────────
+  - from: EED-SYS-001
+    relation: DEPENDS_ON
+    to: EED-EXT-002
+
+  - from: EED-SYS-001
+    relation: PARALLEL_TO
+    to: EED-EXT-003
+
+  - from: EED-SCH-001
+    relation: GUARDED_BY
+    to: EED-EXT-004
+
+  # ── Evidence provenance (key claims) ─────────────────────────────────────────
+  - from: EED-SVC-001
+    relation: PROVEN_BY
+    to: EED-EV-0002
+
+  - from: EED-COMP-003
+    relation: PROVEN_BY
+    to: EED-EV-0008
+
+  - from: EED-COMP-004
+    relation: PROVEN_BY
+    to: EED-EV-0011
+
+  - from: EED-CFG-001
+    relation: PROVEN_BY
+    to: EED-EV-0013
+
+  - from: EED-UI-001
+    relation: PROVEN_BY
+    to: EED-EV-0015
+
+  # ── Open questions reference areas ─────────────────────────────────────────────
+  - from: EED-OQ-001
+    relation: REFERENCES
+    to: EED-ST-001
+
+  - from: EED-SVC-001
+    relation: CALLS
+    to: EED-COMP-008
+    notes: Optional post-REFUEL fuel station enrichment enqueue
+
+  - from: EED-EXT-001
+    relation: SKIPS_ON
+    to: EED-FB-001
+    notes: When EnergyEventsService not injected
+
+  - from: EED-OQ-002
+    relation: REFERENCES
+    to: EED-DEC-009
+
+  - from: EED-OQ-004
+    relation: REFERENCES
+    to: EED-EXT-003
+
+  - from: EED-OQ-005
+    relation: REFERENCES
+    to: EED-CFG-001
+
+  - from: EED-OQ-007
+    relation: REFERENCES
+    to: EED-COMP-004
+
+  - from: EED-OQ-011
+    relation: REFERENCES
+    to: EED-UI-002
+
+  - from: EED-OQ-012
+    relation: REFERENCES
+    to: EED-OBS-001

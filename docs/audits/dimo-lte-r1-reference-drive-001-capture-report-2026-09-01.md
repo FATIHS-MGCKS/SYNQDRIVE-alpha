@@ -27,6 +27,27 @@ Reference Drive #001 is a **real physical drive** with **real telemetry capture*
 | `HF_HISTORICAL` (real motion) | **ACTIVE — 1333 rows** (vs 3A.2 stationary `SUPPORTED_NO_DATA`) |
 | `dualReplicaSerialization` | **INFERENCE** (evidence limitation — see §12) |
 | `ARM_WORKFLOW_REMEDIATION_REQUIRED` | **YES** |
+| `RD001_METRICS_CORRECTION` | **COMPLETE** (2026-09-01 methodology pass) |
+
+---
+
+## Methodology correction (2026-09-01)
+
+Prior metrics in the first PR #1502 draft contained analysis bugs. **Sealed raw export unchanged** (SHA-256 verified). Corrected analysis re-run from JSONL.
+
+| Issue | Prior (invalid) | Corrected |
+|-------|-----------------|-------------|
+| Out-of-order detection | Sorted by `providerTimestamp` first → always 0% | Uses acquisition order (`sequenceNumber` → `synqReceivedAt`) |
+| Prior `outOfOrderRate=0` | Reported as confirmed | **`INVALIDATED_BY_ANALYSIS_BUG`** — recomputed: **0** in acquisition order (valid after fix) |
+| Provider cadence | Included duplicate timestamps (Δt=0) | Unique provider timestamps only; positive Δt |
+| Surface mixing | Combined per-field cadence | Separate `HF_HISTORICAL`, `LATEST_LIVE`, `LATEST_SLOW` |
+| Latency label | `ingressLatencyMs` as network ingress | `providerSampleAgeAtIngressMs` (+ `httpRequestDurationMs`, `synqResponseBoundaryMs`) |
+| Dynamics | `non-null` ⇒ "useful dynamic data" | `OBSERVED_NON_NULL` vs `DYNAMICALLY_INFORMATIVE` etc. |
+| CSV surface column | First row surface on combined metrics | One row per `providerField` + `acquisitionSurface` |
+| Brake eligibility | `pedal`/`pressure` substring false positive | Brake-specific identity only (`brakeCaptureEligible=false` on Tiguan) |
+
+**Analysis module:** `backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-signal-metrics.ts`
+**Reanalyze script:** `backend/scripts/ops/reference-capture-drive-001-reanalyze.ts`
 
 ---
 
@@ -149,7 +170,7 @@ Do **not** assume useful telemetry begins at `sessionStartedAt`.
 | Total observations | **3452** |
 | Signal observations | **3451** |
 | Metadata observations | **1** |
-| Unique physical samples | **1333** |
+| Unique physical samples (fingerprinted) | **1333** (HF_HISTORICAL only — 38.6% row coverage) |
 | Mapped observations | **2767** |
 | Unmapped observations | **684** |
 | Native events | **0** |
@@ -171,44 +192,65 @@ Do **not** assume useful telemetry begins at `sessionStartedAt`.
 |-----|-------|-------|
 | `CAPABILITY_DISCOVERED` (preflight) | **31** fields | All preflight `availableSignals` |
 | `ACTUALLY_OBSERVED` | **31** fields | 100% of discovered fields produced rows |
-| `ACTUALLY_OBSERVED_WITH_USEFUL_DATA` | **31** fields | All non-null during drive |
+| `ACTUALLY_OBSERVED_WITH_USEFUL_DATA` | **31** fields observed non-null |
+| `DYNAMICALLY_INFORMATIVE` | **18** fields |
+| `STATIC_OR_CONTEXTUAL` | **10** fields |
+| `NON_NUMERIC_CONTEXT` | **3** fields |
 
-**Not available on this vehicle (confirmed):** yaw/lateral, wheel speed — consistent with Phase 2B capability matrix.
+**Do not claim** "all 31 fields produced useful dynamic data" — only 18 showed meaningful variation.
 
-Full per-field counts: `docs/audits/data/dimo-lte-r1-reference-drive-001-signal-quality-metrics.json`.
+### Coverage windows (do not conflate)
+
+| Window | Start | End | Duration |
+|--------|-------|-----|----------|
+| `SESSION_LIFECYCLE_WINDOW` | `19:00:43.252Z` | `19:34:52.360Z` | **2049.1 s** |
+| `ACQUISITION_EXECUTION_WINDOW` | `19:12:27.239Z` (first request) | `19:34:48.594Z` (last synq) | **1341.4 s** |
+| `PROVIDER_DATA_COVERAGE_WINDOW` | `19:01:30.252Z` (earliest provider ts) | `19:14:03.000Z` | **752.7 s** |
+| **HF historical backfill before first acquisition** | — | — | **657.0 s (~10m 57s)** |
+
+**Major finding:** HF_HISTORICAL retrieved provider timestamps beginning ~11 minutes before first successful acquisition request — pre-recovery driving telemetry may be partially recoverable via HF backfill.
 
 ---
 
-## 8. Signal quality metrics (summary)
+## 8. Signal quality metrics (corrected methodology)
 
-**Important:** Combined per-field metrics aggregate **all surfaces**. Provider-timestamp-based `delta-t` and ingress latency on `LATEST_*` surfaces are **misleading** when provider timestamps are stale relative to `synqReceivedAt`. Use surface-specific interpretation (see HF audit §10).
-
-### Overall (all surfaces, all fields)
+### Out-of-order (acquisition order)
 
 | Metric | Value |
 |--------|-------|
-| Signal observation rows | **3451** |
-| Overall duplicate provider timestamp rate | **~56.3%** (1944 / 3451) — largely multi-surface overlap |
-| Out-of-order rate | **0%** |
-| Null rate | **0%** |
+| Prior `outOfOrderRate=0` | **INVALIDATED_BY_ANALYSIS_BUG** |
+| Corrected total `outOfOrderCount` (all field×surface groups) | **0** |
+| Interpretation | No provider timestamp regressions observed in `sequenceNumber` order |
 
-### Priority signals (combined surfaces)
+### HF_HISTORICAL provider cadence (unique timestamps, positive Δt)
 
-| Signal | Obs | P50 Δt | P95 Δt | P99 Δt | Max gap |
-|--------|-----|--------|--------|--------|---------|
-| **speed** | 506 | 1 s | 3 s | 9 s | 151 s |
-| **RPM** (`powertrainCombustionEngineSpeed`) | 465 | 1 s | 4 s | 14.5 s | 151 s |
-| **throttle** (`obdThrottlePosition`) | 491 | 1 s | 4 s | 13 s | 151 s |
-| **engine load** (`obdEngineLoad`) | 506 | 1 s | 3 s | 9 s | 151 s |
-| **TPS** (`powertrainCombustionEngineTPS`) | 495 | 1 s | 4 s | 13 s | 151 s |
-| **gear** (`powertrainTransmissionActualGear`) | 38 | — | 33 s | 56 s | 56 s |
-| **ignition** (`isIgnitionOn`) | 38 | — | 33 s | 56 s | 56 s |
+| Field | P50 | P95 | P99 | Max gap | Max gap class |
+|-------|-----|-----|-----|---------|---------------|
+| **speed** | **2 s** | 4 s | 20 s | 151 s | PROVIDER_GAP |
+| **RPM** | **2 s** | 9 s | 20 s | 151 s | PROVIDER_GAP |
+| **TPS** | **2 s** | 4.7 s | 20 s | 151 s | PROVIDER_GAP |
+| **throttle** | **2 s** | 4.7 s | 20 s | 151 s | PROVIDER_GAP |
+| **engine load** | **2 s** | 4 s | 20 s | 151 s | PROVIDER_GAP |
 
-**LATEST_LIVE cycle cadence:** Design interval ~5 s. Speed has **226** non-HF observations over ~22.4 min capture → consistent with ~5 s LATEST polling (not 1 Hz).
+**151 s max gap:** classified **PROVIDER_GAP** (ARM startup/recovery boundary artifact — not continuous-motion dropout).
 
-**Ingress latency:** Provider-timestamp-based ingress on LATEST surfaces reflects **stale provider clocks**, not SynqDrive HTTP delay. Do not use combined ingress metrics for LATEST latency claims.
+### LATEST_LIVE (separate metrics)
 
-Full metrics: DI-EV-0018 JSON + CSV.
+| Metric | speed (example) |
+|--------|-----------------|
+| SynqDrive retrieval cadence P50 (`synqReceivedAt`) | **~5.9 s** |
+| Provider timestamp cadence P50 (unique ts) | **~6 s** (stale LATEST provider clocks) |
+| `providerSampleAgeAtIngressMs` P50 | Large — reflects sample age, **not** HTTP network latency |
+
+### Latency terminology (corrected)
+
+| Metric | Meaning |
+|--------|---------|
+| `httpRequestDurationMs` | `requestCompletedAt - requestStartedAt` |
+| `synqResponseBoundaryMs` | `synqReceivedAt - requestStartedAt` |
+| `providerSampleAgeAtIngressMs` | `synqReceivedAt - providerTimestamp` — sample age / freshness at retrieval |
+
+Full per-field×surface metrics: DI-EV-0018 JSON + CSV.
 
 ---
 
@@ -221,7 +263,9 @@ Full metrics: DI-EV-0018 JSON + CSV.
 | throttle / TPS | YES | YES | **CONFIRMED** |
 | engine load | YES | YES | **CONFIRMED** |
 | gear/transmission | YES | YES (38 obs — LATEST_SLOW cadence) | **CONFIRMED** |
-| brake-related | eligible in manifest | **No dedicated brake hydraulic signal on vehicle** | N/A on Tiguan LTE_R1 |
+| brake-related | **BRAKE_DIRECT_SIGNAL_AVAILABLE = NO** | No dedicated hydraulic brake signal on Tiguan LTE_R1 |
+| brake proxy | **BRAKE_PROXY_EVIDENCE_AVAILABLE = YES** | Deceleration/longitudinal proxies only — not direct brake hydraulics |
+| brake preflight (corrected) | `brakeCaptureEligible=false` | Prior ARM substring bug (`pedal`/`pressure`) fixed |
 | ignition | YES | YES | **CONFIRMED** |
 | location/heading | YES | YES | **CONFIRMED** |
 | temperatures | YES | YES (ECT, oil, intake, exterior) | **CONFIRMED** |
@@ -229,11 +273,11 @@ Full metrics: DI-EV-0018 JSON + CSV.
 | yaw/lateral | unavailable | **0 rows** | **CONFIRMED absent** |
 | wheel speed | unavailable | **0 rows** | **CONFIRMED absent** |
 
-**Eligibility ≠ useful observed data** — but on this drive, all 31 eligible fields produced useful non-null data.
+**Eligibility ≠ useful observed data** — 31/31 observed non-null; **18/31 dynamically informative**.
 
 ---
 
-## 10. HF_HISTORICAL audit (critical)
+## 10. HF_HISTORICAL audit (corrected)
 
 Phase 3A.2 stationary canary: `HF_HISTORICAL = SUPPORTED_NO_DATA`.  
 Reference Drive #001 real motion: **`HF_HISTORICAL = ACTIVE`**.
@@ -278,15 +322,9 @@ Reference Drive #001 real motion: **`HF_HISTORICAL = ACTIVE`**.
 
 ## 11. Native events
 
-**Count: 0**
+**Count: 0** — DIMO returned no native events for the captured session/window.
 
-| Item | Value |
-|------|-------|
-| Native events captured | **0** |
-| Event watermark | Set at session start; no increments |
-| `seenEventFingerprints` | `[]` |
-
-**Do not infer** that no harsh maneuver occurred physically — only that DIMO native events were not returned during this capture window.
+Do **not** infer no harsh physical maneuver occurred. Do **not** infer provider event detector quality from one zero-event drive.
 
 ---
 
@@ -302,7 +340,9 @@ ARM report noted two backend replicas in nginx upstream. Phase 3A.2 canary did n
 | Worker/process identity | **Not logged** |
 | Unique cycle job IDs in provenance | **0** (provenance field not populated on all rows) |
 
-**Verdict:** `INFERENCE` — no evidence of duplicate concurrent physical cycles, but **true cross-replica operation not independently proven** (`CONFIRMED_FROM_RUNTIME` not assignable).
+**Verdict:** `INFERENCE` — no evidence of duplicate concurrent physical cycles, but **true cross-replica operation not independently proven**.
+
+**Missing evidence for `CONFIRMED_FROM_RUNTIME`:** `workerId`, `processId/replicaId`, `cycleJobId`, cycle execution start/end timestamps.
 
 ---
 
@@ -331,7 +371,7 @@ No fake MAE/RMSE/onset metrics were calculated.
 | Dropouts / gaps | **YES** | CONFIRMED_FROM_VEHICLE_OBSERVATION | Max gap 151s (ARM gap artifact) |
 | Jitter | **YES** | CONFIRMED_FROM_VEHICLE_OBSERVATION | Per-field stddev in metrics JSON |
 | Duplicates | **YES** | CONFIRMED_FROM_VEHICLE_OBSERVATION | Multi-surface overlap ~56% dup ts rate |
-| Out-of-order | **YES** | CONFIRMED_FROM_VEHICLE_OBSERVATION | 0% out-of-order |
+| Out-of-order | **YES** (recomputed; prior 0% invalidated) | CONFIRMED_FROM_VEHICLE_OBSERVATION | 0 in acquisition order after methodology fix |
 | Ingress latency (LATEST) | **PARTIAL** | INFERENCE | Provider timestamps stale — misleading |
 | Native-event availability | **YES** | CONFIRMED_FROM_VEHICLE_OBSERVATION | Zero events returned |
 | Broad acquisition behavior | **YES** | CONFIRMED_FROM_RUNTIME | 3452 obs, 226 cycles, broad capture |
@@ -381,16 +421,18 @@ Also includes: `session-summary.json`, `signal-quality-metrics.json`, `pre-stop-
 |------|--------|
 | Phase 3A overall | **IN_PROGRESS** |
 | Reference Drive #001 capture | **COMPLETED** |
-| Reference Drive #001 telemetry analysis | **AVAILABLE** |
+| Reference Drive #001 telemetry analysis | **AVAILABLE** (methodology-corrected) |
+| `RD001_METRICS_CORRECTION` | **COMPLETE** |
 | Reference Drive #001 Ground Truth | **NOT_AVAILABLE** |
 | Ground Truth synchronization | **NOT DONE** |
-| Next drive for video GT | **`DIMO_LTE_R1_REFERENCE_DRIVE_002`** |
+| Next engineering phase | **Phase 3A.3.1 FAST PRE-ARM / GO workflow** |
+| Next drive for video GT | **`DIMO_LTE_R1_REFERENCE_DRIVE_002`** (not started) |
 
 ---
 
 ## 18. Open questions
 
-1. **ARM workflow delay** — 704 s gap unacceptable for owner-at-vehicle workflow. Remediation required before #002.
+1. **Phase 3A.3.1 ARM workflow** — 704 s gap unacceptable; FAST GO via production API required before RD002.
 2. **HF 1s request vs ~2s observed** — planner/request vs provider delivery mismatch; quantify on #002 with longer HF window.
 3. **Dual-replica proof** — add worker identity logging before claiming `CONFIRMED_FROM_RUNTIME` serialization.
 4. **Native events zero** — vehicle limitation vs capture window vs query surface — investigate on #002 with known maneuvers + video.

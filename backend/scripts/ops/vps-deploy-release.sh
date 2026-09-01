@@ -1,6 +1,40 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+GIT_REPO="${SYNQDRIVE_GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
+REQUESTED_SHA="${SYNQDRIVE_REQUESTED_DEPLOY_SHA:-}"
+
+vps_validate_requested_deploy_sha() {
+  local sha=$1
+  if [[ ! "$sha" =~ ^[0-9a-fA-F]{40}$ ]]; then
+    echo "!! ABORT: invalid SYNQDRIVE_REQUESTED_DEPLOY_SHA (must be 40-char hex commit)" >&2
+    exit 1
+  fi
+}
+
+vps_clone_release_at_sha() {
+  local dest=$1
+  local sha=$2
+  vps_validate_requested_deploy_sha "$sha"
+  if [[ -z "$sha" ]]; then
+    echo "!! ABORT: SYNQDRIVE_REQUESTED_DEPLOY_SHA is required (DEC-016 exact-SHA deploy provenance)" >&2
+    exit 1
+  fi
+  rm -rf "$dest"
+  mkdir -p "$dest"
+  git -C "$dest" init -q
+  git -C "$dest" remote add origin "$GIT_REPO"
+  git -C "$dest" fetch --depth 1 origin "$sha"
+  git -C "$dest" checkout -q FETCH_HEAD
+  local actual
+  actual="$(git -C "$dest" rev-parse HEAD)"
+  if [[ "$actual" != "$sha" ]]; then
+    echo "!! ABORT: release source SHA ${actual} != requested ${sha}" >&2
+    exit 1
+  fi
+  echo "==> Release source SHA verified: ${sha:0:12}"
+}
+
 RELEASE_ID="$(date -u +%Y%m%d%H%M%S)_v4994"
 RELEASE_DIR="/opt/synqdrive/releases/${RELEASE_ID}"
 BACKUP_DIR="/opt/synqdrive/shared/backups"
@@ -24,7 +58,7 @@ if [[ -x /opt/synqdrive/current/backend/scripts/ops/vps-backup-status-textfile.s
 fi
 
 echo "==> Clone release ${RELEASE_ID}"
-git clone --depth 1 --branch main https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git "$RELEASE_DIR"
+vps_clone_release_at_sha "$RELEASE_DIR" "$REQUESTED_SHA"
 
 echo "==> Link shared env/uploads"
 ln -sfn /opt/synqdrive/shared/backend.env "$RELEASE_DIR/backend/.env"
@@ -82,27 +116,50 @@ if ! SYNQDRIVE_BOOT_CHECK=1 timeout 120 node dist/src/main.js; then
   exit 1
 fi
 
-echo "==> Switch current + restart pm2"
-ln -sfn "$RELEASE_DIR" /opt/synqdrive/current
-cd /opt/synqdrive/current/backend
-pm2 restart synqdrive --update-env
-pm2 save
+echo "==> Switch current + rolling multi-replica restart"
+# Source ops libs from the NEW release being promoted — not the pre-switch current
+# symlink copy of this script (P1.8.3 / OQ-18 bootstrap caveat: old current would
+# load pre-P1.8.3.1 verify_post_deploy without the convergence gate).
+RELEASE_OPS_DIR="${RELEASE_DIR}/backend/scripts/ops"
+# shellcheck source=vps-production-replica-topology.config.sh
+source "${RELEASE_OPS_DIR}/vps-production-replica-topology.config.sh"
+# shellcheck source=lib/vps-production-replica.lib.sh
+source "${RELEASE_OPS_DIR}/lib/vps-production-replica.lib.sh"
 
-echo "==> Health check"
-HEALTH_OK=0
-for _ in $(seq 1 30); do
-  if curl -sf http://127.0.0.1:3001/api/v1/health; then
-    echo
-    HEALTH_OK=1
-    break
-  fi
-  sleep 2
-done
-if [[ "$HEALTH_OK" -ne 1 ]]; then
-  echo "!! ABORT: ${RELEASE_ID} is not serving /health after restart" >&2
+TARGET_SHA="$(vps_replica_release_sha "$RELEASE_DIR")"
+if [[ "$TARGET_SHA" != "$REQUESTED_SHA" ]]; then
+  echo "!! ABORT: TARGET_SHA ${TARGET_SHA} != REQUESTED_SHA ${REQUESTED_SHA}" >&2
   exit 1
 fi
-pm2 list
+echo "==> Deploy provenance: REQUESTED_SHA=${REQUESTED_SHA:0:12} TARGET_SHA=${TARGET_SHA:0:12}"
+DEPLOY_STATE_FILE="${SYNQDRIVE_DEPLOY_STATE_DIR}/last-deploy-state.env"
+ROLLBACK_ON_FAIL=1
+
+vps_replica_capture_deploy_state "$DEPLOY_STATE_FILE"
+
+ln -sfn "$RELEASE_DIR" /opt/synqdrive/current
+
+if ! vps_replica_rolling_deploy "$RELEASE_DIR" "$TARGET_SHA"; then
+  echo "!! ABORT: multi-replica rolling deploy failed for ${RELEASE_ID}" >&2
+  if [[ "$ROLLBACK_ON_FAIL" -eq 1 ]]; then
+    echo "==> Rolling back to previous release"
+    vps_replica_rollback "$DEPLOY_STATE_FILE" || true
+  fi
+  exit 1
+fi
+
+if ! vps_replica_verify_post_deploy "$RELEASE_DIR" "$TARGET_SHA"; then
+  echo "!! ABORT: post-deploy multi-replica verification failed for ${RELEASE_ID}" >&2
+  if [[ "$ROLLBACK_ON_FAIL" -eq 1 ]]; then
+    echo "==> Rolling back to previous release"
+    vps_replica_rollback "$DEPLOY_STATE_FILE" || true
+  fi
+  exit 1
+fi
+
+echo "==> Multi-replica deploy verification PASS"
+echo "    TARGET_SHA=${TARGET_SHA}"
+echo "    REPLICA_COUNT=${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}"
 echo "Deployed release: ${RELEASE_ID} ($(git -C "$RELEASE_DIR" rev-parse --short HEAD))"
 
 if [[ "${MONITORING_AUTO_REFRESH:-auto}" == "auto" ]]; then

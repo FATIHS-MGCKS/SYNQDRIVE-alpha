@@ -1,0 +1,1412 @@
+# Battery V2 Knowledge Graph — Nodes (bootstrap seed)
+# Validate: bash architecture/battery-v2/scripts/validate-graph.sh
+
+nodes:
+  # --- Authorities ---
+  - id: BAT-V2-AUTH-TRIP-END-001
+    type: authority
+    title: Trip end time anchor authority
+    epistemic_status: CONFIRMED
+    summary: >
+      When tripEndAt is present, LV REST anchor = authoritative trip.endTime.
+      Session idempotency derives from vehicleId + anchor ms.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window.state-machine.ts
+    evidence:
+      - BAT-V2-EVID-CODE-ANCHOR-001
+      - BAT-V2-EVID-ARCH-PIPELINE-CLOSURE-001
+
+  - id: BAT-V2-AUTH-LV-OPEN-001
+    type: authority
+    title: ICE LV rest-window opening evidence precedence
+    epistemic_status: CONFIRMED
+    summary: >
+      isEngineOffForRestWindowOpening — ignition-off + measured stationary speed
+      can outrank engine_load proxy at opening gate.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window.policy.ts
+    evidence:
+      - BAT-V2-EVID-PR-1393-001
+      - BAT-V2-EVID-PROD-61715ECD-001
+
+  - id: BAT-V2-AUTH-LV-MEASURE-001
+    type: authority
+    title: Conservative REST measurement engine-off quality
+    epistemic_status: CONFIRMED
+    summary: >
+      isEngineOffForRest — downstream evaluation remains conservative;
+      residual engine_load may reject in-window observations.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window.policy.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/battery-rest-target-evaluation.ts
+    evidence:
+      - BAT-V2-EVID-PR-1393-001
+
+  - id: BAT-V2-AUTH-REST-EVAL-001
+    type: authority
+    title: REST target canonical evaluation authority
+    epistemic_status: CONFIRMED
+    summary: BatteryRestTargetEvaluationService adjudicates VALID/MISSED/retryable; handler persists metadata only.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/battery-rest-target-evaluation.ts
+
+  # --- Policies ---
+  - id: BAT-V2-POL-NO-FABRICATE-001
+    type: policy
+    title: No fabricated REST measurements
+    epistemic_status: CONFIRMED
+    summary: Missing telemetry evidence yields MISSED or PENDING_EVALUATION — not numeric zero.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
+
+  - id: BAT-V2-POL-OPEN-VS-MEASURE-001
+    type: policy
+    title: Opening vs measurement policy split
+    epistemic_status: CONFIRMED
+    summary: Opening gate and measurement quality use different engine-off functions intentionally.
+    evidence:
+      - BAT-V2-DEC-1393-001
+
+  # --- Jobs ---
+  - id: BAT-V2-JOB-LV-SESSION-OPEN-001
+    type: job
+    title: BATTERY_LV_REST_SESSION_OPEN
+    epistemic_status: CONFIRMED
+    summary: Durable session-open job; idempotency lv-rest-open:{vehicleId}:{anchorMs}.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-lv-rest-session.producer.ts
+
+  - id: BAT-V2-JOB-REST-EVAL-001
+    type: job
+    title: BATTERY_REST_TARGET_EVALUATE
+    epistemic_status: CONFIRMED
+    summary: Evaluates REST_60M/REST_6H; requires restWindowId on payload.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-rest-target.producer.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
+    evidence:
+      - BAT-V2-EVID-ARCH-REST-CONTRACT-001
+
+  # --- Liveness rules ---
+  - id: BAT-V2-LIVE-SESSION-RECON-001
+    type: liveness_rule
+    title: LV session reconciliation arming
+    epistemic_status: CONFIRMED
+    summary: reconcileMissingLvRestSessions calls ensureLvRestWindowForFinalizedTrip before recovery enqueue.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-reconciliation.service.ts
+
+  - id: BAT-V2-LIVE-PEND-EVAL-001
+    type: liveness_rule
+    title: PENDING_EVALUATION reconciliation deferral
+    epistemic_status: CONFIRMED
+    summary: Retryable missing evidence → PENDING_EVALUATION + return; reconciliation reschedules on cadence.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window-target.metadata.ts
+    evidence:
+      - BAT-V2-TEST-PEND-EVAL-001
+
+  - id: BAT-V2-LIVE-ORPHAN-ENQ-001
+    type: liveness_rule
+    title: Orphaned ENQUEUED REST target recovery
+    epistemic_status: CONFIRMED
+    summary: ENQUEUED without live Bull job and without DLQ → PENDING_EVALUATION → recovery schedule.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-reconciliation.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-producer.service.ts
+    evidence:
+      - BAT-V2-TEST-ORPHAN-ENQ-001
+    non_effects:
+      - Does not cover RUNNING-without-job orphan state
+
+  # --- States ---
+  - id: BAT-V2-STATE-REST-TARGET-001
+    type: state
+    title: REST target metadata status FSM
+    epistemic_status: CONFIRMED
+    summary: SCHEDULED|ENQUEUED|RUNNING|PENDING_EVALUATION|terminal statuses in session metadata.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window-target.metadata.ts
+
+  # --- Signals ---
+  - id: BAT-V2-SIG-LV-VOLTAGE-001
+    type: signal
+    title: LV battery voltage (LIVE_VOLTAGE)
+    epistemic_status: CONFIRMED
+    summary: Primary REST measurement observation source in shadow pipeline.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/battery-rest-target-evaluation.ts
+
+  # --- Decisions ---
+  - id: BAT-V2-DEC-1383-001
+    type: decision
+    title: Observation-independent LV Rest session opening
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Trip finalization enqueues durable session-open; reconciliation scans COMPLETED trips.
+    evidence:
+      - BAT-V2-EVID-PR-1383-001
+      - BAT-V2-EVID-ARCH-LIVENESS-001
+    non_effects:
+      - Does not alone fix REST ENQUEUED/DLQ liveness
+      - Does not fix ICE opening load-proxy (#1393)
+
+  - id: BAT-V2-DEC-1393-001
+    type: decision
+    title: ICE rest-window opening policy hardening
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Split opening vs measurement engine-off policies for ICE key-off shapes.
+    evidence:
+      - BAT-V2-EVID-PR-1393-001
+      - BAT-V2-EVID-PROD-61715ECD-001
+    notes: >
+      Production trip 61715ecd motivated OBSERVATION/WHY (pre-change defect).
+      Post-change production behavioral validation of opening rate is UNKNOWN.
+
+  - id: BAT-V2-DEC-1445-001
+    type: decision
+    title: Stage 1 pipeline defect closure
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Liveness, trip binding, REST temporal defects A-D; orphan ENQUEUED recovery; no historical backfill.
+    evidence:
+      - BAT-V2-EVID-PR-1445-001
+      - BAT-V2-EVID-ARCH-PIPELINE-CLOSURE-001
+    non_effects:
+      - RUNNING orphan recovery
+      - Stage 2 / publication / readiness activation
+      - Historical backfill
+      - Proof all natural post-fix trips succeed
+
+  - id: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
+    type: decision
+    title: LV canonical handoff architecture (Phase 4 PROPOSED)
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: >
+      Hybrid direct enqueue + reconciliation safety net for canonical REST → assessment → publication.
+      Assessment: buildAssessmentJobIdempotencyKey (assess: prefix); PKG-01 blockers — REST post-persist/pre-enqueue
+      crash-boundary handling SPEC REQUIRED; CONFIGURATION_INVARIANT_SPEC_REQUIRED (inputVersion closed by
+      BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001).
+      Publication: BATTERY_PUBLICATION_UPDATE after deterministic assessment-selection authority (SPEC REQUIRED);
+      policy in BatteryPublicationService only; buildPublicationJobIdempotencyKey; PKG-02 blockers —
+      assessment-track selection SPEC REQUIRED; publicationVersion SPEC REQUIRED; CONFIGURATION_INVARIANT_SPEC_REQUIRED.
+      Multi-track recompute (WORKSHOP_OVERRIDE + TELEMETRY) requires track authority — not "publish every assessment".
+      REST_SHADOW=ON + PUBLICATION=ON + future HANDOFF=OFF must not be treated as valid Stage-2 steady state under
+      current legacy-capture semantics. Configuration-invariant option not chosen — CONFIGURATION_INVARIANT_SPEC_REQUIRED.
+      P0_ACTIVATION_BLOCKER not active outage. NOT implemented; NOT VALIDATED; three LV gaps remain open.
+    source_paths:
+      - architecture/battery-v2/resolution/lv-publication-chain-resolution.md
+    non_effects:
+      - Does not enable readiness or Stage 3
+      - Does not fix timestamp provenance
+      - Does not resolve open gaps until runtime merged
+
+  - id: BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001
+    type: decision
+    title: Canonical LV REST assessment inputVersion (D1)
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: >
+      PKG-01 inputVersion = persisted BatteryMeasurement.id for canonical REST → assessment handoff.
+      Job identity: assess:{vehicleId}:LV_HEALTH:{measurementId} via buildAssessmentJobIdempotencyKey.
+      inputVersion is trigger authority for the persisted measurement, not model version, timestamp provenance,
+      trip, or rest-window identity. Identity/retry-in-flight-dedupe safe — not durable exactly-once execution.
+      Rejected: observedAt, trip/session/window alone, composite rest binding.
+      Legacy snapshot path may keep capture.capturedAt.getTime() — no re-keying. NOT PRODUCTION_VALIDATED.
+    source_paths:
+      - architecture/battery-v2/decisions/lv-assessment-input-version-decision.md
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-idempotency.policy.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
+    evidence:
+      - BAT-V2-EVID-CODE-ASSESSMENT-JOB-IDEMPOTENCY-001
+      - BAT-V2-EVID-CODE-REST-MEASUREMENT-ID-HANDOFF-001
+    non_effects:
+      - Does not implement assessment enqueue
+      - Does not close BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
+      - Does not resolve crash-boundary (D2) or configuration invariant (D3)
+      - Does not guarantee durable exactly-once assessment execution
+      - No migration, flags, backfill, or production mutation
+
+  # --- Gaps ---
+  - id: BAT-V2-GAP-RUNNING-ORPHAN-001
+    type: gap
+    title: RUNNING REST target metadata semantics and recovery
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      RUNNING is a current enum member read by isLvRestTargetAlreadyScheduled (treated as already-scheduled).
+      No writer found in audited repository/Git history assigning RUNNING to REST target metadata.
+      Introduced in commit 6cbd9a9c0e019650a19b343081b55cf483f2788f. Whether orphan RUNNING rows exist in
+      production DB from unknown origin is UNKNOWN (see BAT-V2-HYP-RUNNING-ORPHAN-001).
+    open_questions:
+      - Do orphan RUNNING rows exist in production DB from non-git path?
+    evidence:
+      - BAT-V2-EVID-CODE-REST-TARGET-STATUS-001
+      - BAT-V2-EVID-GIT-RUNNING-SKIPPED-ENUM-001
+      - BAT-V2-EVID-AUDIT-RUNNING-SKIPPED-WRITER-ABSENCE-001
+
+  - id: BAT-V2-GAP-SKIPPED-REST-001
+    type: gap
+    title: SKIPPED REST target semantics
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      SKIPPED is a current enum member with no defined lifecycle writer in audited repository/Git history.
+      Introduced in commit 6cbd9a9c0e019650a19b343081b55cf483f2788f. Terminal semantics never implemented.
+    evidence:
+      - BAT-V2-EVID-CODE-REST-TARGET-STATUS-001
+      - BAT-V2-EVID-GIT-RUNNING-SKIPPED-ENUM-001
+      - BAT-V2-EVID-AUDIT-RUNNING-SKIPPED-WRITER-ABSENCE-001
+
+  - id: BAT-V2-GAP-BRIDGE-FALLBACK-001
+    type: gap
+    title: Bridge trip resolution without authoritative finalized trip
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      Bridge invoked from classify ingestion when REST shadow on. ±120s trip resolution; legacy TRIP_ENDED with
+      tripId=null REACHABLE. Bridge anchor uses detState.lastActivityAt; canonical arming uses trip.endTime —
+      different session idempotency keys (lv-rest:{vehicleId}:{anchorMs}). Idempotency does NOT collapse bridge
+      vs canonical identities when anchors differ. CODE-CONDITIONAL duplicate/supersession risk; production
+      frequency UNKNOWN.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window-ingestion-bridge.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-BRIDGE-REACHABILITY-001
+
+  - id: BAT-V2-GAP-HV-AUTHORITY-001
+    type: gap
+    title: HV/PHEV authority model — remaining unknowns
+    epistemic_status: INFERRED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      Phase 2+3 traced signals, methods, publication, consumers. Remaining: SESSION/GROSS compute paths,
+      PHEV mixed-powertrain edge cases, production enablement. HEV contradiction partially reachable (see CONTRA).
+    evidence:
+      - BAT-V2-EVID-CODE-HV-METHOD-PROFILE-001
+      - BAT-V2-EVID-PR-1480-001
+
+  - id: BAT-V2-GAP-CONSUMER-READ-001
+    type: gap
+    title: Consumer read-model authority — remaining surfaces
+    epistemic_status: INFERRED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      Rental health, tasks, insights, notifications, AI summary traced to canonical. Master live battery UNCONSUMED.
+      Operator battery panel UNCONSUMED. Insight→Notification V2 battery ingest path UNCONSUMED (rental-health sync used).
+    evidence:
+      - BAT-V2-EVID-CODE-CANONICAL-READ-001
+      - BAT-V2-EVID-PR-1480-001
+
+  - id: BAT-V2-GAP-LOCK-FAILOPEN-001
+    type: gap
+    title: Redis lock fail-open rationale
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: PARTIAL
+    summary: >
+      CONFIRMED behavior: when Redis unavailable (not contended), BatteryV2VehicleLockService proceeds
+      without lock (token redis-unavailable). Historical decision rationale not found in repo.
+    evidence:
+      - BAT-V2-EVID-CODE-LOCK-FAILOPEN-001
+    open_questions:
+      - Why fail-open vs fail-closed for battery ingest?
+
+  - id: BAT-V2-GAP-TIMESTAMP-FALLBACK-001
+    type: gap
+    title: LV timestamp fallback production reachability
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      Fallback chain REACHABLE_AND_CONFLICTING: collectionLastSeenAt/providerFetchedAt/new Date() can become
+      providerTimestamp; REST evaluation accepts any non-null providerTimestamp. Production frequency UNKNOWN.
+    evidence:
+      - BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001
+      - BAT-V2-EVID-CODE-LV-TIMESTAMP-CHAIN-001
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-live-voltage/lv-live-voltage-ingestion.service.ts
+      - backend/src/modules/dimo/mappers/dimo-battery-signal.mapper.ts
+
+  - id: BAT-V2-GAP-THRESHOLD-PROVENANCE-001
+    type: gap
+    title: Policy threshold calibration rationale
+    epistemic_status: UNKNOWN
+    reconstruction_maturity: PARTIAL
+    summary: >
+      Threshold values cataloged as CODE FACT in signals/threshold-catalog.md.
+      Physical/domain rationale for most constants not documented in repository.
+    source_paths:
+      - architecture/battery-v2/signals/threshold-catalog.md
+
+  - id: BAT-V2-GAP-PUB-READINESS-001
+    type: gap
+    title: Publication/readiness enablement gates
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      Flag defaults and stage model traced. LV publication job chain incomplete (no REST→pub enqueue).
+      Dual authority battery_publications vs battery_features. HV SOH gate execution under HV_CAPACITY_SHADOW flag;
+      HV_SOH_PUBLICATION flag is publication-intent/reason metadata only (PUBLICATION_DISABLED does not block sohGatePassed);
+      publicationEligible remains false; no HV BatteryPublication/customer carrier identified. Production enablement UNKNOWN.
+    source_paths:
+      - backend/src/config/battery-health-v2.config.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-soh-gate.policy.ts
+      - architecture/battery-v2/health-model/publication-readiness.md
+    evidence:
+      - BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001
+
+  - id: BAT-V2-GAP-HEV-IS-EV-001
+    type: gap
+    title: HEV fuelType vs canonical isEv gate
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      CONFIRMED: fuelType HYBRID → isEv=false → canonical.hv=null, support.hv=false. HV side-effects (jobs,
+      snapshots) can still run. Within BAT-V2-CONTRA-HEV-HV-AUTHORITY-001. Production fleet mix UNKNOWN.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+      - backend/src/modules/vehicle-intelligence/drive-profile/drive-profile-resolver.ts
+    evidence:
+      - BAT-V2-CONTRA-HEV-HV-AUTHORITY-001
+
+  - id: BAT-V2-GAP-HV-PROVIDER-SOH-LATESTSTATE-TIMESTAMP-001
+    type: gap
+    title: Provider SOH latestState value without evidence timestamp
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      providerSoh falls back to VehicleLatestState.tractionBatterySohPercent but providerSohObservedAt
+      uses hvProviderSohEvidence.observedAt only. VLS-only and VLS-ahead-of-evidence paths CODE REACHABLE.
+      VLS has no per-signal SOH timestamp column. Production frequency UNKNOWN.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HV-SOH-WINNER-FLOW-001
+
+  - id: BAT-V2-GAP-HV-SOH-WINNER-USABILITY-001
+    type: gap
+    title: HV SOH winner fails usability — no second-candidate reselection
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      Winner-specific usability gate with no reselection. CODE REACHABLE: stale provider-soh winner +
+      usable capacity-estimate ignored (legacy pairwise flag). Fresh reported-soh always wins over stale provider.
+      Production frequency UNKNOWN.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HV-SOH-WINNER-FLOW-001
+
+  - id: BAT-V2-GAP-HV-SELECTED-SOH-DTO-NAMING-001
+    type: gap
+    title: Selected HV SOH uses providerSoh-named DTO carrier
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      CanonicalBatteryHvProviderSoh.source supports PROVIDER, DOCUMENT, MANUAL, CAPACITY_ESTIMATE.
+      buildCanonicalBatteryDto maps selected hvProviderSoh into canonical.hv.providerSoh. No
+      canonical.hv.healthPercent field exists. Field name is legacy/misleading — agents may treat
+      providerSoh as provider-only. Whether runtime DTO should be renamed UNKNOWN. Contract/naming
+      ambiguity only — no production impact claim.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery/canonical-battery.types.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery/canonical-battery.builder.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HV-SELECTED-SOH-DTO-001
+
+  - id: BAT-V2-GAP-HEV-SIDE-EFFECT-READ-DIVERGENCE-001
+    type: gap
+    title: HEV HV side-effect vs canonical read-model divergence
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      Layer A — policy-gated BatteryMeasurement HV types: inherited ICE policy forbids HV_ALL_MEASUREMENT_TYPES
+      → measurements can become UNSUPPORTED_PROFILE. Layer D1 — snapshot/evidence: observation-driven
+      recordSnapshot when evSoc present; no universal fuelType gate. Layer D2 — charge-session paths:
+      recharge/fallback flags + method/capability conditions. Layer D3 — capacity shadow:
+      BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED + eligible completed session. Layer E — canonical read:
+      FuelType.HYBRID → isEv=false → canonical.hv absent. Write/compute/read authority divergence —
+      not necessarily database-orphaned rows. Production frequency UNKNOWN.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-battery-health.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-snapshot-ingestion.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HEV-SIDE-EFFECT-READ-DIVERGENCE-001
+
+  - id: BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
+    type: gap
+    title: Canonical REST target completion does not enqueue LV assessment recompute
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      battery-rest-target-evaluate.handler completes REST targets but does not enqueue BATTERY_ASSESSMENT_RECOMPUTE.
+      Legacy assessment enqueue exists only via isBatteryV2LegacyRestCaptureEnabled() snapshot path; when REST
+      shadow ON and publication ON, legacy rest capture is OFF. reconcilePendingAssessments selects stale
+      batteryFeatures (restObservationCount/crankObservationCount), not canonical BatteryMeasurement REST rows.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-snapshot-ingestion.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-reconciliation.service.ts
+      - backend/src/config/battery-health-v2.config.ts
+    evidence:
+      - BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001
+
+  - id: BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
+    type: gap
+    title: BATTERY_ASSESSMENT_RECOMPUTE completion does not enqueue BATTERY_PUBLICATION_UPDATE
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      battery-assessment-recompute.handler persists assessment but does not enqueue BATTERY_PUBLICATION_UPDATE.
+      battery-publication-update.handler calls BatteryPublicationService.updateLvPublication when job runs.
+      No normal enqueue wrapper in BATTERY_V2_ENQUEUE_ENTRY_POINTS audit inventory. Backfill may call
+      updateLvPublication directly. Production impact UNKNOWN (publication default OFF).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-assessment-recompute.handler.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-publication-update.handler.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-publication.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001
+      - BAT-V2-EVID-AUDIT-PUBLICATION-ENQUEUE-ABSENCE-001
+
+  - id: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
+    type: gap
+    title: LV canonical REST → assessment → publication pipeline not end-to-end reachable
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      Umbrella gap: both canonical assessment handoff and publication handoff missing in normal pipeline.
+      Enabling publication flag alone does not establish automatic canonical REST → assessment → publication
+      chain due to legacy-cutover interaction. See BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001 and
+      BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001.
+    evidence:
+      - BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001
+      - BAT-V2-EVID-AUDIT-PUBLICATION-ENQUEUE-ABSENCE-001
+
+  - id: BAT-V2-GAP-HV-PIPELINE-ALLOWED-DEAD-001
+    type: gap
+    title: ResolvedBatteryPolicy.hvPipelineAllowed has no runtime consumer
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      materializePolicy sets hvPipelineAllowed=true for HEV via isHvMeasurementSupported override. Repo-wide
+      current-code audit found no runtime reader of policy.hvPipelineAllowed outside resolver/tests/catalog.
+      Write gates are separate: (1) BatteryMeasurement — forbiddenMeasurementTypes per policy;
+      (2) HV snapshots — observation-driven recordSnapshot; (3) charge sessions/capacity shadow — flags +
+      capability/method profile; (4) canonical read — isEv (ELECTRIC/PLUGIN_HYBRID only; HYBRID excluded).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.resolver.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HEV-POLICY-MATERIALIZE-001
+      - BAT-V2-EVID-AUDIT-HV-PIPELINE-ALLOWED-ABSENCE-001
+
+  - id: BAT-V2-GAP-HV-SESSION-CHARGE-METHOD-001
+    type: gap
+    title: SESSION_CHARGE_CAPACITY method has no compute implementation
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: HV method profile may list SESSION_CHARGE_CAPACITY as supported when capabilities allow, but no shadow/compute service implements it.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-method-profile/
+
+  - id: BAT-V2-GAP-HV-GROSS-CAPACITY-METHOD-001
+    type: gap
+    title: GROSS_CAPACITY_REFERENCE method has no compute implementation
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      Profile eligibility for hv.gross_capacity exists; HvCapacityMethod.PROVIDER_GROSS_CAPACITY in domain
+      enum only — no shadow compute pipeline found.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/
+
+  # --- HV signals (Phase 2) ---
+  - id: BAT-V2-SIG-HV-SOC-001
+    type: signal
+    title: HV SOC (powertrainTractionBatteryStateOfChargeCurrent)
+    epistemic_status: CONFIRMED
+    summary: Primary SOC signal for M2/M3 and live HV state.
+    source_paths:
+      - backend/src/modules/dimo/mappers/dimo-battery-signal.mapper.ts
+
+  - id: BAT-V2-SIG-HV-CURRENT-ENERGY-001
+    type: signal
+    title: HV current pack energy (StateOfChargeCurrentEnergy)
+    epistemic_status: CONFIRMED
+    summary: Remaining pack energy kWh — M2 numerator input.
+    source_paths:
+      - backend/src/modules/dimo/mappers/dimo-battery-signal.mapper.ts
+
+  - id: BAT-V2-SIG-HV-PROVIDER-SOH-001
+    type: signal
+    title: HV provider SOH (StateOfHealth)
+    epistemic_status: CONFIRMED
+    summary: OEM-reported SOH %; conflict candidate tier PROVIDER_OEM_SOH when fresh — not universal winner.
+    source_paths:
+      - backend/src/modules/dimo/mappers/dimo-battery-signal.mapper.ts
+
+  - id: BAT-V2-SIG-DIMO-RECHARGE-SEG-001
+    type: signal
+    title: DIMO recharge segments (dimo.segments.recharge)
+    epistemic_status: CONFIRMED
+    summary: Native charge session boundaries; capability preflight probe.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-signals.registry.ts
+
+  # --- HV authorities (Phase 2) ---
+  - id: BAT-V2-AUTH-HV-METHOD-PROFILE-001
+    type: authority
+    title: HV method profile capability-driven eligibility
+    epistemic_status: CONFIRMED
+    summary: resolveHvMethodProfile() — 100% capability-driven; resolver v1.0.0; no ICE/BEV branching inside resolver.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-method-profile/hv-method-profile.resolver.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HV-METHOD-PROFILE-001
+
+  - id: BAT-V2-AUTH-HV-M2-001
+    type: authority
+    title: M2 current-energy-over-SOC capacity estimate
+    epistemic_status: CONFIRMED
+    summary: estimatedCapacityKwh = currentEnergyKwh / (socPercent/100); shadow-only; flag-gated.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-capacity-m2.policy.ts
+
+  - id: BAT-V2-AUTH-HV-M3-001
+    type: authority
+    title: M3 added-energy-over-SOC-delta validation
+    epistemic_status: CONFIRMED
+    summary: VALIDATION_ONLY cross-check vs M2 session median; does not publish SOH alone.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-capacity-m3.policy.ts
+
+  - id: BAT-V2-POL-HV-EVIDENCE-STRENGTH-001
+    type: policy
+    title: HV SOH evidence-strength tier ranks and stale penalty
+    epistemic_status: CONFIRMED
+    summary: >
+      Tier ranks WORKSHOP_OR_BMS_VERIFIED(9) > DOCUMENT_VERIFIED(8) > PROVIDER_OEM_SOH(7) > ESTIMATED(4).
+      Stale evidence receives STALE_TIER_PENALTY=3 in effectiveTierScore. Not provider-always-wins.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-evidence-strength.policy.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HV-EVIDENCE-STRENGTH-001
+
+  - id: BAT-V2-AUTH-HV-SOH-CONFLICT-001
+    type: authority
+    title: HV SOH evidence-strength + freshness conflict resolution
+    epistemic_status: CONFIRMED
+    summary: >
+      resolveHvSohEvidenceConflict() selects winner among provider/workshop-document/capacity-estimate
+      candidates using freshness-aware resolveEvidenceConflict(). Fresh workshop/document outrank fresh
+      provider SOH at equal freshness.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-evidence-strength.policy.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HV-SOH-CONFLICT-001
+
+  - id: BAT-V2-AUTH-HV-SELECTED-SOH-001
+    type: authority
+    title: Selected HV health/SOH in canonical read model
+    epistemic_status: CONFIRMED
+    summary: >
+      Internal: hvHealthPercent/hvSohSource from conflict winner + usability checks. Canonical DTO carrier:
+      canonical.hv.providerSoh (NOT canonical.hv.healthPercent). .source identifies actual authority
+      (PROVIDER|DOCUMENT|MANUAL|CAPACITY_ESTIMATE). Separate from canonical.hv.sohAssessment.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery/canonical-battery.builder.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery/canonical-battery.types.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HV-SOH-WINNER-FLOW-001
+      - BAT-V2-EVID-CODE-HV-SELECTED-SOH-DTO-001
+
+  - id: BAT-V2-AUTH-HV-PROVIDER-SOH-001
+    type: authority
+    title: Provider SOH evidence candidate path
+    epistemic_status: CONFIRMED
+    summary: >
+      Provider-reported SOH is one conflict candidate (tier PROVIDER_OEM_SOH). Outranks ESTIMATED at equal
+      freshness; does not universally outrank workshop/document. Not authoritative_over SOH gate assessment.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+      - backend/src/modules/dimo/mappers/dimo-battery-signal.mapper.ts
+
+  - id: BAT-V2-AUTH-HV-RECHARGE-NATIVE-001
+    type: authority
+    title: Native DIMO recharge segment over telemetry fallback
+    epistemic_status: CONFIRMED
+    summary: Native segment ingest supersedes overlapping telemetry-poll fallback sessions.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session-persist.service.ts
+
+  - id: BAT-V2-AUTH-CANONICAL-READ-001
+    type: authority
+    title: CanonicalBatteryHealthService read composition
+    epistemic_status: CONFIRMED
+    summary: Preferred battery read authority for summary/detail APIs and rental health aggregators.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-CANONICAL-READ-001
+
+  # --- HV policies (Phase 2) ---
+  - id: BAT-V2-POL-HV-NO-FABRICATE-SOH-001
+    type: policy
+    title: No fabricated HV SOH from age/km heuristics
+    epistemic_status: CONFIRMED
+    summary: Missing measured basis yields unavailable — never numeric 0% SOH fabrication.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-battery-health.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+
+  # --- HV jobs (Phase 2) ---
+  - id: BAT-V2-JOB-HV-RECHARGE-RECON-001
+    type: job
+    title: HV_RECHARGE_SESSION_RECONCILE
+    epistemic_status: CONFIRMED
+    summary: Reconciles native DIMO recharge segments or fallback detector when segments unavailable.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-recharge-session-reconcile.service.ts
+
+  - id: BAT-V2-JOB-HV-CAPACITY-SHADOW-001
+    type: job
+    title: HV_CAPACITY_SHADOW_RECOMPUTE
+    epistemic_status: CONFIRMED
+    summary: Shadow M2/M3/cross-session/SOH gate pipeline; default disabled by flag.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-capacity-shadow.service.ts
+
+  # --- Stores (Phase 2) ---
+  - id: BAT-V2-STORE-BATTERY-MEASUREMENT-001
+    type: store
+    title: BatteryMeasurement table
+    epistemic_status: CONFIRMED
+    summary: Immutable measurement layer; LIVE_VOLTAGE, REST, etc.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: BAT-V2-STORE-BATTERY-MEASUREMENT-SESSION-001
+    type: store
+    title: BatteryMeasurementSession table
+    epistemic_status: CONFIRMED
+    summary: Mutable session cycles with metadata FSM for REST targets.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: BAT-V2-STORE-BATTERY-ASSESSMENT-001
+    type: store
+    title: BatteryAssessment table
+    epistemic_status: CONFIRMED
+    summary: Versioned assessment runs; LV estimated health, HV shadow, SOH gate.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: BAT-V2-STORE-BATTERY-PUBLICATION-001
+    type: store
+    title: BatteryPublication table
+    epistemic_status: CONFIRMED
+    summary: Immutable publication history; flag-gated operational read may still use legacy tables.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: BAT-V2-STORE-HV-CHARGE-SESSION-001
+    type: store
+    title: HvChargeSession table
+    epistemic_status: CONFIRMED
+    summary: Native DIMO and telemetry-fallback charge sessions.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: BAT-V2-STORE-HV-CAPACITY-OBSERVATION-001
+    type: store
+    title: HvCapacityObservation table
+    epistemic_status: CONFIRMED
+    summary: Shadow capacity point estimates and session summaries.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: BAT-V2-STORE-VEHICLE-BATTERY-CAPABILITY-001
+    type: store
+    title: VehicleBatteryCapability table
+    epistemic_status: CONFIRMED
+    summary: Preflight capability rows per signal per vehicle.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: BAT-V2-STORE-REFERENCE-CAPACITY-001
+    type: store
+    title: VehicleBatteryReferenceCapacity table
+    epistemic_status: CONFIRMED
+    summary: Verified reference capacity for SOH gate calculations.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: BAT-V2-STORE-BATTERY-FEATURES-LEGACY-001
+    type: store
+    title: BatteryFeatures legacy feature store
+    epistemic_status: CONFIRMED
+    summary: In-place legacy rest/crank features; battery-health/v2 API still reads this.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  # --- Assessments (Phase 2) ---
+  - id: BAT-V2-ASSESS-LV-ESTIMATED-001
+    type: assessment
+    title: LV estimated health assessment
+    epistemic_status: CONFIRMED
+    summary: Behavioral score — explicitly not workshop SOH.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-estimated-health-assessment.policy.ts
+
+  - id: BAT-V2-ASSESS-HV-CAPACITY-SHADOW-001
+    type: assessment
+    title: HV capacity shadow cross-session assessment
+    epistemic_status: CONFIRMED
+    summary: Rolling median cross-session; publicationEligible false by default.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-capacity-cross-session-assessment.service.ts
+
+  - id: BAT-V2-ASSESS-HV-SOH-GATE-001
+    type: assessment
+    title: HV SOH gate internal assessment
+    epistemic_status: CONFIRMED
+    summary: >
+      Executed under BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED via shadow recompute chain
+      (M2→M3→cross-session→recomputeForVehicle). Requires verified reference capacity;
+      publicationEligible false always; not customer-published.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-soh-gate-assessment.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-capacity-shadow.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-soh-gate.policy.ts
+
+  # --- Publication (Phase 2) ---
+  - id: BAT-V2-PUB-LV-001
+    type: publication
+    title: LV publication layer
+    epistemic_status: CONFIRMED
+    summary: Flag BATTERY_V2_PUBLICATION_ENABLED; shadow assessments cannot auto-publish without flag.
+    source_paths:
+      - backend/src/config/battery-health-v2.config.ts
+
+  - id: BAT-V2-PUB-HV-SOH-001
+    type: publication
+    title: HV SOH publication-intent marker
+    epistemic_status: CONFIRMED
+    summary: >
+      HV SOH publication-intent/configuration marker. Current code exposes
+      BATTERY_V2_HV_SOH_PUBLICATION_ENABLED (sohPublicationEnabled reason metadata), but SOH gate
+      assessments remain publicationEligible=false and no HV BatteryPublication/customer carrier is identified.
+      Execution authority is BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED, not this flag.
+    source_paths:
+      - backend/src/config/battery-health-v2.config.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-soh-gate.policy.ts
+
+  # --- Consumers (Phase 2) ---
+  - id: BAT-V2-CONS-API-SUMMARY-001
+    type: consumer
+    title: battery-health-summary API
+    epistemic_status: CONFIRMED
+    summary: Canonical read via CanonicalBatteryHealthService.getSummary().
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+
+  - id: BAT-V2-CONS-API-DETAIL-001
+    type: consumer
+    title: battery-health-detail API
+    epistemic_status: CONFIRMED
+    summary: Canonical read via CanonicalBatteryHealthService.getDetail().
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+
+  - id: BAT-V2-CONS-API-LEGACY-V2-001
+    type: consumer
+    title: battery-health/v2 legacy API
+    epistemic_status: CONFIRMED
+    summary: Reads BatteryV2Service / battery_features — legacy authority.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+
+  - id: BAT-V2-CONS-FE-HEALTH-TAB-001
+    type: consumer
+    title: Rental vehicle health tab battery UI
+    epistemic_status: CONFIRMED
+    summary: useBatteryHealthQuery → canonical summary/detail DTO view-models.
+    source_paths:
+      - frontend/src/rental/hooks/useHealthTabBatteryData.ts
+
+  - id: BAT-V2-CONS-RENTAL-HEALTH-001
+    type: consumer
+    title: RentalHealthService battery module
+    epistemic_status: CONFIRMED
+    summary: Aggregates canonical battery summary for rental health surface.
+    source_paths:
+      - backend/src/modules/rental-health/rental-health.service.ts
+
+  - id: BAT-V2-CONS-BATTERY-TASK-001
+    type: consumer
+    title: BatteryTaskService automation
+    epistemic_status: CONFIRMED
+    summary: Task materialization from canonical battery summary policy evaluation.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-task.service.ts
+
+  # --- Hypotheses ---
+  - id: BAT-V2-HYP-RUNNING-ORPHAN-001
+    type: hypothesis
+    title: Orphaned RUNNING metadata may need Bull liveness check
+    epistemic_status: INFERRED
+    summary: >
+      If RUNNING rows exist in production DB (origin unknown — no writer found in audited Git/repo history),
+      they may need the same Bull liveness check as ENQUEUED. Current code reads RUNNING as already-scheduled
+      but has no writer path in audited history.
+    evidence:
+      - BAT-V2-GAP-RUNNING-ORPHAN-001
+      - BAT-V2-EVID-GIT-RUNNING-SKIPPED-ENUM-001
+      - BAT-V2-EVID-AUDIT-RUNNING-SKIPPED-WRITER-ABSENCE-001
+
+  - id: BAT-V2-HYP-POST-1445-SOAK-001
+    type: hypothesis
+    title: Post-#1445 natural trip REST stall elimination
+    epistemic_status: UNKNOWN
+    summary: >
+      #1445 fixes may eliminate production REST stall class for natural trips under shadow.
+      AWAITING post-change production soak evidence.
+    evidence:
+      - BAT-V2-DEC-1445-001
+
+  - id: BAT-V2-HYP-BRIDGE-120S-001
+    type: hypothesis
+    title: ±120s bridge fallback mis-bind risk
+    epistemic_status: UNKNOWN
+    summary: >
+      ±120s bridge fallback may mis-bind when multiple trips cluster in time window.
+      UNTESTED.
+    evidence:
+      - BAT-V2-GAP-BRIDGE-FALLBACK-001
+
+  # --- Contradictions ---
+  - id: BAT-V2-CONTRA-HEV-HV-AUTHORITY-001
+    type: contradiction
+    title: HEV multi-layer HV authority contradiction
+    epistemic_status: CONTRADICTED
+    summary: >
+      isHvMeasurementSupported(HEV)=true; materializePolicy sets hvPipelineAllowed=true (no runtime consumer);
+      ICE catalog forbids HV_ALL_MEASUREMENT_TYPES for BatteryMeasurement; D1 snapshot/evidence writes
+      are observation-driven (evSoc); D2 charge-session paths are flag/capability gated; D3 capacity shadow
+      requires HV_CAPACITY_SHADOW flag + eligible session; canonical isEv excludes HYBRID → canonical.hv
+      absent. PARTIALLY REACHABLE: write/compute/read divergence (BAT-V2-GAP-HEV-SIDE-EFFECT-READ-DIVERGENCE-001). Resolution UNRESOLVED.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/drive-profile/drive-profile-resolver.ts
+      - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.resolver.ts
+      - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.catalog.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HEV-POLICY-MATERIALIZE-001
+      - BAT-V2-EVID-CODE-HEV-IS-EV-001
+    open_questions:
+      - Which layer should govern HEV HV eligibility — policy catalog, drive-profile helper, or canonical isEv?
+      - Do any production HEV vehicles have HV capability rows and active shadow pipeline?
+
+  - id: BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001
+    type: contradiction
+    title: LV providerTimestamp fallback vs REST evidence eligibility
+    epistemic_status: CONTRADICTED
+    summary: >
+      Doctrine: provider/fetch receipt time is not automatically a new provider observation.
+      Code: mapper resolveLvBatteryObservedAt falls back to collectionLastSeenAt; persist uses
+      lvBatteryObservedAt ?? receivedAt (receivedAt = providerFetchedAt ?? now); providerTimestamp persisted.
+      KNOWN: multi-layer fallback REACHABLE_AND_CONFLICTING — REST eval accepts any non-null providerTimestamp.
+      UNKNOWN: production frequency. Resolution: UNRESOLVED.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-live-voltage/lv-live-voltage-ingestion.service.ts
+      - backend/src/modules/dimo/mappers/dimo-battery-signal.mapper.ts
+    evidence:
+      - BAT-V2-EVID-CODE-LV-TIMESTAMP-CHAIN-001
+    open_questions:
+      - Production frequency of collectionLastSeenAt-only LV timestamps?
+      - Do fallback providerTimestamp rows pass REST quality gates?
+
+  # --- Failed approaches ---
+  - id: BAT-V2-FAIL-OBS-ONLY-OPEN-001
+    type: failed_approach
+    title: Observation-only session opening
+    epistemic_status: HISTORICAL
+    summary: Insufficient — session existence depended on post-finalize observation cycle.
+    evidence:
+      - BAT-V2-EVID-PROD-61715ECD-001
+
+  - id: BAT-V2-FAIL-ENQUEUE-ONLY-RECON-001
+    type: failed_approach
+    title: Enqueue-only session reconciliation
+    epistemic_status: HISTORICAL
+    summary: Insufficient — lost jobs without DLQ left no durable session trigger.
+    evidence:
+      - BAT-V2-EVID-PROD-EA7696B6-001
+
+  - id: BAT-V2-FAIL-ENQ-META-LIVENESS-001
+    type: failed_approach
+    title: ENQUEUED metadata as queue liveness proof
+    epistemic_status: HISTORICAL
+    summary: Insufficient — metadata could outlive Bull job.
+    evidence:
+      - BAT-V2-TEST-ORPHAN-ENQ-001
+
+  - id: BAT-V2-FAIL-BULL-SHORT-RETRY-001
+    type: failed_approach
+    title: Short Bull retry for evidence grace window
+    epistemic_status: HISTORICAL
+    summary: Insufficient — ~15s Bull exhaust vs ~30m evidence grace.
+    evidence:
+      - BAT-V2-TEST-PEND-EVAL-001
+
+  - id: BAT-V2-FAIL-BULK-DLQ-001
+    type: failed_approach
+    title: Bulk DLQ clear before reconciliation
+    epistemic_status: HISTORICAL
+    summary: Insufficient — defeated per-entity ENQUEUED+DLQ rescue.
+    evidence:
+      - BAT-V2-EVID-ARCH-PIPELINE-CLOSURE-001
+
+  # --- Rejected approaches (governance rejection, not empirical failure) ---
+  - id: BAT-V2-REJECT-HISTORICAL-REPAIR-SCAN-001
+    type: rejected_approach
+    title: Recurring historical trip-binding repair scan
+    epistemic_status: HISTORICAL
+    decision_status: REJECTED
+    summary: >
+      NOT_ADOPTED — violates no-backfill policy; masks creation-time bugs.
+      Preferred: creation-time invariant + P2002 race repair at mutation boundary.
+      Recurring historical rewrite intentionally removed in #1445.
+    evidence:
+      - BAT-V2-EVID-ARCH-PIPELINE-CLOSURE-001
+
+  # --- Evidence nodes ---
+  - id: BAT-V2-EVID-CODE-ANCHOR-001
+    type: evidence
+    title: resolveLvRestWindowAnchorAt implementation
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Code anchor resolution prefers tripEndAt when present.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window.state-machine.ts
+
+  - id: BAT-V2-EVID-CODE-HAS-LIVE-JOB-001
+    type: evidence
+    title: BatteryV2JobProducerService.hasLiveJob
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Bull queue liveness probe used by orphan ENQUEUED recovery.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-producer.service.ts
+
+  - id: BAT-V2-EVID-ARCH-PIPELINE-CLOSURE-001
+    type: evidence
+    title: Stage 1 pipeline defect closure architecture memo
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: Dated architecture memo documenting Stage 1 defect closure scope and non-effects.
+    source_paths:
+      - architecture/BATTERY_V2_STAGE1_PIPELINE_DEFECT_CLOSURE_2026-08-30.md
+
+  - id: BAT-V2-EVID-ARCH-LIVENESS-001
+    type: evidence
+    title: LV rest session liveness architecture memo
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: Dated architecture memo on observation-independent session opening.
+    source_paths:
+      - architecture/BATTERY_V2_LV_REST_SESSION_LIVENESS_2026-08-28.md
+
+  - id: BAT-V2-EVID-ARCH-ICE-OPEN-001
+    type: evidence
+    title: ICE opening policy architecture memo
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: Dated architecture memo on ICE opening vs measurement policy split.
+    source_paths:
+      - architecture/BATTERY_V2_ICE_REST_OPENING_POLICY_2026-08-28.md
+
+  - id: BAT-V2-EVID-ARCH-REST-CONTRACT-001
+    type: evidence
+    title: REST window contract architecture memo
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: Dated architecture memo on REST window contract and target scheduling.
+    source_paths:
+      - architecture/BATTERY_V2_REST_WINDOW_CONTRACT_2026-08-26.md
+
+  - id: BAT-V2-TEST-ORPHAN-ENQ-001
+    type: test_evidence
+    title: Orphaned ENQUEUED liveness spec
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Unit/integration spec proving orphan ENQUEUED recovery path.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-rest-target-orphaned-enqueued-liveness.spec.ts
+
+  - id: BAT-V2-TEST-PEND-EVAL-001
+    type: test_evidence
+    title: PENDING_EVALUATION liveness spec
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Unit/integration spec proving PENDING_EVALUATION deferral and reschedule.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-rest-target-pending-evaluation-liveness.spec.ts
+
+  - id: BAT-V2-EVID-PR-1383-001
+    type: evidence
+    title: PR #1383 merge history
+    epistemic_status: CONFIRMED
+    source_type: PR_HISTORY
+    summary: Merge record for observation-independent LV Rest session opening.
+    source_locator: "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1383"
+    verified_ref: "f104f522ec22c37f22398eab997f229517748028"
+    verified_at: "2026-08-28T14:47:39Z"
+
+  - id: BAT-V2-EVID-PR-1393-001
+    type: evidence
+    title: PR #1393 merge history
+    epistemic_status: CONFIRMED
+    source_type: PR_HISTORY
+    summary: Merge record for ICE rest-window opening policy hardening.
+    source_locator: "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1393"
+    verified_ref: "65d2242c346a785bcdd75296433175d4700b6cb3"
+    verified_at: "2026-08-28T19:17:14Z"
+
+  - id: BAT-V2-EVID-PR-1445-001
+    type: evidence
+    title: PR #1445 merge history
+    epistemic_status: CONFIRMED
+    source_type: PR_HISTORY
+    summary: Merge record for Stage 1 pipeline defect closure.
+    source_locator: "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1445"
+    verified_ref: "7556a5119ae0bd376e4a508071aa0095a6a4bb3c"
+    verified_at: "2026-08-30T17:37:35Z"
+
+  - id: BAT-V2-EVID-PR-1480-001
+    type: evidence
+    title: PR #1480 merge history — Phase 2 HV/persistence/consumer knowledge reconstruction
+    epistemic_status: CONFIRMED
+    source_type: PR_HISTORY
+    summary: >
+      Documentation evolution evidence for HV signals, methods, persistence, canonical read, consumers,
+      SOH authority correction. NOT evidence of production runtime validation.
+    source_locator: "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1480"
+    verified_ref: "da959784f835a31482852d506daa137c90389b87"
+    verified_at: "2026-09-01T10:31:24Z"
+
+  - id: BAT-V2-EVID-PROD-EA7696B6-001
+    type: evidence
+    title: Production trip ea7696b6 missing session after finalize
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: Pre-change production audit — missing LV session 50+ min post-finalize.
+    source_paths:
+      - architecture/BATTERY_V2_STAGE1_PIPELINE_DEFECT_CLOSURE_2026-08-30.md
+    notes: Pre-change production observation — evidence for OBSERVATION/WHY, not post-fix validation.
+
+  - id: BAT-V2-EVID-PROD-61715ECD-001
+    type: evidence
+    title: Production trip 61715ecd ICE opening rejection
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: Pre-change production audit — ICE opening rejected at key-off due to engine_load proxy.
+    source_paths:
+      - architecture/BATTERY_V2_ICE_REST_OPENING_POLICY_2026-08-28.md
+    notes: Pre-change production observation — evidence for OBSERVATION/WHY, not post-fix validation.
+
+  - id: BAT-V2-EVID-PROD-4D2BEF5F-001
+    type: evidence
+    title: Production session 4d2bef5f stuck ENQUEUED + DLQ
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: Pre-change production audit — REST target stuck ENQUEUED with PROVIDER_UNAVAILABLE DLQ.
+    source_paths:
+      - architecture/BATTERY_V2_STAGE1_PIPELINE_DEFECT_CLOSURE_2026-08-30.md
+    notes: Pre-change production observation — evidence for OBSERVATION/WHY, not post-fix validation.
+
+  - id: BAT-V2-EVID-CODE-HV-METHOD-PROFILE-001
+    type: evidence
+    title: HV method profile resolver implementation
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Capability-driven HV method eligibility resolver v1.0.0.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-method-profile/hv-method-profile.resolver.ts
+
+  - id: BAT-V2-EVID-CODE-CANONICAL-READ-001
+    type: evidence
+    title: CanonicalBatteryHealthService implementation
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Canonical battery read composition; selected HV SOH via conflict resolver; sohAssessment mapped separately.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery/canonical-battery.builder.ts
+
+  - id: BAT-V2-EVID-CODE-LOCK-FAILOPEN-001
+    type: evidence
+    title: BatteryV2VehicleLockService fail-open on Redis unavailable
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: acquire() returns redis-unavailable token when Redis down; jobs proceed without lock.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-vehicle-lock.service.ts
+
+  - id: BAT-V2-EVID-CODE-REST-TARGET-STATUS-001
+    type: evidence
+    title: REST target metadata status enum and scheduling guards
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: RUNNING/SKIPPED enum values; isLvRestTargetAlreadyScheduled treats RUNNING as scheduled.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window-target.metadata.ts
+
+  - id: BAT-V2-EVID-CODE-LV-TIMESTAMP-CHAIN-001
+    type: evidence
+    title: LV timestamp chain from DIMO mapper through classify ingest
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: resolveLvBatteryObservedAt fallback to collectionLastSeenAt; persist fallback chain documented.
+    source_paths:
+      - backend/src/modules/dimo/mappers/dimo-battery-signal.mapper.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-live-voltage/lv-live-voltage-ingestion.service.ts
+
+  - id: BAT-V2-EVID-CODE-REST-60M-WINDOW-001
+    type: evidence
+    title: REST_60M quality window constants
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: REST_60M ±15 min; REST_6H ±30 min quality half-widths.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/battery-rest-target-evaluation.ts
+
+  - id: BAT-V2-EVID-CODE-HV-RECHARGE-SUPERSEDE-001
+    type: evidence
+    title: Native recharge segment supersedes fallback sessions
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: persistRechargeSegment calls supersedeOverlappingFallbackSessions before native persist.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session-persist.service.ts
+
+  - id: BAT-V2-EVID-CODE-HV-EVIDENCE-STRENGTH-001
+    type: evidence
+    title: HV/LV evidence-strength tier ranks and stale penalty
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: TIER_RANK map; STALE_TIER_PENALTY=3; effectiveTierScore freshness adjustment.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-evidence-strength.policy.ts
+
+  - id: BAT-V2-EVID-CODE-HV-SOH-CONFLICT-001
+    type: evidence
+    title: resolveHvSohEvidenceConflict implementation
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Provider/workshop-document/capacity-estimate candidates; resolveEvidenceConflict with HV scope.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-evidence-strength.policy.ts
+
+  - id: BAT-V2-EVID-CODE-HV-SOH-WINNER-FLOW-001
+    type: evidence
+    title: Canonical HV SOH winner selection and usability control flow
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      providerSoh value from evidence or latestState; providerSohObservedAt evidence-only; winner-specific
+      usability checks without second-candidate fallback.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+
+  - id: BAT-V2-EVID-CODE-HEV-POLICY-MATERIALIZE-001
+    type: evidence
+    title: HEV policy materialization and ICE HV forbidden set
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      materializePolicy hvPipelineAllowed = definition.hvPipelineAllowed || isHvMeasurementSupported(HEV).
+      ICE catalog forbiddenMeasurementTypes includes HV_ALL_MEASUREMENT_TYPES.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.resolver.ts
+      - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.catalog.ts
+      - backend/src/modules/vehicle-intelligence/drive-profile/drive-profile-resolver.ts
+
+  - id: BAT-V2-EVID-CODE-HEV-IS-EV-001
+    type: evidence
+    title: Canonical isEv excludes FuelType.HYBRID
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: isEv = fuelType ELECTRIC || PLUGIN_HYBRID only; HYBRID/HEV not recognized as EV in canonical read.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+
+  - id: BAT-V2-EVID-CODE-CAPABILITY-REGISTRY-001
+    type: evidence
+    title: Battery capability preflight signal registry (13 entries)
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: BATTERY_CAPABILITY_SIGNALS — 1 LV + 11 hv.* + dimo.segments.recharge; measurement types per key.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-signals.registry.ts
+
+  - id: BAT-V2-EVID-CODE-DIMO-MAPPER-HV-001
+    type: evidence
+    title: DIMO battery signal mapper HV field inventory
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      12 HV + 1 LV mapped fields; powertrainTractionBatteryCurrentVoltage mapped without registry key.
+    source_paths:
+      - backend/src/modules/dimo/mappers/dimo-battery-signal.mapper.ts
+
+  - id: BAT-V2-EVID-CODE-HV-SELECTED-SOH-DTO-001
+    type: evidence
+    title: Selected HV SOH canonical DTO mapping
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      CanonicalBatteryHvSection has providerSoh (not healthPercent). CanonicalBatteryHvProviderSoh.source
+      supports PROVIDER|DOCUMENT|MANUAL|CAPACITY_ESTIMATE. buildCanonicalBatteryDto maps input.hvProviderSoh
+      to canonical.hv.providerSoh. liveState.hv.values.providerSohPercent is separate live signal.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery/canonical-battery.types.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery/canonical-battery.builder.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+
+  - id: BAT-V2-EVID-GIT-RUNNING-SKIPPED-ENUM-001
+    type: evidence
+    title: Git history — RUNNING/SKIPPED enum introduction commit
+    epistemic_status: CONFIRMED
+    source_type: COMMIT_HISTORY
+    summary: >
+      Enum values introduced in commit 6cbd9a9c0e019650a19b343081b55cf483f2788f (2026-07-16, Prompt 31/78).
+      Audit: git log -S/-G on backend/**/lv-rest-window/** and backend/**/battery-health/** for
+      LV_REST_TARGET_JOB_STATUS.RUNNING/SKIPPED and status assignment patterns — introduction commit only;
+      no subsequent writer commit found in audited history. See BAT-V2-EVID-AUDIT-RUNNING-SKIPPED-WRITER-ABSENCE-001
+      for current-code ripgrep audit.
+    verified_ref: "6cbd9a9c0e019650a19b343081b55cf483f2788f"
+    source_paths:
+      - architecture/battery-v2/execution/rest-target-status-history.md
+
+  - id: BAT-V2-EVID-AUDIT-RUNNING-SKIPPED-WRITER-ABSENCE-001
+    type: evidence
+    title: Audit — no RUNNING/SKIPPED REST target metadata writer in repo
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      SEARCH_METHOD: ripgrep + git log -S/-G. SEARCH_SCOPE: backend/**/battery-health/**,
+      backend/**/lv-rest-window/**. TERMS: RUNNING, SKIPPED, LV_REST_TARGET_JOB_STATUS.RUNNING,
+      LV_REST_TARGET_JOB_STATUS.SKIPPED, status assignment patterns. RESULT: enum + reader
+      (isLvRestTargetAlreadyScheduled) present; no status: RUNNING or status: SKIPPED assignment
+      in battery-health/lv-rest-window writers. Exhaustive absence not proven beyond audited scope.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window-target.metadata.ts
+      - architecture/battery-v2/execution/rest-target-status-history.md
+
+  - id: BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001
+    type: evidence
+    title: LV assessment/publication handoff gaps — handler vs enqueue paths
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      Handler: battery-publication-update.handler.ts (BATTERY_PUBLICATION_UPDATE) →
+      BatteryPublicationService.updateLvPublication(). Assessment handler does not enqueue publication.
+      REST target handler does not enqueue assessment. Legacy assessment enqueue gated by
+      isBatteryV2LegacyRestCaptureEnabled() (OFF when shadow+publication ON).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-publication-update.handler.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-publication.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-assessment-recompute.handler.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-snapshot-ingestion.service.ts
+      - backend/src/config/battery-health-v2.config.ts
+
+  - id: BAT-V2-EVID-AUDIT-PUBLICATION-ENQUEUE-ABSENCE-001
+    type: evidence
+    title: Audit — BATTERY_PUBLICATION_UPDATE absent from normal enqueue inventory
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      SEARCH_METHOD: BATTERY_V2_ENQUEUE_ENTRY_POINTS audit inventory + ripgrep enqueue('BATTERY_PUBLICATION_UPDATE').
+      SEARCH_SCOPE: backend/src/modules/vehicle-intelligence/battery-health/**.
+      RESULT: assessment enqueue wrapper listed (snapshot-ingestion.enqueueLvAssessmentRecompute);
+      no publication enqueue wrapper in inventory; no production enqueue() call for BATTERY_PUBLICATION_UPDATE
+      outside test/metrics specs in audited scope.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-enqueue-paths.audit.spec.ts
+
+  - id: BAT-V2-EVID-CODE-HEV-SIDE-EFFECT-READ-DIVERGENCE-001
+    type: evidence
+    title: HEV HV side-effect writes vs canonical read absence
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      BatteryMeasurement HV types gated by ICE forbiddenMeasurementTypes (UNSUPPORTED_PROFILE).
+      recordSnapshot/HV jobs lack universal fuelType gate. getHvBatteryStatus returns null for HYBRID
+      (isEv=false) → canonical.hv absent despite possible side-effect rows.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-battery-health.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-snapshot-ingestion.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.catalog.ts
+
+  - id: BAT-V2-EVID-CODE-BRIDGE-REACHABILITY-001
+    type: evidence
+    title: Bridge fallback reachability — anchor identity and repair boundary
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      Bridge: lv-rest-window-ingestion-bridge.service.ts — ±120s TRIP_END_ANCHOR_TOLERANCE_MS;
+      fallback TRIP_ENDED with tripId=null and anchor=detState.lastActivityAt. Canonical arming:
+      lv-rest-window-session-arming.service.ts — anchor=trip.endTime, windowId=lv-rest:{vehicleId}:{endTimeMs}.
+      Different idempotency keys when anchors differ; repair binds only on matching canonical key.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window-ingestion-bridge.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window.state-machine.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window-session-arming.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-measurement-session.repository.ts
+
+  - id: BAT-V2-EVID-AUDIT-HV-PIPELINE-ALLOWED-ABSENCE-001
+    type: evidence
+    title: Audit — hvPipelineAllowed has no runtime consumer
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      SEARCH_METHOD: repo-wide ripgrep hvPipelineAllowed. SEARCH_SCOPE: backend/**.
+      RESULT: assignments in resolver.ts + catalog.ts + tests/specs only; no producer/handler/service
+      reads policy.hvPipelineAllowed at runtime in audited scope.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.resolver.ts
+
+  - id: BAT-V2-EVID-CODE-ASSESSMENT-JOB-IDEMPOTENCY-001
+    type: evidence
+    title: "Assessment job idempotency builder - assess prefix contract"
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      buildAssessmentJobIdempotencyKey({ vehicleId, assessmentType, inputVersion }) →
+      assess:{vehicleId}:{assessmentType}:{inputVersion}. Builder unchanged; inputVersion is caller-supplied
+      string/number anchor for deduplication — not consumed by assessment computation logic.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-idempotency.policy.ts
+
+  - id: BAT-V2-EVID-CODE-REST-MEASUREMENT-ID-HANDOFF-001
+    type: evidence
+    title: "REST target evaluate - measurementId at persist boundary"
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      BatteryRestTargetEvaluateHandler calls evaluateAndPersist(); on success logs result.measurementId.
+      measurementId is the persisted BatteryMeasurement primary key — available at intended future handoff
+      boundary. Assessment enqueue not implemented in handler.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/battery-rest-target-evaluation.service.ts
