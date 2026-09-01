@@ -170,9 +170,59 @@ edges:
   - from: BAT-V2-SIG-HV-PROVIDER-SOH-001
     relation: contributes_to
     to: BAT-V2-AUTH-HV-PROVIDER-SOH-001
+  - from: BAT-V2-SIG-HV-PROVIDER-SOH-001
+    relation: contributes_to
+    to: BAT-V2-AUTH-HV-SOH-CONFLICT-001
+  - from: BAT-V2-EVID-CODE-HV-EVIDENCE-STRENGTH-001
+    relation: supports
+    to: BAT-V2-POL-HV-EVIDENCE-STRENGTH-001
+  - from: BAT-V2-EVID-CODE-HV-SOH-CONFLICT-001
+    relation: supports
+    to: BAT-V2-AUTH-HV-SOH-CONFLICT-001
+  - from: BAT-V2-POL-HV-EVIDENCE-STRENGTH-001
+    relation: governs
+    to: BAT-V2-AUTH-HV-SOH-CONFLICT-001
+  - from: BAT-V2-AUTH-HV-SOH-CONFLICT-001
+    relation: governs
+    to: BAT-V2-AUTH-HV-SELECTED-SOH-001
   - from: BAT-V2-AUTH-HV-PROVIDER-SOH-001
-    relation: authoritative_over
+    relation: contributes_to
+    to: BAT-V2-AUTH-HV-SOH-CONFLICT-001
+  - from: BAT-V2-EVID-CODE-HV-SOH-WINNER-FLOW-001
+    relation: supports
+    to: BAT-V2-AUTH-HV-SELECTED-SOH-001
+  - from: BAT-V2-EVID-CODE-HV-SOH-WINNER-FLOW-001
+    relation: supports
+    to: BAT-V2-GAP-HV-PROVIDER-SOH-LATESTSTATE-TIMESTAMP-001
+  - from: BAT-V2-EVID-CODE-HV-SOH-WINNER-FLOW-001
+    relation: supports
+    to: BAT-V2-GAP-HV-SOH-WINNER-USABILITY-001
+  - from: BAT-V2-AUTH-HV-SELECTED-SOH-001
+    relation: consumed_by
+    to: BAT-V2-AUTH-CANONICAL-READ-001
+  - from: BAT-V2-ASSESS-HV-SOH-GATE-001
+    relation: consumed_by
+    to: BAT-V2-AUTH-CANONICAL-READ-001
+    notes: Mapped to canonical.hv.sohAssessment — not overwritten by provider SOH
+  - from: BAT-V2-JOB-HV-CAPACITY-SHADOW-001
+    relation: evaluates
     to: BAT-V2-ASSESS-HV-SOH-GATE-001
+  - from: BAT-V2-EVID-CODE-HEV-POLICY-MATERIALIZE-001
+    relation: supports
+    to: BAT-V2-CONTRA-HEV-HV-AUTHORITY-001
+  - from: BAT-V2-EVID-CODE-HEV-IS-EV-001
+    relation: supports
+    to: BAT-V2-CONTRA-HEV-HV-AUTHORITY-001
+  - from: BAT-V2-CONTRA-HEV-HV-AUTHORITY-001
+    relation: refines
+    to: BAT-V2-GAP-HEV-IS-EV-001
+    notes: Narrower isEv question within broader HEV authority contradiction
+  - from: BAT-V2-EVID-CODE-CAPABILITY-REGISTRY-001
+    relation: supports
+    to: BAT-V2-SIG-HV-SOC-001
+  - from: BAT-V2-EVID-CODE-DIMO-MAPPER-HV-001
+    relation: supports
+    to: BAT-V2-SIG-HV-SOC-001
   - from: BAT-V2-AUTH-HV-RECHARGE-NATIVE-001
     relation: authoritative_over
     to: BAT-V2-STORE-HV-CHARGE-SESSION-001

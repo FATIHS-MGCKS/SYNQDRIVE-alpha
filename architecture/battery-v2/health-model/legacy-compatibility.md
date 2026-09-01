@@ -23,7 +23,7 @@
 
 ## Conflict rules (CONFIRMED)
 
-- Canonical read ignores stale legacy pairwise SOH when provider SOH path exists
+- Canonical read uses evidence-strength conflict resolution for selected HV SOH; stale legacy pairwise SOH ignored when stronger evidence wins
 - Legacy `degradation_model` HV SOH must not publish (`soh-publication.ts`)
 - When `BATTERY_V2_REST_SHADOW_ENABLED` + `BATTERY_V2_PUBLICATION_ENABLED`, legacy rest capture may be suppressed
 

@@ -296,11 +296,41 @@ nodes:
     epistemic_status: UNKNOWN
     reconstruction_maturity: PARTIAL
     summary: >
-      HV policy allows pipeline for HEV via isHvMeasurementSupported override, but canonical isEv
-      checks ELECTRIC/PLUGIN_HYBRID only. HEV vehicles with fuelType HYBRID may not get canonical HV slice.
+      Canonical isEv checks ELECTRIC/PLUGIN_HYBRID only — HYBRID excluded. Narrower question within
+      BAT-V2-CONTRA-HEV-HV-AUTHORITY-001: do HEV vehicles with fuelType HYBRID receive canonical HV slice?
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
       - backend/src/modules/vehicle-intelligence/drive-profile/drive-profile-resolver.ts
+    evidence:
+      - BAT-V2-CONTRA-HEV-HV-AUTHORITY-001
+
+  - id: BAT-V2-GAP-HV-PROVIDER-SOH-LATESTSTATE-TIMESTAMP-001
+    type: gap
+    title: Provider SOH latestState value without evidence timestamp
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      providerSoh falls back to VehicleLatestState.tractionBatterySohPercent but providerSohObservedAt
+      uses hvProviderSohEvidence.observedAt only (null if evidence absent). Latest-state-only values do
+      not automatically become decision-fresh selected provider SOH. Production frequency/impact UNKNOWN.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HV-SOH-WINNER-FLOW-001
+
+  - id: BAT-V2-GAP-HV-SOH-WINNER-USABILITY-001
+    type: gap
+    title: HV SOH winner fails usability — no second-candidate reselection
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      After resolveHvSohEvidenceConflict picks a winner, canonical read checks winner-specific ...Usable
+      flags. No fallback to second-ranked candidate if winner fails usability. Control flow CONFIRMED;
+      whether production reaches problematic combinations UNKNOWN.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HV-SOH-WINNER-FLOW-001
 
   - id: BAT-V2-GAP-HV-SESSION-CHARGE-METHOD-001
     type: gap
@@ -343,7 +373,7 @@ nodes:
     type: signal
     title: HV provider SOH (StateOfHealth)
     epistemic_status: CONFIRMED
-    summary: OEM-reported SOH %; canonical HV SOH priority when fresh.
+    summary: OEM-reported SOH %; conflict candidate tier PROVIDER_OEM_SOH when fresh — not universal winner.
     source_paths:
       - backend/src/modules/dimo/mappers/dimo-battery-signal.mapper.ts
 
@@ -382,13 +412,54 @@ nodes:
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-capacity-m3.policy.ts
 
-  - id: BAT-V2-AUTH-HV-PROVIDER-SOH-001
-    type: authority
-    title: Provider SOH canonical read priority
+  - id: BAT-V2-POL-HV-EVIDENCE-STRENGTH-001
+    type: policy
+    title: HV SOH evidence-strength tier ranks and stale penalty
     epistemic_status: CONFIRMED
-    summary: Fresh provider SOH authoritative over calculated shadow SOH in canonical read model.
+    summary: >
+      Tier ranks WORKSHOP_OR_BMS_VERIFIED(9) > DOCUMENT_VERIFIED(8) > PROVIDER_OEM_SOH(7) > ESTIMATED(4).
+      Stale evidence receives STALE_TIER_PENALTY=3 in effectiveTierScore. Not provider-always-wins.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-evidence-strength.policy.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HV-EVIDENCE-STRENGTH-001
+
+  - id: BAT-V2-AUTH-HV-SOH-CONFLICT-001
+    type: authority
+    title: HV SOH evidence-strength + freshness conflict resolution
+    epistemic_status: CONFIRMED
+    summary: >
+      resolveHvSohEvidenceConflict() selects winner among provider/workshop-document/capacity-estimate
+      candidates using freshness-aware resolveEvidenceConflict(). Fresh workshop/document outrank fresh
+      provider SOH at equal freshness.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-evidence-strength.policy.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HV-SOH-CONFLICT-001
+
+  - id: BAT-V2-AUTH-HV-SELECTED-SOH-001
+    type: authority
+    title: Selected HV health/SOH in canonical read model
+    epistemic_status: CONFIRMED
+    summary: >
+      Canonical hvHealthPercent/hvSohSource from conflict winner + winner-specific usability checks.
+      Separate from canonical.hv.sohAssessment shadow gate assessment.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HV-SOH-WINNER-FLOW-001
+
+  - id: BAT-V2-AUTH-HV-PROVIDER-SOH-001
+    type: authority
+    title: Provider SOH evidence candidate path
+    epistemic_status: CONFIRMED
+    summary: >
+      Provider-reported SOH is one conflict candidate (tier PROVIDER_OEM_SOH). Outranks ESTIMATED at equal
+      freshness; does not universally outrank workshop/document. Not authoritative_over SOH gate assessment.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+      - backend/src/modules/dimo/mappers/dimo-battery-signal.mapper.ts
 
   - id: BAT-V2-AUTH-HV-RECHARGE-NATIVE-001
     type: authority
@@ -631,6 +702,26 @@ nodes:
       - BAT-V2-GAP-BRIDGE-FALLBACK-001
 
   # --- Contradictions ---
+  - id: BAT-V2-CONTRA-HEV-HV-AUTHORITY-001
+    type: contradiction
+    title: HEV multi-layer HV authority contradiction
+    epistemic_status: CONTRADICTED
+    summary: >
+      isHvMeasurementSupported(HEV)=true and materializePolicy sets hvPipelineAllowed=true for HEV, but ICE
+      policy catalog forbids HV_ALL_MEASUREMENT_TYPES and sets definition.hvPipelineAllowed=false. Canonical
+      isEv excludes FuelType.HYBRID. Resolution UNRESOLVED; production impact UNKNOWN.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/drive-profile/drive-profile-resolver.ts
+      - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.resolver.ts
+      - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.catalog.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HEV-POLICY-MATERIALIZE-001
+      - BAT-V2-EVID-CODE-HEV-IS-EV-001
+    open_questions:
+      - Which layer should govern HEV HV eligibility — policy catalog, drive-profile helper, or canonical isEv?
+      - Do any production HEV vehicles have HV capability rows and active shadow pipeline?
+
   - id: BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001
     type: contradiction
     title: LV providerTimestamp fallback vs REST evidence eligibility
@@ -852,9 +943,10 @@ nodes:
     title: CanonicalBatteryHealthService implementation
     epistemic_status: CONFIRMED
     source_type: CURRENT_CODE
-    summary: Canonical battery read model composition and HV SOH priority rules.
+    summary: Canonical battery read composition; selected HV SOH via conflict resolver; sohAssessment mapped separately.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery/canonical-battery.builder.ts
 
   - id: BAT-V2-EVID-CODE-LOCK-FAILOPEN-001
     type: evidence
@@ -901,3 +993,73 @@ nodes:
     summary: persistRechargeSegment calls supersedeOverlappingFallbackSessions before native persist.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session-persist.service.ts
+
+  - id: BAT-V2-EVID-CODE-HV-EVIDENCE-STRENGTH-001
+    type: evidence
+    title: HV/LV evidence-strength tier ranks and stale penalty
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: TIER_RANK map; STALE_TIER_PENALTY=3; effectiveTierScore freshness adjustment.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-evidence-strength.policy.ts
+
+  - id: BAT-V2-EVID-CODE-HV-SOH-CONFLICT-001
+    type: evidence
+    title: resolveHvSohEvidenceConflict implementation
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Provider/workshop-document/capacity-estimate candidates; resolveEvidenceConflict with HV scope.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-evidence-strength.policy.ts
+
+  - id: BAT-V2-EVID-CODE-HV-SOH-WINNER-FLOW-001
+    type: evidence
+    title: Canonical HV SOH winner selection and usability control flow
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      providerSoh value from evidence or latestState; providerSohObservedAt evidence-only; winner-specific
+      usability checks without second-candidate fallback.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+
+  - id: BAT-V2-EVID-CODE-HEV-POLICY-MATERIALIZE-001
+    type: evidence
+    title: HEV policy materialization and ICE HV forbidden set
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      materializePolicy hvPipelineAllowed = definition.hvPipelineAllowed || isHvMeasurementSupported(HEV).
+      ICE catalog forbiddenMeasurementTypes includes HV_ALL_MEASUREMENT_TYPES.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.resolver.ts
+      - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.catalog.ts
+      - backend/src/modules/vehicle-intelligence/drive-profile/drive-profile-resolver.ts
+
+  - id: BAT-V2-EVID-CODE-HEV-IS-EV-001
+    type: evidence
+    title: Canonical isEv excludes FuelType.HYBRID
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: isEv = fuelType ELECTRIC || PLUGIN_HYBRID only; HYBRID/HEV not recognized as EV in canonical read.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+
+  - id: BAT-V2-EVID-CODE-CAPABILITY-REGISTRY-001
+    type: evidence
+    title: Battery capability preflight signal registry (13 entries)
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: BATTERY_CAPABILITY_SIGNALS — 1 LV + 11 hv.* + dimo.segments.recharge; measurement types per key.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-signals.registry.ts
+
+  - id: BAT-V2-EVID-CODE-DIMO-MAPPER-HV-001
+    type: evidence
+    title: DIMO battery signal mapper HV field inventory
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      12 HV + 1 LV mapped fields; powertrainTractionBatteryCurrentVoltage mapped without registry key.
+    source_paths:
+      - backend/src/modules/dimo/mappers/dimo-battery-signal.mapper.ts

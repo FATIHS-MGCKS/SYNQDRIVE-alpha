@@ -13,7 +13,9 @@ Stable gap IDs (`BAT-V2-GAP-*`). See also [research/OPEN_QUESTIONS.md](../resear
 | `BAT-V2-GAP-TIMESTAMP-FALLBACK-001` | LV timestamp fallback production reachability | UNKNOWN | PARTIAL |
 | `BAT-V2-GAP-THRESHOLD-PROVENANCE-001` | Threshold values cataloged; calibration rationale UNKNOWN | UNKNOWN | PARTIAL |
 | `BAT-V2-GAP-PUB-READINESS-001` | Publication/readiness production enablement gates | INFERRED | PARTIAL |
-| `BAT-V2-GAP-HEV-IS-EV-001` | HEV fuelType vs canonical isEv gate | UNKNOWN | PARTIAL |
+| `BAT-V2-GAP-HEV-IS-EV-001` | HEV fuelType vs canonical isEv gate (within `BAT-V2-CONTRA-HEV-HV-AUTHORITY-001`) | UNKNOWN | PARTIAL |
+| `BAT-V2-GAP-HV-PROVIDER-SOH-LATESTSTATE-TIMESTAMP-001` | LatestState SOH value without evidence observedAt | CONFIRMED | SUBSTANTIAL |
+| `BAT-V2-GAP-HV-SOH-WINNER-USABILITY-001` | Winner fails usability — no second-candidate reselection | CONFIRMED | SUBSTANTIAL |
 | `BAT-V2-GAP-HV-SESSION-CHARGE-METHOD-001` | SESSION_CHARGE_CAPACITY eligibility only — no compute | CONFIRMED | SUBSTANTIAL |
 | `BAT-V2-GAP-HV-GROSS-CAPACITY-METHOD-001` | GROSS_CAPACITY eligibility only — no compute | CONFIRMED | SUBSTANTIAL |
 

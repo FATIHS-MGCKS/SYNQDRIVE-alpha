@@ -30,7 +30,9 @@ Stable gap IDs (`BAT-V2-GAP-*`). Machine nodes in `graph/nodes.yaml`.
 | ID | Question | Epistemic status |
 |----|----------|------------------|
 | `BAT-V2-GAP-PUB-READINESS-001` | Exact gates for enabling publication/readiness in production | INFERRED from flags |
-| `BAT-V2-GAP-HEV-IS-EV-001` | Do HEV vehicles with fuelType HYBRID receive canonical HV slice? | UNKNOWN |
+| `BAT-V2-GAP-HEV-IS-EV-001` | Do HEV vehicles with fuelType HYBRID receive canonical HV slice? | UNKNOWN (see `BAT-V2-CONTRA-HEV-HV-AUTHORITY-001`) |
+| `BAT-V2-GAP-HV-PROVIDER-SOH-LATESTSTATE-TIMESTAMP-001` | How often does production have latestState SOH without evidence observedAt? | CONFIRMED code behavior; UNKNOWN frequency |
+| `BAT-V2-GAP-HV-SOH-WINNER-USABILITY-001` | Does production reach winner-selected-but-unusable SOH combinations? | CONFIRMED control flow; UNKNOWN frequency |
 | `BAT-V2-GAP-HV-SESSION-CHARGE-METHOD-001` | Will SESSION_CHARGE_CAPACITY get a compute implementation? | UNKNOWN |
 | `BAT-V2-GAP-HV-GROSS-CAPACITY-METHOD-001` | Will GROSS_CAPACITY_REFERENCE get a compute implementation? | UNKNOWN |
 
@@ -39,3 +41,4 @@ Stable gap IDs (`BAT-V2-GAP-*`). Machine nodes in `graph/nodes.yaml`.
 | ID | Question | Epistemic status |
 |----|----------|------------------|
 | `BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001` | Does LV timestamp fallback violate REST providerTimestamp evidence semantics in production? | CONTRADICTED / UNRESOLVED |
+| `BAT-V2-CONTRA-HEV-HV-AUTHORITY-001` | Which layer should govern HEV HV eligibility — policy, drive profile, or canonical isEv? | CONTRADICTED / UNRESOLVED |
