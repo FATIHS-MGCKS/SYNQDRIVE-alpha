@@ -1,103 +1,81 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-01  
-**Knowledge maturity:** Bootstrap — partial reconstruction from code + recent architecture memos + tests  
-**Production deploy note:** Stage 1 pipeline defect closure (#1445) merged 2026-08-30; production deploy verified 2026-08-31 (`bfcf9ddb7`+ on VPS). Post-fix natural-trip validation remains **UNKNOWN**.
+**Snapshot date:** 2026-09-01 (Phase 2 authority correction pass)  
+**Graph:** 105 nodes / 80 edges / 11 invariants (validated 2026-09-01, authority correction pass)  
+**Knowledge maturity:** Bootstrap + Phase 2 HV/persistence/consumer reconstruction + authority epistemic correction
 
 ## Executive summary
 
-Battery V2 Stage 1 operates in **shadow mode** (`BATTERY_V2_REST_SHADOW_ENABLED` may be true in production; publication and readiness default **false** in `.env.example`). The strongest reconstructed areas are:
+Battery V2 Stage 1 LV REST shadow pipeline remains the strongest reconstructed area. Phase 2 added substantial HV signal/method, persistence model, canonical read model, and primary consumer mapping. Authority correction pass fixed HV SOH evidence-strength semantics, separated selected SOH from SOH gate assessment, elevated HEV multi-layer contradiction, and corrected signal inventory counts. Publication, readiness, and full production validation remain immature.
 
-1. LV Rest Window session opening convergence (trip-finalization → arming → reconciliation)
-2. ICE opening vs measurement policy split (#1393)
-3. REST target asynchronous liveness (metadata vs Bull job vs DLQ vs reconciliation)
-4. Canonical trip-end anchor and session identity when authoritative finalized trip is known
+## Strong-confidence areas (CONFIRMED)
 
-Large areas remain **not yet reconstructed** (HV authority, full consumer/read model, all legacy compatibility paths).
+- LV REST lifecycle, liveness, ICE opening split (#1383/#1393/#1445 — VALIDATED not PRODUCTION_VALIDATED)
+- HV capability preflight registry (13 entries) and DIMO mapper inventory (12 HV + 1 LV, mapper-only current voltage)
+- HV method profile (capability-driven eligibility)
+- M2/M3 shadow formulas and gates (flag-gated); M3 VALIDATION_ONLY
+- Cross-session HV capacity assessment (≥3 qualified sessions) — **SUBSTANTIAL** reconstruction
+- Native recharge segment supersedes fallback sessions
+- HV SOH evidence-strength + freshness conflict policy (workshop/document outrank provider at equal freshness)
+- Selected HV SOH vs `canonical.hv.sohAssessment` — separate canonical concepts; selected SOH carrier is `canonical.hv.providerSoh` (check `.source`)
+- No fabricated HV SOH / LV-not-SOH invariants
+- Primary API + rental health tab → canonical read model
+- REST_60M ±15 min / REST_6H ±30 min quality windows
 
-## Confidence matrix
+## Partially reconstructed (INFERRED / PARTIAL maturity)
 
-| Area | Reconstruction maturity | Epistemic status | Notes |
-|------|-------------------------|------------------|-------|
-| Trip-end anchor authority | SUBSTANTIAL | CONFIRMED | `resolveLvRestWindowAnchorAt()` prefers `tripEndAt` |
-| Session opening convergence | SUBSTANTIAL | CONFIRMED | Single arming operation; multiple entry paths |
-| ICE opening vs measurement split | SUBSTANTIAL | CONFIRMED | Separate policy functions in code |
-| REST target metadata FSM | SUBSTANTIAL | CONFIRMED | Statuses in `lv-rest-window-target.metadata.ts` |
-| Orphaned ENQUEUED recovery | SUBSTANTIAL | CONFIRMED | `hasLiveJob()` + `PENDING_EVALUATION` path |
-| PENDING_EVALUATION deferral | SUBSTANTIAL | CONFIRMED | Handler + reconciliation reschedule |
-| Trip lifecycle isolation | PARTIAL | CONFIRMED | Try/catch around battery enqueue at trip finalize |
-| Orphaned RUNNING target | PARTIAL | CONFIRMED | Explicitly **not** closed by #1445 |
-| SKIPPED REST target semantics | NONE | UNKNOWN | Status exists; full semantics not reconstructed |
-| Bridge fallback without finalized trip | PARTIAL | INFERRED | ±120s fallback documented; not fully traced |
-| HV / PHEV authority model | NONE | UNKNOWN | Not bootstrapped |
-| Publication / readiness layers | PARTIAL | INFERRED | Flags exist; consumers not fully mapped |
-| Legacy `battery_features` bridge | PARTIAL | INFERRED | Reconciliation bridge exists; full legacy model not reconstructed |
-| LV timestamp fallback provenance | PARTIAL | CONTRADICTED | Code fallback exists; production reachability UNKNOWN |
+- SOH gate internal assessment path (code traced SUBSTANTIAL; publication wiring PARTIAL)
+- Publication/readiness flag wiring
+- Consumer map (master/admin incomplete)
+- Threshold calibration rationale (values cataloged, rationale UNKNOWN)
+- LV timestamp fallback production reachability
+- HEV canonical HV path (contradiction documented; production impact UNKNOWN)
 
-## Feature flags (verified in code template)
+**Maturity note:** Reconstruction maturity measures documentation completeness, not confidence. Cross-session capacity is SUBSTANTIAL because formulas, gates, and persistence are traced; SOH gate assessment is SUBSTANTIAL for the same reason while publication consumer impact remains PARTIAL.
 
-| Flag | `.env.example` default | Role |
-|------|------------------------|------|
-| `BATTERY_V2_REST_SHADOW_ENABLED` | `false` | Gates shadow REST pipeline paths |
-| `BATTERY_V2_PUBLICATION_ENABLED` | `false` | Publication layer (not authoritative in Stage 1) |
-| `BATTERY_V2_READINESS_ENABLED` | `false` | Readiness layer (not authoritative in Stage 1) |
-
-Production may override defaults via `backend.env` — treat runtime flag values as **environment evidence**, not code defaults.
-
-## Strong-confidence lifecycle (reconstructed)
-
-```
-Trip finalization (authoritative COMPLETED trip)
-  → trip.endTime anchor
-  → LV_REST_WINDOW session arming / BATTERY_LV_REST_SESSION_OPEN job
-  → REST_60M / REST_6H target scheduling (metadata + Bull job)
-  → LIVE_VOLTAGE evidence in window
-  → BATTERY_REST_TARGET_EVALUATE
-  → BatteryMeasurement (VALID / MISSED / etc.)
-  → (shadow metrics; publication/readiness not authoritative)
-```
-
-Parts after assessment → publication are **not yet reconstructed** in this bootstrap.
-
-## Unresolved contradictions
+## Unresolved gaps (explicit)
 
 | ID | Summary |
 |----|---------|
-| `BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001` | LV `providerTimestamp` fallback vs REST evidence eligibility — UNRESOLVED |
+| `BAT-V2-GAP-HEV-IS-EV-001` | HEV fuelType vs canonical isEv (linked to HEV contradiction) |
+| `BAT-V2-GAP-HV-PROVIDER-SOH-LATESTSTATE-TIMESTAMP-001` | LatestState SOH value without evidence timestamp |
+| `BAT-V2-GAP-HV-SOH-WINNER-USABILITY-001` | No second-candidate fallback after winner fails usability |
+| `BAT-V2-GAP-HV-SELECTED-SOH-DTO-NAMING-001` | Selected SOH uses `providerSoh`-named DTO carrier |
+| `BAT-V2-GAP-HV-SESSION-CHARGE-METHOD-001` | SESSION_CHARGE_CAPACITY no compute |
+| `BAT-V2-GAP-HV-GROSS-CAPACITY-METHOD-001` | GROSS_CAPACITY no compute |
+| `BAT-V2-GAP-TIMESTAMP-FALLBACK-001` | LV timestamp production reachability |
+| `BAT-V2-GAP-THRESHOLD-PROVENANCE-001` | Threshold rationale |
+| `BAT-V2-GAP-LOCK-FAILOPEN-001` | Fail-open rationale (behavior confirmed) |
+| `BAT-V2-GAP-PUB-READINESS-001` | Production enablement gates |
+| `BAT-V2-GAP-RUNNING-ORPHAN-001` | RUNNING enum debt / no writer |
+| `BAT-V2-GAP-SKIPPED-REST-001` | SKIPPED enum debt / no writer |
+| `BAT-V2-GAP-BRIDGE-FALLBACK-001` | Bridge without finalized trip |
 
-See [contradictions/OPEN_CONTRADICTIONS.md](./contradictions/OPEN_CONTRADICTIONS.md).
+## Contradictions
 
-## Major open gaps
+| ID | Status |
+|----|--------|
+| `BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001` | UNRESOLVED — fallback reachable in code; production impact unproven |
+| `BAT-V2-CONTRA-HEV-HV-AUTHORITY-001` | UNRESOLVED — hvPipelineAllowed vs HV forbidden types vs isEv; production impact UNKNOWN |
 
-| ID | Summary |
-|----|---------|
-| `BAT-V2-GAP-RUNNING-ORPHAN-001` | `RUNNING` metadata without live Bull job after handler crash |
-| `BAT-V2-GAP-SKIPPED-REST-001` | `SKIPPED` REST target semantics |
-| `BAT-V2-GAP-BRIDGE-FALLBACK-001` | Bridge trip resolution when no authoritative finalized trip |
-| `BAT-V2-GAP-HV-AUTHORITY-001` | HV/PHEV signal and assessment authority |
-| `BAT-V2-GAP-CONSUMER-READ-001` | Which UI/API surfaces consume canonical vs legacy data |
-| `BAT-V2-GAP-LOCK-FAILOPEN-001` | Redis lock fail-open rationale on Battery V2 enqueue paths |
-| `BAT-V2-GAP-TIMESTAMP-FALLBACK-001` | LV live ingestion timestamp fallback production reachability |
-| `BAT-V2-GAP-THRESHOLD-PROVENANCE-001` | Policy threshold provenance (0.5 km/h, 5% load, 30m grace) |
-| `BAT-V2-GAP-PUB-READINESS-001` | Publication/readiness enablement gates |
+## Production validation maturity
 
-## Latest production observations (pre-change evidence)
+| Decision | Status |
+|----------|--------|
+| #1383, #1393, #1445 | VALIDATED (code + tests); post-change production behavioral validation **UNKNOWN** |
+| `BAT-V2-HYP-POST-1445-SOAK-001` | AWAITING soak evidence |
 
-| ID | Summary | Date |
-|----|---------|------|
-| `BAT-V2-EVID-PROD-EA7696B6-001` | Missing LV session after trip finalize + deploy interrupt | 2026-08-30 |
-| `BAT-V2-EVID-PROD-61715ECD-001` | ICE opening rejection at trip end (pre-#1393) | 2026-08-28 |
-| `BAT-V2-EVID-PROD-4D2BEF5F-001` | Stuck REST ENQUEUED + PROVIDER_UNAVAILABLE DLQ | 2026-08-30 |
+## Profile coverage
 
-Post-#1445 production validation of natural trips: **UNKNOWN** at bootstrap time (`BAT-V2-HYP-POST-1445-SOAK-001`).
+ICE / PHEV / BEV partially mapped; HEV has documented multi-layer authority contradiction (`BAT-V2-CONTRA-HEV-HV-AUTHORITY-001`). See `purpose/profile-matrix.md`.
+
+## Signal inventory (corrected)
+
+| Inventory | Count |
+|-----------|-------|
+| Capability preflight registry | 13 (1 LV + 11 hv.* + dimo.segments.recharge) |
+| DIMO mapper | 1 LV + 12 HV (includes mapper-only `powertrainTractionBatteryCurrentVoltage`) |
 
 ## Explicit non-claims
 
-Battery V2 Stage 1 is **not finished**. This snapshot does **not** assert:
-
-- perfect liveness in all crash/restart scenarios
-- historical data repair or backfill
-- Stage 2 activation
-- publication/readiness correctness
-- complete health-model authority for all powertrains
-- post-change production behavioral validation of #1383/#1393/#1445 fixes
+Battery V2 is **not complete**. Phase 2 did **not** implement runtime fixes, enable Stage 2, or validate production soak. Provider SOH does **not** universally win over workshop/document evidence.

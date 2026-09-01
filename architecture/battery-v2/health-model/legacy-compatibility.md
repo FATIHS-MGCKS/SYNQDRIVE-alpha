@@ -1,34 +1,41 @@
-# Battery V2 — Legacy Compatibility
+# Battery V2 — Legacy Compatibility (Phase 2)
 
-**Epistemic status:** INFERRED — principle documented; full mapping incomplete
+**Reconstruction date:** 2026-09-01
 
-## Principle
+## Legacy paths still active
 
-Battery V2 knowledge must **not collapse**:
+| Path | Store / service | User-facing? | Authority |
+|------|-----------------|--------------|-----------|
+| `GET battery-health/v2` | `BatteryFeatures` via `BatteryV2Service` | Yes (compat route) | **LEGACY** |
+| `GET battery-health` | `BatteryHealthService` snapshots | Yes | **LEGACY** |
+| `GET battery-health/trend` | Snapshot trend | Yes | **LEGACY** |
+| `GET hv-battery-status` | `HvBatteryHealthService` | Yes (compat) | **COMPAT** |
+| Legacy pairwise HV capacity | `HvBatteryHealthService` | Only if `BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENABLED` | **LEGACY** (disabled default) |
+| `degradation_model` SOH | Legacy publication path | Blocked from publish | **DEAD for publication** |
 
-1. **Legacy compatibility behavior** (e.g. `battery_features`, legacy crank paths, old UI adapters)
-2. **Canonical Battery V2 authority** (sessions, measurements, assessments under new pipeline)
+## Canonical paths (preferred)
 
-into a single model.
+| Path | Authority |
+|------|-----------|
+| `battery-health-summary` / `detail` | `CanonicalBatteryHealthService` |
+| Rental health tab | Canonical summary/detail |
+| `BatteryTaskService` | Canonical summary |
 
-## Known legacy bridge (partially verified)
+## Conflict rules (CONFIRMED)
 
-| Legacy surface | Bridge behavior | Canonical requirement |
-|----------------|-----------------|---------------------|
-| `battery_features.restWindowStartedAt` | `reconcileLegacyRestTargets()` | Requires matching `LV_REST_WINDOW` session |
-| `BatteryV2Service.onSnapshot()` | Separate `battery_features` persistence | Parallel to shadow ingestion bridge |
-| Legacy `rest-target:*` keys | **Rejected** — must use `BatteryV2RestTargetProducer` + `restWindowId` | Contract fix 2026-08-26 |
+- Canonical read uses evidence-strength conflict resolution for selected HV SOH; stale legacy pairwise SOH ignored when stronger evidence wins
+- Legacy `degradation_model` HV SOH must not publish (`soh-publication.ts`)
+- When `BATTERY_V2_REST_SHADOW_ENABLED` + `BATTERY_V2_PUBLICATION_ENABLED`, legacy rest capture may be suppressed
 
-## Reconciliation rule
+## Shadow vs legacy
 
-Legacy reconciliation **does not** enqueue bare REST jobs without `restWindowId`. It schedules via canonical producer when session exists.
+| Layer | Customer-visible by default? |
+|-------|------------------------------|
+| Canonical DTO | Yes (summary/detail APIs) |
+| Shadow HV capacity/SOH assessments | No (`publicationEligible: false`) |
+| `battery_features` rest/crank | Yes on v2 legacy route only |
 
-**Evidence:** `BATTERY_V2_REST_WINDOW_CONTRACT_2026-08-26.md`, `battery-v2-reconciliation.service.ts`
+## Remaining gaps
 
-## Consumer caution
-
-UI may still read legacy summaries while shadow pipeline populates canonical tables. Which surface is authoritative per screen is **not fully reconstructed** (`BAT-V2-GAP-CONSUMER-READ-001`).
-
-## Agent rule
-
-When changing legacy or canonical paths, update **both** the compatibility note here and the canonical graph nodes — do not silently redirect legacy callers without documenting non-effects.
+- Master/admin battery surfaces not exhaustively mapped
+- Per-screen authority when canonical and legacy routes both reachable — **partial**

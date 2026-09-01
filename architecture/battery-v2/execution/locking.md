@@ -1,17 +1,31 @@
-# Battery V2 — Locking (Bootstrap)
+# Battery V2 — Redis Vehicle Lock
 
-**Epistemic status:** UNKNOWN — not fully reconstructed in bootstrap
+**Service:** `BatteryV2VehicleLockService`  
+**Gap:** `BAT-V2-GAP-LOCK-FAILOPEN-001` (rationale UNKNOWN)
 
-## Known references
+## Confirmed behavior
 
-- `LOCK_CONTENTION` appeared in production DLQ for `BATTERY_LV_REST_SESSION_OPEN` (#1445 production evidence)
-- Per-vehicle serialization mentioned in preserved invariants (#1445 architecture memo)
+| Property | Value |
+|----------|-------|
+| Key format | `battery:v2:lock:{scope}:{vehicleId}` |
+| Scopes | `ingest`, `assess`, `publish`, `hv` |
+| Default TTL | 120_000 ms |
+| Contended | Throws `BatteryV2VehicleLockContendedError` — job does not run |
+| Redis unavailable | **Fail-open** — logs warn, returns `{ token: 'redis-unavailable' }`, job proceeds |
 
-## Open questions
+## Scope mapping (jobs)
 
-- Redis lock fail-open rationale for Battery V2 paths
-- Exact lock scope (vehicle-level vs org-level)
+- `BATTERY_ASSESSMENT_RECOMPUTE` → `assess`
+- `BATTERY_PUBLICATION_UPDATE` → `publish`
+- `HV_RECHARGE_SESSION_RECONCILE`, `HV_CAPACITY_SHADOW_RECOMPUTE`, `HV_CAPABILITY_REFRESH` → `hv`
+- Default ingest jobs → `ingest`
 
-See `research/OPEN_QUESTIONS.md` — locking section.
+## Protections when lock absent
 
-**Do not invent locking semantics beyond evidence.**
+- DB idempotency keys and unique constraints remain
+- `BatteryV2IdempotentExecutionService` pre-checks before handler
+
+## Unknown
+
+- Historical PR/decision explaining why fail-open was chosen over fail-closed
+- Multi-replica race impact quantification in production

@@ -16,6 +16,23 @@ When two sources disagree, create `BAT-V2-CONTRA-*` node and list here — **do 
 
 Do **not** classify as confirmed production defect without production reachability proof.
 
+## BAT-V2-CONTRA-HEV-HV-AUTHORITY-001
+
+| Field | Content |
+|-------|---------|
+| **Layer A — drive profile** | `isHvMeasurementSupported(HEV) = true` |
+| **Layer B — ICE policy catalog** | HEV resolves to ICE family: `forbiddenMeasurementTypes: HV_ALL_MEASUREMENT_TYPES`, `definition.hvPipelineAllowed: false` |
+| **Layer C — materializePolicy** | `hvPipelineAllowed = definition.hvPipelineAllowed \|\| isHvMeasurementSupported(HEV)` → **true for HEV** |
+| **Layer D — HV method profile** | Capability-driven independently |
+| **Layer E — canonical read** | `isEv` only `ELECTRIC` / `PLUGIN_HYBRID` — **`HYBRID` excluded** |
+| **KNOWN** | All five layers coexist in current code |
+| **UNKNOWN** | Production impact; which layer should govern HEV HV eligibility |
+| **Impact** | HEV vehicles may have `hvPipelineAllowed=true` while HV measurement types remain forbidden and canonical read treats them as non-EV |
+| **Resolution status** | UNRESOLVED |
+| **Related gap** | `BAT-V2-GAP-HEV-IS-EV-001` (narrower isEv question) |
+
+Do **not** decide which layer is “correct” without a product decision. Do **not** change runtime code in documentation-only passes.
+
 ## Template
 
 ```markdown

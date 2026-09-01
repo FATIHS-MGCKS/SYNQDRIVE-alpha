@@ -33,6 +33,15 @@ It is **not** a finalized static architecture document. It is a continuously evo
 | [CURRENT_STATE.md](./CURRENT_STATE.md) | Best-known snapshot of Battery V2 today |
 | [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md) | Human-readable graph overview |
 | [AGENT_CONTRACT.md](./AGENT_CONTRACT.md) | **Mandatory rules for future agents** |
+| [purpose/profile-matrix.md](./purpose/profile-matrix.md) | ICE/HEV/PHEV/BEV profile behavior |
+| [signals/hv-signal-authority.md](./signals/hv-signal-authority.md) | HV DIMO signal catalog |
+| [signals/threshold-catalog.md](./signals/threshold-catalog.md) | Threshold CODE FACT catalog |
+| [health-model/hv-capacity.md](./health-model/hv-capacity.md) | M2/M3/cross-session methods |
+| [health-model/hv-soh.md](./health-model/hv-soh.md) | Provider SOH + SOH gate |
+| [lifecycle/hv-charge-sessions.md](./lifecycle/hv-charge-sessions.md) | Native vs fallback recharge |
+| [persistence/models.md](./persistence/models.md) | Prisma persistence model |
+| [consumers/api-authority.md](./consumers/api-authority.md) | API route authority |
+| [consumers/frontend-authority.md](./consumers/frontend-authority.md) | Frontend consumers |
 | [research/CHANGE_LEDGER.md](./research/CHANGE_LEDGER.md) | Scientific change history |
 | [graph/nodes.yaml](./graph/nodes.yaml) | Machine-readable node catalog |
 | [graph/edges.yaml](./graph/edges.yaml) | Machine-readable relationships |
