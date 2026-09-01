@@ -1234,6 +1234,7 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Phase 3D High Mobility OEM reference program | NOT_STARTED | `GATED_ON_HIGH_MOBILITY_PROFILE_MANIFEST` |
 | Flight Recorder implementation (LTE_R1) | DONE (3A.1+3A.2) | `reference-capture` deployed + production canary validated |
 | Instrumented reference drive | NEXT / READY | `REFERENCE_DRIVE_READY=YES`; not started — schedule when ready |
+| Evidence & documentation governance | DONE | `driving-intelligence-evidence-governance-2026-09-01.md` + registry seeded |
 | Ground-truth synchronization | NOT_STARTED | Phase 5 |
 | Detector validation | NOT_STARTED | Phase 6 |
 | Sampling-invariance replay | NOT_STARTED | Phase 6 |
@@ -1262,18 +1263,78 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 13. **Execute Phase 2H:** High Mobility OEM/profile audit + manifests → ungate 3D when ready.
 14. **Execute Phase 2I:** Cross-provider canonical consolidation / parity governance (after provider-specific knowledge exists).
 ---
-# 7. Agent Handoff Protocol
+# 7. Repository Evidence & Documentation Governance
+
+**Normative document:** `docs/audits/driving-intelligence-evidence-governance-2026-09-01.md`  
+**Evidence registry:** `docs/audits/driving-intelligence-evidence-registry.md`
+
+### Core principle
+
+**REPOSITORY = CANONICAL KNOWLEDGE AND EVIDENCE AUTHORITY.**
+
+Chat conversations, agent summaries, and temporary scratchpads are **not** canonical project authority. Every material result must ultimately be represented in repository files.
+
+Cumulative refinement model: **OBSERVE → MEASURE → DOCUMENT → CHALLENGE → IMPROVE → VALIDATE AGAIN**
+
+### Mandatory rules
+
+| Rule | Requirement |
+|------|-------------|
+| Material findings | Require repository artifacts with evidence maturity class |
+| Definition of Done | Not satisfied by code alone, chat claims, or single-pass tests — see governance §15 |
+| Negative evidence | FAILED / NULL / UNSUPPORTED / CONTRADICTORY results are retained permanently |
+| Independent review | Creates **separate** review artifact; never silently rewrite original audit |
+| Historical evidence | **Superseded**, not deleted |
+| Large raw data | Telemetry/video may live outside Git; durable provenance + checksum + export procedure required in Git |
+| Canonical reference TTL | Designated reference datasets must reach `SEALED_EXPORT_AVAILABLE` / `ARCHIVED` before production retention purge |
+| Agent onboarding | Every future agent must read governance + registry before material DI work |
+| Phase / experiment completion | Must update Master Plan **and** evidence registry |
+
+### Templates
+
+- Experiment report: `docs/audits/templates/driving-intelligence-experiment-report-template.md`
+- Independent review: `docs/audits/templates/driving-intelligence-independent-review-template.md`
+
+### First reference drive artifact contract
+
+After the first instrumented `DIMO_LTE_R1` reference drive, require at minimum:
+
+1. `dimo-lte-r1-reference-drive-001-capture-report-YYYY-MM-DD.md`
+2. Machine-readable session summary JSON
+3. Signal-quality metrics JSON/CSV (post-analysis)
+4. Video / external Ground Truth evidence index
+5. Later: Ground Truth alignment report + independent review(s) when requested
+
+**Do not create fake result files before the drive occurs.**
+
+### Phase 3A readiness (unchanged)
+
+| Item | Status |
+|------|--------|
+| Phase 3A.1 | **DONE** |
+| Phase 3A.2 | **DONE** |
+| Instrumented LTE_R1 reference drive | **NEXT / READY** |
+| Reference drive itself | **NOT STARTED** |
+| `REFERENCE_DRIVE_READY` | **YES** |
+
+---
+# 8. Agent Handoff Protocol
 Any agent continuing this workstream should:
 1. Read this file first.
-2. Read the latest linked/source audit docs for the phase being worked.
-3. Verify current `main` before relying on historical audit conclusions.
-4. Update the Progress Tracker and material decisions in this file when a phase or subphase changes state.
-5. Distinguish clearly between `confirmed from code`, `confirmed from runtime/provider`, `inference`, and `proposal`.
-6. Do not make production scoring changes before the relevant phase gate is satisfied.
-7. Preserve model/version/provenance semantics; never present proxy-derived values as direct measurements.
-8. Prefer explicit `INSUFFICIENT_DATA` / lower confidence over invented precision when signal/cadence evidence is inadequate.
+2. Read `docs/audits/driving-intelligence-evidence-governance-2026-09-01.md`.
+3. Read `docs/audits/driving-intelligence-evidence-registry.md` and relevant Evidence IDs.
+4. Read the latest linked/source audit docs for the phase being worked.
+5. Verify current `main` before relying on historical audit conclusions.
+6. Update the Progress Tracker and material decisions in this file when a phase or subphase changes state.
+7. Add or update evidence registry entries for material new artifacts (assign new `DI-EV-xxxx`; never reuse IDs).
+8. Distinguish clearly between evidence maturity classes (`CONFIRMED_FROM_CODE`, `CONFIRMED_FROM_RUNTIME`, `INFERENCE`, `PROPOSAL`, etc.).
+9. Do not make production scoring changes before the relevant phase gate is satisfied.
+10. Preserve model/version/provenance semantics; never present proxy-derived values as direct measurements.
+11. Prefer explicit `INSUFFICIENT_DATA` / lower confidence over invented precision when signal/cadence evidence is inadequate.
+12. Record negative and contradictory evidence; do not hide failed hypotheses.
+13. Supersede prior artifacts instead of deleting them when conclusions change.
 ---
-# 8. Definition of Success
+# 9. Definition of Success
 This workstream is complete when SynqDrive can explain, for an individual trip and over rolling timeframes, with traceable evidence:
 - how the driver behaved,
 - how much the vehicle was loaded,
