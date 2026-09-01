@@ -1,0 +1,266 @@
+name: i18n Governance — Authority Protection
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - labeled
+      - unlabeled
+    branches:
+      - main
+      - p239-p238-merge-baseline-3c10
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+jobs:
+  i18n-authority-protection:
+    name: i18n-authority-protection
+    runs-on: ubuntu-latest
+    env:
+      TRUSTED_AUTHORITY_ACTOR: FATIHS-MGCKS
+      AUTHORITY_LABEL: i18n-governance-authority-change
+      HAS_AUTHORITY_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'i18n-governance-authority-change') }}
+    steps:
+      - name: Evaluate trusted governance authority protection
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_REPOSITORY: ${{ github.repository }}
+          EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_ACTION_VALUE: ${{ github.event.action }}
+          EVENT_CHANGED_FILES_VALUE: ${{ github.event.pull_request.changed_files }}
+          EVENT_LABEL_NAME: ${{ github.event.label.name }}
+          EVENT_SENDER_LOGIN: ${{ github.event.sender.login }}
+        run: |
+          set -euo pipefail
+
+          REPO="${EVENT_REPOSITORY}"
+          PR_NUMBER="${EVENT_PR_NUMBER}"
+          BASE_REF="${EVENT_BASE_REF}"
+          BASE_SHA="${EVENT_BASE_SHA}"
+          HEAD_SHA="${EVENT_HEAD_SHA}"
+          EVENT_ACTION="${EVENT_ACTION_VALUE}"
+          EVENT_CHANGED_FILES="${EVENT_CHANGED_FILES_VALUE}"
+
+          FILES_JSON="${RUNNER_TEMP}/i18n-authority-pr-files-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+          PATHS_FILE="${RUNNER_TEMP}/i18n-authority-paths-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.bin"
+
+          AUTHORITY_CHANGED=false
+          PRODUCT_OR_PRESENTATION_CHANGED=false
+          AUTHORITY_PATH_COUNT=0
+          PRODUCT_OR_PRESENTATION_PATH_COUNT=0
+          AUTHORITY_LABEL_PRESENT=false
+          AUTHORITY_APPROVED=false
+          RESULT=PASS
+          REASON=NO_GOVERNANCE_AUTHORITY_CHANGE
+
+          AUTHORITY_PATHS_REPORT=""
+          PRODUCT_PATHS_REPORT=""
+          CLASSIFIED_PATH_COUNT=0
+          ENUMERATED_FILE_COUNT=0
+
+          is_authority_path() {
+            local path="$1"
+            case "$path" in
+              .github/workflows/*)
+                return 0
+                ;;
+              frontend/scripts/i18n-hardcoded-scan.mjs|frontend/scripts/i18n-check.mjs|frontend/scripts/i18n-governance.mjs|frontend/scripts/i18n-pr-gate.mjs|frontend/scripts/i18n-shim-inventory.mjs)
+                return 0
+                ;;
+              frontend/scripts/lib/i18n-governance/*)
+                return 0
+                ;;
+              frontend/package.json|frontend/package-lock.json)
+                return 0
+                ;;
+              frontend/src/i18n/i18n-debt-classifications.json|frontend/src/i18n/i18n-pr-gate.test.ts|frontend/src/i18n/i18n-governance-scanner.test.ts|frontend/src/i18n/translation-registry.test.ts|frontend/src/i18n/locales.test.ts|frontend/src/i18n/i18n-structural-check.test.ts|frontend/src/i18n/hardcoded-copy-guard.test.ts)
+                return 0
+                ;;
+            esac
+            return 1
+          }
+
+          is_product_or_presentation_path() {
+            local path="$1"
+            case "$path" in
+              frontend/src/*)
+                if is_authority_path "$path"; then
+                  return 1
+                fi
+                return 0
+                ;;
+            esac
+            return 1
+          }
+
+          classify_path_identity() {
+            local path="$1"
+            if [ -z "$path" ]; then
+              return 0
+            fi
+            CLASSIFIED_PATH_COUNT=$((CLASSIFIED_PATH_COUNT + 1))
+            if is_authority_path "$path"; then
+              AUTHORITY_CHANGED=true
+              AUTHORITY_PATH_COUNT=$((AUTHORITY_PATH_COUNT + 1))
+              if [ -z "$AUTHORITY_PATHS_REPORT" ]; then
+                AUTHORITY_PATHS_REPORT="$path"
+              else
+                AUTHORITY_PATHS_REPORT="${AUTHORITY_PATHS_REPORT},${path}"
+              fi
+            fi
+            if is_product_or_presentation_path "$path"; then
+              PRODUCT_OR_PRESENTATION_CHANGED=true
+              PRODUCT_OR_PRESENTATION_PATH_COUNT=$((PRODUCT_OR_PRESENTATION_PATH_COUNT + 1))
+              if [ -z "$PRODUCT_PATHS_REPORT" ]; then
+                PRODUCT_PATHS_REPORT="$path"
+              else
+                PRODUCT_PATHS_REPORT="${PRODUCT_PATHS_REPORT},${path}"
+              fi
+            fi
+          }
+
+          fail_authority_gate() {
+            local reason="$1"
+            RESULT=FAIL
+            REASON="$reason"
+            AUTHORITY_APPROVED=false
+          }
+
+          emit_diagnostics() {
+            echo "I18N_AUTHORITY_PROTECTION=${RESULT}"
+            echo "BASE_REF=${BASE_REF}"
+            echo "BASE_SHA=${BASE_SHA}"
+            echo "HEAD_SHA=${HEAD_SHA}"
+            echo "EVENT_ACTION=${EVENT_ACTION}"
+            echo "CHANGED_FILES_EVENT_COUNT=${EVENT_CHANGED_FILES}"
+            echo "CHANGED_FILES_ENUMERATED=${ENUMERATED_FILE_COUNT}"
+            echo "CLASSIFIED_PATH_COUNT=${CLASSIFIED_PATH_COUNT}"
+            echo "AUTHORITY_CHANGED=$([[ "$AUTHORITY_CHANGED" == true ]] && echo YES || echo NO)"
+            echo "AUTHORITY_PATH_COUNT=${AUTHORITY_PATH_COUNT}"
+            echo "PRODUCT_OR_PRESENTATION_CHANGED=$([[ "$PRODUCT_OR_PRESENTATION_CHANGED" == true ]] && echo YES || echo NO)"
+            echo "PRODUCT_OR_PRESENTATION_PATH_COUNT=${PRODUCT_OR_PRESENTATION_PATH_COUNT}"
+            echo "AUTHORITY_LABEL_PRESENT=$([[ "$AUTHORITY_LABEL_PRESENT" == true ]] && echo YES || echo NO)"
+            echo "AUTHORITY_APPROVED=$([[ "$AUTHORITY_APPROVED" == true ]] && echo YES || echo NO)"
+            echo "REASON=${REASON}"
+            if [ -n "$AUTHORITY_PATHS_REPORT" ]; then
+              echo "AUTHORITY_PATHS=${AUTHORITY_PATHS_REPORT}"
+            fi
+            if [ -n "$PRODUCT_PATHS_REPORT" ]; then
+              echo "PRODUCT_OR_PRESENTATION_PATHS=${PRODUCT_PATHS_REPORT}"
+            fi
+          }
+
+          invalidate_authority_label() {
+            if gh api --method DELETE \
+              "repos/${REPO}/issues/${PR_NUMBER}/labels/${AUTHORITY_LABEL}" \
+              >/dev/null 2>&1; then
+              AUTHORITY_LABEL_PRESENT=false
+              return 0
+            fi
+            return 1
+          }
+
+          if [ "${EVENT_CHANGED_FILES}" -ge 3000 ]; then
+            fail_authority_gate "PR_FILE_ENUMERATION_LIMIT_UNSAFE"
+            emit_diagnostics
+            exit 1
+          fi
+
+          if ! gh api --paginate --slurp \
+            "repos/${REPO}/pulls/${PR_NUMBER}/files" \
+            > "${FILES_JSON}"; then
+            fail_authority_gate "PR_FILE_ENUMERATION_FAILED"
+            emit_diagnostics
+            exit 1
+          fi
+
+          if ! jq -e 'type == "array"' "${FILES_JSON}" >/dev/null 2>&1; then
+            fail_authority_gate "PR_FILE_JSON_PARSE_FAILED"
+            emit_diagnostics
+            exit 1
+          fi
+
+          if ! jq -j '
+            .[][] |
+            [.filename, (.previous_filename // empty)][] |
+            select(type == "string" and length > 0) |
+            ., "\u0000"
+          ' "${FILES_JSON}" > "${PATHS_FILE}"; then
+            fail_authority_gate "PR_FILE_PATH_EXTRACTION_FAILED"
+            emit_diagnostics
+            exit 1
+          fi
+
+          ENUMERATED_FILE_COUNT="$(jq '[.[][] | .filename] | length' "${FILES_JSON}")"
+
+          if [ "${ENUMERATED_FILE_COUNT}" != "${EVENT_CHANGED_FILES}" ]; then
+            fail_authority_gate "INCOMPLETE_PR_FILE_ENUMERATION"
+            emit_diagnostics
+            exit 1
+          fi
+
+          while IFS= read -r -d '' path; do
+            classify_path_identity "$path"
+          done < "${PATHS_FILE}"
+
+          if [ "${HAS_AUTHORITY_LABEL}" = "true" ]; then
+            AUTHORITY_LABEL_PRESENT=true
+          fi
+
+          if [ "${EVENT_ACTION}" = "labeled" ] && [ "${EVENT_LABEL_NAME}" = "${AUTHORITY_LABEL}" ]; then
+            AUTHORITY_LABEL_PRESENT=true
+            if [ "${EVENT_SENDER_LOGIN}" != "${TRUSTED_AUTHORITY_ACTOR}" ]; then
+              if invalidate_authority_label; then
+                fail_authority_gate "UNTRUSTED_AUTHORITY_APPROVAL_ACTOR"
+              else
+                fail_authority_gate "AUTHORITY_LABEL_INVALIDATION_FAILED"
+              fi
+              emit_diagnostics
+              exit 1
+            fi
+          fi
+
+          if [ "${EVENT_ACTION}" = "synchronize" ] && [ "$AUTHORITY_CHANGED" = true ] && [ "$AUTHORITY_LABEL_PRESENT" = true ]; then
+            if invalidate_authority_label; then
+              fail_authority_gate "AUTHORITY_REAPPROVAL_REQUIRED_AFTER_HEAD_CHANGE"
+            else
+              fail_authority_gate "AUTHORITY_LABEL_INVALIDATION_FAILED"
+            fi
+            emit_diagnostics
+            exit 1
+          fi
+
+          if [ "$AUTHORITY_CHANGED" = false ]; then
+            RESULT=PASS
+            REASON=NO_GOVERNANCE_AUTHORITY_CHANGE
+            AUTHORITY_APPROVED=false
+            emit_diagnostics
+            exit 0
+          fi
+
+          if [ "$PRODUCT_OR_PRESENTATION_CHANGED" = true ]; then
+            fail_authority_gate "MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE"
+            emit_diagnostics
+            exit 1
+          fi
+
+          if [ "${EVENT_ACTION}" = "labeled" ] && [ "${EVENT_LABEL_NAME}" = "${AUTHORITY_LABEL}" ]; then
+            AUTHORITY_APPROVED=true
+            RESULT=PASS
+            REASON=GOVERNANCE_AUTHORITY_APPROVED
+            emit_diagnostics
+            exit 0
+          fi
+
+          fail_authority_gate "GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL"
+          emit_diagnostics
+          exit 1
