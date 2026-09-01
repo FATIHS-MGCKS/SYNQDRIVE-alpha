@@ -1,6 +1,7 @@
 # Battery V2 — Publication & Readiness Reachability (Phase 3)
 
-**Gap:** `BAT-V2-GAP-PUB-READINESS-001` (refined to SUBSTANTIAL)  
+**Gap:** `BAT-V2-GAP-PUB-READINESS-001` (refined)  
+**Handoff gaps:** `BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001`, `BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001`, `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001`  
 **Epistemic:** CONFIRMED from config + code trace
 
 ## Separate concepts (do not collapse)
@@ -32,48 +33,58 @@
 | 3 | ON | ON | ON | OFF |
 | Legacy-only | OFF | OFF | — | ON |
 
-## LV publication pipeline
+`isBatteryV2LegacyRestCaptureEnabled()`: when REST shadow ON **and** publication ON → legacy rest capture **OFF**.
+
+## LV publication pipeline — two missing automatic handoffs
+
+### Handoff A — canonical REST → assessment (MISSING)
 
 ```
-REST measurement (shadow) → battery_assessments (CANONICAL or SHADOW mode)
-  → BatteryPublicationService.updateLvPublication (flag-gated)
-  → battery_publications row
-  → LvCanonicalBatteryResolver primaryTruth
+REST target evaluate completes measurement
+  ✗ does NOT enqueue BATTERY_ASSESSMENT_RECOMPUTE
 ```
 
-**Confirmed gaps:**
+Legacy path only:
 
-- REST target completion does **not** enqueue assessment or publication jobs.
-- `BATTERY_PUBLICATION_UPDATE` handler exists; **not enqueued** in normal production path (backfill calls `updateLvPublication` directly).
-- `getSummary` LV aggregate (`healthPercent`, `healthStatus`) still reads **`battery_features`** — dual authority with `battery_publications`.
+```
+snapshot classify + isBatteryV2LegacyRestCaptureEnabled()
+  → legacy onSnapshot restCaptured
+  → enqueueLvAssessmentRecompute
+```
+
+**Cutover trap:** Stage 2+ (shadow ON + publication ON) disables legacy capture → no automatic assessment enqueue from snapshots either.
+
+`reconcilePendingAssessments()` selects stale `batteryFeatures` (`restObservationCount`/`crankObservationCount`), **not** canonical `BatteryMeasurement` REST rows.
+
+### Handoff B — assessment → publication (MISSING)
+
+```
+battery-assessment-recompute.handler completes
+  ✗ does NOT enqueue BATTERY_PUBLICATION_UPDATE
+```
+
+Handler exists and works when invoked:
+
+```
+battery-publication-update.handler (BATTERY_PUBLICATION_UPDATE)
+  → BatteryPublicationService.updateLvPublication()
+```
+
+**Enqueue audit:** `BATTERY_V2_ENQUEUE_ENTRY_POINTS` lists assessment wrapper; **no publication enqueue wrapper** (`BAT-V2-EVID-AUDIT-PUBLICATION-ENQUEUE-ABSENCE-001`).
+
+### End-to-end verdict
+
+**NOT CURRENTLY END-TO-END REACHABLE** for canonical REST → assessment → publication. Enabling `BATTERY_V2_PUBLICATION_ENABLED` alone is **not sufficient**.
 
 ## HV "publication"
 
 - No HV `battery_publications` consumer path identified.
 - `BATTERY_V2_HV_SOH_PUBLICATION_ENABLED` unblocks internal `sohGatePassed` only.
-- SOH gate assessments always `publicationEligible: false`.
-- `summary.hv.sohPct` winner: provider → reported → legacy capacity — **not** SOH gate assessment.
 
-## Readiness (`battery-readiness.policy.ts`)
+## Readiness
 
-**Inputs:** canonical publication maturity, `summary.lv` aggregate, warning light, DTC, HV provider SOH, shadow signals.
+**Inputs:** canonical publication maturity, `summary.lv` aggregate, warning light, DTC, HV provider SOH.
 
-**Hard LV rental block (when flag ON):** requires `publicationMaturity === 'STABLE'` + VALID rest + evidence tier.
+**Important:** `blocksVehicleAvailability: false` on battery tasks.
 
-**Explicit non-blocks:** REST shadow, HV capacity shadow, proxy/live-only paths.
-
-**Consumer:** `RentalHealthService.evaluateBattery` → `rental_blocked` module state. Tasks use separate `evaluateBatteryAlerts` path.
-
-**Important:** `blocksVehicleAvailability: false` on battery tasks — tasks do **not** equal rental unavailability.
-
-## Necessary vs sufficient (CONFIRMED code, not production enablement)
-
-| Outcome | Necessary (code) | Sufficient (code) |
-|---------|------------------|-------------------|
-| LV publication row | `PUBLICATION_ENABLED` + `updateLvPublication` call | STABLE/PROVISIONAL policy pass |
-| Canonical primaryTruth from publication | publication row exists | resolver read path |
-| Rental readiness block (LV critical) | `READINESS_ENABLED` + STABLE + VALID rest | policy branch |
-| HV SOH gate pass | shadow pipeline + verified ref + `HV_SOH_PUBLICATION_ENABLED` | gate policy |
-| User sees HV SOH % | `isEv` + selected SOH evidence | `canonical.hv.providerSoh` |
-
-Production enablement checklist remains in `architecture/BATTERY_V2_PRODUCTION_CUTOVER_2026-08-26.md` — **not PRODUCTION_VALIDATED**.
+Production enablement checklist — **not PRODUCTION_VALIDATED**.

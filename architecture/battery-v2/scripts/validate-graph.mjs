@@ -222,7 +222,10 @@ if (fs.existsSync(currentStatePath)) {
     }
     if (countsOk) console.log('==> CURRENT_STATE graph counts: OK');
   } else {
-    console.log('==> CURRENT_STATE graph counts: not declared (skip)');
+    fail(
+      'CURRENT_STATE.md missing parseable **Graph:** N nodes / M edges / I invariants line',
+    );
+    console.log('==> CURRENT_STATE graph counts: MISSING (required)');
   }
 }
 
