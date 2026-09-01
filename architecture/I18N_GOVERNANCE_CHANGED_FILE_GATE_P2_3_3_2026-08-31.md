@@ -1,0 +1,210 @@
+# P2.3.3 — Changed-File / New-Debt PR Gate
+
+**Date:** 2026-08-31
+**Campaign branch:** `p239-p238-merge-baseline-3c10`
+**Foundation:** P2.3.2 scanner governance (#1450), P2.3.2R remediation (#1460)
+
+## Purpose
+
+`npm run i18n:governance` answers repository snapshot health against the immutable historical baseline (1627 fingerprints, v3).
+
+`npm run i18n:pr-gate` answers a different question:
+
+> What actionable host-presentation debt did **this PR** introduce relative to its exact PR base?
+
+Required future invariant: `NEW_PR_ACTIONABLE_HOST_DEBT = 0` for governed PRs.
+
+## Historical baseline vs PR base
+
+| Concept | Authority | Mutable |
+|---------|-----------|---------|
+| Historical governance baseline | `i18n-debt-classifications.json` (`governanceBaseline`, `baselineFingerprints`) | **No** |
+| PR comparison base | `github.event.pull_request.base.sha` / `--base-sha` | Per PR |
+
+Historical baseline membership never authorizes reintroduction. PR-base absence is authoritative for reintroduction detection.
+
+## Identity models
+
+### Fingerprint v3 (historical identity)
+
+`file | category | presentationOwner | kind | structuralContext | normalizedLiteral | occurrenceOrdinal`
+
+Used for historical baseline membership and reintroduction detection.
+
+### PR-lineage key (PR delta identity)
+
+`severity | category | presentationOwner | kind | normalizedLiteral`
+
+Used for multiset counting across base/head. Ignores file, line, structural context, and occurrence ordinal so pure refactors/renames do not false-positive.
+
+## Multiset comparison
+
+For each PR-lineage key:
+
+`newOccurrences = max(0, headCount - baseCount)`
+
+Duplicate safety uses scanner `occurrences` counts from deduped findings.
+
+## Rename / copy semantics
+
+| Git status | Semantics |
+|------------|-----------|
+| `R` | Compare base old path findings vs head new path as one lineage pair |
+| `C` | Destination treated as new source; no inherited lineage |
+| `D` | Deletion always allowed |
+| `A/M` | Standard base vs head comparison |
+
+## Deferred classifications (baseline-only)
+
+`DATA_ANALYSE_PLANNED_REMOVAL`, `IAM_PRODUCT_WIRING_REQUIRED`, and other deferred classes describe **existing** historical exceptions only.
+
+**New host copy in deferred surfaces still blocks.**
+
+## Semantic new-copy allowlist (narrow)
+
+Allowed without blocking:
+
+- `MACHINE_DOMAIN` / `FORMAT_LOCALE`
+- `RAW_PROVIDER`, `RAW_USER`
+- `EDITORIAL_CONTENT` when classification rule matches (non-enforce-clean surfaces)
+
+Help Center enforce-clean shell remains fail-closed for ambiguous editorial/shell boundaries.
+
+## Governance authority firewall
+
+Authority paths:
+
+- `frontend/scripts/i18n-hardcoded-scan.mjs`
+- `frontend/scripts/i18n-check.mjs`
+- `frontend/scripts/i18n-governance.mjs`
+- `frontend/scripts/i18n-pr-gate.mjs`
+- `frontend/scripts/i18n-shim-inventory.mjs`
+- `frontend/scripts/lib/i18n-governance/**`
+- `frontend/package.json` / `frontend/package-lock.json`
+- `frontend/src/i18n/i18n-debt-classifications.json`
+- `frontend/src/i18n/i18n-pr-gate.test.ts`
+- `frontend/src/i18n/i18n-governance-scanner.test.ts`
+- `frontend/src/i18n/translation-registry.test.ts`
+- `.github/workflows/i18n-governance-new-debt.yml`
+
+Mixed authority + governed production changes fail closed.
+
+Authority-only PRs require label `i18n-governance-authority-change`.
+
+## Ungoverned path firewall
+
+New/modified `frontend/src/**/*.ts(x)` outside scanner roots fails with `UNGOVERNED_PRODUCTION_SOURCE_PATH`.
+
+Unsupported `frontend/src/**/*.js(x)` fails with `UNSUPPORTED_GOVERNED_SOURCE_EXTENSION`.
+
+## GitHub workflow
+
+- Workflow: `i18n Governance — New Debt Gate`
+- Job/check: `i18n-new-debt-gate`
+- Checkout: exact `github.event.pull_request.head.sha`, `fetch-depth: 0`
+- Base authority: `github.event.pull_request.base.sha`
+- **No top-level `paths:` filter** — the check always materializes for every `pull_request` event (`opened`, `synchronize`, `reopened`, `ready_for_review`, `labeled`, `unlabeled`).
+
+### Two-layer required-check security model
+
+**Layer A — workflow-inline trusted bootstrap (Git + Bash builtins only; no PR-head repository executables)**
+
+Before `npm ci` or any governance JavaScript runs, the workflow `Classify PR relevance` step classifies changed paths using **Git and Bash builtins only**:
+
+```bash
+git diff --name-only -z "${BASE_SHA}...${HEAD_SHA}" > "${RUNNER_TEMP}/i18n-governance-changed-paths-….bin"
+while IFS= read -r -d '' path; do …; done < "${DIFF_FILE}"
+```
+
+- Does **not** execute any repository file from PR HEAD for the relevance decision (no `node`, `npm`, `bash .github/scripts/`, or `source .github/`).
+- External bootstrap executable: **NONE** (`.github/scripts/i18n-pr-bootstrap-relevance.sh` removed).
+- **Synchronous diff enumeration:** `git diff` runs as a foreground command with output redirected to `$RUNNER_TEMP` before NUL-safe path consumption. Producer failure therefore terminates the bootstrap before any authoritative `relevant=false` / irrelevant no-op decision. Process substitution (`done < <(git diff …)`) is **not** used — `set -euo pipefail` alone does not propagate process-substitution producer failures.
+- Fail-closed: invalid/missing SHAs, `git cat-file` failure, or synchronous `git diff` failure → workflow **FAIL** (never `relevant=false` fallback).
+- NUL-safe path iteration via `while IFS= read -r -d '' path`.
+- Outputs `relevant=true|false` directly to `$GITHUB_OUTPUT`.
+- Simple bootstrap relevance rule (intentionally duplicated from canonical JS policy contract for trust separation).
+
+**Layer B — full P2.3.3 gate (PR-head code, authority-gated)**
+
+After Layer A selects the relevant path: `npm ci` → scanner tests → **PR-gate adversarial tests** (`i18n:pr-gate:test`) → read-only `i18n:check:ci` → `i18n:pr-gate`.
+
+`runGate` evaluates governance authority **before** any irrelevant no-op return, so malicious classifier weakening cannot bypass authority policy.
+
+### Required-check materialization + relevance no-op
+
+1. **Layer A** classifies changed paths vs exact PR base via workflow-inline Git/Bash bootstrap (not PR-head JS or shell helpers).
+2. **Irrelevant PR** (e.g. backend-only): emit `I18N_PR_GATE=PASS`, `I18N_PR_GATE_REASON=NO_I18N_RELEVANT_CHANGES`, `I18N_RELEVANT_CHANGES=NO`; skip `npm ci`, scanner tests, dictionary suite, and full gate.
+3. **Relevant PR**: run Layer B including read-only `npm run i18n:check:ci`.
+
+Canonical relevance surface (Layer A bootstrap + Layer B contract):
+
+- `frontend/src/**`
+- `frontend/scripts/i18n-*.mjs`
+- `frontend/scripts/lib/i18n-governance/**`
+- `frontend/package.json`, `frontend/package-lock.json`
+- `.github/workflows/i18n-governance-new-debt.yml`
+
+### Read-only CI validation
+
+- `i18n-hardcoded-scan.mjs --no-write` — scan without mutating `hardcoded-copy-inventory.json`
+- `npm run i18n:check:ci` — read-only scanner + structural/dictionary validation
+- Workflow asserts `git status --porcelain` is empty after relevant-path CI
+
+### Git source read fail-closed
+
+Expected source absence is derived from Git diff status (`A`/`M`/`D`/`R`/`C`) before `git show`:
+
+| Status | Base source | Head source |
+|--------|-------------|-------------|
+| `A` | absent | must exist |
+| `M` | must exist | must exist |
+| `D` | must exist | absent |
+| `R` | old must exist | new must exist |
+| `C` | absent (new lineage) | destination must exist |
+
+Unexpected `git show` failure for a must-exist source → `GIT_SOURCE_READ_FAILURE`, exit `5`.
+
+Supported Git statuses: **A, M, D, R, C only**. `T`/`U`/`X`/`B` → `UNSUPPORTED_GIT_STATUS` (fail closed).
+
+Single canonical NUL parser: `parseNameStatusZGit` (`git diff --name-status -z -M`).
+
+### Governance authority scope (executable gate control)
+
+Authority paths (require label `i18n-governance-authority-change` or `--authority-approved`):
+
+- `frontend/scripts/i18n-pr-gate.mjs`
+- `frontend/scripts/i18n-hardcoded-scan.mjs`
+- `frontend/scripts/i18n-governance.mjs`
+- `frontend/scripts/i18n-check.mjs` (controls read-only CI dictionary/structural validation)
+- `frontend/scripts/i18n-shim-inventory.mjs`
+- `frontend/scripts/lib/i18n-governance/**`
+- `frontend/package.json` / `frontend/package-lock.json` (control `npm run` governance commands)
+- `frontend/src/i18n/i18n-debt-classifications.json`
+- `frontend/src/i18n/i18n-pr-gate.test.ts` (adversarial PR-gate assurance suite)
+- `frontend/src/i18n/i18n-governance-scanner.test.ts` (scanner assurance suite run by `i18n:scanner:test`)
+- `frontend/src/i18n/translation-registry.test.ts` (canonical key/parity/coverage contract for `i18n:check:ci`)
+- `.github/workflows/i18n-governance-new-debt.yml`
+
+Mixed authority + governed production changes fail closed even with approval.
+
+### Workflow self-modification caveat
+
+`WORKFLOW_SELF_MODIFICATION = POST_MERGE_REPOSITORY_PROTECTION_REQUIRED`
+
+A PR may modify its own workflow definition (Layer A inline bootstrap + Layer B YAML) because checkout is the PR head. **Tamper-resistant enforcement** of workflow-authority changes requires repository-level protection (CODEOWNERS / rulesets / protected workflow governance) covering `.github/workflows/i18n-governance-new-debt.yml` **before** `i18n-new-debt-gate` is activated as a required merge check. That protection is **not activated** in P2.3.3 — documented for post-merge activation slice.
+
+### Bootstrap label lifecycle
+
+Authority-only governance PRs require GitHub label `i18n-governance-authority-change` (or local `--authority-approved` for validation). Label `labeled`/`unlabeled` events retrigger the workflow.
+
+Branch protection activation is **out of scope** for P2.3.3 implementation; enable only after independent audit certification.
+
+## CLI exit codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | PASS |
+| 2 | New actionable host debt or reintroduction |
+| 3 | Governance authority policy failure |
+| 4 | Ungoverned / unsupported production path |
+| 5 | Invalid base / git comparison failure |

@@ -915,6 +915,30 @@ function migrationPhaseFor(relPath, surface) {
   return 'P2.2.2';
 }
 
+function relPathUnderScanRoot(relPath) {
+  const normalized = String(relPath ?? '').replace(/\\/g, '/');
+  for (const root of SCAN_ROOTS) {
+    const rootRel = relative(srcRoot, root).replace(/\\/g, '/');
+    if (!rootRel) continue;
+    if (normalized === rootRel) return true;
+    if (rootRel.endsWith('.ts') || rootRel.endsWith('.tsx')) continue;
+    if (normalized.startsWith(`${rootRel}/`)) return true;
+  }
+  return false;
+}
+
+/**
+ * Reproduce scanner inclusion/exclusion semantics for a src-relative path.
+ */
+export function isScannerEligibleRelativePath(relPath) {
+  const normalized = String(relPath ?? '').replace(/\\/g, '/');
+  if (!normalized) return false;
+  if (!/\.(ts|tsx)$/.test(normalized)) return false;
+  if (SKIP_FILE_RE.test(normalized)) return false;
+  if (SKIP_DIR_RE.test(`/${normalized}/`)) return false;
+  return relPathUnderScanRoot(normalized);
+}
+
 function collectFiles(target, files = []) {
   if (/\.(tsx|ts)$/.test(target)) {
     if (!SKIP_FILE_RE.test(target)) files.push(target);
@@ -1112,6 +1136,7 @@ export {
 };
 
 const isCliMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const noWrite = process.argv.includes('--no-write');
 if (!isCliMain) {
   // imported for tests/governance
 } else {
@@ -1142,12 +1167,18 @@ const inventory = {
   findings,
 };
 
-writeFileSync(inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`);
+if (!noWrite) {
+  writeFileSync(inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`);
+}
 console.log('Hardcoded copy inventory');
 console.log(`Total unique findings: ${summary.total}`);
 console.log('By surface:', summary.bySurface);
 console.log('By category:', summary.byCategory);
 console.log('Rental by module:', summary.byRentalModule);
 console.log(`Enforce-clean surface findings: ${summary.enforceCleanRemaining}`);
-console.log(`Wrote ${relative(frontendRoot, inventoryPath)}`);
+if (!noWrite) {
+  console.log(`Wrote ${relative(frontendRoot, inventoryPath)}`);
+} else {
+  console.log('Read-only scan mode: inventory not written');
+}
 }
