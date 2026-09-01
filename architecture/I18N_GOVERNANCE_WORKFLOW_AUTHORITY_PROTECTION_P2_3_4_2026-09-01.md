@@ -1,9 +1,9 @@
 # P2.3.4 — Workflow Authority Protection
 
-**Date:** 2026-09-01  
-**Phase:** P2.3.4A (trusted authority guard bootstrap)  
-**P2.3.3 merge commit:** `7406d4cdf7d87b91eea28c1f5a55368928656d1d`  
-**Campaign branch:** `p239-p238-merge-baseline-3c10`  
+**Date:** 2026-09-01
+**Phase:** P2.3.4A (trusted authority guard bootstrap)
+**P2.3.3 merge commit:** `7406d4cdf7d87b91eea28c1f5a55368928656d1d`
+**Campaign branch:** `p239-p238-merge-baseline-3c10`
 **Default branch trust anchor:** `main`
 
 ---
@@ -124,6 +124,36 @@ Enumeration metrics are split:
 | `CHANGED_FILES_ENUMERATED` | PR file **records** (`== changed_files`) |
 | `CLASSIFIED_PATH_COUNT` | Path identities consumed (`filename` + `previous_filename`) |
 
+### Workflow namespace authority (`REQUIRED_CHECK_NAME_SPOOFING_FIREWALL`)
+
+The complete GitHub workflow namespace is governance authority:
+
+```
+.github/workflows/**
+```
+
+Any add, modify, delete, or rename identity under `.github/workflows/` sets
+`AUTHORITY_CHANGED=YES`. A PR cannot introduce a spoof workflow that emits
+an expected governance check name without being treated as authority mutation.
+
+### PR file enumeration limit
+
+If `changed_files >= 3000`, Layer 0 fails closed with
+`PR_FILE_ENUMERATION_LIMIT_UNSAFE` before treating API enumeration as
+authoritative.
+
+### Shell event-data boundary
+
+GitHub event metadata is passed through step `env:` declarations and
+consumed as quoted shell data. Attacker-controlled event strings are not
+interpolated directly into the `run:` shell source.
+
+### Label invalidation fail-closed
+
+Authority-label removal uses `invalidate_authority_label()` with **no**
+`|| true` suppression. Removal failure yields
+`AUTHORITY_LABEL_INVALIDATION_FAILED`.
+
 ---
 
 ## 6. Trusted governance authority path census
@@ -132,8 +162,7 @@ Layer 0 independently protects:
 
 | Path / prefix |
 |---------------|
-| `.github/workflows/i18n-authority-protection.yml` |
-| `.github/workflows/i18n-governance-new-debt.yml` |
+| `.github/workflows/**` (complete workflow namespace) |
 | `frontend/scripts/i18n-hardcoded-scan.mjs` |
 | `frontend/scripts/i18n-check.mjs` |
 | `frontend/scripts/i18n-governance.mjs` |

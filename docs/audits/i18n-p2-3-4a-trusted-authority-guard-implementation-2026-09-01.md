@@ -1,8 +1,8 @@
 # P2.3.4A — Trusted Authority Guard Implementation Audit
 
-**Date:** 2026-09-01  
-**Phase:** P2.3.4A bootstrap (implementation record)  
-**Implementation PR target:** `main`  
+**Date:** 2026-09-01
+**Phase:** P2.3.4A bootstrap (implementation record)
+**Implementation PR target:** `main`
 **Campaign branch (verified untouched):** `p239-p238-merge-baseline-3c10` @ `7406d4cdf7d87b91eea28c1f5a55368928656d1d`
 
 ---
@@ -75,34 +75,23 @@ Suggested label metadata:
 | Classification path count | `CLASSIFIED_PATH_COUNT` (filename + previous_filename identities) |
 | NUL-safe consumption | `while IFS= read -r -d '' path` from `${RUNNER_TEMP}` |
 | Approval provenance | **Exact `labeled` event only** — passive label presence insufficient |
+| Workflow authority prefix | `.github/workflows/**` |
+| Enumeration limit firewall | `changed_files >= 3000` → `PR_FILE_ENUMERATION_LIMIT_UNSAFE` |
+| Label invalidation | **Fail-closed** (`AUTHORITY_LABEL_INVALIDATION_FAILED`) |
+| Shell event interpolation in `run:` | **0** (`GITHUB_EXPRESSION_DIRECT_SHELL_INTERPOLATION_COUNT`) |
 
 `HEAD_SHA` is recorded as PR metadata only; it is **not** used for checkout.
 
 ---
 
-## 5. Authority path census (17 protected surfaces)
+## 5. Authority path census
 
-| # | Path / prefix |
-|---|---------------|
-| 1 | `.github/workflows/i18n-authority-protection.yml` |
-| 2 | `.github/workflows/i18n-governance-new-debt.yml` |
-| 3 | `frontend/scripts/i18n-hardcoded-scan.mjs` |
-| 4 | `frontend/scripts/i18n-check.mjs` |
-| 5 | `frontend/scripts/i18n-governance.mjs` |
-| 6 | `frontend/scripts/i18n-pr-gate.mjs` |
-| 7 | `frontend/scripts/i18n-shim-inventory.mjs` |
-| 8 | `frontend/scripts/lib/i18n-governance/**` |
-| 9 | `frontend/package.json` |
-| 10 | `frontend/package-lock.json` |
-| 11 | `frontend/src/i18n/i18n-debt-classifications.json` |
-| 12 | `frontend/src/i18n/i18n-pr-gate.test.ts` |
-| 13 | `frontend/src/i18n/i18n-governance-scanner.test.ts` |
-| 14 | `frontend/src/i18n/translation-registry.test.ts` |
-| 15 | `frontend/src/i18n/locales.test.ts` |
-| 16 | `frontend/src/i18n/i18n-structural-check.test.ts` |
-| 17 | `frontend/src/i18n/hardcoded-copy-guard.test.ts` |
+| Namespace | Model |
+|-----------|--------|
+| `.github/workflows/**` | Complete workflow namespace (spoofing firewall) |
+| i18n scripts / lib / package / governance tests | 15 additional explicit surfaces |
 
-Items 15–17 added from `i18n-check.mjs` direct execution graph review.
+Total explicit non-workflow authority surfaces: **15**. Workflow namespace is prefix-based.
 
 ---
 
@@ -129,6 +118,10 @@ Non-`frontend/src` paths (backend, `docs/`, `architecture/`) do **not** trigger 
 | Stale label invalidated on `synchronize` | **YES** |
 | Passive label presence cannot approve | **YES** (exact `labeled` event required) |
 | Rename pre-image (`previous_filename`) classified | **YES** |
+| Complete `.github/workflows/**` authority namespace | **YES** |
+| `changed_files >= 3000` fail-closed | **YES** |
+| Label invalidation fail-closed | **YES** |
+| Shell event values via `env:` only in `run:` | **YES** |
 | Enumeration fail-closed | **YES** |
 | Live default-branch certification | **PENDING** (workflow not on `main` until merge + P2.3.4B canary) |
 
@@ -138,44 +131,24 @@ Non-`frontend/src` paths (backend, `docs/`, `architecture/`) do **not** trigger 
 
 Harness: `.cursor/scripts/ephemeral-i18n-authority-protection-harness.sh` (local only)
 
-| # | Case | Expected |
-|---|------|----------|
-| 1 | backend-only | PASS / `NO_GOVERNANCE_AUTHORITY_CHANGE` |
-| 2 | ordinary frontend product only | PASS / `NO_GOVERNANCE_AUTHORITY_CHANGE` |
-| 3 | `i18n-pr-gate.mjs` only | FAIL / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
-| 4 | P2.3.3 workflow only | FAIL / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
-| 5 | authority workflow itself only | FAIL / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
-| 6 | `package.json` only | FAIL / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
-| 7 | authority + frontend product | FAIL / `MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE` |
-| 8 | authority + translations | FAIL / `MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE` |
-| 9 | authority + ordinary docs | PASS / `GOVERNANCE_AUTHORITY_APPROVED` (with label) |
-| 10 | trusted owner label | PASS / `GOVERNANCE_AUTHORITY_APPROVED` |
-| 11 | untrusted label actor | FAIL / `UNTRUSTED_AUTHORITY_APPROVAL_ACTOR` |
-| 12 | synchronize with stale label | FAIL / `AUTHORITY_REAPPROVAL_REQUIRED_AFTER_HEAD_CHANGE` |
-| 13 | reapply trusted label after new HEAD | PASS / `GOVERNANCE_AUTHORITY_APPROVED` |
-| 14 | filename with spaces | PASS (parsed exactly) |
-| 15 | Unicode filename | PASS (parsed exactly) |
-| 16 | enumeration count mismatch | FAIL / `INCOMPLETE_PR_FILE_ENUMERATION` |
-| 17 | zero changed files | PASS / `NO_GOVERNANCE_AUTHORITY_CHANGE` |
-| 18 | API enumeration failure (workflow) | FAIL / `PR_FILE_ENUMERATION_FAILED` (code review) |
-| 19 | opened with stale label | FAIL / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
-| 20 | reopened with stale label | FAIL / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
-| 21 | ready_for_review with stale label | FAIL / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
-| 22 | rename workflow away (pre-image) | FAIL / authority detected via `previous_filename` |
-| 23 | rename pr-gate script away | FAIL / authority detected via `previous_filename` |
-| 24 | rename product → authority | FAIL / `MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE` |
-| 25 | rename authority → product | FAIL / `MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE` |
-| 26 | delete authority file | FAIL / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
-| 27 | add new authority file | FAIL / `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` |
+**Final matrix:** 37 cases covering backend/product/authority paths, passive-label
+rejection, invalidation success/failure, synchronize invalidation, mixed scope,
+rename pre/post images, complete `.github/workflows/**` namespace, 2999/3000/3001
+boundaries, API/JSON/jq failures, enumeration mismatch, and shell-injection data
+cases.
 
-**Harness result:** `26/26` classification cases PASS (case 18 verified by workflow code review).
+**Harness result:** `37/37` PASS
 
-### Security corrections (post-#1489 review)
+### Security correction history
 
 | Finding | Fix |
 |---------|-----|
-| **A — rename-away bypass** | Classify both `filename` and `previous_filename` |
-| **B — passive label approval** | Approve only on exact trusted `labeled` event |
+| Rename-away bypass | Classify `filename` + `previous_filename` |
+| Passive label approval | Exact trusted `labeled` event only |
+| Narrow workflow protection | `.github/workflows/**` authority namespace |
+| Label invalidation fail-open | Remove `\|\| true`; fail on removal error |
+| 3000-file boundary | `PR_FILE_ENUMERATION_LIMIT_UNSAFE` |
+| Shell injection surface | Event metadata via step `env:` only |
 
 ---
 
