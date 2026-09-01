@@ -1,6 +1,6 @@
 # Battery V2 — Knowledge Graph (Human View)
 
-**Last updated:** 2026-09-01 (Phase 3 graph contract integrity pass)  
+**Last updated:** 2026-09-01 (Phase 4 authority alignment pass)  
 **Maturity:** Phase 2+3 substantially reconstructed — open gaps remain  
 Machine-readable source: [graph/nodes.yaml](./graph/nodes.yaml), [graph/edges.yaml](./graph/edges.yaml)
 
@@ -43,7 +43,7 @@ This Human View is a high-level projection of current machine authority. It must
 [Consumers]  rental health, API, tasks, insights
 ```
 
-**Umbrella gap:** `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001` — canonical REST → assessment → publication is **not e2e reachable** today.
+**Umbrella gap:** `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001` — canonical REST → assessment → publication is **not e2e reachable** today. Phase 4 PROPOSED target: `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (hybrid handoff; `assess:`/`pub:` keys). **SPEC REQUIRED before implementation:** PKG-01 — `inputVersion`, REST crash-boundary, configuration invariant; PKG-02 — assessment-track selection, `publicationVersion`, configuration invariant. `REST_SHADOW=ON + PUBLICATION=ON + future HANDOFF=OFF` must not be allowed as Stage-2 steady state. Gap remains open; P0_ACTIVATION_BLOCKER only.
 
 **Flag note:** `BATTERY_V2_REST_SHADOW_ENABLED` (historical name) enables canonical REST ingestion when ON. It does **not** block publication. Publication is separately gated by `BATTERY_V2_PUBLICATION_ENABLED` plus missing handoffs.
 

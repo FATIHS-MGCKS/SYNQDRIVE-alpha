@@ -63,7 +63,19 @@ edges:
     relation: governs
     to: BAT-V2-AUTH-TRIP-END-001
 
-  # Decisions explicitly do not solve remaining gaps
+  # Phase 4 — PROPOSED LV publication handoff architecture (planning only)
+  - from: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
+    relation: refines
+    to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
+    notes: Phase 4 recommended hybrid handoff target — gap remains open until runtime
+  - from: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
+    relation: refines
+    to: BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
+  - from: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
+    relation: refines
+    to: BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
+
+  # Failed → superseded by decisions / liveness
   - from: BAT-V2-DEC-1445-001
     relation: does_not_solve
     to: BAT-V2-GAP-RUNNING-ORPHAN-001
