@@ -74,4 +74,13 @@ This phase is **documentation and governance only**. No runtime, production data
 
 ## Ready for review
 
-Graph is ready for independent KG-EED adversarial review analogous to KG-ATE Phase 2A.1.
+- Phase 2B.1: `architecture/KG_EED_INDEPENDENT_AUTHORITY_REVIEW_2026-09-01.md`
+- Phase 2B.2: `architecture/KG_EED_FINAL_AUTHORITY_CLOSURE_2026-09-01.md`
+
+## Graph count stages (historical — do not rewrite)
+
+| Stage | Operational | Evidence | Edges | Invariants | Decisions |
+|-------|------------:|---------:|------:|-----------:|----------:|
+| INITIAL_PHASE_2B | 69 | 24 | 78 | 13 | 12 |
+| POST_PHASE_2B_1 | 72 | 25 | 81 | 13 | 12 |
+| FINAL_PHASE_2B_2 | 72 | 25 | 81 | 13 | 12 |
