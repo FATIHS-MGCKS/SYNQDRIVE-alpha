@@ -1,0 +1,160 @@
+{
+  "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_001",
+  "sessionId": "06638509-6213-419b-9df4-3def6c024f41",
+  "vehicle": "WOB L  7503",
+  "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+  "tokenId": 192922,
+  "connectionProfile": "DIMO_LTE_R1",
+  "powertrainProfile": "ICE_GASOLINE",
+  "manifestVersion": "1.1.0",
+  "deployedSha": "3772d992d",
+  "sessionCreatedAt": "2026-09-01T19:00:42.405Z",
+  "sessionStartedAt": "2026-09-01T19:00:43.252Z",
+  "sessionStoppedAt": "2026-09-01T19:34:52.333Z",
+  "sessionCompletedAt": "2026-09-01T19:34:52.360Z",
+  "firstActualCaptureAt": "2026-09-01T19:12:27.239Z",
+  "lastActualCaptureAt": "2026-09-01T19:34:48.594Z",
+  "acquisitionStartGapSeconds": 703.987,
+  "actualCaptureDurationSeconds": 1341.355,
+  "sessionLifecycleDurationSeconds": 2049.108,
+  "finalStatus": "COMPLETED",
+  "cycleCount": 226,
+  "totalObservations": 3452,
+  "signalObservations": 3451,
+  "nativeEvents": 0,
+  "metadataObservations": 1,
+  "uniquePhysicalSamples": 1333,
+  "mappedObservations": 2767,
+  "unmappedObservations": 684,
+  "surfaces": {
+    "LATEST_LIVE": 1130,
+    "HF_HISTORICAL": 1333,
+    "LATEST_SLOW": 988
+  },
+  "hfObservationCount": 1333,
+  "hfFields": {
+    "obdEngineLoad": 280,
+    "obdThrottlePosition": 265,
+    "powertrainCombustionEngineSpeed": 239,
+    "powertrainCombustionEngineTPS": 269,
+    "speed": 280
+  },
+  "videoGroundTruthAvailable": false,
+  "rawEvidenceExport": {
+    "path": "/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-001/observations-export.jsonl",
+    "rowCount": 3452,
+    "bytes": 3160077,
+    "sha256": "f8e3097e28899d7a2cbdd269b266c16e5cf3eed69be810aba4e1247ec9a65bbd",
+    "exportedAt": "2026-09-01T19:35:10.833Z",
+    "state": "SEALED_EXPORT_AVAILABLE",
+    "purgeBlocked": true
+  },
+  "armIncident": {
+    "sessionStartedAt": "2026-09-01T19:00:43.252Z",
+    "firstSuccessfulAcquisitionAt": "2026-09-01T19:12:27.239Z",
+    "gapSeconds": 703.987,
+    "classification": "CONFIRMED_FROM_RUNTIME",
+    "rootCause": "Nest bootstrap timeout on ARM script; first BullMQ cycle lost/cancelled; runner recovered via manual re-enqueue at ~19:12:27Z",
+    "sessionWasRecordingDuringGap": true,
+    "observationsBeforeRecovery": 1,
+    "drivingBeforeFirstCapture": "UNKNOWN"
+  },
+  "preStop": {
+    "capturedAt": "2026-09-01T19:34:52.326Z",
+    "status": "RECORDING",
+    "cycleCount": 226,
+    "observationCount": 3452,
+    "pendingCycleJobId": "refcap-cycle_06638509-6213-419b-9df4-3def6c024f41_7c227_7cb4bf507a-f8e4-4832-b3b6-1164d60d5dcd",
+    "activeCycleJobId": null,
+    "eventWatermarkAt": "2026-09-01T19:00:43.252Z",
+    "hfWatermarkAt": "2026-09-01T19:34:48.597Z",
+    "sequenceMin": 1,
+    "sequenceMax": 3451,
+    "bullMqProbe": "0\n0\nWRONGTYPE Operation against a key holding the wrong kind of value\n\nbull:reference.capture.recording:refcap-cycle_06638509-6213-419b-9df4-3def6c024f41_7c227_7cb4bf507a-f8e4-4832-b3b6-1164d60d5dcd",
+    "acquisitionStateJson": {
+      "cycleCount": 226,
+      "lastCycleAt": "2026-09-01T19:34:49.195Z",
+      "hfWatermarkAt": "2026-09-01T19:34:48.597Z",
+      "lastFailureAt": null,
+      "activeCycleJobId": null,
+      "eventWatermarkAt": "2026-09-01T19:00:43.252Z",
+      "lastFailureClass": null,
+      "lastSequenceNumber": 3451,
+      "seenEventFingerprints": [],
+      "quarantinedProviderFields": [],
+      "consecutiveTransientFailures": 0,
+      "seenPhysicalSampleFingerprints": "[1333 fingerprints \u2014 see sealed export]"
+    }
+  },
+  "stopResult": {
+    "stoppedAt": "2026-09-01T19:34:52.364Z",
+    "finalStatus": "COMPLETED",
+    "expectedPath": [
+      "RECORDING",
+      "STOPPING",
+      "COMPLETED"
+    ]
+  },
+  "postStop": {
+    "t12s": {
+      "capturedAt": "2026-09-01T19:35:04.494Z",
+      "status": "COMPLETED",
+      "cycleCount": 226,
+      "observationCount": 3452,
+      "pendingCycleJobId": null,
+      "activeCycleJobId": null,
+      "eventWatermarkAt": "2026-09-01T19:00:43.252Z",
+      "hfWatermarkAt": "2026-09-01T19:34:48.597Z",
+      "sequenceMin": 1,
+      "sequenceMax": 3451,
+      "bullMqProbe": "0\n0\n0",
+      "acquisitionStateJson": {
+        "cycleCount": 226,
+        "lastCycleAt": "2026-09-01T19:34:49.195Z",
+        "hfWatermarkAt": "2026-09-01T19:34:48.597Z",
+        "lastFailureAt": null,
+        "activeCycleJobId": null,
+        "eventWatermarkAt": "2026-09-01T19:00:43.252Z",
+        "lastFailureClass": null,
+        "lastSequenceNumber": 3451,
+        "seenEventFingerprints": [],
+        "quarantinedProviderFields": [],
+        "consecutiveTransientFailures": 0,
+        "seenPhysicalSampleFingerprints": "[1333 fingerprints \u2014 see sealed export]"
+      }
+    },
+    "t18s": {
+      "capturedAt": "2026-09-01T19:35:10.580Z",
+      "status": "COMPLETED",
+      "cycleCount": 226,
+      "observationCount": 3452,
+      "pendingCycleJobId": null,
+      "activeCycleJobId": null,
+      "eventWatermarkAt": "2026-09-01T19:00:43.252Z",
+      "hfWatermarkAt": "2026-09-01T19:34:48.597Z",
+      "sequenceMin": 1,
+      "sequenceMax": 3451,
+      "bullMqProbe": "0\n0\n0",
+      "acquisitionStateJson": {
+        "cycleCount": 226,
+        "lastCycleAt": "2026-09-01T19:34:49.195Z",
+        "hfWatermarkAt": "2026-09-01T19:34:48.597Z",
+        "lastFailureAt": null,
+        "activeCycleJobId": null,
+        "eventWatermarkAt": "2026-09-01T19:00:43.252Z",
+        "lastFailureClass": null,
+        "lastSequenceNumber": 3451,
+        "seenEventFingerprints": [],
+        "quarantinedProviderFields": [],
+        "consecutiveTransientFailures": 0,
+        "seenPhysicalSampleFingerprints": "[1333 fingerprints \u2014 see sealed export]"
+      }
+    }
+  },
+  "evidenceRegistryIds": {
+    "captureReport": "DI-EV-0016",
+    "sessionSummary": "DI-EV-0017",
+    "signalQualityMetrics": "DI-EV-0018",
+    "groundTruthIndex": "DI-EV-0019"
+  }
+}

@@ -888,7 +888,20 @@ The older July DIMO capability audit is HISTORICAL_EVIDENCE only.
 - **42 reference-capture unit tests passing** (+ env-gated Redis integration)
 - **No scoring formula changes; no production scheduler replacement**
 
-**Status:** **3A.1 DONE** · **Phase 3A.2 DONE** (2026-08-31) · **Instrumented reference drive NEXT / READY (NOT STARTED)**
+**Status:** **3A.1 DONE** · **3A.2 DONE** (2026-08-31) · **3A.3 Reference Drive #001 DONE** (2026-09-01) · **Ground Truth validation INCOMPLETE**
+
+### Phase 3A.3 — Reference Drive #001 (real motion, no video Ground Truth)
+**Status:** **CAPTURE_COMPLETED** (2026-09-01)
+
+First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `06638509-6213-419b-9df4-3def6c024f41` · `DIMO_LTE_R1_REFERENCE_DRIVE_001`. Real physical drive; real telemetry; **226 cycles**, **3452 observations**, **HF_HISTORICAL ACTIVE** (1333 rows). STOP lifecycle verified (`RECORDING→STOPPING→COMPLETED`); zombie-free post-stop.
+
+**Ground Truth:** `VIDEO_GROUND_TRUTH_NOT_AVAILABLE` — ARM workflow delay (~704 s acquisition-start gap) prevented instrument-cluster video before owner departure. **Not** eligible for tachometer MAE/RMSE or maneuver GT. Negative evidence indexed (DI-EV-0019).
+
+**ARM incident:** Nest bootstrap timeout on ARM script; manual runner recovery at ~19:12:27Z. `ARM_WORKFLOW_REMEDIATION_REQUIRED=YES` (not fixed in 3A.3).
+
+**Next ground-truth-capable drive:** `DIMO_LTE_R1_REFERENCE_DRIVE_002` (not started).
+
+**Deliverables:** `dimo-lte-r1-reference-drive-001-capture-report-2026-09-01.md` (DI-EV-0016) · session summary JSON (DI-EV-0017) · signal-quality metrics (DI-EV-0018) · GT evidence index (DI-EV-0019) · sealed raw export on VPS (`PURGE_BLOCKED_REFERENCE_EVIDENCE`).
 
 ### Phase 3A.2 — Production deployment + runtime preflight + controlled LTE_R1 canary
 **Status:** **DONE** (2026-08-31)
@@ -1228,7 +1241,8 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Prioritized query expansion proposal | NOT_STARTED | Phase 2D+ |
 | Phase 3A.1 Flight Recorder foundation | DONE | #1468 merged — `reference-capture` module + migrations |
 | Phase 3A.2 production deploy + runtime canary | DONE | Deploy + stationary LTE_R1 canary passed — session `e8613cc7-…`, 5 cycles, 52 obs |
-| Phase 3A DIMO LTE_R1 reference program | IN_PROGRESS | 3A.1+3A.2 DONE; instrumented reference drive NEXT (not started) |
+| Phase 3A.3 Reference Drive #001 capture + telemetry audit | DONE | Session `06638509-…` COMPLETED; HF active; video GT NOT_AVAILABLE |
+| Phase 3A DIMO LTE_R1 reference program | IN_PROGRESS | 3A.1+3A.2+3A.3 RD001 DONE; GT validation incomplete; RD002 required for video GT |
 | Phase 3B DIMO Tesla Direct reference program | NOT_STARTED | `GATED_ON_TESLA_DIRECT_MANIFEST` |
 | Phase 3C DIMO Smart5 compatibility program | NOT_STARTED | `GATED_ON_SMART5_MANIFEST` |
 | Phase 3D High Mobility OEM reference program | NOT_STARTED | `GATED_ON_HIGH_MOBILITY_PROFILE_MANIFEST` |
@@ -1258,10 +1272,11 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 8. ~~Execute Phase 2E: DIMO redundancy / canonicalization (Phase 2D handoff groups).~~ **Done** — see Phase 2E audit (`33` canonical keys, `PHYSICAL_EPISODE_IDENTITY`).
 9. ~~**Execute Phase 2F:** DIMO capability-first acquisition strategy (Phase 2E handoff).~~ **Done** — see Phase 2F audit (VCM contract, T0–T7 tiers, query planner, CAN-001…CAN-033 matrix).
 10. ~~**Execute Phase 2F.1:** `DIMO_LTE_R1` reference manifest.~~ **Done** — v1.1.0 two-layer broad-capture contract frozen.
-11. ~~**Execute Phase 3A.1–3A.2** (LTE R1) — Flight Recorder foundation + production canary.~~ **Done** — 3A.1 #1468 merged; 3A.2 production canary passed (`REFERENCE_DRIVE_READY=YES`). **Next:** instrumented reference drive (explicitly scheduled; not started).
-12. **Execute Phase 2G:** Smart5 + Tesla Direct connection-variant audits + profile manifests → ungate 3B/3C when ready.
-13. **Execute Phase 2H:** High Mobility OEM/profile audit + manifests → ungate 3D when ready.
-14. **Execute Phase 2I:** Cross-provider canonical consolidation / parity governance (after provider-specific knowledge exists).
+11. ~~**Execute Phase 3A.1–3A.2** (LTE R1) — Flight Recorder foundation + production canary.~~ **Done** — 3A.1 #1468 merged; 3A.2 production canary passed (`REFERENCE_DRIVE_READY=YES`).
+12. ~~**Execute Phase 3A.3 Reference Drive #001** — real-motion capture + STOP audit.~~ **Done** — capture COMPLETED; telemetry analysis available; video GT NOT_AVAILABLE. **Next:** Reference Drive #002 with video Ground Truth (not started); ARM workflow remediation.
+13. **Execute Phase 2G:** Smart5 + Tesla Direct connection-variant audits + profile manifests → ungate 3B/3C when ready.
+14. **Execute Phase 2H:** High Mobility OEM/profile audit + manifests → ungate 3D when ready.
+15. **Execute Phase 2I:** Cross-provider canonical consolidation / parity governance (after provider-specific knowledge exists).
 ---
 # 7. Repository Evidence & Documentation Governance
 
@@ -1307,15 +1322,16 @@ After the first instrumented `DIMO_LTE_R1` reference drive, require at minimum:
 
 **Do not create fake result files before the drive occurs.**
 
-### Phase 3A readiness (unchanged)
+### Phase 3A readiness
 
 | Item | Status |
 |------|--------|
 | Phase 3A.1 | **DONE** |
 | Phase 3A.2 | **DONE** |
-| Instrumented LTE_R1 reference drive | **NEXT / READY** |
-| Reference drive itself | **NOT STARTED** |
-| `REFERENCE_DRIVE_READY` | **YES** |
+| Phase 3A.3 Reference Drive #001 | **DONE** — capture COMPLETED; telemetry analysis available |
+| Reference Drive #001 Ground Truth | **NOT_AVAILABLE** (video not captured) |
+| Next: Reference Drive #002 (video GT) | **NOT STARTED** |
+| `REFERENCE_DRIVE_READY` | **YES** (for telemetry); video GT requires RD002 + ARM remediation |
 
 ---
 # 8. Agent Handoff Protocol

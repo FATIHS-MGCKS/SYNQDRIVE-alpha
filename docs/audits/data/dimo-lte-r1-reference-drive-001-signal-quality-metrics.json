@@ -1,0 +1,1857 @@
+{
+  "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_001",
+  "sessionId": "06638509-6213-419b-9df4-3def6c024f41",
+  "generatedAt": "2026-09-01T19:35:10.833Z",
+  "perField": {
+    "obdEngineLoad": {
+      "observationCount": 506,
+      "uniqueProviderTimestampCount": 294,
+      "nonNullCount": 506,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 1,
+        "p90": 2.133,
+        "p95": 3,
+        "p99": 9,
+        "max": 151,
+        "mean": 1.4905900990099012,
+        "stdDev": 6.979311289212355
+      },
+      "jitterSeconds": 6.979311289212355,
+      "duplicateProviderTimestamps": 212,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 151,
+      "gapCountsAbove": {
+        "gt2s": 53,
+        "gt5s": 10,
+        "gt10s": 5,
+        "gt30s": 1
+      },
+      "ingressLatencyMs": {
+        "p50": 428489,
+        "p95": 1097218,
+        "p99": 1215459,
+        "max": 1245594
+      },
+      "firstProviderTimestamp": "2026-09-01T19:01:30.252Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdThrottlePosition": {
+      "observationCount": 491,
+      "uniqueProviderTimestampCount": 279,
+      "nonNullCount": 491,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 1,
+        "p90": 3,
+        "p95": 4,
+        "p99": 13,
+        "max": 151,
+        "mean": 1.5362204081632655,
+        "stdDev": 7.113437851695252
+      },
+      "jitterSeconds": 7.113437851695252,
+      "duplicateProviderTimestamps": 212,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 151,
+      "gapCountsAbove": {
+        "gt2s": 57,
+        "gt5s": 12,
+        "gt10s": 6,
+        "gt30s": 1
+      },
+      "ingressLatencyMs": {
+        "p50": 438489,
+        "p95": 1103144,
+        "p99": 1221330,
+        "max": 1245594
+      },
+      "firstProviderTimestamp": "2026-09-01T19:01:30.252Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "powertrainCombustionEngineSpeed": {
+      "observationCount": 465,
+      "uniqueProviderTimestampCount": 253,
+      "nonNullCount": 465,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 1,
+        "p90": 3,
+        "p95": 4,
+        "p99": 14.5,
+        "max": 151,
+        "mean": 1.6223017241379314,
+        "stdDev": 7.367852549242773
+      },
+      "jitterSeconds": 7.367852549242773,
+      "duplicateProviderTimestamps": 212,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 151,
+      "gapCountsAbove": {
+        "gt2s": 59,
+        "gt5s": 18,
+        "gt10s": 7,
+        "gt30s": 1
+      },
+      "ingressLatencyMs": {
+        "p50": 446140,
+        "p95": 1109010,
+        "p99": 1221330,
+        "max": 1245594
+      },
+      "firstProviderTimestamp": "2026-09-01T19:01:30.252Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "powertrainCombustionEngineTPS": {
+      "observationCount": 495,
+      "uniqueProviderTimestampCount": 283,
+      "nonNullCount": 495,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 1,
+        "p90": 3,
+        "p95": 4,
+        "p99": 13,
+        "max": 151,
+        "mean": 1.5237813765182189,
+        "stdDev": 7.077268630089743
+      },
+      "jitterSeconds": 7.077268630089743,
+      "duplicateProviderTimestamps": 212,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 151,
+      "gapCountsAbove": {
+        "gt2s": 56,
+        "gt5s": 11,
+        "gt10s": 6,
+        "gt30s": 1
+      },
+      "ingressLatencyMs": {
+        "p50": 436489,
+        "p95": 1103144,
+        "p99": 1221330,
+        "max": 1245594
+      },
+      "firstProviderTimestamp": "2026-09-01T19:01:30.252Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "speed": {
+      "observationCount": 506,
+      "uniqueProviderTimestampCount": 294,
+      "nonNullCount": 506,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 1,
+        "p90": 2.133,
+        "p95": 3,
+        "p99": 9,
+        "max": 151,
+        "mean": 1.4905900990099012,
+        "stdDev": 6.979311289212355
+      },
+      "jitterSeconds": 6.979311289212355,
+      "duplicateProviderTimestamps": 212,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 151,
+      "gapCountsAbove": {
+        "gt2s": 53,
+        "gt5s": 10,
+        "gt10s": 5,
+        "gt30s": 1
+      },
+      "ingressLatencyMs": {
+        "p50": 428489,
+        "p95": 1097218,
+        "p99": 1215459,
+        "max": 1245594
+      },
+      "firstProviderTimestamp": "2026-09-01T19:01:30.252Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "currentLocationAltitude": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "currentLocationCoordinates": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "currentLocationHeading": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "exteriorAirTemperature": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "isIgnitionOn": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "lowVoltageBatteryCurrentVoltage": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdBarometricPressure": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdDistanceWithMIL": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdFuelRailPressure": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdFuelTypeName": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdIntakeTemp": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdIsPluggedIn": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdLongTermFuelTrim1": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdLongTermFuelTrim2": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdMAP": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdMaxMAF": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdOilTemperature": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdRunTime": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdStatusDTCCount": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "powertrainCombustionEngineECT": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "powertrainFuelSystemAbsoluteLevel": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "powertrainFuelSystemRelativeLevel": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "powertrainTransmissionActualGear": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "powertrainTransmissionActualGearRatio": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "powertrainTransmissionTravelledDistance": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "powertrainType": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    }
+  },
+  "priority": {
+    "speed": {
+      "observationCount": 506,
+      "uniqueProviderTimestampCount": 294,
+      "nonNullCount": 506,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 1,
+        "p90": 2.133,
+        "p95": 3,
+        "p99": 9,
+        "max": 151,
+        "mean": 1.4905900990099012,
+        "stdDev": 6.979311289212355
+      },
+      "jitterSeconds": 6.979311289212355,
+      "duplicateProviderTimestamps": 212,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 151,
+      "gapCountsAbove": {
+        "gt2s": 53,
+        "gt5s": 10,
+        "gt10s": 5,
+        "gt30s": 1
+      },
+      "ingressLatencyMs": {
+        "p50": 428489,
+        "p95": 1097218,
+        "p99": 1215459,
+        "max": 1245594
+      },
+      "firstProviderTimestamp": "2026-09-01T19:01:30.252Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "powertrainCombustionEngineSpeed": {
+      "observationCount": 465,
+      "uniqueProviderTimestampCount": 253,
+      "nonNullCount": 465,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 1,
+        "p90": 3,
+        "p95": 4,
+        "p99": 14.5,
+        "max": 151,
+        "mean": 1.6223017241379314,
+        "stdDev": 7.367852549242773
+      },
+      "jitterSeconds": 7.367852549242773,
+      "duplicateProviderTimestamps": 212,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 151,
+      "gapCountsAbove": {
+        "gt2s": 59,
+        "gt5s": 18,
+        "gt10s": 7,
+        "gt30s": 1
+      },
+      "ingressLatencyMs": {
+        "p50": 446140,
+        "p95": 1109010,
+        "p99": 1221330,
+        "max": 1245594
+      },
+      "firstProviderTimestamp": "2026-09-01T19:01:30.252Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "powertrainCombustionEngineTPS": {
+      "observationCount": 495,
+      "uniqueProviderTimestampCount": 283,
+      "nonNullCount": 495,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 1,
+        "p90": 3,
+        "p95": 4,
+        "p99": 13,
+        "max": 151,
+        "mean": 1.5237813765182189,
+        "stdDev": 7.077268630089743
+      },
+      "jitterSeconds": 7.077268630089743,
+      "duplicateProviderTimestamps": 212,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 151,
+      "gapCountsAbove": {
+        "gt2s": 56,
+        "gt5s": 11,
+        "gt10s": 6,
+        "gt30s": 1
+      },
+      "ingressLatencyMs": {
+        "p50": 436489,
+        "p95": 1103144,
+        "p99": 1221330,
+        "max": 1245594
+      },
+      "firstProviderTimestamp": "2026-09-01T19:01:30.252Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdThrottlePosition": {
+      "observationCount": 491,
+      "uniqueProviderTimestampCount": 279,
+      "nonNullCount": 491,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 1,
+        "p90": 3,
+        "p95": 4,
+        "p99": 13,
+        "max": 151,
+        "mean": 1.5362204081632655,
+        "stdDev": 7.113437851695252
+      },
+      "jitterSeconds": 7.113437851695252,
+      "duplicateProviderTimestamps": 212,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 151,
+      "gapCountsAbove": {
+        "gt2s": 57,
+        "gt5s": 12,
+        "gt10s": 6,
+        "gt30s": 1
+      },
+      "ingressLatencyMs": {
+        "p50": 438489,
+        "p95": 1103144,
+        "p99": 1221330,
+        "max": 1245594
+      },
+      "firstProviderTimestamp": "2026-09-01T19:01:30.252Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdEngineLoad": {
+      "observationCount": 506,
+      "uniqueProviderTimestampCount": 294,
+      "nonNullCount": 506,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 1,
+        "p90": 2.133,
+        "p95": 3,
+        "p99": 9,
+        "max": 151,
+        "mean": 1.4905900990099012,
+        "stdDev": 6.979311289212355
+      },
+      "jitterSeconds": 6.979311289212355,
+      "duplicateProviderTimestamps": 212,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 151,
+      "gapCountsAbove": {
+        "gt2s": 53,
+        "gt5s": 10,
+        "gt10s": 5,
+        "gt30s": 1
+      },
+      "ingressLatencyMs": {
+        "p50": 428489,
+        "p95": 1097218,
+        "p99": 1215459,
+        "max": 1245594
+      },
+      "firstProviderTimestamp": "2026-09-01T19:01:30.252Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "powertrainTransmissionActualGear": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "isIgnitionOn": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "currentLocationCoordinates": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "currentLocationHeading": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "powertrainCombustionEngineECT": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "obdOilTemperature": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    },
+    "lowVoltageBatteryCurrentVoltage": {
+      "observationCount": 38,
+      "uniqueProviderTimestampCount": 4,
+      "nonNullCount": 38,
+      "nullRate": 0,
+      "deltaTSeconds": {
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p95": 33,
+        "p99": 56,
+        "max": 56,
+        "mean": 2.6216216216216215,
+        "stdDev": 10.586551613961692
+      },
+      "jitterSeconds": 10.586551613961692,
+      "duplicateProviderTimestamps": 34,
+      "duplicatePhysicalSamples": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderRate": 0,
+      "maxGapSeconds": 56,
+      "gapCountsAbove": {
+        "gt2s": 3,
+        "gt5s": 3,
+        "gt10s": 2,
+        "gt30s": 2
+      },
+      "ingressLatencyMs": {
+        "p50": 540487,
+        "p95": 1186203,
+        "p99": 1222037,
+        "max": 1222037
+      },
+      "firstProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "lastProviderTimestamp": "2026-09-01T19:14:03.000Z"
+    }
+  },
+  "hfHistorical": {
+    "totalRows": 1333,
+    "fields": {
+      "obdEngineLoad": 280,
+      "obdThrottlePosition": 265,
+      "powertrainCombustionEngineSpeed": 239,
+      "powertrainCombustionEngineTPS": 269,
+      "speed": 280
+    },
+    "perFieldMetrics": {
+      "obdEngineLoad": {
+        "observationCount": 280,
+        "uniqueProviderTimestampCount": 280,
+        "nonNullCount": 280,
+        "nullRate": 0,
+        "deltaTSeconds": {
+          "min": 1,
+          "p50": 2,
+          "p90": 3,
+          "p95": 4,
+          "p99": 20,
+          "max": 151,
+          "mean": 2.6947849462365596,
+          "stdDev": 9.243115932835101
+        },
+        "jitterSeconds": 9.243115932835101,
+        "duplicateProviderTimestamps": 0,
+        "duplicatePhysicalSamples": 0,
+        "outOfOrderCount": 0,
+        "outOfOrderRate": 0,
+        "maxGapSeconds": 151,
+        "gapCountsAbove": {
+          "gt2s": 53,
+          "gt5s": 11,
+          "gt10s": 5,
+          "gt30s": 1
+        },
+        "ingressLatencyMs": {
+          "p50": 356489,
+          "p95": 636489,
+          "p99": 653489,
+          "max": 657489
+        },
+        "firstProviderTimestamp": "2026-09-01T19:01:30.252Z",
+        "lastProviderTimestamp": "2026-09-01T19:14:02.097Z"
+      },
+      "obdThrottlePosition": {
+        "observationCount": 265,
+        "uniqueProviderTimestampCount": 265,
+        "nonNullCount": 265,
+        "nullRate": 0,
+        "deltaTSeconds": {
+          "min": 1,
+          "p50": 2,
+          "p90": 4,
+          "p95": 4.716,
+          "p99": 20,
+          "max": 151,
+          "mean": 2.847897727272728,
+          "stdDev": 9.525604147030588
+        },
+        "jitterSeconds": 9.525604147030588,
+        "duplicateProviderTimestamps": 0,
+        "duplicatePhysicalSamples": 0,
+        "outOfOrderCount": 0,
+        "outOfOrderRate": 0,
+        "maxGapSeconds": 151,
+        "gapCountsAbove": {
+          "gt2s": 57,
+          "gt5s": 13,
+          "gt10s": 6,
+          "gt30s": 1
+        },
+        "ingressLatencyMs": {
+          "p50": 368489,
+          "p95": 637489,
+          "p99": 653489,
+          "max": 657489
+        },
+        "firstProviderTimestamp": "2026-09-01T19:01:30.252Z",
+        "lastProviderTimestamp": "2026-09-01T19:14:02.097Z"
+      },
+      "powertrainCombustionEngineSpeed": {
+        "observationCount": 239,
+        "uniqueProviderTimestampCount": 239,
+        "nonNullCount": 239,
+        "nullRate": 0,
+        "deltaTSeconds": {
+          "min": 1,
+          "p50": 2,
+          "p90": 4,
+          "p95": 9,
+          "p99": 20,
+          "max": 151,
+          "mean": 3.1590126050420175,
+          "stdDev": 10.092825534919417
+        },
+        "jitterSeconds": 10.092825534919417,
+        "duplicateProviderTimestamps": 0,
+        "duplicatePhysicalSamples": 0,
+        "outOfOrderCount": 0,
+        "outOfOrderRate": 0,
+        "maxGapSeconds": 151,
+        "gapCountsAbove": {
+          "gt2s": 58,
+          "gt5s": 19,
+          "gt10s": 7,
+          "gt30s": 1
+        },
+        "ingressLatencyMs": {
+          "p50": 393489,
+          "p95": 639489,
+          "p99": 653489,
+          "max": 657489
+        },
+        "firstProviderTimestamp": "2026-09-01T19:01:30.252Z",
+        "lastProviderTimestamp": "2026-09-01T19:14:02.097Z"
+      },
+      "powertrainCombustionEngineTPS": {
+        "observationCount": 269,
+        "uniqueProviderTimestampCount": 269,
+        "nonNullCount": 269,
+        "nullRate": 0,
+        "deltaTSeconds": {
+          "min": 1,
+          "p50": 2,
+          "p90": 4,
+          "p95": 4.716,
+          "p99": 20,
+          "max": 151,
+          "mean": 2.8053917910447765,
+          "stdDev": 9.448425787645874
+        },
+        "jitterSeconds": 9.448425787645874,
+        "duplicateProviderTimestamps": 0,
+        "duplicatePhysicalSamples": 0,
+        "outOfOrderCount": 0,
+        "outOfOrderRate": 0,
+        "maxGapSeconds": 151,
+        "gapCountsAbove": {
+          "gt2s": 56,
+          "gt5s": 12,
+          "gt10s": 6,
+          "gt30s": 1
+        },
+        "ingressLatencyMs": {
+          "p50": 368489,
+          "p95": 637489,
+          "p99": 653489,
+          "max": 657489
+        },
+        "firstProviderTimestamp": "2026-09-01T19:01:30.252Z",
+        "lastProviderTimestamp": "2026-09-01T19:14:02.097Z"
+      },
+      "speed": {
+        "observationCount": 280,
+        "uniqueProviderTimestampCount": 280,
+        "nonNullCount": 280,
+        "nullRate": 0,
+        "deltaTSeconds": {
+          "min": 1,
+          "p50": 2,
+          "p90": 3,
+          "p95": 4,
+          "p99": 20,
+          "max": 151,
+          "mean": 2.6947849462365596,
+          "stdDev": 9.243115932835101
+        },
+        "jitterSeconds": 9.243115932835101,
+        "duplicateProviderTimestamps": 0,
+        "duplicatePhysicalSamples": 0,
+        "outOfOrderCount": 0,
+        "outOfOrderRate": 0,
+        "maxGapSeconds": 151,
+        "gapCountsAbove": {
+          "gt2s": 53,
+          "gt5s": 11,
+          "gt10s": 5,
+          "gt30s": 1
+        },
+        "ingressLatencyMs": {
+          "p50": 356489,
+          "p95": 636489,
+          "p99": 653489,
+          "max": 657489
+        },
+        "firstProviderTimestamp": "2026-09-01T19:01:30.252Z",
+        "lastProviderTimestamp": "2026-09-01T19:14:02.097Z"
+      }
+    },
+    "requestedIntervalNote": "HF planner requests 1s interval — this is NOT observed cadence"
+  },
+  "nativeEvents": [],
+  "capabilityVsObserved": {
+    "discovered": [
+      "currentLocationAltitude",
+      "currentLocationCoordinates",
+      "currentLocationHeading",
+      "exteriorAirTemperature",
+      "isIgnitionOn",
+      "lowVoltageBatteryCurrentVoltage",
+      "obdBarometricPressure",
+      "obdDistanceWithMIL",
+      "obdEngineLoad",
+      "obdFuelRailPressure",
+      "obdFuelTypeName",
+      "obdIntakeTemp",
+      "obdIsPluggedIn",
+      "obdLongTermFuelTrim1",
+      "obdLongTermFuelTrim2",
+      "obdMAP",
+      "obdMaxMAF",
+      "obdOilTemperature",
+      "obdRunTime",
+      "obdStatusDTCCount",
+      "obdThrottlePosition",
+      "powertrainCombustionEngineECT",
+      "powertrainCombustionEngineSpeed",
+      "powertrainCombustionEngineTPS",
+      "powertrainFuelSystemAbsoluteLevel",
+      "powertrainFuelSystemRelativeLevel",
+      "powertrainTransmissionActualGear",
+      "powertrainTransmissionActualGearRatio",
+      "powertrainTransmissionTravelledDistance",
+      "powertrainType",
+      "speed"
+    ],
+    "actuallyObserved": [
+      "currentLocationAltitude",
+      "currentLocationCoordinates",
+      "currentLocationHeading",
+      "exteriorAirTemperature",
+      "isIgnitionOn",
+      "lowVoltageBatteryCurrentVoltage",
+      "obdBarometricPressure",
+      "obdDistanceWithMIL",
+      "obdEngineLoad",
+      "obdFuelRailPressure",
+      "obdFuelTypeName",
+      "obdIntakeTemp",
+      "obdIsPluggedIn",
+      "obdLongTermFuelTrim1",
+      "obdLongTermFuelTrim2",
+      "obdMAP",
+      "obdMaxMAF",
+      "obdOilTemperature",
+      "obdRunTime",
+      "obdStatusDTCCount",
+      "obdThrottlePosition",
+      "powertrainCombustionEngineECT",
+      "powertrainCombustionEngineSpeed",
+      "powertrainCombustionEngineTPS",
+      "powertrainFuelSystemAbsoluteLevel",
+      "powertrainFuelSystemRelativeLevel",
+      "powertrainTransmissionActualGear",
+      "powertrainTransmissionActualGearRatio",
+      "powertrainTransmissionTravelledDistance",
+      "powertrainType",
+      "speed"
+    ],
+    "withUsefulDynamicData": [
+      "currentLocationAltitude",
+      "currentLocationCoordinates",
+      "currentLocationHeading",
+      "exteriorAirTemperature",
+      "isIgnitionOn",
+      "lowVoltageBatteryCurrentVoltage",
+      "obdBarometricPressure",
+      "obdDistanceWithMIL",
+      "obdEngineLoad",
+      "obdFuelRailPressure",
+      "obdFuelTypeName",
+      "obdIntakeTemp",
+      "obdIsPluggedIn",
+      "obdLongTermFuelTrim1",
+      "obdLongTermFuelTrim2",
+      "obdMAP",
+      "obdMaxMAF",
+      "obdOilTemperature",
+      "obdRunTime",
+      "obdStatusDTCCount",
+      "obdThrottlePosition",
+      "powertrainCombustionEngineECT",
+      "powertrainCombustionEngineSpeed",
+      "powertrainCombustionEngineTPS",
+      "powertrainFuelSystemAbsoluteLevel",
+      "powertrainFuelSystemRelativeLevel",
+      "powertrainTransmissionActualGear",
+      "powertrainTransmissionActualGearRatio",
+      "powertrainTransmissionTravelledDistance",
+      "powertrainType",
+      "speed"
+    ]
+  },
+  "dualReplicaSerialization": {
+    "verdict": "INFERENCE — cycleCount monotonic; activeCycleJobId null at rest; no overlapping cycleJobId windows detected in provenance sample; worker process identity not logged — true cross-replica contention not independently proven",
+    "uniqueCycleJobIds": 0,
+    "cycleCount": 226
+  }
+}

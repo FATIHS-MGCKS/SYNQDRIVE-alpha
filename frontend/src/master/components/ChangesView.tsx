@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-phase-3a3-reference-drive-001-capture-2026-09-01',
+    version: '4.9.1020',
+    title: 'Phase 3A.3 — Reference Drive #001 capture + STOP audit (telemetry only, no video GT)',
+    summary: [
+      'First real-motion LTE_R1 reference drive on VW Tiguan WOB L 7503: session `06638509-6213-419b-9df4-3def6c024f41`, `DIMO_LTE_R1_REFERENCE_DRIVE_001`.',
+      'Production STOP path verified (`RECORDING→STOPPING→COMPLETED`); 226 cycles, 3452 observations; HF_HISTORICAL ACTIVE (1333 rows vs 0 in 3A.2 stationary canary).',
+      'Sealed raw export on VPS (`PURGE_BLOCKED_REFERENCE_EVIDENCE`); machine-readable session summary + signal-quality metrics in `docs/audits/data/`.',
+      'VIDEO_GROUND_TRUTH_NOT_AVAILABLE — ARM workflow ~704 s acquisition-start gap prevented instrument-cluster video. RD002 required for video GT.',
+      'ARM_WORKFLOW_REMEDIATION_REQUIRED documented; no scoring/model changes.',
+    ],
+    reason: 'Phase 3A.3 — evidence freeze and telemetry audit for canonical Reference Drive #001 per DI governance.',
+    previousBehavior: 'Phase 3A.2 stationary canary only; no real-motion reference drive evidence.',
+    details:
+      'docs/audits/dimo-lte-r1-reference-drive-001-capture-report-2026-09-01.md; DI-EV-0016–0019; backend/scripts/ops/reference-capture-drive-001-stop-audit.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T19:35:00.000Z',
+  },
+  {
     id: 'fuel-station-enrichment-phase-f-ui-2026-09-01',
     version: '4.9.1019',
     title: 'Fuel Station Enrichment Phase F — trip timeline UI integration',
