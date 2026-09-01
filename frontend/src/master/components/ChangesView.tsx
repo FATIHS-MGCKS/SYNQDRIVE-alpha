@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p1-8-3-2-n2-retrospective-audit-2026-09-01',
+    version: '4.9.1023',
+    title: 'P1.8.3.2 — N=2 retrospective production stability audit (EARLY_PASS)',
+    summary: [
+      'Read-only retrospective audit of production N=2 during ~2h39m continuous window after P1.8.3.1 attempt 3 PASS.',
+      'Topology: 2 replicas on SHA `3772d992d`, nginx dual-upstream healthy; scheduler snapshot A=FOLLOWER / B=LEADER; no split-brain signal observed in the limited log sample.',
+      'Queues stable; battery.v2 failed=64 unchanged (0 delta, backlog not reclassified); 2 new trips + 2 route artifacts; no duplicate-work signals.',
+      'ATE workers enabled but zero workload observed — UNEXERCISED for multi-replica certification. FIND-01..03 are observational notes (NEW_P3=0).',
+      'Verdict EARLY_PASS — HEALTHY_EARLY snapshot signal; INSUFFICIENT_WINDOW for retrospective coordination metrics. Evidence precision corrected (v3 final closure). OQ-18 / DEC-016 prod validation still pending.',
+    ],
+    reason: 'Establish first post-P1.8.3.1 N=2 stability evidence without live soak or production mutation.',
+    previousBehavior: 'P1.8.3.1 validated deploy gate; sustained N=2 runtime stability not yet retrospectively audited.',
+    details:
+      'architecture/P1_8_3_2_N2_RETROSPECTIVE_STABILITY_AUDIT_2026-09-01.md; architecture/scaling-process/',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T14:26:00.000Z',
+  },
+  {
     id: 'p1-8-3-1-production-validation-2026-09-01',
     version: '4.9.1022',
     title: 'P1.8.3.1 — Production validation: scheduler convergence gate + INC-06 CLOSED',

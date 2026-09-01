@@ -139,8 +139,32 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | INC-06 closed | P1.8.3.1 | — | production convergence trace | CLOSED | HIGH |
 | OQ-17 leader convergence | P1.8.3.1 | 3772d992d | attempt 3 trace | CLOSED | HIGH |
 | OQ-18 bootstrap false-abort | P1.8.3.1 | 3772d992d | attempts 1–2 ROLLBACK | RELEASE_OPS_DIR MITIGATED | HIGH |
-| OQ-18 cloud-agent exact-SHA bootstrap | P1.8.3.1 authority | PR #1490 | not prod observed | PENDING | MEDIUM |
+| OQ-18 cloud-agent exact-SHA bootstrap | P1.8.3.1 authority | PR #1490 merged | not prod observed post-merge | PENDING | MEDIUM |
 | DEC-016 exact-SHA provenance | P1.8.3.1 authority | PR #1490 | unit tests 7 cases | IMPLEMENTED | HIGH |
+
+---
+
+## P1.8.3.2 — N=2 retrospective stability audit
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| N=2 topology stable (snapshot) | P1.8.3.2 | — | SSH audit 14:26Z | SNAPSHOT_PASS | HIGH |
+| Scheduler singleton (snapshot) | P1.8.3.2 | — | `/api/v1/health/readiness` schedulerLeader | SNAPSHOT_PASS | HIGH |
+| Split brain post-stable | P1.8.3.2 | — | limited PM2 log grep | NO_SIGNAL_IN_LIMITED_SAMPLE | MEDIUM |
+| Queue depths (snapshot) | P1.8.3.2 | — | Redis BullMQ | PASS (idle at audit) | HIGH |
+| battery.v2 delta in window | P1.8.3.2 | — | failed ZSET scores | VERIFIED_ZERO_DELTA (64→64) | HIGH |
+| battery.v2 backlog reclassification | P1.8.3.2 | — | audit scope | NOT_RECLASSIFIED | HIGH |
+| Trip duplicates in window | P1.8.3.2 | — | SQL `vehicle_id,start_time` | VERIFIED_ZERO | HIGH |
+| Trip/route volume | P1.8.3.2 | — | 2 trips, 2 routes | LOW_VOLUME_NEUTRAL | MEDIUM |
+| DIMO in-flight at audit | P1.8.3.2 | — | Redis snapshot | 0 at audit | MEDIUM |
+| DIMO max in-flight (window) | P1.8.3.2 | — | — | UNAVAILABLE | HIGH |
+| Mutex overlap (window) | P1.8.3.2 | — | — | UNAVAILABLE | HIGH |
+| Mutex certification | P1.8.3.2 | — | snapshot only | PARTIAL | MEDIUM |
+| ATE multi-replica | P1.8.3.2 | — | zero jobs in window | UNEXERCISED / NEUTRAL | HIGH |
+| Observational notes (FIND-01..03) | P1.8.3.2 | — | audit Phase 18 | 3 notes; NEW_P3=0 | HIGH |
+| 24h soak certification | P1.8.3.2 | — | window 9532s | NOT_MET | HIGH |
+| Evidence precision | P1.8.3.2 | — | v2 correction pass | CORRECTED | HIGH |
+| N2 retrospective verdict | P1.8.3.2 | — | audit artifact | EARLY_PASS | HIGH |
 
 ---
 
@@ -157,7 +181,7 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 
 ## Evidence gaps (explicit)
 
-1. No 24h soak at N=2 in production
+1. No 24h soak at N=2 in production (P1.8.3.2 early retrospective: ~2h39m only)
 2. No provider ceiling verification at N≈1000
 3. Staging validation Redis DB ≠ production DB
 4. Deploy leader-wait **verified in production** (P1.8.3.1 attempt 3)

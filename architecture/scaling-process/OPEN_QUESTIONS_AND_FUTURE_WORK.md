@@ -67,7 +67,7 @@ Do **not** treat items here as current production architecture.
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
 | OQ-19 | nginx upstream auto-sync with PM2 | FUTURE_OPTION | Manual/config today |
-| OQ-28 | P1.8.3 post-scale retrospective / sustained N=2 soak | OPEN_QUESTION | NEXT_STAGE after P1.8.3.1 validation |
+| OQ-28 | P1.8.3 post-scale retrospective / sustained N=2 soak | **PARTIAL** | P1.8.3.2 early retrospective EARLY_PASS (~2h39m window); full 24h soak still open |
 | OQ-29 | Automated deploy CI for ops scripts | FUTURE_OPTION | Shell + unit tests exist; exact-SHA tests added |
 
 ---

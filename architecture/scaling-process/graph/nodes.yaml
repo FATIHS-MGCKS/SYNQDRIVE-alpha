@@ -224,3 +224,14 @@ nodes:
     validated_by: ["assertDeployShaProvenance unit tests"]
     last_verified_at: "2026-09-01T12:00:00Z"
     confidence: HIGH
+
+  - id: EVIDENCE_N2_RETROSPECTIVE_STABILITY_2026_09_01
+    type: EVIDENCE
+    status: EARLY_PASS
+    description: P1.8.3.2 read-only retrospective N=2 stability audit (~2h39m window post P1.8.3.1)
+    depends_on: [MULTI_REPLICA_DEPLOYMENT, SCHEDULER_LEADER_ELECTION, DIMO_GLOBAL_PROVIDER_BUDGET, RECONCILIATION_MUTEX]
+    validated_by: ["P1_8_3_2_N2_RETROSPECTIVE_STABILITY_AUDIT_2026-09-01.md"]
+    last_verified_sha: 3772d992dae012bc9d794184e05e8ad39db09df4
+    last_verified_at: "2026-09-01T14:26:15Z"
+    confidence: MEDIUM
+    notes: "Window INSUFFICIENT for 24h certification; snapshot/partial coordination evidence only; no scaling defect signal observed; ATE UNEXERCISED (zero workload); battery backlog not reclassified; evidence precision corrected v2+v3 final closure"
