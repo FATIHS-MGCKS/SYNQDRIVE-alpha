@@ -32,6 +32,63 @@ function parseArg(prefix: string): string | undefined {
   return arg?.split('=').slice(1).join('=').trim() || undefined;
 }
 
+function compactAcquisitionStateSnapshot(state: unknown): Record<string, unknown> | null {
+  if (!state || typeof state !== 'object') return null;
+  const src = state as Record<string, unknown>;
+  const fingerprints = Array.isArray(src.seenPhysicalSampleFingerprints)
+    ? (src.seenPhysicalSampleFingerprints as string[])
+    : [];
+  const unique = [...new Set(fingerprints)].sort();
+  const fingerprintSetSha256 = unique.length
+    ? crypto.createHash('sha256').update(unique.join('\n')).digest('hex')
+    : null;
+  return {
+    cycleCount: src.cycleCount ?? null,
+    lastCycleAt: src.lastCycleAt ?? null,
+    hfWatermarkAt: src.hfWatermarkAt ?? null,
+    eventWatermarkAt: src.eventWatermarkAt ?? null,
+    lastSequenceNumber: src.lastSequenceNumber ?? null,
+    lastFailureAt: src.lastFailureAt ?? null,
+    lastFailureClass: src.lastFailureClass ?? null,
+    activeCycleJobId: src.activeCycleJobId ?? null,
+    consecutiveTransientFailures: src.consecutiveTransientFailures ?? null,
+    seenEventFingerprintCount: Array.isArray(src.seenEventFingerprints)
+      ? (src.seenEventFingerprints as string[]).length
+      : 0,
+    seenPhysicalSampleFingerprintSummary: {
+      fingerprintCount: fingerprints.length,
+      uniqueFingerprintCount: unique.length,
+      fingerprintSetSha256,
+      rawExportSha256: EXPECTED_SHA256,
+      sealedExportReference:
+        '/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-001/observations-export.jsonl',
+    },
+    quarantinedProviderFields: src.quarantinedProviderFields ?? [],
+  };
+}
+
+function compactNestedAcquisitionState(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(compactNestedAcquisitionState);
+  if (!value || typeof value !== 'object') return value;
+  const obj = value as Record<string, unknown>;
+  if (Array.isArray(obj.seenPhysicalSampleFingerprints)) {
+    return compactAcquisitionStateSnapshot(obj);
+  }
+  const out: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(obj)) {
+    if (key === 'acquisitionStateJson') {
+      out[key] = compactAcquisitionStateSnapshot(child);
+    } else {
+      out[key] = compactNestedAcquisitionState(child);
+    }
+  }
+  return out;
+}
+
+function compactSessionMeta(meta: Record<string, unknown>): Record<string, unknown> {
+  return compactNestedAcquisitionState(meta) as Record<string, unknown>;
+}
+
 function parseJsonl(filePath: string): SignalMetricsObsRow[] {
   return fs
     .readFileSync(filePath, 'utf8')
@@ -60,9 +117,10 @@ function main(): void {
   const signalObs = allObs.filter((o) => o.observationKind === 'SIGNAL_POINT');
   const eventObs = allObs.filter((o) => o.observationKind === 'NATIVE_EVENT');
 
-  const sessionMeta = fs.existsSync(sessionMetaPath)
+  const sessionMetaRaw = fs.existsSync(sessionMetaPath)
     ? (JSON.parse(fs.readFileSync(sessionMetaPath, 'utf8')) as Record<string, unknown>)
     : {};
+  const sessionMeta = compactSessionMeta(sessionMetaRaw);
 
   const sessionStartedAt = (sessionMeta.sessionStartedAt as string | undefined) ?? '2026-09-01T19:00:43.252Z';
   const sessionCompletedAt = (sessionMeta.sessionCompletedAt as string | undefined) ?? '2026-09-01T19:34:52.360Z';
@@ -173,6 +231,9 @@ function main(): void {
     brakeEvidence: brake,
     signalDynamicsSummary: dynamicsSummary,
     signalDynamicsCounts: dynamicsCounts,
+    signalDynamicsMaturity: 'ANALYSIS_HEURISTIC_PROVISIONAL',
+    signalDynamicsCrossSurfaceNote:
+      'Cross-surface duplicate retrieval inflates observation counts; dynamics labels are provisional until model-feature suitability is validated separately',
     dualReplicaSerialization: {
       verdict: 'INFERENCE',
       reason:
@@ -245,7 +306,25 @@ function main(): void {
     },
     outOfOrderPreviousResultInvalidated: true,
     dualReplicaSerialization: metricsOut.dualReplicaSerialization,
+    coverageWindowDefinitions: {
+      SESSION_LIFECYCLE_WINDOW: coverageWindows.SESSION_LIFECYCLE_WINDOW,
+      ACQUISITION_EXECUTION_WINDOW: coverageWindows.ACQUISITION_EXECUTION_WINDOW,
+      PROVIDER_DATA_COVERAGE_WINDOW: coverageWindows.PROVIDER_DATA_COVERAGE_WINDOW,
+      ROW_PRODUCING_HF_REQUEST_WINDOW: {
+        firstRequestStartedAt: '2026-09-01T19:12:27.500Z',
+        lastRequestStartedAt: '2026-09-01T19:14:09.726Z',
+        rowProducingRequestCount: 13,
+        note: 'Does not prove zero-row HF requests were absent after last row-producing request',
+      },
+    },
+    hfCompletenessForensic: {
+      phase: '3A.3 HF historical completeness / late-arrival audit',
+      artifact: 'docs/audits/data/dimo-lte-r1-reference-drive-001-hf-posthoc-forensic.json',
+      HF_LATE_ARRIVAL_WATERMARK_SKIP_codeRisk: 'CONFIRMED_FROM_CODE_RISK',
+      HF_WATERMARK_REMEDIATION_REQUIRED: 'YES',
+    },
     nextRequiredPhase: 'PHASE_3A.3.1_FAST_ARM_WORKFLOW',
+    nextRequiredPhaseAlso: 'HF_WATERMARK_LATE_ARRIVAL_REMEDIATION',
     ARM_WORKFLOW_REMEDIATION_REQUIRED: true,
   };
 

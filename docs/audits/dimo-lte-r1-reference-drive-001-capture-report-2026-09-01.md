@@ -28,6 +28,8 @@ Reference Drive #001 is a **real physical drive** with **real telemetry capture*
 | `dualReplicaSerialization` | **INFERENCE** (evidence limitation — see §12) |
 | `ARM_WORKFLOW_REMEDIATION_REQUIRED` | **YES** |
 | `RD001_METRICS_CORRECTION` | **COMPLETE** (2026-09-01 methodology pass) |
+| `RD001_HF_COMPLETENESS_FORENSIC` | **COMPLETE** (2026-09-01 Phase 3A.3 HF audit) |
+| `HF_WATERMARK_REMEDIATION_REQUIRED` | **YES** (blocking before RD002) |
 
 ---
 
@@ -206,7 +208,10 @@ Do **not** assume useful telemetry begins at `sessionStartedAt`.
 | `SESSION_LIFECYCLE_WINDOW` | `19:00:43.252Z` | `19:34:52.360Z` | **2049.1 s** |
 | `ACQUISITION_EXECUTION_WINDOW` | `19:12:27.239Z` (first request) | `19:34:48.594Z` (last synq) | **1341.4 s** |
 | `PROVIDER_DATA_COVERAGE_WINDOW` | `19:01:30.252Z` (earliest provider ts) | `19:14:03.000Z` | **752.7 s** |
+| `ROW_PRODUCING_HF_REQUEST_WINDOW` | `19:12:27.500Z` (first HF row-producing request) | `19:14:09.726Z` (last HF row-producing request) | **~102 s** |
 | **HF historical backfill before first acquisition** | — | — | **657.0 s (~10m 57s)** |
+
+**Terminology:** `ROW_PRODUCING_HF_REQUEST_WINDOW` end timestamp is **not** the last HF request executed — zero-row HF cycles leave no `SIGNAL_POINT` evidence.
 
 **Major finding:** HF_HISTORICAL retrieved provider timestamps beginning ~11 minutes before first successful acquisition request — pre-recovery driving telemetry may be partially recoverable via HF backfill.
 
@@ -226,13 +231,19 @@ Do **not** assume useful telemetry begins at `sessionStartedAt`.
 
 | Field | P50 | P95 | P99 | Max gap | Max gap class |
 |-------|-----|-----|-----|---------|---------------|
-| **speed** | **2 s** | 4 s | 20 s | 151 s | PROVIDER_GAP |
-| **RPM** | **2 s** | 9 s | 20 s | 151 s | PROVIDER_GAP |
-| **TPS** | **2 s** | 4.7 s | 20 s | 151 s | PROVIDER_GAP |
-| **throttle** | **2 s** | 4.7 s | 20 s | 151 s | PROVIDER_GAP |
-| **engine load** | **2 s** | 4 s | 20 s | 151 s | PROVIDER_GAP |
+| **speed** | **2 s** | 4 s | 20 s | 151 s | **BOUNDARY_GAP** |
+| **RPM** | **2 s** | 9 s | 20 s | 151 s | **BOUNDARY_GAP** |
+| **TPS** | **2 s** | 4.7 s | 20 s | 151 s | **BOUNDARY_GAP** |
+| **throttle** | **2 s** | 4.7 s | 20 s | 151 s | **BOUNDARY_GAP** |
+| **engine load** | **2 s** | 4 s | 20 s | 151 s | **BOUNDARY_GAP** |
 
-**151 s max gap:** classified **PROVIDER_GAP** (ARM startup/recovery boundary artifact — not continuous-motion dropout).
+**151 s max gap (forensic reclassification):**
+
+| Field | `timestamp_before_gap` | `timestamp_after_gap` | `gap_seconds` | Classification |
+|-------|------------------------|----------------------|---------------|----------------|
+| all 5 HF fields | `2026-09-01T19:09:35.252Z` | `2026-09-01T19:12:06.252Z` | **151.0** | **BOUNDARY_GAP** |
+
+Occurs **inside one provider response** (bulk HF window `19:00:43.252Z → 19:12:27.500Z`), spanning the ARM startup/recovery boundary — **not** continuous-motion provider dropout. Prior label `PROVIDER_GAP` was contradictory and is **invalidated**.
 
 ### LATEST_LIVE (separate metrics)
 
@@ -317,6 +328,80 @@ Reference Drive #001 real motion: **`HF_HISTORICAL = ACTIVE`**.
 | Effective useful HF sample rate | **~0.5 Hz (P50 2 s)** for motion-critical fields |
 
 **This is one of the most important results of Reference Drive #001.**
+
+---
+
+## 10a. HF historical completeness / late-arrival forensic audit (Phase 3A.3)
+
+**Evidence artifact:** `docs/audits/data/dimo-lte-r1-reference-drive-001-hf-posthoc-forensic.json`
+**Script:** `backend/scripts/ops/reference-capture-drive-001-hf-posthoc-forensic.ts`
+**Sealed raw export:** unchanged (`f8e3097e…`)
+
+### Critical observation
+
+Capture continued until `~19:34:48Z`, but HF provider-data coverage ends at `~19:14:02Z` and the last **row-producing** HF request was `~19:14:09Z`. Meanwhile `hfWatermarkAt` advanced to `19:34:48.597Z`.
+
+### HF watermark code behavior (`CONFIRMED_FROM_CODE`)
+
+`captureHistoricalSurface()` in `reference-capture-acquisition.service.ts`:
+
+| Parameter | Behavior |
+|-----------|----------|
+| `from` | `hfWatermarkAt - 2s` OR `sessionStartedAt` |
+| `to` | request wall-clock `now` |
+| `hfWatermarkAt` after request | **always `now`**, even when `rows.length === 0` |
+
+**Mode:** **A — watermark follows request wall-clock time**, not max observed provider timestamp.
+**Risk hypothesis:** `HF_LATE_ARRIVAL_WATERMARK_SKIP` — delayed provider samples older than `watermark - overlap` may become unreachable.
+
+### Post-hoc full-window provider query (`HF_POSTHOC_QUERY_EXECUTED = YES`)
+
+Read-only DIMO `signals()` query for `2026-09-01T19:00:43Z → 19:34:52Z` (7×300s chunks, 5 HF fields, `interval: "1s"`).
+
+| HF field | Sealed | Post-hoc | Intersection | Sealed-only | Post-hoc-only | Match rate |
+|----------|--------|----------|--------------|-------------|---------------|------------|
+| speed | 280 | 293 | 247 | 33 | 46 | 88.2% |
+| obdEngineLoad | 280 | 293 | 247 | 33 | 46 | 88.2% |
+| powertrainCombustionEngineSpeed | 239 | 251 | 210 | 29 | 41 | 87.9% |
+| powertrainCombustionEngineTPS | 269 | 282 | 236 | 33 | 46 | 87.7% |
+| obdThrottlePosition | 265 | 278 | 232 | 33 | 46 | 87.5% |
+| **Total** | **1333** | **1397** | **1172** | **161** | **225** | — |
+
+`POSTHOC_ONLY_TIME_RANGE`: `2026-09-01T19:12:24.252Z` → `2026-09-01T19:14:02.252Z` (mostly active HF window; **0** post-hoc rows for `19:15:43Z → 19:34:52Z`).
+
+### Verdict matrix
+
+| Question | Result | Maturity |
+|----------|--------|----------|
+| `HF_LATE_ARRIVAL_WATERMARK_SKIP` (active HF window 19:12–19:14) | **CONFIRMED_FROM_RUNTIME** — 225 post-hoc-only physical samples now exist vs sealed | CONFIRMED_FROM_RUNTIME |
+| `HF_LATE_ARRIVAL_WATERMARK_SKIP` (why no HF after 19:14 while capture continued) | **NOT_CONFIRMED_FROM_RD001** — post-hoc `signals()` returns **0 rows** for `19:15:43Z → 19:34:52Z`; LATEST provider timestamps frozen at `~19:14:03Z` while synq polling continued | CONFIRMED_FROM_RUNTIME |
+| Code-level watermark risk | **CONFIRMED_FROM_CODE_RISK** | CONFIRMED_FROM_CODE |
+| `RD001_HF_COMPLETENESS` | **INCOMPLETE** relative to current provider full-window query | CONFIRMED_FROM_RUNTIME |
+| `HF_WATERMARK_REMEDIATION_REQUIRED` | **YES** — blocking before RD002 | PROPOSAL |
+
+### Zero-result HF request observability
+
+`ZERO_RESULT_HF_REQUEST_HISTORY = NOT_PERSISTED / UNKNOWN`
+
+Only **13** row-producing HF `requestStartedAt` values exist in sealed export. Cannot prove whether zero-row HF queries executed every cycle after `19:14:09Z` from observation rows alone.
+
+**Proposed per-cycle metrics (not implemented):** `hfRequestExecuted`, `hfRowsReturned`, `hfProviderMaxTimestamp`, `hfWatermarkBefore`, `hfWatermarkAfter`, `hfQueryWindowFrom`, `hfQueryWindowTo`, `workerId`, `cycleJobId`.
+
+### Watermark design analysis (recommendation only — no implementation)
+
+| Option | Summary | RD001 relevance |
+|--------|---------|-----------------|
+| **A** `watermark = request now` | Current behavior | Confirmed; advanced to 19:34 without HF rows |
+| **B** `watermark = max provider timestamp observed` | Safer for late arrival | Would have stopped at ~19:14:02 |
+| **C** `min(now - lag, maxProviderTs)` | Adds provider safety lag | Good compromise if lag calibrated |
+| **D** Sliding reconciliation window | Re-query previous N minutes + fingerprint dedupe | Highest completeness; higher DIMO cost |
+| **E** Two-watermark model | Separate `requestWatermark` / `providerDataWatermark` | Best observability; moderate complexity |
+
+**Recommendation:** Implement **E** (two-watermark) with **D** (short reconciliation overlap, e.g. 5–10 min) before RD002. Do not ship RD002 on current single wall-clock watermark.
+
+### Dynamics classification maturity
+
+Cross-surface duplicate retrieval affects observation counts. Labels `DYNAMICALLY_INFORMATIVE` / `STATIC_OR_CONTEXTUAL` / `NON_NUMERIC_CONTEXT` are **`ANALYSIS_HEURISTIC / PROVISIONAL`** until model-feature suitability is separately validated.
 
 ---
 
@@ -410,8 +495,10 @@ Also includes: `session-summary.json`, `signal-quality-metrics.json`, `pre-stop-
 | `docs/audits/data/dimo-lte-r1-reference-drive-001-signal-quality-metrics.json` | DI-EV-0018 |
 | `docs/audits/data/dimo-lte-r1-reference-drive-001-signal-quality-metrics.csv` | DI-EV-0018 |
 | `docs/audits/dimo-lte-r1-reference-drive-001-ground-truth-evidence-index-2026-09-01.md` | DI-EV-0019 |
+| `docs/audits/data/dimo-lte-r1-reference-drive-001-hf-posthoc-forensic.json` | DI-EV-0016 (HF experiment) |
 | `backend/scripts/ops/reference-capture-drive-001-stop-audit.ts` | ops reproducibility |
-| `backend/scripts/ops/reference-capture-lte-r1-reference-drive-arm.ts` | ops reproducibility |
+| `backend/scripts/ops/reference-capture-drive-001-reanalyze.ts` | ops reproducibility |
+| `backend/scripts/ops/reference-capture-drive-001-hf-posthoc-forensic.ts` | HF post-hoc forensic query |
 
 ---
 
@@ -423,9 +510,11 @@ Also includes: `session-summary.json`, `signal-quality-metrics.json`, `pre-stop-
 | Reference Drive #001 capture | **COMPLETED** |
 | Reference Drive #001 telemetry analysis | **AVAILABLE** (methodology-corrected) |
 | `RD001_METRICS_CORRECTION` | **COMPLETE** |
+| `RD001_HF_COMPLETENESS_FORENSIC` | **COMPLETE** |
 | Reference Drive #001 Ground Truth | **NOT_AVAILABLE** |
 | Ground Truth synchronization | **NOT DONE** |
 | Next engineering phase | **Phase 3A.3.1 FAST PRE-ARM / GO workflow** |
+| Also required before RD002 | **HF watermark / late-arrival remediation** |
 | Next drive for video GT | **`DIMO_LTE_R1_REFERENCE_DRIVE_002`** (not started) |
 
 ---
@@ -433,7 +522,8 @@ Also includes: `session-summary.json`, `signal-quality-metrics.json`, `pre-stop-
 ## 18. Open questions
 
 1. **Phase 3A.3.1 ARM workflow** — 704 s gap unacceptable; FAST GO via production API required before RD002.
-2. **HF 1s request vs ~2s observed** — planner/request vs provider delivery mismatch; quantify on #002 with longer HF window.
+2. **HF watermark remediation** — wall-clock watermark confirmed; 225 post-hoc-only samples in active window; remediation blocking before RD002.
+3. **HF 1s request vs ~2s observed** — planner/request vs provider delivery mismatch; quantify on #002 with longer HF window.
 3. **Dual-replica proof** — add worker identity logging before claiming `CONFIRMED_FROM_RUNTIME` serialization.
 4. **Native events zero** — vehicle limitation vs capture window vs query surface — investigate on #002 with known maneuvers + video.
 

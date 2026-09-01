@@ -1,7 +1,7 @@
 {
   "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_001",
   "sessionId": "06638509-6213-419b-9df4-3def6c024f41",
-  "generatedAt": "2026-09-01T20:24:05.610Z",
+  "generatedAt": "2026-09-01T22:08:00.177Z",
   "methodologyVersion": "2026-09-01-corrected",
   "sealedRawExport": {
     "path": "/tmp/rd001-observations.jsonl",
@@ -282,7 +282,7 @@
           "uniqueFingerprints": 280,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "PROVIDER_GAP",
+        "maxGapClassification": "BOUNDARY_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {
@@ -510,7 +510,7 @@
           "uniqueFingerprints": 265,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "PROVIDER_GAP",
+        "maxGapClassification": "BOUNDARY_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {
@@ -738,7 +738,7 @@
           "uniqueFingerprints": 239,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "PROVIDER_GAP",
+        "maxGapClassification": "BOUNDARY_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 11,
           "deltaTSeconds": {
@@ -966,7 +966,7 @@
           "uniqueFingerprints": 269,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "PROVIDER_GAP",
+        "maxGapClassification": "BOUNDARY_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {
@@ -1194,7 +1194,7 @@
           "uniqueFingerprints": 280,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "PROVIDER_GAP",
+        "maxGapClassification": "BOUNDARY_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {
@@ -4271,7 +4271,7 @@
         "uniqueFingerprints": 280,
         "duplicateFingerprintRetrievals": 0
       },
-      "maxGapClassification": "PROVIDER_GAP",
+      "maxGapClassification": "BOUNDARY_GAP",
       "retrievalCadenceByRequestStartedAt": {
         "sampleCount": 238,
         "deltaTSeconds": {
@@ -4381,7 +4381,7 @@
         "uniqueFingerprints": 265,
         "duplicateFingerprintRetrievals": 0
       },
-      "maxGapClassification": "PROVIDER_GAP",
+      "maxGapClassification": "BOUNDARY_GAP",
       "retrievalCadenceByRequestStartedAt": {
         "sampleCount": 238,
         "deltaTSeconds": {
@@ -4491,7 +4491,7 @@
         "uniqueFingerprints": 239,
         "duplicateFingerprintRetrievals": 0
       },
-      "maxGapClassification": "PROVIDER_GAP",
+      "maxGapClassification": "BOUNDARY_GAP",
       "retrievalCadenceByRequestStartedAt": {
         "sampleCount": 237,
         "deltaTSeconds": {
@@ -4601,7 +4601,7 @@
         "uniqueFingerprints": 269,
         "duplicateFingerprintRetrievals": 0
       },
-      "maxGapClassification": "PROVIDER_GAP",
+      "maxGapClassification": "BOUNDARY_GAP",
       "retrievalCadenceByRequestStartedAt": {
         "sampleCount": 238,
         "deltaTSeconds": {
@@ -4711,7 +4711,7 @@
         "uniqueFingerprints": 280,
         "duplicateFingerprintRetrievals": 0
       },
-      "maxGapClassification": "PROVIDER_GAP",
+      "maxGapClassification": "BOUNDARY_GAP",
       "retrievalCadenceByRequestStartedAt": {
         "sampleCount": 238,
         "deltaTSeconds": {
@@ -7685,7 +7685,7 @@
           "uniqueFingerprints": 280,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "PROVIDER_GAP",
+        "maxGapClassification": "BOUNDARY_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {
@@ -7795,7 +7795,7 @@
           "uniqueFingerprints": 280,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "PROVIDER_GAP",
+        "maxGapClassification": "BOUNDARY_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {
@@ -7905,7 +7905,7 @@
           "uniqueFingerprints": 239,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "PROVIDER_GAP",
+        "maxGapClassification": "BOUNDARY_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 11,
           "deltaTSeconds": {
@@ -8015,7 +8015,7 @@
           "uniqueFingerprints": 269,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "PROVIDER_GAP",
+        "maxGapClassification": "BOUNDARY_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {
@@ -8125,7 +8125,7 @@
           "uniqueFingerprints": 265,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "PROVIDER_GAP",
+        "maxGapClassification": "BOUNDARY_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {
@@ -8549,6 +8549,8 @@
     "NON_NUMERIC_CONTEXT": 3,
     "STATIC_OR_CONTEXTUAL": 10
   },
+  "signalDynamicsMaturity": "ANALYSIS_HEURISTIC_PROVISIONAL",
+  "signalDynamicsCrossSurfaceNote": "Cross-surface duplicate retrieval inflates observation counts; dynamics labels are provisional until model-feature suitability is validated separately",
   "dualReplicaSerialization": {
     "verdict": "INFERENCE",
     "reason": "cycleCount monotonic; activeCycleJobId null at rest; worker/process identity not recorded — true cross-replica contention not independently proven",

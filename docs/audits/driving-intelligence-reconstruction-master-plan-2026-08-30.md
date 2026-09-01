@@ -905,10 +905,14 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 
 **Metrics correction (2026-09-01):** `RD001_METRICS_CORRECTION=COMPLETE` — methodology bugs fixed in analysis layer (out-of-order detection, unique-timestamp cadence, per-surface separation, latency terminology, dynamics classification). Sealed raw export SHA unchanged.
 
+**HF completeness forensic (2026-09-01):** `RD001_HF_COMPLETENESS_FORENSIC=COMPLETE` — post-hoc full-window DIMO query vs sealed export; wall-clock HF watermark confirmed (`CONFIRMED_FROM_CODE`); 225 post-hoc-only physical samples in active HF window (`HF_LATE_ARRIVAL_WATERMARK_SKIP=CONFIRMED_FROM_RUNTIME` for 19:12–19:14); no provider HF data after ~19:15 (`NOT_CONFIRMED_FROM_RD001` for post-19:14 gap). `HF_WATERMARK_REMEDIATION_REQUIRED=YES` — blocking before RD002.
+
 ### Phase 3A.3.1 — FAST PRE-ARM / GO workflow remediation
 **Status:** **NEXT REQUIRED BEFORE RD002** (not started)
 
 **Problem:** RD001 ARM path bootstrapped full Nest context; owner waited ~704 s before first acquisition while session was already `RECORDING`.
+
+**Also blocking RD002:** HF watermark advances on request wall-clock even when zero rows returned; late-arrival skip risk `CONFIRMED_FROM_CODE_RISK`; partial runtime confirmation on RD001 active HF window. Remediation: two-watermark model + short reconciliation overlap (design in DI-EV-0016 §10a).
 
 **Target design (proposal only — not implemented in 3A.3 correction pass):**
 - **PRE-ARM:** health + create session + preflight → `READY` before owner needs GO.

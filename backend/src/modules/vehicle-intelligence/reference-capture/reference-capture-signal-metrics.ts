@@ -335,6 +335,15 @@ export function classifyMaxGap(params: {
   if (firstAcquisitionMs != null && providerTimestamps[gapIndex] != null) {
     const ts = providerTimestamps[gapIndex];
     if (ts < firstAcquisitionMs - 60_000) return 'BOUNDARY_GAP';
+    const tsBefore = providerTimestamps[gapIndex - 1];
+    if (
+      tsBefore != null &&
+      tsBefore < firstAcquisitionMs &&
+      ts <= firstAcquisitionMs + 120_000 &&
+      gapSeconds >= 60
+    ) {
+      return 'BOUNDARY_GAP';
+    }
   }
   if (sessionStartedAtMs != null && providerTimestamps[gapIndex] != null) {
     const ts = providerTimestamps[gapIndex];

@@ -36,7 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'dimo-phase-3a3-reference-drive-001-metrics-correction-2026-09-01',
+    id: 'dimo-phase-3a3-reference-drive-001-hf-completeness-forensic-2026-09-01',
+    version: '4.9.1025',
+    title: 'Phase 3A.3 — Reference Drive #001 HF completeness / late-arrival forensic audit',
+    summary: [
+      'Post-hoc full-window DIMO HF query vs sealed RD001: 1333 sealed vs 1397 post-hoc physical samples; 225 post-hoc-only in active HF window.',
+      'HF watermark confirmed wall-clock (`hfWatermarkAt = now` even on zero rows) — CONFIRMED_FROM_CODE_RISK.',
+      'No HF provider data after ~19:15 in post-hoc query; LATEST provider timestamps frozen at ~19:14:03 while polling continued to 19:34:48.',
+      '151s gap reclassified BOUNDARY_GAP (ARM recovery inside bulk HF window). Session summary fingerprint bloat removed.',
+      'HF_WATERMARK_REMEDIATION_REQUIRED=YES blocking RD002; Phase 3A.3.1 FAST GO still required.',
+    ],
+    reason: 'Forensic audit of why HF rows stopped at ~19:14 while capture continued; evidence correction on PR #1502.',
+    previousBehavior: '151s gap labeled PROVIDER_GAP; HF completeness unverified; session summary contained thousands of duplicate fingerprint strings.',
+    details:
+      'reference-capture-drive-001-hf-posthoc-forensic.ts; dimo-lte-r1-reference-drive-001-hf-posthoc-forensic.json; DI-EV-0016–0019 updated in place.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T22:10:00.000Z',
+  },
+  {
     version: '4.9.1024',
     title: 'Phase 3A.3 — Reference Drive #001 metrics methodology correction',
     summary: [
