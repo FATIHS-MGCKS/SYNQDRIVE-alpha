@@ -139,8 +139,23 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | INC-06 closed | P1.8.3.1 | — | production convergence trace | CLOSED | HIGH |
 | OQ-17 leader convergence | P1.8.3.1 | 3772d992d | attempt 3 trace | CLOSED | HIGH |
 | OQ-18 bootstrap false-abort | P1.8.3.1 | 3772d992d | attempts 1–2 ROLLBACK | RELEASE_OPS_DIR MITIGATED | HIGH |
-| OQ-18 cloud-agent exact-SHA bootstrap | P1.8.3.1 authority | PR #1490 | not prod observed | PENDING | MEDIUM |
+| OQ-18 cloud-agent exact-SHA bootstrap | P1.8.3.1 authority | PR #1490 merged | not prod observed post-merge | PENDING | MEDIUM |
 | DEC-016 exact-SHA provenance | P1.8.3.1 authority | PR #1490 | unit tests 7 cases | IMPLEMENTED | HIGH |
+
+---
+
+## P1.8.3.2 — N=2 retrospective stability audit
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| N=2 topology stable | P1.8.3.2 | — | SSH audit 14:26Z | PASS | HIGH |
+| Scheduler singleton post-stable | P1.8.3.2 | — | readiness A=FOLLOWER B=LEADER | PASS | HIGH |
+| No split brain post-stable | P1.8.3.2 | — | PM2 log grep | PASS | HIGH |
+| Queue regression | P1.8.3.2 | — | Redis BullMQ | PASS | HIGH |
+| battery.v2 delta in window | P1.8.3.2 | — | failed=64 unchanged | PASS | HIGH |
+| Trip/route pipeline | P1.8.3.2 | — | 2 trips, 2 routes, 0 dup signal | PASS | MEDIUM |
+| 24h soak certification | P1.8.3.2 | — | window 9532s | NOT MET | HIGH |
+| N2 retrospective verdict | P1.8.3.2 | — | audit artifact | EARLY_PASS | HIGH |
 
 ---
 
@@ -157,7 +172,7 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 
 ## Evidence gaps (explicit)
 
-1. No 24h soak at N=2 in production
+1. No 24h soak at N=2 in production (P1.8.3.2 early retrospective: ~2h39m only)
 2. No provider ceiling verification at N≈1000
 3. Staging validation Redis DB ≠ production DB
 4. Deploy leader-wait **verified in production** (P1.8.3.1 attempt 3)

@@ -1,7 +1,7 @@
 # SCALING PROCESS — Current State
 
-**Last verified:** 2026-09-01T11:48Z (P1.8.3.1 production validation)  
-**Verifier:** P1.8.3.1 production validation agent
+**Last verified:** 2026-09-01T14:26Z (P1.8.3.2 N=2 retrospective stability audit)  
+**Verifier:** P1.8.3.2 retrospective audit agent
 
 ---
 
@@ -10,8 +10,11 @@
 ```
 WORKSTREAM = SCALING_PROCESS
 AUTHORITY_STATUS = ACTIVE_VERIFIED
-CURRENT_MAIN_SHA = b8501bfd22c07a57c37150c59a79d75c1ece746d
+CURRENT_MAIN_SHA = 2a2fe5ac56e96ba0182967a1022572029bd0e93e
 CURRENT_PRODUCTION_SHA = 3772d992dae012bc9d794184e05e8ad39db09df4
+MAIN_AHEAD_OF_PRODUCTION = YES
+N2_RETROSPECTIVE_AUDIT_VERDICT = EARLY_PASS
+N2_CONTINUOUS_WINDOW_SECONDS = 9532
 CURRENT_PRODUCTION_REPLICA_COUNT = 2
 REPLICA_A = synqdrive @ 3001 ONLINE FOLLOWER
 REPLICA_B = synqdrive-b @ 3002 ONLINE LEADER
@@ -33,7 +36,7 @@ OPEN_P2 = 1 (OQ-18 cloud-agent exact-SHA bootstrap pending routine deploy observ
 INC_06 = CLOSED
 OQ_17 = CLOSED
 OQ_18 = MITIGATED_PENDING_PRODUCTION_VALIDATION
-NEXT_ARCHITECTURE_STAGE = sustained N=2 soak; observe OQ-18 on next routine deploy
+NEXT_ARCHITECTURE_STAGE = 24h N=2 soak checkpoint; observe OQ-18 on next routine deploy
 ```
 
 ---
