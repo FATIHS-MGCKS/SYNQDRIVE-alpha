@@ -24,7 +24,8 @@ Battery V2 authority is substantially reconstructed through Phase 2 (HV/persiste
 - PHEV parallel implemented LV+HV; `isEv=true`
 - HEV: separate write gates vs `isEv` read gate (`BAT-V2-GAP-HEV-SIDE-EFFECT-READ-DIVERGENCE-001`)
 - LV publication eligibility: PROVISIONAL or STABLE per policy (not STABLE-only)
-- Readiness: multiple independent block paths when flag on
+- Readiness: multiple independent block paths when flag on (does **not** globally require STABLE LV publication)
+- HV SOH gate execution: `BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED`; publication-intent flag separate; `publicationEligible: false` always; no HV customer publication path
 - Primary API + rental health → canonical read model
 
 ## Unresolved gaps

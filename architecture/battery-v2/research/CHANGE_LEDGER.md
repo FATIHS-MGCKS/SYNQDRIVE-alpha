@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-01 — Phase 3 final HV SOH enablement + readiness micro-correction
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | HV SOH shadow gate documented under `BATTERY_V2_HV_SOH_PUBLICATION_ENABLED`; false claim that publication flag "unblocks `sohGatePassed`"; HV publication row implied working pipeline; `evaluateBatteryReadiness` still described as "STABLE pub + evidence". |
+| **OBSERVATION** | Direct runtime audit: `hv-capacity-shadow-recompute.handler.ts`, `hv-capacity-shadow.service.ts`, `hv-soh-gate-assessment.service.ts`, `hv-soh-gate.policy.ts` — execution gated by `BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED`; `PUBLICATION_DISABLED` excluded from `sohGatePassed` blocking; `publicationEligible: false` always. |
+| **HYPOTHESIS** | Remaining drift is documentation-only and fixable without runtime changes. |
+| **CHANGE** | Corrected reachability matrix, publication-readiness, hv-soh authority, decision-surfaces readiness rows; refined graph nodes `BAT-V2-PUB-HV-SOH-001`, `BAT-V2-ASSESS-HV-SOH-GATE-001`, `BAT-V2-GAP-PUB-READINESS-001`; strengthened shadow-no-auto-publish invariant. |
+| **WHY** | Final targeted correction pass — prevent agents from treating publication-intent flag as execution gate or working customer publication pipeline. |
+| **EXPECTED_EFFECT** | All authority surfaces agree: HV_CAPACITY_SHADOW = execution; HV_SOH_PUBLICATION = reason metadata; publicationEligible=false; no HV customer publication path. |
+| **VALIDATION** | `validate-graph.sh` PASS |
+| **OBSERVED_EFFECT** | Validator PASS |
+| **NON_EFFECTS** | No runtime, flag, deploy, backfill, or production data changes |
+| **REGRESSIONS_OR_TRADEOFFS** | None |
+| **REMAINING_GAPS** | All open gaps unchanged |
+| **DECISION_STATUS** | VALIDATED (documentation reconstruction only; runtime behavior unchanged/unvalidated) |
+| **AFFECTED_GRAPH** | 120 nodes / 106 edges / 11 invariants (unchanged counts; node/invariant text refined) |
+| **EVIDENCE** | This PR only; runtime code trace of hv-capacity-shadow + hv-soh-gate.policy |
+
+---
+
 ## CL-2026-09-01 — Phase 3 final authority consistency pass
 
 | Field | Content |

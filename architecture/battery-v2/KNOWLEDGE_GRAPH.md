@@ -64,8 +64,11 @@ This Human View is a high-level projection of current machine authority. It must
 [HV SOH evidence conflict]  BAT-V2-AUTH-HV-SOH-CONFLICT-001
         │
         ├── Selected SOH ──► canonical.hv.providerSoh
-        └── SOH gate assessment ──► canonical.hv.sohAssessment (shadow/internal)
+        └── SOH gate assessment ──► canonical.hv.sohAssessment (shadow/internal; execution: HV_CAPACITY_SHADOW flag)
         │
+        ▼
+[Publication-intent only]  BAT-V2-PUB-HV-SOH-001  —  BATTERY_V2_HV_SOH_PUBLICATION_ENABLED
+        │  (reason metadata; publicationEligible=false always; no HV customer publication path)
         ▼
 [Canonical read]  canonical.hv  →  consumers (rental health, API, tasks)
 ```
@@ -75,7 +78,7 @@ This Human View is a high-level projection of current machine authority. It must
 - `BAT-V2-GAP-HV-SESSION-CHARGE-METHOD-001` — SESSION_CHARGE_CAPACITY compute missing
 - `BAT-V2-GAP-HV-GROSS-CAPACITY-METHOD-001` — GROSS_CAPACITY compute missing
 - `BAT-V2-CONTRA-HEV-HV-AUTHORITY-001` — HEV write/side-effect/read divergence
-- `BAT-V2-GAP-PUB-READINESS-001` — production enablement UNKNOWN
+- `BAT-V2-GAP-PUB-READINESS-001` — HV SOH execution vs publication-intent flags traced; no HV customer publication carrier; production enablement UNKNOWN
 
 **PHEV:** parallel **implemented** LV + HV paths when flags and capabilities pass; not all advertised HV methods have compute.
 

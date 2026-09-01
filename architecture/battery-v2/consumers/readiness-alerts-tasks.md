@@ -18,10 +18,10 @@ Battery tasks materialize from canonical summary evaluation — not from legacy 
 |------|---------|--------|
 | `BATTERY_V2_PUBLICATION_ENABLED` | OFF | LV publication layer |
 | `BATTERY_V2_READINESS_ENABLED` | OFF | Readiness layer |
-| `BATTERY_V2_HV_SOH_PUBLICATION_ENABLED` | OFF | HV SOH publication |
-| `BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED` | OFF | Shadow capacity pipeline |
+| `BATTERY_V2_HV_SOH_PUBLICATION_ENABLED` | OFF | HV SOH publication-**intent** / reason metadata (`PUBLICATION_DISABLED` when OFF); **not** execution authority; **not** a working customer publication pipeline |
+| `BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED` | OFF | HV shadow capacity + SOH gate **execution** pipeline |
 
-**CONFIRMED:** Shadow assessments carry `publicationEligible: false`; canonical read does not auto-publish shadow SOH to customer-facing fields.
+**CONFIRMED:** Shadow and SOH gate assessments carry `publicationEligible: false` (even when publication-intent flag ON). Canonical read does not auto-publish shadow SOH to customer-facing fields. No HV `BatteryPublication` carrier identified.
 
 ## Alerts / insights
 

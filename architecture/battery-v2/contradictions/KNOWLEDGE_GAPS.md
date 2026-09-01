@@ -12,7 +12,7 @@ Stable gap IDs (`BAT-V2-GAP-*`). See also [research/OPEN_QUESTIONS.md](../resear
 | `BAT-V2-GAP-LOCK-FAILOPEN-001` | Fail-open confirmed; rationale UNKNOWN | CONFIRMED | PARTIAL |
 | `BAT-V2-GAP-TIMESTAMP-FALLBACK-001` | LV timestamp fallback CODE REACHABLE_AND_CONFLICTING | CONFIRMED | SUBSTANTIAL |
 | `BAT-V2-GAP-THRESHOLD-PROVENANCE-001` | Threshold rationale UNKNOWN | UNKNOWN | PARTIAL |
-| `BAT-V2-GAP-PUB-READINESS-001` | Publication/readiness flags default OFF | CONFIRMED | SUBSTANTIAL |
+| `BAT-V2-GAP-PUB-READINESS-001` | Publication/readiness flags default OFF; HV SOH execution under HV_CAPACITY_SHADOW; publication-intent flag separate; no HV customer carrier | CONFIRMED | SUBSTANTIAL |
 | `BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001` | Canonical REST complete → assessment enqueue missing | CONFIRMED | SUBSTANTIAL |
 | `BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001` | Assessment complete → publication enqueue missing | CONFIRMED | SUBSTANTIAL |
 | `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001` | Canonical LV pipeline not e2e reachable (umbrella) | CONFIRMED | SUBSTANTIAL |

@@ -12,7 +12,7 @@ For each consumer: what battery authority is read, what gate/threshold applies, 
 |---------|-----------|-------|------|---------------------|
 | `battery-health-summary` | **CANONICAL** | `CanonicalBatteryHealthService.getSummary` | `isEv`, freshness | Health tab, vehicle box |
 | `battery-health-detail` | **CANONICAL** | Full `CanonicalBatteryDto` | same | Detail cards |
-| `RentalHealthService` | **CANONICAL** | Summary + `mapRentalBatteryModule` | readiness flag | Module badge, rental block |
+| `RentalHealthService` | **CANONICAL** | Summary + `mapRentalBatteryModule` | canonical read always; rental block only when readiness flag ON **and** policy blocks | Module badge always when data exists; rental block conditional |
 | `HealthSummaryService` / AI Health Care | **CANONICAL** | `fetchCanonicalBatterySummarySafe` | — | Agent narrative input |
 | `VehicleOperationalProjection` | **CANONICAL** | Rental health `modules.battery` | — | Fleet row evidence |
 
@@ -23,7 +23,7 @@ For each consumer: what battery authority is read, what gate/threshold applies, 
 | `BatteryCriticalDetector` | **CANONICAL** | `evaluateBatteryAlerts` | Dashboard insight | Yes |
 | `BatteryTaskService` | **CANONICAL** | `evaluateBatteryTasks` | `orgTask` upsert | Yes (`blocksVehicleAvailability: false`) |
 | `VehicleHealthNotificationSync` | **CANONICAL** | Rental health module projection | Notification V2 event | Separate from insights |
-| `evaluateBatteryReadiness` | **CANONICAL** | STABLE pub + evidence | `rental_blocked` | Only when readiness flag ON |
+| `evaluateBatteryReadiness` | **CANONICAL** | independent hard-block paths when flag ON (confirmed workshop defect; battery warning light; safety-critical battery DTC; stable qualified critical LV evidence; fresh provider SOH below threshold with required confidence) | `rental_blocked` when policy blocks | Only when `BATTERY_V2_READINESS_ENABLED` ON; does **not** globally require STABLE LV publication |
 
 **Phase 3 finding:** Three parallel user-visible channels (insights, notifications, tasks) share canonical upstream data but use **different policy layers**.
 

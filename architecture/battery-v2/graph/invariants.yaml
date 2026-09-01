@@ -130,8 +130,9 @@ invariants:
     title: Shadow assessments cannot auto-publish without flags
     epistemic_status: CONFIRMED
     statement: >
-      HV capacity shadow and SOH gate assessments default publicationEligible false;
-      publication flags default OFF.
+      HV capacity shadow and SOH gate assessments default publicationEligible false (SOH gate: false
+      regardless of BATTERY_V2_HV_SOH_PUBLICATION_ENABLED); publication flags default OFF; no HV
+      BatteryPublication customer carrier identified.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-capacity-shadow-evaluation.types.ts
       - backend/src/config/battery-health-v2.config.ts

@@ -298,9 +298,12 @@ nodes:
     reconstruction_maturity: SUBSTANTIAL
     summary: >
       Flag defaults and stage model traced. LV publication job chain incomplete (no REST→pub enqueue).
-      Dual authority battery_publications vs battery_features. HV publication internal-only. Production enablement UNKNOWN.
+      Dual authority battery_publications vs battery_features. HV SOH gate execution under HV_CAPACITY_SHADOW flag;
+      HV_SOH_PUBLICATION flag is publication-intent/reason metadata only (PUBLICATION_DISABLED does not block sohGatePassed);
+      publicationEligible remains false; no HV BatteryPublication/customer carrier identified. Production enablement UNKNOWN.
     source_paths:
       - backend/src/config/battery-health-v2.config.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-soh-gate.policy.ts
       - architecture/battery-v2/health-model/publication-readiness.md
     evidence:
       - BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001
@@ -722,9 +725,14 @@ nodes:
     type: assessment
     title: HV SOH gate internal assessment
     epistemic_status: CONFIRMED
-    summary: Requires verified reference capacity; not customer-published by default.
+    summary: >
+      Executed under BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED via shadow recompute chain
+      (M2→M3→cross-session→recomputeForVehicle). Requires verified reference capacity;
+      publicationEligible false always; not customer-published.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-soh-gate-assessment.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-capacity-shadow.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-soh-gate.policy.ts
 
   # --- Publication (Phase 2) ---
   - id: BAT-V2-PUB-LV-001
@@ -737,11 +745,16 @@ nodes:
 
   - id: BAT-V2-PUB-HV-SOH-001
     type: publication
-    title: HV SOH publication layer
+    title: HV SOH publication-intent marker
     epistemic_status: CONFIRMED
-    summary: Flag BATTERY_V2_HV_SOH_PUBLICATION_ENABLED; default OFF.
+    summary: >
+      HV SOH publication-intent/configuration marker. Current code exposes
+      BATTERY_V2_HV_SOH_PUBLICATION_ENABLED (sohPublicationEnabled reason metadata), but SOH gate
+      assessments remain publicationEligible=false and no HV BatteryPublication/customer carrier is identified.
+      Execution authority is BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED, not this flag.
     source_paths:
       - backend/src/config/battery-health-v2.config.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-soh-gate.policy.ts
 
   # --- Consumers (Phase 2) ---
   - id: BAT-V2-CONS-API-SUMMARY-001

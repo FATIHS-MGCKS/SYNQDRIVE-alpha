@@ -27,7 +27,7 @@ Stable gap IDs (`BAT-V2-GAP-*`). Must match `contradictions/KNOWLEDGE_GAPS.md` s
 | `BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001` | Should REST target completion enqueue assessment? | CONFIRMED gap |
 | `BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001` | Should assessment completion enqueue publication? | CONFIRMED gap |
 | `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001` | What wiring establishes e2e canonical pipeline? | CONFIRMED not e2e today |
-| `BAT-V2-GAP-PUB-READINESS-001` | Production enablement timing for publication/readiness | CONFIRMED defaults OFF; enablement UNKNOWN |
+| `BAT-V2-GAP-PUB-READINESS-001` | Production enablement timing for publication/readiness; HV SOH execution (`HV_CAPACITY_SHADOW`) vs publication-intent flag; no HV customer publication carrier | CONFIRMED defaults OFF; enablement UNKNOWN |
 
 ## HEV / PHEV / HV methods
 

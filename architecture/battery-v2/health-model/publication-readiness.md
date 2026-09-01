@@ -21,8 +21,8 @@
 | `BATTERY_V2_REST_SHADOW_ENABLED` | **false** | No canonical REST ingestion pipeline |
 | `BATTERY_V2_PUBLICATION_ENABLED` | **false** | No LV publication persist |
 | `BATTERY_V2_READINESS_ENABLED` | **false** | Readiness returns READY noop |
-| `BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED` | **false** | No HV shadow recompute |
-| `BATTERY_V2_HV_SOH_PUBLICATION_ENABLED` | **false** | SOH gate `PUBLICATION_DISABLED` reason |
+| `BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED` | **false** | No HV shadow recompute; **HV SOH gate execution authority** (handler + `HvSohGateAssessmentService` return null) |
+| `BATTERY_V2_HV_SOH_PUBLICATION_ENABLED` | **false** | Adds `PUBLICATION_DISABLED` to SOH gate `gateReasonCodes` (publication-context only; does **not** gate execution) |
 
 ## Stage model (cutover policy)
 
@@ -76,10 +76,28 @@ battery-publication-update.handler (BATTERY_PUBLICATION_UPDATE)
 
 **NOT CURRENTLY END-TO-END REACHABLE** for canonical REST → assessment → publication. Enabling `BATTERY_V2_PUBLICATION_ENABLED` alone is **not sufficient**.
 
-## HV "publication"
+## HV SOH gate execution vs publication-intent (separate flags)
 
-- No HV `battery_publications` consumer path identified.
-- `BATTERY_V2_HV_SOH_PUBLICATION_ENABLED` unblocks internal `sohGatePassed` only.
+**Execution authority:** `BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED`
+
+- `HV_CAPACITY_SHADOW_RECOMPUTE` handler gated by this flag.
+- `HvCapacityShadowService.recomputeM2ForSession()` chain: M2 → M3 validation → cross-session capacity assessment → `HvSohGateAssessmentService.recomputeForVehicle()`.
+- `HvSohGateAssessmentService` returns null when this flag is OFF.
+
+**Publication-intent / reason metadata:** `BATTERY_V2_HV_SOH_PUBLICATION_ENABLED`
+
+- Passed into `hv-soh-gate.policy.ts` as `sohPublicationEnabled`.
+- When OFF: adds `PUBLICATION_DISABLED` to `gateReasonCodes`.
+- `PUBLICATION_DISABLED` is **excluded** from blocking reasons for internal SOH computation / `sohGatePassed` (`blockingWithoutPublication` filter).
+- **`sohGatePassed` MAY BE TRUE while this flag is OFF.** The flag does **not** “unblock `sohGatePassed`”.
+
+**`publicationEligible` (CONFIRMED):** `hv-soh-gate.policy.ts` sets `publicationEligible: false` on returned SOH gate assessments **regardless of** `sohPublicationEnabled`.
+
+**Customer publication reachability:**
+
+- No HV `BatteryPublication` / customer-publication carrier path identified.
+- Enabling `BATTERY_V2_HV_SOH_PUBLICATION_ENABLED` alone does **not** create customer-visible HV SOH publication.
+- Do **not** describe this flag as a working publication pipeline.
 
 ## Readiness (`battery-readiness.policy.ts`)
 
