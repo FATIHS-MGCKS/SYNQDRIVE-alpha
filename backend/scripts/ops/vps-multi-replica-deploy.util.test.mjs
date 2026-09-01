@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  assertDeployShaProvenance,
   assertNoMixedSha,
   classifyLeaderCount,
   computeSchedulerConvergenceTimeoutMs,
@@ -9,6 +10,7 @@ import {
   expectedReplicaNames,
   nginxHasDualUpstream,
   processSchedulerConvergenceObservation,
+  resolveDeployRequestedSha,
   schedulerLeaderInvariant,
   shouldRollbackOnFailure,
   simulateSchedulerConvergence,
@@ -199,4 +201,75 @@ test('waitForSchedulerLeaderConvergence times out without real delay', async () 
   assert.equal(result.ok, false);
   assert.equal(result.reason, 'FAIL_TIMEOUT');
   assert.ok(result.attempts >= 2);
+});
+
+const PINNED = '3772d992dae012bc9d794184e05e8ad39db09df4';
+
+test('CASE A: requested SHA identical through bootstrap + release plan', () => {
+  const r = assertDeployShaProvenance({
+    requestedSha: PINNED,
+    bootstrapSha: PINNED,
+    releaseSha: PINNED,
+    replicaASha: PINNED,
+    replicaBSha: PINNED,
+  });
+  assert.equal(r.ok, true);
+});
+
+test('CASE B: remote main advances after preflight — still uses pinned SHA', () => {
+  const r = resolveDeployRequestedSha({
+    preflightSha: PINNED,
+    remoteMainTipSha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    pinToPreflight: true,
+  });
+  assert.equal(r.ok, true);
+  assert.equal(r.requestedSha, PINNED);
+  assert.equal(r.remoteDriftIgnored, true);
+});
+
+test('CASE C: release SHA != requested SHA => FAIL CLOSED', () => {
+  const r = assertDeployShaProvenance({
+    requestedSha: PINNED,
+    bootstrapSha: PINNED,
+    releaseSha: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    replicaASha: PINNED,
+    replicaBSha: PINNED,
+  });
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.includes('release_sha_mismatch'));
+});
+
+test('CASE D: replica A/B SHA mismatch => FAIL CLOSED', () => {
+  const r = assertDeployShaProvenance({
+    requestedSha: PINNED,
+    bootstrapSha: PINNED,
+    releaseSha: PINNED,
+    replicaASha: PINNED,
+    replicaBSha: 'cccccccccccccccccccccccccccccccccccccccc',
+  });
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.includes('replica_b_sha_mismatch'));
+  assert.ok(r.errors.includes('replica_sha_mismatch'));
+});
+
+test('CASE E: leaderCount=0 transient behavior unchanged', () => {
+  const r = simulateSchedulerConvergence([0, 0, 1, 1]);
+  assert.equal(r.ok, true);
+});
+
+test('CASE F: leaderCount>1 immediate split-brain failure', () => {
+  const r = simulateSchedulerConvergence([0, 2]);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'FAIL_SPLIT_BRAIN');
+});
+
+test('CASE G: rollback on final_verify failure preserves topology intent', () => {
+  const r = shouldRollbackOnFailure({
+    stage: 'final_verify',
+    replicaAUpdated: true,
+    replicaBUpdated: true,
+    replicaBRequired: true,
+  });
+  assert.equal(r.rollback, true);
+  assert.equal(r.reason, 'post_deploy_invariant_failed');
 });

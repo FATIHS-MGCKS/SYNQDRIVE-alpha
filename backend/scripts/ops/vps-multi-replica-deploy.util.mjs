@@ -336,3 +336,80 @@ export function nginxHasDualUpstream(nginxText) {
     nginxText.includes('127.0.0.1:3002')
   );
 }
+
+/**
+ * Exact-SHA deploy provenance (DEC-016).
+ * All provided SHAs must match requestedSha when set.
+ *
+ * @param {{
+ *   requestedSha?: string | null;
+ *   bootstrapSha?: string | null;
+ *   releaseSha?: string | null;
+ *   replicaASha?: string | null;
+ *   replicaBSha?: string | null;
+ * }} input
+ */
+export function assertDeployShaProvenance({
+  requestedSha,
+  bootstrapSha,
+  releaseSha,
+  replicaASha,
+  replicaBSha,
+}) {
+  const errors = [];
+  if (!requestedSha) {
+    errors.push('missing_requested_sha');
+    return { ok: false, errors, pinnedSha: null };
+  }
+
+  const pairs = [
+    ['bootstrap_sha', bootstrapSha],
+    ['release_sha', releaseSha],
+    ['replica_a_sha', replicaASha],
+    ['replica_b_sha', replicaBSha],
+  ];
+
+  for (const [label, value] of pairs) {
+    if (value != null && value !== requestedSha) {
+      errors.push(`${label}_mismatch`);
+    }
+  }
+
+  if (replicaASha && replicaBSha && replicaASha !== replicaBSha) {
+    errors.push('replica_sha_mismatch');
+  }
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    pinnedSha: requestedSha,
+  };
+}
+
+/**
+ * Resolve deploy SHA for preflight — pins to caller-authorized SHA even if remote main advances.
+ *
+ * @param {{ preflightSha: string; remoteMainTipSha?: string; pinToPreflight?: boolean }} input
+ */
+export function resolveDeployRequestedSha({
+  preflightSha,
+  remoteMainTipSha,
+  pinToPreflight = true,
+}) {
+  if (!preflightSha) {
+    return { ok: false, reason: 'missing_preflight_sha', requestedSha: null };
+  }
+  if (pinToPreflight) {
+    return {
+      ok: true,
+      reason: 'pinned_to_preflight',
+      requestedSha: preflightSha,
+      remoteDriftIgnored:
+        remoteMainTipSha != null && remoteMainTipSha !== preflightSha,
+    };
+  }
+  if (!remoteMainTipSha) {
+    return { ok: false, reason: 'missing_remote_tip', requestedSha: null };
+  }
+  return { ok: true, reason: 'remote_tip', requestedSha: remoteMainTipSha };
+}

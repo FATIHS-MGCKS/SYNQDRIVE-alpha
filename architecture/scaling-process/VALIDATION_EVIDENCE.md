@@ -135,8 +135,12 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | Shell integration | P1.8.3.1 | — | `vps-production-replica.lib.sh` | IMPLEMENTED | HIGH |
 | No blind fixed sleep | P1.8.3.1 | — | poll loop | YES | HIGH |
 | Split-brain immediate fail | P1.8.3.1 | — | CASE E/G tests | PASS | HIGH |
-| Production deploy exercise | P1.8.3.1 | — | not executed | PENDING | — |
-| INC-06 closed | P1.8.3.1 | — | — | IMPLEMENTED_PENDING_PRODUCTION_VALIDATION | — |
+| Production deploy exercise | P1.8.3.1 | — | attempt 3 deploy log | PASS (14s convergence) | HIGH |
+| INC-06 closed | P1.8.3.1 | — | production convergence trace | CLOSED | HIGH |
+| OQ-17 leader convergence | P1.8.3.1 | 3772d992d | attempt 3 trace | CLOSED | HIGH |
+| OQ-18 bootstrap false-abort | P1.8.3.1 | 3772d992d | attempts 1–2 ROLLBACK | RELEASE_OPS_DIR MITIGATED | HIGH |
+| OQ-18 cloud-agent exact-SHA bootstrap | P1.8.3.1 authority | PR #1490 | not prod observed | PENDING | MEDIUM |
+| DEC-016 exact-SHA provenance | P1.8.3.1 authority | PR #1490 | unit tests 7 cases | IMPLEMENTED | HIGH |
 
 ---
 
@@ -156,4 +160,5 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 1. No 24h soak at N=2 in production
 2. No provider ceiling verification at N≈1000
 3. Staging validation Redis DB ≠ production DB
-4. Deploy leader-wait implemented — production validation pending (P1.8.3.1)
+4. Deploy leader-wait **verified in production** (P1.8.3.1 attempt 3)
+5. Exact-SHA deploy provenance implemented (DEC-016) — cloud-agent bootstrap pending prod observation
