@@ -8,7 +8,7 @@ title: Energy Event Detection
 status: APPROVED_FOR_CANONICAL_MERGE
 authority_state: APPROVED_FOR_CANONICAL_MERGE
 created: "2026-09-01"
-main_sha_at_canonicalization: "da959784f835a31482852d506daa137c90389b87"
+main_sha_at_canonicalization: null
 
 authority_review:
   required: true
@@ -23,7 +23,7 @@ authority_closure:
   artifact: architecture/KG_EED_FINAL_AUTHORITY_CLOSURE_2026-09-01.md
   completed_at: "2026-09-01"
   reconciled_main_sha: "3772d992dae012bc9d794184e05e8ad39db09df4"
-  post_reconcile_head_sha: "633d60e78325989f8200ff6992c2385085d67c53"
+  post_reconcile_merge_sha: "0b01c1501b524e9fd132b095440d2e36bd4dbb0b"
 
 scope:
   owns:

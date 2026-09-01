@@ -180,6 +180,11 @@ if (status === 'CANONICAL') {
   if (authorityState !== 'CANONICAL') {
     fail('status CANONICAL requires authority_state CANONICAL');
   }
+  const mainShaCanon = graphManifest.main_sha_at_canonicalization;
+  const shaRegex = /^[0-9a-f]{40}$/;
+  if (!mainShaCanon || typeof mainShaCanon !== 'string' || !shaRegex.test(mainShaCanon)) {
+    fail('CANONICAL requires main_sha_at_canonicalization to be a 40-char git SHA');
+  }
 } else if (status === 'APPROVED_FOR_CANONICAL_MERGE') {
   if (!graphManifest.authority_review?.verdict) {
     fail('APPROVED_FOR_CANONICAL_MERGE requires authority_review.verdict');
@@ -190,6 +195,15 @@ if (status === 'CANONICAL') {
   const closureArtifact = path.join(repo, graphManifest.authority_closure.artifact);
   if (!fs.existsSync(closureArtifact)) {
     fail(`Missing authority closure artifact: ${graphManifest.authority_closure.artifact}`);
+  }
+  const mainShaCanon = graphManifest.main_sha_at_canonicalization;
+  if (mainShaCanon !== null && mainShaCanon !== undefined && mainShaCanon !== '') {
+    fail(
+      'APPROVED_FOR_CANONICAL_MERGE requires main_sha_at_canonicalization: null (set after merge)',
+    );
+  }
+  if (!graphManifest.authority_closure?.post_reconcile_merge_sha) {
+    fail('authority_closure.post_reconcile_merge_sha required (stable merge commit, not branch head)');
   }
 } else {
   fail(

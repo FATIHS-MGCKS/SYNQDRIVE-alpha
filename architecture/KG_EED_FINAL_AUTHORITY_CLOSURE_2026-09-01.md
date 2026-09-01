@@ -202,14 +202,13 @@ Delta-only synchronization after Phase 2B.2 closure. No architecture review reop
 | **Previous reconciled main** | `03a7cdb5d0f71f10a47dd4d2541b6b012d7e99de` |
 | **New current main** | `3772d992dae012bc9d794184e05e8ad39db09df4` |
 | **Delta commit count** | 1 |
-| **POST_SYNC_HEAD_SHA (merge)** | `0b01c1501b524e9fd132b095440d2e36bd4dbb0b` |
-| **POST_SYNC_HEAD_SHA (branch)** | `f229273da341dc3a6cde9602e0d3bcbe35eabc15` (metadata commit) |
+| **POST_RECONCILE_MERGE_SHA** | `0b01c1501b524e9fd132b095440d2e36bd4dbb0b` |
 
 ### New delta commit(s)
 
 | SHA | Summary | Classification |
 |-----|---------|----------------|
-| `3772d992d` | fix(ops): source multi-replica deploy libs from new release, not old current | **EED_IRRELEVANT** (deploy bootstrap path in `vps-deploy-release.sh`) |
+| `3772d992d` | fix(ops): source multi-replica deploy libs from new release, not old current | **EED_EXTERNAL_AUTHORITY_RELEVANT** (Scaling Process / multi-replica deploy bootstrap in `vps-deploy-release.sh`) |
 
 ### Classification
 
@@ -217,7 +216,12 @@ Delta-only synchronization after Phase 2B.2 closure. No architecture review reop
 |----------|-------|------------|
 | **EED_RUNTIME_RELEVANT** | *(none)* | No changes |
 | **EED_EXTERNAL_AUTHORITY_RELEVANT** | `backend/scripts/ops/vps-deploy-release.sh` | Scaling Process / multi-replica deploy infrastructure only |
-| **EED_IRRELEVANT** | — | — |
+
+| Impact | Value |
+|--------|-------|
+| **EED_RUNTIME_IMPACT** | NO |
+| **EED_SEMANTIC_IMPACT** | NO |
+| **EXTERNAL_AUTHORITY_IMPACT** | YES |
 
 ### Verified unchanged
 
@@ -234,3 +238,36 @@ Delta-only synchronization after Phase 2B.2 closure. No architecture review reop
 | **KG_EED_REVIEW_STILL_VALID** | YES |
 
 **MERGE_CONFLICTS:** None. Phase 2B / 2B.1 / 2B.2 history preserved.
+
+---
+
+## 13. PRE_MERGE_METADATA_CLEANUP (2026-09-01)
+
+Governance-only cleanup before human merge. No architecture review reopened.
+
+| Field | Value |
+|-------|-------|
+| **Cleanup context** | Fix invalid/unstable provenance SHAs and pre-merge canonicalization semantics |
+| **Corrected reconciliation SHA** | `post_reconcile_merge_sha` → `0b01c1501b524e9fd132b095440d2e36bd4dbb0b` (stable merge commit) |
+| **Removed invalid SHA** | `633d60e78325989f8200ff6992c2385085d67c53` (not resolvable) |
+| **main_sha_at_canonicalization** | `null` (pending post-merge promotion) |
+| **Authority state** | `APPROVED_FOR_CANONICAL_MERGE` |
+| **Delta classification** | `3772d992d` → `EED_EXTERNAL_AUTHORITY_RELEVANT` only (runtime/semantic impact NO) |
+
+### Validation evidence
+
+```bash
+node architecture/knowledge-graphs/energy-event-detection/scripts/validate-graph.mjs
+# GRAPH_VALIDATION_STATUS=PASS
+
+npx jest refuel-fuel-rise.spec.ts refuel-sibling-reconciliation.spec.ts
+# TARGETED_TEST_STATUS=PASS (7 tests)
+```
+
+| PR state | Value |
+|----------|-------|
+| **PR_BEHIND_MAIN** | false |
+| **PR_MERGEABLE** | true |
+| **PR_DRAFT** | false (ready for review) |
+
+**RUNTIME_CHANGED_BY_CLEANUP:** NO

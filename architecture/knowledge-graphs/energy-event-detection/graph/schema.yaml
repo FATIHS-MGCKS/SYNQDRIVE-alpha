@@ -65,6 +65,9 @@ authority_lifecycle_valid_combinations:
     requires:
       - authority_review.verdict
       - authority_closure.artifact
+    forbids:
+      - main_sha_at_canonicalization
+    note: Pre-merge — main_sha_at_canonicalization must be null until merged to main
   - status: CANONICAL
     authority_state: CANONICAL
     requires:
