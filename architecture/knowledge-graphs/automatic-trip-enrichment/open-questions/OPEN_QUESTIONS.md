@@ -16,21 +16,19 @@ All 12 discovery open questions classified. **Do not force-close without evidenc
 | ATE-OQ-10 | Energy step 5 coupling — schedule ownership split? | **OUT_OF_SCOPE_EXTERNAL_AUTHORITY** | Detect cadence tied to reconcile today; **EED** should own future independent scheduler. ATE documents MAY_TRIGGER only. | ATE-EV-0011, ATE-EV-0034 | HIGH | NO — EED canonicalization will decide |
 | ATE-OQ-11 | Permanent trip loss proof limits under mutex skip | **NEEDS_PRODUCTION_EVIDENCE** | Code skips reconcile on mutex contention; no trip deletion. Formal proof artifact for all deferral patterns not in repo. | ATE-EV-0017 | MEDIUM | NO — ATE-INV-TRIP-LOSS-001 is CONDITIONAL |
 | ATE-OQ-12 | UI fallback removal once backlog cleared | **INTENTIONALLY_OPEN** | `useTripBehaviorEvents` still auto-POSTs when status null. No feature flag or removal commit. | ATE-EV-0025 | HIGH | NO — proposed future cleanup |
+| ATE-OQ-13 | Dual driving-impact compute paths convergence | **STILL_OPEN** | Legacy `trip.driving-impact.compute` queue and DI V2 `DRIVING_IMPACT_COMPUTE` both call `DrivingImpactService.computeForTrip` (upsert idempotent). Supersede timeline tied to OQ-01. | ATE-EV-0036 | HIGH | NO — added in authority review 2A.1 |
 
 ## Summary
 
 | Metric | Count |
 |--------|------:|
 | Total discovery questions | 12 |
+| Added in review | 1 (OQ-13) |
 | RESOLVED_FROM_CODE | 4 (OQ-03, 05, 06, 09) |
-| RESOLVED_FROM_TESTS | 0 |
-| RESOLVED_FROM_HISTORY | 0 |
-| RESOLVED_FROM_PRODUCTION_EVIDENCE | 0 |
 | INTENTIONALLY_OPEN | 4 (OQ-01, 02, 04, 12) |
+| STILL_OPEN (new) | 1 (OQ-13) |
 | NEEDS_PRODUCTION_EVIDENCE | 2 (OQ-07, 11) |
 | OUT_OF_SCOPE_EXTERNAL_AUTHORITY | 2 (OQ-08, 10) |
 
 **OPEN_QUESTIONS_RESOLVED (classified closed):** 6  
-**OPEN_QUESTIONS_REMAINING (explicit open nodes):** 6  
-
-Remaining open question nodes in graph: `ATE-OQ-001`, `ATE-OQ-002`, `ATE-OQ-004`, `ATE-OQ-007`, `ATE-OQ-011`, `ATE-OQ-012`.
+**OPEN_QUESTIONS_REMAINING:** 7 (graph nodes OQ-001, 002, 004, 007, 011, 012, 013)

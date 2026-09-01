@@ -37,7 +37,7 @@ Stable IDs: `ATE-EV-####`. Each item: source, path, what it proves, what it does
 | ATE-EV-0031 | ARCHITECTURE_DOC | Enrichment audit | `trip-enrichment-driver-score-energy-events-audit-2026-08.md` | Click-only was fallback | Post-deploy backlog cleared | PROVEN_IN_CODE | 2026-09-01 |
 | ATE-EV-0032 | PRODUCTION | Deploy doc | `P1_3_S6_PRODUCTION_DEPLOY_SINGLE_REPLICA_2026-08-30.md` | Single-replica deploy PASS | 24h soak completion | PROVEN_IN_PRODUCTION | 2026-09-01 |
 | ATE-EV-0033 | HISTORICAL_PR | Hotfix | commit `3874360e0` via deploy doc | Metric collision fix | No future metric collisions | PROVEN_IN_PRODUCTION | 2026-09-01 |
-| ATE-EV-0034 | ARCHITECTURE_DOC | Boundary map | `ATE_EED_BOUNDARY_MAP_2026-09-01.md` | 18 cross-graph relations; 0 conflicts | EED canonical graph (not built) | PROVEN_IN_CODE | 2026-09-01 |
+| ATE-EV-0038 | CODE | Mutex disable | `reconciliation-execution-mutex.service.ts` | Mutex off allows overlap | Safe multi-replica without mutex | PROVEN_IN_CODE | 2026-09-01 |
 
 ## Negative results (first-class)
 
@@ -45,3 +45,4 @@ Stable IDs: `ATE-EV-####`. Each item: source, path, what it proves, what it does
 |----|---------|----------|
 | NEG-001 | Discovery claimed DimoSnapshotScheduler might lack leader — **disproven** at `4843a4ebc` | ATE-EV-0021 |
 | NEG-002 | Deploy `85c3cd8e0` failed startup due to Prometheus gauge collision | ATE-EV-0033 |
+| NEG-003 | Initial KG claimed orchestrator owns `enqueueRepairEnrichment` — **disproven** (TripReconciliationService private method) | Authority review 2A.1 |

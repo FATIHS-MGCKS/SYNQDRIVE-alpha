@@ -57,3 +57,27 @@
 ### Validation
 
 - `node architecture/knowledge-graphs/automatic-trip-enrichment/scripts/validate-graph.mjs` — PASS at creation
+
+## 2026-09-01 — Phase 2A.1 independent authority review
+
+**Reviewer:** Independent adversarial gate (not implementation agent)  
+**Verdict:** APPROVE_WITH_DOCUMENTED_OPEN_QUESTIONS  
+**Review artifact:** `architecture/KG_ATE_INDEPENDENT_AUTHORITY_REVIEW_2026-09-01.md`
+
+### Corrections applied
+
+- Fixed false `enqueueRepairEnrichment` ownership on orchestrator node
+- Added boundary refresh path, dual TDI handler, failure modes FM-007–009
+- Added DEC-013/014 nodes, OQ-013, evidence EV-0035–0038
+- Fixed ENQUEUES edge target; softened UI timeline ownership to AMBIGUOUS
+
+### Graph counts after review
+
+| Metric | Value |
+|--------|------:|
+| Nodes | 121 |
+| Edges | 70 |
+| Decisions | 14 |
+| Evidence | 38 |
+| Open questions (remaining) | 7 |
+| Invariants | 9 |
