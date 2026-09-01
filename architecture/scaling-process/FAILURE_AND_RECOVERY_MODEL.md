@@ -102,9 +102,10 @@
 | **SYMPTOM** | `ABORT: expected 1 scheduler leader(s), got 0` → auto-rollback triggered |
 | **IMPACT** | Deploy reported failure; production recovered to N=2 same SHA after rollback rolling restart |
 | **ROOT_CAUSE** | Leader verification before election acquire window elapsed |
-| **STATUS** | **IMPLEMENTED_PENDING_PRODUCTION_VALIDATION** (P1.8.3.1) |
-| **REMEDIATION** | `vps_replica_wait_scheduler_leader_convergence` — bounded poll gate |
-| **EVIDENCE** | P1.8.3 deploy log; `architecture/P1_8_3_1_DEPLOY_LEADER_WAIT_HARDENING_2026-09-01.md` |
+| **STATUS** | **CLOSED** (2026-09-01 P1.8.3.1 production validation) |
+| **REMEDIATION** | `vps_replica_wait_scheduler_leader_convergence` + RELEASE_OPS_DIR sourcing fix |
+| **PRODUCTION_PROOF** | 6× leaderCount=0 → 2× leaderCount=1 in 14s; deploy PASS |
+| **EVIDENCE** | `P1_8_3_1_DEPLOY_LEADER_WAIT_PRODUCTION_VALIDATION_2026-09-01.md` |
 
 ---
 

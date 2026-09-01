@@ -103,7 +103,7 @@ Restores:
 
 **TYPE: FACT** — `.cursor/scripts/cloud-agent-deploy.sh` → SSH → `vps-deploy-release.sh` → external health URL.
 
-Git preflight: local HEAD must match `origin/main` (VPS clones GitHub main).
+Git preflight: local HEAD must match `origin/main`; deploy transports one immutable `REQUESTED_DEPLOY_SHA` end-to-end (DEC-016).
 
 ---
 
@@ -133,10 +133,30 @@ P1.8.3: `vps_replica_verify_scheduler_leaders` ran immediately after per-replica
 
 **CONFIG:** `SYNQDRIVE_SCHEDULER_LEADER_POLL_INTERVAL_MS=2000`, `SYNQDRIVE_SCHEDULER_LEADER_CONVERGENCE_TIMEOUT_MS=44000`, `SYNQDRIVE_SCHEDULER_LEADER_STABLE_OBSERVATIONS=2`
 
-**EVIDENCE:** `architecture/P1_8_3_1_DEPLOY_LEADER_WAIT_HARDENING_2026-09-01.md`; unit tests 18/18 PASS. Production validation pending.
+**EVIDENCE:** `architecture/P1_8_3_1_DEPLOY_LEADER_WAIT_PRODUCTION_VALIDATION_2026-09-01.md`; production attempt 3 PASS (14s convergence). INC-06 CLOSED.
+
+---
+
+## Deploy provenance (DEC-016)
+
+**TYPE: DECISION**
+
+Exact-SHA invariant — no mutable branch tip after preflight:
+
+```
+SYNQDRIVE_REQUESTED_DEPLOY_SHA (set by cloud-agent-deploy.sh)
+  → bootstrap script checkout at that SHA
+  → vps-deploy-release.sh clones that SHA into RELEASE_DIR
+  → TARGET_SHA verified == REQUESTED_SHA
+  → replica SHA invariant after rolling restart
+```
+
+**OQ-18:** RELEASE_OPS_DIR sourcing production-proven (attempt 3). Cloud-agent exact-SHA bootstrap path: **MITIGATED_PENDING_PRODUCTION_VALIDATION**.
+
+**Canonical path:** `bash .cursor/scripts/cloud-agent-deploy.sh` — do not invoke stale `/opt/synqdrive/current/.../vps-deploy-release.sh` directly.
 
 ---
 
 ## Operator actions
 
-**TYPE: FACT** — As of P1.8.3, production is N=2 on `d6884ce`. Future deploys use merged script from `current`.
+**TYPE: FACT** — As of P1.8.3.1 validation, production is N=2 on `3772d992d`. Use canonical cloud-agent deploy path.
