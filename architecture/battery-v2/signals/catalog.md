@@ -1,6 +1,6 @@
 # Battery V2 — Signal Catalog (Bootstrap)
 
-**Epistemic status:** PARTIAL — LV REST signals only; HV catalog not reconstructed.
+**Reconstruction maturity:** PARTIAL — LV REST signals only; HV catalog not reconstructed.
 
 ## LV REST opening / window signals (from `LvRestWindowSignalContext`)
 

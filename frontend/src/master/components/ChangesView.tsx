@@ -36,26 +36,6 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'battery-v2-knowledge-authority-bootstrap-2026-09-01',
-    version: '4.9.1020',
-    title: 'Battery V2 — living architecture authority & knowledge graph bootstrap',
-    summary: [
-      'Created `architecture/battery-v2/` incremental knowledge system (graph, agent contract, change ledger, gaps/contradictions).',
-      'Seeded CONFIRMED nodes from verified code + architecture memos (#1383, #1393, #1445) — UNKNOWN/CONTRADICTED are first-class.',
-      'Machine-readable graph: `graph/nodes.yaml`, `edges.yaml`, `invariants.yaml` + `scripts/validate-graph.mjs`.',
-      'Documentation only — no runtime, flag, deploy, or data changes.',
-    ],
-    reason:
-      'Battery V2 is an open scientific workstream; repository must preserve what changed, what it did NOT improve, and remaining gaps.',
-    previousBehavior:
-      'Scattered dated architecture memos without stable IDs, agent contract, or append-only scientific change ledger.',
-    details:
-      'architecture/battery-v2/README.md, AGENT_CONTRACT.md, CURRENT_STATE.md, KNOWLEDGE_GRAPH.md, research/CHANGE_LEDGER.md.',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-01T08:00:00.000Z',
-  },
-  {
     id: 'fuel-station-enrichment-phase-f-ui-2026-09-01',
     version: '4.9.1019',
     title: 'Fuel Station Enrichment Phase F — trip timeline UI integration',

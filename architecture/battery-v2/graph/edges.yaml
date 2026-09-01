@@ -1,23 +1,27 @@
 # Battery V2 Knowledge Graph — Edges (bootstrap seed)
 
 edges:
-  # Evidence → decisions
+  # Evidence → decisions (production observations support WHY, not post-fix validation)
   - from: BAT-V2-EVID-PROD-61715ECD-001
     relation: supports
     to: BAT-V2-DEC-1383-001
+    notes: Pre-change production shape motivated observation-independent opening
   - from: BAT-V2-EVID-PROD-61715ECD-001
     relation: supports
     to: BAT-V2-DEC-1393-001
+    notes: Pre-change ICE opening rejection motivated policy split
   - from: BAT-V2-EVID-PROD-EA7696B6-001
     relation: supports
     to: BAT-V2-DEC-1445-001
+    notes: Pre-change missing session motivated liveness fixes
   - from: BAT-V2-EVID-PROD-4D2BEF5F-001
     relation: supports
     to: BAT-V2-DEC-1445-001
-  - from: BAT-V2-EVID-TEST-ORPHAN-ENQ-001
+    notes: Pre-change ENQUEUED+DLQ stall motivated liveness fixes
+  - from: BAT-V2-TEST-ORPHAN-ENQ-001
     relation: supports
     to: BAT-V2-DEC-1445-001
-  - from: BAT-V2-EVID-TEST-PEND-EVAL-001
+  - from: BAT-V2-TEST-PEND-EVAL-001
     relation: supports
     to: BAT-V2-DEC-1445-001
   - from: BAT-V2-EVID-PR-1383-001
@@ -30,27 +34,42 @@ edges:
     relation: supports
     to: BAT-V2-DEC-1445-001
 
-  # Decisions → authorities / liveness
+  # Decisions govern authorities / policies / liveness
+  - from: BAT-V2-DEC-1383-001
+    relation: governs
+    to: BAT-V2-JOB-LV-SESSION-OPEN-001
+  - from: BAT-V2-DEC-1383-001
+    relation: governs
+    to: BAT-V2-LIVE-SESSION-RECON-001
   - from: BAT-V2-DEC-1393-001
-    relation: refines
+    relation: governs
     to: BAT-V2-AUTH-LV-OPEN-001
   - from: BAT-V2-DEC-1393-001
-    relation: refines
+    relation: governs
+    to: BAT-V2-AUTH-LV-MEASURE-001
+  - from: BAT-V2-DEC-1393-001
+    relation: governs
     to: BAT-V2-POL-OPEN-VS-MEASURE-001
   - from: BAT-V2-DEC-1445-001
-    relation: refines
+    relation: governs
     to: BAT-V2-LIVE-ORPHAN-ENQ-001
   - from: BAT-V2-DEC-1445-001
-    relation: refines
+    relation: governs
     to: BAT-V2-LIVE-PEND-EVAL-001
   - from: BAT-V2-DEC-1445-001
-    relation: refines
+    relation: governs
     to: BAT-V2-LIVE-SESSION-RECON-001
-  - from: BAT-V2-DEC-1383-001
-    relation: refines
-    to: BAT-V2-JOB-LV-SESSION-OPEN-001
+  - from: BAT-V2-DEC-1445-001
+    relation: governs
+    to: BAT-V2-AUTH-TRIP-END-001
 
-  # Failed → superseded by decisions
+  # Decisions explicitly do not solve remaining gaps
+  - from: BAT-V2-DEC-1445-001
+    relation: does_not_solve
+    to: BAT-V2-GAP-RUNNING-ORPHAN-001
+    notes: Explicitly documented as remaining risk / non-effect of #1445
+
+  # Failed → superseded by decisions / liveness
   - from: BAT-V2-FAIL-OBS-ONLY-OPEN-001
     relation: superseded_by
     to: BAT-V2-DEC-1383-001
@@ -66,9 +85,10 @@ edges:
   - from: BAT-V2-FAIL-BULK-DLQ-001
     relation: superseded_by
     to: BAT-V2-DEC-1445-001
-  - from: BAT-V2-FAIL-HISTORICAL-REPAIR-SCAN-001
+  - from: BAT-V2-REJECT-HISTORICAL-REPAIR-SCAN-001
     relation: superseded_by
     to: BAT-V2-DEC-1445-001
+    notes: Governance rejection — creation-time invariant preferred over historical rewrite
 
   # Authority chain
   - from: BAT-V2-AUTH-TRIP-END-001
@@ -95,21 +115,35 @@ edges:
     relation: supports
     to: BAT-V2-AUTH-TRIP-END-001
 
-  # Gaps limited by decisions
-  - from: BAT-V2-GAP-RUNNING-ORPHAN-001
-    relation: limited_by
-    to: BAT-V2-DEC-1445-001
-    notes: Explicitly documented as remaining risk / non-effect of #1445
-
   # Policy protection
   - from: BAT-V2-POL-NO-FABRICATE-001
     relation: protected_by
     to: BAT-V2-AUTH-REST-EVAL-001
 
-  # Tests
-  - from: BAT-V2-EVID-TEST-ORPHAN-ENQ-001
+  # Liveness tested by test evidence (liveness → test)
+  - from: BAT-V2-LIVE-ORPHAN-ENQ-001
     relation: tested_by
-    to: BAT-V2-LIVE-ORPHAN-ENQ-001
-  - from: BAT-V2-EVID-TEST-PEND-EVAL-001
+    to: BAT-V2-TEST-ORPHAN-ENQ-001
+  - from: BAT-V2-LIVE-PEND-EVAL-001
     relation: tested_by
-    to: BAT-V2-LIVE-PEND-EVAL-001
+    to: BAT-V2-TEST-PEND-EVAL-001
+
+  # Contradiction links
+  - from: BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001
+    relation: contradicts
+    to: BAT-V2-AUTH-REST-EVAL-001
+    notes: REST evaluation requires providerTimestamp as provider-observation evidence
+  - from: BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001
+    relation: supports
+    to: BAT-V2-GAP-TIMESTAMP-FALLBACK-001
+
+  # Hypothesis links
+  - from: BAT-V2-HYP-RUNNING-ORPHAN-001
+    relation: supports
+    to: BAT-V2-GAP-RUNNING-ORPHAN-001
+  - from: BAT-V2-HYP-POST-1445-SOAK-001
+    relation: supports
+    to: BAT-V2-DEC-1445-001
+  - from: BAT-V2-HYP-BRIDGE-120S-001
+    relation: supports
+    to: BAT-V2-GAP-BRIDGE-FALLBACK-001

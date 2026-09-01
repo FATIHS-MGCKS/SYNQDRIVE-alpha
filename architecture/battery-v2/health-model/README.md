@@ -1,6 +1,6 @@
 # Battery V2 — Health Model
 
-**Epistemic status:** PARTIAL — Stage 1 shadow LV REST reconstructed; full assessment/publication not
+**Reconstruction maturity:** PARTIAL — Stage 1 shadow LV REST reconstructed; full assessment/publication not
 
 ## Layers (conceptual)
 

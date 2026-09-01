@@ -2,6 +2,8 @@
 
 Approaches that were **demonstrably insufficient** — not merely old code.
 
+Governance-rejected approaches are listed separately under [Rejected approaches](#rejected-approaches-not-empirical-failures).
+
 ---
 
 ## BAT-V2-FAIL-OBS-ONLY-OPEN-001
@@ -37,7 +39,7 @@ Approaches that were **demonstrably insufficient** — not merely old code.
 | **Approach** | Treat persisted `ENQUEUED` metadata as proof target is scheduled; skip reconciliation |
 | **WHY IT SEEMED REASONABLE** | Metadata written at enqueue time; avoids duplicate jobs |
 | **WHY IT FAILED** | Bull job could be missing (restart, Redis cleanup, abnormal removal) with no DLQ → permanent stall |
-| **EVIDENCE** | Adversarial review #1445; `BAT-V2-EVID-TEST-ORPHAN-ENQ-001` |
+| **EVIDENCE** | Adversarial review #1445; `BAT-V2-TEST-ORPHAN-ENQ-001` |
 | **REPLACED BY** | `hasLiveJob()` check + `PENDING_EVALUATION` recovery (`BAT-V2-LIVE-ORPHAN-ENQ-001`) |
 | **LESSON** | Metadata state ≠ queue liveness |
 
@@ -50,7 +52,7 @@ Approaches that were **demonstrably insufficient** — not merely old code.
 | **Approach** | Throw retryable error on missing REST evidence → BullMQ 3×5s retry |
 | **WHY IT SEEMED REASONABLE** | Standard queue retry for transient failures |
 | **WHY IT FAILED** | Legitimate evidence grace (~30m) >> Bull retry window (~15s) → DLQ / stuck ENQUEUED |
-| **EVIDENCE** | Session `4d2bef5f` production shape; `BAT-V2-EVID-TEST-PEND-EVAL-001` |
+| **EVIDENCE** | Session `4d2bef5f` production shape; `BAT-V2-TEST-PEND-EVAL-001` |
 | **REPLACED BY** | `PENDING_EVALUATION` + reconciliation cadence (`BAT-V2-LIVE-PEND-EVAL-001`) |
 | **LESSON** | Evidence-waiting is a **persisted deferral** problem, not a short Bull retry problem |
 
@@ -69,13 +71,21 @@ Approaches that were **demonstrably insufficient** — not merely old code.
 
 ---
 
-## BAT-V2-FAIL-HISTORICAL-REPAIR-SCAN-001
+## Rejected approaches (not empirical failures)
+
+These were **not adopted** due to governance/policy constraints — not because the technique was empirically proven broken in production.
+
+### BAT-V2-REJECT-HISTORICAL-REPAIR-SCAN-001
 
 | Field | Content |
 |-------|---------|
 | **Approach** | Recurring reconciliation scan to repair historical trip-binding mis-matches |
 | **WHY IT SEEMED REASONABLE** | Fixes production mis-bound sessions automatically |
-| **WHY IT FAILED** | Violates no-backfill policy; masks creation-time bugs; tenant safety risk |
+| **WHY REJECTED** | Violates no-backfill policy; masks creation-time bugs; tenant safety risk |
 | **EVIDENCE** | #1445 scope constraints; removal from `reconcileAll()` |
-| **REPLACED BY** | Creation-time invariant + P2002 race repair at mutation boundary |
+| **PREFERRED INSTEAD** | Creation-time invariant + P2002 race repair at mutation boundary (`BAT-V2-DEC-1445-001`) |
 | **LESSON** | Repair at **mutation boundary**, not periodic historical rewrite |
+
+Graph node: `type=rejected_approach`, `decision_status=REJECTED`.
+
+**Historical note:** Previously misclassified as `BAT-V2-FAIL-HISTORICAL-REPAIR-SCAN-001` (failed_approach). Renamed and retyped in epistemic correction.

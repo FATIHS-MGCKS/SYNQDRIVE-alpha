@@ -6,12 +6,37 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-01 — Knowledge authority bootstrap epistemic correction
+
+| Field | Content |
+|-------|---------|
+| **DECISION** | (infrastructure — no `BAT-V2-DEC-*`) |
+| **DECISION_STATUS** | `VALIDATED` |
+| **CHANGE** | Corrected PRODUCTION_VALIDATED overuse; normalized test_evidence IDs (`BAT-V2-TEST-*`); added hypothesis/gap/contradiction nodes; strengthened graph validator; reverted frontend TSX from PR scope |
+| **NON_EFFECTS** | No runtime, data, deploy, or backfill changes |
+| **EVIDENCE** | This PR only |
+| **AFFECTED_GRAPH** | All bootstrap graph nodes/edges; `BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001`; `BAT-V2-REJECT-HISTORICAL-REPAIR-SCAN-001`; `BAT-V2-HYP-*`; additional `BAT-V2-GAP-*` |
+
+---
+
+## CL-2026-09-01 — Knowledge authority bootstrap
+
+| Field | Content |
+|-------|---------|
+| **DECISION** | (infrastructure — no `BAT-V2-DEC-*`) |
+| **DECISION_STATUS** | `VALIDATED` |
+| **CHANGE** | Created `architecture/battery-v2/` living knowledge system |
+| **NON_EFFECTS** | No runtime, data, deploy, or backfill changes |
+| **EVIDENCE** | This PR only |
+
+---
+
 ## CL-2026-08-30 — #1445 Stage 1 pipeline defect closure
 
 | Field | Content |
 |-------|---------|
 | **DECISION** | `BAT-V2-DEC-1445-001` |
-| **DECISION_STATUS** | `PRODUCTION_VALIDATED` (code merged; deploy 2026-08-31; natural-trip validation ongoing) |
+| **DECISION_STATUS** | `VALIDATED` (code merged + focused tests/CI; post-change natural-trip production validation **UNKNOWN**) |
 | **BEFORE** | Missing sessions after deploy interrupt; cross-trip `trip_id` mis-binding; REST targets stuck `ENQUEUED` (DLQ + orphan); `PENDING_EVALUATION` blocked reconciliation; bulk DLQ pre-clear defeated per-entity rescue; recurring historical trip-binding repair scan |
 | **OBSERVATION** | Production read-only audit: trip `ea7696b6` (no session 50+ min post-finalize); sessions `d8b4db92`/`dde74be4` (anchor trip N, `trip_id` N-1); session `4d2bef5f` (ENQUEUED + PROVIDER_UNAVAILABLE DLQ); LOCK_CONTENTION DLQ on session-open jobs |
 | **HYPOTHESIS** | Liveness holes are systemic: metadata/Bull/DLQ desync, wrong anchor source, and reconciliation paths that block instead of recover |
@@ -21,8 +46,8 @@ Append-only scientific record. Newest entries first.
 | **VALIDATION** | 297+ battery-v2/lv-rest-window tests; orphaned-ENQUEUED + PENDING_EVALUATION liveness specs; CI 25/25 on PR head |
 | **OBSERVED_EFFECT** | Deploy health OK 2026-08-31; post-fix natural trip outcomes **UNKNOWN** at ledger write time |
 | **NON_EFFECTS** | Does **not** recover every `RUNNING`-without-Bull-job crash state; does **not** prove all future trips succeed; does **not** activate Stage 2; does **not** enable publication/readiness; does **not** backfill historical sessions; does **not** fix pre-existing unrelated test failures |
-| **REMAINING_GAPS** | `BAT-V2-GAP-RUNNING-ORPHAN-001`; production soak validation; SKIPPED semantics |
-| **EVIDENCE** | `BAT-V2-EVID-PR-1445-001`, `BAT-V2-EVID-ARCH-PIPELINE-CLOSURE-001`, `BAT-V2-EVID-TEST-ORPHAN-ENQ-001`, `BAT-V2-EVID-TEST-PEND-EVAL-001` |
+| **REMAINING_GAPS** | `BAT-V2-GAP-RUNNING-ORPHAN-001`; production soak validation (`BAT-V2-HYP-POST-1445-SOAK-001`); SKIPPED semantics |
+| **EVIDENCE** | `BAT-V2-EVID-PR-1445-001`, `BAT-V2-EVID-ARCH-PIPELINE-CLOSURE-001`, `BAT-V2-TEST-ORPHAN-ENQ-001`, `BAT-V2-TEST-PEND-EVAL-001` |
 | **AFFECTED_GRAPH** | `BAT-V2-DEC-1445-001`, `BAT-V2-LIVE-ORPHAN-ENQ-001`, `BAT-V2-LIVE-PEND-EVAL-001`, `BAT-V2-LIVE-SESSION-RECON-001`, `BAT-V2-INV-TRIP-BIND-001` |
 
 ---
@@ -32,7 +57,7 @@ Append-only scientific record. Newest entries first.
 | Field | Content |
 |-------|---------|
 | **DECISION** | `BAT-V2-DEC-1393-001` |
-| **DECISION_STATUS** | `PRODUCTION_VALIDATED` (merged; production trip shape reproduced in tests) |
+| **DECISION_STATUS** | `VALIDATED` (merged + policy tests; pre-change production trip motivated OBSERVATION only) |
 | **BEFORE** | `engine_load > 5` proxy alone could reject ICE opening at key-off |
 | **OBSERVATION** | Trip `61715ecd`: `is_ignition_on=false`, `speed=0`, load ~10% → `engine_not_off` rejection |
 | **HYPOTHESIS** | Opening gate needs separate evidence precedence from measurement quality |
@@ -53,28 +78,16 @@ Append-only scientific record. Newest entries first.
 | Field | Content |
 |-------|---------|
 | **DECISION** | `BAT-V2-DEC-1383-001` |
-| **DECISION_STATUS** | `PRODUCTION_VALIDATED` (merged; architecture + tests) |
+| **DECISION_STATUS** | `VALIDATED` (merged + architecture + focused tests) |
 | **BEFORE** | LV session opening depended on post-finalize observation cycle; frozen `source_timestamp` could prevent session forever |
-| **OBSERVATION** | Trip `61715ecd` anchor: last observation at anchor; RESTING ~58s later; no further observation → no session |
+| **OBSERVATION** | Trip `61715ecd` anchor: last observation at anchor; RESTING ~58s later; no further observation → no `TRIP_ENDED` emission |
 | **HYPOTHESIS** | Trip finalization must trigger durable session-open path independent of next telemetry poll |
 | **CHANGE** | Primary enqueue after COMPLETED trip + RESTING persisted; canonical `ensureLvRestWindowForFinalizedTrip`; reconciliation scans authoritative COMPLETED trips |
 | **WHY** | Observation timing must not be single point of failure for session existence |
 | **EXPECTED_EFFECT** | Sessions exist even when no post-anchor observation arrives |
 | **VALIDATION** | `lv-rest-window-session-arming.service.spec.ts`; reconciliation specs |
-| **OBSERVED_EFFECT** | Architecture validated in tests; production recurrence post-merge **partially** addressed by later #1445 deploy-interrupt case |
+| **OBSERVED_EFFECT** | Tests pass; production recurrence post-merge partially addressed by later #1445 deploy-interrupt case; post-change behavioral validation **UNKNOWN** |
 | **NON_EFFECTS** | Does **not** alone fix ENQUEUED/DLQ REST target liveness; does **not** fix ICE load-proxy opening (#1393); does **not** guarantee measurement quality without observations |
 | **REMAINING_GAPS** | Combined interaction with deploy restarts (#1445) |
 | **EVIDENCE** | `BAT-V2-EVID-PR-1383-001`, `BAT-V2-EVID-ARCH-LIVENESS-001`, `BAT-V2-EVID-PROD-61715ECD-001` |
 | **AFFECTED_GRAPH** | `BAT-V2-DEC-1383-001`, `BAT-V2-JOB-LV-SESSION-OPEN-001`, `BAT-V2-LIVE-SESSION-RECON-001`, `BAT-V2-INV-TRIP-LIFECYCLE-ISO-001` |
-
----
-
-## CL-2026-09-01 — Knowledge authority bootstrap
-
-| Field | Content |
-|-------|---------|
-| **DECISION** | (infrastructure — no `BAT-V2-DEC-*`) |
-| **DECISION_STATUS** | `VALIDATED` |
-| **CHANGE** | Created `architecture/battery-v2/` living knowledge system |
-| **NON_EFFECTS** | No runtime, data, deploy, or backfill changes |
-| **EVIDENCE** | This PR only |

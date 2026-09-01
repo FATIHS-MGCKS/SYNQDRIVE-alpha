@@ -64,7 +64,7 @@ invariants:
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-reconciliation.service.ts
     evidence:
       - BAT-V2-LIVE-ORPHAN-ENQ-001
-      - BAT-V2-EVID-TEST-ORPHAN-ENQ-001
+      - BAT-V2-TEST-ORPHAN-ENQ-001
 
   - id: BAT-V2-INV-NO-HIST-BACKFILL-001
     kind: CONFIRMED_INVARIANT

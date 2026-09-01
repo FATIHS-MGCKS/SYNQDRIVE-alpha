@@ -7,7 +7,6 @@ nodes:
     type: authority
     title: Trip end time anchor authority
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
     summary: >
       When tripEndAt is present, LV REST anchor = authoritative trip.endTime.
       Session idempotency derives from vehicleId + anchor ms.
@@ -21,7 +20,6 @@ nodes:
     type: authority
     title: ICE LV rest-window opening evidence precedence
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
     summary: >
       isEngineOffForRestWindowOpening — ignition-off + measured stationary speed
       can outrank engine_load proxy at opening gate.
@@ -35,7 +33,6 @@ nodes:
     type: authority
     title: Conservative REST measurement engine-off quality
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
     summary: >
       isEngineOffForRest — downstream evaluation remains conservative;
       residual engine_load may reject in-window observations.
@@ -67,7 +64,6 @@ nodes:
     type: policy
     title: Opening vs measurement policy split
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
     summary: Opening gate and measurement quality use different engine-off functions intentionally.
     evidence:
       - BAT-V2-DEC-1393-001
@@ -97,7 +93,6 @@ nodes:
     type: liveness_rule
     title: LV session reconciliation arming
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
     summary: reconcileMissingLvRestSessions calls ensureLvRestWindowForFinalizedTrip before recovery enqueue.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-reconciliation.service.ts
@@ -106,25 +101,23 @@ nodes:
     type: liveness_rule
     title: PENDING_EVALUATION reconciliation deferral
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
     summary: Retryable missing evidence → PENDING_EVALUATION + return; reconciliation reschedules on cadence.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
       - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window-target.metadata.ts
     evidence:
-      - BAT-V2-EVID-TEST-PEND-EVAL-001
+      - BAT-V2-TEST-PEND-EVAL-001
 
   - id: BAT-V2-LIVE-ORPHAN-ENQ-001
     type: liveness_rule
     title: Orphaned ENQUEUED REST target recovery
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
     summary: ENQUEUED without live Bull job and without DLQ → PENDING_EVALUATION → recovery schedule.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-reconciliation.service.ts
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-producer.service.ts
     evidence:
-      - BAT-V2-EVID-TEST-ORPHAN-ENQ-001
+      - BAT-V2-TEST-ORPHAN-ENQ-001
     non_effects:
       - Does not cover RUNNING-without-job orphan state
 
@@ -151,7 +144,7 @@ nodes:
     type: decision
     title: Observation-independent LV Rest session opening
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
+    decision_status: VALIDATED
     summary: Trip finalization enqueues durable session-open; reconciliation scans COMPLETED trips.
     evidence:
       - BAT-V2-EVID-PR-1383-001
@@ -164,18 +157,20 @@ nodes:
     type: decision
     title: ICE rest-window opening policy hardening
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
+    decision_status: VALIDATED
     summary: Split opening vs measurement engine-off policies for ICE key-off shapes.
     evidence:
       - BAT-V2-EVID-PR-1393-001
       - BAT-V2-EVID-PROD-61715ECD-001
-    notes: Refines pre-#1393 opening proxy behavior
+    notes: >
+      Production trip 61715ecd motivated OBSERVATION/WHY (pre-change defect).
+      Post-change production behavioral validation of opening rate is UNKNOWN.
 
   - id: BAT-V2-DEC-1445-001
     type: decision
     title: Stage 1 pipeline defect closure
     epistemic_status: CONFIRMED
-    decision_status: PRODUCTION_VALIDATED
+    decision_status: VALIDATED
     summary: Liveness, trip binding, REST temporal defects A-D; orphan ENQUEUED recovery; no historical backfill.
     evidence:
       - BAT-V2-EVID-PR-1445-001
@@ -207,6 +202,7 @@ nodes:
     type: gap
     title: Bridge trip resolution without authoritative finalized trip
     epistemic_status: INFERRED
+    reconstruction_maturity: PARTIAL
     summary: lastActivityAt anchor and ±120s fallback documented; edge cases not fully traced in bootstrap.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window-ingestion-bridge.service.ts
@@ -215,13 +211,99 @@ nodes:
     type: gap
     title: HV/PHEV authority model
     epistemic_status: UNKNOWN
+    reconstruction_maturity: NONE
     summary: Not reconstructed in bootstrap.
 
   - id: BAT-V2-GAP-CONSUMER-READ-001
     type: gap
     title: Consumer read-model authority
     epistemic_status: UNKNOWN
+    reconstruction_maturity: NONE
     summary: Which UI/API surfaces use canonical vs legacy battery data — not mapped.
+
+  - id: BAT-V2-GAP-LOCK-FAILOPEN-001
+    type: gap
+    title: Redis lock fail-open rationale on Battery V2 enqueue paths
+    epistemic_status: UNKNOWN
+    reconstruction_maturity: NONE
+    summary: Lock acquisition failure behavior on battery enqueue paths not reconstructed in bootstrap.
+
+  - id: BAT-V2-GAP-TIMESTAMP-FALLBACK-001
+    type: gap
+    title: LV live ingestion timestamp fallback production reachability
+    epistemic_status: UNKNOWN
+    reconstruction_maturity: PARTIAL
+    summary: >
+      Code fallback exists (lvBatteryObservedAt ?? providerFetchedAt ?? now).
+      UNKNOWN whether absent lvBatteryObservedAt on reachable classify payloads
+      causes fallback-created rows to enter REST evaluation.
+    evidence:
+      - BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-live-voltage/lv-live-voltage-ingestion.service.ts
+
+  - id: BAT-V2-GAP-THRESHOLD-PROVENANCE-001
+    type: gap
+    title: Policy threshold provenance (0.5 km/h, 5% load, 30m grace)
+    epistemic_status: UNKNOWN
+    reconstruction_maturity: PARTIAL
+    summary: Physical/policy threshold values exist in code; provenance and calibration rationale not reconstructed.
+
+  - id: BAT-V2-GAP-PUB-READINESS-001
+    type: gap
+    title: Publication/readiness enablement gates
+    epistemic_status: INFERRED
+    reconstruction_maturity: PARTIAL
+    summary: Feature flags exist; exact production enablement gates and consumer impact not fully mapped.
+
+  # --- Hypotheses ---
+  - id: BAT-V2-HYP-RUNNING-ORPHAN-001
+    type: hypothesis
+    title: Orphaned RUNNING may need Bull liveness check
+    epistemic_status: INFERRED
+    summary: >
+      Orphaned RUNNING metadata (handler crash mid-flight) may need same hasLiveJob
+      recovery pattern as ENQUEUED. Gap documented; not fixed.
+    evidence:
+      - BAT-V2-GAP-RUNNING-ORPHAN-001
+
+  - id: BAT-V2-HYP-POST-1445-SOAK-001
+    type: hypothesis
+    title: Post-#1445 natural trip REST stall elimination
+    epistemic_status: UNKNOWN
+    summary: >
+      #1445 fixes may eliminate production REST stall class for natural trips under shadow.
+      AWAITING post-change production soak evidence.
+    evidence:
+      - BAT-V2-DEC-1445-001
+
+  - id: BAT-V2-HYP-BRIDGE-120S-001
+    type: hypothesis
+    title: ±120s bridge fallback mis-bind risk
+    epistemic_status: UNKNOWN
+    summary: >
+      ±120s bridge fallback may mis-bind when multiple trips cluster in time window.
+      UNTESTED.
+    evidence:
+      - BAT-V2-GAP-BRIDGE-FALLBACK-001
+
+  # --- Contradictions ---
+  - id: BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001
+    type: contradiction
+    title: LV providerTimestamp fallback vs REST evidence eligibility
+    epistemic_status: CONTRADICTED
+    summary: >
+      Doctrine: provider/fetch receipt time is not automatically a new provider observation.
+      Code: persistFromObservationClassify sets observedAt = lvBatteryObservedAt ?? receivedAt
+      (receivedAt = providerFetchedAt ?? now) and persists providerTimestamp from observedAt.
+      buildRestTargetContext uses separate observedAt fallback (lvBatteryObservedAt ?? now).
+      KNOWN: fallback implementation exists. UNKNOWN: production reachability and whether
+      fallback-created rows enter REST evaluation. Resolution: UNRESOLVED.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-live-voltage/lv-live-voltage-ingestion.service.ts
+    open_questions:
+      - Is lvBatteryObservedAt absent on reachable production classify payloads?
+      - Have fallback-created providerTimestamp rows entered REST target evaluation?
 
   # --- Failed approaches ---
   - id: BAT-V2-FAIL-OBS-ONLY-OPEN-001
@@ -246,7 +328,7 @@ nodes:
     epistemic_status: HISTORICAL
     summary: Insufficient — metadata could outlive Bull job.
     evidence:
-      - BAT-V2-EVID-TEST-ORPHAN-ENQ-001
+      - BAT-V2-TEST-ORPHAN-ENQ-001
 
   - id: BAT-V2-FAIL-BULL-SHORT-RETRY-001
     type: failed_approach
@@ -254,7 +336,7 @@ nodes:
     epistemic_status: HISTORICAL
     summary: Insufficient — ~15s Bull exhaust vs ~30m evidence grace.
     evidence:
-      - BAT-V2-EVID-TEST-PEND-EVAL-001
+      - BAT-V2-TEST-PEND-EVAL-001
 
   - id: BAT-V2-FAIL-BULK-DLQ-001
     type: failed_approach
@@ -264,11 +346,16 @@ nodes:
     evidence:
       - BAT-V2-EVID-ARCH-PIPELINE-CLOSURE-001
 
-  - id: BAT-V2-FAIL-HISTORICAL-REPAIR-SCAN-001
-    type: failed_approach
+  # --- Rejected approaches (governance rejection, not empirical failure) ---
+  - id: BAT-V2-REJECT-HISTORICAL-REPAIR-SCAN-001
+    type: rejected_approach
     title: Recurring historical trip-binding repair scan
     epistemic_status: HISTORICAL
-    summary: Rejected — violates no-backfill policy; masks creation bugs.
+    decision_status: REJECTED
+    summary: >
+      NOT_ADOPTED — violates no-backfill policy; masks creation-time bugs.
+      Preferred: creation-time invariant + P2002 race repair at mutation boundary.
+      Recurring historical rewrite intentionally removed in #1445.
     evidence:
       - BAT-V2-EVID-ARCH-PIPELINE-CLOSURE-001
 
@@ -277,10 +364,17 @@ nodes:
     type: evidence
     title: resolveLvRestWindowAnchorAt implementation
     epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Code anchor resolution prefers tripEndAt when present.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window.state-machine.ts
+
   - id: BAT-V2-EVID-CODE-HAS-LIVE-JOB-001
     type: evidence
     title: BatteryV2JobProducerService.hasLiveJob
     epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Bull queue liveness probe used by orphan ENQUEUED recovery.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-producer.service.ts
 
@@ -288,6 +382,8 @@ nodes:
     type: evidence
     title: Stage 1 pipeline defect closure architecture memo
     epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: Dated architecture memo documenting Stage 1 defect closure scope and non-effects.
     source_paths:
       - architecture/BATTERY_V2_STAGE1_PIPELINE_DEFECT_CLOSURE_2026-08-30.md
 
@@ -295,6 +391,8 @@ nodes:
     type: evidence
     title: LV rest session liveness architecture memo
     epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: Dated architecture memo on observation-independent session opening.
     source_paths:
       - architecture/BATTERY_V2_LV_REST_SESSION_LIVENESS_2026-08-28.md
 
@@ -302,6 +400,8 @@ nodes:
     type: evidence
     title: ICE opening policy architecture memo
     epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: Dated architecture memo on ICE opening vs measurement policy split.
     source_paths:
       - architecture/BATTERY_V2_ICE_REST_OPENING_POLICY_2026-08-28.md
 
@@ -309,20 +409,26 @@ nodes:
     type: evidence
     title: REST window contract architecture memo
     epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: Dated architecture memo on REST window contract and target scheduling.
     source_paths:
       - architecture/BATTERY_V2_REST_WINDOW_CONTRACT_2026-08-26.md
 
-  - id: BAT-V2-EVID-TEST-ORPHAN-ENQ-001
+  - id: BAT-V2-TEST-ORPHAN-ENQ-001
     type: test_evidence
     title: Orphaned ENQUEUED liveness spec
     epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Unit/integration spec proving orphan ENQUEUED recovery path.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-rest-target-orphaned-enqueued-liveness.spec.ts
 
-  - id: BAT-V2-EVID-TEST-PEND-EVAL-001
+  - id: BAT-V2-TEST-PEND-EVAL-001
     type: test_evidence
     title: PENDING_EVALUATION liveness spec
     epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Unit/integration spec proving PENDING_EVALUATION deferral and reschedule.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-rest-target-pending-evaluation-liveness.spec.ts
 
@@ -330,34 +436,54 @@ nodes:
     type: evidence
     title: PR #1383 merge history
     epistemic_status: CONFIRMED
+    source_type: PR_HISTORY
+    summary: Merge record for observation-independent LV Rest session opening.
+    source_locator: "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1383"
+    verified_ref: "7556a5119"
 
   - id: BAT-V2-EVID-PR-1393-001
     type: evidence
     title: PR #1393 merge history
     epistemic_status: CONFIRMED
+    source_type: PR_HISTORY
+    summary: Merge record for ICE rest-window opening policy hardening.
+    source_locator: "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1393"
 
   - id: BAT-V2-EVID-PR-1445-001
     type: evidence
     title: PR #1445 merge history
     epistemic_status: CONFIRMED
+    source_type: PR_HISTORY
+    summary: Merge record for Stage 1 pipeline defect closure.
+    source_locator: "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1445"
+    verified_ref: "7556a5119"
 
   - id: BAT-V2-EVID-PROD-EA7696B6-001
     type: evidence
     title: Production trip ea7696b6 missing session after finalize
     epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: Pre-change production audit — missing LV session 50+ min post-finalize.
     source_paths:
       - architecture/BATTERY_V2_STAGE1_PIPELINE_DEFECT_CLOSURE_2026-08-30.md
+    notes: Pre-change production observation — evidence for OBSERVATION/WHY, not post-fix validation.
 
   - id: BAT-V2-EVID-PROD-61715ECD-001
     type: evidence
     title: Production trip 61715ecd ICE opening rejection
     epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: Pre-change production audit — ICE opening rejected at key-off due to engine_load proxy.
     source_paths:
       - architecture/BATTERY_V2_ICE_REST_OPENING_POLICY_2026-08-28.md
+    notes: Pre-change production observation — evidence for OBSERVATION/WHY, not post-fix validation.
 
   - id: BAT-V2-EVID-PROD-4D2BEF5F-001
     type: evidence
     title: Production session 4d2bef5f stuck ENQUEUED + DLQ
     epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: Pre-change production audit — REST target stuck ENQUEUED with PROVIDER_UNAVAILABLE DLQ.
     source_paths:
       - architecture/BATTERY_V2_STAGE1_PIPELINE_DEFECT_CLOSURE_2026-08-30.md
+    notes: Pre-change production observation — evidence for OBSERVATION/WHY, not post-fix validation.
