@@ -101,10 +101,12 @@ If per-trip failure probability were 30%, observing **zero failures in 10 trips*
 
 | Tranche | Purpose | Minimum guidance |
 |---------|---------|------------------|
-| **Initial smoke** | First observation after #1445 | ≥10 **ELIGIBLE** natural ICE/HEV trips, ≥3 vehicles, 14 days — **smoke only** |
+| **Initial smoke** | First observation after #1445 | ≥10 **ELIGIBLE** natural trips from **LV-REST-supported drive profiles actually exposed** to the tested code path (**ICE / HEV / PHEV as available** — do not require HEV if no eligible HEV exposure; do not exclude PHEV when exposed), ≥3 vehicles, 14 days — **smoke only**. **Stratify results by drive profile** |
 | **Strong validation** | Upgrade hypothesis beyond UNKNOWN | Plan by failure mode: REST_60M/REST_6H exposure opportunities, multi-day parking patterns, reconciliation/restart exposure, multi-replica when relevant — sample size derived from target failure rate, not fixed "10 = 95%" |
 
 Expand sample if any **liveness FAIL** in first tranche.
+
+**Profile-specific validation claims:** A successful ICE-only smoke sample validates **ICE exposure only**. Do **not** claim HEV or PHEV production validation unless that profile was actually represented by eligible observations in the tranche.
 
 ## What this does NOT validate
 

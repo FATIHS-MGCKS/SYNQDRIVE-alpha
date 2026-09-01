@@ -1,7 +1,7 @@
 # Phase 4 Executive Summary
 
-**Date:** 2026-09-01 (correction pass)  
-**Verdict:** Phase 4 planning complete — gaps remain open; PKG-01/02 downgraded to IMPLEMENTATION_SPEC_REQUIRED
+**Date:** 2026-09-01 (activation-semantics correction pass)  
+**Verdict:** Phase 4 planning complete — gaps remain open; PKG-01/02 blocked on spec + configuration invariant
 
 ## Planning accounting
 
@@ -28,11 +28,13 @@
 
 1. **HEV canonical model** — Option A direction (LV canonical; D1/D2/D3 layering) — DECISION_NOT_READY
 2. **Timestamp provenance enum** — approve PKG-03 target model (measurement only; not session opening)
-3. **Stage 2 cutover policy** — when to enable handoff flags
+3. **Stage 2 cutover policy** — when to enable handoff flags; **`CONFIGURATION_INVARIANT_SPEC_REQUIRED`** (unsafe REST_SHADOW=ON + PUBLICATION=ON + HANDOFF=OFF trap)
 4. **PKG-01 inputVersion** — measurement.id vs observedAt vs composite
 5. **PKG-02 assessment-track selection** — WORKSHOP_OVERRIDE vs TELEMETRY when both publicationEligible (DECISION_NOT_READY)
 6. **PKG-02 publicationVersion** — authoritative source for canonical handoff
 7. **PKG-01 crash boundary** — existing-measurement branch handoff vs reconcile-only
+8. **Provider VLS SOH gap** — accept current non-decision-fresh semantics vs new VLS timestamp spec (DECISION_REQUIRED — not PKG-04)
+9. **Canary scope** — deployment/environment isolation; org allowlist **SPEC REQUIRED** if desired
 
 ## DEFER
 
@@ -63,6 +65,12 @@
 12. Status quo HEV side-effect without read alignment
 13. Implementing GROSS_CAPACITY before reference model
 14. Invented DB table names in soak protocol (`Trip`, `BatteryLvRestSession`)
+15. **1–2-org canary** for process.env flags (no org-scoped flag authority)
+16. **HANDOFF OFF = rollback complete** while PUBLICATION ON
+17. **24h assessment/publication SLA** as PASS/FAIL threshold (observation window only)
+18. Assessment/publication **row existence** as sole handoff success criterion
+19. Provider LatestState SOH gap as **IMPLEMENTATION_READY** / future PKG-04 work (current runtime already non-decision-fresh)
+20. Mandatory HEV in post-#1445 smoke when no HEV exposure exists
 
 ## Top 5 next actions
 

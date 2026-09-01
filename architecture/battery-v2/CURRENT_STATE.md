@@ -1,12 +1,17 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-01 (Phase 4 resolution planning — correction pass)  
+**Snapshot date:** 2026-09-01 (Phase 4 activation-semantics correction pass)  
 **Graph:** 121 nodes / 108 edges / 11 invariants (validated 2026-09-01)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`)
 
 ## Executive summary
 
-Battery V2 authority is substantially reconstructed (Phase 2–3) and Phase 4 defines **how to resolve** remaining gaps without implementing runtime fixes. Highest-priority work: **LV publication chain handoffs** (P0_ACTIVATION_BLOCKER — Stage-2 cutover blockers, **not** proven active production incidents while flags default OFF). PKG-01/02 are **IMPLEMENTATION_SPEC_REQUIRED** pending `inputVersion` and `publicationVersion` authority. Post-#1445 soak is **PRODUCTION_VALIDATION_ONLY** (initial smoke, not strong validation). HEV product authority remains **DECISION_NOT_READY**.
+Battery V2 authority is substantially reconstructed (Phase 2–3) and Phase 4 defines **how to resolve** remaining gaps without implementing runtime fixes. Highest-priority work: **LV publication chain handoffs** (P0_ACTIVATION_BLOCKER — Stage-2 cutover blockers, **not** proven active production incidents while flags default OFF). PKG-01/02 are **IMPLEMENTATION_SPEC_REQUIRED** pending:
+
+- **PKG-01:** `inputVersion` authority; REST handler crash-boundary spec (A/B/C); `CONFIGURATION_INVARIANT_SPEC_REQUIRED` (REST_SHADOW + PUBLICATION + HANDOFF combinatorics)
+- **PKG-02:** assessment-track selection authority; `publicationVersion` authority; same configuration invariant
+
+Post-#1445 soak is **PRODUCTION_VALIDATION_ONLY** (initial smoke, not strong validation; profile-stratified — ICE/HEV/PHEV as exposed). HEV product authority remains **DECISION_NOT_READY**. Provider LatestState SOH gap is **DECISION_REQUIRED** (current runtime already non-decision-fresh for VLS-only) — **not** IMPLEMENTATION_READY / not PKG-04 scope.
 
 ## Planning item accounting
 

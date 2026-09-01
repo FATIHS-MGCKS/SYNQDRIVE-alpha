@@ -253,9 +253,59 @@ Optional index on `BatteryMeasurement` (type, vehicleId, createdAt) for reconcil
 
 ## FEATURE FLAG PLAN
 
-1. `BATTERY_V2_REST_SHADOW_ENABLED` — ingestion (existing, default OFF)
+1. `BATTERY_V2_REST_SHADOW_ENABLED` — canonical REST ingestion (existing, default OFF; historical name “shadow”)
 2. `BATTERY_V2_PUBLICATION_ENABLED` — publication persist (existing, default OFF)
-3. New optional `BATTERY_V2_LV_HANDOFF_ENABLED` — shadow handoffs before default ON (recommended)
+3. **PROPOSED** `BATTERY_V2_LV_HANDOFF_ENABLED` — canonical assessment/publication handoff enqueue (not in runtime today)
+
+**Authority:** all flags are **process.env / deployment-scoped** — not per-organization, not per-vehicle. Vehicle policy/profile eligibility is a separate gate from flag exposure.
+
+## LV FEATURE-FLAG STATE MACHINE (current runtime)
+
+Runtime authority (`battery-health-v2.config.ts`):
+
+```typescript
+isBatteryV2LegacyRestCaptureEnabled():
+  if REST_SHADOW == false → legacy capture TRUE
+  if REST_SHADOW == true  → legacy capture = !PUBLICATION_ENABLED
+```
+
+| REST_SHADOW | PUBLICATION | Legacy capture | Canonical REST ingestion | Notes |
+|-------------|-------------|----------------|--------------------------|-------|
+| OFF | OFF | **ON** | OFF | Default production posture |
+| OFF | ON | **ON** | OFF | Publication flag alone does not enable canonical REST |
+| ON | OFF | **ON** | ON | Dual authority — canonical + legacy both active |
+| ON | ON | **OFF** | ON | Stage-2 cutover — legacy capture disabled |
+
+**Separate dimensions (do not conflate):**
+
+| Dimension | Authority |
+|-----------|-----------|
+| **GLOBAL ENV FLAG** | `BATTERY_V2_*` process.env on deployment/replica |
+| **VEHICLE POLICY ELIGIBILITY** | `resolveForVehicle()` / drive profile / REST policy |
+| **ORG-SCOPED ROLLOUT TARGETING** | **Not identified in current runtime** — no org allowlist for publication/handoff flags |
+
+## PROPOSED HANDOFF FLAG — UNSAFE COMBINATION
+
+Phase 4 proposes `BATTERY_V2_LV_HANDOFF_ENABLED` as a third gate. Under **current** legacy-cutover semantics, this creates a potentially unsafe future state:
+
+| REST_SHADOW | PUBLICATION | HANDOFF (proposed) | Legacy capture | Canonical handoff | Result |
+|-------------|-------------|-------------------|----------------|-------------------|--------|
+| ON | ON | **OFF** | OFF | OFF | **Assessment/publication cutover trap** — canonical REST persists measurements; legacy assessment enqueue disabled; automatic handoff not running |
+
+**This combination must not be presented as a valid steady-state Stage-2 configuration.**
+
+## SAFE TARGET CONFIGURATION INVARIANT (SPEC REQUIRED — not implemented Phase 4)
+
+**Status:** `CONFIGURATION_INVARIANT_SPEC_REQUIRED` — PKG-01/02 must **not** become `IMPLEMENTATION_READY` until settled.
+
+| Option | Summary | Rollback safety | Staged rollout | Split-brain risk | Double computation | Multi-replica | Ops simplicity | Observability | Migration |
+|--------|---------|-----------------|----------------|------------------|-------------------|---------------|----------------|---------------|-----------|
+| **A** No separate HANDOFF flag — publication activation permitted only after PKG-01/02 handoffs exist and are verified | Fewer combinatorics | HIGH — rollback = disable PUBLICATION | MEDIUM — fewer gates | LOW | LOW once cutover | Same env on all replicas | HIGH | Clear: flags map to behavior | Merge HANDOFF into PUBLICATION semantics |
+| **B** Keep HANDOFF; enforce `REST_SHADOW && PUBLICATION => HANDOFF` (invalid config fails closed / publication activation rejected) | HIGH if enforced at startup | HIGH with guard | HIGH | LOW | LOW | Requires replica config validation | MEDIUM | Metrics on rejected config | Add validation layer |
+| **C** Change legacy capture cutover — legacy not disabled until canonical handoff actually enabled | MEDIUM — legacy may mask handoff gaps | MEDIUM — staged by handoff readiness | HIGH | **HIGH** — dual assessment paths | **HIGH** | Same | LOW — subtle interactions | Harder to reason | Changes `isBatteryV2LegacyRestCaptureEnabled()` contract |
+| **D** Other evidence-backed design | — | — | — | — | — | — | — | — | — |
+
+**Phase 4 evaluation (no silent choice):** Options **A** and **B** best preserve rollback safety and avoid split-brain. Option **C** reduces cutover-trap risk but reintroduces legacy/canonical double computation. **Decision not ready** — record invariant spec before PKG-01/02 implementation-ready promotion.
 
 ## TEST PLAN
 
@@ -267,11 +317,62 @@ Optional index on `BatteryMeasurement` (type, vehicleId, createdAt) for reconcil
 
 ## PRODUCTION VALIDATION PLAN
 
-Stage 2 canary: 1–2 orgs, observe assessment + publication rows within 24h of natural REST. No backfill.
+### Canary scope (corrected)
 
-## ROLLBACK PLAN
+**Do not claim 1–2-org canary** — current Battery V2 flags are deployment `process.env` values with **no org-scoped publication/handoff authority** identified.
 
-Disable handoff flag; revert to manual/reconcile-only. Rollback does **not** delete historical `BatteryPublication` rows — records remain audit-preserved. Supersession may **UPDATE** an existing publication row's `reason` metadata per current `markPublicationSuperseded()` repository behavior. Do **not** describe `BatteryPublication` as strictly append-only.
+| Mechanism | Status | Notes |
+|-----------|--------|-------|
+| **A — Canary environment / deployment** | **RECOMMENDED** | Separate deployment or release with flags ON; route selected fleet traffic there |
+| **B — Future org allowlist / rollout targeting** | **SPEC REQUIRED** | Would need explicit org-scoped flag or routing layer — not in runtime today |
+| **C — Other verified isolation** | Open | Must be evidence-backed |
+
+### Handoff liveness vs policy outcome (PKG-01 / PKG-02)
+
+Do **not** use assessment/publication **row existence** as the sole handoff success criterion. Policy may legitimately skip persistence.
+
+**PKG-01 validation dimensions:**
+
+| Dimension | Criterion |
+|-----------|-----------|
+| `HANDOFF_ENQUEUE` | Deterministic `BATTERY_ASSESSMENT_RECOMPUTE` job created (`assess:` idempotency key) |
+| `HANDOFF_EXECUTION` | Job executed exactly / idempotently as intended |
+| `ASSESSMENT_POLICY_OUTCOME` | `PERSISTED` \| `SKIPPED_INSUFFICIENT_DATA` \| `UNSUPPORTED` \| other explicit policy outcome (`recomputeLvEstimatedHealth()` may return `ok: false` with empty `persistedAssessmentIds`) |
+| `ASSESSMENT_ROW` | Required **only** when assessment policy says an assessment should persist |
+
+**PKG-02 validation dimensions:**
+
+| Dimension | Criterion |
+|-----------|-----------|
+| `PUBLICATION_HANDOFF_ENQUEUE` | Deterministic `BATTERY_PUBLICATION_UPDATE` job for authoritative selected assessment (`pub:` key) |
+| `PUBLICATION_HANDOFF_EXECUTION` | Job executed |
+| `PUBLICATION_POLICY_OUTCOME` | `PERSIST` \| `SKIP` / `NOT_ELIGIBLE` \| supersession decision per `evaluateLvPublicationPolicy()` |
+| `PUBLICATION_ROW` | Required **only** when `evaluateLvPublicationPolicy().shouldPersistPublication === true` |
+
+`BatteryPublicationService.updateLvPublication()` may return `ok: true` with `persistedPublicationId: null` when `shouldPersistPublication === false`. **A valid policy skip is NOT a handoff-liveness failure.**
+
+### Observation window (not SLA)
+
+Use a descriptive **observation window** (e.g. 24h post-REST) for correlating natural REST events with downstream jobs/rows — **not** as PASS/FAIL correctness SLA unless an explicit product SLA exists. Direct handoff validation uses **job/queue liveness semantics** (enqueue + execute + idempotent replay), not invented time deadlines.
+
+No backfill.
+
+## ROLLBACK PLAN (current runtime semantics)
+
+**Unsafe:** Disabling `BATTERY_V2_LV_HANDOFF_ENABLED` alone while `BATTERY_V2_PUBLICATION_ENABLED` stays ON — under current runtime, legacy capture is already OFF in that state; handoff OFF leaves no assessment/publication path.
+
+**Safe rollback sequence (current runtime):**
+
+1. **Disable `BATTERY_V2_PUBLICATION_ENABLED` first** → `isBatteryV2LegacyRestCaptureEnabled()` restores legacy capture when `REST_SHADOW` is ON
+2. **Verify legacy path restoration** (legacy snapshot rest capture + `enqueueLvAssessmentRecompute` pattern)
+3. **Then disable `BATTERY_V2_LV_HANDOFF_ENABLED`** if/when that flag exists
+4. **`BATTERY_V2_REST_SHADOW_ENABLED` may remain ON** for canonical ingestion / shadow observation if that is the intended rollback posture
+
+**Explicit:** `HANDOFF OFF` alone is **NOT** a safe Stage-2 rollback while `PUBLICATION` stays ON.
+
+If future flag logic changes (e.g. configuration invariant Option B/C), update this sequence accordingly.
+
+Rollback does **not** delete historical `BatteryPublication` rows — records remain audit-preserved. Supersession may **UPDATE** an existing publication row's `reason` metadata per current `markPublicationSuperseded()` repository behavior. Do **not** describe `BatteryPublication` as strictly append-only.
 
 ## OBSERVABILITY
 
@@ -292,8 +393,10 @@ Does not enable readiness; does not fix timestamp provenance; does not fix HEV a
 - **Canonical publication assessment-track selection authority** (WORKSHOP_OVERRIDE vs TELEMETRY when both publicationEligible)
 - Authoritative `publicationVersion` for canonical handoff
 - REST handler crash boundary: existing-measurement branch handoff vs reconcile-only (A/B/C)
+- **Configuration invariant** for REST_SHADOW + PUBLICATION + HANDOFF combinatorics (`CONFIGURATION_INVARIANT_SPEC_REQUIRED`)
 - Exact reconcile cadence vs #1445 reconciliation load
 - Whether handoff flag merges into publication flag after soak
+- Org-scoped rollout targeting (if desired) — **SPEC REQUIRED**; not available via current flags
 
 ## GRAPH IDS
 

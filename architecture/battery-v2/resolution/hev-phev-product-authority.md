@@ -12,7 +12,7 @@
 | D1 snapshot | `evSoc` → `recordSnapshot` (no fuelType gate) |
 | D2 charge sessions | flags + capability |
 | D3 capacity shadow | `HV_CAPACITY_SHADOW` + session |
-| BatteryMeasurement HV | ICE forbidden |
+| BatteryMeasurement HV types (canonical policy layer) | **Unsupported/forbidden** for HEV — HEV resolves through **ICE-family** canonical measurement policy at this layer; canonical HV `BatteryMeasurement` measurement types are not in the HEV policy surface. **HEV is not literally ICE** — preserve D1/D2/D3/E layering below |
 | Canonical read | `isEv=false` → no `canonical.hv` |
 
 **Side-effect / read-model divergence:** HV pipeline side-effects may persist while `canonical.hv` remains absent for HEV.

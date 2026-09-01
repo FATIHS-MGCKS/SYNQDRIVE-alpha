@@ -22,13 +22,13 @@
 | **Dependencies (enablement)** | `inputVersion` spec sign-off; soft: PKG-03 before Stage-2 prod if strict timestamp policy selected |
 | **Modules** | `battery-rest-target-evaluate.handler`, `BatteryV2JobProducerService`, `battery-v2-reconciliation.service` |
 | **DB migration** | Optional index for reconcile |
-| **Feature flag** | `BATTERY_V2_LV_HANDOFF_ENABLED` (recommended) + `BATTERY_V2_REST_SHADOW_ENABLED` |
+| **Feature flag** | `BATTERY_V2_LV_HANDOFF_ENABLED` (recommended, PROPOSED) + `BATTERY_V2_REST_SHADOW_ENABLED` — **deployment-scoped process.env only** |
 | **Job identity** | `buildAssessmentJobIdempotencyKey` → `assess:{vehicleId}:LV_HEALTH:{inputVersion}` — **not** `lv-assess:` |
 | **inputVersion** | **SPEC REQUIRED** — candidate: `persistedMeasurement.id` (see lv-publication-chain dossier) |
-| **Rollback** | Disable flag |
+| **Rollback** | **Safe order (current runtime):** disable `BATTERY_V2_PUBLICATION_ENABLED` first → verify legacy capture restored → then disable handoff flag. `HANDOFF OFF` alone unsafe while `PUBLICATION` ON |
 | **Test scope** | Handler unit + integration |
-| **Production validation** | Assessment row within 24h of REST on canary org (flags ON) |
-| **Blocked by** | inputVersion authority |
+| **Production validation** | Canary **deployment/environment** (not per-org flags). Validate `HANDOFF_ENQUEUE` + `HANDOFF_EXECUTION` + `ASSESSMENT_POLICY_OUTCOME`; `ASSESSMENT_ROW` only when policy requires persist. Observation window for correlation — **not** PASS/FAIL SLA |
+| **Blocked by** | `inputVersion` authority; REST crash-boundary spec (A/B/C); `CONFIGURATION_INVARIANT_SPEC_REQUIRED` |
 | **Crash boundary** | `hasMeasurement` early return — post-persist/pre-enqueue crash needs reconcile or branch handoff (SPEC) |
 | **Does not solve** | Publication, timestamp provenance, readiness |
 
@@ -40,15 +40,15 @@
 | **Dependencies (enablement)** | PKG-01 assessment persist path; **assessment-track selection authority**; `publicationVersion` spec; `BATTERY_V2_PUBLICATION_ENABLED` |
 | **Modules** | `battery-assessment-recompute.handler`, `BatteryV2JobProducerService`, `battery-v2-reconciliation.service`, `BatteryPublicationUpdateHandler`, `BatteryPublicationService` |
 | **DB migration** | No |
-| **Feature flag** | `BATTERY_V2_PUBLICATION_ENABLED` + handoff flag |
+| **Feature flag** | `BATTERY_V2_PUBLICATION_ENABLED` + handoff flag — **deployment-scoped; no org allowlist in runtime** |
 | **Job identity** | `buildPublicationJobIdempotencyKey` → `pub:{assessmentId}:v{publicationVersion}` |
 | **Handoff** | Publication enqueue after deterministic assessment selection; policy in `BatteryPublicationService` only — **not** “enqueue every persistedAssessmentId” |
 | **Assessment-track authority** | **SPEC REQUIRED** — AUTO may persist WORKSHOP_OVERRIDE + TELEMETRY; publication policy has no track ordering |
 | **publicationVersion** | **SPEC REQUIRED** — current default `1` in repository if omitted |
-| **Rollback** | Disable publication flag |
+| **Rollback** | **Safe order (current runtime):** disable `BATTERY_V2_PUBLICATION_ENABLED` first (restores legacy capture) → verify → then disable handoff. `HANDOFF OFF` alone unsafe while `PUBLICATION` ON |
 | **Test scope** | E2E REST→assess→pub with multi-track scenarios |
-| **Production validation** | `battery_publications` row on canary when policy passes |
-| **Blocked by** | PKG-01 enablement + assessment-selection authority + publicationVersion authority |
+| **Production validation** | Canary **deployment/environment**. Validate `PUBLICATION_HANDOFF_ENQUEUE` + `PUBLICATION_HANDOFF_EXECUTION` + `PUBLICATION_POLICY_OUTCOME`; `PUBLICATION_ROW` only when `shouldPersistPublication`. `ok: true` + `persistedPublicationId: null` is valid policy skip |
+| **Blocked by** | PKG-01 enablement + assessment-selection authority + publicationVersion authority + `CONFIGURATION_INVARIANT_SPEC_REQUIRED` |
 | **Does not solve** | HV publication, readiness auto-enable |
 
 ## PKG-03 — Timestamp provenance
