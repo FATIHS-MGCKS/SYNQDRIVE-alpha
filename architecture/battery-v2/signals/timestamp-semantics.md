@@ -18,25 +18,19 @@
 
 ## LV live voltage ingestion (code-verified)
 
-In `lv-live-voltage-ingestion.service.ts` → `persistFromObservationClassify`:
+Mapper: `resolveLvBatteryObservedAt()` returns `lvBatteryVoltage.observedAt` when valid, else `collectionLastSeenAt`.
+
+In `persistFromObservationClassify`:
 
 ```
 receivedAt = parseIso(ctx.providerFetchedAt) ?? new Date()
 observedAt = parseIso(ctx.lvBatteryObservedAt) ?? receivedAt
-providerTimestamp: observedAt  // persisted on BatteryMeasurement
+providerTimestamp: observedAt
 ```
 
-In `buildRestTargetContext`:
+**Phase 2 finding:** Fallback is reachable when per-signal LV timestamp absent — collection-level `lastSeen` may become `providerTimestamp`. Production frequency **UNKNOWN**.
 
-```
-observedAt = parseIso(ctx.lvBatteryObservedAt) ?? new Date()
-```
-
-**Tension:** A missing `lvBatteryObservedAt` can be replaced by fetch/receipt/current time and later appear in `providerTimestamp`. REST target evaluation requires `providerTimestamp` as evidence of a provider-timestamped observation.
-
-See `BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001` and `BAT-V2-GAP-TIMESTAMP-FALLBACK-001`.
-
-Do **not** classify as confirmed production defect without production reachability proof.
+See `BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001` and `BAT-V2-EVID-CODE-LV-TIMESTAMP-CHAIN-001`.
 
 ## Unknown / needs reconstruction
 

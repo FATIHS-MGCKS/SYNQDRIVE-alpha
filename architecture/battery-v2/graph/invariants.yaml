@@ -85,3 +85,56 @@ invariants:
     statement: >
       Universal claim disproven by bridge-only paths and historical mis-binding defects.
     notes: Replaced by conditional BAT-V2-INV-TRIP-BIND-001.
+
+  - id: BAT-V2-INV-HV-NO-FABRICATE-SOH-001
+    kind: CONFIRMED_INVARIANT
+    title: No fabricated HV SOH from age/km heuristics
+    epistemic_status: CONFIRMED
+    statement: >
+      Without measured energy/capacity/provider basis, HV SOH must be unavailable —
+      never a fabricated numeric percentage from age/km heuristics.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-battery-health.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+    evidence:
+      - BAT-V2-POL-HV-NO-FABRICATE-SOH-001
+
+  - id: BAT-V2-INV-LV-NOT-SOH-001
+    kind: CONFIRMED_INVARIANT
+    title: LV estimated health is not workshop SOH
+    epistemic_status: CONFIRMED
+    statement: >
+      LV estimated health score is behavioral semantics; must not be labeled or
+      consumed as workshop SOH %.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-estimated-health-assessment.policy.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-lv-semantics.ts
+    evidence:
+      - BAT-V2-ASSESS-LV-ESTIMATED-001
+
+  - id: BAT-V2-INV-NATIVE-RECHARGE-SUPERSEDES-FALLBACK-001
+    kind: CONFIRMED_INVARIANT
+    title: Native DIMO recharge segment supersedes overlapping fallback sessions
+    epistemic_status: CONFIRMED
+    statement: >
+      When native segment is persisted, overlapping telemetry-poll fallback sessions
+      are superseded in metadata; fallback rows remain historical evidence.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session-persist.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HV-RECHARGE-SUPERSEDE-001
+      - BAT-V2-AUTH-HV-RECHARGE-NATIVE-001
+
+  - id: BAT-V2-INV-SHADOW-NO-AUTO-PUBLISH-001
+    kind: CONFIRMED_INVARIANT
+    title: Shadow assessments cannot auto-publish without flags
+    epistemic_status: CONFIRMED
+    statement: >
+      HV capacity shadow and SOH gate assessments default publicationEligible false;
+      publication flags default OFF.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-capacity-shadow-evaluation.types.ts
+      - backend/src/config/battery-health-v2.config.ts
+    evidence:
+      - BAT-V2-PUB-HV-SOH-001
+      - BAT-V2-PUB-LV-001

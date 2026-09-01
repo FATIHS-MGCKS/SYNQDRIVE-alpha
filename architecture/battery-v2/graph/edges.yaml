@@ -147,3 +147,77 @@ edges:
   - from: BAT-V2-HYP-BRIDGE-120S-001
     relation: supports
     to: BAT-V2-GAP-BRIDGE-FALLBACK-001
+
+  # Phase 2 — HV authority chain
+  - from: BAT-V2-EVID-CODE-HV-METHOD-PROFILE-001
+    relation: supports
+    to: BAT-V2-AUTH-HV-METHOD-PROFILE-001
+  - from: BAT-V2-AUTH-HV-METHOD-PROFILE-001
+    relation: gates
+    to: BAT-V2-AUTH-HV-M2-001
+  - from: BAT-V2-AUTH-HV-METHOD-PROFILE-001
+    relation: gates
+    to: BAT-V2-AUTH-HV-M3-001
+  - from: BAT-V2-SIG-HV-SOC-001
+    relation: contributes_to
+    to: BAT-V2-AUTH-HV-M2-001
+  - from: BAT-V2-SIG-HV-CURRENT-ENERGY-001
+    relation: contributes_to
+    to: BAT-V2-AUTH-HV-M2-001
+  - from: BAT-V2-SIG-DIMO-RECHARGE-SEG-001
+    relation: contributes_to
+    to: BAT-V2-AUTH-HV-M3-001
+  - from: BAT-V2-SIG-HV-PROVIDER-SOH-001
+    relation: contributes_to
+    to: BAT-V2-AUTH-HV-PROVIDER-SOH-001
+  - from: BAT-V2-AUTH-HV-PROVIDER-SOH-001
+    relation: authoritative_over
+    to: BAT-V2-ASSESS-HV-SOH-GATE-001
+  - from: BAT-V2-AUTH-HV-RECHARGE-NATIVE-001
+    relation: authoritative_over
+    to: BAT-V2-STORE-HV-CHARGE-SESSION-001
+  - from: BAT-V2-JOB-HV-RECHARGE-RECON-001
+    relation: schedules
+    to: BAT-V2-STORE-HV-CHARGE-SESSION-001
+  - from: BAT-V2-JOB-HV-CAPACITY-SHADOW-001
+    relation: evaluates
+    to: BAT-V2-ASSESS-HV-CAPACITY-SHADOW-001
+  - from: BAT-V2-POL-HV-NO-FABRICATE-SOH-001
+    relation: protected_by
+    to: BAT-V2-AUTH-CANONICAL-READ-001
+  - from: BAT-V2-AUTH-CANONICAL-READ-001
+    relation: consumed_by
+    to: BAT-V2-CONS-API-SUMMARY-001
+  - from: BAT-V2-AUTH-CANONICAL-READ-001
+    relation: consumed_by
+    to: BAT-V2-CONS-API-DETAIL-001
+  - from: BAT-V2-AUTH-CANONICAL-READ-001
+    relation: consumed_by
+    to: BAT-V2-CONS-RENTAL-HEALTH-001
+  - from: BAT-V2-AUTH-CANONICAL-READ-001
+    relation: consumed_by
+    to: BAT-V2-CONS-BATTERY-TASK-001
+  - from: BAT-V2-CONS-API-SUMMARY-001
+    relation: consumed_by
+    to: BAT-V2-CONS-FE-HEALTH-TAB-001
+  - from: BAT-V2-EVID-CODE-CANONICAL-READ-001
+    relation: supports
+    to: BAT-V2-AUTH-CANONICAL-READ-001
+  - from: BAT-V2-EVID-CODE-LOCK-FAILOPEN-001
+    relation: supports
+    to: BAT-V2-GAP-LOCK-FAILOPEN-001
+  - from: BAT-V2-EVID-CODE-REST-TARGET-STATUS-001
+    relation: supports
+    to: BAT-V2-GAP-RUNNING-ORPHAN-001
+  - from: BAT-V2-EVID-CODE-REST-TARGET-STATUS-001
+    relation: supports
+    to: BAT-V2-GAP-SKIPPED-REST-001
+  - from: BAT-V2-EVID-CODE-LV-TIMESTAMP-CHAIN-001
+    relation: supports
+    to: BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001
+  - from: BAT-V2-EVID-CODE-HV-RECHARGE-SUPERSEDE-001
+    relation: supports
+    to: BAT-V2-AUTH-HV-RECHARGE-NATIVE-001
+  - from: BAT-V2-EVID-CODE-REST-60M-WINDOW-001
+    relation: supports
+    to: BAT-V2-AUTH-REST-EVAL-001

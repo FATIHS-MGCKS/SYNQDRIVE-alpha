@@ -6,6 +6,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-01 — Phase 2 knowledge reconstruction (HV, persistence, consumers)
+
+| Field | Content |
+|-------|---------|
+| **DECISION** | (infrastructure — no new `BAT-V2-DEC-*`) |
+| **DECISION_STATUS** | `VALIDATED` |
+| **CHANGE** | Reconstructed HV signals/methods, persistence model, canonical read model, API/FE consumers, lock fail-open behavior, RUNNING/SKIPPED enum debt, threshold catalog |
+| **NON_EFFECTS** | No runtime, data, deploy, or backfill changes |
+| **REMAINING_GAPS** | HEV isEv, SESSION/GROSS capacity compute paths, timestamp production reachability, threshold rationale, post-#1445 soak |
+| **EVIDENCE** | Phase 2 code trace + existing architecture memos |
+| **AFFECTED_GRAPH** | 92 nodes / 64 edges / 11 invariants (was 49/40/7 at bootstrap) |
+
+---
+
 ## CL-2026-09-01 — Knowledge authority bootstrap epistemic correction
 
 | Field | Content |
