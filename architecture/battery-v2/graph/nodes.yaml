@@ -188,8 +188,9 @@ nodes:
     decision_status: PROPOSED
     summary: >
       Hybrid direct enqueue + reconciliation safety net for canonical REST → assessment → publication.
-      Assessment: buildAssessmentJobIdempotencyKey (assess: prefix); PKG-01 blockers — inputVersion SPEC REQUIRED;
-      REST post-persist/pre-enqueue crash-boundary handling SPEC REQUIRED; CONFIGURATION_INVARIANT_SPEC_REQUIRED.
+      Assessment: buildAssessmentJobIdempotencyKey (assess: prefix); PKG-01 blockers — REST post-persist/pre-enqueue
+      crash-boundary handling SPEC REQUIRED; CONFIGURATION_INVARIANT_SPEC_REQUIRED (inputVersion closed by
+      BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001).
       Publication: BATTERY_PUBLICATION_UPDATE after deterministic assessment-selection authority (SPEC REQUIRED);
       policy in BatteryPublicationService only; buildPublicationJobIdempotencyKey; PKG-02 blockers —
       assessment-track selection SPEC REQUIRED; publicationVersion SPEC REQUIRED; CONFIGURATION_INVARIANT_SPEC_REQUIRED.
@@ -203,6 +204,32 @@ nodes:
       - Does not enable readiness or Stage 3
       - Does not fix timestamp provenance
       - Does not resolve open gaps until runtime merged
+
+  - id: BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001
+    type: decision
+    title: Canonical LV REST assessment inputVersion (D1)
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: >
+      PKG-01 inputVersion = persisted BatteryMeasurement.id for canonical REST → assessment handoff.
+      Job identity: assess:{vehicleId}:LV_HEALTH:{measurementId} via buildAssessmentJobIdempotencyKey.
+      inputVersion is trigger authority for the persisted measurement, not model version, timestamp provenance,
+      trip, or rest-window identity. Identity/retry-in-flight-dedupe safe — not durable exactly-once execution.
+      Rejected: observedAt, trip/session/window alone, composite rest binding.
+      Legacy snapshot path may keep capture.capturedAt.getTime() — no re-keying. NOT PRODUCTION_VALIDATED.
+    source_paths:
+      - architecture/battery-v2/decisions/lv-assessment-input-version-decision.md
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-idempotency.policy.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
+    evidence:
+      - BAT-V2-EVID-CODE-ASSESSMENT-JOB-IDEMPOTENCY-001
+      - BAT-V2-EVID-CODE-REST-MEASUREMENT-ID-HANDOFF-001
+    non_effects:
+      - Does not implement assessment enqueue
+      - Does not close BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
+      - Does not resolve crash-boundary (D2) or configuration invariant (D3)
+      - Does not guarantee durable exactly-once assessment execution
+      - No migration, flags, backfill, or production mutation
 
   # --- Gaps ---
   - id: BAT-V2-GAP-RUNNING-ORPHAN-001
@@ -1358,3 +1385,28 @@ nodes:
       reads policy.hvPipelineAllowed at runtime in audited scope.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.resolver.ts
+
+  - id: BAT-V2-EVID-CODE-ASSESSMENT-JOB-IDEMPOTENCY-001
+    type: evidence
+    title: "Assessment job idempotency builder - assess prefix contract"
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      buildAssessmentJobIdempotencyKey({ vehicleId, assessmentType, inputVersion }) →
+      assess:{vehicleId}:{assessmentType}:{inputVersion}. Builder unchanged; inputVersion is caller-supplied
+      string/number anchor for deduplication — not consumed by assessment computation logic.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-idempotency.policy.ts
+
+  - id: BAT-V2-EVID-CODE-REST-MEASUREMENT-ID-HANDOFF-001
+    type: evidence
+    title: "REST target evaluate - measurementId at persist boundary"
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      BatteryRestTargetEvaluateHandler calls evaluateAndPersist(); on success logs result.measurementId.
+      measurementId is the persisted BatteryMeasurement primary key — available at intended future handoff
+      boundary. Assessment enqueue not implemented in handler.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/battery-rest-target-evaluation.service.ts

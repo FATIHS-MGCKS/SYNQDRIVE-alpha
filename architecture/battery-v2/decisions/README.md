@@ -7,6 +7,8 @@ Append-only decision registry. Stable IDs in `graph/nodes.yaml`.
 | `BAT-V2-DEC-1383-001` | Observation-independent LV Rest session opening | `VALIDATED` | PR #1383 (2026-08-28) | — |
 | `BAT-V2-DEC-1393-001` | ICE opening vs measurement policy split | `VALIDATED` | PR #1393 (2026-08-28) | Refines opening authority pre-#1393 era |
 | `BAT-V2-DEC-1445-001` | Stage 1 pipeline defect closure | `VALIDATED` | PR #1445 (2026-08-30) | Builds on #1383, #1393 |
+| `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` | LV canonical handoff architecture (Phase 4) | `PROPOSED` | PR #1499 (2026-09-01) | Planning only — gaps open |
+| `BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001` | Canonical LV REST assessment `inputVersion` (D1) | `VALIDATED` | PR #1501 (2026-09-01) | PKG-01 spec closure; refines PH4 + assessment-handoff gap |
 
 ## Validation semantics
 

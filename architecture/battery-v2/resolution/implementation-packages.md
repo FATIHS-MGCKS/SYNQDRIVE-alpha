@@ -19,16 +19,16 @@
 | Field | Value |
 |-------|-------|
 | **Dependencies (dev)** | None hard |
-| **Dependencies (enablement)** | `inputVersion` spec sign-off; soft: PKG-03 before Stage-2 prod if strict timestamp policy selected |
+| **Dependencies (enablement)** | D1 `inputVersion` (`BatteryMeasurement.id` — VALIDATED); soft: PKG-03 before Stage-2 prod if strict timestamp policy selected |
 | **Modules** | `battery-rest-target-evaluate.handler`, `BatteryV2JobProducerService`, `battery-v2-reconciliation.service` |
 | **DB migration** | Optional index for reconcile |
 | **Feature flag** | `BATTERY_V2_LV_HANDOFF_ENABLED` (recommended, PROPOSED) + `BATTERY_V2_REST_SHADOW_ENABLED` — **deployment-scoped process.env only** |
-| **Job identity** | `buildAssessmentJobIdempotencyKey` → `assess:{vehicleId}:LV_HEALTH:{inputVersion}` — **not** `lv-assess:` |
-| **inputVersion** | **SPEC REQUIRED** — candidate: `persistedMeasurement.id` (see lv-publication-chain dossier) |
+| **Job identity** | `buildAssessmentJobIdempotencyKey` → `assess:{vehicleId}:LV_HEALTH:{measurementId}` — **not** `lv-assess:` |
+| **inputVersion** | **VALIDATED** — `persisted BatteryMeasurement.id` (`BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001`) |
 | **Rollback** | **Safe order (current runtime):** disable `BATTERY_V2_PUBLICATION_ENABLED` first → verify legacy capture restored → then disable handoff flag. `HANDOFF OFF` alone unsafe while `PUBLICATION` ON |
 | **Test scope** | Handler unit + integration |
 | **Production validation** | Canary **deployment/environment** (not per-org flags). Validate `HANDOFF_ENQUEUE` + `HANDOFF_EXECUTION` + `ASSESSMENT_POLICY_OUTCOME`; `ASSESSMENT_ROW` only when policy requires persist. Observation window for correlation — **not** PASS/FAIL SLA |
-| **Blocked by** | `inputVersion` authority; REST crash-boundary spec (A/B/C); `CONFIGURATION_INVARIANT_SPEC_REQUIRED` |
+| **Blocked by** | REST crash-boundary spec (A/B/C); `CONFIGURATION_INVARIANT_SPEC_REQUIRED` |
 | **Crash boundary** | `hasMeasurement` early return — post-persist/pre-enqueue crash needs reconcile or branch handoff (SPEC) |
 | **Does not solve** | Publication, timestamp provenance, readiness |
 
