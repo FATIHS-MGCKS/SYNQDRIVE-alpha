@@ -194,7 +194,7 @@ Same entry → fetchEnergyEventSegments → DimoRechargeSegmentsClient (default 
 | **REVIEWED_RUNTIME_SHA** | `da959784f835a31482852d506daa137c90389b87` |
 | **POST_REVIEW_HEAD_SHA** | `6e9e65c63610ba64fdc08f8fa671b3330a9c335a` |
 | **CURRENT_MAIN_AT_RECONCILE** | `814a7e00924474d95622e4ff67b0c2b86d0712ef` |
-| **POST_RECONCILE_HEAD_SHA** | `f90b8c72c2d641c65f666f05ac50119f177763e9` |
+| **POST_RECONCILE_HEAD_SHA** | `f4e00e58f0e711402c4fe9fbbbce78738b24ca44` |
 
 **Main delta:** #1487 P1.8.3.1 scaling deploy leader convergence — **EED_RUNTIME_RELEVANT=0 files**.
 

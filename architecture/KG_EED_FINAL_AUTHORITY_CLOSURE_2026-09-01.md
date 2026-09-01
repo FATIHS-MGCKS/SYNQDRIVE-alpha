@@ -10,30 +10,40 @@
 
 | Field | SHA / value |
 |-------|-------------|
-| **CURRENT_MAIN_SHA** | `814a7e00924474d95622e4ff67b0c2b86d0712ef` |
+| **CURRENT_MAIN_SHA** | `03a7cdb5d0f71f10a47dd4d2541b6b012d7e99de` |
 | **PR_1486_HEAD_SHA (before 2B.2)** | `6e9e65c63610ba64fdc08f8fa671b3330a9c335a` |
-| **POST_RECONCILE_HEAD_SHA** | `f90b8c72c2d641c65f666f05ac50119f177763e9` |
+| **POST_RECONCILE_HEAD_SHA** | `97320a6b7b9fa9ac94663fae9fc500deefc43ee9` |
 | **MERGE_BASE_SHA** | `da959784f835a31482852d506daa137c90389b87` |
 | **PR_1486_BASE_SHA** | `da959784f835a31482852d506daa137c90389b87` |
 | **REVIEWED_RUNTIME_AGAINST_SHA** | `da959784f835a31482852d506daa137c90389b87` |
 | **MAIN_RECONCILED** | YES |
 | **MERGE_CONFLICTS** | None |
 
-**Divergence (pre-reconcile):** main +1 commit, PR branch +2 commits from merge-base; **DIVERGED=YES** (resolved by merge).
+**Divergence (pre-reconcile):** main +2 commits from merge-base at task start; PR branch +5 commits; **DIVERGED=YES** (resolved by two merge commits).
+
+**Reconcile history:**
+
+| Merge commit | Main SHA | Content |
+|--------------|----------|---------|
+| `f90b8c72c` | `814a7e009` | P1.8.3.1 scaling deploy leader convergence (#1487) |
+| `97320a6b7` | `03a7cdb5d` | Tankstellenerkennung living architecture bootstrap (#1482) |
 
 ---
 
 ## 2. Post-review main delta audit
 
-**Commits on main since `da959784f`:** 1 — `814a7e009` P1.8.3.1 Deploy scheduler leader convergence gate (#1487)
+**Commits on main since `da959784f` (REVIEWED_RUNTIME_AGAINST_SHA):** 2
+
+1. `814a7e009` — P1.8.3.1 Deploy scheduler leader convergence gate (#1487)
+2. `03a7cdb5d` — docs(tankstellenerkennung): bootstrap living architecture authority (#1482)
 
 ### Classification
 
 | Category | Files | EED impact |
 |----------|-------|------------|
-| **EED_RUNTIME_RELEVANT** | *(none)* | No changes |
-| **EED_EXTERNAL_AUTHORITY_RELEVANT** | `architecture/scaling-process/**`, deploy ops scripts, P1.8.3.1 docs | Leader convergence deploy gate — **does not change** EED semantics |
-| **EED_IRRELEVANT** | `ArchitekturView.tsx`, `ChangesView.tsx` changelog entries | UI changelog only |
+| **EED_RUNTIME_RELEVANT** | *(none)* | No changes to `energy-events/` or EED triggers |
+| **EED_EXTERNAL_AUTHORITY_RELEVANT** | `architecture/scaling-process/**`, deploy ops (#1487); `architecture/tankstellenerkennung/**` (#1482) | Scaling: leader convergence deploy gate — external to EED semantics. Tankstellenerkennung: downstream REFUEL enrichment consumer — references `VehicleEnergyEvent` post-persist; **does not own** REFUEL detection semantics (see `FST` AGENT_CONTRACT §REFUEL detection → EED) |
+| **EED_IRRELEVANT** | `ArchitekturView.tsx`, `ChangesView.tsx` changelog entries (#1487) | UI changelog only |
 
 ### Verified unchanged for EED
 
@@ -48,7 +58,7 @@
 | **MAIN_DELTA_EED_EXTERNAL_AUTHORITY_IMPACT** | YES (Scaling Process deploy/leader docs expanded) |
 | **EED_REVIEW_RECONSTRUCTION_STILL_VALID** | YES |
 
-Scaling Process #1487 strengthens deploy-time leader convergence; KG-EED correctly references leader/mutex as **external** (`EED-EXT-004`). No contradiction.
+Scaling Process #1487 strengthens deploy-time leader convergence; KG-EED correctly references leader/mutex as **external** (`EED-EXT-004`). Tankstellenerkennung #1482 documents post-persist enrichment (`EED-COMP-008`); no semantic conflict with EED REFUEL/RECHARGE ownership.
 
 ---
 
@@ -116,7 +126,7 @@ Validator enforces pre-merge state deterministically (no network/GitHub dependen
 node architecture/knowledge-graphs/energy-event-detection/scripts/validate-graph.mjs
 ```
 
-**GRAPH_VALIDATION_STATUS=PASS** (post-reconcile @ `f90b8c72c`)
+**GRAPH_VALIDATION_STATUS=PASS** (post-reconcile @ `97320a6b7`)
 
 ---
 
