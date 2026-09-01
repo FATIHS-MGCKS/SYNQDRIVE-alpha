@@ -123,9 +123,17 @@ Use graph edges for decision↔gap, policy↔decision, rejected/superseded appro
 ### Recovery scheduler leader ownership
 
 `FuelStationEnrichmentRecoveryScheduler` may be instantiated on every backend replica, but
-`recoverMissedEnrichments()` is **SINGLETON_GLOBAL** via `SchedulerLeaderGuardService`.
-Only the elected cluster scheduler leader executes the recovery sweep tick; followers skip.
-This invariant applies to the **recovery scheduler tick**, not to BullMQ enrichment worker concurrency.
+`recoverMissedEnrichments()` is classified **SINGLETON_GLOBAL** and calls
+`SchedulerLeaderGuardService.shouldRun('fuel_station_enrichment_recovery')`.
+
+| Aspect | Semantics |
+|--------|-----------|
+| Classification | `fuel_station_enrichment_recovery` = SINGLETON_GLOBAL (scheduler registry) |
+| Runtime mechanism | `SchedulerLeaderGuardService` / scheduler leader election lease |
+| Multi-replica safety precondition | `SCHEDULER_LEADER_ELECTION_ENABLED=true` and functioning election |
+| Disabled-election mode | Every replica behaves as leader → duplicate recovery sweeps possible |
+| BullMQ worker | `RefuelStationEnrichmentProcessor` is independently multi-replica capable; **not** singleton-gated |
+
 See `FST-AUTH-RECOVERY-LEADER-001` and `FST-INV-RECOVERY-SINGLETON-001`.
 
 ## Related upstream authority

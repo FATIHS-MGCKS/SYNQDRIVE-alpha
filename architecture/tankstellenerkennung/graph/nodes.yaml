@@ -219,13 +219,19 @@ nodes:
     title: Recovery scheduler cluster leader authority
     epistemic_status: CONFIRMED
     summary: >
-      Fuel-station enrichment recovery sweep execution is SINGLETON_GLOBAL.
-      SchedulerLeaderGuardService ensures only the elected cluster scheduler leader
-      runs recoverMissedEnrichments(); follower replicas skip the tick.
-      Applies to the recovery scheduler tick only — not BullMQ worker concurrency.
+      fuel_station_enrichment_recovery is classified SINGLETON_GLOBAL in the scheduler registry.
+      recoverMissedEnrichments() calls SchedulerLeaderGuardService.shouldRun() so only the
+      elected cluster scheduler leader executes the recovery sweep tick when leader election is
+      enabled and functioning. SCHEDULER_LEADER_ELECTION_ENABLED=true is the operational safety
+      precondition for multi-replica singleton execution. When leader election is disabled,
+      every replica intentionally behaves as leader and duplicate recovery sweeps are possible.
+      Applies to the recovery scheduler tick only — RefuelStationEnrichmentProcessor (BullMQ worker)
+      remains independently multi-replica capable and is NOT governed by this singleton invariant.
     source_paths:
       - backend/src/workers/schedulers/fuel-station-enrichment-recovery.scheduler.ts
       - backend/src/shared/scheduler-leader/scheduler-leader-guard.service.ts
+      - backend/src/shared/scheduler-leader/scheduler-leader-election.service.ts
+      - backend/src/shared/scheduler-leader/scheduler-leader-election.config.ts
       - backend/src/shared/scheduler-leader/scheduler-leader.registry.ts
 
   - id: FST-STATE-PROCESSING-001

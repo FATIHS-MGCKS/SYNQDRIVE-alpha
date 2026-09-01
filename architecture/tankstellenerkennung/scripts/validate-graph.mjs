@@ -84,12 +84,17 @@ function parseDecisionRegisterEvidenceFields(filePath) {
   for (const m of text.matchAll(sectionRe)) {
     const decisionId = m[1];
     const body = m[2];
-    const evidenceMatch = body.match(/\| \*\*EVIDENCE\*\* \| ([^|]+) \|/);
+    const evidenceMatches = [...body.matchAll(/\| \*\*EVIDENCE\*\* \| ([^|]+) \|/g)];
+    const evidenceCount = evidenceMatches.length;
+    const primaryMatch = evidenceCount === 1 ? evidenceMatches[0] : null;
     entries.push({
       decisionId,
-      hasEvidenceField: Boolean(evidenceMatch),
-      raw: evidenceMatch?.[1] ?? null,
-      refs: evidenceMatch ? [...evidenceMatch[1].matchAll(/FST-[A-Z0-9-]+/g)].map((x) => x[0]) : [],
+      evidenceCount,
+      hasExactlyOneEvidenceField: evidenceCount === 1,
+      raw: primaryMatch?.[1] ?? null,
+      refs: primaryMatch
+        ? [...primaryMatch[1].matchAll(/FST-[A-Z0-9-]+/g)].map((x) => x[0])
+        : [],
     });
   }
   return entries;
@@ -460,16 +465,24 @@ const registerDecisionIds = parseDecisionRegisterSectionIds(
 const graphDecisionIds = nodes.filter((n) => n.type === 'decision').map((n) => n.id).sort();
 const registerEvidenceById = new Map(registerEvidence.map((e) => [e.decisionId, e]));
 
+let exactlyOneEvidenceCount = 0;
 for (const decisionId of registerDecisionIds) {
   const entry = registerEvidenceById.get(decisionId);
   if (!entry) {
     fail(`DECISION_REGISTER ${decisionId} section missing from evidence parser output`);
     continue;
   }
-  if (!entry.hasEvidenceField) {
+  if (entry.evidenceCount === 0) {
     fail(`DECISION_REGISTER ${decisionId} missing required EVIDENCE field`);
     continue;
   }
+  if (entry.evidenceCount > 1) {
+    fail(
+      `DECISION_REGISTER ${decisionId} has ${entry.evidenceCount} EVIDENCE fields; exactly one required`,
+    );
+    continue;
+  }
+  exactlyOneEvidenceCount += 1;
   if (entry.refs.length === 0) {
     fail(`DECISION_REGISTER ${decisionId} EVIDENCE field has no FST-* references`);
     continue;
@@ -494,12 +507,23 @@ for (const id of graphDecisionIds) {
     fail(`Graph decision ${id} missing from DECISION_REGISTER.md`);
   }
 }
+const evidenceCardinalityPass =
+  registerDecisionIds.length > 0 &&
+  exactlyOneEvidenceCount === registerDecisionIds.length &&
+  !errors.some((e) => e.includes('EVIDENCE'));
 console.log(
-  '==> Decision Register EVIDENCE field checks:',
+  '==> Decision Register EVIDENCE cardinality:',
   registerDecisionIds.length,
   'decisions,',
-  registerEvidence.filter((e) => e.hasEvidenceField).length,
-  'with EVIDENCE',
+  exactlyOneEvidenceCount,
+  'exactly-one EVIDENCE fields,',
+  evidenceCardinalityPass ? 'PASS' : 'FAIL',
+);
+console.log(
+  '==> Decision Register evidence reference type validation:',
+  registerDecisionIds.length,
+  'decisions checked,',
+  evidenceCardinalityPass ? 'PASS' : 'FAIL',
 );
 
 if (errors.length) {

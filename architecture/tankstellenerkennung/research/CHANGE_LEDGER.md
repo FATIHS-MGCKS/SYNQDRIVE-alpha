@@ -74,22 +74,32 @@ Scientific history of the fuel-station identification workstream. Epistemic rigo
 | **NON_EFFECTS** | No runtime changes |
 | **STATUS** | Documentation only |
 
-## 2026-09-01 — Final merge-gate correction: recovery leader authority
-
-| Field | Detail |
-|-------|--------|
-| **CHANGE** | `FST-AUTH-RECOVERY-LEADER-001`, `FST-INV-RECOVERY-SINGLETON-001`; AGENT_CONTRACT evidence wording; Decision Register EVIDENCE completeness validation |
-| **NON_EFFECTS** | No runtime changes; no main re-sync; no production status changes |
-| **STATUS** | Documentation only |
-
 ## 2026-09-01 — Final main sync + authority contract gate (PR #1482)
 
 | Field | Detail |
 |-------|--------|
-| **CHANGE** | Merged `origin/main` (`bd25f17d`); governance evidence node; Decision Register evidence validation |
+| **CHANGE** | Merged `origin/main` (`bd25f17d`); governance evidence node; Decision Register EVIDENCE validation (at-least-one) |
+| **COMMITS** | `023f0225b` (merge), `a7d8fda95` (governance evidence + validator) |
 | **MAIN DELTA** | NO TANKSTELLENERKENNUNG RUNTIME SEMANTIC DELTA FROM MAIN SYNC |
 | **NON_EFFECTS** | No runtime changes |
 | **STATUS** | Documentation only; authority ready for merge review |
+
+## 2026-09-01 — Final merge-gate correction: recovery leader authority (PR #1482)
+
+| Field | Detail |
+|-------|--------|
+| **CHANGE** | `FST-AUTH-RECOVERY-LEADER-001`, `FST-INV-RECOVERY-SINGLETON-001`; AGENT_CONTRACT evidence wording; Decision Register EVIDENCE completeness validation |
+| **COMMITS** | `9458ffddd` |
+| **NON_EFFECTS** | No runtime changes; no production status changes |
+| **STATUS** | Documentation only |
+
+## 2026-09-01 — Final micro-correction: EVIDENCE cardinality + conditional singleton semantics (PR #1482)
+
+| Field | Detail |
+|-------|--------|
+| **CHANGE** | Validator enforces exactly-one EVIDENCE field per FST-DEC-* section; recovery singleton semantics refined to conditional on `SCHEDULER_LEADER_ELECTION_ENABLED`; CHANGE_LEDGER chronology corrected |
+| **NON_EFFECTS** | No runtime changes; no main re-sync |
+| **STATUS** | Documentation only |
 
 ## Open epistemic gate
 

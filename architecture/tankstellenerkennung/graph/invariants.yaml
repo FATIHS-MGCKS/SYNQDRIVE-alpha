@@ -169,15 +169,21 @@ invariants:
 
   - id: FST-INV-RECOVERY-SINGLETON-001
     kind: CONFIRMED_INVARIANT
-    title: Recovery scheduler executes only on elected cluster leader
+    title: Recovery scheduler executes only on elected cluster leader when election enabled
     epistemic_status: CONFIRMED
     statement: >
       fuel_station_enrichment_recovery is SINGLETON_GLOBAL. recoverMissedEnrichments() must run
-      only when SchedulerLeaderGuardService grants leadership; follower replicas skip the tick.
-      This governs recovery scheduler execution ownership, not BullMQ worker concurrency.
+      only when SchedulerLeaderGuardService grants leadership via the scheduler leader election
+      lease. SCHEDULER_LEADER_ELECTION_ENABLED=true is required for multi-replica singleton safety.
+      When leader election is disabled, every replica behaves as leader and duplicate recovery
+      sweeps are possible — singleton execution is NOT guaranteed across replicas in that mode.
+      This governs recovery scheduler tick ownership only; BullMQ enrichment worker concurrency
+      is not singleton-gated by this mechanism.
     source_paths:
       - backend/src/workers/schedulers/fuel-station-enrichment-recovery.scheduler.ts
       - backend/src/shared/scheduler-leader/scheduler-leader-guard.service.ts
+      - backend/src/shared/scheduler-leader/scheduler-leader-election.service.ts
+      - backend/src/shared/scheduler-leader/scheduler-leader-election.config.ts
       - backend/src/shared/scheduler-leader/scheduler-leader.registry.ts
 
   - id: FST-INV-FALLBACK-EMPTY-ONLY-001
