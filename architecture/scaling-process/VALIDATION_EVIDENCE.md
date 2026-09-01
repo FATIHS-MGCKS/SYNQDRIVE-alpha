@@ -126,6 +126,20 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 
 ---
 
+## P1.8.3.1 — Deploy leader-wait hardening
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Convergence state machine | P1.8.3.1 | — | `vps-multi-replica-deploy.util.mjs` | IMPLEMENTED | HIGH |
+| Cases A–H unit tests | P1.8.3.1 | — | 18/18 PASS | PASS | HIGH |
+| Shell integration | P1.8.3.1 | — | `vps-production-replica.lib.sh` | IMPLEMENTED | HIGH |
+| No blind fixed sleep | P1.8.3.1 | — | poll loop | YES | HIGH |
+| Split-brain immediate fail | P1.8.3.1 | — | CASE E/G tests | PASS | HIGH |
+| Production deploy exercise | P1.8.3.1 | — | not executed | PENDING | — |
+| INC-06 closed | P1.8.3.1 | — | — | IMPLEMENTED_PENDING_PRODUCTION_VALIDATION | — |
+
+---
+
 ## CI / build evidence
 
 | Suite | Typical gate | Confidence |
@@ -142,4 +156,4 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 1. No 24h soak at N=2 in production
 2. No provider ceiling verification at N≈1000
 3. Staging validation Redis DB ≠ production DB
-4. Deploy hardening merged — P1.8.3 production exercise pending leader-wait fix
+4. Deploy leader-wait implemented — production validation pending (P1.8.3.1)

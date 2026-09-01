@@ -112,11 +112,11 @@ nodes:
   - id: MULTI_REPLICA_DEPLOYMENT
     type: DEPLOYMENT
     status: MERGED_VERIFIED
-    description: Rolling A→B deploy with SHA/health/leader/nginx invariants
-    depends_on: [PM2, NGINX, SCHEDULER_LEADER_ELECTION]
+    description: Rolling A→B deploy with SHA/health/leader convergence/nginx invariants
+    depends_on: [PM2, NGINX, SCHEDULER_LEADER_ELECTION, DEPLOY_LEADER_CONVERGENCE_GATE]
     introduced_by: "#1472"
-    validated_by: ["P1.8.3 deploy 2026-09-01"]
-    related_incidents: [INC_05]
+    validated_by: ["P1.8.3 deploy 2026-09-01", "P1.8.3.1 unit tests"]
+    related_incidents: [INC_05, INC_06]
     last_verified_sha: d6884ce6030cafcb9a39fa422359eb8345496913
     last_verified_at: "2026-09-01T10:23:00Z"
     confidence: MEDIUM
@@ -188,4 +188,26 @@ nodes:
     related_incidents: [INC_05]
     supersedes: null
     last_verified_at: "2026-09-01T10:25:00Z"
+    confidence: HIGH
+
+  - id: INC_06
+    type: INCIDENT
+    status: IMPLEMENTED_PENDING_PRODUCTION_VALIDATION
+    description: Deploy false-abort on leaderCount=0 before election converged (P1.8.3)
+    related_incidents: [INC_06]
+    introduced_by: "P1.8.3 deploy 2026-09-01"
+    remediated_by: "P1.8.3.1 leader-wait convergence gate"
+    last_verified_at: "2026-09-01T12:00:00Z"
+    confidence: HIGH
+
+  - id: DEPLOY_LEADER_CONVERGENCE_GATE
+    type: DEPLOYMENT
+    status: IMPLEMENTED_PENDING_PRODUCTION_VALIDATION
+    description: Bounded scheduler leader convergence poll during deploy (0=retry, >1=fail)
+    depends_on: [SCHEDULER_LEADER_ELECTION, MULTI_REPLICA_DEPLOYMENT]
+    protects: [INV_01]
+    introduced_by: "P1.8.3.1"
+    related_incidents: [INC_06]
+    validated_by: ["vps-multi-replica-deploy.util.test.mjs 18/18"]
+    last_verified_at: "2026-09-01T12:00:00Z"
     confidence: HIGH

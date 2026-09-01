@@ -14,7 +14,7 @@
 | Mutex contention | Second worker skips | Expected | None |
 | DIMO 429 | Cooldown + retry | Bounded backoff | Automatic |
 | Deploy partial | Mixed SHA / missing B | Rollback (#1472) | Auto + manual |
-| Deploy leader timing | False abort leaders=0 | Rollback attempted; may leave N=2 | P1.8.3.1 fix |
+| Deploy leader timing | False abort leaders=0 | Rollback attempted; may leave N=2 | **FIXED P1.8.3.1** (pending prod validation) |
 | nginx + dead upstream | Intermittent 5xx | External errors | Fix PM2 / nginx |
 
 ---
@@ -102,8 +102,9 @@
 | **SYMPTOM** | `ABORT: expected 1 scheduler leader(s), got 0` → auto-rollback triggered |
 | **IMPACT** | Deploy reported failure; production recovered to N=2 same SHA after rollback rolling restart |
 | **ROOT_CAUSE** | Leader verification before election acquire window elapsed |
-| **STATUS** | OPEN (mitigated — production healthy) |
-| **RECOMMENDED_FOLLOWUP** | P1.8.3.1 leader-wait in `vps_replica_verify_scheduler_leaders` |
+| **STATUS** | **IMPLEMENTED_PENDING_PRODUCTION_VALIDATION** (P1.8.3.1) |
+| **REMEDIATION** | `vps_replica_wait_scheduler_leader_convergence` — bounded poll gate |
+| **EVIDENCE** | P1.8.3 deploy log; `architecture/P1_8_3_1_DEPLOY_LEADER_WAIT_HARDENING_2026-09-01.md` |
 
 ---
 

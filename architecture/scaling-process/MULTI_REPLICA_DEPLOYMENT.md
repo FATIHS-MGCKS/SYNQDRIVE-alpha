@@ -117,13 +117,23 @@ The remote deploy entrypoint runs `bash /opt/synqdrive/current/backend/scripts/o
 
 ---
 
-## Deploy verification timing (P1.8.3 finding)
+## Deploy verification timing (P1.8.3 finding → P1.8.3.1 fix)
 
-**TYPE: OPEN_QUESTION / P2**
+**TYPE: INCIDENT + REMEDIATION**
 
-`vps_replica_verify_scheduler_leaders` runs immediately after per-replica health checks. Leader acquisition may take up to `acquireIntervalMs` (5s) after restart. P1.8.3 deploy **false-aborted** with `leaders=0` at T+15s; production reached `leaders=1` at T+35s.
+P1.8.3: `vps_replica_verify_scheduler_leaders` ran immediately after per-replica health checks. Leader acquisition may take up to `acquireIntervalMs` (5s) after restart. Deploy **false-aborted** with `leaders=0` at T+15s; production reached `leaders=1` at T+35s (INC-06).
 
-**RECOMMENDED_FOLLOWUP:** Add leader-election wait/retry in deploy verification (P1.8.3.1).
+**P1.8.3.1 fix:** `vps_replica_wait_scheduler_leader_convergence()` polls readiness endpoints with bounded retry:
+
+| leaderCount | Action |
+|-------------|--------|
+| 0 | Transient — retry within 44s timeout |
+| 1 | Candidate — require 2 consecutive stable observations |
+| >1 | Immediate FAIL_SPLIT_BRAIN |
+
+**CONFIG:** `SYNQDRIVE_SCHEDULER_LEADER_POLL_INTERVAL_MS=2000`, `SYNQDRIVE_SCHEDULER_LEADER_CONVERGENCE_TIMEOUT_MS=44000`, `SYNQDRIVE_SCHEDULER_LEADER_STABLE_OBSERVATIONS=2`
+
+**EVIDENCE:** `architecture/P1_8_3_1_DEPLOY_LEADER_WAIT_HARDENING_2026-09-01.md`; unit tests 18/18 PASS. Production validation pending.
 
 ---
 

@@ -165,3 +165,19 @@ Format: Decision ID | Date/Phase | Status
 | **DECISION** | Boot check builds full module graph before `current` switch |
 | **WHY** | Catch Prometheus duplicate registration |
 | **STATUS** | ACTIVE |
+
+---
+
+## DEC-014: Scheduler leader convergence gate during deploy (P1.8.3.1)
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-09-01 |
+| **PROBLEM** | INC-06: deploy false-aborted on `leaderCount=0` before election converged (~35s observed) |
+| **DECISION** | Bounded poll gate: 0=transient retry, 1=candidate (2 stable obs), >1=immediate FAIL_SPLIT_BRAIN |
+| **WHY** | Preserve INV-01 without blind sleep; observable diagnostics; no split-brain tolerance |
+| **PARAMETERS** | poll=2000ms, timeout=44000ms, stableObs=2 |
+| **TIMEOUT_FORMULA** | `(2×replicaCount+2)×acquireInterval + 2×poll + margin` |
+| **STATUS** | **ACTIVE** — implemented; production validation pending |
+| **EVIDENCE** | P1.8.3 deploy logs; `vps-multi-replica-deploy.util.test.mjs` 18/18 |
+| **SUPERSEDES** | immediate single-snapshot leader check as sole deploy gate |

@@ -24,7 +24,7 @@ Do **not** treat items here as current production architecture.
 |----|-------|----------|-------|
 | OQ-05 | ~~Restore production replica B~~ | **CLOSED** | P1.8.3 2026-09-01 |
 | OQ-06 | ~~Merge #1472 before next deploy~~ | **CLOSED** | Merged d6884ce |
-| OQ-17 | Deploy leader-election wait in verify | OPEN_QUESTION | INC-06; false-abort P1.8.3 |
+| OQ-17 | Deploy leader-election wait in verify | **IMPLEMENTED** | P1.8.3.1; prod validation pending |
 | OQ-18 | Bootstrap deploy uses old script from current | OPEN_QUESTION | First post-merge deploy caveat |
 | OQ-07 | Replica count > 2 | FUTURE_OPTION | Not authorized |
 | OQ-08 | Separate scheduler / API / worker processes | FUTURE_OPTION | Architecture split |

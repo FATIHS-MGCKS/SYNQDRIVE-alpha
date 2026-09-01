@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p1-8-3-1-deploy-leader-wait-hardening-2026-09-01',
+    version: '4.9.1021',
+    title: 'P1.8.3.1 — Deploy scheduler leader convergence gate (INC-06 remediation)',
+    summary: [
+      'Bounded scheduler leader convergence gate in multi-replica deploy lifecycle: `leaderCount=0` transient retry, `>1` immediate FAIL_SPLIT_BRAIN, 2 stable observations of `leaderCount=1` required.',
+      'Parameters: poll=2000ms, timeout=44000ms (formula-based, not blind sleep). Pure state machine + CLI (`vps-scheduler-leader-convergence-wait.mjs`) + shell integration.',
+      'Unit tests Cases A–H: 18/18 PASS. No production deploy executed.',
+      'INC-06 status: IMPLEMENTED_PENDING_PRODUCTION_VALIDATION.',
+    ],
+    reason: 'P1.8.3 deploy false-aborted on scheduler leader=0 at T+15s before election converged at T+35s; preserve INV-01 without weakening split-brain detection.',
+    previousBehavior: 'Single snapshot leader check immediately after replica health; no retry on transient zero leaders.',
+    details:
+      'architecture/P1_8_3_1_DEPLOY_LEADER_WAIT_HARDENING_2026-09-01.md; backend/scripts/ops/vps-multi-replica-deploy.util.mjs; vps-scheduler-leader-convergence-wait.mjs',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T12:00:00.000Z',
+  },
+  {
     id: 'p1-8-3-post-merge-multi-replica-verification-2026-09-01',
     version: '4.9.1020',
     title: 'P1.8.3 — Post-merge multi-replica deploy verification + Scaling Process update',

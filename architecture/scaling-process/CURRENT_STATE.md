@@ -25,8 +25,8 @@ PROVIDER_CEILING_VERIFIED = NO
 N1000_CERTIFICATION = CONDITIONAL (software only)
 OPEN_P0 = 0
 OPEN_P1 = 0
-OPEN_P2 = 2 (deploy leader-election timing false-abort; bootstrap deploy uses pre-merge script from current symlink)
-NEXT_ARCHITECTURE_STAGE = P1.8.3.1 deploy script leader-wait hardening; sustained N=2 soak
+OPEN_P2 = 1 (bootstrap deploy uses pre-merge script from current symlink)
+NEXT_ARCHITECTURE_STAGE = P1.8.3.1 production validation of leader-wait gate; sustained N=2 soak
 ```
 
 ---
@@ -64,7 +64,17 @@ NEXT_ARCHITECTURE_STAGE = P1.8.3.1 deploy script leader-wait hardening; sustaine
 
 **STATUS:** CLOSED (2026-09-01 P1.8.3)  
 **RATIONALE:** Replica B restored; both replicas on `d6884ce`; nginx dual-upstream healthy; rolling deploy path exercised.  
-**RESIDUAL:** Deploy script leader verification may false-abort before election completes (see OPEN P2).
+**RESIDUAL:** None for topology.
+
+---
+
+## TYPE: IMPLEMENTATION — P1.8.3.1 leader-wait hardening (2026-09-01)
+
+**STATUS:** IMPLEMENTED_PENDING_PRODUCTION_VALIDATION  
+**INCIDENT:** INC-06  
+**CHANGE:** Bounded scheduler convergence gate in deploy lifecycle (`vps_replica_wait_scheduler_leader_convergence`); 0 leaders = transient retry, >1 = immediate FAIL_SPLIT_BRAIN, 2 stable observations of 1 leader required.  
+**EVIDENCE:** `architecture/P1_8_3_1_DEPLOY_LEADER_WAIT_HARDENING_2026-09-01.md`; unit tests 18/18 PASS.  
+**HISTORICAL:** P1.8.3 deploy still false-aborted at T+15s before this fix — that truth is preserved.
 
 ---
 
@@ -87,4 +97,4 @@ NEXT_ARCHITECTURE_STAGE = P1.8.3.1 deploy script leader-wait hardening; sustaine
 | Single scheduler leader | PASS |
 | Two-replica production invariant | **PASS** |
 | Deploy path preserves 2 replicas | **YES** (after #1472 on current) |
-| Automated deploy gate | PASS_WITH_FINDINGS (leader timing) |
+| Automated deploy gate | PASS_WITH_FINDINGS (P1.8.3 leader timing); P1.8.3.1 fix merged pending prod validation |
