@@ -600,7 +600,9 @@ describe('P2.3.3 PR gate — workflow-inline trusted bootstrap relevance', { tim
     expect(relevanceStep).not.toMatch(/bash\s+\.github\/scripts\//);
     expect(relevanceStep).not.toMatch(/source\s+\.github\//);
     expect(relevanceStep).not.toMatch(/\bnpm\b/);
+    expect(relevanceStep).not.toMatch(/done\s*<\s*<\s*\(\s*git diff/);
     expect(relevanceStep).toContain('git diff --name-only -z');
+    expect(relevanceStep).toContain('RUNNER_TEMP');
     expect(relevanceStep).toContain('GITHUB_OUTPUT');
   });
 

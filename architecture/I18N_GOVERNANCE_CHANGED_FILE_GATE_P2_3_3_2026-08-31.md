@@ -112,12 +112,14 @@ Unsupported `frontend/src/**/*.js(x)` fails with `UNSUPPORTED_GOVERNED_SOURCE_EX
 Before `npm ci` or any governance JavaScript runs, the workflow `Classify PR relevance` step classifies changed paths using **Git and Bash builtins only**:
 
 ```bash
-git diff --name-only -z "${BASE_SHA}...${HEAD_SHA}"
+git diff --name-only -z "${BASE_SHA}...${HEAD_SHA}" > "${RUNNER_TEMP}/i18n-governance-changed-paths-….bin"
+while IFS= read -r -d '' path; do …; done < "${DIFF_FILE}"
 ```
 
 - Does **not** execute any repository file from PR HEAD for the relevance decision (no `node`, `npm`, `bash .github/scripts/`, or `source .github/`).
 - External bootstrap executable: **NONE** (`.github/scripts/i18n-pr-bootstrap-relevance.sh` removed).
-- Fail-closed: invalid/missing SHAs, `git cat-file` failure, `git diff` failure, or shell error under `set -euo pipefail` → workflow **FAIL** (never `relevant=false` fallback).
+- **Synchronous diff enumeration:** `git diff` runs as a foreground command with output redirected to `$RUNNER_TEMP` before NUL-safe path consumption. Producer failure therefore terminates the bootstrap before any authoritative `relevant=false` / irrelevant no-op decision. Process substitution (`done < <(git diff …)`) is **not** used — `set -euo pipefail` alone does not propagate process-substitution producer failures.
+- Fail-closed: invalid/missing SHAs, `git cat-file` failure, or synchronous `git diff` failure → workflow **FAIL** (never `relevant=false` fallback).
 - NUL-safe path iteration via `while IFS= read -r -d '' path`.
 - Outputs `relevant=true|false` directly to `$GITHUB_OUTPUT`.
 - Simple bootstrap relevance rule (intentionally duplicated from canonical JS policy contract for trust separation).
