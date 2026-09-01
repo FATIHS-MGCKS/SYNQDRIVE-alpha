@@ -22,8 +22,10 @@ Do **not** treat items here as current production architecture.
 
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
-| OQ-05 | Restore production replica B (current drift) | OPEN_QUESTION | See CURRENT_STATE 2026-09-01 |
-| OQ-06 | Merge #1472 before next deploy | OPEN_QUESTION | Blocks deploy invariant |
+| OQ-05 | ~~Restore production replica B~~ | **CLOSED** | P1.8.3 2026-09-01 |
+| OQ-06 | ~~Merge #1472 before next deploy~~ | **CLOSED** | Merged d6884ce |
+| OQ-17 | Deploy leader-election wait in verify | OPEN_QUESTION | INC-06; false-abort P1.8.3 |
+| OQ-18 | Bootstrap deploy uses old script from current | OPEN_QUESTION | First post-merge deploy caveat |
 | OQ-07 | Replica count > 2 | FUTURE_OPTION | Not authorized |
 | OQ-08 | Separate scheduler / API / worker processes | FUTURE_OPTION | Architecture split |
 | OQ-09 | Kubernetes / Docker orchestration | FUTURE_OPTION | Explicitly out of scope P1.8.2.1 |

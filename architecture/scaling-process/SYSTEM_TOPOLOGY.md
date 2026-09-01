@@ -1,7 +1,7 @@
 # SCALING PROCESS — System Topology
 
 **TYPE:** ARCHITECTURE  
-**STATUS:** CURRENT (with noted drift — see CURRENT_STATE)
+**STATUS:** CURRENT (verified P1.8.3 2026-09-01)
 
 ---
 

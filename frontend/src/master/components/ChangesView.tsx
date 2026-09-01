@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p1-8-3-post-merge-multi-replica-verification-2026-09-01',
+    version: '4.9.1020',
+    title: 'P1.8.3 — Post-merge multi-replica deploy verification + Scaling Process update',
+    summary: [
+      'First production exercise of merged #1472 multi-replica deploy path: restored N=2 (`synqdrive` :3001 LEADER + `synqdrive-b` :3002 FOLLOWER) on SHA `d6884ce`.',
+      'INC-05 CLOSED. Deploy auto-gate false-aborted on scheduler leader timing (0 leaders at T+15s); production healthy at T+35s (INC-06 P2 finding).',
+      'Updated `architecture/scaling-process/` CURRENT_STATE, envelopes, incidents, validation evidence; added `graph/nodes.yaml`.',
+      'Drift recurrence risk LOW for topology; deploy leader-wait hardening recommended (P1.8.3.1).',
+    ],
+    reason: 'Verify #1472 closes INC-05 and update canonical Scaling Process authority with live production evidence.',
+    previousBehavior: 'Production N=1 drift; #1472 merged but not yet deployed; scaling docs stale.',
+    details:
+      'architecture/P1_8_3_POST_MERGE_MULTI_REPLICA_VERIFICATION_2026-09-01.md; architecture/scaling-process/',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T10:30:00.000Z',
+  },
+  {
     id: 'p1-8-2-1-multi-replica-deploy-lifecycle-2026-08-31',
     version: '4.9.1017',
     title: 'P1.8.2.1 — Multi-replica deployment lifecycle hardening',

@@ -12,7 +12,7 @@ Scaling Process
 ├── Production Topology
 │   ├── PM2 (fork, not cluster)
 │   │   ├── synqdrive :3001  [Replica A]
-│   │   └── synqdrive-b :3002 [Replica B — intended; see CURRENT_STATE drift]
+│   │   └── synqdrive-b :3002 [Replica B — ONLINE P1.8.3]
 │   ├── nginx
 │   │   └── upstream synqdrive_backend → 3001 + 3002
 │   ├── Redis DB 0 (leases, BullMQ, mutex, DIMO budget)
@@ -33,7 +33,7 @@ Scaling Process
 │
 ├── Deployment
 │   ├── vps-deploy-release.sh
-│   ├── Rolling Deploy (P1.8.2.1 — #1472)
+│   ├── Rolling Deploy (P1.8.2.1 — #1472 MERGED)
 │   ├── SHA Coherency
 │   ├── Health / Readiness Verification
 │   └── Rollback (vps-rollback-production-release.sh — #1472)
@@ -41,12 +41,13 @@ Scaling Process
 ├── Failure Domains
 │   ├── Redis outage → fail-closed (leader, mutex, budget)
 │   ├── Leader crash → TTL failover ~35s
-│   ├── Deploy single-replica restart → mixed SHA / lost replica B
+│   ├── Deploy single-replica restart → SUPERSEDED by #1472
+│   ├── Deploy leader-timing false-abort → INC-06 (P1.8.3)
 │   └── nginx dual-upstream with dead backend
 │
 ├── Scaling Envelopes
 │   ├── N=1 PROVEN (soak)
-│   ├── N=2 PROVEN (controlled scale 2026-08-31) + CURRENT DRIFT
+│   ├── N=2 CONDITIONALLY CERTIFIED (P1.8.2 + P1.8.3 restore)
 │   └── N≈1000 CONDITIONAL
 │
 └── Evidence / Decisions / Open Work
