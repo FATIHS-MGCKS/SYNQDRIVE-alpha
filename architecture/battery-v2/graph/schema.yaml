@@ -1,0 +1,160 @@
+# Battery V2 Knowledge Graph — Schema
+
+version: "1.1"
+description: >
+  Deliberately simple schema for Battery V2 living architecture authority.
+  Maintained incrementally by agents per AGENT_CONTRACT.md.
+
+node_types:
+  - signal
+  - observation_semantics
+  - authority
+  - state
+  - event
+  - transition
+  - policy
+  - job
+  - liveness_rule
+  - store
+  - assessment
+  - publication
+  - consumer
+  - decision
+  - evidence
+  - test_evidence
+  - hypothesis
+  - invariant
+  - gap
+  - contradiction
+  - failed_approach
+  - rejected_approach
+
+epistemic_status_values:
+  - CONFIRMED
+  - INFERRED
+  - HISTORICAL
+  - UNKNOWN
+  - CONTRADICTED
+
+decision_status_values:
+  - PROPOSED
+  - EXPERIMENTAL
+  - VALIDATED
+  - PRODUCTION_VALIDATED
+  - REJECTED
+  - SUPERSEDED
+
+# decision_status is primarily for type=decision nodes.
+# Other node types must not carry decision_status unless explicitly
+# modeling a rejected approach (type=rejected_approach uses decision_status: REJECTED).
+decision_status_permitted_types:
+  - decision
+  - rejected_approach
+
+reconstruction_maturity_values:
+  - NONE
+  - PARTIAL
+  - SUBSTANTIAL
+  - COMPLETE
+
+invariant_kinds:
+  - CONFIRMED_INVARIANT
+  - CONDITIONAL_INVARIANT
+  - CANDIDATE_INVARIANT
+  - DISPROVEN_OR_CONTRADICTED
+
+evidence_source_types:
+  - CURRENT_CODE
+  - CURRENT_TEST
+  - PRODUCTION_OBSERVATION
+  - ARCHITECTURE_DOCUMENT
+  - AUDIT_DOCUMENT
+  - PR_HISTORY
+  - COMMIT_HISTORY
+  - SYNTHETIC_TEST
+  - DOMAIN_REASONING
+  - PROVIDER_DOCUMENTATION
+
+relation_types:
+  - produced_by
+  - normalized_from
+  - timestamped_by
+  - stored_as
+  - consumed_by
+  - authoritative_over
+  - authoritative_during
+  - gates
+  - opens
+  - invalidates
+  - transitions_to
+  - schedules
+  - evaluates
+  - recovers
+  - derives
+  - contributes_to
+  - publishes
+  - supports
+  - contradicts
+  - supersedes
+  - superseded_by
+  - refines
+  - governs
+  - tested_by
+  - protected_by
+  - does_not_solve
+
+id_prefixes:
+  signal: BAT-V2-SIG-
+  observation_semantics: BAT-V2-OBS-
+  authority: BAT-V2-AUTH-
+  state: BAT-V2-STATE-
+  event: BAT-V2-EVT-
+  transition: BAT-V2-TRANS-
+  policy: BAT-V2-POL-
+  job: BAT-V2-JOB-
+  liveness_rule: BAT-V2-LIVE-
+  store: BAT-V2-STORE-
+  assessment: BAT-V2-ASSESS-
+  publication: BAT-V2-PUB-
+  consumer: BAT-V2-CONS-
+  decision: BAT-V2-DEC-
+  evidence: BAT-V2-EVID-
+  test_evidence: BAT-V2-TEST-
+  hypothesis: BAT-V2-HYP-
+  invariant: BAT-V2-INV-
+  gap: BAT-V2-GAP-
+  contradiction: BAT-V2-CONTRA-
+  failed_approach: BAT-V2-FAIL-
+  rejected_approach: BAT-V2-REJECT-
+
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+    - summary
+  optional:
+    - decision_status
+    - reconstruction_maturity
+    - source_type
+    - source_paths
+    - source_locator
+    - verified_ref
+    - verified_at
+    - evidence
+    - open_questions
+    - non_effects
+    - superseded_by
+    - notes
+
+evidence_required_fields:
+  - source_type
+
+edge_fields:
+  required:
+    - from
+    - relation
+    - to
+  optional:
+    - notes
