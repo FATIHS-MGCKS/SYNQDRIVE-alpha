@@ -170,6 +170,7 @@
     "NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED": "YES",
     "duplicateAggregateBucketIdentities": 0,
     "duplicateRetrievalObservations": 0,
+    "explicitSameIdentityDedupProofObservations": 0,
     "idempotencyEvidenceNote": "zero duplicate persisted bucket identities observed; no duplicate/retry retrieval exercised — idempotency not proven",
     "nonV2IdentityRows": 0,
     "perFieldWatermark": [

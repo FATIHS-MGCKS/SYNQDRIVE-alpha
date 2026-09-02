@@ -1,7 +1,7 @@
 {
   "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_003",
   "sessionId": "0fa040aa-6105-4872-9b2c-f8ad477009b8",
-  "generatedAt": "2026-09-02T21:25:08.131Z",
+  "generatedAt": "2026-09-02T21:40:36.620Z",
   "methodologyVersion": "2026-09-02-rd003-telemetry-forensics-v2-segmented-video-gt-correction",
   "referenceCaptureRuntimeChanged": false,
   "generatedEvidenceValueSource": "COMPUTED_FROM_SEALED_RAW_DATA",
@@ -5334,6 +5334,7 @@
     "NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED": "YES",
     "duplicateAggregateBucketIdentities": 0,
     "duplicateRetrievalObservations": 0,
+    "explicitSameIdentityDedupProofObservations": 0,
     "idempotencyEvidenceNote": "zero duplicate persisted bucket identities observed; no duplicate/retry retrieval exercised — idempotency not proven",
     "nonV2IdentityRows": 0,
     "perFieldWatermark": [

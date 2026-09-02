@@ -252,24 +252,58 @@ export function validateFieldQueryWindowBounded(
 export type HfIdempotencyEvidence = {
   duplicateAggregateBucketIdentities: number;
   duplicateRetrievalObservations: number;
+  explicitSameIdentityDedupProofObservations: number;
   NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED: 'YES' | 'NO';
   HF_IDEMPOTENCY_RUNTIME_VALIDATED: 'YES' | 'NO' | 'NOT_EXERCISED' | 'PARTIAL';
   HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED: 'YES' | 'NOT_EXERCISED';
   idempotencyEvidenceNote: string;
 };
 
+/** YES requires both fields; current RD003 sealed schema does not emit them. */
+export const IDEMPOTENCY_EXPLICIT_PROOF_FIELDS = [
+  'idempotencyDedupSuppressed',
+  'retriedCanonicalIdentity',
+] as const;
+
+function readRetriedCanonicalIdentity(prov: Record<string, unknown>): string {
+  const candidate =
+    prov.retriedCanonicalIdentity ??
+    prov.retriedAggregateBucketIdentity ??
+    prov.bucketIdentity ??
+    '';
+  return String(candidate).trim();
+}
+
+/**
+ * Explicit same-identity dedup proof: a retry marker names a canonical identity
+ * that already exists in the export AND declares persistence dedup suppression.
+ */
+export function hasExplicitSameIdentityDedupProof(
+  prov: Record<string, unknown>,
+  persistedCanonicalIdentities: Set<string>,
+): boolean {
+  const suppressed =
+    prov.idempotencyDedupSuppressed === true || prov.persistenceDedupSuppressed === true;
+  const retriedIdentity = readRetriedCanonicalIdentity(prov);
+  if (!suppressed || !retriedIdentity) return false;
+  return persistedCanonicalIdentities.has(retriedIdentity);
+}
+
 /**
  * Classify HF idempotency evidence conservatively.
  *
  * Absence of duplicate persisted bucket identities proves only that no duplicate
  * identities were observed — NOT that runtime idempotency was exercised.
- * YES requires an observed duplicate/retry path (duplicateRetrieval) with no
- * duplicate persistence.
+ * YES requires explicit proof that the same canonical identity was retried and
+ * persistence deduplication suppressed the duplicate. duplicateRetrieval alone
+ * is insufficient and yields PARTIAL at most.
  */
 export function classifyHfIdempotencyEvidence(hfRows: HfRuntimeObservationRow[]): HfIdempotencyEvidence {
   let duplicateBuckets = 0;
   let duplicateRetrieval = 0;
+  let explicitProofCount = 0;
   const bucketGlobal = new Set<string>();
+  const persistedCanonicalIdentities = new Set<string>();
 
   for (const row of hfRows) {
     const prov = row.provenanceJson ?? {};
@@ -277,24 +311,40 @@ export function classifyHfIdempotencyEvidence(hfRows: HfRuntimeObservationRow[])
     if (bucket) {
       if (bucketGlobal.has(bucket)) duplicateBuckets++;
       bucketGlobal.add(bucket);
+      persistedCanonicalIdentities.add(bucket);
+    }
+    if (row.physicalSampleFingerprint) {
+      persistedCanonicalIdentities.add(String(row.physicalSampleFingerprint));
     }
     if (prov.duplicateRetrieval === true) duplicateRetrieval++;
   }
 
+  for (const row of hfRows) {
+    const prov = row.provenanceJson ?? {};
+    if (hasExplicitSameIdentityDedupProof(prov, persistedCanonicalIdentities)) {
+      explicitProofCount++;
+    }
+  }
+
   const noDuplicateObserved: 'YES' | 'NO' = duplicateBuckets === 0 ? 'YES' : 'NO';
+  const hasExplicitProof = explicitProofCount > 0;
 
   let idempotencyValidated: HfIdempotencyEvidence['HF_IDEMPOTENCY_RUNTIME_VALIDATED'];
   let note: string;
-  if (duplicateRetrieval > 0 && duplicateBuckets === 0) {
+  if (hasExplicitProof && duplicateBuckets === 0) {
     idempotencyValidated = 'YES';
     note =
-      'duplicateRetrieval observed with zero duplicate persisted aggregate bucket identities — exercised dedup path';
+      'explicit same-identity retry/dedup suppression proof observed with zero duplicate persisted identities';
   } else if (duplicateRetrieval > 0 && duplicateBuckets > 0) {
     idempotencyValidated = 'NO';
     note = 'duplicateRetrieval observed but duplicate aggregate bucket identities were persisted';
   } else if (duplicateBuckets > 0) {
     idempotencyValidated = 'NO';
     note = 'duplicate aggregate bucket identities persisted without exercised dedup evidence';
+  } else if (duplicateRetrieval > 0) {
+    idempotencyValidated = 'PARTIAL';
+    note =
+      'duplicateRetrieval observed without duplicate persistence, but no explicit same-identity dedup suppression proof in evidence schema';
   } else {
     idempotencyValidated = 'NOT_EXERCISED';
     note =
@@ -304,6 +354,7 @@ export function classifyHfIdempotencyEvidence(hfRows: HfRuntimeObservationRow[])
   return {
     duplicateAggregateBucketIdentities: duplicateBuckets,
     duplicateRetrievalObservations: duplicateRetrieval,
+    explicitSameIdentityDedupProofObservations: explicitProofCount,
     NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED: noDuplicateObserved,
     HF_IDEMPOTENCY_RUNTIME_VALIDATED: idempotencyValidated,
     HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED: duplicateRetrieval > 0 ? 'YES' : 'NOT_EXERCISED',
@@ -320,6 +371,7 @@ export type HfRuntimeMechanismValidation = {
   HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED: 'YES' | 'NOT_EXERCISED';
   duplicateAggregateBucketIdentities: number;
   duplicateRetrievalObservations: number;
+  explicitSameIdentityDedupProofObservations: number;
   idempotencyEvidenceNote: string;
   nonV2IdentityRows: number;
   perFieldWatermark: HfFieldWatermarkValidation[];
@@ -374,6 +426,7 @@ export function validateHfRuntimeMechanisms(
       idempotency.NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED,
     duplicateAggregateBucketIdentities: idempotency.duplicateAggregateBucketIdentities,
     duplicateRetrievalObservations: idempotency.duplicateRetrievalObservations,
+    explicitSameIdentityDedupProofObservations: idempotency.explicitSameIdentityDedupProofObservations,
     idempotencyEvidenceNote: idempotency.idempotencyEvidenceNote,
     nonV2IdentityRows: nonV2,
     perFieldWatermark,

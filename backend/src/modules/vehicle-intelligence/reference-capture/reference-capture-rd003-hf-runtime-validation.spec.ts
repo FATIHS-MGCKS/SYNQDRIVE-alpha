@@ -1,6 +1,7 @@
 import {
   classifyHfIdempotencyEvidence,
   groupHfQueryExecutionsByField,
+  hasExplicitSameIdentityDedupProof,
   validateFieldQueryWindowBounded,
   validateFieldWatermarkSequence,
   validateHfRuntimeMechanisms,
@@ -19,6 +20,7 @@ function makeHfRow(args: {
   providerTimestamp?: string;
   aggregateBucketIdentity?: string;
   duplicateRetrieval?: boolean;
+  provenanceExtra?: Record<string, unknown>;
 }): HfRuntimeObservationRow {
   return {
     observationKind: 'SIGNAL_POINT',
@@ -29,7 +31,7 @@ function makeHfRow(args: {
     requestStartedAt: args.requestStartedAt,
     requestCompletedAt: args.requestStartedAt,
     sequenceNumber: args.seq,
-    physicalSampleFingerprint: `fp-${args.seq}`,
+    physicalSampleFingerprint: args.aggregateBucketIdentity ?? `fp-${args.seq}`,
     rawValueJson: { value: 1 },
     createdAt: args.requestStartedAt,
     provenanceJson: {
@@ -41,6 +43,7 @@ function makeHfRow(args: {
       duplicateRetrieval: args.duplicateRetrieval ?? false,
       requestedInterval: '1s',
       requestedAggregation: 'AVG',
+      ...(args.provenanceExtra ?? {}),
     },
   };
 }
@@ -210,7 +213,7 @@ describe('reference-capture-rd003-hf-runtime-validation', () => {
   });
 
   describe('idempotency evidence semantics', () => {
-    it('does not prove runtime idempotency from zero duplicate bucket identities alone', () => {
+    it('case A: zero duplicateRetrieval and zero duplicate persisted identities => NOT_EXERCISED', () => {
       const rows = makeBoundedSequence('speed', 3);
       const evidence = classifyHfIdempotencyEvidence(rows);
       expect(evidence.NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED).toBe('YES');
@@ -218,7 +221,7 @@ describe('reference-capture-rd003-hf-runtime-validation', () => {
       expect(evidence.HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED).toBe('NOT_EXERCISED');
     });
 
-    it('reports NO when duplicate retrieval exercised but duplicate bucket identity persisted', () => {
+    it('case B: duplicateRetrieval with duplicate persisted canonical identity => NO', () => {
       const rows = [
         makeHfRow({
           field: 'speed',
@@ -244,7 +247,7 @@ describe('reference-capture-rd003-hf-runtime-validation', () => {
       expect(evidence.HF_IDEMPOTENCY_RUNTIME_VALIDATED).toBe('NO');
     });
 
-    it('reports YES when duplicate retrieval exercised and dedup prevented persistence', () => {
+    it('case C: duplicateRetrieval without duplicate persistence but no explicit same-identity proof => PARTIAL', () => {
       const rows = [
         makeHfRow({
           field: 'speed',
@@ -266,8 +269,68 @@ describe('reference-capture-rd003-hf-runtime-validation', () => {
       ];
       const evidence = classifyHfIdempotencyEvidence(rows);
       expect(evidence.NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED).toBe('YES');
-      expect(evidence.HF_IDEMPOTENCY_RUNTIME_VALIDATED).toBe('YES');
+      expect(evidence.HF_IDEMPOTENCY_RUNTIME_VALIDATED).toBe('PARTIAL');
       expect(evidence.HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED).toBe('YES');
+      expect(evidence.explicitSameIdentityDedupProofObservations).toBe(0);
+    });
+
+    it('case D: YES only with explicit same-identity dedup suppression proof fields', () => {
+      const rows = [
+        makeHfRow({
+          field: 'speed',
+          seq: 1,
+          requestStartedAt: '2026-09-02T19:00:00.000Z',
+          hfWindowFrom: '2026-09-02T18:59:50.000Z',
+          hfWindowTo: '2026-09-02T19:00:00.000Z',
+          aggregateBucketIdentity: 'bucket-canonical',
+        }),
+        makeHfRow({
+          field: 'speed',
+          seq: 2,
+          requestStartedAt: '2026-09-02T19:00:10.000Z',
+          hfWindowFrom: '2026-09-02T18:59:58.000Z',
+          hfWindowTo: '2026-09-02T19:00:10.000Z',
+          aggregateBucketIdentity: 'bucket-canonical-retry-marker',
+          duplicateRetrieval: true,
+          provenanceExtra: {
+            idempotencyDedupSuppressed: true,
+            retriedCanonicalIdentity: 'bucket-canonical',
+          },
+        }),
+      ];
+      const evidence = classifyHfIdempotencyEvidence(rows);
+      expect(evidence.explicitSameIdentityDedupProofObservations).toBe(1);
+      expect(evidence.HF_IDEMPOTENCY_RUNTIME_VALIDATED).toBe('YES');
+      expect(
+        hasExplicitSameIdentityDedupProof(
+          rows[1].provenanceJson as Record<string, unknown>,
+          new Set(['bucket-canonical']),
+        ),
+      ).toBe(true);
+    });
+
+    it('duplicateRetrieval alone cannot produce idempotency YES', () => {
+      const rows = [
+        makeHfRow({
+          field: 'speed',
+          seq: 1,
+          requestStartedAt: '2026-09-02T19:00:00.000Z',
+          hfWindowFrom: '2026-09-02T18:59:50.000Z',
+          hfWindowTo: '2026-09-02T19:00:00.000Z',
+          aggregateBucketIdentity: 'bucket-a',
+        }),
+        makeHfRow({
+          field: 'speed',
+          seq: 2,
+          requestStartedAt: '2026-09-02T19:00:10.000Z',
+          hfWindowFrom: '2026-09-02T18:59:58.000Z',
+          hfWindowTo: '2026-09-02T19:00:10.000Z',
+          aggregateBucketIdentity: 'bucket-b',
+          duplicateRetrieval: true,
+        }),
+      ];
+      const evidence = classifyHfIdempotencyEvidence(rows);
+      expect(evidence.HF_IDEMPOTENCY_RUNTIME_VALIDATED).not.toBe('YES');
     });
   });
 
