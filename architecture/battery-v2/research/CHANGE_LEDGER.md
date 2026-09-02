@@ -6,7 +6,24 @@ Append-only scientific record. Newest entries first.
 
 ---
 
----
+## CL-2026-09-02 — D5 lifecycle identity precision
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | D5 defined `publicationVersion` as contract generation, but same-assessment lifecycle persistence interaction with create-only idempotency was not explicit. |
+| **OBSERVATION** | `evaluateLvPublicationPolicy` can return STALE with `shouldPersistPublication=true` for existing publication; `persistLvPublication` CREATE + P2002 returns existing row; `markPublicationSuperseded` updates existing row without `publicationVersion` increment. |
+| **HYPOTHESIS** | Publication contract identity (`pub:{assessmentId}:v{n}`) must remain stable across lifecycle transitions; create idempotency ≠ lifecycle-state idempotency. |
+| **CHANGE** | Amend D5 dossier: separate publication contract identity from lifecycle-state revision; document STALE/SUPERSEDED precedents; tests 15–20; refine publication gaps; +1 evidence node. |
+| **WHY** | Prevent misuse of `publicationVersion` as maturity counter; prevent false success when requested lifecycle state was not materialized. |
+| **EXPECTED_EFFECT** | PKG-02 distinguishes create-idempotency from lifecycle-state persistence; STALE durably materialized on same identity. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh` |
+| **OBSERVED_EFFECT** | Validator PASS; graph counts per post-change output. |
+| **NON_EFFECTS** | No runtime implementation; no repository runtime fix; no publication enqueue; no payload validation runtime fix; no database migration; no feature flag change; no production mutation; no backfill; no deploy; no M4; no publication enablement; no production validation; runtime gaps remain open. |
+| **REGRESSIONS_OR_TRADEOFFS** | PKG-02 must not treat P2002 return as lifecycle transition success when state differs |
+| **REMAINING_GAPS** | All 20 `BAT-V2-GAP-*` open |
+| **DECISION_STATUS** | VALIDATED (NOT PRODUCTION_VALIDATED) |
+| **AFFECTED_GRAPH** | D5 summary expanded; GAP-HANDOFF + GAP-JOB-CHAIN refined; +1 evidence, +3 edges |
+| **EVIDENCE** | `BAT-V2-EVID-CODE-LV-PUBLICATION-LIFECYCLE-CREATE-P2002-001` |
 
 ## CL-2026-09-02 — D5 LV publication version authority
 

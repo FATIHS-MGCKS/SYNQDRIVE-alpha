@@ -347,6 +347,18 @@ See `decisions/lv-publication-version-authority-decision.md`.
 | LV publication policy version | `'1.0.0'` | Policy provenance |
 | LV publication contract version | `1` | Publication idempotency generation (D5) |
 
+### Publication identity vs lifecycle (D5 precision)
+
+**Invariant:** `publicationVersion` = contract generation — **not** lifecycle/maturity revision.
+
+Same `assessmentId` + same `LV_PUBLICATION_CONTRACT_VERSION` → same `pub:{assessmentId}:v{n}` identity across PROVISIONAL/STABLE/STALE/SUPERSEDED transitions.
+
+**Current-code lifecycle gap:** Policy may request STALE persistence (`shouldPersistPublication=true`) for an existing `pub:A:v1` row; `persistLvPublication` uses CREATE + P2002 and may return the existing row **without** materializing the requested lifecycle state. `markPublicationSuperseded` demonstrates lifecycle can change without version increment (updates existing row).
+
+PKG-02 must distinguish **create idempotency** from **lifecycle-state idempotency**. P2002 return is not proof a different requested lifecycle state was persisted.
+
+See `decisions/lv-publication-version-authority-decision.md` (sections PUBLICATION_IDENTITY_VS_LIFECYCLE, CREATE_IDEMPOTENCY_VS_STATE_IDEMPOTENCY).
+
 ## REJECTED OPTIONS
 
 - `lv-assess:{vehicleId}:{restTargetId}` — **rejected**; conflicts with `assess:` prefix validation

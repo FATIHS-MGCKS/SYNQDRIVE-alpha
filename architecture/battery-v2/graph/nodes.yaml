@@ -339,10 +339,12 @@ nodes:
       publicationVersion = numeric LV publication contract generation (LV_PUBLICATION_CONTRACT_VERSION = 1).
       Job identity pub:{assessmentId}:v1 via buildPublicationJobIdempotencyKey. Distinct from job envelope
       modelVersion, assessment modelVersion, and LV_PUBLICATION_POLICY_VERSION semver (decision.policyVersion).
-      Not a sequence counter, retry attempt, D4 track epoch, or policy semver mapping. Canonical PKG-02 producers
-      must explicitly supply contract version before enqueue — repository ?? 1 is compatibility fallback only.
-      Same assessmentId + same contract generation converges direct/retry/reconcile on same pub identity.
-      validateBatteryV2JobPayload default branch strips BATTERY_PUBLICATION_UPDATE assessmentId/publicationVersion
+      Not a sequence counter, retry attempt, D4 track epoch, policy semver mapping, or lifecycle/maturity
+      revision. publication contract identity != lifecycle state — STALE/SUPERSEDED do not increment version;
+      same pub:A:v1 identity may require lifecycle-state materialization distinct from create-only P2002 path.
+      Canonical PKG-02 producers must explicitly supply contract version before enqueue — repository ?? 1 is
+      compatibility fallback only. Same assessmentId + same contract generation converges direct/retry/reconcile
+      on same pub identity. validateBatteryV2JobPayload default branch strips BATTERY_PUBLICATION_UPDATE fields
       at producer boundary — PKG-02 must add strict validation. PKG-02 IMPLEMENTATION_READY; runtime gaps remain open.
       NOT PRODUCTION_VALIDATED.
     source_paths:
@@ -353,10 +355,13 @@ nodes:
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-publication-update.handler.ts
       - backend/src/modules/vehicle-intelligence/battery-health/battery-publication.repository.ts
       - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-publication-thresholds.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-publication.policy.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-publication.service.ts
     evidence:
       - BAT-V2-EVID-CODE-LV-PUBLICATION-VERSION-DEFAULT-001
       - BAT-V2-EVID-CODE-LV-PUBLICATION-POLICY-VERSION-SEPARATE-001
       - BAT-V2-EVID-CODE-PUBLICATION-PAYLOAD-VALIDATION-DROP-001
+      - BAT-V2-EVID-CODE-LV-PUBLICATION-LIFECYCLE-CREATE-P2002-001
     non_effects:
       - Does not implement publication enqueue or payload validation fix
       - Does not close BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
@@ -597,7 +602,9 @@ nodes:
       battery-assessment-recompute.handler persists assessment but does not enqueue BATTERY_PUBLICATION_UPDATE.
       battery-publication-update.handler calls BatteryPublicationService.updateLvPublication when job runs.
       No normal enqueue wrapper in BATTERY_V2_ENQUEUE_ENTRY_POINTS audit inventory. Backfill may call
-      updateLvPublication directly. Production impact UNKNOWN (publication default OFF).
+      updateLvPublication directly. D5 documents same-identity lifecycle transitions (e.g. STALE) that may
+      conflict with create-only persistLvPublication P2002 path — lifecycle state may not materialize. Production
+      impact UNKNOWN (publication default OFF).
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-assessment-recompute.handler.ts
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-publication-update.handler.ts
@@ -605,6 +612,7 @@ nodes:
     evidence:
       - BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001
       - BAT-V2-EVID-AUDIT-PUBLICATION-ENQUEUE-ABSENCE-001
+      - BAT-V2-EVID-CODE-LV-PUBLICATION-LIFECYCLE-CREATE-P2002-001
 
   - id: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
     type: gap
@@ -615,13 +623,16 @@ nodes:
       Umbrella gap: both canonical assessment handoff and publication handoff missing in normal pipeline.
       Enabling publication flag alone does not establish automatic canonical REST → assessment → publication
       chain due to legacy-cutover interaction. D5 closes publicationVersion authority but central producer
-      validateBatteryV2JobPayload strips BATTERY_PUBLICATION_UPDATE assessmentId/publicationVersion today —
-      PKG-02 must preserve fields at validation boundary. See BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
+      validateBatteryV2JobPayload strips BATTERY_PUBLICATION_UPDATE assessmentId/publicationVersion today;
+      same publication identity can receive later lifecycle decision (e.g. STALE) while persistLvPublication
+      create-on-P2002 may return existing row without materializing requested transition — PKG-02 must
+      distinguish create idempotency from lifecycle-state persistence. See BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
       and BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001.
     evidence:
       - BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001
       - BAT-V2-EVID-AUDIT-PUBLICATION-ENQUEUE-ABSENCE-001
       - BAT-V2-EVID-CODE-PUBLICATION-PAYLOAD-VALIDATION-DROP-001
+      - BAT-V2-EVID-CODE-LV-PUBLICATION-LIFECYCLE-CREATE-P2002-001
 
   - id: BAT-V2-GAP-HV-PIPELINE-ALLOWED-DEAD-001
     type: gap
@@ -1646,6 +1657,24 @@ nodes:
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job.types.ts
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-publication-update.handler.ts
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job.validation.spec.ts
+
+  - id: BAT-V2-EVID-CODE-LV-PUBLICATION-LIFECYCLE-CREATE-P2002-001
+    type: evidence
+    title: Same publication identity lifecycle transition can conflict with create-only idempotency path
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      evaluateLvPublicationPolicy may return maturity STALE with shouldPersistPublication true for existing
+      previous publication. BatteryPublicationService then calls persistLvPublication with assessmentId and
+      publicationVersion. Repository builds pub:{assessmentId}:v{version}, performs CREATE, and on P2002
+      returns existing row without updating lifecycle state. markPublicationSuperseded updates existing row
+      reason/maturity SUPERSEDED without publicationVersion increment — precedent that lifecycle != contract
+      version. If pub:A:v1 already exists STABLE and policy requests STALE for same assessment/version, P2002
+      may return STABLE row without materializing STALE. Production frequency UNKNOWN.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-publication.policy.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-publication.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-publication.repository.ts
 
   - id: BAT-V2-EVID-CODE-HEV-SIDE-EFFECT-READ-DIVERGENCE-001
     type: evidence

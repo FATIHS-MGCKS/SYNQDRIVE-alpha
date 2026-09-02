@@ -185,6 +185,19 @@ edges:
     relation: supports
     to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
 
+  # D5 lifecycle — same identity vs create-only P2002
+  - from: BAT-V2-EVID-CODE-LV-PUBLICATION-LIFECYCLE-CREATE-P2002-001
+    relation: supports
+    to: BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001
+  - from: BAT-V2-EVID-CODE-LV-PUBLICATION-LIFECYCLE-CREATE-P2002-001
+    relation: supports
+    to: BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
+    notes: Lifecycle persistence gap on existing publication identity — PKG-02 must distinguish create vs state transition
+  - from: BAT-V2-EVID-CODE-LV-PUBLICATION-LIFECYCLE-CREATE-P2002-001
+    relation: supports
+    to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
+    notes: Same-identity STALE/create-P2002 may not materialize requested lifecycle state
+
   # Failed → superseded by decisions / liveness
   - from: BAT-V2-DEC-1445-001
     relation: does_not_solve

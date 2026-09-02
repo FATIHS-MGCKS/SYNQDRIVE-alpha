@@ -1,7 +1,7 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-02 (D5 — LV publication version authority)  
-**Graph:** 146 nodes / 142 edges / 11 invariants (validated 2026-09-02)  
+**Snapshot date:** 2026-09-02 (D5 lifecycle identity precision)  
+**Graph:** 147 nodes / 145 edges / 11 invariants (validated 2026-09-02)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
 ## Executive summary
@@ -50,7 +50,7 @@ See `resolution/` — priority matrix, implementation packages, dependency graph
 - LV publication eligibility: evaluated in `BatteryPublicationService` / `evaluateLvPublicationPolicy()`
 - HV SOH gate execution under `HV_CAPACITY_SHADOW`; publication-intent separate
 - Assessment job identity: `assess:{vehicleId}:{assessmentType}:{inputVersion}` — canonical REST handoff `inputVersion` = `BatteryMeasurement.id` (D1); `sourceEntityId` correlation (D2)
-- Publication job identity: `pub:{assessmentId}:v{publicationVersion}` — D5: `LV_PUBLICATION_CONTRACT_VERSION = 1` (numeric contract generation; distinct from policy semver `1.0.0`)
+- Publication job identity: `pub:{assessmentId}:v{publicationVersion}` — D5: `LV_PUBLICATION_CONTRACT_VERSION = 1`; contract identity ≠ lifecycle state (STALE/SUPERSEDED do not increment version)
 - Primary API + rental health → canonical read model
 - **D3 target:** V2 core mandatory; PUBLICATION = effect gate; HANDOFF flag rejected
 

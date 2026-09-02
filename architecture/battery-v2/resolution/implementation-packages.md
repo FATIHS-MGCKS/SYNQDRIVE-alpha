@@ -48,7 +48,7 @@
 | **Handoff** | Publication enqueue after deterministic assessment selection; policy in `BatteryPublicationService` only — **not** “enqueue every persistedAssessmentId” |
 | **Assessment-track authority** | **VALIDATED (D4)** — freshness-conditional `WORKSHOP_OVERRIDE > TELEMETRY` within D4 authority epoch; cross-track stabilization epoch + retention≠fallback; previous-track observability required at implementation |
 | **publicationVersion** | **VALIDATED (D5)** — `LV_PUBLICATION_CONTRACT_VERSION = 1`; canonical producers must explicitly supply before enqueue; repository `?? 1` is compatibility fallback only |
-| **PKG-02 runtime note** | `IMPLEMENTATION_READY` — must implement full D4 contract + D5 explicit contract version + strict publication payload validation; runtime gaps remain open |
+| **PKG-02 runtime note** | `IMPLEMENTATION_READY` — must implement full D4 contract + D5 explicit contract version + strict publication payload validation + same-identity lifecycle persistence (create vs state-transition idempotency); runtime gaps remain open |
 | **Configuration invariant** | **VALIDATED (D3)** — resolved for PKG-02 |
 | **Rollback (pre-M4)** | Disable `BATTERY_V2_PUBLICATION_ENABLED` first (restores legacy capture when REST_SHADOW ON) |
 | **Test scope** | E2E REST→assess→pub with multi-track scenarios |

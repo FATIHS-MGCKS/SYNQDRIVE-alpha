@@ -200,6 +200,149 @@ Do **not** increment `publicationVersion` because:
 
 Changed `assessmentId` carries the new publication carrier. D5 remains publication **contract generation**.
 
+## PUBLICATION_IDENTITY_VS_LIFECYCLE
+
+**Invariant:** publication **contract identity** ≠ publication **lifecycle state**.
+
+`publicationVersion` versions the execution / persistence / idempotency **contract generation** for a given assessment. It does **not** version:
+
+- publication maturity (PROVISIONAL, STABLE, STALE, SUPERSEDED, …)  
+- lifecycle revision  
+- stale transition  
+- supersession metadata state  
+- publication status update  
+- number of reevaluations  
+
+Therefore:
+
+```
+same assessmentId + same LV_PUBLICATION_CONTRACT_VERSION
+→ same publication contract identity
+```
+
+Example: `assessmentId = A`, contract version `1` → identity **`pub:A:v1`**.
+
+That identity does **not** become `pub:A:v2` merely because lifecycle state changes.
+
+## SAME_IDENTITY_STATE_TRANSITION
+
+### Timeline example (same assessment, same contract generation)
+
+| Time | Assessment | Contract | Lifecycle maturity | Contract identity |
+|------|------------|----------|-------------------|-------------------|
+| T0 | A | 1 | PROVISIONAL | `pub:A:v1` |
+| T1 | A | 1 | STABLE | `pub:A:v1` |
+| T2 | A | 1 | STALE | `pub:A:v1` |
+
+No version increment is allowed solely because maturity/lifecycle changed.
+
+If a lifecycle transition for the **same** assessment identity is intended to be persisted, it must use **same identity + lifecycle materialization** semantics — **not** a `publicationVersion` increment.
+
+**PROVISIONAL → STABLE nuance:** Do **not** assert current runtime necessarily performs a separate persisted PROVISIONAL→STABLE mutation for the exact same assessment unless code evidence proves that path. Use STALE and SUPERSEDED as concrete current-code evidence where available.
+
+## CREATE_IDEMPOTENCY_VS_STATE_IDEMPOTENCY
+
+Two distinct idempotency concerns:
+
+| Concern | Meaning | Valid convergence |
+|---------|---------|-------------------|
+| **A — Idempotent artifact creation retry** | CREATE for `pub:A:v1` when row already exists with required state | P2002 → return existing row **when desired state already materialized** |
+| **B — Lifecycle state transition** | Same `pub:A:v1` identity; requested maturity/state differs from stored row | Must **update/materialize** lifecycle on existing identity |
+
+**Rule:** For the **same** publication contract identity, P2002 → find existing row is sufficient for idempotent CREATE retry **only when** the desired publication artifact already represents the required state.
+
+P2002 **must not** automatically be interpreted as: *"the requested lifecycle transition was persisted."*
+
+**Example:**
+
+```
+existing:  pub:A:v1, maturity = STABLE
+requested: pub:A:v1, maturity = STALE
+CREATE → P2002 → returns existing STABLE row
+```
+
+That does **not** prove STALE was persisted.
+
+**IDENTITY idempotency does not eliminate STATE-TRANSITION idempotency.**
+
+Retry/recovery: if intended state is already materially present, existing-row convergence is valid. If intended state differs, retry/recovery must ensure lifecycle transition is durably applied.
+
+## STALE_LIFECYCLE
+
+**STALE** is a publication **lifecycle state**, not a new publication contract generation.
+
+```
+STABLE pub:A:v1  →  STALE pub:A:v1   ✓
+STABLE pub:A:v1  →  pub:A:v2         ✗  (solely for staleness)
+```
+
+### Current-code evidence (CONFIRMED)
+
+`evaluateLvPublicationPolicy()` — when `evaluateStalePrevious(previous, now)` is true:
+
+- returns `maturity: 'STALE'`  
+- returns `shouldPersistPublication: true`  
+
+`BatteryPublicationService.updateLvPublication()` — when `shouldPersistPublication === true`:
+
+- calls `persistLvPublication({ assessmentId, publicationVersion, decision, ... })`
+
+`BatteryPublicationRepository.persistLvPublication()`:
+
+- builds `idempotencyKey = pub:{assessmentId}:v{publicationVersion}`  
+- performs **CREATE**  
+- on P2002 → `findFirstOrThrow` existing row by idempotency key  
+
+**Lifecycle-persistence gap:** If `pub:A:v1` already exists (e.g. STABLE) and policy later requests STALE persistence for the same assessment/version, the create-on-conflict path may return the **existing row without materializing** the new lifecycle state.
+
+**Production impact/frequency:** UNKNOWN.
+
+PKG-02 must ensure STALE (and other same-identity lifecycle transitions) become durably observable on the existing publication identity or through an equivalent deterministic lifecycle-state mechanism.
+
+## SUPERSEDED_PRECEDENT
+
+Current `markPublicationSuperseded()`:
+
+- **updates** the existing `BatteryPublication` row `reason` payload  
+- sets `maturity: 'SUPERSEDED'` in reason JSON  
+- does **not** increment `publicationVersion`  
+
+This demonstrates publication lifecycle metadata can change while contract identity/version remains stable.
+
+**Precedent only** — not a claim that all lifecycle transitions must use this exact method.
+
+### D4 interaction (lifecycle vs new assessment)
+
+**Case A — new authoritative assessment (D4):**
+
+```
+old: assessment T → pub:T:v1
+new: assessment W → pub:W:v1
+```
+
+New publication identity because `assessmentId` changed. D4 may supersede old publication. No `publicationVersion` increment required.
+
+**Case B — same assessment lifecycle change:**
+
+```
+assessment A, pub:A:v1 STABLE
+later: same assessment A, pub:A:v1 STALE
+```
+
+Same contract identity + lifecycle transition. **Not** new D4 track authority, not new assessment, not new publication contract generation.
+
+## TARGET_PERSISTENCE_MODEL
+
+Conceptual PKG-02 target (exact repository API is implementation detail):
+
+| Scenario | Action |
+|----------|--------|
+| New publication contract artifact (new `assessmentId` or approved new contract generation) | Create / idempotent-create publication identity (`pub:A:v1`, `pub:B:v1`, `pub:A:v2` after approved replay) |
+| Same-identity lifecycle transition (`pub:A:v1` STABLE → STALE) | Update/materialize lifecycle state on **existing** publication identity |
+| Create conflict on same identity | **Not** sufficient proof of lifecycle transition success |
+
+Do **not** prescribe DB migration unless implementation evidence proves one is required.
+
 ## FUTURE_VERSION_BUMP_GOVERNANCE
 
 `LV_PUBLICATION_CONTRACT_VERSION` may bump `1 → 2` only via **intentional publication-contract migration**:
@@ -213,6 +356,14 @@ Changed `assessmentId` carries the new publication carrier. D5 remains publicati
 Appropriate when maintainers need a **new deterministic publication execution identity for the same `assessmentId`** because publication execution/persistence semantics changed materially.
 
 **No automatic increment mechanism.**
+
+**NOT** appropriate for contract bump:
+
+- STALE, STABLE, PROVISIONAL, SUPERSEDED lifecycle transitions  
+- retry, reconciliation  
+- D4 track change  
+- equal-value authority transition  
+- UNKNOWN→known transition  
 
 ### Policy version vs contract version
 
@@ -289,7 +440,18 @@ Deterministic direct/retry/reconciliation identity without mutable counters or s
 - PKG-02 promoted to `IMPLEMENTATION_READY` (architecture spec complete — **not** implemented/deployed/enabled)  
 - Implementers have single central `LV_PUBLICATION_CONTRACT_VERSION` authority  
 - Payload validation gap documented for PKG-02 implementation  
+- Same-identity lifecycle vs contract identity distinguished; create/P2002 lifecycle gap documented  
 - Runtime publication gaps remain open until implementation
+
+### PKG-02 implementation contract (architecture — not runtime authorization)
+
+PKG-02 runtime must include:
+
+**D4:** deterministic track arbitration; previous-track observability; `publicationAuthorityEpochChanged`; cross-track stabilization reset; equal-value authority transitions; UNKNOWN→known; retention ≠ fallback.
+
+**D5:** central `LV_PUBLICATION_CONTRACT_VERSION = 1`; explicit version on canonical publication jobs; strict `assessmentId`/`publicationVersion` validation; publication fields preserved at producer boundary; same-assessment retries converge on same `pub:` identity; same-identity lifecycle transitions do **not** increment version; create-idempotency and lifecycle-state-idempotency distinguished; P2002 existing-row return is not sufficient proof of a different requested lifecycle state; STALE transition durably materialized; SUPERSEDED remains same contract generation.
+
+`IMPLEMENTATION_READY` = architecture/spec complete — **not** implementation exists, current P2002 lifecycle behavior correct, runtime gap closed, publication enabled, deploy authorized, M4 authorized, or production validated.
 
 ## NON_EFFECTS
 
@@ -317,6 +479,8 @@ Deterministic direct/retry/reconciliation identity without mutable counters or s
 | Repository default used at enqueue | CANONICAL producer contract + TEST 8 |
 | Payload fields stripped at producer | PAYLOAD_VALIDATION_FINDING + TEST 11/12 |
 | D4 track change bumps version | D4_INTERACTION + TEST 4 |
+| Lifecycle transition bumps version | PUBLICATION_IDENTITY_VS_LIFECYCLE + TEST 15/16 |
+| P2002 masks lifecycle transition failure | CREATE_IDEMPOTENCY_VS_STATE_IDEMPOTENCY + TEST 19 |
 
 ## TEST_CONTRACT
 
@@ -338,6 +502,12 @@ Future PKG-02 tests (minimum):
 | **12** | `BATTERY_PUBLICATION_UPDATE` missing `assessmentId` | validation failure before enqueue |
 | **13** | same assessment A under deliberately approved future contract v2 | `pub:A:v2` distinct from `pub:A:v1` |
 | **14** | policy semver changes without explicit contract generation bump | no implicit `publicationVersion` change |
+| **15** | same assessment A STABLE → STALE, `shouldPersistPublication = true` | `publicationVersion` remains `1`; identity `pub:A:v1`; STALE durably materialized; create conflict alone cannot falsely acknowledge transition |
+| **16** | `pub:A:v1` STABLE → STALE | no `pub:A:v2` |
+| **17** | existing publication marked SUPERSEDED | contract version unchanged |
+| **18** | idempotent CREATE retry when desired state already exists on `pub:A:v1` | same `pub:A:v1`; existing state accepted; no duplicate artifact |
+| **19** | existing `pub:A:v1` state X; desired lifecycle state Y | existing row identity reused; Y durably applied; returning X unchanged is **not** success |
+| **20** | new assessment B | `pub:B:v1`; no lifecycle revision counter; no v2 |
 
 ## STATUS
 
