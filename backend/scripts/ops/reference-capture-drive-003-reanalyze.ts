@@ -23,6 +23,7 @@ import {
   sortByAcquisitionOrder,
   type SignalMetricsObsRow,
 } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-signal-metrics';
+import { validateHfRuntimeMechanisms, type HfRuntimeObservationRow } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-rd003-hf-runtime-validation';
 
 const REFERENCE_DRIVE_ID = 'DIMO_LTE_R1_REFERENCE_DRIVE_003';
 const SESSION_ID = '0fa040aa-6105-4872-9b2c-f8ad477009b8';
@@ -256,50 +257,6 @@ function analyzeHfForensics(hfRows: ExtendedObsRow[], ctx: { sessionStartedAtMs:
   };
 }
 
-function validateHfRuntimeMechanisms(hfRows: ExtendedObsRow[]) {
-  const perFieldWindows: Record<string, { windowTo: string[]; queryTo: string[] }> = {};
-  let duplicateBuckets = 0;
-  let nonV2 = 0;
-  let lateRecovery = false;
-  const bucketGlobal = new Set<string>();
-
-  for (const row of hfRows) {
-    const field = row.providerField ?? 'UNKNOWN';
-    const prov = row.provenanceJson ?? {};
-    if (prov.hfPhysicalIdentityVersion !== 'AGGREGATE_BUCKET_V2') nonV2++;
-    const bucket = String(prov.aggregateBucketIdentity ?? '');
-    if (bucket) {
-      if (bucketGlobal.has(bucket)) duplicateBuckets++;
-      bucketGlobal.add(bucket);
-    }
-    if (prov.duplicateRetrieval === true) lateRecovery = true;
-    if (!perFieldWindows[field]) perFieldWindows[field] = { windowTo: [], queryTo: [] };
-    if (prov.hfWindowTo) perFieldWindows[field].windowTo.push(String(prov.hfWindowTo));
-    if (prov.hfActualQueryTo) perFieldWindows[field].queryTo.push(String(prov.hfActualQueryTo));
-  }
-
-  let watermarkMonotonic = true;
-  let coverageBounded = true;
-  for (const windows of Object.values(perFieldWindows)) {
-    const sortedTo = [...windows.windowTo].sort();
-    for (let i = 1; i < sortedTo.length; i++) {
-      if (sortedTo[i] < sortedTo[i - 1]) watermarkMonotonic = false;
-    }
-    const lastQuery = windows.queryTo.sort().at(-1);
-    const lastWindow = sortedTo.at(-1);
-    if (lastQuery && lastWindow && lastQuery < lastWindow) coverageBounded = false;
-  }
-
-  return {
-    HF_PHYSICAL_IDENTITY_VERSION: nonV2 === 0 ? 'AGGREGATE_BUCKET_V2' : 'MIXED',
-    HF_QUERY_WINDOW_BOUNDED_RUNTIME_VALIDATED: coverageBounded ? 'YES' : 'PARTIAL',
-    HF_DATA_WATERMARK_RUNTIME_VALIDATED: watermarkMonotonic ? 'YES' : 'PARTIAL',
-    HF_IDEMPOTENCY_RUNTIME_VALIDATED: duplicateBuckets === 0 ? 'YES' : 'NO',
-    HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED: lateRecovery ? 'YES' : 'NOT_EXERCISED',
-    duplicateAggregateBucketIdentities: duplicateBuckets,
-    nonV2IdentityRows: nonV2,
-  };
-}
 
 function buildPhysicsAssessability(discovered: string[], inventory: ReturnType<typeof buildSignalInventory>) {
   const has = (f: string) => discovered.includes(f);
@@ -313,17 +270,27 @@ function buildPhysicsAssessability(discovered: string[], inventory: ReturnType<t
   const maf = has('obdMaxMAF');
 
   return {
+    inputs: {
+      obdEngineLoad: load ? 'DIRECTLY_OBSERVED' : 'NOT_ASSESSABLE',
+      powertrainCombustionEngineSpeed: rpm ? 'DIRECTLY_OBSERVED' : 'NOT_ASSESSABLE',
+      obdThrottlePosition: has('obdThrottlePosition') ? 'DIRECTLY_OBSERVED' : 'NOT_ASSESSABLE',
+      powertrainCombustionEngineTPS: has('powertrainCombustionEngineTPS') ? 'DIRECTLY_OBSERVED' : 'NOT_ASSESSABLE',
+    },
+    gear: {
+      GEAR_STATE_OBSERVED: gear ? 'YES' : 'NO',
+      GEAR_CHANGE_TIMING_VALIDATED: 'NO',
+    },
     targets: {
       vehicleSpeedTimeline: speed ? 'DIRECTLY_OBSERVED' : 'NOT_ASSESSABLE',
-      longitudinalAcceleration: 'NOT_ASSESSABLE',
+      longitudinalAcceleration: speed ? 'RECONSTRUCTABLE_WITH_CADENCE_GATING' : 'NOT_ASSESSABLE',
       jerk: 'NOT_ASSESSABLE',
       accelerationEpisodes: speed && (throttle || load) ? 'RECONSTRUCTABLE_MEDIUM_CONFIDENCE' : 'WEAK_PROXY_ONLY',
       brakingEpisodes: 'NOT_ASSESSABLE',
       accelToBrakeReversal: 'NOT_ASSESSABLE',
       stopGoCycles: speed ? 'RECONSTRUCTABLE_MEDIUM_CONFIDENCE' : 'NOT_ASSESSABLE',
       engineLoadExposure: load ? 'DIRECTLY_OBSERVED' : 'NOT_ASSESSABLE',
-      rpmLoadOperatingRegions: rpm && load ? 'DIRECTLY_OBSERVED' : 'WEAK_PROXY_ONLY',
-      gearChangeTiming: gear ? 'RECONSTRUCTABLE_HIGH_CONFIDENCE' : 'NOT_ASSESSABLE',
+      rpmLoadOperatingRegions: rpm && load ? 'RECONSTRUCTABLE_MEDIUM_CONFIDENCE' : 'WEAK_PROXY_ONLY',
+      gearChangeTiming: gear ? 'RECONSTRUCTABLE_LOW_CONFIDENCE_PENDING_GT' : 'NOT_ASSESSABLE',
       lateralCorneringDemand: heading ? 'WEAK_PROXY_ONLY' : 'NOT_ASSESSABLE',
       yawDynamics: 'NOT_ASSESSABLE',
       wheelSpeedDifferential: 'NOT_ASSESSABLE',
@@ -332,16 +299,24 @@ function buildPhysicsAssessability(discovered: string[], inventory: ReturnType<t
     },
     domains: {
       DRIVER_QUALITY_ASSESSABILITY: speed && (throttle || load) ? 'RECONSTRUCTABLE_MEDIUM_CONFIDENCE' : 'WEAK_PROXY_ONLY',
-      VEHICLE_LOAD_ASSESSABILITY: load && rpm ? 'DIRECTLY_OBSERVED' : 'RECONSTRUCTABLE_MEDIUM_CONFIDENCE',
+      VEHICLE_LOAD_ASSESSABILITY: 'RECONSTRUCTABLE_MEDIUM_CONFIDENCE',
       BRAKE_PHYSICS_ASSESSABILITY: 'NOT_ASSESSABLE',
       TIRE_DYNAMIC_ASSESSABILITY: 'NOT_ASSESSABLE',
     },
     rationale: {
-      longitudinalAcceleration: 'No longitudinal accel signal in Tiguan availableSignals',
+      longitudinalAcceleration:
+        speed
+          ? 'Speed timeline enables a_x ≈ Δv/Δt reconstruction; HF rows are DIMO AVG aggregate buckets — cadence/confidence NOT calibrated pre-video-GT'
+          : 'No speed signal',
+      vehicleLoadDomain:
+        'Domain assessability is reconstructed from load/RPM/throttle inputs — inputs may be DIRECTLY_OBSERVED but domain is not',
       brakingEpisodes: 'No brake pedal/pressure/hydraulic signals; no native harsh-brake events observed',
       yawDynamics: 'No yaw rate signal on Tiguan LTE_R1',
       wheelSpeedDifferential: 'No wheel speed signals',
-      gearChangeTiming: gear ? 'powertrainTransmissionActualGear observed with moderate cadence' : 'missing',
+      gearChangeTiming:
+        gear
+          ? 'GEAR_STATE_OBSERVED=YES but GEAR_CHANGE_TIMING_VALIDATED=NO until segmented video GT alignment'
+          : 'missing',
       speedTimeline: speed ? `speed observed on LATEST_LIVE + HF; temporalClass=${dyn('speed')}` : 'missing',
       mafPresent: maf,
     },
@@ -361,7 +336,7 @@ function buildNativeEventForensics(
     NATIVE_EVENT_CAPABILITY_ADVERTISED: preflight?.eventCapability != null ? 'YES' : 'UNKNOWN',
     PROVIDER_RETURNED_EVENT_COUNT: eventObs.length,
     QUALIFYING_DRIVER_EVENTS_OCCURRED: 'UNKNOWN',
-    NATIVE_EVENT_RUNTIME_DELIVERY_VALIDATED: eventObs.length > 0 ? 'YES' : 'NOT_EXERCISED',
+    NATIVE_EVENT_RUNTIME_DELIVERY_VALIDATED: 'NOT_EXERCISED',
     comparison: {
       RD001_NATIVE_EVENTS: 0,
       RD002_NATIVE_EVENTS: 0,
@@ -387,13 +362,36 @@ function buildSamplingInvarianceReadiness(params: {
   return {
     RD003_SAMPLING_INVARIANCE_SOURCE_READY: blockers.length === 0 ? 'YES' : blockers.length <= 2 ? 'PARTIAL' : 'NO',
     blockers,
-    plannedReplayCadences: ['native', '1s', '2s', '5s', '10s', '30s', 'irregular', '10pct_dropout', '25pct_dropout'],
-    note: 'Do not upscale sparse HF buckets to synthetic native 1Hz truth',
+    sourceTimeline: 'OBSERVED_PROVIDER_BUCKET_TIMELINE',
+    plannedReplayCadences: [
+      'OBSERVED_PROVIDER_BUCKET_TIMELINE',
+      '2s replay',
+      '5s replay',
+      '10s replay',
+      '30s replay',
+      'irregular replay',
+      '10% controlled dropout',
+      '25% controlled dropout',
+    ],
+    RAW_PHYSICAL_SAMPLE_CADENCE: 'NOT_PROVEN',
+    note: 'HF aggregate-bucket timeline is not a proven raw LTE_R1 physical sampling source',
   };
 }
 
+function resolveRepoPath(relPath: string): string {
+  const candidates = [
+    path.resolve(__dirname, '../../../..', relPath),
+    path.resolve(process.cwd(), relPath),
+    path.resolve(__dirname, '../../..', relPath),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return candidates[0];
+}
+
 function loadPeerSummary(relPath: string): Record<string, unknown> | null {
-  const p = path.resolve(process.cwd(), relPath);
+  const p = resolveRepoPath(relPath);
   if (!fs.existsSync(p)) return null;
   return JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>;
 }
@@ -417,7 +415,11 @@ function buildRd001Differential(rd003: Record<string, unknown>) {
     acquisitionStartGapSeconds: {
       RD001: rd001.acquisitionStartGapSeconds,
       RD003: rd003.acquisitionStartGapSeconds,
+      RD003_SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS: (rd003.timingMetrics as { SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS?: number } | undefined)
+        ?.SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS,
       classification: Number(rd001.acquisitionStartGapSeconds) > 60 ? 'RECORDER_ARCHITECTURE_CHANGE' : 'UNCHANGED',
+      terminologyNote:
+        'Use distinct timing metrics — do not conflate SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS with ambiguous acquisition-start gap labels',
     },
     cycleCount: { RD001: rd001.cycleCount, RD003: rd003.cycleCount },
     signalObservations: { RD001: rd001.signalObservations, RD003: rd003.signalObservations },
@@ -593,7 +595,7 @@ function main(): void {
   const inventory = buildSignalInventory(signalObs, ctx);
   const hfRows = signalObs.filter((o) => o.acquisitionSurface === 'HF_HISTORICAL');
   const hfForensics = analyzeHfForensics(hfRows, ctx);
-  const hfRuntime = validateHfRuntimeMechanisms(hfRows);
+  const hfRuntime = validateHfRuntimeMechanisms(hfRows as HfRuntimeObservationRow[], ctx.sessionStartedAtMs);
   const recorderCycles = computeRecorderCycleIntervals(signalObs);
   const fingerprintAudit = auditFingerprintSemantics(allObs);
   const physics = buildPhysicsAssessability(discovered, inventory);
@@ -615,8 +617,27 @@ function main(): void {
 
   const sessionLifecycleDurationSeconds =
     (Date.parse(sessionCompletedAt) - Date.parse(sessionStartedAt)) / 1000;
-  const acquisitionStartGapSeconds =
-    (Date.parse(String(firstAcquisition)) - Date.parse(sessionStartedAt)) / 1000;
+
+  const firstByRequest = [...signalObs]
+    .filter((o) => o.requestStartedAt != null)
+    .sort((a, b) => Date.parse(String(a.requestStartedAt)) - Date.parse(String(b.requestStartedAt)));
+  const firstRequestAt = firstByRequest[0]?.requestStartedAt ?? null;
+  const firstIngressAt = sortedByIngress[0]?.synqReceivedAt ?? null;
+
+  const timingMetrics = {
+    SESSION_START_TO_FIRST_REQUEST_MS:
+      firstRequestAt != null ? Date.parse(String(firstRequestAt)) - ctx.sessionStartedAtMs : null,
+    SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS:
+      firstIngressAt != null ? Date.parse(String(firstIngressAt)) - ctx.sessionStartedAtMs : null,
+    FAST_GO_TO_RECORDING_MS: FROZEN_SESSION_FACTS.fastGoMetrics.goToRecordingMs,
+    FAST_GO_TO_FIRST_CYCLE_MS: FROZEN_SESSION_FACTS.fastGoMetrics.goToFirstCycleMs,
+    FAST_GO_TO_READY_TO_DRIVE_MS: FROZEN_SESSION_FACTS.fastGoMetrics.goToReadyToDriveMs,
+    legacyAmbiguousAcquisitionStartGapSeconds:
+      firstIngressAt != null ? (Date.parse(String(firstIngressAt)) - ctx.sessionStartedAtMs) / 1000 : null,
+    legacyNote:
+      'Prior ~0.93 s label was ambiguous; SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS=254 ms is the sealed-data metric from sessionStartedAt to first synqReceivedAt',
+  };
+  const acquisitionStartGapSeconds = timingMetrics.legacyAmbiguousAcquisitionStartGapSeconds;
 
   const sampling = buildSamplingInvarianceReadiness({
     hfForensics,
@@ -634,7 +655,7 @@ function main(): void {
     referenceDriveId: REFERENCE_DRIVE_ID,
     sessionId: SESSION_ID,
     generatedAt: new Date().toISOString(),
-    methodologyVersion: '2026-09-02-rd003-telemetry-forensics-v1-computed',
+    methodologyVersion: '2026-09-02-rd003-telemetry-forensics-v2-segmented-video-gt-correction',
     referenceCaptureRuntimeChanged: false,
     generatedEvidenceValueSource: 'COMPUTED_FROM_SEALED_RAW_DATA',
     sealedRawExport: {
@@ -654,7 +675,8 @@ function main(): void {
       PROVIDER_TIMESTAMP_CADENCE: 'see perFieldSurface.providerCadence',
       VALUE_CHANGE_CADENCE: 'see inventory + dynamics',
       HF_AGGREGATE_BUCKET_CADENCE: hfForensics.perField,
-      PHYSICAL_SAMPLE_CADENCE: 'NOT_PROVEN — HF rows are aggregate buckets',
+      RAW_PHYSICAL_SAMPLE_CADENCE: 'NOT_PROVEN',
+      PHYSICAL_SAMPLE_CADENCE: 'NOT_PROVEN — HF rows are aggregate buckets; distinct from RAW_PHYSICAL_SAMPLE_CADENCE',
     },
     fingerprintAudit,
     physicsAssessability: physics,
@@ -706,6 +728,7 @@ function main(): void {
     manifestVersion: '1.1.0',
     firstActualCaptureAt: firstAcquisition,
     lastActualCaptureAt: lastAcquisition,
+    timingMetrics,
     acquisitionStartGapSeconds,
     actualCaptureDurationSeconds:
       (Date.parse(String(lastAcquisition)) - Date.parse(String(firstAcquisition))) / 1000,
@@ -724,8 +747,45 @@ function main(): void {
     observedFields: discovered,
     hfFieldList: hfForensics.hfFieldList,
     videoGroundTruthAvailable: false,
-    videoGroundTruthProtocol: 'VIDEO_INSTRUMENT_CLUSTER',
-    videoAlignmentStatus: 'PENDING_VIDEO',
+    videoGroundTruthProtocol: 'VIDEO_INSTRUMENT_CLUSTER_SEGMENTED',
+    RD003_TELEMETRY_COVERAGE: 'FULL_SESSION',
+    RD003_VIDEO_GT_COVERAGE: 'PARTIAL_SEGMENTED',
+    VIDEO_GROUND_TRUTH_AVAILABLE: 'NOT_YET_INGESTED',
+    VIDEO_ALIGNMENT_STATUS: 'PENDING_SEGMENTED_VIDEO',
+    segmentedVideoGtModel: {
+      continuousVideoAssumptionRemoved: true,
+      clipTaxonomyExamples: [
+        'GT_ACCELERATION_01',
+        'GT_BRAKING_01',
+        'GT_COASTING_01',
+        'GT_CORNERING_01',
+        'GT_CRUISE_01',
+      ],
+      clipSchema: {
+        clipId: 'pending ingest',
+        behavioralLabel: 'pending ingest',
+        fileName: 'pending ingest',
+        sha256: 'pending ingest',
+        creationTimestamp: 'pending ingest',
+        duration: 'pending ingest',
+        fps: 'pending ingest',
+        cameraClockMetadata: 'pending ingest',
+        estimatedTelemetryWindow: 'pending ingest',
+        synchronizationMethod: 'pending ingest',
+        synchronizationAnchors: 'pending ingest',
+        alignmentConfidence: 'pending ingest',
+        alignmentResidual: 'pending ingest',
+        speedAlignmentMetrics: 'pending ingest',
+        rpmAlignmentMetrics: 'pending ingest',
+        gearAlignmentMetrics: 'pending ingest if visible',
+        accelerationOnsetAlignment: 'pending ingest',
+        brakingDecelerationOnsetAlignment: 'pending ingest',
+        notes: 'pending ingest',
+        evidenceClassification: 'pending ingest',
+      },
+      unrecordedTelemetryWindows: 'TELEMETRY_ONLY',
+      note: 'Owner recorded multiple ~1 min clips around interesting states — NOT one continuous ~37 min video',
+    },
     postStopZombieProof: {
       runnerJobId: null,
       pendingCycleJobId: null,
@@ -763,7 +823,7 @@ function main(): void {
     verdicts: {
       REFERENCE_DRIVE_003_CAPTURE: 'COMPLETED',
       RD003_TELEMETRY_FORENSICS: 'DONE',
-      VIDEO_GROUND_TRUTH: 'PENDING_VIDEO',
+      VIDEO_GROUND_TRUTH: 'PENDING_SEGMENTED_VIDEO',
       GROUND_TRUTH_VALIDATED: 'NO',
       READY_FOR_VIDEO_GT_INGESTION: 'YES',
     },
@@ -797,16 +857,23 @@ function main(): void {
       `| Flag | Value |\n|------|-------|\n` +
       `| REFERENCE_DRIVE_003_CAPTURE | COMPLETED |\n` +
       `| RD003_TELEMETRY_FORENSICS | DONE |\n` +
-      `| VIDEO_GROUND_TRUTH | PENDING_VIDEO |\n` +
+      `| VIDEO_GROUND_TRUTH | PENDING_SEGMENTED_VIDEO |\n` +
       `| GROUND_TRUTH_VALIDATED | NO |\n` +
-      `| REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ | ${hfForensics.REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ} |\n\n` +
+      `| RD003_TELEMETRY_COVERAGE | FULL_SESSION |\n` +
+      `| RD003_VIDEO_GT_COVERAGE | PARTIAL_SEGMENTED |\n` +
+      `| REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ | ${hfForensics.REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ} |\n` +
+      `| RAW_PHYSICAL_SAMPLE_CADENCE | NOT_PROVEN |\n\n` +
       `## Session facts (frozen + computed)\n\n` +
       `| Metric | Value |\n|--------|-------|\n` +
       `| Duration | ${sessionLifecycleDurationSeconds.toFixed(1)} s (~${(sessionLifecycleDurationSeconds / 60).toFixed(1)} min) |\n` +
       `| Cycles | ${FROZEN_SESSION_FACTS.cycleCount} |\n` +
       `| SIGNAL_POINT | ${signalObs.length} |\n` +
       `| HF_HISTORICAL | ${hfForensics.totalRows} |\n` +
-      `| Acquisition-start gap | ${acquisitionStartGapSeconds.toFixed(3)} s |\n` +
+      `| SESSION_START_TO_FIRST_REQUEST_MS | ${timingMetrics.SESSION_START_TO_FIRST_REQUEST_MS} |\n` +
+      `| SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS | ${timingMetrics.SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS} |\n` +
+      `| FAST_GO_TO_RECORDING_MS | ${timingMetrics.FAST_GO_TO_RECORDING_MS} |\n` +
+      `| FAST_GO_TO_FIRST_CYCLE_MS | ${timingMetrics.FAST_GO_TO_FIRST_CYCLE_MS} |\n` +
+      `| FAST_GO_TO_READY_TO_DRIVE_MS | ${timingMetrics.FAST_GO_TO_READY_TO_DRIVE_MS} |\n` +
       `| Recorder cycle P50 | ${recorderCycles.deltaTSeconds.p50?.toFixed(3) ?? '—'} s |\n` +
       `| Recorder cycle P95 | ${recorderCycles.deltaTSeconds.p95?.toFixed(3) ?? '—'} s |\n\n` +
       `## HF cadence (per field)\n\n` +
@@ -819,7 +886,14 @@ function main(): void {
       `| HF_QUERY_WINDOW_BOUNDED | ${hfRuntime.HF_QUERY_WINDOW_BOUNDED_RUNTIME_VALIDATED} |\n` +
       `| HF_DATA_WATERMARK | ${hfRuntime.HF_DATA_WATERMARK_RUNTIME_VALIDATED} |\n` +
       `| HF_IDEMPOTENCY | ${hfRuntime.HF_IDEMPOTENCY_RUNTIME_VALIDATED} |\n` +
-      `| HF_LATE_ARRIVAL_RECOVERY | ${hfRuntime.HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED} |\n\n` +
+      `| HF_LATE_ARRIVAL_RECOVERY | ${hfRuntime.HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED} |\n` +
+      `| Proof method | ${hfRuntime.proofMethod} |\n\n` +
+      `## Physics assessability (corrected semantics)\n\n` +
+      `| Domain / target | Classification |\n|-----------------|----------------|\n` +
+      `| VEHICLE_LOAD_ASSESSABILITY | ${physics.domains.VEHICLE_LOAD_ASSESSABILITY} |\n` +
+      `| longitudinalAcceleration | ${physics.targets.longitudinalAcceleration} |\n` +
+      `| GEAR_STATE_OBSERVED | ${physics.gear.GEAR_STATE_OBSERVED} |\n` +
+      `| GEAR_CHANGE_TIMING_VALIDATED | ${physics.gear.GEAR_CHANGE_TIMING_VALIDATED} |\n\n` +
       `**GENERATED_EVIDENCE_VALUE_SOURCE:** COMPUTED_FROM_SEALED_RAW_DATA\n`,
   );
 
@@ -838,24 +912,43 @@ function main(): void {
 
   fs.writeFileSync(
     videoGtPath,
-    `# RD003 Video Ground Truth Evidence Index (Pending Video)\n\n**Evidence ID:** DI-EV-0032\n\n` +
+    `# RD003 Segmented Video Ground Truth Evidence Index (Pending Ingest)\n\n**Evidence ID:** DI-EV-0032\n\n` +
+      `## Coverage model\n\n` +
       `| Field | Value |\n|-------|-------|\n` +
+      `| RD003_TELEMETRY_COVERAGE | FULL_SESSION |\n` +
+      `| RD003_VIDEO_GT_COVERAGE | PARTIAL_SEGMENTED |\n` +
       `| VIDEO_GROUND_TRUTH_AVAILABLE | NOT_YET_INGESTED |\n` +
-      `| VIDEO_ALIGNMENT_STATUS | PENDING_VIDEO |\n` +
-      `| VIDEO_FILE_SHA256 | _empty — pending ingest_ |\n` +
-      `| VIDEO_DURATION | _empty_ |\n` +
-      `| VIDEO_FPS | _empty_ |\n` +
-      `| VIDEO_START_TIME | _empty_ |\n` +
-      `| VIDEO_END_TIME | _empty_ |\n` +
-      `| CAMERA_CLOCK_REFERENCE | _empty_ |\n` +
-      `| TELEMETRY_CLOCK_REFERENCE | session ${SESSION_ID} |\n\n` +
-      `## Synchronization anchors (to be marked from video)\n\n` +
-      `- START_IDLE\n- THROTTLE_PULSE_1\n- THROTTLE_PULSE_2\n- THROTTLE_PULSE_3\n- DRIVE_START\n- FIRST_STOP\n- DRIVE_END\n\n` +
-      `## Future alignment targets\n\n` +
-      `speed, RPM, gear (if visible), start/stop timing, acceleration onset, braking onset, accel→brake reversal\n\n` +
-      `## Methodology (not yet executed)\n\n` +
-      `clock offset estimation, drift estimation, anchor residuals, speed bias, MAE, RMSE, onset latency, steady-speed agreement\n\n` +
-      `**No alignment metrics are reported until the actual video file is ingested and SHA-verified.**\n`,
+      `| VIDEO_ALIGNMENT_STATUS | PENDING_SEGMENTED_VIDEO |\n` +
+      `| GROUND_TRUTH_VALIDATED | NO |\n` +
+      `| CONTINUOUS_VIDEO_ASSUMPTION | REMOVED |\n\n` +
+      `RD003 did **not** record one continuous ~37 minute instrument-cluster video. Telemetry covers the full session; ` +
+      `video Ground Truth is **partial / segmented** — multiple short clips (~1 min each) around interesting driving states ` +
+      `(acceleration, braking, coasting, cornering, cruise, etc.).\n\n` +
+      `**Do not assume:** single VIDEO_START_TIME, VIDEO_END_TIME, global VIDEO_DURATION, or continuous video coverage.\n\n` +
+      `## Clip taxonomy (examples only — pending ingest)\n\n` +
+      `| Example clipId | Behavioral label |\n|----------------|------------------|\n` +
+      `| GT_ACCELERATION_01 | acceleration |\n` +
+      `| GT_BRAKING_01 | braking |\n` +
+      `| GT_COASTING_01 | coasting / rolling without throttle |\n` +
+      `| GT_CORNERING_01 | faster / curved driving |\n` +
+      `| GT_CRUISE_01 | steady cruise |\n\n` +
+      `Actual clip IDs are assigned at ingest. Multiple clips per category are allowed.\n\n` +
+      `## Per-clip schema (populated at ingest)\n\n` +
+      `Each ingested clip must store independently:\n\n` +
+      `- clipId, behavioral label, file name, SHA-256\n` +
+      `- creation timestamp / media metadata, duration, FPS, camera clock metadata\n` +
+      `- estimated telemetry window, synchronization method, synchronization anchors\n` +
+      `- alignment confidence, alignment residual/error\n` +
+      `- speed / RPM / gear (if visible) alignment metrics\n` +
+      `- acceleration onset alignment, braking/deceleration onset alignment\n` +
+      `- notes / evidence classification\n\n` +
+      `## Unrecorded windows\n\n` +
+      `Telemetry windows without a corresponding video clip remain **TELEMETRY_ONLY** and must NOT be classified as Ground Truth.\n\n` +
+      `## Telemetry reference\n\n` +
+      `| Field | Value |\n|-------|-------|\n` +
+      `| TELEMETRY_CLOCK_REFERENCE | session \`${SESSION_ID}\` |\n` +
+      `| Sealed SHA-256 | \`${EXPECTED_SHA256}\` |\n\n` +
+      `**No alignment metrics are reported until segmented video files are ingested and SHA-verified.**\n`,
   );
 
   console.log(

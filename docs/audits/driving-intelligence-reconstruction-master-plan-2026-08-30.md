@@ -950,11 +950,11 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 | `VIDEO_GROUND_TRUTH` | **NOT_PLANNED_BY_PROTOCOL** |
 | `READY_FOR_RD003` | **YES** |
 
-**Next ground-truth-capable drive:** `DIMO_LTE_R1_REFERENCE_DRIVE_003` — **telemetry forensics DONE**; video GT alignment **PENDING_VIDEO**.
+**Next ground-truth-capable drive:** `DIMO_LTE_R1_REFERENCE_DRIVE_003` — **telemetry forensics DONE**; segmented video GT alignment **PENDING_SEGMENTED_VIDEO**.
 
-### RD003 — Video Ground Truth drive (TELEMETRY FORENSICS COMPLETE)
+### RD003 — Video Ground Truth drive (TELEMETRY FORENSICS COMPLETE — METHODOLOGY v2)
 
-**Status:** **CAPTURE COMPLETE** · **TELEMETRY FORENSICS DONE** (2026-09-02) · DI-EV-0027–0032
+**Status:** **CAPTURE COMPLETE** · **TELEMETRY FORENSICS DONE** (2026-09-02) · DI-EV-0027–0032 (amended in place)
 
 | Field | Value |
 |-------|-------|
@@ -965,12 +965,17 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 | SIGNAL_POINT | 6250 |
 | HF_HISTORICAL | 2783 (AGGREGATE_BUCKET_V2) |
 | Sealed SHA-256 | `81534484cdd0fa6224d9efbcf97bb445cfbe8af1fdb8ef29e9bb8204f09c32e4` |
-| `REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ` | **NO** (HF Δt P50 2s; independent Tiguan confirmation) |
-| `VIDEO_GROUND_TRUTH` | **PENDING_VIDEO** (instrument-cluster video not yet ingested) |
+| `REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ` | **NO** (HF aggregate-bucket Δt P50 ~2s — not raw physical LTE_R1 cadence) |
+| `RAW_PHYSICAL_SAMPLE_CADENCE` | **NOT_PROVEN** |
+| `RD003_TELEMETRY_COVERAGE` | **FULL_SESSION** |
+| `RD003_VIDEO_GT_COVERAGE` | **PARTIAL_SEGMENTED** (multiple ~1 min clips — NOT one continuous video) |
+| `VIDEO_GROUND_TRUTH` | **PENDING_SEGMENTED_VIDEO** |
 | `GROUND_TRUTH_VALIDATED` | **NO** |
 | `READY_FOR_VIDEO_GT_INGESTION` | **YES** |
 
-**Key findings:** First planned video GT drive; FAST GO 1222 ms; ~0.93 s acquisition-start gap (vs RD001 ~704 s ARM gap). Same 31-field Tiguan surface as RD001. HF idempotency/watermark/coverage validated under long motion. Zero native events (research finding across RD001–RD003).
+**Timing metrics (distinct semantics):** SESSION_START_TO_FIRST_REQUEST_MS=35; SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS=254; FAST_GO_TO_RECORDING_MS=125; FAST_GO_TO_FIRST_CYCLE_MS=1222. Prior ambiguous ~0.93s acquisition-start label retired.
+
+**Key findings:** HF watermark + query-window proofs use acquisition-order per-field execution (not lexical sort). Vehicle Load domain = RECONSTRUCTABLE_MEDIUM_CONFIDENCE (inputs directly observed). Longitudinal accel = RECONSTRUCTABLE_WITH_CADENCE_GATING. GEAR_STATE_OBSERVED=YES; GEAR_CHANGE_TIMING_VALIDATED=NO. Zero native events (NOT_EXERCISED — not proof no harsh maneuvers occurred).
 
 ### RD002 gate (historical — satisfied 2026-09-02)
 

@@ -1,8 +1,8 @@
 {
   "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_003",
   "sessionId": "0fa040aa-6105-4872-9b2c-f8ad477009b8",
-  "generatedAt": "2026-09-02T19:55:02.466Z",
-  "methodologyVersion": "2026-09-02-rd003-telemetry-forensics-v1-computed",
+  "generatedAt": "2026-09-02T20:56:47.801Z",
+  "methodologyVersion": "2026-09-02-rd003-telemetry-forensics-v2-segmented-video-gt-correction",
   "referenceCaptureRuntimeChanged": false,
   "generatedEvidenceValueSource": "COMPUTED_FROM_SEALED_RAW_DATA",
   "sealedRawExport": {
@@ -5332,7 +5332,97 @@
     "HF_IDEMPOTENCY_RUNTIME_VALIDATED": "YES",
     "HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED": "NOT_EXERCISED",
     "duplicateAggregateBucketIdentities": 0,
-    "nonV2IdentityRows": 0
+    "nonV2IdentityRows": 0,
+    "perFieldWatermark": [
+      {
+        "providerField": "obdEngineLoad",
+        "executionCount": 230,
+        "validated": true,
+        "violations": []
+      },
+      {
+        "providerField": "obdThrottlePosition",
+        "executionCount": 219,
+        "validated": true,
+        "violations": []
+      },
+      {
+        "providerField": "powertrainCombustionEngineSpeed",
+        "executionCount": 209,
+        "validated": true,
+        "violations": []
+      },
+      {
+        "providerField": "powertrainCombustionEngineTPS",
+        "executionCount": 219,
+        "validated": true,
+        "violations": []
+      },
+      {
+        "providerField": "speed",
+        "executionCount": 230,
+        "validated": true,
+        "violations": []
+      }
+    ],
+    "perFieldBounded": [
+      {
+        "providerField": "obdEngineLoad",
+        "executionCount": 230,
+        "validated": true,
+        "violations": [],
+        "windowMs": {
+          "p50": 7894,
+          "p95": 8420,
+          "max": 11597
+        }
+      },
+      {
+        "providerField": "obdThrottlePosition",
+        "executionCount": 219,
+        "validated": true,
+        "violations": [],
+        "windowMs": {
+          "p50": 7896,
+          "p95": 8420,
+          "max": 11597
+        }
+      },
+      {
+        "providerField": "powertrainCombustionEngineSpeed",
+        "executionCount": 209,
+        "validated": true,
+        "violations": [],
+        "windowMs": {
+          "p50": 7894,
+          "p95": 8420,
+          "max": 11597
+        }
+      },
+      {
+        "providerField": "powertrainCombustionEngineTPS",
+        "executionCount": 219,
+        "validated": true,
+        "violations": [],
+        "windowMs": {
+          "p50": 7894,
+          "p95": 8420,
+          "max": 11597
+        }
+      },
+      {
+        "providerField": "speed",
+        "executionCount": 230,
+        "validated": true,
+        "violations": [],
+        "windowMs": {
+          "p50": 7894,
+          "p95": 8420,
+          "max": 11597
+        }
+      }
+    ],
+    "proofMethod": "ACQUISITION_ORDER_PER_FIELD_EXECUTION"
   },
   "recorderCycleTiming": {
     "uniqueRequestStartedAtCount": 663,
@@ -5989,7 +6079,8 @@
         "lateArrivalRecoveryObserved": false
       }
     },
-    "PHYSICAL_SAMPLE_CADENCE": "NOT_PROVEN — HF rows are aggregate buckets"
+    "RAW_PHYSICAL_SAMPLE_CADENCE": "NOT_PROVEN",
+    "PHYSICAL_SAMPLE_CADENCE": "NOT_PROVEN — HF rows are aggregate buckets; distinct from RAW_PHYSICAL_SAMPLE_CADENCE"
   },
   "fingerprintAudit": {
     "note": "physicalSampleFingerprint is a persisted field name with semantic debt on HF_HISTORICAL: it fingerprints DIMO aggregate buckets (field + bucket-start timestamp + AVG), not proven raw LTE_R1 physical source samples.",
@@ -6021,17 +6112,27 @@
     }
   },
   "physicsAssessability": {
+    "inputs": {
+      "obdEngineLoad": "DIRECTLY_OBSERVED",
+      "powertrainCombustionEngineSpeed": "DIRECTLY_OBSERVED",
+      "obdThrottlePosition": "DIRECTLY_OBSERVED",
+      "powertrainCombustionEngineTPS": "DIRECTLY_OBSERVED"
+    },
+    "gear": {
+      "GEAR_STATE_OBSERVED": "YES",
+      "GEAR_CHANGE_TIMING_VALIDATED": "NO"
+    },
     "targets": {
       "vehicleSpeedTimeline": "DIRECTLY_OBSERVED",
-      "longitudinalAcceleration": "NOT_ASSESSABLE",
+      "longitudinalAcceleration": "RECONSTRUCTABLE_WITH_CADENCE_GATING",
       "jerk": "NOT_ASSESSABLE",
       "accelerationEpisodes": "RECONSTRUCTABLE_MEDIUM_CONFIDENCE",
       "brakingEpisodes": "NOT_ASSESSABLE",
       "accelToBrakeReversal": "NOT_ASSESSABLE",
       "stopGoCycles": "RECONSTRUCTABLE_MEDIUM_CONFIDENCE",
       "engineLoadExposure": "DIRECTLY_OBSERVED",
-      "rpmLoadOperatingRegions": "DIRECTLY_OBSERVED",
-      "gearChangeTiming": "RECONSTRUCTABLE_HIGH_CONFIDENCE",
+      "rpmLoadOperatingRegions": "RECONSTRUCTABLE_MEDIUM_CONFIDENCE",
+      "gearChangeTiming": "RECONSTRUCTABLE_LOW_CONFIDENCE_PENDING_GT",
       "lateralCorneringDemand": "WEAK_PROXY_ONLY",
       "yawDynamics": "NOT_ASSESSABLE",
       "wheelSpeedDifferential": "NOT_ASSESSABLE",
@@ -6040,16 +6141,17 @@
     },
     "domains": {
       "DRIVER_QUALITY_ASSESSABILITY": "RECONSTRUCTABLE_MEDIUM_CONFIDENCE",
-      "VEHICLE_LOAD_ASSESSABILITY": "DIRECTLY_OBSERVED",
+      "VEHICLE_LOAD_ASSESSABILITY": "RECONSTRUCTABLE_MEDIUM_CONFIDENCE",
       "BRAKE_PHYSICS_ASSESSABILITY": "NOT_ASSESSABLE",
       "TIRE_DYNAMIC_ASSESSABILITY": "NOT_ASSESSABLE"
     },
     "rationale": {
-      "longitudinalAcceleration": "No longitudinal accel signal in Tiguan availableSignals",
+      "longitudinalAcceleration": "Speed timeline enables a_x ≈ Δv/Δt reconstruction; HF rows are DIMO AVG aggregate buckets — cadence/confidence NOT calibrated pre-video-GT",
+      "vehicleLoadDomain": "Domain assessability is reconstructed from load/RPM/throttle inputs — inputs may be DIRECTLY_OBSERVED but domain is not",
       "brakingEpisodes": "No brake pedal/pressure/hydraulic signals; no native harsh-brake events observed",
       "yawDynamics": "No yaw rate signal on Tiguan LTE_R1",
       "wheelSpeedDifferential": "No wheel speed signals",
-      "gearChangeTiming": "powertrainTransmissionActualGear observed with moderate cadence",
+      "gearChangeTiming": "GEAR_STATE_OBSERVED=YES but GEAR_CHANGE_TIMING_VALIDATED=NO until segmented video GT alignment",
       "speedTimeline": "speed observed on LATEST_LIVE + HF; temporalClass=WAVEFORM_DYNAMICS",
       "mafPresent": true
     }
@@ -6077,18 +6179,19 @@
   "samplingInvarianceReadiness": {
     "RD003_SAMPLING_INVARIANCE_SOURCE_READY": "YES",
     "blockers": [],
+    "sourceTimeline": "OBSERVED_PROVIDER_BUCKET_TIMELINE",
     "plannedReplayCadences": [
-      "native",
-      "1s",
-      "2s",
-      "5s",
-      "10s",
-      "30s",
-      "irregular",
-      "10pct_dropout",
-      "25pct_dropout"
+      "OBSERVED_PROVIDER_BUCKET_TIMELINE",
+      "2s replay",
+      "5s replay",
+      "10s replay",
+      "30s replay",
+      "irregular replay",
+      "10% controlled dropout",
+      "25% controlled dropout"
     ],
-    "note": "Do not upscale sparse HF buckets to synthetic native 1Hz truth"
+    "RAW_PHYSICAL_SAMPLE_CADENCE": "NOT_PROVEN",
+    "note": "HF aggregate-bucket timeline is not a proven raw LTE_R1 physical sampling source"
   },
   "capabilityVsObserved": {
     "availableSignalsCount": 31,

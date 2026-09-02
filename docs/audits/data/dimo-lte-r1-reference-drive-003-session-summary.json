@@ -21,6 +21,15 @@
   "manifestVersion": "1.1.0",
   "firstActualCaptureAt": "2026-09-02T18:59:15.949Z",
   "lastActualCaptureAt": "2026-09-02T19:36:21.769Z",
+  "timingMetrics": {
+    "SESSION_START_TO_FIRST_REQUEST_MS": 35,
+    "SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS": 254,
+    "FAST_GO_TO_RECORDING_MS": 125,
+    "FAST_GO_TO_FIRST_CYCLE_MS": 1222,
+    "FAST_GO_TO_READY_TO_DRIVE_MS": 1222,
+    "legacyAmbiguousAcquisitionStartGapSeconds": 0.254,
+    "legacyNote": "Prior ~0.93 s label was ambiguous; SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS=254 ms is the sealed-data metric from sessionStartedAt to first synqReceivedAt"
+  },
   "acquisitionStartGapSeconds": 0.254,
   "actualCaptureDurationSeconds": 2225.82,
   "sessionLifecycleDurationSeconds": 2227.291,
@@ -86,8 +95,45 @@
     "speed"
   ],
   "videoGroundTruthAvailable": false,
-  "videoGroundTruthProtocol": "VIDEO_INSTRUMENT_CLUSTER",
-  "videoAlignmentStatus": "PENDING_VIDEO",
+  "videoGroundTruthProtocol": "VIDEO_INSTRUMENT_CLUSTER_SEGMENTED",
+  "RD003_TELEMETRY_COVERAGE": "FULL_SESSION",
+  "RD003_VIDEO_GT_COVERAGE": "PARTIAL_SEGMENTED",
+  "VIDEO_GROUND_TRUTH_AVAILABLE": "NOT_YET_INGESTED",
+  "VIDEO_ALIGNMENT_STATUS": "PENDING_SEGMENTED_VIDEO",
+  "segmentedVideoGtModel": {
+    "continuousVideoAssumptionRemoved": true,
+    "clipTaxonomyExamples": [
+      "GT_ACCELERATION_01",
+      "GT_BRAKING_01",
+      "GT_COASTING_01",
+      "GT_CORNERING_01",
+      "GT_CRUISE_01"
+    ],
+    "clipSchema": {
+      "clipId": "pending ingest",
+      "behavioralLabel": "pending ingest",
+      "fileName": "pending ingest",
+      "sha256": "pending ingest",
+      "creationTimestamp": "pending ingest",
+      "duration": "pending ingest",
+      "fps": "pending ingest",
+      "cameraClockMetadata": "pending ingest",
+      "estimatedTelemetryWindow": "pending ingest",
+      "synchronizationMethod": "pending ingest",
+      "synchronizationAnchors": "pending ingest",
+      "alignmentConfidence": "pending ingest",
+      "alignmentResidual": "pending ingest",
+      "speedAlignmentMetrics": "pending ingest",
+      "rpmAlignmentMetrics": "pending ingest",
+      "gearAlignmentMetrics": "pending ingest if visible",
+      "accelerationOnsetAlignment": "pending ingest",
+      "brakingDecelerationOnsetAlignment": "pending ingest",
+      "notes": "pending ingest",
+      "evidenceClassification": "pending ingest"
+    },
+    "unrecordedTelemetryWindows": "TELEMETRY_ONLY",
+    "note": "Owner recorded multiple ~1 min clips around interesting states — NOT one continuous ~37 min video"
+  },
   "postStopZombieProof": {
     "runnerJobId": null,
     "pendingCycleJobId": null,
@@ -122,7 +168,97 @@
     "HF_IDEMPOTENCY_RUNTIME_VALIDATED": "YES",
     "HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED": "NOT_EXERCISED",
     "duplicateAggregateBucketIdentities": 0,
-    "nonV2IdentityRows": 0
+    "nonV2IdentityRows": 0,
+    "perFieldWatermark": [
+      {
+        "providerField": "obdEngineLoad",
+        "executionCount": 230,
+        "validated": true,
+        "violations": []
+      },
+      {
+        "providerField": "obdThrottlePosition",
+        "executionCount": 219,
+        "validated": true,
+        "violations": []
+      },
+      {
+        "providerField": "powertrainCombustionEngineSpeed",
+        "executionCount": 209,
+        "validated": true,
+        "violations": []
+      },
+      {
+        "providerField": "powertrainCombustionEngineTPS",
+        "executionCount": 219,
+        "validated": true,
+        "violations": []
+      },
+      {
+        "providerField": "speed",
+        "executionCount": 230,
+        "validated": true,
+        "violations": []
+      }
+    ],
+    "perFieldBounded": [
+      {
+        "providerField": "obdEngineLoad",
+        "executionCount": 230,
+        "validated": true,
+        "violations": [],
+        "windowMs": {
+          "p50": 7894,
+          "p95": 8420,
+          "max": 11597
+        }
+      },
+      {
+        "providerField": "obdThrottlePosition",
+        "executionCount": 219,
+        "validated": true,
+        "violations": [],
+        "windowMs": {
+          "p50": 7896,
+          "p95": 8420,
+          "max": 11597
+        }
+      },
+      {
+        "providerField": "powertrainCombustionEngineSpeed",
+        "executionCount": 209,
+        "validated": true,
+        "violations": [],
+        "windowMs": {
+          "p50": 7894,
+          "p95": 8420,
+          "max": 11597
+        }
+      },
+      {
+        "providerField": "powertrainCombustionEngineTPS",
+        "executionCount": 219,
+        "validated": true,
+        "violations": [],
+        "windowMs": {
+          "p50": 7894,
+          "p95": 8420,
+          "max": 11597
+        }
+      },
+      {
+        "providerField": "speed",
+        "executionCount": 230,
+        "validated": true,
+        "violations": [],
+        "windowMs": {
+          "p50": 7894,
+          "p95": 8420,
+          "max": 11597
+        }
+      }
+    ],
+    "proofMethod": "ACQUISITION_ORDER_PER_FIELD_EXECUTION"
   },
   "hfCadenceFinding": {
     "REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ": "NO",
@@ -206,7 +342,7 @@
   },
   "physicsAssessability": {
     "DRIVER_QUALITY_ASSESSABILITY": "RECONSTRUCTABLE_MEDIUM_CONFIDENCE",
-    "VEHICLE_LOAD_ASSESSABILITY": "DIRECTLY_OBSERVED",
+    "VEHICLE_LOAD_ASSESSABILITY": "RECONSTRUCTABLE_MEDIUM_CONFIDENCE",
     "BRAKE_PHYSICS_ASSESSABILITY": "NOT_ASSESSABLE",
     "TIRE_DYNAMIC_ASSESSABILITY": "NOT_ASSESSABLE"
   },
@@ -227,18 +363,19 @@
   "samplingInvarianceReadiness": {
     "RD003_SAMPLING_INVARIANCE_SOURCE_READY": "YES",
     "blockers": [],
+    "sourceTimeline": "OBSERVED_PROVIDER_BUCKET_TIMELINE",
     "plannedReplayCadences": [
-      "native",
-      "1s",
-      "2s",
-      "5s",
-      "10s",
-      "30s",
-      "irregular",
-      "10pct_dropout",
-      "25pct_dropout"
+      "OBSERVED_PROVIDER_BUCKET_TIMELINE",
+      "2s replay",
+      "5s replay",
+      "10s replay",
+      "30s replay",
+      "irregular replay",
+      "10% controlled dropout",
+      "25% controlled dropout"
     ],
-    "note": "Do not upscale sparse HF buckets to synthetic native 1Hz truth"
+    "RAW_PHYSICAL_SAMPLE_CADENCE": "NOT_PROVEN",
+    "note": "HF aggregate-bucket timeline is not a proven raw LTE_R1 physical sampling source"
   },
   "coverageWindows": {
     "SESSION_LIFECYCLE_WINDOW": {
@@ -320,7 +457,7 @@
   "verdicts": {
     "REFERENCE_DRIVE_003_CAPTURE": "COMPLETED",
     "RD003_TELEMETRY_FORENSICS": "DONE",
-    "VIDEO_GROUND_TRUTH": "PENDING_VIDEO",
+    "VIDEO_GROUND_TRUTH": "PENDING_SEGMENTED_VIDEO",
     "GROUND_TRUTH_VALIDATED": "NO",
     "READY_FOR_VIDEO_GT_INGESTION": "YES"
   }
