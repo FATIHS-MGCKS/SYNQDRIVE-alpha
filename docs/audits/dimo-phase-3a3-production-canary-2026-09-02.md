@@ -15,9 +15,10 @@
 | `CUTOVER_TARGET_SHA` (code authority) | `bf1be9b6b351066eb74126b56e85f6848b16812c` | CONFIRMED_FROM_CODE |
 | `PRE_CUTOVER_PRODUCTION_SHA` | `3772d992dae012bc9d794184e05e8ad39db09df4` | CONFIRMED_FROM_PRODUCTION_RUNTIME |
 | Post-migration deploy SHA (3A.3 code release) | `bf1be9b6b351066eb74126b56e85f6848b16812c` | CONFIRMED_FROM_PRODUCTION_RUNTIME |
-| Canonical runner-race fix deploy (`82f3d9c5c`) | **NOT VERIFIED** — hot-patch only; VPS GitHub clone auth blocked canonical redeploy | CONFIRMED_FROM_PRODUCTION_RUNTIME |
-| Runner-race hotfix SHA (main) | `82f3d9c5c428c745b8224db2e045902238e157fa` | CONFIRMED_FROM_CODE |
-| Runner-race hotfix on VPS | Hot-patched `reference-capture-session.service.ts` + `npm run build` + PM2 reload (canonical redeploy of `82f3d9c` blocked: VPS GitHub clone auth) | CONFIRMED_FROM_PRODUCTION_RUNTIME |
+| **Canonical production SHA (current)** | `f00a493949d8134f82a3e83d6c80ea8f7bb19699` (main post #1509) | CONFIRMED_FROM_PRODUCTION_RUNTIME |
+| `CANONICAL_VPS_REDEPLOY_VERIFIED` | **YES** (2026-09-02 11:53 UTC; DEC-016 SHA invariant on both replicas) | CONFIRMED_FROM_PRODUCTION_RUNTIME |
+| Runner-race fix SHA (included in `f00a49394`) | `82f3d9c5c428c745b8224db2e045902238e157fa` | CONFIRMED_FROM_CODE |
+| Prior hot-patch state (superseded) | Hot-patched on VPS before canonical redeploy; no longer authoritative | CONFIRMED_FROM_PRODUCTION_RUNTIME |
 
 ---
 
@@ -55,7 +56,55 @@
 
 ---
 
-## Canary vehicle (canonical RD001 authority)
+## Canonical VPS redeploy (2026-09-02)
+
+| Field | Value | Evidence class |
+|-------|-------|----------------|
+| `PRE_DEPLOY_PRODUCTION_SHA` | `bf1be9b6b351066eb74126b56e85f6848b16812c` | CONFIRMED_FROM_PRODUCTION_RUNTIME |
+| `POST_DEPLOY_PRODUCTION_SHA` | `f00a493949d8134f82a3e83d6c80ea8f7bb19699` | CONFIRMED_FROM_PRODUCTION_RUNTIME |
+| `RUNTIME_CODE_AUTHORITY_SHA` | `f00a493949d8134f82a3e83d6c80ea8f7bb19699` | CONFIRMED_FROM_PRODUCTION_RUNTIME |
+| Release directory | `/opt/synqdrive/releases/20260902115336_v4994` | CONFIRMED_FROM_PRODUCTION_RUNTIME |
+| Replica topology | `synqdrive` (3001) + `synqdrive-b` (3002); scheduler LEADER on B | CONFIRMED_FROM_PRODUCTION_RUNTIME |
+| `DEPLOY_AUTH_ROOT_CAUSE` | Private repo HTTPS clone on VPS without credentials → `could not read Username for https://github.com` | CONFIRMED_FROM_PRODUCTION_RUNTIME |
+| `DEPLOY_PATH_REPAIRED` | **PARTIAL** — this deploy used ephemeral `gh auth token` in `SYNQDRIVE_GIT_REPO`; durable VPS credential/deploy-key still required for unattended `cloud-agent-deploy.sh` | INFERENCE |
+
+---
+
+## Post-deploy stationary smoke (2026-09-02)
+
+Disposable session — **not** RD002.
+
+| Field | Value |
+|-------|-------|
+| `SMOKE_SESSION_ID` | `cc30f049-e83e-4ebb-a172-bb007a8b609f` |
+| `referenceDriveId` | `DIMO_LTE_R1_POST_DEPLOY_SMOKE_001` |
+| `PREARM_READY` | YES |
+| `PREARM_DURATION_MS` | 2356 |
+| `READY_TO_DRIVE` | YES |
+| `goRequestedAt` | `2026-09-02T12:05:58.860Z` |
+| `recordingEnteredAt` | `2026-09-02T12:05:58.995Z` |
+| `firstCycleCompletedAt` | `2026-09-02T12:06:00.375Z` |
+| `readyToDriveAt` | `2026-09-02T12:06:00.375Z` |
+| `GO_TO_RECORDING_MS` | **135** |
+| `GO_TO_FIRST_CYCLE_MS` | **1515** |
+| `GO_TO_FIRST_SIGNAL_POINT_MS` | **1515** (31 SIGNAL_POINT in first cycle; no separate ingress timestamp in ops output) |
+| `GO_TO_READY_TO_DRIVE_MS` | **1515** |
+| `FAST_GO_WITHIN_15S` | YES |
+| `CYCLES_COMPLETED` | 7 |
+| `SIGNAL_POINT_COUNT` | 87 |
+| `HF_HISTORICAL_COUNT` | 0 |
+| `TOTAL_OBSERVATION_COUNT` | 88 (incl. 1 SESSION_METADATA) |
+| `HF_PHYSICAL_IDENTITY_VERSION` | `AGGREGATE_BUCKET_V2` |
+| `STOP_CONFIRMED` | COMPLETED |
+| `NO_POST_STOP_NEXT_CYCLE` | YES |
+| Post-stop runner artifacts | all null |
+| BullMQ wait/delayed/active | 0 / 0 / 0 |
+| `POST_SMOKE_DUPLICATE_IDENTITY_GROUPS` | 0 |
+| `POST_DEPLOY_STATIONARY_SMOKE` | **PASS** |
+
+---
+
+## Initial cutover stationary canary (2026-09-02 morning — superseded for deploy provenance)
 
 | Field | Value |
 |-------|-------|
@@ -148,4 +197,4 @@
 
 ## Next required step
 
-Schedule controlled **motion HF canary** on WOB L 7503 after vehicle telemetry is live. **Prerequisite:** canonical VPS redeploy of `82f3d9c5c` (restore GitHub deploy auth — hot-patch alone is insufficient for operational authority). RD002 planning only if motion HF evidence passes.
+**CONTROLLED_MOTION_HF_CANARY_WOB_L_7503** — vehicle owner must deliberately drive under safe conditions. Canonical deploy provenance now verified at `f00a49394`. Install durable VPS GitHub read credentials for unattended future deploys. RD002 remains blocked until motion HF evidence passes.

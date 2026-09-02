@@ -949,14 +949,14 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 | C | Production/runtime canary proving A + B | **PARTIAL** — 3A.3.1 pass; 3A.3.2 stationary only (DI-EV-0022) |
 | D | `DIMO_LTE_R1_REFERENCE_DRIVE_002` with video Ground Truth | NOT STARTED |
 
-**Production cutover (2026-09-02):** Migration `20260902103000_reference_capture_physical_sample_unique` applied; deploy `bf1be9b6b`; runner STARTING/RECORDING race hotfix `82f3d9c5c` hot-patched on VPS (canonical redeploy NOT VERIFIED). Audit: `docs/audits/dimo-phase-3a3-production-canary-2026-09-02.md` (DI-EV-0022).
+**Production cutover (2026-09-02):** Migration applied; initial deploy `bf1be9b6b`; runner fix hot-patched then **canonical redeploy verified** at `f00a49394` (main post #1509) with post-deploy stationary smoke PASS. Audit: `docs/audits/dimo-phase-3a3-production-canary-2026-09-02.md` (DI-EV-0022, amended).
 
-**Next operational sequence (post-evidence merge):**
-1. Merge clean Phase 3A.3 evidence (PR #1509)
-2. Restore canonical VPS deployment path (GitHub clone auth)
-3. Deploy and verify current main authority (`82f3d9c5c`)
-4. Short stationary smoke test
-5. Controlled motion HF canary on live LTE_R1 telemetry
+**Next operational sequence (post-canonical redeploy):**
+1. ~~Merge clean Phase 3A.3 evidence (PR #1509)~~ **Done**
+2. ~~Canonical VPS deploy + verify `f00a49394`~~ **Done** (2026-09-02)
+3. ~~Post-deploy stationary smoke~~ **PASS** (session `cc30f049-…`)
+4. Install durable VPS GitHub read credential (deploy key or credential helper) for unattended deploys — **PARTIAL** (ephemeral token used)
+5. Controlled **motion HF canary** on WOB L 7503 (owner-driven drive)
 6. Validate 3A.3.2 runtime HF behavior under motion
 7. Only then evaluate `READY_FOR_RD002`
 
