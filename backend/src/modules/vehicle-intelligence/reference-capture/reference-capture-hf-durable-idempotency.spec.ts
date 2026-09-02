@@ -117,7 +117,7 @@ describe('reference-capture HF durable idempotency', () => {
         if (pending.length >= 1) {
           await flushIdempotent();
         }
-        return { flushed: pending.length, pending: 0, inserted: pending.length };
+        return { flushed: pending.length, pending: 0, inserted: pending.length, durablyRepresentedFingerprints: [] };
       }),
       flushIdempotent,
     };
@@ -346,7 +346,7 @@ describe('reference-capture HF durable idempotency', () => {
       createRequestCorrelationId: () => 'req-partial',
       enqueueAndMaybeFlush: jest.fn(async (_s: string, _o: string, _v: string, envelope: unknown) => {
         pending.push(envelope);
-        return { flushed: 0, pending: pending.length, inserted: 0 };
+        return { flushed: 0, pending: pending.length, inserted: 0, durablyRepresentedFingerprints: [] };
       }),
       flushIdempotent,
     };

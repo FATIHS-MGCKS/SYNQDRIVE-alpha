@@ -9,17 +9,19 @@ import {
   advanceHfQueryCoverageAfterQuery,
   advanceHfWatermarksAfterPersistedBuckets,
   computeHfQueryFrom,
-  computeHfQueryTo,
   getFieldHfQueryFrom,
   HF_QUERY_OVERLAP_MS,
   normalizeHfCommittedWatermarkState,
+  resolveHfActualQueryTo,
   shouldAdvanceHfWatermark,
+  simulateHfActiveThenSilentQueryGrowth,
   simulateHfQueryWindowGrowth,
 } from './reference-capture-hf-watermark-policy';
 import {
   buildAggregateBucketFingerprint,
   buildLegacyValueInclusiveFingerprint,
   buildPhysicalSampleFingerprint,
+  HF_PHYSICAL_IDENTITY_VERSION,
 } from './reference-capture-physical-sample-identity.util';
 
 const RD001_DIFFERENTIAL_PATH = join(
@@ -283,15 +285,49 @@ describe('reference-capture-hf-watermark-policy', () => {
     });
   });
 
-  describe('query TO boundary', () => {
-    it('prefers requestCompletedAt over fallback', () => {
-      const completed = new Date('2026-09-01T19:12:27.741Z');
-      const fallback = new Date('2026-09-01T19:12:27.500Z');
-      expect(computeHfQueryTo(completed, fallback)).toEqual(completed);
+  describe('ACTUAL_QUERY_TO authority', () => {
+    it('uses requestStartedAt as ACTUAL_QUERY_TO (not HTTP completion)', () => {
+      const actual = new Date('2026-09-01T10:00:00.000Z');
+      expect(resolveHfActualQueryTo(actual)).toEqual(actual);
+    });
+
+    it('QUERY_COVERAGE_EXCEEDS_ACTUAL_QUERY_TO = NO: coverage equals actual query TO only', () => {
+      const actualQueryTo = '2026-09-01T10:00:00.000Z';
+      const state = advanceHfQueryCoverageAfterQuery(
+        normalizeHfCommittedWatermarkState({
+          hfWatermarkAt: null,
+          hfWatermarkByField: {},
+          hfQueryCoverageByField: {},
+        }),
+        ['speed'],
+        actualQueryTo,
+      );
+      expect(state.hfQueryCoverageByField.speed).toBe(actualQueryTo);
+      expect(state.hfQueryCoverageByField.speed).not.toBe('2026-09-01T10:00:05.000Z');
     });
   });
 
   describe('query coverage vs data watermark', () => {
+    it('prefers query coverage over stale data watermark for previously active then silent field', () => {
+      const state = normalizeHfCommittedWatermarkState({
+        hfWatermarkAt: null,
+        hfWatermarkByField: { rareField: '2026-09-01T19:00:63.252Z' },
+        hfQueryCoverageByField: { rareField: '2026-09-01T19:30:43.252Z' },
+      });
+      const from = getFieldHfQueryFrom(state, 'rareField', sessionStart);
+      expect(from.toISOString()).toBe('2026-09-01T19:30:41.252Z');
+    });
+
+    it('allows late bucket capture when silent field reactivates within overlap', () => {
+      const state = normalizeHfCommittedWatermarkState({
+        hfWatermarkAt: null,
+        hfWatermarkByField: { rareField: '2026-09-01T19:00:63.252Z' },
+        hfQueryCoverageByField: { rareField: '2026-09-01T19:30:43.252Z' },
+      });
+      const from = getFieldHfQueryFrom(state, 'rareField', sessionStart);
+      const lateBucketMs = Date.parse('2026-09-01T19:30:42.500Z');
+      expect(lateBucketMs).toBeGreaterThanOrEqual(from.getTime());
+    });
     it('does not pin silent field query FROM to session start after first successful query', () => {
       let state = normalizeHfCommittedWatermarkState({
         hfWatermarkAt: null,
@@ -322,6 +358,20 @@ describe('reference-capture-hf-watermark-policy', () => {
       });
       const from = computeHfQueryFrom(state, sessionStart, ['speed', 'slowField']);
       expect(from.toISOString()).toBe('2026-09-01T19:12:26.000Z');
+    });
+
+    it('FIELD_B_PREVIOUSLY_OBSERVED_THEN_SILENT: HF query window stays bounded over 64 cycles', () => {
+      const result = simulateHfActiveThenSilentQueryGrowth({
+        sessionStartedAt: sessionStart,
+        cycleCount: 64,
+        cycleIntervalMs: 5000,
+        providerFields: ['speed', 'rareField'],
+        silentField: 'rareField',
+        silentFieldActiveUntilCycle: 4,
+        fieldBucketCadenceMs: { speed: 1000, rareField: 1000 },
+      });
+      expect(result.windowMsMax).toBeLessThanOrEqual(HF_QUERY_OVERLAP_MS + 5000 + 1000);
+      expect(result.cycles[63].windowMs).toBeLessThan(64 * 5000);
     });
   });
 

@@ -147,20 +147,32 @@ export class ReferenceCaptureObservationWriterService {
     organizationId: string,
     vehicleId: string,
     envelope: ReferenceCaptureObservationEnvelope,
-  ): Promise<{ flushed: number; pending: number; inserted: number }> {
+  ): Promise<{
+    flushed: number;
+    pending: number;
+    inserted: number;
+    durablyRepresentedFingerprints: string[];
+  }> {
     this.enqueue(sessionId, organizationId, vehicleId, envelope);
     const pending = this.getPendingCount(sessionId);
     const batchSize = this.config.getBatchSize();
     let flushed = 0;
     let inserted = 0;
+    let durablyRepresentedFingerprints: string[] = [];
 
     if (pending >= batchSize) {
       const result = await this.flushIdempotent(sessionId);
       flushed = result.attempted;
       inserted = result.inserted;
+      durablyRepresentedFingerprints = result.durablyRepresentedFingerprints;
     }
 
-    return { flushed, pending: this.getPendingCount(sessionId), inserted };
+    return {
+      flushed,
+      pending: this.getPendingCount(sessionId),
+      inserted,
+      durablyRepresentedFingerprints,
+    };
   }
 
   clearSession(sessionId: string): void {

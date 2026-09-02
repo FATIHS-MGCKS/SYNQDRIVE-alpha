@@ -120,6 +120,25 @@ export class ReferenceCaptureObservationRepository {
     });
   }
 
+  async findExistingProviderEventFingerprints(
+    sessionId: string,
+    fingerprints: string[],
+  ): Promise<Set<string>> {
+    if (!fingerprints.length) return new Set();
+    const rows = await this.prisma.referenceCaptureObservation.findMany({
+      where: {
+        sessionId,
+        providerEventFingerprint: { in: fingerprints },
+      },
+      select: { providerEventFingerprint: true },
+    });
+    return new Set(
+      rows
+        .map((r) => r.providerEventFingerprint)
+        .filter((fp): fp is string => typeof fp === 'string' && fp.length > 0),
+    );
+  }
+
   private toCreateData(o: NormalizedReferenceCaptureObservation) {
     return {
       sessionId: o.sessionId,

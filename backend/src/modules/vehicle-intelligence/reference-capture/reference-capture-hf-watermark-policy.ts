@@ -57,22 +57,25 @@ export function getFieldQueryCoverage(
   return state.hfQueryCoverageByField[providerField] ?? null;
 }
 
-/** Per-field query FROM using data watermark or query coverage (never pins silent fields to session start forever). */
+/**
+ * Per-field query FROM — coverage-driven once a field has been successfully queried.
+ * DATA watermark is diagnostic/evidence only; it must not pin query range after later coverage advances.
+ */
 export function getFieldHfQueryFrom(
   state: HfCommittedWatermarkState,
   providerField: string,
   sessionStartedAt: Date,
   overlapMs: number = HF_QUERY_OVERLAP_MS,
 ): Date {
-  const dataCommitted = getFieldDataWatermark(state, providerField);
-  if (dataCommitted) {
-    const ms = Date.parse(canonicalizeBucketTimestamp(dataCommitted));
-    if (Number.isFinite(ms)) return new Date(ms - overlapMs);
-  }
-
   const queryCoverage = getFieldQueryCoverage(state, providerField);
   if (queryCoverage) {
     const ms = Date.parse(canonicalizeBucketTimestamp(queryCoverage));
+    if (Number.isFinite(ms)) return new Date(ms - overlapMs);
+  }
+
+  const dataCommitted = getFieldDataWatermark(state, providerField);
+  if (dataCommitted) {
+    const ms = Date.parse(canonicalizeBucketTimestamp(dataCommitted));
     if (Number.isFinite(ms)) return new Date(ms - overlapMs);
   }
 
@@ -102,20 +105,17 @@ export function computeHfQueryFrom(
   return new Date(minFromMs);
 }
 
-/** Query TO uses response boundary — not pre-request wall clock. */
-export function computeHfQueryTo(requestCompletedAt: Date | null | undefined, fallback: Date): Date {
-  if (requestCompletedAt && Number.isFinite(requestCompletedAt.getTime())) {
-    return requestCompletedAt;
-  }
-  return fallback;
+/** ACTUAL_QUERY_TO — temporal boundary sent to DIMO GraphQL (requestStartedAt at query build). */
+export function resolveHfActualQueryTo(actualQueryToAt: Date): Date {
+  return actualQueryToAt;
 }
 
 export function advanceHfQueryCoverageAfterQuery(
   state: HfCommittedWatermarkState,
   providerFields: string[],
-  queryCompletedAt: string | Date,
+  actualQueryTo: string | Date,
 ): HfCommittedWatermarkState {
-  const ts = canonicalizeBucketTimestamp(queryCompletedAt);
+  const ts = canonicalizeBucketTimestamp(actualQueryTo);
   const nextCoverage = { ...state.hfQueryCoverageByField };
   for (const field of providerFields) {
     const prev = nextCoverage[field];
@@ -207,6 +207,65 @@ export function simulateHfQueryWindowGrowth(args: {
       const cadence = args.fieldBucketCadenceMs?.[field];
       if (!cadence) continue;
       const dataTs = new Date(queryToMs - cadence).toISOString();
+      state = advanceHfWatermarksAfterPersistedBuckets(state, [
+        { providerField: field, providerTimestamp: dataTs },
+      ]);
+    }
+  }
+
+  const sorted = [...windows].sort((a, b) => a - b);
+  const pct = (p: number) =>
+    sorted[Math.max(0, Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1))];
+
+  return {
+    cycles,
+    windowMsP50: sorted.length ? pct(50) : 0,
+    windowMsP95: sorted.length ? pct(95) : 0,
+    windowMsMax: sorted.length ? sorted[sorted.length - 1] : 0,
+  };
+}
+
+/** Simulate a field that emits buckets early then becomes runtime-silent while queries continue. */
+export function simulateHfActiveThenSilentQueryGrowth(args: {
+  sessionStartedAt: Date;
+  cycleCount: number;
+  cycleIntervalMs: number;
+  providerFields: string[];
+  silentField: string;
+  silentFieldActiveUntilCycle: number;
+  fieldBucketCadenceMs?: Record<string, number | null>;
+  overlapMs?: number;
+}): HfQueryWindowSimulationResult {
+  const overlapMs = args.overlapMs ?? HF_QUERY_OVERLAP_MS;
+  let state = normalizeHfCommittedWatermarkState({
+    hfWatermarkAt: null,
+    hfWatermarkByField: {},
+    hfQueryCoverageByField: {},
+  });
+
+  const cycles: HfQueryWindowSimulationCycle[] = [];
+  const windows: number[] = [];
+
+  for (let cycle = 1; cycle <= args.cycleCount; cycle += 1) {
+    const actualQueryToMs = args.sessionStartedAt.getTime() + cycle * args.cycleIntervalMs;
+    const queryFrom = computeHfQueryFrom(state, args.sessionStartedAt, args.providerFields, overlapMs);
+    const windowMs = actualQueryToMs - queryFrom.getTime();
+    windows.push(windowMs);
+    cycles.push({ cycle, queryFromMs: queryFrom.getTime(), queryToMs: actualQueryToMs, windowMs });
+
+    state = advanceHfQueryCoverageAfterQuery(
+      state,
+      args.providerFields,
+      new Date(actualQueryToMs).toISOString(),
+    );
+
+    for (const field of args.providerFields) {
+      if (field === args.silentField && cycle > args.silentFieldActiveUntilCycle) {
+        continue;
+      }
+      const cadence = args.fieldBucketCadenceMs?.[field];
+      if (!cadence) continue;
+      const dataTs = new Date(actualQueryToMs - cadence).toISOString();
       state = advanceHfWatermarksAfterPersistedBuckets(state, [
         { providerField: field, providerTimestamp: dataTs },
       ]);

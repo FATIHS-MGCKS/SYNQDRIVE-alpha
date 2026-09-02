@@ -17,18 +17,19 @@ import { bucketValuesEqual, hashNormalizedBucketValue } from './reference-captur
 import { buildProviderEventFingerprint } from './reference-capture-event-identity.util';
 import {
   buildPhysicalSampleFingerprint,
-  HF_PHYSICAL_IDENTITY_VERSION,
+  buildProviderBucketRevisionIdentity,
+  isActiveLegacyIdentitySession,
   resolveHfPhysicalIdentityVersion,
 } from './reference-capture-physical-sample-identity.util';
 import {
   advanceHfQueryCoverageAfterQuery,
   advanceHfWatermarksAfterPersistedBuckets,
   computeHfQueryFrom,
-  computeHfQueryTo,
   HF_AGGREGATION_TYPE,
   HF_QUERY_OVERLAP_MS,
   HF_REQUESTED_INTERVAL,
   normalizeHfCommittedWatermarkState,
+  resolveHfActualQueryTo,
   shouldAdvanceHfWatermark,
 } from './reference-capture-hf-watermark-policy';
 import { ReferenceCaptureObservationRepository } from './reference-capture-observation.repository';
@@ -91,6 +92,13 @@ function dedupeBucketsByFieldTimestamp(
   return unique;
 }
 
+export class ReferenceCaptureLegacySessionIdentityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ReferenceCaptureLegacySessionIdentityError';
+  }
+}
+
 @Injectable()
 export class ReferenceCaptureAcquisitionService {
   private readonly logger = new Logger(ReferenceCaptureAcquisitionService.name);
@@ -132,6 +140,11 @@ export class ReferenceCaptureAcquisitionService {
     }
 
     const state = lock.state ?? parseAcquisitionState(session.acquisitionStateJson);
+    if (isActiveLegacyIdentitySession(state)) {
+      throw new ReferenceCaptureLegacySessionIdentityError(
+        'Active reference capture session uses legacy V1 physical identity fingerprints; start a new session after deploy (completed pre-V2 sessions remain immutable evidence)',
+      );
+    }
     const cycleNumber = state.cycleCount + 1;
     const captureCycleId = this.observationWriter.createCaptureCycleId();
 
@@ -171,7 +184,7 @@ export class ReferenceCaptureAcquisitionService {
       [];
     const newPhysicalSampleFingerprints: string[] = [];
     let hfQueryCoverageFields: string[] = [];
-    let hfQueryCompletedAt: string | null = null;
+    let hfActualQueryTo: string | null = null;
     let hfBucketByFingerprint = new Map<string, { providerField: string; providerTimestamp: string }>();
 
     const fieldLookup = new Map(
@@ -229,17 +242,14 @@ export class ReferenceCaptureAcquisitionService {
           hfIdentityVersion,
           sessionStartedAt: session.startedAt ?? new Date(),
           sequenceStart: sequenceNumber,
-          cycleSeenFingerprints:
-            hfIdentityVersion === HF_PHYSICAL_IDENTITY_VERSION.LEGACY_VALUE_V1
-              ? [...(state.seenPhysicalSampleFingerprints ?? []), ...newPhysicalSampleFingerprints]
-              : newPhysicalSampleFingerprints,
+          cycleSeenFingerprints: newPhysicalSampleFingerprints,
         });
         sequenceNumber = hfResult.nextSequenceNumber;
         signalPoints += hfResult.points;
         durableBucketsForWatermark.push(...hfResult.durableBucketsForWatermark);
         newPhysicalSampleFingerprints.push(...hfResult.newPhysicalSampleFingerprints);
         hfQueryCoverageFields = hfResult.queryCoverageFields;
-        hfQueryCompletedAt = hfResult.queryCompletedAt;
+        hfActualQueryTo = hfResult.actualQueryTo;
         hfBucketByFingerprint = hfResult.bucketByFingerprint;
       }
     }
@@ -260,11 +270,11 @@ export class ReferenceCaptureAcquisitionService {
       );
     }
 
-    if (hfQueryCoverageFields.length > 0 && hfQueryCompletedAt) {
+    if (hfQueryCoverageFields.length > 0 && hfActualQueryTo) {
       hfWatermarkState = advanceHfQueryCoverageAfterQuery(
         hfWatermarkState,
         hfQueryCoverageFields,
-        hfQueryCompletedAt,
+        hfActualQueryTo,
       );
     }
 
@@ -416,7 +426,7 @@ export class ReferenceCaptureAcquisitionService {
     newPhysicalSampleFingerprints: string[];
     bucketByFingerprint: Map<string, { providerField: string; providerTimestamp: string }>;
     queryCoverageFields: string[];
-    queryCompletedAt: string;
+    actualQueryTo: string;
   }> {
     const requestStartedAt = new Date();
     const from = computeHfQueryFrom(
@@ -426,11 +436,12 @@ export class ReferenceCaptureAcquisitionService {
     );
     const requestedInterval = args.surfacePlan.requestedInterval ?? HF_REQUESTED_INTERVAL;
     const aggregation = HF_AGGREGATION_TYPE;
+    const actualQueryToAt = resolveHfActualQueryTo(requestStartedAt);
     const query = buildBroadReferenceHistoricalSignalsQuery(
       args.tokenId,
       args.surfacePlan.providerFields,
       from,
-      requestStartedAt,
+      actualQueryToAt,
       requestedInterval,
     );
     const emptyResult = {
@@ -440,7 +451,7 @@ export class ReferenceCaptureAcquisitionService {
       newPhysicalSampleFingerprints: [] as string[],
       bucketByFingerprint: new Map<string, { providerField: string; providerTimestamp: string }>(),
       queryCoverageFields: args.surfacePlan.providerFields,
-      queryCompletedAt: requestStartedAt.toISOString(),
+      actualQueryTo: actualQueryToAt.toISOString(),
     };
     if (!query) return emptyResult;
 
@@ -453,7 +464,6 @@ export class ReferenceCaptureAcquisitionService {
       'REFERENCE_CAPTURE',
     );
 
-    const queryTo = computeHfQueryTo(timed.requestCompletedAt, requestStartedAt);
     const rows = (timed.result?.data?.signals ?? []) as Array<Record<string, unknown>>;
     let sequenceNumber = args.sequenceStart;
     let points = 0;
@@ -515,6 +525,28 @@ export class ReferenceCaptureAcquisitionService {
       args.input.sessionId,
       candidateFingerprints,
     );
+    const revisionCandidates: Array<{ revisionIdentity: string }> = [];
+    for (const candidate of candidates) {
+      const existingRow = existingInDb.get(candidate.physicalSampleFingerprint);
+      if (!existingRow || bucketValuesEqual(existingRow.normalizedValueJson, candidate.normalizedValue)) {
+        continue;
+      }
+      revisionCandidates.push({
+        revisionIdentity: buildProviderBucketRevisionIdentity({
+          bucketIdentity: candidate.physicalSampleFingerprint,
+          firstSeenValueHash: hashNormalizedBucketValue(existingRow.normalizedValueJson),
+          revisedValueHash: candidate.valueHash,
+        }),
+      });
+    }
+    const existingRevisionIdentities =
+      revisionCandidates.length > 0
+        ? await this.observationRepository.findExistingProviderEventFingerprints(
+            args.input.sessionId,
+            revisionCandidates.map((r) => r.revisionIdentity),
+          )
+        : new Set<string>();
+    const seenRevisionIdentities = new Set<string>(existingRevisionIdentities);
 
     for (const fp of args.cycleSeenFingerprints) {
       cycleSeen.set(fp, { valueHash: '', normalizedValue: null });
@@ -531,23 +563,32 @@ export class ReferenceCaptureAcquisitionService {
       if (existingRow) {
         durableBucketsForWatermark.push(bucket);
         if (!bucketValuesEqual(existingRow.normalizedValueJson, candidate.normalizedValue)) {
-          providerRevisionObservations += 1;
-          sequenceNumber += 1;
-          await this.enqueueProviderBucketRevisionObservation({
-            input: args.input,
-            captureCycleId: args.captureCycleId,
-            sequenceNumber,
-            requestCorrelationId,
-            timed,
-            candidate,
-            requestedInterval,
-            aggregation,
-            from,
-            queryTo,
-            firstSeenValue: existingRow.normalizedValueJson,
-            surfacePlan: args.surfacePlan,
-            field,
+          const revisionIdentity = buildProviderBucketRevisionIdentity({
+            bucketIdentity: candidate.physicalSampleFingerprint,
+            firstSeenValueHash: hashNormalizedBucketValue(existingRow.normalizedValueJson),
+            revisedValueHash: candidate.valueHash,
           });
+          if (!seenRevisionIdentities.has(revisionIdentity)) {
+            seenRevisionIdentities.add(revisionIdentity);
+            providerRevisionObservations += 1;
+            sequenceNumber += 1;
+            await this.enqueueProviderBucketRevisionObservation({
+              input: args.input,
+              captureCycleId: args.captureCycleId,
+              sequenceNumber,
+              requestCorrelationId,
+              timed,
+              candidate,
+              requestedInterval,
+              aggregation,
+              from,
+              actualQueryTo: actualQueryToAt,
+              firstSeenValue: existingRow.normalizedValueJson,
+              revisionIdentity,
+              surfacePlan: args.surfacePlan,
+              field,
+            });
+          }
         }
         duplicateSkipped += 1;
         continue;
@@ -556,23 +597,32 @@ export class ReferenceCaptureAcquisitionService {
       if (cycleSeen.has(candidate.physicalSampleFingerprint)) {
         const prior = cycleSeen.get(candidate.physicalSampleFingerprint)!;
         if (prior.valueHash && prior.valueHash !== candidate.valueHash) {
-          providerRevisionObservations += 1;
-          sequenceNumber += 1;
-          await this.enqueueProviderBucketRevisionObservation({
-            input: args.input,
-            captureCycleId: args.captureCycleId,
-            sequenceNumber,
-            requestCorrelationId,
-            timed,
-            candidate,
-            requestedInterval,
-            aggregation,
-            from,
-            queryTo,
-            firstSeenValue: prior.normalizedValue,
-            surfacePlan: args.surfacePlan,
-            field,
+          const revisionIdentity = buildProviderBucketRevisionIdentity({
+            bucketIdentity: candidate.physicalSampleFingerprint,
+            firstSeenValueHash: prior.valueHash,
+            revisedValueHash: candidate.valueHash,
           });
+          if (!seenRevisionIdentities.has(revisionIdentity)) {
+            seenRevisionIdentities.add(revisionIdentity);
+            providerRevisionObservations += 1;
+            sequenceNumber += 1;
+            await this.enqueueProviderBucketRevisionObservation({
+              input: args.input,
+              captureCycleId: args.captureCycleId,
+              sequenceNumber,
+              requestCorrelationId,
+              timed,
+              candidate,
+              requestedInterval,
+              aggregation,
+              from,
+              actualQueryTo: actualQueryToAt,
+              firstSeenValue: prior.normalizedValue,
+              revisionIdentity,
+              surfacePlan: args.surfacePlan,
+              field,
+            });
+          }
         }
         duplicateSkipped += 1;
         continue;
@@ -587,7 +637,7 @@ export class ReferenceCaptureAcquisitionService {
       sequenceNumber += 1;
       points += 1;
 
-      await this.observationWriter.enqueueAndMaybeFlush(
+      const enqueueResult = await this.observationWriter.enqueueAndMaybeFlush(
         args.input.sessionId,
         args.input.organizationId,
         args.input.vehicleId,
@@ -626,7 +676,8 @@ export class ReferenceCaptureAcquisitionService {
             hfPhysicalIdentityVersion: args.hfIdentityVersion,
             requestedCadenceMs: args.surfacePlan.requestedCadenceMs,
             hfWindowFrom: from.toISOString(),
-            hfWindowTo: queryTo.toISOString(),
+            hfActualQueryTo: actualQueryToAt.toISOString(),
+            hfWindowTo: actualQueryToAt.toISOString(),
             sequenceScope: REFERENCE_CAPTURE_SEQUENCE_SCOPE,
             aggregateBucketIdentity: candidate.physicalSampleFingerprint,
             hfRetrievalObservation: true,
@@ -635,6 +686,10 @@ export class ReferenceCaptureAcquisitionService {
           },
         },
       );
+      for (const fp of enqueueResult.durablyRepresentedFingerprints) {
+        const durableBucket = bucketByFingerprint.get(fp);
+        if (durableBucket) durableBucketsForWatermark.push(durableBucket);
+      }
     }
 
     if (duplicateSkipped > 0 || providerRevisionObservations > 0) {
@@ -650,7 +705,7 @@ export class ReferenceCaptureAcquisitionService {
       newPhysicalSampleFingerprints,
       bucketByFingerprint,
       queryCoverageFields: args.surfacePlan.providerFields,
-      queryCompletedAt: queryTo.toISOString(),
+      actualQueryTo: actualQueryToAt.toISOString(),
     };
   }
 
@@ -680,8 +735,9 @@ export class ReferenceCaptureAcquisitionService {
     requestedInterval: string;
     aggregation: string;
     from: Date;
-    queryTo: Date;
+    actualQueryTo: Date;
     firstSeenValue: unknown;
+    revisionIdentity: string;
     surfacePlan: ReferenceCaptureSurfacePlan;
     field: ReferenceCapturePreflightResult['broadObservationFields'][number] | undefined;
   }): Promise<void> {
@@ -717,11 +773,13 @@ export class ReferenceCaptureAcquisitionService {
         captureCycleId: args.captureCycleId,
         sequenceNumber: args.sequenceNumber,
         physicalSampleFingerprint: null,
+        providerEventFingerprint: args.revisionIdentity,
         provenance: {
           observationType: 'PROVIDER_BUCKET_REVISION',
           manifestVersion: args.input.manifestVersion,
           captureSessionId: args.input.sessionId,
           bucketIdentity: args.candidate.physicalSampleFingerprint,
+          revisionIdentity: args.revisionIdentity,
           correctedValuePolicy: 'IMMUTABLE_FIRST_SEEN',
           firstSeenValue: args.firstSeenValue,
           firstSeenValueHash: hashNormalizedBucketValue(args.firstSeenValue),
@@ -730,7 +788,8 @@ export class ReferenceCaptureAcquisitionService {
           requestedInterval: args.requestedInterval,
           requestedAggregation: args.aggregation,
           hfWindowFrom: args.from.toISOString(),
-          hfWindowTo: args.queryTo.toISOString(),
+          hfActualQueryTo: args.actualQueryTo.toISOString(),
+          hfWindowTo: args.actualQueryTo.toISOString(),
           requestedCadenceMs: args.surfacePlan.requestedCadenceMs,
           sequenceScope: REFERENCE_CAPTURE_SEQUENCE_SCOPE,
         },

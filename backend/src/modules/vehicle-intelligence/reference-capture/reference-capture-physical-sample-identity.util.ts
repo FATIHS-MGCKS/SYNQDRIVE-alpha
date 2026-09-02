@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
 import { canonicalizeBucketTimestamp } from './reference-capture-hf-aggregate-bucket-analysis';
+import { hashNormalizedBucketValue } from './reference-capture-bucket-value.util';
 import {
   HF_AGGREGATION_TYPE,
   HF_REQUESTED_INTERVAL,
@@ -42,13 +43,13 @@ export function buildAggregateBucketFingerprint(input: AggregateBucketIdentityIn
     .digest('hex');
 }
 
-/** @deprecated LEGACY_VALUE_V1 — value-inclusive fingerprint for forensic comparison only. */
+/** Historical V1 physical identity: field + providerTimestamp + normalizedValue (no version prefix). */
 export function buildLegacyValueInclusiveFingerprint(input: {
   providerField: string;
   providerTimestamp: string | null;
   normalizedValue: unknown;
 }): string {
-  const ts = input.providerTimestamp ?? '';
+  const ts = input.providerTimestamp ? canonicalizeBucketTimestamp(input.providerTimestamp) : '';
   const value =
     input.normalizedValue === undefined || input.normalizedValue === null
       ? ''
@@ -59,14 +60,35 @@ export function buildLegacyValueInclusiveFingerprint(input: {
   return createHash('sha256').update([input.providerField, ts, value].join('|')).digest('hex');
 }
 
+/** Stable idempotency key for PROVIDER_BUCKET_REVISION evidence (not a physical bucket). */
+export function buildProviderBucketRevisionIdentity(input: {
+  bucketIdentity: string;
+  firstSeenValueHash: string;
+  revisedValueHash: string;
+}): string {
+  return createHash('sha256')
+    .update(
+      [input.bucketIdentity, input.firstSeenValueHash, input.revisedValueHash].join('|'),
+    )
+    .digest('hex');
+}
+
 /** Stable identity of a persisted HF_HISTORICAL aggregate bucket (executed query contract). */
 export function buildPhysicalSampleFingerprint(input: PhysicalSampleIdentityInput): string {
+  const version = input.identityVersion ?? HF_PHYSICAL_IDENTITY_VERSION.AGGREGATE_BUCKET_V2;
+  if (version === HF_PHYSICAL_IDENTITY_VERSION.LEGACY_VALUE_V1) {
+    return buildLegacyValueInclusiveFingerprint({
+      providerField: input.providerField,
+      providerTimestamp: input.providerTimestamp,
+      normalizedValue: input.normalizedValue,
+    });
+  }
   return buildAggregateBucketFingerprint({
     providerField: input.providerField,
     providerTimestamp: input.providerTimestamp,
     interval: input.interval ?? HF_REQUESTED_INTERVAL,
     aggregation: input.aggregation ?? HF_AGGREGATION_TYPE,
-    identityVersion: input.identityVersion ?? HF_PHYSICAL_IDENTITY_VERSION.AGGREGATE_BUCKET_V2,
+    identityVersion: HF_PHYSICAL_IDENTITY_VERSION.AGGREGATE_BUCKET_V2,
   });
 }
 
@@ -97,4 +119,10 @@ export function resolveHfPhysicalIdentityVersion(
     return HF_PHYSICAL_IDENTITY_VERSION.LEGACY_VALUE_V1;
   }
   return HF_PHYSICAL_IDENTITY_VERSION.AGGREGATE_BUCKET_V2;
+}
+
+export function isActiveLegacyIdentitySession(
+  state: { hfPhysicalIdentityVersion?: HfPhysicalIdentityVersion; seenPhysicalSampleFingerprints?: string[] },
+): boolean {
+  return resolveHfPhysicalIdentityVersion(state) === HF_PHYSICAL_IDENTITY_VERSION.LEGACY_VALUE_V1;
 }

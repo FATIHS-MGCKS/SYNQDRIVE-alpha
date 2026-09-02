@@ -1,7 +1,7 @@
 # Phase 3A.3.2 — HF Watermark + Aggregate Bucket Identity Remediation
 
 **Date:** 2026-09-02  
-**Phase:** 3A.3.2 (correction pass amendment 2026-09-02)
+**Phase:** 3A.3.2 (correction pass + temporal/identity micro-pass 2026-09-02)
 **Evidence ID:** DI-EV-0021 (amended in place — no new evidence ID)
 **Governance:** `docs/audits/driving-intelligence-evidence-governance-2026-09-01.md`  
 **Reference Drive:** `DIMO_LTE_R1_REFERENCE_DRIVE_001` (DI-EV-0016)  
@@ -20,6 +20,12 @@ Phase 3A.3.2 remediates two Reference Capture telemetry-integrity defects discov
 
 3. **Durable idempotency gap** — in-memory `seenPhysicalSampleFingerprints` alone could not prevent duplicate physical rows after crash between PostgreSQL persist and `releaseCycleLockAndUpdateState()`.
 4. **Unbounded query window** — a schema-supported but runtime-silent HF field without committed data watermark pinned `computeHfQueryFrom()` to `sessionStartedAt - overlap` forever.
+
+**Temporal/identity micro-pass (same evidence ID)** closes three further consistency gaps:
+
+5. **Previously active then silent field** — data watermark priority could re-pin query FROM after field stopped emitting despite advanced query coverage.
+6. **Query coverage exceeded actual query TO** — coverage advanced to `requestCompletedAt` (HTTP boundary) instead of `requestStartedAt` (GraphQL TO).
+7. **Legacy identity mislabel** — `LEGACY_VALUE_V1` fingerprint builder did not match historical V1 hash; active legacy sessions now fail closed.
 
 **Verdicts:**
 
@@ -55,8 +61,11 @@ executeAcquisitionCycle()
 
 | Concern | Symbol / location |
 |---------|-------------------|
-| HF query FROM | `computeHfQueryFrom()` — `reference-capture-hf-watermark-policy.ts` |
-| HF query TO (GraphQL) | `requestStartedAt` at query build; provenance `hfWindowTo` = `computeHfQueryTo(requestCompletedAt)` |
+| HF query FROM (per field) | `getFieldHfQueryFrom()` — **query coverage first**, then data watermark, then session start |
+| ACTUAL_QUERY_TO (GraphQL) | `requestStartedAt` at query build (`resolveHfActualQueryTo`) |
+| Query coverage advance | `hfQueryCoverageByField` ← ACTUAL_QUERY_TO only (not HTTP response) |
+| HTTP latency provenance | `requestCompletedAt`, `httpResponseReceivedAt` (not query coverage) |
+| Provenance query bounds | `hfWindowFrom`, `hfActualQueryTo` (`hfWindowTo` alias = actual query TO) |
 | Committed HF watermark (global legacy) | `acquisitionStateJson.hfWatermarkAt` |
 | Per-field committed watermark | `acquisitionStateJson.hfWatermarkByField` |
 | Per-field query coverage cursor | `acquisitionStateJson.hfQueryCoverageByField` (temporal interval queried — **not** a data watermark) |
@@ -67,7 +76,9 @@ executeAcquisitionCycle()
 | Dedup gate (optimization) | DB unique `(session_id, physical_sample_fingerprint)` + in-cycle/DB lookup in `captureHistoricalSurface()` |
 | Durable idempotent append | `ReferenceCaptureObservationRepository.appendManyIdempotent()` (`skipDuplicates: true`) |
 | Watermark advance | `advanceHfWatermarksAfterPersistedBuckets()` after `flushIdempotent()` using **durably represented** fingerprints |
-| Provider bucket revision | `PROVIDER_BUCKET_REVISION` observation (null fingerprint) — first-seen value immutable |
+| Provider bucket revision | `PROVIDER_BUCKET_REVISION` with `revisionIdentity` on `providerEventFingerprint` (idempotent per session) |
+| Auto-flush watermark | `enqueueAndMaybeFlush()` returns `durablyRepresentedFingerprints` for same-cycle DATA watermark |
+| Legacy session upgrade | **FAIL_CLOSED** — active `LEGACY_VALUE_V1` sessions throw; completed pre-V2 evidence immutable; new sessions V2 only |
 | State persistence | `ReferenceCaptureSessionRepository.releaseCycleLockAndUpdateState()` |
 
 ### RD001 quantified metrics
@@ -101,14 +112,16 @@ executeAcquisitionCycle()
 
 | Policy | Selection | Maturity |
 |--------|-----------|----------|
-| `HF_QUERY_WINDOW_POLICY` | `nextFrom = min(perFieldQueryFrom) - HF_QUERY_OVERLAP_MS`; per-field query from uses **data watermark OR query coverage** (never session start forever for silent fields) | CONFIRMED_FROM_CODE |
-| `HF_WATERMARK_SCOPE` | Per-field committed provider bucket timestamps (`hfWatermarkByField`); legacy `hfWatermarkAt` = max(per-field) | CONFIRMED_FROM_CODE |
-| `HF_QUERY_COVERAGE_MODEL` | `hfQueryCoverageByField` records last successfully queried interval end per field; separate from data watermark | CONFIRMED_FROM_CODE |
-| `HF_WATERMARK_ADVANCE_RULE` | Advance only from **durably represented** bucket identities (inserted or pre-existing in DB) after `flushIdempotent()` | CONFIRMED_FROM_CODE |
-| `HF_LATE_ARRIVAL_POLICY` | Bounded 2s overlap re-query; overlap bound provisional from RD001 closed-bucket lag P50 ≈ 1.49s | PROVISIONAL_REQUIRES_MORE_REFERENCE_DRIVES |
-| `DURABLE_PHYSICAL_IDEMPOTENCY` | `PHYSICAL_SAMPLE_IDEMPOTENCY_AUTHORITY = DATABASE`; partial unique index on `(session_id, physical_sample_fingerprint) WHERE NOT NULL` | CONFIRMED_FROM_CODE |
-| `AGGREGATE_BUCKET_IDENTITY` | `sha256(V2\|providerField\|canonicalBucketTs\|executedInterval\|executedAggregation)` | CONFIRMED_FROM_CODE |
-| `HF_PHYSICAL_IDENTITY_VERSION` | New sessions: `AGGREGATE_BUCKET_V2`; legacy active sessions with value fingerprints: `LEGACY_VALUE_V1` until new session | CONFIRMED_FROM_CODE |
+| `HF_QUERY_WINDOW_POLICY` | `nextFrom = min(perFieldQueryFrom) - HF_QUERY_OVERLAP_MS`; per-field FROM uses **query coverage first**, then data watermark, then session start | CONFIRMED_FROM_CODE |
+| `DATA_WATERMARK_AUTHORITY` | `hfWatermarkByField` = highest durable provider bucket represented (evidence/diagnostic; not primary query cursor) | CONFIRMED_FROM_CODE |
+| `QUERY_COVERAGE_AUTHORITY` | `hfQueryCoverageByField` = ACTUAL_QUERY_TO boundary successfully queried per field | CONFIRMED_FROM_CODE |
+| `ACTUAL_QUERY_TO_AUTHORITY` | `requestStartedAt` at GraphQL build — never `requestCompletedAt` | CONFIRMED_FROM_CODE |
+| `HTTP_RESPONSE_BOUNDARY` | `requestCompletedAt` / `httpResponseReceivedAt` are latency provenance only | CONFIRMED_FROM_CODE |
+| `LEGACY_SESSION_UPGRADE_POLICY` | Completed pre-V2 sessions immutable; active legacy sessions **fail closed**; new sessions `AGGREGATE_BUCKET_V2` only | CONFIRMED_FROM_CODE |
+| `REAL_LEGACY_V1_HASH` | `buildLegacyValueInclusiveFingerprint(field\|ts\|value)` — exact historical algorithm | CONFIRMED_FROM_CODE |
+| `AUTO_FLUSH_WATERMARK_ACCOUNTING` | Intermediate `enqueueAndMaybeFlush` durables included in same-cycle DATA watermark | CONFIRMED_FROM_CODE |
+| `PROVIDER_REVISION_IDEMPOTENCY` | `revisionIdentity = hash(bucketIdentity\|firstSeenHash\|revisedHash)` on `providerEventFingerprint` | CONFIRMED_FROM_CODE |
+| `HF_PHYSICAL_IDENTITY_VERSION` | New sessions: `AGGREGATE_BUCKET_V2`; `LEGACY_VALUE_V1` forensic-only / fail-closed on active resume | CONFIRMED_FROM_CODE |
 | `PHYSICAL_SAMPLE_IDENTITY` | Same as aggregate bucket identity for HF_HISTORICAL | CONFIRMED_FROM_CODE |
 | `MULTI_SURFACE_IDENTITY_SCOPE` | **HF_HISTORICAL-scoped** V2 fingerprint; LATEST_LIVE/LATEST_SLOW do not set `physicalSampleFingerprint` — cross-surface collapse is analysis concern, not shared dedup Set | CONFIRMED_FROM_CODE |
 | `PROVIDER_BUCKET_REVISION_POLICY` | `IMMUTABLE_FIRST_SEEN` physical row; revised provider value emits `PROVIDER_BUCKET_REVISION` provenance observation (null fingerprint) | CONFIRMED_FROM_CODE |
@@ -123,8 +136,14 @@ executeAcquisitionCycle()
 | `STATE_COMMIT_FAILURE_RETRY_IDEMPOTENT` | **YES** |
 | `FAST_FIELD_CAN_SUPPRESS_SLOW_FIELD` | **NO** |
 | `SLOW_FIELD_CAN_FORCE_UNBOUNDED_FAST_FIELD_REQUERY` | **NO** |
-| `SILENT_FIELD_CAN_PIN_QUERY_TO_SESSION_START` | **NO** (query coverage cursor) |
-| `HF_QUERY_WINDOW_GROWS_WITH_SESSION_DURATION` | **NO** under steady successful operation |
+| `PREVIOUSLY_ACTIVE_THEN_SILENT_FIELD_BOUNDED` | **YES** (coverage-driven FROM) |
+| `QUERY_COVERAGE_EXCEEDS_ACTUAL_QUERY_TO` | **NO** |
+| `HTTP_LATENCY_CAN_CREATE_UNQUERIED_HOLE` | **NO** |
+| `AUTO_FLUSH_DURABLES_INCLUDED_IN_SAME_CYCLE_WATERMARK` | **YES** |
+| `PROVIDER_REVISION_IDEMPOTENT` | **YES** |
+| `REAL_LEGACY_V1_HASH_COMPATIBLE` | **YES** (forensic); active resume **NOT_SUPPORTED** (fail closed) |
+| `SILENT_FIELD_CAN_PIN_QUERY_TO_SESSION_START` | **NO** |
+| `HF_QUERY_WINDOW_GROWS_WITH_SESSION_DURATION` | **NO** (including previously active then silent fields) |
 | `REPEATED_BUCKET_CREATES_NEW_PHYSICAL_SAMPLE` | **NO** |
 | `LATE_VALID_BUCKET_CAN_BE_RECOVERED` | **YES** |
 | `RETRY_IS_IDEMPOTENT` | **YES** at DB boundary |
@@ -230,5 +249,6 @@ RD001 fixture: `reference-capture-hf-watermark-policy.spec.ts` describe block **
 PHASE_3A3_2_CODE_READY = YES
 PHASE_3A3_2_PRODUCTION_VALIDATED = NO
 READY_FOR_RD002 = NO
-NEXT_REQUIRED_STEP = MERGE_REVIEW_THEN_PRODUCTION_CANARY_FOR_3A3_1_PLUS_3A3_2
+PRODUCTION_PRE_MIGRATION_DUPLICATE_AUDIT = REQUIRED_BEFORE_DEPLOY
+NEXT_REQUIRED_STEP = MERGE_REVIEW_THEN_PRODUCTION_PRE_MIGRATION_AUDIT_AND_CANARY
 ```

@@ -55,7 +55,12 @@ describe('Reference Capture integration (Phase 3A.1 correction)', () => {
       const writer = {
         createCaptureCycleId: () => 'cycle-a',
         createRequestCorrelationId: () => 'req-a',
-        enqueueAndMaybeFlush: jest.fn().mockResolvedValue({ flushed: 0, pending: 1, inserted: 0 }),
+        enqueueAndMaybeFlush: jest.fn().mockResolvedValue({
+          flushed: 0,
+          pending: 1,
+          inserted: 0,
+          durablyRepresentedFingerprints: [],
+        }),
         flush: jest.fn().mockResolvedValue(1),
         flushIdempotent: jest.fn().mockResolvedValue({ attempted: 1, inserted: 1, durablyRepresentedFingerprints: [] }),
       };

@@ -25,10 +25,11 @@ Correction pass additionally closes:
 ### Separation of concerns
 
 ```
-DATA_WATERMARK (hfWatermarkByField)     → highest durable provider bucket per field
-QUERY_COVERAGE (hfQueryCoverageByField)   → temporal interval successfully queried (NOT data)
+DATA_WATERMARK (hfWatermarkByField)     → highest durable provider bucket per field (evidence)
+QUERY_COVERAGE (hfQueryCoverageByField) → ACTUAL_QUERY_TO successfully queried per field
+ACTUAL_QUERY_TO                         → requestStartedAt sent to DIMO GraphQL
+HTTP_RESPONSE_BOUNDARY                  → requestCompletedAt / httpResponseReceivedAt (latency only)
 AGGREGATE_BUCKET_IDENTITY (V2)            → whether HF physical observation already represented
-PROVENANCE                                → which surface/cycle/request returned it
 DURABLE_IDEMPOTENCY_AUTHORITY             → PostgreSQL unique (session_id, physical_sample_fingerprint)
 ```
 
@@ -48,11 +49,11 @@ DURABLE_IDEMPOTENCY_AUTHORITY             → PostgreSQL unique (session_id, phy
 
 ```
 1. acquire cycle lock
-2. query DIMO HF_HISTORICAL (FROM uses data watermark OR query coverage per field)
+2. query DIMO HF_HISTORICAL (FROM = coverage-first per field; TO = requestStartedAt)
 3. dedup by aggregate bucket fingerprint (DB lookup + in-cycle) → enqueue new only
-4. flushIdempotent() all pending observations (skipDuplicates)
-5. advance hfWatermarkByField from durably represented bucket identities only
-6. advance hfQueryCoverageByField for queried fields
+4. flushIdempotent() — auto-flush durables propagate to same-cycle DATA watermark
+5. advance hfWatermarkByField from all durably represented bucket identities
+6. advance hfQueryCoverageByField to ACTUAL_QUERY_TO (not HTTP completion)
 7. release lock + persist acquisitionStateJson
 ```
 
@@ -78,9 +79,11 @@ Legacy sessions with value-inclusive fingerprints remain `LEGACY_VALUE_V1` until
 
 V2 `physicalSampleFingerprint` is set only on **HF_HISTORICAL** `SIGNAL_POINT` observations. `LATEST_LIVE` and `LATEST_SLOW` persist separate observations without physical fingerprints. Cross-surface relationship is preserved in provenance and downstream analysis — not a shared in-memory dedup Set across surfaces.
 
+Legacy sessions with value-inclusive fingerprints remain **immutable completed evidence**. Active legacy sessions at deploy **fail closed** (`ReferenceCaptureLegacySessionIdentityError`) — start a new V2 session.
+
 ### Provider bucket revision policy
 
-`IMMUTABLE_FIRST_SEEN`: first persisted value for a bucket identity is authoritative. A later provider return with different value for the same bucket identity emits a `PROVIDER_BUCKET_REVISION` observation (null fingerprint) with first-seen and revised value evidence — not a second physical bucket.
+`IMMUTABLE_FIRST_SEEN`: first persisted value for a bucket identity is authoritative. Revised values emit `PROVIDER_BUCKET_REVISION` with stable `revisionIdentity` on `providerEventFingerprint` (idempotent per session).
 
 ---
 
