@@ -148,6 +148,8 @@ Precedence applies **only** while workshop evidence that caused `WORKSHOP_OVERRI
 
 - `TELEMETRY` ↔ `WORKSHOP_OVERRIDE` track change = **new** publication authority/stabilization epoch  
 - **Rejected:** cross-track EWMA/hysteresis baseline from prior track  
+- **Equal-value cross-track:** track change publication-significant when policy permits (e.g. TELEMETRY 72 → WORKSHOP 72) — **PKG-02 target**; current `shouldPersistPublication = firstPublication || valueChanged` gap  
+- **UNKNOWN previousTrack:** discontinuity — no stabilization inheritance  
 - **Current gap:** `LvPublicationPreviousState` lacks `assessmentTrack` — PKG-02 must expose previous track  
 - **Retention ≠ fallback:** existing TELEMETRY publication may remain after `WORKSHOP_OVERRIDE` SKIP; no new TELEMETRY fallback publication in same epoch
 

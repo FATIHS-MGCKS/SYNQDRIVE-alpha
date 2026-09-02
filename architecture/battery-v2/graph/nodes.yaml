@@ -300,10 +300,11 @@ nodes:
       eligibility changes. Same-handoff retry preserves selected assessmentId; no lower-track fallback. Track
       change (TELEMETRY↔WORKSHOP_OVERRIDE) = new publication authority/stabilization epoch — no cross-track
       EWMA/hysteresis baseline. Higher-track SKIP retains existing lower-track publication (retention ≠ fallback).
-      LvPublicationPreviousState lacks assessmentTrack today — PKG-02 must expose previous track for cross-track
-      semantics. Explicit assessmentTrack carrier required. findLatestLvEstimatedHealth must NOT become selector.
-      BatteryPublicationService remains sole publication-policy authority. PKG-02 IMPLEMENTATION_SPEC_REQUIRED
-      (D5 only); D4 cross-track semantics must be implemented in PKG-02. NOT PRODUCTION_VALIDATED.
+      Equal-value cross-track transition is publication-significant when policy permits (72 TELEMETRY→72 WORKSHOP);
+      current shouldPersistPublication = firstPublication||valueChanged only — track change gap. UNKNOWN previousTrack
+      = discontinuity. LvPublicationPreviousState lacks assessmentTrack — PKG-02 must expose previous track.
+      BatteryPublicationService remains sole publication-policy authority. PKG-02 IMPLEMENTATION_SPEC_REQUIRED (D5 only);
+      D4 runtime contracts not implemented. NOT PRODUCTION_VALIDATED.
     source_paths:
       - architecture/battery-v2/decisions/lv-publication-track-authority-decision.md
       - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-estimated-health-assessment.policy.ts
@@ -320,6 +321,7 @@ nodes:
       - BAT-V2-EVID-CODE-LV-PREV-STATE-NO-TRACK-001
       - BAT-V2-EVID-CODE-LV-RECOMPUTE-CURRENT-EVIDENCE-001
       - BAT-V2-EVID-CODE-LV-PUBLICATION-EWMA-PREVIOUS-001
+      - BAT-V2-EVID-CODE-LV-PUBLICATION-PERSIST-VALUE-ONLY-001
     non_effects:
       - Does not implement track selector or publication enqueue
       - Does not close BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
@@ -1544,6 +1546,20 @@ nodes:
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-publication.policy.ts
       - backend/src/modules/vehicle-intelligence/battery-health/battery-publication.repository.ts
+
+  - id: BAT-V2-EVID-CODE-LV-PUBLICATION-PERSIST-VALUE-ONLY-001
+    type: evidence
+    title: LV publication persistence currently depends on first/value change — track change not represented
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      lv-publication.policy.ts: valueChanged = publishedEstimatedHealth !== currentPublished;
+      firstPublication = currentPublished == null; shouldPersistPublication = maturityAllowsFirstPublish &&
+      (firstPublication || valueChanged). Equal-value cross-track (e.g. TELEMETRY 72 → WORKSHOP_OVERRIDE 72) yields
+      shouldPersistPublication false — old TELEMETRY publication remains active. D4 requires track-change
+      publication significance when policy permits; not implemented in current runtime.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-publication.policy.ts
 
   - id: BAT-V2-EVID-CODE-HEV-SIDE-EFFECT-READ-DIVERGENCE-001
     type: evidence

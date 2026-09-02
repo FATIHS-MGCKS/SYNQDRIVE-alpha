@@ -6,6 +6,29 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-02 — D4 equal-value cross-track publication precision
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | D4 defined cross-track epoch and retention≠fallback but did not explicitly require equal-value track transitions to persist when policy permits; current `shouldPersistPublication` uses firstPublication\|\|valueChanged only. |
+| **OBSERVATION** | `lv-publication.policy.ts`: equal TELEMETRY 72 → WORKSHOP 72 yields `valueChanged=false` → no new publication; old TELEMETRY row remains active despite D4 authority change. Reason payload stores assessmentTrack; `LvPublicationPreviousState` omits it. |
+| **HYPOTHESIS** | Track authority change is publication-significant independently of numeric equality when new track passes policy; UNKNOWN previousTrack = discontinuity without stabilization inheritance. |
+| **CHANGE** | Amended D4 dossier with EQUAL_VALUE_TRACK_TRANSITION, PUBLICATION_SIGNIFICANCE, HISTORY_VS_STABILIZATION_CONTEXT, UNKNOWN_PREVIOUS_TRACK; TEST 14–17; +1 evidence node. |
+| **WHY** | Publication carries provenance/authority beyond displayed score; 72 TELEMETRY ≠ 72 WORKSHOP epistemically; single-authority requires active publication to reflect successful authoritative track. |
+| **EXPECTED_EFFECT** | PKG-02 must implement track-change publication significance and equal-value cross-track tests; D5 remains sole blocker. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh`; `lv-publication.policy.ts` |
+| **OBSERVED_EFFECT** | Validator PASS; graph counts per post-change output. |
+| **NON_EFFECTS** | No runtime implementation; no publication behavior change; no assessment behavior change; no DB migration; no feature flag change; no production mutation; no backfill; no deploy; no M4 cutover; no production validation; runtime gaps remain open. |
+| **REGRESSIONS_OR_TRADEOFFS** | PKG-02 publication policy must accept track-change significance signal from D4 context |
+| **REMAINING_GAPS** | All 20 `BAT-V2-GAP-*` open; PKG-02 D5 only; M4 not authorized |
+| **DECISION_STATUS** | VALIDATED (NOT PRODUCTION_VALIDATED) |
+| **AFFECTED_GRAPH** | +1 evidence, +1 edge; expanded D4 summary |
+| **EVIDENCE** | `BAT-V2-EVID-CODE-LV-PUBLICATION-PERSIST-VALUE-ONLY-001` |
+
+---
+
 ## CL-2026-09-02 — D4 precision pass (authority epoch + cross-track publication semantics)
 
 | Field | Content |

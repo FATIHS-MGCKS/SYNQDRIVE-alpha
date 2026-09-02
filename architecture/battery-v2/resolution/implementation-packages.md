@@ -48,7 +48,7 @@
 | **Handoff** | Publication enqueue after deterministic assessment selection; policy in `BatteryPublicationService` only — **not** “enqueue every persistedAssessmentId” |
 | **Assessment-track authority** | **VALIDATED (D4)** — freshness-conditional `WORKSHOP_OVERRIDE > TELEMETRY` within D4 authority epoch; cross-track stabilization epoch + retention≠fallback; previous-track observability required at implementation |
 | **publicationVersion** | **D5 SPEC REQUIRED** — current default `1` in repository if omitted |
-| **PKG-02 runtime note** | `IMPLEMENTATION_SPEC_REQUIRED` with D5 only does **not** mean runtime already supports D4 cross-track semantics |
+| **PKG-02 runtime note** | `IMPLEMENTATION_SPEC_REQUIRED` with D5 only does **not** mean runtime supports D4 — must implement track selector, cross-track epoch, equal-value publication significance, previous-track observability, retention≠fallback |
 | **Configuration invariant** | **VALIDATED (D3)** — resolved for PKG-02 |
 | **Rollback (pre-M4)** | Disable `BATTERY_V2_PUBLICATION_ENABLED` first (restores legacy capture when REST_SHADOW ON) |
 | **Test scope** | E2E REST→assess→pub with multi-track scenarios |
