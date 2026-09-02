@@ -113,6 +113,36 @@ describe('LvRestAssessmentHandoffService', () => {
     expect(handoff?.bullJobId).toBe('bull-job-1');
   });
 
+  it('records reconciliation fairness on stable already_enqueued_live skip', async () => {
+    sessionMetadata = {
+      scheduledTargets: {
+        REST_60M: {
+          idempotencyKey: 'rest-key',
+          scheduledFor: new Date().toISOString(),
+          status: 'COMPLETED',
+          assessmentHandoff: {
+            measurementId: MEAS,
+            idempotencyKey: `assess:${VEH}:LV_HEALTH:${MEAS}`,
+            status: LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED,
+            lastAttemptAt: null,
+          },
+        },
+      },
+    };
+    jobProducer.hasLiveJob.mockResolvedValue(true);
+
+    const result = await service.reconcileAssessmentHandoff(baseInput());
+
+    expect(result.skipped).toBe(true);
+    expect(result.reason).toBe('already_enqueued_live');
+    const handoff = readAssessmentHandoffFromTargetMetadata(
+      sessionMetadata,
+      LV_REST_TARGET_TYPES.REST_60M,
+    );
+    expect(handoff?.status).toBe(LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED);
+    expect(handoff?.lastAttemptAt).toBeTruthy();
+  });
+
   it('skips ineligible measurements without enqueue', async () => {
     prisma.batteryMeasurement.findFirst.mockResolvedValue({
       ...eligibleMeasurement(),

@@ -213,6 +213,45 @@ export class LvRestAssessmentHandoffService {
     };
   }
 
+  /**
+   * Reconciliation inspection path: attempt handoff repair, then durably record
+   * fairness metadata for stable skip outcomes that otherwise remain at queue front.
+   */
+  async reconcileAssessmentHandoff(
+    input: EnsureLvRestAssessmentHandoffInput,
+  ): Promise<EnsureLvRestAssessmentHandoffResult> {
+    const attemptedAt = new Date();
+    const result = await this.ensureAssessmentHandoff(input);
+
+    if (this.shouldRecordReconciliationInspection(result)) {
+      await this.touchReconciliationFairness({
+        organizationId: input.organizationId,
+        sessionId: input.sessionId,
+        restTargetType: input.restTargetType,
+        measurementId: input.measurementId,
+        idempotencyKey: result.idempotencyKey,
+        attemptedAt,
+      });
+    }
+
+    return result;
+  }
+
+  /** Advance durable fairness cursor without attempting enqueue (repair budget exhausted). */
+  async touchReconciliationFairness(input: {
+    organizationId: string;
+    sessionId: string;
+    restTargetType: LvRestTargetType;
+    measurementId: string;
+    idempotencyKey: string;
+    attemptedAt?: Date;
+  }): Promise<void> {
+    await this.touchReconciliationFairnessState({
+      ...input,
+      attemptedAt: input.attemptedAt ?? new Date(),
+    });
+  }
+
   async acknowledgeExecuted(input: {
     organizationId: string;
     vehicleId: string;
@@ -271,6 +310,51 @@ export class LvRestAssessmentHandoffService {
         correlationId: input.measurementId,
       }),
     );
+  }
+
+  private shouldRecordReconciliationInspection(
+    result: EnsureLvRestAssessmentHandoffResult,
+  ): boolean {
+    if (result.enqueued) return false;
+    if (result.reason === 'enqueue_suppressed') return false;
+    if (result.reason === 'measurement_not_found') return false;
+    if (result.reason === 'measurement_not_handoff_eligible') return false;
+    if (result.reason === 'session_not_found') return false;
+    return true;
+  }
+
+  private async touchReconciliationFairnessState(input: {
+    organizationId: string;
+    sessionId: string;
+    restTargetType: LvRestTargetType;
+    measurementId: string;
+    idempotencyKey: string;
+    attemptedAt: Date;
+  }): Promise<void> {
+    const session = await this.prisma.batteryMeasurementSession.findFirst({
+      where: {
+        id: input.sessionId,
+        organizationId: input.organizationId,
+      },
+    });
+    if (!session) return;
+
+    const existing = readAssessmentHandoffFromTargetMetadata(
+      session.metadata,
+      input.restTargetType,
+    );
+
+    await this.persistHandoffState({
+      sessionId: input.sessionId,
+      organizationId: input.organizationId,
+      restTargetType: input.restTargetType,
+      handoffPatch: {
+        measurementId: input.measurementId,
+        idempotencyKey: input.idempotencyKey,
+        status: existing?.status ?? LV_REST_ASSESSMENT_HANDOFF_STATUS.MISSING,
+        lastAttemptAt: input.attemptedAt.toISOString(),
+      },
+    });
   }
 
   private async persistHandoffState(input: {

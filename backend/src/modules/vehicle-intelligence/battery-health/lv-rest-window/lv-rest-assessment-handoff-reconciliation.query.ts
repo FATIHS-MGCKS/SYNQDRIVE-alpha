@@ -11,22 +11,20 @@ export interface RestAssessmentHandoffReconcileCandidate {
 }
 
 /**
- * Fetch canonical REST measurements whose session target handoff is not yet
- * EXECUTED for the same measurement id (D2 reconciliation safety net).
+ * Fetch incomplete canonical REST handoff candidates ordered for fair traversal.
  *
- * Narrowing directly to incomplete candidates avoids starvation behind already
- * completed rows; OFFSET rotation (see reconciliation policy) provides
- * cross-invocation coverage when the incomplete set exceeds per-run budget.
+ * Ordering uses durable target-scoped `assessmentHandoff.lastAttemptAt` so every
+ * finite backlog is eventually inspected without process-local cursors or fixed
+ * scan-window ceilings.
  */
 export async function fetchRestAssessmentHandoffReconcileCandidates(
   prisma: PrismaService,
   input: {
     lookbackFrom: Date;
-    offset: number;
     limit: number;
   },
 ): Promise<RestAssessmentHandoffReconcileCandidate[]> {
-  const { lookbackFrom, offset, limit } = input;
+  const { lookbackFrom, limit } = input;
   if (limit <= 0) {
     return [];
   }
@@ -57,8 +55,12 @@ export async function fetchRestAssessmentHandoffReconcileCandidates(
           ''
         ) = m.id
       )
-    ORDER BY m.id ASC
-    OFFSET ${offset}
+    ORDER BY
+      NULLIF(
+        s.metadata #>> ARRAY['scheduledTargets', m.type::text, 'assessmentHandoff', 'lastAttemptAt'],
+        ''
+      )::timestamptz NULLS FIRST,
+      m.id ASC
     LIMIT ${limit}
   `);
 }

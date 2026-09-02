@@ -3,9 +3,7 @@ import { BatteryV2ReconciliationService } from './battery-v2-reconciliation.serv
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { buildRestTargetJobIdempotencyKey } from './battery-v2-job-idempotency.policy';
 import {
-  CANONICAL_REST_ASSESSMENT_HANDOFF_ROTATION_SLOT_MS,
   maxScannedRestAssessmentHandoffCandidates,
-  resolveRestAssessmentHandoffScanOffset,
 } from '../lv-rest-window/lv-rest-assessment-handoff-reconciliation.policy';
 
 jest.mock('@config/battery-health-v2.config', () => {
@@ -196,6 +194,8 @@ describe('BatteryV2ReconciliationService', () => {
   };
   const assessmentHandoff = {
     ensureAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }),
+    reconcileAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }),
+    touchReconciliationFairness: jest.fn().mockResolvedValue(undefined),
   };
 
   let service: BatteryV2ReconciliationService;
@@ -211,10 +211,17 @@ describe('BatteryV2ReconciliationService', () => {
     prisma.$queryRaw.mockReset();
     prisma.$queryRaw.mockResolvedValue([]);
     assessmentHandoff.ensureAssessmentHandoff.mockReset();
+    assessmentHandoff.reconcileAssessmentHandoff.mockReset();
+    assessmentHandoff.touchReconciliationFairness.mockReset();
     assessmentHandoff.ensureAssessmentHandoff.mockResolvedValue({
       enqueued: false,
       skipped: true,
     });
+    assessmentHandoff.reconcileAssessmentHandoff.mockResolvedValue({
+      enqueued: false,
+      skipped: true,
+    });
+    assessmentHandoff.touchReconciliationFairness.mockResolvedValue(undefined);
     service = new BatteryV2ReconciliationService(
       prisma as any,
       jobProducer as any,
@@ -766,7 +773,7 @@ describe('BatteryV2ReconciliationService', () => {
         provenance: { sourceObservationId: 'obs-1' },
       },
     ]);
-    assessmentHandoff.ensureAssessmentHandoff.mockResolvedValue({
+    assessmentHandoff.reconcileAssessmentHandoff.mockResolvedValue({
       enqueued: true,
       skipped: false,
       idempotencyKey: `assess:${VEH}:LV_HEALTH:${MEAS}`,
@@ -775,7 +782,7 @@ describe('BatteryV2ReconciliationService', () => {
     const result = await service.reconcileAll();
 
     expect(result.assessments).toBe(1);
-    expect(assessmentHandoff.ensureAssessmentHandoff).toHaveBeenCalledWith(
+    expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledWith(
       expect.objectContaining({
         measurementId: MEAS,
         sessionId: SESSION,
@@ -795,7 +802,7 @@ describe('BatteryV2ReconciliationService', () => {
       provenance: { sourceObservationId: 'obs-repair' },
     };
     prisma.$queryRaw.mockResolvedValue([repairable]);
-    assessmentHandoff.ensureAssessmentHandoff.mockResolvedValue({
+    assessmentHandoff.reconcileAssessmentHandoff.mockResolvedValue({
       enqueued: true,
       skipped: false,
       idempotencyKey: `assess:${VEH}:LV_HEALTH:${repairable.id}`,
@@ -804,53 +811,31 @@ describe('BatteryV2ReconciliationService', () => {
     const result = await service.reconcileAll();
 
     expect(prisma.batteryMeasurement.findMany).not.toHaveBeenCalled();
-    expect(assessmentHandoff.ensureAssessmentHandoff).toHaveBeenCalledWith(
+    expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledWith(
       expect.objectContaining({ measurementId: repairable.id }),
     );
     expect(result.assessments).toBe(1);
   });
 
-  it('rotates scan offset across reconciliation invocations to reach candidates beyond single-run budget', async () => {
-    const maxScanned = maxScannedRestAssessmentHandoffCandidates(100);
-    const incompleteCandidates = Array.from({ length: 2500 }, (_, index) => ({
-      id: `clmeasinc${String(index).padStart(20, '0')}`,
+  it('touches fairness metadata for fetched candidates after repair budget is exhausted', async () => {
+    const candidates = Array.from({ length: 30 }, (_, index) => ({
+      id: `clmeasfair${String(index).padStart(21, '0')}`,
       organizationId: ORG,
       vehicleId: VEH,
-      sessionId: `clsessinc${String(index).padStart(20, '0')}`,
+      sessionId: `clsessfair${String(index).padStart(21, '0')}`,
       type: 'REST_60M' as const,
-      provenance: { sourceObservationId: `obs-inc-${index}` },
+      provenance: { sourceObservationId: `obs-fair-${index}` },
     }));
-    const repairableBeyondFirstWindow = incompleteCandidates[maxScanned]!;
-
-    const dateSpy = jest.spyOn(Date, 'now');
-    prisma.$queryRaw.mockImplementation(async () => {
-      const offset = resolveRestAssessmentHandoffScanOffset(Date.now(), maxScanned);
-      return incompleteCandidates.slice(offset, offset + maxScanned);
-    });
-
-    dateSpy.mockReturnValue(0);
-    assessmentHandoff.ensureAssessmentHandoff.mockImplementation(async (input) => ({
+    prisma.$queryRaw.mockResolvedValue(candidates);
+    assessmentHandoff.reconcileAssessmentHandoff.mockResolvedValue({
       enqueued: true,
       skipped: false,
-      idempotencyKey: `assess:${VEH}:LV_HEALTH:${input.measurementId}`,
-    }));
+      idempotencyKey: 'assess-key',
+    });
 
-    const run1 = await service.reconcileAll();
-    const run1RepairIds = assessmentHandoff.ensureAssessmentHandoff.mock.calls.map(
-      (call) => call[0]?.measurementId,
-    );
-    expect(run1RepairIds).not.toContain(repairableBeyondFirstWindow.id);
-    expect(run1.assessments).toBeGreaterThan(0);
+    await service.reconcileAll();
 
-    assessmentHandoff.ensureAssessmentHandoff.mockClear();
-    dateSpy.mockReturnValue(CANONICAL_REST_ASSESSMENT_HANDOFF_ROTATION_SLOT_MS);
-    const run2 = await service.reconcileAll();
-
-    expect(assessmentHandoff.ensureAssessmentHandoff).toHaveBeenCalledWith(
-      expect.objectContaining({ measurementId: repairableBeyondFirstWindow.id }),
-    );
-    expect(run2.assessments).toBeGreaterThan(0);
-
-    dateSpy.mockRestore();
+    expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledTimes(25);
+    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(5);
   });
 });

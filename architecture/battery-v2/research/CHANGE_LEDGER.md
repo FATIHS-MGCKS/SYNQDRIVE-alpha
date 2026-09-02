@@ -147,6 +147,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-02 — PKG-01 reconciliation fairness finalization (lastAttemptAt queue)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Wall-clock modulo-32 OFFSET rotation was not coupled to scheduler cadence (gcd aliasing at non-coprime intervals) and capped coverage at 32×maxScanned — false eventual-coverage claims. |
+| **CHANGE** | Replaced rotation with durable fairness queue: SQL orders incomplete candidates by `assessmentHandoff.lastAttemptAt NULLS FIRST, lastAttemptAt ASC, id`; reconciliation inspects up to bounded budget and advances `lastAttemptAt` via existing CAS for stable skip outcomes (`already_enqueued_live`, `dead_letter`, etc.) and `touchReconciliationFairness` after repair budget exhaustion. Added fairness regression tests A–D + gated Postgres SQL smoke spec. |
+| **WHY** | PR #1510 review — D2 independent eventual recovery requires scheduler-interval-independent, unbounded-finite-backlog fairness without process-local cursor authority. |
+| **VALIDATION** | PKG-01-focused Jest 87+ tests PASS; fairness tests A–D PASS; `validate-graph.sh` PASS |
+| **NON_EFFECTS** | D1 identity unchanged; CAS/replay/monotonic/direct-path tests unchanged; no PKG-02/M4/flags/migration/deploy |
+| **DECISION_STATUS** | PKG-01 IMPLEMENTED — not PRODUCTION_VALIDATED |
+
+---
+
 ## CL-2026-09-02 — PKG-01 final correction pass (reconciliation eventual progress + direct-path test)
 
 | Field | Content |

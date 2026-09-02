@@ -46,7 +46,6 @@ import { measurementTypeForRestTarget } from '../lv-rest-window/battery-rest-tar
 import {
   CANONICAL_REST_ASSESSMENT_HANDOFF_LOOKBACK_MS,
   maxScannedRestAssessmentHandoffCandidates,
-  resolveRestAssessmentHandoffScanOffset,
 } from '../lv-rest-window/lv-rest-assessment-handoff-reconciliation.policy';
 import { fetchRestAssessmentHandoffReconcileCandidates } from '../lv-rest-window/lv-rest-assessment-handoff-reconciliation.query';
 import {
@@ -823,37 +822,48 @@ export class BatteryV2ReconciliationService {
 
     const lookbackFrom = new Date(Date.now() - CANONICAL_REST_ASSESSMENT_HANDOFF_LOOKBACK_MS);
     const maxScanned = maxScannedRestAssessmentHandoffCandidates(batch);
-    const scanOffset = resolveRestAssessmentHandoffScanOffset(Date.now(), maxScanned);
     const candidates = await fetchRestAssessmentHandoffReconcileCandidates(this.prisma, {
       lookbackFrom,
-      offset: scanOffset,
       limit: maxScanned,
     });
 
     let repaired = 0;
-    const repairedMeasurementIds = new Set<string>();
 
     for (const measurement of candidates) {
-      if (repaired >= batch) break;
       if (!isCanonicalRestAssessmentHandoffEligible(measurement)) continue;
       if (!measurement.sessionId) continue;
 
       const restTargetType = restTargetTypeForMeasurementType(measurement.type);
       if (!restTargetType) continue;
-      if (repairedMeasurementIds.has(measurement.id)) continue;
 
-      const result = await this.assessmentHandoff.ensureAssessmentHandoff({
+      const handoffInput = {
         organizationId: measurement.organizationId,
         vehicleId: measurement.vehicleId,
         sessionId: measurement.sessionId,
         restTargetType,
         measurementId: measurement.id,
         correlationPrefix: 'lv-rest-reconcile',
-      });
-      if (result.enqueued) {
-        repaired += 1;
-        repairedMeasurementIds.add(measurement.id);
+      };
+
+      if (repaired < batch) {
+        const result = await this.assessmentHandoff.reconcileAssessmentHandoff(handoffInput);
+        if (result.enqueued) {
+          repaired += 1;
+        }
+        continue;
       }
+
+      await this.assessmentHandoff.touchReconciliationFairness({
+        organizationId: handoffInput.organizationId,
+        sessionId: handoffInput.sessionId,
+        restTargetType: handoffInput.restTargetType,
+        measurementId: handoffInput.measurementId,
+        idempotencyKey: buildAssessmentJobIdempotencyKey({
+          vehicleId: handoffInput.vehicleId,
+          assessmentType: 'LV_HEALTH',
+          inputVersion: handoffInput.measurementId,
+        }),
+      });
     }
 
     return repaired;
