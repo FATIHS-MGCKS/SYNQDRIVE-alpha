@@ -45,12 +45,13 @@
 | DI-EV-0019 | Phase 3A.3 | C — Ground Truth index | `docs/audits/dimo-lte-r1-reference-drive-001-ground-truth-evidence-index-2026-09-01.md` | 2026-09-01 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_001` | REJECTED | — | — | Negative evidence: VIDEO_NOT_CAPTURED; GT alignment impossible for #001 |
 | DI-EV-0020 | Phase 3A.3.1 | A + D | `docs/audits/dimo-phase-3a31-fast-prearm-go-remediation-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | — | — | CONFIRMED_FROM_CODE | — | — | FAST PRE-ARM/GO split; PRE-ARM→READY; FAST GO via production HTTP; 15s cap (max 15s); ambiguous-START reconciliation; SIGNAL_POINT-only gate |
 | DI-EV-0021 | Phase 3A.3.2 | A + D | `docs/audits/dimo-phase-3a32-hf-watermark-aggregate-identity-remediation-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | — | RD001 | CONFIRMED_FROM_CODE + CONFIRMED_FROM_RUNTIME | — | — | Per-field HF data watermark + query coverage; DB durable idempotency; V2 aggregate bucket fingerprint; provider revision policy; RD001 39-exclusion remediated |
+| DI-EV-0022 | Phase 3A.3 | A — Production canary | `docs/audits/dimo-phase-3a3-production-canary-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | WOB L 7503 · session `ed06ea20-…` | CONFIRMED_FROM_PRODUCTION_RUNTIME | — | — | Combined cutover: migration applied; 3A.3.1 FAST GO pass (1321ms); 3A.3.2 stationary partial (HF_HISTORICAL=0); runner race fix `82f3d9c5c`; RD002 blocked |
 
 ---
 
 ## Entry count
 
-**20** registry entries (Phases 1, 2A–2F.1, 3A.1, 3A.2, 3A.3 RD001, 3A.3.1, governance).
+**20** registry entries through DI-EV-0020; **DI-EV-0021** (3A.3.2 remediation) and **DI-EV-0022** (3A.3 production canary) added 2026-09-02.
 
 ---
 
@@ -58,8 +59,7 @@
 
 | Planned ID | Phase | Artifact | Status |
 |------------|-------|----------|--------|
-| DI-EV-0021 | Phase 3A.3.1 canary | Production FAST GO canary evidence | NOT_STARTED |
-| DI-EV-0022+ | Reference Drive 002 | Capture report + GT-aligned metrics | NOT_STARTED |
+| DI-EV-0023+ | Reference Drive 002 | Capture report + GT-aligned metrics | NOT_STARTED |
 
 ---
 
