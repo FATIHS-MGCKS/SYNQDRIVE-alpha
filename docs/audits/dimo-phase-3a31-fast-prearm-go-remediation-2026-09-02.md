@@ -123,18 +123,74 @@ Stale pre-arm → `READY_TO_DRIVE = NO` + `prearm_stale_requires_new_prearm`.
 
 ## Hard 15s GO gate
 
-`REFERENCE_CAPTURE_FAST_GO_FIRST_CYCLE_TIMEOUT_MS` (default **15000**).
+`REFERENCE_CAPTURE_FAST_GO_FIRST_CYCLE_TIMEOUT_MS` (default **15000**, validated/clamped).
 
-FAST GO must confirm within deadline:
+### One absolute operator-critical deadline
 
-1. Session enters `RECORDING`
-2. First autonomous cycle completes (`cycleCount >= 1`)
-3. Signal observations persist
-4. Next cycle scheduled (`pendingCycleJobId` set)
+```
+goRequestedAtMs = Date.now()   // BEFORE any HTTP work
+goDeadlineAtMs  = goRequestedAtMs + timeoutMs
+```
 
-If timeout: `READY_TO_DRIVE = NO` + **abort compensation** via production `POST .../abort` — no zombie `RECORDING` session.
+This single budget covers:
 
-**Operator output order (safety):** banner first (`READY_TO_DRIVE = YES/NO`), technical metadata only after.
+- initial session GET
+- freshness gates
+- `POST /start`
+- RECORDING confirmation
+- first autonomous cycle completion
+- signal observation persistence
+- **runner continuity proof**
+
+There is **no** second timer started after `POST /start`.
+
+### Deadline-aware HTTP
+
+`ReferenceCaptureOpsHttpClient` accepts `goDeadlineAtMs` per request:
+
+```
+remainingMs = goDeadlineAtMs - Date.now()
+requestTimeoutMs = min(defaultHttpMax, remainingMs)
+```
+
+If `remainingMs <= 0`, the client does not issue the request (`budgetExhausted`).
+
+### Canonical GO success invariant
+
+`isFastGoReadyToDrive()` / `assessFastGoReadiness()` require **all**:
+
+| Requirement | Authority |
+|-------------|-----------|
+| `status === RECORDING` | session |
+| `cycleCount >= 1` | acquisition state |
+| `signalObservationCount > 0` | observations API |
+| `runnerJobId != null` | session |
+| runner continuity proven | `pendingCycleJobId` **or** `activeCycleJobId` |
+
+`isRunnerContinuityProven()` — after cycle N completes, `scheduleNextCycle` normally sets `pendingCycleJobId` to N+1. Legitimate transient: `activeCycleJobId` set while N+1 is already executing.
+
+### Idempotent RECORDING
+
+`READY_TO_DRIVE = YES` on already-RECORDING sessions **only** when the full invariant above is proven. No duplicate runner enqueue.
+
+### Timeout compensation
+
+On deadline expiry:
+
+1. Banner: `READY_TO_DRIVE = NO` (never YES)
+2. Bounded cleanup (`FAST_GO_CLEANUP_TIMEOUT_MS` = 3s, separate from GO budget)
+3. Report `COMPENSATION_CONFIRMED` or `COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED` — never `compensated: true` without verification
+
+### Timestamp semantics
+
+| Field | When set |
+|-------|----------|
+| `goRequestedAt` | Operator GO command start |
+| `goDeadlineAt` | `goRequestedAt + timeout` |
+| `startRequestStartedAt` | Before `POST /start` |
+| `startAcceptedAt` | After HTTP 200/201 on start |
+| `runnerContinuityConfirmedAt` | When continuity invariant proven |
+| `readyToDriveAt` | When full invariant proven |
 
 ---
 
@@ -149,7 +205,11 @@ If timeout: `READY_TO_DRIVE = NO` + **abort compensation** via production `POST 
 
 ---
 
-## Observability timestamps
+## Runtime health (HTTP path)
+
+The HTTP-only FAST GO path does **not** call `ReferenceCaptureRuntimeHealthService` directly.
+
+**Rationale:** Production `POST /start` already requires a live Nest process, BullMQ queue registration, and successful runner enqueue. First-cycle completion + runner continuity proof from session state is sufficient lightweight runtime evidence for the operator GO window. The in-process `ReferenceCaptureFastGoService` retains explicit queue/storage checks for unit/integration testing without HTTP.
 
 Operational SynqDrive timestamps (not provider timestamps):
 

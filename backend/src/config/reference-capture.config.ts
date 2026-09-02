@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+import { normalizeFastGoTimeoutMs } from '../modules/vehicle-intelligence/reference-capture/reference-capture-fast-go.policy';
 
 function parseBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
   if (value == null || value.trim() === '') return defaultValue;
@@ -64,7 +65,7 @@ export default registerAs('referenceCapture', () => ({
     DEFAULT_PREARM_MAX_AGE_MS,
   ),
   /** Hard operator budget: first autonomous cycle must complete within this window. */
-  fastGoFirstCycleTimeoutMs: parseIntEnv(
+  fastGoFirstCycleTimeoutMs: normalizeFastGoTimeoutMs(
     process.env[REFERENCE_CAPTURE_FAST_GO_FIRST_CYCLE_TIMEOUT_MS_ENV],
     DEFAULT_FAST_GO_FIRST_CYCLE_TIMEOUT_MS,
   ),

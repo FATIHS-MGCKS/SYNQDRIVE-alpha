@@ -2,6 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { ReferenceCaptureObservationKind, ReferenceCaptureSessionStatus } from '@prisma/client';
 import { ReferenceCaptureConfig } from './reference-capture.config';
 import {
+  assessFastGoReadiness,
+  createFastGoTimestamps,
+  isRunnerContinuityProven,
+  isSessionCleanupComplete,
+  remainingGoBudgetMs,
+  runnerSnapshotFromDbSession,
+  type FastGoCompensationStatus,
+  type ReferenceCaptureFastGoTimestamps,
+} from './reference-capture-fast-go.policy';
+import {
   assessPrearmFreshness,
   describeFastGoStatusRejection,
 } from './reference-capture-prearm.policy';
@@ -16,15 +26,7 @@ import type {
   ReferenceCaptureSessionView,
 } from './reference-capture.types';
 
-export type ReferenceCaptureFastGoTimestamps = {
-  goRequestedAt: string;
-  startAcceptedAt: string | null;
-  runnerEnqueuedAt: string | null;
-  recordingEnteredAt: string | null;
-  firstCycleStartedAt: string | null;
-  firstCycleCompletedAt: string | null;
-  readyToDriveAt: string | null;
-};
+export type { ReferenceCaptureFastGoTimestamps } from './reference-capture-fast-go.policy';
 
 export type ReferenceCaptureFastGoResult = {
   readyToDrive: boolean;
@@ -33,9 +35,10 @@ export type ReferenceCaptureFastGoResult = {
   sessionStatus: ReferenceCaptureSessionStatus;
   cycleCount: number;
   signalObservationCount: number;
-  nextCycleScheduled: boolean;
+  runnerContinuityProven: boolean;
   timestamps: ReferenceCaptureFastGoTimestamps;
   blockers: string[];
+  compensationStatus?: FastGoCompensationStatus;
 };
 
 function sleep(ms: number): Promise<void> {
@@ -57,17 +60,13 @@ export class ReferenceCaptureFastGoService {
     vehicleId: string;
     sessionId: string;
     goRequestedAt?: Date;
+    nowMs?: () => number;
   }): Promise<ReferenceCaptureFastGoResult> {
-    const goRequestedAt = input.goRequestedAt ?? new Date();
-    const timestamps: ReferenceCaptureFastGoTimestamps = {
-      goRequestedAt: goRequestedAt.toISOString(),
-      startAcceptedAt: null,
-      runnerEnqueuedAt: null,
-      recordingEnteredAt: null,
-      firstCycleStartedAt: null,
-      firstCycleCompletedAt: null,
-      readyToDriveAt: null,
-    };
+    const nowMs = input.nowMs ?? (() => Date.now());
+    const goRequestedAtMs = (input.goRequestedAt ?? new Date(nowMs())).getTime();
+    const timeoutMs = this.config.getFastGoFirstCycleTimeoutMs();
+    const goDeadlineAtMs = goRequestedAtMs + timeoutMs;
+    const timestamps = createFastGoTimestamps(goRequestedAtMs, timeoutMs);
 
     const session = await this.sessionRepository.findById(input.organizationId, input.sessionId);
     if (!session) {
@@ -81,7 +80,7 @@ export class ReferenceCaptureFastGoService {
     }
 
     if (session.status === ReferenceCaptureSessionStatus.RECORDING) {
-      return this.handleAlreadyRecording(input.organizationId, session.id, timestamps);
+      return this.handleAlreadyRecording(input.organizationId, session.id, timestamps, goDeadlineAtMs, nowMs);
     }
 
     if (session.status !== ReferenceCaptureSessionStatus.READY) {
@@ -107,7 +106,7 @@ export class ReferenceCaptureFastGoService {
       manifestVersion: session.manifestVersion,
       featureEnabled: this.config.isEnabled(),
       preflightMaxAgeMs: this.config.getPrearmMaxAgeMs(),
-      nowMs: goRequestedAt.getTime(),
+      nowMs: goRequestedAtMs,
     });
     if (!freshness.fresh) {
       return this.failure(session.id, session.status, 0, 0, false, timestamps, freshness.blockers);
@@ -137,12 +136,17 @@ export class ReferenceCaptureFastGoService {
       ]);
     }
 
+    if (remainingGoBudgetMs(goDeadlineAtMs, nowMs()) <= 0) {
+      return this.failure(session.id, session.status, 0, 0, false, timestamps, ['go_budget_exhausted_before_start']);
+    }
+
     let startedView: ReferenceCaptureSessionView;
     try {
-      timestamps.startAcceptedAt = new Date().toISOString();
+      timestamps.startRequestStartedAt = new Date(nowMs()).toISOString();
       startedView = await this.sessionService.startRecording(input.organizationId, session.id);
+      timestamps.startAcceptedAt = new Date(nowMs()).toISOString();
       timestamps.runnerEnqueuedAt = timestamps.startAcceptedAt;
-      timestamps.recordingEnteredAt = new Date().toISOString();
+      timestamps.recordingEnteredAt = new Date(nowMs()).toISOString();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return this.failure(session.id, ReferenceCaptureSessionStatus.READY, 0, 0, false, timestamps, [
@@ -162,33 +166,41 @@ export class ReferenceCaptureFastGoService {
       );
     }
 
-    const poll = await this.pollForFirstCycle({
+    const poll = await this.pollUntilReadyOrDeadline({
       organizationId: input.organizationId,
       sessionId: session.id,
-      timeoutMs: this.config.getFastGoFirstCycleTimeoutMs(),
+      goDeadlineAtMs,
       timestamps,
+      nowMs,
     });
 
     if (!poll.readyToDrive) {
-      await this.compensateFailedGo(input.organizationId, session.id, poll.reason);
-      return poll;
+      const compensationStatus = await this.compensateFailedGo(
+        input.organizationId,
+        session.id,
+        poll.reason,
+        nowMs,
+      );
+      return { ...poll, compensationStatus };
     }
 
-    timestamps.readyToDriveAt = new Date().toISOString();
+    timestamps.readyToDriveAt = new Date(nowMs()).toISOString();
     return poll;
   }
 
-  private async pollForFirstCycle(args: {
+  private async pollUntilReadyOrDeadline(args: {
     organizationId: string;
     sessionId: string;
-    timeoutMs: number;
+    goDeadlineAtMs: number;
     timestamps: ReferenceCaptureFastGoTimestamps;
+    nowMs: () => number;
   }): Promise<ReferenceCaptureFastGoResult> {
-    const pollMs = 250;
-    const deadline = Date.now() + args.timeoutMs;
+    const pollMs = 100;
     let lastCycleCount = 0;
+    let lastSignalCount = 0;
+    let lastContinuity = false;
 
-    while (Date.now() < deadline) {
+    while (remainingGoBudgetMs(args.goDeadlineAtMs, args.nowMs()) > 0) {
       const session = await this.sessionRepository.findById(args.organizationId, args.sessionId);
       if (!session) {
         return this.failure(args.sessionId, ReferenceCaptureSessionStatus.FAILED, 0, 0, false, args.timestamps, [
@@ -198,7 +210,7 @@ export class ReferenceCaptureFastGoService {
 
       const state = parseAcquisitionState(session.acquisitionStateJson);
       if (state.activeCycleJobId && !args.timestamps.firstCycleStartedAt) {
-        args.timestamps.firstCycleStartedAt = new Date().toISOString();
+        args.timestamps.firstCycleStartedAt = new Date(args.nowMs()).toISOString();
       }
 
       if (
@@ -217,7 +229,10 @@ export class ReferenceCaptureFastGoService {
       }
 
       if (session.status === ReferenceCaptureSessionStatus.RECORDING && state.cycleCount >= 1) {
-        args.timestamps.firstCycleCompletedAt = new Date().toISOString();
+        if (!args.timestamps.firstCycleCompletedAt) {
+          args.timestamps.firstCycleCompletedAt = new Date(args.nowMs()).toISOString();
+        }
+
         const observations = await this.observationRepository.findBySession(
           args.organizationId,
           args.sessionId,
@@ -228,32 +243,55 @@ export class ReferenceCaptureFastGoService {
             o.observationKind !== ReferenceCaptureObservationKind.NATIVE_EVENT &&
             o.observationKind !== ReferenceCaptureObservationKind.SESSION_METADATA,
         ).length;
-        const nextCycleScheduled = Boolean(session.pendingCycleJobId);
-        return {
-          readyToDrive: signalCount > 0,
-          reason: signalCount > 0 ? 'first_cycle_confirmed' : 'first_cycle_without_signal_observations',
-          sessionId: args.sessionId,
-          sessionStatus: session.status,
-          cycleCount: state.cycleCount,
-          signalObservationCount: signalCount,
-          nextCycleScheduled,
-          timestamps: args.timestamps,
-          blockers: signalCount > 0 ? [] : ['no_signal_observations_after_first_cycle'],
-        };
+
+        const snapshot = runnerSnapshotFromDbSession({
+          status: session.status,
+          runnerJobId: session.runnerJobId,
+          pendingCycleJobId: session.pendingCycleJobId,
+          acquisitionStateJson: session.acquisitionStateJson,
+        });
+        snapshot.cycleCount = state.cycleCount;
+
+        const assessment = assessFastGoReadiness({ snapshot, signalObservationCount: signalCount });
+        lastCycleCount = state.cycleCount;
+        lastSignalCount = signalCount;
+        lastContinuity = assessment.runnerContinuityProven;
+
+        if (assessment.ready) {
+          if (!args.timestamps.runnerContinuityConfirmedAt) {
+            args.timestamps.runnerContinuityConfirmedAt = new Date(args.nowMs()).toISOString();
+          }
+          return {
+            readyToDrive: true,
+            reason: 'first_cycle_and_runner_continuity_confirmed',
+            sessionId: args.sessionId,
+            sessionStatus: session.status,
+            cycleCount: state.cycleCount,
+            signalObservationCount: signalCount,
+            runnerContinuityProven: true,
+            timestamps: args.timestamps,
+            blockers: [],
+          };
+        }
       }
 
       lastCycleCount = state.cycleCount;
-      await sleep(pollMs);
+      await sleep(Math.min(pollMs, Math.max(0, remainingGoBudgetMs(args.goDeadlineAtMs, args.nowMs()))));
     }
+
+    const blockers =
+      lastCycleCount >= 1 && lastSignalCount > 0 && !lastContinuity
+        ? ['runner_continuity_not_proven']
+        : ['go_deadline_exceeded'];
 
     return this.failure(
       args.sessionId,
       ReferenceCaptureSessionStatus.RECORDING,
       lastCycleCount,
-      0,
-      false,
+      lastSignalCount,
+      lastContinuity,
       args.timestamps,
-      ['first_cycle_timeout'],
+      blockers,
     );
   }
 
@@ -261,64 +299,113 @@ export class ReferenceCaptureFastGoService {
     organizationId: string,
     sessionId: string,
     timestamps: ReferenceCaptureFastGoTimestamps,
+    goDeadlineAtMs: number,
+    nowMs: () => number,
   ): Promise<ReferenceCaptureFastGoResult> {
-    const session = await this.sessionRepository.findById(organizationId, sessionId);
-    if (!session || session.status !== ReferenceCaptureSessionStatus.RECORDING) {
-      return this.failure(sessionId, session?.status ?? ReferenceCaptureSessionStatus.FAILED, 0, 0, false, timestamps, [
-        'recording_state_changed_during_idempotent_go',
-      ]);
+    while (remainingGoBudgetMs(goDeadlineAtMs, nowMs()) > 0) {
+      const session = await this.sessionRepository.findById(organizationId, sessionId);
+      if (!session || session.status !== ReferenceCaptureSessionStatus.RECORDING) {
+        return this.failure(sessionId, session?.status ?? ReferenceCaptureSessionStatus.FAILED, 0, 0, false, timestamps, [
+          'recording_state_changed_during_idempotent_go',
+        ]);
+      }
+
+      const state = parseAcquisitionState(session.acquisitionStateJson);
+      const observations = await this.observationRepository.findBySession(organizationId, sessionId, {
+        limit: 5000,
+      });
+      const signalCount = observations.filter(
+        (o) =>
+          o.observationKind !== ReferenceCaptureObservationKind.NATIVE_EVENT &&
+          o.observationKind !== ReferenceCaptureObservationKind.SESSION_METADATA,
+      ).length;
+
+      const snapshot = runnerSnapshotFromDbSession({
+        status: session.status,
+        runnerJobId: session.runnerJobId,
+        pendingCycleJobId: session.pendingCycleJobId,
+        acquisitionStateJson: session.acquisitionStateJson,
+      });
+      snapshot.cycleCount = state.cycleCount;
+
+      const assessment = assessFastGoReadiness({ snapshot, signalObservationCount: signalCount });
+      if (assessment.ready) {
+        timestamps.recordingEnteredAt = session.startedAt?.toISOString() ?? timestamps.goRequestedAt;
+        timestamps.runnerContinuityConfirmedAt = new Date(nowMs()).toISOString();
+        timestamps.readyToDriveAt = new Date(nowMs()).toISOString();
+        return {
+          readyToDrive: true,
+          reason: 'already_recording_confirmed',
+          sessionId,
+          sessionStatus: session.status,
+          cycleCount: state.cycleCount,
+          signalObservationCount: signalCount,
+          runnerContinuityProven: true,
+          timestamps,
+          blockers: [],
+        };
+      }
+
+      if (state.cycleCount < 1) {
+        await sleep(100);
+        continue;
+      }
+
+      return this.failure(
+        sessionId,
+        session.status,
+        state.cycleCount,
+        signalCount,
+        assessment.runnerContinuityProven,
+        timestamps,
+        assessment.blockers,
+      );
     }
 
-    const state = parseAcquisitionState(session.acquisitionStateJson);
-    if (state.cycleCount < 1) {
-      return this.failure(sessionId, session.status, state.cycleCount, 0, false, timestamps, [
-        'recording_without_confirmed_first_cycle',
-      ]);
-    }
-
-    const observations = await this.observationRepository.findBySession(organizationId, sessionId, {
-      limit: 5000,
-    });
-    const signalCount = observations.filter(
-      (o) =>
-        o.observationKind !== ReferenceCaptureObservationKind.NATIVE_EVENT &&
-        o.observationKind !== ReferenceCaptureObservationKind.SESSION_METADATA,
-    ).length;
-
-    timestamps.recordingEnteredAt = session.startedAt?.toISOString() ?? timestamps.goRequestedAt;
-    timestamps.readyToDriveAt = new Date().toISOString();
-
-    return {
-      readyToDrive: true,
-      reason: 'already_recording_confirmed',
-      sessionId,
-      sessionStatus: session.status,
-      cycleCount: state.cycleCount,
-      signalObservationCount: signalCount,
-      nextCycleScheduled: Boolean(session.pendingCycleJobId),
-      timestamps,
-      blockers: [],
-    };
+    return this.failure(sessionId, ReferenceCaptureSessionStatus.RECORDING, 0, 0, false, timestamps, [
+      'go_deadline_exceeded',
+    ]);
   }
 
   private async compensateFailedGo(
     organizationId: string,
     sessionId: string,
     reason: string,
-  ): Promise<void> {
+    nowMs: () => number,
+  ): Promise<FastGoCompensationStatus> {
     const session = await this.sessionRepository.findById(organizationId, sessionId);
-    if (!session) return;
+    if (!session) return 'COMPENSATION_NOT_REQUIRED';
 
     if (
-      session.status === ReferenceCaptureSessionStatus.RECORDING ||
-      session.status === ReferenceCaptureSessionStatus.STARTING
+      session.status !== ReferenceCaptureSessionStatus.RECORDING &&
+      session.status !== ReferenceCaptureSessionStatus.STARTING
     ) {
+      const snapshot = runnerSnapshotFromDbSession(session);
+      return isSessionCleanupComplete(snapshot)
+        ? 'COMPENSATION_CONFIRMED'
+        : 'COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED';
+    }
+
+    try {
       await this.sessionService.abortSession(
         organizationId,
         sessionId,
         `fast_go_compensation:${reason}`,
       );
+    } catch {
+      return 'COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED';
     }
+
+    const deadline = nowMs() + 3_000;
+    while (nowMs() < deadline) {
+      const refreshed = await this.sessionRepository.findById(organizationId, sessionId);
+      if (!refreshed) return 'COMPENSATION_CONFIRMED';
+      const snapshot = runnerSnapshotFromDbSession(refreshed);
+      if (isSessionCleanupComplete(snapshot)) return 'COMPENSATION_CONFIRMED';
+      await sleep(100);
+    }
+
+    return 'COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED';
   }
 
   private failure(
@@ -326,7 +413,7 @@ export class ReferenceCaptureFastGoService {
     status: ReferenceCaptureSessionStatus,
     cycleCount: number,
     signalObservationCount: number,
-    nextCycleScheduled: boolean,
+    runnerContinuityProven: boolean,
     timestamps: ReferenceCaptureFastGoTimestamps,
     blockers: string[],
   ): ReferenceCaptureFastGoResult {
@@ -337,7 +424,7 @@ export class ReferenceCaptureFastGoService {
       sessionStatus: status,
       cycleCount,
       signalObservationCount,
-      nextCycleScheduled,
+      runnerContinuityProven,
       timestamps,
       blockers,
     };

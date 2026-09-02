@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { normalizeFastGoTimeoutMs } from './reference-capture-fast-go.policy';
 
 @Injectable()
 export class ReferenceCaptureConfig {
@@ -54,7 +55,9 @@ export class ReferenceCaptureConfig {
   }
 
   getFastGoFirstCycleTimeoutMs(): number {
-    return this.configService.get<number>('referenceCapture.fastGoFirstCycleTimeoutMs') ?? 15_000;
+    return normalizeFastGoTimeoutMs(
+      this.configService.get<number>('referenceCapture.fastGoFirstCycleTimeoutMs'),
+    );
   }
 
   /** Hard invariant: reference capture must never affect live trip FSM. */

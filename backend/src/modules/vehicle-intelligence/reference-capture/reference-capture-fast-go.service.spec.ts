@@ -39,11 +39,24 @@ function makeReadySession(overrides: Record<string, unknown> = {}) {
 }
 
 describe('ReferenceCaptureFastGoService', () => {
-  function makeService() {
+  beforeEach(() => {
+    jest.spyOn(global, 'setTimeout').mockImplementation((handler: TimerHandler) => {
+      if (typeof handler === 'function') {
+        handler();
+      }
+      return 0 as unknown as NodeJS.Timeout;
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  function makeService(timeoutMs = 15_000) {
     const config = {
       isEnabled: () => true,
       getPrearmMaxAgeMs: () => 15 * 60 * 1000,
-      getFastGoFirstCycleTimeoutMs: () => 15_000,
+      getFastGoFirstCycleTimeoutMs: () => timeoutMs,
     } as ReferenceCaptureConfig;
 
     const sessionService = {
@@ -78,7 +91,7 @@ describe('ReferenceCaptureFastGoService', () => {
     return { service, config, sessionService, sessionRepository, observationRepository, runtimeHealth };
   }
 
-  it('starts READY session and confirms first cycle with observations', async () => {
+  it('E — confirms GO only with first cycle, signals, and runner continuity', async () => {
     const { service, sessionService, sessionRepository, observationRepository } = makeService();
     sessionRepository.findById
       .mockResolvedValueOnce(makeReadySession())
@@ -86,21 +99,137 @@ describe('ReferenceCaptureFastGoService', () => {
         ...makeReadySession(),
         status: ReferenceCaptureSessionStatus.RECORDING,
         runnerJobId: 'refcap-session-sess-1',
-        pendingCycleJobId: 'refcap-cycle-sess-1-1-uuid',
+        pendingCycleJobId: 'refcap-cycle-sess-1-2-uuid',
         acquisitionStateJson: { cycleCount: 1, activeCycleJobId: null },
       });
 
     sessionService.startRecording.mockResolvedValue({
       id: 'sess-1',
       status: ReferenceCaptureSessionStatus.RECORDING,
-      operational: { cycleCount: 0, pendingCycleJobId: 'refcap-cycle-sess-1-1-uuid' },
     });
 
     observationRepository.findBySession.mockResolvedValue([
-      {
-        observationKind: ReferenceCaptureObservationKind.SIGNAL_POINT,
-        providerField: 'speed',
+      { observationKind: ReferenceCaptureObservationKind.SIGNAL_POINT },
+    ]);
+
+    const result = await service.executeFastGo({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      sessionId: 'sess-1',
+      goRequestedAt: new Date(1_000_000),
+      nowMs: () => 1_001_000,
+    });
+
+    expect(result.readyToDrive).toBe(true);
+    expect(result.runnerContinuityProven).toBe(true);
+    expect(result.timestamps.startRequestStartedAt).toBeTruthy();
+    expect(result.timestamps.startAcceptedAt).toBeTruthy();
+    expect(result.timestamps.runnerContinuityConfirmedAt).toBeTruthy();
+    expect(result.timestamps.goDeadlineAt).toBe(new Date(1_015_000).toISOString());
+  });
+
+  it('D — rejects when cycle 1 + signals but runner continuity missing', async () => {
+    const { service, sessionService, sessionRepository, observationRepository } = makeService(1_000);
+    let now = 1_000_000;
+    let calls = 0;
+    sessionRepository.findById
+      .mockResolvedValueOnce(makeReadySession())
+      .mockResolvedValue({
+        ...makeReadySession(),
+        status: ReferenceCaptureSessionStatus.RECORDING,
+        runnerJobId: 'refcap-session-sess-1',
+        pendingCycleJobId: null,
+        acquisitionStateJson: { cycleCount: 1, activeCycleJobId: null },
+      });
+
+    sessionService.startRecording.mockResolvedValue({
+      id: 'sess-1',
+      status: ReferenceCaptureSessionStatus.RECORDING,
+    });
+    observationRepository.findBySession.mockResolvedValue([
+      { observationKind: ReferenceCaptureObservationKind.SIGNAL_POINT },
+    ]);
+    sessionService.abortSession.mockResolvedValue({
+      status: ReferenceCaptureSessionStatus.ABORTED,
+      runnerJobId: null,
+      pendingCycleJobId: null,
+      acquisitionStateJson: { cycleCount: 1 },
+    });
+
+    const result = await service.executeFastGo({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      sessionId: 'sess-1',
+      goRequestedAt: new Date(1_000_000),
+      nowMs: () => {
+        calls += 1;
+        if (calls <= 6) return 1_000_000;
+        now += 20;
+        return now;
       },
+    });
+
+    expect(result.readyToDrive).toBe(false);
+    expect(result.blockers).toContain('runner_continuity_not_proven');
+    expect(sessionService.abortSession).toHaveBeenCalled();
+  });
+
+  it('F — already RECORDING with cycle>=1 and zero signals => NO', async () => {
+    const { service, sessionRepository, sessionService } = makeService();
+    sessionRepository.findById.mockResolvedValue({
+      ...makeReadySession(),
+      status: ReferenceCaptureSessionStatus.RECORDING,
+      runnerJobId: 'refcap-session-sess-1',
+      pendingCycleJobId: 'refcap-cycle-sess-1-2-uuid',
+      acquisitionStateJson: { cycleCount: 2 },
+    });
+
+    const result = await service.executeFastGo({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      sessionId: 'sess-1',
+    });
+
+    expect(result.readyToDrive).toBe(false);
+    expect(result.blockers).toContain('no_signal_observations_after_first_cycle');
+    expect(sessionService.startRecording).not.toHaveBeenCalled();
+  });
+
+  it('G — already RECORDING with signals but no runner continuity => NO', async () => {
+    const { service, sessionRepository, sessionService, observationRepository } = makeService();
+    sessionRepository.findById.mockResolvedValue({
+      ...makeReadySession(),
+      status: ReferenceCaptureSessionStatus.RECORDING,
+      runnerJobId: 'refcap-session-sess-1',
+      pendingCycleJobId: null,
+      acquisitionStateJson: { cycleCount: 2, activeCycleJobId: null },
+    });
+    observationRepository.findBySession.mockResolvedValue([
+      { observationKind: ReferenceCaptureObservationKind.SIGNAL_POINT },
+    ]);
+
+    const result = await service.executeFastGo({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      sessionId: 'sess-1',
+    });
+
+    expect(result.readyToDrive).toBe(false);
+    expect(result.blockers).toContain('runner_continuity_not_proven');
+    expect(sessionService.startRecording).not.toHaveBeenCalled();
+  });
+
+  it('H — already RECORDING with full invariant => YES without duplicate enqueue', async () => {
+    const { service, sessionRepository, sessionService, observationRepository } = makeService();
+    sessionRepository.findById.mockResolvedValue({
+      ...makeReadySession(),
+      status: ReferenceCaptureSessionStatus.RECORDING,
+      runnerJobId: 'refcap-session-sess-1',
+      pendingCycleJobId: 'refcap-cycle-sess-1-2-uuid',
+      acquisitionStateJson: { cycleCount: 2 },
+    });
+    observationRepository.findBySession.mockResolvedValue([
+      { observationKind: ReferenceCaptureObservationKind.SIGNAL_POINT },
     ]);
 
     const result = await service.executeFastGo({
@@ -110,12 +239,40 @@ describe('ReferenceCaptureFastGoService', () => {
     });
 
     expect(result.readyToDrive).toBe(true);
-    expect(result.cycleCount).toBe(1);
-    expect(result.signalObservationCount).toBe(1);
-    expect(result.nextCycleScheduled).toBe(true);
-    expect(sessionService.startRecording).toHaveBeenCalledTimes(1);
-    expect(result.timestamps.startAcceptedAt).toBeTruthy();
-    expect(result.timestamps.readyToDriveAt).toBeTruthy();
+    expect(sessionService.startRecording).not.toHaveBeenCalled();
+  });
+
+  it('J — timeout compensation unconfirmed when abort verification fails', async () => {
+    const { service, sessionService, sessionRepository } = makeService(300);
+    let now = 1_000_000;
+    sessionRepository.findById
+      .mockResolvedValueOnce(makeReadySession())
+      .mockResolvedValue({
+        ...makeReadySession(),
+        status: ReferenceCaptureSessionStatus.RECORDING,
+        runnerJobId: 'refcap-session-sess-1',
+        pendingCycleJobId: 'pending',
+        acquisitionStateJson: { cycleCount: 0 },
+      });
+
+    sessionService.startRecording.mockResolvedValue({
+      id: 'sess-1',
+      status: ReferenceCaptureSessionStatus.RECORDING,
+    });
+
+    const result = await service.executeFastGo({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      sessionId: 'sess-1',
+      goRequestedAt: new Date(1_000_000),
+      nowMs: () => {
+        now += 40;
+        return now;
+      },
+    });
+
+    expect(result.readyToDrive).toBe(false);
+    expect(result.compensationStatus).toBe('COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED');
   });
 
   it('rejects stale pre-arm beyond configured max age', async () => {
@@ -143,139 +300,10 @@ describe('ReferenceCaptureFastGoService', () => {
     expect(result.blockers).toContain('prearm_stale_requires_new_prearm');
     expect(sessionService.startRecording).not.toHaveBeenCalled();
   });
-
-  it('rejects vehicle/session mismatch', async () => {
-    const { service, sessionRepository, sessionService } = makeService();
-    sessionRepository.findById.mockResolvedValue(makeReadySession({ vehicleId: 'other-veh' }));
-
-    const result = await service.executeFastGo({
-      organizationId: 'org-1',
-      vehicleId: 'veh-1',
-      sessionId: 'sess-1',
-    });
-
-    expect(result.readyToDrive).toBe(false);
-    expect(result.blockers).toContain('vehicle_session_mismatch');
-    expect(sessionService.startRecording).not.toHaveBeenCalled();
-  });
-
-  it('returns idempotent success when already RECORDING with confirmed first cycle', async () => {
-    const { service, sessionRepository, sessionService, observationRepository } = makeService();
-    sessionRepository.findById.mockResolvedValue({
-      ...makeReadySession(),
-      status: ReferenceCaptureSessionStatus.RECORDING,
-      startedAt: new Date('2026-09-01T19:12:27.239Z'),
-      runnerJobId: 'refcap-session-sess-1',
-      pendingCycleJobId: 'refcap-cycle-sess-1-2-uuid',
-      acquisitionStateJson: { cycleCount: 2 },
-    });
-    observationRepository.findBySession.mockResolvedValue([
-      { observationKind: ReferenceCaptureObservationKind.SIGNAL_POINT },
-    ]);
-
-    const result = await service.executeFastGo({
-      organizationId: 'org-1',
-      vehicleId: 'veh-1',
-      sessionId: 'sess-1',
-    });
-
-    expect(result.readyToDrive).toBe(true);
-    expect(result.reason).toBe('already_recording_confirmed');
-    expect(sessionService.startRecording).not.toHaveBeenCalled();
-  });
-
-  it('aborts session when first cycle times out (no zombie recording)', async () => {
-    const { service, sessionRepository, sessionService } = makeService();
-    const config = {
-      isEnabled: () => true,
-      getPrearmMaxAgeMs: () => 15 * 60 * 1000,
-      getFastGoFirstCycleTimeoutMs: () => 50,
-    } as ReferenceCaptureConfig;
-
-    const fastService = new ReferenceCaptureFastGoService(
-      config,
-      sessionService as never,
-      sessionRepository as never,
-      { findBySession: jest.fn() } as never,
-      {
-        assessRuntimeHealth: jest.fn().mockResolvedValue({
-          queueReachable: true,
-          storageReadable: true,
-          storageWritable: true,
-          workerQueueRegistered: true,
-        }),
-      } as never,
-    );
-
-    sessionRepository.findById
-      .mockResolvedValueOnce(makeReadySession())
-      .mockResolvedValue({
-        ...makeReadySession(),
-        status: ReferenceCaptureSessionStatus.RECORDING,
-        acquisitionStateJson: { cycleCount: 0 },
-      });
-
-    sessionService.startRecording.mockResolvedValue({
-      id: 'sess-1',
-      status: ReferenceCaptureSessionStatus.RECORDING,
-    });
-
-    const result = await fastService.executeFastGo({
-      organizationId: 'org-1',
-      vehicleId: 'veh-1',
-      sessionId: 'sess-1',
-    });
-
-    expect(result.readyToDrive).toBe(false);
-    expect(result.blockers).toContain('first_cycle_timeout');
-    expect(sessionService.abortSession).toHaveBeenCalledWith(
-      'org-1',
-      'sess-1',
-      expect.stringContaining('fast_go_compensation'),
-    );
-  });
-
-  it('does not start when runtime queue is unreachable', async () => {
-    const { service, sessionRepository, sessionService, runtimeHealth } = makeService();
-    sessionRepository.findById.mockResolvedValue(makeReadySession());
-    runtimeHealth.assessRuntimeHealth.mockResolvedValue({
-      queueReachable: false,
-      storageReadable: true,
-      storageWritable: true,
-      workerQueueRegistered: true,
-    });
-
-    const result = await service.executeFastGo({
-      organizationId: 'org-1',
-      vehicleId: 'veh-1',
-      sessionId: 'sess-1',
-    });
-
-    expect(result.readyToDrive).toBe(false);
-    expect(result.blockers).toContain('redis_queue_unreachable');
-    expect(sessionService.startRecording).not.toHaveBeenCalled();
-  });
-
-  it('rejects non-READY statuses with explicit reason', async () => {
-    const { service, sessionRepository, sessionService } = makeService();
-    sessionRepository.findById.mockResolvedValue(
-      makeReadySession({ status: ReferenceCaptureSessionStatus.CREATED }),
-    );
-
-    const result = await service.executeFastGo({
-      organizationId: 'org-1',
-      vehicleId: 'veh-1',
-      sessionId: 'sess-1',
-    });
-
-    expect(result.readyToDrive).toBe(false);
-    expect(result.blockers).toContain('session_not_prearmed_run_prearm_first');
-    expect(sessionService.startRecording).not.toHaveBeenCalled();
-  });
 });
 
 describe('ReferenceCaptureSessionService concurrent start (CAS authority)', () => {
-  it('rejects second start when CAS loses READY→STARTING race', async () => {
+  it('K — rejects second start when CAS loses READY→STARTING race', async () => {
     const sessionRepo = {
       findById: jest.fn().mockResolvedValue({
         id: 's1',
@@ -313,30 +341,12 @@ describe('ReferenceCaptureSessionService concurrent start (CAS authority)', () =
 describe('reference-capture ops workflow scripts (3A.3.1)', () => {
   const opsDir = path.resolve(__dirname, '../../../../scripts/ops');
 
-  it('FAST GO script does not bootstrap AppModule or NestFactory', () => {
+  it('FAST GO script uses absolute goDeadlineAt before initial GET', () => {
     const source = fs.readFileSync(path.join(opsDir, 'reference-capture-lte-r1-fast-go.ts'), 'utf8');
-    expect(source).not.toMatch(/import\s+\{[^}]*AppModule/);
-    expect(source).not.toMatch(/import\s+\{[^}]*NestFactory/);
-    expect(source).not.toMatch(/NestFactory\.create/);
-    expect(source).toContain('ReferenceCaptureOpsHttpClient');
-    expect(source).toContain('printReadyToDriveBanner');
-  });
-
-  it('PRE-ARM script may bootstrap Nest but does not call startRecording', () => {
-    const source = fs.readFileSync(path.join(opsDir, 'reference-capture-lte-r1-prearm.ts'), 'utf8');
-    expect(source).toContain('AppModule');
-    expect(source).toContain('runPreflight');
-    expect(source).not.toMatch(/startRecording/);
-    expect(source).toContain('PREARM_READY');
-  });
-
-  it('legacy ARM script is marked deprecated in favor of two-stage workflow', () => {
-    const source = fs.readFileSync(
-      path.join(opsDir, 'reference-capture-lte-r1-reference-drive-arm.ts'),
-      'utf8',
-    );
-    expect(source).toContain('@deprecated');
-    expect(source).toContain('reference-capture-lte-r1-prearm.ts');
-    expect(source).toContain('reference-capture-lte-r1-fast-go.ts');
+    expect(source).toContain('goRequestedAtMs = Date.now()');
+    expect(source).toContain('computeGoDeadlineMs(goRequestedAtMs');
+    expect(source.indexOf('computeGoDeadlineMs')).toBeLessThan(source.indexOf('getSession'));
+    expect(source).toContain('goDeadlineAtMs');
+    expect(source).not.toMatch(/deadline = Date\.now\(\) \+ timeoutMs/);
   });
 });

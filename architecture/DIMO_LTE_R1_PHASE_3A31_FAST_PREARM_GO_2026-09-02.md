@@ -26,12 +26,14 @@ no runner / no startedAt                poll ≤15s for cycleCount≥1 + observa
 
 | Component | Role |
 |-----------|------|
+| `reference-capture-fast-go.policy.ts` | **Shared predicates** — deadline math, `isRunnerContinuityProven`, `isFastGoReadyToDrive`, compensation helpers |
 | `reference-capture-lte-r1-prearm.ts` | Ops PRE-ARM command |
-| `reference-capture-lte-r1-fast-go.ts` | Ops FAST GO command (HTTP client) |
-| `reference-capture-ops-http.client.ts` | Authenticated production API client |
-| `reference-capture-prearm.policy.ts` | Freshness + status rejection rules |
-| `ReferenceCaptureFastGoService` | In-process GO orchestration (tests + future internal use) |
+| `reference-capture-lte-r1-fast-go.ts` | **Production operational authority** — ops FAST GO via HTTP |
+| `reference-capture-ops-http.client.ts` | Deadline-aware authenticated production API client |
+| `ReferenceCaptureFastGoService` | In-process mirror of same invariant (tests; optional internal use) |
 | `ReferenceCaptureSessionService.startRecording` | Canonical start authority (unchanged CAS) |
+
+**Parity rule:** HTTP ops script and `ReferenceCaptureFastGoService` both call `reference-capture-fast-go.policy.ts` predicates — they cannot drift.
 
 ## Config
 
