@@ -40,19 +40,20 @@
 | Field | Value |
 |-------|-------|
 | **Dependencies (dev)** | PKG-01 code may proceed in parallel for handler wiring; e2e needs both |
-| **Dependencies (enablement)** | PKG-01 assessment persist path; **assessment-track selection authority**; `publicationVersion` spec; `BATTERY_V2_PUBLICATION_ENABLED` |
+| **Dependencies (enablement)** | PKG-01 assessment persist path; **assessment-track selection authority (D4 VALIDATED)**; `publicationVersion` spec (D5); `BATTERY_V2_PUBLICATION_ENABLED` |
 | **Modules** | `battery-assessment-recompute.handler`, `BatteryV2JobProducerService`, `battery-v2-reconciliation.service`, `BatteryPublicationUpdateHandler`, `BatteryPublicationService` |
 | **DB migration** | No |
 | **Feature flag** | `BATTERY_V2_PUBLICATION_ENABLED` — customer/publication **effect gate** (D3). No separate HANDOFF flag |
 | **Job identity** | `buildPublicationJobIdempotencyKey` → `pub:{assessmentId}:v{publicationVersion}` |
 | **Handoff** | Publication enqueue after deterministic assessment selection; policy in `BatteryPublicationService` only — **not** “enqueue every persistedAssessmentId” |
-| **Assessment-track authority** | **D4 SPEC REQUIRED** — AUTO may persist WORKSHOP_OVERRIDE + TELEMETRY; publication policy has no track ordering |
+| **Assessment-track authority** | **VALIDATED (D4)** — freshness-conditional `WORKSHOP_OVERRIDE > TELEMETRY` within D4 authority epoch; cross-track stabilization epoch + retention≠fallback; previous-track observability required at implementation |
 | **publicationVersion** | **D5 SPEC REQUIRED** — current default `1` in repository if omitted |
+| **PKG-02 runtime note** | `IMPLEMENTATION_SPEC_REQUIRED` with D5 only — must implement full D4 contract including `publicationAuthorityEpochChanged`, UNKNOWN→known, equal-value transitions, previous-track observability; current track must be known |
 | **Configuration invariant** | **VALIDATED (D3)** — resolved for PKG-02 |
 | **Rollback (pre-M4)** | Disable `BATTERY_V2_PUBLICATION_ENABLED` first (restores legacy capture when REST_SHADOW ON) |
 | **Test scope** | E2E REST→assess→pub with multi-track scenarios |
 | **Production validation** | Canary **deployment/environment**. Validate publication handoff enqueue/execution/policy outcome |
-| **Blocked by** | PKG-01 runtime enablement + **D4** assessment-track selection + **D5** `publicationVersion` only |
+| **Blocked by** | PKG-01 runtime enablement + **D5** `publicationVersion` only |
 | **Does not solve** | HV publication, readiness auto-enable |
 
 ## PKG-03 — Timestamp provenance

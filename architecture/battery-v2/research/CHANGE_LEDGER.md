@@ -6,6 +6,88 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-02 — D4 final closure (publication authority epoch + UNKNOWN→known)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Equal-value known→known transitions covered; UNKNOWN→known equal value ambiguous because `authoritativeTrackChanged` cannot be proven against unknown previous authority. |
+| **OBSERVATION** | Previous track may be UNKNOWN (`LvPublicationPreviousState` lacks `assessmentTrack`); `shouldPersistPublication` uses firstPublication\|\|valueChanged only. |
+| **HYPOTHESIS** | `publicationAuthorityEpochChanged` replaces insufficient track-change boolean; UNKNOWN→known = authority epoch transition when policy permits; D4 recompute epoch ≠ publication authority epoch. |
+| **CHANGE** | Amended D4 with PUBLICATION_AUTHORITY_EPOCH, UNKNOWN_TO_KNOWN_TRANSITION, ASSESSMENT_EPOCH_VS_PUBLICATION_EPOCH, CURRENT_TRACK_MUST_BE_KNOWN; TEST 18–22; cosmetic ledger/executive fixes. |
+| **WHY** | Deterministic canonical provenance must replace ambiguous previous authority when policy permits, even if score unchanged; cannot prove track-changed against UNKNOWN. |
+| **EXPECTED_EFFECT** | PKG-02 implements `publicationAuthorityEpochChanged` context; D5 remains sole blocker. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh` |
+| **OBSERVED_EFFECT** | Validator PASS; graph counts unchanged (docs-only precision). |
+| **NON_EFFECTS** | No runtime implementation; no publication/assessment behavior change; no DB migration; no feature flag change; no production mutation; no backfill; no deploy; no M4 cutover; no production validation; runtime gaps remain open. |
+| **REGRESSIONS_OR_TRADEOFFS** | PKG-02 must not treat every recompute as publication authority epoch change |
+| **REMAINING_GAPS** | All 20 `BAT-V2-GAP-*` open; PKG-02 D5 only |
+| **DECISION_STATUS** | VALIDATED (NOT PRODUCTION_VALIDATED) |
+| **AFFECTED_GRAPH** | D4 summary expanded — no new nodes |
+| **EVIDENCE** | `BAT-V2-EVID-CODE-LV-PREV-STATE-NO-TRACK-001`, `BAT-V2-EVID-CODE-LV-PUBLICATION-PERSIST-VALUE-ONLY-001` |
+
+## CL-2026-09-02 — D4 equal-value cross-track publication precision
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | D4 defined cross-track epoch and retention≠fallback but did not explicitly require equal-value track transitions to persist when policy permits; current `shouldPersistPublication` uses firstPublication\|\|valueChanged only. |
+| **OBSERVATION** | `lv-publication.policy.ts`: equal TELEMETRY 72 → WORKSHOP 72 yields `valueChanged=false` → no new publication; old TELEMETRY row remains active despite D4 authority change. Reason payload stores assessmentTrack; `LvPublicationPreviousState` omits it. |
+| **HYPOTHESIS** | Track authority change is publication-significant independently of numeric equality when new track passes policy; UNKNOWN previousTrack = discontinuity without stabilization inheritance. |
+| **CHANGE** | Amended D4 dossier with EQUAL_VALUE_TRACK_TRANSITION, PUBLICATION_SIGNIFICANCE, HISTORY_VS_STABILIZATION_CONTEXT, UNKNOWN_PREVIOUS_TRACK; TEST 14–17; +1 evidence node. |
+| **WHY** | Publication carries provenance/authority beyond displayed score; 72 TELEMETRY ≠ 72 WORKSHOP epistemically; single-authority requires active publication to reflect successful authoritative track. |
+| **EXPECTED_EFFECT** | PKG-02 must implement track-change publication significance and equal-value cross-track tests; D5 remains sole blocker. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh`; `lv-publication.policy.ts` |
+| **OBSERVED_EFFECT** | Validator PASS; graph counts per post-change output. |
+| **NON_EFFECTS** | No runtime implementation; no publication behavior change; no assessment behavior change; no DB migration; no feature flag change; no production mutation; no backfill; no deploy; no M4 cutover; no production validation; runtime gaps remain open. |
+| **REGRESSIONS_OR_TRADEOFFS** | PKG-02 publication policy must accept track-change significance signal from D4 context |
+| **REMAINING_GAPS** | All 20 `BAT-V2-GAP-*` open; PKG-02 D5 only; M4 not authorized |
+| **DECISION_STATUS** | VALIDATED (NOT PRODUCTION_VALIDATED) |
+| **AFFECTED_GRAPH** | +1 evidence, +1 edge; expanded D4 summary |
+| **EVIDENCE** | `BAT-V2-EVID-CODE-LV-PUBLICATION-PERSIST-VALUE-ONLY-001` |
+
+---
+
+## CL-2026-09-02 — D4 precision pass (authority epoch + cross-track publication semantics)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | D4 VALIDATED track precedence but retry/reconciliation wording implied preserving first-epoch winner across fresh recomputes; cross-track EWMA/hysteresis and retention-vs-fallback not explicit; LvPublicationPreviousState track gap undocumented. |
+| **OBSERVATION** | D1 inputVersion is trigger identity not frozen snapshot; recomputeLvEstimatedHealth reads current measurements; reason payload persists assessmentTrack but toPreviousState omits it; evaluateLvPublicationPolicy EWMA seeds from previous.stabilizedEstimatedHealth without track awareness. |
+| **HYPOTHESIS** | Authority epoch per recompute + cross-track stabilization boundary + retention≠fallback closes D4 precision without reopening WORKSHOP_OVERRIDE > TELEMETRY selection. |
+| **CHANGE** | Amended `BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001` with D4_AUTHORITY_EPOCH, RETRY_RECONCILIATION_CONTRACT, CROSS_TRACK_PUBLICATION_AUTHORITY_EPOCH, RETENTION_VS_FALLBACK, PREVIOUS_TRACK_OBSERVABILITY; updated TEST_CONTRACT (9A/9B, 10–13); +3 evidence nodes; graph/authority doc sync. |
+| **WHY** | Fresh recompute after crash may legitimately change winner; track transitions are semantic boundaries; same-handoff retry must not be conflated with new epoch; existing TELEMETRY publication retention after higher-track SKIP is not fallback. |
+| **EXPECTED_EFFECT** | PKG-02 must implement/test cross-track epoch semantics; D5 remains sole architecture blocker; IMPLEMENTATION_SPEC_REQUIRED does not mean runtime supports D4 yet. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh`; `battery-assessment.service.ts`, `lv-publication.policy.ts`, `battery-publication.repository.ts` |
+| **OBSERVED_EFFECT** | Validator PASS; graph counts per post-change validator output. |
+| **NON_EFFECTS** | No runtime implementation; no publication behavior change; no assessment behavior change; no DB migration; no feature flag change; no production mutation; no backfill; no deploy; no M4 cutover; no production validation; runtime gaps remain open. |
+| **REGRESSIONS_OR_TRADEOFFS** | PKG-02 must add previous-track observability and cross-track stabilization tests |
+| **REMAINING_GAPS** | All 20 `BAT-V2-GAP-*` open; PKG-02 D5 only; M4 not authorized |
+| **DECISION_STATUS** | VALIDATED (NOT PRODUCTION_VALIDATED) |
+| **AFFECTED_GRAPH** | +3 evidence, +3 edges; expanded D4 summary — see validator counts |
+| **EVIDENCE** | `BAT-V2-EVID-CODE-LV-PREV-STATE-NO-TRACK-001`, `BAT-V2-EVID-CODE-LV-RECOMPUTE-CURRENT-EVIDENCE-001`, `BAT-V2-EVID-CODE-LV-PUBLICATION-EWMA-PREVIOUS-001` |
+
+---
+
+## CL-2026-09-02 — D4 LV publication assessment-track authority
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | PKG-02 remained `IMPLEMENTATION_SPEC_REQUIRED` with D4 assessment-track selection and D5 `publicationVersion` blockers. AUTO could persist WORKSHOP_OVERRIDE + TELEMETRY but no deterministic publication handoff selector existed. `findLatestLvEstimatedHealth()` orders by `computedAt` only; backfill used `persistedAssessmentIds[length-1]`. |
+| **OBSERVATION** | `lv-estimated-health-assessment.policy.ts` AUTO emits dual tracks when workshop in selectedEvidence; `lv-evidence-selection.policy.ts` rejects stale workshop via STALE_MEASUREMENT; `battery-assessment.repository.ts` findLatest has no track filter; `BatteryPublicationService` evaluates one assessmentId with no track precedence. |
+| **HYPOTHESIS** | Freshness-conditional WORKSHOP_OVERRIDE > TELEMETRY within current recompute closes D4 without runtime change; stale workshop must relinquish authority; telemetry volume must not override; no same-recompute telemetry fallback after publication-policy SKIP. |
+| **CHANGE** | Created `BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001` dossier; added graph decision node + 3 evidence nodes; updated PH4 summary, CURRENT_STATE, KNOWLEDGE_GRAPH, implementation-packages, lv-publication-chain-resolution, phase4-executive-summary, dependency-graph, RESOLUTION_PRIORITY_MATRIX, decisions/README. |
+| **WHY** | Multi-track persistence is intentional for diagnostics; publication requires exactly one evidence-backed candidate; workshop authority must align with existing freshness eligibility — not permanent override or latest-wins. |
+| **EXPECTED_EFFECT** | PKG-02 implementers have deterministic track selector spec; D5 is sole remaining PKG-02 architecture blocker; runtime gaps remain open until PKG-02 implementation. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh`; code cites `lv-estimated-health-assessment.policy.ts`, `lv-evidence-selection.policy.ts`, `battery-assessment.repository.ts`, `battery-assessment.service.ts`, `battery-publication.service.ts` |
+| **OBSERVED_EFFECT** | Validator PASS; graph counts per post-change validator output. |
+| **NON_EFFECTS** | No runtime implementation; no publication enqueue; no feature flag change; no DB migration; no production mutation; no backfill; no deploy; no M4 cutover; no production validation; runtime publication gaps remain open. |
+| **REGRESSIONS_OR_TRADEOFFS** | PKG-02 test contract adds 9 future multi-track scenarios; implementers must not use findLatest or array order as selector |
+| **REMAINING_GAPS** | All 20 `BAT-V2-GAP-*` open; PKG-02 D5 only; M4 not authorized |
+| **DECISION_STATUS** | VALIDATED (architecture / selection authority — NOT PRODUCTION_VALIDATED) |
+| **AFFECTED_GRAPH** | +1 decision, +3 evidence, +6 edges — see validator counts |
+| **EVIDENCE** | `BAT-V2-EVID-CODE-LV-AUTO-DUAL-TRACK-001`, `BAT-V2-EVID-CODE-LV-WORKSHOP-FRESHNESS-REJECT-001`, `BAT-V2-EVID-CODE-LV-FIND-LATEST-NO-TRACK-001`, `BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001` |
+
+---
+
 ## CL-2026-09-02 — D3 Battery V2 single-authority cutover / configuration invariant
 
 | Field | Content |

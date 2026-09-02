@@ -1,6 +1,6 @@
 # Battery V2 — Knowledge Graph (Human View)
 
-**Last updated:** 2026-09-02 (D3 single-authority cutover decision)  
+**Last updated:** 2026-09-02 (D4 precision pass — authority epoch + cross-track publication)  
 **Maturity:** Phase 2+3 substantially reconstructed — open gaps remain  
 Machine-readable source: [graph/nodes.yaml](./graph/nodes.yaml), [graph/edges.yaml](./graph/edges.yaml)
 
@@ -43,7 +43,7 @@ This Human View is a high-level projection of current machine authority. It must
 [Consumers]  rental health, API, tasks, insights
 ```
 
-**Umbrella gap:** `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001` — canonical REST → assessment → publication is **not e2e reachable** today. Phase 4 PROPOSED target: `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (hybrid handoff; `assess:`/`pub:` keys). **PKG-01 IMPLEMENTATION_READY** (D1/D2/D3 VALIDATED); **PKG-02 IMPLEMENTATION_SPEC_REQUIRED** (D4 assessment-track + D5 `publicationVersion` only). Target architecture (D3): V2 core mandatory; PUBLICATION = effect gate; REST_SHADOW + legacy = temporary scaffolds; **no** HANDOFF flag. Gap remains open; P0_ACTIVATION_BLOCKER only.
+**Umbrella gap:** `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001` — canonical REST → assessment → publication is **not e2e reachable** today. Phase 4 PROPOSED target: `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (hybrid handoff; `assess:`/`pub:` keys). **PKG-01 IMPLEMENTATION_READY** (D1/D2/D3 VALIDATED); **PKG-02 IMPLEMENTATION_SPEC_REQUIRED** (D5 `publicationVersion` only — D4 track authority VALIDATED). Target architecture (D3): V2 core mandatory; PUBLICATION = effect gate; REST_SHADOW + legacy = temporary scaffolds; **no** HANDOFF flag. Gap remains open; P0_ACTIVATION_BLOCKER only.
 
 **Flag note (current runtime):** `BATTERY_V2_REST_SHADOW_ENABLED` gates canonical REST (temporary migration scaffold per D3). `BATTERY_V2_PUBLICATION_ENABLED` = customer publication effect gate. **No** `BATTERY_V2_LV_HANDOFF_ENABLED` (D3 rejected).
 
