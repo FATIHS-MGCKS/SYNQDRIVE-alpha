@@ -106,10 +106,27 @@ export function mergePublicationHandoffPatchIntoSummary(
 /** Concurrent enqueue attempts within this window are treated as in-flight. */
 export const LV_PUBLICATION_HANDOFF_ENQUEUE_CLAIM_WINDOW_MS = 30_000;
 
+export function publicationHandoffClaimAnchorMs(
+  handoff: LvPublicationHandoffMetadata,
+): number | null {
+  const anchor = handoff.enqueuedAt ?? handoff.lastAttemptAt;
+  if (!anchor) return null;
+  const ms = new Date(anchor).getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+export function isPublicationHandoffClaimFresh(
+  handoff: LvPublicationHandoffMetadata,
+  now: Date,
+): boolean {
+  const claimMs = publicationHandoffClaimAnchorMs(handoff);
+  if (claimMs == null) return false;
+  return now.getTime() - claimMs < LV_PUBLICATION_HANDOFF_ENQUEUE_CLAIM_WINDOW_MS;
+}
+
 export type LvPublicationHandoffEnqueueReservation =
   | { action: 'reserve'; inputSummary: Prisma.InputJsonValue }
   | { action: 'skip_executed'; handoff: LvPublicationHandoffMetadata }
-  | { action: 'skip_enqueued'; handoff: LvPublicationHandoffMetadata }
   | { action: 'skip_in_progress'; handoff: LvPublicationHandoffMetadata };
 
 /**
@@ -160,19 +177,7 @@ export async function reserveLvPublicationHandoffEnqueue(
       (existing.status === LV_PUBLICATION_HANDOFF_STATUS.ENQUEUED ||
         existing.status === LV_PUBLICATION_HANDOFF_STATUS.MISSING)
     ) {
-      if (existing.bullJobId) {
-        return { action: 'skip_enqueued', handoff: existing };
-      }
-
-      const enqueuedAtMs = existing.enqueuedAt
-        ? new Date(existing.enqueuedAt).getTime()
-        : existing.lastAttemptAt
-          ? new Date(existing.lastAttemptAt).getTime()
-          : null;
-      if (
-        enqueuedAtMs != null &&
-        now.getTime() - enqueuedAtMs < LV_PUBLICATION_HANDOFF_ENQUEUE_CLAIM_WINDOW_MS
-      ) {
+      if (isPublicationHandoffClaimFresh(existing, now)) {
         return { action: 'skip_in_progress', handoff: existing };
       }
     }

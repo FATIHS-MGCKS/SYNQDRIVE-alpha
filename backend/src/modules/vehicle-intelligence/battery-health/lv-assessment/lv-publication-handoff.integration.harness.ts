@@ -1,6 +1,15 @@
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { mergePublicationHandoffPatchIntoSummary } from './lv-publication-handoff.mutation';
+import {
+  buildBatteryV2AttemptContext,
+  validateBatteryV2JobPayload,
+} from '../jobs/battery-v2-job.validation';
+import {
+  BATTERY_V2_JOB_MODEL_VERSION_DEFAULT,
+  type BatteryV2JobType,
+} from '../jobs/battery-v2-job.types';
+import { getBatteryV2JobRetryPolicy } from '../jobs/battery-v2-job.retry-policy';
 
 export function createRowLockedAssessmentPrisma(input: {
   organizationId: string;
@@ -122,6 +131,7 @@ export function createRowLockedAssessmentPrisma(input: {
 
 export function createConcurrentJobProducer() {
   const liveJobs = new Map<string, string>();
+  const validatedPayloads: unknown[] = [];
   let enqueueMutex: Promise<void> = Promise.resolve();
 
   const withEnqueueMutex = async <T>(fn: () => Promise<T>): Promise<T> => {
@@ -138,21 +148,45 @@ export function createConcurrentJobProducer() {
     }
   };
 
-  return {
-    liveJobs,
-    jobProducer: {
-      enqueue: jest.fn(async (_type: string, payload: { idempotencyKey: string }) =>
+  const jobProducer = {
+    enqueue: jest.fn(
+      async (jobType: BatteryV2JobType, input: Record<string, unknown>) =>
         withEnqueueMutex(async () => {
+          const policy = getBatteryV2JobRetryPolicy(jobType);
+          const payload = validateBatteryV2JobPayload(jobType, {
+            ...input,
+            modelVersion: BATTERY_V2_JOB_MODEL_VERSION_DEFAULT,
+            requestedAt:
+              typeof input.requestedAt === 'string'
+                ? input.requestedAt
+                : new Date().toISOString(),
+            correlationId:
+              typeof input.correlationId === 'string'
+                ? input.correlationId
+                : 'integration-test-correlation',
+            attemptContext: buildBatteryV2AttemptContext({
+              maxAttempts: policy.attempts,
+            }),
+          });
+          validatedPayloads.push(payload);
+
           const existing = liveJobs.get(payload.idempotencyKey);
           if (existing) return existing;
           const jobId = `bull-${payload.idempotencyKey}`;
           liveJobs.set(payload.idempotencyKey, jobId);
           return jobId;
         }),
-      ),
-      hasLiveJob: jest.fn(async (idempotencyKey: string) =>
-        liveJobs.has(idempotencyKey),
-      ),
-    },
+    ),
+    hasLiveJob: jest.fn(async (idempotencyKey: string) =>
+      liveJobs.has(idempotencyKey),
+    ),
+  };
+
+  return {
+    liveJobs,
+    jobProducer,
+    validatedPayloads,
+    getLastValidatedPayload: () =>
+      validatedPayloads[validatedPayloads.length - 1] ?? null,
   };
 }

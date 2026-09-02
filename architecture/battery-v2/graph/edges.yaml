@@ -155,7 +155,7 @@ edges:
   - from: BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001
     relation: refines
     to: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
-    notes: Closes PKG-02 publicationVersion blocker; PKG-02 IMPLEMENTATION_READY
+    notes: PRE-PKG-02 evidence — D5 publicationVersion blocker; PKG-02 runtime IMPLEMENTED 2026-09-02; PRODUCTION_VALIDATED open
   - from: BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001
     relation: refines
     to: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
@@ -205,11 +205,11 @@ edges:
   - from: BAT-V2-EVID-CODE-LV-PUBLICATION-PREV-STATE-EXECUTION-IDEMPOTENCY-001
     relation: supports
     to: BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
-    notes: Stale-previous/current-assessment mixing; same-assessment EWMA retry; self-supersession risk
+    notes: PRE-PKG-02 evidence — stale-previous/current mixing, same-assessment EWMA retry, self-supersession risk; PKG-02 runtime IMPLEMENTED 2026-09-02
   - from: BAT-V2-EVID-CODE-LV-PUBLICATION-PREV-STATE-EXECUTION-IDEMPOTENCY-001
     relation: supports
     to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
-    notes: Three-layer idempotency and lifecycle isolation gaps documented for PKG-02
+    notes: PRE-PKG-02 evidence — three-layer idempotency/lifecycle isolation gaps; PKG-02 runtime IMPLEMENTED; PRODUCTION_VALIDATED open
 
   # Failed → superseded by decisions / liveness
   - from: BAT-V2-DEC-1445-001

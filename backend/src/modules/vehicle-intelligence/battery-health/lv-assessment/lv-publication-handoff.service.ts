@@ -197,20 +197,6 @@ export class LvPublicationHandoffService {
       };
     }
 
-    if (reservation.action === 'skip_enqueued') {
-      const live = await this.jobProducer.hasLiveJob(idempotencyKey);
-      return {
-        enqueued: false,
-        skipped: true,
-        reason: live ? 'already_enqueued_live' : 'already_enqueued',
-        idempotencyKey,
-        jobId: reservation.handoff.bullJobId ?? null,
-        selectedAssessmentId: selected.assessmentId,
-        selectedAssessmentTrack: selected.assessmentTrack,
-        epochAssessmentIds: arbitration.epochAssessmentIds,
-      };
-    }
-
     if (reservation.action === 'skip_in_progress') {
       const live = await this.jobProducer.hasLiveJob(idempotencyKey);
       if (live) {

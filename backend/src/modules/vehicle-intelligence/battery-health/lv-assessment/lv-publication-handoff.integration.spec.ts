@@ -6,7 +6,6 @@ import {
 } from '../battery-v2-domain';
 import { BatteryPublicationRepository } from '../battery-publication.repository';
 import { BatteryPublicationService } from '../battery-publication.service';
-import { validateBatteryV2JobPayload } from '../jobs/battery-v2-job.validation';
 import { BatteryPublicationUpdateHandler } from '../jobs/handlers/battery-publication-update.handler';
 import { LvPublicationHandoffService } from './lv-publication-handoff.service';
 import { LV_PUBLICATION_CONTRACT_VERSION } from './lv-publication-contract.policy';
@@ -198,7 +197,7 @@ function createPublicationHarness(publicationEnabled: boolean) {
     },
   );
 
-  const { jobProducer, liveJobs } = createConcurrentJobProducer();
+  const { jobProducer, liveJobs, getLastValidatedPayload } = createConcurrentJobProducer();
   const publicationRepository = new BatteryPublicationRepository(prisma);
   const policyProfile = {
     resolveForVehicle: jest.fn().mockResolvedValue(
@@ -236,6 +235,7 @@ function createPublicationHarness(publicationEnabled: boolean) {
     handler,
     jobProducer,
     liveJobs,
+    getLastValidatedPayload,
   };
 }
 
@@ -265,30 +265,9 @@ describe('LV publication handoff deterministic service-chain integration', () =>
     expect(handoffResult.idempotencyKey).toBe(`pub:${workshopId}:v1`);
     expect(harness.jobProducer.enqueue).toHaveBeenCalledTimes(1);
 
-    const chainClock = assessmentClock();
-    const payload = validateBatteryV2JobPayload('BATTERY_PUBLICATION_UPDATE', {
-      organizationId,
-      vehicleId,
-      idempotencyKey: `pub:${workshopId}:v1`,
-      assessmentId: workshopId,
-      publicationVersion: LV_PUBLICATION_CONTRACT_VERSION,
-      sourceEntityId: workshopId,
-      requestedAt: chainClock.now.toISOString(),
-      correlationId: 'chain-off',
-      modelVersion: '1.0.0',
-      attemptContext: {
-        attemptNumber: 1,
-        maxAttempts: 3,
-        enqueuedAt: chainClock.now.toISOString(),
-        previousFailureCode: null,
-      },
-    });
-
-    await harness.handler.handle({
-      ...payload,
-      requestedAt: chainClock.now.toISOString(),
-      correlationId: 'chain-off',
-    } as never);
+    const capturedPayload = harness.getLastValidatedPayload();
+    expect(capturedPayload).not.toBeNull();
+    await harness.handler.handle(capturedPayload as never);
 
     expect(harness.publications.size).toBe(0);
     const handoff = readPublicationHandoffFromAssessmentSummary(
@@ -307,30 +286,9 @@ describe('LV publication handoff deterministic service-chain integration', () =>
       epochCandidates,
     });
 
-    const chainClock = assessmentClock();
-    const payload = validateBatteryV2JobPayload('BATTERY_PUBLICATION_UPDATE', {
-      organizationId,
-      vehicleId,
-      idempotencyKey: `pub:${workshopId}:v1`,
-      assessmentId: workshopId,
-      publicationVersion: LV_PUBLICATION_CONTRACT_VERSION,
-      sourceEntityId: workshopId,
-      requestedAt: chainClock.now.toISOString(),
-      correlationId: 'chain-on',
-      modelVersion: '1.0.0',
-      attemptContext: {
-        attemptNumber: 1,
-        maxAttempts: 3,
-        enqueuedAt: chainClock.now.toISOString(),
-        previousFailureCode: null,
-      },
-    });
-
-    await harness.handler.handle({
-      ...payload,
-      requestedAt: chainClock.now.toISOString(),
-      correlationId: 'chain-on',
-    } as never);
+    const capturedPayload = harness.getLastValidatedPayload();
+    expect(capturedPayload).not.toBeNull();
+    await harness.handler.handle(capturedPayload as never);
 
     const publication = [...harness.publications.values()].find(
       (row) => row.assessmentId === workshopId,

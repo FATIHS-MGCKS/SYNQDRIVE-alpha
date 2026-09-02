@@ -15,7 +15,8 @@ export interface PublicationHandoffReconcileCandidate {
 
 /**
  * Targeted query for assessments with incomplete publication handoff metadata.
- * Uses durable epoch correlation stored on the selected assessment row.
+ * Structural invariants are enforced in SQL before LIMIT so malformed legacy rows
+ * cannot starve valid canonical backlog or abort ordering via unsafe casts.
  */
 export async function fetchPublicationHandoffReconcileCandidates(
   prisma: PrismaClient,
@@ -37,11 +38,22 @@ export async function fetchPublicationHandoffReconcileCandidates(
       AND ba.computed_at >= ${input.lookbackFrom}
       AND COALESCE(ba.input_summary->>'assessmentMode', '') = 'CANONICAL'
       AND ba.input_summary IS NOT NULL
-      AND (ba.input_summary->'publicationHandoff'->>'status') IS NOT NULL
-      AND (ba.input_summary->'publicationHandoff'->>'status') <> 'EXECUTED'
+      AND jsonb_typeof(ba.input_summary->'publicationHandoff') = 'object'
+      AND ba.input_summary->'publicationHandoff'->>'status' IN ('MISSING', 'ENQUEUED')
+      AND COALESCE(ba.input_summary->'publicationHandoff'->>'selectedAssessmentId', '') <> ''
+      AND ba.input_summary->'publicationHandoff'->>'selectedAssessmentId' = ba.id::text
+      AND ba.input_summary->'publicationHandoff'->>'assessmentTrack' IN ('TELEMETRY', 'WORKSHOP_OVERRIDE')
+      AND COALESCE(ba.input_summary->'publicationHandoff'->>'idempotencyKey', '') <> ''
+      AND jsonb_typeof(ba.input_summary->'publicationHandoff'->'publicationVersion') = 'number'
+      AND jsonb_typeof(ba.input_summary->'publicationHandoff'->'epochAssessmentIds') = 'array'
+      AND jsonb_array_length(ba.input_summary->'publicationHandoff'->'epochAssessmentIds') > 0
+      AND ba.input_summary->'publicationHandoff'->'epochAssessmentIds' ? ba.id::text
     ORDER BY
-      (ba.input_summary->'publicationHandoff'->>'lastAttemptAt')::timestamptz NULLS FIRST,
-      (ba.input_summary->'publicationHandoff'->>'lastAttemptAt')::timestamptz ASC,
+      CASE
+        WHEN (ba.input_summary->'publicationHandoff'->>'lastAttemptAt') ~ '^\\d{4}-\\d{2}-\\d{2}T'
+        THEN ba.input_summary->'publicationHandoff'->>'lastAttemptAt'
+        ELSE NULL
+      END ASC NULLS FIRST,
       ba.id ASC
     LIMIT ${input.limit}
   `;

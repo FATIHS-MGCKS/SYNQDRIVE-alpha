@@ -14,6 +14,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-02 — PKG-02 liveness/graph correction pass (PR #1513)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Stale `bullJobId` permanently blocked reconciliation via `skip_enqueued`; malformed reconciliation rows could starve valid backlog; unsafe `lastAttemptAt` timestamptz cast; stale graph edge wording. |
+| **CHANGE** | Claim-age-based reservation recovery (clears stale `bullJobId`); hardened reconciliation SQL invariants + safe ISO ordering; stale-bullJobId recovery tests A–F; malformed postgres fixtures; graph temporal semantics; persistence doc structure fix; integration uses captured producer payload. |
+| **WHY** | Reconciliation liveness must not be permanently blocked by historical Bull metadata or malformed legacy rows. |
+| **VALIDATION** | PKG-02 suites + stale recovery + PKG-01/stage-1 regression; graph validator PASS |
+| **NON_EFFECTS** | No deploy; no migration; D4/D5 semantics unchanged |
+| **REMAINING_GAPS** | PRODUCTION_VALIDATED; POSTGRES_SMOKE when DATABASE_URL unavailable |
+| **DECISION_STATUS** | PKG-02 IMPLEMENTED — not PRODUCTION_VALIDATED |
+
 ## CL-2026-09-02 — PKG-02 merge-readiness pass (PR #1513)
 
 | Field | Content |
