@@ -62,7 +62,15 @@ async function probeDatabase(): Promise<boolean> {
 
     beforeEach(async () => {
       const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const observedAt = new Date();
+      const anchor = Date.now();
+      const fixtureObservedAt = {
+        'eligible-60m': new Date(anchor - 1),
+        'eligible-6h': new Date(anchor - 2),
+        'executed-60m': new Date(anchor - 3),
+        'no-source-observation': new Date(anchor - 4),
+        'order-late': new Date(anchor - 5),
+        'order-early': new Date(anchor - 6),
+      } as const;
 
       const org = await prisma.organization.create({
         data: {
@@ -88,12 +96,13 @@ async function probeDatabase(): Promise<boolean> {
       vehicleId = vehicle.id;
 
       const createSessionWithMeasurement = async (input: {
-        label: string;
+        label: keyof typeof fixtureObservedAt;
         measurementType: BatteryMeasurementType;
         targetKey: 'REST_60M' | 'REST_6H';
         provenance: Record<string, unknown> | null;
         handoff?: Record<string, unknown> | null;
       }) => {
+        const observedAt = fixtureObservedAt[input.label];
         const session = await prisma.batteryMeasurementSession.create({
           data: {
             organizationId,
@@ -176,6 +185,7 @@ async function probeDatabase(): Promise<boolean> {
         measurementId: executedMeasurementId,
       });
       if (executedSession?.sessionId) {
+        const executedObservedAt = fixtureObservedAt['executed-60m'];
         await prisma.batteryMeasurementSession.update({
           where: { id: executedSession.sessionId },
           data: {
@@ -183,14 +193,14 @@ async function probeDatabase(): Promise<boolean> {
               scheduledTargets: {
                 REST_60M: {
                   idempotencyKey: `rest-executed-${suffix}`,
-                  scheduledFor: observedAt.toISOString(),
+                  scheduledFor: executedObservedAt.toISOString(),
                   status: 'COMPLETED',
                   assessmentHandoff: {
                     status: LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED,
                     measurementId: executedMeasurementId,
                     idempotencyKey: executedKey,
-                    executedAt: observedAt.toISOString(),
-                    lastAttemptAt: observedAt.toISOString(),
+                    executedAt: executedObservedAt.toISOString(),
+                    lastAttemptAt: executedObservedAt.toISOString(),
                   },
                 },
               },
