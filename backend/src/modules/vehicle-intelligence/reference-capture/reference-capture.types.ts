@@ -125,12 +125,17 @@ export type ReferenceCaptureSessionView = {
 export type ReferenceCaptureAcquisitionState = {
   cycleCount: number;
   lastCycleAt: string | null;
-  /** Global HF committed cursor — max(per-field) provider bucket time after successful persist. */
+  /** Global HF DATA watermark — max(per-field) provider bucket time after durable persist. */
   hfWatermarkAt: string | null;
-  /** Per-field committed provider bucket timestamps — prevents fast-field suppression. */
+  /** Per-field DATA watermark: highest durable provider bucket timestamp represented. */
   hfWatermarkByField?: Record<string, string>;
+  /** Per-field QUERY COVERAGE: highest query-to boundary successfully queried. */
+  hfQueryCoverageByField?: Record<string, string>;
+  /** HF physical identity algorithm version — do not mix V1/V2 in one session state cache. */
+  hfPhysicalIdentityVersion?: 'LEGACY_VALUE_V1' | 'AGGREGATE_BUCKET_V2';
   eventWatermarkAt: string | null;
   seenEventFingerprints: string[];
+  /** In-memory HF dedup cache only — DATABASE is idempotency authority. */
   seenPhysicalSampleFingerprints?: string[];
   lastSequenceNumber?: number;
   activeCycleJobId?: string | null;

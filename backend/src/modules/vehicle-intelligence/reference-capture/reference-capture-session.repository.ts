@@ -1,10 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import type { ReferenceCaptureSession, ReferenceCaptureSessionStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { HF_PHYSICAL_IDENTITY_VERSION } from './reference-capture-physical-sample-identity.util';
 import type { ReferenceCaptureAcquisitionState } from './reference-capture.types';
 
 function parseAcquisitionState(raw: unknown): ReferenceCaptureAcquisitionState {
   const base = (raw ?? {}) as Partial<ReferenceCaptureAcquisitionState>;
+  const seenPhysical = base.seenPhysicalSampleFingerprints ?? [];
+  const hfPhysicalIdentityVersion =
+    base.hfPhysicalIdentityVersion ??
+    (seenPhysical.length > 0
+      ? HF_PHYSICAL_IDENTITY_VERSION.LEGACY_VALUE_V1
+      : HF_PHYSICAL_IDENTITY_VERSION.AGGREGATE_BUCKET_V2);
+
   return {
     cycleCount: base.cycleCount ?? 0,
     lastCycleAt: base.lastCycleAt ?? null,
@@ -13,9 +21,17 @@ function parseAcquisitionState(raw: unknown): ReferenceCaptureAcquisitionState {
       base.hfWatermarkByField && typeof base.hfWatermarkByField === 'object'
         ? { ...base.hfWatermarkByField }
         : {},
+    hfQueryCoverageByField:
+      base.hfQueryCoverageByField && typeof base.hfQueryCoverageByField === 'object'
+        ? { ...base.hfQueryCoverageByField }
+        : {},
+    hfPhysicalIdentityVersion,
     eventWatermarkAt: base.eventWatermarkAt ?? null,
     seenEventFingerprints: base.seenEventFingerprints ?? [],
-    seenPhysicalSampleFingerprints: base.seenPhysicalSampleFingerprints ?? [],
+    seenPhysicalSampleFingerprints:
+      hfPhysicalIdentityVersion === HF_PHYSICAL_IDENTITY_VERSION.LEGACY_VALUE_V1
+        ? [...seenPhysical]
+        : [],
     lastSequenceNumber: base.lastSequenceNumber ?? 0,
     activeCycleJobId: base.activeCycleJobId ?? null,
     quarantinedProviderFields: base.quarantinedProviderFields ?? [],

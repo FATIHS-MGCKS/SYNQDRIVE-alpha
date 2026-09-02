@@ -6,12 +6,15 @@ import {
   type HfLateArrivalDifferentialRow,
 } from './reference-capture-hf-aggregate-bucket-analysis';
 import {
+  advanceHfQueryCoverageAfterQuery,
   advanceHfWatermarksAfterPersistedBuckets,
   computeHfQueryFrom,
   computeHfQueryTo,
+  getFieldHfQueryFrom,
   HF_QUERY_OVERLAP_MS,
   normalizeHfCommittedWatermarkState,
   shouldAdvanceHfWatermark,
+  simulateHfQueryWindowGrowth,
 } from './reference-capture-hf-watermark-policy';
 import {
   buildAggregateBucketFingerprint,
@@ -34,11 +37,15 @@ describe('reference-capture-hf-watermark-policy', () => {
         providerField: 'speed',
         providerTimestamp: '2026-09-01T10:00:02.000Z',
         normalizedValue: 11,
+        interval: '1s',
+        aggregation: 'AVG',
       });
       const fp2 = buildPhysicalSampleFingerprint({
         providerField: 'speed',
         providerTimestamp: '2026-09-01T10:00:02.000Z',
         normalizedValue: 11,
+        interval: '1s',
+        aggregation: 'AVG',
       });
       expect(fp1).toBe(fp2);
     });
@@ -49,10 +56,14 @@ describe('reference-capture-hf-watermark-policy', () => {
       const a = buildAggregateBucketFingerprint({
         providerField: 'speed',
         providerTimestamp: '2026-09-01T10:00:02.000Z',
+        interval: '1s',
+        aggregation: 'AVG',
       });
       const b = buildAggregateBucketFingerprint({
         providerField: 'speed',
         providerTimestamp: '2026-09-01T10:00:03.000Z',
+        interval: '1s',
+        aggregation: 'AVG',
       });
       expect(a).not.toBe(b);
     });
@@ -82,6 +93,7 @@ describe('reference-capture-hf-watermark-policy', () => {
           speed: '2026-09-01T19:12:30.000Z',
           obdEngineLoad: '2026-09-01T19:12:20.000Z',
         },
+        hfQueryCoverageByField: {},
       });
       const from = computeHfQueryFrom(state, sessionStart, fields);
       expect(from.toISOString()).toBe('2026-09-01T19:12:18.000Z');
@@ -90,7 +102,7 @@ describe('reference-capture-hf-watermark-policy', () => {
 
   describe('E — out-of-order provider response', () => {
     it('advances per-field watermark to max persisted bucket regardless of arrival order', () => {
-      const state = normalizeHfCommittedWatermarkState({ hfWatermarkAt: null, hfWatermarkByField: {} });
+      const state = normalizeHfCommittedWatermarkState({ hfWatermarkAt: null, hfWatermarkByField: {}, hfQueryCoverageByField: {} });
       const advanced = advanceHfWatermarksAfterPersistedBuckets(state, [
         { providerField: 'speed', providerTimestamp: '2026-09-01T10:00:04.000Z' },
         { providerField: 'speed', providerTimestamp: '2026-09-01T10:00:01.000Z' },
@@ -122,12 +134,18 @@ describe('reference-capture-hf-watermark-policy', () => {
         providerField: bucket.providerField,
         providerTimestamp: bucket.providerTimestamp,
         normalizedValue: 42,
+        interval: '1s',
+        aggregation: 'AVG',
       });
       const seen = new Set<string>();
       expect(seen.has(fp)).toBe(false);
       seen.add(fp);
       expect(seen.has(fp)).toBe(true);
-      const stateBefore = normalizeHfCommittedWatermarkState({ hfWatermarkAt: null, hfWatermarkByField: {} });
+      const stateBefore = normalizeHfCommittedWatermarkState({
+        hfWatermarkAt: null,
+        hfWatermarkByField: {},
+        hfQueryCoverageByField: {},
+      });
       expect(shouldAdvanceHfWatermark(0)).toBe(false);
       const stateAfterRetry = advanceHfWatermarksAfterPersistedBuckets(stateBefore, [bucket]);
       expect(stateAfterRetry.hfWatermarkByField.speed).toBe('2026-09-01T10:00:02.000Z');
@@ -140,29 +158,37 @@ describe('reference-capture-hf-watermark-policy', () => {
         providerField: 'speed',
         providerTimestamp: '2026-09-01T19:12:25.500Z',
         normalizedValue: 10,
+        interval: '1s',
+        aggregation: 'AVG',
       });
       const b = buildPhysicalSampleFingerprint({
         providerField: 'speed',
         providerTimestamp: '2026-09-01T19:12:25.5Z',
         normalizedValue: 10,
+        interval: '1s',
+        aggregation: 'AVG',
       });
       expect(a).toBe(b);
     });
   });
 
-  describe('I — multi-surface overlap policy', () => {
-    it('keeps HF identity independent of acquisition surface (global physical identity)', () => {
+  describe('I — HF_HISTORICAL identity scope', () => {
+    it('uses the same bucket contract identity regardless of surface label (HF dedup is HF-scoped)', () => {
       const hf = buildPhysicalSampleFingerprint({
         providerField: 'speed',
         providerTimestamp: '2026-09-01T10:00:01.000Z',
         normalizedValue: 55,
+        interval: '1s',
+        aggregation: 'AVG',
       });
-      const live = buildPhysicalSampleFingerprint({
+      const sameContract = buildPhysicalSampleFingerprint({
         providerField: 'speed',
         providerTimestamp: '2026-09-01T10:00:01.000Z',
         normalizedValue: 55,
+        interval: '1s',
+        aggregation: 'AVG',
       });
-      expect(hf).toBe(live);
+      expect(hf).toBe(sameContract);
     });
   });
 
@@ -172,11 +198,15 @@ describe('reference-capture-hf-watermark-policy', () => {
         providerField: 'speed',
         providerTimestamp: '2026-09-01T10:00:02.000Z',
         normalizedValue: 10,
+        interval: '1s',
+        aggregation: 'AVG',
       });
       const revised = buildPhysicalSampleFingerprint({
         providerField: 'speed',
         providerTimestamp: '2026-09-01T10:00:02.000Z',
         normalizedValue: 11,
+        interval: '1s',
+        aggregation: 'AVG',
       });
       expect(first).toBe(revised);
       const legacyFirst = buildLegacyValueInclusiveFingerprint({
@@ -195,7 +225,7 @@ describe('reference-capture-hf-watermark-policy', () => {
 
   describe('K — watermark commit ordering', () => {
     it('advances only when shouldAdvanceHfWatermark passes after simulated flush', () => {
-      const state = normalizeHfCommittedWatermarkState({ hfWatermarkAt: null, hfWatermarkByField: {} });
+      const state = normalizeHfCommittedWatermarkState({ hfWatermarkAt: null, hfWatermarkByField: {}, hfQueryCoverageByField: {} });
       const buckets = [{ providerField: 'speed', providerTimestamp: '2026-09-01T10:00:01.000Z' }];
       const flushedCount = buckets.length;
       const next =
@@ -258,6 +288,72 @@ describe('reference-capture-hf-watermark-policy', () => {
       const completed = new Date('2026-09-01T19:12:27.741Z');
       const fallback = new Date('2026-09-01T19:12:27.500Z');
       expect(computeHfQueryTo(completed, fallback)).toEqual(completed);
+    });
+  });
+
+  describe('query coverage vs data watermark', () => {
+    it('does not pin silent field query FROM to session start after first successful query', () => {
+      let state = normalizeHfCommittedWatermarkState({
+        hfWatermarkAt: null,
+        hfWatermarkByField: {},
+        hfQueryCoverageByField: {},
+      });
+      const fields = ['speed', 'rareField'];
+      const firstFrom = computeHfQueryFrom(state, sessionStart, fields);
+      expect(firstFrom).toEqual(sessionStart);
+
+      state = advanceHfQueryCoverageAfterQuery(
+        state,
+        fields,
+        new Date(sessionStart.getTime() + 20_000).toISOString(),
+      );
+      const cycle20From = computeHfQueryFrom(state, sessionStart, fields);
+      expect(cycle20From.getTime()).toBeGreaterThan(sessionStart.getTime());
+      expect(getFieldHfQueryFrom(state, 'rareField', sessionStart).getTime()).toBe(
+        sessionStart.getTime() + 20_000 - HF_QUERY_OVERLAP_MS,
+      );
+    });
+
+    it('keeps sparse slow field query bounded while fast field has data watermark', () => {
+      const state = normalizeHfCommittedWatermarkState({
+        hfWatermarkAt: '2026-09-01T19:12:30.000Z',
+        hfWatermarkByField: { speed: '2026-09-01T19:12:30.000Z' },
+        hfQueryCoverageByField: { slowField: '2026-09-01T19:12:28.000Z' },
+      });
+      const from = computeHfQueryFrom(state, sessionStart, ['speed', 'slowField']);
+      expect(from.toISOString()).toBe('2026-09-01T19:12:26.000Z');
+    });
+  });
+
+  describe('executed query contract in identity', () => {
+    it('differs identities for different intervals at same timestamp', () => {
+      const oneSecond = buildAggregateBucketFingerprint({
+        providerField: 'speed',
+        providerTimestamp: '2026-09-01T10:00:02.000Z',
+        interval: '1s',
+        aggregation: 'AVG',
+      });
+      const fiveSecond = buildAggregateBucketFingerprint({
+        providerField: 'speed',
+        providerTimestamp: '2026-09-01T10:00:02.000Z',
+        interval: '5s',
+        aggregation: 'AVG',
+      });
+      expect(oneSecond).not.toBe(fiveSecond);
+    });
+  });
+
+  describe('query window growth simulation', () => {
+    it('keeps HF query window bounded under steady operation with one silent field', () => {
+      const result = simulateHfQueryWindowGrowth({
+        sessionStartedAt: sessionStart,
+        cycleCount: 60,
+        cycleIntervalMs: 5000,
+        providerFields: ['speed', 'silentField'],
+        fieldBucketCadenceMs: { speed: 1000, silentField: null },
+      });
+      expect(result.windowMsMax).toBeLessThanOrEqual(HF_QUERY_OVERLAP_MS + 5000 + 1000);
+      expect(result.cycles[59].windowMs).toBeLessThan(sessionStart.getTime() + 60 * 5000);
     });
   });
 });

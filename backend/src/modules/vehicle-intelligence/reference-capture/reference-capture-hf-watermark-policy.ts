@@ -8,35 +8,80 @@ export const HF_AGGREGATION_TYPE = 'AVG' as const;
 export const HF_REQUESTED_INTERVAL = '1s' as const;
 
 export type HfCommittedWatermarkState = {
-  /** Legacy global committed cursor — max(per-field) when per-field map is populated. */
+  /** Legacy global committed cursor — max(per-field) provider bucket time after durable persist. */
   hfWatermarkAt: string | null;
-  /** Per-field committed provider bucket timestamps (ISO). */
+  /** Per-field DATA watermark: highest durable provider bucket timestamp represented. */
   hfWatermarkByField: Record<string, string>;
+  /** Per-field QUERY COVERAGE: highest query-to boundary successfully queried (not persisted data). */
+  hfQueryCoverageByField: Record<string, string>;
 };
 
 export function normalizeHfCommittedWatermarkState(
-  state: Pick<ReferenceCaptureAcquisitionState, 'hfWatermarkAt' | 'hfWatermarkByField'>,
+  state: Pick<
+    ReferenceCaptureAcquisitionState,
+    'hfWatermarkAt' | 'hfWatermarkByField' | 'hfQueryCoverageByField'
+  >,
 ): HfCommittedWatermarkState {
   const byField =
     state.hfWatermarkByField && typeof state.hfWatermarkByField === 'object'
       ? { ...state.hfWatermarkByField }
       : {};
+  const queryCoverage =
+    state.hfQueryCoverageByField && typeof state.hfQueryCoverageByField === 'object'
+      ? { ...state.hfQueryCoverageByField }
+      : {};
   return {
     hfWatermarkAt: state.hfWatermarkAt ?? null,
     hfWatermarkByField: byField,
+    hfQueryCoverageByField: queryCoverage,
   };
 }
 
-export function getFieldCommittedWatermark(
+export function getFieldDataWatermark(
   state: HfCommittedWatermarkState,
   providerField: string,
 ): string | null {
-  return state.hfWatermarkByField[providerField] ?? state.hfWatermarkAt ?? null;
+  if (state.hfWatermarkByField[providerField]) {
+    return state.hfWatermarkByField[providerField];
+  }
+  if (Object.keys(state.hfWatermarkByField).length === 0 && state.hfWatermarkAt) {
+    return state.hfWatermarkAt;
+  }
+  return null;
+}
+
+export function getFieldQueryCoverage(
+  state: HfCommittedWatermarkState,
+  providerField: string,
+): string | null {
+  return state.hfQueryCoverageByField[providerField] ?? null;
+}
+
+/** Per-field query FROM using data watermark or query coverage (never pins silent fields to session start forever). */
+export function getFieldHfQueryFrom(
+  state: HfCommittedWatermarkState,
+  providerField: string,
+  sessionStartedAt: Date,
+  overlapMs: number = HF_QUERY_OVERLAP_MS,
+): Date {
+  const dataCommitted = getFieldDataWatermark(state, providerField);
+  if (dataCommitted) {
+    const ms = Date.parse(canonicalizeBucketTimestamp(dataCommitted));
+    if (Number.isFinite(ms)) return new Date(ms - overlapMs);
+  }
+
+  const queryCoverage = getFieldQueryCoverage(state, providerField);
+  if (queryCoverage) {
+    const ms = Date.parse(canonicalizeBucketTimestamp(queryCoverage));
+    if (Number.isFinite(ms)) return new Date(ms - overlapMs);
+  }
+
+  return sessionStartedAt;
 }
 
 /**
- * Query FROM = min(per-field committed provider time) - overlap.
- * Prevents a fast-advancing global wall-clock cursor from suppressing slower fields.
+ * Multi-field HF query FROM = min(per-field from).
+ * Prevents fast-field suppression and silent-field session-start pinning.
  */
 export function computeHfQueryFrom(
   state: HfCommittedWatermarkState,
@@ -47,23 +92,11 @@ export function computeHfQueryFrom(
   if (!providerFields.length) return sessionStartedAt;
 
   let minFromMs = Number.POSITIVE_INFINITY;
-  let hasCommitted = false;
-
   for (const field of providerFields) {
-    const committed = getFieldCommittedWatermark(state, field);
-    if (!committed) {
-      minFromMs = Math.min(minFromMs, sessionStartedAt.getTime() - overlapMs);
-      continue;
-    }
-    hasCommitted = true;
-    const committedMs = Date.parse(canonicalizeBucketTimestamp(committed));
-    if (Number.isFinite(committedMs)) {
-      minFromMs = Math.min(minFromMs, committedMs - overlapMs);
-    }
-  }
-
-  if (!hasCommitted && minFromMs === Number.POSITIVE_INFINITY) {
-    return sessionStartedAt;
+    minFromMs = Math.min(
+      minFromMs,
+      getFieldHfQueryFrom(state, field, sessionStartedAt, overlapMs).getTime(),
+    );
   }
 
   return new Date(minFromMs);
@@ -75,6 +108,22 @@ export function computeHfQueryTo(requestCompletedAt: Date | null | undefined, fa
     return requestCompletedAt;
   }
   return fallback;
+}
+
+export function advanceHfQueryCoverageAfterQuery(
+  state: HfCommittedWatermarkState,
+  providerFields: string[],
+  queryCompletedAt: string | Date,
+): HfCommittedWatermarkState {
+  const ts = canonicalizeBucketTimestamp(queryCompletedAt);
+  const nextCoverage = { ...state.hfQueryCoverageByField };
+  for (const field of providerFields) {
+    const prev = nextCoverage[field];
+    if (!prev || Date.parse(ts) > Date.parse(canonicalizeBucketTimestamp(prev))) {
+      nextCoverage[field] = ts;
+    }
+  }
+  return { ...state, hfQueryCoverageByField: nextCoverage };
 }
 
 export function advanceHfWatermarksAfterPersistedBuckets(
@@ -100,10 +149,78 @@ export function advanceHfWatermarksAfterPersistedBuckets(
         )
       : state.hfWatermarkAt;
 
-  return { hfWatermarkAt, hfWatermarkByField: nextByField };
+  return { hfWatermarkAt, hfWatermarkByField: nextByField, hfQueryCoverageByField: state.hfQueryCoverageByField };
 }
 
-/** Committed watermark must not advance when nothing new was durably represented. */
-export function shouldAdvanceHfWatermark(newPersistedBucketCount: number): boolean {
-  return newPersistedBucketCount > 0;
+/** Committed data watermark must not advance when nothing was durably represented. */
+export function shouldAdvanceHfWatermark(durableBucketCount: number): boolean {
+  return durableBucketCount > 0;
+}
+
+export type HfQueryWindowSimulationCycle = {
+  cycle: number;
+  queryFromMs: number;
+  queryToMs: number;
+  windowMs: number;
+};
+
+export type HfQueryWindowSimulationResult = {
+  cycles: HfQueryWindowSimulationCycle[];
+  windowMsP50: number;
+  windowMsP95: number;
+  windowMsMax: number;
+};
+
+/** Deterministic query-window growth analysis for audit/tests. */
+export function simulateHfQueryWindowGrowth(args: {
+  sessionStartedAt: Date;
+  cycleCount: number;
+  cycleIntervalMs: number;
+  providerFields: string[];
+  fieldBucketCadenceMs?: Record<string, number | null>;
+  overlapMs?: number;
+}): HfQueryWindowSimulationResult {
+  const overlapMs = args.overlapMs ?? HF_QUERY_OVERLAP_MS;
+  let state = normalizeHfCommittedWatermarkState({
+    hfWatermarkAt: null,
+    hfWatermarkByField: {},
+    hfQueryCoverageByField: {},
+  });
+
+  const cycles: HfQueryWindowSimulationCycle[] = [];
+  const windows: number[] = [];
+
+  for (let cycle = 1; cycle <= args.cycleCount; cycle += 1) {
+    const queryToMs = args.sessionStartedAt.getTime() + cycle * args.cycleIntervalMs;
+    const queryFrom = computeHfQueryFrom(state, args.sessionStartedAt, args.providerFields, overlapMs);
+    const windowMs = queryToMs - queryFrom.getTime();
+    windows.push(windowMs);
+    cycles.push({ cycle, queryFromMs: queryFrom.getTime(), queryToMs, windowMs });
+
+    state = advanceHfQueryCoverageAfterQuery(
+      state,
+      args.providerFields,
+      new Date(queryToMs).toISOString(),
+    );
+
+    for (const field of args.providerFields) {
+      const cadence = args.fieldBucketCadenceMs?.[field];
+      if (!cadence) continue;
+      const dataTs = new Date(queryToMs - cadence).toISOString();
+      state = advanceHfWatermarksAfterPersistedBuckets(state, [
+        { providerField: field, providerTimestamp: dataTs },
+      ]);
+    }
+  }
+
+  const sorted = [...windows].sort((a, b) => a - b);
+  const pct = (p: number) =>
+    sorted[Math.max(0, Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1))];
+
+  return {
+    cycles,
+    windowMsP50: sorted.length ? pct(50) : 0,
+    windowMsP95: sorted.length ? pct(95) : 0,
+    windowMsMax: sorted.length ? sorted[sorted.length - 1] : 0,
+  };
 }

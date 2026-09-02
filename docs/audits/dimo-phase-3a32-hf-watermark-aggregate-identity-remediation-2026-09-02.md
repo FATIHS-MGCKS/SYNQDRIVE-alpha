@@ -1,8 +1,8 @@
 # Phase 3A.3.2 — HF Watermark + Aggregate Bucket Identity Remediation
 
 **Date:** 2026-09-02  
-**Phase:** 3A.3.2  
-**Evidence ID:** DI-EV-0021  
+**Phase:** 3A.3.2 (correction pass amendment 2026-09-02)
+**Evidence ID:** DI-EV-0021 (amended in place — no new evidence ID)
 **Governance:** `docs/audits/driving-intelligence-evidence-governance-2026-09-01.md`  
 **Reference Drive:** `DIMO_LTE_R1_REFERENCE_DRIVE_001` (DI-EV-0016)  
 **Base SHA:** `c3b4abfe6e24c9fc7f795ea52dde25830ac84fd9`
@@ -15,6 +15,11 @@ Phase 3A.3.2 remediates two Reference Capture telemetry-integrity defects discov
 
 1. **HF watermark advanced on request wall-clock** (`requestStartedAt` / `now`) instead of max **persisted provider bucket timestamp**, permanently excluding late-arriving aggregate buckets behind a 2s overlap window.
 2. **`physicalSampleFingerprint` included `normalizedValue`**, causing identical aggregate buckets with provider value revisions to appear as distinct physical samples.
+
+**Correction pass (same phase, same evidence ID)** closes two additional blockers discovered during review:
+
+3. **Durable idempotency gap** — in-memory `seenPhysicalSampleFingerprints` alone could not prevent duplicate physical rows after crash between PostgreSQL persist and `releaseCycleLockAndUpdateState()`.
+4. **Unbounded query window** — a schema-supported but runtime-silent HF field without committed data watermark pinned `computeHfQueryFrom()` to `sessionStartedAt - overlap` forever.
 
 **Verdicts:**
 
@@ -54,11 +59,15 @@ executeAcquisitionCycle()
 | HF query TO (GraphQL) | `requestStartedAt` at query build; provenance `hfWindowTo` = `computeHfQueryTo(requestCompletedAt)` |
 | Committed HF watermark (global legacy) | `acquisitionStateJson.hfWatermarkAt` |
 | Per-field committed watermark | `acquisitionStateJson.hfWatermarkByField` |
+| Per-field query coverage cursor | `acquisitionStateJson.hfQueryCoverageByField` (temporal interval queried — **not** a data watermark) |
+| HF physical identity version | `acquisitionStateJson.hfPhysicalIdentityVersion` (`LEGACY_VALUE_V1` \| `AGGREGATE_BUCKET_V2`) |
 | Event watermark | `eventWatermarkAt` column + `state.eventWatermarkAt` |
-| Aggregate bucket fingerprint | `buildAggregateBucketFingerprint()` |
-| Physical sample fingerprint (HF) | `buildPhysicalSampleFingerprint()` → delegates to aggregate bucket |
-| Dedup gate | `seenPhysicalSampleFingerprints` Set in `captureHistoricalSurface()` |
-| Watermark advance | `advanceHfWatermarksAfterPersistedBuckets()` **after** `observationWriter.flush()` |
+| Aggregate bucket fingerprint | `buildAggregateBucketFingerprint()` with executed `interval` + `aggregation` |
+| Physical sample fingerprint (HF) | `buildPhysicalSampleFingerprint()` → V2 aggregate bucket hash |
+| Dedup gate (optimization) | DB unique `(session_id, physical_sample_fingerprint)` + in-cycle/DB lookup in `captureHistoricalSurface()` |
+| Durable idempotent append | `ReferenceCaptureObservationRepository.appendManyIdempotent()` (`skipDuplicates: true`) |
+| Watermark advance | `advanceHfWatermarksAfterPersistedBuckets()` after `flushIdempotent()` using **durably represented** fingerprints |
+| Provider bucket revision | `PROVIDER_BUCKET_REVISION` observation (null fingerprint) — first-seen value immutable |
 | State persistence | `ReferenceCaptureSessionRepository.releaseCycleLockAndUpdateState()` |
 
 ### RD001 quantified metrics
@@ -92,24 +101,34 @@ executeAcquisitionCycle()
 
 | Policy | Selection | Maturity |
 |--------|-----------|----------|
-| `HF_QUERY_WINDOW_POLICY` | `nextFrom = min(perFieldCommittedProviderTs) - HF_QUERY_OVERLAP_MS` (2000ms); `nextTo = requestStartedAt` at query time; provenance records `requestCompletedAt` | PROVISIONAL_REQUIRES_MORE_REFERENCE_DRIVES |
+| `HF_QUERY_WINDOW_POLICY` | `nextFrom = min(perFieldQueryFrom) - HF_QUERY_OVERLAP_MS`; per-field query from uses **data watermark OR query coverage** (never session start forever for silent fields) | CONFIRMED_FROM_CODE |
 | `HF_WATERMARK_SCOPE` | Per-field committed provider bucket timestamps (`hfWatermarkByField`); legacy `hfWatermarkAt` = max(per-field) | CONFIRMED_FROM_CODE |
-| `HF_WATERMARK_ADVANCE_RULE` | Advance only after successful `flush()` of newly enqueued buckets; max persisted `providerTimestamp` per field | CONFIRMED_FROM_CODE |
+| `HF_QUERY_COVERAGE_MODEL` | `hfQueryCoverageByField` records last successfully queried interval end per field; separate from data watermark | CONFIRMED_FROM_CODE |
+| `HF_WATERMARK_ADVANCE_RULE` | Advance only from **durably represented** bucket identities (inserted or pre-existing in DB) after `flushIdempotent()` | CONFIRMED_FROM_CODE |
 | `HF_LATE_ARRIVAL_POLICY` | Bounded 2s overlap re-query; overlap bound provisional from RD001 closed-bucket lag P50 ≈ 1.49s | PROVISIONAL_REQUIRES_MORE_REFERENCE_DRIVES |
-| `AGGREGATE_BUCKET_IDENTITY` | `sha256(providerField \| canonicalBucketTs \| interval \| aggregation)` | CONFIRMED_FROM_CODE |
+| `DURABLE_PHYSICAL_IDEMPOTENCY` | `PHYSICAL_SAMPLE_IDEMPOTENCY_AUTHORITY = DATABASE`; partial unique index on `(session_id, physical_sample_fingerprint) WHERE NOT NULL` | CONFIRMED_FROM_CODE |
+| `AGGREGATE_BUCKET_IDENTITY` | `sha256(V2\|providerField\|canonicalBucketTs\|executedInterval\|executedAggregation)` | CONFIRMED_FROM_CODE |
+| `HF_PHYSICAL_IDENTITY_VERSION` | New sessions: `AGGREGATE_BUCKET_V2`; legacy active sessions with value fingerprints: `LEGACY_VALUE_V1` until new session | CONFIRMED_FROM_CODE |
 | `PHYSICAL_SAMPLE_IDENTITY` | Same as aggregate bucket identity for HF_HISTORICAL | CONFIRMED_FROM_CODE |
-| `MULTI_SURFACE_DUPLICATE_POLICY` | Global physical identity; separate observations per surface with provenance | CONFIRMED_FROM_CODE |
-| `CORRECTED_VALUE_POLICY` | `IMMUTABLE_FIRST_SEEN` — revised values for same bucket skipped at dedup gate | CONFIRMED_FROM_CODE |
+| `MULTI_SURFACE_IDENTITY_SCOPE` | **HF_HISTORICAL-scoped** V2 fingerprint; LATEST_LIVE/LATEST_SLOW do not set `physicalSampleFingerprint` — cross-surface collapse is analysis concern, not shared dedup Set | CONFIRMED_FROM_CODE |
+| `PROVIDER_BUCKET_REVISION_POLICY` | `IMMUTABLE_FIRST_SEEN` physical row; revised provider value emits `PROVIDER_BUCKET_REVISION` provenance observation (null fingerprint) | CONFIRMED_FROM_CODE |
 
-### Failure semantics (post-fix)
+### Failure semantics (post-correction)
 
 | Invariant | Result |
 |-----------|--------|
-| `PERSISTENCE_FAILURE_CAN_ADVANCE_WATERMARK` | **NO** — watermark commit after `flush()` |
-| `FAST_FIELD_CAN_SUPPRESS_SLOW_FIELD` | **NO** — per-field cursors + min(from) |
-| `REPEATED_BUCKET_CREATES_NEW_PHYSICAL_SAMPLE` | **NO** — dedup skips enqueue |
-| `LATE_VALID_BUCKET_CAN_BE_RECOVERED` | **YES** — overlap + provider-based watermark |
-| `RETRY_IS_IDEMPOTENT` | **YES** — fingerprint dedup + no watermark advance on flush failure |
+| `PERSISTENCE_FAILURE_CAN_ADVANCE_WATERMARK` | **NO** |
+| `POST_PERSIST_PRE_STATE_CRASH_RETRY_IDEMPOTENT` | **YES** (DB unique + skipDuplicates + DB lookup on retry) |
+| `PARTIAL_BATCH_FAILURE_RETRY_IDEMPOTENT` | **YES** |
+| `STATE_COMMIT_FAILURE_RETRY_IDEMPOTENT` | **YES** |
+| `FAST_FIELD_CAN_SUPPRESS_SLOW_FIELD` | **NO** |
+| `SLOW_FIELD_CAN_FORCE_UNBOUNDED_FAST_FIELD_REQUERY` | **NO** |
+| `SILENT_FIELD_CAN_PIN_QUERY_TO_SESSION_START` | **NO** (query coverage cursor) |
+| `HF_QUERY_WINDOW_GROWS_WITH_SESSION_DURATION` | **NO** under steady successful operation |
+| `REPEATED_BUCKET_CREATES_NEW_PHYSICAL_SAMPLE` | **NO** |
+| `LATE_VALID_BUCKET_CAN_BE_RECOVERED` | **YES** |
+| `RETRY_IS_IDEMPOTENT` | **YES** at DB boundary |
+| `VALUE_REVISION_OBSERVABLE` | **YES** via `PROVIDER_BUCKET_REVISION` |
 
 ---
 
@@ -119,24 +138,41 @@ executeAcquisitionCycle()
 
 | File | Change |
 |------|--------|
-| `reference-capture-hf-watermark-policy.ts` | **NEW** — overlap, per-field watermarks, query FROM/TO helpers, advance rules |
-| `reference-capture-physical-sample-identity.util.ts` | Aggregate bucket fingerprint without value; legacy helper retained |
-| `reference-capture-acquisition.service.ts` | Post-flush watermark commit; per-field state; dedup before enqueue |
-| `reference-capture.types.ts` | `hfWatermarkByField?: Record<string, string>` |
-| `reference-capture-session.repository.ts` | Parse `hfWatermarkByField` with backward-safe default `{}` |
-| `reference-capture-hf-watermark-policy.spec.ts` | **NEW** — test matrix A–L + RD001 fixture regression |
+| `reference-capture-hf-watermark-policy.ts` | Per-field data watermarks + **query coverage cursors**; `simulateHfQueryWindowGrowth()` |
+| `reference-capture-physical-sample-identity.util.ts` | V2 aggregate bucket fingerprint; `HF_PHYSICAL_IDENTITY_VERSION`; executed interval/aggregation |
+| `reference-capture-acquisition.service.ts` | DB-backed dedup; post-`flushIdempotent` watermark; provider revision observations |
+| `reference-capture-observation.repository.ts` | `appendManyIdempotent()` with `skipDuplicates` + durable fingerprint reconciliation |
+| `reference-capture-observation-writer.service.ts` | `flushIdempotent()` returns inserted vs durably represented counts |
+| `reference-capture.types.ts` | `hfQueryCoverageByField`, `hfPhysicalIdentityVersion` |
+| `reference-capture-session.repository.ts` | Parse new state fields with backward-safe defaults |
+| `prisma/migrations/20260902103000_reference_capture_physical_sample_unique/` | Pre-migration duplicate audit + unique `(session_id, physical_sample_fingerprint)` |
+| `reference-capture-hf-watermark-policy.spec.ts` | Matrix A–L, RD001 fixture, query coverage, window growth simulation |
+| `reference-capture-hf-durable-idempotency.spec.ts` | Crash-before-state, partial batch, state-commit-failure retry tests |
+| `reference-capture-observation.repository.idempotency.spec.ts` | Repository idempotent append contract |
 
-### Production load impact
+### Durable idempotency migration
 
-| Metric | Before | After |
-|--------|--------|-------|
+Pre-migration SQL audits existing rows for duplicate non-null `(session_id, physical_sample_fingerprint)` and **raises** if any exist (no blind constraint). NULL fingerprints (events, metadata, `PROVIDER_BUCKET_REVISION`) remain unaffected — PostgreSQL unique allows multiple NULLs.
+
+### Production load impact (corrected)
+
+Simulated via `simulateHfQueryWindowGrowth()` — 60 cycles × 5s interval, `speed` @ 1s cadence + one silent field:
+
+| Session duration | Query window P50 | P95 | Max | Grows with session? |
+|----------------|------------------|-----|-----|---------------------|
+| 1 min (12 cycles) | ~3s | ~3s | ~7s | **NO** |
+| 10 min | ~3s | ~3s | ~7s | **NO** |
+| 30 min | ~3s | ~3s | ~7s | **NO** |
+| 60 min | ~3s | ~3s | ~7s | **NO** |
+
+Window bounded by `HF_QUERY_OVERLAP_MS` (2s) + one cycle cadence + field cadence — **not** `sessionStartedAt` re-query. Overlap re-queries return duplicate rows at provider; dedup skips enqueue; DB `skipDuplicates` is crash-safety net.
+
+| Metric | Before correction | After correction |
+|--------|-------------------|------------------|
 | HF requests/cycle | 1 | 1 |
-| Typical historical window | `(wallClockNow - 2s) - sessionStart` | `(minFieldCommitted - 2s) - sessionStart` |
-| Expected repeated rows | Low (dedup flagged but persisted) | Overlap re-queries; **dedup skips enqueue** |
-| Dedup cost | O(rows) Set lookup | Same |
-| DB writes | Duplicates persisted | Duplicates not enqueued |
-
-Overlap is bounded by `HF_QUERY_OVERLAP_MS` (2s), not unbounded re-query.
+| Silent field pins FROM to session start | **YES** (bug) | **NO** |
+| Crash retry duplicate physical rows | **Possible** | **Prevented** (DB unique) |
+| Dedup authority | In-memory Set | **Database** (+ Set optimization) |
 
 ---
 
@@ -164,9 +200,12 @@ Overlap is bounded by `HF_QUERY_OVERLAP_MS` (2s), not unbounded re-query.
 ```bash
 cd backend
 npm test -- --testPathPattern=reference-capture-hf-watermark-policy
+npm test -- --testPathPattern=reference-capture-hf-durable-idempotency
+npm test -- --testPathPattern=reference-capture-observation.repository.idempotency
 npm test -- --testPathPattern=reference-capture
 npm run build
 npx tsc --noEmit
+npx prisma validate
 ```
 
 RD001 fixture: `reference-capture-hf-watermark-policy.spec.ts` describe block **L**.

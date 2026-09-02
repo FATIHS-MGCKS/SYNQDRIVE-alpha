@@ -40,18 +40,20 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.1030',
     title: 'Phase 3A.3.2 — HF watermark + aggregate bucket identity remediation',
     summary: [
-      'Per-field committed HF watermarks (hfWatermarkByField) replace wall-clock hfWatermarkAt advance.',
-      'Query FROM = min(per-field committed provider ts) - 2s overlap (HF_QUERY_OVERLAP_MS).',
-      'Watermark advances only after successful observation flush (post-persist commit).',
-      'Aggregate bucket fingerprint: field + canonical bucket ts + interval + aggregation (no value).',
-      'HF dedup skips enqueue for repeated buckets; IMMUTABLE_FIRST_SEEN corrected-value policy.',
-      'RD001 regression fixture: 39 DEFINITELY_EXCLUDED buckets recoverable under new model.',
+      'Per-field committed HF data watermarks (hfWatermarkByField); separate query coverage cursors (hfQueryCoverageByField).',
+      'Durable physical idempotency: PostgreSQL unique (session_id, physical_sample_fingerprint) + appendManyIdempotent skipDuplicates.',
+      'Watermark advances only from durably represented bucket identities after flushIdempotent().',
+      'V2 aggregate bucket fingerprint: field + canonical bucket ts + executed interval + aggregation (no value).',
+      'HF_PHYSICAL_IDENTITY_VERSION: AGGREGATE_BUCKET_V2 (new sessions); LEGACY_VALUE_V1 for active legacy sessions.',
+      'PROVIDER_BUCKET_REVISION observations for revised provider values (IMMUTABLE_FIRST_SEEN).',
+      'MULTI_SURFACE_IDENTITY_SCOPE: HF_HISTORICAL-scoped; LATEST surfaces do not share physical fingerprint.',
+      'Crash/partial-batch/state-commit-failure retry tests; RD001 39-exclusion regression preserved.',
       'PHASE_3A3_2_CODE_READY=YES; production canary with 3A.3.1 still required before RD002.',
     ],
     reason:
-      'RD001 proved wall-clock HF watermark permanently excluded 39 late aggregate buckets; value-inclusive fingerprint created false distinct identities.',
+      'RD001 proved wall-clock HF watermark excluded 39 late buckets; correction pass closes durable idempotency gap and unbounded silent-field query window.',
     previousBehavior:
-      'hfWatermarkAt = requestStartedAt always; duplicates flagged but persisted; fingerprint included normalizedValue.',
+      'In-memory fingerprint dedup only; silent HF fields pinned query FROM to session start; value-inclusive fingerprint; hfWatermarkAt = requestStartedAt.',
     details:
       'docs/audits/dimo-phase-3a32-hf-watermark-aggregate-identity-remediation-2026-09-02.md; architecture/DIMO_LTE_R1_PHASE_3A32_HF_WATERMARK_AGGREGATE_IDENTITY_2026-09-02.md; DI-EV-0021.',
     affectsArchitecture: true,

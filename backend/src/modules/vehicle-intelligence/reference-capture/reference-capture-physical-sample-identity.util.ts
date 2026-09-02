@@ -5,10 +5,21 @@ import {
   HF_REQUESTED_INTERVAL,
 } from './reference-capture-hf-watermark-policy';
 
+export const HF_PHYSICAL_IDENTITY_VERSION = {
+  LEGACY_VALUE_V1: 'LEGACY_VALUE_V1',
+  AGGREGATE_BUCKET_V2: 'AGGREGATE_BUCKET_V2',
+} as const;
+
+export type HfPhysicalIdentityVersion =
+  (typeof HF_PHYSICAL_IDENTITY_VERSION)[keyof typeof HF_PHYSICAL_IDENTITY_VERSION];
+
 export type PhysicalSampleIdentityInput = {
   providerField: string;
   providerTimestamp: string | null;
   normalizedValue: unknown;
+  interval?: string;
+  aggregation?: string;
+  identityVersion?: HfPhysicalIdentityVersion;
 };
 
 export type AggregateBucketIdentityInput = {
@@ -16,23 +27,27 @@ export type AggregateBucketIdentityInput = {
   providerTimestamp: string | null;
   interval?: string;
   aggregation?: string;
+  identityVersion?: HfPhysicalIdentityVersion;
 };
 
 /**
- * Canonical aggregate bucket identity — field + bucket timestamp + aggregation contract.
+ * Canonical aggregate bucket identity — version + field + bucket timestamp + aggregation contract.
  * Does NOT include normalizedValue (value revisions are payload, not identity).
  */
 export function buildAggregateBucketFingerprint(input: AggregateBucketIdentityInput): string {
+  const version = input.identityVersion ?? HF_PHYSICAL_IDENTITY_VERSION.AGGREGATE_BUCKET_V2;
   const ts = input.providerTimestamp ? canonicalizeBucketTimestamp(input.providerTimestamp) : '';
-  const interval = input.interval ?? HF_REQUESTED_INTERVAL;
-  const aggregation = input.aggregation ?? HF_AGGREGATION_TYPE;
   return createHash('sha256')
-    .update([input.providerField, ts, interval, aggregation].join('|'))
+    .update([version, input.providerField, ts, input.interval, input.aggregation].join('|'))
     .digest('hex');
 }
 
-/** @deprecated Use buildAggregateBucketFingerprint — value-inclusive legacy fingerprint. */
-export function buildLegacyValueInclusiveFingerprint(input: PhysicalSampleIdentityInput): string {
+/** @deprecated LEGACY_VALUE_V1 — value-inclusive fingerprint for forensic comparison only. */
+export function buildLegacyValueInclusiveFingerprint(input: {
+  providerField: string;
+  providerTimestamp: string | null;
+  normalizedValue: unknown;
+}): string {
   const ts = input.providerTimestamp ?? '';
   const value =
     input.normalizedValue === undefined || input.normalizedValue === null
@@ -44,11 +59,14 @@ export function buildLegacyValueInclusiveFingerprint(input: PhysicalSampleIdenti
   return createHash('sha256').update([input.providerField, ts, value].join('|')).digest('hex');
 }
 
-/** Stable identity of a persisted HF_HISTORICAL aggregate bucket. */
+/** Stable identity of a persisted HF_HISTORICAL aggregate bucket (executed query contract). */
 export function buildPhysicalSampleFingerprint(input: PhysicalSampleIdentityInput): string {
   return buildAggregateBucketFingerprint({
     providerField: input.providerField,
     providerTimestamp: input.providerTimestamp,
+    interval: input.interval ?? HF_REQUESTED_INTERVAL,
+    aggregation: input.aggregation ?? HF_AGGREGATION_TYPE,
+    identityVersion: input.identityVersion ?? HF_PHYSICAL_IDENTITY_VERSION.AGGREGATE_BUCKET_V2,
   });
 }
 
@@ -69,4 +87,14 @@ export function collapseToUniquePhysicalSamples<T extends HfRetrievalObservation
     unique.push(obs);
   }
   return unique;
+}
+
+export function resolveHfPhysicalIdentityVersion(
+  state: { hfPhysicalIdentityVersion?: HfPhysicalIdentityVersion; seenPhysicalSampleFingerprints?: string[] },
+): HfPhysicalIdentityVersion {
+  if (state.hfPhysicalIdentityVersion) return state.hfPhysicalIdentityVersion;
+  if (state.seenPhysicalSampleFingerprints?.length) {
+    return HF_PHYSICAL_IDENTITY_VERSION.LEGACY_VALUE_V1;
+  }
+  return HF_PHYSICAL_IDENTITY_VERSION.AGGREGATE_BUCKET_V2;
 }

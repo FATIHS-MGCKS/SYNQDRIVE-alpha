@@ -55,8 +55,12 @@ describe('Reference Capture integration (Phase 3A.1 correction)', () => {
       const writer = {
         createCaptureCycleId: () => 'cycle-a',
         createRequestCorrelationId: () => 'req-a',
-        enqueueAndMaybeFlush: jest.fn().mockResolvedValue({ flushed: 0, pending: 1 }),
+        enqueueAndMaybeFlush: jest.fn().mockResolvedValue({ flushed: 0, pending: 1, inserted: 0 }),
         flush: jest.fn().mockResolvedValue(1),
+        flushIdempotent: jest.fn().mockResolvedValue({ attempted: 1, inserted: 1, durablyRepresentedFingerprints: [] }),
+      };
+      const observationRepository = {
+        findPhysicalSamplesByFingerprints: jest.fn().mockResolvedValue(new Map()),
       };
       const sessionRepo = {
         findById: jest.fn().mockResolvedValue({
@@ -104,6 +108,7 @@ describe('Reference Capture integration (Phase 3A.1 correction)', () => {
         dimoAuth as never,
         dimoTelemetry as never,
         writer as never,
+        observationRepository as never,
         sessionRepo as never,
       );
 
@@ -328,7 +333,7 @@ describe('Reference Capture integration (Phase 3A.1 correction)', () => {
         getMaxPendingObservations: () => 10,
       };
       const repo = {
-        appendMany: jest
+        appendManyIdempotent: jest
           .fn()
           .mockRejectedValueOnce(new Error('db down'))
           .mockRejectedValueOnce(new Error('db down'))
@@ -355,7 +360,7 @@ describe('Reference Capture integration (Phase 3A.1 correction)', () => {
         ReferenceCapturePersistenceError,
       );
       expect(writer.getPendingCount('s1')).toBe(2);
-      expect(repo.appendMany).toHaveBeenCalledTimes(3);
+      expect(repo.appendManyIdempotent).toHaveBeenCalledTimes(3);
     });
   });
 });

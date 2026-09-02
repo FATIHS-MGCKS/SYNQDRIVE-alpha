@@ -121,6 +121,8 @@ describe('Reference Capture correction 2', () => {
           providerField: field,
           providerTimestamp: ts,
           normalizedValue: value,
+          interval: '1s',
+          aggregation: 'AVG',
         });
         return {
           physicalSampleFingerprint,
@@ -141,11 +143,15 @@ describe('Reference Capture correction 2', () => {
         providerField: 'speed',
         providerTimestamp: '2026-08-31T10:00:02.000Z',
         normalizedValue: 10,
+        interval: '1s',
+        aggregation: 'AVG',
       });
       const revised = buildPhysicalSampleFingerprint({
         providerField: 'speed',
         providerTimestamp: '2026-08-31T10:00:02.000Z',
         normalizedValue: 99,
+        interval: '1s',
+        aggregation: 'AVG',
       });
       expect(first).toBe(revised);
     });

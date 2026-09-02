@@ -13,17 +13,25 @@ import {
   REFERENCE_CAPTURE_SEQUENCE_SCOPE,
 } from './reference-capture.constants';
 import { buildRawIdentity } from './reference-capture.contract';
+import { bucketValuesEqual, hashNormalizedBucketValue } from './reference-capture-bucket-value.util';
 import { buildProviderEventFingerprint } from './reference-capture-event-identity.util';
-import { buildPhysicalSampleFingerprint } from './reference-capture-physical-sample-identity.util';
 import {
+  buildPhysicalSampleFingerprint,
+  HF_PHYSICAL_IDENTITY_VERSION,
+  resolveHfPhysicalIdentityVersion,
+} from './reference-capture-physical-sample-identity.util';
+import {
+  advanceHfQueryCoverageAfterQuery,
   advanceHfWatermarksAfterPersistedBuckets,
   computeHfQueryFrom,
   computeHfQueryTo,
+  HF_AGGREGATION_TYPE,
   HF_QUERY_OVERLAP_MS,
   HF_REQUESTED_INTERVAL,
   normalizeHfCommittedWatermarkState,
   shouldAdvanceHfWatermark,
 } from './reference-capture-hf-watermark-policy';
+import { ReferenceCaptureObservationRepository } from './reference-capture-observation.repository';
 import { resolveCanonicalKeyForProviderField } from './reference-capture-manifest.loader';
 import {
   buildBroadReferenceEventsQuery,
@@ -69,6 +77,20 @@ function extractRawScalar(value: unknown): unknown {
   return value;
 }
 
+function dedupeBucketsByFieldTimestamp(
+  buckets: Array<{ providerField: string; providerTimestamp: string }>,
+): Array<{ providerField: string; providerTimestamp: string }> {
+  const seen = new Set<string>();
+  const unique: Array<{ providerField: string; providerTimestamp: string }> = [];
+  for (const bucket of buckets) {
+    const key = `${bucket.providerField}|${bucket.providerTimestamp}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(bucket);
+  }
+  return unique;
+}
+
 @Injectable()
 export class ReferenceCaptureAcquisitionService {
   private readonly logger = new Logger(ReferenceCaptureAcquisitionService.name);
@@ -78,6 +100,7 @@ export class ReferenceCaptureAcquisitionService {
     private readonly dimoAuth: DimoAuthService,
     private readonly dimoTelemetry: DimoTelemetryService,
     private readonly observationWriter: ReferenceCaptureObservationWriterService,
+    private readonly observationRepository: ReferenceCaptureObservationRepository,
     private readonly sessionRepository: ReferenceCaptureSessionRepository,
   ) {}
 
@@ -141,10 +164,15 @@ export class ReferenceCaptureAcquisitionService {
     let hfWatermarkState = normalizeHfCommittedWatermarkState({
       hfWatermarkAt: state.hfWatermarkAt,
       hfWatermarkByField: state.hfWatermarkByField,
+      hfQueryCoverageByField: state.hfQueryCoverageByField,
     });
-    const hfBucketsPendingWatermarkCommit: Array<{ providerField: string; providerTimestamp: string }> =
+    const hfIdentityVersion = resolveHfPhysicalIdentityVersion(state);
+    const durableBucketsForWatermark: Array<{ providerField: string; providerTimestamp: string }> =
       [];
     const newPhysicalSampleFingerprints: string[] = [];
+    let hfQueryCoverageFields: string[] = [];
+    let hfQueryCompletedAt: string | null = null;
+    let hfBucketByFingerprint = new Map<string, { providerField: string; providerTimestamp: string }>();
 
     const fieldLookup = new Map(
       input.preflight.broadObservationFields.map((f) => [f.providerField, f]),
@@ -198,26 +226,45 @@ export class ReferenceCaptureAcquisitionService {
           captureCycleId,
           fieldLookup,
           hfWatermarkState,
+          hfIdentityVersion,
           sessionStartedAt: session.startedAt ?? new Date(),
           sequenceStart: sequenceNumber,
-          seenPhysicalSampleFingerprints: [
-            ...(state.seenPhysicalSampleFingerprints ?? []),
-            ...newPhysicalSampleFingerprints,
-          ],
+          cycleSeenFingerprints:
+            hfIdentityVersion === HF_PHYSICAL_IDENTITY_VERSION.LEGACY_VALUE_V1
+              ? [...(state.seenPhysicalSampleFingerprints ?? []), ...newPhysicalSampleFingerprints]
+              : newPhysicalSampleFingerprints,
         });
         sequenceNumber = hfResult.nextSequenceNumber;
         signalPoints += hfResult.points;
-        hfBucketsPendingWatermarkCommit.push(...hfResult.newlyPersistedBuckets);
+        durableBucketsForWatermark.push(...hfResult.durableBucketsForWatermark);
         newPhysicalSampleFingerprints.push(...hfResult.newPhysicalSampleFingerprints);
+        hfQueryCoverageFields = hfResult.queryCoverageFields;
+        hfQueryCompletedAt = hfResult.queryCompletedAt;
+        hfBucketByFingerprint = hfResult.bucketByFingerprint;
       }
     }
 
-    const flushed = await this.observationWriter.flush(input.sessionId);
+    const flushResult = await this.observationWriter.flushIdempotent(input.sessionId);
 
-    if (shouldAdvanceHfWatermark(hfBucketsPendingWatermarkCommit.length)) {
+    for (const fp of flushResult.durablyRepresentedFingerprints) {
+      const bucket = hfBucketByFingerprint.get(fp);
+      if (bucket) durableBucketsForWatermark.push(bucket);
+    }
+
+    const uniqueDurableBuckets = dedupeBucketsByFieldTimestamp(durableBucketsForWatermark);
+
+    if (shouldAdvanceHfWatermark(uniqueDurableBuckets.length)) {
       hfWatermarkState = advanceHfWatermarksAfterPersistedBuckets(
         hfWatermarkState,
-        hfBucketsPendingWatermarkCommit,
+        uniqueDurableBuckets,
+      );
+    }
+
+    if (hfQueryCoverageFields.length > 0 && hfQueryCompletedAt) {
+      hfWatermarkState = advanceHfQueryCoverageAfterQuery(
+        hfWatermarkState,
+        hfQueryCoverageFields,
+        hfQueryCompletedAt,
       );
     }
 
@@ -226,6 +273,8 @@ export class ReferenceCaptureAcquisitionService {
       lastCycleAt: new Date().toISOString(),
       hfWatermarkAt: hfWatermarkState.hfWatermarkAt,
       hfWatermarkByField: hfWatermarkState.hfWatermarkByField,
+      hfQueryCoverageByField: hfWatermarkState.hfQueryCoverageByField,
+      hfPhysicalIdentityVersion: hfIdentityVersion,
       eventWatermarkAt: state.eventWatermarkAt,
       seenEventFingerprints: state.seenEventFingerprints.slice(-5000),
       seenPhysicalSampleFingerprints: [
@@ -255,7 +304,7 @@ export class ReferenceCaptureAcquisitionService {
       nativeEvents,
       newEventIdentities,
       duplicateEventRetrievals,
-      flushed,
+      flushed: flushResult.attempted,
       surfacesExecuted: cyclePlan.surfaces.map((s) => s.surface),
       skippedConcurrentCycle: false,
     };
@@ -356,14 +405,18 @@ export class ReferenceCaptureAcquisitionService {
     captureCycleId: string;
     fieldLookup: Map<string, ReferenceCapturePreflightResult['broadObservationFields'][number]>;
     hfWatermarkState: ReturnType<typeof normalizeHfCommittedWatermarkState>;
+    hfIdentityVersion: ReturnType<typeof resolveHfPhysicalIdentityVersion>;
     sessionStartedAt: Date;
     sequenceStart: number;
-    seenPhysicalSampleFingerprints: string[];
+    cycleSeenFingerprints: string[];
   }): Promise<{
     points: number;
     nextSequenceNumber: number;
-    newlyPersistedBuckets: Array<{ providerField: string; providerTimestamp: string }>;
+    durableBucketsForWatermark: Array<{ providerField: string; providerTimestamp: string }>;
     newPhysicalSampleFingerprints: string[];
+    bucketByFingerprint: Map<string, { providerField: string; providerTimestamp: string }>;
+    queryCoverageFields: string[];
+    queryCompletedAt: string;
   }> {
     const requestStartedAt = new Date();
     const from = computeHfQueryFrom(
@@ -372,6 +425,7 @@ export class ReferenceCaptureAcquisitionService {
       args.surfacePlan.providerFields,
     );
     const requestedInterval = args.surfacePlan.requestedInterval ?? HF_REQUESTED_INTERVAL;
+    const aggregation = HF_AGGREGATION_TYPE;
     const query = buildBroadReferenceHistoricalSignalsQuery(
       args.tokenId,
       args.surfacePlan.providerFields,
@@ -379,14 +433,16 @@ export class ReferenceCaptureAcquisitionService {
       requestStartedAt,
       requestedInterval,
     );
-    if (!query) {
-      return {
-        points: 0,
-        nextSequenceNumber: args.sequenceStart,
-        newlyPersistedBuckets: [],
-        newPhysicalSampleFingerprints: [],
-      };
-    }
+    const emptyResult = {
+      points: 0,
+      nextSequenceNumber: args.sequenceStart,
+      durableBucketsForWatermark: [] as Array<{ providerField: string; providerTimestamp: string }>,
+      newPhysicalSampleFingerprints: [] as string[],
+      bucketByFingerprint: new Map<string, { providerField: string; providerTimestamp: string }>(),
+      queryCoverageFields: args.surfacePlan.providerFields,
+      queryCompletedAt: requestStartedAt.toISOString(),
+    };
+    if (!query) return emptyResult;
 
     const requestCorrelationId = this.observationWriter.createRequestCorrelationId();
     const timed = await this.dimoTelemetry.queryGraphQLWithIngressTiming(
@@ -402,10 +458,22 @@ export class ReferenceCaptureAcquisitionService {
     let sequenceNumber = args.sequenceStart;
     let points = 0;
     let duplicateSkipped = 0;
-    let valueRevisionSkipped = 0;
-    const seenPhysical = new Set(args.seenPhysicalSampleFingerprints);
-    const newlyPersistedBuckets: Array<{ providerField: string; providerTimestamp: string }> = [];
+    let providerRevisionObservations = 0;
+    const cycleSeen = new Map<string, { valueHash: string; normalizedValue: unknown }>();
+    const durableBucketsForWatermark: Array<{ providerField: string; providerTimestamp: string }> = [];
     const newPhysicalSampleFingerprints: string[] = [];
+    const bucketByFingerprint = new Map<string, { providerField: string; providerTimestamp: string }>();
+
+    type HfCandidate = {
+      providerField: string;
+      providerTimestampIso: string;
+      providerTimestamp: Date;
+      rawPayload: unknown;
+      normalizedValue: unknown;
+      physicalSampleFingerprint: string;
+      valueHash: string;
+    };
+    const candidates: HfCandidate[] = [];
 
     for (const row of rows) {
       const providerTimestamp = extractProviderTimestamp(row);
@@ -417,87 +485,257 @@ export class ReferenceCaptureAcquisitionService {
         const rawPayload = row[providerField];
         if (rawPayload == null) continue;
 
-        const field = args.fieldLookup.get(providerField);
         const normalizedValue = rawPayload;
         const physicalSampleFingerprint = buildPhysicalSampleFingerprint({
           providerField,
           providerTimestamp: providerTimestampIso,
           normalizedValue,
+          interval: requestedInterval,
+          aggregation,
+          identityVersion: args.hfIdentityVersion,
         });
-        const duplicateRetrieval = seenPhysical.has(physicalSampleFingerprint);
-        if (duplicateRetrieval) {
-          duplicateSkipped += 1;
-          continue;
-        }
-
-        seenPhysical.add(physicalSampleFingerprint);
-        newPhysicalSampleFingerprints.push(physicalSampleFingerprint);
-        newlyPersistedBuckets.push({ providerField, providerTimestamp: providerTimestampIso });
-
-        sequenceNumber += 1;
-        points += 1;
-
-        await this.observationWriter.enqueueAndMaybeFlush(
-          args.input.sessionId,
-          args.input.organizationId,
-          args.input.vehicleId,
-          {
-            envelopeVersion: REFERENCE_CAPTURE_ENVELOPE_VERSION,
-            observationKind: ReferenceCaptureObservationKind.SIGNAL_POINT,
-            provider: REFERENCE_CAPTURE_PROVIDER,
-            connectionProfile: REFERENCE_CAPTURE_CONNECTION_PROFILE,
-            powertrainProfile: args.input.powertrainProfile,
-            providerField,
-            canonicalKey: field?.canonicalKey ?? resolveCanonicalKeyForProviderField(providerField),
-            rawIdentity: field?.rawIdentity ?? buildRawIdentity(providerField),
-            acquisitionSurface: 'HF_HISTORICAL',
-            acquisitionTier: 'T5',
-            temporalClass: field?.temporalClass ?? null,
-            rawValue: rawPayload,
-            normalizedValue,
-            providerTimestamp: providerTimestamp ?? extractProviderTimestamp({ timestamp: row.timestamp }),
-            synqReceivedAt: timed.timing.synqReceivedAt,
-            acquisitionRequestedAt: timed.timing.acquisitionRequestedAt,
-            httpRequestStartedAt: timed.timing.httpRequestStartedAt,
-            httpResponseReceivedAt: timed.timing.httpResponseReceivedAt,
-            requestStartedAt: timed.requestStartedAt,
-            requestCompletedAt: timed.requestCompletedAt,
-            processingCompletedAt: timed.timing.processingCompletedAt,
-            requestCorrelationId,
-            captureCycleId: args.captureCycleId,
-            sequenceNumber,
-            physicalSampleFingerprint,
-            provenance: {
-              manifestVersion: args.input.manifestVersion,
-              captureSessionId: args.input.sessionId,
-              requestedInterval,
-              requestedCadenceMs: args.surfacePlan.requestedCadenceMs,
-              hfWindowFrom: from.toISOString(),
-              hfWindowTo: queryTo.toISOString(),
-              sequenceScope: REFERENCE_CAPTURE_SEQUENCE_SCOPE,
-              aggregateBucketIdentity: physicalSampleFingerprint,
-              hfRetrievalObservation: true,
-              duplicateRetrieval: false,
-              correctedValuePolicy: 'IMMUTABLE_FIRST_SEEN',
-              valueRevisionSkipped,
-            },
-          },
-        );
+        candidates.push({
+          providerField,
+          providerTimestampIso,
+          providerTimestamp: providerTimestamp ?? new Date(providerTimestampIso),
+          rawPayload,
+          normalizedValue,
+          physicalSampleFingerprint,
+          valueHash: hashNormalizedBucketValue(normalizedValue),
+        });
+        bucketByFingerprint.set(physicalSampleFingerprint, {
+          providerField,
+          providerTimestamp: providerTimestampIso,
+        });
       }
     }
 
-    if (duplicateSkipped > 0) {
+    const candidateFingerprints = [...new Set(candidates.map((c) => c.physicalSampleFingerprint))];
+    const existingInDb = await this.observationRepository.findPhysicalSamplesByFingerprints(
+      args.input.sessionId,
+      candidateFingerprints,
+    );
+
+    for (const fp of args.cycleSeenFingerprints) {
+      cycleSeen.set(fp, { valueHash: '', normalizedValue: null });
+    }
+
+    for (const candidate of candidates) {
+      const field = args.fieldLookup.get(candidate.providerField);
+      const bucket = {
+        providerField: candidate.providerField,
+        providerTimestamp: candidate.providerTimestampIso,
+      };
+
+      const existingRow = existingInDb.get(candidate.physicalSampleFingerprint);
+      if (existingRow) {
+        durableBucketsForWatermark.push(bucket);
+        if (!bucketValuesEqual(existingRow.normalizedValueJson, candidate.normalizedValue)) {
+          providerRevisionObservations += 1;
+          sequenceNumber += 1;
+          await this.enqueueProviderBucketRevisionObservation({
+            input: args.input,
+            captureCycleId: args.captureCycleId,
+            sequenceNumber,
+            requestCorrelationId,
+            timed,
+            candidate,
+            requestedInterval,
+            aggregation,
+            from,
+            queryTo,
+            firstSeenValue: existingRow.normalizedValueJson,
+            surfacePlan: args.surfacePlan,
+            field,
+          });
+        }
+        duplicateSkipped += 1;
+        continue;
+      }
+
+      if (cycleSeen.has(candidate.physicalSampleFingerprint)) {
+        const prior = cycleSeen.get(candidate.physicalSampleFingerprint)!;
+        if (prior.valueHash && prior.valueHash !== candidate.valueHash) {
+          providerRevisionObservations += 1;
+          sequenceNumber += 1;
+          await this.enqueueProviderBucketRevisionObservation({
+            input: args.input,
+            captureCycleId: args.captureCycleId,
+            sequenceNumber,
+            requestCorrelationId,
+            timed,
+            candidate,
+            requestedInterval,
+            aggregation,
+            from,
+            queryTo,
+            firstSeenValue: prior.normalizedValue,
+            surfacePlan: args.surfacePlan,
+            field,
+          });
+        }
+        duplicateSkipped += 1;
+        continue;
+      }
+
+      cycleSeen.set(candidate.physicalSampleFingerprint, {
+        valueHash: candidate.valueHash,
+        normalizedValue: candidate.normalizedValue,
+      });
+      newPhysicalSampleFingerprints.push(candidate.physicalSampleFingerprint);
+
+      sequenceNumber += 1;
+      points += 1;
+
+      await this.observationWriter.enqueueAndMaybeFlush(
+        args.input.sessionId,
+        args.input.organizationId,
+        args.input.vehicleId,
+        {
+          envelopeVersion: REFERENCE_CAPTURE_ENVELOPE_VERSION,
+          observationKind: ReferenceCaptureObservationKind.SIGNAL_POINT,
+          provider: REFERENCE_CAPTURE_PROVIDER,
+          connectionProfile: REFERENCE_CAPTURE_CONNECTION_PROFILE,
+          powertrainProfile: args.input.powertrainProfile,
+          providerField: candidate.providerField,
+          canonicalKey:
+            field?.canonicalKey ?? resolveCanonicalKeyForProviderField(candidate.providerField),
+          rawIdentity: field?.rawIdentity ?? buildRawIdentity(candidate.providerField),
+          acquisitionSurface: 'HF_HISTORICAL',
+          acquisitionTier: 'T5',
+          temporalClass: field?.temporalClass ?? null,
+          rawValue: candidate.rawPayload,
+          normalizedValue: candidate.normalizedValue,
+          providerTimestamp: candidate.providerTimestamp,
+          synqReceivedAt: timed.timing.synqReceivedAt,
+          acquisitionRequestedAt: timed.timing.acquisitionRequestedAt,
+          httpRequestStartedAt: timed.timing.httpRequestStartedAt,
+          httpResponseReceivedAt: timed.timing.httpResponseReceivedAt,
+          requestStartedAt: timed.requestStartedAt,
+          requestCompletedAt: timed.requestCompletedAt,
+          processingCompletedAt: timed.timing.processingCompletedAt,
+          requestCorrelationId,
+          captureCycleId: args.captureCycleId,
+          sequenceNumber,
+          physicalSampleFingerprint: candidate.physicalSampleFingerprint,
+          provenance: {
+            manifestVersion: args.input.manifestVersion,
+            captureSessionId: args.input.sessionId,
+            requestedInterval,
+            requestedAggregation: aggregation,
+            hfPhysicalIdentityVersion: args.hfIdentityVersion,
+            requestedCadenceMs: args.surfacePlan.requestedCadenceMs,
+            hfWindowFrom: from.toISOString(),
+            hfWindowTo: queryTo.toISOString(),
+            sequenceScope: REFERENCE_CAPTURE_SEQUENCE_SCOPE,
+            aggregateBucketIdentity: candidate.physicalSampleFingerprint,
+            hfRetrievalObservation: true,
+            duplicateRetrieval: false,
+            correctedValuePolicy: 'IMMUTABLE_FIRST_SEEN',
+          },
+        },
+      );
+    }
+
+    if (duplicateSkipped > 0 || providerRevisionObservations > 0) {
       this.logger.debug(
-        `HF dedup skipped ${duplicateSkipped} duplicate aggregate buckets session=${args.input.sessionId}`,
+        `HF dedup session=${args.input.sessionId} duplicates=${duplicateSkipped} providerRevisions=${providerRevisionObservations}`,
       );
     }
 
     return {
       points,
       nextSequenceNumber: sequenceNumber,
-      newlyPersistedBuckets,
+      durableBucketsForWatermark,
       newPhysicalSampleFingerprints,
+      bucketByFingerprint,
+      queryCoverageFields: args.surfacePlan.providerFields,
+      queryCompletedAt: queryTo.toISOString(),
     };
+  }
+
+  private async enqueueProviderBucketRevisionObservation(args: {
+    input: AcquisitionCycleInput;
+    captureCycleId: string;
+    sequenceNumber: number;
+    requestCorrelationId: string;
+    timed: {
+      timing: {
+        synqReceivedAt: Date;
+        acquisitionRequestedAt: Date;
+        httpRequestStartedAt: Date;
+        httpResponseReceivedAt: Date;
+        processingCompletedAt: Date;
+      };
+      requestStartedAt: Date;
+      requestCompletedAt: Date;
+    };
+    candidate: {
+      providerField: string;
+      providerTimestamp: Date;
+      normalizedValue: unknown;
+      physicalSampleFingerprint: string;
+      valueHash: string;
+    };
+    requestedInterval: string;
+    aggregation: string;
+    from: Date;
+    queryTo: Date;
+    firstSeenValue: unknown;
+    surfacePlan: ReferenceCaptureSurfacePlan;
+    field: ReferenceCapturePreflightResult['broadObservationFields'][number] | undefined;
+  }): Promise<void> {
+    await this.observationWriter.enqueueAndMaybeFlush(
+      args.input.sessionId,
+      args.input.organizationId,
+      args.input.vehicleId,
+      {
+        envelopeVersion: REFERENCE_CAPTURE_ENVELOPE_VERSION,
+        observationKind: ReferenceCaptureObservationKind.SIGNAL_POINT,
+        provider: REFERENCE_CAPTURE_PROVIDER,
+        connectionProfile: REFERENCE_CAPTURE_CONNECTION_PROFILE,
+        powertrainProfile: args.input.powertrainProfile,
+        providerField: args.candidate.providerField,
+        canonicalKey:
+          args.field?.canonicalKey ??
+          resolveCanonicalKeyForProviderField(args.candidate.providerField),
+        rawIdentity: args.field?.rawIdentity ?? buildRawIdentity(args.candidate.providerField),
+        acquisitionSurface: 'HF_HISTORICAL',
+        acquisitionTier: 'T5',
+        temporalClass: args.field?.temporalClass ?? null,
+        rawValue: args.candidate.normalizedValue,
+        normalizedValue: args.candidate.normalizedValue,
+        providerTimestamp: args.candidate.providerTimestamp,
+        synqReceivedAt: args.timed.timing.synqReceivedAt,
+        acquisitionRequestedAt: args.timed.timing.acquisitionRequestedAt,
+        httpRequestStartedAt: args.timed.timing.httpRequestStartedAt,
+        httpResponseReceivedAt: args.timed.timing.httpResponseReceivedAt,
+        requestStartedAt: args.timed.requestStartedAt,
+        requestCompletedAt: args.timed.requestCompletedAt,
+        processingCompletedAt: args.timed.timing.processingCompletedAt,
+        requestCorrelationId: args.requestCorrelationId,
+        captureCycleId: args.captureCycleId,
+        sequenceNumber: args.sequenceNumber,
+        physicalSampleFingerprint: null,
+        provenance: {
+          observationType: 'PROVIDER_BUCKET_REVISION',
+          manifestVersion: args.input.manifestVersion,
+          captureSessionId: args.input.sessionId,
+          bucketIdentity: args.candidate.physicalSampleFingerprint,
+          correctedValuePolicy: 'IMMUTABLE_FIRST_SEEN',
+          firstSeenValue: args.firstSeenValue,
+          firstSeenValueHash: hashNormalizedBucketValue(args.firstSeenValue),
+          revisedValue: args.candidate.normalizedValue,
+          revisedValueHash: args.candidate.valueHash,
+          requestedInterval: args.requestedInterval,
+          requestedAggregation: args.aggregation,
+          hfWindowFrom: args.from.toISOString(),
+          hfWindowTo: args.queryTo.toISOString(),
+          requestedCadenceMs: args.surfacePlan.requestedCadenceMs,
+          sequenceScope: REFERENCE_CAPTURE_SEQUENCE_SCOPE,
+        },
+      },
+    );
   }
 
   private async captureNativeEvents(args: {
