@@ -34,7 +34,7 @@ Phase 3A.3.2 remediates two Reference Capture telemetry-integrity defects discov
 | `HF_WATERMARK_REMEDIATION_REQUIRED` | **IMPLEMENTED** (code) |
 | `PHYSICAL_SAMPLE_FINGERPRINT_REMEDIATION_REQUIRED` | **IMPLEMENTED** (code) |
 | `PHASE_3A3_2_CODE_READY` | **YES** |
-| `PHASE_3A3_2_PRODUCTION_VALIDATED` | **NO** |
+| `PHASE_3A3_2_PRODUCTION_VALIDATED` | **NO** (stationary canary — see DI-EV-0022) |
 | `READY_FOR_RD002` | **NO** |
 
 ---

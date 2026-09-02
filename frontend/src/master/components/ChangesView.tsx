@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-phase-3a3-production-canary-2026-09-02',
+    version: '4.9.1031',
+    title: 'Phase 3A.3 — Combined production cutover + stationary canary',
+    summary: [
+      'Pre-migration safety gate passed; migration 20260902103000_reference_capture_physical_sample_unique applied.',
+      'Production deploy bf1be9b6b (3A.3.1 + 3A.3.2 code); unique index refcap_obs_session_physical_fp_uq valid.',
+      'Runner STARTING/RECORDING race fixed (82f3d9c5c): enqueue cycle only after RECORDING transition.',
+      'PRE-ARM + HTTP FAST GO production canary on WOB L 7503: READY_TO_DRIVE in 1321ms (≤15s).',
+      '6 autonomous cycles, 82 SIGNAL_POINT observations, AGGREGATE_BUCKET_V2, clean STOP.',
+      'HF_HISTORICAL=0 (stationary/stale telemetry) — 3A.3.2 motion HF canary still required.',
+      'PHASE_3A3_1_PRODUCTION_VALIDATED=YES; PHASE_3A3_2_PRODUCTION_VALIDATED=NO; RD002 blocked.',
+    ],
+    reason: 'Authorized combined 3A.3 production cutover after safety gate; validate FAST GO and migration under live runtime.',
+    previousBehavior: 'Production on pre-3A.3 SHA; migration not applied; FAST GO untested in production.',
+    details: 'docs/audits/dimo-phase-3a3-production-canary-2026-09-02.md; DI-EV-0022.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T10:45:00.000Z',
+  },
+  {
     id: 'dimo-phase-3a32-hf-watermark-aggregate-identity-2026-09-02',
     version: '4.9.1030',
     title: 'Phase 3A.3.2 — HF watermark + aggregate bucket identity remediation',
@@ -52,7 +72,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Legacy V1 hash forensic-only; active legacy sessions fail closed — new sessions V2 only.',
       'PRODUCTION_PRE_MIGRATION_DUPLICATE_AUDIT required before deploy.',
       'Crash/partial-batch/state-commit-failure retry tests; RD001 39-exclusion regression preserved.',
-      'PHASE_3A3_2_CODE_READY=YES; production canary with 3A.3.1 still required before RD002.',
+      'PHASE_3A3_2_CODE_READY=YES; migration applied 2026-09-02; motion HF production canary pending before RD002.',
     ],
     reason:
       'RD001 proved wall-clock HF watermark excluded 39 late buckets; correction pass closes durable idempotency gap and unbounded silent-field query window.',
@@ -77,9 +97,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'STATE_MACHINE_COMPENSATION_OWNERSHIP: start failure rollback STARTING→READY via CAS only; cannot resurrect ABORTED.',
       'SIGNAL_POINT-only persistence gate; PROBE_RESULT/SEGMENT/NATIVE_EVENT are diagnostics only.',
       'Configurable prearm freshness REFERENCE_CAPTURE_PREARM_MAX_AGE_MS (default 15 min).',
-      'Session view operational block: cycleCount, runnerJobId, pendingCycleJobId for GO polling.',
-    ],
-    reason: 'RD001 703.987s operator wait — ARM workflow reliability defect.',
+      'PHASE_3A3_1_PRODUCTION_VALIDATED=YES (DI-EV-0022 FAST GO 1321ms); 3A.3.2 motion HF pending.',
     previousBehavior: 'Single ARM script bootstrapped full Nest and blocked operator for minutes before trustworthy GO.',
     details:
       'docs/audits/dimo-phase-3a31-fast-prearm-go-remediation-2026-09-02.md; architecture/DIMO_LTE_R1_PHASE_3A31_FAST_PREARM_GO_2026-09-02.md; DI-EV-0020.',
