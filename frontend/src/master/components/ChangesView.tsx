@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-phase-3a3-reference-drive-001-aggregation-semantics-2026-09-01',
+    version: '4.9.1026',
+    title: 'Phase 3A.3 — RD001 HF aggregation semantics correction',
+    summary: [
+      'DIMO signals(interval:"1s", agg:AVG) confirmed as 1s aggregation buckets anchored to query from — not raw LTE_R1 physical samples.',
+      'Prior 225 post-hoc-only physical sample claim INVALIDATED_BY_AGGREGATION_GRID_MISMATCH (300s chunk grid mismatch).',
+      'Exact-window replay of 13 original HF requests: 137 new aggregate buckets, 15 removed, 0 changed values — HF_LATE_ARRIVAL_AGGREGATE_BUCKET=CONFIRMED_FROM_RUNTIME.',
+      '151s gap reclassified PROVIDER_DATA_GAP inside single aggregation response; upstream data stall after ~19:14 CONFIRMED_FROM_RUNTIME.',
+      'physicalSampleFingerprint documented as aggregate bucket semantic debt; PHYSICAL_SAMPLE_FINGERPRINT_REMEDIATION_REQUIRED=YES.',
+    ],
+    reason: 'Aggregation semantics correction on PR #1502 before merge; sealed raw export unchanged.',
+    previousBehavior: 'HF forensic treated signals() rows as physical samples; chunked post-hoc compare used mismatched bucket grids.',
+    details:
+      'architecture/DIMO_LTE_R1_RD001_HF_AGGREGATION_SEMANTICS_2026-09-01.md; reference-capture-drive-001-hf-exact-window-replay.ts; DI-EV-0016–0019 updated in place.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T03:20:00.000Z',
+  },
+  {
     id: 'dimo-phase-3a3-reference-drive-001-hf-completeness-forensic-2026-09-01',
     version: '4.9.1025',
     title: 'Phase 3A.3 — Reference Drive #001 HF completeness / late-arrival forensic audit',

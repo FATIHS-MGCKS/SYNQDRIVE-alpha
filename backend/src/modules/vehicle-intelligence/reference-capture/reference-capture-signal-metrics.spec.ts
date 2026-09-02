@@ -1,7 +1,9 @@
 import {
   ACQUISITION_SURFACES,
   analyzeSignalGroup,
+  auditFingerprintSemantics,
   classifyBrakeEvidence,
+  classifyMaxGap,
   classifySignalDynamics,
   computeProviderCadence,
   detectOutOfOrder,
@@ -111,5 +113,38 @@ describe('reference-capture-signal-metrics', () => {
       row({ sequenceNumber: 2, providerTimestamp: '2026-01-01T00:00:02.000Z' }),
     ]);
     expect(rows.map((r) => r.sequenceNumber)).toEqual([1, 2, 3]);
+  });
+
+  it('classifies large in-window HF gaps as PROVIDER_DATA_GAP', () => {
+    const providerTimestamps = [
+      Date.parse('2026-09-01T19:08:00.000Z'),
+      Date.parse('2026-09-01T19:09:35.252Z'),
+      Date.parse('2026-09-01T19:12:06.252Z'),
+      Date.parse('2026-09-01T19:13:00.000Z'),
+    ];
+    const classification = classifyMaxGap({
+      gapSeconds: 151,
+      surface: 'HF_HISTORICAL',
+      field: 'speed',
+      gapIndex: 2,
+      totalUniqueTimestamps: providerTimestamps.length,
+      sessionStartedAtMs: Date.parse('2026-09-01T19:00:43.252Z'),
+      firstAcquisitionMs: Date.parse('2026-09-01T19:12:27.239Z'),
+      providerTimestamps,
+    });
+    expect(classification).toBe('PROVIDER_DATA_GAP');
+  });
+
+  it('documents HF_HISTORICAL fingerprints as aggregate bucket identity', () => {
+    const hf = row({
+      acquisitionSurface: 'HF_HISTORICAL',
+      physicalSampleFingerprint: 'abc123',
+      providerTimestamp: '2026-09-01T19:01:30.252Z',
+      rawValueJson: 42.5,
+    });
+    const audit = auditFingerprintSemantics([hf]);
+    expect(audit.observationTypeForHfHistorical).toBe('HF_AGGREGATE_BUCKET_OBSERVATION');
+    expect(audit.uniqueAggregateBucketFingerprintsHfHistorical).toBe(1);
+    expect(audit.note).toContain('aggregate buckets');
   });
 });

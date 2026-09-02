@@ -20,6 +20,7 @@ export type SignalMetricsObsRow = {
 export type GapClassification =
   | 'BOUNDARY_GAP'
   | 'PROVIDER_GAP'
+  | 'PROVIDER_DATA_GAP'
   | 'RETRIEVAL_GAP'
   | 'UNKNOWN_GAP';
 
@@ -335,20 +336,12 @@ export function classifyMaxGap(params: {
   if (firstAcquisitionMs != null && providerTimestamps[gapIndex] != null) {
     const ts = providerTimestamps[gapIndex];
     if (ts < firstAcquisitionMs - 60_000) return 'BOUNDARY_GAP';
-    const tsBefore = providerTimestamps[gapIndex - 1];
-    if (
-      tsBefore != null &&
-      tsBefore < firstAcquisitionMs &&
-      ts <= firstAcquisitionMs + 120_000 &&
-      gapSeconds >= 60
-    ) {
-      return 'BOUNDARY_GAP';
-    }
   }
   if (sessionStartedAtMs != null && providerTimestamps[gapIndex] != null) {
     const ts = providerTimestamps[gapIndex];
     if (Math.abs(ts - sessionStartedAtMs) < 120_000) return 'BOUNDARY_GAP';
   }
+  if (gapSeconds >= 60) return 'PROVIDER_DATA_GAP';
   if (gapSeconds >= 30) return 'PROVIDER_GAP';
   if (gapSeconds >= 10) return 'UNKNOWN_GAP';
   return 'RETRIEVAL_GAP';
@@ -494,12 +487,19 @@ export function auditFingerprintSemantics(rows: SignalMetricsObsRow[]) {
   }
   const allFps = signalRows.map((r) => r.physicalSampleFingerprint).filter(Boolean) as string[];
   const uniqueAll = new Set(allFps);
+  const hfRows = signalRows.filter((r) => r.acquisitionSurface === 'HF_HISTORICAL');
+  const hfFps = new Set(hfRows.map((r) => r.physicalSampleFingerprint).filter(Boolean) as string[]);
   return {
-    note: 'physicalSampleFingerprint is populated on HF_HISTORICAL rows in RD001; not a global all-surface unique-physical-sample count unless coverage is complete.',
+    note:
+      'physicalSampleFingerprint is a persisted field name with semantic debt on HF_HISTORICAL: it fingerprints DIMO aggregate buckets (field + bucket-start timestamp + AVG), not proven raw LTE_R1 physical source samples.',
+    observationTypeForHfHistorical: 'HF_AGGREGATE_BUCKET_OBSERVATION',
+    aggregateBucketFingerprintField: 'physicalSampleFingerprint',
+    futureRemediation: 'aggregateBucketFingerprint distinct from rawPhysicalSampleFingerprint before physics calibration',
     fingerprintEligibleRows: signalRows.length,
     fingerprintedRows: allFps.length,
     fingerprintCoverageRate: signalRows.length ? allFps.length / signalRows.length : null,
-    uniqueFingerprintsAllSurfaces: uniqueAll.size,
+    uniqueAggregateBucketFingerprintsAllSurfaces: uniqueAll.size,
+    uniqueAggregateBucketFingerprintsHfHistorical: hfFps.size,
     duplicateFingerprintRetrievals: allFps.length - uniqueAll.size,
     bySurface,
   };

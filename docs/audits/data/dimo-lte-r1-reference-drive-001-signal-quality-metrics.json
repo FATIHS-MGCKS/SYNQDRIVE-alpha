@@ -1,8 +1,25 @@
 {
   "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_001",
   "sessionId": "06638509-6213-419b-9df4-3def6c024f41",
-  "generatedAt": "2026-09-01T22:08:00.177Z",
-  "methodologyVersion": "2026-09-01-corrected",
+  "generatedAt": "2026-09-02T03:29:52.860Z",
+  "methodologyVersion": "2026-09-01-aggregation-semantics-corrected",
+  "hfAggregationSemantics": {
+    "HF_AGGREGATION_SEMANTICS": "CONFIRMED_FROM_CODE_AND_PROVIDER_SOURCE",
+    "dimoHistoricalSurface": "DIMO_AGGREGATED_HISTORICAL_1S",
+    "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+    "aggregator": "AVG",
+    "interval": "1s",
+    "bucketTimestampMeaning": "INTERVAL_START_ANCHORED_TO_QUERY_FROM",
+    "cadenceHierarchy": {
+      "DEVICE_RAW_SAMPLE_CADENCE": "UNKNOWN",
+      "DIMO_INGESTED_SOURCE_CADENCE": "UNKNOWN",
+      "DIMO_AGGREGATE_BUCKET_CADENCE": "PARTIALLY_OBSERVED",
+      "SYNQDRIVE_RETRIEVAL_CADENCE": "OBSERVED"
+    },
+    "dimoHistoricalNonemptyBucketCadenceP50Seconds": 2,
+    "priorPhysicalSampleClaimsInvalidated": true,
+    "prior225PosthocClaim": "INVALIDATED_BY_AGGREGATION_GRID_MISMATCH"
+  },
   "sealedRawExport": {
     "path": "/tmp/rd001-observations.jsonl",
     "sha256": "f8e3097e28899d7a2cbdd269b266c16e5cf3eed69be810aba4e1247ec9a65bbd",
@@ -60,11 +77,15 @@
     }
   },
   "fingerprintAudit": {
-    "note": "physicalSampleFingerprint is populated on HF_HISTORICAL rows in RD001; not a global all-surface unique-physical-sample count unless coverage is complete.",
+    "note": "physicalSampleFingerprint is a persisted field name with semantic debt on HF_HISTORICAL: it fingerprints DIMO aggregate buckets (field + bucket-start timestamp + AVG), not proven raw LTE_R1 physical source samples.",
+    "observationTypeForHfHistorical": "HF_AGGREGATE_BUCKET_OBSERVATION",
+    "aggregateBucketFingerprintField": "physicalSampleFingerprint",
+    "futureRemediation": "aggregateBucketFingerprint distinct from rawPhysicalSampleFingerprint before physics calibration",
     "fingerprintEligibleRows": 3451,
     "fingerprintedRows": 1333,
     "fingerprintCoverageRate": 0.38626485076789335,
-    "uniqueFingerprintsAllSurfaces": 1333,
+    "uniqueAggregateBucketFingerprintsAllSurfaces": 1333,
+    "uniqueAggregateBucketFingerprintsHfHistorical": 1333,
     "duplicateFingerprintRetrievals": 0,
     "bySurface": {
       "LATEST_LIVE": {
@@ -282,7 +303,7 @@
           "uniqueFingerprints": 280,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "BOUNDARY_GAP",
+        "maxGapClassification": "PROVIDER_DATA_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {
@@ -510,7 +531,7 @@
           "uniqueFingerprints": 265,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "BOUNDARY_GAP",
+        "maxGapClassification": "PROVIDER_DATA_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {
@@ -738,7 +759,7 @@
           "uniqueFingerprints": 239,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "BOUNDARY_GAP",
+        "maxGapClassification": "PROVIDER_DATA_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 11,
           "deltaTSeconds": {
@@ -966,7 +987,7 @@
           "uniqueFingerprints": 269,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "BOUNDARY_GAP",
+        "maxGapClassification": "PROVIDER_DATA_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {
@@ -1194,7 +1215,7 @@
           "uniqueFingerprints": 280,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "BOUNDARY_GAP",
+        "maxGapClassification": "PROVIDER_DATA_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {
@@ -4271,7 +4292,7 @@
         "uniqueFingerprints": 280,
         "duplicateFingerprintRetrievals": 0
       },
-      "maxGapClassification": "BOUNDARY_GAP",
+      "maxGapClassification": "PROVIDER_DATA_GAP",
       "retrievalCadenceByRequestStartedAt": {
         "sampleCount": 238,
         "deltaTSeconds": {
@@ -4381,7 +4402,7 @@
         "uniqueFingerprints": 265,
         "duplicateFingerprintRetrievals": 0
       },
-      "maxGapClassification": "BOUNDARY_GAP",
+      "maxGapClassification": "PROVIDER_DATA_GAP",
       "retrievalCadenceByRequestStartedAt": {
         "sampleCount": 238,
         "deltaTSeconds": {
@@ -4491,7 +4512,7 @@
         "uniqueFingerprints": 239,
         "duplicateFingerprintRetrievals": 0
       },
-      "maxGapClassification": "BOUNDARY_GAP",
+      "maxGapClassification": "PROVIDER_DATA_GAP",
       "retrievalCadenceByRequestStartedAt": {
         "sampleCount": 237,
         "deltaTSeconds": {
@@ -4601,7 +4622,7 @@
         "uniqueFingerprints": 269,
         "duplicateFingerprintRetrievals": 0
       },
-      "maxGapClassification": "BOUNDARY_GAP",
+      "maxGapClassification": "PROVIDER_DATA_GAP",
       "retrievalCadenceByRequestStartedAt": {
         "sampleCount": 238,
         "deltaTSeconds": {
@@ -4711,7 +4732,7 @@
         "uniqueFingerprints": 280,
         "duplicateFingerprintRetrievals": 0
       },
-      "maxGapClassification": "BOUNDARY_GAP",
+      "maxGapClassification": "PROVIDER_DATA_GAP",
       "retrievalCadenceByRequestStartedAt": {
         "sampleCount": 238,
         "deltaTSeconds": {
@@ -7685,7 +7706,7 @@
           "uniqueFingerprints": 280,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "BOUNDARY_GAP",
+        "maxGapClassification": "PROVIDER_DATA_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {
@@ -7795,7 +7816,7 @@
           "uniqueFingerprints": 280,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "BOUNDARY_GAP",
+        "maxGapClassification": "PROVIDER_DATA_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {
@@ -7905,7 +7926,7 @@
           "uniqueFingerprints": 239,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "BOUNDARY_GAP",
+        "maxGapClassification": "PROVIDER_DATA_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 11,
           "deltaTSeconds": {
@@ -8015,7 +8036,7 @@
           "uniqueFingerprints": 269,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "BOUNDARY_GAP",
+        "maxGapClassification": "PROVIDER_DATA_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {
@@ -8125,7 +8146,7 @@
           "uniqueFingerprints": 265,
           "duplicateFingerprintRetrievals": 0
         },
-        "maxGapClassification": "BOUNDARY_GAP",
+        "maxGapClassification": "PROVIDER_DATA_GAP",
         "retrievalCadenceByRequestStartedAt": {
           "sampleCount": 12,
           "deltaTSeconds": {

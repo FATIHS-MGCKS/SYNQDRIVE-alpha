@@ -196,20 +196,20 @@
   "verdict": {
     "HF_LATE_ARRIVAL_WATERMARK_SKIP_activeWindow": "CONFIRMED_FROM_RUNTIME",
     "HF_LATE_ARRIVAL_WATERMARK_SKIP_post1914SessionWindow": "NOT_CONFIRMED_FROM_RD001",
-    "HF_LATE_ARRIVAL_WATERMARK_SKIP": "CONFIRMED_FROM_RUNTIME",
+    "HF_LATE_ARRIVAL_WATERMARK_SKIP": "INVALIDATED_BY_AGGREGATION_GRID_MISMATCH",
     "HF_LATE_ARRIVAL_WATERMARK_SKIP_codeRisk": "CONFIRMED_FROM_CODE_RISK",
     "RD001_HF_COMPLETENESS": "INCOMPLETE",
-    "whyNoHfRowsAfter1914": "Post-hoc DIMO signals() returns 0 rows for 2026-09-01T19:15:43Z→19:34:52Z; LATEST provider timestamps frozen at ~19:14:03 while synq polling continued to 19:34:48",
-    "note": "225 post-hoc-only physical samples now exist vs sealed RD001 (mostly 19:12:24→19:14:02); provider empty after 19:15"
+    "whyNoHfRowsAfter1914": "Post-hoc DIMO signals() returns 0 rows for 2026-09-01T19:15:43Z\u219219:34:52Z; LATEST provider timestamps frozen at ~19:14:03 while synq polling continued to 19:34:48",
+    "note": "Chunked 300s post-hoc compare used mismatched aggregation bucket grids; do not use for physical-sample or watermark-skip conclusions."
   },
   "gapForensics151s": {
     "timestampBeforeGap": "2026-09-01T19:09:35.252Z",
     "timestampAfterGap": "2026-09-01T19:12:06.252Z",
     "gapSeconds": 151,
-    "occursWithinSingleBulkWindow": "2026-09-01T19:00:43.252Z → 2026-09-01T19:12:27.500Z",
+    "occursWithinSingleBulkWindow": "2026-09-01T19:00:43.252Z \u2192 2026-09-01T19:12:27.500Z",
     "classification": "BOUNDARY_GAP",
     "priorIncorrectClassification": "PROVIDER_GAP",
-    "rationale": "ARM startup/recovery boundary inside first bulk HF backfill window — not continuous-motion dropout"
+    "rationale": "ARM startup/recovery boundary inside first bulk HF backfill window \u2014 not continuous-motion dropout"
   },
   "zeroResultHfRequestObservability": {
     "status": "NOT_PERSISTED_UNKNOWN",
@@ -225,5 +225,8 @@
       "workerId",
       "cycleJobId"
     ]
-  }
+  },
+  "invalidated": true,
+  "invalidationReason": "INVALIDATED_BY_AGGREGATION_GRID_MISMATCH",
+  "supersededBy": "docs/audits/data/dimo-lte-r1-reference-drive-001-hf-exact-window-replay.json"
 }

@@ -333,7 +333,7 @@ async function main(): Promise<void> {
       metadataObservations: metaObs.length,
       uniquePhysicalSamplesNote:
         'Counts unique physicalSampleFingerprint values where populated (RD001: HF_HISTORICAL only, 38.6% row coverage).',
-      uniquePhysicalSamples: fingerprintAudit.uniqueFingerprintsAllSurfaces,
+      uniqueAggregateBucketFingerprints: fingerprintAudit.uniqueAggregateBucketFingerprintsAllSurfaces,
       fingerprintAudit,
       mappedObservations: mapped,
       unmappedObservations: unmapped,
