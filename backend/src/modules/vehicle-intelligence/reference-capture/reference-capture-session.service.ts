@@ -19,11 +19,12 @@ import {
   ReferenceCapturePersistenceError,
 } from './reference-capture-observation-writer.service';
 import { ReferenceCaptureObservationRepository } from './reference-capture-observation.repository';
-import { ReferenceCaptureSessionRepository } from './reference-capture-session.repository';
+import { ReferenceCaptureSessionRepository, parseAcquisitionState } from './reference-capture-session.repository';
 import { ReferenceCaptureReadinessService } from './reference-capture-readiness.service';
 import { ReferenceCaptureRunnerService } from './reference-capture-runner.service';
 import type {
   CreateReferenceCaptureSessionInput,
+  ReferenceCaptureOperationalSnapshot,
   ReferenceCapturePreflightResult,
   ReferenceCaptureReadinessReport,
   ReferenceCaptureSessionView,
@@ -451,6 +452,18 @@ export class ReferenceCaptureSessionService {
     preflight: ReferenceCapturePreflightResult | null,
     readiness: ReferenceCaptureReadinessReport | null,
   ): ReferenceCaptureSessionView {
+    const acquisitionState = parseAcquisitionState(
+      'acquisitionStateJson' in session ? session.acquisitionStateJson : null,
+    );
+    const operational: ReferenceCaptureOperationalSnapshot = {
+      cycleCount: acquisitionState.cycleCount ?? 0,
+      runnerJobId: 'runnerJobId' in session ? (session.runnerJobId as string | null) : null,
+      pendingCycleJobId:
+        'pendingCycleJobId' in session ? (session.pendingCycleJobId as string | null) : null,
+      preflightAssessedAt: readiness?.assessedAt ?? null,
+      activeCycleJobId: acquisitionState.activeCycleJobId ?? null,
+    };
+
     return {
       id: session.id,
       organizationId: session.organizationId,
@@ -472,6 +485,7 @@ export class ReferenceCaptureSessionService {
       completedAt: session.completedAt,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
+      operational,
     };
   }
 }

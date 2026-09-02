@@ -43,12 +43,13 @@
 | DI-EV-0017 | Phase 3A.3 | B — Machine-readable | `docs/audits/data/dimo-lte-r1-reference-drive-001-session-summary.json` | 2026-09-01 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `06638509-…` | CONFIRMED_FROM_RUNTIME | — | — | Session inventory, capture windows, aggregation semantics maturity, compact acquisition-state summaries |
 | DI-EV-0018 | Phase 3A.3 | B — Machine-readable | `docs/audits/data/dimo-lte-r1-reference-drive-001-signal-quality-metrics.json` (+ CSV) | 2026-09-01 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `06638509-…` | CONFIRMED_FROM_VEHICLE_OBSERVATION | — | — | Per-field/surface metrics; nonempty bucket cadence; 151s PROVIDER_DATA_GAP; dynamics PROVISIONAL |
 | DI-EV-0019 | Phase 3A.3 | C — Ground Truth index | `docs/audits/dimo-lte-r1-reference-drive-001-ground-truth-evidence-index-2026-09-01.md` | 2026-09-01 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_001` | REJECTED | — | — | Negative evidence: VIDEO_NOT_CAPTURED; GT alignment impossible for #001 |
+| DI-EV-0020 | Phase 3A.3.1 | A + D | `docs/audits/dimo-phase-3a31-fast-prearm-go-remediation-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | — | — | CONFIRMED_FROM_CODE | — | — | FAST PRE-ARM/GO workflow split; PRE-ARM→READY; FAST GO via production HTTP; 15s first-cycle gate |
 
 ---
 
 ## Entry count
 
-**19** registry entries (Phases 1, 2A–2F.1, 3A.1, 3A.2, 3A.3 RD001, governance).
+**20** registry entries (Phases 1, 2A–2F.1, 3A.1, 3A.2, 3A.3 RD001, 3A.3.1, governance).
 
 ---
 
@@ -56,7 +57,8 @@
 
 | Planned ID | Phase | Artifact | Status |
 |------------|-------|----------|--------|
-| DI-EV-0020+ | Reference Drive 002 | Capture report + GT-aligned metrics | NOT_STARTED |
+| DI-EV-0021 | Phase 3A.3.1 canary | Production FAST GO canary evidence | NOT_STARTED |
+| DI-EV-0022+ | Reference Drive 002 | Capture report + GT-aligned metrics | NOT_STARTED |
 
 ---
 

@@ -908,11 +908,20 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 **HF completeness forensic (2026-09-02):** `RD001_HF_COMPLETENESS_FORENSIC=COMPLETE` — timestamp-canonicalized exact-window replay: **122** late aggregate buckets; **39** field×bucket `DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK` (**8** unique bucket-start timestamps); `HF_LATE_ARRIVAL_RUNTIME_SKIP=CONFIRMED_FROM_RUNTIME`; closed-bucket availability lag lower-bound P50 ≈ **1.49 s**; bucket-level differential artifact in Git; `DEVICE_RAW_SAMPLE_CADENCE=UNKNOWN`.
 
 ### Phase 3A.3.1 — FAST PRE-ARM / GO workflow remediation
-**Status:** **REQUIRED BEFORE RD002** (not started)
+**Status:** **CODE READY** (2026-09-02) · **production canary NOT STARTED**
 
 **Problem:** RD001 ARM path bootstrapped full Nest context; owner waited ~704 s before first acquisition while session was already `RECORDING`.
 
-`ARM_WORKFLOW_REMEDIATION_REQUIRED=YES`
+`ARM_WORKFLOW_REMEDIATION_REQUIRED=YES` (code implemented; runtime validation pending)
+
+**Implemented:**
+- **PRE-ARM:** `reference-capture-lte-r1-prearm.ts` → session `READY` without runner/recording
+- **FAST GO:** `reference-capture-lte-r1-fast-go.ts` → authenticated production HTTP `POST .../start`; no Nest bootstrap on GO path
+- **Freshness:** `REFERENCE_CAPTURE_PREARM_MAX_AGE_MS` (default 15 min)
+- **Hard gate:** `REFERENCE_CAPTURE_FAST_GO_FIRST_CYCLE_TIMEOUT_MS` (default 15 s) → abort on timeout
+- **Audit:** `docs/audits/dimo-phase-3a31-fast-prearm-go-remediation-2026-09-02.md` (DI-EV-0020)
+
+`PHASE_3A3_1_CODE_READY=YES` · `PHASE_3A3_1_PRODUCTION_VALIDATED=NO`
 
 ### Phase 3A.3.2 — HF watermark + aggregate fingerprint remediation
 **Status:** **REQUIRED BEFORE RD002** (not started)
@@ -932,12 +941,12 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 
 | Step | Requirement | Status |
 |------|-------------|--------|
-| A | `PHASE_3A3_1_FAST_PREARM_GO_REMEDIATION` implemented + verified | NOT STARTED |
+| A | `PHASE_3A3_1_FAST_PREARM_GO_REMEDIATION` implemented + verified | CODE READY (canary pending) |
 | B | `HF_WATERMARK_LATE_ARRIVAL_REMEDIATION` + `aggregateBucketFingerprint` terminology remediation | NOT STARTED |
 | C | Production/runtime canary proving A + B | NOT STARTED |
 | D | `DIMO_LTE_R1_REFERENCE_DRIVE_002` with video Ground Truth | NOT STARTED |
 
-**Target design for 3A.3.1 (proposal only — not implemented):**
+**Target design for 3A.3.1 (implemented — DI-EV-0020):**
 - **PRE-ARM:** health + create session + preflight → `READY` before owner needs GO.
 - **FAST GO:** `START` against existing `READY` session via production API/service — avoid second Nest bootstrap for GO only.
 - **Hard gate:** if first autonomous cycle not confirmed within ~10–15 s, return `READY_TO_DRIVE=NO` — do not silently recover for 12+ minutes.
@@ -1377,7 +1386,7 @@ After the first instrumented `DIMO_LTE_R1` reference drive, require at minimum:
 | RD001 metrics correction | **COMPLETE** (`RD001_METRICS_CORRECTION`) |
 | RD001 HF completeness forensic | **COMPLETE** (`RD001_HF_COMPLETENESS_FORENSIC`) |
 | Reference Drive #001 Ground Truth | **NOT_AVAILABLE** (video not captured) |
-| Phase 3A.3.1 FAST PRE-ARM/GO | **REQUIRED BEFORE RD002** (not started) |
+| Phase 3A.3.1 FAST PRE-ARM/GO | **CODE READY** (2026-09-02) — production canary pending |
 | Phase 3A.3.2 HF watermark + fingerprint remediation | **REQUIRED BEFORE RD002** (not started) |
 | Production canary (3A.3.1 + 3A.3.2) | **REQUIRED BEFORE RD002** (not started) |
 | Reference Drive #002 (video GT) | **BLOCKED** — gate A+B+C not satisfied |

@@ -49,6 +49,14 @@ export class ReferenceCaptureConfig {
     return this.configService.get<number>('referenceCapture.transientRetryBaseDelayMs') ?? 2000;
   }
 
+  getPrearmMaxAgeMs(): number {
+    return this.configService.get<number>('referenceCapture.prearmMaxAgeMs') ?? 15 * 60 * 1000;
+  }
+
+  getFastGoFirstCycleTimeoutMs(): number {
+    return this.configService.get<number>('referenceCapture.fastGoFirstCycleTimeoutMs') ?? 15_000;
+  }
+
   /** Hard invariant: reference capture must never affect live trip FSM. */
   isTripDetectionAffected(): boolean {
     return false;

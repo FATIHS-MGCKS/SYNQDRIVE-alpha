@@ -23,6 +23,12 @@ export const REFERENCE_CAPTURE_MAX_DURATION_MS_ENV = 'REFERENCE_CAPTURE_MAX_DURA
 export const REFERENCE_CAPTURE_SLOW_CYCLE_EVERY_ENV = 'REFERENCE_CAPTURE_SLOW_CYCLE_EVERY';
 export const REFERENCE_CAPTURE_RETENTION_SCHEDULER_ENABLED_ENV =
   'REFERENCE_CAPTURE_RETENTION_SCHEDULER_ENABLED';
+export const REFERENCE_CAPTURE_PREARM_MAX_AGE_MS_ENV = 'REFERENCE_CAPTURE_PREARM_MAX_AGE_MS';
+export const REFERENCE_CAPTURE_FAST_GO_FIRST_CYCLE_TIMEOUT_MS_ENV =
+  'REFERENCE_CAPTURE_FAST_GO_FIRST_CYCLE_TIMEOUT_MS';
+
+const DEFAULT_PREARM_MAX_AGE_MS = 15 * 60 * 1000;
+const DEFAULT_FAST_GO_FIRST_CYCLE_TIMEOUT_MS = 15_000;
 
 export default registerAs('referenceCapture', () => ({
   /** Master gate — default off. Never affects production trip FSM or schedulers. */
@@ -51,6 +57,16 @@ export default registerAs('referenceCapture', () => ({
   transientRetryBaseDelayMs: parseIntEnv(
     process.env.REFERENCE_CAPTURE_TRANSIENT_RETRY_BASE_DELAY_MS,
     2000,
+  ),
+  /** Maximum age of a READY pre-arm session before FAST GO must re-run PRE-ARM. */
+  prearmMaxAgeMs: parseIntEnv(
+    process.env[REFERENCE_CAPTURE_PREARM_MAX_AGE_MS_ENV],
+    DEFAULT_PREARM_MAX_AGE_MS,
+  ),
+  /** Hard operator budget: first autonomous cycle must complete within this window. */
+  fastGoFirstCycleTimeoutMs: parseIntEnv(
+    process.env[REFERENCE_CAPTURE_FAST_GO_FIRST_CYCLE_TIMEOUT_MS_ENV],
+    DEFAULT_FAST_GO_FIRST_CYCLE_TIMEOUT_MS,
   ),
   /** Estimated PostgreSQL storage multiplier over logical JSON envelope size. */
   postgresStorageMultiplier: 2.5,
