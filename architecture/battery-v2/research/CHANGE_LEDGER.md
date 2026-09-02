@@ -16,6 +16,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-02 — PKG-02 PostgreSQL contract alignment (PR #1513)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Reconciliation SQL accepted fractional/string publicationVersion before LIMIT while reader requires integer canonical version; `jsonb_array_length` on legacy epochAssessmentIds; malformed lastAttemptAt test contradicted query semantics (excluded repairable carriers). |
+| **CHANGE** | SQL publicationVersion parity via `to_jsonb(LV_PUBLICATION_CONTRACT_VERSION)`; removed `jsonb_array_length`; lastAttemptAt treated as fairness metadata (NULLS FIRST, repairable); gated postgres fixtures for version/epoch/lastAttemptAt + starvation stress. |
+| **WHY** | Pre-LIMIT SQL contract must be at least as strict as `readPublicationHandoffFromAssessmentSummary`; query must not abort on non-array epochAssessmentIds. |
+| **VALIDATION** | PKG-02 focused 20 passed (6 postgres skipped); PKG-01/stage-1 99 passed; lifecycle 6 passed; graph validator PASS; tsc PASS |
+| **NON_EFFECTS** | No deploy; no migration; D4/D5 semantics unchanged |
+| **REMAINING_GAPS** | PRODUCTION_VALIDATED; POSTGRES_SMOKE = NOT_EXECUTED |
+| **DECISION_STATUS** | PKG-02 IMPLEMENTED — not PRODUCTION_VALIDATED |
+
 ## CL-2026-09-02 — PKG-02 liveness/graph correction pass (PR #1513)
 
 | Field | Content |
