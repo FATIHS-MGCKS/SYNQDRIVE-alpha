@@ -124,6 +124,123 @@ Unsupported profiles remain handled by canonical policy.
 |----------|----------------|
 | `BATTERY_V2_REST_SHADOW_ENABLED` | **TEMPORARY MIGRATION / COMPATIBILITY SCAFFOLD** — do not remove in D3 doc PR |
 | Legacy REST capture code | **TEMPORARY MIGRATION / COMPATIBILITY SCAFFOLD** — do not remove in D3 doc PR |
+| `isLvRestShadowModeActive()` publication-coupled shadow semantics | **TEMPORARY COMPATIBILITY BEHAVIOR** — retired/refactored at M4 (see below) |
+
+## PUBLICATION_EFFECT_ONLY_TARGET_INVARIANT
+
+**Target (post-M4):** `BATTERY_V2_PUBLICATION_ENABLED` is an **effect-boundary gate only**.
+
+When PUBLICATION=OFF in target steady state:
+
+- Canonical V2 REST ingestion **remains active**
+- Canonical assessment handoff **remains active**
+- Canonical assessment **remains active**
+- Customer-visible `BatteryPublication` persistence and downstream publication effects **suppressed**
+
+**Post-M4 PUBLICATION must NOT control:**
+
+- whether canonical V2 REST ingestion runs  
+- whether canonical measurement is classified as “shadow”  
+- measurement quality  
+- evidence eligibility (`evidenceEligible`)  
+- assessment handoff or assessment eligibility  
+- legacy capture selection (legacy no longer exists at M4)
+
+**Post-M4 PUBLICATION may control:**
+
+- publication policy enablement  
+- customer-facing `BatteryPublication` persistence  
+- downstream publication/customer effects
+
+### Current runtime coupling (compatibility-era — NOT target)
+
+**Current runtime is NOT yet effect-only.**
+
+`isLvRestShadowModeActive()` = `REST_SHADOW_ENABLED && !PUBLICATION_ENABLED`
+
+When active (`lv-rest-shadow.policy.ts`):
+
+- `resolveLvRestShadowEvidenceEligible(...)` → `false`  
+- `resolveLvRestShadowPublicationEligible()` → `false`  
+- canonical REST measurement context receives `shadowMode: true`  
+- comments: shadow measurements do not feed canonical health, readiness, alerts, or tasks
+
+Therefore **current** `PUBLICATION` participates in REST shadow semantics, evidence eligibility, publication eligibility, `shadowMode` context, and legacy-rest cutover via `isBatteryV2LegacyRestCaptureEnabled()`.
+
+This coupling is **compatibility-era behavior** — part of the M4 retirement/refactor surface. **Do not claim current runtime already matches the effect-only target.**
+
+## M4_SHADOW_SEMANTICS_RETIREMENT
+
+**M4 cutover precondition (added):** before `REST_SHADOW` is physically removed, runtime must have an evidence-backed replacement/removal of compatibility shadow semantics such that:
+
+```
+PUBLICATION OFF
+  → canonical V2 REST remains normal canonical internal evidence
+  → canonical assessment handoff remains active
+  → canonical assessment remains active
+  → only customer publication is suppressed
+```
+
+No hidden dependency on `REST_SHADOW` or publication-coupled `isLvRestShadowModeActive()` may remain in the canonical V2 measurement/assessment path.
+
+**M4 is NOT authorized by D3 documentation.**
+
+## MIGRATION_DUAL_COMPUTE
+
+**Temporary M1–M3 consequence** when `REST_SHADOW=ON` and `PUBLICATION=OFF`:
+
+- canonical V2 REST = ON  
+- legacy REST capture = ON (`isBatteryV2LegacyRestCaptureEnabled()`)
+
+`BatteryV2SnapshotIngestionService` legacy capture path enqueues `BATTERY_ASSESSMENT_RECOMPUTE` when `restCaptured=true`, using:
+
+```
+inputVersion = capture.capturedAt.getTime()
+```
+
+After PKG-01 implementation, canonical V2 REST will additionally enqueue assessment per D1:
+
+```
+inputVersion = BatteryMeasurement.id
+```
+
+**During M1–M3**, a controlled migration deployment may therefore have **legacy assessment trigger + canonical assessment trigger** for overlapping vehicle/evidence periods.
+
+This is **TEMPORARY MIGRATION DUAL-PRODUCER / DUAL-COMPUTE** — **not** accepted permanent dual authority.
+
+- BullMQ does **not** dedupe these jobs — deterministic identities differ  
+- Assessment persistence idempotency may converge identical evidence fingerprints — does **not** prove zero duplicate compute or zero extra queue load  
+- Different execution timing may produce different evidence fingerprint / assessment input set
+
+**Authority:**
+
+- overlap accepted only during controlled migration/canary  
+- must be observed explicitly in M3  
+- ends at M4 when legacy REST is retired  
+- `IMPLEMENTATION_READY` ≠ `ACTIVATION_READY`  
+- production frequency/impact **UNKNOWN** until measured — not a claimed production incident
+
+### M3 validation dimensions (no invented thresholds)
+
+| Dimension | Purpose |
+|-----------|---------|
+| `LEGACY_ASSESSMENT_TRIGGER_COUNT` | Legacy path assessment enqueue volume |
+| `CANONICAL_ASSESSMENT_TRIGGER_COUNT` | D1 canonical handoff enqueue volume |
+| `OVERLAP / DUPLICATE_COMPUTE_RATE` | Concurrent legacy + canonical assessment execution overlap |
+| `ASSESSMENT_PERSISTENCE_CONVERGENCE` | Whether duplicate triggers converge at persistence layer |
+| `QUEUE / CPU LOAD` | Migration duplicate work cost |
+| `NO_CUSTOMER_PUBLICATION_WHILE_PUBLICATION_OFF` | Customer publication suppressed while internal V2 runs |
+
+## MIGRATION_ACTIVATION_SEMANTICS
+
+**M0–M3 temporary activation:**
+
+- `REST_SHADOW` remains the historical temporary activation scaffold for canonical V2 REST while it still exists  
+- **No** separate assessment-handoff flag (`BATTERY_V2_LV_HANDOFF_ENABLED` rejected)  
+- PKG-01 direct handoff follows **eligible** canonical V2 REST measurements per D1/D2  
+- Legacy-only captures must **not** be mistaken for D1 canonical `measurement.id` handoffs  
+- Reconciliation remains governed by D2 canonical measurement identity  
+- D3 does **not** redefine queue drain behavior
 
 ## MIGRATION_SEQUENCE
 
@@ -149,6 +266,7 @@ Minimum preconditions:
 - D2 contract implemented  
 - D4 assessment-track publication authority resolved  
 - D5 `publicationVersion` authority resolved  
+- **M4 shadow-semantics decoupling** — evidence-backed removal/replacement of `isLvRestShadowModeActive()` publication coupling before REST_SHADOW physical removal  
 - Graph/runtime tests PASS  
 - Appropriate controlled runtime validation completed  
 - **Explicit cutover authorization received**
@@ -217,6 +335,8 @@ Do **not** retain legacy indefinitely solely for hypothetical runtime rollback.
 | Premature M4 cutover before handoffs validated | Explicit preconditions + separate authorization |
 | Confusing current dual-authority with target | CURRENT_VS_TARGET documented separately |
 | HANDOFF flag re-proposed during PKG-01 impl | D3 REJECTED — documented in implementation-packages |
+| Publication-coupled shadow semantics persist post-M4 | M4 precondition requires decoupling before REST_SHADOW removal |
+| M1–M3 dual producer/compute overlap | M3 validation dimensions; ends at M4 legacy retirement |
 
 ## STATUS
 

@@ -135,7 +135,7 @@ BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001 (D3)
     └── refines ──► BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
     └── refines ──► BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
     └── refines ──► BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
-    └── target: V2 core mandatory; PUBLICATION effect gate; REST_SHADOW/legacy temporary; HANDOFF flag rejected
+    └── target: V2 core mandatory; PUBLICATION effect gate at M4; current publication/shadow coupling; REST_SHADOW/legacy temporary; HANDOFF rejected; M1-M3 dual-compute overlap
 ```
 
 ## Still open (use `BAT-V2-GAP-*` — do not invent detail)

@@ -1,7 +1,7 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-02 (D3 single-authority cutover decision)  
-**Graph:** 133 nodes / 119 edges / 11 invariants (validated 2026-09-02)  
+**Snapshot date:** 2026-09-02 (D3 single-authority precision pass)  
+**Graph:** 134 nodes / 119 edges / 11 invariants (validated 2026-09-02)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 3 VALIDATED PKG-01 spec decisions (D1, D2, D3)
 
 ## Executive summary
@@ -11,7 +11,7 @@ Battery V2 authority is substantially reconstructed (Phase 2–3) and Phase 4 de
 - **PKG-01:** **`IMPLEMENTATION_READY`** — D1 (`inputVersion`), D2 (crash-boundary Hybrid C+), D3 (single-authority configuration invariant) all **VALIDATED**. `IMPLEMENTATION_READY` ≠ activation-ready ≠ cutover-ready ≠ `PRODUCTION_VALIDATED`. Runtime implementation requires **separate explicit authorization**. Legacy/REST_SHADOW retirement **not** authorized by PKG-01 readiness.
 - **PKG-02:** **`IMPLEMENTATION_SPEC_REQUIRED`** — remaining blockers: **D4** assessment-track publication authority, **D5** `publicationVersion` authority only.
 
-**Target architecture (D3):** canonical V2 REST + assessment handoff + assessment = mandatory core; `BATTERY_V2_PUBLICATION_ENABLED` = customer effect gate; `REST_SHADOW` + legacy REST = **temporary migration scaffolds** until M4 cutover. `BATTERY_V2_LV_HANDOFF_ENABLED` = **NOT INTRODUCED**.
+**Target architecture (D3):** canonical V2 REST + assessment handoff + assessment = mandatory core; `BATTERY_V2_PUBLICATION_ENABLED` = **target** customer effect gate (current runtime still couples PUBLICATION OFF → `isLvRestShadowModeActive` shadow semantics — M4 retirement surface); `REST_SHADOW` + legacy REST = **temporary migration scaffolds** until M4. `BATTERY_V2_LV_HANDOFF_ENABLED` = **NOT INTRODUCED**. M1–M3 may have temporary legacy + canonical dual assessment triggers.
 
 **Current runtime:** canonical REST still behind `BATTERY_V2_REST_SHADOW_ENABLED`; legacy capture still active per `isBatteryV2LegacyRestCaptureEnabled()`.
 

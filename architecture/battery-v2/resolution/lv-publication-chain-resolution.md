@@ -340,35 +340,10 @@ isBatteryV2LegacyRestCaptureEnabled():
 |-------------|-------------|----------------|--------------------------|-------|
 | OFF | OFF | **ON** | OFF | Default production posture |
 | OFF | ON | **ON** | OFF | Publication flag alone does not enable canonical REST |
-| ON | OFF | **ON** | ON | Dual authority — canonical + legacy both active |
-| ON | ON | **OFF** | ON | Stage-2 cutover — legacy capture disabled |
-
-**Separate dimensions (do not conflate):**
-
-| Dimension | Authority |
-|-----------|-----------|
-| **GLOBAL ENV FLAG** | `BATTERY_V2_*` process.env on deployment/replica |
-| **VEHICLE POLICY ELIGIBILITY** | `resolveForVehicle()` / drive profile / REST policy |
-| **ORG-SCOPED ROLLOUT TARGETING** | **Not identified in current runtime** — no org allowlist for publication/handoff flags |
-
-## LV FEATURE-FLAG STATE MACHINE (current runtime — not target)
-
-Runtime authority (`battery-health-v2.config.ts`):
-
-```typescript
-isBatteryV2LegacyRestCaptureEnabled():
-  if REST_SHADOW == false → legacy capture TRUE
-  if REST_SHADOW == true  → legacy capture = !PUBLICATION_ENABLED
-```
-
-| REST_SHADOW | PUBLICATION | Legacy capture | Canonical REST ingestion | Notes |
-|-------------|-------------|----------------|--------------------------|-------|
-| OFF | OFF | **ON** | OFF | Default production posture |
-| OFF | ON | **ON** | OFF | Publication flag alone does not enable canonical REST |
-| ON | OFF | **ON** | ON | **Dual authority** — canonical + legacy both active |
+| ON | OFF | **ON** | ON | **Dual authority** — canonical + legacy both active; shadow-mode coupling active |
 | ON | ON | **OFF** | ON | Stage-2 cutover posture under current flags |
 
-**Target (post-M4):** REST_SHADOW removed; legacy removed; V2 core always on for eligible vehicles; PUBLICATION=OFF means internal V2 without customer publication.
+**Target (post-M4):** REST_SHADOW removed; legacy removed; V2 core always on for eligible vehicles; PUBLICATION=OFF means internal V2 without customer publication — **effect-only gate**.
 
 **Separate dimensions (do not conflate):**
 
@@ -377,6 +352,17 @@ isBatteryV2LegacyRestCaptureEnabled():
 | **GLOBAL ENV FLAG** | `BATTERY_V2_*` process.env on deployment/replica |
 | **VEHICLE POLICY ELIGIBILITY** | `resolveForVehicle()` / drive profile / REST policy |
 | **ORG-SCOPED ROLLOUT TARGETING** | **Not identified in current runtime** |
+
+### Current PUBLICATION ↔ LV REST shadow coupling (compatibility-era)
+
+**Not target behavior.** When `REST_SHADOW=ON` and `PUBLICATION=OFF`, `isLvRestShadowModeActive()` is true (`lv-rest-shadow.policy.ts`):
+
+- `resolveLvRestShadowEvidenceEligible(...)` → `false`
+- `resolveLvRestShadowPublicationEligible()` → `false`
+- measurement context may include `shadowMode: true`
+- shadow measurements documented as not feeding canonical health, readiness, alerts, or tasks
+
+D3 target: at M4, PUBLICATION becomes **effect-only** — this coupling must be retired/refactored before REST_SHADOW physical removal.
 
 ## CONFIGURATION INVARIANT (VALIDATED D3)
 
@@ -402,8 +388,37 @@ Phase 4 options A–D (`CONFIGURATION_INVARIANT_SPEC_REQUIRED`) are **superseded
 | M0 | Current — legacy + REST_SHADOW scaffold |
 | M1 | PKG-01 implementation (D1/D2/D3) — no legacy/REST_SHADOW removal |
 | M2 | PKG-02 after D4/D5 — publication chain; PUBLICATION OFF where needed |
-| M3 | Validation/soak — no invented PRODUCTION_VALIDATED |
-| M4 | Single-authority cutover — **separate authorization required** |
+| M3 | Validation/soak — dual-producer overlap observation; shadow decoupling **not** required until M4 prep |
+| M4 | Single-authority cutover — **separate authorization required**; shadow semantics decoupled; legacy + REST_SHADOW removed |
+
+### M1–M3 temporary dual-producer / dual-compute
+
+When `REST_SHADOW=ON` and `PUBLICATION=OFF` (common migration posture):
+
+- canonical V2 REST ON + legacy REST capture ON  
+- legacy path: `BatteryV2SnapshotIngestionService` enqueues assessment with `inputVersion = capture.capturedAt.getTime()`  
+- after PKG-01: canonical path enqueues with `inputVersion = BatteryMeasurement.id` (D1)
+
+**Overlapping legacy + canonical assessment triggers** may occur — temporary migration dual-compute, **not** permanent dual authority. BullMQ does not dedupe (different job identities). M3 must quantify overlap/load. Ends at M4.
+
+### M3 migration validation dimensions (no invented thresholds)
+
+| Dimension | Purpose |
+|-----------|---------|
+| `LEGACY_ASSESSMENT_TRIGGER_COUNT` | Legacy assessment enqueue volume |
+| `CANONICAL_ASSESSMENT_TRIGGER_COUNT` | D1 canonical handoff enqueue volume |
+| `OVERLAP / DUPLICATE_COMPUTE_RATE` | Legacy + canonical concurrent assessment overlap |
+| `ASSESSMENT_PERSISTENCE_CONVERGENCE` | Persistence-layer convergence vs duplicate compute |
+| `QUEUE / CPU LOAD` | Migration duplicate work |
+| `NO_CUSTOMER_PUBLICATION_WHILE_PUBLICATION_OFF` | Customer publication suppressed; internal V2 active |
+
+### M0–M3 activation semantics
+
+- `REST_SHADOW` = historical temporary activation scaffold for canonical V2 REST  
+- **No** separate handoff flag (D3 rejected)  
+- PKG-01 handoff follows eligible canonical measurements per D1/D2 only  
+- Legacy captures are **not** D1 `measurement.id` handoffs  
+- Reconciliation per D2 canonical identity
 
 ## HANDOFF FLAG — REJECTED (D3)
 
@@ -413,10 +428,12 @@ Under current runtime, the unsafe trap was: REST_SHADOW=ON + PUBLICATION=ON with
 
 ## TEST PLAN
 
-- Unit: enqueue called once per REST completion (idempotent replay with `assess:` key)
-- Integration: REST → assess → pub with flags ON
-- Negative: flag OFF → no handoff enqueue
-- Reconcile: kill worker after measurement → reconcile recovers
+- Unit: canonical handoff enqueue once per eligible REST completion (idempotent replay with `assess:` key per D1)
+- Integration: REST → assess → pub when publication chain enabled
+- **Migration negatives (no HANDOFF flag):**
+  - current scaffold OFF / no canonical REST completion → no **new** direct canonical REST assessment handoff
+  - `PUBLICATION=OFF` → assessment handoff **still allowed**; customer publication suppressed (current shadow coupling is compatibility-era, not target)
+- Reconcile: kill worker after measurement → reconcile recovers per D2
 - Publication: policy evaluated only in `BatteryPublicationService` (mock/spy)
 
 ## PRODUCTION VALIDATION PLAN
@@ -440,7 +457,7 @@ Do **not** use assessment/publication **row existence** as the sole handoff succ
 | Dimension | Criterion |
 |-----------|-----------|
 | `HANDOFF_ENQUEUE` | Deterministic `BATTERY_ASSESSMENT_RECOMPUTE` job created (`assess:` idempotency key) |
-| `HANDOFF_EXECUTION` | Job executed exactly / idempotently as intended |
+| `HANDOFF_EXECUTION` | Job execution observed under D2 at-least-once + deterministic identity + idempotent persistence semantics — **not** exactly-once |
 | `ASSESSMENT_POLICY_OUTCOME` | `PERSISTED` \| `SKIPPED_INSUFFICIENT_DATA` \| `UNSUPPORTED` \| other explicit policy outcome (`recomputeLvEstimatedHealth()` may return `ok: false` with empty `persistedAssessmentIds`) |
 | `ASSESSMENT_ROW` | Required **only** when assessment policy says an assessment should persist |
 
@@ -477,10 +494,6 @@ Rollback = **deploy previous known-good release** (or explicit release rollback 
 
 See `decisions/lv-single-authority-cutover-decision.md`.
 
-**Explicit:** `HANDOFF OFF` alone is **NOT** a safe Stage-2 rollback while `PUBLICATION` stays ON.
-
-If future flag logic changes (e.g. configuration invariant Option B/C), update this sequence accordingly.
-
 Rollback does **not** delete historical `BatteryPublication` rows — records remain audit-preserved. Supersession may **UPDATE** an existing publication row's `reason` metadata per current `markPublicationSuperseded()` repository behavior. Do **not** describe `BatteryPublication` as strictly append-only.
 
 ## OBSERVABILITY
@@ -500,9 +513,7 @@ Does not enable readiness; does not fix timestamp provenance; does not fix HEV a
 
 - **Canonical publication assessment-track selection authority** (WORKSHOP_OVERRIDE vs TELEMETRY when both publicationEligible) — **D4**
 - Authoritative `publicationVersion` for canonical handoff — **D5**
-- Configuration invariant — **VALIDATED D3** (`BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001`)
 - Exact reconcile cadence vs #1445 reconciliation load
-- Whether handoff flag merges into publication flag after soak
 - Org-scoped rollout targeting (if desired) — **SPEC REQUIRED**; not available via current flags
 
 ## GRAPH IDS

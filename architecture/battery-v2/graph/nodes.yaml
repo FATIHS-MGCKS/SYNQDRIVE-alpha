@@ -266,18 +266,20 @@ nodes:
     epistemic_status: CONFIRMED
     decision_status: VALIDATED
     summary: >
-      Target architecture: canonical V2 REST + assessment handoff + assessment are mandatory core; legacy REST and
-      REST_SHADOW retired at M4 cutover (temporary migration scaffolds until then). BATTERY_V2_LV_HANDOFF_ENABLED NOT
-      INTRODUCED. BATTERY_V2_PUBLICATION_ENABLED retained as customer/publication effect gate. Target state A:
-      PUBLICATION OFF with full internal V2 core; state B: PUBLICATION ON full operation. CURRENT runtime still gates
-      canonical REST behind REST_SHADOW with legacy parallel authority — not rewritten as target. M0-M4 migration sequence;
-      M4 requires explicit cutover authorization. PKG-01 IMPLEMENTATION_READY; PKG-02 config invariant resolved (D4/D5
-      remain). NOT PRODUCTION_VALIDATED; does not authorize cutover.
+      Target architecture: canonical V2 REST + assessment handoff + assessment mandatory core; legacy REST and
+      REST_SHADOW retired at M4 (temporary scaffolds until then). BATTERY_V2_LV_HANDOFF_ENABLED NOT INTRODUCED.
+      BATTERY_V2_PUBLICATION_ENABLED retained as customer/publication effect gate at target — current runtime still
+      couples PUBLICATION OFF to isLvRestShadowModeActive shadow semantics (compatibility-era, M4 retirement surface).
+      M1-M3 temporary dual-producer/dual-compute overlap when REST_SHADOW ON + PUBLICATION OFF. M4 requires shadow
+      semantics decoupling before REST_SHADOW removal. PKG-01 IMPLEMENTATION_READY; PKG-02 D4/D5 remain. NOT
+      PRODUCTION_VALIDATED; does not authorize cutover.
     source_paths:
       - architecture/battery-v2/decisions/lv-single-authority-cutover-decision.md
       - backend/src/config/battery-health-v2.config.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-shadow.policy.ts
     evidence:
       - BAT-V2-EVID-CODE-BATTERY-V2-FLAG-CUTOVER-SEMANTICS-001
+      - BAT-V2-EVID-CODE-LV-REST-PUBLICATION-SHADOW-COUPLING-001
       - BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001
     non_effects:
       - Does not remove legacy REST or REST_SHADOW runtime gate
@@ -1376,6 +1378,20 @@ nodes:
       when REST_SHADOW OFF or when REST_SHADOW ON and PUBLICATION OFF; legacy OFF when both REST_SHADOW and PUBLICATION
       ON. BATTERY_V2_LV_HANDOFF_ENABLED does not exist in runtime. PUBLICATION gates publication persist separately.
     source_paths:
+      - backend/src/config/battery-health-v2.config.ts
+
+  - id: BAT-V2-EVID-CODE-LV-REST-PUBLICATION-SHADOW-COUPLING-001
+    type: evidence
+    title: PUBLICATION OFF couples canonical REST to LV shadow-mode semantics
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      isLvRestShadowModeActive equals REST_SHADOW_ENABLED and not PUBLICATION_ENABLED. When active,
+      resolveLvRestShadowEvidenceEligible returns false, resolveLvRestShadowPublicationEligible returns false, and
+      withLvRestShadowContext adds shadowMode true. Comments state shadow measurements do not feed canonical health,
+      readiness, alerts, or tasks. Current PUBLICATION is not effect-only — part of M4 retirement surface per D3.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-shadow.policy.ts
       - backend/src/config/battery-health-v2.config.ts
 
   - id: BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001

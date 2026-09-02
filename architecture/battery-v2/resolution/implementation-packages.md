@@ -30,7 +30,7 @@
 | **Rollback (pre-M4)** | Disable `BATTERY_V2_PUBLICATION_ENABLED` first → legacy capture restored when REST_SHADOW ON |
 | **Rollback (post-M4)** | Release rollback — not legacy env toggle (see D3) |
 | **Test scope** | Handler unit + integration; concurrency/monotonic handoff tests per D2; eligibility + terminal-outcome replay |
-| **Production validation** | Canary **deployment/environment**. Validate handoff enqueue/execution/policy outcome dimensions |
+| **Production validation** | Canary **deployment/environment**. Validate handoff enqueue/execution/policy outcome dimensions; M3 migration: legacy/canonical trigger counts, overlap/duplicate compute, queue load, no customer publication while PUBLICATION OFF |
 | **Blocked by** | **None** (architecture/spec) — runtime implementation requires separate authorization |
 | **Crash boundary** | **VALIDATED (D2)** — Hybrid C+ per D2 dossier |
 | **Does not solve** | Publication (PKG-02), timestamp provenance, readiness, legacy/REST_SHADOW removal (M4) |
