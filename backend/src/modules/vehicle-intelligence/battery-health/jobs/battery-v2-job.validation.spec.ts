@@ -233,11 +233,15 @@ describe('battery-v2-job.validation', () => {
       ['missing assessmentId', { assessmentId: undefined, publicationVersion: 1 }],
       ['null assessmentId', { assessmentId: null, publicationVersion: 1 }],
       ['missing publicationVersion', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: undefined }],
+      ['string publicationVersion "1"', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: '1' }],
+      ['string publicationVersion "01"', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: '01' }],
+      ['string publicationVersion "1e0"', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: '1e0' }],
       ['semver publicationVersion', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: '1.0.0' }],
       ['zero publicationVersion', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: 0 }],
       ['negative publicationVersion', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: -1 }],
       ['fractional publicationVersion', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: 1.5 }],
       ['NaN publicationVersion', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: Number.NaN }],
+      ['null publicationVersion', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: null }],
     ])('rejects invalid BATTERY_PUBLICATION_UPDATE: %s', (_label, overrides) => {
       const payload = validBase({
         idempotencyKey: 'pub:test:v1',

@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BatteryV2JobDeadLetterService } from '../jobs/battery-v2-job-dead-letter.service';
 import { BatteryV2JobProducerService } from '../jobs/battery-v2-job-producer.service';
@@ -14,10 +13,13 @@ import {
 import {
   LV_PUBLICATION_HANDOFF_OUTCOME,
   LV_PUBLICATION_HANDOFF_STATUS,
-  mergePublicationHandoffIntoAssessmentSummary,
   readPublicationHandoffFromAssessmentSummary,
   type LvPublicationHandoffOutcome,
 } from './lv-publication-handoff.metadata';
+import {
+  mergePublicationHandoffPatchIntoSummary,
+  mutateBatteryAssessmentPublicationHandoff,
+} from './lv-publication-handoff.mutation';
 import { formatBatteryV2PipelineLog } from '../observability/battery-v2-pipeline-observability.util';
 import {
   isKnownPublicationTrack,
@@ -169,7 +171,6 @@ export class LvPublicationHandoffService {
     await this.persistHandoffState({
       assessmentId: selected.assessmentId,
       organizationId: input.organizationId,
-      inputSummary: assessmentRow.inputSummary,
       handoffPatch: {
         status: LV_PUBLICATION_HANDOFF_STATUS.MISSING,
         selectedAssessmentId: selected.assessmentId,
@@ -212,7 +213,6 @@ export class LvPublicationHandoffService {
     await this.persistHandoffState({
       assessmentId: selected.assessmentId,
       organizationId: input.organizationId,
-      inputSummary: assessmentRow.inputSummary,
       handoffPatch,
     });
 
@@ -294,7 +294,6 @@ export class LvPublicationHandoffService {
     await this.persistHandoffState({
       assessmentId: input.assessmentId,
       organizationId: input.organizationId,
-      inputSummary: assessmentRow.inputSummary,
       handoffPatch: {
         ...existing,
         lastAttemptAt: (input.attemptedAt ?? new Date()).toISOString(),
@@ -326,7 +325,6 @@ export class LvPublicationHandoffService {
     await this.persistHandoffState({
       assessmentId: input.assessmentId,
       organizationId: input.organizationId,
-      inputSummary: assessmentRow.inputSummary,
       handoffPatch: {
         ...existing,
         status: LV_PUBLICATION_HANDOFF_STATUS.EXECUTED,
@@ -362,27 +360,13 @@ export class LvPublicationHandoffService {
   private async persistHandoffState(input: {
     assessmentId: string;
     organizationId: string;
-    inputSummary: Prisma.JsonValue;
-    handoffPatch: Parameters<typeof mergePublicationHandoffIntoAssessmentSummary>[1];
+    handoffPatch: Parameters<typeof mergePublicationHandoffPatchIntoSummary>[1];
   }): Promise<void> {
-    const summary =
-      input.inputSummary && typeof input.inputSummary === 'object' && !Array.isArray(input.inputSummary)
-        ? (input.inputSummary as Record<string, unknown>)
-        : {};
-
-    const merged = mergePublicationHandoffIntoAssessmentSummary(
-      summary,
-      input.handoffPatch,
-    );
-
-    await this.prisma.batteryAssessment.update({
-      where: {
-        id: input.assessmentId,
-        organizationId: input.organizationId,
-      },
-      data: {
-        inputSummary: merged as Prisma.InputJsonValue,
-      },
+    await mutateBatteryAssessmentPublicationHandoff(this.prisma, {
+      assessmentId: input.assessmentId,
+      organizationId: input.organizationId,
+      mutate: (summary) =>
+        mergePublicationHandoffPatchIntoSummary(summary, input.handoffPatch),
     });
   }
 }

@@ -12,9 +12,18 @@ describe('LvPublicationHandoffService', () => {
     deadLetter?: boolean;
   }) {
     const prisma = {
+      $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
+        const tx = {
+          $queryRaw: jest.fn(async () => [{ input_summary: {} }]),
+          batteryAssessment: {
+            updateMany: jest.fn(async () => ({ count: 1 })),
+          },
+        };
+        return fn(tx);
+      }),
       batteryAssessment: {
         findFirst: jest.fn().mockResolvedValue(deps?.assessmentRow ?? null),
-        update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
     const jobProducer = {

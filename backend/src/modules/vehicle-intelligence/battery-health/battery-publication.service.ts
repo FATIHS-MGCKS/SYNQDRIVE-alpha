@@ -7,6 +7,7 @@ import type { LvEstimatedHealthAssessment } from './lv-assessment/lv-estimated-h
 import { LV_PUBLICATION_CONTRACT_VERSION } from './lv-assessment/lv-publication-contract.policy';
 import {
   evaluateLvPublicationPolicy,
+  isLvPublicationPreviousStale,
   type LvPublicationDecision,
   type LvPublicationEvidenceSummary,
   type LvPublicationPreviousState,
@@ -194,6 +195,45 @@ export class BatteryPublicationService {
     });
 
     if (isSameAssessmentRetry && existingIdentity) {
+      const existingState =
+        this.publicationRepository.toPublicationPreviousState(existingIdentity);
+      if (
+        existingState &&
+        existingState.maturity === 'STABLE' &&
+        isLvPublicationPreviousStale(existingState, now)
+      ) {
+        const staleDecision = evaluateLvPublicationPolicy({
+          publicationEnabled: isBatteryV2PublicationEnabled(),
+          policy,
+          assessment: null,
+          evidence,
+          previous: existingState,
+          materializeStaleLifecycle: true,
+          now,
+        });
+        if (
+          staleDecision.maturity === 'STALE' &&
+          staleDecision.shouldPersistPublication
+        ) {
+          await this.publicationRepository.materializePublicationLifecycleState({
+            organizationId: input.organizationId,
+            publicationId: existingIdentity.id,
+            decision: staleDecision,
+            assessmentId: input.assessmentId,
+          });
+          this.logger.debug(
+            formatBatteryV2PipelineLog({
+              component: 'publication',
+              event: 'same_assessment_lifecycle_stale_materialized',
+              status: 'completed',
+              organizationId: input.organizationId,
+              vehicleId: input.vehicleId,
+              correlationId: input.assessmentId,
+            }),
+          );
+        }
+      }
+
       this.logger.debug(
         formatBatteryV2PipelineLog({
           component: 'publication',

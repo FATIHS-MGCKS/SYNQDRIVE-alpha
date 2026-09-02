@@ -271,6 +271,14 @@ function evaluateStalePrevious(
   return freshness.observationState === 'STALE';
 }
 
+/** Exported for service-layer lifecycle repair (same pub identity, no new EWMA). */
+export function isLvPublicationPreviousStale(
+  previous: LvPublicationPreviousState,
+  now: Date = new Date(),
+): boolean {
+  return evaluateStalePrevious(previous, now);
+}
+
 function emptyAuthorityContext(
   assessment: LvEstimatedHealthAssessment | null,
   previous: LvPublicationPreviousState | null,

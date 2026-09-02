@@ -27,20 +27,20 @@ export async function fetchPublicationHandoffReconcileCandidates(
   const rows = await prisma.$queryRaw<PublicationHandoffReconcileCandidate[]>`
     SELECT
       ba.id,
-      ba."organizationId",
-      ba."vehicleId",
-      ba."inputSummary",
-      ba."computedAt"
-    FROM "BatteryAssessment" ba
+      ba.organization_id AS "organizationId",
+      ba.vehicle_id AS "vehicleId",
+      ba.input_summary AS "inputSummary",
+      ba.computed_at AS "computedAt"
+    FROM battery_assessments ba
     WHERE ba.scope = ${BatteryEvidenceScope.LV}::"BatteryEvidenceScope"
       AND ba.type = ${BatteryAssessmentType.LV_ESTIMATED_HEALTH}::"BatteryAssessmentType"
-      AND ba."computedAt" >= ${input.lookbackFrom}
-      AND ba."inputSummary" IS NOT NULL
-      AND (ba."inputSummary"->'publicationHandoff'->>'status') IS NOT NULL
-      AND (ba."inputSummary"->'publicationHandoff'->>'status') <> 'EXECUTED'
+      AND ba.computed_at >= ${input.lookbackFrom}
+      AND ba.input_summary IS NOT NULL
+      AND (ba.input_summary->'publicationHandoff'->>'status') IS NOT NULL
+      AND (ba.input_summary->'publicationHandoff'->>'status') <> 'EXECUTED'
     ORDER BY
-      (ba."inputSummary"->'publicationHandoff'->>'lastAttemptAt')::timestamptz NULLS FIRST,
-      (ba."inputSummary"->'publicationHandoff'->>'lastAttemptAt')::timestamptz ASC,
+      (ba.input_summary->'publicationHandoff'->>'lastAttemptAt')::timestamptz NULLS FIRST,
+      (ba.input_summary->'publicationHandoff'->>'lastAttemptAt')::timestamptz ASC,
       ba.id ASC
     LIMIT ${input.limit}
   `;

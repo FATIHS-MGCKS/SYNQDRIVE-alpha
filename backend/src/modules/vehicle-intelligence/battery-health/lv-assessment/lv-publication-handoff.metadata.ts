@@ -32,6 +32,68 @@ export interface LvPublicationHandoffMetadata {
   outcome?: LvPublicationHandoffOutcome;
 }
 
+const HANDOFF_STATUS_RANK: Record<LvPublicationHandoffStatus, number> = {
+  MISSING: 0,
+  ENQUEUED: 1,
+  EXECUTED: 2,
+};
+
+export function publicationHandoffStatusRank(
+  status: LvPublicationHandoffStatus | undefined | null,
+): number {
+  if (!status) return HANDOFF_STATUS_RANK.MISSING;
+  return HANDOFF_STATUS_RANK[status] ?? HANDOFF_STATUS_RANK.MISSING;
+}
+
+/** Monotonic merge — never regress EXECUTED → ENQUEUED/MISSING. */
+export function mergePublicationHandoffState(
+  existing: LvPublicationHandoffMetadata | null | undefined,
+  patch: Partial<LvPublicationHandoffMetadata> &
+    Pick<
+      LvPublicationHandoffMetadata,
+      | 'selectedAssessmentId'
+      | 'assessmentTrack'
+      | 'idempotencyKey'
+      | 'publicationVersion'
+      | 'epochAssessmentIds'
+    > & {
+      status?: LvPublicationHandoffStatus;
+    },
+): LvPublicationHandoffMetadata {
+  const base: LvPublicationHandoffMetadata = existing ?? {
+    status: LV_PUBLICATION_HANDOFF_STATUS.MISSING,
+    selectedAssessmentId: patch.selectedAssessmentId,
+    assessmentTrack: patch.assessmentTrack,
+    idempotencyKey: patch.idempotencyKey,
+    publicationVersion: patch.publicationVersion,
+    epochAssessmentIds: patch.epochAssessmentIds,
+  };
+
+  const nextStatus = patch.status ?? base.status;
+  if (publicationHandoffStatusRank(nextStatus) < publicationHandoffStatusRank(base.status)) {
+    return {
+      ...base,
+      lastAttemptAt: patch.lastAttemptAt ?? base.lastAttemptAt,
+      bullJobId: patch.bullJobId ?? base.bullJobId,
+      outcome: patch.outcome ?? base.outcome,
+      executedAt: patch.executedAt ?? base.executedAt,
+      enqueuedAt: patch.enqueuedAt ?? base.enqueuedAt,
+    };
+  }
+
+  return {
+    ...base,
+    ...patch,
+    selectedAssessmentId: patch.selectedAssessmentId,
+    assessmentTrack: patch.assessmentTrack,
+    idempotencyKey: patch.idempotencyKey,
+    publicationVersion: patch.publicationVersion,
+    epochAssessmentIds: patch.epochAssessmentIds,
+    status: nextStatus,
+    outcome: patch.outcome !== undefined ? patch.outcome : base.outcome,
+  };
+}
+
 export function readPublicationHandoffFromAssessmentSummary(
   inputSummary: unknown,
 ): LvPublicationHandoffMetadata | null {
@@ -109,20 +171,19 @@ export function mergePublicationHandoffIntoAssessmentSummary(
       | 'idempotencyKey'
       | 'publicationVersion'
       | 'epochAssessmentIds'
-      | 'status'
-    >,
+    > & {
+      status?: LvPublicationHandoffStatus;
+    },
 ): Record<string, unknown> {
   const base =
     inputSummary && typeof inputSummary === 'object' && !Array.isArray(inputSummary)
       ? { ...inputSummary }
       : {};
   const existing = readPublicationHandoffFromAssessmentSummary(base);
+  const merged = mergePublicationHandoffState(existing, handoff);
 
   return {
     ...base,
-    publicationHandoff: {
-      ...existing,
-      ...handoff,
-    },
+    publicationHandoff: merged,
   };
 }

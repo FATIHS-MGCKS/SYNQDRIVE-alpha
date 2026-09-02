@@ -10,6 +10,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-02 — PKG-02 runtime correction pass (PR #1513)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Publication handoff used stale `inputSummary` snapshot updates without monotonic guard; reconciliation SQL used Prisma model names; same-assessment STABLE→STALE lifecycle blocked; `ok:false` acknowledged as EXECUTED; `publicationVersion` accepted numeric strings. |
+| **OBSERVATION** | Producer/worker race could regress EXECUTED→ENQUEUED; `BatteryAssessment` is append-only evidence but PKG-02 authority stores operational `publicationHandoff` on selected rows (`CURRENT_STATE.md`). |
+| **CHANGE** | Row-locked `mutateBatteryAssessmentPublicationHandoff` + monotonic `mergePublicationHandoffState`; corrected `battery_assessments` reconciliation SQL; same-assessment lifecycle repair in `BatteryPublicationService`; handler throws on `ok:false`; strict `typeof number` publicationVersion validation; race/lifecycle/integration/postgres-gated tests. |
+| **WHY** | Runtime correctness, concurrency safety, and evidence-backed idempotency without schema migration. |
+| **VALIDATION** | PKG-02 D4/D5 + handoff concurrency + lifecycle + reconciliation + integration tests; graph validator |
+| **NON_EFFECTS** | No deploy; no `BATTERY_V2_PUBLICATION_ENABLED` default change; no DB migration |
+| **REMAINING_GAPS** | PRODUCTION_VALIDATED; M3 soak |
+| **EVIDENCE** | `lv-publication-handoff.mutation.ts`, `lv-publication-handoff-reconciliation.query.ts` |
+
 ## CL-2026-09-02 — PKG-02 LV publication handoff runtime
 
 | Field | Content |

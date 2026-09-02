@@ -186,14 +186,19 @@ function validatePositiveIntegerPublicationVersion(
       field,
     );
   }
-  const numeric = typeof value === 'number' ? value : Number(value);
-  if (!Number.isFinite(numeric) || !Number.isInteger(numeric) || numeric <= 0) {
+  if (typeof value !== 'number') {
+    throw new BatteryV2JobValidationError(
+      `${field} must be a number`,
+      field,
+    );
+  }
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value <= 0) {
     throw new BatteryV2JobValidationError(
       `${field} must be a positive integer`,
       field,
     );
   }
-  return numeric;
+  return value;
 }
 
 function validateSnapshotContext(value: unknown): BatteryObservationSnapshotContext | null | undefined {

@@ -6,6 +6,10 @@ import {
   LvPublicationHandoffService,
   mapPublicationUpdateOutcome,
 } from '../../lv-assessment/lv-publication-handoff.service';
+import {
+  BATTERY_V2_JOB_ERROR_CODES,
+  BatteryV2JobProcessingError,
+} from '../battery-v2-job.errors';
 
 @Injectable()
 export class BatteryPublicationUpdateHandler
@@ -37,6 +41,15 @@ export class BatteryPublicationUpdateHandler
           ? payload.publicationVersion
           : undefined,
     });
+
+    if (!result.ok) {
+      throw new BatteryV2JobProcessingError({
+        code: BATTERY_V2_JOB_ERROR_CODES.HANDLER_FAILED,
+        message: `lv_publication_update_failed:${result.decision.reasons.map((r) => r.code).join(',')}`,
+        retryable: true,
+        jobType: 'BATTERY_PUBLICATION_UPDATE',
+      });
+    }
 
     await this.publicationHandoff.acknowledgeExecuted({
       organizationId: payload.organizationId,
