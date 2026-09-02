@@ -1,0 +1,6173 @@
+{
+  "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_003",
+  "sessionId": "0fa040aa-6105-4872-9b2c-f8ad477009b8",
+  "generatedAt": "2026-09-02T19:55:02.466Z",
+  "methodologyVersion": "2026-09-02-rd003-telemetry-forensics-v1-computed",
+  "referenceCaptureRuntimeChanged": false,
+  "generatedEvidenceValueSource": "COMPUTED_FROM_SEALED_RAW_DATA",
+  "sealedRawExport": {
+    "path": "/workspace/tmp/rd003-evidence/observations.jsonl",
+    "sha256": "81534484cdd0fa6224d9efbcf97bb445cfbe8af1fdb8ef29e9bb8204f09c32e4",
+    "rowCount": 6251,
+    "unchanged": true,
+    "readOnlyAnalysis": true
+  },
+  "inventory": [
+    {
+      "providerField": "currentLocationAltitude",
+      "rawIdentity": "DIMO::currentLocationAltitude",
+      "canonicalKey": "CAN_ALTITUDE",
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "currentLocationCoordinates",
+      "rawIdentity": "DIMO::currentLocationCoordinates",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "currentLocationHeading",
+      "rawIdentity": "DIMO::currentLocationHeading",
+      "canonicalKey": "CAN_LOCATION_HEADING",
+      "temporalClass": "SPATIAL_ROUTE",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "exteriorAirTemperature",
+      "rawIdentity": "DIMO::exteriorAirTemperature",
+      "canonicalKey": "CAN_AMBIENT_TEMPERATURE",
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 50,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "isIgnitionOn",
+      "rawIdentity": "DIMO::isIgnitionOn",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "lowVoltageBatteryCurrentVoltage",
+      "rawIdentity": "DIMO::lowVoltageBatteryCurrentVoltage",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "obdBarometricPressure",
+      "rawIdentity": "DIMO::obdBarometricPressure",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "obdDistanceWithMIL",
+      "rawIdentity": "DIMO::obdDistanceWithMIL",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "obdEngineLoad",
+      "rawIdentity": "DIMO::obdEngineLoad",
+      "canonicalKey": "CAN_ENGINE_LOAD",
+      "temporalClass": "POWERTRAIN_DYNAMIC",
+      "surfaces": [
+        "LATEST_LIVE",
+        "HF_HISTORICAL"
+      ],
+      "observationCount": 963,
+      "nonNullCount": 963,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 838,
+      "uniquePhysicalSampleCount": 592,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:36:17.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:15.949Z",
+      "lastReceivedAt": "2026-09-02T19:36:21.769Z"
+    },
+    {
+      "providerField": "obdFuelRailPressure",
+      "rawIdentity": "DIMO::obdFuelRailPressure",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "obdFuelTypeName",
+      "rawIdentity": "DIMO::obdFuelTypeName",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "obdIntakeTemp",
+      "rawIdentity": "DIMO::obdIntakeTemp",
+      "canonicalKey": "CAN_INTAKE_TEMPERATURE",
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "obdIsPluggedIn",
+      "rawIdentity": "DIMO::obdIsPluggedIn",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "obdLongTermFuelTrim1",
+      "rawIdentity": "DIMO::obdLongTermFuelTrim1",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "obdLongTermFuelTrim2",
+      "rawIdentity": "DIMO::obdLongTermFuelTrim2",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "obdMAP",
+      "rawIdentity": "DIMO::obdMAP",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "obdMaxMAF",
+      "rawIdentity": "DIMO::obdMaxMAF",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "obdOilTemperature",
+      "rawIdentity": "DIMO::obdOilTemperature",
+      "canonicalKey": "CAN_OIL_TEMPERATURE",
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "obdRunTime",
+      "rawIdentity": "DIMO::obdRunTime",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "obdStatusDTCCount",
+      "rawIdentity": "DIMO::obdStatusDTCCount",
+      "canonicalKey": null,
+      "temporalClass": "HEALTH_DIAGNOSTIC",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "obdThrottlePosition",
+      "rawIdentity": "DIMO::obdThrottlePosition",
+      "canonicalKey": "CAN_ENGINE_THROTTLE_POSITION",
+      "temporalClass": "POWERTRAIN_DYNAMIC",
+      "surfaces": [
+        "LATEST_LIVE",
+        "HF_HISTORICAL"
+      ],
+      "observationCount": 916,
+      "nonNullCount": 916,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 780,
+      "uniquePhysicalSampleCount": 545,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:36:17.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:15.949Z",
+      "lastReceivedAt": "2026-09-02T19:36:21.769Z"
+    },
+    {
+      "providerField": "powertrainCombustionEngineECT",
+      "rawIdentity": "DIMO::powertrainCombustionEngineECT",
+      "canonicalKey": "CAN_COOLANT_TEMPERATURE",
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 50,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "powertrainCombustionEngineSpeed",
+      "rawIdentity": "DIMO::powertrainCombustionEngineSpeed",
+      "canonicalKey": "CAN_ENGINE_RPM",
+      "temporalClass": "POWERTRAIN_DYNAMIC",
+      "surfaces": [
+        "LATEST_LIVE",
+        "HF_HISTORICAL"
+      ],
+      "observationCount": 871,
+      "nonNullCount": 871,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 729,
+      "uniquePhysicalSampleCount": 500,
+      "firstProviderTimestamp": "2026-09-02T17:48:50.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:36:17.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:15.949Z",
+      "lastReceivedAt": "2026-09-02T19:36:21.769Z"
+    },
+    {
+      "providerField": "powertrainCombustionEngineTPS",
+      "rawIdentity": "DIMO::powertrainCombustionEngineTPS",
+      "canonicalKey": "CAN_ENGINE_TPS",
+      "temporalClass": "POWERTRAIN_DYNAMIC",
+      "surfaces": [
+        "LATEST_LIVE",
+        "HF_HISTORICAL"
+      ],
+      "observationCount": 925,
+      "nonNullCount": 925,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 790,
+      "uniquePhysicalSampleCount": 554,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:36:17.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:15.949Z",
+      "lastReceivedAt": "2026-09-02T19:36:21.769Z"
+    },
+    {
+      "providerField": "powertrainFuelSystemAbsoluteLevel",
+      "rawIdentity": "DIMO::powertrainFuelSystemAbsoluteLevel",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 49,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "powertrainFuelSystemRelativeLevel",
+      "rawIdentity": "DIMO::powertrainFuelSystemRelativeLevel",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 50,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "powertrainTransmissionActualGear",
+      "rawIdentity": "DIMO::powertrainTransmissionActualGear",
+      "canonicalKey": "CAN_TRANSMISSION_ACTUAL_GEAR",
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 50,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "powertrainTransmissionActualGearRatio",
+      "rawIdentity": "DIMO::powertrainTransmissionActualGearRatio",
+      "canonicalKey": "CAN_TRANSMISSION_GEAR_RATIO",
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 50,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "powertrainTransmissionTravelledDistance",
+      "rawIdentity": "DIMO::powertrainTransmissionTravelledDistance",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "powertrainType",
+      "rawIdentity": "DIMO::powertrainType",
+      "canonicalKey": null,
+      "temporalClass": "SLOW_PHYSICAL_CONTEXT",
+      "surfaces": [
+        "LATEST_SLOW"
+      ],
+      "observationCount": 62,
+      "nonNullCount": 62,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 51,
+      "uniquePhysicalSampleCount": 0,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastReceivedAt": "2026-09-02T19:35:52.659Z"
+    },
+    {
+      "providerField": "speed",
+      "rawIdentity": "DIMO::speed",
+      "canonicalKey": "CAN_VEHICLE_SPEED",
+      "temporalClass": "WAVEFORM_DYNAMICS",
+      "surfaces": [
+        "LATEST_LIVE",
+        "HF_HISTORICAL"
+      ],
+      "observationCount": 963,
+      "nonNullCount": 963,
+      "nullCount": 0,
+      "uniqueProviderTimestampCount": 838,
+      "uniquePhysicalSampleCount": 592,
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:36:17.000Z",
+      "firstReceivedAt": "2026-09-02T18:59:15.949Z",
+      "lastReceivedAt": "2026-09-02T19:36:21.769Z"
+    }
+  ],
+  "perFieldSurface": [
+    {
+      "providerField": "obdEngineLoad",
+      "acquisitionSurface": "LATEST_LIVE",
+      "metrics": {
+        "observationCount": 371,
+        "nonNullCount": 371,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 371,
+          "uniqueProviderTimestampCount": 246,
+          "duplicateProviderTimestampRetrievals": 125,
+          "positiveDeltaTSampleCount": 245,
+          "deltaTSeconds": {
+            "sampleCount": 245,
+            "min": 1,
+            "p50": 6,
+            "p90": 9,
+            "p95": 17,
+            "p99": 125,
+            "max": 4253,
+            "mean": 26.29795918367347,
+            "stdDev": 271.71282188697904
+          },
+          "jitterSeconds": 271.7128218869784,
+          "maxGapSeconds": 4253,
+          "gapCountsAbove": {
+            "gt2s": 234,
+            "gt5s": 152,
+            "gt10s": 20,
+            "gt30s": 7
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:17.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 371
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 260,
+            "p95": 502,
+            "p99": 1356,
+            "max": 10336,
+            "sampleCount": 371
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 260,
+            "p95": 502,
+            "p99": 1356,
+            "max": 10336,
+            "sampleCount": 371
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5789,
+            "p95": 122752,
+            "p99": 4234041,
+            "max": 4251643,
+            "sampleCount": 371
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 371,
+          "uniqueValueCount": 109,
+          "valueChangeCount": 208,
+          "min": 0,
+          "max": 98.0392156862745,
+          "mean": 29.26589503726022,
+          "stdDev": 25.18762717362422,
+          "range": 98.0392156862745,
+          "staticFraction": 0.4378378378378378
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 371,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 370,
+          "deltaTSeconds": {
+            "sampleCount": 370,
+            "min": 5.628,
+            "p50": 5.909,
+            "p90": 6.257,
+            "p95": 6.587,
+            "p99": 8.102,
+            "max": 15.931,
+            "mean": 6.015086486486484,
+            "stdDev": 0.6370497788117494
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 370,
+          "deltaTSeconds": {
+            "sampleCount": 370,
+            "min": 5.679,
+            "p50": 5.892,
+            "p90": 6.237,
+            "p95": 6.592,
+            "p99": 7.755,
+            "max": 17.103,
+            "mean": 6.015156756756757,
+            "stdDev": 0.6739483846892322
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdEngineLoad",
+      "acquisitionSurface": "HF_HISTORICAL",
+      "metrics": {
+        "observationCount": 592,
+        "nonNullCount": 592,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 592,
+          "uniqueProviderTimestampCount": 592,
+          "duplicateProviderTimestampRetrievals": 0,
+          "positiveDeltaTSampleCount": 591,
+          "deltaTSeconds": {
+            "sampleCount": 591,
+            "min": 0.751,
+            "p50": 2,
+            "p90": 4.815,
+            "p95": 6.038,
+            "p99": 78.028,
+            "max": 222.738,
+            "mean": 3.7069780033840964,
+            "stdDev": 13.019900585987854
+          },
+          "jitterSeconds": 13.019900585987822,
+          "maxGapSeconds": 222.738,
+          "gapCountsAbove": {
+            "gt2s": 221,
+            "gt5s": 44,
+            "gt10s": 18,
+            "gt30s": 6
+          },
+          "firstProviderTimestamp": "2026-09-02T18:59:45.646Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:16.470Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 592
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 225,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 592
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 225,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 592
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6354,
+            "p95": 8319,
+            "p99": 9062,
+            "max": 10802,
+            "sampleCount": 592
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 592,
+          "uniqueValueCount": 151,
+          "valueChangeCount": 481,
+          "min": 0,
+          "max": 98.0392156862745,
+          "mean": 26.45866454689986,
+          "stdDev": 21.152861247342997,
+          "range": 98.0392156862745,
+          "staticFraction": 0.1861252115059222
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 592,
+          "fingerprintedRows": 592,
+          "fingerprintCoverageRate": 1,
+          "uniqueFingerprints": 592,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "PROVIDER_DATA_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 229,
+          "deltaTSeconds": {
+            "sampleCount": 229,
+            "min": 5.684,
+            "p50": 5.912,
+            "p90": 6.971,
+            "p95": 17.724,
+            "p99": 117.894,
+            "max": 221.588,
+            "mean": 9.561995633187774,
+            "stdDev": 20.075331318079975
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 229,
+          "deltaTSeconds": {
+            "sampleCount": 229,
+            "min": 5.673,
+            "p50": 5.925,
+            "p90": 7,
+            "p95": 17.482,
+            "p99": 117.941,
+            "max": 221.411,
+            "mean": 9.561764192139737,
+            "stdDev": 20.051565742038914
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdThrottlePosition",
+      "acquisitionSurface": "LATEST_LIVE",
+      "metrics": {
+        "observationCount": 371,
+        "nonNullCount": 371,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 371,
+          "uniqueProviderTimestampCount": 235,
+          "duplicateProviderTimestampRetrievals": 136,
+          "positiveDeltaTSampleCount": 234,
+          "deltaTSeconds": {
+            "sampleCount": 234,
+            "min": 1,
+            "p50": 6,
+            "p90": 11,
+            "p95": 23,
+            "p99": 125,
+            "max": 4253,
+            "mean": 27.534188034188034,
+            "stdDev": 278.0195150659255
+          },
+          "jitterSeconds": 278.01951506592684,
+          "maxGapSeconds": 4253,
+          "gapCountsAbove": {
+            "gt2s": 224,
+            "gt5s": 145,
+            "gt10s": 24,
+            "gt30s": 7
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:17.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 371
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 260,
+            "p95": 502,
+            "p99": 1356,
+            "max": 10336,
+            "sampleCount": 371
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 260,
+            "p95": 502,
+            "p99": 1356,
+            "max": 10336,
+            "sampleCount": 371
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6009,
+            "p95": 122752,
+            "p99": 4234041,
+            "max": 4251643,
+            "sampleCount": 371
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 371,
+          "uniqueValueCount": 53,
+          "valueChangeCount": 214,
+          "min": 10.19607843137255,
+          "max": 84.70588235294117,
+          "mean": 18.117435653506675,
+          "stdDev": 13.792873280907687,
+          "range": 74.50980392156862,
+          "staticFraction": 0.42162162162162165
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 371,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 370,
+          "deltaTSeconds": {
+            "sampleCount": 370,
+            "min": 5.628,
+            "p50": 5.909,
+            "p90": 6.257,
+            "p95": 6.587,
+            "p99": 8.102,
+            "max": 15.931,
+            "mean": 6.015086486486484,
+            "stdDev": 0.6370497788117494
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 370,
+          "deltaTSeconds": {
+            "sampleCount": 370,
+            "min": 5.679,
+            "p50": 5.892,
+            "p90": 6.237,
+            "p95": 6.592,
+            "p99": 7.755,
+            "max": 17.103,
+            "mean": 6.015156756756757,
+            "stdDev": 0.6739483846892322
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdThrottlePosition",
+      "acquisitionSurface": "HF_HISTORICAL",
+      "metrics": {
+        "observationCount": 545,
+        "nonNullCount": 545,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 545,
+          "uniqueProviderTimestampCount": 545,
+          "duplicateProviderTimestampRetrievals": 0,
+          "positiveDeltaTSampleCount": 544,
+          "deltaTSeconds": {
+            "sampleCount": 544,
+            "min": 0.751,
+            "p50": 2,
+            "p90": 4.874,
+            "p95": 6.988,
+            "p99": 78.028,
+            "max": 222.738,
+            "mean": 4.02725,
+            "stdDev": 13.888067468021486
+          },
+          "jitterSeconds": 13.88806746802155,
+          "maxGapSeconds": 222.738,
+          "gapCountsAbove": {
+            "gt2s": 211,
+            "gt5s": 47,
+            "gt10s": 22,
+            "gt30s": 6
+          },
+          "firstProviderTimestamp": "2026-09-02T18:59:45.646Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:16.470Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 545
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 545
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 545
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6354,
+            "p95": 8338,
+            "p99": 9062,
+            "max": 10802,
+            "sampleCount": 545
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 545,
+          "uniqueValueCount": 66,
+          "valueChangeCount": 473,
+          "min": 10.19607843137255,
+          "max": 85.09803921568627,
+          "mean": 19.95178989026802,
+          "stdDev": 16.56670582639374,
+          "range": 74.90196078431372,
+          "staticFraction": 0.13051470588235292
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 545,
+          "fingerprintedRows": 545,
+          "fingerprintCoverageRate": 1,
+          "uniqueFingerprints": 545,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "PROVIDER_DATA_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 218,
+          "deltaTSeconds": {
+            "sampleCount": 218,
+            "min": 5.697,
+            "p50": 5.921,
+            "p90": 11.436,
+            "p95": 23.316,
+            "p99": 117.894,
+            "max": 221.588,
+            "mean": 10.044481651376149,
+            "stdDev": 20.980488664276333
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 218,
+          "deltaTSeconds": {
+            "sampleCount": 218,
+            "min": 5.673,
+            "p50": 5.93,
+            "p90": 11.515,
+            "p95": 23.348,
+            "p99": 117.941,
+            "max": 221.411,
+            "mean": 10.044238532110091,
+            "stdDev": 20.944945541147682
+          }
+        }
+      }
+    },
+    {
+      "providerField": "powertrainCombustionEngineSpeed",
+      "acquisitionSurface": "LATEST_LIVE",
+      "metrics": {
+        "observationCount": 371,
+        "nonNullCount": 371,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 371,
+          "uniqueProviderTimestampCount": 229,
+          "duplicateProviderTimestampRetrievals": 142,
+          "positiveDeltaTSampleCount": 228,
+          "deltaTSeconds": {
+            "sampleCount": 228,
+            "min": 1,
+            "p50": 6,
+            "p90": 11,
+            "p95": 23,
+            "p99": 125,
+            "max": 4257,
+            "mean": 28.276315789473685,
+            "stdDev": 281.90606421308377
+          },
+          "jitterSeconds": 281.90606421308263,
+          "maxGapSeconds": 4257,
+          "gapCountsAbove": {
+            "gt2s": 217,
+            "gt5s": 139,
+            "gt10s": 25,
+            "gt30s": 8
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:50.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:17.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 371
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 260,
+            "p95": 502,
+            "p99": 1356,
+            "max": 10336,
+            "sampleCount": 371
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 260,
+            "p95": 502,
+            "p99": 1356,
+            "max": 10336,
+            "sampleCount": 371
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6560,
+            "p95": 122752,
+            "p99": 4238041,
+            "max": 4255643,
+            "sampleCount": 371
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 371,
+          "uniqueValueCount": 181,
+          "valueChangeCount": 225,
+          "min": 195,
+          "max": 2829,
+          "mean": 1347.9272237196765,
+          "stdDev": 427.4628070909271,
+          "range": 2634,
+          "staticFraction": 0.3918918918918919
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 371,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 370,
+          "deltaTSeconds": {
+            "sampleCount": 370,
+            "min": 5.628,
+            "p50": 5.909,
+            "p90": 6.257,
+            "p95": 6.587,
+            "p99": 8.102,
+            "max": 15.931,
+            "mean": 6.015086486486484,
+            "stdDev": 0.6370497788117494
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 370,
+          "deltaTSeconds": {
+            "sampleCount": 370,
+            "min": 5.679,
+            "p50": 5.892,
+            "p90": 6.237,
+            "p95": 6.592,
+            "p99": 7.755,
+            "max": 17.103,
+            "mean": 6.015156756756757,
+            "stdDev": 0.6739483846892322
+          }
+        }
+      }
+    },
+    {
+      "providerField": "powertrainCombustionEngineSpeed",
+      "acquisitionSurface": "HF_HISTORICAL",
+      "metrics": {
+        "observationCount": 500,
+        "nonNullCount": 500,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 500,
+          "uniqueProviderTimestampCount": 500,
+          "duplicateProviderTimestampRetrievals": 0,
+          "positiveDeltaTSampleCount": 499,
+          "deltaTSeconds": {
+            "sampleCount": 499,
+            "min": 0.843,
+            "p50": 2,
+            "p90": 5.242,
+            "p95": 10.17,
+            "p99": 86.894,
+            "max": 222.738,
+            "mean": 4.39042885771543,
+            "stdDev": 14.56173346668135
+          },
+          "jitterSeconds": 14.561733466681307,
+          "maxGapSeconds": 222.738,
+          "gapCountsAbove": {
+            "gt2s": 203,
+            "gt5s": 56,
+            "gt10s": 25,
+            "gt30s": 8
+          },
+          "firstProviderTimestamp": "2026-09-02T18:59:45.646Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:16.470Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 500
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 500
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 500
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6406,
+            "p95": 8286,
+            "p99": 8807,
+            "max": 9967,
+            "sampleCount": 500
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 500,
+          "uniqueValueCount": 344,
+          "valueChangeCount": 478,
+          "min": 195,
+          "max": 3212,
+          "mean": 1366.111,
+          "stdDev": 427.4924499550101,
+          "range": 3017,
+          "staticFraction": 0.04208416833667339
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 500,
+          "fingerprintedRows": 500,
+          "fingerprintCoverageRate": 1,
+          "uniqueFingerprints": 500,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "PROVIDER_DATA_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 208,
+          "deltaTSeconds": {
+            "sampleCount": 208,
+            "min": 5.697,
+            "p50": 5.921,
+            "p90": 12.028,
+            "p95": 23.5,
+            "p99": 117.894,
+            "max": 221.588,
+            "mean": 10.527389423076928,
+            "stdDev": 21.50422520975289
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 208,
+          "deltaTSeconds": {
+            "sampleCount": 208,
+            "min": 5.673,
+            "p50": 5.93,
+            "p90": 12.02,
+            "p95": 23.582,
+            "p99": 117.941,
+            "max": 221.411,
+            "mean": 10.527134615384615,
+            "stdDev": 21.479465564991056
+          }
+        }
+      }
+    },
+    {
+      "providerField": "powertrainCombustionEngineTPS",
+      "acquisitionSurface": "LATEST_LIVE",
+      "metrics": {
+        "observationCount": 371,
+        "nonNullCount": 371,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 371,
+          "uniqueProviderTimestampCount": 236,
+          "duplicateProviderTimestampRetrievals": 135,
+          "positiveDeltaTSampleCount": 235,
+          "deltaTSeconds": {
+            "sampleCount": 235,
+            "min": 1,
+            "p50": 6,
+            "p90": 10,
+            "p95": 23,
+            "p99": 125,
+            "max": 4253,
+            "mean": 27.417021276595744,
+            "stdDev": 277.41937407244546
+          },
+          "jitterSeconds": 277.41937407244416,
+          "maxGapSeconds": 4253,
+          "gapCountsAbove": {
+            "gt2s": 225,
+            "gt5s": 144,
+            "gt10s": 21,
+            "gt30s": 8
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:17.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 371
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 260,
+            "p95": 502,
+            "p99": 1356,
+            "max": 10336,
+            "sampleCount": 371
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 260,
+            "p95": 502,
+            "p99": 1356,
+            "max": 10336,
+            "sampleCount": 371
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5956,
+            "p95": 122752,
+            "p99": 4234041,
+            "max": 4251643,
+            "sampleCount": 371
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 371,
+          "uniqueValueCount": 58,
+          "valueChangeCount": 148,
+          "min": 0,
+          "max": 49.41176470588236,
+          "mean": 17.659743142539988,
+          "stdDev": 9.263081271966415,
+          "range": 49.41176470588236,
+          "staticFraction": 0.6
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 371,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 370,
+          "deltaTSeconds": {
+            "sampleCount": 370,
+            "min": 5.628,
+            "p50": 5.909,
+            "p90": 6.257,
+            "p95": 6.587,
+            "p99": 8.102,
+            "max": 15.931,
+            "mean": 6.015086486486484,
+            "stdDev": 0.6370497788117494
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 370,
+          "deltaTSeconds": {
+            "sampleCount": 370,
+            "min": 5.679,
+            "p50": 5.892,
+            "p90": 6.237,
+            "p95": 6.592,
+            "p99": 7.755,
+            "max": 17.103,
+            "mean": 6.015156756756757,
+            "stdDev": 0.6739483846892322
+          }
+        }
+      }
+    },
+    {
+      "providerField": "powertrainCombustionEngineTPS",
+      "acquisitionSurface": "HF_HISTORICAL",
+      "metrics": {
+        "observationCount": 554,
+        "nonNullCount": 554,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 554,
+          "uniqueProviderTimestampCount": 554,
+          "duplicateProviderTimestampRetrievals": 0,
+          "positiveDeltaTSampleCount": 553,
+          "deltaTSeconds": {
+            "sampleCount": 553,
+            "min": 0.751,
+            "p50": 2,
+            "p90": 4.859,
+            "p95": 6.42,
+            "p99": 78.028,
+            "max": 222.738,
+            "mean": 3.9617070524412297,
+            "stdDev": 13.739301019110703
+          },
+          "jitterSeconds": 13.739301019110757,
+          "maxGapSeconds": 222.738,
+          "gapCountsAbove": {
+            "gt2s": 211,
+            "gt5s": 47,
+            "gt10s": 19,
+            "gt30s": 7
+          },
+          "firstProviderTimestamp": "2026-09-02T18:59:45.646Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:16.470Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 554
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 554
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 554
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6354,
+            "p95": 8319,
+            "p99": 9062,
+            "max": 10802,
+            "sampleCount": 554
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 554,
+          "uniqueValueCount": 73,
+          "valueChangeCount": 305,
+          "min": 0,
+          "max": 49.41176470588236,
+          "mean": 18.882990019112285,
+          "stdDev": 9.60962326548081,
+          "range": 49.41176470588236,
+          "staticFraction": 0.44846292947558775
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 554,
+          "fingerprintedRows": 554,
+          "fingerprintCoverageRate": 1,
+          "uniqueFingerprints": 554,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "PROVIDER_DATA_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 218,
+          "deltaTSeconds": {
+            "sampleCount": 218,
+            "min": 5.697,
+            "p50": 5.916,
+            "p90": 7.755,
+            "p95": 23.316,
+            "p99": 117.894,
+            "max": 221.588,
+            "mean": 10.044481651376147,
+            "stdDev": 20.95912930113925
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 218,
+          "deltaTSeconds": {
+            "sampleCount": 218,
+            "min": 5.673,
+            "p50": 5.928,
+            "p90": 8.682,
+            "p95": 23.348,
+            "p99": 117.941,
+            "max": 221.411,
+            "mean": 10.04423853211009,
+            "stdDev": 20.935443562519282
+          }
+        }
+      }
+    },
+    {
+      "providerField": "speed",
+      "acquisitionSurface": "LATEST_LIVE",
+      "metrics": {
+        "observationCount": 371,
+        "nonNullCount": 371,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 371,
+          "uniqueProviderTimestampCount": 246,
+          "duplicateProviderTimestampRetrievals": 125,
+          "positiveDeltaTSampleCount": 245,
+          "deltaTSeconds": {
+            "sampleCount": 245,
+            "min": 1,
+            "p50": 6,
+            "p90": 9,
+            "p95": 17,
+            "p99": 125,
+            "max": 4253,
+            "mean": 26.29795918367347,
+            "stdDev": 271.71282188697904
+          },
+          "jitterSeconds": 271.7128218869784,
+          "maxGapSeconds": 4253,
+          "gapCountsAbove": {
+            "gt2s": 234,
+            "gt5s": 152,
+            "gt10s": 20,
+            "gt30s": 7
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:17.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 371
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 260,
+            "p95": 502,
+            "p99": 1356,
+            "max": 10336,
+            "sampleCount": 371
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 260,
+            "p95": 502,
+            "p99": 1356,
+            "max": 10336,
+            "sampleCount": 371
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5789,
+            "p95": 122752,
+            "p99": 4234041,
+            "max": 4251643,
+            "sampleCount": 371
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 371,
+          "uniqueValueCount": 67,
+          "valueChangeCount": 214,
+          "min": 0,
+          "max": 96,
+          "mean": 20.380053908355794,
+          "stdDev": 20.17192405292777,
+          "range": 96,
+          "staticFraction": 0.42162162162162165
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 371,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 370,
+          "deltaTSeconds": {
+            "sampleCount": 370,
+            "min": 5.628,
+            "p50": 5.909,
+            "p90": 6.257,
+            "p95": 6.587,
+            "p99": 8.102,
+            "max": 15.931,
+            "mean": 6.015086486486484,
+            "stdDev": 0.6370497788117494
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 370,
+          "deltaTSeconds": {
+            "sampleCount": 370,
+            "min": 5.679,
+            "p50": 5.892,
+            "p90": 6.237,
+            "p95": 6.592,
+            "p99": 7.755,
+            "max": 17.103,
+            "mean": 6.015156756756757,
+            "stdDev": 0.6739483846892322
+          }
+        }
+      }
+    },
+    {
+      "providerField": "speed",
+      "acquisitionSurface": "HF_HISTORICAL",
+      "metrics": {
+        "observationCount": 592,
+        "nonNullCount": 592,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 592,
+          "uniqueProviderTimestampCount": 592,
+          "duplicateProviderTimestampRetrievals": 0,
+          "positiveDeltaTSampleCount": 591,
+          "deltaTSeconds": {
+            "sampleCount": 591,
+            "min": 0.751,
+            "p50": 2,
+            "p90": 4.815,
+            "p95": 6.038,
+            "p99": 78.028,
+            "max": 222.738,
+            "mean": 3.7069780033840964,
+            "stdDev": 13.019900585987854
+          },
+          "jitterSeconds": 13.019900585987822,
+          "maxGapSeconds": 222.738,
+          "gapCountsAbove": {
+            "gt2s": 221,
+            "gt5s": 44,
+            "gt10s": 18,
+            "gt30s": 6
+          },
+          "firstProviderTimestamp": "2026-09-02T18:59:45.646Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:16.470Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 592
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 225,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 592
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 225,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 592
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6354,
+            "p95": 8319,
+            "p99": 9062,
+            "max": 10802,
+            "sampleCount": 592
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 592,
+          "uniqueValueCount": 76,
+          "valueChangeCount": 450,
+          "min": 0,
+          "max": 96,
+          "mean": 21.56587837837838,
+          "stdDev": 20.283416193846598,
+          "range": 96,
+          "staticFraction": 0.23857868020304573
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 592,
+          "fingerprintedRows": 592,
+          "fingerprintCoverageRate": 1,
+          "uniqueFingerprints": 592,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "PROVIDER_DATA_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 229,
+          "deltaTSeconds": {
+            "sampleCount": 229,
+            "min": 5.684,
+            "p50": 5.912,
+            "p90": 6.971,
+            "p95": 17.724,
+            "p99": 117.894,
+            "max": 221.588,
+            "mean": 9.561995633187774,
+            "stdDev": 20.075331318079975
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 229,
+          "deltaTSeconds": {
+            "sampleCount": 229,
+            "min": 5.673,
+            "p50": 5.925,
+            "p90": 7,
+            "p95": 17.482,
+            "p99": 117.941,
+            "max": 221.411,
+            "mean": 9.561764192139737,
+            "stdDev": 20.051565742038914
+          }
+        }
+      }
+    },
+    {
+      "providerField": "currentLocationAltitude",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3873995225327
+          },
+          "jitterSeconds": 595.387399522533,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 48,
+            "gt10s": 47,
+            "gt30s": 43
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 51,
+          "valueChangeCount": 50,
+          "min": 127.1,
+          "max": 236.3,
+          "mean": 173.42903225806444,
+          "stdDev": 29.529226350925423,
+          "range": 109.20000000000002,
+          "staticFraction": 0.180327868852459
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "currentLocationCoordinates",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3873995225327
+          },
+          "jitterSeconds": 595.387399522533,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 48,
+            "gt10s": 47,
+            "gt30s": 43
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "NON_NUMERIC_CONTEXT",
+          "nonNullCount": 62,
+          "uniqueValueCount": 51,
+          "valueChangeCount": 50,
+          "min": null,
+          "max": null,
+          "mean": null,
+          "stdDev": null,
+          "range": null,
+          "staticFraction": null
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "currentLocationHeading",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3873995225327
+          },
+          "jitterSeconds": 595.387399522533,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 48,
+            "gt10s": 47,
+            "gt30s": 43
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 49,
+          "valueChangeCount": 48,
+          "min": 8.8,
+          "max": 358.3,
+          "mean": 217.43064516129022,
+          "stdDev": 90.50579474013891,
+          "range": 349.5,
+          "staticFraction": 0.21311475409836067
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "exteriorAirTemperature",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 50,
+          "duplicateProviderTimestampRetrievals": 12,
+          "positiveDeltaTSampleCount": 49,
+          "deltaTSeconds": {
+            "sampleCount": 49,
+            "min": 4,
+            "p50": 36,
+            "p90": 107,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 130.87755102040816,
+            "stdDev": 601.2840992635769
+          },
+          "jitterSeconds": 601.2840992635772,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 49,
+            "gt5s": 48,
+            "gt10s": 48,
+            "gt30s": 40
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5538,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 18,
+          "valueChangeCount": 28,
+          "min": 18,
+          "max": 43,
+          "mean": 29.322580645161292,
+          "stdDev": 7.148940523472262,
+          "range": 25,
+          "staticFraction": 0.540983606557377
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "isIgnitionOn",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3811610546436
+          },
+          "jitterSeconds": 595.3811610546438,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 49,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 2,
+          "valueChangeCount": 8,
+          "min": 0,
+          "max": 1,
+          "mean": 0.9354838709677419,
+          "stdDev": 0.24767560367065314,
+          "range": 1,
+          "staticFraction": 0.8688524590163934
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "lowVoltageBatteryCurrentVoltage",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3811610546436
+          },
+          "jitterSeconds": 595.3811610546438,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 49,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 45,
+          "valueChangeCount": 48,
+          "min": 12.483,
+          "max": 14.476,
+          "mean": 13.66243548387097,
+          "stdDev": 0.5807318904247636,
+          "range": 1.9930000000000003,
+          "staticFraction": 0.21311475409836067
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdBarometricPressure",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3811610546436
+          },
+          "jitterSeconds": 595.3811610546438,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 49,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 4,
+          "valueChangeCount": 14,
+          "min": 0,
+          "max": 100,
+          "mean": 89.43548387096774,
+          "stdDev": 29.515553536766074,
+          "range": 100,
+          "staticFraction": 0.7704918032786885
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdDistanceWithMIL",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3811610546436
+          },
+          "jitterSeconds": 595.3811610546438,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 49,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "STATIC_OR_CONTEXTUAL",
+          "nonNullCount": 62,
+          "uniqueValueCount": 1,
+          "valueChangeCount": 0,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "stdDev": 0,
+          "range": 0,
+          "staticFraction": 1
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdFuelRailPressure",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3811610546436
+          },
+          "jitterSeconds": 595.3811610546438,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 49,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "STATIC_OR_CONTEXTUAL",
+          "nonNullCount": 62,
+          "uniqueValueCount": 1,
+          "valueChangeCount": 0,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "stdDev": 0,
+          "range": 0,
+          "staticFraction": 1
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdFuelTypeName",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3821893780258
+          },
+          "jitterSeconds": 595.3821893780262,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 48,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5439,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "NON_NUMERIC_CONTEXT",
+          "nonNullCount": 62,
+          "uniqueValueCount": 51,
+          "valueChangeCount": 50,
+          "min": null,
+          "max": null,
+          "mean": null,
+          "stdDev": null,
+          "range": null,
+          "staticFraction": null
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdIntakeTemp",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3811610546436
+          },
+          "jitterSeconds": 595.3811610546438,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 49,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 25,
+          "valueChangeCount": 41,
+          "min": -40,
+          "max": 59,
+          "mean": 39.38709677419355,
+          "stdDev": 25.058851934706887,
+          "range": 99,
+          "staticFraction": 0.3278688524590164
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdIsPluggedIn",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3811610546436
+          },
+          "jitterSeconds": 595.3811610546438,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 49,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "STATIC_OR_CONTEXTUAL",
+          "nonNullCount": 62,
+          "uniqueValueCount": 1,
+          "valueChangeCount": 0,
+          "min": 1,
+          "max": 1,
+          "mean": 1,
+          "stdDev": 0,
+          "range": 0,
+          "staticFraction": 1
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdLongTermFuelTrim1",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3811610546436
+          },
+          "jitterSeconds": 595.3811610546438,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 49,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 14,
+          "valueChangeCount": 39,
+          "min": -100,
+          "max": 2.34375,
+          "mean": -9.11038306451613,
+          "stdDev": 27.258151861585507,
+          "range": 102.34375,
+          "staticFraction": 0.360655737704918
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdLongTermFuelTrim2",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3811610546436
+          },
+          "jitterSeconds": 595.3811610546438,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 49,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "STATIC_OR_CONTEXTUAL",
+          "nonNullCount": 62,
+          "uniqueValueCount": 1,
+          "valueChangeCount": 0,
+          "min": -100,
+          "max": -100,
+          "mean": -100,
+          "stdDev": 0,
+          "range": 0,
+          "staticFraction": 1
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdMAP",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3811610546436
+          },
+          "jitterSeconds": 595.3811610546438,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 49,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 36,
+          "valueChangeCount": 46,
+          "min": 0,
+          "max": 117,
+          "mean": 60.95161290322581,
+          "stdDev": 31.103437909898528,
+          "range": 117,
+          "staticFraction": 0.24590163934426235
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdMaxMAF",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3811610546436
+          },
+          "jitterSeconds": 595.3811610546438,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 49,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "STATIC_OR_CONTEXTUAL",
+          "nonNullCount": 62,
+          "uniqueValueCount": 1,
+          "valueChangeCount": 0,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "stdDev": 0,
+          "range": 0,
+          "staticFraction": 1
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdOilTemperature",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3811610546436
+          },
+          "jitterSeconds": 595.3811610546438,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 49,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 27,
+          "valueChangeCount": 41,
+          "min": -40,
+          "max": 97,
+          "mean": 69.95161290322581,
+          "stdDev": 39.49203174219312,
+          "range": 137,
+          "staticFraction": 0.3278688524590164
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdRunTime",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3821893780258
+          },
+          "jitterSeconds": 595.3821893780262,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 48,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5439,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 46,
+          "valueChangeCount": 47,
+          "min": 31,
+          "max": 2407,
+          "mean": 636.241935483871,
+          "stdDev": 482.3813091247564,
+          "range": 2376,
+          "staticFraction": 0.2295081967213115
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "obdStatusDTCCount",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3811610546436
+          },
+          "jitterSeconds": 595.3811610546438,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 49,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "STATIC_OR_CONTEXTUAL",
+          "nonNullCount": 62,
+          "uniqueValueCount": 1,
+          "valueChangeCount": 0,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "stdDev": 0,
+          "range": 0,
+          "staticFraction": 1
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "powertrainCombustionEngineECT",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 50,
+          "duplicateProviderTimestampRetrievals": 12,
+          "positiveDeltaTSampleCount": 49,
+          "deltaTSeconds": {
+            "sampleCount": 49,
+            "min": 4,
+            "p50": 36,
+            "p90": 107,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 130.87755102040816,
+            "stdDev": 601.2840992635769
+          },
+          "jitterSeconds": 601.2840992635772,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 49,
+            "gt5s": 48,
+            "gt10s": 48,
+            "gt30s": 40
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5538,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 20,
+          "valueChangeCount": 43,
+          "min": 54,
+          "max": 99,
+          "mean": 89.2741935483871,
+          "stdDev": 7.4771112043305115,
+          "range": 45,
+          "staticFraction": 0.29508196721311475
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "powertrainFuelSystemAbsoluteLevel",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 49,
+          "duplicateProviderTimestampRetrievals": 13,
+          "positiveDeltaTSampleCount": 48,
+          "deltaTSeconds": {
+            "sampleCount": 48,
+            "min": 4,
+            "p50": 36,
+            "p90": 107,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 133.60416666666666,
+            "stdDev": 607.3963877873847
+          },
+          "jitterSeconds": 607.3963877873842,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 48,
+            "gt5s": 47,
+            "gt10s": 47,
+            "gt30s": 38
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5659,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 8,
+          "valueChangeCount": 7,
+          "min": 14,
+          "max": 21,
+          "mean": 17.85483870967742,
+          "stdDev": 2.572533191766296,
+          "range": 7,
+          "staticFraction": 0.8852459016393442
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "powertrainFuelSystemRelativeLevel",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 50,
+          "duplicateProviderTimestampRetrievals": 12,
+          "positiveDeltaTSampleCount": 49,
+          "deltaTSeconds": {
+            "sampleCount": 49,
+            "min": 4,
+            "p50": 36,
+            "p90": 107,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 130.87755102040816,
+            "stdDev": 601.2840992635769
+          },
+          "jitterSeconds": 601.2840992635772,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 49,
+            "gt5s": 48,
+            "gt10s": 48,
+            "gt30s": 40
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5538,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 20,
+          "valueChangeCount": 20,
+          "min": 24.70588235294118,
+          "max": 40,
+          "mean": 33.16888045540798,
+          "stdDev": 5.144828133770471,
+          "range": 15.294117647058819,
+          "staticFraction": 0.6721311475409837
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "powertrainTransmissionActualGear",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 50,
+          "duplicateProviderTimestampRetrievals": 12,
+          "positiveDeltaTSampleCount": 49,
+          "deltaTSeconds": {
+            "sampleCount": 49,
+            "min": 4,
+            "p50": 36,
+            "p90": 106,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 130.87755102040816,
+            "stdDev": 601.2786941404219
+          },
+          "jitterSeconds": 601.2786941404222,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 49,
+            "gt5s": 48,
+            "gt10s": 48,
+            "gt30s": 41
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5538,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 7,
+          "valueChangeCount": 40,
+          "min": 0,
+          "max": 6,
+          "mean": 2.370967741935484,
+          "stdDev": 1.681469604759255,
+          "range": 6,
+          "staticFraction": 0.34426229508196726
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "powertrainTransmissionActualGearRatio",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 50,
+          "duplicateProviderTimestampRetrievals": 12,
+          "positiveDeltaTSampleCount": 49,
+          "deltaTSeconds": {
+            "sampleCount": 49,
+            "min": 4,
+            "p50": 36,
+            "p90": 106,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 130.87755102040816,
+            "stdDev": 601.2786941404219
+          },
+          "jitterSeconds": 601.2786941404222,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 49,
+            "gt5s": 48,
+            "gt10s": 48,
+            "gt30s": 41
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5538,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "STATIC_OR_CONTEXTUAL",
+          "nonNullCount": 62,
+          "uniqueValueCount": 1,
+          "valueChangeCount": 0,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "stdDev": 0,
+          "range": 0,
+          "staticFraction": 1
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "powertrainTransmissionTravelledDistance",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3811610546436
+          },
+          "jitterSeconds": 595.3811610546438,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 49,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5421,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 62,
+          "uniqueValueCount": 35,
+          "valueChangeCount": 34,
+          "min": 8342,
+          "max": 8429,
+          "mean": 8377.177419354839,
+          "stdDev": 32.55589100505058,
+          "range": 87,
+          "staticFraction": 0.4426229508196722
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    },
+    {
+      "providerField": "powertrainType",
+      "acquisitionSurface": "LATEST_SLOW",
+      "metrics": {
+        "observationCount": 62,
+        "nonNullCount": 62,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 62,
+          "uniqueProviderTimestampCount": 51,
+          "duplicateProviderTimestampRetrievals": 11,
+          "positiveDeltaTSampleCount": 50,
+          "deltaTSeconds": {
+            "sampleCount": 50,
+            "min": 4,
+            "p50": 36,
+            "p90": 87,
+            "p95": 132,
+            "p99": 4247,
+            "max": 4247,
+            "mean": 128.26,
+            "stdDev": 595.3821893780258
+          },
+          "jitterSeconds": 595.3821893780262,
+          "maxGapSeconds": 4247,
+          "gapCountsAbove": {
+            "gt2s": 50,
+            "gt5s": 48,
+            "gt10s": 48,
+            "gt30s": 42
+          },
+          "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+          "lastProviderTimestamp": "2026-09-02T19:35:47.000Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 62
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 240,
+            "p95": 389,
+            "p99": 722,
+            "max": 722,
+            "sampleCount": 62
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 5439,
+            "p95": 111526,
+            "p99": 4222641,
+            "max": 4222641,
+            "sampleCount": 62
+          }
+        },
+        "dynamics": {
+          "classification": "NON_NUMERIC_CONTEXT",
+          "nonNullCount": 62,
+          "uniqueValueCount": 51,
+          "valueChangeCount": 50,
+          "min": null,
+          "max": null,
+          "mean": null,
+          "stdDev": null,
+          "range": null,
+          "staticFraction": null
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 62,
+          "fingerprintedRows": 0,
+          "fingerprintCoverageRate": 0,
+          "uniqueFingerprints": 0,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "BOUNDARY_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.883,
+            "p50": 35.696,
+            "p90": 37.176,
+            "p95": 38.552,
+            "p99": 45.232,
+            "max": 45.232,
+            "mean": 35.99962295081966,
+            "stdDev": 1.7461165307040118
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 61,
+          "deltaTSeconds": {
+            "sampleCount": 61,
+            "min": 29.84,
+            "p50": 35.684,
+            "p90": 37.145,
+            "p95": 38.66,
+            "p99": 45.172,
+            "max": 45.172,
+            "mean": 36.00029508196721,
+            "stdDev": 1.7464684398738528
+          }
+        }
+      }
+    }
+  ],
+  "hfForensics": {
+    "hfFieldCount": 5,
+    "hfFieldList": [
+      "obdEngineLoad",
+      "obdThrottlePosition",
+      "powertrainCombustionEngineSpeed",
+      "powertrainCombustionEngineTPS",
+      "speed"
+    ],
+    "totalRows": 2783,
+    "uniquePhysicalSamples": 2783,
+    "identityVersions": [
+      "AGGREGATE_BUCKET_V2"
+    ],
+    "requestedAggregation": "AVG",
+    "requestedInterval": "1s",
+    "REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ": "NO",
+    "ACTUAL_PHYSICAL_SAMPLE_RATE_PROVEN": "NO",
+    "perField": {
+      "obdEngineLoad": {
+        "observationCount": 592,
+        "nonNullCount": 592,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 592,
+          "uniqueProviderTimestampCount": 592,
+          "duplicateProviderTimestampRetrievals": 0,
+          "positiveDeltaTSampleCount": 591,
+          "deltaTSeconds": {
+            "sampleCount": 591,
+            "min": 0.751,
+            "p50": 2,
+            "p90": 4.815,
+            "p95": 6.038,
+            "p99": 78.028,
+            "max": 222.738,
+            "mean": 3.7069780033840964,
+            "stdDev": 13.019900585987854
+          },
+          "jitterSeconds": 13.019900585987822,
+          "maxGapSeconds": 222.738,
+          "gapCountsAbove": {
+            "gt2s": 221,
+            "gt5s": 44,
+            "gt10s": 18,
+            "gt30s": 6
+          },
+          "firstProviderTimestamp": "2026-09-02T18:59:45.646Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:16.470Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 592
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 225,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 592
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 225,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 592
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6354,
+            "p95": 8319,
+            "p99": 9062,
+            "max": 10802,
+            "sampleCount": 592
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 592,
+          "uniqueValueCount": 151,
+          "valueChangeCount": 481,
+          "min": 0,
+          "max": 98.0392156862745,
+          "mean": 26.45866454689986,
+          "stdDev": 21.152861247342997,
+          "range": 98.0392156862745,
+          "staticFraction": 0.1861252115059222
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 592,
+          "fingerprintedRows": 592,
+          "fingerprintCoverageRate": 1,
+          "uniqueFingerprints": 592,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "PROVIDER_DATA_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 229,
+          "deltaTSeconds": {
+            "sampleCount": 229,
+            "min": 5.684,
+            "p50": 5.912,
+            "p90": 6.971,
+            "p95": 17.724,
+            "p99": 117.894,
+            "max": 221.588,
+            "mean": 9.561995633187774,
+            "stdDev": 20.075331318079975
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 229,
+          "deltaTSeconds": {
+            "sampleCount": 229,
+            "min": 5.673,
+            "p50": 5.925,
+            "p90": 7,
+            "p95": 17.482,
+            "p99": 117.941,
+            "max": 221.411,
+            "mean": 9.561764192139737,
+            "stdDev": 20.051565742038914
+          }
+        },
+        "identityVersions": [
+          "AGGREGATE_BUCKET_V2"
+        ],
+        "aggregations": [
+          "AVG"
+        ],
+        "requestedIntervals": [
+          "1s"
+        ],
+        "duplicateBucketIdentities": 0,
+        "hfWindowFromFirst": "2026-09-02T18:59:43.646Z",
+        "hfWindowToLast": "2026-09-02T19:36:21.560Z",
+        "hfActualQueryToLast": "2026-09-02T19:36:21.560Z",
+        "lateArrivalRecoveryObserved": false
+      },
+      "obdThrottlePosition": {
+        "observationCount": 545,
+        "nonNullCount": 545,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 545,
+          "uniqueProviderTimestampCount": 545,
+          "duplicateProviderTimestampRetrievals": 0,
+          "positiveDeltaTSampleCount": 544,
+          "deltaTSeconds": {
+            "sampleCount": 544,
+            "min": 0.751,
+            "p50": 2,
+            "p90": 4.874,
+            "p95": 6.988,
+            "p99": 78.028,
+            "max": 222.738,
+            "mean": 4.02725,
+            "stdDev": 13.888067468021486
+          },
+          "jitterSeconds": 13.88806746802155,
+          "maxGapSeconds": 222.738,
+          "gapCountsAbove": {
+            "gt2s": 211,
+            "gt5s": 47,
+            "gt10s": 22,
+            "gt30s": 6
+          },
+          "firstProviderTimestamp": "2026-09-02T18:59:45.646Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:16.470Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 545
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 545
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 545
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6354,
+            "p95": 8338,
+            "p99": 9062,
+            "max": 10802,
+            "sampleCount": 545
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 545,
+          "uniqueValueCount": 66,
+          "valueChangeCount": 473,
+          "min": 10.19607843137255,
+          "max": 85.09803921568627,
+          "mean": 19.95178989026802,
+          "stdDev": 16.56670582639374,
+          "range": 74.90196078431372,
+          "staticFraction": 0.13051470588235292
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 545,
+          "fingerprintedRows": 545,
+          "fingerprintCoverageRate": 1,
+          "uniqueFingerprints": 545,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "PROVIDER_DATA_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 218,
+          "deltaTSeconds": {
+            "sampleCount": 218,
+            "min": 5.697,
+            "p50": 5.921,
+            "p90": 11.436,
+            "p95": 23.316,
+            "p99": 117.894,
+            "max": 221.588,
+            "mean": 10.044481651376149,
+            "stdDev": 20.980488664276333
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 218,
+          "deltaTSeconds": {
+            "sampleCount": 218,
+            "min": 5.673,
+            "p50": 5.93,
+            "p90": 11.515,
+            "p95": 23.348,
+            "p99": 117.941,
+            "max": 221.411,
+            "mean": 10.044238532110091,
+            "stdDev": 20.944945541147682
+          }
+        },
+        "identityVersions": [
+          "AGGREGATE_BUCKET_V2"
+        ],
+        "aggregations": [
+          "AVG"
+        ],
+        "requestedIntervals": [
+          "1s"
+        ],
+        "duplicateBucketIdentities": 0,
+        "hfWindowFromFirst": "2026-09-02T18:59:43.646Z",
+        "hfWindowToLast": "2026-09-02T19:36:21.560Z",
+        "hfActualQueryToLast": "2026-09-02T19:36:21.560Z",
+        "lateArrivalRecoveryObserved": false
+      },
+      "powertrainCombustionEngineSpeed": {
+        "observationCount": 500,
+        "nonNullCount": 500,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 500,
+          "uniqueProviderTimestampCount": 500,
+          "duplicateProviderTimestampRetrievals": 0,
+          "positiveDeltaTSampleCount": 499,
+          "deltaTSeconds": {
+            "sampleCount": 499,
+            "min": 0.843,
+            "p50": 2,
+            "p90": 5.242,
+            "p95": 10.17,
+            "p99": 86.894,
+            "max": 222.738,
+            "mean": 4.39042885771543,
+            "stdDev": 14.56173346668135
+          },
+          "jitterSeconds": 14.561733466681307,
+          "maxGapSeconds": 222.738,
+          "gapCountsAbove": {
+            "gt2s": 203,
+            "gt5s": 56,
+            "gt10s": 25,
+            "gt30s": 8
+          },
+          "firstProviderTimestamp": "2026-09-02T18:59:45.646Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:16.470Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 500
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 500
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 500
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6406,
+            "p95": 8286,
+            "p99": 8807,
+            "max": 9967,
+            "sampleCount": 500
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 500,
+          "uniqueValueCount": 344,
+          "valueChangeCount": 478,
+          "min": 195,
+          "max": 3212,
+          "mean": 1366.111,
+          "stdDev": 427.4924499550101,
+          "range": 3017,
+          "staticFraction": 0.04208416833667339
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 500,
+          "fingerprintedRows": 500,
+          "fingerprintCoverageRate": 1,
+          "uniqueFingerprints": 500,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "PROVIDER_DATA_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 208,
+          "deltaTSeconds": {
+            "sampleCount": 208,
+            "min": 5.697,
+            "p50": 5.921,
+            "p90": 12.028,
+            "p95": 23.5,
+            "p99": 117.894,
+            "max": 221.588,
+            "mean": 10.527389423076928,
+            "stdDev": 21.50422520975289
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 208,
+          "deltaTSeconds": {
+            "sampleCount": 208,
+            "min": 5.673,
+            "p50": 5.93,
+            "p90": 12.02,
+            "p95": 23.582,
+            "p99": 117.941,
+            "max": 221.411,
+            "mean": 10.527134615384615,
+            "stdDev": 21.479465564991056
+          }
+        },
+        "identityVersions": [
+          "AGGREGATE_BUCKET_V2"
+        ],
+        "aggregations": [
+          "AVG"
+        ],
+        "requestedIntervals": [
+          "1s"
+        ],
+        "duplicateBucketIdentities": 0,
+        "hfWindowFromFirst": "2026-09-02T18:59:43.646Z",
+        "hfWindowToLast": "2026-09-02T19:36:21.560Z",
+        "hfActualQueryToLast": "2026-09-02T19:36:21.560Z",
+        "lateArrivalRecoveryObserved": false
+      },
+      "powertrainCombustionEngineTPS": {
+        "observationCount": 554,
+        "nonNullCount": 554,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 554,
+          "uniqueProviderTimestampCount": 554,
+          "duplicateProviderTimestampRetrievals": 0,
+          "positiveDeltaTSampleCount": 553,
+          "deltaTSeconds": {
+            "sampleCount": 553,
+            "min": 0.751,
+            "p50": 2,
+            "p90": 4.859,
+            "p95": 6.42,
+            "p99": 78.028,
+            "max": 222.738,
+            "mean": 3.9617070524412297,
+            "stdDev": 13.739301019110703
+          },
+          "jitterSeconds": 13.739301019110757,
+          "maxGapSeconds": 222.738,
+          "gapCountsAbove": {
+            "gt2s": 211,
+            "gt5s": 47,
+            "gt10s": 19,
+            "gt30s": 7
+          },
+          "firstProviderTimestamp": "2026-09-02T18:59:45.646Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:16.470Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 554
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 554
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 554
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6354,
+            "p95": 8319,
+            "p99": 9062,
+            "max": 10802,
+            "sampleCount": 554
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 554,
+          "uniqueValueCount": 73,
+          "valueChangeCount": 305,
+          "min": 0,
+          "max": 49.41176470588236,
+          "mean": 18.882990019112285,
+          "stdDev": 9.60962326548081,
+          "range": 49.41176470588236,
+          "staticFraction": 0.44846292947558775
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 554,
+          "fingerprintedRows": 554,
+          "fingerprintCoverageRate": 1,
+          "uniqueFingerprints": 554,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "PROVIDER_DATA_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 218,
+          "deltaTSeconds": {
+            "sampleCount": 218,
+            "min": 5.697,
+            "p50": 5.916,
+            "p90": 7.755,
+            "p95": 23.316,
+            "p99": 117.894,
+            "max": 221.588,
+            "mean": 10.044481651376147,
+            "stdDev": 20.95912930113925
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 218,
+          "deltaTSeconds": {
+            "sampleCount": 218,
+            "min": 5.673,
+            "p50": 5.928,
+            "p90": 8.682,
+            "p95": 23.348,
+            "p99": 117.941,
+            "max": 221.411,
+            "mean": 10.04423853211009,
+            "stdDev": 20.935443562519282
+          }
+        },
+        "identityVersions": [
+          "AGGREGATE_BUCKET_V2"
+        ],
+        "aggregations": [
+          "AVG"
+        ],
+        "requestedIntervals": [
+          "1s"
+        ],
+        "duplicateBucketIdentities": 0,
+        "hfWindowFromFirst": "2026-09-02T18:59:43.646Z",
+        "hfWindowToLast": "2026-09-02T19:36:21.560Z",
+        "hfActualQueryToLast": "2026-09-02T19:36:21.560Z",
+        "lateArrivalRecoveryObserved": false
+      },
+      "speed": {
+        "observationCount": 592,
+        "nonNullCount": 592,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 592,
+          "uniqueProviderTimestampCount": 592,
+          "duplicateProviderTimestampRetrievals": 0,
+          "positiveDeltaTSampleCount": 591,
+          "deltaTSeconds": {
+            "sampleCount": 591,
+            "min": 0.751,
+            "p50": 2,
+            "p90": 4.815,
+            "p95": 6.038,
+            "p99": 78.028,
+            "max": 222.738,
+            "mean": 3.7069780033840964,
+            "stdDev": 13.019900585987854
+          },
+          "jitterSeconds": 13.019900585987822,
+          "maxGapSeconds": 222.738,
+          "gapCountsAbove": {
+            "gt2s": 221,
+            "gt5s": 44,
+            "gt10s": 18,
+            "gt30s": 6
+          },
+          "firstProviderTimestamp": "2026-09-02T18:59:45.646Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:16.470Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 592
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 225,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 592
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 225,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 592
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6354,
+            "p95": 8319,
+            "p99": 9062,
+            "max": 10802,
+            "sampleCount": 592
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 592,
+          "uniqueValueCount": 76,
+          "valueChangeCount": 450,
+          "min": 0,
+          "max": 96,
+          "mean": 21.56587837837838,
+          "stdDev": 20.283416193846598,
+          "range": 96,
+          "staticFraction": 0.23857868020304573
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 592,
+          "fingerprintedRows": 592,
+          "fingerprintCoverageRate": 1,
+          "uniqueFingerprints": 592,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "PROVIDER_DATA_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 229,
+          "deltaTSeconds": {
+            "sampleCount": 229,
+            "min": 5.684,
+            "p50": 5.912,
+            "p90": 6.971,
+            "p95": 17.724,
+            "p99": 117.894,
+            "max": 221.588,
+            "mean": 9.561995633187774,
+            "stdDev": 20.075331318079975
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 229,
+          "deltaTSeconds": {
+            "sampleCount": 229,
+            "min": 5.673,
+            "p50": 5.925,
+            "p90": 7,
+            "p95": 17.482,
+            "p99": 117.941,
+            "max": 221.411,
+            "mean": 9.561764192139737,
+            "stdDev": 20.051565742038914
+          }
+        },
+        "identityVersions": [
+          "AGGREGATE_BUCKET_V2"
+        ],
+        "aggregations": [
+          "AVG"
+        ],
+        "requestedIntervals": [
+          "1s"
+        ],
+        "duplicateBucketIdentities": 0,
+        "hfWindowFromFirst": "2026-09-02T18:59:43.646Z",
+        "hfWindowToLast": "2026-09-02T19:36:21.560Z",
+        "hfActualQueryToLast": "2026-09-02T19:36:21.560Z",
+        "lateArrivalRecoveryObserved": false
+      }
+    },
+    "note": "HF rows are AGGREGATE_BUCKET_V2 observations — not proven raw LTE_R1 physical sample rate"
+  },
+  "hfRuntimeValidation": {
+    "HF_PHYSICAL_IDENTITY_VERSION": "AGGREGATE_BUCKET_V2",
+    "HF_QUERY_WINDOW_BOUNDED_RUNTIME_VALIDATED": "YES",
+    "HF_DATA_WATERMARK_RUNTIME_VALIDATED": "YES",
+    "HF_IDEMPOTENCY_RUNTIME_VALIDATED": "YES",
+    "HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED": "NOT_EXERCISED",
+    "duplicateAggregateBucketIdentities": 0,
+    "nonV2IdentityRows": 0
+  },
+  "recorderCycleTiming": {
+    "uniqueRequestStartedAtCount": 663,
+    "inferredCycleStartCount": 372,
+    "clusterGapThresholdSeconds": 3,
+    "deltaTSeconds": {
+      "sampleCount": 371,
+      "p50": 5.896,
+      "p90": 6.25,
+      "p95": 6.539,
+      "p99": 7.941,
+      "max": 15.931,
+      "mean": 5.99887331536388
+    },
+    "note": "Recorder cycle cadence inferred from clustered requestStartedAt — NOT provider signal cadence"
+  },
+  "cadenceSeparation": {
+    "RECORDER_POLL_CADENCE": {
+      "uniqueRequestStartedAtCount": 663,
+      "inferredCycleStartCount": 372,
+      "clusterGapThresholdSeconds": 3,
+      "deltaTSeconds": {
+        "sampleCount": 371,
+        "p50": 5.896,
+        "p90": 6.25,
+        "p95": 6.539,
+        "p99": 7.941,
+        "max": 15.931,
+        "mean": 5.99887331536388
+      },
+      "note": "Recorder cycle cadence inferred from clustered requestStartedAt — NOT provider signal cadence"
+    },
+    "PROVIDER_TIMESTAMP_CADENCE": "see perFieldSurface.providerCadence",
+    "VALUE_CHANGE_CADENCE": "see inventory + dynamics",
+    "HF_AGGREGATE_BUCKET_CADENCE": {
+      "obdEngineLoad": {
+        "observationCount": 592,
+        "nonNullCount": 592,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 592,
+          "uniqueProviderTimestampCount": 592,
+          "duplicateProviderTimestampRetrievals": 0,
+          "positiveDeltaTSampleCount": 591,
+          "deltaTSeconds": {
+            "sampleCount": 591,
+            "min": 0.751,
+            "p50": 2,
+            "p90": 4.815,
+            "p95": 6.038,
+            "p99": 78.028,
+            "max": 222.738,
+            "mean": 3.7069780033840964,
+            "stdDev": 13.019900585987854
+          },
+          "jitterSeconds": 13.019900585987822,
+          "maxGapSeconds": 222.738,
+          "gapCountsAbove": {
+            "gt2s": 221,
+            "gt5s": 44,
+            "gt10s": 18,
+            "gt30s": 6
+          },
+          "firstProviderTimestamp": "2026-09-02T18:59:45.646Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:16.470Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 592
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 225,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 592
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 225,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 592
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6354,
+            "p95": 8319,
+            "p99": 9062,
+            "max": 10802,
+            "sampleCount": 592
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 592,
+          "uniqueValueCount": 151,
+          "valueChangeCount": 481,
+          "min": 0,
+          "max": 98.0392156862745,
+          "mean": 26.45866454689986,
+          "stdDev": 21.152861247342997,
+          "range": 98.0392156862745,
+          "staticFraction": 0.1861252115059222
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 592,
+          "fingerprintedRows": 592,
+          "fingerprintCoverageRate": 1,
+          "uniqueFingerprints": 592,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "PROVIDER_DATA_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 229,
+          "deltaTSeconds": {
+            "sampleCount": 229,
+            "min": 5.684,
+            "p50": 5.912,
+            "p90": 6.971,
+            "p95": 17.724,
+            "p99": 117.894,
+            "max": 221.588,
+            "mean": 9.561995633187774,
+            "stdDev": 20.075331318079975
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 229,
+          "deltaTSeconds": {
+            "sampleCount": 229,
+            "min": 5.673,
+            "p50": 5.925,
+            "p90": 7,
+            "p95": 17.482,
+            "p99": 117.941,
+            "max": 221.411,
+            "mean": 9.561764192139737,
+            "stdDev": 20.051565742038914
+          }
+        },
+        "identityVersions": [
+          "AGGREGATE_BUCKET_V2"
+        ],
+        "aggregations": [
+          "AVG"
+        ],
+        "requestedIntervals": [
+          "1s"
+        ],
+        "duplicateBucketIdentities": 0,
+        "hfWindowFromFirst": "2026-09-02T18:59:43.646Z",
+        "hfWindowToLast": "2026-09-02T19:36:21.560Z",
+        "hfActualQueryToLast": "2026-09-02T19:36:21.560Z",
+        "lateArrivalRecoveryObserved": false
+      },
+      "obdThrottlePosition": {
+        "observationCount": 545,
+        "nonNullCount": 545,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 545,
+          "uniqueProviderTimestampCount": 545,
+          "duplicateProviderTimestampRetrievals": 0,
+          "positiveDeltaTSampleCount": 544,
+          "deltaTSeconds": {
+            "sampleCount": 544,
+            "min": 0.751,
+            "p50": 2,
+            "p90": 4.874,
+            "p95": 6.988,
+            "p99": 78.028,
+            "max": 222.738,
+            "mean": 4.02725,
+            "stdDev": 13.888067468021486
+          },
+          "jitterSeconds": 13.88806746802155,
+          "maxGapSeconds": 222.738,
+          "gapCountsAbove": {
+            "gt2s": 211,
+            "gt5s": 47,
+            "gt10s": 22,
+            "gt30s": 6
+          },
+          "firstProviderTimestamp": "2026-09-02T18:59:45.646Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:16.470Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 545
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 545
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 545
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6354,
+            "p95": 8338,
+            "p99": 9062,
+            "max": 10802,
+            "sampleCount": 545
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 545,
+          "uniqueValueCount": 66,
+          "valueChangeCount": 473,
+          "min": 10.19607843137255,
+          "max": 85.09803921568627,
+          "mean": 19.95178989026802,
+          "stdDev": 16.56670582639374,
+          "range": 74.90196078431372,
+          "staticFraction": 0.13051470588235292
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 545,
+          "fingerprintedRows": 545,
+          "fingerprintCoverageRate": 1,
+          "uniqueFingerprints": 545,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "PROVIDER_DATA_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 218,
+          "deltaTSeconds": {
+            "sampleCount": 218,
+            "min": 5.697,
+            "p50": 5.921,
+            "p90": 11.436,
+            "p95": 23.316,
+            "p99": 117.894,
+            "max": 221.588,
+            "mean": 10.044481651376149,
+            "stdDev": 20.980488664276333
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 218,
+          "deltaTSeconds": {
+            "sampleCount": 218,
+            "min": 5.673,
+            "p50": 5.93,
+            "p90": 11.515,
+            "p95": 23.348,
+            "p99": 117.941,
+            "max": 221.411,
+            "mean": 10.044238532110091,
+            "stdDev": 20.944945541147682
+          }
+        },
+        "identityVersions": [
+          "AGGREGATE_BUCKET_V2"
+        ],
+        "aggregations": [
+          "AVG"
+        ],
+        "requestedIntervals": [
+          "1s"
+        ],
+        "duplicateBucketIdentities": 0,
+        "hfWindowFromFirst": "2026-09-02T18:59:43.646Z",
+        "hfWindowToLast": "2026-09-02T19:36:21.560Z",
+        "hfActualQueryToLast": "2026-09-02T19:36:21.560Z",
+        "lateArrivalRecoveryObserved": false
+      },
+      "powertrainCombustionEngineSpeed": {
+        "observationCount": 500,
+        "nonNullCount": 500,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 500,
+          "uniqueProviderTimestampCount": 500,
+          "duplicateProviderTimestampRetrievals": 0,
+          "positiveDeltaTSampleCount": 499,
+          "deltaTSeconds": {
+            "sampleCount": 499,
+            "min": 0.843,
+            "p50": 2,
+            "p90": 5.242,
+            "p95": 10.17,
+            "p99": 86.894,
+            "max": 222.738,
+            "mean": 4.39042885771543,
+            "stdDev": 14.56173346668135
+          },
+          "jitterSeconds": 14.561733466681307,
+          "maxGapSeconds": 222.738,
+          "gapCountsAbove": {
+            "gt2s": 203,
+            "gt5s": 56,
+            "gt10s": 25,
+            "gt30s": 8
+          },
+          "firstProviderTimestamp": "2026-09-02T18:59:45.646Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:16.470Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 500
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 500
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 500
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6406,
+            "p95": 8286,
+            "p99": 8807,
+            "max": 9967,
+            "sampleCount": 500
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 500,
+          "uniqueValueCount": 344,
+          "valueChangeCount": 478,
+          "min": 195,
+          "max": 3212,
+          "mean": 1366.111,
+          "stdDev": 427.4924499550101,
+          "range": 3017,
+          "staticFraction": 0.04208416833667339
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 500,
+          "fingerprintedRows": 500,
+          "fingerprintCoverageRate": 1,
+          "uniqueFingerprints": 500,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "PROVIDER_DATA_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 208,
+          "deltaTSeconds": {
+            "sampleCount": 208,
+            "min": 5.697,
+            "p50": 5.921,
+            "p90": 12.028,
+            "p95": 23.5,
+            "p99": 117.894,
+            "max": 221.588,
+            "mean": 10.527389423076928,
+            "stdDev": 21.50422520975289
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 208,
+          "deltaTSeconds": {
+            "sampleCount": 208,
+            "min": 5.673,
+            "p50": 5.93,
+            "p90": 12.02,
+            "p95": 23.582,
+            "p99": 117.941,
+            "max": 221.411,
+            "mean": 10.527134615384615,
+            "stdDev": 21.479465564991056
+          }
+        },
+        "identityVersions": [
+          "AGGREGATE_BUCKET_V2"
+        ],
+        "aggregations": [
+          "AVG"
+        ],
+        "requestedIntervals": [
+          "1s"
+        ],
+        "duplicateBucketIdentities": 0,
+        "hfWindowFromFirst": "2026-09-02T18:59:43.646Z",
+        "hfWindowToLast": "2026-09-02T19:36:21.560Z",
+        "hfActualQueryToLast": "2026-09-02T19:36:21.560Z",
+        "lateArrivalRecoveryObserved": false
+      },
+      "powertrainCombustionEngineTPS": {
+        "observationCount": 554,
+        "nonNullCount": 554,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 554,
+          "uniqueProviderTimestampCount": 554,
+          "duplicateProviderTimestampRetrievals": 0,
+          "positiveDeltaTSampleCount": 553,
+          "deltaTSeconds": {
+            "sampleCount": 553,
+            "min": 0.751,
+            "p50": 2,
+            "p90": 4.859,
+            "p95": 6.42,
+            "p99": 78.028,
+            "max": 222.738,
+            "mean": 3.9617070524412297,
+            "stdDev": 13.739301019110703
+          },
+          "jitterSeconds": 13.739301019110757,
+          "maxGapSeconds": 222.738,
+          "gapCountsAbove": {
+            "gt2s": 211,
+            "gt5s": 47,
+            "gt10s": 19,
+            "gt30s": 7
+          },
+          "firstProviderTimestamp": "2026-09-02T18:59:45.646Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:16.470Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 554
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 554
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 226,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 554
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6354,
+            "p95": 8319,
+            "p99": 9062,
+            "max": 10802,
+            "sampleCount": 554
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 554,
+          "uniqueValueCount": 73,
+          "valueChangeCount": 305,
+          "min": 0,
+          "max": 49.41176470588236,
+          "mean": 18.882990019112285,
+          "stdDev": 9.60962326548081,
+          "range": 49.41176470588236,
+          "staticFraction": 0.44846292947558775
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 554,
+          "fingerprintedRows": 554,
+          "fingerprintCoverageRate": 1,
+          "uniqueFingerprints": 554,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "PROVIDER_DATA_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 218,
+          "deltaTSeconds": {
+            "sampleCount": 218,
+            "min": 5.697,
+            "p50": 5.916,
+            "p90": 7.755,
+            "p95": 23.316,
+            "p99": 117.894,
+            "max": 221.588,
+            "mean": 10.044481651376147,
+            "stdDev": 20.95912930113925
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 218,
+          "deltaTSeconds": {
+            "sampleCount": 218,
+            "min": 5.673,
+            "p50": 5.928,
+            "p90": 8.682,
+            "p95": 23.348,
+            "p99": 117.941,
+            "max": 221.411,
+            "mean": 10.04423853211009,
+            "stdDev": 20.935443562519282
+          }
+        },
+        "identityVersions": [
+          "AGGREGATE_BUCKET_V2"
+        ],
+        "aggregations": [
+          "AVG"
+        ],
+        "requestedIntervals": [
+          "1s"
+        ],
+        "duplicateBucketIdentities": 0,
+        "hfWindowFromFirst": "2026-09-02T18:59:43.646Z",
+        "hfWindowToLast": "2026-09-02T19:36:21.560Z",
+        "hfActualQueryToLast": "2026-09-02T19:36:21.560Z",
+        "lateArrivalRecoveryObserved": false
+      },
+      "speed": {
+        "observationCount": 592,
+        "nonNullCount": 592,
+        "nullRate": 0,
+        "providerCadence": {
+          "observationCount": 592,
+          "uniqueProviderTimestampCount": 592,
+          "duplicateProviderTimestampRetrievals": 0,
+          "positiveDeltaTSampleCount": 591,
+          "deltaTSeconds": {
+            "sampleCount": 591,
+            "min": 0.751,
+            "p50": 2,
+            "p90": 4.815,
+            "p95": 6.038,
+            "p99": 78.028,
+            "max": 222.738,
+            "mean": 3.7069780033840964,
+            "stdDev": 13.019900585987854
+          },
+          "jitterSeconds": 13.019900585987822,
+          "maxGapSeconds": 222.738,
+          "gapCountsAbove": {
+            "gt2s": 221,
+            "gt5s": 44,
+            "gt10s": 18,
+            "gt30s": 6
+          },
+          "firstProviderTimestamp": "2026-09-02T18:59:45.646Z",
+          "lastProviderTimestamp": "2026-09-02T19:36:16.470Z"
+        },
+        "outOfOrder": {
+          "outOfOrderCount": 0,
+          "outOfOrderRate": 0,
+          "negativeTimestampJumps": 0,
+          "largestBackwardsJumpSeconds": 0,
+          "acquisitionOrderedSampleCount": 592
+        },
+        "latency": {
+          "httpRequestDurationMs": {
+            "p50": 225,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 592
+          },
+          "synqResponseBoundaryMs": {
+            "p50": 225,
+            "p95": 426,
+            "p99": 939,
+            "max": 2091,
+            "sampleCount": 592
+          },
+          "providerSampleAgeAtIngressMs": {
+            "p50": 6354,
+            "p95": 8319,
+            "p99": 9062,
+            "max": 10802,
+            "sampleCount": 592
+          }
+        },
+        "dynamics": {
+          "classification": "DYNAMICALLY_INFORMATIVE",
+          "nonNullCount": 592,
+          "uniqueValueCount": 76,
+          "valueChangeCount": 450,
+          "min": 0,
+          "max": 96,
+          "mean": 21.56587837837838,
+          "stdDev": 20.283416193846598,
+          "range": 96,
+          "staticFraction": 0.23857868020304573
+        },
+        "fingerprint": {
+          "fingerprintEligibleRows": 592,
+          "fingerprintedRows": 592,
+          "fingerprintCoverageRate": 1,
+          "uniqueFingerprints": 592,
+          "duplicateFingerprintRetrievals": 0
+        },
+        "maxGapClassification": "PROVIDER_DATA_GAP",
+        "retrievalCadenceByRequestStartedAt": {
+          "sampleCount": 229,
+          "deltaTSeconds": {
+            "sampleCount": 229,
+            "min": 5.684,
+            "p50": 5.912,
+            "p90": 6.971,
+            "p95": 17.724,
+            "p99": 117.894,
+            "max": 221.588,
+            "mean": 9.561995633187774,
+            "stdDev": 20.075331318079975
+          }
+        },
+        "retrievalCadenceBySynqReceivedAt": {
+          "sampleCount": 229,
+          "deltaTSeconds": {
+            "sampleCount": 229,
+            "min": 5.673,
+            "p50": 5.925,
+            "p90": 7,
+            "p95": 17.482,
+            "p99": 117.941,
+            "max": 221.411,
+            "mean": 9.561764192139737,
+            "stdDev": 20.051565742038914
+          }
+        },
+        "identityVersions": [
+          "AGGREGATE_BUCKET_V2"
+        ],
+        "aggregations": [
+          "AVG"
+        ],
+        "requestedIntervals": [
+          "1s"
+        ],
+        "duplicateBucketIdentities": 0,
+        "hfWindowFromFirst": "2026-09-02T18:59:43.646Z",
+        "hfWindowToLast": "2026-09-02T19:36:21.560Z",
+        "hfActualQueryToLast": "2026-09-02T19:36:21.560Z",
+        "lateArrivalRecoveryObserved": false
+      }
+    },
+    "PHYSICAL_SAMPLE_CADENCE": "NOT_PROVEN — HF rows are aggregate buckets"
+  },
+  "fingerprintAudit": {
+    "note": "physicalSampleFingerprint is a persisted field name with semantic debt on HF_HISTORICAL: it fingerprints DIMO aggregate buckets (field + bucket-start timestamp + AVG), not proven raw LTE_R1 physical source samples.",
+    "observationTypeForHfHistorical": "HF_AGGREGATE_BUCKET_OBSERVATION",
+    "aggregateBucketFingerprintField": "physicalSampleFingerprint",
+    "futureRemediation": "aggregateBucketFingerprint distinct from rawPhysicalSampleFingerprint before physics calibration",
+    "fingerprintEligibleRows": 6250,
+    "fingerprintedRows": 2783,
+    "fingerprintCoverageRate": 0.44528,
+    "uniqueAggregateBucketFingerprintsAllSurfaces": 2783,
+    "uniqueAggregateBucketFingerprintsHfHistorical": 2783,
+    "duplicateFingerprintRetrievals": 0,
+    "bySurface": {
+      "LATEST_LIVE": {
+        "eligible": 1855,
+        "fingerprinted": 0,
+        "unique": 0
+      },
+      "LATEST_SLOW": {
+        "eligible": 1612,
+        "fingerprinted": 0,
+        "unique": 0
+      },
+      "HF_HISTORICAL": {
+        "eligible": 2783,
+        "fingerprinted": 2783,
+        "unique": 2783
+      }
+    }
+  },
+  "physicsAssessability": {
+    "targets": {
+      "vehicleSpeedTimeline": "DIRECTLY_OBSERVED",
+      "longitudinalAcceleration": "NOT_ASSESSABLE",
+      "jerk": "NOT_ASSESSABLE",
+      "accelerationEpisodes": "RECONSTRUCTABLE_MEDIUM_CONFIDENCE",
+      "brakingEpisodes": "NOT_ASSESSABLE",
+      "accelToBrakeReversal": "NOT_ASSESSABLE",
+      "stopGoCycles": "RECONSTRUCTABLE_MEDIUM_CONFIDENCE",
+      "engineLoadExposure": "DIRECTLY_OBSERVED",
+      "rpmLoadOperatingRegions": "DIRECTLY_OBSERVED",
+      "gearChangeTiming": "RECONSTRUCTABLE_HIGH_CONFIDENCE",
+      "lateralCorneringDemand": "WEAK_PROXY_ONLY",
+      "yawDynamics": "NOT_ASSESSABLE",
+      "wheelSpeedDifferential": "NOT_ASSESSABLE",
+      "brakeHydraulicDemand": "NOT_ASSESSABLE",
+      "tireDynamicDemand": "NOT_ASSESSABLE"
+    },
+    "domains": {
+      "DRIVER_QUALITY_ASSESSABILITY": "RECONSTRUCTABLE_MEDIUM_CONFIDENCE",
+      "VEHICLE_LOAD_ASSESSABILITY": "DIRECTLY_OBSERVED",
+      "BRAKE_PHYSICS_ASSESSABILITY": "NOT_ASSESSABLE",
+      "TIRE_DYNAMIC_ASSESSABILITY": "NOT_ASSESSABLE"
+    },
+    "rationale": {
+      "longitudinalAcceleration": "No longitudinal accel signal in Tiguan availableSignals",
+      "brakingEpisodes": "No brake pedal/pressure/hydraulic signals; no native harsh-brake events observed",
+      "yawDynamics": "No yaw rate signal on Tiguan LTE_R1",
+      "wheelSpeedDifferential": "No wheel speed signals",
+      "gearChangeTiming": "powertrainTransmissionActualGear observed with moderate cadence",
+      "speedTimeline": "speed observed on LATEST_LIVE + HF; temporalClass=WAVEFORM_DYNAMICS",
+      "mafPresent": true
+    }
+  },
+  "nativeEventForensics": {
+    "NATIVE_EVENT_COUNT": 0,
+    "NATIVE_EVENT_ENDPOINT_QUERIED": "UNKNOWN",
+    "NATIVE_EVENT_CAPABILITY_ADVERTISED": "UNKNOWN",
+    "PROVIDER_RETURNED_EVENT_COUNT": 0,
+    "QUALIFYING_DRIVER_EVENTS_OCCURRED": "UNKNOWN",
+    "NATIVE_EVENT_RUNTIME_DELIVERY_VALIDATED": "NOT_EXERCISED",
+    "comparison": {
+      "RD001_NATIVE_EVENTS": 0,
+      "RD002_NATIVE_EVENTS": 0,
+      "RD003_NATIVE_EVENTS": 0,
+      "researchFinding": "Three reference drives returned zero native DIMO events — acquisition/capability research finding, NOT proof that no harsh maneuvers occurred"
+    }
+  },
+  "brakeEvidence": {
+    "brakeDirectSignalAvailable": false,
+    "brakeProxyEvidenceAvailable": true,
+    "brakeNativeEventAvailable": false,
+    "brakeCaptureEligiblePreflight": false
+  },
+  "samplingInvarianceReadiness": {
+    "RD003_SAMPLING_INVARIANCE_SOURCE_READY": "YES",
+    "blockers": [],
+    "plannedReplayCadences": [
+      "native",
+      "1s",
+      "2s",
+      "5s",
+      "10s",
+      "30s",
+      "irregular",
+      "10pct_dropout",
+      "25pct_dropout"
+    ],
+    "note": "Do not upscale sparse HF buckets to synthetic native 1Hz truth"
+  },
+  "capabilityVsObserved": {
+    "availableSignalsCount": 31,
+    "observedFieldCount": 31,
+    "availableSignals": [
+      "currentLocationAltitude",
+      "currentLocationCoordinates",
+      "currentLocationHeading",
+      "exteriorAirTemperature",
+      "isIgnitionOn",
+      "lowVoltageBatteryCurrentVoltage",
+      "obdBarometricPressure",
+      "obdDistanceWithMIL",
+      "obdEngineLoad",
+      "obdFuelRailPressure",
+      "obdFuelTypeName",
+      "obdIntakeTemp",
+      "obdIsPluggedIn",
+      "obdLongTermFuelTrim1",
+      "obdLongTermFuelTrim2",
+      "obdMAP",
+      "obdMaxMAF",
+      "obdOilTemperature",
+      "obdRunTime",
+      "obdStatusDTCCount",
+      "obdThrottlePosition",
+      "powertrainCombustionEngineECT",
+      "powertrainCombustionEngineSpeed",
+      "powertrainCombustionEngineTPS",
+      "powertrainFuelSystemAbsoluteLevel",
+      "powertrainFuelSystemRelativeLevel",
+      "powertrainTransmissionActualGear",
+      "powertrainTransmissionActualGearRatio",
+      "powertrainTransmissionTravelledDistance",
+      "powertrainType",
+      "speed"
+    ],
+    "observedFields": [
+      "currentLocationAltitude",
+      "currentLocationCoordinates",
+      "currentLocationHeading",
+      "exteriorAirTemperature",
+      "isIgnitionOn",
+      "lowVoltageBatteryCurrentVoltage",
+      "obdBarometricPressure",
+      "obdDistanceWithMIL",
+      "obdEngineLoad",
+      "obdFuelRailPressure",
+      "obdFuelTypeName",
+      "obdIntakeTemp",
+      "obdIsPluggedIn",
+      "obdLongTermFuelTrim1",
+      "obdLongTermFuelTrim2",
+      "obdMAP",
+      "obdMaxMAF",
+      "obdOilTemperature",
+      "obdRunTime",
+      "obdStatusDTCCount",
+      "obdThrottlePosition",
+      "powertrainCombustionEngineECT",
+      "powertrainCombustionEngineSpeed",
+      "powertrainCombustionEngineTPS",
+      "powertrainFuelSystemAbsoluteLevel",
+      "powertrainFuelSystemRelativeLevel",
+      "powertrainTransmissionActualGear",
+      "powertrainTransmissionActualGearRatio",
+      "powertrainTransmissionTravelledDistance",
+      "powertrainType",
+      "speed"
+    ]
+  },
+  "surfaceCounts": {
+    "HF_HISTORICAL": 2783,
+    "LATEST_LIVE": 1855,
+    "LATEST_SLOW": 1612
+  },
+  "acquisitionSurfaces": [
+    "HF_HISTORICAL",
+    "LATEST_LIVE",
+    "LATEST_SLOW"
+  ]
+}

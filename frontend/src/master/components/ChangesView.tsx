@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-rd003-telemetry-forensics-2026-09-02',
+    version: '4.9.1034',
+    title: 'Reference Drive #003 — Telemetry forensics (WOB L 7503, video GT pending)',
+    summary: [
+      'RD003 session 0fa040aa-… COMPLETED: 371 cycles, 6250 SIGNAL_POINT + 1 SESSION_METADATA.',
+      'HF_HISTORICAL 2783 aggregate-bucket rows (AGGREGATE_BUCKET_V2); 0 duplicate fingerprints.',
+      'REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ=NO (HF Δt P50 2s; Tiguan independent confirmation).',
+      'Recorder cycle P50 ~5.9s — runtime cadence only, not DIMO provider cadence.',
+      'FAST GO 1222ms; acquisition-start gap ~0.93s (vs RD001 ~704s ARM gap).',
+      'VIDEO_GROUND_TRUTH=PENDING_VIDEO; GROUND_TRUTH_VALIDATED=NO.',
+      'DI-EV-0027–0032: capture report, metrics, RD001/RD002 differentials, video GT index.',
+      'Offline read-only reanalyze tooling only — REFERENCE_CAPTURE_RUNTIME_CHANGED=NO.',
+    ],
+    reason: 'Post-STOP telemetry forensic analysis for first planned video GT drive; video alignment deferred until ingest.',
+    previousBehavior: 'RD003 capture complete but no derived telemetry evidence artifacts.',
+    details:
+      'docs/audits/dimo-lte-r1-reference-drive-003-capture-report-2026-09-02.md; DI-EV-0027–0032; backend/scripts/ops/reference-capture-drive-003-reanalyze.ts (read-only).',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T19:52:00.000Z',
+  },
+  {
     id: 'dimo-rd002-motion-hf-canary-2026-09-02',
     version: '4.9.1033',
     title: 'Reference Drive #002 — Motion HF canary (KS MX 2024)',

@@ -950,7 +950,27 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 | `VIDEO_GROUND_TRUTH` | **NOT_PLANNED_BY_PROTOCOL** |
 | `READY_FOR_RD003` | **YES** |
 
-**Next ground-truth-capable drive:** `DIMO_LTE_R1_REFERENCE_DRIVE_003` (video GT — not started).
+**Next ground-truth-capable drive:** `DIMO_LTE_R1_REFERENCE_DRIVE_003` — **telemetry forensics DONE**; video GT alignment **PENDING_VIDEO**.
+
+### RD003 — Video Ground Truth drive (TELEMETRY FORENSICS COMPLETE)
+
+**Status:** **CAPTURE COMPLETE** · **TELEMETRY FORENSICS DONE** (2026-09-02) · DI-EV-0027–0032
+
+| Field | Value |
+|-------|-------|
+| Vehicle | VW Tiguan WOB L 7503 |
+| Session | `0fa040aa-6105-4872-9b2c-f8ad477009b8` |
+| Duration | ~37.1 min (2227 s) |
+| Cycles | 371 |
+| SIGNAL_POINT | 6250 |
+| HF_HISTORICAL | 2783 (AGGREGATE_BUCKET_V2) |
+| Sealed SHA-256 | `81534484cdd0fa6224d9efbcf97bb445cfbe8af1fdb8ef29e9bb8204f09c32e4` |
+| `REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ` | **NO** (HF Δt P50 2s; independent Tiguan confirmation) |
+| `VIDEO_GROUND_TRUTH` | **PENDING_VIDEO** (instrument-cluster video not yet ingested) |
+| `GROUND_TRUTH_VALIDATED` | **NO** |
+| `READY_FOR_VIDEO_GT_INGESTION` | **YES** |
+
+**Key findings:** First planned video GT drive; FAST GO 1222 ms; ~0.93 s acquisition-start gap (vs RD001 ~704 s ARM gap). Same 31-field Tiguan surface as RD001. HF idempotency/watermark/coverage validated under long motion. Zero native events (research finding across RD001–RD003).
 
 ### RD002 gate (historical — satisfied 2026-09-02)
 
@@ -1321,14 +1341,14 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Phase 3A.2 production deploy + runtime canary | DONE | Deploy + stationary LTE_R1 canary passed — session `e8613cc7-…`, 5 cycles, 52 obs |
 | Phase 3A.3 Reference Drive #001 capture + telemetry audit | DONE | Session `06638509-…` COMPLETED; HF active; video GT NOT_AVAILABLE |
 | Phase 3A.3 Reference Drive #002 motion HF canary | DONE | Session `e095d273-…` COMPLETED; 3A.3.2 validated; video GT NOT_PLANNED |
-| Phase 3A DIMO LTE_R1 reference program | IN_PROGRESS | RD001+RD002 DONE; RD003 (video GT) authorized when owner ready |
+| Phase 3A DIMO LTE_R1 reference program | IN_PROGRESS | RD001+RD002+RD003 capture DONE; RD003 video GT alignment PENDING_VIDEO |
 | Phase 3B DIMO Tesla Direct reference program | NOT_STARTED | `GATED_ON_TESLA_DIRECT_MANIFEST` |
 | Phase 3C DIMO Smart5 compatibility program | NOT_STARTED | `GATED_ON_SMART5_MANIFEST` |
 | Phase 3D High Mobility OEM reference program | NOT_STARTED | `GATED_ON_HIGH_MOBILITY_PROFILE_MANIFEST` |
 | Flight Recorder implementation (LTE_R1) | DONE (3A.1+3A.2) | `reference-capture` deployed + production canary validated |
 | Instrumented reference drive #001 (RD001) | DONE | Session `06638509-…` COMPLETED; telemetry audit available; video GT NOT_AVAILABLE |
 | RD002 (motion HF canary) | **DONE** | Session `e095d273-…` — DI-EV-0023; MOTION_CANARY_COMPLETED=YES |
-| RD003 (video Ground Truth) | **AUTHORIZED** | Owner may start when prepared; FAST GO workflow validated |
+| RD003 (video Ground Truth) | **CAPTURE DONE / GT PENDING** | Telemetry forensics complete (DI-EV-0027–0032); video ingest + alignment required |
 | Evidence & documentation governance | DONE | `driving-intelligence-evidence-governance-2026-09-01.md` + registry seeded |
 | Ground-truth synchronization | NOT_STARTED | Phase 5 |
 | Detector validation | NOT_STARTED | Phase 6 |

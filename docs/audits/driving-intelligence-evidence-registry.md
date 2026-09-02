@@ -6,7 +6,7 @@
 
 **Scope:** Driving Intelligence Reconstruction phases and major artifacts only. Does not index every unrelated repository audit.
 
-**Last updated:** 2026-09-02
+**Last updated:** 2026-09-02 (RD003 telemetry forensics)
 
 ---
 
@@ -50,12 +50,18 @@
 | DI-EV-0024 | Phase 3A.3 | B — Machine-readable | `docs/audits/data/dimo-lte-r1-reference-drive-002-session-summary.json` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `e095d273-…` | CONFIRMED_FROM_PRODUCTION_RUNTIME | — | — | Session inventory, capture windows, HF watermark/coverage, FAST GO metrics, C63 field parity |
 | DI-EV-0025 | Phase 3A.3 | B — Machine-readable | `docs/audits/data/dimo-lte-r1-reference-drive-002-signal-quality-metrics.json` (+ CSV) | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `e095d273-…` | CONFIRMED_FROM_VEHICLE_OBSERVATION | — | — | Per-field/surface metrics; HF cadence under motion; dynamics PROVISIONAL |
 | DI-EV-0026 | Phase 3A.3 | B — Vehicle differential | `docs/audits/dimo-lte-r1-reference-drive-002-c63-signal-differential-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 · RD002 session `e095d273-…` | CONFIRMED_FROM_VEHICLE_OBSERVATION | — | — | C63 signal inventory + Aug/RD002/RD001 differential; HF 1s≠1Hz finding; physics assessability; native events NOT_OBSERVED |
+| DI-EV-0027 | Phase 3A.3 | A — Reference drive report | `docs/audits/dimo-lte-r1-reference-drive-003-capture-report-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | VW Tiguan `19fedd4b-…` · session `0fa040aa-…` · `DIMO_LTE_R1_REFERENCE_DRIVE_003` | CONFIRMED_FROM_PRODUCTION_RUNTIME | — | — | First planned video GT drive STOP + telemetry forensics; 371 cycles; 2783 HF V2; FAST GO 1222ms; video GT PENDING_VIDEO |
+| DI-EV-0028 | Phase 3A.3 | B — Machine-readable | `docs/audits/data/dimo-lte-r1-reference-drive-003-session-summary.json` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `0fa040aa-…` | CONFIRMED_FROM_PRODUCTION_RUNTIME | — | — | Session inventory, recorder cycle timing, HF watermark validation, FAST GO metrics |
+| DI-EV-0029 | Phase 3A.3 | B — Machine-readable | `docs/audits/data/dimo-lte-r1-reference-drive-003-signal-quality-metrics.json` (+ CSV) | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `0fa040aa-…` | CONFIRMED_FROM_VEHICLE_OBSERVATION | — | — | Per-field/surface metrics; HF 1s≠1Hz Tiguan confirmation; dynamics PROVISIONAL |
+| DI-EV-0030 | Phase 3A.3 | B — Vehicle differential | `docs/audits/dimo-lte-r1-reference-drive-003-vs-rd001-tiguan-differential-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | WOB L 7503 · RD001 vs RD003 | CONFIRMED_FROM_VEHICLE_OBSERVATION | — | — | Same Tiguan: ARM gap eliminated, longer drive, HF density increase, same 31-field surface |
+| DI-EV-0031 | Phase 3A.3 | B — Cross-vehicle differential | `docs/audits/dimo-lte-r1-reference-drive-002-vs-rd003-tiguan-cross-vehicle-differential-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | C63 vs Tiguan | CONFIRMED_FROM_VEHICLE_OBSERVATION | — | — | C63 29 vs Tiguan 31 fields; shared HF set; vehicle-specific gear signals |
+| DI-EV-0032 | Phase 3A.3 | C — Ground Truth index | `docs/audits/dimo-lte-r1-reference-drive-003-ground-truth-evidence-index-2026-09-02.md` | 2026-09-02 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | PENDING_VIDEO | — | — | Video GT protocol + sync anchor schema; alignment metrics EMPTY pending video ingest |
 
 ---
 
 ## Entry count
 
-**26** registry entries through DI-EV-0026 (RD002 motion HF canary added 2026-09-02).
+**32** registry entries through DI-EV-0032 (RD003 telemetry forensics added 2026-09-02).
 
 ---
 
@@ -63,7 +69,7 @@
 
 | Planned ID | Phase | Artifact | Status |
 |------------|-------|----------|--------|
-| DI-EV-0027+ | Reference Drive 003 | Capture report + video GT-aligned metrics | NOT_STARTED |
+| DI-EV-0033+ | RD003 Video GT | Video-aligned metrics after ingest | NOT_STARTED |
 
 ---
 

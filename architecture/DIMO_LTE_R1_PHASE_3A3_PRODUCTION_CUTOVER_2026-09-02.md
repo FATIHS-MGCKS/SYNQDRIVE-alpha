@@ -66,7 +66,17 @@ Post-smoke integrity (unique index valid, duplicates=0)
 
 ## Next step
 
-Reference Drive #003 (video Ground Truth) when owner authorizes. Durable VPS GitHub read credential still recommended for unattended deploys.
+Reference Drive #003 video GT alignment when owner ingests instrument-cluster video. Durable VPS GitHub read credential still recommended for unattended deploys.
+
+## RD003 video GT telemetry forensics (2026-09-02)
+
+| Item | Value |
+|------|-------|
+| Session | `0fa040aa-6105-4872-9b2c-f8ad477009b8` |
+| Vehicle | WOB L 7503 (VW Tiguan) |
+| Telemetry forensics | DONE (DI-EV-0027–0032) |
+| Video GT alignment | PENDING_VIDEO |
+| Sealed evidence | `/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-003/` |
 
 ## References
 

@@ -1,0 +1,327 @@
+{
+  "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_003",
+  "sessionId": "0fa040aa-6105-4872-9b2c-f8ad477009b8",
+  "vehicle": "WOB L 7503",
+  "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+  "tokenId": 192922,
+  "sessionStartedAt": "2026-09-02T18:59:15.695Z",
+  "sessionStoppedAt": "2026-09-02T19:36:22.970Z",
+  "sessionCompletedAt": "2026-09-02T19:36:22.986Z",
+  "cycleCount": 371,
+  "deployedSha": "f00a493949d8134f82a3e83d6c80ea8f7bb19699",
+  "fastGoMetrics": {
+    "prearmReadyMs": 2059,
+    "goToRecordingMs": 125,
+    "goToFirstCycleMs": 1222,
+    "goToReadyToDriveMs": 1222,
+    "firstCycleSignalPointCount": 31
+  },
+  "connectionProfile": "DIMO_LTE_R1",
+  "powertrainProfile": "ICE_GASOLINE",
+  "manifestVersion": "1.1.0",
+  "firstActualCaptureAt": "2026-09-02T18:59:15.949Z",
+  "lastActualCaptureAt": "2026-09-02T19:36:21.769Z",
+  "acquisitionStartGapSeconds": 0.254,
+  "actualCaptureDurationSeconds": 2225.82,
+  "sessionLifecycleDurationSeconds": 2227.291,
+  "finalStatus": "COMPLETED",
+  "totalObservations": 6251,
+  "signalObservations": 6250,
+  "nativeEvents": 0,
+  "metadataObservations": 1,
+  "hfAggregateBucketObservationCount": 2783,
+  "hfPhysicalIdentityVersion": "AGGREGATE_BUCKET_V2",
+  "surfaces": {
+    "HF_HISTORICAL": 2783,
+    "LATEST_LIVE": 1855,
+    "LATEST_SLOW": 1612
+  },
+  "hfFields": {
+    "obdEngineLoad": 592,
+    "obdThrottlePosition": 545,
+    "powertrainCombustionEngineSpeed": 500,
+    "powertrainCombustionEngineTPS": 554,
+    "speed": 592
+  },
+  "availableSignalsCount": 31,
+  "observedFieldCount": 31,
+  "observedFields": [
+    "currentLocationAltitude",
+    "currentLocationCoordinates",
+    "currentLocationHeading",
+    "exteriorAirTemperature",
+    "isIgnitionOn",
+    "lowVoltageBatteryCurrentVoltage",
+    "obdBarometricPressure",
+    "obdDistanceWithMIL",
+    "obdEngineLoad",
+    "obdFuelRailPressure",
+    "obdFuelTypeName",
+    "obdIntakeTemp",
+    "obdIsPluggedIn",
+    "obdLongTermFuelTrim1",
+    "obdLongTermFuelTrim2",
+    "obdMAP",
+    "obdMaxMAF",
+    "obdOilTemperature",
+    "obdRunTime",
+    "obdStatusDTCCount",
+    "obdThrottlePosition",
+    "powertrainCombustionEngineECT",
+    "powertrainCombustionEngineSpeed",
+    "powertrainCombustionEngineTPS",
+    "powertrainFuelSystemAbsoluteLevel",
+    "powertrainFuelSystemRelativeLevel",
+    "powertrainTransmissionActualGear",
+    "powertrainTransmissionActualGearRatio",
+    "powertrainTransmissionTravelledDistance",
+    "powertrainType",
+    "speed"
+  ],
+  "hfFieldList": [
+    "obdEngineLoad",
+    "obdThrottlePosition",
+    "powertrainCombustionEngineSpeed",
+    "powertrainCombustionEngineTPS",
+    "speed"
+  ],
+  "videoGroundTruthAvailable": false,
+  "videoGroundTruthProtocol": "VIDEO_INSTRUMENT_CLUSTER",
+  "videoAlignmentStatus": "PENDING_VIDEO",
+  "postStopZombieProof": {
+    "runnerJobId": null,
+    "pendingCycleJobId": null,
+    "duplicatePhysicalFingerprintsInSession": 0
+  },
+  "rawEvidenceExport": {
+    "path": "/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-003/observations.jsonl",
+    "manifestPath": "/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-003/manifest.sha256.json",
+    "rowCount": 6251,
+    "sha256": "81534484cdd0fa6224d9efbcf97bb445cfbe8af1fdb8ef29e9bb8204f09c32e4",
+    "state": "SEALED_EXPORT_AVAILABLE"
+  },
+  "recorderCycleTiming": {
+    "uniqueRequestStartedAtCount": 663,
+    "inferredCycleStartCount": 372,
+    "clusterGapThresholdSeconds": 3,
+    "deltaTSeconds": {
+      "sampleCount": 371,
+      "p50": 5.896,
+      "p90": 6.25,
+      "p95": 6.539,
+      "p99": 7.941,
+      "max": 15.931,
+      "mean": 5.99887331536388
+    },
+    "note": "Recorder cycle cadence inferred from clustered requestStartedAt — NOT provider signal cadence"
+  },
+  "hfRuntimeValidation": {
+    "HF_PHYSICAL_IDENTITY_VERSION": "AGGREGATE_BUCKET_V2",
+    "HF_QUERY_WINDOW_BOUNDED_RUNTIME_VALIDATED": "YES",
+    "HF_DATA_WATERMARK_RUNTIME_VALIDATED": "YES",
+    "HF_IDEMPOTENCY_RUNTIME_VALIDATED": "YES",
+    "HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED": "NOT_EXERCISED",
+    "duplicateAggregateBucketIdentities": 0,
+    "nonV2IdentityRows": 0
+  },
+  "hfCadenceFinding": {
+    "REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ": "NO",
+    "perFieldSummary": {
+      "obdEngineLoad": {
+        "hfRows": 592,
+        "providerBucketDeltaTSeconds": {
+          "sampleCount": 591,
+          "min": 0.751,
+          "p50": 2,
+          "p90": 4.815,
+          "p95": 6.038,
+          "p99": 78.028,
+          "max": 222.738,
+          "mean": 3.7069780033840964,
+          "stdDev": 13.019900585987854
+        },
+        "maxGapSeconds": 222.738
+      },
+      "obdThrottlePosition": {
+        "hfRows": 545,
+        "providerBucketDeltaTSeconds": {
+          "sampleCount": 544,
+          "min": 0.751,
+          "p50": 2,
+          "p90": 4.874,
+          "p95": 6.988,
+          "p99": 78.028,
+          "max": 222.738,
+          "mean": 4.02725,
+          "stdDev": 13.888067468021486
+        },
+        "maxGapSeconds": 222.738
+      },
+      "powertrainCombustionEngineSpeed": {
+        "hfRows": 500,
+        "providerBucketDeltaTSeconds": {
+          "sampleCount": 499,
+          "min": 0.843,
+          "p50": 2,
+          "p90": 5.242,
+          "p95": 10.17,
+          "p99": 86.894,
+          "max": 222.738,
+          "mean": 4.39042885771543,
+          "stdDev": 14.56173346668135
+        },
+        "maxGapSeconds": 222.738
+      },
+      "powertrainCombustionEngineTPS": {
+        "hfRows": 554,
+        "providerBucketDeltaTSeconds": {
+          "sampleCount": 553,
+          "min": 0.751,
+          "p50": 2,
+          "p90": 4.859,
+          "p95": 6.42,
+          "p99": 78.028,
+          "max": 222.738,
+          "mean": 3.9617070524412297,
+          "stdDev": 13.739301019110703
+        },
+        "maxGapSeconds": 222.738
+      },
+      "speed": {
+        "hfRows": 592,
+        "providerBucketDeltaTSeconds": {
+          "sampleCount": 591,
+          "min": 0.751,
+          "p50": 2,
+          "p90": 4.815,
+          "p95": 6.038,
+          "p99": 78.028,
+          "max": 222.738,
+          "mean": 3.7069780033840964,
+          "stdDev": 13.019900585987854
+        },
+        "maxGapSeconds": 222.738
+      }
+    }
+  },
+  "physicsAssessability": {
+    "DRIVER_QUALITY_ASSESSABILITY": "RECONSTRUCTABLE_MEDIUM_CONFIDENCE",
+    "VEHICLE_LOAD_ASSESSABILITY": "DIRECTLY_OBSERVED",
+    "BRAKE_PHYSICS_ASSESSABILITY": "NOT_ASSESSABLE",
+    "TIRE_DYNAMIC_ASSESSABILITY": "NOT_ASSESSABLE"
+  },
+  "nativeEventForensics": {
+    "NATIVE_EVENT_COUNT": 0,
+    "NATIVE_EVENT_ENDPOINT_QUERIED": "UNKNOWN",
+    "NATIVE_EVENT_CAPABILITY_ADVERTISED": "UNKNOWN",
+    "PROVIDER_RETURNED_EVENT_COUNT": 0,
+    "QUALIFYING_DRIVER_EVENTS_OCCURRED": "UNKNOWN",
+    "NATIVE_EVENT_RUNTIME_DELIVERY_VALIDATED": "NOT_EXERCISED",
+    "comparison": {
+      "RD001_NATIVE_EVENTS": 0,
+      "RD002_NATIVE_EVENTS": 0,
+      "RD003_NATIVE_EVENTS": 0,
+      "researchFinding": "Three reference drives returned zero native DIMO events — acquisition/capability research finding, NOT proof that no harsh maneuvers occurred"
+    }
+  },
+  "samplingInvarianceReadiness": {
+    "RD003_SAMPLING_INVARIANCE_SOURCE_READY": "YES",
+    "blockers": [],
+    "plannedReplayCadences": [
+      "native",
+      "1s",
+      "2s",
+      "5s",
+      "10s",
+      "30s",
+      "irregular",
+      "10pct_dropout",
+      "25pct_dropout"
+    ],
+    "note": "Do not upscale sparse HF buckets to synthetic native 1Hz truth"
+  },
+  "coverageWindows": {
+    "SESSION_LIFECYCLE_WINDOW": {
+      "start": "2026-09-02T18:59:15.695Z",
+      "end": "2026-09-02T19:36:22.986Z",
+      "durationSeconds": 2227.291
+    },
+    "ACQUISITION_EXECUTION_WINDOW": {
+      "firstRequestStartedAt": "2026-09-02T18:59:15.730Z",
+      "lastSynqReceivedAt": "2026-09-02T19:36:21.769Z",
+      "durationSeconds": 2226.039
+    },
+    "PROVIDER_DATA_COVERAGE_WINDOW": {
+      "earliestProviderTimestamp": "2026-09-02T17:48:50.000Z",
+      "latestProviderTimestamp": "2026-09-02T19:36:17.000Z",
+      "durationSeconds": 6447
+    },
+    "historicalBackfillBeforeFirstAcquisitionSeconds": 4225.73
+  },
+  "surfaceCoverage": {
+    "LATEST_LIVE": {
+      "earliestProviderTimestamp": "2026-09-02T17:48:50.000Z",
+      "latestProviderTimestamp": "2026-09-02T19:36:17.000Z",
+      "firstRequestStartedAt": "2026-09-02T18:59:15.730Z",
+      "lastRequestStartedAt": "2026-09-02T19:36:21.312Z",
+      "firstSynqReceivedAt": "2026-09-02T18:59:15.949Z",
+      "lastSynqReceivedAt": "2026-09-02T19:36:21.557Z",
+      "observationCount": 1855
+    },
+    "LATEST_SLOW": {
+      "earliestProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "latestProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstRequestStartedAt": "2026-09-02T18:59:16.385Z",
+      "lastRequestStartedAt": "2026-09-02T19:35:52.362Z",
+      "firstSynqReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastSynqReceivedAt": "2026-09-02T19:35:52.659Z",
+      "observationCount": 1612
+    },
+    "HF_HISTORICAL": {
+      "earliestProviderTimestamp": "2026-09-02T18:59:45.646Z",
+      "latestProviderTimestamp": "2026-09-02T19:36:16.470Z",
+      "firstRequestStartedAt": "2026-09-02T18:59:51.863Z",
+      "lastRequestStartedAt": "2026-09-02T19:36:21.560Z",
+      "firstSynqReceivedAt": "2026-09-02T18:59:52.125Z",
+      "lastSynqReceivedAt": "2026-09-02T19:36:21.769Z",
+      "observationCount": 2783
+    }
+  },
+  "fingerprintAudit": {
+    "note": "physicalSampleFingerprint is a persisted field name with semantic debt on HF_HISTORICAL: it fingerprints DIMO aggregate buckets (field + bucket-start timestamp + AVG), not proven raw LTE_R1 physical source samples.",
+    "observationTypeForHfHistorical": "HF_AGGREGATE_BUCKET_OBSERVATION",
+    "aggregateBucketFingerprintField": "physicalSampleFingerprint",
+    "futureRemediation": "aggregateBucketFingerprint distinct from rawPhysicalSampleFingerprint before physics calibration",
+    "fingerprintEligibleRows": 6250,
+    "fingerprintedRows": 2783,
+    "fingerprintCoverageRate": 0.44528,
+    "uniqueAggregateBucketFingerprintsAllSurfaces": 2783,
+    "uniqueAggregateBucketFingerprintsHfHistorical": 2783,
+    "duplicateFingerprintRetrievals": 0,
+    "bySurface": {
+      "LATEST_LIVE": {
+        "eligible": 1855,
+        "fingerprinted": 0,
+        "unique": 0
+      },
+      "LATEST_SLOW": {
+        "eligible": 1612,
+        "fingerprinted": 0,
+        "unique": 0
+      },
+      "HF_HISTORICAL": {
+        "eligible": 2783,
+        "fingerprinted": 2783,
+        "unique": 2783
+      }
+    }
+  },
+  "generatedEvidenceValueSource": "COMPUTED_FROM_SEALED_RAW_DATA",
+  "verdicts": {
+    "REFERENCE_DRIVE_003_CAPTURE": "COMPLETED",
+    "RD003_TELEMETRY_FORENSICS": "DONE",
+    "VIDEO_GROUND_TRUTH": "PENDING_VIDEO",
+    "GROUND_TRUTH_VALIDATED": "NO",
+    "READY_FOR_VIDEO_GT_INGESTION": "YES"
+  }
+}
