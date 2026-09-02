@@ -13,6 +13,14 @@ import { LvRestWindowState } from '../../battery-v2-domain';
 import { BatteryRestTargetEvaluationService } from '../../lv-rest-window/battery-rest-target-evaluation.service';
 import { measurementTypeForRestTarget } from '../../lv-rest-window/battery-rest-target-evaluation';
 import {
+  isCanonicalRestAssessmentHandoffEligible,
+  isSyntheticRestMissedMeasurement,
+  isSyntheticRestStatusMeasurement,
+  readRestMeasurementTerminalReason,
+} from '../../lv-rest-window/lv-rest-assessment-handoff.policy';
+import { LvRestAssessmentHandoffService } from '../../lv-rest-window/lv-rest-assessment-handoff.service';
+import { mutateLvRestSessionMetadata } from '../../lv-rest-window/lv-rest-session-metadata.mutation';
+import {
   LV_REST_TARGET_JOB_STATUS,
   LV_REST_TARGET_TYPES,
   mergeLvRestTargetJobMetadata,
@@ -31,6 +39,7 @@ export class BatteryRestTargetEvaluateHandler
     private readonly prisma: PrismaService,
     private readonly evaluation: BatteryRestTargetEvaluationService,
     private readonly observability: BatteryV2JobObservabilityService,
+    private readonly assessmentHandoff: LvRestAssessmentHandoffService,
   ) {}
 
   async handle(payload: BatteryRestTargetEvaluatePayload): Promise<void> {
@@ -65,22 +74,23 @@ export class BatteryRestTargetEvaluateHandler
         metadataState.lvRestWindowState ?? null,
       ) ?? null;
 
-    const hasMeasurement = await this.hasTargetMeasurement(
+    const existingMeasurement = await this.findTargetMeasurement(
       payload.organizationId,
       session.id,
       restTargetType,
     );
 
-    if (hasMeasurement) {
-      await this.updateTargetMetadata(session, restTargetType, {
-        status: LV_REST_TARGET_JOB_STATUS.COMPLETED,
-        completedAt: new Date().toISOString(),
+    if (existingMeasurement) {
+      return this.handleExistingMeasurementReplay({
+        payload,
+        session,
+        restTargetType,
+        existingMeasurement,
       });
-      return;
     }
 
     if (this.shouldCancelForInvalidatedWindow(fsmState, session.status)) {
-      await this.updateTargetMetadata(session, restTargetType, {
+      await this.updateTargetMetadata(session.id, session.organizationId, restTargetType, {
         status: LV_REST_TARGET_JOB_STATUS.CANCELLED,
         completedAt: new Date().toISOString(),
         cancelReason: metadataState.invalidatedReason ?? 'rest_window_invalidated',
@@ -100,7 +110,7 @@ export class BatteryRestTargetEvaluateHandler
 
     if (!result.ok) {
       if (result.retryable) {
-        await this.updateTargetMetadata(session, restTargetType, {
+        await this.updateTargetMetadata(session.id, session.organizationId, restTargetType, {
           status: LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION,
           lastAttemptAt: new Date().toISOString(),
         });
@@ -111,7 +121,7 @@ export class BatteryRestTargetEvaluateHandler
       }
       if (result.missed) {
         this.recordShadowMetrics(restTargetType, result.quality ?? 'MISSED');
-        await this.updateTargetMetadata(session, restTargetType, {
+        await this.updateTargetMetadata(session.id, session.organizationId, restTargetType, {
           status: LV_REST_TARGET_JOB_STATUS.MISSED,
           completedAt: new Date().toISOString(),
           cancelReason: result.reason,
@@ -124,7 +134,7 @@ export class BatteryRestTargetEvaluateHandler
       if (result.quality) {
         this.recordShadowMetrics(restTargetType, result.quality);
       }
-      await this.updateTargetMetadata(session, restTargetType, {
+      await this.updateTargetMetadata(session.id, session.organizationId, restTargetType, {
         status: LV_REST_TARGET_JOB_STATUS.FAILED,
         completedAt: new Date().toISOString(),
         cancelReason: result.reason,
@@ -133,12 +143,76 @@ export class BatteryRestTargetEvaluateHandler
     }
 
     this.recordShadowMetrics(restTargetType, result.quality);
-    await this.updateTargetMetadata(session, restTargetType, {
+
+    if (result.measurementId) {
+      await this.assessmentHandoff.ensureAssessmentHandoff({
+        organizationId: payload.organizationId,
+        vehicleId: payload.vehicleId,
+        sessionId: session.id,
+        restTargetType,
+        measurementId: result.measurementId,
+        correlationPrefix: 'lv-rest-direct',
+      });
+    }
+
+    await this.updateTargetMetadata(session.id, session.organizationId, restTargetType, {
       status: LV_REST_TARGET_JOB_STATUS.COMPLETED,
       completedAt: new Date().toISOString(),
     });
     this.logger.debug(
       `REST target measurement persisted: vehicle=${payload.vehicleId} window=${restWindowId} type=${restTargetType} measurement=${result.measurementId}`,
+    );
+  }
+
+  private async handleExistingMeasurementReplay(input: {
+    payload: BatteryRestTargetEvaluatePayload;
+    session: { id: string; organizationId: string };
+    restTargetType: typeof LV_REST_TARGET_TYPES.REST_60M | typeof LV_REST_TARGET_TYPES.REST_6H;
+    existingMeasurement: NonNullable<Awaited<ReturnType<typeof this.findTargetMeasurement>>>;
+  }): Promise<void> {
+    const { payload, session, restTargetType, existingMeasurement } = input;
+
+    if (isCanonicalRestAssessmentHandoffEligible(existingMeasurement)) {
+      await this.assessmentHandoff.ensureAssessmentHandoff({
+        organizationId: payload.organizationId,
+        vehicleId: payload.vehicleId,
+        sessionId: session.id,
+        restTargetType,
+        measurementId: existingMeasurement.id,
+        correlationPrefix: 'lv-rest-replay',
+      });
+      await this.updateTargetMetadata(session.id, session.organizationId, restTargetType, {
+        status: LV_REST_TARGET_JOB_STATUS.COMPLETED,
+        completedAt: new Date().toISOString(),
+      });
+      return;
+    }
+
+    if (isSyntheticRestMissedMeasurement(existingMeasurement)) {
+      const reason =
+        readRestMeasurementTerminalReason(existingMeasurement) ??
+        'no_eligible_observation_in_target_window';
+      await this.updateTargetMetadata(session.id, session.organizationId, restTargetType, {
+        status: LV_REST_TARGET_JOB_STATUS.MISSED,
+        completedAt: new Date().toISOString(),
+        cancelReason: reason,
+      });
+      return;
+    }
+
+    if (isSyntheticRestStatusMeasurement(existingMeasurement)) {
+      const reason =
+        readRestMeasurementTerminalReason(existingMeasurement) ?? 'unsupported_profile';
+      await this.updateTargetMetadata(session.id, session.organizationId, restTargetType, {
+        status: LV_REST_TARGET_JOB_STATUS.FAILED,
+        completedAt: new Date().toISOString(),
+        cancelReason: reason,
+      });
+      return;
+    }
+
+    this.logger.warn(
+      `REST target replay ignored unknown measurement classification: vehicle=${payload.vehicleId} session=${session.id} measurement=${existingMeasurement.id}`,
     );
   }
 
@@ -186,20 +260,19 @@ export class BatteryRestTargetEvaluateHandler
     });
   }
 
-  private async hasTargetMeasurement(
+  private async findTargetMeasurement(
     organizationId: string,
     sessionId: string,
     restTargetType: typeof LV_REST_TARGET_TYPES.REST_60M | typeof LV_REST_TARGET_TYPES.REST_6H,
-  ): Promise<boolean> {
-    const existing = await this.prisma.batteryMeasurement.findFirst({
+  ) {
+    return this.prisma.batteryMeasurement.findFirst({
       where: {
         organizationId,
         sessionId,
         type: measurementTypeForRestTarget(restTargetType),
       },
-      select: { id: true, quality: true },
+      orderBy: { createdAt: 'desc' },
     });
-    return existing != null;
   }
 
   private shouldCancelForInvalidatedWindow(
@@ -214,22 +287,16 @@ export class BatteryRestTargetEvaluateHandler
   }
 
   private async updateTargetMetadata(
-    session: { id: string; organizationId: string; metadata: unknown },
+    sessionId: string,
+    organizationId: string,
     restTargetType: typeof LV_REST_TARGET_TYPES.REST_60M | typeof LV_REST_TARGET_TYPES.REST_6H,
     patch: Parameters<typeof mergeLvRestTargetJobMetadata>[2],
   ): Promise<void> {
-    await this.prisma.batteryMeasurementSession.update({
-      where: {
-        id: session.id,
-        organizationId: session.organizationId,
-      },
-      data: {
-        metadata: mergeLvRestTargetJobMetadata(
-          session.metadata,
-          restTargetType,
-          patch,
-        ),
-      },
+    await mutateLvRestSessionMetadata(this.prisma, {
+      sessionId,
+      organizationId,
+      mutate: (metadata) =>
+        mergeLvRestTargetJobMetadata(metadata, restTargetType, patch),
     });
   }
 }

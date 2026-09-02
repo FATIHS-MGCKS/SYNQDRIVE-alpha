@@ -43,7 +43,7 @@ This Human View is a high-level projection of current machine authority. It must
 [Consumers]  rental health, API, tasks, insights
 ```
 
-**Umbrella gap:** `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001` — canonical REST → assessment → publication is **not e2e reachable** today. Phase 4 PROPOSED target: `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (hybrid handoff; `assess:`/`pub:` keys). **PKG-01 IMPLEMENTATION_READY** (D1/D2/D3 VALIDATED); **PKG-02 IMPLEMENTATION_READY** (D4/D5 VALIDATED — `LV_PUBLICATION_CONTRACT_VERSION = 1`). Target architecture (D3): V2 core mandatory; PUBLICATION = effect gate; REST_SHADOW + legacy = temporary scaffolds; **no** HANDOFF flag. Gap remains open; P0_ACTIVATION_BLOCKER only.
+**Umbrella gap:** `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001` — canonical REST → assessment → publication is **not e2e reachable** today (assessment handoff **implemented** PKG-01 2026-09-02; publication handoff still open PKG-02). Phase 4 PROPOSED target: `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (hybrid handoff; `assess:`/`pub:` keys). **PKG-01 IMPLEMENTED** (D1/D2/D3); **PKG-02 IMPLEMENTATION_READY** (D4/D5 VALIDATED — `LV_PUBLICATION_CONTRACT_VERSION = 1`). Target architecture (D3): V2 core mandatory; PUBLICATION = effect gate; REST_SHADOW + legacy = temporary scaffolds; **no** HANDOFF flag. Assessment-handoff gap runtime closed; production validation pending; publication gap remains P0_ACTIVATION_BLOCKER.
 
 **Flag note (current runtime):** `BATTERY_V2_REST_SHADOW_ENABLED` gates canonical REST (temporary migration scaffold per D3). `BATTERY_V2_PUBLICATION_ENABLED` = customer publication effect gate. **No** `BATTERY_V2_LV_HANDOFF_ENABLED` (D3 rejected).
 

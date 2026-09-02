@@ -2,6 +2,9 @@ import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 import { BatteryV2ReconciliationService } from './battery-v2-reconciliation.service';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { buildRestTargetJobIdempotencyKey } from './battery-v2-job-idempotency.policy';
+import {
+  maxScannedRestAssessmentHandoffCandidates,
+} from '../lv-rest-window/lv-rest-assessment-handoff-reconciliation.policy';
 
 jest.mock('@config/battery-health-v2.config', () => {
   const actual = jest.requireActual('@config/battery-health-v2.config');
@@ -119,7 +122,11 @@ describe('BatteryV2ReconciliationService', () => {
       findFirst: jest.fn().mockResolvedValue(null),
       update: jest.fn().mockResolvedValue({}),
     },
-    batteryMeasurement: { findFirst: jest.fn().mockResolvedValue(null) },
+    batteryMeasurement: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    $queryRaw: jest.fn().mockResolvedValue([]),
     vehicleTrip: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn().mockResolvedValue(null),
@@ -185,6 +192,11 @@ describe('BatteryV2ReconciliationService', () => {
     enqueueForChargingTransition: jest.fn().mockResolvedValue('job-id'),
     enqueueAfterCapabilityRefresh: jest.fn().mockResolvedValue('job-id'),
   };
+  const assessmentHandoff = {
+    ensureAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }),
+    reconcileAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }),
+    touchReconciliationFairness: jest.fn().mockResolvedValue(undefined),
+  };
 
   let service: BatteryV2ReconciliationService;
 
@@ -194,6 +206,22 @@ describe('BatteryV2ReconciliationService', () => {
     prisma.vehicleEnergyEvent.findMany.mockResolvedValue([]);
     prisma.batteryMeasurementSession.findMany.mockResolvedValue([]);
     prisma.batteryMeasurement.findFirst.mockResolvedValue(null);
+    prisma.batteryMeasurement.findMany.mockReset();
+    prisma.batteryMeasurement.findMany.mockResolvedValue([]);
+    prisma.$queryRaw.mockReset();
+    prisma.$queryRaw.mockResolvedValue([]);
+    assessmentHandoff.ensureAssessmentHandoff.mockReset();
+    assessmentHandoff.reconcileAssessmentHandoff.mockReset();
+    assessmentHandoff.touchReconciliationFairness.mockReset();
+    assessmentHandoff.ensureAssessmentHandoff.mockResolvedValue({
+      enqueued: false,
+      skipped: true,
+    });
+    assessmentHandoff.reconcileAssessmentHandoff.mockResolvedValue({
+      enqueued: false,
+      skipped: true,
+    });
+    assessmentHandoff.touchReconciliationFairness.mockResolvedValue(undefined);
     service = new BatteryV2ReconciliationService(
       prisma as any,
       jobProducer as any,
@@ -205,6 +233,7 @@ describe('BatteryV2ReconciliationService', () => {
       restTargetProducer as any,
       tripStartProducer as any,
       rechargeReconcileProducer as any,
+      assessmentHandoff as any,
     );
   });
 
@@ -720,5 +749,93 @@ describe('BatteryV2ReconciliationService', () => {
     const result = await service.reconcileAll();
     expect(result.rechargeSegments).toBe(2);
     expect(rechargeReconcileProducer.reconcilePeriodic).toHaveBeenCalled();
+  });
+
+  it('skips canonical REST handoff repair when already EXECUTED', async () => {
+    prisma.$queryRaw.mockResolvedValue([]);
+
+    const result = await service.reconcileAll();
+
+    expect(assessmentHandoff.ensureAssessmentHandoff).not.toHaveBeenCalled();
+    expect(result.assessments).toBe(0);
+  });
+
+  it('repairs missed canonical REST assessment handoffs via ensureAssessmentHandoff (D2)', async () => {
+    const MEAS = 'clmeas123456789012345678901';
+    const SESSION = 'clsess123456789012345678901';
+    prisma.$queryRaw.mockResolvedValue([
+      {
+        id: MEAS,
+        organizationId: ORG,
+        vehicleId: VEH,
+        sessionId: SESSION,
+        type: 'REST_60M',
+        provenance: { sourceObservationId: 'obs-1' },
+      },
+    ]);
+    assessmentHandoff.reconcileAssessmentHandoff.mockResolvedValue({
+      enqueued: true,
+      skipped: false,
+      idempotencyKey: `assess:${VEH}:LV_HEALTH:${MEAS}`,
+    });
+
+    const result = await service.reconcileAll();
+
+    expect(result.assessments).toBe(1);
+    expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledWith(
+      expect.objectContaining({
+        measurementId: MEAS,
+        sessionId: SESSION,
+        restTargetType: 'REST_60M',
+        correlationPrefix: 'lv-rest-reconcile',
+      }),
+    );
+  });
+
+  it('targeted incomplete query reaches repairable candidate without scanning EXECUTED rows', async () => {
+    const repairable = {
+      id: 'clmeasrepair12345678901234567',
+      organizationId: ORG,
+      vehicleId: VEH,
+      sessionId: 'clsess-repair12345678901234',
+      type: 'REST_60M' as const,
+      provenance: { sourceObservationId: 'obs-repair' },
+    };
+    prisma.$queryRaw.mockResolvedValue([repairable]);
+    assessmentHandoff.reconcileAssessmentHandoff.mockResolvedValue({
+      enqueued: true,
+      skipped: false,
+      idempotencyKey: `assess:${VEH}:LV_HEALTH:${repairable.id}`,
+    });
+
+    const result = await service.reconcileAll();
+
+    expect(prisma.batteryMeasurement.findMany).not.toHaveBeenCalled();
+    expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledWith(
+      expect.objectContaining({ measurementId: repairable.id }),
+    );
+    expect(result.assessments).toBe(1);
+  });
+
+  it('touches fairness metadata for fetched candidates after repair budget is exhausted', async () => {
+    const candidates = Array.from({ length: 30 }, (_, index) => ({
+      id: `clmeasfair${String(index).padStart(21, '0')}`,
+      organizationId: ORG,
+      vehicleId: VEH,
+      sessionId: `clsessfair${String(index).padStart(21, '0')}`,
+      type: 'REST_60M' as const,
+      provenance: { sourceObservationId: `obs-fair-${index}` },
+    }));
+    prisma.$queryRaw.mockResolvedValue(candidates);
+    assessmentHandoff.reconcileAssessmentHandoff.mockResolvedValue({
+      enqueued: true,
+      skipped: false,
+      idempotencyKey: 'assess-key',
+    });
+
+    await service.reconcileAll();
+
+    expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledTimes(25);
+    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(5);
   });
 });

@@ -4,7 +4,7 @@
 
 | Package | Title | Readiness | Priority |
 |---------|-------|-----------|----------|
-| `BAT-V2-RUNTIME-PKG-01` | LV canonical assessment handoff | IMPLEMENTATION_READY | P0_ACTIVATION_BLOCKER |
+| `BAT-V2-RUNTIME-PKG-01` | LV canonical assessment handoff | IMPLEMENTED | P0_ACTIVATION_BLOCKER |
 | `BAT-V2-RUNTIME-PKG-02` | LV publication handoff + reconcile | IMPLEMENTATION_READY | P0_ACTIVATION_BLOCKER |
 | `BAT-V2-RUNTIME-PKG-03` | Timestamp provenance model | DECISION_REQUIRED | P1 |
 | `BAT-V2-RUNTIME-PKG-04` | HV SOH usable-candidate iteration | IMPLEMENTATION_READY | P2 |
@@ -15,6 +15,8 @@
 | `BAT-V2-VALIDATION-PKG-09` | Post-#1445 natural soak | PRODUCTION_VALIDATION_ONLY | P1 |
 
 ## PKG-01 — LV assessment handoff
+
+**Runtime status:** `IMPLEMENTED` (2026-09-02) — not `PRODUCTION_VALIDATED`.
 
 | Field | Value |
 |-------|-------|

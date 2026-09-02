@@ -38,12 +38,21 @@ import {
 import {
   BatteryMeasurementSessionStatus,
   BatteryMeasurementSessionType,
-  BatteryMeasurementType,
   Prisma,
   TripStatus,
 } from '@prisma/client';
 import { buildLvRestWindowIdempotencyKey, LvRestWindowState } from '../battery-v2-domain';
 import { measurementTypeForRestTarget } from '../lv-rest-window/battery-rest-target-evaluation';
+import {
+  CANONICAL_REST_ASSESSMENT_HANDOFF_LOOKBACK_MS,
+  maxScannedRestAssessmentHandoffCandidates,
+} from '../lv-rest-window/lv-rest-assessment-handoff-reconciliation.policy';
+import { fetchRestAssessmentHandoffReconcileCandidates } from '../lv-rest-window/lv-rest-assessment-handoff-reconciliation.query';
+import {
+  isCanonicalRestAssessmentHandoffEligible,
+  restTargetTypeForMeasurementType,
+} from '../lv-rest-window/lv-rest-assessment-handoff.policy';
+import { LvRestAssessmentHandoffService } from '../lv-rest-window/lv-rest-assessment-handoff.service';
 import { buildStartProxyMeasurementIdempotencyKey } from '../lv-start-proxy/battery-start-proxy.policy';
 import { BatteryV2TripStartProducer } from './battery-v2-trip-start.producer';
 import {
@@ -85,6 +94,7 @@ export class BatteryV2ReconciliationService {
     private readonly restTargetProducer: BatteryV2RestTargetProducer,
     private readonly tripStartProducer: BatteryV2TripStartProducer,
     private readonly rechargeReconcileProducer: HvRechargeSessionReconcileProducerService,
+    private readonly assessmentHandoff: LvRestAssessmentHandoffService,
     @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
@@ -106,7 +116,9 @@ export class BatteryV2ReconciliationService {
     result.restTargets = await this.reconcileRestTargets(batch);
     result.tripStarts = await this.reconcileTripStarts(batch);
     result.rechargeSegments = await this.reconcileRechargeSegments(batch);
-    result.assessments = await this.reconcilePendingAssessments(batch);
+    result.assessments =
+      (await this.reconcileCanonicalRestAssessmentHandoffs(batch)) +
+      (await this.reconcilePendingAssessments(batch));
     result.capabilityRefresh =
       await this.capabilityRefresh.reconcilePeriodicRefresh(batch);
     result.capabilitySignalLoss =
@@ -797,6 +809,64 @@ export class BatteryV2ReconciliationService {
 
   private async reconcileRechargeSegments(batch: number): Promise<number> {
     return this.rechargeReconcileProducer.reconcilePeriodic(batch);
+  }
+
+  /**
+   * D2 reconciliation safety net: repair missed canonical REST → assessment handoffs
+   * for eligible persisted measurements (same D1 identity as direct handoff).
+   */
+  private async reconcileCanonicalRestAssessmentHandoffs(batch: number): Promise<number> {
+    if (!isBatteryV2RestShadowEnabled()) {
+      return 0;
+    }
+
+    const lookbackFrom = new Date(Date.now() - CANONICAL_REST_ASSESSMENT_HANDOFF_LOOKBACK_MS);
+    const maxScanned = maxScannedRestAssessmentHandoffCandidates(batch);
+    const candidates = await fetchRestAssessmentHandoffReconcileCandidates(this.prisma, {
+      lookbackFrom,
+      limit: maxScanned,
+    });
+
+    let repaired = 0;
+
+    for (const measurement of candidates) {
+      if (!isCanonicalRestAssessmentHandoffEligible(measurement)) continue;
+      if (!measurement.sessionId) continue;
+
+      const restTargetType = restTargetTypeForMeasurementType(measurement.type);
+      if (!restTargetType) continue;
+
+      const handoffInput = {
+        organizationId: measurement.organizationId,
+        vehicleId: measurement.vehicleId,
+        sessionId: measurement.sessionId,
+        restTargetType,
+        measurementId: measurement.id,
+        correlationPrefix: 'lv-rest-reconcile',
+      };
+
+      if (repaired < batch) {
+        const result = await this.assessmentHandoff.reconcileAssessmentHandoff(handoffInput);
+        if (result.enqueued) {
+          repaired += 1;
+        }
+        continue;
+      }
+
+      await this.assessmentHandoff.touchReconciliationFairness({
+        organizationId: handoffInput.organizationId,
+        sessionId: handoffInput.sessionId,
+        restTargetType: handoffInput.restTargetType,
+        measurementId: handoffInput.measurementId,
+        idempotencyKey: buildAssessmentJobIdempotencyKey({
+          vehicleId: handoffInput.vehicleId,
+          assessmentType: 'LV_HEALTH',
+          inputVersion: handoffInput.measurementId,
+        }),
+      });
+    }
+
+    return repaired;
   }
 
   private async reconcilePendingAssessments(batch: number): Promise<number> {

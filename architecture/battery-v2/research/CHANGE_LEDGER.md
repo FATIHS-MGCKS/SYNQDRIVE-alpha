@@ -147,7 +147,71 @@ Append-only scientific record. Newest entries first.
 
 ---
 
-## CL-2026-09-02 — D3 Battery V2 single-authority cutover / configuration invariant
+## CL-2026-09-02 — PKG-01 evidence closure (TEST C repair proof + Postgres smoke honesty)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | TEST C proved deep-candidate traversal only (all candidates ENQUEUED/live); Postgres integration spec could false-green on empty results or missing DATABASE_URL; lookback/capacity claims overstated unconditional eventual recovery. |
+| **CHANGE** | TEST C now uses genuinely repairable MISSING-handoff target beyond 32×maxScanned with D1 enqueue assertions; Postgres integration creates controlled fixtures (eligible 60m/6h, EXECUTED exclusion, sourceObservationId exclusion, lastAttemptAt ordering) and fails hard when `BATTERY_V2_HANDOFF_RECONCILE_INTEGRATION=1` without reachable DB; CURRENT_STATE documents precise 7-day lookback invariant and operational backlog risks. |
+| **WHY** | PR #1510 final evidence pass — architecture approved; evidence must not over-claim. |
+| **VALIDATION** | PKG-01-focused Jest suite PASS; fairness TEST C repair proof; integration gated (`BATTERY_V2_HANDOFF_RECONCILE_INTEGRATION=1` + DATABASE_URL) |
+| **NON_EFFECTS** | No runtime architecture redesign; 7-day lookback unchanged |
+| **DECISION_STATUS** | PKG-01 IMPLEMENTED — not PRODUCTION_VALIDATED |
+
+---
+
+## CL-2026-09-02 — PKG-01 reconciliation fairness finalization (lastAttemptAt queue)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Wall-clock modulo-32 OFFSET rotation was not coupled to scheduler cadence (gcd aliasing at non-coprime intervals) and capped coverage at 32×maxScanned — false eventual-coverage claims. |
+| **CHANGE** | Replaced rotation with durable fairness queue: SQL orders incomplete candidates by `assessmentHandoff.lastAttemptAt NULLS FIRST, lastAttemptAt ASC, id`; reconciliation inspects up to bounded budget and advances `lastAttemptAt` via existing CAS for stable skip outcomes (`already_enqueued_live`, `dead_letter`, etc.) and `touchReconciliationFairness` after repair budget exhaustion. Added fairness regression tests A–D + gated Postgres SQL smoke spec. |
+| **WHY** | PR #1510 review — D2 independent eventual recovery requires scheduler-interval-independent, unbounded-finite-backlog fairness without process-local cursor authority. |
+| **VALIDATION** | PKG-01-focused Jest 87+ tests PASS; fairness tests A–D PASS; `validate-graph.sh` PASS |
+| **NON_EFFECTS** | D1 identity unchanged; CAS/replay/monotonic/direct-path tests unchanged; no PKG-02/M4/flags/migration/deploy |
+| **DECISION_STATUS** | PKG-01 IMPLEMENTED — not PRODUCTION_VALIDATED |
+
+---
+
+## CL-2026-09-02 — PKG-01 final correction pass (reconciliation eventual progress + direct-path test)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Reconciliation scanned sequential measurement pages with process-local `cursorId` resetting each invocation — EXECUTED rows could starve repairable candidates beyond `batch*20`; direct-path integration test preloaded `findFirst` measurement causing replay not direct path. |
+| **CHANGE** | Replaced sequential scan with targeted SQL join on incomplete handoff candidates (`fetchRestAssessmentHandoffReconcileCandidates`) plus wall-clock rotating `OFFSET` (`resolveRestAssessmentHandoffScanOffset`); cross-run starvation regression test; corrected direct-path handler test with ordered mocks + `evaluateAndPersist` exactly-once assertion. CAS/replay/monotonic architecture unchanged. |
+| **WHY** | PR #1510 second review — D2 independent eventual recovery requires cross-invocation progress without process-local cursor authority. |
+| **VALIDATION** | PKG-01-focused Jest 82 tests PASS (handoff + reconciliation + handler + stage-1/liveness); `validate-graph.sh` PASS |
+| **NON_EFFECTS** | D1 identity unchanged; no PKG-02/M4/flags/migration/deploy; optimistic CAS architecture retained |
+| **DECISION_STATUS** | PKG-01 IMPLEMENTED — not PRODUCTION_VALIDATED |
+
+---
+
+## CL-2026-09-02 — PKG-01 D2 review correction pass (metadata CAS + replay + reconciliation pagination)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Handler COMPLETED write used stale session snapshot (could erase assessmentHandoff); handoff persistence was read-modify-write without DB concurrency guard; replay marked all measurements COMPLETED; reconciliation first-page starvation. |
+| **CHANGE** | Added `mutateLvRestSessionMetadata` optimistic CAS on `updatedAt`; handoff + handler target writes use fresh re-read/retry; terminal replay discriminators (`isSyntheticRestMissedMeasurement`, `isSyntheticRestStatusMeasurement`); reconciliation id-cursor pagination + per-run repaired-id dedupe; race/regression tests A–E. |
+| **WHY** | PR #1510 review found D2 contract violations — not merge-ready without these fixes. |
+| **VALIDATION** | 83 PKG-01-focused Jest tests PASS; `npx tsc --noEmit` PASS; `validate-graph.sh` PASS |
+| **NON_EFFECTS** | D1 identity unchanged; no PKG-02/M4/flags/migration/deploy |
+| **DECISION_STATUS** | PKG-01 IMPLEMENTED — not PRODUCTION_VALIDATED |
+
+---
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | battery-rest-target-evaluate.handler persisted measurements but did not enqueue assessment; replay used hasMeasurement bool only; reconcilePendingAssessments scanned batteryFeatures not canonical REST measurements; no assessmentHandoff durable metadata. |
+| **CHANGE** | Implemented LvRestAssessmentHandoffService (direct handoff + idempotency + monotonic metadata), handler integration (direct + replay repair), assessment handler EXECUTED ack via sourceEntityId, reconcileCanonicalRestAssessmentHandoffs in BatteryV2ReconciliationService. Tests: metadata/policy/service/handler/reconciliation. PKG-01 → IMPLEMENTED (not PRODUCTION_VALIDATED). |
+| **WHY** | Authorized BAT-V2-RUNTIME-PKG-01 per validated D1/D2/D3 architecture. |
+| **EXPECTED_EFFECT** | Eligible canonical REST measurements enqueue assess:{vehicleId}:LV_HEALTH:{measurementId}; crash-boundary repair via replay + reconciliation; no HANDOFF flag; REST_SHADOW and publication unchanged. |
+| **VALIDATION** | `npm test --testPathPattern="lv-rest-assessment-handoff|battery-rest-target-evaluate.handler|battery-v2-reconciliation.spec|battery-v2-rest-target|battery-v2-stage1-pipeline"`; `bash architecture/battery-v2/scripts/validate-graph.sh` |
+| **NON_EFFECTS** | No PKG-02 publication handoff; no M4 cutover; no REST_SHADOW removal; no DB migration; no feature flag changes; no deploy. |
+| **REMAINING_GAPS** | BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001 open until PRODUCTION_VALIDATED; publication handoff (PKG-02) open. |
+| **DECISION_STATUS** | D1/D2/D3 runtime implemented — NOT PRODUCTION_VALIDATED |
+| **AFFECTED_GRAPH** | PKG-01 IMPLEMENTED; gap node summary updated |
+
+---
 
 | Field | Content |
 |-------|---------|

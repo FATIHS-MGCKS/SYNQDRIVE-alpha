@@ -32,6 +32,7 @@ export interface LvRestTargetJobMetadata {
   lastAttemptAt?: string | null;
   completedAt?: string | null;
   cancelReason?: string | null;
+  assessmentHandoff?: import('./lv-rest-assessment-handoff.metadata').LvRestAssessmentHandoffMetadata;
 }
 
 export interface LvRestWindowScheduledTargets {

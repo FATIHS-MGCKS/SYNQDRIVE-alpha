@@ -45,6 +45,7 @@ function buildHandlerAndReconciliation() {
     },
   };
 
+  let updatedAt = new Date('2026-08-30T11:00:00.000Z');
   const sessionRow = {
     id: SESSION,
     organizationId: ORG,
@@ -54,20 +55,35 @@ function buildHandlerAndReconciliation() {
     metadata: sessionMetadata,
     status: BatteryMeasurementSessionStatus.ACTIVE,
     type: BatteryMeasurementSessionType.LV_REST_WINDOW,
+    updatedAt,
   };
 
   const prisma = {
     batteryMeasurementSession: {
-      findFirst: jest.fn(async () => ({ ...sessionRow, metadata: sessionMetadata })),
-      findMany: jest.fn(async () => [{ ...sessionRow, metadata: sessionMetadata }]),
+      findFirst: jest.fn(async () => ({
+        ...sessionRow,
+        metadata: sessionMetadata,
+        updatedAt,
+      })),
+      findMany: jest.fn(async () => [{ ...sessionRow, metadata: sessionMetadata, updatedAt }]),
       update: jest.fn(async ({ data }: any) => {
         sessionMetadata = data.metadata as Record<string, unknown>;
         return { ...sessionRow, metadata: sessionMetadata };
       }),
+      updateMany: jest.fn(async ({ data, where }: any) => {
+        if (where?.updatedAt?.getTime() !== updatedAt.getTime()) {
+          return { count: 0 };
+        }
+        sessionMetadata = data.metadata as Record<string, unknown>;
+        updatedAt = new Date(updatedAt.getTime() + 1);
+        return { count: 1 };
+      }),
     },
     batteryMeasurement: {
       findFirst: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
     },
+    $queryRaw: jest.fn().mockResolvedValue([]),
     vehicleLatestState: { findMany: jest.fn().mockResolvedValue([]) },
     batteryFeatures: { findMany: jest.fn().mockResolvedValue([]) },
     vehicleTrip: { findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn() },
@@ -87,6 +103,7 @@ function buildHandlerAndReconciliation() {
     prisma as any,
     evaluation as any,
     { recordLvRestShadowMeasurement: jest.fn() } as any,
+    { ensureAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }) } as any,
   );
 
   const restTargetProducer = {
@@ -133,6 +150,7 @@ function buildHandlerAndReconciliation() {
     restTargetProducer as any,
     { enqueueStartProxy: jest.fn() } as any,
     { reconcilePeriodic: jest.fn().mockResolvedValue(0) } as any,
+    { ensureAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }) } as any,
   );
 
   const basePayload = (restTargetType: 'REST_60M' | 'REST_6H') => ({
