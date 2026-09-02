@@ -354,11 +354,18 @@ Reference Drive #001 real motion: **`HF_HISTORICAL = ACTIVE`**.
 
 ### DIMO_AGGREGATION_BUCKET_ORIGIN
 
-Upstream `DIMO-Network/dq` → `GetAggregatedSignals()` (`internal/service/duck/aggregations.go`):
+**Verified public upstream:** `DIMO-Network/telemetry-api` @ `98d88534857fec95a507a61331d5e357b86cfcc6`
 
-- Epoch-aligned buckets with **origin = query `from` (`aggArgs.FromTS`)**
-- Returned `timestamp` = **bucket interval start** (anchored to that origin)
-- **Not** raw LTE_R1 physical source samples
+| File | Implementation |
+|------|----------------|
+| `internal/service/ch/ch.go` | `GetAggregatedSignals()` — aggregated signals; `timestamp` = start of interval |
+| `internal/service/ch/queries.go` | `selectInterval()` / `getAggQuery()` — `origin = aggArgs.FromTS` |
+
+**Bucket semantics:** **QUERY-FROM-ANCHORED AGGREGATION BUCKETS** (anchored to query `from`, not independent epoch alignment).
+
+`DIMO-Network/dq` may proxy production queries; not used as sole canonical citation without independent commit verification.
+
+**Not** raw LTE_R1 physical source samples.
 
 ### Semantic debt: `physicalSampleFingerprint`
 
@@ -390,24 +397,69 @@ On `HF_HISTORICAL`, persisted `physicalSampleFingerprint` fingerprints `(field, 
 | `hfWatermarkAt` after request | **always `now`**, even when `rows.length === 0` |
 
 `HF_LATE_ARRIVAL_WATERMARK_RISK = CONFIRMED_FROM_CODE_RISK`  
-`HF_LATE_ARRIVAL_RUNTIME_SKIP = UNKNOWN_REQUIRES_VALIDATION` (watermark mechanism not isolated by replay alone)
+`HF_LATE_ARRIVAL_RUNTIME_SKIP = CONFIRMED_FROM_RUNTIME` (39 aggregate buckets classified `DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK`)
 
-### Exact-window aggregate bucket replay (`EXACT_WINDOW_REPLAY_EXECUTED = YES`)
+### Exact-window aggregate bucket replay (`EXACT_WINDOW_REPLAY_NORMALIZED = YES`)
 
-Re-queried all **13** original row-producing requests using **exact** `hfWindowFrom`/`hfWindowTo` from `provenanceJson`.
+Re-queried all **13** original row-producing requests using **exact** `hfWindowFrom`/`hfWindowTo` from `provenanceJson`. Bucket timestamps canonicalized via `new Date(ts).toISOString()` before comparison (fixes `…25.500Z` ≡ `…25.5Z` identity bug).
 
-| HF field | Original buckets | Replay buckets | Unchanged | New | Removed | Changed value |
-|----------|-----------------|----------------|-----------|-----|---------|---------------|
-| speed | 280 | 305 | 277 | 28 | 3 | 0 |
-| obdEngineLoad | 280 | 305 | 277 | 28 | 3 | 0 |
-| powertrainCombustionEngineSpeed | 239 | 261 | 236 | 25 | 3 | 0 |
-| powertrainCombustionEngineTPS | 269 | 294 | 266 | 28 | 3 | 0 |
-| obdThrottlePosition | 265 | 290 | 262 | 28 | 3 | 0 |
-| **Total** | **1333** | **1455** | **1318** | **137** | **15** | **0** |
+**Counting model:** `AGGREGATE_BUCKET_OBSERVATIONS_ACROSS_REQUEST_WINDOWS` — not globally unique physical samples.
 
-`HF_LATE_ARRIVAL_AGGREGATE_BUCKET = CONFIRMED_FROM_RUNTIME` — exact same query windows now return **137 aggregate buckets** not present in original sealed responses.
+#### Prior unnormalized vs normalized totals
 
-`RD001_HF_COMPLETENESS = INCOMPLETE` (relative to current exact-window replay).
+| Metric | Pre-normalization | Normalized |
+|--------|-------------------|------------|
+| Original | 1333 | 1333 |
+| Replay | 1455 | 1455 |
+| Unchanged | 1318 | **1333** |
+| New | 137 | **122** |
+| Removed | 15 | **0** |
+| Changed value | 0 | 0 |
+
+#### Per-field normalized totals
+
+| HF field | Original | Replay | Unchanged | New | Removed | Changed |
+|----------|----------|--------|-----------|-----|---------|---------|
+| speed | 280 | 305 | 280 | 25 | 0 | 0 |
+| obdEngineLoad | 280 | 305 | 280 | 25 | 0 | 0 |
+| powertrainCombustionEngineSpeed | 239 | 261 | 239 | 22 | 0 | 0 |
+| powertrainCombustionEngineTPS | 269 | 294 | 269 | 25 | 0 | 0 |
+| obdThrottlePosition | 265 | 290 | 265 | 25 | 0 | 0 |
+| **Total** | **1333** | **1455** | **1333** | **122** | **0** | **0** |
+
+#### Problematic window (`19:12:25.500Z` → `19:12:34.201Z`)
+
+| Metric | Pre-normalization | Normalized |
+|--------|-------------------|------------|
+| Unchanged | 0 | **15** |
+| Removed | 15 | **0** |
+| New | 25 | **10** |
+
+Prior `removed=15` was partly caused by RFC3339 timestamp serialization mismatch, not provider data loss.
+
+`HF_LATE_ARRIVAL_AGGREGATE_BUCKET = CONFIRMED_FROM_RUNTIME` — exact same query windows now return **122 aggregate buckets** not present in original sealed responses.
+
+`RD001_HF_COMPLETENESS = INCOMPLETE` (relative to normalized exact-window replay).
+
+#### Watermark causality (NEW buckets)
+
+| Classification | Total |
+|----------------|-------|
+| `DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK` | **39** |
+| `PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW` | 30 |
+| `POTENTIALLY_REQUERYABLE` | 53 |
+
+Late-available DIMO aggregate source intervals were permanently excluded from subsequent Reference Capture HF windows by the 2-second wall-clock watermark overlap.
+
+#### Provider availability lag lower bound (NEW buckets)
+
+Not network latency. Basis: `requestCompletedAt - bucketEnd` (conservative fallback: `requestStartedAt - bucketEnd`).
+
+| min | P50 | P95 | max |
+|-----|-----|-----|-----|
+| −0.084 s | 1.489 s | 3.248 s | 4.035 s |
+
+Empirical signal that 2s overlap may be insufficient — design review only; do not tune production overlap from RD001 alone.
 
 ### Upstream data stall (`DIMO_LTE_R1_RD001_UPSTREAM_DATA_STALL`)
 
@@ -485,8 +537,8 @@ No fake MAE/RMSE/onset metrics were calculated.
 |----------|------------------|-------------------|--------|
 | Provider signal availability | **YES** | CONFIRMED_FROM_VEHICLE_OBSERVATION | 31/31 fields observed with data |
 | Real-motion HF availability | **YES** | CONFIRMED_FROM_VEHICLE_OBSERVATION | 1333 HF rows vs 0 in 3A.2 |
-| Observed cadence | **YES** | CONFIRMED_FROM_VEHICLE_OBSERVATION | HF ~2s P50; LATEST ~5s cycle |
-| Dropouts / gaps | **YES** | CONFIRMED_FROM_VEHICLE_OBSERVATION | Max gap 151s (ARM gap artifact) |
+| Observed cadence | **YES** | CONFIRMED_FROM_VEHICLE_OBSERVATION | Nonempty 1s aggregate-bucket spacing P50 ≈ 2s; LATEST ~5s cycle; `DEVICE_RAW_SAMPLE_CADENCE = UNKNOWN` |
+| Dropouts / gaps | **YES** | CONFIRMED_FROM_VEHICLE_OBSERVATION | Max gap 151s — **PROVIDER_DATA_GAP** inside single aggregation response; ARM attribution **INVALIDATED**; root cause **UNKNOWN_REQUIRES_VALIDATION** |
 | Jitter | **YES** | CONFIRMED_FROM_VEHICLE_OBSERVATION | Per-field stddev in metrics JSON |
 | Duplicates | **YES** | CONFIRMED_FROM_VEHICLE_OBSERVATION | Multi-surface overlap ~56% dup ts rate |
 | Out-of-order | **YES** (recomputed; prior 0% invalidated) | CONFIRMED_FROM_VEHICLE_OBSERVATION | 0 in acquisition order after methodology fix |
@@ -547,7 +599,7 @@ Also includes: `session-summary.json`, `signal-quality-metrics.json`, `pre-stop-
 | Reference Drive #001 telemetry analysis | **AVAILABLE** (methodology-corrected) |
 | `RD001_METRICS_CORRECTION` | **COMPLETE** |
 | `RD001_AGGREGATION_SEMANTICS_CORRECTION` | **COMPLETE** |
-| `RD001_HF_COMPLETENESS_FORENSIC` | **COMPLETE** (grid-controlled replay) |
+| `RD001_HF_COMPLETENESS_FORENSIC` | **COMPLETE** (normalized grid-controlled replay + watermark causality) |
 | Reference Drive #001 Ground Truth | **NOT_AVAILABLE** |
 | Ground Truth synchronization | **NOT DONE** |
 | Next engineering phase | **Phase 3A.3.1 FAST PRE-ARM / GO workflow** |
@@ -560,10 +612,10 @@ Also includes: `session-summary.json`, `signal-quality-metrics.json`, `pre-stop-
 
 1. **Phase 3A.3.1 ARM workflow** — 704 s gap unacceptable; FAST GO via production API required before RD002.
 2. **HF aggregation semantics** — `signals(agg:AVG)` returns 1s buckets, not raw physical samples; 225 chunked post-hoc claim invalidated.
-3. **HF watermark remediation** — wall-clock watermark confirmed; exact-window replay found 137 late aggregate buckets; remediation blocking before RD002.
-4. **HF 1s bucket interval vs ~2s nonempty bucket P50** — do not infer raw device cadence.
-3. **Dual-replica proof** — add worker identity logging before claiming `CONFIRMED_FROM_RUNTIME` serialization.
-4. **Native events zero** — vehicle limitation vs capture window vs query surface — investigate on #002 with known maneuvers + video.
+3. **HF watermark remediation** — wall-clock watermark confirmed; normalized exact-window replay found 122 late aggregate buckets with 39 `DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK`; remediation blocking before RD002.
+4. **HF 1s bucket interval vs ~2s nonempty bucket P50** — do not infer raw device cadence (`DEVICE_RAW_SAMPLE_CADENCE = UNKNOWN`).
+5. **Dual-replica proof** — add worker identity logging before claiming `CONFIRMED_FROM_RUNTIME` serialization.
+6. **Native events zero** — vehicle limitation vs capture window vs query surface — investigate on #002 with known maneuvers + video.
 
 ---
 

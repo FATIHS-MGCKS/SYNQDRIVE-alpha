@@ -905,7 +905,7 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 
 **Metrics correction (2026-09-01):** `RD001_METRICS_CORRECTION=COMPLETE` — methodology bugs fixed in analysis layer (out-of-order detection, unique-timestamp cadence, per-surface separation, latency terminology, dynamics classification). Sealed raw export SHA unchanged.
 
-**HF completeness forensic (2026-09-01):** `RD001_HF_COMPLETENESS_FORENSIC=COMPLETE` — aggregation semantics corrected (`DIMO_AGGREGATED_HISTORICAL_1S`, `agg:AVG`, bucket origin = query `from`); prior 225 chunked post-hoc claim **INVALIDATED_BY_AGGREGATION_GRID_MISMATCH**; exact-window replay found **137** late aggregate buckets (`HF_LATE_ARRIVAL_AGGREGATE_BUCKET=CONFIRMED_FROM_RUNTIME`); upstream data stall after ~19:14 **CONFIRMED_FROM_RUNTIME**; `HF_LATE_ARRIVAL_RUNTIME_SKIP=UNKNOWN_REQUIRES_VALIDATION`; `PHYSICAL_SAMPLE_FINGERPRINT_REMEDIATION_REQUIRED=YES`.
+**HF completeness forensic (2026-09-02):** `RD001_HF_COMPLETENESS_FORENSIC=COMPLETE` — timestamp-canonicalized exact-window replay: **122** late aggregate buckets (was 137 pre-normalization; 15 false “removed” from RFC3339 mismatch); **39** `DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK` → `HF_LATE_ARRIVAL_RUNTIME_SKIP=CONFIRMED_FROM_RUNTIME`; provider availability lag lower-bound P50 ≈ **1.49 s**; DIMO authority = `telemetry-api` @ `98d8853`; `DEVICE_RAW_SAMPLE_CADENCE=UNKNOWN`; upstream data stall after ~19:14 **CONFIRMED_FROM_RUNTIME**; `PHYSICAL_SAMPLE_FINGERPRINT_REMEDIATION_REQUIRED=YES`.
 
 ### Phase 3A.3.1 — FAST PRE-ARM / GO workflow remediation
 **Status:** **NEXT REQUIRED BEFORE RD002** (not started)

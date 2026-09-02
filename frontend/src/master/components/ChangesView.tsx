@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-phase-3a3-reference-drive-001-exact-window-replay-normalized-2026-09-02',
+    version: '4.9.1027',
+    title: 'Phase 3A.3 — RD001 exact-window replay normalization + watermark causality',
+    summary: [
+      'Timestamp canonicalization fixed for aggregate bucket identity (…25.500Z ≡ …25.5Z); prior 15 “removed” buckets were serialization artifacts.',
+      'Normalized exact-window replay (13 windows): unchanged=1333, new=122, removed=0; problematic ARM window corrected from unchanged=0/removed=15 to unchanged=15/new=10.',
+      'Watermark causality: 39 NEW buckets DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK — HF_LATE_ARRIVAL_RUNTIME_SKIP=CONFIRMED_FROM_RUNTIME.',
+      'Provider availability lag lower bound P50≈1.49s (not network latency); DIMO authority corrected to telemetry-api @ 98d8853.',
+      '151s gap matrix wording fixed (PROVIDER_DATA_GAP; ARM attribution INVALIDATED); DEVICE_RAW_SAMPLE_CADENCE=UNKNOWN preserved.',
+    ],
+    reason: 'Final RD001 exact-window replay normalization on PR #1502; sealed raw export unchanged.',
+    previousBehavior: 'Replay compared raw RFC3339 strings; dq-only authority citation; HF_LATE_ARRIVAL_RUNTIME_SKIP unproven.',
+    details:
+      'reference-capture-hf-aggregate-bucket-analysis.ts; reference-capture-drive-001-hf-exact-window-replay.ts; architecture/DIMO_LTE_R1_RD001_HF_AGGREGATION_SEMANTICS_2026-09-01.md; DI-EV-0016 updated in place.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T04:00:00.000Z',
+  },
+  {
     id: 'dimo-phase-3a3-reference-drive-001-aggregation-semantics-2026-09-01',
     version: '4.9.1026',
     title: 'Phase 3A.3 — RD001 HF aggregation semantics correction',

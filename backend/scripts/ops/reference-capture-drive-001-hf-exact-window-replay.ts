@@ -1,6 +1,5 @@
 /**
- * Reference Drive #001 — grid-controlled HF aggregate bucket replay.
- * Re-queries DIMO with EXACT original hfWindowFrom/hfWindowTo per row-producing request.
+ * Reference Drive #001 — grid-controlled HF aggregate bucket replay (normalized).
  */
 import * as crypto from 'crypto';
 import * as fs from 'fs';
@@ -8,6 +7,17 @@ import * as path from 'path';
 import axios from 'axios';
 import { Wallet } from 'ethers';
 import { buildBroadReferenceHistoricalSignalsQuery } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-query-builder';
+import {
+  aggregateBucketKey,
+  bucketIntervalBoundsMs,
+  canonicalizeBucketTimestamp,
+  classifyWatermarkExclusion,
+  compareAggregateBucketMaps,
+  DIMO_PROVIDER_SOURCE_AUTHORITY,
+  summarizeLagSeconds,
+  type AggregateBucketObservation,
+  type WatermarkExclusionClassification,
+} from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-aggregate-bucket-analysis';
 
 const TOKEN_ID = 192922;
 const EXPECTED_SHA256 = 'f8e3097e28899d7a2cbdd269b266c16e5cf3eed69be810aba4e1247ec9a65bbd';
@@ -20,18 +30,34 @@ const HF_FIELDS = [
 ] as const;
 const REQUESTED_INTERVAL = '1s';
 const AGGREGATOR = 'AVG';
+const PRIOR_NORMALIZED_TOTALS = {
+  originalAggregateBuckets: 1333,
+  replayAggregateBuckets: 1455,
+  unchangedBucketCount: 1318,
+  newBucketCount: 137,
+  removedBucketCount: 15,
+  changedValueCount: 0,
+};
+const PRIOR_PROBLEMATIC_WINDOW = {
+  hfWindowFrom: '2026-09-01T19:12:25.500Z',
+  hfWindowTo: '2026-09-01T19:12:34.201Z',
+  unchangedBucketCount: 0,
+  removedBucketCount: 15,
+  newBucketCount: 25,
+};
 
 type HfField = (typeof HF_FIELDS)[number];
 
-type BucketKey = string;
-
-type AggregateBucket = {
-  providerField: HfField;
-  bucketTimestamp: string;
-  avgValue: number;
+type RequestWindow = {
   hfWindowFrom: string;
   hfWindowTo: string;
   requestStartedAt: string;
+  requestCompletedAt: string | null;
+};
+
+type LoadedWindow = RequestWindow & {
+  windowId: string;
+  originalBuckets: Map<string, AggregateBucketObservation>;
 };
 
 function loadEnv(): void {
@@ -57,10 +83,6 @@ function parseArg(prefix: string): string | undefined {
   return undefined;
 }
 
-function bucketKey(field: string, bucketTimestamp: string): BucketKey {
-  return `${field}|${bucketTimestamp}`;
-}
-
 function extractAvgValue(raw: unknown): number | null {
   if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
   if (raw != null && typeof raw === 'object' && 'value' in (raw as object)) {
@@ -70,24 +92,15 @@ function extractAvgValue(raw: unknown): number | null {
   return null;
 }
 
-function loadOriginalBuckets(inputPath: string): {
-  sha256: string;
-  windows: Array<{ hfWindowFrom: string; hfWindowTo: string; requestStartedAt: string }>;
-  bucketsByWindow: Map<string, Map<BucketKey, AggregateBucket>>;
-  bucketsByField: Record<HfField, Map<BucketKey, AggregateBucket>>;
-} {
+function loadOriginalWindows(inputPath: string): { sha256: string; windows: LoadedWindow[] } {
   const raw = fs.readFileSync(inputPath);
   const sha256 = crypto.createHash('sha256').update(raw).digest('hex');
   if (sha256 !== EXPECTED_SHA256) {
     throw new Error(`SHA-256 mismatch: expected ${EXPECTED_SHA256}, got ${sha256}`);
   }
 
-  const windowSet = new Map<string, { hfWindowFrom: string; hfWindowTo: string; requestStartedAt: string }>();
-  const bucketsByWindow = new Map<string, Map<BucketKey, AggregateBucket>>();
-  const bucketsByField = Object.fromEntries(HF_FIELDS.map((f) => [f, new Map<BucketKey, AggregateBucket>()])) as Record<
-    HfField,
-    Map<BucketKey, AggregateBucket>
-  >;
+  const windowMeta = new Map<string, RequestWindow & { completedCandidates: string[] }>();
+  const bucketsByWindow = new Map<string, Map<string, AggregateBucketObservation>>();
 
   for (const line of raw.toString('utf8').split(/\r?\n/)) {
     if (!line.trim()) continue;
@@ -101,31 +114,54 @@ function loadOriginalBuckets(inputPath: string): {
     const requestStartedAt = String(row.requestStartedAt ?? '');
     if (!hfWindowFrom || !hfWindowTo || !requestStartedAt) continue;
     const windowId = `${hfWindowFrom}|${hfWindowTo}|${requestStartedAt}`;
-    windowSet.set(windowId, { hfWindowFrom, hfWindowTo, requestStartedAt });
+    if (!windowMeta.has(windowId)) {
+      windowMeta.set(windowId, {
+        hfWindowFrom,
+        hfWindowTo,
+        requestStartedAt,
+        requestCompletedAt: null,
+        completedCandidates: [],
+      });
+      bucketsByWindow.set(windowId, new Map());
+    }
+    const meta = windowMeta.get(windowId)!;
+    if (typeof row.requestCompletedAt === 'string') meta.completedCandidates.push(row.requestCompletedAt);
+
     const avgValue = extractAvgValue(row.rawValueJson);
-    const bucketTimestamp =
+    const providerTimestamp =
       typeof row.providerTimestamp === 'string'
         ? row.providerTimestamp
         : row.providerTimestamp instanceof Date
           ? row.providerTimestamp.toISOString()
           : null;
-    if (avgValue == null || !bucketTimestamp) continue;
-    const bucket: AggregateBucket = {
+    if (avgValue == null || !providerTimestamp) continue;
+
+    const bucketTimestamp = canonicalizeBucketTimestamp(providerTimestamp);
+    bucketsByWindow.get(windowId)!.set(aggregateBucketKey(field, bucketTimestamp), {
       providerField: field,
       bucketTimestamp,
       avgValue,
-      hfWindowFrom,
-      hfWindowTo,
-      requestStartedAt,
-    };
-    if (!bucketsByWindow.has(windowId)) bucketsByWindow.set(windowId, new Map());
-    const key = bucketKey(field, bucketTimestamp);
-    bucketsByWindow.get(windowId)!.set(key, bucket);
-    bucketsByField[field].set(key, bucket);
+    });
   }
 
-  const windows = [...windowSet.values()].sort((a, b) => a.requestStartedAt.localeCompare(b.requestStartedAt));
-  return { sha256, windows, bucketsByWindow, bucketsByField };
+  const windows: LoadedWindow[] = [...windowMeta.entries()]
+    .map(([windowId, meta]) => {
+      const completed = meta.completedCandidates
+        .map((v) => Date.parse(v))
+        .filter((ms) => Number.isFinite(ms))
+        .sort((a, b) => b - a);
+      return {
+        windowId,
+        hfWindowFrom: meta.hfWindowFrom,
+        hfWindowTo: meta.hfWindowTo,
+        requestStartedAt: meta.requestStartedAt,
+        requestCompletedAt: completed.length ? new Date(completed[0]).toISOString() : null,
+        originalBuckets: bucketsByWindow.get(windowId) ?? new Map(),
+      };
+    })
+    .sort((a, b) => a.requestStartedAt.localeCompare(b.requestStartedAt));
+
+  return { sha256, windows };
 }
 
 async function getDeveloperJwt(): Promise<string> {
@@ -188,65 +224,48 @@ async function gql(jwt: string, query: string): Promise<Record<string, unknown>>
 
 function parseReplayBuckets(
   rows: Array<Record<string, unknown>>,
-  window: { hfWindowFrom: string; hfWindowTo: string; requestStartedAt: string },
-): Map<BucketKey, AggregateBucket> {
-  const out = new Map<BucketKey, AggregateBucket>();
+): Map<string, AggregateBucketObservation> {
+  const out = new Map<string, AggregateBucketObservation>();
   for (const row of rows) {
     const rowTs = typeof row.timestamp === 'string' ? row.timestamp : null;
+    if (!rowTs) continue;
+    const bucketTimestamp = canonicalizeBucketTimestamp(rowTs);
     for (const field of HF_FIELDS) {
       if (!(field in row)) continue;
       const avgValue = extractAvgValue(row[field]);
       if (avgValue == null) continue;
-      const bucketTimestamp = rowTs;
-      if (!bucketTimestamp) continue;
-      const key = bucketKey(field, bucketTimestamp);
-      out.set(key, {
+      out.set(aggregateBucketKey(field, bucketTimestamp), {
         providerField: field,
         bucketTimestamp,
         avgValue,
-        hfWindowFrom: window.hfWindowFrom,
-        hfWindowTo: window.hfWindowTo,
-        requestStartedAt: window.requestStartedAt,
       });
     }
   }
   return out;
 }
 
-function compareBuckets(original: Map<BucketKey, AggregateBucket>, replay: Map<BucketKey, AggregateBucket>) {
-  let unchanged = 0;
-  let changedValue = 0;
-  let removed = 0;
-  let added = 0;
-  const changedExamples: Array<{ key: BucketKey; original: number; replay: number }> = [];
-  const newExamples: AggregateBucket[] = [];
-  for (const [key, ob] of original.entries()) {
-    const rb = replay.get(key);
-    if (!rb) {
-      removed++;
-      continue;
-    }
-    if (Math.abs(ob.avgValue - rb.avgValue) < 1e-9) unchanged++;
-    else {
-      changedValue++;
-      if (changedExamples.length < 5) changedExamples.push({ key, original: ob.avgValue, replay: rb.avgValue });
-    }
-  }
-  for (const [key, rb] of replay.entries()) {
-    if (!original.has(key)) {
-      added++;
-      if (newExamples.length < 5) newExamples.push(rb);
-    }
-  }
+function emptyFieldTotals(): Record<HfField, ReturnType<typeof compareAggregateBucketMaps>> {
+  return Object.fromEntries(
+    HF_FIELDS.map((f) => [
+      f,
+      {
+        originalBucketObservations: 0,
+        replayBucketObservations: 0,
+        unchangedBucketObservations: 0,
+        newBucketObservations: 0,
+        removedBucketObservations: 0,
+        changedValueBucketObservations: 0,
+      },
+    ]),
+  ) as Record<HfField, ReturnType<typeof compareAggregateBucketMaps>>;
+}
+
+function emptyWatermarkCounts(): Record<WatermarkExclusionClassification, number> {
   return {
-    originalBucketCount: original.size,
-    replayBucketCount: replay.size,
-    unchangedBucketCount: unchanged,
-    newBucketCount: added,
-    removedBucketCount: removed,
-    changedValueCount: changedValue,
-    changedValueExamples: changedExamples,
-    newBucketExamples: newExamples,
+    DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK: 0,
+    PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW: 0,
+    POTENTIALLY_REQUERYABLE: 0,
+    NO_NEXT_WINDOW_EVIDENCE: 0,
   };
 }
 
@@ -255,48 +274,37 @@ async function main(): Promise<void> {
   const inputPath = parseArg('--input') ?? '/tmp/rd001-observations.jsonl';
   const outPath =
     parseArg('--out') ??
-    path.resolve(process.cwd(), 'docs/audits/data/dimo-lte-r1-reference-drive-001-hf-exact-window-replay.json');
+    path.resolve(__dirname, '../../../docs/audits/data/dimo-lte-r1-reference-drive-001-hf-exact-window-replay.json');
 
   if (!process.env.DIMO_CLIENT_ID || !process.env.DIMO_PRIVATE_KEY) {
     throw new Error('DIMO_CLIENT_ID and DIMO_PRIVATE_KEY required');
   }
 
-  const original = loadOriginalBuckets(inputPath);
+  const original = loadOriginalWindows(inputPath);
   const devJwt = await getDeveloperJwt();
   const vehicleJwt = await getVehicleJwt(devJwt);
 
-  const perWindow: Array<ReturnType<typeof compareBuckets> & {
-    hfWindowFrom: string;
-    hfWindowTo: string;
-    requestStartedAt: string;
-    providerRowCount: number;
-  }> = [];
-  const perFieldTotals = Object.fromEntries(
-    HF_FIELDS.map((f) => [
-      f,
-      {
-        originalAggregateBuckets: 0,
-        replayAggregateBuckets: 0,
-        unchangedBucketCount: 0,
-        newBucketCount: 0,
-        removedBucketCount: 0,
-        changedValueCount: 0,
-      },
-    ]),
-  ) as Record<
-    HfField,
-    {
-      originalAggregateBuckets: number;
-      replayAggregateBuckets: number;
-      unchangedBucketCount: number;
-      newBucketCount: number;
-      removedBucketCount: number;
-      changedValueCount: number;
+  const perWindow: Array<
+    ReturnType<typeof compareAggregateBucketMaps> & {
+      hfWindowFrom: string;
+      hfWindowTo: string;
+      requestStartedAt: string;
+      requestCompletedAt: string | null;
+      providerRowCount: number;
+      perField: Record<HfField, ReturnType<typeof compareAggregateBucketMaps>>;
     }
+  > = [];
+  const perFieldTotals = emptyFieldTotals();
+  const watermarkByField = Object.fromEntries(HF_FIELDS.map((f) => [f, emptyWatermarkCounts()])) as Record<
+    HfField,
+    Record<WatermarkExclusionClassification, number>
   >;
+  const watermarkTotal = emptyWatermarkCounts();
+  const availabilityLagSeconds: number[] = [];
 
-  for (const window of original.windows) {
-    const windowId = `${window.hfWindowFrom}|${window.hfWindowTo}|${window.requestStartedAt}`;
+  for (let i = 0; i < original.windows.length; i++) {
+    const window = original.windows[i];
+    const nextWindow = original.windows[i + 1] ?? null;
     const query = buildBroadReferenceHistoricalSignalsQuery(
       TOKEN_ID,
       [...HF_FIELDS],
@@ -304,96 +312,171 @@ async function main(): Promise<void> {
       new Date(window.hfWindowTo),
       REQUESTED_INTERVAL,
     );
-    if (!query) throw new Error(`No historical query for window ${windowId}`);
+    if (!query) throw new Error(`No historical query for window ${window.windowId}`);
     const result = await gql(vehicleJwt, query);
     const rows = ((result.data as Record<string, unknown> | undefined)?.signals ?? []) as Array<
       Record<string, unknown>
     >;
-    const replayBuckets = parseReplayBuckets(rows, window);
-    const originalBuckets = original.bucketsByWindow.get(windowId) ?? new Map();
-    const cmp = compareBuckets(originalBuckets, replayBuckets);
-    perWindow.push({
-      ...window,
-      providerRowCount: rows.length,
-      ...cmp,
-    });
+    const replayBuckets = parseReplayBuckets(rows);
+    const cmp = compareAggregateBucketMaps(window.originalBuckets, replayBuckets);
+    const perField = emptyFieldTotals();
+
     for (const field of HF_FIELDS) {
       const origField = new Map(
-        [...originalBuckets.entries()].filter(([k]) => k.startsWith(`${field}|`)),
+        [...window.originalBuckets.entries()].filter(([k]) => k.startsWith(`${field}|`)),
       );
       const replayField = new Map([...replayBuckets.entries()].filter(([k]) => k.startsWith(`${field}|`)));
-      const fieldCmp = compareBuckets(origField, replayField);
+      const fieldCmp = compareAggregateBucketMaps(origField, replayField);
+      perField[field] = fieldCmp;
       const t = perFieldTotals[field];
-      t.originalAggregateBuckets += fieldCmp.originalBucketCount;
-      t.replayAggregateBuckets += fieldCmp.replayBucketCount;
-      t.unchangedBucketCount += fieldCmp.unchangedBucketCount;
-      t.newBucketCount += fieldCmp.newBucketCount;
-      t.removedBucketCount += fieldCmp.removedBucketCount;
-      t.changedValueCount += fieldCmp.changedValueCount;
+      t.originalBucketObservations += fieldCmp.originalBucketObservations;
+      t.replayBucketObservations += fieldCmp.replayBucketObservations;
+      t.unchangedBucketObservations += fieldCmp.unchangedBucketObservations;
+      t.newBucketObservations += fieldCmp.newBucketObservations;
+      t.removedBucketObservations += fieldCmp.removedBucketObservations;
+      t.changedValueBucketObservations += fieldCmp.changedValueBucketObservations;
     }
+
+    for (const [key, bucket] of replayBuckets.entries()) {
+      if (window.originalBuckets.has(key)) continue;
+      const classification = classifyWatermarkExclusion({
+        bucketTimestamp: bucket.bucketTimestamp,
+        nextWindowFrom: nextWindow?.hfWindowFrom ?? null,
+      });
+      watermarkTotal[classification]++;
+      watermarkByField[bucket.providerField as HfField][classification]++;
+
+      const { endMs } = bucketIntervalBoundsMs(bucket.bucketTimestamp);
+      const referenceMs = window.requestCompletedAt
+        ? Date.parse(window.requestCompletedAt)
+        : Date.parse(window.requestStartedAt);
+      if (Number.isFinite(referenceMs)) {
+        availabilityLagSeconds.push((referenceMs - endMs) / 1000);
+      }
+    }
+
+    perWindow.push({
+      hfWindowFrom: window.hfWindowFrom,
+      hfWindowTo: window.hfWindowTo,
+      requestStartedAt: window.requestStartedAt,
+      requestCompletedAt: window.requestCompletedAt,
+      providerRowCount: rows.length,
+      perField,
+      ...cmp,
+    });
   }
 
   const aggregate = Object.values(perFieldTotals).reduce(
     (acc, f) => ({
-      originalAggregateBuckets: acc.originalAggregateBuckets + f.originalAggregateBuckets,
-      replayAggregateBuckets: acc.replayAggregateBuckets + f.replayAggregateBuckets,
-      unchangedBucketCount: acc.unchangedBucketCount + f.unchangedBucketCount,
-      newBucketCount: acc.newBucketCount + f.newBucketCount,
-      removedBucketCount: acc.removedBucketCount + f.removedBucketCount,
-      changedValueCount: acc.changedValueCount + f.changedValueCount,
+      aggregateBucketObservationsAcrossRequestWindows_original: acc.aggregateBucketObservationsAcrossRequestWindows_original + f.originalBucketObservations,
+      aggregateBucketObservationsAcrossRequestWindows_replay: acc.aggregateBucketObservationsAcrossRequestWindows_replay + f.replayBucketObservations,
+      unchangedBucketObservations: acc.unchangedBucketObservations + f.unchangedBucketObservations,
+      newBucketObservations: acc.newBucketObservations + f.newBucketObservations,
+      removedBucketObservations: acc.removedBucketObservations + f.removedBucketObservations,
+      changedValueBucketObservations: acc.changedValueBucketObservations + f.changedValueBucketObservations,
     }),
     {
-      originalAggregateBuckets: 0,
-      replayAggregateBuckets: 0,
-      unchangedBucketCount: 0,
-      newBucketCount: 0,
-      removedBucketCount: 0,
-      changedValueCount: 0,
+      aggregateBucketObservationsAcrossRequestWindows_original: 0,
+      aggregateBucketObservationsAcrossRequestWindows_replay: 0,
+      unchangedBucketObservations: 0,
+      newBucketObservations: 0,
+      removedBucketObservations: 0,
+      changedValueBucketObservations: 0,
     },
   );
 
-  const hfLateArrivalAggregateBucket =
-    aggregate.newBucketCount > 0 ? 'CONFIRMED_FROM_RUNTIME' : 'NOT_CONFIRMED_FROM_RD001';
+  const problematicWindow = perWindow.find(
+    (w) => w.hfWindowFrom === PRIOR_PROBLEMATIC_WINDOW.hfWindowFrom && w.hfWindowTo === PRIOR_PROBLEMATIC_WINDOW.hfWindowTo,
+  );
+
+  const definitelyExcluded = watermarkTotal.DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK;
+  const hfLateArrivalRuntimeSkip =
+    definitelyExcluded > 0 ? 'CONFIRMED_FROM_RUNTIME' : aggregate.newBucketObservations > 0 ? 'UNKNOWN_REQUIRES_VALIDATION' : 'NOT_CONFIRMED_FROM_RD001';
 
   const output = {
     referenceDriveId: 'DIMO_LTE_R1_REFERENCE_DRIVE_001',
     generatedAt: new Date().toISOString(),
-    experiment: 'HF_EXACT_WINDOW_AGGREGATE_BUCKET_REPLAY',
+    experiment: 'HF_EXACT_WINDOW_AGGREGATE_BUCKET_REPLAY_NORMALIZED',
+    timestampCanonicalizationFixed: true,
+    priorUnnormalizedTotals: PRIOR_NORMALIZED_TOTALS,
+    problematicWindowAudit: {
+      window: PRIOR_PROBLEMATIC_WINDOW,
+      priorUnnormalizedResult: {
+        unchangedBucketCount: PRIOR_PROBLEMATIC_WINDOW.unchangedBucketCount,
+        removedBucketCount: PRIOR_PROBLEMATIC_WINDOW.removedBucketCount,
+        newBucketCount: PRIOR_PROBLEMATIC_WINDOW.newBucketCount,
+      },
+      correctedNormalizedResult: problematicWindow
+        ? {
+            unchangedBucketObservations: problematicWindow.unchangedBucketObservations,
+            removedBucketObservations: problematicWindow.removedBucketObservations,
+            newBucketObservations: problematicWindow.newBucketObservations,
+            changedValueBucketObservations: problematicWindow.changedValueBucketObservations,
+          }
+        : null,
+    },
     semantics: {
       HF_AGGREGATION_SEMANTICS: 'CONFIRMED_FROM_CODE_AND_PROVIDER_SOURCE',
       observationType: 'HF_AGGREGATE_BUCKET_OBSERVATION',
+      countingModel: 'AGGREGATE_BUCKET_OBSERVATIONS_ACROSS_REQUEST_WINDOWS',
       dimoHistoricalSurface: 'DIMO_AGGREGATED_HISTORICAL_1S',
       aggregator: AGGREGATOR,
       interval: REQUESTED_INTERVAL,
-      bucketTimestampMeaning: 'INTERVAL_START_ANCHORED_TO_QUERY_FROM',
-      bucketOriginAuthority:
-        'DIMO-Network/dq internal/service/duck/aggregations.go — epoch-aligned buckets with origin = aggArgs.FromTS',
+      bucketSemantics: DIMO_PROVIDER_SOURCE_AUTHORITY.bucketSemantics,
+      bucketTimestampMeaning: DIMO_PROVIDER_SOURCE_AUTHORITY.bucketTimestampMeaning,
+      dimoProviderSourceAuthority: DIMO_PROVIDER_SOURCE_AUTHORITY,
       synqDriveSelection:
         'reference-capture-signal-schema.registry.ts buildHistoricalSelectionForField() => field(agg: AVG)',
-      physicalSampleFingerprintSemanticDebt:
-        'physicalSampleFingerprint on HF_HISTORICAL fingerprints (field, bucketTimestamp, AVG) — aggregate bucket identity, not raw physical LTE_R1 sample',
-      prior225PosthocClaim: 'INVALIDATED_BY_AGGREGATION_GRID_MISMATCH',
+      deviceRawSampleCadence: 'UNKNOWN',
     },
     sealedRawExport: { path: inputPath, sha256: original.sha256, unchanged: true },
     rowProducingRequestCount: original.windows.length,
     perWindowReplay: perWindow,
     perFieldTotals,
     aggregate,
+    watermarkCausality: {
+      perField: watermarkByField,
+      total: watermarkTotal,
+      definitelyExcludedByNextWatermark: definitelyExcluded,
+      interpretation:
+        definitelyExcluded > 0
+          ? 'Late-available DIMO aggregate source intervals were permanently excluded from subsequent Reference Capture HF windows by the 2-second wall-clock watermark overlap.'
+          : 'No new replay buckets were classified as definitely excluded by the next incremental window boundary.',
+    },
+    providerAvailabilityLagLowerBoundSeconds: {
+      basis: 'requestCompletedAt_minus_bucketEnd when available else requestStartedAt_minus_bucketEnd_conservative',
+      ...summarizeLagSeconds(availabilityLagSeconds),
+    },
     verdict: {
+      LATE_AGGREGATE_AVAILABILITY: aggregate.newBucketObservations > 0 ? 'CONFIRMED' : 'NOT_CONFIRMED',
       HF_LATE_ARRIVAL_WATERMARK_RISK: 'CONFIRMED_FROM_CODE_RISK',
-      HF_LATE_ARRIVAL_RUNTIME_SKIP: 'UNKNOWN_REQUIRES_VALIDATION',
-      HF_LATE_ARRIVAL_AGGREGATE_BUCKET: hfLateArrivalAggregateBucket,
-      RD001_HF_COMPLETENESS: aggregate.newBucketCount > 0 ? 'INCOMPLETE' : 'UNKNOWN_REQUIRES_VALIDATION',
-      note:
-        aggregate.newBucketCount > 0
-          ? 'Exact-window replay found aggregate buckets not present in original sealed response'
-          : 'Exact-window replay found no new aggregate buckets vs sealed RD001 at same from/to boundaries',
+      HF_LATE_ARRIVAL_RUNTIME_SKIP: hfLateArrivalRuntimeSkip,
+      HF_LATE_ARRIVAL_AGGREGATE_BUCKET: aggregate.newBucketObservations > 0 ? 'CONFIRMED_FROM_RUNTIME' : 'NOT_CONFIRMED_FROM_RD001',
+      RD001_HF_COMPLETENESS: aggregate.newBucketObservations > 0 ? 'INCOMPLETE' : 'UNKNOWN_REQUIRES_VALIDATION',
+      RD001_UPSTREAM_DATA_STALL_AFTER_1914: 'CONFIRMED_FROM_RUNTIME',
+      UPSTREAM_DATA_STALL_ROOT_CAUSE: 'UNKNOWN_REQUIRES_VALIDATION',
+      PHYSICAL_SAMPLE_FINGERPRINT_REMEDIATION_REQUIRED: 'YES',
+      HF_WATERMARK_REMEDIATION_REQUIRED: definitelyExcluded > 0 ? 'YES' : 'REQUIRES_VALIDATION',
     },
   };
 
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, JSON.stringify(output, null, 2));
-  console.log(JSON.stringify({ ok: true, outPath, aggregate, verdict: output.verdict, perFieldTotals }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        ok: true,
+        outPath,
+        aggregate,
+        problematicWindow: output.problematicWindowAudit,
+        watermarkCausality: output.watermarkCausality,
+        availabilityLag: output.providerAvailabilityLagLowerBoundSeconds,
+        verdict: output.verdict,
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 main().catch((err) => {

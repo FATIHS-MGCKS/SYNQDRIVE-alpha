@@ -408,19 +408,36 @@
     }
   },
   "hfCompletenessForensic": {
-    "phase": "3A.3 HF aggregate bucket completeness / late-arrival audit",
+    "phase": "3A.3 HF aggregate bucket completeness / late-arrival audit (normalized replay)",
     "exactWindowReplayArtifact": "docs/audits/data/dimo-lte-r1-reference-drive-001-hf-exact-window-replay.json",
     "invalidatedChunkedPosthocArtifact": "docs/audits/data/dimo-lte-r1-reference-drive-001-hf-posthoc-forensic.json",
+    "timestampCanonicalizationFixed": true,
+    "countingModel": "AGGREGATE_BUCKET_OBSERVATIONS_ACROSS_REQUEST_WINDOWS",
     "HF_AGGREGATION_SEMANTICS": "CONFIRMED_FROM_CODE_AND_PROVIDER_SOURCE",
     "225_POSTHOC_PHYSICAL_SAMPLE_CLAIM": "INVALIDATED_BY_AGGREGATION_GRID_MISMATCH",
     "HF_LATE_ARRIVAL_WATERMARK_RISK": "CONFIRMED_FROM_CODE_RISK",
-    "HF_LATE_ARRIVAL_RUNTIME_SKIP": "UNKNOWN_REQUIRES_VALIDATION",
+    "HF_LATE_ARRIVAL_RUNTIME_SKIP": "CONFIRMED_FROM_RUNTIME",
     "HF_LATE_ARRIVAL_AGGREGATE_BUCKET": "CONFIRMED_FROM_RUNTIME",
     "RD001_HF_COMPLETENESS": "INCOMPLETE",
+    "normalizedExactWindowReplay": {
+      "originalAggregateBuckets": 1333,
+      "replayAggregateBuckets": 1455,
+      "unchangedBucketObservations": 1333,
+      "newBucketObservations": 122,
+      "removedBucketObservations": 0,
+      "definitelyExcludedByNextWatermark": 39,
+      "providerAvailabilityLagLowerBoundSeconds": {
+        "min": -0.084,
+        "p50": 1.489,
+        "p95": 3.248,
+        "max": 4.035
+      }
+    },
     "RD001_UPSTREAM_DATA_STALL_AFTER_1914": "CONFIRMED_FROM_RUNTIME",
     "UPSTREAM_DATA_STALL_ROOT_CAUSE": "UNKNOWN_REQUIRES_VALIDATION",
     "HF_WATERMARK_REMEDIATION_REQUIRED": "YES",
-    "PHYSICAL_SAMPLE_FINGERPRINT_REMEDIATION_REQUIRED": "YES"
+    "PHYSICAL_SAMPLE_FINGERPRINT_REMEDIATION_REQUIRED": "YES",
+    "DEVICE_RAW_SAMPLE_CADENCE": "UNKNOWN"
   },
   "nextRequiredPhaseAlso": "HF_WATERMARK_LATE_ARRIVAL_REMEDIATION",
   "RD001_AGGREGATION_SEMANTICS_CORRECTION": "COMPLETE"
