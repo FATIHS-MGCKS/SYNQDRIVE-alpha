@@ -1,6 +1,6 @@
 # Battery V2 — Knowledge Graph (Human View)
 
-**Last updated:** 2026-09-01 (D2 crash-boundary contract precision pass)  
+**Last updated:** 2026-09-02 (D3 single-authority cutover decision)  
 **Maturity:** Phase 2+3 substantially reconstructed — open gaps remain  
 Machine-readable source: [graph/nodes.yaml](./graph/nodes.yaml), [graph/edges.yaml](./graph/edges.yaml)
 
@@ -43,9 +43,9 @@ This Human View is a high-level projection of current machine authority. It must
 [Consumers]  rental health, API, tasks, insights
 ```
 
-**Umbrella gap:** `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001` — canonical REST → assessment → publication is **not e2e reachable** today. Phase 4 PROPOSED target: `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (hybrid handoff; `assess:`/`pub:` keys). **SPEC REQUIRED before implementation:** PKG-01 — configuration invariant only (`inputVersion` = `BatteryMeasurement.id` — **VALIDATED** D1; crash-boundary — **VALIDATED** D2 Hybrid C+); PKG-02 — assessment-track selection, `publicationVersion`, configuration invariant. `REST_SHADOW=ON + PUBLICATION=ON + future HANDOFF=OFF` must not be allowed as Stage-2 steady state. Gap remains open; P0_ACTIVATION_BLOCKER only.
+**Umbrella gap:** `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001` — canonical REST → assessment → publication is **not e2e reachable** today. Phase 4 PROPOSED target: `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (hybrid handoff; `assess:`/`pub:` keys). **PKG-01 IMPLEMENTATION_READY** (D1/D2/D3 VALIDATED); **PKG-02 IMPLEMENTATION_SPEC_REQUIRED** (D4 assessment-track + D5 `publicationVersion` only). Target architecture (D3): V2 core mandatory; PUBLICATION = effect gate; REST_SHADOW + legacy = temporary scaffolds; **no** HANDOFF flag. Gap remains open; P0_ACTIVATION_BLOCKER only.
 
-**Flag note:** `BATTERY_V2_REST_SHADOW_ENABLED` (historical name) enables canonical REST ingestion when ON. It does **not** block publication. Publication is separately gated by `BATTERY_V2_PUBLICATION_ENABLED` plus missing handoffs.
+**Flag note (current runtime):** `BATTERY_V2_REST_SHADOW_ENABLED` gates canonical REST (temporary migration scaffold per D3). `BATTERY_V2_PUBLICATION_ENABLED` = customer publication effect gate. **No** `BATTERY_V2_LV_HANDOFF_ENABLED` (D3 rejected).
 
 ## HV branch (implemented paths + remaining gaps)
 
@@ -129,8 +129,13 @@ BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001 (D2)
     └── refines ──► BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
     └── refines ──► BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
     └── refines ──► BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001
-    └── handoff eligibility: provenance.sourceObservationId (not any-measurement bool)
-    └── correlation: sourceEntityId = measurement.id; monotonic MISSING<ENQUEUED<EXECUTED
+
+BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001 (D3)
+    └── refines ──► BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
+    └── refines ──► BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
+    └── refines ──► BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
+    └── refines ──► BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
+    └── target: V2 core mandatory; PUBLICATION effect gate; REST_SHADOW/legacy temporary; HANDOFF flag rejected
 ```
 
 ## Still open (use `BAT-V2-GAP-*` — do not invent detail)

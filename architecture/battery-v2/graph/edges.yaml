@@ -99,6 +99,32 @@ edges:
     to: BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001
     notes: D2 operationalizes D1 identity under crash/retry/reconcile paths
 
+  # D3 — single-authority cutover / configuration invariant (PKG-01/02 spec closure)
+  - from: BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001
+    relation: refines
+    to: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
+    notes: Closes configuration invariant; defines target steady-state flag model
+  - from: BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001
+    relation: refines
+    to: BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
+    notes: Config authority only — runtime handoff gap remains open
+  - from: BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001
+    relation: refines
+    to: BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
+    notes: Config authority only — publication handoff gap remains open
+  - from: BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001
+    relation: refines
+    to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
+    notes: Umbrella config authority — e2e chain gap remains open
+  - from: BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001
+    relation: refines
+    to: BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001
+    notes: Handoff is V2 core behavior — not independent HANDOFF flag
+  - from: BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001
+    relation: refines
+    to: BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001
+    notes: D3 operationalizes D1/D2 under single-authority target architecture
+
   # Failed → superseded by decisions / liveness
   - from: BAT-V2-DEC-1445-001
     relation: does_not_solve

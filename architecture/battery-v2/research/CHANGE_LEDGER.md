@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-02 — D3 Battery V2 single-authority cutover / configuration invariant
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | `CONFIGURATION_INVARIANT_SPEC_REQUIRED` blocked PKG-01/02 IMPLEMENTATION_READY. Phase 4 proposed `BATTERY_V2_LV_HANDOFF_ENABLED` third gate. REST_SHADOW historically gates canonical REST. Legacy capture parallel authority during migration. |
+| **OBSERVATION** | `isBatteryV2RestShadowEnabled()` gates canonical pipeline (comment: historically named REST_SHADOW). `isBatteryV2LegacyRestCaptureEnabled()` ON when REST_SHADOW OFF or REST_SHADOW ON + PUBLICATION OFF. HANDOFF env does not exist. D1/D2 define handoff identity and Hybrid C+ recovery. |
+| **HYPOTHESIS** | Selecting single-authority target (V2 core mandatory; PUBLICATION effect gate; REST_SHADOW/legacy temporary scaffolds; HANDOFF flag rejected) closes configuration invariant without runtime change. |
+| **CHANGE** | Created `BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001` (VALIDATED — not PRODUCTION_VALIDATED); dossier `decisions/lv-single-authority-cutover-decision.md`; graph decision node + evidence `BAT-V2-EVID-CODE-BATTERY-V2-FLAG-CUTOVER-SEMANTICS-001` + refines edges; PKG-01 → IMPLEMENTATION_READY; PKG-02 config invariant resolved (D4/D5 remain); updated CURRENT_STATE, KNOWLEDGE_GRAPH, implementation-packages, lv-publication-chain dossier, executive summary, dependency graph, priority matrix, decisions README. |
+| **WHY** | Permanent REST_SHADOW misleading; HANDOFF flag creates incomplete pipeline; dual legacy+V2 incompatible with single truth; PUBLICATION correctly separate effect boundary; M0-M4 separates spec from cutover authorization. |
+| **EXPECTED_EFFECT** | PKG-01 ready for implementation (separate authorization); PKG-02 awaits D4/D5 only; runtime agents do not introduce HANDOFF flag; M4 cutover deferred. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh`; `battery-health-v2.config.ts` |
+| **OBSERVED_EFFECT** | Validator PASS; 20 open gaps; 23 planning items; 133 nodes / 119 edges / 11 invariants (was 131/113/11). |
+| **NON_EFFECTS** | No runtime implementation; no legacy code removed; no REST_SHADOW env removed; no HANDOFF env introduced; no publication behavior changed; no DB migration; no production mutation; no backfill; no deploy; no cutover authorized; runtime gaps remain open. |
+| **REGRESSIONS_OR_TRADEOFFS** | IMPLEMENTATION_READY ≠ cutover-ready; current dual-authority runtime unchanged until M4 |
+| **REMAINING_GAPS** | All 20 `BAT-V2-GAP-*` open; PKG-02 D4 + D5; M4 cutover not authorized |
+| **DECISION_STATUS** | VALIDATED (architecture / configuration authority — NOT PRODUCTION_VALIDATED) |
+| **AFFECTED_GRAPH** | +1 decision, +1 evidence, +6 refines edges — see validator counts |
+| **EVIDENCE** | `BAT-V2-EVID-CODE-BATTERY-V2-FLAG-CUTOVER-SEMANTICS-001`, `BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001` |
+
+---
+
 ## CL-2026-09-01 — D2 canonical LV assessment crash-boundary decision
 
 | Field | Content |
