@@ -41,7 +41,51 @@ type SessionState = {
   updatedAt: Date;
 };
 
-function buildFairnessHarness(candidateCount: number) {
+type TargetHandoffMode = 'enqueued_live' | 'missing_repairable';
+
+function buildTargetMetadata(
+  index: number,
+  measurementId: string,
+  mode: TargetHandoffMode,
+): Record<string, unknown> {
+  const baseTarget = {
+    idempotencyKey: `rest-${index}`,
+    scheduledFor: new Date().toISOString(),
+    status: 'COMPLETED',
+  };
+
+  if (mode === 'missing_repairable') {
+    return {
+      scheduledTargets: {
+        REST_60M: baseTarget,
+      },
+    };
+  }
+
+  return {
+    scheduledTargets: {
+      REST_60M: {
+        ...baseTarget,
+        assessmentHandoff: {
+          measurementId,
+          idempotencyKey: buildCanonicalLvAssessmentHandoffJobKey({
+            vehicleId: VEH,
+            measurementId,
+          }),
+          status: LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED,
+          lastAttemptAt: null,
+        },
+      },
+    },
+  };
+}
+
+function buildFairnessHarness(
+  candidateCount: number,
+  options?: { targetMode?: TargetHandoffMode; targetIndex?: number },
+) {
+  const targetIndex = options?.targetIndex ?? candidateCount - 1;
+  const targetMode = options?.targetMode ?? 'enqueued_live';
   const sessions = new Map<string, SessionState>();
   const measurements = new Map<string, CandidateRow>();
   const candidates: CandidateRow[] = Array.from({ length: candidateCount }, (_, index) => {
@@ -56,28 +100,17 @@ function buildFairnessHarness(candidateCount: number) {
       provenance: { sourceObservationId: `obs-${index}` },
     };
     measurements.set(id, row);
+    const handoffMode = index === targetIndex ? targetMode : 'enqueued_live';
     sessions.set(sessionId, {
-      metadata: {
-        scheduledTargets: {
-          REST_60M: {
-            idempotencyKey: `rest-${index}`,
-            scheduledFor: new Date().toISOString(),
-            status: 'COMPLETED',
-            assessmentHandoff: {
-              measurementId: id,
-              idempotencyKey: buildCanonicalLvAssessmentHandoffJobKey({
-                vehicleId: VEH,
-                measurementId: id,
-              }),
-              status: LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED,
-              lastAttemptAt: null,
-            },
-          },
-        },
-      },
+      metadata: buildTargetMetadata(index, id, handoffMode),
       updatedAt: new Date('2026-09-02T10:00:00.000Z'),
     });
     return row;
+  });
+  const target = candidates[targetIndex]!;
+  const targetIdempotencyKey = buildCanonicalLvAssessmentHandoffJobKey({
+    vehicleId: VEH,
+    measurementId: target.id,
   });
 
   const prisma = {
@@ -153,8 +186,10 @@ function buildFairnessHarness(candidateCount: number) {
   };
 
   const jobProducer = {
-    enqueue: jest.fn().mockResolvedValue(null),
-    hasLiveJob: jest.fn().mockResolvedValue(true),
+    enqueue: jest.fn(async (_jobType: string, payload: { inputVersion: string }) => {
+      return `bull-${payload.inputVersion}`;
+    }),
+    hasLiveJob: jest.fn(async (idempotencyKey: string) => idempotencyKey !== targetIdempotencyKey),
   };
   const deadLetters = { isDeadLetter: jest.fn().mockResolvedValue(false) };
   const assessmentHandoff = new LvRestAssessmentHandoffService(
@@ -189,15 +224,11 @@ function buildFairnessHarness(candidateCount: number) {
 
   return {
     candidates,
+    target,
     sessions,
     prisma,
+    jobProducer,
     buildService,
-    getInspectedIds: () =>
-      [...sessions.values()]
-        .map((session) =>
-          readAssessmentHandoffFromTargetMetadata(session.metadata, 'REST_60M')?.lastAttemptAt,
-        )
-        .filter((value): value is string => typeof value === 'string'),
   };
 }
 
@@ -231,12 +262,11 @@ async function runUntilInspected(
 }
 
 describe('lv-rest-assessment-handoff reconciliation fairness', () => {
-  it('TEST A — reaches deep candidate at default 300_000ms scheduler cadence', async () => {
+  it('TEST A — reaches deep candidate at default 300_000ms scheduler cadence (traversal)', async () => {
     const batch = 5;
     const maxScanned = maxScannedRestAssessmentHandoffCandidates(batch);
     const candidateCount = maxScanned + 50;
-    const { candidates, sessions, buildService } = buildFairnessHarness(candidateCount);
-    const target = candidates[candidateCount - 1]!;
+    const { target, sessions, buildService } = buildFairnessHarness(candidateCount);
 
     const runs = await runUntilInspected(
       buildService,
@@ -254,12 +284,11 @@ describe('lv-rest-assessment-handoff reconciliation fairness', () => {
     expect(runs).toBeLessThanOrEqual(Math.ceil(candidateCount / maxScanned) + 2);
   });
 
-  it('TEST B — reaches deep candidate at non-coprime 600_000ms interval', async () => {
+  it('TEST B — reaches deep candidate at non-coprime 600_000ms interval (traversal)', async () => {
     const batch = 5;
     const maxScanned = maxScannedRestAssessmentHandoffCandidates(batch);
     const candidateCount = maxScanned + 50;
-    const { candidates, sessions, buildService } = buildFairnessHarness(candidateCount);
-    const target = candidates[candidateCount - 1]!;
+    const { target, sessions, buildService } = buildFairnessHarness(candidateCount);
 
     const runs = await runUntilInspected(buildService, target, sessions, 600_000, 200);
 
@@ -271,23 +300,54 @@ describe('lv-rest-assessment-handoff reconciliation fairness', () => {
     expect(runs).toBeLessThanOrEqual(Math.ceil(candidateCount / maxScanned) + 2);
   });
 
-  it('TEST C — candidate beyond former 32-window capacity is eventually inspected while predecessors stay ENQUEUED', async () => {
+  it('TEST C — repairable candidate beyond former 32-window capacity is eventually enqueued via reconciliation', async () => {
     const batch = 5;
     const maxScanned = maxScannedRestAssessmentHandoffCandidates(batch);
     const oldWindowCapacity = 32 * maxScanned;
     const candidateCount = oldWindowCapacity + 25;
-    const { candidates, sessions, buildService } = buildFairnessHarness(candidateCount);
-    const target = candidates[candidateCount - 1]!;
+    const { candidates, target, sessions, buildService, jobProducer } = buildFairnessHarness(
+      candidateCount,
+      { targetMode: 'missing_repairable' },
+    );
 
-    const runs = await runUntilInspected(buildService, target, sessions, 300_000, 500);
+    let now = 0;
+    const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);
+    try {
+      for (let run = 0; run < 500; run += 1) {
+        await buildService().reconcileAll();
+        const handoff = readAssessmentHandoffFromTargetMetadata(
+          sessions.get(target.sessionId)?.metadata,
+          'REST_60M',
+        );
+        if (
+          handoff?.status === LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED &&
+          handoff.lastAttemptAt
+        ) {
+          break;
+        }
+        now += 300_000;
+      }
+    } finally {
+      dateSpy.mockRestore();
+    }
+
+    expect(jobProducer.enqueue).toHaveBeenCalledWith(
+      'BATTERY_ASSESSMENT_RECOMPUTE',
+      expect.objectContaining({
+        assessmentType: 'LV_HEALTH',
+        inputVersion: target.id,
+        sourceEntityId: target.id,
+        idempotencyKey: `assess:${VEH}:LV_HEALTH:${target.id}`,
+      }),
+    );
 
     const targetHandoff = readAssessmentHandoffFromTargetMetadata(
       sessions.get(target.sessionId)?.metadata,
       'REST_60M',
     );
-    expect(targetHandoff?.lastAttemptAt).toBeTruthy();
     expect(targetHandoff?.status).toBe(LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED);
-    expect(runs).toBeGreaterThan(1);
+    expect(targetHandoff?.measurementId).toBe(target.id);
+    expect(targetHandoff?.lastAttemptAt).toBeTruthy();
 
     const predecessor = candidates[0]!;
     const predecessorHandoff = readAssessmentHandoffFromTargetMetadata(
@@ -302,8 +362,7 @@ describe('lv-rest-assessment-handoff reconciliation fairness', () => {
     const batch = 5;
     const maxScanned = maxScannedRestAssessmentHandoffCandidates(batch);
     const candidateCount = maxScanned + 10;
-    const { candidates, sessions, buildService } = buildFairnessHarness(candidateCount);
-    const target = candidates[candidateCount - 1]!;
+    const { target, sessions, buildService } = buildFairnessHarness(candidateCount);
 
     let now = 0;
     const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);

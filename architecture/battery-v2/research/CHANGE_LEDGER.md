@@ -147,6 +147,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-02 — PKG-01 evidence closure (TEST C repair proof + Postgres smoke honesty)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | TEST C proved deep-candidate traversal only (all candidates ENQUEUED/live); Postgres integration spec could false-green on empty results or missing DATABASE_URL; lookback/capacity claims overstated unconditional eventual recovery. |
+| **CHANGE** | TEST C now uses genuinely repairable MISSING-handoff target beyond 32×maxScanned with D1 enqueue assertions; Postgres integration creates controlled fixtures (eligible 60m/6h, EXECUTED exclusion, sourceObservationId exclusion, lastAttemptAt ordering) and fails hard when `BATTERY_V2_HANDOFF_RECONCILE_INTEGRATION=1` without reachable DB; CURRENT_STATE documents precise 7-day lookback invariant and operational backlog risks. |
+| **WHY** | PR #1510 final evidence pass — architecture approved; evidence must not over-claim. |
+| **VALIDATION** | PKG-01-focused Jest suite PASS; fairness TEST C repair proof; integration gated (`BATTERY_V2_HANDOFF_RECONCILE_INTEGRATION=1` + DATABASE_URL) |
+| **NON_EFFECTS** | No runtime architecture redesign; 7-day lookback unchanged |
+| **DECISION_STATUS** | PKG-01 IMPLEMENTED — not PRODUCTION_VALIDATED |
+
+---
+
 ## CL-2026-09-02 — PKG-01 reconciliation fairness finalization (lastAttemptAt queue)
 
 | Field | Content |
