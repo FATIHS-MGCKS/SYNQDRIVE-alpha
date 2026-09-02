@@ -23,7 +23,12 @@
   "signalObservations": 3451,
   "nativeEvents": 0,
   "metadataObservations": 1,
-  "uniquePhysicalSamples": 1333,
+  "hfAggregateBucketObservationCount": 1333,
+  "uniquePhysicalSamples": {
+    "value": 1333,
+    "status": "DEPRECATED_INVALID_NAME",
+    "actualMeaning": "HF_AGGREGATE_BUCKET_OBSERVATIONS"
+  },
   "mappedObservations": 2767,
   "unmappedObservations": 684,
   "surfaces": {
@@ -419,19 +424,24 @@
     "HF_LATE_ARRIVAL_RUNTIME_SKIP": "CONFIRMED_FROM_RUNTIME",
     "HF_LATE_ARRIVAL_AGGREGATE_BUCKET": "CONFIRMED_FROM_RUNTIME",
     "RD001_HF_COMPLETENESS": "INCOMPLETE",
+    "lateArrivalDifferentialArtifact": "docs/audits/data/dimo-lte-r1-reference-drive-001-hf-late-arrival-differential.json",
     "normalizedExactWindowReplay": {
       "originalAggregateBuckets": 1333,
       "replayAggregateBuckets": 1455,
       "unchangedBucketObservations": 1333,
       "newBucketObservations": 122,
       "removedBucketObservations": 0,
-      "definitelyExcludedByNextWatermark": 39,
-      "providerAvailabilityLagLowerBoundSeconds": {
-        "min": -0.084,
+      "definitelyExcludedFieldBucketObservations": 39,
+      "definitelyExcludedUniqueBucketStartTimestamps": 8,
+      "bucketNotClosedAtOriginalResponseCount": 4,
+      "closedBucketNotAvailableCount": 118,
+      "providerAvailabilityLagLowerBoundSecondsClosedOnly": {
+        "min": 0.001,
         "p50": 1.489,
         "p95": 3.248,
         "max": 4.035
-      }
+      },
+      "differentialContentsSha256": "9ca28ab377761262fe6300098993fe62e52349ae07d15e44db1c8d6fe7974a9f"
     },
     "RD001_UPSTREAM_DATA_STALL_AFTER_1914": "CONFIRMED_FROM_RUNTIME",
     "UPSTREAM_DATA_STALL_ROOT_CAUSE": "UNKNOWN_REQUIRES_VALIDATION",

@@ -1,6 +1,6 @@
 {
   "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_001",
-  "generatedAt": "2026-09-02T03:58:07.417Z",
+  "generatedAt": "2026-09-02T04:44:06.325Z",
   "experiment": "HF_EXACT_WINDOW_AGGREGATE_BUCKET_REPLAY_NORMALIZED",
   "timestampCanonicalizationFixed": true,
   "priorUnnormalizedTotals": {
@@ -867,19 +867,30 @@
       "POTENTIALLY_REQUERYABLE": 53,
       "NO_NEXT_WINDOW_EVIDENCE": 0
     },
-    "definitelyExcludedByNextWatermark": 39,
+    "definitelyExcludedFieldBucketObservations": 39,
+    "definitelyExcludedUniqueBucketStartTimestamps": 8,
     "interpretation": "Late-available DIMO aggregate source intervals were permanently excluded from subsequent Reference Capture HF windows by the 2-second wall-clock watermark overlap."
   },
   "providerAvailabilityLagLowerBoundSeconds": {
-    "basis": "requestCompletedAt_minus_bucketEnd when available else requestStartedAt_minus_bucketEnd_conservative",
-    "count": 122,
-    "minSeconds": -0.084,
-    "p50Seconds": 1.489,
-    "p95Seconds": 3.248,
-    "maxSeconds": 4.035
+    "note": "Not network latency. Only CLOSED_BUCKET_NOT_AVAILABLE_AT_ORIGINAL_RESPONSE rows (bucketEnd <= requestCompletedAt).",
+    "newBucketObservationCount": 122,
+    "bucketNotClosedAtOriginalResponseCount": 4,
+    "closedBucketNotAvailableAtOriginalResponseCount": 118,
+    "closedBucketOnly": {
+      "count": 118,
+      "minSeconds": 0.001,
+      "p50Seconds": 1.489,
+      "p95Seconds": 3.248,
+      "maxSeconds": 4.035
+    }
+  },
+  "lateArrivalDifferentialArtifact": {
+    "path": "/workspace/docs/audits/data/dimo-lte-r1-reference-drive-001-hf-late-arrival-differential.json",
+    "differentialRowCount": 122,
+    "differentialContentsSha256": "9ca28ab377761262fe6300098993fe62e52349ae07d15e44db1c8d6fe7974a9f"
   },
   "verdict": {
-    "LATE_AGGREGATE_AVAILABILITY": "CONFIRMED",
+    "LATE_AGGREGATE_AVAILABILITY": "CONFIRMED_FROM_RUNTIME",
     "HF_LATE_ARRIVAL_WATERMARK_RISK": "CONFIRMED_FROM_CODE_RISK",
     "HF_LATE_ARRIVAL_RUNTIME_SKIP": "CONFIRMED_FROM_RUNTIME",
     "HF_LATE_ARRIVAL_AGGREGATE_BUCKET": "CONFIRMED_FROM_RUNTIME",

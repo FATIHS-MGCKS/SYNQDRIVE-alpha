@@ -10,6 +10,29 @@ export type WatermarkExclusionClassification =
   | 'POTENTIALLY_REQUERYABLE'
   | 'NO_NEXT_WINDOW_EVIDENCE';
 
+export type BucketClosureAtOriginalResponse = 'CLOSED' | 'OPEN';
+
+export type BucketClosureClassification =
+  | 'CLOSED_BUCKET_NOT_AVAILABLE_AT_ORIGINAL_RESPONSE'
+  | 'BUCKET_NOT_CLOSED_AT_ORIGINAL_RESPONSE';
+
+export type HfLateArrivalDifferentialRow = {
+  observationType: 'HF_AGGREGATE_BUCKET_OBSERVATION';
+  providerField: string;
+  bucketStart: string;
+  bucketEnd: string;
+  avgValue: number;
+  originalHfWindowFrom: string;
+  originalHfWindowTo: string;
+  originalRequestStartedAt: string;
+  originalRequestCompletedAt: string | null;
+  nextKnownHfWindowFrom: string | null;
+  watermarkClassification: WatermarkExclusionClassification;
+  bucketClosureAtOriginalResponse: BucketClosureAtOriginalResponse;
+  availabilityLagLowerBoundSeconds: number | null;
+  replayExperimentGeneratedAt: string;
+};
+
 export type AggregateBucketObservation = {
   providerField: string;
   bucketTimestamp: string;
@@ -88,6 +111,63 @@ export function compareAggregateBucketMaps(
     removedBucketObservations,
     changedValueBucketObservations,
   };
+}
+
+export function classifyBucketClosureAtOriginalResponse(args: {
+  bucketTimestamp: string | Date;
+  requestCompletedAt: string | Date | null | undefined;
+}): {
+  bucketClosureAtOriginalResponse: BucketClosureAtOriginalResponse;
+  bucketClosureClassification: BucketClosureClassification | null;
+} {
+  if (args.requestCompletedAt == null) {
+    return {
+      bucketClosureAtOriginalResponse: 'OPEN',
+      bucketClosureClassification: 'BUCKET_NOT_CLOSED_AT_ORIGINAL_RESPONSE',
+    };
+  }
+  const { endMs } = bucketIntervalBoundsMs(args.bucketTimestamp);
+  const completedMs = Date.parse(canonicalizeBucketTimestamp(args.requestCompletedAt));
+  if (!Number.isFinite(completedMs)) {
+    return {
+      bucketClosureAtOriginalResponse: 'OPEN',
+      bucketClosureClassification: 'BUCKET_NOT_CLOSED_AT_ORIGINAL_RESPONSE',
+    };
+  }
+  if (endMs > completedMs) {
+    return {
+      bucketClosureAtOriginalResponse: 'OPEN',
+      bucketClosureClassification: 'BUCKET_NOT_CLOSED_AT_ORIGINAL_RESPONSE',
+    };
+  }
+  return {
+    bucketClosureAtOriginalResponse: 'CLOSED',
+    bucketClosureClassification: 'CLOSED_BUCKET_NOT_AVAILABLE_AT_ORIGINAL_RESPONSE',
+  };
+}
+
+export function computeAvailabilityLagLowerBoundSeconds(args: {
+  bucketTimestamp: string | Date;
+  requestCompletedAt: string | Date | null | undefined;
+}): number | null {
+  const closure = classifyBucketClosureAtOriginalResponse(args);
+  if (closure.bucketClosureAtOriginalResponse !== 'CLOSED' || args.requestCompletedAt == null) return null;
+  const { endMs } = bucketIntervalBoundsMs(args.bucketTimestamp);
+  const completedMs = Date.parse(canonicalizeBucketTimestamp(args.requestCompletedAt));
+  if (!Number.isFinite(completedMs)) return null;
+  const lagSeconds = (completedMs - endMs) / 1000;
+  return lagSeconds >= 0 ? lagSeconds : null;
+}
+
+export function countDefinitelyExcludedUniqueBucketTimestamps(
+  rows: Array<Pick<HfLateArrivalDifferentialRow, 'bucketStart' | 'watermarkClassification'>>,
+): number {
+  const unique = new Set<string>();
+  for (const row of rows) {
+    if (row.watermarkClassification !== 'DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK') continue;
+    unique.add(canonicalizeBucketTimestamp(row.bucketStart));
+  }
+  return unique.size;
 }
 
 export function summarizeLagSeconds(values: number[]): {

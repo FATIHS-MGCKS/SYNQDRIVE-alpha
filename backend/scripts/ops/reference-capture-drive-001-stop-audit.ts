@@ -331,9 +331,14 @@ async function main(): Promise<void> {
       signalObservations: signalObs.length,
       nativeEvents: eventObs.length,
       metadataObservations: metaObs.length,
+      hfAggregateBucketObservationCount: fingerprintAudit.uniqueAggregateBucketFingerprintsHfHistorical,
+      uniquePhysicalSamples: {
+        value: fingerprintAudit.uniqueAggregateBucketFingerprintsHfHistorical,
+        status: 'DEPRECATED_INVALID_NAME',
+        actualMeaning: 'HF_AGGREGATE_BUCKET_OBSERVATIONS',
+      },
       uniquePhysicalSamplesNote:
-        'Counts unique physicalSampleFingerprint values where populated (RD001: HF_HISTORICAL only, 38.6% row coverage).',
-      uniqueAggregateBucketFingerprints: fingerprintAudit.uniqueAggregateBucketFingerprintsAllSurfaces,
+        'DEPRECATED: use hfAggregateBucketObservationCount. HF_HISTORICAL rows are DIMO_AGGREGATED_HISTORICAL_1S aggregate buckets, not raw LTE_R1 physical samples.',
       fingerprintAudit,
       mappedObservations: mapped,
       unmappedObservations: unmapped,

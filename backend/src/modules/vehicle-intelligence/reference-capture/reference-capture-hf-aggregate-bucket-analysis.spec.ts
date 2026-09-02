@@ -2,8 +2,11 @@ import {
   aggregateBucketKey,
   bucketIntervalBoundsMs,
   canonicalizeBucketTimestamp,
+  classifyBucketClosureAtOriginalResponse,
   classifyWatermarkExclusion,
   compareAggregateBucketMaps,
+  computeAvailabilityLagLowerBoundSeconds,
+  countDefinitelyExcludedUniqueBucketTimestamps,
   DIMO_PROVIDER_SOURCE_AUTHORITY,
   summarizeLagSeconds,
   type AggregateBucketObservation,
@@ -43,5 +46,39 @@ describe('reference-capture-hf-aggregate-bucket-analysis', () => {
       nextWindowFrom: '2026-09-01T19:12:25.500Z',
     });
     expect(classification).toBe('POTENTIALLY_REQUERYABLE');
+  });
+
+  it('excludes open buckets from availability lag lower-bound distribution', () => {
+    const closure = classifyBucketClosureAtOriginalResponse({
+      bucketTimestamp: '2026-09-01T19:12:25.000Z',
+      requestCompletedAt: '2026-09-01T19:12:25.084Z',
+    });
+    expect(closure.bucketClosureAtOriginalResponse).toBe('OPEN');
+    expect(closure.bucketClosureClassification).toBe('BUCKET_NOT_CLOSED_AT_ORIGINAL_RESPONSE');
+    expect(
+      computeAvailabilityLagLowerBoundSeconds({
+        bucketTimestamp: '2026-09-01T19:12:25.000Z',
+        requestCompletedAt: '2026-09-01T19:12:25.084Z',
+      }),
+    ).toBeNull();
+  });
+
+  it('returns non-negative lower-bound lag for closed buckets', () => {
+    const lag = computeAvailabilityLagLowerBoundSeconds({
+      bucketTimestamp: '2026-09-01T19:12:24.252Z',
+      requestCompletedAt: '2026-09-01T19:12:27.741Z',
+    });
+    expect(lag).not.toBeNull();
+    expect(lag!).toBeGreaterThanOrEqual(0);
+    expect(lag!).toBeCloseTo(2.489, 3);
+  });
+
+  it('counts unique definitely-excluded bucket timestamps separately from field observations', () => {
+    const unique = countDefinitelyExcludedUniqueBucketTimestamps([
+      { bucketStart: '2026-09-01T19:12:24.252Z', watermarkClassification: 'DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK' },
+      { bucketStart: '2026-09-01T19:12:24.252Z', watermarkClassification: 'DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK' },
+      { bucketStart: '2026-09-01T19:12:25.000Z', watermarkClassification: 'POTENTIALLY_REQUERYABLE' },
+    ]);
+    expect(unique).toBe(1);
   });
 });

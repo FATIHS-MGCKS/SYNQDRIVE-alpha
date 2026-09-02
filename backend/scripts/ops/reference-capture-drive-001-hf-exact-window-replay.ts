@@ -11,11 +11,15 @@ import {
   aggregateBucketKey,
   bucketIntervalBoundsMs,
   canonicalizeBucketTimestamp,
+  classifyBucketClosureAtOriginalResponse,
   classifyWatermarkExclusion,
   compareAggregateBucketMaps,
+  computeAvailabilityLagLowerBoundSeconds,
+  countDefinitelyExcludedUniqueBucketTimestamps,
   DIMO_PROVIDER_SOURCE_AUTHORITY,
   summarizeLagSeconds,
   type AggregateBucketObservation,
+  type HfLateArrivalDifferentialRow,
   type WatermarkExclusionClassification,
 } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-aggregate-bucket-analysis';
 
@@ -269,12 +273,20 @@ function emptyWatermarkCounts(): Record<WatermarkExclusionClassification, number
   };
 }
 
+function hashCanonicalJson(value: unknown): string {
+  return crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+
 async function main(): Promise<void> {
   loadEnv();
   const inputPath = parseArg('--input') ?? '/tmp/rd001-observations.jsonl';
   const outPath =
     parseArg('--out') ??
     path.resolve(__dirname, '../../../docs/audits/data/dimo-lte-r1-reference-drive-001-hf-exact-window-replay.json');
+  const differentialPath =
+    parseArg('--differential-out') ??
+    path.resolve(__dirname, '../../../docs/audits/data/dimo-lte-r1-reference-drive-001-hf-late-arrival-differential.json');
+  const replayExperimentGeneratedAt = new Date().toISOString();
 
   if (!process.env.DIMO_CLIENT_ID || !process.env.DIMO_PRIVATE_KEY) {
     throw new Error('DIMO_CLIENT_ID and DIMO_PRIVATE_KEY required');
@@ -300,7 +312,10 @@ async function main(): Promise<void> {
     Record<WatermarkExclusionClassification, number>
   >;
   const watermarkTotal = emptyWatermarkCounts();
-  const availabilityLagSeconds: number[] = [];
+  const differentialRows: HfLateArrivalDifferentialRow[] = [];
+  let bucketNotClosedAtOriginalResponseCount = 0;
+  let closedBucketNotAvailableCount = 0;
+  const closedBucketLagSeconds: number[] = [];
 
   for (let i = 0; i < original.windows.length; i++) {
     const window = original.windows[i];
@@ -346,13 +361,39 @@ async function main(): Promise<void> {
       watermarkTotal[classification]++;
       watermarkByField[bucket.providerField as HfField][classification]++;
 
-      const { endMs } = bucketIntervalBoundsMs(bucket.bucketTimestamp);
-      const referenceMs = window.requestCompletedAt
-        ? Date.parse(window.requestCompletedAt)
-        : Date.parse(window.requestStartedAt);
-      if (Number.isFinite(referenceMs)) {
-        availabilityLagSeconds.push((referenceMs - endMs) / 1000);
+      const closure = classifyBucketClosureAtOriginalResponse({
+        bucketTimestamp: bucket.bucketTimestamp,
+        requestCompletedAt: window.requestCompletedAt,
+      });
+      if (closure.bucketClosureClassification === 'BUCKET_NOT_CLOSED_AT_ORIGINAL_RESPONSE') {
+        bucketNotClosedAtOriginalResponseCount++;
+      } else if (closure.bucketClosureClassification === 'CLOSED_BUCKET_NOT_AVAILABLE_AT_ORIGINAL_RESPONSE') {
+        closedBucketNotAvailableCount++;
       }
+
+      const lagSeconds = computeAvailabilityLagLowerBoundSeconds({
+        bucketTimestamp: bucket.bucketTimestamp,
+        requestCompletedAt: window.requestCompletedAt,
+      });
+      if (lagSeconds != null) closedBucketLagSeconds.push(lagSeconds);
+
+      const { endMs } = bucketIntervalBoundsMs(bucket.bucketTimestamp);
+      differentialRows.push({
+        observationType: 'HF_AGGREGATE_BUCKET_OBSERVATION',
+        providerField: bucket.providerField,
+        bucketStart: bucket.bucketTimestamp,
+        bucketEnd: new Date(endMs).toISOString(),
+        avgValue: bucket.avgValue,
+        originalHfWindowFrom: window.hfWindowFrom,
+        originalHfWindowTo: window.hfWindowTo,
+        originalRequestStartedAt: window.requestStartedAt,
+        originalRequestCompletedAt: window.requestCompletedAt,
+        nextKnownHfWindowFrom: nextWindow?.hfWindowFrom ?? null,
+        watermarkClassification: classification,
+        bucketClosureAtOriginalResponse: closure.bucketClosureAtOriginalResponse,
+        availabilityLagLowerBoundSeconds: lagSeconds,
+        replayExperimentGeneratedAt,
+      });
     }
 
     perWindow.push({
@@ -390,12 +431,30 @@ async function main(): Promise<void> {
   );
 
   const definitelyExcluded = watermarkTotal.DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK;
+  const definitelyExcludedUniqueBucketTimestamps = countDefinitelyExcludedUniqueBucketTimestamps(differentialRows);
   const hfLateArrivalRuntimeSkip =
     definitelyExcluded > 0 ? 'CONFIRMED_FROM_RUNTIME' : aggregate.newBucketObservations > 0 ? 'UNKNOWN_REQUIRES_VALIDATION' : 'NOT_CONFIRMED_FROM_RD001';
 
+  const differentialRowsCanonical = [...differentialRows].sort((a, b) => {
+    const fieldCmp = a.providerField.localeCompare(b.providerField);
+    if (fieldCmp !== 0) return fieldCmp;
+    return a.bucketStart.localeCompare(b.bucketStart);
+  });
+  const differentialArtifact = {
+    referenceDriveId: 'DIMO_LTE_R1_REFERENCE_DRIVE_001',
+    evidenceId: 'DI-EV-0016',
+    observationType: 'HF_AGGREGATE_BUCKET_OBSERVATION',
+    generatedAt: replayExperimentGeneratedAt,
+    sealedRawExportSha256: original.sha256,
+    exactWindowReplayArtifact: path.basename(outPath),
+    differentialRowCount: differentialRowsCanonical.length,
+    rows: differentialRowsCanonical,
+  };
+  const differentialContentsSha256 = hashCanonicalJson(differentialRowsCanonical);
+
   const output = {
     referenceDriveId: 'DIMO_LTE_R1_REFERENCE_DRIVE_001',
-    generatedAt: new Date().toISOString(),
+    generatedAt: replayExperimentGeneratedAt,
     experiment: 'HF_EXACT_WINDOW_AGGREGATE_BUCKET_REPLAY_NORMALIZED',
     timestampCanonicalizationFixed: true,
     priorUnnormalizedTotals: PRIOR_NORMALIZED_TOTALS,
@@ -437,18 +496,27 @@ async function main(): Promise<void> {
     watermarkCausality: {
       perField: watermarkByField,
       total: watermarkTotal,
-      definitelyExcludedByNextWatermark: definitelyExcluded,
+      definitelyExcludedFieldBucketObservations: definitelyExcluded,
+      definitelyExcludedUniqueBucketStartTimestamps: definitelyExcludedUniqueBucketTimestamps,
       interpretation:
         definitelyExcluded > 0
           ? 'Late-available DIMO aggregate source intervals were permanently excluded from subsequent Reference Capture HF windows by the 2-second wall-clock watermark overlap.'
           : 'No new replay buckets were classified as definitely excluded by the next incremental window boundary.',
     },
     providerAvailabilityLagLowerBoundSeconds: {
-      basis: 'requestCompletedAt_minus_bucketEnd when available else requestStartedAt_minus_bucketEnd_conservative',
-      ...summarizeLagSeconds(availabilityLagSeconds),
+      note: 'Not network latency. Only CLOSED_BUCKET_NOT_AVAILABLE_AT_ORIGINAL_RESPONSE rows (bucketEnd <= requestCompletedAt).',
+      newBucketObservationCount: aggregate.newBucketObservations,
+      bucketNotClosedAtOriginalResponseCount,
+      closedBucketNotAvailableAtOriginalResponseCount: closedBucketNotAvailableCount,
+      closedBucketOnly: summarizeLagSeconds(closedBucketLagSeconds),
+    },
+    lateArrivalDifferentialArtifact: {
+      path: differentialPath,
+      differentialRowCount: differentialRowsCanonical.length,
+      differentialContentsSha256,
     },
     verdict: {
-      LATE_AGGREGATE_AVAILABILITY: aggregate.newBucketObservations > 0 ? 'CONFIRMED' : 'NOT_CONFIRMED',
+      LATE_AGGREGATE_AVAILABILITY: aggregate.newBucketObservations > 0 ? 'CONFIRMED_FROM_RUNTIME' : 'NOT_CONFIRMED',
       HF_LATE_ARRIVAL_WATERMARK_RISK: 'CONFIRMED_FROM_CODE_RISK',
       HF_LATE_ARRIVAL_RUNTIME_SKIP: hfLateArrivalRuntimeSkip,
       HF_LATE_ARRIVAL_AGGREGATE_BUCKET: aggregate.newBucketObservations > 0 ? 'CONFIRMED_FROM_RUNTIME' : 'NOT_CONFIRMED_FROM_RD001',
@@ -462,11 +530,17 @@ async function main(): Promise<void> {
 
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, JSON.stringify(output, null, 2));
+  fs.writeFileSync(
+    differentialPath,
+    JSON.stringify({ ...differentialArtifact, differentialContentsSha256 }, null, 2),
+  );
   console.log(
     JSON.stringify(
       {
         ok: true,
         outPath,
+        differentialPath,
+        differentialContentsSha256,
         aggregate,
         problematicWindow: output.problematicWindowAudit,
         watermarkCausality: output.watermarkCausality,

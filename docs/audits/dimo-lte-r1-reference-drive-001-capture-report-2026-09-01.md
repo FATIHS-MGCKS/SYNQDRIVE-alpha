@@ -443,21 +443,39 @@ Prior `removed=15` was partly caused by RFC3339 timestamp serialization mismatch
 
 #### Watermark causality (NEW buckets)
 
-| Classification | Total |
-|----------------|-------|
+| Classification | Field×bucket observations |
+|----------------|---------------------------|
 | `DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK` | **39** |
 | `PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW` | 30 |
 | `POTENTIALLY_REQUERYABLE` | 53 |
+
+**Severity (do not confuse with unique seconds):**
+
+| Metric | Count |
+|--------|-------|
+| `DEFINITELY_EXCLUDED_FIELD_BUCKET_OBSERVATIONS` | **39** |
+| `DEFINITELY_EXCLUDED_UNIQUE_BUCKET_START_TIMESTAMPS` | **8** |
+
+Bucket-level differential artifact (122 rows, one per NEW `HF_AGGREGATE_BUCKET_OBSERVATION`):
+`docs/audits/data/dimo-lte-r1-reference-drive-001-hf-late-arrival-differential.json`
 
 Late-available DIMO aggregate source intervals were permanently excluded from subsequent Reference Capture HF windows by the 2-second wall-clock watermark overlap.
 
 #### Provider availability lag lower bound (NEW buckets)
 
-Not network latency. Basis: `requestCompletedAt - bucketEnd` (conservative fallback: `requestStartedAt - bucketEnd`).
+**Not network latency.** Open buckets at original response (`bucketEnd > requestCompletedAt`) are excluded from lag distribution.
+
+| Metric | Count |
+|--------|-------|
+| NEW bucket observations | 122 |
+| `BUCKET_NOT_CLOSED_AT_ORIGINAL_RESPONSE` | 4 |
+| `CLOSED_BUCKET_NOT_AVAILABLE_AT_ORIGINAL_RESPONSE` | 118 |
+
+Closed-bucket-only lower bound (`requestCompletedAt - bucketEnd`, ≥ 0):
 
 | min | P50 | P95 | max |
 |-----|-----|-----|-----|
-| −0.084 s | 1.489 s | 3.248 s | 4.035 s |
+| 0.001 s | 1.489 s | 3.248 s | 4.035 s |
 
 Empirical signal that 2s overlap may be insufficient — design review only; do not tune production overlap from RD001 alone.
 
@@ -581,6 +599,7 @@ Also includes: `session-summary.json`, `signal-quality-metrics.json`, `pre-stop-
 | `docs/audits/data/dimo-lte-r1-reference-drive-001-signal-quality-metrics.csv` | DI-EV-0018 |
 | `docs/audits/dimo-lte-r1-reference-drive-001-ground-truth-evidence-index-2026-09-01.md` | DI-EV-0019 |
 | `docs/audits/data/dimo-lte-r1-reference-drive-001-hf-exact-window-replay.json` | DI-EV-0016 (exact-window experiment) |
+| `docs/audits/data/dimo-lte-r1-reference-drive-001-hf-late-arrival-differential.json` | DI-EV-0016 (bucket-level late-arrival differential) |
 | `docs/audits/data/dimo-lte-r1-reference-drive-001-hf-posthoc-forensic.json` | DI-EV-0016 (invalidated chunked experiment) |
 | `architecture/DIMO_LTE_R1_RD001_HF_AGGREGATION_SEMANTICS_2026-09-01.md` | architecture record |
 | `backend/scripts/ops/reference-capture-drive-001-stop-audit.ts` | ops reproducibility |
@@ -603,7 +622,7 @@ Also includes: `session-summary.json`, `signal-quality-metrics.json`, `pre-stop-
 | Reference Drive #001 Ground Truth | **NOT_AVAILABLE** |
 | Ground Truth synchronization | **NOT DONE** |
 | Next engineering phase | **Phase 3A.3.1 FAST PRE-ARM / GO workflow** |
-| Also required before RD002 | **HF watermark / late-arrival remediation** |
+| Also required before RD002 | **A.** Phase 3A.3.1 FAST PRE-ARM/GO · **B.** HF watermark + `aggregateBucketFingerprint` remediation · **C.** production/runtime canary proving both · **D.** then RD002 with video Ground Truth |
 | Next drive for video GT | **`DIMO_LTE_R1_REFERENCE_DRIVE_002`** (not started) |
 
 ---

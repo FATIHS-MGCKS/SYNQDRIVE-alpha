@@ -112,25 +112,31 @@ Replays all **13** original row-producing `hfWindowFrom`/`hfWindowTo` pairs with
 
 | Classification | Count |
 |----------------|-------|
-| `DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK` | **39** |
+| `DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK` (field×bucket) | **39** |
+| `DEFINITELY_EXCLUDED_UNIQUE_BUCKET_START_TIMESTAMPS` | **8** |
 | `PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW` | 30 |
 | `POTENTIALLY_REQUERYABLE` | 53 |
 | `NO_NEXT_WINDOW_EVIDENCE` | 0 |
 
+Bucket-level differential: `docs/audits/data/dimo-lte-r1-reference-drive-001-hf-late-arrival-differential.json` (122 rows).
+
 `HF_LATE_ARRIVAL_RUNTIME_SKIP = CONFIRMED_FROM_RUNTIME` — late-available DIMO aggregate source intervals were permanently excluded from subsequent Reference Capture HF windows by the 2-second wall-clock watermark overlap.
 
-### Provider availability lag lower bound (NEW buckets)
+### Provider availability lag lower bound (NEW buckets, closed only)
 
-Basis: `requestCompletedAt - bucketEnd` (fallback: `requestStartedAt - bucketEnd`, conservative). **Not** network latency.
+**Not** network latency. Open buckets (`bucketEnd > requestCompletedAt`) excluded from lag distribution.
 
-| Stat | Seconds |
-|------|---------|
-| min | −0.084 |
-| P50 | 1.489 |
-| P95 | 3.248 |
-| max | 4.035 |
+| Metric | Count |
+|--------|-------|
+| NEW bucket observations | 122 |
+| `BUCKET_NOT_CLOSED_AT_ORIGINAL_RESPONSE` | 4 |
+| `CLOSED_BUCKET_NOT_AVAILABLE_AT_ORIGINAL_RESPONSE` | 118 |
 
-Empirical signal: existing 2s overlap may be insufficient for late aggregate availability (design review only — **do not tune production overlap from RD001 alone**).
+Closed-bucket-only (`requestCompletedAt - bucketEnd`, ≥ 0):
+
+| min | P50 | P95 | max |
+|-----|-----|-----|-----|
+| 0.001 s | 1.489 s | 3.248 s | 4.035 s |
 
 ---
 

@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-phase-3a3-reference-drive-001-evidence-closure-2026-09-02',
+    version: '4.9.1028',
+    title: 'Phase 3A.3 — RD001 evidence closure micro-pass',
+    summary: [
+      'Deprecated uniquePhysicalSamples in session summary; canonical hfAggregateBucketObservationCount=1333.',
+      'Corrected availability-lag lower bound: 4 open buckets excluded; closed-only min=0.001s P50=1.489s (no negative lag).',
+      'Frozen 122-row HF_AGGREGATE_BUCKET_OBSERVATION differential artifact with watermark + closure per row.',
+      '39 field×bucket DEFINITELY_EXCLUDED vs 8 unique bucket-start timestamps explicitly reported.',
+      'Master Plan RD002 gate unified: 3A.3.1 FAST GO + 3A.3.2 watermark/fingerprint remediation + canary before RD002.',
+    ],
+    reason: 'Evidence closure on PR #1502 before merge; sealed raw export unchanged.',
+    previousBehavior: 'Stale physical-sample terminology; negative lag min; aggregate-only watermark counts; ambiguous RD002 gate.',
+    details:
+      'dimo-lte-r1-reference-drive-001-hf-late-arrival-differential.json; reference-capture-hf-aggregate-bucket-analysis.ts; DI-EV-0016 updated in place.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T04:45:00.000Z',
+  },
+  {
     id: 'dimo-phase-3a3-reference-drive-001-exact-window-replay-normalized-2026-09-02',
     version: '4.9.1027',
     title: 'Phase 3A.3 — RD001 exact-window replay normalization + watermark causality',

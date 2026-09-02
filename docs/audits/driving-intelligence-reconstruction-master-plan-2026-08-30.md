@@ -905,16 +905,39 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 
 **Metrics correction (2026-09-01):** `RD001_METRICS_CORRECTION=COMPLETE` — methodology bugs fixed in analysis layer (out-of-order detection, unique-timestamp cadence, per-surface separation, latency terminology, dynamics classification). Sealed raw export SHA unchanged.
 
-**HF completeness forensic (2026-09-02):** `RD001_HF_COMPLETENESS_FORENSIC=COMPLETE` — timestamp-canonicalized exact-window replay: **122** late aggregate buckets (was 137 pre-normalization; 15 false “removed” from RFC3339 mismatch); **39** `DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK` → `HF_LATE_ARRIVAL_RUNTIME_SKIP=CONFIRMED_FROM_RUNTIME`; provider availability lag lower-bound P50 ≈ **1.49 s**; DIMO authority = `telemetry-api` @ `98d8853`; `DEVICE_RAW_SAMPLE_CADENCE=UNKNOWN`; upstream data stall after ~19:14 **CONFIRMED_FROM_RUNTIME**; `PHYSICAL_SAMPLE_FINGERPRINT_REMEDIATION_REQUIRED=YES`.
+**HF completeness forensic (2026-09-02):** `RD001_HF_COMPLETENESS_FORENSIC=COMPLETE` — timestamp-canonicalized exact-window replay: **122** late aggregate buckets; **39** field×bucket `DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK` (**8** unique bucket-start timestamps); `HF_LATE_ARRIVAL_RUNTIME_SKIP=CONFIRMED_FROM_RUNTIME`; closed-bucket availability lag lower-bound P50 ≈ **1.49 s**; bucket-level differential artifact in Git; `DEVICE_RAW_SAMPLE_CADENCE=UNKNOWN`.
 
 ### Phase 3A.3.1 — FAST PRE-ARM / GO workflow remediation
-**Status:** **NEXT REQUIRED BEFORE RD002** (not started)
+**Status:** **REQUIRED BEFORE RD002** (not started)
 
 **Problem:** RD001 ARM path bootstrapped full Nest context; owner waited ~704 s before first acquisition while session was already `RECORDING`.
 
-**Also blocking RD002:** HF watermark advances on request wall-clock even when zero rows returned; late-arrival skip risk `CONFIRMED_FROM_CODE_RISK`; partial runtime confirmation on RD001 active HF window. Remediation: two-watermark model + short reconciliation overlap (design in DI-EV-0016 §10a).
+`ARM_WORKFLOW_REMEDIATION_REQUIRED=YES`
 
-**Target design (proposal only — not implemented in 3A.3 correction pass):**
+### Phase 3A.3.2 — HF watermark + aggregate fingerprint remediation
+**Status:** **REQUIRED BEFORE RD002** (not started)
+
+**Problem:** HF watermark advances on request wall-clock even when zero rows returned; RD001 exact-window replay confirmed **39** field×bucket observations (`8` unique bucket intervals) permanently excluded by 2s overlap (`HF_LATE_ARRIVAL_RUNTIME_SKIP=CONFIRMED_FROM_RUNTIME`). `physicalSampleFingerprint` on HF rows is aggregate-bucket semantic debt.
+
+**Remediation bundle (before RD002):**
+- Two-watermark / reconciliation-overlap model for HF historical acquisition
+- Introduce `aggregateBucketFingerprint` distinct from `rawPhysicalSampleFingerprint` (or equivalent terminology fix)
+- Production/runtime canary proving both fixes
+
+`HF_WATERMARK_REMEDIATION_REQUIRED=YES` · `PHYSICAL_SAMPLE_FINGERPRINT_REMEDIATION_REQUIRED=YES`
+
+### RD002 gate (canonical — all locations must agree)
+
+**RD002 is NOT permitted until all of:**
+
+| Step | Requirement | Status |
+|------|-------------|--------|
+| A | `PHASE_3A3_1_FAST_PREARM_GO_REMEDIATION` implemented + verified | NOT STARTED |
+| B | `HF_WATERMARK_LATE_ARRIVAL_REMEDIATION` + `aggregateBucketFingerprint` terminology remediation | NOT STARTED |
+| C | Production/runtime canary proving A + B | NOT STARTED |
+| D | `DIMO_LTE_R1_REFERENCE_DRIVE_002` with video Ground Truth | NOT STARTED |
+
+**Target design for 3A.3.1 (proposal only — not implemented):**
 - **PRE-ARM:** health + create session + preflight → `READY` before owner needs GO.
 - **FAST GO:** `START` against existing `READY` session via production API/service — avoid second Nest bootstrap for GO only.
 - **Hard gate:** if first autonomous cycle not confirmed within ~10–15 s, return `READY_TO_DRIVE=NO` — do not silently recover for 12+ minutes.
@@ -1265,7 +1288,8 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Phase 3C DIMO Smart5 compatibility program | NOT_STARTED | `GATED_ON_SMART5_MANIFEST` |
 | Phase 3D High Mobility OEM reference program | NOT_STARTED | `GATED_ON_HIGH_MOBILITY_PROFILE_MANIFEST` |
 | Flight Recorder implementation (LTE_R1) | DONE (3A.1+3A.2) | `reference-capture` deployed + production canary validated |
-| Instrumented reference drive | NEXT / READY | `REFERENCE_DRIVE_READY=YES`; not started — schedule when ready |
+| Instrumented reference drive #001 (RD001) | DONE | Session `06638509-…` COMPLETED; telemetry audit available; video GT NOT_AVAILABLE |
+| RD002 (video Ground Truth) | **BLOCKED** | Requires 3A.3.1 FAST GO + 3A.3.2 HF watermark/fingerprint remediation + production canary |
 | Evidence & documentation governance | DONE | `driving-intelligence-evidence-governance-2026-09-01.md` + registry seeded |
 | Ground-truth synchronization | NOT_STARTED | Phase 5 |
 | Detector validation | NOT_STARTED | Phase 6 |
@@ -1291,10 +1315,13 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 9. ~~**Execute Phase 2F:** DIMO capability-first acquisition strategy (Phase 2E handoff).~~ **Done** — see Phase 2F audit (VCM contract, T0–T7 tiers, query planner, CAN-001…CAN-033 matrix).
 10. ~~**Execute Phase 2F.1:** `DIMO_LTE_R1` reference manifest.~~ **Done** — v1.1.0 two-layer broad-capture contract frozen.
 11. ~~**Execute Phase 3A.1–3A.2** (LTE R1) — Flight Recorder foundation + production canary.~~ **Done** — 3A.1 #1468 merged; 3A.2 production canary passed (`REFERENCE_DRIVE_READY=YES`).
-12. ~~**Execute Phase 3A.3 Reference Drive #001** — real-motion capture + STOP audit.~~ **Done** — capture COMPLETED; telemetry analysis available; video GT NOT_AVAILABLE. **Next:** Reference Drive #002 with video Ground Truth (not started); ARM workflow remediation.
-13. **Execute Phase 2G:** Smart5 + Tesla Direct connection-variant audits + profile manifests → ungate 3B/3C when ready.
-14. **Execute Phase 2H:** High Mobility OEM/profile audit + manifests → ungate 3D when ready.
-15. **Execute Phase 2I:** Cross-provider canonical consolidation / parity governance (after provider-specific knowledge exists).
+12. ~~**Execute Phase 3A.3 Reference Drive #001** — real-motion capture + STOP audit.~~ **Done** — capture COMPLETED; telemetry analysis available; video GT NOT_AVAILABLE.
+13. **Execute Phase 3A.3.1 FAST PRE-ARM/GO remediation** — required before RD002.
+14. **Execute Phase 3A.3.2 HF watermark + aggregateBucketFingerprint remediation** — required before RD002; production canary proving A+B.
+15. **Execute Reference Drive #002** — only after A+B+C gate; video Ground Truth required.
+16. **Execute Phase 2G:** Smart5 + Tesla Direct connection-variant audits + profile manifests → ungate 3B/3C when ready.
+17. **Execute Phase 2H:** High Mobility OEM/profile audit + manifests → ungate 3D when ready.
+18. **Execute Phase 2I:** Cross-provider canonical consolidation / parity governance (after provider-specific knowledge exists).
 ---
 # 7. Repository Evidence & Documentation Governance
 
@@ -1348,10 +1375,13 @@ After the first instrumented `DIMO_LTE_R1` reference drive, require at minimum:
 | Phase 3A.2 | **DONE** |
 | Phase 3A.3 Reference Drive #001 | **DONE** — capture COMPLETED; telemetry analysis available |
 | RD001 metrics correction | **COMPLETE** (`RD001_METRICS_CORRECTION`) |
+| RD001 HF completeness forensic | **COMPLETE** (`RD001_HF_COMPLETENESS_FORENSIC`) |
 | Reference Drive #001 Ground Truth | **NOT_AVAILABLE** (video not captured) |
-| Next: Phase 3A.3.1 FAST ARM workflow | **REQUIRED BEFORE RD002** |
-| Next: Reference Drive #002 (video GT) | **NOT STARTED** |
-| `REFERENCE_DRIVE_READY` | **YES** (for telemetry); video GT requires RD002 + ARM remediation |
+| Phase 3A.3.1 FAST PRE-ARM/GO | **REQUIRED BEFORE RD002** (not started) |
+| Phase 3A.3.2 HF watermark + fingerprint remediation | **REQUIRED BEFORE RD002** (not started) |
+| Production canary (3A.3.1 + 3A.3.2) | **REQUIRED BEFORE RD002** (not started) |
+| Reference Drive #002 (video GT) | **BLOCKED** — gate A+B+C not satisfied |
+| `REFERENCE_DRIVE_READY` (telemetry infra) | **YES** — does **not** authorize RD002 without remediation gate |
 
 ---
 # 8. Agent Handoff Protocol
