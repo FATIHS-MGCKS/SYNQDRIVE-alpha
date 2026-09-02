@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-02 — D3 Battery V2 single-authority cutover / configuration invariant
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | D3 selected single-authority target but left publication effect-only coupling implicit; M1-M3 dual-producer overlap undocumented; lv-publication-chain dossier had duplicate state-machine tables and stale HANDOFF-flag Phase-4 wording. |
+| **OBSERVATION** | isLvRestShadowModeActive = REST_SHADOW && !PUBLICATION; publication OFF forces evidenceEligible false and shadowMode context. Legacy snapshot path enqueues assessment with capturedAt.getTime(); canonical PKG-01 will use measurement.id — different job identities. |
+| **HYPOTHESIS** | Precision pass closes publication effect-only target invariant, M4 shadow retirement precondition, and temporary dual-compute migration semantics without reopening D3 architecture selection. |
+| **CHANGE** | Amended `BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001` with PUBLICATION_EFFECT_ONLY_TARGET_INVARIANT, M4_SHADOW_SEMANTICS_RETIREMENT, MIGRATION_DUAL_COMPUTE, MIGRATION_ACTIVATION_SEMANTICS; added `BAT-V2-EVID-CODE-LV-REST-PUBLICATION-SHADOW-COUPLING-001`; deduplicated lv-publication-chain state machine; fixed TEST PLAN, HANDOFF_EXECUTION wording (at-least-once not exactly-once), removed stale HANDOFF rollback/merge questions. |
+| **WHY** | Current PUBLICATION is not effect-only; target requires M4 decoupling; migration overlap is real but temporary; stale HANDOFF references contradict D3. |
+| **EXPECTED_EFFECT** | PKG-01 remains IMPLEMENTATION_READY; implementers understand M4 shadow retirement surface and M3 dual-compute observation requirements. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh`; `lv-rest-shadow.policy.ts`, `battery-v2-snapshot-ingestion.service.ts` |
+| **OBSERVED_EFFECT** | Validator PASS; 20 open gaps; 23 planning items; 134 nodes / 119 edges / 11 invariants (was 133/119/11 before precision pass). |
+| **NON_EFFECTS** | No runtime implementation; no legacy removed; no REST_SHADOW removed; no HANDOFF env introduced; no publication runtime change; no DB migration; no production mutation; no backfill; no deploy; no cutover authorized; runtime gaps remain open. |
+| **REGRESSIONS_OR_TRADEOFFS** | M3 validation burden increased; M4 cutover has additional shadow-decoupling precondition |
+| **REMAINING_GAPS** | All 20 `BAT-V2-GAP-*` open; PKG-02 D4 + D5; M4 not authorized |
+| **DECISION_STATUS** | VALIDATED (architecture / configuration authority — NOT PRODUCTION_VALIDATED) |
+| **AFFECTED_GRAPH** | +1 evidence; expanded D3 summary — see validator counts |
+| **EVIDENCE** | `BAT-V2-EVID-CODE-LV-REST-PUBLICATION-SHADOW-COUPLING-001`, `BAT-V2-EVID-CODE-BATTERY-V2-FLAG-CUTOVER-SEMANTICS-001`, `BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001` |
+
+---
+
 ## CL-2026-09-01 — D2 canonical LV assessment crash-boundary decision
 
 | Field | Content |
