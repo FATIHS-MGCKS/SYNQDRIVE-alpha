@@ -39,12 +39,16 @@
 | DI-EV-0013 | Phase 3A.2 | A + D | `docs/audits/dimo-phase-3a2-production-preflight-canary-2026-08-31.md` | 2026-08-31 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | VW Tiguan `19fedd4b-…` · session `e8613cc7-…` | CONFIRMED_FROM_RUNTIME | — | — | Production deploy + stationary canary; 5 cycles; 52 observations; REFERENCE_DRIVE_READY=YES |
 | DI-EV-0014 | Phase 3A.2 | D — Architecture | `architecture/DIMO_LTE_R1_PHASE_3A2_PRODUCTION_CANARY_2026-08-31.md` | 2026-08-31 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `e8613cc7-…` | CONFIRMED_FROM_RUNTIME | — | — | Architecture summary of production canary |
 | DI-EV-0015 | Governance | G — Governance | `docs/audits/driving-intelligence-evidence-governance-2026-09-01.md` | 2026-09-01 | CURRENT | — | — | — | — | PROPOSAL | — | — | Normative evidence governance for all future DI work |
+| DI-EV-0016 | Phase 3A.3 | A — Reference drive report | `docs/audits/dimo-lte-r1-reference-drive-001-capture-report-2026-09-01.md` | 2026-09-01 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | VW Tiguan `19fedd4b-…` · session `06638509-…` · `DIMO_LTE_R1_REFERENCE_DRIVE_001` | CONFIRMED_FROM_RUNTIME | — | — | Real-motion STOP + telemetry audit; HF aggregation semantics + normalized exact-window replay + watermark causality; differential: `dimo-lte-r1-reference-drive-001-hf-late-arrival-differential.json` (SHA `9ca28ab3…`); sealed export SHA `f8e3097e…`; video GT NOT_AVAILABLE |
+| DI-EV-0017 | Phase 3A.3 | B — Machine-readable | `docs/audits/data/dimo-lte-r1-reference-drive-001-session-summary.json` | 2026-09-01 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `06638509-…` | CONFIRMED_FROM_RUNTIME | — | — | Session inventory, capture windows, aggregation semantics maturity, compact acquisition-state summaries |
+| DI-EV-0018 | Phase 3A.3 | B — Machine-readable | `docs/audits/data/dimo-lte-r1-reference-drive-001-signal-quality-metrics.json` (+ CSV) | 2026-09-01 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `06638509-…` | CONFIRMED_FROM_VEHICLE_OBSERVATION | — | — | Per-field/surface metrics; nonempty bucket cadence; 151s PROVIDER_DATA_GAP; dynamics PROVISIONAL |
+| DI-EV-0019 | Phase 3A.3 | C — Ground Truth index | `docs/audits/dimo-lte-r1-reference-drive-001-ground-truth-evidence-index-2026-09-01.md` | 2026-09-01 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_001` | REJECTED | — | — | Negative evidence: VIDEO_NOT_CAPTURED; GT alignment impossible for #001 |
 
 ---
 
 ## Entry count
 
-**15** registry entries (Phases 1, 2A–2F.1, 3A.1, 3A.2, governance).
+**19** registry entries (Phases 1, 2A–2F.1, 3A.1, 3A.2, 3A.3 RD001, governance).
 
 ---
 
@@ -52,10 +56,7 @@
 
 | Planned ID | Phase | Artifact | Status |
 |------------|-------|----------|--------|
-| DI-EV-0016+ | Reference Drive 001 | `dimo-lte-r1-reference-drive-001-capture-report-YYYY-MM-DD.md` | NOT_STARTED |
-| TBD | Reference Drive 001 | Session summary JSON | NOT_STARTED |
-| TBD | Reference Drive 001 | Signal-quality metrics JSON/CSV | NOT_STARTED |
-| TBD | Reference Drive 001 | Video Ground Truth index | NOT_STARTED |
+| DI-EV-0020+ | Reference Drive 002 | Capture report + GT-aligned metrics | NOT_STARTED |
 
 ---
 

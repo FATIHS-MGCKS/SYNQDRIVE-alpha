@@ -6,7 +6,7 @@ export type PhysicalSampleIdentityInput = {
   normalizedValue: unknown;
 };
 
-/** Stable identity of a provider physical HF sample (distinct from retrieval observation). */
+/** Stable identity of a persisted HF_HISTORICAL aggregate bucket (field + bucket-start timestamp + AVG value). */
 export function buildPhysicalSampleFingerprint(input: PhysicalSampleIdentityInput): string {
   const ts = input.providerTimestamp ?? '';
   const value =
@@ -24,7 +24,7 @@ export type HfRetrievalObservation = {
   provenance?: { duplicateRetrieval?: boolean } | null;
 };
 
-/** Collapse HF retrieval observations to unique physical samples for analysis. */
+/** Collapse HF retrieval observations to unique aggregate buckets for analysis. */
 export function collapseToUniquePhysicalSamples<T extends HfRetrievalObservation>(
   observations: T[],
 ): T[] {
