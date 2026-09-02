@@ -67,6 +67,20 @@ Delayed original `/start` cannot succeed after fence moves session to `ABORTED` 
 
 Generic `runBoundedSessionCleanup()` semantics unchanged for non-ambiguous post-GO failures.
 
+## STATE_MACHINE_COMPENSATION_OWNERSHIP
+
+Compensation may revert only the transition it owns and only while the expected intermediate state remains current.
+
+| Path | Owned transition | Mechanism |
+|------|------------------|-----------|
+| `startRecording()` failure rollback | `STARTING → READY` | `updateStatusIfCurrent(STARTING, READY)` — never unconditional |
+| Ambiguous START fence | `READY/STARTING/RECORDING → ABORTED` | canonical `abortSession` |
+| Generic post-GO cleanup | `STARTING/RECORDING → terminal` | `runBoundedSessionCleanup` |
+
+If `STARTING → READY` compensation loses CAS (e.g. concurrent fence moved session to `ABORTED`), the stale start handler **must not** resurrect the session. Diagnostics report the actual latest status.
+
+**Audit (3A.3.1 start lifecycle):** Only `startRecording()` catch used unconditional `updateStatus(..., READY)` — corrected. `abortSession` uses unconditional `ABORTED` as intentional fencing authority. `stopRecording` / preflight paths are outside ambiguous-START scope.
+
 ## SIGNAL_POINT gate
 
 Ground Truth GO requires `observationKind === SIGNAL_POINT`. `PROBE_RESULT`, `SEGMENT`, `NATIVE_EVENT`, `SESSION_METADATA` are diagnostics only.

@@ -193,6 +193,19 @@ A `READY` session after ambiguous START is **intentionally sacrificed** (`READY 
 
 Generic post-GO cleanup (`runBoundedSessionCleanup`) retains prior semantics for non-ambiguous failures.
 
+### STATE_MACHINE_COMPENSATION_OWNERSHIP
+
+Compensation may revert only the transition it owns and only while the expected intermediate state remains current.
+
+`ReferenceCaptureSessionService.startRecording()` failure rollback:
+
+- **Before (unsafe):** unconditional `updateStatus(..., READY)` could overwrite concurrent `ABORTED` from ambiguous fencing
+- **After (CAS):** `updateStatusIfCurrent(STARTING, READY)` only; if CAS fails, preserve latest state and report `compensation superseded by concurrent session transition to <status>`
+
+An `ABORTED` fence cannot be resurrected to `READY` by a stale start compensation handler.
+
+**Lifecycle audit:** Only the `startRecording()` catch block used unconditional READY rollback in the start path — corrected. `abortSession` unconditional `ABORTED` is intentional fencing authority.
+
 Never silently return after ambiguous START.
 
 ### Idempotent RECORDING with bounded wait

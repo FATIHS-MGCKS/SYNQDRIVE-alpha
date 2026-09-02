@@ -210,22 +210,34 @@ export class ReferenceCaptureSessionService {
       );
     } catch (error) {
       await this.runnerService.stopRunner(organizationId, sessionId);
-      const failed = await this.sessionRepository.updateStatus(
+      const failureReason =
+        error instanceof Error ? error.message : 'runner_start_failed';
+
+      const reverted = await this.sessionRepository.updateStatusIfCurrent(
         organizationId,
         sessionId,
+        ReferenceCaptureSessionStatus.STARTING,
         ReferenceCaptureSessionStatus.READY,
         {
-          failureReason:
-            error instanceof Error ? error.message : 'runner_start_failed',
+          failureReason,
           runnerJobId: null,
           pendingCycleJobId: null,
         },
       );
-      throw error instanceof BadRequestException
-        ? error
-        : new BadRequestException(
-            `Failed to start reference capture runner: ${failed.failureReason ?? 'unknown'}`,
-          );
+
+      if (reverted) {
+        throw error instanceof BadRequestException
+          ? error
+          : new BadRequestException(
+              `Failed to start reference capture runner: ${failureReason}`,
+            );
+      }
+
+      const latest = await this.sessionRepository.findById(organizationId, sessionId);
+      const latestStatus = latest?.status ?? 'UNKNOWN';
+      throw new BadRequestException(
+        `runner start failed; compensation superseded by concurrent session transition to ${latestStatus}`,
+      );
     }
   }
 

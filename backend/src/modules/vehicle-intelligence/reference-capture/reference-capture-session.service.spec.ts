@@ -153,7 +153,7 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
     expect(runner.startRunner).toHaveBeenCalled();
   });
 
-  it('K — reverts STARTING to READY when runner enqueue fails', async () => {
+  it('K — reverts STARTING to READY via CAS when runner enqueue fails (no concurrent transition)', async () => {
     const { service, sessionRepo, runner } = makeService();
     sessionRepo.findById.mockResolvedValue({
       id: 's1',
@@ -166,37 +166,159 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       preflightJson: {},
       readinessJson: { deploymentPreflightReady: true },
     });
-    sessionRepo.updateStatusIfCurrent.mockResolvedValueOnce({
-      id: 's1',
-      status: ReferenceCaptureSessionStatus.STARTING,
-    });
+    sessionRepo.updateStatusIfCurrent
+      .mockResolvedValueOnce({
+        id: 's1',
+        status: ReferenceCaptureSessionStatus.STARTING,
+      })
+      .mockResolvedValueOnce({
+        id: 's1',
+        status: ReferenceCaptureSessionStatus.READY,
+        failureReason: 'redis unavailable',
+        runnerJobId: null,
+        pendingCycleJobId: null,
+      });
     runner.startRunner.mockRejectedValue(new Error('redis unavailable'));
-    sessionRepo.updateStatus.mockResolvedValue({
-      id: 's1',
-      status: ReferenceCaptureSessionStatus.READY,
-      failureReason: 'redis unavailable',
-      runnerJobId: null,
-      pendingCycleJobId: null,
-    });
 
     await expect(service.startRecording('org', 's1')).rejects.toThrow(
-      'Failed to start reference capture runner',
+      'Failed to start reference capture runner: redis unavailable',
     );
     expect(runner.stopRunner).toHaveBeenCalledWith('org', 's1');
-    expect(sessionRepo.updateStatus).toHaveBeenCalledWith(
+    expect(sessionRepo.updateStatusIfCurrent).toHaveBeenNthCalledWith(
+      2,
       'org',
       's1',
+      ReferenceCaptureSessionStatus.STARTING,
       ReferenceCaptureSessionStatus.READY,
       expect.objectContaining({
+        failureReason: 'redis unavailable',
         runnerJobId: null,
         pendingCycleJobId: null,
       }),
     );
+    expect(sessionRepo.updateStatus).not.toHaveBeenCalled();
     expect(
       sessionRepo.updateStatusIfCurrent.mock.calls.some(
         (call) => call[3] === ReferenceCaptureSessionStatus.RECORDING,
       ),
     ).toBe(false);
+  });
+
+  it('M — concurrent ABORT during STARTING->RECORDING CAS leaves ABORTED (no READY resurrection)', async () => {
+    const readySession = {
+      id: 's1',
+      organizationId: 'org',
+      vehicleId: 'veh',
+      status: ReferenceCaptureSessionStatus.READY,
+      manifestVersion: '1.1.0',
+      powertrainProfile: 'ICE_GASOLINE',
+      massBindingJson: {},
+      preflightJson: {},
+      readinessJson: { deploymentPreflightReady: true },
+    };
+    const abortedSession = {
+      ...readySession,
+      status: ReferenceCaptureSessionStatus.ABORTED,
+      runnerJobId: null,
+      pendingCycleJobId: null,
+    };
+
+    const { service, sessionRepo, runner } = makeService();
+    sessionRepo.findById.mockResolvedValueOnce(readySession).mockResolvedValue(abortedSession);
+    sessionRepo.updateStatusIfCurrent
+      .mockResolvedValueOnce({ id: 's1', status: ReferenceCaptureSessionStatus.STARTING })
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    runner.startRunner.mockResolvedValue('refcap-cycle-s1-1-uuid');
+
+    await expect(service.startRecording('org', 's1')).rejects.toThrow(
+      'compensation superseded by concurrent session transition to ABORTED',
+    );
+    expect(runner.stopRunner).toHaveBeenCalledWith('org', 's1');
+    expect(sessionRepo.updateStatus).not.toHaveBeenCalled();
+    expect(sessionRepo.updateStatusIfCurrent).toHaveBeenNthCalledWith(
+      3,
+      'org',
+      's1',
+      ReferenceCaptureSessionStatus.STARTING,
+      ReferenceCaptureSessionStatus.READY,
+      expect.any(Object),
+    );
+    const latest = await sessionRepo.findById('org', 's1');
+    expect(latest.status).toBe(ReferenceCaptureSessionStatus.ABORTED);
+  });
+
+  it('N — concurrent ABORT during runner failure leaves ABORTED (no READY resurrection)', async () => {
+    const readySession = {
+      id: 's1',
+      organizationId: 'org',
+      vehicleId: 'veh',
+      status: ReferenceCaptureSessionStatus.READY,
+      manifestVersion: '1.1.0',
+      powertrainProfile: 'ICE_GASOLINE',
+      massBindingJson: {},
+      preflightJson: {},
+      readinessJson: { deploymentPreflightReady: true },
+    };
+    const abortedSession = {
+      ...readySession,
+      status: ReferenceCaptureSessionStatus.ABORTED,
+      runnerJobId: null,
+      pendingCycleJobId: null,
+    };
+
+    const { service, sessionRepo, runner } = makeService();
+    sessionRepo.findById.mockResolvedValueOnce(readySession).mockResolvedValue(abortedSession);
+    sessionRepo.updateStatusIfCurrent
+      .mockResolvedValueOnce({ id: 's1', status: ReferenceCaptureSessionStatus.STARTING })
+      .mockResolvedValueOnce(null);
+    runner.startRunner.mockRejectedValue(new Error('redis unavailable'));
+
+    await expect(service.startRecording('org', 's1')).rejects.toThrow(
+      'compensation superseded by concurrent session transition to ABORTED',
+    );
+    expect(runner.stopRunner).toHaveBeenCalledWith('org', 's1');
+    expect(sessionRepo.updateStatus).not.toHaveBeenCalled();
+    const latest = await sessionRepo.findById('org', 's1');
+    expect(latest.status).toBe(ReferenceCaptureSessionStatus.ABORTED);
+  });
+
+  it('O — fencing: COMPENSATION_CONFIRMED ABORTED cannot be resurrected by stale start handler', async () => {
+    const readySession = {
+      id: 's1',
+      organizationId: 'org',
+      vehicleId: 'veh',
+      status: ReferenceCaptureSessionStatus.READY,
+      manifestVersion: '1.1.0',
+      powertrainProfile: 'ICE_GASOLINE',
+      massBindingJson: {},
+      preflightJson: {},
+      readinessJson: { deploymentPreflightReady: true },
+    };
+    const abortedSession = {
+      ...readySession,
+      status: ReferenceCaptureSessionStatus.ABORTED,
+      runnerJobId: null,
+      pendingCycleJobId: null,
+    };
+
+    const { service, sessionRepo, runner } = makeService();
+    sessionRepo.findById
+      .mockResolvedValueOnce(readySession)
+      .mockResolvedValueOnce(abortedSession)
+      .mockResolvedValueOnce(abortedSession);
+    sessionRepo.updateStatusIfCurrent
+      .mockResolvedValueOnce({ id: 's1', status: ReferenceCaptureSessionStatus.STARTING })
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    runner.startRunner.mockResolvedValue('refcap-cycle-s1-1-uuid');
+
+    await expect(service.startRecording('org', 's1')).rejects.toThrow('ABORTED');
+    await expect(service.startRecording('org', 's1')).rejects.toThrow(
+      'Cannot start recording from status ABORTED',
+    );
+    expect(sessionRepo.updateStatus).not.toHaveBeenCalled();
+    expect(runner.stopRunner).toHaveBeenCalled();
   });
 
   it('stop cancels pending cycle without requiring active job removal', async () => {
