@@ -123,7 +123,9 @@ Stale pre-arm → `READY_TO_DRIVE = NO` + `prearm_stale_requires_new_prearm`.
 
 ## Hard 15s GO gate
 
-`REFERENCE_CAPTURE_FAST_GO_FIRST_CYCLE_TIMEOUT_MS` (default **15000**, validated/clamped).
+`REFERENCE_CAPTURE_FAST_GO_FIRST_CYCLE_TIMEOUT_MS` (default **15000**).
+
+**RD002 freeze:** `MAX_FAST_GO_TIMEOUT_MS = 15_000`. Production env cannot extend FAST GO beyond 15 seconds. Invalid values (`<=0`, `NaN`, `Infinity`, `>15000`) resolve to the 15s default. Lower values are permitted when intentionally configured.
 
 ### One absolute operator-critical deadline
 
@@ -163,15 +165,35 @@ If `remainingMs <= 0`, the client does not issue the request (`budgetExhausted`)
 |-------------|-----------|
 | `status === RECORDING` | session |
 | `cycleCount >= 1` | acquisition state |
-| `signalObservationCount > 0` | observations API |
+| `signalPointCount >= 1` (`observationKind === SIGNAL_POINT` only) | observations API |
 | `runnerJobId != null` | session |
 | runner continuity proven | `pendingCycleJobId` **or** `activeCycleJobId` |
 
+**SIGNAL_POINT-only gate:** `PROBE_RESULT`, `SEGMENT`, `NATIVE_EVENT`, and `SESSION_METADATA` may be reported as diagnostics but **cannot** satisfy `SIGNAL_PERSISTENCE_REQUIRED`. Shared predicate: `countPersistedSignalPoints()`.
+
 `isRunnerContinuityProven()` — after cycle N completes, `scheduleNextCycle` normally sets `pendingCycleJobId` to N+1. Legitimate transient: `activeCycleJobId` set while N+1 is already executing.
 
-### Idempotent RECORDING
+### Ambiguous POST /start timeout
+
+`CLIENT_TIMEOUT != SERVER_DID_NOT_START`. A mutating `POST /start` may have transitioned `READY → STARTING → RECORDING` even when the HTTP client times out before receiving the response.
+
+When `started.timedOut` or `started.budgetExhausted`:
+
+1. `READY_TO_DRIVE = NO` (never YES)
+2. Immediate bounded reconciliation via `reconcileAmbiguousStartViaHttp()` (3s cleanup budget, separate from GO window)
+3. `GET` session → if `STARTING` or `RECORDING`, call canonical authenticated `abort`
+4. Verify: status ∉ `{STARTING, RECORDING}`; `runnerJobId`, `pendingCycleJobId`, `activeCycleJobId` all null
+5. Report `COMPENSATION_CONFIRMED` or `COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED`
+
+If session remains `READY` with no runner artifacts, cleanup is confirmed from server state (no abort required).
+
+Never silently return after ambiguous START.
+
+### Idempotent RECORDING with bounded wait
 
 `READY_TO_DRIVE = YES` on already-RECORDING sessions **only** when the full invariant above is proven. No duplicate runner enqueue.
+
+When RECORDING but invariant not yet proven, both the HTTP ops script and `ReferenceCaptureFastGoService` continue bounded polling until the same absolute `goDeadlineAtMs` when `shouldContinueFastGoWait()` indicates plausibly progressing state (e.g. `cycleCount === 0` with valid runner pending/active; `cycleCount >= 1` awaiting signal visibility). Terminal/broken runner states return `NO` immediately.
 
 ### Timeout compensation
 
@@ -188,9 +210,14 @@ On deadline expiry:
 | `goRequestedAt` | Operator GO command start |
 | `goDeadlineAt` | `goRequestedAt + timeout` |
 | `startRequestStartedAt` | Before `POST /start` |
-| `startAcceptedAt` | After HTTP 200/201 on start |
+| `startAcceptedAt` | HTTP 200/201 on start only — **not** set on ambiguous timeout |
+| `recordingEnteredAt` | Observed when session.status becomes RECORDING (HTTP poll); null if unobserved |
+| `firstCycleStartedAt` | Observed when `activeCycleJobId` first seen; null if unobserved |
+| `firstCycleCompletedAt` | Observed when `cycleCount >= 1` first seen; confirmation timestamp only |
 | `runnerContinuityConfirmedAt` | When continuity invariant proven |
 | `readyToDriveAt` | When full invariant proven |
+
+Do not fabricate exact physical-event timestamps from later HTTP observations.
 
 ---
 
@@ -200,8 +227,9 @@ On deadline expiry:
 |---------------|-----------|
 | STARTING CAS lost | Second GO rejected; no duplicate runner |
 | BullMQ enqueue failure | `startRecording` reverts to `READY` (existing 3A.1 behavior) |
-| First-cycle timeout | `abortSession(fast_go_first_cycle_timeout)` |
-| Already RECORDING | Idempotent status if `cycleCount >= 1`; no second runner |
+| Ambiguous POST /start timeout | `reconcileAmbiguousStartViaHttp()` → abort if mutated → verify cleanup |
+| First-cycle timeout | `abortSession(fast_go_deadline_exceeded)` + bounded verify |
+| Already RECORDING | Bounded wait until invariant proven or deadline; no second runner |
 
 ---
 
@@ -228,7 +256,10 @@ Session view extended with `operational` block: `cycleCount`, `runnerJobId`, `pe
 | Area | Tests |
 |------|-------|
 | Prearm freshness policy | `reference-capture-prearm.policy.spec.ts` |
+| FAST GO policy (SIGNAL_POINT gate, 15s cap) | `reference-capture-fast-go.policy.spec.ts` |
+| FAST GO workflow (ambiguous START compensation matrix) | `reference-capture-fast-go.workflow.spec.ts` |
 | FAST GO service | `reference-capture-fast-go.service.spec.ts` |
+| HTTP client (deadline + AbortSignal) | `reference-capture-ops-http.client.spec.ts` |
 | Controller security | `reference-capture-controller.security.spec.ts` |
 | Ops script contract | Static analysis in fast-go spec (no Nest bootstrap on GO path) |
 | Concurrent start CAS | Session service + fast-go spec |

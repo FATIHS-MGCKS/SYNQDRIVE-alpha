@@ -42,7 +42,9 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Split monolithic ARM into PRE-ARM (Nest bootstrap → READY) and FAST GO (production HTTP only).',
       'PRE-ARM: reference-capture-lte-r1-prearm.ts leaves session READY without runner/recording.',
-      'FAST GO: reference-capture-lte-r1-fast-go.ts via authenticated POST .../start; 15s first-cycle hard gate + abort compensation.',
+      'FAST GO: reference-capture-lte-r1-fast-go.ts via authenticated POST .../start; 15s hard cap (max 15s, RD002 freeze).',
+      'Ambiguous POST /start timeout → bounded reconciliation (abort + verify); never silent return.',
+      'SIGNAL_POINT-only persistence gate; PROBE_RESULT/SEGMENT/NATIVE_EVENT are diagnostics only.',
       'Configurable prearm freshness REFERENCE_CAPTURE_PREARM_MAX_AGE_MS (default 15 min).',
       'Session view operational block: cycleCount, runnerJobId, pendingCycleJobId for GO polling.',
     ],

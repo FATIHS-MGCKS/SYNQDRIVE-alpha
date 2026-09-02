@@ -2,27 +2,24 @@
  * Phase 3A.3.1 — FAST GO for pre-armed DIMO LTE_R1 reference capture sessions.
  *
  * Production operational authority: authenticated HTTP API only — does NOT bootstrap AppModule.
- *
- * Required env:
- * - REFERENCE_CAPTURE_OPS_API_BASE_URL (e.g. https://app.synqdrive.eu/api/v1)
- * - REFERENCE_CAPTURE_OPS_BEARER_TOKEN (operator JWT with fleet-condition:write)
  */
 import {
-  assessFastGoReadiness,
   computeGoDeadlineMs,
-  countSignalObservations,
   createFastGoTimestamps,
-  isSessionCleanupComplete,
   normalizeFastGoTimeoutMs,
   remainingGoBudgetMs,
-  runnerSnapshotFromSession,
-  type FastGoCompensationStatus,
-  FAST_GO_CLEANUP_TIMEOUT_MS,
 } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-fast-go.policy';
 import {
   assessPrearmFreshness,
   describeFastGoStatusRejection,
 } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-prearm.policy';
+import {
+  evaluateRecordingSessionViaHttp,
+  observeRecordingTimestamps,
+  reconcileAmbiguousStartViaHttp,
+  runBoundedSessionCleanup,
+  shouldContinueFastGoWait,
+} from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-fast-go.workflow';
 import type { ReferenceCaptureSessionView } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture.types';
 import { ReferenceCaptureOpsHttpClient } from './reference-capture-ops-http.client';
 import {
@@ -45,74 +42,82 @@ function parsePrearmMaxAgeMs(): number {
   return Number.isFinite(parsed) ? parsed : DEFAULT_PREARM_MAX_AGE_MS;
 }
 
-function httpOptions(goDeadlineAtMs: number) {
-  return { goDeadlineAtMs, nowMs: Date.now() };
+function httpOptions(goDeadlineAtMs: number, nowMs: () => number) {
+  return { goDeadlineAtMs, nowMs: nowMs() };
 }
 
-async function evaluateRecordingSession(
-  client: ReferenceCaptureOpsHttpClient,
-  organizationId: string,
-  vehicleId: string,
-  sessionId: string,
-  goDeadlineAtMs: number,
-): Promise<{
+async function pollUntilReadyOrDeadline(args: {
+  client: ReferenceCaptureOpsHttpClient;
+  organizationId: string;
+  vehicleId: string;
+  sessionId: string;
+  goDeadlineAtMs: number;
+  timestamps: ReturnType<typeof createFastGoTimestamps>;
+  nowMs: () => number;
+}): Promise<{
   ready: boolean;
-  session: ReferenceCaptureSessionView | null;
-  signalObservationCount: number;
-  assessment: ReturnType<typeof assessFastGoReadiness>;
+  lastBlockers: string[];
+  lastCycleCount: number;
+  lastSignalCount: number;
 }> {
-  const polled = await client.getSession(organizationId, vehicleId, sessionId, httpOptions(goDeadlineAtMs));
-  if (polled.budgetExhausted || polled.timedOut || polled.status !== 200) {
-    return {
-      ready: false,
-      session: null,
-      signalObservationCount: 0,
-      assessment: { ready: false, blockers: ['session_poll_failed'], runnerContinuityProven: false },
-    };
-  }
+  let lastBlockers: string[] = [];
+  let lastCycleCount = 0;
+  let lastSignalCount = 0;
 
-  const session = polled.data as ReferenceCaptureSessionView;
-  const snapshot = runnerSnapshotFromSession(session);
-  let signalObservationCount = 0;
+  while (remainingGoBudgetMs(args.goDeadlineAtMs, args.nowMs()) > 0) {
+    const evaluated = await evaluateRecordingSessionViaHttp(
+      args.client,
+      args.organizationId,
+      args.vehicleId,
+      args.sessionId,
+      args.goDeadlineAtMs,
+      args.nowMs,
+    );
 
-  if (snapshot.cycleCount >= 1) {
-    const obs = await client.listObservations(organizationId, vehicleId, sessionId, 200, httpOptions(goDeadlineAtMs));
-    if (!obs.budgetExhausted && !obs.timedOut && obs.status === 200) {
-      signalObservationCount = countSignalObservations(obs.data);
+    if (!evaluated.session) {
+      await sleep(Math.min(100, Math.max(0, remainingGoBudgetMs(args.goDeadlineAtMs, args.nowMs()))));
+      continue;
     }
+
+    observeRecordingTimestamps(args.timestamps, evaluated.session, new Date(args.nowMs()).toISOString());
+    lastBlockers = evaluated.assessment.blockers;
+    lastCycleCount = evaluated.session.operational?.cycleCount ?? 0;
+    lastSignalCount = evaluated.signalPointCount;
+
+    if (evaluated.session.status === 'FAILED' || evaluated.session.status === 'ABORTED') {
+      return {
+        ready: false,
+        lastBlockers: [evaluated.session.failureReason ?? evaluated.session.status],
+        lastCycleCount,
+        lastSignalCount,
+      };
+    }
+
+    if (evaluated.ready) {
+      return { ready: true, lastBlockers: [], lastCycleCount, lastSignalCount };
+    }
+
+    const snapshot = {
+      status: evaluated.session.status,
+      cycleCount: lastCycleCount,
+      runnerJobId: evaluated.session.operational?.runnerJobId ?? null,
+      pendingCycleJobId: evaluated.session.operational?.pendingCycleJobId ?? null,
+      activeCycleJobId: evaluated.session.operational?.activeCycleJobId ?? null,
+    };
+
+    if (!shouldContinueFastGoWait(snapshot, evaluated.assessment)) {
+      return { ready: false, lastBlockers, lastCycleCount, lastSignalCount };
+    }
+
+    await sleep(Math.min(100, Math.max(0, remainingGoBudgetMs(args.goDeadlineAtMs, args.nowMs()))));
   }
 
-  const assessment = assessFastGoReadiness({ snapshot, signalObservationCount });
-  return { ready: assessment.ready, session, signalObservationCount, assessment };
-}
-
-async function compensateAfterDeadline(
-  client: ReferenceCaptureOpsHttpClient,
-  organizationId: string,
-  vehicleId: string,
-  sessionId: string,
-  reason: string,
-): Promise<FastGoCompensationStatus> {
-  const cleanupDeadlineAtMs = Date.now() + FAST_GO_CLEANUP_TIMEOUT_MS;
-  const abort = await client.abortSession(organizationId, vehicleId, sessionId, reason, {
-    goDeadlineAtMs: cleanupDeadlineAtMs,
-  });
-
-  if (abort.timedOut || abort.budgetExhausted) {
-    return 'COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED';
-  }
-
-  const verify = await client.getSession(organizationId, vehicleId, sessionId, {
-    goDeadlineAtMs: cleanupDeadlineAtMs,
-  });
-  if (verify.timedOut || verify.budgetExhausted || verify.status !== 200) {
-    return 'COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED';
-  }
-
-  const snapshot = runnerSnapshotFromSession(verify.data as ReferenceCaptureSessionView);
-  return isSessionCleanupComplete(snapshot)
-    ? 'COMPENSATION_CONFIRMED'
-    : 'COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED';
+  return {
+    ready: false,
+    lastBlockers: lastBlockers.length ? lastBlockers : ['go_deadline_exceeded'],
+    lastCycleCount,
+    lastSignalCount,
+  };
 }
 
 async function main(): Promise<void> {
@@ -132,11 +137,12 @@ async function main(): Promise<void> {
 
   const client = ReferenceCaptureOpsHttpClient.fromEnv();
   const goRequestedAtMs = Date.now();
+  const nowMs = () => Date.now();
   const timeoutMs = normalizeFastGoTimeoutMs(process.env.REFERENCE_CAPTURE_FAST_GO_FIRST_CYCLE_TIMEOUT_MS);
   const goDeadlineAtMs = computeGoDeadlineMs(goRequestedAtMs, timeoutMs);
   const timestamps = createFastGoTimestamps(goRequestedAtMs, timeoutMs);
 
-  const initial = await client.getSession(organizationId, vehicleId, sessionId, httpOptions(goDeadlineAtMs));
+  const initial = await client.getSession(organizationId, vehicleId, sessionId, httpOptions(goDeadlineAtMs, nowMs));
   if (initial.budgetExhausted) {
     printReadyToDriveBanner(false, sessionId, 'go_budget_exhausted_before_initial_get');
     process.exitCode = 2;
@@ -156,17 +162,26 @@ async function main(): Promise<void> {
   const session = initial.data as ReferenceCaptureSessionView;
 
   if (session.status === 'RECORDING') {
-    const evaluated = await evaluateRecordingSession(client, organizationId, vehicleId, sessionId, goDeadlineAtMs);
-    if (evaluated.ready && evaluated.session) {
+    const poll = await pollUntilReadyOrDeadline({
+      client,
+      organizationId,
+      vehicleId,
+      sessionId,
+      goDeadlineAtMs,
+      timestamps,
+      nowMs,
+    });
+    if (poll.ready) {
+      timestamps.runnerContinuityConfirmedAt = new Date(nowMs()).toISOString();
+      timestamps.readyToDriveAt = timestamps.runnerContinuityConfirmedAt;
       printReadyToDriveBanner(true, sessionId);
-      timestamps.readyToDriveAt = new Date().toISOString();
-      timestamps.runnerContinuityConfirmedAt = timestamps.readyToDriveAt;
       console.log(
         JSON.stringify(
           {
             authority: 'production_http_api',
             reason: 'already_recording_confirmed',
             runnerContinuityProven: true,
+            signalPointCount: poll.lastSignalCount,
             timestamps,
           },
           null,
@@ -175,7 +190,7 @@ async function main(): Promise<void> {
       );
       return;
     }
-    printReadyToDriveBanner(false, sessionId, evaluated.assessment.blockers.join(','));
+    printReadyToDriveBanner(false, sessionId, poll.lastBlockers.join(','));
     process.exitCode = 2;
     return;
   }
@@ -209,77 +224,75 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (remainingGoBudgetMs(goDeadlineAtMs) <= 0) {
+  if (remainingGoBudgetMs(goDeadlineAtMs, nowMs()) <= 0) {
     printReadyToDriveBanner(false, sessionId, 'go_budget_exhausted_before_start');
     process.exitCode = 2;
     return;
   }
 
-  timestamps.startRequestStartedAt = new Date().toISOString();
-  const started = await client.startRecording(organizationId, vehicleId, sessionId, httpOptions(goDeadlineAtMs));
+  timestamps.startRequestStartedAt = new Date(nowMs()).toISOString();
+  const started = await client.startRecording(organizationId, vehicleId, sessionId, httpOptions(goDeadlineAtMs, nowMs));
+
   if (started.budgetExhausted || started.timedOut) {
-    printReadyToDriveBanner(false, sessionId, started.timedOut ? 'start_request_timeout' : 'go_budget_exhausted_during_start');
+    printReadyToDriveBanner(false, sessionId, 'ambiguous_start_requires_reconciliation');
+    const compensationStatus = await reconcileAmbiguousStartViaHttp(client, organizationId, vehicleId, sessionId);
+    console.log(
+      JSON.stringify(
+        {
+          ambiguousStart: true,
+          compensationStatus,
+          timestamps,
+        },
+        null,
+        2,
+      ),
+    );
     process.exitCode = 2;
     return;
   }
+
   if (started.status !== 200 && started.status !== 201) {
     printReadyToDriveBanner(false, sessionId, `start_failed:${started.status}`);
     process.exitCode = 2;
     return;
   }
-  timestamps.startAcceptedAt = new Date().toISOString();
-  timestamps.recordingEnteredAt = new Date().toISOString();
 
-  let lastBlockers: string[] = [];
-  let lastCycleCount = 0;
-  let lastSignalCount = 0;
+  timestamps.startAcceptedAt = new Date(nowMs()).toISOString();
+  observeRecordingTimestamps(timestamps, started.data as ReferenceCaptureSessionView, timestamps.startAcceptedAt);
 
-  while (remainingGoBudgetMs(goDeadlineAtMs) > 0) {
-    const evaluated = await evaluateRecordingSession(client, organizationId, vehicleId, sessionId, goDeadlineAtMs);
-    if (!evaluated.session) {
-      await sleep(100);
-      continue;
-    }
+  const poll = await pollUntilReadyOrDeadline({
+    client,
+    organizationId,
+    vehicleId,
+    sessionId,
+    goDeadlineAtMs,
+    timestamps,
+    nowMs,
+  });
 
-    lastBlockers = evaluated.assessment.blockers;
-    lastCycleCount = evaluated.session.operational?.cycleCount ?? 0;
-    lastSignalCount = evaluated.signalObservationCount;
-
-    if (evaluated.session.status === 'FAILED' || evaluated.session.status === 'ABORTED') {
-      printReadyToDriveBanner(false, sessionId, evaluated.session.failureReason ?? evaluated.session.status);
-      process.exitCode = 2;
-      return;
-    }
-
-    if (evaluated.ready) {
-      timestamps.firstCycleCompletedAt = new Date().toISOString();
-      timestamps.runnerContinuityConfirmedAt = new Date().toISOString();
-      timestamps.readyToDriveAt = new Date().toISOString();
-      printReadyToDriveBanner(true, sessionId);
-      console.log(
-        JSON.stringify(
-          {
-            authority: 'production_http_api',
-            AUTH_MODEL: 'Bearer JWT via REFERENCE_CAPTURE_OPS_BEARER_TOKEN',
-            FAST_GO_BOOTSTRAPS_FULL_NEST_CONTEXT: false,
-            ABSOLUTE_GO_DEADLINE: timestamps.goDeadlineAt,
-            MAX_OPERATOR_CRITICAL_BUDGET_SECONDS: timeoutMs / 1000,
-            cycleCount: lastCycleCount,
-            signalObservationCount: lastSignalCount,
-            runnerContinuityProven: true,
-            timestamps,
-          },
-          null,
-          2,
-        ),
-      );
-      return;
-    }
-
-    await sleep(Math.min(100, Math.max(0, remainingGoBudgetMs(goDeadlineAtMs))));
+  if (poll.ready) {
+    timestamps.runnerContinuityConfirmedAt = new Date(nowMs()).toISOString();
+    timestamps.readyToDriveAt = timestamps.runnerContinuityConfirmedAt;
+    printReadyToDriveBanner(true, sessionId);
+    console.log(
+      JSON.stringify(
+        {
+          authority: 'production_http_api',
+          ABSOLUTE_GO_DEADLINE: timestamps.goDeadlineAt,
+          MAX_OPERATOR_CRITICAL_BUDGET_SECONDS: timeoutMs / 1000,
+          cycleCount: poll.lastCycleCount,
+          signalPointCount: poll.lastSignalCount,
+          runnerContinuityProven: true,
+          timestamps,
+        },
+        null,
+        2,
+      ),
+    );
+    return;
   }
 
-  const compensationStatus = await compensateAfterDeadline(
+  const compensationStatus = await runBoundedSessionCleanup(
     client,
     organizationId,
     vehicleId,
@@ -287,13 +300,13 @@ async function main(): Promise<void> {
     'fast_go_deadline_exceeded',
   );
 
-  printReadyToDriveBanner(false, sessionId, lastBlockers[0] ?? 'go_deadline_exceeded');
+  printReadyToDriveBanner(false, sessionId, poll.lastBlockers[0] ?? 'go_deadline_exceeded');
   console.log(
     JSON.stringify(
       {
         compensationStatus,
-        cycleCount: lastCycleCount,
-        signalObservationCount: lastSignalCount,
+        cycleCount: poll.lastCycleCount,
+        signalPointCount: poll.lastSignalCount,
         runnerContinuityProven: false,
         timestamps,
       },

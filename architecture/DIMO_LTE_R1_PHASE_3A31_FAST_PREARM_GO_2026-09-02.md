@@ -26,23 +26,37 @@ no runner / no startedAt                poll ≤15s for cycleCount≥1 + observa
 
 | Component | Role |
 |-----------|------|
-| `reference-capture-fast-go.policy.ts` | **Shared predicates** — deadline math, `isRunnerContinuityProven`, `isFastGoReadyToDrive`, compensation helpers |
+| `reference-capture-fast-go.policy.ts` | **Shared predicates** — deadline math (15s cap), `countPersistedSignalPoints` (SIGNAL_POINT only), `isRunnerContinuityProven`, `shouldContinueFastGoWait`, compensation helpers |
+| `reference-capture-fast-go.workflow.ts` | HTTP workflow — `evaluateRecordingSessionViaHttp`, `reconcileAmbiguousStartViaHttp`, `runBoundedSessionCleanup` |
 | `reference-capture-lte-r1-prearm.ts` | Ops PRE-ARM command |
 | `reference-capture-lte-r1-fast-go.ts` | **Production operational authority** — ops FAST GO via HTTP |
-| `reference-capture-ops-http.client.ts` | Deadline-aware authenticated production API client |
+| `reference-capture-ops-http.client.ts` | Deadline-aware authenticated production API client (AbortSignal per request) |
 | `ReferenceCaptureFastGoService` | In-process mirror of same invariant (tests; optional internal use) |
 | `ReferenceCaptureSessionService.startRecording` | Canonical start authority (unchanged CAS) |
 
-**Parity rule:** HTTP ops script and `ReferenceCaptureFastGoService` both call `reference-capture-fast-go.policy.ts` predicates — they cannot drift.
+**Parity rule:** HTTP ops script and `ReferenceCaptureFastGoService` both call `reference-capture-fast-go.policy.ts` predicates and `shouldContinueFastGoWait()` — equivalent state-transition semantics, not merely shared final predicate.
 
 ## Config
 
 | Env | Default | Purpose |
 |-----|---------|---------|
 | `REFERENCE_CAPTURE_PREARM_MAX_AGE_MS` | 900000 (15 min) | Max READY session age before re-PRE-ARM |
-| `REFERENCE_CAPTURE_FAST_GO_FIRST_CYCLE_TIMEOUT_MS` | 15000 | Hard first-cycle deadline |
+| `REFERENCE_CAPTURE_FAST_GO_FIRST_CYCLE_TIMEOUT_MS` | 15000 | Hard first-cycle deadline (**max 15000** — RD002 freeze) |
 | `REFERENCE_CAPTURE_OPS_API_BASE_URL` | — | Production API base for FAST GO |
 | `REFERENCE_CAPTURE_OPS_BEARER_TOKEN` | — | Operator JWT (runtime secret) |
+
+## Ambiguous START reconciliation
+
+Mutating `POST /start` timeouts do not imply the server did not start. On `timedOut` or `budgetExhausted`, FAST GO:
+
+1. Prints `READY_TO_DRIVE = NO`
+2. Runs `reconcileAmbiguousStartViaHttp()` within 3s cleanup budget
+3. Aborts if session is `STARTING` or `RECORDING`
+4. Verifies no runner artifacts remain
+
+## SIGNAL_POINT gate
+
+Ground Truth GO requires `observationKind === SIGNAL_POINT`. `PROBE_RESULT`, `SEGMENT`, `NATIVE_EVENT`, `SESSION_METADATA` are diagnostics only.
 
 ## Invariants preserved
 

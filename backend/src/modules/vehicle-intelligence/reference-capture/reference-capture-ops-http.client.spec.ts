@@ -5,16 +5,22 @@ jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('ReferenceCaptureOpsHttpClient deadline-aware requests', () => {
-  const mockRequest = jest.fn();
+  let mockRequest: jest.Mock;
 
   beforeEach(() => {
+    jest.useFakeTimers();
     jest.clearAllMocks();
+    mockRequest = jest.fn();
     mockedAxios.create.mockReturnValue({
       request: mockRequest,
     } as never);
     mockedAxios.isAxiosError.mockImplementation((error: unknown) => {
       return typeof error === 'object' && error !== null && 'isAxiosError' in error;
     });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   function makeClient() {
@@ -25,7 +31,7 @@ describe('ReferenceCaptureOpsHttpClient deadline-aware requests', () => {
     });
   }
 
-  it('B — does not issue request when GO budget already exhausted', async () => {
+  it('does not issue request when GO budget already exhausted', async () => {
     const client = makeClient();
     const result = await client.getSession('org', 'veh', 'sess', {
       goDeadlineAtMs: 1_000,
@@ -35,7 +41,7 @@ describe('ReferenceCaptureOpsHttpClient deadline-aware requests', () => {
     expect(mockRequest).not.toHaveBeenCalled();
   });
 
-  it('B/C — per-request timeout is capped to remaining GO budget', async () => {
+  it('per-request timeout is capped to remaining GO budget', async () => {
     const client = makeClient();
     mockRequest.mockResolvedValue({ status: 200, data: { id: 'sess' } });
 
@@ -47,20 +53,37 @@ describe('ReferenceCaptureOpsHttpClient deadline-aware requests', () => {
     expect(mockRequest).toHaveBeenCalledWith(
       expect.objectContaining({
         timeout: 500,
+        signal: expect.any(AbortSignal),
       }),
     );
   });
 
-  it('B — hanging request returns timedOut without exceeding remaining budget', async () => {
+  it('aborts hanging request via AbortSignal when timeout elapses', async () => {
     const client = makeClient();
-    mockRequest.mockRejectedValue({ isAxiosError: true, code: 'ECONNABORTED', name: 'AxiosError' });
-
-    const result = await client.startRecording('org', 'veh', 'sess', {
-      goDeadlineAtMs: 10_000,
-      nowMs: 9_000,
+    mockRequest.mockImplementation((config: { signal?: AbortSignal }) => {
+      return new Promise((_resolve, reject) => {
+        const err = new Error('canceled') as Error & { isAxiosError: boolean; code: string; name: string };
+        err.isAxiosError = true;
+        err.code = 'ECONNABORTED';
+        err.name = 'CanceledError';
+        config.signal?.addEventListener('abort', () => reject(err));
+      });
     });
+
+    const promise = client.startRecording('org', 'veh', 'sess', {
+      timeoutMs: 200,
+    });
+
+    await jest.advanceTimersByTimeAsync(250);
+    const result = await promise;
 
     expect(result.timedOut).toBe(true);
     expect(result.status).toBe(0);
+    expect(mockRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        timeout: 200,
+        signal: expect.any(AbortSignal),
+      }),
+    );
   });
 });
