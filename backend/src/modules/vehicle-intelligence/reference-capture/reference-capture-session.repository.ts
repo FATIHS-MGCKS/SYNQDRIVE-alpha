@@ -9,6 +9,10 @@ function parseAcquisitionState(raw: unknown): ReferenceCaptureAcquisitionState {
     cycleCount: base.cycleCount ?? 0,
     lastCycleAt: base.lastCycleAt ?? null,
     hfWatermarkAt: base.hfWatermarkAt ?? null,
+    hfWatermarkByField:
+      base.hfWatermarkByField && typeof base.hfWatermarkByField === 'object'
+        ? { ...base.hfWatermarkByField }
+        : {},
     eventWatermarkAt: base.eventWatermarkAt ?? null,
     seenEventFingerprints: base.seenEventFingerprints ?? [],
     seenPhysicalSampleFingerprints: base.seenPhysicalSampleFingerprints ?? [],

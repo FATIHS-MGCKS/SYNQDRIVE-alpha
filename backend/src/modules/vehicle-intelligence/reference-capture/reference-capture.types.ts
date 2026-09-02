@@ -125,7 +125,10 @@ export type ReferenceCaptureSessionView = {
 export type ReferenceCaptureAcquisitionState = {
   cycleCount: number;
   lastCycleAt: string | null;
+  /** Global HF committed cursor — max(per-field) provider bucket time after successful persist. */
   hfWatermarkAt: string | null;
+  /** Per-field committed provider bucket timestamps — prevents fast-field suppression. */
+  hfWatermarkByField?: Record<string, string>;
   eventWatermarkAt: string | null;
   seenEventFingerprints: string[];
   seenPhysicalSampleFingerprints?: string[];

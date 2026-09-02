@@ -15,6 +15,15 @@ import {
 import { buildRawIdentity } from './reference-capture.contract';
 import { buildProviderEventFingerprint } from './reference-capture-event-identity.util';
 import { buildPhysicalSampleFingerprint } from './reference-capture-physical-sample-identity.util';
+import {
+  advanceHfWatermarksAfterPersistedBuckets,
+  computeHfQueryFrom,
+  computeHfQueryTo,
+  HF_QUERY_OVERLAP_MS,
+  HF_REQUESTED_INTERVAL,
+  normalizeHfCommittedWatermarkState,
+  shouldAdvanceHfWatermark,
+} from './reference-capture-hf-watermark-policy';
 import { resolveCanonicalKeyForProviderField } from './reference-capture-manifest.loader';
 import {
   buildBroadReferenceEventsQuery,
@@ -33,7 +42,7 @@ import type {
   ReferenceCapturePreflightResult,
 } from './reference-capture.types';
 
-const EVENT_OVERLAP_MS = 2000;
+const EVENT_OVERLAP_MS = HF_QUERY_OVERLAP_MS;
 
 function extractProviderTimestamp(value: unknown): Date | null {
   if (value == null || typeof value !== 'object') return null;
@@ -129,6 +138,13 @@ export class ReferenceCaptureAcquisitionService {
     let nativeEvents = 0;
     let newEventIdentities = 0;
     let duplicateEventRetrievals = 0;
+    let hfWatermarkState = normalizeHfCommittedWatermarkState({
+      hfWatermarkAt: state.hfWatermarkAt,
+      hfWatermarkByField: state.hfWatermarkByField,
+    });
+    const hfBucketsPendingWatermarkCommit: Array<{ providerField: string; providerTimestamp: string }> =
+      [];
+    const newPhysicalSampleFingerprints: string[] = [];
 
     const fieldLookup = new Map(
       input.preflight.broadObservationFields.map((f) => [f.providerField, f]),
@@ -181,27 +197,41 @@ export class ReferenceCaptureAcquisitionService {
           providerContext,
           captureCycleId,
           fieldLookup,
-          hfWatermarkAt: state.hfWatermarkAt,
+          hfWatermarkState,
           sessionStartedAt: session.startedAt ?? new Date(),
           sequenceStart: sequenceNumber,
-          seenPhysicalSampleFingerprints: state.seenPhysicalSampleFingerprints ?? [],
+          seenPhysicalSampleFingerprints: [
+            ...(state.seenPhysicalSampleFingerprints ?? []),
+            ...newPhysicalSampleFingerprints,
+          ],
         });
         sequenceNumber = hfResult.nextSequenceNumber;
         signalPoints += hfResult.points;
-        state.hfWatermarkAt = hfResult.hfWatermarkAt;
-        state.seenPhysicalSampleFingerprints = hfResult.seenPhysicalSampleFingerprints;
+        hfBucketsPendingWatermarkCommit.push(...hfResult.newlyPersistedBuckets);
+        newPhysicalSampleFingerprints.push(...hfResult.newPhysicalSampleFingerprints);
       }
     }
 
     const flushed = await this.observationWriter.flush(input.sessionId);
 
+    if (shouldAdvanceHfWatermark(hfBucketsPendingWatermarkCommit.length)) {
+      hfWatermarkState = advanceHfWatermarksAfterPersistedBuckets(
+        hfWatermarkState,
+        hfBucketsPendingWatermarkCommit,
+      );
+    }
+
     const nextState: ReferenceCaptureAcquisitionState = {
       cycleCount: cycleNumber,
       lastCycleAt: new Date().toISOString(),
-      hfWatermarkAt: state.hfWatermarkAt,
+      hfWatermarkAt: hfWatermarkState.hfWatermarkAt,
+      hfWatermarkByField: hfWatermarkState.hfWatermarkByField,
       eventWatermarkAt: state.eventWatermarkAt,
       seenEventFingerprints: state.seenEventFingerprints.slice(-5000),
-      seenPhysicalSampleFingerprints: (state.seenPhysicalSampleFingerprints ?? []).slice(-20_000),
+      seenPhysicalSampleFingerprints: [
+        ...(state.seenPhysicalSampleFingerprints ?? []),
+        ...newPhysicalSampleFingerprints,
+      ].slice(-20_000),
       lastSequenceNumber: sequenceNumber,
       activeCycleJobId: null,
       quarantinedProviderFields: state.quarantinedProviderFields ?? [],
@@ -325,34 +355,36 @@ export class ReferenceCaptureAcquisitionService {
     providerContext: ReturnType<typeof buildDimoProviderRequestContext>;
     captureCycleId: string;
     fieldLookup: Map<string, ReferenceCapturePreflightResult['broadObservationFields'][number]>;
-    hfWatermarkAt: string | null;
+    hfWatermarkState: ReturnType<typeof normalizeHfCommittedWatermarkState>;
     sessionStartedAt: Date;
     sequenceStart: number;
     seenPhysicalSampleFingerprints: string[];
   }): Promise<{
     points: number;
     nextSequenceNumber: number;
-    hfWatermarkAt: string;
-    seenPhysicalSampleFingerprints: string[];
+    newlyPersistedBuckets: Array<{ providerField: string; providerTimestamp: string }>;
+    newPhysicalSampleFingerprints: string[];
   }> {
-    const now = new Date();
-    const from = args.hfWatermarkAt
-      ? new Date(new Date(args.hfWatermarkAt).getTime() - EVENT_OVERLAP_MS)
-      : args.sessionStartedAt;
-    const requestedInterval = args.surfacePlan.requestedInterval ?? '1s';
+    const requestStartedAt = new Date();
+    const from = computeHfQueryFrom(
+      args.hfWatermarkState,
+      args.sessionStartedAt,
+      args.surfacePlan.providerFields,
+    );
+    const requestedInterval = args.surfacePlan.requestedInterval ?? HF_REQUESTED_INTERVAL;
     const query = buildBroadReferenceHistoricalSignalsQuery(
       args.tokenId,
       args.surfacePlan.providerFields,
       from,
-      now,
+      requestStartedAt,
       requestedInterval,
     );
     if (!query) {
       return {
         points: 0,
         nextSequenceNumber: args.sequenceStart,
-        hfWatermarkAt: now.toISOString(),
-        seenPhysicalSampleFingerprints: args.seenPhysicalSampleFingerprints,
+        newlyPersistedBuckets: [],
+        newPhysicalSampleFingerprints: [],
       };
     }
 
@@ -365,14 +397,21 @@ export class ReferenceCaptureAcquisitionService {
       'REFERENCE_CAPTURE',
     );
 
+    const queryTo = computeHfQueryTo(timed.requestCompletedAt, requestStartedAt);
     const rows = (timed.result?.data?.signals ?? []) as Array<Record<string, unknown>>;
     let sequenceNumber = args.sequenceStart;
     let points = 0;
+    let duplicateSkipped = 0;
+    let valueRevisionSkipped = 0;
     const seenPhysical = new Set(args.seenPhysicalSampleFingerprints);
+    const newlyPersistedBuckets: Array<{ providerField: string; providerTimestamp: string }> = [];
+    const newPhysicalSampleFingerprints: string[] = [];
 
     for (const row of rows) {
       const providerTimestamp = extractProviderTimestamp(row);
       const providerTimestampIso = providerTimestamp?.toISOString() ?? null;
+      if (!providerTimestampIso) continue;
+
       for (const providerField of args.surfacePlan.providerFields) {
         if (!(providerField in row)) continue;
         const rawPayload = row[providerField];
@@ -386,9 +425,14 @@ export class ReferenceCaptureAcquisitionService {
           normalizedValue,
         });
         const duplicateRetrieval = seenPhysical.has(physicalSampleFingerprint);
-        if (!duplicateRetrieval) {
-          seenPhysical.add(physicalSampleFingerprint);
+        if (duplicateRetrieval) {
+          duplicateSkipped += 1;
+          continue;
         }
+
+        seenPhysical.add(physicalSampleFingerprint);
+        newPhysicalSampleFingerprints.push(physicalSampleFingerprint);
+        newlyPersistedBuckets.push({ providerField, providerTimestamp: providerTimestampIso });
 
         sequenceNumber += 1;
         points += 1;
@@ -429,22 +473,30 @@ export class ReferenceCaptureAcquisitionService {
               requestedInterval,
               requestedCadenceMs: args.surfacePlan.requestedCadenceMs,
               hfWindowFrom: from.toISOString(),
-              hfWindowTo: now.toISOString(),
+              hfWindowTo: queryTo.toISOString(),
               sequenceScope: REFERENCE_CAPTURE_SEQUENCE_SCOPE,
-              physicalSampleIdentity: physicalSampleFingerprint,
+              aggregateBucketIdentity: physicalSampleFingerprint,
               hfRetrievalObservation: true,
-              duplicateRetrieval,
+              duplicateRetrieval: false,
+              correctedValuePolicy: 'IMMUTABLE_FIRST_SEEN',
+              valueRevisionSkipped,
             },
           },
         );
       }
     }
 
+    if (duplicateSkipped > 0) {
+      this.logger.debug(
+        `HF dedup skipped ${duplicateSkipped} duplicate aggregate buckets session=${args.input.sessionId}`,
+      );
+    }
+
     return {
       points,
       nextSequenceNumber: sequenceNumber,
-      hfWatermarkAt: now.toISOString(),
-      seenPhysicalSampleFingerprints: [...seenPhysical],
+      newlyPersistedBuckets,
+      newPhysicalSampleFingerprints,
     };
   }
 

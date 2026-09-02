@@ -135,6 +135,20 @@ describe('Reference Capture correction 2', () => {
       expect(all).toHaveLength(6);
       expect(collapseToUniquePhysicalSamples(all)).toHaveLength(4);
     });
+
+    it('treats same bucket with revised value as one identity (IMMUTABLE_FIRST_SEEN)', () => {
+      const first = buildPhysicalSampleFingerprint({
+        providerField: 'speed',
+        providerTimestamp: '2026-08-31T10:00:02.000Z',
+        normalizedValue: 10,
+      });
+      const revised = buildPhysicalSampleFingerprint({
+        providerField: 'speed',
+        providerTimestamp: '2026-08-31T10:00:02.000Z',
+        normalizedValue: 99,
+      });
+      expect(first).toBe(revised);
+    });
   });
 
   describe('J — retry exhaustion marks session FAILED', () => {

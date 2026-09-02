@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-phase-3a32-hf-watermark-aggregate-identity-2026-09-02',
+    version: '4.9.1030',
+    title: 'Phase 3A.3.2 — HF watermark + aggregate bucket identity remediation',
+    summary: [
+      'Per-field committed HF watermarks (hfWatermarkByField) replace wall-clock hfWatermarkAt advance.',
+      'Query FROM = min(per-field committed provider ts) - 2s overlap (HF_QUERY_OVERLAP_MS).',
+      'Watermark advances only after successful observation flush (post-persist commit).',
+      'Aggregate bucket fingerprint: field + canonical bucket ts + interval + aggregation (no value).',
+      'HF dedup skips enqueue for repeated buckets; IMMUTABLE_FIRST_SEEN corrected-value policy.',
+      'RD001 regression fixture: 39 DEFINITELY_EXCLUDED buckets recoverable under new model.',
+      'PHASE_3A3_2_CODE_READY=YES; production canary with 3A.3.1 still required before RD002.',
+    ],
+    reason:
+      'RD001 proved wall-clock HF watermark permanently excluded 39 late aggregate buckets; value-inclusive fingerprint created false distinct identities.',
+    previousBehavior:
+      'hfWatermarkAt = requestStartedAt always; duplicates flagged but persisted; fingerprint included normalizedValue.',
+    details:
+      'docs/audits/dimo-phase-3a32-hf-watermark-aggregate-identity-remediation-2026-09-02.md; architecture/DIMO_LTE_R1_PHASE_3A32_HF_WATERMARK_AGGREGATE_IDENTITY_2026-09-02.md; DI-EV-0021.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T12:00:00.000Z',
+  },
+  {
     id: 'dimo-phase-3a31-fast-prearm-go-remediation-2026-09-02',
     version: '4.9.1029',
     title: 'Phase 3A.3.1 — FAST PRE-ARM / GO workflow remediation',
