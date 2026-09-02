@@ -2,8 +2,12 @@ import { BatteryMeasurementType } from '@prisma/client';
 import {
   buildCanonicalLvAssessmentHandoffJobKey,
   isCanonicalRestAssessmentHandoffEligible,
+  isSyntheticRestMissedMeasurement,
+  isSyntheticRestStatusMeasurement,
   restTargetTypeForMeasurementType,
 } from './lv-rest-assessment-handoff.policy';
+import { buildRestMissedMeasurementIdempotencyKey } from './battery-rest-target-evaluation';
+import { BatteryMeasurementQuality } from '@prisma/client';
 import { LV_REST_TARGET_TYPES } from './lv-rest-window-target.metadata';
 
 const VEH = 'clveh1234567890123456789012';
@@ -71,6 +75,40 @@ describe('lv-rest-assessment-handoff.policy', () => {
         LV_REST_TARGET_TYPES.REST_6H,
       );
       expect(restTargetTypeForMeasurementType(BatteryMeasurementType.LIVE_VOLTAGE)).toBeNull();
+    });
+  });
+
+  describe('terminal replay discriminators', () => {
+    const sessionId = 'clsess123456789012345678901';
+
+    it('identifies synthetic missed measurements', () => {
+      expect(
+        isSyntheticRestMissedMeasurement({
+          type: BatteryMeasurementType.REST_60M,
+          quality: BatteryMeasurementQuality.MISSED,
+          sessionId,
+          idempotencyKey: buildRestMissedMeasurementIdempotencyKey({
+            sessionId,
+            restTargetType: 'REST_60M',
+          }),
+          provenance: { qualityReasonCode: 'missed_no_valid_observation' },
+        }),
+      ).toBe(true);
+    });
+
+    it('identifies synthetic unsupported measurements', () => {
+      expect(
+        isSyntheticRestStatusMeasurement({
+          type: BatteryMeasurementType.REST_60M,
+          quality: BatteryMeasurementQuality.UNSUPPORTED_PROFILE,
+          sessionId,
+          idempotencyKey: buildRestMissedMeasurementIdempotencyKey({
+            sessionId,
+            restTargetType: 'REST_60M',
+          }),
+          provenance: { qualityReasonCode: 'unsupported_profile' },
+        }),
+      ).toBe(true);
     });
   });
 });

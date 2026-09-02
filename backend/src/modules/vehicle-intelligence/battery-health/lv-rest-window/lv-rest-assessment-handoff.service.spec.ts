@@ -29,15 +29,20 @@ function eligibleMeasurement() {
 
 describe('LvRestAssessmentHandoffService', () => {
   let sessionMetadata: Record<string, unknown> = {};
+  let updatedAt = new Date('2026-09-02T10:00:00.000Z');
   const prisma = {
     batteryMeasurement: {
       findFirst: jest.fn(),
     },
     batteryMeasurementSession: {
       findFirst: jest.fn(),
-      update: jest.fn(async ({ data }: { data: { metadata: unknown } }) => {
+      updateMany: jest.fn(async ({ data, where }: { data: { metadata: unknown }; where: { updatedAt?: Date } }) => {
+        if (where.updatedAt?.getTime() !== updatedAt.getTime()) {
+          return { count: 0 };
+        }
         sessionMetadata = data.metadata as Record<string, unknown>;
-        return { id: SESSION };
+        updatedAt = new Date(updatedAt.getTime() + 1);
+        return { count: 1 };
       }),
     },
   };
@@ -54,6 +59,7 @@ describe('LvRestAssessmentHandoffService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     sessionMetadata = {};
+    updatedAt = new Date('2026-09-02T10:00:00.000Z');
     service = new LvRestAssessmentHandoffService(
       prisma as never,
       jobProducer as never,
@@ -64,6 +70,7 @@ describe('LvRestAssessmentHandoffService', () => {
       id: SESSION,
       organizationId: ORG,
       metadata: sessionMetadata,
+      updatedAt,
       status: BatteryMeasurementSessionStatus.ACTIVE,
       type: BatteryMeasurementSessionType.LV_REST_WINDOW,
     }));

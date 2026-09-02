@@ -65,6 +65,8 @@ const TRIP_LOOKBACK_MS = 7 * 24 * 3600_000;
 const ASSESSMENT_STALE_MS = 6 * 3600_000;
 /** Canonical REST assessment handoff repair lookback (D2 reconciliation safety net). */
 const CANONICAL_REST_ASSESSMENT_HANDOFF_LOOKBACK_MS = 7 * 24 * 3600_000;
+/** Max measurement rows scanned per reconciliation pass (prevents starvation, bounds work). */
+const CANONICAL_REST_ASSESSMENT_HANDOFF_MAX_SCAN_MULTIPLIER = 20;
 /** Max age of a rest anchor still worth arming (FSM max rest window). */
 const LV_REST_SESSION_LOOKBACK_MS = 24 * 3600_000;
 /** Grace before recovery kicks in — lets the primary finalize path land first. */
@@ -823,63 +825,85 @@ export class BatteryV2ReconciliationService {
     }
 
     const lookbackFrom = new Date(Date.now() - CANONICAL_REST_ASSESSMENT_HANDOFF_LOOKBACK_MS);
-    const measurements = await this.prisma.batteryMeasurement.findMany({
-      where: {
-        type: {
-          in: [BatteryMeasurementType.REST_60M, BatteryMeasurementType.REST_6H],
-        },
-        sessionId: { not: null },
-        createdAt: { gte: lookbackFrom },
-      },
-      take: batch,
-      orderBy: { createdAt: 'asc' },
-      select: {
-        id: true,
-        organizationId: true,
-        vehicleId: true,
-        sessionId: true,
-        type: true,
-        provenance: true,
-      },
-    });
-
+    const pageSize = batch;
+    const maxScanned = batch * CANONICAL_REST_ASSESSMENT_HANDOFF_MAX_SCAN_MULTIPLIER;
     let repaired = 0;
-    for (const measurement of measurements) {
-      if (!isCanonicalRestAssessmentHandoffEligible(measurement)) continue;
-      if (!measurement.sessionId) continue;
+    let scanned = 0;
+    let cursorId: string | undefined;
+    const repairedMeasurementIds = new Set<string>();
 
-      const restTargetType = restTargetTypeForMeasurementType(measurement.type);
-      if (!restTargetType) continue;
-
-      const session = await this.prisma.batteryMeasurementSession.findFirst({
+    while (repaired < batch && scanned < maxScanned) {
+      const measurements = await this.prisma.batteryMeasurement.findMany({
         where: {
-          id: measurement.sessionId,
-          organizationId: measurement.organizationId,
+          type: {
+            in: [BatteryMeasurementType.REST_60M, BatteryMeasurementType.REST_6H],
+          },
+          sessionId: { not: null },
+          createdAt: { gte: lookbackFrom },
+          ...(cursorId ? { id: { gt: cursorId } } : {}),
         },
-        select: { metadata: true },
+        take: pageSize,
+        orderBy: { id: 'asc' },
+        select: {
+          id: true,
+          organizationId: true,
+          vehicleId: true,
+          sessionId: true,
+          type: true,
+          provenance: true,
+        },
       });
-      if (session) {
-        const handoff = readAssessmentHandoffFromTargetMetadata(
-          session.metadata,
-          restTargetType,
-        );
-        if (
-          handoff?.status === LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED &&
-          handoff.measurementId === measurement.id
-        ) {
-          continue;
-        }
+
+      if (measurements.length === 0) {
+        break;
       }
 
-      const result = await this.assessmentHandoff.ensureAssessmentHandoff({
-        organizationId: measurement.organizationId,
-        vehicleId: measurement.vehicleId,
-        sessionId: measurement.sessionId,
-        restTargetType,
-        measurementId: measurement.id,
-        correlationPrefix: 'lv-rest-reconcile',
-      });
-      if (result.enqueued) repaired += 1;
+      for (const measurement of measurements) {
+        cursorId = measurement.id;
+        scanned += 1;
+        if (repaired >= batch) break;
+
+        if (!isCanonicalRestAssessmentHandoffEligible(measurement)) continue;
+        if (!measurement.sessionId) continue;
+
+        const restTargetType = restTargetTypeForMeasurementType(measurement.type);
+        if (!restTargetType) continue;
+
+        const session = await this.prisma.batteryMeasurementSession.findFirst({
+          where: {
+            id: measurement.sessionId,
+            organizationId: measurement.organizationId,
+          },
+          select: { metadata: true },
+        });
+        if (session) {
+          const handoff = readAssessmentHandoffFromTargetMetadata(
+            session.metadata,
+            restTargetType,
+          );
+          if (
+            handoff?.status === LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED &&
+            handoff.measurementId === measurement.id
+          ) {
+            continue;
+          }
+        }
+
+        if (repairedMeasurementIds.has(measurement.id)) continue;
+
+        const result = await this.assessmentHandoff.ensureAssessmentHandoff({
+          organizationId: measurement.organizationId,
+          vehicleId: measurement.vehicleId,
+          sessionId: measurement.sessionId,
+          restTargetType,
+          measurementId: measurement.id,
+          correlationPrefix: 'lv-rest-reconcile',
+        });
+        if (result.enqueued) {
+          repaired += 1;
+          repairedMeasurementIds.add(measurement.id);
+        }
+      }
     }
 
     return repaired;

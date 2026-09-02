@@ -64,6 +64,7 @@ function buildCtx(targetType: 'REST_60M' | 'REST_6H') {
     },
   };
 
+  let updatedAt = new Date('2026-08-30T11:00:00.000Z');
   const sessionRow = {
     id: SESSION,
     organizationId: ORG,
@@ -73,15 +74,28 @@ function buildCtx(targetType: 'REST_60M' | 'REST_6H') {
     metadata: sessionMetadata,
     status: BatteryMeasurementSessionStatus.ACTIVE,
     type: BatteryMeasurementSessionType.LV_REST_WINDOW,
+    updatedAt,
   };
 
   const prisma = {
     batteryMeasurementSession: {
-      findFirst: jest.fn(async () => ({ ...sessionRow, metadata: sessionMetadata })),
-      findMany: jest.fn(async () => [{ ...sessionRow, metadata: sessionMetadata }]),
+      findFirst: jest.fn(async () => ({
+        ...sessionRow,
+        metadata: sessionMetadata,
+        updatedAt,
+      })),
+      findMany: jest.fn(async () => [{ ...sessionRow, metadata: sessionMetadata, updatedAt }]),
       update: jest.fn(async ({ data }: { data: { metadata: unknown } }) => {
         sessionMetadata = data.metadata as Record<string, unknown>;
         return { ...sessionRow, metadata: sessionMetadata };
+      }),
+      updateMany: jest.fn(async ({ data, where }: { data: { metadata: unknown }; where?: { updatedAt?: Date } }) => {
+        if (where?.updatedAt?.getTime() !== updatedAt.getTime()) {
+          return { count: 0 };
+        }
+        sessionMetadata = data.metadata as Record<string, unknown>;
+        updatedAt = new Date(updatedAt.getTime() + 1);
+        return { count: 1 };
       }),
     },
     batteryMeasurement: {

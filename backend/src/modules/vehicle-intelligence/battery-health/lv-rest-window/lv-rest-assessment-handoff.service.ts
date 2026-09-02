@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { BatteryMeasurementSession } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { buildAssessmentJobIdempotencyKey } from '../jobs/battery-v2-job-idempotency.policy';
 import { BatteryV2JobDeadLetterService } from '../jobs/battery-v2-job-dead-letter.service';
@@ -17,6 +16,7 @@ import {
   isCanonicalRestAssessmentHandoffEligible,
   restTargetTypeForMeasurementType,
 } from './lv-rest-assessment-handoff.policy';
+import { mutateLvRestSessionMetadata } from './lv-rest-session-metadata.mutation';
 import type { LvRestTargetType } from './lv-rest-window-target.metadata';
 
 export interface EnsureLvRestAssessmentHandoffInput {
@@ -160,11 +160,16 @@ export class LvRestAssessmentHandoffService {
     });
 
     if (!jobId) {
-      await this.persistHandoffState(session, input.restTargetType, {
-        measurementId: measurement.id,
-        idempotencyKey,
-        status: existingHandoff?.status ?? LV_REST_ASSESSMENT_HANDOFF_STATUS.MISSING,
-        lastAttemptAt: now.toISOString(),
+      await this.persistHandoffState({
+        sessionId: input.sessionId,
+        organizationId: input.organizationId,
+        restTargetType: input.restTargetType,
+        handoffPatch: {
+          measurementId: measurement.id,
+          idempotencyKey,
+          status: existingHandoff?.status ?? LV_REST_ASSESSMENT_HANDOFF_STATUS.MISSING,
+          lastAttemptAt: now.toISOString(),
+        },
       });
       return {
         enqueued: false,
@@ -174,13 +179,18 @@ export class LvRestAssessmentHandoffService {
       };
     }
 
-    await this.persistHandoffState(session, input.restTargetType, {
-      measurementId: measurement.id,
-      idempotencyKey,
-      status: LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED,
-      enqueuedAt: now.toISOString(),
-      lastAttemptAt: now.toISOString(),
-      bullJobId: jobId,
+    await this.persistHandoffState({
+      sessionId: input.sessionId,
+      organizationId: input.organizationId,
+      restTargetType: input.restTargetType,
+      handoffPatch: {
+        measurementId: measurement.id,
+        idempotencyKey,
+        status: LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED,
+        enqueuedAt: now.toISOString(),
+        lastAttemptAt: now.toISOString(),
+        bullJobId: jobId,
+      },
     });
 
     this.logger.log(
@@ -237,13 +247,18 @@ export class LvRestAssessmentHandoffService {
       inputVersion: measurement.id,
     });
 
-    await this.persistHandoffState(session, restTargetType, {
-      measurementId: measurement.id,
-      idempotencyKey,
-      status: LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED,
-      outcome: input.outcome,
-      executedAt: now,
-      lastAttemptAt: now,
+    await this.persistHandoffState({
+      sessionId: measurement.sessionId,
+      organizationId: input.organizationId,
+      restTargetType,
+      handoffPatch: {
+        measurementId: measurement.id,
+        idempotencyKey,
+        status: LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED,
+        outcome: input.outcome,
+        executedAt: now,
+        lastAttemptAt: now,
+      },
     });
 
     this.logger.debug(
@@ -258,22 +273,21 @@ export class LvRestAssessmentHandoffService {
     );
   }
 
-  private async persistHandoffState(
-    session: BatteryMeasurementSession,
-    restTargetType: LvRestTargetType,
-    handoffPatch: Parameters<typeof mergeSessionAssessmentHandoffMetadata>[2],
-  ): Promise<void> {
-    const metadata = mergeSessionAssessmentHandoffMetadata(
-      session.metadata,
-      restTargetType,
-      handoffPatch,
-    );
-    await this.prisma.batteryMeasurementSession.update({
-      where: {
-        id: session.id,
-        organizationId: session.organizationId,
-      },
-      data: { metadata },
+  private async persistHandoffState(input: {
+    sessionId: string;
+    organizationId: string;
+    restTargetType: LvRestTargetType;
+    handoffPatch: Parameters<typeof mergeSessionAssessmentHandoffMetadata>[2];
+  }): Promise<void> {
+    await mutateLvRestSessionMetadata(this.prisma, {
+      sessionId: input.sessionId,
+      organizationId: input.organizationId,
+      mutate: (metadata) =>
+        mergeSessionAssessmentHandoffMetadata(
+          metadata,
+          input.restTargetType,
+          input.handoffPatch,
+        ),
     });
   }
 }
