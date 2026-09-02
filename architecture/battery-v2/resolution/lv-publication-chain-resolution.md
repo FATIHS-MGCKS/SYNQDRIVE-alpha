@@ -2,7 +2,7 @@
 
 **Gaps:** `BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001`, `BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001`, `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001`  
 **Priority:** P0_ACTIVATION_BLOCKER (Stage-2 cutover — **not** proven active production outage while flags default OFF)  
-**Readiness:** PKG-01 **IMPLEMENTATION_READY** (D1/D2/D3 VALIDATED); PKG-02 **IMPLEMENTATION_SPEC_REQUIRED** — blockers: **D4** assessment-track selection, **D5** `publicationVersion` only  
+**Readiness:** PKG-01 **IMPLEMENTATION_READY** (D1/D2/D3 VALIDATED); PKG-02 **IMPLEMENTATION_SPEC_REQUIRED** — blocker: **D5** `publicationVersion` only (D4 track authority VALIDATED)  
 **Proposed decision:** `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (PROPOSED — gaps remain open)
 
 ## CURRENT STATE
@@ -40,7 +40,7 @@ End-to-end deterministic path:
 REST target COMPLETED + measurement persisted
   → BATTERY_ASSESSMENT_RECOMPUTE (canonical idempotency key)
   → assessment persisted (BatteryAssessmentService; may be multiple tracks)
-  → deterministic assessment-selection authority (SPEC REQUIRED)
+  → deterministic assessment-selection authority (D4 VALIDATED)
   → BATTERY_PUBLICATION_UPDATE for selected assessment(s)
   → BatteryPublicationService.evaluateLvPublicationPolicy()
   → battery_publications row when policy passes
@@ -115,26 +115,64 @@ When workshop evidence is present, `computeLvEstimatedHealthAssessment()` may pe
 
 This is **not** a confirmed current production defect — automatic handoff is absent. It is a **target-architecture spec gap** for PKG-02.
 
-## OPTIONS — Assessment-track selection for publication (SPEC REQUIRED)
+## ASSESSMENT-TRACK SELECTION FOR PUBLICATION (D4 — VALIDATED)
 
-| Option | Summary | Verdict |
-|--------|---------|---------|
-| **A** Select exactly one authoritative assessment before publication enqueue | Explicit track ordering (e.g. WORKSHOP_OVERRIDE over TELEMETRY) requires evidence | **Candidate** — needs authority sign-off |
-| **B** Enqueue all assessments; `BatteryPublicationService` resolves track authority before supersession | Policy layer owns ordering | **Candidate** — requires policy extension |
-| **C** Separate publication tracks / namespaces | Workshop and telemetry cannot overwrite each other | **Candidate** — schema/history impact |
-| **D** Other evidence-backed architecture | — | Open |
+**Decision:** `BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001` — **freshness-conditional deterministic track precedence** (not `PRODUCTION_VALIDATED`)
 
-**Status: DECISION_NOT_READY** — do not silently choose ordering.
+### SELECTED rule
 
-Evaluate against: evidence strength, publication semantics, hysteresis, supersession, deterministic execution, BullMQ ordering independence, multi-replica behavior, canonical primaryTruth semantics, auditability, backwards compatibility.
+Within **current recompute assessments only**:
+
+```
+WORKSHOP_OVERRIDE > TELEMETRY
+```
+
+Precedence applies **only** while workshop evidence that caused `WORKSHOP_OVERRIDE` remains eligible under existing `lv-evidence-selection.policy.ts` (including freshness). **Not** a permanent lifetime override.
+
+| Case | Current recompute tracks | Publication handoff candidate |
+|------|--------------------------|------------------------------|
+| A | `WORKSHOP_OVERRIDE` + `TELEMETRY` | `WORKSHOP_OVERRIDE` only |
+| B | `WORKSHOP_OVERRIDE` only | `WORKSHOP_OVERRIDE` |
+| C | `TELEMETRY` only | `TELEMETRY` |
+| D | no qualifying canonical assessment | none |
+| — | `SHADOW` present | never selected |
+
+### Required transitions
+
+- **Stale workshop → TELEMETRY authority:** when workshop rejected as `STALE_MEASUREMENT`, current recompute emits `TELEMETRY` only; old persisted `WORKSHOP_OVERRIDE` does **not** win  
+- **Telemetry volume does not override:** fresh qualified workshop remains authoritative regardless of telemetry sample count  
+- **No same-recompute fallback:** if `BatteryPublicationService` returns SKIP on selected `WORKSHOP_OVERRIDE`, do **not** enqueue `TELEMETRY` in same recompute
+
+### Explicit track carrier (PKG-02 implementation)
+
+Authority **must** use explicit `assessmentTrack` on current-recompute persisted assessments. **Rejected:** array position, persistence order, `computedAt`, `findLatestLvEstimatedHealth()`, `persistedAssessmentIds[length-1]`.
+
+### Boundaries
+
+- **Persist both ≠ publish both** — both tracks may remain for diagnostics  
+- **At most one** `BATTERY_PUBLICATION_UPDATE` handoff per recompute  
+- **`BatteryPublicationService`** remains sole publication-policy authority — D4 does not duplicate `evaluateLvPublicationPolicy()`
+
+Full dossier: `decisions/lv-publication-track-authority-decision.md`
+
+### REJECTED alternatives
+
+| ID | Alternative | Why rejected |
+|----|-------------|--------------|
+| A | Latest-wins / `computedAt` | Time ordering is not evidence authority |
+| B | Publish every track | Competing publication truth |
+| C | Permanent workshop override | Stale workshop must relinquish authority |
+| D | Telemetry wins by volume | Sample count ≠ evidence class precedence |
+| E | Publication service selects track | Mixes arbitration with policy |
+| F | Same-recompute telemetry fallback after workshop SKIP | Bypasses publication-policy rejection |
 
 ## RECOMMENDED OPTION (handoff architecture — partial)
 
 **Assessment:** Option D — after successful REST measurement persist in `BatteryRestTargetEvaluateHandler`, enqueue `BATTERY_ASSESSMENT_RECOMPUTE` via existing producer infrastructure. Extend `reconcilePendingAssessments()` to include canonical REST measurements without recent assessment.
 
-**Publication:** Option C hybrid — after assessment persist, enqueue publication job(s) per **deterministic assessment-selection authority** (SPEC REQUIRED). `BatteryPublicationService` evaluates policy per job. Reconciliation safety net for missed handoffs.
+**Publication:** Option C hybrid — after assessment persist, enqueue publication job per **D4 deterministic assessment-selection authority**. `BatteryPublicationService` evaluates policy per job. Reconciliation safety net for missed handoffs.
 
-**Not settled:** which assessment(s) receive publication enqueue when recompute yields multiple tracks.
+**Settled (D4):** when recompute yields multiple tracks, exactly one assessment receives publication enqueue — `WORKSHOP_OVERRIDE` when both present and workshop currently eligible; else `TELEMETRY`.
 
 ## REST HANDLER CRASH BOUNDARY (PKG-01 — VALIDATED D2)
 
@@ -285,7 +323,7 @@ Until `publicationVersion` source is authoritative for canonical handoff, PKG-02
 | Module | Role |
 |--------|------|
 | `battery-rest-target-evaluate.handler.ts` | Enqueue assessment after measurement persist |
-| `battery-assessment-recompute.handler.ts` | Candidate publication handoff after deterministic assessment-selection authority (SPEC REQUIRED; new) |
+| `battery-assessment-recompute.handler.ts` | Candidate publication handoff after D4 deterministic assessment-selection authority (new — not implemented) |
 | `battery-v2-reconciliation.service.ts` | Canonical measurement scan + publication reconcile |
 | `BatteryV2JobProducerService` | Shared enqueue (`enqueue('BATTERY_ASSESSMENT_RECOMPUTE' \| 'BATTERY_PUBLICATION_UPDATE', ...)`) |
 | `BatteryV2SnapshotIngestionService.enqueueLvAssessmentRecompute()` | Reference pattern for assessment enqueue (private) |
@@ -387,7 +425,7 @@ Phase 4 options A–D (`CONFIGURATION_INVARIANT_SPEC_REQUIRED`) are **superseded
 |-------|---------|
 | M0 | Current — legacy + REST_SHADOW scaffold |
 | M1 | PKG-01 implementation (D1/D2/D3) — no legacy/REST_SHADOW removal |
-| M2 | PKG-02 after D4/D5 — publication chain; PUBLICATION OFF where needed |
+| M2 | PKG-02 after D5 — publication chain; D4 track authority VALIDATED; PUBLICATION OFF where needed |
 | M3 | Validation/soak — dual-producer overlap observation; shadow decoupling **not** required until M4 prep |
 | M4 | Single-authority cutover — **separate authorization required**; shadow semantics decoupled; legacy + REST_SHADOW removed |
 
@@ -511,8 +549,7 @@ Does not enable readiness; does not fix timestamp provenance; does not fix HEV a
 
 ## OPEN QUESTIONS
 
-- **Canonical publication assessment-track selection authority** (WORKSHOP_OVERRIDE vs TELEMETRY when both publicationEligible) — **D4**
-- Authoritative `publicationVersion` for canonical handoff — **D5**
+- Authoritative `publicationVersion` for canonical handoff — **D5** (only remaining PKG-02 architecture blocker)
 - Exact reconcile cadence vs #1445 reconciliation load
 - Org-scoped rollout targeting (if desired) — **SPEC REQUIRED**; not available via current flags
 

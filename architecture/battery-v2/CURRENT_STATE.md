@@ -1,15 +1,15 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-02 (D3 single-authority precision pass)  
-**Graph:** 134 nodes / 119 edges / 11 invariants (validated 2026-09-02)  
-**Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 3 VALIDATED PKG-01 spec decisions (D1, D2, D3)
+**Snapshot date:** 2026-09-02 (D4 publication-track authority)  
+**Graph:** 138 nodes / 129 edges / 11 invariants (validated 2026-09-02)  
+**Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 4 VALIDATED PKG spec decisions (D1, D2, D3, D4)
 
 ## Executive summary
 
 Battery V2 authority is substantially reconstructed (Phase 2–3) and Phase 4 defines **how to resolve** remaining gaps without implementing runtime fixes. Highest-priority work: **LV publication chain handoffs** (P0_ACTIVATION_BLOCKER — Stage-2 cutover blockers, **not** proven active production incidents while flags default OFF).
 
 - **PKG-01:** **`IMPLEMENTATION_READY`** — D1 (`inputVersion`), D2 (crash-boundary Hybrid C+), D3 (single-authority configuration invariant) all **VALIDATED**. `IMPLEMENTATION_READY` ≠ activation-ready ≠ cutover-ready ≠ `PRODUCTION_VALIDATED`. Runtime implementation requires **separate explicit authorization**. Legacy/REST_SHADOW retirement **not** authorized by PKG-01 readiness.
-- **PKG-02:** **`IMPLEMENTATION_SPEC_REQUIRED`** — remaining blockers: **D4** assessment-track publication authority, **D5** `publicationVersion` authority only.
+- **PKG-02:** **`IMPLEMENTATION_SPEC_REQUIRED`** — remaining blocker: **D5** `publicationVersion` authority only. **D4** assessment-track publication authority **VALIDATED**.
 
 **Target architecture (D3):** canonical V2 REST + assessment handoff + assessment = mandatory core; `BATTERY_V2_PUBLICATION_ENABLED` = **target** customer effect gate (current runtime still couples PUBLICATION OFF → `isLvRestShadowModeActive` shadow semantics — M4 retirement surface); `REST_SHADOW` + legacy REST = **temporary migration scaffolds** until M4. `BATTERY_V2_LV_HANDOFF_ENABLED` = **NOT INTRODUCED**. M1–M3 may have temporary legacy + canonical dual assessment triggers.
 
@@ -34,7 +34,7 @@ P0 tier = **P0_ACTIVATION_BLOCKER** for LV handoff gaps (flags default OFF).
 | `BAT-V2-HYP-POST-1445-SOAK-001` | **AWAITING** — natural soak protocol defined; smoke tranche only |
 | PR #1488 (merged `b8501bfd`) | Phase 3 authority — documentation only |
 | Phase 4 (this branch) | Resolution planning — **not** runtime validation |
-| D1/D2/D3 | **VALIDATED** architecture authority — **not** `PRODUCTION_VALIDATED`; **no M4 cutover authorized** |
+| D1/D2/D3/D4 | **VALIDATED** architecture authority — **not** `PRODUCTION_VALIDATED`; **no M4 cutover authorized** |
 
 ## Phase 4 planning outputs
 

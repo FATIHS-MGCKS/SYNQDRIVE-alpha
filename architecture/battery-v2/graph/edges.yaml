@@ -125,6 +125,32 @@ edges:
     to: BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001
     notes: D3 operationalizes D1/D2 under single-authority target architecture
 
+  # D4 — LV publication assessment-track authority (PKG-02 spec closure)
+  - from: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
+    relation: refines
+    to: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
+    notes: Closes PKG-02 assessment-track selection blocker; publicationVersion D5 remains
+  - from: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
+    relation: refines
+    to: BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
+    notes: Selection authority only — runtime handoff gap remains open
+  - from: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
+    relation: refines
+    to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
+    notes: Track authority spec only — e2e chain gap remains open
+  - from: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
+    relation: refines
+    to: BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001
+    notes: D4 operationalizes publication handoff candidate selection under D3 target architecture
+  - from: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
+    relation: refines
+    to: BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001
+    notes: Track selection applies after D1-identified assessment persist path
+  - from: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
+    relation: refines
+    to: BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001
+    notes: Track selection applies on current recompute boundary consistent with D2 recovery model
+
   # Failed → superseded by decisions / liveness
   - from: BAT-V2-DEC-1445-001
     relation: does_not_solve
@@ -381,6 +407,18 @@ edges:
   - from: BAT-V2-EVID-AUDIT-PUBLICATION-ENQUEUE-ABSENCE-001
     relation: supports
     to: BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
+  - from: BAT-V2-EVID-CODE-LV-AUTO-DUAL-TRACK-001
+    relation: supports
+    to: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
+  - from: BAT-V2-EVID-CODE-LV-WORKSHOP-FRESHNESS-REJECT-001
+    relation: supports
+    to: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
+  - from: BAT-V2-EVID-CODE-LV-FIND-LATEST-NO-TRACK-001
+    relation: supports
+    to: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
+  - from: BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001
+    relation: supports
+    to: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
   - from: BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
     relation: refines
     to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001

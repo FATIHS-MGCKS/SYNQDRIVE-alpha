@@ -50,7 +50,7 @@ What must be true before Stage-2+ flags go ON in production.
 
 | Gate | Requires |
 |------|----------|
-| **Stage-2 LV e2e** | PKG-01 + PKG-02 implemented; PKG-01 **IMPLEMENTATION_READY** (D1/D2/D3); PKG-02 **IMPLEMENTATION_SPEC_REQUIRED** (D4 + D5 only); separate runtime implementation authorization; M4 cutover **not** authorized by D3 |
+| **Stage-2 LV e2e** | PKG-01 + PKG-02 implemented; PKG-01 **IMPLEMENTATION_READY** (D1/D2/D3); PKG-02 **IMPLEMENTATION_SPEC_REQUIRED** (D5 only — D4 VALIDATED); separate runtime implementation authorization; M4 cutover **not** authorized by D3 |
 | **Stage-2 canary** | **Canary deployment/environment** — not per-org process.env flags (org allowlist **SPEC REQUIRED** if desired) |
 | **Strict timestamp policy (optional)** | PKG-03 decision + migration **before** Stage-2 if selected as safety policy |
 | **HEV write-gate changes** | PKG-05 product decision — not Phase 4 |

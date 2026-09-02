@@ -248,7 +248,7 @@ This is **TEMPORARY MIGRATION DUAL-PRODUCER / DUAL-COMPUTE** — **not** accepte
 |-------|------|-------|
 | **M0** | CURRENT | Legacy available; canonical V2 REST behind REST_SHADOW; runtime handoffs not yet implemented |
 | **M1** | V2 CORE IMPLEMENTATION | PKG-01 per D1/D2; **no** legacy removal; **no** REST_SHADOW removal; **no** HANDOFF flag |
-| **M2** | V2 PUBLICATION CHAIN | PKG-02 after D4/D5; exercise REST→Assessment→Publication policy; PUBLICATION OFF where customer effect suppressed; legacy remains fallback |
+| **M2** | V2 PUBLICATION CHAIN | PKG-02 after D5 (D4 VALIDATED); exercise REST→Assessment→Publication policy; PUBLICATION OFF where customer effect suppressed; legacy remains fallback |
 | **M3** | V2 VALIDATION / SOAK | REST, D1 identity, D2 recovery, reconciliation, concurrency, policy outcomes, publication policy, load, profiles — **no invented PRODUCTION_VALIDATED** |
 | **M4** | SINGLE-AUTHORITY CUTOVER | **Separate future runtime authorization** — retire legacy + REST_SHADOW; V2 sole authority; PUBLICATION remains effect gate |
 
@@ -264,7 +264,7 @@ Minimum preconditions:
 - PKG-02 implemented  
 - D1 contract implemented  
 - D2 contract implemented  
-- D4 assessment-track publication authority resolved  
+- D4 assessment-track publication authority **VALIDATED** (`BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001`)  
 - D5 `publicationVersion` authority resolved  
 - **M4 shadow-semantics decoupling** — evidence-backed removal/replacement of `isLvRestShadowModeActive()` publication coupling before REST_SHADOW physical removal  
 - Graph/runtime tests PASS  
@@ -310,7 +310,7 @@ Do **not** retain legacy indefinitely solely for hypothetical runtime rollback.
 ## EXPECTED_EFFECT
 
 - PKG-01 promoted to `IMPLEMENTATION_READY` (not activation/cutover ready)  
-- PKG-02 configuration invariant resolved; remains `IMPLEMENTATION_SPEC_REQUIRED` (D4 + D5 only)  
+- PKG-02 configuration invariant resolved; remains `IMPLEMENTATION_SPEC_REQUIRED` (D5 only)  
 - Runtime agents implement V2 core without introducing HANDOFF flag  
 - Cutover/removal deferred to explicit M4 authorization
 
