@@ -129,7 +129,7 @@ edges:
   - from: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
     relation: refines
     to: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
-    notes: Closes PKG-02 assessment-track selection blocker; publicationVersion D5 remains
+    notes: Closes PKG-02 assessment-track selection blocker; D5 publicationVersion VALIDATED
   - from: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
     relation: refines
     to: BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
@@ -150,6 +150,40 @@ edges:
     relation: refines
     to: BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001
     notes: Track selection applies on current recompute boundary consistent with D2 recovery model
+
+  # D5 — LV publication version authority (PKG-02 spec closure)
+  - from: BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001
+    relation: refines
+    to: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
+    notes: Closes PKG-02 publicationVersion blocker; PKG-02 IMPLEMENTATION_READY
+  - from: BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001
+    relation: refines
+    to: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
+    notes: D5 publication contract generation orthogonal to D4 track authority
+  - from: BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001
+    relation: refines
+    to: BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
+    notes: Version authority spec only — runtime handoff gap remains open
+  - from: BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001
+    relation: refines
+    to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
+    notes: Version authority + payload validation finding documented — e2e chain gap remains open
+  - from: BAT-V2-EVID-CODE-LV-PUBLICATION-VERSION-DEFAULT-001
+    relation: supports
+    to: BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001
+  - from: BAT-V2-EVID-CODE-LV-PUBLICATION-POLICY-VERSION-SEPARATE-001
+    relation: supports
+    to: BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001
+  - from: BAT-V2-EVID-CODE-PUBLICATION-PAYLOAD-VALIDATION-DROP-001
+    relation: supports
+    to: BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001
+  - from: BAT-V2-EVID-CODE-PUBLICATION-PAYLOAD-VALIDATION-DROP-001
+    relation: supports
+    to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
+    notes: Producer validation strips publication fields — PKG-02 must fix
+  - from: BAT-V2-EVID-CODE-LV-PUBLICATION-VERSION-DEFAULT-001
+    relation: supports
+    to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
 
   # Failed → superseded by decisions / liveness
   - from: BAT-V2-DEC-1445-001

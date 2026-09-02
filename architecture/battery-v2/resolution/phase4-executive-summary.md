@@ -1,7 +1,7 @@
 # Phase 4 Executive Summary
 
-**Date:** 2026-09-02 (D4 publication-track authority decision)  
-**Verdict:** Phase 4 planning complete — gaps remain open; PKG-01 **IMPLEMENTATION_READY** (D1/D2/D3); PKG-02 awaits D5 only (D4 VALIDATED)
+**Date:** 2026-09-02 (D5 LV publication version authority)  
+**Verdict:** Phase 4 planning complete — gaps remain open; PKG-01 **IMPLEMENTATION_READY** (D1/D2/D3); PKG-02 **IMPLEMENTATION_READY** (D4/D5 VALIDATED)
 
 ## Planning accounting
 
@@ -15,8 +15,7 @@
 ## DO NOW (highest leverage — documentation / validation only)
 
 1. **PKG-09** — Execute post-#1445 natural soak (initial smoke tranche — not strong validation)
-2. **Implementation authorization gate** — PKG-01 **IMPLEMENTATION_READY** (D1/D2/D3 VALIDATED); obtain **separate runtime implementation authorization** before coding. PKG-02 remains **IMPLEMENTATION_SPEC_REQUIRED** (D5 `publicationVersion` only — D4 VALIDATED)
-3. **Runtime implementation** — PKG-01 + PKG-02 code changes require **separate explicit authorization** after full spec sign-off. **Phase-4 documentation merge is not runtime authorization.**
+2. **Implementation authorization gate** — PKG-01 + PKG-02 **IMPLEMENTATION_READY** (D1–D5 VALIDATED); obtain **separate runtime implementation authorization** before coding. **Phase-4 documentation merge is not runtime authorization.**
 
 ## VALIDATE NOW (no runtime change)
 
@@ -30,9 +29,8 @@
 1. **HEV canonical model** — Option A direction (LV canonical; D1/D2/D3 layering) — DECISION_NOT_READY
 2. **Timestamp provenance enum** — approve PKG-03 target model (measurement only; not session opening)
 3. **Stage 2 cutover policy** — M4 single-authority cutover requires explicit authorization (D3); **not** authorized by documentation merge
-4. **PKG-02 publicationVersion** — authoritative source for canonical handoff (**D5** — only remaining PKG-02 architecture blocker)
-5. **Provider VLS SOH gap** — **RECOMMENDED/PROPOSED:** retain current non-decision-fresh VLS-only semantics unless product authority requires decision-capable VLS SOH (separate spec) — **DECISION_REQUIRED**, pending sign-off; not PKG-04
-6. **Canary scope** — deployment/environment isolation; org allowlist **SPEC REQUIRED** if desired
+4. **Provider VLS SOH gap** — **RECOMMENDED/PROPOSED:** retain current non-decision-fresh VLS-only semantics unless product authority requires decision-capable VLS SOH (separate spec) — **DECISION_REQUIRED**, pending sign-off; not PKG-04
+5. **Canary scope** — deployment/environment isolation; org allowlist **SPEC REQUIRED** if desired
 
 ## DEFER
 
@@ -74,7 +72,7 @@
 
 ## Top 5 next actions
 
-1. Authorize PKG-01 runtime implementation (spec complete: D1/D2/D3) **and** resolve PKG-02 blocker (**D5**) before PKG-02 implementation
+1. Authorize PKG-01 + PKG-02 runtime implementation (specs complete: D1–D5)
 2. Obtain **separate runtime implementation authorization** for PKG-01 + PKG-02 (Phase-4 merge alone does not authorize)
 3. Run PKG-09 initial smoke tranche (≥10 trips / 14 days — not strong validation; profile-stratified)
 4. Product decision on HEV Option A layering (DECISION_NOT_READY)

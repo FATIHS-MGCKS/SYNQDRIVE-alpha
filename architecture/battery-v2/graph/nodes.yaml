@@ -190,8 +190,8 @@ nodes:
       Hybrid direct enqueue + reconciliation safety net for canonical REST → assessment → publication.
       Assessment: buildAssessmentJobIdempotencyKey (assess: prefix); PKG-01 IMPLEMENTATION_READY (D1/D2/D3).
       Publication: BATTERY_PUBLICATION_UPDATE after deterministic assessment-selection authority (D4 VALIDATED);
-      policy in BatteryPublicationService only; buildPublicationJobIdempotencyKey; PKG-02 blocker —
-      publicationVersion D5 SPEC REQUIRED only.
+      publicationVersion authority closed by D5 (LV_PUBLICATION_CONTRACT_VERSION = 1); policy in
+      BatteryPublicationService only; buildPublicationJobIdempotencyKey; PKG-02 IMPLEMENTATION_READY.
       Multi-track recompute (WORKSHOP_OVERRIDE + TELEMETRY) requires track authority — not "publish every assessment".
       Configuration invariant closed BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001 (D3): single-authority target; REST_SHADOW
       and legacy are temporary migration scaffolds; BATTERY_V2_LV_HANDOFF_ENABLED NOT INTRODUCED; PUBLICATION retained
@@ -271,7 +271,8 @@ nodes:
       BATTERY_V2_PUBLICATION_ENABLED retained as customer/publication effect gate at target — current runtime still
       couples PUBLICATION OFF to isLvRestShadowModeActive shadow semantics (compatibility-era, M4 retirement surface).
       M1-M3 temporary dual-producer/dual-compute overlap when REST_SHADOW ON + PUBLICATION OFF. M4 requires shadow
-      semantics decoupling before REST_SHADOW removal. PKG-01 IMPLEMENTATION_READY; PKG-02 D5 only remains. NOT
+      semantics decoupling before REST_SHADOW removal. PKG-01 IMPLEMENTATION_READY; PKG-02 IMPLEMENTATION_READY
+      (D5 VALIDATED). NOT
       PRODUCTION_VALIDATED; does not authorize cutover.
     source_paths:
       - architecture/battery-v2/decisions/lv-single-authority-cutover-decision.md
@@ -304,7 +305,7 @@ nodes:
       when policy permits. D4 recompute epoch != publication authority epoch. Current shouldPersistPublication =
       firstPublication||valueChanged only — authority epoch gap. UNKNOWN previousTrack = discontinuity; current
       track must be known for successful canonical publication. BatteryPublicationService remains sole
-      publication-policy authority. PKG-02 IMPLEMENTATION_SPEC_REQUIRED (D5 only); D4 runtime not implemented.
+      publication-policy authority. PKG-02 IMPLEMENTATION_READY (D5 VALIDATED); D4/D5 runtime not implemented.
       NOT PRODUCTION_VALIDATED.
     source_paths:
       - architecture/battery-v2/decisions/lv-publication-track-authority-decision.md
@@ -327,7 +328,39 @@ nodes:
       - Does not implement track selector or publication enqueue
       - Does not close BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
       - Does not close BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
-      - Does not resolve D5 publicationVersion
+      - No migration, flags, backfill, deploy, or production mutation
+
+  - id: BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001
+    type: decision
+    title: LV publication version authority (D5)
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: >
+      publicationVersion = numeric LV publication contract generation (LV_PUBLICATION_CONTRACT_VERSION = 1).
+      Job identity pub:{assessmentId}:v1 via buildPublicationJobIdempotencyKey. Distinct from job envelope
+      modelVersion, assessment modelVersion, and LV_PUBLICATION_POLICY_VERSION semver (decision.policyVersion).
+      Not a sequence counter, retry attempt, D4 track epoch, or policy semver mapping. Canonical PKG-02 producers
+      must explicitly supply contract version before enqueue — repository ?? 1 is compatibility fallback only.
+      Same assessmentId + same contract generation converges direct/retry/reconcile on same pub identity.
+      validateBatteryV2JobPayload default branch strips BATTERY_PUBLICATION_UPDATE assessmentId/publicationVersion
+      at producer boundary — PKG-02 must add strict validation. PKG-02 IMPLEMENTATION_READY; runtime gaps remain open.
+      NOT PRODUCTION_VALIDATED.
+    source_paths:
+      - architecture/battery-v2/decisions/lv-publication-version-authority-decision.md
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-idempotency.policy.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job.validation.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-producer.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-publication-update.handler.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-publication.repository.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-publication-thresholds.ts
+    evidence:
+      - BAT-V2-EVID-CODE-LV-PUBLICATION-VERSION-DEFAULT-001
+      - BAT-V2-EVID-CODE-LV-PUBLICATION-POLICY-VERSION-SEPARATE-001
+      - BAT-V2-EVID-CODE-PUBLICATION-PAYLOAD-VALIDATION-DROP-001
+    non_effects:
+      - Does not implement publication enqueue or payload validation fix
+      - Does not close BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
+      - Does not close BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
       - No migration, flags, backfill, deploy, or production mutation
 
   # --- Gaps ---
@@ -581,11 +614,14 @@ nodes:
     summary: >
       Umbrella gap: both canonical assessment handoff and publication handoff missing in normal pipeline.
       Enabling publication flag alone does not establish automatic canonical REST → assessment → publication
-      chain due to legacy-cutover interaction. See BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001 and
-      BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001.
+      chain due to legacy-cutover interaction. D5 closes publicationVersion authority but central producer
+      validateBatteryV2JobPayload strips BATTERY_PUBLICATION_UPDATE assessmentId/publicationVersion today —
+      PKG-02 must preserve fields at validation boundary. See BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
+      and BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001.
     evidence:
       - BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001
       - BAT-V2-EVID-AUDIT-PUBLICATION-ENQUEUE-ABSENCE-001
+      - BAT-V2-EVID-CODE-PUBLICATION-PAYLOAD-VALIDATION-DROP-001
 
   - id: BAT-V2-GAP-HV-PIPELINE-ALLOWED-DEAD-001
     type: gap
@@ -1561,6 +1597,55 @@ nodes:
       publication significance when policy permits; not implemented in current runtime.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-publication.policy.ts
+
+  - id: BAT-V2-EVID-CODE-LV-PUBLICATION-VERSION-DEFAULT-001
+    type: evidence
+    title: Repository defaults publicationVersion to 1 when payload omits field
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      battery-publication.repository.ts persistLvPublication: const version = input.publicationVersion ?? 1;
+      builds idempotencyKey via buildPublicationJobIdempotencyKey({ assessmentId, publicationVersion: version });
+      persists BatteryPublication.version. Prisma BatteryPublication.version Int @default(1). Compatible with D5
+      initial contract generation 1 but repository is too late to invent canonical BullMQ identity — PKG-02
+      producers must explicitly supply LV_PUBLICATION_CONTRACT_VERSION before enqueue.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-publication.repository.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-idempotency.policy.ts
+      - backend/prisma/schema.prisma
+
+  - id: BAT-V2-EVID-CODE-LV-PUBLICATION-POLICY-VERSION-SEPARATE-001
+    type: evidence
+    title: LV_PUBLICATION_POLICY_VERSION semver separate from publication contract Int version
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      lv-publication-thresholds.ts LV_PUBLICATION_POLICY_VERSION = '1.0.0' with comment bump when publication
+      gates or hysteresis change. Returned as decision.policyVersion and stored in BatteryPublication reason
+      payload — semantic policy provenance. BatteryPublication.version is Int; handler uses Number(publicationVersion).
+      Number('1.0.0') is not valid integer contract — D5 rejects mapping policy semver into publicationVersion.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-publication-thresholds.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-publication-update.handler.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-publication.repository.ts
+
+  - id: BAT-V2-EVID-CODE-PUBLICATION-PAYLOAD-VALIDATION-DROP-001
+    type: evidence
+    title: validateBatteryV2JobPayload strips BATTERY_PUBLICATION_UPDATE-specific fields at producer
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      battery-v2-job.validation.ts switch handles OBSERVATION_CLASSIFY, LV_REST_SESSION_OPEN, REST_TARGET_EVALUATE,
+      START_PROXY_EXTRACT only; default returns base as BatteryV2JobPayload — assessmentId and publicationVersion
+      not copied. BatteryV2JobProducerService.enqueue uses validated payload before queue.add. Handler missing
+      assessmentId skips publication. battery-v2-job.validation.spec.ts tests BATTERY_PUBLICATION_UPDATE for base
+      fields only — no publication-specific preservation assertions. Production impact UNKNOWN (automatic handoff absent).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job.validation.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-producer.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job.types.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-publication-update.handler.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job.validation.spec.ts
 
   - id: BAT-V2-EVID-CODE-HEV-SIDE-EFFECT-READ-DIVERGENCE-001
     type: evidence

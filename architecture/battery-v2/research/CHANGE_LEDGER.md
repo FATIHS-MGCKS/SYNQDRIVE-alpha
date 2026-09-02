@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-02 — D5 LV publication version authority
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Publication job key accepted `publicationVersion` but canonical source undefined; repository defaulted to `1`; policy semver `1.0.0` coexisted with Int `BatteryPublication.version` without explicit separation; central producer validation stripped publication-specific fields. |
+| **OBSERVATION** | `buildPublicationJobIdempotencyKey` → `pub:{assessmentId}:v{publicationVersion}`; DB `version Int @default(1)`; `LV_PUBLICATION_POLICY_VERSION = '1.0.0'` separate from contract; no central `LV_PUBLICATION_CONTRACT_VERSION`; `validateBatteryV2JobPayload` default branch drops `assessmentId`/`publicationVersion` for `BATTERY_PUBLICATION_UPDATE`. |
+| **HYPOTHESIS** | Numeric publication contract generation (initial `1`) provides deterministic direct/retry/reconciliation identity without mutable counters or policy/assessment semver coupling. |
+| **CHANGE** | Select `publicationVersion = LV_PUBLICATION_CONTRACT_VERSION = 1`; document version taxonomy; reject policy semver mapping; PKG-02 promoted to `IMPLEMENTATION_READY`; payload validation field-loss documented for PKG-02 runtime. |
+| **WHY** | Job idempotency identity must be known before enqueue; same assessment + same contract generation must converge on same `pub:` identity. |
+| **EXPECTED_EFFECT** | PKG-02 implements explicit contract version + strict publication payload validation; no further PKG-02 architecture blockers unless new decision discovered. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh` |
+| **OBSERVED_EFFECT** | Validator PASS; graph 146 nodes / 142 edges (was 142/133). |
+| **NON_EFFECTS** | No runtime implementation; no publication enqueue; no validation runtime fix; no database migration; no feature flag change; no production mutation; no backfill; no deploy; no M4 cutover; no publication enablement; no production validation; runtime gaps remain open. |
+| **REGRESSIONS_OR_TRADEOFFS** | Future contract bump `1→2` requires explicit migration/replay governance — not automatic |
+| **REMAINING_GAPS** | All 20 `BAT-V2-GAP-*` open including handoff and job-chain gaps |
+| **DECISION_STATUS** | VALIDATED (NOT PRODUCTION_VALIDATED) |
+| **AFFECTED_GRAPH** | +1 decision (D5), +3 evidence nodes, +9 edges; refined GAP-JOB-CHAIN |
+| **EVIDENCE** | `BAT-V2-EVID-CODE-LV-PUBLICATION-VERSION-DEFAULT-001`, `BAT-V2-EVID-CODE-LV-PUBLICATION-POLICY-VERSION-SEPARATE-001`, `BAT-V2-EVID-CODE-PUBLICATION-PAYLOAD-VALIDATION-DROP-001` |
+
 ## CL-2026-09-02 — D4 final closure (publication authority epoch + UNKNOWN→known)
 
 | Field | Content |
