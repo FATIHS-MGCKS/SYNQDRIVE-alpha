@@ -240,6 +240,7 @@
       "interval": "1s"
     },
     "notRawPhysicalSample": true,
+    "generatedEvidenceValueSource": "COMPUTED_FROM_SEALED_RAW_DATA",
     "perFieldSummary": {
       "speed": {
         "hfAggregateBucketRows": 71,
@@ -349,6 +350,7 @@
     "RD002": "NOT_PLANNED_BY_PROTOCOL",
     "RD003": "PLANNED_VIDEO_GT"
   },
+  "generatedEvidenceValueSource": "COMPUTED_FROM_SEALED_RAW_DATA",
   "verdicts": {
     "REFERENCE_DRIVE_002_CAPTURE": "COMPLETED",
     "MOTION_CANARY_COMPLETED": "YES",

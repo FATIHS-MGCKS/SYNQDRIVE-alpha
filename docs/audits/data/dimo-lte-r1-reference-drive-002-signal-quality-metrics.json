@@ -1,9 +1,10 @@
 {
   "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_002",
   "sessionId": "e095d273-eb03-4bc9-aa2b-d0d709abd9bc",
-  "generatedAt": "2026-09-02T15:31:55.298Z",
-  "methodologyVersion": "2026-09-02-rd002-motion-hf-v2",
+  "generatedAt": "2026-09-02T16:47:18.240Z",
+  "methodologyVersion": "2026-09-02-rd002-motion-hf-v3-computed",
   "referenceCaptureRuntimeChanged": false,
+  "generatedEvidenceValueSource": "COMPUTED_FROM_SEALED_RAW_DATA",
   "hfAggregationSemantics": {
     "HF_AGGREGATION_SEMANTICS": "CONFIRMED_FROM_CODE_AND_PROVIDER_SOURCE",
     "hfPhysicalIdentityVersion": "AGGREGATE_BUCKET_V2",
@@ -22,6 +23,7 @@
       "interval": "1s"
     },
     "notRawPhysicalSample": true,
+    "generatedEvidenceValueSource": "COMPUTED_FROM_SEALED_RAW_DATA",
     "perFieldSummary": {
       "speed": {
         "hfAggregateBucketRows": 71,
