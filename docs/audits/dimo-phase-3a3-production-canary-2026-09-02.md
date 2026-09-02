@@ -197,4 +197,30 @@ Disposable session — **not** RD002.
 
 ## Next required step
 
-**CONTROLLED_MOTION_HF_CANARY_WOB_L_7503** — vehicle owner must deliberately drive under safe conditions. Canonical deploy provenance now verified at `f00a49394`. Install durable VPS GitHub read credentials for unattended future deploys. RD002 remains blocked until motion HF evidence passes.
+~~**CONTROLLED_MOTION_HF_CANARY_WOB_L_7503**~~ — **COMPLETED** as RD002 on KS MX 2024 (DI-EV-0023, 2026-09-02). See amendment below.
+
+---
+
+## Amendment — RD002 motion HF canary (2026-09-02)
+
+**Supersedes** stationary-canary `PHASE_3A3_2_PRODUCTION_VALIDATED=NO` for motion validation purposes.
+
+| Item | Value |
+|------|-------|
+| Reference drive | `DIMO_LTE_R1_REFERENCE_DRIVE_002` |
+| Session | `e095d273-eb03-4bc9-aa2b-d0d709abd9bc` |
+| Vehicle | KS MX 2024 (Mercedes C 63 AMG) — owner-authorized vehicle substitution |
+| Cycles | 351 |
+| HF_HISTORICAL | **355** rows (`AGGREGATE_BUCKET_V2`) |
+| Duplicate fingerprints | **0** |
+| FAST GO | READY_TO_DRIVE **1949 ms** |
+| Sealed export SHA | `ad2d9c29…` |
+
+| Flag | Updated result |
+|------|----------------|
+| `PHASE_3A3_2_PRODUCTION_VALIDATED` | **YES** |
+| `MOTION_CANARY_COMPLETED` | **YES** |
+| `COMBINED_3A3_CANARY_PASSED` | **YES** |
+| `READY_FOR_RD003` | **YES** |
+
+Full report: `docs/audits/dimo-lte-r1-reference-drive-002-capture-report-2026-09-02.md` (DI-EV-0023).

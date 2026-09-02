@@ -924,7 +924,7 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 `PHASE_3A3_1_CODE_READY=YES` · `PHASE_3A3_1_PRODUCTION_VALIDATED=YES` (DI-EV-0022: READY_TO_DRIVE in 1321 ms)
 
 ### Phase 3A.3.2 — HF watermark + aggregate fingerprint remediation
-**Status:** **CODE READY** (2026-09-02) · **motion HF production canary PENDING** (stationary cutover DI-EV-0022)
+**Status:** **PRODUCTION VALIDATED** (2026-09-02) · DI-EV-0023 (RD002 motion HF canary)
 
 **Problem:** HF watermark advanced on request wall-clock even when zero rows returned; RD001 exact-window replay confirmed **39** field×bucket observations (`8` unique bucket intervals) permanently excluded by 2s overlap (`HF_LATE_ARRIVAL_RUNTIME_SKIP=CONFIRMED_FROM_RUNTIME`). `physicalSampleFingerprint` incorrectly included `normalizedValue`.
 
@@ -936,18 +936,32 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 - **Audit:** `docs/audits/dimo-phase-3a32-hf-watermark-aggregate-identity-remediation-2026-09-02.md` (DI-EV-0021)
 
 `HF_WATERMARK_REMEDIATION_REQUIRED=IMPLEMENTED` · `PHYSICAL_SAMPLE_FINGERPRINT_REMEDIATION_REQUIRED=IMPLEMENTED`
-`PHASE_3A3_2_CODE_READY=YES` · `PHASE_3A3_2_PRODUCTION_VALIDATED=NO` (stationary canary 2026-09-02 — HF_HISTORICAL=0; motion pending — DI-EV-0022)
+`PHASE_3A3_2_CODE_READY=YES` · `PHASE_3A3_2_PRODUCTION_VALIDATED=YES` (RD002 session `e095d273-…`: 355 HF_HISTORICAL, AGGREGATE_BUCKET_V2, 0 duplicate fingerprints — DI-EV-0023)
 
-### RD002 gate (canonical — all locations must agree)
+### RD002 — Motion HF canary (COMPLETE)
 
-**RD002 is NOT permitted until all of:**
+**Status:** **COMPLETED** (2026-09-02) · DI-EV-0023
+
+| Field | Value |
+|-------|-------|
+| Vehicle | KS MX 2024 (Mercedes C 63 AMG) |
+| Session | `e095d273-eb03-4bc9-aa2b-d0d709abd9bc` |
+| `MOTION_CANARY_COMPLETED` | **YES** |
+| `VIDEO_GROUND_TRUTH` | **NOT_PLANNED_BY_PROTOCOL** |
+| `READY_FOR_RD003` | **YES** |
+
+**Next ground-truth-capable drive:** `DIMO_LTE_R1_REFERENCE_DRIVE_003` (video GT — not started).
+
+### RD002 gate (historical — satisfied 2026-09-02)
+
+**RD002 was NOT permitted until all of:**
 
 | Step | Requirement | Status |
 |------|-------------|--------|
 | A | `PHASE_3A3_1_FAST_PREARM_GO_REMEDIATION` implemented + verified | **PRODUCTION VALIDATED** (DI-EV-0022, 2026-09-02) |
-| B | `HF_WATERMARK_LATE_ARRIVAL_REMEDIATION` + `aggregateBucketFingerprint` terminology remediation | CODE READY; **production HF motion canary pending** |
-| C | Production/runtime canary proving A + B | **PARTIAL** — 3A.3.1 pass; 3A.3.2 stationary only (DI-EV-0022) |
-| D | `DIMO_LTE_R1_REFERENCE_DRIVE_002` with video Ground Truth | NOT STARTED |
+| B | `HF_WATERMARK_LATE_ARRIVAL_REMEDIATION` + `aggregateBucketFingerprint` terminology remediation | **IMPLEMENTED** (DI-EV-0021) |
+| C | Production/runtime canary proving A + B | **PASS** — RD002 motion HF (DI-EV-0023) |
+| D | `DIMO_LTE_R1_REFERENCE_DRIVE_002` | **COMPLETED** — video GT NOT_PLANNED_BY_PROTOCOL |
 
 **Production cutover (2026-09-02):** Migration applied; initial deploy `bf1be9b6b`; runner fix hot-patched then **canonical redeploy verified** at `f00a49394` (main post #1509) with post-deploy stationary smoke PASS. Audit: `docs/audits/dimo-phase-3a3-production-canary-2026-09-02.md` (DI-EV-0022, amended).
 
@@ -1306,13 +1320,15 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Phase 3A.1 Flight Recorder foundation | DONE | #1468 merged — `reference-capture` module + migrations |
 | Phase 3A.2 production deploy + runtime canary | DONE | Deploy + stationary LTE_R1 canary passed — session `e8613cc7-…`, 5 cycles, 52 obs |
 | Phase 3A.3 Reference Drive #001 capture + telemetry audit | DONE | Session `06638509-…` COMPLETED; HF active; video GT NOT_AVAILABLE |
-| Phase 3A DIMO LTE_R1 reference program | IN_PROGRESS | 3A.1+3A.2+3A.3 RD001 DONE; GT validation incomplete; RD002 required for video GT |
+| Phase 3A.3 Reference Drive #002 motion HF canary | DONE | Session `e095d273-…` COMPLETED; 3A.3.2 validated; video GT NOT_PLANNED |
+| Phase 3A DIMO LTE_R1 reference program | IN_PROGRESS | RD001+RD002 DONE; RD003 (video GT) authorized when owner ready |
 | Phase 3B DIMO Tesla Direct reference program | NOT_STARTED | `GATED_ON_TESLA_DIRECT_MANIFEST` |
 | Phase 3C DIMO Smart5 compatibility program | NOT_STARTED | `GATED_ON_SMART5_MANIFEST` |
 | Phase 3D High Mobility OEM reference program | NOT_STARTED | `GATED_ON_HIGH_MOBILITY_PROFILE_MANIFEST` |
 | Flight Recorder implementation (LTE_R1) | DONE (3A.1+3A.2) | `reference-capture` deployed + production canary validated |
 | Instrumented reference drive #001 (RD001) | DONE | Session `06638509-…` COMPLETED; telemetry audit available; video GT NOT_AVAILABLE |
-| RD002 (video Ground Truth) | **BLOCKED** | Requires 3A.3.1 FAST GO + 3A.3.2 HF watermark/fingerprint remediation + production canary |
+| RD002 (motion HF canary) | **DONE** | Session `e095d273-…` — DI-EV-0023; MOTION_CANARY_COMPLETED=YES |
+| RD003 (video Ground Truth) | **AUTHORIZED** | Owner may start when prepared; FAST GO workflow validated |
 | Evidence & documentation governance | DONE | `driving-intelligence-evidence-governance-2026-09-01.md` + registry seeded |
 | Ground-truth synchronization | NOT_STARTED | Phase 5 |
 | Detector validation | NOT_STARTED | Phase 6 |
@@ -1340,7 +1356,8 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 11. ~~**Execute Phase 3A.1–3A.2** (LTE R1) — Flight Recorder foundation + production canary.~~ **Done** — 3A.1 #1468 merged; 3A.2 production canary passed (`REFERENCE_DRIVE_READY=YES`).
 12. ~~**Execute Phase 3A.3 Reference Drive #001** — real-motion capture + STOP audit.~~ **Done** — capture COMPLETED; telemetry analysis available; video GT NOT_AVAILABLE.
 13. ~~**Execute Phase 3A.3.1 FAST PRE-ARM/GO remediation** — required before RD002.~~ **Done** — production validated (DI-EV-0022).
-14. **Phase 3A.3.2 HF watermark + aggregateBucketFingerprint remediation** — migration applied; **motion HF production canary** still required before RD002 (stationary partial only — DI-EV-0022).
+14. ~~**Phase 3A.3.2 HF watermark + aggregateBucketFingerprint remediation** — motion HF production canary.~~ **Done** — RD002 validated (DI-EV-0023).
+15. **Reference Drive #003** — video Ground Truth capture when owner authorizes.
 15. **Execute Reference Drive #002** — only after A+B+C gate; video Ground Truth required.
 16. **Execute Phase 2G:** Smart5 + Tesla Direct connection-variant audits + profile manifests → ungate 3B/3C when ready.
 17. **Execute Phase 2H:** High Mobility OEM/profile audit + manifests → ungate 3D when ready.
@@ -1401,10 +1418,12 @@ After the first instrumented `DIMO_LTE_R1` reference drive, require at minimum:
 | RD001 HF completeness forensic | **COMPLETE** (`RD001_HF_COMPLETENESS_FORENSIC`) |
 | Reference Drive #001 Ground Truth | **NOT_AVAILABLE** (video not captured) |
 | Phase 3A.3.1 FAST PRE-ARM/GO | **PRODUCTION VALIDATED** (DI-EV-0022, 2026-09-02) |
-| Phase 3A.3.2 HF watermark + fingerprint remediation | **CODE READY** — migration applied; motion HF canary pending |
-| Production canary (3A.3.1 + 3A.3.2) | **PARTIAL** — 3A.3.1 pass; 3A.3.2 stationary only (DI-EV-0022) |
-| Reference Drive #002 (video GT) | **BLOCKED** — gate A+B+C not satisfied |
-| `REFERENCE_DRIVE_READY` (telemetry infra) | **YES** — does **not** authorize RD002 without remediation gate |
+| Phase 3A.3.2 HF watermark + fingerprint remediation | **PRODUCTION VALIDATED** (DI-EV-0023, RD002) |
+| Production canary (3A.3.1 + 3A.3.2) | **PASS** — stationary (DI-EV-0022) + motion (DI-EV-0023) |
+| Reference Drive #002 (motion HF canary) | **DONE** — session `e095d273-…`; VIDEO_GROUND_TRUTH NOT_PLANNED_BY_PROTOCOL |
+| Reference Drive #003 (video GT) | **AUTHORIZED** — not started |
+| `REFERENCE_DRIVE_READY` (telemetry infra) | **YES** |
+| `READY_FOR_RD003` | **YES** |
 
 ---
 # 8. Agent Handoff Protocol

@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-rd002-motion-hf-canary-2026-09-02',
+    version: '4.9.1033',
+    title: 'Reference Drive #002 — Motion HF canary (KS MX 2024)',
+    summary: [
+      'RD002 session e095d273-… COMPLETED: 351 cycles, 3526 SIGNAL_POINT + 1 SESSION_METADATA.',
+      'HF_HISTORICAL 355 rows with AGGREGATE_BUCKET_V2; 0 duplicate physical_sample_fingerprint in session.',
+      'FAST GO READY_TO_DRIVE 1949ms; acquisition ingress gap 0.93s (no RD001 ARM defect).',
+      '29/29 preflight fields observed — C63 full parity with Aug 2026 inventory audit.',
+      'PHASE_3A3_2_PRODUCTION_VALIDATED=YES; MOTION_CANARY_COMPLETED=YES.',
+      'VIDEO_GROUND_TRUTH=NOT_PLANNED_BY_PROTOCOL; READY_FOR_RD003=YES.',
+      'Sealed export SHA ad2d9c29… at /opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-002/.',
+    ],
+    reason: 'Authorized motion HF production canary to validate 3A.3.2 watermark/V2 identity under real driving.',
+    previousBehavior: 'PHASE_3A3_2_PRODUCTION_VALIDATED=NO; RD002 blocked pending motion evidence.',
+    details:
+      'docs/audits/dimo-lte-r1-reference-drive-002-capture-report-2026-09-02.md; DI-EV-0023 through DI-EV-0026.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T13:20:00.000Z',
+  },
+  {
     id: 'dimo-phase-3a3-canonical-redeploy-smoke-2026-09-02',
     version: '4.9.1032',
     title: 'Phase 3A.3 — Canonical VPS redeploy + post-deploy stationary smoke',
