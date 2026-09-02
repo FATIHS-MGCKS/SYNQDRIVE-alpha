@@ -13,6 +13,10 @@ import { LvRestWindowState } from '../../battery-v2-domain';
 import { BatteryRestTargetEvaluationService } from '../../lv-rest-window/battery-rest-target-evaluation.service';
 import { measurementTypeForRestTarget } from '../../lv-rest-window/battery-rest-target-evaluation';
 import {
+  isCanonicalRestAssessmentHandoffEligible,
+} from '../../lv-rest-window/lv-rest-assessment-handoff.policy';
+import { LvRestAssessmentHandoffService } from '../../lv-rest-window/lv-rest-assessment-handoff.service';
+import {
   LV_REST_TARGET_JOB_STATUS,
   LV_REST_TARGET_TYPES,
   mergeLvRestTargetJobMetadata,
@@ -31,6 +35,7 @@ export class BatteryRestTargetEvaluateHandler
     private readonly prisma: PrismaService,
     private readonly evaluation: BatteryRestTargetEvaluationService,
     private readonly observability: BatteryV2JobObservabilityService,
+    private readonly assessmentHandoff: LvRestAssessmentHandoffService,
   ) {}
 
   async handle(payload: BatteryRestTargetEvaluatePayload): Promise<void> {
@@ -65,13 +70,23 @@ export class BatteryRestTargetEvaluateHandler
         metadataState.lvRestWindowState ?? null,
       ) ?? null;
 
-    const hasMeasurement = await this.hasTargetMeasurement(
+    const existingMeasurement = await this.findTargetMeasurement(
       payload.organizationId,
       session.id,
       restTargetType,
     );
 
-    if (hasMeasurement) {
+    if (existingMeasurement) {
+      if (isCanonicalRestAssessmentHandoffEligible(existingMeasurement)) {
+        await this.assessmentHandoff.ensureAssessmentHandoff({
+          organizationId: payload.organizationId,
+          vehicleId: payload.vehicleId,
+          sessionId: session.id,
+          restTargetType,
+          measurementId: existingMeasurement.id,
+          correlationPrefix: 'lv-rest-replay',
+        });
+      }
       await this.updateTargetMetadata(session, restTargetType, {
         status: LV_REST_TARGET_JOB_STATUS.COMPLETED,
         completedAt: new Date().toISOString(),
@@ -133,6 +148,18 @@ export class BatteryRestTargetEvaluateHandler
     }
 
     this.recordShadowMetrics(restTargetType, result.quality);
+
+    if (result.measurementId) {
+      await this.assessmentHandoff.ensureAssessmentHandoff({
+        organizationId: payload.organizationId,
+        vehicleId: payload.vehicleId,
+        sessionId: session.id,
+        restTargetType,
+        measurementId: result.measurementId,
+        correlationPrefix: 'lv-rest-direct',
+      });
+    }
+
     await this.updateTargetMetadata(session, restTargetType, {
       status: LV_REST_TARGET_JOB_STATUS.COMPLETED,
       completedAt: new Date().toISOString(),
@@ -186,20 +213,19 @@ export class BatteryRestTargetEvaluateHandler
     });
   }
 
-  private async hasTargetMeasurement(
+  private async findTargetMeasurement(
     organizationId: string,
     sessionId: string,
     restTargetType: typeof LV_REST_TARGET_TYPES.REST_60M | typeof LV_REST_TARGET_TYPES.REST_6H,
-  ): Promise<boolean> {
-    const existing = await this.prisma.batteryMeasurement.findFirst({
+  ) {
+    return this.prisma.batteryMeasurement.findFirst({
       where: {
         organizationId,
         sessionId,
         type: measurementTypeForRestTarget(restTargetType),
       },
-      select: { id: true, quality: true },
+      orderBy: { createdAt: 'desc' },
     });
-    return existing != null;
   }
 
   private shouldCancelForInvalidatedWindow(

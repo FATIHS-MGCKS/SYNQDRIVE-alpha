@@ -67,6 +67,7 @@ function buildHandlerAndReconciliation() {
     },
     batteryMeasurement: {
       findFirst: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
     },
     vehicleLatestState: { findMany: jest.fn().mockResolvedValue([]) },
     batteryFeatures: { findMany: jest.fn().mockResolvedValue([]) },
@@ -87,6 +88,7 @@ function buildHandlerAndReconciliation() {
     prisma as any,
     evaluation as any,
     { recordLvRestShadowMeasurement: jest.fn() } as any,
+    { ensureAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }) } as any,
   );
 
   const restTargetProducer = {
@@ -133,6 +135,7 @@ function buildHandlerAndReconciliation() {
     restTargetProducer as any,
     { enqueueStartProxy: jest.fn() } as any,
     { reconcilePeriodic: jest.fn().mockResolvedValue(0) } as any,
+    { ensureAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }) } as any,
   );
 
   const basePayload = (restTargetType: 'REST_60M' | 'REST_6H') => ({

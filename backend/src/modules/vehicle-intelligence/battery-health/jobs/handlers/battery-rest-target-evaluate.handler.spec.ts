@@ -30,6 +30,14 @@ describe('BatteryRestTargetEvaluateHandler', () => {
     recordLvRestShadowMeasurement: jest.fn(),
   };
 
+  const assessmentHandoff = {
+    ensureAssessmentHandoff: jest.fn().mockResolvedValue({
+      enqueued: true,
+      skipped: false,
+      idempotencyKey: `assess:${VEH}:LV_HEALTH:meas-6h`,
+    }),
+  };
+
   let handler: BatteryRestTargetEvaluateHandler;
   const originalEnv = process.env.BATTERY_V2_REST_SHADOW_ENABLED;
 
@@ -40,6 +48,7 @@ describe('BatteryRestTargetEvaluateHandler', () => {
       prisma as any,
       evaluation as any,
       observability as any,
+      assessmentHandoff as any,
     );
   });
 
@@ -117,6 +126,13 @@ describe('BatteryRestTargetEvaluateHandler', () => {
     expect(evaluation.evaluateAndPersist).toHaveBeenCalledWith(
       expect.objectContaining({
         restTargetType: 'REST_6H',
+      }),
+    );
+    expect(assessmentHandoff.ensureAssessmentHandoff).toHaveBeenCalledWith(
+      expect.objectContaining({
+        measurementId: 'meas-6h',
+        restTargetType: 'REST_6H',
+        correlationPrefix: 'lv-rest-direct',
       }),
     );
     expect(prisma.batteryMeasurementSession.update).toHaveBeenCalledWith(
@@ -218,5 +234,47 @@ describe('BatteryRestTargetEvaluateHandler', () => {
 
     expect(evaluation.evaluateAndPersist).not.toHaveBeenCalled();
     expect(prisma.batteryMeasurementSession.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('replays eligible measurement and ensures assessment handoff without re-persist', async () => {
+    prisma.batteryMeasurementSession.findFirst.mockResolvedValue({
+      id: SESSION,
+      organizationId: ORG,
+      status: BatteryMeasurementSessionStatus.COMPLETED,
+      metadata: { lvRestWindowState: LvRestWindowState.RESTING },
+    });
+    prisma.batteryMeasurement.findFirst.mockResolvedValue({
+      id: 'meas-replay',
+      type: 'REST_60M',
+      provenance: { sourceObservationId: 'obs-replay' },
+    });
+
+    await handler.handle(basePayload('REST_60M'));
+
+    expect(evaluation.evaluateAndPersist).not.toHaveBeenCalled();
+    expect(assessmentHandoff.ensureAssessmentHandoff).toHaveBeenCalledWith(
+      expect.objectContaining({
+        measurementId: 'meas-replay',
+        correlationPrefix: 'lv-rest-replay',
+      }),
+    );
+  });
+
+  it('does not handoff ineligible terminal measurement on replay', async () => {
+    prisma.batteryMeasurementSession.findFirst.mockResolvedValue({
+      id: SESSION,
+      organizationId: ORG,
+      status: BatteryMeasurementSessionStatus.ACTIVE,
+      metadata: { lvRestWindowState: LvRestWindowState.RESTING },
+    });
+    prisma.batteryMeasurement.findFirst.mockResolvedValue({
+      id: 'meas-missed',
+      type: 'REST_60M',
+      provenance: { syntheticMissed: true },
+    });
+
+    await handler.handle(basePayload('REST_60M'));
+
+    expect(assessmentHandoff.ensureAssessmentHandoff).not.toHaveBeenCalled();
   });
 });

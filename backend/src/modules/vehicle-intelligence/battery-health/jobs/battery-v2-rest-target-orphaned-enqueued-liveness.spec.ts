@@ -86,6 +86,7 @@ function buildCtx(targetType: 'REST_60M' | 'REST_6H') {
     },
     batteryMeasurement: {
       findFirst: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
     },
     vehicleLatestState: { findMany: jest.fn().mockResolvedValue([]) },
     batteryFeatures: { findMany: jest.fn().mockResolvedValue([]) },
@@ -140,6 +141,7 @@ function buildCtx(targetType: 'REST_60M' | 'REST_6H') {
     prisma as never,
     evaluation as never,
     { recordLvRestShadowMeasurement: jest.fn() } as never,
+    { ensureAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }) } as never,
   );
 
   const reconciliation = new BatteryV2ReconciliationService(
@@ -156,6 +158,7 @@ function buildCtx(targetType: 'REST_60M' | 'REST_6H') {
     restTargetProducer as never,
     { enqueueStartProxy: jest.fn() } as never,
     { reconcilePeriodic: jest.fn().mockResolvedValue(0) } as never,
+    { ensureAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }) } as never,
   );
 
   const basePayload = () => ({

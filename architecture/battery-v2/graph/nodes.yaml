@@ -188,7 +188,7 @@ nodes:
     decision_status: PROPOSED
     summary: >
       Hybrid direct enqueue + reconciliation safety net for canonical REST → assessment → publication.
-      Assessment: buildAssessmentJobIdempotencyKey (assess: prefix); PKG-01 IMPLEMENTATION_READY (D1/D2/D3).
+      Assessment: buildAssessmentJobIdempotencyKey (assess: prefix); PKG-01 IMPLEMENTED (D1/D2/D3 runtime).
       Publication: BATTERY_PUBLICATION_UPDATE after deterministic assessment-selection authority (D4 VALIDATED);
       publicationVersion authority closed by D5 (LV_PUBLICATION_CONTRACT_VERSION = 1); policy in
       BatteryPublicationService only; buildPublicationJobIdempotencyKey; PKG-02 IMPLEMENTATION_READY.
@@ -585,10 +585,11 @@ nodes:
     epistemic_status: CONFIRMED
     reconstruction_maturity: SUBSTANTIAL
     summary: >
-      battery-rest-target-evaluate.handler completes REST targets but does not enqueue BATTERY_ASSESSMENT_RECOMPUTE.
-      Legacy assessment enqueue exists only via isBatteryV2LegacyRestCaptureEnabled() snapshot path; when REST
-      shadow ON and publication ON, legacy rest capture is OFF. reconcilePendingAssessments selects stale
-      batteryFeatures (restObservationCount/crankObservationCount), not canonical BatteryMeasurement REST rows.
+      PKG-01 runtime IMPLEMENTED (2026-09-02): LvRestAssessmentHandoffService + direct handoff in
+      battery-rest-target-evaluate.handler + reconcileCanonicalRestAssessmentHandoffs. D1 identity
+      (inputVersion/sourceEntityId = BatteryMeasurement.id; assess:{vehicleId}:LV_HEALTH:{measurementId}).
+      D2 Hybrid C+ durable target-scoped assessmentHandoff metadata (MISSING/ENQUEUED/EXECUTED).
+      Gap remains open for PRODUCTION_VALIDATED closure; legacy batteryFeatures reconcile path retained.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-snapshot-ingestion.service.ts

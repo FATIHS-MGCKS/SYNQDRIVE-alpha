@@ -145,7 +145,7 @@ describe('Battery V2 Stage 1 pipeline defect closure', () => {
         findFirst: jest.fn().mockResolvedValue(null),
         update: jest.fn().mockResolvedValue({}),
       },
-      batteryMeasurement: { findFirst: jest.fn().mockResolvedValue(null) },
+      batteryMeasurement: { findFirst: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]) },
       vehicleTrip: {
         findMany: jest.fn().mockResolvedValue([]),
         findFirst: jest.fn().mockResolvedValue(null),
@@ -194,6 +194,7 @@ describe('Battery V2 Stage 1 pipeline defect closure', () => {
           } as any,
           { enqueueStartProxy: jest.fn() } as any,
           { reconcilePeriodic: jest.fn().mockResolvedValue(0) } as any,
+          { ensureAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }) } as any,
         ),
         sessionArming,
         lvRestSessionProducer,

@@ -147,7 +147,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
-## CL-2026-09-02 — D3 Battery V2 single-authority cutover / configuration invariant
+## CL-2026-09-02 — PKG-01 canonical LV REST → assessment handoff runtime
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | battery-rest-target-evaluate.handler persisted measurements but did not enqueue assessment; replay used hasMeasurement bool only; reconcilePendingAssessments scanned batteryFeatures not canonical REST measurements; no assessmentHandoff durable metadata. |
+| **CHANGE** | Implemented LvRestAssessmentHandoffService (direct handoff + idempotency + monotonic metadata), handler integration (direct + replay repair), assessment handler EXECUTED ack via sourceEntityId, reconcileCanonicalRestAssessmentHandoffs in BatteryV2ReconciliationService. Tests: metadata/policy/service/handler/reconciliation. PKG-01 → IMPLEMENTED (not PRODUCTION_VALIDATED). |
+| **WHY** | Authorized BAT-V2-RUNTIME-PKG-01 per validated D1/D2/D3 architecture. |
+| **EXPECTED_EFFECT** | Eligible canonical REST measurements enqueue assess:{vehicleId}:LV_HEALTH:{measurementId}; crash-boundary repair via replay + reconciliation; no HANDOFF flag; REST_SHADOW and publication unchanged. |
+| **VALIDATION** | `npm test --testPathPattern="lv-rest-assessment-handoff|battery-rest-target-evaluate.handler|battery-v2-reconciliation.spec|battery-v2-rest-target|battery-v2-stage1-pipeline"`; `bash architecture/battery-v2/scripts/validate-graph.sh` |
+| **NON_EFFECTS** | No PKG-02 publication handoff; no M4 cutover; no REST_SHADOW removal; no DB migration; no feature flag changes; no deploy. |
+| **REMAINING_GAPS** | BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001 open until PRODUCTION_VALIDATED; publication handoff (PKG-02) open. |
+| **DECISION_STATUS** | D1/D2/D3 runtime implemented — NOT PRODUCTION_VALIDATED |
+| **AFFECTED_GRAPH** | PKG-01 IMPLEMENTED; gap node summary updated |
+
+---
 
 | Field | Content |
 |-------|---------|

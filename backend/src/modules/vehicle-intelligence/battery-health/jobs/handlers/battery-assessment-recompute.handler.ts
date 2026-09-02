@@ -2,6 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { BatteryV2JobHandler } from '../battery-v2-job.handler';
 import type { BatteryAssessmentRecomputePayload } from '../battery-v2-job.types';
 import { BatteryAssessmentService } from '../../battery-assessment.service';
+import {
+  LvRestAssessmentHandoffService,
+  mapAssessmentRecomputeOutcome,
+} from '../../lv-rest-window/lv-rest-assessment-handoff.service';
 
 @Injectable()
 export class BatteryAssessmentRecomputeHandler
@@ -10,7 +14,10 @@ export class BatteryAssessmentRecomputeHandler
   readonly jobType = 'BATTERY_ASSESSMENT_RECOMPUTE' as const;
   private readonly logger = new Logger(BatteryAssessmentRecomputeHandler.name);
 
-  constructor(private readonly assessmentService: BatteryAssessmentService) {}
+  constructor(
+    private readonly assessmentService: BatteryAssessmentService,
+    private readonly assessmentHandoff: LvRestAssessmentHandoffService,
+  ) {}
 
   async handle(payload: BatteryAssessmentRecomputePayload): Promise<void> {
     const result = await this.assessmentService.recomputeLvEstimatedHealth({
@@ -18,6 +25,15 @@ export class BatteryAssessmentRecomputeHandler
       vehicleId: payload.vehicleId,
       shadowMode: payload.assessmentType === 'SHADOW',
     });
+
+    if (payload.sourceEntityId) {
+      await this.assessmentHandoff.acknowledgeExecuted({
+        organizationId: payload.organizationId,
+        vehicleId: payload.vehicleId,
+        measurementId: payload.sourceEntityId,
+        outcome: mapAssessmentRecomputeOutcome(result),
+      });
+    }
 
     if (!result.ok) {
       this.logger.debug(
