@@ -11,13 +11,11 @@ Pre-migration safety gate (duplicates=0, no active sessions)
         ↓
 Prisma migration 20260902103000_reference_capture_physical_sample_unique
         ↓
-Deploy bf1be9b6b (3A.3.1 + 3A.3.2 code authority)
+Deploy f00a49394 (main: 3A.3.1 + 3A.3.2 + runner fix + DI-EV-0022 docs)
         ↓
-Runner race fix 82f3d9c5c (STARTING→RECORDING before startRunner enqueue) — merged main; VPS hot-patch only (canonical redeploy NOT VERIFIED)
+PRE-ARM → FAST GO → observe cycles → STOP (post-deploy smoke)
         ↓
-PRE-ARM → FAST GO → observe cycles → STOP
-        ↓
-Post-canary integrity (unique index valid, duplicates=0)
+Post-smoke integrity (unique index valid, duplicates=0)
 ```
 
 ## Migration
@@ -34,16 +32,18 @@ Post-canary integrity (unique index valid, duplicates=0)
 
 **After:** `ReferenceCaptureSessionService.startRecording` transitions `STARTING → RECORDING` **before** `startRunner()`.
 
-## Production canary (stationary)
+## Canonical redeploy + post-deploy smoke (2026-09-02)
 
 | Item | Value |
 |------|-------|
-| Vehicle | WOB L 7503 (`19fedd4b-c4e8-4de8-a125-dab293326e7e`) |
-| Session | `ed06ea20-bb33-47d5-b8fb-8f19810b33ae` |
-| FAST GO | READY_TO_DRIVE in 1321 ms |
-| Cycles | 6 completed |
-| Observations | 82 SIGNAL_POINT, 0 HF_HISTORICAL |
-| Identity version | `AGGREGATE_BUCKET_V2` |
+| `CANONICAL_VPS_REDEPLOY_VERIFIED` | YES (`f00a49394` on both replicas) |
+| Post-deploy smoke session | `cc30f049-e83e-4ebb-a172-bb007a8b609f` |
+| FAST GO | READY_TO_DRIVE in 1515 ms |
+| Cycles | 7 completed |
+| Observations | 87 SIGNAL_POINT, 0 HF_HISTORICAL |
+| `POST_DEPLOY_STATIONARY_SMOKE` | PASS |
+
+## Initial cutover canary (stationary, morning)
 
 ## Verdicts
 
@@ -55,7 +55,7 @@ Post-canary integrity (unique index valid, duplicates=0)
 
 ## Next step
 
-Motion HF canary on live LTE_R1 telemetry; **canonical redeploy of `82f3d9c5c` NOT VERIFIED** (restore VPS GitHub deploy auth first).
+Controlled motion HF canary on WOB L 7503. Canonical deploy provenance verified at `f00a49394`. Durable VPS GitHub read credential still recommended for unattended deploys.
 
 ## References
 

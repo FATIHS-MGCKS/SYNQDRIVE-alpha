@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-phase-3a3-canonical-redeploy-smoke-2026-09-02',
+    version: '4.9.1032',
+    title: 'Phase 3A.3 — Canonical VPS redeploy + post-deploy stationary smoke',
+    summary: [
+      'Canonical production deploy verified at f00a49394 (main post #1509); DEC-016 SHA invariant on both replicas.',
+      'PRE_DEPLOY_SHA bf1be9b6b superseded; runner fix now from canonical release (not hot-patch).',
+      'Post-deploy smoke session cc30f049-…: PRE-ARM 2356ms, FAST GO READY_TO_DRIVE in 1515ms.',
+      '7 autonomous cycles, 87 SIGNAL_POINT, AGGREGATE_BUCKET_V2, clean STOP; BullMQ queues empty.',
+      'DEPLOY_AUTH_ROOT_CAUSE: private repo HTTPS clone without VPS credentials; ephemeral gh token used.',
+      'POST_DEPLOY_STATIONARY_SMOKE=PASS; CANONICAL_VPS_REDEPLOY_VERIFIED=YES; motion HF canary next.',
+    ],
+    reason: 'Remove hot-patch deploy ambiguity after PR #1509 merge; verify canonical runtime on production.',
+    previousBehavior: 'Production on bf1be9b6b with hot-patched runner fix; canonical redeploy NOT VERIFIED.',
+    details: 'docs/audits/dimo-phase-3a3-production-canary-2026-09-02.md (DI-EV-0022 amended).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T12:10:00.000Z',
+  },
+  {
     id: 'dimo-phase-3a3-production-canary-2026-09-02',
     version: '4.9.1031',
     title: 'Phase 3A.3 — Combined production cutover + stationary canary',
