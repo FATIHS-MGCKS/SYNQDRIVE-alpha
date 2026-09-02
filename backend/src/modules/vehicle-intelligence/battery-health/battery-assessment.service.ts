@@ -29,6 +29,11 @@ export interface RecomputeLvEstimatedHealthAssessmentResult {
   unsupportedProfile: boolean;
   assessments: LvEstimatedHealthAssessment[];
   persistedAssessmentIds: string[];
+  persistedEpochAssessments: Array<{
+    assessmentId: string;
+    assessmentTrack: LvEstimatedHealthAssessment['assessmentTrack'];
+    assessmentMode: LvEstimatedHealthAssessment['assessmentMode'];
+  }>;
   reasons: Array<{ code: string; labelDe: string }>;
 }
 
@@ -130,11 +135,14 @@ export class BatteryAssessmentService {
         unsupportedProfile: computed.unsupportedProfile,
         assessments: [],
         persistedAssessmentIds: [],
+        persistedEpochAssessments: [],
         reasons: computed.reasons,
       };
     }
 
     const persistedAssessmentIds: string[] = [];
+    const persistedEpochAssessments: RecomputeLvEstimatedHealthAssessmentResult['persistedEpochAssessments'] =
+      [];
     for (const assessment of computed.assessments) {
       const persisted = await this.assessmentRepository.persistLvEstimatedHealth({
         organizationId: input.organizationId,
@@ -142,6 +150,11 @@ export class BatteryAssessmentService {
         assessment,
       });
       persistedAssessmentIds.push(persisted.id);
+      persistedEpochAssessments.push({
+        assessmentId: persisted.id,
+        assessmentTrack: assessment.assessmentTrack,
+        assessmentMode: assessment.assessmentMode,
+      });
       if (this.metrics) {
         recordBatteryAssessment(this.metrics, {
           scope: 'lv',
@@ -160,6 +173,7 @@ export class BatteryAssessmentService {
       unsupportedProfile: false,
       assessments: computed.assessments,
       persistedAssessmentIds,
+      persistedEpochAssessments,
       reasons: [],
     };
   }

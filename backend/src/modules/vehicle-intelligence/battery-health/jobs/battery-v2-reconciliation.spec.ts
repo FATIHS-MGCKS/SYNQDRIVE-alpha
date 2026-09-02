@@ -234,6 +234,7 @@ describe('BatteryV2ReconciliationService', () => {
       tripStartProducer as any,
       rechargeReconcileProducer as any,
       assessmentHandoff as any,
+      { reconcilePublicationHandoff: jest.fn(), touchReconciliationFairness: jest.fn() } as any,
     );
   });
 

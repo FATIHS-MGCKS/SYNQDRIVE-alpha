@@ -174,6 +174,7 @@ function buildCtx(targetType: 'REST_60M' | 'REST_6H') {
     { enqueueStartProxy: jest.fn() } as never,
     { reconcilePeriodic: jest.fn().mockResolvedValue(0) } as never,
     { ensureAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }) } as never,
+    { reconcilePublicationHandoff: jest.fn(), touchReconciliationFairness: jest.fn() } as never,
   );
 
   const basePayload = () => ({

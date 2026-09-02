@@ -8,6 +8,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-02 — PKG-02 LV publication handoff runtime
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Assessment recompute persisted canonical LV assessments but stopped before publication enqueue; no D4 selector; `BATTERY_PUBLICATION_UPDATE` payload validation gap; no publication reconciliation. |
+| **OBSERVATION** | PKG-01 merged (PR #1510); D4/D5 validated; runtime needed direct handoff + reconcile without enabling customer publication effects. |
+| **HYPOTHESIS** | Current-epoch D4 arbitration + D5 `pub:{assessmentId}:v1` + durable `publicationHandoff` metadata enables idempotent direct/retry/reconcile paths without schema migration. |
+| **CHANGE** | Implement `LvPublicationHandoffService`, D4 track arbitration policy, strict `BATTERY_PUBLICATION_UPDATE` validation, assessment handler wiring, publication reconciliation query, `BatteryPublicationService` lifecycle/idempotency hardening (authority epoch reset, same-assessment retry, previous/current identity isolation, self-supersession guard). |
+| **WHY** | Complete canonical LV pipeline mechanically while `BATTERY_V2_PUBLICATION_ENABLED` remains OFF. |
+| **EXPECTED_EFFECT** | REST→assess→D4→`BATTERY_PUBLICATION_UPDATE`→`BatteryPublicationService` chain converges deterministically; reconciliation repairs missed handoffs from epoch evidence. |
+| **VALIDATION** | PKG-02 unit/integration tests; `bash architecture/battery-v2/scripts/validate-graph.sh`; graph validator PASS |
+| **OBSERVED_EFFECT** | 14 PKG-02-focused backend suites PASS (124 tests); graph validator PASS |
+| **NON_EFFECTS** | No `BATTERY_V2_PUBLICATION_ENABLED` activation; no deploy; no DB migration; no M4; no PKG-03; not `PRODUCTION_VALIDATED` |
+| **REGRESSIONS_OR_TRADEOFFS** | Publication policy stale lifecycle path now requires `materializeStaleLifecycle` for previous-only updates |
+| **REMAINING_GAPS** | M3 production validation; PKG-03 timestamp provenance; M4 cutover |
+| **DECISION_STATUS** | PKG-02 `IMPLEMENTED` (runtime); D4/D5 remain VALIDATED architecture authority |
+| **AFFECTED_GRAPH** | CURRENT_STATE PKG-02 status; implementation-packages PKG-02 |
+| **EVIDENCE** | `backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-publication-handoff.service.ts` |
+
 ## CL-2026-09-02 — D5 execution idempotency precision
 
 | Field | Content |

@@ -4,10 +4,12 @@ import { TripMetricsService } from '@modules/observability/trip-metrics.service'
 import { BatteryPolicyProfileService } from '../battery-policy-profile/battery-policy-profile.service';
 import { BatteryPublicationRepository } from './battery-publication.repository';
 import type { LvEstimatedHealthAssessment } from './lv-assessment/lv-estimated-health-assessment.policy';
+import { LV_PUBLICATION_CONTRACT_VERSION } from './lv-assessment/lv-publication-contract.policy';
 import {
   evaluateLvPublicationPolicy,
   type LvPublicationDecision,
   type LvPublicationEvidenceSummary,
+  type LvPublicationPreviousState,
 } from './lv-assessment/lv-publication.policy';
 import {
   recordBatteryPublication,
@@ -112,6 +114,8 @@ export class BatteryPublicationService {
     input: UpdateLvPublicationInput,
   ): Promise<UpdateLvPublicationResult> {
     const now = input.now ?? new Date();
+    const publicationVersion =
+      input.publicationVersion ?? LV_PUBLICATION_CONTRACT_VERSION;
     const policy = await this.policyProfileService.resolveForVehicle(
       input.vehicleId,
     );
@@ -124,6 +128,31 @@ export class BatteryPublicationService {
       ? this.publicationRepository.assessmentToEstimatedHealthModel(assessmentRow)
       : null;
 
+    const existingIdentity =
+      await this.publicationRepository.findPublicationByAssessmentIdentity({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        assessmentId: input.assessmentId,
+        publicationVersion,
+      });
+
+    const retainedRow =
+      await this.publicationRepository.findLatestRetainedLvPublication({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+      });
+    const retained =
+      this.publicationRepository.toPublicationPreviousState(retainedRow);
+
+    await this.maintainPreviousPublicationLifecycle({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      currentAssessmentId: input.assessmentId,
+      previous: retained,
+      policy,
+      now,
+    });
+
     const previousRow =
       await this.publicationRepository.findLatestActiveLvPublication({
         organizationId: input.organizationId,
@@ -131,6 +160,14 @@ export class BatteryPublicationService {
       });
     const previous =
       this.publicationRepository.toPublicationPreviousState(previousRow);
+
+    const stabilizationPrevious =
+      previous &&
+      previous.assessmentId !== input.assessmentId
+        ? previous
+        : previous?.assessmentId === input.assessmentId
+          ? previous
+          : null;
 
     const evidence = assessment
       ? this.buildEvidenceSummaryFromAssessment(assessment, now)
@@ -143,14 +180,37 @@ export class BatteryPublicationService {
           firstAssessmentEvidenceObservedAt: null,
         };
 
+    const existingPublicationId = existingIdentity?.id ?? null;
+    const isSameAssessmentRetry = existingIdentity != null;
+
     const decision = evaluateLvPublicationPolicy({
       publicationEnabled: isBatteryV2PublicationEnabled(),
       policy,
       assessment,
       evidence,
-      previous,
+      previous: stabilizationPrevious,
+      isSameAssessmentRetry,
       now,
     });
+
+    if (isSameAssessmentRetry && existingIdentity) {
+      this.logger.debug(
+        formatBatteryV2PipelineLog({
+          component: 'publication',
+          event: 'same_assessment_retry_converged',
+          status: 'completed',
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          correlationId: input.assessmentId,
+        }),
+      );
+      return {
+        ok: true,
+        decision,
+        persistedPublicationId: existingIdentity.id,
+        supersededPublicationId: null,
+      };
+    }
 
     if (!decision.shouldPersistPublication || !assessment || !assessmentRow) {
       if (this.metrics) {
@@ -181,16 +241,46 @@ export class BatteryPublicationService {
       };
     }
 
+    if (
+      decision.supersedePublicationId &&
+      existingPublicationId &&
+      decision.supersedePublicationId === existingPublicationId
+    ) {
+      this.logger.warn(
+        formatBatteryV2PipelineLog({
+          component: 'publication',
+          event: 'self_supersession_prevented',
+          status: 'failed',
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          errorCode: 'SELF_SUPERSESSION',
+        }),
+      );
+      return {
+        ok: false,
+        decision: {
+          ...decision,
+          shouldPersistPublication: false,
+          supersedePublicationId: null,
+        },
+        persistedPublicationId: null,
+        supersededPublicationId: null,
+      };
+    }
+
     const persisted = await this.publicationRepository.persistLvPublication({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       assessmentId: input.assessmentId,
       assessment,
       decision,
-      publicationVersion: input.publicationVersion,
+      publicationVersion,
     });
 
-    if (decision.supersedePublicationId) {
+    if (
+      decision.supersedePublicationId &&
+      decision.supersedePublicationId !== persisted.id
+    ) {
       await this.publicationRepository.markPublicationSuperseded({
         organizationId: input.organizationId,
         publicationId: decision.supersedePublicationId,
@@ -239,5 +329,57 @@ export class BatteryPublicationService {
       persistedPublicationId: persisted.id,
       supersededPublicationId: decision.supersedePublicationId,
     };
+  }
+
+  private async maintainPreviousPublicationLifecycle(input: {
+    organizationId: string;
+    vehicleId: string;
+    currentAssessmentId: string;
+    previous: LvPublicationPreviousState | null;
+    policy: Awaited<ReturnType<BatteryPolicyProfileService['resolveForVehicle']>>;
+    now: Date;
+  }): Promise<void> {
+    if (!input.previous?.assessmentId) return;
+    if (input.previous.assessmentId === input.currentAssessmentId) return;
+    if (input.previous.maturity === 'STALE') return;
+
+    const staleDecision = evaluateLvPublicationPolicy({
+      publicationEnabled: isBatteryV2PublicationEnabled(),
+      policy: input.policy,
+      assessment: null,
+      evidence: {
+        compatibleCycleCount: 0,
+        validEvidenceCount: 0,
+        rejectedEvidenceCount: 0,
+        contaminationRejectedCount: 0,
+        latestAssessmentEvidenceObservedAt: null,
+        firstAssessmentEvidenceObservedAt: null,
+      },
+      previous: input.previous,
+      materializeStaleLifecycle: true,
+      now: input.now,
+    });
+
+    if (staleDecision.maturity !== 'STALE' || !staleDecision.shouldPersistPublication) {
+      return;
+    }
+
+    await this.publicationRepository.materializePublicationLifecycleState({
+      organizationId: input.organizationId,
+      publicationId: input.previous.publicationId,
+      decision: staleDecision,
+      assessmentId: input.previous.assessmentId,
+    });
+
+    this.logger.debug(
+      formatBatteryV2PipelineLog({
+        component: 'publication',
+        event: 'previous_publication_stale_materialized',
+        status: 'completed',
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        correlationId: input.previous.assessmentId,
+      }),
+    );
   }
 }
