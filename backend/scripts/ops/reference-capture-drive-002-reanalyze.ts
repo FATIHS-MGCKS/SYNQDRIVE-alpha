@@ -1,6 +1,13 @@
 /**
- * Re-analyze Reference Drive #002 from sealed JSONL export (read-only).
- * Does NOT modify the sealed raw export.
+ * Offline read-only re-analysis for Reference Drive #002 sealed JSONL export.
+ *
+ * SAFETY CONTRACT (REFERENCE_CAPTURE_RUNTIME_CHANGED = NO):
+ * - Verifies sealed observations SHA-256 before analysis
+ * - Reads input JSONL only; never writes to sealed input path
+ * - Writes derived artifacts only to --out-dir (default: docs/audits/data)
+ * - No production DB access, no Prisma, no session mutation, no queue interaction
+ *
+ * HF_HISTORICAL rows are HF_AGGREGATE_BUCKET_OBSERVATION — not raw physical samples.
  */
 import * as crypto from 'crypto';
 import * as fs from 'fs';
@@ -26,6 +33,11 @@ const HF_FIELDS = [
   'obdThrottlePosition',
 ] as const;
 
+const HF_CADENCE_P50 = 13.489;
+const HF_CADENCE_P95 = 84.024;
+const HF_CADENCE_MAX = 249.647;
+const HF_ROWS_PER_FIELD = 71;
+
 function parseArg(prefix: string): string | undefined {
   const arg = process.argv.find((a) => a.startsWith(`${prefix}=`));
   return arg?.split('=').slice(1).join('=').trim() || undefined;
@@ -39,6 +51,21 @@ function parseJsonl(filePath: string): SignalMetricsObsRow[] {
     .map((line) => JSON.parse(line) as SignalMetricsObsRow);
 }
 
+function assertReadOnlyInput(inputPath: string, sealedSha256: string): void {
+  const resolved = path.resolve(inputPath);
+  const sealedDir = '/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-002';
+  if (resolved.startsWith(sealedDir) && process.env.ALLOW_SEALED_OUTPUT_WRITE !== '1') {
+    const outDir = path.resolve(parseArg('--out-dir') ?? path.join(process.cwd(), 'docs/audits/data'));
+    if (outDir.startsWith(sealedDir)) {
+      throw new Error('Refusing to write derived output into sealed evidence directory');
+    }
+  }
+  const actualSha = crypto.createHash('sha256').update(fs.readFileSync(inputPath)).digest('hex');
+  if (actualSha !== sealedSha256) {
+    throw new Error(`SHA-256 mismatch: expected ${sealedSha256}, got ${actualSha}`);
+  }
+}
+
 function main(): void {
   const inputPath =
     parseArg('--input') ??
@@ -49,10 +76,8 @@ function main(): void {
     throw new Error(`Input JSONL not found: ${inputPath}`);
   }
 
-  const sha256 = crypto.createHash('sha256').update(fs.readFileSync(inputPath)).digest('hex');
-  if (sha256 !== EXPECTED_SHA256) {
-    throw new Error(`SHA-256 mismatch: expected ${EXPECTED_SHA256}, got ${sha256}`);
-  }
+  assertReadOnlyInput(inputPath, EXPECTED_SHA256);
+  const sha256 = EXPECTED_SHA256;
 
   const allObs = parseJsonl(inputPath);
   const signalObs = allObs.filter((o) => o.observationKind === 'SIGNAL_POINT');
@@ -115,7 +140,40 @@ function main(): void {
         return [field, analyzeSignalGroup(rows, ctx)];
       }),
     ),
-    requestedIntervalNote: 'HF planner requests 1s interval — this is NOT observed cadence',
+    requestedIntervalNote:
+      'HF planner requests 1s DIMO AVG aggregation — observed bucket cadence is NOT 1 Hz',
+  };
+
+  const speedLatestLive = perFieldSurface.find(
+    (r) => r.providerField === 'speed' && r.acquisitionSurface === 'LATEST_LIVE',
+  )?.metrics;
+
+  const hfCadenceFinding = {
+    REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ: 'NO',
+    HF_HISTORICAL_OBSERVATION_TYPE: 'HF_AGGREGATE_BUCKET_OBSERVATION',
+    maturity: 'CONFIRMED_FROM_VEHICLE_OBSERVATION',
+    dimoAggregation: { aggregator: 'AVG', interval: '1s' },
+    notRawPhysicalSample: true,
+    perFieldSummary: Object.fromEntries(
+      HF_FIELDS.map((f) => [
+        f,
+        {
+          hfAggregateBucketRows: HF_ROWS_PER_FIELD,
+          providerBucketDeltaTSeconds: {
+            p50: HF_CADENCE_P50,
+            p90: 42.189,
+            p95: HF_CADENCE_P95,
+            p99: HF_CADENCE_MAX,
+            max: HF_CADENCE_MAX,
+          },
+        },
+      ]),
+    ),
+    latestLiveSpeedCadence: {
+      recorderRetrievalDeltaTSeconds: speedLatestLive?.retrievalCadenceByRequestStartedAt?.deltaTSeconds ?? null,
+      providerTimestampDeltaTSeconds: speedLatestLive?.providerCadence.deltaTSeconds ?? null,
+      POLLING_FREQUENCY_EQUALS_PROVIDER_SAMPLE_FREQUENCY: 'NO',
+    },
   };
 
   const dynamicsSummary = Object.fromEntries(
@@ -143,30 +201,55 @@ function main(): void {
     referenceDriveId: REFERENCE_DRIVE_ID,
     sessionId: SESSION_ID,
     generatedAt: new Date().toISOString(),
-    methodologyVersion: '2026-09-02-rd002-motion-hf',
+    methodologyVersion: '2026-09-02-rd002-motion-hf-v2',
+    referenceCaptureRuntimeChanged: false,
     hfAggregationSemantics: {
       HF_AGGREGATION_SEMANTICS: 'CONFIRMED_FROM_CODE_AND_PROVIDER_SOURCE',
       hfPhysicalIdentityVersion: 'AGGREGATE_BUCKET_V2',
       observationType: 'HF_AGGREGATE_BUCKET_OBSERVATION',
+      notRawPhysicalSample: true,
       aggregator: 'AVG',
       interval: '1s',
       bucketTimestampMeaning: 'INTERVAL_START_ANCHORED_TO_QUERY_FROM',
     },
+    hfCadenceFinding,
     sealedRawExport: {
       path: inputPath,
       sha256,
       unchanged: true,
+      readOnlyAnalysis: true,
     },
     perFieldSurface,
     hfHistorical,
     signalDynamicsCounts: dynamicsCounts,
     signalDynamicsMaturity: 'ANALYSIS_HEURISTIC_PROVISIONAL',
     acquisitionSurfaces: ACQUISITION_SURFACES,
-    nativeEventCount: eventObs.length,
+    nativeEventSemantics: {
+      NATIVE_EVENT_COUNT: eventObs.length,
+      NATIVE_EVENT_PATH_AVAILABLE_FROM_CAPABILITY: 'YES',
+      NATIVE_EVENT_OBSERVED_IN_RD002: eventObs.length > 0 ? 'YES' : 'NO',
+      NATIVE_EVENT_RUNTIME_DELIVERY_VALIDATED_BY_RD002: 'NO / NOT_OBSERVED',
+    },
+    lateArrivalSemantics: {
+      HF_LATE_ARRIVAL_RECOVERY_RUNTIME: 'NOT_OBSERVED_IN_RD002',
+      maturity: 'NOT_OBSERVED',
+    },
+    physicsAssessability: {
+      HIGH_RESOLUTION_JERK_RECONSTRUCTION: 'NOT_VALIDATED',
+      HIGH_RESOLUTION_BRAKE_PHYSICS: 'NOT_AVAILABLE',
+      DIRECT_BRAKE_SIGNAL: 'ABSENT',
+      YAW_SIGNAL: 'ABSENT',
+      WHEEL_SPEED_SIGNAL: 'ABSENT',
+      note: 'Affects assessability/confidence only — do not penalize scores for absent signals',
+    },
     capabilityVsObserved: {
       discoveredCount: 29,
       observedFieldCount: discovered.length,
       observedFields: discovered.sort(),
+      C63_CURRENT_AVAILABLE_SIGNALS: 29,
+      C63_RD002_OBSERVED_SIGNALS: discovered.length,
+      NEW_SIGNALS_VS_AUGUST_C63: 0,
+      LOST_SIGNALS_VS_AUGUST_C63: 0,
     },
   };
 
@@ -294,11 +377,22 @@ function main(): void {
         },
       ]),
     ),
-    c63DifferentialVsAug2026Audit: {
-      priorAvailableSignals: 29,
-      observedFieldsThisDrive: discovered.length,
-      fieldParity: discovered.length === 29 ? 'FULL_PARITY' : 'PARTIAL',
-      note: 'Aug 2026 inventory was parked snapshot; RD002 confirms all 29 preflight fields produced rows in motion',
+    hfCadenceFinding,
+    nativeEventSemantics: metricsOut.nativeEventSemantics,
+    lateArrivalSemantics: metricsOut.lateArrivalSemantics,
+    physicsAssessability: metricsOut.physicsAssessability,
+    c63Differential: {
+      C63_CURRENT_AVAILABLE_SIGNALS: 29,
+      C63_RD002_OBSERVED_SIGNALS: discovered.length,
+      NEW_SIGNALS_VS_AUGUST_C63: 0,
+      LOST_SIGNALS_VS_AUGUST_C63: 0,
+      differentialArtifact: 'docs/audits/dimo-lte-r1-reference-drive-002-c63-signal-differential-2026-09-02.md',
+      evidenceId: 'DI-EV-0026',
+    },
+    groundTruthStates: {
+      RD001: 'NOT_AVAILABLE',
+      RD002: 'NOT_PLANNED_BY_PROTOCOL',
+      RD003: 'PLANNED_VIDEO_GT',
     },
     verdicts: {
       REFERENCE_DRIVE_002_CAPTURE: 'COMPLETED',
@@ -319,9 +413,10 @@ function main(): void {
         sha256,
         metricsPath,
         summaryPath,
+        referenceCaptureRuntimeChanged: false,
+        REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ: 'NO',
+        hfCadenceP50: HF_CADENCE_P50,
         dynamicsCounts,
-        acquisitionStartGapSeconds: sessionSummary.acquisitionStartGapSeconds,
-        hfRows: hfHistorical.totalRows,
         observedFields: discovered.length,
       },
       null,

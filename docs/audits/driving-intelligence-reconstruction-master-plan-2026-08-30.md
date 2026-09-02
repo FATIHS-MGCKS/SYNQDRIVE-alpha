@@ -1358,7 +1358,6 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 13. ~~**Execute Phase 3A.3.1 FAST PRE-ARM/GO remediation** — required before RD002.~~ **Done** — production validated (DI-EV-0022).
 14. ~~**Phase 3A.3.2 HF watermark + aggregateBucketFingerprint remediation** — motion HF production canary.~~ **Done** — RD002 validated (DI-EV-0023).
 15. **Reference Drive #003** — video Ground Truth capture when owner authorizes.
-15. **Execute Reference Drive #002** — only after A+B+C gate; video Ground Truth required.
 16. **Execute Phase 2G:** Smart5 + Tesla Direct connection-variant audits + profile manifests → ungate 3B/3C when ready.
 17. **Execute Phase 2H:** High Mobility OEM/profile audit + manifests → ungate 3D when ready.
 18. **Execute Phase 2I:** Cross-provider canonical consolidation / parity governance (after provider-specific knowledge exists).

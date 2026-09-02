@@ -132,47 +132,105 @@ RD001 sealed evidence was **not modified**.
 
 ---
 
-## 6. HF cadence (motion — provisional)
+## 6. HF cadence finding (major Driving Intelligence result)
 
-HF rows are **DIMO 1s AVG aggregate buckets**, not raw physical samples. Observed bucket spacing is **irregular** under motion (provider/upstream cadence dominates).
+`HF_HISTORICAL` is **ACTIVE** under motion, but **requested 1s DIMO aggregation ≠ observed 1 Hz bucket cadence**.
 
-| Field | HF rows | Δt p50 (s) | Δt max (s) | Out-of-order (acquisition order) |
-|-------|---------|------------|------------|-----------------------------------|
-| `speed` | 71 | 13.5 | 249.6 | 0 |
-| `obdEngineLoad` | 71 | 13.5 | 249.6 | 0 |
-| `powertrainCombustionEngineSpeed` | 71 | 13.5 | 249.6 | 0 |
+| Flag | Value | Maturity |
+|------|-------|----------|
+| `REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ` | **NO** | CONFIRMED_FROM_VEHICLE_OBSERVATION |
+| `HF_HISTORICAL_OBSERVATION_TYPE` | `HF_AGGREGATE_BUCKET_OBSERVATION` | CONFIRMED_FROM_CODE |
+| DIMO aggregation | AVG, 1s bucket definition | CONFIRMED_FROM_CODE_AND_PROVIDER_SOURCE |
+| Provider/upstream bucket availability | sparse / irregular | CONFIRMED_FROM_VEHICLE_OBSERVATION |
+
+The **355 HF rows are aggregate-bucket observations** (`AGGREGATE_BUCKET_V2` fingerprint), **not** proven raw LTE_R1 physical source samples.
+
+### Per-field HF bucket spacing (all five HF fields — identical in RD002)
+
+| Field | HF rows | Δt P50 (s) | Δt P90 (s) | Δt P95 (s) | Δt P99/MAX (s) |
+|-------|---------|------------|------------|------------|----------------|
+| `speed` | 71 | 13.489 | 42.189 | 84.024 | 249.647 |
+| `obdEngineLoad` | 71 | 13.489 | 42.189 | 84.024 | 249.647 |
+| `obdThrottlePosition` | 71 | 13.489 | 42.189 | 84.024 | 249.647 |
+| `powertrainCombustionEngineTPS` | 71 | 13.489 | 42.189 | 84.024 | 249.647 |
+| `powertrainCombustionEngineSpeed` | 71 | 13.489 | 42.189 | 84.024 | 249.647 |
 
 Full per-field/surface metrics: `docs/audits/data/dimo-lte-r1-reference-drive-002-signal-quality-metrics.json` (DI-EV-0025).
 
----
+### LATEST_LIVE: polling ≠ provider sample frequency
 
-## 7. C63 differential vs Aug 2026 audit vs RD001 Tiguan
+Example `speed` on `LATEST_LIVE`:
 
-| Dimension | Aug 2026 C63 audit | RD002 (this drive) | RD001 Tiguan |
-|-----------|-------------------|-------------------|--------------|
-| `availableSignals` | 29 | 29 observed | 31 discovered |
-| Transmission gear signals | absent | absent (expected) | present |
-| HF_HISTORICAL rows | N/A (parked audit) | **355** | **1333** |
-| Acquisition-start gap | N/A | **0.93 s** | **704 s** (ARM defect) |
-| FAST GO | N/A | **1949 ms** | N/A (legacy ARM) |
-| HF identity version | N/A | **V2** | pre-V2 remediation |
-| Video GT | N/A | NOT_PLANNED | NOT_AVAILABLE (incident) |
+| Cadence type | P50 | P95 |
+|--------------|-----|-----|
+| Recorder retrieval (`requestStartedAt` Δt) | **~5.85 s** | **~6.25 s** |
+| Provider timestamp update (unique timestamps) | **~15 s** | **~27 s** |
 
-**C63 field parity:** `FULL_PARITY` with Aug 2026 `availableSignals` inventory — all 29 preflight fields produced rows in motion.
+| Flag | Value |
+|------|-------|
+| `POLLING_FREQUENCY_EQUALS_PROVIDER_SAMPLE_FREQUENCY` | **NO** |
 
----
-
-## 8. Native events
-
-| Check | Result |
-|-------|--------|
-| `NATIVE_EVENT` observations | **0** |
-| Aug 2026 audit `behavior.*` (30d) | 34 events historically on this vehicle |
-| Interpretation | No harsh-driving native events crossed the capture window threshold during RD002 — **not** a capture failure |
+Critical for future Driver Quality, Vehicle Load, Brake Physics, Tire Dynamic Load, and sampling-confidence work. **No score changes in this pass.**
 
 ---
 
-## 9. Sealed raw evidence (outside Git)
+## 7. Physics / assessability semantics
+
+RD002 validates **recorder + HF acquisition mechanics**. It does **not** prove C63 LTE_R1 cadence is sufficient for fine-grained vehicle dynamics reconstruction.
+
+| Assessment | Result |
+|------------|--------|
+| `HIGH_RESOLUTION_JERK_RECONSTRUCTION` | **NOT_VALIDATED** |
+| `HIGH_RESOLUTION_BRAKE_PHYSICS` | **NOT_AVAILABLE** |
+| `DIRECT_BRAKE_SIGNAL` | **ABSENT** |
+| `YAW_SIGNAL` | **ABSENT** |
+| `WHEEL_SPEED_SIGNAL` | **ABSENT** |
+
+Speed/RPM/throttle/load remain useful vehicle-specific evidence. **Do not penalize scores** for absent signals — assessability/confidence only.
+
+---
+
+## 8. C63 signal differential (summary)
+
+Full per-field inventory: `docs/audits/dimo-lte-r1-reference-drive-002-c63-signal-differential-2026-09-02.md` (DI-EV-0026).
+
+| Metric | Value |
+|--------|-------|
+| `C63_CURRENT_AVAILABLE_SIGNALS` | **29** |
+| `C63_RD002_OBSERVED_SIGNALS` | **29** |
+| `NEW_SIGNALS_VS_AUGUST_C63` | **0** |
+| `LOST_SIGNALS_VS_AUGUST_C63` | **0** |
+
+RD001 Tiguan had **31** discovered signals — **vehicle-specific comparison only**, not cross-vehicle parity. C63 lacks transmission gear fields present on Tiguan.
+
+C63-specific absent high-value physics (vehicle-level, not provider-wide): transmission actual gear, yaw/lateral angular velocity, wheel speed, direct brake pedal/hydraulic evidence, tire pressure.
+
+---
+
+## 9. Native events
+
+| Flag | Value | Maturity |
+|------|-------|----------|
+| `NATIVE_EVENT_COUNT` | **0** | CONFIRMED_FROM_RUNTIME |
+| `NATIVE_EVENT_PATH_AVAILABLE_FROM_CAPABILITY` | **YES** | CONFIRMED_FROM_CODE |
+| `NATIVE_EVENT_OBSERVED_IN_RD002` | **NO** | CONFIRMED_FROM_RUNTIME |
+| `NATIVE_EVENT_RUNTIME_DELIVERY_VALIDATED_BY_RD002` | **NO / NOT_OBSERVED** | NOT_OBSERVED |
+
+Aug 2026 C63 audit: **34** historical `behavior.*` events (30d). Historical evidence only — **not** an event-capture failure.
+
+---
+
+## 10. Late-arrival recovery
+
+| Flag | Value | Maturity |
+|------|-------|----------|
+| `HF_LATE_ARRIVAL_RECOVERY_RUNTIME` | **NOT_OBSERVED_IN_RD002** | NOT_OBSERVED |
+
+No concrete late-arriving bucket was observed and recovered during RD002. This does **not** invalidate `PHASE_3A3_2_PRODUCTION_VALIDATED=YES`. RD002 did prove HF acquisition, watermark/coverage state, V2 identity, DB uniqueness, runtime continuity, and clean STOP under motion.
+
+---
+
+## 11. Sealed raw evidence (outside Git)
 
 | File | SHA-256 | Bytes |
 |------|---------|-------|
@@ -180,11 +238,11 @@ Full per-field/surface metrics: `docs/audits/data/dimo-lte-r1-reference-drive-00
 | `session-metadata.json` | `6a2ed20f4eb1cf82dec290a27e986aa2d234ead8c07a6f0597feb834bbf65882` | 468 |
 | Manifest | `/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-002/manifest.sha256.json` | — |
 
-Reanalyze script: `backend/scripts/ops/reference-capture-drive-002-reanalyze.ts`
+Reanalyze script (offline, read-only): `backend/scripts/ops/reference-capture-drive-002-reanalyze.ts`
 
 ---
 
-## 10. Verdicts (canonical)
+## 12. Verdicts (canonical)
 
 | Verdict | Value |
 |---------|-------|
@@ -205,6 +263,6 @@ Reanalyze script: `backend/scripts/ops/reference-capture-drive-002-reanalyze.ts`
 | DI-EV-0023 | This report |
 | DI-EV-0024 | `docs/audits/data/dimo-lte-r1-reference-drive-002-session-summary.json` |
 | DI-EV-0025 | `docs/audits/data/dimo-lte-r1-reference-drive-002-signal-quality-metrics.json` (+ CSV) |
-| DI-EV-0026 | `docs/audits/dimo-lte-r1-reference-drive-002-ground-truth-evidence-index-2026-09-02.md` |
+| DI-EV-0026 | `docs/audits/dimo-lte-r1-reference-drive-002-c63-signal-differential-2026-09-02.md` |
 | DI-EV-0021 | 3A.3.2 HF watermark remediation (code basis) |
 | DI-EV-0022 | Production cutover + canonical redeploy |

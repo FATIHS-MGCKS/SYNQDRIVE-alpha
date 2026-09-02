@@ -1,20 +1,110 @@
 {
   "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_002",
   "sessionId": "e095d273-eb03-4bc9-aa2b-d0d709abd9bc",
-  "generatedAt": "2026-09-02T13:22:07.967Z",
-  "methodologyVersion": "2026-09-02-rd002-motion-hf",
+  "generatedAt": "2026-09-02T15:31:55.298Z",
+  "methodologyVersion": "2026-09-02-rd002-motion-hf-v2",
+  "referenceCaptureRuntimeChanged": false,
   "hfAggregationSemantics": {
     "HF_AGGREGATION_SEMANTICS": "CONFIRMED_FROM_CODE_AND_PROVIDER_SOURCE",
     "hfPhysicalIdentityVersion": "AGGREGATE_BUCKET_V2",
     "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+    "notRawPhysicalSample": true,
     "aggregator": "AVG",
     "interval": "1s",
     "bucketTimestampMeaning": "INTERVAL_START_ANCHORED_TO_QUERY_FROM"
   },
+  "hfCadenceFinding": {
+    "REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ": "NO",
+    "HF_HISTORICAL_OBSERVATION_TYPE": "HF_AGGREGATE_BUCKET_OBSERVATION",
+    "maturity": "CONFIRMED_FROM_VEHICLE_OBSERVATION",
+    "dimoAggregation": {
+      "aggregator": "AVG",
+      "interval": "1s"
+    },
+    "notRawPhysicalSample": true,
+    "perFieldSummary": {
+      "speed": {
+        "hfAggregateBucketRows": 71,
+        "providerBucketDeltaTSeconds": {
+          "p50": 13.489,
+          "p90": 42.189,
+          "p95": 84.024,
+          "p99": 249.647,
+          "max": 249.647
+        }
+      },
+      "obdEngineLoad": {
+        "hfAggregateBucketRows": 71,
+        "providerBucketDeltaTSeconds": {
+          "p50": 13.489,
+          "p90": 42.189,
+          "p95": 84.024,
+          "p99": 249.647,
+          "max": 249.647
+        }
+      },
+      "powertrainCombustionEngineSpeed": {
+        "hfAggregateBucketRows": 71,
+        "providerBucketDeltaTSeconds": {
+          "p50": 13.489,
+          "p90": 42.189,
+          "p95": 84.024,
+          "p99": 249.647,
+          "max": 249.647
+        }
+      },
+      "powertrainCombustionEngineTPS": {
+        "hfAggregateBucketRows": 71,
+        "providerBucketDeltaTSeconds": {
+          "p50": 13.489,
+          "p90": 42.189,
+          "p95": 84.024,
+          "p99": 249.647,
+          "max": 249.647
+        }
+      },
+      "obdThrottlePosition": {
+        "hfAggregateBucketRows": 71,
+        "providerBucketDeltaTSeconds": {
+          "p50": 13.489,
+          "p90": 42.189,
+          "p95": 84.024,
+          "p99": 249.647,
+          "max": 249.647
+        }
+      }
+    },
+    "latestLiveSpeedCadence": {
+      "recorderRetrievalDeltaTSeconds": {
+        "sampleCount": 350,
+        "min": 5.632,
+        "p50": 5.845,
+        "p90": 6.167,
+        "p95": 6.278,
+        "p99": 6.437,
+        "max": 6.704,
+        "mean": 5.911754285714282,
+        "stdDev": 0.18339686301988423
+      },
+      "providerTimestampDeltaTSeconds": {
+        "sampleCount": 103,
+        "min": 1,
+        "p50": 15,
+        "p90": 23,
+        "p95": 27,
+        "p99": 127,
+        "max": 153,
+        "mean": 17.281553398058254,
+        "stdDev": 20.369343302691547
+      },
+      "POLLING_FREQUENCY_EQUALS_PROVIDER_SAMPLE_FREQUENCY": "NO"
+    }
+  },
   "sealedRawExport": {
     "path": "/tmp/rd002-observations.jsonl",
     "sha256": "ad2d9c29e130d07dffa395c7d99e33d9a217e3273bdaed74168925c8ac108d9a",
-    "unchanged": true
+    "unchanged": true,
+    "readOnlyAnalysis": true
   },
   "perFieldSurface": [
     {
@@ -4448,7 +4538,7 @@
         }
       }
     },
-    "requestedIntervalNote": "HF planner requests 1s interval — this is NOT observed cadence"
+    "requestedIntervalNote": "HF planner requests 1s DIMO AVG aggregation — observed bucket cadence is NOT 1 Hz"
   },
   "signalDynamicsCounts": {
     "DYNAMICALLY_INFORMATIVE": 18,
@@ -4461,7 +4551,24 @@
     "LATEST_LIVE",
     "LATEST_SLOW"
   ],
-  "nativeEventCount": 0,
+  "nativeEventSemantics": {
+    "NATIVE_EVENT_COUNT": 0,
+    "NATIVE_EVENT_PATH_AVAILABLE_FROM_CAPABILITY": "YES",
+    "NATIVE_EVENT_OBSERVED_IN_RD002": "NO",
+    "NATIVE_EVENT_RUNTIME_DELIVERY_VALIDATED_BY_RD002": "NO / NOT_OBSERVED"
+  },
+  "lateArrivalSemantics": {
+    "HF_LATE_ARRIVAL_RECOVERY_RUNTIME": "NOT_OBSERVED_IN_RD002",
+    "maturity": "NOT_OBSERVED"
+  },
+  "physicsAssessability": {
+    "HIGH_RESOLUTION_JERK_RECONSTRUCTION": "NOT_VALIDATED",
+    "HIGH_RESOLUTION_BRAKE_PHYSICS": "NOT_AVAILABLE",
+    "DIRECT_BRAKE_SIGNAL": "ABSENT",
+    "YAW_SIGNAL": "ABSENT",
+    "WHEEL_SPEED_SIGNAL": "ABSENT",
+    "note": "Affects assessability/confidence only — do not penalize scores for absent signals"
+  },
   "capabilityVsObserved": {
     "discoveredCount": 29,
     "observedFieldCount": 29,
@@ -4495,6 +4602,10 @@
       "powertrainTransmissionTravelledDistance",
       "powertrainType",
       "speed"
-    ]
+    ],
+    "C63_CURRENT_AVAILABLE_SIGNALS": 29,
+    "C63_RD002_OBSERVED_SIGNALS": 29,
+    "NEW_SIGNALS_VS_AUGUST_C63": 0,
+    "LOST_SIGNALS_VS_AUGUST_C63": 0
   }
 }
