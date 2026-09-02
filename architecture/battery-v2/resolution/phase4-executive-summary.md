@@ -31,8 +31,8 @@
 2. **Timestamp provenance enum** — approve PKG-03 target model (measurement only; not session opening)
 3. **Stage 2 cutover policy** — M4 single-authority cutover requires explicit authorization (D3); **not** authorized by documentation merge
 4. **PKG-02 publicationVersion** — authoritative source for canonical handoff (**D5** — only remaining PKG-02 architecture blocker)
-6. **Provider VLS SOH gap** — **RECOMMENDED/PROPOSED:** retain current non-decision-fresh VLS-only semantics unless product authority requires decision-capable VLS SOH (separate spec) — **DECISION_REQUIRED**, pending sign-off; not PKG-04
-7. **Canary scope** — deployment/environment isolation; org allowlist **SPEC REQUIRED** if desired
+5. **Provider VLS SOH gap** — **RECOMMENDED/PROPOSED:** retain current non-decision-fresh VLS-only semantics unless product authority requires decision-capable VLS SOH (separate spec) — **DECISION_REQUIRED**, pending sign-off; not PKG-04
+6. **Canary scope** — deployment/environment isolation; org allowlist **SPEC REQUIRED** if desired
 
 ## DEFER
 

@@ -5,7 +5,7 @@
 **Depends on:** `BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001` (D1), `BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001` (D2), `BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001` (D3)  
 **Refines:** `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (PROPOSED — not elevated to validated dependency)  
 **Status:** `VALIDATED` (architecture / selection authority — **not** `PRODUCTION_VALIDATED`)  
-**Date:** 2026-09-02 (precision pass: equal-value cross-track publication significance)
+**Date:** 2026-09-02 (final closure: publication authority epoch + UNKNOWN→known transitions)
 
 ## BEFORE
 
@@ -37,7 +37,7 @@ Phase 4 left PKG-02 `IMPLEMENTATION_SPEC_REQUIRED` with two architecture blocker
 | Publication reason payload | `battery-publication.repository.ts` — `persistLvPublication()` stores `assessmentTrack` and `assessmentMode` in reason JSON |
 | Previous publication state | `battery-publication.repository.ts` `toPreviousState()` → `LvPublicationPreviousState` — carries `publishedEstimatedHealth`, `stabilizedEstimatedHealth`, maturity, timestamps — **no `assessmentTrack`** |
 | Publication EWMA/hysteresis | `lv-publication.policy.ts` — `stabilize(input.previous?.stabilizedEstimatedHealth, ...)` and hysteresis compare against `input.previous` values — **no track-change awareness** |
-| Publication persistence gate | `lv-publication.policy.ts` — `valueChanged = publishedEstimatedHealth !== currentPublished`; `firstPublication = currentPublished == null`; `shouldPersistPublication = maturityAllowsFirstPublish && (firstPublication \|\| valueChanged)` — **track change not represented** |
+| Publication persistence gate | `lv-publication.policy.ts` — `shouldPersistPublication = maturityAllowsFirstPublish && (firstPublication \|\| valueChanged)` — **no `trackChanged` / `publicationAuthorityEpochChanged`** |
 | Equal-value cross-track gap | Current runtime: existing TELEMETRY publication at **72** + new publication-qualified `WORKSHOP_OVERRIDE` at **72** → `valueChanged = false` → `shouldPersistPublication = false` → old TELEMETRY row remains active despite D4 authority change — **CURRENT CODE; not solved** |
 | Publication policy | `battery-publication.service.ts` / `evaluateLvPublicationPolicy()` — receives specific `assessmentId`; no track precedence or cross-track epoch boundary |
 | Backfill precedent | `battery-snapshot-rest-backfill.service.ts` — `persistedAssessmentIds[length - 1]` for publication candidate |
@@ -262,6 +262,39 @@ const shouldPersistPublication =
 
 When both resolve to **72**, `shouldPersistPublication = false` and old TELEMETRY publication remains active. **Do not claim runtime already solves this.**
 
+## PUBLICATION_AUTHORITY_EPOCH
+
+**Semantic carrier:** `publicationAuthorityEpochChanged` — not merely `knownTrackA !== knownTrackB`.
+
+A **publication authority epoch change** exists when continuity with the previous active publication cannot validly be treated as the **same publication authority**.
+
+| Transition | `publicationAuthorityEpochChanged` |
+|------------|-----------------------------------|
+| `TELEMETRY` → `WORKSHOP_OVERRIDE` | **true** |
+| `WORKSHOP_OVERRIDE` → `TELEMETRY` | **true** |
+| `UNKNOWN` → `TELEMETRY` | **true** |
+| `UNKNOWN` → `WORKSHOP_OVERRIDE` | **true** |
+| `TELEMETRY` → `TELEMETRY` (new recompute only) | **false** — not merely because recompute occurred |
+| `WORKSHOP_OVERRIDE` → `WORKSHOP_OVERRIDE` (new recompute only) | **false** — not merely because recompute occurred |
+
+### ASSESSMENT_EPOCH_VS_PUBLICATION_EPOCH
+
+**Do not equate:**
+
+| Concept | Meaning |
+|---------|---------|
+| **D4 assessment authority epoch** | Every `recomputeLvEstimatedHealth()` invocation creates a new D4 assessment epoch |
+| **Publication authority epoch** | Changes only on track-authority discontinuity or `UNKNOWN` continuity — **not** on every recompute |
+
+**Example — same-track equal-value recompute:**
+
+- Recompute A: `TELEMETRY` 72  
+- Recompute B: `TELEMETRY` 72 (no value change; normal policy/hysteresis)  
+- `publicationAuthorityEpochChanged = false`  
+- **No mandatory** new publication merely because a new D4 recompute epoch occurred
+
+D4 recompute epoch **≠** publication authority epoch transition.
+
 ## PUBLICATION_SIGNIFICANCE
 
 Conceptual future PKG-02 publication persistence significance:
@@ -270,31 +303,79 @@ Conceptual future PKG-02 publication persistence significance:
 publicationPersistSignificant =
   firstPublication
   OR numericValueChanged
-  OR authoritativeTrackChanged
+  OR publicationAuthorityEpochChanged
 ```
+
+**Why not `authoritativeTrackChanged` alone:** when `previousTrack = UNKNOWN`, a deterministic boolean “track changed” cannot be proven. `publicationAuthorityEpochChanged` captures discontinuity including UNKNOWN→known.
 
 **Constraints:**
 
-- `authoritativeTrackChanged` matters **only after** the new selected assessment has passed normal publication policy requirements  
-- Track change **does not** bypass: `publicationEnabled`, assessment publication eligibility, evidence sufficiency, freshness, maturity, contamination policy, or other publication safety gates
+- `publicationAuthorityEpochChanged` matters **only after** the new selected assessment has passed normal publication policy requirements  
+- Authority epoch significance **does not** bypass: `publicationEnabled`, assessment publication eligibility, evidence sufficiency, freshness, maturity, contamination policy, or other publication safety gates
 
-### Track change vs policy SKIP
+A new publication may become persistence-significant when normal publication policy permits **and** one of:
+
+- **A)** first publication  
+- **B)** numeric published value changed  
+- **C)** publication authority epoch changed (includes known→different-known and UNKNOWN→known)
+
+### Track / authority change vs policy SKIP
 
 | Case | Existing | New authoritative | Policy | Result |
 |------|----------|-------------------|--------|--------|
 | **A — passes** | TELEMETRY 72 | `WORKSHOP_OVERRIDE` 72 | PUBLISH / publication-qualified | New WORKSHOP publication **must** be persistable despite equal numeric value; prior TELEMETRY may be superseded |
 | **B — fails** | TELEMETRY 72 | `WORKSHOP_OVERRIDE` 72 | SKIP / CALIBRATING / not publishable | No new WORKSHOP publication; no TELEMETRY fallback; existing TELEMETRY continues under retention/freshness lifecycle only |
+| **C — UNKNOWN passes** | UNKNOWN 72 | `TELEMETRY` 72 | PUBLISH / publication-qualified | `publicationAuthorityEpochChanged = true`; new TELEMETRY publication persistable; prior UNKNOWN may be superseded |
+| **D — UNKNOWN fails** | UNKNOWN 72 | `TELEMETRY` 72 | SKIP / not publishable | No new publication; no forced supersession; old UNKNOWN follows retention/freshness only |
 
-Track change alone does **not** override publication safety policy.
+Authority epoch significance matters **only after** the current candidate passes normal publication policy.
 
-### Same-track vs cross-track (target semantics)
+### Same-track vs authority-epoch transitions (target semantics)
 
 | Transition | Publication significance |
 |------------|-------------------------|
-| `TELEMETRY` → `TELEMETRY` | Normal: first publication, numeric change, same-track hysteresis/stabilization |
-| `WORKSHOP_OVERRIDE` → `WORKSHOP_OVERRIDE` | Normal same-track publication policy |
-| `TELEMETRY` → `WORKSHOP_OVERRIDE` | If new track passes policy: **track change itself** is publication-significant — equal value may still persist and supersede |
-| `WORKSHOP_OVERRIDE` → `TELEMETRY` | Same — equal value does not suppress track-transition publication |
+| `TELEMETRY` → `TELEMETRY` (same track, equal value, new recompute) | Normal same-track policy only — **no** mandatory persistence from recompute alone |
+| `WORKSHOP_OVERRIDE` → `WORKSHOP_OVERRIDE` (same track, equal value, new recompute) | Same |
+| `TELEMETRY` → `WORKSHOP_OVERRIDE` | If policy permits: `publicationAuthorityEpochChanged` — equal value may persist and supersede |
+| `WORKSHOP_OVERRIDE` → `TELEMETRY` | Same |
+| `UNKNOWN` → `TELEMETRY` or `UNKNOWN` → `WORKSHOP_OVERRIDE` | If policy permits: `publicationAuthorityEpochChanged` — equal value may persist and supersede |
+
+## UNKNOWN_TO_KNOWN_TRANSITION
+
+When `previousTrack = UNKNOWN` and the new authoritative assessment has a **known** `assessmentTrack`:
+
+### Equal-value examples (required)
+
+**UNKNOWN 72 → TELEMETRY 72** (policy permits):
+
+- Previous continuity: **DISCONTINUOUS**  
+- `publicationAuthorityEpochChanged = true`  
+- No previous EWMA or hysteresis baseline  
+- Equal numeric value **does not** suppress persistence  
+- New TELEMETRY-backed publication may be persisted  
+- Previous UNKNOWN publication may be superseded  
+- User-visible score may remain **72**; active provenance becomes deterministically `TELEMETRY`
+
+**UNKNOWN 72 → WORKSHOP_OVERRIDE 72** (policy permits): same pattern with `WORKSHOP_OVERRIDE` provenance.
+
+### UNKNOWN policy SKIP
+
+**UNKNOWN 72 → TELEMETRY 72** (policy SKIP):
+
+- No new TELEMETRY publication  
+- No forced supersession merely because previous track was UNKNOWN  
+- Old publication continues under existing retention/freshness rules only  
+- No EWMA/hysteresis continuity assumed
+
+## CURRENT_TRACK_MUST_BE_KNOWN
+
+**Do not** invent a normal target state where a newly created canonical publication intentionally has `assessmentTrack = UNKNOWN`.
+
+Future PKG-02 publications must carry deterministic **current** `assessmentTrack` authority.
+
+If implementation cannot determine the **current selected** assessment track → treat as **operational authority/correlation failure**. Do **not** persist a new canonical UNKNOWN-track publication as a normal successful D4 result.
+
+Historical UNKNOWN is tolerated as **previous-state compatibility** only. New canonical UNKNOWN publication authority is **not** a selected target (TEST 22).
 
 ## HISTORY_VS_STABILIZATION_CONTEXT
 
@@ -305,7 +386,7 @@ On cross-track transition, previous active publication retains valid roles for:
 - retention behavior  
 - publication lineage  
 
-But it **must not** act as prior-track stabilization authority for:
+But when `publicationAuthorityEpochChanged = true`, previous publication **must not** act as prior-track stabilization authority for:
 
 - EWMA baseline  
 - hysteresis baseline  
@@ -316,8 +397,10 @@ previous active publication
         |
         +-- history / supersession context = YES
         |
-        +-- stabilization baseline = NO on track change
+        +-- stabilization baseline = NO when publicationAuthorityEpochChanged
 ```
+
+Example: **UNKNOWN 72 → TELEMETRY 72** — previous row: history/supersession **YES** if new publication persists; stabilization/hysteresis baseline **NO**.
 
 Useful publication history is preserved while respecting the new authority epoch.
 
@@ -368,9 +451,9 @@ previousTrack = UNKNOWN
 - “latest assessment”  
 - historical heuristics  
 
-**UNKNOWN nuance:** UNKNOWN does **not** mean “always supersede immediately.” It means only “do not assume stabilization continuity.” The new selected assessment must still pass normal publication policy. If policy permits → new publication may persist and supersede. If SKIP → old publication follows existing retention/staleness behavior.
+**UNKNOWN nuance:** UNKNOWN does **not** mean “always supersede immediately.” It means continuity cannot be proven → `publicationAuthorityEpochChanged = true` when transitioning to a known authoritative track **and** policy permits. If SKIP → old publication follows existing retention/staleness behavior.
 
-If previous active publication track cannot be determined reliably → fail safe per above (TEST 13, TEST 17).
+If previous active publication track cannot be determined reliably → fail safe per above (TEST 13, TEST 17–20).
 
 ## NO_POLICY_BYPASS
 
@@ -426,9 +509,9 @@ Similarly for `WORKSHOP_OVERRIDE` → `TELEMETRY` after workshop goes stale.
 
 D4 may define:
 
-- selected current assessment track  
-- whether track changed vs previous active publication  
-- authority/stabilization epoch boundary signal
+- selected current assessment track (must be known for successful canonical publication)  
+- `publicationAuthorityEpochChanged` vs previous active publication  
+- authority/stabilization epoch boundary signal for `BatteryPublicationService`
 
 `BatteryPublicationService` / `evaluateLvPublicationPolicy()` remains sole authority for:
 
@@ -453,7 +536,7 @@ recompute (new D4 authority epoch)
   → deterministic D4 arbitration
   → exactly one selected assessmentId at most
   → BATTERY_PUBLICATION_UPDATE
-  → BatteryPublicationService (with track-change context)
+  → BatteryPublicationService (with publicationAuthorityEpochChanged context)
 ```
 
 ## FAILURE_SEMANTICS
@@ -494,6 +577,9 @@ D4 is narrower: **BatteryAssessment track → publication handoff candidate sele
 | **H** | `PRESERVE_FIRST_RECOMPUTE_WINNER_ACROSS_EPOCHS` | Violates freshness-driven authority when evidence eligibility changes |
 | **I** | `AUTO_DELETE_LOWER_TRACK_PUBLICATION_ON_HIGHER_TRACK_SKIP` | Conflates retention with fallback; deletes without policy basis |
 | **J** | `SUPPRESS_CROSS_TRACK_ON_EQUAL_VALUE` | Numeric equality must not block valid authority/provenance transition when policy permits |
+| **K** | `SUPPRESS_UNKNOWN_TO_KNOWN_ON_EQUAL_VALUE` | UNKNOWN→known authority transition must be publication-significant when policy permits |
+| **L** | `MANDATORY_PUBLICATION_ON_EVERY_RECOMPUTE` | D4 assessment epoch ≠ publication authority epoch; same-track equal-value recompute must not force persistence |
+| **M** | `NEW_CANONICAL_UNKNOWN_TRACK_PUBLICATION` | Successful canonical publication must carry known current assessmentTrack |
 
 ## WHY
 
@@ -533,7 +619,8 @@ Multi-track AUTO supports diagnostics; publication requires one evidence-backed 
 | Cross-track EWMA drags workshop toward telemetry baseline | Cross-track epoch + TEST 10/11 |
 | Same-epoch telemetry fallback after SKIP | Retention vs fallback + TEST 12 |
 | Heuristic previous-track inference | Previous-track observability + TEST 13 |
-| Equal-value cross-track leaves stale TELEMETRY publication active | Publication significance + TEST 14/15 |
+| UNKNOWN→known equal-value suppressed | `publicationAuthorityEpochChanged` + TEST 18/19 |
+| Mandatory publication on every recompute | Assessment vs publication epoch distinction + TEST 21 |
 | `findLatestLvEstimatedHealth` as selector | Explicit rejection + TEST 4 |
 
 ## TEST_CONTRACT
@@ -559,8 +646,13 @@ Future PKG-02 tests (minimum):
 | **14** | Equal-value TELEMETRY 72 → WORKSHOP 72; workshop passes policy | Cross-track detected; new epoch; no cross-track EWMA/hysteresis; new WORKSHOP publication persisted; prior TELEMETRY superseded; user-visible 72; provenance WORKSHOP_OVERRIDE |
 | **15** | Equal-value WORKSHOP 72 → TELEMETRY 72 after workshop stale; telemetry passes policy | New TELEMETRY epoch; equal value does not suppress publication; no cross-track baseline; prior WORKSHOP superseded |
 | **16** | Equal-value TELEMETRY 72; current WORKSHOP 72; workshop fails policy | No new WORKSHOP; no TELEMETRY fallback; existing TELEMETRY retention only |
-| **17** | Previous publication exists; `assessmentTrack` unavailable; new assessment passes policy | UNKNOWN = discontinuity; no EWMA/hysteresis baseline; history/supersession may remain; no heuristic inference |
+| **17** | Previous publication exists; `assessmentTrack` unavailable; new assessment passes policy | UNKNOWN = discontinuity; `publicationAuthorityEpochChanged`; no EWMA/hysteresis baseline; history/supersession may remain |
+| **18** | UNKNOWN 72 → TELEMETRY 72; policy permits | Discontinuity; epoch changed; new TELEMETRY persisted despite equal value; prior UNKNOWN superseded; visible 72 |
+| **19** | UNKNOWN 72 → WORKSHOP 72; policy permits | New authority epoch; no stabilization inheritance; new WORKSHOP persisted; prior UNKNOWN may be superseded |
+| **20** | UNKNOWN 72 → TELEMETRY 72; policy SKIP | No new publication; no forced supersession; old UNKNOWN retention only |
+| **21** | TELEMETRY 72 → recompute TELEMETRY 72 (same track, equal value) | New D4 recompute epoch; `publicationAuthorityEpochChanged = false`; no mandatory persistence from recompute alone |
+| **22** | Current selected assessment track unavailable | Operational failure; do not persist canonical UNKNOWN-track publication as success; no heuristic inference |
 
 ## STATUS
 
-`VALIDATED` — architecture / selection authority documentation only. **Not** `PRODUCTION_VALIDATED`. Runtime publication handoff, cross-track epoch, and equal-value track-transition persistence **not implemented**.
+`VALIDATED` — architecture / selection authority documentation only. **Not** `PRODUCTION_VALIDATED`. Runtime publication handoff, `publicationAuthorityEpochChanged` semantics, and UNKNOWN→known persistence **not implemented**.

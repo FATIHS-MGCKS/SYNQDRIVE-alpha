@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-02 (D4 equal-value cross-track publication precision)  
+**Snapshot date:** 2026-09-02 (D4 final closure — publication authority epoch + UNKNOWN→known)  
 **Graph:** 142 nodes / 133 edges / 11 invariants (validated 2026-09-02)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 4 VALIDATED PKG spec decisions (D1, D2, D3, D4)
 

@@ -6,7 +6,24 @@ Append-only scientific record. Newest entries first.
 
 ---
 
----
+## CL-2026-09-02 — D4 final closure (publication authority epoch + UNKNOWN→known)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Equal-value known→known transitions covered; UNKNOWN→known equal value ambiguous because `authoritativeTrackChanged` cannot be proven against unknown previous authority. |
+| **OBSERVATION** | Previous track may be UNKNOWN (`LvPublicationPreviousState` lacks `assessmentTrack`); `shouldPersistPublication` uses firstPublication\|\|valueChanged only. |
+| **HYPOTHESIS** | `publicationAuthorityEpochChanged` replaces insufficient track-change boolean; UNKNOWN→known = authority epoch transition when policy permits; D4 recompute epoch ≠ publication authority epoch. |
+| **CHANGE** | Amended D4 with PUBLICATION_AUTHORITY_EPOCH, UNKNOWN_TO_KNOWN_TRANSITION, ASSESSMENT_EPOCH_VS_PUBLICATION_EPOCH, CURRENT_TRACK_MUST_BE_KNOWN; TEST 18–22; cosmetic ledger/executive fixes. |
+| **WHY** | Deterministic canonical provenance must replace ambiguous previous authority when policy permits, even if score unchanged; cannot prove track-changed against UNKNOWN. |
+| **EXPECTED_EFFECT** | PKG-02 implements `publicationAuthorityEpochChanged` context; D5 remains sole blocker. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh` |
+| **OBSERVED_EFFECT** | Validator PASS; graph counts unchanged (docs-only precision). |
+| **NON_EFFECTS** | No runtime implementation; no publication/assessment behavior change; no DB migration; no feature flag change; no production mutation; no backfill; no deploy; no M4 cutover; no production validation; runtime gaps remain open. |
+| **REGRESSIONS_OR_TRADEOFFS** | PKG-02 must not treat every recompute as publication authority epoch change |
+| **REMAINING_GAPS** | All 20 `BAT-V2-GAP-*` open; PKG-02 D5 only |
+| **DECISION_STATUS** | VALIDATED (NOT PRODUCTION_VALIDATED) |
+| **AFFECTED_GRAPH** | D4 summary expanded — no new nodes |
+| **EVIDENCE** | `BAT-V2-EVID-CODE-LV-PREV-STATE-NO-TRACK-001`, `BAT-V2-EVID-CODE-LV-PUBLICATION-PERSIST-VALUE-ONLY-001` |
 
 ## CL-2026-09-02 — D4 equal-value cross-track publication precision
 

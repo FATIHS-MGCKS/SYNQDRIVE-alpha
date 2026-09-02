@@ -300,11 +300,12 @@ nodes:
       eligibility changes. Same-handoff retry preserves selected assessmentId; no lower-track fallback. Track
       change (TELEMETRY↔WORKSHOP_OVERRIDE) = new publication authority/stabilization epoch — no cross-track
       EWMA/hysteresis baseline. Higher-track SKIP retains existing lower-track publication (retention ≠ fallback).
-      Equal-value cross-track transition is publication-significant when policy permits (72 TELEMETRY→72 WORKSHOP);
-      current shouldPersistPublication = firstPublication||valueChanged only — track change gap. UNKNOWN previousTrack
-      = discontinuity. LvPublicationPreviousState lacks assessmentTrack — PKG-02 must expose previous track.
-      BatteryPublicationService remains sole publication-policy authority. PKG-02 IMPLEMENTATION_SPEC_REQUIRED (D5 only);
-      D4 runtime contracts not implemented. NOT PRODUCTION_VALIDATED.
+      Equal-value and UNKNOWN→known transitions publication-significant via publicationAuthorityEpochChanged
+      when policy permits. D4 recompute epoch != publication authority epoch. Current shouldPersistPublication =
+      firstPublication||valueChanged only — authority epoch gap. UNKNOWN previousTrack = discontinuity; current
+      track must be known for successful canonical publication. BatteryPublicationService remains sole
+      publication-policy authority. PKG-02 IMPLEMENTATION_SPEC_REQUIRED (D5 only); D4 runtime not implemented.
+      NOT PRODUCTION_VALIDATED.
     source_paths:
       - architecture/battery-v2/decisions/lv-publication-track-authority-decision.md
       - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-estimated-health-assessment.policy.ts
