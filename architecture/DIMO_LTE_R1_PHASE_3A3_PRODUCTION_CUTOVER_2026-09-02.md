@@ -13,7 +13,7 @@ Prisma migration 20260902103000_reference_capture_physical_sample_unique
         ↓
 Deploy bf1be9b6b (3A.3.1 + 3A.3.2 code authority)
         ↓
-Runner race fix 82f3d9c5c (STARTING→RECORDING before startRunner enqueue)
+Runner race fix 82f3d9c5c (STARTING→RECORDING before startRunner enqueue) — merged main; VPS hot-patch only (canonical redeploy NOT VERIFIED)
         ↓
 PRE-ARM → FAST GO → observe cycles → STOP
         ↓
@@ -55,7 +55,7 @@ Post-canary integrity (unique index valid, duplicates=0)
 
 ## Next step
 
-Motion HF canary on live LTE_R1 telemetry; canonical redeploy of `82f3d9c5c` (restore VPS GitHub deploy auth).
+Motion HF canary on live LTE_R1 telemetry; **canonical redeploy of `82f3d9c5c` NOT VERIFIED** (restore VPS GitHub deploy auth first).
 
 ## References
 

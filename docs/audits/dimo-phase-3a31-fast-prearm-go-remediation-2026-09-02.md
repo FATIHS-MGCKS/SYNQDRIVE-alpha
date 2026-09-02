@@ -296,13 +296,9 @@ Session view extended with `operational` block: `cycleCount`, `runnerJobId`, `pe
 
 ---
 
-## Production canary requirement
+## Production canary (completed)
 
-Before `PHASE_3A3_1_PRODUCTION_VALIDATED = YES`:
-
-1. Run PRE-ARM on production LTE_R1 vehicle → verify `PREARM_READY=YES`, status `READY`.
-2. Run FAST GO within freshness window → verify `READY_TO_DRIVE=YES` within 15s.
-3. Record operational timestamps for canary evidence (DI-EV-0021+).
+`PHASE_3A3_1_PRODUCTION_VALIDATED = YES` — confirmed in production canary **DI-EV-0022** (2026-09-02): PRE-ARM → FAST GO READY_TO_DRIVE in 1321 ms on WOB L 7503. Runner STARTING/RECORDING race fix (`82f3d9c5c`) hot-patched on VPS; canonical redeploy outstanding.
 
 ---
 

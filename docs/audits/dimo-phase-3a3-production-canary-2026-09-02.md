@@ -14,7 +14,8 @@
 |------|-------|----------------|
 | `CUTOVER_TARGET_SHA` (code authority) | `bf1be9b6b351066eb74126b56e85f6848b16812c` | CONFIRMED_FROM_CODE |
 | `PRE_CUTOVER_PRODUCTION_SHA` | `3772d992dae012bc9d794184e05e8ad39db09df4` | CONFIRMED_FROM_PRODUCTION_RUNTIME |
-| Post-migration deploy SHA (canonical) | `bf1be9b6b351066eb74126b56e85f6848b16812c` | CONFIRMED_FROM_PRODUCTION_RUNTIME |
+| Post-migration deploy SHA (3A.3 code release) | `bf1be9b6b351066eb74126b56e85f6848b16812c` | CONFIRMED_FROM_PRODUCTION_RUNTIME |
+| Canonical runner-race fix deploy (`82f3d9c5c`) | **NOT VERIFIED** — hot-patch only; VPS GitHub clone auth blocked canonical redeploy | CONFIRMED_FROM_PRODUCTION_RUNTIME |
 | Runner-race hotfix SHA (main) | `82f3d9c5c428c745b8224db2e045902238e157fa` | CONFIRMED_FROM_CODE |
 | Runner-race hotfix on VPS | Hot-patched `reference-capture-session.service.ts` + `npm run build` + PM2 reload (canonical redeploy of `82f3d9c` blocked: VPS GitHub clone auth) | CONFIRMED_FROM_PRODUCTION_RUNTIME |
 
@@ -147,4 +148,4 @@
 
 ## Next required step
 
-Schedule controlled **motion HF canary** on WOB L 7503 after vehicle telemetry is live, redeploy `82f3d9c5c` via canonical VPS path (restore GitHub deploy auth), then authorize RD002 planning only if motion HF evidence passes.
+Schedule controlled **motion HF canary** on WOB L 7503 after vehicle telemetry is live. **Prerequisite:** canonical VPS redeploy of `82f3d9c5c` (restore GitHub deploy auth — hot-patch alone is insufficient for operational authority). RD002 planning only if motion HF evidence passes.

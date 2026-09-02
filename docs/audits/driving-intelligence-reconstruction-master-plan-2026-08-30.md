@@ -949,14 +949,23 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 | C | Production/runtime canary proving A + B | **PARTIAL** — 3A.3.1 pass; 3A.3.2 stationary only (DI-EV-0022) |
 | D | `DIMO_LTE_R1_REFERENCE_DRIVE_002` with video Ground Truth | NOT STARTED |
 
-**Production cutover (2026-09-02):** Migration `20260902103000_reference_capture_physical_sample_unique` applied; deploy `bf1be9b6b`; runner STARTING/RECORDING race hotfix `82f3d9c5c`. Audit: `docs/audits/dimo-phase-3a3-production-canary-2026-09-02.md` (DI-EV-0022).
+**Production cutover (2026-09-02):** Migration `20260902103000_reference_capture_physical_sample_unique` applied; deploy `bf1be9b6b`; runner STARTING/RECORDING race hotfix `82f3d9c5c` hot-patched on VPS (canonical redeploy NOT VERIFIED). Audit: `docs/audits/dimo-phase-3a3-production-canary-2026-09-02.md` (DI-EV-0022).
+
+**Next operational sequence (post-evidence merge):**
+1. Merge clean Phase 3A.3 evidence (PR #1509)
+2. Restore canonical VPS deployment path (GitHub clone auth)
+3. Deploy and verify current main authority (`82f3d9c5c`)
+4. Short stationary smoke test
+5. Controlled motion HF canary on live LTE_R1 telemetry
+6. Validate 3A.3.2 runtime HF behavior under motion
+7. Only then evaluate `READY_FOR_RD002`
 
 **Target design for 3A.3.1 (implemented — DI-EV-0020):**
 - **PRE-ARM:** health + create session + preflight → `READY` before owner needs GO.
 - **FAST GO:** `START` against existing `READY` session via production API/service — avoid second Nest bootstrap for GO only.
 - **Hard gate:** if first autonomous cycle not confirmed within ~10–15 s, return `READY_TO_DRIVE=NO` — do not silently recover for 12+ minutes.
 
-`ARM_WORKFLOW_REMEDIATION_REQUIRED=YES`
+`ARM_WORKFLOW_REMEDIATION_REQUIRED=IMPLEMENTED`
 
 ### Phase 3A.2 — Production deployment + runtime preflight + controlled LTE_R1 canary
 **Status:** **DONE** (2026-08-31)

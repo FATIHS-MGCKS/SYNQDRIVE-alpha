@@ -51,7 +51,7 @@
 
 ## Entry count
 
-**20** registry entries (Phases 1, 2A–2F.1, 3A.1, 3A.2, 3A.3 RD001, 3A.3.1, governance).
+**20** registry entries through DI-EV-0020; **DI-EV-0021** (3A.3.2 remediation) and **DI-EV-0022** (3A.3 production canary) added 2026-09-02.
 
 ---
 
@@ -59,8 +59,7 @@
 
 | Planned ID | Phase | Artifact | Status |
 |------------|-------|----------|--------|
-| DI-EV-0021 | Phase 3A.3.1 canary | Production FAST GO canary evidence | NOT_STARTED |
-| DI-EV-0022+ | Reference Drive 002 | Capture report + GT-aligned metrics | NOT_STARTED |
+| DI-EV-0023+ | Reference Drive 002 | Capture report + GT-aligned metrics | NOT_STARTED |
 
 ---
 

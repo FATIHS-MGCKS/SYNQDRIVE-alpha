@@ -42,7 +42,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Pre-migration safety gate passed; migration 20260902103000_reference_capture_physical_sample_unique applied.',
       'Production deploy bf1be9b6b (3A.3.1 + 3A.3.2 code); unique index refcap_obs_session_physical_fp_uq valid.',
-      'Runner STARTING/RECORDING race fixed (82f3d9c5c): enqueue cycle only after RECORDING transition.',
+      'Runner STARTING/RECORDING race fixed on main (82f3d9c5c); hot-patched on VPS — canonical redeploy outstanding.',
       'PRE-ARM + HTTP FAST GO production canary on WOB L 7503: READY_TO_DRIVE in 1321ms (≤15s).',
       '6 autonomous cycles, 82 SIGNAL_POINT observations, AGGREGATE_BUCKET_V2, clean STOP.',
       'HF_HISTORICAL=0 (stationary/stale telemetry) — 3A.3.2 motion HF canary still required.',
@@ -98,6 +98,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'SIGNAL_POINT-only persistence gate; PROBE_RESULT/SEGMENT/NATIVE_EVENT are diagnostics only.',
       'Configurable prearm freshness REFERENCE_CAPTURE_PREARM_MAX_AGE_MS (default 15 min).',
       'PHASE_3A3_1_PRODUCTION_VALIDATED=YES (DI-EV-0022 FAST GO 1321ms); 3A.3.2 motion HF pending.',
+    ],
+    reason: 'RD001 703.987s operator wait — ARM workflow reliability defect; production FAST GO validated DI-EV-0022.',
     previousBehavior: 'Single ARM script bootstrapped full Nest and blocked operator for minutes before trustworthy GO.',
     details:
       'docs/audits/dimo-phase-3a31-fast-prearm-go-remediation-2026-09-02.md; architecture/DIMO_LTE_R1_PHASE_3A31_FAST_PREARM_GO_2026-09-02.md; DI-EV-0020.',
