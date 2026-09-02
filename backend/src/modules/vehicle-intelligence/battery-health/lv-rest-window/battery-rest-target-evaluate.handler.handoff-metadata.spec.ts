@@ -98,15 +98,47 @@ describe('BatteryRestTargetEvaluateHandler handoff metadata integration', () => 
   });
 
   it('final metadata contains COMPLETED target and ENQUEUED assessmentHandoff after direct success', async () => {
+    const NEW_MEAS = 'clmeasnew123456789012345678';
     const prisma = buildIntegratedPrisma();
-    prisma.batteryMeasurement.findFirst.mockResolvedValue({
-      id: MEAS,
-      organizationId: ORG,
-      vehicleId: VEH,
-      sessionId: SESSION,
-      type: BatteryMeasurementType.REST_60M,
-      provenance: { sourceObservationId: 'obs-1' },
+    const measurementStore = new Map<string, Record<string, unknown>>();
+
+    prisma.batteryMeasurement.findFirst.mockImplementation(
+      async (args: {
+        where?: {
+          sessionId?: string;
+          id?: string;
+          organizationId?: string;
+          vehicleId?: string;
+        };
+      }) => {
+        if (args.where?.id) {
+          return measurementStore.get(args.where.id) ?? null;
+        }
+        if (args.where?.sessionId) {
+          return null;
+        }
+        return null;
+      },
+    );
+
+    const evaluateAndPersist = jest.fn().mockImplementation(async () => {
+      const persisted = {
+        id: NEW_MEAS,
+        organizationId: ORG,
+        vehicleId: VEH,
+        sessionId: SESSION,
+        type: BatteryMeasurementType.REST_60M,
+        provenance: { sourceObservationId: 'obs-direct-1' },
+      };
+      measurementStore.set(NEW_MEAS, persisted);
+      return {
+        ok: true,
+        measurementId: NEW_MEAS,
+        sourceObservationId: 'obs-direct-1',
+        quality: 'VALID',
+      };
     });
+
     const jobProducer = {
       enqueue: jest.fn().mockResolvedValue('bull-job-1'),
       hasLiveJob: jest.fn().mockResolvedValue(false),
@@ -119,32 +151,26 @@ describe('BatteryRestTargetEvaluateHandler handoff metadata integration', () => 
     );
     const handler = new BatteryRestTargetEvaluateHandler(
       prisma as never,
-      {
-        evaluateAndPersist: jest.fn().mockResolvedValue({
-          ok: true,
-          measurementId: MEAS,
-          sourceObservationId: 'obs-1',
-          quality: 'VALID',
-        }),
-      } as never,
+      { evaluateAndPersist } as never,
       { recordLvRestShadowMeasurement: jest.fn() } as never,
       assessmentHandoff,
     );
 
     await handler.handle(basePayload());
 
+    expect(evaluateAndPersist).toHaveBeenCalledTimes(1);
     const metadata = prisma.getMetadata();
     const target = (metadata.scheduledTargets as any).REST_60M;
     expect(target.status).toBe(LV_REST_TARGET_JOB_STATUS.COMPLETED);
     const handoff = readAssessmentHandoffFromTargetMetadata(metadata, 'REST_60M');
     expect(handoff?.status).toBe(LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED);
-    expect(handoff?.measurementId).toBe(MEAS);
+    expect(handoff?.measurementId).toBe(NEW_MEAS);
     expect(jobProducer.enqueue).toHaveBeenCalledWith(
       'BATTERY_ASSESSMENT_RECOMPUTE',
       expect.objectContaining({
-        inputVersion: MEAS,
-        sourceEntityId: MEAS,
-        idempotencyKey: `assess:${VEH}:LV_HEALTH:${MEAS}`,
+        inputVersion: NEW_MEAS,
+        sourceEntityId: NEW_MEAS,
+        idempotencyKey: `assess:${VEH}:LV_HEALTH:${NEW_MEAS}`,
       }),
     );
   });

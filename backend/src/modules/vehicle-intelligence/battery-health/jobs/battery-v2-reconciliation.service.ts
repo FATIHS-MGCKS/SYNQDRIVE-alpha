@@ -38,16 +38,17 @@ import {
 import {
   BatteryMeasurementSessionStatus,
   BatteryMeasurementSessionType,
-  BatteryMeasurementType,
   Prisma,
   TripStatus,
 } from '@prisma/client';
 import { buildLvRestWindowIdempotencyKey, LvRestWindowState } from '../battery-v2-domain';
 import { measurementTypeForRestTarget } from '../lv-rest-window/battery-rest-target-evaluation';
 import {
-  LV_REST_ASSESSMENT_HANDOFF_STATUS,
-  readAssessmentHandoffFromTargetMetadata,
-} from '../lv-rest-window/lv-rest-assessment-handoff.metadata';
+  CANONICAL_REST_ASSESSMENT_HANDOFF_LOOKBACK_MS,
+  maxScannedRestAssessmentHandoffCandidates,
+  resolveRestAssessmentHandoffScanOffset,
+} from '../lv-rest-window/lv-rest-assessment-handoff-reconciliation.policy';
+import { fetchRestAssessmentHandoffReconcileCandidates } from '../lv-rest-window/lv-rest-assessment-handoff-reconciliation.query';
 import {
   isCanonicalRestAssessmentHandoffEligible,
   restTargetTypeForMeasurementType,
@@ -63,10 +64,6 @@ import { formatBatteryV2PipelineLog } from '../observability/battery-v2-pipeline
 
 const TRIP_LOOKBACK_MS = 7 * 24 * 3600_000;
 const ASSESSMENT_STALE_MS = 6 * 3600_000;
-/** Canonical REST assessment handoff repair lookback (D2 reconciliation safety net). */
-const CANONICAL_REST_ASSESSMENT_HANDOFF_LOOKBACK_MS = 7 * 24 * 3600_000;
-/** Max measurement rows scanned per reconciliation pass (prevents starvation, bounds work). */
-const CANONICAL_REST_ASSESSMENT_HANDOFF_MAX_SCAN_MULTIPLIER = 20;
 /** Max age of a rest anchor still worth arming (FSM max rest window). */
 const LV_REST_SESSION_LOOKBACK_MS = 24 * 3600_000;
 /** Grace before recovery kicks in — lets the primary finalize path land first. */
@@ -825,84 +822,37 @@ export class BatteryV2ReconciliationService {
     }
 
     const lookbackFrom = new Date(Date.now() - CANONICAL_REST_ASSESSMENT_HANDOFF_LOOKBACK_MS);
-    const pageSize = batch;
-    const maxScanned = batch * CANONICAL_REST_ASSESSMENT_HANDOFF_MAX_SCAN_MULTIPLIER;
+    const maxScanned = maxScannedRestAssessmentHandoffCandidates(batch);
+    const scanOffset = resolveRestAssessmentHandoffScanOffset(Date.now(), maxScanned);
+    const candidates = await fetchRestAssessmentHandoffReconcileCandidates(this.prisma, {
+      lookbackFrom,
+      offset: scanOffset,
+      limit: maxScanned,
+    });
+
     let repaired = 0;
-    let scanned = 0;
-    let cursorId: string | undefined;
     const repairedMeasurementIds = new Set<string>();
 
-    while (repaired < batch && scanned < maxScanned) {
-      const measurements = await this.prisma.batteryMeasurement.findMany({
-        where: {
-          type: {
-            in: [BatteryMeasurementType.REST_60M, BatteryMeasurementType.REST_6H],
-          },
-          sessionId: { not: null },
-          createdAt: { gte: lookbackFrom },
-          ...(cursorId ? { id: { gt: cursorId } } : {}),
-        },
-        take: pageSize,
-        orderBy: { id: 'asc' },
-        select: {
-          id: true,
-          organizationId: true,
-          vehicleId: true,
-          sessionId: true,
-          type: true,
-          provenance: true,
-        },
+    for (const measurement of candidates) {
+      if (repaired >= batch) break;
+      if (!isCanonicalRestAssessmentHandoffEligible(measurement)) continue;
+      if (!measurement.sessionId) continue;
+
+      const restTargetType = restTargetTypeForMeasurementType(measurement.type);
+      if (!restTargetType) continue;
+      if (repairedMeasurementIds.has(measurement.id)) continue;
+
+      const result = await this.assessmentHandoff.ensureAssessmentHandoff({
+        organizationId: measurement.organizationId,
+        vehicleId: measurement.vehicleId,
+        sessionId: measurement.sessionId,
+        restTargetType,
+        measurementId: measurement.id,
+        correlationPrefix: 'lv-rest-reconcile',
       });
-
-      if (measurements.length === 0) {
-        break;
-      }
-
-      for (const measurement of measurements) {
-        cursorId = measurement.id;
-        scanned += 1;
-        if (repaired >= batch) break;
-
-        if (!isCanonicalRestAssessmentHandoffEligible(measurement)) continue;
-        if (!measurement.sessionId) continue;
-
-        const restTargetType = restTargetTypeForMeasurementType(measurement.type);
-        if (!restTargetType) continue;
-
-        const session = await this.prisma.batteryMeasurementSession.findFirst({
-          where: {
-            id: measurement.sessionId,
-            organizationId: measurement.organizationId,
-          },
-          select: { metadata: true },
-        });
-        if (session) {
-          const handoff = readAssessmentHandoffFromTargetMetadata(
-            session.metadata,
-            restTargetType,
-          );
-          if (
-            handoff?.status === LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED &&
-            handoff.measurementId === measurement.id
-          ) {
-            continue;
-          }
-        }
-
-        if (repairedMeasurementIds.has(measurement.id)) continue;
-
-        const result = await this.assessmentHandoff.ensureAssessmentHandoff({
-          organizationId: measurement.organizationId,
-          vehicleId: measurement.vehicleId,
-          sessionId: measurement.sessionId,
-          restTargetType,
-          measurementId: measurement.id,
-          correlationPrefix: 'lv-rest-reconcile',
-        });
-        if (result.enqueued) {
-          repaired += 1;
-          repairedMeasurementIds.add(measurement.id);
-        }
+      if (result.enqueued) {
+        repaired += 1;
+        repairedMeasurementIds.add(measurement.id);
       }
     }
 

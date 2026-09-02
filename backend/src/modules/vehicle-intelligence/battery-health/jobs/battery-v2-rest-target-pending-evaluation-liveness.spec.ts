@@ -83,6 +83,7 @@ function buildHandlerAndReconciliation() {
       findFirst: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([]),
     },
+    $queryRaw: jest.fn().mockResolvedValue([]),
     vehicleLatestState: { findMany: jest.fn().mockResolvedValue([]) },
     batteryFeatures: { findMany: jest.fn().mockResolvedValue([]) },
     vehicleTrip: { findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn() },

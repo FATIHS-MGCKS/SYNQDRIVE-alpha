@@ -146,6 +146,7 @@ describe('Battery V2 Stage 1 pipeline defect closure', () => {
         update: jest.fn().mockResolvedValue({}),
       },
       batteryMeasurement: { findFirst: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]) },
+      $queryRaw: jest.fn().mockResolvedValue([]),
       vehicleTrip: {
         findMany: jest.fn().mockResolvedValue([]),
         findFirst: jest.fn().mockResolvedValue(null),

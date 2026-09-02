@@ -8,7 +8,7 @@
 
 Battery V2 authority is substantially reconstructed (Phase 2–3) and Phase 4 defines **how to resolve** remaining gaps without implementing runtime fixes. Highest-priority work: **LV publication chain handoffs** (P0_ACTIVATION_BLOCKER — Stage-2 cutover blockers, **not** proven active production incidents while flags default OFF).
 
-- **PKG-01:** **`IMPLEMENTED`** (runtime, 2026-09-02; D2 correction pass) — canonical LV REST → assessment handoff per D1/D2/D3. Session metadata mutations use optimistic `updatedAt` CAS via `mutateLvRestSessionMetadata`. `IMPLEMENTED` ≠ `PRODUCTION_VALIDATED`.
+- **PKG-01:** **`IMPLEMENTED`** (runtime, 2026-09-02; final correction pass) — canonical LV REST → assessment handoff per D1/D2/D3. Reconciliation uses targeted incomplete-candidate SQL + wall-clock rotating scan offset (no process-local cursor). Session metadata mutations use optimistic `updatedAt` CAS via `mutateLvRestSessionMetadata`. `IMPLEMENTED` ≠ `PRODUCTION_VALIDATED`.
 - **PKG-02:** **`IMPLEMENTATION_READY`** — D4 track authority + D5 `publicationVersion` contract authority both **VALIDATED**. Runtime implementation requires **separate explicit authorization**; known runtime gaps (handoff, payload validation, D4 selector) remain open.
 
 **Target architecture (D3):** canonical V2 REST + assessment handoff + assessment = mandatory core; `BATTERY_V2_PUBLICATION_ENABLED` = **target** customer effect gate (current runtime still couples PUBLICATION OFF → `isLvRestShadowModeActive` shadow semantics — M4 retirement surface); `REST_SHADOW` + legacy REST = **temporary migration scaffolds** until M4. `BATTERY_V2_LV_HANDOFF_ENABLED` = **NOT INTRODUCED**. M1–M3 may have temporary legacy + canonical dual assessment triggers.

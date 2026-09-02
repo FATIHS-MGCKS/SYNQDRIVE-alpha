@@ -147,7 +147,31 @@ Append-only scientific record. Newest entries first.
 
 ---
 
-## CL-2026-09-02 — PKG-01 canonical LV REST → assessment handoff runtime
+## CL-2026-09-02 — PKG-01 final correction pass (reconciliation eventual progress + direct-path test)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Reconciliation scanned sequential measurement pages with process-local `cursorId` resetting each invocation — EXECUTED rows could starve repairable candidates beyond `batch*20`; direct-path integration test preloaded `findFirst` measurement causing replay not direct path. |
+| **CHANGE** | Replaced sequential scan with targeted SQL join on incomplete handoff candidates (`fetchRestAssessmentHandoffReconcileCandidates`) plus wall-clock rotating `OFFSET` (`resolveRestAssessmentHandoffScanOffset`); cross-run starvation regression test; corrected direct-path handler test with ordered mocks + `evaluateAndPersist` exactly-once assertion. CAS/replay/monotonic architecture unchanged. |
+| **WHY** | PR #1510 second review — D2 independent eventual recovery requires cross-invocation progress without process-local cursor authority. |
+| **VALIDATION** | PKG-01-focused Jest 82 tests PASS (handoff + reconciliation + handler + stage-1/liveness); `validate-graph.sh` PASS |
+| **NON_EFFECTS** | D1 identity unchanged; no PKG-02/M4/flags/migration/deploy; optimistic CAS architecture retained |
+| **DECISION_STATUS** | PKG-01 IMPLEMENTED — not PRODUCTION_VALIDATED |
+
+---
+
+## CL-2026-09-02 — PKG-01 D2 review correction pass (metadata CAS + replay + reconciliation pagination)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Handler COMPLETED write used stale session snapshot (could erase assessmentHandoff); handoff persistence was read-modify-write without DB concurrency guard; replay marked all measurements COMPLETED; reconciliation first-page starvation. |
+| **CHANGE** | Added `mutateLvRestSessionMetadata` optimistic CAS on `updatedAt`; handoff + handler target writes use fresh re-read/retry; terminal replay discriminators (`isSyntheticRestMissedMeasurement`, `isSyntheticRestStatusMeasurement`); reconciliation id-cursor pagination + per-run repaired-id dedupe; race/regression tests A–E. |
+| **WHY** | PR #1510 review found D2 contract violations — not merge-ready without these fixes. |
+| **VALIDATION** | 83 PKG-01-focused Jest tests PASS; `npx tsc --noEmit` PASS; `validate-graph.sh` PASS |
+| **NON_EFFECTS** | D1 identity unchanged; no PKG-02/M4/flags/migration/deploy |
+| **DECISION_STATUS** | PKG-01 IMPLEMENTED — not PRODUCTION_VALIDATED |
+
+---
 
 | Field | Content |
 |-------|---------|
