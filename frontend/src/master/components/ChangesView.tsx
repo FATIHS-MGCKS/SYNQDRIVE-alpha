@@ -41,7 +41,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'Reference Drive #003 — Telemetry forensics v2 (segmented video GT model)',
     summary: [
       'RD003 session 0fa040aa-… COMPLETED: 371 cycles, 6250 SIGNAL_POINT + 1 SESSION_METADATA.',
-      'HF_HISTORICAL 2783 aggregate-bucket rows (AGGREGATE_BUCKET_V2); 0 duplicate fingerprints.',
+      'HF_HISTORICAL 2783 aggregate-bucket rows (AGGREGATE_BUCKET_V2); NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED=YES.',
+      'HF_IDEMPOTENCY_RUNTIME_VALIDATED=NOT_EXERCISED (no duplicate/retry path exercised in sealed export).',
       'REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ=NO (HF aggregate-bucket Δt P50 ~2s; RAW_PHYSICAL_SAMPLE_CADENCE=NOT_PROVEN).',
       'HF watermark + query-window proofs use acquisition-order per-field execution (not lexical sort).',
       'VIDEO_GT=PARTIAL_SEGMENTED — multiple ~1 min clips, NOT one continuous ~37 min video.',

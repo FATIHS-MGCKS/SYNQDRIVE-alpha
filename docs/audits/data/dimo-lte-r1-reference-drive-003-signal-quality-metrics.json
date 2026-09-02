@@ -1,7 +1,7 @@
 {
   "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_003",
   "sessionId": "0fa040aa-6105-4872-9b2c-f8ad477009b8",
-  "generatedAt": "2026-09-02T20:56:47.801Z",
+  "generatedAt": "2026-09-02T21:25:08.131Z",
   "methodologyVersion": "2026-09-02-rd003-telemetry-forensics-v2-segmented-video-gt-correction",
   "referenceCaptureRuntimeChanged": false,
   "generatedEvidenceValueSource": "COMPUTED_FROM_SEALED_RAW_DATA",
@@ -5329,9 +5329,12 @@
     "HF_PHYSICAL_IDENTITY_VERSION": "AGGREGATE_BUCKET_V2",
     "HF_QUERY_WINDOW_BOUNDED_RUNTIME_VALIDATED": "YES",
     "HF_DATA_WATERMARK_RUNTIME_VALIDATED": "YES",
-    "HF_IDEMPOTENCY_RUNTIME_VALIDATED": "YES",
+    "HF_IDEMPOTENCY_RUNTIME_VALIDATED": "NOT_EXERCISED",
     "HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED": "NOT_EXERCISED",
+    "NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED": "YES",
     "duplicateAggregateBucketIdentities": 0,
+    "duplicateRetrievalObservations": 0,
+    "idempotencyEvidenceNote": "zero duplicate persisted bucket identities observed; no duplicate/retry retrieval exercised — idempotency not proven",
     "nonV2IdentityRows": 0,
     "perFieldWatermark": [
       {

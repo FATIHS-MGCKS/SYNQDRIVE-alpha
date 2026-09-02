@@ -975,7 +975,7 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 
 **Timing metrics (distinct semantics):** SESSION_START_TO_FIRST_REQUEST_MS=35; SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS=254; FAST_GO_TO_RECORDING_MS=125; FAST_GO_TO_FIRST_CYCLE_MS=1222. Prior ambiguous ~0.93s acquisition-start label retired.
 
-**Key findings:** HF watermark + query-window proofs use acquisition-order per-field execution (not lexical sort). Vehicle Load domain = RECONSTRUCTABLE_MEDIUM_CONFIDENCE (inputs directly observed). Longitudinal accel = RECONSTRUCTABLE_WITH_CADENCE_GATING. GEAR_STATE_OBSERVED=YES; GEAR_CHANGE_TIMING_VALIDATED=NO. Zero native events (NOT_EXERCISED — not proof no harsh maneuvers occurred).
+**Key findings:** HF watermark + query-window proofs use acquisition-order per-field execution (not lexical sort). `NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED=YES`; `HF_IDEMPOTENCY_RUNTIME_VALIDATED=NOT_EXERCISED` (no duplicate/retry path exercised). Vehicle Load domain = RECONSTRUCTABLE_MEDIUM_CONFIDENCE. Longitudinal accel = RECONSTRUCTABLE_WITH_CADENCE_GATING. GEAR_STATE_OBSERVED=YES; GEAR_CHANGE_TIMING_VALIDATED=NO. Zero native events (NOT_EXERCISED — not proof no harsh maneuvers occurred).
 
 ### RD002 gate (historical — satisfied 2026-09-02)
 

@@ -79,6 +79,7 @@ Reference Drive #003 video GT alignment when owner ingests instrument-cluster vi
 | Video GT coverage | PARTIAL_SEGMENTED (multiple ~1 min clips) |
 | Video GT alignment | PENDING_SEGMENTED_VIDEO |
 | HF watermark proof | Acquisition-order per-field execution |
+| HF idempotency | NOT_EXERCISED (NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED=YES) |
 | Sealed evidence | `/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-003/` |
 | Validation module | `reference-capture-rd003-hf-runtime-validation.ts` |
 

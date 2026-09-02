@@ -165,9 +165,12 @@
     "HF_PHYSICAL_IDENTITY_VERSION": "AGGREGATE_BUCKET_V2",
     "HF_QUERY_WINDOW_BOUNDED_RUNTIME_VALIDATED": "YES",
     "HF_DATA_WATERMARK_RUNTIME_VALIDATED": "YES",
-    "HF_IDEMPOTENCY_RUNTIME_VALIDATED": "YES",
+    "HF_IDEMPOTENCY_RUNTIME_VALIDATED": "NOT_EXERCISED",
     "HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED": "NOT_EXERCISED",
+    "NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED": "YES",
     "duplicateAggregateBucketIdentities": 0,
+    "duplicateRetrievalObservations": 0,
+    "idempotencyEvidenceNote": "zero duplicate persisted bucket identities observed; no duplicate/retry retrieval exercised — idempotency not proven",
     "nonV2IdentityRows": 0,
     "perFieldWatermark": [
       {

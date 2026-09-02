@@ -886,6 +886,7 @@ function main(): void {
       `| HF_QUERY_WINDOW_BOUNDED | ${hfRuntime.HF_QUERY_WINDOW_BOUNDED_RUNTIME_VALIDATED} |\n` +
       `| HF_DATA_WATERMARK | ${hfRuntime.HF_DATA_WATERMARK_RUNTIME_VALIDATED} |\n` +
       `| HF_IDEMPOTENCY | ${hfRuntime.HF_IDEMPOTENCY_RUNTIME_VALIDATED} |\n` +
+      `| NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED | ${hfRuntime.NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED} |\n` +
       `| HF_LATE_ARRIVAL_RECOVERY | ${hfRuntime.HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED} |\n` +
       `| Proof method | ${hfRuntime.proofMethod} |\n\n` +
       `## Physics assessability (corrected semantics)\n\n` +

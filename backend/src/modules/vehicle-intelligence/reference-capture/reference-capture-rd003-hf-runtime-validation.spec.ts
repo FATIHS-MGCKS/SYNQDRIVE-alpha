@@ -1,4 +1,5 @@
 import {
+  classifyHfIdempotencyEvidence,
   groupHfQueryExecutionsByField,
   validateFieldQueryWindowBounded,
   validateFieldWatermarkSequence,
@@ -16,6 +17,8 @@ function makeHfRow(args: {
   hfWindowFrom: string;
   hfWindowTo: string;
   providerTimestamp?: string;
+  aggregateBucketIdentity?: string;
+  duplicateRetrieval?: boolean;
 }): HfRuntimeObservationRow {
   return {
     observationKind: 'SIGNAL_POINT',
@@ -34,7 +37,8 @@ function makeHfRow(args: {
       hfWindowFrom: args.hfWindowFrom,
       hfWindowTo: args.hfWindowTo,
       hfActualQueryTo: args.hfWindowTo,
-      aggregateBucketIdentity: `bucket-${args.seq}`,
+      aggregateBucketIdentity: args.aggregateBucketIdentity ?? `bucket-${args.seq}`,
+      duplicateRetrieval: args.duplicateRetrieval ?? false,
       requestedInterval: '1s',
       requestedAggregation: 'AVG',
     },
@@ -202,6 +206,68 @@ describe('reference-capture-rd003-hf-runtime-validation', () => {
       const result = validateFieldQueryWindowBounded('speed', execs, SESSION_START_MS);
       expect(result.validated).toBe(false);
       expect(result.violations.some((v) => v.code === 'QUERY_COVERAGE_REGRESSION')).toBe(true);
+    });
+  });
+
+  describe('idempotency evidence semantics', () => {
+    it('does not prove runtime idempotency from zero duplicate bucket identities alone', () => {
+      const rows = makeBoundedSequence('speed', 3);
+      const evidence = classifyHfIdempotencyEvidence(rows);
+      expect(evidence.NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED).toBe('YES');
+      expect(evidence.HF_IDEMPOTENCY_RUNTIME_VALIDATED).toBe('NOT_EXERCISED');
+      expect(evidence.HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED).toBe('NOT_EXERCISED');
+    });
+
+    it('reports NO when duplicate retrieval exercised but duplicate bucket identity persisted', () => {
+      const rows = [
+        makeHfRow({
+          field: 'speed',
+          seq: 1,
+          requestStartedAt: '2026-09-02T19:00:00.000Z',
+          hfWindowFrom: '2026-09-02T18:59:50.000Z',
+          hfWindowTo: '2026-09-02T19:00:00.000Z',
+          aggregateBucketIdentity: 'bucket-shared',
+        }),
+        makeHfRow({
+          field: 'speed',
+          seq: 2,
+          requestStartedAt: '2026-09-02T19:00:10.000Z',
+          hfWindowFrom: '2026-09-02T18:59:58.000Z',
+          hfWindowTo: '2026-09-02T19:00:10.000Z',
+          aggregateBucketIdentity: 'bucket-shared',
+          duplicateRetrieval: true,
+        }),
+      ];
+      const evidence = classifyHfIdempotencyEvidence(rows);
+      expect(evidence.duplicateRetrievalObservations).toBe(1);
+      expect(evidence.NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED).toBe('NO');
+      expect(evidence.HF_IDEMPOTENCY_RUNTIME_VALIDATED).toBe('NO');
+    });
+
+    it('reports YES when duplicate retrieval exercised and dedup prevented persistence', () => {
+      const rows = [
+        makeHfRow({
+          field: 'speed',
+          seq: 1,
+          requestStartedAt: '2026-09-02T19:00:00.000Z',
+          hfWindowFrom: '2026-09-02T18:59:50.000Z',
+          hfWindowTo: '2026-09-02T19:00:00.000Z',
+          aggregateBucketIdentity: 'bucket-a',
+        }),
+        makeHfRow({
+          field: 'speed',
+          seq: 2,
+          requestStartedAt: '2026-09-02T19:00:10.000Z',
+          hfWindowFrom: '2026-09-02T18:59:58.000Z',
+          hfWindowTo: '2026-09-02T19:00:10.000Z',
+          aggregateBucketIdentity: 'bucket-b',
+          duplicateRetrieval: true,
+        }),
+      ];
+      const evidence = classifyHfIdempotencyEvidence(rows);
+      expect(evidence.NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED).toBe('YES');
+      expect(evidence.HF_IDEMPOTENCY_RUNTIME_VALIDATED).toBe('YES');
+      expect(evidence.HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED).toBe('YES');
     });
   });
 

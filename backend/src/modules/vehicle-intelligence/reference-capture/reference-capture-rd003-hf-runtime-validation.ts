@@ -249,13 +249,78 @@ export function validateFieldQueryWindowBounded(
   };
 }
 
+export type HfIdempotencyEvidence = {
+  duplicateAggregateBucketIdentities: number;
+  duplicateRetrievalObservations: number;
+  NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED: 'YES' | 'NO';
+  HF_IDEMPOTENCY_RUNTIME_VALIDATED: 'YES' | 'NO' | 'NOT_EXERCISED' | 'PARTIAL';
+  HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED: 'YES' | 'NOT_EXERCISED';
+  idempotencyEvidenceNote: string;
+};
+
+/**
+ * Classify HF idempotency evidence conservatively.
+ *
+ * Absence of duplicate persisted bucket identities proves only that no duplicate
+ * identities were observed — NOT that runtime idempotency was exercised.
+ * YES requires an observed duplicate/retry path (duplicateRetrieval) with no
+ * duplicate persistence.
+ */
+export function classifyHfIdempotencyEvidence(hfRows: HfRuntimeObservationRow[]): HfIdempotencyEvidence {
+  let duplicateBuckets = 0;
+  let duplicateRetrieval = 0;
+  const bucketGlobal = new Set<string>();
+
+  for (const row of hfRows) {
+    const prov = row.provenanceJson ?? {};
+    const bucket = String(prov.aggregateBucketIdentity ?? '');
+    if (bucket) {
+      if (bucketGlobal.has(bucket)) duplicateBuckets++;
+      bucketGlobal.add(bucket);
+    }
+    if (prov.duplicateRetrieval === true) duplicateRetrieval++;
+  }
+
+  const noDuplicateObserved: 'YES' | 'NO' = duplicateBuckets === 0 ? 'YES' : 'NO';
+
+  let idempotencyValidated: HfIdempotencyEvidence['HF_IDEMPOTENCY_RUNTIME_VALIDATED'];
+  let note: string;
+  if (duplicateRetrieval > 0 && duplicateBuckets === 0) {
+    idempotencyValidated = 'YES';
+    note =
+      'duplicateRetrieval observed with zero duplicate persisted aggregate bucket identities — exercised dedup path';
+  } else if (duplicateRetrieval > 0 && duplicateBuckets > 0) {
+    idempotencyValidated = 'NO';
+    note = 'duplicateRetrieval observed but duplicate aggregate bucket identities were persisted';
+  } else if (duplicateBuckets > 0) {
+    idempotencyValidated = 'NO';
+    note = 'duplicate aggregate bucket identities persisted without exercised dedup evidence';
+  } else {
+    idempotencyValidated = 'NOT_EXERCISED';
+    note =
+      'zero duplicate persisted bucket identities observed; no duplicate/retry retrieval exercised — idempotency not proven';
+  }
+
+  return {
+    duplicateAggregateBucketIdentities: duplicateBuckets,
+    duplicateRetrievalObservations: duplicateRetrieval,
+    NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED: noDuplicateObserved,
+    HF_IDEMPOTENCY_RUNTIME_VALIDATED: idempotencyValidated,
+    HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED: duplicateRetrieval > 0 ? 'YES' : 'NOT_EXERCISED',
+    idempotencyEvidenceNote: note,
+  };
+}
+
 export type HfRuntimeMechanismValidation = {
   HF_PHYSICAL_IDENTITY_VERSION: 'AGGREGATE_BUCKET_V2' | 'MIXED';
   HF_QUERY_WINDOW_BOUNDED_RUNTIME_VALIDATED: 'YES' | 'PARTIAL' | 'NO';
   HF_DATA_WATERMARK_RUNTIME_VALIDATED: 'YES' | 'PARTIAL' | 'NO';
-  HF_IDEMPOTENCY_RUNTIME_VALIDATED: 'YES' | 'NO';
+  NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED: 'YES' | 'NO';
+  HF_IDEMPOTENCY_RUNTIME_VALIDATED: 'YES' | 'NO' | 'NOT_EXERCISED' | 'PARTIAL';
   HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED: 'YES' | 'NOT_EXERCISED';
   duplicateAggregateBucketIdentities: number;
+  duplicateRetrievalObservations: number;
+  idempotencyEvidenceNote: string;
   nonV2IdentityRows: number;
   perFieldWatermark: HfFieldWatermarkValidation[];
   perFieldBounded: HfFieldBoundedValidation[];
@@ -266,21 +331,14 @@ export function validateHfRuntimeMechanisms(
   hfRows: HfRuntimeObservationRow[],
   sessionStartedAtMs: number,
 ): HfRuntimeMechanismValidation {
-  let duplicateBuckets = 0;
   let nonV2 = 0;
-  let lateRecovery = false;
-  const bucketGlobal = new Set<string>();
 
   for (const row of hfRows) {
     const prov = row.provenanceJson ?? {};
     if (prov.hfPhysicalIdentityVersion !== 'AGGREGATE_BUCKET_V2') nonV2++;
-    const bucket = String(prov.aggregateBucketIdentity ?? '');
-    if (bucket) {
-      if (bucketGlobal.has(bucket)) duplicateBuckets++;
-      bucketGlobal.add(bucket);
-    }
-    if (prov.duplicateRetrieval === true) lateRecovery = true;
   }
+
+  const idempotency = classifyHfIdempotencyEvidence(hfRows);
 
   const executionsByField = groupHfQueryExecutionsByField(hfRows);
   const perFieldWatermark: HfFieldWatermarkValidation[] = [];
@@ -310,9 +368,13 @@ export function validateHfRuntimeMechanisms(
       : allWatermarkPass
         ? 'YES'
         : 'PARTIAL',
-    HF_IDEMPOTENCY_RUNTIME_VALIDATED: duplicateBuckets === 0 ? 'YES' : 'NO',
-    HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED: lateRecovery ? 'YES' : 'NOT_EXERCISED',
-    duplicateAggregateBucketIdentities: duplicateBuckets,
+    HF_IDEMPOTENCY_RUNTIME_VALIDATED: idempotency.HF_IDEMPOTENCY_RUNTIME_VALIDATED,
+    HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED: idempotency.HF_LATE_ARRIVAL_RECOVERY_RUNTIME_OBSERVED,
+    NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED:
+      idempotency.NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED,
+    duplicateAggregateBucketIdentities: idempotency.duplicateAggregateBucketIdentities,
+    duplicateRetrievalObservations: idempotency.duplicateRetrievalObservations,
+    idempotencyEvidenceNote: idempotency.idempotencyEvidenceNote,
     nonV2IdentityRows: nonV2,
     perFieldWatermark,
     perFieldBounded,

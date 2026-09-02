@@ -65,7 +65,8 @@ describe('reference-capture-drive-003-reanalyze', () => {
     const result = JSON.parse(stdout.slice(jsonStart));
     expect(result.ok).toBe(true);
     expect(result.REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ).toBe('NO');
-    expect(result.HF_IDEMPOTENCY_RUNTIME_VALIDATED).toBe('YES');
+    expect(result.HF_IDEMPOTENCY_RUNTIME_VALIDATED).toBe('NOT_EXERCISED');
+    expect(result.NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED).toBe('YES');
     expect(result.HF_DATA_WATERMARK_RUNTIME_VALIDATED).toBe('YES');
     expect(result.HF_QUERY_WINDOW_BOUNDED_RUNTIME_VALIDATED).toBe('YES');
     expect(result.hfFieldCount).toBe(5);
