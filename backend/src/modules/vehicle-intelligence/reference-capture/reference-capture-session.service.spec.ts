@@ -124,19 +124,27 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
     expect(readiness.assessSessionReadiness).toHaveBeenCalled();
   });
 
-  it('uses STARTING compensated transition before RECORDING', async () => {
+  it('uses STARTING then RECORDING before runner enqueue', async () => {
     const { service, sessionRepo, runner } = makeService();
-    sessionRepo.findById.mockResolvedValue({
-      id: 's1',
-      organizationId: 'org',
-      vehicleId: 'veh',
-      status: ReferenceCaptureSessionStatus.READY,
-      manifestVersion: '1.1.0',
-      powertrainProfile: 'ICE_GASOLINE',
-      massBindingJson: {},
-      preflightJson: {},
-      readinessJson: { deploymentPreflightReady: true },
-    });
+    sessionRepo.findById
+      .mockResolvedValueOnce({
+        id: 's1',
+        organizationId: 'org',
+        vehicleId: 'veh',
+        status: ReferenceCaptureSessionStatus.READY,
+        manifestVersion: '1.1.0',
+        powertrainProfile: 'ICE_GASOLINE',
+        massBindingJson: {},
+        preflightJson: {},
+        readinessJson: { deploymentPreflightReady: true },
+      })
+      .mockResolvedValueOnce({
+        id: 's1',
+        status: ReferenceCaptureSessionStatus.RECORDING,
+        massBindingJson: {},
+        preflightJson: {},
+        readinessJson: { deploymentPreflightReady: true },
+      });
     sessionRepo.updateStatusIfCurrent
       .mockResolvedValueOnce({ id: 's1', status: ReferenceCaptureSessionStatus.STARTING })
       .mockResolvedValueOnce({ id: 's1', status: ReferenceCaptureSessionStatus.RECORDING });
@@ -149,6 +157,14 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       ReferenceCaptureSessionStatus.READY,
       ReferenceCaptureSessionStatus.STARTING,
       expect.any(Object),
+    );
+    expect(sessionRepo.updateStatusIfCurrent).toHaveBeenNthCalledWith(
+      2,
+      'org',
+      's1',
+      ReferenceCaptureSessionStatus.STARTING,
+      ReferenceCaptureSessionStatus.RECORDING,
+      expect.objectContaining({ runnerJobId: expect.any(String), pendingCycleJobId: null }),
     );
     expect(runner.startRunner).toHaveBeenCalled();
   });
@@ -173,6 +189,10 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       })
       .mockResolvedValueOnce({
         id: 's1',
+        status: ReferenceCaptureSessionStatus.RECORDING,
+      })
+      .mockResolvedValueOnce({
+        id: 's1',
         status: ReferenceCaptureSessionStatus.READY,
         failureReason: 'redis unavailable',
         runnerJobId: null,
@@ -185,10 +205,10 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
     );
     expect(runner.stopRunner).toHaveBeenCalledWith('org', 's1');
     expect(sessionRepo.updateStatusIfCurrent).toHaveBeenNthCalledWith(
-      2,
+      3,
       'org',
       's1',
-      ReferenceCaptureSessionStatus.STARTING,
+      ReferenceCaptureSessionStatus.RECORDING,
       ReferenceCaptureSessionStatus.READY,
       expect.objectContaining({
         failureReason: 'redis unavailable',
@@ -201,7 +221,7 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       sessionRepo.updateStatusIfCurrent.mock.calls.some(
         (call) => call[3] === ReferenceCaptureSessionStatus.RECORDING,
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('M — concurrent ABORT during STARTING->RECORDING CAS leaves ABORTED (no READY resurrection)', async () => {
@@ -228,20 +248,21 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
     sessionRepo.updateStatusIfCurrent
       .mockResolvedValueOnce({ id: 's1', status: ReferenceCaptureSessionStatus.STARTING })
       .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null);
-    runner.startRunner.mockResolvedValue('refcap-cycle-s1-1-uuid');
 
     await expect(service.startRecording('org', 's1')).rejects.toThrow(
       'compensation superseded by concurrent session transition to ABORTED',
     );
+    expect(runner.startRunner).not.toHaveBeenCalled();
     expect(runner.stopRunner).toHaveBeenCalledWith('org', 's1');
     expect(sessionRepo.updateStatus).not.toHaveBeenCalled();
     expect(sessionRepo.updateStatusIfCurrent).toHaveBeenNthCalledWith(
-      3,
+      2,
       'org',
       's1',
       ReferenceCaptureSessionStatus.STARTING,
-      ReferenceCaptureSessionStatus.READY,
+      ReferenceCaptureSessionStatus.RECORDING,
       expect.any(Object),
     );
     const latest = await sessionRepo.findById('org', 's1');
@@ -271,6 +292,8 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
     sessionRepo.findById.mockResolvedValueOnce(readySession).mockResolvedValue(abortedSession);
     sessionRepo.updateStatusIfCurrent
       .mockResolvedValueOnce({ id: 's1', status: ReferenceCaptureSessionStatus.STARTING })
+      .mockResolvedValueOnce({ id: 's1', status: ReferenceCaptureSessionStatus.RECORDING })
+      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null);
     runner.startRunner.mockRejectedValue(new Error('redis unavailable'));
 
@@ -310,8 +333,8 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
     sessionRepo.updateStatusIfCurrent
       .mockResolvedValueOnce({ id: 's1', status: ReferenceCaptureSessionStatus.STARTING })
       .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null);
-    runner.startRunner.mockResolvedValue('refcap-cycle-s1-1-uuid');
 
     await expect(service.startRecording('org', 's1')).rejects.toThrow('ABORTED');
     await expect(service.startRecording('org', 's1')).rejects.toThrow(

@@ -178,7 +178,23 @@ export class ReferenceCaptureSessionService {
     }
 
     try {
-      const firstCycleJobId = await this.runnerService.startRunner({
+      const runnerJobId = this.runnerService.sessionRunnerKey(sessionId);
+      const recording = await this.sessionRepository.updateStatusIfCurrent(
+        organizationId,
+        sessionId,
+        ReferenceCaptureSessionStatus.STARTING,
+        ReferenceCaptureSessionStatus.RECORDING,
+        {
+          runnerJobId,
+          pendingCycleJobId: null,
+        },
+      );
+
+      if (!recording) {
+        throw new BadRequestException('Failed to transition session to RECORDING before runner enqueue');
+      }
+
+      await this.runnerService.startRunner({
         organizationId,
         vehicleId: session.vehicleId,
         sessionId,
@@ -186,24 +202,14 @@ export class ReferenceCaptureSessionService {
         powertrainProfile: session.powertrainProfile,
       });
 
-      const recording = await this.sessionRepository.updateStatusIfCurrent(
-        organizationId,
-        sessionId,
-        ReferenceCaptureSessionStatus.STARTING,
-        ReferenceCaptureSessionStatus.RECORDING,
-        {
-          runnerJobId: this.runnerService.sessionRunnerKey(sessionId),
-          pendingCycleJobId: firstCycleJobId,
-        },
-      );
-
-      if (!recording) {
+      const refreshed = await this.sessionRepository.findById(organizationId, sessionId);
+      if (!refreshed || refreshed.status !== ReferenceCaptureSessionStatus.RECORDING) {
         await this.runnerService.stopRunner(organizationId, sessionId);
-        throw new BadRequestException('Failed to transition session to RECORDING after runner enqueue');
+        throw new BadRequestException('Session left RECORDING before runner start completed');
       }
 
       return this.toView(
-        recording,
+        refreshed,
         session.massBindingJson as never,
         session.preflightJson as never,
         readiness,
@@ -213,7 +219,27 @@ export class ReferenceCaptureSessionService {
       const failureReason =
         error instanceof Error ? error.message : 'runner_start_failed';
 
-      const reverted = await this.sessionRepository.updateStatusIfCurrent(
+      const revertedFromRecording = await this.sessionRepository.updateStatusIfCurrent(
+        organizationId,
+        sessionId,
+        ReferenceCaptureSessionStatus.RECORDING,
+        ReferenceCaptureSessionStatus.READY,
+        {
+          failureReason,
+          runnerJobId: null,
+          pendingCycleJobId: null,
+        },
+      );
+
+      if (revertedFromRecording) {
+        throw error instanceof BadRequestException
+          ? error
+          : new BadRequestException(
+              `Failed to start reference capture runner: ${failureReason}`,
+            );
+      }
+
+      const revertedFromStarting = await this.sessionRepository.updateStatusIfCurrent(
         organizationId,
         sessionId,
         ReferenceCaptureSessionStatus.STARTING,
@@ -225,7 +251,7 @@ export class ReferenceCaptureSessionService {
         },
       );
 
-      if (reverted) {
+      if (revertedFromStarting) {
         throw error instanceof BadRequestException
           ? error
           : new BadRequestException(
