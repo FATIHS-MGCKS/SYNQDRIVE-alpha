@@ -232,6 +232,49 @@ export function sessionRequiresAbort(snapshot: FastGoRunnerSnapshot): boolean {
   );
 }
 
+/** Ambiguous mutating POST /start — fence READY/STARTING/RECORDING to block delayed CAS. */
+export function ambiguousStartRequiresSessionFence(snapshot: FastGoRunnerSnapshot): boolean {
+  return (
+    snapshot.status === ReferenceCaptureSessionStatus.READY ||
+    snapshot.status === ReferenceCaptureSessionStatus.STARTING ||
+    snapshot.status === ReferenceCaptureSessionStatus.RECORDING
+  );
+}
+
+/** Compensation confirmed only when session is terminal/non-active and cannot restart. */
+export function isAmbiguousStartFenceComplete(snapshot: FastGoRunnerSnapshot): boolean {
+  if (ambiguousStartRequiresSessionFence(snapshot)) return false;
+  if (snapshot.runnerJobId) return false;
+  if (snapshot.pendingCycleJobId) return false;
+  if (snapshot.activeCycleJobId) return false;
+  return true;
+}
+
+export function deriveAmbiguousStartCompensationStatus(
+  snapshot: FastGoRunnerSnapshot | null,
+  verifyFailed: boolean,
+): FastGoCompensationStatus {
+  if (verifyFailed || !snapshot) {
+    return 'COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED';
+  }
+  return isAmbiguousStartFenceComplete(snapshot)
+    ? 'COMPENSATION_CONFIRMED'
+    : 'COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED';
+}
+
+/**
+ * Whether a mutating POST /start HTTP outcome requires ambiguous-start reconciliation.
+ * 401/403 are definitive auth failures — not ambiguous mutation.
+ */
+export function isAmbiguousMutatingStartHttpOutcome(
+  httpStatus: number,
+  opts: { timedOut?: boolean; budgetExhausted?: boolean } = {},
+): boolean {
+  if (opts.timedOut || opts.budgetExhausted) return true;
+  if (httpStatus >= 500 && httpStatus < 600) return true;
+  return false;
+}
+
 export function deriveCleanupCompensationStatus(
   snapshot: FastGoRunnerSnapshot | null,
   verifyFailed: boolean,

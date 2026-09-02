@@ -281,17 +281,11 @@ describe('ReferenceCaptureFastGoService', () => {
     expect(result.compensationStatus).toBe('COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED');
   });
 
-  it('I — ambiguous START failure reconciles without READY_TO_DRIVE and confirms cleanup', async () => {
+  it('I — ambiguous START failure fences READY session and confirms cleanup', async () => {
     const { service, sessionService, sessionRepository } = makeService();
     sessionRepository.findById
       .mockResolvedValueOnce(makeReadySession())
-      .mockResolvedValueOnce({
-        ...makeReadySession(),
-        status: ReferenceCaptureSessionStatus.RECORDING,
-        runnerJobId: 'refcap-session-sess-1',
-        pendingCycleJobId: 'pending',
-        acquisitionStateJson: { cycleCount: 0 },
-      })
+      .mockResolvedValueOnce(makeReadySession())
       .mockResolvedValueOnce({
         ...makeReadySession(),
         status: ReferenceCaptureSessionStatus.ABORTED,
@@ -433,6 +427,41 @@ describe('ReferenceCaptureSessionService concurrent start (CAS authority)', () =
     await expect(service.startRecording('org', 's1')).rejects.toThrow(
       'Concurrent start request — session no longer READY',
     );
+  });
+
+  it('L — delayed START blocked after ambiguous fence moves session to ABORTED', async () => {
+    const sessionRepo = {
+      findById: jest.fn().mockResolvedValue({
+        id: 's1',
+        organizationId: 'org',
+        vehicleId: 'veh',
+        status: ReferenceCaptureSessionStatus.ABORTED,
+        manifestVersion: '1.1.0',
+        powertrainProfile: 'ICE_GASOLINE',
+        massBindingJson: {},
+        preflightJson: {},
+        readinessJson: { deploymentPreflightReady: true },
+      }),
+      updateStatusIfCurrent: jest.fn(),
+    };
+    const config = { isEnabled: () => true } as ReferenceCaptureConfig;
+    const { ReferenceCaptureSessionService } = require('./reference-capture-session.service');
+    const service = new ReferenceCaptureSessionService(
+      config,
+      sessionRepo as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      { startRunner: jest.fn() } as never,
+    );
+
+    await expect(service.startRecording('org', 's1')).rejects.toThrow(
+      'Cannot start recording from status ABORTED',
+    );
+    expect(sessionRepo.updateStatusIfCurrent).not.toHaveBeenCalled();
   });
 });
 

@@ -45,14 +45,27 @@ no runner / no startedAt                poll ≤15s for cycleCount≥1 + observa
 | `REFERENCE_CAPTURE_OPS_API_BASE_URL` | — | Production API base for FAST GO |
 | `REFERENCE_CAPTURE_OPS_BEARER_TOKEN` | — | Operator JWT (runtime secret) |
 
-## Ambiguous START reconciliation
+## Ambiguous START reconciliation — `AMBIGUOUS_START_SESSION_FENCING`
 
-Mutating `POST /start` timeouts do not imply the server did not start. On `timedOut` or `budgetExhausted`, FAST GO:
+Mutating `POST /start` outcomes classified by `isAmbiguousMutatingStartHttpOutcome()`:
+
+| Outcome | Reconcile? |
+|---------|------------|
+| `timedOut` / `budgetExhausted` | YES |
+| HTTP 5xx | YES |
+| HTTP 401/403 | NO (definitive auth failure) |
+| HTTP 4xx (other) | NO unless proven ambiguous |
+
+On ambiguous outcome, FAST GO:
 
 1. Prints `READY_TO_DRIVE = NO`
 2. Runs `reconcileAmbiguousStartViaHttp()` within 3s cleanup budget
-3. Aborts if session is `STARTING` or `RECORDING`
-4. Verifies no runner artifacts remain
+3. **Fences** session if `READY`, `STARTING`, or `RECORDING` via canonical `abort`
+4. Verifies terminal/non-active state with no runner artifacts
+
+Delayed original `/start` cannot succeed after fence moves session to `ABORTED` (CAS `READY → STARTING` blocked).
+
+Generic `runBoundedSessionCleanup()` semantics unchanged for non-ambiguous post-GO failures.
 
 ## SIGNAL_POINT gate
 

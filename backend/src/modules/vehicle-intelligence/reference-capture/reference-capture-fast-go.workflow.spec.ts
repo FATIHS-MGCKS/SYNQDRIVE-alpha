@@ -59,19 +59,39 @@ describe('reference-capture-fast-go.workflow', () => {
 });
 
 describe('reference-capture-fast-go.workflow compensation matrix', () => {
-  it('START timeout after no server mutation => NO GO path cleanup confirms READY/no runner', async () => {
+  it('A — ambiguous START + GET READY => session fenced via abort', async () => {
     const getSession = jest
       .fn()
-      .mockResolvedValueOnce({ status: 200, data: sessionView(ReferenceCaptureSessionStatus.READY) });
-    const abortSession = jest.fn();
+      .mockResolvedValueOnce({ status: 200, data: sessionView(ReferenceCaptureSessionStatus.READY) })
+      .mockResolvedValueOnce({ status: 200, data: sessionView(ReferenceCaptureSessionStatus.ABORTED) });
+    const abortSession = jest.fn().mockResolvedValue({ status: 200, data: {} });
     const client = makeClient({ getSession, abortSession });
 
     const status = await reconcileAmbiguousStartViaHttp(client, 'org', 'veh', 'sess');
     expect(status).toBe('COMPENSATION_CONFIRMED');
-    expect(abortSession).not.toHaveBeenCalled();
+    expect(abortSession).toHaveBeenCalledWith(
+      'org',
+      'veh',
+      'sess',
+      'ambiguous_start_session_fencing',
+      expect.any(Object),
+    );
   });
 
-  it('START timeout after server mutation to STARTING => abort + cleanup confirmed', async () => {
+  it('F — ambiguous START never confirms while session remains READY', async () => {
+    const getSession = jest.fn().mockResolvedValue({
+      status: 200,
+      data: sessionView(ReferenceCaptureSessionStatus.READY),
+    });
+    const abortSession = jest.fn().mockResolvedValue({ status: 0, timedOut: true });
+    const client = makeClient({ getSession, abortSession });
+
+    const status = await reconcileAmbiguousStartViaHttp(client, 'org', 'veh', 'sess');
+    expect(status).toBe('COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED');
+    expect(abortSession).toHaveBeenCalled();
+  });
+
+  it('C — ambiguous START + STARTING => abort + confirmed', async () => {
     const getSession = jest
       .fn()
       .mockResolvedValueOnce({
@@ -90,7 +110,7 @@ describe('reference-capture-fast-go.workflow compensation matrix', () => {
     expect(abortSession).toHaveBeenCalled();
   });
 
-  it('START timeout after server mutation to RECORDING => abort + cleanup confirmed', async () => {
+  it('D — ambiguous START + RECORDING => abort + confirmed', async () => {
     const getSession = jest
       .fn()
       .mockResolvedValueOnce({
@@ -113,7 +133,7 @@ describe('reference-capture-fast-go.workflow compensation matrix', () => {
     expect(abortSession).toHaveBeenCalled();
   });
 
-  it('START timeout + cleanup HTTP timeout => UNCONFIRMED', async () => {
+  it('E — ambiguous START + cleanup cannot verify => UNCONFIRMED', async () => {
     const getSession = jest.fn().mockResolvedValue({
       status: 200,
       data: sessionView(ReferenceCaptureSessionStatus.RECORDING, { runnerJobId: 'r', pendingCycleJobId: 'p' }),

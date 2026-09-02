@@ -3,8 +3,11 @@ import { ReferenceCaptureObservationKind, ReferenceCaptureSessionStatus } from '
 import { ReferenceCaptureConfig } from './reference-capture.config';
 import {
   assessFastGoReadiness,
+  ambiguousStartRequiresSessionFence,
   createFastGoTimestamps,
+  deriveAmbiguousStartCompensationStatus,
   FAST_GO_CLEANUP_TIMEOUT_MS,
+  isAmbiguousStartFenceComplete,
   isSessionCleanupComplete,
   remainingGoBudgetMs,
   runnerSnapshotFromDbSession,
@@ -152,7 +155,7 @@ export class ReferenceCaptureFastGoService {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const compensationStatus = await this.compensateFailedGo(
+      const compensationStatus = await this.compensateAmbiguousStart(
         input.organizationId,
         session.id,
         `ambiguous_start:${message}`,
@@ -387,6 +390,39 @@ export class ReferenceCaptureFastGoService {
     return this.failure(sessionId, ReferenceCaptureSessionStatus.RECORDING, 0, 0, false, timestamps, [
       'go_deadline_exceeded',
     ]);
+  }
+
+  private async compensateAmbiguousStart(
+    organizationId: string,
+    sessionId: string,
+    reason: string,
+    nowMs: () => number,
+  ): Promise<FastGoCompensationStatus> {
+    const session = await this.sessionRepository.findById(organizationId, sessionId);
+    if (!session) return 'COMPENSATION_NOT_REQUIRED';
+
+    let snapshot = runnerSnapshotFromDbSession(session);
+
+    if (ambiguousStartRequiresSessionFence(snapshot)) {
+      try {
+        await this.sessionService.abortSession(organizationId, sessionId, `fast_go_compensation:${reason}`);
+      } catch {
+        return 'COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED';
+      }
+    } else if (isAmbiguousStartFenceComplete(snapshot)) {
+      return 'COMPENSATION_CONFIRMED';
+    }
+
+    const deadline = nowMs() + FAST_GO_CLEANUP_TIMEOUT_MS;
+    while (nowMs() < deadline) {
+      const refreshed = await this.sessionRepository.findById(organizationId, sessionId);
+      if (!refreshed) return 'COMPENSATION_CONFIRMED';
+      snapshot = runnerSnapshotFromDbSession(refreshed);
+      if (isAmbiguousStartFenceComplete(snapshot)) return 'COMPENSATION_CONFIRMED';
+      await sleep(100);
+    }
+
+    return deriveAmbiguousStartCompensationStatus(snapshot, true);
   }
 
   private async compensateFailedGo(

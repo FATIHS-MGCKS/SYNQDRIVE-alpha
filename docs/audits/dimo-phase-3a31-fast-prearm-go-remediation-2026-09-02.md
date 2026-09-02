@@ -173,19 +173,25 @@ If `remainingMs <= 0`, the client does not issue the request (`budgetExhausted`)
 
 `isRunnerContinuityProven()` — after cycle N completes, `scheduleNextCycle` normally sets `pendingCycleJobId` to N+1. Legitimate transient: `activeCycleJobId` set while N+1 is already executing.
 
-### Ambiguous POST /start timeout
+### Ambiguous POST /start timeout — `AMBIGUOUS_START_SESSION_FENCING`
 
-`CLIENT_TIMEOUT != SERVER_DID_NOT_START`. A mutating `POST /start` may have transitioned `READY → STARTING → RECORDING` even when the HTTP client times out before receiving the response.
+`CLIENT_TIMEOUT != SERVER_DID_NOT_START`. A mutating `POST /start` may still be in flight server-side even when the HTTP client times out, loses connection, exhausts GO budget, or receives HTTP 5xx after partial mutation.
 
-When `started.timedOut` or `started.budgetExhausted`:
+**Client timeout ≠ server cancellation.** A cleanup `GET` observing `READY` with no runner artifacts is an observation, not proof that no delayed mutation exists.
+
+When `isAmbiguousMutatingStartHttpOutcome()` is true (`timedOut`, `budgetExhausted`, HTTP 5xx — not 401/403):
 
 1. `READY_TO_DRIVE = NO` (never YES)
 2. Immediate bounded reconciliation via `reconcileAmbiguousStartViaHttp()` (3s cleanup budget, separate from GO window)
-3. `GET` session → if `STARTING` or `RECORDING`, call canonical authenticated `abort`
-4. Verify: status ∉ `{STARTING, RECORDING}`; `runnerJobId`, `pendingCycleJobId`, `activeCycleJobId` all null
+3. `GET` session → if status is `READY`, `STARTING`, or `RECORDING`, call canonical authenticated `abort` (**session fencing**)
+4. Verify terminal/non-active state: status ∉ `{READY, STARTING, RECORDING}`; `runnerJobId`, `pendingCycleJobId`, `activeCycleJobId` all null
 5. Report `COMPENSATION_CONFIRMED` or `COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED`
 
-If session remains `READY` with no runner artifacts, cleanup is confirmed from server state (no abort required).
+A `READY` session after ambiguous START is **intentionally sacrificed** (`READY → ABORTED`) to establish a CAS fencing barrier. A delayed original `/start` can no longer win `READY → STARTING`. Operator must run a new PRE-ARM before another reference attempt.
+
+`COMPENSATION_CONFIRMED` requires terminal non-running state — never while session remains `READY`.
+
+Generic post-GO cleanup (`runBoundedSessionCleanup`) retains prior semantics for non-ambiguous failures.
 
 Never silently return after ambiguous START.
 
@@ -227,7 +233,7 @@ Do not fabricate exact physical-event timestamps from later HTTP observations.
 |---------------|-----------|
 | STARTING CAS lost | Second GO rejected; no duplicate runner |
 | BullMQ enqueue failure | `startRecording` reverts to `READY` (existing 3A.1 behavior) |
-| Ambiguous POST /start timeout | `reconcileAmbiguousStartViaHttp()` → abort if mutated → verify cleanup |
+| Ambiguous POST /start timeout | `reconcileAmbiguousStartViaHttp()` → fence READY/STARTING/RECORDING via abort → verify terminal state |
 | First-cycle timeout | `abortSession(fast_go_deadline_exceeded)` + bounded verify |
 | Already RECORDING | Bounded wait until invariant proven or deadline; no second runner |
 

@@ -1,10 +1,13 @@
 import { ReferenceCaptureObservationKind, ReferenceCaptureSessionStatus } from '@prisma/client';
 import {
   assessFastGoReadiness,
+  ambiguousStartRequiresSessionFence,
   clampHttpRequestTimeoutMs,
   computeGoDeadlineMs,
   countPersistedSignalPoints,
   createFastGoTimestamps,
+  isAmbiguousMutatingStartHttpOutcome,
+  isAmbiguousStartFenceComplete,
   isFastGoReadyToDrive,
   isRunnerContinuityProven,
   isSessionCleanupComplete,
@@ -155,5 +158,58 @@ describe('reference-capture-fast-go.policy', () => {
         activeCycleJobId: null,
       }),
     ).toBe(true);
+  });
+
+  describe('AMBIGUOUS_START_SESSION_FENCING', () => {
+    it('requires fence for READY, STARTING, RECORDING', () => {
+      expect(
+        ambiguousStartRequiresSessionFence({
+          status: ReferenceCaptureSessionStatus.READY,
+          cycleCount: 0,
+          runnerJobId: null,
+          pendingCycleJobId: null,
+          activeCycleJobId: null,
+        }),
+      ).toBe(true);
+      expect(
+        ambiguousStartRequiresSessionFence({
+          status: ReferenceCaptureSessionStatus.ABORTED,
+          cycleCount: 0,
+          runnerJobId: null,
+          pendingCycleJobId: null,
+          activeCycleJobId: null,
+        }),
+      ).toBe(false);
+    });
+
+    it('fence complete only for terminal non-running state without runner artifacts', () => {
+      expect(
+        isAmbiguousStartFenceComplete({
+          status: ReferenceCaptureSessionStatus.READY,
+          cycleCount: 0,
+          runnerJobId: null,
+          pendingCycleJobId: null,
+          activeCycleJobId: null,
+        }),
+      ).toBe(false);
+      expect(
+        isAmbiguousStartFenceComplete({
+          status: ReferenceCaptureSessionStatus.ABORTED,
+          cycleCount: 0,
+          runnerJobId: null,
+          pendingCycleJobId: null,
+          activeCycleJobId: null,
+        }),
+      ).toBe(true);
+    });
+
+    it('classifies ambiguous mutating start HTTP outcomes', () => {
+      expect(isAmbiguousMutatingStartHttpOutcome(0, { timedOut: true })).toBe(true);
+      expect(isAmbiguousMutatingStartHttpOutcome(0, { budgetExhausted: true })).toBe(true);
+      expect(isAmbiguousMutatingStartHttpOutcome(503)).toBe(true);
+      expect(isAmbiguousMutatingStartHttpOutcome(401)).toBe(false);
+      expect(isAmbiguousMutatingStartHttpOutcome(403)).toBe(false);
+      expect(isAmbiguousMutatingStartHttpOutcome(409)).toBe(false);
+    });
   });
 });

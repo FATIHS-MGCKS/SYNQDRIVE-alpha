@@ -2,9 +2,12 @@ import { ReferenceCaptureSessionStatus } from '@prisma/client';
 import type { ReferenceCaptureSessionView } from './reference-capture.types';
 import {
   assessFastGoReadiness,
+  ambiguousStartRequiresSessionFence,
   countPersistedSignalPoints,
+  deriveAmbiguousStartCompensationStatus,
   deriveCleanupCompensationStatus,
   FAST_GO_CLEANUP_TIMEOUT_MS,
+  isAmbiguousStartFenceComplete,
   isSessionCleanupComplete,
   runnerSnapshotFromSession,
   sessionRequiresAbort,
@@ -138,14 +141,46 @@ export async function reconcileAmbiguousStartViaHttp(
   organizationId: string,
   vehicleId: string,
   sessionId: string,
+  cleanupStartedAtMs: number = Date.now(),
 ): Promise<FastGoCompensationStatus> {
-  return runBoundedSessionCleanup(
-    client,
-    organizationId,
-    vehicleId,
-    sessionId,
-    'ambiguous_start_timeout',
-  );
+  const cleanupDeadlineAtMs = cleanupStartedAtMs + FAST_GO_CLEANUP_TIMEOUT_MS;
+  const nowMs = () => Date.now();
+
+  const initial = await client.getSession(organizationId, vehicleId, sessionId, {
+    goDeadlineAtMs: cleanupDeadlineAtMs,
+    nowMs: nowMs(),
+  });
+  if (initial.budgetExhausted || initial.timedOut || initial.status !== 200) {
+    return 'COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED';
+  }
+
+  let snapshot = runnerSnapshotFromSession(initial.data as ReferenceCaptureSessionView);
+
+  if (ambiguousStartRequiresSessionFence(snapshot)) {
+    const abort = await client.abortSession(
+      organizationId,
+      vehicleId,
+      sessionId,
+      'ambiguous_start_session_fencing',
+      { goDeadlineAtMs: cleanupDeadlineAtMs, nowMs: nowMs() },
+    );
+    if (abort.timedOut || abort.budgetExhausted) {
+      return 'COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED';
+    }
+  } else if (isAmbiguousStartFenceComplete(snapshot)) {
+    return 'COMPENSATION_CONFIRMED';
+  }
+
+  const verify = await client.getSession(organizationId, vehicleId, sessionId, {
+    goDeadlineAtMs: cleanupDeadlineAtMs,
+    nowMs: nowMs(),
+  });
+  if (verify.budgetExhausted || verify.timedOut || verify.status !== 200) {
+    return 'COMPENSATION_UNCONFIRMED_MANUAL_CHECK_REQUIRED';
+  }
+
+  snapshot = runnerSnapshotFromSession(verify.data as ReferenceCaptureSessionView);
+  return deriveAmbiguousStartCompensationStatus(snapshot, false);
 }
 
 export function observeRecordingTimestamps(

@@ -6,6 +6,7 @@
 import {
   computeGoDeadlineMs,
   createFastGoTimestamps,
+  isAmbiguousMutatingStartHttpOutcome,
   normalizeFastGoTimeoutMs,
   remainingGoBudgetMs,
 } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-fast-go.policy';
@@ -233,13 +234,14 @@ async function main(): Promise<void> {
   timestamps.startRequestStartedAt = new Date(nowMs()).toISOString();
   const started = await client.startRecording(organizationId, vehicleId, sessionId, httpOptions(goDeadlineAtMs, nowMs));
 
-  if (started.budgetExhausted || started.timedOut) {
+  if (isAmbiguousMutatingStartHttpOutcome(started.status, started)) {
     printReadyToDriveBanner(false, sessionId, 'ambiguous_start_requires_reconciliation');
     const compensationStatus = await reconcileAmbiguousStartViaHttp(client, organizationId, vehicleId, sessionId);
     console.log(
       JSON.stringify(
         {
           ambiguousStart: true,
+          httpStatus: started.status,
           compensationStatus,
           timestamps,
         },
