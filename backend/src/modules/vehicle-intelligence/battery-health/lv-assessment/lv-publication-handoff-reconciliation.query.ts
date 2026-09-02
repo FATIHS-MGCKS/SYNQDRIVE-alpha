@@ -4,6 +4,7 @@ import {
   Prisma,
   type PrismaClient,
 } from '@prisma/client';
+import { LV_PUBLICATION_CONTRACT_VERSION } from './lv-publication-contract.policy';
 
 export interface PublicationHandoffReconcileCandidate {
   id: string;
@@ -17,6 +18,14 @@ export interface PublicationHandoffReconcileCandidate {
  * Targeted query for assessments with incomplete publication handoff metadata.
  * Structural invariants are enforced in SQL before LIMIT so malformed legacy rows
  * cannot starve valid canonical backlog or abort ordering via unsafe casts.
+ *
+ * publicationVersion must be a JSON number exactly equal to LV_PUBLICATION_CONTRACT_VERSION
+ * (reader parity: integer canonical D5 version only).
+ *
+ * epochAssessmentIds membership uses jsonb `?` only — no jsonb_array_length on legacy JSON.
+ *
+ * lastAttemptAt is fairness metadata only: invalid values sort as NULL (oldest) and do
+ * not exclude repairable carriers; reconciliation fairness touch normalizes to ISO.
  */
 export async function fetchPublicationHandoffReconcileCandidates(
   prisma: PrismaClient,
@@ -45,8 +54,8 @@ export async function fetchPublicationHandoffReconcileCandidates(
       AND ba.input_summary->'publicationHandoff'->>'assessmentTrack' IN ('TELEMETRY', 'WORKSHOP_OVERRIDE')
       AND COALESCE(ba.input_summary->'publicationHandoff'->>'idempotencyKey', '') <> ''
       AND jsonb_typeof(ba.input_summary->'publicationHandoff'->'publicationVersion') = 'number'
+      AND (ba.input_summary->'publicationHandoff'->'publicationVersion') = to_jsonb(${LV_PUBLICATION_CONTRACT_VERSION}::int)
       AND jsonb_typeof(ba.input_summary->'publicationHandoff'->'epochAssessmentIds') = 'array'
-      AND jsonb_array_length(ba.input_summary->'publicationHandoff'->'epochAssessmentIds') > 0
       AND ba.input_summary->'publicationHandoff'->'epochAssessmentIds' ? ba.id::text
     ORDER BY
       CASE

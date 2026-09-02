@@ -9,6 +9,8 @@ import {
 import { fetchPublicationHandoffReconcileCandidates } from './lv-publication-handoff-reconciliation.query';
 import { LV_PUBLICATION_HANDOFF_STATUS } from './lv-publication-handoff.metadata';
 import { LV_PUBLICATION_CONTRACT_VERSION } from './lv-publication-contract.policy';
+import { LvPublicationHandoffService } from './lv-publication-handoff.service';
+import { readPublicationHandoffFromAssessmentSummary } from './lv-publication-handoff.metadata';
 
 const LIVE = process.env.BATTERY_V2_PUB_HANDOFF_RECONCILE_INTEGRATION === '1';
 
@@ -351,7 +353,7 @@ async function probeDatabase(): Promise<boolean> {
       expect(lateIndex).toBeLessThan(earlyIndex);
     });
 
-    it('excludes malformed handoff carriers without aborting valid discovery', async () => {
+    it('excludes structurally malformed handoff carriers without aborting valid discovery', async () => {
       const lookbackFrom = new Date(Date.now() - 7 * 24 * 60 * 60_000);
       const anchor = Date.now();
       const valid = await createAssessment({
@@ -423,25 +425,57 @@ async function probeDatabase(): Promise<boolean> {
           },
         },
         {
-          label: 'bad-last-attempt',
-          handoff: {
-            status: LV_PUBLICATION_HANDOFF_STATUS.ENQUEUED,
-            selectedAssessmentId: 'pending',
-            assessmentTrack: 'TELEMETRY',
-            idempotencyKey: 'pub:pending:v1',
-            publicationVersion: LV_PUBLICATION_CONTRACT_VERSION,
-            epochAssessmentIds: ['pending'],
-            lastAttemptAt: 'not-a-timestamp',
-          },
-        },
-        {
-          label: 'bad-version',
+          label: 'version-string',
           handoff: {
             status: LV_PUBLICATION_HANDOFF_STATUS.MISSING,
             selectedAssessmentId: 'pending',
             assessmentTrack: 'TELEMETRY',
             idempotencyKey: 'pub:pending:v1',
             publicationVersion: '1',
+            epochAssessmentIds: ['pending'],
+          },
+        },
+        {
+          label: 'version-fractional',
+          handoff: {
+            status: LV_PUBLICATION_HANDOFF_STATUS.MISSING,
+            selectedAssessmentId: 'pending',
+            assessmentTrack: 'TELEMETRY',
+            idempotencyKey: 'pub:pending:v1',
+            publicationVersion: 1.5,
+            epochAssessmentIds: ['pending'],
+          },
+        },
+        {
+          label: 'version-null',
+          handoff: {
+            status: LV_PUBLICATION_HANDOFF_STATUS.MISSING,
+            selectedAssessmentId: 'pending',
+            assessmentTrack: 'TELEMETRY',
+            idempotencyKey: 'pub:pending:v1',
+            publicationVersion: null,
+            epochAssessmentIds: ['pending'],
+          },
+        },
+        {
+          label: 'version-object',
+          handoff: {
+            status: LV_PUBLICATION_HANDOFF_STATUS.MISSING,
+            selectedAssessmentId: 'pending',
+            assessmentTrack: 'TELEMETRY',
+            idempotencyKey: 'pub:pending:v1',
+            publicationVersion: { major: 1 },
+            epochAssessmentIds: ['pending'],
+          },
+        },
+        {
+          label: 'version-array',
+          handoff: {
+            status: LV_PUBLICATION_HANDOFF_STATUS.MISSING,
+            selectedAssessmentId: 'pending',
+            assessmentTrack: 'TELEMETRY',
+            idempotencyKey: 'pub:pending:v1',
+            publicationVersion: [1],
             epochAssessmentIds: ['pending'],
           },
         },
@@ -495,7 +529,163 @@ async function probeDatabase(): Promise<boolean> {
       expect(ids).not.toContain(wrongTypeId);
     });
 
-    it('does not let malformed rows occupy bounded scan ahead of valid backlog', async () => {
+    it('executes safely when epochAssessmentIds has non-array legacy JSON types', async () => {
+      const lookbackFrom = new Date(Date.now() - 7 * 24 * 60 * 60_000);
+      const anchor = Date.now();
+      const valid = await createAssessment({
+        label: 'valid-epoch-type-safety',
+        computedAt: new Date(anchor - 1),
+      });
+      await prisma.batteryAssessment.update({
+        where: { id: valid.id },
+        data: {
+          inputSummary: {
+            assessmentTrack: 'TELEMETRY',
+            assessmentMode: 'CANONICAL',
+            publicationHandoff: {
+              status: LV_PUBLICATION_HANDOFF_STATUS.MISSING,
+              selectedAssessmentId: valid.id,
+              assessmentTrack: 'TELEMETRY',
+              idempotencyKey: `pub:${valid.id}:v1`,
+              publicationVersion: LV_PUBLICATION_CONTRACT_VERSION,
+              epochAssessmentIds: [valid.id],
+            },
+          },
+        },
+      });
+
+      const nonArrayEpochTypes = [
+        { label: 'epoch-string', value: 'not-an-array' },
+        { label: 'epoch-object', value: { ids: [valid.id] } },
+        { label: 'epoch-number', value: 42 },
+        { label: 'epoch-boolean', value: true },
+        { label: 'epoch-null', value: null },
+      ] as const;
+
+      for (const [index, epochCase] of nonArrayEpochTypes.entries()) {
+        const row = await createAssessment({
+          label: `epoch-type-${epochCase.label}`,
+          computedAt: new Date(anchor - 10 - index),
+        });
+        await prisma.batteryAssessment.update({
+          where: { id: row.id },
+          data: {
+            inputSummary: {
+              assessmentTrack: 'TELEMETRY',
+              assessmentMode: 'CANONICAL',
+              publicationHandoff: {
+                status: LV_PUBLICATION_HANDOFF_STATUS.MISSING,
+                selectedAssessmentId: row.id,
+                assessmentTrack: 'TELEMETRY',
+                idempotencyKey: `pub:${row.id}:v1`,
+                publicationVersion: LV_PUBLICATION_CONTRACT_VERSION,
+                epochAssessmentIds: epochCase.value,
+              },
+            },
+          },
+        });
+      }
+
+      const rows = await fetchPublicationHandoffReconcileCandidates(prisma, {
+        lookbackFrom,
+        limit: 50,
+      });
+      const ids = rows.map((row) => row.id);
+
+      expect(ids).toContain(valid.id);
+      expect(ids).toContain(missingId);
+    });
+
+    it('keeps repairable carriers with malformed lastAttemptAt and normalizes on fairness touch', async () => {
+      const lookbackFrom = new Date(Date.now() - 7 * 24 * 60 * 60_000);
+      const anchor = Date.now();
+      const malformedAttempt = await createAssessment({
+        label: 'bad-last-attempt-repairable',
+        computedAt: new Date(anchor - 3),
+      });
+      await prisma.batteryAssessment.update({
+        where: { id: malformedAttempt.id },
+        data: {
+          inputSummary: {
+            assessmentTrack: 'TELEMETRY',
+            assessmentMode: 'CANONICAL',
+            publicationHandoff: {
+              status: LV_PUBLICATION_HANDOFF_STATUS.ENQUEUED,
+              selectedAssessmentId: malformedAttempt.id,
+              assessmentTrack: 'TELEMETRY',
+              idempotencyKey: `pub:${malformedAttempt.id}:v1`,
+              publicationVersion: LV_PUBLICATION_CONTRACT_VERSION,
+              epochAssessmentIds: [malformedAttempt.id],
+              lastAttemptAt: 'not-a-timestamp',
+            },
+          },
+        },
+      });
+
+      const validFresh = await createAssessment({
+        label: 'valid-fresh-attempt',
+        computedAt: new Date(anchor - 2),
+      });
+      await prisma.batteryAssessment.update({
+        where: { id: validFresh.id },
+        data: {
+          inputSummary: {
+            assessmentTrack: 'TELEMETRY',
+            assessmentMode: 'CANONICAL',
+            publicationHandoff: {
+              status: LV_PUBLICATION_HANDOFF_STATUS.MISSING,
+              selectedAssessmentId: validFresh.id,
+              assessmentTrack: 'TELEMETRY',
+              idempotencyKey: `pub:${validFresh.id}:v1`,
+              publicationVersion: LV_PUBLICATION_CONTRACT_VERSION,
+              epochAssessmentIds: [validFresh.id],
+              lastAttemptAt: '2026-06-01T00:00:00.000Z',
+            },
+          },
+        },
+      });
+
+      const rows = await fetchPublicationHandoffReconcileCandidates(prisma, {
+        lookbackFrom,
+        limit: 50,
+      });
+      const ids = rows.map((row) => row.id);
+
+      expect(ids).toContain(malformedAttempt.id);
+      expect(ids).toContain(validFresh.id);
+
+      const subset = rows.filter((row) =>
+        [malformedAttempt.id, validFresh.id].includes(row.id),
+      );
+      const malformedIndex = subset.findIndex((row) => row.id === malformedAttempt.id);
+      const freshIndex = subset.findIndex((row) => row.id === validFresh.id);
+      expect(malformedIndex).toBeGreaterThanOrEqual(0);
+      expect(freshIndex).toBeGreaterThanOrEqual(0);
+      expect(malformedIndex).toBeLessThan(freshIndex);
+
+      const service = new LvPublicationHandoffService(
+        prisma as never,
+        { enqueue: jest.fn() } as never,
+        { isDeadLetter: jest.fn().mockResolvedValue(false) } as never,
+      );
+      const fairnessAt = new Date('2026-09-02T12:00:00.000Z');
+      await service.touchReconciliationFairness({
+        organizationId,
+        assessmentId: malformedAttempt.id,
+        idempotencyKey: `pub:${malformedAttempt.id}:v1`,
+        attemptedAt: fairnessAt,
+      });
+
+      const updated = await prisma.batteryAssessment.findFirst({
+        where: { id: malformedAttempt.id },
+      });
+      const handoff = readPublicationHandoffFromAssessmentSummary(
+        updated?.inputSummary,
+      );
+      expect(handoff?.lastAttemptAt).toBe(fairnessAt.toISOString());
+    });
+
+    it('does not let structurally malformed rows occupy bounded scan ahead of valid backlog', async () => {
       const lookbackFrom = new Date(Date.now() - 7 * 24 * 60 * 60_000);
       const anchor = Date.now();
       const validLate = await createAssessment({
@@ -537,7 +727,7 @@ async function probeDatabase(): Promise<boolean> {
                 selectedAssessmentId: malformed.id,
                 assessmentTrack: 'TELEMETRY',
                 idempotencyKey: `pub:${malformed.id}:v1`,
-                publicationVersion: LV_PUBLICATION_CONTRACT_VERSION,
+                publicationVersion: 1.5,
                 epochAssessmentIds: [malformed.id],
               },
             },
