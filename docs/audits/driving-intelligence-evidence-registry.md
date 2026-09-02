@@ -6,7 +6,7 @@
 
 **Scope:** Driving Intelligence Reconstruction phases and major artifacts only. Does not index every unrelated repository audit.
 
-**Last updated:** 2026-09-01
+**Last updated:** 2026-09-02
 
 ---
 
@@ -45,13 +45,17 @@
 | DI-EV-0019 | Phase 3A.3 | C — Ground Truth index | `docs/audits/dimo-lte-r1-reference-drive-001-ground-truth-evidence-index-2026-09-01.md` | 2026-09-01 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_001` | REJECTED | — | — | Negative evidence: VIDEO_NOT_CAPTURED; GT alignment impossible for #001 |
 | DI-EV-0020 | Phase 3A.3.1 | A + D | `docs/audits/dimo-phase-3a31-fast-prearm-go-remediation-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | — | — | CONFIRMED_FROM_CODE | — | — | FAST PRE-ARM/GO split; PRE-ARM→READY; FAST GO via production HTTP; 15s cap (max 15s); ambiguous-START reconciliation; SIGNAL_POINT-only gate |
 | DI-EV-0021 | Phase 3A.3.2 | A + D | `docs/audits/dimo-phase-3a32-hf-watermark-aggregate-identity-remediation-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | — | RD001 | CONFIRMED_FROM_CODE + CONFIRMED_FROM_RUNTIME | — | — | Per-field HF data watermark + query coverage; DB durable idempotency; V2 aggregate bucket fingerprint; provider revision policy; RD001 39-exclusion remediated |
-| DI-EV-0022 | Phase 3A.3 | A — Production canary | `docs/audits/dimo-phase-3a3-production-canary-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | WOB L 7503 · sessions `ed06ea20-…`, `cc30f049-…` | CONFIRMED_FROM_PRODUCTION_RUNTIME | — | — | Combined cutover + canonical redeploy `f00a49394` + post-deploy smoke PASS; 3A.3.1 validated; 3A.3.2 motion pending; RD002 blocked |
+| DI-EV-0022 | Phase 3A.3 | A — Production canary | `docs/audits/dimo-phase-3a3-production-canary-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | WOB L 7503 · sessions `ed06ea20-…`, `cc30f049-…` | CONFIRMED_FROM_PRODUCTION_RUNTIME | — | — | Combined cutover + canonical redeploy `f00a49394` + post-deploy smoke PASS; 3A.3.1 validated; 3A.3.2 motion validated in RD002 (DI-EV-0023) |
+| DI-EV-0023 | Phase 3A.3 | A — Reference drive report | `docs/audits/dimo-lte-r1-reference-drive-002-capture-report-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · session `e095d273-…` · `DIMO_LTE_R1_REFERENCE_DRIVE_002` | CONFIRMED_FROM_PRODUCTION_RUNTIME | — | — | Motion HF canary STOP + forensic audit; 351 cycles; 355 HF_HISTORICAL V2; 0 duplicate fingerprints; FAST GO 1949ms; VIDEO_GROUND_TRUTH NOT_PLANNED_BY_PROTOCOL |
+| DI-EV-0024 | Phase 3A.3 | B — Machine-readable | `docs/audits/data/dimo-lte-r1-reference-drive-002-session-summary.json` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `e095d273-…` | CONFIRMED_FROM_PRODUCTION_RUNTIME | — | — | Session inventory, capture windows, HF watermark/coverage, FAST GO metrics, C63 field parity |
+| DI-EV-0025 | Phase 3A.3 | B — Machine-readable | `docs/audits/data/dimo-lte-r1-reference-drive-002-signal-quality-metrics.json` (+ CSV) | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `e095d273-…` | CONFIRMED_FROM_VEHICLE_OBSERVATION | — | — | Per-field/surface metrics; HF cadence under motion; dynamics PROVISIONAL |
+| DI-EV-0026 | Phase 3A.3 | B — Vehicle differential | `docs/audits/dimo-lte-r1-reference-drive-002-c63-signal-differential-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 · RD002 session `e095d273-…` | CONFIRMED_FROM_VEHICLE_OBSERVATION | — | — | C63 signal inventory + Aug/RD002/RD001 differential; HF 1s≠1Hz finding; physics assessability; native events NOT_OBSERVED |
 
 ---
 
 ## Entry count
 
-**20** registry entries through DI-EV-0020; **DI-EV-0021** (3A.3.2 remediation) and **DI-EV-0022** (3A.3 production canary) added 2026-09-02.
+**26** registry entries through DI-EV-0026 (RD002 motion HF canary added 2026-09-02).
 
 ---
 
@@ -59,7 +63,7 @@
 
 | Planned ID | Phase | Artifact | Status |
 |------------|-------|----------|--------|
-| DI-EV-0023+ | Reference Drive 002 | Capture report + GT-aligned metrics | NOT_STARTED |
+| DI-EV-0027+ | Reference Drive 003 | Capture report + video GT-aligned metrics | NOT_STARTED |
 
 ---
 

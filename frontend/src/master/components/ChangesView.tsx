@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-rd002-motion-hf-canary-2026-09-02',
+    version: '4.9.1033',
+    title: 'Reference Drive #002 — Motion HF canary (KS MX 2024)',
+    summary: [
+      'RD002 session e095d273-… COMPLETED: 351 cycles, 3526 SIGNAL_POINT + 1 SESSION_METADATA.',
+      'HF_HISTORICAL 355 aggregate-bucket rows (AGGREGATE_BUCKET_V2); 0 duplicate fingerprints.',
+      'Major finding: REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ=NO (HF Δt P50 13.5s, MAX 249.6s).',
+      'POLLING_FREQUENCY≠PROVIDER_SAMPLE_FREQUENCY (LATEST_LIVE ~5.9s poll vs ~15s provider updates).',
+      'FAST GO 1949ms; C63 29/29 fields observed; VIDEO_GROUND_TRUTH=NOT_PLANNED_BY_PROTOCOL.',
+      'DI-EV-0026 repurposed to C63 signal differential (no separate GT artifact for RD002).',
+      'Offline read-only reanalyze tooling only — REFERENCE_CAPTURE_RUNTIME_CHANGED=NO.',
+    ],
+    reason: 'Evidence-governance correction pass: preserve RD002 facts, fix DI-EV-0026, document HF cadence finding.',
+    previousBehavior: 'DI-EV-0026 incorrectly used as Ground Truth index; HF 1Hz implication under-documented.',
+    details:
+      'docs/audits/dimo-lte-r1-reference-drive-002-capture-report-2026-09-02.md; DI-EV-0023–0026; backend/scripts/ops/reference-capture-drive-002-reanalyze.ts (read-only).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T13:20:00.000Z',
+  },
+  {
     id: 'dimo-phase-3a3-canonical-redeploy-smoke-2026-09-02',
     version: '4.9.1032',
     title: 'Phase 3A.3 — Canonical VPS redeploy + post-deploy stationary smoke',

@@ -50,12 +50,23 @@ Post-smoke integrity (unique index valid, duplicates=0)
 | Flag | Result |
 |------|--------|
 | `PHASE_3A3_1_PRODUCTION_VALIDATED` | YES |
-| `PHASE_3A3_2_PRODUCTION_VALIDATED` | NO (no HF_HISTORICAL under motion) |
-| `READY_FOR_RD002` | NO |
+| `PHASE_3A3_2_PRODUCTION_VALIDATED` | YES (RD002 motion HF — DI-EV-0023) |
+| `MOTION_CANARY_COMPLETED` | YES |
+| `READY_FOR_RD003` | YES |
+
+## RD002 motion HF canary (2026-09-02)
+
+| Item | Value |
+|------|-------|
+| Session | `e095d273-eb03-4bc9-aa2b-d0d709abd9bc` |
+| Vehicle | KS MX 2024 (Mercedes C 63 AMG) |
+| HF_HISTORICAL | 355 rows, AGGREGATE_BUCKET_V2, 0 duplicate fingerprints |
+| FAST GO | READY_TO_DRIVE 1949 ms |
+| Sealed evidence | `/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-002/` |
 
 ## Next step
 
-Controlled motion HF canary on WOB L 7503. Canonical deploy provenance verified at `f00a49394`. Durable VPS GitHub read credential still recommended for unattended deploys.
+Reference Drive #003 (video Ground Truth) when owner authorizes. Durable VPS GitHub read credential still recommended for unattended deploys.
 
 ## References
 
