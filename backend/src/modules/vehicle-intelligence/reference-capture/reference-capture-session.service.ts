@@ -19,11 +19,12 @@ import {
   ReferenceCapturePersistenceError,
 } from './reference-capture-observation-writer.service';
 import { ReferenceCaptureObservationRepository } from './reference-capture-observation.repository';
-import { ReferenceCaptureSessionRepository } from './reference-capture-session.repository';
+import { ReferenceCaptureSessionRepository, parseAcquisitionState } from './reference-capture-session.repository';
 import { ReferenceCaptureReadinessService } from './reference-capture-readiness.service';
 import { ReferenceCaptureRunnerService } from './reference-capture-runner.service';
 import type {
   CreateReferenceCaptureSessionInput,
+  ReferenceCaptureOperationalSnapshot,
   ReferenceCapturePreflightResult,
   ReferenceCaptureReadinessReport,
   ReferenceCaptureSessionView,
@@ -209,22 +210,34 @@ export class ReferenceCaptureSessionService {
       );
     } catch (error) {
       await this.runnerService.stopRunner(organizationId, sessionId);
-      const failed = await this.sessionRepository.updateStatus(
+      const failureReason =
+        error instanceof Error ? error.message : 'runner_start_failed';
+
+      const reverted = await this.sessionRepository.updateStatusIfCurrent(
         organizationId,
         sessionId,
+        ReferenceCaptureSessionStatus.STARTING,
         ReferenceCaptureSessionStatus.READY,
         {
-          failureReason:
-            error instanceof Error ? error.message : 'runner_start_failed',
+          failureReason,
           runnerJobId: null,
           pendingCycleJobId: null,
         },
       );
-      throw error instanceof BadRequestException
-        ? error
-        : new BadRequestException(
-            `Failed to start reference capture runner: ${failed.failureReason ?? 'unknown'}`,
-          );
+
+      if (reverted) {
+        throw error instanceof BadRequestException
+          ? error
+          : new BadRequestException(
+              `Failed to start reference capture runner: ${failureReason}`,
+            );
+      }
+
+      const latest = await this.sessionRepository.findById(organizationId, sessionId);
+      const latestStatus = latest?.status ?? 'UNKNOWN';
+      throw new BadRequestException(
+        `runner start failed; compensation superseded by concurrent session transition to ${latestStatus}`,
+      );
     }
   }
 
@@ -451,6 +464,18 @@ export class ReferenceCaptureSessionService {
     preflight: ReferenceCapturePreflightResult | null,
     readiness: ReferenceCaptureReadinessReport | null,
   ): ReferenceCaptureSessionView {
+    const acquisitionState = parseAcquisitionState(
+      'acquisitionStateJson' in session ? session.acquisitionStateJson : null,
+    );
+    const operational: ReferenceCaptureOperationalSnapshot = {
+      cycleCount: acquisitionState.cycleCount ?? 0,
+      runnerJobId: 'runnerJobId' in session ? (session.runnerJobId as string | null) : null,
+      pendingCycleJobId:
+        'pendingCycleJobId' in session ? (session.pendingCycleJobId as string | null) : null,
+      preflightAssessedAt: readiness?.assessedAt ?? null,
+      activeCycleJobId: acquisitionState.activeCycleJobId ?? null,
+    };
+
     return {
       id: session.id,
       organizationId: session.organizationId,
@@ -472,6 +497,7 @@ export class ReferenceCaptureSessionService {
       completedAt: session.completedAt,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
+      operational,
     };
   }
 }

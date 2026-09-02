@@ -90,6 +90,14 @@ export type CreateReferenceCaptureSessionInput = {
   groundTruthVideoRef?: string | null;
 };
 
+export type ReferenceCaptureOperationalSnapshot = {
+  cycleCount: number;
+  runnerJobId: string | null;
+  pendingCycleJobId: string | null;
+  preflightAssessedAt: string | null;
+  activeCycleJobId: string | null;
+};
+
 export type ReferenceCaptureSessionView = {
   id: string;
   organizationId: string;
@@ -111,6 +119,7 @@ export type ReferenceCaptureSessionView = {
   completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  operational?: ReferenceCaptureOperationalSnapshot;
 };
 
 export type ReferenceCaptureAcquisitionState = {

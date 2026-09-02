@@ -1,6 +1,9 @@
 /**
  * Phase 3A.3 — ARM + START only for DIMO LTE_R1 Reference Drive #001.
- * Does NOT stop the session. Leaves RECORDING for physical drive.
+ *
+ * @deprecated Use reference-capture-lte-r1-prearm.ts + reference-capture-lte-r1-fast-go.ts
+ * (Phase 3A.3.1 two-stage workflow). This monolithic script bootstraps full Nest and blocks
+ * the operator-critical path for minutes.
  */
 import * as fs from 'fs';
 import { NestFactory } from '@nestjs/core';

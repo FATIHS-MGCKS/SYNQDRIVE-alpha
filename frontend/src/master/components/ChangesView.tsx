@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-phase-3a31-fast-prearm-go-remediation-2026-09-02',
+    version: '4.9.1029',
+    title: 'Phase 3A.3.1 — FAST PRE-ARM / GO workflow remediation',
+    summary: [
+      'Split monolithic ARM into PRE-ARM (Nest bootstrap → READY) and FAST GO (production HTTP only).',
+      'PRE-ARM: reference-capture-lte-r1-prearm.ts leaves session READY without runner/recording.',
+      'FAST GO: reference-capture-lte-r1-fast-go.ts via authenticated POST .../start; 15s hard cap (max 15s, RD002 freeze).',
+      'Ambiguous POST /start timeout → bounded reconciliation (abort + verify); never silent return.',
+      'AMBIGUOUS_START_SESSION_FENCING: READY sessions fenced/aborted after ambiguous START to block delayed CAS.',
+      'STATE_MACHINE_COMPENSATION_OWNERSHIP: start failure rollback STARTING→READY via CAS only; cannot resurrect ABORTED.',
+      'SIGNAL_POINT-only persistence gate; PROBE_RESULT/SEGMENT/NATIVE_EVENT are diagnostics only.',
+      'Configurable prearm freshness REFERENCE_CAPTURE_PREARM_MAX_AGE_MS (default 15 min).',
+      'Session view operational block: cycleCount, runnerJobId, pendingCycleJobId for GO polling.',
+    ],
+    reason: 'RD001 703.987s operator wait — ARM workflow reliability defect.',
+    previousBehavior: 'Single ARM script bootstrapped full Nest and blocked operator for minutes before trustworthy GO.',
+    details:
+      'docs/audits/dimo-phase-3a31-fast-prearm-go-remediation-2026-09-02.md; architecture/DIMO_LTE_R1_PHASE_3A31_FAST_PREARM_GO_2026-09-02.md; DI-EV-0020.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T00:00:00.000Z',
+  },
+  {
     id: 'dimo-phase-3a3-reference-drive-001-evidence-closure-2026-09-02',
     version: '4.9.1028',
     title: 'Phase 3A.3 — RD001 evidence closure micro-pass',
