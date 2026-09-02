@@ -294,27 +294,32 @@ nodes:
     epistemic_status: CONFIRMED
     decision_status: VALIDATED
     summary: >
-      Freshness-conditional deterministic track precedence within CURRENT recompute only:
-      WORKSHOP_OVERRIDE > TELEMETRY while workshop evidence remains eligible under existing evidence-selection
-      policy; stale workshop relinquishes authority. Not permanent lifetime override; not latest-wins/computedAt;
-      not publish-every-track; not telemetry-volume override; not same-recompute telemetry fallback after
-      publication-policy SKIP on selected WORKSHOP_OVERRIDE. Explicit assessmentTrack carrier required — never
-      array order or persistence order. findLatestLvEstimatedHealth must NOT become publication selector.
-      BatteryPublicationService remains sole publication-policy authority. Both tracks may persist; at most one
-      publication handoff candidate per recompute. SHADOW never selected. PKG-02 remains IMPLEMENTATION_SPEC_REQUIRED
-      (D5 publicationVersion only). NOT PRODUCTION_VALIDATED; runtime handoff gaps remain open.
+      Freshness-conditional deterministic track precedence within CURRENT recompute / D4 authority epoch only:
+      WORKSHOP_OVERRIDE > TELEMETRY while workshop evidence remains eligible. Each recomputeLvEstimatedHealth()
+      invocation is default D4 authority epoch; new recompute after crash may legitimately change winner when
+      eligibility changes. Same-handoff retry preserves selected assessmentId; no lower-track fallback. Track
+      change (TELEMETRY↔WORKSHOP_OVERRIDE) = new publication authority/stabilization epoch — no cross-track
+      EWMA/hysteresis baseline. Higher-track SKIP retains existing lower-track publication (retention ≠ fallback).
+      LvPublicationPreviousState lacks assessmentTrack today — PKG-02 must expose previous track for cross-track
+      semantics. Explicit assessmentTrack carrier required. findLatestLvEstimatedHealth must NOT become selector.
+      BatteryPublicationService remains sole publication-policy authority. PKG-02 IMPLEMENTATION_SPEC_REQUIRED
+      (D5 only); D4 cross-track semantics must be implemented in PKG-02. NOT PRODUCTION_VALIDATED.
     source_paths:
       - architecture/battery-v2/decisions/lv-publication-track-authority-decision.md
       - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-estimated-health-assessment.policy.ts
       - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-evidence-selection.policy.ts
       - backend/src/modules/vehicle-intelligence/battery-health/battery-assessment.repository.ts
       - backend/src/modules/vehicle-intelligence/battery-health/battery-assessment.service.ts
-      - backend/src/modules/vehicle-intelligence/battery-health/battery-publication.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-publication.repository.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-publication.policy.ts
     evidence:
       - BAT-V2-EVID-CODE-LV-AUTO-DUAL-TRACK-001
       - BAT-V2-EVID-CODE-LV-WORKSHOP-FRESHNESS-REJECT-001
       - BAT-V2-EVID-CODE-LV-FIND-LATEST-NO-TRACK-001
       - BAT-V2-EVID-CODE-LV-PUBLICATION-JOB-001
+      - BAT-V2-EVID-CODE-LV-PREV-STATE-NO-TRACK-001
+      - BAT-V2-EVID-CODE-LV-RECOMPUTE-CURRENT-EVIDENCE-001
+      - BAT-V2-EVID-CODE-LV-PUBLICATION-EWMA-PREVIOUS-001
     non_effects:
       - Does not implement track selector or publication enqueue
       - Does not close BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
@@ -1499,6 +1504,46 @@ nodes:
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/battery-assessment.repository.ts
       - backend/src/modules/vehicle-intelligence/battery-health/backfill/battery-snapshot-rest-backfill.service.ts
+
+  - id: BAT-V2-EVID-CODE-LV-PREV-STATE-NO-TRACK-001
+    type: evidence
+    title: LvPublicationPreviousState omits assessmentTrack despite reason payload persistence
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      persistLvPublication stores assessmentTrack in reason JSON via buildLvPublicationReasonPayload, but
+      toPreviousState/LvPublicationPreviousState exposes only published/stabilized values, maturity, and
+      timestamps — no assessmentTrack. evaluateLvPublicationPolicy cannot distinguish TELEMETRY→TELEMETRY
+      from cross-track transitions without PKG-02 track observability enhancement.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-publication.repository.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-publication.policy.ts
+
+  - id: BAT-V2-EVID-CODE-LV-RECOMPUTE-CURRENT-EVIDENCE-001
+    type: evidence
+    title: recomputeLvEstimatedHealth reads current measurements — not frozen trigger snapshot
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      battery-assessment.service.ts recomputeLvEstimatedHealth loads listForOrganization measurements and
+      runs computeLvEstimatedHealthAssessment on current eligible set. D1 inputVersion is trigger identity
+      for job/handoff — not a frozen calculation snapshot. Later retry recompute may see different eligibility.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-assessment.service.ts
+      - architecture/battery-v2/decisions/lv-assessment-input-version-decision.md
+
+  - id: BAT-V2-EVID-CODE-LV-PUBLICATION-EWMA-PREVIOUS-001
+    type: evidence
+    title: Publication EWMA/hysteresis uses previous stabilized values without track awareness
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      lv-publication.policy.ts stabilize() seeds from input.previous.stabilizedEstimatedHealth; hysteresis
+      compares against previous published values. No assessmentTrack on LvPublicationPreviousState — cross-track
+      epoch boundary not implemented; D4 requires PKG-02 same-track vs cross-track stabilization semantics.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-publication.policy.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-publication.repository.ts
 
   - id: BAT-V2-EVID-CODE-HEV-SIDE-EFFECT-READ-DIVERGENCE-001
     type: evidence

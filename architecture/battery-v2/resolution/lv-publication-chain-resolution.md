@@ -121,7 +121,7 @@ This is **not** a confirmed current production defect — automatic handoff is a
 
 ### SELECTED rule
 
-Within **current recompute assessments only**:
+Within **current D4 authority epoch** (one `recomputeLvEstimatedHealth()` invocation):
 
 ```
 WORKSHOP_OVERRIDE > TELEMETRY
@@ -129,19 +129,33 @@ WORKSHOP_OVERRIDE > TELEMETRY
 
 Precedence applies **only** while workshop evidence that caused `WORKSHOP_OVERRIDE` remains eligible under existing `lv-evidence-selection.policy.ts` (including freshness). **Not** a permanent lifetime override.
 
-| Case | Current recompute tracks | Publication handoff candidate |
-|------|--------------------------|------------------------------|
+| Case | Current epoch tracks | Publication handoff candidate |
+|------|----------------------|------------------------------|
 | A | `WORKSHOP_OVERRIDE` + `TELEMETRY` | `WORKSHOP_OVERRIDE` only |
 | B | `WORKSHOP_OVERRIDE` only | `WORKSHOP_OVERRIDE` |
 | C | `TELEMETRY` only | `TELEMETRY` |
 | D | no qualifying canonical assessment | none |
 | — | `SHADOW` present | never selected |
 
+### D4 authority epoch + retry contract
+
+- **Default epoch:** one actual `recomputeLvEstimatedHealth()` + its assessment set (D1: `inputVersion` = trigger, not frozen snapshot)  
+- **New recompute during recovery:** new epoch; fresh eligibility applies; different winner allowed (e.g. workshop stale → `TELEMETRY`)  
+- **Same-handoff retry (no recompute):** preserve same selected `assessmentId`; no lower-track fallback  
+- **Resume without recompute:** requires durable arbitration correlation — no heuristic reconstruction
+
+### Cross-track publication authority epoch
+
+- `TELEMETRY` ↔ `WORKSHOP_OVERRIDE` track change = **new** publication authority/stabilization epoch  
+- **Rejected:** cross-track EWMA/hysteresis baseline from prior track  
+- **Current gap:** `LvPublicationPreviousState` lacks `assessmentTrack` — PKG-02 must expose previous track  
+- **Retention ≠ fallback:** existing TELEMETRY publication may remain after `WORKSHOP_OVERRIDE` SKIP; no new TELEMETRY fallback publication in same epoch
+
 ### Required transitions
 
-- **Stale workshop → TELEMETRY authority:** when workshop rejected as `STALE_MEASUREMENT`, current recompute emits `TELEMETRY` only; old persisted `WORKSHOP_OVERRIDE` does **not** win  
+- **Stale workshop → TELEMETRY authority:** when workshop rejected as `STALE_MEASUREMENT`, current epoch emits `TELEMETRY` only; old persisted `WORKSHOP_OVERRIDE` does **not** win  
 - **Telemetry volume does not override:** fresh qualified workshop remains authoritative regardless of telemetry sample count  
-- **No same-recompute fallback:** if `BatteryPublicationService` returns SKIP on selected `WORKSHOP_OVERRIDE`, do **not** enqueue `TELEMETRY` in same recompute
+- **No same-epoch fallback:** if `BatteryPublicationService` returns SKIP on selected `WORKSHOP_OVERRIDE`, do **not** enqueue `TELEMETRY` in same epoch
 
 ### Explicit track carrier (PKG-02 implementation)
 
@@ -164,7 +178,9 @@ Full dossier: `decisions/lv-publication-track-authority-decision.md`
 | C | Permanent workshop override | Stale workshop must relinquish authority |
 | D | Telemetry wins by volume | Sample count ≠ evidence class precedence |
 | E | Publication service selects track | Mixes arbitration with policy |
-| F | Same-recompute telemetry fallback after workshop SKIP | Bypasses publication-policy rejection |
+| F | Same-epoch telemetry fallback after workshop SKIP | Bypasses publication-policy rejection |
+| G | Cross-track EWMA continuity | Evidence-authority boundary violation |
+| H | Preserve first-epoch winner across fresh recompute | Violates freshness-driven authority |
 
 ## RECOMMENDED OPTION (handoff architecture — partial)
 
