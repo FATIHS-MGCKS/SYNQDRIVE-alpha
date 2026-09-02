@@ -44,6 +44,7 @@
 | DI-EV-0018 | Phase 3A.3 | B — Machine-readable | `docs/audits/data/dimo-lte-r1-reference-drive-001-signal-quality-metrics.json` (+ CSV) | 2026-09-01 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `06638509-…` | CONFIRMED_FROM_VEHICLE_OBSERVATION | — | — | Per-field/surface metrics; nonempty bucket cadence; 151s PROVIDER_DATA_GAP; dynamics PROVISIONAL |
 | DI-EV-0019 | Phase 3A.3 | C — Ground Truth index | `docs/audits/dimo-lte-r1-reference-drive-001-ground-truth-evidence-index-2026-09-01.md` | 2026-09-01 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_001` | REJECTED | — | — | Negative evidence: VIDEO_NOT_CAPTURED; GT alignment impossible for #001 |
 | DI-EV-0020 | Phase 3A.3.1 | A + D | `docs/audits/dimo-phase-3a31-fast-prearm-go-remediation-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | — | — | CONFIRMED_FROM_CODE | — | — | FAST PRE-ARM/GO split; PRE-ARM→READY; FAST GO via production HTTP; 15s cap (max 15s); ambiguous-START reconciliation; SIGNAL_POINT-only gate |
+| DI-EV-0021 | Phase 3A.3.2 | A + D | `docs/audits/dimo-phase-3a32-hf-watermark-aggregate-identity-remediation-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | — | RD001 | CONFIRMED_FROM_CODE + CONFIRMED_FROM_RUNTIME | — | — | Per-field HF data watermark + query coverage; DB durable idempotency; V2 aggregate bucket fingerprint; provider revision policy; RD001 39-exclusion remediated |
 
 ---
 

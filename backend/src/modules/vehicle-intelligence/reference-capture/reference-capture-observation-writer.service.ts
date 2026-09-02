@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ReferenceCaptureConfig } from './reference-capture.config';
 import { normalizeReferenceCaptureObservationEnvelope } from './reference-capture.contract';
-import { ReferenceCaptureObservationRepository } from './reference-capture-observation.repository';
+import {
+  ReferenceCaptureObservationRepository,
+  type AppendManyIdempotentResult,
+} from './reference-capture-observation.repository';
 import type {
   NormalizedReferenceCaptureObservation,
   ReferenceCaptureObservationEnvelope,
@@ -21,6 +24,15 @@ export class ReferenceCapturePersistenceError extends Error {
     this.name = 'ReferenceCapturePersistenceError';
   }
 }
+
+export type IdempotentFlushResult = {
+  /** Observations attempted in this flush call. */
+  attempted: number;
+  /** Rows actually inserted (skipDuplicates). */
+  inserted: number;
+  /** Physical bucket fingerprints durably present after flush. */
+  durablyRepresentedFingerprints: string[];
+};
 
 @Injectable()
 export class ReferenceCaptureObservationWriterService {
@@ -62,12 +74,24 @@ export class ReferenceCaptureObservationWriterService {
   }
 
   async flush(sessionId: string, options?: { maxAttempts?: number }): Promise<number> {
+    const result = await this.flushIdempotent(sessionId, options);
+    return result.attempted;
+  }
+
+  async flushIdempotent(
+    sessionId: string,
+    options?: { maxAttempts?: number },
+  ): Promise<IdempotentFlushResult> {
     const pending = this.pendingBySession.get(sessionId) ?? [];
-    if (pending.length === 0) return 0;
+    if (pending.length === 0) {
+      return { attempted: 0, inserted: 0, durablyRepresentedFingerprints: [] };
+    }
 
     const batchSize = this.config.getBatchSize();
     const maxAttempts = options?.maxAttempts ?? 3;
-    let flushed = 0;
+    let attempted = 0;
+    let inserted = 0;
+    const durableFingerprints = new Set<string>();
 
     while (pending.length > 0) {
       const batch = pending.slice(0, batchSize);
@@ -77,10 +101,15 @@ export class ReferenceCaptureObservationWriterService {
       while (!persisted && attempt < maxAttempts) {
         attempt += 1;
         try {
-          await this.observationRepository.appendMany(batch);
+          const result: AppendManyIdempotentResult =
+            await this.observationRepository.appendManyIdempotent(batch);
           persisted = true;
           pending.splice(0, batch.length);
-          flushed += batch.length;
+          attempted += batch.length;
+          inserted += result.insertedCount;
+          for (const fp of result.durablyRepresentedFingerprints) {
+            durableFingerprints.add(fp);
+          }
         } catch (error) {
           const delayMs = Math.min(1000 * 2 ** (attempt - 1), 8000);
           this.logger.warn(
@@ -100,10 +129,17 @@ export class ReferenceCaptureObservationWriterService {
     }
 
     this.pendingBySession.set(sessionId, pending);
-    if (flushed > 0) {
-      this.logger.debug(`Flushed ${flushed} observations for session ${sessionId}`);
+    if (attempted > 0) {
+      this.logger.debug(
+        `Flushed ${attempted} observations (${inserted} inserted) for session ${sessionId}`,
+      );
     }
-    return flushed;
+
+    return {
+      attempted,
+      inserted,
+      durablyRepresentedFingerprints: [...durableFingerprints],
+    };
   }
 
   async enqueueAndMaybeFlush(
@@ -111,17 +147,32 @@ export class ReferenceCaptureObservationWriterService {
     organizationId: string,
     vehicleId: string,
     envelope: ReferenceCaptureObservationEnvelope,
-  ): Promise<{ flushed: number; pending: number }> {
+  ): Promise<{
+    flushed: number;
+    pending: number;
+    inserted: number;
+    durablyRepresentedFingerprints: string[];
+  }> {
     this.enqueue(sessionId, organizationId, vehicleId, envelope);
     const pending = this.getPendingCount(sessionId);
     const batchSize = this.config.getBatchSize();
     let flushed = 0;
+    let inserted = 0;
+    let durablyRepresentedFingerprints: string[] = [];
 
     if (pending >= batchSize) {
-      flushed = await this.flush(sessionId);
+      const result = await this.flushIdempotent(sessionId);
+      flushed = result.attempted;
+      inserted = result.inserted;
+      durablyRepresentedFingerprints = result.durablyRepresentedFingerprints;
     }
 
-    return { flushed, pending: this.getPendingCount(sessionId) };
+    return {
+      flushed,
+      pending: this.getPendingCount(sessionId),
+      inserted,
+      durablyRepresentedFingerprints,
+    };
   }
 
   clearSession(sessionId: string): void {

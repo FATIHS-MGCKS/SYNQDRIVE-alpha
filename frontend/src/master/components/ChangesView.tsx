@@ -36,6 +36,35 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-phase-3a32-hf-watermark-aggregate-identity-2026-09-02',
+    version: '4.9.1030',
+    title: 'Phase 3A.3.2 — HF watermark + aggregate bucket identity remediation',
+    summary: [
+      'Per-field committed HF data watermarks (hfWatermarkByField); separate query coverage cursors (hfQueryCoverageByField).',
+      'Durable physical idempotency: PostgreSQL unique (session_id, physical_sample_fingerprint) + appendManyIdempotent skipDuplicates.',
+      'Watermark advances only from durably represented bucket identities after flushIdempotent().',
+      'V2 aggregate bucket fingerprint: field + canonical bucket ts + executed interval + aggregation (no value).',
+      'HF_PHYSICAL_IDENTITY_VERSION: AGGREGATE_BUCKET_V2 (new sessions); LEGACY_VALUE_V1 for active legacy sessions.',
+      'Query coverage advances to ACTUAL_QUERY_TO (requestStartedAt) only — not HTTP response boundary.',
+      'Previously active then silent fields: query FROM is coverage-driven, not stale data watermark.',
+      'Auto-flush durables included in same-cycle DATA watermark via enqueueAndMaybeFlush fingerprints.',
+      'Provider revision idempotency via revisionIdentity on providerEventFingerprint.',
+      'Legacy V1 hash forensic-only; active legacy sessions fail closed — new sessions V2 only.',
+      'PRODUCTION_PRE_MIGRATION_DUPLICATE_AUDIT required before deploy.',
+      'Crash/partial-batch/state-commit-failure retry tests; RD001 39-exclusion regression preserved.',
+      'PHASE_3A3_2_CODE_READY=YES; production canary with 3A.3.1 still required before RD002.',
+    ],
+    reason:
+      'RD001 proved wall-clock HF watermark excluded 39 late buckets; correction pass closes durable idempotency gap and unbounded silent-field query window.',
+    previousBehavior:
+      'In-memory fingerprint dedup only; silent HF fields pinned query FROM to session start; value-inclusive fingerprint; hfWatermarkAt = requestStartedAt.',
+    details:
+      'docs/audits/dimo-phase-3a32-hf-watermark-aggregate-identity-remediation-2026-09-02.md; architecture/DIMO_LTE_R1_PHASE_3A32_HF_WATERMARK_AGGREGATE_IDENTITY_2026-09-02.md; DI-EV-0021.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T12:00:00.000Z',
+  },
+  {
     id: 'dimo-phase-3a31-fast-prearm-go-remediation-2026-09-02',
     version: '4.9.1029',
     title: 'Phase 3A.3.1 — FAST PRE-ARM / GO workflow remediation',

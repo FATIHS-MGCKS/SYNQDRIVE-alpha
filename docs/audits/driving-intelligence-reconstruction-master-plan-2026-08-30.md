@@ -924,16 +924,19 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 `PHASE_3A3_1_CODE_READY=YES` · `PHASE_3A3_1_PRODUCTION_VALIDATED=NO`
 
 ### Phase 3A.3.2 — HF watermark + aggregate fingerprint remediation
-**Status:** **REQUIRED BEFORE RD002** (not started)
+**Status:** **CODE READY** (2026-09-02) · **production canary NOT STARTED**
 
-**Problem:** HF watermark advances on request wall-clock even when zero rows returned; RD001 exact-window replay confirmed **39** field×bucket observations (`8` unique bucket intervals) permanently excluded by 2s overlap (`HF_LATE_ARRIVAL_RUNTIME_SKIP=CONFIRMED_FROM_RUNTIME`). `physicalSampleFingerprint` on HF rows is aggregate-bucket semantic debt.
+**Problem:** HF watermark advanced on request wall-clock even when zero rows returned; RD001 exact-window replay confirmed **39** field×bucket observations (`8` unique bucket intervals) permanently excluded by 2s overlap (`HF_LATE_ARRIVAL_RUNTIME_SKIP=CONFIRMED_FROM_RUNTIME`). `physicalSampleFingerprint` incorrectly included `normalizedValue`.
 
-**Remediation bundle (before RD002):**
-- Two-watermark / reconciliation-overlap model for HF historical acquisition
-- Introduce `aggregateBucketFingerprint` distinct from `rawPhysicalSampleFingerprint` (or equivalent terminology fix)
-- Production/runtime canary proving both fixes
+**Implemented:**
+- Per-field committed provider bucket watermarks (`hfWatermarkByField`) + bounded 2s overlap query FROM
+- Watermark advance only after successful observation `flush()` (post-persist commit)
+- Aggregate bucket fingerprint: `field + canonicalBucketTs + interval + aggregation` (no value)
+- HF dedup skips enqueue for repeated buckets (`IMMUTABLE_FIRST_SEEN` corrected-value policy)
+- **Audit:** `docs/audits/dimo-phase-3a32-hf-watermark-aggregate-identity-remediation-2026-09-02.md` (DI-EV-0021)
 
-`HF_WATERMARK_REMEDIATION_REQUIRED=YES` · `PHYSICAL_SAMPLE_FINGERPRINT_REMEDIATION_REQUIRED=YES`
+`HF_WATERMARK_REMEDIATION_REQUIRED=IMPLEMENTED` · `PHYSICAL_SAMPLE_FINGERPRINT_REMEDIATION_REQUIRED=IMPLEMENTED`
+`PHASE_3A3_2_CODE_READY=YES` · `PHASE_3A3_2_PRODUCTION_VALIDATED=NO`
 
 ### RD002 gate (canonical — all locations must agree)
 
@@ -942,7 +945,7 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 | Step | Requirement | Status |
 |------|-------------|--------|
 | A | `PHASE_3A3_1_FAST_PREARM_GO_REMEDIATION` implemented + verified | CODE READY (canary pending) |
-| B | `HF_WATERMARK_LATE_ARRIVAL_REMEDIATION` + `aggregateBucketFingerprint` terminology remediation | NOT STARTED |
+| B | `HF_WATERMARK_LATE_ARRIVAL_REMEDIATION` + `aggregateBucketFingerprint` terminology remediation | CODE READY (canary pending) |
 | C | Production/runtime canary proving A + B | NOT STARTED |
 | D | `DIMO_LTE_R1_REFERENCE_DRIVE_002` with video Ground Truth | NOT STARTED |
 
@@ -1326,7 +1329,7 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 11. ~~**Execute Phase 3A.1–3A.2** (LTE R1) — Flight Recorder foundation + production canary.~~ **Done** — 3A.1 #1468 merged; 3A.2 production canary passed (`REFERENCE_DRIVE_READY=YES`).
 12. ~~**Execute Phase 3A.3 Reference Drive #001** — real-motion capture + STOP audit.~~ **Done** — capture COMPLETED; telemetry analysis available; video GT NOT_AVAILABLE.
 13. **Execute Phase 3A.3.1 FAST PRE-ARM/GO remediation** — required before RD002.
-14. **Execute Phase 3A.3.2 HF watermark + aggregateBucketFingerprint remediation** — required before RD002; production canary proving A+B.
+14. **Phase 3A.3.2 HF watermark + aggregateBucketFingerprint remediation** — CODE READY (2026-09-02); production canary proving A+B still required before RD002.
 15. **Execute Reference Drive #002** — only after A+B+C gate; video Ground Truth required.
 16. **Execute Phase 2G:** Smart5 + Tesla Direct connection-variant audits + profile manifests → ungate 3B/3C when ready.
 17. **Execute Phase 2H:** High Mobility OEM/profile audit + manifests → ungate 3D when ready.
@@ -1387,7 +1390,7 @@ After the first instrumented `DIMO_LTE_R1` reference drive, require at minimum:
 | RD001 HF completeness forensic | **COMPLETE** (`RD001_HF_COMPLETENESS_FORENSIC`) |
 | Reference Drive #001 Ground Truth | **NOT_AVAILABLE** (video not captured) |
 | Phase 3A.3.1 FAST PRE-ARM/GO | **CODE READY** (2026-09-02) — production canary pending |
-| Phase 3A.3.2 HF watermark + fingerprint remediation | **REQUIRED BEFORE RD002** (not started) |
+| Phase 3A.3.2 HF watermark + fingerprint remediation | **CODE READY** (canary pending) |
 | Production canary (3A.3.1 + 3A.3.2) | **REQUIRED BEFORE RD002** (not started) |
 | Reference Drive #002 (video GT) | **BLOCKED** — gate A+B+C not satisfied |
 | `REFERENCE_DRIVE_READY` (telemetry infra) | **YES** — does **not** authorize RD002 without remediation gate |
