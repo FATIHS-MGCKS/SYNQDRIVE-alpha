@@ -42,7 +42,7 @@ This agent has **no authorized production DB access** in this run. Query plans f
 
 ## What still requires runtime implementation
 
-- LV handoffs (PKG-01/02) — IMPLEMENTATION_SPEC_REQUIRED
+- LV handoffs (PKG-01/02) — **IMPLEMENTATION_READY** (D1–D5 VALIDATED); runtime implementation requires separate authorization
 - Timestamp provenance schema (PKG-03)
 - HV SOH iteration (PKG-04)
 - HEV write-gate alignment (PKG-05, after decision)

@@ -5,7 +5,7 @@
 | Package | Title | Readiness | Priority |
 |---------|-------|-----------|----------|
 | `BAT-V2-RUNTIME-PKG-01` | LV canonical assessment handoff | IMPLEMENTATION_READY | P0_ACTIVATION_BLOCKER |
-| `BAT-V2-RUNTIME-PKG-02` | LV publication handoff + reconcile | IMPLEMENTATION_SPEC_REQUIRED | P0_ACTIVATION_BLOCKER |
+| `BAT-V2-RUNTIME-PKG-02` | LV publication handoff + reconcile | IMPLEMENTATION_READY | P0_ACTIVATION_BLOCKER |
 | `BAT-V2-RUNTIME-PKG-03` | Timestamp provenance model | DECISION_REQUIRED | P1 |
 | `BAT-V2-RUNTIME-PKG-04` | HV SOH usable-candidate iteration | IMPLEMENTATION_READY | P2 |
 | `BAT-V2-RUNTIME-PKG-05` | HEV product-policy alignment | DECISION_REQUIRED | P1 |
@@ -40,20 +40,20 @@
 | Field | Value |
 |-------|-------|
 | **Dependencies (dev)** | PKG-01 code may proceed in parallel for handler wiring; e2e needs both |
-| **Dependencies (enablement)** | PKG-01 assessment persist path; **assessment-track selection authority (D4 VALIDATED)**; `publicationVersion` spec (D5); `BATTERY_V2_PUBLICATION_ENABLED` |
+| **Dependencies (enablement)** | PKG-01 assessment persist path; **assessment-track selection authority (D4 VALIDATED)**; **publicationVersion contract (D5 VALIDATED)**; `BATTERY_V2_PUBLICATION_ENABLED` |
 | **Modules** | `battery-assessment-recompute.handler`, `BatteryV2JobProducerService`, `battery-v2-reconciliation.service`, `BatteryPublicationUpdateHandler`, `BatteryPublicationService` |
 | **DB migration** | No |
 | **Feature flag** | `BATTERY_V2_PUBLICATION_ENABLED` — customer/publication **effect gate** (D3). No separate HANDOFF flag |
 | **Job identity** | `buildPublicationJobIdempotencyKey` → `pub:{assessmentId}:v{publicationVersion}` |
 | **Handoff** | Publication enqueue after deterministic assessment selection; policy in `BatteryPublicationService` only — **not** “enqueue every persistedAssessmentId” |
 | **Assessment-track authority** | **VALIDATED (D4)** — freshness-conditional `WORKSHOP_OVERRIDE > TELEMETRY` within D4 authority epoch; cross-track stabilization epoch + retention≠fallback; previous-track observability required at implementation |
-| **publicationVersion** | **D5 SPEC REQUIRED** — current default `1` in repository if omitted |
-| **PKG-02 runtime note** | `IMPLEMENTATION_SPEC_REQUIRED` with D5 only — must implement full D4 contract including `publicationAuthorityEpochChanged`, UNKNOWN→known, equal-value transitions, previous-track observability; current track must be known |
+| **publicationVersion** | **VALIDATED (D5)** — `LV_PUBLICATION_CONTRACT_VERSION = 1`; canonical producers must explicitly supply before enqueue; repository `?? 1` is compatibility fallback only |
+| **PKG-02 runtime note** | `IMPLEMENTATION_READY` — D4 + full D5 contract including three-layer idempotency, previous/current identity isolation, execution-idempotent same-assessment retry, self-supersession prohibition; runtime gaps remain open |
 | **Configuration invariant** | **VALIDATED (D3)** — resolved for PKG-02 |
 | **Rollback (pre-M4)** | Disable `BATTERY_V2_PUBLICATION_ENABLED` first (restores legacy capture when REST_SHADOW ON) |
 | **Test scope** | E2E REST→assess→pub with multi-track scenarios |
 | **Production validation** | Canary **deployment/environment**. Validate publication handoff enqueue/execution/policy outcome |
-| **Blocked by** | PKG-01 runtime enablement + **D5** `publicationVersion` only |
+| **Blocked by** | PKG-01 runtime enablement only (architecture spec complete) |
 | **Does not solve** | HV publication, readiness auto-enable |
 
 ## PKG-03 — Timestamp provenance

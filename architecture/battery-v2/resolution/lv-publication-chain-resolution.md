@@ -2,7 +2,7 @@
 
 **Gaps:** `BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001`, `BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001`, `BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001`  
 **Priority:** P0_ACTIVATION_BLOCKER (Stage-2 cutover — **not** proven active production outage while flags default OFF)  
-**Readiness:** PKG-01 **IMPLEMENTATION_READY** (D1/D2/D3 VALIDATED); PKG-02 **IMPLEMENTATION_SPEC_REQUIRED** — blocker: **D5** `publicationVersion` only (D4 track authority VALIDATED)  
+**Readiness:** PKG-01 **IMPLEMENTATION_READY** (D1/D2/D3 VALIDATED); PKG-02 **IMPLEMENTATION_READY** (D4/D5 VALIDATED)  
 **Proposed decision:** `BAT-V2-DEC-PH4-LV-PUB-CHAIN-001` (PROPOSED — gaps remain open)
 
 ## CURRENT STATE
@@ -319,15 +319,58 @@ buildPublicationJobIdempotencyKey({
 
 `recomputeLvEstimatedHealth()` may persist **multiple** assessments (WORKSHOP_OVERRIDE + TELEMETRY) in one run. Publication handoff requires **deterministic assessment-selection authority** before enqueue — not “every persisted ID” as settled design.
 
-### `publicationVersion` source (SPEC REQUIRED)
+### `publicationVersion` authority (VALIDATED — D5)
 
-| Source | Status |
-|--------|--------|
-| Omit from payload → repository default `1` | **CONFIRMED** current fallback |
-| Assessment row version field | **NOT CONFIRMED** — no authoritative assessment→publication version contract traced |
-| Monotonic publication supersession counter | **PROPOSED** — requires spec before IMPLEMENTATION_READY |
+**Decision:** `BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001` — `publicationVersion` = numeric LV publication **contract generation**.
 
-Until `publicationVersion` source is authoritative for canonical handoff, PKG-02 remains **IMPLEMENTATION_SPEC_REQUIRED**.
+| Authority | Value | Role |
+|-----------|-------|------|
+| `LV_PUBLICATION_CONTRACT_VERSION` | **`1` (integer)** | Canonical publication execution/idempotency generation |
+| Job identity | `pub:{assessmentId}:v1` | via `buildPublicationJobIdempotencyKey` |
+| `LV_PUBLICATION_POLICY_VERSION` | `'1.0.0'` (semver) | **Separate** — `decision.policyVersion` / reason payload only |
+| Repository fallback | `publicationVersion ?? 1` | Compatibility only — **not** canonical producer authority |
+
+Canonical PKG-02 producers **must explicitly** set `publicationVersion = LV_PUBLICATION_CONTRACT_VERSION` before enqueue. Not a sequence counter, retry attempt, D4 track epoch, or policy semver mapping.
+
+See `decisions/lv-publication-version-authority-decision.md`.
+
+### Payload validation finding (PKG-02 runtime — not fixed here)
+
+`validateBatteryV2JobPayload()` has no `BATTERY_PUBLICATION_UPDATE` case; `default:` returns base only → **`assessmentId` and `publicationVersion` stripped** before `queue.add`. Handler then skips when `assessmentId` missing. Production impact **UNKNOWN** (automatic handoff absent). PKG-02 must add strict job-specific validation and preservation tests.
+
+### Version axes (must remain distinct)
+
+| Axis | Example | Meaning |
+|------|---------|---------|
+| Battery V2 job model version | `'1.0.0'` | Job envelope contract |
+| Assessment model version | per row | Calculation semantics |
+| LV publication policy version | `'1.0.0'` | Policy provenance |
+| LV publication contract version | `1` | Publication idempotency generation (D5) |
+
+### Publication identity vs lifecycle (D5 precision)
+
+**Invariant:** `publicationVersion` = contract generation — **not** lifecycle/maturity revision.
+
+Same `assessmentId` + same `LV_PUBLICATION_CONTRACT_VERSION` → same `pub:{assessmentId}:v{n}` identity across PROVISIONAL/STABLE/STALE/SUPERSEDED transitions.
+
+**Current-code lifecycle gap:** Policy may request STALE persistence (`shouldPersistPublication=true`) for an existing `pub:A:v1` row; `persistLvPublication` uses CREATE + P2002 and may return the existing row **without** materializing the requested lifecycle state. `markPublicationSuperseded` demonstrates lifecycle can change without version increment (updates existing row).
+
+PKG-02 must distinguish **create idempotency**, **execution idempotency**, and **lifecycle-state idempotency**. P2002 return is not proof a different requested lifecycle state was persisted.
+
+### Execution idempotency and lifecycle isolation (D5 final precision)
+
+**Invariant:** previous publication lifecycle belongs to previous publication identity — not rebound to current `assessmentId`.
+
+| Concern | Current-code finding | PKG-02 target |
+|---------|---------------------|---------------|
+| Stale previous + new assessment | STALE decision may persist under current `assessmentId` | STALE applies to `pub:A:v1`; B evaluated independently |
+| Stale loop-block | STALE may remain "active previous" indefinitely | Current candidate proceeds after previous expiry |
+| Same-assessment retry | `LvPublicationPreviousState` lacks `assessmentId`; EWMA re-applies | No re-application of same assessment as new evidence |
+| Self-supersession | `supersedePublicationId` + P2002 can mark row superseded by itself | Supersession requires distinct publication identities |
+
+Three idempotency layers: (1) job/contract identity, (2) execution, (3) lifecycle state.
+
+See `decisions/lv-publication-version-authority-decision.md` (sections PREVIOUS_LIFECYCLE_IDENTITY_ISOLATION through THREE_LAYER_IDEMPOTENCY_MODEL).
 
 ## REJECTED OPTIONS
 
@@ -444,7 +487,7 @@ Phase 4 options A–D (`CONFIGURATION_INVARIANT_SPEC_REQUIRED`) are **superseded
 |-------|---------|
 | M0 | Current — legacy + REST_SHADOW scaffold |
 | M1 | PKG-01 implementation (D1/D2/D3) — no legacy/REST_SHADOW removal |
-| M2 | PKG-02 after D5 — publication chain; D4 track authority VALIDATED; PUBLICATION OFF where needed |
+| M2 | PKG-02 IMPLEMENTATION_READY (D4/D5) — publication chain runtime; PUBLICATION OFF where needed |
 | M3 | Validation/soak — dual-producer overlap observation; shadow decoupling **not** required until M4 prep |
 | M4 | Single-authority cutover — **separate authorization required**; shadow semantics decoupled; legacy + REST_SHADOW removed |
 
@@ -568,7 +611,7 @@ Does not enable readiness; does not fix timestamp provenance; does not fix HEV a
 
 ## OPEN QUESTIONS
 
-- Authoritative `publicationVersion` for canonical handoff — **D5** (only remaining PKG-02 architecture blocker)
+- Authoritative `publicationVersion` for canonical handoff — **D5 VALIDATED** (`LV_PUBLICATION_CONTRACT_VERSION = 1`)
 - Exact reconcile cadence vs #1445 reconciliation load
 - Org-scoped rollout targeting (if desired) — **SPEC REQUIRED**; not available via current flags
 

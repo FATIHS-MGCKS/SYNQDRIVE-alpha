@@ -11,7 +11,8 @@ Append-only decision registry. Stable IDs in `graph/nodes.yaml`.
 | `BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001` | Canonical LV REST assessment `inputVersion` (D1) | `VALIDATED` | PR #1501 (2026-09-01) | PKG-01 spec closure; refines PH4 + assessment-handoff gap |
 | `BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001` | Canonical LV REST assessment crash-boundary recovery (D2) | `VALIDATED` | PR #1503 (2026-09-01) | Hybrid C+; refines D1 + PH4 + assessment-handoff gap |
 | `BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001` | Battery V2 single-authority cutover / configuration invariant (D3) | `VALIDATED` | PR #1504 (2026-09-02) | PKG-01 IMPLEMENTATION_READY; HANDOFF flag rejected |
-| `BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001` | LV publication assessment-track authority (D4) | `VALIDATED` | — | PKG-02 spec closure; refines PH4 + publication handoff gaps; D5 remains |
+| `BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001` | LV publication assessment-track authority (D4) | `VALIDATED` | — | PKG-02 spec closure; refines PH4 + publication handoff gaps; D5 closed |
+| `BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001` | LV publication version authority (D5) | `VALIDATED` | — | PKG-02 IMPLEMENTATION_READY; refines PH4 + publication gaps |
 
 ## Validation semantics
 
