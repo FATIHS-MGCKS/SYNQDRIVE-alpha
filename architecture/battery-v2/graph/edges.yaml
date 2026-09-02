@@ -198,6 +198,19 @@ edges:
     to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
     notes: Same-identity STALE/create-P2002 may not materialize requested lifecycle state
 
+  # D5 execution idempotency — previous lifecycle isolation
+  - from: BAT-V2-EVID-CODE-LV-PUBLICATION-PREV-STATE-EXECUTION-IDEMPOTENCY-001
+    relation: supports
+    to: BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001
+  - from: BAT-V2-EVID-CODE-LV-PUBLICATION-PREV-STATE-EXECUTION-IDEMPOTENCY-001
+    relation: supports
+    to: BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
+    notes: Stale-previous/current-assessment mixing; same-assessment EWMA retry; self-supersession risk
+  - from: BAT-V2-EVID-CODE-LV-PUBLICATION-PREV-STATE-EXECUTION-IDEMPOTENCY-001
+    relation: supports
+    to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
+    notes: Three-layer idempotency and lifecycle isolation gaps documented for PKG-02
+
   # Failed → superseded by decisions / liveness
   - from: BAT-V2-DEC-1445-001
     relation: does_not_solve

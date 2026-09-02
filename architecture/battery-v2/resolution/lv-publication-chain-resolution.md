@@ -355,9 +355,22 @@ Same `assessmentId` + same `LV_PUBLICATION_CONTRACT_VERSION` → same `pub:{asse
 
 **Current-code lifecycle gap:** Policy may request STALE persistence (`shouldPersistPublication=true`) for an existing `pub:A:v1` row; `persistLvPublication` uses CREATE + P2002 and may return the existing row **without** materializing the requested lifecycle state. `markPublicationSuperseded` demonstrates lifecycle can change without version increment (updates existing row).
 
-PKG-02 must distinguish **create idempotency** from **lifecycle-state idempotency**. P2002 return is not proof a different requested lifecycle state was persisted.
+PKG-02 must distinguish **create idempotency**, **execution idempotency**, and **lifecycle-state idempotency**. P2002 return is not proof a different requested lifecycle state was persisted.
 
-See `decisions/lv-publication-version-authority-decision.md` (sections PUBLICATION_IDENTITY_VS_LIFECYCLE, CREATE_IDEMPOTENCY_VS_STATE_IDEMPOTENCY).
+### Execution idempotency and lifecycle isolation (D5 final precision)
+
+**Invariant:** previous publication lifecycle belongs to previous publication identity — not rebound to current `assessmentId`.
+
+| Concern | Current-code finding | PKG-02 target |
+|---------|---------------------|---------------|
+| Stale previous + new assessment | STALE decision may persist under current `assessmentId` | STALE applies to `pub:A:v1`; B evaluated independently |
+| Stale loop-block | STALE may remain "active previous" indefinitely | Current candidate proceeds after previous expiry |
+| Same-assessment retry | `LvPublicationPreviousState` lacks `assessmentId`; EWMA re-applies | No re-application of same assessment as new evidence |
+| Self-supersession | `supersedePublicationId` + P2002 can mark row superseded by itself | Supersession requires distinct publication identities |
+
+Three idempotency layers: (1) job/contract identity, (2) execution, (3) lifecycle state.
+
+See `decisions/lv-publication-version-authority-decision.md` (sections PREVIOUS_LIFECYCLE_IDENTITY_ISOLATION through THREE_LAYER_IDEMPOTENCY_MODEL).
 
 ## REJECTED OPTIONS
 

@@ -343,6 +343,206 @@ Conceptual PKG-02 target (exact repository API is implementation detail):
 
 Do **not** prescribe DB migration unless implementation evidence proves one is required.
 
+## PREVIOUS_LIFECYCLE_IDENTITY_ISOLATION
+
+**Invariant:** A publication lifecycle decision must apply to the publication identity that the decision describes.
+
+```
+STALE(previous publication A)  →  pub:A:v1
+NOT  →  pub:B:v1  merely because B is the current assessment being evaluated
+```
+
+### Current-code defect (CONFIRMED)
+
+`BatteryPublicationService.updateLvPublication()`:
+
+1. loads **current** assessment by `input.assessmentId`  
+2. loads **previous** active LV publication  
+3. maps previous to `LvPublicationPreviousState`  
+4. calls `evaluateLvPublicationPolicy({ assessment: CURRENT, previous: PREVIOUS })`  
+5. on `shouldPersistPublication`, calls `persistLvPublication({ assessmentId: input.assessmentId, ... })`
+
+When previous publication is stale, `evaluateLvPublicationPolicy()` may early-return:
+
+- `maturity: 'STALE'`  
+- `shouldPersistPublication: true`  
+- `publishedEstimatedHealth: previous.publishedEstimatedHealth`
+
+This decision is semantically about the **previous** publication — but persistence uses `input.assessmentId` (current assessment). **Previous lifecycle decision + current assessment identity can be mixed.**
+
+**Production impact/frequency:** UNKNOWN (automatic handoff absent; publication flag defaults OFF).
+
+### Two logically distinct operations
+
+| Operation | Target | Examples |
+|-----------|--------|----------|
+| **A — Previous publication lifecycle maintenance** | Previous publication's own identity/row | mark previous STALE; mark previous SUPERSEDED |
+| **B — Current candidate publication evaluation** | `pub:{currentAssessmentId}:v1` | normal D4/D5 publication of selected assessment |
+
+These may occur in the same workflow, but identities **must not** be conflated.
+
+**Required semantics (STALE previous + current B):**
+
+1. expire/materialize lifecycle of `pub:A:v1`  
+2. evaluate B independently as current candidate  
+3. if B passes policy → create/update `pub:B:v1` per D4/D5  
+
+**Forbidden:** STALE decision derived from A → persisted under `assessmentId` B.
+
+## CURRENT_CANDIDATE_AFTER_EXPIRY
+
+**Target contract:** Previous publication expiry must **not** permanently suppress evaluation of the current authoritative assessment.
+
+### Current-code loop risk (CODE-CONDITIONAL)
+
+1. previous publication A becomes STALE  
+2. policy early-returns STALE with `shouldPersistPublication: true`  
+3. service persists using current assessment B's `assessmentId`  
+4. latest active publication may remain/become STALE  
+5. future evaluation encounters STALE previous again  
+
+This can loop-block the current candidate from reaching normal publication evaluation.
+
+**Target:** After previous lifecycle maintenance, current candidate remains eligible for its own publication-policy evaluation.
+
+```
+expire previous A  →  THEN  evaluate current B
+```
+
+(or equivalent deterministic two-phase result). Exact sequencing/API is implementation detail.
+
+### STALE active-row semantics (CURRENT_CODE)
+
+`findLatestActiveLvPublication()` excludes `SUPERSEDED` and superseded IDs, but **does not exclude STALE**. Therefore STALE may remain the "previous active publication."
+
+**D5 target:** STALE may remain useful as historical/lifecycle context, but must **not** behave as an indefinitely authoritative baseline that prevents a newer valid assessment from being evaluated. No stale-authority lock; no provenance rebinding; no cross-track/stale EWMA contamination contrary to D4.
+
+## THREE_LAYER_IDEMPOTENCY_MODEL
+
+D5 distinguishes **three** related but non-interchangeable idempotency layers:
+
+| Layer | Concern | Contract |
+|-------|---------|----------|
+| **1 — Job / contract identity** | Same `assessmentId` + `publicationVersion` | Same `pub:{assessmentId}:v{n}` identity |
+| **2 — Execution idempotency** | Re-running same pub identity | Must **not** re-apply same assessment as new EWMA/hysteresis evidence |
+| **3 — Lifecycle state idempotency** | Same pub identity, different maturity | Lifecycle repair (e.g. STABLE → STALE) without version bump |
+
+Layer 1 does not imply layer 2 or 3. Create idempotency (P2002) addresses layer 1 only when desired artifact state is already materialized.
+
+## EXECUTION_IDEMPOTENCY
+
+**Invariant:** Retrying the same publication contract identity must **not** re-apply the same assessment as a new stabilization sample.
+
+Same `assessmentId = A` + `publicationVersion = 1` → same execution identity `pub:A:v1`.
+
+If `pub:A:v1` was already produced from assessment A, retry/reconciliation must **not** treat A again as fresh evidence for:
+
+- EWMA (`stabilize(previous.stabilized, currentScore)`)  
+- outlier damping  
+- hysteresis evolution (`shouldPublish`)  
+- threshold crossing  
+- maturity progression caused solely by repeated execution  
+
+### Current-code risk (CONFIRMED)
+
+`BatteryPublicationService` loads latest active publication as `previous` **without** determining whether `previous` row's `assessmentId` equals current `input.assessmentId`.
+
+`LvPublicationPreviousState` omits `assessmentId` (and `assessmentTrack` — see D4).
+
+`evaluateLvPublicationPolicy()` uses `previous.stabilizedEstimatedHealth` in `stabilize(...)` and `previous.publishedEstimatedHealth` in hysteresis — so same-assessment retry can re-feed the same score as a new observation.
+
+**Production frequency:** UNKNOWN.
+
+## SAME_ASSESSMENT_RETRY
+
+### Deterministic distinction
+
+| Case | Signal | Behavior |
+|------|--------|----------|
+| **NEW ASSESSMENT** | `assessmentId` changes | New `pub:` identity; may enter stabilization/hysteresis per D4 track-epoch rules |
+| **SAME-ASSESSMENT RETRY** | same `assessmentId` + same `publicationVersion` | Same pub identity; **no** reapplication as new evidence |
+
+Distinction must use **explicit identity** — not timestamp proximity, job attempt number, latest-row heuristics, or score equality alone.
+
+### Target same-identity retry behavior
+
+If current `assessmentId = A`, contract `v1`, and previous active publication already represents `pub:A:v1`:
+
+- do not re-apply assessment A as new EWMA input  
+- do not generate new hysteresis evolution from repeated execution  
+- converge on already-materialized result if correct  
+- apply only missing lifecycle-state repair if required  
+
+```
+same identity + same desired state  →  idempotent no-op/convergence
+same identity + missing lifecycle   →  lifecycle repair
+NOT:  same identity retry  →  new stabilization sample
+```
+
+## SELF_SUPERSESSION_PROHIBITION
+
+**Hard invariant:** A `BatteryPublication` must **never** supersede itself.
+
+Forbidden:
+
+```
+supersedePublicationId === persistedPublicationId
+```
+
+or: previous publication contract identity === current publication contract identity, followed by self-supersession.
+
+Same-identity retry → supersession is **not** the correct operation. Converge idempotently or repair lifecycle state.
+
+### Current-code self-supersession risk (CODE-CONDITIONAL)
+
+Possible path:
+
+1. existing `pub:A:v1` loaded as `previous`  
+2. current assessment is also A  
+3. policy produces `shouldPersistPublication: true` and `supersedePublicationId = previous.publicationId` (same row)  
+4. `persistLvPublication` CREATE `pub:A:v1` → P2002 → returns existing `pub:A:v1`  
+5. `markPublicationSuperseded({ publicationId: previous pub:A:v1, supersededByPublicationId: persisted pub:A:v1 })`  
+
+Result: publication may be marked SUPERSEDED by itself.
+
+**Production frequency:** UNKNOWN. **Not** claimed to have occurred in production.
+
+### Valid supersession contract
+
+Supersession requires **two distinct** publication identities:
+
+```
+old: assessment T → pub:T:v1
+new: assessment W → pub:W:v1
+→ pub:T:v1 SUPERSEDED BY pub:W:v1
+```
+
+Required: `oldPublication.id != newPublication.id` (and preferably distinct contract identities). Same `pub:A:v1` must never supersede itself.
+
+### D4 interaction (execution vs authority)
+
+| Case | Semantics |
+|------|-----------|
+| **A — new assessment / authority** | `pub:T:v1` → `pub:W:v1`; D4 may supersede; supersession may apply |
+| **B — same assessment retry** | `pub:A:v1` retry; **not** D4 authority transition; no new stabilization sample; no self-supersession |
+| **C — previous stale + new assessment** | STALE applies to A; B evaluated independently |
+
+### Previous assessmentId observability (PKG-02 requirement)
+
+Runtime must have deterministic access to:
+
+- `previousPublicationId`, `previousAssessmentId`, `previousAssessmentTrack`  
+- `currentAssessmentId`, `currentAssessmentTrack`  
+- `publicationVersion` / contract identity  
+
+To distinguish: same-identity retry vs new assessment (same/different track) vs previous lifecycle maintenance.
+
+Heuristic reconstruction is **forbidden**. Carrier may extend `LvPublicationPreviousState`, use `BatteryPublication.assessmentId` before policy, or equivalent — implementation detail.
+
+### Policy responsibility boundary
+
+`BatteryPublicationService` / `evaluateLvPublicationPolicy` remain sole publication-policy authority. Implementation must supply sufficient identity/lifecycle context for safe distinction of stale-previous maintenance, current-candidate evaluation, same-identity retry, new candidate, and track authority change. Do **not** duplicate publication policy into assessment handler or D4 track arbitration into repository.
+
 ## FUTURE_VERSION_BUMP_GOVERNANCE
 
 `LV_PUBLICATION_CONTRACT_VERSION` may bump `1 → 2` only via **intentional publication-contract migration**:
@@ -449,9 +649,9 @@ PKG-02 runtime must include:
 
 **D4:** deterministic track arbitration; previous-track observability; `publicationAuthorityEpochChanged`; cross-track stabilization reset; equal-value authority transitions; UNKNOWN→known; retention ≠ fallback.
 
-**D5:** central `LV_PUBLICATION_CONTRACT_VERSION = 1`; explicit version on canonical publication jobs; strict `assessmentId`/`publicationVersion` validation; publication fields preserved at producer boundary; same-assessment retries converge on same `pub:` identity; same-identity lifecycle transitions do **not** increment version; create-idempotency and lifecycle-state-idempotency distinguished; P2002 existing-row return is not sufficient proof of a different requested lifecycle state; STALE transition durably materialized; SUPERSEDED remains same contract generation.
+**D5:** central `LV_PUBLICATION_CONTRACT_VERSION = 1`; explicit version on canonical publication jobs; strict `assessmentId`/`publicationVersion` validation; publication fields preserved at producer boundary; same-assessment retries converge on same `pub:` identity; same-identity lifecycle transitions do **not** increment version; create-idempotency, execution-idempotency, and lifecycle-state-idempotency distinguished; previous lifecycle isolated from current candidate identity; STALE previous cannot loop-block new candidate; same-assessment retry must not re-apply EWMA/hysteresis as new evidence; previous `assessmentId` observability required; self-supersession forbidden; STALE transition durably materialized; SUPERSEDED remains same contract generation.
 
-`IMPLEMENTATION_READY` = architecture/spec complete — **not** implementation exists, current P2002 lifecycle behavior correct, runtime gap closed, publication enabled, deploy authorized, M4 authorized, or production validated.
+`IMPLEMENTATION_READY` = architecture/spec complete — **not** implementation exists, stale isolation fixed, retry execution idempotency fixed, self-supersession fixed, current P2002 lifecycle behavior correct, runtime gap closed, publication enabled, deploy authorized, M4 authorized, or production validated.
 
 ## NON_EFFECTS
 
@@ -481,6 +681,9 @@ PKG-02 runtime must include:
 | D4 track change bumps version | D4_INTERACTION + TEST 4 |
 | Lifecycle transition bumps version | PUBLICATION_IDENTITY_VS_LIFECYCLE + TEST 15/16 |
 | P2002 masks lifecycle transition failure | CREATE_IDEMPOTENCY_VS_STATE_IDEMPOTENCY + TEST 19 |
+| Stale previous rebound to current assessmentId | PREVIOUS_LIFECYCLE_IDENTITY_ISOLATION + TEST 21 |
+| Same-assessment retry re-applies EWMA | EXECUTION_IDEMPOTENCY + TEST 23/29 |
+| Self-supersession on same identity | SELF_SUPERSESSION_PROHIBITION + TEST 25 |
 
 ## TEST_CONTRACT
 
@@ -508,6 +711,15 @@ Future PKG-02 tests (minimum):
 | **18** | idempotent CREATE retry when desired state already exists on `pub:A:v1` | same `pub:A:v1`; existing state accepted; no duplicate artifact |
 | **19** | existing `pub:A:v1` state X; desired lifecycle state Y | existing row identity reused; Y durably applied; returning X unchanged is **not** success |
 | **20** | new assessment B | `pub:B:v1`; no lifecycle revision counter; no v2 |
+| **21** | STALE previous A + current assessment B | STALE applies to `pub:A:v1`; no STALE(A) under `pub:B:v1`; B eligible for independent evaluation |
+| **22** | previous A stale; current B valid/publishable | A lifecycle handled; B can proceed; stale previous cannot indefinitely short-circuit B |
+| **23** | same assessment A retry after `pub:A:v1` exists | same identity; A not re-applied as new EWMA sample; no hysteresis evolution from retry alone; no duplicate publication |
+| **24** | `pub:A:v1` STABLE → STALE same identity | no new EWMA; no v2; lifecycle repaired to STALE |
+| **25** | same `pub:A:v1` execution | `supersedePublicationId` must not equal current/persisted publication; self-supersession impossible |
+| **26** | `pub:A:v1` → `pub:B:v1` | A may be superseded by B; `A.id != B.id` |
+| **27** | previous row assessment A; current B | deterministic A vs B identity; no heuristic inference |
+| **28** | same track; assessment A → B | B is NEW candidate not retry; distinction by assessment identity |
+| **29** | repeat same assessment A multiple times | stabilized value does not drift solely from repeated execution |
 
 ## STATUS
 

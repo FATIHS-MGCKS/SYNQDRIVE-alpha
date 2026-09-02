@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-02 — D5 execution idempotency precision
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | D5 separated contract identity from lifecycle state but did not fully separate previous lifecycle maintenance from current candidate publication, nor same-assessment execution retry from new evidence. |
+| **OBSERVATION** | Stale-previous early return persisted under current `assessmentId`; STALE remains eligible as latest active previous; `LvPublicationPreviousState` lacks `assessmentId`; same-assessment retry reuses previous stabilized state for EWMA/hysteresis; P2002 + supersession path can conditionally self-supersede. |
+| **HYPOTHESIS** | Three-layer idempotency (job/contract, execution, lifecycle) with explicit previous-vs-current identity observability prevents provenance rebinding, stale lock, EWMA drift, and self-supersession. |
+| **CHANGE** | Amend D5: previous lifecycle identity isolation; current candidate after expiry; execution idempotency; self-supersession prohibition; tests 21–29; +1 evidence node; refine publication gaps. |
+| **WHY** | Prevent misuse of `publicationVersion`, stale-authority lock, repeated-EWMA drift, and self-supersession. |
+| **EXPECTED_EFFECT** | PKG-02 implements identity-isolated lifecycle maintenance, execution-idempotent same-assessment retry, and supersession safety. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh` |
+| **OBSERVED_EFFECT** | Validator PASS; graph counts per post-change output. |
+| **NON_EFFECTS** | No runtime implementation; no publication enqueue; no repository fix; no payload validator runtime fix; no DB migration; no flags; no prod mutation; no backfill; no deploy; no M4; no publication enablement; no production validation; runtime gaps remain open. |
+| **REGRESSIONS_OR_TRADEOFFS** | PKG-02 must supply previous/current assessment identity to policy without heuristic inference |
+| **REMAINING_GAPS** | All 20 `BAT-V2-GAP-*` open |
+| **DECISION_STATUS** | VALIDATED (NOT PRODUCTION_VALIDATED) |
+| **AFFECTED_GRAPH** | D5 summary expanded; GAP-HANDOFF + GAP-JOB-CHAIN refined; +1 evidence, +3 edges |
+| **EVIDENCE** | `BAT-V2-EVID-CODE-LV-PUBLICATION-PREV-STATE-EXECUTION-IDEMPOTENCY-001` |
+
 ## CL-2026-09-02 — D5 lifecycle identity precision
 
 | Field | Content |

@@ -1,6 +1,6 @@
 # Battery V2 — Knowledge Graph (Human View)
 
-**Last updated:** 2026-09-02 (D5 — LV publication version authority)  
+**Last updated:** 2026-09-02 (D5 execution idempotency precision)  
 **Maturity:** Phase 2+3 substantially reconstructed — open gaps remain  
 Machine-readable source: [graph/nodes.yaml](./graph/nodes.yaml), [graph/edges.yaml](./graph/edges.yaml)
 
