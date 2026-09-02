@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-rd003-telemetry-forensics-2026-09-02',
+    version: '4.9.1034',
+    title: 'Reference Drive #003 — Telemetry forensics v2 (segmented video GT model)',
+    summary: [
+      'RD003 session 0fa040aa-… COMPLETED: 371 cycles, 6250 SIGNAL_POINT + 1 SESSION_METADATA.',
+      'HF_HISTORICAL 2783 aggregate-bucket rows (AGGREGATE_BUCKET_V2); NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED=YES.',
+      'HF_IDEMPOTENCY_RUNTIME_VALIDATED=NOT_EXERCISED (no duplicate/retry path exercised in sealed export).',
+      'REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ=NO (HF aggregate-bucket Δt P50 ~2s; RAW_PHYSICAL_SAMPLE_CADENCE=NOT_PROVEN).',
+      'HF watermark + query-window proofs use acquisition-order per-field execution (not lexical sort).',
+      'VIDEO_GT=PARTIAL_SEGMENTED — multiple ~1 min clips, NOT one continuous ~37 min video.',
+      'VEHICLE_LOAD_ASSESSABILITY=RECONSTRUCTABLE_MEDIUM_CONFIDENCE; longitudinal accel cadence-gated.',
+      'SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS=254; FAST_GO_TO_FIRST_CYCLE_MS=1222.',
+      'DI-EV-0027–0032 amended in place; REFERENCE_CAPTURE_RUNTIME_CHANGED=NO.',
+    ],
+    reason: 'Methodology correction pass: segmented video GT model, HF proof fixes, physics semantics, distinct timing metrics.',
+    previousBehavior: 'Continuous video assumption; lexical-sort watermark proof; Vehicle Load marked DIRECTLY_OBSERVED.',
+    details:
+      'docs/audits/dimo-lte-r1-reference-drive-003-capture-report-2026-09-02.md; DI-EV-0027–0032; backend/scripts/ops/reference-capture-drive-003-reanalyze.ts (read-only).',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T19:52:00.000Z',
+  },
+  {
     id: 'dimo-rd002-motion-hf-canary-2026-09-02',
     version: '4.9.1033',
     title: 'Reference Drive #002 — Motion HF canary (KS MX 2024)',

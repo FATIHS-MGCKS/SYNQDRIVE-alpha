@@ -66,7 +66,22 @@ Post-smoke integrity (unique index valid, duplicates=0)
 
 ## Next step
 
-Reference Drive #003 (video Ground Truth) when owner authorizes. Durable VPS GitHub read credential still recommended for unattended deploys.
+Reference Drive #003 video GT alignment when owner ingests instrument-cluster video. Durable VPS GitHub read credential still recommended for unattended deploys.
+
+## RD003 segmented video GT telemetry forensics (2026-09-02, methodology v2)
+
+| Item | Value |
+|------|-------|
+| Session | `0fa040aa-6105-4872-9b2c-f8ad477009b8` |
+| Vehicle | WOB L 7503 (VW Tiguan) |
+| Telemetry forensics | DONE (DI-EV-0027–0032, amended in place) |
+| Telemetry coverage | FULL_SESSION |
+| Video GT coverage | PARTIAL_SEGMENTED (multiple ~1 min clips) |
+| Video GT alignment | PENDING_SEGMENTED_VIDEO |
+| HF watermark proof | Acquisition-order per-field execution |
+| HF idempotency | NOT_EXERCISED (NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED=YES) |
+| Sealed evidence | `/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-003/` |
+| Validation module | `reference-capture-rd003-hf-runtime-validation.ts` |
 
 ## References
 

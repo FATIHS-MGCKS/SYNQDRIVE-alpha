@@ -950,7 +950,32 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 | `VIDEO_GROUND_TRUTH` | **NOT_PLANNED_BY_PROTOCOL** |
 | `READY_FOR_RD003` | **YES** |
 
-**Next ground-truth-capable drive:** `DIMO_LTE_R1_REFERENCE_DRIVE_003` (video GT — not started).
+**Next ground-truth-capable drive:** `DIMO_LTE_R1_REFERENCE_DRIVE_003` — **telemetry forensics DONE**; segmented video GT alignment **PENDING_SEGMENTED_VIDEO**.
+
+### RD003 — Video Ground Truth drive (TELEMETRY FORENSICS COMPLETE — METHODOLOGY v2)
+
+**Status:** **CAPTURE COMPLETE** · **TELEMETRY FORENSICS DONE** (2026-09-02) · DI-EV-0027–0032 (amended in place)
+
+| Field | Value |
+|-------|-------|
+| Vehicle | VW Tiguan WOB L 7503 |
+| Session | `0fa040aa-6105-4872-9b2c-f8ad477009b8` |
+| Duration | ~37.1 min (2227 s) |
+| Cycles | 371 |
+| SIGNAL_POINT | 6250 |
+| HF_HISTORICAL | 2783 (AGGREGATE_BUCKET_V2) |
+| Sealed SHA-256 | `81534484cdd0fa6224d9efbcf97bb445cfbe8af1fdb8ef29e9bb8204f09c32e4` |
+| `REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ` | **NO** (HF aggregate-bucket Δt P50 ~2s — not raw physical LTE_R1 cadence) |
+| `RAW_PHYSICAL_SAMPLE_CADENCE` | **NOT_PROVEN** |
+| `RD003_TELEMETRY_COVERAGE` | **FULL_SESSION** |
+| `RD003_VIDEO_GT_COVERAGE` | **PARTIAL_SEGMENTED** (multiple ~1 min clips — NOT one continuous video) |
+| `VIDEO_GROUND_TRUTH` | **PENDING_SEGMENTED_VIDEO** |
+| `GROUND_TRUTH_VALIDATED` | **NO** |
+| `READY_FOR_VIDEO_GT_INGESTION` | **YES** |
+
+**Timing metrics (distinct semantics):** SESSION_START_TO_FIRST_REQUEST_MS=35; SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS=254; FAST_GO_TO_RECORDING_MS=125; FAST_GO_TO_FIRST_CYCLE_MS=1222. Prior ambiguous ~0.93s acquisition-start label retired.
+
+**Key findings:** HF watermark + query-window proofs use acquisition-order per-field execution (not lexical sort). `NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED=YES`; `HF_IDEMPOTENCY_RUNTIME_VALIDATED=NOT_EXERCISED` (no duplicate/retry path exercised). Vehicle Load domain = RECONSTRUCTABLE_MEDIUM_CONFIDENCE. Longitudinal accel = RECONSTRUCTABLE_WITH_CADENCE_GATING. GEAR_STATE_OBSERVED=YES; GEAR_CHANGE_TIMING_VALIDATED=NO. Zero native events (NOT_EXERCISED — not proof no harsh maneuvers occurred).
 
 ### RD002 gate (historical — satisfied 2026-09-02)
 
@@ -1321,14 +1346,14 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Phase 3A.2 production deploy + runtime canary | DONE | Deploy + stationary LTE_R1 canary passed — session `e8613cc7-…`, 5 cycles, 52 obs |
 | Phase 3A.3 Reference Drive #001 capture + telemetry audit | DONE | Session `06638509-…` COMPLETED; HF active; video GT NOT_AVAILABLE |
 | Phase 3A.3 Reference Drive #002 motion HF canary | DONE | Session `e095d273-…` COMPLETED; 3A.3.2 validated; video GT NOT_PLANNED |
-| Phase 3A DIMO LTE_R1 reference program | IN_PROGRESS | RD001+RD002 DONE; RD003 (video GT) authorized when owner ready |
+| Phase 3A DIMO LTE_R1 reference program | IN_PROGRESS | RD001+RD002+RD003 capture DONE; RD003 video GT alignment PENDING_VIDEO |
 | Phase 3B DIMO Tesla Direct reference program | NOT_STARTED | `GATED_ON_TESLA_DIRECT_MANIFEST` |
 | Phase 3C DIMO Smart5 compatibility program | NOT_STARTED | `GATED_ON_SMART5_MANIFEST` |
 | Phase 3D High Mobility OEM reference program | NOT_STARTED | `GATED_ON_HIGH_MOBILITY_PROFILE_MANIFEST` |
 | Flight Recorder implementation (LTE_R1) | DONE (3A.1+3A.2) | `reference-capture` deployed + production canary validated |
 | Instrumented reference drive #001 (RD001) | DONE | Session `06638509-…` COMPLETED; telemetry audit available; video GT NOT_AVAILABLE |
 | RD002 (motion HF canary) | **DONE** | Session `e095d273-…` — DI-EV-0023; MOTION_CANARY_COMPLETED=YES |
-| RD003 (video Ground Truth) | **AUTHORIZED** | Owner may start when prepared; FAST GO workflow validated |
+| RD003 (video Ground Truth) | **CAPTURE DONE / GT PENDING** | Telemetry forensics complete (DI-EV-0027–0032); video ingest + alignment required |
 | Evidence & documentation governance | DONE | `driving-intelligence-evidence-governance-2026-09-01.md` + registry seeded |
 | Ground-truth synchronization | NOT_STARTED | Phase 5 |
 | Detector validation | NOT_STARTED | Phase 6 |
