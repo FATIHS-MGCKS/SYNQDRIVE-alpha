@@ -324,6 +324,7 @@ async function probeDatabase(): Promise<boolean> {
       expect(ids).toContain(enqueuedId);
       expect(ids).not.toContain(executedId);
       expect(ids).not.toContain(nonLvId);
+      expect(ids).not.toContain(wrongTypeId);
 
       const missingRow = rows.find((row) => row.id === missingId);
       expect(missingRow?.organizationId).toBe(organizationId);

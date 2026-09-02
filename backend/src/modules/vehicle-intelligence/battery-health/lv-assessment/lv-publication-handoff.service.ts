@@ -19,6 +19,7 @@ import {
 import {
   mergePublicationHandoffPatchIntoSummary,
   mutateBatteryAssessmentPublicationHandoff,
+  reserveLvPublicationHandoffEnqueue,
 } from './lv-publication-handoff.mutation';
 import { formatBatteryV2PipelineLog } from '../observability/battery-v2-pipeline-observability.util';
 import {
@@ -137,7 +138,8 @@ export class LvPublicationHandoffService {
     if (
       existingHandoff?.status === LV_PUBLICATION_HANDOFF_STATUS.ENQUEUED &&
       existingHandoff.selectedAssessmentId === selected.assessmentId &&
-      existingHandoff.idempotencyKey === idempotencyKey
+      existingHandoff.idempotencyKey === idempotencyKey &&
+      existingHandoff.bullJobId
     ) {
       const live = await this.jobProducer.hasLiveJob(idempotencyKey);
       if (live) {
@@ -168,21 +170,72 @@ export class LvPublicationHandoffService {
       };
     }
 
-    await this.persistHandoffState({
+    const now = new Date();
+    const reservation = await reserveLvPublicationHandoffEnqueue(this.prisma, {
       assessmentId: selected.assessmentId,
       organizationId: input.organizationId,
+      idempotencyKey,
+      now,
       handoffPatch: {
-        status: LV_PUBLICATION_HANDOFF_STATUS.MISSING,
         selectedAssessmentId: selected.assessmentId,
         assessmentTrack: selected.assessmentTrack,
         idempotencyKey,
         publicationVersion: LV_PUBLICATION_CONTRACT_VERSION,
         epochAssessmentIds: arbitration.epochAssessmentIds,
-        lastAttemptAt: new Date().toISOString(),
       },
     });
 
-    const now = new Date();
+    if (reservation.action === 'skip_executed') {
+      return {
+        enqueued: false,
+        skipped: true,
+        reason: 'already_executed',
+        idempotencyKey,
+        selectedAssessmentId: selected.assessmentId,
+        selectedAssessmentTrack: selected.assessmentTrack,
+        epochAssessmentIds: arbitration.epochAssessmentIds,
+      };
+    }
+
+    if (reservation.action === 'skip_enqueued') {
+      const live = await this.jobProducer.hasLiveJob(idempotencyKey);
+      return {
+        enqueued: false,
+        skipped: true,
+        reason: live ? 'already_enqueued_live' : 'already_enqueued',
+        idempotencyKey,
+        jobId: reservation.handoff.bullJobId ?? null,
+        selectedAssessmentId: selected.assessmentId,
+        selectedAssessmentTrack: selected.assessmentTrack,
+        epochAssessmentIds: arbitration.epochAssessmentIds,
+      };
+    }
+
+    if (reservation.action === 'skip_in_progress') {
+      const live = await this.jobProducer.hasLiveJob(idempotencyKey);
+      if (live) {
+        return {
+          enqueued: false,
+          skipped: true,
+          reason: 'already_enqueued_live',
+          idempotencyKey,
+          jobId: reservation.handoff.bullJobId ?? null,
+          selectedAssessmentId: selected.assessmentId,
+          selectedAssessmentTrack: selected.assessmentTrack,
+          epochAssessmentIds: arbitration.epochAssessmentIds,
+        };
+      }
+      return {
+        enqueued: false,
+        skipped: true,
+        reason: 'enqueue_in_progress',
+        idempotencyKey,
+        selectedAssessmentId: selected.assessmentId,
+        selectedAssessmentTrack: selected.assessmentTrack,
+        epochAssessmentIds: arbitration.epochAssessmentIds,
+      };
+    }
+
     const correlationPrefix = input.correlationPrefix ?? 'lv-pub-handoff';
     const jobId = await this.jobProducer.enqueue('BATTERY_PUBLICATION_UPDATE', {
       organizationId: input.organizationId,

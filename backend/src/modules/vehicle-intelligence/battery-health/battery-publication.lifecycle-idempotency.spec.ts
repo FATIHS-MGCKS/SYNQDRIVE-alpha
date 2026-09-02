@@ -78,9 +78,12 @@ describe('BatteryPublicationService lifecycle idempotency (D5)', () => {
     };
   }
 
+  let markSupersededMock: jest.Mock;
+
   beforeEach(async () => {
     persistMock = jest.fn().mockResolvedValue({ id: 'pub-new' });
     materializeMock = jest.fn().mockResolvedValue({ id: 'pub-a' });
+    markSupersededMock = jest.fn().mockResolvedValue({ id: 'pub-a' });
     findPublicationByAssessmentIdentity = jest
       .fn()
       .mockResolvedValue(existingPublication());
@@ -113,6 +116,7 @@ describe('BatteryPublicationService lifecycle idempotency (D5)', () => {
             findLatestActiveLvPublication,
             findLatestRetainedLvPublication,
             findPublicationByAssessmentIdentity,
+            findPublicationById: jest.fn(),
             toPublicationPreviousState: jest.fn().mockImplementation((row) => {
               if (!row) return null;
               const payload = JSON.parse(row.reason);
@@ -148,7 +152,7 @@ describe('BatteryPublicationService lifecycle idempotency (D5)', () => {
             })),
             persistLvPublication: persistMock,
             materializePublicationLifecycleState: materializeMock,
-            markPublicationSuperseded: jest.fn(),
+            markPublicationSuperseded: markSupersededMock,
           },
         },
       ],
@@ -271,7 +275,7 @@ describe('BatteryPublicationService lifecycle idempotency (D5)', () => {
     expect(persistMock).not.toHaveBeenCalled();
   });
 
-  it('TEST 5: retry pub:B repairs previous A lifecycle before B persist', async () => {
+  it('TEST 5: first-creation supersession materializes STALE(A) then pub:B:v1', async () => {
     const pubA = existingPublication({ assessmentId: assessmentA });
     findPublicationByAssessmentIdentity.mockResolvedValue(null);
     findLatestRetainedLvPublication.mockResolvedValue(pubA);
@@ -305,5 +309,66 @@ describe('BatteryPublicationService lifecycle idempotency (D5)', () => {
     expect(persistMock).toHaveBeenCalledWith(
       expect.objectContaining({ assessmentId: assessmentB }),
     );
+  });
+
+  it('TEST 6: crash after pub:B:v1 create — retry repairs A SUPERSEDED without B duplicate', async () => {
+    const pubB = {
+      id: 'pub-b',
+      assessmentId: assessmentB,
+      version: 1,
+      publishedAt: now,
+      reason: JSON.stringify({
+        maturity: 'STABLE',
+        supersedePublicationId: 'pub-a',
+        publishedEstimatedHealth: 76,
+        stabilizedEstimatedHealth: 76,
+        assessmentTrack: 'WORKSHOP_OVERRIDE',
+        assessmentEvidenceObservedAt: now.toISOString(),
+      }),
+    };
+
+    findPublicationByAssessmentIdentity.mockResolvedValue(pubB);
+    findLatestRetainedLvPublication.mockResolvedValue(existingPublication());
+    findLatestActiveLvPublication.mockResolvedValue(existingPublication());
+
+    const assessmentBRow = {
+      ...assessmentRow,
+      id: assessmentB,
+      idempotencyKey: 'assess-key-b',
+      scoreValue: 76,
+      inputSummary: {
+        ...assessmentRow.inputSummary,
+        assessmentTrack: 'WORKSHOP_OVERRIDE',
+      },
+    };
+    const repo = (service as unknown as { publicationRepository: BatteryPublicationRepository })
+      .publicationRepository;
+    (repo.findAssessmentById as jest.Mock).mockResolvedValue(assessmentBRow);
+    (repo.findPublicationById as jest.Mock).mockImplementation(
+      async ({ publicationId }: { publicationId: string }) => {
+        if (publicationId === 'pub-a') return existingPublication();
+        if (publicationId === 'pub-b') return pubB;
+        return null;
+      },
+    );
+
+    const result = await service.updateLvPublication({
+      organizationId,
+      vehicleId,
+      assessmentId: assessmentB,
+      publicationVersion: 1,
+      now,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.persistedPublicationId).toBe('pub-b');
+    expect(persistMock).not.toHaveBeenCalled();
+    expect(markSupersededMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        publicationId: 'pub-a',
+        supersededByPublicationId: 'pub-b',
+      }),
+    );
+    expect(result.supersededPublicationId).toBe('pub-a');
   });
 });

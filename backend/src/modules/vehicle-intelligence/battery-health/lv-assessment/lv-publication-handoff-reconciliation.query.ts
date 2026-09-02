@@ -35,6 +35,7 @@ export async function fetchPublicationHandoffReconcileCandidates(
     WHERE ba.scope = ${BatteryEvidenceScope.LV}::"BatteryEvidenceScope"
       AND ba.type = ${BatteryAssessmentType.LV_ESTIMATED_HEALTH}::"BatteryAssessmentType"
       AND ba.computed_at >= ${input.lookbackFrom}
+      AND COALESCE(ba.input_summary->>'assessmentMode', '') = 'CANONICAL'
       AND ba.input_summary IS NOT NULL
       AND (ba.input_summary->'publicationHandoff'->>'status') IS NOT NULL
       AND (ba.input_summary->'publicationHandoff'->>'status') <> 'EXECUTED'

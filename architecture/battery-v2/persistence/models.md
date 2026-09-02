@@ -10,6 +10,22 @@
 | `BatteryMeasurementSession` | `BAT-V2-STORE-BATTERY-MEASUREMENT-SESSION-001` | Time-bounded cycle (LV REST window, etc.) | `@@unique([vehicleId, idempotencyKey])`; mutable `metadata` FSM |
 | `BatteryMeasurement` | `BAT-V2-STORE-BATTERY-MEASUREMENT-001` | Immutable measurements | `@@unique([organizationId, vehicleId, idempotencyKey])`; `@@unique([vehicleId, type, observedAt])` |
 | `BatteryAssessment` | `BAT-V2-STORE-BATTERY-ASSESSMENT-001` | Versioned assessments | `@@unique([vehicleId, idempotencyKey])`; `supersededById` chain |
+
+### BatteryAssessment operational envelope (PKG-02)
+
+Scientific assessment identity and evidence fields on `BatteryAssessment` are **append-only / versioned** — scores, evidence selection, model outputs, and measurement linkage must not be mutated post-create.
+
+The **only** post-create mutable envelope permitted by PKG-02 is:
+
+`inputSummary.publicationHandoff`
+
+This is **operational handoff/liveness metadata** (MISSING → ENQUEUED → EXECUTED), not scientific assessment evidence. Mutations are restricted to `LvPublicationHandoffService` via row-locked `mutateBatteryAssessmentPublicationHandoff` and must be:
+
+- identity preserving (`selectedAssessmentId`, `idempotencyKey`, `epochAssessmentIds`)
+- monotonic (never regress EXECUTED → ENQUEUED/MISSING)
+- row-locked (`SELECT … FOR UPDATE`)
+- non-destructive to unrelated `inputSummary` keys
+- no score/evidence/model mutation
 | `BatteryPublication` | `BAT-V2-STORE-BATTERY-PUBLICATION-001` | Publication history | `@@unique([organizationId, vehicleId, idempotencyKey])` |
 | `VehicleBatteryCapability` | `BAT-V2-STORE-VEHICLE-BATTERY-CAPABILITY-001` | Preflight per signal | `@@unique([vehicleId, signalKey])` |
 | `VehicleBatteryReferenceCapacity` | `BAT-V2-STORE-REFERENCE-CAPACITY-001` | Verified HV reference | Active/superseded chain |

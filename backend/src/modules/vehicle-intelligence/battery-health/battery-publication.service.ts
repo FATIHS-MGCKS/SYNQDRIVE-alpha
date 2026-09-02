@@ -195,6 +195,12 @@ export class BatteryPublicationService {
     });
 
     if (isSameAssessmentRetry && existingIdentity) {
+      const repairedSupersessionId = await this.repairPendingSupersessionOnRetry({
+        organizationId: input.organizationId,
+        existingPublication: existingIdentity,
+        now,
+      });
+
       const existingState =
         this.publicationRepository.toPublicationPreviousState(existingIdentity);
       if (
@@ -248,7 +254,7 @@ export class BatteryPublicationService {
         ok: true,
         decision,
         persistedPublicationId: existingIdentity.id,
-        supersededPublicationId: null,
+        supersededPublicationId: repairedSupersessionId,
       };
     }
 
@@ -421,5 +427,45 @@ export class BatteryPublicationService {
         correlationId: input.previous.assessmentId,
       }),
     );
+  }
+
+  private async repairPendingSupersessionOnRetry(input: {
+    organizationId: string;
+    existingPublication: { id: string; reason: string | null };
+    now: Date;
+  }): Promise<string | null> {
+    let payload: Record<string, unknown> | null = null;
+    try {
+      payload = input.existingPublication.reason
+        ? (JSON.parse(input.existingPublication.reason) as Record<string, unknown>)
+        : null;
+    } catch {
+      return null;
+    }
+
+    const supersedePublicationId = payload?.supersedePublicationId;
+    if (typeof supersedePublicationId !== 'string' || !supersedePublicationId) {
+      return null;
+    }
+
+    const prior = await this.publicationRepository.findPublicationById({
+      organizationId: input.organizationId,
+      publicationId: supersedePublicationId,
+    });
+    if (!prior) return null;
+
+    const priorState = this.publicationRepository.toPublicationPreviousState(prior);
+    if (!priorState || priorState.maturity === 'SUPERSEDED') {
+      return null;
+    }
+
+    await this.publicationRepository.markPublicationSuperseded({
+      organizationId: input.organizationId,
+      publicationId: supersedePublicationId,
+      supersededByPublicationId: input.existingPublication.id,
+      supersededAt: input.now,
+    });
+
+    return supersedePublicationId;
   }
 }

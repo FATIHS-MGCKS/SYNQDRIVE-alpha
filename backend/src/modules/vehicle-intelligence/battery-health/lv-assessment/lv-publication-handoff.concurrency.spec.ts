@@ -193,7 +193,7 @@ describe('mutateBatteryAssessmentPublicationHandoff', () => {
 });
 
 describe('lv-publication-handoff concurrency (PKG-02)', () => {
-  it('RACE C: duplicate ensurePublicationHandoff converges on one identity', async () => {
+  it('sequential retry converges on one identity without duplicate enqueue', async () => {
     const store = buildAssessmentStore({});
     const jobProducer = {
       enqueue: jest.fn().mockResolvedValue('bull-job-pub'),
@@ -244,7 +244,7 @@ describe('lv-publication-handoff concurrency (PKG-02)', () => {
     ).toBe(`pub:${ASSESS}:v1`);
   });
 
-  it('RACE B: reconcile and direct paths share durable pub identity', async () => {
+  it('sequential direct then reconcile share durable pub identity', async () => {
     const store = buildAssessmentStore({});
     const jobProducer = {
       enqueue: jest.fn().mockResolvedValue('bull-job-pub'),

@@ -67,7 +67,7 @@ edges:
   - from: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
     relation: refines
     to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
-    notes: Phase 4 recommended hybrid handoff target — gap remains open until runtime
+    notes: Phase 4 recommended hybrid handoff target — PRE-PKG-02 evidence; PKG-02 runtime IMPLEMENTED 2026-09-02; PRODUCTION_VALIDATED remains open
   - from: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
     relation: refines
     to: BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
@@ -79,7 +79,7 @@ edges:
   - from: BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001
     relation: refines
     to: BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
-    notes: inputVersion = BatteryMeasurement.id — handoff gap remains open until runtime enqueue
+    notes: PRE-PKG-01 evidence — inputVersion identity; PKG-01 runtime IMPLEMENTED 2026-09-02
   - from: BAT-V2-DEC-LV-ASSESSMENT-INPUT-VERSION-001
     relation: refines
     to: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
@@ -89,7 +89,7 @@ edges:
   - from: BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001
     relation: refines
     to: BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
-    notes: Hybrid C+ — handoff gap remains open until runtime implementation
+    notes: PRE-PKG-01 evidence — Hybrid C+ crash boundary; PKG-01 runtime IMPLEMENTED 2026-09-02
   - from: BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001
     relation: refines
     to: BAT-V2-DEC-PH4-LV-PUB-CHAIN-001
@@ -107,15 +107,15 @@ edges:
   - from: BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001
     relation: refines
     to: BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
-    notes: Config authority only — runtime handoff gap remains open
+    notes: Config authority — PRE-PKG-01 assessment handoff evidence; PKG-01 IMPLEMENTED
   - from: BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001
     relation: refines
     to: BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
-    notes: Config authority only — publication handoff gap remains open
+    notes: Config authority — PRE-PKG-02 publication handoff evidence; PKG-02 IMPLEMENTED 2026-09-02
   - from: BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001
     relation: refines
     to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
-    notes: Umbrella config authority — e2e chain gap remains open
+    notes: Umbrella config authority — PRE-PKG-02 e2e chain evidence; PKG-02 IMPLEMENTED; PRODUCTION_VALIDATED open
   - from: BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001
     relation: refines
     to: BAT-V2-DEC-LV-ASSESSMENT-CRASH-BOUNDARY-001
@@ -133,11 +133,11 @@ edges:
   - from: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
     relation: refines
     to: BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
-    notes: Selection authority only — runtime handoff gap remains open
+    notes: PRE-PKG-02 evidence — D4 selection authority; PKG-02 runtime IMPLEMENTED 2026-09-02
   - from: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
     relation: refines
     to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
-    notes: Track authority spec only — e2e chain gap remains open
+    notes: PRE-PKG-02 evidence — D4 track authority spec; PKG-02 IMPLEMENTED; PRODUCTION_VALIDATED open
   - from: BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001
     relation: refines
     to: BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001
@@ -163,11 +163,11 @@ edges:
   - from: BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001
     relation: refines
     to: BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
-    notes: Version authority spec only — runtime handoff gap remains open
+    notes: PRE-PKG-02 evidence — D5 version authority; PKG-02 IMPLEMENTED 2026-09-02
   - from: BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001
     relation: refines
     to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
-    notes: Version authority + payload validation finding documented — e2e chain gap remains open
+    notes: PRE-PKG-02 evidence — payload validation fixed PKG-02; IMPLEMENTED; PRODUCTION_VALIDATED open
   - from: BAT-V2-EVID-CODE-LV-PUBLICATION-VERSION-DEFAULT-001
     relation: supports
     to: BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001
@@ -180,7 +180,7 @@ edges:
   - from: BAT-V2-EVID-CODE-PUBLICATION-PAYLOAD-VALIDATION-DROP-001
     relation: supports
     to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
-    notes: Producer validation strips publication fields — PKG-02 must fix
+    notes: PRE-PKG-02 evidence — producer validation gap; PKG-02 IMPLEMENTED (validateBatteryV2JobPayload hardened)
   - from: BAT-V2-EVID-CODE-LV-PUBLICATION-VERSION-DEFAULT-001
     relation: supports
     to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
@@ -192,11 +192,11 @@ edges:
   - from: BAT-V2-EVID-CODE-LV-PUBLICATION-LIFECYCLE-CREATE-P2002-001
     relation: supports
     to: BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
-    notes: Lifecycle persistence gap on existing publication identity — PKG-02 must distinguish create vs state transition
+    notes: PRE-PKG-02 evidence — lifecycle create vs transition; PKG-02 IMPLEMENTED (same-assessment STALE repair)
   - from: BAT-V2-EVID-CODE-LV-PUBLICATION-LIFECYCLE-CREATE-P2002-001
     relation: supports
     to: BAT-V2-GAP-LV-PUBLICATION-JOB-CHAIN-001
-    notes: Same-identity STALE/create-P2002 may not materialize requested lifecycle state
+    notes: PRE-PKG-02 evidence — same-identity STALE/P2002; PKG-02 IMPLEMENTED; PRODUCTION_VALIDATED open
 
   # D5 execution idempotency — previous lifecycle isolation
   - from: BAT-V2-EVID-CODE-LV-PUBLICATION-PREV-STATE-EXECUTION-IDEMPOTENCY-001

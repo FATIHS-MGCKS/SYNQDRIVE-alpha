@@ -210,6 +210,18 @@ export class BatteryPublicationRepository {
     });
   }
 
+  async findPublicationById(input: {
+    organizationId: string;
+    publicationId: string;
+  }): Promise<BatteryPublication | null> {
+    return this.prisma.batteryPublication.findFirst({
+      where: {
+        id: input.publicationId,
+        organizationId: input.organizationId,
+      },
+    });
+  }
+
   toPublicationPreviousState(
     row: BatteryPublication | null,
   ): LvPublicationPreviousState | null {

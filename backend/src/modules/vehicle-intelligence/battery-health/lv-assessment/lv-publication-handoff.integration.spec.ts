@@ -1,205 +1,439 @@
-import { arbitrateLvPublicationTrack } from './lv-publication-track-arbitration.policy';
-import { LvPublicationHandoffService } from './lv-publication-handoff.service';
+import { BatteryPolicyProfileService } from '../../battery-policy-profile/battery-policy-profile.service';
+import { resolveBatteryPolicy } from '../../battery-policy-profile/battery-policy-profile.resolver';
+import {
+  BatteryChemistry,
+  BatteryDriveProfile,
+} from '../battery-v2-domain';
+import { BatteryPublicationRepository } from '../battery-publication.repository';
+import { BatteryPublicationService } from '../battery-publication.service';
 import { validateBatteryV2JobPayload } from '../jobs/battery-v2-job.validation';
 import { BatteryPublicationUpdateHandler } from '../jobs/handlers/battery-publication-update.handler';
-import { BatteryPublicationService } from '../battery-publication.service';
+import { LvPublicationHandoffService } from './lv-publication-handoff.service';
 import { LV_PUBLICATION_CONTRACT_VERSION } from './lv-publication-contract.policy';
 import {
+  LV_PUBLICATION_HANDOFF_OUTCOME,
   LV_PUBLICATION_HANDOFF_STATUS,
   readPublicationHandoffFromAssessmentSummary,
 } from './lv-publication-handoff.metadata';
+import {
+  createConcurrentJobProducer,
+  createRowLockedAssessmentPrisma,
+} from './lv-publication-handoff.integration.harness';
+import { isBatteryV2PublicationEnabled } from '@config/battery-health-v2.config';
+import {
+  BatteryEvidenceScope,
+  BatteryEvidenceStrength,
+  SohPublicationState,
+  type BatteryAssessment,
+  type BatteryPublication,
+} from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
 
 jest.mock('@config/battery-health-v2.config', () => ({
-  isBatteryV2PublicationEnabled: jest.fn().mockReturnValue(false),
+  isBatteryV2PublicationEnabled: jest.fn(),
 }));
 
-describe('LV publication handoff service-chain integration', () => {
-  const organizationId = 'clorg1234567890123456789012';
-  const vehicleId = 'clveh1234567890123456789012';
-  const workshopId = 'assess-workshop';
-  const telemetryId = 'assess-telemetry';
+const organizationId = 'clorg1234567890123456789012';
+const vehicleId = 'clveh1234567890123456789012';
+const workshopId = 'assess-workshop';
+const telemetryId = 'assess-telemetry';
 
-  function buildHandoffHarness() {
-    const stores = new Map<string, Record<string, unknown>>();
-    stores.set(workshopId, {
-      assessmentTrack: 'WORKSHOP_OVERRIDE',
+function assessmentClock() {
+  const now = new Date();
+  return {
+    now,
+    validFrom: new Date(now.getTime() - 3 * 24 * 60 * 60_000),
+    validUntil: new Date(now.getTime() + 30 * 24 * 60 * 60_000),
+    firstEvidenceObservedAt: new Date(
+      now.getTime() - 20 * 24 * 60 * 60_000,
+    ).toISOString(),
+  };
+}
+
+function stableAssessmentRow(
+  id: string,
+  track: 'WORKSHOP_OVERRIDE' | 'TELEMETRY',
+  clock = assessmentClock(),
+) {
+  return {
+    id,
+    organizationId,
+    vehicleId,
+    scope: BatteryEvidenceScope.LV,
+    type: 'LV_ESTIMATED_HEALTH',
+    scoreValue: track === 'WORKSHOP_OVERRIDE' ? 76 : 82,
+    confidence: 'HIGH',
+    evidenceStrength: BatteryEvidenceStrength.PRIMARY,
+    dataQuality: 'ESTIMATED',
+    modelVersion: 1,
+    validFrom: clock.validFrom,
+    validUntil: clock.validUntil,
+    computedAt: clock.now,
+    idempotencyKey: `assess-key-${id}`,
+    inputSummary: {
+      assessmentTrack: track,
       assessmentMode: 'CANONICAL',
-    });
-
-    const prisma: {
-      $transaction: jest.Mock;
-      $queryRaw: jest.Mock;
-      batteryAssessment: {
-        findFirst: jest.Mock;
-        updateMany: jest.Mock;
-      };
-    } = {
-      $transaction: jest.fn(),
-      $queryRaw: jest.fn(),
-      batteryAssessment: {
-        findFirst: jest.fn(),
-        updateMany: jest.fn(),
+      confidenceScore: 0.85,
+      publicationEligible: true,
+      measurementCoverage: {
+        selectedCount: 6,
+        rejectedCount: 0,
+        restMeasurementCount: 6,
+        startProxyCount: 0,
+        workshopMeasurementCount: track === 'WORKSHOP_OVERRIDE' ? 2 : 0,
+        shadowExperimentalCount: 0,
+        weightedInputCount: 6,
+        coverageRatio: 1,
       },
+      selectedMeasurementIds: ['m1', 'm2', 'm3', 'm4', 'm5', 'm6'],
+      firstEvidenceObservedAt: clock.firstEvidenceObservedAt,
+    },
+  } as unknown as BatteryAssessment;
+}
+
+function createPublicationHarness(publicationEnabled: boolean) {
+  (isBatteryV2PublicationEnabled as jest.Mock).mockReturnValue(publicationEnabled);
+
+  const clock = assessmentClock();
+  const assessments = new Map<string, Record<string, unknown>>([
+    [
+      workshopId,
+      stableAssessmentRow(workshopId, 'WORKSHOP_OVERRIDE', clock).inputSummary as Record<
+        string,
+        unknown
+      >,
+    ],
+    [
+      telemetryId,
+      stableAssessmentRow(telemetryId, 'TELEMETRY', clock).inputSummary as Record<string, unknown>,
+    ],
+  ]);
+
+  const publications = new Map<string, BatteryPublication>();
+  const assessmentRows = new Map<string, BatteryAssessment>([
+    [workshopId, stableAssessmentRow(workshopId, 'WORKSHOP_OVERRIDE', clock)],
+    [telemetryId, stableAssessmentRow(telemetryId, 'TELEMETRY', clock)],
+  ]);
+
+  const prisma = createRowLockedAssessmentPrisma({
+    organizationId,
+    vehicleId,
+    assessments,
+    assessmentIdForLock: workshopId,
+  }) as unknown as PrismaService & {
+    batteryPublication: {
+      findMany: jest.Mock;
+      findFirst: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+      findFirstOrThrow: jest.Mock;
     };
+    batteryAssessment: {
+      findFirst: jest.Mock;
+    };
+  };
 
-    prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
-      fn(prisma),
-    );
-    prisma.$queryRaw.mockImplementation(async () => [
-      { input_summary: stores.get(workshopId) ?? {} },
-    ]);
-    prisma.batteryAssessment.findFirst.mockImplementation(
-      async ({ where }: { where: { id: string } }) => {
-        const summary = stores.get(where.id);
-        if (!summary) return null;
-        return { id: where.id, organizationId, vehicleId, inputSummary: summary };
-      },
-    );
-    prisma.batteryAssessment.updateMany.mockImplementation(
-      async ({
-        where,
-        data,
-      }: {
-        where: { id: string };
-        data: { inputSummary: Record<string, unknown> };
-      }) => {
-        stores.set(where.id, data.inputSummary);
-        return { count: 1 };
-      },
-    );
+  prisma.batteryAssessment.findFirst.mockImplementation(
+    async ({ where }: { where: { id: string; organizationId?: string } }) => {
+      const row = assessmentRows.get(where.id);
+      if (!row) return null;
+      const summary = assessments.get(where.id) ?? row.inputSummary;
+      return { ...row, inputSummary: summary };
+    },
+  );
 
-    const enqueuedJobs: unknown[] = [];
-    const jobProducer = {
-      enqueue: jest.fn(async (_type: string, payload: unknown) => {
-        enqueuedJobs.push(payload);
-        return 'bull-job-1';
+  prisma.batteryPublication.findMany.mockImplementation(
+    async ({ where }: { where: { organizationId: string; vehicleId: string } }) =>
+      [...publications.values()].filter(
+        (row) =>
+          row.organizationId === where.organizationId &&
+          row.vehicleId === where.vehicleId,
+      ),
+  );
+
+  prisma.batteryPublication.findFirst.mockImplementation(
+    async ({ where }: { where: Record<string, unknown> }) => {
+      if (typeof where.id === 'string') {
+        return publications.get(where.id) ?? null;
+      }
+      if (typeof where.idempotencyKey === 'string') {
+        return (
+          [...publications.values()].find(
+            (row) =>
+              row.idempotencyKey === where.idempotencyKey &&
+              row.organizationId === where.organizationId &&
+              row.vehicleId === where.vehicleId,
+          ) ?? null
+        );
+      }
+      return null;
+    },
+  );
+
+  prisma.batteryPublication.create.mockImplementation(async ({ data }) => {
+    const row = {
+      id: `pub-${data.assessmentId}`,
+      ...data,
+      createdAt: clock.now,
+    } as BatteryPublication;
+    publications.set(row.id, row);
+    return row;
+  });
+
+  prisma.batteryPublication.update.mockImplementation(
+    async ({ where, data }: { where: { id: string }; data: { reason?: string } }) => {
+      const existing = publications.get(where.id);
+      if (!existing) throw new Error('publication_not_found');
+      const updated = { ...existing, ...data };
+      publications.set(where.id, updated);
+      return updated;
+    },
+  );
+
+  prisma.batteryPublication.findFirstOrThrow.mockImplementation(
+    async ({ where }: { where: { id: string } }) => {
+      const row = publications.get(where.id);
+      if (!row) throw new Error('publication_not_found');
+      return row;
+    },
+  );
+
+  const { jobProducer, liveJobs } = createConcurrentJobProducer();
+  const publicationRepository = new BatteryPublicationRepository(prisma);
+  const policyProfile = {
+    resolveForVehicle: jest.fn().mockResolvedValue(
+      resolveBatteryPolicy({
+        driveProfile: BatteryDriveProfile.ICE,
+        chemistry: BatteryChemistry.AGM,
+        lvSignalPresent: true,
       }),
-      hasLiveJob: jest.fn().mockResolvedValue(false),
-    };
+    ),
+  };
 
-    const handoffService = new LvPublicationHandoffService(
-      prisma as never,
-      jobProducer as never,
-      { isDeadLetter: jest.fn().mockResolvedValue(false) } as never,
-    );
+  const publicationService = new BatteryPublicationService(
+    policyProfile as unknown as BatteryPolicyProfileService,
+    publicationRepository,
+  );
 
-    return { handoffService, jobProducer, stores, enqueuedJobs, prisma };
-  }
+  const handoffService = new LvPublicationHandoffService(
+    prisma,
+    jobProducer as never,
+    { isDeadLetter: jest.fn().mockResolvedValue(false) } as never,
+  );
 
-  it('PUBLICATION OFF: D4 arbitration → handoff → validated job payload', async () => {
-    const { handoffService, enqueuedJobs } = buildHandoffHarness();
-    const epochCandidates = [
-      {
-        assessmentId: telemetryId,
-        assessmentTrack: 'TELEMETRY' as const,
-        assessmentMode: 'CANONICAL' as const,
-      },
-      {
-        assessmentId: workshopId,
-        assessmentTrack: 'WORKSHOP_OVERRIDE' as const,
-        assessmentMode: 'CANONICAL' as const,
-      },
-    ];
+  const handler = new BatteryPublicationUpdateHandler(
+    publicationService,
+    handoffService,
+  );
 
-    const arbitration = arbitrateLvPublicationTrack(epochCandidates);
-    expect(arbitration.selected?.assessmentId).toBe(workshopId);
+  return {
+    prisma,
+    assessments,
+    publications,
+    publicationRepository,
+    publicationService,
+    handoffService,
+    handler,
+    jobProducer,
+    liveJobs,
+  };
+}
 
-    const result = await handoffService.ensurePublicationHandoff({
+describe('LV publication handoff deterministic service-chain integration', () => {
+  const epochCandidates = [
+    {
+      assessmentId: telemetryId,
+      assessmentTrack: 'TELEMETRY' as const,
+      assessmentMode: 'CANONICAL' as const,
+    },
+    {
+      assessmentId: workshopId,
+      assessmentTrack: 'WORKSHOP_OVERRIDE' as const,
+      assessmentMode: 'CANONICAL' as const,
+    },
+  ];
+
+  it('PUBLICATION OFF: mechanical chain through real publication service (policy skip)', async () => {
+    const harness = createPublicationHarness(false);
+
+    const handoffResult = await harness.handoffService.ensurePublicationHandoff({
       organizationId,
       vehicleId,
       epochCandidates,
     });
 
-    expect(result.enqueued).toBe(true);
-    expect(result.idempotencyKey).toBe(`pub:${workshopId}:v1`);
-    expect(enqueuedJobs).toHaveLength(1);
+    expect(handoffResult.idempotencyKey).toBe(`pub:${workshopId}:v1`);
+    expect(harness.jobProducer.enqueue).toHaveBeenCalledTimes(1);
 
-    const validated = validateBatteryV2JobPayload(
-      'BATTERY_PUBLICATION_UPDATE',
-      {
-        organizationId,
-        vehicleId,
-        idempotencyKey: `pub:${workshopId}:v1`,
-        assessmentId: workshopId,
-        publicationVersion: LV_PUBLICATION_CONTRACT_VERSION,
-        sourceEntityId: workshopId,
-        requestedAt: new Date().toISOString(),
-        correlationId: 'integration-test',
-        modelVersion: '1.0.0',
-        attemptContext: {
-          attemptNumber: 1,
-          maxAttempts: 3,
-          enqueuedAt: new Date().toISOString(),
-          previousFailureCode: null,
-        },
-      },
-    );
-
-    expect(validated.assessmentId).toBe(workshopId);
-    expect(validated.publicationVersion).toBe(1);
-  });
-
-  it('PUBLICATION ON config: handler delegates to BatteryPublicationService', async () => {
-    const publicationService = {
-      updateLvPublication: jest.fn().mockResolvedValue({
-        ok: true,
-        decision: { maturity: 'STABLE', reasons: [] },
-        persistedPublicationId: 'pub-1',
-        supersededPublicationId: null,
-      }),
-    };
-    const publicationHandoff = {
-      acknowledgeExecuted: jest.fn().mockResolvedValue(undefined),
-    };
-
-    const handler = new BatteryPublicationUpdateHandler(
-      publicationService as unknown as BatteryPublicationService,
-      publicationHandoff as never,
-    );
-
-    await handler.handle({
+    const chainClock = assessmentClock();
+    const payload = validateBatteryV2JobPayload('BATTERY_PUBLICATION_UPDATE', {
       organizationId,
       vehicleId,
-      assessmentId: workshopId,
-      publicationVersion: 1,
       idempotencyKey: `pub:${workshopId}:v1`,
+      assessmentId: workshopId,
+      publicationVersion: LV_PUBLICATION_CONTRACT_VERSION,
       sourceEntityId: workshopId,
-      requestedAt: new Date().toISOString(),
-      correlationId: 'integration-on',
-      modelVersion: 1,
+      requestedAt: chainClock.now.toISOString(),
+      correlationId: 'chain-off',
+      modelVersion: '1.0.0',
       attemptContext: {
         attemptNumber: 1,
         maxAttempts: 3,
-        enqueuedAt: new Date().toISOString(),
+        enqueuedAt: chainClock.now.toISOString(),
         previousFailureCode: null,
       },
+    });
+
+    await harness.handler.handle({
+      ...payload,
+      requestedAt: chainClock.now.toISOString(),
+      correlationId: 'chain-off',
     } as never);
 
-    expect(publicationService.updateLvPublication).toHaveBeenCalledWith(
-      expect.objectContaining({
-        assessmentId: workshopId,
-        publicationVersion: 1,
-      }),
+    expect(harness.publications.size).toBe(0);
+    const handoff = readPublicationHandoffFromAssessmentSummary(
+      harness.assessments.get(workshopId),
     );
-    expect(publicationHandoff.acknowledgeExecuted).toHaveBeenCalled();
+    expect(handoff?.status).toBe(LV_PUBLICATION_HANDOFF_STATUS.EXECUTED);
+    expect(handoff?.outcome).toBe(LV_PUBLICATION_HANDOFF_OUTCOME.POLICY_SKIPPED);
   });
 
-  it('persists durable ENQUEUED handoff metadata on selected assessment', async () => {
-    const { handoffService, stores } = buildHandoffHarness();
-    await handoffService.ensurePublicationHandoff({
+  it('PUBLICATION ON: qualified winner materializes pub:{assessmentId}:v1 via real policy', async () => {
+    const harness = createPublicationHarness(true);
+
+    await harness.handoffService.ensurePublicationHandoff({
       organizationId,
       vehicleId,
-      epochCandidates: [
+      epochCandidates,
+    });
+
+    const chainClock = assessmentClock();
+    const payload = validateBatteryV2JobPayload('BATTERY_PUBLICATION_UPDATE', {
+      organizationId,
+      vehicleId,
+      idempotencyKey: `pub:${workshopId}:v1`,
+      assessmentId: workshopId,
+      publicationVersion: LV_PUBLICATION_CONTRACT_VERSION,
+      sourceEntityId: workshopId,
+      requestedAt: chainClock.now.toISOString(),
+      correlationId: 'chain-on',
+      modelVersion: '1.0.0',
+      attemptContext: {
+        attemptNumber: 1,
+        maxAttempts: 3,
+        enqueuedAt: chainClock.now.toISOString(),
+        previousFailureCode: null,
+      },
+    });
+
+    await harness.handler.handle({
+      ...payload,
+      requestedAt: chainClock.now.toISOString(),
+      correlationId: 'chain-on',
+    } as never);
+
+    const publication = [...harness.publications.values()].find(
+      (row) => row.assessmentId === workshopId,
+    );
+    expect(publication?.idempotencyKey).toBe(`pub:${workshopId}:v1`);
+    expect(publication?.version).toBe(1);
+    expect(publication?.status).toBe(SohPublicationState.STABLE);
+
+    const active =
+      await harness.publicationRepository.findLatestActiveLvPublication({
+        organizationId,
+        vehicleId,
+      });
+    expect(active?.assessmentId).toBe(workshopId);
+  });
+});
+
+describe('LV publication handoff concurrent replica convergence', () => {
+  const ORG = organizationId;
+  const VEH = vehicleId;
+  const ASSESS = workshopId;
+
+  function buildReplicaServices() {
+    const assessments = new Map<string, Record<string, unknown>>([
+      [
+        ASSESS,
         {
-          assessmentId: workshopId,
           assessmentTrack: 'WORKSHOP_OVERRIDE',
           assessmentMode: 'CANONICAL',
         },
       ],
+    ]);
+
+    const prisma = createRowLockedAssessmentPrisma({
+      organizationId: ORG,
+      vehicleId: VEH,
+      assessments,
+      assessmentIdForLock: ASSESS,
     });
 
-    const handoff = readPublicationHandoffFromAssessmentSummary(stores.get(workshopId));
+    const { jobProducer } = createConcurrentJobProducer();
+    const deadLetters = { isDeadLetter: jest.fn().mockResolvedValue(false) };
+
+    const createService = () =>
+      new LvPublicationHandoffService(
+        prisma as never,
+        jobProducer as never,
+        deadLetters as never,
+      );
+
+    const input = {
+      organizationId: ORG,
+      vehicleId: VEH,
+      epochCandidates: [
+        {
+          assessmentId: ASSESS,
+          assessmentTrack: 'WORKSHOP_OVERRIDE' as const,
+          assessmentMode: 'CANONICAL' as const,
+        },
+      ],
+    };
+
+    return { assessments, jobProducer, createService, input };
+  }
+
+  it('overlapping replica ensurePublicationHandoff converges on one pub identity', async () => {
+    const { assessments, jobProducer, createService, input } = buildReplicaServices();
+    const replicaA = createService();
+    const replicaB = createService();
+
+    const [resultA, resultB] = await Promise.all([
+      replicaA.ensurePublicationHandoff(input),
+      replicaB.ensurePublicationHandoff(input),
+    ]);
+
+    const enqueuedCount = [resultA, resultB].filter((row) => row.enqueued).length;
+    expect(enqueuedCount).toBe(1);
+    expect(jobProducer.enqueue).toHaveBeenCalledTimes(1);
+
+    const handoff = readPublicationHandoffFromAssessmentSummary(assessments.get(ASSESS));
+    expect(handoff?.idempotencyKey).toBe(`pub:${ASSESS}:v1`);
+    expect([
+      LV_PUBLICATION_HANDOFF_STATUS.ENQUEUED,
+      LV_PUBLICATION_HANDOFF_STATUS.EXECUTED,
+    ]).toContain(handoff?.status);
+  });
+
+  it('overlapping direct vs reconciliation paths share one durable identity', async () => {
+    const { assessments, jobProducer, createService, input } = buildReplicaServices();
+    const direct = createService();
+    const reconcile = createService();
+
+    const [directResult, reconcileResult] = await Promise.all([
+      direct.ensurePublicationHandoff(input),
+      reconcile.reconcilePublicationHandoff(input),
+    ]);
+
+    expect(jobProducer.enqueue).toHaveBeenCalledTimes(1);
+    expect(directResult.idempotencyKey).toBe(`pub:${ASSESS}:v1`);
+    expect(reconcileResult.idempotencyKey).toBe(`pub:${ASSESS}:v1`);
+
+    const handoff = readPublicationHandoffFromAssessmentSummary(assessments.get(ASSESS));
+    expect(handoff?.idempotencyKey).toBe(`pub:${ASSESS}:v1`);
     expect(handoff?.status).toBe(LV_PUBLICATION_HANDOFF_STATUS.ENQUEUED);
-    expect(handoff?.epochAssessmentIds).toEqual([workshopId]);
   });
 });

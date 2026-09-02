@@ -12,6 +12,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-02 — PKG-02 merge-readiness pass (PR #1513)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Concurrency tests were sequential retry proofs; integration spec mocked `BatteryPublicationService`; TEST 5 modeled first-creation not crash/retry; graph edges had present-tense PRE-PKG-02 gap language; reconciliation SQL lacked CANONICAL filter; append-only tension undocumented. |
+| **CHANGE** | `reserveLvPublicationHandoffEnqueue` row-locked claim; overlapping `Promise.all` replica tests; real service-chain integration harness; TEST 6 crash-after-pub:B retry + `repairPendingSupersessionOnRetry`; `findPublicationById` + active-read-path proof; reconciliation CANONICAL filter + SHADOW exclusion assertion; graph edge temporal semantics; `persistence/models.md` operational envelope authority. |
+| **WHY** | Merge-readiness evidence for true concurrency, real integration chain, D5 supersession crash window, and authority documentation without semantic drift. |
+| **VALIDATION** | PKG-02 suites 24 passed (2 postgres skipped); PKG-01/stage-1 56 passed; `validate-graph.sh` PASS |
+| **NON_EFFECTS** | No deploy; no migration; `BATTERY_V2_PUBLICATION_ENABLED` default OFF unchanged |
+| **REMAINING_GAPS** | PRODUCTION_VALIDATED; POSTGRES_SMOKE when DATABASE_URL unavailable |
+| **DECISION_STATUS** | PKG-02 IMPLEMENTED — not PRODUCTION_VALIDATED |
+| **EVIDENCE** | `lv-publication-handoff.integration.spec.ts`, `lv-publication-handoff.mutation.ts`, `battery-publication.lifecycle-idempotency.spec.ts` |
+
 ## CL-2026-09-02 — PKG-02 runtime correction pass (PR #1513)
 
 | Field | Content |
