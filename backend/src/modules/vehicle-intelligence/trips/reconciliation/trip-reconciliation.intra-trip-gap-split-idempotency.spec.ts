@@ -112,6 +112,16 @@ function buildGapSplitHarness(options?: {
         repairRows.set(where.id, created);
         return created;
       }),
+      updateMany: jest.fn(async ({ where, data }: any) => {
+        const stored = repairRows.get(where.id);
+        if (!stored) return { count: 0 };
+        if (where.status?.not === REPAIR_STATUS.APPLIED && stored.status === REPAIR_STATUS.APPLIED) {
+          return { count: 0 };
+        }
+        Object.assign(stored, data);
+        repairRows.set(where.id, stored);
+        return { count: 1 };
+      }),
     },
   };
 
@@ -127,7 +137,10 @@ function buildGapSplitHarness(options?: {
         id: 'trip-second',
       }),
     },
-    tripRepair: tx.tripRepair,
+    tripRepair: {
+      ...tx.tripRepair,
+      updateMany: tx.tripRepair.updateMany,
+    },
     $transaction: jest.fn(async (fn: (inner: typeof tx) => Promise<unknown>) => {
       const prev = txLock;
       let release!: () => void;
@@ -432,5 +445,101 @@ describe('INTRA_TRIP_GAP_SPLIT idempotency (INC-07)', () => {
     const failed = await h.runSingleSplit();
     expect(failed).toEqual({ proposed: 1, applied: 0, rejected: 1 });
     expect(h.repairRows.get(h.repairId)?.status).toBe(REPAIR_STATUS.REJECTED);
+  });
+
+  it('POST_COMMIT_ENQUEUE_FAILURE_TEST: enqueue failure must not downgrade APPLIED', async () => {
+    const h = buildGapSplitHarness({ gapSequence: [GAP, null, GAP, null] });
+    h.enqueueRepairEnrichment.mockRejectedValue(new Error('enqueue failed'));
+    const first = await h.runSingleSplit();
+    expect(first).toEqual({ proposed: 1, applied: 1, rejected: 0 });
+    expect(h.repairRows.get(h.repairId)?.status).toBe(REPAIR_STATUS.APPLIED);
+    const replay = await h.runSingleSplit();
+    expect(replay.applied).toBe(0);
+    expect(h.decisionEngine.splitTripAtGap).toHaveBeenCalledTimes(1);
+    expect(h.tripMetrics.repairActions.inc).not.toHaveBeenCalledWith(
+      expect.objectContaining({ result: 'rejected' }),
+    );
+  });
+
+  it('POST_COMMIT_RECURSION_READ_FAILURE_TEST: read failure must not downgrade APPLIED', async () => {
+    const h = buildGapSplitHarness({ gapSequence: [GAP, null] });
+    h.prisma.vehicleTrip.findUnique.mockRejectedValueOnce(new Error('read failed'));
+    const result = await h.runSingleSplit();
+    expect(result).toEqual({ proposed: 1, applied: 1, rejected: 0 });
+    expect(h.repairRows.get(h.repairId)?.status).toBe(REPAIR_STATUS.APPLIED);
+  });
+
+  it('POST_COMMIT_FAILURE_REPLAY_TEST: warm replay after enqueue failure is idempotent', async () => {
+    const h = buildGapSplitHarness({ gapSequence: [GAP, null, GAP, null] });
+    h.enqueueRepairEnrichment.mockRejectedValueOnce(new Error('enqueue failed'));
+    await h.runSingleSplit();
+    const replay = await h.runSingleSplit();
+    expect(replay).toEqual({ proposed: 1, applied: 0, rejected: 0 });
+    expect(h.decisionEngine.splitTripAtGap).toHaveBeenCalledTimes(1);
+  });
+
+  it('AMBIGUOUS_COMMIT_APPLIED_PRESERVATION_TEST: failure recorder preserves APPLIED', async () => {
+    const h = buildGapSplitHarness();
+    h.repairRows.set(h.repairId, {
+      id: h.repairId,
+      vehicleId: VEHICLE_ID,
+      tripId: PARENT_TRIP_ID,
+      repairType: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
+      status: REPAIR_STATUS.APPLIED,
+      reason: 'applied',
+      confidence: 'MEDIUM',
+      windowFrom: GAP.firstEndAt,
+      windowTo: GAP.secondStartAt,
+      detectorEvidence: {},
+      appliedAt: at(0),
+    });
+    const outcome = await (
+      h.service as never as {
+        recordIntraTripGapSplitFailureSafely: (input: unknown) => Promise<string>;
+      }
+    ).recordIntraTripGapSplitFailureSafely({
+      repairId: h.repairId,
+      vehicleId: VEHICLE_ID,
+      tripId: PARENT_TRIP_ID,
+      gap: GAP,
+      reason: 'test',
+      detectorEvidence: {},
+      error: new Error('client timeout after commit'),
+    });
+    expect(outcome).toBe('COMMIT_STATE_ALREADY_APPLIED');
+    expect(h.repairRows.get(h.repairId)?.status).toBe(REPAIR_STATUS.APPLIED);
+    expect(h.prisma.tripRepair.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('APPLIED_TERMINAL_STATE_TEST: guarded update never downgrades APPLIED', async () => {
+    const h = buildGapSplitHarness();
+    h.repairRows.set(h.repairId, {
+      id: h.repairId,
+      vehicleId: VEHICLE_ID,
+      tripId: PARENT_TRIP_ID,
+      repairType: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
+      status: REPAIR_STATUS.APPLIED,
+      reason: 'applied',
+      confidence: 'MEDIUM',
+      windowFrom: GAP.firstEndAt,
+      windowTo: GAP.secondStartAt,
+      detectorEvidence: {},
+    });
+    h.prisma.tripRepair.updateMany = jest.fn(async (_args: unknown) => ({ count: 0 }));
+    const outcome = await (
+      h.service as never as {
+        recordIntraTripGapSplitFailureSafely: (input: unknown) => Promise<string>;
+      }
+    ).recordIntraTripGapSplitFailureSafely({
+      repairId: h.repairId,
+      vehicleId: VEHICLE_ID,
+      tripId: PARENT_TRIP_ID,
+      gap: GAP,
+      reason: 'test',
+      detectorEvidence: {},
+      error: new Error('post-commit'),
+    });
+    expect(outcome).toBe('COMMIT_STATE_ALREADY_APPLIED');
+    expect(h.prisma.tripRepair.updateMany).not.toHaveBeenCalled();
   });
 });

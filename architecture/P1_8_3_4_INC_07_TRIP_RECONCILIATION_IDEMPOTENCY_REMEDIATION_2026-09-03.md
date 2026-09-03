@@ -106,6 +106,27 @@ INTRA_TRIP_GAP_SPLIT_CANONICAL_IDENTITY =
 
 **BROAD_CREATE_ERROR_SWALLOW:** NO
 
+**TRIP_REPAIR_APPLIED_TERMINAL:** YES — `recordIntraTripGapSplitFailureSafely` never downgrades durable `APPLIED`
+
+---
+
+## POST-COMMIT FAILURE DOMAIN
+
+The PostgreSQL transaction is the **authoritative** repair mutation boundary.
+
+Once `applyIntraTripGapSplitRepairAtomically` returns `APPLY_COMMITTED`:
+
+- `TripRepair` status remains `APPLIED` (terminal)
+- Trip split rows remain authoritative
+- Post-commit failures (enrichment enqueue, recursion read, logging) are isolated in separate `try/catch` blocks
+- Mutation-error handler uses `recordIntraTripGapSplitFailureSafely` which re-reads durable state before any `REJECTED` write
+
+**Commit ambiguity:** If the atomic helper throws but durable DB state is already `APPLIED`, the failure recorder returns `COMMIT_STATE_ALREADY_APPLIED` and does not write `REJECTED`.
+
+**Downstream recovery** is independent from trip-mutation idempotency: trips with `behaviorSummaryStatus=PENDING` may be picked up by existing enrichment/ATE producers.
+
+**PRISMA_TX_TIMEOUT_RISK:** LOW — single interactive transaction with bounded writes; no custom timeout extension required.
+
 **GLOBAL_VEHICLE_START_UNIQUE_ADDED:** NO
 
 **HISTORICAL_DUPLICATE_ROWS_MUTATED:** NO
@@ -139,7 +160,9 @@ INTRA_TRIP_GAP_SPLIT_CANONICAL_IDENTITY =
 | LEGACY_APPLIED compatibility | PASS |
 | REJECTED recovery | PASS |
 | DISTINCT_GAP identity | PASS |
-| MISSING_TRIP regression (existing suite) | PASS |
+| POST_COMMIT_ENQUEUE_FAILURE | PASS |
+| APPLIED_TERMINAL_STATE | PASS |
+| POSTGRES_CONCURRENT_TWIN (CI) | PASS in vehicle-detail postgres job |
 
 ---
 
@@ -165,7 +188,12 @@ INC_07_STATUS = FIX_IMPLEMENTED_PENDING_PRODUCTION_VALIDATION
 INC_07_FIX_IMPLEMENTED = YES
 INC_07_LOCAL_VALIDATION = PASS
 INC_07_CRASH_SAFETY_LOCAL = PASS
+INC_07_APPLIED_TERMINALITY_LOCAL = PASS
 INC_07_PRODUCTION_VALIDATED = NO
+
+TRIP_REPAIR_APPLIED_TERMINAL = YES
+POST_COMMIT_FAILURE_MUTATES_REPAIR_STATUS = NO
+COMMIT_AMBIGUITY_SAFE = YES
 
 SESSION_ADVISORY_LOCK_REMOVED = YES
 ALL_REPAIR_DB_WRITES_USE_ONE_TX = YES

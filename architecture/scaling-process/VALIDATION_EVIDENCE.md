@@ -216,7 +216,9 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | Deterministic INTRA_TRIP_GAP_SPLIT repair identity | P1.8.3.4 | — | `buildIntraTripGapSplitRepairAuditId` | IMPLEMENTED | HIGH |
 | Single-tx atomic claim+split+APPLIED | P1.8.3.4 | — | `applyIntraTripGapSplitRepairAtomically` | IMPLEMENTED | HIGH |
 | Session advisory lock removed | P1.8.3.4 | — | code audit | YES | HIGH |
-| Crash-safety (rollback before APPLIED) | P1.8.3.4 | — | unit + postgres integration spec | PASS (unit); PG when DATABASE_URL | HIGH |
+| Crash-safety (rollback before APPLIED) | P1.8.3.4 | — | unit + postgres integration spec | PASS (unit); PG in CI vehicle-detail job | HIGH |
+| APPLIED terminality (post-commit failure) | P1.8.3.4 | — | post-commit enqueue/read tests | PASS | HIGH |
+| Commit ambiguity preservation | P1.8.3.4 | — | ambiguous commit test | PASS | HIGH |
 | Serial / 4h replay idempotent | P1.8.3.4 | — | idempotency spec | PASS | HIGH |
 | Unit concurrent twin | P1.8.3.4 | — | idempotency spec | PASS | HIGH |
 | Postgres concurrent twin | P1.8.3.4 | — | postgres integration spec | PASS when `INTRA_TRIP_GAP_SPLIT_POSTGRES_INTEGRATION=1` | HIGH |

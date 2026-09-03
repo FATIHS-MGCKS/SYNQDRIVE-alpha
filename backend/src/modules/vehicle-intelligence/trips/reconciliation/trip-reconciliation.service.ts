@@ -1471,6 +1471,93 @@ export class TripReconciliationService {
   }
 
   /**
+   * Records a mutation failure without downgrading a durable APPLIED repair.
+   * Handles commit ambiguity: client error after server commit must not write REJECTED.
+   */
+  private async recordIntraTripGapSplitFailureSafely(input: {
+    repairId: string;
+    vehicleId: string;
+    tripId: string;
+    gap: IntraTripGap;
+    reason: string;
+    detectorEvidence: Record<string, unknown>;
+    error: unknown;
+  }): Promise<
+    'RECORDED_REJECTED' | 'COMMIT_STATE_ALREADY_APPLIED' | 'LEGACY_ALREADY_APPLIED'
+  > {
+    const { repairId, vehicleId, tripId, gap, detectorEvidence, error } =
+      input;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    const durableApplied = await this.prisma.tripRepair.findUnique({
+      where: { id: repairId },
+      select: { status: true },
+    });
+    if (durableApplied?.status === REPAIR_STATUS.APPLIED) {
+      return 'COMMIT_STATE_ALREADY_APPLIED';
+    }
+
+    const legacyApplied = await this.prisma.tripRepair.findFirst({
+      where: {
+        vehicleId,
+        repairType: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
+        status: REPAIR_STATUS.APPLIED,
+        windowFrom: gap.firstEndAt,
+        windowTo: gap.secondStartAt,
+      },
+      select: { id: true },
+      orderBy: { appliedAt: 'asc' },
+    });
+    if (legacyApplied) {
+      return 'LEGACY_ALREADY_APPLIED';
+    }
+
+    const rejectedReason = `Split failed: ${errorMessage}`;
+    const repairPayload = {
+      vehicleId,
+      tripId,
+      repairType: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
+      status: REPAIR_STATUS.REJECTED,
+      reason: rejectedReason,
+      confidence: 'MEDIUM',
+      windowFrom: gap.firstEndAt,
+      windowTo: gap.secondStartAt,
+      detectorEvidence: JSON.parse(JSON.stringify(detectorEvidence)),
+    };
+
+    const guardedUpdate = await this.prisma.tripRepair.updateMany({
+      where: {
+        id: repairId,
+        status: { not: REPAIR_STATUS.APPLIED },
+      },
+      data: {
+        status: REPAIR_STATUS.REJECTED,
+        reason: rejectedReason,
+        tripId,
+      },
+    });
+    if (guardedUpdate.count > 0) {
+      return 'RECORDED_REJECTED';
+    }
+
+    const afterRace = await this.prisma.tripRepair.findUnique({
+      where: { id: repairId },
+      select: { status: true },
+    });
+    if (afterRace?.status === REPAIR_STATUS.APPLIED) {
+      return 'COMMIT_STATE_ALREADY_APPLIED';
+    }
+    if (afterRace) {
+      return 'RECORDED_REJECTED';
+    }
+
+    await this.prisma.tripRepair.create({
+      data: { id: repairId, ...repairPayload },
+    });
+    return 'RECORDED_REJECTED';
+  }
+
+  /**
    * Writes the durable diagnostic record for one evaluated proposal, before the
    * suppression decision is acted on.
    *
@@ -2029,8 +2116,17 @@ export class TripReconciliationService {
         `${gap.driftM != null ? `${Math.round(gap.driftM)}m` : 'unknown'} ` +
         `(tier=${tier})`;
 
+      let applyResult:
+        | { outcome: 'IDEMPOTENT_SKIP'; reason: 'ALREADY_APPLIED' | 'LEGACY_ALREADY_APPLIED' }
+        | {
+            outcome: 'APPLY_COMMITTED';
+            splitResult: SplitTripAtGapResult;
+            organizationId: string | null;
+            recoveredFromRejected: boolean;
+          };
+
       try {
-        const applyResult = await this.applyIntraTripGapSplitRepairAtomically({
+        applyResult = await this.applyIntraTripGapSplitRepairAtomically({
           repairId,
           vehicleId,
           tripId: current.id,
@@ -2040,46 +2136,80 @@ export class TripReconciliationService {
           detectorEvidence,
           current,
         });
-
-        if (applyResult.outcome === 'IDEMPOTENT_SKIP') {
+      } catch (mutationError: unknown) {
+        const failureOutcome = await this.recordIntraTripGapSplitFailureSafely({
+          repairId,
+          vehicleId,
+          tripId: current.id,
+          gap,
+          reason: repairReason,
+          detectorEvidence,
+          error: mutationError,
+        });
+        if (
+          failureOutcome === 'COMMIT_STATE_ALREADY_APPLIED' ||
+          failureOutcome === 'LEGACY_ALREADY_APPLIED'
+        ) {
           this.tripMetrics?.tripReconciliationRepairIdempotentSkip?.inc({
             repair_type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
           });
           this.logger.debug(
-            `INTRA_TRIP_GAP_SPLIT idempotent skip vehicle=${vehicleId} ` +
-              `repairIdentity=${repairId} reason=${applyResult.reason} trip=${current.id}`,
+            `INTRA_TRIP_GAP_SPLIT mutation error but durable repair already applied ` +
+              `vehicle=${vehicleId} repairIdentity=${repairId} outcome=${failureOutcome}`,
           );
           break;
         }
-
-        const { splitResult, organizationId, recoveredFromRejected } = applyResult;
-        if (recoveredFromRejected) {
-          this.tripMetrics?.tripReconciliationRepairRecovery?.inc({
-            repair_type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
-          });
-        }
-
-        applied++;
+        rejected++;
         this.tripMetrics?.repairActions?.inc({
           type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
-          result: 'applied',
+          result: 'rejected',
         });
-        this.tripMetrics?.tripReconciliationRepairApply?.inc({
+        this.logger.warn(
+          `INTRA_TRIP_GAP_SPLIT retro failed for trip ${current.id}: ${(mutationError as Error).message}`,
+        );
+        break;
+      }
+
+      if (applyResult.outcome === 'IDEMPOTENT_SKIP') {
+        this.tripMetrics?.tripReconciliationRepairIdempotentSkip?.inc({
           repair_type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
         });
-        this.tripMetrics?.tripEvidencePaths.inc({
-          phase: 'mid_gap_split',
-          path: 'reconciliation',
-        });
-        this.logger.log(
-          `INTRA_TRIP_GAP_SPLIT retro: vehicle=${vehicleId} ` +
-            `first=${splitResult.firstTripId} second=${splitResult.secondTripId} ` +
-            `gap=${Math.round(gap.gapMs / 1000)}s ` +
-            `drift=${gap.driftM != null ? `${Math.round(gap.driftM)}m` : 'unknown'} ` +
-            `firstEnd=${gap.firstEndAt.toISOString()} ` +
-            `secondStart=${gap.secondStartAt.toISOString()}`,
+        this.logger.debug(
+          `INTRA_TRIP_GAP_SPLIT idempotent skip vehicle=${vehicleId} ` +
+            `repairIdentity=${repairId} reason=${applyResult.reason} trip=${current.id}`,
         );
+        break;
+      }
 
+      const { splitResult, organizationId, recoveredFromRejected } = applyResult;
+      if (recoveredFromRejected) {
+        this.tripMetrics?.tripReconciliationRepairRecovery?.inc({
+          repair_type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
+        });
+      }
+
+      applied++;
+      this.tripMetrics?.repairActions?.inc({
+        type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
+        result: 'applied',
+      });
+      this.tripMetrics?.tripReconciliationRepairApply?.inc({
+        repair_type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
+      });
+      this.tripMetrics?.tripEvidencePaths.inc({
+        phase: 'mid_gap_split',
+        path: 'reconciliation',
+      });
+      this.logger.log(
+        `INTRA_TRIP_GAP_SPLIT retro: vehicle=${vehicleId} ` +
+          `first=${splitResult.firstTripId} second=${splitResult.secondTripId} ` +
+          `gap=${Math.round(gap.gapMs / 1000)}s ` +
+          `drift=${gap.driftM != null ? `${Math.round(gap.driftM)}m` : 'unknown'} ` +
+          `firstEnd=${gap.firstEndAt.toISOString()} ` +
+          `secondStart=${gap.secondStartAt.toISOString()}`,
+      );
+
+      try {
         if (organizationId) {
           await this.enqueueRepairEnrichment(
             splitResult.firstTripId,
@@ -2092,7 +2222,14 @@ export class TripReconciliationService {
             organizationId,
           );
         }
+      } catch (postCommitError: unknown) {
+        this.logger.warn(
+          `INTRA_TRIP_GAP_SPLIT post-commit enrichment failed vehicle=${vehicleId} ` +
+            `repairIdentity=${repairId}: ${(postCommitError as Error).message}`,
+        );
+      }
 
+      try {
         const nextTrip = await this.prisma.vehicleTrip.findUnique({
           where: { id: splitResult.secondTripId },
           select: {
@@ -2107,33 +2244,10 @@ export class TripReconciliationService {
         });
         if (!nextTrip || !nextTrip.endTime) break;
         current = nextTrip as IntraGapTripRow;
-      } catch (err: unknown) {
-        await this.prisma.tripRepair.upsert({
-          where: { id: repairId },
-          create: {
-            id: repairId,
-            vehicleId,
-            tripId: current.id,
-            repairType: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
-            status: REPAIR_STATUS.REJECTED,
-            reason: `Split failed: ${(err as Error).message}`,
-            confidence: 'MEDIUM',
-            windowFrom: gap.firstEndAt,
-            windowTo: gap.secondStartAt,
-            detectorEvidence: JSON.parse(JSON.stringify(detectorEvidence)),
-          },
-          update: {
-            status: REPAIR_STATUS.REJECTED,
-            reason: `Split failed: ${(err as Error).message}`,
-          },
-        });
-        rejected++;
-        this.tripMetrics?.repairActions?.inc({
-          type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
-          result: 'rejected',
-        });
+      } catch (postCommitReadError: unknown) {
         this.logger.warn(
-          `INTRA_TRIP_GAP_SPLIT retro failed for trip ${current.id}: ${(err as Error).message}`,
+          `INTRA_TRIP_GAP_SPLIT post-commit recursion read failed vehicle=${vehicleId} ` +
+            `repairIdentity=${repairId}: ${(postCommitReadError as Error).message}`,
         );
         break;
       }

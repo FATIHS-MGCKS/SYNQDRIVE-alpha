@@ -75,6 +75,7 @@
     "test:vehicle-detail:verify": "bash scripts/test/vehicle-detail-backend-verify.sh all",
     "test:vehicle-detail:verify:unit": "bash scripts/test/vehicle-detail-backend-verify.sh unit",
     "test:boundary-repair:postgres": "BOUNDARY_REPAIR_POSTGRES_INTEGRATION=1 jest boundary-repair.postgres.integration --runInBand",
+    "test:intra-trip-gap-split:postgres": "INTRA_TRIP_GAP_SPLIT_POSTGRES_INTEGRATION=1 jest intra-trip-gap-split-repair.postgres.integration --runInBand",
     "test:fuel-stations:unit": "jest --testPathPattern='fuel-station-' --testPathIgnorePatterns='postgres.integration'",
     "test:fuel-stations:enrichment": "jest --testPathPattern='fuel-station-enrichment|refuel-station-enrichment|energy-events-fuel-station-enrichment.firewall'",
     "test:fuel-stations:postgres": "FUEL_STATION_POSTGRES_INTEGRATION=1 jest fuel-station-location-resolver.postgres.integration --runInBand",
