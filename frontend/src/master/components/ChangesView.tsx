@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0034f2-integrity-closeout-2026-09-03',
+    version: '4.9.1046',
+    title: 'DI-EV-0034F.2 — Final Semantic + Artifact Integrity Closeout',
+    summary: [
+      'Corrects specific kinetic energy formula to 0.5*(vEnd²-vStart²); removes ½Δv² mislabel.',
+      'Removes repetition from physical episode severity; keeps severity event-local.',
+      'Driver behavior dimensions use explicit reconstruction/attribution confidence requirements.',
+      'Quality gate provider-age policy made surface-aware (HF_HISTORICAL generic age penalty=NO).',
+      'Export manifest: per-file SHA256 map, separate bundleSha256, repo-relative RD003 authority path.',
+      'Migration status: F/F.1/F.2 COMPLETE, RD004 NEXT. Production unchanged.',
+    ],
+    reason: 'Final design/documentation consistency before RD004 controlled validation.',
+    previousBehavior: 'F.1 retained ½Δv² energy proxy wording, ambiguous behavior confidenceRequired, bundle hash reused per file.',
+    details:
+      'driving-intelligence-v2-canonical-design.ts F.2; regenerated driving-intelligence-v2-design/ artifacts with export-manifest integrity.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T18:30:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0034f1-consistency-closeout-2026-09-03',
     version: '4.9.1045',
     title: 'DI-EV-0034F.1 — Canonical Architecture Consistency Closeout',

@@ -9,7 +9,7 @@
 import * as crypto from 'crypto';
 
 export const CANONICAL_DESIGN_EVIDENCE_ID = 'DI-EV-0034F';
-export const CANONICAL_DESIGN_CLOSEOUT_REVISION = 'DI-EV-0034F.1';
+export const CANONICAL_DESIGN_CLOSEOUT_REVISION = 'DI-EV-0034F.2';
 export const CANONICAL_DESIGN_MODE = 'DRIVING_INTELLIGENCE_V2_CANONICAL_DESIGN';
 export const CANONICAL_DESIGN_EVIDENCE_CLASS =
   'ARCHITECTURE_DESIGN+DRIVING_INTELLIGENCE_V2_FOUNDATION';
@@ -40,6 +40,23 @@ export function stableStringify(value: unknown): string {
 
 export function artifactSha256(value: unknown): string {
   return crypto.createHash('sha256').update(stableStringify(value)).digest('hex');
+}
+
+/**
+ * Canonical specific kinetic energy change per unit mass (signed).
+ * deltaSpecificKineticEnergy = 0.5 * (vEndMps² - vStartMps²)
+ * Units: m²/s² (equivalent to J/kg). Mass-independent.
+ */
+export function computeSpecificKineticEnergyChangeMps2(
+  vStartMps: number,
+  vEndMps: number,
+): number {
+  return 0.5 * (vEndMps ** 2 - vStartMps ** 2);
+}
+
+/** Forbidden mislabel: 0.5 * (deltaV)² loses starting-speed dependence and signed change semantics. */
+export function computeForbiddenDeltaVSquaredMislabelMps2(deltaVMps: number): number {
+  return 0.5 * deltaVMps ** 2;
 }
 
 // ── Canonical pipeline stages ─────────────────────────────────────────────────
@@ -175,9 +192,10 @@ export const PHYSICAL_SAMPLE_NORMALIZATION = {
 export const QUALITY_GATE_DESIGN = {
   purpose: 'Reusable gate BEFORE any derivative or event detector',
   qualityLevels: ['HIGH', 'MEDIUM', 'LOW', 'REJECTED'],
+  PROVIDER_AGE_POLICY: 'SURFACE_AWARE',
   factors: [
     'physicalSampleCadence',
-    'providerAgeMs',
+    'providerAgeMsSurfaceAware',
     'staleHoldExposure',
     'duplicatePhysicalSample',
     'missingData',
@@ -187,6 +205,19 @@ export const QUALITY_GATE_DESIGN = {
     'interpolationDependence',
     'signalSpecificLimitation',
   ],
+  providerAgeSemantics: {
+    LATEST_LIVE:
+      'Provider sample age may indicate direct freshness failure and may reject/downgrade samples',
+    HF_HISTORICAL:
+      'Generic historical delivery/ingestion age must NOT cause rejection or quality downgrade merely because the sample is historical',
+    validUses: [
+      'stale_physical_identity',
+      'freshness_failure_relevant_to_surface',
+      'incorrect_physical_sample_association',
+    ],
+    invalidUses: ['generic_elapsed_ingestion_delay_on_post_trip_hf'],
+    HF_HISTORICAL_GENERIC_AGE_PENALTY: 'NO',
+  },
   gapPolicy: {
     productionMaxGapSeconds: null,
     rd003ProvisionalAnalysisAnchorSeconds: 2.0,
@@ -346,10 +377,24 @@ export const EPISODE_TAXONOMY = {
       'deltaSpeed',
       'startingSpeed',
       'endingSpeed',
-      'specificKineticEnergyChangeProxy',
-      'repetitionExposureContext',
+      'specificKineticEnergyChangeMagnitude',
     ],
-    forbiddenDimensions: ['confidence', 'reconstructionConfidence', 'attributionConfidence'],
+    forbiddenDimensions: [
+      'confidence',
+      'reconstructionConfidence',
+      'attributionConfidence',
+      'repetitionExposureContext',
+      'repetitionFrequency',
+      'tripLevelExposure',
+    ],
+    PHYSICAL_EPISODE_SEVERITY_IS_EVENT_LOCAL: 'YES',
+    REPETITION_EXPOSURE_NOT_PART_OF_EPISODE_SEVERITY: 'YES',
+    repetitionBelongsTo: [
+      'TRIP_FEATURE_VECTOR',
+      'HIGH_DYNAMIC_EXPOSURE',
+      'DRIVER_BEHAVIOR_DIMENSIONS',
+      'FUTURE_DRIVING_SCORE',
+    ],
     futureScoreGating:
       'Later calibration may confidence-gate or confidence-weight score contribution — not part of physical severity',
     productionThresholdsSelected: false,
@@ -457,8 +502,8 @@ export const TRIP_FEATURE_VECTOR = {
     'decelMagnitudeMedianMps2',
     'decelMagnitudeP90Mps2',
     'decelMagnitudeP95Mps2',
-    'positiveSpecificKineticEnergyChangeProxy',
-    'negativeSpecificKineticEnergyChangeProxy',
+    'positiveSpecificKineticEnergyChange',
+    'negativeSpecificKineticEnergyChange',
     'speedVariability',
     'stopCount',
     'launchCount',
@@ -484,14 +529,24 @@ export const TRIP_FEATURE_VECTOR = {
     ],
   },
   energyProxySemantics: {
-    fieldNaming: 'SPECIFIC_KINETIC_ENERGY_CHANGE_PROXY',
-    alias: 'DELTA_V_SQUARED_ENERGY_PROXY',
+    fieldNaming: 'SPECIFIC_KINETIC_ENERGY_CHANGE',
+    formula: 'deltaSpecificKineticEnergy = 0.5 * (vEndMps² - vStartMps²)',
     massIndependent: true,
-    units: 'm²/s² aggregate (½Δv² per episode interval — no vehicle mass)',
-    rule: 'Without trusted vehicle mass, do NOT call values physical kinetic energy (Joules)',
-    futurePhysicalEnergy:
-      'If trusted vehicle mass becomes available later, physical energy may be added as a separate field',
-    forbidden: ['infer_mass_from_obdEngineLoad'],
+    units: 'm²/s² (equivalent to J/kg)',
+    signedSemantics: {
+      positive: 'kinetic energy per unit mass increased',
+      negative: 'kinetic energy per unit mass decreased',
+      magnitudeUse: 'absolute value may be used where load models need energy-change exposure',
+    },
+    forbiddenMislabel: {
+      formula: '0.5 * (deltaV)²',
+      reason:
+        'Loses starting-speed dependence and cannot represent signed specific kinetic energy change',
+      DELTA_V_SQUARED_MISLABEL_REMOVED: 'YES',
+    },
+    physicalJoules:
+      'Physical energy in Joules still requires trusted vehicle mass as a separate field',
+    forbidden: ['infer_mass_from_obdEngineLoad', 'call_half_delta_v_squared_specific_kinetic_energy'],
   },
   exposureNormalization: 'REQUIRED — 5 km city vs 500 km motorway must be comparable',
 } as const;
@@ -500,54 +555,68 @@ export const TRIP_FEATURE_VECTOR = {
 
 export const DRIVER_BEHAVIOR_DIMENSIONS = {
   purpose: 'Interpretable dimensions BEFORE opaque Driving Score',
+  confidenceModel: {
+    reconstructionConfidenceRequired: 'Minimum reconstruction confidence to trust physical episode/features',
+    attributionConfidenceRequired: 'Minimum attribution confidence to interpret as driver behavior',
+    DRIVER_BEHAVIOR_CONFIDENCE_REQUIREMENTS_ARE_LAYER_EXPLICIT: 'YES',
+  },
   dimensions: [
     {
       id: 'SMOOTHNESS',
       inputs: ['acceleration_episodes', 'deceleration_episodes', 'jerk_context'],
-      confidenceRequired: 'MEDIUM',
+      reconstructionConfidenceRequired: 'MEDIUM',
+      attributionConfidenceRequired: 'MEDIUM',
       limitations: ['HF cadence ~2s masks sub-second smoothness'],
     },
     {
       id: 'ACCELERATION_STYLE',
       inputs: ['acceleration_episodes', 'throttle_context', 'rpm_context'],
-      confidenceRequired: 'MEDIUM',
+      reconstructionConfidenceRequired: 'MEDIUM',
+      attributionConfidenceRequired: 'MEDIUM',
     },
     {
       id: 'DECELERATION_STYLE',
       inputs: ['deceleration_episodes'],
-      confidenceRequired: 'MEDIUM',
+      reconstructionConfidenceRequired: 'MEDIUM',
+      attributionConfidenceRequired: 'MEDIUM',
       limitations: ['Deceleration ≠ braking; no friction-brake direct observation'],
     },
     {
       id: 'ANTICIPATION_STOP_APPROACH',
       inputs: ['stop_approach_episodes', 'deceleration_episodes'],
-      confidenceRequired: 'MEDIUM',
+      reconstructionConfidenceRequired: 'MEDIUM',
+      attributionConfidenceRequired: 'HIGH',
     },
     {
       id: 'SPEED_STABILITY',
       inputs: ['cruise_episodes', 'speed_variability'],
-      confidenceRequired: 'HIGH',
+      reconstructionConfidenceRequired: 'HIGH',
+      attributionConfidenceRequired: 'LOW',
     },
     {
       id: 'POWERTRAIN_DEMAND_STYLE',
       inputs: ['throttle_context', 'tps_context', 'engine_load_context', 'rpm_context'],
-      confidenceRequired: 'MEDIUM',
+      reconstructionConfidenceRequired: 'MEDIUM',
+      attributionConfidenceRequired: 'MEDIUM',
       limitations: ['Engine load ≠ vehicle load'],
     },
     {
       id: 'DRIVING_CONSISTENCY',
       inputs: ['trip_feature_vector_over_time'],
-      confidenceRequired: 'HIGH',
+      reconstructionConfidenceRequired: 'HIGH',
+      attributionConfidenceRequired: 'MEDIUM',
     },
     {
       id: 'HIGH_DYNAMIC_EXPOSURE',
       inputs: ['strong_dynamic_episodes', 'exposure_normalized_counts'],
-      confidenceRequired: 'MEDIUM',
+      reconstructionConfidenceRequired: 'MEDIUM',
+      attributionConfidenceRequired: 'LOW',
     },
     {
       id: 'STOP_LAUNCH_BEHAVIOR',
       inputs: ['launch_episodes', 'stop_episodes'],
-      confidenceRequired: 'MEDIUM',
+      reconstructionConfidenceRequired: 'MEDIUM',
+      attributionConfidenceRequired: 'MEDIUM',
     },
   ],
 } as const;
@@ -603,7 +672,7 @@ export const BRAKE_LOAD_FOUNDATION = {
         'initial_speed',
         'deceleration_intensity',
         'sustained_duration',
-        'specific_kinetic_energy_change_proxy',
+        'specific_kinetic_energy_change',
         'frequency',
       ],
     },
@@ -858,8 +927,9 @@ export const RD004_VALIDATION_CONTRACT = {
 export const MIGRATION_PLAN = {
   phases: [
     { id: 'DI-EV-0034F', title: 'Canonical Driving Intelligence Design', status: 'COMPLETE' },
-    { id: 'DI-EV-0034F.1', title: 'Canonical Architecture Consistency Closeout', status: 'CURRENT' },
-    { id: 'RD004', title: 'Controlled validation drive', status: 'PLANNED' },
+    { id: 'DI-EV-0034F.1', title: 'Canonical Architecture Consistency Closeout', status: 'COMPLETE' },
+    { id: 'DI-EV-0034F.2', title: 'Final Semantic + Artifact Integrity Closeout', status: 'COMPLETE' },
+    { id: 'RD004', title: 'Controlled validation drive', status: 'NEXT' },
     { id: 'DI-EV-0034G', title: 'RD004 Evidence Ingestion + Validation', status: 'PLANNED' },
     { id: 'DI-EV-0034H', title: 'Detector / Episode Parameter Calibration', status: 'PLANNED' },
     { id: 'DI-EV-0034I', title: 'Driving Behavior Dimension Calibration', status: 'PLANNED' },
@@ -901,6 +971,14 @@ export const DESIGN_INVARIANTS = {
   providerAgePolicySurfaceAware: true,
   rd004PreprocessingValidationAdded: true,
   fleetComparableCohortRequired: true,
+  specificKineticEnergyFormulaCorrect: true,
+  physicalEpisodeSeverityIsEventLocal: true,
+  repetitionNotPartOfEpisodeSeverity: true,
+  driverBehaviorConfidenceLayersExplicit: true,
+  qualityGateProviderAgeSurfaceAware: true,
+  hfHistoricalGenericAgePenalty: false,
+  perFileArtifactSha256: true,
+  noEnvironmentSpecificPathsInCanonicalArtifacts: true,
 } as const;
 
 export function assertDesignInvariants(): void {
@@ -996,6 +1074,43 @@ export function assertDesignInvariants(): void {
   ) {
     violations.push('fleet comparison requires comparable cohort');
   }
+  if (TRIP_FEATURE_VECTOR.energyProxySemantics.formula !== 'deltaSpecificKineticEnergy = 0.5 * (vEndMps² - vStartMps²)') {
+    violations.push('specific kinetic energy must use 0.5 * (vEnd² - vStart²)');
+  }
+  if (TRIP_FEATURE_VECTOR.energyProxySemantics.forbiddenMislabel.DELTA_V_SQUARED_MISLABEL_REMOVED !== 'YES') {
+    violations.push('delta-v-squared mislabel must be removed');
+  }
+  if (EPISODE_TAXONOMY.physicalSeverityModel.forbiddenDimensions.includes('repetitionExposureContext')) {
+    // ok — repetition excluded from severity
+  } else {
+    violations.push('repetition must not be part of physical episode severity');
+  }
+  if (EPISODE_TAXONOMY.physicalSeverityModel.PHYSICAL_EPISODE_SEVERITY_IS_EVENT_LOCAL !== 'YES') {
+    violations.push('physical episode severity must be event-local');
+  }
+  if (
+    !DRIVER_BEHAVIOR_DIMENSIONS.dimensions.every(
+      (d) => 'reconstructionConfidenceRequired' in d && 'attributionConfidenceRequired' in d,
+    )
+  ) {
+    violations.push('driver behavior dimensions must specify layer-explicit confidence requirements');
+  }
+  if (QUALITY_GATE_DESIGN.PROVIDER_AGE_POLICY !== 'SURFACE_AWARE') {
+    violations.push('quality gate provider age policy must be surface-aware');
+  }
+  if (QUALITY_GATE_DESIGN.providerAgeSemantics.HF_HISTORICAL_GENERIC_AGE_PENALTY !== 'NO') {
+    violations.push('HF_HISTORICAL must not apply generic age penalty');
+  }
+  const fPhase = MIGRATION_PLAN.phases.find((p) => p.id === 'DI-EV-0034F');
+  const f1Phase = MIGRATION_PLAN.phases.find((p) => p.id === 'DI-EV-0034F.1');
+  const f2Phase = MIGRATION_PLAN.phases.find((p) => p.id === 'DI-EV-0034F.2');
+  const rd004Phase = MIGRATION_PLAN.phases.find((p) => p.id === 'RD004');
+  if (fPhase?.status !== 'COMPLETE' || f1Phase?.status !== 'COMPLETE' || f2Phase?.status !== 'COMPLETE') {
+    violations.push('F/F.1/F.2 migration status must be COMPLETE');
+  }
+  if (rd004Phase?.status !== 'NEXT') {
+    violations.push('RD004 must be NEXT after F.2 closeout');
+  }
 
   if (violations.length > 0) {
     throw new Error(`Design invariant violations: ${violations.join('; ')}`);
@@ -1047,6 +1162,22 @@ export function buildCanonicalDesignArtifacts(): Record<string, unknown> {
       PROVIDER_AGE_POLICY,
       RD004_PREPROCESSING_RESPONSE_VALIDATION_ADDED: 'YES',
       FLEET_COMPARABLE_COHORT_REQUIREMENT_ADDED: 'YES',
+      SPECIFIC_KINETIC_ENERGY_FORMULA: '0.5 * (vEndMps² - vStartMps²)',
+      SPECIFIC_KINETIC_ENERGY_UNITS: 'm²/s² (J/kg)',
+      DELTA_V_SQUARED_MISLABEL_REMOVED: 'YES',
+      PHYSICAL_EPISODE_SEVERITY_IS_EVENT_LOCAL: 'YES',
+      REPETITION_EXPOSURE_NOT_PART_OF_EPISODE_SEVERITY: 'YES',
+      DRIVER_BEHAVIOR_CONFIDENCE_LAYERS_EXPLICIT: 'YES',
+      QUALITY_GATE_PROVIDER_AGE_POLICY: 'SURFACE_AWARE',
+      HF_HISTORICAL_GENERIC_AGE_PENALTY: 'NO',
+      F_STATUS: 'COMPLETE',
+      F1_STATUS: 'COMPLETE',
+      F2_STATUS: 'COMPLETE',
+      RD004_STATUS: 'NEXT',
+      PER_FILE_ARTIFACT_SHA256: 'YES',
+      BUNDLE_SHA256_SEPARATE: 'YES',
+      ENVIRONMENT_SPECIFIC_PATHS_IN_CANONICAL_ARTIFACTS: 'NO',
+      designInvariantTestCount: 40,
       PRODUCTION_SCORE_CHANGED,
       PRODUCTION_DETECTORS_CHANGED,
       TIRE_RUNTIME_CHANGED,
@@ -1084,4 +1215,27 @@ export function buildCanonicalDesignArtifacts(): Record<string, unknown> {
 
 export function canonicalDesignOutputSha256(): string {
   return artifactSha256(buildCanonicalDesignArtifacts());
+}
+
+export function buildExportManifest(
+  artifacts: Record<string, unknown>,
+  exportedAt: string,
+): Record<string, unknown> {
+  const fileSha256: Record<string, string> = {};
+  for (const [filename, payload] of Object.entries(artifacts)) {
+    fileSha256[filename] = artifactSha256(payload);
+  }
+
+  return {
+    evidenceId: CANONICAL_DESIGN_EVIDENCE_ID,
+    closeoutRevision: CANONICAL_DESIGN_CLOSEOUT_REVISION,
+    exportedAt,
+    outputDirectory: 'docs/audits/data/driving-intelligence-v2-design',
+    artifactCount: Object.keys(artifacts).length,
+    bundleSha256: canonicalDesignOutputSha256(),
+    fileSha256,
+    rd003Authority: RD003_AUTHORITY_PATH,
+    files: Object.keys(artifacts).sort(),
+    ENVIRONMENT_SPECIFIC_PATHS_IN_CANONICAL_ARTIFACTS: 'NO',
+  };
 }

@@ -1,8 +1,8 @@
-# Canonical Driving Intelligence V2 Design — DI-EV-0034F / F.1
+# Canonical Driving Intelligence V2 Design — DI-EV-0034F / F.1 / F.2
 
 **Date:** 2026-09-03
 **Evidence ID:** DI-EV-0034F
-**Closeout revision:** DI-EV-0034F.1 (architecture consistency closeout)
+**Closeout revision:** DI-EV-0034F.2 (final semantic + artifact integrity closeout)
 **Evidence class:** ARCHITECTURE_DESIGN + DRIVING_INTELLIGENCE_V2_FOUNDATION
 **Authority:** DI-EV-0034E / E.1 (`docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md`)
 **V2 contract compatibility:** `docs/architecture/driving-intelligence-v2.md`
@@ -13,7 +13,29 @@
 
 ---
 
-## DI-EV-0034F.1 consistency closeout (human summary)
+## DI-EV-0034F.2 final closeout (human summary)
+
+### Specific kinetic energy semantics
+
+Canonical formula: **deltaSpecificKineticEnergy = 0.5 × (vEndMps² − vStartMps²)** in **m²/s² (J/kg)**. Positive = kinetic energy per unit mass increased; negative = decreased. **0.5 × (Δv)² is forbidden** — it loses starting-speed dependence and signed change semantics. Physical Joules still require trusted vehicle mass separately.
+
+### Physical severity is event-local
+
+Repetition/exposure removed from `physicalSeverityModel`. Repetition belongs in trip features, `HIGH_DYNAMIC_EXPOSURE`, behavior dimensions, and future score — not single-episode severity.
+
+### Driver behavior confidence layers
+
+Each behavior dimension now specifies `reconstructionConfidenceRequired` and `attributionConfidenceRequired` explicitly — no ambiguous `confidenceRequired`.
+
+### Quality gate provider age
+
+`QUALITY_GATE_DESIGN` now uses `PROVIDER_AGE_POLICY = SURFACE_AWARE` with `providerAgeMsSurfaceAware`. HF_HISTORICAL generic delivery age does **not** cause rejection/downgrade.
+
+### Artifact integrity
+
+Export manifest now includes deterministic **per-file SHA256** map plus separate **bundleSha256**. RD003 authority stored as repo-relative path only — no `/workspace` paths in canonical artifacts.
+
+---
 
 ### Why states were split into parallel layers
 
@@ -66,7 +88,7 @@ Production **Driving Impact V1** (`driving-impact-scorer.ts`) computes a composi
 
 ### 4. What is a Driving Episode?
 
-A coherent multi-sample segment (e.g. ACCELERATION_EPISODE, DECELERATION_EPISODE) with `startedAt`/`endedAt` on **providerTimestamp**, kinematic stats (peak/mean accel, Δspeed, duration), optional powertrain context (RPM, throttle, TPS, engine load, gear state), `sourceCoverage`, `confidence`, and `evidenceFlags`. Episodes survive short telemetry gaps when evidence remains coherent; they are **not** one derivative sample = one event.
+A coherent multi-sample segment (e.g. ACCELERATION_EPISODE, DECELERATION_EPISODE) with `startedAt`/`endedAt` on **providerTimestamp**, kinematic stats (peak/mean accel, Δspeed, duration), optional powertrain context (RPM, throttle, TPS, engine load, gear state), `sourceCoverage`, `reconstructionConfidence`, `attributionConfidence`, `physicalSeverity`, and `evidenceFlags`. Episodes survive short telemetry gaps when evidence remains coherent; they are **not** one derivative sample = one event.
 
 ### 5. How will confidence work?
 
@@ -82,7 +104,7 @@ Two **separate epistemic layers**: **Reconstruction confidence** (did the kinema
 
 ### 8. How will trip-level behavior be calculated?
 
-A **canonical trip feature vector**: distance, duration, moving/standstill time, cruise fraction, episode counts **normalized per 100 km and driving hour**, strong-dynamic exposure, **separate positive-accel and decel-magnitude percentiles**, **mass-independent specific kinetic energy proxies**, speed variability, stop/launch counts, powertrain-demand fraction, reconstruction/attribution confidence distributions, telemetry coverage, trip reconstruction confidence.
+A **canonical trip feature vector**: distance, duration, moving/standstill time, cruise fraction, episode counts **normalized per 100 km and driving hour**, strong-dynamic exposure, **separate positive-accel and decel-magnitude percentiles**, **specific kinetic energy change** (`0.5 × (vEnd² − vStart²)` per episode, mass-independent), speed variability, stop/launch counts, powertrain-demand fraction, reconstruction/attribution confidence distributions, telemetry coverage, trip reconstruction confidence.
 
 ### 9. How will 30/90-day driver trends work?
 
@@ -90,7 +112,7 @@ Weighted rolling distributions over **7/30/90-day** calendar and rolling distanc
 
 ### 10. What can we already estimate for brake load?
 
-**Longitudinal deceleration load** proxies: speed reduction magnitude, initial speed, deceleration intensity, sustained duration, kinetic-energy change proxy, frequency — with explicit **kinematic provenance** and confidence gating. **Not** friction-brake load directly.
+**Longitudinal deceleration load** proxies: speed reduction magnitude, initial speed, deceleration intensity, sustained duration, specific kinetic energy change magnitude, frequency — with explicit **kinematic provenance** and confidence gating. **Not** friction-brake load directly.
 
 ### 11. What can we already estimate for tire load?
 
@@ -132,8 +154,8 @@ UI / HEALTH        driving-impact-load-components.ts → tireLoad, brakingLoad, 
 | hf-acceleration | speed pairs | provider ts | ~1s comment; any dt>0 | entry 1.5 m/s² | HARD/EXTREME events | none | ~2s cadence noise; no gap gate | REPLACE_WITH_EPISODE_MODEL |
 | hf-braking | speed pairs | provider ts | same | entry 1.5 decel | BrakingEvent | none | decel≡braking | REPLACE_WITH_EPISODE_MODEL |
 | hf-abuse | HF + rpm/throttle | provider ts | whole-trip segment | FULL_BRAKING 7.5 m/s² | abuse events | feasibility only | kinematic braking abuse | KEEP_WITH_GATE |
-| driving-impact-scorer | per-100km rates | trip aggregate | MIN 2 km trip | capLinear refs | 0-100 scores | none | engine load component | KEEP (unchanged) |
-| load-components | scores + provenance | trip | rolling 30d window | composite weights | tire/brake/engine load | evidence strength | BRAKING_PROXY_KINEMATICS | KEEP (unchanged) |
+| driving-impact-scorer | per-100km rates | trip aggregate | MIN 2 km trip | capLinear refs | 0-100 scores | none | engine load component | KEEP_LEGACY_UNTIL_V2_CUTOVER |
+| load-components | scores + provenance | trip | rolling 30d window | composite weights | tire/brake/engine load | evidence strength | BRAKING_PROXY_KINEMATICS | KEEP_LEGACY_UNTIL_V2_CUTOVER |
 
 Full machine-readable map: `current-vs-future-architecture.json`.
 
@@ -185,7 +207,7 @@ Detailed schemas in `docs/audits/data/driving-intelligence-v2-design/`:
 | 8 | Semantic distinctions | `episode-taxonomy.json` (semanticDistinctions) |
 | 9 | Multi-signal fusion | `signal-authority-model.json` |
 | 10 | Episode confidence | `episode-confidence-model.json` |
-| 11 | Episode severity | `episode-taxonomy.json` (severityModel) |
+| 11 | Episode severity | `episode-taxonomy.json` (`physicalSeverityModel`) |
 | 12 | Behavior dimensions | `driver-behavior-dimensions.json` |
 | 13 | Trip feature vector | `trip-feature-vector.json` |
 | 14 | High-timeframe aggregation | `high-timeframe-aggregation.json` |
@@ -202,7 +224,7 @@ Detailed schemas in `docs/audits/data/driving-intelligence-v2-design/`:
 
 Canonical capture: one continuous master video ~20–25 min, scenarios S1–S13, second phone as independent time reference (visible start/end), cluster-focused recording.
 
-RD004 must validate: absolute speed accuracy; providerTimestamp offset/drift; true event timing error; stable-cruise false dynamics; acceleration reconstruction; candidate cadence gate; RPM/throttle/TPS confirmation; stop/launch reconstruction; deceleration reconstruction; gear state; direction/reverse; long continuous telemetry; stale-hold behavior.
+RD004 must validate: absolute speed accuracy; providerTimestamp offset/drift; true event timing error; stable-cruise false dynamics; acceleration reconstruction; candidate cadence gate; RPM/throttle/TPS confirmation; stop/launch reconstruction; deceleration reconstruction; gear state; direction/reverse; long continuous telemetry; stale-hold behavior; preprocessing filter response.
 
 Artifact: `rd004-validation-contract.json`.
 
@@ -220,8 +242,8 @@ Artifact: `rd004-validation-contract.json`.
 
 ## Recommended phase sequence
 
-1. **DI-EV-0034F** — Canonical design (this document)  
-2. **RD004** — Controlled validation drive  
+1. **DI-EV-0034F / F.1 / F.2** — Canonical design + consistency closeouts (COMPLETE)
+2. **RD004** — Controlled validation drive (NEXT)
 3. **DI-EV-0034G** — RD004 evidence ingestion  
 4. **DI-EV-0034H** — Episode parameter calibration  
 5. **DI-EV-0034I** — Behavior dimension calibration  
@@ -244,6 +266,18 @@ Artifact: `rd004-validation-contract.json`.
 | PRIMARY_EXPOSURE_DOUBLE_COUNT_PREVENTED | YES |
 | POSITIVE_NEGATIVE_DYNAMICS_SEPARATED | YES |
 | MASS_INDEPENDENT_ENERGY_PROXY_EXPLICIT | YES |
+| SPECIFIC_KINETIC_ENERGY_FORMULA | 0.5 * (vEndMps² - vStartMps²) |
+| DELTA_V_SQUARED_MISLABEL_REMOVED | YES |
+| PHYSICAL_EPISODE_SEVERITY_IS_EVENT_LOCAL | YES |
+| REPETITION_EXPOSURE_NOT_PART_OF_EPISODE_SEVERITY | YES |
+| DRIVER_BEHAVIOR_CONFIDENCE_LAYERS_EXPLICIT | YES |
+| QUALITY_GATE_PROVIDER_AGE_POLICY | SURFACE_AWARE |
+| HF_HISTORICAL_GENERIC_AGE_PENALTY | NO |
+| PER_FILE_ARTIFACT_SHA256 | YES |
+| BUNDLE_SHA256_SEPARATE | YES |
+| ENVIRONMENT_SPECIFIC_PATHS_IN_CANONICAL_ARTIFACTS | NO |
+| F_STATUS / F1_STATUS / F2_STATUS | COMPLETE / COMPLETE / COMPLETE |
+| RD004_STATUS | NEXT |
 | TIRE_THERMAL_DIRECT_OBSERVATION_CLAIMED | NO |
 | PROVIDER_AGE_POLICY | SURFACE_AWARE |
 | RD004_PREPROCESSING_RESPONSE_VALIDATION_ADDED | YES |
@@ -261,4 +295,4 @@ Artifact: `rd004-validation-contract.json`.
 
 - RD003 authority: `docs/audits/data/rd003-signal-quality/`
 - Prior V2 contract (preserved, superseded for reconstruction design): `docs/architecture/driving-intelligence-v2.md`
-- Design invariants tested: `driving-intelligence-v2-canonical-design.spec.ts` (13 tests)
+- Design invariants tested: `driving-intelligence-v2-canonical-design.spec.ts` (40 tests: 13 F + 13 F.1 + 14 F.2)

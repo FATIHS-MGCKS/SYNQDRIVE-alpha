@@ -1122,6 +1122,21 @@ Rationale: RD003 answered signal trust; DI-EV-0034F answers how to reconstruct p
 | Legacy scorer | KEEP_LEGACY_UNTIL_V2_CUTOVER |
 | `PRODUCTION_SCORE_CHANGED` | **NO** |
 
+**DI-EV-0034F.2 — Final Semantic + Artifact Integrity Closeout (2026-09-03):**
+
+| Field | Value |
+|-------|-------|
+| Closeout revision | DI-EV-0034F.2 |
+| Specific kinetic energy | `0.5 * (vEndMps² - vStartMps²)` in m²/s² (J/kg) |
+| Delta-v-squared mislabel | REMOVED |
+| Physical severity | Event-local; repetition excluded |
+| Behavior dimensions | Layer-explicit reconstruction/attribution confidence requirements |
+| Quality gate provider age | SURFACE_AWARE; HF_HISTORICAL generic age penalty = NO |
+| Artifact integrity | Per-file SHA256 + separate bundleSha256; no environment paths |
+| F/F.1/F.2 status | COMPLETE / COMPLETE / COMPLETE |
+| RD004 status | NEXT |
+| `PRODUCTION_SCORE_CHANGED` | **NO** |
+
 **Timing metrics (distinct semantics):** SESSION_START_TO_FIRST_REQUEST_MS=35; SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS=254; FAST_GO_TO_RECORDING_MS=125; FAST_GO_TO_FIRST_CYCLE_MS=1222. Prior ambiguous ~0.93s acquisition-start label retired.
 
 **Key findings:** HF watermark + query-window proofs use acquisition-order per-field execution (not lexical sort). `NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED=YES`; `HF_IDEMPOTENCY_RUNTIME_VALIDATED=NOT_EXERCISED` (no duplicate/retry path exercised). Vehicle Load domain = RECONSTRUCTABLE_MEDIUM_CONFIDENCE. Longitudinal accel = RECONSTRUCTABLE_WITH_CADENCE_GATING. GEAR_STATE_OBSERVED=YES; GEAR_CHANGE_TIMING_VALIDATED=NO. Zero native events (NOT_EXERCISED — not proof no harsh maneuvers occurred).
