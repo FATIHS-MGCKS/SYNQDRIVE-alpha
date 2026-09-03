@@ -16,6 +16,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-03 — M3.0B canary-readiness closure (PR #1515)
+
+| Field | Content |
+|-------|---------|
+| **CHANGE** | Failed-job forensic triage (60 historical PKG-01 failures, 0 PKG-02, 0 in 24h); observability helper `--since` UTC window + production config authority + crash-proof lastAttemptAt SQL; isolated bounded-LIMIT starvation test; production `prisma migrate status` up to date |
+| **VALIDATION** | POSTGRES_SMOKE PASS PKG-02 7/7 + PKG-01 2/2; regression + graph PASS |
+| **REMAINING_GAPS** | PR #1515 merge + deploy before M3.1; failed-depth baseline 60 is historical delta anchor |
+| **DECISION_STATUS** | M3.0B COMPLETE — M3.1 pending merge/deploy |
+
 ## CL-2026-09-03 — M3.0 pre-deploy preflight (PKG-01 + PKG-02)
 
 | Field | Content |
