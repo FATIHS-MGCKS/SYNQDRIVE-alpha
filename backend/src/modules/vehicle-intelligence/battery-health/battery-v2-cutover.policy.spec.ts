@@ -47,12 +47,24 @@ describe('battery-v2-cutover.policy', () => {
     expect(isBatteryV2LegacyRestCaptureEnabled()).toBe(false);
   });
 
-  it('legacy-only: canonical pipeline off — legacy capture remains enabled', () => {
+  it('invalid M3.1: publication on with canonical REST off — legacy capture on', () => {
+    process.env.BATTERY_V2_REST_SHADOW_ENABLED = 'false';
+    process.env.BATTERY_V2_PUBLICATION_ENABLED = 'true';
+
+    expect(isBatteryV2CanonicalRestPipelineEnabled()).toBe(false);
+    expect(isBatteryV2LegacyRestCaptureEnabled()).toBe(true);
+    expect(isLvRestShadowModeActive()).toBe(false);
+    expect(isBatteryV2PublicationEnabled()).toBe(true);
+  });
+
+  it('all-off: canonical REST off, legacy capture on, publication off', () => {
     process.env.BATTERY_V2_REST_SHADOW_ENABLED = 'false';
     process.env.BATTERY_V2_PUBLICATION_ENABLED = 'false';
 
-    expect(isBatteryV2RestShadowEnabled()).toBe(false);
+    expect(isBatteryV2CanonicalRestPipelineEnabled()).toBe(false);
     expect(isBatteryV2LegacyRestCaptureEnabled()).toBe(true);
     expect(isLvRestShadowModeActive()).toBe(false);
+    expect(isBatteryV2PublicationEnabled()).toBe(false);
   });
+
 });

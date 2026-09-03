@@ -15,31 +15,45 @@ const MEAS = 'clmeas123456789012345678901';
 
 describe('lv-rest-assessment-handoff.policy', () => {
   describe('isCanonicalRestAssessmentHandoffEligible', () => {
-    it('returns true for REST targets with sourceObservationId provenance', () => {
+    it('returns true for VALID REST targets with sourceObservationId provenance', () => {
       expect(
         isCanonicalRestAssessmentHandoffEligible({
           type: BatteryMeasurementType.REST_60M,
+          quality: BatteryMeasurementQuality.VALID,
           provenance: { sourceObservationId: 'obs-1' },
         }),
       ).toBe(true);
       expect(
         isCanonicalRestAssessmentHandoffEligible({
           type: BatteryMeasurementType.REST_6H,
+          quality: BatteryMeasurementQuality.VALID,
           provenance: { sourceObservationId: 'obs-2' },
         }),
       ).toBe(true);
+    });
+
+    it('returns false for contaminated REST even with sourceObservationId', () => {
+      expect(
+        isCanonicalRestAssessmentHandoffEligible({
+          type: BatteryMeasurementType.REST_60M,
+          quality: BatteryMeasurementQuality.CONTAMINATED_BY_WAKE,
+          provenance: { sourceObservationId: 'obs-1' },
+        }),
+      ).toBe(false);
     });
 
     it('returns false for synthetic terminal measurements without sourceObservationId', () => {
       expect(
         isCanonicalRestAssessmentHandoffEligible({
           type: BatteryMeasurementType.REST_60M,
+          quality: BatteryMeasurementQuality.VALID,
           provenance: { syntheticMissed: true },
         }),
       ).toBe(false);
       expect(
         isCanonicalRestAssessmentHandoffEligible({
           type: BatteryMeasurementType.REST_60M,
+          quality: BatteryMeasurementQuality.VALID,
           provenance: null,
         }),
       ).toBe(false);
@@ -49,6 +63,7 @@ describe('lv-rest-assessment-handoff.policy', () => {
       expect(
         isCanonicalRestAssessmentHandoffEligible({
           type: BatteryMeasurementType.LIVE_VOLTAGE,
+          quality: BatteryMeasurementQuality.VALID,
           provenance: { sourceObservationId: 'obs-1' },
         }),
       ).toBe(false);

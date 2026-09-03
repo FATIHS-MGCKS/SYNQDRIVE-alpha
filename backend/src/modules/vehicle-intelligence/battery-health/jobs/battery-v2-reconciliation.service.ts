@@ -53,6 +53,7 @@ import {
 import { fetchRestAssessmentHandoffReconcileCandidates } from '../lv-rest-window/lv-rest-assessment-handoff-reconciliation.query';
 import {
   isCanonicalRestAssessmentHandoffEligible,
+  isRestAssessmentHandoffReconciliationTerminalCandidate,
   restTargetTypeForMeasurementType,
 } from '../lv-rest-window/lv-rest-assessment-handoff.policy';
 import { LvRestAssessmentHandoffService } from '../lv-rest-window/lv-rest-assessment-handoff.service';
@@ -853,7 +854,24 @@ export class BatteryV2ReconciliationService {
     const repairedVehiclesThisPass = new Set<string>();
 
     for (const measurement of candidates) {
-      if (!isCanonicalRestAssessmentHandoffEligible(measurement)) continue;
+      if (!isCanonicalRestAssessmentHandoffEligible(measurement)) {
+        if (
+          isRestAssessmentHandoffReconciliationTerminalCandidate(measurement) &&
+          measurement.sessionId
+        ) {
+          const restTargetType = restTargetTypeForMeasurementType(measurement.type);
+          if (restTargetType) {
+            await this.assessmentHandoff.terminalizeIneligibleReconciliationCandidate({
+              organizationId: measurement.organizationId,
+              vehicleId: measurement.vehicleId,
+              sessionId: measurement.sessionId,
+              restTargetType,
+              measurementId: measurement.id,
+            });
+          }
+        }
+        continue;
+      }
       if (!measurement.sessionId) continue;
 
       const restTargetType = restTargetTypeForMeasurementType(measurement.type);

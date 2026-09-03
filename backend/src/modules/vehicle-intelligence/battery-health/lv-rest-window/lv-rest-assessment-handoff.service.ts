@@ -279,6 +279,51 @@ export class LvRestAssessmentHandoffService {
     });
   }
 
+  /**
+   * Fail-closed terminalization for reconciliation rows that retain sourceObservationId
+   * but are not VALID (contaminated/missed). Prevents vehicle-level assess enqueue that
+   * could publish from unrelated fresh evidence on the same vehicle.
+   */
+  async terminalizeIneligibleReconciliationCandidate(input: {
+    organizationId: string;
+    vehicleId: string;
+    sessionId: string;
+    restTargetType: LvRestTargetType;
+    measurementId: string;
+  }): Promise<void> {
+    const session = await this.prisma.batteryMeasurementSession.findFirst({
+      where: {
+        id: input.sessionId,
+        organizationId: input.organizationId,
+      },
+    });
+    if (!session) return;
+
+    const existing = readAssessmentHandoffFromTargetMetadata(
+      session.metadata,
+      input.restTargetType,
+    );
+    if (
+      existing?.status === LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED &&
+      existing.measurementId === input.measurementId
+    ) {
+      return;
+    }
+    if (
+      existing?.status === LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED &&
+      existing.measurementId === input.measurementId
+    ) {
+      return;
+    }
+
+    await this.acknowledgeExecuted({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      measurementId: input.measurementId,
+      outcome: LV_REST_ASSESSMENT_HANDOFF_OUTCOME.POLICY_SKIPPED,
+    });
+  }
+
   async acknowledgeExecuted(input: {
     organizationId: string;
     vehicleId: string;

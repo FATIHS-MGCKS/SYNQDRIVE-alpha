@@ -775,6 +775,7 @@ describe('BatteryV2ReconciliationService', () => {
         vehicleId: VEH,
         sessionId: SESSION,
         type: 'REST_60M',
+        quality: 'VALID',
         provenance: { sourceObservationId: 'obs-1' },
       },
     ]);
@@ -928,6 +929,7 @@ describe('BatteryV2ReconciliationService', () => {
         vehicleId: VEH,
         sessionId: 'clsess123456789012345678901',
         type: 'REST_60M',
+        quality: 'VALID',
         provenance: { sourceObservationId: 'obs-1' },
       },
     ]);
