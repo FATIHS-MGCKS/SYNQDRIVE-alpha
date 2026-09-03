@@ -6,7 +6,7 @@
 
 **Scope:** Driving Intelligence Reconstruction phases and major artifacts only. Does not index every unrelated repository audit.
 
-**Last updated:** 2026-09-03 (RD003 global fingerprint discovery v2 DI-EV-0034D.2)
+**Last updated:** 2026-09-03 (RD003 signal quality interpretation DI-EV-0034E)
 
 ---
 
@@ -62,12 +62,13 @@
 | DI-EV-0034C | Phase 3A.3 | B — Method diagnostic + C — Discovery alignment | `docs/audits/data/rd003-video-gt-alignment/global-fingerprint-discovery/` + `hard-clock-prior-run/` | 2026-09-03 | SUPERSEDED (method) | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | GLOBAL_FINGERPRINT_DISCOVERY | — | DI-EV-0034D | Clock-prior falsification; full-session speed fingerprint search; preserves DI-EV-0034B hard-prior run; methodological defects corrected in DI-EV-0034D |
 | DI-EV-0034D | Phase 3A.3 | B — Method correction + C — Joint alignment discovery | `docs/audits/data/rd003-video-gt-alignment/global-fingerprint-discovery-v2/` + preserved `hard-clock-prior-run/` + `global-fingerprint-discovery/` | 2026-09-03 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | GLOBAL_FINGERPRINT_DISCOVERY_V2 | DI-EV-0034C (method only) | — | V2 seed selection; ambiguous CLOCK_CANDIDATE_SET preservation; corrected static-minute geometry (D.2); joint DP intervals; artifact/runtime parity; GROUND_TRUTH_VALIDATED=NO |
 | DI-EV-0034D.1 | Phase 3A.3 | B — Method correction (partial) | `global-fingerprint-discovery-v2/` (pre-D.2 static/joint slice) | 2026-09-03 | SUPERSEDED (static/joint) | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | GLOBAL_FINGERPRINT_DISCOVERY_V2 | — | DI-EV-0034D.2 | D.1 joint/static-minute results superseded by D.2 geometry correction; independent speed basins preserved |
+| DI-EV-0034E | Phase 3A.3 | E — Signal quality + foundation | `docs/audits/data/rd003-signal-quality/` + `docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md` | 2026-09-03 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | SIGNAL_QUALITY_INTERPRETATION | DI-EV-0034D.2 (alignment) | — | Per-signal usability matrix; Tier A/B/C evidence; no Driving Score changes; GROUND_TRUTH_VALIDATED=NO |
 
 ---
 
 ## Entry count
 
-**38** registry entries through DI-EV-0034D.2 (static-minute geometry correction added 2026-09-03).
+**39** registry entries through DI-EV-0034E (RD003 signal quality interpretation added 2026-09-03).
 
 ---
 
@@ -75,7 +76,7 @@
 
 | Planned ID | Phase | Artifact | Status |
 |------------|-------|----------|--------|
-| DI-EV-0034E+ | RD003 Video GT | Signal quality interpretation after corrected discovery anchors | NOT_STARTED |
+| DI-EV-0034F | Driving Intelligence Design | Score architecture from signal-quality foundation | NOT_STARTED |
 
 ---
 
