@@ -9,6 +9,7 @@ import {
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { BatteryRestTargetEvaluateHandler } from './handlers/battery-rest-target-evaluate.handler';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { createBatteryV2JobProducer, mockAssessDispatchReservation } from './battery-v2-job-producer.test-util';
 import { BatteryV2ReconciliationService } from './battery-v2-reconciliation.service';
 import { LvRestWindowState } from '../battery-v2-domain';
 import {
@@ -322,17 +323,14 @@ describe('BatteryV2JobProducerService.hasLiveJob', () => {
           getState: async () => state,
         }),
       };
-      const producer = new BatteryV2JobProducerService(
-        queue as never,
-        { isDeadLetter: jest.fn() } as never,
-      );
+      const producer = createBatteryV2JobProducer(queue as never, { isDeadLetter: jest.fn() } as never);
       await expect(producer.hasLiveJob('battery-rest:test:60m')).resolves.toBe(true);
     }
   });
 
   it('returns false when job is missing or terminal', async () => {
     const queueMissing = { getJob: jest.fn().mockResolvedValue(null) };
-    const producerMissing = new BatteryV2JobProducerService(
+    const producerMissing = createBatteryV2JobProducer(
       queueMissing as never,
       { isDeadLetter: jest.fn() } as never,
     );
@@ -343,7 +341,7 @@ describe('BatteryV2JobProducerService.hasLiveJob', () => {
         getState: async () => 'failed',
       }),
     };
-    const producerFailed = new BatteryV2JobProducerService(
+    const producerFailed = createBatteryV2JobProducer(
       queueFailed as never,
       { isDeadLetter: jest.fn() } as never,
     );
@@ -351,45 +349,29 @@ describe('BatteryV2JobProducerService.hasLiveJob', () => {
   });
 });
 
-describe('BatteryV2JobProducerService.hasLiveAssessJobForVehicle', () => {
+describe('BatteryV2JobProducerService.hasLiveAssessJobForVehicle (Redis reservation)', () => {
   beforeEach(() => {
     jest.spyOn(RuntimeStatusRegistry, 'getWorkersEnabled').mockReturnValue(true);
   });
 
-  it('returns true when a live assess job exists for the vehicle', async () => {
-    const queue = {
-      getJob: jest.fn(),
-      getJobs: jest.fn().mockResolvedValue([
-        {
-          name: 'BATTERY_ASSESSMENT_RECOMPUTE',
-          data: { vehicleId: VEH },
-        },
-      ]),
-    };
-    const producer = new BatteryV2JobProducerService(
-      queue as never,
+  it('returns true when a vehicle assess dispatch reservation exists', async () => {
+    const reservation = mockAssessDispatchReservation();
+    await reservation.tryReserve(VEH, 'assess:veh:LV_HEALTH:meas-1');
+    const producer = createBatteryV2JobProducer(
+      { getJob: jest.fn(), getJobs: jest.fn() } as never,
       { isDeadLetter: jest.fn() } as never,
+      reservation,
     );
     await expect(producer.hasLiveAssessJobForVehicle(VEH)).resolves.toBe(true);
   });
 
-  it('returns false when only other job types or vehicles are live', async () => {
-    const queue = {
-      getJob: jest.fn(),
-      getJobs: jest.fn().mockResolvedValue([
-        {
-          name: 'BATTERY_REST_TARGET_EVALUATE',
-          data: { vehicleId: VEH },
-        },
-        {
-          name: 'BATTERY_ASSESSMENT_RECOMPUTE',
-          data: { vehicleId: 'other-vehicle' },
-        },
-      ]),
-    };
-    const producer = new BatteryV2JobProducerService(
-      queue as never,
+  it('returns false when only other vehicles hold reservations', async () => {
+    const reservation = mockAssessDispatchReservation();
+    await reservation.tryReserve('other-vehicle', 'assess:other:LV_HEALTH:meas-2');
+    const producer = createBatteryV2JobProducer(
+      { getJob: jest.fn(), getJobs: jest.fn() } as never,
       { isDeadLetter: jest.fn() } as never,
+      reservation,
     );
     await expect(producer.hasLiveAssessJobForVehicle(VEH)).resolves.toBe(false);
   });

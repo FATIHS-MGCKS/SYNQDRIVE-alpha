@@ -6,6 +6,7 @@ import { observeQueueLag } from '@modules/observability/queue-lag.util';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { BatteryV2IdempotentExecutionService } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-idempotent-execution.service';
 import { BatteryV2JobHandlerRegistry } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-handler.registry';
+import { BatteryV2AssessDispatchReservationService } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-assess-dispatch-reservation.service';
 import { BatteryV2JobDeadLetterService } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-dead-letter.service';
 import { BatteryV2JobObservabilityService } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-observability.service';
 import { classifyBatteryV2JobError } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-error.util';
@@ -59,6 +60,7 @@ export class BatteryV2Processor extends WorkerHost {
     private readonly handlerRegistry: BatteryV2JobHandlerRegistry,
     private readonly idempotentExecution: BatteryV2IdempotentExecutionService,
     private readonly deadLetters: BatteryV2JobDeadLetterService,
+    private readonly assessDispatchReservation: BatteryV2AssessDispatchReservationService,
     private readonly observability: BatteryV2JobObservabilityService,
     private readonly assessmentHandoff: LvRestAssessmentHandoffService,
     private readonly tripMetrics?: TripMetricsService,
@@ -79,6 +81,15 @@ export class BatteryV2Processor extends WorkerHost {
 
     observeQueueLag(this.tripMetrics, QUEUE_NAMES.BATTERY_V2, job);
 
+    const isAssessJob = jobType === 'BATTERY_ASSESSMENT_RECOMPUTE';
+    if (isAssessJob) {
+      await this.assessDispatchReservation.refresh(
+        payload.vehicleId,
+        payload.idempotencyKey,
+      );
+    }
+
+    let releaseAssessReservation = false;
     try {
       const result = await this.idempotentExecution.execute({
         jobType: jobType as BatteryV2JobType,
@@ -120,6 +131,7 @@ export class BatteryV2Processor extends WorkerHost {
         jobType,
         (Date.now() - started) / 1000,
       );
+      releaseAssessReservation = isAssessJob;
     } catch (err) {
       const classified = classifyBatteryV2JobError(err);
       const isFinalAttempt = attempt >= maxAttempts;
@@ -158,7 +170,10 @@ export class BatteryV2Processor extends WorkerHost {
             vehicleId: payload.vehicleId,
             measurementId: payload.sourceEntityId,
             outcome: mapTerminalAssessHandoffOutcome(classified),
+            errorCode: classified.code,
+            errorMessage: classified.message,
           });
+          releaseAssessReservation = isAssessJob;
         }
       } else if (classified.retryable) {
         this.observability.recordRetry(jobType as BatteryV2JobType, classified.code);
@@ -191,6 +206,13 @@ export class BatteryV2Processor extends WorkerHost {
         jobType: jobType as BatteryV2JobType,
         cause: err,
       });
+    } finally {
+      if (releaseAssessReservation) {
+        await this.assessDispatchReservation.release(
+          payload.vehicleId,
+          payload.idempotencyKey,
+        );
+      }
     }
   }
 

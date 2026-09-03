@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
+import { RedisModule } from '@shared/redis/redis.module';
 import { BatteryPolicyProfileService } from '../../battery-policy-profile/battery-policy-profile.service';
 import { BatteryMeasurementSessionRepository } from '../battery-measurement-session.repository';
 import { LvRestWindowStateMachineService } from '../lv-rest-window/lv-rest-window.service';
 import { LvRestWindowSessionArmingService } from '../lv-rest-window/lv-rest-window-session-arming.service';
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { BatteryV2AssessDispatchReservationService } from './battery-v2-assess-dispatch-reservation.service';
 import { BatteryV2ReconciliationService } from './battery-v2-reconciliation.service';
 import { BatteryV2SnapshotObservationProducer } from './battery-v2-snapshot-observation.producer';
 import { BatteryV2TripStartProducer } from './battery-v2-trip-start.producer';
@@ -20,13 +22,14 @@ import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-han
 
 /** Producer-side queue registration — safe to import from VehicleIntelligence without worker handlers. */
 @Module({
-  imports: [BullModule.registerQueue({ name: QUEUE_NAMES.BATTERY_V2 })],
+  imports: [BullModule.registerQueue({ name: QUEUE_NAMES.BATTERY_V2 }), RedisModule],
   providers: [
     BatteryPolicyProfileService,
     BatteryMeasurementSessionRepository,
     LvRestWindowStateMachineService,
     LvRestWindowSessionArmingService,
     BatteryV2JobDeadLetterService,
+    BatteryV2AssessDispatchReservationService,
     BatteryV2JobProducerService,
     BatteryV2SnapshotObservationProducer,
     BatteryV2TripStartProducer,
@@ -41,6 +44,7 @@ import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-han
   ],
   exports: [
     BatteryV2JobDeadLetterService,
+    BatteryV2AssessDispatchReservationService,
     BatteryV2JobProducerService,
     BatteryV2SnapshotObservationProducer,
     BatteryV2TripStartProducer,

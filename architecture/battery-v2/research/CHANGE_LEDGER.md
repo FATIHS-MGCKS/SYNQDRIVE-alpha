@@ -16,6 +16,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-03 — M3.0D.2 PR #1519 final pre-merge closure
+
+| Field | Content |
+|-------|---------|
+| **OBSERVATION** | M3.0D.1 fixed 54000 root cause but ~30 legacy HANDLER_FAILED/54000 DLQs were not replayable; bounded BullMQ scan (250/state) not fleet-safe; digest keys could duplicate legacy raw-key rows; FAILED handoffs had no explicit rearm path. |
+| **CHANGE** | `clearLegacyAssessPersistence54000DeadLetterIfPresent` + `isLegacyAssessPersistence54000DeadLetter`; Redis assess dispatch reservation (O(1)); `findExistingLvEstimatedHealthByCanonicalIdentity` (digest + legacy + fingerprint); FAILED→ENQUEUED rearm with `rearmReason`; metadata explicit-rearm merge bypass; real PostgreSQL persistence integration test. |
+| **VALIDATION** | M3.0D.2 closure + reservation + legacy compat + PKG-01/02/stage-1 regressions; PostgreSQL 16.15 isolated persistence PASS (gated); graph + tsc PASS. **Not deployed.** |
+| **NON_EFFECTS** | `BATTERY_V2_PUBLICATION_ENABLED=false`; `BATTERY_V2_REST_SHADOW_ENABLED=true`; production failed jobs untouched. |
+| **REMAINING_GAPS** | Production forensics blocked (SSH); event-driven same-vehicle drain not implemented; deploy + soak before activation reevaluation. |
+| **DECISION_STATUS** | M3.0D.2 CODE COMPLETE — human merge review |
+
 ## CL-2026-09-03 — M3.0D.1 PR #1519 persistence + cross-tick liveness closure
 
 | Field | Content |

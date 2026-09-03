@@ -7,6 +7,7 @@ import {
 } from './battery-v2-job.errors';
 import { classifyBatteryV2JobError } from './battery-v2-job-error.util';
 import { buildBatteryV2AttemptContext } from './battery-v2-job.validation';
+import { mockProcessorAssessDispatchReservation } from './battery-v2-job-producer.test-util';
 import { LV_REST_ASSESSMENT_HANDOFF_OUTCOME } from '../lv-rest-window/lv-rest-assessment-handoff.metadata';
 
 const ORG = 'clorg1234567890123456789012';
@@ -55,6 +56,7 @@ describe('PKG-01 reconciliation liveness — processor error propagation', () =>
     acknowledgeTerminalFailure: jest.fn().mockResolvedValue(undefined),
   };
 
+  const assessDispatchReservation = mockProcessorAssessDispatchReservation();
   let processor: BatteryV2Processor;
 
   beforeEach(() => {
@@ -63,6 +65,7 @@ describe('PKG-01 reconciliation liveness — processor error propagation', () =>
       handlerRegistry as any,
       idempotentExecution as any,
       deadLetters as any,
+      assessDispatchReservation as any,
       observability as any,
       assessmentHandoff as any,
       undefined,
@@ -124,6 +127,8 @@ describe('PKG-01 reconciliation liveness — processor error propagation', () =>
       vehicleId: VEH,
       measurementId: MEAS,
       outcome: LV_REST_ASSESSMENT_HANDOFF_OUTCOME.PERSISTENCE_FAILED,
+      errorCode: 'HANDLER_FAILED',
+      errorMessage: expect.stringContaining('54000'),
     });
   });
 });

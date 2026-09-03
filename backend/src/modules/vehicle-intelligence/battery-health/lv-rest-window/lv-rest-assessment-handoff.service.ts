@@ -4,8 +4,10 @@ import { buildAssessmentJobIdempotencyKey } from '../jobs/battery-v2-job-idempot
 import { BatteryV2JobDeadLetterService } from '../jobs/battery-v2-job-dead-letter.service';
 import { BatteryV2JobProducerService } from '../jobs/battery-v2-job-producer.service';
 import { formatBatteryV2PipelineLog } from '../observability/battery-v2-pipeline-observability.util';
+import type { LvRestAssessmentHandoffMetadata } from './lv-rest-assessment-handoff.metadata';
 import {
   LV_REST_ASSESSMENT_HANDOFF_OUTCOME,
+  LV_REST_ASSESSMENT_HANDOFF_REARM_REASON,
   LV_REST_ASSESSMENT_HANDOFF_STATUS,
   mergeSessionAssessmentHandoffMetadata,
   readAssessmentHandoffFromTargetMetadata,
@@ -119,6 +121,18 @@ export class LvRestAssessmentHandoffService {
     }
 
     if (
+      existingHandoff?.status === LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED &&
+      existingHandoff.measurementId === measurement.id
+    ) {
+      return {
+        enqueued: false,
+        skipped: true,
+        reason: 'terminal_failed',
+        idempotencyKey,
+      };
+    }
+
+    if (
       existingHandoff?.status === LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED &&
       existingHandoff.measurementId === measurement.id &&
       existingHandoff.idempotencyKey === idempotencyKey
@@ -146,7 +160,9 @@ export class LvRestAssessmentHandoffService {
       };
     }
 
-    if (await this.jobProducer.hasLiveAssessJobForVehicle(input.vehicleId)) {
+    if (
+      await this.jobProducer.hasAssessDispatchConflict(input.vehicleId, idempotencyKey)
+    ) {
       return {
         enqueued: false,
         skipped: true,
@@ -230,6 +246,7 @@ export class LvRestAssessmentHandoffService {
     input: EnsureLvRestAssessmentHandoffInput,
   ): Promise<EnsureLvRestAssessmentHandoffResult> {
     const attemptedAt = new Date();
+    await this.tryRearmFailedHandoffIfEligible(input);
     const result = await this.ensureAssessmentHandoff(input);
 
     if (this.shouldRecordReconciliationInspection(result)) {
@@ -283,6 +300,8 @@ export class LvRestAssessmentHandoffService {
     measurementId: string;
     outcome: LvRestAssessmentHandoffOutcome;
     failedAt?: Date;
+    errorCode?: string | null;
+    errorMessage?: string | null;
   }): Promise<void> {
     await this.acknowledgeTerminalHandoff({
       organizationId: input.organizationId,
@@ -291,6 +310,79 @@ export class LvRestAssessmentHandoffService {
       outcome: input.outcome,
       status: LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED,
       executedAt: (input.failedAt ?? new Date()).toISOString(),
+      failureHistory: {
+        outcome: input.outcome,
+        failedAt: (input.failedAt ?? new Date()).toISOString(),
+        errorCode: input.errorCode ?? null,
+        errorMessage: input.errorMessage ?? null,
+      },
+    });
+  }
+
+  /**
+   * Explicit FAILED → ENQUEUED rearm after repaired root cause and DLQ clearance.
+   */
+  async rearmFailedAssessmentHandoff(input: {
+    organizationId: string;
+    sessionId: string;
+    restTargetType: LvRestTargetType;
+    measurementId: string;
+    idempotencyKey: string;
+    rearmReason: (typeof LV_REST_ASSESSMENT_HANDOFF_REARM_REASON)[keyof typeof LV_REST_ASSESSMENT_HANDOFF_REARM_REASON];
+  }): Promise<void> {
+    const now = new Date().toISOString();
+    await this.persistHandoffState({
+      sessionId: input.sessionId,
+      organizationId: input.organizationId,
+      restTargetType: input.restTargetType,
+      handoffPatch: {
+        measurementId: input.measurementId,
+        idempotencyKey: input.idempotencyKey,
+        status: LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED,
+        rearmReason: input.rearmReason,
+        rearmedAt: now,
+        lastAttemptAt: now,
+      },
+    });
+  }
+
+  private async tryRearmFailedHandoffIfEligible(
+    input: EnsureLvRestAssessmentHandoffInput,
+  ): Promise<void> {
+    const session = await this.prisma.batteryMeasurementSession.findFirst({
+      where: {
+        id: input.sessionId,
+        organizationId: input.organizationId,
+      },
+    });
+    if (!session) return;
+
+    const existing = readAssessmentHandoffFromTargetMetadata(
+      session.metadata,
+      input.restTargetType,
+    );
+    if (
+      existing?.status !== LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED ||
+      existing.measurementId !== input.measurementId
+    ) {
+      return;
+    }
+
+    const idempotencyKey = buildCanonicalLvAssessmentHandoffJobKey({
+      vehicleId: input.vehicleId,
+      measurementId: input.measurementId,
+    });
+    if (await this.deadLetters.isDeadLetter('BATTERY_ASSESSMENT_RECOMPUTE', idempotencyKey)) {
+      return;
+    }
+
+    await this.rearmFailedAssessmentHandoff({
+      organizationId: input.organizationId,
+      sessionId: input.sessionId,
+      restTargetType: input.restTargetType,
+      measurementId: input.measurementId,
+      idempotencyKey,
+      rearmReason: LV_REST_ASSESSMENT_HANDOFF_REARM_REASON.LEGACY_PERSISTENCE_54000,
     });
   }
 
@@ -303,6 +395,7 @@ export class LvRestAssessmentHandoffService {
       | typeof LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED
       | typeof LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED;
     executedAt: string;
+    failureHistory?: LvRestAssessmentHandoffMetadata['failureHistory'];
   }): Promise<void> {
     const measurement = await this.prisma.batteryMeasurement.findFirst({
       where: {
@@ -343,6 +436,7 @@ export class LvRestAssessmentHandoffService {
         outcome: input.outcome,
         executedAt: input.executedAt,
         lastAttemptAt: now,
+        failureHistory: input.failureHistory ?? undefined,
       },
     });
 

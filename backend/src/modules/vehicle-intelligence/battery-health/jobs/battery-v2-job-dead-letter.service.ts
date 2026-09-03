@@ -3,6 +3,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import type { BatteryV2JobType } from './battery-v2-job.types';
 import type { BatteryV2JobErrorCode } from './battery-v2-job.errors';
 import { sanitizeBatteryV2LogMessage } from './battery-v2-job-error.util';
+import { isLegacyAssessPersistence54000DeadLetter } from './battery-v2-job-dead-letter.policy';
 
 export interface RecordBatteryV2DeadLetterInput {
   organizationId: string;
@@ -100,6 +101,28 @@ export class BatteryV2JobDeadLetterService {
     });
     if (!row) return false;
     if (!(replayableCodes as readonly string[]).includes(row.errorCode)) return false;
+    return this.clearDeadLetter(jobType, idempotencyKey);
+  }
+
+  /**
+   * Clear repaired-software legacy assess persistence 54000 DLQ rows only.
+   * Does not replay arbitrary HANDLER_FAILED persistence failures.
+   */
+  async clearLegacyAssessPersistence54000DeadLetterIfPresent(
+    jobType: BatteryV2JobType,
+    idempotencyKey: string,
+  ): Promise<boolean> {
+    const row = await this.prisma.batteryV2JobDeadLetter.findUnique({
+      where: {
+        jobType_idempotencyKey: { jobType, idempotencyKey },
+      },
+      select: {
+        jobType: true,
+        errorCode: true,
+        errorMessage: true,
+      },
+    });
+    if (!row || !isLegacyAssessPersistence54000DeadLetter(row)) return false;
     return this.clearDeadLetter(jobType, idempotencyKey);
   }
 

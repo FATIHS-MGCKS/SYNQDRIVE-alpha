@@ -2,6 +2,7 @@ import { UnrecoverableError } from 'bullmq';
 import { BatteryV2Processor } from '@workers/processors/battery-v2.processor';
 import { BATTERY_V2_JOB_ERROR_CODES, BatteryV2JobProcessingError } from './battery-v2-job.errors';
 import { buildBatteryV2AttemptContext } from './battery-v2-job.validation';
+import { mockProcessorAssessDispatchReservation } from './battery-v2-job-producer.test-util';
 
 const ORG = 'clorg1234567890123456789012';
 const VEH = 'clveh1234567890123456789012';
@@ -52,6 +53,7 @@ describe('BatteryV2Processor pipeline hardening', () => {
     acknowledgeExecuted: jest.fn().mockResolvedValue(undefined),
   };
 
+  const assessDispatchReservation = mockProcessorAssessDispatchReservation();
   let processor: BatteryV2Processor;
 
   beforeEach(() => {
@@ -60,6 +62,7 @@ describe('BatteryV2Processor pipeline hardening', () => {
       handlerRegistry as any,
       idempotentExecution as any,
       deadLetters as any,
+      assessDispatchReservation as any,
       observability as any,
       assessmentHandoff as any,
       undefined,

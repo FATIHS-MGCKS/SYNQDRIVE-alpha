@@ -11,6 +11,8 @@ export const REPLAYABLE_ASSESSMENT_HANDOFF_DEAD_LETTER_CODES = [
   'PROVIDER_UNAVAILABLE',
 ] as const;
 
+export { isLegacyAssessPersistence54000DeadLetter } from '../jobs/battery-v2-job-dead-letter.policy';
+
 export function maxScannedRestAssessmentHandoffCandidates(batch: number): number {
   return batch * CANONICAL_REST_ASSESSMENT_HANDOFF_MAX_SCAN_MULTIPLIER;
 }

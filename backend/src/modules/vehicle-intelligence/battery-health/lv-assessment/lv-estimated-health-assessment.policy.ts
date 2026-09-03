@@ -278,15 +278,53 @@ export function buildLvEstimatedHealthAssessmentIdempotencyKey(input: {
   const fingerprintDigest = digestLvAssessmentEvidenceFingerprint(
     input.evidenceFingerprint,
   );
+  return buildLvEstimatedHealthAssessmentIdempotencyKeyFromDigest({
+    vehicleId: input.vehicleId,
+    assessmentTrack: input.assessmentTrack,
+    assessmentMode: input.assessmentMode,
+    modelVersion: version,
+    fingerprintDigest,
+  });
+}
+
+/** Pre-M3.0D.1 raw fingerprint key — lookup only, not used for new writes. */
+export function buildLegacyLvEstimatedHealthAssessmentIdempotencyKey(input: {
+  vehicleId: string;
+  assessmentTrack: LvAssessmentTrack;
+  assessmentMode: LvAssessmentMode;
+  modelVersion?: number;
+  evidenceFingerprint: string;
+}): string {
+  const version = input.modelVersion ?? LV_ESTIMATED_HEALTH_ASSESSMENT_MODEL_VERSION;
   return [
     'lv-estimated-health',
     input.vehicleId,
     input.assessmentMode,
     input.assessmentTrack,
     `m${version}`,
-    `${LV_ASSESSMENT_IDEMPOTENCY_KEY_FP_PREFIX}${fingerprintDigest}`,
+    input.evidenceFingerprint,
   ].join(':');
 }
+
+export function buildLvEstimatedHealthAssessmentIdempotencyKeyFromDigest(input: {
+  vehicleId: string;
+  assessmentTrack: LvAssessmentTrack;
+  assessmentMode: LvAssessmentMode;
+  modelVersion: number;
+  fingerprintDigest: string;
+}): string {
+  return [
+    'lv-estimated-health',
+    input.vehicleId,
+    input.assessmentMode,
+    input.assessmentTrack,
+    `m${input.modelVersion}`,
+    `${LV_ASSESSMENT_IDEMPOTENCY_KEY_FP_PREFIX}${input.fingerprintDigest}`,
+  ].join(':');
+}
+
+/** PostgreSQL btree index tuple practical ceiling for idempotency_key uniqueness. */
+export const LV_ASSESSMENT_LEGACY_IDEMPOTENCY_KEY_UNSAFE_BYTES = 2_500;
 
 function filterSelectionForTrack(
   selection: LvEvidenceSelectionResult,

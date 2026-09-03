@@ -191,10 +191,12 @@ function buildFairnessHarness(
     }),
     hasLiveJob: jest.fn(async (idempotencyKey: string) => idempotencyKey !== targetIdempotencyKey),
     hasLiveAssessJobForVehicle: jest.fn().mockResolvedValue(false),
+    hasAssessDispatchConflict: jest.fn().mockResolvedValue(false),
   };
   const deadLetters = {
     isDeadLetter: jest.fn().mockResolvedValue(false),
     clearReplayableDeadLetterIfPresent: jest.fn().mockResolvedValue(false),
+    clearLegacyAssessPersistence54000DeadLetterIfPresent: jest.fn().mockResolvedValue(false),
   };
   const assessmentHandoff = new LvRestAssessmentHandoffService(
     prisma as never,

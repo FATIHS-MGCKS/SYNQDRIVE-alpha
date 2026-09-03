@@ -9,6 +9,9 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { LvEstimatedHealthAssessment } from './lv-assessment/lv-estimated-health-assessment.policy';
+import {
+  buildLegacyLvEstimatedHealthAssessmentIdempotencyKey,
+} from './lv-assessment/lv-estimated-health-assessment.policy';
 import type { HvCrossSessionAssessment } from './hv-capacity-shadow/hv-capacity-cross-session.types';
 import type { HvSohGateAssessment } from './hv-capacity-shadow/hv-soh-gate.types';
 
@@ -159,10 +162,74 @@ export class BatteryAssessmentRepository {
     };
   }
 
+  async findExistingLvEstimatedHealthByCanonicalIdentity(input: {
+    organizationId: string;
+    vehicleId: string;
+    assessment: LvEstimatedHealthAssessment;
+  }): Promise<BatteryAssessment | null> {
+    const { vehicleId, assessment } = input;
+    const evidenceFingerprint =
+      typeof assessment.inputSummary.evidenceFingerprint === 'string'
+        ? assessment.inputSummary.evidenceFingerprint
+        : null;
+
+    const byDigest = await this.prisma.batteryAssessment.findUnique({
+      where: {
+        vehicleId_idempotencyKey: {
+          vehicleId,
+          idempotencyKey: assessment.idempotencyKey,
+        },
+      },
+    });
+    if (byDigest) return byDigest;
+
+    const legacyKey = buildLegacyLvEstimatedHealthAssessmentIdempotencyKey({
+      vehicleId,
+      assessmentTrack: assessment.assessmentTrack,
+      assessmentMode: assessment.assessmentMode,
+      modelVersion: assessment.modelVersion,
+      evidenceFingerprint: evidenceFingerprint ?? '',
+    });
+    const byLegacy = await this.prisma.batteryAssessment.findUnique({
+      where: {
+        vehicleId_idempotencyKey: {
+          vehicleId,
+          idempotencyKey: legacyKey,
+        },
+      },
+    });
+    if (byLegacy) return byLegacy;
+
+    if (!evidenceFingerprint) return null;
+
+    return this.prisma.batteryAssessment.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        vehicleId,
+        scope: BatteryEvidenceScope.LV,
+        type: BatteryAssessmentType.LV_ESTIMATED_HEALTH,
+        modelVersion: assessment.modelVersion,
+        inputSummary: {
+          path: ['evidenceFingerprint'],
+          equals: evidenceFingerprint,
+        },
+      },
+      orderBy: { computedAt: 'desc' },
+    });
+  }
+
   async persistLvEstimatedHealth(
     input: PersistLvEstimatedHealthAssessmentInput,
   ): Promise<BatteryAssessment> {
     const { assessment } = input;
+
+    const existing = await this.findExistingLvEstimatedHealthByCanonicalIdentity({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      assessment,
+    });
+    if (existing) return existing;
+
     const data: Prisma.BatteryAssessmentUncheckedCreateInput = {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,

@@ -1,4 +1,5 @@
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { createBatteryV2JobProducer } from './battery-v2-job-producer.test-util';
 import { BatteryV2ReconciliationService } from './battery-v2-reconciliation.service';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { buildRestTargetJobIdempotencyKey } from './battery-v2-job-idempotency.policy';
@@ -17,11 +18,12 @@ jest.mock('@config/battery-health-v2.config', () => {
 const ORG = 'clorg1234567890123456789012';
 const VEH = 'clveh1234567890123456789012';
 
-function mockDeadLetters(overrides: Partial<{ isDeadLetter: jest.Mock; clearDeadLetter: jest.Mock; clearReplayableDeadLetterIfPresent: jest.Mock }> = {}) {
+function mockDeadLetters(overrides: Partial<{ isDeadLetter: jest.Mock; clearDeadLetter: jest.Mock; clearReplayableDeadLetterIfPresent: jest.Mock; clearLegacyAssessPersistence54000DeadLetterIfPresent: jest.Mock }> = {}) {
   return {
     isDeadLetter: jest.fn().mockResolvedValue(false),
     clearDeadLetter: jest.fn().mockResolvedValue(true),
     clearReplayableDeadLetterIfPresent: jest.fn().mockResolvedValue(false),
+    clearLegacyAssessPersistence54000DeadLetterIfPresent: jest.fn().mockResolvedValue(false),
     ...overrides,
   };
 }
@@ -40,7 +42,7 @@ describe('BatteryV2JobProducerService hardening', () => {
       }),
       add: jest.fn().mockResolvedValue({ id: 'job-1' }),
     };
-    const producer = new BatteryV2JobProducerService(queue as any, mockDeadLetters() as any);
+    const producer = createBatteryV2JobProducer(queue as any, mockDeadLetters() as any);
 
     const startedAt = new Date('2026-07-16T08:00:00.000Z');
     const idempotencyKey = buildRestTargetJobIdempotencyKey({
@@ -70,7 +72,7 @@ describe('BatteryV2JobProducerService hardening', () => {
     const deadLetters = mockDeadLetters({
       isDeadLetter: jest.fn().mockResolvedValue(true),
     });
-    const producer = new BatteryV2JobProducerService(queue as any, deadLetters as any);
+    const producer = createBatteryV2JobProducer(queue as any, deadLetters as any);
 
     const result = await producer.enqueue('BATTERY_REST_TARGET_EVALUATE', {
       organizationId: ORG,
@@ -93,7 +95,7 @@ describe('BatteryV2JobProducerService hardening', () => {
     const deadLetters = mockDeadLetters({
       isDeadLetter: jest.fn().mockResolvedValue(true),
     });
-    const producer = new BatteryV2JobProducerService(queue as any, deadLetters as any);
+    const producer = createBatteryV2JobProducer(queue as any, deadLetters as any);
 
     const result = await producer.enqueue(
       'BATTERY_REST_TARGET_EVALUATE',

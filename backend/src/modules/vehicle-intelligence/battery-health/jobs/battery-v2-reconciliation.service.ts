@@ -904,6 +904,10 @@ export class BatteryV2ReconciliationService {
           idempotencyKey,
           REPLAYABLE_ASSESSMENT_HANDOFF_DEAD_LETTER_CODES,
         );
+        await this.deadLetters.clearLegacyAssessPersistence54000DeadLetterIfPresent(
+          'BATTERY_ASSESSMENT_RECOMPUTE',
+          idempotencyKey,
+        );
         const result = await this.assessmentHandoff.reconcileAssessmentHandoff(handoffInput);
         markRestAssessmentHandoffVehicleTouchedThisPass(
           measurement.vehicleId,

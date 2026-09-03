@@ -54,6 +54,10 @@ export async function fetchRestAssessmentHandoffReconcileCandidates(
           s.metadata #>> ARRAY['scheduledTargets', m.type::text, 'assessmentHandoff', 'measurementId'],
           ''
         ) = m.id
+        AND COALESCE(
+          s.metadata #>> ARRAY['scheduledTargets', m.type::text, 'assessmentHandoff', 'rearmReason'],
+          ''
+        ) = ''
       )
     ORDER BY
       NULLIF(
