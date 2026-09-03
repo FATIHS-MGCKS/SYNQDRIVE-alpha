@@ -131,3 +131,17 @@ BATTERY_V2_30M_PRODUCTION_VALIDATED = PENDING_NATURAL_EVIDENCE
 PRODUCTION_VALIDATED = NO
 SIX_HOUR_VALIDATION_PENDING = YES
 ```
+
+## Amendment (2026-09-03 cutover contract audit)
+
+**Historical record preserved above.** Subsequent audit (`M3_1_CUTOVER_CONTRACT_AUDIT.md`) determined:
+
+| Field | Original 30m interpretation | Corrected interpretation |
+|-------|----------------------------|--------------------------|
+| `INFRASTRUCTURE_HEALTH` | PASS | PASS (unchanged) |
+| `M3_1_ACTIVATION_CONTRACT` | Implicitly healthy | **MISMATCH** — `REST_SHADOW=false` disables canonical REST |
+| `CANONICAL_REST_PIPELINE_ACTIVE` | Assumed pending rest windows | **NO** — config-blocked |
+| `M3_1_STATUS` | `PASS_WITH_PENDING_NATURAL_EVIDENCE` | **`BLOCKED_BY_CUTOVER_CONTRACT`** |
+| `PRODUCTION_VALIDATED` | `NO` / pending natural evidence | **`PENDING_CORRECTED_ACTIVATION_EVIDENCE`** |
+
+The activation script (`vps-enable-battery-v2-full-fleet-production.sh`) set `REST_SHADOW=false` intending to exit shadow-only mode, but Stage-2 cutover per code requires `REST_SHADOW=true` + `PUBLICATION=true` (shadow semantics off via `isLvRestShadowModeActive=false`, canonical pipeline ON). Waiting for natural REST evidence under the deployed flag combination would not produce canonical REST measurements.

@@ -9,10 +9,11 @@
 ## Executive verdict
 
 ```
-PRODUCTION_VALIDATED = PENDING_EVIDENCE
+M3_1_STATUS = BLOCKED_BY_CUTOVER_CONTRACT
+PRODUCTION_VALIDATED = PENDING_CORRECTED_ACTIVATION_EVIDENCE
 ```
 
-Infrastructure and activation configuration are healthy across the ≥6h window. **No natural post-T0 canonical REST → assessment → publication chain was observed.** The 30-minute audit’s missing natural evidence has **not** been resolved for the publication gate.
+**Infrastructure health = PASS** across the ≥6h window (PM2, scheduler leader, reconciliation ticks, zero new failure classes). **M3.1 activation contract = MISMATCH** — production `REST_SHADOW=false` + `PUBLICATION=true` disables the canonical REST pipeline per code/tests while enabling publication. **No natural post-T0 canonical REST → assessment → publication chain was observed** because config prevented canonical REST scheduling/evaluation, not merely absence of qualifying rest. See `M3_1_CUTOVER_CONTRACT_AUDIT.md`.
 
 | Field | Value |
 |-------|-------|
@@ -295,7 +296,7 @@ Post-T0 LIVE_VOLTAGE samples have **no linked assessments** (expected — not ca
 
 | Challenge | Resolution |
 |-----------|------------|
-| Healthy counts while fleet stuck? | **Partially yes for publication path** — 3 active vehicles have telemetry but zero REST/assess/pub post-T0. Infrastructure healthy; canonical pipeline idle pending REST windows. |
+| Healthy counts while fleet stuck? | **Yes for infra; no for canonical pipeline** — 3 active vehicles have telemetry but zero REST/assess/pub post-T0. Infrastructure healthy; canonical pipeline **blocked by `REST_SHADOW=false`**, not idle pending REST windows. |
 | Publications from reconciliation only? | **N/A** — zero publications. Reconciliation ran but did not produce assessments or publications for active fleet. |
 | Duplicates hidden behind PKs? | **Disproven** — logical idempotency checks clean post-T0. |
 | Scheduler leadership hidden? | **Disproven** — 1 leader entire window; scheduler logs active (880 lines post-T0). |
@@ -319,6 +320,10 @@ Post-T0 LIVE_VOLTAGE samples have **no linked assessments** (expected — not ca
 ```
 BATTERY_V2_M3_1_6H_AUDIT=COMPLETE
 BATTERY_V2_FULL_FLEET_T0=2026-09-03T11:08:02Z
+INFRASTRUCTURE_HEALTH=PASS
+M3_1_ACTIVATION_CONTRACT=MISMATCH
+CANONICAL_REST_PIPELINE_ACTIVE=NO
+CANONICAL_PIPELINE_HEALTH=BLOCKED_BY_CONFIG
 NATURAL_MEASUREMENT_EVIDENCE=NO
 NATURAL_ASSESSMENT_EVIDENCE=NO
 NATURAL_PUBLICATION_EVIDENCE=NO
@@ -330,7 +335,9 @@ RESERVATION_LEAK_FOUND=NO
 RECONCILIATION_LIVENESS=PARTIAL
 PM2_HEALTH=PASS
 SCHEDULER_HEALTH=PASS
-PRODUCTION_VALIDATED=PENDING_EVIDENCE
+WAITING_LONGER_WOULD_NOT_PRODUCE_CANONICAL_REST_EVIDENCE=YES
+M3_1_STATUS=BLOCKED_BY_CUTOVER_CONTRACT
+PRODUCTION_VALIDATED=PENDING_CORRECTED_ACTIVATION_EVIDENCE
 ```
 
 ## Ops notes
@@ -338,4 +345,5 @@ PRODUCTION_VALIDATED=PENDING_EVIDENCE
 - For stdin Cloud Agent audits, set `BATTERY_V2_OPS_SCRIPT_DIR` explicitly (validator fails closed without it).
 - Deploy M3.1 ops scripts to production release for on-VPS execution, or pipe with explicit `BATTERY_V2_OPS_SCRIPT_DIR`.
 - PKG-01 ENQUEUED backlog is pre-T0 and frozen while `REST_SHADOW=false`; not a new post-T0 failure class.
-- Re-run validation after canonical REST pipeline is active and first natural REST window completes post-T0.
+- Corrected Stage-2 activation required (`REST_SHADOW=true` + `PUBLICATION=true`) before re-validation; waiting longer under current config will not produce canonical REST evidence.
+- See `M3_1_CUTOVER_CONTRACT_AUDIT.md` for repair plan (do not execute without authorization).

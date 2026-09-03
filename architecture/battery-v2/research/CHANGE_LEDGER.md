@@ -16,6 +16,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-03 — M3.1 cutover contract audit
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.1 ≥6h audit `PRODUCTION_VALIDATED=PENDING_EVIDENCE`; production `REST_SHADOW=false`, `PUBLICATION=true`, `RECONCILIATION=true`. |
+| **OBSERVATION** | Code truth table: `isBatteryV2CanonicalRestPipelineEnabled = isBatteryV2RestShadowEnabled`; Stage-2 requires `REST_SHADOW=true` + `PUBLICATION=true`. M3.1 activation script set opposite. ≥6h evidence (0 REST, 0 assess, 0 pub, restSessions=0, restTargets=0, PKG-01 repair frozen) fully explained by config. |
+| **HYPOTHESIS** | Operators intended “disable shadow-only semantics” but selected `REST_SHADOW=false`, which disables entire canonical REST pipeline. |
+| **CHANGE** | Documentation correction only: `M3_1_CUTOVER_CONTRACT_AUDIT.md`; reclassify `M3_1_STATUS=BLOCKED_BY_CUTOVER_CONTRACT`; `PRODUCTION_VALIDATED=PENDING_CORRECTED_ACTIVATION_EVIDENCE`. |
+| **WHY** | Separate infrastructure health from activation contract; prevent “wait longer” false validation strategy. |
+| **VALIDATION** | `battery-v2-cutover.policy.spec.ts`, `battery-health-v2.config.ts`, `lv-publication-chain-resolution.md`, production forensic evidence from ≥6h audit. |
+| **NON_EFFECTS** | No production config/PM2/DB changes; no flag correction executed. |
+| **REMAINING_GAPS** | Corrected Stage-2 activation + new T0 + re-validation required. |
+| **DECISION_STATUS** | `ROOT_CAUSE_CLASS=MULTIPLE_DEFECTS` (CONFIG + DOCUMENTATION + known CODE_SEMANTICS overload); `SAFE_TO_PLAN_PRODUCTION_REPAIR=YES`. |
+
 ## CL-2026-09-03 — M3.1 ≥6h production validation audit
 
 | Field | Content |
@@ -23,7 +37,7 @@ Append-only scientific record. Newest entries first.
 | **BEFORE** | M3.1 activated `2026-09-03T11:08:02Z`; 30m `PASS_WITH_PENDING_NATURAL_EVIDENCE`; 0 post-T0 measurements/assessments/publications at T+30m. |
 | **OBSERVATION** | ~7.02h post-T0 forensic audit (`0e0f09259`): infra healthy; 68 LIVE_VOLTAGE / 0 canonical REST measurements post-T0; 0 assessments/publications; `FULL_FLEET_E2E_EVIDENCE=NO`; PKG-01 24×ENQUEUED frozen (pre-T0, repair gated by `REST_SHADOW=false`). |
 | **VALIDATION** | Independent read-only SQL + BullMQ + PM2 + logs; scheduling contract reconstructed from code; canonical validator requires `BATTERY_V2_OPS_SCRIPT_DIR` when piped. |
-| **DECISION_STATUS** | `PRODUCTION_VALIDATED=PENDING_EVIDENCE`; `SIX_HOUR_VALIDATION_PENDING=NO` (audit complete). |
+| **DECISION_STATUS** | `PRODUCTION_VALIDATED=PENDING_CORRECTED_ACTIVATION_EVIDENCE` (amended by cutover audit); `SIX_HOUR_VALIDATION_PENDING=NO` (audit complete). |
 
 ## CL-2026-09-03 — M3.1 direct full-fleet production activation
 
