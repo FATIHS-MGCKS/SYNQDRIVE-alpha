@@ -5,7 +5,15 @@ import {
   observationFreshnessIsDecisionFresh,
 } from '../battery-freshness.policy';
 import { shouldPublish, stabilize } from '../soh-publication';
-import type { LvEstimatedHealthAssessment } from './lv-estimated-health-assessment.policy';
+import type {
+  LvAssessmentTrack,
+  LvEstimatedHealthAssessment,
+} from './lv-estimated-health-assessment.policy';
+import {
+  isKnownPublicationTrack,
+  resolvePublicationAuthorityEpochChanged,
+  type LvPublicationTrackObservability,
+} from './lv-publication-authority-epoch.policy';
 import {
   LV_PUBLICATION_CONTAMINATION_DOMINANCE_MAX_RATIO,
   LV_PUBLICATION_EWMA_ALPHA,
@@ -45,6 +53,8 @@ export interface LvPublicationEvidenceSummary {
 
 export interface LvPublicationPreviousState {
   publicationId: string;
+  assessmentId: string | null;
+  assessmentTrack: LvPublicationTrackObservability;
   publishedEstimatedHealth: number | null;
   stabilizedEstimatedHealth: number | null;
   maturity: LvPublicationMaturity;
@@ -59,6 +69,10 @@ export interface EvaluateLvPublicationPolicyInput {
   assessment: LvEstimatedHealthAssessment | null;
   evidence: LvPublicationEvidenceSummary;
   previous: LvPublicationPreviousState | null;
+  /** When true, execution is a same-assessment retry — no new EWMA/hysteresis evolution. */
+  isSameAssessmentRetry?: boolean;
+  /** When true, evaluate stale lifecycle materialization for previous only. */
+  materializeStaleLifecycle?: boolean;
   /** Explicitly ignored for publication freshness (Rule 9). */
   liveVoltageObservedAt?: string | null;
   now?: Date;
@@ -75,6 +89,9 @@ export interface LvPublicationDecision {
   supersedePublicationId: string | null;
   staleAt: string | null;
   assessmentEvidenceObservedAt: string | null;
+  publicationAuthorityEpochChanged: boolean;
+  previousAssessmentTrack: LvPublicationTrackObservability;
+  currentAssessmentTrack: LvAssessmentTrack | 'UNKNOWN';
   reasons: LvPublicationReason[];
 }
 
@@ -254,6 +271,52 @@ function evaluateStalePrevious(
   return freshness.observationState === 'STALE';
 }
 
+/** Exported for service-layer lifecycle repair (same pub identity, no new EWMA). */
+export function isLvPublicationPreviousStale(
+  previous: LvPublicationPreviousState,
+  now: Date = new Date(),
+): boolean {
+  return evaluateStalePrevious(previous, now);
+}
+
+function emptyAuthorityContext(
+  assessment: LvEstimatedHealthAssessment | null,
+  previous: LvPublicationPreviousState | null,
+): Pick<
+  LvPublicationDecision,
+  | 'publicationAuthorityEpochChanged'
+  | 'previousAssessmentTrack'
+  | 'currentAssessmentTrack'
+> {
+  const currentTrack = assessment?.assessmentTrack ?? 'UNKNOWN';
+  const previousTrack = previous?.assessmentTrack ?? 'UNKNOWN';
+  return {
+    previousAssessmentTrack: previousTrack,
+    currentAssessmentTrack: isKnownPublicationTrack(currentTrack)
+      ? currentTrack
+      : 'UNKNOWN',
+    publicationAuthorityEpochChanged: isKnownPublicationTrack(currentTrack)
+      ? resolvePublicationAuthorityEpochChanged({
+          previousTrack,
+          currentTrack,
+        })
+      : false,
+  };
+}
+
+function roundedStabilizedFrom(
+  baseline: number | null,
+  rawScore: number,
+): number {
+  const { stabilized } = stabilize(
+    baseline,
+    rawScore,
+    LV_PUBLICATION_EWMA_ALPHA,
+    LV_PUBLICATION_EWMA_DAMPED_ALPHA,
+  );
+  return Math.round(stabilized * 100) / 100;
+}
+
 /**
  * Evaluates LV Battery Health V2 publication policy.
  * Live voltage timestamps must not be passed as assessment evidence freshness.
@@ -277,6 +340,7 @@ export function evaluateLvPublicationPolicy(
       staleAt: null,
       assessmentEvidenceObservedAt:
         input.previous?.assessmentEvidenceObservedAt ?? null,
+      ...emptyAuthorityContext(input.assessment, input.previous),
       reasons: [
         reason(
           'publication_flag_disabled',
@@ -298,6 +362,7 @@ export function evaluateLvPublicationPolicy(
       supersedePublicationId: null,
       staleAt: null,
       assessmentEvidenceObservedAt: null,
+      ...emptyAuthorityContext(input.assessment, input.previous),
       reasons: [
         reason(
           'unsupported_profile',
@@ -308,6 +373,35 @@ export function evaluateLvPublicationPolicy(
   }
 
   if (!input.assessment) {
+    if (
+      input.materializeStaleLifecycle &&
+      input.previous &&
+      evaluateStalePrevious(input.previous, now)
+    ) {
+      return {
+        policyVersion: LV_PUBLICATION_POLICY_VERSION,
+        maturity: 'STALE',
+        userFacingPublished: false,
+        shouldPersistPublication: true,
+        publishedEstimatedHealth: input.previous.publishedEstimatedHealth,
+        stabilizedEstimatedHealth: input.previous.stabilizedEstimatedHealth,
+        hysteresisBlocked: false,
+        supersedePublicationId: null,
+        staleAt: new Date(
+          new Date(input.previous.publishedAt).getTime() +
+            LV_PUBLICATION_OBSERVATION_STALE_MS,
+        ).toISOString(),
+        assessmentEvidenceObservedAt: input.previous.assessmentEvidenceObservedAt,
+        ...emptyAuthorityContext(input.assessment, input.previous),
+        reasons: [
+          reason(
+            'publication_stale',
+            'Publication-Evidence ist veraltet — kein Live-Spannungs-Refresh',
+          ),
+        ],
+      };
+    }
+
     return {
       policyVersion: LV_PUBLICATION_POLICY_VERSION,
       maturity: 'UNAVAILABLE',
@@ -320,13 +414,43 @@ export function evaluateLvPublicationPolicy(
       staleAt: null,
       assessmentEvidenceObservedAt:
         input.previous?.assessmentEvidenceObservedAt ?? null,
+      ...emptyAuthorityContext(input.assessment, input.previous),
       reasons: [
         reason('missing_assessment', 'Kein Assessment für Publication'),
       ],
     };
   }
 
-  if (input.previous && evaluateStalePrevious(input.previous, now)) {
+  const authorityContext = emptyAuthorityContext(input.assessment, input.previous);
+
+  if (!isKnownPublicationTrack(input.assessment.assessmentTrack)) {
+    return {
+      policyVersion: LV_PUBLICATION_POLICY_VERSION,
+      maturity: 'UNAVAILABLE',
+      userFacingPublished: false,
+      shouldPersistPublication: false,
+      publishedEstimatedHealth: input.previous?.publishedEstimatedHealth ?? null,
+      stabilizedEstimatedHealth: input.previous?.stabilizedEstimatedHealth ?? null,
+      hysteresisBlocked: false,
+      supersedePublicationId: null,
+      staleAt: null,
+      assessmentEvidenceObservedAt:
+        input.evidence.latestAssessmentEvidenceObservedAt,
+      ...authorityContext,
+      reasons: [
+        reason(
+          'unknown_assessment_track',
+          'Assessment-Track unbekannt — keine Publication',
+        ),
+      ],
+    };
+  }
+
+  if (
+    input.materializeStaleLifecycle &&
+    input.previous &&
+    evaluateStalePrevious(input.previous, now)
+  ) {
     return {
       policyVersion: LV_PUBLICATION_POLICY_VERSION,
       maturity: 'STALE',
@@ -341,6 +465,7 @@ export function evaluateLvPublicationPolicy(
           LV_PUBLICATION_OBSERVATION_STALE_MS,
       ).toISOString(),
       assessmentEvidenceObservedAt: input.previous.assessmentEvidenceObservedAt,
+      ...authorityContext,
       reasons: [
         reason(
           'publication_stale',
@@ -349,6 +474,19 @@ export function evaluateLvPublicationPolicy(
       ],
     };
   }
+
+  const stabilizationPrevious =
+    input.previous && !evaluateStalePrevious(input.previous, now)
+      ? input.previous
+      : null;
+  const stabilizationBaseline =
+    authorityContext.publicationAuthorityEpochChanged
+      ? null
+      : (stabilizationPrevious?.stabilizedEstimatedHealth ?? null);
+  const hysteresisBaseline =
+    authorityContext.publicationAuthorityEpochChanged
+      ? null
+      : (stabilizationPrevious?.publishedEstimatedHealth ?? null);
 
   const { maturity, reasons: maturityReasons } = deriveTargetMaturity({
     assessment: input.assessment,
@@ -363,13 +501,14 @@ export function evaluateLvPublicationPolicy(
       maturity,
       userFacingPublished: false,
       shouldPersistPublication: false,
-      publishedEstimatedHealth: input.previous?.publishedEstimatedHealth ?? null,
-      stabilizedEstimatedHealth: input.previous?.stabilizedEstimatedHealth ?? null,
+      publishedEstimatedHealth: stabilizationPrevious?.publishedEstimatedHealth ?? null,
+      stabilizedEstimatedHealth: stabilizationPrevious?.stabilizedEstimatedHealth ?? null,
       hysteresisBlocked: false,
       supersedePublicationId: null,
       staleAt: null,
       assessmentEvidenceObservedAt:
         input.evidence.latestAssessmentEvidenceObservedAt,
+      ...authorityContext,
       reasons,
     };
   }
@@ -381,13 +520,14 @@ export function evaluateLvPublicationPolicy(
       maturity: 'CALIBRATING',
       userFacingPublished: false,
       shouldPersistPublication: false,
-      publishedEstimatedHealth: input.previous?.publishedEstimatedHealth ?? null,
-      stabilizedEstimatedHealth: input.previous?.stabilizedEstimatedHealth ?? null,
+      publishedEstimatedHealth: stabilizationPrevious?.publishedEstimatedHealth ?? null,
+      stabilizedEstimatedHealth: stabilizationPrevious?.stabilizedEstimatedHealth ?? null,
       hysteresisBlocked: false,
       supersedePublicationId: null,
       staleAt: null,
       assessmentEvidenceObservedAt:
         input.evidence.latestAssessmentEvidenceObservedAt,
+      ...authorityContext,
       reasons: [
         ...reasons,
         reason('missing_score', 'Kein Score für Publication'),
@@ -395,19 +535,46 @@ export function evaluateLvPublicationPolicy(
     };
   }
 
-  const { stabilized } = stabilize(
-    input.previous?.stabilizedEstimatedHealth ?? null,
-    rawScore,
-    LV_PUBLICATION_EWMA_ALPHA,
-    LV_PUBLICATION_EWMA_DAMPED_ALPHA,
-  );
-  const roundedStabilized = Math.round(stabilized * 100) / 100;
+  if (input.isSameAssessmentRetry) {
+    return {
+      policyVersion: LV_PUBLICATION_POLICY_VERSION,
+      maturity,
+      userFacingPublished:
+        stabilizationPrevious?.publishedEstimatedHealth != null,
+      shouldPersistPublication: false,
+      publishedEstimatedHealth:
+        stabilizationPrevious?.publishedEstimatedHealth ?? null,
+      stabilizedEstimatedHealth:
+        stabilizationPrevious?.stabilizedEstimatedHealth ?? roundedStabilizedFrom(
+          stabilizationBaseline,
+          rawScore,
+        ),
+      hysteresisBlocked: false,
+      supersedePublicationId: null,
+      staleAt: new Date(
+        now.getTime() + LV_PUBLICATION_OBSERVATION_STALE_MS,
+      ).toISOString(),
+      assessmentEvidenceObservedAt:
+        input.evidence.latestAssessmentEvidenceObservedAt,
+      ...authorityContext,
+      reasons: [
+        ...reasons,
+        reason(
+          'same_assessment_retry_converged',
+          'Wiederholte Ausführung — keine neue Evidence-Anwendung',
+        ),
+      ],
+    };
+  }
+
+  const roundedStabilized = roundedStabilizedFrom(stabilizationBaseline, rawScore);
 
   const maturityAllowsFirstPublish =
     maturity === 'PROVISIONAL' || maturity === 'STABLE';
-  const currentPublished = input.previous?.publishedEstimatedHealth ?? null;
+  const currentPublished = hysteresisBaseline;
   const hysteresisBlocked =
     currentPublished != null &&
+    !authorityContext.publicationAuthorityEpochChanged &&
     !shouldPublish(
       roundedStabilized,
       currentPublished,
@@ -434,13 +601,26 @@ export function evaluateLvPublicationPolicy(
     publishedEstimatedHealth != null &&
     publishedEstimatedHealth !== currentPublished;
   const firstPublication = currentPublished == null && publishedEstimatedHealth != null;
+  const publicationPersistSignificant =
+    firstPublication ||
+    valueChanged ||
+    authorityContext.publicationAuthorityEpochChanged;
   const shouldPersistPublication =
-    maturityAllowsFirstPublish && (firstPublication || valueChanged);
+    maturityAllowsFirstPublish && publicationPersistSignificant && !hysteresisBlocked;
 
   const supersedePublicationId =
-    shouldPersistPublication && input.previous?.publicationId
-      ? input.previous.publicationId
+    shouldPersistPublication && stabilizationPrevious?.publicationId
+      ? stabilizationPrevious.publicationId
       : null;
+
+  if (authorityContext.publicationAuthorityEpochChanged) {
+    reasons.push(
+      reason(
+        'publication_authority_epoch_changed',
+        'Track-Autorität gewechselt — Stabilisierung zurückgesetzt',
+      ),
+    );
+  }
 
   if (supersedePublicationId) {
     reasons.push(
@@ -475,6 +655,7 @@ export function evaluateLvPublicationPolicy(
     staleAt,
     assessmentEvidenceObservedAt:
       input.evidence.latestAssessmentEvidenceObservedAt,
+    ...authorityContext,
     reasons,
   };
 }
@@ -491,6 +672,9 @@ export function buildLvPublicationReasonPayload(
     hysteresisBlocked: decision.hysteresisBlocked,
     supersedePublicationId: decision.supersedePublicationId,
     assessmentEvidenceObservedAt: decision.assessmentEvidenceObservedAt,
+    publicationAuthorityEpochChanged: decision.publicationAuthorityEpochChanged,
+    previousAssessmentTrack: decision.previousAssessmentTrack,
+    currentAssessmentTrack: decision.currentAssessmentTrack,
     liveVoltageIgnoredForFreshness: true,
     reasons: decision.reasons,
     ...extra,

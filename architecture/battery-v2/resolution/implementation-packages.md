@@ -5,7 +5,7 @@
 | Package | Title | Readiness | Priority |
 |---------|-------|-----------|----------|
 | `BAT-V2-RUNTIME-PKG-01` | LV canonical assessment handoff | IMPLEMENTED | P0_ACTIVATION_BLOCKER |
-| `BAT-V2-RUNTIME-PKG-02` | LV publication handoff + reconcile | IMPLEMENTATION_READY | P0_ACTIVATION_BLOCKER |
+| `BAT-V2-RUNTIME-PKG-02` | LV publication handoff + reconcile | IMPLEMENTED | P0_ACTIVATION_BLOCKER |
 | `BAT-V2-RUNTIME-PKG-03` | Timestamp provenance model | DECISION_REQUIRED | P1 |
 | `BAT-V2-RUNTIME-PKG-04` | HV SOH usable-candidate iteration | IMPLEMENTATION_READY | P2 |
 | `BAT-V2-RUNTIME-PKG-05` | HEV product-policy alignment | DECISION_REQUIRED | P1 |
@@ -39,6 +39,8 @@
 
 ## PKG-02 — LV publication handoff
 
+**Runtime status:** `IMPLEMENTED` (2026-09-02) — not `PRODUCTION_VALIDATED`.
+
 | Field | Value |
 |-------|-------|
 | **Dependencies (dev)** | PKG-01 code may proceed in parallel for handler wiring; e2e needs both |
@@ -50,7 +52,7 @@
 | **Handoff** | Publication enqueue after deterministic assessment selection; policy in `BatteryPublicationService` only — **not** “enqueue every persistedAssessmentId” |
 | **Assessment-track authority** | **VALIDATED (D4)** — freshness-conditional `WORKSHOP_OVERRIDE > TELEMETRY` within D4 authority epoch; cross-track stabilization epoch + retention≠fallback; previous-track observability required at implementation |
 | **publicationVersion** | **VALIDATED (D5)** — `LV_PUBLICATION_CONTRACT_VERSION = 1`; canonical producers must explicitly supply before enqueue; repository `?? 1` is compatibility fallback only |
-| **PKG-02 runtime note** | `IMPLEMENTATION_READY` — D4 + full D5 contract including three-layer idempotency, previous/current identity isolation, execution-idempotent same-assessment retry, self-supersession prohibition; runtime gaps remain open |
+| **PKG-02 runtime note** | `IMPLEMENTED` — D4 selector + D5 contract/handoff/reconcile + strict payload validation + publication-service lifecycle/idempotency hardening |
 | **Configuration invariant** | **VALIDATED (D3)** — resolved for PKG-02 |
 | **Rollback (pre-M4)** | Disable `BATTERY_V2_PUBLICATION_ENABLED` first (restores legacy capture when REST_SHADOW ON) |
 | **Test scope** | E2E REST→assess→pub with multi-track scenarios |

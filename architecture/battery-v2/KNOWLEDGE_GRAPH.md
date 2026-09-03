@@ -1,6 +1,6 @@
 # Battery V2 — Knowledge Graph (Human View)
 
-**Last updated:** 2026-09-02 (D5 execution idempotency precision)  
+**Last updated:** 2026-09-02 (PKG-02 publication handoff runtime)  
 **Maturity:** Phase 2+3 substantially reconstructed — open gaps remain  
 Machine-readable source: [graph/nodes.yaml](./graph/nodes.yaml), [graph/edges.yaml](./graph/edges.yaml)
 
@@ -26,12 +26,14 @@ This Human View is a high-level projection of current machine authority. It must
         ▼
 [BatteryMeasurement]  ── BAT-V2-POL-NO-FABRICATE-001
         │
-        ╳  MISSING automatic handoff  BAT-V2-GAP-LV-CANONICAL-ASSESSMENT-HANDOFF-001
+        ▼
+[BATTERY_ASSESSMENT_RECOMPUTE]  PKG-01 IMPLEMENTED
         │
         ▼
-[BatteryAssessment]  (when assessment job runs — legacy/reconcile paths)
+[BatteryAssessment]
         │
-        ╳  MISSING automatic handoff  BAT-V2-GAP-LV-PUBLICATION-HANDOFF-001
+        ▼
+[D4 track arbitration + BATTERY_PUBLICATION_UPDATE]  PKG-02 IMPLEMENTED
         │
         ▼
 [BatteryPublication]  (when flag on + updateLvPublication invoked)

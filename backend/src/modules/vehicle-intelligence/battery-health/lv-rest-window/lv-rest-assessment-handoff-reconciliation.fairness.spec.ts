@@ -220,6 +220,7 @@ function buildFairnessHarness(
       { enqueueStartProxy: jest.fn() } as never,
       { reconcilePeriodic: jest.fn().mockResolvedValue(0) } as never,
       assessmentHandoff,
+      { reconcilePublicationHandoff: jest.fn(), touchReconciliationFairness: jest.fn() } as never,
     );
 
   return {

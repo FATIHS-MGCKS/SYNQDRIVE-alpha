@@ -53,6 +53,19 @@ import {
   restTargetTypeForMeasurementType,
 } from '../lv-rest-window/lv-rest-assessment-handoff.policy';
 import { LvRestAssessmentHandoffService } from '../lv-rest-window/lv-rest-assessment-handoff.service';
+import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-handoff.service';
+import {
+  arbitrateLvPublicationTrackFromEpochEvidence,
+  type LvPublicationArbitrationCandidate,
+} from '../lv-assessment/lv-publication-track-arbitration.policy';
+import {
+  readPublicationHandoffFromAssessmentSummary,
+} from '../lv-assessment/lv-publication-handoff.metadata';
+import {
+  LV_PUBLICATION_HANDOFF_RECONCILE_LOOKBACK_MS,
+  maxScannedPublicationHandoffCandidates,
+} from '../lv-assessment/lv-publication-handoff.policy';
+import { fetchPublicationHandoffReconcileCandidates } from '../lv-assessment/lv-publication-handoff-reconciliation.query';
 import { buildStartProxyMeasurementIdempotencyKey } from '../lv-start-proxy/battery-start-proxy.policy';
 import { BatteryV2TripStartProducer } from './battery-v2-trip-start.producer';
 import {
@@ -75,6 +88,7 @@ export interface BatteryV2ReconciliationResult {
   tripStarts: number;
   rechargeSegments: number;
   assessments: number;
+  publicationHandoffs: number;
   capabilityRefresh: number;
   capabilitySignalLoss: number;
 }
@@ -95,6 +109,7 @@ export class BatteryV2ReconciliationService {
     private readonly tripStartProducer: BatteryV2TripStartProducer,
     private readonly rechargeReconcileProducer: HvRechargeSessionReconcileProducerService,
     private readonly assessmentHandoff: LvRestAssessmentHandoffService,
+    private readonly publicationHandoff: LvPublicationHandoffService,
     @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
@@ -107,6 +122,7 @@ export class BatteryV2ReconciliationService {
       tripStarts: 0,
       rechargeSegments: 0,
       assessments: 0,
+      publicationHandoffs: 0,
       capabilityRefresh: 0,
       capabilitySignalLoss: 0,
     };
@@ -119,6 +135,7 @@ export class BatteryV2ReconciliationService {
     result.assessments =
       (await this.reconcileCanonicalRestAssessmentHandoffs(batch)) +
       (await this.reconcilePendingAssessments(batch));
+    result.publicationHandoffs = await this.reconcilePublicationHandoffs(batch);
     result.capabilityRefresh =
       await this.capabilityRefresh.reconcilePeriodicRefresh(batch);
     result.capabilitySignalLoss =
@@ -131,6 +148,7 @@ export class BatteryV2ReconciliationService {
       result.tripStarts +
       result.rechargeSegments +
       result.assessments +
+      result.publicationHandoffs +
       result.capabilityRefresh +
       result.capabilitySignalLoss;
 
@@ -156,6 +174,7 @@ export class BatteryV2ReconciliationService {
       ['trip_starts', result.tripStarts],
       ['recharge_segments', result.rechargeSegments],
       ['assessments', result.assessments],
+      ['publication_handoffs', result.publicationHandoffs],
       ['capability_refresh', result.capabilityRefresh],
       ['capability_signal_loss', result.capabilitySignalLoss],
     ];
@@ -923,5 +942,89 @@ export class BatteryV2ReconciliationService {
     }
 
     return enqueued;
+  }
+
+  /**
+   * Repair missed canonical assessment → publication handoffs using durable epoch evidence.
+   */
+  private async reconcilePublicationHandoffs(batch: number): Promise<number> {
+    const lookbackFrom = new Date(Date.now() - LV_PUBLICATION_HANDOFF_RECONCILE_LOOKBACK_MS);
+    const maxScanned = maxScannedPublicationHandoffCandidates(batch);
+    const candidates = await fetchPublicationHandoffReconcileCandidates(this.prisma, {
+      lookbackFrom,
+      limit: maxScanned,
+    });
+
+    let repaired = 0;
+
+    for (const row of candidates) {
+      const handoffMeta = readPublicationHandoffFromAssessmentSummary(row.inputSummary);
+      if (!handoffMeta) continue;
+
+      const epochRows = await this.prisma.batteryAssessment.findMany({
+        where: {
+          organizationId: row.organizationId,
+          id: { in: handoffMeta.epochAssessmentIds },
+        },
+        select: {
+          id: true,
+          inputSummary: true,
+        },
+      });
+
+      const epochCandidates: LvPublicationArbitrationCandidate[] = epochRows
+        .map((assessmentRow) => {
+          const summary =
+            assessmentRow.inputSummary &&
+            typeof assessmentRow.inputSummary === 'object' &&
+            !Array.isArray(assessmentRow.inputSummary)
+              ? (assessmentRow.inputSummary as Record<string, unknown>)
+              : {};
+          const track = summary.assessmentTrack;
+          const mode = summary.assessmentMode;
+          if (track !== 'TELEMETRY' && track !== 'WORKSHOP_OVERRIDE') {
+            return null;
+          }
+          if (mode !== 'CANONICAL' && mode !== 'SHADOW') {
+            return null;
+          }
+          return {
+            assessmentId: assessmentRow.id,
+            assessmentTrack: track,
+            assessmentMode: mode,
+          };
+        })
+        .filter((row): row is LvPublicationArbitrationCandidate => row != null);
+
+      const arbitration = arbitrateLvPublicationTrackFromEpochEvidence(epochCandidates);
+      if (!arbitration.selected) continue;
+
+      const handoffInput = {
+        organizationId: row.organizationId,
+        vehicleId: row.vehicleId,
+        epochCandidates,
+        correlationPrefix: 'lv-pub-reconcile',
+      };
+
+      if (repaired < batch) {
+        const result = await this.publicationHandoff.reconcilePublicationHandoff(
+          handoffInput,
+        );
+        if (result.enqueued) {
+          repaired += 1;
+        }
+        continue;
+      }
+
+      if (handoffMeta.idempotencyKey) {
+        await this.publicationHandoff.touchReconciliationFairness({
+          organizationId: row.organizationId,
+          assessmentId: arbitration.selected.assessmentId,
+          idempotencyKey: handoffMeta.idempotencyKey,
+        });
+      }
+    }
+
+    return repaired;
   }
 }

@@ -151,6 +151,7 @@ function buildHandlerAndReconciliation() {
     { enqueueStartProxy: jest.fn() } as any,
     { reconcilePeriodic: jest.fn().mockResolvedValue(0) } as any,
     { ensureAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }) } as any,
+    { reconcilePublicationHandoff: jest.fn(), touchReconciliationFairness: jest.fn() } as any,
   );
 
   const basePayload = (restTargetType: 'REST_60M' | 'REST_6H') => ({

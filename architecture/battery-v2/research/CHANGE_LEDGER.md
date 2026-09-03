@@ -8,6 +8,104 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+---
+
+---
+
+---
+
+## CL-2026-09-03 — M3.0B canary-readiness closure (PR #1515)
+
+| Field | Content |
+|-------|---------|
+| **CHANGE** | Failed-job forensic triage (60 historical PKG-01 failures, 0 PKG-02, 0 in 24h); observability helper `--since` UTC window + production config authority + crash-proof lastAttemptAt SQL; isolated bounded-LIMIT starvation test; production `prisma migrate status` up to date |
+| **VALIDATION** | POSTGRES_SMOKE PASS PKG-02 7/7 + PKG-01 2/2; regression + graph PASS |
+| **REMAINING_GAPS** | PR #1515 merge + deploy before M3.1; failed-depth baseline 60 is historical delta anchor |
+| **DECISION_STATUS** | M3.0B COMPLETE — M3.1 pending merge/deploy |
+
+## CL-2026-09-03 — M3.0 pre-deploy preflight (PKG-01 + PKG-02)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | `POSTGRES_SMOKE = NOT_EXECUTED`; production baseline undocumented for M3.1 canary. |
+| **CHANGE** | Isolated PostgreSQL 16 smoke on VPS (`synqdrive_bv2_m3_smoke_*`, `prisma db push` bootstrap); PKG-02/PKG-01 gated suites PASS; fixed `lv-publication-handoff.mutation.ts` text id cast (`::uuid` removed); stress-test fixture isolation; read-only `battery-v2-m3-canary-observability.sh`. |
+| **OBSERVATION** | Production `battery_assessments.id` is `text`; row-lock SQL `::uuid` cast fails at runtime on `touchReconciliationFairness`. |
+| **VALIDATION** | POSTGRES_SMOKE PASS (PKG-02 6/6, PKG-01 2/2); PKG-01/02 unit regression; graph validator PASS |
+| **NON_EFFECTS** | No deploy; `BATTERY_V2_PUBLICATION_ENABLED` remains OFF; no M4; PKG-01/02 not `PRODUCTION_VALIDATED` |
+| **REMAINING_GAPS** | Runtime uuid-cast fix + stress-test patch must merge before M3.1 deploy; production canary/soak not started |
+| **DECISION_STATUS** | M3.0 COMPLETE — M3.1 blocked on patch merge |
+
+## CL-2026-09-02 — PKG-02 PostgreSQL contract alignment (PR #1513)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Reconciliation SQL accepted fractional/string publicationVersion before LIMIT while reader requires integer canonical version; `jsonb_array_length` on legacy epochAssessmentIds; malformed lastAttemptAt test contradicted query semantics (excluded repairable carriers). |
+| **CHANGE** | SQL publicationVersion parity via `to_jsonb(LV_PUBLICATION_CONTRACT_VERSION)`; removed `jsonb_array_length`; lastAttemptAt treated as fairness metadata (NULLS FIRST, repairable); gated postgres fixtures for version/epoch/lastAttemptAt + starvation stress. |
+| **WHY** | Pre-LIMIT SQL contract must be at least as strict as `readPublicationHandoffFromAssessmentSummary`; query must not abort on non-array epochAssessmentIds. |
+| **VALIDATION** | PKG-02 focused 20 passed (6 postgres skipped); PKG-01/stage-1 99 passed; lifecycle 6 passed; graph validator PASS; tsc PASS |
+| **NON_EFFECTS** | No deploy; no migration; D4/D5 semantics unchanged |
+| **REMAINING_GAPS** | PRODUCTION_VALIDATED; POSTGRES_SMOKE = NOT_EXECUTED |
+| **DECISION_STATUS** | PKG-02 IMPLEMENTED — not PRODUCTION_VALIDATED |
+
+## CL-2026-09-02 — PKG-02 liveness/graph correction pass (PR #1513)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Stale `bullJobId` permanently blocked reconciliation via `skip_enqueued`; malformed reconciliation rows could starve valid backlog; unsafe `lastAttemptAt` timestamptz cast; stale graph edge wording. |
+| **CHANGE** | Claim-age-based reservation recovery (clears stale `bullJobId`); hardened reconciliation SQL invariants + safe ISO ordering; stale-bullJobId recovery tests A–F; malformed postgres fixtures; graph temporal semantics; persistence doc structure fix; integration uses captured producer payload. |
+| **WHY** | Reconciliation liveness must not be permanently blocked by historical Bull metadata or malformed legacy rows. |
+| **VALIDATION** | PKG-02 suites + stale recovery + PKG-01/stage-1 regression; graph validator PASS |
+| **NON_EFFECTS** | No deploy; no migration; D4/D5 semantics unchanged |
+| **REMAINING_GAPS** | PRODUCTION_VALIDATED; POSTGRES_SMOKE when DATABASE_URL unavailable |
+| **DECISION_STATUS** | PKG-02 IMPLEMENTED — not PRODUCTION_VALIDATED |
+
+## CL-2026-09-02 — PKG-02 merge-readiness pass (PR #1513)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Concurrency tests were sequential retry proofs; integration spec mocked `BatteryPublicationService`; TEST 5 modeled first-creation not crash/retry; graph edges had present-tense PRE-PKG-02 gap language; reconciliation SQL lacked CANONICAL filter; append-only tension undocumented. |
+| **CHANGE** | `reserveLvPublicationHandoffEnqueue` row-locked claim; overlapping `Promise.all` replica tests; real service-chain integration harness; TEST 6 crash-after-pub:B retry + `repairPendingSupersessionOnRetry`; `findPublicationById` + active-read-path proof; reconciliation CANONICAL filter + SHADOW exclusion assertion; graph edge temporal semantics; `persistence/models.md` operational envelope authority. |
+| **WHY** | Merge-readiness evidence for true concurrency, real integration chain, D5 supersession crash window, and authority documentation without semantic drift. |
+| **VALIDATION** | PKG-02 suites 24 passed (2 postgres skipped); PKG-01/stage-1 56 passed; `validate-graph.sh` PASS |
+| **NON_EFFECTS** | No deploy; no migration; `BATTERY_V2_PUBLICATION_ENABLED` default OFF unchanged |
+| **REMAINING_GAPS** | PRODUCTION_VALIDATED; POSTGRES_SMOKE when DATABASE_URL unavailable |
+| **DECISION_STATUS** | PKG-02 IMPLEMENTED — not PRODUCTION_VALIDATED |
+| **EVIDENCE** | `lv-publication-handoff.integration.spec.ts`, `lv-publication-handoff.mutation.ts`, `battery-publication.lifecycle-idempotency.spec.ts` |
+
+## CL-2026-09-02 — PKG-02 runtime correction pass (PR #1513)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Publication handoff used stale `inputSummary` snapshot updates without monotonic guard; reconciliation SQL used Prisma model names; same-assessment STABLE→STALE lifecycle blocked; `ok:false` acknowledged as EXECUTED; `publicationVersion` accepted numeric strings. |
+| **OBSERVATION** | Producer/worker race could regress EXECUTED→ENQUEUED; `BatteryAssessment` is append-only evidence but PKG-02 authority stores operational `publicationHandoff` on selected rows (`CURRENT_STATE.md`). |
+| **CHANGE** | Row-locked `mutateBatteryAssessmentPublicationHandoff` + monotonic `mergePublicationHandoffState`; corrected `battery_assessments` reconciliation SQL; same-assessment lifecycle repair in `BatteryPublicationService`; handler throws on `ok:false`; strict `typeof number` publicationVersion validation; race/lifecycle/integration/postgres-gated tests. |
+| **WHY** | Runtime correctness, concurrency safety, and evidence-backed idempotency without schema migration. |
+| **VALIDATION** | PKG-02 D4/D5 + handoff concurrency + lifecycle + reconciliation + integration tests; graph validator |
+| **NON_EFFECTS** | No deploy; no `BATTERY_V2_PUBLICATION_ENABLED` default change; no DB migration |
+| **REMAINING_GAPS** | PRODUCTION_VALIDATED; M3 soak |
+| **EVIDENCE** | `lv-publication-handoff.mutation.ts`, `lv-publication-handoff-reconciliation.query.ts` |
+
+## CL-2026-09-02 — PKG-02 LV publication handoff runtime
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Assessment recompute persisted canonical LV assessments but stopped before publication enqueue; no D4 selector; `BATTERY_PUBLICATION_UPDATE` payload validation gap; no publication reconciliation. |
+| **OBSERVATION** | PKG-01 merged (PR #1510); D4/D5 validated; runtime needed direct handoff + reconcile without enabling customer publication effects. |
+| **HYPOTHESIS** | Current-epoch D4 arbitration + D5 `pub:{assessmentId}:v1` + durable `publicationHandoff` metadata enables idempotent direct/retry/reconcile paths without schema migration. |
+| **CHANGE** | Implement `LvPublicationHandoffService`, D4 track arbitration policy, strict `BATTERY_PUBLICATION_UPDATE` validation, assessment handler wiring, publication reconciliation query, `BatteryPublicationService` lifecycle/idempotency hardening (authority epoch reset, same-assessment retry, previous/current identity isolation, self-supersession guard). |
+| **WHY** | Complete canonical LV pipeline mechanically while `BATTERY_V2_PUBLICATION_ENABLED` remains OFF. |
+| **EXPECTED_EFFECT** | REST→assess→D4→`BATTERY_PUBLICATION_UPDATE`→`BatteryPublicationService` chain converges deterministically; reconciliation repairs missed handoffs from epoch evidence. |
+| **VALIDATION** | PKG-02 unit/integration tests; `bash architecture/battery-v2/scripts/validate-graph.sh`; graph validator PASS |
+| **OBSERVED_EFFECT** | 14 PKG-02-focused backend suites PASS (124 tests); graph validator PASS |
+| **NON_EFFECTS** | No `BATTERY_V2_PUBLICATION_ENABLED` activation; no deploy; no DB migration; no M4; no PKG-03; not `PRODUCTION_VALIDATED` |
+| **REGRESSIONS_OR_TRADEOFFS** | Publication policy stale lifecycle path now requires `materializeStaleLifecycle` for previous-only updates |
+| **REMAINING_GAPS** | M3 production validation; PKG-03 timestamp provenance; M4 cutover |
+| **DECISION_STATUS** | PKG-02 `IMPLEMENTED` (runtime); D4/D5 remain VALIDATED architecture authority |
+| **AFFECTED_GRAPH** | CURRENT_STATE PKG-02 status; implementation-packages PKG-02 |
+| **EVIDENCE** | `backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-publication-handoff.service.ts` |
+
 ## CL-2026-09-02 — D5 execution idempotency precision
 
 | Field | Content |
