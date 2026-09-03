@@ -20,11 +20,17 @@ _resolve_script_dir() {
     printf '%s\n' "${BATTERY_V2_OPS_SCRIPT_DIR}"
     return 0
   fi
-  local src="${BASH_SOURCE[0]:-}"
-  if [[ -n "$src" && "$src" != "/dev/stdin" && "$src" != "bash" ]]; then
-    cd "$(dirname "$src")" && pwd
-    return 0
-  fi
+  local i src dir
+  for ((i = 0; i < ${#BASH_SOURCE[@]}; i++)); do
+    src="${BASH_SOURCE[$i]}"
+    [[ -z "$src" || "$src" == "main" || "$src" == "bash" || "$src" == "/dev/stdin" ]] && continue
+    [[ "$src" == */* ]] || continue
+    dir="$(cd "$(dirname "$src")" 2>/dev/null && pwd)" || continue
+    if [[ -f "${dir}/battery-v2-m3-1-production-snapshot.sh" ]]; then
+      printf '%s\n' "$dir"
+      return 0
+    fi
+  done
   cat >&2 <<'EOF'
 ERROR: Cannot resolve Battery V2 ops script directory.
 When piping this script via stdin (e.g. Cloud Agent SSH), set:
