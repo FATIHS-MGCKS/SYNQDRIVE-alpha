@@ -281,9 +281,14 @@ section_failed_jobs() {
     echo "Run on VPS with deployed backend (bullmq required)"
     return 0
   fi
-  (
-    cd /opt/synqdrive/current/backend
-    sudo bash -c "set -a; source '$BACKEND_ENV'; set +a; node - <<'NODE'
+  sudo BACKEND_ENV="$BACKEND_ENV" bash <<'EOS'
+set -euo pipefail
+cd /opt/synqdrive/current/backend
+set -a
+# shellcheck disable=SC1090
+source "$BACKEND_ENV"
+set +a
+node - <<'NODE'
 const { Queue } = require('bullmq');
 function redact(s){return String(s||'').replace(/[a-f0-9-]{36}/gi,'<uuid>').slice(0,200)}
 (async()=>{
@@ -306,7 +311,7 @@ function redact(s){return String(s||'').replace(/[a-f0-9-]{36}/gi,'<uuid>').slic
   await q.close();
 })().catch(e=>{console.error(e);process.exit(1)});
 NODE
-  )
+EOS
 }
 
 section_promql() {
