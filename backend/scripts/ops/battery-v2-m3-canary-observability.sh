@@ -282,7 +282,7 @@ section_failed_jobs() {
     return 0
   fi
   sudo BACKEND_ENV="$BACKEND_ENV" bash <<'EOS'
-set -euo pipefail
+set -eo pipefail
 cd /opt/synqdrive/current/backend
 set -a
 # shellcheck disable=SC1090
