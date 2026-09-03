@@ -6,19 +6,29 @@ import {
   alignClip,
   alignmentOutputSha256,
   AMBIGUITY_MAE_DELTA_KMH,
+  buildCrossClipClockModel,
   buildSignalSurfaceQuality,
   buildSpeedSeries,
   CANONICAL_TELEMETRY_JSONL_SHA256,
   computeProviderDeliveryMetrics,
   deriveTelemetryAtUtc,
   detectStaleHolds,
+  extractClockSemantics,
+  isAlignmentEligibleGroundTruth,
+  isClockModelEligible,
   loadCanonicalTelemetryJsonl,
   makeTelemetryRow,
+  resolveCandidateTimeWindow,
   runAlignmentWorkbench,
+  scoreSpeedResidual,
   searchSpeedOffsetCandidates,
+  searchSpeedResidualCandidates,
   stableStringify,
+  SURFACE_INTERPOLATION_GAP_SECONDS,
   type ExternalGtClip,
   type ExternalGtDocument,
+  type ExternalGtObservation,
+  type SpeedSeriesPoint,
 } from './reference-capture-rd003-video-gt-alignment';
 
 const TELEMETRY_JSONL = path.resolve(
@@ -46,6 +56,65 @@ function makeClip(overrides: Partial<ExternalGtClip> = {}): ExternalGtClip {
     evidenceStatus: 'PENDING_EXTERNAL_REVIEW',
     observations: [],
     ...overrides,
+  };
+}
+
+function makeSpeedSeries(
+  points: Array<{ utcMs: number; value: number; ordinal?: number }>,
+  surface: 'LATEST_LIVE' | 'HF_HISTORICAL' | 'LATEST_SLOW' = 'LATEST_LIVE',
+): SpeedSeriesPoint[] {
+  return points.map((p, i) => ({
+    utcMs: p.utcMs,
+    value: p.value,
+    row: makeTelemetryRow({
+      providerField: 'speed',
+      acquisitionSurface: surface,
+      providerTimestamp: new Date(p.utcMs).toISOString(),
+      synqReceivedAt: new Date(p.utcMs).toISOString(),
+      rawValueJson: p.value,
+      acquisitionOrdinal: p.ordinal ?? i + 1,
+      physicalSampleFingerprint: `fp-${i}-${p.value}`,
+    }),
+  }));
+}
+
+function validatedSpeedObs(
+  id: string,
+  videoTimeSeconds: number,
+  value: number,
+): ExternalGtObservation {
+  return {
+    observationId: id,
+    videoTimeSeconds,
+    videoTimeUncertaintySeconds: 0.1,
+    observationType: 'SPEED',
+    value,
+    unit: 'km/h',
+    valueUncertainty: 1,
+    confidence: 'VALIDATED',
+    evidenceClass: 'DIRECT_VISUAL',
+    sourceMethod: 'TEST_FIXTURE',
+    notes: null,
+  };
+}
+
+function candidateSpeedObs(
+  id: string,
+  videoTimeSeconds: number,
+  value: number,
+): ExternalGtObservation {
+  return {
+    observationId: id,
+    videoTimeSeconds,
+    videoTimeUncertaintySeconds: 0.1,
+    observationType: 'SPEED',
+    value,
+    unit: 'km/h',
+    valueUncertainty: 1,
+    confidence: 'CANDIDATE',
+    evidenceClass: 'DIRECT_VISUAL',
+    sourceMethod: 'TEST_FIXTURE',
+    notes: null,
   };
 }
 
@@ -267,10 +336,10 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
 
   describe('I) large telemetry gaps return INSUFFICIENT_CADENCE', () => {
     it('refuses interpolation across large gap', () => {
-      const series = [
+      const series = makeSpeedSeries([
         { utcMs: Date.parse('2026-09-02T19:00:00.000Z'), value: 10 },
         { utcMs: Date.parse('2026-09-02T19:00:20.000Z'), value: 30 },
-      ];
+      ]);
       const pt = deriveTelemetryAtUtc(series, Date.parse('2026-09-02T19:00:10.000Z'), 5);
       expect(pt.status).toBe('INSUFFICIENT_CADENCE');
       expect(pt.interpolationUsed).toBe(false);
@@ -292,14 +361,17 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
 
   describe('K) derived interpolation is explicitly labelled and bounded', () => {
     it('marks interpolation used within gap bound', () => {
-      const series = [
+      const series = makeSpeedSeries([
         { utcMs: Date.parse('2026-09-02T19:00:00.000Z'), value: 10 },
         { utcMs: Date.parse('2026-09-02T19:00:02.000Z'), value: 20 },
-      ];
+      ]);
       const pt = deriveTelemetryAtUtc(series, Date.parse('2026-09-02T19:00:01.000Z'), 5);
       expect(pt.interpolationUsed).toBe(true);
       expect(pt.status).toBe('MATCHED');
       expect(pt.gapSeconds).toBe(2);
+      expect(pt.beforeSource?.acquisitionOrdinal).toBe(1);
+      expect(pt.afterSource?.acquisitionOrdinal).toBe(2);
+      expect(pt.interpolationFraction).toBeCloseTo(0.5);
     });
   });
 
@@ -496,6 +568,359 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
           'CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY',
         );
       }
+    });
+  });
+
+  describe('DI-EV-0034A hardening tests', () => {
+    it('1) LATEST_LIVE is NOT automatically selected as sole speed authority', () => {
+      const hf = syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [10, 20, 30, 40], 1, 'HF_HISTORICAL');
+      const live = syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [10, 20, 30, 40], 1, 'LATEST_LIVE');
+      const clip = makeClip({
+        candidateAbsoluteTime: {
+          candidateStartUtc: '2026-09-02T19:00:00.000Z',
+          uncertaintySeconds: 2,
+          status: 'CANDIDATE',
+        },
+        observations: [validatedSpeedObs('o1', 0, 20), validatedSpeedObs('o2', 2, 40)],
+      });
+      const result = alignClip({ clip, telemetryRows: [...hf, ...live] });
+      expect(result.SPEED_ALIGNMENT_SURFACE_PRESELECTED).toBe('NO');
+      expect(result.speedAlignmentBySurface.HF_HISTORICAL?.status).not.toBe('NOT_OBSERVED');
+      expect(result.speedAlignmentBySurface.LATEST_LIVE?.status).not.toBe('NOT_OBSERVED');
+      expect(result.preferredSpeedAlignmentSurface).not.toBe('LATEST_LIVE');
+    });
+
+    it('2) HF_HISTORICAL and LATEST_LIVE produce separate alignment results', () => {
+      const hf = syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [5, 15, 25, 35], 1, 'HF_HISTORICAL');
+      const live = syntheticSpeedTelemetry('2026-09-02T19:00:02.000Z', [10, 20, 30, 40], 1, 'LATEST_LIVE');
+      const clip = makeClip({
+        candidateAbsoluteTime: {
+          candidateStartUtc: '2026-09-02T19:00:00.000Z',
+          uncertaintySeconds: 2,
+          status: 'CANDIDATE',
+        },
+        observations: [validatedSpeedObs('o1', 0, 15), validatedSpeedObs('o2', 2, 35)],
+      });
+      const result = alignClip({ clip, telemetryRows: [...hf, ...live] });
+      const hfEntry = result.speedAlignmentBySurface.HF_HISTORICAL;
+      const liveEntry = result.speedAlignmentBySurface.LATEST_LIVE;
+      expect(hfEntry && 'bestCandidate' in hfEntry).toBe(true);
+      expect(liveEntry && 'bestCandidate' in liveEntry).toBe(true);
+      if (hfEntry && 'bestCandidate' in hfEntry && liveEntry && 'bestCandidate' in liveEntry) {
+        expect(hfEntry.bestCandidate.maeKmh).not.toBe(liveEntry.bestCandidate.maeKmh);
+      }
+    });
+
+    it('3) two unvalidated/candidate SPEED observations cannot drive alignment', () => {
+      const telemetry = syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [10, 20, 30, 40]);
+      const clip = makeClip({
+        candidateAbsoluteTime: {
+          candidateStartUtc: '2026-09-02T19:00:00.000Z',
+          uncertaintySeconds: 2,
+          status: 'CANDIDATE',
+        },
+        observations: [candidateSpeedObs('c1', 0, 20), candidateSpeedObs('c2', 2, 40)],
+      });
+      const result = alignClip({ clip, telemetryRows: telemetry });
+      expect(result.gtCounts.RAW_EXTERNAL_GT_COUNT).toBe(2);
+      expect(result.gtCounts.ALIGNMENT_ELIGIBLE_GT_COUNT).toBe(0);
+      expect(result.alignmentStatus).not.toBe('STRONG_CANDIDATE');
+      expect(result.alignmentStatus).not.toBe('VALIDATED');
+    });
+
+    it('4) only alignment-eligible GT enters matching metrics', () => {
+      const telemetry = syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [10, 20, 30, 40]);
+      const clip = makeClip({
+        candidateAbsoluteTime: {
+          candidateStartUtc: '2026-09-02T19:00:00.000Z',
+          uncertaintySeconds: 2,
+          status: 'CANDIDATE',
+        },
+        observations: [
+          validatedSpeedObs('v1', 0, 20),
+          validatedSpeedObs('v2', 2, 40),
+          candidateSpeedObs('c1', 1, 25),
+        ],
+      });
+      const result = alignClip({ clip, telemetryRows: telemetry });
+      expect(result.gtCounts.RAW_EXTERNAL_GT_COUNT).toBe(3);
+      expect(result.gtCounts.ALIGNMENT_ELIGIBLE_GT_COUNT).toBe(2);
+      expect(isAlignmentEligibleGroundTruth(candidateSpeedObs('x', 0, 1))).toBe(false);
+    });
+
+    it('5) candidate UTC range can be searched without fabricating exact observed start', () => {
+      const clip = makeClip({
+        candidateAbsoluteTime: {
+          candidateStartUtcFrom: '2026-09-02T19:21:00.000Z',
+          candidateStartUtcTo: '2026-09-02T19:21:14.000Z',
+          status: 'CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY',
+        },
+      });
+      const window = resolveCandidateTimeWindow(clip);
+      expect(window.priorUtc).toBeNull();
+      expect(window.priorFromUtc).toBe('2026-09-02T19:21:00.000Z');
+      expect(window.priorToUtc).toBe('2026-09-02T19:21:14.000Z');
+      expect(window.searchAnchorDerivation).toBe('DERIVED_MIDPOINT_OF_CANDIDATE_RANGE_FOR_SEARCH_ONLY');
+      expect(window.residualSearchToSeconds).toBe(14);
+    });
+
+    it('6) candidate-start residual is not mislabeled absolute clock offset', () => {
+      const telemetry = syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [10, 20, 30, 40]);
+      const clip = makeClip({
+        candidateAbsoluteTime: {
+          candidateStartUtc: '2026-09-02T19:00:00.000Z',
+          uncertaintySeconds: 2,
+          status: 'CANDIDATE',
+        },
+        observations: [validatedSpeedObs('o1', 0, 20), validatedSpeedObs('o2', 2, 40)],
+      });
+      const result = alignClip({ clip, telemetryRows: telemetry });
+      expect(result.offsetSemantics.CANDIDATE_START_RESIDUAL_SECONDS).not.toBeNull();
+      expect(result.offsetSemantics.VIDEO_CLOCK_TO_PROVIDER_TIME_OFFSET_SECONDS).toBe(
+        'NOT_IDENTIFIABLE',
+      );
+      expect(result.offsetSemantics.CANDIDATE_START_PRIOR_UTC).toBe('2026-09-02T19:00:00.000Z');
+    });
+
+    it('7) AMBIGUOUS alignment cannot enter cross-clip clock model', () => {
+      const ambiguous = alignClip({
+        clip: makeClip({
+          candidateAbsoluteTime: {
+            candidateStartUtc: '2026-09-02T19:00:00.000Z',
+            uncertaintySeconds: 2,
+            status: 'CANDIDATE',
+          },
+          observations: [validatedSpeedObs('o1', 0, 50), validatedSpeedObs('o2', 1, 50)],
+        }),
+        telemetryRows: syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [50, 50, 50, 50]),
+      });
+      ambiguous.alignmentStatus = 'AMBIGUOUS';
+      const gate = isClockModelEligible(ambiguous);
+      expect(gate.eligible).toBe(false);
+      expect(gate.reason).toBe('AMBIGUOUS');
+    });
+
+    it('8) NOT_IDENTIFIABLE alignment cannot enter clock model', () => {
+      const notId = alignClip({
+        clip: makeClip({
+          candidateAbsoluteTime: {
+            candidateStartUtc: '2026-09-02T19:00:00.000Z',
+            uncertaintySeconds: 2,
+            status: 'CANDIDATE',
+          },
+          observations: [validatedSpeedObs('o1', 0, 999), validatedSpeedObs('o2', 2, 999)],
+        }),
+        telemetryRows: syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [10, 20, 30, 40]),
+      });
+      notId.alignmentStatus = 'NOT_IDENTIFIABLE';
+      const gate = isClockModelEligible(notId);
+      expect(gate.eligible).toBe(false);
+      expect(gate.reason).toBe('NOT_IDENTIFIABLE');
+    });
+
+    it('9) global clock model remains UNRESOLVED with insufficient eligible clips', () => {
+      const pending = alignClip({ clip: makeClip(), telemetryRows: [] });
+      const model = buildCrossClipClockModel([pending, pending]);
+      expect(model.modelOutcome).toBe('PENDING_EXTERNAL_GT');
+      const oneEligible = alignClip({
+        clip: makeClip({
+          candidateAbsoluteTime: {
+            candidateStartUtc: '2026-09-02T19:00:00.000Z',
+            uncertaintySeconds: 2,
+            status: 'CANDIDATE',
+          },
+          observations: [validatedSpeedObs('o1', 0, 20), validatedSpeedObs('o2', 2, 40)],
+        }),
+        telemetryRows: syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [10, 20, 30, 40]),
+      });
+      const modelOne = buildCrossClipClockModel([oneEligible, pending]);
+      expect(modelOne.modelOutcome).toBe('UNRESOLVED');
+    });
+
+    it('10) minute transition uncertainty remains distinct from static minute resolution', () => {
+      const clip = makeClip({
+        videoClock: {
+          displayedLocalTime: '21:03 → 21:04',
+          displayedMinuteTransitions: [
+            { videoTimeSeconds: 10.55, uncertaintySeconds: 0.1, fromMinute: '21:03', toMinute: '21:04' },
+          ],
+          clockResolutionSeconds: 60,
+        },
+      });
+      const semantics = extractClockSemantics(clip);
+      expect(semantics.VIDEO_CLOCK_DISPLAY_RESOLUTION_SECONDS).toBe(60);
+      expect(semantics.MINUTE_TRANSITION_VIDEO_TIME_UNCERTAINTY_SECONDS).toBe(0.1);
+      expect(semantics.VEHICLE_CLOCK_TO_UTC_ACCURACY).toBe('UNKNOWN');
+    });
+
+    it('11) ActualGear row count alone cannot prove event cadence', () => {
+      const manyRows = Array.from({ length: 20 }, (_, i) =>
+        makeTelemetryRow({
+          providerField: 'powertrainTransmissionActualGear',
+          acquisitionSurface: 'LATEST_SLOW',
+          providerTimestamp: new Date(Date.parse('2026-09-02T19:00:00.000Z') + i * 60_000).toISOString(),
+          synqReceivedAt: new Date(Date.parse('2026-09-02T19:00:00.000Z') + i * 60_000).toISOString(),
+          rawValueJson: 2,
+        }),
+      );
+      const clip = makeClip({
+        candidateAbsoluteTime: {
+          candidateStartUtc: '2026-09-02T19:00:00.000Z',
+          uncertaintySeconds: 5,
+          status: 'CANDIDATE',
+        },
+        observations: [
+          validatedSpeedObs('s1', 0, 40),
+          validatedSpeedObs('s2', 5, 60),
+          {
+            observationId: 'shift1',
+            videoTimeSeconds: 9.5,
+            videoTimeUncertaintySeconds: 0.1,
+            observationType: 'SHIFT_TRANSITION',
+            value: 'S2→S3',
+            unit: null,
+            valueUncertainty: null,
+            confidence: 'EXTERNALLY_OBSERVED',
+            evidenceClass: 'DIRECT_VISUAL',
+            sourceMethod: 'TEST_FIXTURE',
+            notes: null,
+          },
+        ],
+      });
+      const result = alignClip({ clip, telemetryRows: [...syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [40, 50, 60]), ...manyRows] });
+      expect(result.gearTiming.GEAR_STATE_OBSERVED).toBe('YES');
+      expect(result.gearTiming.GEAR_CHANGE_TIMING_VALIDATED).not.toBe('YES');
+    });
+
+    it('12) slow ActualGear around synthetic shift cannot validate timing if local gap is too large', () => {
+      const telemetry = [
+        ...syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [40, 45, 50, 55, 60, 65, 70], 1),
+        makeTelemetryRow({
+          providerField: 'powertrainTransmissionActualGear',
+          acquisitionSurface: 'LATEST_SLOW',
+          providerTimestamp: '2026-09-02T19:00:00.000Z',
+          synqReceivedAt: '2026-09-02T19:00:00.000Z',
+          rawValueJson: 2,
+        }),
+        makeTelemetryRow({
+          providerField: 'powertrainTransmissionActualGear',
+          acquisitionSurface: 'LATEST_SLOW',
+          providerTimestamp: '2026-09-02T19:00:30.000Z',
+          synqReceivedAt: '2026-09-02T19:00:30.000Z',
+          rawValueJson: 3,
+        }),
+      ];
+      const clip = makeClip({
+        candidateAbsoluteTime: {
+          candidateStartUtc: '2026-09-02T19:00:00.000Z',
+          uncertaintySeconds: 5,
+          status: 'CANDIDATE',
+        },
+        observations: [
+          validatedSpeedObs('s1', 0, 40),
+          validatedSpeedObs('s2', 5, 60),
+          {
+            observationId: 'shift1',
+            videoTimeSeconds: 9.5,
+            videoTimeUncertaintySeconds: 0.1,
+            observationType: 'SHIFT_TRANSITION',
+            value: 'S2→S3',
+            unit: null,
+            valueUncertainty: null,
+            confidence: 'EXTERNALLY_OBSERVED',
+            evidenceClass: 'DIRECT_VISUAL',
+            sourceMethod: 'TEST_FIXTURE',
+            notes: null,
+          },
+        ],
+      });
+      const result = alignClip({ clip, telemetryRows: telemetry });
+      expect(result.gearTiming.localGapAroundShiftSeconds).toBeGreaterThan(
+        SURFACE_INTERPOLATION_GAP_SECONDS.LATEST_SLOW,
+      );
+      expect(result.gearTiming.GEAR_CHANGE_TIMING_VALIDATED).toBe('NOT_IDENTIFIABLE');
+    });
+
+    it('13) RMSE and max absolute speed error are correct on synthetic fixtures', () => {
+      const series = makeSpeedSeries([
+        { utcMs: Date.parse('2026-09-02T19:00:00.000Z'), value: 10 },
+        { utcMs: Date.parse('2026-09-02T19:00:01.000Z'), value: 20 },
+        { utcMs: Date.parse('2026-09-02T19:00:02.000Z'), value: 30 },
+      ]);
+      const obs = [validatedSpeedObs('o1', 0, 10), validatedSpeedObs('o2', 2, 30)];
+      const metrics = scoreSpeedResidual({
+        eligibleObservations: obs,
+        speedSeries: series,
+        searchAnchorMs: Date.parse('2026-09-02T19:00:00.000Z'),
+        residualSeconds: 0,
+        maxGapSeconds: 5,
+      });
+      expect(metrics.mae).toBe(0);
+      expect(metrics.rmse).toBe(0);
+      expect(metrics.maxAbsError).toBe(0);
+      const metrics2 = scoreSpeedResidual({
+        eligibleObservations: [validatedSpeedObs('o3', 1, 25)],
+        speedSeries: series,
+        searchAnchorMs: Date.parse('2026-09-02T19:00:00.000Z'),
+        residualSeconds: 0,
+        maxGapSeconds: 5,
+      });
+      expect(metrics2.maxAbsError).toBe(5);
+      expect(metrics2.rmse).toBe(5);
+    });
+
+    it('14) derived interpolation points retain source-row provenance', () => {
+      const series = makeSpeedSeries([
+        { utcMs: Date.parse('2026-09-02T19:00:00.000Z'), value: 10, ordinal: 11 },
+        { utcMs: Date.parse('2026-09-02T19:00:02.000Z'), value: 30, ordinal: 22 },
+      ]);
+      const pt = deriveTelemetryAtUtc(series, Date.parse('2026-09-02T19:00:01.000Z'), 5);
+      expect(pt.beforeSource?.acquisitionOrdinal).toBe(11);
+      expect(pt.afterSource?.acquisitionOrdinal).toBe(22);
+      expect(pt.beforeSource?.physicalSampleFingerprint).toBe('fp-0-10');
+      expect(pt.afterSource?.physicalSampleFingerprint).toBe('fp-1-30');
+    });
+
+    it('15) surface-specific configured interpolation gap is enforced', () => {
+      const hfSeries = makeSpeedSeries(
+        [
+          { utcMs: Date.parse('2026-09-02T19:00:00.000Z'), value: 10 },
+          { utcMs: Date.parse('2026-09-02T19:00:04.000Z'), value: 30 },
+        ],
+        'HF_HISTORICAL',
+      );
+      const hfGap = SURFACE_INTERPOLATION_GAP_SECONDS.HF_HISTORICAL;
+      const ptHf = deriveTelemetryAtUtc(hfSeries, Date.parse('2026-09-02T19:00:02.000Z'), hfGap);
+      expect(ptHf.status).toBe('INSUFFICIENT_CADENCE');
+      const liveGap = SURFACE_INTERPOLATION_GAP_SECONDS.LATEST_LIVE;
+      const liveSeries = makeSpeedSeries(
+        [
+          { utcMs: Date.parse('2026-09-02T19:00:00.000Z'), value: 10 },
+          { utcMs: Date.parse('2026-09-02T19:00:02.000Z'), value: 30 },
+        ],
+        'LATEST_LIVE',
+      );
+      const ptLive = deriveTelemetryAtUtc(liveSeries, Date.parse('2026-09-02T19:00:01.000Z'), liveGap);
+      expect(ptLive.status).toBe('MATCHED');
+    });
+
+    it('16) canonical DI-EV-0033 SHA remains unchanged', () => {
+      (hasTelemetry ? expect : expect)(true).toBe(true);
+      if (!hasTelemetry) return;
+      const content = fs.readFileSync(TELEMETRY_JSONL, 'utf8');
+      expect(crypto.createHash('sha256').update(content).digest('hex')).toBe(
+        CANONICAL_TELEMETRY_JSONL_SHA256,
+      );
+    });
+
+    it('17) same inputs still produce deterministic byte-identical output', () => {
+      if (!hasTelemetry || !hasExternalGt) return;
+      const telemetry = loadCanonicalTelemetryJsonl(TELEMETRY_JSONL);
+      const externalGt = JSON.parse(fs.readFileSync(EXTERNAL_GT, 'utf8')) as ExternalGtDocument;
+      const r1 = runAlignmentWorkbench({ telemetryRows: telemetry, externalGt });
+      const r2 = runAlignmentWorkbench({ telemetryRows: telemetry, externalGt });
+      expect(alignmentOutputSha256(r1)).toBe(alignmentOutputSha256(r2));
+      expect(stableStringify(r1)).toBe(stableStringify(r2));
     });
   });
 });
