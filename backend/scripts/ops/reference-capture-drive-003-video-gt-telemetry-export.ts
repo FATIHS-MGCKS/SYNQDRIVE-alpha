@@ -14,6 +14,7 @@ import * as path from 'path';
 import {
   assertSafeOutputPath,
   assertSealedSha256,
+  AUTHORITATIVE_SEALED_SOURCE_PATH,
   buildPerFieldConvenienceCsvs,
   buildSummary,
   buildVideoGtCorrelationExport,
@@ -70,8 +71,7 @@ function main(): void {
   const canonicalJsonlSha256 = sha256Hex(jsonlContent);
   const csvContent = buildCsvContent(exportedRows);
   const summary = buildSummary({
-    sealedSourcePath: inputPath,
-    sealedSourceSha256: sealedSha,
+    analysisInputSha256: sealedSha,
     sourceRowCount,
     exportedRows,
     canonicalJsonlSha256,
@@ -100,7 +100,12 @@ function main(): void {
         ok: true,
         evidenceId: 'DI-EV-0033',
         referenceDriveId: REFERENCE_DRIVE_ID,
-        sealedSourceSha256: sealedSha,
+        authoritativeSealedSourcePath: AUTHORITATIVE_SEALED_SOURCE_PATH,
+        authoritativeSealedSourceSha256: EXPECTED_SEALED_SHA256,
+        analysisInputPath: inputPath,
+        analysisInputSha256: sealedSha,
+        ANALYSIS_INPUT_SHA_MATCHES_SEALED_AUTHORITY:
+          sealedSha === EXPECTED_SEALED_SHA256 ? 'YES' : 'NO',
         sourceRowCount,
         exportedRowCount: exportedRows.length,
         HF_HISTORICAL_ROWS: perSurface.HF_HISTORICAL ?? 0,

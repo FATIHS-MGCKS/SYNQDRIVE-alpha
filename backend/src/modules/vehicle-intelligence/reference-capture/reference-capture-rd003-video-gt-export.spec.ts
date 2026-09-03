@@ -5,6 +5,8 @@ import { execFileSync } from 'child_process';
 import {
   assertSafeOutputPath,
   assertSealedSha256,
+  AUTHORITATIVE_SEALED_SOURCE_PATH,
+  buildSummary,
   buildVideoGtCorrelationExport,
   EXPECTED_SEALED_SHA256,
   parseSealedJsonl,
@@ -21,6 +23,9 @@ const SCRIPT = path.resolve(
   '../../../../scripts/ops/reference-capture-drive-003-video-gt-telemetry-export.ts',
 );
 const SEALED_ROOT = '/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-003';
+const SESSION_START = '2026-09-02T18:59:15.695Z';
+const CANONICAL_JSONL_SHA =
+  '69209a6d9e488d51c3aaf3b55dee5584ce622dc072a191b81e7061597cdda87a';
 
 describe('reference-capture-rd003-video-gt-export', () => {
   const hasFixture = fs.existsSync(FIXTURE);
@@ -184,10 +189,124 @@ describe('reference-capture-rd003-video-gt-export', () => {
         ),
       );
       expect(summary.evidenceId).toBe('DI-EV-0033');
+      expect(summary.authoritativeSealedSourcePath).toBe(AUTHORITATIVE_SEALED_SOURCE_PATH);
+      expect(summary.authoritativeSealedSourceSha256).toBe(EXPECTED_SEALED_SHA256);
+      expect(summary.sealedSourcePath).toBeUndefined();
+      expect(summary.ANALYSIS_INPUT_SHA_MATCHES_SEALED_AUTHORITY).toBe('YES');
       expect(summary.methodology.FULL_SESSION_FILTERED_EXPORT).toBe('YES');
       expect(summary.methodology.VIDEO_CANDIDATE_WINDOWS_USED_AS_FILTER).toBe('NO');
       expect(summary.methodology.NO_INTERPOLATION_PERFORMED).toBe('YES');
+      expect(summary.methodology.ROW_SELECTION_BASIS).toBe(
+        'SEALED_RD003_SESSION_OBSERVATIONS_BY_ACQUISITION',
+      );
+      expect(summary.methodology.PROVIDER_TIMESTAMP_USED_AS_SESSION_FILTER).toBe('NO');
+      expect(summary.methodology.VIDEO_TO_TELEMETRY_CLOCK_MODEL_STATUS).toBe(
+        'PENDING_MULTI_CLOCK_CORRELATION',
+      );
       expect(summary.exportedRowCount).toBe(5010);
+    });
+  });
+
+  describe('K–Q) source-semantics closeout', () => {
+    (hasFixture ? it : it.skip)('K) committed authority path is canonical /opt sealed path', () => {
+      const rows = parseSealedJsonl(FIXTURE);
+      const { exportedRows, sourceRowCount } = buildVideoGtCorrelationExport(rows);
+      const jsonl = serializeCanonicalJsonl(exportedRows);
+      const summary = buildSummary({
+        analysisInputSha256: EXPECTED_SEALED_SHA256,
+        sourceRowCount,
+        exportedRows,
+        canonicalJsonlSha256: sha256Hex(jsonl),
+        sessionStart: SESSION_START,
+        sessionStop: '2026-09-02T19:36:22.970Z',
+      });
+      expect(summary.authoritativeSealedSourcePath).toBe(
+        `${SEALED_ROOT}/observations.jsonl`,
+      );
+      expect(summary.authoritativeSealedSourceSha256).toBe(EXPECTED_SEALED_SHA256);
+      expect(JSON.stringify(summary)).not.toContain('/workspace/tmp/');
+    });
+
+    (hasFixture ? it : it.skip)('L) workspace --input is not mislabeled as sealed authority in summary', () => {
+      const outDir = fs.mkdtempSync(path.join('/tmp', 'rd003-vgt-semantics-'));
+      const stdout = execFileSync(
+        'npx',
+        [
+          'ts-node',
+          '-r',
+          'tsconfig-paths/register',
+          SCRIPT,
+          `--input=${FIXTURE}`,
+          `--docs-dir=${outDir}`,
+        ],
+        { cwd: path.resolve(__dirname, '../../../..'), encoding: 'utf8' },
+      );
+      const summary = JSON.parse(
+        fs.readFileSync(
+          path.join(outDir, 'dimo-lte-r1-reference-drive-003-video-gt-correlation-source-summary.json'),
+          'utf8',
+        ),
+      );
+      expect(summary.authoritativeSealedSourcePath).toBe(AUTHORITATIVE_SEALED_SOURCE_PATH);
+      expect(summary.sealedSourcePath).toBeUndefined();
+      expect(JSON.stringify(summary)).not.toContain(FIXTURE);
+
+      const jsonStart = stdout.lastIndexOf('{\n  "ok"');
+      const cliResult = JSON.parse(stdout.slice(jsonStart));
+      expect(cliResult.analysisInputPath).toBe(FIXTURE);
+      expect(cliResult.authoritativeSealedSourcePath).toBe(AUTHORITATIVE_SEALED_SOURCE_PATH);
+    });
+
+    (hasFixture ? it : it.skip)('M) matching input SHA is required', () => {
+      const tmp = fs.mkdtempSync(path.join('/tmp', 'rd003-bad-sha-export-'));
+      const badFile = path.join(tmp, 'observations.jsonl');
+      fs.writeFileSync(badFile, '{"observationKind":"SESSION_METADATA"}\n');
+      expect(() => assertSealedSha256(badFile)).toThrow(/SHA-256 mismatch/);
+    });
+
+    (hasFixture ? it : it.skip)('N) provider timestamps before session start remain in export', () => {
+      const rows = parseSealedJsonl(FIXTURE);
+      const { exportedRows } = buildVideoGtCorrelationExport(rows);
+      const predating = exportedRows.filter(
+        (r) => r.providerTimestamp != null && r.providerTimestamp < SESSION_START,
+      );
+      expect(predating.length).toBeGreaterThan(0);
+      expect(exportedRows.length).toBe(5010);
+    });
+
+    (hasFixture ? it : it.skip)('O) providerTimestamp is not used as session-row filter', () => {
+      const rows = parseSealedJsonl(FIXTURE);
+      const fieldSet = new Set<string>(VIDEO_GT_CORRELATION_FIELDS);
+      const unfiltered = rows.filter(
+        (r) => r.observationKind === 'SIGNAL_POINT' && fieldSet.has(r.providerField ?? ''),
+      );
+      expect(buildVideoGtCorrelationExport(rows).exportedRows.length).toBe(unfiltered.length);
+      expect(buildVideoGtCorrelationExport(rows).exportedRows.length).toBe(5010);
+    });
+
+    (hasFixture ? it : it.skip)('P) no new video clock assumption introduced', () => {
+      const rows = parseSealedJsonl(FIXTURE);
+      const { exportedRows, sourceRowCount } = buildVideoGtCorrelationExport(rows);
+      const summary = buildSummary({
+        analysisInputSha256: EXPECTED_SEALED_SHA256,
+        sourceRowCount,
+        exportedRows,
+        canonicalJsonlSha256: CANONICAL_JSONL_SHA,
+        sessionStart: SESSION_START,
+        sessionStop: '2026-09-02T19:36:22.970Z',
+      });
+      const methodology = summary.methodology as Record<string, string>;
+      expect(methodology.NO_VIDEO_CLOCK_ASSUMPTION_APPLIED).toBe('YES');
+      expect(methodology.VIDEO_CANDIDATE_WINDOWS_USED_AS_FILTER).toBe('NO');
+      expect(methodology.VIDEO_TO_TELEMETRY_CLOCK_MODEL_STATUS).toBe(
+        'PENDING_MULTI_CLOCK_CORRELATION',
+      );
+    });
+
+    (hasFixture ? it : it.skip)('Q) canonical JSONL remains deterministic and unchanged', () => {
+      const rows = parseSealedJsonl(FIXTURE);
+      const jsonl = serializeCanonicalJsonl(buildVideoGtCorrelationExport(rows).exportedRows);
+      expect(sha256Hex(jsonl)).toBe(CANONICAL_JSONL_SHA);
     });
   });
 });

@@ -2,9 +2,10 @@
   "evidenceId": "DI-EV-0033",
   "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_003",
   "sessionId": "0fa040aa-6105-4872-9b2c-f8ad477009b8",
-  "exportSchemaVersion": "2026-09-03-rd003-video-gt-correlation-v1",
-  "sealedSourcePath": "/workspace/tmp/rd003-evidence/observations.jsonl",
-  "sealedSourceSha256": "81534484cdd0fa6224d9efbcf97bb445cfbe8af1fdb8ef29e9bb8204f09c32e4",
+  "exportSchemaVersion": "2026-09-03-rd003-video-gt-correlation-v1.1",
+  "authoritativeSealedSourcePath": "/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-003/observations.jsonl",
+  "authoritativeSealedSourceSha256": "81534484cdd0fa6224d9efbcf97bb445cfbe8af1fdb8ef29e9bb8204f09c32e4",
+  "ANALYSIS_INPUT_SHA_MATCHES_SEALED_AUTHORITY": "YES",
   "sourceRowCount": 6251,
   "exportedRowCount": 5010,
   "sessionStart": "2026-09-02T18:59:15.695Z",
@@ -168,10 +169,57 @@
     "RD003_TELEMETRY_COVERAGE": "FULL_SESSION",
     "RD003_VIDEO_GT_COVERAGE": "PARTIAL_SEGMENTED",
     "VIDEO_ALIGNMENT_STATUS": "PENDING_CORRELATION",
+    "VIDEO_TO_TELEMETRY_CLOCK_MODEL_STATUS": "PENDING_MULTI_CLOCK_CORRELATION",
     "GROUND_TRUTH_VALIDATED": "NO",
     "CONTINUOUS_VIDEO_ASSUMPTION_REMOVED": "YES",
     "ACQUISITION_ORDER_PRESERVED": "YES",
-    "PROVIDER_TIME_NOT_REWRITTEN": "YES"
+    "PROVIDER_TIME_NOT_REWRITTEN": "YES",
+    "ROW_SELECTION_BASIS": "SEALED_RD003_SESSION_OBSERVATIONS_BY_ACQUISITION",
+    "PROVIDER_TIMESTAMP_USED_AS_SESSION_FILTER": "NO",
+    "PROVIDER_TIMESTAMP_MAY_PREDATE_SESSION_START": "YES",
+    "SYNQ_RECEIVED_AT_EQUALS_PHYSICAL_SAMPLE_TIME": "NO",
+    "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO"
+  },
+  "multiClockModel": {
+    "status": "PENDING_MULTI_CLOCK_CORRELATION",
+    "note": "DI-EV-0034 correlation must distinguish clocks independently; no global fixed offset validated",
+    "clocks": [
+      {
+        "id": "A",
+        "name": "VIDEO_INSTRUMENT_CLOCK",
+        "role": "External segmented video instrument-cluster display time"
+      },
+      {
+        "id": "B",
+        "name": "PROVIDER_TIMESTAMP",
+        "role": "Provider-reported sample timestamp (may predate session start when stale/latest cached)"
+      },
+      {
+        "id": "C",
+        "name": "SYNQ_RECEIVED_AT",
+        "role": "SynqDrive ingress/receipt time — not physical sample time"
+      },
+      {
+        "id": "D",
+        "name": "REQUEST_STARTED_AT_REQUEST_COMPLETED_AT",
+        "role": "Polling/request execution window boundaries"
+      },
+      {
+        "id": "E",
+        "name": "HF_WINDOW_FROM_HF_WINDOW_TO_HF_ACTUAL_QUERY_TO",
+        "role": "HF_HISTORICAL aggregate query/bucket window boundaries"
+      }
+    ]
+  },
+  "surfaceFreshnessSemantics": {
+    "note": "Acquisition surfaces are not guarantees of equal freshness or cadence",
+    "surfaces": {
+      "HF_HISTORICAL": "Provider aggregate-bucket timeline; not raw physical LTE_R1 cadence",
+      "LATEST_LIVE": "Live polling surface — does NOT imply FRESH_PHYSICAL_SAMPLE",
+      "LATEST_SLOW": "Slow polling surface — does NOT imply FRESH_PHYSICAL_SAMPLE"
+    },
+    "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+    "providerAgeStalenessMeasuredPerSurface": "DEFERRED_TO_DI_EV_0034"
   },
   "candidateVideoClockAnchors": {
     "classification": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",

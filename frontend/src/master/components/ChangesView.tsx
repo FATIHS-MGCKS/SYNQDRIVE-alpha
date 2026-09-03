@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-rd003-video-gt-semantics-closeout-2026-09-03',
+    version: '4.9.1035.1',
+    title: 'DI-EV-0033 — sealed-source authority + multi-clock semantics closeout',
+    summary: [
+      'Summary uses authoritativeSealedSourcePath=/opt/.../observations.jsonl (not workspace temp path).',
+      'ANALYSIS_INPUT_SHA_MATCHES_SEALED_AUTHORITY=YES; workspace materialization kept out of committed summary.',
+      'ROW_SELECTION_BASIS=SEALED_RD003_SESSION_OBSERVATIONS_BY_ACQUISITION; providerTimestamp not session-filtered.',
+      'PROVIDER_TIMESTAMP_MAY_PREDATE_SESSION_START=YES (stale/latest cached samples retained).',
+      'VIDEO_TO_TELEMETRY_CLOCK_MODEL_STATUS=PENDING_MULTI_CLOCK_CORRELATION.',
+      'LATEST_LIVE≠FRESH_PHYSICAL_SAMPLE; canonical JSONL SHA unchanged (69209a6d…).',
+    ],
+    reason: 'Correct provenance/path semantics and make multi-clock row-selection model explicit for DI-EV-0034.',
+    previousBehavior: 'Committed summary mislabeled /workspace/tmp/... as sealedSourcePath authority.',
+    details:
+      'docs/audits/data/dimo-lte-r1-reference-drive-003-video-gt-correlation-source-summary.json v1.1; reference-capture-rd003-video-gt-export.ts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T05:35:00.000Z',
+  },
+  {
     id: 'dimo-rd003-video-gt-correlation-export-2026-09-03',
     version: '4.9.1035',
     title: 'Reference Drive #003 — Video-GT correlation telemetry source export (DI-EV-0033)',

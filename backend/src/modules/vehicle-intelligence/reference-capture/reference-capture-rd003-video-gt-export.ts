@@ -17,7 +17,8 @@ export const SESSION_ID = '0fa040aa-6105-4872-9b2c-f8ad477009b8';
 export const EXPECTED_SEALED_SHA256 = '81534484cdd0fa6224d9efbcf97bb445cfbe8af1fdb8ef29e9bb8204f09c32e4';
 export const SEALED_EVIDENCE_ROOT =
   '/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-003';
-export const EXPORT_SCHEMA_VERSION = '2026-09-03-rd003-video-gt-correlation-v1';
+export const AUTHORITATIVE_SEALED_SOURCE_PATH = `${SEALED_EVIDENCE_ROOT}/observations.jsonl`;
+export const EXPORT_SCHEMA_VERSION = '2026-09-03-rd003-video-gt-correlation-v1.1';
 
 export const VIDEO_GT_CORRELATION_FIELDS = [
   'speed',
@@ -289,8 +290,7 @@ export function buildPerSurfaceCounts(exportedRows: VideoGtExportedRow[]): Recor
 }
 
 export function buildSummary(params: {
-  sealedSourcePath: string;
-  sealedSourceSha256: string;
+  analysisInputSha256: string;
   sourceRowCount: number;
   exportedRows: VideoGtExportedRow[];
   canonicalJsonlSha256: string;
@@ -298,13 +298,15 @@ export function buildSummary(params: {
   sessionStop: string;
 }): Record<string, unknown> {
   const perSurface = buildPerSurfaceCounts(params.exportedRows);
+  const shaMatchesAuthority = params.analysisInputSha256 === EXPECTED_SEALED_SHA256;
   return {
     evidenceId: 'DI-EV-0033',
     referenceDriveId: REFERENCE_DRIVE_ID,
     sessionId: SESSION_ID,
     exportSchemaVersion: EXPORT_SCHEMA_VERSION,
-    sealedSourcePath: params.sealedSourcePath,
-    sealedSourceSha256: params.sealedSourceSha256,
+    authoritativeSealedSourcePath: AUTHORITATIVE_SEALED_SOURCE_PATH,
+    authoritativeSealedSourceSha256: EXPECTED_SEALED_SHA256,
+    ANALYSIS_INPUT_SHA_MATCHES_SEALED_AUTHORITY: shaMatchesAuthority ? 'YES' : 'NO',
     sourceRowCount: params.sourceRowCount,
     exportedRowCount: params.exportedRows.length,
     sessionStart: params.sessionStart,
@@ -325,10 +327,41 @@ export function buildSummary(params: {
       RD003_TELEMETRY_COVERAGE: 'FULL_SESSION',
       RD003_VIDEO_GT_COVERAGE: 'PARTIAL_SEGMENTED',
       VIDEO_ALIGNMENT_STATUS: 'PENDING_CORRELATION',
+      VIDEO_TO_TELEMETRY_CLOCK_MODEL_STATUS: 'PENDING_MULTI_CLOCK_CORRELATION',
       GROUND_TRUTH_VALIDATED: 'NO',
       CONTINUOUS_VIDEO_ASSUMPTION_REMOVED: 'YES',
       ACQUISITION_ORDER_PRESERVED: 'YES',
       PROVIDER_TIME_NOT_REWRITTEN: 'YES',
+      ROW_SELECTION_BASIS: 'SEALED_RD003_SESSION_OBSERVATIONS_BY_ACQUISITION',
+      PROVIDER_TIMESTAMP_USED_AS_SESSION_FILTER: 'NO',
+      PROVIDER_TIMESTAMP_MAY_PREDATE_SESSION_START: 'YES',
+      SYNQ_RECEIVED_AT_EQUALS_PHYSICAL_SAMPLE_TIME: 'NO',
+      LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE: 'NO',
+    },
+    multiClockModel: {
+      status: 'PENDING_MULTI_CLOCK_CORRELATION',
+      note: 'DI-EV-0034 correlation must distinguish clocks independently; no global fixed offset validated',
+      clocks: [
+        { id: 'A', name: 'VIDEO_INSTRUMENT_CLOCK', role: 'External segmented video instrument-cluster display time' },
+        { id: 'B', name: 'PROVIDER_TIMESTAMP', role: 'Provider-reported sample timestamp (may predate session start when stale/latest cached)' },
+        { id: 'C', name: 'SYNQ_RECEIVED_AT', role: 'SynqDrive ingress/receipt time — not physical sample time' },
+        { id: 'D', name: 'REQUEST_STARTED_AT_REQUEST_COMPLETED_AT', role: 'Polling/request execution window boundaries' },
+        {
+          id: 'E',
+          name: 'HF_WINDOW_FROM_HF_WINDOW_TO_HF_ACTUAL_QUERY_TO',
+          role: 'HF_HISTORICAL aggregate query/bucket window boundaries',
+        },
+      ],
+    },
+    surfaceFreshnessSemantics: {
+      note: 'Acquisition surfaces are not guarantees of equal freshness or cadence',
+      surfaces: {
+        HF_HISTORICAL: 'Provider aggregate-bucket timeline; not raw physical LTE_R1 cadence',
+        LATEST_LIVE: 'Live polling surface — does NOT imply FRESH_PHYSICAL_SAMPLE',
+        LATEST_SLOW: 'Slow polling surface — does NOT imply FRESH_PHYSICAL_SAMPLE',
+      },
+      LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE: 'NO',
+      providerAgeStalenessMeasuredPerSurface: 'DEFERRED_TO_DI_EV_0034',
     },
     candidateVideoClockAnchors: {
       classification: 'CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY',
