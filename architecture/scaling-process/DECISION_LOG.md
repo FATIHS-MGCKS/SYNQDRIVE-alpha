@@ -207,5 +207,5 @@ Format: Decision ID | Date/Phase | Status
 | **INVARIANT** | `REQUESTED_DEPLOY_SHA == BOOTSTRAP_SCRIPT_SHA == RELEASE_SOURCE_SHA == TARGET_SHA == REPLICA_A_SHA == REPLICA_B_SHA` |
 | **FAILURE** | Any mismatch → abort; rollback if promotion began |
 | **WHY** | Guarantees authorized artifact is promoted; prevents branch-tip drift |
-| **STATUS** | **IMPLEMENTED** — unit tests; **PRODUCTION_VALIDATION_PENDING** for cloud-agent exact-SHA bootstrap path (OQ-18) |
+| **STATUS** | **IMPLEMENTED** — unit tests; **PRODUCTION_VALIDATED** (P1.8.3.3 audit 2026-09-03; OQ-18 CLOSED) |
 | **EVIDENCE** | `vps-deploy-release.sh`, `cloud-agent-deploy.sh`, `assertDeployShaProvenance` tests |

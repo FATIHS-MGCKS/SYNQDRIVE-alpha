@@ -1,7 +1,7 @@
 # SCALING PROCESS — Current State
 
-**Last verified:** 2026-09-01T14:26Z (P1.8.3.2 N=2 retrospective stability audit)  
-**Verifier:** P1.8.3.2 retrospective audit agent
+**Last verified:** 2026-09-03T07:55Z (P1.8.3.3 N=2 24h+ segmented retrospective audit)  
+**Verifier:** P1.8.3.3 retrospective audit agent
 
 ---
 
@@ -10,18 +10,21 @@
 ```
 WORKSTREAM = SCALING_PROCESS
 AUTHORITY_STATUS = ACTIVE_VERIFIED
-CURRENT_MAIN_SHA = 2a2fe5ac56e96ba0182967a1022572029bd0e93e
-CURRENT_PRODUCTION_SHA = 3772d992dae012bc9d794184e05e8ad39db09df4
+CURRENT_MAIN_SHA = f7a7d1cf1e6acef3350eadd430511f370b15b888
+CURRENT_PRODUCTION_SHA = 7d53da51e3b4dfaad711af735e568f97813ddfeb
 MAIN_AHEAD_OF_PRODUCTION = YES
 N2_RETROSPECTIVE_AUDIT_VERDICT = EARLY_PASS
-N2_EVIDENCE_PRECISION = CORRECTED
+P1_8_3_3_OPERATIONAL_24H_PLUS = PASS_WITH_FINDINGS
+P1_8_3_3_CONTINUOUS_24H_SOAK = NOT_MET
+N2_PRODUCTION_CERTIFICATION = EARLY
 RUNTIME_N2_SIGNAL = HEALTHY_EARLY
 SCALING_DEFECT_FOUND = NO
-N2_CONTINUOUS_WINDOW_SECONDS = 9532
-N2_AUDIT_WINDOW_CLASS = INSUFFICIENT_WINDOW
-N2_AUDIT_NEW_P3_COUNT = 0
-N2_AUDIT_OBSERVATIONAL_NOTE_COUNT = 3
+N2_SEGMENTED_HORIZON_SECONDS = 158877
+N2_LONGEST_CONTINUOUS_SEGMENT_SECONDS = 81024
+N2_AUDIT_WINDOW_CLASS = SEGMENTED_POST_DEPLOY
 ATE_MULTI_REPLICA_CERTIFICATION = UNEXERCISED
+BATTERY_V2_FAILED_BASELINE = 64
+BATTERY_V2_FAILED_NOW = 100
 BATTERY_V2_HISTORICAL_BACKLOG_RECLASSIFIED = NO
 CURRENT_PRODUCTION_REPLICA_COUNT = 2
 REPLICA_A = synqdrive @ 3001 ONLINE FOLLOWER
@@ -33,57 +36,54 @@ RECONCILIATION_MUTEX = ENABLED
 ROLLING_DEPLOYMENT = YES (#1472 + P1.8.3.1 convergence gate verified)
 MIXED_SHA_PROTECTION = YES
 DEPLOY_LEADER_CONVERGENCE_GATE = VERIFIED_PRODUCTION
-DEPLOY_LEADER_CONVERGENCE_MS = 14000
-DEPLOY_LEADER_ZERO_POLLS_OBSERVED = 6
-DEPLOY_LEADER_STABLE_ONE_OBSERVATIONS = 2
+DEPLOY_EXACT_SHA_INVARIANT = PRODUCTION_VALIDATED
+DEC_016_PRODUCTION_VALIDATED = YES
 PROVIDER_CEILING_VERIFIED = NO
 N1000_CERTIFICATION = CONDITIONAL (software only)
 OPEN_P0 = 0
 OPEN_P1 = 0
-OPEN_P2 = 1 (OQ-18 cloud-agent exact-SHA bootstrap pending routine deploy observation)
+OPEN_P2 = 2
 INC_06 = CLOSED
 OQ_17 = CLOSED
-OQ_18 = MITIGATED_PENDING_PRODUCTION_VALIDATION
+OQ_18 = CLOSED
 OQ_28 = PARTIAL
-NEXT_ARCHITECTURE_STAGE = 24h N=2 soak checkpoint; observe OQ-18 on next routine deploy
+NEXT_ARCHITECTURE_STAGE = uninterrupted 24h N=2 segment for OQ-28 closure
 ```
 
 ---
 
-## TYPE: FACT — Production topology (2026-09-01 P1.8.3.1)
+## TYPE: FACT — Production topology (2026-09-03 P1.8.3.3)
 
 | Component | Observed state | Evidence |
 |-----------|----------------|----------|
 | Host | `srv1374778.hstgr.cloud` / `app.synqdrive.eu` | SSH |
-| Release | `20260901114113_v4994` | `readlink -f /opt/synqdrive/current` |
-| PM2 `synqdrive` | online, port 3001, FOLLOWER | `pm2 list`, readiness @ 11:47:59Z |
-| PM2 `synqdrive-b` | online, port 3002, LEADER | `pm2 list`, readiness @ 11:47:59Z |
+| Release | `20260903055433_v4994` | `readlink -f /opt/synqdrive/current` |
+| Production SHA | `7d53da51e3b4dfaad711af735e568f97813ddfeb` | release git HEAD |
+| PM2 `synqdrive` | online, port 3001, FOLLOWER | `pm2 list`, readiness |
+| PM2 `synqdrive-b` | online, port 3002, LEADER | `pm2 list`, readiness |
 | Port 3001 / 3002 | both listening, health 200 | `ss -tlnp`, curl |
 | nginx upstream | `synqdrive_backend { 3001; 3002 }` | `/etc/nginx/sites-enabled/synqdrive` |
 | External health | PASS | `https://app.synqdrive.eu/api/v1/health` |
-| Scheduler leader | 1 (A=FOLLOWER, B=LEADER) | readiness @ 11:47:59Z |
+| Scheduler leader | 1 (A=FOLLOWER, B=LEADER) | readiness @ 07:55Z |
 | Redis DB | 0 | `redis-cli -n 0 PING` |
-| `synqdrive:scheduler:leader` | present, TTL ~26s | `redis-cli` |
-| `battery.v2` failed (BullMQ) | 64 (unchanged) | `ZCARD bull:battery.v2:failed` |
+| `battery.v2` failed (BullMQ) | 100 (+36 vs P1.8.3.2 baseline) | `ZCARD bull:battery.v2:failed` |
 | Queue wait/active | 0 on sampled queues | Redis LLEN |
 
 ---
 
-## TYPE: FACT — P1.8.3 deploy sequence
+## TYPE: FACT — P1.8.3.3 segmented horizon (post-checkpoint)
 
-1. **Bootstrap deploy** (10:01Z): `cloud-agent-deploy.sh` ran **pre-#1472** script from old `current` symlink → single `pm2 restart synqdrive` only; promoted SHA `d6884ce` on replica A only.
-2. **Multi-replica deploy** (10:17Z): second deploy exercised **#1472 rolling path** — started `synqdrive-b`, rolling A→B, SHA invariant PASS; **scheduler leader check failed** (0 leaders at T+15s) → auto-rollback to same SHA release; rollback rolling restart left **both replicas online**.
-3. **Post-audit** (10:24Z): after leader election window (~35s), **N=2 coherent**, leader count=1, SHA match.
+**Checkpoint:** `2026-09-01T11:47:23Z` (P1.8.3.1 stable N=2)
 
-**EVIDENCE:** `/opt/cursor/artifacts/p183_deploy_bootstrap.log`, `p183_deploy_multi_replica.log`
+| Metric | Value |
+|--------|-------|
+| Calendar observation | ~44.1h (`158877s`) |
+| Longest continuous N=2 segment | ~22.5h (`81024s`) — **NOT_MET** for 24h soak |
+| Successful deploys | 3 (`bf1be9b6`, `f00a4939`, `7d53da51`) |
+| Failed deploy attempts | 2 (2026-09-02T10:32Z; no release promoted) |
+| Unexpected PM2 restarts | 2 (2026-09-02T10:35Z) |
 
----
-
-## TYPE: INCIDENT — INC-05 status
-
-**STATUS:** CLOSED (2026-09-01 P1.8.3)  
-**RATIONALE:** Replica B restored; both replicas on `d6884ce`; nginx dual-upstream healthy; rolling deploy path exercised.  
-**RESIDUAL:** None for topology.
+**EVIDENCE:** `architecture/P1_8_3_3_N2_24H_PLUS_SEGMENTED_RETROSPECTIVE_AUDIT_2026-09-03.md`
 
 ---
 
@@ -91,21 +91,18 @@ NEXT_ARCHITECTURE_STAGE = 24h N=2 soak checkpoint; observe OQ-18 on next routine
 
 **STATUS:** **VERIFIED IN PRODUCTION** (2026-09-01T11:47Z)  
 **INCIDENT:** INC-06 **CLOSED**  
-**CHANGE:** Bounded scheduler convergence gate; 6× `leaderCount=0` tolerated; converged in 14s; deploy PASS.  
-**EVIDENCE:** `architecture/P1_8_3_1_DEPLOY_LEADER_WAIT_PRODUCTION_VALIDATION_2026-09-01.md`  
-**HISTORICAL:** P1.8.3 deploy false-aborted at T+15s — preserved. Attempts 1–2 of P1.8.3.1 validation also false-aborted due to OQ-18 bootstrap before attempt 3 PASS.
+**EVIDENCE:** `architecture/P1_8_3_1_DEPLOY_LEADER_WAIT_PRODUCTION_VALIDATION_2026-09-01.md`
 
 ---
 
-## TYPE: INCIDENT — INC-06 status
+## TYPE: IMPLEMENTATION — DEC-016 exact-SHA deploy (2026-09-03)
 
-**STATUS:** **CLOSED** (2026-09-01 P1.8.3.1 production validation)  
-**RATIONALE:** Convergence gate executed in production; transient `leaderCount=0` did not false-abort; eventual `leaderCount=1` with 2 stable observations; no split brain.  
-**EVIDENCE:** Deploy log attempt 3; convergence trace 8 attempts / 14s.
+**STATUS:** **PRODUCTION VALIDATED**  
+**EVIDENCE:** `/var/log/auth.log` bootstrap entries 2026-09-02/03; release SHA match; OQ-18 **CLOSED**
 
 ---
 
-## TYPE: DECISION — Coordination layers (main @ 3772d992d)
+## TYPE: DECISION — Coordination layers
 
 | Layer | Status | Introduced by |
 |-------|--------|---------------|
@@ -114,6 +111,7 @@ NEXT_ARCHITECTURE_STAGE = 24h N=2 soak checkpoint; observe OQ-18 on next routine
 | Reconciliation mutex (P1.4) | ACTIVE | #1435 |
 | Multi-replica deploy hardening (P1.8.2.1) | **MERGED** #1472 | rolling deploy |
 | Deploy leader convergence gate (P1.8.3.1) | **VERIFIED** | #1487 + prod validation |
+| Exact-SHA deploy provenance (DEC-016) | **PRODUCTION VALIDATED** | P1.8.3.3 audit |
 
 ---
 
@@ -124,5 +122,6 @@ NEXT_ARCHITECTURE_STAGE = 24h N=2 soak checkpoint; observe OQ-18 on next routine
 | Application externally reachable | PASS |
 | Single scheduler leader | PASS |
 | Two-replica production invariant | **PASS** |
-| Deploy path preserves 2 replicas | **YES** (after #1472 on current) |
-| Automated deploy gate | **PASS** (P1.8.3.1 convergence verified) |
+| Deploy path preserves 2 replicas | **YES** |
+| Exact-SHA deploy invariant (routine) | **YES** (auth.log + releases) |
+| Continuous 24h N=2 soak | **NOT_MET** (OQ-28 PARTIAL) |

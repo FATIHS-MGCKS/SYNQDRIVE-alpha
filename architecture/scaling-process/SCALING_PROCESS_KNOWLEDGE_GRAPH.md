@@ -44,7 +44,8 @@ Scaling Process
 │   ├── Leader crash → TTL failover ~35s
 │   ├── Deploy single-replica restart → SUPERSEDED by #1472
 │   ├── Deploy leader-timing false-abort → INC-06 (P1.8.3) — **CLOSED** P1.8.3.1 prod validation
-│   ├── Deploy bootstrap stale-current → OQ-18 — RELEASE_OPS_DIR proven; exact-SHA bootstrap pending
+│   ├── Deploy bootstrap stale-current → OQ-18 — **CLOSED** P1.8.3.3 prod exact-SHA bootstrap
+│   ├── N=2 continuous 24h soak → OQ-28 — PARTIAL (P1.8.3.3 longest segment 81024s)
 │   └── nginx dual-upstream with dead backend
 │
 ├── Scaling Envelopes
@@ -117,7 +118,7 @@ MUST_PRESERVE → both replicas registered when REPLICA_COUNT=2
 MUST_PRESERVE → nginx upstream matches live processes
 CONVERGENCE_GATE → leaderCount=0 transient retry; >1 immediate FAIL_SPLIT_BRAIN; 2 stable obs of 1
 PROVENANCE → SYNQDRIVE_REQUESTED_DEPLOY_SHA end-to-end (DEC-016)
-BOOTSTRAP → source libs from RELEASE_DIR (DEC-015); cloud-agent exact-SHA bootstrap (OQ-18 pending)
+BOOTSTRAP → source libs from RELEASE_DIR (DEC-015); cloud-agent exact-SHA bootstrap (OQ-18 **CLOSED** P1.8.3.3)
 SUPERSEDES → single `pm2 restart synqdrive` only model
 SUPERSEDES → immediate single-snapshot leader check (INC-06)
 EVIDENCE → P1.8.3.1 production validation attempt 3; DEC-015; DEC-016 unit tests

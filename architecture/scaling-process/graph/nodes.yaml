@@ -235,3 +235,14 @@ nodes:
     last_verified_at: "2026-09-01T14:26:15Z"
     confidence: MEDIUM
     notes: "Window INSUFFICIENT for 24h certification; snapshot/partial coordination evidence only; no scaling defect signal observed; ATE UNEXERCISED (zero workload); battery backlog not reclassified; evidence precision corrected v2+v3 final closure"
+
+  - id: EVIDENCE_N2_24H_PLUS_SEGMENTED_RETROSPECTIVE_2026_09_03
+    type: EVIDENCE
+    status: PASS_WITH_FINDINGS
+    description: P1.8.3.3 read-only segmented N=2 retrospective (~44h calendar, longest segment 81024s)
+    depends_on: [MULTI_REPLICA_DEPLOYMENT, SCHEDULER_LEADER_ELECTION, DEC_016_EXACT_SHA_DEPLOY]
+    validated_by: ["P1_8_3_3_N2_24H_PLUS_SEGMENTED_RETROSPECTIVE_AUDIT_2026-09-03.md"]
+    last_verified_sha: 7d53da51e3b4dfaad711af735e568f97813ddfeb
+    last_verified_at: "2026-09-03T07:55:20Z"
+    confidence: MEDIUM
+    notes: "OPERATIONAL_24H_PLUS=PASS_WITH_FINDINGS; CONTINUOUS_24H_SOAK=NOT_MET; OQ-18 CLOSED; OQ-28 PARTIAL; duplicate trip SQL (2 groups); battery +36; ATE UNEXERCISED"

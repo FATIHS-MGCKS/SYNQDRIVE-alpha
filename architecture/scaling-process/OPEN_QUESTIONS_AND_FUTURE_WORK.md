@@ -37,7 +37,7 @@ Do **not** treat items here as current production architecture.
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
 | OQ-17 | Deploy scheduler leader convergence / leader-election wait | **CLOSED** | P1.8.3.1 production verified; INC-06 CLOSED; `DEPLOY_LEADER_CONVERGENCE_GATE=VERIFIED_PRODUCTION` |
-| OQ-18 | Bootstrap deploy can execute stale logic from pre-success `current` | **MITIGATED_PENDING_PRODUCTION_VALIDATION** | RELEASE_OPS_DIR sourcing production-proven (attempt 3); exact-SHA + cloud-agent bootstrap path in PR #1490 not yet observed on routine deploy |
+| OQ-18 | Bootstrap deploy can execute stale logic from pre-success `current` | **CLOSED** | P1.8.3.3: routine deploys 2026-09-02/03 used TMP exact-SHA bootstrap + `SYNQDRIVE_REQUESTED_DEPLOY_SHA`; auth.log + release SHA verified; DEC-016 production-validated |
 
 ---
 
@@ -67,7 +67,7 @@ Do **not** treat items here as current production architecture.
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
 | OQ-19 | nginx upstream auto-sync with PM2 | FUTURE_OPTION | Manual/config today |
-| OQ-28 | P1.8.3 post-scale retrospective / sustained N=2 soak | **PARTIAL** | P1.8.3.2 early retrospective EARLY_PASS (~2h39m window); full 24h soak still open |
+| OQ-28 | P1.8.3 post-scale retrospective / sustained N=2 soak | **PARTIAL** | P1.8.3.2 EARLY_PASS (~2h39m); P1.8.3.3 calendar ~44h but longest continuous segment 81024s (<86400); 3 deploys segmented runtime |
 | OQ-29 | Automated deploy CI for ops scripts | FUTURE_OPTION | Shell + unit tests exist; exact-SHA tests added |
 
 ---

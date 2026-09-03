@@ -151,7 +151,7 @@ SYNQDRIVE_REQUESTED_DEPLOY_SHA (set by cloud-agent-deploy.sh)
   → replica SHA invariant after rolling restart
 ```
 
-**OQ-18:** RELEASE_OPS_DIR sourcing production-proven (attempt 3). Cloud-agent exact-SHA bootstrap path: **MITIGATED_PENDING_PRODUCTION_VALIDATION**.
+**OQ-18:** **CLOSED** (P1.8.3.3). Routine deploys 2026-09-02/03 used TMP exact-SHA bootstrap + `SYNQDRIVE_REQUESTED_DEPLOY_SHA`; auth.log verified. DEC-016 **production-validated**.
 
 **Canonical path:** `bash .cursor/scripts/cloud-agent-deploy.sh` — do not invoke stale `/opt/synqdrive/current/.../vps-deploy-release.sh` directly.
 

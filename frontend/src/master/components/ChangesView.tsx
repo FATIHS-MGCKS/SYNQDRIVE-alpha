@@ -150,6 +150,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-03T07:50:00.000Z',
   },
   {
+    id: 'p1-8-3-3-n2-24h-segmented-audit-2026-09-03',
+    version: '4.9.1024',
+    title: 'P1.8.3.3 — N=2 24h+ segmented production retrospective audit (forensic authority v4)',
+    summary: [
+      'Forensic authority closure v4 (read-only SSH + code-path analysis) on PR #1521.',
+      'Corrected segment model: FULL_N2=158815s + excluded gaps=62s = 158877s calendar; splits at PM2 10:35/10:36 unexpected restarts.',
+      'INC-07 (P2 OPEN): duplicate REPAIRED trips from warm-tier INTRA_TRIP_GAP_SPLIT re-run. APPLICATION_DEFECT + SCALING_READINESS_DEFECT; N2_MULTI_REPLICA_CAUSED=NO_PROVEN.',
+      'Battery +36 net delta; ID math underdetermined (N∈[36,48]); taxonomy RESOLVED_PARTIAL; POSSIBLE scaling relation UNRESOLVED; OQ-21 existing workstream.',
+      'PM2: recovery from stopped proven; initial stop UNAVAILABLE; failed deploys RULED_OUT (~382ms, no PM2 touch). NEW_P2=1 (INC-07 only); PRE_EXISTING_P3=1.',
+    ],
+    reason: 'Close the natural >24h calendar checkpoint with deploy-aware segment analysis; do not conflate calendar time with continuous soak.',
+    previousBehavior: 'P1.8.3.2 covered only ~2h39m snapshot window; OQ-18/DEC-016 pending routine deploy observation.',
+    details:
+      'architecture/P1_8_3_3_N2_24H_PLUS_SEGMENTED_RETROSPECTIVE_AUDIT_2026-09-03.md; architecture/scaling-process/',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T07:55:00.000Z',
+  },
+  {
     id: 'dimo-rd003-video-gt-alignment-workbench-2026-09-03',
     version: '4.9.1036',
     title: 'DI-EV-0034A — RD003 External Video/Telemetry Alignment Workbench',
