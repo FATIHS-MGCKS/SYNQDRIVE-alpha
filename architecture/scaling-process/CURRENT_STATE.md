@@ -14,11 +14,12 @@ CURRENT_MAIN_SHA = f7a7d1cf1e6acef3350eadd430511f370b15b888
 CURRENT_PRODUCTION_SHA = 7d53da51e3b4dfaad711af735e568f97813ddfeb
 MAIN_AHEAD_OF_PRODUCTION = YES
 N2_RETROSPECTIVE_AUDIT_VERDICT = EARLY_PASS
+P1_8_3_3_EVIDENCE_PRECISION = CORRECTED_V2
 P1_8_3_3_OPERATIONAL_24H_PLUS = PASS_WITH_FINDINGS
 P1_8_3_3_CONTINUOUS_24H_SOAK = NOT_MET
 N2_PRODUCTION_CERTIFICATION = EARLY
 RUNTIME_N2_SIGNAL = HEALTHY_EARLY
-SCALING_DEFECT_FOUND = NO
+SCALING_DEFECT_FOUND = UNRESOLVED
 N2_SEGMENTED_HORIZON_SECONDS = 158877
 N2_LONGEST_CONTINUOUS_SEGMENT_SECONDS = 81024
 N2_AUDIT_WINDOW_CLASS = SEGMENTED_POST_DEPLOY
@@ -36,8 +37,9 @@ RECONCILIATION_MUTEX = ENABLED
 ROLLING_DEPLOYMENT = YES (#1472 + P1.8.3.1 convergence gate verified)
 MIXED_SHA_PROTECTION = YES
 DEPLOY_LEADER_CONVERGENCE_GATE = VERIFIED_PRODUCTION
-DEPLOY_EXACT_SHA_INVARIANT = PRODUCTION_VALIDATED
-DEC_016_PRODUCTION_VALIDATED = YES
+DEPLOY_EXACT_SHA_INVARIANT = NEEDS_PRECISION_REVIEW
+DEC_016_PRODUCTION_VALIDATED = NO
+DEC_016_FULL_INVARIANT = NEEDS_PRECISION_REVIEW
 PROVIDER_CEILING_VERIFIED = NO
 N1000_CERTIFICATION = CONDITIONAL (software only)
 OPEN_P0 = 0
@@ -45,8 +47,9 @@ OPEN_P1 = 0
 OPEN_P2 = 2
 INC_06 = CLOSED
 OQ_17 = CLOSED
-OQ_18 = CLOSED
+OQ_18 = MITIGATED_LIKELY_PRODUCTION_VERIFIED
 OQ_28 = PARTIAL
+P1_8_3_3_MERGE_RECOMMENDATION = HOLD
 NEXT_ARCHITECTURE_STAGE = uninterrupted 24h N=2 segment for OQ-28 closure
 ```
 
@@ -97,8 +100,8 @@ NEXT_ARCHITECTURE_STAGE = uninterrupted 24h N=2 segment for OQ-28 closure
 
 ## TYPE: IMPLEMENTATION — DEC-016 exact-SHA deploy (2026-09-03)
 
-**STATUS:** **PRODUCTION VALIDATED**  
-**EVIDENCE:** `/var/log/auth.log` bootstrap entries 2026-09-02/03; release SHA match; OQ-18 **CLOSED**
+**STATUS:** **LIKELY PRODUCTION VERIFIED** (stale-current fix); full DEC-016 invariant **NEEDS_PRECISION_REVIEW**  
+**EVIDENCE:** `/var/log/auth.log` TMP bootstrap entries 2026-09-02/03; release SHA match
 
 ---
 
@@ -111,7 +114,7 @@ NEXT_ARCHITECTURE_STAGE = uninterrupted 24h N=2 segment for OQ-28 closure
 | Reconciliation mutex (P1.4) | ACTIVE | #1435 |
 | Multi-replica deploy hardening (P1.8.2.1) | **MERGED** #1472 | rolling deploy |
 | Deploy leader convergence gate (P1.8.3.1) | **VERIFIED** | #1487 + prod validation |
-| Exact-SHA deploy provenance (DEC-016) | **PRODUCTION VALIDATED** | P1.8.3.3 audit |
+| Exact-SHA deploy provenance (DEC-016) | **NEEDS_PRECISION_REVIEW** | P1.8.3.3 audit |
 
 ---
 
@@ -123,5 +126,5 @@ NEXT_ARCHITECTURE_STAGE = uninterrupted 24h N=2 segment for OQ-28 closure
 | Single scheduler leader | PASS |
 | Two-replica production invariant | **PASS** |
 | Deploy path preserves 2 replicas | **YES** |
-| Exact-SHA deploy invariant (routine) | **YES** (auth.log + releases) |
+| Exact-SHA deploy invariant (routine) | **NEEDS_PRECISION_REVIEW** (auth.log TMP bootstrap likely; full chain not logged) |
 | Continuous 24h N=2 soak | **NOT_MET** (OQ-28 PARTIAL) |

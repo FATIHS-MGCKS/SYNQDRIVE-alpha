@@ -19,9 +19,14 @@ More than **44 hours** of real production calendar time elapsed since the P1.8.3
 | `OPERATIONAL_24H_PLUS_RETROSPECTIVE` | **PASS_WITH_FINDINGS** |
 | `CONTINUOUS_24H_N2_SOAK` | **NOT_MET** |
 | `N2_PRODUCTION_CERTIFICATION` | **EARLY** (unchanged) |
-| `SCALING_DEFECT_FOUND` | **NO** (no scaling-specific P0/P1) |
+| `SCALING_DEFECT_FOUND` | **UNRESOLVED** (duplicate-trip, battery taxonomy, PM2 restart causality not closed) |
 
-**OQ-18 / DEC-016:** Production deploys on 2026-09-02 and 2026-09-03 exercised the canonical exact-SHA bootstrap path (auth.log + release SHA verification). **OQ-18 CLOSED.** **DEC-016 production-validated.**
+**OQ-18 / DEC-016:** Auth.log shows TMP exact-SHA bootstrap on routine deploys (stale-`current` path **likely** avoided). Full DEC-016 end-to-end invariant (`BOOTSTRAP_SCRIPT_SHA` … `REPLICA_B_SHA`) **not exhaustively logged** → precision review required before closure.
+
+```
+OQ_18_STALE_CURRENT_FIX = LIKELY_PRODUCTION_VERIFIED
+DEC_016_FULL_INVARIANT = NEEDS_PRECISION_REVIEW
+```
 
 **OQ-28:** Longest continuous segment `< 86400s` → remains **PARTIAL**.
 
@@ -159,13 +164,16 @@ Failed attempts at 10:32Z used same bootstrap pattern but **no matching release 
 | Release clone at requested SHA | Release dirs contain matching `git rev-parse HEAD` |
 | No stale-`current` bootstrap for successful deploys | TMP ephemeral clone, not `/opt/synqdrive/current` script |
 | Deployment completed | `current` symlink → promoted release; PM2 online both replicas |
+| Full DEC-016 invariant chain logged | **NOT_PROVEN** (bootstrap script SHA vs replica verify not retained in deploy transcripts) |
 
 ```
-OQ_18_STATUS = CLOSED
-DEC_016_PRODUCTION_VALIDATED = YES
+OQ_18_STATUS = MITIGATED_LIKELY_PRODUCTION_VERIFIED
+OQ_18_STALE_CURRENT_FIX = LIKELY_PRODUCTION_VERIFIED
+DEC_016_PRODUCTION_VALIDATED = NO
+DEC_016_FULL_INVARIANT = NEEDS_PRECISION_REVIEW
 ```
 
-**Note:** Failed deploy attempts at 2026-09-02T10:32Z demonstrate abort-before-promote behavior; they do not invalidate successful exact-SHA paths.
+**Note:** Auth.log proves TMP fetch + `SYNQDRIVE_REQUESTED_DEPLOY_SHA` for successful deploys — strong evidence the stale-`current` bootstrap path was bypassed. This does **not** alone close the full DEC-016 invariant without retained bootstrap-script and per-replica SHA verification logs. Failed deploy attempts at 2026-09-02T10:32Z demonstrate abort-before-promote behavior.
 
 ---
 
@@ -181,7 +189,14 @@ DEC_016_PRODUCTION_VALIDATED = YES
 | PROMETHEUS_DUPLICATE_METRIC_RECURRENCE | **NO_SIGNAL** |
 | PORT_BIND_FAILURE_COUNT | **0** |
 
-Unexpected restarts correlate temporally with failed deploy attempts (~3 min later); root cause **not proven** from available logs (no errored exit in sampled error log).
+Unexpected restarts correlate temporally with failed deploy attempts (~3 min later).
+
+```
+PM2_UNEXPECTED_RESTARTS = 2
+PM2_RESTART_CAUSALITY = UNRESOLVED
+```
+
+Root cause **not proven** from available logs (no errored exit in sampled error log).
 
 ---
 
@@ -260,9 +275,11 @@ Current snapshot: A=FOLLOWER, B=LEADER, lease renewing.
 | BATTERY_V2_FAILED_BASELINE (P1.8.3.2) | 64 |
 | BATTERY_V2_FAILED_NOW | **100** |
 | BATTERY_V2_FAILED_DELTA | **+36** |
+| BATTERY_V2_NET_DELTA | **+36** |
 | BATTERY_V2_NEW_FAILED_COUNT (score after checkpoint) | **48** |
-| BATTERY_V2_SCALING_RELATED_NEW_FAILURES | **0** (not attributed to N=2; pipeline/pre-existing class) |
-| BATTERY_V2_UNKNOWN_NEW_FAILURES | **36** (delta not fully score-classified in this audit) |
+| BATTERY_V2_SCALING_RELATED_NEW_FAILURES | **0** (not attributed without taxonomy) |
+| BATTERY_V2_UNKNOWN_NEW_FAILURES | **36** (net delta; per-job class not resolved) |
+| BATTERY_FAILURE_TAXONOMY | **UNRESOLVED** |
 | BATTERY_V2_HISTORICAL_BACKLOG_RECLASSIFIED | **NO** |
 
 Newest failed job scores post-checkpoint; failures are **battery pipeline backlog growth**, not deploy-mixed-SHA artifact.
@@ -275,10 +292,12 @@ Newest failed job scores post-checkpoint; failures are **battery pipeline backlo
 |--------|-------|
 | NEW_TRIPS (full horizon) | **23** |
 | NEW_TRIPS_SINCE_P1_8_3_2 | **21** (23 − 2 from P1.8.3.2 window) |
+| DUPLICATE_TRIPS | **PROVEN** (SQL) |
 | DUPLICATE_TRIP_SIGNAL | **YES_VERIFIED_SQL** (2 `vehicle_id,start_time` groups with count=2) |
+| DUPLICATE_TRIP_SCALING_CAUSALITY | **UNRESOLVED** |
 | PERMANENT_TRIP_LOSS_SIGNAL | **NO_SIGNAL_IN_AVAILABLE_EVIDENCE** |
 | DUPLICATE_FINALIZATION_SIGNAL | **NO_SIGNAL_IN_AVAILABLE_EVIDENCE** |
-| TRIP_PIPELINE_SCALING_REGRESSION_SIGNAL | **INSUFFICIENT_EVIDENCE** |
+| TRIP_PIPELINE_SCALING_REGRESSION_SIGNAL | **UNRESOLVED** |
 
 Duplicate rows (same vehicle, same start_time):
 
@@ -362,22 +381,24 @@ Duplicate trips and battery growth are **not timed to deploy boundaries** in ava
 
 ## Phase 19 — Incident classification
 
-| ID | Severity | Classification | Notes |
-|----|----------|----------------|-------|
-| FIND-01 | P2 | INSUFFICIENT_EVIDENCE | 2 duplicate `vehicle_id,start_time` trip groups (SQL verified) |
-| FIND-02 | P2 | PRE_EXISTING_CLASS | battery.v2 failed 64→100 (+36); not reclassified |
-| FIND-03 | P3 | INSUFFICIENT_EVIDENCE | Unexpected PM2 restarts 2026-09-02T10:35Z |
-| FIND-04 | P3 | PRE_EXISTING | ClickHouse schema checksum drift (readiness) |
-| FIND-05 | P3 | OBSERVATIONAL | Redis `blocked_clients=43` at audit |
+| ID | Type | Classification | Notes |
+|----|------|----------------|-------|
+| FIND-01 | Finding | DUPLICATE_TRIPS_PROVEN | 2 duplicate `vehicle_id,start_time` groups (SQL verified); scaling causality **UNRESOLVED** |
+| FIND-02 | Finding | BATTERY_V2_NET_DELTA | battery.v2 failed 64→100 (+36); failure taxonomy **UNRESOLVED** |
+| FIND-03 | Observational | PM2_RESTART_UNRESOLVED | Unexpected PM2 restarts 2026-09-02T10:35Z; causality **UNRESOLVED** |
+| FIND-04 | Observational | PRE_EXISTING | ClickHouse schema checksum drift (readiness) — **likely sole P3** |
+| FIND-05 | Observational | REDIS_BLOCKED_CLIENTS | Redis `blocked_clients=43` at audit — not promoted to P3 |
 
 ```
 NEW_P0_COUNT = 0
 NEW_P1_COUNT = 0
 NEW_P2_COUNT = 2
-NEW_P3_COUNT = 3
+NEW_P3_COUNT = 1
+NEW_P3_COUNT_CONFIDENCE = LIKELY
+OBSERVATIONAL_NOTE_COUNT = 3
 ```
 
-No **scaling-caused** P0/P1 incident.
+`SCALING_DEFECT_FOUND` remains **UNRESOLVED** until duplicate-trip, battery taxonomy, and PM2 restart causality are closed or ruled out as scaling-unrelated.
 
 ---
 
@@ -406,7 +427,22 @@ Rationale: Calendar >24h but **continuous soak NOT_MET** due to deploy segmentat
 | N2_PRODUCTION_CERTIFICATION | **EARLY** |
 | N3_PLUS_CERTIFICATION | **UNVERIFIED** |
 | N1000_CERTIFICATION | **CONDITIONAL** |
-| SCALING_DEFECT_FOUND | **NO** |
+| SCALING_DEFECT_FOUND | **UNRESOLVED** |
+
+---
+
+## Evidence precision corrections (v2)
+
+| Domain | v1 claim | v2 precision |
+|--------|----------|--------------|
+| OQ-18 | CLOSED | **LIKELY_PRODUCTION_VERIFIED** (stale-current fix); full closure withheld |
+| DEC-016 | production-validated YES | **NEEDS_PRECISION_REVIEW** (invariant chain not fully logged) |
+| SCALING_DEFECT_FOUND | NO | **UNRESOLVED** (open causality on trips/battery/PM2) |
+| Duplicate trips | P2 insufficient | **PROVEN** SQL; scaling causality **UNRESOLVED** |
+| Battery +36 | scaling-related 0 | **NET_DELTA +36**; taxonomy **UNRESOLVED** |
+| PM2 restarts | P3 finding | **2 restarts**; causality **UNRESOLVED**; observational not P3 |
+| NEW_P3 | 3 | **1 (LIKELY)** — ClickHouse drift only |
+| MERGE_RECOMMENDATION | MERGE | **HOLD** pending causality / DEC-016 precision |
 
 ---
 
@@ -437,7 +473,9 @@ Rationale: Calendar >24h but **continuous soak NOT_MET** due to deploy segmentat
 ## Canonical machine-readable final block
 
 ```
+P1_8_3_3_AUDIT_VALUE = HIGH
 P1_8_3_3_VERDICT = PASS_WITH_FINDINGS
+EVIDENCE_PRECISION = CORRECTED_V2
 
 AUDIT_HORIZON_START = 2026-09-01T11:47:23Z
 AUDIT_HORIZON_END = 2026-09-03T07:55:20Z
@@ -491,12 +529,16 @@ QUEUE_RETRY_AMPLIFICATION_SIGNAL_FOUND = NO_SIGNAL_IN_AVAILABLE_EVIDENCE
 BATTERY_V2_FAILED_BASELINE = 64
 BATTERY_V2_FAILED_NOW = 100
 BATTERY_V2_FAILED_DELTA = 36
+BATTERY_V2_NET_DELTA = 36
 BATTERY_V2_NEW_FAILED_COUNT = 48
 BATTERY_V2_SCALING_RELATED_NEW_FAILURES = 0
+BATTERY_FAILURE_TAXONOMY = UNRESOLVED
 BATTERY_V2_HISTORICAL_BACKLOG_RECLASSIFIED = NO
 
 NEW_TRIPS = 23
+DUPLICATE_TRIPS = PROVEN
 DUPLICATE_TRIP_SIGNAL_FOUND = YES_VERIFIED_SQL
+DUPLICATE_TRIP_SCALING_CAUSALITY = UNRESOLVED
 PERMANENT_TRIP_LOSS_SIGNAL_FOUND = NO_SIGNAL_IN_AVAILABLE_EVIDENCE
 DUPLICATE_FINALIZATION_SIGNAL_FOUND = NO_SIGNAL_IN_AVAILABLE_EVIDENCE
 
@@ -522,20 +564,27 @@ DEPLOYMENT_CORRELATED_DATA_DEFECT_FOUND = NO_PROVEN_CORRELATION
 DEPLOYMENT_CORRELATED_QUEUE_DEFECT_FOUND = NO
 DEPLOYMENT_CORRELATED_COORDINATION_DEFECT_FOUND = NO
 
+PM2_UNEXPECTED_RESTARTS = 2
+PM2_RESTART_CAUSALITY = UNRESOLVED
+
 INC_06_STATUS = CLOSED
-OQ_18_STATUS = CLOSED
-DEC_016_PRODUCTION_VALIDATED = YES
+OQ_18_STATUS = MITIGATED_LIKELY_PRODUCTION_VERIFIED
+OQ_18_STALE_CURRENT_FIX = LIKELY_PRODUCTION_VERIFIED
+DEC_016_PRODUCTION_VALIDATED = NO
+DEC_016_FULL_INVARIANT = NEEDS_PRECISION_REVIEW
 OQ_28_STATUS = PARTIAL
 
 N2_PRODUCTION_CERTIFICATION = EARLY
 N3_PLUS_CERTIFICATION = UNVERIFIED
 N1000_CERTIFICATION = CONDITIONAL
-SCALING_DEFECT_FOUND = NO
+SCALING_DEFECT_FOUND = UNRESOLVED
 
 NEW_P0_COUNT = 0
 NEW_P1_COUNT = 0
 NEW_P2_COUNT = 2
-NEW_P3_COUNT = 3
+NEW_P3_COUNT = 1
+NEW_P3_COUNT_CONFIDENCE = LIKELY
+OBSERVATIONAL_NOTE_COUNT = 3
 
 PRODUCTION_MUTATION_EXECUTED = NO
 PRODUCTION_DEPLOY_EXECUTED_BY_AUDIT = NO
@@ -555,8 +604,8 @@ FINAL_PR_CI_HEAD = EXTERNAL_GITHUB_GATE
 PR_MERGEABLE = EXTERNAL_GITHUB_GATE
 PR_DRAFT = EXTERNAL_GITHUB_GATE
 
-BLOCKERS =
-RESIDUAL_FINDINGS = OQ-28 continuous soak NOT_MET; duplicate trip SQL (2 groups); battery.v2 +36; unexpected PM2 restarts Sep2; ATE still UNEXERCISED; DIMO/mutex historical metrics UNAVAILABLE
-MERGE_RECOMMENDATION = MERGE
+BLOCKERS = DUPLICATE_TRIP_SCALING_CAUSALITY_UNRESOLVED; BATTERY_FAILURE_TAXONOMY_UNRESOLVED; PM2_RESTART_CAUSALITY_UNRESOLVED; DEC_016_FULL_INVARIANT_NEEDS_PRECISION_REVIEW
+RESIDUAL_FINDINGS = OQ-28 continuous soak NOT_MET; duplicate trips PROVEN (2 groups); battery.v2 +36 taxonomy unresolved; PM2 unexpected restarts (2); ATE UNEXERCISED; DIMO/mutex historical metrics UNAVAILABLE
+MERGE_RECOMMENDATION = HOLD
 NEXT_STAGE = SCHEDULE_UNINTERRUPTED_24H_N2_SEGMENT_OR_DEFER_DEPLOY_WINDOW
 ```

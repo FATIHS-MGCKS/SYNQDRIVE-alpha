@@ -177,13 +177,14 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | Operational 24h+ retrospective | P1.8.3.3 | — | segmented audit | PASS_WITH_FINDINGS | HIGH |
 | Continuous 24h soak | P1.8.3.3 | — | segment math | NOT_MET | HIGH |
 | Post-checkpoint deploy count | P1.8.3.3 | — | auth.log + releases | 3 PASS, 2 FAIL attempts | HIGH |
-| DEC-016 exact-SHA production | P1.8.3.3 | — | auth.log TMP bootstrap | VALIDATED | HIGH |
-| OQ-18 closure | P1.8.3.3 | — | deploy forensics | CLOSED | HIGH |
+| DEC-016 exact-SHA production | P1.8.3.3 | — | auth.log TMP bootstrap | NEEDS_PRECISION_REVIEW | MEDIUM |
+| OQ-18 stale-current fix | P1.8.3.3 | — | auth.log | LIKELY_PRODUCTION_VERIFIED | MEDIUM |
 | OQ-28 closure | P1.8.3.3 | — | segment <86400s | PARTIAL (not closed) | HIGH |
-| Trip duplicates (horizon) | P1.8.3.3 | — | SQL vehicle_id,start_time | YES_VERIFIED_SQL (2 groups) | HIGH |
-| battery.v2 delta since baseline | P1.8.3.3 | — | Redis failed ZSET | +36 (64→100) | HIGH |
-| ATE multi-replica | P1.8.3.3 | — | queue idle | UNEXERCISED | HIGH |
-| Scaling defect | P1.8.3.3 | — | incident class | NO P0/P1 | HIGH |
+| Trip duplicates (horizon) | P1.8.3.3 | — | SQL vehicle_id,start_time | PROVEN (2 groups); causality UNRESOLVED | HIGH |
+| battery.v2 net delta | P1.8.3.3 | — | Redis failed ZSET | +36; taxonomy UNRESOLVED | HIGH |
+| PM2 unexpected restarts | P1.8.3.3 | — | pm2.log | 2; causality UNRESOLVED | MEDIUM |
+| Scaling defect | P1.8.3.3 | — | open causality | UNRESOLVED | MEDIUM |
+| Merge recommendation | P1.8.3.3 | — | precision v2 | HOLD | HIGH |
 
 ---
 
@@ -204,4 +205,4 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 2. No provider ceiling verification at N≈1000
 3. Staging validation Redis DB ≠ production DB
 4. Deploy leader-wait **verified in production** (P1.8.3.1 attempt 3)
-5. Exact-SHA deploy provenance **production-validated** (P1.8.3.3; OQ-18 CLOSED)
+5. Exact-SHA deploy: stale-current fix **likely** production-verified; full DEC-016 invariant **NEEDS_PRECISION_REVIEW** (P1.8.3.3)

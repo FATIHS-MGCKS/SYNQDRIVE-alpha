@@ -37,7 +37,7 @@ Do **not** treat items here as current production architecture.
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
 | OQ-17 | Deploy scheduler leader convergence / leader-election wait | **CLOSED** | P1.8.3.1 production verified; INC-06 CLOSED; `DEPLOY_LEADER_CONVERGENCE_GATE=VERIFIED_PRODUCTION` |
-| OQ-18 | Bootstrap deploy can execute stale logic from pre-success `current` | **CLOSED** | P1.8.3.3: routine deploys 2026-09-02/03 used TMP exact-SHA bootstrap + `SYNQDRIVE_REQUESTED_DEPLOY_SHA`; auth.log + release SHA verified; DEC-016 production-validated |
+| OQ-18 | Bootstrap deploy can execute stale logic from pre-success `current` | **MITIGATED_LIKELY_PRODUCTION_VERIFIED** | P1.8.3.3: auth.log TMP exact-SHA bootstrap on 2026-09-02/03 deploys — stale-current path **likely** avoided; full DEC-016 invariant chain not logged; precision review before CLOSED |
 
 ---
 
