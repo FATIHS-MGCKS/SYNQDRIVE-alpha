@@ -191,7 +191,10 @@ function buildFairnessHarness(
     }),
     hasLiveJob: jest.fn(async (idempotencyKey: string) => idempotencyKey !== targetIdempotencyKey),
   };
-  const deadLetters = { isDeadLetter: jest.fn().mockResolvedValue(false) };
+  const deadLetters = {
+    isDeadLetter: jest.fn().mockResolvedValue(false),
+    clearReplayableDeadLetterIfPresent: jest.fn().mockResolvedValue(false),
+  };
   const assessmentHandoff = new LvRestAssessmentHandoffService(
     prisma as never,
     jobProducer as never,

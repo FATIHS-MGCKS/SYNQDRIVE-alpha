@@ -4,8 +4,26 @@ export const CANONICAL_REST_ASSESSMENT_HANDOFF_LOOKBACK_MS = 7 * 24 * 3600_000;
 /** Max candidate rows inspected per reconciliation pass (bounds work per invocation). */
 export const CANONICAL_REST_ASSESSMENT_HANDOFF_MAX_SCAN_MULTIPLIER = 20;
 
+/** DLQ error codes eligible for reconciliation replay (mirrors REST-target recovery). */
+export const REPLAYABLE_ASSESSMENT_HANDOFF_DEAD_LETTER_CODES = [
+  'LOCK_CONTENTION',
+  'TRANSIENT_INFRA',
+  'PROVIDER_UNAVAILABLE',
+] as const;
+
 export function maxScannedRestAssessmentHandoffCandidates(batch: number): number {
   return batch * CANONICAL_REST_ASSESSMENT_HANDOFF_MAX_SCAN_MULTIPLIER;
+}
+
+/**
+ * At most one canonical assessment-handoff repair enqueue per vehicle per reconciliation pass.
+ * Prevents same-vehicle assess-lock fan-out when a vehicle has many historical REST measurements.
+ */
+export function shouldDeferRestAssessmentHandoffVehicleRepair(
+  vehicleId: string,
+  repairedVehiclesThisPass: ReadonlySet<string>,
+): boolean {
+  return repairedVehiclesThisPass.has(vehicleId);
 }
 
 /**

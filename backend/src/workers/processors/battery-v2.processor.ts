@@ -10,6 +10,14 @@ import { BatteryV2JobDeadLetterService } from '@modules/vehicle-intelligence/bat
 import { BatteryV2JobObservabilityService } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-observability.service';
 import { classifyBatteryV2JobError } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-error.util';
 import {
+  BATTERY_V2_JOB_ERROR_CODES,
+  BatteryV2JobProcessingError,
+} from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-job.errors';
+import {
+  LvRestAssessmentHandoffService,
+} from '@modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-assessment-handoff.service';
+import { LV_REST_ASSESSMENT_HANDOFF_OUTCOME } from '@modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-assessment-handoff.metadata';
+import {
   fingerprintBatteryV2IdempotencyKey,
   fingerprintBatteryV2JobId,
   formatBatteryV2PipelineLog,
@@ -34,6 +42,7 @@ export class BatteryV2Processor extends WorkerHost {
     private readonly idempotentExecution: BatteryV2IdempotentExecutionService,
     private readonly deadLetters: BatteryV2JobDeadLetterService,
     private readonly observability: BatteryV2JobObservabilityService,
+    private readonly assessmentHandoff: LvRestAssessmentHandoffService,
     private readonly tripMetrics?: TripMetricsService,
   ) {
     super();
@@ -73,6 +82,18 @@ export class BatteryV2Processor extends WorkerHost {
             correlationId: payload.correlationId,
           }),
         );
+        if (
+          result.skipReason === 'already_completed' &&
+          jobType === 'BATTERY_ASSESSMENT_RECOMPUTE' &&
+          payload.sourceEntityId
+        ) {
+          await this.assessmentHandoff.acknowledgeExecuted({
+            organizationId: payload.organizationId,
+            vehicleId: payload.vehicleId,
+            measurementId: payload.sourceEntityId,
+            outcome: LV_REST_ASSESSMENT_HANDOFF_OUTCOME.ASSESSMENT_PERSISTED,
+          });
+        }
       } else {
         this.observability.recordCompleted(jobType);
       }
@@ -126,10 +147,19 @@ export class BatteryV2Processor extends WorkerHost {
       }
 
       if (!classified.retryable) {
-        throw new UnrecoverableError(classified.message);
+        throw new UnrecoverableError(
+          classified.message || classified.code || BATTERY_V2_JOB_ERROR_CODES.HANDLER_FAILED,
+        );
       }
 
-      throw err instanceof Error ? err : new Error(classified.message);
+      throw new BatteryV2JobProcessingError({
+        code: classified.code,
+        message:
+          classified.message || classified.code || BATTERY_V2_JOB_ERROR_CODES.HANDLER_FAILED,
+        retryable: classified.retryable,
+        jobType: jobType as BatteryV2JobType,
+        cause: err,
+      });
     }
   }
 

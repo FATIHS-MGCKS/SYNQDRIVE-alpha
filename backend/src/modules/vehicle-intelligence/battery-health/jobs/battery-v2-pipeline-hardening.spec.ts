@@ -48,6 +48,9 @@ describe('BatteryV2Processor pipeline hardening', () => {
     observeProcessingDuration: jest.fn(),
     logWarn: jest.fn(),
   };
+  const assessmentHandoff = {
+    acknowledgeExecuted: jest.fn().mockResolvedValue(undefined),
+  };
 
   let processor: BatteryV2Processor;
 
@@ -58,6 +61,7 @@ describe('BatteryV2Processor pipeline hardening', () => {
       idempotentExecution as any,
       deadLetters as any,
       observability as any,
+      assessmentHandoff as any,
       undefined,
     );
   });

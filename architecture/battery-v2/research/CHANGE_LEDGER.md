@@ -16,6 +16,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-03 — M3.0D PKG-01 reconciliation failure-spike forensics + liveness closure
+
+| Field | Content |
+|-------|---------|
+| **OBSERVATION** | Post-#1515 deploy: 45 PKG-01 candidates → 45 `lv-rest-reconcile:` terminal failures (3 vehicles, 17+11+17). 15 lock contention + 30 Prisma Postgres 54000 persistence. Failed queue 60→100; handoffs now 46×ENQUEUED. |
+| **ROOT_CAUSE** | Reconciliation fan-out enqueued many same-vehicle assess jobs concurrently → vehicle assess lock contention + concurrent assessment creates → terminal BullMQ failures; empty `failedReason` from raw re-throw without `BatteryV2JobProcessingError`. |
+| **CHANGE** | Per-vehicle repair serialization in `reconcileCanonicalRestAssessmentHandoffs`; `clearReplayableDeadLetterIfPresent` before repair; processor throws classified `BatteryV2JobProcessingError`; idempotent-skip ack handoff; assess retry 5×10s exponential; Prisma 54000 classified non-retryable. |
+| **VALIDATION** | PKG-01 reconciliation/fairness/liveness 98 passed; graph PASS. **Not deployed.** |
+| **NON_EFFECTS** | `BATTERY_V2_PUBLICATION_ENABLED` unchanged; REST_SHADOW unchanged; failed queue not mutated. |
+| **REMAINING_GAPS** | Postgres 54000 on assessment create may need separate persistence investigation; fix deploy + soak before activation readiness reevaluation. |
+| **DECISION_STATUS** | M3.0D CODE COMPLETE — deploy pending |
+
 ## CL-2026-09-03 — M3.0B canary-readiness closure (PR #1515)
 
 | Field | Content |

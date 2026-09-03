@@ -45,4 +45,18 @@ describe('battery-v2-job-error.util', () => {
     expect(result.code).toBe(BATTERY_V2_JOB_ERROR_CODES.PROVIDER_UNAVAILABLE);
     expect(result.retryable).toBe(true);
   });
+
+  it('classifies empty handler failures with fallback message', () => {
+    const result = classifyBatteryV2JobError(new Error(''));
+    expect(result.code).toBe(BATTERY_V2_JOB_ERROR_CODES.HANDLER_FAILED);
+    expect(result.message).toBe(BATTERY_V2_JOB_ERROR_CODES.HANDLER_FAILED);
+  });
+
+  it('classifies Prisma 54000 persistence errors as non-retryable', () => {
+    const result = classifyBatteryV2JobError(
+      new Error('ConnectorError PostgresError { code: "54000" }'),
+    );
+    expect(result.retryable).toBe(false);
+    expect(result.code).toBe(BATTERY_V2_JOB_ERROR_CODES.HANDLER_FAILED);
+  });
 });

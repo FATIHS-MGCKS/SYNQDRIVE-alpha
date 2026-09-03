@@ -17,10 +17,11 @@ jest.mock('@config/battery-health-v2.config', () => {
 const ORG = 'clorg1234567890123456789012';
 const VEH = 'clveh1234567890123456789012';
 
-function mockDeadLetters(overrides: Partial<{ isDeadLetter: jest.Mock; clearDeadLetter: jest.Mock }> = {}) {
+function mockDeadLetters(overrides: Partial<{ isDeadLetter: jest.Mock; clearDeadLetter: jest.Mock; clearReplayableDeadLetterIfPresent: jest.Mock }> = {}) {
   return {
     isDeadLetter: jest.fn().mockResolvedValue(false),
     clearDeadLetter: jest.fn().mockResolvedValue(true),
+    clearReplayableDeadLetterIfPresent: jest.fn().mockResolvedValue(false),
     ...overrides,
   };
 }
@@ -836,7 +837,49 @@ describe('BatteryV2ReconciliationService', () => {
 
     await service.reconcileAll();
 
-    expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledTimes(25);
-    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(5);
+    expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledTimes(1);
+    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(29);
+  });
+
+  it('serializes canonical REST handoff repair to one enqueue per vehicle per pass', async () => {
+    const VEH_B = 'clvehB1234567890123456789012';
+    const candidates = [
+      {
+        id: 'clmeasvehA00000000000000000001',
+        organizationId: ORG,
+        vehicleId: VEH,
+        sessionId: 'clsessvehA000000000000000001',
+        type: 'REST_60M' as const,
+        provenance: { sourceObservationId: 'obs-a1' },
+      },
+      {
+        id: 'clmeasvehA00000000000000000002',
+        organizationId: ORG,
+        vehicleId: VEH,
+        sessionId: 'clsessvehA000000000000000002',
+        type: 'REST_60M' as const,
+        provenance: { sourceObservationId: 'obs-a2' },
+      },
+      {
+        id: 'clmeasvehB00000000000000000001',
+        organizationId: ORG,
+        vehicleId: VEH_B,
+        sessionId: 'clsessvehB000000000000000001',
+        type: 'REST_60M' as const,
+        provenance: { sourceObservationId: 'obs-b1' },
+      },
+    ];
+    prisma.$queryRaw.mockResolvedValue(candidates);
+    assessmentHandoff.reconcileAssessmentHandoff.mockResolvedValue({
+      enqueued: true,
+      skipped: false,
+      idempotencyKey: 'assess-key',
+    });
+
+    await service.reconcileAll();
+
+    expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledTimes(2);
+    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(1);
+    expect(deadLetters.clearReplayableDeadLetterIfPresent).toHaveBeenCalledTimes(2);
   });
 });
