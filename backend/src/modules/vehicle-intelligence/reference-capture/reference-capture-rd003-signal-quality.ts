@@ -424,7 +424,46 @@ export function runHoldoutSpeedValidation(params: {
     HOLDOUT_MAX_ERROR: holdoutErrors.length ? Math.max(...holdoutErrors) : null,
     HOLDOUT_POINT_COUNT: holdoutErrors.length,
     trainAlignedClipStartUtc: basin.alignedClipStartUtc,
-    note: 'Holdout points never used for candidate start-time selection',
+    note: 'Holdout points never used for candidate start-time selection; within-clip generalization only — not independent absolute accuracy',
+  };
+}
+
+export function summarizeHoldoutByAlignmentClass(
+  holdoutResults: Array<Record<string, unknown>>,
+): {
+  uniqueAlignmentHoldoutResults: Array<Record<string, unknown>>;
+  ambiguousAlignmentHoldoutDiagnostics: Array<Record<string, unknown>>;
+  uniqueAlignmentHoldoutClips: number;
+  uniqueAlignmentHoldoutMaeKmh: number | null;
+  ambiguousAlignmentHoldoutClips: number;
+  ambiguousAlignmentHoldoutMaeKmh: number | null;
+  withinClipHoldoutMaeKmh: number | null;
+} {
+  const evaluated = holdoutResults.filter((h) => h.status === 'EVALUATED');
+  const uniqueAlignmentHoldoutResults = evaluated.filter(
+    (h) => h.independentStatus === 'STRONG_CANDIDATE',
+  );
+  const ambiguousAlignmentHoldoutDiagnostics = evaluated.filter(
+    (h) => h.independentStatus === 'AMBIGUOUS',
+  );
+  const uniqueMaes = uniqueAlignmentHoldoutResults
+    .map((h) => h.HOLDOUT_MAE as number)
+    .filter((v): v is number => v != null);
+  const ambiguousMaes = ambiguousAlignmentHoldoutDiagnostics
+    .map((h) => h.HOLDOUT_MAE as number)
+    .filter((v): v is number => v != null);
+  const allMaes = evaluated
+    .map((h) => h.HOLDOUT_MAE as number)
+    .filter((v): v is number => v != null);
+
+  return {
+    uniqueAlignmentHoldoutResults,
+    ambiguousAlignmentHoldoutDiagnostics,
+    uniqueAlignmentHoldoutClips: uniqueAlignmentHoldoutResults.length,
+    uniqueAlignmentHoldoutMaeKmh: uniqueMaes.length ? mean(uniqueMaes) : null,
+    ambiguousAlignmentHoldoutClips: ambiguousAlignmentHoldoutDiagnostics.length,
+    ambiguousAlignmentHoldoutMaeKmh: ambiguousMaes.length ? mean(ambiguousMaes) : null,
+    withinClipHoldoutMaeKmh: allMaes.length ? mean(allMaes) : null,
   };
 }
 
@@ -720,6 +759,11 @@ export function buildSpeedVideoValidation(params: {
         clipId: clip.clipId,
         fileName: clip.fileName,
         negativeControl: true,
+        independentStatus: disc.HF_HISTORICAL.independentStatus,
+        NEGATIVE_CONTROL_AUTHORITY:
+          disc.HF_HISTORICAL.independentStatus === 'STRONG_CANDIDATE'
+            ? 'UNIQUE_ALIGNMENT_SUPPORTED'
+            : 'DIAGNOSTIC_ONLY_AMBIGUOUS_ALIGNMENT',
         cruiseWindow,
         cruiseObservationCount: cruiseObs.length,
         cruiseMatchedPointCount: cruiseErrors.length,
@@ -731,21 +775,25 @@ export function buildSpeedVideoValidation(params: {
           cruiseAccel.map((p) => p.accelerationMps2),
         ),
         NEGATIVE_CONTROL_ARTIFICIAL_DYNAMICS: artificialDynamics,
-        note: 'Scores only GT SPEED observations inside declared stable-cruise window',
+        note:
+          disc.HF_HISTORICAL.independentStatus === 'AMBIGUOUS'
+            ? 'Diagnostic only — ambiguous temporal alignment; not authoritative proof of artificial dynamics'
+            : 'Scores only GT SPEED observations inside declared stable-cruise window',
       });
     }
 
     clipResults.push(episode);
   }
 
-  const holdoutMaes = holdoutResults
-    .map((h) => h.HOLDOUT_MAE as number | null | undefined)
-    .filter((v): v is number => v != null);
+  const holdoutSummary = summarizeHoldoutByAlignmentClass(holdoutResults);
 
   return {
     evidenceTier: 'TIER_A_DIRECT_VIDEO_VALIDATION',
     evidenceClass: 'ALIGNMENT_FIT_VIDEO_COMPARISON',
     GROUND_TRUTH_VALIDATED: 'NO',
+    INDEPENDENT_ABSOLUTE_ACCURACY_VALIDATED: 'NO',
+    INDEPENDENT_ABSOLUTE_SPEED_ACCURACY_VALIDATED: 'NO',
+    WITHIN_CLIP_HOLDOUT_IMPROVES_GENERALIZATION_EVIDENCE: 'YES',
     IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY: 'YES',
     UNIQUE_ALIGNMENT_SUPPORTED_CLIPS: uniqueAlignmentSupportedClips,
     AMBIGUOUS_CLIPS_WITH_STRONG_SPEED_BASIN: ambiguousClipsWithStrongSpeedBasin,
@@ -765,11 +813,19 @@ export function buildSpeedVideoValidation(params: {
         liveAlignmentFitErrors.length >= 3 ? 'LIMITED' : 'INSUFFICIENT_EVIDENCE',
     },
     HF_SPEED_ALIGNMENT_FIT_MAE_KMH: mean(hfAlignmentFitErrors),
-    HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH: holdoutMaes.length ? mean(holdoutMaes) : null,
+    HF_SPEED_WITHIN_CLIP_HOLDOUT_MAE_KMH: holdoutSummary.withinClipHoldoutMaeKmh,
+    HF_SPEED_INDEPENDENT_ABSOLUTE_ACCURACY_MAE_KMH: null,
+    UNIQUE_ALIGNMENT_HOLDOUT_CLIPS: holdoutSummary.uniqueAlignmentHoldoutClips,
+    UNIQUE_ALIGNMENT_HOLDOUT_MAE_KMH: holdoutSummary.uniqueAlignmentHoldoutMaeKmh,
+    AMBIGUOUS_ALIGNMENT_HOLDOUT_CLIPS: holdoutSummary.ambiguousAlignmentHoldoutClips,
+    AMBIGUOUS_ALIGNMENT_HOLDOUT_MAE_KMH: holdoutSummary.ambiguousAlignmentHoldoutMaeKmh,
+    UNIQUE_ALIGNMENT_HOLDOUT_RESULTS: holdoutSummary.uniqueAlignmentHoldoutResults,
+    AMBIGUOUS_ALIGNMENT_HOLDOUT_DIAGNOSTICS: holdoutSummary.ambiguousAlignmentHoldoutDiagnostics,
     holdoutValidation: holdoutResults,
     perClip: clipResults,
     negativeControls,
-    note: 'Alignment-fit MAE uses STRONG_CANDIDATE basins discovered with same video GT — not independent accuracy unless holdout supports it',
+    NEGATIVE_CONTROL_UNIQUE_ALIGNMENT_VALIDATED: 'NO',
+    note: 'Alignment-fit MAE uses STRONG_CANDIDATE basins discovered with same video GT; within-clip holdout improves generalization evidence but does not establish independent absolute accuracy',
   };
 }
 
@@ -1045,6 +1101,10 @@ export function buildPowertrainSignalCorrelation(params: {
     {
       lagCorrelations: number[];
       eventAgreements: number[];
+      uniqueAlignmentLagCorrelations: number[];
+      uniqueAlignmentEventAgreements: number[];
+      ambiguousLagCorrelations: number[];
+      ambiguousEventAgreements: number[];
       episodeCount: number;
       uniqueAlignmentEpisodes: number;
       ambiguousBasinEpisodes: number;
@@ -1062,6 +1122,10 @@ export function buildPowertrainSignalCorrelation(params: {
     aggregateBySignal[sig] = {
       lagCorrelations: [],
       eventAgreements: [],
+      uniqueAlignmentLagCorrelations: [],
+      uniqueAlignmentEventAgreements: [],
+      ambiguousLagCorrelations: [],
+      ambiguousEventAgreements: [],
       episodeCount: 0,
       uniqueAlignmentEpisodes: 0,
       ambiguousBasinEpisodes: 0,
@@ -1111,8 +1175,16 @@ export function buildPowertrainSignalCorrelation(params: {
       agg.episodeCount++;
       if (isUniqueAlignment) agg.uniqueAlignmentEpisodes++;
       if (isAmbiguousBasin) agg.ambiguousBasinEpisodes++;
-      if (bestCorr != null) agg.lagCorrelations.push(bestCorr);
-      if (eventDir.agreementFraction != null) agg.eventAgreements.push(eventDir.agreementFraction);
+      if (bestCorr != null) {
+        agg.lagCorrelations.push(bestCorr);
+        if (isUniqueAlignment) agg.uniqueAlignmentLagCorrelations.push(bestCorr);
+        if (isAmbiguousBasin) agg.ambiguousLagCorrelations.push(bestCorr);
+      }
+      if (eventDir.agreementFraction != null) {
+        agg.eventAgreements.push(eventDir.agreementFraction);
+        if (isUniqueAlignment) agg.uniqueAlignmentEventAgreements.push(eventDir.agreementFraction);
+        if (isAmbiguousBasin) agg.ambiguousEventAgreements.push(eventDir.agreementFraction);
+      }
 
       signalStats[field] = {
         observationCount: rows.length,
@@ -1151,30 +1223,61 @@ export function buildPowertrainSignalCorrelation(params: {
   const avgEventAgreement = (vals: number[]) => (vals.length ? mean(vals) : null);
   const avgLagCorr = (vals: number[]) => (vals.length ? mean(vals.map(Math.abs)) : null);
 
+  const formatPowertrainEvidence = (agg: (typeof aggregateBySignal)[string]) =>
+    `unique-alignment (n=${agg.uniqueAlignmentEpisodes}): eventDir=${avgEventAgreement(agg.uniqueAlignmentEventAgreements)?.toFixed(2) ?? 'n/a'}, |lagCorr|=${avgLagCorr(agg.uniqueAlignmentLagCorrelations)?.toFixed(2) ?? 'n/a'}; ambiguous-diagnostic (n=${agg.ambiguousBasinEpisodes}): eventDir=${avgEventAgreement(agg.ambiguousEventAgreements)?.toFixed(2) ?? 'n/a'}, |lagCorr|=${avgLagCorr(agg.ambiguousLagCorrelations)?.toFixed(2) ?? 'n/a'}`;
+
   signalInterpretations.powertrainCombustionEngineSpeed = {
     RATING: 'USEFUL_WITH_GATING',
-    EVIDENCE_BASIS: `eventDirectionAgreement=${avgEventAgreement(rpmAgg.eventAgreements)?.toFixed(2) ?? 'n/a'} across ${rpmAgg.episodeCount} episodes; laggedCorrelation=${avgLagCorr(rpmAgg.lagCorrelations)?.toFixed(2) ?? 'n/a'}`,
-    LIMITATION: `Not direct video GT; shift timing not proven; ${rpmAgg.ambiguousBasinEpisodes} ambiguous-basin episodes`,
+    EVIDENCE_BASIS: formatPowertrainEvidence(rpmAgg),
+    LIMITATION: 'Not direct video GT; shift timing not proven; ambiguous episodes are diagnostic only',
   };
   signalInterpretations.obdThrottlePosition = {
     RATING: 'SECONDARY_DEMAND_CONTEXT',
-    EVIDENCE_BASIS: `driver-demand eventDirectionAgreement=${avgEventAgreement(throttleAgg.eventAgreements)?.toFixed(2) ?? 'n/a'}; laggedCorrelation=${avgLagCorr(throttleAgg.lagCorrelations)?.toFixed(2) ?? 'n/a'}`,
-    LIMITATION: 'Separate from TPS; raw speed correlation insufficient alone',
+    EVIDENCE_BASIS: formatPowertrainEvidence(throttleAgg),
+    LIMITATION: 'Separate from TPS; unique-alignment evidence limited to 2 episodes',
   };
   signalInterpretations.powertrainCombustionEngineTPS = {
     RATING: 'SECONDARY_DEMAND_CONTEXT',
-    EVIDENCE_BASIS: `driver-demand eventDirectionAgreement=${avgEventAgreement(tpsAgg.eventAgreements)?.toFixed(2) ?? 'n/a'}; laggedCorrelation=${avgLagCorr(tpsAgg.lagCorrelations)?.toFixed(2) ?? 'n/a'}`,
-    LIMITATION: 'Separate from obdThrottlePosition; semantics not identical',
+    EVIDENCE_BASIS: formatPowertrainEvidence(tpsAgg),
+    LIMITATION: 'Separate from obdThrottlePosition; ambiguous episodes diagnostic only',
   };
   signalInterpretations.obdEngineLoad = {
     RATING: 'POWERTRAIN_DEMAND_CONTEXT_ONLY',
-    EVIDENCE_BASIS: `eventDirectionAgreement=${avgEventAgreement(loadAgg.eventAgreements)?.toFixed(2) ?? 'n/a'}; adds context beyond RPM+throttle in some windows`,
+    EVIDENCE_BASIS: formatPowertrainEvidence(loadAgg),
     LIMITATION: 'Not vehicle mass/payload/road load; contextual only',
   };
+
+  const uniqueAlignmentEpisodes = episodes.filter(
+    (e) => e.independentStatus === 'STRONG_CANDIDATE',
+  ).length;
+  const ambiguousAlignmentDiagnosticEpisodes = episodes.filter(
+    (e) => e.independentStatus === 'AMBIGUOUS',
+  ).length;
+
+  const perSignalAuthorityMetrics = Object.fromEntries(
+    signals.map((sig) => {
+      const agg = aggregateBySignal[sig]!;
+      return [
+        sig,
+        {
+          UNIQUE_ALIGNMENT_MEAN_EVENT_DIRECTION_AGREEMENT: avgEventAgreement(
+            agg.uniqueAlignmentEventAgreements,
+          ),
+          UNIQUE_ALIGNMENT_MEAN_ABS_LAGGED_CORRELATION: avgLagCorr(agg.uniqueAlignmentLagCorrelations),
+          AMBIGUOUS_DIAGNOSTIC_MEAN_EVENT_DIRECTION_AGREEMENT: avgEventAgreement(
+            agg.ambiguousEventAgreements,
+          ),
+          AMBIGUOUS_DIAGNOSTIC_MEAN_ABS_LAGGED_CORRELATION: avgLagCorr(agg.ambiguousLagCorrelations),
+        },
+      ];
+    }),
+  );
 
   return {
     evidenceTier: 'TIER_B_ALIGNED_EVENT_CORRELATION',
     episodeCount: episodes.length,
+    UNIQUE_ALIGNMENT_EPISODES: uniqueAlignmentEpisodes,
+    AMBIGUOUS_ALIGNMENT_DIAGNOSTIC_EPISODES: ambiguousAlignmentDiagnosticEpisodes,
     episodes,
     aggregateDiagnostics: Object.fromEntries(
       signals.map((sig) => [
@@ -1183,9 +1286,22 @@ export function buildPowertrainSignalCorrelation(params: {
           ...aggregateBySignal[sig],
           meanEventDirectionAgreement: avgEventAgreement(aggregateBySignal[sig]!.eventAgreements),
           meanAbsLaggedCorrelation: avgLagCorr(aggregateBySignal[sig]!.lagCorrelations),
+          UNIQUE_ALIGNMENT_MEAN_EVENT_DIRECTION_AGREEMENT: avgEventAgreement(
+            aggregateBySignal[sig]!.uniqueAlignmentEventAgreements,
+          ),
+          UNIQUE_ALIGNMENT_MEAN_ABS_LAGGED_CORRELATION: avgLagCorr(
+            aggregateBySignal[sig]!.uniqueAlignmentLagCorrelations,
+          ),
+          AMBIGUOUS_DIAGNOSTIC_MEAN_EVENT_DIRECTION_AGREEMENT: avgEventAgreement(
+            aggregateBySignal[sig]!.ambiguousEventAgreements,
+          ),
+          AMBIGUOUS_DIAGNOSTIC_MEAN_ABS_LAGGED_CORRELATION: avgLagCorr(
+            aggregateBySignal[sig]!.ambiguousLagCorrelations,
+          ),
         },
       ]),
     ),
+    perSignalAuthorityMetrics,
     signalInterpretations,
     ENGINE_LOAD_INTERPRETATION:
       'Powertrain demand context only — not vehicle mass/payload/road load',
@@ -1361,7 +1477,8 @@ export function buildSignalClassifications(params: {
   powertrainCorrelation: Record<string, unknown>;
 }): Record<string, SignalRatingEvidence> {
   const alignmentFitMae = params.speedValidation.HF_SPEED_ALIGNMENT_FIT_MAE_KMH as number | null;
-  const holdoutMae = params.speedValidation.HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH as number | null;
+  const withinClipHoldoutMae = params.speedValidation.HF_SPEED_WITHIN_CLIP_HOLDOUT_MAE_KMH as number | null;
+  const uniqueHoldoutMae = params.speedValidation.UNIQUE_ALIGNMENT_HOLDOUT_MAE_KMH as number | null;
   const uniqueClips = params.speedValidation.UNIQUE_ALIGNMENT_SUPPORTED_CLIPS as number;
   const liveMatched = (params.speedValidation.aggregateLATEST_LIVE as { matchedPoints?: number })
     ?.matchedPoints ?? 0;
@@ -1378,8 +1495,8 @@ export function buildSignalClassifications(params: {
   return {
     SPEED: {
       RATING: 'USEFUL_WITH_GATING',
-      EVIDENCE_BASIS: `HF alignment-fit MAE=${alignmentFitMae?.toFixed(2) ?? 'n/a'} km/h across ${params.speedValidation.qualifiedStrongBasinClips} STRONG basins; holdout MAE=${holdoutMae?.toFixed(2) ?? 'n/a'}; ${uniqueClips} unique-alignment clips`,
-      LIMITATION: 'IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY; nine-clip chronology unresolved',
+      EVIDENCE_BASIS: `HF alignment-fit MAE=${alignmentFitMae?.toFixed(2) ?? 'n/a'} km/h; within-clip holdout MAE=${withinClipHoldoutMae?.toFixed(2) ?? 'n/a'} (generalization evidence only); unique-alignment holdout MAE=${uniqueHoldoutMae?.toFixed(2) ?? 'n/a'} across ${uniqueClips} clips`,
+      LIMITATION: 'INDEPENDENT_ABSOLUTE_ACCURACY_VALIDATED=NO; IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY',
     },
     RPM: powertrainInterp.powertrainCombustionEngineSpeed ?? {
       RATING: 'USEFUL_WITH_GATING',
@@ -1534,7 +1651,7 @@ export function buildSignalQualitySummary(params: {
   negativeControls: Record<string, unknown>[];
 }): Record<string, unknown> {
   const alignmentFitMae = params.speedValidation.HF_SPEED_ALIGNMENT_FIT_MAE_KMH as number | null;
-  const holdoutMae = params.speedValidation.HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH as number | null;
+  const withinClipHoldoutMae = params.speedValidation.HF_SPEED_WITHIN_CLIP_HOLDOUT_MAE_KMH as number | null;
   const hfCadence = (
     params.surfaceMatrix.speed?.HF_HISTORICAL?.NEW_PHYSICAL_SAMPLE_CADENCE as {
       medianSeconds?: number;
@@ -1577,35 +1694,59 @@ export function buildSignalQualitySummary(params: {
     analysisMode: SIGNAL_QUALITY_MODE,
     evidenceClass: 'SIGNAL_QUALITY+DRIVING_INTELLIGENCE_FOUNDATION',
     GROUND_TRUTH_VALIDATED: 'NO',
+    INDEPENDENT_ABSOLUTE_ACCURACY_VALIDATED: 'NO',
+    INDEPENDENT_ABSOLUTE_SPEED_ACCURACY_VALIDATED: 'NO',
     DRIVING_SCORE_CHANGED: 'NO',
     REFERENCE_CAPTURE_RUNTIME_CHANGED: 'NO',
     whatWeKnow: [
-      'HF speed contains recoverable driving dynamics at ~2s median physical cadence when gated',
-      'providerTimestamp is best available physical-event timeline',
-      'RPM/throttle/TPS show Tier B event-correlated support in aligned windows',
-      'gear state is observable; gear timing is not',
+      'HF speed contains recoverable driving dynamics',
+      'HF physical cadence is approximately 2 s median in RD003',
+      'providerTimestamp is the best available event-time authority',
+      'gear state is observable; precise gear-change timing is not',
+      'LATEST_LIVE direct video evidence is insufficient',
     ],
-    whatWeSuspect: [
-      'Holdout speed accuracy may be better than alignment-fit alone where evaluated',
-      'LATEST_LIVE may help freshness-gated near-real-time surfaces when explicitly measured',
-      'derived acceleration may support episode context with conservative gap gating',
+    whatRd003SupportsButDoesNotYetProve: [
+      'approximate speed accuracy',
+      'throttle/TPS/RPM usefulness across arbitrary trips',
+      'negative-control artificial dynamics',
+      'reliable reconstructed acceleration thresholds',
+    ],
+    whatRd004ShouldValidate: [
+      'absolute speed accuracy',
+      'temporal event accuracy',
+      'acceleration reconstruction accuracy',
+      'negative-control false-event rate',
+      'RPM/throttle/TPS event confirmation',
+      'provider timestamp offset/drift',
     ],
     whatWeMustNotClaim: [
-      'Alignment-fit MAE as independent DIMO speed accuracy',
+      'Independent absolute DIMO speed accuracy from RD003 alone',
       'Exact jerk/acceleration accuracy without suitable GT',
       'LATEST_LIVE freshness by surface name',
       'Exact gear-change timing from current cadence',
+      'Negative-control artificial dynamics as authoritative proof under ambiguous alignment',
     ],
     humanSummary,
     signalClassifications: classifications,
     HF_SPEED_VIDEO_VALIDATION_SUPPORTED:
       (params.speedValidation.qualifiedStrongBasinClips as number) > 0 ? 'YES' : 'NO',
     HF_SPEED_ALIGNMENT_FIT_MAE_KMH: alignmentFitMae,
-    HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH: holdoutMae,
+    HF_SPEED_WITHIN_CLIP_HOLDOUT_MAE_KMH: withinClipHoldoutMae,
+    HF_SPEED_INDEPENDENT_ABSOLUTE_ACCURACY_MAE_KMH: null,
+    WITHIN_CLIP_HOLDOUT_IMPROVES_GENERALIZATION_EVIDENCE: 'YES',
     IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY: 'YES',
     UNIQUE_ALIGNMENT_SUPPORTED_CLIPS: params.speedValidation.UNIQUE_ALIGNMENT_SUPPORTED_CLIPS,
     AMBIGUOUS_CLIPS_WITH_STRONG_SPEED_BASIN:
       params.speedValidation.AMBIGUOUS_CLIPS_WITH_STRONG_SPEED_BASIN,
+    UNIQUE_ALIGNMENT_HOLDOUT_CLIPS: params.speedValidation.UNIQUE_ALIGNMENT_HOLDOUT_CLIPS,
+    UNIQUE_ALIGNMENT_HOLDOUT_MAE_KMH: params.speedValidation.UNIQUE_ALIGNMENT_HOLDOUT_MAE_KMH,
+    AMBIGUOUS_ALIGNMENT_HOLDOUT_CLIPS: params.speedValidation.AMBIGUOUS_ALIGNMENT_HOLDOUT_CLIPS,
+    AMBIGUOUS_ALIGNMENT_HOLDOUT_MAE_KMH: params.speedValidation.AMBIGUOUS_ALIGNMENT_HOLDOUT_MAE_KMH,
+    POWERTRAIN_UNIQUE_ALIGNMENT_EPISODES: params.powertrainCorrelation.UNIQUE_ALIGNMENT_EPISODES,
+    POWERTRAIN_AMBIGUOUS_DIAGNOSTIC_EPISODES:
+      params.powertrainCorrelation.AMBIGUOUS_ALIGNMENT_DIAGNOSTIC_EPISODES,
+    NEGATIVE_CONTROL_UNIQUE_ALIGNMENT_VALIDATED:
+      params.speedValidation.NEGATIVE_CONTROL_UNIQUE_ALIGNMENT_VALIDATED ?? 'NO',
     HF_SPEED_TEMPORAL_RESOLUTION:
       hfCadence != null ? `~${hfCadence.toFixed(2)}s median new physical sample` : null,
     LATEST_LIVE_DIRECT_VIDEO_VALIDATION: 'INSUFFICIENT_EVIDENCE',
@@ -1624,6 +1765,8 @@ export function buildSignalQualitySummary(params: {
     GEAR_TIMING_CLASSIFICATION: params.gearDirection.PRECISE_SHIFT_TIMING_USEFUL === 'NO' ? 'NOT_SUPPORTED' : 'PARTIAL',
     NEGATIVE_CONTROL_IMG_2804: nc2804?.NEGATIVE_CONTROL_ARTIFICIAL_DYNAMICS ?? 'INSUFFICIENT_EVIDENCE',
     NEGATIVE_CONTROL_IMG_2809: nc2809?.NEGATIVE_CONTROL_ARTIFICIAL_DYNAMICS ?? 'INSUFFICIENT_EVIDENCE',
+    NEGATIVE_CONTROL_IMG_2804_AUTHORITY: nc2804?.NEGATIVE_CONTROL_AUTHORITY ?? null,
+    NEGATIVE_CONTROL_IMG_2809_AUTHORITY: nc2809?.NEGATIVE_CONTROL_AUTHORITY ?? null,
     DIRECTION_RECONSTRUCTION_CAPABILITY: params.gearDirection.DIRECTION_RECONSTRUCTION_CAPABILITY,
     OFFLINE_TRIP_RECONSTRUCTION_READINESS: 'READY_WITH_GATING',
     NEAR_REALTIME_FEEDBACK_READINESS: 'NOT_READY',

@@ -145,7 +145,9 @@ function main(): void {
         closeoutRevision: SIGNAL_QUALITY_CLOSEOUT_REVISION,
         humanSummary: result.signalQualitySummary.humanSummary,
         HF_SPEED_ALIGNMENT_FIT_MAE_KMH: result.signalQualitySummary.HF_SPEED_ALIGNMENT_FIT_MAE_KMH,
-        HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH: result.signalQualitySummary.HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH,
+        HF_SPEED_WITHIN_CLIP_HOLDOUT_MAE_KMH: result.signalQualitySummary.HF_SPEED_WITHIN_CLIP_HOLDOUT_MAE_KMH,
+        HF_SPEED_INDEPENDENT_ABSOLUTE_ACCURACY_MAE_KMH:
+          result.signalQualitySummary.HF_SPEED_INDEPENDENT_ABSOLUTE_ACCURACY_MAE_KMH,
         DRIVING_SCORE_CHANGED: 'NO',
       },
       null,

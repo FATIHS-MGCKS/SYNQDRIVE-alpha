@@ -348,7 +348,7 @@ describe('DI-EV-0034E signal quality interpretation', () => {
 });
 
 describe('DI-EV-0034E.1 signal quality correctness closeout', () => {
-  it('E.1a) alignment-fit MAE is not labelled independent accuracy', () => {
+  it('E.1a) alignment-fit MAE is not labelled independent absolute accuracy', () => {
     if (!hasExternalGt || !hasTelemetry) return;
     const { loadExternalGtDocument, loadCanonicalTelemetryJsonl } = require('./reference-capture-rd003-video-gt-alignment');
     const result = runRd003SignalQualityInterpretation({
@@ -357,8 +357,11 @@ describe('DI-EV-0034E.1 signal quality correctness closeout', () => {
     });
     expect(result.speedVideoValidation.IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY).toBe('YES');
     expect(result.signalQualitySummary.HF_SPEED_ALIGNMENT_FIT_MAE_KMH).not.toBeNull();
-    expect(result.signalQualitySummary.HF_SPEED_TYPICAL_ERROR_KMH).toBeUndefined();
-    expect(result.signalQualitySummary.IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY).toBe('YES');
+    expect(result.signalQualitySummary.HF_SPEED_WITHIN_CLIP_HOLDOUT_MAE_KMH).not.toBeNull();
+    expect(result.signalQualitySummary.HF_SPEED_INDEPENDENT_ABSOLUTE_ACCURACY_MAE_KMH).toBeNull();
+    expect(result.signalQualitySummary.HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH).toBeUndefined();
+    expect(result.signalQualitySummary.INDEPENDENT_ABSOLUTE_ACCURACY_VALIDATED).toBe('NO');
+    expect(result.signalQualitySummary.WITHIN_CLIP_HOLDOUT_IMPROVES_GENERALIZATION_EVIDENCE).toBe('YES');
   });
 
   it('E.1b) negative control scores only cruise-window GT observations', () => {
@@ -421,9 +424,44 @@ describe('DI-EV-0034E.1 signal quality correctness closeout', () => {
       externalGt: loadExternalGtDocument(EXTERNAL_GT),
     });
     expect(Array.isArray(result.speedVideoValidation.holdoutValidation)).toBe(true);
-    const evaluated = (result.speedVideoValidation.holdoutValidation as Array<Record<string, unknown>>).filter(
-      (h) => h.status === 'EVALUATED',
-    );
-    expect(evaluated.length).toBeGreaterThan(0);
+    expect(Array.isArray(result.speedVideoValidation.UNIQUE_ALIGNMENT_HOLDOUT_RESULTS)).toBe(true);
+    expect(Array.isArray(result.speedVideoValidation.AMBIGUOUS_ALIGNMENT_HOLDOUT_DIAGNOSTICS)).toBe(true);
+    expect(result.signalQualitySummary.UNIQUE_ALIGNMENT_HOLDOUT_CLIPS).toBe(1);
+    expect(result.signalQualitySummary.AMBIGUOUS_ALIGNMENT_HOLDOUT_CLIPS).toBe(6);
+    expect(result.signalQualitySummary.UNIQUE_ALIGNMENT_SUPPORTED_CLIPS).toBe(2);
+  });
+
+  it('E.1g) negative controls are diagnostic-only under ambiguous alignment', () => {
+    if (!hasExternalGt || !hasTelemetry) return;
+    const { loadExternalGtDocument, loadCanonicalTelemetryJsonl } = require('./reference-capture-rd003-video-gt-alignment');
+    const result = runRd003SignalQualityInterpretation({
+      telemetryRows: loadCanonicalTelemetryJsonl(TELEMETRY_JSONL),
+      externalGt: loadExternalGtDocument(EXTERNAL_GT),
+    });
+    expect(result.signalQualitySummary.NEGATIVE_CONTROL_UNIQUE_ALIGNMENT_VALIDATED).toBe('NO');
+    const nc = result.speedVideoValidation.negativeControls as Array<Record<string, unknown>>;
+    const img2804 = nc.find((n) => n.fileName === 'IMG_2804.mp4');
+    expect(img2804?.NEGATIVE_CONTROL_AUTHORITY).toBe('DIAGNOSTIC_ONLY_AMBIGUOUS_ALIGNMENT');
+  });
+
+  it('E.1h) powertrain unique vs ambiguous diagnostics reported separately', () => {
+    if (!hasExternalGt || !hasTelemetry) return;
+    const { loadExternalGtDocument, loadCanonicalTelemetryJsonl } = require('./reference-capture-rd003-video-gt-alignment');
+    const result = runRd003SignalQualityInterpretation({
+      telemetryRows: loadCanonicalTelemetryJsonl(TELEMETRY_JSONL),
+      externalGt: loadExternalGtDocument(EXTERNAL_GT),
+    });
+    expect(result.powertrainSignalCorrelation.UNIQUE_ALIGNMENT_EPISODES).toBe(2);
+    expect(result.powertrainSignalCorrelation.AMBIGUOUS_ALIGNMENT_DIAGNOSTIC_EPISODES).toBe(6);
+    const rpm = (
+      result.powertrainSignalCorrelation.aggregateDiagnostics as Record<string, Record<string, unknown>>
+    ).powertrainCombustionEngineSpeed;
+    expect(rpm.UNIQUE_ALIGNMENT_MEAN_EVENT_DIRECTION_AGREEMENT).not.toBeNull();
+    expect(rpm.AMBIGUOUS_DIAGNOSTIC_MEAN_EVENT_DIRECTION_AGREEMENT).not.toBeNull();
+    const rpmBasis = (
+      result.signalQualitySummary.signalClassifications as Record<string, { EVIDENCE_BASIS: string }>
+    ).RPM.EVIDENCE_BASIS;
+    expect(rpmBasis).toContain('unique-alignment');
+    expect(rpmBasis).toContain('ambiguous-diagnostic');
   });
 });

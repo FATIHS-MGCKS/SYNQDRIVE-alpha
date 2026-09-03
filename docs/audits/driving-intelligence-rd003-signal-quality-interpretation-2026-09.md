@@ -52,7 +52,9 @@ The RD003 time-alignment methodology (DI-EV-0033 through DI-EV-0034D.2) has comp
 Across qualified STRONG_CANDIDATE basins (Tier A — **alignment-fit**, not independent accuracy):
 
 - **HF_HISTORICAL alignment-fit MAE:** ~8.5 km/h (`HF_SPEED_ALIGNMENT_FIT_MAE_KMH`, 109 matched GT points)
-- **Holdout MAE (where evaluated):** ~7.8 km/h (`HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH`)
+- **Within-clip holdout MAE:** ~7.85 km/h (`HF_SPEED_WITHIN_CLIP_HOLDOUT_MAE_KMH` — generalization evidence only)
+- **`HF_SPEED_INDEPENDENT_ABSOLUTE_ACCURACY_MAE_KMH`:** `null` (`INDEPENDENT_ABSOLUTE_ACCURACY_VALIDATED=NO`)
+- **Unique-alignment holdout:** 1 clip evaluated (IMG_2805); **ambiguous diagnostic holdout:** 6 clips
 - **HF aggregate RMSE:** ~12.2 km/h
 - **Max absolute error:** ~52 km/h (outlier episodes; not typical)
 

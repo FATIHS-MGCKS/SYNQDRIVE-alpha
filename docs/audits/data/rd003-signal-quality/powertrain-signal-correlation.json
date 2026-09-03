@@ -1,6 +1,8 @@
 {
   "evidenceTier": "TIER_B_ALIGNED_EVENT_CORRELATION",
   "episodeCount": 8,
+  "UNIQUE_ALIGNMENT_EPISODES": 2,
+  "AMBIGUOUS_ALIGNMENT_DIAGNOSTIC_EPISODES": 6,
   "episodes": [
     {
       "clipId": "RD003_GT_CLIP_001",
@@ -673,11 +675,39 @@
         1,
         0.42857142857142855
       ],
+      "uniqueAlignmentLagCorrelations": [
+        0.8097398688965615,
+        0.434862288451239
+      ],
+      "uniqueAlignmentEventAgreements": [
+        0.8333333333333334,
+        0
+      ],
+      "ambiguousLagCorrelations": [
+        -0.1651215220777229,
+        0.6212429100604082,
+        0.5366501365963735,
+        0.4426186730554201,
+        0.9099378366499441,
+        0.7819565576940066
+      ],
+      "ambiguousEventAgreements": [
+        0.42857142857142855,
+        0.875,
+        0.4444444444444444,
+        0,
+        1,
+        0.42857142857142855
+      ],
       "episodeCount": 8,
       "uniqueAlignmentEpisodes": 2,
       "ambiguousBasinEpisodes": 6,
       "meanEventDirectionAgreement": 0.5012400793650794,
-      "meanAbsLaggedCorrelation": 0.5877662241852095
+      "meanAbsLaggedCorrelation": 0.5877662241852095,
+      "UNIQUE_ALIGNMENT_MEAN_EVENT_DIRECTION_AGREEMENT": 0.4166666666666667,
+      "UNIQUE_ALIGNMENT_MEAN_ABS_LAGGED_CORRELATION": 0.6223010786739003,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_EVENT_DIRECTION_AGREEMENT": 0.5294312169312169,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_ABS_LAGGED_CORRELATION": 0.5762546060223125
     },
     "obdThrottlePosition": {
       "lagCorrelations": [
@@ -699,11 +729,38 @@
         0.25,
         0.5
       ],
+      "uniqueAlignmentLagCorrelations": [
+        0.7534015476989796,
+        0.7285769018873294
+      ],
+      "uniqueAlignmentEventAgreements": [
+        0.6666666666666666,
+        0.8
+      ],
+      "ambiguousLagCorrelations": [
+        -0.5322720090746086,
+        0.7508496419575735,
+        0.38541064034086475,
+        0.7346155599364,
+        -0.6576569687752459,
+        -0.5635107219746709
+      ],
+      "ambiguousEventAgreements": [
+        0.6,
+        0.75,
+        0.4166666666666667,
+        0.25,
+        0.5
+      ],
       "episodeCount": 8,
       "uniqueAlignmentEpisodes": 2,
       "ambiguousBasinEpisodes": 6,
       "meanEventDirectionAgreement": 0.569047619047619,
-      "meanAbsLaggedCorrelation": 0.6382867489557091
+      "meanAbsLaggedCorrelation": 0.6382867489557091,
+      "UNIQUE_ALIGNMENT_MEAN_EVENT_DIRECTION_AGREEMENT": 0.7333333333333334,
+      "UNIQUE_ALIGNMENT_MEAN_ABS_LAGGED_CORRELATION": 0.7409892247931544,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_EVENT_DIRECTION_AGREEMENT": 0.5033333333333333,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_ABS_LAGGED_CORRELATION": 0.6040525903432273
     },
     "powertrainCombustionEngineTPS": {
       "lagCorrelations": [
@@ -723,11 +780,36 @@
         0.2857142857142857,
         0.5
       ],
+      "uniqueAlignmentLagCorrelations": [
+        0.7896815117324528,
+        0.7228761450670039
+      ],
+      "uniqueAlignmentEventAgreements": [
+        0.3333333333333333,
+        0.2857142857142857
+      ],
+      "ambiguousLagCorrelations": [
+        3.5566281238669653e-16,
+        0.8067713053493234,
+        0.2920400048208006,
+        -4.868558603927878e-16,
+        0.9579246403263401,
+        0.11230574809877727
+      ],
+      "ambiguousEventAgreements": [
+        0.2,
+        0.5,
+        0.5
+      ],
       "episodeCount": 8,
       "uniqueAlignmentEpisodes": 2,
       "ambiguousBasinEpisodes": 6,
       "meanEventDirectionAgreement": 0.36380952380952375,
-      "meanAbsLaggedCorrelation": 0.4601999194243374
+      "meanAbsLaggedCorrelation": 0.4601999194243374,
+      "UNIQUE_ALIGNMENT_MEAN_EVENT_DIRECTION_AGREEMENT": 0.30952380952380953,
+      "UNIQUE_ALIGNMENT_MEAN_ABS_LAGGED_CORRELATION": 0.7562788283997284,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_EVENT_DIRECTION_AGREEMENT": 0.39999999999999997,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_ABS_LAGGED_CORRELATION": 0.36150694976587366
     },
     "obdEngineLoad": {
       "lagCorrelations": [
@@ -749,32 +831,85 @@
         0.25,
         0
       ],
+      "uniqueAlignmentLagCorrelations": [
+        0.738444240941848,
+        0.6399287911643535
+      ],
+      "uniqueAlignmentEventAgreements": [
+        0.5,
+        0.5
+      ],
+      "ambiguousLagCorrelations": [
+        -0.56430522863294,
+        0.8026395853001419,
+        0.5594026328146271,
+        0.650867191267791,
+        -0.955327508936107,
+        -0.583093477227365
+      ],
+      "ambiguousEventAgreements": [
+        0.375,
+        0.6666666666666666,
+        0.46153846153846156,
+        0.25,
+        0
+      ],
       "episodeCount": 8,
       "uniqueAlignmentEpisodes": 2,
       "ambiguousBasinEpisodes": 6,
       "meanEventDirectionAgreement": 0.3933150183150183,
-      "meanAbsLaggedCorrelation": 0.6867510820356467
+      "meanAbsLaggedCorrelation": 0.6867510820356467,
+      "UNIQUE_ALIGNMENT_MEAN_EVENT_DIRECTION_AGREEMENT": 0.5,
+      "UNIQUE_ALIGNMENT_MEAN_ABS_LAGGED_CORRELATION": 0.6891865160531008,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_EVENT_DIRECTION_AGREEMENT": 0.3506410256410256,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_ABS_LAGGED_CORRELATION": 0.6859392706964954
+    }
+  },
+  "perSignalAuthorityMetrics": {
+    "powertrainCombustionEngineSpeed": {
+      "UNIQUE_ALIGNMENT_MEAN_EVENT_DIRECTION_AGREEMENT": 0.4166666666666667,
+      "UNIQUE_ALIGNMENT_MEAN_ABS_LAGGED_CORRELATION": 0.6223010786739003,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_EVENT_DIRECTION_AGREEMENT": 0.5294312169312169,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_ABS_LAGGED_CORRELATION": 0.5762546060223125
+    },
+    "obdThrottlePosition": {
+      "UNIQUE_ALIGNMENT_MEAN_EVENT_DIRECTION_AGREEMENT": 0.7333333333333334,
+      "UNIQUE_ALIGNMENT_MEAN_ABS_LAGGED_CORRELATION": 0.7409892247931544,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_EVENT_DIRECTION_AGREEMENT": 0.5033333333333333,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_ABS_LAGGED_CORRELATION": 0.6040525903432273
+    },
+    "powertrainCombustionEngineTPS": {
+      "UNIQUE_ALIGNMENT_MEAN_EVENT_DIRECTION_AGREEMENT": 0.30952380952380953,
+      "UNIQUE_ALIGNMENT_MEAN_ABS_LAGGED_CORRELATION": 0.7562788283997284,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_EVENT_DIRECTION_AGREEMENT": 0.39999999999999997,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_ABS_LAGGED_CORRELATION": 0.36150694976587366
+    },
+    "obdEngineLoad": {
+      "UNIQUE_ALIGNMENT_MEAN_EVENT_DIRECTION_AGREEMENT": 0.5,
+      "UNIQUE_ALIGNMENT_MEAN_ABS_LAGGED_CORRELATION": 0.6891865160531008,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_EVENT_DIRECTION_AGREEMENT": 0.3506410256410256,
+      "AMBIGUOUS_DIAGNOSTIC_MEAN_ABS_LAGGED_CORRELATION": 0.6859392706964954
     }
   },
   "signalInterpretations": {
     "powertrainCombustionEngineSpeed": {
       "RATING": "USEFUL_WITH_GATING",
-      "EVIDENCE_BASIS": "eventDirectionAgreement=0.50 across 8 episodes; laggedCorrelation=0.59",
-      "LIMITATION": "Not direct video GT; shift timing not proven; 6 ambiguous-basin episodes"
+      "EVIDENCE_BASIS": "unique-alignment (n=2): eventDir=0.42, |lagCorr|=0.62; ambiguous-diagnostic (n=6): eventDir=0.53, |lagCorr|=0.58",
+      "LIMITATION": "Not direct video GT; shift timing not proven; ambiguous episodes are diagnostic only"
     },
     "obdThrottlePosition": {
       "RATING": "SECONDARY_DEMAND_CONTEXT",
-      "EVIDENCE_BASIS": "driver-demand eventDirectionAgreement=0.57; laggedCorrelation=0.64",
-      "LIMITATION": "Separate from TPS; raw speed correlation insufficient alone"
+      "EVIDENCE_BASIS": "unique-alignment (n=2): eventDir=0.73, |lagCorr|=0.74; ambiguous-diagnostic (n=6): eventDir=0.50, |lagCorr|=0.60",
+      "LIMITATION": "Separate from TPS; unique-alignment evidence limited to 2 episodes"
     },
     "powertrainCombustionEngineTPS": {
       "RATING": "SECONDARY_DEMAND_CONTEXT",
-      "EVIDENCE_BASIS": "driver-demand eventDirectionAgreement=0.36; laggedCorrelation=0.46",
-      "LIMITATION": "Separate from obdThrottlePosition; semantics not identical"
+      "EVIDENCE_BASIS": "unique-alignment (n=2): eventDir=0.31, |lagCorr|=0.76; ambiguous-diagnostic (n=6): eventDir=0.40, |lagCorr|=0.36",
+      "LIMITATION": "Separate from obdThrottlePosition; ambiguous episodes diagnostic only"
     },
     "obdEngineLoad": {
       "RATING": "POWERTRAIN_DEMAND_CONTEXT_ONLY",
-      "EVIDENCE_BASIS": "eventDirectionAgreement=0.39; adds context beyond RPM+throttle in some windows",
+      "EVIDENCE_BASIS": "unique-alignment (n=2): eventDir=0.50, |lagCorr|=0.69; ambiguous-diagnostic (n=6): eventDir=0.35, |lagCorr|=0.69",
       "LIMITATION": "Not vehicle mass/payload/road load; contextual only"
     }
   },
