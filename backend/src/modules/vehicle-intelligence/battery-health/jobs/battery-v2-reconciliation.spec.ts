@@ -200,6 +200,7 @@ describe('BatteryV2ReconciliationService', () => {
     ensureAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }),
     reconcileAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }),
     touchReconciliationFairness: jest.fn().mockResolvedValue(undefined),
+    terminalizeIneligibleReconciliationCandidate: jest.fn().mockResolvedValue(undefined),
   };
 
   let service: BatteryV2ReconciliationService;
@@ -217,6 +218,7 @@ describe('BatteryV2ReconciliationService', () => {
     assessmentHandoff.ensureAssessmentHandoff.mockReset();
     assessmentHandoff.reconcileAssessmentHandoff.mockReset();
     assessmentHandoff.touchReconciliationFairness.mockReset();
+    assessmentHandoff.terminalizeIneligibleReconciliationCandidate.mockReset();
     assessmentHandoff.ensureAssessmentHandoff.mockResolvedValue({
       enqueued: false,
       skipped: true,
@@ -226,6 +228,10 @@ describe('BatteryV2ReconciliationService', () => {
       skipped: true,
     });
     assessmentHandoff.touchReconciliationFairness.mockResolvedValue(undefined);
+    assessmentHandoff.terminalizeIneligibleReconciliationCandidate.mockResolvedValue(undefined);
+    jobProducer.hasLiveAssessJobForVehicle.mockResolvedValue(false);
+    jobProducer.hasLiveJob.mockResolvedValue(false);
+    jobProducer.enqueue.mockResolvedValue('job-id');
     service = new BatteryV2ReconciliationService(
       prisma as any,
       jobProducer as any,
@@ -805,6 +811,7 @@ describe('BatteryV2ReconciliationService', () => {
       vehicleId: VEH,
       sessionId: 'clsess-repair12345678901234',
       type: 'REST_60M' as const,
+      quality: 'VALID' as const,
       provenance: { sourceObservationId: 'obs-repair' },
     };
     prisma.$queryRaw.mockResolvedValue([repairable]);
@@ -830,6 +837,7 @@ describe('BatteryV2ReconciliationService', () => {
       vehicleId: VEH,
       sessionId: `clsessfair${String(index).padStart(21, '0')}`,
       type: 'REST_60M' as const,
+      quality: 'VALID' as const,
       provenance: { sourceObservationId: `obs-fair-${index}` },
     }));
     prisma.$queryRaw.mockResolvedValue(candidates);
@@ -854,6 +862,7 @@ describe('BatteryV2ReconciliationService', () => {
         vehicleId: VEH,
         sessionId: 'clsessvehA000000000000000001',
         type: 'REST_60M' as const,
+        quality: 'VALID' as const,
         provenance: { sourceObservationId: 'obs-a1' },
       },
       {
@@ -862,6 +871,7 @@ describe('BatteryV2ReconciliationService', () => {
         vehicleId: VEH,
         sessionId: 'clsessvehA000000000000000002',
         type: 'REST_60M' as const,
+        quality: 'VALID' as const,
         provenance: { sourceObservationId: 'obs-a2' },
       },
       {
@@ -870,6 +880,7 @@ describe('BatteryV2ReconciliationService', () => {
         vehicleId: VEH_B,
         sessionId: 'clsessvehB000000000000000001',
         type: 'REST_60M' as const,
+        quality: 'VALID' as const,
         provenance: { sourceObservationId: 'obs-b1' },
       },
     ];
@@ -895,6 +906,7 @@ describe('BatteryV2ReconciliationService', () => {
         vehicleId: VEH,
         sessionId: 'clsessvehA000000000000000001',
         type: 'REST_60M' as const,
+        quality: 'VALID' as const,
         provenance: { sourceObservationId: 'obs-a1' },
       },
       {
@@ -903,6 +915,7 @@ describe('BatteryV2ReconciliationService', () => {
         vehicleId: VEH,
         sessionId: 'clsessvehA000000000000000002',
         type: 'REST_60M' as const,
+        quality: 'VALID' as const,
         provenance: { sourceObservationId: 'obs-a2' },
       },
     ];
@@ -940,5 +953,124 @@ describe('BatteryV2ReconciliationService', () => {
     expect(result.assessments).toBe(0);
     expect(assessmentHandoff.reconcileAssessmentHandoff).not.toHaveBeenCalled();
     expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(1);
+  });
+
+  describe('PKG-01 pre-cutover terminalization orchestration', () => {
+    const SESSION = 'clsess123456789012345678901';
+
+    it('A. VALID REST candidate repairs via reconcileAssessmentHandoff without terminalization', async () => {
+      const MEAS = 'clmeasvalid123456789012345678';
+      prisma.$queryRaw.mockResolvedValue([
+        {
+          id: MEAS,
+          organizationId: ORG,
+          vehicleId: VEH,
+          sessionId: SESSION,
+          type: 'REST_60M',
+          quality: 'VALID',
+          provenance: { sourceObservationId: 'obs-valid' },
+        },
+      ]);
+      assessmentHandoff.reconcileAssessmentHandoff.mockResolvedValue({
+        enqueued: true,
+        skipped: false,
+        idempotencyKey: `assess:${VEH}:LV_HEALTH:${MEAS}`,
+      });
+
+      const result = await service.reconcileAll();
+
+      expect(result.assessments).toBe(1);
+      expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledTimes(1);
+      expect(assessmentHandoff.terminalizeIneligibleReconciliationCandidate).not.toHaveBeenCalled();
+    });
+
+    it('B. CONTAMINATED REST candidate terminalizes without assess enqueue', async () => {
+      const MEAS = 'clmeascontam12345678901234567';
+      prisma.$queryRaw.mockResolvedValue([
+        {
+          id: MEAS,
+          organizationId: ORG,
+          vehicleId: VEH,
+          sessionId: SESSION,
+          type: 'REST_60M',
+          quality: 'CONTAMINATED_BY_ACTIVE_TRIP',
+          provenance: { sourceObservationId: 'obs-contam' },
+        },
+      ]);
+
+      const result = await service.reconcileAll();
+
+      expect(result.assessments).toBe(0);
+      expect(assessmentHandoff.reconcileAssessmentHandoff).not.toHaveBeenCalled();
+      expect(assessmentHandoff.terminalizeIneligibleReconciliationCandidate).toHaveBeenCalledTimes(1);
+      expect(assessmentHandoff.terminalizeIneligibleReconciliationCandidate).toHaveBeenCalledWith({
+        organizationId: ORG,
+        vehicleId: VEH,
+        sessionId: SESSION,
+        restTargetType: 'REST_60M',
+        measurementId: MEAS,
+      });
+    });
+
+    it('C. MISSED REST candidate terminalizes without assess enqueue', async () => {
+      const MEAS = 'clmeasmissed1234567890123456';
+      prisma.$queryRaw.mockResolvedValue([
+        {
+          id: MEAS,
+          organizationId: ORG,
+          vehicleId: VEH,
+          sessionId: SESSION,
+          type: 'REST_6H',
+          quality: 'MISSED',
+          provenance: { sourceObservationId: 'obs-missed' },
+        },
+      ]);
+
+      await service.reconcileAll();
+
+      expect(assessmentHandoff.reconcileAssessmentHandoff).not.toHaveBeenCalled();
+      expect(assessmentHandoff.terminalizeIneligibleReconciliationCandidate).toHaveBeenCalledTimes(1);
+    });
+
+    it('D. repeated reconciliation does not enqueue assess for terminalized identity', async () => {
+      const MEAS = 'clmeasrepeat12345678901234567';
+      prisma.$queryRaw.mockResolvedValue([
+        {
+          id: MEAS,
+          organizationId: ORG,
+          vehicleId: VEH,
+          sessionId: SESSION,
+          type: 'REST_60M',
+          quality: 'CONTAMINATED_BY_ACTIVE_TRIP',
+          provenance: { sourceObservationId: 'obs-repeat' },
+        },
+      ]);
+
+      await service.reconcileAll();
+      await service.reconcileAll();
+
+      expect(assessmentHandoff.reconcileAssessmentHandoff).not.toHaveBeenCalled();
+      expect(assessmentHandoff.terminalizeIneligibleReconciliationCandidate).toHaveBeenCalledTimes(2);
+    });
+
+    it('E. malformed provenance does not enqueue assess or terminalize', async () => {
+      const MEAS = 'clmeasmalform1234567890123456';
+      prisma.$queryRaw.mockResolvedValue([
+        {
+          id: MEAS,
+          organizationId: ORG,
+          vehicleId: VEH,
+          sessionId: SESSION,
+          type: 'REST_60M',
+          quality: 'CONTAMINATED_BY_ACTIVE_TRIP',
+          provenance: {},
+        },
+      ]);
+
+      await service.reconcileAll();
+
+      expect(assessmentHandoff.reconcileAssessmentHandoff).not.toHaveBeenCalled();
+      expect(assessmentHandoff.terminalizeIneligibleReconciliationCandidate).not.toHaveBeenCalled();
+    });
   });
 });

@@ -16,6 +16,7 @@ import {
 import {
   buildCanonicalLvAssessmentHandoffJobKey,
   isCanonicalRestAssessmentHandoffEligible,
+  isRestAssessmentHandoffReconciliationTerminalCandidate,
   restTargetTypeForMeasurementType,
 } from './lv-rest-assessment-handoff.policy';
 import { mutateLvRestSessionMetadata } from './lv-rest-session-metadata.mutation';
@@ -291,6 +292,25 @@ export class LvRestAssessmentHandoffService {
     restTargetType: LvRestTargetType;
     measurementId: string;
   }): Promise<void> {
+    const measurement = await this.prisma.batteryMeasurement.findFirst({
+      where: {
+        id: input.measurementId,
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        sessionId: input.sessionId,
+      },
+    });
+    if (!measurement) return;
+
+    const measurementTargetType = restTargetTypeForMeasurementType(measurement.type);
+    if (!measurementTargetType || measurementTargetType !== input.restTargetType) {
+      return;
+    }
+
+    if (!isRestAssessmentHandoffReconciliationTerminalCandidate(measurement)) {
+      return;
+    }
+
     const session = await this.prisma.batteryMeasurementSession.findFirst({
       where: {
         id: input.sessionId,
@@ -303,6 +323,9 @@ export class LvRestAssessmentHandoffService {
       session.metadata,
       input.restTargetType,
     );
+    if (existing?.measurementId && existing.measurementId !== input.measurementId) {
+      return;
+    }
     if (
       existing?.status === LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED &&
       existing.measurementId === input.measurementId
@@ -316,12 +339,36 @@ export class LvRestAssessmentHandoffService {
       return;
     }
 
-    await this.acknowledgeExecuted({
-      organizationId: input.organizationId,
+    const idempotencyKey = buildCanonicalLvAssessmentHandoffJobKey({
       vehicleId: input.vehicleId,
       measurementId: input.measurementId,
-      outcome: LV_REST_ASSESSMENT_HANDOFF_OUTCOME.POLICY_SKIPPED,
     });
+    const now = new Date().toISOString();
+
+    await this.persistHandoffState({
+      sessionId: input.sessionId,
+      organizationId: input.organizationId,
+      restTargetType: input.restTargetType,
+      handoffPatch: {
+        measurementId: input.measurementId,
+        idempotencyKey,
+        status: LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED,
+        outcome: LV_REST_ASSESSMENT_HANDOFF_OUTCOME.POLICY_SKIPPED,
+        executedAt: now,
+        lastAttemptAt: now,
+      },
+    });
+
+    this.logger.debug(
+      formatBatteryV2PipelineLog({
+        component: 'assessment-handoff',
+        event: 'assessment_handoff_ineligible_terminalized',
+        status: 'completed',
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        correlationId: input.measurementId,
+      }),
+    );
   }
 
   async acknowledgeExecuted(input: {

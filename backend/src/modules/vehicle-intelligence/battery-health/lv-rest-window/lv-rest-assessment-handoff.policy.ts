@@ -7,6 +7,9 @@ import { buildAssessmentJobIdempotencyKey } from '../jobs/battery-v2-job-idempot
 import { buildRestMissedMeasurementIdempotencyKey } from './battery-rest-target-evaluation';
 import { LV_REST_TARGET_TYPES, type LvRestTargetType } from './lv-rest-window-target.metadata';
 
+/** Pre-cutover guard marker — must exist in deployed release for Stage-2 activation preflight. */
+export const BATTERY_V2_PKG01_PRE_CUTOVER_GUARD_VERSION = '2026-09-03-valid-only-handoff';
+
 function parseProvenance(
   provenance: BatteryMeasurement['provenance'],
 ): Record<string, unknown> | null {
