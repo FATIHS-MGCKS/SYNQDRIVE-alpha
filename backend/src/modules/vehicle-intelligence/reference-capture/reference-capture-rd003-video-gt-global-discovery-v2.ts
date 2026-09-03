@@ -294,13 +294,47 @@ export function computeStaticMinuteInterceptInterval(params: {
   };
 }
 
+export function pairwiseBoundaryMinuteResidual(
+  boundaryI: number,
+  boundaryJ: number,
+  minuteLi: number,
+  minuteLj: number,
+): number {
+  return boundaryJ - boundaryI - 60 * (minuteLj - minuteLi);
+}
+
+export function pairwiseClockInterceptResidual(interceptI: number, interceptJ: number): number {
+  return interceptJ - interceptI;
+}
+
+/** @deprecated Use pairwiseBoundaryMinuteResidual or pairwiseClockInterceptResidual */
 export function pairwiseMinuteDistanceResidual(
   interceptI: number,
   interceptJ: number,
   minuteLi: number,
   minuteLj: number,
 ): number {
-  return interceptJ - interceptI - 60 * (minuteLj - minuteLi);
+  return pairwiseClockInterceptResidual(interceptI, interceptJ);
+}
+
+export function boundaryToClockIntercept(boundarySeconds: number, minuteOrdinalL: number): number {
+  return boundarySeconds - 60 * minuteOrdinalL;
+}
+
+export function interceptIntervalsIntersect(
+  a: { from: number; to: number },
+  b: { from: number; to: number },
+): { from: number; to: number } | null {
+  const from = Math.max(a.from, b.from);
+  const to = Math.min(a.to, b.to);
+  return from <= to + 1e-9 ? { from, to } : null;
+}
+
+export function transitionInterceptToleranceInterval(intercept: number): { from: number; to: number } {
+  return {
+    from: intercept - JOINT_INTERCEPT_TOLERANCE_SECONDS,
+    to: intercept + JOINT_INTERCEPT_TOLERANCE_SECONDS,
+  };
 }
 
 function expandBasinMembersV2(
@@ -625,6 +659,237 @@ export type JointPathSelection = {
   jointRejectionReason: string | null;
 };
 
+export type JointPathRejectionCounters = {
+  REJECTED_BY_CHRONOLOGY: number;
+  REJECTED_BY_TRANSITION_CLOCK: number;
+  REJECTED_BY_STATIC_MINUTE_INTERVAL: number;
+  REJECTED_BY_NO_CANDIDATE: number;
+};
+
+export type ClockTransitionCandidate = {
+  basinRank: number;
+  alignedClipStartUtc: string;
+  intercept: number;
+};
+
+export type ClockClipEvidence = {
+  clipId: string;
+  fileName: string;
+  independentStatus: AlignmentStatus;
+  clipType: 'TRANSITION' | 'STATIC_MINUTE';
+  authorityMode: 'DIRECT_POINT' | 'CLOCK_CANDIDATE_SET' | 'INTERVAL_ONLY' | 'NONE';
+  clockAuthorityEligible: 'YES' | 'NO';
+  CLOCK_INTERCEPT_SECONDS?: number;
+  CLOCK_CANDIDATE_SET?: ClockTransitionCandidate[];
+  CLOCK_INTERCEPT_INTERVAL_FROM?: number;
+  CLOCK_INTERCEPT_INTERVAL_TO?: number;
+  minuteOrdinalL: number;
+  basinStatus: AlignmentStatus;
+};
+
+export function selectQualifiedClockBasins(basins: BasinV2Result[]): BasinV2Result[] {
+  return basins
+    .filter((b) => b.status === 'STRONG_CANDIDATE' || b.status === 'AMBIGUOUS')
+    .sort((a, b) => a.rankByQuality - b.rankByQuality);
+}
+
+export function buildClockClipEvidence(params: {
+  disc: ClipDiscoveryV2Result;
+  clip: ExternalGtClip;
+}): ClockClipEvidence | null {
+  const minuteL = clipDisplayedMinuteOrdinal(params.clip);
+  if (minuteL == null) return null;
+
+  const qualifiedBasins = selectQualifiedClockBasins(params.disc.HF_HISTORICAL.basins);
+  const diagnosticBasin =
+    qualifiedBasins[0] ??
+    params.disc.HF_HISTORICAL.basins.sort((a, b) => a.rankByQuality - b.rankByQuality)[0];
+  if (!diagnosticBasin) return null;
+
+  const independentStatus = params.disc.HF_HISTORICAL.independentStatus;
+
+  if (hasObservedMinuteTransition(params.clip)) {
+    const tr = getClipObservedMinuteTransition(params.clip)!;
+    const minuteOrdinal = parseDisplayedMinuteOrdinal(tr.toMinute);
+
+    if (independentStatus === 'STRONG_CANDIDATE') {
+      const strongBasins = qualifiedBasins.filter((b) => b.status === 'STRONG_CANDIDATE');
+      const basin = strongBasins[0] ?? qualifiedBasins[0];
+      if (!basin) {
+        return {
+          clipId: params.disc.clipId,
+          fileName: params.disc.fileName,
+          independentStatus,
+          clipType: 'TRANSITION',
+          authorityMode: 'NONE',
+          clockAuthorityEligible: 'NO',
+          minuteOrdinalL: minuteOrdinal,
+          basinStatus: diagnosticBasin.status,
+        };
+      }
+      return {
+        clipId: params.disc.clipId,
+        fileName: params.disc.fileName,
+        independentStatus,
+        clipType: 'TRANSITION',
+        authorityMode: 'DIRECT_POINT',
+        clockAuthorityEligible: 'YES',
+        CLOCK_INTERCEPT_SECONDS: computeRelativeClockIntercept({
+          alignedClipStartMs: basin.alignedClipStartMs,
+          transitionVideoTimeSeconds: tr.videoTimeSeconds,
+          minuteOrdinalL: minuteOrdinal,
+        }),
+        minuteOrdinalL: minuteOrdinal,
+        basinStatus: basin.status,
+      };
+    }
+
+    if (independentStatus === 'AMBIGUOUS') {
+      const strongCandidates = qualifiedBasins.filter((b) => b.status === 'STRONG_CANDIDATE');
+      if (strongCandidates.length === 0) {
+        return {
+          clipId: params.disc.clipId,
+          fileName: params.disc.fileName,
+          independentStatus,
+          clipType: 'TRANSITION',
+          authorityMode: 'NONE',
+          clockAuthorityEligible: 'NO',
+          minuteOrdinalL: minuteOrdinal,
+          basinStatus: diagnosticBasin.status,
+        };
+      }
+      return {
+        clipId: params.disc.clipId,
+        fileName: params.disc.fileName,
+        independentStatus,
+        clipType: 'TRANSITION',
+        authorityMode: 'CLOCK_CANDIDATE_SET',
+        clockAuthorityEligible: 'YES',
+        CLOCK_CANDIDATE_SET: strongCandidates.map((basin) => ({
+          basinRank: basin.rankByQuality,
+          alignedClipStartUtc: basin.alignedClipStartUtc,
+          intercept: computeRelativeClockIntercept({
+            alignedClipStartMs: basin.alignedClipStartMs,
+            transitionVideoTimeSeconds: tr.videoTimeSeconds,
+            minuteOrdinalL: minuteOrdinal,
+          }),
+        })),
+        minuteOrdinalL: minuteOrdinal,
+        basinStatus: diagnosticBasin.status,
+      };
+    }
+
+    return {
+      clipId: params.disc.clipId,
+      fileName: params.disc.fileName,
+      independentStatus,
+      clipType: 'TRANSITION',
+      authorityMode: 'NONE',
+      clockAuthorityEligible: 'NO',
+      minuteOrdinalL: minuteOrdinal,
+      basinStatus: diagnosticBasin.status,
+    };
+  }
+
+  if (STATIC_MINUTE_CLIP_IDS.has(params.disc.clipId) || !TRANSITION_CLIP_IDS.has(params.disc.clipId)) {
+    const interval = computeStaticMinuteInterceptInterval({
+      alignedClipStartMs: diagnosticBasin.alignedClipStartMs,
+      durationSeconds: params.clip.videoDurationSeconds ?? 60,
+      durationUncertaintySeconds: params.clip.videoDurationUncertainty ?? 0.5,
+      minuteOrdinalL: minuteL,
+    });
+    return {
+      clipId: params.disc.clipId,
+      fileName: params.disc.fileName,
+      independentStatus,
+      clipType: 'STATIC_MINUTE',
+      authorityMode: 'INTERVAL_ONLY',
+      clockAuthorityEligible: 'NO',
+      CLOCK_INTERCEPT_INTERVAL_FROM: interval.from,
+      CLOCK_INTERCEPT_INTERVAL_TO: interval.to,
+      minuteOrdinalL: minuteL,
+      basinStatus: diagnosticBasin.status,
+    };
+  }
+
+  return null;
+}
+
+export function enumerateTransitionInterceptCombinations(
+  evidences: ClockClipEvidence[],
+): number[][] {
+  const transitionChoices = evidences
+    .filter((e) => e.clockAuthorityEligible === 'YES' && e.clipType === 'TRANSITION')
+    .map((e) => {
+      if (e.authorityMode === 'DIRECT_POINT' && e.CLOCK_INTERCEPT_SECONDS != null) {
+        return [e.CLOCK_INTERCEPT_SECONDS];
+      }
+      if (e.authorityMode === 'CLOCK_CANDIDATE_SET' && e.CLOCK_CANDIDATE_SET?.length) {
+        return e.CLOCK_CANDIDATE_SET.map((c) => c.intercept);
+      }
+      return [];
+    })
+    .filter((choices) => choices.length > 0);
+
+  if (transitionChoices.length === 0) return [];
+
+  const combos: number[][] = [];
+  function walk(depth: number, current: number[]) {
+    if (depth === transitionChoices.length) {
+      combos.push([...current]);
+      return;
+    }
+    for (const intercept of transitionChoices[depth]!) {
+      current.push(intercept);
+      walk(depth + 1, current);
+      current.pop();
+    }
+  }
+  walk(0, []);
+  return combos;
+}
+
+export function evaluateRelativeClockCombination(intercepts: number[]): {
+  spread: number;
+  center: number;
+  consistent: boolean;
+} {
+  if (intercepts.length < 2) {
+    const only = intercepts[0] ?? 0;
+    return { spread: 0, center: only, consistent: intercepts.length === 1 };
+  }
+  const spread = Math.max(...intercepts) - Math.min(...intercepts);
+  const center = intercepts.reduce((a, b) => a + b, 0) / intercepts.length;
+  return {
+    spread,
+    center,
+    consistent: spread <= JOINT_INTERCEPT_TOLERANCE_SECONDS,
+  };
+}
+
+export function deriveRelativeClockModelStatus(params: {
+  transitionAuthorityClips: ClockClipEvidence[];
+  hasAmbiguousCandidateSets: boolean;
+  bestCombination: { spread: number; center: number; consistent: boolean } | null;
+  anyCombination: boolean;
+}): string {
+  const qualifiedCount = params.transitionAuthorityClips.length;
+  if (qualifiedCount < 2) return 'UNRESOLVED_INSUFFICIENT_QUALIFIED_TRANSITION_CLIPS';
+  if (!params.anyCombination) return 'UNRESOLVED_INSUFFICIENT_QUALIFIED_TRANSITION_CLIPS';
+  if (!params.bestCombination) {
+    return params.hasAmbiguousCandidateSets
+      ? 'UNRESOLVED_AMBIGUOUS_CANDIDATE_ASSIGNMENT'
+      : 'RELATIVE_INTERCEPT_CLUSTER_REJECTED';
+  }
+  if (params.bestCombination.consistent) return 'RELATIVE_INTERCEPT_CLUSTER_SUPPORTED';
+  if (params.bestCombination.spread > JOINT_INTERCEPT_TOLERANCE_SECONDS * 4) {
+    return params.hasAmbiguousCandidateSets
+      ? 'UNRESOLVED_AMBIGUOUS_CANDIDATE_ASSIGNMENT'
+      : 'RELATIVE_INTERCEPT_CLUSTER_REJECTED';
+  }
+  return 'RELATIVE_INTERCEPT_CLUSTER_WEAK';
+}
+
 export function buildJointClockChronologyPath(params: {
   discoveries: ClipDiscoveryV2Result[];
   clips: ExternalGtClip[];
@@ -633,14 +898,28 @@ export function buildJointClockChronologyPath(params: {
   JOINT_PATH_STATUS: string;
   path: JointPathSelection[];
   note: string;
-} {
+  STATIC_MINUTE_INTERVALS_USED_BY_JOINT_DP: 'YES' | 'NO';
+} & JointPathRejectionCounters {
   type State = {
-    selections: Array<{ disc: ClipDiscoveryV2Result; basin: BasinV2Result; clip: ExternalGtClip; endMs: number }>;
-    intercepts: number[];
+    selections: Array<{
+      disc: ClipDiscoveryV2Result;
+      basin: BasinV2Result;
+      clip: ExternalGtClip;
+      endMs: number;
+    }>;
+    interceptHypothesis: { from: number; to: number } | null;
   };
 
+  const counters: JointPathRejectionCounters = {
+    REJECTED_BY_CHRONOLOGY: 0,
+    REJECTED_BY_TRANSITION_CLOCK: 0,
+    REJECTED_BY_STATIC_MINUTE_INTERVAL: 0,
+    REJECTED_BY_NO_CANDIDATE: 0,
+  };
+  let staticMinuteIntervalsUsed = false;
+
   const clipMap = new Map(params.clips.map((c) => [c.clipId, c]));
-  let states: State[] = [{ selections: [], intercepts: [] }];
+  let states: State[] = [{ selections: [], interceptHypothesis: null }];
 
   for (const clipId of CLIP_CHRONOLOGY_ORDER) {
     const disc = params.discoveries.find((d) => d.clipId === clipId);
@@ -651,11 +930,14 @@ export function buildJointClockChronologyPath(params: {
       (b) => b.status === 'STRONG_CANDIDATE' || b.status === 'AMBIGUOUS' || b.coverage >= 0.5,
     );
     if (basinOptions.length === 0) {
+      counters.REJECTED_BY_NO_CANDIDATE += 1;
       return {
         JOINT_PATH_FOUND: 'NO',
         JOINT_PATH_STATUS: 'NO_CONSISTENT_PATH_IN_RETAINED_BASINS',
         path: [],
         note: `No credible basin retained for ${clip.fileName}`,
+        STATIC_MINUTE_INTERVALS_USED_BY_JOINT_DP: staticMinuteIntervalsUsed ? 'YES' : 'NO',
+        ...counters,
       };
     }
 
@@ -668,39 +950,56 @@ export function buildJointClockChronologyPath(params: {
         : 0;
 
       for (const basin of basinOptions) {
-        if (state.selections.length > 0 && basin.alignedClipStartMs < prevEnd - 1000) continue;
+        if (state.selections.length > 0 && basin.alignedClipStartMs < prevEnd - 1000) {
+          counters.REJECTED_BY_CHRONOLOGY += 1;
+          continue;
+        }
 
+        let nextHypothesis = state.interceptHypothesis;
         const minuteL = clipDisplayedMinuteOrdinal(clip);
-        const newIntercepts = [...state.intercepts];
+
         if (minuteL != null) {
           if (hasObservedMinuteTransition(clip)) {
             const tr = getClipObservedMinuteTransition(clip)!;
-            newIntercepts.push(
-              computeRelativeClockIntercept({
-                alignedClipStartMs: basin.alignedClipStartMs,
-                transitionVideoTimeSeconds: tr.videoTimeSeconds,
-                minuteOrdinalL: parseDisplayedMinuteOrdinal(tr.toMinute),
-              }),
-            );
+            const intercept = computeRelativeClockIntercept({
+              alignedClipStartMs: basin.alignedClipStartMs,
+              transitionVideoTimeSeconds: tr.videoTimeSeconds,
+              minuteOrdinalL: parseDisplayedMinuteOrdinal(tr.toMinute),
+            });
+            const pointInterval = transitionInterceptToleranceInterval(intercept);
+            nextHypothesis =
+              nextHypothesis == null
+                ? pointInterval
+                : interceptIntervalsIntersect(nextHypothesis, pointInterval);
+            if (nextHypothesis == null) {
+              counters.REJECTED_BY_TRANSITION_CLOCK += 1;
+              continue;
+            }
+          } else {
+            staticMinuteIntervalsUsed = true;
+            const interval = computeStaticMinuteInterceptInterval({
+              alignedClipStartMs: basin.alignedClipStartMs,
+              durationSeconds: clip.videoDurationSeconds ?? 60,
+              durationUncertaintySeconds: clip.videoDurationUncertainty ?? 0.5,
+              minuteOrdinalL: minuteL,
+            });
+            nextHypothesis =
+              nextHypothesis == null
+                ? interval
+                : interceptIntervalsIntersect(nextHypothesis, interval);
+            if (nextHypothesis == null) {
+              counters.REJECTED_BY_STATIC_MINUTE_INTERVAL += 1;
+              continue;
+            }
           }
-        }
-
-        if (newIntercepts.length >= 2) {
-          const spread = Math.max(...newIntercepts) - Math.min(...newIntercepts);
-          if (spread > JOINT_INTERCEPT_TOLERANCE_SECONDS) continue;
         }
 
         nextStates.push({
           selections: [
             ...state.selections,
-            {
-              disc,
-              basin,
-              clip,
-              endMs: basin.alignedClipStartMs + durationMs,
-            },
+            { disc, basin, clip, endMs: basin.alignedClipStartMs + durationMs },
           ],
-          intercepts: newIntercepts,
+          interceptHypothesis: nextHypothesis,
         });
       }
     }
@@ -711,6 +1010,8 @@ export function buildJointClockChronologyPath(params: {
         JOINT_PATH_STATUS: 'NO_CONSISTENT_PATH_IN_RETAINED_BASINS',
         path: [],
         note: 'Joint chronology/clock constraints unsatisfiable within retained basins (non-exhaustive DP)',
+        STATIC_MINUTE_INTERVALS_USED_BY_JOINT_DP: staticMinuteIntervalsUsed ? 'YES' : 'NO',
+        ...counters,
       };
     }
 
@@ -737,6 +1038,8 @@ export function buildJointClockChronologyPath(params: {
       JOINT_PATH_STATUS: 'NO_CONSISTENT_PATH_IN_RETAINED_BASINS',
       path: [],
       note: 'Incomplete joint path within retained basins',
+      STATIC_MINUTE_INTERVALS_USED_BY_JOINT_DP: staticMinuteIntervalsUsed ? 'YES' : 'NO',
+      ...counters,
     };
   }
 
@@ -754,15 +1057,9 @@ export function buildJointClockChronologyPath(params: {
     JOINT_PATH_STATUS: 'JOINT_CLOCK_CHRONOLOGY_PATH_SELECTED',
     path,
     note: 'Joint path is secondary inference — independent basin metrics unchanged',
+    STATIC_MINUTE_INTERVALS_USED_BY_JOINT_DP: staticMinuteIntervalsUsed ? 'YES' : 'NO',
+    ...counters,
   };
-}
-
-export function selectClockAuthorityBasin(basins: BasinV2Result[]): BasinV2Result | null {
-  const qualified = basins.filter(
-    (b) => b.status === 'STRONG_CANDIDATE' || b.status === 'AMBIGUOUS',
-  );
-  if (qualified.length === 0) return null;
-  return qualified.sort((a, b) => a.rankByQuality - b.rankByQuality)[0] ?? null;
 }
 
 export function isClipClockAuthorityEligible(disc: ClipDiscoveryV2Result): boolean {
@@ -776,81 +1073,52 @@ export function buildRelativeClockInterceptModel(params: {
   discoveries: ClipDiscoveryV2Result[];
   clips: ExternalGtClip[];
 }): Record<string, unknown> {
-  const entries: Array<Record<string, unknown>> = [];
+  const entries: ClockClipEvidence[] = [];
 
   for (const disc of params.discoveries) {
     const clip = params.clips.find((c) => c.clipId === disc.clipId);
     if (!clip) continue;
-    const authorityBasin = selectClockAuthorityBasin(disc.HF_HISTORICAL.basins);
-    const best =
-      authorityBasin ??
-      disc.HF_HISTORICAL.basins.sort((a, b) => a.rankByQuality - b.rankByQuality)[0];
-    if (!best) continue;
+    const evidence = buildClockClipEvidence({ disc, clip });
+    if (evidence) entries.push(evidence);
+  }
 
-    const minuteL = clipDisplayedMinuteOrdinal(clip);
-    if (minuteL == null) continue;
-
-    const qualifiedForClock = isClipClockAuthorityEligible(disc) && authorityBasin != null;
-
-    if (hasObservedMinuteTransition(clip)) {
-      const tr = getClipObservedMinuteTransition(clip)!;
-      const intercept = computeRelativeClockIntercept({
-        alignedClipStartMs: best.alignedClipStartMs,
-        transitionVideoTimeSeconds: tr.videoTimeSeconds,
-        minuteOrdinalL: parseDisplayedMinuteOrdinal(tr.toMinute),
-      });
-      entries.push({
-        clipId: disc.clipId,
-        fileName: disc.fileName,
-        clipType: 'TRANSITION',
-        basinStatus: best.status,
-        clockAuthorityEligible: qualifiedForClock ? 'YES' : 'NO',
-        CLOCK_INTERCEPT_SECONDS: intercept,
-        minuteOrdinalL: parseDisplayedMinuteOrdinal(tr.toMinute),
-      });
-    } else if (STATIC_MINUTE_CLIP_IDS.has(disc.clipId) || !TRANSITION_CLIP_IDS.has(disc.clipId)) {
-      const interval = computeStaticMinuteInterceptInterval({
-        alignedClipStartMs: best.alignedClipStartMs,
-        durationSeconds: clip.videoDurationSeconds ?? 60,
-        durationUncertaintySeconds: clip.videoDurationUncertainty ?? 0.5,
-        minuteOrdinalL: minuteL,
-      });
-      entries.push({
-        clipId: disc.clipId,
-        fileName: disc.fileName,
-        clipType: 'STATIC_MINUTE',
-        basinStatus: best.status,
-        clockAuthorityEligible: 'NO',
-        CLOCK_INTERCEPT_INTERVAL_FROM: interval.from,
-        CLOCK_INTERCEPT_INTERVAL_TO: interval.to,
-        minuteOrdinalL: minuteL,
-      });
+  const transitionAuthorityClips = entries.filter(
+    (e) => e.clockAuthorityEligible === 'YES' && e.clipType === 'TRANSITION',
+  );
+  const hasAmbiguousCandidateSets = transitionAuthorityClips.some(
+    (e) => e.authorityMode === 'CLOCK_CANDIDATE_SET',
+  );
+  const combinations = enumerateTransitionInterceptCombinations(entries);
+  let bestCombination: { spread: number; center: number; consistent: boolean } | null = null;
+  for (const combo of combinations) {
+    const evaluated = evaluateRelativeClockCombination(combo);
+    if (
+      bestCombination == null ||
+      (evaluated.consistent && !bestCombination.consistent) ||
+      (evaluated.consistent === bestCombination.consistent && evaluated.spread < bestCombination.spread)
+    ) {
+      bestCombination = evaluated;
     }
   }
 
-  const qualifiedIntercepts = entries
-    .filter((e) => e.clockAuthorityEligible === 'YES' && typeof e.CLOCK_INTERCEPT_SECONDS === 'number')
-    .map((e) => e.CLOCK_INTERCEPT_SECONDS as number);
-
-  let status = 'UNRESOLVED_INSUFFICIENT_QUALIFIED_TRANSITION_CLIPS';
-  let center: number | null = null;
-  let spread: number | null = null;
-
-  if (qualifiedIntercepts.length >= 2) {
-    center = qualifiedIntercepts.reduce((a, b) => a + b, 0) / qualifiedIntercepts.length;
-    spread = Math.max(...qualifiedIntercepts) - Math.min(...qualifiedIntercepts);
-    status = spread <= JOINT_INTERCEPT_TOLERANCE_SECONDS ? 'RELATIVE_INTERCEPT_CLUSTER_SUPPORTED' : 'RELATIVE_INTERCEPT_CLUSTER_WEAK';
-  }
+  const status = deriveRelativeClockModelStatus({
+    transitionAuthorityClips,
+    hasAmbiguousCandidateSets,
+    bestCombination,
+    anyCombination: combinations.length > 0,
+  });
 
   return {
     evidenceLayer: 'METHOD_CORRECTION',
     modelName: 'RELATIVE_CLOCK_INTERCEPT_MODEL',
     RELATIVE_CLOCK_MODEL_STATUS: status,
-    RELATIVE_CLOCK_INTERCEPT_CENTER: center,
-    RELATIVE_CLOCK_INTERCEPT_SPREAD_SECONDS: spread,
-    QUALIFIED_TRANSITION_CLIPS: qualifiedIntercepts.length,
+    RELATIVE_CLOCK_INTERCEPT_CENTER: bestCombination?.center ?? null,
+    RELATIVE_CLOCK_INTERCEPT_SPREAD_SECONDS: bestCombination?.spread ?? null,
+    QUALIFIED_TRANSITION_CLIPS: transitionAuthorityClips.length,
+    AMBIGUOUS_CLOCK_CANDIDATE_SETS_PRESERVED: hasAmbiguousCandidateSets ? 'YES' : 'NO',
+    combinationCount: combinations.length,
     entries,
-    note: 'Timezone-independent; CEST interpretation reported separately',
+    note: 'Timezone-independent; ambiguous clips retain CLOCK_CANDIDATE_SET; CEST interpretation reported separately',
   };
 }
 
@@ -862,11 +1130,12 @@ export function buildQualifiedClockPhaseModel(params: {
 
   for (const disc of params.discoveries) {
     if (!TRANSITION_CLIP_IDS.has(disc.clipId)) continue;
-    if (!isClipClockAuthorityEligible(disc)) continue;
+    if (disc.HF_HISTORICAL.independentStatus !== 'STRONG_CANDIDATE') continue;
     const clip = params.clips.find((c) => c.clipId === disc.clipId);
     if (!clip || !clipHasObservedMinuteTransition(clip)) continue;
 
-    const best = selectClockAuthorityBasin(disc.HF_HISTORICAL.basins);
+    const strongBasins = disc.HF_HISTORICAL.basins.filter((b) => b.status === 'STRONG_CANDIDATE');
+    const best = strongBasins.sort((a, b) => a.rankByQuality - b.rankByQuality)[0];
     if (!best || best.CLOCK_BOUNDARY_PHASE_SECONDS_MOD_60 == null) continue;
 
     phases.push({
@@ -882,6 +1151,7 @@ export function buildQualifiedClockPhaseModel(params: {
       COMMON_CLOCK_PHASE_STATUS: 'UNRESOLVED_INSUFFICIENT_QUALIFIED_TRANSITION_CLIPS',
       CLOCK_PHASE_CENTER_SECONDS_MOD_60: null,
       CLOCK_PHASE_SPREAD_SECONDS: null,
+      COMMON_CLOCK_PHASE_QUALIFIED_UNIQUE_CLIPS: strongPhases.length,
       qualifiedClipCount: strongPhases.length,
     };
   }
@@ -895,6 +1165,7 @@ export function buildQualifiedClockPhaseModel(params: {
       maxSpread <= 8 ? 'PHASE_CLUSTER_SUPPORTED' : maxSpread <= 15 ? 'PHASE_CLUSTER_WEAK' : 'UNRESOLVED',
     CLOCK_PHASE_CENTER_SECONDS_MOD_60: center,
     CLOCK_PHASE_SPREAD_SECONDS: spreads.reduce((a, b) => a + b, 0) / spreads.length,
+    COMMON_CLOCK_PHASE_QUALIFIED_UNIQUE_CLIPS: strongPhases.length,
     qualifiedClipCount: strongPhases.length,
     circularMeanUsed: true,
   };
@@ -1020,19 +1291,82 @@ export function runGlobalFingerprintDiscoveryV2(params: {
     clips: params.externalGt.clips,
   });
 
-  const independentStrongBasinClips = perClipDiscoveries.filter((d) =>
+  const discoverySummary = buildDiscoveryV2Summary({
+    perClipDiscoveries,
+    externalGt: params.externalGt,
+    telemetryRows: params.telemetryRows,
+    relativeClockInterceptModel,
+    jointClockChronologyPath,
+    mutuallyExclusiveCandidates,
+    qualifiedPhase,
+  });
+
+  return {
+    perClipDiscoveries,
+    perClipTopBasins,
+    paretoFrontiers,
+    independentProviderDiscovery,
+    independentIngressDiscovery,
+    relativeClockInterceptModel,
+    jointClockChronologyPath,
+    mutuallyExclusiveCandidates,
+    discoverySummary,
+  };
+}
+
+export const V2_SUMMARY_PARITY_FIELDS = [
+  'INDEPENDENT_STRONG_CANDIDATE_COUNT',
+  'INDEPENDENT_STRONG_BASIN_CLIPS',
+  'PROVIDER_TIME_ALIGNMENT_SUPPORTED_CLIPS',
+  'HF_SPEED_ALIGNMENT_V2_CONCLUSION',
+  'RELATIVE_CLOCK_MODEL_STATUS',
+  'RELATIVE_CLOCK_INTERCEPT_CENTER',
+  'RELATIVE_CLOCK_INTERCEPT_SPREAD_SECONDS',
+  'QUALIFIED_TRANSITION_CLIPS',
+  'AMBIGUOUS_CLOCK_CANDIDATE_SETS_PRESERVED',
+  'COMMON_CLOCK_PHASE_STATUS',
+  'COMMON_CLOCK_PHASE_QUALIFIED_UNIQUE_CLIPS',
+  'JOINT_PATH_FOUND',
+  'JOINT_PATH_STATUS',
+  'STATIC_MINUTE_INTERVALS_USED_BY_JOINT_DP',
+  'REJECTED_BY_CHRONOLOGY',
+  'REJECTED_BY_TRANSITION_CLOCK',
+  'REJECTED_BY_STATIC_MINUTE_INTERVAL',
+  'REJECTED_BY_NO_CANDIDATE',
+  'IMG_2807_AND_IMG_2810_JOINTLY_POSSIBLE',
+  'INGRESS_TIME_DIAGNOSTIC_SUPPORTED_CLIPS',
+] as const;
+
+export function pickV2SummaryParityFields(
+  summary: Record<string, unknown>,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    V2_SUMMARY_PARITY_FIELDS.map((field) => [field, summary[field] ?? null]),
+  );
+}
+
+export function buildDiscoveryV2Summary(params: {
+  perClipDiscoveries: ClipDiscoveryV2Result[];
+  externalGt: ExternalGtDocument;
+  telemetryRows: VideoGtExportedRow[];
+  relativeClockInterceptModel: Record<string, unknown>;
+  jointClockChronologyPath: ReturnType<typeof buildJointClockChronologyPath>;
+  mutuallyExclusiveCandidates: Record<string, unknown>;
+  qualifiedPhase: Record<string, unknown>;
+}): Record<string, unknown> {
+  const independentStrongBasinClips = params.perClipDiscoveries.filter((d) =>
     d.HF_HISTORICAL.basins.some((b) => b.status === 'STRONG_CANDIDATE'),
   ).length;
-  const providerAlignmentSupportedClips = perClipDiscoveries.filter(
+  const providerAlignmentSupportedClips = params.perClipDiscoveries.filter(
     (d) => d.HF_HISTORICAL.independentStatus === 'STRONG_CANDIDATE',
   ).length;
 
   const jointlyConsistentStrong =
-    jointClockChronologyPath.JOINT_PATH_FOUND === 'YES'
-      ? jointClockChronologyPath.path.filter((p) => p.jointStatus === 'JOINTLY_SUPPORTED').length
+    params.jointClockChronologyPath.JOINT_PATH_FOUND === 'YES'
+      ? params.jointClockChronologyPath.path.filter((p) => p.jointStatus === 'JOINTLY_SUPPORTED').length
       : 0;
 
-  const img2810 = perClipDiscoveries.find((d) => d.clipId === 'RD003_GT_CLIP_008');
+  const img2810 = params.perClipDiscoveries.find((d) => d.clipId === 'RD003_GT_CLIP_008');
   const img2810Basin = img2810?.HF_HISTORICAL.basins.find(
     (b) =>
       b.alignedClipStartMs >= Date.parse('2026-09-02T19:23:50.000Z') &&
@@ -1041,7 +1375,7 @@ export function runGlobalFingerprintDiscoveryV2(params: {
   );
 
   const ages: number[] = [];
-  for (const disc of perClipDiscoveries) {
+  for (const disc of params.perClipDiscoveries) {
     const best = disc.HF_HISTORICAL.basins[0];
     if (!best) continue;
     const clip = params.externalGt.clips.find((c) => c.clipId === disc.clipId);
@@ -1065,7 +1399,7 @@ export function runGlobalFingerprintDiscoveryV2(params: {
   }
   ages.sort((a, b) => a - b);
 
-  const discoverySummary: Record<string, unknown> = {
+  return {
     evidenceId: DISCOVERY_V2_EVIDENCE_ID,
     discoveryMode: DISCOVERY_V2_MODE,
     DISCOVERY_V2_EXECUTED: 'YES',
@@ -1073,19 +1407,22 @@ export function runGlobalFingerprintDiscoveryV2(params: {
     REFERENCE_CAPTURE_RUNTIME_CHANGED: 'NO',
     DRIVING_SCORE_CHANGED: 'NO',
     INDEPENDENT_STRONG_CANDIDATE_COUNT: independentStrongBasinClips,
+    INDEPENDENT_STRONG_BASIN_CLIPS: independentStrongBasinClips,
     JOINTLY_CONSISTENT_STRONG_CANDIDATE_COUNT: jointlyConsistentStrong,
-    ...mutuallyExclusiveCandidates,
-    RELATIVE_CLOCK_MODEL_STATUS: relativeClockInterceptModel.RELATIVE_CLOCK_MODEL_STATUS,
-    QUALIFIED_TRANSITION_CLIPS: relativeClockInterceptModel.QUALIFIED_TRANSITION_CLIPS,
-    RELATIVE_CLOCK_INTERCEPT_CENTER: relativeClockInterceptModel.RELATIVE_CLOCK_INTERCEPT_CENTER,
+    ...params.mutuallyExclusiveCandidates,
+    RELATIVE_CLOCK_MODEL_STATUS: params.relativeClockInterceptModel.RELATIVE_CLOCK_MODEL_STATUS,
+    QUALIFIED_TRANSITION_CLIPS: params.relativeClockInterceptModel.QUALIFIED_TRANSITION_CLIPS,
+    RELATIVE_CLOCK_INTERCEPT_CENTER: params.relativeClockInterceptModel.RELATIVE_CLOCK_INTERCEPT_CENTER,
     RELATIVE_CLOCK_INTERCEPT_SPREAD_SECONDS:
-      relativeClockInterceptModel.RELATIVE_CLOCK_INTERCEPT_SPREAD_SECONDS,
-    ...qualifiedPhase,
+      params.relativeClockInterceptModel.RELATIVE_CLOCK_INTERCEPT_SPREAD_SECONDS,
+    AMBIGUOUS_CLOCK_CANDIDATE_SETS_PRESERVED:
+      params.relativeClockInterceptModel.AMBIGUOUS_CLOCK_CANDIDATE_SETS_PRESERVED,
+    ...params.qualifiedPhase,
     ZERO_PHASE_HARD_CLOCK_BOUND_CONCLUSION: img2810Basin ? 'HARD_SECOND_PHASE_PRIOR_FALSIFIED' : 'INCONCLUSIVE',
     DISPLAYED_MINUTE_IDENTITY_CONCLUSION: 'SUPPORTED_BY_OBSERVED_CLIP_ORDER',
     CEST_TIMEZONE_HYPOTHESIS_CONCLUSION: 'UNRESOLVED_INDEPENDENT_OF_RELATIVE_MODEL',
     PROVIDER_TIME_ALIGNMENT_SUPPORTED_CLIPS: providerAlignmentSupportedClips,
-    INGRESS_TIME_DIAGNOSTIC_SUPPORTED_CLIPS: countIngressDiagnosticSupported(perClipDiscoveries),
+    INGRESS_TIME_DIAGNOSTIC_SUPPORTED_CLIPS: countIngressDiagnosticSupported(params.perClipDiscoveries),
     HF_PROVIDER_SAMPLE_AGE_MEDIAN_SECONDS: ages.length ? ages[Math.floor(ages.length / 2)] : null,
     HF_PROVIDER_SAMPLE_AGE_P90_SECONDS: ages.length ? ages[Math.floor(ages.length * 0.9)] : null,
     HF_SPEED_ALIGNMENT_V2_CONCLUSION:
@@ -1095,19 +1432,16 @@ export function runGlobalFingerprintDiscoveryV2(params: {
           ? 'HF_SPEED_ALIGNMENT_V2_AMBIGUOUS'
           : 'HF_SPEED_ALIGNMENT_V2_NOT_IDENTIFIABLE',
     IMG_2810_V2_STRONG_BASIN_AT_19_23_59: img2810Basin ? 'YES' : 'NO',
+    JOINT_PATH_FOUND: params.jointClockChronologyPath.JOINT_PATH_FOUND,
+    JOINT_PATH_STATUS: params.jointClockChronologyPath.JOINT_PATH_STATUS,
+    STATIC_MINUTE_INTERVALS_USED_BY_JOINT_DP:
+      params.jointClockChronologyPath.STATIC_MINUTE_INTERVALS_USED_BY_JOINT_DP,
+    REJECTED_BY_CHRONOLOGY: params.jointClockChronologyPath.REJECTED_BY_CHRONOLOGY,
+    REJECTED_BY_TRANSITION_CLOCK: params.jointClockChronologyPath.REJECTED_BY_TRANSITION_CLOCK,
+    REJECTED_BY_STATIC_MINUTE_INTERVAL:
+      params.jointClockChronologyPath.REJECTED_BY_STATIC_MINUTE_INTERVAL,
+    REJECTED_BY_NO_CANDIDATE: params.jointClockChronologyPath.REJECTED_BY_NO_CANDIDATE,
     READY_FOR_DI_EV_0034E_SIGNAL_QUALITY_INTERPRETATION: 'YES',
-  };
-
-  return {
-    perClipDiscoveries,
-    perClipTopBasins,
-    paretoFrontiers,
-    independentProviderDiscovery,
-    independentIngressDiscovery,
-    relativeClockInterceptModel,
-    jointClockChronologyPath,
-    mutuallyExclusiveCandidates,
-    discoverySummary,
   };
 }
 

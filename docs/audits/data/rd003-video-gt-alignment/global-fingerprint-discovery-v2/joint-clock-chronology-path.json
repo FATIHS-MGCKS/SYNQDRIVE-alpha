@@ -2,5 +2,10 @@
   "JOINT_PATH_FOUND": "NO",
   "JOINT_PATH_STATUS": "NO_CONSISTENT_PATH_IN_RETAINED_BASINS",
   "path": [],
-  "note": "Joint chronology/clock constraints unsatisfiable within retained basins (non-exhaustive DP)"
+  "note": "Joint chronology/clock constraints unsatisfiable within retained basins (non-exhaustive DP)",
+  "STATIC_MINUTE_INTERVALS_USED_BY_JOINT_DP": "YES",
+  "REJECTED_BY_CHRONOLOGY": 32,
+  "REJECTED_BY_TRANSITION_CLOCK": 0,
+  "REJECTED_BY_STATIC_MINUTE_INTERVAL": 14,
+  "REJECTED_BY_NO_CANDIDATE": 0
 }

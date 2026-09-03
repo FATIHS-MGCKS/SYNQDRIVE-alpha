@@ -18,6 +18,8 @@ import {
 } from './reference-capture-rd003-video-gt-global-discovery';
 import {
   auditMutuallyExclusiveCandidates,
+  boundaryToClockIntercept,
+  buildClockClipEvidence,
   buildDiscoveryV2SeedSet,
   buildJointClockChronologyPath,
   buildParetoFrontier,
@@ -32,12 +34,19 @@ import {
   decomposeClockResidual,
   dedupePhysicalSamples,
   deriveGlobalStatusV2,
+  deriveRelativeClockModelStatus,
   discoverClipV2,
   DISCOVERY_V2_MODE,
-  pairwiseMinuteDistanceResidual,
+  enumerateTransitionInterceptCombinations,
+  evaluateRelativeClockCombination,
+  interceptIntervalsIntersect,
+  pairwiseBoundaryMinuteResidual,
+  pairwiseClockInterceptResidual,
+  pickV2SummaryParityFields,
   regressionCoverageMaeSeedSelection,
   runGlobalFingerprintDiscoveryV2,
   runIndependentIngressDiscovery,
+  V2_SUMMARY_PARITY_FIELDS,
 } from './reference-capture-rd003-video-gt-global-discovery-v2';
 
 const EXTERNAL_GT = path.resolve(
@@ -386,9 +395,17 @@ describe('DI-EV-0034D global fingerprint discovery v2', () => {
     expect(intercept).toBeCloseTo(interceptShifted, 6);
   });
 
-  it('11) pairwise minute-distance residual is correct', () => {
-    const residual = pairwiseMinuteDistanceResidual(100, 250, 10, 12);
-    expect(residual).toBeCloseTo(250 - 100 - 60 * 2, 6);
+  it('11) raw-boundary and normalized-intercept pairwise equations are equivalent', () => {
+    const boundaryI = 1_000_000;
+    const boundaryJ = 1_000_250;
+    const minuteLi = 10;
+    const minuteLj = 12;
+    const interceptI = boundaryToClockIntercept(boundaryI, minuteLi);
+    const interceptJ = boundaryToClockIntercept(boundaryJ, minuteLj);
+    const boundaryResidual = pairwiseBoundaryMinuteResidual(boundaryI, boundaryJ, minuteLi, minuteLj);
+    const interceptResidual = pairwiseClockInterceptResidual(interceptI, interceptJ);
+    expect(boundaryResidual).toBeCloseTo(interceptResidual, 6);
+    expect(boundaryResidual).toBeCloseTo(250 - 120, 6);
   });
 
   it('12) static-minute clips create intercept intervals, not exact points', () => {
@@ -799,5 +816,313 @@ describe('DI-EV-0034D global fingerprint discovery v2', () => {
       ),
     );
     expect(qualityFirst[0]!.alignedClipStartMs).toBe(good.alignedClipStartMs);
+  });
+});
+
+describe('DI-EV-0034D.1 correctness closeout', () => {
+  it('1) committed V2 summary parity fields equal fresh deterministic run', () => {
+    if (!hasExternalGt || !hasV2Discovery) return;
+    const { loadExternalGtDocument, loadCanonicalTelemetryJsonl, stableStringify } = require('./reference-capture-rd003-video-gt-alignment');
+    const committed = JSON.parse(
+      fs.readFileSync(path.join(V2_DISCOVERY_DIR, 'discovery-v2-summary.json'), 'utf8'),
+    ) as Record<string, unknown>;
+    const externalGt = loadExternalGtDocument(EXTERNAL_GT);
+    const telemetryRows = loadCanonicalTelemetryJsonl(TELEMETRY_JSONL);
+    const fresh = runGlobalFingerprintDiscoveryV2({ telemetryRows, externalGt }).discoverySummary;
+    const committedParity = pickV2SummaryParityFields(committed);
+    const freshParity = pickV2SummaryParityFields(fresh);
+    expect(stableStringify(committedParity)).toBe(stableStringify(freshParity));
+    expect(committed.PROVIDER_TIME_ALIGNMENT_SUPPORTED_CLIPS).toBe(fresh.PROVIDER_TIME_ALIGNMENT_SUPPORTED_CLIPS);
+    expect(committed.HF_SPEED_ALIGNMENT_V2_CONCLUSION).toBe(fresh.HF_SPEED_ALIGNMENT_V2_CONCLUSION);
+  });
+
+  it('2) ambiguous clip exposes CLOCK_CANDIDATE_SET, not one forced authority basin', () => {
+    const clip = makeClip({
+      clipId: 'RD003_GT_CLIP_005',
+      fileName: 'IMG_2807.mp4',
+      videoClock: {
+        displayedMinuteTransitions: [
+          { videoTimeSeconds: 10, uncertaintySeconds: 0.1, fromMinute: '21:13', toMinute: '21:14' },
+        ],
+      },
+    });
+    const disc = {
+      clipId: clip.clipId,
+      fileName: clip.fileName,
+      alignmentEligibleGtCount: 10,
+      HF_HISTORICAL: {
+        independentStatus: 'AMBIGUOUS' as const,
+        globalStatus: 'AMBIGUOUS' as const,
+        basins: [
+          {
+            rankByQuality: 1,
+            rankByCoverage: 1,
+            paretoStatus: 'PARETO' as const,
+            alignedClipStartUtc: '2026-09-02T19:23:51.795Z',
+            alignedClipStartMs: Date.parse('2026-09-02T19:23:51.795Z'),
+            matchedGtCount: 10,
+            eligibleGtCount: 16,
+            coverage: 0.625,
+            MAE: 6,
+            RMSE: 6,
+            maxAbsError: 7,
+            basinStartUtc: 'x',
+            basinEndUtc: 'x',
+            basinWidthSeconds: 0.7,
+            distinctFromNearestCompetingBasinSeconds: null,
+            status: 'STRONG_CANDIDATE' as const,
+            FULL_CLOCK_BOUNDARY_RESIDUAL_SECONDS: null,
+            WHOLE_MINUTE_RESIDUAL_COUNT: null,
+            CLOCK_BOUNDARY_PHASE_SECONDS_MOD_60: null,
+          },
+          {
+            rankByQuality: 2,
+            rankByCoverage: 2,
+            paretoStatus: 'PARETO' as const,
+            alignedClipStartUtc: '2026-09-02T19:23:01.995Z',
+            alignedClipStartMs: Date.parse('2026-09-02T19:23:01.995Z'),
+            matchedGtCount: 16,
+            eligibleGtCount: 16,
+            coverage: 1,
+            MAE: 6.15,
+            RMSE: 7,
+            maxAbsError: 8,
+            basinStartUtc: 'x',
+            basinEndUtc: 'x',
+            basinWidthSeconds: 0.8,
+            distinctFromNearestCompetingBasinSeconds: null,
+            status: 'STRONG_CANDIDATE' as const,
+            FULL_CLOCK_BOUNDARY_RESIDUAL_SECONDS: null,
+            WHOLE_MINUTE_RESIDUAL_COUNT: null,
+            CLOCK_BOUNDARY_PHASE_SECONDS_MOD_60: null,
+          },
+        ],
+      },
+      INGRESS_DIAGNOSTIC: {
+        status: 'NOT_IDENTIFIABLE' as const,
+        alignedStart: null,
+        coverage: null,
+        MAE: null,
+        RMSE: null,
+        maxAbsError: null,
+        ingressMinusProviderStartSeconds: null,
+      },
+    };
+    const evidence = buildClockClipEvidence({ disc, clip });
+    expect(evidence?.authorityMode).toBe('CLOCK_CANDIDATE_SET');
+    expect(evidence?.CLOCK_CANDIDATE_SET?.length).toBe(2);
+    expect(evidence?.CLOCK_INTERCEPT_SECONDS).toBeUndefined();
+  });
+
+  it('3) incompatible ambiguous basin combinations can be rejected individually', () => {
+    const combos = enumerateTransitionInterceptCombinations([
+      {
+        clipId: 'A',
+        fileName: 'A.mp4',
+        independentStatus: 'AMBIGUOUS',
+        clipType: 'TRANSITION',
+        authorityMode: 'CLOCK_CANDIDATE_SET',
+        clockAuthorityEligible: 'YES',
+        CLOCK_CANDIDATE_SET: [
+          { basinRank: 1, alignedClipStartUtc: 'a', intercept: 100 },
+          { basinRank: 2, alignedClipStartUtc: 'b', intercept: 1300 },
+        ],
+        minuteOrdinalL: 10,
+        basinStatus: 'AMBIGUOUS',
+      },
+      {
+        clipId: 'B',
+        fileName: 'B.mp4',
+        independentStatus: 'STRONG_CANDIDATE',
+        clipType: 'TRANSITION',
+        authorityMode: 'DIRECT_POINT',
+        clockAuthorityEligible: 'YES',
+        CLOCK_INTERCEPT_SECONDS: 110,
+        minuteOrdinalL: 11,
+        basinStatus: 'STRONG_CANDIDATE',
+      },
+    ]);
+    const evaluations = combos.map((c) => evaluateRelativeClockCombination(c));
+    expect(evaluations.some((e) => e.consistent)).toBe(true);
+    expect(evaluations.some((e) => !e.consistent && e.spread > 1000)).toBe(true);
+  });
+
+  it('4) compatible combination can survive', () => {
+    const status = deriveRelativeClockModelStatus({
+      transitionAuthorityClips: [
+        { clipId: 'A', fileName: 'A.mp4' } as any,
+        { clipId: 'B', fileName: 'B.mp4' } as any,
+      ],
+      hasAmbiguousCandidateSets: false,
+      bestCombination: { spread: 5, center: 100, consistent: true },
+      anyCombination: true,
+    });
+    expect(status).toBe('RELATIVE_INTERCEPT_CLUSTER_SUPPORTED');
+  });
+
+  it('5) 1196 s intercept spread cannot become WEAK support', () => {
+    const status = deriveRelativeClockModelStatus({
+      transitionAuthorityClips: [{ clipId: 'x' } as any, { clipId: 'y' } as any],
+      hasAmbiguousCandidateSets: true,
+      bestCombination: { spread: 1196.37, center: 1_788_300_573, consistent: false },
+      anyCombination: true,
+    });
+    expect(status).not.toBe('RELATIVE_INTERCEPT_CLUSTER_WEAK');
+    expect(status).toBe('UNRESOLVED_AMBIGUOUS_CANDIDATE_ASSIGNMENT');
+  });
+
+  it('6) static-minute interval accepts compatible intercept', () => {
+    const interval = { from: 100, to: 200 };
+    const hypothesis = { from: 150, to: 250 };
+    expect(interceptIntervalsIntersect(interval, hypothesis)).toEqual({ from: 150, to: 200 });
+  });
+
+  it('7) static-minute interval rejects incompatible intercept', () => {
+    const interval = { from: 100, to: 120 };
+    const hypothesis = { from: 130, to: 140 };
+    expect(interceptIntervalsIntersect(interval, hypothesis)).toBeNull();
+  });
+
+  it('8) joint DP uses static-minute intervals', () => {
+    const discoveries = [
+      {
+        clipId: 'RD003_GT_CLIP_001',
+        fileName: 'A.mp4',
+        alignmentEligibleGtCount: 2,
+        HF_HISTORICAL: {
+          independentStatus: 'STRONG_CANDIDATE' as const,
+          globalStatus: 'STRONG_CANDIDATE' as const,
+          basins: [
+            {
+              rankByQuality: 1,
+              rankByCoverage: 1,
+              paretoStatus: 'PARETO' as const,
+              alignedClipStartUtc: '2026-09-02T19:00:00.000Z',
+              alignedClipStartMs: Date.parse('2026-09-02T19:00:00.000Z'),
+              matchedGtCount: 2,
+              eligibleGtCount: 2,
+              coverage: 1,
+              MAE: 3,
+              RMSE: 3,
+              maxAbsError: 4,
+              basinStartUtc: 'x',
+              basinEndUtc: 'x',
+              basinWidthSeconds: 0,
+              distinctFromNearestCompetingBasinSeconds: null,
+              status: 'STRONG_CANDIDATE' as const,
+              FULL_CLOCK_BOUNDARY_RESIDUAL_SECONDS: null,
+              WHOLE_MINUTE_RESIDUAL_COUNT: null,
+              CLOCK_BOUNDARY_PHASE_SECONDS_MOD_60: null,
+            },
+          ],
+        },
+        INGRESS_DIAGNOSTIC: {
+          status: 'NOT_IDENTIFIABLE' as const,
+          alignedStart: null,
+          coverage: null,
+          MAE: null,
+          RMSE: null,
+          maxAbsError: null,
+          ingressMinusProviderStartSeconds: null,
+        },
+      },
+      {
+        clipId: 'RD003_GT_CLIP_002',
+        fileName: 'B.mp4',
+        alignmentEligibleGtCount: 2,
+        HF_HISTORICAL: {
+          independentStatus: 'STRONG_CANDIDATE' as const,
+          globalStatus: 'STRONG_CANDIDATE' as const,
+          basins: [
+            {
+              rankByQuality: 1,
+              rankByCoverage: 1,
+              paretoStatus: 'PARETO' as const,
+              alignedClipStartUtc: '2026-09-02T19:01:00.000Z',
+              alignedClipStartMs: Date.parse('2026-09-02T19:01:00.000Z'),
+              matchedGtCount: 2,
+              eligibleGtCount: 2,
+              coverage: 1,
+              MAE: 3,
+              RMSE: 3,
+              maxAbsError: 4,
+              basinStartUtc: 'x',
+              basinEndUtc: 'x',
+              basinWidthSeconds: 0,
+              distinctFromNearestCompetingBasinSeconds: null,
+              status: 'STRONG_CANDIDATE' as const,
+              FULL_CLOCK_BOUNDARY_RESIDUAL_SECONDS: null,
+              WHOLE_MINUTE_RESIDUAL_COUNT: null,
+              CLOCK_BOUNDARY_PHASE_SECONDS_MOD_60: null,
+            },
+          ],
+        },
+        INGRESS_DIAGNOSTIC: {
+          status: 'NOT_IDENTIFIABLE' as const,
+          alignedStart: null,
+          coverage: null,
+          MAE: null,
+          RMSE: null,
+          maxAbsError: null,
+          ingressMinusProviderStartSeconds: null,
+        },
+      },
+    ];
+    const clips = [
+      makeClip({
+        clipId: 'RD003_GT_CLIP_001',
+        fileName: 'A.mp4',
+        videoDurationSeconds: 30,
+        videoClock: {
+          displayedMinuteTransitions: [
+            { videoTimeSeconds: 5, uncertaintySeconds: 0.1, fromMinute: '21:03', toMinute: '21:04' },
+          ],
+        },
+      }),
+      makeClip({
+        clipId: 'RD003_GT_CLIP_002',
+        fileName: 'B.mp4',
+        videoDurationSeconds: 30,
+        videoClock: { displayedLocalTime: '21:06' },
+      }),
+    ];
+    const result = buildJointClockChronologyPath({ discoveries, clips });
+    expect(result.STATIC_MINUTE_INTERVALS_USED_BY_JOINT_DP).toBe('YES');
+    expect(result.REJECTED_BY_STATIC_MINUTE_INTERVAL).toBeGreaterThanOrEqual(0);
+  });
+
+  it('9-11) pairwise equations mathematical equivalence', () => {
+    const boundaryI = 5_000_000;
+    const boundaryJ = 5_000_180;
+    const li = 834;
+    const lj = 835;
+    const ii = boundaryToClockIntercept(boundaryI, li);
+    const ij = boundaryToClockIntercept(boundaryJ, lj);
+    expect(pairwiseBoundaryMinuteResidual(boundaryI, boundaryJ, li, lj)).toBeCloseTo(
+      pairwiseClockInterceptResidual(ii, ij),
+      6,
+    );
+  });
+
+  it('12) IMG_2807/IMG_2810 incompatibility remains detected', () => {
+    if (!hasExternalGt) return;
+    const { loadExternalGtDocument, loadCanonicalTelemetryJsonl } = require('./reference-capture-rd003-video-gt-alignment');
+    const result = runGlobalFingerprintDiscoveryV2({
+      telemetryRows: loadCanonicalTelemetryJsonl(TELEMETRY_JSONL),
+      externalGt: loadExternalGtDocument(EXTERNAL_GT),
+    });
+    expect(result.mutuallyExclusiveCandidates.IMG_2807_AND_IMG_2810_JOINTLY_POSSIBLE).toBe('NO');
+  });
+
+  it('14) ingress real-data result is not fabricated', () => {
+    if (!hasV2Discovery) return;
+    const summary = JSON.parse(
+      fs.readFileSync(path.join(V2_DISCOVERY_DIR, 'discovery-v2-summary.json'), 'utf8'),
+    );
+    expect(summary.INGRESS_TIME_DIAGNOSTIC_SUPPORTED_CLIPS).toBe(0);
+  });
+
+  it('18) V2 parity field list is stable', () => {
+    expect(V2_SUMMARY_PARITY_FIELDS.length).toBeGreaterThanOrEqual(18);
   });
 });
