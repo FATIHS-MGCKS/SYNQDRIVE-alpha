@@ -36,6 +36,120 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-rd003-global-discovery-v2-static-minute-d2-2026-09-03',
+    version: '4.9.1041',
+    title: 'DI-EV-0034D.2 — Static-Minute Clock Geometry + Joint Alignment Closeout',
+    summary: [
+      'Corrected static-minute feasible intercept interval to I ∈ [S + d − 60(L+1), S − 60L] (was wrong upper-bound geometry).',
+      'STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL with documented inclusive bounds and uncertainty widening.',
+      'AMBIGUOUS static clips preserve STATIC_CLOCK_CANDIDATE_INTERVAL_SET per qualified basin until joint inference.',
+      'RELATIVE_CLOCK_INTERCEPT_CENTER=null when unresolved; BEST_RETAINED_COMBINATION_* diagnostic fields separated.',
+      'Regenerated all eight global-fingerprint-discovery-v2/ artifacts; D.1 static/joint counters superseded.',
+      'Mandatory regression: S=1000, L=10, d=30 → exactly [370, 400]; width ≈ 60−d before uncertainty.',
+    ],
+    reason: 'Human review found static-minute interval geometry blocked authoritative joint DP interpretation.',
+    previousBehavior:
+      'computeStaticMinuteInterceptInterval used [S−60L, S+d−60L] producing [400,430] for the canonical synthetic case; AMBIGUOUS static clips collapsed to one diagnostic basin interval.',
+    details:
+      'reference-capture-rd003-video-gt-global-discovery-v2.ts; global-fingerprint-discovery-v2/ artifacts regenerated; D.1 joint/static results marked superseded.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T10:30:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-global-discovery-v2-closeout-2026-09-03',
+    version: '4.9.1040',
+    title: 'DI-EV-0034D.1 — RD003 Discovery V2 Correctness + Evidence Closeout',
+    summary: [
+      'Regenerated all eight global-fingerprint-discovery-v2/ artifacts from current runtime code.',
+      'Added V2 summary parity regression: committed discovery-v2-summary.json must match fresh deterministic run.',
+      'AMBIGUOUS clips now preserve CLOCK_CANDIDATE_SET (no forced single clock authority).',
+      'Relative clock model searches intercept combinations; large spreads → UNRESOLVED_AMBIGUOUS_CANDIDATE_ASSIGNMENT (not WEAK).',
+      'Joint DP enforces static-minute intercept intervals with rejection counters.',
+      'Explicit pairwiseBoundaryMinuteResidual / pairwiseClockInterceptResidual helpers.',
+      'PROVIDER_TIME_ALIGNMENT_SUPPORTED_CLIPS=2; HF_SPEED_ALIGNMENT_V2_CONCLUSION=AMBIGUOUS.',
+    ],
+    reason: 'Close four methodological/evidence defects before DI-EV-0034E signal-quality interpretation.',
+    previousBehavior:
+      'Stale summary artifact drift; AMBIGUOUS clips collapsed to rank-1 clock anchor; static-minute intervals unused in joint DP; ambiguous pairwise clock helper.',
+    details:
+      'reference-capture-rd003-video-gt-global-discovery-v2.ts; global-fingerprint-discovery-v2/ artifacts regenerated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T10:00:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-global-fingerprint-discovery-v2-2026-09-03',
+    version: '4.9.1039',
+    title: 'DI-EV-0034D — RD003 Global Discovery V2 + Joint Clock-Consistent Alignment',
+    summary: [
+      'Added GLOBAL_FINGERPRINT_DISCOVERY_V2 with corrected seed selection: QUALITY_SEEDS + COVERAGE_SEEDS + PARETO_SEEDS.',
+      'Coverage=1.0 / MAE=50 junk basins can no longer suppress coverage-qualified lower-MAE candidates.',
+      'Relative clock-intercept model (timezone-independent); qualified transition clips only for clock authority.',
+      'True circular mean for modulo-60 phase; full clock residual preserves whole-minute + phase components.',
+      'Joint chronology DP over retained basins; non-exhaustive failure renamed NO_CONSISTENT_PATH_IN_RETAINED_BASINS.',
+      'Independent ingress discovery on synqReceivedAt timeline; INGRESS_TIME_DIAGNOSTIC_SUPPORTED_CLIPS from ingress results.',
+      'IMG_2807 + IMG_2810 independent STRONG basins detected as jointly incompatible (~−130.8 s chronology gap).',
+      'Preserved DI-EV-0034B hard-clock-prior-run/ and DI-EV-0034C global-fingerprint-discovery/ unchanged.',
+      'ZERO_PHASE_HARD_CLOCK_BOUND_CONCLUSION=HARD_SECOND_PHASE_PRIOR_FALSIFIED; GROUND_TRUTH_VALIDATED=NO.',
+    ],
+    reason:
+      'Correct DI-EV-0034C methodological defects (coverage-first ranking, clock authority, ingress proxy) before signal-quality interpretation.',
+    previousBehavior:
+      'DI-EV-0034C coverage-first compareCandidateQuality could suppress superior lower-coverage basins; NOT_IDENTIFIABLE basins could reject clock phase; ingress support counted from provider MAE proxy.',
+    details:
+      'reference-capture-rd003-video-gt-global-discovery-v2.ts; reference-capture-drive-003-video-gt-global-discovery-v2.ts; docs/audits/data/rd003-video-gt-alignment/global-fingerprint-discovery-v2/.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T09:30:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-global-fingerprint-discovery-2026-09-03',
+    version: '4.9.1038',
+    title: 'DI-EV-0034C — RD003 Clock-Prior Falsification + Global Fingerprint Discovery',
+    summary: [
+      'Added GLOBAL_FINGERPRINT_DISCOVERY mode: full-session speed fingerprint search without hard clock-prior bounds.',
+      'Preserved DI-EV-0034B HARD_CLOCK_PRIOR_RUN artifacts in hard-clock-prior-run/ with SHA manifest.',
+      'Coarse 0.5s + fine 0.1s search; top 5 distinct temporal basins per clip/surface.',
+      'CLOCK_PRIOR_FALSIFIED: materially better HF basins found outside prior windows (e.g. IMG_2810 ~19:23:59.5Z, MAE ~4.17).',
+      'Modulo-60 vehicle-clock boundary phase model under CEST hypothesis; chronology path analysis separate from basin scores.',
+      'Fixed clock boundary status: MINUTE_TRANSITION_OBSERVED_ALIGNMENT_NOT_QUALIFIED vs NO_OBSERVED_MINUTE_TRANSITION.',
+      'providerTimestamp vs synqReceivedAt diagnostic timelines remain separate.',
+      'GROUND_TRUTH_VALIDATED=NO; REFERENCE_CAPTURE_RUNTIME_CHANGED=NO; DRIVING_SCORE_CHANGED=NO.',
+    ],
+    reason:
+      'Distinguish clock-prior failure from telemetry/video shape incompatibility without modifying external GT.',
+    previousBehavior: 'DI-EV-0034B hard-clock-prior run produced no STRONG_CANDIDATE; boundary status could misreport missing transitions.',
+    details:
+      'reference-capture-rd003-video-gt-global-discovery.ts; reference-capture-drive-003-video-gt-global-discovery.ts; docs/audits/data/rd003-video-gt-alignment/global-fingerprint-discovery/.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T08:40:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-external-gt-ingestion-2026-09-03',
+    version: '4.9.1037',
+    title: 'DI-EV-0034B — RD003 Sparse External Video Ground Truth Ingestion + First Real Alignment',
+    summary: [
+      'First real externally reviewed sparse video GT ingested for all nine RD003 clips (198 observations, 182 alignment-eligible SPEED points).',
+      'Source: EXTERNAL_OWNER_PLUS_CHATGPT_MANUAL_VISUAL_REVIEW; no interpolation or 30 Hz fabrication.',
+      'Deterministic observation IDs (RD003_GT_001_SPEED_000, etc.); EXTERNAL_GT_SHA256=ea0d78ee….',
+      'Accepted DI-EV-0034A v1.2 workbench executed against DI-EV-0033 canonical telemetry without algorithm redesign.',
+      'REAL_EXTERNAL_GT_INGESTED=YES; REAL_ALIGNMENT_EXECUTED=YES; VIDEO_ALIGNMENT_STATUS=REAL_CANDIDATE_ALIGNMENTS_AVAILABLE.',
+      'GROUND_TRUTH_VALIDATED=NO; failed/ambiguous per-clip outcomes preserved as valid scientific results.',
+      'IMG_2810 S2→S3 and IMG_2811 reverse direction remain separate video GT — not telemetry proof.',
+      'REFERENCE_CAPTURE_RUNTIME_CHANGED=NO; DRIVING_SCORE_CHANGED=NO.',
+    ],
+    reason:
+      'Ingest owner-reviewed sparse instrument-cluster observations and produce first real candidate video/telemetry alignments without declaring final Ground Truth validation.',
+    previousBehavior: 'External GT schema held metadata only; observations[] empty pending ingestion.',
+    details:
+      'reference-capture-rd003-video-gt-external-observations.ts; reference-capture-rd003-video-gt-alignment-episodes.ts; reference-capture-drive-003-video-gt-ingest-external.ts; docs/audits/data/rd003-video-ground-truth-observations.json; docs/audits/data/rd003-video-gt-alignment/.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T07:50:00.000Z',
+  },
+  {
     id: 'dimo-rd003-video-gt-alignment-workbench-2026-09-03',
     version: '4.9.1036',
     title: 'DI-EV-0034A — RD003 External Video/Telemetry Alignment Workbench',

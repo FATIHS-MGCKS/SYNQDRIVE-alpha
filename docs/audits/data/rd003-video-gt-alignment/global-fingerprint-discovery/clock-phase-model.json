@@ -1,0 +1,49 @@
+{
+  "evidenceLayer": "METHOD_DIAGNOSTIC",
+  "modelName": "VEHICLE_CLOCK_BOUNDARY_PHASE_UNDER_CEST_HYPOTHESIS",
+  "CLOCK_PHASE_MODEL_STATUS": "PHASE_CLUSTER_REJECTED",
+  "CLOCK_PHASE_CENTER_SECONDS_MOD_60": 31.63899999999999,
+  "CLOCK_PHASE_SPREAD_SECONDS": 14.404799999999994,
+  "CLOCK_PHASE_MAX_CIRCULAR_RESIDUAL_SECONDS": 25.194000000000052,
+  "eligibleClipCount": 5,
+  "phases": [
+    {
+      "clipId": "RD003_GT_CLIP_001",
+      "fileName": "IMG_2803.mp4",
+      "phaseSecondsMod60": 6.444999999999936,
+      "residualSeconds": 1506.445,
+      "status": "NOT_IDENTIFIABLE"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_003",
+      "fileName": "IMG_2805.mp4",
+      "phaseSecondsMod60": 22.61500000000001,
+      "residualSeconds": 862.615,
+      "status": "NOT_IDENTIFIABLE"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_004",
+      "fileName": "IMG_2806.mp4",
+      "phaseSecondsMod60": 47.64499999999998,
+      "residualSeconds": 1187.645,
+      "status": "NOT_IDENTIFIABLE"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_005",
+      "fileName": "IMG_2807.mp4",
+      "phaseSecondsMod60": 51.64499999999998,
+      "residualSeconds": 651.645,
+      "status": "STRONG_CANDIDATE"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_007",
+      "fileName": "IMG_2809.mp4",
+      "phaseSecondsMod60": 29.845000000000027,
+      "residualSeconds": 509.845,
+      "status": "NOT_IDENTIFIABLE"
+    }
+  ],
+  "phaseInformedWindow": null,
+  "CROSS_CLIP_MODEL_USES_CANDIDATE_START_RESIDUAL_AS_CLOCK_OFFSET": "NO",
+  "note": "Phase uses modulo-60 circular distance — not validated UTC clock offset"
+}

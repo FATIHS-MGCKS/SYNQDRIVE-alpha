@@ -151,16 +151,17 @@ function syntheticSpeedTelemetry(
 }
 
 describe('reference-capture-rd003-video-gt-alignment', () => {
-  describe('A) empty/PENDING external GT cannot produce VALIDATED alignment', () => {
-    (hasExternalGt ? it : it.skip)('pending observations yield PENDING_EXTERNAL_GT', () => {
+  describe('A) ingested external GT cannot produce VALIDATED alignment', () => {
+    (hasExternalGt ? it : it.skip)('real sparse GT yields candidate alignments without VALIDATED status', () => {
       const externalGt = JSON.parse(fs.readFileSync(EXTERNAL_GT, 'utf8')) as ExternalGtDocument;
       const telemetry = loadCanonicalTelemetryJsonl(TELEMETRY_JSONL);
       const result = runAlignmentWorkbench({ telemetryRows: telemetry, externalGt });
       expect(result.clipAlignments.every((c) => c.alignmentStatus !== 'VALIDATED')).toBe(true);
       expect(result.clipAlignments.every((c) => c.alignmentStatus === 'PENDING_EXTERNAL_GT')).toBe(
-        true,
+        false,
       );
       expect(result.alignmentSummary.GROUND_TRUTH_VALIDATED).toBe('NO');
+      expect(externalGt.clips.some((c) => c.observations.length > 0)).toBe(true);
     });
   });
 
@@ -570,12 +571,12 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
   });
 
   describe('Q) candidate metadata cannot become VALIDATED Ground Truth', () => {
-    (hasExternalGt ? it : it.skip)('external GT file has empty observations and pending status', () => {
+    (hasExternalGt ? it : it.skip)('external GT ingested but candidate clock metadata remains candidate', () => {
       const doc = JSON.parse(fs.readFileSync(EXTERNAL_GT, 'utf8')) as ExternalGtDocument;
       expect(doc.clips.length).toBe(9);
       for (const clip of doc.clips) {
-        expect(clip.observations).toEqual([]);
-        expect(clip.evidenceStatus).toBe('PENDING_EXTERNAL_REVIEW');
+        expect(clip.observations.length).toBeGreaterThan(0);
+        expect(clip.evidenceStatus).toBe('EXTERNAL_GT_INGESTED');
         expect(clip.candidateAbsoluteTime?.status).toBe(
           'CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY',
         );
@@ -1111,7 +1112,7 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
         }),
         alignedClipStartMs: alignedMs,
       });
-      expect(boundary.VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS).toBe('CANDIDATE_TIMEZONE_INTERPRETATION');
+      expect(boundary.VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS).toBe('MINUTE_TRANSITION_OBSERVED_PHASE_DERIVED');
       const interpreted = parseCestLocalMinuteToUtcMs('21:04');
       const alignedBoundary = absoluteEventMsFromAlignedClipStart(alignedMs, 10.55);
       expect(boundary.VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS).toBeCloseTo(
@@ -1219,10 +1220,10 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
       );
     });
 
-    it('14) observations[] remain empty', () => {
+    it('14) observations[] populated after DI-EV-0034B ingestion', () => {
       if (!hasExternalGt) return;
       const doc = JSON.parse(fs.readFileSync(EXTERNAL_GT, 'utf8')) as ExternalGtDocument;
-      for (const clip of doc.clips) expect(clip.observations).toEqual([]);
+      for (const clip of doc.clips) expect(clip.observations.length).toBeGreaterThan(0);
     });
 
     it('15) same input produces deterministic output', () => {

@@ -1,0 +1,92 @@
+{
+  "RD003_GT_CLIP_001": {
+    "clipId": "RD003_GT_CLIP_001",
+    "status": "NOT_IDENTIFIABLE",
+    "alignedStart": null,
+    "coverage": null,
+    "MAE": null,
+    "RMSE": null,
+    "maxAbsError": null,
+    "ingressMinusProviderStartSeconds": null
+  },
+  "RD003_GT_CLIP_002": {
+    "clipId": "RD003_GT_CLIP_002",
+    "status": "NOT_IDENTIFIABLE",
+    "alignedStart": null,
+    "coverage": null,
+    "MAE": null,
+    "RMSE": null,
+    "maxAbsError": null,
+    "ingressMinusProviderStartSeconds": null
+  },
+  "RD003_GT_CLIP_003": {
+    "clipId": "RD003_GT_CLIP_003",
+    "status": "NOT_IDENTIFIABLE",
+    "alignedStart": null,
+    "coverage": null,
+    "MAE": null,
+    "RMSE": null,
+    "maxAbsError": null,
+    "ingressMinusProviderStartSeconds": null
+  },
+  "RD003_GT_CLIP_004": {
+    "clipId": "RD003_GT_CLIP_004",
+    "status": "NOT_IDENTIFIABLE",
+    "alignedStart": null,
+    "coverage": null,
+    "MAE": null,
+    "RMSE": null,
+    "maxAbsError": null,
+    "ingressMinusProviderStartSeconds": null
+  },
+  "RD003_GT_CLIP_005": {
+    "clipId": "RD003_GT_CLIP_005",
+    "status": "NOT_IDENTIFIABLE",
+    "alignedStart": null,
+    "coverage": null,
+    "MAE": null,
+    "RMSE": null,
+    "maxAbsError": null,
+    "ingressMinusProviderStartSeconds": null
+  },
+  "RD003_GT_CLIP_006": {
+    "clipId": "RD003_GT_CLIP_006",
+    "status": "NOT_IDENTIFIABLE",
+    "alignedStart": null,
+    "coverage": null,
+    "MAE": null,
+    "RMSE": null,
+    "maxAbsError": null,
+    "ingressMinusProviderStartSeconds": null
+  },
+  "RD003_GT_CLIP_007": {
+    "clipId": "RD003_GT_CLIP_007",
+    "status": "NOT_IDENTIFIABLE",
+    "alignedStart": null,
+    "coverage": null,
+    "MAE": null,
+    "RMSE": null,
+    "maxAbsError": null,
+    "ingressMinusProviderStartSeconds": null
+  },
+  "RD003_GT_CLIP_008": {
+    "clipId": "RD003_GT_CLIP_008",
+    "status": "NOT_IDENTIFIABLE",
+    "alignedStart": null,
+    "coverage": null,
+    "MAE": null,
+    "RMSE": null,
+    "maxAbsError": null,
+    "ingressMinusProviderStartSeconds": null
+  },
+  "RD003_GT_CLIP_009": {
+    "clipId": "RD003_GT_CLIP_009",
+    "status": "NOT_IDENTIFIABLE",
+    "alignedStart": null,
+    "coverage": null,
+    "MAE": null,
+    "RMSE": null,
+    "maxAbsError": null,
+    "ingressMinusProviderStartSeconds": null
+  }
+}

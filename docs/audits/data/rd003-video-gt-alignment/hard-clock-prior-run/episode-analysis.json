@@ -1,0 +1,47 @@
+{
+  "evidenceLayer": "CANDIDATE_EPISODE_ANALYSIS",
+  "ingestionEvidenceId": "DI-EV-0034B",
+  "IMG_2810": {
+    "clipId": "RD003_GT_CLIP_008",
+    "fileName": "IMG_2810.mp4",
+    "videoShiftGt": {
+      "videoTimeSeconds": 9.55,
+      "videoTimeUncertaintySeconds": 0.05,
+      "value": "S2→S3",
+      "confidence": "VALIDATED",
+      "evidenceClass": "DIRECT_VISUAL"
+    },
+    "alignedClipStartUtc": null,
+    "overallAlignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+    "preferredSpeedAlignmentSurface": null,
+    "gearTiming": {
+      "GEAR_STATE_OBSERVED": "YES",
+      "GEAR_CHANGE_TIMING_VALIDATED": "NO",
+      "nearestProviderSpacingSeconds": null,
+      "localGapAroundShiftSeconds": null,
+      "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
+    },
+    "actualGearObservationCount": 62,
+    "VIDEO_GEAR_OBSERVATION_NOT_TELEMETRY_PROOF": "YES",
+    "signalsNearShiftEpisode": {
+      "speed": "OBSERVED",
+      "powertrainCombustionEngineSpeed": "OBSERVED",
+      "obdThrottlePosition": "OBSERVED",
+      "powertrainCombustionEngineTPS": "OBSERVED",
+      "obdEngineLoad": "OBSERVED"
+    },
+    "GEAR_CHANGE_TIMING_RECONSTRUCTED": "NO",
+    "note": "Video S2→S3 is external visual GT. powertrainTransmissionActualGear cadence assessment remains separate."
+  },
+  "IMG_2811": {
+    "clipId": "RD003_GT_CLIP_009",
+    "fileName": "IMG_2811.mp4",
+    "VIDEO_DIRECTION_GT": "AVAILABLE",
+    "DIRECTION_FROM_VIDEO": "OBSERVED",
+    "DIRECTION_FROM_TELEMETRY": "PARTIAL",
+    "SIGNED_SPEED_FABRICATED_FROM_UNSIGNED_SPEED": "NO",
+    "overallAlignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+    "preferredSpeedAlignmentSurface": null,
+    "note": "Unsigned speed magnitude preserved. Reverse/forward direction remains separate video GT landmarks."
+  }
+}

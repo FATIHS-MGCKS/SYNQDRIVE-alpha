@@ -2,7 +2,7 @@
 
 **Evidence ID:** DI-EV-0032
 
-**Related:** DI-EV-0033 — canonical telemetry correlation source. DI-EV-0034A — alignment workbench (`docs/audits/data/rd003-video-ground-truth-observations.json`, `docs/audits/data/rd003-video-gt-alignment/`). Neither is validated Ground Truth.
+**Related:** DI-EV-0033 — canonical telemetry correlation source. DI-EV-0034A — alignment workbench. DI-EV-0034B — first real external sparse video GT ingestion + candidate alignments (`docs/audits/data/rd003-video-ground-truth-observations.json`, `docs/audits/data/rd003-video-gt-alignment/`). None is validated Ground Truth.
 
 ## Coverage model
 
@@ -11,10 +11,12 @@
 | RD003_TELEMETRY_COVERAGE | FULL_SESSION |
 | RD003_VIDEO_GT_COVERAGE | PARTIAL_SEGMENTED |
 | VIDEO_GROUND_TRUTH_AVAILABLE | CLIPS_AVAILABLE_EXTERNALLY (9 segmented instrument-cluster clips) |
-| VIDEO_ALIGNMENT_STATUS | AWAITING_EXTERNAL_GT_INGESTION |
+| VIDEO_ALIGNMENT_STATUS | REAL_CANDIDATE_ALIGNMENTS_AVAILABLE (DI-EV-0034B) |
 | GROUND_TRUTH_VALIDATED | NO |
 | CONTINUOUS_VIDEO_ASSUMPTION | REMOVED |
 | WORKBENCH_READY | YES (DI-EV-0034A) |
+| EXTERNAL_GT_INGESTED | YES (DI-EV-0034B) |
+| EXTERNAL_GT_SHA256 | `ea0d78ee71b5c83f104e8de31056ccfccc7b476733b676da5bf8828badc9592e` |
 
 RD003 did **not** record one continuous ~37 minute instrument-cluster video. Telemetry covers the full session; video Ground Truth is **partial / segmented** — multiple short clips (~1 min each) around interesting driving states (acceleration, braking, coasting, cornering, cruise, etc.).
 
@@ -72,8 +74,25 @@ Nine segmented clips (IMG_2803–IMG_2811) registered in DI-EV-0034A external GT
 | External GT schema | `docs/audits/data/rd003-video-ground-truth-observations.json` |
 | Alignment outputs | `docs/audits/data/rd003-video-gt-alignment/` |
 | WORKBENCH_READY | YES |
-| EXTERNAL_GT_VALUES_COMPLETE | NO |
-| VIDEO_ALIGNMENT_STATUS | AWAITING_EXTERNAL_GT_INGESTION |
+| EXTERNAL_GT_VALUES_COMPLETE | YES (DI-EV-0034B) |
+| VIDEO_ALIGNMENT_STATUS | REAL_CANDIDATE_ALIGNMENTS_AVAILABLE |
+| REAL_ALIGNMENT_EXECUTED | YES (DI-EV-0034B) |
+| GROUND_TRUTH_VALIDATED | NO |
+
+## External sparse video GT (DI-EV-0034B)
+
+| Field | Value |
+|-------|-------|
+| Ingestion authority | EXTERNAL_OWNER_PLUS_CHATGPT_MANUAL_VISUAL_REVIEW |
+| Source method | EXTERNAL_MANUAL_FRAME_REVIEW_CHATGPT_2026_09_03 |
+| Clips with GT | 9 / 9 |
+| Total raw observations | 198 |
+| Alignment-eligible SPEED points | 182 |
+| NO_VIDEO_GT_INTERPOLATION | YES |
+| NO_VIDEO_GT_30HZ_FABRICATION | YES |
+| EXTERNAL_GT_SHA256 | `ea0d78ee71b5c83f104e8de31056ccfccc7b476733b676da5bf8828badc9592e` |
+
+VALIDATED on SPEED observations denotes external visual observation authority — not telemetry alignment validation.
 
 ## Telemetry reference
 
@@ -82,4 +101,18 @@ Nine segmented clips (IMG_2803–IMG_2811) registered in DI-EV-0034A external GT
 | TELEMETRY_CLOCK_REFERENCE | session `0fa040aa-6105-4872-9b2c-f8ad477009b8` |
 | Sealed SHA-256 | `81534484cdd0fa6224d9efbcf97bb445cfbe8af1fdb8ef29e9bb8204f09c32e4` |
 
-**No alignment metrics are reported until segmented video files are ingested and SHA-verified.**
+**Candidate alignment metrics are available in `docs/audits/data/rd003-video-gt-alignment/` after DI-EV-0034B ingestion. DI-EV-0034C global fingerprint discovery preserved in `global-fingerprint-discovery/`. DI-EV-0034D corrected discovery v2 in `global-fingerprint-discovery-v2/`. GROUND_TRUTH_VALIDATED remains NO.**
+
+## Global fingerprint discovery v2 (DI-EV-0034D)
+
+| Field | Value |
+|-------|-------|
+| Evidence ID | DI-EV-0034D |
+| Discovery mode | `GLOBAL_FINGERPRINT_DISCOVERY_V2` |
+| Artifact path | `docs/audits/data/rd003-video-gt-alignment/global-fingerprint-discovery-v2/` |
+| Prior runs preserved | `hard-clock-prior-run/` (0034B), `global-fingerprint-discovery/` (0034C) |
+| `ZERO_PHASE_HARD_CLOCK_BOUND_CONCLUSION` | HARD_SECOND_PHASE_PRIOR_FALSIFIED |
+| `IMG_2810_V2_STRONG_BASIN_AT_19_23_59` | YES |
+| `IMG_2807_AND_IMG_2810_JOINTLY_POSSIBLE` | NO |
+| `READY_FOR_DI_EV_0034E` | YES |
+| `GROUND_TRUTH_VALIDATED` | NO |

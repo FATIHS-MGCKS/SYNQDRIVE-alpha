@@ -1002,6 +1002,56 @@ Rationale: vehicle instrument-cluster clock offset vs DIMO/provider timestamps i
 
 Rationale: nine segmented clips (~5m51s total) vs full-session telemetry; visible vehicle clock is minute-resolution prior only; providerTimestamp ≠ synqReceivedAt; LATEST_LIVE ≠ fresh physical sample; Ground Truth / alignment / signal-quality are separate evidence layers.
 
+**DI-EV-0034B — External Sparse Video Ground Truth Ingestion + First Real Alignment (2026-09-03):**
+
+| Field | Value |
+|-------|-------|
+| Evidence ID | DI-EV-0034B |
+| Ingestion authority | EXTERNAL_OWNER_PLUS_CHATGPT_MANUAL_VISUAL_REVIEW |
+| External GT SHA-256 | `ea0d78ee71b5c83f104e8de31056ccfccc7b476733b676da5bf8828badc9592e` |
+| Clips with GT | 9 / 9 |
+| Total raw observations | 198 |
+| Alignment-eligible SPEED points | 182 |
+| `REAL_EXTERNAL_GT_INGESTED` | **YES** |
+| `REAL_ALIGNMENT_EXECUTED` | **YES** |
+| `VIDEO_ALIGNMENT_STATUS` | **REAL_CANDIDATE_ALIGNMENTS_AVAILABLE** |
+| `GROUND_TRUTH_VALIDATED` | **NO** |
+| `NO_VIDEO_GT_INTERPOLATION` | **YES** |
+
+Rationale: first real externally reviewed sparse video observations ingested deterministically; accepted v1.2 workbench executed against DI-EV-0033 telemetry without redesigning alignment semantics. VALIDATED on SPEED denotes external visual observation authority — not telemetry alignment validation. Failed/ambiguous per-clip outcomes preserved as valid scientific results pending DI-EV-0034C interpretation.
+
+**DI-EV-0034C — Clock-Prior Falsification + Global Fingerprint Discovery (2026-09-03):**
+
+| Field | Value |
+|-------|-------|
+| Evidence ID | DI-EV-0034C |
+| Discovery mode | `GLOBAL_FINGERPRINT_DISCOVERY` |
+| Preserved prior run | `hard-clock-prior-run/` (DI-EV-0034B, `NO_STRONG_CANDIDATES`) |
+| Full session search | YES (2026-09-02T18:59:15.695Z → 2026-09-02T19:36:22.970Z) |
+| `CLOCK_PRIOR_CONCLUSION` | **CLOCK_PRIOR_FALSIFIED** |
+| `HF_SPEED_ALIGNMENT_CONCLUSION` | **HF_SPEED_ALIGNMENT_NOT_IDENTIFIABLE** (2/9 STRONG_CANDIDATE) |
+| `IMG_2810_DIAGNOSTIC_BASIN_NEAR_19_23_59` | **FOUND** (rank 1, MAE ~4.17, coverage 1.0) |
+| `GROUND_TRUTH_VALIDATED` | **NO** |
+
+Rationale: hard vehicle-clock UTC prior treated as metadata only; independent full-session HF/LIVE speed fingerprint search discovered materially better basins outside prior windows (e.g. IMG_2810 ~19:23:59.5Z). Modulo-60 vehicle-clock boundary phase model evaluated under CEST hypothesis. DI-EV-0034B hard-prior results preserved as evidence, not erased. **Methodological defects corrected in DI-EV-0034D** (coverage-first seed suppression, clock authority from NOT_IDENTIFIABLE basins, ingress proxy bug).
+
+**DI-EV-0034D — Global Discovery V2 + Joint Clock-Consistent Alignment (2026-09-03):**
+
+| Field | Value |
+|-------|-------|
+| Evidence ID | DI-EV-0034D |
+| Discovery mode | `GLOBAL_FINGERPRINT_DISCOVERY_V2` |
+| Preserved prior runs | `hard-clock-prior-run/` (DI-EV-0034B), `global-fingerprint-discovery/` (DI-EV-0034C) |
+| V2 seed policy | QUALITY_SEEDS + COVERAGE_SEEDS + PARETO_SEEDS (not coverage-first only) |
+| `ZERO_PHASE_HARD_CLOCK_BOUND_CONCLUSION` | **HARD_SECOND_PHASE_PRIOR_FALSIFIED** |
+| `IMG_2810_V2_STRONG_BASIN_AT_19_23_59` | **YES** (MAE ~4.17, coverage 1.0) |
+| `IMG_2807_AND_IMG_2810_JOINTLY_POSSIBLE` | **NO** (chronology gap conflict ~−130.8 s) |
+| `RELATIVE_CLOCK_MODEL_STATUS` | **RELATIVE_INTERCEPT_CLUSTER_WEAK** (4 qualified transition clips) |
+| `INGRESS_TIME_DIAGNOSTIC_SUPPORTED_CLIPS` | **0** (independent ingress search; not provider MAE proxy) |
+| `GROUND_TRUTH_VALIDATED` | **NO** |
+
+Rationale: corrects DI-EV-0034C methodological defects before signal-quality interpretation; introduces timezone-independent relative clock-intercept model, qualified clock authority rules, joint chronology DP over retained basins, and independent ingress timeline discovery.
+
 **Timing metrics (distinct semantics):** SESSION_START_TO_FIRST_REQUEST_MS=35; SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS=254; FAST_GO_TO_RECORDING_MS=125; FAST_GO_TO_FIRST_CYCLE_MS=1222. Prior ambiguous ~0.93s acquisition-start label retired.
 
 **Key findings:** HF watermark + query-window proofs use acquisition-order per-field execution (not lexical sort). `NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED=YES`; `HF_IDEMPOTENCY_RUNTIME_VALIDATED=NOT_EXERCISED` (no duplicate/retry path exercised). Vehicle Load domain = RECONSTRUCTABLE_MEDIUM_CONFIDENCE. Longitudinal accel = RECONSTRUCTABLE_WITH_CADENCE_GATING. GEAR_STATE_OBSERVED=YES; GEAR_CHANGE_TIMING_VALIDATED=NO. Zero native events (NOT_EXERCISED — not proof no harsh maneuvers occurred).
@@ -1382,7 +1432,7 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Flight Recorder implementation (LTE_R1) | DONE (3A.1+3A.2) | `reference-capture` deployed + production canary validated |
 | Instrumented reference drive #001 (RD001) | DONE | Session `06638509-…` COMPLETED; telemetry audit available; video GT NOT_AVAILABLE |
 | RD002 (motion HF canary) | **DONE** | Session `e095d273-…` — DI-EV-0023; MOTION_CANARY_COMPLETED=YES |
-| RD003 (video Ground Truth) | **ALIGNMENT WORKBENCH READY** | DI-EV-0033 correlation source merged; DI-EV-0034A workbench; external GT ingestion pending |
+| RD003 (video Ground Truth) | **GLOBAL FINGERPRINT DISCOVERY V2** | DI-EV-0033 correlation; DI-EV-0034B external GT; DI-EV-0034C discovery; DI-EV-0034D method correction + joint alignment; GROUND_TRUTH_VALIDATED=NO |
 | Evidence & documentation governance | DONE | `driving-intelligence-evidence-governance-2026-09-01.md` + registry seeded |
 | Ground-truth synchronization | NOT_STARTED | Phase 5 |
 | Detector validation | NOT_STARTED | Phase 6 |
