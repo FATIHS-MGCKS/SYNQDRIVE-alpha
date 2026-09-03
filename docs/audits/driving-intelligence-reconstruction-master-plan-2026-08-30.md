@@ -972,6 +972,21 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 | `VIDEO_GROUND_TRUTH` | **PENDING_SEGMENTED_VIDEO** |
 | `GROUND_TRUTH_VALIDATED` | **NO** |
 | `READY_FOR_VIDEO_GT_INGESTION` | **YES** |
+| `READY_FOR_EXTERNAL_VIDEO_TELEMETRY_ALIGNMENT` | **YES** (DI-EV-0033 correlation source exported) |
+
+**DI-EV-0033 — Video-GT correlation telemetry source (2026-09-03):**
+
+| Field | Value |
+|-------|-------|
+| Evidence ID | DI-EV-0033 |
+| Export rows | 5010 (HF 2783 + LIVE 1855 + SLOW 372) |
+| Canonical JSONL SHA-256 | `69209a6d9e488d51c3aaf3b55dee5584ce622dc072a191b81e7061597cdda87a` |
+| `FULL_SESSION_FILTERED_EXPORT` | **YES** |
+| `VIDEO_CANDIDATE_WINDOWS_USED_AS_FILTER` | **NO** |
+| `VIDEO_ALIGNMENT_STATUS` | **PENDING_CORRELATION** |
+| `NO_INTERPOLATION_PERFORMED` | **YES** |
+
+Rationale: vehicle instrument-cluster clock offset vs DIMO/provider timestamps is an **unknown parameter** to be measured by external correlation — not assumed as a pre-filter. Export preserves all acquisition surfaces (HF_HISTORICAL, LATEST_LIVE, LATEST_SLOW) without resampling or deduplication.
 
 **Timing metrics (distinct semantics):** SESSION_START_TO_FIRST_REQUEST_MS=35; SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS=254; FAST_GO_TO_RECORDING_MS=125; FAST_GO_TO_FIRST_CYCLE_MS=1222. Prior ambiguous ~0.93s acquisition-start label retired.
 
@@ -1353,7 +1368,7 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Flight Recorder implementation (LTE_R1) | DONE (3A.1+3A.2) | `reference-capture` deployed + production canary validated |
 | Instrumented reference drive #001 (RD001) | DONE | Session `06638509-…` COMPLETED; telemetry audit available; video GT NOT_AVAILABLE |
 | RD002 (motion HF canary) | **DONE** | Session `e095d273-…` — DI-EV-0023; MOTION_CANARY_COMPLETED=YES |
-| RD003 (video Ground Truth) | **CAPTURE DONE / GT PENDING** | Telemetry forensics complete (DI-EV-0027–0032); video ingest + alignment required |
+| RD003 (video Ground Truth) | **CORRELATION SOURCE READY** | Telemetry forensics complete (DI-EV-0027–0032); correlation export DI-EV-0033; external video alignment PENDING |
 | Evidence & documentation governance | DONE | `driving-intelligence-evidence-governance-2026-09-01.md` + registry seeded |
 | Ground-truth synchronization | NOT_STARTED | Phase 5 |
 | Detector validation | NOT_STARTED | Phase 6 |

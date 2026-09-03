@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-rd003-video-gt-correlation-export-2026-09-03',
+    version: '4.9.1035',
+    title: 'Reference Drive #003 — Video-GT correlation telemetry source export (DI-EV-0033)',
+    summary: [
+      'Full-session lossless filtered export: 5010 SIGNAL_POINT rows across 11 correlation fields.',
+      'All acquisition surfaces preserved: HF_HISTORICAL 2783, LATEST_LIVE 1855, LATEST_SLOW 372.',
+      'NO interpolation, resampling, smoothing, or video-clock pre-filtering.',
+      'Vehicle-clock-to-telemetry offset is unknown — export spans full session for external correlation.',
+      'Canonical JSONL SHA-256: 69209a6d9e488d51c3aaf3b55dee5584ce622dc072a191b81e7061597cdda87a.',
+      'VIDEO_ALIGNMENT_STATUS=PENDING_CORRELATION; GROUND_TRUTH_VALIDATED=NO.',
+      'DI-EV-0032 unchanged (pre-alignment segmented-video GT index).',
+      'REFERENCE_CAPTURE_RUNTIME_CHANGED=NO.',
+    ],
+    reason:
+      'Prepare canonical telemetry correlation source for external video alignment against nine segmented RD003 instrument-cluster clips.',
+    previousBehavior: 'No dedicated correlation export; video candidate clock regions undocumented in machine-readable form.',
+    details:
+      'docs/audits/data/dimo-lte-r1-reference-drive-003-video-gt-correlation-source.jsonl; DI-EV-0033; backend/scripts/ops/reference-capture-drive-003-video-gt-telemetry-export.ts (read-only).',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T04:30:00.000Z',
+  },
+  {
     id: 'dimo-rd003-telemetry-forensics-2026-09-02',
     version: '4.9.1034',
     title: 'Reference Drive #003 — Telemetry forensics v2 (segmented video GT model)',

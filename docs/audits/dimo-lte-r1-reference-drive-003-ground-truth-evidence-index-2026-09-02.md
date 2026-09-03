@@ -2,14 +2,16 @@
 
 **Evidence ID:** DI-EV-0032
 
+**Related:** DI-EV-0033 — canonical telemetry correlation source (`docs/audits/data/dimo-lte-r1-reference-drive-003-video-gt-correlation-source.jsonl`). DI-EV-0033 is **not** Ground Truth itself; it is the lossless telemetry source against which the nine external video clips will be aligned.
+
 ## Coverage model
 
 | Field | Value |
 |-------|-------|
 | RD003_TELEMETRY_COVERAGE | FULL_SESSION |
 | RD003_VIDEO_GT_COVERAGE | PARTIAL_SEGMENTED |
-| VIDEO_GROUND_TRUTH_AVAILABLE | NOT_YET_INGESTED |
-| VIDEO_ALIGNMENT_STATUS | PENDING_SEGMENTED_VIDEO |
+| VIDEO_GROUND_TRUTH_AVAILABLE | CLIPS_AVAILABLE_EXTERNALLY (9 segmented instrument-cluster clips) |
+| VIDEO_ALIGNMENT_STATUS | PENDING_CORRELATION |
 | GROUND_TRUTH_VALIDATED | NO |
 | CONTINUOUS_VIDEO_ASSUMPTION | REMOVED |
 
@@ -44,6 +46,18 @@ Each ingested clip must store independently:
 ## Unrecorded windows
 
 Telemetry windows without a corresponding video clip remain **TELEMETRY_ONLY** and must NOT be classified as Ground Truth.
+
+## Telemetry correlation source (DI-EV-0033)
+
+| Field | Value |
+|-------|-------|
+| Correlation source | `docs/audits/data/dimo-lte-r1-reference-drive-003-video-gt-correlation-source.jsonl` |
+| Canonical SHA-256 | `69209a6d9e488d51c3aaf3b55dee5584ce622dc072a191b81e7061597cdda87a` |
+| Exported rows | 5010 |
+| FULL_SESSION_FILTERED_EXPORT | YES |
+| VIDEO_CANDIDATE_WINDOWS_USED_AS_FILTER | NO |
+
+Nine segmented clips (IMG_2803–IMG_2811) are available to the external analysis authority. Candidate vehicle-clock regions are documented in the DI-EV-0033 summary only — **not** applied as telemetry filters.
 
 ## Telemetry reference
 
