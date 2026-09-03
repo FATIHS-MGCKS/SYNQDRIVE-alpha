@@ -154,6 +154,11 @@ export type ExternalGtDocument = {
   evidenceId: string;
   referenceDriveId: string;
   sessionId: string;
+  ingestionEvidenceId?: string;
+  ingestionAuthority?: string;
+  ingestionDate?: string;
+  ingestionStatus?: string;
+  note?: string;
   clips: ExternalGtClip[];
 };
 
