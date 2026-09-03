@@ -42,7 +42,7 @@ export async function mutateBatteryAssessmentPublicationHandoff(
         const rows = await tx.$queryRaw<AssessmentInputSummaryRow[]>`
           SELECT input_summary
           FROM battery_assessments
-          WHERE id = ${input.assessmentId}::uuid
+          WHERE id = ${input.assessmentId}
             AND organization_id = ${input.organizationId}
           FOR UPDATE
         `;
@@ -150,7 +150,7 @@ export async function reserveLvPublicationHandoffEnqueue(
     const rows = await tx.$queryRaw<AssessmentInputSummaryRow[]>`
       SELECT input_summary
       FROM battery_assessments
-      WHERE id = ${input.assessmentId}::uuid
+      WHERE id = ${input.assessmentId}
         AND organization_id = ${input.organizationId}
       FOR UPDATE
     `;

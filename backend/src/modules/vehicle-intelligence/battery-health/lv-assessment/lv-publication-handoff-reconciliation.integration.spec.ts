@@ -684,65 +684,136 @@ async function probeDatabase(): Promise<boolean> {
       );
       expect(handoff?.lastAttemptAt).toBe(fairnessAt.toISOString());
     });
+  },
+);
 
-    it('does not let structurally malformed rows occupy bounded scan ahead of valid backlog', async () => {
-      const lookbackFrom = new Date(Date.now() - 7 * 24 * 60 * 60_000);
-      const anchor = Date.now();
-      const validLate = await createAssessment({
-        label: 'valid-stress-late',
-        computedAt: new Date(anchor - 200),
+(LIVE ? describe : describe.skip)(
+  'lv-publication-handoff reconciliation bounded scan (isolated cohort)',
+  () => {
+    let prisma: PrismaClient;
+    let organizationId = '';
+    let vehicleId = '';
+
+    beforeAll(async () => {
+      if (!process.env.DATABASE_URL) {
+        throw new Error('DATABASE_URL required');
+      }
+      prisma = new PrismaClient();
+    }, 60_000);
+
+    afterAll(async () => {
+      if (prisma) {
+        await prisma.$disconnect().catch(() => undefined);
+      }
+    });
+
+    const createIsolatedAssessment = async (input: {
+      label: string;
+      computedAt: Date;
+      handoff: Record<string, unknown>;
+    }) => {
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const row = await prisma.batteryAssessment.create({
+        data: {
+          organizationId,
+          vehicleId,
+          scope: BatteryEvidenceScope.LV,
+          type: BatteryAssessmentType.LV_ESTIMATED_HEALTH,
+          evidenceStrength: BatteryEvidenceStrength.PRIMARY,
+          maturity: BatteryAssessmentMaturity.HIGH,
+          modelVersion: 1,
+          computedAt: input.computedAt,
+          idempotencyKey: `assess-isolated-${input.label}-${suffix}`,
+          inputSummary: {
+            assessmentTrack: 'TELEMETRY',
+            assessmentMode: 'CANONICAL',
+            publicationHandoff: input.handoff,
+          } as Prisma.InputJsonValue,
+        },
       });
-      await prisma.batteryAssessment.update({
-        where: { id: validLate.id },
+      return prisma.batteryAssessment.update({
+        where: { id: row.id },
         data: {
           inputSummary: {
             assessmentTrack: 'TELEMETRY',
             assessmentMode: 'CANONICAL',
             publicationHandoff: {
-              status: LV_PUBLICATION_HANDOFF_STATUS.MISSING,
-              selectedAssessmentId: validLate.id,
-              assessmentTrack: 'TELEMETRY',
-              idempotencyKey: `pub:${validLate.id}:v1`,
-              publicationVersion: LV_PUBLICATION_CONTRACT_VERSION,
-              epochAssessmentIds: [validLate.id],
-              lastAttemptAt: null,
+              ...input.handoff,
+              selectedAssessmentId: row.id,
+              idempotencyKey: `pub:${row.id}:v1`,
+              epochAssessmentIds: [row.id],
             },
           },
         },
       });
+    };
 
+    beforeEach(async () => {
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const org = await prisma.organization.create({
+        data: {
+          companyName: `Bounded Scan Org ${suffix}`,
+          businessType: 'FLEET',
+          status: 'ACTIVE',
+        },
+      });
+      organizationId = org.id;
+      const vehicle = await prisma.vehicle.create({
+        data: {
+          organizationId,
+          licensePlate: `BS-${suffix}`,
+          vin: `VIN${suffix}`.slice(0, 17).padEnd(17, '0'),
+          make: 'Test',
+          model: 'BoundedScan',
+          year: 2024,
+          fuelType: 'ELECTRIC',
+          status: 'AVAILABLE',
+        },
+      });
+      vehicleId = vehicle.id;
+    });
+
+    it('returns the specifically identified valid candidate within bounded LIMIT', async () => {
+      const anchor = Date.now();
+      const lookbackFrom = new Date(anchor - 1);
+
+      const validCandidate = await createIsolatedAssessment({
+        label: 'bounded-valid',
+        computedAt: new Date(anchor),
+        handoff: {
+          status: LV_PUBLICATION_HANDOFF_STATUS.MISSING,
+          assessmentTrack: 'TELEMETRY',
+          publicationVersion: LV_PUBLICATION_CONTRACT_VERSION,
+          lastAttemptAt: null,
+        },
+      });
+
+      const malformedIds: string[] = [];
       for (let index = 0; index < 12; index += 1) {
-        const malformed = await createAssessment({
-          label: `stress-malformed-${index}`,
-          computedAt: new Date(anchor - index),
-        });
-        await prisma.batteryAssessment.update({
-          where: { id: malformed.id },
-          data: {
-            inputSummary: {
-              assessmentTrack: 'TELEMETRY',
-              assessmentMode: 'CANONICAL',
-              publicationHandoff: {
-                status: 'CORRUPT',
-                selectedAssessmentId: malformed.id,
-                assessmentTrack: 'TELEMETRY',
-                idempotencyKey: `pub:${malformed.id}:v1`,
-                publicationVersion: 1.5,
-                epochAssessmentIds: [malformed.id],
-              },
-            },
+        const malformed = await createIsolatedAssessment({
+          label: `bounded-malformed-${index}`,
+          computedAt: new Date(anchor - index - 1),
+          handoff: {
+            status: 'CORRUPT',
+            assessmentTrack: 'TELEMETRY',
+            publicationVersion: 1.5,
+            epochAssessmentIds: [],
           },
         });
+        malformedIds.push(malformed.id);
       }
 
-      const rows = await fetchPublicationHandoffReconcileCandidates(prisma, {
+      const boundedRows = await fetchPublicationHandoffReconcileCandidates(prisma, {
         lookbackFrom,
         limit: 5,
       });
-      const ids = rows.map((row) => row.id);
+      const boundedIds = boundedRows.map((row) => row.id);
 
-      expect(ids).toContain(validLate.id);
-      expect(ids.length).toBeGreaterThan(0);
+      for (const malformedId of malformedIds) {
+        expect(boundedIds).not.toContain(malformedId);
+      }
+      expect(boundedIds).toContain(validCandidate.id);
+      expect(boundedIds.length).toBe(1);
     });
   },
 );
