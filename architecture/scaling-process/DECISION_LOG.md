@@ -218,9 +218,11 @@ Format: Decision ID | Date/Phase | Status
 |-------|-------|
 | **DATE** | 2026-09-03 |
 | **PROBLEM** | `INTRA_TRIP_GAP_SPLIT` used random `trip_repairs` IDs; warm-tier re-execution created duplicate repaired trips (INC-07) |
-| **DECISION** | Enforce idempotency via deterministic `trip_repairs` primary key derived from `(vehicleId, repairType, gap boundaries)`; claim before `splitTripAtGap` |
-| **INVARIANT** | Same semantic repair → same durable identity → at most one successful mutation |
-| **AUTHORITY** | PostgreSQL `trip_repairs` PK — Redis reconciliation mutex serializes concurrent execution but is **not** the idempotency authority |
+| **DECISION** | Enforce idempotency via deterministic `trip_repairs` primary key derived from `(vehicleId, repairType, gap boundaries)`; **one PostgreSQL transaction** atomically claims, splits, finalizes, and marks `APPLIED` |
+| **INVARIANT** | Same semantic repair → same durable identity → at most one committed trip mutation |
+| **AUTHORITY** | PostgreSQL `trip_repairs` PK + single interactive transaction — Redis reconciliation mutex serializes concurrent execution but is **not** the idempotency authority |
+| **LOCKING** | `pg_advisory_xact_lock64` only inside the transaction (64-bit key). Session-scoped `pg_advisory_lock` across separate Prisma calls is **prohibited** |
+| **DOWNSTREAM** | Route/ATE/enrichment enqueue occurs **after** transaction commit only |
 | **LEGACY** | Pre-fix random-UUID `APPLIED` rows matched by `(vehicleId, repairType, windowFrom, windowTo)` lookup |
 | **STATUS** | **IMPLEMENTED** — local regression PASS; production validation pending |
 | **EVIDENCE** | `P1_8_3_4_INC_07_TRIP_RECONCILIATION_IDEMPOTENCY_REMEDIATION_2026-09-03.md` |

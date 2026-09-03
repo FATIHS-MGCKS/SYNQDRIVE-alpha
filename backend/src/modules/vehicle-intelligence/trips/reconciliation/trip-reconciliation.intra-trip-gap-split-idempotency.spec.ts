@@ -63,6 +63,9 @@ function buildGapSplitHarness(options?: {
 
   const tx = {
     $executeRaw: jest.fn().mockResolvedValue(undefined),
+    vehicle: {
+      findUnique: jest.fn().mockResolvedValue({ organizationId: ORG_ID }),
+    },
     tripRepair: {
       findFirst: jest.fn(async ({ where }: any) => {
         for (const row of repairRows.values()) {
@@ -98,9 +101,21 @@ function buildGapSplitHarness(options?: {
         repairRows.set(where.id, stored);
         return stored;
       }),
+      upsert: jest.fn(async ({ where, create, update }: any) => {
+        const stored = repairRows.get(where.id);
+        if (stored) {
+          Object.assign(stored, update);
+          repairRows.set(where.id, stored);
+          return stored;
+        }
+        const created: RepairRow = { ...create };
+        repairRows.set(where.id, created);
+        return created;
+      }),
     },
   };
 
+  let txLock: Promise<void> = Promise.resolve();
   const prisma = {
     vehicle: {
       findUnique: jest.fn().mockResolvedValue({ organizationId: ORG_ID }),
@@ -113,17 +128,36 @@ function buildGapSplitHarness(options?: {
       }),
     },
     tripRepair: tx.tripRepair,
-    $transaction: jest.fn(async (fn: (inner: typeof tx) => Promise<unknown>) => fn(tx)),
+    $transaction: jest.fn(async (fn: (inner: typeof tx) => Promise<unknown>) => {
+      const prev = txLock;
+      let release!: () => void;
+      txLock = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await prev;
+      const snapshot = new Map(repairRows);
+      try {
+        return await fn(tx);
+      } catch (err) {
+        repairRows.clear();
+        for (const [key, value] of snapshot.entries()) {
+          repairRows.set(key, value);
+        }
+        throw err;
+      } finally {
+        release();
+      }
+    }),
     $executeRaw: jest.fn().mockResolvedValue(undefined),
   };
 
-  const splitTripAtGap = jest.fn(async () => ({
+  const splitTripAtGap = jest.fn(async (_params: unknown, _tx?: unknown) => ({
     firstTripId: PARENT_TRIP_ID,
     secondTripId: 'trip-second',
     movedWaypoints: 2,
   }));
   if (options?.splitThrows) {
-    splitTripAtGap.mockRejectedValue(new Error('split failed'));
+    splitTripAtGap.mockRejectedValueOnce(new Error('split failed'));
   }
 
   const decisionEngine = {
@@ -168,8 +202,9 @@ function buildGapSplitHarness(options?: {
     .spyOn(service as any, 'enqueueRepairEnrichment')
     .mockResolvedValue(undefined);
 
-  const runSingleSplit = () =>
-    (
+  const runSingleSplit = () => {
+    gapCallCount = 0;
+    return (
       service as never as {
         splitCompletedTripRecursively: (
           trip: typeof parentTrip,
@@ -178,6 +213,7 @@ function buildGapSplitHarness(options?: {
         ) => Promise<{ proposed: number; applied: number; rejected: number }>;
       }
     ).splitCompletedTripRecursively(parentTrip, VEHICLE_ID, 'warm');
+  };
 
   const runWarmReplay = () =>
     (
@@ -345,12 +381,50 @@ describe('INTRA_TRIP_GAP_SPLIT idempotency (INC-07)', () => {
     expect(a).not.toBe(b);
   });
 
-  it('CONCURRENT_TWIN_TEST: parallel replay resolves to a single apply', async () => {
+  it('UNIT_CONCURRENT_TWIN_TEST: parallel replay resolves to a single apply', async () => {
     const h = buildGapSplitHarness({ gapSequence: [GAP, null, GAP, null] });
     const [a, b] = await Promise.all([h.runSingleSplit(), h.runSingleSplit()]);
     expect(a.applied + b.applied).toBe(1);
     expect(h.decisionEngine.splitTripAtGap).toHaveBeenCalledTimes(1);
     expect(h.repairRows.get(h.repairId)?.status).toBe(REPAIR_STATUS.APPLIED);
+  });
+
+  it('ROOT_PARENT_NEGATIVE_CONTROL: same gap boundaries share identity across parent rows', () => {
+    const idFromParentA = buildIntraTripGapSplitRepairAuditId(
+      VEHICLE_ID,
+      GAP.firstEndAt,
+      GAP.secondStartAt,
+    );
+    const idFromParentB = buildIntraTripGapSplitRepairAuditId(
+      VEHICLE_ID,
+      GAP.firstEndAt,
+      GAP.secondStartAt,
+    );
+    expect(idFromParentA).toBe(idFromParentB);
+  });
+
+  it('CRASH_AFTER_PROPOSED_TEST: failed transaction rolls back PROPOSED repair row', async () => {
+    const h = buildGapSplitHarness({ splitThrows: true, gapSequence: [GAP, null] });
+    const failed = await h.runSingleSplit();
+    expect(failed).toEqual({ proposed: 1, applied: 0, rejected: 1 });
+    expect(h.repairRows.get(h.repairId)?.status).toBe(REPAIR_STATUS.REJECTED);
+    expect(h.decisionEngine.splitTripAtGap).toHaveBeenCalledTimes(1);
+  });
+
+  it('TRANSACTION_ROLLBACK_RETRY_TEST: retry after failed tx applies once', async () => {
+    const h = buildGapSplitHarness({ splitThrows: true, gapSequence: [GAP, null, GAP, null] });
+    const failed = await h.runSingleSplit();
+    expect(failed.rejected).toBe(1);
+    const retry = await h.runSingleSplit();
+    expect(retry).toEqual({ proposed: 1, applied: 1, rejected: 0 });
+    expect(h.decisionEngine.splitTripAtGap).toHaveBeenCalledTimes(2);
+    expect(h.repairRows.get(h.repairId)?.status).toBe(REPAIR_STATUS.APPLIED);
+  });
+
+  it('DOWNSTREAM_ON_FAILED_TX: no enrichment when transaction fails', async () => {
+    const h = buildGapSplitHarness({ splitThrows: true, gapSequence: [GAP, null] });
+    await h.runSingleSplit();
+    expect(h.enqueueRepairEnrichment).not.toHaveBeenCalled();
   });
 
   it('marks failed split as REJECTED without blocking future retry', async () => {

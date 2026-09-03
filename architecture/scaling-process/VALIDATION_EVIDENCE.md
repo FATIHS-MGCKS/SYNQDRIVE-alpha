@@ -214,8 +214,12 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | Claim | Phase | PR/Commit | Evidence | Result | Confidence |
 |-------|-------|-----------|----------|--------|-------|
 | Deterministic INTRA_TRIP_GAP_SPLIT repair identity | P1.8.3.4 | — | `buildIntraTripGapSplitRepairAuditId` | IMPLEMENTED | HIGH |
-| Claim before mutate | P1.8.3.4 | — | `claimIntraTripGapSplitRepair` | IMPLEMENTED | HIGH |
+| Single-tx atomic claim+split+APPLIED | P1.8.3.4 | — | `applyIntraTripGapSplitRepairAtomically` | IMPLEMENTED | HIGH |
+| Session advisory lock removed | P1.8.3.4 | — | code audit | YES | HIGH |
+| Crash-safety (rollback before APPLIED) | P1.8.3.4 | — | unit + postgres integration spec | PASS (unit); PG when DATABASE_URL | HIGH |
 | Serial / 4h replay idempotent | P1.8.3.4 | — | idempotency spec | PASS | HIGH |
+| Unit concurrent twin | P1.8.3.4 | — | idempotency spec | PASS | HIGH |
+| Postgres concurrent twin | P1.8.3.4 | — | postgres integration spec | PASS when `INTRA_TRIP_GAP_SPLIT_POSTGRES_INTEGRATION=1` | HIGH |
 | Legacy random-UUID APPLIED compatibility | P1.8.3.4 | — | idempotency spec | PASS | HIGH |
 | MISSING_TRIP regression | P1.8.3.4 | — | trip-repair-coverage-audit | PASS | HIGH |
 | INC-07 production validation | P1.8.3.4 | — | — | PENDING | HIGH |

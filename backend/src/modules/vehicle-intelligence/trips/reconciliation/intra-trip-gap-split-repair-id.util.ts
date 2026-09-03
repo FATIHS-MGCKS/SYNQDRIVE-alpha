@@ -8,6 +8,13 @@ import { REPAIR_TYPES } from './reconciliation.types';
  * changes. Identity is the vehicle plus the absolute gap boundary timestamps
  * (first segment end / second segment start) — not the mutable trip row id,
  * which changes after the first split mutates the parent.
+ *
+ * DOMAIN_IDENTITY_DECISION: For a single vehicle, identical absolute gap
+ * boundaries identify the same physical engine-off window regardless of which
+ * mutable parent trip row currently spans that window. Parent/root lineage is
+ * intentionally excluded: after G1 splits parent P into P1+P2, a replay of G1
+ * must no-op even though the "current" trip id differs. Distinct gaps G1/G2 on
+ * the same parent produce distinct identities via different boundary timestamps.
  */
 export function buildIntraTripGapSplitRepairAuditId(
   vehicleId: string,

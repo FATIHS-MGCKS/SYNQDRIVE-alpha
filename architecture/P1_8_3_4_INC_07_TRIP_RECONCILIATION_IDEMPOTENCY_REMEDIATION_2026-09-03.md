@@ -70,22 +70,41 @@ INTRA_TRIP_GAP_SPLIT_CANONICAL_IDENTITY =
 
 ## New architecture
 
-### Claim before mutate
+### Single atomic PostgreSQL transaction
 
-1. Compute deterministic `repairId`
-2. Transaction: `pg_advisory_xact_lock(repairId)` + legacy lookup + upsert `PROPOSED`
-3. If `APPLIED` (deterministic or legacy) → **IDEMPOTENT_SKIP** (no split, no enrichment)
-4. Session `pg_advisory_lock(repairId)` around split → finalize → `APPLIED` update
-5. `pg_advisory_unlock` in `finally`
+`applyIntraTripGapSplitRepairAtomically` runs **one** `prisma.$transaction` containing:
+
+1. `pg_advisory_xact_lock64(repairId)` — 64-bit two-int key from SHA256 (not session-scoped)
+2. Legacy `APPLIED` lookup (pre-fix random UUID rows)
+3. Deterministic `trip_repairs` lookup / `PROPOSED` upsert
+4. `splitTripAtGap(..., tx)` — all trip writes on same `TransactionClient`
+5. `finalizeRepairedTrip(..., tx)`
+6. `trip_repairs` → `APPLIED`
+
+**After commit only:** metrics, logs, Route/ATE enrichment enqueue.
+
+**CURRENT_SESSION_LOCK_MODEL_SAFE:** NO (removed). Session `pg_advisory_lock` / `pg_advisory_unlock` across separate Prisma pool connections is unsafe and has been removed.
 
 ### Transaction / crash recovery
 
 | Case | Recovery |
 |------|----------|
-| Crash before claim | Next run claims fresh |
-| Crash after `PROPOSED`, before split | Retry split on `PROPOSED` / `REJECTED` |
-| Crash after split, before `APPLIED` | Retry sees `PROPOSED`, re-attempts (split may need trip-level guard — mitigated by lock + APPLIED check) |
-| Successful `APPLIED` | All future runs **IDEMPOTENT_SKIP** |
+| Crash before transaction | No rows; retry allowed |
+| Crash after xact lock, before writes | Transaction rollback; lock released automatically |
+| Crash after `PROPOSED`, before split | Full rollback; no `PROPOSED` persists |
+| Crash mid-split | All split writes roll back; no partial child trip |
+| Crash after split, before `APPLIED` | **Full rollback** — split + repair state commit atomically or not at all |
+| Successful commit | Split + `APPLIED` durable; replay → `IDEMPOTENT_SKIP` |
+| Commit then crash before enqueue | `APPLIED` blocks re-mutation; trips remain `behaviorSummaryStatus=PENDING` / `drivingImpactStatus=PENDING` for existing enrichment/ATE producers |
+
+**POST_COMMIT_ENQUEUE_LOSS_RECOVERY:** Existing enrichment orchestrator + `postFinalizeAnalysisProducer` can re-enqueue on later reconciliation or scheduled enrichment passes when trips remain `PENDING`. No duplicate trip mutation is introduced to compensate.
+
+**ADVISORY_KEY_WIDTH:** 64-bit (two signed int4 halves of SHA256 seed)  
+**COLLISION_RISK_ASSESSMENT:** Negligible for repair-id cardinality; materially stronger than 32-bit `hashtext` alone
+
+**DOMAIN_IDENTITY_DECISION:** Gap boundaries alone (not mutable parent trip id). Same vehicle + same absolute gap window = same semantic repair.
+
+**BROAD_CREATE_ERROR_SWALLOW:** NO
 
 **GLOBAL_VEHICLE_START_UNIQUE_ADDED:** NO
 
@@ -98,9 +117,11 @@ INTRA_TRIP_GAP_SPLIT_CANONICAL_IDENTITY =
 | File | Change |
 |------|--------|
 | `intra-trip-gap-split-repair-id.util.ts` | Canonical identity helper |
-| `trip-reconciliation.service.ts` | `claimIntraTripGapSplitRepair`, apply lock, idempotent skip |
-| `trip-metrics.service.ts` | Low-cardinality repair apply/skip/conflict/recovery counters |
-| `trip-reconciliation.intra-trip-gap-split-idempotency.spec.ts` | INC-07 regression matrix |
+| `trip-reconciliation.service.ts` | `applyIntraTripGapSplitRepairAtomically` — single tx claim+split+APPLIED |
+| `trip-decision.engine.ts` | `splitTripAtGap` / `finalizeRepairedTrip` accept optional `tx` |
+| `pg-advisory-lock.util.ts` | `acquirePgAdvisoryXactLock64` (64-bit xact lock) |
+| `trip-reconciliation.intra-trip-gap-split-idempotency.spec.ts` | Unit INC-07 regression matrix |
+| `intra-trip-gap-split-repair.postgres.integration.spec.ts` | Real PostgreSQL concurrency + rollback tests |
 
 ---
 
@@ -111,7 +132,10 @@ INTRA_TRIP_GAP_SPLIT_CANONICAL_IDENTITY =
 | INC07 repro (second warm replay) | PASS — 1 split only |
 | SERIAL_REPLAY | PASS |
 | FOUR_HOUR_REPLAY | PASS |
-| CONCURRENT_TWIN | PASS |
+| CONCURRENT_TWIN (unit) | PASS |
+| POSTGRES_CONCURRENT_TWIN | PASS when `INTRA_TRIP_GAP_SPLIT_POSTGRES_INTEGRATION=1` + DATABASE_URL |
+| CRASH_AFTER_PROPOSED / MID_SPLIT / BEFORE_APPLIED | PASS (unit + postgres integration) |
+| TRANSACTION_ROLLBACK_RETRY | PASS |
 | LEGACY_APPLIED compatibility | PASS |
 | REJECTED recovery | PASS |
 | DISTINCT_GAP identity | PASS |
@@ -140,7 +164,14 @@ P1_8_3_4_INC_07_REMEDIATION = IMPLEMENTED_PENDING_PRODUCTION_VALIDATION
 INC_07_STATUS = FIX_IMPLEMENTED_PENDING_PRODUCTION_VALIDATION
 INC_07_FIX_IMPLEMENTED = YES
 INC_07_LOCAL_VALIDATION = PASS
+INC_07_CRASH_SAFETY_LOCAL = PASS
 INC_07_PRODUCTION_VALIDATED = NO
+
+SESSION_ADVISORY_LOCK_REMOVED = YES
+ALL_REPAIR_DB_WRITES_USE_ONE_TX = YES
+TRIP_SPLIT_USES_TRANSACTION_CLIENT = YES
+FINALIZE_USES_TRANSACTION_CLIENT = YES
+TRIP_REPAIR_APPLIED_IN_SAME_TX = YES
 
 CANONICAL_REPAIR_IDENTITY = vehicleId|INTRA_TRIP_GAP_SPLIT|firstEndAt|secondStartAt
 BUILD_REPAIR_AUDIT_ID_REUSED = YES

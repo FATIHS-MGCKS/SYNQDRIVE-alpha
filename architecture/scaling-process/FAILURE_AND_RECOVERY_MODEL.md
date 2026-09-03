@@ -119,7 +119,7 @@
 | **ROOT_CAUSE** | Warm-tier `repairIntraTripGapSplits` re-applies split on same parent trip/window; `INTRA_TRIP_GAP_SPLIT` `trip_repairs` lack deterministic idempotency key (unlike `MISSING_TRIP`) |
 | **SCALING_CAUSALITY** | APPLICATION_IDEMPOTENCY_DEFECT — not multi-replica concurrent race (4h scheduler cadence) |
 | **STATUS** | **FIX_IMPLEMENTED_PENDING_PRODUCTION_VALIDATION** (P1.8.3.4) |
-| **REMEDIATION** | Implemented: deterministic `trip_repairs` PK via `buildIntraTripGapSplitRepairAuditId`; `claimIntraTripGapSplitRepair` before `splitTripAtGap`; legacy `APPLIED` row lookup; session advisory lock around apply; observability counters. Historical duplicates untouched. |
+| **REMEDIATION** | Single PostgreSQL transaction: `pg_advisory_xact_lock64` + legacy lookup + `splitTripAtGap(tx)` + `finalizeRepairedTrip(tx)` + `APPLIED`. Session advisory locks removed. Downstream enqueue after commit. |
 | **EVIDENCE** | `architecture/P1_8_3_3_N2_24H_PLUS_SEGMENTED_RETROSPECTIVE_AUDIT_2026-09-03.md`; `architecture/P1_8_3_4_INC_07_TRIP_RECONCILIATION_IDEMPOTENCY_REMEDIATION_2026-09-03.md` |
 
 ---
