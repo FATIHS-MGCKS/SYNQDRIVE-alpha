@@ -255,15 +255,16 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'P1.8.3.5 — INC-07 production deploy + validation baseline',
     summary: [
       'Deployed exact PR #1525 merge SHA 5b788a223 to N=2 production via canonical exact-SHA rolling path.',
-      'DEC-016 full six-point provenance chain directly verified; OQ-18 CLOSED.',
+      'DEC-016 full six-point provenance chain directly verified; OQ-18 CLOSED (explicit machine-readable status).',
       'INC-07 runtime fix confirmed in production dist (deterministic repair ID, atomic tx, APPLIED terminality).',
       'Historical duplicate baseline frozen: 2 groups / 4 rows unchanged. Validation start 2026-09-03T21:19:07Z.',
+      'Final authority pass: scheduler role snapshot vs leader-count invariant; corrected deterministic repair-ID detector for retrospective ops.',
       'INC-07 NOT CLOSED — natural warm-tier evidence pending (≥2 cycles). N2=EARLY. OQ-28=PARTIAL.',
     ],
     reason: 'Controlled production deployment of merged INC-07 remediation with read-only forensic baseline for retrospective validation.',
     previousBehavior: 'Production ran pre-fix SHA 0e0f092 without deterministic INTRA_TRIP_GAP_SPLIT idempotency.',
     details:
-      'architecture/P1_8_3_5_INC_07_PRODUCTION_VALIDATION_BASELINE_2026-09-03.md; backend/scripts/ops/inc07-production-validation-baseline.sh',
+      'architecture/P1_8_3_5_INC_07_PRODUCTION_VALIDATION_BASELINE_2026-09-03.md; backend/scripts/ops/inc07-production-validation-baseline.sh; backend/scripts/ops/inc07-deterministic-repair-id-detector.mjs',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-03T21:19:07.000Z',

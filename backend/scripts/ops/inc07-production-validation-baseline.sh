@@ -82,17 +82,15 @@ WHERE repair_type = 'INTRA_TRIP_GAP_SPLIT'
 GROUP BY status ORDER BY status;"
 
 echo "--- INC07_DETERMINISTIC_REPAIR_ID_COUNT ---"
-psql "$PSQL_URL" -t -A -c "
-SELECT COUNT(*) FROM trip_repairs tr
-WHERE tr.repair_type = 'INTRA_TRIP_GAP_SPLIT'
-  AND tr.id ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-  AND tr.id = (
-    SELECT encode(digest(
-      concat_ws('|', tr.vehicle_id, 'INTRA_TRIP_GAP_SPLIT',
-        to_char(tr.window_from AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'),
-        to_char(tr.window_to AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')
-      ), 'sha256'), 'hex')
-  );" 2>/dev/null || echo "deterministic_id_check=UNAVAILABLE_WITHOUT_PGCRYPTO"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COUNT_SCRIPT="${INC07_REPAIR_ID_COUNT_SCRIPT:-${SCRIPT_DIR}/inc07-count-deterministic-repair-ids.mjs}"
+psql "$PSQL_URL" -t -A -F $'\t' -c "
+SELECT id, vehicle_id,
+  to_char(window_from AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'),
+  to_char(window_to AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')
+FROM trip_repairs
+WHERE repair_type = 'INTRA_TRIP_GAP_SPLIT';" 2>/dev/null \
+| node "$COUNT_SCRIPT" 2>/dev/null || echo "deterministic_id_check=UNAVAILABLE"
 
 echo "--- INC07_HISTORICAL_DUPLICATE_GROUPS ---"
 psql "$PSQL_URL" -P pager=off -c "

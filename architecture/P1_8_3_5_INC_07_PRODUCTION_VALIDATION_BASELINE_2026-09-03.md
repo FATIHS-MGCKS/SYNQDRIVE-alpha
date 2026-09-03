@@ -37,6 +37,9 @@
 
 ```
 DEC_016_FULL_INVARIANT_PRODUCTION_PROOF = YES
+DEC_016_PRODUCTION_VALIDATION = FULLY_PRODUCTION_VALIDATED
+DEC_016_FULL_INVARIANT = VERIFIED_PRODUCTION
+OQ_18_STATUS = CLOSED
 OQ_18_CLOSURE_CANDIDATE = YES
 ```
 
@@ -133,7 +136,15 @@ NEW_INC07_DUPLICATE_GROUPS_IMMEDIATE = 0
 | `INTRA_TRIP_GAP_SPLIT` APPLIED | 323 |
 | `INTRA_TRIP_GAP_SPLIT` PROPOSED | 0 |
 | `INTRA_TRIP_GAP_SPLIT` REJECTED | 0 |
-| Deterministic INC-07 repair IDs (post-fix style) | 0 (expected — all pre-fix random UUIDs) |
+| Deterministic INC-07 repair IDs (post-fix style) | 0 (historical baseline — all 323 rows are pre-fix random UUIDs) |
+
+**Detector authority note:** P1.8.3.5 pre-deploy deterministic count was zero by historical state (legacy random UUID rows only). The initial baseline script used an incorrect full-SHA256 SQL equality check; the detector was corrected in this final authority pass to match `buildIntraTripGapSplitRepairAuditId()` before any retrospective use. The broken detector did not independently prove the zero count.
+
+```
+DETERMINISTIC_INC07_REPAIR_ID_COUNT_PRE_DEPLOY = 0
+DETERMINISTIC_ID_DETECTOR_CANONICAL_SOURCE = buildIntraTripGapSplitRepairAuditId (intra-trip-gap-split-repair-id.util.ts)
+FUTURE_RETROSPECTIVE_DETECTOR_READY = YES
+```
 
 ---
 
@@ -151,7 +162,9 @@ Historical warm-tier cadence for INC-07 duplicates: **~4 hours**.
 | **MODERATE** | Multiple warm cycles with eligible reconciliation activity, no new duplicate group |
 | **WEAK** | Time elapsed without meaningful reconciliation opportunity |
 
-**Earliest reasonable retrospective window:** `2026-09-04T05:19:07Z` (validation start + 8h for two ~4h cycles). Recommended agent scheduling: **`2026-09-04T09:00:00Z`** or later.
+**Earliest theoretical two-cycle window:** `2026-09-04T05:19:07Z` (validation start + 8h for two ~4h cycles). Recommended conservative retrospective: **`2026-09-04T09:00:00Z`** or later.
+
+Elapsed wall-clock time alone does **not** prove validation; retrospective evidence must be classified **STRONG**, **MODERATE**, or **WEAK** per the table above.
 
 Retrospective must inspect:
 
@@ -183,6 +196,8 @@ INC_07_PRODUCTION_VALIDATED = NO
 ## Ops script
 
 Read-only baseline: `backend/scripts/ops/inc07-production-validation-baseline.sh`
+
+Deterministic repair-ID detection uses `backend/scripts/ops/inc07-deterministic-repair-id-detector.mjs` (canonical semantics aligned with `buildIntraTripGapSplitRepairAuditId()` — first 32 SHA256 hex chars as UUID, not full 64-char digest).
 
 ```bash
 sudo bash /opt/synqdrive/current/backend/scripts/ops/inc07-production-validation-baseline.sh PRE_DEPLOY
