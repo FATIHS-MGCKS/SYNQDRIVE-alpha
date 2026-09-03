@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-03 (M3.0D reconciliation liveness closure — code only, not deployed)  
+**Snapshot date:** 2026-09-03 (M3.0D.1 persistence + cross-tick liveness closure — PR #1519 amendment, not deployed)  
 **Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
@@ -11,9 +11,9 @@
 | **Causality proved** | 45 PKG-01 reconciliation candidates → 45 new `BATTERY_ASSESSMENT_RECOMPUTE` jobs (`lv-rest-reconcile:` correlation), 1:1 |
 | **Same-vehicle fan-out** | 3 vehicles: 17 + 11 + 17 jobs; reconciliation enqueued up to `batch` repairs without per-vehicle cap |
 | **Lock contention** | 15/45 unique jobs terminal with `Battery V2 vehicle lock contended scope=assess` after 3 attempts |
-| **Persistence failures** | 30/45 unique jobs terminal with Prisma `batteryAssessment.create` Postgres `54000` (program_limit_exceeded / index row size) |
-| **Handoff state post-failure** | 46 incomplete carriers now `ENQUEUED` (not `EXECUTED`); eligible for DLQ block on subsequent ticks |
-| **Fix (PR pending)** | Per-vehicle repair serialization (1 enqueue/vehicle/tick), replayable DLQ clear before reconcile, diagnostic `BatteryV2JobProcessingError` propagation, idempotent-skip handoff ack, assess retry 5×10s backoff |
+| **Persistence failures** | 30/45 unique jobs terminal with Prisma `batteryAssessment.create` Postgres `54000` — **root cause:** oversized `idempotency_key` in unique btree `(vehicle_id, idempotency_key)`; evidence UUID fan-out in key string |
+| **Handoff state post-failure** | 46 incomplete carriers `ENQUEUED`; terminal `FAILED` handoff + bounded idempotency key fix in PR #1519 M3.0D.1 |
+| **Fix (PR pending)** | Per-vehicle repair serialization (same-pass + cross-tick `hasLiveAssessJobForVehicle`), replayable DLQ clear, SHA-256 bounded assessment idempotency key, terminal handoff on non-retryable persistence failure |
 
 **FULL_FLEET_ACTIVATION_READY:** NOT reevaluated — awaits fix deploy + soak.
 

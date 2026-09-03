@@ -10,6 +10,8 @@ export const LV_REST_ASSESSMENT_HANDOFF_STATUS = {
   MISSING: 'MISSING',
   ENQUEUED: 'ENQUEUED',
   EXECUTED: 'EXECUTED',
+  /** Terminal: non-retryable assess failure (e.g. persistence 54000). */
+  FAILED: 'FAILED',
 } as const;
 
 export type LvRestAssessmentHandoffStatus =
@@ -19,6 +21,7 @@ export const LV_REST_ASSESSMENT_HANDOFF_OUTCOME = {
   ASSESSMENT_PERSISTED: 'ASSESSMENT_PERSISTED',
   POLICY_SKIPPED: 'POLICY_SKIPPED',
   UNSUPPORTED: 'UNSUPPORTED',
+  PERSISTENCE_FAILED: 'PERSISTENCE_FAILED',
 } as const;
 
 export type LvRestAssessmentHandoffOutcome =
@@ -39,7 +42,17 @@ const HANDOFF_STATUS_RANK: Record<LvRestAssessmentHandoffStatus, number> = {
   MISSING: 0,
   ENQUEUED: 1,
   EXECUTED: 2,
+  FAILED: 2,
 };
+
+export function isTerminalRestAssessmentHandoffStatus(
+  status: LvRestAssessmentHandoffStatus | undefined | null,
+): boolean {
+  return (
+    status === LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED ||
+    status === LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED
+  );
+}
 
 export function handoffStatusRank(
   status: LvRestAssessmentHandoffStatus | undefined | null,

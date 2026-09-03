@@ -49,6 +49,7 @@ describe('LvRestAssessmentHandoffService', () => {
   const jobProducer = {
     enqueue: jest.fn(),
     hasLiveJob: jest.fn(),
+    hasLiveAssessJobForVehicle: jest.fn(),
   };
   const deadLetters = {
     isDeadLetter: jest.fn().mockResolvedValue(false),
@@ -76,6 +77,8 @@ describe('LvRestAssessmentHandoffService', () => {
     }));
     jobProducer.enqueue.mockResolvedValue('bull-job-1');
     jobProducer.hasLiveJob.mockResolvedValue(false);
+    jobProducer.hasLiveAssessJobForVehicle.mockResolvedValue(false);
+    deadLetters.isDeadLetter.mockResolvedValue(false);
   });
 
   const baseInput = () => ({
@@ -267,6 +270,17 @@ describe('LvRestAssessmentHandoffService', () => {
 
     expect(result.skipped).toBe(true);
     expect(result.reason).toBe('dead_letter');
+    expect(jobProducer.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('does not enqueue when another live assess job exists for the vehicle', async () => {
+    deadLetters.isDeadLetter.mockResolvedValue(false);
+    jobProducer.hasLiveAssessJobForVehicle.mockResolvedValue(true);
+
+    const result = await service.ensureAssessmentHandoff(baseInput());
+
+    expect(result.skipped).toBe(true);
+    expect(result.reason).toBe('vehicle_assess_job_live');
     expect(jobProducer.enqueue).not.toHaveBeenCalled();
   });
 });

@@ -16,6 +16,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-03 — M3.0D.1 PR #1519 persistence + cross-tick liveness closure
+
+| Field | Content |
+|-------|---------|
+| **OBSERVATION** | M3.0D closed lock contention but not Postgres 54000; 30/45 assess creates failed on `battery_assessments_idempotency_key` btree tuple size; handoffs stuck ENQUEUED+DLQ; same-pass `repairedVehiclesThisPass` only tracked `enqueued=true`. |
+| **ROOT_CAUSE** | Unbounded LV assessment `idempotency_key` embedding sorted measurement UUIDs in unique index `(vehicle_id, idempotency_key)`; concurrency disproved as 54000 mechanism. |
+| **CHANGE** | SHA-256 digest segment `fp{hex}` in `buildLvEstimatedHealthAssessmentIdempotencyKey`; `evidenceFingerprint` preserved in `inputSummary`; `hasLiveAssessJobForVehicle` cross-tick guard; vehicle touched-this-pass on any repair attempt; handoff `FAILED`/`PERSISTENCE_FAILED` terminal; unique-constraint races remain retryable at classifier. |
+| **VALIDATION** | PKG-01/02 + persistence + liveness + graph + tsc (M3.0D.1 run). **Not deployed.** |
+| **NON_EFFECTS** | `BATTERY_V2_PUBLICATION_ENABLED=false`; `BATTERY_V2_REST_SHADOW_ENABLED=true`; production failed jobs untouched. |
+| **REMAINING_GAPS** | Deploy + soak before `FULL_FLEET_ACTIVATION_READY` reevaluation; historical long-key rows remain (new writes bounded). |
+| **DECISION_STATUS** | M3.0D.1 CODE COMPLETE — merge pending human review |
+
 ## CL-2026-09-03 — M3.0D PKG-01 reconciliation failure-spike forensics + liveness closure
 
 | Field | Content |

@@ -143,6 +143,7 @@ describe('BatteryV2ReconciliationService', () => {
   const jobProducer = {
     enqueue: jest.fn().mockResolvedValue('job-id'),
     hasLiveJob: jest.fn().mockResolvedValue(false),
+    hasLiveAssessJobForVehicle: jest.fn().mockResolvedValue(false),
   };
   const observationProducer = { classifyAndEnqueue: jest.fn().mockResolvedValue(null) };
   const deadLetters = mockDeadLetters();
@@ -838,7 +839,7 @@ describe('BatteryV2ReconciliationService', () => {
     await service.reconcileAll();
 
     expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledTimes(1);
-    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(29);
+    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(0);
   });
 
   it('serializes canonical REST handoff repair to one enqueue per vehicle per pass', async () => {
@@ -879,7 +880,61 @@ describe('BatteryV2ReconciliationService', () => {
     await service.reconcileAll();
 
     expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledTimes(2);
-    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(1);
+    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(0);
     expect(deadLetters.clearReplayableDeadLetterIfPresent).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not enqueue a second candidate for the same vehicle when first returns enqueued=false', async () => {
+    const candidates = [
+      {
+        id: 'clmeasvehA00000000000000000001',
+        organizationId: ORG,
+        vehicleId: VEH,
+        sessionId: 'clsessvehA000000000000000001',
+        type: 'REST_60M' as const,
+        provenance: { sourceObservationId: 'obs-a1' },
+      },
+      {
+        id: 'clmeasvehA00000000000000000002',
+        organizationId: ORG,
+        vehicleId: VEH,
+        sessionId: 'clsessvehA000000000000000002',
+        type: 'REST_60M' as const,
+        provenance: { sourceObservationId: 'obs-a2' },
+      },
+    ];
+    prisma.$queryRaw.mockResolvedValue(candidates);
+    assessmentHandoff.reconcileAssessmentHandoff.mockResolvedValue({
+      enqueued: false,
+      skipped: true,
+      reason: 'already_enqueued_live',
+      idempotencyKey: 'assess-key',
+    });
+
+    await service.reconcileAll();
+
+    expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledTimes(1);
+    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(0);
+  });
+
+  it('defers repair when another live assess job exists for the vehicle across ticks', async () => {
+    const MEAS = 'clmeas123456789012345678901';
+    prisma.$queryRaw.mockResolvedValue([
+      {
+        id: MEAS,
+        organizationId: ORG,
+        vehicleId: VEH,
+        sessionId: 'clsess123456789012345678901',
+        type: 'REST_60M',
+        provenance: { sourceObservationId: 'obs-1' },
+      },
+    ]);
+    jobProducer.hasLiveAssessJobForVehicle.mockResolvedValue(true);
+
+    const result = await service.reconcileAll();
+
+    expect(result.assessments).toBe(0);
+    expect(assessmentHandoff.reconcileAssessmentHandoff).not.toHaveBeenCalled();
+    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(1);
   });
 });

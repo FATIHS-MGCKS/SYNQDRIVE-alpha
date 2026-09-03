@@ -49,7 +49,7 @@ export async function fetchRestAssessmentHandoffReconcileCandidates(
         COALESCE(
           s.metadata #>> ARRAY['scheduledTargets', m.type::text, 'assessmentHandoff', 'status'],
           'MISSING'
-        ) = 'EXECUTED'
+        ) IN ('EXECUTED', 'FAILED')
         AND COALESCE(
           s.metadata #>> ARRAY['scheduledTargets', m.type::text, 'assessmentHandoff', 'measurementId'],
           ''

@@ -235,6 +235,29 @@ export class BatteryV2JobProducerService {
     const job = await this.queue.getJob(jobId);
     if (!job) return false;
     const state = await job.getState();
+    return BatteryV2JobProducerService.isLiveBullMqJobState(state);
+  }
+
+  /**
+   * True when any BATTERY_ASSESSMENT_RECOMPUTE job for the vehicle is still live
+   * (waiting, delayed, active, prioritized). Cross-tick vehicle serialization guard.
+   */
+  async hasLiveAssessJobForVehicle(vehicleId: string): Promise<boolean> {
+    const liveStates = ['waiting', 'delayed', 'active', 'prioritized'] as const;
+    for (const state of liveStates) {
+      const jobs = await this.queue.getJobs([state], 0, 250, false);
+      for (const job of jobs) {
+        if (job.name !== 'BATTERY_ASSESSMENT_RECOMPUTE') continue;
+        const data = job.data as BatteryV2JobPayload<'BATTERY_ASSESSMENT_RECOMPUTE'> | undefined;
+        if (data?.vehicleId === vehicleId) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private static isLiveBullMqJobState(state: string): boolean {
     return (
       state === 'waiting' ||
       state === 'delayed' ||

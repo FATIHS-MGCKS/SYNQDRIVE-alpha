@@ -350,3 +350,47 @@ describe('BatteryV2JobProducerService.hasLiveJob', () => {
     await expect(producerFailed.hasLiveJob('battery-rest:test:60m')).resolves.toBe(false);
   });
 });
+
+describe('BatteryV2JobProducerService.hasLiveAssessJobForVehicle', () => {
+  beforeEach(() => {
+    jest.spyOn(RuntimeStatusRegistry, 'getWorkersEnabled').mockReturnValue(true);
+  });
+
+  it('returns true when a live assess job exists for the vehicle', async () => {
+    const queue = {
+      getJob: jest.fn(),
+      getJobs: jest.fn().mockResolvedValue([
+        {
+          name: 'BATTERY_ASSESSMENT_RECOMPUTE',
+          data: { vehicleId: VEH },
+        },
+      ]),
+    };
+    const producer = new BatteryV2JobProducerService(
+      queue as never,
+      { isDeadLetter: jest.fn() } as never,
+    );
+    await expect(producer.hasLiveAssessJobForVehicle(VEH)).resolves.toBe(true);
+  });
+
+  it('returns false when only other job types or vehicles are live', async () => {
+    const queue = {
+      getJob: jest.fn(),
+      getJobs: jest.fn().mockResolvedValue([
+        {
+          name: 'BATTERY_REST_TARGET_EVALUATE',
+          data: { vehicleId: VEH },
+        },
+        {
+          name: 'BATTERY_ASSESSMENT_RECOMPUTE',
+          data: { vehicleId: 'other-vehicle' },
+        },
+      ]),
+    };
+    const producer = new BatteryV2JobProducerService(
+      queue as never,
+      { isDeadLetter: jest.fn() } as never,
+    );
+    await expect(producer.hasLiveAssessJobForVehicle(VEH)).resolves.toBe(false);
+  });
+});

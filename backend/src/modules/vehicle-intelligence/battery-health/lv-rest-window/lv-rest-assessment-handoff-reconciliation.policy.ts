@@ -26,6 +26,14 @@ export function shouldDeferRestAssessmentHandoffVehicleRepair(
   return repairedVehiclesThisPass.has(vehicleId);
 }
 
+/** Mark vehicle as dispatch-touched for this reconciliation pass (enqueue OR guarded skip). */
+export function markRestAssessmentHandoffVehicleTouchedThisPass(
+  vehicleId: string,
+  repairedVehiclesThisPass: Set<string>,
+): void {
+  repairedVehiclesThisPass.add(vehicleId);
+}
+
 /**
  * Deterministic fairness ordering mirrored by reconciliation SQL:
  * never-inspected (NULL lastAttemptAt) first, then oldest attempt, then id.

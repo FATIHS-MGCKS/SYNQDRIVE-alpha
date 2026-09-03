@@ -29,6 +29,24 @@ import {
 } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-job.validation';
 import type { BatteryV2JobPayload, BatteryV2JobType } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-job.types';
 
+function mapTerminalAssessHandoffOutcome(classified: {
+  code: string;
+  message: string;
+}): (typeof LV_REST_ASSESSMENT_HANDOFF_OUTCOME)[keyof typeof LV_REST_ASSESSMENT_HANDOFF_OUTCOME] {
+  const lower = classified.message.toLowerCase();
+  if (
+    classified.message.includes('54000') ||
+    lower.includes('index row size') ||
+    lower.includes('program_limit_exceeded')
+  ) {
+    return LV_REST_ASSESSMENT_HANDOFF_OUTCOME.PERSISTENCE_FAILED;
+  }
+  if (classified.code === BATTERY_V2_JOB_ERROR_CODES.PERMANENT_CONFIG) {
+    return LV_REST_ASSESSMENT_HANDOFF_OUTCOME.UNSUPPORTED;
+  }
+  return LV_REST_ASSESSMENT_HANDOFF_OUTCOME.POLICY_SKIPPED;
+}
+
 @Injectable()
 @Processor(QUEUE_NAMES.BATTERY_V2, {
   concurrency: 2,
@@ -129,6 +147,19 @@ export class BatteryV2Processor extends WorkerHost {
           maxAttempts,
           errorCode: classified.code,
         });
+
+        if (
+          !classified.retryable &&
+          jobType === 'BATTERY_ASSESSMENT_RECOMPUTE' &&
+          payload.sourceEntityId
+        ) {
+          await this.assessmentHandoff.acknowledgeTerminalFailure({
+            organizationId: payload.organizationId,
+            vehicleId: payload.vehicleId,
+            measurementId: payload.sourceEntityId,
+            outcome: mapTerminalAssessHandoffOutcome(classified),
+          });
+        }
       } else if (classified.retryable) {
         this.observability.recordRetry(jobType as BatteryV2JobType, classified.code);
         this.observability.logWarn({

@@ -59,4 +59,12 @@ describe('battery-v2-job-error.util', () => {
     expect(result.retryable).toBe(false);
     expect(result.code).toBe(BATTERY_V2_JOB_ERROR_CODES.HANDLER_FAILED);
   });
+
+  it('keeps Prisma unique-constraint races retryable for idempotent handlers', () => {
+    const result = classifyBatteryV2JobError(
+      new Error('PrismaClientKnownRequestError: Unique constraint failed on the fields'),
+    );
+    expect(result.retryable).toBe(true);
+    expect(result.code).toBe(BATTERY_V2_JOB_ERROR_CODES.HANDLER_FAILED);
+  });
 });

@@ -48,6 +48,7 @@ import {
   maxScannedRestAssessmentHandoffCandidates,
   REPLAYABLE_ASSESSMENT_HANDOFF_DEAD_LETTER_CODES,
   shouldDeferRestAssessmentHandoffVehicleRepair,
+  markRestAssessmentHandoffVehicleTouchedThisPass,
 } from '../lv-rest-window/lv-rest-assessment-handoff-reconciliation.policy';
 import { fetchRestAssessmentHandoffReconcileCandidates } from '../lv-rest-window/lv-rest-assessment-handoff-reconciliation.query';
 import {
@@ -879,26 +880,37 @@ export class BatteryV2ReconciliationService {
           repairedVehiclesThisPass,
         )
       ) {
-        await this.assessmentHandoff.touchReconciliationFairness({
-          organizationId: handoffInput.organizationId,
-          sessionId: handoffInput.sessionId,
-          restTargetType: handoffInput.restTargetType,
-          measurementId: handoffInput.measurementId,
-          idempotencyKey,
-        });
         continue;
       }
 
       if (repaired < batch) {
+        if (await this.jobProducer.hasLiveAssessJobForVehicle(measurement.vehicleId)) {
+          markRestAssessmentHandoffVehicleTouchedThisPass(
+            measurement.vehicleId,
+            repairedVehiclesThisPass,
+          );
+          await this.assessmentHandoff.touchReconciliationFairness({
+            organizationId: handoffInput.organizationId,
+            sessionId: handoffInput.sessionId,
+            restTargetType: handoffInput.restTargetType,
+            measurementId: handoffInput.measurementId,
+            idempotencyKey,
+          });
+          continue;
+        }
+
         await this.deadLetters.clearReplayableDeadLetterIfPresent(
           'BATTERY_ASSESSMENT_RECOMPUTE',
           idempotencyKey,
           REPLAYABLE_ASSESSMENT_HANDOFF_DEAD_LETTER_CODES,
         );
         const result = await this.assessmentHandoff.reconcileAssessmentHandoff(handoffInput);
+        markRestAssessmentHandoffVehicleTouchedThisPass(
+          measurement.vehicleId,
+          repairedVehiclesThisPass,
+        );
         if (result.enqueued) {
           repaired += 1;
-          repairedVehiclesThisPass.add(measurement.vehicleId);
         }
         continue;
       }

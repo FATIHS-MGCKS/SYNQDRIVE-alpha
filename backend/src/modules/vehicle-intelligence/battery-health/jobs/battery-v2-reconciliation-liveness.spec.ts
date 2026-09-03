@@ -52,6 +52,7 @@ describe('PKG-01 reconciliation liveness — processor error propagation', () =>
   };
   const assessmentHandoff = {
     acknowledgeExecuted: jest.fn().mockResolvedValue(undefined),
+    acknowledgeTerminalFailure: jest.fn().mockResolvedValue(undefined),
   };
 
   let processor: BatteryV2Processor;
@@ -116,7 +117,13 @@ describe('PKG-01 reconciliation liveness — processor error propagation', () =>
       new Error('PostgresError { code: "54000", message: "index row size exceeds maximum" }'),
     );
 
-    await expect(processor.process(buildAssessJob(0))).rejects.toBeInstanceOf(UnrecoverableError);
-    await expect(processor.process(buildAssessJob(0))).rejects.toThrow('54000');
+    await expect(processor.process(buildAssessJob(4, 5))).rejects.toBeInstanceOf(UnrecoverableError);
+    await expect(processor.process(buildAssessJob(4, 5))).rejects.toThrow('54000');
+    expect(assessmentHandoff.acknowledgeTerminalFailure).toHaveBeenCalledWith({
+      organizationId: ORG,
+      vehicleId: VEH,
+      measurementId: MEAS,
+      outcome: LV_REST_ASSESSMENT_HANDOFF_OUTCOME.PERSISTENCE_FAILED,
+    });
   });
 });

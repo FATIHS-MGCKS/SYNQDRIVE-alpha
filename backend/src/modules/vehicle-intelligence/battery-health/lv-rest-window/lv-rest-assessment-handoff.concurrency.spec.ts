@@ -222,6 +222,7 @@ describe('lv-rest-assessment-handoff concurrency (D2)', () => {
     const jobProducer = {
       enqueue: jest.fn().mockResolvedValue('bull-job-d'),
       hasLiveJob: jest.fn(),
+      hasLiveAssessJobForVehicle: jest.fn().mockResolvedValue(false),
     };
     let live = false;
     jobProducer.enqueue.mockImplementation(async () => {
@@ -299,7 +300,7 @@ describe('lv-rest-assessment-handoff concurrency (D2)', () => {
 
     const service = new LvRestAssessmentHandoffService(
       prisma,
-      { enqueue: jest.fn(), hasLiveJob: jest.fn() } as never,
+      { enqueue: jest.fn(), hasLiveJob: jest.fn(), hasLiveAssessJobForVehicle: jest.fn().mockResolvedValue(false) } as never,
       { isDeadLetter: jest.fn().mockResolvedValue(false) } as never,
     );
 

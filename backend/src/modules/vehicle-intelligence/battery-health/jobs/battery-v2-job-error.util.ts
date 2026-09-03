@@ -108,9 +108,7 @@ export function classifyBatteryV2JobError(err: unknown): {
     const nonRetryablePersistence =
       message.includes('54000') ||
       lower.includes('index row size') ||
-      lower.includes('program_limit_exceeded') ||
-      lower.includes('unique constraint') ||
-      lower.includes('foreign key constraint');
+      lower.includes('program_limit_exceeded');
     return {
       code: BATTERY_V2_JOB_ERROR_CODES.HANDLER_FAILED,
       retryable: !nonRetryablePersistence,

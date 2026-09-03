@@ -146,6 +146,15 @@ export class LvRestAssessmentHandoffService {
       };
     }
 
+    if (await this.jobProducer.hasLiveAssessJobForVehicle(input.vehicleId)) {
+      return {
+        enqueued: false,
+        skipped: true,
+        reason: 'vehicle_assess_job_live',
+        idempotencyKey,
+      };
+    }
+
     const now = new Date();
     const correlationPrefix = input.correlationPrefix ?? 'lv-rest-handoff';
     const jobId = await this.jobProducer.enqueue('BATTERY_ASSESSMENT_RECOMPUTE', {
@@ -258,6 +267,43 @@ export class LvRestAssessmentHandoffService {
     measurementId: string;
     outcome: LvRestAssessmentHandoffOutcome;
   }): Promise<void> {
+    await this.acknowledgeTerminalHandoff({
+      ...input,
+      status: LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED,
+      executedAt: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Terminal handoff for non-retryable assess failures — prevents indefinite ENQUEUED + DLQ.
+   */
+  async acknowledgeTerminalFailure(input: {
+    organizationId: string;
+    vehicleId: string;
+    measurementId: string;
+    outcome: LvRestAssessmentHandoffOutcome;
+    failedAt?: Date;
+  }): Promise<void> {
+    await this.acknowledgeTerminalHandoff({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      measurementId: input.measurementId,
+      outcome: input.outcome,
+      status: LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED,
+      executedAt: (input.failedAt ?? new Date()).toISOString(),
+    });
+  }
+
+  private async acknowledgeTerminalHandoff(input: {
+    organizationId: string;
+    vehicleId: string;
+    measurementId: string;
+    outcome: LvRestAssessmentHandoffOutcome;
+    status:
+      | typeof LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED
+      | typeof LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED;
+    executedAt: string;
+  }): Promise<void> {
     const measurement = await this.prisma.batteryMeasurement.findFirst({
       where: {
         id: input.measurementId,
@@ -293,9 +339,9 @@ export class LvRestAssessmentHandoffService {
       handoffPatch: {
         measurementId: measurement.id,
         idempotencyKey,
-        status: LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED,
+        status: input.status,
         outcome: input.outcome,
-        executedAt: now,
+        executedAt: input.executedAt,
         lastAttemptAt: now,
       },
     });
@@ -303,7 +349,10 @@ export class LvRestAssessmentHandoffService {
     this.logger.debug(
       formatBatteryV2PipelineLog({
         component: 'assessment-handoff',
-        event: 'assessment_handoff_executed',
+        event:
+          input.status === LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED
+            ? 'assessment_handoff_failed'
+            : 'assessment_handoff_executed',
         status: 'completed',
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
