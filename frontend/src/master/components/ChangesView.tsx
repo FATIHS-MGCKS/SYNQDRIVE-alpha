@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-rd003-global-fingerprint-discovery-2026-09-03',
+    version: '4.9.1038',
+    title: 'DI-EV-0034C — RD003 Clock-Prior Falsification + Global Fingerprint Discovery',
+    summary: [
+      'Added GLOBAL_FINGERPRINT_DISCOVERY mode: full-session speed fingerprint search without hard clock-prior bounds.',
+      'Preserved DI-EV-0034B HARD_CLOCK_PRIOR_RUN artifacts in hard-clock-prior-run/ with SHA manifest.',
+      'Coarse 0.5s + fine 0.1s search; top 5 distinct temporal basins per clip/surface.',
+      'CLOCK_PRIOR_FALSIFIED: materially better HF basins found outside prior windows (e.g. IMG_2810 ~19:23:59.5Z, MAE ~4.17).',
+      'Modulo-60 vehicle-clock boundary phase model under CEST hypothesis; chronology path analysis separate from basin scores.',
+      'Fixed clock boundary status: MINUTE_TRANSITION_OBSERVED_ALIGNMENT_NOT_QUALIFIED vs NO_OBSERVED_MINUTE_TRANSITION.',
+      'providerTimestamp vs synqReceivedAt diagnostic timelines remain separate.',
+      'GROUND_TRUTH_VALIDATED=NO; REFERENCE_CAPTURE_RUNTIME_CHANGED=NO; DRIVING_SCORE_CHANGED=NO.',
+    ],
+    reason:
+      'Distinguish clock-prior failure from telemetry/video shape incompatibility without modifying external GT.',
+    previousBehavior: 'DI-EV-0034B hard-clock-prior run produced no STRONG_CANDIDATE; boundary status could misreport missing transitions.',
+    details:
+      'reference-capture-rd003-video-gt-global-discovery.ts; reference-capture-drive-003-video-gt-global-discovery.ts; docs/audits/data/rd003-video-gt-alignment/global-fingerprint-discovery/.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T08:40:00.000Z',
+  },
+  {
     id: 'dimo-rd003-external-gt-ingestion-2026-09-03',
     version: '4.9.1037',
     title: 'DI-EV-0034B — RD003 Sparse External Video Ground Truth Ingestion + First Real Alignment',

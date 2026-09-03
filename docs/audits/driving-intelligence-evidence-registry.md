@@ -6,7 +6,7 @@
 
 **Scope:** Driving Intelligence Reconstruction phases and major artifacts only. Does not index every unrelated repository audit.
 
-**Last updated:** 2026-09-03 (RD003 external sparse video GT ingestion DI-EV-0034B)
+**Last updated:** 2026-09-03 (RD003 global fingerprint discovery DI-EV-0034C)
 
 ---
 
@@ -59,12 +59,13 @@
 | DI-EV-0033 | Phase 3A.3 | B — Machine-readable | `docs/audits/data/dimo-lte-r1-reference-drive-003-video-gt-correlation-source.jsonl` (+ CSV, summary, per-field CSVs) | 2026-09-03 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `0fa040aa-…` · `DIMO_LTE_R1_REFERENCE_DRIVE_003` | PENDING_CORRELATION | — | — | Full-session lossless telemetry correlation source for external video alignment; 5010 rows; NOT Ground Truth itself |
 | DI-EV-0034A | Phase 3A.3 | B — Method/Tooling | `docs/audits/data/rd003-video-ground-truth-observations.json` + `docs/audits/data/rd003-video-gt-alignment/` | 2026-09-03 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | WORKBENCH_READY | — | — | External video/telemetry alignment workbench v1.2; multi-clock model; NOT validated Ground Truth |
 | DI-EV-0034B | Phase 3A.3 | B — External Ground Truth + C — Candidate alignment | `docs/audits/data/rd003-video-ground-truth-observations.json` + `docs/audits/data/rd003-video-gt-alignment/` | 2026-09-03 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | REAL_CANDIDATE_ALIGNMENTS | — | — | First real externally reviewed sparse video GT (9 clips, 198 obs); first real alignment run; GROUND_TRUTH_VALIDATED=NO |
+| DI-EV-0034C | Phase 3A.3 | B — Method diagnostic + C — Discovery alignment | `docs/audits/data/rd003-video-gt-alignment/global-fingerprint-discovery/` + `hard-clock-prior-run/` | 2026-09-03 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | GLOBAL_FINGERPRINT_DISCOVERY | — | — | Clock-prior falsification; full-session speed fingerprint search; preserves DI-EV-0034B hard-prior run; GROUND_TRUTH_VALIDATED=NO |
 
 ---
 
 ## Entry count
 
-**35** registry entries through DI-EV-0034B (RD003 external GT ingestion added 2026-09-03).
+**36** registry entries through DI-EV-0034C (RD003 global discovery added 2026-09-03).
 
 ---
 
@@ -72,7 +73,7 @@
 
 | Planned ID | Phase | Artifact | Status |
 |------------|-------|----------|--------|
-| DI-EV-0034C+ | RD003 Video GT | Result interpretation / validation pass after candidate alignments | NOT_STARTED |
+| DI-EV-0034D+ | RD003 Video GT | Signal quality interpretation after discovery anchors | NOT_STARTED |
 
 ---
 
