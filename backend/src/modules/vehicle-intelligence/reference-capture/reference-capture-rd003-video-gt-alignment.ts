@@ -14,7 +14,7 @@ import {
   type VideoGtExportedRow,
 } from './reference-capture-rd003-video-gt-export';
 
-export const ALIGNMENT_SCHEMA_VERSION = '2026-09-03-rd003-video-gt-alignment-v1.1';
+export const ALIGNMENT_SCHEMA_VERSION = '2026-09-03-rd003-video-gt-alignment-v1.2';
 export const EVIDENCE_ID = 'DI-EV-0034A';
 
 export const CANONICAL_TELEMETRY_JSONL_SHA256 =
@@ -29,6 +29,9 @@ export const DERIVED_INTERPOLATION_METHOD = 'LINEAR_BOUNDED';
 export const STATIC_MINUTE_DISPLAY_RESOLUTION_SECONDS = 60;
 export const MIN_ELIGIBLE_CLIPS_FOR_CLOCK_MODEL = 2;
 export const MIN_ALIGNMENT_ELIGIBLE_GT_POINTS = 2;
+/** Workbench-quality gate — not a production Driving Score threshold. */
+export const MIN_STRONG_CANDIDATE_COVERAGE = 0.6;
+export const BASIN_CONTIGUITY_MAX_GAP_SECONDS = 1.0;
 
 export const SURFACE_INTERPOLATION_GAP_SECONDS: Record<AcquisitionSurface, number> = {
   HF_HISTORICAL: 3,
@@ -201,6 +204,12 @@ export type SurfaceSpeedAlignment = {
     maxAbsErrorKmh: number | null;
   };
   metrics: Record<string, number | string | null>;
+  ambiguityContext: {
+    BEST_BASIN_START_SECONDS: number | null;
+    BEST_BASIN_END_SECONDS: number | null;
+    OFFSET_UNCERTAINTY_SECONDS: number | null;
+    COMPETING_DISTINCT_BASINS: number;
+  };
   cadenceFreshnessContext: Record<string, unknown>;
   derivedComparisonLayer: {
     schemaVersion: string;
@@ -263,6 +272,14 @@ export type ClipAlignmentResult = {
     localGapAroundShiftSeconds: number | null;
     note: string;
   };
+  clockBoundary: {
+    VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS: number | null;
+    VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS: string;
+    alignedBoundaryUtc: string | null;
+    interpretedBoundaryUtc: string | null;
+    transitionVideoTimeSeconds: number | null;
+    CLOCK_MODEL_BOUNDARY_ELIGIBLE: 'YES' | 'NO';
+  };
 };
 
 function parseMs(iso: string | null | undefined): number | null {
@@ -315,6 +332,7 @@ export function resolveCandidateTimeWindow(clip: ExternalGtClip): {
 
   if (fromMs != null && toMs != null) {
     const searchAnchorMs = fromMs + (toMs - fromMs) / 2;
+    const halfRangeSeconds = (toMs - fromMs) / 2000;
     return {
       fromMs,
       toMs,
@@ -323,8 +341,8 @@ export function resolveCandidateTimeWindow(clip: ExternalGtClip): {
       priorToUtc: cat?.candidateStartUtcTo ?? null,
       searchAnchorMs,
       searchAnchorDerivation: 'DERIVED_MIDPOINT_OF_CANDIDATE_RANGE_FOR_SEARCH_ONLY',
-      residualSearchFromSeconds: 0,
-      residualSearchToSeconds: (toMs - fromMs) / 1000,
+      residualSearchFromSeconds: -halfRangeSeconds,
+      residualSearchToSeconds: halfRangeSeconds,
     };
   }
 
@@ -369,6 +387,141 @@ export function extractClockSemantics(clip: ExternalGtClip): ClipAlignmentResult
       transitionUncertainties.length > 0 ? Math.min(...transitionUncertainties) : null,
     VEHICLE_CLOCK_TO_UTC_ACCURACY: 'UNKNOWN',
   };
+}
+
+export function alignedClipStartMsFromSearch(
+  searchAnchorMs: number,
+  residualSeconds: number,
+): number {
+  return searchAnchorMs + residualSeconds * 1000;
+}
+
+export function absoluteEventMsFromAlignedClipStart(
+  alignedClipStartMs: number,
+  videoTimeSeconds: number,
+): number {
+  return alignedClipStartMs + videoTimeSeconds * 1000;
+}
+
+export function searchedAbsoluteStartMs(
+  searchAnchorMs: number,
+  residualSeconds: number,
+): number {
+  return alignedClipStartMsFromSearch(searchAnchorMs, residualSeconds);
+}
+
+const SESSION_DATE_UTC = { year: 2026, month: 8, day: 2 };
+const CEST_OFFSET_HOURS = 2;
+
+export function parseCestLocalMinuteToUtcMs(localMinute: string): number | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(localMinute.trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  const utcHours = hours - CEST_OFFSET_HOURS;
+  return Date.UTC(SESSION_DATE_UTC.year, SESSION_DATE_UTC.month, SESSION_DATE_UTC.day, utcHours, minutes, 0, 0);
+}
+
+export function computeVideoClockBoundaryResidual(params: {
+  clip: ExternalGtClip;
+  alignedClipStartMs: number | null;
+}): ClipAlignmentResult['clockBoundary'] {
+  const transitions = params.clip.videoClock?.displayedMinuteTransitions ?? [];
+  const observed = transitions.find(
+    (t) => t.videoTimeSeconds != null && t.toMinute != null && t.toMinute.length > 0,
+  );
+  if (!observed || observed.videoTimeSeconds == null || params.alignedClipStartMs == null) {
+    return {
+      VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS: null,
+      VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS: 'NO_OBSERVED_MINUTE_TRANSITION',
+      alignedBoundaryUtc: null,
+      interpretedBoundaryUtc: null,
+      transitionVideoTimeSeconds: null,
+      CLOCK_MODEL_BOUNDARY_ELIGIBLE: 'NO',
+    };
+  }
+
+  const interpretedMs = parseCestLocalMinuteToUtcMs(observed.toMinute!);
+  if (interpretedMs == null) {
+    return {
+      VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS: null,
+      VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS: 'UNPARSEABLE_TIMEZONE_INTERPRETATION',
+      alignedBoundaryUtc: null,
+      interpretedBoundaryUtc: null,
+      transitionVideoTimeSeconds: observed.videoTimeSeconds,
+      CLOCK_MODEL_BOUNDARY_ELIGIBLE: 'NO',
+    };
+  }
+
+  const alignedBoundaryMs = absoluteEventMsFromAlignedClipStart(
+    params.alignedClipStartMs,
+    observed.videoTimeSeconds,
+  );
+  const residualSeconds = (alignedBoundaryMs - interpretedMs) / 1000;
+
+  return {
+    VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS: residualSeconds,
+    VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS: 'CANDIDATE_TIMEZONE_INTERPRETATION',
+    alignedBoundaryUtc: toIso(alignedBoundaryMs),
+    interpretedBoundaryUtc: toIso(interpretedMs),
+    transitionVideoTimeSeconds: observed.videoTimeSeconds,
+    CLOCK_MODEL_BOUNDARY_ELIGIBLE: 'YES',
+  };
+}
+
+export type ResidualSearchBasin = {
+  startSeconds: number;
+  endSeconds: number;
+  bestMae: number;
+  bestResidualSeconds: number;
+};
+
+export function identifyNearOptimalBasins(
+  candidates: Array<SpeedMatchMetrics & { residualSeconds: number }>,
+  maeToleranceKmh: number,
+): ResidualSearchBasin[] {
+  if (candidates.length === 0) return [];
+  const globalBestMae = Math.min(...candidates.map((c) => c.mae));
+  const nearOptimal = candidates
+    .filter((c) => c.mae <= globalBestMae + maeToleranceKmh)
+    .sort((a, b) => a.residualSeconds - b.residualSeconds);
+  if (nearOptimal.length === 0) return [];
+
+  const basins: ResidualSearchBasin[] = [];
+  let current: Array<SpeedMatchMetrics & { residualSeconds: number }> = [nearOptimal[0]!];
+  for (let i = 1; i < nearOptimal.length; i++) {
+    const prev = nearOptimal[i - 1]!;
+    const cur = nearOptimal[i]!;
+    if (cur.residualSeconds - prev.residualSeconds > BASIN_CONTIGUITY_MAX_GAP_SECONDS) {
+      basins.push(summarizeBasin(current));
+      current = [cur];
+    } else {
+      current.push(cur);
+    }
+  }
+  basins.push(summarizeBasin(current));
+  return basins;
+}
+
+function summarizeBasin(
+  members: Array<SpeedMatchMetrics & { residualSeconds: number }>,
+): ResidualSearchBasin {
+  const best = members.reduce((a, b) => (a.mae <= b.mae ? a : b));
+  return {
+    startSeconds: members[0]!.residualSeconds,
+    endSeconds: members[members.length - 1]!.residualSeconds,
+    bestMae: best.mae,
+    bestResidualSeconds: best.residualSeconds,
+  };
+}
+
+export function compareCandidateQuality(
+  a: { mae: number; coverage: number },
+  b: { mae: number; coverage: number },
+): number {
+  if (Math.abs(a.coverage - b.coverage) > 1e-9) return b.coverage - a.coverage;
+  return a.mae - b.mae;
 }
 
 export function assertCanonicalTelemetrySha256(content: string | Buffer): void {
@@ -712,23 +865,44 @@ export function searchSpeedResidualCandidates(params: {
   searchToResidualSeconds: number;
   maxGapSeconds: number;
   stepSeconds?: number;
+  candidateFromMs?: number | null;
+  candidateToMs?: number | null;
 }): {
-  candidates: Array<SpeedMatchMetrics & { residualSeconds: number }>;
-  best: (SpeedMatchMetrics & { residualSeconds: number }) | null;
+  candidates: Array<SpeedMatchMetrics & { residualSeconds: number; matchCoverageRatio: number }>;
+  best: (SpeedMatchMetrics & { residualSeconds: number; matchCoverageRatio: number }) | null;
   ambiguous: boolean;
   status: AlignmentStatus;
+  basins: ResidualSearchBasin[];
+  ambiguityContext: SurfaceSpeedAlignment['ambiguityContext'];
 } {
   if (params.eligibleObservations.length < MIN_ALIGNMENT_ELIGIBLE_GT_POINTS) {
-    return { candidates: [], best: null, ambiguous: false, status: 'INSUFFICIENT_GROUND_TRUTH' };
+    return {
+      candidates: [],
+      best: null,
+      ambiguous: false,
+      status: 'INSUFFICIENT_GROUND_TRUTH',
+      basins: [],
+      ambiguityContext: {
+        BEST_BASIN_START_SECONDS: null,
+        BEST_BASIN_END_SECONDS: null,
+        OFFSET_UNCERTAINTY_SECONDS: null,
+        COMPETING_DISTINCT_BASINS: 0,
+      },
+    };
   }
 
   const step = params.stepSeconds ?? 0.5;
-  const candidates: Array<SpeedMatchMetrics & { residualSeconds: number }> = [];
+  const candidates: Array<SpeedMatchMetrics & { residualSeconds: number; matchCoverageRatio: number }> =
+    [];
   for (
     let residual = params.searchFromResidualSeconds;
     residual <= params.searchToResidualSeconds + 1e-9;
     residual += step
   ) {
+    const clipStartMs = alignedClipStartMsFromSearch(params.searchAnchorMs, residual);
+    if (params.candidateFromMs != null && clipStartMs < params.candidateFromMs - 1e-6) continue;
+    if (params.candidateToMs != null && clipStartMs > params.candidateToMs + 1e-6) continue;
+
     const score = scoreSpeedResidual({
       eligibleObservations: params.eligibleObservations,
       speedSeries: params.speedSeries,
@@ -736,28 +910,71 @@ export function searchSpeedResidualCandidates(params: {
       residualSeconds: residual,
       maxGapSeconds: params.maxGapSeconds,
     });
-    if (Number.isFinite(score.mae)) {
-      candidates.push({ residualSeconds: residual, ...score });
-    }
+    if (!Number.isFinite(score.mae)) continue;
+    const matchCoverageRatio = score.total > 0 ? score.matched / score.total : 0;
+    candidates.push({ residualSeconds: residual, matchCoverageRatio, ...score });
   }
-  candidates.sort((a, b) => a.mae - b.mae || a.residualSeconds - b.residualSeconds);
+  candidates.sort(
+    (a, b) =>
+      compareCandidateQuality(
+        { mae: a.mae, coverage: a.matchCoverageRatio },
+        { mae: b.mae, coverage: b.matchCoverageRatio },
+      ),
+  );
   if (candidates.length === 0) {
-    return { candidates: [], best: null, ambiguous: false, status: 'INSUFFICIENT_GROUND_TRUTH' };
+    return {
+      candidates: [],
+      best: null,
+      ambiguous: false,
+      status: 'INSUFFICIENT_GROUND_TRUTH',
+      basins: [],
+      ambiguityContext: {
+        BEST_BASIN_START_SECONDS: null,
+        BEST_BASIN_END_SECONDS: null,
+        OFFSET_UNCERTAINTY_SECONDS: null,
+        COMPETING_DISTINCT_BASINS: 0,
+      },
+    };
   }
+
   const best = candidates[0]!;
-  const second = candidates[1];
-  const ambiguous = second != null && Math.abs(second.mae - best.mae) <= AMBIGUITY_MAE_DELTA_KMH;
+  const basins = identifyNearOptimalBasins(candidates, AMBIGUITY_MAE_DELTA_KMH);
+  const bestBasin =
+    basins.find((b) => Math.abs(b.bestResidualSeconds - best.residualSeconds) < 1e-9) ?? basins[0]!;
+  const competingBasins = basins.filter(
+    (b) => Math.abs(b.bestMae - best.mae) <= AMBIGUITY_MAE_DELTA_KMH,
+  );
+  const ambiguous = competingBasins.length >= 2;
+
   let status: AlignmentStatus = 'STRONG_CANDIDATE';
-  if (ambiguous) status = 'AMBIGUOUS';
-  if (best.mae > 15) status = 'NOT_IDENTIFIABLE';
-  return { candidates, best, ambiguous, status };
+  if (best.mae > 15) {
+    status = 'NOT_IDENTIFIABLE';
+  } else if (best.matchCoverageRatio < MIN_STRONG_CANDIDATE_COVERAGE) {
+    status = best.matched === 0 ? 'INSUFFICIENT_CADENCE' : 'NOT_IDENTIFIABLE';
+  } else if (ambiguous) {
+    status = 'AMBIGUOUS';
+  }
+
+  return {
+    candidates,
+    best,
+    ambiguous,
+    status,
+    basins,
+    ambiguityContext: {
+      BEST_BASIN_START_SECONDS: bestBasin?.startSeconds ?? null,
+      BEST_BASIN_END_SECONDS: bestBasin?.endSeconds ?? null,
+      OFFSET_UNCERTAINTY_SECONDS:
+        bestBasin != null ? bestBasin.endSeconds - bestBasin.startSeconds : null,
+      COMPETING_DISTINCT_BASINS: competingBasins.length,
+    },
+  };
 }
 
 export function evaluateGearShiftTiming(params: {
   clip: ExternalGtClip;
   telemetryRows: VideoGtExportedRow[];
   alignedClipStartMs: number | null;
-  residualSeconds: number;
 }): ClipAlignmentResult['gearTiming'] {
   const gearRows = filterTelemetryByFieldAndSurface(
     params.telemetryRows,
@@ -777,8 +994,10 @@ export function evaluateGearShiftTiming(params: {
     };
   }
 
-  const shiftAbsMs =
-    params.alignedClipStartMs + (shiftObs.videoTimeSeconds + params.residualSeconds) * 1000;
+  const shiftAbsMs = absoluteEventMsFromAlignedClipStart(
+    params.alignedClipStartMs,
+    shiftObs.videoTimeSeconds,
+  );
   const providerTimes = gearRows
     .map((r) => parseMs(r.providerTimestamp))
     .filter((v): v is number => v != null)
@@ -858,7 +1077,14 @@ function alignClipOnSurface(params: {
         NUMBER_OF_GT_POINTS: params.eligibleObservations.length,
         ALIGNMENT_ELIGIBLE_GT_COUNT: params.eligibleObservations.length,
         MATCHED_GT_COUNT: null,
+        MATCH_COVERAGE_RATIO: null,
         COVERAGE_RATIO: null,
+      },
+      ambiguityContext: {
+        BEST_BASIN_START_SECONDS: null,
+        BEST_BASIN_END_SECONDS: null,
+        OFFSET_UNCERTAINTY_SECONDS: null,
+        COMPETING_DISTINCT_BASINS: 0,
       },
       cadenceFreshnessContext: {
         observationCount: speedRows.length,
@@ -888,6 +1114,13 @@ function alignClipOnSurface(params: {
         NUMBER_OF_GT_POINTS: params.eligibleObservations.length,
         ALIGNMENT_ELIGIBLE_GT_COUNT: params.eligibleObservations.length,
         MATCHED_GT_COUNT: null,
+        MATCH_COVERAGE_RATIO: null,
+      },
+      ambiguityContext: {
+        BEST_BASIN_START_SECONDS: null,
+        BEST_BASIN_END_SECONDS: null,
+        OFFSET_UNCERTAINTY_SECONDS: null,
+        COMPETING_DISTINCT_BASINS: 0,
       },
       cadenceFreshnessContext: { configuredMaxInterpolationGapSeconds: maxGap },
       derivedComparisonLayer: null,
@@ -902,10 +1135,12 @@ function alignClipOnSurface(params: {
     searchToResidualSeconds: params.timeWindow.residualSearchToSeconds,
     maxGapSeconds: maxGap,
     stepSeconds: 0.5,
+    candidateFromMs: params.timeWindow.fromMs,
+    candidateToMs: params.timeWindow.toMs,
   });
 
   const residual = search.best?.residualSeconds ?? 0;
-  const alignedMs = params.timeWindow.searchAnchorMs + residual * 1000;
+  const alignedMs = alignedClipStartMsFromSearch(params.timeWindow.searchAnchorMs, residual);
 
   return {
     status: search.status,
@@ -920,12 +1155,14 @@ function alignClipOnSurface(params: {
       NUMBER_OF_GT_POINTS: params.eligibleObservations.length,
       ALIGNMENT_ELIGIBLE_GT_COUNT: params.eligibleObservations.length,
       MATCHED_GT_COUNT: search.best?.matched ?? null,
-      COVERAGE_RATIO:
-        search.best && search.best.total > 0 ? search.best.matched / search.best.total : null,
+      MATCH_COVERAGE_RATIO: search.best?.matchCoverageRatio ?? null,
+      COVERAGE_RATIO: search.best?.matchCoverageRatio ?? null,
       SPEED_MAE_KMH: search.best?.mae ?? null,
       SPEED_RMSE_KMH: search.best?.rmse ?? null,
       SPEED_MAX_ABS_ERROR_KMH: search.best?.maxAbsError ?? null,
+      MIN_STRONG_CANDIDATE_COVERAGE,
     },
+    ambiguityContext: search.ambiguityContext,
     cadenceFreshnessContext: {
       observationCount: speedRows.length,
       configuredMaxInterpolationGapSeconds: maxGap,
@@ -947,9 +1184,7 @@ function alignClipOnSurface(params: {
             sourceField: 'speed',
             sourceSurface: params.surface,
             points: params.eligibleObservations.map((obs) => {
-              const absMs =
-                params.timeWindow.searchAnchorMs! +
-                (obs.videoTimeSeconds! + (search.best?.residualSeconds ?? 0)) * 1000;
+              const absMs = absoluteEventMsFromAlignedClipStart(alignedMs, obs.videoTimeSeconds!);
               const pt = deriveTelemetryAtUtc(speedSeries, absMs, maxGap);
               return { ...pt, videoTimeSeconds: obs.videoTimeSeconds! };
             }),
@@ -960,18 +1195,18 @@ function alignClipOnSurface(params: {
 function selectPreferredSpeedSurface(
   bySurface: Record<string, SurfaceSpeedAlignment | { status: 'NOT_OBSERVED' }>,
 ): AcquisitionSurface | null {
-  const ranked: Array<{ surface: AcquisitionSurface; mae: number; matched: number }> = [];
+  const ranked: Array<{ surface: AcquisitionSurface; mae: number; coverage: number }> = [];
   for (const surface of SPEED_SURFACES) {
     const entry = bySurface[surface];
     if (!entry || entry.status === 'NOT_OBSERVED') continue;
     if (entry.status !== 'STRONG_CANDIDATE' && entry.status !== 'VALIDATED') continue;
     const mae = entry.bestCandidate.maeKmh;
-    const matched = entry.metrics.MATCHED_GT_COUNT;
-    if (mae == null || matched == null || typeof matched !== 'number') continue;
-    ranked.push({ surface, mae, matched });
+    const coverageRaw = entry.metrics.MATCH_COVERAGE_RATIO;
+    if (mae == null || typeof coverageRaw !== 'number') continue;
+    ranked.push({ surface, mae, coverage: coverageRaw });
   }
   if (ranked.length === 0) return null;
-  ranked.sort((a, b) => a.mae - b.mae || b.matched - a.matched);
+  ranked.sort((a, b) => compareCandidateQuality(a, b));
   return ranked[0]!.surface;
 }
 
@@ -1069,38 +1304,63 @@ export function alignClip(params: {
       clip: params.clip,
       telemetryRows: params.telemetryRows,
       alignedClipStartMs: alignedStartMs,
-      residualSeconds: residual ?? 0,
+    }),
+    clockBoundary: computeVideoClockBoundaryResidual({
+      clip: params.clip,
+      alignedClipStartMs: alignedStartMs,
     }),
   };
 }
 
+export function isClockModelBoundaryEligible(
+  alignment: ClipAlignmentResult,
+): { eligible: boolean; reason: string | null } {
+  if (alignment.clockBoundary.CLOCK_MODEL_BOUNDARY_ELIGIBLE !== 'YES') {
+    return {
+      eligible: false,
+      reason: alignment.clockBoundary.VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS,
+    };
+  }
+  if (CLOCK_MODEL_INELIGIBLE_STATUSES.includes(alignment.alignmentStatus)) {
+    return { eligible: false, reason: alignment.alignmentStatus };
+  }
+  if (
+    alignment.alignmentStatus !== 'STRONG_CANDIDATE' &&
+    alignment.alignmentStatus !== 'VALIDATED'
+  ) {
+    return { eligible: false, reason: alignment.alignmentStatus };
+  }
+  if (alignment.clockBoundary.VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS == null) {
+    return { eligible: false, reason: 'NO_BOUNDARY_RESIDUAL' };
+  }
+  return { eligible: true, reason: null };
+}
+
+/** @deprecated Use isClockModelBoundaryEligible — candidate-start residuals are not clock-model inputs. */
 export function isClockModelEligible(alignment: ClipAlignmentResult): {
   eligible: boolean;
   reason: string | null;
 } {
-  if (CLOCK_MODEL_INELIGIBLE_STATUSES.includes(alignment.alignmentStatus)) {
-    return { eligible: false, reason: alignment.alignmentStatus };
-  }
-  if (alignment.alignmentStatus !== 'STRONG_CANDIDATE' && alignment.alignmentStatus !== 'VALIDATED') {
-    return { eligible: false, reason: alignment.alignmentStatus };
-  }
-  if (alignment.offsetSemantics.CANDIDATE_START_RESIDUAL_SECONDS == null) {
-    return { eligible: false, reason: 'NO_RESIDUAL_OFFSET' };
-  }
-  return { eligible: true, reason: null };
+  return isClockModelBoundaryEligible(alignment);
 }
 
 export function buildCrossClipClockModel(
   clipAlignments: ClipAlignmentResult[],
 ): Record<string, unknown> {
   const entries = clipAlignments.map((c) => {
-    const gate = isClockModelEligible(c);
+    const gate = isClockModelBoundaryEligible(c);
     return {
       clipId: c.clipId,
       alignmentStatus: c.alignmentStatus,
       candidateStartResidualSeconds: c.offsetSemantics.CANDIDATE_START_RESIDUAL_SECONDS,
       alignedClipStartUtc: c.offsetSemantics.ALIGNED_CLIP_START_UTC,
       preferredSurface: c.preferredSpeedAlignmentSurface,
+      VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS:
+        c.clockBoundary.VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS,
+      VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS:
+        c.clockBoundary.VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS,
+      alignedBoundaryUtc: c.clockBoundary.alignedBoundaryUtc,
+      interpretedBoundaryUtc: c.clockBoundary.interpretedBoundaryUtc,
       CLOCK_MODEL_ELIGIBLE: gate.eligible ? 'YES' : 'NO',
       CLOCK_MODEL_EXCLUSION_REASON: gate.reason,
       VIDEO_CLOCK_TO_PROVIDER_TIME_OFFSET_SECONDS:
@@ -1108,24 +1368,28 @@ export function buildCrossClipClockModel(
     };
   });
 
-  const eligibleResiduals = entries
+  const eligibleBoundaryResiduals = entries
     .filter((e) => e.CLOCK_MODEL_ELIGIBLE === 'YES')
-    .map((e) => e.candidateStartResidualSeconds)
+    .map((e) => e.VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS)
     .filter((v): v is number => typeof v === 'number');
 
-  if (eligibleResiduals.length < MIN_ELIGIBLE_CLIPS_FOR_CLOCK_MODEL) {
+  if (eligibleBoundaryResiduals.length < MIN_ELIGIBLE_CLIPS_FOR_CLOCK_MODEL) {
     return {
       evidenceLayer: 'DERIVED_SIGNAL_QUALITY',
-      modelOutcome: eligibleResiduals.length === 0 ? 'PENDING_EXTERNAL_GT' : 'UNRESOLVED',
-      note: 'Cross-clip model requires sufficiently supported per-clip residuals — not heterogeneous absolute clock offsets',
-      eligibleClipCount: eligibleResiduals.length,
+      modelOutcome:
+        eligibleBoundaryResiduals.length === 0 ? 'PENDING_EXTERNAL_GT' : 'UNRESOLVED',
+      clockModelQuantity: 'VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS',
+      note:
+        'Cross-clip clock model uses common VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS only — not heterogeneous candidate-start residuals',
+      eligibleClipCount: eligibleBoundaryResiduals.length,
       clipEntries: entries,
       VEHICLE_CLOCK_TO_UTC_ACCURACY: 'UNKNOWN',
+      CROSS_CLIP_MODEL_USES_CANDIDATE_START_RESIDUAL_AS_CLOCK_OFFSET: 'NO',
     };
   }
 
-  const min = Math.min(...eligibleResiduals);
-  const max = Math.max(...eligibleResiduals);
+  const min = Math.min(...eligibleBoundaryResiduals);
+  const max = Math.max(...eligibleBoundaryResiduals);
   const spread = max - min;
   let modelOutcome: (typeof CLOCK_MODEL_OUTCOMES)[number] = 'CONSTANT_OFFSET';
   if (spread > 5) modelOutcome = 'NON_CONSTANT';
@@ -1134,13 +1398,17 @@ export function buildCrossClipClockModel(
   return {
     evidenceLayer: 'DERIVED_SIGNAL_QUALITY',
     modelOutcome,
-    residualSpreadSeconds: spread,
-    minResidualSeconds: min,
-    maxResidualSeconds: max,
-    eligibleClipCount: eligibleResiduals.length,
+    clockModelQuantity: 'VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS',
+    boundaryResidualSpreadSeconds: spread,
+    minBoundaryResidualSeconds: min,
+    maxBoundaryResidualSeconds: max,
+    eligibleClipCount: eligibleBoundaryResiduals.length,
     clipEntries: entries,
     VEHICLE_CLOCK_TO_UTC_ACCURACY: 'UNKNOWN',
-    note: 'Residuals are adjustments relative to per-clip candidate priors — not absolute VIDEO_CLOCK_TO_PROVIDER_TIME offsets',
+    VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS: 'CANDIDATE_TIMEZONE_INTERPRETATION',
+    CROSS_CLIP_MODEL_USES_CANDIDATE_START_RESIDUAL_AS_CLOCK_OFFSET: 'NO',
+    note:
+      'Boundary residuals compare aligned minute-transition UTC against CEST-interpreted vehicle-clock minute boundary — not validated absolute synchronization',
   };
 }
 
@@ -1183,6 +1451,11 @@ export function runAlignmentWorkbench(params: {
       ACTUAL_GEAR_USED_AS_PRECISE_SHIFT_AUTHORITY: 'NO',
       SIGNED_SPEED_FABRICATED_FROM_UNSIGNED_SPEED: 'NO',
       ALIGNMENT_ELIGIBLE_GT_GATE_IMPLEMENTED: 'YES',
+      MATCH_COVERAGE_GATE_IMPLEMENTED: 'YES',
+      MIN_STRONG_CANDIDATE_COVERAGE,
+      BASIN_AWARE_AMBIGUITY_IMPLEMENTED: 'YES',
+      VIDEO_CLOCK_BOUNDARY_RESIDUAL_IMPLEMENTED: 'YES',
+      CROSS_CLIP_MODEL_USES_CANDIDATE_START_RESIDUAL_AS_CLOCK_OFFSET: 'NO',
       REFERENCE_CAPTURE_RUNTIME_CHANGED: 'NO',
       DRIVING_SCORE_CHANGED: 'NO',
       multiClockModel: {

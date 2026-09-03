@@ -5,24 +5,34 @@ import { execFileSync } from 'child_process';
 import {
   alignClip,
   alignmentOutputSha256,
+  alignedClipStartMsFromSearch,
+  absoluteEventMsFromAlignedClipStart,
   AMBIGUITY_MAE_DELTA_KMH,
   buildCrossClipClockModel,
   buildSignalSurfaceQuality,
   buildSpeedSeries,
   CANONICAL_TELEMETRY_JSONL_SHA256,
+  compareCandidateQuality,
   computeProviderDeliveryMetrics,
+  computeVideoClockBoundaryResidual,
   deriveTelemetryAtUtc,
   detectStaleHolds,
+  evaluateGearShiftTiming,
   extractClockSemantics,
+  identifyNearOptimalBasins,
   isAlignmentEligibleGroundTruth,
+  isClockModelBoundaryEligible,
   isClockModelEligible,
   loadCanonicalTelemetryJsonl,
   makeTelemetryRow,
+  MIN_STRONG_CANDIDATE_COVERAGE,
+  parseCestLocalMinuteToUtcMs,
   resolveCandidateTimeWindow,
   runAlignmentWorkbench,
   scoreSpeedResidual,
   searchSpeedOffsetCandidates,
   searchSpeedResidualCandidates,
+  searchedAbsoluteStartMs,
   stableStringify,
   SURFACE_INTERPOLATION_GAP_SECONDS,
   type ExternalGtClip,
@@ -281,8 +291,8 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
     });
   });
 
-  describe('H) two similarly strong offsets return AMBIGUOUS', () => {
-    it('triggers ambiguity when MAE delta within threshold', () => {
+  describe('H) flat plateau in one basin does not trigger AMBIGUOUS from grid neighbors', () => {
+    it('adjacent near-optimal grid points remain one basin', () => {
       const telemetry = syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [50, 50, 50, 50, 50]);
       const series = buildSpeedSeries(telemetry);
       const clip = makeClip({
@@ -320,16 +330,18 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
           },
         ],
       });
-      const search = searchSpeedOffsetCandidates({
-        gtObservations: clip.observations,
+      const search = searchSpeedResidualCandidates({
+        eligibleObservations: clip.observations,
         speedSeries: series,
-        clipStartUtcMs: Date.parse('2026-09-02T19:00:00.000Z'),
-        searchFromOffsetSeconds: -2,
-        searchToOffsetSeconds: 2,
+        searchAnchorMs: Date.parse('2026-09-02T19:00:00.000Z'),
+        searchFromResidualSeconds: -2,
+        searchToResidualSeconds: 2,
+        maxGapSeconds: 5,
         stepSeconds: 1,
       });
-      expect(search.ambiguous).toBe(true);
-      expect(search.status).toBe('AMBIGUOUS');
+      expect(search.ambiguous).toBe(false);
+      expect(search.status).toBe('STRONG_CANDIDATE');
+      expect(search.ambiguityContext.COMPETING_DISTINCT_BASINS).toBe(1);
       expect(AMBIGUITY_MAE_DELTA_KMH).toBe(1.0);
     });
   });
@@ -661,7 +673,8 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
       expect(window.priorFromUtc).toBe('2026-09-02T19:21:00.000Z');
       expect(window.priorToUtc).toBe('2026-09-02T19:21:14.000Z');
       expect(window.searchAnchorDerivation).toBe('DERIVED_MIDPOINT_OF_CANDIDATE_RANGE_FOR_SEARCH_ONLY');
-      expect(window.residualSearchToSeconds).toBe(14);
+      expect(window.residualSearchFromSeconds).toBeCloseTo(-7, 5);
+      expect(window.residualSearchToSeconds).toBeCloseTo(7, 5);
     });
 
     it('6) candidate-start residual is not mislabeled absolute clock offset', () => {
@@ -685,6 +698,11 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
     it('7) AMBIGUOUS alignment cannot enter cross-clip clock model', () => {
       const ambiguous = alignClip({
         clip: makeClip({
+          videoClock: {
+            displayedMinuteTransitions: [
+              { videoTimeSeconds: 10, uncertaintySeconds: 0.1, fromMinute: '21:03', toMinute: '21:04' },
+            ],
+          },
           candidateAbsoluteTime: {
             candidateStartUtc: '2026-09-02T19:00:00.000Z',
             uncertaintySeconds: 2,
@@ -695,7 +713,13 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
         telemetryRows: syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [50, 50, 50, 50]),
       });
       ambiguous.alignmentStatus = 'AMBIGUOUS';
-      const gate = isClockModelEligible(ambiguous);
+      ambiguous.clockBoundary = {
+        ...ambiguous.clockBoundary,
+        CLOCK_MODEL_BOUNDARY_ELIGIBLE: 'YES',
+        VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS: 1,
+        VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS: 'CANDIDATE_TIMEZONE_INTERPRETATION',
+      };
+      const gate = isClockModelBoundaryEligible(ambiguous);
       expect(gate.eligible).toBe(false);
       expect(gate.reason).toBe('AMBIGUOUS');
     });
@@ -703,6 +727,11 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
     it('8) NOT_IDENTIFIABLE alignment cannot enter clock model', () => {
       const notId = alignClip({
         clip: makeClip({
+          videoClock: {
+            displayedMinuteTransitions: [
+              { videoTimeSeconds: 10, uncertaintySeconds: 0.1, fromMinute: '21:03', toMinute: '21:04' },
+            ],
+          },
           candidateAbsoluteTime: {
             candidateStartUtc: '2026-09-02T19:00:00.000Z',
             uncertaintySeconds: 2,
@@ -713,7 +742,13 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
         telemetryRows: syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [10, 20, 30, 40]),
       });
       notId.alignmentStatus = 'NOT_IDENTIFIABLE';
-      const gate = isClockModelEligible(notId);
+      notId.clockBoundary = {
+        ...notId.clockBoundary,
+        CLOCK_MODEL_BOUNDARY_ELIGIBLE: 'YES',
+        VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS: 2,
+        VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS: 'CANDIDATE_TIMEZONE_INTERPRETATION',
+      };
+      const gate = isClockModelBoundaryEligible(notId);
       expect(gate.eligible).toBe(false);
       expect(gate.reason).toBe('NOT_IDENTIFIABLE');
     });
@@ -724,6 +759,11 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
       expect(model.modelOutcome).toBe('PENDING_EXTERNAL_GT');
       const oneEligible = alignClip({
         clip: makeClip({
+          videoClock: {
+            displayedMinuteTransitions: [
+              { videoTimeSeconds: 10, uncertaintySeconds: 0.1, fromMinute: '21:03', toMinute: '21:04' },
+            ],
+          },
           candidateAbsoluteTime: {
             candidateStartUtc: '2026-09-02T19:00:00.000Z',
             uncertaintySeconds: 2,
@@ -921,6 +961,277 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
       const r2 = runAlignmentWorkbench({ telemetryRows: telemetry, externalGt });
       expect(alignmentOutputSha256(r1)).toBe(alignmentOutputSha256(r2));
       expect(stableStringify(r1)).toBe(stableStringify(r2));
+    });
+  });
+
+  describe('DI-EV-0034A numerical closeout tests', () => {
+    it('1) candidate 00→14 range with midpoint 07 searches -7→+7', () => {
+      const clip = makeClip({
+        candidateAbsoluteTime: {
+          candidateStartUtcFrom: '2026-09-02T19:21:00.000Z',
+          candidateStartUtcTo: '2026-09-02T19:21:14.000Z',
+          status: 'CANDIDATE',
+        },
+      });
+      const w = resolveCandidateTimeWindow(clip);
+      expect(w.residualSearchFromSeconds).toBeCloseTo(-7, 5);
+      expect(w.residualSearchToSeconds).toBeCloseTo(7, 5);
+      expect(w.searchAnchorMs).toBe(Date.parse('2026-09-02T19:21:07.000Z'));
+    });
+
+    it('2) no candidate search time exceeds supplied from/to bounds', () => {
+      const fromMs = Date.parse('2026-09-02T19:24:29.000Z');
+      const toMs = Date.parse('2026-09-02T19:24:32.000Z');
+      const anchorMs = fromMs + (toMs - fromMs) / 2;
+      const w = resolveCandidateTimeWindow(
+        makeClip({
+          candidateAbsoluteTime: {
+            candidateStartUtcFrom: '2026-09-02T19:24:29.000Z',
+            candidateStartUtcTo: '2026-09-02T19:24:32.000Z',
+            status: 'CANDIDATE',
+          },
+        }),
+      );
+      const series = makeSpeedSeries([
+        { utcMs: fromMs, value: 10 },
+        { utcMs: toMs, value: 20 },
+      ]);
+      const obs = [validatedSpeedObs('o1', 0, 10), validatedSpeedObs('o2', 1, 20)];
+      const search = searchSpeedResidualCandidates({
+        eligibleObservations: obs,
+        speedSeries: series,
+        searchAnchorMs: anchorMs,
+        searchFromResidualSeconds: w.residualSearchFromSeconds,
+        searchToResidualSeconds: w.residualSearchToSeconds,
+        maxGapSeconds: 5,
+        stepSeconds: 0.5,
+        candidateFromMs: fromMs,
+        candidateToMs: toMs,
+      });
+      for (const c of search.candidates) {
+        const startMs = searchedAbsoluteStartMs(anchorMs, c.residualSeconds);
+        expect(startMs).toBeGreaterThanOrEqual(fromMs - 1e-6);
+        expect(startMs).toBeLessThanOrEqual(toMs + 1e-6);
+      }
+    });
+
+    it('3) aligned start residual is applied exactly once to video-relative events', () => {
+      const anchorMs = Date.parse('2026-09-02T19:00:00.000Z');
+      const residual = 5;
+      const alignedMs = alignedClipStartMsFromSearch(anchorMs, residual);
+      const eventMs = absoluteEventMsFromAlignedClipStart(alignedMs, 9.55);
+      expect(eventMs).toBe(Date.parse('2026-09-02T19:00:14.550Z'));
+    });
+
+    it('4) gear shift absolute timestamp does not double-apply residual', () => {
+      const priorMs = Date.parse('2026-09-02T19:00:00.000Z');
+      const alignedMs = priorMs + 5000;
+      const telemetry = [
+        ...syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [40, 45, 50, 55, 60, 65, 70], 1),
+        makeTelemetryRow({
+          providerField: 'powertrainTransmissionActualGear',
+          acquisitionSurface: 'LATEST_SLOW',
+          providerTimestamp: '2026-09-02T19:00:09.000Z',
+          synqReceivedAt: '2026-09-02T19:00:09.000Z',
+          rawValueJson: 2,
+        }),
+        makeTelemetryRow({
+          providerField: 'powertrainTransmissionActualGear',
+          acquisitionSurface: 'LATEST_SLOW',
+          providerTimestamp: '2026-09-02T19:00:19.000Z',
+          synqReceivedAt: '2026-09-02T19:00:19.000Z',
+          rawValueJson: 3,
+        }),
+      ];
+      const clip = makeClip({
+        observations: [
+          validatedSpeedObs('s1', 0, 40),
+          validatedSpeedObs('s2', 5, 60),
+          {
+            observationId: 'shift1',
+            videoTimeSeconds: 9.55,
+            videoTimeUncertaintySeconds: 0.1,
+            observationType: 'SHIFT_TRANSITION',
+            value: 'S2→S3',
+            unit: null,
+            valueUncertainty: null,
+            confidence: 'EXTERNALLY_OBSERVED',
+            evidenceClass: 'DIRECT_VISUAL',
+            sourceMethod: 'TEST_FIXTURE',
+            notes: null,
+          },
+        ],
+        candidateAbsoluteTime: {
+          candidateStartUtc: '2026-09-02T19:00:00.000Z',
+          uncertaintySeconds: 5,
+          status: 'CANDIDATE',
+        },
+      });
+      const gear = evaluateGearShiftTiming({
+        clip,
+        telemetryRows: telemetry,
+        alignedClipStartMs: alignedMs,
+      });
+      const expectedShiftMs = absoluteEventMsFromAlignedClipStart(alignedMs, 9.55);
+      expect(expectedShiftMs).toBe(priorMs + (5 + 9.55) * 1000);
+      expect(gear.localGapAroundShiftSeconds).not.toBeNull();
+    });
+
+    it('5) heterogeneous candidate-start residuals cannot produce a global clock model', () => {
+      const a = alignClip({
+        clip: makeClip({
+          clipId: 'A',
+          candidateAbsoluteTime: {
+            candidateStartUtc: '2026-09-02T19:00:00.000Z',
+            uncertaintySeconds: 2,
+            status: 'CANDIDATE',
+          },
+          observations: [validatedSpeedObs('o1', 0, 20), validatedSpeedObs('o2', 2, 40)],
+        }),
+        telemetryRows: syntheticSpeedTelemetry('2026-09-02T19:00:00.000Z', [10, 20, 30, 40, 50]),
+      });
+      a.alignmentStatus = 'STRONG_CANDIDATE';
+      a.offsetSemantics.CANDIDATE_START_RESIDUAL_SECONDS = 1;
+      const b = { ...a, clipId: 'B', offsetSemantics: { ...a.offsetSemantics, CANDIDATE_START_RESIDUAL_SECONDS: 8 } };
+      const model = buildCrossClipClockModel([a, b]);
+      expect(model.CROSS_CLIP_MODEL_USES_CANDIDATE_START_RESIDUAL_AS_CLOCK_OFFSET).toBe('NO');
+      expect(model.modelOutcome).not.toBe('CONSTANT_OFFSET');
+      expect(['UNRESOLVED', 'PENDING_EXTERNAL_GT']).toContain(model.modelOutcome);
+    });
+
+    it('6) minute-boundary residual uses one common semantic quantity', () => {
+      const alignedMs = Date.parse('2026-09-02T19:03:38.850Z');
+      const boundary = computeVideoClockBoundaryResidual({
+        clip: makeClip({
+          videoClock: {
+            displayedMinuteTransitions: [
+              { videoTimeSeconds: 10.55, uncertaintySeconds: 0.1, fromMinute: '21:03', toMinute: '21:04' },
+            ],
+          },
+        }),
+        alignedClipStartMs: alignedMs,
+      });
+      expect(boundary.VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS).toBe('CANDIDATE_TIMEZONE_INTERPRETATION');
+      const interpreted = parseCestLocalMinuteToUtcMs('21:04');
+      const alignedBoundary = absoluteEventMsFromAlignedClipStart(alignedMs, 10.55);
+      expect(boundary.VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS).toBeCloseTo(
+        (alignedBoundary - interpreted!) / 1000,
+        3,
+      );
+    });
+
+    it('7) static-minute clips cannot masquerade as precise minute-boundary anchors', () => {
+      const boundary = computeVideoClockBoundaryResidual({
+        clip: makeClip({
+          fileName: 'IMG_2804.mp4',
+          videoClock: { displayedMinuteTransitions: [], displayedLocalTime: '21:06' },
+        }),
+        alignedClipStartMs: Date.parse('2026-09-02T19:06:10.000Z'),
+      });
+      expect(boundary.CLOCK_MODEL_BOUNDARY_ELIGIBLE).toBe('NO');
+      expect(boundary.VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS).toBeNull();
+    });
+
+    it('8) low coverage + excellent MAE cannot become STRONG_CANDIDATE', () => {
+      const series = makeSpeedSeries([
+        { utcMs: Date.parse('2026-09-02T19:00:00.000Z'), value: 50 },
+        { utcMs: Date.parse('2026-09-02T19:00:01.000Z'), value: 50 },
+      ]);
+      const obs = Array.from({ length: 20 }, (_, i) => validatedSpeedObs(`o${i}`, i, 50));
+      const search = searchSpeedResidualCandidates({
+        eligibleObservations: obs,
+        speedSeries: series,
+        searchAnchorMs: Date.parse('2026-09-02T19:00:00.000Z'),
+        searchFromResidualSeconds: -2,
+        searchToResidualSeconds: 2,
+        maxGapSeconds: 2,
+        stepSeconds: 0.5,
+      });
+      expect(search.best?.matchCoverageRatio).toBeLessThan(MIN_STRONG_CANDIDATE_COVERAGE);
+      expect(search.status).not.toBe('STRONG_CANDIDATE');
+    });
+
+    it('9) high-coverage candidate is preferred over weakly supported accidental match', () => {
+      const low = { mae: 0.2, coverage: 2 / 20 };
+      const high = { mae: 1.0, coverage: 19 / 20 };
+      expect(compareCandidateQuality(high, low)).toBeLessThan(0);
+      expect(compareCandidateQuality(low, high)).toBeGreaterThan(0);
+    });
+
+    it('10) two neighboring points in the same score basin do not automatically produce AMBIGUOUS', () => {
+      const candidates = [
+        { residualSeconds: 2.0, mae: 1.0, rmse: 1, maxAbsError: 1, matched: 2, total: 2, errors: [1, 1], matchCoverageRatio: 1 },
+        { residualSeconds: 2.5, mae: 1.1, rmse: 1.1, maxAbsError: 1.1, matched: 2, total: 2, errors: [1, 1], matchCoverageRatio: 1 },
+      ];
+      const basins = identifyNearOptimalBasins(candidates, AMBIGUITY_MAE_DELTA_KMH);
+      expect(basins.length).toBe(1);
+    });
+
+    it('11) two separated similarly strong solution basins DO produce AMBIGUOUS', () => {
+      const series = makeSpeedSeries(
+        Array.from({ length: 40 }, (_, i) => ({
+          utcMs: Date.parse('2026-09-02T19:00:00.000Z') + i * 1000,
+          value: i < 5 || i >= 15 ? 30 : 60,
+        })),
+      );
+      const obs = [
+        validatedSpeedObs('o1', 0, 30),
+        validatedSpeedObs('o2', 1, 30),
+        validatedSpeedObs('o3', 15, 30),
+        validatedSpeedObs('o4', 16, 30),
+      ];
+      const search = searchSpeedResidualCandidates({
+        eligibleObservations: obs,
+        speedSeries: series,
+        searchAnchorMs: Date.parse('2026-09-02T19:00:00.000Z'),
+        searchFromResidualSeconds: -20,
+        searchToResidualSeconds: 20,
+        maxGapSeconds: 3,
+        stepSeconds: 1,
+      });
+      expect(search.ambiguityContext.COMPETING_DISTINCT_BASINS).toBeGreaterThanOrEqual(2);
+      expect(search.status).toBe('AMBIGUOUS');
+    });
+
+    it('12) offset uncertainty is derived from the winning local basin', () => {
+      const search = searchSpeedResidualCandidates({
+        eligibleObservations: [validatedSpeedObs('o1', 0, 20), validatedSpeedObs('o2', 2, 40)],
+        speedSeries: makeSpeedSeries([
+          { utcMs: Date.parse('2026-09-02T19:00:00.000Z'), value: 10 },
+          { utcMs: Date.parse('2026-09-02T19:00:01.000Z'), value: 20 },
+          { utcMs: Date.parse('2026-09-02T19:00:02.000Z'), value: 30 },
+          { utcMs: Date.parse('2026-09-02T19:00:03.000Z'), value: 40 },
+        ]),
+        searchAnchorMs: Date.parse('2026-09-02T19:00:00.000Z'),
+        searchFromResidualSeconds: -2,
+        searchToResidualSeconds: 2,
+        maxGapSeconds: 3,
+        stepSeconds: 0.5,
+      });
+      expect(search.ambiguityContext.BEST_BASIN_START_SECONDS).not.toBeNull();
+      expect(search.ambiguityContext.OFFSET_UNCERTAINTY_SECONDS).not.toBeNull();
+    });
+
+    it('13) canonical JSONL SHA remains unchanged', () => {
+      if (!hasTelemetry) return;
+      expect(crypto.createHash('sha256').update(fs.readFileSync(TELEMETRY_JSONL)).digest('hex')).toBe(
+        CANONICAL_TELEMETRY_JSONL_SHA256,
+      );
+    });
+
+    it('14) observations[] remain empty', () => {
+      if (!hasExternalGt) return;
+      const doc = JSON.parse(fs.readFileSync(EXTERNAL_GT, 'utf8')) as ExternalGtDocument;
+      for (const clip of doc.clips) expect(clip.observations).toEqual([]);
+    });
+
+    it('15) same input produces deterministic output', () => {
+      if (!hasTelemetry || !hasExternalGt) return;
+      const telemetry = loadCanonicalTelemetryJsonl(TELEMETRY_JSONL);
+      const externalGt = JSON.parse(fs.readFileSync(EXTERNAL_GT, 'utf8')) as ExternalGtDocument;
+      expect(alignmentOutputSha256(runAlignmentWorkbench({ telemetryRows: telemetry, externalGt }))).toBe(
+        alignmentOutputSha256(runAlignmentWorkbench({ telemetryRows: telemetry, externalGt })),
+      );
     });
   });
 });
