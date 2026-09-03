@@ -13,7 +13,11 @@ set -eo pipefail
 
 ACTIVATION_T0="${BATTERY_V2_FULL_FLEET_T0:-2026-09-03T11:08:02Z}"
 BACKEND_ENV="${BATTERY_V2_BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# When piped via stdin (Cloud Agent SSH), BASH_SOURCE[0] is /dev/stdin — allow explicit override.
+SCRIPT_DIR="${BATTERY_V2_OPS_SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+if [[ ! -f "${SCRIPT_DIR}/battery-v2-m3-1-production-snapshot.sh" ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+fi
 
 echo "=============================================="
 echo " Battery V2 M3.1 — 6-hour validation audit"
