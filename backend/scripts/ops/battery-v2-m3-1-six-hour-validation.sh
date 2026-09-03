@@ -6,17 +6,40 @@
 #   sudo BATTERY_V2_FULL_FLEET_T0=2026-09-03T11:08:02Z \
 #     bash /opt/synqdrive/current/backend/scripts/ops/battery-v2-m3-1-six-hour-validation.sh
 #
-# Or from Cloud Agent:
-#   ssh synqdrive-admin@srv1374778.hstgr.cloud 'sudo -n bash -s' \
+# Or from Cloud Agent (stdin pipe — helper dir is NOT auto-detected):
+#   BATTERY_V2_OPS_SCRIPT_DIR=/path/to/backend/scripts/ops \
+#     ssh synqdrive-admin@srv1374778.hstgr.cloud 'sudo -n bash -s' \
 #     < backend/scripts/ops/battery-v2-m3-1-six-hour-validation.sh
 set -eo pipefail
 
 ACTIVATION_T0="${BATTERY_V2_FULL_FLEET_T0:-2026-09-03T11:08:02Z}"
 BACKEND_ENV="${BATTERY_V2_BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
-# When piped via stdin (Cloud Agent SSH), BASH_SOURCE[0] is /dev/stdin — allow explicit override.
-SCRIPT_DIR="${BATTERY_V2_OPS_SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
-if [[ ! -f "${SCRIPT_DIR}/battery-v2-m3-1-production-snapshot.sh" ]]; then
-  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+_resolve_script_dir() {
+  if [[ -n "${BATTERY_V2_OPS_SCRIPT_DIR:-}" ]]; then
+    printf '%s\n' "${BATTERY_V2_OPS_SCRIPT_DIR}"
+    return 0
+  fi
+  local src="${BASH_SOURCE[0]:-}"
+  if [[ -n "$src" && "$src" != "/dev/stdin" && "$src" != "bash" ]]; then
+    cd "$(dirname "$src")" && pwd
+    return 0
+  fi
+  cat >&2 <<'EOF'
+ERROR: Cannot resolve Battery V2 ops script directory.
+When piping this script via stdin (e.g. Cloud Agent SSH), set:
+  BATTERY_V2_OPS_SCRIPT_DIR=/absolute/path/to/backend/scripts/ops
+The directory must contain battery-v2-m3-1-production-snapshot.sh
+EOF
+  return 1
+}
+
+SCRIPT_DIR="$(_resolve_script_dir)" || exit 1
+SNAPSHOT_HELPER="${SCRIPT_DIR}/battery-v2-m3-1-production-snapshot.sh"
+if [[ ! -f "$SNAPSHOT_HELPER" ]]; then
+  echo "ERROR: Missing helper script: ${SNAPSHOT_HELPER}" >&2
+  echo "Set BATTERY_V2_OPS_SCRIPT_DIR to the directory that contains battery-v2-m3-1-production-snapshot.sh" >&2
+  exit 1
 fi
 
 echo "=============================================="
@@ -26,7 +49,7 @@ echo " Audit time:    $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "=============================================="
 
 export BATTERY_V2_SINCE_ISO="${ACTIVATION_T0}"
-bash "${SCRIPT_DIR}/battery-v2-m3-1-production-snapshot.sh" SIX_HOUR_AUDIT
+bash "${SNAPSHOT_HELPER}" SIX_HOUR_AUDIT
 
 set +u; set -a; source "$BACKEND_ENV"; set +a
 PSQL_URL="${DATABASE_URL%%\?*}"

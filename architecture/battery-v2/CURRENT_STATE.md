@@ -14,8 +14,8 @@
 | `BATTERY_V2_RECONCILIATION_ENABLED` | true |
 | Deployed SHA | `0e0f09259` (PR #1519) |
 | 30m status | `PASS_WITH_PENDING_NATURAL_EVIDENCE` |
-| 6h status (`2026-09-03T18:09Z`) | `PENDING_EVIDENCE` — infra PASS; 0 REST/assess/pub post-T0 |
-| `PRODUCTION_VALIDATED` | **NO** — natural E2E publication evidence not yet observed |
+| 6h status (`2026-09-03T18:09Z`) | `PENDING_EVIDENCE` — infra PASS; 0 canonical REST/assess/pub post-T0 |
+| `PRODUCTION_VALIDATED` | **PENDING_EVIDENCE** — natural E2E publication evidence not yet observed |
 | Connected fleet | 6 DIMO vehicles (full fleet, no subset) |
 
 See `research/M3_1_DIRECT_FULL_FLEET_ACTIVATION.md` and `research/M3_1_6H_PRODUCTION_VALIDATION.md`. First customer `battery_publications` rows await natural post-T0 REST evidence (68 LIVE_VOLTAGE post-T0; 0 REST_60M/REST_6H).

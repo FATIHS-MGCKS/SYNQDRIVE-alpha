@@ -21,9 +21,9 @@ Append-only scientific record. Newest entries first.
 | Field | Content |
 |-------|---------|
 | **BEFORE** | M3.1 activated `2026-09-03T11:08:02Z`; 30m `PASS_WITH_PENDING_NATURAL_EVIDENCE`; 0 post-T0 measurements/assessments/publications at T+30m. |
-| **OBSERVATION** | ~7.02h post-T0 forensic audit on production VPS (`0e0f09259`): infra healthy (failed delta 0, reservations 0, dupes 0, PM2/scheduler PASS); 68 LIVE_VOLTAGE measurements (3 vehicles); **0 REST_60M/REST_6H, 0 assessments, 0 publications** post-T0; all-time `battery_publications`=0. |
-| **VALIDATION** | Independent read-only SQL + BullMQ + PM2 + logs; canonical validator not on deployed release (stdin SCRIPT_DIR bug when piped). |
-| **DECISION_STATUS** | `PRODUCTION_VALIDATED=PENDING_EVIDENCE`; `SIX_HOUR_VALIDATION_PENDING=NO` (audit complete); re-validation after first natural REST window. |
+| **OBSERVATION** | ~7.02h post-T0 forensic audit (`0e0f09259`): infra healthy; 68 LIVE_VOLTAGE / 0 canonical REST measurements post-T0; 0 assessments/publications; `FULL_FLEET_E2E_EVIDENCE=NO`; PKG-01 24×ENQUEUED frozen (pre-T0, repair gated by `REST_SHADOW=false`). |
+| **VALIDATION** | Independent read-only SQL + BullMQ + PM2 + logs; scheduling contract reconstructed from code; canonical validator requires `BATTERY_V2_OPS_SCRIPT_DIR` when piped. |
+| **DECISION_STATUS** | `PRODUCTION_VALIDATED=PENDING_EVIDENCE`; `SIX_HOUR_VALIDATION_PENDING=NO` (audit complete). |
 
 ## CL-2026-09-03 — M3.1 direct full-fleet production activation
 

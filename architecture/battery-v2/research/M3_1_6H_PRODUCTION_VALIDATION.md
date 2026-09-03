@@ -19,7 +19,9 @@ Infrastructure and activation configuration are healthy across the ≥6h window.
 | `AUDIT_WINDOW` | `2026-09-03T11:08:02Z` → `2026-09-03T18:09:26Z` (~7.02h) |
 | `FLEET_SIZE` | 6 connected DIMO vehicles |
 | `ELIGIBLE_FLEET_SIZE` | 3 LV-active gasoline (telemetry + LIVE_VOLTAGE post-T0); 1 EV (no LV REST path); 2 idle/offline gasoline |
-| `MEASUREMENTS_POST_T0` | 68 (`LIVE_VOLTAGE` only) |
+| `TOTAL_MEASUREMENTS_POST_T0` | 68 |
+| `LIVE_VOLTAGE_MEASUREMENTS_POST_T0` | 68 |
+| `CANONICAL_REST_MEASUREMENTS_POST_T0` | 0 (`REST_60M` + `REST_6H`) |
 | `ASSESSMENTS_POST_T0` | 0 |
 | `PUBLICATIONS_POST_T0` | 0 (all-time `battery_publications` = 0) |
 | `NATURAL_POST_T0_PUBLICATION_PROVEN` | **NO** |
@@ -68,7 +70,7 @@ Attempted pipe via SSH stdin per M3.1 activation doc:
 bash: /home/synqdrive-admin/battery-v2-m3-1-production-snapshot.sh: No such file or directory
 ```
 
-**Root cause (read-only diagnosis):** `battery-v2-m3-1-six-hour-validation.sh` resolves `SCRIPT_DIR` from `${BASH_SOURCE[0]}`, which is `/dev/stdin` when piped — helper path resolves to `$HOME` instead of `backend/scripts/ops/`. **Not patched on production** per audit rules.
+**Root cause (read-only diagnosis):** Piped stdin cannot resolve `SCRIPT_DIR`; helper path fails without explicit `BATTERY_V2_OPS_SCRIPT_DIR`. Validator updated in this PR to fail closed with a clear diagnostic. **Not patched on production** per audit rules.
 
 Independent forensic audit (`/tmp/m31-6h-forensic-audit.sh` + deep queries) used as substitute evidence.
 
@@ -87,24 +89,64 @@ Independent forensic audit (`/tmp/m31-6h-forensic-audit.sh` + deep queries) used
 
 **Eligibility changes:** None disconnected. Three gasoline vehicles gained LIVE_VOLTAGE telemetry post-T0 but produced **zero** REST_60M/REST_6H measurements — consistent with continuous driving / no qualifying shutdown-rest window completing after T0.
 
-### B. 30m / 6h cadence
+### B. Scheduling contract (code authority) vs production evidence
 
-| Path | Post-T0 evidence |
-|------|------------------|
-| `REST_60M` | **0** measurements (last fleet-wide: `2026-09-03 08:22:24`, vehicle `c10351f8`, quality `CONTAMINATED_BY_ACTIVE_TRIP`) |
-| `REST_6H` | **0** measurements (last: `2026-09-03 11:05:55`, vehicle `a60c0749`, quality `CONTAMINATED_BY_WAKE` — **2m before T0**) |
-| `LIVE_VOLTAGE` | 68 measurements, ~1/min when vehicles active (12:38–16:02 UTC) — **observation classify path**, not canonical REST assessment driver |
+**Code contract** (deployed `0e0f09259`, `battery-health-v2.config.ts`, `battery-v2-cutover.policy.spec.ts`):
 
-BullMQ completed post-T0 (scanned 1000): `BATTERY_OBSERVATION_CLASSIFY` 73, `BATTERY_ASSESSMENT_RECOMPUTE` 2 (reconciliation, idle vehicles), `BATTERY_REST_TARGET_EVALUATE` 1 (pre-T0 6h window completing 12:34:49), `HV_*` 12.
+| Layer | Contract | Default / production |
+|-------|----------|----------------------|
+| **REST_60M target delay** | `anchor + BATTERY_REST_60M_MS` | 60 min after rest-window anchor |
+| **REST_6H target delay** | `anchor + BATTERY_REST_6H_MS` | 6 h after rest-window anchor |
+| **REST quality windows** | `battery-rest-target-evaluation.ts` | REST_60M ±15 min; REST_6H ±30 min around target instant |
+| **REST measurement creation** | `BATTERY_REST_TARGET_EVALUATE` handler | Creates `REST_60M`/`REST_6H` row when eligible observation selected |
+| **Reconciliation scheduler** | `BatteryV2ReconciliationScheduler` | Every `BATTERY_V2_RECONCILIATION_INTERVAL_MS` = **300000** (5 min), leader only |
+| **Observation classify** | `reconcileMissingObservations` | Re-enqueues when gap > `BATTERY_V2_OBSERVATION_STALE_MS` = **120000** (2 min) — produces `LIVE_VOLTAGE`, not REST |
+| **Canonical pipeline gate** | `isBatteryV2RestShadowEnabled()` (`BATTERY_V2_REST_SHADOW_ENABLED`) | When **false**, gates: REST target scheduling/evaluation, session arming, PKG-01 handoff repair, REST-target reconciliation |
+| **Stage-2 cutover (tests)** | `REST_SHADOW=true` + `PUBLICATION=true` | Canonical pipeline ON, shadow semantics OFF, legacy capture OFF |
+| **Production M3.1 config** | `REST_SHADOW=false` + `PUBLICATION=true` | Canonical pipeline **OFF** per code; `isBatteryV2LegacyRestCaptureEnabled()` = **true** |
 
-**Anomalous gaps:** No REST target evaluations for active fleet post-T0 despite 7h elapsed and 3 driving vehicles. Pre-T0 REST burst at ~11:05 produced last assessments; no subsequent REST window closure observed. **Not judged as scheduler failure** — vehicles show continuous LIVE_VOLTAGE (active trips); long-running `LV_REST_WINDOW ACTIVE` session on `a60c0749` since 03:59 without post-T0 target completion.
+**Distinction:** Scheduler **evaluation cadence** (reconciliation ticks, observation classify) is independent of **REST measurement creation** (requires canonical pipeline enabled).
 
-### C. Measurements
+**Post-T0 scheduler/reconciliation evidence** (`T0` → audit end):
+
+| Signal | Expected under M3.1 flags | Observed |
+|--------|---------------------------|----------|
+| Reconciliation ticks | ~every 5 min on leader | **90** `reconcile_completed` log lines |
+| `restSessions` / `restTargets` per tick | 0 (REST_SHADOW=false) | **0** on every sampled tick |
+| PKG-01 handoff repairs per tick | 0 (REST_SHADOW=false) | **0** (canonical repair gated) |
+| `observationClassify` per tick | >0 when telemetry stale | **1–4** per tick when vehicles active |
+| `BATTERY_REST_TARGET_EVALUATE` completed | Only pre-cutover delayed jobs | **1** (12:34:49 UTC, pre-T0 6h window) |
+| `BATTERY_OBSERVATION_CLASSIFY` completed | When observations stale | **73** post-T0 |
+| `REST_60M`/`REST_6H` measurements created | 0 when canonical pipeline off | **0** post-T0 |
+
+Sample reconciliation tick (post-T0, typical):
+
+```json
+{"observationClassify":2,"restSessions":0,"restTargets":0,"assessments":2,"publicationHandoffs":0,"total":4}
+```
+
+The `assessments:2` are **legacy** `reconcilePendingAssessments` (`battery_features` stale path), not canonical REST handoffs.
+
+### C. Cadence (measurement types split)
+
+| Path | Post-T0 |
+|------|---------|
+| `30M_CADENCE` (REST_60M measurements) | **0** (last fleet-wide: `08:22:24` pre-T0) |
+| `6H_CADENCE` (REST_6H measurements) | **0** (last: `11:05:55`, 2 min before T0) |
+| `LIVE_VOLTAGE` (telemetry snapshots) | ~1/min when vehicles active (12:38–16:02 UTC) |
+| Reconciliation scheduler | ~5 min (90 ticks observed) |
+| Observation classify | ~2 min stale threshold (73 jobs post-T0) |
+
+`ANOMALOUS_GAPS`: No new REST target evaluations or REST measurements post-T0 — **consistent with `REST_SHADOW=false` gating canonical pipeline**, not absent scheduler ticks. One pre-scheduled `BATTERY_REST_TARGET_EVALUATE` completed at 12:34 for a pre-T0 6h window.
+
+### D. Measurements (terminology split)
 
 ```
 TOTAL_MEASUREMENTS_POST_T0 = 68
-VEHICLES_WITH_MEASUREMENTS = 3
-MEASUREMENT_TYPES = LIVE_VOLTAGE (68)
+LIVE_VOLTAGE_MEASUREMENTS_POST_T0 = 68
+CANONICAL_REST_MEASUREMENTS_POST_T0 = 0  (REST_60M=0, REST_6H=0)
+VEHICLES_WITH_MEASUREMENTS = 3 (LIVE_VOLTAGE only)
+MEASUREMENT_TYPES_POST_T0 = LIVE_VOLTAGE (68)
 FIRST_MEASUREMENT_POST_T0 = 2026-09-03T12:38:59.972Z
 LAST_MEASUREMENT_POST_T0 = 2026-09-03T16:02:29.225Z
 ```
@@ -112,7 +154,7 @@ LAST_MEASUREMENT_POST_T0 = 2026-09-03T16:02:29.225Z
 - Identity uniqueness: no logical duplicate idempotency keys post-T0.
 - **30m audit gap unresolved:** zero REST_60M/REST_6H post-T0; LIVE_VOLTAGE does not satisfy canonical REST measurement gate.
 
-### D. Assessments
+### E. Assessments
 
 ```
 TOTAL_ASSESSMENTS_POST_T0 = 0
@@ -131,7 +173,7 @@ Pre-T0 latest assessments (all `CANONICAL`, `publicationHandoff=EXECUTED`, zero 
 
 Two reconciliation `BATTERY_ASSESSMENT_RECOMPUTE` jobs completed 18:07:29 for idle vehicles (`c43c3b45`, `8c850ff1`) with `correlationId=reconcile:assess:...` — **no new assessment rows** (no eligible measurement).
 
-### E. Publications — critical M3.1 gate
+### F. Publications — critical M3.1 gate
 
 ```
 TOTAL_PUBLICATIONS_POST_T0 = 0
@@ -148,7 +190,7 @@ NATURAL_END_TO_END_PIPELINE_PROVEN = NO
 
 PKG-02 handoff metadata: 10× `EXECUTED` on pre-T0 assessments — **shadow-era handoffs without persisted publication rows** (expected when `PUBLICATION_ENABLED=false`). M3.1 doc: new assessments drive first customer-facing publications; pre-T0 EXECUTED handoffs do not re-enter PKG-02 queue.
 
-### F. Failure delta
+### G. Failure delta
 
 | Field | Value |
 |-------|-------|
@@ -160,7 +202,7 @@ Post-T0 monitored log classes: `54000=0`, `LOCK_CONTENTION=0`, `AUTHORITY_UNAVAI
 
 **Classification:** All 77 failed jobs are historical/pre-T0. No new post-T0 failure identities.
 
-### G. Duplicates / idempotency
+### H. Duplicates / idempotency
 
 ```
 NEW_LOGICAL_DUPLICATES = 0
@@ -170,7 +212,7 @@ IDEMPOTENCY_VIOLATIONS = 0
 
 Post-T0 duplicate checks on assessments, publications, and customer publication versions: all zero.
 
-### H. Reservation lifecycle
+### I. Reservation lifecycle
 
 ```
 ACTIVE_RESERVATIONS = 0
@@ -179,16 +221,52 @@ RESERVATION_LEAKS = 0
 AUTHORITY_UNAVAILABLE_POST_T0 = 0
 ```
 
-### I. Reconciliation / liveness
+### J. Reconciliation / liveness / PKG-01 ENQUEUED backlog
 
 | Field | Value |
 |-------|-------|
 | PKG-01 ENQUEUED / EXECUTED / MISSING | 24 / 24 / 13 |
 | PKG-02 EXECUTED (metadata) | 10 |
-| `POST_T0_REPAIRS` | 2 reconciliation assess jobs (idle vehicles, no persisted assessment) |
-| `RECONCILIATION_LIVENESS` | **PARTIAL** — reconciliation active; pre-T0 ENQUEUED handoffs remain (e.g. `19fedd4b` REST_6H, `a60c0749` REST_60M); not primary-path rescue of publications |
+| `OLDEST_PENDING_AGE` | **12h 33m** (enqueued `2026-09-03T06:07:19.375Z`) |
+| `POST_T0_REPAIRS` | 0 canonical PKG-01 repairs (`reconcileCanonicalRestAssessmentHandoffs` gated); 2 legacy `reconcilePendingAssessments` jobs (idle vehicles, no persisted rows) |
+| `RECONCILIATION_LIVENESS` | **PARTIAL** — scheduler ticks healthy; canonical repair frozen by `REST_SHADOW=false` |
 
-### J. PM2 / scheduler health
+#### PKG-01 ENQUEUED handoff classification (all 24)
+
+Every ENQUEUED identity is **pre-T0** (`enqueuedAt` 06:07–06:30 UTC; `lastAttemptAt` ~10:22 UTC, before `T0=11:08:02Z`). All have `assess_row_exists=0` despite linked measurement rows (quality `CONTAMINATED_*` or `MISSED`).
+
+| Vehicle | Target | Session | Meas quality | Enqueued | Last attempt | Reconciliation should progress? | Liveness defect? |
+|---------|--------|---------|--------------|----------|--------------|--------------------------------|--------------------|
+| `c10351f8` | REST_6H | PLANNED | CONTAMINATED_BY_CHARGING | 06:07:19 | 10:22:19 | **No** under `REST_SHADOW=false` (PKG-01 repair gated); would be candidate if canonical ON | **No new post-T0 regression** — frozen pre-T0 backlog |
+| `c10351f8` | REST_60M | INVALID | CONTAMINATED_BY_CHARGING | 06:07:19 | 10:22:19 | same | same |
+| `a60c0749` | REST_6H | INVALID | CONTAMINATED_BY_WAKE | 06:07:19 | 11:05:55 | same | same |
+| `a60c0749` | REST_60M | COMPLETED | CONTAMINATED_BY_ACTIVE_TRIP | 06:07:19 | 10:22:19 | same | same |
+| `a60c0749` | REST_6H | INVALID | CONTAMINATED_BY_WAKE | 06:07:19 | 10:22:19 | same | same |
+| `c10351f8` | REST_6H | INVALID | CONTAMINATED_BY_WAKE | 06:07:19 | 10:22:19 | same | same |
+| `c10351f8` | REST_6H | INVALID | CONTAMINATED_BY_ACTIVE_TRIP | 06:12:19 | 10:22:19 | same | same |
+| `a60c0749` | REST_6H | COMPLETED | CONTAMINATED_BY_WAKE | 06:12:19 | 10:22:19 | same | same |
+| `a60c0749` | REST_6H | PLANNED | CONTAMINATED_BY_WAKE | 06:12:19 | 10:22:19 | same | same |
+| `c10351f8` | REST_60M | PLANNED | CONTAMINATED_BY_CHARGING | 06:12:19 | 10:22:19 | same | same |
+| `19fedd4b` | REST_6H | INVALID | CONTAMINATED_BY_ACTIVE_TRIP | 06:12:19 | 10:22:19 | same | same |
+| `c10351f8` | REST_6H | PLANNED | CONTAMINATED_BY_WAKE | 06:12:19 | 10:22:19 | same | same |
+| `c10351f8` | REST_6H | INVALID | CONTAMINATED_BY_WAKE | 06:12:19 | 10:22:19 | same | same |
+| `19fedd4b` | REST_60M | INVALID | CONTAMINATED_BY_ACTIVE_TRIP | 06:12:19 | 10:22:20 | same | same |
+| `c10351f8` | REST_60M | INVALID | CONTAMINATED_BY_ACTIVE_TRIP | 06:12:19 | 10:22:20 | same | same |
+| `c10351f8` | REST_60M | INVALID | CONTAMINATED_BY_ACTIVE_TRIP | 06:12:19 | 10:22:20 | same | same |
+| `c10351f8` | REST_60M | PLANNED | CONTAMINATED_BY_ACTIVE_TRIP | 06:12:19 | 10:22:20 | same | same |
+| `a60c0749` | REST_60M | PLANNED | MISSED | 06:12:19 | 10:22:20 | same | same |
+| `a60c0749` | REST_60M | INVALID | CONTAMINATED_BY_ACTIVE_TRIP | 06:12:19 | 10:22:20 | same | same |
+| `a60c0749` | REST_60M | INVALID | CONTAMINATED_BY_ACTIVE_TRIP | 06:12:19 | 10:22:20 | same | same |
+| `19fedd4b` | REST_6H | INVALID | CONTAMINATED_BY_ACTIVE_TRIP | 06:12:19 | 10:22:20 | same | same |
+| `a60c0749` | REST_60M | INVALID | CONTAMINATED_BY_ACTIVE_TRIP | 06:12:19 | 10:22:20 | same | same |
+| `a60c0749` | REST_60M | PLANNED | CONTAMINATED_BY_WAKE | 06:12:19 | 10:22:20 | same | same |
+| `a60c0749` | REST_60M | ACTIVE | CONTAMINATED_BY_ACTIVE_TRIP | 06:30:24 | 10:22:20 | same | same |
+
+**Why ENQUEUED:** BullMQ assess jobs were enqueued during pre-T0 shadow-era reconciliation burst; handoff metadata never reached `EXECUTED` (no `battery_assessments` row for these idempotency keys — measurements are contaminated/missed).
+
+**Post-T0 behavior:** Reconciliation continued (90 ticks) but `reconcileCanonicalRestAssessmentHandoffs` returned 0 each tick because `isBatteryV2RestShadowEnabled()` is false. **Not a new post-T0 liveness defect** — expected under deployed flag semantics; blocks validation because canonical repair path is inactive.
+
+### K. PM2 / scheduler health
 
 | Field | Value |
 |-------|-------|
@@ -231,9 +309,10 @@ Post-T0 LIVE_VOLTAGE samples have **no linked assessments** (expected — not ca
 1. **Zero post-T0 `battery_publications` rows** — M3.1 activation gate not closed.
 2. **Zero post-T0 canonical REST measurements** (`REST_60M`/`REST_6H`) — assessment chain never triggered naturally after T0.
 3. **Zero post-T0 assessments** — cannot prove publication path with `PUBLICATION_ENABLED=true`.
-4. **Full-fleet E2E incomplete** — 0/3 active LV-eligible vehicles with post-T0 E2E; 3/6 legitimately without evidence.
+4. **Full-fleet E2E absent** — 0/3 active LV-eligible vehicles with post-T0 measurement→assessment→publication chain (`FULL_FLEET_E2E_EVIDENCE=NO`).
+5. **Config/code contract:** Production `REST_SHADOW=false` disables canonical REST pipeline per `battery-v2-cutover.policy.spec.ts` Stage 2 (`REST_SHADOW=true` required). Explains zero post-T0 REST measurements and frozen PKG-01 repair.
 
-**Not blockers (classified):** EV vehicle, 2 idle vehicles, infrastructure stability, historical failed queue.
+**Not blockers (classified):** EV vehicle, 2 idle vehicles, infrastructure stability, historical failed queue, pre-T0 PKG-01 backlog freeze (not new post-T0 regression).
 
 ## Machine-readable block
 
@@ -243,7 +322,7 @@ BATTERY_V2_FULL_FLEET_T0=2026-09-03T11:08:02Z
 NATURAL_MEASUREMENT_EVIDENCE=NO
 NATURAL_ASSESSMENT_EVIDENCE=NO
 NATURAL_PUBLICATION_EVIDENCE=NO
-FULL_FLEET_E2E_EVIDENCE=PARTIAL
+FULL_FLEET_E2E_EVIDENCE=NO
 NEW_FAILURE_CLASS=NO
 LOGICAL_DUPLICATE_FOUND=NO
 IDEMPOTENCY_VIOLATION_FOUND=NO
@@ -256,6 +335,7 @@ PRODUCTION_VALIDATED=PENDING_EVIDENCE
 
 ## Ops notes
 
-- Deploy M3.1 ops scripts (`battery-v2-m3-1-six-hour-validation.sh`, snapshot helper) to production release for future audits, **or** fix stdin `SCRIPT_DIR` resolution in repo before piping.
-- Continue PKG-01 ENQUEUED backlog observation; not a new post-T0 failure class.
-- Re-run ≥6h validation after first natural REST window completes post-T0 on active fleet.
+- For stdin Cloud Agent audits, set `BATTERY_V2_OPS_SCRIPT_DIR` explicitly (validator fails closed without it).
+- Deploy M3.1 ops scripts to production release for on-VPS execution, or pipe with explicit `BATTERY_V2_OPS_SCRIPT_DIR`.
+- PKG-01 ENQUEUED backlog is pre-T0 and frozen while `REST_SHADOW=false`; not a new post-T0 failure class.
+- Re-run validation after canonical REST pipeline is active and first natural REST window completes post-T0.
