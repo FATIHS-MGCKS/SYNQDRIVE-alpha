@@ -16,6 +16,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-03 — M3.0E post-merge production deploy + convergence closure
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | PR #1519 merged to `main` (`0e0f09259`) but not deployed; 46 ENQUEUED PKG-01 handoffs; 100 historical BullMQ failed jobs; `FULL_FLEET_ACTIVATION_READY` blocked. |
+| **CHANGE** | Deployed `0e0f09259` to production (`20260903101734_v4994`); 19-min read-only convergence observation (3 reconciliation ticks); no publication activation; added `battery-v2-m3-0e-convergence-snapshot.sh`. |
+| **OBSERVED_EFFECT** | ENQUEUED 46→35, EXECUTED 0→12; failed queue 100→88 (shrinking); post-deploy failed jobs = 0; no new 54000/LOCK_CONTENTION/reservation errors; digest keys length 146; publications_post_deploy = 0. |
+| **VALIDATION** | Deploy SHA invariant; PM2 dual-replica health; scheduler leader=1; external health OK; tick-by-tick PKG-01 deltas; reservation count=0 throughout. |
+| **NON_EFFECTS** | `BATTERY_V2_PUBLICATION_ENABLED` remains false; REST_SHADOW unchanged; no canary/staged rollout; historical terminal failed jobs not cleared. |
+| **REMAINING_GAPS** | 35 ENQUEUED + 14 MISSING handoffs still draining (forward convergence, not blocked); 88 historical terminal BullMQ records remain. |
+| **DECISION_STATUS** | `FULL_FLEET_ACTIVATION_READY = YES` — next task: direct full-fleet publication activation. |
+
 ## CL-2026-09-03 — M3.0D.3 reservation authority + FAILED rearm runtime closure
 
 | Field | Content |
