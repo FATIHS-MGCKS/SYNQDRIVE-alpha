@@ -1,8 +1,23 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-03 (M3.0E post-merge production convergence closure — PR #1519 deployed `0e0f09259`)  
+**Snapshot date:** 2026-09-03 (M3.1 direct full-fleet production activation — **LIVE**)  
 **Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
+
+## M3.1 full-fleet activation (LIVE since `2026-09-03T11:08:02Z`)
+
+| Field | Value |
+|-------|-------|
+| `BATTERY_V2_FULL_FLEET_ACTIVE` | **YES** |
+| `BATTERY_V2_PUBLICATION_ENABLED` | **true** (production) |
+| `BATTERY_V2_REST_SHADOW_ENABLED` | **false** (production) |
+| `BATTERY_V2_RECONCILIATION_ENABLED` | true |
+| Deployed SHA | `0e0f09259` (PR #1519) |
+| 30m status | `PASS_WITH_PENDING_NATURAL_EVIDENCE` |
+| `PRODUCTION_VALIDATED` | **NO** — 6h slow-path validation pending |
+| Connected fleet | 6 DIMO vehicles (full fleet, no subset) |
+
+See `research/M3_1_DIRECT_FULL_FLEET_ACTIVATION.md`. First customer `battery_publications` rows await natural post-T0 REST evidence.
 
 ## M3.0E production convergence (deployed `0e0f09259`, release `20260903101734_v4994`)
 
@@ -16,7 +31,7 @@
 | **Digest idempotency** | New assessment keys length 146 (bounded); duplicate `assess:` keys = 0 |
 | **Publication gate** | `BATTERY_V2_PUBLICATION_ENABLED=false`; `publications_post_deploy=0` |
 
-**FULL_FLEET_ACTIVATION_READY = YES** — see `research/M3_0E_POST_MERGE_CONVERGENCE_CLOSURE.md`. Next: direct full-fleet `BATTERY_V2_PUBLICATION_ENABLED=true` activation (separate task).
+**FULL_FLEET_ACTIVATION_READY = YES** — see `research/M3_0E_POST_MERGE_CONVERGENCE_CLOSURE.md`. **Activated M3.1** `2026-09-03T11:08:02Z` — see `research/M3_1_DIRECT_FULL_FLEET_ACTIVATION.md`.
 
 ## M3.0D root cause (production forensics, pre-#1519 `7d53da51`)
 
@@ -37,7 +52,7 @@ Battery V2 authority is substantially reconstructed (Phase 2–3) and Phase 4 de
 
 **Target architecture (D3):** canonical V2 REST + assessment handoff + assessment = mandatory core; `BATTERY_V2_PUBLICATION_ENABLED` = **target** customer effect gate (current runtime still couples PUBLICATION OFF → `isLvRestShadowModeActive` shadow semantics — M4 retirement surface); `REST_SHADOW` + legacy REST = **temporary migration scaffolds** until M4. `BATTERY_V2_LV_HANDOFF_ENABLED` = **NOT INTRODUCED**. M1–M3 may have temporary legacy + canonical dual assessment triggers.
 
-**Current runtime:** canonical REST still behind `BATTERY_V2_REST_SHADOW_ENABLED`; legacy capture still active per `isBatteryV2LegacyRestCaptureEnabled()`.
+**Current runtime:** canonical REST active (`REST_SHADOW=false`); publication customer effects **ON** (`PUBLICATION_ENABLED=true`) for full connected fleet since M3.1.
 
 Post-#1445 soak is **PRODUCTION_VALIDATION_ONLY** (initial smoke, not strong validation; profile-stratified — ICE/HEV/PHEV as exposed). HEV product authority remains **DECISION_NOT_READY**. Provider LatestState SOH gap is **DECISION_REQUIRED** (current runtime already non-decision-fresh for VLS-only) — **not** IMPLEMENTATION_READY / not PKG-04 scope.
 

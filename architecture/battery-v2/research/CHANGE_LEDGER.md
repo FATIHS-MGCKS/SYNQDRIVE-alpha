@@ -16,6 +16,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-03 — M3.1 direct full-fleet production activation
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.0E `FULL_FLEET_ACTIVATION_READY=YES`; `PUBLICATION=false`, `REST_SHADOW=true`; 6 connected DIMO vehicles; 0 `battery_publications` rows. |
+| **CHANGE** | Production cutover: `BATTERY_V2_PUBLICATION_ENABLED=true`, `BATTERY_V2_REST_SHADOW_ENABLED=false`; rolling dual-replica restart; ops scripts for snapshot/activation/6h validation. |
+| **OBSERVED_EFFECT** | `BATTERY_V2_FULL_FLEET_T0=2026-09-03T11:08:02Z`; 30m infra PASS; post-activation failed=0; 0 publications (no new measurements since T0). |
+| **DECISION_STATUS** | `BATTERY_V2_FULL_FLEET_ACTIVE=YES`; `PASS_WITH_PENDING_NATURAL_EVIDENCE`; `SIX_HOUR_VALIDATION_PENDING=YES`. |
+
 ## CL-2026-09-03 — M3.0E post-merge production deploy + convergence closure
 
 | Field | Content |
