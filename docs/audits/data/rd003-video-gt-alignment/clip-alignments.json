@@ -4,36 +4,100 @@
     "fileName": "IMG_2803.mp4",
     "evidenceLayer": "CANDIDATE_ALIGNMENT",
     "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "SPEED_ALIGNMENT_SURFACE_PRESELECTED": "NO",
+    "speedAlignmentBySurface": {
+      "HF_HISTORICAL": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 592,
+          "configuredMaxInterpolationGapSeconds": 3,
+          "medianProviderSampleAgeSeconds": 6.354
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_LIVE": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 371,
+          "configuredMaxInterpolationGapSeconds": 2,
+          "medianProviderSampleAgeSeconds": 5.789
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_SLOW": {
+        "status": "NOT_OBSERVED"
+      }
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "offsetSemantics": {
+      "CANDIDATE_START_PRIOR_UTC": "2026-09-02T19:03:49.400Z",
+      "CANDIDATE_START_PRIOR_UTC_FROM": null,
+      "CANDIDATE_START_PRIOR_UTC_TO": null,
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_UTC": "2026-09-02T19:03:49.400Z",
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_DERIVATION": "EXPLICIT_CANDIDATE_START_UTC",
+      "CANDIDATE_START_RESIDUAL_SECONDS": null,
+      "ALIGNED_CLIP_START_UTC": null,
+      "VIDEO_CLOCK_TO_PROVIDER_TIME_OFFSET_SECONDS": "NOT_IDENTIFIABLE"
+    },
+    "clockSemantics": {
+      "VIDEO_CLOCK_DISPLAY_RESOLUTION_SECONDS": 60,
+      "MINUTE_TRANSITION_VIDEO_TIME_UNCERTAINTY_SECONDS": 0.1,
+      "VEHICLE_CLOCK_TO_UTC_ACCURACY": "UNKNOWN"
+    },
     "stages": {
       "clockPrior": {
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
         "candidateStartUtc": "2026-09-02T19:03:49.400Z",
+        "candidateStartUtcFrom": null,
+        "candidateStartUtcTo": null,
         "uncertaintySeconds": 30,
-        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
-      },
-      "speedFingerprint": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
-        "bestOffsetSeconds": null,
-        "offsetUncertaintySeconds": null,
-        "competingOffsets": [],
-        "ambiguityRuleTriggered": false
+        "note": "Visible vehicle clock establishes candidate region only — not sole alignment authority"
       },
       "multiSignalConfirmation": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "status": "PENDING_EXTERNAL_GT",
         "signalsEvaluated": []
       }
     },
-    "metrics": {
-      "CLOCK_OFFSET_SECONDS": null,
-      "NUMBER_OF_GT_POINTS": 0,
-      "COVERAGE_RATIO": null,
-      "SPEED_MAE_KMH": null
+    "gtCounts": {
+      "RAW_EXTERNAL_GT_COUNT": 0,
+      "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+      "MATCHED_GT_COUNT": null
     },
-    "derivedComparisonLayer": null,
+    "metrics": {
+      "EPISODE_DETECTABILITY": "EVALUATED"
+    },
     "gearTiming": {
-      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_STATE_OBSERVED": "YES",
       "GEAR_CHANGE_TIMING_VALIDATED": "NO",
-      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+      "nearestProviderSpacingSeconds": null,
+      "localGapAroundShiftSeconds": null,
+      "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
     }
   },
   {
@@ -41,36 +105,100 @@
     "fileName": "IMG_2804.mp4",
     "evidenceLayer": "CANDIDATE_ALIGNMENT",
     "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "SPEED_ALIGNMENT_SURFACE_PRESELECTED": "NO",
+    "speedAlignmentBySurface": {
+      "HF_HISTORICAL": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 592,
+          "configuredMaxInterpolationGapSeconds": 3,
+          "medianProviderSampleAgeSeconds": 6.354
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_LIVE": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 371,
+          "configuredMaxInterpolationGapSeconds": 2,
+          "medianProviderSampleAgeSeconds": 5.789
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_SLOW": {
+        "status": "NOT_OBSERVED"
+      }
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "offsetSemantics": {
+      "CANDIDATE_START_PRIOR_UTC": null,
+      "CANDIDATE_START_PRIOR_UTC_FROM": "2026-09-02T19:06:00.000Z",
+      "CANDIDATE_START_PRIOR_UTC_TO": "2026-09-02T19:06:59.000Z",
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_UTC": "2026-09-02T19:06:29.500Z",
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_DERIVATION": "DERIVED_MIDPOINT_OF_CANDIDATE_RANGE_FOR_SEARCH_ONLY",
+      "CANDIDATE_START_RESIDUAL_SECONDS": null,
+      "ALIGNED_CLIP_START_UTC": null,
+      "VIDEO_CLOCK_TO_PROVIDER_TIME_OFFSET_SECONDS": "NOT_IDENTIFIABLE"
+    },
+    "clockSemantics": {
+      "VIDEO_CLOCK_DISPLAY_RESOLUTION_SECONDS": 60,
+      "MINUTE_TRANSITION_VIDEO_TIME_UNCERTAINTY_SECONDS": null,
+      "VEHICLE_CLOCK_TO_UTC_ACCURACY": "UNKNOWN"
+    },
     "stages": {
       "clockPrior": {
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
         "candidateStartUtc": null,
-        "uncertaintySeconds": 60,
-        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
-      },
-      "speedFingerprint": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
-        "bestOffsetSeconds": null,
-        "offsetUncertaintySeconds": null,
-        "competingOffsets": [],
-        "ambiguityRuleTriggered": false
+        "candidateStartUtcFrom": "2026-09-02T19:06:00.000Z",
+        "candidateStartUtcTo": "2026-09-02T19:06:59.000Z",
+        "uncertaintySeconds": null,
+        "note": "Visible vehicle clock establishes candidate region only — not sole alignment authority"
       },
       "multiSignalConfirmation": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "status": "PENDING_EXTERNAL_GT",
         "signalsEvaluated": []
       }
     },
-    "metrics": {
-      "CLOCK_OFFSET_SECONDS": null,
-      "NUMBER_OF_GT_POINTS": 0,
-      "COVERAGE_RATIO": null,
-      "SPEED_MAE_KMH": null
+    "gtCounts": {
+      "RAW_EXTERNAL_GT_COUNT": 0,
+      "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+      "MATCHED_GT_COUNT": null
     },
-    "derivedComparisonLayer": null,
+    "metrics": {
+      "EPISODE_DETECTABILITY": "NEGATIVE_CONTROL"
+    },
     "gearTiming": {
-      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_STATE_OBSERVED": "YES",
       "GEAR_CHANGE_TIMING_VALIDATED": "NO",
-      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+      "nearestProviderSpacingSeconds": null,
+      "localGapAroundShiftSeconds": null,
+      "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
     }
   },
   {
@@ -78,36 +206,100 @@
     "fileName": "IMG_2805.mp4",
     "evidenceLayer": "CANDIDATE_ALIGNMENT",
     "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "SPEED_ALIGNMENT_SURFACE_PRESELECTED": "NO",
+    "speedAlignmentBySurface": {
+      "HF_HISTORICAL": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 592,
+          "configuredMaxInterpolationGapSeconds": 3,
+          "medianProviderSampleAgeSeconds": 6.354
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_LIVE": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 371,
+          "configuredMaxInterpolationGapSeconds": 2,
+          "medianProviderSampleAgeSeconds": 5.789
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_SLOW": {
+        "status": "NOT_OBSERVED"
+      }
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "offsetSemantics": {
+      "CANDIDATE_START_PRIOR_UTC": "2026-09-02T19:08:37.300Z",
+      "CANDIDATE_START_PRIOR_UTC_FROM": null,
+      "CANDIDATE_START_PRIOR_UTC_TO": null,
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_UTC": "2026-09-02T19:08:37.300Z",
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_DERIVATION": "EXPLICIT_CANDIDATE_START_UTC",
+      "CANDIDATE_START_RESIDUAL_SECONDS": null,
+      "ALIGNED_CLIP_START_UTC": null,
+      "VIDEO_CLOCK_TO_PROVIDER_TIME_OFFSET_SECONDS": "NOT_IDENTIFIABLE"
+    },
+    "clockSemantics": {
+      "VIDEO_CLOCK_DISPLAY_RESOLUTION_SECONDS": 60,
+      "MINUTE_TRANSITION_VIDEO_TIME_UNCERTAINTY_SECONDS": 0.1,
+      "VEHICLE_CLOCK_TO_UTC_ACCURACY": "UNKNOWN"
+    },
     "stages": {
       "clockPrior": {
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
         "candidateStartUtc": "2026-09-02T19:08:37.300Z",
+        "candidateStartUtcFrom": null,
+        "candidateStartUtcTo": null,
         "uncertaintySeconds": 30,
-        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
-      },
-      "speedFingerprint": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
-        "bestOffsetSeconds": null,
-        "offsetUncertaintySeconds": null,
-        "competingOffsets": [],
-        "ambiguityRuleTriggered": false
+        "note": "Visible vehicle clock establishes candidate region only — not sole alignment authority"
       },
       "multiSignalConfirmation": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "status": "PENDING_EXTERNAL_GT",
         "signalsEvaluated": []
       }
     },
-    "metrics": {
-      "CLOCK_OFFSET_SECONDS": null,
-      "NUMBER_OF_GT_POINTS": 0,
-      "COVERAGE_RATIO": null,
-      "SPEED_MAE_KMH": null
+    "gtCounts": {
+      "RAW_EXTERNAL_GT_COUNT": 0,
+      "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+      "MATCHED_GT_COUNT": null
     },
-    "derivedComparisonLayer": null,
+    "metrics": {
+      "EPISODE_DETECTABILITY": "EVALUATED"
+    },
     "gearTiming": {
-      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_STATE_OBSERVED": "YES",
       "GEAR_CHANGE_TIMING_VALIDATED": "NO",
-      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+      "nearestProviderSpacingSeconds": null,
+      "localGapAroundShiftSeconds": null,
+      "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
     }
   },
   {
@@ -115,36 +307,100 @@
     "fileName": "IMG_2806.mp4",
     "evidenceLayer": "CANDIDATE_ALIGNMENT",
     "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "SPEED_ALIGNMENT_SURFACE_PRESELECTED": "NO",
+    "speedAlignmentBySurface": {
+      "HF_HISTORICAL": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 592,
+          "configuredMaxInterpolationGapSeconds": 3,
+          "medianProviderSampleAgeSeconds": 6.354
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_LIVE": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 371,
+          "configuredMaxInterpolationGapSeconds": 2,
+          "medianProviderSampleAgeSeconds": 5.789
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_SLOW": {
+        "status": "NOT_OBSERVED"
+      }
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "offsetSemantics": {
+      "CANDIDATE_START_PRIOR_UTC": "2026-09-02T19:09:50.200Z",
+      "CANDIDATE_START_PRIOR_UTC_FROM": null,
+      "CANDIDATE_START_PRIOR_UTC_TO": null,
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_UTC": "2026-09-02T19:09:50.200Z",
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_DERIVATION": "EXPLICIT_CANDIDATE_START_UTC",
+      "CANDIDATE_START_RESIDUAL_SECONDS": null,
+      "ALIGNED_CLIP_START_UTC": null,
+      "VIDEO_CLOCK_TO_PROVIDER_TIME_OFFSET_SECONDS": "NOT_IDENTIFIABLE"
+    },
+    "clockSemantics": {
+      "VIDEO_CLOCK_DISPLAY_RESOLUTION_SECONDS": 60,
+      "MINUTE_TRANSITION_VIDEO_TIME_UNCERTAINTY_SECONDS": 0.1,
+      "VEHICLE_CLOCK_TO_UTC_ACCURACY": "UNKNOWN"
+    },
     "stages": {
       "clockPrior": {
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
         "candidateStartUtc": "2026-09-02T19:09:50.200Z",
+        "candidateStartUtcFrom": null,
+        "candidateStartUtcTo": null,
         "uncertaintySeconds": 30,
-        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
-      },
-      "speedFingerprint": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
-        "bestOffsetSeconds": null,
-        "offsetUncertaintySeconds": null,
-        "competingOffsets": [],
-        "ambiguityRuleTriggered": false
+        "note": "Visible vehicle clock establishes candidate region only — not sole alignment authority"
       },
       "multiSignalConfirmation": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "status": "PENDING_EXTERNAL_GT",
         "signalsEvaluated": []
       }
     },
-    "metrics": {
-      "CLOCK_OFFSET_SECONDS": null,
-      "NUMBER_OF_GT_POINTS": 0,
-      "COVERAGE_RATIO": null,
-      "SPEED_MAE_KMH": null
+    "gtCounts": {
+      "RAW_EXTERNAL_GT_COUNT": 0,
+      "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+      "MATCHED_GT_COUNT": null
     },
-    "derivedComparisonLayer": null,
+    "metrics": {
+      "EPISODE_DETECTABILITY": "EVALUATED"
+    },
     "gearTiming": {
-      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_STATE_OBSERVED": "YES",
       "GEAR_CHANGE_TIMING_VALIDATED": "NO",
-      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+      "nearestProviderSpacingSeconds": null,
+      "localGapAroundShiftSeconds": null,
+      "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
     }
   },
   {
@@ -152,36 +408,100 @@
     "fileName": "IMG_2807.mp4",
     "evidenceLayer": "CANDIDATE_ALIGNMENT",
     "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "SPEED_ALIGNMENT_SURFACE_PRESELECTED": "NO",
+    "speedAlignmentBySurface": {
+      "HF_HISTORICAL": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 592,
+          "configuredMaxInterpolationGapSeconds": 3,
+          "medianProviderSampleAgeSeconds": 6.354
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_LIVE": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 371,
+          "configuredMaxInterpolationGapSeconds": 2,
+          "medianProviderSampleAgeSeconds": 5.789
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_SLOW": {
+        "status": "NOT_OBSERVED"
+      }
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "offsetSemantics": {
+      "CANDIDATE_START_PRIOR_UTC": "2026-09-02T19:12:10.300Z",
+      "CANDIDATE_START_PRIOR_UTC_FROM": null,
+      "CANDIDATE_START_PRIOR_UTC_TO": null,
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_UTC": "2026-09-02T19:12:10.300Z",
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_DERIVATION": "EXPLICIT_CANDIDATE_START_UTC",
+      "CANDIDATE_START_RESIDUAL_SECONDS": null,
+      "ALIGNED_CLIP_START_UTC": null,
+      "VIDEO_CLOCK_TO_PROVIDER_TIME_OFFSET_SECONDS": "NOT_IDENTIFIABLE"
+    },
+    "clockSemantics": {
+      "VIDEO_CLOCK_DISPLAY_RESOLUTION_SECONDS": 60,
+      "MINUTE_TRANSITION_VIDEO_TIME_UNCERTAINTY_SECONDS": 0.1,
+      "VEHICLE_CLOCK_TO_UTC_ACCURACY": "UNKNOWN"
+    },
     "stages": {
       "clockPrior": {
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
         "candidateStartUtc": "2026-09-02T19:12:10.300Z",
+        "candidateStartUtcFrom": null,
+        "candidateStartUtcTo": null,
         "uncertaintySeconds": 30,
-        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
-      },
-      "speedFingerprint": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
-        "bestOffsetSeconds": null,
-        "offsetUncertaintySeconds": null,
-        "competingOffsets": [],
-        "ambiguityRuleTriggered": false
+        "note": "Visible vehicle clock establishes candidate region only — not sole alignment authority"
       },
       "multiSignalConfirmation": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "status": "PENDING_EXTERNAL_GT",
         "signalsEvaluated": []
       }
     },
-    "metrics": {
-      "CLOCK_OFFSET_SECONDS": null,
-      "NUMBER_OF_GT_POINTS": 0,
-      "COVERAGE_RATIO": null,
-      "SPEED_MAE_KMH": null
+    "gtCounts": {
+      "RAW_EXTERNAL_GT_COUNT": 0,
+      "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+      "MATCHED_GT_COUNT": null
     },
-    "derivedComparisonLayer": null,
+    "metrics": {
+      "EPISODE_DETECTABILITY": "EVALUATED"
+    },
     "gearTiming": {
-      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_STATE_OBSERVED": "YES",
       "GEAR_CHANGE_TIMING_VALIDATED": "NO",
-      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+      "nearestProviderSpacingSeconds": null,
+      "localGapAroundShiftSeconds": null,
+      "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
     }
   },
   {
@@ -189,36 +509,100 @@
     "fileName": "IMG_2808.mp4",
     "evidenceLayer": "CANDIDATE_ALIGNMENT",
     "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "SPEED_ALIGNMENT_SURFACE_PRESELECTED": "NO",
+    "speedAlignmentBySurface": {
+      "HF_HISTORICAL": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 592,
+          "configuredMaxInterpolationGapSeconds": 3,
+          "medianProviderSampleAgeSeconds": 6.354
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_LIVE": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 371,
+          "configuredMaxInterpolationGapSeconds": 2,
+          "medianProviderSampleAgeSeconds": 5.789
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_SLOW": {
+        "status": "NOT_OBSERVED"
+      }
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "offsetSemantics": {
+      "CANDIDATE_START_PRIOR_UTC": null,
+      "CANDIDATE_START_PRIOR_UTC_FROM": "2026-09-02T19:21:00.000Z",
+      "CANDIDATE_START_PRIOR_UTC_TO": "2026-09-02T19:21:14.000Z",
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_UTC": "2026-09-02T19:21:07.000Z",
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_DERIVATION": "DERIVED_MIDPOINT_OF_CANDIDATE_RANGE_FOR_SEARCH_ONLY",
+      "CANDIDATE_START_RESIDUAL_SECONDS": null,
+      "ALIGNED_CLIP_START_UTC": null,
+      "VIDEO_CLOCK_TO_PROVIDER_TIME_OFFSET_SECONDS": "NOT_IDENTIFIABLE"
+    },
+    "clockSemantics": {
+      "VIDEO_CLOCK_DISPLAY_RESOLUTION_SECONDS": 60,
+      "MINUTE_TRANSITION_VIDEO_TIME_UNCERTAINTY_SECONDS": null,
+      "VEHICLE_CLOCK_TO_UTC_ACCURACY": "UNKNOWN"
+    },
     "stages": {
       "clockPrior": {
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
         "candidateStartUtc": null,
-        "uncertaintySeconds": 14,
-        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
-      },
-      "speedFingerprint": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
-        "bestOffsetSeconds": null,
-        "offsetUncertaintySeconds": null,
-        "competingOffsets": [],
-        "ambiguityRuleTriggered": false
+        "candidateStartUtcFrom": "2026-09-02T19:21:00.000Z",
+        "candidateStartUtcTo": "2026-09-02T19:21:14.000Z",
+        "uncertaintySeconds": null,
+        "note": "Visible vehicle clock establishes candidate region only — not sole alignment authority"
       },
       "multiSignalConfirmation": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "status": "PENDING_EXTERNAL_GT",
         "signalsEvaluated": []
       }
     },
-    "metrics": {
-      "CLOCK_OFFSET_SECONDS": null,
-      "NUMBER_OF_GT_POINTS": 0,
-      "COVERAGE_RATIO": null,
-      "SPEED_MAE_KMH": null
+    "gtCounts": {
+      "RAW_EXTERNAL_GT_COUNT": 0,
+      "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+      "MATCHED_GT_COUNT": null
     },
-    "derivedComparisonLayer": null,
+    "metrics": {
+      "EPISODE_DETECTABILITY": "EVALUATED"
+    },
     "gearTiming": {
-      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_STATE_OBSERVED": "YES",
       "GEAR_CHANGE_TIMING_VALIDATED": "NO",
-      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+      "nearestProviderSpacingSeconds": null,
+      "localGapAroundShiftSeconds": null,
+      "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
     }
   },
   {
@@ -226,36 +610,100 @@
     "fileName": "IMG_2809.mp4",
     "evidenceLayer": "CANDIDATE_ALIGNMENT",
     "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "SPEED_ALIGNMENT_SURFACE_PRESELECTED": "NO",
+    "speedAlignmentBySurface": {
+      "HF_HISTORICAL": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 592,
+          "configuredMaxInterpolationGapSeconds": 3,
+          "medianProviderSampleAgeSeconds": 6.354
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_LIVE": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 371,
+          "configuredMaxInterpolationGapSeconds": 2,
+          "medianProviderSampleAgeSeconds": 5.789
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_SLOW": {
+        "status": "NOT_OBSERVED"
+      }
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "offsetSemantics": {
+      "CANDIDATE_START_PRIOR_UTC": "2026-09-02T19:22:30.450Z",
+      "CANDIDATE_START_PRIOR_UTC_FROM": null,
+      "CANDIDATE_START_PRIOR_UTC_TO": null,
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_UTC": "2026-09-02T19:22:30.450Z",
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_DERIVATION": "EXPLICIT_CANDIDATE_START_UTC",
+      "CANDIDATE_START_RESIDUAL_SECONDS": null,
+      "ALIGNED_CLIP_START_UTC": null,
+      "VIDEO_CLOCK_TO_PROVIDER_TIME_OFFSET_SECONDS": "NOT_IDENTIFIABLE"
+    },
+    "clockSemantics": {
+      "VIDEO_CLOCK_DISPLAY_RESOLUTION_SECONDS": 60,
+      "MINUTE_TRANSITION_VIDEO_TIME_UNCERTAINTY_SECONDS": 0.1,
+      "VEHICLE_CLOCK_TO_UTC_ACCURACY": "UNKNOWN"
+    },
     "stages": {
       "clockPrior": {
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
         "candidateStartUtc": "2026-09-02T19:22:30.450Z",
+        "candidateStartUtcFrom": null,
+        "candidateStartUtcTo": null,
         "uncertaintySeconds": 30,
-        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
-      },
-      "speedFingerprint": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
-        "bestOffsetSeconds": null,
-        "offsetUncertaintySeconds": null,
-        "competingOffsets": [],
-        "ambiguityRuleTriggered": false
+        "note": "Visible vehicle clock establishes candidate region only — not sole alignment authority"
       },
       "multiSignalConfirmation": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "status": "PENDING_EXTERNAL_GT",
         "signalsEvaluated": []
       }
     },
-    "metrics": {
-      "CLOCK_OFFSET_SECONDS": null,
-      "NUMBER_OF_GT_POINTS": 0,
-      "COVERAGE_RATIO": null,
-      "SPEED_MAE_KMH": null
+    "gtCounts": {
+      "RAW_EXTERNAL_GT_COUNT": 0,
+      "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+      "MATCHED_GT_COUNT": null
     },
-    "derivedComparisonLayer": null,
+    "metrics": {
+      "EPISODE_DETECTABILITY": "NEGATIVE_CONTROL"
+    },
     "gearTiming": {
-      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_STATE_OBSERVED": "YES",
       "GEAR_CHANGE_TIMING_VALIDATED": "NO",
-      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+      "nearestProviderSpacingSeconds": null,
+      "localGapAroundShiftSeconds": null,
+      "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
     }
   },
   {
@@ -263,36 +711,100 @@
     "fileName": "IMG_2810.mp4",
     "evidenceLayer": "CANDIDATE_ALIGNMENT",
     "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "SPEED_ALIGNMENT_SURFACE_PRESELECTED": "NO",
+    "speedAlignmentBySurface": {
+      "HF_HISTORICAL": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 592,
+          "configuredMaxInterpolationGapSeconds": 3,
+          "medianProviderSampleAgeSeconds": 6.354
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_LIVE": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 371,
+          "configuredMaxInterpolationGapSeconds": 2,
+          "medianProviderSampleAgeSeconds": 5.789
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_SLOW": {
+        "status": "NOT_OBSERVED"
+      }
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "offsetSemantics": {
+      "CANDIDATE_START_PRIOR_UTC": null,
+      "CANDIDATE_START_PRIOR_UTC_FROM": "2026-09-02T19:23:00.000Z",
+      "CANDIDATE_START_PRIOR_UTC_TO": "2026-09-02T19:23:59.000Z",
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_UTC": "2026-09-02T19:23:29.500Z",
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_DERIVATION": "DERIVED_MIDPOINT_OF_CANDIDATE_RANGE_FOR_SEARCH_ONLY",
+      "CANDIDATE_START_RESIDUAL_SECONDS": null,
+      "ALIGNED_CLIP_START_UTC": null,
+      "VIDEO_CLOCK_TO_PROVIDER_TIME_OFFSET_SECONDS": "NOT_IDENTIFIABLE"
+    },
+    "clockSemantics": {
+      "VIDEO_CLOCK_DISPLAY_RESOLUTION_SECONDS": 60,
+      "MINUTE_TRANSITION_VIDEO_TIME_UNCERTAINTY_SECONDS": null,
+      "VEHICLE_CLOCK_TO_UTC_ACCURACY": "UNKNOWN"
+    },
     "stages": {
       "clockPrior": {
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
         "candidateStartUtc": null,
-        "uncertaintySeconds": 60,
-        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
-      },
-      "speedFingerprint": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
-        "bestOffsetSeconds": null,
-        "offsetUncertaintySeconds": null,
-        "competingOffsets": [],
-        "ambiguityRuleTriggered": false
+        "candidateStartUtcFrom": "2026-09-02T19:23:00.000Z",
+        "candidateStartUtcTo": "2026-09-02T19:23:59.000Z",
+        "uncertaintySeconds": null,
+        "note": "Visible vehicle clock establishes candidate region only — not sole alignment authority"
       },
       "multiSignalConfirmation": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "status": "PENDING_EXTERNAL_GT",
         "signalsEvaluated": []
       }
     },
-    "metrics": {
-      "CLOCK_OFFSET_SECONDS": null,
-      "NUMBER_OF_GT_POINTS": 0,
-      "COVERAGE_RATIO": null,
-      "SPEED_MAE_KMH": null
+    "gtCounts": {
+      "RAW_EXTERNAL_GT_COUNT": 0,
+      "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+      "MATCHED_GT_COUNT": null
     },
-    "derivedComparisonLayer": null,
+    "metrics": {
+      "EPISODE_DETECTABILITY": "EVALUATED"
+    },
     "gearTiming": {
-      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_STATE_OBSERVED": "YES",
       "GEAR_CHANGE_TIMING_VALIDATED": "NO",
-      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+      "nearestProviderSpacingSeconds": null,
+      "localGapAroundShiftSeconds": null,
+      "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
     }
   },
   {
@@ -300,36 +812,100 @@
     "fileName": "IMG_2811.mp4",
     "evidenceLayer": "CANDIDATE_ALIGNMENT",
     "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "SPEED_ALIGNMENT_SURFACE_PRESELECTED": "NO",
+    "speedAlignmentBySurface": {
+      "HF_HISTORICAL": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 592,
+          "configuredMaxInterpolationGapSeconds": 3,
+          "medianProviderSampleAgeSeconds": 6.354
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_LIVE": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestCandidate": {
+          "candidateStartResidualSeconds": null,
+          "alignedClipStartUtc": null,
+          "maeKmh": null,
+          "rmseKmh": null,
+          "maxAbsErrorKmh": null
+        },
+        "metrics": {
+          "NUMBER_OF_GT_POINTS": 0,
+          "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+          "MATCHED_GT_COUNT": null,
+          "COVERAGE_RATIO": null
+        },
+        "cadenceFreshnessContext": {
+          "observationCount": 371,
+          "configuredMaxInterpolationGapSeconds": 2,
+          "medianProviderSampleAgeSeconds": 5.789
+        },
+        "derivedComparisonLayer": null
+      },
+      "LATEST_SLOW": {
+        "status": "NOT_OBSERVED"
+      }
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "offsetSemantics": {
+      "CANDIDATE_START_PRIOR_UTC": null,
+      "CANDIDATE_START_PRIOR_UTC_FROM": "2026-09-02T19:24:29.000Z",
+      "CANDIDATE_START_PRIOR_UTC_TO": "2026-09-02T19:24:32.000Z",
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_UTC": "2026-09-02T19:24:30.500Z",
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_DERIVATION": "DERIVED_MIDPOINT_OF_CANDIDATE_RANGE_FOR_SEARCH_ONLY",
+      "CANDIDATE_START_RESIDUAL_SECONDS": null,
+      "ALIGNED_CLIP_START_UTC": null,
+      "VIDEO_CLOCK_TO_PROVIDER_TIME_OFFSET_SECONDS": "NOT_IDENTIFIABLE"
+    },
+    "clockSemantics": {
+      "VIDEO_CLOCK_DISPLAY_RESOLUTION_SECONDS": 60,
+      "MINUTE_TRANSITION_VIDEO_TIME_UNCERTAINTY_SECONDS": null,
+      "VEHICLE_CLOCK_TO_UTC_ACCURACY": "UNKNOWN"
+    },
     "stages": {
       "clockPrior": {
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
         "candidateStartUtc": null,
-        "uncertaintySeconds": 3,
-        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
-      },
-      "speedFingerprint": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
-        "bestOffsetSeconds": null,
-        "offsetUncertaintySeconds": null,
-        "competingOffsets": [],
-        "ambiguityRuleTriggered": false
+        "candidateStartUtcFrom": "2026-09-02T19:24:29.000Z",
+        "candidateStartUtcTo": "2026-09-02T19:24:32.000Z",
+        "uncertaintySeconds": null,
+        "note": "Visible vehicle clock establishes candidate region only — not sole alignment authority"
       },
       "multiSignalConfirmation": {
-        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "status": "PENDING_EXTERNAL_GT",
         "signalsEvaluated": []
       }
     },
-    "metrics": {
-      "CLOCK_OFFSET_SECONDS": null,
-      "NUMBER_OF_GT_POINTS": 0,
-      "COVERAGE_RATIO": null,
-      "SPEED_MAE_KMH": null
+    "gtCounts": {
+      "RAW_EXTERNAL_GT_COUNT": 0,
+      "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
+      "MATCHED_GT_COUNT": null
     },
-    "derivedComparisonLayer": null,
+    "metrics": {
+      "EPISODE_DETECTABILITY": "EVALUATED"
+    },
     "gearTiming": {
-      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_STATE_OBSERVED": "YES",
       "GEAR_CHANGE_TIMING_VALIDATED": "NO",
-      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+      "nearestProviderSpacingSeconds": null,
+      "localGapAroundShiftSeconds": null,
+      "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
     }
   }
 ]

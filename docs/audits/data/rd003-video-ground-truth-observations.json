@@ -55,8 +55,10 @@
       },
       "candidateAbsoluteTime": {
         "candidateStartUtc": null,
-        "uncertaintySeconds": 60,
-        "derivation": "Exact second unresolved",
+        "candidateStartUtcFrom": "2026-09-02T19:06:00.000Z",
+        "candidateStartUtcTo": "2026-09-02T19:06:59.000Z",
+        "uncertaintySeconds": null,
+        "derivation": "Visible 21:06 minute — exact start second unresolved",
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY"
       },
       "observations": []
@@ -172,7 +174,9 @@
       },
       "candidateAbsoluteTime": {
         "candidateStartUtc": null,
-        "uncertaintySeconds": 14,
+        "candidateStartUtcFrom": "2026-09-02T19:21:00.000Z",
+        "candidateStartUtcTo": "2026-09-02T19:21:14.000Z",
+        "uncertaintySeconds": null,
         "derivation": "Candidate region ~19:21:00Z–19:21:14Z; exact second unresolved",
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY"
       },
@@ -227,8 +231,10 @@
       },
       "candidateAbsoluteTime": {
         "candidateStartUtc": null,
-        "uncertaintySeconds": 60,
-        "derivation": "Exact start second unresolved",
+        "candidateStartUtcFrom": "2026-09-02T19:23:00.000Z",
+        "candidateStartUtcTo": "2026-09-02T19:23:59.000Z",
+        "uncertaintySeconds": null,
+        "derivation": "Visible 21:23 minute — exact start second unresolved",
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY"
       },
       "observations": []
@@ -258,7 +264,9 @@
       },
       "candidateAbsoluteTime": {
         "candidateStartUtc": null,
-        "uncertaintySeconds": 3,
+        "candidateStartUtcFrom": "2026-09-02T19:24:29.000Z",
+        "candidateStartUtcTo": "2026-09-02T19:24:32.000Z",
+        "uncertaintySeconds": null,
         "derivation": "Candidate region ~19:24:29Z–19:24:32Z",
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY"
       },

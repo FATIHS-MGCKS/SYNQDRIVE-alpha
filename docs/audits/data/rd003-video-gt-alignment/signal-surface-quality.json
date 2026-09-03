@@ -12,6 +12,7 @@
         "max": 2.091,
         "median": 0.225
       },
+      "configuredMaxInterpolationGapSeconds": 3,
       "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
       "freshnessEvaluatedBySurfaceName": "NO"
     },
@@ -27,6 +28,7 @@
         "max": 10.336,
         "median": 0.26
       },
+      "configuredMaxInterpolationGapSeconds": 2,
       "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
       "freshnessEvaluatedBySurfaceName": "NO"
     },
@@ -48,6 +50,7 @@
         "max": 2.091,
         "median": 0.226
       },
+      "configuredMaxInterpolationGapSeconds": 3,
       "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
       "freshnessEvaluatedBySurfaceName": "NO"
     },
@@ -63,6 +66,7 @@
         "max": 10.336,
         "median": 0.26
       },
+      "configuredMaxInterpolationGapSeconds": 2,
       "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
       "freshnessEvaluatedBySurfaceName": "NO"
     },
@@ -84,6 +88,7 @@
         "max": 2.091,
         "median": 0.226
       },
+      "configuredMaxInterpolationGapSeconds": 3,
       "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
       "freshnessEvaluatedBySurfaceName": "NO"
     },
@@ -99,6 +104,7 @@
         "max": 10.336,
         "median": 0.26
       },
+      "configuredMaxInterpolationGapSeconds": 2,
       "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
       "freshnessEvaluatedBySurfaceName": "NO"
     },
@@ -120,6 +126,7 @@
         "max": 2.091,
         "median": 0.226
       },
+      "configuredMaxInterpolationGapSeconds": 3,
       "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
       "freshnessEvaluatedBySurfaceName": "NO"
     },
@@ -135,6 +142,7 @@
         "max": 10.336,
         "median": 0.26
       },
+      "configuredMaxInterpolationGapSeconds": 2,
       "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
       "freshnessEvaluatedBySurfaceName": "NO"
     },
@@ -156,6 +164,7 @@
         "max": 2.091,
         "median": 0.225
       },
+      "configuredMaxInterpolationGapSeconds": 3,
       "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
       "freshnessEvaluatedBySurfaceName": "NO"
     },
@@ -171,6 +180,7 @@
         "max": 10.336,
         "median": 0.26
       },
+      "configuredMaxInterpolationGapSeconds": 2,
       "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
       "freshnessEvaluatedBySurfaceName": "NO"
     },
@@ -200,6 +210,7 @@
         "max": 0.722,
         "median": 0.2435
       },
+      "configuredMaxInterpolationGapSeconds": 10,
       "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
       "freshnessEvaluatedBySurfaceName": "NO"
     }
@@ -225,6 +236,7 @@
         "max": 0.722,
         "median": 0.2435
       },
+      "configuredMaxInterpolationGapSeconds": 10,
       "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
       "freshnessEvaluatedBySurfaceName": "NO"
     }
