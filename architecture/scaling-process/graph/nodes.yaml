@@ -139,9 +139,10 @@ nodes:
 
   - id: SCALING_ENVELOPE_N2
     type: ENVELOPE
-    status: CONDITIONALLY_CERTIFIED
-    description: Two-replica production; scale P1.8.2 + restore P1.8.3; no 24h N=2 soak
-    validated_by: ["#1471", "P1.8.3 2026-09-01"]
+    status: EARLY_PRODUCTION_VALIDATION
+    description: Real N=2 production proven; >24h calendar operational evidence (P1.8.3.3); continuous 24h FULL_N2 soak NOT_MET (81024s); INC-07 scale-readiness remediation open — N2 not fully certified
+    validated_by: ["#1471", "P1.8.3 2026-09-01", "P1.8.3.3 segmented retrospective"]
+    related_incidents: [INC_07]
     confidence: MEDIUM
 
   - id: SCALING_ENVELOPE_N100
@@ -201,6 +202,17 @@ nodes:
     last_verified_at: "2026-09-01T11:48:00Z"
     confidence: HIGH
 
+  - id: INC_07
+    type: INCIDENT
+    status: OPEN
+    description: INTRA_TRIP_GAP_SPLIT reconciliation re-run creates duplicate REPAIRED trip rows
+    related_incidents: [INC_07]
+    introduced_by: "P1.8.3.3 forensic closure"
+    validated_by: ["P1_8_3_3_N2_24H_PLUS_SEGMENTED_RETROSPECTIVE_AUDIT_2026-09-03.md"]
+    last_verified_sha: 7d53da51e3b4dfaad711af735e568f97813ddfeb
+    last_verified_at: "2026-09-03T09:30:00Z"
+    confidence: HIGH
+
   - id: DEPLOY_LEADER_CONVERGENCE_GATE
     type: DEPLOYMENT
     status: VERIFIED_PRODUCTION
@@ -216,14 +228,15 @@ nodes:
 
   - id: EXACT_SHA_DEPLOY_PROVENANCE
     type: DEPLOYMENT
-    status: IMPLEMENTED_PENDING_PRODUCTION_VALIDATION
+    status: PARTIALLY_PRODUCTION_VALIDATED
     description: Pin SYNQDRIVE_REQUESTED_DEPLOY_SHA through bootstrap, release clone, and replica verify
     depends_on: [MULTI_REPLICA_DEPLOYMENT]
     introduced_by: "DEC-016"
     related_incidents: [INC_06]
-    validated_by: ["assertDeployShaProvenance unit tests"]
-    last_verified_at: "2026-09-01T12:00:00Z"
-    confidence: HIGH
+    validated_by: ["assertDeployShaProvenance unit tests", "P1.8.3.3 auth.log TMP bootstrap"]
+    last_verified_sha: 7d53da51e3b4dfaad711af735e568f97813ddfeb
+    last_verified_at: "2026-09-03T09:30:00Z"
+    confidence: MEDIUM
 
   - id: EVIDENCE_N2_RETROSPECTIVE_STABILITY_2026_09_01
     type: EVIDENCE
@@ -235,3 +248,14 @@ nodes:
     last_verified_at: "2026-09-01T14:26:15Z"
     confidence: MEDIUM
     notes: "Window INSUFFICIENT for 24h certification; snapshot/partial coordination evidence only; no scaling defect signal observed; ATE UNEXERCISED (zero workload); battery backlog not reclassified; evidence precision corrected v2+v3 final closure"
+
+  - id: EVIDENCE_N2_24H_PLUS_SEGMENTED_RETROSPECTIVE_2026_09_03
+    type: EVIDENCE
+    status: PASS_WITH_FINDINGS
+    description: P1.8.3.3 read-only segmented N=2 retrospective (~44h calendar, longest segment 81024s)
+    depends_on: [MULTI_REPLICA_DEPLOYMENT, SCHEDULER_LEADER_ELECTION, EXACT_SHA_DEPLOY_PROVENANCE]
+    validated_by: ["P1_8_3_3_N2_24H_PLUS_SEGMENTED_RETROSPECTIVE_AUDIT_2026-09-03.md"]
+    last_verified_sha: 7d53da51e3b4dfaad711af735e568f97813ddfeb
+    last_verified_at: "2026-09-03T07:55:20Z"
+    confidence: MEDIUM
+    notes: "FORENSIC_AUTHORITY_V4: segment 158815+62; INC-07 open P2; battery ID math underdetermined; PM2 failed-deploy ruled out; APPLICATION_DEFECT + SCALING_READINESS_DEFECT; N2_MULTI_REPLICA_CAUSED=NO_PROVEN"

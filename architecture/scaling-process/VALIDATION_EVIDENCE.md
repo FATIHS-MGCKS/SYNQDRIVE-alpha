@@ -168,6 +168,27 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 
 ---
 
+## P1.8.3.3 — N=2 24h+ segmented retrospective audit
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Calendar observation >24h | P1.8.3.3 | — | horizon 158877s | YES | HIGH |
+| Longest continuous N=2 segment | P1.8.3.3 | — | PM2/deploy boundaries | 81024s NOT_MET | HIGH |
+| Operational 24h+ retrospective | P1.8.3.3 | — | segmented audit | PASS_WITH_FINDINGS | HIGH |
+| Continuous 24h soak | P1.8.3.3 | — | segment math | NOT_MET | HIGH |
+| Post-checkpoint deploy count | P1.8.3.3 | — | auth.log + releases | 3 PASS, 2 FAIL attempts | HIGH |
+| DEC-016 exact-SHA production | P1.8.3.3 | — | auth.log TMP bootstrap | NEEDS_PRECISION_REVIEW | MEDIUM |
+| OQ-18 stale-current fix | P1.8.3.3 | — | auth.log | LIKELY_PRODUCTION_VERIFIED | MEDIUM |
+| OQ-28 closure | P1.8.3.3 | — | segment <86400s | PARTIAL (not closed) | HIGH |
+| Trip duplicates (horizon) | P1.8.3.3 | — | SQL + trip_repairs | PROVEN; RECONCILIATION_DUPLICATE (INC-07) | HIGH |
+| battery.v2 net delta | P1.8.3.3 | — | Redis + dead letters | +36 net; ID math underdetermined (N∈[36,48]); taxonomy RESOLVED_PARTIAL; NO_PROVEN scaling relation | HIGH |
+| PM2 unexpected restarts | P1.8.3.3 | — | pm2.log + auth.log | Recovery from stopped; initial stop UNAVAILABLE; failed deploy RULED_OUT | HIGH |
+| Segment model corrected | P1.8.3.3 forensic | — | PM2 boundaries | 158815+62=158877 | HIGH |
+| Application / scale-readiness defect | P1.8.3.3 forensic v4 | — | INC-07 | APPLICATION_DEFECT + SCALING_READINESS_DEFECT; N2_MULTI_REPLICA_CAUSED=NO_PROVEN | HIGH |
+| Merge recommendation | P1.8.3.3 forensic v4 | — | authority closure | EXTERNAL_GITHUB_GATE | HIGH |
+
+---
+
 ## CI / build evidence
 
 | Suite | Typical gate | Confidence |
@@ -181,8 +202,9 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 
 ## Evidence gaps (explicit)
 
-1. No 24h soak at N=2 in production (P1.8.3.2 early retrospective: ~2h39m only)
+1. No **continuous** 24h soak at N=2 (P1.8.3.3: longest segment 81024s; calendar ~44h with deploy segmentation)
 2. No provider ceiling verification at N≈1000
 3. Staging validation Redis DB ≠ production DB
 4. Deploy leader-wait **verified in production** (P1.8.3.1 attempt 3)
-5. Exact-SHA deploy provenance implemented (DEC-016) — cloud-agent bootstrap pending prod observation
+5. Exact-SHA deploy: stale-current fix **likely** production-verified; full DEC-016 invariant **NEEDS_PRECISION_REVIEW** (P1.8.3.3 forensic)
+6. INC-07 trip reconciliation idempotency — runtime remediation open

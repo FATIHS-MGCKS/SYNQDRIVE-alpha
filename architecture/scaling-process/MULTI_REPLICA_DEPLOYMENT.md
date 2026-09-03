@@ -151,7 +151,17 @@ SYNQDRIVE_REQUESTED_DEPLOY_SHA (set by cloud-agent-deploy.sh)
   → replica SHA invariant after rolling restart
 ```
 
-**OQ-18:** RELEASE_OPS_DIR sourcing production-proven (attempt 3). Cloud-agent exact-SHA bootstrap path: **MITIGATED_PENDING_PRODUCTION_VALIDATION**.
+**OQ-18:** Stale-`current` bootstrap **LIKELY_PRODUCTION_VERIFIED** (P1.8.3.3 auth.log TMP pattern). Full DEC-016 invariant: **NEEDS_PRECISION_REVIEW** (replica SHA RELEASE_INFERRED).
+
+---
+
+## Failed deploy abort before PM2 (P1.8.3.3 forensic)
+
+**TYPE: FACT**
+
+2026-09-02T10:32Z failed deploy attempts (two SHAs) aborted in **~382ms** per auth.log sudo session — before `vps-deploy-release.sh` could reach boot-check or PM2 rolling restart. No release directory created. PM2 restarts at 10:35Z are **not** attributable to deploy cleanup.
+
+**EVIDENCE:** P1.8.3.3 forensic closure; `/var/log/auth.log` session durations; `pm2.log` "Process in stopped status" auto-recovery.
 
 **Canonical path:** `bash .cursor/scripts/cloud-agent-deploy.sh` — do not invoke stale `/opt/synqdrive/current/.../vps-deploy-release.sh` directly.
 
