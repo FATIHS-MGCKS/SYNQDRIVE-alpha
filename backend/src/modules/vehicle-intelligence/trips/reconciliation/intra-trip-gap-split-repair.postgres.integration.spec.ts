@@ -12,11 +12,14 @@ import {
 
 const LIVE = process.env.INTRA_TRIP_GAP_SPLIT_POSTGRES_INTEGRATION === '1';
 
-function buildService(prisma: PrismaClient): TripReconciliationService {
-  const engine = new TripDecisionEngine(prisma as never);
+function buildService(
+  prisma: PrismaClient,
+  engine?: TripDecisionEngine,
+): TripReconciliationService {
+  const decisionEngine = engine ?? new TripDecisionEngine(prisma as never);
   return new TripReconciliationService(
     prisma as never,
-    engine,
+    decisionEngine,
     {} as never,
     {} as never,
     {} as never,
@@ -126,7 +129,7 @@ function buildService(prisma: PrismaClient): TripReconciliationService {
           throw new Error('forced mid-split failure');
         });
 
-      const service = buildService(prismaA);
+      const service = buildService(prismaA, engine);
       await expect(applyOnce(service)).rejects.toThrow('forced mid-split failure');
       splitSpy.mockRestore();
 
@@ -147,7 +150,7 @@ function buildService(prisma: PrismaClient): TripReconciliationService {
         throw new Error('forced before APPLIED');
       });
 
-      const service = buildService(prismaA);
+      const service = buildService(prismaA, engine);
       await expect(applyOnce(service)).rejects.toThrow('forced before APPLIED');
 
       const tripsAfterFail = await prismaA.vehicleTrip.findMany({
