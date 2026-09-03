@@ -1,8 +1,21 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-03 (M3.0 pre-deploy preflight)  
+**Snapshot date:** 2026-09-03 (M3.0D.3 reservation authority + FAILED rearm closure — PR #1519, not deployed)  
 **Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
+
+## M3.0D root cause (production forensics, deployed `7d53da51`)
+
+| Finding | Evidence |
+|---------|----------|
+| **Causality proved** | 45 PKG-01 reconciliation candidates → 45 new `BATTERY_ASSESSMENT_RECOMPUTE` jobs (`lv-rest-reconcile:` correlation), 1:1 |
+| **Same-vehicle fan-out** | 3 vehicles: 17 + 11 + 17 jobs; reconciliation enqueued up to `batch` repairs without per-vehicle cap |
+| **Lock contention** | 15/45 unique jobs terminal with `Battery V2 vehicle lock contended scope=assess` after 3 attempts |
+| **Persistence failures** | 30/45 unique jobs terminal with Prisma `batteryAssessment.create` Postgres `54000` — **root cause:** oversized `idempotency_key` in unique btree `(vehicle_id, idempotency_key)`; evidence UUID fan-out in key string |
+| **Handoff state post-failure** | 46 incomplete carriers `ENQUEUED`; terminal `FAILED` handoff + bounded idempotency key fix in PR #1519 M3.0D.1 |
+| **Fix (PR pending)** | Fail-closed Redis assess dispatch authority (`ACQUIRED`/`CONFLICT`/`AUTHORITY_UNAVAILABLE`); ownership-safe release; atomic refresh; final-attempt reservation cleanup; narrow FAILED legacy-54000 SQL + metadata rearm (Option B); prior M3.0D.2 persistence/DLQ/compat fixes retained |
+
+**FULL_FLEET_ACTIVATION_READY:** NOT reevaluated — awaits fix deploy + soak.
 
 ## Executive summary
 

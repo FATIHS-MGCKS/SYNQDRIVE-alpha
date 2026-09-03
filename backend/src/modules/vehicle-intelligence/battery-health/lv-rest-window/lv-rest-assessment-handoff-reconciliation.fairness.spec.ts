@@ -190,8 +190,14 @@ function buildFairnessHarness(
       return `bull-${payload.inputVersion}`;
     }),
     hasLiveJob: jest.fn(async (idempotencyKey: string) => idempotencyKey !== targetIdempotencyKey),
+    hasLiveAssessJobForVehicle: jest.fn().mockResolvedValue(false),
+    hasAssessDispatchConflict: jest.fn().mockResolvedValue(false),
   };
-  const deadLetters = { isDeadLetter: jest.fn().mockResolvedValue(false) };
+  const deadLetters = {
+    isDeadLetter: jest.fn().mockResolvedValue(false),
+    clearReplayableDeadLetterIfPresent: jest.fn().mockResolvedValue(false),
+    clearLegacyAssessPersistence54000DeadLetterIfPresent: jest.fn().mockResolvedValue(false),
+  };
   const assessmentHandoff = new LvRestAssessmentHandoffService(
     prisma as never,
     jobProducer as never,
@@ -282,7 +288,7 @@ describe('lv-rest-assessment-handoff reconciliation fairness', () => {
       'REST_60M',
     );
     expect(handoff?.lastAttemptAt).toBeTruthy();
-    expect(runs).toBeLessThanOrEqual(Math.ceil(candidateCount / maxScanned) + 2);
+    expect(runs).toBeLessThanOrEqual(candidateCount + 2);
   });
 
   it('TEST B — reaches deep candidate at non-coprime 600_000ms interval (traversal)', async () => {
@@ -298,7 +304,7 @@ describe('lv-rest-assessment-handoff reconciliation fairness', () => {
       'REST_60M',
     );
     expect(handoff?.lastAttemptAt).toBeTruthy();
-    expect(runs).toBeLessThanOrEqual(Math.ceil(candidateCount / maxScanned) + 2);
+    expect(runs).toBeLessThanOrEqual(candidateCount + 2);
   });
 
   it('TEST C — repairable candidate beyond former 32-window capacity is eventually enqueued via reconciliation', async () => {
@@ -314,7 +320,8 @@ describe('lv-rest-assessment-handoff reconciliation fairness', () => {
     let now = 0;
     const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);
     try {
-      for (let run = 0; run < 500; run += 1) {
+      // Per-vehicle serialization allows one repair enqueue per vehicle per pass.
+      for (let run = 0; run < candidateCount + 50; run += 1) {
         await buildService().reconcileAll();
         const handoff = readAssessmentHandoffFromTargetMetadata(
           sessions.get(target.sessionId)?.metadata,
@@ -368,7 +375,7 @@ describe('lv-rest-assessment-handoff reconciliation fairness', () => {
     let now = 0;
     const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);
     try {
-      for (let run = 0; run < 30; run += 1) {
+      for (let run = 0; run < candidateCount + 50; run += 1) {
         const freshService = buildService();
         await freshService.reconcileAll();
         const handoff = readAssessmentHandoffFromTargetMetadata(

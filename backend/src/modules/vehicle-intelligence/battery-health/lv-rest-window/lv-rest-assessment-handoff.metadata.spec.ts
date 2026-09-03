@@ -74,4 +74,40 @@ describe('lv-rest-assessment-handoff.metadata', () => {
     expect(executed.status).toBe(LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED);
     expect(executed.outcome).toBe(LV_REST_ASSESSMENT_HANDOFF_OUTCOME.POLICY_SKIPPED);
   });
+
+  it('allows ENQUEUED → FAILED terminal progression for persistence failures', () => {
+    const enqueued = mergeAssessmentHandoffState(null, {
+      measurementId: MEAS,
+      idempotencyKey: KEY,
+      status: LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED,
+      enqueuedAt: '2026-09-02T10:00:00.000Z',
+    });
+    const failed = mergeAssessmentHandoffState(enqueued, {
+      measurementId: MEAS,
+      idempotencyKey: KEY,
+      status: LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED,
+      outcome: LV_REST_ASSESSMENT_HANDOFF_OUTCOME.PERSISTENCE_FAILED,
+      executedAt: '2026-09-02T10:01:00.000Z',
+    });
+
+    expect(failed.status).toBe(LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED);
+    expect(failed.outcome).toBe(LV_REST_ASSESSMENT_HANDOFF_OUTCOME.PERSISTENCE_FAILED);
+  });
+
+  it('never regresses FAILED to ENQUEUED', () => {
+    const failed = mergeAssessmentHandoffState(null, {
+      measurementId: MEAS,
+      idempotencyKey: KEY,
+      status: LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED,
+      outcome: LV_REST_ASSESSMENT_HANDOFF_OUTCOME.PERSISTENCE_FAILED,
+      executedAt: '2026-09-02T10:01:00.000Z',
+    });
+    const regressed = mergeAssessmentHandoffState(failed, {
+      measurementId: MEAS,
+      idempotencyKey: KEY,
+      status: LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED,
+      enqueuedAt: '2026-09-02T10:02:00.000Z',
+    });
+    expect(regressed.status).toBe(LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED);
+  });
 });

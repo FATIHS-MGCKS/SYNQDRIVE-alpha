@@ -46,6 +46,9 @@ import { measurementTypeForRestTarget } from '../lv-rest-window/battery-rest-tar
 import {
   CANONICAL_REST_ASSESSMENT_HANDOFF_LOOKBACK_MS,
   maxScannedRestAssessmentHandoffCandidates,
+  REPLAYABLE_ASSESSMENT_HANDOFF_DEAD_LETTER_CODES,
+  shouldDeferRestAssessmentHandoffVehicleRepair,
+  markRestAssessmentHandoffVehicleTouchedThisPass,
 } from '../lv-rest-window/lv-rest-assessment-handoff-reconciliation.policy';
 import { fetchRestAssessmentHandoffReconcileCandidates } from '../lv-rest-window/lv-rest-assessment-handoff-reconciliation.query';
 import {
@@ -847,6 +850,7 @@ export class BatteryV2ReconciliationService {
     });
 
     let repaired = 0;
+    const repairedVehiclesThisPass = new Set<string>();
 
     for (const measurement of candidates) {
       if (!isCanonicalRestAssessmentHandoffEligible(measurement)) continue;
@@ -854,6 +858,12 @@ export class BatteryV2ReconciliationService {
 
       const restTargetType = restTargetTypeForMeasurementType(measurement.type);
       if (!restTargetType) continue;
+
+      const idempotencyKey = buildAssessmentJobIdempotencyKey({
+        vehicleId: measurement.vehicleId,
+        assessmentType: 'LV_HEALTH',
+        inputVersion: measurement.id,
+      });
 
       const handoffInput = {
         organizationId: measurement.organizationId,
@@ -864,8 +874,45 @@ export class BatteryV2ReconciliationService {
         correlationPrefix: 'lv-rest-reconcile',
       };
 
+      if (
+        shouldDeferRestAssessmentHandoffVehicleRepair(
+          measurement.vehicleId,
+          repairedVehiclesThisPass,
+        )
+      ) {
+        continue;
+      }
+
       if (repaired < batch) {
+        if (await this.jobProducer.hasLiveAssessJobForVehicle(measurement.vehicleId)) {
+          markRestAssessmentHandoffVehicleTouchedThisPass(
+            measurement.vehicleId,
+            repairedVehiclesThisPass,
+          );
+          await this.assessmentHandoff.touchReconciliationFairness({
+            organizationId: handoffInput.organizationId,
+            sessionId: handoffInput.sessionId,
+            restTargetType: handoffInput.restTargetType,
+            measurementId: handoffInput.measurementId,
+            idempotencyKey,
+          });
+          continue;
+        }
+
+        await this.deadLetters.clearReplayableDeadLetterIfPresent(
+          'BATTERY_ASSESSMENT_RECOMPUTE',
+          idempotencyKey,
+          REPLAYABLE_ASSESSMENT_HANDOFF_DEAD_LETTER_CODES,
+        );
+        await this.deadLetters.clearLegacyAssessPersistence54000DeadLetterIfPresent(
+          'BATTERY_ASSESSMENT_RECOMPUTE',
+          idempotencyKey,
+        );
         const result = await this.assessmentHandoff.reconcileAssessmentHandoff(handoffInput);
+        markRestAssessmentHandoffVehicleTouchedThisPass(
+          measurement.vehicleId,
+          repairedVehiclesThisPass,
+        );
         if (result.enqueued) {
           repaired += 1;
         }
@@ -877,11 +924,7 @@ export class BatteryV2ReconciliationService {
         sessionId: handoffInput.sessionId,
         restTargetType: handoffInput.restTargetType,
         measurementId: handoffInput.measurementId,
-        idempotencyKey: buildAssessmentJobIdempotencyKey({
-          vehicleId: handoffInput.vehicleId,
-          assessmentType: 'LV_HEALTH',
-          inputVersion: handoffInput.measurementId,
-        }),
+        idempotencyKey,
       });
     }
 

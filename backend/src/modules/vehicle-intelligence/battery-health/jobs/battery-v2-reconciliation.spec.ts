@@ -1,4 +1,5 @@
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { createBatteryV2JobProducer } from './battery-v2-job-producer.test-util';
 import { BatteryV2ReconciliationService } from './battery-v2-reconciliation.service';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { buildRestTargetJobIdempotencyKey } from './battery-v2-job-idempotency.policy';
@@ -17,10 +18,12 @@ jest.mock('@config/battery-health-v2.config', () => {
 const ORG = 'clorg1234567890123456789012';
 const VEH = 'clveh1234567890123456789012';
 
-function mockDeadLetters(overrides: Partial<{ isDeadLetter: jest.Mock; clearDeadLetter: jest.Mock }> = {}) {
+function mockDeadLetters(overrides: Partial<{ isDeadLetter: jest.Mock; clearDeadLetter: jest.Mock; clearReplayableDeadLetterIfPresent: jest.Mock; clearLegacyAssessPersistence54000DeadLetterIfPresent: jest.Mock }> = {}) {
   return {
     isDeadLetter: jest.fn().mockResolvedValue(false),
     clearDeadLetter: jest.fn().mockResolvedValue(true),
+    clearReplayableDeadLetterIfPresent: jest.fn().mockResolvedValue(false),
+    clearLegacyAssessPersistence54000DeadLetterIfPresent: jest.fn().mockResolvedValue(false),
     ...overrides,
   };
 }
@@ -39,7 +42,7 @@ describe('BatteryV2JobProducerService hardening', () => {
       }),
       add: jest.fn().mockResolvedValue({ id: 'job-1' }),
     };
-    const producer = new BatteryV2JobProducerService(queue as any, mockDeadLetters() as any);
+    const producer = createBatteryV2JobProducer(queue as any, mockDeadLetters() as any);
 
     const startedAt = new Date('2026-07-16T08:00:00.000Z');
     const idempotencyKey = buildRestTargetJobIdempotencyKey({
@@ -69,7 +72,7 @@ describe('BatteryV2JobProducerService hardening', () => {
     const deadLetters = mockDeadLetters({
       isDeadLetter: jest.fn().mockResolvedValue(true),
     });
-    const producer = new BatteryV2JobProducerService(queue as any, deadLetters as any);
+    const producer = createBatteryV2JobProducer(queue as any, deadLetters as any);
 
     const result = await producer.enqueue('BATTERY_REST_TARGET_EVALUATE', {
       organizationId: ORG,
@@ -92,7 +95,7 @@ describe('BatteryV2JobProducerService hardening', () => {
     const deadLetters = mockDeadLetters({
       isDeadLetter: jest.fn().mockResolvedValue(true),
     });
-    const producer = new BatteryV2JobProducerService(queue as any, deadLetters as any);
+    const producer = createBatteryV2JobProducer(queue as any, deadLetters as any);
 
     const result = await producer.enqueue(
       'BATTERY_REST_TARGET_EVALUATE',
@@ -142,6 +145,7 @@ describe('BatteryV2ReconciliationService', () => {
   const jobProducer = {
     enqueue: jest.fn().mockResolvedValue('job-id'),
     hasLiveJob: jest.fn().mockResolvedValue(false),
+    hasLiveAssessJobForVehicle: jest.fn().mockResolvedValue(false),
   };
   const observationProducer = { classifyAndEnqueue: jest.fn().mockResolvedValue(null) };
   const deadLetters = mockDeadLetters();
@@ -836,7 +840,103 @@ describe('BatteryV2ReconciliationService', () => {
 
     await service.reconcileAll();
 
-    expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledTimes(25);
-    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(5);
+    expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledTimes(1);
+    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(0);
+  });
+
+  it('serializes canonical REST handoff repair to one enqueue per vehicle per pass', async () => {
+    const VEH_B = 'clvehB1234567890123456789012';
+    const candidates = [
+      {
+        id: 'clmeasvehA00000000000000000001',
+        organizationId: ORG,
+        vehicleId: VEH,
+        sessionId: 'clsessvehA000000000000000001',
+        type: 'REST_60M' as const,
+        provenance: { sourceObservationId: 'obs-a1' },
+      },
+      {
+        id: 'clmeasvehA00000000000000000002',
+        organizationId: ORG,
+        vehicleId: VEH,
+        sessionId: 'clsessvehA000000000000000002',
+        type: 'REST_60M' as const,
+        provenance: { sourceObservationId: 'obs-a2' },
+      },
+      {
+        id: 'clmeasvehB00000000000000000001',
+        organizationId: ORG,
+        vehicleId: VEH_B,
+        sessionId: 'clsessvehB000000000000000001',
+        type: 'REST_60M' as const,
+        provenance: { sourceObservationId: 'obs-b1' },
+      },
+    ];
+    prisma.$queryRaw.mockResolvedValue(candidates);
+    assessmentHandoff.reconcileAssessmentHandoff.mockResolvedValue({
+      enqueued: true,
+      skipped: false,
+      idempotencyKey: 'assess-key',
+    });
+
+    await service.reconcileAll();
+
+    expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledTimes(2);
+    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(0);
+    expect(deadLetters.clearReplayableDeadLetterIfPresent).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not enqueue a second candidate for the same vehicle when first returns enqueued=false', async () => {
+    const candidates = [
+      {
+        id: 'clmeasvehA00000000000000000001',
+        organizationId: ORG,
+        vehicleId: VEH,
+        sessionId: 'clsessvehA000000000000000001',
+        type: 'REST_60M' as const,
+        provenance: { sourceObservationId: 'obs-a1' },
+      },
+      {
+        id: 'clmeasvehA00000000000000000002',
+        organizationId: ORG,
+        vehicleId: VEH,
+        sessionId: 'clsessvehA000000000000000002',
+        type: 'REST_60M' as const,
+        provenance: { sourceObservationId: 'obs-a2' },
+      },
+    ];
+    prisma.$queryRaw.mockResolvedValue(candidates);
+    assessmentHandoff.reconcileAssessmentHandoff.mockResolvedValue({
+      enqueued: false,
+      skipped: true,
+      reason: 'already_enqueued_live',
+      idempotencyKey: 'assess-key',
+    });
+
+    await service.reconcileAll();
+
+    expect(assessmentHandoff.reconcileAssessmentHandoff).toHaveBeenCalledTimes(1);
+    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(0);
+  });
+
+  it('defers repair when another live assess job exists for the vehicle across ticks', async () => {
+    const MEAS = 'clmeas123456789012345678901';
+    prisma.$queryRaw.mockResolvedValue([
+      {
+        id: MEAS,
+        organizationId: ORG,
+        vehicleId: VEH,
+        sessionId: 'clsess123456789012345678901',
+        type: 'REST_60M',
+        provenance: { sourceObservationId: 'obs-1' },
+      },
+    ]);
+    jobProducer.hasLiveAssessJobForVehicle.mockResolvedValue(true);
+
+    const result = await service.reconcileAll();
+
+    expect(result.assessments).toBe(0);
+    expect(assessmentHandoff.reconcileAssessmentHandoff).not.toHaveBeenCalled();
+    expect(assessmentHandoff.touchReconciliationFairness).toHaveBeenCalledTimes(1);
   });
 });

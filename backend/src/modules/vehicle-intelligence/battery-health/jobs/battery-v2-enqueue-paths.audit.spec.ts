@@ -16,6 +16,7 @@ import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/
 import { HvRechargeSessionReconcileTrigger } from '../hv-charge-session/hv-recharge-session-reconcile.trigger';
 import { buildHvRechargeVehicleReconcileIdempotencyKey } from '../hv-charge-session/hv-recharge-session-reconcile.policy';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { createBatteryV2JobProducer } from './battery-v2-job-producer.test-util';
 import {
   buildAssessmentJobIdempotencyKey,
   buildBatteryRestTargetJobIdempotencyKey,
@@ -93,7 +94,7 @@ function createCapturingProducer() {
       return Promise.resolve({ id: opts.jobId });
     }),
   };
-  const producer = new BatteryV2JobProducerService(queue as never, mockDeadLetters() as never);
+  const producer = createBatteryV2JobProducer(queue as never, mockDeadLetters() as never);
   return { producer, queue, captured };
 }
 
@@ -141,6 +142,19 @@ function directEnqueueInput(jobType: BatteryV2JobType, idempotencyKey: string) {
         tripId: TRIP,
         tripStartedAt: FIXED_AT,
         sourceEntityId: TRIP,
+      };
+    case 'BATTERY_ASSESSMENT_RECOMPUTE':
+      return {
+        ...base,
+        assessmentType: 'LV_HEALTH' as const,
+        inputVersion: 'meas-audit-1',
+        sourceEntityId: 'meas-audit-1',
+      };
+    case 'BATTERY_PUBLICATION_UPDATE':
+      return {
+        ...base,
+        assessmentId: ASSESSMENT,
+        publicationVersion: 1,
       };
     case 'HV_CAPABILITY_REFRESH':
       return {
@@ -413,7 +427,7 @@ describe('battery-v2 enqueue path audit', () => {
         }),
         add: jest.fn().mockResolvedValue({ id: expectedJobId }),
       };
-      const producer = new BatteryV2JobProducerService(queue as never, mockDeadLetters() as never);
+      const producer = createBatteryV2JobProducer(queue as never, mockDeadLetters() as never);
       const input = directEnqueueInput('BATTERY_REST_TARGET_EVALUATE', idempotencyKey);
 
       const first = await producer.enqueue('BATTERY_REST_TARGET_EVALUATE', input as never);

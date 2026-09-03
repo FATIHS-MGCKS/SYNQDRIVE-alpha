@@ -16,6 +16,51 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-03 — M3.0D.3 reservation authority + FAILED rearm runtime closure
+
+| Field | Content |
+|-------|---------|
+| **OBSERVATION** | M3.0D.2 reservation service conflated Redis errors with absent reservation; producer could release reservations it did not acquire; processor left ghost reservations after final retryable exhaustion; FAILED rearm unreachable via scheduler SQL. |
+| **CHANGE** | Typed `acquireForDispatch` fail-closed semantics; ownership-gated producer release; Lua atomic refresh; processor releases on all final assess attempts; Option B FAILED candidate SQL + `isLegacyPersistence54000HandoffFailure` narrow rearm. |
+| **VALIDATION** | Authority + producer + processor + M3.0D.2/3 closure + PKG regressions; PostgreSQL 16.15 persistence (gated); graph + tsc PASS. **Not deployed.** |
+| **NON_EFFECTS** | No publication/REST_SHADOW change; no event-driven drain; production failed jobs untouched. |
+| **DECISION_STATUS** | M3.0D.3 CODE COMPLETE — human merge review |
+
+## CL-2026-09-03 — M3.0D.2 PR #1519 final pre-merge closure
+
+| Field | Content |
+|-------|---------|
+| **OBSERVATION** | M3.0D.1 fixed 54000 root cause but ~30 legacy HANDLER_FAILED/54000 DLQs were not replayable; bounded BullMQ scan (250/state) not fleet-safe; digest keys could duplicate legacy raw-key rows; FAILED handoffs had no explicit rearm path. |
+| **CHANGE** | `clearLegacyAssessPersistence54000DeadLetterIfPresent` + `isLegacyAssessPersistence54000DeadLetter`; Redis assess dispatch reservation (O(1)); `findExistingLvEstimatedHealthByCanonicalIdentity` (digest + legacy + fingerprint); FAILED→ENQUEUED rearm with `rearmReason`; metadata explicit-rearm merge bypass; real PostgreSQL persistence integration test. |
+| **VALIDATION** | M3.0D.2 closure + reservation + legacy compat + PKG-01/02/stage-1 regressions; PostgreSQL 16.15 isolated persistence PASS (gated); graph + tsc PASS. **Not deployed.** |
+| **NON_EFFECTS** | `BATTERY_V2_PUBLICATION_ENABLED=false`; `BATTERY_V2_REST_SHADOW_ENABLED=true`; production failed jobs untouched. |
+| **REMAINING_GAPS** | Production forensics blocked (SSH); event-driven same-vehicle drain not implemented; deploy + soak before activation reevaluation. |
+| **DECISION_STATUS** | M3.0D.2 CODE COMPLETE — human merge review |
+
+## CL-2026-09-03 — M3.0D.1 PR #1519 persistence + cross-tick liveness closure
+
+| Field | Content |
+|-------|---------|
+| **OBSERVATION** | M3.0D closed lock contention but not Postgres 54000; 30/45 assess creates failed on `battery_assessments_idempotency_key` btree tuple size; handoffs stuck ENQUEUED+DLQ; same-pass `repairedVehiclesThisPass` only tracked `enqueued=true`. |
+| **ROOT_CAUSE** | Unbounded LV assessment `idempotency_key` embedding sorted measurement UUIDs in unique index `(vehicle_id, idempotency_key)`; concurrency disproved as 54000 mechanism. |
+| **CHANGE** | SHA-256 digest segment `fp{hex}` in `buildLvEstimatedHealthAssessmentIdempotencyKey`; `evidenceFingerprint` preserved in `inputSummary`; `hasLiveAssessJobForVehicle` cross-tick guard; vehicle touched-this-pass on any repair attempt; handoff `FAILED`/`PERSISTENCE_FAILED` terminal; unique-constraint races remain retryable at classifier. |
+| **VALIDATION** | PKG-01/02 + persistence + liveness + graph + tsc (M3.0D.1 run). **Not deployed.** |
+| **NON_EFFECTS** | `BATTERY_V2_PUBLICATION_ENABLED=false`; `BATTERY_V2_REST_SHADOW_ENABLED=true`; production failed jobs untouched. |
+| **REMAINING_GAPS** | Deploy + soak before `FULL_FLEET_ACTIVATION_READY` reevaluation; historical long-key rows remain (new writes bounded). |
+| **DECISION_STATUS** | M3.0D.1 CODE COMPLETE — merge pending human review |
+
+## CL-2026-09-03 — M3.0D PKG-01 reconciliation failure-spike forensics + liveness closure
+
+| Field | Content |
+|-------|---------|
+| **OBSERVATION** | Post-#1515 deploy: 45 PKG-01 candidates → 45 `lv-rest-reconcile:` terminal failures (3 vehicles, 17+11+17). 15 lock contention + 30 Prisma Postgres 54000 persistence. Failed queue 60→100; handoffs now 46×ENQUEUED. |
+| **ROOT_CAUSE** | Reconciliation fan-out enqueued many same-vehicle assess jobs concurrently → vehicle assess lock contention + concurrent assessment creates → terminal BullMQ failures; empty `failedReason` from raw re-throw without `BatteryV2JobProcessingError`. |
+| **CHANGE** | Per-vehicle repair serialization in `reconcileCanonicalRestAssessmentHandoffs`; `clearReplayableDeadLetterIfPresent` before repair; processor throws classified `BatteryV2JobProcessingError`; idempotent-skip ack handoff; assess retry 5×10s exponential; Prisma 54000 classified non-retryable. |
+| **VALIDATION** | PKG-01 reconciliation/fairness/liveness 98 passed; graph PASS. **Not deployed.** |
+| **NON_EFFECTS** | `BATTERY_V2_PUBLICATION_ENABLED` unchanged; REST_SHADOW unchanged; failed queue not mutated. |
+| **REMAINING_GAPS** | Postgres 54000 on assessment create may need separate persistence investigation; fix deploy + soak before activation readiness reevaluation. |
+| **DECISION_STATUS** | M3.0D CODE COMPLETE — deploy pending |
+
 ## CL-2026-09-03 — M3.0B canary-readiness closure (PR #1515)
 
 | Field | Content |

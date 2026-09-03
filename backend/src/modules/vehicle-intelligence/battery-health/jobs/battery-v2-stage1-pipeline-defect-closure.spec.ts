@@ -5,6 +5,7 @@
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { BatteryMeasurementSessionRepository } from '../battery-measurement-session.repository';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { createBatteryV2JobProducer } from './battery-v2-job-producer.test-util';
 import { BatteryV2ReconciliationService } from './battery-v2-reconciliation.service';
 import { resolveLvRestWindowAnchorAt } from '../lv-rest-window/lv-rest-window.state-machine';
 import { LvRestWindowEventType } from '../battery-v2-domain';
@@ -278,7 +279,7 @@ describe('Battery V2 Stage 1 pipeline defect closure', () => {
       const deadLetters = {
         isDeadLetter: jest.fn().mockResolvedValue(true),
       };
-      const producer = new BatteryV2JobProducerService(queue as any, deadLetters as any);
+      const producer = createBatteryV2JobProducer(queue as any, deadLetters as any);
 
       await producer.enqueue(
         'BATTERY_LV_REST_SESSION_OPEN',

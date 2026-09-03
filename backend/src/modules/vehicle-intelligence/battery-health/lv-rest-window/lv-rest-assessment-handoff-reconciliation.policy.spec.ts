@@ -1,6 +1,7 @@
 import {
   compareRestAssessmentHandoffReconcileFairness,
   maxScannedRestAssessmentHandoffCandidates,
+  shouldDeferRestAssessmentHandoffVehicleRepair,
 } from './lv-rest-assessment-handoff-reconciliation.policy';
 
 describe('lv-rest-assessment-handoff-reconciliation.policy', () => {
@@ -34,5 +35,11 @@ describe('lv-rest-assessment-handoff-reconciliation.policy', () => {
         { id: 'bbb', lastAttemptAt: attemptAt },
       ),
     ).toBeLessThan(0);
+  });
+
+  it('defers additional repairs for a vehicle already enqueued this pass', () => {
+    const repaired = new Set(['veh-a']);
+    expect(shouldDeferRestAssessmentHandoffVehicleRepair('veh-a', repaired)).toBe(true);
+    expect(shouldDeferRestAssessmentHandoffVehicleRepair('veh-b', repaired)).toBe(false);
   });
 });

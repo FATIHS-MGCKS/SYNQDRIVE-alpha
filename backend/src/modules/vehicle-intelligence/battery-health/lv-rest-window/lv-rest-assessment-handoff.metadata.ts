@@ -10,6 +10,8 @@ export const LV_REST_ASSESSMENT_HANDOFF_STATUS = {
   MISSING: 'MISSING',
   ENQUEUED: 'ENQUEUED',
   EXECUTED: 'EXECUTED',
+  /** Terminal: non-retryable assess failure (e.g. persistence 54000). */
+  FAILED: 'FAILED',
 } as const;
 
 export type LvRestAssessmentHandoffStatus =
@@ -19,10 +21,26 @@ export const LV_REST_ASSESSMENT_HANDOFF_OUTCOME = {
   ASSESSMENT_PERSISTED: 'ASSESSMENT_PERSISTED',
   POLICY_SKIPPED: 'POLICY_SKIPPED',
   UNSUPPORTED: 'UNSUPPORTED',
+  PERSISTENCE_FAILED: 'PERSISTENCE_FAILED',
 } as const;
 
 export type LvRestAssessmentHandoffOutcome =
   (typeof LV_REST_ASSESSMENT_HANDOFF_OUTCOME)[keyof typeof LV_REST_ASSESSMENT_HANDOFF_OUTCOME];
+
+export const LV_REST_ASSESSMENT_HANDOFF_REARM_REASON = {
+  LEGACY_PERSISTENCE_54000: 'LEGACY_PERSISTENCE_54000',
+  OPERATOR: 'OPERATOR',
+} as const;
+
+export type LvRestAssessmentHandoffRearmReason =
+  (typeof LV_REST_ASSESSMENT_HANDOFF_REARM_REASON)[keyof typeof LV_REST_ASSESSMENT_HANDOFF_REARM_REASON];
+
+export interface LvRestAssessmentHandoffFailureHistory {
+  outcome: LvRestAssessmentHandoffOutcome;
+  failedAt: string;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+}
 
 export interface LvRestAssessmentHandoffMetadata {
   measurementId: string;
@@ -33,13 +51,26 @@ export interface LvRestAssessmentHandoffMetadata {
   executedAt?: string | null;
   lastAttemptAt?: string | null;
   bullJobId?: string | null;
+  rearmReason?: LvRestAssessmentHandoffRearmReason | null;
+  rearmedAt?: string | null;
+  failureHistory?: LvRestAssessmentHandoffFailureHistory | null;
 }
 
 const HANDOFF_STATUS_RANK: Record<LvRestAssessmentHandoffStatus, number> = {
   MISSING: 0,
   ENQUEUED: 1,
   EXECUTED: 2,
+  FAILED: 2,
 };
+
+export function isTerminalRestAssessmentHandoffStatus(
+  status: LvRestAssessmentHandoffStatus | undefined | null,
+): boolean {
+  return (
+    status === LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED ||
+    status === LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED
+  );
+}
 
 export function handoffStatusRank(
   status: LvRestAssessmentHandoffStatus | undefined | null,
@@ -65,10 +96,20 @@ export function mergeAssessmentHandoffState(
     executedAt: null,
     lastAttemptAt: null,
     bullJobId: null,
+    rearmReason: null,
+    rearmedAt: null,
+    failureHistory: null,
   };
 
   const nextStatus = patch.status ?? base.status;
-  if (handoffStatusRank(nextStatus) < handoffStatusRank(base.status)) {
+  const isExplicitRearm =
+    patch.rearmReason != null &&
+    base.status === LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED &&
+    nextStatus === LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED;
+  if (
+    !isExplicitRearm &&
+    handoffStatusRank(nextStatus) < handoffStatusRank(base.status)
+  ) {
     return {
       ...base,
       lastAttemptAt: patch.lastAttemptAt ?? base.lastAttemptAt,
@@ -83,6 +124,10 @@ export function mergeAssessmentHandoffState(
     idempotencyKey: patch.idempotencyKey,
     status: nextStatus,
     outcome: patch.outcome !== undefined ? patch.outcome : base.outcome,
+    rearmReason: patch.rearmReason !== undefined ? patch.rearmReason : base.rearmReason,
+    rearmedAt: patch.rearmedAt !== undefined ? patch.rearmedAt : base.rearmedAt,
+    failureHistory:
+      patch.failureHistory !== undefined ? patch.failureHistory : base.failureHistory,
   };
 }
 

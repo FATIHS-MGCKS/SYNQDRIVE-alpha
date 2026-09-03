@@ -22,6 +22,10 @@ import { buildBatteryV2JobId, buildBatteryV2JobOptions, assertBatteryV2BullMqJob
 import { getBatteryV2JobRetryPolicy } from './battery-v2-job.retry-policy';
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import {
+  BatteryV2AssessDispatchReservationService,
+} from './battery-v2-assess-dispatch-reservation.service';
+import { ASSESS_DISPATCH_RESERVATION_STATUS } from './battery-v2-assess-dispatch-reservation.types';
+import {
   recordBatteryJob,
   recordBatteryV2JobEnqueue,
   recordBatteryV2JobEnqueueSuppressed,
@@ -58,6 +62,7 @@ export class BatteryV2JobProducerService {
   constructor(
     @InjectQueue(QUEUE_NAMES.BATTERY_V2) private readonly queue: Queue,
     private readonly deadLetters: BatteryV2JobDeadLetterService,
+    private readonly assessDispatchReservation: BatteryV2AssessDispatchReservationService,
     @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
@@ -115,10 +120,69 @@ export class BatteryV2JobProducerService {
 
     const jobId = buildBatteryV2JobId(payload.idempotencyKey);
     assertBatteryV2BullMqJobId(jobId);
-    return this.addIdempotent(jobType, payload, jobId, {
-      ...buildBatteryV2JobOptions(jobType),
-      delay: options.delayMs ?? 0,
-    });
+
+    let reservationAcquiredByThisInvocation = false;
+
+    if (jobType === 'BATTERY_ASSESSMENT_RECOMPUTE') {
+      const acquire = await this.assessDispatchReservation.acquireForDispatch(
+        payload.vehicleId,
+        payload.idempotencyKey,
+      );
+      switch (acquire.status) {
+        case ASSESS_DISPATCH_RESERVATION_STATUS.ACQUIRED:
+          reservationAcquiredByThisInvocation = true;
+          break;
+        case ASSESS_DISPATCH_RESERVATION_STATUS.SAME_IDENTITY_HELD:
+          break;
+        case ASSESS_DISPATCH_RESERVATION_STATUS.CONFLICT:
+          this.recordEnqueueSuppressed(jobType, 'duplicate');
+          this.logger.debug(
+            formatBatteryV2PipelineLog({
+              component: 'enqueue',
+              event: 'enqueue_suppressed_assess_dispatch_reservation',
+              status: 'suppressed',
+              jobType,
+              organizationId: payload.organizationId,
+              vehicleId: payload.vehicleId,
+              keyFp: fingerprintBatteryV2IdempotencyKey(payload.idempotencyKey),
+              correlationId: payload.correlationId,
+              suppressionReason: 'duplicate',
+            }),
+          );
+          return null;
+        case ASSESS_DISPATCH_RESERVATION_STATUS.AUTHORITY_UNAVAILABLE:
+          this.logger.warn(
+            formatBatteryV2PipelineLog({
+              component: 'enqueue',
+              event: 'enqueue_suppressed_assess_dispatch_authority_unavailable',
+              status: 'suppressed',
+              jobType,
+              organizationId: payload.organizationId,
+              vehicleId: payload.vehicleId,
+              keyFp: fingerprintBatteryV2IdempotencyKey(payload.idempotencyKey),
+              correlationId: payload.correlationId,
+              suppressionReason: 'duplicate',
+              errorCode: 'TRANSIENT_INFRA',
+            }),
+          );
+          return null;
+      }
+    }
+
+    try {
+      return await this.addIdempotent(jobType, payload, jobId, {
+        ...buildBatteryV2JobOptions(jobType),
+        delay: options.delayMs ?? 0,
+      });
+    } catch (err) {
+      if (jobType === 'BATTERY_ASSESSMENT_RECOMPUTE' && reservationAcquiredByThisInvocation) {
+        await this.assessDispatchReservation.release(
+          payload.vehicleId,
+          payload.idempotencyKey,
+        );
+      }
+      throw err;
+    }
   }
 
   private async addIdempotent(
@@ -235,6 +299,42 @@ export class BatteryV2JobProducerService {
     const job = await this.queue.getJob(jobId);
     if (!job) return false;
     const state = await job.getState();
+    return BatteryV2JobProducerService.isLiveBullMqJobState(state);
+  }
+
+  /**
+   * O(1) vehicle-scoped assess dispatch reservation check (Redis-backed).
+   */
+  async hasAssessDispatchConflict(
+    vehicleId: string,
+    idempotencyKey: string,
+  ): Promise<boolean> {
+    return this.assessDispatchReservation.hasConflictingReservation(
+      vehicleId,
+      idempotencyKey,
+    );
+  }
+
+  /** @deprecated Use hasAssessDispatchConflict — retained for reconciliation call sites. */
+  async hasLiveAssessJobForVehicle(vehicleId: string): Promise<boolean> {
+    return this.assessDispatchReservation.hasReservationForVehicle(vehicleId);
+  }
+
+  async releaseAssessDispatchReservation(
+    vehicleId: string,
+    idempotencyKey: string,
+  ): Promise<void> {
+    await this.assessDispatchReservation.release(vehicleId, idempotencyKey);
+  }
+
+  async refreshAssessDispatchReservation(
+    vehicleId: string,
+    idempotencyKey: string,
+  ): Promise<void> {
+    await this.assessDispatchReservation.refresh(vehicleId, idempotencyKey);
+  }
+
+  private static isLiveBullMqJobState(state: string): boolean {
     return (
       state === 'waiting' ||
       state === 'delayed' ||

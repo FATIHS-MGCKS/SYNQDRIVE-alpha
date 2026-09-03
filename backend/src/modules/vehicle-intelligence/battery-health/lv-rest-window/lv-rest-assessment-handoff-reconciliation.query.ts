@@ -16,6 +16,9 @@ export interface RestAssessmentHandoffReconcileCandidate {
  * Ordering uses durable target-scoped `assessmentHandoff.lastAttemptAt` so every
  * finite backlog is eventually inspected without process-local cursors or fixed
  * scan-window ceilings.
+ *
+ * FAILED rows are excluded unless durable metadata proves repaired legacy 54000
+ * persistence failure (Option B narrow automatic rearm eligibility).
  */
 export async function fetchRestAssessmentHandoffReconcileCandidates(
   prisma: PrismaService,
@@ -54,6 +57,44 @@ export async function fetchRestAssessmentHandoffReconcileCandidates(
           s.metadata #>> ARRAY['scheduledTargets', m.type::text, 'assessmentHandoff', 'measurementId'],
           ''
         ) = m.id
+      )
+      AND NOT (
+        COALESCE(
+          s.metadata #>> ARRAY['scheduledTargets', m.type::text, 'assessmentHandoff', 'status'],
+          'MISSING'
+        ) = 'FAILED'
+        AND COALESCE(
+          s.metadata #>> ARRAY['scheduledTargets', m.type::text, 'assessmentHandoff', 'measurementId'],
+          ''
+        ) = m.id
+        AND COALESCE(
+          s.metadata #>> ARRAY['scheduledTargets', m.type::text, 'assessmentHandoff', 'rearmReason'],
+          ''
+        ) = ''
+        AND NOT (
+          COALESCE(
+            s.metadata #>> ARRAY['scheduledTargets', m.type::text, 'assessmentHandoff', 'outcome'],
+            ''
+          ) = 'PERSISTENCE_FAILED'
+          AND COALESCE(
+            s.metadata #>> ARRAY['scheduledTargets', m.type::text, 'assessmentHandoff', 'failureHistory', 'errorCode'],
+            ''
+          ) = 'HANDLER_FAILED'
+          AND (
+            COALESCE(
+              s.metadata #>> ARRAY['scheduledTargets', m.type::text, 'assessmentHandoff', 'failureHistory', 'errorMessage'],
+              ''
+            ) ILIKE '%54000%'
+            OR COALESCE(
+              s.metadata #>> ARRAY['scheduledTargets', m.type::text, 'assessmentHandoff', 'failureHistory', 'errorMessage'],
+              ''
+            ) ILIKE '%index row size%'
+            OR COALESCE(
+              s.metadata #>> ARRAY['scheduledTargets', m.type::text, 'assessmentHandoff', 'failureHistory', 'errorMessage'],
+              ''
+            ) ILIKE '%program_limit_exceeded%'
+          )
+        )
       )
     ORDER BY
       NULLIF(

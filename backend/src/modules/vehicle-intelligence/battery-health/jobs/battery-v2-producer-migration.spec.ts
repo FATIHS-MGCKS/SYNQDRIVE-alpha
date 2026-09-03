@@ -1,4 +1,5 @@
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { createBatteryV2JobProducer } from './battery-v2-job-producer.test-util';
 import {
   BatteryV2SnapshotObservationProducer,
   buildBatteryObservationSnapshotContext,
@@ -16,7 +17,7 @@ function mockDeadLetters() {
 }
 
 function createJobProducer(queue: { add: jest.Mock; getJob: jest.Mock }) {
-  return new BatteryV2JobProducerService(queue as any, mockDeadLetters() as any);
+  return createBatteryV2JobProducer(queue as any, mockDeadLetters() as any);
 }
 
 function baseBatteryMap() {

@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import type { ResolvedBatteryPolicy } from '../../battery-policy-profile/battery-policy-profile.types';
 import { BatteryPolicyProfile } from '../../battery-policy-profile/battery-policy-profile.types';
 import {
@@ -36,6 +37,22 @@ import {
 } from './lv-evidence-selection.policy';
 
 export const LV_ESTIMATED_HEALTH_ASSESSMENT_POLICY_VERSION = '1.0.0';
+
+/** Prefix for SHA-256 digest segment in bounded assessment idempotency keys. */
+export const LV_ASSESSMENT_IDEMPOTENCY_KEY_FP_PREFIX = 'fp';
+
+/**
+ * PostgreSQL btree unique index on `(vehicle_id, idempotency_key)` rejects oversized
+ * index tuples (~2704 bytes). Evidence fingerprints embed sorted measurement UUIDs and
+ * can exceed that bound; digest keeps canonical identity without truncating science.
+ */
+export const LV_ASSESSMENT_IDEMPOTENCY_KEY_MAX_BYTES = 512;
+
+export function digestLvAssessmentEvidenceFingerprint(
+  evidenceFingerprint: string,
+): string {
+  return createHash('sha256').update(evidenceFingerprint, 'utf8').digest('hex');
+}
 
 export const LV_ASSESSMENT_TRACKS = ['TELEMETRY', 'WORKSHOP_OVERRIDE'] as const;
 export type LvAssessmentTrack = (typeof LV_ASSESSMENT_TRACKS)[number];
@@ -258,6 +275,27 @@ export function buildLvEstimatedHealthAssessmentIdempotencyKey(input: {
   evidenceFingerprint: string;
 }): string {
   const version = input.modelVersion ?? LV_ESTIMATED_HEALTH_ASSESSMENT_MODEL_VERSION;
+  const fingerprintDigest = digestLvAssessmentEvidenceFingerprint(
+    input.evidenceFingerprint,
+  );
+  return buildLvEstimatedHealthAssessmentIdempotencyKeyFromDigest({
+    vehicleId: input.vehicleId,
+    assessmentTrack: input.assessmentTrack,
+    assessmentMode: input.assessmentMode,
+    modelVersion: version,
+    fingerprintDigest,
+  });
+}
+
+/** Pre-M3.0D.1 raw fingerprint key — lookup only, not used for new writes. */
+export function buildLegacyLvEstimatedHealthAssessmentIdempotencyKey(input: {
+  vehicleId: string;
+  assessmentTrack: LvAssessmentTrack;
+  assessmentMode: LvAssessmentMode;
+  modelVersion?: number;
+  evidenceFingerprint: string;
+}): string {
+  const version = input.modelVersion ?? LV_ESTIMATED_HEALTH_ASSESSMENT_MODEL_VERSION;
   return [
     'lv-estimated-health',
     input.vehicleId,
@@ -267,6 +305,26 @@ export function buildLvEstimatedHealthAssessmentIdempotencyKey(input: {
     input.evidenceFingerprint,
   ].join(':');
 }
+
+export function buildLvEstimatedHealthAssessmentIdempotencyKeyFromDigest(input: {
+  vehicleId: string;
+  assessmentTrack: LvAssessmentTrack;
+  assessmentMode: LvAssessmentMode;
+  modelVersion: number;
+  fingerprintDigest: string;
+}): string {
+  return [
+    'lv-estimated-health',
+    input.vehicleId,
+    input.assessmentMode,
+    input.assessmentTrack,
+    `m${input.modelVersion}`,
+    `${LV_ASSESSMENT_IDEMPOTENCY_KEY_FP_PREFIX}${input.fingerprintDigest}`,
+  ].join(':');
+}
+
+/** PostgreSQL btree index tuple practical ceiling for idempotency_key uniqueness. */
+export const LV_ASSESSMENT_LEGACY_IDEMPOTENCY_KEY_UNSAFE_BYTES = 2_500;
 
 function filterSelectionForTrack(
   selection: LvEvidenceSelectionResult,
@@ -494,6 +552,7 @@ function computeTrackAssessment(input: {
       policyProfile: input.policy.profile,
       chemistry: input.policy.chemistry,
       evidenceWindow: filtered.evidenceWindow,
+      evidenceFingerprint,
       selectedMeasurementIds: selectedEvidence.map((row) => row.measurementId),
       rejectedMeasurementIds: input.selection.rejectedEvidence.map(
         (row) => row.measurementId,

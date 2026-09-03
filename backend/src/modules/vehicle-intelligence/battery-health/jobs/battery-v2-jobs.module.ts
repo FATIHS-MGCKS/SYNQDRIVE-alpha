@@ -4,6 +4,7 @@ import { BatteryV2IdempotentExecutionService } from './battery-v2-idempotent-exe
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import { BatteryV2JobHandlerRegistry } from './battery-v2-job-handler.registry';
 import { BatteryV2JobObservabilityService } from './battery-v2-job-observability.service';
+import { BatteryV2AssessDispatchReservationService } from './battery-v2-assess-dispatch-reservation.service';
 import { BatteryV2VehicleLockService } from './battery-v2-vehicle-lock.service';
 import { BatteryV2SnapshotIngestionService } from './battery-v2-snapshot-ingestion.service';
 import { LvLiveVoltageIngestionService } from '../lv-live-voltage/lv-live-voltage-ingestion.service';
@@ -54,6 +55,7 @@ const BATTERY_V2_JOB_HANDLERS = [
   providers: [
     ...BATTERY_V2_JOB_HANDLERS,
     BatteryV2VehicleLockService,
+    BatteryV2AssessDispatchReservationService,
     BatteryV2IdempotentExecutionService,
     BatteryV2JobDeadLetterService,
     BatteryV2JobObservabilityService,
