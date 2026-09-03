@@ -36,6 +36,49 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-rd003-global-discovery-v2-static-minute-d2-2026-09-03',
+    version: '4.9.1041',
+    title: 'DI-EV-0034D.2 — Static-Minute Clock Geometry + Joint Alignment Closeout',
+    summary: [
+      'Corrected static-minute feasible intercept interval to I ∈ [S + d − 60(L+1), S − 60L] (was wrong upper-bound geometry).',
+      'STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL with documented inclusive bounds and uncertainty widening.',
+      'AMBIGUOUS static clips preserve STATIC_CLOCK_CANDIDATE_INTERVAL_SET per qualified basin until joint inference.',
+      'RELATIVE_CLOCK_INTERCEPT_CENTER=null when unresolved; BEST_RETAINED_COMBINATION_* diagnostic fields separated.',
+      'Regenerated all eight global-fingerprint-discovery-v2/ artifacts; D.1 static/joint counters superseded.',
+      'Mandatory regression: S=1000, L=10, d=30 → exactly [370, 400]; width ≈ 60−d before uncertainty.',
+    ],
+    reason: 'Human review found static-minute interval geometry blocked authoritative joint DP interpretation.',
+    previousBehavior:
+      'computeStaticMinuteInterceptInterval used [S−60L, S+d−60L] producing [400,430] for the canonical synthetic case; AMBIGUOUS static clips collapsed to one diagnostic basin interval.',
+    details:
+      'reference-capture-rd003-video-gt-global-discovery-v2.ts; global-fingerprint-discovery-v2/ artifacts regenerated; D.1 joint/static results marked superseded.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T10:30:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-global-discovery-v2-closeout-2026-09-03',
+    version: '4.9.1040',
+    title: 'DI-EV-0034D.1 — RD003 Discovery V2 Correctness + Evidence Closeout',
+    summary: [
+      'Regenerated all eight global-fingerprint-discovery-v2/ artifacts from current runtime code.',
+      'Added V2 summary parity regression: committed discovery-v2-summary.json must match fresh deterministic run.',
+      'AMBIGUOUS clips now preserve CLOCK_CANDIDATE_SET (no forced single clock authority).',
+      'Relative clock model searches intercept combinations; large spreads → UNRESOLVED_AMBIGUOUS_CANDIDATE_ASSIGNMENT (not WEAK).',
+      'Joint DP enforces static-minute intercept intervals with rejection counters.',
+      'Explicit pairwiseBoundaryMinuteResidual / pairwiseClockInterceptResidual helpers.',
+      'PROVIDER_TIME_ALIGNMENT_SUPPORTED_CLIPS=2; HF_SPEED_ALIGNMENT_V2_CONCLUSION=AMBIGUOUS.',
+    ],
+    reason: 'Close four methodological/evidence defects before DI-EV-0034E signal-quality interpretation.',
+    previousBehavior:
+      'Stale summary artifact drift; AMBIGUOUS clips collapsed to rank-1 clock anchor; static-minute intervals unused in joint DP; ambiguous pairwise clock helper.',
+    details:
+      'reference-capture-rd003-video-gt-global-discovery-v2.ts; global-fingerprint-discovery-v2/ artifacts regenerated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T10:00:00.000Z',
+  },
+  {
     id: 'dimo-rd003-global-fingerprint-discovery-v2-2026-09-03',
     version: '4.9.1039',
     title: 'DI-EV-0034D — RD003 Global Discovery V2 + Joint Clock-Consistent Alignment',

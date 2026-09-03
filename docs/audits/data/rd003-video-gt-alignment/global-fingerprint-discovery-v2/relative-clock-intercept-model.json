@@ -1,9 +1,14 @@
 {
   "evidenceLayer": "METHOD_CORRECTION",
+  "evidenceRevision": "DI-EV-0034D.2",
   "modelName": "RELATIVE_CLOCK_INTERCEPT_MODEL",
+  "STATIC_MINUTE_INTERVAL_EQUATION_CORRECTED": "YES",
+  "D_1_STATIC_JOINT_RESULTS_SUPERSEDED": "YES",
   "RELATIVE_CLOCK_MODEL_STATUS": "UNRESOLVED_AMBIGUOUS_CANDIDATE_ASSIGNMENT",
-  "RELATIVE_CLOCK_INTERCEPT_CENTER": 1788300660.7625,
-  "RELATIVE_CLOCK_INTERCEPT_SPREAD_SECONDS": 846.2700002193451,
+  "RELATIVE_CLOCK_INTERCEPT_CENTER": null,
+  "RELATIVE_CLOCK_INTERCEPT_SPREAD_SECONDS": null,
+  "BEST_RETAINED_COMBINATION_CENTER_DIAGNOSTIC": 1788300660.7625,
+  "BEST_RETAINED_COMBINATION_SPREAD_SECONDS": 846.2700002193451,
   "QUALIFIED_TRANSITION_CLIPS": 4,
   "AMBIGUOUS_CLOCK_CANDIDATE_SETS_PRESERVED": "YES",
   "combinationCount": 18,
@@ -40,10 +45,90 @@
       "fileName": "IMG_2804.mp4",
       "independentStatus": "AMBIGUOUS",
       "clipType": "STATIC_MINUTE",
-      "authorityMode": "INTERVAL_ONLY",
+      "authorityMode": "STATIC_CLOCK_CANDIDATE_INTERVAL_SET",
       "clockAuthorityEligible": "NO",
-      "CLOCK_INTERCEPT_INTERVAL_FROM": 1788301122.295,
-      "CLOCK_INTERCEPT_INTERVAL_TO": 1788301160.1950002,
+      "STATIC_CLOCK_CANDIDATE_INTERVAL_SET": [
+        {
+          "basinRank": 5,
+          "alignedClipStartUtc": "2026-09-02T19:24:42.795Z",
+          "CLOCK_INTERCEPT_INTERVAL_FROM": 1788301099.0950003,
+          "CLOCK_INTERCEPT_INTERVAL_TO": 1788301122.895,
+          "basinStatus": "STRONG_CANDIDATE",
+          "coverage": 0.625,
+          "MAE": 4.9801711529834005,
+          "STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL": {
+            "from": 1788301099.0950003,
+            "to": 1788301122.895,
+            "boundSemantics": "INCLUSIVE_BOTH",
+            "minuteIntervalSemantics": "HALF_OPEN_MINUTE_CONTAINMENT_INCLUSIVE_CLIP_END",
+            "derivation": "I ∈ [S + d - 60(L+1), S - 60L]; widened by basinTimingUncertainty on S and durationUncertainty on d"
+          }
+        },
+        {
+          "basinRank": 6,
+          "alignedClipStartUtc": "2026-09-02T19:24:37.895Z",
+          "CLOCK_INTERCEPT_INTERVAL_FROM": 1788301094.1950002,
+          "CLOCK_INTERCEPT_INTERVAL_TO": 1788301117.995,
+          "basinStatus": "STRONG_CANDIDATE",
+          "coverage": 0.625,
+          "MAE": 5.2462142216240455,
+          "STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL": {
+            "from": 1788301094.1950002,
+            "to": 1788301117.995,
+            "boundSemantics": "INCLUSIVE_BOTH",
+            "minuteIntervalSemantics": "HALF_OPEN_MINUTE_CONTAINMENT_INCLUSIVE_CLIP_END",
+            "derivation": "I ∈ [S + d - 60(L+1), S - 60L]; widened by basinTimingUncertainty on S and durationUncertainty on d"
+          }
+        },
+        {
+          "basinRank": 7,
+          "alignedClipStartUtc": "2026-09-02T19:21:02.495Z",
+          "CLOCK_INTERCEPT_INTERVAL_FROM": 1788300878.795,
+          "CLOCK_INTERCEPT_INTERVAL_TO": 1788300902.5949998,
+          "basinStatus": "STRONG_CANDIDATE",
+          "coverage": 0.625,
+          "MAE": 8.335066666666666,
+          "STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL": {
+            "from": 1788300878.795,
+            "to": 1788300902.5949998,
+            "boundSemantics": "INCLUSIVE_BOTH",
+            "minuteIntervalSemantics": "HALF_OPEN_MINUTE_CONTAINMENT_INCLUSIVE_CLIP_END",
+            "derivation": "I ∈ [S + d - 60(L+1), S - 60L]; widened by basinTimingUncertainty on S and durationUncertainty on d"
+          }
+        },
+        {
+          "basinRank": 8,
+          "alignedClipStartUtc": "2026-09-02T19:24:29.995Z",
+          "CLOCK_INTERCEPT_INTERVAL_FROM": 1788301086.295,
+          "CLOCK_INTERCEPT_INTERVAL_TO": 1788301110.0949998,
+          "basinStatus": "STRONG_CANDIDATE",
+          "coverage": 0.75,
+          "MAE": 8.590068973315242,
+          "STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL": {
+            "from": 1788301086.295,
+            "to": 1788301110.0949998,
+            "boundSemantics": "INCLUSIVE_BOTH",
+            "minuteIntervalSemantics": "HALF_OPEN_MINUTE_CONTAINMENT_INCLUSIVE_CLIP_END",
+            "derivation": "I ∈ [S + d - 60(L+1), S - 60L]; widened by basinTimingUncertainty on S and durationUncertainty on d"
+          }
+        },
+        {
+          "basinRank": 9,
+          "alignedClipStartUtc": "2026-09-02T19:21:07.495Z",
+          "CLOCK_INTERCEPT_INTERVAL_FROM": 1788300883.795,
+          "CLOCK_INTERCEPT_INTERVAL_TO": 1788300907.5949998,
+          "basinStatus": "STRONG_CANDIDATE",
+          "coverage": 0.75,
+          "MAE": 8.732000000000001,
+          "STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL": {
+            "from": 1788300883.795,
+            "to": 1788300907.5949998,
+            "boundSemantics": "INCLUSIVE_BOTH",
+            "minuteIntervalSemantics": "HALF_OPEN_MINUTE_CONTAINMENT_INCLUSIVE_CLIP_END",
+            "derivation": "I ∈ [S + d - 60(L+1), S - 60L]; widened by basinTimingUncertainty on S and durationUncertainty on d"
+          }
+        }
+      ],
       "minuteOrdinalL": 1266,
       "basinStatus": "STRONG_CANDIDATE"
     },
@@ -97,8 +182,15 @@
       "clipType": "STATIC_MINUTE",
       "authorityMode": "INTERVAL_ONLY",
       "clockAuthorityEligible": "NO",
-      "CLOCK_INTERCEPT_INTERVAL_FROM": 1788300208.795,
-      "CLOCK_INTERCEPT_INTERVAL_TO": 1788300255.595,
+      "CLOCK_INTERCEPT_INTERVAL_FROM": 1788300194.4950001,
+      "CLOCK_INTERCEPT_INTERVAL_TO": 1788300209.395,
+      "STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL": {
+        "from": 1788300194.4950001,
+        "to": 1788300209.395,
+        "boundSemantics": "INCLUSIVE_BOTH",
+        "minuteIntervalSemantics": "HALF_OPEN_MINUTE_CONTAINMENT_INCLUSIVE_CLIP_END",
+        "derivation": "I ∈ [S + d - 60(L+1), S - 60L]; widened by basinTimingUncertainty on S and durationUncertainty on d"
+      },
       "minuteOrdinalL": 1281,
       "basinStatus": "STRONG_CANDIDATE"
     },
@@ -134,10 +226,26 @@
       "fileName": "IMG_2810.mp4",
       "independentStatus": "AMBIGUOUS",
       "clipType": "STATIC_MINUTE",
-      "authorityMode": "INTERVAL_ONLY",
+      "authorityMode": "STATIC_CLOCK_CANDIDATE_INTERVAL_SET",
       "clockAuthorityEligible": "NO",
-      "CLOCK_INTERCEPT_INTERVAL_FROM": 1788300058.995,
-      "CLOCK_INTERCEPT_INTERVAL_TO": 1788300081.395,
+      "STATIC_CLOCK_CANDIDATE_INTERVAL_SET": [
+        {
+          "basinRank": 3,
+          "alignedClipStartUtc": "2026-09-02T19:23:59.495Z",
+          "CLOCK_INTERCEPT_INTERVAL_FROM": 1788300020.295,
+          "CLOCK_INTERCEPT_INTERVAL_TO": 1788300059.5949998,
+          "basinStatus": "STRONG_CANDIDATE",
+          "coverage": 1,
+          "MAE": 4.169440130861505,
+          "STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL": {
+            "from": 1788300020.295,
+            "to": 1788300059.5949998,
+            "boundSemantics": "INCLUSIVE_BOTH",
+            "minuteIntervalSemantics": "HALF_OPEN_MINUTE_CONTAINMENT_INCLUSIVE_CLIP_END",
+            "derivation": "I ∈ [S + d - 60(L+1), S - 60L]; widened by basinTimingUncertainty on S and durationUncertainty on d"
+          }
+        }
+      ],
       "minuteOrdinalL": 1283,
       "basinStatus": "STRONG_CANDIDATE"
     },
@@ -146,13 +254,45 @@
       "fileName": "IMG_2811.mp4",
       "independentStatus": "AMBIGUOUS",
       "clipType": "STATIC_MINUTE",
-      "authorityMode": "INTERVAL_ONLY",
+      "authorityMode": "STATIC_CLOCK_CANDIDATE_INTERVAL_SET",
       "clockAuthorityEligible": "NO",
-      "CLOCK_INTERCEPT_INTERVAL_FROM": 1788300362.295,
-      "CLOCK_INTERCEPT_INTERVAL_TO": 1788300397.595,
+      "STATIC_CLOCK_CANDIDATE_INTERVAL_SET": [
+        {
+          "basinRank": 4,
+          "alignedClipStartUtc": "2026-09-02T19:30:02.795Z",
+          "CLOCK_INTERCEPT_INTERVAL_FROM": 1788300336.4950001,
+          "CLOCK_INTERCEPT_INTERVAL_TO": 1788300362.895,
+          "basinStatus": "STRONG_CANDIDATE",
+          "coverage": 0.64,
+          "MAE": 5.866828174893994,
+          "STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL": {
+            "from": 1788300336.4950001,
+            "to": 1788300362.895,
+            "boundSemantics": "INCLUSIVE_BOTH",
+            "minuteIntervalSemantics": "HALF_OPEN_MINUTE_CONTAINMENT_INCLUSIVE_CLIP_END",
+            "derivation": "I ∈ [S + d - 60(L+1), S - 60L]; widened by basinTimingUncertainty on S and durationUncertainty on d"
+          }
+        },
+        {
+          "basinRank": 5,
+          "alignedClipStartUtc": "2026-09-02T19:07:29.395Z",
+          "CLOCK_INTERCEPT_INTERVAL_FROM": 1788298983.095,
+          "CLOCK_INTERCEPT_INTERVAL_TO": 1788299009.495,
+          "basinStatus": "STRONG_CANDIDATE",
+          "coverage": 0.8,
+          "MAE": 12.17302916713813,
+          "STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL": {
+            "from": 1788298983.095,
+            "to": 1788299009.495,
+            "boundSemantics": "INCLUSIVE_BOTH",
+            "minuteIntervalSemantics": "HALF_OPEN_MINUTE_CONTAINMENT_INCLUSIVE_CLIP_END",
+            "derivation": "I ∈ [S + d - 60(L+1), S - 60L]; widened by basinTimingUncertainty on S and durationUncertainty on d"
+          }
+        }
+      ],
       "minuteOrdinalL": 1284,
       "basinStatus": "STRONG_CANDIDATE"
     }
   ],
-  "note": "Timezone-independent; ambiguous clips retain CLOCK_CANDIDATE_SET; CEST interpretation reported separately"
+  "note": "Timezone-independent; ambiguous clips retain CLOCK_CANDIDATE_SET; static-minute geometry corrected in D.2; CEST interpretation reported separately"
 }

@@ -279,19 +279,73 @@ export function computeRelativeClockIntercept(params: {
   return boundarySeconds - 60 * params.minuteOrdinalL;
 }
 
+/** Conservative basin-alignment timing slack applied to aligned clip start S. */
+export const STATIC_MINUTE_BASIN_TIMING_UNCERTAINTY_SECONDS = FINE_STEP_SECONDS;
+
+export type StaticMinuteFeasibleClockInterceptInterval = {
+  STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL: {
+    from: number;
+    to: number;
+    /** Inclusive on both ends — clip may touch minute boundaries per containment inequalities. */
+    boundSemantics: 'INCLUSIVE_BOTH';
+    /**
+     * Vehicle-clock minute L occupies [I + 60L, I + 60(L+1)) on the provider timeline.
+     * Clip [S, S+d] must satisfy I + 60L <= S and S + d <= I + 60(L+1), yielding
+     * I ∈ [S + d - 60(L+1), S - 60L] before uncertainty widening.
+     */
+    minuteIntervalSemantics: 'HALF_OPEN_MINUTE_CONTAINMENT_INCLUSIVE_CLIP_END';
+    derivation: string;
+  };
+};
+
+/**
+ * Derives a conservative feasible clock-intercept interval for a static displayed minute.
+ *
+ * Uncertainty widening (union over independent slack terms):
+ * - duration: clip may be shorter/longer by u_d on the end boundary
+ * - basin timing: aligned clip start S may shift by u_s
+ * - combined lower bound uses min S and min d; upper bound uses max S
+ */
 export function computeStaticMinuteInterceptInterval(params: {
   alignedClipStartMs: number;
   durationSeconds: number;
   durationUncertaintySeconds: number;
+  basinTimingUncertaintySeconds?: number;
   minuteOrdinalL: number;
-}): { from: number; to: number } {
+}): StaticMinuteFeasibleClockInterceptInterval['STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL'] {
   const s = params.alignedClipStartMs / 1000;
   const d = params.durationSeconds;
-  const u = params.durationUncertaintySeconds;
+  const uDur = params.durationUncertaintySeconds;
+  const uBasin = params.basinTimingUncertaintySeconds ?? STATIC_MINUTE_BASIN_TIMING_UNCERTAINTY_SECONDS;
+  const L = params.minuteOrdinalL;
+  const minuteStartOffset = 60 * L;
+  const minuteEndOffset = 60 * (L + 1);
+
+  const from = s - uBasin + (d - uDur) - minuteEndOffset;
+  const to = s + uBasin - minuteStartOffset;
+
   return {
-    from: s - 60 * params.minuteOrdinalL - u,
-    to: s + d + u - 60 * params.minuteOrdinalL,
+    from,
+    to,
+    boundSemantics: 'INCLUSIVE_BOTH',
+    minuteIntervalSemantics: 'HALF_OPEN_MINUTE_CONTAINMENT_INCLUSIVE_CLIP_END',
+    derivation:
+      'I ∈ [S + d - 60(L+1), S - 60L]; widened by basinTimingUncertainty on S and durationUncertainty on d',
   };
+}
+
+export function staticMinuteFeasibleIntervalWidth(
+  interval: StaticMinuteFeasibleClockInterceptInterval['STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL'],
+): number {
+  return interval.to - interval.from;
+}
+
+/** Tests whether intercept I satisfies static-minute containment for the given interval. */
+export function isStaticMinuteInterceptFeasible(
+  intercept: number,
+  interval: StaticMinuteFeasibleClockInterceptInterval['STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL'],
+): boolean {
+  return intercept >= interval.from - 1e-9 && intercept <= interval.to + 1e-9;
 }
 
 export function pairwiseBoundaryMinuteResidual(
@@ -672,17 +726,35 @@ export type ClockTransitionCandidate = {
   intercept: number;
 };
 
+export type StaticClockCandidateInterval = {
+  basinRank: number;
+  alignedClipStartUtc: string;
+  CLOCK_INTERCEPT_INTERVAL_FROM: number;
+  CLOCK_INTERCEPT_INTERVAL_TO: number;
+  basinStatus: AlignmentStatus;
+  coverage: number;
+  MAE: number;
+  STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL: StaticMinuteFeasibleClockInterceptInterval['STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL'];
+};
+
 export type ClockClipEvidence = {
   clipId: string;
   fileName: string;
   independentStatus: AlignmentStatus;
   clipType: 'TRANSITION' | 'STATIC_MINUTE';
-  authorityMode: 'DIRECT_POINT' | 'CLOCK_CANDIDATE_SET' | 'INTERVAL_ONLY' | 'NONE';
+  authorityMode:
+    | 'DIRECT_POINT'
+    | 'CLOCK_CANDIDATE_SET'
+    | 'INTERVAL_ONLY'
+    | 'STATIC_CLOCK_CANDIDATE_INTERVAL_SET'
+    | 'NONE';
   clockAuthorityEligible: 'YES' | 'NO';
   CLOCK_INTERCEPT_SECONDS?: number;
   CLOCK_CANDIDATE_SET?: ClockTransitionCandidate[];
   CLOCK_INTERCEPT_INTERVAL_FROM?: number;
   CLOCK_INTERCEPT_INTERVAL_TO?: number;
+  STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL?: StaticMinuteFeasibleClockInterceptInterval['STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL'];
+  STATIC_CLOCK_CANDIDATE_INTERVAL_SET?: StaticClockCandidateInterval[];
   minuteOrdinalL: number;
   basinStatus: AlignmentStatus;
 };
@@ -691,6 +763,37 @@ export function selectQualifiedClockBasins(basins: BasinV2Result[]): BasinV2Resu
   return basins
     .filter((b) => b.status === 'STRONG_CANDIDATE' || b.status === 'AMBIGUOUS')
     .sort((a, b) => a.rankByQuality - b.rankByQuality);
+}
+
+function buildStaticMinuteIntervalForBasin(params: {
+  basin: BasinV2Result;
+  clip: ExternalGtClip;
+  minuteOrdinalL: number;
+}): StaticMinuteFeasibleClockInterceptInterval['STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL'] {
+  return computeStaticMinuteInterceptInterval({
+    alignedClipStartMs: params.basin.alignedClipStartMs,
+    durationSeconds: params.clip.videoDurationSeconds ?? 60,
+    durationUncertaintySeconds: params.clip.videoDurationUncertainty ?? 0.5,
+    minuteOrdinalL: params.minuteOrdinalL,
+  });
+}
+
+function toStaticClockCandidateInterval(params: {
+  basin: BasinV2Result;
+  clip: ExternalGtClip;
+  minuteOrdinalL: number;
+}): StaticClockCandidateInterval {
+  const interval = buildStaticMinuteIntervalForBasin(params);
+  return {
+    basinRank: params.basin.rankByQuality,
+    alignedClipStartUtc: params.basin.alignedClipStartUtc,
+    CLOCK_INTERCEPT_INTERVAL_FROM: interval.from,
+    CLOCK_INTERCEPT_INTERVAL_TO: interval.to,
+    basinStatus: params.basin.status,
+    coverage: params.basin.coverage,
+    MAE: params.basin.MAE,
+    STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL: interval,
+  };
 }
 
 export function buildClockClipEvidence(params: {
@@ -792,10 +895,87 @@ export function buildClockClipEvidence(params: {
   }
 
   if (STATIC_MINUTE_CLIP_IDS.has(params.disc.clipId) || !TRANSITION_CLIP_IDS.has(params.disc.clipId)) {
-    const interval = computeStaticMinuteInterceptInterval({
-      alignedClipStartMs: diagnosticBasin.alignedClipStartMs,
-      durationSeconds: params.clip.videoDurationSeconds ?? 60,
-      durationUncertaintySeconds: params.clip.videoDurationUncertainty ?? 0.5,
+    if (independentStatus === 'NOT_IDENTIFIABLE') {
+      return {
+        clipId: params.disc.clipId,
+        fileName: params.disc.fileName,
+        independentStatus,
+        clipType: 'STATIC_MINUTE',
+        authorityMode: 'NONE',
+        clockAuthorityEligible: 'NO',
+        minuteOrdinalL: minuteL,
+        basinStatus: diagnosticBasin.status,
+      };
+    }
+
+    if (independentStatus === 'AMBIGUOUS') {
+      const candidateBasins = qualifiedBasins.filter(
+        (b) => b.status === 'STRONG_CANDIDATE' || b.status === 'AMBIGUOUS',
+      );
+      if (candidateBasins.length === 0) {
+        return {
+          clipId: params.disc.clipId,
+          fileName: params.disc.fileName,
+          independentStatus,
+          clipType: 'STATIC_MINUTE',
+          authorityMode: 'NONE',
+          clockAuthorityEligible: 'NO',
+          minuteOrdinalL: minuteL,
+          basinStatus: diagnosticBasin.status,
+        };
+      }
+      return {
+        clipId: params.disc.clipId,
+        fileName: params.disc.fileName,
+        independentStatus,
+        clipType: 'STATIC_MINUTE',
+        authorityMode: 'STATIC_CLOCK_CANDIDATE_INTERVAL_SET',
+        clockAuthorityEligible: 'NO',
+        STATIC_CLOCK_CANDIDATE_INTERVAL_SET: candidateBasins.map((basin) =>
+          toStaticClockCandidateInterval({ basin, clip: params.clip, minuteOrdinalL: minuteL }),
+        ),
+        minuteOrdinalL: minuteL,
+        basinStatus: diagnosticBasin.status,
+      };
+    }
+
+    if (independentStatus === 'STRONG_CANDIDATE') {
+      const basin = qualifiedBasins.find((b) => b.status === 'STRONG_CANDIDATE') ?? qualifiedBasins[0];
+      if (!basin) {
+        return {
+          clipId: params.disc.clipId,
+          fileName: params.disc.fileName,
+          independentStatus,
+          clipType: 'STATIC_MINUTE',
+          authorityMode: 'NONE',
+          clockAuthorityEligible: 'NO',
+          minuteOrdinalL: minuteL,
+          basinStatus: diagnosticBasin.status,
+        };
+      }
+      const interval = buildStaticMinuteIntervalForBasin({
+        basin,
+        clip: params.clip,
+        minuteOrdinalL: minuteL,
+      });
+      return {
+        clipId: params.disc.clipId,
+        fileName: params.disc.fileName,
+        independentStatus,
+        clipType: 'STATIC_MINUTE',
+        authorityMode: 'INTERVAL_ONLY',
+        clockAuthorityEligible: 'NO',
+        CLOCK_INTERCEPT_INTERVAL_FROM: interval.from,
+        CLOCK_INTERCEPT_INTERVAL_TO: interval.to,
+        STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL: interval,
+        minuteOrdinalL: minuteL,
+        basinStatus: basin.status,
+      };
+    }
+
+    const interval = buildStaticMinuteIntervalForBasin({
+      basin: diagnosticBasin,
+      clip: params.clip,
       minuteOrdinalL: minuteL,
     });
     return {
@@ -807,6 +987,7 @@ export function buildClockClipEvidence(params: {
       clockAuthorityEligible: 'NO',
       CLOCK_INTERCEPT_INTERVAL_FROM: interval.from,
       CLOCK_INTERCEPT_INTERVAL_TO: interval.to,
+      STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL: interval,
       minuteOrdinalL: minuteL,
       basinStatus: diagnosticBasin.status,
     };
@@ -882,12 +1063,13 @@ export function deriveRelativeClockModelStatus(params: {
       : 'RELATIVE_INTERCEPT_CLUSTER_REJECTED';
   }
   if (params.bestCombination.consistent) return 'RELATIVE_INTERCEPT_CLUSTER_SUPPORTED';
-  if (params.bestCombination.spread > JOINT_INTERCEPT_TOLERANCE_SECONDS * 4) {
-    return params.hasAmbiguousCandidateSets
-      ? 'UNRESOLVED_AMBIGUOUS_CANDIDATE_ASSIGNMENT'
-      : 'RELATIVE_INTERCEPT_CLUSTER_REJECTED';
+  if (params.hasAmbiguousCandidateSets) {
+    return 'UNRESOLVED_AMBIGUOUS_CANDIDATE_ASSIGNMENT';
   }
-  return 'RELATIVE_INTERCEPT_CLUSTER_WEAK';
+  if (params.bestCombination.spread > JOINT_INTERCEPT_TOLERANCE_SECONDS * 4) {
+    return 'NO_CONSISTENT_RELATIVE_CLOCK_ASSIGNMENT_IN_RETAINED_BASINS';
+  }
+  return 'NO_CONSISTENT_RELATIVE_CLOCK_ASSIGNMENT_IN_RETAINED_BASINS';
 }
 
 export function buildJointClockChronologyPath(params: {
@@ -899,6 +1081,8 @@ export function buildJointClockChronologyPath(params: {
   path: JointPathSelection[];
   note: string;
   STATIC_MINUTE_INTERVALS_USED_BY_JOINT_DP: 'YES' | 'NO';
+  STATIC_MINUTE_INTERVAL_EQUATION_CORRECTED: 'YES';
+  D_1_STATIC_JOINT_RESULTS_SUPERSEDED: 'YES';
 } & JointPathRejectionCounters {
   type State = {
     selections: Array<{
@@ -937,6 +1121,8 @@ export function buildJointClockChronologyPath(params: {
         path: [],
         note: `No credible basin retained for ${clip.fileName}`,
         STATIC_MINUTE_INTERVALS_USED_BY_JOINT_DP: staticMinuteIntervalsUsed ? 'YES' : 'NO',
+        D_1_STATIC_JOINT_RESULTS_SUPERSEDED: 'YES',
+        STATIC_MINUTE_INTERVAL_EQUATION_CORRECTED: 'YES',
         ...counters,
       };
     }
@@ -985,8 +1171,11 @@ export function buildJointClockChronologyPath(params: {
             });
             nextHypothesis =
               nextHypothesis == null
-                ? interval
-                : interceptIntervalsIntersect(nextHypothesis, interval);
+                ? { from: interval.from, to: interval.to }
+                : interceptIntervalsIntersect(nextHypothesis, {
+                    from: interval.from,
+                    to: interval.to,
+                  });
             if (nextHypothesis == null) {
               counters.REJECTED_BY_STATIC_MINUTE_INTERVAL += 1;
               continue;
@@ -1011,6 +1200,8 @@ export function buildJointClockChronologyPath(params: {
         path: [],
         note: 'Joint chronology/clock constraints unsatisfiable within retained basins (non-exhaustive DP)',
         STATIC_MINUTE_INTERVALS_USED_BY_JOINT_DP: staticMinuteIntervalsUsed ? 'YES' : 'NO',
+        D_1_STATIC_JOINT_RESULTS_SUPERSEDED: 'YES',
+        STATIC_MINUTE_INTERVAL_EQUATION_CORRECTED: 'YES',
         ...counters,
       };
     }
@@ -1039,6 +1230,8 @@ export function buildJointClockChronologyPath(params: {
       path: [],
       note: 'Incomplete joint path within retained basins',
       STATIC_MINUTE_INTERVALS_USED_BY_JOINT_DP: staticMinuteIntervalsUsed ? 'YES' : 'NO',
+      D_1_STATIC_JOINT_RESULTS_SUPERSEDED: 'YES',
+      STATIC_MINUTE_INTERVAL_EQUATION_CORRECTED: 'YES',
       ...counters,
     };
   }
@@ -1056,8 +1249,10 @@ export function buildJointClockChronologyPath(params: {
     JOINT_PATH_FOUND: 'YES',
     JOINT_PATH_STATUS: 'JOINT_CLOCK_CHRONOLOGY_PATH_SELECTED',
     path,
-    note: 'Joint path is secondary inference — independent basin metrics unchanged',
+    note: 'Joint path is secondary inference — independent basin metrics unchanged; static-minute geometry corrected in DI-EV-0034D.2',
     STATIC_MINUTE_INTERVALS_USED_BY_JOINT_DP: staticMinuteIntervalsUsed ? 'YES' : 'NO',
+    D_1_STATIC_JOINT_RESULTS_SUPERSEDED: 'YES',
+    STATIC_MINUTE_INTERVAL_EQUATION_CORRECTED: 'YES',
     ...counters,
   };
 }
@@ -1108,17 +1303,27 @@ export function buildRelativeClockInterceptModel(params: {
     anyCombination: combinations.length > 0,
   });
 
+  const authoritativeCenter =
+    status === 'RELATIVE_INTERCEPT_CLUSTER_SUPPORTED' ? bestCombination?.center ?? null : null;
+  const authoritativeSpread =
+    status === 'RELATIVE_INTERCEPT_CLUSTER_SUPPORTED' ? bestCombination?.spread ?? null : null;
+
   return {
     evidenceLayer: 'METHOD_CORRECTION',
+    evidenceRevision: 'DI-EV-0034D.2',
     modelName: 'RELATIVE_CLOCK_INTERCEPT_MODEL',
+    STATIC_MINUTE_INTERVAL_EQUATION_CORRECTED: 'YES',
+    D_1_STATIC_JOINT_RESULTS_SUPERSEDED: 'YES',
     RELATIVE_CLOCK_MODEL_STATUS: status,
-    RELATIVE_CLOCK_INTERCEPT_CENTER: bestCombination?.center ?? null,
-    RELATIVE_CLOCK_INTERCEPT_SPREAD_SECONDS: bestCombination?.spread ?? null,
+    RELATIVE_CLOCK_INTERCEPT_CENTER: authoritativeCenter,
+    RELATIVE_CLOCK_INTERCEPT_SPREAD_SECONDS: authoritativeSpread,
+    BEST_RETAINED_COMBINATION_CENTER_DIAGNOSTIC: bestCombination?.center ?? null,
+    BEST_RETAINED_COMBINATION_SPREAD_SECONDS: bestCombination?.spread ?? null,
     QUALIFIED_TRANSITION_CLIPS: transitionAuthorityClips.length,
     AMBIGUOUS_CLOCK_CANDIDATE_SETS_PRESERVED: hasAmbiguousCandidateSets ? 'YES' : 'NO',
     combinationCount: combinations.length,
     entries,
-    note: 'Timezone-independent; ambiguous clips retain CLOCK_CANDIDATE_SET; CEST interpretation reported separately',
+    note: 'Timezone-independent; ambiguous clips retain CLOCK_CANDIDATE_SET; static-minute geometry corrected in D.2; CEST interpretation reported separately',
   };
 }
 
@@ -1322,8 +1527,13 @@ export const V2_SUMMARY_PARITY_FIELDS = [
   'RELATIVE_CLOCK_MODEL_STATUS',
   'RELATIVE_CLOCK_INTERCEPT_CENTER',
   'RELATIVE_CLOCK_INTERCEPT_SPREAD_SECONDS',
+  'BEST_RETAINED_COMBINATION_CENTER_DIAGNOSTIC',
+  'BEST_RETAINED_COMBINATION_SPREAD_SECONDS',
   'QUALIFIED_TRANSITION_CLIPS',
   'AMBIGUOUS_CLOCK_CANDIDATE_SETS_PRESERVED',
+  'AMBIGUOUS_STATIC_INTERVAL_SETS_PRESERVED',
+  'STATIC_MINUTE_INTERVAL_EQUATION_CORRECTED',
+  'D_1_STATIC_JOINT_RESULTS_SUPERSEDED',
   'COMMON_CLOCK_PHASE_STATUS',
   'COMMON_CLOCK_PHASE_QUALIFIED_UNIQUE_CLIPS',
   'JOINT_PATH_FOUND',
@@ -1399,10 +1609,17 @@ export function buildDiscoveryV2Summary(params: {
   }
   ages.sort((a, b) => a - b);
 
+  const ambiguousStaticSetsPreserved = (
+    params.relativeClockInterceptModel.entries as ClockClipEvidence[] | undefined
+  )?.some((e) => e.authorityMode === 'STATIC_CLOCK_CANDIDATE_INTERVAL_SET') ?? false;
+
   return {
     evidenceId: DISCOVERY_V2_EVIDENCE_ID,
+    evidenceRevision: 'DI-EV-0034D.2',
     discoveryMode: DISCOVERY_V2_MODE,
     DISCOVERY_V2_EXECUTED: 'YES',
+    STATIC_MINUTE_INTERVAL_EQUATION_CORRECTED: 'YES',
+    D_1_STATIC_JOINT_RESULTS_SUPERSEDED: 'YES',
     GROUND_TRUTH_VALIDATED: 'NO',
     REFERENCE_CAPTURE_RUNTIME_CHANGED: 'NO',
     DRIVING_SCORE_CHANGED: 'NO',
@@ -1415,8 +1632,13 @@ export function buildDiscoveryV2Summary(params: {
     RELATIVE_CLOCK_INTERCEPT_CENTER: params.relativeClockInterceptModel.RELATIVE_CLOCK_INTERCEPT_CENTER,
     RELATIVE_CLOCK_INTERCEPT_SPREAD_SECONDS:
       params.relativeClockInterceptModel.RELATIVE_CLOCK_INTERCEPT_SPREAD_SECONDS,
+    BEST_RETAINED_COMBINATION_CENTER_DIAGNOSTIC:
+      params.relativeClockInterceptModel.BEST_RETAINED_COMBINATION_CENTER_DIAGNOSTIC,
+    BEST_RETAINED_COMBINATION_SPREAD_SECONDS:
+      params.relativeClockInterceptModel.BEST_RETAINED_COMBINATION_SPREAD_SECONDS,
     AMBIGUOUS_CLOCK_CANDIDATE_SETS_PRESERVED:
       params.relativeClockInterceptModel.AMBIGUOUS_CLOCK_CANDIDATE_SETS_PRESERVED,
+    AMBIGUOUS_STATIC_INTERVAL_SETS_PRESERVED: ambiguousStaticSetsPreserved ? 'YES' : 'NO',
     ...params.qualifiedPhase,
     ZERO_PHASE_HARD_CLOCK_BOUND_CONCLUSION: img2810Basin ? 'HARD_SECOND_PHASE_PRIOR_FALSIFIED' : 'INCONCLUSIVE',
     DISPLAYED_MINUTE_IDENTITY_CONCLUSION: 'SUPPORTED_BY_OBSERVED_CLIP_ORDER',
