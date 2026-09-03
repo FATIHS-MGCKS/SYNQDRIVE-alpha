@@ -8,10 +8,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export BATTERY_V2_OPS_SCRIPT_DIR="$SCRIPT_DIR"
 # shellcheck source=lib/battery-v2-stage2-cutover.lib.sh
 source "${SCRIPT_DIR}/lib/battery-v2-stage2-cutover.lib.sh"
 
 BACKEND_ENV="${BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
+CURRENT="${SYNQDRIVE_CURRENT_LINK:-/opt/synqdrive/current}"
 DRY_RUN="${DRY_RUN:-0}"
 
 read_flag() {
@@ -40,35 +42,45 @@ fi
 echo "TARGET_CONTRACT=STAGE_2"
 battery_v2_stage2_contract_expected
 
-echo "--- SCHEDULER LEADERS ---"
-LEADERS=0
-for port in 3001 3002; do
-  body=$(curl -sf "http://127.0.0.1:${port}/api/v1/health/readiness" 2>/dev/null || echo '{}')
-  role=$(printf '%s' "$body" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('checks',{}).get('schedulerLeader',{}).get('details',{}).get('role','UNKNOWN'))" 2>/dev/null || echo UNKNOWN)
-  echo "port_${port}_role=${role}"
-  if [[ "$role" == "LEADER" ]]; then LEADERS=$((LEADERS + 1)); fi
-done
-echo "SCHEDULER_LEADERS=${LEADERS}"
+echo "--- SCHEDULER TOPOLOGY ---"
+battery_v2_stage2_scheduler_topology_preflight
 
-if [[ -f "$BACKEND_ENV" ]]; then
-  set +u
-  set -a
-  # shellcheck disable=SC1090
-  source "$BACKEND_ENV"
-  set +a
-  PSQL_URL="${DATABASE_URL%%\?*}"
-  echo "--- PKG01 ENQUEUED non-VALID (requires code guard + terminalization) ---"
-  NON_VALID_ENQUEUED=$(psql "$PSQL_URL" -t -A -c "
-    SELECT COUNT(*)
-    FROM battery_measurements m
-    INNER JOIN battery_measurement_sessions s
-      ON s.id = m.session_id AND s.organization_id = m.organization_id
-    WHERE m.type IN ('REST_60M','REST_6H')
-      AND m.quality <> 'VALID'
-      AND COALESCE(s.metadata #>> ARRAY['scheduledTargets', m.type::text, 'assessmentHandoff', 'status'], 'MISSING') = 'ENQUEUED'
-      AND m.created_at >= NOW() - INTERVAL '7 days';" | tr -d '[:space:]')
-  echo "PKG01_ENQUEUED_NON_VALID=${NON_VALID_ENQUEUED:-ERR}"
-  echo "PKG01_PRE_CUTOVER_GUARD_NOTE=non-VALID ENQUEUED rows terminalize without assess enqueue after quality-gate deploy"
+echo "--- PKG01 GUARD DEPLOYMENT ---"
+battery_v2_stage2_verify_pkg01_guard_deployed
+
+if [[ ! -f "$BACKEND_ENV" ]]; then
+  echo "PKG01_ENQUEUED_TOTAL=ERR"
+  echo "PKG01_ENQUEUED_VALID=ERR"
+  echo "PKG01_ENQUEUED_NON_VALID=ERR"
+  echo "PKG01_ENQUEUED_UNRESOLVED=ERR"
+  echo "ERROR: backend.env missing — cannot audit PKG-01 backlog" >&2
+  exit 1
+fi
+
+set +u
+set -a
+# shellcheck disable=SC1090
+source "$BACKEND_ENV"
+set +a
+PSQL_URL="${DATABASE_URL%%\?*}"
+
+echo "--- PKG01 ENQUEUED backlog (full, no age bound) ---"
+echo "PKG01_BACKLOG_SCOPE=ALL_ENQUEUED_REST_HANDOFF_IDENTITIES"
+echo "PKG01_RUNTIME_RECONCILE_LOOKBACK_NOTE=reconciliation SQL uses bounded lookback; preflight audits full ENQUEUED backlog"
+
+counts="$(battery_v2_stage2_pkg01_sql_counts "$PSQL_URL" | tr -d '[:space:]')"
+IFS='|' read -r PKG01_ENQUEUED_TOTAL PKG01_ENQUEUED_VALID PKG01_ENQUEUED_NON_VALID PKG01_ENQUEUED_UNRESOLVED <<< "$counts"
+
+echo "PKG01_ENQUEUED_TOTAL=${PKG01_ENQUEUED_TOTAL:-ERR}"
+echo "PKG01_ENQUEUED_VALID=${PKG01_ENQUEUED_VALID:-ERR}"
+echo "PKG01_ENQUEUED_NON_VALID=${PKG01_ENQUEUED_NON_VALID:-ERR}"
+echo "PKG01_ENQUEUED_UNRESOLVED=${PKG01_ENQUEUED_UNRESOLVED:-ERR}"
+echo "PKG01_PRE_CUTOVER_GUARD_NOTE=non-VALID ENQUEUED rows terminalize without assess enqueue after quality-gate deploy"
+
+if [[ "${PKG01_ENQUEUED_UNRESOLVED:-ERR}" != "0" ]]; then
+  echo "PKG01_PREFLIGHT=FAIL"
+  echo "ERROR: unresolved PKG-01 ENQUEUED identities=${PKG01_ENQUEUED_UNRESOLVED}" >&2
+  exit 1
 fi
 
 echo "--- CONTRACT CHECK ---"

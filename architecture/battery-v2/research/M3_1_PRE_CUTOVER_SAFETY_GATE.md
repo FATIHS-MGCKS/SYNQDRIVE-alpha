@@ -111,8 +111,15 @@ STAGE2_CONTRACT_ASSERTED=YES
 |--------|----------|
 | `vps-enable-battery-v2-full-fleet-production.sh` | **FAIL CLOSED** (deprecated) |
 | `vps-enable-battery-v2-stage2-production.sh` | Stage-2 cutover + rolling restart |
-| `battery-v2-stage2-production-preflight.sh` | Read-only preflight + PKG-01 inventory |
-| `battery-v2-stage2-production-activation.selftest.sh` | Contract selftest |
+| `battery-v2-stage2-production-preflight.sh` | Read-only preflight: scheduler topology fail-closed, full PKG-01 ENQUEUED backlog, guard deployment proof |
+| `battery-v2-stage2-production-activation.selftest.sh` | Contract + topology + dry-run/ACK + guard selftests |
+
+**Preflight hardening (PR #1527 final):**
+- `SCHEDULER_TOPOLOGY_PREFLIGHT=PASS` only when exactly one leader and no UNKNOWN/UNREACHABLE replica roles
+- PKG-01 SQL audits **all** ENQUEUED REST handoff identities (no 7-day age bound); runtime reconciliation retains bounded lookback
+- `PKG01_GUARD_DEPLOYED=YES` required via `BATTERY_V2_PKG01_PRE_CUTOVER_GUARD_VERSION` marker in deployed release
+- `DRY_RUN=1` on activation script: preflight only, no `BATTERY_V2_STAGE2_PREFLIGHT_ACK` required
+- Post-`backend.env` mutation failure: emits `BACKUP_FILE` + `ROLLBACK_COMMAND` (+ automatic restore attempt)
 
 ---
 

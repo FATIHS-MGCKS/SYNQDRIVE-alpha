@@ -16,6 +16,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-03 — M3.1 Stage-2 pre-merge hardening (PR #1527)
+
+| Field | Content |
+|-------|---------|
+| **CHANGE** | Stage-2 preflight fail-closed scheduler topology; full PKG-01 ENQUEUED backlog audit (no 7-day bound); guard deployment proof via `BATTERY_V2_PKG01_PRE_CUTOVER_GUARD_VERSION`; activation dry-run before ACK; rollback metadata on deploy failure; `terminalizeIneligibleReconciliationCandidate` identity-safe path (bypasses VALID-only `acknowledgeExecuted`); reconciliation + terminalization unit tests; expanded shell selftests. |
+| **WHY** | Close operational blind spots before merge/deploy of PKG-01 guard. |
+| **VALIDATION** | 66 targeted unit tests PASS; `battery-v2-stage2-production-activation.selftest.sh` PASS; `validate-graph.sh` PASS. |
+| **DECISION_STATUS** | `PR_1527_PREMERGE_READY=YES` pending push; `M3_1_STATUS` unchanged (`BLOCKED_BY_CUTOVER_CONTRACT`). |
+
 ## CL-2026-09-03 — M3.1 pre-cutover PKG-01 safety gate
 
 | Field | Content |

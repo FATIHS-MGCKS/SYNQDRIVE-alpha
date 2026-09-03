@@ -5,7 +5,7 @@
 # Run on VPS as root:
 #   sudo bash /opt/synqdrive/current/backend/scripts/ops/vps-enable-battery-v2-stage2-production.sh
 #
-# Dry-run (no mutations):
+# Dry-run (no mutations, no ACK required):
 #   sudo DRY_RUN=1 bash .../vps-enable-battery-v2-stage2-production.sh
 set -euo pipefail
 
@@ -18,6 +18,33 @@ CURRENT="${SYNQDRIVE_CURRENT_LINK:-/opt/synqdrive/current}"
 RELEASE_OPS_DIR="${CURRENT}/backend/scripts/ops"
 DRY_RUN="${DRY_RUN:-0}"
 REQUIRE_PREFLIGHT_ACK="${BATTERY_V2_STAGE2_REQUIRE_PREFLIGHT_ACK:-1}"
+BACKUP_FILE=""
+ROLLBACK_APPLIED=0
+
+rollback_backend_env() {
+  if [[ "$ROLLBACK_APPLIED" == "1" ]]; then
+    return 0
+  fi
+  if [[ -n "$BACKUP_FILE" && -f "$BACKUP_FILE" ]]; then
+    cp "$BACKUP_FILE" "$BACKEND_ENV"
+    chmod 600 "$BACKEND_ENV"
+    ROLLBACK_APPLIED=1
+    echo "ROLLBACK_APPLIED=YES"
+  fi
+}
+
+on_activation_failure() {
+  local exit_code=$?
+  if [[ -n "$BACKUP_FILE" ]]; then
+    echo "BACKUP_FILE=${BACKUP_FILE}"
+    echo "ROLLBACK_COMMAND=cp ${BACKUP_FILE} ${BACKEND_ENV} && chmod 600 ${BACKEND_ENV}"
+    if [[ "$ROLLBACK_APPLIED" == "0" && "$DRY_RUN" != "1" ]]; then
+      echo "ATTEMPTING_AUTOMATIC_ROLLBACK=YES"
+      rollback_backend_env || true
+    fi
+  fi
+  exit "$exit_code"
+}
 
 if [[ ! -f "$BACKEND_ENV" ]]; then
   echo "ERROR: $BACKEND_ENV not found" >&2
@@ -37,20 +64,26 @@ fi
 echo "=== Battery V2 Stage-2 activation preflight ==="
 bash "${SCRIPT_DIR}/battery-v2-stage2-production-preflight.sh"
 
+if [[ "$DRY_RUN" == "1" ]]; then
+  echo "DRY_RUN=1 — would set REST_SHADOW=true PUBLICATION=true RECONCILIATION=true"
+  echo "Would run rolling restart to target SHA: $(git -C "$CURRENT" rev-parse HEAD 2>/dev/null || echo unknown)"
+  echo "No backend.env changes applied."
+  echo "No BATTERY_V2_STAGE2_PREFLIGHT_ACK required for dry-run."
+  exit 0
+fi
+
 if [[ "$REQUIRE_PREFLIGHT_ACK" == "1" && "${BATTERY_V2_STAGE2_PREFLIGHT_ACK:-}" != "YES" ]]; then
   echo "ERROR: set BATTERY_V2_STAGE2_PREFLIGHT_ACK=YES after reviewing preflight output" >&2
   exit 1
 fi
 
-if [[ "$DRY_RUN" == "1" ]]; then
-  echo "DRY_RUN=1 — would set REST_SHADOW=true PUBLICATION=true (reconciliation default true)"
-  echo "No backend.env changes applied."
-  exit 0
-fi
+trap on_activation_failure ERR
 
 STAMP="$(date -u +%Y%m%d%H%M%S)"
-cp "$BACKEND_ENV" "${BACKEND_ENV}.bak-battery-v2-stage2-${STAMP}"
-echo "Backup: ${BACKEND_ENV}.bak-battery-v2-stage2-${STAMP}"
+BACKUP_FILE="${BACKEND_ENV}.bak-battery-v2-stage2-${STAMP}"
+cp "$BACKEND_ENV" "$BACKUP_FILE"
+echo "BACKUP_FILE=${BACKUP_FILE}"
+echo "ROLLBACK_COMMAND=cp ${BACKUP_FILE} ${BACKEND_ENV} && chmod 600 ${BACKEND_ENV}"
 
 upsert_env() {
   local file="$1" key="$2" value="$3"
@@ -90,6 +123,8 @@ source "${RELEASE_OPS_DIR}/lib/vps-production-replica.lib.sh"
 echo "=== Rolling restart (target SHA ${TARGET_SHA:0:12}) ==="
 vps_replica_rolling_deploy "$CURRENT" "$TARGET_SHA"
 vps_replica_verify_post_deploy "$CURRENT" "$TARGET_SHA"
+
+trap - ERR
 
 echo "=== Effective PM2 config ==="
 bash "${RELEASE_OPS_DIR}/battery-v2-m3-canary-observability.sh" config
