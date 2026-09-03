@@ -356,7 +356,7 @@ describe('BatteryV2JobProducerService.hasLiveAssessJobForVehicle (Redis reservat
 
   it('returns true when a vehicle assess dispatch reservation exists', async () => {
     const reservation = mockAssessDispatchReservation();
-    await reservation.tryReserve(VEH, 'assess:veh:LV_HEALTH:meas-1');
+    await reservation.acquireForDispatch(VEH, 'assess:veh:LV_HEALTH:meas-1');
     const producer = createBatteryV2JobProducer(
       { getJob: jest.fn(), getJobs: jest.fn() } as never,
       { isDeadLetter: jest.fn() } as never,
@@ -367,7 +367,7 @@ describe('BatteryV2JobProducerService.hasLiveAssessJobForVehicle (Redis reservat
 
   it('returns false when only other vehicles hold reservations', async () => {
     const reservation = mockAssessDispatchReservation();
-    await reservation.tryReserve('other-vehicle', 'assess:other:LV_HEALTH:meas-2');
+    await reservation.acquireForDispatch('other-vehicle', 'assess:other:LV_HEALTH:meas-2');
     const producer = createBatteryV2JobProducer(
       { getJob: jest.fn(), getJobs: jest.fn() } as never,
       { isDeadLetter: jest.fn() } as never,

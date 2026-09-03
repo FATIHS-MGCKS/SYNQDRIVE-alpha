@@ -19,6 +19,7 @@ import {
   restTargetTypeForMeasurementType,
 } from './lv-rest-assessment-handoff.policy';
 import { mutateLvRestSessionMetadata } from './lv-rest-session-metadata.mutation';
+import { isLegacyPersistence54000HandoffFailure } from './lv-rest-assessment-handoff-failure.policy';
 import type { LvRestTargetType } from './lv-rest-window-target.metadata';
 
 export interface EnsureLvRestAssessmentHandoffInput {
@@ -363,7 +364,8 @@ export class LvRestAssessmentHandoffService {
     );
     if (
       existing?.status !== LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED ||
-      existing.measurementId !== input.measurementId
+      existing.measurementId !== input.measurementId ||
+      !isLegacyPersistence54000HandoffFailure(existing)
     ) {
       return;
     }

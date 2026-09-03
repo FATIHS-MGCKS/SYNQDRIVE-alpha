@@ -16,6 +16,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-03 — M3.0D.3 reservation authority + FAILED rearm runtime closure
+
+| Field | Content |
+|-------|---------|
+| **OBSERVATION** | M3.0D.2 reservation service conflated Redis errors with absent reservation; producer could release reservations it did not acquire; processor left ghost reservations after final retryable exhaustion; FAILED rearm unreachable via scheduler SQL. |
+| **CHANGE** | Typed `acquireForDispatch` fail-closed semantics; ownership-gated producer release; Lua atomic refresh; processor releases on all final assess attempts; Option B FAILED candidate SQL + `isLegacyPersistence54000HandoffFailure` narrow rearm. |
+| **VALIDATION** | Authority + producer + processor + M3.0D.2/3 closure + PKG regressions; PostgreSQL 16.15 persistence (gated); graph + tsc PASS. **Not deployed.** |
+| **NON_EFFECTS** | No publication/REST_SHADOW change; no event-driven drain; production failed jobs untouched. |
+| **DECISION_STATUS** | M3.0D.3 CODE COMPLETE — human merge review |
+
 ## CL-2026-09-03 — M3.0D.2 PR #1519 final pre-merge closure
 
 | Field | Content |

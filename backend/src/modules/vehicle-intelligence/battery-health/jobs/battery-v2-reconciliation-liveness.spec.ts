@@ -7,7 +7,6 @@ import {
 } from './battery-v2-job.errors';
 import { classifyBatteryV2JobError } from './battery-v2-job-error.util';
 import { buildBatteryV2AttemptContext } from './battery-v2-job.validation';
-import { mockProcessorAssessDispatchReservation } from './battery-v2-job-producer.test-util';
 import { LV_REST_ASSESSMENT_HANDOFF_OUTCOME } from '../lv-rest-window/lv-rest-assessment-handoff.metadata';
 
 const ORG = 'clorg1234567890123456789012';
@@ -56,7 +55,10 @@ describe('PKG-01 reconciliation liveness — processor error propagation', () =>
     acknowledgeTerminalFailure: jest.fn().mockResolvedValue(undefined),
   };
 
-  const assessDispatchReservation = mockProcessorAssessDispatchReservation();
+  const assessDispatchReservation = {
+    refresh: jest.fn().mockResolvedValue(true),
+    release: jest.fn().mockResolvedValue(true),
+  };
   let processor: BatteryV2Processor;
 
   beforeEach(() => {
@@ -130,5 +132,26 @@ describe('PKG-01 reconciliation liveness — processor error propagation', () =>
       errorCode: 'HANDLER_FAILED',
       errorMessage: expect.stringContaining('54000'),
     });
+    expect(assessDispatchReservation.release).toHaveBeenCalledWith(VEH, assessPayload().idempotencyKey);
+  });
+
+  it('releases assess reservation after final retryable exhaustion', async () => {
+    const contention = new BatteryV2VehicleLockContendedError(VEH, 'assess');
+    idempotentExecution.execute.mockRejectedValue(contention);
+
+    await expect(processor.process(buildAssessJob(4, 5))).rejects.toBeInstanceOf(
+      BatteryV2JobProcessingError,
+    );
+    expect(assessDispatchReservation.release).toHaveBeenCalledWith(VEH, assessPayload().idempotencyKey);
+  });
+
+  it('keeps assess reservation during intermediate retryable failure', async () => {
+    const contention = new BatteryV2VehicleLockContendedError(VEH, 'assess');
+    idempotentExecution.execute.mockRejectedValue(contention);
+
+    await expect(processor.process(buildAssessJob(0, 5))).rejects.toBeInstanceOf(
+      BatteryV2JobProcessingError,
+    );
+    expect(assessDispatchReservation.release).not.toHaveBeenCalled();
   });
 });

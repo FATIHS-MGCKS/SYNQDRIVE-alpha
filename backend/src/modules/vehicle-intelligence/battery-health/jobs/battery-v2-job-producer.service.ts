@@ -24,6 +24,7 @@ import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.serv
 import {
   BatteryV2AssessDispatchReservationService,
 } from './battery-v2-assess-dispatch-reservation.service';
+import { ASSESS_DISPATCH_RESERVATION_STATUS } from './battery-v2-assess-dispatch-reservation.types';
 import {
   recordBatteryJob,
   recordBatteryV2JobEnqueue,
@@ -120,17 +121,20 @@ export class BatteryV2JobProducerService {
     const jobId = buildBatteryV2JobId(payload.idempotencyKey);
     assertBatteryV2BullMqJobId(jobId);
 
+    let reservationAcquiredByThisInvocation = false;
+
     if (jobType === 'BATTERY_ASSESSMENT_RECOMPUTE') {
-      const reserved = await this.assessDispatchReservation.tryReserve(
+      const acquire = await this.assessDispatchReservation.acquireForDispatch(
         payload.vehicleId,
         payload.idempotencyKey,
       );
-      if (!reserved) {
-        const conflict = await this.assessDispatchReservation.hasConflictingReservation(
-          payload.vehicleId,
-          payload.idempotencyKey,
-        );
-        if (conflict) {
+      switch (acquire.status) {
+        case ASSESS_DISPATCH_RESERVATION_STATUS.ACQUIRED:
+          reservationAcquiredByThisInvocation = true;
+          break;
+        case ASSESS_DISPATCH_RESERVATION_STATUS.SAME_IDENTITY_HELD:
+          break;
+        case ASSESS_DISPATCH_RESERVATION_STATUS.CONFLICT:
           this.recordEnqueueSuppressed(jobType, 'duplicate');
           this.logger.debug(
             formatBatteryV2PipelineLog({
@@ -146,11 +150,22 @@ export class BatteryV2JobProducerService {
             }),
           );
           return null;
-        }
-        await this.assessDispatchReservation.refresh(
-          payload.vehicleId,
-          payload.idempotencyKey,
-        );
+        case ASSESS_DISPATCH_RESERVATION_STATUS.AUTHORITY_UNAVAILABLE:
+          this.logger.warn(
+            formatBatteryV2PipelineLog({
+              component: 'enqueue',
+              event: 'enqueue_suppressed_assess_dispatch_authority_unavailable',
+              status: 'suppressed',
+              jobType,
+              organizationId: payload.organizationId,
+              vehicleId: payload.vehicleId,
+              keyFp: fingerprintBatteryV2IdempotencyKey(payload.idempotencyKey),
+              correlationId: payload.correlationId,
+              suppressionReason: 'duplicate',
+              errorCode: 'TRANSIENT_INFRA',
+            }),
+          );
+          return null;
       }
     }
 
@@ -160,7 +175,7 @@ export class BatteryV2JobProducerService {
         delay: options.delayMs ?? 0,
       });
     } catch (err) {
-      if (jobType === 'BATTERY_ASSESSMENT_RECOMPUTE') {
+      if (jobType === 'BATTERY_ASSESSMENT_RECOMPUTE' && reservationAcquiredByThisInvocation) {
         await this.assessDispatchReservation.release(
           payload.vehicleId,
           payload.idempotencyKey,

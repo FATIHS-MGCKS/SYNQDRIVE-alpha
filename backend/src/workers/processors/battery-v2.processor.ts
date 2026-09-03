@@ -123,6 +123,9 @@ export class BatteryV2Processor extends WorkerHost {
             outcome: LV_REST_ASSESSMENT_HANDOFF_OUTCOME.ASSESSMENT_PERSISTED,
           });
         }
+        if (isAssessJob) {
+          releaseAssessReservation = true;
+        }
       } else {
         this.observability.recordCompleted(jobType);
       }
@@ -173,7 +176,9 @@ export class BatteryV2Processor extends WorkerHost {
             errorCode: classified.code,
             errorMessage: classified.message,
           });
-          releaseAssessReservation = isAssessJob;
+        }
+        if (isAssessJob) {
+          releaseAssessReservation = true;
         }
       } else if (classified.retryable) {
         this.observability.recordRetry(jobType as BatteryV2JobType, classified.code);

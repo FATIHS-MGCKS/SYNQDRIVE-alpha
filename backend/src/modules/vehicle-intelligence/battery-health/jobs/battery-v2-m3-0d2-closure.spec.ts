@@ -164,7 +164,7 @@ describe('M3.0D.2 closure — legacy 54000 recovery + FAILED rearm', () => {
       expect(jobProducer.enqueue).toHaveBeenCalled();
     });
 
-    it('rearms FAILED handoff to ENQUEUED when DLQ is cleared (explicit recovery)', async () => {
+    it('does not rearm unrelated FAILED persistence failures', async () => {
       sessionMetadata = {
         scheduledTargets: {
           REST_60M: {
@@ -177,27 +177,17 @@ describe('M3.0D.2 closure — legacy 54000 recovery + FAILED rearm', () => {
                 outcome: LV_REST_ASSESSMENT_HANDOFF_OUTCOME.PERSISTENCE_FAILED,
                 failedAt: '2026-09-02T09:00:00.000Z',
                 errorCode: 'HANDLER_FAILED',
-                errorMessage: '54000 index row size',
+                errorMessage: 'foreign key violation',
               },
             },
           },
         },
       };
 
-      const terminal = await service.ensureAssessmentHandoff(baseInput());
-      expect(terminal.reason).toBe('terminal_failed');
-
       const recovered = await service.reconcileAssessmentHandoff(baseInput());
-      expect(recovered.enqueued).toBe(true);
-
-      const handoff = readAssessmentHandoffFromTargetMetadata(
-        sessionMetadata,
-        LV_REST_TARGET_TYPES.REST_60M,
-      );
-      expect(handoff?.status).toBe(LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED);
-      expect(handoff?.rearmReason).toBe(
-        LV_REST_ASSESSMENT_HANDOFF_REARM_REASON.LEGACY_PERSISTENCE_54000,
-      );
+      expect(recovered.enqueued).toBe(false);
+      expect(recovered.reason).toBe('terminal_failed');
+      expect(jobProducer.enqueue).not.toHaveBeenCalled();
     });
   });
 

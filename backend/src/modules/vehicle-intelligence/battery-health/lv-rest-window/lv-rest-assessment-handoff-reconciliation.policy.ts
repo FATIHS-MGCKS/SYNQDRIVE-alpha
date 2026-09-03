@@ -12,6 +12,7 @@ export const REPLAYABLE_ASSESSMENT_HANDOFF_DEAD_LETTER_CODES = [
 ] as const;
 
 export { isLegacyAssessPersistence54000DeadLetter } from '../jobs/battery-v2-job-dead-letter.policy';
+export { isLegacyPersistence54000HandoffFailure } from './lv-rest-assessment-handoff-failure.policy';
 
 export function maxScannedRestAssessmentHandoffCandidates(batch: number): number {
   return batch * CANONICAL_REST_ASSESSMENT_HANDOFF_MAX_SCAN_MULTIPLIER;

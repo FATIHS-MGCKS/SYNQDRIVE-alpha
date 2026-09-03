@@ -1,7 +1,7 @@
 import {
-  BatteryMeasurementSessionStatus,
-  BatteryMeasurementSessionType,
-  BatteryMeasurementType,
+  BatteryEvidenceScope,
+  BatteryAssessmentMaturity,
+  BatteryAssessmentType,
   PrismaClient,
 } from '@prisma/client';
 import { BatteryAssessmentRepository } from './battery-assessment.repository';
@@ -13,6 +13,7 @@ import {
 import { LV_ESTIMATED_HEALTH_ASSESSMENT_MODEL_VERSION } from './lv-assessment/lv-assessment-thresholds';
 import type { LvEstimatedHealthAssessment } from './lv-assessment/lv-estimated-health-assessment.policy';
 import { BatteryEvidenceStrength } from './battery-v2-domain';
+import { BatteryEvidenceStrength as PrismaBatteryEvidenceStrength } from '@prisma/client';
 
 const LIVE = process.env.BATTERY_V2_ASSESSMENT_PERSISTENCE_INTEGRATION === '1';
 
@@ -202,6 +203,52 @@ function buildRepresentativeAssessment(input: {
           fixtureOrganizationId: organizationId,
         }),
       );
+    });
+
+    it('reuses existing legacy-key row when same evidence is persisted under digest key', async () => {
+      const evidenceFingerprint = buildLargeFingerprint();
+      const legacyKey = buildLegacyLvEstimatedHealthAssessmentIdempotencyKey({
+        vehicleId,
+        assessmentTrack: 'TELEMETRY',
+        assessmentMode: 'CANONICAL',
+        evidenceFingerprint,
+      });
+      const selectedMeasurementIds = evidenceFingerprint.split(':').at(-1)!.split('|').filter(Boolean);
+
+      const legacyRow = await prisma.batteryAssessment.create({
+        data: {
+          organizationId,
+          vehicleId,
+          scope: BatteryEvidenceScope.LV,
+          type: BatteryAssessmentType.LV_ESTIMATED_HEALTH,
+          scoreValue: 70,
+          textValue: 'ESTIMATED_HEALTH_NOT_SOH',
+          confidence: 'MEDIUM',
+          evidenceStrength: PrismaBatteryEvidenceStrength.SUPPLEMENTARY,
+          dataQuality: 'ESTIMATED',
+          maturity: BatteryAssessmentMaturity.MEDIUM,
+          modelVersion: LV_ESTIMATED_HEALTH_ASSESSMENT_MODEL_VERSION,
+          idempotencyKey: legacyKey,
+          inputSummary: {
+            evidenceFingerprint,
+            selectedMeasurementIds,
+            rejectedMeasurementIds: ['legacy-rejected'],
+          },
+        },
+      });
+
+      const digestAssessment = buildRepresentativeAssessment({ vehicleId, evidenceFingerprint });
+      const persisted = await repository.persistLvEstimatedHealth({
+        organizationId,
+        vehicleId,
+        assessment: digestAssessment,
+      });
+
+      expect(persisted.id).toBe(legacyRow.id);
+      const count = await prisma.batteryAssessment.count({
+        where: { organizationId, vehicleId },
+      });
+      expect(count).toBe(1);
     });
   },
 );
