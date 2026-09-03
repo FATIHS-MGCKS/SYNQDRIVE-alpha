@@ -250,6 +250,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-03T07:50:00.000Z',
   },
   {
+    id: 'p1-8-3-5-inc-07-production-validation-baseline-2026-09-03',
+    version: '4.9.1026',
+    title: 'P1.8.3.5 — INC-07 production deploy + validation baseline',
+    summary: [
+      'Deployed exact PR #1525 merge SHA 5b788a223 to N=2 production via canonical exact-SHA rolling path.',
+      'DEC-016 full six-point provenance chain directly verified; OQ-18 CLOSED.',
+      'INC-07 runtime fix confirmed in production dist (deterministic repair ID, atomic tx, APPLIED terminality).',
+      'Historical duplicate baseline frozen: 2 groups / 4 rows unchanged. Validation start 2026-09-03T21:19:07Z.',
+      'INC-07 NOT CLOSED — natural warm-tier evidence pending (≥2 cycles). N2=EARLY. OQ-28=PARTIAL.',
+    ],
+    reason: 'Controlled production deployment of merged INC-07 remediation with read-only forensic baseline for retrospective validation.',
+    previousBehavior: 'Production ran pre-fix SHA 0e0f092 without deterministic INTRA_TRIP_GAP_SPLIT idempotency.',
+    details:
+      'architecture/P1_8_3_5_INC_07_PRODUCTION_VALIDATION_BASELINE_2026-09-03.md; backend/scripts/ops/inc07-production-validation-baseline.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T21:19:07.000Z',
+  },
+  {
     id: 'p1-8-3-4-inc-07-trip-reconciliation-idempotency-2026-09-03',
     version: '4.9.1025',
     title: 'P1.8.3.4 — INC-07 INTRA_TRIP_GAP_SPLIT reconciliation idempotency remediation',

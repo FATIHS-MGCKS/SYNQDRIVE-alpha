@@ -44,9 +44,9 @@ Scaling Process
 │   ├── Leader crash → TTL failover ~35s
 │   ├── Deploy single-replica restart → SUPERSEDED by #1472
 │   ├── Deploy leader-timing false-abort → INC-06 (P1.8.3) — **CLOSED** P1.8.3.1 prod validation
-│   ├── Deploy bootstrap stale-current → OQ-18 — LIKELY_PRODUCTION_VERIFIED; DEC-016 precision review pending
+│   ├── Deploy bootstrap stale-current → OQ-18 — **CLOSED** (P1.8.3.5 DEC-016 full invariant verified)
 │   ├── N=2 continuous 24h soak → OQ-28 — PARTIAL (P1.8.3.3 longest FULL_N2 segment 81024s)
-│   ├── Trip reconciliation duplicate rows → INC-07 (P1.8.3.3 forensic) — FIX_IMPLEMENTED_PENDING_PRODUCTION_VALIDATION (P1.8.3.4)
+│   ├── Trip reconciliation duplicate rows → INC-07 (P1.8.3.3 forensic) — **FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS** (P1.8.3.5)
 │   └── nginx dual-upstream with dead backend
 │
 ├── Scaling Envelopes
