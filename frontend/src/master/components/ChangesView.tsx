@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-rd003-video-gt-alignment-workbench-2026-09-03',
+    version: '4.9.1036',
+    title: 'DI-EV-0034A — RD003 External Video/Telemetry Alignment Workbench',
+    summary: [
+      'Deterministic offline workbench correlating nine segmented video clips against DI-EV-0033 telemetry.',
+      'External GT schema: rd003-video-ground-truth-observations.json (metadata + empty observations pending ingestion).',
+      'Multi-clock model preserved (video instrument, provider, synq ingress, request windows, HF windows).',
+      'Acquisition surfaces evaluated separately; LATEST_LIVE≠fresh physical sample; stale-hold detection.',
+      'Derived comparison layer explicit and bounded; canonical telemetry never mutated.',
+      'WORKBENCH_READY=YES; VIDEO_ALIGNMENT_STATUS=AWAITING_EXTERNAL_GT_INGESTION; GROUND_TRUTH_VALIDATED=NO.',
+      'REFERENCE_CAPTURE_RUNTIME_CHANGED=NO; DRIVING_SCORE_CHANGED=NO.',
+    ],
+    reason:
+      'Provide tooling for external analysis authority to ingest validated video observations and correlate against immutable DI-EV-0033 telemetry without fabricating video content.',
+    previousBehavior: 'No structured external GT ingestion or alignment workbench existed.',
+    details:
+      'reference-capture-rd003-video-gt-alignment.ts; reference-capture-drive-003-video-gt-align.ts; docs/audits/data/rd003-video-gt-alignment/.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T06:30:00.000Z',
+  },
+  {
     id: 'dimo-rd003-video-gt-semantics-closeout-2026-09-03',
     version: '4.9.1035.1',
     title: 'DI-EV-0033 — sealed-source authority + multi-clock semantics closeout',

@@ -1,0 +1,52 @@
+{
+  "evidenceLayer": "DERIVED_SIGNAL_QUALITY",
+  "modelOutcome": "PENDING_EXTERNAL_GT",
+  "note": "Insufficient validated per-clip offsets for cross-clip model",
+  "clipOffsets": [
+    {
+      "clipId": "RD003_GT_CLIP_001",
+      "offsetSeconds": null,
+      "status": "PENDING_EXTERNAL_GT"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_002",
+      "offsetSeconds": null,
+      "status": "PENDING_EXTERNAL_GT"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_003",
+      "offsetSeconds": null,
+      "status": "PENDING_EXTERNAL_GT"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_004",
+      "offsetSeconds": null,
+      "status": "PENDING_EXTERNAL_GT"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_005",
+      "offsetSeconds": null,
+      "status": "PENDING_EXTERNAL_GT"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_006",
+      "offsetSeconds": null,
+      "status": "PENDING_EXTERNAL_GT"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_007",
+      "offsetSeconds": null,
+      "status": "PENDING_EXTERNAL_GT"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_008",
+      "offsetSeconds": null,
+      "status": "PENDING_EXTERNAL_GT"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_009",
+      "offsetSeconds": null,
+      "status": "PENDING_EXTERNAL_GT"
+    }
+  ]
+}

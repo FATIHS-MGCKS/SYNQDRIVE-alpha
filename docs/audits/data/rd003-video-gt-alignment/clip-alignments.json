@@ -1,0 +1,335 @@
+[
+  {
+    "clipId": "RD003_GT_CLIP_001",
+    "fileName": "IMG_2803.mp4",
+    "evidenceLayer": "CANDIDATE_ALIGNMENT",
+    "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "stages": {
+      "clockPrior": {
+        "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "candidateStartUtc": "2026-09-02T19:03:49.400Z",
+        "uncertaintySeconds": 30,
+        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
+      },
+      "speedFingerprint": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestOffsetSeconds": null,
+        "offsetUncertaintySeconds": null,
+        "competingOffsets": [],
+        "ambiguityRuleTriggered": false
+      },
+      "multiSignalConfirmation": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "signalsEvaluated": []
+      }
+    },
+    "metrics": {
+      "CLOCK_OFFSET_SECONDS": null,
+      "NUMBER_OF_GT_POINTS": 0,
+      "COVERAGE_RATIO": null,
+      "SPEED_MAE_KMH": null
+    },
+    "derivedComparisonLayer": null,
+    "gearTiming": {
+      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_CHANGE_TIMING_VALIDATED": "NO",
+      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+    }
+  },
+  {
+    "clipId": "RD003_GT_CLIP_002",
+    "fileName": "IMG_2804.mp4",
+    "evidenceLayer": "CANDIDATE_ALIGNMENT",
+    "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "stages": {
+      "clockPrior": {
+        "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "candidateStartUtc": null,
+        "uncertaintySeconds": 60,
+        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
+      },
+      "speedFingerprint": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestOffsetSeconds": null,
+        "offsetUncertaintySeconds": null,
+        "competingOffsets": [],
+        "ambiguityRuleTriggered": false
+      },
+      "multiSignalConfirmation": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "signalsEvaluated": []
+      }
+    },
+    "metrics": {
+      "CLOCK_OFFSET_SECONDS": null,
+      "NUMBER_OF_GT_POINTS": 0,
+      "COVERAGE_RATIO": null,
+      "SPEED_MAE_KMH": null
+    },
+    "derivedComparisonLayer": null,
+    "gearTiming": {
+      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_CHANGE_TIMING_VALIDATED": "NO",
+      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+    }
+  },
+  {
+    "clipId": "RD003_GT_CLIP_003",
+    "fileName": "IMG_2805.mp4",
+    "evidenceLayer": "CANDIDATE_ALIGNMENT",
+    "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "stages": {
+      "clockPrior": {
+        "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "candidateStartUtc": "2026-09-02T19:08:37.300Z",
+        "uncertaintySeconds": 30,
+        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
+      },
+      "speedFingerprint": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestOffsetSeconds": null,
+        "offsetUncertaintySeconds": null,
+        "competingOffsets": [],
+        "ambiguityRuleTriggered": false
+      },
+      "multiSignalConfirmation": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "signalsEvaluated": []
+      }
+    },
+    "metrics": {
+      "CLOCK_OFFSET_SECONDS": null,
+      "NUMBER_OF_GT_POINTS": 0,
+      "COVERAGE_RATIO": null,
+      "SPEED_MAE_KMH": null
+    },
+    "derivedComparisonLayer": null,
+    "gearTiming": {
+      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_CHANGE_TIMING_VALIDATED": "NO",
+      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+    }
+  },
+  {
+    "clipId": "RD003_GT_CLIP_004",
+    "fileName": "IMG_2806.mp4",
+    "evidenceLayer": "CANDIDATE_ALIGNMENT",
+    "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "stages": {
+      "clockPrior": {
+        "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "candidateStartUtc": "2026-09-02T19:09:50.200Z",
+        "uncertaintySeconds": 30,
+        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
+      },
+      "speedFingerprint": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestOffsetSeconds": null,
+        "offsetUncertaintySeconds": null,
+        "competingOffsets": [],
+        "ambiguityRuleTriggered": false
+      },
+      "multiSignalConfirmation": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "signalsEvaluated": []
+      }
+    },
+    "metrics": {
+      "CLOCK_OFFSET_SECONDS": null,
+      "NUMBER_OF_GT_POINTS": 0,
+      "COVERAGE_RATIO": null,
+      "SPEED_MAE_KMH": null
+    },
+    "derivedComparisonLayer": null,
+    "gearTiming": {
+      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_CHANGE_TIMING_VALIDATED": "NO",
+      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+    }
+  },
+  {
+    "clipId": "RD003_GT_CLIP_005",
+    "fileName": "IMG_2807.mp4",
+    "evidenceLayer": "CANDIDATE_ALIGNMENT",
+    "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "stages": {
+      "clockPrior": {
+        "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "candidateStartUtc": "2026-09-02T19:12:10.300Z",
+        "uncertaintySeconds": 30,
+        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
+      },
+      "speedFingerprint": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestOffsetSeconds": null,
+        "offsetUncertaintySeconds": null,
+        "competingOffsets": [],
+        "ambiguityRuleTriggered": false
+      },
+      "multiSignalConfirmation": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "signalsEvaluated": []
+      }
+    },
+    "metrics": {
+      "CLOCK_OFFSET_SECONDS": null,
+      "NUMBER_OF_GT_POINTS": 0,
+      "COVERAGE_RATIO": null,
+      "SPEED_MAE_KMH": null
+    },
+    "derivedComparisonLayer": null,
+    "gearTiming": {
+      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_CHANGE_TIMING_VALIDATED": "NO",
+      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+    }
+  },
+  {
+    "clipId": "RD003_GT_CLIP_006",
+    "fileName": "IMG_2808.mp4",
+    "evidenceLayer": "CANDIDATE_ALIGNMENT",
+    "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "stages": {
+      "clockPrior": {
+        "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "candidateStartUtc": null,
+        "uncertaintySeconds": 14,
+        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
+      },
+      "speedFingerprint": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestOffsetSeconds": null,
+        "offsetUncertaintySeconds": null,
+        "competingOffsets": [],
+        "ambiguityRuleTriggered": false
+      },
+      "multiSignalConfirmation": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "signalsEvaluated": []
+      }
+    },
+    "metrics": {
+      "CLOCK_OFFSET_SECONDS": null,
+      "NUMBER_OF_GT_POINTS": 0,
+      "COVERAGE_RATIO": null,
+      "SPEED_MAE_KMH": null
+    },
+    "derivedComparisonLayer": null,
+    "gearTiming": {
+      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_CHANGE_TIMING_VALIDATED": "NO",
+      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+    }
+  },
+  {
+    "clipId": "RD003_GT_CLIP_007",
+    "fileName": "IMG_2809.mp4",
+    "evidenceLayer": "CANDIDATE_ALIGNMENT",
+    "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "stages": {
+      "clockPrior": {
+        "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "candidateStartUtc": "2026-09-02T19:22:30.450Z",
+        "uncertaintySeconds": 30,
+        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
+      },
+      "speedFingerprint": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestOffsetSeconds": null,
+        "offsetUncertaintySeconds": null,
+        "competingOffsets": [],
+        "ambiguityRuleTriggered": false
+      },
+      "multiSignalConfirmation": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "signalsEvaluated": []
+      }
+    },
+    "metrics": {
+      "CLOCK_OFFSET_SECONDS": null,
+      "NUMBER_OF_GT_POINTS": 0,
+      "COVERAGE_RATIO": null,
+      "SPEED_MAE_KMH": null
+    },
+    "derivedComparisonLayer": null,
+    "gearTiming": {
+      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_CHANGE_TIMING_VALIDATED": "NO",
+      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+    }
+  },
+  {
+    "clipId": "RD003_GT_CLIP_008",
+    "fileName": "IMG_2810.mp4",
+    "evidenceLayer": "CANDIDATE_ALIGNMENT",
+    "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "stages": {
+      "clockPrior": {
+        "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "candidateStartUtc": null,
+        "uncertaintySeconds": 60,
+        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
+      },
+      "speedFingerprint": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestOffsetSeconds": null,
+        "offsetUncertaintySeconds": null,
+        "competingOffsets": [],
+        "ambiguityRuleTriggered": false
+      },
+      "multiSignalConfirmation": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "signalsEvaluated": []
+      }
+    },
+    "metrics": {
+      "CLOCK_OFFSET_SECONDS": null,
+      "NUMBER_OF_GT_POINTS": 0,
+      "COVERAGE_RATIO": null,
+      "SPEED_MAE_KMH": null
+    },
+    "derivedComparisonLayer": null,
+    "gearTiming": {
+      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_CHANGE_TIMING_VALIDATED": "NO",
+      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+    }
+  },
+  {
+    "clipId": "RD003_GT_CLIP_009",
+    "fileName": "IMG_2811.mp4",
+    "evidenceLayer": "CANDIDATE_ALIGNMENT",
+    "alignmentStatus": "PENDING_EXTERNAL_GT",
+    "stages": {
+      "clockPrior": {
+        "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "candidateStartUtc": null,
+        "uncertaintySeconds": 3,
+        "note": "Visible vehicle clock establishes broad candidate region only — not sole alignment authority"
+      },
+      "speedFingerprint": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "bestOffsetSeconds": null,
+        "offsetUncertaintySeconds": null,
+        "competingOffsets": [],
+        "ambiguityRuleTriggered": false
+      },
+      "multiSignalConfirmation": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "signalsEvaluated": []
+      }
+    },
+    "metrics": {
+      "CLOCK_OFFSET_SECONDS": null,
+      "NUMBER_OF_GT_POINTS": 0,
+      "COVERAGE_RATIO": null,
+      "SPEED_MAE_KMH": null
+    },
+    "derivedComparisonLayer": null,
+    "gearTiming": {
+      "GEAR_STATE_OBSERVED": "NOT_EVALUATED",
+      "GEAR_CHANGE_TIMING_VALIDATED": "NO",
+      "note": "ActualGear cadence/freshness must support timing validation separately from video gear display"
+    }
+  }
+]
