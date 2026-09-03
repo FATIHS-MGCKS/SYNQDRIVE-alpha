@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0034f1-consistency-closeout-2026-09-03',
+    version: '4.9.1045',
+    title: 'DI-EV-0034F.1 — Canonical Architecture Consistency Closeout',
+    summary: [
+      'Splits driving state into orthogonal layers (kinematic, direction, powertrain, transition markers).',
+      'Separates physical severity from reconstruction confidence; adds attribution confidence layer.',
+      'Preserves V2 native-event PROVIDER_CLASSIFIED authority vs HF kinematic reconstruction scope.',
+      'Defines episode overlap policy — one primary kinematic episode per physical interval.',
+      'Separate positive/decel trip stats; mass-independent energy proxy; surface-aware provider age.',
+      'RD004 adds preprocessing filter-response validation; fleet comparison requires comparable cohort.',
+      'Legacy scorer classified KEEP_LEGACY_UNTIL_V2_CUTOVER — production unchanged.',
+    ],
+    reason: 'Human review found design consistency issues before specification becomes canonical.',
+    previousBehavior: 'F.0 used flat state list, mixed severity/confidence, ambiguous thermal/energy semantics.',
+    details:
+      'driving-intelligence-v2-canonical-design.ts F.1 closeout; regenerated driving-intelligence-v2-design/ artifacts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T18:00:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0034f-canonical-design-2026-09-03',
     version: '4.9.1044',
     title: 'DI-EV-0034F — Canonical Driving Intelligence V2 Design',

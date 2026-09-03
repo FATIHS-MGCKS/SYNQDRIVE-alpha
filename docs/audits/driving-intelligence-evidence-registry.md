@@ -6,7 +6,7 @@
 
 **Scope:** Driving Intelligence Reconstruction phases and major artifacts only. Does not index every unrelated repository audit.
 
-**Last updated:** 2026-09-03 (Canonical Driving Intelligence V2 design DI-EV-0034F)
+**Last updated:** 2026-09-03 (DI-EV-0034F.1 architecture consistency closeout)
 
 ---
 
@@ -63,7 +63,7 @@
 | DI-EV-0034D | Phase 3A.3 | B — Method correction + C — Joint alignment discovery | `docs/audits/data/rd003-video-gt-alignment/global-fingerprint-discovery-v2/` + preserved `hard-clock-prior-run/` + `global-fingerprint-discovery/` | 2026-09-03 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | GLOBAL_FINGERPRINT_DISCOVERY_V2 | DI-EV-0034C (method only) | — | V2 seed selection; ambiguous CLOCK_CANDIDATE_SET preservation; corrected static-minute geometry (D.2); joint DP intervals; artifact/runtime parity; GROUND_TRUTH_VALIDATED=NO |
 | DI-EV-0034D.1 | Phase 3A.3 | B — Method correction (partial) | `global-fingerprint-discovery-v2/` (pre-D.2 static/joint slice) | 2026-09-03 | SUPERSEDED (static/joint) | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | GLOBAL_FINGERPRINT_DISCOVERY_V2 | — | DI-EV-0034D.2 | D.1 joint/static-minute results superseded by D.2 geometry correction; independent speed basins preserved |
 | DI-EV-0034E | Phase 3A.3 | E — Signal quality + foundation | `docs/audits/data/rd003-signal-quality/` + `docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md` | 2026-09-03 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | SIGNAL_QUALITY_INTERPRETATION | DI-EV-0034D.2 (alignment) | — | Per-signal usability matrix; Tier A/B/C evidence; no Driving Score changes; GROUND_TRUTH_VALIDATED=NO |
-| DI-EV-0034F | Phase 3A.3 | F — Architecture design | `docs/audits/data/driving-intelligence-v2-design/` + `docs/audits/driving-intelligence-v2-canonical-design-2026-09.md` | 2026-09-03 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` (RD003 authority) | ARCHITECTURE_DESIGN + DRIVING_INTELLIGENCE_V2_FOUNDATION | DI-EV-0034E | — | Episode reconstruction + trip feature architecture; production score/detectors/tire/brake unchanged; RD004 validation contract; READY_FOR_RD004=YES |
+| DI-EV-0034F | Phase 3A.3 | F — Architecture design | `docs/audits/data/driving-intelligence-v2-design/` + `docs/audits/driving-intelligence-v2-canonical-design-2026-09.md` | 2026-09-03 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` (RD003 authority) | ARCHITECTURE_DESIGN + DRIVING_INTELLIGENCE_V2_FOUNDATION | DI-EV-0034E | — | Episode reconstruction + trip feature architecture; F.1 orthogonal states, confidence layers, overlap policy; production unchanged; READY_FOR_RD004=YES |
 
 ---
 

@@ -1104,6 +1104,24 @@ Rationale: alignment methodology complete; answers product question of signal tr
 
 Rationale: RD003 answered signal trust; DI-EV-0034F answers how to reconstruct professional driving intelligence from imperfect signals. Design-only — no production cutover, no score weights, no RD004 results invented.
 
+**DI-EV-0034F.1 — Architecture Consistency Closeout (2026-09-03):**
+
+| Field | Value |
+|-------|-------|
+| Closeout revision | DI-EV-0034F.1 |
+| Orthogonal state model | KINEMATIC_STATE + DIRECTION_CONTEXT + POWERTRAIN_DEMAND_STATE + TRANSITION_MARKERS |
+| Severity vs confidence | PHYSICAL_EPISODE_SEVERITY separated from RECONSTRUCTION_CONFIDENCE |
+| Confidence layers | RECONSTRUCTION_CONFIDENCE vs ATTRIBUTION_CONFIDENCE |
+| V2 contract preserved | Native PROVIDER_CLASSIFIED ≠ HF kinematic authority |
+| Episode overlap | PRIMARY_KINEMATIC_EPISODE + qualifiers/context/tags; no duplicate primary exposure |
+| Trip dynamics | Separate positive accel / decel magnitude stats; mass-independent energy proxy |
+| Tire semantics | SPEED_DURATION_EXPOSURE; no observed thermal load |
+| Provider age | SURFACE_AWARE policy |
+| RD004 addition | PREPROCESSING_FILTER_RESPONSE validation |
+| Fleet comparison | FLEET_RELATIVE_COMPARISON_REQUIRES_COMPARABLE_COHORT=YES |
+| Legacy scorer | KEEP_LEGACY_UNTIL_V2_CUTOVER |
+| `PRODUCTION_SCORE_CHANGED` | **NO** |
+
 **Timing metrics (distinct semantics):** SESSION_START_TO_FIRST_REQUEST_MS=35; SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS=254; FAST_GO_TO_RECORDING_MS=125; FAST_GO_TO_FIRST_CYCLE_MS=1222. Prior ambiguous ~0.93s acquisition-start label retired.
 
 **Key findings:** HF watermark + query-window proofs use acquisition-order per-field execution (not lexical sort). `NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED=YES`; `HF_IDEMPOTENCY_RUNTIME_VALIDATED=NOT_EXERCISED` (no duplicate/retry path exercised). Vehicle Load domain = RECONSTRUCTABLE_MEDIUM_CONFIDENCE. Longitudinal accel = RECONSTRUCTABLE_WITH_CADENCE_GATING. GEAR_STATE_OBSERVED=YES; GEAR_CHANGE_TIMING_VALIDATED=NO. Zero native events (NOT_EXERCISED — not proof no harsh maneuvers occurred).

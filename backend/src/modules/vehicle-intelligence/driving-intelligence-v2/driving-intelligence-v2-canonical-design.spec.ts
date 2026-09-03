@@ -3,20 +3,28 @@ import {
   BRAKE_FRICTION_USE_DIRECTLY_OBSERVABLE,
   BRAKE_LOAD_FOUNDATION,
   buildCanonicalDesignArtifacts,
+  CANONICAL_DESIGN_CLOSEOUT_REVISION,
   CANONICAL_DESIGN_EVIDENCE_ID,
   CANONICAL_PIPELINE_STAGES,
+  CONTEXT_FAIRNESS,
   CURRENT_PRODUCTION_COMPONENTS,
   DESIGN_INVARIANTS,
+  DRIVING_STATE_MODEL,
   EPISODE_CONFIDENCE_MODEL,
   EPISODE_TAXONOMY,
+  HIGH_TIMEFRAME_AGGREGATION,
   LATERAL_TIRE_LOAD_DIRECTLY_OBSERVABLE,
   PHYSICAL_EVENT_TIME_AUTHORITY,
   PRODUCTION_DETECTORS_CHANGED,
   PRODUCTION_SCORE_CHANGED,
+  PROVIDER_AGE_POLICY,
   QUALITY_GATE_DESIGN,
+  RD004_VALIDATION_CONTRACT,
   SIGNAL_AUTHORITY_MODEL,
   TIRE_LOAD_FOUNDATION,
+  TIRE_THERMAL_DIRECT_OBSERVATION_CLAIMED,
   TRIP_FEATURE_VECTOR,
+  V2_AUTHORITY_CONTRACT_COMPATIBILITY,
 } from './driving-intelligence-v2-canonical-design';
 
 describe('DI-EV-0034F canonical driving intelligence design', () => {
@@ -78,8 +86,8 @@ describe('DI-EV-0034F canonical driving intelligence design', () => {
   });
 
   it('9) requires episode confidence before score calculation', () => {
-    expect(EPISODE_CONFIDENCE_MODEL.rule).toMatch(/without episode confidence/i);
-    expect(EPISODE_CONFIDENCE_MODEL.factors.length).toBeGreaterThanOrEqual(8);
+    expect(EPISODE_CONFIDENCE_MODEL.rule).toMatch(/reconstruction confidence/i);
+    expect(EPISODE_CONFIDENCE_MODEL.layers.RECONSTRUCTION_CONFIDENCE.factors.length).toBeGreaterThanOrEqual(8);
     expect(DESIGN_INVARIANTS.scoreRequiresEpisodeConfidence).toBe(true);
   });
 
@@ -119,5 +127,139 @@ describe('DI-EV-0034F canonical driving intelligence design', () => {
     expect(CANONICAL_PIPELINE_STAGES).toHaveLength(12);
     expect(() => assertDesignInvariants()).not.toThrow();
     expect(BRAKE_FRICTION_USE_DIRECTLY_OBSERVABLE).toBe(false);
+  });
+});
+
+describe('DI-EV-0034F.1 architecture consistency closeout', () => {
+  it('1) separates KINEMATIC_STATE from DIRECTION_CONTEXT and POWERTRAIN_DEMAND_STATE', () => {
+    expect(DRIVING_STATE_MODEL.modelType).toBe('ORTHOGONAL_LAYERS');
+    expect(DRIVING_STATE_MODEL.layers.KINEMATIC_STATE.values).toContain('ACCELERATING');
+    expect(DRIVING_STATE_MODEL.layers.DIRECTION_CONTEXT.values).toContain('REVERSE');
+    expect(DRIVING_STATE_MODEL.layers.POWERTRAIN_DEMAND_STATE.values).toContain('HIGH');
+    expect(DRIVING_STATE_MODEL.layers.KINEMATIC_STATE.values).not.toContain('REVERSE');
+    expect(DRIVING_STATE_MODEL.layers.TRANSITION_EPISODE_MARKERS.concepts).toContain('LAUNCH');
+    expect(DESIGN_INVARIANTS.orthogonalStateLayers).toBe(true);
+  });
+
+  it('2) keeps physical severity independent from evidence confidence', () => {
+    expect(EPISODE_TAXONOMY.physicalSeverityModel.forbiddenDimensions).toContain('confidence');
+    expect(EPISODE_TAXONOMY.physicalSeverityModel.separatedFrom).toBe('RECONSTRUCTION_CONFIDENCE');
+    expect(EPISODE_TAXONOMY.physicalSeverityModel.dimensions).not.toContain('confidence');
+    expect(DESIGN_INVARIANTS.physicalSeveritySeparatedFromConfidence).toBe(true);
+  });
+
+  it('3) distinguishes RECONSTRUCTION_CONFIDENCE from ATTRIBUTION_CONFIDENCE', () => {
+    expect(EPISODE_CONFIDENCE_MODEL.layers.RECONSTRUCTION_CONFIDENCE).toBeDefined();
+    expect(EPISODE_CONFIDENCE_MODEL.layers.ATTRIBUTION_CONFIDENCE).toBeDefined();
+    expect(CONTEXT_FAIRNESS.policy).toMatch(/ATTRIBUTION_CONFIDENCE/i);
+    expect(CONTEXT_FAIRNESS.policy).not.toMatch(/reduce reconstruction confidence/i);
+    expect(DESIGN_INVARIANTS.reconstructionConfidenceDistinctFromAttribution).toBe(true);
+  });
+
+  it('4) preserves native provider event authority separate from HF kinematic authority', () => {
+    expect(SIGNAL_AUTHORITY_MODEL.HF_KINEMATIC_AUTHORITY_SCOPE.explicitlyNot).toBe(
+      'PRIMARY_DRIVER_CONDUCT_AUTHORITY',
+    );
+    expect(SIGNAL_AUTHORITY_MODEL.NATIVE_PROVIDER_EVENT_AUTHORITY.evidenceClass).toBe(
+      'PROVIDER_CLASSIFIED',
+    );
+    expect(V2_AUTHORITY_CONTRACT_COMPATIBILITY.normativeContract).toBe(
+      'docs/architecture/driving-intelligence-v2.md',
+    );
+    expect(DESIGN_INVARIANTS.nativeEventAuthorityPreserved).toBe(true);
+    expect(DESIGN_INVARIANTS.hfKinematicAuthorityScopeExplicit).toBe(true);
+  });
+
+  it('5) forbids derived HF events from silently becoming PROVIDER_CLASSIFIED', () => {
+    expect(SIGNAL_AUTHORITY_MODEL.DERIVED_HF_EVENT_EVIDENCE_CLASS.forbiddenSilentUpgradeTo).toBe(
+      'PROVIDER_CLASSIFIED',
+    );
+    expect(
+      V2_AUTHORITY_CONTRACT_COMPATIBILITY.preservedDistinctions.forbiddenSilentUpgrade,
+    ).toMatch(/PROVIDER_CLASSIFIED/);
+    expect(DESIGN_INVARIANTS.derivedHfCannotBecomeProviderClassified).toBe(true);
+  });
+
+  it('6) defines episode hierarchy and overlap policy', () => {
+    expect(EPISODE_TAXONOMY.compositionModel.primaryType).toBe('PRIMARY_KINEMATIC_EPISODE');
+    expect(EPISODE_TAXONOMY.compositionModel.qualifiers).toContain('STRONG_ACCELERATION_CANDIDATE');
+    expect(EPISODE_TAXONOMY.compositionModel.contextOverlays).toContain('HIGH_POWERTRAIN_DEMAND');
+    expect(EPISODE_TAXONOMY.compositionModel.transitionTags).toContain('LAUNCH');
+    expect(DESIGN_INVARIANTS.episodeOverlapPolicyDefined).toBe(true);
+  });
+
+  it('7) prevents primary exposure double counting from overlapping qualifiers/context', () => {
+    expect(
+      EPISODE_TAXONOMY.compositionModel.overlapPolicy
+        .ONE_PHYSICAL_INTERVAL_CANNOT_CREATE_DUPLICATE_PRIMARY_EXPOSURE,
+    ).toBe('YES');
+    expect(
+      EPISODE_TAXONOMY.compositionModel.overlapPolicy.qualifiersAndContextDoNotCreateSeparatePrimaryExposure,
+    ).toBe(true);
+    expect(DESIGN_INVARIANTS.primaryExposureDoubleCountPrevented).toBe(true);
+  });
+
+  it('8) separates positive acceleration and deceleration magnitude distributions', () => {
+    expect(TRIP_FEATURE_VECTOR.dynamicsSeparation.positiveAccelerationStats).toContain(
+      'positiveAccelMeanMps2',
+    );
+    expect(TRIP_FEATURE_VECTOR.dynamicsSeparation.decelerationMagnitudeStats).toContain(
+      'decelMagnitudeMeanMps2',
+    );
+    expect(TRIP_FEATURE_VECTOR.features).not.toContain('accelMeanMps2');
+    expect(DESIGN_INVARIANTS.positiveNegativeDynamicsSeparated).toBe(true);
+  });
+
+  it('9) uses explicitly mass-independent energy proxy semantics', () => {
+    expect(TRIP_FEATURE_VECTOR.energyProxySemantics.massIndependent).toBe(true);
+    expect(TRIP_FEATURE_VECTOR.energyProxySemantics.fieldNaming).toMatch(/SPECIFIC_KINETIC_ENERGY/);
+    expect(TRIP_FEATURE_VECTOR.features).toContain('positiveSpecificKineticEnergyChangeProxy');
+    expect(TRIP_FEATURE_VECTOR.energyProxySemantics.forbidden).toContain('infer_mass_from_obdEngineLoad');
+    expect(DESIGN_INVARIANTS.massIndependentEnergyProxyExplicit).toBe(true);
+  });
+
+  it('10) does not claim observed tire thermal load', () => {
+    expect(TIRE_THERMAL_DIRECT_OBSERVATION_CLAIMED).toBe(false);
+    expect(TIRE_LOAD_FOUNDATION.futureComponents.SPEED_DURATION_EXPOSURE).toBeDefined();
+    expect(TIRE_LOAD_FOUNDATION.futureComponents.THERMAL_RISK_PROXY_UNVALIDATED.directlyObserved).toBe(
+      false,
+    );
+    expect('SPEED_THERMAL_EXPOSURE' in TIRE_LOAD_FOUNDATION.futureComponents).toBe(false);
+    expect(DESIGN_INVARIANTS.noObservedTireThermalLoad).toBe(true);
+  });
+
+  it('11) applies surface-aware provider-age confidence policy', () => {
+    expect(PROVIDER_AGE_POLICY).toBe('SURFACE_AWARE');
+    expect(EPISODE_CONFIDENCE_MODEL.PROVIDER_AGE_CONFIDENCE_POLICY).toBe('SURFACE_AWARE');
+    expect(EPISODE_CONFIDENCE_MODEL.providerAgeSemantics.HF_HISTORICAL).toMatch(/NOT automatically reduce/i);
+    expect(DESIGN_INVARIANTS.providerAgePolicySurfaceAware).toBe(true);
+  });
+
+  it('12) adds RD004 preprocessing filter-response validation', () => {
+    expect(RD004_VALIDATION_CONTRACT.mustValidate).toContain('preprocessing_filter_response');
+    expect(RD004_VALIDATION_CONTRACT.preprocessingFilterResponse.objective).toBe(
+      'PREPROCESSING_FILTER_RESPONSE',
+    );
+    expect(RD004_VALIDATION_CONTRACT.preprocessingFilterResponse.runtimeChange).toBe(false);
+    expect(DESIGN_INVARIANTS.rd004PreprocessingValidationAdded).toBe(true);
+  });
+
+  it('13) keeps production runtime unchanged and documents legacy scorer migration status', () => {
+    expect(PRODUCTION_SCORE_CHANGED).toBe('NO');
+    expect(PRODUCTION_DETECTORS_CHANGED).toBe('NO');
+    const scorer = CURRENT_PRODUCTION_COMPONENTS.find((c) => c.id === 'driving_impact_scorer');
+    expect(scorer?.classification).toBe('KEEP_LEGACY_UNTIL_V2_CUTOVER');
+    expect(HIGH_TIMEFRAME_AGGREGATION.fleetRelativeComparison.FLEET_RELATIVE_COMPARISON_REQUIRES_COMPARABLE_COHORT).toBe(
+      'YES',
+    );
+    expect(CANONICAL_DESIGN_CLOSEOUT_REVISION).toBe('DI-EV-0034F.1');
+    expect(() => assertDesignInvariants()).not.toThrow();
+    const artifacts = buildCanonicalDesignArtifacts();
+    expect(artifacts['design-summary.json']).toMatchObject({
+      closeoutRevision: 'DI-EV-0034F.1',
+      ORTHOGONAL_STATE_MODEL_DESIGNED: 'YES',
+    });
+    expect(Object.keys(artifacts)).toHaveLength(14);
+    expect(CANONICAL_PIPELINE_STAGES).toHaveLength(12);
   });
 });
