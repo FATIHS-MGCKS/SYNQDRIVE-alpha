@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { TripStatus, TripSource } from '@prisma/client';
+import { TripStatus, TripSource, Prisma } from '@prisma/client';
 import type { VehicleTrip } from '@prisma/client';
 import type { DetectorFinding } from '../detectors/detector.interfaces';
 import { TRIP_OWNERSHIP } from '../TRIP_OWNERSHIP';
@@ -395,8 +395,10 @@ export class TripDecisionEngine {
    */
   async splitTripAtGap(
     params: SplitTripAtGapParams,
+    tx?: Prisma.TransactionClient,
   ): Promise<SplitTripAtGapResult> {
-    const originalTrip = await this.prisma.vehicleTrip.findUnique({
+    const readClient = tx ?? this.prisma;
+    const originalTrip = await readClient.vehicleTrip.findUnique({
       where: { id: params.tripId },
       select: {
         id: true,
@@ -410,7 +412,7 @@ export class TripDecisionEngine {
       throw new Error(`splitTripAtGap: trip ${params.tripId} not found`);
     }
 
-    const vehicleRow = await this.prisma.vehicle.findUnique({
+    const vehicleRow = await readClient.vehicle.findUnique({
       where: { id: originalTrip.vehicleId },
       select: { organizationId: true },
     });
@@ -420,15 +422,13 @@ export class TripDecisionEngine {
     const firstDurationMinutes =
       firstDurationMs > 0 ? firstDurationMs / 60_000 : undefined;
 
-    // Best-effort first-trip distance: if caller knows it, honour it; otherwise
-    // keep what was recorded (the original trip was already tracking distance
-    // while ONGOING so the last write is the lower bound for segment 1).
     const firstDistanceKm =
       params.firstEndDistanceKm ?? originalTrip.distanceKm ?? undefined;
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      // ── 1. Finalize the existing trip as the first segment ────────────
-      await tx.vehicleTrip.update({
+    const runSplit = async (
+      writeClient: Prisma.TransactionClient,
+    ): Promise<SplitTripAtGapResult> => {
+      await writeClient.vehicleTrip.update({
         where: { id: params.tripId },
         data: {
           tripStatus: TripStatus.COMPLETED,
@@ -452,8 +452,7 @@ export class TripDecisionEngine {
         },
       });
 
-      // ── 2. Create the continuation trip ───────────────────────────────
-      const secondTrip = await tx.vehicleTrip.create({
+      const secondTrip = await writeClient.vehicleTrip.create({
         data: {
           vehicleId: originalTrip.vehicleId,
           tripStatus: TripStatus.ONGOING,
@@ -480,8 +479,7 @@ export class TripDecisionEngine {
         },
       });
 
-      // ── 3. Re-parent waypoints that belong to segment 2 ───────────────
-      const movedWaypoints = await tx.vehicleTripWaypoint.updateMany({
+      const movedWaypoints = await writeClient.vehicleTripWaypoint.updateMany({
         where: {
           tripId: params.tripId,
           recordedAt: { gte: params.secondStartAt },
@@ -494,7 +492,11 @@ export class TripDecisionEngine {
         secondTripId: secondTrip.id,
         movedWaypoints: movedWaypoints.count,
       };
-    });
+    };
+
+    const result = tx
+      ? await runSplit(tx)
+      : await this.prisma.$transaction(runSplit);
 
     this.logger.log(
       `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip SPLIT ON GAP — ` +
@@ -516,8 +518,10 @@ export class TripDecisionEngine {
   async finalizeRepairedTrip(
     tripId: string,
     meta: FinalizeMeta,
+    tx?: Prisma.TransactionClient,
   ): Promise<VehicleTrip> {
-    const trip = await this.prisma.vehicleTrip.update({
+    const writeClient = tx ?? this.prisma;
+    const trip = await writeClient.vehicleTrip.update({
       where: { id: tripId },
       data: {
         tripStatus: TripStatus.COMPLETED,

@@ -250,6 +250,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-03T07:50:00.000Z',
   },
   {
+    id: 'p1-8-3-4-inc-07-trip-reconciliation-idempotency-2026-09-03',
+    version: '4.9.1025',
+    title: 'P1.8.3.4 — INC-07 INTRA_TRIP_GAP_SPLIT reconciliation idempotency remediation',
+    summary: [
+      'Deterministic repair identity: buildIntraTripGapSplitRepairAuditId(vehicleId, gapFirstEndAt, gapSecondStartAt) — same pattern as MISSING_TRIP buildRepairAuditId.',
+      'Claim-before-mutate: TripRepair PK claim in transaction + legacy APPLIED window lookup; session advisory lock around split/finalize.',
+      'Repeated warm-tier execution → IDEMPOTENT_SKIP (no duplicate repaired trips, no downstream Route/enrichment jobs).',
+      'INC-07 fix IMPLEMENTED / TEST-VALIDATED locally; NOT production-validated; INC-07 NOT CLOSED.',
+      'Historical duplicate rows untouched. No UNIQUE(vehicle_id, start_time). Redis mutex retained (concurrency only). DEC-017.',
+    ],
+    reason: 'P1.8.3.3 proved warm-tier INTRA_TRIP_GAP_SPLIT re-application creates duplicate REPAIRED trips ~4h apart; MISSING_TRIP already had deterministic idempotency.',
+    previousBehavior: 'INTRA_TRIP_GAP_SPLIT used random trip_repairs UUID; warm-tier re-run could create equivalent repaired trips again.',
+    details:
+      'architecture/P1_8_3_4_INC_07_TRIP_RECONCILIATION_IDEMPOTENCY_REMEDIATION_2026-09-03.md; trip-reconciliation.intra-trip-gap-split-idempotency.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T14:45:00.000Z',
+  },
+  {
     id: 'p1-8-3-3-n2-24h-segmented-audit-2026-09-03',
     version: '4.9.1024',
     title: 'P1.8.3.3 — N=2 24h+ segmented production retrospective audit (forensic authority v4)',

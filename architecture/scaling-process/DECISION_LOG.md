@@ -209,3 +209,23 @@ Format: Decision ID | Date/Phase | Status
 | **WHY** | Guarantees authorized artifact is promoted; prevents branch-tip drift |
 | **STATUS** | **IMPLEMENTED** — unit tests; stale-current fix **LIKELY_PRODUCTION_VERIFIED** (P1.8.3.3); full invariant **NEEDS_PRECISION_REVIEW** |
 | **EVIDENCE** | `vps-deploy-release.sh`, `cloud-agent-deploy.sh`, `assertDeployShaProvenance` tests |
+
+---
+
+## DEC-017: Durable semantic repair identity for trip reconciliation (P1.8.3.4)
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-09-03 |
+| **PROBLEM** | `INTRA_TRIP_GAP_SPLIT` used random `trip_repairs` IDs; warm-tier re-execution created duplicate repaired trips (INC-07) |
+| **DECISION** | Enforce idempotency via deterministic `trip_repairs` primary key; **one PostgreSQL transaction** atomically claims, splits, finalizes, and marks `APPLIED` |
+| **INVARIANT A** | Same semantic repair → at most one committed trip mutation |
+| **INVARIANT B** | `TripRepair APPLIED` is terminal — no code path may downgrade to `REJECTED` or `PROPOSED` |
+| **INVARIANT C** | Post-commit side-effect failures (enqueue, metrics, recursion read) cannot alter repair mutation authority |
+| **INVARIANT D** | Transaction-client error after possible server commit is resolved by durable-state re-read before writing failure status |
+| **INVARIANT E** | Redis reconciliation mutex serializes concurrent execution but is **not** the idempotency authority |
+| **LOCKING** | `pg_advisory_xact_lock64` only inside the transaction (64-bit key). Session-scoped `pg_advisory_lock` across separate Prisma calls is **prohibited** |
+| **DOWNSTREAM** | Route/ATE/enrichment enqueue occurs **after** transaction commit only |
+| **LEGACY** | Pre-fix random-UUID `APPLIED` rows matched by `(vehicleId, repairType, windowFrom, windowTo)` lookup |
+| **STATUS** | **IMPLEMENTED** — local regression PASS; production validation pending |
+| **EVIDENCE** | `P1_8_3_4_INC_07_TRIP_RECONCILIATION_IDEMPOTENCY_REMEDIATION_2026-09-03.md` |
