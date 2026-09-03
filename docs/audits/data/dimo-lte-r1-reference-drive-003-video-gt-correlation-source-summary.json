@@ -1,0 +1,219 @@
+{
+  "evidenceId": "DI-EV-0033",
+  "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_003",
+  "sessionId": "0fa040aa-6105-4872-9b2c-f8ad477009b8",
+  "exportSchemaVersion": "2026-09-03-rd003-video-gt-correlation-v1",
+  "sealedSourcePath": "/workspace/tmp/rd003-evidence/observations.jsonl",
+  "sealedSourceSha256": "81534484cdd0fa6224d9efbcf97bb445cfbe8af1fdb8ef29e9bb8204f09c32e4",
+  "sourceRowCount": 6251,
+  "exportedRowCount": 5010,
+  "sessionStart": "2026-09-02T18:59:15.695Z",
+  "sessionStop": "2026-09-02T19:36:22.970Z",
+  "exportedFields": [
+    "speed",
+    "powertrainCombustionEngineSpeed",
+    "obdEngineLoad",
+    "obdThrottlePosition",
+    "powertrainCombustionEngineTPS",
+    "powertrainTransmissionActualGear",
+    "powertrainTransmissionActualGearRatio",
+    "currentLocationHeading",
+    "currentLocationCoordinates",
+    "obdRunTime",
+    "powertrainTransmissionTravelledDistance"
+  ],
+  "perField": {
+    "obdEngineLoad": {
+      "observationCount": 963,
+      "acquisitionSurfaces": [
+        "HF_HISTORICAL",
+        "LATEST_LIVE"
+      ],
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:36:17.000Z",
+      "firstSynqReceivedAt": "2026-09-02T18:59:15.949Z",
+      "lastSynqReceivedAt": "2026-09-02T19:36:21.769Z",
+      "nonNullCount": 963
+    },
+    "obdThrottlePosition": {
+      "observationCount": 916,
+      "acquisitionSurfaces": [
+        "HF_HISTORICAL",
+        "LATEST_LIVE"
+      ],
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:36:17.000Z",
+      "firstSynqReceivedAt": "2026-09-02T18:59:15.949Z",
+      "lastSynqReceivedAt": "2026-09-02T19:36:21.769Z",
+      "nonNullCount": 916
+    },
+    "powertrainCombustionEngineSpeed": {
+      "observationCount": 871,
+      "acquisitionSurfaces": [
+        "HF_HISTORICAL",
+        "LATEST_LIVE"
+      ],
+      "firstProviderTimestamp": "2026-09-02T17:48:50.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:36:17.000Z",
+      "firstSynqReceivedAt": "2026-09-02T18:59:15.949Z",
+      "lastSynqReceivedAt": "2026-09-02T19:36:21.769Z",
+      "nonNullCount": 871
+    },
+    "powertrainCombustionEngineTPS": {
+      "observationCount": 925,
+      "acquisitionSurfaces": [
+        "HF_HISTORICAL",
+        "LATEST_LIVE"
+      ],
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:36:17.000Z",
+      "firstSynqReceivedAt": "2026-09-02T18:59:15.949Z",
+      "lastSynqReceivedAt": "2026-09-02T19:36:21.769Z",
+      "nonNullCount": 925
+    },
+    "speed": {
+      "observationCount": 963,
+      "acquisitionSurfaces": [
+        "HF_HISTORICAL",
+        "LATEST_LIVE"
+      ],
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:36:17.000Z",
+      "firstSynqReceivedAt": "2026-09-02T18:59:15.949Z",
+      "lastSynqReceivedAt": "2026-09-02T19:36:21.769Z",
+      "nonNullCount": 963
+    },
+    "currentLocationCoordinates": {
+      "observationCount": 62,
+      "acquisitionSurfaces": [
+        "LATEST_SLOW"
+      ],
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstSynqReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastSynqReceivedAt": "2026-09-02T19:35:52.659Z",
+      "nonNullCount": 0
+    },
+    "currentLocationHeading": {
+      "observationCount": 62,
+      "acquisitionSurfaces": [
+        "LATEST_SLOW"
+      ],
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstSynqReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastSynqReceivedAt": "2026-09-02T19:35:52.659Z",
+      "nonNullCount": 62
+    },
+    "obdRunTime": {
+      "observationCount": 62,
+      "acquisitionSurfaces": [
+        "LATEST_SLOW"
+      ],
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstSynqReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastSynqReceivedAt": "2026-09-02T19:35:52.659Z",
+      "nonNullCount": 62
+    },
+    "powertrainTransmissionActualGear": {
+      "observationCount": 62,
+      "acquisitionSurfaces": [
+        "LATEST_SLOW"
+      ],
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstSynqReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastSynqReceivedAt": "2026-09-02T19:35:52.659Z",
+      "nonNullCount": 62
+    },
+    "powertrainTransmissionActualGearRatio": {
+      "observationCount": 62,
+      "acquisitionSurfaces": [
+        "LATEST_SLOW"
+      ],
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstSynqReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastSynqReceivedAt": "2026-09-02T19:35:52.659Z",
+      "nonNullCount": 62
+    },
+    "powertrainTransmissionTravelledDistance": {
+      "observationCount": 62,
+      "acquisitionSurfaces": [
+        "LATEST_SLOW"
+      ],
+      "firstProviderTimestamp": "2026-09-02T17:48:54.000Z",
+      "lastProviderTimestamp": "2026-09-02T19:35:47.000Z",
+      "firstSynqReceivedAt": "2026-09-02T18:59:16.641Z",
+      "lastSynqReceivedAt": "2026-09-02T19:35:52.659Z",
+      "nonNullCount": 62
+    }
+  },
+  "perSurface": {
+    "LATEST_LIVE": 1855,
+    "LATEST_SLOW": 372,
+    "HF_HISTORICAL": 2783
+  },
+  "canonicalJsonlSha256": "69209a6d9e488d51c3aaf3b55dee5584ce622dc072a191b81e7061597cdda87a",
+  "methodology": {
+    "FULL_SESSION_FILTERED_EXPORT": "YES",
+    "VIDEO_CANDIDATE_WINDOWS_USED_AS_FILTER": "NO",
+    "NO_INTERPOLATION_PERFORMED": "YES",
+    "NO_RESAMPLING_PERFORMED": "YES",
+    "NO_SMOOTHING_PERFORMED": "YES",
+    "NO_VIDEO_CLOCK_ASSUMPTION_APPLIED": "YES",
+    "RAW_PHYSICAL_SAMPLE_CADENCE_PROVEN": "NO",
+    "REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ": "NO",
+    "RD003_TELEMETRY_COVERAGE": "FULL_SESSION",
+    "RD003_VIDEO_GT_COVERAGE": "PARTIAL_SEGMENTED",
+    "VIDEO_ALIGNMENT_STATUS": "PENDING_CORRELATION",
+    "GROUND_TRUTH_VALIDATED": "NO",
+    "CONTINUOUS_VIDEO_ASSUMPTION_REMOVED": "YES",
+    "ACQUISITION_ORDER_PRESERVED": "YES",
+    "PROVIDER_TIME_NOT_REWRITTEN": "YES"
+  },
+  "candidateVideoClockAnchors": {
+    "classification": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+    "note": "Not validated telemetry timestamps; MUST NOT be used as export filters",
+    "clips": [
+      {
+        "fileName": "IMG_2803.mp4",
+        "candidateStartUtc": "~19:03:49Z start candidate"
+      },
+      {
+        "fileName": "IMG_2804.mp4",
+        "candidateStartUtc": "~19:06:00Z–19:06:23Z start candidate"
+      },
+      {
+        "fileName": "IMG_2805.mp4",
+        "candidateStartUtc": "~19:08:37Z start candidate"
+      },
+      {
+        "fileName": "IMG_2806.mp4",
+        "candidateStartUtc": "~19:09:50Z start candidate"
+      },
+      {
+        "fileName": "IMG_2807.mp4",
+        "candidateStartUtc": "~19:12:10Z start candidate"
+      },
+      {
+        "fileName": "IMG_2808.mp4",
+        "candidateStartUtc": "~19:21:00Z–19:21:14Z start candidate"
+      },
+      {
+        "fileName": "IMG_2809.mp4",
+        "candidateStartUtc": "~19:22:30.45Z start candidate"
+      },
+      {
+        "fileName": "IMG_2810.mp4",
+        "candidateStartUtc": "~19:23Z region, exact second unresolved"
+      },
+      {
+        "fileName": "IMG_2811.mp4",
+        "candidateStartUtc": "~19:24:29Z–19:24:32Z start candidate"
+      }
+    ]
+  },
+  "referenceCaptureRuntimeChanged": false
+}
