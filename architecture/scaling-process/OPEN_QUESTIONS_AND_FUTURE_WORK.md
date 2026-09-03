@@ -72,12 +72,20 @@ Do **not** treat items here as current production architecture.
 
 ---
 
+## Trip reconciliation idempotency
+
+| ID | Topic | Category | Notes |
+|----|-------|----------|-------|
+| OQ-30 | `INTRA_TRIP_GAP_SPLIT` reconciliation idempotency | **OPEN_QUESTION** | P1.8.3.3 forensic closure: warm-tier re-run created duplicate REPAIRED trips (INC-07); deterministic repair ID or existence guard required |
+
+---
+
 ## Queue architecture
 
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
 | OQ-20 | Queue partitioning by tenant | FUTURE_OPTION | |
-| OQ-21 | Historical battery.v2 failed backlog remediation | OPEN_QUESTION | Classified; not auto-fixed |
+| OQ-21 | Historical battery.v2 failed backlog remediation | OPEN_QUESTION | P1.8.3.3 taxonomy RESOLVED_PARTIAL (REST/assessment/lock); not scaling-related |
 | OQ-22 | Autoscaling workers | FUTURE_OPTION | |
 
 ---

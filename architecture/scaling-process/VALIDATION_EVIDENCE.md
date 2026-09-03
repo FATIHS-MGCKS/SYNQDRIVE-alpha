@@ -180,11 +180,12 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | DEC-016 exact-SHA production | P1.8.3.3 | — | auth.log TMP bootstrap | NEEDS_PRECISION_REVIEW | MEDIUM |
 | OQ-18 stale-current fix | P1.8.3.3 | — | auth.log | LIKELY_PRODUCTION_VERIFIED | MEDIUM |
 | OQ-28 closure | P1.8.3.3 | — | segment <86400s | PARTIAL (not closed) | HIGH |
-| Trip duplicates (horizon) | P1.8.3.3 | — | SQL vehicle_id,start_time | PROVEN (2 groups); causality UNRESOLVED | HIGH |
-| battery.v2 net delta | P1.8.3.3 | — | Redis failed ZSET | +36; taxonomy UNRESOLVED | HIGH |
-| PM2 unexpected restarts | P1.8.3.3 | — | pm2.log | 2; causality UNRESOLVED | MEDIUM |
-| Scaling defect | P1.8.3.3 | — | open causality | UNRESOLVED | MEDIUM |
-| Merge recommendation | P1.8.3.3 | — | precision v2 | HOLD | HIGH |
+| Trip duplicates (horizon) | P1.8.3.3 | — | SQL + trip_repairs | PROVEN; RECONCILIATION_DUPLICATE (INC-07) | HIGH |
+| battery.v2 net delta | P1.8.3.3 | — | Redis + dead letters | +36; 48-vs-36 reconciled; taxonomy RESOLVED_PARTIAL | HIGH |
+| PM2 unexpected restarts | P1.8.3.3 | — | pm2.log + auth.log | PM2_AUTO_RECOVERY; not deploy cleanup | HIGH |
+| Segment model corrected | P1.8.3.3 forensic | — | PM2 boundaries | 158815+62=158877 | HIGH |
+| Scaling defect | P1.8.3.3 forensic | — | INC-07 | YES (idempotency defect) | HIGH |
+| Merge recommendation | P1.8.3.3 forensic | — | causality closed | MERGE | HIGH |
 
 ---
 
@@ -205,4 +206,5 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 2. No provider ceiling verification at N≈1000
 3. Staging validation Redis DB ≠ production DB
 4. Deploy leader-wait **verified in production** (P1.8.3.1 attempt 3)
-5. Exact-SHA deploy: stale-current fix **likely** production-verified; full DEC-016 invariant **NEEDS_PRECISION_REVIEW** (P1.8.3.3)
+5. Exact-SHA deploy: stale-current fix **likely** production-verified; full DEC-016 invariant **NEEDS_PRECISION_REVIEW** (P1.8.3.3 forensic)
+6. INC-07 trip reconciliation idempotency — runtime remediation open
