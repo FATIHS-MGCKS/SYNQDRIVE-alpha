@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-rd003-external-gt-ingestion-2026-09-03',
+    version: '4.9.1037',
+    title: 'DI-EV-0034B — RD003 Sparse External Video Ground Truth Ingestion + First Real Alignment',
+    summary: [
+      'First real externally reviewed sparse video GT ingested for all nine RD003 clips (198 observations, 182 alignment-eligible SPEED points).',
+      'Source: EXTERNAL_OWNER_PLUS_CHATGPT_MANUAL_VISUAL_REVIEW; no interpolation or 30 Hz fabrication.',
+      'Deterministic observation IDs (RD003_GT_001_SPEED_000, etc.); EXTERNAL_GT_SHA256=ea0d78ee….',
+      'Accepted DI-EV-0034A v1.2 workbench executed against DI-EV-0033 canonical telemetry without algorithm redesign.',
+      'REAL_EXTERNAL_GT_INGESTED=YES; REAL_ALIGNMENT_EXECUTED=YES; VIDEO_ALIGNMENT_STATUS=REAL_CANDIDATE_ALIGNMENTS_AVAILABLE.',
+      'GROUND_TRUTH_VALIDATED=NO; failed/ambiguous per-clip outcomes preserved as valid scientific results.',
+      'IMG_2810 S2→S3 and IMG_2811 reverse direction remain separate video GT — not telemetry proof.',
+      'REFERENCE_CAPTURE_RUNTIME_CHANGED=NO; DRIVING_SCORE_CHANGED=NO.',
+    ],
+    reason:
+      'Ingest owner-reviewed sparse instrument-cluster observations and produce first real candidate video/telemetry alignments without declaring final Ground Truth validation.',
+    previousBehavior: 'External GT schema held metadata only; observations[] empty pending ingestion.',
+    details:
+      'reference-capture-rd003-video-gt-external-observations.ts; reference-capture-rd003-video-gt-alignment-episodes.ts; reference-capture-drive-003-video-gt-ingest-external.ts; docs/audits/data/rd003-video-ground-truth-observations.json; docs/audits/data/rd003-video-gt-alignment/.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T07:50:00.000Z',
+  },
+  {
     id: 'dimo-rd003-video-gt-alignment-workbench-2026-09-03',
     version: '4.9.1036',
     title: 'DI-EV-0034A — RD003 External Video/Telemetry Alignment Workbench',

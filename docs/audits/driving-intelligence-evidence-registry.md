@@ -6,7 +6,7 @@
 
 **Scope:** Driving Intelligence Reconstruction phases and major artifacts only. Does not index every unrelated repository audit.
 
-**Last updated:** 2026-09-03 (RD003 video-GT alignment workbench DI-EV-0034A)
+**Last updated:** 2026-09-03 (RD003 external sparse video GT ingestion DI-EV-0034B)
 
 ---
 
@@ -57,13 +57,14 @@
 | DI-EV-0031 | Phase 3A.3 | B — Cross-vehicle differential | `docs/audits/dimo-lte-r1-reference-drive-002-vs-rd003-tiguan-cross-vehicle-differential-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | C63 vs Tiguan | CONFIRMED_FROM_VEHICLE_OBSERVATION | — | — | C63 29 vs Tiguan 31 fields; shared HF set; vehicle-specific gear signals |
 | DI-EV-0032 | Phase 3A.3 | C — Ground Truth index | `docs/audits/dimo-lte-r1-reference-drive-003-ground-truth-evidence-index-2026-09-02.md` | 2026-09-02 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | PENDING_SEGMENTED_VIDEO | — | — | Partial/segmented video GT clip schema; TELEMETRY_ONLY unrecorded windows; continuous video assumption removed |
 | DI-EV-0033 | Phase 3A.3 | B — Machine-readable | `docs/audits/data/dimo-lte-r1-reference-drive-003-video-gt-correlation-source.jsonl` (+ CSV, summary, per-field CSVs) | 2026-09-03 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `0fa040aa-…` · `DIMO_LTE_R1_REFERENCE_DRIVE_003` | PENDING_CORRELATION | — | — | Full-session lossless telemetry correlation source for external video alignment; 5010 rows; NOT Ground Truth itself |
-| DI-EV-0034A | Phase 3A.3 | B — Method/Tooling | `docs/audits/data/rd003-video-ground-truth-observations.json` + `docs/audits/data/rd003-video-gt-alignment/` | 2026-09-03 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | AWAITING_EXTERNAL_GT_INGESTION | — | — | External video/telemetry alignment workbench; multi-clock model; NOT validated Ground Truth |
+| DI-EV-0034A | Phase 3A.3 | B — Method/Tooling | `docs/audits/data/rd003-video-ground-truth-observations.json` + `docs/audits/data/rd003-video-gt-alignment/` | 2026-09-03 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | WORKBENCH_READY | — | — | External video/telemetry alignment workbench v1.2; multi-clock model; NOT validated Ground Truth |
+| DI-EV-0034B | Phase 3A.3 | B — External Ground Truth + C — Candidate alignment | `docs/audits/data/rd003-video-ground-truth-observations.json` + `docs/audits/data/rd003-video-gt-alignment/` | 2026-09-03 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | REAL_CANDIDATE_ALIGNMENTS | — | — | First real externally reviewed sparse video GT (9 clips, 198 obs); first real alignment run; GROUND_TRUTH_VALIDATED=NO |
 
 ---
 
 ## Entry count
 
-**34** registry entries through DI-EV-0034A (RD003 alignment workbench added 2026-09-03).
+**35** registry entries through DI-EV-0034B (RD003 external GT ingestion added 2026-09-03).
 
 ---
 
@@ -71,7 +72,7 @@
 
 | Planned ID | Phase | Artifact | Status |
 |------------|-------|----------|--------|
-| DI-EV-0034B+ | RD003 Video GT | Validated per-clip alignment results after external GT ingestion | NOT_STARTED |
+| DI-EV-0034C+ | RD003 Video GT | Result interpretation / validation pass after candidate alignments | NOT_STARTED |
 
 ---
 
