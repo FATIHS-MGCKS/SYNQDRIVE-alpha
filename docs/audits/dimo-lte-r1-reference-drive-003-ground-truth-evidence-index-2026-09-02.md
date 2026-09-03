@@ -101,4 +101,18 @@ VALIDATED on SPEED observations denotes external visual observation authority â€
 | TELEMETRY_CLOCK_REFERENCE | session `0fa040aa-6105-4872-9b2c-f8ad477009b8` |
 | Sealed SHA-256 | `81534484cdd0fa6224d9efbcf97bb445cfbe8af1fdb8ef29e9bb8204f09c32e4` |
 
-**Candidate alignment metrics are available in `docs/audits/data/rd003-video-gt-alignment/` after DI-EV-0034B ingestion. GROUND_TRUTH_VALIDATED remains NO.**
+**Candidate alignment metrics are available in `docs/audits/data/rd003-video-gt-alignment/` after DI-EV-0034B ingestion. DI-EV-0034C global fingerprint discovery preserved in `global-fingerprint-discovery/`. DI-EV-0034D corrected discovery v2 in `global-fingerprint-discovery-v2/`. GROUND_TRUTH_VALIDATED remains NO.**
+
+## Global fingerprint discovery v2 (DI-EV-0034D)
+
+| Field | Value |
+|-------|-------|
+| Evidence ID | DI-EV-0034D |
+| Discovery mode | `GLOBAL_FINGERPRINT_DISCOVERY_V2` |
+| Artifact path | `docs/audits/data/rd003-video-gt-alignment/global-fingerprint-discovery-v2/` |
+| Prior runs preserved | `hard-clock-prior-run/` (0034B), `global-fingerprint-discovery/` (0034C) |
+| `ZERO_PHASE_HARD_CLOCK_BOUND_CONCLUSION` | HARD_SECOND_PHASE_PRIOR_FALSIFIED |
+| `IMG_2810_V2_STRONG_BASIN_AT_19_23_59` | YES |
+| `IMG_2807_AND_IMG_2810_JOINTLY_POSSIBLE` | NO |
+| `READY_FOR_DI_EV_0034E` | YES |
+| `GROUND_TRUTH_VALIDATED` | NO |

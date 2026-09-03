@@ -1033,7 +1033,24 @@ Rationale: first real externally reviewed sparse video observations ingested det
 | `IMG_2810_DIAGNOSTIC_BASIN_NEAR_19_23_59` | **FOUND** (rank 1, MAE ~4.17, coverage 1.0) |
 | `GROUND_TRUTH_VALIDATED` | **NO** |
 
-Rationale: hard vehicle-clock UTC prior treated as metadata only; independent full-session HF/LIVE speed fingerprint search discovered materially better basins outside prior windows (e.g. IMG_2810 ~19:23:59.5Z). Modulo-60 vehicle-clock boundary phase model evaluated under CEST hypothesis. DI-EV-0034B hard-prior results preserved as evidence, not erased.
+Rationale: hard vehicle-clock UTC prior treated as metadata only; independent full-session HF/LIVE speed fingerprint search discovered materially better basins outside prior windows (e.g. IMG_2810 ~19:23:59.5Z). Modulo-60 vehicle-clock boundary phase model evaluated under CEST hypothesis. DI-EV-0034B hard-prior results preserved as evidence, not erased. **Methodological defects corrected in DI-EV-0034D** (coverage-first seed suppression, clock authority from NOT_IDENTIFIABLE basins, ingress proxy bug).
+
+**DI-EV-0034D — Global Discovery V2 + Joint Clock-Consistent Alignment (2026-09-03):**
+
+| Field | Value |
+|-------|-------|
+| Evidence ID | DI-EV-0034D |
+| Discovery mode | `GLOBAL_FINGERPRINT_DISCOVERY_V2` |
+| Preserved prior runs | `hard-clock-prior-run/` (DI-EV-0034B), `global-fingerprint-discovery/` (DI-EV-0034C) |
+| V2 seed policy | QUALITY_SEEDS + COVERAGE_SEEDS + PARETO_SEEDS (not coverage-first only) |
+| `ZERO_PHASE_HARD_CLOCK_BOUND_CONCLUSION` | **HARD_SECOND_PHASE_PRIOR_FALSIFIED** |
+| `IMG_2810_V2_STRONG_BASIN_AT_19_23_59` | **YES** (MAE ~4.17, coverage 1.0) |
+| `IMG_2807_AND_IMG_2810_JOINTLY_POSSIBLE` | **NO** (chronology gap conflict ~−130.8 s) |
+| `RELATIVE_CLOCK_MODEL_STATUS` | **RELATIVE_INTERCEPT_CLUSTER_WEAK** (4 qualified transition clips) |
+| `INGRESS_TIME_DIAGNOSTIC_SUPPORTED_CLIPS` | **0** (independent ingress search; not provider MAE proxy) |
+| `GROUND_TRUTH_VALIDATED` | **NO** |
+
+Rationale: corrects DI-EV-0034C methodological defects before signal-quality interpretation; introduces timezone-independent relative clock-intercept model, qualified clock authority rules, joint chronology DP over retained basins, and independent ingress timeline discovery.
 
 **Timing metrics (distinct semantics):** SESSION_START_TO_FIRST_REQUEST_MS=35; SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS=254; FAST_GO_TO_RECORDING_MS=125; FAST_GO_TO_FIRST_CYCLE_MS=1222. Prior ambiguous ~0.93s acquisition-start label retired.
 
@@ -1415,7 +1432,7 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Flight Recorder implementation (LTE_R1) | DONE (3A.1+3A.2) | `reference-capture` deployed + production canary validated |
 | Instrumented reference drive #001 (RD001) | DONE | Session `06638509-…` COMPLETED; telemetry audit available; video GT NOT_AVAILABLE |
 | RD002 (motion HF canary) | **DONE** | Session `e095d273-…` — DI-EV-0023; MOTION_CANARY_COMPLETED=YES |
-| RD003 (video Ground Truth) | **GLOBAL FINGERPRINT DISCOVERY** | DI-EV-0033 correlation; DI-EV-0034B external GT; DI-EV-0034C clock-prior falsification; GROUND_TRUTH_VALIDATED=NO |
+| RD003 (video Ground Truth) | **GLOBAL FINGERPRINT DISCOVERY V2** | DI-EV-0033 correlation; DI-EV-0034B external GT; DI-EV-0034C discovery; DI-EV-0034D method correction + joint alignment; GROUND_TRUTH_VALIDATED=NO |
 | Evidence & documentation governance | DONE | `driving-intelligence-evidence-governance-2026-09-01.md` + registry seeded |
 | Ground-truth synchronization | NOT_STARTED | Phase 5 |
 | Detector validation | NOT_STARTED | Phase 6 |

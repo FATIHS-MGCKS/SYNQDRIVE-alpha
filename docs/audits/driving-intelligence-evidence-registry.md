@@ -6,7 +6,7 @@
 
 **Scope:** Driving Intelligence Reconstruction phases and major artifacts only. Does not index every unrelated repository audit.
 
-**Last updated:** 2026-09-03 (RD003 global fingerprint discovery DI-EV-0034C)
+**Last updated:** 2026-09-03 (RD003 global fingerprint discovery v2 DI-EV-0034D)
 
 ---
 
@@ -59,13 +59,14 @@
 | DI-EV-0033 | Phase 3A.3 | B — Machine-readable | `docs/audits/data/dimo-lte-r1-reference-drive-003-video-gt-correlation-source.jsonl` (+ CSV, summary, per-field CSVs) | 2026-09-03 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `0fa040aa-…` · `DIMO_LTE_R1_REFERENCE_DRIVE_003` | PENDING_CORRELATION | — | — | Full-session lossless telemetry correlation source for external video alignment; 5010 rows; NOT Ground Truth itself |
 | DI-EV-0034A | Phase 3A.3 | B — Method/Tooling | `docs/audits/data/rd003-video-ground-truth-observations.json` + `docs/audits/data/rd003-video-gt-alignment/` | 2026-09-03 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | WORKBENCH_READY | — | — | External video/telemetry alignment workbench v1.2; multi-clock model; NOT validated Ground Truth |
 | DI-EV-0034B | Phase 3A.3 | B — External Ground Truth + C — Candidate alignment | `docs/audits/data/rd003-video-ground-truth-observations.json` + `docs/audits/data/rd003-video-gt-alignment/` | 2026-09-03 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | REAL_CANDIDATE_ALIGNMENTS | — | — | First real externally reviewed sparse video GT (9 clips, 198 obs); first real alignment run; GROUND_TRUTH_VALIDATED=NO |
-| DI-EV-0034C | Phase 3A.3 | B — Method diagnostic + C — Discovery alignment | `docs/audits/data/rd003-video-gt-alignment/global-fingerprint-discovery/` + `hard-clock-prior-run/` | 2026-09-03 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | GLOBAL_FINGERPRINT_DISCOVERY | — | — | Clock-prior falsification; full-session speed fingerprint search; preserves DI-EV-0034B hard-prior run; GROUND_TRUTH_VALIDATED=NO |
+| DI-EV-0034C | Phase 3A.3 | B — Method diagnostic + C — Discovery alignment | `docs/audits/data/rd003-video-gt-alignment/global-fingerprint-discovery/` + `hard-clock-prior-run/` | 2026-09-03 | SUPERSEDED (method) | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | GLOBAL_FINGERPRINT_DISCOVERY | — | DI-EV-0034D | Clock-prior falsification; full-session speed fingerprint search; preserves DI-EV-0034B hard-prior run; methodological defects corrected in DI-EV-0034D |
+| DI-EV-0034D | Phase 3A.3 | B — Method correction + C — Joint alignment discovery | `docs/audits/data/rd003-video-gt-alignment/global-fingerprint-discovery-v2/` + preserved `hard-clock-prior-run/` + `global-fingerprint-discovery/` | 2026-09-03 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | GLOBAL_FINGERPRINT_DISCOVERY_V2 | DI-EV-0034C (method only) | — | V2 seed selection (quality/Pareto/coverage); relative clock-intercept model; joint chronology DP; independent ingress discovery; GROUND_TRUTH_VALIDATED=NO |
 
 ---
 
 ## Entry count
 
-**36** registry entries through DI-EV-0034C (RD003 global discovery added 2026-09-03).
+**37** registry entries through DI-EV-0034D (RD003 discovery v2 added 2026-09-03).
 
 ---
 
@@ -73,7 +74,7 @@
 
 | Planned ID | Phase | Artifact | Status |
 |------------|-------|----------|--------|
-| DI-EV-0034D+ | RD003 Video GT | Signal quality interpretation after discovery anchors | NOT_STARTED |
+| DI-EV-0034E+ | RD003 Video GT | Signal quality interpretation after corrected discovery anchors | NOT_STARTED |
 
 ---
 

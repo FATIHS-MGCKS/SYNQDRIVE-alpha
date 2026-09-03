@@ -36,6 +36,31 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-rd003-global-fingerprint-discovery-v2-2026-09-03',
+    version: '4.9.1039',
+    title: 'DI-EV-0034D — RD003 Global Discovery V2 + Joint Clock-Consistent Alignment',
+    summary: [
+      'Added GLOBAL_FINGERPRINT_DISCOVERY_V2 with corrected seed selection: QUALITY_SEEDS + COVERAGE_SEEDS + PARETO_SEEDS.',
+      'Coverage=1.0 / MAE=50 junk basins can no longer suppress coverage-qualified lower-MAE candidates.',
+      'Relative clock-intercept model (timezone-independent); qualified transition clips only for clock authority.',
+      'True circular mean for modulo-60 phase; full clock residual preserves whole-minute + phase components.',
+      'Joint chronology DP over retained basins; non-exhaustive failure renamed NO_CONSISTENT_PATH_IN_RETAINED_BASINS.',
+      'Independent ingress discovery on synqReceivedAt timeline; INGRESS_TIME_DIAGNOSTIC_SUPPORTED_CLIPS from ingress results.',
+      'IMG_2807 + IMG_2810 independent STRONG basins detected as jointly incompatible (~−130.8 s chronology gap).',
+      'Preserved DI-EV-0034B hard-clock-prior-run/ and DI-EV-0034C global-fingerprint-discovery/ unchanged.',
+      'ZERO_PHASE_HARD_CLOCK_BOUND_CONCLUSION=HARD_SECOND_PHASE_PRIOR_FALSIFIED; GROUND_TRUTH_VALIDATED=NO.',
+    ],
+    reason:
+      'Correct DI-EV-0034C methodological defects (coverage-first ranking, clock authority, ingress proxy) before signal-quality interpretation.',
+    previousBehavior:
+      'DI-EV-0034C coverage-first compareCandidateQuality could suppress superior lower-coverage basins; NOT_IDENTIFIABLE basins could reject clock phase; ingress support counted from provider MAE proxy.',
+    details:
+      'reference-capture-rd003-video-gt-global-discovery-v2.ts; reference-capture-drive-003-video-gt-global-discovery-v2.ts; docs/audits/data/rd003-video-gt-alignment/global-fingerprint-discovery-v2/.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T09:30:00.000Z',
+  },
+  {
     id: 'dimo-rd003-global-fingerprint-discovery-2026-09-03',
     version: '4.9.1038',
     title: 'DI-EV-0034C — RD003 Clock-Prior Falsification + Global Fingerprint Discovery',

@@ -1,0 +1,6 @@
+{
+  "JOINT_PATH_FOUND": "NO",
+  "JOINT_PATH_STATUS": "NO_CONSISTENT_PATH_IN_RETAINED_BASINS",
+  "path": [],
+  "note": "Joint chronology/clock constraints unsatisfiable within retained basins (non-exhaustive DP)"
+}
