@@ -1052,6 +1052,34 @@ Rationale: hard vehicle-clock UTC prior treated as metadata only; independent fu
 
 Rationale: corrects DI-EV-0034C methodological defects before signal-quality interpretation; introduces timezone-independent relative clock-intercept model, qualified clock authority rules, joint chronology DP over retained basins, and independent ingress timeline discovery.
 
+**DI-EV-0034E — RD003 Signal Quality Interpretation + Usability Matrix (2026-09-03):**
+
+| Field | Value |
+|-------|-------|
+| Evidence ID | DI-EV-0034E |
+| Analysis mode | `RD003_SIGNAL_QUALITY_INTERPRETATION` |
+| Artifact path | `docs/audits/data/rd003-signal-quality/` |
+| Audit doc | `docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md` |
+| Surfaces audited | HF_HISTORICAL, LATEST_LIVE, LATEST_SLOW (separate timelines) |
+| Physical time authority | `providerTimestamp` (candidate); `synqReceivedAt` = delivery only |
+| Tier A (direct video) | SPEED on qualified STRONG_CANDIDATE basins only |
+| Tier B (aligned correlation) | RPM, throttle, TPS, engine load around qualified speed episodes |
+| Tier C (state context) | ActualGear, ActualGearRatio — state vs timing distinguished |
+| HF speed typical error | ~8.5 km/h MAE (qualified basins) |
+| HF speed temporal resolution | ~2.0 s median new physical sample |
+| Derived acceleration | WEAK — cadence-gated; provisional max-gap analysis only |
+| Derived jerk | EPISODE_CONTEXT_ONLY — not direct authority |
+| `GEAR_STATE_USEFUL` | **YES** |
+| `GEAR_CHANGE_TIMING_USEFUL` | **NO** |
+| `DIRECTION_RECONSTRUCTION_CAPABILITY` | **PARTIAL** |
+| `OFFLINE_TRIP_RECONSTRUCTION_READINESS` | **READY_WITH_GATING** |
+| `NEAR_REALTIME_FEEDBACK_READINESS` | **NOT_READY** |
+| `DRIVING_SCORE_CHANGED` | **NO** |
+| `READY_FOR_DI_EV_0034F` | **YES** |
+| `GROUND_TRUTH_VALIDATED` | **NO** |
+
+Rationale: alignment methodology complete; answers product question of signal trustworthiness per surface. Proposed signal authority model and use-case eligibility matrix documented — not implemented in production Driving Score.
+
 **Timing metrics (distinct semantics):** SESSION_START_TO_FIRST_REQUEST_MS=35; SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS=254; FAST_GO_TO_RECORDING_MS=125; FAST_GO_TO_FIRST_CYCLE_MS=1222. Prior ambiguous ~0.93s acquisition-start label retired.
 
 **Key findings:** HF watermark + query-window proofs use acquisition-order per-field execution (not lexical sort). `NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED=YES`; `HF_IDEMPOTENCY_RUNTIME_VALIDATED=NOT_EXERCISED` (no duplicate/retry path exercised). Vehicle Load domain = RECONSTRUCTABLE_MEDIUM_CONFIDENCE. Longitudinal accel = RECONSTRUCTABLE_WITH_CADENCE_GATING. GEAR_STATE_OBSERVED=YES; GEAR_CHANGE_TIMING_VALIDATED=NO. Zero native events (NOT_EXERCISED — not proof no harsh maneuvers occurred).
@@ -1432,7 +1460,7 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Flight Recorder implementation (LTE_R1) | DONE (3A.1+3A.2) | `reference-capture` deployed + production canary validated |
 | Instrumented reference drive #001 (RD001) | DONE | Session `06638509-…` COMPLETED; telemetry audit available; video GT NOT_AVAILABLE |
 | RD002 (motion HF canary) | **DONE** | Session `e095d273-…` — DI-EV-0023; MOTION_CANARY_COMPLETED=YES |
-| RD003 (video Ground Truth) | **GLOBAL FINGERPRINT DISCOVERY V2** | DI-EV-0033 correlation; DI-EV-0034B external GT; DI-EV-0034C discovery; DI-EV-0034D method correction + joint alignment; GROUND_TRUTH_VALIDATED=NO |
+| RD003 (video Ground Truth) | **SIGNAL QUALITY INTERPRETATION** | DI-EV-0033 correlation; DI-EV-0034B external GT; DI-EV-0034C/D discovery; DI-EV-0034E signal usability matrix; GROUND_TRUTH_VALIDATED=NO; READY_FOR_0034F=YES |
 | Evidence & documentation governance | DONE | `driving-intelligence-evidence-governance-2026-09-01.md` + registry seeded |
 | Ground-truth synchronization | NOT_STARTED | Phase 5 |
 | Detector validation | NOT_STARTED | Phase 6 |

@@ -1,0 +1,241 @@
+{
+  "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
+  "evidenceClass": "DIRECT_VIDEO_VALIDATION",
+  "GROUND_TRUTH_VALIDATED": "NO",
+  "qualifiedStrongBasinClips": 8,
+  "aggregateHF": {
+    "MAE": 8.456566903515773,
+    "RMSE": 12.206356516643789,
+    "maxAbsError": 52.165,
+    "matchedPoints": 109
+  },
+  "aggregateLATEST_LIVE": {
+    "MAE": 12.630000000000003,
+    "RMSE": 12.630000000000003,
+    "maxAbsError": 12.630000000000003,
+    "matchedPoints": 1
+  },
+  "perClip": [
+    {
+      "clipId": "RD003_GT_CLIP_001",
+      "fileName": "IMG_2803.mp4",
+      "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
+      "independentStatus": "AMBIGUOUS",
+      "basinStatus": "STRONG_CANDIDATE",
+      "alignedClipStartUtc": "2026-09-02T19:18:13.695Z",
+      "basinMAE": 8.601539190906355,
+      "HF_HISTORICAL": {
+        "matchedGtCount": 16,
+        "eligibleGtCount": 25,
+        "MAE": 8.601539190906355,
+        "RMSE": 12.174489327870795,
+        "maxAbsError": 30.348,
+        "shapeCorrelation": 0.8991220875677529
+      },
+      "LATEST_LIVE": {
+        "matchedGtCount": 0,
+        "eligibleGtCount": 25,
+        "MAE": null,
+        "RMSE": null,
+        "maxAbsError": null,
+        "shapeCorrelation": null
+      }
+    },
+    {
+      "clipId": "RD003_GT_CLIP_002",
+      "fileName": "IMG_2804.mp4",
+      "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
+      "independentStatus": "AMBIGUOUS",
+      "basinStatus": "STRONG_CANDIDATE",
+      "alignedClipStartUtc": "2026-09-02T19:24:42.795Z",
+      "basinMAE": 4.9801711529834005,
+      "HF_HISTORICAL": {
+        "matchedGtCount": 5,
+        "eligibleGtCount": 8,
+        "MAE": 4.9801711529834005,
+        "RMSE": 8.042467809941048,
+        "maxAbsError": 16.913333333333334,
+        "shapeCorrelation": 0.8256515620743639
+      },
+      "LATEST_LIVE": {
+        "matchedGtCount": 0,
+        "eligibleGtCount": 8,
+        "MAE": null,
+        "RMSE": null,
+        "maxAbsError": null,
+        "shapeCorrelation": null
+      }
+    },
+    {
+      "clipId": "RD003_GT_CLIP_003",
+      "fileName": "IMG_2805.mp4",
+      "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
+      "independentStatus": "STRONG_CANDIDATE",
+      "basinStatus": "STRONG_CANDIDATE",
+      "alignedClipStartUtc": "2026-09-02T19:24:39.095Z",
+      "basinMAE": 8.742845577308264,
+      "HF_HISTORICAL": {
+        "matchedGtCount": 14,
+        "eligibleGtCount": 20,
+        "MAE": 8.742845577308264,
+        "RMSE": 10.913295446618864,
+        "maxAbsError": 19.4015,
+        "shapeCorrelation": 0.8083399283149694
+      },
+      "LATEST_LIVE": {
+        "matchedGtCount": 0,
+        "eligibleGtCount": 20,
+        "MAE": null,
+        "RMSE": null,
+        "maxAbsError": null,
+        "shapeCorrelation": null
+      }
+    },
+    {
+      "clipId": "RD003_GT_CLIP_005",
+      "fileName": "IMG_2807.mp4",
+      "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
+      "independentStatus": "AMBIGUOUS",
+      "basinStatus": "STRONG_CANDIDATE",
+      "alignedClipStartUtc": "2026-09-02T19:23:51.795Z",
+      "basinMAE": 6.057543830948755,
+      "HF_HISTORICAL": {
+        "matchedGtCount": 10,
+        "eligibleGtCount": 16,
+        "MAE": 6.057543830948755,
+        "RMSE": 6.611224938146284,
+        "maxAbsError": 10.64,
+        "shapeCorrelation": 0.9565512435825845
+      },
+      "LATEST_LIVE": {
+        "matchedGtCount": 0,
+        "eligibleGtCount": 16,
+        "MAE": null,
+        "RMSE": null,
+        "maxAbsError": null,
+        "shapeCorrelation": null
+      }
+    },
+    {
+      "clipId": "RD003_GT_CLIP_006",
+      "fileName": "IMG_2808.mp4",
+      "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
+      "independentStatus": "STRONG_CANDIDATE",
+      "basinStatus": "STRONG_CANDIDATE",
+      "alignedClipStartUtc": "2026-09-02T19:24:29.295Z",
+      "basinMAE": 14.3121398082524,
+      "HF_HISTORICAL": {
+        "matchedGtCount": 27,
+        "eligibleGtCount": 43,
+        "MAE": 14.3121398082524,
+        "RMSE": 19.208438634615966,
+        "maxAbsError": 52.165,
+        "shapeCorrelation": 0.6218055575511097
+      },
+      "LATEST_LIVE": {
+        "matchedGtCount": 0,
+        "eligibleGtCount": 43,
+        "MAE": null,
+        "RMSE": null,
+        "maxAbsError": null,
+        "shapeCorrelation": null
+      }
+    },
+    {
+      "clipId": "RD003_GT_CLIP_007",
+      "fileName": "IMG_2809.mp4",
+      "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
+      "independentStatus": "AMBIGUOUS",
+      "basinStatus": "STRONG_CANDIDATE",
+      "alignedClipStartUtc": "2026-09-02T19:18:35.895Z",
+      "basinMAE": 4.9339642129330485,
+      "HF_HISTORICAL": {
+        "matchedGtCount": 11,
+        "eligibleGtCount": 18,
+        "MAE": 4.9339642129330485,
+        "RMSE": 6.813783014206529,
+        "maxAbsError": 15,
+        "shapeCorrelation": -0.6858828387357289
+      },
+      "LATEST_LIVE": {
+        "matchedGtCount": 1,
+        "eligibleGtCount": 18,
+        "MAE": 12.630000000000003,
+        "RMSE": 12.630000000000003,
+        "maxAbsError": 12.630000000000003,
+        "shapeCorrelation": null
+      }
+    },
+    {
+      "clipId": "RD003_GT_CLIP_008",
+      "fileName": "IMG_2810.mp4",
+      "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
+      "independentStatus": "AMBIGUOUS",
+      "basinStatus": "STRONG_CANDIDATE",
+      "alignedClipStartUtc": "2026-09-02T19:23:59.495Z",
+      "basinMAE": 4.169440130861505,
+      "HF_HISTORICAL": {
+        "matchedGtCount": 10,
+        "eligibleGtCount": 10,
+        "MAE": 4.169440130861505,
+        "RMSE": 4.7337418262418245,
+        "maxAbsError": 7.836423118865866,
+        "shapeCorrelation": 0.9786083808229691
+      },
+      "LATEST_LIVE": {
+        "matchedGtCount": 0,
+        "eligibleGtCount": 10,
+        "MAE": null,
+        "RMSE": null,
+        "maxAbsError": null,
+        "shapeCorrelation": null
+      }
+    },
+    {
+      "clipId": "RD003_GT_CLIP_009",
+      "fileName": "IMG_2811.mp4",
+      "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
+      "independentStatus": "AMBIGUOUS",
+      "basinStatus": "STRONG_CANDIDATE",
+      "alignedClipStartUtc": "2026-09-02T19:30:02.795Z",
+      "basinMAE": 5.866828174893994,
+      "HF_HISTORICAL": {
+        "matchedGtCount": 16,
+        "eligibleGtCount": 25,
+        "MAE": 5.866828174893994,
+        "RMSE": 6.820333871141126,
+        "maxAbsError": 12.680500000000002,
+        "shapeCorrelation": 0.9717726413203924
+      },
+      "LATEST_LIVE": {
+        "matchedGtCount": 0,
+        "eligibleGtCount": 25,
+        "MAE": null,
+        "RMSE": null,
+        "maxAbsError": null,
+        "shapeCorrelation": null
+      }
+    }
+  ],
+  "negativeControls": [
+    {
+      "clipId": "RD003_GT_CLIP_002",
+      "fileName": "IMG_2804.mp4",
+      "negativeControl": true,
+      "cruiseObservationCount": 7,
+      "hfSpeedErrorStdDevKmh": 7.060380988385995,
+      "artificialMotionRisk": "ELEVATED",
+      "note": "Negative control — stable cruise should not show large artificial speed dynamics"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_007",
+      "fileName": "IMG_2809.mp4",
+      "negativeControl": true,
+      "cruiseObservationCount": 13,
+      "hfSpeedErrorStdDevKmh": 4.928691481641341,
+      "artificialMotionRisk": "ELEVATED",
+      "note": "Negative control — stable cruise should not show large artificial speed dynamics"
+    }
+  ],
+  "note": "Uses per-clip STRONG_CANDIDATE HF basins only — not a validated nine-clip absolute chronology"
+}

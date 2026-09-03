@@ -1,0 +1,53 @@
+{
+  "evidenceClass": "DERIVED_KINEMATIC_ANALYSIS",
+  "JERK_DIRECT_USE": "EPISODE_CONTEXT_ONLY",
+  "JERK_EPISODE_CONTEXT_ONLY": "YES",
+  "source": "jerkFromAcceleration",
+  "policies": {
+    "maxGap_1.5s": {
+      "maxGapSeconds": 1.5,
+      "totalAccelerationPoints": 591,
+      "reliableAccelerationPoints": 231,
+      "reliableAccelerationFraction": 0.39086294416243655,
+      "accelerationNoiseStdMps2": 3.436129132798139,
+      "totalJerkPoints": 230,
+      "reliableJerkPoints": 93,
+      "reliableJerkFraction": 0.4043478260869565,
+      "jerkNoiseStdMps3": 4.4297690966528505
+    },
+    "maxGap_2s": {
+      "maxGapSeconds": 2,
+      "totalAccelerationPoints": 591,
+      "reliableAccelerationPoints": 370,
+      "reliableAccelerationFraction": 0.626057529610829,
+      "accelerationNoiseStdMps2": 2.884109068900026,
+      "totalJerkPoints": 369,
+      "reliableJerkPoints": 204,
+      "reliableJerkFraction": 0.5528455284552846,
+      "jerkNoiseStdMps3": 4.111845721078758
+    },
+    "maxGap_3s": {
+      "maxGapSeconds": 3,
+      "totalAccelerationPoints": 591,
+      "reliableAccelerationPoints": 444,
+      "reliableAccelerationFraction": 0.751269035532995,
+      "accelerationNoiseStdMps2": 2.728207764978142,
+      "totalJerkPoints": 443,
+      "reliableJerkPoints": 322,
+      "reliableJerkFraction": 0.7268623024830699,
+      "jerkNoiseStdMps3": 3.6298893313924894
+    },
+    "maxGap_5s": {
+      "maxGapSeconds": 5,
+      "totalAccelerationPoints": 591,
+      "reliableAccelerationPoints": 547,
+      "reliableAccelerationFraction": 0.9255499153976311,
+      "accelerationNoiseStdMps2": 2.513888097439759,
+      "totalJerkPoints": 546,
+      "reliableJerkPoints": 410,
+      "reliableJerkFraction": 0.7509157509157509,
+      "jerkNoiseStdMps3": 3.399395590040631
+    }
+  },
+  "note": "Raw cadence-aware jerk without smoothing — high sensitivity to Δt"
+}

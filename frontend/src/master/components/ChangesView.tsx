@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-rd003-signal-quality-interpretation-2026-09-03',
+    version: '4.9.1042',
+    title: 'DI-EV-0034E — RD003 Signal Quality Interpretation + Usability Matrix',
+    summary: [
+      'Adds RD003 signal-by-signal quality audit across HF_HISTORICAL, LATEST_LIVE, LATEST_SLOW.',
+      'Tier A/B/C evidence: direct video validation, aligned event correlation, state context.',
+      'Speed HF typical MAE ~8.5 km/h on qualified STRONG_CANDIDATE basins; providerTimestamp is physical authority.',
+      'synqReceivedAt classified delivery-only; ingress not supported for physical events.',
+      'Derived acceleration/jerk analyzed with provisional gap policies; jerk episode-context only.',
+      'Use-case eligibility matrix (A/B/C/D) and proposed signal authority model — no Driving Score changes.',
+    ],
+    reason: 'Answer what DIMO/SynqDrive signals can be trusted before DI-EV-0034F driving-intelligence design.',
+    previousBehavior: 'Alignment methodology complete (0034D.2); signal usability for reconstruction not yet formalized.',
+    details:
+      'reference-capture-rd003-signal-quality.ts; reference-capture-drive-003-signal-quality.ts; docs/audits/data/rd003-signal-quality/.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T11:30:00.000Z',
+  },
+  {
     id: 'dimo-rd003-global-discovery-v2-static-minute-d2-2026-09-03',
     version: '4.9.1041',
     title: 'DI-EV-0034D.2 — Static-Minute Clock Geometry + Joint Alignment Closeout',

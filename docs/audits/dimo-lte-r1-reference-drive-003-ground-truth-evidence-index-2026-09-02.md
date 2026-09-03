@@ -116,3 +116,21 @@ VALIDATED on SPEED observations denotes external visual observation authority â€
 | `IMG_2807_AND_IMG_2810_JOINTLY_POSSIBLE` | NO |
 | `READY_FOR_DI_EV_0034E` | YES |
 | `GROUND_TRUTH_VALIDATED` | NO |
+
+## Signal quality interpretation (DI-EV-0034E)
+
+| Field | Value |
+|-------|-------|
+| Evidence ID | DI-EV-0034E |
+| Analysis mode | `RD003_SIGNAL_QUALITY_INTERPRETATION` |
+| Artifact path | `docs/audits/data/rd003-signal-quality/` |
+| Audit doc | `docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md` |
+| Primary kinematic authority | speed (HF_HISTORICAL, providerTimestamp-aligned) |
+| Delivery-only timestamps | synqReceivedAt |
+| HF speed typical MAE | ~8.5 km/h (qualified STRONG_CANDIDATE basins) |
+| Derived jerk | EPISODE_CONTEXT_ONLY |
+| `GEAR_CHANGE_TIMING_USEFUL` | NO |
+| `DIRECTION_RECONSTRUCTION_CAPABILITY` | PARTIAL |
+| `DRIVING_SCORE_CHANGED` | NO |
+| `READY_FOR_DI_EV_0034F` | YES |
+| `GROUND_TRUTH_VALIDATED` | NO |

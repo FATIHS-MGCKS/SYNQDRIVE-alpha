@@ -1,0 +1,107 @@
+{
+  "evidenceId": "DI-EV-0034E",
+  "analysisMode": "RD003_SIGNAL_QUALITY_INTERPRETATION",
+  "evidenceClass": "SIGNAL_QUALITY+DRIVING_INTELLIGENCE_FOUNDATION",
+  "GROUND_TRUTH_VALIDATED": "NO",
+  "DRIVING_SCORE_CHANGED": "NO",
+  "REFERENCE_CAPTURE_RUNTIME_CHANGED": "NO",
+  "humanSummary": {
+    "SPEED": "USEFUL_WITH_GATING",
+    "RPM": "USEFUL_WITH_GATING",
+    "THROTTLE": "USEFUL_WITH_GATING",
+    "TPS": "USEFUL_WITH_GATING",
+    "ENGINE_LOAD": "CONTEXT_ONLY",
+    "ACTUAL_GEAR": "CONTEXT_ONLY",
+    "GEAR_RATIO": "CONTEXT_ONLY",
+    "DERIVED_ACCELERATION": "WEAK",
+    "DERIVED_JERK": "WEAK",
+    "PROVIDER_TIMESTAMP": "STRONG",
+    "SYNQ_RECEIVED_AT": "NOT_RELIABLE"
+  },
+  "HF_SPEED_VIDEO_VALIDATION_SUPPORTED": "YES",
+  "HF_SPEED_TYPICAL_ERROR_KMH": 8.456566903515773,
+  "HF_SPEED_TEMPORAL_RESOLUTION": "~2.00s median new physical sample",
+  "LATEST_LIVE_SPEED_USEFULNESS": "USEFUL_WITH_GATING",
+  "PROVIDER_TIME_PHYSICAL_EVENT_USEFULNESS": "STRONG",
+  "INGRESS_TIME_PHYSICAL_EVENT_USEFULNESS": "NOT_RELIABLE",
+  "DERIVED_ACCELERATION_RELIABILITY": "WEAK",
+  "DERIVED_ACCELERATION_RECOMMENDED_MAX_GAP": "ANALYSIS_ONLY_2.0s_provisional",
+  "DERIVED_JERK_RELIABILITY": "EPISODE_CONTEXT_ONLY",
+  "RPM_DYNAMIC_EPISODE_USEFULNESS": "USEFUL_WITH_GATING",
+  "RPM_SHIFT_SIGNATURE_USEFULNESS": "PARTIAL",
+  "OBD_THROTTLE_USEFULNESS": "SECONDARY_DEMAND_CONTEXT",
+  "POWERTRAIN_TPS_USEFULNESS": "SECONDARY_DEMAND_CONTEXT",
+  "ENGINE_LOAD_USEFULNESS": "POWERTRAIN_DEMAND_CONTEXT_ONLY",
+  "GEAR_STATE_USEFULNESS": "YES",
+  "GEAR_CHANGE_TIMING_USEFULNESS": "NO",
+  "DIRECTION_RECONSTRUCTION_CAPABILITY": "PARTIAL",
+  "OFFLINE_TRIP_RECONSTRUCTION_READINESS": "READY_WITH_GATING",
+  "NEAR_REALTIME_FEEDBACK_READINESS": "NOT_READY",
+  "POST_TRIP_DRIVING_SCORE_READINESS": "FOUNDATION_ONLY_NOT_PRODUCTION",
+  "PRIMARY_KINEMATIC_AUTHORITY": [
+    "speed (HF_HISTORICAL, providerTimestamp-aligned)"
+  ],
+  "SECONDARY_DYNAMIC_CONFIRMATION": [
+    "powertrainCombustionEngineSpeed (HF_HISTORICAL, event-correlated)"
+  ],
+  "POWERTRAIN_CONTEXT_SIGNALS": [
+    "obdThrottlePosition",
+    "powertrainCombustionEngineTPS",
+    "obdEngineLoad"
+  ],
+  "STATE_CONTEXT_SIGNALS": [
+    "powertrainTransmissionActualGear",
+    "powertrainTransmissionActualGearRatio"
+  ],
+  "DELIVERY_ONLY_TIMESTAMPS": [
+    "synqReceivedAt",
+    "requestStartedAt (ingress boundary)"
+  ],
+  "UNSUITABLE_DIRECT_AUTHORITIES": [
+    "synqReceivedAt as physical event time",
+    "LATEST_LIVE without stale-hold gating",
+    "obdEngineLoad as vehicle mass/payload",
+    "unsigned speed alone for direction",
+    "jerk without cadence qualification"
+  ],
+  "proposedConfidenceFactors": [
+    "sampleCadenceMedianSeconds",
+    "providerSampleAgeP90Seconds",
+    "staleHoldDurationSeconds",
+    "acquisitionSurface",
+    "supportingSignalAgreementCount",
+    "alignmentBasinCoverage",
+    "interpolationGapSeconds",
+    "missingnessRate"
+  ],
+  "note": "Proposed architecture only — not implemented in production Driving Score",
+  "SIGNALS_SAFE_FOR_FUTURE_DRIVING_SCORE": [
+    "speed (HF_HISTORICAL, gated)"
+  ],
+  "SIGNALS_REQUIRING_CONFIDENCE_GATING": [
+    "powertrainCombustionEngineSpeed",
+    "obdThrottlePosition",
+    "powertrainCombustionEngineTPS",
+    "derived longitudinal acceleration",
+    "LATEST_LIVE speed"
+  ],
+  "SIGNALS_NOT_SAFE_AS_DIRECT_SCORE_INPUT": [
+    "synqReceivedAt",
+    "obdEngineLoad as mass proxy",
+    "jerk (raw)",
+    "gear timing without cadence proof",
+    "unsigned speed for direction"
+  ],
+  "PRIOR_ALIGNMENT_STATE": {
+    "HF_SPEED_ALIGNMENT_V2_CONCLUSION": "HF_SPEED_ALIGNMENT_V2_AMBIGUOUS",
+    "JOINT_PATH_FOUND": "NO",
+    "INGRESS_TIME_DIAGNOSTIC_SUPPORTED_CLIPS": 0
+  },
+  "READY_FOR_DI_EV_0034F_DRIVING_INTELLIGENCE_DESIGN": "YES",
+  "EXTERNAL_GT_SHA256": "ea0d78ee71b5c83f104e8de31056ccfccc7b476733b676da5bf8828badc9592e",
+  "EXTERNAL_GT_SHA_UNCHANGED": "YES",
+  "DI_EV_0033_CANONICAL_SHA256": "69209a6d9e488d51c3aaf3b55dee5584ce622dc072a191b81e7061597cdda87a",
+  "DI_EV_0034B_PRESERVED": "YES",
+  "DI_EV_0034C_PRESERVED": "YES",
+  "DI_EV_0034D_PRESERVED": "YES"
+}

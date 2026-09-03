@@ -1,0 +1,524 @@
+{
+  "speed": {
+    "HF_HISTORICAL": {
+      "OBSERVATION_COUNT": 592,
+      "UNIQUE_PHYSICAL_SAMPLE_COUNT": 592,
+      "SESSION_COVERAGE": "FULL_SESSION",
+      "NEW_PHYSICAL_SAMPLE_CADENCE": {
+        "medianSeconds": 2,
+        "p10Seconds": 1,
+        "p90Seconds": 4.815,
+        "maxGapSeconds": 222.738,
+        "staleHoldDuplicatesExcludedFromCadence": "YES"
+      },
+      "PROVIDER_SAMPLE_AGE": {
+        "medianSeconds": 6.354,
+        "p90Seconds": 8.171,
+        "maxSeconds": 10.802
+      },
+      "STALE_HOLD": {
+        "count": 0,
+        "totalDurationSeconds": 0,
+        "longestDurationSeconds": 0,
+        "repeatedAcquisitionCount": 0
+      },
+      "VALUE_HOLD_DURATION": {
+        "staticFraction": 0.23857868020304573,
+        "note": "High staticFraction may be legitimate constant state or stale identity — interpret with STALE_HOLD"
+      },
+      "NULL_MISSING_RATE": 0,
+      "OUT_OF_ORDER_RATE": 0,
+      "DUPLICATE_PHYSICAL_SAMPLE_RATE": 0,
+      "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+      "configuredMaxInterpolationGapSeconds": 3,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "YES",
+      "PHYSICAL_EVENT_TIME_AUTHORITY": "providerTimestamp",
+      "DELIVERY_TIME": "synqReceivedAt"
+    },
+    "LATEST_LIVE": {
+      "OBSERVATION_COUNT": 371,
+      "UNIQUE_PHYSICAL_SAMPLE_COUNT": 246,
+      "SESSION_COVERAGE": "FULL_SESSION",
+      "NEW_PHYSICAL_SAMPLE_CADENCE": {
+        "medianSeconds": 6,
+        "p10Seconds": 4,
+        "p90Seconds": 9,
+        "maxGapSeconds": 4253,
+        "staleHoldDuplicatesExcludedFromCadence": "YES"
+      },
+      "PROVIDER_SAMPLE_AGE": {
+        "medianSeconds": 5.789,
+        "p90Seconds": 85.599,
+        "maxSeconds": 4251.643
+      },
+      "STALE_HOLD": {
+        "count": 19,
+        "totalDurationSeconds": 757.2810000000001,
+        "longestDurationSeconds": 178.727,
+        "repeatedAcquisitionCount": 144
+      },
+      "VALUE_HOLD_DURATION": {
+        "staticFraction": 0.42162162162162165,
+        "note": "High staticFraction may be legitimate constant state or stale identity — interpret with STALE_HOLD"
+      },
+      "NULL_MISSING_RATE": 0,
+      "OUT_OF_ORDER_RATE": 0,
+      "DUPLICATE_PHYSICAL_SAMPLE_RATE": null,
+      "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+      "configuredMaxInterpolationGapSeconds": 2,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "YES",
+      "PHYSICAL_EVENT_TIME_AUTHORITY": "providerTimestamp",
+      "DELIVERY_TIME": "synqReceivedAt"
+    },
+    "LATEST_SLOW": {
+      "status": "NOT_OBSERVED",
+      "OBSERVATION_COUNT": 0
+    }
+  },
+  "powertrainCombustionEngineSpeed": {
+    "HF_HISTORICAL": {
+      "OBSERVATION_COUNT": 500,
+      "UNIQUE_PHYSICAL_SAMPLE_COUNT": 500,
+      "SESSION_COVERAGE": "FULL_SESSION",
+      "NEW_PHYSICAL_SAMPLE_CADENCE": {
+        "medianSeconds": 2,
+        "p10Seconds": 1,
+        "p90Seconds": 5.242,
+        "maxGapSeconds": 222.738,
+        "staleHoldDuplicatesExcludedFromCadence": "YES"
+      },
+      "PROVIDER_SAMPLE_AGE": {
+        "medianSeconds": 6.406,
+        "p90Seconds": 8.172,
+        "maxSeconds": 9.967
+      },
+      "STALE_HOLD": {
+        "count": 0,
+        "totalDurationSeconds": 0,
+        "longestDurationSeconds": 0,
+        "repeatedAcquisitionCount": 0
+      },
+      "VALUE_HOLD_DURATION": {
+        "staticFraction": 0.04208416833667339,
+        "note": "High staticFraction may be legitimate constant state or stale identity — interpret with STALE_HOLD"
+      },
+      "NULL_MISSING_RATE": 0,
+      "OUT_OF_ORDER_RATE": 0,
+      "DUPLICATE_PHYSICAL_SAMPLE_RATE": 0,
+      "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+      "configuredMaxInterpolationGapSeconds": 3,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "YES",
+      "PHYSICAL_EVENT_TIME_AUTHORITY": "providerTimestamp",
+      "DELIVERY_TIME": "synqReceivedAt"
+    },
+    "LATEST_LIVE": {
+      "OBSERVATION_COUNT": 371,
+      "UNIQUE_PHYSICAL_SAMPLE_COUNT": 229,
+      "SESSION_COVERAGE": "FULL_SESSION",
+      "NEW_PHYSICAL_SAMPLE_CADENCE": {
+        "medianSeconds": 6,
+        "p10Seconds": 3,
+        "p90Seconds": 11,
+        "maxGapSeconds": 4257,
+        "staleHoldDuplicatesExcludedFromCadence": "YES"
+      },
+      "PROVIDER_SAMPLE_AGE": {
+        "medianSeconds": 6.56,
+        "p90Seconds": 87.526,
+        "maxSeconds": 4255.643
+      },
+      "STALE_HOLD": {
+        "count": 23,
+        "totalDurationSeconds": 859.3250000000002,
+        "longestDurationSeconds": 178.727,
+        "repeatedAcquisitionCount": 165
+      },
+      "VALUE_HOLD_DURATION": {
+        "staticFraction": 0.3918918918918919,
+        "note": "High staticFraction may be legitimate constant state or stale identity — interpret with STALE_HOLD"
+      },
+      "NULL_MISSING_RATE": 0,
+      "OUT_OF_ORDER_RATE": 0,
+      "DUPLICATE_PHYSICAL_SAMPLE_RATE": null,
+      "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+      "configuredMaxInterpolationGapSeconds": 2,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "YES",
+      "PHYSICAL_EVENT_TIME_AUTHORITY": "providerTimestamp",
+      "DELIVERY_TIME": "synqReceivedAt"
+    },
+    "LATEST_SLOW": {
+      "status": "NOT_OBSERVED",
+      "OBSERVATION_COUNT": 0
+    }
+  },
+  "obdThrottlePosition": {
+    "HF_HISTORICAL": {
+      "OBSERVATION_COUNT": 545,
+      "UNIQUE_PHYSICAL_SAMPLE_COUNT": 545,
+      "SESSION_COVERAGE": "FULL_SESSION",
+      "NEW_PHYSICAL_SAMPLE_CADENCE": {
+        "medianSeconds": 2,
+        "p10Seconds": 1,
+        "p90Seconds": 4.874,
+        "maxGapSeconds": 222.738,
+        "staleHoldDuplicatesExcludedFromCadence": "YES"
+      },
+      "PROVIDER_SAMPLE_AGE": {
+        "medianSeconds": 6.354,
+        "p90Seconds": 8.174,
+        "maxSeconds": 10.802
+      },
+      "STALE_HOLD": {
+        "count": 0,
+        "totalDurationSeconds": 0,
+        "longestDurationSeconds": 0,
+        "repeatedAcquisitionCount": 0
+      },
+      "VALUE_HOLD_DURATION": {
+        "staticFraction": 0.13051470588235292,
+        "note": "High staticFraction may be legitimate constant state or stale identity — interpret with STALE_HOLD"
+      },
+      "NULL_MISSING_RATE": 0,
+      "OUT_OF_ORDER_RATE": 0,
+      "DUPLICATE_PHYSICAL_SAMPLE_RATE": 0,
+      "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+      "configuredMaxInterpolationGapSeconds": 3,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "YES",
+      "PHYSICAL_EVENT_TIME_AUTHORITY": "providerTimestamp",
+      "DELIVERY_TIME": "synqReceivedAt"
+    },
+    "LATEST_LIVE": {
+      "OBSERVATION_COUNT": 371,
+      "UNIQUE_PHYSICAL_SAMPLE_COUNT": 235,
+      "SESSION_COVERAGE": "FULL_SESSION",
+      "NEW_PHYSICAL_SAMPLE_CADENCE": {
+        "medianSeconds": 6,
+        "p10Seconds": 4,
+        "p90Seconds": 11,
+        "maxGapSeconds": 4253,
+        "staleHoldDuplicatesExcludedFromCadence": "YES"
+      },
+      "PROVIDER_SAMPLE_AGE": {
+        "medianSeconds": 6.009,
+        "p90Seconds": 87.828,
+        "maxSeconds": 4251.643
+      },
+      "STALE_HOLD": {
+        "count": 23,
+        "totalDurationSeconds": 822.3760000000001,
+        "longestDurationSeconds": 178.727,
+        "repeatedAcquisitionCount": 159
+      },
+      "VALUE_HOLD_DURATION": {
+        "staticFraction": 0.42162162162162165,
+        "note": "High staticFraction may be legitimate constant state or stale identity — interpret with STALE_HOLD"
+      },
+      "NULL_MISSING_RATE": 0,
+      "OUT_OF_ORDER_RATE": 0,
+      "DUPLICATE_PHYSICAL_SAMPLE_RATE": null,
+      "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+      "configuredMaxInterpolationGapSeconds": 2,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "YES",
+      "PHYSICAL_EVENT_TIME_AUTHORITY": "providerTimestamp",
+      "DELIVERY_TIME": "synqReceivedAt"
+    },
+    "LATEST_SLOW": {
+      "status": "NOT_OBSERVED",
+      "OBSERVATION_COUNT": 0
+    }
+  },
+  "powertrainCombustionEngineTPS": {
+    "HF_HISTORICAL": {
+      "OBSERVATION_COUNT": 554,
+      "UNIQUE_PHYSICAL_SAMPLE_COUNT": 554,
+      "SESSION_COVERAGE": "FULL_SESSION",
+      "NEW_PHYSICAL_SAMPLE_CADENCE": {
+        "medianSeconds": 2,
+        "p10Seconds": 1,
+        "p90Seconds": 4.859,
+        "maxGapSeconds": 222.738,
+        "staleHoldDuplicatesExcludedFromCadence": "YES"
+      },
+      "PROVIDER_SAMPLE_AGE": {
+        "medianSeconds": 6.354,
+        "p90Seconds": 8.172,
+        "maxSeconds": 10.802
+      },
+      "STALE_HOLD": {
+        "count": 0,
+        "totalDurationSeconds": 0,
+        "longestDurationSeconds": 0,
+        "repeatedAcquisitionCount": 0
+      },
+      "VALUE_HOLD_DURATION": {
+        "staticFraction": 0.44846292947558775,
+        "note": "High staticFraction may be legitimate constant state or stale identity — interpret with STALE_HOLD"
+      },
+      "NULL_MISSING_RATE": 0,
+      "OUT_OF_ORDER_RATE": 0,
+      "DUPLICATE_PHYSICAL_SAMPLE_RATE": 0,
+      "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+      "configuredMaxInterpolationGapSeconds": 3,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "YES",
+      "PHYSICAL_EVENT_TIME_AUTHORITY": "providerTimestamp",
+      "DELIVERY_TIME": "synqReceivedAt"
+    },
+    "LATEST_LIVE": {
+      "OBSERVATION_COUNT": 371,
+      "UNIQUE_PHYSICAL_SAMPLE_COUNT": 236,
+      "SESSION_COVERAGE": "FULL_SESSION",
+      "NEW_PHYSICAL_SAMPLE_CADENCE": {
+        "medianSeconds": 6,
+        "p10Seconds": 4,
+        "p90Seconds": 10,
+        "maxGapSeconds": 4253,
+        "staleHoldDuplicatesExcludedFromCadence": "YES"
+      },
+      "PROVIDER_SAMPLE_AGE": {
+        "medianSeconds": 5.956,
+        "p90Seconds": 85.599,
+        "maxSeconds": 4251.643
+      },
+      "STALE_HOLD": {
+        "count": 22,
+        "totalDurationSeconds": 817.634,
+        "longestDurationSeconds": 178.727,
+        "repeatedAcquisitionCount": 157
+      },
+      "VALUE_HOLD_DURATION": {
+        "staticFraction": 0.6,
+        "note": "High staticFraction may be legitimate constant state or stale identity — interpret with STALE_HOLD"
+      },
+      "NULL_MISSING_RATE": 0,
+      "OUT_OF_ORDER_RATE": 0,
+      "DUPLICATE_PHYSICAL_SAMPLE_RATE": null,
+      "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+      "configuredMaxInterpolationGapSeconds": 2,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "YES",
+      "PHYSICAL_EVENT_TIME_AUTHORITY": "providerTimestamp",
+      "DELIVERY_TIME": "synqReceivedAt"
+    },
+    "LATEST_SLOW": {
+      "status": "NOT_OBSERVED",
+      "OBSERVATION_COUNT": 0
+    }
+  },
+  "obdEngineLoad": {
+    "HF_HISTORICAL": {
+      "OBSERVATION_COUNT": 592,
+      "UNIQUE_PHYSICAL_SAMPLE_COUNT": 592,
+      "SESSION_COVERAGE": "FULL_SESSION",
+      "NEW_PHYSICAL_SAMPLE_CADENCE": {
+        "medianSeconds": 2,
+        "p10Seconds": 1,
+        "p90Seconds": 4.815,
+        "maxGapSeconds": 222.738,
+        "staleHoldDuplicatesExcludedFromCadence": "YES"
+      },
+      "PROVIDER_SAMPLE_AGE": {
+        "medianSeconds": 6.354,
+        "p90Seconds": 8.171,
+        "maxSeconds": 10.802
+      },
+      "STALE_HOLD": {
+        "count": 0,
+        "totalDurationSeconds": 0,
+        "longestDurationSeconds": 0,
+        "repeatedAcquisitionCount": 0
+      },
+      "VALUE_HOLD_DURATION": {
+        "staticFraction": 0.1861252115059222,
+        "note": "High staticFraction may be legitimate constant state or stale identity — interpret with STALE_HOLD"
+      },
+      "NULL_MISSING_RATE": 0,
+      "OUT_OF_ORDER_RATE": 0,
+      "DUPLICATE_PHYSICAL_SAMPLE_RATE": 0,
+      "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+      "configuredMaxInterpolationGapSeconds": 3,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "YES",
+      "PHYSICAL_EVENT_TIME_AUTHORITY": "providerTimestamp",
+      "DELIVERY_TIME": "synqReceivedAt"
+    },
+    "LATEST_LIVE": {
+      "OBSERVATION_COUNT": 371,
+      "UNIQUE_PHYSICAL_SAMPLE_COUNT": 246,
+      "SESSION_COVERAGE": "FULL_SESSION",
+      "NEW_PHYSICAL_SAMPLE_CADENCE": {
+        "medianSeconds": 6,
+        "p10Seconds": 4,
+        "p90Seconds": 9,
+        "maxGapSeconds": 4253,
+        "staleHoldDuplicatesExcludedFromCadence": "YES"
+      },
+      "PROVIDER_SAMPLE_AGE": {
+        "medianSeconds": 5.789,
+        "p90Seconds": 85.599,
+        "maxSeconds": 4251.643
+      },
+      "STALE_HOLD": {
+        "count": 19,
+        "totalDurationSeconds": 757.2810000000001,
+        "longestDurationSeconds": 178.727,
+        "repeatedAcquisitionCount": 144
+      },
+      "VALUE_HOLD_DURATION": {
+        "staticFraction": 0.4378378378378378,
+        "note": "High staticFraction may be legitimate constant state or stale identity — interpret with STALE_HOLD"
+      },
+      "NULL_MISSING_RATE": 0,
+      "OUT_OF_ORDER_RATE": 0,
+      "DUPLICATE_PHYSICAL_SAMPLE_RATE": null,
+      "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+      "configuredMaxInterpolationGapSeconds": 2,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "YES",
+      "PHYSICAL_EVENT_TIME_AUTHORITY": "providerTimestamp",
+      "DELIVERY_TIME": "synqReceivedAt"
+    },
+    "LATEST_SLOW": {
+      "status": "NOT_OBSERVED",
+      "OBSERVATION_COUNT": 0
+    }
+  },
+  "powertrainTransmissionActualGear": {
+    "HF_HISTORICAL": {
+      "status": "NOT_OBSERVED",
+      "OBSERVATION_COUNT": 0
+    },
+    "LATEST_LIVE": {
+      "status": "NOT_OBSERVED",
+      "OBSERVATION_COUNT": 0
+    },
+    "LATEST_SLOW": {
+      "OBSERVATION_COUNT": 62,
+      "UNIQUE_PHYSICAL_SAMPLE_COUNT": 50,
+      "SESSION_COVERAGE": "FULL_SESSION",
+      "NEW_PHYSICAL_SAMPLE_CADENCE": {
+        "medianSeconds": 36,
+        "p10Seconds": 26,
+        "p90Seconds": 106,
+        "maxGapSeconds": 4247,
+        "staleHoldDuplicatesExcludedFromCadence": "YES"
+      },
+      "PROVIDER_SAMPLE_AGE": {
+        "medianSeconds": 5.538,
+        "p90Seconds": 79.491,
+        "maxSeconds": 4222.641
+      },
+      "STALE_HOLD": {
+        "count": 6,
+        "totalDurationSeconds": 436.053,
+        "longestDurationSeconds": 142.964,
+        "repeatedAcquisitionCount": 18
+      },
+      "VALUE_HOLD_DURATION": {
+        "staticFraction": 0.34426229508196726,
+        "note": "High staticFraction may be legitimate constant state or stale identity — interpret with STALE_HOLD"
+      },
+      "NULL_MISSING_RATE": 0,
+      "OUT_OF_ORDER_RATE": 0,
+      "DUPLICATE_PHYSICAL_SAMPLE_RATE": null,
+      "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+      "configuredMaxInterpolationGapSeconds": 10,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "YES",
+      "PHYSICAL_EVENT_TIME_AUTHORITY": "providerTimestamp",
+      "DELIVERY_TIME": "synqReceivedAt"
+    }
+  },
+  "powertrainTransmissionActualGearRatio": {
+    "HF_HISTORICAL": {
+      "status": "NOT_OBSERVED",
+      "OBSERVATION_COUNT": 0
+    },
+    "LATEST_LIVE": {
+      "status": "NOT_OBSERVED",
+      "OBSERVATION_COUNT": 0
+    },
+    "LATEST_SLOW": {
+      "OBSERVATION_COUNT": 62,
+      "UNIQUE_PHYSICAL_SAMPLE_COUNT": 50,
+      "SESSION_COVERAGE": "FULL_SESSION",
+      "NEW_PHYSICAL_SAMPLE_CADENCE": {
+        "medianSeconds": 36,
+        "p10Seconds": 26,
+        "p90Seconds": 106,
+        "maxGapSeconds": 4247,
+        "staleHoldDuplicatesExcludedFromCadence": "YES"
+      },
+      "PROVIDER_SAMPLE_AGE": {
+        "medianSeconds": 5.538,
+        "p90Seconds": 79.491,
+        "maxSeconds": 4222.641
+      },
+      "STALE_HOLD": {
+        "count": 6,
+        "totalDurationSeconds": 436.053,
+        "longestDurationSeconds": 142.964,
+        "repeatedAcquisitionCount": 18
+      },
+      "VALUE_HOLD_DURATION": {
+        "staticFraction": 1,
+        "note": "High staticFraction may be legitimate constant state or stale identity — interpret with STALE_HOLD"
+      },
+      "NULL_MISSING_RATE": 0,
+      "OUT_OF_ORDER_RATE": 0,
+      "DUPLICATE_PHYSICAL_SAMPLE_RATE": null,
+      "dynamicsClassification": "STATIC_OR_CONTEXTUAL",
+      "configuredMaxInterpolationGapSeconds": 10,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "YES",
+      "PHYSICAL_EVENT_TIME_AUTHORITY": "providerTimestamp",
+      "DELIVERY_TIME": "synqReceivedAt"
+    }
+  },
+  "longitudinalAccelerationFromSpeed": {
+    "HF_HISTORICAL": {
+      "status": "DERIVED_NOT_RAW_TELEMETRY",
+      "sourceSignal": "speed",
+      "sourceSurface": "HF_HISTORICAL",
+      "note": "See derived-acceleration-quality.json / jerk-quality.json"
+    },
+    "LATEST_LIVE": {
+      "status": "DERIVED_NOT_RAW_TELEMETRY",
+      "sourceSignal": "speed",
+      "sourceSurface": "HF_HISTORICAL",
+      "note": "See derived-acceleration-quality.json / jerk-quality.json"
+    },
+    "LATEST_SLOW": {
+      "status": "DERIVED_NOT_RAW_TELEMETRY",
+      "sourceSignal": "speed",
+      "sourceSurface": "HF_HISTORICAL",
+      "note": "See derived-acceleration-quality.json / jerk-quality.json"
+    }
+  },
+  "jerkFromAcceleration": {
+    "HF_HISTORICAL": {
+      "status": "DERIVED_NOT_RAW_TELEMETRY",
+      "sourceSignal": "speed",
+      "sourceSurface": "HF_HISTORICAL",
+      "note": "See derived-acceleration-quality.json / jerk-quality.json"
+    },
+    "LATEST_LIVE": {
+      "status": "DERIVED_NOT_RAW_TELEMETRY",
+      "sourceSignal": "speed",
+      "sourceSurface": "HF_HISTORICAL",
+      "note": "See derived-acceleration-quality.json / jerk-quality.json"
+    },
+    "LATEST_SLOW": {
+      "status": "DERIVED_NOT_RAW_TELEMETRY",
+      "sourceSignal": "speed",
+      "sourceSurface": "HF_HISTORICAL",
+      "note": "See derived-acceleration-quality.json / jerk-quality.json"
+    }
+  }
+}

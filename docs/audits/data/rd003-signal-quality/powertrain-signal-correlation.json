@@ -1,0 +1,296 @@
+{
+  "evidenceTier": "TIER_B_ALIGNED_EVENT_CORRELATION",
+  "episodeCount": 8,
+  "episodes": [
+    {
+      "clipId": "RD003_GT_CLIP_001",
+      "fileName": "IMG_2803.mp4",
+      "evidenceTier": "TIER_B_ALIGNED_EVENT_CORRELATION",
+      "alignedClipStartUtc": "2026-09-02T19:18:13.695Z",
+      "signals": {
+        "powertrainCombustionEngineSpeed": {
+          "observationCount": 25,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.11490018190286562,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdThrottlePosition": {
+          "observationCount": 27,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": -0.21805742543679502,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "powertrainCombustionEngineTPS": {
+          "observationCount": 27,
+          "dynamicsClassification": "STATIC_OR_CONTEXTUAL",
+          "speedCorrelation": 2.331365673708389e-16,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdEngineLoad": {
+          "observationCount": 27,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": -0.3465732438595361,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        }
+      }
+    },
+    {
+      "clipId": "RD003_GT_CLIP_002",
+      "fileName": "IMG_2804.mp4",
+      "evidenceTier": "TIER_B_ALIGNED_EVENT_CORRELATION",
+      "alignedClipStartUtc": "2026-09-02T19:24:42.795Z",
+      "signals": {
+        "powertrainCombustionEngineSpeed": {
+          "observationCount": 16,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.6212429100604082,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdThrottlePosition": {
+          "observationCount": 19,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.40670761690702345,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "powertrainCombustionEngineTPS": {
+          "observationCount": 19,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.7142341209288497,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdEngineLoad": {
+          "observationCount": 19,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.3848210397140074,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        }
+      }
+    },
+    {
+      "clipId": "RD003_GT_CLIP_003",
+      "fileName": "IMG_2805.mp4",
+      "evidenceTier": "TIER_B_ALIGNED_EVENT_CORRELATION",
+      "alignedClipStartUtc": "2026-09-02T19:24:39.095Z",
+      "signals": {
+        "powertrainCombustionEngineSpeed": {
+          "observationCount": 11,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.8097398688965615,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdThrottlePosition": {
+          "observationCount": 12,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.6212104110946721,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "powertrainCombustionEngineTPS": {
+          "observationCount": 12,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.5767697595455171,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdEngineLoad": {
+          "observationCount": 12,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.5098212441579545,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        }
+      }
+    },
+    {
+      "clipId": "RD003_GT_CLIP_005",
+      "fileName": "IMG_2807.mp4",
+      "evidenceTier": "TIER_B_ALIGNED_EVENT_CORRELATION",
+      "alignedClipStartUtc": "2026-09-02T19:23:51.795Z",
+      "signals": {
+        "powertrainCombustionEngineSpeed": {
+          "observationCount": 23,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.49649497041408924,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdThrottlePosition": {
+          "observationCount": 26,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.35519344029849653,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "powertrainCombustionEngineTPS": {
+          "observationCount": 27,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.15075932755763985,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdEngineLoad": {
+          "observationCount": 27,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.4113827003688142,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        }
+      }
+    },
+    {
+      "clipId": "RD003_GT_CLIP_006",
+      "fileName": "IMG_2808.mp4",
+      "evidenceTier": "TIER_B_ALIGNED_EVENT_CORRELATION",
+      "alignedClipStartUtc": "2026-09-02T19:24:29.295Z",
+      "signals": {
+        "powertrainCombustionEngineSpeed": {
+          "observationCount": 21,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.31292137043429785,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdThrottlePosition": {
+          "observationCount": 22,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.24185313546380954,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "powertrainCombustionEngineTPS": {
+          "observationCount": 22,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.5307640973182768,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdEngineLoad": {
+          "observationCount": 22,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.14218425638779467,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        }
+      }
+    },
+    {
+      "clipId": "RD003_GT_CLIP_007",
+      "fileName": "IMG_2809.mp4",
+      "evidenceTier": "TIER_B_ALIGNED_EVENT_CORRELATION",
+      "alignedClipStartUtc": "2026-09-02T19:18:35.895Z",
+      "signals": {
+        "powertrainCombustionEngineSpeed": {
+          "observationCount": 14,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.15384149866702518,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdThrottlePosition": {
+          "observationCount": 16,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.5517570685569368,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "powertrainCombustionEngineTPS": {
+          "observationCount": 16,
+          "dynamicsClassification": "STATIC_OR_CONTEXTUAL",
+          "speedCorrelation": 0,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdEngineLoad": {
+          "observationCount": 16,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.5335840632730611,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        }
+      }
+    },
+    {
+      "clipId": "RD003_GT_CLIP_008",
+      "fileName": "IMG_2810.mp4",
+      "evidenceTier": "TIER_B_ALIGNED_EVENT_CORRELATION",
+      "alignedClipStartUtc": "2026-09-02T19:23:59.495Z",
+      "signals": {
+        "powertrainCombustionEngineSpeed": {
+          "observationCount": 6,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.5001732590314022,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdThrottlePosition": {
+          "observationCount": 7,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.4633136648971423,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "powertrainCombustionEngineTPS": {
+          "observationCount": 7,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": -0.8832952031543994,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdEngineLoad": {
+          "observationCount": 7,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.6394439078377605,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        }
+      }
+    },
+    {
+      "clipId": "RD003_GT_CLIP_009",
+      "fileName": "IMG_2811.mp4",
+      "evidenceTier": "TIER_B_ALIGNED_EVENT_CORRELATION",
+      "alignedClipStartUtc": "2026-09-02T19:30:02.795Z",
+      "signals": {
+        "powertrainCombustionEngineSpeed": {
+          "observationCount": 16,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.5686758029012536,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdThrottlePosition": {
+          "observationCount": 16,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.16317654446939758,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "powertrainCombustionEngineTPS": {
+          "observationCount": 16,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": 0.01956477583577845,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        },
+        "obdEngineLoad": {
+          "observationCount": 16,
+          "dynamicsClassification": "DYNAMICALLY_INFORMATIVE",
+          "speedCorrelation": -0.06145757110126845,
+          "evidenceClass": "ALIGNED_EVENT_CORRELATED_SUPPORT",
+          "note": "Not direct video GT validation"
+        }
+      }
+    }
+  ],
+  "ENGINE_LOAD_INTERPRETATION": "Powertrain demand context only — not vehicle mass/payload/road load",
+  "note": "Correlation within qualified STRONG_CANDIDATE speed-aligned windows"
+}
