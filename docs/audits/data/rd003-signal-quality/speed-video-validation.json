@@ -1,20 +1,142 @@
 {
   "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
-  "evidenceClass": "DIRECT_VIDEO_VALIDATION",
+  "evidenceClass": "ALIGNMENT_FIT_VIDEO_COMPARISON",
   "GROUND_TRUTH_VALIDATED": "NO",
+  "IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY": "YES",
+  "UNIQUE_ALIGNMENT_SUPPORTED_CLIPS": 2,
+  "AMBIGUOUS_CLIPS_WITH_STRONG_SPEED_BASIN": 6,
   "qualifiedStrongBasinClips": 8,
   "aggregateHF": {
-    "MAE": 8.456566903515773,
+    "ALIGNMENT_FIT_MAE": 8.456566903515773,
     "RMSE": 12.206356516643789,
     "maxAbsError": 52.165,
     "matchedPoints": 109
   },
   "aggregateLATEST_LIVE": {
-    "MAE": 12.630000000000003,
+    "ALIGNMENT_FIT_MAE": 12.630000000000003,
     "RMSE": 12.630000000000003,
     "maxAbsError": 12.630000000000003,
-    "matchedPoints": 1
+    "matchedPoints": 1,
+    "directVideoValidationEvidence": "INSUFFICIENT_EVIDENCE"
   },
+  "HF_SPEED_ALIGNMENT_FIT_MAE_KMH": 8.456566903515773,
+  "HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH": 7.848561086499397,
+  "holdoutValidation": [
+    {
+      "clipId": "RD003_GT_CLIP_001",
+      "fileName": "IMG_2803.mp4",
+      "independentStatus": "AMBIGUOUS",
+      "status": "EVALUATED",
+      "trainPointCount": 13,
+      "holdoutPointCount": 12,
+      "TRAIN_ALIGNMENT_MAE": 7.580264784808773,
+      "HOLDOUT_MAE": 10.251172659959476,
+      "HOLDOUT_RMSE": 13.6465605485362,
+      "HOLDOUT_MAX_ERROR": 25.180530330548493,
+      "HOLDOUT_POINT_COUNT": 7,
+      "trainAlignedClipStartUtc": "2026-09-02T19:23:46.195Z",
+      "note": "Holdout points never used for candidate start-time selection"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_002",
+      "fileName": "IMG_2804.mp4",
+      "independentStatus": "AMBIGUOUS",
+      "status": "EVALUATED",
+      "trainPointCount": 4,
+      "holdoutPointCount": 4,
+      "TRAIN_ALIGNMENT_MAE": 5.364999999999999,
+      "HOLDOUT_MAE": 9.851122116689282,
+      "HOLDOUT_RMSE": 11.624870402508497,
+      "HOLDOUT_MAX_ERROR": 17.720488466757125,
+      "HOLDOUT_POINT_COUNT": 4,
+      "trainAlignedClipStartUtc": "2026-09-02T19:24:28.895Z",
+      "note": "Holdout points never used for candidate start-time selection"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_003",
+      "fileName": "IMG_2805.mp4",
+      "independentStatus": "STRONG_CANDIDATE",
+      "status": "EVALUATED",
+      "trainPointCount": 10,
+      "holdoutPointCount": 10,
+      "TRAIN_ALIGNMENT_MAE": 8.430008028041609,
+      "HOLDOUT_MAE": 8.977473739258254,
+      "HOLDOUT_RMSE": 11.50974740219601,
+      "HOLDOUT_MAX_ERROR": 19.4015,
+      "HOLDOUT_POINT_COUNT": 8,
+      "trainAlignedClipStartUtc": "2026-09-02T19:24:39.095Z",
+      "note": "Holdout points never used for candidate start-time selection"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_005",
+      "fileName": "IMG_2807.mp4",
+      "independentStatus": "AMBIGUOUS",
+      "status": "EVALUATED",
+      "trainPointCount": 8,
+      "holdoutPointCount": 8,
+      "TRAIN_ALIGNMENT_MAE": 4.990827480916029,
+      "HOLDOUT_MAE": 7.046700109051254,
+      "HOLDOUT_RMSE": 9.373610498662767,
+      "HOLDOUT_MAX_ERROR": 16.64,
+      "HOLDOUT_POINT_COUNT": 6,
+      "trainAlignedClipStartUtc": "2026-09-02T19:23:52.295Z",
+      "note": "Holdout points never used for candidate start-time selection"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_006",
+      "fileName": "IMG_2808.mp4",
+      "independentStatus": "STRONG_CANDIDATE",
+      "status": "AMBIGUOUS",
+      "reason": "NO_ISOLATED_TRAIN_CANDIDATE",
+      "trainPointCount": 22,
+      "holdoutPointCount": 21
+    },
+    {
+      "clipId": "RD003_GT_CLIP_007",
+      "fileName": "IMG_2809.mp4",
+      "independentStatus": "AMBIGUOUS",
+      "status": "EVALUATED",
+      "trainPointCount": 9,
+      "holdoutPointCount": 9,
+      "TRAIN_ALIGNMENT_MAE": 4.536312894434883,
+      "HOLDOUT_MAE": 8.349465060240961,
+      "HOLDOUT_RMSE": 8.792472372057802,
+      "HOLDOUT_MAX_ERROR": 11.334999999999994,
+      "HOLDOUT_POINT_COUNT": 5,
+      "trainAlignedClipStartUtc": "2026-09-02T19:21:14.495Z",
+      "note": "Holdout points never used for candidate start-time selection"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_008",
+      "fileName": "IMG_2810.mp4",
+      "independentStatus": "AMBIGUOUS",
+      "status": "EVALUATED",
+      "trainPointCount": 5,
+      "holdoutPointCount": 5,
+      "TRAIN_ALIGNMENT_MAE": 3.7888401308615074,
+      "HOLDOUT_MAE": 4.9204571428571455,
+      "HOLDOUT_RMSE": 5.647630128317445,
+      "HOLDOUT_MAX_ERROR": 9.581243184296618,
+      "HOLDOUT_POINT_COUNT": 5,
+      "trainAlignedClipStartUtc": "2026-09-02T19:23:59.395Z",
+      "note": "Holdout points never used for candidate start-time selection"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_009",
+      "fileName": "IMG_2811.mp4",
+      "independentStatus": "AMBIGUOUS",
+      "status": "EVALUATED",
+      "trainPointCount": 13,
+      "holdoutPointCount": 12,
+      "TRAIN_ALIGNMENT_MAE": 6.621427942913163,
+      "HOLDOUT_MAE": 5.543536777439413,
+      "HOLDOUT_RMSE": 6.386082180529728,
+      "HOLDOUT_MAX_ERROR": 12.2305,
+      "HOLDOUT_POINT_COUNT": 9,
+      "trainAlignedClipStartUtc": "2026-09-02T19:30:02.695Z",
+      "note": "Holdout points never used for candidate start-time selection"
+    }
+  ],
   "perClip": [
     {
       "clipId": "RD003_GT_CLIP_001",
@@ -22,12 +144,13 @@
       "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
       "independentStatus": "AMBIGUOUS",
       "basinStatus": "STRONG_CANDIDATE",
+      "alignmentFitNotIndependentAccuracy": "IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY",
       "alignedClipStartUtc": "2026-09-02T19:18:13.695Z",
-      "basinMAE": 8.601539190906355,
+      "basinAlignmentFitMAE": 8.601539190906355,
       "HF_HISTORICAL": {
         "matchedGtCount": 16,
         "eligibleGtCount": 25,
-        "MAE": 8.601539190906355,
+        "ALIGNMENT_FIT_MAE": 8.601539190906355,
         "RMSE": 12.174489327870795,
         "maxAbsError": 30.348,
         "shapeCorrelation": 0.8991220875677529
@@ -35,10 +158,11 @@
       "LATEST_LIVE": {
         "matchedGtCount": 0,
         "eligibleGtCount": 25,
-        "MAE": null,
+        "ALIGNMENT_FIT_MAE": null,
         "RMSE": null,
         "maxAbsError": null,
-        "shapeCorrelation": null
+        "shapeCorrelation": null,
+        "directVideoValidationEvidence": "INSUFFICIENT_EVIDENCE"
       }
     },
     {
@@ -47,12 +171,13 @@
       "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
       "independentStatus": "AMBIGUOUS",
       "basinStatus": "STRONG_CANDIDATE",
+      "alignmentFitNotIndependentAccuracy": "IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY",
       "alignedClipStartUtc": "2026-09-02T19:24:42.795Z",
-      "basinMAE": 4.9801711529834005,
+      "basinAlignmentFitMAE": 4.9801711529834005,
       "HF_HISTORICAL": {
         "matchedGtCount": 5,
         "eligibleGtCount": 8,
-        "MAE": 4.9801711529834005,
+        "ALIGNMENT_FIT_MAE": 4.9801711529834005,
         "RMSE": 8.042467809941048,
         "maxAbsError": 16.913333333333334,
         "shapeCorrelation": 0.8256515620743639
@@ -60,10 +185,11 @@
       "LATEST_LIVE": {
         "matchedGtCount": 0,
         "eligibleGtCount": 8,
-        "MAE": null,
+        "ALIGNMENT_FIT_MAE": null,
         "RMSE": null,
         "maxAbsError": null,
-        "shapeCorrelation": null
+        "shapeCorrelation": null,
+        "directVideoValidationEvidence": "INSUFFICIENT_EVIDENCE"
       }
     },
     {
@@ -72,12 +198,13 @@
       "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
       "independentStatus": "STRONG_CANDIDATE",
       "basinStatus": "STRONG_CANDIDATE",
+      "alignmentFitNotIndependentAccuracy": "IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY",
       "alignedClipStartUtc": "2026-09-02T19:24:39.095Z",
-      "basinMAE": 8.742845577308264,
+      "basinAlignmentFitMAE": 8.742845577308264,
       "HF_HISTORICAL": {
         "matchedGtCount": 14,
         "eligibleGtCount": 20,
-        "MAE": 8.742845577308264,
+        "ALIGNMENT_FIT_MAE": 8.742845577308264,
         "RMSE": 10.913295446618864,
         "maxAbsError": 19.4015,
         "shapeCorrelation": 0.8083399283149694
@@ -85,10 +212,11 @@
       "LATEST_LIVE": {
         "matchedGtCount": 0,
         "eligibleGtCount": 20,
-        "MAE": null,
+        "ALIGNMENT_FIT_MAE": null,
         "RMSE": null,
         "maxAbsError": null,
-        "shapeCorrelation": null
+        "shapeCorrelation": null,
+        "directVideoValidationEvidence": "INSUFFICIENT_EVIDENCE"
       }
     },
     {
@@ -97,12 +225,13 @@
       "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
       "independentStatus": "AMBIGUOUS",
       "basinStatus": "STRONG_CANDIDATE",
+      "alignmentFitNotIndependentAccuracy": "IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY",
       "alignedClipStartUtc": "2026-09-02T19:23:51.795Z",
-      "basinMAE": 6.057543830948755,
+      "basinAlignmentFitMAE": 6.057543830948755,
       "HF_HISTORICAL": {
         "matchedGtCount": 10,
         "eligibleGtCount": 16,
-        "MAE": 6.057543830948755,
+        "ALIGNMENT_FIT_MAE": 6.057543830948755,
         "RMSE": 6.611224938146284,
         "maxAbsError": 10.64,
         "shapeCorrelation": 0.9565512435825845
@@ -110,10 +239,11 @@
       "LATEST_LIVE": {
         "matchedGtCount": 0,
         "eligibleGtCount": 16,
-        "MAE": null,
+        "ALIGNMENT_FIT_MAE": null,
         "RMSE": null,
         "maxAbsError": null,
-        "shapeCorrelation": null
+        "shapeCorrelation": null,
+        "directVideoValidationEvidence": "INSUFFICIENT_EVIDENCE"
       }
     },
     {
@@ -122,12 +252,13 @@
       "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
       "independentStatus": "STRONG_CANDIDATE",
       "basinStatus": "STRONG_CANDIDATE",
+      "alignmentFitNotIndependentAccuracy": "IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY",
       "alignedClipStartUtc": "2026-09-02T19:24:29.295Z",
-      "basinMAE": 14.3121398082524,
+      "basinAlignmentFitMAE": 14.3121398082524,
       "HF_HISTORICAL": {
         "matchedGtCount": 27,
         "eligibleGtCount": 43,
-        "MAE": 14.3121398082524,
+        "ALIGNMENT_FIT_MAE": 14.3121398082524,
         "RMSE": 19.208438634615966,
         "maxAbsError": 52.165,
         "shapeCorrelation": 0.6218055575511097
@@ -135,10 +266,11 @@
       "LATEST_LIVE": {
         "matchedGtCount": 0,
         "eligibleGtCount": 43,
-        "MAE": null,
+        "ALIGNMENT_FIT_MAE": null,
         "RMSE": null,
         "maxAbsError": null,
-        "shapeCorrelation": null
+        "shapeCorrelation": null,
+        "directVideoValidationEvidence": "INSUFFICIENT_EVIDENCE"
       }
     },
     {
@@ -147,12 +279,13 @@
       "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
       "independentStatus": "AMBIGUOUS",
       "basinStatus": "STRONG_CANDIDATE",
+      "alignmentFitNotIndependentAccuracy": "IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY",
       "alignedClipStartUtc": "2026-09-02T19:18:35.895Z",
-      "basinMAE": 4.9339642129330485,
+      "basinAlignmentFitMAE": 4.9339642129330485,
       "HF_HISTORICAL": {
         "matchedGtCount": 11,
         "eligibleGtCount": 18,
-        "MAE": 4.9339642129330485,
+        "ALIGNMENT_FIT_MAE": 4.9339642129330485,
         "RMSE": 6.813783014206529,
         "maxAbsError": 15,
         "shapeCorrelation": -0.6858828387357289
@@ -160,10 +293,11 @@
       "LATEST_LIVE": {
         "matchedGtCount": 1,
         "eligibleGtCount": 18,
-        "MAE": 12.630000000000003,
+        "ALIGNMENT_FIT_MAE": 12.630000000000003,
         "RMSE": 12.630000000000003,
         "maxAbsError": 12.630000000000003,
-        "shapeCorrelation": null
+        "shapeCorrelation": null,
+        "directVideoValidationEvidence": "INSUFFICIENT_EVIDENCE"
       }
     },
     {
@@ -172,12 +306,13 @@
       "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
       "independentStatus": "AMBIGUOUS",
       "basinStatus": "STRONG_CANDIDATE",
+      "alignmentFitNotIndependentAccuracy": "IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY",
       "alignedClipStartUtc": "2026-09-02T19:23:59.495Z",
-      "basinMAE": 4.169440130861505,
+      "basinAlignmentFitMAE": 4.169440130861505,
       "HF_HISTORICAL": {
         "matchedGtCount": 10,
         "eligibleGtCount": 10,
-        "MAE": 4.169440130861505,
+        "ALIGNMENT_FIT_MAE": 4.169440130861505,
         "RMSE": 4.7337418262418245,
         "maxAbsError": 7.836423118865866,
         "shapeCorrelation": 0.9786083808229691
@@ -185,10 +320,11 @@
       "LATEST_LIVE": {
         "matchedGtCount": 0,
         "eligibleGtCount": 10,
-        "MAE": null,
+        "ALIGNMENT_FIT_MAE": null,
         "RMSE": null,
         "maxAbsError": null,
-        "shapeCorrelation": null
+        "shapeCorrelation": null,
+        "directVideoValidationEvidence": "INSUFFICIENT_EVIDENCE"
       }
     },
     {
@@ -197,12 +333,13 @@
       "evidenceTier": "TIER_A_DIRECT_VIDEO_VALIDATION",
       "independentStatus": "AMBIGUOUS",
       "basinStatus": "STRONG_CANDIDATE",
+      "alignmentFitNotIndependentAccuracy": "IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY",
       "alignedClipStartUtc": "2026-09-02T19:30:02.795Z",
-      "basinMAE": 5.866828174893994,
+      "basinAlignmentFitMAE": 5.866828174893994,
       "HF_HISTORICAL": {
         "matchedGtCount": 16,
         "eligibleGtCount": 25,
-        "MAE": 5.866828174893994,
+        "ALIGNMENT_FIT_MAE": 5.866828174893994,
         "RMSE": 6.820333871141126,
         "maxAbsError": 12.680500000000002,
         "shapeCorrelation": 0.9717726413203924
@@ -210,10 +347,11 @@
       "LATEST_LIVE": {
         "matchedGtCount": 0,
         "eligibleGtCount": 25,
-        "MAE": null,
+        "ALIGNMENT_FIT_MAE": null,
         "RMSE": null,
         "maxAbsError": null,
-        "shapeCorrelation": null
+        "shapeCorrelation": null,
+        "directVideoValidationEvidence": "INSUFFICIENT_EVIDENCE"
       }
     }
   ],
@@ -222,20 +360,40 @@
       "clipId": "RD003_GT_CLIP_002",
       "fileName": "IMG_2804.mp4",
       "negativeControl": true,
-      "cruiseObservationCount": 7,
-      "hfSpeedErrorStdDevKmh": 7.060380988385995,
-      "artificialMotionRisk": "ELEVATED",
-      "note": "Negative control — stable cruise should not show large artificial speed dynamics"
+      "cruiseWindow": {
+        "fromSeconds": 0,
+        "toSeconds": 36,
+        "source": "CRUISE_STABLE_LANDMARK"
+      },
+      "cruiseObservationCount": 8,
+      "cruiseMatchedPointCount": 5,
+      "cruiseSpeedMeanError": 4.9801711529834005,
+      "cruiseSpeedErrorStdDev": 7.060380988385995,
+      "telemetrySpeedStdDev": 21.797714349839364,
+      "videoSpeedStdDev": 2.073644135332772,
+      "artificialAccelerationStdMps2InCruiseWindow": 3.2739475352430634,
+      "NEGATIVE_CONTROL_ARTIFICIAL_DYNAMICS": "ELEVATED",
+      "note": "Scores only GT SPEED observations inside declared stable-cruise window"
     },
     {
       "clipId": "RD003_GT_CLIP_007",
       "fileName": "IMG_2809.mp4",
       "negativeControl": true,
-      "cruiseObservationCount": 13,
-      "hfSpeedErrorStdDevKmh": 4.928691481641341,
-      "artificialMotionRisk": "ELEVATED",
-      "note": "Negative control — stable cruise should not show large artificial speed dynamics"
+      "cruiseWindow": {
+        "fromSeconds": 0,
+        "toSeconds": 18,
+        "source": "CRUISE_STABLE_LANDMARK"
+      },
+      "cruiseObservationCount": 5,
+      "cruiseMatchedPointCount": 4,
+      "cruiseSpeedMeanError": 7.389249999999999,
+      "cruiseSpeedErrorStdDev": 6.3036418772537095,
+      "telemetrySpeedStdDev": 6.54633832417371,
+      "videoSpeedStdDev": 0,
+      "artificialAccelerationStdMps2InCruiseWindow": 0.9172877485495138,
+      "NEGATIVE_CONTROL_ARTIFICIAL_DYNAMICS": "ELEVATED",
+      "note": "Scores only GT SPEED observations inside declared stable-cruise window"
     }
   ],
-  "note": "Uses per-clip STRONG_CANDIDATE HF basins only — not a validated nine-clip absolute chronology"
+  "note": "Alignment-fit MAE uses STRONG_CANDIDATE basins discovered with same video GT — not independent accuracy unless holdout supports it"
 }

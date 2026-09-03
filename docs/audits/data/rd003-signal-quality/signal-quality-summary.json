@@ -1,39 +1,126 @@
 {
   "evidenceId": "DI-EV-0034E",
+  "closeoutRevision": "DI-EV-0034E.1",
   "analysisMode": "RD003_SIGNAL_QUALITY_INTERPRETATION",
   "evidenceClass": "SIGNAL_QUALITY+DRIVING_INTELLIGENCE_FOUNDATION",
   "GROUND_TRUTH_VALIDATED": "NO",
   "DRIVING_SCORE_CHANGED": "NO",
   "REFERENCE_CAPTURE_RUNTIME_CHANGED": "NO",
+  "whatWeKnow": [
+    "HF speed contains recoverable driving dynamics at ~2s median physical cadence when gated",
+    "providerTimestamp is best available physical-event timeline",
+    "RPM/throttle/TPS show Tier B event-correlated support in aligned windows",
+    "gear state is observable; gear timing is not"
+  ],
+  "whatWeSuspect": [
+    "Holdout speed accuracy may be better than alignment-fit alone where evaluated",
+    "LATEST_LIVE may help freshness-gated near-real-time surfaces when explicitly measured",
+    "derived acceleration may support episode context with conservative gap gating"
+  ],
+  "whatWeMustNotClaim": [
+    "Alignment-fit MAE as independent DIMO speed accuracy",
+    "Exact jerk/acceleration accuracy without suitable GT",
+    "LATEST_LIVE freshness by surface name",
+    "Exact gear-change timing from current cadence"
+  ],
   "humanSummary": {
     "SPEED": "USEFUL_WITH_GATING",
     "RPM": "USEFUL_WITH_GATING",
-    "THROTTLE": "USEFUL_WITH_GATING",
-    "TPS": "USEFUL_WITH_GATING",
-    "ENGINE_LOAD": "CONTEXT_ONLY",
+    "THROTTLE": "SECONDARY_DEMAND_CONTEXT",
+    "TPS": "SECONDARY_DEMAND_CONTEXT",
+    "ENGINE_LOAD": "POWERTRAIN_DEMAND_CONTEXT_ONLY",
     "ACTUAL_GEAR": "CONTEXT_ONLY",
     "GEAR_RATIO": "CONTEXT_ONLY",
-    "DERIVED_ACCELERATION": "WEAK",
+    "DERIVED_ACCELERATION": "USEFUL_WITH_GATING",
     "DERIVED_JERK": "WEAK",
-    "PROVIDER_TIMESTAMP": "STRONG",
+    "PROVIDER_TIMESTAMP": "BEST_AVAILABLE_PHYSICAL_EVENT_TIME_AUTHORITY",
     "SYNQ_RECEIVED_AT": "NOT_RELIABLE"
   },
+  "signalClassifications": {
+    "SPEED": {
+      "RATING": "USEFUL_WITH_GATING",
+      "EVIDENCE_BASIS": "HF alignment-fit MAE=8.46 km/h across 8 STRONG basins; holdout MAE=7.85; 2 unique-alignment clips",
+      "LIMITATION": "IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY; nine-clip chronology unresolved"
+    },
+    "RPM": {
+      "RATING": "USEFUL_WITH_GATING",
+      "EVIDENCE_BASIS": "eventDirectionAgreement=0.50 across 8 episodes; laggedCorrelation=0.59",
+      "LIMITATION": "Not direct video GT; shift timing not proven; 6 ambiguous-basin episodes"
+    },
+    "THROTTLE": {
+      "RATING": "SECONDARY_DEMAND_CONTEXT",
+      "EVIDENCE_BASIS": "driver-demand eventDirectionAgreement=0.57; laggedCorrelation=0.64",
+      "LIMITATION": "Separate from TPS; raw speed correlation insufficient alone"
+    },
+    "TPS": {
+      "RATING": "SECONDARY_DEMAND_CONTEXT",
+      "EVIDENCE_BASIS": "driver-demand eventDirectionAgreement=0.36; laggedCorrelation=0.46",
+      "LIMITATION": "Separate from obdThrottlePosition; semantics not identical"
+    },
+    "ENGINE_LOAD": {
+      "RATING": "POWERTRAIN_DEMAND_CONTEXT_ONLY",
+      "EVIDENCE_BASIS": "eventDirectionAgreement=0.39; adds context beyond RPM+throttle in some windows",
+      "LIMITATION": "Not vehicle mass/payload/road load; contextual only"
+    },
+    "ACTUAL_GEAR": {
+      "RATING": "CONTEXT_ONLY",
+      "EVIDENCE_BASIS": "GEAR_STATE_OBSERVABILITY=YES",
+      "LIMITATION": "GEAR_CHANGE_TIMING_OBSERVABILITY=NO"
+    },
+    "GEAR_RATIO": {
+      "RATING": "CONTEXT_ONLY",
+      "EVIDENCE_BASIS": "State context on LATEST_SLOW",
+      "LIMITATION": "Slow cadence; not timing authority"
+    },
+    "DERIVED_ACCELERATION": {
+      "RATING": "USEFUL_WITH_GATING",
+      "EVIDENCE_BASIS": "qualifiedPointFraction@2s=0.63; implausibleFraction=0.03",
+      "LIMITATION": "Derived from speed cadence; not direct GT"
+    },
+    "DERIVED_JERK": {
+      "RATING": "WEAK",
+      "EVIDENCE_BASIS": "classification=EPISODE_CONTEXT_ONLY",
+      "LIMITATION": "Episode context only; high Δt sensitivity"
+    },
+    "PROVIDER_TIMESTAMP": {
+      "RATING": "BEST_AVAILABLE_PHYSICAL_EVENT_TIME_AUTHORITY",
+      "EVIDENCE_BASIS": "Best available physical-event timeline in RD003 capture",
+      "LIMITATION": "Not independently proven raw ECU sample time"
+    },
+    "SYNQ_RECEIVED_AT": {
+      "RATING": "NOT_RELIABLE",
+      "EVIDENCE_BASIS": "Delivery/ingress timing only; INGRESS_TIME_DIAGNOSTIC_SUPPORTED_CLIPS=0",
+      "LIMITATION": "Must not anchor physical driving events"
+    },
+    "LATEST_LIVE_SPEED": {
+      "RATING": "CONTEXT_WITH_FRESHNESS_GATING",
+      "EVIDENCE_BASIS": "directVideoMatchedPoints=1; medianCadence≈6.0s; staleHolds=19",
+      "LIMITATION": "LATEST_LIVE_DIRECT_VIDEO_VALIDATION=INSUFFICIENT_EVIDENCE; surface name does not imply freshness"
+    }
+  },
   "HF_SPEED_VIDEO_VALIDATION_SUPPORTED": "YES",
-  "HF_SPEED_TYPICAL_ERROR_KMH": 8.456566903515773,
+  "HF_SPEED_ALIGNMENT_FIT_MAE_KMH": 8.456566903515773,
+  "HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH": 7.848561086499397,
+  "IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY": "YES",
+  "UNIQUE_ALIGNMENT_SUPPORTED_CLIPS": 2,
+  "AMBIGUOUS_CLIPS_WITH_STRONG_SPEED_BASIN": 6,
   "HF_SPEED_TEMPORAL_RESOLUTION": "~2.00s median new physical sample",
-  "LATEST_LIVE_SPEED_USEFULNESS": "USEFUL_WITH_GATING",
-  "PROVIDER_TIME_PHYSICAL_EVENT_USEFULNESS": "STRONG",
+  "LATEST_LIVE_DIRECT_VIDEO_VALIDATION": "INSUFFICIENT_EVIDENCE",
+  "LATEST_LIVE_GENERAL_DATA_UTILITY": "CONTEXT_WITH_FRESHNESS_GATING",
+  "LATEST_LIVE_OBSERVED_MEDIAN_CADENCE_SECONDS": 6,
+  "PROVIDER_TIME_PHYSICAL_EVENT_USEFULNESS": "BEST_AVAILABLE_PHYSICAL_EVENT_TIME_AUTHORITY",
   "INGRESS_TIME_PHYSICAL_EVENT_USEFULNESS": "NOT_RELIABLE",
-  "DERIVED_ACCELERATION_RELIABILITY": "WEAK",
-  "DERIVED_ACCELERATION_RECOMMENDED_MAX_GAP": "ANALYSIS_ONLY_2.0s_provisional",
-  "DERIVED_JERK_RELIABILITY": "EPISODE_CONTEXT_ONLY",
-  "RPM_DYNAMIC_EPISODE_USEFULNESS": "USEFUL_WITH_GATING",
-  "RPM_SHIFT_SIGNATURE_USEFULNESS": "PARTIAL",
-  "OBD_THROTTLE_USEFULNESS": "SECONDARY_DEMAND_CONTEXT",
-  "POWERTRAIN_TPS_USEFULNESS": "SECONDARY_DEMAND_CONTEXT",
-  "ENGINE_LOAD_USEFULNESS": "POWERTRAIN_DEMAND_CONTEXT_ONLY",
-  "GEAR_STATE_USEFULNESS": "YES",
-  "GEAR_CHANGE_TIMING_USEFULNESS": "NO",
+  "DERIVED_ACCELERATION_CLASSIFICATION": "USEFUL_WITH_GATING",
+  "DERIVED_ACCELERATION_PROVISIONAL_MAX_GAP": "ANALYSIS_ONLY — no production threshold selected",
+  "DERIVED_JERK_CLASSIFICATION": "EPISODE_CONTEXT_ONLY",
+  "RPM_CLASSIFICATION": "USEFUL_WITH_GATING",
+  "THROTTLE_CLASSIFICATION": "SECONDARY_DEMAND_CONTEXT",
+  "TPS_CLASSIFICATION": "SECONDARY_DEMAND_CONTEXT",
+  "ENGINE_LOAD_CLASSIFICATION": "POWERTRAIN_DEMAND_CONTEXT_ONLY",
+  "GEAR_STATE_CLASSIFICATION": "CONTEXT_ONLY",
+  "GEAR_TIMING_CLASSIFICATION": "NOT_SUPPORTED",
+  "NEGATIVE_CONTROL_IMG_2804": "ELEVATED",
+  "NEGATIVE_CONTROL_IMG_2809": "ELEVATED",
   "DIRECTION_RECONSTRUCTION_CAPABILITY": "PARTIAL",
   "OFFLINE_TRIP_RECONSTRUCTION_READINESS": "READY_WITH_GATING",
   "NEAR_REALTIME_FEEDBACK_READINESS": "NOT_READY",
@@ -62,7 +149,8 @@
     "LATEST_LIVE without stale-hold gating",
     "obdEngineLoad as vehicle mass/payload",
     "unsigned speed alone for direction",
-    "jerk without cadence qualification"
+    "jerk without cadence qualification",
+    "alignment-fit MAE as independent speed accuracy"
   ],
   "proposedConfidenceFactors": [
     "sampleCadenceMedianSeconds",
@@ -72,25 +160,28 @@
     "supportingSignalAgreementCount",
     "alignmentBasinCoverage",
     "interpolationGapSeconds",
-    "missingnessRate"
+    "missingnessRate",
+    "holdoutValidationMae",
+    "negativeControlArtificialDynamics"
   ],
   "note": "Proposed architecture only — not implemented in production Driving Score",
   "SIGNALS_SAFE_FOR_FUTURE_DRIVING_SCORE": [
-    "speed (HF_HISTORICAL, gated)"
+    "speed (HF_HISTORICAL, gated, confidence-scored)"
   ],
   "SIGNALS_REQUIRING_CONFIDENCE_GATING": [
     "powertrainCombustionEngineSpeed",
     "obdThrottlePosition",
     "powertrainCombustionEngineTPS",
     "derived longitudinal acceleration",
-    "LATEST_LIVE speed"
+    "LATEST_LIVE speed (freshness-gated only)"
   ],
   "SIGNALS_NOT_SAFE_AS_DIRECT_SCORE_INPUT": [
     "synqReceivedAt",
     "obdEngineLoad as mass proxy",
     "jerk (raw)",
     "gear timing without cadence proof",
-    "unsigned speed for direction"
+    "unsigned speed for direction",
+    "alignment-fit MAE as accuracy claim"
   ],
   "PRIOR_ALIGNMENT_STATE": {
     "HF_SPEED_ALIGNMENT_V2_CONCLUSION": "HF_SPEED_ALIGNMENT_V2_AMBIGUOUS",

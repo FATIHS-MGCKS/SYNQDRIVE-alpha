@@ -1714,6 +1714,6 @@
       }
     }
   },
-  "providerTimestampAuthority": "PHYSICAL_EVENT_CANDIDATE",
-  "synqReceivedAtAuthority": "DELIVERY_ONLY"
+  "providerTimestampAuthority": "BEST_AVAILABLE_PHYSICAL_EVENT_TIME_AUTHORITY",
+  "synqReceivedAtAuthority": "DELIVERY_TIME_ONLY"
 }

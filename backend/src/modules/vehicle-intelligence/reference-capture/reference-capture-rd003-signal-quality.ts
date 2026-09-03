@@ -1,5 +1,5 @@
 /**
- * DI-EV-0034E — RD003 Signal Quality Interpretation + Driving Intelligence Usability Matrix.
+ * DI-EV-0034E / DI-EV-0034E.1 — RD003 Signal Quality Interpretation + Usability Matrix.
  * Read-only analysis; does not modify production Driving Score, external GT, or canonical telemetry.
  */
 import * as crypto from 'crypto';
@@ -21,14 +21,19 @@ import {
   filterTelemetryByFieldAndSurface,
   buildSpeedSeries,
   isAlignmentEligibleGroundTruth,
+  MIN_ALIGNMENT_ELIGIBLE_GT_POINTS,
+  SESSION_START,
+  SESSION_STOP,
   stableStringify,
   SURFACE_INTERPOLATION_GAP_SECONDS,
   type AcquisitionSurface,
   type ExternalGtClip,
   type ExternalGtDocument,
+  type ExternalGtObservation,
   type SpeedSeriesPoint,
 } from './reference-capture-rd003-video-gt-alignment';
 import {
+  coarseToFineGlobalSearchV2,
   dedupePhysicalSamples,
   runGlobalFingerprintDiscoveryV2,
   type BasinV2Result,
@@ -36,7 +41,11 @@ import {
 } from './reference-capture-rd003-video-gt-global-discovery-v2';
 
 export const SIGNAL_QUALITY_EVIDENCE_ID = 'DI-EV-0034E';
+export const SIGNAL_QUALITY_CLOSEOUT_REVISION = 'DI-EV-0034E.1';
 export const SIGNAL_QUALITY_MODE = 'RD003_SIGNAL_QUALITY_INTERPRETATION';
+
+export const DIAGNOSTIC_LAG_SECONDS = [0, 1, 2, 3, 4] as const;
+export const IMPLAUSIBLE_ABS_ACCELERATION_MPS2 = 8.0;
 
 export const CORE_AUDIT_SIGNALS = [
   'speed',
@@ -75,6 +84,14 @@ export type SignalUsabilityClass =
   | 'CONTEXT_ONLY'
   | 'WEAK'
   | 'NOT_RELIABLE';
+
+export type SignalRatingEvidence = {
+  RATING: SignalUsabilityClass | string;
+  EVIDENCE_BASIS: string;
+  LIMITATION: string;
+};
+
+export type NegativeControlDynamics = 'LOW' | 'MODERATE' | 'ELEVATED' | 'INSUFFICIENT_EVIDENCE';
 
 export type AuthorityClass =
   | 'PRIMARY_KINEMATIC_AUTHORITY'
@@ -198,6 +215,235 @@ export function computePhysicalCadenceMetrics(rows: VideoGtExportedRow[]): {
   };
 }
 
+const SESSION_START_MS = Date.parse(SESSION_START);
+const SESSION_STOP_MS = Date.parse(SESSION_STOP);
+
+export function computeSessionCoverageMetrics(rows: VideoGtExportedRow[]): Record<string, unknown> {
+  const physicalRows = rowsForPhysicalCadenceAnalysis(rows);
+  const timestamps = physicalRows
+    .map((r) => parseMs(r.providerTimestamp))
+    .filter((t): t is number => t != null)
+    .sort((a, b) => a - b);
+
+  if (timestamps.length === 0) {
+    return {
+      SESSION_SPAN_COVERAGE: 'NOT_OBSERVED',
+      TEMPORAL_CONTINUITY: 'NOT_OBSERVED',
+      OBSERVED_SPAN_FROM: null,
+      OBSERVED_SPAN_TO: null,
+      OBSERVED_SPAN_RATIO: null,
+      MAX_PHYSICAL_SAMPLE_GAP_SECONDS: null,
+      TIME_COVERAGE_WITHIN_3S: null,
+      TIME_COVERAGE_WITHIN_5S: null,
+      TIME_COVERAGE_WITHIN_10S: null,
+    };
+  }
+
+  const observedFrom = timestamps[0]!;
+  const observedTo = timestamps[timestamps.length - 1]!;
+  const sessionSpanMs = SESSION_STOP_MS - SESSION_START_MS;
+  const observedSpanMs = observedTo - observedFrom;
+  const gaps = timestamps.slice(1).map((t, i) => (t - timestamps[i]!) / 1000);
+  const maxGap = gaps.length ? Math.max(...gaps) : 0;
+
+  const coverageWithin = (thresholdSec: number): number | null => {
+    if (sessionSpanMs <= 0) return null;
+    let coveredMs = 0;
+    const stepMs = 1000;
+    for (let t = SESSION_START_MS; t < SESSION_STOP_MS; t += stepMs) {
+      const nearest = timestamps.reduce(
+        (best, ts) => Math.min(best, Math.abs(ts - t)),
+        Number.POSITIVE_INFINITY,
+      );
+      if (nearest <= thresholdSec * 1000) coveredMs += stepMs;
+    }
+    return coveredMs / sessionSpanMs;
+  };
+
+  const continuity =
+    maxGap > 60 ? 'DISCONTINUOUS' : maxGap > 10 ? 'GAPPED' : maxGap > 3 ? 'MODERATE' : 'CONTINUOUS';
+
+  return {
+    SESSION_SPAN_COVERAGE:
+      observedFrom <= SESSION_START_MS + 5000 && observedTo >= SESSION_STOP_MS - 5000
+        ? 'FULL_SESSION_SPAN'
+        : 'PARTIAL_SESSION_SPAN',
+    TEMPORAL_CONTINUITY: continuity,
+    OBSERVED_SPAN_FROM: new Date(observedFrom).toISOString(),
+    OBSERVED_SPAN_TO: new Date(observedTo).toISOString(),
+    OBSERVED_SPAN_RATIO: sessionSpanMs > 0 ? observedSpanMs / sessionSpanMs : null,
+    MAX_PHYSICAL_SAMPLE_GAP_SECONDS: maxGap,
+    TIME_COVERAGE_WITHIN_3S: coverageWithin(3),
+    TIME_COVERAGE_WITHIN_5S: coverageWithin(5),
+    TIME_COVERAGE_WITHIN_10S: coverageWithin(10),
+  };
+}
+
+export function evaluateSurfaceFreshness(params: {
+  subset: VideoGtExportedRow[];
+  staleHoldCount: number;
+  medianCadence: number | null;
+  providerAgeP90: number | null;
+}): Record<string, unknown> {
+  const { subset, staleHoldCount, medianCadence, providerAgeP90 } = params;
+  const physicalIdentityFresh =
+    staleHoldCount === 0 && (medianCadence ?? 99) <= 3 && (providerAgeP90 ?? 99) <= 5;
+  return {
+    freshnessEvaluatedFromProviderMetrics: 'YES',
+    surfaceNameImpliesFreshPhysicalSample: 'NO',
+    LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE: 'NO',
+    medianPhysicalCadenceSeconds: medianCadence,
+    staleHoldExposure: staleHoldCount > 0 ? 'YES' : 'NO',
+    providerAgeP90Seconds: providerAgeP90,
+    suitableForNearRealtimeWithoutGating: physicalIdentityFresh ? 'PARTIAL' : 'NO',
+    note: 'Freshness from providerTimestamp cadence, physical identity, stale holds — not surface label',
+  };
+}
+
+export function resolveNegativeControlCruiseWindow(clip: ExternalGtClip): {
+  fromSeconds: number;
+  toSeconds: number;
+  source: 'CRUISE_STABLE_LANDMARK' | 'FULL_CLIP_NEGATIVE_CONTROL';
+} | null {
+  if (!clip.negativeControl) return null;
+  const cruiseStable = clip.observations.find((o) => o.observationType === 'CRUISE_STABLE');
+  if (cruiseStable?.videoTimeSeconds != null) {
+    const unc = cruiseStable.videoTimeUncertaintySeconds ?? 0;
+    return {
+      fromSeconds: Math.max(0, cruiseStable.videoTimeSeconds - unc),
+      toSeconds: Math.min(clip.videoDurationSeconds ?? 60, cruiseStable.videoTimeSeconds + unc),
+      source: 'CRUISE_STABLE_LANDMARK',
+    };
+  }
+  return {
+    fromSeconds: 0,
+    toSeconds: clip.videoDurationSeconds ?? 60,
+    source: 'FULL_CLIP_NEGATIVE_CONTROL',
+  };
+}
+
+export function getCruiseSpeedGtObservations(clip: ExternalGtClip): ExternalGtObservation[] {
+  const window = resolveNegativeControlCruiseWindow(clip);
+  if (!window) return [];
+  return clip.observations.filter(
+    (o) =>
+      o.observationType === 'SPEED' &&
+      o.videoTimeSeconds != null &&
+      typeof o.value === 'number' &&
+      o.videoTimeSeconds >= window.fromSeconds &&
+      o.videoTimeSeconds <= window.toSeconds &&
+      isAlignmentEligibleGroundTruth(o),
+  );
+}
+
+export function splitHoldoutTrainObservations(observations: ExternalGtObservation[]): {
+  train: ExternalGtObservation[];
+  holdout: ExternalGtObservation[];
+} {
+  const eligible = observations
+    .filter(isAlignmentEligibleGroundTruth)
+    .sort((a, b) => (a.observationId ?? '').localeCompare(b.observationId ?? ''));
+  const train: ExternalGtObservation[] = [];
+  const holdout: ExternalGtObservation[] = [];
+  for (let i = 0; i < eligible.length; i++) {
+    if (i % 2 === 0) train.push(eligible[i]!);
+    else holdout.push(eligible[i]!);
+  }
+  if (train.length < MIN_ALIGNMENT_ELIGIBLE_GT_POINTS || holdout.length < 1) {
+    return { train: [], holdout: [] };
+  }
+  return { train, holdout };
+}
+
+export function runHoldoutSpeedValidation(params: {
+  clip: ExternalGtClip;
+  speedSeries: SpeedSeriesPoint[];
+  surface: AcquisitionSurface;
+}): Record<string, unknown> {
+  const { train, holdout } = splitHoldoutTrainObservations(params.clip.observations);
+  if (train.length < MIN_ALIGNMENT_ELIGIBLE_GT_POINTS || holdout.length < 1) {
+    return { status: 'INSUFFICIENT_GROUND_TRUTH_FOR_HOLDOUT' };
+  }
+
+  const search = coarseToFineGlobalSearchV2({
+    clip: params.clip,
+    speedSeries: params.speedSeries,
+    eligibleObservations: train,
+    surface: params.surface,
+  });
+
+  const strongBasins = search.basins.filter((b) => b.status === 'STRONG_CANDIDATE');
+  if (strongBasins.length === 0) {
+    return {
+      status: 'AMBIGUOUS',
+      reason: 'NO_ISOLATED_TRAIN_CANDIDATE',
+      trainPointCount: train.length,
+      holdoutPointCount: holdout.length,
+    };
+  }
+  if (strongBasins.length > 1) {
+    const maeSpread = Math.max(...strongBasins.map((b) => b.MAE)) - Math.min(...strongBasins.map((b) => b.MAE));
+    if (maeSpread <= 1.0) {
+      return {
+        status: 'AMBIGUOUS',
+        reason: 'MULTIPLE_COMPETING_TRAIN_CANDIDATES',
+        trainPointCount: train.length,
+        holdoutPointCount: holdout.length,
+        competingStrongBasinCount: strongBasins.length,
+      };
+    }
+  }
+
+  const basin = strongBasins.sort((a, b) => a.MAE - b.MAE)[0]!;
+  const maxGap = SURFACE_INTERPOLATION_GAP_SECONDS[params.surface];
+  const trainErrors: number[] = [];
+  const holdoutErrors: number[] = [];
+
+  for (const obs of train) {
+    const absMs = absoluteEventMsFromAlignedClipStart(basin.alignedClipStartMs, obs.videoTimeSeconds!);
+    const pt = deriveTelemetryAtUtc(params.speedSeries, absMs, maxGap);
+    if (pt.status === 'MATCHED' && pt.telemetryValue != null && typeof obs.value === 'number') {
+      trainErrors.push(Math.abs(pt.telemetryValue - obs.value));
+    }
+  }
+  for (const obs of holdout) {
+    const absMs = absoluteEventMsFromAlignedClipStart(basin.alignedClipStartMs, obs.videoTimeSeconds!);
+    const pt = deriveTelemetryAtUtc(params.speedSeries, absMs, maxGap);
+    if (pt.status === 'MATCHED' && pt.telemetryValue != null && typeof obs.value === 'number') {
+      holdoutErrors.push(Math.abs(pt.telemetryValue - obs.value));
+    }
+  }
+
+  return {
+    status: holdoutErrors.length > 0 ? 'EVALUATED' : 'INSUFFICIENT_HOLDOUT_MATCHES',
+    trainPointCount: train.length,
+    holdoutPointCount: holdout.length,
+    TRAIN_ALIGNMENT_MAE: mean(trainErrors),
+    HOLDOUT_MAE: mean(holdoutErrors),
+    HOLDOUT_RMSE: rmse(holdoutErrors),
+    HOLDOUT_MAX_ERROR: holdoutErrors.length ? Math.max(...holdoutErrors) : null,
+    HOLDOUT_POINT_COUNT: holdoutErrors.length,
+    trainAlignedClipStartUtc: basin.alignedClipStartUtc,
+    note: 'Holdout points never used for candidate start-time selection',
+  };
+}
+
+export function classifyNegativeControlDynamics(params: {
+  cruiseSpeedMeanError: number | null;
+  cruiseSpeedErrorStdDev: number | null;
+  telemetrySpeedStdDev: number | null;
+  artificialAccelStdMps2: number | null;
+  cruisePointCount: number;
+}): NegativeControlDynamics {
+  if (params.cruisePointCount < 2) return 'INSUFFICIENT_EVIDENCE';
+  const errStd = params.cruiseSpeedErrorStdDev ?? 0;
+  const telemStd = params.telemetrySpeedStdDev ?? 0;
+  const artAccel = params.artificialAccelStdMps2 ?? 0;
+  if (errStd > 4 || telemStd > 3 || artAccel > 0.8) return 'ELEVATED';
+  if (errStd > 2 || telemStd > 1.5 || artAccel > 0.35) return 'MODERATE';
+  return 'LOW';
+}
+
 export function computeSignalSurfaceEntry(params: {
   field: string;
   surface: AcquisitionSurface;
@@ -226,11 +472,18 @@ export function computeSignalSurfaceEntry(params: {
       : null;
 
   const valueHolds = metrics.dynamics.staticFraction;
+  const sessionCoverage = computeSessionCoverageMetrics(subset);
+  const freshness = evaluateSurfaceFreshness({
+    subset,
+    staleHoldCount: holds.length,
+    medianCadence: physicalCadence.NEW_PHYSICAL_SAMPLE_CADENCE_MEDIAN_SECONDS,
+    providerAgeP90: pct(ages, 90),
+  });
 
   return {
     OBSERVATION_COUNT: subset.length,
     UNIQUE_PHYSICAL_SAMPLE_COUNT: physicalCadence.UNIQUE_PHYSICAL_SAMPLE_COUNT,
-    SESSION_COVERAGE: 'FULL_SESSION',
+    ...sessionCoverage,
     NEW_PHYSICAL_SAMPLE_CADENCE: {
       medianSeconds: physicalCadence.NEW_PHYSICAL_SAMPLE_CADENCE_MEDIAN_SECONDS,
       p10Seconds: physicalCadence.NEW_PHYSICAL_SAMPLE_CADENCE_P10_SECONDS,
@@ -258,10 +511,9 @@ export function computeSignalSurfaceEntry(params: {
     DUPLICATE_PHYSICAL_SAMPLE_RATE: duplicateRate,
     dynamicsClassification: metrics.dynamics.classification,
     configuredMaxInterpolationGapSeconds: SURFACE_INTERPOLATION_GAP_SECONDS[params.surface],
-    LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE: 'NO',
-    freshnessEvaluatedBySurfaceName: 'YES',
-    PHYSICAL_EVENT_TIME_AUTHORITY: 'providerTimestamp',
-    DELIVERY_TIME: 'synqReceivedAt',
+    ...freshness,
+    BEST_AVAILABLE_PHYSICAL_EVENT_TIME_AUTHORITY: 'providerTimestamp',
+    DELIVERY_TIME_ONLY: 'synqReceivedAt',
   };
 }
 
@@ -350,9 +602,19 @@ export function buildSpeedVideoValidation(params: {
   telemetryRows: VideoGtExportedRow[];
 }): Record<string, unknown> {
   const clipResults: Record<string, unknown>[] = [];
-  const hfErrors: number[] = [];
-  const liveErrors: number[] = [];
+  const hfAlignmentFitErrors: number[] = [];
+  const liveAlignmentFitErrors: number[] = [];
   const negativeControls: Record<string, unknown>[] = [];
+  const holdoutResults: Record<string, unknown>[] = [];
+  let uniqueAlignmentSupportedClips = 0;
+  let ambiguousClipsWithStrongSpeedBasin = 0;
+
+  const hfSeriesAll = buildSpeedSeries(
+    filterTelemetryByFieldAndSurface(params.telemetryRows, 'speed', 'HF_HISTORICAL'),
+  );
+  const liveSeriesAll = buildSpeedSeries(
+    filterTelemetryByFieldAndSurface(params.telemetryRows, 'speed', 'LATEST_LIVE'),
+  );
 
   for (const disc of params.perClipDiscoveries) {
     const clip = params.externalGt.clips.find((c) => c.clipId === disc.clipId);
@@ -360,18 +622,29 @@ export function buildSpeedVideoValidation(params: {
     const basin = selectStrongBasinPerClip(disc);
     if (!basin || basin.status !== 'STRONG_CANDIDATE') continue;
 
-    const hfSeries = buildSpeedSeries(
-      filterTelemetryByFieldAndSurface(params.telemetryRows, 'speed', 'HF_HISTORICAL'),
-    );
-    const liveSeries = buildSpeedSeries(
-      filterTelemetryByFieldAndSurface(params.telemetryRows, 'speed', 'LATEST_LIVE'),
-    );
+    if (disc.HF_HISTORICAL.independentStatus === 'STRONG_CANDIDATE') {
+      uniqueAlignmentSupportedClips++;
+    } else if (disc.HF_HISTORICAL.independentStatus === 'AMBIGUOUS') {
+      ambiguousClipsWithStrongSpeedBasin++;
+    }
 
-    const hf = scoreSpeedAtGtPoints({ clip, basin, speedSeries: hfSeries, surface: 'HF_HISTORICAL' });
-    const live = scoreSpeedAtGtPoints({ clip, basin, speedSeries: liveSeries, surface: 'LATEST_LIVE' });
+    const hf = scoreSpeedAtGtPoints({ clip, basin, speedSeries: hfSeriesAll, surface: 'HF_HISTORICAL' });
+    const live = scoreSpeedAtGtPoints({ clip, basin, speedSeries: liveSeriesAll, surface: 'LATEST_LIVE' });
 
-    hfErrors.push(...hf.absErrors);
-    liveErrors.push(...live.absErrors);
+    hfAlignmentFitErrors.push(...hf.absErrors);
+    liveAlignmentFitErrors.push(...live.absErrors);
+
+    const holdout = runHoldoutSpeedValidation({
+      clip,
+      speedSeries: hfSeriesAll,
+      surface: 'HF_HISTORICAL',
+    });
+    holdoutResults.push({
+      clipId: disc.clipId,
+      fileName: disc.fileName,
+      independentStatus: disc.HF_HISTORICAL.independentStatus,
+      ...holdout,
+    });
 
     const episode: Record<string, unknown> = {
       clipId: disc.clipId,
@@ -379,12 +652,13 @@ export function buildSpeedVideoValidation(params: {
       evidenceTier: 'TIER_A_DIRECT_VIDEO_VALIDATION',
       independentStatus: disc.HF_HISTORICAL.independentStatus,
       basinStatus: basin.status,
+      alignmentFitNotIndependentAccuracy: 'IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY',
       alignedClipStartUtc: basin.alignedClipStartUtc,
-      basinMAE: basin.MAE,
+      basinAlignmentFitMAE: basin.MAE,
       HF_HISTORICAL: {
         matchedGtCount: hf.matched,
         eligibleGtCount: hf.total,
-        MAE: mean(hf.absErrors),
+        ALIGNMENT_FIT_MAE: mean(hf.absErrors),
         RMSE: rmse(hf.absErrors.map((e, i) => hf.telemValues[i]! - hf.gtValues[i]!)),
         maxAbsError: hf.absErrors.length ? Math.max(...hf.absErrors) : null,
         shapeCorrelation: pearsonCorrelation(hf.gtValues, hf.telemValues),
@@ -392,56 +666,110 @@ export function buildSpeedVideoValidation(params: {
       LATEST_LIVE: {
         matchedGtCount: live.matched,
         eligibleGtCount: live.total,
-        MAE: mean(live.absErrors),
+        ALIGNMENT_FIT_MAE: mean(live.absErrors),
         RMSE: rmse(live.absErrors.map((e, i) => live.telemValues[i]! - live.gtValues[i]!)),
         maxAbsError: live.absErrors.length ? Math.max(...live.absErrors) : null,
         shapeCorrelation: pearsonCorrelation(live.gtValues, live.telemValues),
+        directVideoValidationEvidence: live.matched >= 3 ? 'LIMITED' : 'INSUFFICIENT_EVIDENCE',
       },
     };
 
     if (clip.negativeControl) {
-      const cruiseObs = clip.observations.filter(
-        (o) =>
-          o.observationType === 'CRUISE_STABLE' ||
-          (o.observationType === 'SPEED' && o.videoTimeSeconds != null && o.videoTimeSeconds <= 25),
+      const cruiseWindow = resolveNegativeControlCruiseWindow(clip);
+      const cruiseObs = getCruiseSpeedGtObservations(clip);
+      const cruiseGtValues: number[] = [];
+      const cruiseTelemValues: number[] = [];
+      const cruiseErrors: number[] = [];
+
+      for (const obs of cruiseObs) {
+        const absMs = absoluteEventMsFromAlignedClipStart(
+          basin.alignedClipStartMs,
+          obs.videoTimeSeconds!,
+        );
+        const pt = deriveTelemetryAtUtc(
+          hfSeriesAll,
+          absMs,
+          SURFACE_INTERPOLATION_GAP_SECONDS.HF_HISTORICAL,
+        );
+        if (pt.status === 'MATCHED' && pt.telemetryValue != null && typeof obs.value === 'number') {
+          cruiseGtValues.push(obs.value);
+          cruiseTelemValues.push(pt.telemetryValue);
+          cruiseErrors.push(Math.abs(pt.telemetryValue - obs.value));
+        }
+      }
+
+      const windowStartMs = basin.alignedClipStartMs + (cruiseWindow?.fromSeconds ?? 0) * 1000;
+      const windowEndMs = basin.alignedClipStartMs + (cruiseWindow?.toSeconds ?? 60) * 1000;
+      const cruiseTelemInWindow = hfSeriesAll.filter(
+        (p) => p.utcMs >= windowStartMs && p.utcMs <= windowEndMs,
       );
-      const cruiseErrors = hf.absErrors;
-      const cruiseNoise = cruiseErrors.length ? stddev(cruiseErrors) : null;
+      const cruiseAccel = deriveLongitudinalAccelerationFromSpeed({
+        speedSeries: cruiseTelemInWindow,
+        maxGapSeconds: 2.0,
+      }).filter((p) => p.reliable);
+
+      const artificialDynamics = classifyNegativeControlDynamics({
+        cruiseSpeedMeanError: mean(cruiseErrors),
+        cruiseSpeedErrorStdDev: stddev(cruiseErrors),
+        telemetrySpeedStdDev: stddev(cruiseTelemInWindow.map((p) => p.value)),
+        artificialAccelStdMps2: stddev(cruiseAccel.map((p) => p.accelerationMps2)),
+        cruisePointCount: cruiseErrors.length,
+      });
+
       negativeControls.push({
         clipId: clip.clipId,
         fileName: clip.fileName,
         negativeControl: true,
+        cruiseWindow,
         cruiseObservationCount: cruiseObs.length,
-        hfSpeedErrorStdDevKmh: cruiseNoise,
-        artificialMotionRisk:
-          cruiseNoise != null && cruiseNoise > 3 ? 'ELEVATED' : 'LOW',
-        note: 'Negative control — stable cruise should not show large artificial speed dynamics',
+        cruiseMatchedPointCount: cruiseErrors.length,
+        cruiseSpeedMeanError: mean(cruiseErrors),
+        cruiseSpeedErrorStdDev: stddev(cruiseErrors),
+        telemetrySpeedStdDev: stddev(cruiseTelemInWindow.map((p) => p.value)),
+        videoSpeedStdDev: stddev(cruiseGtValues),
+        artificialAccelerationStdMps2InCruiseWindow: stddev(
+          cruiseAccel.map((p) => p.accelerationMps2),
+        ),
+        NEGATIVE_CONTROL_ARTIFICIAL_DYNAMICS: artificialDynamics,
+        note: 'Scores only GT SPEED observations inside declared stable-cruise window',
       });
     }
 
     clipResults.push(episode);
   }
 
+  const holdoutMaes = holdoutResults
+    .map((h) => h.HOLDOUT_MAE as number | null | undefined)
+    .filter((v): v is number => v != null);
+
   return {
     evidenceTier: 'TIER_A_DIRECT_VIDEO_VALIDATION',
-    evidenceClass: 'DIRECT_VIDEO_VALIDATION',
+    evidenceClass: 'ALIGNMENT_FIT_VIDEO_COMPARISON',
     GROUND_TRUTH_VALIDATED: 'NO',
+    IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY: 'YES',
+    UNIQUE_ALIGNMENT_SUPPORTED_CLIPS: uniqueAlignmentSupportedClips,
+    AMBIGUOUS_CLIPS_WITH_STRONG_SPEED_BASIN: ambiguousClipsWithStrongSpeedBasin,
     qualifiedStrongBasinClips: clipResults.length,
     aggregateHF: {
-      MAE: mean(hfErrors),
-      RMSE: rmse(hfErrors),
-      maxAbsError: hfErrors.length ? Math.max(...hfErrors) : null,
-      matchedPoints: hfErrors.length,
+      ALIGNMENT_FIT_MAE: mean(hfAlignmentFitErrors),
+      RMSE: rmse(hfAlignmentFitErrors),
+      maxAbsError: hfAlignmentFitErrors.length ? Math.max(...hfAlignmentFitErrors) : null,
+      matchedPoints: hfAlignmentFitErrors.length,
     },
     aggregateLATEST_LIVE: {
-      MAE: mean(liveErrors),
-      RMSE: rmse(liveErrors),
-      maxAbsError: liveErrors.length ? Math.max(...liveErrors) : null,
-      matchedPoints: liveErrors.length,
+      ALIGNMENT_FIT_MAE: mean(liveAlignmentFitErrors),
+      RMSE: rmse(liveAlignmentFitErrors),
+      maxAbsError: liveAlignmentFitErrors.length ? Math.max(...liveAlignmentFitErrors) : null,
+      matchedPoints: liveAlignmentFitErrors.length,
+      directVideoValidationEvidence:
+        liveAlignmentFitErrors.length >= 3 ? 'LIMITED' : 'INSUFFICIENT_EVIDENCE',
     },
+    HF_SPEED_ALIGNMENT_FIT_MAE_KMH: mean(hfAlignmentFitErrors),
+    HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH: holdoutMaes.length ? mean(holdoutMaes) : null,
+    holdoutValidation: holdoutResults,
     perClip: clipResults,
     negativeControls,
-    note: 'Uses per-clip STRONG_CANDIDATE HF basins only — not a validated nine-clip absolute chronology',
+    note: 'Alignment-fit MAE uses STRONG_CANDIDATE basins discovered with same video GT — not independent accuracy unless holdout supports it',
   };
 }
 
@@ -541,6 +869,7 @@ export function deriveJerkFromAcceleration(accelPoints: DerivedAccelPoint[]): Ar
 
 export function buildDerivedAccelerationQuality(
   telemetryRows: VideoGtExportedRow[],
+  negativeControls?: Record<string, unknown>[],
 ): Record<string, unknown> {
   const hfRows = filterTelemetryByFieldAndSurface(telemetryRows, 'speed', 'HF_HISTORICAL');
   const staleDupes = identifyStaleHoldDuplicateRows(hfRows);
@@ -554,18 +883,36 @@ export function buildDerivedAccelerationQuality(
       staleHoldDuplicateOrdinals: staleDupes,
     });
     const reliable = accel.filter((p) => p.reliable);
+    const absAccel = reliable.map((p) => Math.abs(p.accelerationMps2));
     const jerk = deriveJerkFromAcceleration(accel);
     const reliableJerk = jerk.filter((p) => p.reliable);
     policies[`maxGap_${maxGap}s`] = {
       maxGapSeconds: maxGap,
+      policyRole: 'ANALYSIS_ONLY',
       totalAccelerationPoints: accel.length,
       reliableAccelerationPoints: reliable.length,
-      reliableAccelerationFraction: accel.length ? reliable.length / accel.length : 0,
-      accelerationNoiseStdMps2: stddev(reliable.map((p) => p.accelerationMps2)),
+      qualifiedPointFraction: accel.length ? reliable.length / accel.length : 0,
+      accelerationDistributionStdMps2: stddev(reliable.map((p) => p.accelerationMps2)),
+      medianAbsAcceleration: pct(absAccel, 50),
+      p90AbsAcceleration: pct(absAccel, 90),
+      p99AbsAcceleration: pct(absAccel, 99),
+      implausibleAccelerationFraction:
+        absAccel.length > 0
+          ? absAccel.filter((a) => a > IMPLAUSIBLE_ABS_ACCELERATION_MPS2).length / absAccel.length
+          : 0,
       totalJerkPoints: jerk.length,
       reliableJerkPoints: reliableJerk.length,
       reliableJerkFraction: jerk.length ? reliableJerk.length / jerk.length : 0,
-      jerkNoiseStdMps3: stddev(reliableJerk.map((p) => p.jerkMps3)),
+      jerkDistributionStdMps3: stddev(reliableJerk.map((p) => p.jerkMps3)),
+    };
+  }
+
+  const negativeControlNearZero: Record<string, unknown> = {};
+  for (const nc of negativeControls ?? []) {
+    const fileName = String(nc.fileName ?? '');
+    negativeControlNearZero[fileName] = {
+      artificialAccelerationStdMps2InCruiseWindow: nc.artificialAccelerationStdMps2InCruiseWindow,
+      NEGATIVE_CONTROL_ARTIFICIAL_DYNAMICS: nc.NEGATIVE_CONTROL_ARTIFICIAL_DYNAMICS,
     };
   }
 
@@ -575,7 +922,10 @@ export function buildDerivedAccelerationQuality(
     sourceSurface: 'HF_HISTORICAL',
     physicalDeltaTAuthority: 'providerTimestamp',
     staleHoldExcluded: 'YES',
+    accelerationDistributionNote: 'StdDev of reconstructed acceleration includes real vehicle dynamics — not sensor noise',
     policies,
+    negativeControlNearZeroBehavior: negativeControlNearZero,
+    PROVISIONAL_CANDIDATE_MAX_GAP: 'ANALYSIS_ONLY — no production threshold selected',
     note: 'Provisional gap policies — no production threshold selected',
   };
 }
@@ -586,9 +936,12 @@ export function buildJerkQuality(derivedAccel: Record<string, unknown>): Record<
   const reliableFrac = (policy24?.reliableJerkFraction as number) ?? 0;
   return {
     evidenceClass: 'DERIVED_KINEMATIC_ANALYSIS',
+    DERIVED_JERK_CLASSIFICATION:
+      reliableFrac >= 0.5 ? 'EPISODE_CONTEXT_ONLY' : 'NOT_RELIABLE',
     JERK_DIRECT_USE:
       reliableFrac >= 0.5 ? 'EPISODE_CONTEXT_ONLY' : 'NOT_RELIABLE',
     JERK_EPISODE_CONTEXT_ONLY: reliableFrac >= 0.25 ? 'YES' : 'NO',
+    jerkDistributionNote: 'jerkDistributionStdMps3 includes real dynamic variation — not isolated sensor noise',
     source: 'jerkFromAcceleration',
     policies,
     note: 'Raw cadence-aware jerk without smoothing — high sensitivity to Δt',
@@ -624,8 +977,60 @@ export function buildCadenceAndStaleness(
   return {
     staleHoldRecords: staleHolds,
     perSignalSurface: byFieldSurface,
-    providerTimestampAuthority: 'PHYSICAL_EVENT_CANDIDATE',
-    synqReceivedAtAuthority: 'DELIVERY_ONLY',
+    providerTimestampAuthority: 'BEST_AVAILABLE_PHYSICAL_EVENT_TIME_AUTHORITY',
+    synqReceivedAtAuthority: 'DELIVERY_TIME_ONLY',
+  };
+}
+
+export function laggedPearsonAtSeconds(
+  speedPoints: Array<{ utcMs: number; value: number }>,
+  signalRows: VideoGtExportedRow[],
+  lagSeconds: number,
+): number | null {
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (const sp of speedPoints) {
+    const targetMs = sp.utcMs + lagSeconds * 1000;
+    const near = signalRows
+      .map((r) => ({ ms: parseMs(r.providerTimestamp), v: extractNumericValue(r.rawValueJson) }))
+      .filter((x) => x.ms != null && x.v != null && Math.abs(x.ms! - targetMs) < 1500);
+    if (near.length === 0) continue;
+    const best = near.sort((a, b) => Math.abs(a.ms! - targetMs) - Math.abs(b.ms! - targetMs))[0]!;
+    xs.push(sp.value);
+    ys.push(best.v!);
+  }
+  return pearsonCorrelation(xs, ys);
+}
+
+export function computeEventDirectionAgreement(
+  speedPoints: SpeedSeriesPoint[],
+  signalRows: VideoGtExportedRow[],
+  lagSeconds: number,
+): { agreementFraction: number | null; evaluatedPairs: number } {
+  let agree = 0;
+  let total = 0;
+  for (let i = 1; i < speedPoints.length; i++) {
+    const prev = speedPoints[i - 1]!;
+    const cur = speedPoints[i]!;
+    const dt = (cur.utcMs - prev.utcMs) / 1000;
+    if (dt <= 0 || dt > 4) continue;
+    const speedDelta = cur.value - prev.value;
+    if (Math.abs(speedDelta) < 0.5) continue;
+
+    const targetMs = cur.utcMs + lagSeconds * 1000;
+    const near = signalRows
+      .map((r) => ({ ms: parseMs(r.providerTimestamp), v: extractNumericValue(r.rawValueJson) }))
+      .filter((x) => x.ms != null && x.v != null && Math.abs(x.ms! - targetMs) < 1500);
+    if (near.length < 2) continue;
+    const sorted = near.sort((a, b) => a.ms! - b.ms!);
+    const sigDelta = sorted[sorted.length - 1]!.v! - sorted[0]!.v!;
+    if (Math.abs(sigDelta) < 0.01) continue;
+    total++;
+    if (Math.sign(speedDelta) === Math.sign(sigDelta)) agree++;
+  }
+  return {
+    agreementFraction: total > 0 ? agree / total : null,
+    evaluatedPairs: total,
   };
 }
 
@@ -635,6 +1040,17 @@ export function buildPowertrainSignalCorrelation(params: {
   telemetryRows: VideoGtExportedRow[];
 }): Record<string, unknown> {
   const episodes: Record<string, unknown>[] = [];
+  const aggregateBySignal: Record<
+    string,
+    {
+      lagCorrelations: number[];
+      eventAgreements: number[];
+      episodeCount: number;
+      uniqueAlignmentEpisodes: number;
+      ambiguousBasinEpisodes: number;
+    }
+  > = {};
+
   const signals = [
     'powertrainCombustionEngineSpeed',
     'obdThrottlePosition',
@@ -642,11 +1058,24 @@ export function buildPowertrainSignalCorrelation(params: {
     'obdEngineLoad',
   ] as const;
 
+  for (const sig of signals) {
+    aggregateBySignal[sig] = {
+      lagCorrelations: [],
+      eventAgreements: [],
+      episodeCount: 0,
+      uniqueAlignmentEpisodes: 0,
+      ambiguousBasinEpisodes: 0,
+    };
+  }
+
   for (const disc of params.perClipDiscoveries) {
     const clip = params.externalGt.clips.find((c) => c.clipId === disc.clipId);
     const basin = selectStrongBasinPerClip(disc);
     if (!clip || !basin || basin.status !== 'STRONG_CANDIDATE') continue;
     if (basin.coverage < 0.5) continue;
+
+    const isUniqueAlignment = disc.HF_HISTORICAL.independentStatus === 'STRONG_CANDIDATE';
+    const isAmbiguousBasin = disc.HF_HISTORICAL.independentStatus === 'AMBIGUOUS';
 
     const startMs = basin.alignedClipStartMs;
     const endMs = startMs + (clip.videoDurationSeconds ?? 60) * 1000;
@@ -664,23 +1093,42 @@ export function buildPowertrainSignalCorrelation(params: {
           (parseMs(r.providerTimestamp) ?? 0) <= endMs,
       );
       const dynamics = analyzeSignalGroup(rows.map(toMetricsRow)).dynamics;
-      const speedVals: number[] = [];
-      const sigVals: number[] = [];
-      for (const sp of hfSpeed) {
-        const near = rows
-          .map((r) => ({ ms: parseMs(r.providerTimestamp), v: extractNumericValue(r.rawValueJson) }))
-          .filter((x) => x.ms != null && x.v != null && Math.abs(x.ms! - sp.utcMs) < 1500);
-        if (near.length === 0) continue;
-        const best = near.sort((a, b) => Math.abs(a.ms! - sp.utcMs) - Math.abs(b.ms! - sp.utcMs))[0]!;
-        speedVals.push(sp.value);
-        sigVals.push(best.v!);
+      const lagAnalysis: Record<string, unknown> = {};
+      let bestLag: number | null = null;
+      let bestCorr: number | null = null;
+
+      for (const lag of DIAGNOSTIC_LAG_SECONDS) {
+        const corr = laggedPearsonAtSeconds(hfSpeed, rows, lag);
+        lagAnalysis[`lag_${lag}s`] = corr;
+        if (corr != null && (bestCorr == null || Math.abs(corr) > Math.abs(bestCorr))) {
+          bestCorr = corr;
+          bestLag = lag;
+        }
       }
+
+      const eventDir = computeEventDirectionAgreement(hfSpeed, rows, bestLag ?? 0);
+      const agg = aggregateBySignal[field]!;
+      agg.episodeCount++;
+      if (isUniqueAlignment) agg.uniqueAlignmentEpisodes++;
+      if (isAmbiguousBasin) agg.ambiguousBasinEpisodes++;
+      if (bestCorr != null) agg.lagCorrelations.push(bestCorr);
+      if (eventDir.agreementFraction != null) agg.eventAgreements.push(eventDir.agreementFraction);
+
       signalStats[field] = {
         observationCount: rows.length,
         dynamicsClassification: dynamics.classification,
-        speedCorrelation: pearsonCorrelation(speedVals, sigVals),
+        laggedCorrelation: lagAnalysis,
+        bestDiagnosticLagSeconds: bestLag,
+        laggedCorrelationAtBestLag: bestCorr,
+        eventDirectionAgreement: eventDir.agreementFraction,
+        eventDirectionPairsEvaluated: eventDir.evaluatedPairs,
         evidenceClass: 'ALIGNED_EVENT_CORRELATED_SUPPORT',
-        note: 'Not direct video GT validation',
+        alignmentEpisodeClass: isUniqueAlignment
+          ? 'UNIQUE_ALIGNMENT_SUPPORTED'
+          : isAmbiguousBasin
+            ? 'AMBIGUOUS_BASIN_DIAGNOSTIC'
+            : 'OTHER',
+        note: 'Diagnostic lag/correlation only — not direct video GT validation',
       };
     }
 
@@ -688,18 +1136,60 @@ export function buildPowertrainSignalCorrelation(params: {
       clipId: disc.clipId,
       fileName: disc.fileName,
       evidenceTier: 'TIER_B_ALIGNED_EVENT_CORRELATION',
+      independentStatus: disc.HF_HISTORICAL.independentStatus,
       alignedClipStartUtc: basin.alignedClipStartUtc,
       signals: signalStats,
     });
   }
 
+  const signalInterpretations: Record<string, SignalRatingEvidence> = {};
+  const rpmAgg = aggregateBySignal.powertrainCombustionEngineSpeed!;
+  const throttleAgg = aggregateBySignal.obdThrottlePosition!;
+  const tpsAgg = aggregateBySignal.powertrainCombustionEngineTPS!;
+  const loadAgg = aggregateBySignal.obdEngineLoad!;
+
+  const avgEventAgreement = (vals: number[]) => (vals.length ? mean(vals) : null);
+  const avgLagCorr = (vals: number[]) => (vals.length ? mean(vals.map(Math.abs)) : null);
+
+  signalInterpretations.powertrainCombustionEngineSpeed = {
+    RATING: 'USEFUL_WITH_GATING',
+    EVIDENCE_BASIS: `eventDirectionAgreement=${avgEventAgreement(rpmAgg.eventAgreements)?.toFixed(2) ?? 'n/a'} across ${rpmAgg.episodeCount} episodes; laggedCorrelation=${avgLagCorr(rpmAgg.lagCorrelations)?.toFixed(2) ?? 'n/a'}`,
+    LIMITATION: `Not direct video GT; shift timing not proven; ${rpmAgg.ambiguousBasinEpisodes} ambiguous-basin episodes`,
+  };
+  signalInterpretations.obdThrottlePosition = {
+    RATING: 'SECONDARY_DEMAND_CONTEXT',
+    EVIDENCE_BASIS: `driver-demand eventDirectionAgreement=${avgEventAgreement(throttleAgg.eventAgreements)?.toFixed(2) ?? 'n/a'}; laggedCorrelation=${avgLagCorr(throttleAgg.lagCorrelations)?.toFixed(2) ?? 'n/a'}`,
+    LIMITATION: 'Separate from TPS; raw speed correlation insufficient alone',
+  };
+  signalInterpretations.powertrainCombustionEngineTPS = {
+    RATING: 'SECONDARY_DEMAND_CONTEXT',
+    EVIDENCE_BASIS: `driver-demand eventDirectionAgreement=${avgEventAgreement(tpsAgg.eventAgreements)?.toFixed(2) ?? 'n/a'}; laggedCorrelation=${avgLagCorr(tpsAgg.lagCorrelations)?.toFixed(2) ?? 'n/a'}`,
+    LIMITATION: 'Separate from obdThrottlePosition; semantics not identical',
+  };
+  signalInterpretations.obdEngineLoad = {
+    RATING: 'POWERTRAIN_DEMAND_CONTEXT_ONLY',
+    EVIDENCE_BASIS: `eventDirectionAgreement=${avgEventAgreement(loadAgg.eventAgreements)?.toFixed(2) ?? 'n/a'}; adds context beyond RPM+throttle in some windows`,
+    LIMITATION: 'Not vehicle mass/payload/road load; contextual only',
+  };
+
   return {
     evidenceTier: 'TIER_B_ALIGNED_EVENT_CORRELATION',
     episodeCount: episodes.length,
     episodes,
+    aggregateDiagnostics: Object.fromEntries(
+      signals.map((sig) => [
+        sig,
+        {
+          ...aggregateBySignal[sig],
+          meanEventDirectionAgreement: avgEventAgreement(aggregateBySignal[sig]!.eventAgreements),
+          meanAbsLaggedCorrelation: avgLagCorr(aggregateBySignal[sig]!.lagCorrelations),
+        },
+      ]),
+    ),
+    signalInterpretations,
     ENGINE_LOAD_INTERPRETATION:
       'Powertrain demand context only — not vehicle mass/payload/road load',
-    note: 'Correlation within qualified STRONG_CANDIDATE speed-aligned windows',
+    note: 'Correlation and lag analysis within qualified STRONG_CANDIDATE speed-aligned windows',
   };
 }
 
@@ -782,31 +1272,50 @@ export function buildUseCaseEligibilityMatrix(params: {
   speedValidation: Record<string, unknown>;
   derivedAccel: Record<string, unknown>;
   gearDirection: Record<string, unknown>;
+  powertrainCorrelation: Record<string, unknown>;
 }): Record<string, Record<string, EligibilityRating>> {
   const matrix: Record<string, Record<string, EligibilityRating>> = {};
-  const speedHf = params.surfaceMatrix.speed?.HF_HISTORICAL ?? {};
-  const speedLive = params.surfaceMatrix.speed?.LATEST_LIVE ?? {};
-  const hfMae = (params.speedValidation.aggregateHF as { MAE?: number })?.MAE ?? 99;
+  const alignmentFitMae =
+    (params.speedValidation.HF_SPEED_ALIGNMENT_FIT_MAE_KMH as number | null) ??
+    (params.speedValidation.aggregateHF as { ALIGNMENT_FIT_MAE?: number })?.ALIGNMENT_FIT_MAE ??
+    99;
+  const liveMatched = (params.speedValidation.aggregateLATEST_LIVE as { matchedPoints?: number })
+    ?.matchedPoints ?? 0;
   const accelPolicy = (params.derivedAccel.policies as Record<string, unknown>)?.maxGap_2s as
-    | { reliableAccelerationFraction?: number }
+    | { qualifiedPointFraction?: number }
     | undefined;
+  const rpmInterp = (
+    params.powertrainCorrelation.signalInterpretations as Record<string, SignalRatingEvidence>
+  )?.powertrainCombustionEngineSpeed;
 
   const signalRatings: Record<string, EligibilityRating> = {
-    speed_HF: hfMae <= 8 ? 'A' : hfMae <= 15 ? 'B' : 'C',
-    speed_LIVE: (speedLive.STALE_HOLD as { count?: number })?.count ? 'B' : 'C',
+    speed_HF: alignmentFitMae <= 10 ? 'B' : 'C',
+    speed_LIVE: liveMatched >= 3 ? 'C' : 'D',
     powertrainCombustionEngineSpeed:
-      rateFromDynamics(
-        String(params.surfaceMatrix.powertrainCombustionEngineSpeed?.HF_HISTORICAL?.dynamicsClassification ?? 'UNKNOWN'),
-        Number((params.surfaceMatrix.powertrainCombustionEngineSpeed?.LATEST_LIVE?.STALE_HOLD as { count?: number })?.count ?? 0),
-        (params.surfaceMatrix.powertrainCombustionEngineSpeed?.HF_HISTORICAL?.NEW_PHYSICAL_SAMPLE_CADENCE as { medianSeconds?: number })?.medianSeconds ?? null,
-      ),
+      rpmInterp?.RATING === 'USEFUL_WITH_GATING'
+        ? 'B'
+        : rateFromDynamics(
+            String(
+              params.surfaceMatrix.powertrainCombustionEngineSpeed?.HF_HISTORICAL
+                ?.dynamicsClassification ?? 'UNKNOWN',
+            ),
+            Number(
+              (params.surfaceMatrix.powertrainCombustionEngineSpeed?.LATEST_LIVE?.STALE_HOLD as {
+                count?: number;
+              })?.count ?? 0,
+            ),
+            (
+              params.surfaceMatrix.powertrainCombustionEngineSpeed?.HF_HISTORICAL
+                ?.NEW_PHYSICAL_SAMPLE_CADENCE as { medianSeconds?: number }
+            )?.medianSeconds ?? null,
+          ),
     obdThrottlePosition: 'B',
     powertrainCombustionEngineTPS: 'B',
     obdEngineLoad: 'C',
     powertrainTransmissionActualGear: 'C',
     powertrainTransmissionActualGearRatio: 'C',
     longitudinalAccelerationFromSpeed:
-      (accelPolicy?.reliableAccelerationFraction ?? 0) >= 0.7 ? 'B' : 'C',
+      (accelPolicy?.qualifiedPointFraction ?? 0) >= 0.6 ? 'B' : 'C',
     jerkFromAcceleration: 'D',
     providerTimestamp: 'A',
     synqReceivedAt: 'D',
@@ -843,11 +1352,99 @@ export function buildUseCaseEligibilityMatrix(params: {
   return matrix;
 }
 
+export function buildSignalClassifications(params: {
+  surfaceMatrix: Record<string, Record<string, Record<string, unknown>>>;
+  speedValidation: Record<string, unknown>;
+  derivedAccel: Record<string, unknown>;
+  jerkQuality: Record<string, unknown>;
+  gearDirection: Record<string, unknown>;
+  powertrainCorrelation: Record<string, unknown>;
+}): Record<string, SignalRatingEvidence> {
+  const alignmentFitMae = params.speedValidation.HF_SPEED_ALIGNMENT_FIT_MAE_KMH as number | null;
+  const holdoutMae = params.speedValidation.HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH as number | null;
+  const uniqueClips = params.speedValidation.UNIQUE_ALIGNMENT_SUPPORTED_CLIPS as number;
+  const liveMatched = (params.speedValidation.aggregateLATEST_LIVE as { matchedPoints?: number })
+    ?.matchedPoints ?? 0;
+  const liveCadence = (
+    params.surfaceMatrix.speed?.LATEST_LIVE?.NEW_PHYSICAL_SAMPLE_CADENCE as { medianSeconds?: number }
+  )?.medianSeconds;
+  const liveStale = (params.surfaceMatrix.speed?.LATEST_LIVE?.STALE_HOLD as { count?: number })?.count ?? 0;
+  const accel24 = (params.derivedAccel.policies as Record<string, unknown>)?.maxGap_2s as
+    | { qualifiedPointFraction?: number; implausibleAccelerationFraction?: number }
+    | undefined;
+  const powertrainInterp =
+    (params.powertrainCorrelation.signalInterpretations as Record<string, SignalRatingEvidence>) ?? {};
+
+  return {
+    SPEED: {
+      RATING: 'USEFUL_WITH_GATING',
+      EVIDENCE_BASIS: `HF alignment-fit MAE=${alignmentFitMae?.toFixed(2) ?? 'n/a'} km/h across ${params.speedValidation.qualifiedStrongBasinClips} STRONG basins; holdout MAE=${holdoutMae?.toFixed(2) ?? 'n/a'}; ${uniqueClips} unique-alignment clips`,
+      LIMITATION: 'IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY; nine-clip chronology unresolved',
+    },
+    RPM: powertrainInterp.powertrainCombustionEngineSpeed ?? {
+      RATING: 'USEFUL_WITH_GATING',
+      EVIDENCE_BASIS: 'Tier B event-correlated support',
+      LIMITATION: 'Not direct video GT',
+    },
+    THROTTLE: powertrainInterp.obdThrottlePosition ?? {
+      RATING: 'SECONDARY_DEMAND_CONTEXT',
+      EVIDENCE_BASIS: 'Tier B lag/event analysis',
+      LIMITATION: 'Separate from TPS',
+    },
+    TPS: powertrainInterp.powertrainCombustionEngineTPS ?? {
+      RATING: 'SECONDARY_DEMAND_CONTEXT',
+      EVIDENCE_BASIS: 'Tier B lag/event analysis',
+      LIMITATION: 'Separate from obdThrottlePosition',
+    },
+    ENGINE_LOAD: powertrainInterp.obdEngineLoad ?? {
+      RATING: 'CONTEXT_ONLY',
+      EVIDENCE_BASIS: 'Powertrain demand context',
+      LIMITATION: 'Not vehicle mass/payload',
+    },
+    ACTUAL_GEAR: {
+      RATING: 'CONTEXT_ONLY',
+      EVIDENCE_BASIS: `GEAR_STATE_OBSERVABILITY=${params.gearDirection.GEAR_STATE_OBSERVABILITY}`,
+      LIMITATION: 'GEAR_CHANGE_TIMING_OBSERVABILITY=NO',
+    },
+    GEAR_RATIO: {
+      RATING: 'CONTEXT_ONLY',
+      EVIDENCE_BASIS: 'State context on LATEST_SLOW',
+      LIMITATION: 'Slow cadence; not timing authority',
+    },
+    DERIVED_ACCELERATION: {
+      RATING:
+        (accel24?.qualifiedPointFraction ?? 0) >= 0.6 ? 'USEFUL_WITH_GATING' : 'WEAK',
+      EVIDENCE_BASIS: `qualifiedPointFraction@2s=${accel24?.qualifiedPointFraction?.toFixed(2) ?? 'n/a'}; implausibleFraction=${accel24?.implausibleAccelerationFraction?.toFixed(2) ?? 'n/a'}`,
+      LIMITATION: 'Derived from speed cadence; not direct GT',
+    },
+    DERIVED_JERK: {
+      RATING: String(params.jerkQuality.DERIVED_JERK_CLASSIFICATION) === 'NOT_RELIABLE' ? 'NOT_RELIABLE' : 'WEAK',
+      EVIDENCE_BASIS: `classification=${params.jerkQuality.DERIVED_JERK_CLASSIFICATION}`,
+      LIMITATION: 'Episode context only; high Δt sensitivity',
+    },
+    PROVIDER_TIMESTAMP: {
+      RATING: 'BEST_AVAILABLE_PHYSICAL_EVENT_TIME_AUTHORITY',
+      EVIDENCE_BASIS: 'Best available physical-event timeline in RD003 capture',
+      LIMITATION: 'Not independently proven raw ECU sample time',
+    },
+    SYNQ_RECEIVED_AT: {
+      RATING: 'NOT_RELIABLE',
+      EVIDENCE_BASIS: 'Delivery/ingress timing only; INGRESS_TIME_DIAGNOSTIC_SUPPORTED_CLIPS=0',
+      LIMITATION: 'Must not anchor physical driving events',
+    },
+    LATEST_LIVE_SPEED: {
+      RATING: 'CONTEXT_WITH_FRESHNESS_GATING',
+      EVIDENCE_BASIS: `directVideoMatchedPoints=${liveMatched}; medianCadence≈${liveCadence?.toFixed(1) ?? 'n/a'}s; staleHolds=${liveStale}`,
+      LIMITATION: 'LATEST_LIVE_DIRECT_VIDEO_VALIDATION=INSUFFICIENT_EVIDENCE; surface name does not imply freshness',
+    },
+  };
+}
+
 export function classifySignalUsability(
   field: string,
   surface: AcquisitionSurface,
   entry: Record<string, unknown>,
-  speedMae?: number | null,
+  speedAlignmentFitMae?: number | null,
 ): SignalUsabilityClass {
   if (entry.status === 'NOT_OBSERVED') return 'NOT_RELIABLE';
   const staleCount = (entry.STALE_HOLD as { count?: number })?.count ?? 0;
@@ -855,12 +1452,11 @@ export function classifySignalUsability(
   const medianCadence = (entry.NEW_PHYSICAL_SAMPLE_CADENCE as { medianSeconds?: number })?.medianSeconds ?? null;
 
   if (field === 'speed' && surface === 'HF_HISTORICAL') {
-    if (speedMae != null && speedMae <= 8) return 'STRONG';
-    if (speedMae != null && speedMae <= 15) return 'USEFUL_WITH_GATING';
+    if (speedAlignmentFitMae != null && speedAlignmentFitMae <= 10) return 'USEFUL_WITH_GATING';
     return 'USEFUL_WITH_GATING';
   }
   if (field === 'speed' && surface === 'LATEST_LIVE') {
-    return staleCount > 0 ? 'USEFUL_WITH_GATING' : 'CONTEXT_ONLY';
+    return 'CONTEXT_ONLY';
   }
   if (field === 'obdEngineLoad') return 'CONTEXT_ONLY';
   if (
@@ -884,7 +1480,7 @@ export function buildSignalAuthorityModel(params: {
   surfaceMatrix: Record<string, Record<string, Record<string, unknown>>>;
   speedValidation: Record<string, unknown>;
 }): Record<string, unknown> {
-  const hfMae = (params.speedValidation.aggregateHF as { MAE?: number | null })?.MAE ?? null;
+  const alignmentFitMae = params.speedValidation.HF_SPEED_ALIGNMENT_FIT_MAE_KMH as number | null;
   return {
     PRIMARY_KINEMATIC_AUTHORITY: ['speed (HF_HISTORICAL, providerTimestamp-aligned)'],
     SECONDARY_DYNAMIC_CONFIRMATION: [
@@ -906,6 +1502,7 @@ export function buildSignalAuthorityModel(params: {
       'obdEngineLoad as vehicle mass/payload',
       'unsigned speed alone for direction',
       'jerk without cadence qualification',
+      'alignment-fit MAE as independent speed accuracy',
     ],
     proposedConfidenceFactors: [
       'sampleCadenceMedianSeconds',
@@ -916,8 +1513,11 @@ export function buildSignalAuthorityModel(params: {
       'alignmentBasinCoverage',
       'interpolationGapSeconds',
       'missingnessRate',
+      'holdoutValidationMae',
+      'negativeControlArtificialDynamics',
     ],
-    HF_SPEED_TYPICAL_ERROR_KMH: hfMae,
+    HF_SPEED_ALIGNMENT_FIT_MAE_KMH: alignmentFitMae,
+    IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY: 'YES',
     note: 'Proposed architecture only — not implemented in production Driving Score',
   };
 }
@@ -928,83 +1528,114 @@ export function buildSignalQualitySummary(params: {
   derivedAccel: Record<string, unknown>;
   jerkQuality: Record<string, unknown>;
   gearDirection: Record<string, unknown>;
+  powertrainCorrelation: Record<string, unknown>;
   authorityModel: Record<string, unknown>;
   discoverySummary: Record<string, unknown>;
+  negativeControls: Record<string, unknown>[];
 }): Record<string, unknown> {
-  const hfMae = (params.speedValidation.aggregateHF as { MAE?: number | null })?.MAE ?? null;
+  const alignmentFitMae = params.speedValidation.HF_SPEED_ALIGNMENT_FIT_MAE_KMH as number | null;
+  const holdoutMae = params.speedValidation.HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH as number | null;
   const hfCadence = (
     params.surfaceMatrix.speed?.HF_HISTORICAL?.NEW_PHYSICAL_SAMPLE_CADENCE as {
       medianSeconds?: number;
     }
   )?.medianSeconds;
-  const accel24 = (params.derivedAccel.policies as Record<string, unknown>)?.maxGap_2s as
-    | { reliableAccelerationFraction?: number }
-    | undefined;
-  const accelReliable = (accel24?.reliableAccelerationFraction ?? 0) >= 0.65;
+  const liveCadence = (
+    params.surfaceMatrix.speed?.LATEST_LIVE?.NEW_PHYSICAL_SAMPLE_CADENCE as {
+      medianSeconds?: number;
+    }
+  )?.medianSeconds;
+  const classifications = buildSignalClassifications({
+    surfaceMatrix: params.surfaceMatrix,
+    speedValidation: params.speedValidation,
+    derivedAccel: params.derivedAccel,
+    jerkQuality: params.jerkQuality,
+    gearDirection: params.gearDirection,
+    powertrainCorrelation: params.powertrainCorrelation,
+  });
 
-  const humanSummary: Record<string, SignalUsabilityClass> = {
-    SPEED: classifySignalUsability('speed', 'HF_HISTORICAL', params.surfaceMatrix.speed?.HF_HISTORICAL ?? {}, hfMae),
-    RPM: classifySignalUsability(
-      'powertrainCombustionEngineSpeed',
-      'HF_HISTORICAL',
-      params.surfaceMatrix.powertrainCombustionEngineSpeed?.HF_HISTORICAL ?? {},
-    ),
-    THROTTLE: classifySignalUsability(
-      'obdThrottlePosition',
-      'HF_HISTORICAL',
-      params.surfaceMatrix.obdThrottlePosition?.HF_HISTORICAL ?? {},
-    ),
-    TPS: classifySignalUsability(
-      'powertrainCombustionEngineTPS',
-      'HF_HISTORICAL',
-      params.surfaceMatrix.powertrainCombustionEngineTPS?.HF_HISTORICAL ?? {},
-    ),
-    ENGINE_LOAD: 'CONTEXT_ONLY',
-    ACTUAL_GEAR: 'CONTEXT_ONLY',
-    GEAR_RATIO: 'CONTEXT_ONLY',
-    DERIVED_ACCELERATION: accelReliable ? 'USEFUL_WITH_GATING' : 'WEAK',
-    DERIVED_JERK: String(params.jerkQuality.JERK_DIRECT_USE) === 'NOT_RELIABLE' ? 'NOT_RELIABLE' : 'WEAK',
-    PROVIDER_TIMESTAMP: 'STRONG',
-    SYNQ_RECEIVED_AT: 'NOT_RELIABLE',
+  const humanSummary: Record<string, string> = {
+    SPEED: classifications.SPEED.RATING,
+    RPM: classifications.RPM.RATING,
+    THROTTLE: classifications.THROTTLE.RATING,
+    TPS: classifications.TPS.RATING,
+    ENGINE_LOAD: classifications.ENGINE_LOAD.RATING,
+    ACTUAL_GEAR: classifications.ACTUAL_GEAR.RATING,
+    GEAR_RATIO: classifications.GEAR_RATIO.RATING,
+    DERIVED_ACCELERATION: classifications.DERIVED_ACCELERATION.RATING,
+    DERIVED_JERK: classifications.DERIVED_JERK.RATING,
+    PROVIDER_TIMESTAMP: classifications.PROVIDER_TIMESTAMP.RATING,
+    SYNQ_RECEIVED_AT: classifications.SYNQ_RECEIVED_AT.RATING,
   };
+
+  const nc2804 = params.negativeControls.find((n) => n.fileName === 'IMG_2804.mp4');
+  const nc2809 = params.negativeControls.find((n) => n.fileName === 'IMG_2809.mp4');
 
   return {
     evidenceId: SIGNAL_QUALITY_EVIDENCE_ID,
+    closeoutRevision: SIGNAL_QUALITY_CLOSEOUT_REVISION,
     analysisMode: SIGNAL_QUALITY_MODE,
     evidenceClass: 'SIGNAL_QUALITY+DRIVING_INTELLIGENCE_FOUNDATION',
     GROUND_TRUTH_VALIDATED: 'NO',
     DRIVING_SCORE_CHANGED: 'NO',
     REFERENCE_CAPTURE_RUNTIME_CHANGED: 'NO',
+    whatWeKnow: [
+      'HF speed contains recoverable driving dynamics at ~2s median physical cadence when gated',
+      'providerTimestamp is best available physical-event timeline',
+      'RPM/throttle/TPS show Tier B event-correlated support in aligned windows',
+      'gear state is observable; gear timing is not',
+    ],
+    whatWeSuspect: [
+      'Holdout speed accuracy may be better than alignment-fit alone where evaluated',
+      'LATEST_LIVE may help freshness-gated near-real-time surfaces when explicitly measured',
+      'derived acceleration may support episode context with conservative gap gating',
+    ],
+    whatWeMustNotClaim: [
+      'Alignment-fit MAE as independent DIMO speed accuracy',
+      'Exact jerk/acceleration accuracy without suitable GT',
+      'LATEST_LIVE freshness by surface name',
+      'Exact gear-change timing from current cadence',
+    ],
     humanSummary,
+    signalClassifications: classifications,
     HF_SPEED_VIDEO_VALIDATION_SUPPORTED:
       (params.speedValidation.qualifiedStrongBasinClips as number) > 0 ? 'YES' : 'NO',
-    HF_SPEED_TYPICAL_ERROR_KMH: hfMae,
-    HF_SPEED_TEMPORAL_RESOLUTION: hfCadence != null ? `~${hfCadence.toFixed(2)}s median new physical sample` : null,
-    LATEST_LIVE_SPEED_USEFULNESS: 'USEFUL_WITH_GATING',
-    PROVIDER_TIME_PHYSICAL_EVENT_USEFULNESS: 'STRONG',
+    HF_SPEED_ALIGNMENT_FIT_MAE_KMH: alignmentFitMae,
+    HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH: holdoutMae,
+    IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY: 'YES',
+    UNIQUE_ALIGNMENT_SUPPORTED_CLIPS: params.speedValidation.UNIQUE_ALIGNMENT_SUPPORTED_CLIPS,
+    AMBIGUOUS_CLIPS_WITH_STRONG_SPEED_BASIN:
+      params.speedValidation.AMBIGUOUS_CLIPS_WITH_STRONG_SPEED_BASIN,
+    HF_SPEED_TEMPORAL_RESOLUTION:
+      hfCadence != null ? `~${hfCadence.toFixed(2)}s median new physical sample` : null,
+    LATEST_LIVE_DIRECT_VIDEO_VALIDATION: 'INSUFFICIENT_EVIDENCE',
+    LATEST_LIVE_GENERAL_DATA_UTILITY: 'CONTEXT_WITH_FRESHNESS_GATING',
+    LATEST_LIVE_OBSERVED_MEDIAN_CADENCE_SECONDS: liveCadence,
+    PROVIDER_TIME_PHYSICAL_EVENT_USEFULNESS: 'BEST_AVAILABLE_PHYSICAL_EVENT_TIME_AUTHORITY',
     INGRESS_TIME_PHYSICAL_EVENT_USEFULNESS: 'NOT_RELIABLE',
-    DERIVED_ACCELERATION_RELIABILITY: accelReliable ? 'USEFUL_WITH_GATING' : 'WEAK',
-    DERIVED_ACCELERATION_RECOMMENDED_MAX_GAP: 'ANALYSIS_ONLY_2.0s_provisional',
-    DERIVED_JERK_RELIABILITY: params.jerkQuality.JERK_DIRECT_USE,
-    RPM_DYNAMIC_EPISODE_USEFULNESS: 'USEFUL_WITH_GATING',
-    RPM_SHIFT_SIGNATURE_USEFULNESS: params.gearDirection.RPM_SHIFT_SIGNATURE_DETECTABILITY,
-    OBD_THROTTLE_USEFULNESS: 'SECONDARY_DEMAND_CONTEXT',
-    POWERTRAIN_TPS_USEFULNESS: 'SECONDARY_DEMAND_CONTEXT',
-    ENGINE_LOAD_USEFULNESS: 'POWERTRAIN_DEMAND_CONTEXT_ONLY',
-    GEAR_STATE_USEFULNESS: params.gearDirection.GEAR_STATE_USEFUL,
-    GEAR_CHANGE_TIMING_USEFULNESS: params.gearDirection.PRECISE_SHIFT_TIMING_USEFUL,
+    DERIVED_ACCELERATION_CLASSIFICATION: classifications.DERIVED_ACCELERATION.RATING,
+    DERIVED_ACCELERATION_PROVISIONAL_MAX_GAP: 'ANALYSIS_ONLY — no production threshold selected',
+    DERIVED_JERK_CLASSIFICATION: params.jerkQuality.DERIVED_JERK_CLASSIFICATION,
+    RPM_CLASSIFICATION: classifications.RPM.RATING,
+    THROTTLE_CLASSIFICATION: classifications.THROTTLE.RATING,
+    TPS_CLASSIFICATION: classifications.TPS.RATING,
+    ENGINE_LOAD_CLASSIFICATION: classifications.ENGINE_LOAD.RATING,
+    GEAR_STATE_CLASSIFICATION: classifications.ACTUAL_GEAR.RATING,
+    GEAR_TIMING_CLASSIFICATION: params.gearDirection.PRECISE_SHIFT_TIMING_USEFUL === 'NO' ? 'NOT_SUPPORTED' : 'PARTIAL',
+    NEGATIVE_CONTROL_IMG_2804: nc2804?.NEGATIVE_CONTROL_ARTIFICIAL_DYNAMICS ?? 'INSUFFICIENT_EVIDENCE',
+    NEGATIVE_CONTROL_IMG_2809: nc2809?.NEGATIVE_CONTROL_ARTIFICIAL_DYNAMICS ?? 'INSUFFICIENT_EVIDENCE',
     DIRECTION_RECONSTRUCTION_CAPABILITY: params.gearDirection.DIRECTION_RECONSTRUCTION_CAPABILITY,
     OFFLINE_TRIP_RECONSTRUCTION_READINESS: 'READY_WITH_GATING',
     NEAR_REALTIME_FEEDBACK_READINESS: 'NOT_READY',
     POST_TRIP_DRIVING_SCORE_READINESS: 'FOUNDATION_ONLY_NOT_PRODUCTION',
     ...params.authorityModel,
-    SIGNALS_SAFE_FOR_FUTURE_DRIVING_SCORE: ['speed (HF_HISTORICAL, gated)'],
+    SIGNALS_SAFE_FOR_FUTURE_DRIVING_SCORE: ['speed (HF_HISTORICAL, gated, confidence-scored)'],
     SIGNALS_REQUIRING_CONFIDENCE_GATING: [
       'powertrainCombustionEngineSpeed',
       'obdThrottlePosition',
       'powertrainCombustionEngineTPS',
       'derived longitudinal acceleration',
-      'LATEST_LIVE speed',
+      'LATEST_LIVE speed (freshness-gated only)',
     ],
     SIGNALS_NOT_SAFE_AS_DIRECT_SCORE_INPUT: [
       'synqReceivedAt',
@@ -1012,6 +1643,7 @@ export function buildSignalQualitySummary(params: {
       'jerk (raw)',
       'gear timing without cadence proof',
       'unsigned speed for direction',
+      'alignment-fit MAE as accuracy claim',
     ],
     PRIOR_ALIGNMENT_STATE: {
       HF_SPEED_ALIGNMENT_V2_CONCLUSION: params.discoverySummary.HF_SPEED_ALIGNMENT_V2_CONCLUSION,
@@ -1049,7 +1681,10 @@ export function runRd003SignalQualityInterpretation(params: {
     telemetryRows: params.telemetryRows,
   });
   const cadenceAndStaleness = buildCadenceAndStaleness(params.telemetryRows);
-  const derivedAccelerationQuality = buildDerivedAccelerationQuality(params.telemetryRows);
+  const derivedAccelerationQuality = buildDerivedAccelerationQuality(
+    params.telemetryRows,
+    speedVideoValidation.negativeControls as Record<string, unknown>[],
+  );
   const jerkQuality = buildJerkQuality(derivedAccelerationQuality);
   const powertrainSignalCorrelation = buildPowertrainSignalCorrelation({
     perClipDiscoveries: discovery.perClipDiscoveries,
@@ -1065,6 +1700,7 @@ export function runRd003SignalQualityInterpretation(params: {
     speedValidation: speedVideoValidation,
     derivedAccel: derivedAccelerationQuality,
     gearDirection: gearDirectionQuality,
+    powertrainCorrelation: powertrainSignalCorrelation,
   });
   const authorityModel = buildSignalAuthorityModel({
     surfaceMatrix: signalSurfaceQualityMatrix as Record<string, Record<string, Record<string, unknown>>>,
@@ -1076,8 +1712,10 @@ export function runRd003SignalQualityInterpretation(params: {
     derivedAccel: derivedAccelerationQuality,
     jerkQuality,
     gearDirection: gearDirectionQuality,
+    powertrainCorrelation: powertrainSignalCorrelation,
     authorityModel,
     discoverySummary: discovery.discoverySummary,
+    negativeControls: speedVideoValidation.negativeControls as Record<string, unknown>[],
   });
 
   return {

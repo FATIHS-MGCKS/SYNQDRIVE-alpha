@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-rd003-signal-quality-closeout-2026-09-03',
+    version: '4.9.1043',
+    title: 'DI-EV-0034E.1 — RD003 Signal Quality Correctness Closeout',
+    summary: [
+      'Corrects alignment-fit MAE vs independent accuracy terminology; adds holdout validation.',
+      'Fixes negative-control cruise-window scoring for IMG_2804/IMG_2809.',
+      'Renames acceleration/jerk distribution metrics; PROVISIONAL_CANDIDATE_MAX_GAP only.',
+      'LATEST_LIVE_DIRECT_VIDEO_VALIDATION=INSUFFICIENT_EVIDENCE; freshness from metrics not surface name.',
+      'Per-signal session coverage, lag/event powertrain diagnostics, evidence-traced ratings.',
+    ],
+    reason: 'Human review found interpretation defects that must be fixed before DI-EV-0034F design.',
+    previousBehavior: 'E.0 reported ~8.46 km/h as typical error; negative controls used full-clip errors; FULL_SESSION hardcoded.',
+    details:
+      'reference-capture-rd003-signal-quality.ts E.1 closeout; regenerated rd003-signal-quality/ artifacts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T12:00:00.000Z',
+  },
+  {
     id: 'dimo-rd003-signal-quality-interpretation-2026-09-03',
     version: '4.9.1042',
     title: 'DI-EV-0034E — RD003 Signal Quality Interpretation + Usability Matrix',

@@ -15,6 +15,7 @@ import {
 import {
   runRd003SignalQualityInterpretation,
   SIGNAL_QUALITY_EVIDENCE_ID,
+  SIGNAL_QUALITY_CLOSEOUT_REVISION,
   SIGNAL_QUALITY_MODE,
   signalQualityOutputSha256,
 } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-rd003-signal-quality';
@@ -141,8 +142,10 @@ function main(): void {
         EXTERNAL_GT_SHA256: externalGtSha256,
         outputSha256: outputSha,
         outDir,
+        closeoutRevision: SIGNAL_QUALITY_CLOSEOUT_REVISION,
         humanSummary: result.signalQualitySummary.humanSummary,
-        HF_SPEED_TYPICAL_ERROR_KMH: result.signalQualitySummary.HF_SPEED_TYPICAL_ERROR_KMH,
+        HF_SPEED_ALIGNMENT_FIT_MAE_KMH: result.signalQualitySummary.HF_SPEED_ALIGNMENT_FIT_MAE_KMH,
+        HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH: result.signalQualitySummary.HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH,
         DRIVING_SCORE_CHANGED: 'NO',
       },
       null,

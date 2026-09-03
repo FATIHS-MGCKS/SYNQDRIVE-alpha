@@ -16,6 +16,9 @@ import {
   runRd003SignalQualityInterpretation,
   SIGNAL_QUALITY_EVIDENCE_ID,
   buildGearDirectionQuality,
+  getCruiseSpeedGtObservations,
+  resolveNegativeControlCruiseWindow,
+  SIGNAL_QUALITY_CLOSEOUT_REVISION,
 } from './reference-capture-rd003-signal-quality';
 import { buildSpeedSeries } from './reference-capture-rd003-video-gt-alignment';
 
@@ -62,9 +65,12 @@ describe('DI-EV-0034E signal quality interpretation', () => {
     ];
     const matrix = buildSignalSurfaceQualityMatrix(rows);
     const entry = matrix.speed.HF_HISTORICAL as Record<string, unknown>;
-    expect(entry.PHYSICAL_EVENT_TIME_AUTHORITY).toBe('providerTimestamp');
-    expect(entry.DELIVERY_TIME).toBe('synqReceivedAt');
-    expect(entry.PROVIDER_SAMPLE_AGE).toBeDefined();
+    expect(entry.BEST_AVAILABLE_PHYSICAL_EVENT_TIME_AUTHORITY).toBe('providerTimestamp');
+    expect(entry.DELIVERY_TIME_ONLY).toBe('synqReceivedAt');
+    expect(entry.SESSION_SPAN_COVERAGE).toBeDefined();
+    expect(entry.SESSION_COVERAGE).toBeUndefined();
+    expect(entry.freshnessEvaluatedFromProviderMetrics).toBe('YES');
+    expect(entry.freshnessEvaluatedBySurfaceName).toBeUndefined();
   });
 
   it('2) duplicate physical samples do not inflate cadence', () => {
@@ -338,5 +344,86 @@ describe('DI-EV-0034E signal quality interpretation', () => {
     }).signalQualitySummary;
     expect(stableStringify(committed.humanSummary)).toBe(stableStringify(fresh.humanSummary));
     expect(committed.evidenceId).toBe(SIGNAL_QUALITY_EVIDENCE_ID);
+  });
+});
+
+describe('DI-EV-0034E.1 signal quality correctness closeout', () => {
+  it('E.1a) alignment-fit MAE is not labelled independent accuracy', () => {
+    if (!hasExternalGt || !hasTelemetry) return;
+    const { loadExternalGtDocument, loadCanonicalTelemetryJsonl } = require('./reference-capture-rd003-video-gt-alignment');
+    const result = runRd003SignalQualityInterpretation({
+      telemetryRows: loadCanonicalTelemetryJsonl(TELEMETRY_JSONL),
+      externalGt: loadExternalGtDocument(EXTERNAL_GT),
+    });
+    expect(result.speedVideoValidation.IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY).toBe('YES');
+    expect(result.signalQualitySummary.HF_SPEED_ALIGNMENT_FIT_MAE_KMH).not.toBeNull();
+    expect(result.signalQualitySummary.HF_SPEED_TYPICAL_ERROR_KMH).toBeUndefined();
+    expect(result.signalQualitySummary.IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY).toBe('YES');
+  });
+
+  it('E.1b) negative control scores only cruise-window GT observations', () => {
+    if (!hasExternalGt) return;
+    const { loadExternalGtDocument } = require('./reference-capture-rd003-video-gt-alignment');
+    const externalGt = loadExternalGtDocument(EXTERNAL_GT);
+    const clip2809 = externalGt.clips.find((c: { fileName: string }) => c.fileName === 'IMG_2809.mp4')!;
+    const window = resolveNegativeControlCruiseWindow(clip2809)!;
+    expect(window.toSeconds).toBeLessThanOrEqual(18);
+    const cruiseObs = getCruiseSpeedGtObservations(clip2809);
+    expect(cruiseObs.every((o) => (o.videoTimeSeconds ?? 0) <= window.toSeconds)).toBe(true);
+    expect(cruiseObs.some((o) => (o.videoTimeSeconds ?? 0) > 20)).toBe(false);
+  });
+
+  it('E.1c) acceleration uses distribution semantics not noise', () => {
+    if (!hasExternalGt || !hasTelemetry) return;
+    const { loadExternalGtDocument, loadCanonicalTelemetryJsonl } = require('./reference-capture-rd003-video-gt-alignment');
+    const result = runRd003SignalQualityInterpretation({
+      telemetryRows: loadCanonicalTelemetryJsonl(TELEMETRY_JSONL),
+      externalGt: loadExternalGtDocument(EXTERNAL_GT),
+    });
+    const policy = (result.derivedAccelerationQuality.policies as Record<string, Record<string, unknown>>)['maxGap_2s'];
+    expect(policy.accelerationDistributionStdMps2).toBeDefined();
+    expect(policy.accelerationNoiseStdMps2).toBeUndefined();
+    expect(policy.qualifiedPointFraction).toBeDefined();
+    expect(result.derivedAccelerationQuality.PROVISIONAL_CANDIDATE_MAX_GAP).toContain('ANALYSIS_ONLY');
+  });
+
+  it('E.1d) LATEST_LIVE direct video validation is insufficient evidence', () => {
+    if (!hasExternalGt || !hasTelemetry) return;
+    const { loadExternalGtDocument, loadCanonicalTelemetryJsonl } = require('./reference-capture-rd003-video-gt-alignment');
+    const result = runRd003SignalQualityInterpretation({
+      telemetryRows: loadCanonicalTelemetryJsonl(TELEMETRY_JSONL),
+      externalGt: loadExternalGtDocument(EXTERNAL_GT),
+    });
+    expect(result.signalQualitySummary.LATEST_LIVE_DIRECT_VIDEO_VALIDATION).toBe('INSUFFICIENT_EVIDENCE');
+    expect(result.signalQualitySummary.LATEST_LIVE_GENERAL_DATA_UTILITY).toBe('CONTEXT_WITH_FRESHNESS_GATING');
+    expect(result.signalQualitySummary.LATEST_LIVE_SPEED_USEFULNESS).toBeUndefined();
+  });
+
+  it('E.1e) signal classifications include evidence basis and limitation', () => {
+    if (!hasExternalGt || !hasTelemetry) return;
+    const { loadExternalGtDocument, loadCanonicalTelemetryJsonl } = require('./reference-capture-rd003-video-gt-alignment');
+    const result = runRd003SignalQualityInterpretation({
+      telemetryRows: loadCanonicalTelemetryJsonl(TELEMETRY_JSONL),
+      externalGt: loadExternalGtDocument(EXTERNAL_GT),
+    });
+    const cls = result.signalQualitySummary.signalClassifications as Record<string, { RATING: string; EVIDENCE_BASIS: string; LIMITATION: string }>;
+    expect(cls.SPEED.EVIDENCE_BASIS).toContain('alignment-fit');
+    expect(cls.SPEED.LIMITATION).toContain('IN_SAMPLE');
+    expect(cls.PROVIDER_TIMESTAMP.RATING).toBe('BEST_AVAILABLE_PHYSICAL_EVENT_TIME_AUTHORITY');
+    expect(result.signalQualitySummary.closeoutRevision).toBe(SIGNAL_QUALITY_CLOSEOUT_REVISION);
+  });
+
+  it('E.1f) holdout validation reported separately from alignment fit', () => {
+    if (!hasExternalGt || !hasTelemetry) return;
+    const { loadExternalGtDocument, loadCanonicalTelemetryJsonl } = require('./reference-capture-rd003-video-gt-alignment');
+    const result = runRd003SignalQualityInterpretation({
+      telemetryRows: loadCanonicalTelemetryJsonl(TELEMETRY_JSONL),
+      externalGt: loadExternalGtDocument(EXTERNAL_GT),
+    });
+    expect(Array.isArray(result.speedVideoValidation.holdoutValidation)).toBe(true);
+    const evaluated = (result.speedVideoValidation.holdoutValidation as Array<Record<string, unknown>>).filter(
+      (h) => h.status === 'EVALUATED',
+    );
+    expect(evaluated.length).toBeGreaterThan(0);
   });
 });

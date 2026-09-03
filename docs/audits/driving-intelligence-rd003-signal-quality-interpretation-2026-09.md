@@ -1,9 +1,23 @@
-# RD003 Signal Quality Interpretation — DI-EV-0034E
+# RD003 Signal Quality Interpretation — DI-EV-0034E / E.1
 
-**Date:** 2026-09-03  
-**Evidence ID:** DI-EV-0034E  
-**Evidence class:** SIGNAL_QUALITY + DRIVING_INTELLIGENCE_FOUNDATION  
-**Session:** DIMO_LTE_R1_REFERENCE_DRIVE_003  
+**Date:** 2026-09-03
+**Evidence ID:** DI-EV-0034E
+**Closeout revision:** DI-EV-0034E.1 (correctness closeout)
+**Evidence class:** SIGNAL_QUALITY + DRIVING_INTELLIGENCE_FOUNDATION
+**Session:** DIMO_LTE_R1_REFERENCE_DRIVE_003
+
+## DI-EV-0034E.1 correctness closeout
+
+Human review corrected interpretation/reporting defects before DI-EV-0034F:
+
+- **Alignment-fit MAE ≠ independent accuracy** — `HF_SPEED_ALIGNMENT_FIT_MAE_KMH` (~8.46) is in-sample fit on STRONG basins discovered with the same video GT. `HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH` is reported only from deterministic holdout evaluation (~7.85 where evaluated).
+- **Clip taxonomy** — `UNIQUE_ALIGNMENT_SUPPORTED_CLIPS=2`, `AMBIGUOUS_CLIPS_WITH_STRONG_SPEED_BASIN=6`.
+- **Negative controls fixed** — IMG_2804 / IMG_2809 score only declared stable-cruise GT windows (`NEGATIVE_CONTROL_ARTIFICIAL_DYNAMICS=ELEVATED` for both).
+- **Acceleration semantics** — `accelerationDistributionStdMps2` (not “noise”); `PROVISIONAL_CANDIDATE_MAX_GAP` (not production recommendation).
+- **LATEST_LIVE** — `LATEST_LIVE_DIRECT_VIDEO_VALIDATION=INSUFFICIENT_EVIDENCE` (1 matched point); `LATEST_LIVE_GENERAL_DATA_UTILITY=CONTEXT_WITH_FRESHNESS_GATING` (median cadence ~6s, stale holds).
+- **Session coverage** — per-signal `OBSERVED_SPAN_*`, `TEMPORAL_CONTINUITY`, gap metrics replace hardcoded `FULL_SESSION`.
+- **Powertrain** — lag analysis (0–4s) and event-direction agreement drive interpretations.
+- **Ratings** — each signal has `RATING`, `EVIDENCE_BASIS`, `LIMITATION` in `signal-quality-summary.json`.
 
 ## Executive summary
 
@@ -17,14 +31,14 @@ The RD003 time-alignment methodology (DI-EV-0033 through DI-EV-0034D.2) has comp
 |-------------------|--------|
 | SPEED | USEFUL_WITH_GATING |
 | RPM | USEFUL_WITH_GATING |
-| THROTTLE (obdThrottlePosition) | USEFUL_WITH_GATING |
-| TPS (powertrainCombustionEngineTPS) | USEFUL_WITH_GATING |
-| ENGINE_LOAD | CONTEXT_ONLY |
+| THROTTLE (obdThrottlePosition) | SECONDARY_DEMAND_CONTEXT |
+| TPS (powertrainCombustionEngineTPS) | SECONDARY_DEMAND_CONTEXT |
+| ENGINE_LOAD | POWERTRAIN_DEMAND_CONTEXT_ONLY |
 | ACTUAL_GEAR | CONTEXT_ONLY |
 | GEAR_RATIO | CONTEXT_ONLY |
-| DERIVED_ACCELERATION | WEAK |
+| DERIVED_ACCELERATION | USEFUL_WITH_GATING |
 | DERIVED_JERK | WEAK |
-| PROVIDER_TIMESTAMP | STRONG |
+| PROVIDER_TIMESTAMP | BEST_AVAILABLE_PHYSICAL_EVENT_TIME_AUTHORITY |
 | SYNQ_RECEIVED_AT | NOT_RELIABLE |
 
 ---
@@ -35,13 +49,14 @@ The RD003 time-alignment methodology (DI-EV-0033 through DI-EV-0034D.2) has comp
 
 ## 2. How accurately?
 
-Across qualified STRONG_CANDIDATE basins (Tier A direct video validation):
+Across qualified STRONG_CANDIDATE basins (Tier A — **alignment-fit**, not independent accuracy):
 
-- **HF_HISTORICAL aggregate MAE:** ~8.5 km/h (109 matched GT points)
+- **HF_HISTORICAL alignment-fit MAE:** ~8.5 km/h (`HF_SPEED_ALIGNMENT_FIT_MAE_KMH`, 109 matched GT points)
+- **Holdout MAE (where evaluated):** ~7.8 km/h (`HF_SPEED_INDEPENDENT_ACCURACY_MAE_KMH`)
 - **HF aggregate RMSE:** ~12.2 km/h
 - **Max absolute error:** ~52 km/h (outlier episodes; not typical)
 
-Per-clip MAE varies; best clips approach single-digit km/h under strong basins. This is **candidate alignment evidence**, not validated global truth.
+`IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY=YES`. Per-clip MAE varies; best clips approach single-digit km/h under strong basins. This is **candidate alignment evidence**, not validated global truth.
 
 ## 3. At what temporal resolution?
 
@@ -51,7 +66,7 @@ Per-clip MAE varies; best clips approach single-digit km/h under strong basins. 
 
 ## 4. Is HF better than LATEST_LIVE for driving reconstruction?
 
-**For offline episode reconstruction: generally yes.** HF_HISTORICAL provides denser unique physical samples and better video-GT coverage in qualified basins. LATEST_LIVE matched only one GT point in aggregate cross-check and carries stale-hold risk. LATEST_LIVE may still help near-real-time surfaces when freshness is explicitly evaluated — not assumed from surface name alone.
+**For offline episode reconstruction: generally yes.** HF_HISTORICAL provides denser unique physical samples and better video-GT coverage in qualified basins. `LATEST_LIVE_DIRECT_VIDEO_VALIDATION=INSUFFICIENT_EVIDENCE` (only ~1 matched GT point). `LATEST_LIVE_GENERAL_DATA_UTILITY=CONTEXT_WITH_FRESHNESS_GATING` — median cadence ~6s, stale-hold exposure, large provider-age tail. LATEST_LIVE may still help near-real-time surfaces when freshness is explicitly evaluated — not assumed from surface name alone.
 
 ## 5. Is synqReceivedAt suitable for physical event timing?
 
