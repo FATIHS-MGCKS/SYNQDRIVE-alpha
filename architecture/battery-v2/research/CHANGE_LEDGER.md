@@ -16,6 +16,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-03 — M3.1 pre-cutover PKG-01 safety gate
+
+| Field | Content |
+|-------|---------|
+| **CHANGE** | PKG-01 pre-cutover guard: `VALID`-only handoff eligibility; reconciliation terminalization for contaminated/missed ENQUEUED; Stage-2 activation script; deprecated invalid M3.1 script; production forensic simulator + 24-identity classification. |
+| **VALIDATION** | `pkg01-pre-cutover-safety.policy.spec.ts` (production fixtures); `battery-v2-cutover.policy.spec.ts`; `battery-v2-stage2-production-activation.selftest.sh`. |
+| **OBSERVED_EFFECT** | All 24 production ENQUEUED identities → `SAFE_TERMINAL`; `WOULD_CREATE_CUSTOMER_PUBLICATION_COUNT=0` with guard. |
+| **DECISION_STATUS** | `CORRECTED_STAGE2_ACTIVATION_READY=YES` (deploy guard before execute); `PRE_CUTOVER_GUARD_REQUIRED=YES`. |
+
 ## CL-2026-09-03 — M3.1 cutover contract audit
 
 | Field | Content |
@@ -28,7 +37,8 @@ Append-only scientific record. Newest entries first.
 | **VALIDATION** | `battery-v2-cutover.policy.spec.ts`, `battery-health-v2.config.ts`, `lv-publication-chain-resolution.md`, production forensic evidence from ≥6h audit. |
 | **NON_EFFECTS** | No production config/PM2/DB changes; no flag correction executed. |
 | **REMAINING_GAPS** | Corrected Stage-2 activation + new T0 + re-validation required. |
-| **DECISION_STATUS** | `ROOT_CAUSE_CLASS=MULTIPLE_DEFECTS` (CONFIG + DOCUMENTATION + known CODE_SEMANTICS overload); `SAFE_TO_PLAN_PRODUCTION_REPAIR=YES`. |
+| **DECISION_STATUS** | `SAFE_TO_PLAN_PRODUCTION_REPAIR=YES`; root cause refined (see `M3_1_PRE_CUTOVER_SAFETY_GATE.md`). |
+| **ROOT_CAUSE_CLASS** | `PRIMARY=CONFIGURATION_DEFECT`, `CONTRIBUTING=DOCUMENTATION_DEFECT`, `DESIGN_DEBT=REST_SHADOW_SEMANTIC_OVERLOAD` |
 
 ## CL-2026-09-03 — M3.1 ≥6h production validation audit
 

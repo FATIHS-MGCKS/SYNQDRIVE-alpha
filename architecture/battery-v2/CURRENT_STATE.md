@@ -19,7 +19,7 @@
 | `PRODUCTION_VALIDATED` | **PENDING_CORRECTED_ACTIVATION_EVIDENCE** — ≥6h soak validated infra only, not canonical REST→pub |
 | `INFRASTRUCTURE_HEALTH` | **PASS** |
 | `M3_1_ACTIVATION_CONTRACT` | **MISMATCH** (`REST_SHADOW=false` disables canonical REST while `PUBLICATION=true`) |
-| `CANONICAL_REST_PIPELINE_ACTIVE` | **NO** |
+| `CORRECTED_STAGE2_ACTIVATION_READY` | **YES** (deploy pre-cutover guard first) — see `M3_1_PRE_CUTOVER_SAFETY_GATE.md` |
 | Connected fleet | 6 DIMO vehicles (full fleet, no subset) |
 
 See `research/M3_1_DIRECT_FULL_FLEET_ACTIVATION.md`, `research/M3_1_6H_PRODUCTION_VALIDATION.md`, and `research/M3_1_CUTOVER_CONTRACT_AUDIT.md`. ≥6h audit: 68 LIVE_VOLTAGE post-T0; 0 REST_60M/REST_6H; 0 assessments/publications — **config-blocked**, not merely awaiting qualifying rest.
