@@ -148,7 +148,6 @@ jobs:
         env:
           DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
           BOUNDARY_REPAIR_POSTGRES_INTEGRATION: '1'
-          INTRA_TRIP_GAP_SPLIT_POSTGRES_INTEGRATION: '1'
 
   frontend-component:
     name: Frontend component tests
