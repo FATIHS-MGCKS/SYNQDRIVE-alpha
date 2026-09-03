@@ -36,6 +36,67 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0034f2-integrity-closeout-2026-09-03',
+    version: '4.9.1046',
+    title: 'DI-EV-0034F.2 — Final Semantic + Artifact Integrity Closeout',
+    summary: [
+      'Corrects specific kinetic energy formula to 0.5*(vEnd²-vStart²); removes ½Δv² mislabel.',
+      'Removes repetition from physical episode severity; keeps severity event-local.',
+      'Driver behavior dimensions use explicit reconstruction/attribution confidence requirements.',
+      'Quality gate provider-age policy made surface-aware (HF_HISTORICAL generic age penalty=NO).',
+      'Export manifest: per-file SHA256 map, separate bundleSha256, repo-relative RD003 authority path.',
+      'Migration status: F/F.1/F.2 COMPLETE, RD004 NEXT. Production unchanged.',
+    ],
+    reason: 'Final design/documentation consistency before RD004 controlled validation.',
+    previousBehavior: 'F.1 retained ½Δv² energy proxy wording, ambiguous behavior confidenceRequired, bundle hash reused per file.',
+    details:
+      'driving-intelligence-v2-canonical-design.ts F.2; regenerated driving-intelligence-v2-design/ artifacts with export-manifest integrity.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T18:30:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0034f1-consistency-closeout-2026-09-03',
+    version: '4.9.1045',
+    title: 'DI-EV-0034F.1 — Canonical Architecture Consistency Closeout',
+    summary: [
+      'Splits driving state into orthogonal layers (kinematic, direction, powertrain, transition markers).',
+      'Separates physical severity from reconstruction confidence; adds attribution confidence layer.',
+      'Preserves V2 native-event PROVIDER_CLASSIFIED authority vs HF kinematic reconstruction scope.',
+      'Defines episode overlap policy — one primary kinematic episode per physical interval.',
+      'Separate positive/decel trip stats; mass-independent energy proxy; surface-aware provider age.',
+      'RD004 adds preprocessing filter-response validation; fleet comparison requires comparable cohort.',
+      'Legacy scorer classified KEEP_LEGACY_UNTIL_V2_CUTOVER — production unchanged.',
+    ],
+    reason: 'Human review found design consistency issues before specification becomes canonical.',
+    previousBehavior: 'F.0 used flat state list, mixed severity/confidence, ambiguous thermal/energy semantics.',
+    details:
+      'driving-intelligence-v2-canonical-design.ts F.1 closeout; regenerated driving-intelligence-v2-design/ artifacts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T18:00:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0034f-canonical-design-2026-09-03',
+    version: '4.9.1044',
+    title: 'DI-EV-0034F — Canonical Driving Intelligence V2 Design',
+    summary: [
+      'Designs episode reconstruction pipeline: normalize → quality gate → kinematics → states → episodes → confidence → trip features.',
+      'Audits current production detectors/score; maps KEEP / KEEP_WITH_GATE / REPLACE_WITH_EPISODE_MODEL.',
+      'Signal authority grounded in RD003: providerTimestamp physical time; HF speed primary; jerk episode-context only.',
+      'Semantic distinctions: deceleration≠braking; engine load≠mass; gear state≠shift timing.',
+      'Trip feature vector with exposure normalization; behavior dimensions before opaque score; RD004 validation contract.',
+      'Production Driving Score, detectors, tire/brake runtime unchanged.',
+    ],
+    reason: 'RD003 established signal trust; this phase designs how to turn imperfect signals into professional driving intelligence.',
+    previousBehavior: 'DI-EV-0034E usability matrix only; no canonical episode/trip-feature architecture.',
+    details:
+      'driving-intelligence-v2-canonical-design.ts; docs/audits/data/driving-intelligence-v2-design/ (14 JSON artifacts).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T14:30:00.000Z',
+  },
+  {
     id: 'dimo-rd003-signal-quality-closeout-2026-09-03',
     version: '4.9.1043',
     title: 'DI-EV-0034E.1 — RD003 Signal Quality Correctness Closeout',
