@@ -16,6 +16,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-03 — M3.0 pre-deploy preflight (PKG-01 + PKG-02)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | `POSTGRES_SMOKE = NOT_EXECUTED`; production baseline undocumented for M3.1 canary. |
+| **CHANGE** | Isolated PostgreSQL 16 smoke on VPS (`synqdrive_bv2_m3_smoke_*`, `prisma db push` bootstrap); PKG-02/PKG-01 gated suites PASS; fixed `lv-publication-handoff.mutation.ts` text id cast (`::uuid` removed); stress-test fixture isolation; read-only `battery-v2-m3-canary-observability.sh`. |
+| **OBSERVATION** | Production `battery_assessments.id` is `text`; row-lock SQL `::uuid` cast fails at runtime on `touchReconciliationFairness`. |
+| **VALIDATION** | POSTGRES_SMOKE PASS (PKG-02 6/6, PKG-01 2/2); PKG-01/02 unit regression; graph validator PASS |
+| **NON_EFFECTS** | No deploy; `BATTERY_V2_PUBLICATION_ENABLED` remains OFF; no M4; PKG-01/02 not `PRODUCTION_VALIDATED` |
+| **REMAINING_GAPS** | Runtime uuid-cast fix + stress-test patch must merge before M3.1 deploy; production canary/soak not started |
+| **DECISION_STATUS** | M3.0 COMPLETE — M3.1 blocked on patch merge |
+
 ## CL-2026-09-02 — PKG-02 PostgreSQL contract alignment (PR #1513)
 
 | Field | Content |

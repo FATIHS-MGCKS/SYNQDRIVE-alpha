@@ -711,11 +711,13 @@ async function probeDatabase(): Promise<boolean> {
         },
       });
 
+      const malformedIds: string[] = [];
       for (let index = 0; index < 12; index += 1) {
         const malformed = await createAssessment({
           label: `stress-malformed-${index}`,
           computedAt: new Date(anchor - index),
         });
+        malformedIds.push(malformed.id);
         await prisma.batteryAssessment.update({
           where: { id: malformed.id },
           data: {
@@ -735,14 +737,23 @@ async function probeDatabase(): Promise<boolean> {
         });
       }
 
-      const rows = await fetchPublicationHandoffReconcileCandidates(prisma, {
+      const boundedRows = await fetchPublicationHandoffReconcileCandidates(prisma, {
         lookbackFrom,
         limit: 5,
       });
-      const ids = rows.map((row) => row.id);
+      const boundedIds = boundedRows.map((row) => row.id);
 
-      expect(ids).toContain(validLate.id);
-      expect(ids.length).toBeGreaterThan(0);
+      for (const malformedId of malformedIds) {
+        expect(boundedIds).not.toContain(malformedId);
+      }
+      expect(boundedIds.length).toBeGreaterThan(0);
+
+      const fullRows = await fetchPublicationHandoffReconcileCandidates(prisma, {
+        lookbackFrom,
+        limit: 50,
+      });
+      const fullIds = fullRows.map((row) => row.id);
+      expect(fullIds).toContain(validLate.id);
     });
   },
 );
