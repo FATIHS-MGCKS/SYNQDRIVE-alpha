@@ -56,9 +56,9 @@
       "candidateAbsoluteTime": {
         "candidateStartUtc": null,
         "candidateStartUtcFrom": "2026-09-02T19:06:00.000Z",
-        "candidateStartUtcTo": "2026-09-02T19:06:59.000Z",
+        "candidateStartUtcTo": "2026-09-02T19:06:23.100Z",
         "uncertaintySeconds": null,
-        "derivation": "Visible 21:06 minute — exact start second unresolved",
+        "derivation": "21:06 visible throughout ~36.9 s clip with no 21:07 transition — latest start constrained by clip duration within minute (CEST)",
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY"
       },
       "observations": []
@@ -232,9 +232,9 @@
       "candidateAbsoluteTime": {
         "candidateStartUtc": null,
         "candidateStartUtcFrom": "2026-09-02T19:23:00.000Z",
-        "candidateStartUtcTo": "2026-09-02T19:23:59.000Z",
+        "candidateStartUtcTo": "2026-09-02T19:23:38.600Z",
         "uncertaintySeconds": null,
-        "derivation": "Visible 21:23 minute — exact start second unresolved",
+        "derivation": "21:23 visible throughout ~21.4 s clip with no 21:24 transition — latest start constrained by clip duration within minute (CEST)",
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY"
       },
       "observations": []

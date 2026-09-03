@@ -19,7 +19,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 592,
@@ -41,7 +48,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 371,
@@ -98,6 +112,14 @@
       "nearestProviderSpacingSeconds": null,
       "localGapAroundShiftSeconds": null,
       "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
+    },
+    "clockBoundary": {
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS": null,
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS": "NO_OBSERVED_MINUTE_TRANSITION",
+      "alignedBoundaryUtc": null,
+      "interpretedBoundaryUtc": null,
+      "transitionVideoTimeSeconds": null,
+      "CLOCK_MODEL_BOUNDARY_ELIGIBLE": "NO"
     }
   },
   {
@@ -120,7 +142,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 592,
@@ -142,7 +171,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 371,
@@ -159,8 +195,8 @@
     "offsetSemantics": {
       "CANDIDATE_START_PRIOR_UTC": null,
       "CANDIDATE_START_PRIOR_UTC_FROM": "2026-09-02T19:06:00.000Z",
-      "CANDIDATE_START_PRIOR_UTC_TO": "2026-09-02T19:06:59.000Z",
-      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_UTC": "2026-09-02T19:06:29.500Z",
+      "CANDIDATE_START_PRIOR_UTC_TO": "2026-09-02T19:06:23.100Z",
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_UTC": "2026-09-02T19:06:11.550Z",
       "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_DERIVATION": "DERIVED_MIDPOINT_OF_CANDIDATE_RANGE_FOR_SEARCH_ONLY",
       "CANDIDATE_START_RESIDUAL_SECONDS": null,
       "ALIGNED_CLIP_START_UTC": null,
@@ -176,7 +212,7 @@
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
         "candidateStartUtc": null,
         "candidateStartUtcFrom": "2026-09-02T19:06:00.000Z",
-        "candidateStartUtcTo": "2026-09-02T19:06:59.000Z",
+        "candidateStartUtcTo": "2026-09-02T19:06:23.100Z",
         "uncertaintySeconds": null,
         "note": "Visible vehicle clock establishes candidate region only — not sole alignment authority"
       },
@@ -199,6 +235,14 @@
       "nearestProviderSpacingSeconds": null,
       "localGapAroundShiftSeconds": null,
       "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
+    },
+    "clockBoundary": {
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS": null,
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS": "NO_OBSERVED_MINUTE_TRANSITION",
+      "alignedBoundaryUtc": null,
+      "interpretedBoundaryUtc": null,
+      "transitionVideoTimeSeconds": null,
+      "CLOCK_MODEL_BOUNDARY_ELIGIBLE": "NO"
     }
   },
   {
@@ -221,7 +265,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 592,
@@ -243,7 +294,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 371,
@@ -300,6 +358,14 @@
       "nearestProviderSpacingSeconds": null,
       "localGapAroundShiftSeconds": null,
       "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
+    },
+    "clockBoundary": {
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS": null,
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS": "NO_OBSERVED_MINUTE_TRANSITION",
+      "alignedBoundaryUtc": null,
+      "interpretedBoundaryUtc": null,
+      "transitionVideoTimeSeconds": null,
+      "CLOCK_MODEL_BOUNDARY_ELIGIBLE": "NO"
     }
   },
   {
@@ -322,7 +388,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 592,
@@ -344,7 +417,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 371,
@@ -401,6 +481,14 @@
       "nearestProviderSpacingSeconds": null,
       "localGapAroundShiftSeconds": null,
       "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
+    },
+    "clockBoundary": {
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS": null,
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS": "NO_OBSERVED_MINUTE_TRANSITION",
+      "alignedBoundaryUtc": null,
+      "interpretedBoundaryUtc": null,
+      "transitionVideoTimeSeconds": null,
+      "CLOCK_MODEL_BOUNDARY_ELIGIBLE": "NO"
     }
   },
   {
@@ -423,7 +511,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 592,
@@ -445,7 +540,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 371,
@@ -502,6 +604,14 @@
       "nearestProviderSpacingSeconds": null,
       "localGapAroundShiftSeconds": null,
       "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
+    },
+    "clockBoundary": {
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS": null,
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS": "NO_OBSERVED_MINUTE_TRANSITION",
+      "alignedBoundaryUtc": null,
+      "interpretedBoundaryUtc": null,
+      "transitionVideoTimeSeconds": null,
+      "CLOCK_MODEL_BOUNDARY_ELIGIBLE": "NO"
     }
   },
   {
@@ -524,7 +634,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 592,
@@ -546,7 +663,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 371,
@@ -603,6 +727,14 @@
       "nearestProviderSpacingSeconds": null,
       "localGapAroundShiftSeconds": null,
       "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
+    },
+    "clockBoundary": {
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS": null,
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS": "NO_OBSERVED_MINUTE_TRANSITION",
+      "alignedBoundaryUtc": null,
+      "interpretedBoundaryUtc": null,
+      "transitionVideoTimeSeconds": null,
+      "CLOCK_MODEL_BOUNDARY_ELIGIBLE": "NO"
     }
   },
   {
@@ -625,7 +757,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 592,
@@ -647,7 +786,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 371,
@@ -704,6 +850,14 @@
       "nearestProviderSpacingSeconds": null,
       "localGapAroundShiftSeconds": null,
       "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
+    },
+    "clockBoundary": {
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS": null,
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS": "NO_OBSERVED_MINUTE_TRANSITION",
+      "alignedBoundaryUtc": null,
+      "interpretedBoundaryUtc": null,
+      "transitionVideoTimeSeconds": null,
+      "CLOCK_MODEL_BOUNDARY_ELIGIBLE": "NO"
     }
   },
   {
@@ -726,7 +880,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 592,
@@ -748,7 +909,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 371,
@@ -765,8 +933,8 @@
     "offsetSemantics": {
       "CANDIDATE_START_PRIOR_UTC": null,
       "CANDIDATE_START_PRIOR_UTC_FROM": "2026-09-02T19:23:00.000Z",
-      "CANDIDATE_START_PRIOR_UTC_TO": "2026-09-02T19:23:59.000Z",
-      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_UTC": "2026-09-02T19:23:29.500Z",
+      "CANDIDATE_START_PRIOR_UTC_TO": "2026-09-02T19:23:38.600Z",
+      "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_UTC": "2026-09-02T19:23:19.300Z",
       "CANDIDATE_START_PRIOR_SEARCH_ANCHOR_DERIVATION": "DERIVED_MIDPOINT_OF_CANDIDATE_RANGE_FOR_SEARCH_ONLY",
       "CANDIDATE_START_RESIDUAL_SECONDS": null,
       "ALIGNED_CLIP_START_UTC": null,
@@ -782,7 +950,7 @@
         "status": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
         "candidateStartUtc": null,
         "candidateStartUtcFrom": "2026-09-02T19:23:00.000Z",
-        "candidateStartUtcTo": "2026-09-02T19:23:59.000Z",
+        "candidateStartUtcTo": "2026-09-02T19:23:38.600Z",
         "uncertaintySeconds": null,
         "note": "Visible vehicle clock establishes candidate region only — not sole alignment authority"
       },
@@ -805,6 +973,14 @@
       "nearestProviderSpacingSeconds": null,
       "localGapAroundShiftSeconds": null,
       "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
+    },
+    "clockBoundary": {
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS": null,
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS": "NO_OBSERVED_MINUTE_TRANSITION",
+      "alignedBoundaryUtc": null,
+      "interpretedBoundaryUtc": null,
+      "transitionVideoTimeSeconds": null,
+      "CLOCK_MODEL_BOUNDARY_ELIGIBLE": "NO"
     }
   },
   {
@@ -827,7 +1003,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 592,
@@ -849,7 +1032,14 @@
           "NUMBER_OF_GT_POINTS": 0,
           "ALIGNMENT_ELIGIBLE_GT_COUNT": 0,
           "MATCHED_GT_COUNT": null,
+          "MATCH_COVERAGE_RATIO": null,
           "COVERAGE_RATIO": null
+        },
+        "ambiguityContext": {
+          "BEST_BASIN_START_SECONDS": null,
+          "BEST_BASIN_END_SECONDS": null,
+          "OFFSET_UNCERTAINTY_SECONDS": null,
+          "COMPETING_DISTINCT_BASINS": 0
         },
         "cadenceFreshnessContext": {
           "observationCount": 371,
@@ -906,6 +1096,14 @@
       "nearestProviderSpacingSeconds": null,
       "localGapAroundShiftSeconds": null,
       "note": "Shift timing requires aligned shift observation and resolvable ActualGear cadence"
+    },
+    "clockBoundary": {
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS": null,
+      "VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS": "NO_OBSERVED_MINUTE_TRANSITION",
+      "alignedBoundaryUtc": null,
+      "interpretedBoundaryUtc": null,
+      "transitionVideoTimeSeconds": null,
+      "CLOCK_MODEL_BOUNDARY_ELIGIBLE": "NO"
     }
   }
 ]
