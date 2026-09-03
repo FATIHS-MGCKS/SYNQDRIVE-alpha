@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0034f-canonical-design-2026-09-03',
+    version: '4.9.1044',
+    title: 'DI-EV-0034F — Canonical Driving Intelligence V2 Design',
+    summary: [
+      'Designs episode reconstruction pipeline: normalize → quality gate → kinematics → states → episodes → confidence → trip features.',
+      'Audits current production detectors/score; maps KEEP / KEEP_WITH_GATE / REPLACE_WITH_EPISODE_MODEL.',
+      'Signal authority grounded in RD003: providerTimestamp physical time; HF speed primary; jerk episode-context only.',
+      'Semantic distinctions: deceleration≠braking; engine load≠mass; gear state≠shift timing.',
+      'Trip feature vector with exposure normalization; behavior dimensions before opaque score; RD004 validation contract.',
+      'Production Driving Score, detectors, tire/brake runtime unchanged.',
+    ],
+    reason: 'RD003 established signal trust; this phase designs how to turn imperfect signals into professional driving intelligence.',
+    previousBehavior: 'DI-EV-0034E usability matrix only; no canonical episode/trip-feature architecture.',
+    details:
+      'driving-intelligence-v2-canonical-design.ts; docs/audits/data/driving-intelligence-v2-design/ (14 JSON artifacts).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T14:30:00.000Z',
+  },
+  {
     id: 'dimo-rd003-signal-quality-closeout-2026-09-03',
     version: '4.9.1043',
     title: 'DI-EV-0034E.1 — RD003 Signal Quality Correctness Closeout',

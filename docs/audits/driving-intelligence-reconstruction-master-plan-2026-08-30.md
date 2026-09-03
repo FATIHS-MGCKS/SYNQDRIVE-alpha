@@ -1080,6 +1080,30 @@ Rationale: corrects DI-EV-0034C methodological defects before signal-quality int
 
 Rationale: alignment methodology complete; answers product question of signal trustworthiness per surface. Proposed signal authority model and use-case eligibility matrix documented — not implemented in production Driving Score.
 
+**DI-EV-0034F — Canonical Driving Intelligence V2 Design (2026-09-03):**
+
+| Field | Value |
+|-------|-------|
+| Evidence ID | DI-EV-0034F |
+| Analysis mode | `DRIVING_INTELLIGENCE_V2_CANONICAL_DESIGN` |
+| Artifact path | `docs/audits/data/driving-intelligence-v2-design/` |
+| Audit doc | `docs/audits/driving-intelligence-v2-canonical-design-2026-09.md` |
+| Design module | `driving-intelligence-v2-canonical-design.ts` |
+| Authority | DI-EV-0034E RD003 signal quality |
+| Pipeline designed | RAW → normalize → quality gate → kinematics → states → episodes → confidence → trip features → behavior dimensions → future score → tire/brake load |
+| Episode model | Multi-sample temporal objects with continuous severity + confidence |
+| Primary kinematic authority | HF_HISTORICAL speed on `providerTimestamp` |
+| Deceleration vs braking | Distinguished — friction-brake load NOT directly observable |
+| Lateral tire load | NOT_YET_OBSERVABLE |
+| `PRODUCTION_SCORE_CHANGED` | **NO** |
+| `PRODUCTION_DETECTORS_CHANGED` | **NO** |
+| `TIRE_RUNTIME_CHANGED` | **NO** |
+| `BRAKE_RUNTIME_CHANGED` | **NO** |
+| `READY_FOR_RD004_CONTROLLED_VALIDATION` | **YES** |
+| `GROUND_TRUTH_VALIDATED` | **NO** |
+
+Rationale: RD003 answered signal trust; DI-EV-0034F answers how to reconstruct professional driving intelligence from imperfect signals. Design-only — no production cutover, no score weights, no RD004 results invented.
+
 **Timing metrics (distinct semantics):** SESSION_START_TO_FIRST_REQUEST_MS=35; SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS=254; FAST_GO_TO_RECORDING_MS=125; FAST_GO_TO_FIRST_CYCLE_MS=1222. Prior ambiguous ~0.93s acquisition-start label retired.
 
 **Key findings:** HF watermark + query-window proofs use acquisition-order per-field execution (not lexical sort). `NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED=YES`; `HF_IDEMPOTENCY_RUNTIME_VALIDATED=NOT_EXERCISED` (no duplicate/retry path exercised). Vehicle Load domain = RECONSTRUCTABLE_MEDIUM_CONFIDENCE. Longitudinal accel = RECONSTRUCTABLE_WITH_CADENCE_GATING. GEAR_STATE_OBSERVED=YES; GEAR_CHANGE_TIMING_VALIDATED=NO. Zero native events (NOT_EXERCISED — not proof no harsh maneuvers occurred).
@@ -1460,7 +1484,7 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Flight Recorder implementation (LTE_R1) | DONE (3A.1+3A.2) | `reference-capture` deployed + production canary validated |
 | Instrumented reference drive #001 (RD001) | DONE | Session `06638509-…` COMPLETED; telemetry audit available; video GT NOT_AVAILABLE |
 | RD002 (motion HF canary) | **DONE** | Session `e095d273-…` — DI-EV-0023; MOTION_CANARY_COMPLETED=YES |
-| RD003 (video Ground Truth) | **SIGNAL QUALITY INTERPRETATION** | DI-EV-0033 correlation; DI-EV-0034B external GT; DI-EV-0034C/D discovery; DI-EV-0034E signal usability matrix; GROUND_TRUTH_VALIDATED=NO; READY_FOR_0034F=YES |
+| RD003 (video Ground Truth) | **SIGNAL QUALITY + V2 DESIGN** | DI-EV-0033 correlation; DI-EV-0034B external GT; DI-EV-0034C/D discovery; DI-EV-0034E signal usability matrix; DI-EV-0034F episode/trip-feature architecture; GROUND_TRUTH_VALIDATED=NO; READY_FOR_RD004=YES |
 | Evidence & documentation governance | DONE | `driving-intelligence-evidence-governance-2026-09-01.md` + registry seeded |
 | Ground-truth synchronization | NOT_STARTED | Phase 5 |
 | Detector validation | NOT_STARTED | Phase 6 |
