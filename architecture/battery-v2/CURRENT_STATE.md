@@ -14,10 +14,15 @@
 | `BATTERY_V2_RECONCILIATION_ENABLED` | true |
 | Deployed SHA | `0e0f09259` (PR #1519) |
 | 30m status | `PASS_WITH_PENDING_NATURAL_EVIDENCE` |
-| `PRODUCTION_VALIDATED` | **NO** — 6h slow-path validation pending |
+| 6h status (`2026-09-03T18:09Z`) | `BLOCKED_BY_CUTOVER_CONTRACT` — infra PASS; canonical REST pipeline OFF |
+| `M3_1_STATUS` | **BLOCKED_BY_CUTOVER_CONTRACT** — activation flag mismatch vs Stage-2 code contract |
+| `PRODUCTION_VALIDATED` | **PENDING_CORRECTED_ACTIVATION_EVIDENCE** — ≥6h soak validated infra only, not canonical REST→pub |
+| `INFRASTRUCTURE_HEALTH` | **PASS** |
+| `M3_1_ACTIVATION_CONTRACT` | **MISMATCH** (`REST_SHADOW=false` disables canonical REST while `PUBLICATION=true`) |
+| `CORRECTED_STAGE2_ACTIVATION_READY` | **YES** (deploy pre-cutover guard first) — see `M3_1_PRE_CUTOVER_SAFETY_GATE.md` |
 | Connected fleet | 6 DIMO vehicles (full fleet, no subset) |
 
-See `research/M3_1_DIRECT_FULL_FLEET_ACTIVATION.md`. First customer `battery_publications` rows await natural post-T0 REST evidence.
+See `research/M3_1_DIRECT_FULL_FLEET_ACTIVATION.md`, `research/M3_1_6H_PRODUCTION_VALIDATION.md`, and `research/M3_1_CUTOVER_CONTRACT_AUDIT.md`. ≥6h audit: 68 LIVE_VOLTAGE post-T0; 0 REST_60M/REST_6H; 0 assessments/publications — **config-blocked**, not merely awaiting qualifying rest.
 
 ## M3.0E production convergence (deployed `0e0f09259`, release `20260903101734_v4994`)
 
@@ -52,7 +57,7 @@ Battery V2 authority is substantially reconstructed (Phase 2–3) and Phase 4 de
 
 **Target architecture (D3):** canonical V2 REST + assessment handoff + assessment = mandatory core; `BATTERY_V2_PUBLICATION_ENABLED` = **target** customer effect gate (current runtime still couples PUBLICATION OFF → `isLvRestShadowModeActive` shadow semantics — M4 retirement surface); `REST_SHADOW` + legacy REST = **temporary migration scaffolds** until M4. `BATTERY_V2_LV_HANDOFF_ENABLED` = **NOT INTRODUCED**. M1–M3 may have temporary legacy + canonical dual assessment triggers.
 
-**Current runtime:** canonical REST active (`REST_SHADOW=false`); publication customer effects **ON** (`PUBLICATION_ENABLED=true`) for full connected fleet since M3.1.
+**Current runtime:** canonical REST pipeline **OFF** (`REST_SHADOW=false` per `isBatteryV2CanonicalRestPipelineEnabled`); legacy REST capture **ON**; publication customer effects **ON** (`PUBLICATION_ENABLED=true`) but no post-T0 canonical inputs. Stage-2 cutover requires `REST_SHADOW=true` + `PUBLICATION=true`.
 
 Post-#1445 soak is **PRODUCTION_VALIDATION_ONLY** (initial smoke, not strong validation; profile-stratified — ICE/HEV/PHEV as exposed). HEV product authority remains **DECISION_NOT_READY**. Provider LatestState SOH gap is **DECISION_REQUIRED** (current runtime already non-decision-fresh for VLS-only) — **not** IMPLEMENTATION_READY / not PKG-04 scope.
 

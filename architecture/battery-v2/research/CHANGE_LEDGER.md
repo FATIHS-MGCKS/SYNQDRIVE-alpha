@@ -16,6 +16,60 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+---
+
+## CL-2026-09-03 — M3.1 Stage-2 cutover atomicity hardening (PR #1527)
+
+| Field | Content |
+|-------|---------|
+| **CHANGE** | Atomic env rollback restores `backend.env` then rolling-restarts all replicas on unchanged SHA with scheduler re-verification; `set -E` ERR trap inheritance; PKG-01 pre-T0 VALID backlog fail-closed gate; `BATTERY_V2_STAGE2_T0` only after full success; rollback atomicity selftests (A–E). |
+| **WHY** | Prevent mixed runtime (replica A on Stage-2 config, replica B on old) after partial activation failure; block silent pre-cutover VALID repair eligibility. |
+| **VALIDATION** | `battery-v2-stage2-rollback-atomicity.selftest.sh` PASS; 66 targeted unit tests PASS; graph validator PASS. |
+
+## CL-2026-09-03 — M3.1 Stage-2 pre-merge hardening (PR #1527)
+
+| Field | Content |
+|-------|---------|
+| **CHANGE** | Stage-2 preflight fail-closed scheduler topology; full PKG-01 ENQUEUED backlog audit (no 7-day bound); guard deployment proof via `BATTERY_V2_PKG01_PRE_CUTOVER_GUARD_VERSION`; activation dry-run before ACK; rollback metadata on deploy failure; `terminalizeIneligibleReconciliationCandidate` identity-safe path (bypasses VALID-only `acknowledgeExecuted`); reconciliation + terminalization unit tests; expanded shell selftests. |
+| **WHY** | Close operational blind spots before merge/deploy of PKG-01 guard. |
+| **VALIDATION** | 66 targeted unit tests PASS; `battery-v2-stage2-production-activation.selftest.sh` PASS; `validate-graph.sh` PASS. |
+| **DECISION_STATUS** | `PR_1527_PREMERGE_READY=YES` pending push; `M3_1_STATUS` unchanged (`BLOCKED_BY_CUTOVER_CONTRACT`). |
+
+## CL-2026-09-03 — M3.1 pre-cutover PKG-01 safety gate
+
+| Field | Content |
+|-------|---------|
+| **CHANGE** | PKG-01 pre-cutover guard: `VALID`-only handoff eligibility; reconciliation terminalization for contaminated/missed ENQUEUED; Stage-2 activation script; deprecated invalid M3.1 script; production forensic simulator + 24-identity classification. |
+| **VALIDATION** | `pkg01-pre-cutover-safety.policy.spec.ts` (production fixtures); `battery-v2-cutover.policy.spec.ts`; `battery-v2-stage2-production-activation.selftest.sh`. |
+| **OBSERVED_EFFECT** | All 24 production ENQUEUED identities → `SAFE_TERMINAL`; `WOULD_CREATE_CUSTOMER_PUBLICATION_COUNT=0` with guard. |
+| **DECISION_STATUS** | `CORRECTED_STAGE2_ACTIVATION_READY=YES` (deploy guard before execute); `PRE_CUTOVER_GUARD_REQUIRED=YES`. |
+
+## CL-2026-09-03 — M3.1 cutover contract audit
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.1 ≥6h audit `PRODUCTION_VALIDATED=PENDING_EVIDENCE`; production `REST_SHADOW=false`, `PUBLICATION=true`, `RECONCILIATION=true`. |
+| **OBSERVATION** | Code truth table: `isBatteryV2CanonicalRestPipelineEnabled = isBatteryV2RestShadowEnabled`; Stage-2 requires `REST_SHADOW=true` + `PUBLICATION=true`. M3.1 activation script set opposite. ≥6h evidence (0 REST, 0 assess, 0 pub, restSessions=0, restTargets=0, PKG-01 repair frozen) fully explained by config. |
+| **HYPOTHESIS** | Operators intended “disable shadow-only semantics” but selected `REST_SHADOW=false`, which disables entire canonical REST pipeline. |
+| **CHANGE** | Documentation correction only: `M3_1_CUTOVER_CONTRACT_AUDIT.md`; reclassify `M3_1_STATUS=BLOCKED_BY_CUTOVER_CONTRACT`; `PRODUCTION_VALIDATED=PENDING_CORRECTED_ACTIVATION_EVIDENCE`. |
+| **WHY** | Separate infrastructure health from activation contract; prevent “wait longer” false validation strategy. |
+| **VALIDATION** | `battery-v2-cutover.policy.spec.ts`, `battery-health-v2.config.ts`, `lv-publication-chain-resolution.md`, production forensic evidence from ≥6h audit. |
+| **NON_EFFECTS** | No production config/PM2/DB changes; no flag correction executed. |
+| **REMAINING_GAPS** | Corrected Stage-2 activation + new T0 + re-validation required. |
+| **DECISION_STATUS** | `SAFE_TO_PLAN_PRODUCTION_REPAIR=YES`; root cause refined (see `M3_1_PRE_CUTOVER_SAFETY_GATE.md`). |
+| **ROOT_CAUSE_CLASS** | `PRIMARY=CONFIGURATION_DEFECT`, `CONTRIBUTING=DOCUMENTATION_DEFECT`, `DESIGN_DEBT=REST_SHADOW_SEMANTIC_OVERLOAD` |
+
+## CL-2026-09-03 — M3.1 ≥6h production validation audit
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.1 activated `2026-09-03T11:08:02Z`; 30m `PASS_WITH_PENDING_NATURAL_EVIDENCE`; 0 post-T0 measurements/assessments/publications at T+30m. |
+| **OBSERVATION** | ~7.02h post-T0 forensic audit (`0e0f09259`): infra healthy; 68 LIVE_VOLTAGE / 0 canonical REST measurements post-T0; 0 assessments/publications; `FULL_FLEET_E2E_EVIDENCE=NO`; PKG-01 24×ENQUEUED frozen (pre-T0, repair gated by `REST_SHADOW=false`). |
+| **VALIDATION** | Independent read-only SQL + BullMQ + PM2 + logs; scheduling contract reconstructed from code; canonical validator requires `BATTERY_V2_OPS_SCRIPT_DIR` when piped. |
+| **DECISION_STATUS** | `PRODUCTION_VALIDATED=PENDING_CORRECTED_ACTIVATION_EVIDENCE` (amended by cutover audit); `SIX_HOUR_VALIDATION_PENDING=NO` (audit complete). |
+
 ## CL-2026-09-03 — M3.1 direct full-fleet production activation
 
 | Field | Content |

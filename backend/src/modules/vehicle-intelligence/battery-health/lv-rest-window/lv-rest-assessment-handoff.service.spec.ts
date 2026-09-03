@@ -1,4 +1,5 @@
 import {
+  BatteryMeasurementQuality,
   BatteryMeasurementSessionStatus,
   BatteryMeasurementSessionType,
   BatteryMeasurementType,
@@ -23,7 +24,16 @@ function eligibleMeasurement() {
     vehicleId: VEH,
     sessionId: SESSION,
     type: BatteryMeasurementType.REST_60M,
+    quality: BatteryMeasurementQuality.VALID,
     provenance: { sourceObservationId: 'obs-1' },
+  };
+}
+
+function contaminatedMeasurement() {
+  return {
+    ...eligibleMeasurement(),
+    quality: BatteryMeasurementQuality.CONTAMINATED_BY_ACTIVE_TRIP,
+    provenance: { sourceObservationId: 'obs-contam' },
   };
 }
 
@@ -284,5 +294,219 @@ describe('LvRestAssessmentHandoffService', () => {
     expect(result.skipped).toBe(true);
     expect(result.reason).toBe('vehicle_assess_job_live');
     expect(jobProducer.enqueue).not.toHaveBeenCalled();
+  });
+});
+
+describe('LvRestAssessmentHandoffService.terminalizeIneligibleReconciliationCandidate', () => {
+  let sessionMetadata: Record<string, unknown> = {};
+  let updatedAt = new Date('2026-09-02T10:00:00.000Z');
+  const prisma = {
+    batteryMeasurement: {
+      findFirst: jest.fn(),
+    },
+    batteryMeasurementSession: {
+      findFirst: jest.fn(),
+      updateMany: jest.fn(async ({ data, where }: { data: { metadata: unknown }; where: { updatedAt?: Date } }) => {
+        if (where.updatedAt?.getTime() !== updatedAt.getTime()) {
+          return { count: 0 };
+        }
+        sessionMetadata = data.metadata as Record<string, unknown>;
+        updatedAt = new Date(updatedAt.getTime() + 1);
+        return { count: 1 };
+      }),
+    },
+  };
+  const jobProducer = {
+    enqueue: jest.fn(),
+    hasLiveJob: jest.fn(),
+    hasAssessDispatchConflict: jest.fn(),
+    hasLiveAssessJobForVehicle: jest.fn(),
+  };
+  const deadLetters = {
+    isDeadLetter: jest.fn().mockResolvedValue(false),
+  };
+
+  let service: LvRestAssessmentHandoffService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    sessionMetadata = {
+      scheduledTargets: {
+        REST_60M: {
+          idempotencyKey: 'rest-key',
+          scheduledFor: new Date().toISOString(),
+          status: 'COMPLETED',
+          assessmentHandoff: {
+            measurementId: MEAS,
+            idempotencyKey: `assess:${VEH}:LV_HEALTH:${MEAS}`,
+            status: LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED,
+          },
+        },
+      },
+    };
+    updatedAt = new Date('2026-09-02T10:00:00.000Z');
+    service = new LvRestAssessmentHandoffService(
+      prisma as never,
+      jobProducer as never,
+      deadLetters as never,
+    );
+    prisma.batteryMeasurement.findFirst.mockImplementation(async () => contaminatedMeasurement());
+    prisma.batteryMeasurementSession.findFirst.mockImplementation(async () => ({
+      id: SESSION,
+      organizationId: ORG,
+      metadata: sessionMetadata,
+      updatedAt,
+      status: BatteryMeasurementSessionStatus.ACTIVE,
+      type: BatteryMeasurementSessionType.LV_REST_WINDOW,
+    }));
+  });
+
+  const baseInput = () => ({
+    organizationId: ORG,
+    vehicleId: VEH,
+    sessionId: SESSION,
+    restTargetType: LV_REST_TARGET_TYPES.REST_60M,
+    measurementId: MEAS,
+  });
+
+  it('terminalizes same measurement with POLICY_SKIPPED without assess enqueue', async () => {
+    await service.terminalizeIneligibleReconciliationCandidate(baseInput());
+
+    const handoff = readAssessmentHandoffFromTargetMetadata(
+      sessionMetadata,
+      LV_REST_TARGET_TYPES.REST_60M,
+    );
+    expect(handoff?.status).toBe(LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED);
+    expect(handoff?.outcome).toBe(LV_REST_ASSESSMENT_HANDOFF_OUTCOME.POLICY_SKIPPED);
+    expect(handoff?.measurementId).toBe(MEAS);
+    expect(jobProducer.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('does not overwrite handoff bound to a different measurement', async () => {
+    const otherMeas = 'clmeasother123456789012345678';
+    sessionMetadata = {
+      scheduledTargets: {
+        REST_60M: {
+          idempotencyKey: 'rest-key',
+          scheduledFor: new Date().toISOString(),
+          status: 'COMPLETED',
+          assessmentHandoff: {
+            measurementId: otherMeas,
+            idempotencyKey: `assess:${VEH}:LV_HEALTH:${otherMeas}`,
+            status: LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED,
+          },
+        },
+      },
+    };
+
+    await service.terminalizeIneligibleReconciliationCandidate(baseInput());
+
+    const handoff = readAssessmentHandoffFromTargetMetadata(
+      sessionMetadata,
+      LV_REST_TARGET_TYPES.REST_60M,
+    );
+    expect(handoff?.measurementId).toBe(otherMeas);
+    expect(handoff?.status).toBe(LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED);
+  });
+
+  it('is idempotent when already EXECUTED for same measurement', async () => {
+    sessionMetadata = {
+      scheduledTargets: {
+        REST_60M: {
+          idempotencyKey: 'rest-key',
+          scheduledFor: new Date().toISOString(),
+          status: 'COMPLETED',
+          assessmentHandoff: {
+            measurementId: MEAS,
+            idempotencyKey: `assess:${VEH}:LV_HEALTH:${MEAS}`,
+            status: LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED,
+            outcome: LV_REST_ASSESSMENT_HANDOFF_OUTCOME.POLICY_SKIPPED,
+          },
+        },
+      },
+    };
+
+    await service.terminalizeIneligibleReconciliationCandidate(baseInput());
+
+    const handoff = readAssessmentHandoffFromTargetMetadata(
+      sessionMetadata,
+      LV_REST_TARGET_TYPES.REST_60M,
+    );
+    expect(handoff?.status).toBe(LV_REST_ASSESSMENT_HANDOFF_STATUS.EXECUTED);
+    expect(handoff?.outcome).toBe(LV_REST_ASSESSMENT_HANDOFF_OUTCOME.POLICY_SKIPPED);
+  });
+
+  it('does not regress FAILED terminal state for same measurement', async () => {
+    sessionMetadata = {
+      scheduledTargets: {
+        REST_60M: {
+          idempotencyKey: 'rest-key',
+          scheduledFor: new Date().toISOString(),
+          status: 'COMPLETED',
+          assessmentHandoff: {
+            measurementId: MEAS,
+            idempotencyKey: `assess:${VEH}:LV_HEALTH:${MEAS}`,
+            status: LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED,
+            outcome: LV_REST_ASSESSMENT_HANDOFF_OUTCOME.PERSISTENCE_FAILED,
+          },
+        },
+      },
+    };
+
+    await service.terminalizeIneligibleReconciliationCandidate(baseInput());
+
+    const handoff = readAssessmentHandoffFromTargetMetadata(
+      sessionMetadata,
+      LV_REST_TARGET_TYPES.REST_60M,
+    );
+    expect(handoff?.status).toBe(LV_REST_ASSESSMENT_HANDOFF_STATUS.FAILED);
+  });
+
+  it('fails closed when session is missing', async () => {
+    prisma.batteryMeasurementSession.findFirst.mockResolvedValue(null);
+
+    await service.terminalizeIneligibleReconciliationCandidate(baseInput());
+
+    expect(readAssessmentHandoffFromTargetMetadata(sessionMetadata, LV_REST_TARGET_TYPES.REST_60M)?.status).toBe(
+      LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED,
+    );
+  });
+
+  it('fails closed for wrong organization', async () => {
+    prisma.batteryMeasurement.findFirst.mockResolvedValue(null);
+
+    await service.terminalizeIneligibleReconciliationCandidate({
+      ...baseInput(),
+      organizationId: 'clorgwrong123456789012345678',
+    });
+
+    expect(readAssessmentHandoffFromTargetMetadata(sessionMetadata, LV_REST_TARGET_TYPES.REST_60M)?.status).toBe(
+      LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED,
+    );
+  });
+
+  it('does not terminalize VALID measurement via reconciliation terminal path', async () => {
+    prisma.batteryMeasurement.findFirst.mockResolvedValue(eligibleMeasurement());
+
+    await service.terminalizeIneligibleReconciliationCandidate(baseInput());
+
+    expect(readAssessmentHandoffFromTargetMetadata(sessionMetadata, LV_REST_TARGET_TYPES.REST_60M)?.status).toBe(
+      LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED,
+    );
+  });
+
+  it('acknowledgeExecuted does not terminalize contaminated measurement', async () => {
+    prisma.batteryMeasurement.findFirst.mockResolvedValue(contaminatedMeasurement());
+
+    await service.acknowledgeExecuted({
+      organizationId: ORG,
+      vehicleId: VEH,
+      measurementId: MEAS,
+      outcome: LV_REST_ASSESSMENT_HANDOFF_OUTCOME.POLICY_SKIPPED,
+    });
+
+    expect(readAssessmentHandoffFromTargetMetadata(sessionMetadata, LV_REST_TARGET_TYPES.REST_60M)?.status).toBe(
+      LV_REST_ASSESSMENT_HANDOFF_STATUS.ENQUEUED,
+    );
   });
 });

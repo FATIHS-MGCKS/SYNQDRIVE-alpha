@@ -1,4 +1,4 @@
-import { BatteryMeasurementType, Prisma } from '@prisma/client';
+import { BatteryMeasurementQuality, BatteryMeasurementType, Prisma } from '@prisma/client';
 import type { PrismaService } from '@shared/database/prisma.service';
 
 export interface RestAssessmentHandoffReconcileCandidate {
@@ -7,6 +7,7 @@ export interface RestAssessmentHandoffReconcileCandidate {
   vehicleId: string;
   sessionId: string;
   type: BatteryMeasurementType;
+  quality: BatteryMeasurementQuality;
   provenance: Prisma.JsonValue;
 }
 
@@ -39,6 +40,7 @@ export async function fetchRestAssessmentHandoffReconcileCandidates(
       m.vehicle_id AS "vehicleId",
       m.session_id AS "sessionId",
       m.type AS "type",
+      m.quality AS "quality",
       m.provenance AS "provenance"
     FROM battery_measurements m
     INNER JOIN battery_measurement_sessions s
