@@ -176,6 +176,31 @@ function validateBasePayload(raw: unknown): BatteryV2JobPayloadBase {
   };
 }
 
+function validatePositiveIntegerPublicationVersion(
+  value: unknown,
+  field: string,
+): number {
+  if (value === undefined || value === null) {
+    throw new BatteryV2JobValidationError(
+      `${field} is required`,
+      field,
+    );
+  }
+  if (typeof value !== 'number') {
+    throw new BatteryV2JobValidationError(
+      `${field} must be a number`,
+      field,
+    );
+  }
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value <= 0) {
+    throw new BatteryV2JobValidationError(
+      `${field} must be a positive integer`,
+      field,
+    );
+  }
+  return value;
+}
+
 function validateSnapshotContext(value: unknown): BatteryObservationSnapshotContext | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
@@ -353,6 +378,21 @@ export function validateBatteryV2JobPayload<T extends BatteryV2JobType>(
         ...base,
         tripId: data.tripId,
         tripStartedAt,
+      } as BatteryV2JobPayload<T>;
+    }
+    case 'BATTERY_PUBLICATION_UPDATE': {
+      if (!isEntityId(data.assessmentId)) {
+        throw new BatteryV2JobValidationError('assessmentId is required', 'assessmentId');
+      }
+      const publicationVersion = validatePositiveIntegerPublicationVersion(
+        data.publicationVersion,
+        'publicationVersion',
+      );
+      return {
+        ...base,
+        assessmentId: data.assessmentId,
+        publicationVersion,
+        sourceEntityId: data.sourceEntityId ?? data.assessmentId,
       } as BatteryV2JobPayload<T>;
     }
     default:

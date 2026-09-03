@@ -9,6 +9,7 @@ import { BatteryV2SnapshotIngestionService } from './battery-v2-snapshot-ingesti
 import { LvLiveVoltageIngestionService } from '../lv-live-voltage/lv-live-voltage-ingestion.service';
 import { BatteryRestTargetEvaluationService } from '../lv-rest-window/battery-rest-target-evaluation.service';
 import { LvRestAssessmentHandoffService } from '../lv-rest-window/lv-rest-assessment-handoff.service';
+import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-handoff.service';
 import { BatteryObservationClassifyHandler } from './handlers/battery-observation-classify.handler';
 import { BatteryLvRestSessionOpenHandler } from './handlers/battery-lv-rest-session-open.handler';
 import { BatteryRestTargetEvaluateHandler } from './handlers/battery-rest-target-evaluate.handler';
@@ -61,6 +62,7 @@ const BATTERY_V2_JOB_HANDLERS = [
     LvLiveVoltageIngestionService,
     BatteryRestTargetEvaluationService,
     LvRestAssessmentHandoffService,
+    LvPublicationHandoffService,
     BatteryStartProxyExtractService,
     BatteryAssessmentService,
     BatteryPublicationService,

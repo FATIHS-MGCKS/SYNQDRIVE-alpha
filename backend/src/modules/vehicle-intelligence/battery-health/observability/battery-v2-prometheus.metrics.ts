@@ -232,6 +232,7 @@ export type BatteryV2ReconciliationCategory =
   | 'trip_starts'
   | 'recharge_segments'
   | 'assessments'
+  | 'publication_handoffs'
   | 'capability_refresh'
   | 'capability_signal_loss';
 

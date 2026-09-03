@@ -6,6 +6,7 @@ export type BatteryV2PipelineComponent =
   | 'processor'
   | 'reconciliation'
   | 'publication'
+  | 'publication-handoff'
   | 'assessment-handoff';
 
 export type BatteryV2PipelineLogStatus =

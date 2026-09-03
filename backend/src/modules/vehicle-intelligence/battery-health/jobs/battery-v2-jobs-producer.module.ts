@@ -16,6 +16,7 @@ import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/
 import { BatteryCapabilityRefreshService } from '../capability-preflight/battery-capability-refresh.service';
 import { BatteryV2JobObservabilityService } from './battery-v2-job-observability.service';
 import { LvRestAssessmentHandoffService } from '../lv-rest-window/lv-rest-assessment-handoff.service';
+import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-handoff.service';
 
 /** Producer-side queue registration — safe to import from VehicleIntelligence without worker handlers. */
 @Module({
@@ -35,6 +36,7 @@ import { LvRestAssessmentHandoffService } from '../lv-rest-window/lv-rest-assess
     BatteryCapabilityRefreshService,
     BatteryV2JobObservabilityService,
     LvRestAssessmentHandoffService,
+    LvPublicationHandoffService,
     BatteryV2ReconciliationService,
   ],
   exports: [
@@ -49,6 +51,7 @@ import { LvRestAssessmentHandoffService } from '../lv-rest-window/lv-rest-assess
     BatteryCapabilityRefreshService,
     BatteryV2JobObservabilityService,
     LvRestAssessmentHandoffService,
+    LvPublicationHandoffService,
     BatteryV2ReconciliationService,
     BullModule,
   ],

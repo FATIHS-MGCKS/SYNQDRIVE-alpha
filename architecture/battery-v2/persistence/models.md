@@ -17,6 +17,27 @@
 | `HvCapacityObservation` | `BAT-V2-STORE-HV-CAPACITY-OBSERVATION-001` | Shadow capacity points | `@@unique([vehicleId, method, observedAt])` |
 | `BatteryV2JobDeadLetter` | (execution layer) | Exhausted job ledger | `@@unique([jobType, idempotencyKey])` |
 
+### BatteryAssessment operational envelope (PKG-02)
+
+Scientific assessment identity and evidence fields on `BatteryAssessment` are **append-only / versioned** — scores, evidence selection, model outputs, and measurement linkage must not be mutated post-create.
+
+The **only** post-create mutable envelope permitted by PKG-02 is:
+
+`inputSummary.publicationHandoff`
+
+This is **operational handoff/liveness metadata** (MISSING → ENQUEUED → EXECUTED), not scientific assessment evidence. Mutations are restricted to `LvPublicationHandoffService` through row-locked handoff mutation primitives:
+
+- `mutateBatteryAssessmentPublicationHandoff`
+- `reserveLvPublicationHandoffEnqueue`
+
+Both must preserve:
+
+- scientific assessment immutability
+- unrelated `inputSummary` keys
+- monotonic lifecycle semantics (`EXECUTED` never regresses)
+- identity (`selectedAssessmentId`, `idempotencyKey`, `epochAssessmentIds`)
+- row-lock serialization (`SELECT … FOR UPDATE`)
+
 ## Legacy / operational (still consumed)
 
 | Model | Graph ID | Status |
