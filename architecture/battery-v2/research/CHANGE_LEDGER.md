@@ -16,6 +16,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-03 — M3.0C post-merge production deploy + T0 baseline
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | PR #1515 merged to `main` (`7d53da51`); production on `f00a4939` (pre-#1515); failed-job anchor 60; `BATTERY_V2_PUBLICATION_ENABLED=false`. |
+| **CHANGE** | Canonical deploy via `cloud-agent-deploy.sh`; production now runs `7d53da51`; T0 read-only baseline captured (PKG-01/02 SQL, queue, config gate, #1515 row-lock proof). |
+| **OBSERVATION** | Immediate post-deploy: failed=60, queue stable (wait=0/active=0). During 8-min stability watch: reconciliation cycle enqueued PKG-01 repairs → failed grew 60→79→99. New failures: `BATTERY_ASSESSMENT_RECOMPUTE` with `lv-rest-reconcile:` correlation, `LOCK_CONTENTION` + `HANDLER_FAILED`; **0 PKG-02**, **0 uuid/row-lock SQL errors**. PM2 stable (restarts +1/deploy, no crash loop). Scheduler converged (1 leader). |
+| **VALIDATION** | Deploy SHA invariant PASS; health endpoint PASS; migration 329/0 pending; config gate `PUBLICATION=false`, `REST_SHADOW=true`; deployed mutation has no `::uuid` on assessment id. |
+| **NON_EFFECTS** | `BATTERY_V2_PUBLICATION_ENABLED` not enabled; REST_SHADOW not disabled; no queue cleanup; no M4; not `PRODUCTION_VALIDATED`. |
+| **REMAINING_GAPS** | Post-deploy reconciliation failure spike needs soak/classification before full-fleet activation; PKG-01 lock-contention tuning may be needed at fleet scale. |
+| **DECISION_STATUS** | M3.0C DEPLOY COMPLETE — `FULL_FLEET_ACTIVATION_READY = NO` (pending failure-spike classification) |
+| **EVIDENCE** | Release `20260903055433_v4994`; T0 `2026-09-03T06:03:54Z`; PKG-01 incomplete=45; PKG-02 reconciliation candidates=5; `battery_publications`=0 |
+
 ## CL-2026-09-03 — M3.0B canary-readiness closure (PR #1515)
 
 | Field | Content |
