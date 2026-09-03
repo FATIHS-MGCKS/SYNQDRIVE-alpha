@@ -1112,7 +1112,7 @@ describe('reference-capture-rd003-video-gt-alignment', () => {
         }),
         alignedClipStartMs: alignedMs,
       });
-      expect(boundary.VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS).toBe('CANDIDATE_TIMEZONE_INTERPRETATION');
+      expect(boundary.VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS).toBe('MINUTE_TRANSITION_OBSERVED_PHASE_DERIVED');
       const interpreted = parseCestLocalMinuteToUtcMs('21:04');
       const alignedBoundary = absoluteEventMsFromAlignedClipStart(alignedMs, 10.55);
       expect(boundary.VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS).toBeCloseTo(

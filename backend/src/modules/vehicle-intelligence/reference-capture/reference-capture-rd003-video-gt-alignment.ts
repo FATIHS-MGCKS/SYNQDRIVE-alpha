@@ -428,15 +428,40 @@ export function parseCestLocalMinuteToUtcMs(localMinute: string): number | null 
   return Date.UTC(SESSION_DATE_UTC.year, SESSION_DATE_UTC.month, SESSION_DATE_UTC.day, utcHours, minutes, 0, 0);
 }
 
+export function clipHasObservedMinuteTransition(clip: ExternalGtClip): boolean {
+  const metaTransitions = clip.videoClock?.displayedMinuteTransitions ?? [];
+  if (metaTransitions.some((t) => t.videoTimeSeconds != null && t.toMinute)) return true;
+  return clip.observations.some(
+    (o) => o.observationType === 'CLOCK_MINUTE_TRANSITION' && o.videoTimeSeconds != null,
+  );
+}
+
+export function getClipObservedMinuteTransition(clip: ExternalGtClip): {
+  videoTimeSeconds: number;
+  toMinute: string;
+} | null {
+  const meta = clip.videoClock?.displayedMinuteTransitions?.find(
+    (t) => t.videoTimeSeconds != null && t.toMinute,
+  );
+  if (meta && meta.videoTimeSeconds != null && meta.toMinute) {
+    return { videoTimeSeconds: meta.videoTimeSeconds, toMinute: meta.toMinute };
+  }
+  const obs = clip.observations.find(
+    (o) => o.observationType === 'CLOCK_MINUTE_TRANSITION' && o.videoTimeSeconds != null,
+  );
+  if (!obs || obs.videoTimeSeconds == null) return null;
+  const value = String(obs.value ?? '');
+  const match = /→(\d{1,2}:\d{2})/.exec(value);
+  if (!match) return null;
+  return { videoTimeSeconds: obs.videoTimeSeconds, toMinute: match[1]! };
+}
+
 export function computeVideoClockBoundaryResidual(params: {
   clip: ExternalGtClip;
   alignedClipStartMs: number | null;
 }): ClipAlignmentResult['clockBoundary'] {
-  const transitions = params.clip.videoClock?.displayedMinuteTransitions ?? [];
-  const observed = transitions.find(
-    (t) => t.videoTimeSeconds != null && t.toMinute != null && t.toMinute.length > 0,
-  );
-  if (!observed || observed.videoTimeSeconds == null || params.alignedClipStartMs == null) {
+  const observed = getClipObservedMinuteTransition(params.clip);
+  if (!observed) {
     return {
       VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS: null,
       VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS: 'NO_OBSERVED_MINUTE_TRANSITION',
@@ -447,7 +472,18 @@ export function computeVideoClockBoundaryResidual(params: {
     };
   }
 
-  const interpretedMs = parseCestLocalMinuteToUtcMs(observed.toMinute!);
+  if (params.alignedClipStartMs == null) {
+    return {
+      VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS: null,
+      VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS: 'MINUTE_TRANSITION_OBSERVED_ALIGNMENT_NOT_QUALIFIED',
+      alignedBoundaryUtc: null,
+      interpretedBoundaryUtc: null,
+      transitionVideoTimeSeconds: observed.videoTimeSeconds,
+      CLOCK_MODEL_BOUNDARY_ELIGIBLE: 'NO',
+    };
+  }
+
+  const interpretedMs = parseCestLocalMinuteToUtcMs(observed.toMinute);
   if (interpretedMs == null) {
     return {
       VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS: null,
@@ -467,7 +503,7 @@ export function computeVideoClockBoundaryResidual(params: {
 
   return {
     VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS: residualSeconds,
-    VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS: 'CANDIDATE_TIMEZONE_INTERPRETATION',
+    VIDEO_CLOCK_BOUNDARY_RESIDUAL_STATUS: 'MINUTE_TRANSITION_OBSERVED_PHASE_DERIVED',
     alignedBoundaryUtc: toIso(alignedBoundaryMs),
     interpretedBoundaryUtc: toIso(interpretedMs),
     transitionVideoTimeSeconds: observed.videoTimeSeconds,
