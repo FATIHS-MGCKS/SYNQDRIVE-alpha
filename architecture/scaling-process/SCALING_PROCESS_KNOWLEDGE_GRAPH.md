@@ -51,7 +51,7 @@ Scaling Process
 │
 ├── Scaling Envelopes
 │   ├── N=1 PROVEN (soak)
-│   ├── N=2 CONDITIONALLY CERTIFIED (P1.8.2 + P1.8.3 restore)
+│   ├── N=2 EARLY_PRODUCTION_VALIDATION (P1.8.3.3: calendar >24h; continuous FULL_N2 soak NOT_MET; INC-07 open)
 │   └── N≈1000 CONDITIONAL
 │
 └── Evidence / Decisions / Open Work

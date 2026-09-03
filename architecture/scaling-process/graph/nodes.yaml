@@ -139,9 +139,10 @@ nodes:
 
   - id: SCALING_ENVELOPE_N2
     type: ENVELOPE
-    status: CONDITIONALLY_CERTIFIED
-    description: Two-replica production; scale P1.8.2 + restore P1.8.3; no 24h N=2 soak
-    validated_by: ["#1471", "P1.8.3 2026-09-01"]
+    status: EARLY_PRODUCTION_VALIDATION
+    description: Real N=2 production proven; >24h calendar operational evidence (P1.8.3.3); continuous 24h FULL_N2 soak NOT_MET (81024s); INC-07 scale-readiness remediation open — N2 not fully certified
+    validated_by: ["#1471", "P1.8.3 2026-09-01", "P1.8.3.3 segmented retrospective"]
+    related_incidents: [INC_07]
     confidence: MEDIUM
 
   - id: SCALING_ENVELOPE_N100
@@ -252,9 +253,9 @@ nodes:
     type: EVIDENCE
     status: PASS_WITH_FINDINGS
     description: P1.8.3.3 read-only segmented N=2 retrospective (~44h calendar, longest segment 81024s)
-    depends_on: [MULTI_REPLICA_DEPLOYMENT, SCHEDULER_LEADER_ELECTION, DEC_016_EXACT_SHA_DEPLOY]
+    depends_on: [MULTI_REPLICA_DEPLOYMENT, SCHEDULER_LEADER_ELECTION, EXACT_SHA_DEPLOY_PROVENANCE]
     validated_by: ["P1_8_3_3_N2_24H_PLUS_SEGMENTED_RETROSPECTIVE_AUDIT_2026-09-03.md"]
     last_verified_sha: 7d53da51e3b4dfaad711af735e568f97813ddfeb
     last_verified_at: "2026-09-03T07:55:20Z"
     confidence: MEDIUM
-    notes: "FORENSIC_CLOSURE_V3: segment corrected 158815+62; INC-07 RECONCILIATION_DUPLICATE; battery 48-vs-36 reconciled; PM2 auto-recovery not deploy; SCALING_DEFECT_FOUND=YES; MERGE=MERGE"
+    notes: "FORENSIC_AUTHORITY_V4: segment 158815+62; INC-07 open P2; battery ID math underdetermined; PM2 failed-deploy ruled out; APPLICATION_DEFECT + SCALING_READINESS_DEFECT; N2_MULTI_REPLICA_CAUSED=NO_PROVEN"

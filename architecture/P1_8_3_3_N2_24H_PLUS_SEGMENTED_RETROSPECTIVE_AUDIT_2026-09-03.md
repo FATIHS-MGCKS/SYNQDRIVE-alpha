@@ -19,7 +19,9 @@ More than **44 hours** of real production calendar time elapsed since the P1.8.3
 | `OPERATIONAL_24H_PLUS_RETROSPECTIVE` | **PASS_WITH_FINDINGS** |
 | `CONTINUOUS_24H_N2_SOAK` | **NOT_MET** |
 | `N2_PRODUCTION_CERTIFICATION` | **EARLY** (unchanged) |
-| `SCALING_DEFECT_FOUND` | **UNRESOLVED** (duplicate-trip, battery taxonomy, PM2 restart causality not closed) |
+| `APPLICATION_DEFECT_FOUND` | **YES** (INC-07 reconciliation idempotency) |
+| `SCALING_READINESS_DEFECT_FOUND` | **YES** (INC-07 blocks scale-readiness certification) |
+| `N2_MULTI_REPLICA_CAUSED_DEFECT_FOUND` | **NO_PROVEN** |
 
 **OQ-18 / DEC-016:** Auth.log shows TMP exact-SHA bootstrap on routine deploys (stale-`current` path **likely** avoided). Full DEC-016 end-to-end invariant (`BOOTSTRAP_SCRIPT_SHA` … `REPLICA_B_SHA`) **not exhaustively logged** → precision review required before closure.
 
@@ -193,10 +195,10 @@ Unexpected restarts correlate temporally with failed deploy attempts (~3 min lat
 
 ```
 PM2_UNEXPECTED_RESTARTS = 2
-PM2_RESTART_CAUSALITY = UNRESOLVED
+PM2_RESTART_CAUSALITY = UNRESOLVED   # v1 snapshot — superseded by forensic closure v4 below
 ```
 
-Root cause **not proven** from available logs (no errored exit in sampled error log).
+Root cause **not proven** from available logs (no errored exit in sampled error log). **Forensic closure v4:** failed deploy **RULED_OUT**; recovery action `PM2_STARTED_PROCESS_FROM_STOPPED_STATUS`; initial stop **UNAVAILABLE**.
 
 ---
 
@@ -383,22 +385,22 @@ Duplicate trips and battery growth are **not timed to deploy boundaries** in ava
 
 | ID | Type | Classification | Notes |
 |----|------|----------------|-------|
-| FIND-01 | Finding | DUPLICATE_TRIPS_PROVEN | 2 duplicate `vehicle_id,start_time` groups (SQL verified); scaling causality **UNRESOLVED** |
-| FIND-02 | Finding | BATTERY_V2_NET_DELTA | battery.v2 failed 64→100 (+36); failure taxonomy **UNRESOLVED** |
-| FIND-03 | Observational | PM2_RESTART_UNRESOLVED | Unexpected PM2 restarts 2026-09-02T10:35Z; causality **UNRESOLVED** |
-| FIND-04 | Observational | PRE_EXISTING | ClickHouse schema checksum drift (readiness) — **likely sole P3** |
-| FIND-05 | Observational | REDIS_BLOCKED_CLIENTS | Redis `blocked_clients=43` at audit — not promoted to P3 |
+| FIND-01 | Finding | DUPLICATE_TRIPS_PROVEN | 2 duplicate `vehicle_id,start_time` groups (SQL verified); **INC-07** P2; multi-replica causality **NO_PROVEN** |
+| FIND-02 | Finding | BATTERY_V2_NET_DELTA | battery.v2 failed 64→100 (+36); taxonomy **RESOLVED_PARTIAL**; exact ID reconciliation **NOT_RECOVERABLE**; scaling causality **NO_PROVEN_RELATION** |
+| FIND-03 | Observational | PM2_RECOVERY | Unexpected PM2 restarts 2026-09-02T10:35Z; recovery action proven; initial stop **UNAVAILABLE**; failed deploy **RULED_OUT** |
+| FIND-04 | Observational | PRE_EXISTING | ClickHouse schema checksum drift (readiness) — **PRE_EXISTING_P3** |
+| FIND-05 | Observational | REDIS_BLOCKED_CLIENTS | Redis `blocked_clients=43` at audit — observational only |
 
 ```
 NEW_P0_COUNT = 0
 NEW_P1_COUNT = 0
-NEW_P2_COUNT = 2
-NEW_P3_COUNT = 1
-NEW_P3_COUNT_CONFIDENCE = LIKELY
+NEW_P2_COUNT = 1
+NEW_P3_COUNT = 0
+PRE_EXISTING_P3_COUNT = 1
 OBSERVATIONAL_NOTE_COUNT = 3
 ```
 
-`SCALING_DEFECT_FOUND` remains **UNRESOLVED** until duplicate-trip, battery taxonomy, and PM2 restart causality are closed or ruled out as scaling-unrelated.
+> **Historical note:** v1/v2 classified FIND-02 as unresolved P2 and ClickHouse as NEW_P3. **v4 forensic authority closure** supersedes: INC-07 only new P2; Battery covered by OQ-21; ClickHouse pre-existing P3.
 
 ---
 
@@ -427,22 +429,24 @@ Rationale: Calendar >24h but **continuous soak NOT_MET** due to deploy segmentat
 | N2_PRODUCTION_CERTIFICATION | **EARLY** |
 | N3_PLUS_CERTIFICATION | **UNVERIFIED** |
 | N1000_CERTIFICATION | **CONDITIONAL** |
-| SCALING_DEFECT_FOUND | **UNRESOLVED** |
+| APPLICATION_DEFECT_FOUND | **YES** (INC-07) |
+| SCALING_READINESS_DEFECT_FOUND | **YES** |
+| N2_MULTI_REPLICA_CAUSED_DEFECT_FOUND | **NO_PROVEN** |
 
 ---
 
-## Evidence precision corrections (v2)
+## Evidence precision corrections (v2 — superseded in part by v4)
 
-| Domain | v1 claim | v2 precision |
-|--------|----------|--------------|
-| OQ-18 | CLOSED | **LIKELY_PRODUCTION_VERIFIED** (stale-current fix); full closure withheld |
-| DEC-016 | production-validated YES | **NEEDS_PRECISION_REVIEW** (invariant chain not fully logged) |
-| SCALING_DEFECT_FOUND | NO | **UNRESOLVED** (open causality on trips/battery/PM2) |
-| Duplicate trips | P2 insufficient | **PROVEN** SQL; scaling causality **UNRESOLVED** |
-| Battery +36 | scaling-related 0 | **NET_DELTA +36**; taxonomy **UNRESOLVED** |
-| PM2 restarts | P3 finding | **2 restarts**; causality **UNRESOLVED**; observational not P3 |
-| NEW_P3 | 3 | **1 (LIKELY)** — ClickHouse drift only |
-| MERGE_RECOMMENDATION | MERGE | **HOLD** pending causality / DEC-016 precision |
+| Domain | v1 claim | v2 precision | v4 final |
+|--------|----------|--------------|----------|
+| OQ-18 | CLOSED | **LIKELY_PRODUCTION_VERIFIED** | **MITIGATED_LIKELY_PRODUCTION_VERIFIED** |
+| DEC-016 | production-validated YES | **NEEDS_PRECISION_REVIEW** | **PARTIALLY_PRODUCTION_VALIDATED** |
+| SCALING_DEFECT_FOUND | NO | **UNRESOLVED** | Split: `APPLICATION_DEFECT` + `SCALING_READINESS_DEFECT`; `N2_MULTI_REPLICA_CAUSED=NO_PROVEN` |
+| Duplicate trips | P2 insufficient | **PROVEN** SQL | **INC-07** P2; multi-replica causality **NO_PROVEN** |
+| Battery +36 | scaling-related 0 | **NET_DELTA +36** | Underdetermined ID math; taxonomy **RESOLVED_PARTIAL**; **NO_PROVEN** scaling relation |
+| PM2 restarts | P3 finding | **2 restarts**; causality **UNRESOLVED** | Recovery action proven; initial stop **UNAVAILABLE**; observational |
+| NEW_P3 | 3 | **1 (LIKELY)** — ClickHouse | **PRE_EXISTING_P3=1**; `NEW_P3=0` |
+| MERGE_RECOMMENDATION | MERGE | **HOLD** | **EXTERNAL_GITHUB_GATE** (v4) |
 
 ---
 
@@ -541,10 +545,12 @@ RECONCILIATION_CREATED_SECOND_ROW = YES (PROVEN via trip_repairs + row metadata)
 **Verdict:**
 
 ```
-DUPLICATE_TRIP_ROOT_CAUSE = RECONCILIATION_DUPLICATE
-DUPLICATE_TRIP_SCALING_CAUSALITY = APPLICATION_IDEMPOTENCY_DEFECT
+DUPLICATE_TRIP_ROOT_CAUSE = RECONCILIATION_REAPPLICATION_IDEMPOTENCY_DEFECT
+DUPLICATE_TRIP_MULTI_REPLICA_CAUSALITY = NO_PROVEN_RELATION
 DUPLICATE_TRIP_FIX_REQUIRED = YES
 DUPLICATE_TRIP_SEVERITY = P2
+INC_07_DISCOVERED_DURING_N2 = YES
+INC_07_BLOCKS_SCALING_CERTIFICATION = YES
 ```
 
 Not a multi-replica concurrent write race; first manifestation post-checkpoint with **0** pre-N2 duplicate groups in 1947 trips. Recorded as **INC-07**.
@@ -554,36 +560,54 @@ Not a multi-replica concurrent write race; first manifestation post-checkpoint w
 **At P1.8.3.3 audit snapshot:** `ZCARD=100` (baseline 64 → net **+36**).  
 **Forensic re-check (2026-09-03T09:27Z):** `ZCARD=101` (+1 drift; taxonomy unchanged).
 
-**48 vs 36 reconciliation (audit-time, PROVEN):**
+**Known constraints (audit-time):**
 
 ```
-64 baseline
-+ 36 genuinely new failed job IDs (net cardinality)
-- 12 baseline IDs exited failed set (retry success or removal — per-ID reason UNAVAILABLE)
-= 100 at audit
-
-48 post-checkpoint failure scores (ZSET timestamps)
-= 36 new IDs + 12 re-failure score updates on existing IDs (no cardinality change)
+BATTERY_V2_FAILED_BASELINE = 64
+BATTERY_V2_FAILED_AT_AUDIT = 100
+BATTERY_V2_FAILED_AT_FORENSIC_RECHECK = 101
+BATTERY_V2_NET_DELTA_AT_AUDIT = 36
+BATTERY_POST_CHECKPOINT_SCORE_COUNT = 48
 ```
 
-`BATTERY_48_VS_36_RECONCILED = YES` — BullMQ refreshes failed-score on re-fail; baseline ID set not retained in Redis for exact diff.
+**Equations (cardinality vs score events):**
 
-**Taxonomy (101 jobs, Redis `failedReason` metadata only):**
+```
+N - D = 36          where N = genuinely new failed IDs, D = baseline IDs that exited failed set
+N + R = 48          where R = baseline IDs re-failed (score updated, cardinality unchanged)
+```
+
+**Without retained baseline failed-job ID set, N/D/R are NOT uniquely recoverable.**
+
+Example valid solutions: `(D=0,N=36,R=12)`, `(D=5,N=41,R=7)`, `(D=12,N=48,R=0)`.
+
+```
+BATTERY_EXACT_ID_RECONCILIATION_AVAILABLE = NO
+BATTERY_BASELINE_ID_SET_RETAINED = NO
+BATTERY_NEW_ID_COUNT_MIN = 36
+BATTERY_NEW_ID_COUNT_MAX = 48
+BATTERY_BASELINE_IDS_REMOVED_MIN = 0
+BATTERY_BASELINE_IDS_REMOVED_MAX = 12
+BATTERY_BASELINE_IDS_REFAILED_MIN = 0
+BATTERY_BASELINE_IDS_REFAILED_MAX = 12
+BATTERY_48_VS_36_EXACT_RECONCILIATION = NOT_RECOVERABLE_FROM_RETAINED_IDENTITY_EVIDENCE
+```
+
+**Current failed-set taxonomy (101 jobs, forensic re-check snapshot — NOT exact net-new membership):**
 
 | Class | Count |
 |-------|-------|
-| REST_TARGET (rest-target jobs) | 29 |
-| BATTERY_ASSESSMENT_CREATE (Prisma connector) | 39 |
+| REST_TARGET | 29 |
+| BATTERY_ASSESSMENT_CREATE | 39 |
 | LOCK_CONTENTION | 17 |
-| OTHER | 16 |
+| OTHER (UNKNOWN) | 16 |
 
-`battery_v2_job_dead_letters`: 49 rows since checkpoint, all `BATTERY_ASSESSMENT_RECOMPUTE`.
+`BATTERY_CURRENT_FAILED_SET_TAXONOMY` = above table. `battery_v2_job_dead_letters`: 49 since checkpoint (`BATTERY_ASSESSMENT_RECOMPUTE`). Covered by **OQ-21** (existing open workstream); **not** a new P1.8.3.3 P2.
 
 ```
 PROVEN_SCALING_RELATED_BATTERY_FAILURES = 0
-POSSIBLE_SCALING_RELATED_BATTERY_FAILURES = 0
-NON_SCALING_BATTERY_FAILURES = 85 (REST + assessment + lock — backlog/pipeline)
-UNKNOWN_BATTERY_FAILURES = 16
+POSSIBLE_SCALING_RELATED_BATTERY_FAILURES = UNRESOLVED
+BATTERY_CURRENT_SET_UNKNOWN_COUNT = 16
 BATTERY_FAILURE_TAXONOMY = RESOLVED_PARTIAL
 BATTERY_SCALING_CAUSALITY = NO_PROVEN_RELATION
 ```
@@ -600,16 +624,16 @@ BATTERY_SCALING_CAUSALITY = NO_PROVEN_RELATION
 **Deploy script audit:** `vps-deploy-release.sh` only touches PM2 after boot-check passes (minutes into deploy). Failed attempts **cannot** have reached rolling restart (382ms sessions). **No rollback** (no promote).
 
 ```
-DID_FAILED_DEPLOY_TOUCH_PM2 = NO (PROVEN)
-PM2_RESTART_1_CAUSALITY = PM2_AUTO_RECOVERY_EXPECTED
-PM2_RESTART_2_CAUSALITY = PM2_AUTO_RECOVERY_EXPECTED
-PM2_RESTART_CAUSALITY = PM2_AUTO_RECOVERY_EXPECTED
-PM2_RESTART_SCALING_RELEVANCE = NO
-PM2_RESTART_FIX_REQUIRED = NO
+PM2_UNEXPECTED_RESTARTS = 2
+PM2_FAILED_DEPLOY_CAUSALITY = RULED_OUT
+PM2_RECOVERY_ACTION = PM2_STARTED_PROCESS_FROM_STOPPED_STATUS
+PM2_INITIAL_STOP_CAUSE = UNAVAILABLE
+PM2_SCALING_CAUSALITY = NO_PROVEN_RELATION
+PM2_RESTART_FIX_REQUIRED = NO_CURRENT_ACTION_UNLESS_RECURRENCE
 PM2_RESTART_SEVERITY = OBSERVATIONAL
 ```
 
-Initial transition to `stopped` status: **UNAVAILABLE** (no OOM, no crash loop, no deploy correlation).
+Logs prove recovery action only; initial transition to `stopped` is **UNAVAILABLE** (no OOM, no crash loop, no deploy correlation).
 
 ### Phases 14–15 — DEC-016 six-link matrix
 
@@ -627,32 +651,58 @@ DEC_016_FULL_INVARIANT = NEEDS_PRECISION_REVIEW
 
 Boundary: OQ-18 (stale-current bootstrap) **likely closed**; full six-link historical logging for every field remains **PARTIAL**.
 
-### Phases 16–19 — Scaling defect & severity
+### Phases 16–19 — Application vs scaling-readiness defect & severity
 
 ```
-SCALING_DEFECT_FOUND = YES
+APPLICATION_DEFECT_FOUND = YES
+SCALING_READINESS_DEFECT_FOUND = YES
+N2_MULTI_REPLICA_CAUSED_DEFECT_FOUND = NO_PROVEN
 ```
 
-**INC-07** (reconciliation idempotency) is a proven application correctness defect discovered during N=2 operations; **not** a multi-replica race.
+**INC-07** is a proven reconciliation idempotency defect that blocks scale-readiness certification; **not** proven to be caused by horizontal replica concurrency.
+
+Preferred remediation (implementation workstream — not this PR):
+
+1. Deterministic idempotency identity for `INTRA_TRIP_GAP_SPLIT` repair audit (extend `buildRepairAuditId` pattern)
+2. Deterministic repaired-trip identity: `organization + vehicle + parent_trip + split_window + repair_type/version`
+3. DB-supported conflict-safe persistence where semantically valid (do **not** blindly impose `UNIQUE(vehicle_id, start_time)`)
 
 | Count | Value |
 |-------|-------|
 | NEW_P0 | 0 |
 | NEW_P1 | 0 |
-| NEW_P2 | 2 (INC-07 duplicate trips; battery.v2 backlog growth) |
-| NEW_P3 | 1 (ClickHouse checksum drift — PRE_EXISTING) |
+| NEW_P2 | 1 (INC-07 only) |
+| NEW_P3 | 0 |
+| PRE_EXISTING_P3 | 1 (ClickHouse checksum drift) |
 | PRE_EXISTING_FINDING_COUNT | 1 |
-| OBSERVATIONAL_NOTE_COUNT | 2 (PM2 auto-recovery; Redis blocked_clients=43) |
+| OBSERVATIONAL_NOTE_COUNT | 3 (PM2 recovery; Redis blocked_clients=43; PM2 initial stop UNAVAILABLE) |
 | EXPECTED_BEHAVIOR_NOTE_COUNT | 4 (deploy rolling gaps) |
 | UNRESOLVED_FINDING_COUNT | 1 (PM2 initial stop cause) |
+
+**Battery backlog:** OQ-21 existing open workstream — not double-counted as new P2.
 
 **New registry items:** **INC-07**, **OQ-30** (trip reconciliation idempotency).
 
 ---
 
+## P1.8.3.3 FORENSIC AUTHORITY CLOSURE (v4 — 2026-09-03)
+
+Corrects v3 forensic closure epistemic overclaims:
+
+| v3 issue | v4 correction |
+|----------|---------------|
+| Battery `64+36-12=100` exact ID math | Underdetermined; bounds only (`N∈[36,48]`, `D∈[0,12]`, `R∈[0,12]`) |
+| `POSSIBLE_SCALING_RELATED_BATTERY_FAILURES=0` | **UNRESOLVED** (16 UNKNOWN + 17 LOCK) |
+| `PM2_RESTART_CAUSALITY=PM2_AUTO_RECOVERY_EXPECTED` | Recovery action proven; **initial stop UNAVAILABLE** |
+| `NEW_P3=1` for ClickHouse | **PRE_EXISTING_P3=1**; `NEW_P3=0` |
+| `SCALING_DEFECT_FOUND=YES` (ambiguous) | Split: `APPLICATION_DEFECT_FOUND` + `SCALING_READINESS_DEFECT_FOUND`; `N2_MULTI_REPLICA_CAUSED_DEFECT_FOUND=NO_PROVEN` |
+| Self-referential `PR_HEAD_AFTER` in machine block | **EXTERNAL_GITHUB_GATE** semantics |
+
+---
+
 ## Residual unknowns / next stage
 
-1. **INC-07 remediation** — idempotent `INTRA_TRIP_GAP_SPLIT` (deterministic repair ID or pre-create existence check on `vehicle_id+start_time` for REPAIRED rows).
+1. **INC-07 remediation** — deterministic `INTRA_TRIP_GAP_SPLIT` repair identity + conflict-safe repaired-trip persistence (see Phase 16 remediation direction).
 2. **Continuous 24h N=2 segment** — defer routine deploy; re-audit OQ-28.
 3. **Battery V2 backlog** — OQ-21 remediation workstream (taxonomy resolved partial; not scaling-blocker).
 4. **DEC-016** — optional deploy transcript logging for bootstrap-script SHA + per-replica verify.
@@ -674,27 +724,24 @@ SCALING_DEFECT_FOUND = YES
 
 ---
 
-## Canonical machine-readable final block (v3 — forensic closure)
+## Canonical machine-readable final block (v4 — forensic authority closure)
 
 ```
-P1_8_3_3_FORENSIC_CLOSURE_VERDICT = COMPLETE
+P1_8_3_3_FORENSIC_AUTHORITY_CLOSURE = PASS
 
 PR = 1521
-PR_HEAD_BEFORE = 2a2ef4a24cd4edb6298c6e45fe46db94cb661387
-PR_HEAD_AFTER = 6ff1b1b5d8c4f2e1a0b9c8d7e6f5a4b3c2d1e0f
-LATEST_MAIN_SHA = f7a7d1cf1e6acef3350eadd430511f370b15b888
-PR_BEHIND_MAIN = 0
+PR_HEAD_AT_FORENSIC_INPUT = 2a2ef4a24cd4edb6298c6e45fe46db94cb661387
+FINAL_PR_HEAD = EXTERNAL_GITHUB_GATE
+FINAL_PR_CI_STATUS = EXTERNAL_GITHUB_GATE
+FINAL_PR_MERGEABILITY = EXTERNAL_GITHUB_GATE
+FINAL_PR_BEHIND_MAIN = EXTERNAL_GITHUB_GATE
+PR_DRAFT = EXTERNAL_GITHUB_GATE
 
 SEGMENT_MODEL_CORRECTED = YES
 TOTAL_CALENDAR_HORIZON_SECONDS = 158877
 TOTAL_FULL_N2_SECONDS = 158815
-TOTAL_STABLE_SAME_RELEASE_N2_SECONDS = 158815
 EXCLUDED_TRANSITION_SECONDS = 62
-
-LONGEST_FULL_N2_SEGMENT_START = 2026-09-01T11:47:23Z
-LONGEST_FULL_N2_SEGMENT_END = 2026-09-02T10:17:47Z
 LONGEST_FULL_N2_SEGMENT_SECONDS = 81024
-
 SEGMENT_ARITHMETIC_RECONCILED = YES
 
 OPERATIONAL_24H_PLUS_RETROSPECTIVE = PASS_WITH_FINDINGS
@@ -702,84 +749,59 @@ CONTINUOUS_24H_N2_SOAK = NOT_MET
 OQ_28_STATUS = PARTIAL
 N2_PRODUCTION_CERTIFICATION = EARLY
 
-DUPLICATE_TRIPS = PROVEN
-DUPLICATE_TRIP_GROUP_COUNT = 2
-DUPLICATE_TRIP_PRE_N2_BASELINE_GROUPS = 0
-DUPLICATE_TRIP_ROOT_CAUSE = RECONCILIATION_DUPLICATE
-DUPLICATE_TRIP_SCALING_CAUSALITY = APPLICATION_IDEMPOTENCY_DEFECT
-DUPLICATE_TRIP_FIX_REQUIRED = YES
-DUPLICATE_TRIP_SEVERITY = P2
+APPLICATION_DEFECT_FOUND = YES
+SCALING_READINESS_DEFECT_FOUND = YES
+N2_MULTI_REPLICA_CAUSED_DEFECT_FOUND = NO_PROVEN
+
+INC_07_STATUS = OPEN
+INC_07_SEVERITY = P2
+INC_07_FIX_REQUIRED = YES
+INC_07_BLOCKS_SCALING_CERTIFICATION = YES
+
+DUPLICATE_TRIP_ROOT_CAUSE = RECONCILIATION_REAPPLICATION_IDEMPOTENCY_DEFECT
+DUPLICATE_TRIP_MULTI_REPLICA_CAUSALITY = NO_PROVEN_RELATION
 
 BATTERY_V2_FAILED_BASELINE = 64
-BATTERY_V2_FAILED_NOW = 100
-BATTERY_V2_NET_DELTA = 36
-BATTERY_FAILED_IDS_NEW = 36
-BATTERY_FAILED_IDS_REMOVED = 12
-BATTERY_FAILED_IDS_REFAILED = 12
+BATTERY_V2_FAILED_AT_AUDIT = 100
+BATTERY_V2_FAILED_AT_FORENSIC_RECHECK = 101
+BATTERY_V2_NET_DELTA_AT_AUDIT = 36
 BATTERY_POST_CHECKPOINT_SCORE_COUNT = 48
-BATTERY_48_VS_36_RECONCILED = YES
-PROVEN_SCALING_RELATED_BATTERY_FAILURES = 0
-POSSIBLE_SCALING_RELATED_BATTERY_FAILURES = 0
-UNKNOWN_BATTERY_FAILURES = 16
+BATTERY_EXACT_ID_RECONCILIATION_AVAILABLE = NO
+BATTERY_BASELINE_ID_SET_RETAINED = NO
+BATTERY_NEW_ID_COUNT_MIN = 36
+BATTERY_NEW_ID_COUNT_MAX = 48
+BATTERY_BASELINE_IDS_REMOVED_MIN = 0
+BATTERY_BASELINE_IDS_REMOVED_MAX = 12
+BATTERY_BASELINE_IDS_REFAILED_MIN = 0
+BATTERY_BASELINE_IDS_REFAILED_MAX = 12
+BATTERY_48_VS_36_EXACT_RECONCILIATION = NOT_RECOVERABLE_FROM_RETAINED_IDENTITY_EVIDENCE
 BATTERY_FAILURE_TAXONOMY = RESOLVED_PARTIAL
+PROVEN_SCALING_RELATED_BATTERY_FAILURES = 0
+POSSIBLE_SCALING_RELATED_BATTERY_FAILURES = UNRESOLVED
+BATTERY_CURRENT_SET_UNKNOWN_COUNT = 16
 BATTERY_SCALING_CAUSALITY = NO_PROVEN_RELATION
 
 PM2_UNEXPECTED_RESTARTS = 2
-PM2_RESTART_1_CAUSALITY = PM2_AUTO_RECOVERY_EXPECTED
-PM2_RESTART_2_CAUSALITY = PM2_AUTO_RECOVERY_EXPECTED
-PM2_RESTART_CAUSALITY = PM2_AUTO_RECOVERY_EXPECTED
-PM2_RESTART_SCALING_RELEVANCE = NO
-PM2_RESTART_FIX_REQUIRED = NO
+PM2_FAILED_DEPLOY_CAUSALITY = RULED_OUT
+PM2_RECOVERY_ACTION = PM2_STARTED_PROCESS_FROM_STOPPED_STATUS
+PM2_INITIAL_STOP_CAUSE = UNAVAILABLE
+PM2_SCALING_CAUSALITY = NO_PROVEN_RELATION
 PM2_RESTART_SEVERITY = OBSERVATIONAL
 
 OQ_18_STATUS = MITIGATED_LIKELY_PRODUCTION_VERIFIED
-OQ_18_STALE_CURRENT_FIX = LIKELY_PRODUCTION_VERIFIED
-
-DEC_016_REQUESTED_SHA_EVIDENCE = DIRECT
-DEC_016_BOOTSTRAP_SCRIPT_SHA_EVIDENCE = DIRECT
-DEC_016_RELEASE_SOURCE_SHA_EVIDENCE = DIRECT
-DEC_016_TARGET_SHA_EVIDENCE = DIRECT
-DEC_016_REPLICA_A_SHA_EVIDENCE = RELEASE_INFERRED
-DEC_016_REPLICA_B_SHA_EVIDENCE = RELEASE_INFERRED
-
 DEC_016_PRODUCTION_VALIDATION = PARTIALLY_PRODUCTION_VALIDATED
 DEC_016_FULL_INVARIANT = NEEDS_PRECISION_REVIEW
 
-SCALING_DEFECT_FOUND = YES
-
 NEW_P0_COUNT = 0
 NEW_P1_COUNT = 0
-NEW_P2_COUNT = 2
-NEW_P3_COUNT = 1
-
-PRE_EXISTING_FINDING_COUNT = 1
-OBSERVATIONAL_NOTE_COUNT = 2
-EXPECTED_BEHAVIOR_NOTE_COUNT = 4
-UNRESOLVED_FINDING_COUNT = 1
-
-NEW_INCIDENT_CREATED = INC-07
-NEW_OPEN_QUESTION_CREATED = OQ-30
+NEW_P2_COUNT = 1
+NEW_P3_COUNT = 0
+PRE_EXISTING_P3_COUNT = 1
+OBSERVATIONAL_NOTE_COUNT = 3
 
 PRODUCTION_MUTATION_EXECUTED = NO
 PRODUCTION_DEPLOY_EXECUTED_BY_AUDIT = NO
 
-CURRENT_STATE_UPDATED = YES
-DECISION_LOG_UPDATED = YES
-VALIDATION_EVIDENCE_UPDATED = YES
-FAILURE_MODEL_UPDATED = YES
-DEPLOYMENT_MODEL_UPDATED = YES
-OPEN_QUESTIONS_UPDATED = YES
-KNOWLEDGE_GRAPH_UPDATED = YES
-GRAPH_NODES_UPDATED = YES
-
-VALIDATORS = PASS
-FOCUSED_TESTS = N/A
-CI_STATUS_CURRENT_HEAD = PENDING
-PR_MERGEABLE = YES
-PR_DRAFT = YES
-
-BLOCKERS = OQ-28_CONTINUOUS_SOAK_NOT_MET; INC-07_RUNTIME_REMEDIATION_OPEN
-RESIDUAL_FINDINGS = DEC-016 full invariant logging partial; PM2 initial stop cause unavailable; ATE UNEXERCISED
-MERGE_RECOMMENDATION = MERGE
+MERGE_RECOMMENDATION = EXTERNAL_GITHUB_GATE
 NEXT_STAGE = INC_07_TRIP_RECONCILIATION_IDEMPOTENCY_REMEDIATION_THEN_UNINTERRUPTED_24H_N2_SOAK
 ```

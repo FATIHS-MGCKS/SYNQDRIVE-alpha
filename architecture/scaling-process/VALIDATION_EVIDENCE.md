@@ -181,11 +181,11 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | OQ-18 stale-current fix | P1.8.3.3 | — | auth.log | LIKELY_PRODUCTION_VERIFIED | MEDIUM |
 | OQ-28 closure | P1.8.3.3 | — | segment <86400s | PARTIAL (not closed) | HIGH |
 | Trip duplicates (horizon) | P1.8.3.3 | — | SQL + trip_repairs | PROVEN; RECONCILIATION_DUPLICATE (INC-07) | HIGH |
-| battery.v2 net delta | P1.8.3.3 | — | Redis + dead letters | +36; 48-vs-36 reconciled; taxonomy RESOLVED_PARTIAL | HIGH |
-| PM2 unexpected restarts | P1.8.3.3 | — | pm2.log + auth.log | PM2_AUTO_RECOVERY; not deploy cleanup | HIGH |
+| battery.v2 net delta | P1.8.3.3 | — | Redis + dead letters | +36 net; ID math underdetermined (N∈[36,48]); taxonomy RESOLVED_PARTIAL; NO_PROVEN scaling relation | HIGH |
+| PM2 unexpected restarts | P1.8.3.3 | — | pm2.log + auth.log | Recovery from stopped; initial stop UNAVAILABLE; failed deploy RULED_OUT | HIGH |
 | Segment model corrected | P1.8.3.3 forensic | — | PM2 boundaries | 158815+62=158877 | HIGH |
-| Scaling defect | P1.8.3.3 forensic | — | INC-07 | YES (idempotency defect) | HIGH |
-| Merge recommendation | P1.8.3.3 forensic | — | causality closed | MERGE | HIGH |
+| Application / scale-readiness defect | P1.8.3.3 forensic v4 | — | INC-07 | APPLICATION_DEFECT + SCALING_READINESS_DEFECT; N2_MULTI_REPLICA_CAUSED=NO_PROVEN | HIGH |
+| Merge recommendation | P1.8.3.3 forensic v4 | — | authority closure | EXTERNAL_GITHUB_GATE | HIGH |
 
 ---
 
