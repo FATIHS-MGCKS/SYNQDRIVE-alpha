@@ -412,6 +412,11 @@ describe('DI-EV-0034E.1 signal quality correctness closeout', () => {
     const cls = result.signalQualitySummary.signalClassifications as Record<string, { RATING: string; EVIDENCE_BASIS: string; LIMITATION: string }>;
     expect(cls.SPEED.EVIDENCE_BASIS).toContain('alignment-fit');
     expect(cls.SPEED.LIMITATION).toContain('IN_SAMPLE');
+    expect(cls.SPEED.EVIDENCE_BASIS).toContain('1 evaluated holdout clip');
+    expect(cls.SPEED.EVIDENCE_BASIS).not.toMatch(/across 2 clips/);
+    expect(cls.SPEED.EVIDENCE_BASIS).not.toMatch(/across 2 evaluated holdout clips/);
+    expect(result.signalQualitySummary.UNIQUE_ALIGNMENT_SUPPORTED_CLIPS).toBe(2);
+    expect(result.signalQualitySummary.UNIQUE_ALIGNMENT_HOLDOUT_CLIPS).toBe(1);
     expect(cls.PROVIDER_TIMESTAMP.RATING).toBe('BEST_AVAILABLE_PHYSICAL_EVENT_TIME_AUTHORITY');
     expect(result.signalQualitySummary.closeoutRevision).toBe(SIGNAL_QUALITY_CLOSEOUT_REVISION);
   });

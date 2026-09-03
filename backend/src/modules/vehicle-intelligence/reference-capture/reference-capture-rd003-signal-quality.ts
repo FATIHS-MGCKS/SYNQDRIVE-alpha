@@ -1479,7 +1479,7 @@ export function buildSignalClassifications(params: {
   const alignmentFitMae = params.speedValidation.HF_SPEED_ALIGNMENT_FIT_MAE_KMH as number | null;
   const withinClipHoldoutMae = params.speedValidation.HF_SPEED_WITHIN_CLIP_HOLDOUT_MAE_KMH as number | null;
   const uniqueHoldoutMae = params.speedValidation.UNIQUE_ALIGNMENT_HOLDOUT_MAE_KMH as number | null;
-  const uniqueClips = params.speedValidation.UNIQUE_ALIGNMENT_SUPPORTED_CLIPS as number;
+  const uniqueHoldoutClips = params.speedValidation.UNIQUE_ALIGNMENT_HOLDOUT_CLIPS as number;
   const liveMatched = (params.speedValidation.aggregateLATEST_LIVE as { matchedPoints?: number })
     ?.matchedPoints ?? 0;
   const liveCadence = (
@@ -1495,7 +1495,7 @@ export function buildSignalClassifications(params: {
   return {
     SPEED: {
       RATING: 'USEFUL_WITH_GATING',
-      EVIDENCE_BASIS: `HF alignment-fit MAE=${alignmentFitMae?.toFixed(2) ?? 'n/a'} km/h; within-clip holdout MAE=${withinClipHoldoutMae?.toFixed(2) ?? 'n/a'} (generalization evidence only); unique-alignment holdout MAE=${uniqueHoldoutMae?.toFixed(2) ?? 'n/a'} across ${uniqueClips} clips`,
+      EVIDENCE_BASIS: `HF alignment-fit MAE=${alignmentFitMae?.toFixed(2) ?? 'n/a'} km/h; within-clip holdout MAE=${withinClipHoldoutMae?.toFixed(2) ?? 'n/a'} (generalization evidence only); unique-alignment holdout MAE=${uniqueHoldoutMae?.toFixed(2) ?? 'n/a'} across ${uniqueHoldoutClips} evaluated holdout clip${uniqueHoldoutClips === 1 ? '' : 's'}`,
       LIMITATION: 'INDEPENDENT_ABSOLUTE_ACCURACY_VALIDATED=NO; IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY',
     },
     RPM: powertrainInterp.powertrainCombustionEngineSpeed ?? {

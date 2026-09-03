@@ -52,7 +52,7 @@
   "signalClassifications": {
     "SPEED": {
       "RATING": "USEFUL_WITH_GATING",
-      "EVIDENCE_BASIS": "HF alignment-fit MAE=8.46 km/h; within-clip holdout MAE=7.85 (generalization evidence only); unique-alignment holdout MAE=8.98 across 2 clips",
+      "EVIDENCE_BASIS": "HF alignment-fit MAE=8.46 km/h; within-clip holdout MAE=7.85 (generalization evidence only); unique-alignment holdout MAE=8.98 across 1 evaluated holdout clip",
       "LIMITATION": "INDEPENDENT_ABSOLUTE_ACCURACY_VALIDATED=NO; IN_SAMPLE_ALIGNMENT_FIT_NOT_INDEPENDENT_ACCURACY"
     },
     "RPM": {
