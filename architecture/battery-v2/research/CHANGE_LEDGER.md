@@ -18,6 +18,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-03 — M3.1 Stage-2 cutover atomicity hardening (PR #1527)
+
+| Field | Content |
+|-------|---------|
+| **CHANGE** | Atomic env rollback restores `backend.env` then rolling-restarts all replicas on unchanged SHA with scheduler re-verification; `set -E` ERR trap inheritance; PKG-01 pre-T0 VALID backlog fail-closed gate; `BATTERY_V2_STAGE2_T0` only after full success; rollback atomicity selftests (A–E). |
+| **WHY** | Prevent mixed runtime (replica A on Stage-2 config, replica B on old) after partial activation failure; block silent pre-cutover VALID repair eligibility. |
+| **VALIDATION** | `battery-v2-stage2-rollback-atomicity.selftest.sh` PASS; 66 targeted unit tests PASS; graph validator PASS. |
+
 ## CL-2026-09-03 — M3.1 Stage-2 pre-merge hardening (PR #1527)
 
 | Field | Content |

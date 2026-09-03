@@ -117,9 +117,14 @@ STAGE2_CONTRACT_ASSERTED=YES
 **Preflight hardening (PR #1527 final):**
 - `SCHEDULER_TOPOLOGY_PREFLIGHT=PASS` only when exactly one leader and no UNKNOWN/UNREACHABLE replica roles
 - PKG-01 SQL audits **all** ENQUEUED REST handoff identities (no 7-day age bound); runtime reconciliation retains bounded lookback
+- `PKG01_PRE_T0_VALID_BACKLOG_GATE=PASS` only when `PKG01_ENQUEUED_VALID=0` (fail-closed on VALID+ENQUEUED pre-T0 backlog)
 - `PKG01_GUARD_DEPLOYED=YES` required via `BATTERY_V2_PKG01_PRE_CUTOVER_GUARD_VERSION` marker in deployed release
 - `DRY_RUN=1` on activation script: preflight only, no `BATTERY_V2_STAGE2_PREFLIGHT_ACK` required
-- Post-`backend.env` mutation failure: emits `BACKUP_FILE` + `ROLLBACK_COMMAND` (+ automatic restore attempt)
+
+**Atomic env rollback (post-mutation failure):**
+- Restores exact `backend.env` backup, chmod 600, rolling-restarts **all** replicas on unchanged release SHA
+- Verifies post-deploy health + exactly one scheduler leader (`ROLLBACK_*=YES` markers)
+- `BATTERY_V2_STAGE2_T0` emitted only after full activation success (never on partial failure)
 
 ---
 
