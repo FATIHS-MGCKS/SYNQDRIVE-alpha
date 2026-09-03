@@ -6,7 +6,7 @@
 
 **Scope:** Driving Intelligence Reconstruction phases and major artifacts only. Does not index every unrelated repository audit.
 
-**Last updated:** 2026-09-03 (RD003 video-GT correlation telemetry export)
+**Last updated:** 2026-09-03 (RD003 video-GT alignment workbench DI-EV-0034A)
 
 ---
 
@@ -57,12 +57,13 @@
 | DI-EV-0031 | Phase 3A.3 | B — Cross-vehicle differential | `docs/audits/dimo-lte-r1-reference-drive-002-vs-rd003-tiguan-cross-vehicle-differential-2026-09-02.md` | 2026-09-02 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | C63 vs Tiguan | CONFIRMED_FROM_VEHICLE_OBSERVATION | — | — | C63 29 vs Tiguan 31 fields; shared HF set; vehicle-specific gear signals |
 | DI-EV-0032 | Phase 3A.3 | C — Ground Truth index | `docs/audits/dimo-lte-r1-reference-drive-003-ground-truth-evidence-index-2026-09-02.md` | 2026-09-02 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | PENDING_SEGMENTED_VIDEO | — | — | Partial/segmented video GT clip schema; TELEMETRY_ONLY unrecorded windows; continuous video assumption removed |
 | DI-EV-0033 | Phase 3A.3 | B — Machine-readable | `docs/audits/data/dimo-lte-r1-reference-drive-003-video-gt-correlation-source.jsonl` (+ CSV, summary, per-field CSVs) | 2026-09-03 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Session `0fa040aa-…` · `DIMO_LTE_R1_REFERENCE_DRIVE_003` | PENDING_CORRELATION | — | — | Full-session lossless telemetry correlation source for external video alignment; 5010 rows; NOT Ground Truth itself |
+| DI-EV-0034A | Phase 3A.3 | B — Method/Tooling | `docs/audits/data/rd003-video-ground-truth-observations.json` + `docs/audits/data/rd003-video-gt-alignment/` | 2026-09-03 | CURRENT | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | AWAITING_EXTERNAL_GT_INGESTION | — | — | External video/telemetry alignment workbench; multi-clock model; NOT validated Ground Truth |
 
 ---
 
 ## Entry count
 
-**33** registry entries through DI-EV-0033 (RD003 video-GT correlation export added 2026-09-03).
+**34** registry entries through DI-EV-0034A (RD003 alignment workbench added 2026-09-03).
 
 ---
 
@@ -70,7 +71,7 @@
 
 | Planned ID | Phase | Artifact | Status |
 |------------|-------|----------|--------|
-| DI-EV-0034+ | RD003 Video GT | Video↔telemetry alignment results after external analysis | NOT_STARTED |
+| DI-EV-0034B+ | RD003 Video GT | Validated per-clip alignment results after external GT ingestion | NOT_STARTED |
 
 ---
 

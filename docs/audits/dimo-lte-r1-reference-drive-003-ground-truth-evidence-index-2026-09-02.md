@@ -2,7 +2,7 @@
 
 **Evidence ID:** DI-EV-0032
 
-**Related:** DI-EV-0033 — canonical telemetry correlation source (`docs/audits/data/dimo-lte-r1-reference-drive-003-video-gt-correlation-source.jsonl`). DI-EV-0033 is **not** Ground Truth itself; it is the lossless telemetry source against which the nine external video clips will be aligned.
+**Related:** DI-EV-0033 — canonical telemetry correlation source. DI-EV-0034A — alignment workbench (`docs/audits/data/rd003-video-ground-truth-observations.json`, `docs/audits/data/rd003-video-gt-alignment/`). Neither is validated Ground Truth.
 
 ## Coverage model
 
@@ -11,9 +11,10 @@
 | RD003_TELEMETRY_COVERAGE | FULL_SESSION |
 | RD003_VIDEO_GT_COVERAGE | PARTIAL_SEGMENTED |
 | VIDEO_GROUND_TRUTH_AVAILABLE | CLIPS_AVAILABLE_EXTERNALLY (9 segmented instrument-cluster clips) |
-| VIDEO_ALIGNMENT_STATUS | PENDING_CORRELATION |
+| VIDEO_ALIGNMENT_STATUS | AWAITING_EXTERNAL_GT_INGESTION |
 | GROUND_TRUTH_VALIDATED | NO |
 | CONTINUOUS_VIDEO_ASSUMPTION | REMOVED |
+| WORKBENCH_READY | YES (DI-EV-0034A) |
 
 RD003 did **not** record one continuous ~37 minute instrument-cluster video. Telemetry covers the full session; video Ground Truth is **partial / segmented** — multiple short clips (~1 min each) around interesting driving states (acceleration, braking, coasting, cornering, cruise, etc.).
 
@@ -62,7 +63,17 @@ Telemetry windows without a corresponding video clip remain **TELEMETRY_ONLY** a
 | PROVIDER_TIMESTAMP_MAY_PREDATE_SESSION_START | YES |
 | VIDEO_TO_TELEMETRY_CLOCK_MODEL_STATUS | PENDING_MULTI_CLOCK_CORRELATION |
 
-Nine segmented clips (IMG_2803–IMG_2811) are available to the external analysis authority. Candidate vehicle-clock regions are documented in the DI-EV-0033 summary only — **not** applied as telemetry filters.
+Nine segmented clips (IMG_2803–IMG_2811) registered in DI-EV-0034A external GT schema.
+
+## Alignment workbench (DI-EV-0034A)
+
+| Field | Value |
+|-------|-------|
+| External GT schema | `docs/audits/data/rd003-video-ground-truth-observations.json` |
+| Alignment outputs | `docs/audits/data/rd003-video-gt-alignment/` |
+| WORKBENCH_READY | YES |
+| EXTERNAL_GT_VALUES_COMPLETE | NO |
+| VIDEO_ALIGNMENT_STATUS | AWAITING_EXTERNAL_GT_INGESTION |
 
 ## Telemetry reference
 

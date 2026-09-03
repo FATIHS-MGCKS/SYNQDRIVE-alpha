@@ -988,6 +988,20 @@ First instrumented LTE_R1 reference drive on VW Tiguan WOB L 7503. Session `0663
 
 Rationale: vehicle instrument-cluster clock offset vs DIMO/provider timestamps is an **unknown parameter** to be measured by external correlation — not assumed as a pre-filter. Export preserves all acquisition surfaces (HF_HISTORICAL, LATEST_LIVE, LATEST_SLOW) without resampling or deduplication.
 
+**DI-EV-0034A — External Video/Telemetry Alignment Workbench (2026-09-03):**
+
+| Field | Value |
+|-------|-------|
+| Evidence ID | DI-EV-0034A |
+| Workbench status | **WORKBENCH_READY** |
+| External GT schema | `docs/audits/data/rd003-video-ground-truth-observations.json` |
+| Alignment outputs | `docs/audits/data/rd003-video-gt-alignment/` |
+| `VIDEO_ALIGNMENT_STATUS` | **AWAITING_EXTERNAL_GT_INGESTION** |
+| `GROUND_TRUTH_VALIDATED` | **NO** |
+| `VIDEO_CLOCK_USED_AS_SOLE_ALIGNMENT_AUTHORITY` | **NO** |
+
+Rationale: nine segmented clips (~5m51s total) vs full-session telemetry; visible vehicle clock is minute-resolution prior only; providerTimestamp ≠ synqReceivedAt; LATEST_LIVE ≠ fresh physical sample; Ground Truth / alignment / signal-quality are separate evidence layers.
+
 **Timing metrics (distinct semantics):** SESSION_START_TO_FIRST_REQUEST_MS=35; SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS=254; FAST_GO_TO_RECORDING_MS=125; FAST_GO_TO_FIRST_CYCLE_MS=1222. Prior ambiguous ~0.93s acquisition-start label retired.
 
 **Key findings:** HF watermark + query-window proofs use acquisition-order per-field execution (not lexical sort). `NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED=YES`; `HF_IDEMPOTENCY_RUNTIME_VALIDATED=NOT_EXERCISED` (no duplicate/retry path exercised). Vehicle Load domain = RECONSTRUCTABLE_MEDIUM_CONFIDENCE. Longitudinal accel = RECONSTRUCTABLE_WITH_CADENCE_GATING. GEAR_STATE_OBSERVED=YES; GEAR_CHANGE_TIMING_VALIDATED=NO. Zero native events (NOT_EXERCISED — not proof no harsh maneuvers occurred).
@@ -1368,7 +1382,7 @@ Legend: `DONE`, `IN_PROGRESS`, `NEXT`, `BLOCKED`, `NOT_STARTED`.
 | Flight Recorder implementation (LTE_R1) | DONE (3A.1+3A.2) | `reference-capture` deployed + production canary validated |
 | Instrumented reference drive #001 (RD001) | DONE | Session `06638509-…` COMPLETED; telemetry audit available; video GT NOT_AVAILABLE |
 | RD002 (motion HF canary) | **DONE** | Session `e095d273-…` — DI-EV-0023; MOTION_CANARY_COMPLETED=YES |
-| RD003 (video Ground Truth) | **CORRELATION SOURCE READY** | Telemetry forensics complete (DI-EV-0027–0032); correlation export DI-EV-0033; external video alignment PENDING |
+| RD003 (video Ground Truth) | **ALIGNMENT WORKBENCH READY** | DI-EV-0033 correlation source merged; DI-EV-0034A workbench; external GT ingestion pending |
 | Evidence & documentation governance | DONE | `driving-intelligence-evidence-governance-2026-09-01.md` + registry seeded |
 | Ground-truth synchronization | NOT_STARTED | Phase 5 |
 | Detector validation | NOT_STARTED | Phase 6 |
