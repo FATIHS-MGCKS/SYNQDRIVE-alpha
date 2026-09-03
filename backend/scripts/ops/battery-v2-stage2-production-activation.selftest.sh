@@ -116,4 +116,42 @@ fi
 unset BACKEND_ENV BATTERY_V2_TEST_REPLICA_ROLE_BY_PORT SYNQDRIVE_CURRENT_LINK
 rm -f "$TMP_ENV"
 
+# PKG-01 valid backlog gate
+battery_v2_stage2_pkg01_preflight_backlog_gate 0 0 | grep -q 'PKG01_PRE_T0_VALID_BACKLOG_GATE=PASS' \
+  || fail "PKG01 valid=0 unresolved=0 should pass"
+if battery_v2_stage2_pkg01_preflight_backlog_gate 1 0 2>/dev/null; then
+  fail "PKG01 valid=1 should fail"
+fi
+if battery_v2_stage2_pkg01_preflight_backlog_gate 0 1 2>/dev/null; then
+  fail "PKG01 unresolved=1 should fail"
+fi
+
+# Preflight fails on VALID ENQUEUED backlog (mocked SQL)
+MOCK_BIN="$(mktemp -d)"
+cat >"$MOCK_BIN/psql" <<'EOF'
+#!/usr/bin/env bash
+echo "25|1|24|0"
+EOF
+chmod +x "$MOCK_BIN/psql"
+export PATH="$MOCK_BIN:$PATH"
+TMP_ENV="$(mktemp)"
+cat >"$TMP_ENV" <<'EOF'
+BATTERY_V2_REST_SHADOW_ENABLED=false
+BATTERY_V2_PUBLICATION_ENABLED=true
+BATTERY_V2_RECONCILIATION_ENABLED=true
+DATABASE_URL=postgresql://invalid
+EOF
+export BACKEND_ENV="$TMP_ENV"
+export BATTERY_V2_TEST_REPLICA_ROLE_BY_PORT="3001:LEADER,3002:FOLLOWER"
+export SYNQDRIVE_CURRENT_LINK="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+if bash "${SCRIPT_DIR}/battery-v2-stage2-production-preflight.sh" 2>/dev/null; then
+  fail "preflight should fail when VALID ENQUEUED backlog > 0"
+fi
+unset BACKEND_ENV BATTERY_V2_TEST_REPLICA_ROLE_BY_PORT SYNQDRIVE_CURRENT_LINK
+rm -rf "$MOCK_BIN" "$TMP_ENV"
+
+# Atomic rollback matrix (runtime, not file-only)
+bash "${SCRIPT_DIR}/battery-v2-stage2-rollback-atomicity.selftest.sh" \
+  || fail "rollback atomicity selftest failed"
+
 echo "battery-v2-stage2-production-activation.selftest: OK"

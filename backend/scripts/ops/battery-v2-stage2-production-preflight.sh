@@ -77,9 +77,7 @@ echo "PKG01_ENQUEUED_NON_VALID=${PKG01_ENQUEUED_NON_VALID:-ERR}"
 echo "PKG01_ENQUEUED_UNRESOLVED=${PKG01_ENQUEUED_UNRESOLVED:-ERR}"
 echo "PKG01_PRE_CUTOVER_GUARD_NOTE=non-VALID ENQUEUED rows terminalize without assess enqueue after quality-gate deploy"
 
-if [[ "${PKG01_ENQUEUED_UNRESOLVED:-ERR}" != "0" ]]; then
-  echo "PKG01_PREFLIGHT=FAIL"
-  echo "ERROR: unresolved PKG-01 ENQUEUED identities=${PKG01_ENQUEUED_UNRESOLVED}" >&2
+if ! battery_v2_stage2_pkg01_preflight_backlog_gate "${PKG01_ENQUEUED_VALID:-ERR}" "${PKG01_ENQUEUED_UNRESOLVED:-ERR}"; then
   exit 1
 fi
 

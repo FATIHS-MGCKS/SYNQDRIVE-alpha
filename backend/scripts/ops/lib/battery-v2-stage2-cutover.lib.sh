@@ -159,3 +159,150 @@ WHERE m.type IN ('REST_60M', 'REST_6H')
   ) = 'ENQUEUED';
 SQL
 }
+
+battery_v2_stage2_read_env_flag() {
+  local file="$1"
+  local key="$2"
+  local default="${3:-}"
+  if [[ -f "$file" ]]; then
+    grep -E "^${key}=" "$file" | tail -n1 | cut -d= -f2- || echo "$default"
+  else
+    echo "$default"
+  fi
+}
+
+battery_v2_stage2_env_has_stage2_contract() {
+  local file="$1"
+  battery_v2_stage2_contract_is_valid \
+    "$(battery_v2_stage2_read_env_flag "$file" BATTERY_V2_REST_SHADOW_ENABLED false)" \
+    "$(battery_v2_stage2_read_env_flag "$file" BATTERY_V2_PUBLICATION_ENABLED false)" \
+    "$(battery_v2_stage2_read_env_flag "$file" BATTERY_V2_RECONCILIATION_ENABLED true)"
+}
+
+battery_v2_stage2_pkg01_preflight_backlog_gate() {
+  local valid_cnt="${1:-ERR}"
+  local unresolved_cnt="${2:-ERR}"
+
+  if [[ "$unresolved_cnt" != "0" ]]; then
+    echo "PKG01_PREFLIGHT=FAIL"
+    echo "PKG01_PRE_T0_VALID_BACKLOG_GATE=FAIL"
+    echo "ERROR: unresolved PKG-01 ENQUEUED identities=${unresolved_cnt}" >&2
+    return 1
+  fi
+  if [[ "$valid_cnt" != "0" ]]; then
+    echo "PKG01_PREFLIGHT=FAIL"
+    echo "PKG01_PRE_T0_VALID_BACKLOG_GATE=FAIL"
+    echo "ERROR: VALID ENQUEUED PKG-01 backlog=${valid_cnt} requires forensic classification before Stage-2 recovery activation" >&2
+    return 1
+  fi
+  echo "PKG01_PRE_T0_VALID_BACKLOG_GATE=PASS"
+  return 0
+}
+
+battery_v2_stage2_rolling_deploy() {
+  if declare -F battery_v2_stage2_test_rolling_deploy_hook >/dev/null 2>&1; then
+    battery_v2_stage2_test_rolling_deploy_hook "$@"
+    return $?
+  fi
+  vps_replica_rolling_deploy "$@"
+}
+
+battery_v2_stage2_verify_post_deploy() {
+  if declare -F battery_v2_stage2_test_verify_post_deploy_hook >/dev/null 2>&1; then
+    battery_v2_stage2_test_verify_post_deploy_hook "$@"
+    return $?
+  fi
+  vps_replica_verify_post_deploy "$@"
+}
+
+# Atomic env rollback: restore backend.env then restart ALL replicas on unchanged release SHA.
+battery_v2_stage2_execute_atomic_env_rollback() {
+  local backend_env="$1"
+  local backup_file="$2"
+  local current="$3"
+  local target_sha="$4"
+
+  echo "=== ATOMIC ENV ROLLBACK BEGIN ==="
+  echo "ROLLBACK_TARGET_SHA=${target_sha}"
+
+  if [[ ! -f "$backup_file" ]]; then
+    echo "ROLLBACK_ENV_RESTORED=NO"
+    echo "ROLLBACK_REPLICAS_RESTARTED=NO"
+    echo "ROLLBACK_SCHEDULER_CONVERGED=NO"
+    echo "ROLLBACK_RUNTIME_VERIFIED=NO"
+    return 1
+  fi
+
+  cp "$backup_file" "$backend_env"
+  chmod 600 "$backend_env"
+  if ! cmp -s "$backup_file" "$backend_env"; then
+    echo "ROLLBACK_ENV_RESTORED=NO"
+    echo "ROLLBACK_RUNTIME_VERIFIED=NO"
+    return 1
+  fi
+  echo "ROLLBACK_ENV_RESTORED=YES"
+
+  export BATTERY_V2_STAGE2_ROLLBACK_PHASE=1
+  if ! battery_v2_stage2_rolling_deploy "$current" "$target_sha"; then
+    unset BATTERY_V2_STAGE2_ROLLBACK_PHASE
+    echo "ROLLBACK_REPLICAS_RESTARTED=NO"
+    echo "ROLLBACK_SCHEDULER_CONVERGED=NO"
+    echo "ROLLBACK_RUNTIME_VERIFIED=NO"
+    return 1
+  fi
+  echo "ROLLBACK_REPLICAS_RESTARTED=YES"
+
+  if ! battery_v2_stage2_verify_post_deploy "$current" "$target_sha"; then
+    unset BATTERY_V2_STAGE2_ROLLBACK_PHASE
+    echo "ROLLBACK_SCHEDULER_CONVERGED=NO"
+    echo "ROLLBACK_RUNTIME_VERIFIED=NO"
+    return 1
+  fi
+
+  if ! battery_v2_stage2_scheduler_topology_preflight; then
+    unset BATTERY_V2_STAGE2_ROLLBACK_PHASE
+    echo "ROLLBACK_SCHEDULER_CONVERGED=NO"
+    echo "ROLLBACK_RUNTIME_VERIFIED=NO"
+    return 1
+  fi
+  unset BATTERY_V2_STAGE2_ROLLBACK_PHASE
+  echo "ROLLBACK_SCHEDULER_CONVERGED=YES"
+
+  if ! cmp -s "$backup_file" "$backend_env"; then
+    echo "ROLLBACK_MIXED_CONFIG_DETECTED=YES"
+    echo "ROLLBACK_RUNTIME_VERIFIED=NO"
+    return 1
+  fi
+  if battery_v2_stage2_env_has_stage2_contract "$backend_env" \
+    && ! battery_v2_stage2_env_has_stage2_contract "$backup_file"; then
+    echo "ROLLBACK_MIXED_CONFIG_DETECTED=YES"
+    echo "ROLLBACK_RUNTIME_VERIFIED=NO"
+    return 1
+  fi
+
+  if declare -F battery_v2_stage2_test_runtime_mixed_check >/dev/null 2>&1; then
+    if ! battery_v2_stage2_test_runtime_mixed_check; then
+      echo "ROLLBACK_MIXED_RUNTIME_DETECTED=YES"
+      echo "ROLLBACK_RUNTIME_VERIFIED=NO"
+      return 1
+    fi
+  fi
+
+  echo "ROLLBACK_RUNTIME_VERIFIED=YES"
+  echo "ATOMIC_ROLLBACK_SUCCESSFUL=YES"
+  return 0
+}
+
+battery_v2_stage2_emit_manual_recovery() {
+  local backup_file="$1"
+  local backend_env="$2"
+  cat <<EOF
+MANUAL_RECOVERY_REQUIRED=YES
+MANUAL_RECOVERY_STEPS:
+  1. cp ${backup_file} ${backend_env}
+  2. chmod 600 ${backend_env}
+  3. rolling-restart ALL production replicas from ${SYNQDRIVE_CURRENT_LINK:-/opt/synqdrive/current}
+  4. verify exactly one scheduler leader and external health
+  5. confirm no replica retains Stage-2 env in memory while backend.env is restored
+EOF
+}
