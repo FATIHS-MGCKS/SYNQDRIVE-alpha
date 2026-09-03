@@ -1,7 +1,7 @@
 # SCALING PROCESS — Current State
 
-**Last verified:** 2026-09-03T11:15Z (P1.8.3.3 forensic authority closure v4)  
-**Verifier:** P1.8.3.3 forensic authority correction agent
+**Last verified:** 2026-09-03T14:45Z (P1.8.3.4 INC-07 idempotency remediation)  
+**Verifier:** P1.8.3.4 INC-07 remediation agent
 
 > `MAIN_SHA_AT_LAST_AUTHORITY_SYNC` is a snapshot at authority sync — not a live pointer to `origin/main`.
 
@@ -60,15 +60,18 @@ N1000_CERTIFICATION = CONDITIONAL (software only)
 OPEN_P0 = 0
 OPEN_P1 = 0
 OPEN_P2 = 1
+INC_07_FIX_IMPLEMENTED = YES
+INC_07_LOCAL_VALIDATION = PASS
+INC_07_PRODUCTION_VALIDATED = NO
 PRE_EXISTING_P3 = 1
 INC_06 = CLOSED
-INC_07 = OPEN
+INC_07 = FIX_IMPLEMENTED_PENDING_PRODUCTION_VALIDATION
 OQ_17 = CLOSED
 OQ_18 = MITIGATED_LIKELY_PRODUCTION_VERIFIED
 OQ_28 = PARTIAL
-OQ_30 = OPEN
+OQ_30 = PARTIAL
 P1_8_3_3_MERGE_RECOMMENDATION = EXTERNAL_GITHUB_GATE
-NEXT_ARCHITECTURE_STAGE = trip reconciliation idempotency remediation then uninterrupted 24h N=2 soak for OQ-28
+NEXT_ARCHITECTURE_STAGE = INC-07 production validation then uninterrupted 24h N=2 soak for OQ-28
 ```
 
 ---
@@ -126,10 +129,10 @@ NEXT_ARCHITECTURE_STAGE = trip reconciliation idempotency remediation then unint
 
 ---
 
-## TYPE: INCIDENT — INC-07 (open)
+## TYPE: INCIDENT — INC-07 (fix implemented; production validation pending)
 
-**STATUS:** **OPEN** (P2) — reconciliation `INTRA_TRIP_GAP_SPLIT` reapplication creates duplicate REPAIRED trips. Blocks scale-readiness certification; **not** proven N=2 multi-replica race.  
-**EVIDENCE:** P1.8.3.3 forensic closure; `FAILURE_AND_RECOVERY_MODEL.md`
+**STATUS:** **FIX_IMPLEMENTED_PENDING_PRODUCTION_VALIDATION** (P2) — reconciliation `INTRA_TRIP_GAP_SPLIT` reapplication created duplicate REPAIRED trips; P1.8.3.4 implements deterministic repair identity + claim-before-mutate. Historical duplicates untouched. **Not closed.**  
+**EVIDENCE:** P1.8.3.3 forensic closure; P1.8.3.4 remediation + local regression PASS; `FAILURE_AND_RECOVERY_MODEL.md`
 
 ---
 
@@ -156,4 +159,4 @@ NEXT_ARCHITECTURE_STAGE = trip reconciliation idempotency remediation then unint
 | Deploy path preserves 2 replicas | **YES** |
 | Exact-SHA deploy invariant (routine) | **NEEDS_PRECISION_REVIEW** |
 | Continuous 24h N=2 soak | **NOT_MET** (OQ-28 PARTIAL) |
-| Scale-readiness blockers | **INC-07** open |
+| Scale-readiness blockers | **INC-07** fix implemented; production validation pending |

@@ -118,9 +118,9 @@
 | **SYMPTOM** | 2 duplicate `vehicle_id+start_time` groups (4 REPAIRED rows); 0 pre-N2 duplicate groups in 1947 trips |
 | **ROOT_CAUSE** | Warm-tier `repairIntraTripGapSplits` re-applies split on same parent trip/window; `INTRA_TRIP_GAP_SPLIT` `trip_repairs` lack deterministic idempotency key (unlike `MISSING_TRIP`) |
 | **SCALING_CAUSALITY** | APPLICATION_IDEMPOTENCY_DEFECT — not multi-replica concurrent race (4h scheduler cadence) |
-| **STATUS** | **OPEN** |
-| **REMEDIATION** | (1) Deterministic idempotency identity for `INTRA_TRIP_GAP_SPLIT` repair audit (extend `buildRepairAuditId` pattern); (2) deterministic repaired-trip identity (`organization + vehicle + parent_trip + split_window + repair_type/version`); (3) DB-supported conflict-safe persistence where semantically valid — do **not** blindly impose `UNIQUE(vehicle_id, start_time)` |
-| **EVIDENCE** | `architecture/P1_8_3_3_N2_24H_PLUS_SEGMENTED_RETROSPECTIVE_AUDIT_2026-09-03.md` (forensic closure) |
+| **STATUS** | **FIX_IMPLEMENTED_PENDING_PRODUCTION_VALIDATION** (P1.8.3.4) |
+| **REMEDIATION** | Implemented: deterministic `trip_repairs` PK via `buildIntraTripGapSplitRepairAuditId`; `claimIntraTripGapSplitRepair` before `splitTripAtGap`; legacy `APPLIED` row lookup; session advisory lock around apply; observability counters. Historical duplicates untouched. |
+| **EVIDENCE** | `architecture/P1_8_3_3_N2_24H_PLUS_SEGMENTED_RETROSPECTIVE_AUDIT_2026-09-03.md`; `architecture/P1_8_3_4_INC_07_TRIP_RECONCILIATION_IDEMPOTENCY_REMEDIATION_2026-09-03.md` |
 
 ---
 

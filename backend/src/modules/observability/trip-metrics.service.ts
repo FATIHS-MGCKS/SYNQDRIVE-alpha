@@ -37,6 +37,11 @@ export class TripMetricsService implements OnModuleInit {
   readonly tripDiscarded: Counter<string>;
   readonly enrichmentFailed: Counter<string>;
   readonly repairActions: Counter<string>;
+  /** Trip reconciliation durable repair claims — low-cardinality repair_type only. */
+  readonly tripReconciliationRepairApply: Counter<string>;
+  readonly tripReconciliationRepairIdempotentSkip: Counter<string>;
+  readonly tripReconciliationRepairClaimConflict: Counter<string>;
+  readonly tripReconciliationRepairRecovery: Counter<string>;
   readonly emptySnapshots: Counter<string>;
   readonly staleSnapshots: Counter<string>;
   readonly duplicateCandidates: Counter<string>;
@@ -306,6 +311,34 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_repair_actions_total',
       help: 'Total repair actions taken by the reconciliation layer',
       labelNames: ['type', 'result'],
+      registers: [this.registry],
+    });
+
+    this.tripReconciliationRepairApply = new Counter({
+      name: 'synqdrive_trip_reconciliation_repair_apply_total',
+      help: 'Trip reconciliation repairs that committed a new mutation',
+      labelNames: ['repair_type'],
+      registers: [this.registry],
+    });
+
+    this.tripReconciliationRepairIdempotentSkip = new Counter({
+      name: 'synqdrive_trip_reconciliation_repair_idempotent_skip_total',
+      help: 'Trip reconciliation repairs skipped because the semantic repair already exists',
+      labelNames: ['repair_type'],
+      registers: [this.registry],
+    });
+
+    this.tripReconciliationRepairClaimConflict = new Counter({
+      name: 'synqdrive_trip_reconciliation_repair_claim_conflict_total',
+      help: 'Trip reconciliation repair claim races resolved without duplicate mutation',
+      labelNames: ['repair_type'],
+      registers: [this.registry],
+    });
+
+    this.tripReconciliationRepairRecovery = new Counter({
+      name: 'synqdrive_trip_reconciliation_repair_recovery_total',
+      help: 'Trip reconciliation repairs retried after a prior REJECTED or crash-interrupted attempt',
+      labelNames: ['repair_type'],
       registers: [this.registry],
     });
 

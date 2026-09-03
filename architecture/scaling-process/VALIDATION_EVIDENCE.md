@@ -207,4 +207,16 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 3. Staging validation Redis DB ≠ production DB
 4. Deploy leader-wait **verified in production** (P1.8.3.1 attempt 3)
 5. Exact-SHA deploy: stale-current fix **likely** production-verified; full DEC-016 invariant **NEEDS_PRECISION_REVIEW** (P1.8.3.3 forensic)
-6. INC-07 trip reconciliation idempotency — runtime remediation open
+---
+
+## P1.8.3.4 — INC-07 trip reconciliation idempotency remediation
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|-------|
+| Deterministic INTRA_TRIP_GAP_SPLIT repair identity | P1.8.3.4 | — | `buildIntraTripGapSplitRepairAuditId` | IMPLEMENTED | HIGH |
+| Claim before mutate | P1.8.3.4 | — | `claimIntraTripGapSplitRepair` | IMPLEMENTED | HIGH |
+| Serial / 4h replay idempotent | P1.8.3.4 | — | idempotency spec | PASS | HIGH |
+| Legacy random-UUID APPLIED compatibility | P1.8.3.4 | — | idempotency spec | PASS | HIGH |
+| MISSING_TRIP regression | P1.8.3.4 | — | trip-repair-coverage-audit | PASS | HIGH |
+| INC-07 production validation | P1.8.3.4 | — | — | PENDING | HIGH |
+

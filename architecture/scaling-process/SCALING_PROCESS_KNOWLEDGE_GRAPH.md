@@ -46,12 +46,12 @@ Scaling Process
 │   ├── Deploy leader-timing false-abort → INC-06 (P1.8.3) — **CLOSED** P1.8.3.1 prod validation
 │   ├── Deploy bootstrap stale-current → OQ-18 — LIKELY_PRODUCTION_VERIFIED; DEC-016 precision review pending
 │   ├── N=2 continuous 24h soak → OQ-28 — PARTIAL (P1.8.3.3 longest FULL_N2 segment 81024s)
-│   ├── Trip reconciliation duplicate rows → INC-07 (P1.8.3.3 forensic) — OPEN
+│   ├── Trip reconciliation duplicate rows → INC-07 (P1.8.3.3 forensic) — FIX_IMPLEMENTED_PENDING_PRODUCTION_VALIDATION (P1.8.3.4)
 │   └── nginx dual-upstream with dead backend
 │
 ├── Scaling Envelopes
 │   ├── N=1 PROVEN (soak)
-│   ├── N=2 EARLY_PRODUCTION_VALIDATION (P1.8.3.3: calendar >24h; continuous FULL_N2 soak NOT_MET; INC-07 open)
+│   ├── N=2 EARLY_PRODUCTION_VALIDATION (P1.8.3.3: calendar >24h; continuous FULL_N2 soak NOT_MET; INC-07 fix implemented pending prod validation)
 │   └── N≈1000 CONDITIONAL
 │
 └── Evidence / Decisions / Open Work

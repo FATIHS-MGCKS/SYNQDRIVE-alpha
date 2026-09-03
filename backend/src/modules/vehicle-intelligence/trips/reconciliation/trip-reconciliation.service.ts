@@ -61,6 +61,7 @@ import {
 import { BoundaryRefreshLifecycleService } from '../boundary-refresh-lifecycle.service';
 import { BoundaryRepairConcurrentMutationError } from '../decision/decision.types';
 import { ReconciliationExecutionMutexService } from '@shared/reconciliation-execution-mutex/reconciliation-execution-mutex.service';
+import { buildIntraTripGapSplitRepairAuditId } from './intra-trip-gap-split-repair-id.util';
 
 interface ReconciliationOptions {
   useDimoSegmentFallback?: boolean;
@@ -523,14 +524,14 @@ export class TripReconciliationService {
           },
         });
 
-        this.tripMetrics?.repairActions.inc({ type: REPAIR_TYPES.STALE_ONGOING, result: 'applied' });
+        this.tripMetrics?.repairActions?.inc({ type: REPAIR_TYPES.STALE_ONGOING, result: 'applied' });
         this.logger.log(`Stale trip ${trip.id} repaired for vehicle ${vehicleId}`);
       } catch (err: unknown) {
         await this.prisma.tripRepair.update({
           where: { id: repair.id },
           data: { status: REPAIR_STATUS.REJECTED, reason: `Repair failed: ${(err as Error).message}` },
         });
-        this.tripMetrics?.repairActions.inc({ type: REPAIR_TYPES.STALE_ONGOING, result: 'rejected' });
+        this.tripMetrics?.repairActions?.inc({ type: REPAIR_TYPES.STALE_ONGOING, result: 'rejected' });
       }
     }
   }
@@ -703,7 +704,7 @@ export class TripReconciliationService {
             );
           }
           applied++;
-          this.tripMetrics?.repairActions.inc({
+          this.tripMetrics?.repairActions?.inc({
             type: REPAIR_TYPES.MISSING_TRIP,
             result: 'applied',
           });
@@ -716,7 +717,7 @@ export class TripReconciliationService {
             data: { status: REPAIR_STATUS.REJECTED, reason: (err as Error).message },
           });
           rejected++;
-          this.tripMetrics?.repairActions.inc({
+          this.tripMetrics?.repairActions?.inc({
             type: REPAIR_TYPES.MISSING_TRIP,
             result: 'rejected',
           });
@@ -1178,7 +1179,7 @@ export class TripReconciliationService {
           status: REPAIR_STATUS.REJECTED,
           reason: (err as Error).message,
         });
-        this.tripMetrics?.repairActions.inc({
+        this.tripMetrics?.repairActions?.inc({
           type: REPAIR_TYPES.PARTIAL_TRIP_BOUNDARY_EXTENSION,
           result: 'rejected',
         });
@@ -1304,6 +1305,125 @@ export class TripReconciliationService {
       digest.slice(16, 20),
       digest.slice(20, 32),
     ].join('-');
+  }
+
+  /**
+   * Claims a durable INTRA_TRIP_GAP_SPLIT repair identity before any trip mutation.
+   *
+   * Redis reconciliation mutex serializes concurrent callers per vehicle but does
+   * not protect against later scheduler re-execution. The TripRepair primary key
+   * derived from (vehicle, gap boundaries) is the shared idempotency authority.
+   */
+  private async claimIntraTripGapSplitRepair(input: {
+    repairId: string;
+    vehicleId: string;
+    tripId: string;
+    gap: IntraTripGap;
+    tier: ReconciliationTier;
+    reason: string;
+    detectorEvidence: Record<string, unknown>;
+  }): Promise<
+    | { outcome: 'APPLY'; recoveredFromRejected: boolean }
+    | { outcome: 'IDEMPOTENT_SKIP'; reason: 'ALREADY_APPLIED' | 'LEGACY_ALREADY_APPLIED' }
+  > {
+    const { repairId, vehicleId, tripId, gap, reason, detectorEvidence } = input;
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${repairId}::text))`;
+
+      const legacyApplied = await tx.tripRepair.findFirst({
+        where: {
+          vehicleId,
+          repairType: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
+          status: REPAIR_STATUS.APPLIED,
+          windowFrom: gap.firstEndAt,
+          windowTo: gap.secondStartAt,
+        },
+        select: { id: true },
+        orderBy: { appliedAt: 'asc' },
+      });
+      if (legacyApplied) {
+        return {
+          outcome: 'IDEMPOTENT_SKIP' as const,
+          reason:
+            legacyApplied.id === repairId
+              ? ('ALREADY_APPLIED' as const)
+              : ('LEGACY_ALREADY_APPLIED' as const),
+        };
+      }
+
+      const existing = await tx.tripRepair.findUnique({
+        where: { id: repairId },
+        select: { id: true, status: true },
+      });
+      if (existing?.status === REPAIR_STATUS.APPLIED) {
+        return { outcome: 'IDEMPOTENT_SKIP' as const, reason: 'ALREADY_APPLIED' as const };
+      }
+
+      const repairData = {
+        vehicleId,
+        tripId,
+        repairType: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
+        status: REPAIR_STATUS.PROPOSED,
+        reason,
+        confidence: 'MEDIUM',
+        windowFrom: gap.firstEndAt,
+        windowTo: gap.secondStartAt,
+        detectorEvidence: JSON.parse(JSON.stringify(detectorEvidence)),
+      };
+
+      let recoveredFromRejected = false;
+      if (!existing) {
+        try {
+          await tx.tripRepair.create({ data: { id: repairId, ...repairData } });
+        } catch {
+          const raced = await tx.tripRepair.findUnique({
+            where: { id: repairId },
+            select: { id: true, status: true },
+          });
+          if (raced?.status === REPAIR_STATUS.APPLIED) {
+            this.tripMetrics?.tripReconciliationRepairClaimConflict?.inc({
+              repair_type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
+            });
+            return { outcome: 'IDEMPOTENT_SKIP' as const, reason: 'ALREADY_APPLIED' as const };
+          }
+          this.tripMetrics?.tripReconciliationRepairClaimConflict?.inc({
+            repair_type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
+          });
+        }
+      } else if (existing.status === REPAIR_STATUS.REJECTED) {
+        recoveredFromRejected = true;
+        await tx.tripRepair.update({
+          where: { id: repairId },
+          data: repairData,
+        });
+      } else if (existing.status === REPAIR_STATUS.PROPOSED) {
+        await tx.tripRepair.update({
+          where: { id: repairId },
+          data: {
+            tripId,
+            reason,
+            detectorEvidence: repairData.detectorEvidence,
+          },
+        });
+      }
+
+      if (recoveredFromRejected) {
+        this.tripMetrics?.tripReconciliationRepairRecovery?.inc({
+          repair_type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
+        });
+      }
+
+      const fresh = await tx.tripRepair.findUnique({
+        where: { id: repairId },
+        select: { status: true },
+      });
+      if (fresh?.status === REPAIR_STATUS.APPLIED) {
+        return { outcome: 'IDEMPOTENT_SKIP' as const, reason: 'ALREADY_APPLIED' as const };
+      }
+
+      return { outcome: 'APPLY' as const, recoveredFromRejected };
+    });
   }
 
   /**
@@ -1841,36 +1961,66 @@ export class TripReconciliationService {
 
       proposed++;
 
-      const repair = await this.prisma.tripRepair.create({
-        data: {
-          vehicleId,
-          tripId: current.id,
-          repairType: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
-          status: REPAIR_STATUS.PROPOSED,
-          reason:
-            `Waypoint silence of ${Math.round(gap.gapMs / 1000)}s with drift ` +
-            `${gap.driftM != null ? `${Math.round(gap.driftM)}m` : 'unknown'} ` +
-            `(tier=${tier})`,
-          confidence: 'MEDIUM',
-          windowFrom: gap.firstEndAt,
-          windowTo: gap.secondStartAt,
-          detectorEvidence: {
-            repairSource: 'INTRA_TRIP_WAYPOINT_GAP',
-            gapMs: gap.gapMs,
-            driftM: gap.driftM,
-            firstEndAt: gap.firstEndAt.toISOString(),
-            secondStartAt: gap.secondStartAt.toISOString(),
-            preWaypointCount: gap.preWaypointCount,
-            postWaypointCount: gap.postWaypointCount,
-            seg1DistanceKm: gap.seg1DistanceKm,
-            seg2DistanceKm: gap.seg2DistanceKm,
-            originalTripStart: current.startTime.toISOString(),
-            originalTripEnd: current.endTime!.toISOString(),
-          },
-        },
+      const repairId = buildIntraTripGapSplitRepairAuditId(
+        vehicleId,
+        gap.firstEndAt,
+        gap.secondStartAt,
+      );
+      const detectorEvidence = {
+        repairSource: 'INTRA_TRIP_WAYPOINT_GAP',
+        gapMs: gap.gapMs,
+        driftM: gap.driftM,
+        firstEndAt: gap.firstEndAt.toISOString(),
+        secondStartAt: gap.secondStartAt.toISOString(),
+        preWaypointCount: gap.preWaypointCount,
+        postWaypointCount: gap.postWaypointCount,
+        seg1DistanceKm: gap.seg1DistanceKm,
+        seg2DistanceKm: gap.seg2DistanceKm,
+        originalTripStart: current.startTime.toISOString(),
+        originalTripEnd: current.endTime!.toISOString(),
+        repairIdentity: repairId,
+      };
+      const repairReason =
+        `Waypoint silence of ${Math.round(gap.gapMs / 1000)}s with drift ` +
+        `${gap.driftM != null ? `${Math.round(gap.driftM)}m` : 'unknown'} ` +
+        `(tier=${tier})`;
+
+      const claim = await this.claimIntraTripGapSplitRepair({
+        repairId,
+        vehicleId,
+        tripId: current.id,
+        gap,
+        tier,
+        reason: repairReason,
+        detectorEvidence,
       });
 
+      if (claim.outcome === 'IDEMPOTENT_SKIP') {
+        this.tripMetrics?.tripReconciliationRepairIdempotentSkip?.inc({
+          repair_type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
+        });
+        this.logger.debug(
+          `INTRA_TRIP_GAP_SPLIT idempotent skip vehicle=${vehicleId} ` +
+            `repairIdentity=${repairId} reason=${claim.reason} trip=${current.id}`,
+        );
+        break;
+      }
+
+      const repair = { id: repairId };
+
       try {
+        await this.prisma.$executeRaw`SELECT pg_advisory_lock(hashtext(${repairId}::text))`;
+        const appliedRepair = await this.prisma.tripRepair.findUnique({
+          where: { id: repairId },
+          select: { status: true },
+        });
+        if (appliedRepair?.status === REPAIR_STATUS.APPLIED) {
+          this.tripMetrics?.tripReconciliationRepairIdempotentSkip?.inc({
+            repair_type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
+          });
+          break;
+        }
+
         const splitResult = await this.decisionEngine.splitTripAtGap({
           tripId: current.id,
           firstEndAt: gap.firstEndAt,
@@ -1924,9 +2074,12 @@ export class TripReconciliationService {
         });
 
         applied++;
-        this.tripMetrics?.repairActions.inc({
+        this.tripMetrics?.repairActions?.inc({
           type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
           result: 'applied',
+        });
+        this.tripMetrics?.tripReconciliationRepairApply?.inc({
+          repair_type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
         });
         this.tripMetrics?.tripEvidencePaths.inc({
           phase: 'mid_gap_split',
@@ -1987,7 +2140,7 @@ export class TripReconciliationService {
           },
         });
         rejected++;
-        this.tripMetrics?.repairActions.inc({
+        this.tripMetrics?.repairActions?.inc({
           type: REPAIR_TYPES.INTRA_TRIP_GAP_SPLIT,
           result: 'rejected',
         });
@@ -1995,6 +2148,8 @@ export class TripReconciliationService {
           `INTRA_TRIP_GAP_SPLIT retro failed for trip ${current.id}: ${(err as Error).message}`,
         );
         break;
+      } finally {
+        await this.prisma.$executeRaw`SELECT pg_advisory_unlock(hashtext(${repairId}::text))`;
       }
     }
 
@@ -2234,7 +2389,7 @@ export class TripReconciliationService {
           data: { status: REPAIR_STATUS.APPLIED, appliedAt: new Date() },
         });
         applied++;
-        this.tripMetrics?.repairActions.inc({ type: REPAIR_TYPES.MISSING_END, result: 'applied' });
+        this.tripMetrics?.repairActions?.inc({ type: REPAIR_TYPES.MISSING_END, result: 'applied' });
         this.logger.log(`Missing-end trip ${trip.id} repaired for vehicle ${vehicleId}`);
       } catch (err: unknown) {
         await this.prisma.tripRepair.update({
@@ -2242,7 +2397,7 @@ export class TripReconciliationService {
           data: { status: REPAIR_STATUS.REJECTED, reason: (err as Error).message },
         });
         rejected++;
-        this.tripMetrics?.repairActions.inc({ type: REPAIR_TYPES.MISSING_END, result: 'rejected' });
+        this.tripMetrics?.repairActions?.inc({ type: REPAIR_TYPES.MISSING_END, result: 'rejected' });
       }
     }
 

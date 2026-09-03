@@ -76,7 +76,7 @@ Do **not** treat items here as current production architecture.
 
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
-| OQ-30 | `INTRA_TRIP_GAP_SPLIT` reconciliation idempotency | **OPEN_QUESTION** | P1.8.3.3 forensic closure: warm-tier re-run created duplicate REPAIRED trips (INC-07); deterministic repair ID or existence guard required |
+| OQ-30 | `INTRA_TRIP_GAP_SPLIT` reconciliation idempotency | **PARTIAL** | P1.8.3.4: deterministic `buildIntraTripGapSplitRepairAuditId` + claim-before-mutate + legacy window lookup; local regression PASS; production validation pending; INC-07 closes only after no new duplicate groups |
 
 ---
 

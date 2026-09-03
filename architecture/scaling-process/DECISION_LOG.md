@@ -209,3 +209,18 @@ Format: Decision ID | Date/Phase | Status
 | **WHY** | Guarantees authorized artifact is promoted; prevents branch-tip drift |
 | **STATUS** | **IMPLEMENTED** — unit tests; stale-current fix **LIKELY_PRODUCTION_VERIFIED** (P1.8.3.3); full invariant **NEEDS_PRECISION_REVIEW** |
 | **EVIDENCE** | `vps-deploy-release.sh`, `cloud-agent-deploy.sh`, `assertDeployShaProvenance` tests |
+
+---
+
+## DEC-017: Durable semantic repair identity for trip reconciliation (P1.8.3.4)
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-09-03 |
+| **PROBLEM** | `INTRA_TRIP_GAP_SPLIT` used random `trip_repairs` IDs; warm-tier re-execution created duplicate repaired trips (INC-07) |
+| **DECISION** | Enforce idempotency via deterministic `trip_repairs` primary key derived from `(vehicleId, repairType, gap boundaries)`; claim before `splitTripAtGap` |
+| **INVARIANT** | Same semantic repair → same durable identity → at most one successful mutation |
+| **AUTHORITY** | PostgreSQL `trip_repairs` PK — Redis reconciliation mutex serializes concurrent execution but is **not** the idempotency authority |
+| **LEGACY** | Pre-fix random-UUID `APPLIED` rows matched by `(vehicleId, repairType, windowFrom, windowTo)` lookup |
+| **STATUS** | **IMPLEMENTED** — local regression PASS; production validation pending |
+| **EVIDENCE** | `P1_8_3_4_INC_07_TRIP_RECONCILIATION_IDEMPOTENCY_REMEDIATION_2026-09-03.md` |
