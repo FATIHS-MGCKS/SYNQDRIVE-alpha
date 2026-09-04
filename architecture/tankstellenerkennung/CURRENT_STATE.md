@@ -32,7 +32,7 @@ Phase E exposes persisted enrichment on the existing Energy Event / trips-timeli
 
 **ARCHITECTURE DEPLOYED ≠ NATURAL POSITIVE PATH PRODUCTION-VALIDATED.**
 
-As of the 2026-09-04 KS MX natural post-cutover REFUEL incident (`FST-EVID-INCIDENT-REFUEL-2026-09-04-001`), production has exercised detection → persistence → enrichment → resolver → NOT_FOUND API/UI. **G1.1 closure** (`FST-EVID-G11-HF-CLOSURE-2026-09-04-001`) confirms physical Esso forecourt dwell and selects V2 coordinate policy (`FST-DEC-COORD-FORECOURT-DWELL-V2-001`, PROPOSED). **Positive MATCHED/trusted station path on persisted production row remains NOT production-validated** until G2 implements V2 coordinate derivation. See `FST-GAP-REAL-POST-CUTOVER-REFUEL-001`.
+As of the 2026-09-04 KS MX natural post-cutover REFUEL incident (`FST-EVID-INCIDENT-REFUEL-2026-09-04-001`), production has exercised detection → persistence → enrichment → resolver → NOT_FOUND API/UI. **G1.1 closure** (`FST-EVID-G11-HF-CLOSURE-2026-09-04-001`) confirms physical Esso forecourt dwell and selects V2 coordinate policy (`FST-DEC-COORD-FORECOURT-DWELL-V2-001`, PROPOSED). **G1.2b boundary hardening** (`FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001`) closes provider-independent lookback, settlement/finality, coarse lock, dimension-safe comparator, and clique grouping defects before G2 wiring. **Positive MATCHED/trusted station path on persisted production row remains NOT production-validated** until G2 implements V2 coordinate derivation. See `FST-GAP-REAL-POST-CUTOVER-REFUEL-001`.
 
 ## Upstream dependency (out of domain)
 

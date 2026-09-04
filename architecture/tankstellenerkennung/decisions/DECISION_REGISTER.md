@@ -271,3 +271,75 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 | **TRADEOFFS** | Requires HF/route speed+GPS; CH HF mirror may lack GPS for some vehicles |
 | **REMAINING_GAPS** | G2 implementation; fleet-wide offset calibration; CH GPS mirror completeness |
 | **EVIDENCE** | FST-EVID-G12-ALGORITHMIC-CLOSURE-2026-09-04-001 |
+
+---
+
+## FST-DEC-LOOKBACK-PROVIDER-INDEPENDENT-001 — Fuel-rise anchored lookback (no provider segment cutoff)
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | `derivePhysicalRefuelCoordinate` used `max(eventStartAt, riseOnset - lookback)` clipping valid pre-rise dwell |
+| **WHY** | Sept04 physical stop precedes Event B DIMO segment start; independent Event B processing would lose forecourt cluster |
+| **CHANGE** | `lookbackStart = fuelRiseOnsetAt - physicalLookbackMax`; `eventStartAt` diagnostic only |
+| **EXPECTED_EFFECT** | Event A and Event B alone both select same forecourt region |
+| **VALIDATION** | G1.2b selector tests A/B/regression; 51 tests PASS |
+| **REMAINING_GAPS** | G2 runtime wiring; fleet calibration |
+| **EVIDENCE** | FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001 |
+
+---
+
+## FST-DEC-REFUEL-SETTLEMENT-FINALITY-001 — Settlement before enrichment
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | Singleton rows immediately `enrichmentEligibleId = self`; staggered sibling arrival risks duplicate enrichment |
+| **WHY** | G1.2 proved grouping but not incremental enrichment safety |
+| **CHANGE** | PROVISIONAL / SETTLING / FINAL_CANONICAL / FINAL_DISTINCT / INSUFFICIENT_EVIDENCE model |
+| **EXPECTED_EFFECT** | ONE_PHYSICAL_REFUEL → AT MOST ONE enrichment-eligible event |
+| **VALIDATION** | Settlement design tests; horizon default 60m INFERRED from Sept04 ~45m stagger (OPEN calibration) |
+| **REMAINING_GAPS** | Production horizon calibration; G2 BullMQ wiring |
+| **EVIDENCE** | FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001 |
+
+---
+
+## FST-DEC-REFUEL-COARSE-LOCK-001 — Vehicle-scoped reconciliation lock
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | Bucketed scope key (end-minute, rounded fuel, rounded odometer) allowed boundary races |
+| **WHY** | Semantic siblings at minute/fuel/odo bucket boundaries could acquire unrelated locks |
+| **CHANGE** | Stage 1: `refuel_reconciliation:{vehicleId}`; Stage 2: semantic matcher under transaction |
+| **EXPECTED_EFFECT** | Plausible SAME siblings always share concurrency domain |
+| **VALIDATION** | Boundary rollover tests in G1.2b reconciliation spec |
+| **EVIDENCE** | FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001 |
+
+---
+
+## FST-DEC-CANONICAL-COMPARATOR-DIMENSION-SAFE-001 — Liter/percent-safe canonical choice
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | `transitionCompletenessScore` mixed liters, delta liters, and percent span via `Math.max` |
+| **WHY** | Dimensionally invalid; could prefer wrong canonical when percent numerically larger |
+| **CHANGE** | Ordered `compareCanonicalRefuelCandidates` precedence; symmetric deterministic |
+| **EXPECTED_EFFECT** | Sept04 canonical remains Event A |
+| **VALIDATION** | G1.2b matcher comparator tests |
+| **EVIDENCE** | FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001 |
+
+---
+
+## FST-DEC-MULTI-SIBLING-CLIQUE-GROUPING-001 — Fail-closed clique grouping
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | Star comparison from first row; naive transitive merge risk for 3+ segments |
+| **WHY** | SAME_PHYSICAL_REFUEL is not guaranteed transitive |
+| **CHANGE** | Clique-consistent partition; non-transitive triples stay separate |
+| **EXPECTED_EFFECT** | Input-order and arrival-order independent grouping |
+| **VALIDATION** | Permutation tests + mocked A~B,B~C,A!~C partition |
+| **EVIDENCE** | FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001 |

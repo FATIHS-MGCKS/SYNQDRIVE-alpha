@@ -796,6 +796,74 @@ nodes:
       - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/physical-refuel-coordinate.selector.ts
       - docs/audits/refuel-g12-algorithmic-closure-2026-09-04.md
 
+  - id: FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001
+    type: evidence
+    title: G1.2b runtime boundary hardening — lookback, finality, lock, comparator, grouping
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Provider-independent lookback; settlement/finality model; vehicle-scoped lock;
+      dimensionally-safe canonical comparator; fail-closed clique grouping; 51 tests PASS.
+    source_paths:
+      - docs/audits/refuel-g12b-runtime-boundary-hardening-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-settlement.design.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation.design.ts
+
+  - id: FST-DEC-LOOKBACK-PROVIDER-INDEPENDENT-001
+    type: decision
+    title: Physical refuel coordinate lookback anchored on fuel-rise onset only
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      eventStartAt is provenance/diagnostics only; must not clip pre-rise dwell evidence.
+      Required because Sept04 physical stop precedes Event B provider segment start.
+    evidence:
+      - FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001
+
+  - id: FST-DEC-REFUEL-SETTLEMENT-FINALITY-001
+    type: decision
+    title: Physical refuel settlement/finality before enrichment eligibility
+    decision_status: PROPOSED
+    epistemic_status: INFERRED
+    summary: >
+      Distinguish PROVISIONAL singleton from FINAL_CANONICAL/FINAL_DISTINCT safe-to-enrich.
+      Settlement horizon default 60m (OPEN calibration); prevents duplicate enrichment on staggered siblings.
+    evidence:
+      - FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001
+
+  - id: FST-DEC-REFUEL-COARSE-LOCK-001
+    type: decision
+    title: Vehicle-scoped coarse refuel reconciliation lock (Stage 1)
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Lock scope vehicleId+REFUEL domain; broader than semantic matching.
+      Replaces bucketed end-minute/fuel/odo keys that risk boundary races.
+    evidence:
+      - FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001
+
+  - id: FST-DEC-CANONICAL-COMPARATOR-DIMENSION-SAFE-001
+    type: decision
+    title: Dimensionally-safe canonical refuel comparator
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Ordered precedence: suffix superset, liter transition, percent corroboration only when liters absent.
+      Never mix liters and percentages in one scalar score.
+    evidence:
+      - FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001
+
+  - id: FST-DEC-MULTI-SIBLING-CLIQUE-GROUPING-001
+    type: decision
+    title: Fail-closed clique-consistent multi-sibling grouping
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Row joins group only if SAME with every member; non-transitive A~B,B~C,A!~C cannot false-merge.
+      Input-order and arrival-order independent.
+    evidence:
+      - FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001
+
   - id: FST-HYP-OSM-REFRESH-001
     type: hypothesis
     title: OSM refresh may require re-enrichment policy

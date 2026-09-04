@@ -1,15 +1,16 @@
 import {
   classifyPhysicalRefuelSibling,
   chooseCanonicalRefuel,
+  compareCanonicalRefuelCandidates,
   HISTORICAL_REFUEL_CALIBRATION_ROWS,
-  transitionCompletenessScore,
+  type RefuelRowForMatcher,
 } from './physical-refuel-identity.matcher';
 import {
   KS_MX_2024_SEPT04_EVENT_A,
   KS_MX_2024_SEPT04_EVENT_B,
 } from '@modules/dimo/fixtures/ks-mx-2024-sept04-refuel.fixture';
 
-describe('physical refuel identity matcher (G1.2 hardened)', () => {
+describe('physical refuel identity matcher (G1.2b hardened)', () => {
   const incidentA = HISTORICAL_REFUEL_CALIBRATION_ROWS[0];
   const incidentB = HISTORICAL_REFUEL_CALIBRATION_ROWS[1];
 
@@ -17,9 +18,7 @@ describe('physical refuel identity matcher (G1.2 hardened)', () => {
     const ab = classifyPhysicalRefuelSibling(incidentA, incidentB);
     expect(ab.classification).toBe('SAME_PHYSICAL_REFUEL');
     expect(ab.canonicalId).toBe(incidentA.id);
-    expect(transitionCompletenessScore(incidentA)).toBeGreaterThan(
-      transitionCompletenessScore(incidentB),
-    );
+    expect(compareCanonicalRefuelCandidates(incidentA, incidentB)).toBeLessThan(0);
   });
 
   it('is symmetric for all classifications', () => {
@@ -143,5 +142,121 @@ describe('physical refuel identity matcher (G1.2 hardened)', () => {
     expect(KS_MX_2024_SEPT04_EVENT_B.fuelStartLiters).toBe(21);
     expect(KS_MX_2024_SEPT04_EVENT_A.fuelEndLiters).toBe(28);
     expect(KS_MX_2024_SEPT04_EVENT_B.fuelEndLiters).toBe(28);
+  });
+
+  describe('dimensionally-safe canonical comparator (G1.2b)', () => {
+    const base = incidentA;
+
+    it('prefers larger liter transition over larger percent delta', () => {
+      const litersFavorA: RefuelRowForMatcher = {
+        ...base,
+        id: 'liters-a',
+        dimoSegmentId: 'seg-liters-a',
+        fuelStartLiters: 7,
+        fuelEndLiters: 28,
+        fuelDeltaLiters: 21,
+        fuelStartPercent: 10,
+        fuelEndPercent: 43,
+        fuelDeltaPercent: 33,
+      };
+      const percentLooksLargerB: RefuelRowForMatcher = {
+        ...incidentB,
+        id: 'percent-b',
+        dimoSegmentId: 'seg-percent-b',
+        fuelStartLiters: 21,
+        fuelEndLiters: 28,
+        fuelDeltaLiters: 7,
+        fuelStartPercent: 5,
+        fuelEndPercent: 43,
+        fuelDeltaPercent: 38,
+      };
+      expect(chooseCanonicalRefuel(litersFavorA, percentLooksLargerB)).toBe(litersFavorA.id);
+      expect(chooseCanonicalRefuel(percentLooksLargerB, litersFavorA)).toBe(litersFavorA.id);
+      expect(
+        compareCanonicalRefuelCandidates(litersFavorA, percentLooksLargerB),
+      ).toBe(-compareCanonicalRefuelCandidates(percentLooksLargerB, litersFavorA));
+    });
+
+    it('uses percent only when liters absent for both', () => {
+      const pctA: RefuelRowForMatcher = {
+        ...base,
+        id: 'pct-a',
+        dimoSegmentId: 'seg-pct-a',
+        fuelStartLiters: null,
+        fuelEndLiters: null,
+        fuelDeltaLiters: null,
+        fuelStartPercent: 10,
+        fuelEndPercent: 40,
+        fuelDeltaPercent: 30,
+      };
+      const pctB: RefuelRowForMatcher = {
+        ...base,
+        id: 'pct-b',
+        dimoSegmentId: 'seg-pct-b',
+        fuelStartLiters: null,
+        fuelEndLiters: null,
+        fuelDeltaLiters: null,
+        fuelStartPercent: 20,
+        fuelEndPercent: 35,
+        fuelDeltaPercent: 15,
+      };
+      expect(chooseCanonicalRefuel(pctA, pctB)).toBe(pctA.id);
+    });
+
+    it('prefers row with liter evidence when only one has liters', () => {
+      const withLiters: RefuelRowForMatcher = {
+        ...base,
+        id: 'with-liters',
+        dimoSegmentId: 'seg-with-liters',
+        fuelStartLiters: 10,
+        fuelEndLiters: 20,
+        fuelDeltaLiters: 10,
+        fuelStartPercent: null,
+        fuelEndPercent: null,
+      };
+      const pctOnly: RefuelRowForMatcher = {
+        ...base,
+        id: 'pct-only',
+        dimoSegmentId: 'seg-pct-only',
+        fuelStartLiters: null,
+        fuelEndLiters: null,
+        fuelDeltaLiters: null,
+        fuelStartPercent: 5,
+        fuelEndPercent: 50,
+        fuelDeltaPercent: 45,
+      };
+      expect(chooseCanonicalRefuel(withLiters, pctOnly)).toBe(withLiters.id);
+    });
+
+    it('breaks equal terminal states by lexicographic id', () => {
+      const a: RefuelRowForMatcher = {
+        ...base,
+        id: 'aaa-equal',
+        dimoSegmentId: 'seg-aaa',
+        fuelStartLiters: 10,
+        fuelEndLiters: 20,
+        durationSeconds: 100,
+      };
+      const b: RefuelRowForMatcher = {
+        ...base,
+        id: 'bbb-equal',
+        dimoSegmentId: 'seg-bbb',
+        fuelStartLiters: 10,
+        fuelEndLiters: 20,
+        durationSeconds: 100,
+      };
+      expect(chooseCanonicalRefuel(a, b)).toBe(a.id);
+      expect(chooseCanonicalRefuel(b, a)).toBe(a.id);
+    });
+
+    it('is symmetric under reverse argument order', () => {
+      const pairs: [RefuelRowForMatcher, RefuelRowForMatcher][] = [
+        [incidentA, incidentB],
+        [HISTORICAL_REFUEL_CALIBRATION_ROWS[4], HISTORICAL_REFUEL_CALIBRATION_ROWS[5]],
+      ];
+      for (const [a, b] of pairs) {
+        expect(chooseCanonicalRefuel(a, b)).toBe(chooseCanonicalRefuel(b, a));
+      }
+    });
   });
 });

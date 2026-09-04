@@ -1118,6 +1118,62 @@ nodes:
     title: Physical refuel identity implementation rollout
     epistemic_status: UNKNOWN
     summary: >
-      G1.2 algorithmic closure complete (EED-EV-0028); G2 runtime wiring pending.
+      G1.2b runtime boundary hardening complete (EED-EV-0029); G2 runtime wiring pending.
     authority_class: EED_OWNS
-    evidence: [EED-EV-0026, EED-EV-0027, EED-EV-0028]
+    evidence: [EED-EV-0026, EED-EV-0027, EED-EV-0028, EED-EV-0029]
+
+  - id: EED-EV-0029
+    type: evidence
+    title: G1.2b runtime boundary hardening — settlement, lock, comparator, grouping
+    epistemic_status: CONFIRMED
+    source_type: TEST
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-settlement.design.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation.design.ts
+      - docs/audits/refuel-g12b-runtime-boundary-hardening-2026-09-04.md
+    summary: >
+      Provider-independent lookback; settlement/finality; vehicle lock; dimension-safe comparator;
+      clique grouping; 51 tests PASS. G2_IMPLEMENTATION_READY=YES (design); no production wiring.
+    verified_at: "2026-09-04"
+
+  - id: EED-DEC-LOOKBACK-PROVIDER-INDEPENDENT-001
+    type: decision
+    title: Physical coordinate lookback independent of provider segment start
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: fuelRiseOnsetAt anchors lookback; eventStartAt diagnostic only.
+    evidence: [EED-EV-0029]
+
+  - id: EED-DEC-REFUEL-SETTLEMENT-FINALITY-001
+    type: decision
+    title: Physical refuel settlement/finality before enrichment
+    decision_status: PROPOSED
+    epistemic_status: INFERRED
+    summary: >
+      PROVISIONAL singleton ≠ safe to enrich; FINAL_CANONICAL/FINAL_DISTINCT gate enqueue.
+      Horizon default 60m OPEN calibration.
+    evidence: [EED-EV-0029]
+
+  - id: EED-DEC-REFUEL-COARSE-LOCK-001
+    type: decision
+    title: Vehicle-scoped refuel reconciliation lock
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: Stage 1 coarse lock broader than Stage 2 semantic identity.
+    evidence: [EED-EV-0029]
+
+  - id: EED-DEC-CANONICAL-COMPARATOR-DIMENSION-SAFE-001
+    type: decision
+    title: Dimensionally-safe canonical refuel comparator
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: Never mix liters and percentages; symmetric ordered precedence.
+    evidence: [EED-EV-0029]
+
+  - id: EED-DEC-MULTI-SIBLING-CLIQUE-GROUPING-001
+    type: decision
+    title: Fail-closed clique-consistent multi-sibling grouping
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: Non-transitive triples cannot false-merge; order-independent partition.
+    evidence: [EED-EV-0029]

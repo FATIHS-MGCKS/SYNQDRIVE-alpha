@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'refuel-g12b-runtime-boundary-hardening-2026-09-04',
+    version: '4.9.1051',
+    title: 'G1.2b runtime boundary hardening — lookback, finality, lock, grouping (2026-09-04)',
+    summary: [
+      'Fuel-rise onset is sole lookback anchor; provider segment start is diagnostic only (Event B alone still selects forecourt).',
+      'Settlement/finality model: PROVISIONAL singleton ≠ enrichment-safe; FINAL_CANONICAL gates enqueue.',
+      'Vehicle-scoped coarse reconciliation lock replaces bucketed scope keys.',
+      'Dimensionally-safe canonical comparator; fail-closed clique multi-sibling grouping.',
+      '51 tests PASS; G2_IMPLEMENTATION_READY=YES; PRODUCTION_DEPLOYMENT_READY=NO.',
+    ],
+    reason: 'Close five G1.2 review defects before G2 runtime wiring.',
+    previousBehavior: 'G1.2 algorithmic closure with eventStart lookback cutoff, immediate singleton enrichment, bucketed locks.',
+    details:
+      'docs/audits/refuel-g12b-runtime-boundary-hardening-2026-09-04.md; physical-refuel-settlement.design.ts; FST-EVID-G12B-*; EED-EV-0029.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T16:00:00.000Z',
+  },
+  {
     id: 'refuel-g12-algorithmic-closure-2026-09-04',
     version: '4.9.1050',
     title: 'G1.2 algorithmic closure — dwell selector + identity hardening (2026-09-04)',

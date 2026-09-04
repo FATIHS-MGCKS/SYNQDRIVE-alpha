@@ -8,7 +8,7 @@
 export const PHYSICAL_REFUEL_FORECOURT_DWELL_MEDOID_V2 =
   'physical_refuel_forecourt_dwell_medoid_v2';
 
-export const PHYSICAL_REFUEL_COORDINATE_SELECTOR_VERSION = 'g1.2-v2';
+export const PHYSICAL_REFUEL_COORDINATE_SELECTOR_VERSION = 'g1.2b-v1';
 
 export type PhysicalRefuelCoordinateStatus =
   | 'SELECTED'
@@ -27,7 +27,7 @@ export interface PhysicalRefuelCoordinateInput {
   routeSamples: RouteGpsSample[];
   /** Detector- or provider-derived fuel-rise onset (ISO UTC). */
   fuelRiseOnsetAt: string;
-  /** Optional event envelope for bounded lookback (ISO UTC). */
+  /** Optional provider segment start — provenance/diagnostics only; NOT a lookback cutoff (G1.2b). */
   eventStartAt?: string | null;
   policyVersion?: string;
 }
@@ -48,6 +48,9 @@ export interface PhysicalRefuelCoordinateProvenance {
   candidateCount: number;
   rejectionReasons: string[];
   selectedClusterRank: number;
+  /** Provider segment start when supplied — diagnostic only, does not bound lookback. */
+  eventStartAtMs?: number | null;
+  lookbackStartMs: number;
 }
 
 export interface PhysicalRefuelCoordinateResult {
@@ -292,12 +295,9 @@ export function derivePhysicalRefuelCoordinate(
 ): PhysicalRefuelCoordinateResult {
   const policyVersion = input.policyVersion ?? PHYSICAL_REFUEL_FORECOURT_DWELL_MEDOID_V2;
   const riseOnsetMs = new Date(input.fuelRiseOnsetAt).getTime();
-  const lookbackStartMs = Math.max(
-    input.eventStartAt
-      ? new Date(input.eventStartAt).getTime()
-      : riseOnsetMs - config.lookbackMaxSec * 1000,
-    riseOnsetMs - config.lookbackMaxSec * 1000,
-  );
+  /** G1.2b: fuel-rise onset is the sole temporal anchor; provider segment start must not clip pre-rise dwell. */
+  const lookbackStartMs = riseOnsetMs - config.lookbackMaxSec * 1000;
+  const eventStartAtMs = input.eventStartAt ? new Date(input.eventStartAt).getTime() : null;
 
   const baseProvenance = {
     policyVersion,
@@ -311,6 +311,8 @@ export function derivePhysicalRefuelCoordinate(
     candidateCount: 0,
     rejectionReasons: [] as string[],
     selectedClusterRank: 0,
+    eventStartAtMs,
+    lookbackStartMs,
   };
 
   const gpsSamples = input.routeSamples.filter(
@@ -400,6 +402,8 @@ export function derivePhysicalRefuelCoordinate(
       candidateCount: ranked.length,
       rejectionReasons,
       selectedClusterRank: 1,
+      eventStartAtMs,
+      lookbackStartMs,
     },
   };
 }

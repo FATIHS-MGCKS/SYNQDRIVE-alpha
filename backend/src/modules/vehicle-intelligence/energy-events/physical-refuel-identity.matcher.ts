@@ -99,18 +99,90 @@ function hasTransitionEvidence(row: RefuelRowForMatcher): boolean {
   return row.fuelStartLiters != null && row.fuelEndLiters != null;
 }
 
-/** Semantic completeness score — higher = more complete consistent transition. */
+function literTransitionSpan(row: RefuelRowForMatcher): number | null {
+  if (row.fuelStartLiters != null && row.fuelEndLiters != null) {
+    return row.fuelEndLiters - row.fuelStartLiters;
+  }
+  if (row.fuelDeltaLiters != null && row.fuelDeltaLiters > 0) return row.fuelDeltaLiters;
+  return null;
+}
+
+function percentTransitionSpan(row: RefuelRowForMatcher): number | null {
+  if (row.fuelStartPercent != null && row.fuelEndPercent != null) {
+    return row.fuelEndPercent - row.fuelStartPercent;
+  }
+  if (row.fuelDeltaPercent != null && row.fuelDeltaPercent > 0) return row.fuelDeltaPercent;
+  return null;
+}
+
+function transitionEvidenceRank(row: RefuelRowForMatcher): number {
+  let rank = 0;
+  if (hasTransitionEvidence(row)) rank += 2;
+  if (hasTerminalFuelEvidence(row)) rank += 1;
+  if (row.fuelStartPercent != null && row.fuelEndPercent != null) rank += 1;
+  return rank;
+}
+
+/**
+ * Dimensionally-safe canonical comparison — never mixes liters and percentages.
+ * Returns negative if `a` is preferred, positive if `b` is preferred, 0 if tied.
+ * Symmetric: compareCanonicalRefuelCandidates(a,b) === -compareCanonicalRefuelCandidates(b,a)
+ */
+export function compareCanonicalRefuelCandidates(
+  a: RefuelRowForMatcher,
+  b: RefuelRowForMatcher,
+  tol: PhysicalRefuelMatcherTolerances = DEFAULT_PHYSICAL_REFUEL_MATCHER_TOLERANCES,
+): number {
+  const aSuperset = isSuffixCompatibleTransition(a, b, tol);
+  const bSuperset = isSuffixCompatibleTransition(b, a, tol);
+  if (aSuperset && !bSuperset) return -1;
+  if (bSuperset && !aSuperset) return 1;
+
+  const rankA = transitionEvidenceRank(a);
+  const rankB = transitionEvidenceRank(b);
+  if (rankA !== rankB) return rankB > rankA ? 1 : -1;
+
+  const literA = literTransitionSpan(a);
+  const literB = literTransitionSpan(b);
+  if (literA != null && literB != null) {
+    if (literA > literB + tol.fuelLiters * 0.01) return -1;
+    if (literB > literA + tol.fuelLiters * 0.01) return 1;
+  } else if (literA != null && literB == null) {
+    return -1;
+  } else if (literB != null && literA == null) {
+    return 1;
+  }
+
+  if (literA == null && literB == null) {
+    const pctA = percentTransitionSpan(a);
+    const pctB = percentTransitionSpan(b);
+    if (pctA != null && pctB != null) {
+      if (pctA > pctB + tol.fuelPercent * 0.01) return -1;
+      if (pctB > pctA + tol.fuelPercent * 0.01) return 1;
+    } else if (pctA != null && pctB == null) {
+      return -1;
+    } else if (pctB != null && pctA == null) {
+      return 1;
+    }
+  }
+
+  const aContainsB = isContained(b, a);
+  const bContainsA = isContained(a, b);
+  if (aContainsB && !bContainsA) return -1;
+  if (bContainsA && !aContainsB) return 1;
+
+  const durA = a.durationSeconds ?? 0;
+  const durB = b.durationSeconds ?? 0;
+  if (durA !== durB) return durA > durB ? -1 : 1;
+
+  const idCmp = a.id.localeCompare(b.id);
+  return idCmp === 0 ? 0 : idCmp < 0 ? -1 : 1;
+}
+
+/** @deprecated G1.2b — use compareCanonicalRefuelCandidates; never mix liters and percentages. */
 export function transitionCompletenessScore(row: RefuelRowForMatcher): number {
-  const span =
-    row.fuelStartLiters != null && row.fuelEndLiters != null
-      ? row.fuelEndLiters - row.fuelStartLiters
-      : 0;
-  const delta = row.fuelDeltaLiters ?? 0;
-  const pctSpan =
-    row.fuelStartPercent != null && row.fuelEndPercent != null
-      ? row.fuelEndPercent - row.fuelStartPercent
-      : 0;
-  return Math.max(span, delta, pctSpan);
+  const liter = literTransitionSpan(row);
+  return liter ?? percentTransitionSpan(row) ?? 0;
 }
 
 /**
@@ -122,20 +194,9 @@ export function chooseCanonicalRefuel(
   b: RefuelRowForMatcher,
   tol: PhysicalRefuelMatcherTolerances = DEFAULT_PHYSICAL_REFUEL_MATCHER_TOLERANCES,
 ): string {
-  const scoreA = transitionCompletenessScore(a);
-  const scoreB = transitionCompletenessScore(b);
-  if (scoreA > scoreB + tol.fuelLiters * 0.01) return a.id;
-  if (scoreB > scoreA + tol.fuelLiters * 0.01) return b.id;
-
-  const aSuperset = isSuffixCompatibleTransition(a, b, tol);
-  const bSuperset = isSuffixCompatibleTransition(b, a, tol);
-  if (aSuperset && !bSuperset) return a.id;
-  if (bSuperset && !aSuperset) return b.id;
-
-  const durA = a.durationSeconds ?? 0;
-  const durB = b.durationSeconds ?? 0;
-  if (durA !== durB) return durA >= durB ? a.id : b.id;
-
+  const cmp = compareCanonicalRefuelCandidates(a, b, tol);
+  if (cmp < 0) return a.id;
+  if (cmp > 0) return b.id;
   return a.id.localeCompare(b.id) <= 0 ? a.id : b.id;
 }
 

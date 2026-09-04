@@ -7,6 +7,7 @@ import {
 } from './physical-refuel-coordinate.selector';
 import {
   KS_MX_2024_SEPT04_EVENT_A,
+  KS_MX_2024_SEPT04_EVENT_B,
   ESSO_YSENBURG_CENTROID,
 } from '@modules/dimo/fixtures/ks-mx-2024-sept04-refuel.fixture';
 
@@ -35,7 +36,7 @@ function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): num
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-describe('physical refuel coordinate selector (G1.2)', () => {
+describe('physical refuel coordinate selector (G1.2b)', () => {
   const routeSamples = fixture.routePoints.map((p) => ({
     timestamp: p.timestamp,
     latitude: p.latitude,
@@ -44,7 +45,7 @@ describe('physical refuel coordinate selector (G1.2)', () => {
   }));
 
   beforeAll(() => {
-    expect(PHYSICAL_REFUEL_COORDINATE_SELECTOR_VERSION).toBe('g1.2-v2');
+    expect(PHYSICAL_REFUEL_COORDINATE_SELECTOR_VERSION).toBe('g1.2b-v1');
     expect(fixture.routePoints.length).toBeGreaterThan(100);
   });
 
@@ -59,12 +60,9 @@ describe('physical refuel coordinate selector (G1.2)', () => {
     expect(keys).not.toContain(String(ESSO_YSENBURG_CENTROID.latitude));
   });
 
-  it('selects Sept04 forecourt dwell cluster adjacent to rise onset', () => {
+  it('A) selects Sept04 forecourt dwell cluster for Event A', () => {
     const riseMs = new Date(KS_MX_2024_SEPT04_EVENT_A.fuelLevelRiseStart).getTime();
-    const lookbackMs = Math.max(
-      new Date(KS_MX_2024_SEPT04_EVENT_A.startTime).getTime(),
-      riseMs - 30 * 60 * 1000,
-    );
+    const lookbackMs = riseMs - 30 * 60 * 1000;
     const gpsInWindow = routeSamples.filter(
       (s) =>
         s.latitude != null &&
@@ -85,6 +83,10 @@ describe('physical refuel coordinate selector (G1.2)', () => {
     expect(result.provenance.policyVersion).toBe(PHYSICAL_REFUEL_FORECOURT_DWELL_MEDOID_V2);
     expect(result.provenance.temporalOffsetToRiseSec).toBeLessThanOrEqual(30);
     expect(result.provenance.sampleCount).toBeGreaterThanOrEqual(2);
+    expect(result.provenance.lookbackStartMs).toBe(lookbackMs);
+    expect(result.provenance.eventStartAtMs).toBe(
+      new Date(KS_MX_2024_SEPT04_EVENT_A.startTime).getTime(),
+    );
 
     const distEsso = haversineM(
       result.coordinate!.latitude,
@@ -98,7 +100,48 @@ describe('physical refuel coordinate selector (G1.2)', () => {
     expect(result.provenance.clusterStart).toMatch(/2026-09-04T03:47:1/);
   });
 
-  it('prefers forecourt dwell adjacent to rise over unrelated earlier stop', () => {
+  it('B) Event B alone still selects same Esso forecourt region (provider-start-independent)', () => {
+    const result = derivePhysicalRefuelCoordinate({
+      routeSamples,
+      fuelRiseOnsetAt: KS_MX_2024_SEPT04_EVENT_B.fuelLevelRiseStart,
+      eventStartAt: KS_MX_2024_SEPT04_EVENT_B.startTime,
+    });
+
+    expect(result.status).toBe('SELECTED');
+    expect(
+      new Date(KS_MX_2024_SEPT04_EVENT_B.startTime).getTime(),
+    ).toBeGreaterThan(new Date(result.provenance.clusterEnd).getTime());
+
+    const distEsso = haversineM(
+      result.coordinate!.latitude,
+      result.coordinate!.longitude,
+      ESSO_YSENBURG_CENTROID.latitude,
+      ESSO_YSENBURG_CENTROID.longitude,
+    );
+    expect(distEsso).toBeGreaterThanOrEqual(5);
+    expect(distEsso).toBeLessThanOrEqual(25);
+  });
+
+  it('regression: provider segment start after physical dwell does not suppress dwell', () => {
+    const withEventStart = derivePhysicalRefuelCoordinate({
+      routeSamples,
+      fuelRiseOnsetAt: KS_MX_2024_SEPT04_EVENT_B.fuelLevelRiseStart,
+      eventStartAt: KS_MX_2024_SEPT04_EVENT_B.startTime,
+    });
+    const withoutEventStart = derivePhysicalRefuelCoordinate({
+      routeSamples,
+      fuelRiseOnsetAt: KS_MX_2024_SEPT04_EVENT_B.fuelLevelRiseStart,
+    });
+
+    expect(withEventStart.status).toBe('SELECTED');
+    expect(withoutEventStart.status).toBe('SELECTED');
+    expect(withEventStart.coordinate).toEqual(withoutEventStart.coordinate);
+    expect(withEventStart.provenance.lookbackStartMs).toBe(
+      withoutEventStart.provenance.lookbackStartMs,
+    );
+  });
+
+  it('C) prefers forecourt dwell adjacent to rise over unrelated earlier stop', () => {
     const result = derivePhysicalRefuelCoordinate({
       routeSamples,
       fuelRiseOnsetAt: KS_MX_2024_SEPT04_EVENT_A.fuelLevelRiseStart,
@@ -127,7 +170,7 @@ describe('physical refuel coordinate selector (G1.2)', () => {
     expect(selectedDistEsso).toBeLessThan(30);
   });
 
-  it('returns INSUFFICIENT_EVIDENCE when no GPS samples', () => {
+  it('D) returns INSUFFICIENT_EVIDENCE when no GPS samples', () => {
     const result = derivePhysicalRefuelCoordinate({
       routeSamples: [],
       fuelRiseOnsetAt: KS_MX_2024_SEPT04_EVENT_A.fuelLevelRiseStart,
@@ -135,7 +178,7 @@ describe('physical refuel coordinate selector (G1.2)', () => {
     expect(result.status).toBe('INSUFFICIENT_EVIDENCE');
   });
 
-  it('returns NO_DWELL_FOUND when only high-speed samples precede rise', () => {
+  it('E) returns NO_DWELL_FOUND when only high-speed samples precede rise', () => {
     const movingOnly = routeSamples
       .filter((p) => p.speedKmh != null && p.speedKmh > 40)
       .slice(0, 20);
