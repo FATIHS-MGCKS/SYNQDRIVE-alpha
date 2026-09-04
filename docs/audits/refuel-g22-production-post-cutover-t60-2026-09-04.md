@@ -44,7 +44,7 @@ Replicas agree on all refuel flags and cutover timestamps.
 
 ### Physical-refuel recovery (G2.1d — Redis-independent)
 
-Both replicas emit `physical_refuel_recovery_backlog` every 60s (~101 ticks each since cutover). Recovery timer on replica A logged `leaderElection:"none_pg_vehicle_lock"`. No recovery vehicle failures.
+Both replicas emitted `physical_refuel_recovery_backlog` approximately once per minute throughout the audit window; observed counts were ~121 on replica A and ~122 on replica B. Recovery timer on replica A logged `leaderElection:"none_pg_vehicle_lock"`. No recovery vehicle failures.
 
 ## 2. Migration state (read-only)
 
@@ -188,8 +188,8 @@ Empty error grep alone would be insufficient; correlated DB state + structured b
 
 ## 16. Canonical evidence nodes
 
-- **FST:** `FST-EVID-G22-PRODUCTION-POST-CUTOVER-T60-2026-09-04-001`
-- **EED:** `EED-EV-0039`
+- **FST:** `FST-EVID-G22-PRODUCTION-POST-CUTOVER-T60-2026-09-04-001` (`source_type: PRODUCTION_OBSERVATION`; validates cutover only — no forecourt-dwell decision edge)
+- **EED:** `EED-EV-0039` (`source_type: PRODUCTION`, `epistemic_status: HISTORICAL` per EED validator ontology for time-bounded production snapshots; facts are directly confirmed by read-only VPS/DB/log/queue inspection)
 
 Cross-reference: `FST-EVID-G22-PRODUCTION-CUTOVER-2026-09-04-001`, `EED-EV-0038`.
 

@@ -1316,6 +1316,8 @@ nodes:
       Read-only VPS production audit ~T+122m after cutover. Both replicas healthy on SHA
       43c9ae6c; V2 enabled; zero post-cutover REFUELs; zero errors/storms/bypasses.
       Runtime stability PASS; per-REFUEL PROVEN_IN_PRODUCTION still pending.
+      epistemic_status HISTORICAL: EED ontology requires HISTORICAL for PRODUCTION
+      source_type (time-bounded snapshot); does not downgrade factual confirmation.
     verified_at: "2026-09-04"
 
   - id: EED-DEC-SETTLEMENT-OBSERVATION-TIME-001
