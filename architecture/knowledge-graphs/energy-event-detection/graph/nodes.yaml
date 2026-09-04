@@ -1118,9 +1118,9 @@ nodes:
     title: Physical refuel identity implementation rollout
     epistemic_status: UNKNOWN
     summary: >
-      G1.2b runtime boundary hardening complete (EED-EV-0029); G2 runtime wiring pending.
+      G1.2c finality + ambiguity closure complete (EED-EV-0030); G2 runtime wiring pending.
     authority_class: EED_OWNS
-    evidence: [EED-EV-0026, EED-EV-0027, EED-EV-0028, EED-EV-0029]
+    evidence: [EED-EV-0026, EED-EV-0027, EED-EV-0028, EED-EV-0029, EED-EV-0030]
 
   - id: EED-EV-0029
     type: evidence
@@ -1177,3 +1177,48 @@ nodes:
     epistemic_status: CONFIRMED
     summary: Non-transitive triples cannot false-merge; order-independent partition.
     evidence: [EED-EV-0029]
+
+  - id: EED-EV-0030
+    type: evidence
+    title: G1.2c finality + ambiguity closure
+    epistemic_status: CONFIRMED
+    source_type: TEST
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-identity-component.design.ts
+      - docs/audits/refuel-g12c-finality-ambiguity-closure-2026-09-04.md
+    summary: >
+      SETTLING until observation-time window closes; non-transitive fail-closed; no eventTime fallback.
+      64 targeted tests PASS.
+    verified_at: "2026-09-04"
+
+  - id: EED-DEC-SETTLEMENT-OBSERVATION-TIME-001
+    type: decision
+    title: Settlement clock uses SYNQDRIVE firstObservedAt
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: Provider event time must not substitute for system observation time.
+    evidence: [EED-EV-0030]
+
+  - id: EED-DEC-SETTLING-MULTIROW-FINALITY-001
+    type: decision
+    title: Multi-row groups SETTLING until window closes
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: Closes 2→3+ sibling finality race; zero enrichment while window open.
+    evidence: [EED-EV-0030]
+
+  - id: EED-DEC-NON-TRANSITIVE-FAIL-CLOSED-001
+    type: decision
+    title: Non-transitive identity components fail closed
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: Pairwise matrix analysis; UUID order is not epistemic authority.
+    evidence: [EED-EV-0030]
+
+  - id: EED-DEC-LATE-SIBLING-RECOVERY-CONFLICT-001
+    type: decision
+    title: Late sibling after finalization requires G2 recovery
+    decision_status: PROPOSED
+    epistemic_status: INFERRED
+    summary: Blocks duplicate enrichment; operational recovery deferred to G2.
+    evidence: [EED-EV-0030]

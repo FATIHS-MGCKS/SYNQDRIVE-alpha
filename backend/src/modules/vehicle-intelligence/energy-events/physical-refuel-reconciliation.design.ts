@@ -1,12 +1,18 @@
 /**
- * G1.2b arrival-order / concurrency / settlement design model — pure functions only.
+ * G1.2c arrival-order / concurrency / settlement design model — pure functions only.
  * Documents future G2 transaction boundary without runtime wiring.
  */
 import {
-  classifyPhysicalRefuelSibling,
   chooseCanonicalRefuel,
   type RefuelRowForMatcher,
 } from './physical-refuel-identity.matcher';
+import {
+  buildPairwiseIdentityMatrix,
+  pairKey,
+  type IdentityAmbiguityReasonCode,
+  type PhysicalRefuelIdentityComponent,
+  type PhysicalRefuelIdentityMatrix,
+} from './physical-refuel-identity-component.design';
 import {
   determinePhysicalRefuelSettlement,
   type PhysicalRefuelFinalityState,
@@ -16,19 +22,29 @@ import {
 
 export interface PhysicalRefuelReconciliationDecision {
   reconciliationLockKey: string;
-  classification: ReturnType<typeof classifyPhysicalRefuelSibling>['classification'];
+  classification: 'SAME_PHYSICAL_REFUEL' | 'DISTINCT_PHYSICAL_REFUEL' | 'INSUFFICIENT_EVIDENCE';
   canonicalEventId: string | null;
+  provisionalCanonicalId: string | null;
   siblingEventIds: string[];
   enrichmentEligibleId: string | null;
   finalityState: PhysicalRefuelFinalityState;
   reason: string;
+  reasonCodes: IdentityAmbiguityReasonCode[];
+  settlementWindowOpen: boolean;
 }
 
 export interface PhysicalRefuelReconciliationContext {
-  asOfMs?: number;
+  /** SYNQDRIVE system observation time — REQUIRED for production-capable reconciliation. */
+  firstObservedAtById?: Record<string, number>;
+  /** @deprecated G1.2b alias — use firstObservedAtById */
   firstSeenAtById?: Record<string, number>;
+  asOfMs?: number;
   settlementConfig?: PhysicalRefuelSettlementConfig;
-  /** IDs that already reached FINAL_DISTINCT enrichment before a late sibling arrived. */
+  /** IDs that reached FINAL_DISTINCT enrichment before a late sibling arrived. */
+  priorDistinctFinalizationIds?: Set<string>;
+  /** IDs that were in a FINAL_CANONICAL group that was already enriched. */
+  priorCanonicalFinalizationIds?: Set<string>;
+  /** @deprecated use priorDistinctFinalizationIds */
   priorDistinctSettlementIds?: Set<string>;
 }
 
@@ -40,38 +56,18 @@ export function buildPhysicalRefuelReconciliationLockKey(vehicleId: string): str
   return `refuel_reconciliation:${vehicleId}`;
 }
 
-/** @deprecated G1.2b — bucketed scope keys risk boundary races; use buildPhysicalRefuelReconciliationLockKey. */
+/** @deprecated G1.2b — use buildPhysicalRefuelReconciliationLockKey. */
 export function buildPhysicalRefuelScopeKey(row: RefuelRowForMatcher): string {
   return buildPhysicalRefuelReconciliationLockKey(row.vehicleId);
 }
 
-/**
- * Fail-closed clique-consistent grouping: a row joins a group only when it matches
- * SAME_PHYSICAL_REFUEL with every existing member (no transitive false merge).
- */
-export function partitionPhysicalRefuelGroups(
-  candidates: RefuelRowForMatcher[],
-): RefuelRowForMatcher[][] {
-  const sorted = [...candidates].sort((a, b) => a.id.localeCompare(b.id));
-  const groups: RefuelRowForMatcher[][] = [];
+/** @deprecated G1.2c — use buildPairwiseIdentityMatrix / partitionIdentityComponents. */
+export { partitionPhysicalRefuelGroups } from './physical-refuel-identity-component.design';
 
-  for (const row of sorted) {
-    let placed = false;
-    for (const group of groups) {
-      const compatibleWithAll = group.every((member) => {
-        const result = classifyPhysicalRefuelSibling(row, member);
-        return result.classification === 'SAME_PHYSICAL_REFUEL';
-      });
-      if (compatibleWithAll) {
-        group.push(row);
-        placed = true;
-        break;
-      }
-    }
-    if (!placed) groups.push([row]);
-  }
-
-  return groups;
+function resolveFirstObservedAtById(
+  context?: PhysicalRefuelReconciliationContext,
+): Record<string, number> {
+  return { ...(context?.firstObservedAtById ?? context?.firstSeenAtById ?? {}) };
 }
 
 function chooseCanonicalFromGroup(group: RefuelRowForMatcher[]): RefuelRowForMatcher {
@@ -81,22 +77,145 @@ function chooseCanonicalFromGroup(group: RefuelRowForMatcher[]): RefuelRowForMat
   });
 }
 
-function defaultFirstSeenMap(
-  candidates: RefuelRowForMatcher[],
-  context?: PhysicalRefuelReconciliationContext,
-): Record<string, number> {
-  const map = { ...(context?.firstSeenAtById ?? {}) };
-  for (const row of candidates) {
-    if (map[row.id] == null) {
-      map[row.id] = new Date(row.endTime).getTime();
+function invalidBatchDecision(
+  reason: string,
+  reasonCodes: IdentityAmbiguityReasonCode[],
+): PhysicalRefuelReconciliationDecision[] {
+  return [
+    {
+      reconciliationLockKey: 'refuel_reconciliation:INVALID_BATCH',
+      classification: 'INSUFFICIENT_EVIDENCE',
+      canonicalEventId: null,
+      provisionalCanonicalId: null,
+      siblingEventIds: [],
+      enrichmentEligibleId: null,
+      finalityState: 'INSUFFICIENT_EVIDENCE',
+      reason,
+      reasonCodes,
+      settlementWindowOpen: true,
+    },
+  ];
+}
+
+function getPairCell(
+  matrix: PhysicalRefuelIdentityMatrix,
+  idA: string,
+  idB: string,
+) {
+  if (idA === idB) return { classification: 'SAME_PHYSICAL_REFUEL' as const, reason: 'same_row' };
+  return matrix.pairs[pairKey(idA, idB)];
+}
+
+function hasLateSiblingFinalizationConflict(
+  component: PhysicalRefuelIdentityComponent,
+  matrix: PhysicalRefuelIdentityMatrix,
+  priorDistinct: Set<string>,
+  priorCanonical: Set<string>,
+): boolean {
+  const finalizedIds = new Set([...priorDistinct, ...priorCanonical]);
+  if (!finalizedIds.size) return false;
+
+  for (const member of component.members) {
+    for (const finalizedId of finalizedIds) {
+      if (member.id === finalizedId) continue;
+      const cell = getPairCell(matrix, member.id, finalizedId);
+      if (
+        cell.classification === 'SAME_PHYSICAL_REFUEL' ||
+        cell.classification === 'INSUFFICIENT_EVIDENCE'
+      ) {
+        return true;
+      }
     }
   }
-  return map;
+  return false;
+}
+
+function decisionFromComponent(
+  component: PhysicalRefuelIdentityComponent,
+  matrix: PhysicalRefuelIdentityMatrix,
+  lockKey: string,
+  asOfMs: number,
+  firstObservedAtById: Record<string, number>,
+  context?: PhysicalRefuelReconciliationContext,
+): PhysicalRefuelReconciliationDecision {
+  const priorDistinct = context?.priorDistinctFinalizationIds ??
+    context?.priorDistinctSettlementIds ??
+    new Set<string>();
+  const priorCanonical = context?.priorCanonicalFinalizationIds ?? new Set<string>();
+
+  if (component.status === 'AMBIGUOUS_NON_TRANSITIVE') {
+    return {
+      reconciliationLockKey: lockKey,
+      classification: 'INSUFFICIENT_EVIDENCE',
+      canonicalEventId: null,
+      provisionalCanonicalId: null,
+      siblingEventIds: component.memberIds,
+      enrichmentEligibleId: null,
+      finalityState: 'INSUFFICIENT_EVIDENCE',
+      reason: 'non_transitive_identity_component',
+      reasonCodes: component.reasonCodes,
+      settlementWindowOpen: true,
+    };
+  }
+
+  if (component.status === 'PAIRWISE_INSUFFICIENT') {
+    return {
+      reconciliationLockKey: lockKey,
+      classification: 'INSUFFICIENT_EVIDENCE',
+      canonicalEventId: null,
+      provisionalCanonicalId: null,
+      siblingEventIds: component.memberIds,
+      enrichmentEligibleId: null,
+      finalityState: 'INSUFFICIENT_EVIDENCE',
+      reason: 'pairwise_identity_insufficient',
+      reasonCodes: component.reasonCodes,
+      settlementWindowOpen: true,
+    };
+  }
+
+  const isSiblingGroup = component.members.length > 1;
+  const canonical = isSiblingGroup ? chooseCanonicalFromGroup(component.members) : component.members[0];
+  const priorDistinctHit = component.memberIds.some((id) => priorDistinct.has(id));
+  const priorCanonicalHit = component.memberIds.some((id) => priorCanonical.has(id));
+  const lateSiblingConflict = hasLateSiblingFinalizationConflict(
+    component,
+    matrix,
+    priorDistinct,
+    priorCanonical,
+  );
+
+  const settlement = determinePhysicalRefuelSettlement({
+    group: component.members,
+    canonicalEventId: canonical.id,
+    classification: isSiblingGroup ? 'SAME_PHYSICAL_REFUEL' : 'DISTINCT_PHYSICAL_REFUEL',
+    asOfMs,
+    firstObservedAtById,
+    config: context?.settlementConfig,
+    priorDistinctFinalization: lateSiblingConflict && priorDistinctHit,
+    priorCanonicalFinalization: lateSiblingConflict && priorCanonicalHit,
+    ambiguityReasonCodes: lateSiblingConflict
+      ? [...component.reasonCodes, 'late_sibling_after_finalization']
+      : component.reasonCodes,
+  });
+
+  return {
+    reconciliationLockKey: lockKey,
+    classification: isSiblingGroup ? 'SAME_PHYSICAL_REFUEL' : 'DISTINCT_PHYSICAL_REFUEL',
+    canonicalEventId:
+      settlement.finalityState === 'FINAL_CANONICAL' ? canonical.id : settlement.provisionalCanonicalId,
+    provisionalCanonicalId: settlement.provisionalCanonicalId,
+    siblingEventIds: component.memberIds,
+    enrichmentEligibleId: settlement.enrichmentEligibleId,
+    finalityState: settlement.finalityState,
+    reason: settlement.reason,
+    reasonCodes: settlement.reasonCodes,
+    settlementWindowOpen: settlement.settlementWindowOpen,
+  };
 }
 
 /**
- * Pure reconciliation decision for a batch of candidate rows (G2 design).
- * Arrival-order and input-order independent via clique-consistent grouping.
+ * Pure reconciliation for a bounded same-vehicle candidate set (G2 design).
+ * Evidence-safe component analysis; observation-time settlement authority.
  */
 export function reconcilePhysicalRefuelBatch(
   candidates: RefuelRowForMatcher[],
@@ -104,125 +223,76 @@ export function reconcilePhysicalRefuelBatch(
 ): PhysicalRefuelReconciliationDecision[] {
   if (!candidates.length) return [];
 
-  const vehicleId = candidates[0].vehicleId;
-  const lockKey = buildPhysicalRefuelReconciliationLockKey(vehicleId);
-  const asOfMs = context?.asOfMs ?? Math.max(...candidates.map((r) => new Date(r.endTime).getTime()));
-  const firstSeenAtById = defaultFirstSeenMap(candidates, context);
-  const priorDistinct = context?.priorDistinctSettlementIds ?? new Set<string>();
+  const analysis = buildPairwiseIdentityMatrix(candidates);
 
-  const groups = partitionPhysicalRefuelGroups(candidates);
-  const decisions: PhysicalRefuelReconciliationDecision[] = [];
-
-  for (const group of groups) {
-    const sortedIds = group.map((g) => g.id).sort();
-
-    if (group.length === 1) {
-      const row = group[0];
-      const settlement = determinePhysicalRefuelSettlement({
-        group,
-        canonicalEventId: row.id,
-        classification: 'DISTINCT_PHYSICAL_REFUEL',
-        asOfMs,
-        firstSeenAtById,
-        config: context?.settlementConfig,
-        priorDistinctSettlement: false,
-      });
-      decisions.push({
-        reconciliationLockKey: lockKey,
-        classification: 'DISTINCT_PHYSICAL_REFUEL',
-        canonicalEventId: row.id,
-        siblingEventIds: sortedIds,
-        enrichmentEligibleId: settlement.enrichmentEligibleId,
-        finalityState: settlement.finalityState,
-        reason: settlement.reason,
-      });
-      continue;
-    }
-
-    const canonical = chooseCanonicalFromGroup(group);
-    const priorDistinctSettlement = sortedIds.some((id) => priorDistinct.has(id));
-
-    const pairwiseInsufficient = group.some((a) =>
-      group.some((b) => {
-        if (a.id === b.id) return false;
-        const result = classifyPhysicalRefuelSibling(a, b);
-        return result.classification === 'INSUFFICIENT_EVIDENCE';
-      }),
-    );
-
-    if (pairwiseInsufficient) {
-      for (const row of group) {
-        decisions.push({
-          reconciliationLockKey: lockKey,
-          classification: 'INSUFFICIENT_EVIDENCE',
-          canonicalEventId: null,
-          siblingEventIds: [row.id],
-          enrichmentEligibleId: null,
-          finalityState: 'INSUFFICIENT_EVIDENCE',
-          reason: 'non_transitive_group_insufficient_evidence',
-        });
-      }
-      continue;
-    }
-
-    const settlement = determinePhysicalRefuelSettlement({
-      group,
-      canonicalEventId: canonical.id,
-      classification: 'SAME_PHYSICAL_REFUEL',
-      asOfMs,
-      firstSeenAtById,
-      config: context?.settlementConfig,
-      priorDistinctSettlement,
-    });
-
-    decisions.push({
-      reconciliationLockKey: lockKey,
-      classification: 'SAME_PHYSICAL_REFUEL',
-      canonicalEventId: canonical.id,
-      siblingEventIds: sortedIds,
-      enrichmentEligibleId: settlement.enrichmentEligibleId,
-      finalityState: settlement.finalityState,
-      reason: priorDistinctSettlement
-        ? settlement.reason
-        : 'semantic_sibling_clique_group',
-    });
+  if (analysis.batchStatus === 'MIXED_VEHICLE_BATCH') {
+    return invalidBatchDecision('mixed_vehicle_batch', ['mixed_vehicle_batch']);
   }
 
-  return decisions;
+  const firstObservedAtById = resolveFirstObservedAtById(context);
+  const missingObservation = candidates.some((c) => firstObservedAtById[c.id] == null);
+  if (missingObservation) {
+    return invalidBatchDecision('missing_system_observation_time', [
+      'missing_system_observation_time',
+    ]);
+  }
+
+  const asOfMs = context?.asOfMs ?? Date.now();
+  const lockKey = buildPhysicalRefuelReconciliationLockKey(analysis.vehicleId!);
+
+  return analysis.components.map((component) =>
+    decisionFromComponent(
+      component,
+      analysis.matrix!,
+      lockKey,
+      asOfMs,
+      firstObservedAtById,
+      context,
+    ),
+  );
 }
 
 /**
  * Simulates incremental arrival; returns final reconciliation once all rows are visible.
+ * Uses explicit observation timestamps — never provider event endTime.
  */
 export function simulateArrivalOrder(
   allRows: RefuelRowForMatcher[],
   arrivalOrder: RefuelRowForMatcher[],
   context?: PhysicalRefuelReconciliationContext,
 ): PhysicalRefuelReconciliationDecision[] {
-  const visible: RefuelRowForMatcher[] = [];
-  const firstSeenAtById: Record<string, number> = { ...(context?.firstSeenAtById ?? {}) };
-  const priorDistinctSettlementIds = new Set(context?.priorDistinctSettlementIds ?? []);
+  const firstObservedAtById = resolveFirstObservedAtById(context);
+  const priorDistinctFinalizationIds = new Set(
+    context?.priorDistinctFinalizationIds ?? context?.priorDistinctSettlementIds ?? [],
+  );
+  const priorCanonicalFinalizationIds = new Set(context?.priorCanonicalFinalizationIds ?? []);
+  const baseAsOfMs = context?.asOfMs ?? Date.now();
   let lastDecision: PhysicalRefuelReconciliationDecision[] = [];
 
   for (let i = 0; i < arrivalOrder.length; i++) {
     const row = arrivalOrder[i];
-    visible.push(row);
-    const asOfMs =
-      context?.asOfMs ??
-      new Date(row.endTime).getTime() + (i + 1) * 1000;
-    firstSeenAtById[row.id] = firstSeenAtById[row.id] ?? asOfMs;
+    const observedAt = firstObservedAtById[row.id] ?? baseAsOfMs + i * 1000;
+    firstObservedAtById[row.id] = observedAt;
+    const asOfMs = context?.asOfMs ?? observedAt;
 
-    const subset = allRows.filter((r) => visible.some((v) => v.id === r.id));
+    const subset = allRows.filter((r) =>
+      arrivalOrder.slice(0, i + 1).some((v) => v.id === r.id),
+    );
+
     lastDecision = reconcilePhysicalRefuelBatch(subset, {
       ...context,
       asOfMs,
-      firstSeenAtById,
-      priorDistinctSettlementIds,
+      firstObservedAtById,
+      priorDistinctFinalizationIds,
+      priorCanonicalFinalizationIds,
     });
 
     for (const d of lastDecision) {
       if (d.finalityState === 'FINAL_DISTINCT' && d.enrichmentEligibleId) {
-        priorDistinctSettlementIds.add(d.enrichmentEligibleId);
+        priorDistinctFinalizationIds.add(d.enrichmentEligibleId);
+      }
+      if (d.finalityState === 'FINAL_CANONICAL' && d.enrichmentEligibleId) {
+        priorCanonicalFinalizationIds.add(d.enrichmentEligibleId);
       }
     }
   }
@@ -231,23 +301,39 @@ export function simulateArrivalOrder(
 }
 
 /**
- * G2 transaction boundary (design only) — G1.2b adds explicit finality gate.
- *
- * Stage 1: coarse vehicle/refuel reconciliation lock (serialization)
- * Stage 2: semantic physical-event identity + fail-closed clique grouping
+ * Test helper — synthesize explicit SYNQDRIVE observation times (fixture provenance only).
  */
+export function buildTestObservationContext(
+  rows: RefuelRowForMatcher[],
+  options: {
+    asOfMs: number;
+    observedAtById?: Record<string, number>;
+    baseOffsetMs?: number;
+  },
+): PhysicalRefuelReconciliationContext {
+  const firstObservedAtById: Record<string, number> = { ...(options.observedAtById ?? {}) };
+  const base = options.baseOffsetMs ?? 0;
+  for (let i = 0; i < rows.length; i++) {
+    if (firstObservedAtById[rows[i].id] == null) {
+      firstObservedAtById[rows[i].id] = options.asOfMs - base - (rows.length - i) * 1000;
+    }
+  }
+  return { asOfMs: options.asOfMs, firstObservedAtById };
+}
+
 export const G2_PHYSICAL_REFUEL_TRANSACTION_BOUNDARY = {
   stages: {
     stage1: 'coarse_vehicle_refuel_reconciliation_lock',
-    stage2: 'semantic_physical_event_identity',
+    stage2: 'semantic_physical_event_identity_matrix_and_components',
+    stage3: 'settlement_finality_on_system_observation_time',
   },
   phases: [
     'BEGIN',
     'advisory_xact_lock(vehicle_refuel_reconciliation)',
-    'load_bounded_physical_refuel_candidates',
-    'classify_physical_identity',
-    'partition_fail_closed_clique_groups',
-    'choose_canonical_refuel',
+    'load_bounded_physical_refuel_candidates_same_vehicle',
+    'build_pairwise_identity_matrix',
+    'analyze_evidence_safe_identity_components',
+    'choose_canonical_refuel_per_valid_clique',
     'determine_settlement_finality_state',
     'persist_semantic_state_and_evidence',
     'COMMIT',

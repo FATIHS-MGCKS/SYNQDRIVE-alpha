@@ -84,7 +84,7 @@ Scoped `PRODUCTION_VALIDATED` decisions cite explicit production-validation scop
 
 ## G1.2b boundary hardening (2026-09-04)
 
-`FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001` closes five G1.2 review defects: provider-independent lookback, settlement/finality before enrichment, vehicle-scoped reconciliation lock, dimensionally-safe canonical comparator, fail-closed clique multi-sibling grouping. **51 tests PASS.** G2 design-ready; **no production wiring**.
+`FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001` closes five G1.2 review defects: provider-independent lookback, settlement/finality before enrichment, vehicle-scoped reconciliation lock, dimensionally-safe canonical comparator, fail-closed clique multi-sibling grouping. **G1.2c** (`FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001`) closes SETTLING semantics, observation-time settlement authority, non-transitive fail-closed components, and 2→3+ sibling race. **64 targeted tests PASS.** G2 design-ready; **no production wiring**.
 | FST-GAP-GERMANY-SCOPE-001 | Germany-only scope / international expansion |
 | FST-GAP-MANUAL-FAILED-REPAIR-001 | Manual repair for terminal FAILED rows |
 | FST-GAP-SINGLE-COORD-POLICY-001 | Single start-coordinate policy |

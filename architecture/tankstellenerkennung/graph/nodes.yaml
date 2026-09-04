@@ -864,6 +864,60 @@ nodes:
     evidence:
       - FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001
 
+  - id: FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001
+    type: evidence
+    title: G1.2c finality + ambiguity closure — SETTLING, observation time, fail-closed components
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      SETTLING until settlement window closes on latest firstObservedAt; non-transitive components
+      fail closed; no eventTime fallback; 64 targeted tests PASS.
+    source_paths:
+      - docs/audits/refuel-g12c-finality-ambiguity-closure-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-identity-component.design.ts
+
+  - id: FST-DEC-SETTLEMENT-OBSERVATION-TIME-001
+    type: decision
+    title: Settlement clock uses SYNQDRIVE system observation time
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      firstObservedAt required; provider endTime/startTime must not substitute.
+      Window closes at max(firstObservedAt in group) + horizon.
+    evidence:
+      - FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001
+
+  - id: FST-DEC-SETTLING-MULTIROW-FINALITY-001
+    type: decision
+    title: Multi-row SAME groups remain SETTLING until settlement window closes
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      group.length > 1 alone does not imply FINAL_CANONICAL; closes 2→3+ sibling race.
+    evidence:
+      - FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001
+
+  - id: FST-DEC-NON-TRANSITIVE-FAIL-CLOSED-001
+    type: decision
+    title: Non-transitive identity components fail closed
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Pairwise matrix + complete-clique validation; UUID order never decides physical identity.
+    evidence:
+      - FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001
+
+  - id: FST-DEC-LATE-SIBLING-RECOVERY-CONFLICT-001
+    type: decision
+    title: Late sibling after finalization is a recovery conflict
+    decision_status: PROPOSED
+    epistemic_status: INFERRED
+    summary: >
+      SAME or INSUFFICIENT late sibling after FINAL_DISTINCT/FINAL_CANONICAL blocks enrichment;
+      G2 operational recovery required.
+    evidence:
+      - FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001
+
   - id: FST-HYP-OSM-REFRESH-001
     type: hypothesis
     title: OSM refresh may require re-enrichment policy

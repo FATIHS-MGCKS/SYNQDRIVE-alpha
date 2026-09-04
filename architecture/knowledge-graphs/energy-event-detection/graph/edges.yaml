@@ -395,6 +395,25 @@ edges:
     relation: REFERENCES
     to: EED-OQ-013
 
+  - from: EED-EV-0030
+    relation: REFERENCES
+    to: EED-EV-0029
+  - from: EED-EV-0030
+    relation: REFERENCES
+    to: EED-DEC-SETTLEMENT-OBSERVATION-TIME-001
+  - from: EED-EV-0030
+    relation: REFERENCES
+    to: EED-DEC-SETTLING-MULTIROW-FINALITY-001
+  - from: EED-EV-0030
+    relation: REFERENCES
+    to: EED-DEC-NON-TRANSITIVE-FAIL-CLOSED-001
+  - from: EED-EV-0030
+    relation: REFERENCES
+    to: EED-DEC-LATE-SIBLING-RECOVERY-CONFLICT-001
+  - from: EED-EV-0030
+    relation: REFERENCES
+    to: EED-OQ-013
+
   - from: EED-EV-0027
     relation: REFERENCES
     to: EED-OQ-013

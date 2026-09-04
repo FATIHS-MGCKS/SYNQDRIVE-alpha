@@ -341,5 +341,57 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 | **WHY** | SAME_PHYSICAL_REFUEL is not guaranteed transitive |
 | **CHANGE** | Clique-consistent partition; non-transitive triples stay separate |
 | **EXPECTED_EFFECT** | Input-order and arrival-order independent grouping |
-| **VALIDATION** | Permutation tests + mocked A~B,B~C,A!~C partition |
-| **EVIDENCE** | FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001 |
+| **VALIDATION** | Permutation tests + fail-closed ambiguous component (G1.2c) |
+| **EVIDENCE** | FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001 |
+
+---
+
+## FST-DEC-SETTLEMENT-OBSERVATION-TIME-001 — System observation time settlement authority
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | Missing firstObservedAt could fall back to provider endTime |
+| **WHY** | Old event time would incorrectly consume settlement horizon |
+| **CHANGE** | `firstObservedAtById` required; window closes at max(observation)+horizon |
+| **VALIDATION** | G1.2c observation-time tests |
+| **EVIDENCE** | FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001 |
+
+---
+
+## FST-DEC-SETTLING-MULTIROW-FINALITY-001 — SETTLING until window closes
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | `group.length > 1` → immediate FINAL_CANONICAL |
+| **WHY** | 2→3+ sibling race: third row could arrive with stronger evidence |
+| **CHANGE** | Multi-row SAME → SETTLING while window open; FINAL_CANONICAL only after close |
+| **VALIDATION** | G1.2c 2→3 race tests |
+| **EVIDENCE** | FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001 |
+
+---
+
+## FST-DEC-NON-TRANSITIVE-FAIL-CLOSED-001 — Ambiguous components fail closed
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | Greedy partition could yield [A,B]+[C] for A~B,B~C,A!~C |
+| **WHY** | UUID order must not decide physical identity |
+| **CHANGE** | Pairwise matrix + complete-clique validation; non-transitive → INSUFFICIENT |
+| **VALIDATION** | Six permutation tests |
+| **EVIDENCE** | FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001 |
+
+---
+
+## FST-DEC-LATE-SIBLING-RECOVERY-CONFLICT-001 — Late sibling recovery conflict
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | Partial late-sibling handling without INSUFFICIENT case |
+| **WHY** | Duplicate enrichment risk after FINAL_DISTINCT |
+| **CHANGE** | SAME or INSUFFICIENT late sibling after finalization → fail closed; G2 recovery |
+| **VALIDATION** | G1.2c late sibling tests |
+| **EVIDENCE** | FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001 |

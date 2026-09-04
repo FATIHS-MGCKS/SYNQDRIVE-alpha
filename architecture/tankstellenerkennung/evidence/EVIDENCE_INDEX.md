@@ -24,6 +24,7 @@ Canonical evidence nodes (`FST-EVID-*`, `FST-TEST-*`). See also `graph/nodes.yam
 | FST-EVID-G11-HF-CLOSURE-2026-09-04-001 | PRODUCTION_OBSERVATION | evidence/G11_HF_CLOSURE_KS_MX_2026-09-04.json | G1.1 HF/route closure: Esso forecourt dwell, V2 coordinate policy, timing correction |
 | FST-EVID-G12-ALGORITHMIC-CLOSURE-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g12-algorithmic-closure-2026-09-04.md | G1.2 selector + identity matcher; 31 tests |
 | FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g12b-runtime-boundary-hardening-2026-09-04.md | G1.2b boundary hardening; 51 tests; settlement/finality/lock/grouping |
+| FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g12c-finality-ambiguity-closure-2026-09-04.md | G1.2c SETTLING, observation time, fail-closed components; 64 tests |
 
 ## Phase memos (supporting, not graph authority)
 

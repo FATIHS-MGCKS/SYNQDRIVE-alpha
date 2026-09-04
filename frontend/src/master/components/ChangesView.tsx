@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'refuel-g12c-finality-ambiguity-closure-2026-09-04',
+    version: '4.9.1052',
+    title: 'G1.2c finality + ambiguity closure — SETTLING, observation time (2026-09-04)',
+    summary: [
+      'SETTLING is real: multi-row SAME groups stay non-enrichment-eligible until observation-time settlement window closes.',
+      'Settlement clock authority = SYNQDRIVE firstObservedAt (no provider endTime fallback).',
+      'Pairwise identity matrix + fail-closed non-transitive component analysis (UUID order not epistemic).',
+      'Late sibling after finalization → recovery conflict; mixed-vehicle batch rejected.',
+      '64 targeted tests PASS; G2_IMPLEMENTATION_READY=YES; PRODUCTION_DEPLOYMENT_READY=NO.',
+    ],
+    reason: 'Close four G1.2b semantic gaps before G2 runtime wiring.',
+    previousBehavior: 'G1.2b: FINAL_CANONICAL on group.length>1; greedy partition; event.endTime fallback for firstSeen.',
+    details:
+      'docs/audits/refuel-g12c-finality-ambiguity-closure-2026-09-04.md; physical-refuel-identity-component.design.ts; FST-EVID-G12C-*; EED-EV-0030.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T18:00:00.000Z',
+  },
+  {
     id: 'refuel-g12b-runtime-boundary-hardening-2026-09-04',
     version: '4.9.1051',
     title: 'G1.2b runtime boundary hardening — lookback, finality, lock, grouping (2026-09-04)',
