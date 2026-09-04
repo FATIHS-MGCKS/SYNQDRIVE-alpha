@@ -67,10 +67,21 @@ describe('physical-refuel-coordinate-retry.policy', () => {
         coordinateLatitude: null,
         coordinateLongitude: null,
         coordinateSource: null,
-        coordinateSelectionStatus: 'NO_DWELL_FOUND',
+        coordinateSelectionStatus: 'NO_DWELL_FOUND_FOR_STABLE_EVIDENCE',
         nextCoordinateRetryAt: null,
         asOfMs: asOf,
       }),
     ).toBe(false);
+  });
+
+  it('RC semantics: retry count increments once per failed retryable attempt', () => {
+    const first = computeNextCoordinateRetryAt(1, asOf);
+    const second = computeNextCoordinateRetryAt(2, asOf);
+    expect(first.getTime() - asOf).toBe(120_000);
+    expect(second.getTime() - asOf).toBe(240_000);
+    expect(isCoordinateStatusRetryable('ROUTE_UNAVAILABLE')).toBe(true);
+    expect(isCoordinateStatusRetryable('ROUTE_EVIDENCE_STABILIZING')).toBe(true);
+    expect(isCoordinateStatusTerminal('NO_DWELL_FOUND_FOR_STABLE_EVIDENCE')).toBe(true);
+    expect(isCoordinateStatusRetryable('SELECTED')).toBe(false);
   });
 });

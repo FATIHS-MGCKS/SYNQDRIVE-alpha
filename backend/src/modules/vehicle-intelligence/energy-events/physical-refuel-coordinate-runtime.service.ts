@@ -10,6 +10,7 @@ import {
   COORDINATE_PROVIDER_ERROR,
   COORDINATE_ROUTE_UNAVAILABLE,
 } from './physical-refuel-coordinate-retry.policy';
+import { computeRouteEvidenceFingerprint } from './physical-refuel-route-evidence.util';
 
 export const PHYSICAL_REFUEL_COORDINATE_SOURCE_V2 = 'physical_refuel_forecourt_dwell_v2';
 
@@ -19,6 +20,7 @@ export interface PhysicalRefuelCoordinateRuntimeResult {
   source: string | null;
   selectorVersion: string;
   status: string;
+  routeEvidenceFingerprint: string | null;
 }
 
 @Injectable()
@@ -69,6 +71,11 @@ export class PhysicalRefuelCoordinateRuntimeService {
       return unavailableResult(COORDINATE_PROVIDER_ERROR);
     }
 
+    const routeEvidenceFingerprint =
+      routeOutcome.status === 'SUCCESS'
+        ? computeRouteEvidenceFingerprint(routeOutcome.points)
+        : null;
+
     const result = derivePhysicalRefuelCoordinate({
       routeSamples: routeOutcome.points.map((p) => ({
         timestamp: p.timestamp,
@@ -90,7 +97,10 @@ export class PhysicalRefuelCoordinateRuntimeService {
           rejectionReasons: result.provenance.rejectionReasons,
         }),
       );
-      return unavailableResult(result.status);
+      return {
+        ...unavailableResult(result.status),
+        routeEvidenceFingerprint,
+      };
     }
 
     return {
@@ -99,6 +109,7 @@ export class PhysicalRefuelCoordinateRuntimeService {
       source: PHYSICAL_REFUEL_COORDINATE_SOURCE_V2,
       selectorVersion: PHYSICAL_REFUEL_COORDINATE_SELECTOR_VERSION,
       status: result.status,
+      routeEvidenceFingerprint,
     };
   }
 }
@@ -110,5 +121,6 @@ function unavailableResult(status: string): PhysicalRefuelCoordinateRuntimeResul
     source: null,
     selectorVersion: PHYSICAL_REFUEL_COORDINATE_SELECTOR_VERSION,
     status,
+    routeEvidenceFingerprint: null,
   };
 }

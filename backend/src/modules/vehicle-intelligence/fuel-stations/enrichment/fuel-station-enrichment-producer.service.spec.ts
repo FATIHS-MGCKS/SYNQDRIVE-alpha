@@ -322,4 +322,55 @@ describe('FuelStationEnrichmentProducerService', () => {
     expect(outcome).toEqual({ status: 'deferred_queue_unavailable', jobId: null });
     expect(queue.add).not.toHaveBeenCalled();
   });
+
+  it('BQ1 dedupes existing WAITING job', async () => {
+    queue.getJob.mockResolvedValue({
+      getState: jest.fn().mockResolvedValue('waiting'),
+    });
+    const outcome = await service.enqueueAfterPersistOutcome(postCutoverInput);
+    expect(outcome.status).toBe('deduped');
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('BQ3 removes failed BullMQ job and re-enqueues when DB allows retry', async () => {
+    const remove = jest.fn().mockResolvedValue(undefined);
+    queue.getJob.mockResolvedValue({
+      getState: jest.fn().mockResolvedValue('failed'),
+      remove,
+    });
+    prisma.vehicleEnergyEventFuelStationEnrichment.findUnique.mockResolvedValue({
+      processingStatus: 'PROCESSING',
+      lastAttemptAt: new Date('2026-09-01T00:00:00.000Z'),
+      inputFingerprint: fingerprint,
+      resolverVersion: FUEL_STATION_RESOLVER_VERSION,
+    });
+
+    const outcome = await service.enqueueAfterPersistOutcome(postCutoverInput);
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(queue.add).toHaveBeenCalledTimes(1);
+    expect(outcome.status).toBe('enqueued');
+  });
+
+  it('BQ4 does not retry failed BullMQ job when DB enrichment is terminal FAILED', async () => {
+    queue.getJob.mockResolvedValue({
+      getState: jest.fn().mockResolvedValue('failed'),
+      remove: jest.fn(),
+    });
+    prisma.vehicleEnergyEventFuelStationEnrichment.findUnique.mockResolvedValue({
+      processingStatus: 'FAILED',
+      inputFingerprint: fingerprint,
+      resolverVersion: FUEL_STATION_RESOLVER_VERSION,
+    });
+
+    const outcome = await service.enqueueAfterPersistOutcome(postCutoverInput);
+    expect(outcome.status).toBe('terminal_skip');
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('BQ6 adds deterministic job when BullMQ job is missing', async () => {
+    queue.getJob.mockResolvedValue(null);
+    const outcome = await service.enqueueAfterPersistOutcome(postCutoverInput);
+    expect(outcome.status).toBe('enqueued');
+    expect(queue.add).toHaveBeenCalledTimes(1);
+  });
 });

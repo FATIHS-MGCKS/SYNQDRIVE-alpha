@@ -179,7 +179,12 @@ export class FuelStationEnrichmentProducerService {
     const existingJob = await this.queue.getJob(jobId);
     if (existingJob) {
       const state = await existingJob.getState();
-      if (state === 'waiting' || state === 'delayed' || state === 'active' || state === 'prioritized') {
+      if (
+        state === 'waiting' ||
+        state === 'delayed' ||
+        state === 'active' ||
+        state === 'prioritized'
+      ) {
         this.logger.debug(
           `Fuel station enrichment duplicate suppressed ${formatBullMqJobIdLogContext({
             namespace: 'refuel-station',
@@ -187,6 +192,21 @@ export class FuelStationEnrichmentProducerService {
             jobId,
           })}`,
         );
+        return { status: 'deduped', jobId };
+      }
+      if (state === 'failed') {
+        if (terminalSkipReason) {
+          return { status: 'terminal_skip', jobId: null, reason: terminalSkipReason };
+        }
+        await existingJob.remove();
+        this.logger.debug(
+          JSON.stringify({
+            event: 'fuel_station_enrichment_failed_job_removed',
+            energyEventId: input.energyEventId,
+            jobId,
+          }),
+        );
+      } else if (state === 'completed') {
         return { status: 'deduped', jobId };
       }
     }

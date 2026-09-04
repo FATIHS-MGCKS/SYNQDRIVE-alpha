@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'refuel-g21d-final-recovery-execution-closure-2026-09-04',
+    version: '4.9.1058',
+    title: 'G2.1d physical-refuel final recovery execution closure',
+    summary: [
+      'Stale PENDING/stale PROCESSING enrichment survives enqueue-plan construction and reaches producer recovery end-to-end.',
+      'Physical-refuel recovery scheduler is Redis-independent — every replica may scan; PG vehicle advisory lock serializes.',
+      'coordinateRetryCount increments exactly once per failed retryable attempt via persistCoordinateHold only.',
+      'Bounded route evidence stabilization: ROUTE_EVIDENCE_STABILIZING inside horizon; NO_DWELL_FOUND_FOR_STABLE_EVIDENCE after.',
+      'BullMQ failed deterministic jobs: remove + re-add when DB lifecycle permits; active/waiting deduped.',
+      'Per-vehicle error isolation in runRecoveryBatch; stale PROCESSING reset to PENDING before re-enqueue.',
+      'PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED remains default OFF.',
+    ],
+    reason: 'Close G2.1c independent review execution/liveness boundaries before G2.2 shadow authorization.',
+    previousBehavior: 'stale_enrichment discovered but never enqueued; recovery depended on Redis leader election; coordinate retry double-count; sparse route evidence terminalized prematurely; failed BullMQ jobs not recovered.',
+    details:
+      'docs/audits/refuel-g21d-final-recovery-execution-closure-2026-09-04.md; FST-EVID-G21D-FINAL-RECOVERY-EXECUTION-CLOSURE-2026-09-04-001; EED-EV-0036.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T00:00:00.000Z',
+  },
+  {
     id: 'refuel-g21c-final-recovery-semantics-closure-2026-09-04',
     version: '4.9.1057',
     title: 'G2.1c physical-refuel final recovery semantics closure',

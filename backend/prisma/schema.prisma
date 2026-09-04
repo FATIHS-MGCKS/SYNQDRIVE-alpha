@@ -9877,6 +9877,8 @@ model VehicleEnergyEventRefuelReconciliation {
   coordinateSelectorVersion String?                     @map("coordinate_selector_version")
   coordinateSelectionStatus String?                   @map("coordinate_selection_status")
   coordinateEvidenceFingerprint String?             @map("coordinate_evidence_fingerprint")
+  routeEvidenceFingerprint      String?             @map("route_evidence_fingerprint")
+  routeEvidenceStabilizationUntil DateTime?           @map("route_evidence_stabilization_until")
   coordinateRetryCount      Int                         @default(0) @map("coordinate_retry_count")
   nextCoordinateRetryAt     DateTime?                   @map("next_coordinate_retry_at")
   lastCoordinateAttemptAt   DateTime?                   @map("last_coordinate_attempt_at")

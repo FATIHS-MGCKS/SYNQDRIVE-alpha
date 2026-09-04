@@ -36,6 +36,13 @@ export const PHYSICAL_REFUEL_RECONCILIATION_V2_CUTOVER_AT_ENV =
 export const PHYSICAL_REFUEL_RECOVERY_ORPHAN_LOOKBACK_MS_ENV =
   'PHYSICAL_REFUEL_RECOVERY_ORPHAN_LOOKBACK_MS';
 
+/**
+ * Bounded horizon for DIMO route evidence to stabilize after event observation.
+ * INFERRED operational default: 2h (historical route backfill latency).
+ */
+export const PHYSICAL_REFUEL_ROUTE_EVIDENCE_STABILIZATION_MS_ENV =
+  'PHYSICAL_REFUEL_ROUTE_EVIDENCE_STABILIZATION_MS';
+
 function parseBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
   if (value == null || value.trim() === '') return defaultValue;
   const normalized = value.trim().toLowerCase();
@@ -88,6 +95,10 @@ export default registerAs('physicalRefuelReconciliation', () => ({
   recoveryOrphanLookbackMs: parsePositiveIntEnv(
     process.env[PHYSICAL_REFUEL_RECOVERY_ORPHAN_LOOKBACK_MS_ENV],
     7 * 24 * 60 * 60 * 1000,
+  ),
+  routeEvidenceStabilizationMs: parsePositiveIntEnv(
+    process.env[PHYSICAL_REFUEL_ROUTE_EVIDENCE_STABILIZATION_MS_ENV],
+    2 * 60 * 60 * 1000,
   ),
 }));
 

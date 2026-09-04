@@ -38,6 +38,7 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
     recoveryBatchSize: 25,
     v2OwnershipCutoverAt: null as Date | null,
     recoveryOrphanLookbackMs: 7 * 24 * 60 * 60 * 1000,
+    routeEvidenceStabilizationMs: 2 * 60 * 60 * 1000,
   };
 
   const fuelEnrichmentConfig = {
@@ -342,6 +343,7 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
         source: 'physical_refuel_forecourt_dwell_v2',
         selectorVersion: 'v2',
         status: 'SELECTED',
+        routeEvidenceFingerprint: 'route-fp-selected',
       }),
     };
 
@@ -607,6 +609,8 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
         nextCoordinateRetryAt: null,
         lastCoordinateAttemptAt: null,
         coordinateEvidenceFingerprint: null,
+        routeEvidenceFingerprint: null,
+        routeEvidenceStabilizationUntil: null,
         nextReconciliationAt: null,
         enrichmentEnqueuedAt: new Date(t0),
         reconciledAt: new Date(t0),

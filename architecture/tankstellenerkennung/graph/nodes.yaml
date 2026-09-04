@@ -943,6 +943,22 @@ nodes:
       - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-recovery.repository.ts
       - backend/src/modules/dimo/dimo-segments.service.ts
 
+  - id: FST-EVID-G21D-FINAL-RECOVERY-EXECUTION-CLOSURE-2026-09-04-001
+    type: evidence
+    title: G2.1d final recovery execution closure
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Stale enrichment end-to-end execution, Redis-independent multi-replica recovery scan,
+      single coordinate retry increment, bounded route evidence stabilization, BullMQ failed-job
+      recovery, per-vehicle error isolation.
+    source_paths:
+      - docs/audits/refuel-g21d-final-recovery-execution-closure-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-enqueue-plan.util.ts
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-producer.service.ts
+      - backend/src/workers/schedulers/physical-refuel-reconciliation-recovery.scheduler.ts
+
   - id: FST-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE system observation time

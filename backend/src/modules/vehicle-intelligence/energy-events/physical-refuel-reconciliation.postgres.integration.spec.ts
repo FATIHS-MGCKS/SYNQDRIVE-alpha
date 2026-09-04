@@ -82,5 +82,25 @@ async function probeDatabase(): Promise<boolean> {
       expect(started).toContain('A');
       expect(started).toContain('B');
     });
+
+    it('G2.1d SR4: multi-replica scheduler concurrency — same vehicle lock serializes', async () => {
+      const order: string[] = [];
+
+      const replicaA = prismaA.$transaction(async (tx) => {
+        await acquirePgAdvisoryXactLock64(tx, lockKey);
+        order.push('replica-a');
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 30));
+
+      const replicaB = prismaB.$transaction(async (tx) => {
+        await acquirePgAdvisoryXactLock64(tx, lockKey);
+        order.push('replica-b');
+      });
+
+      await Promise.all([replicaA, replicaB]);
+      expect(order).toEqual(['replica-a', 'replica-b']);
+    });
   },
 );

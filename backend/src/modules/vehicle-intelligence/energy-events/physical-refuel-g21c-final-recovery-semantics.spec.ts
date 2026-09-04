@@ -131,6 +131,8 @@ describe('G2.1c final recovery semantics closure', () => {
             reconciledAt: new Date(),
             updatedAt: new Date(),
             coordinateEvidenceFingerprint: null,
+            routeEvidenceFingerprint: null,
+            routeEvidenceStabilizationUntil: null,
             ...data,
           } as VehicleEnergyEventRefuelReconciliation;
           reconciliations.set(data.energyEventId, created);
@@ -180,6 +182,7 @@ describe('G2.1c final recovery semantics closure', () => {
         source: 'physical_refuel_forecourt_dwell_v2',
         selectorVersion: 'v2',
         status: 'SELECTED',
+        routeEvidenceFingerprint: 'route-fp-selected',
       }),
     };
 
@@ -195,6 +198,7 @@ describe('G2.1c final recovery semantics closure', () => {
         recoveryBatchSize: 25,
         v2OwnershipCutoverAt: v2Cutover,
         recoveryOrphanLookbackMs: 7 * 24 * 60 * 60 * 1000,
+        routeEvidenceStabilizationMs: 2 * 60 * 60 * 1000,
       } as never,
       { cutoverAt: v2Cutover, cutoverState: 'valid' } as never,
       fuelStationEnrichmentProducer as never,
@@ -666,6 +670,8 @@ describe('G2.1c final recovery semantics closure', () => {
         nextCoordinateRetryAt: null,
         lastCoordinateAttemptAt: new Date(),
         coordinateEvidenceFingerprint: computeCoordinateEvidenceFingerprint(event),
+        routeEvidenceFingerprint: 'route-fp-selected',
+        routeEvidenceStabilizationUntil: null,
         nextReconciliationAt: null,
         enrichmentEnqueuedAt: new Date(),
         reconciledAt: new Date(),
@@ -710,6 +716,8 @@ describe('G2.1c final recovery semantics closure', () => {
         nextCoordinateRetryAt: null,
         lastCoordinateAttemptAt: new Date(),
         coordinateEvidenceFingerprint: computeCoordinateEvidenceFingerprint(event),
+        routeEvidenceFingerprint: 'route-fp-selected',
+        routeEvidenceStabilizationUntil: null,
         nextReconciliationAt: null,
         enrichmentEnqueuedAt: new Date(),
         reconciledAt: new Date(),

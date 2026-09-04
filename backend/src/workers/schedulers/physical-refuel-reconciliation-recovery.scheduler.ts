@@ -2,12 +2,11 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { ConfigType } from '@nestjs/config';
 import { Inject } from '@nestjs/common';
 import physicalRefuelReconciliationConfig from '@config/physical-refuel-reconciliation.config';
-import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 import { PhysicalRefuelReconciliationRuntimeService } from '@modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service';
 
 /**
  * G2.1a durable reconciliation recovery: settlement due, orphan refuels, lost enqueue.
- * Owns all V2-owned REFUEL reconciliation authority when flag is enabled.
+ * G2.1d: Redis-independent — every replica may scan; vehicle PG advisory lock serializes work.
  */
 @Injectable()
 export class PhysicalRefuelReconciliationRecoveryScheduler implements OnModuleInit, OnModuleDestroy {
@@ -19,7 +18,6 @@ export class PhysicalRefuelReconciliationRecoveryScheduler implements OnModuleIn
     @Inject(physicalRefuelReconciliationConfig.KEY)
     private readonly config: ConfigType<typeof physicalRefuelReconciliationConfig>,
     private readonly runtime: PhysicalRefuelReconciliationRuntimeService,
-    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   shouldStartRecoveryTimer(): boolean {
@@ -37,6 +35,7 @@ export class PhysicalRefuelReconciliationRecoveryScheduler implements OnModuleIn
       JSON.stringify({
         event: 'physical_refuel_recovery_timer_started',
         intervalMs,
+        leaderElection: 'none_pg_vehicle_lock',
       }),
     );
   }
@@ -50,11 +49,11 @@ export class PhysicalRefuelReconciliationRecoveryScheduler implements OnModuleIn
 
   async runRecoveryTick(): Promise<number> {
     if (!this.config.enabled || !this.config.recoveryEnabled) return 0;
-    if (!this.leaderGuard.shouldRun('physical_refuel_reconciliation_recovery')) return 0;
     if (this.inProgress) return 0;
 
     this.inProgress = true;
     try {
+      this.logger.debug(JSON.stringify({ event: 'physical_refuel_recovery_tick' }));
       await this.runtime.emitRecoveryBacklogMetrics();
       const result = await this.runtime.runRecoveryBatch();
       return result.processedVehicles;
