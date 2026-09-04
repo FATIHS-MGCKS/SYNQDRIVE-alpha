@@ -46,7 +46,7 @@ Scaling Process
 │   ├── Deploy leader-timing false-abort → INC-06 (P1.8.3) — **CLOSED** P1.8.3.1 prod validation
 │   ├── Deploy bootstrap stale-current → OQ-18 — **CLOSED** (P1.8.3.5 DEC-016 full invariant verified)
 │   ├── N=2 continuous 24h soak → OQ-28 — PARTIAL (P1.8.3.3 longest FULL_N2 segment 81024s)
-│   ├── Trip reconciliation duplicate rows → INC-07 (P1.8.3.3 forensic) — **FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS** (P1.8.3.5)
+│   ├── Trip reconciliation duplicate rows → INC-07 (P1.8.3.3 forensic) — **FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS** (P1.8.3.6 retrospective WEAK: 2 warm cycles, 0 replay)
 │   └── nginx dual-upstream with dead backend
 │
 ├── Scaling Envelopes

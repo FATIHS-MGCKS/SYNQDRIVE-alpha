@@ -241,3 +241,22 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | Validation start timestamp | P1.8.3.5 | — | `INC07_VALIDATION_START_UTC` | `2026-09-03T21:19:07Z` | HIGH |
 | Natural warm-tier validation | P1.8.3.5 | — | — | IN_PROGRESS (0 cycles) | HIGH |
 
+---
+
+## P1.8.3.6 — INC-07 natural warm-tier retrospective
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Post-T0 audit window (~12h) | P1.8.3.6 | — | read-only SSH + SQL + logs | `43093s` | HIGH |
+| INC-07 fix present entire window | P1.8.3.6 | — | single deploy `5b788a223`, dist markers | YES | HIGH |
+| Natural warm-tier cycles after T0 | P1.8.3.6 | — | scheduler logs `01:18Z`, `05:18Z` | 2 cycles | HIGH |
+| Post-T0 INTRA_TRIP_GAP_SPLIT rows | P1.8.3.6 | — | `trip_repairs` SQL | 0 | HIGH |
+| Natural same-repair replay / IDEMPOTENT_SKIP | P1.8.3.6 | — | logs + DB | 0 | HIGH |
+| New INC-07-equivalent duplicate groups | P1.8.3.6 | — | duplicate SQL | 0 | HIGH |
+| Historical duplicate baseline | P1.8.3.6 | — | duplicate SQL | 2 groups / 4 rows unchanged | HIGH |
+| APPLIED terminality regression | P1.8.3.6 | — | `trip_repairs` SQL | none | HIGH |
+| INC-07 production evidence strength | P1.8.3.6 | — | classification matrix | WEAK | HIGH |
+| INC-07 closure | P1.8.3.6 | — | Phase 17 rule | NOT CLOSED | HIGH |
+| OQ-30 | P1.8.3.6 | — | idempotency replay pending | PARTIAL | HIGH |
+| OQ-28 FULL_N=2 segment | P1.8.3.6 | — | deploy restart `21:18:36Z` | `43103s` (<86400) | HIGH |
+

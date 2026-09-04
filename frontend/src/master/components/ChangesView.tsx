@@ -250,6 +250,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-03T07:50:00.000Z',
   },
   {
+    id: 'p1-8-3-6-inc-07-natural-warm-tier-retrospective-2026-09-04',
+    version: '4.9.1027',
+    title: 'P1.8.3.6 — INC-07 natural warm-tier retrospective audit',
+    summary: [
+      'Read-only production retrospective over ~12h since validation start (2026-09-03T21:19:07Z).',
+      'INC-07 fix present entire window on SHA 5b788a223; 2 proven post-fix warm-tier cycles (01:18Z, 05:18Z).',
+      'Zero post-T0 INTRA_TRIP_GAP_SPLIT rows, zero natural replay, zero IDEMPOTENT_SKIP observability.',
+      'Historical duplicate baseline unchanged (2 groups / 4 rows). No new INC-07-equivalent duplicates.',
+      'Evidence strength WEAK — INC-07 NOT CLOSED. OQ-30 PARTIAL. N2=EARLY. OQ-28 checkpoint 2026-09-04T21:18:36Z.',
+    ],
+    reason: 'First real natural warm-tier closure audit after P1.8.3.5 deploy; determine whether remediated path proved idempotent under production reconciliation.',
+    previousBehavior: 'INC-07 validation in progress with 0 observed warm-tier cycles at P1.8.3.5 baseline.',
+    details:
+      'architecture/P1_8_3_6_INC_07_NATURAL_WARM_TIER_RETROSPECTIVE_CLOSURE_2026-09-04.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T09:17:20.000Z',
+  },
+  {
     id: 'p1-8-3-5-inc-07-production-validation-baseline-2026-09-03',
     version: '4.9.1026',
     title: 'P1.8.3.5 — INC-07 production deploy + validation baseline',
