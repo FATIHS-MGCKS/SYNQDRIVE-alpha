@@ -37,7 +37,7 @@ Do **not** treat items here as current production architecture.
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
 | OQ-17 | Deploy scheduler leader convergence / leader-election wait | **CLOSED** | P1.8.3.1 production verified; INC-06 CLOSED; `DEPLOY_LEADER_CONVERGENCE_GATE=VERIFIED_PRODUCTION` |
-| OQ-18 | Bootstrap deploy can execute stale logic from pre-success `current` | **MITIGATED_LIKELY_PRODUCTION_VERIFIED** | P1.8.3.3: auth.log TMP exact-SHA bootstrap on 2026-09-02/03 deploys — stale-current path **likely** avoided; full DEC-016 invariant chain not logged; precision review before CLOSED |
+| OQ-18 | Bootstrap deploy can execute stale logic from pre-success `current` | **CLOSED** | P1.8.3.5: INC-07 deploy used canonical TMP exact-SHA bootstrap; full DEC-016 invariant directly verified in deploy log |
 
 ---
 
@@ -76,7 +76,7 @@ Do **not** treat items here as current production architecture.
 
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
-| OQ-30 | `INTRA_TRIP_GAP_SPLIT` reconciliation idempotency | **PARTIAL** | P1.8.3.4: deterministic `buildIntraTripGapSplitRepairAuditId` + claim-before-mutate + legacy window lookup; local regression PASS; production validation pending; INC-07 closes only after no new duplicate groups |
+| OQ-30 | `INTRA_TRIP_GAP_SPLIT` reconciliation idempotency | **PARTIAL** | P1.8.3.5: fix deployed production `5b788a223`; validation start `2026-09-03T21:19:07Z`; natural warm-tier evidence pending; INC-07 closes only after STRONG/MODERATE replay evidence |
 
 ---
 

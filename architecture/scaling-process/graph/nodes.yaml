@@ -205,7 +205,7 @@ nodes:
   - id: INC_07
     type: INCIDENT
     status: FIX_IMPLEMENTED_PENDING_PRODUCTION_VALIDATION
-    description: INTRA_TRIP_GAP_SPLIT reconciliation re-run creates duplicate REPAIRED trip rows — fix implemented P1.8.3.4
+    description: INTRA_TRIP_GAP_SPLIT reconciliation re-run creates duplicate REPAIRED trip rows — fix deployed P1.8.3.5; production validation in progress
     related_incidents: [INC_07]
     introduced_by: "P1.8.3.3 forensic closure"
     remediated_by: "P1.8.3.4 deterministic repair identity + claim-before-mutate"

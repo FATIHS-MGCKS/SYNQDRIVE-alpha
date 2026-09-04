@@ -206,7 +206,7 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 2. No provider ceiling verification at N≈1000
 3. Staging validation Redis DB ≠ production DB
 4. Deploy leader-wait **verified in production** (P1.8.3.1 attempt 3)
-5. Exact-SHA deploy: stale-current fix **likely** production-verified; full DEC-016 invariant **NEEDS_PRECISION_REVIEW** (P1.8.3.3 forensic)
+5. Exact-SHA deploy: **FULLY_PRODUCTION_VALIDATED** (P1.8.3.5 INC-07 deploy — DEC-016 six-point chain direct)
 ---
 
 ## P1.8.3.4 — INC-07 trip reconciliation idempotency remediation
@@ -225,4 +225,19 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | Legacy random-UUID APPLIED compatibility | P1.8.3.4 | — | idempotency spec | PASS | HIGH |
 | MISSING_TRIP regression | P1.8.3.4 | — | trip-repair-coverage-audit | PASS | HIGH |
 | INC-07 production validation | P1.8.3.4 | — | — | PENDING | HIGH |
+
+---
+
+## P1.8.3.5 — INC-07 production deploy + validation baseline
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Exact INC-07 merge SHA deployed | P1.8.3.5 | #1525 `5b788a223` | cloud-agent deploy log | PASS | HIGH |
+| DEC-016 full invariant (6-point chain) | P1.8.3.5 | — | deploy provenance + SHA invariant log | VERIFIED_PRODUCTION | HIGH |
+| OQ-18 stale-current bootstrap | P1.8.3.5 | — | TMP exact-SHA bootstrap | CLOSED | HIGH |
+| N=2 rolling deploy + leader convergence | P1.8.3.5 | — | deploy log attempt 8 CONVERGED | PASS | HIGH |
+| INC-07 runtime fix in production | P1.8.3.5 | — | dist grep markers | PRESENT | HIGH |
+| Historical duplicate baseline frozen | P1.8.3.5 | — | pre/post SQL | 2 groups / 4 rows unchanged | HIGH |
+| Validation start timestamp | P1.8.3.5 | — | `INC07_VALIDATION_START_UTC` | `2026-09-03T21:19:07Z` | HIGH |
+| Natural warm-tier validation | P1.8.3.5 | — | — | IN_PROGRESS (0 cycles) | HIGH |
 
