@@ -1,180 +1,145 @@
-# RD004-A — Segment A Video ↔ Telemetry Alignment Findings
+# RD004-A.1 — Segment A Video ↔ Telemetry Alignment Findings
 
-**Evidence ID:** DI-EV-0035A  
-**Phase:** RD004-A (Segment A only — departure → fuel station)  
+**Evidence ID:** DI-EV-0035A.1 (methodology correctness closeout)  
+**Phase:** RD004-A.1 (Segment A only — departure → fuel station)  
 **Vehicle:** KS MX 2024 Mercedes-Benz C 63 AMG (`a60c0749-a7cd-494e-b5b9-dea3c6b97d63`, DIMO token `187336`)  
 **Session:** `f1e81e78-f96b-44ee-80c2-ca5270f21248`  
-**Reference drive:** `DIMO_LTE_R1_REFERENCE_DRIVE_004`  
-**Analysis window (telemetry envelope):** `2026-09-04T03:37:00Z` – `2026-09-04T03:45:00Z`  
-**Video anchor:** `t=0` = `2026-09-04T03:37:46Z` (Time.is second-phone clock)  
-**Nominal video end:** `2026-09-04T03:43:56.65Z` (~370.65 s)  
 **Mode:** Read-only offline analysis — **no production changes**
 
 ---
 
 ## Einfache Zusammenfassung (Deutsch)
 
-1. **Brauchbare HF-Daten?** Ja. Im Segment-A-Fenster liegen **38 HF_HISTORICAL-Speed-Messpunkte** vor (`03:37:44Z`–`03:43:53Z`), ohne Duplikate, Stale-Holds oder Out-of-Order in der qualifizierten Serie.
+### 1. Welche ursprünglichen Ergebnisse waren echt?
 
-2. **Physischer Speed-Takt?** Median **~4,7 s** zwischen neuen physischen HF-Speed-Samples (P90 **~32,7 s**, max Gap **~52,3 s**). Das ist **nicht 1 Hz** — nur ~38 echte Messpunkte über ~6 Minuten.
+- **38 HF_HISTORICAL-Speed-Messpunkte** (38 unique physical), Median-Cadence **~4,73 s**, P90 **~32,7 s**, max Gap **~52,3 s**
+- Keine HF-Duplikate/Stale-Holds/Out-of-Order in der qualifizierten Speed-Serie (acquisition-order geprüft)
+- LATEST_LIVE zeigt viele wiederholte/stale Beobachtungen (separat dokumentiert)
+- Legacy-Detector auf vorhandenen Segment-A-Daten: **0** Hard/Extreme/Launch/Full-Braking-Events
+- Video-Uhr absolut verankert via Time.is: **03:37:46 UTC** bei Video t=0
+- Reverse im Video: **ja**; in Telemetrie: **nein** (kein HF-Gear/Ratio)
+- Gear HF: **0 Beobachtungen** in Segment A
 
-3. **Speed-Verlauf vs. Video?** **Grundsätzlich ja** unter PROVISIONAL_ZERO_OFFSET_PROJECTION: lange frühe Stillstände, ruhige Beschleunigungen, Verzögerungen, Stopps und ein später Anfahren bis ~44 km/h passen zur menschlich beschriebenen ruhigen Stadt-/Tankstellen-Anfahrt. Absolute Geschwindigkeitsgenauigkeit ist **nicht** validiert (keine frame-exakten Video-OCR-Anker).
+### 2. Welche Ergebnisse waren durch Analysefehler künstlich entstanden?
 
-4. **Konstanter Zeitversatz?** Für die **Mitte/Ende** des Segments (Landmarks B, C, D, F, G) liegt der provisorische Offset bei **~0 s** relativ zum Time.is-Anker — **STABLE_OFFSET** für diese Episoden. Landmark A (frühes Rückwärts) zeigt **~-10 s**; Landmark H (Tankstellen-Anfahrt) ist **nicht zuverlässig gematcht** → Gesamtklassifikation **AMBIGUOUS_ALIGNMENT** / **POSSIBLE_DRIFT** wenn alle Landmarks einbezogen werden.
+| Fehlerhaft (DI-EV-0035A) | Korrektur (DI-EV-0035A.1) |
+|--------------------------|---------------------------|
+| ~0 s Offset aus zirkulären Landmark-Matches (B,C,D,F,G) | Offset nur aus unabhängiger Video-Zeit; zirkuläre Logik entfernt |
+| Drift ~−128,6 s (inkl. fehlgeschlagenem H-Match) | **DRIFT_VALIDATED = NO**, kein numerischer Drift |
+| PREPROCESSING_START_SHIFT ~127,6 s | Ungültige Methode entfernt; lokale Event-Fenster oder **NOT_VALIDATED** |
+| Acceleration-Median = Max (+2,63 m/s²) | Percentile-Bug behoben; Median jetzt **~−0,28 m/s²** |
+| GEAR_STATE_USEFUL = PARTIAL bei 0 Samples | **NOT_OBSERVED** |
+| „Plausibel ruhig“ für ±2,6/−2,8 m/s² | **VIDEO_SEVERITY_CONFIRMATION = NOT_VALIDATED** |
+| Bundle-SHA = nur observations.jsonl | Kanonisches Multi-File-Manifest-SHA |
 
-5. **Drift innerhalb 6 Minuten?** **Nicht final beweisbar.** Lineares Konzeptmodell über alle gematchten Landmarks ergibt **PARTIAL** mit großer negativer Drift-Schätzung, stark verzerrt durch den fehlgeschlagenen Landmark-H-Match. **DRIFT_VALIDATED = NO** für Segment-A allein empfohlen; Segment B bleibt pending.
+### 3. Ist 0-s-Offset wirklich bewiesen?
 
-6. **Speed-Fehler an lesbaren Videoankern?** **Nicht messbar** — `EXACT_VIDEO_SPEED_ANCHORS = 0`, `ABSOLUTE_SPEED_ACCURACY_VALIDATED = NO`.
+**Nein.** Der frühere ~0-s-Offset war ein Artefakt zirkulärer Landmark-Logik (`expectedVideoT = telemetryT`). Nach Korrektur: ein einzelner clock-fit-fähiger Landmark **H** ergibt **~+22,2 s** (PROVISIONAL_SINGLE_ANCHOR), aber **PROVIDER_TIMESTAMP_OFFSET_VALIDATED = NO**.
 
-7. **Ruhige Beschleunigungen?** Qualifizierte HF-Paare zeigen max **~+2,6 m/s²** — plausibel ruhig; keine Legacy-Hard/Extreme-Accel-Events.
+### 4. Ist Clock Drift bewiesen?
 
-8. **Ruhige Verzögerungen?** Max **~-2,8 m/s²** auf qualifizierten Paaren — ebenfalls ruhig; keine Hard/Extreme-Braking-Events. Kinematische Verzögerung ≠ Reibungsbremsung.
+**Nein.** **DRIFT_VALIDATED = NO**, **ESTIMATED_DRIFT_SECONDS_OVER_SEGMENT = null**. Es fehlen ≥3 unabhängige, zuverlässige Landmarks über das Segment verteilt.
 
-9. **Legacy-Detector False Positives?** **Keine** Hard/Extreme/Launch/Full-Braking-Events auf Segment A (`LIKELY_FALSE_POSITIVE_EVENTS = 0`). Calm-Baseline-Kontrolle **PARTIAL** bestätigt (keine Fehlalarme, aber sparse HF limitiert Sensitivität).
+### 5. Wie viele echte HF-Speed-Samples?
 
-10. **3-Punkt-Glättung?** Peak-Dämpfung bis **~18,3 km/h** beobachtet; Event-Timing-Verschiebung auf sparse HF **nicht zuverlässig messbar** (`NOT_MEASURED_SPARSE_CADENCE`).
+**38** unique physical samples, **38** HF_HISTORICAL rows im Envelope.
 
-11. **RPM / Throttle / TPS / Gear?** RPM, Throttle, TPS **nützlich mit Gating** (27 HF-Samples, gleiche Cadence wie Speed). Gear **PARTIAL** — frühe Reverse-Phase ohne Gear-HF-Daten.
+### 6. Wie lückenhaft ist HF?
 
-12. **Reverse im Telemetrie-Kontext?** **NEIN** — `REVERSE_TELEMETRY_SUPPORTED = NO` (keine Gear/Ratio-HF in den ersten ~30 s; unsigned speed allein reicht nicht).
+Median **~4,7 s** zwischen physischen Samples, P90 **~32,7 s**, max Gap **~52,3 s** — deutlich unter 1 Hz. Nur **~43 %** der HF-Paare qualifizieren sich bei 2-s-Analyse-Gate (nicht produktionsvalidiert).
 
-13. **Ausdrücklich offen:** Absolute Speed-Genauigkeit; finale Clock-Drift; Landmark E (stabile ~52–56 km/h); Reverse-Bestätigung; S1–S13-Gesamtfahrt; Segment B (~16:40); Produktionskalibrierung.
+### 7. Was wissen wir über die 3-Punkt-Glättung?
 
----
+- **MAX_SAME_TIMESTAMP_RAW_SMOOTHED_DELTA_KMH = ~18,33 km/h** (gleicher Zeitstempel, nicht Peak-Attenuation)
+- **TRUE_LOCAL_PEAK_ATTENUATION_KMH = ~18,33 km/h** an identifizierbaren lokalen Peaks
+- Timing-Verschiebung: **PARTIAL** (lokale Event-Fenster); kein globaler 127-s-Shift
 
-## Phase 1 — Raw telemetry sealed
+### 8. Was wissen wir NICHT über Gear/Reverse?
 
-| Source | SHA256 |
-|--------|--------|
-| `source-observations.jsonl` | `5938b9e9120864768dd91048fb06a182ef2b7f0772a2df2c75f17cb684d2e2` |
-| Envelope rows (03:37–03:45 UTC) | 1057 |
+- **GEAR_STATE_OBSERVED = NO** — kein HF-Gear/Ratio in Segment A
+- **REVERSE_TELEMETRY_SUPPORTED = NO** — unsigned speed reicht nicht; kein Richtungssignal
+- Video zeigt Reverse und Gangwechsel, aber das ist **Video-Evidenz**, nicht Telemetrie
 
-Surfaces preserved separately — **not merged**.
+### 9. Legacy-Detector Fehlalarme?
 
-## Phase 2 — Signal inventory (HF_HISTORICAL highlights)
+**Keine** auf vorhandenen Daten (**CALM_BASELINE_FALSE_POSITIVE_CHECK = NO_FALSE_POSITIVES_OBSERVED_ON_AVAILABLE_DATA**), aber **CALM_BASELINE_COVERAGE = PARTIAL** (sparse HF limitiert Sensitivität).
 
-| Signal | Rows | Unique physical | Median cadence | Max gap |
-|--------|------|-----------------|----------------|---------|
-| speed | 38 | 38 | 4.732 s | 52.283 s |
-| powertrainCombustionEngineSpeed | 27 | 27 | 4.732 s | 52.283 s |
-| obdThrottlePosition | 27 | 27 | 4.732 s | 52.283 s |
-| powertrainCombustionEngineTPS | 27 | 27 | 4.732 s | 52.283 s |
-| obdEngineLoad | 27 | 27 | 4.732 s | 52.283 s |
-| powertrainTransmissionActualGear | 0 | — | — | — |
-| powertrainTransmissionActualGearRatio | 0 | — | — | — |
+### 10. Was kann Segment B zusätzlich klären?
 
-LATEST_LIVE speed: 105 rows / 35 unique physical (70 duplicates, 15 stale holds).
-
-## Phase 3–4 — Qualified HF speed + provisional projection
-
-- 38 qualified points, 0 duplicate/stale/out-of-order exclusions in final series
-- `PROVISIONAL_ZERO_OFFSET_PROJECTION` applied — not claimed as final alignment
-
-## Phase 5–7 — Landmarks & clock
-
-See `rd004-a-video-clock-alignment.json`. Key matches under zero-offset anchor:
-
-| ID | Event | Telemetry shape | Offset (s) |
-|----|-------|-----------------|------------|
-| B | Decel ~41→0 | 31→4 km/h / 27 s | 0 |
-| C | Prolonged stop | ~96 s at 0 km/h | 0 |
-| D | Launch 0→56 | 0→44 km/h / 31 s | 0 |
-| F | Decel ~55→0 | 31→3 km/h / 15 s | 0 |
-| A | Early reverse/low | 0 km/h @ t≈-1.9 s | -9.9 |
-| E | Stable cruise | NOT_FOUND | — |
-| H | Fuel approach | WEAK match | -341.9 |
-
-**VIDEO_TO_PROVIDER_OFFSET_SECONDS (median):** 0  
-**OFFSET_MAD_SECONDS:** 0 (among matched offsets with spread driven by H outlier)
-
-## Phase 8 — Absolute speed
-
-`ABSOLUTE_SPEED_ACCURACY_VALIDATED = NO` — no frame-exact digital speed OCR in this phase.
-
-## Phase 9 — Acceleration reconstruction
-
-- **QUALIFIED_ACCELERATION_PAIR_FRACTION:** 0.43 (16/37 pairs; gaps >2 s rejected)
-- Max positive: **+2.63 m/s²**
-- Max negative: **-2.78 m/s²**
-- No extreme dynamics inconsistent with calm video
-
-## Phase 10 — Legacy detector audit (offline)
-
-All counts **0** — no hard/extreme accel/brake, no launch-like, no full braking, no likely false positives.
-
-## Phase 11 — Preprocessing filter response
-
-- Peak attenuation: **18.33 km/h**
-- Event timing shift: **not measured** (sparse cadence)
-- False event creation/suppression: **not measured**
-
-## Phase 12 — Supporting signals
-
-RPM/throttle/TPS useful with gating; gear weak/absent on HF for this window. Thermal warmup note preserved (~24°C → ~47/39°C video observation).
-
-## Phase 13 — Reverse
-
-`REVERSE_VIDEO_OBSERVED = YES`  
-`REVERSE_TELEMETRY_SUPPORTED = NO`
+- Mehr unabhängige Video-Landmarks für Offset/Drift-Validierung
+- Längere Zeitbasis für Drift-Schätzung
+- Ob HF-Cadence/Qualität über die Gesamtfahrt konsistent bleibt
+- Ob Gear/RPM-Kontext in anderen Fahrtphasen verfügbar wird
 
 ---
 
-## Flags (summary)
+## Flags (corrected)
 
 ```
-RD004_PHASE = A
-RD004_SEGMENT_A_VIDEO_START_UTC = 2026-09-04T03:37:46.000Z
-RD004_SEGMENT_A_VIDEO_END_UTC = 2026-09-04T03:43:56.650Z
-HF_HISTORICAL_AVAILABLE = YES
+RD004_PHASE = A.1
+RAW_SOURCE_OBSERVATIONS_CHANGED = NO
+RAW_SOURCE_SHA256 = 5938b9e9120864768dd91048fb06a182ef2b7f0772a9a2df2c75f17cb684d2e2
+
 HF_SPEED_ROWS = 38
 HF_SPEED_UNIQUE_PHYSICAL_SAMPLES = 38
 HF_SPEED_MEDIAN_PHYSICAL_CADENCE_SECONDS = 4.732
 HF_SPEED_P90_PHYSICAL_CADENCE_SECONDS = 32.66
 HF_SPEED_MAX_GAP_SECONDS = 52.283
-DUPLICATE_SPEED_SAMPLES = 0
-STALE_HOLD_SPEED_SAMPLES = 0
-OUT_OF_ORDER_SPEED_SAMPLES = 0
-VIDEO_PROVIDER_ALIGNMENT_CLASS = POSSIBLE_DRIFT
-VIDEO_TO_PROVIDER_OFFSET_SECONDS = 0
-OFFSET_MAD_SECONDS = 0
-DRIFT_VALIDATED = PARTIAL
-ESTIMATED_DRIFT_SECONDS_OVER_SEGMENT = -128.56
-EXACT_VIDEO_SPEED_ANCHORS = 0
-ABSOLUTE_SPEED_ACCURACY_VALIDATED = NO
-QUALIFIED_ACCELERATION_PAIR_FRACTION = 0.43
-LEGACY_HARD_ACCEL_EVENTS = 0
-LEGACY_EXTREME_ACCEL_EVENTS = 0
-LEGACY_HARD_BRAKING_EVENTS = 0
-LEGACY_EXTREME_BRAKING_EVENTS = 0
-LEGACY_LAUNCH_LIKE_EVENTS = 0
-LEGACY_FULL_BRAKING_EVENTS = 0
-LIKELY_FALSE_POSITIVE_EVENTS = 0
+
+VIDEO_ABSOLUTE_TIME_ANCHORED = YES
+PROVIDER_TIMESTAMP_OFFSET_VALIDATED = NO
+VIDEO_TO_PROVIDER_OFFSET_SECONDS = 22.205 (PROVISIONAL_SINGLE_ANCHOR from H only; not validated)
+
+CLOCK_FIT_ELIGIBLE_LANDMARKS = [H]
+DRIFT_VALIDATED = NO
+ESTIMATED_DRIFT_SECONDS_OVER_SEGMENT = null
+
+CIRCULAR_LANDMARK_ALIGNMENT_REMOVED = YES
+DUPLICATE_CLOCK_EVIDENCE_PREVENTED = YES
+TEMPORAL_LOCALITY_ENFORCED = YES
+
+ACCELERATION_PERCENTILE_BUG_FIXED = YES
+ACCELERATION_GAP_THRESHOLD_STATUS = ANALYSIS_CANDIDATE_NOT_VALIDATED
+
+PREPROCESSING_LOCAL_EVENT_METHOD = SAME_WINDOW_RAW_VS_SMOOTHED_BOUNDARIES
+PREPROCESSING_TIMING_VALIDATED = PARTIAL
+MAX_SAME_TIMESTAMP_RAW_SMOOTHED_DELTA_KMH = 18.33
+TRUE_LOCAL_PEAK_ATTENUATION_KMH = 18.33
+
+GEAR_STATE_OBSERVED = NO
+GEAR_STATE_USEFUL_FOR_SEGMENT_A = NOT_OBSERVED
+
+REVERSE_VIDEO_OBSERVED = YES
 REVERSE_TELEMETRY_SUPPORTED = NO
-CALM_BASELINE_VALIDATED = PARTIAL
-RD004_SEGMENT_A_COMPLETE = YES
+
+LEGACY_HARD/EXTREME EVENTS = 0
+CALM_BASELINE_FALSE_POSITIVE_CHECK = NO_FALSE_POSITIVES_OBSERVED_ON_AVAILABLE_DATA
+CALM_BASELINE_COVERAGE = PARTIAL
+
+CANONICAL_PATHS_REPO_RELATIVE = YES
+BUNDLE_SHA256_METHOD = CANONICAL_MEMBER_HASH_MANIFEST
+BUNDLE_SHA256 = 4821d45d7c5061719b595523b9c1e4f12ffafe9d9dc17b5786db0fca74668cf1
+
 RD004_WHOLE_DRIVE_COMPLETE = NO
 SEGMENT_B_PENDING = YES
-PRODUCTION_SCORE_CHANGED = NO
-PRODUCTION_DETECTORS_CHANGED = NO
-DEPLOYED = NO
-READY_FOR_RD004_SEGMENT_B = YES
+PRODUCTION_UNCHANGED = YES
 ```
 
 ---
 
-## Artifacts
+## Methodology corrections (DI-EV-0035A.1)
 
-| File | Purpose |
-|------|---------|
-| `rd004-a-session-summary.json` | Session + flags |
-| `rd004-a-raw-speed-series.json` / `.csv` | Qualified HF speed |
-| `rd004-a-signal-cadence.json` | Per-signal/surface cadence |
-| `rd004-a-video-clock-alignment.json` | Landmarks + clock/drift |
-| `rd004-a-speed-comparison.json` | Speed anchor classes |
-| `rd004-a-kinematic-reconstruction.json` | Acceleration pairs |
-| `rd004-a-legacy-detector-audit.json` | Offline detector audit |
-| `rd004-a-preprocessing-response.json` | Raw vs 3-point |
-| `rd004-a-supporting-signals.json` | RPM/throttle/TPS/gear |
-| `rd004-a-reverse-validation.json` | Reverse check |
+1. Removed circular clock-alignment (telemetry-derived expected video time)
+2. Landmark evidence classes: VIDEO_TIMING_AUTHORITY, TELEMETRY_MATCH_CONFIDENCE, CLOCK_FIT_ELIGIBLE
+3. One telemetry episode cannot count as multiple independent clock landmarks
+4. Temporal locality enforced for landmarks A and H
+5. Drift fit requires ≥3 independent reliable landmarks — not met
+6. Percentile sorting fixed for acceleration statistics
+7. Preprocessing timing uses same local event window only
+8. Same-timestamp delta separated from true local peak attenuation
+9. Gear usefulness: NOT_OBSERVED when zero HF samples
+10. Supporting-signal usefulness requires dynamic informativeness, not just count
+11. Repo-relative canonical paths; correct multi-file bundle SHA
+12. Out-of-order detection uses acquisition order
 
-**RD003 preserved. No production deployment.**
+**RD003 preserved. Segment B pending. No deploy.**

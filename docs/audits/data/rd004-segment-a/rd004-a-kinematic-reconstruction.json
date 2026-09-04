@@ -334,6 +334,7 @@
       "rejectionReason": null
     }
   ],
+  "qualifiedPairCount": 16,
   "qualifiedPairFraction": 0.43243243243243246,
   "qualifiedPairs": [
     {
@@ -484,6 +485,33 @@
   "distribution": {
     "maxPositiveMs2": 2.6329647182727753,
     "maxNegativeMs2": -2.7777777777777777,
-    "medianMs2": 2.6329647182727753
-  }
+    "medianMs2": -0.2777777777777778,
+    "p10Ms2": -2.2222222222222223,
+    "p90Ms2": 0.8203714641989892
+  },
+  "gapSensitivity": [
+    {
+      "gapSeconds": 2,
+      "qualifiedPairCount": 16,
+      "qualifiedPairFraction": 0.43243243243243246,
+      "maxPositiveMs2": 2.6329647182727753,
+      "maxNegativeMs2": -2.7777777777777777
+    },
+    {
+      "gapSeconds": 3,
+      "qualifiedPairCount": 16,
+      "qualifiedPairFraction": 0.43243243243243246,
+      "maxPositiveMs2": 2.6329647182727753,
+      "maxNegativeMs2": -2.7777777777777777
+    },
+    {
+      "gapSeconds": 5,
+      "qualifiedPairCount": 20,
+      "qualifiedPairFraction": 0.5405405405405406,
+      "maxPositiveMs2": 2.6329647182727753,
+      "maxNegativeMs2": -2.7777777777777777
+    }
+  ],
+  "VIDEO_SEVERITY_CONFIRMATION": "NOT_VALIDATED",
+  "note": "Qualified kinematic derivatives from sparse HF — not validated against video severity"
 }

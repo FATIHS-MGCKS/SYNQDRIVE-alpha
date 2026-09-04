@@ -1,40 +1,42 @@
-# RD004-A — Segment A Video ↔ Telemetry Alignment
+# RD004-A.1 — Segment A Video ↔ Telemetry Alignment (Methodology Closeout)
 
 **Date:** 2026-09-04  
-**Evidence ID:** DI-EV-0035A  
-**Vehicle:** KS MX 2024 Mercedes-Benz C 63 AMG (`a60c0749-a7cd-494e-b5b9-dea3c6b97d63`)  
-**Session:** `f1e81e78-f96b-44ee-80c2-ca5270f21248`  
-**Scope:** Segment A only (departure → fuel station, ~370.65 s video)
+**Evidence ID:** DI-EV-0035A.1  
+**Supersedes methodology defects in:** DI-EV-0035A  
+**Vehicle:** KS MX 2024 Mercedes-Benz C 63 AMG (`a60c0749-a7cd-494e-b5b9-dea3c6b97d63`)
 
-## Architecture preserved
+## Scope
 
-- **HF_HISTORICAL** speed uses `providerTimestamp` as physical event-time authority.
-- Acquisition surfaces (HF_HISTORICAL, LATEST_LIVE, LATEST_SLOW) analyzed separately — not merged.
-- Legacy detectors (`hf-preprocessing`, `hf-acceleration`, `hf-braking`, `hf-abuse`) evaluated **offline only** on preserved Segment-A data.
-- **No** production score, detector, tire, or brake runtime changes.
+Segment A only (departure → fuel station, ~370.65 s video). Segment B (~16:40) pending.
 
-## Analysis module
+## Methodology corrections
 
-- `backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-rd004-a-segment-a.ts`
-- CLI: `backend/scripts/ops/reference-capture-drive-004-a-segment-a-analyze.ts`
+| Area | DI-EV-0035A defect | DI-EV-0035A.1 fix |
+|------|-------------------|-------------------|
+| Clock offset | Circular `expectedVideoT = telemetryT` → artificial 0 s | Only independently observed video times contribute |
+| Drift | −128.6 s from bad fit | `DRIFT_VALIDATED = NO`, null estimate |
+| Preprocessing timing | 127.6 s global speed-value match | Same local event window only |
+| Acceleration median | Unsorted percentile → median = max | `sortedPercentile()` everywhere |
+| Gear | PARTIAL with 0 samples | `NOT_OBSERVED` |
+| Bundle SHA | Single-file hash | Canonical multi-member manifest hash |
+| Paths | `/workspace/...` in artifacts | Repo-relative only |
 
-## Key findings
+## Preserved valid evidence
 
-| Topic | Result |
-|-------|--------|
-| HF speed samples (envelope) | 38 unique physical / median cadence ~4.7 s |
-| Video clock (mid-segment landmarks) | ~0 s offset under Time.is anchor |
-| Absolute speed accuracy | NOT validated (no frame-exact OCR) |
-| Calm-drive legacy detectors | 0 hard/extreme events |
-| Reverse telemetry | NOT supported in HF for early window |
-| Segment B | PENDING — whole-drive drift NOT finalized |
+- 38 HF speed samples, ~4.7 s median cadence (not 1 Hz)
+- 0 legacy hard/extreme events on available data
+- Video absolute time anchored (Time.is); provider offset **not validated**
+- Reverse: video YES, telemetry NO
+- Absolute speed accuracy: NOT VALIDATED
+
+## Module / CLI
+
+- `reference-capture-rd004-a-segment-a.ts`
+- `reference-capture-drive-004-a-segment-a-analyze.ts`
+- 23 methodology tests
 
 ## Artifacts
 
-`docs/audits/data/rd004-segment-a/` — immutable evidence directory for RD004-A.
+`docs/audits/data/rd004-segment-a/` — regenerated with corrected methodology.
 
-## Related
-
-- RD004 capture: `DIMO_LTE_R1_REFERENCE_DRIVE_004`
-- RD003 signal quality: DI-EV-0034E (preserved)
-- V2 design: DI-EV-0034F (preserved, not calibrated)
+**No production changes. RD004 whole drive NOT complete.**

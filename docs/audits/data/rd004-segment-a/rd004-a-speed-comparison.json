@@ -4,10 +4,15 @@
     {
       "id": "A",
       "videoRelativeSeconds": 8,
-      "videoSpeedKmhApprox": 2,
-      "note": "APPROXIMATE_VIDEO_LANDMARK — human reviewed, not frame-exact"
+      "videoTimingAuthority": "APPROXIMATE",
+      "note": "Human-reviewed approximate — not frame-exact"
+    },
+    {
+      "id": "H",
+      "videoRelativeSeconds": 340,
+      "videoTimingAuthority": "APPROXIMATE",
+      "note": "Human-reviewed approximate — not frame-exact"
     }
   ],
-  "ABSOLUTE_SPEED_ACCURACY_VALIDATED": "NO",
-  "note": "No frame-exact digital speed OCR in this phase — approximate human landmarks only"
+  "ABSOLUTE_SPEED_ACCURACY_VALIDATED": "NO"
 }

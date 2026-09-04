@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035a1-rd004-segment-a-methodology-closeout-2026-09-04',
+    version: '4.9.1048',
+    title: 'DI-EV-0035A.1 — RD004-A Methodology Correctness Closeout',
+    summary: [
+      'Fixes circular landmark clock-alignment (telemetry-derived expectedVideoT → artificial 0 s offset).',
+      'Invalidates −128.6 s drift estimate; DRIFT_VALIDATED=NO with null numeric output.',
+      'Removes invalid 127.6 s preprocessing timing; uses same local event window only.',
+      'Fixes unsorted percentile bug (acceleration median now ~−0.28 m/s², not max).',
+      'Gear NOT_OBSERVED (0 HF samples); reverse telemetry NO; bundle SHA canonical multi-file.',
+      'Preserves valid evidence: 38 HF speed samples, ~4.7 s median cadence, 0 legacy harsh events.',
+    ],
+    reason: 'Human review found methodology bugs in DI-EV-0035A before PR #1529 becomes canonical evidence.',
+    previousBehavior: 'DI-EV-0035A reported STABLE 0 s offset, −128.6 s drift, GEAR PARTIAL, invalid preprocessing shift.',
+    details:
+      '23 methodology tests; repo-relative paths; CLOCK_FIT_ELIGIBLE only from independent video times; Segment B pending.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T09:30:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035a-rd004-segment-a-alignment-2026-09-04',
     version: '4.9.1047',
     title: 'DI-EV-0035A — RD004-A Segment A Video ↔ Telemetry Alignment',

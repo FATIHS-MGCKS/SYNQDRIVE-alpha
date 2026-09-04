@@ -6,7 +6,7 @@
 
 **Scope:** Driving Intelligence Reconstruction phases and major artifacts only. Does not index every unrelated repository audit.
 
-**Last updated:** 2026-09-04 (DI-EV-0035A RD004-A Segment A video ↔ telemetry alignment)
+**Last updated:** 2026-09-04 (DI-EV-0035A.1 RD004-A methodology correctness closeout)
 
 ---
 
@@ -64,13 +64,14 @@
 | DI-EV-0034D.1 | Phase 3A.3 | B — Method correction (partial) | `global-fingerprint-discovery-v2/` (pre-D.2 static/joint slice) | 2026-09-03 | SUPERSEDED (static/joint) | — | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | GLOBAL_FINGERPRINT_DISCOVERY_V2 | — | DI-EV-0034D.2 | D.1 joint/static-minute results superseded by D.2 geometry correction; independent speed basins preserved |
 | DI-EV-0034E | Phase 3A.3 | E — Signal quality + foundation | `docs/audits/data/rd003-signal-quality/` + `docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md` | 2026-09-03 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | SIGNAL_QUALITY_INTERPRETATION | DI-EV-0034D.2 (alignment) | — | Per-signal usability matrix; Tier A/B/C evidence; no Driving Score changes; GROUND_TRUTH_VALIDATED=NO |
 | DI-EV-0034F | Phase 3A.3 | F — Architecture design | `docs/audits/data/driving-intelligence-v2-design/` + `docs/audits/driving-intelligence-v2-canonical-design-2026-09.md` | 2026-09-03 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` (RD003 authority) | ARCHITECTURE_DESIGN + DRIVING_INTELLIGENCE_V2_FOUNDATION | DI-EV-0034E | — | Episode reconstruction + trip features; F.1 orthogonal states/confidence; F.2 kinetic energy semantics, artifact integrity; production unchanged; READY_FOR_RD004=YES |
-| DI-EV-0035A | RD004-A | C — Video ↔ telemetry alignment | `docs/audits/data/rd004-segment-a/` + `architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md` | 2026-09-04 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · session `f1e81e78-…` · `DIMO_LTE_R1_REFERENCE_DRIVE_004` Segment A | SEGMENT_A_ALIGNMENT | — | — | First RD004 evidence-grade video ↔ HF telemetry comparison; 38 HF speed samples; calm-baseline legacy detector audit (0 harsh events); ABSOLUTE_SPEED_ACCURACY_VALIDATED=NO; SEGMENT_B_PENDING=YES; production unchanged |
+| DI-EV-0035A | RD004-A | C — Video ↔ telemetry alignment | `docs/audits/data/rd004-segment-a/` + `architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md` | 2026-09-04 | SUPERSEDED (methodology) | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · session `f1e81e78-…` · `DIMO_LTE_R1_REFERENCE_DRIVE_004` Segment A | SEGMENT_A_ALIGNMENT | — | DI-EV-0035A.1 | First RD004 comparison; circular clock offset + drift defects corrected in DI-EV-0035A.1 |
+| DI-EV-0035A.1 | RD004-A.1 | C — Video ↔ telemetry alignment (methodology closeout) | `docs/audits/data/rd004-segment-a/` + `architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md` | 2026-09-04 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · session `f1e81e78-…` · Segment A | SEGMENT_A_ALIGNMENT_V2 | DI-EV-0035A (method) | — | Corrected landmark/clock/drift/preprocessing/percentile/path/bundle methodology; 38 HF samples preserved; offset NOT validated; drift NOT validated; SEGMENT_B_PENDING=YES |
 
 ---
 
 ## Entry count
 
-**41** registry entries through DI-EV-0035A (RD004-A Segment A alignment added 2026-09-04).
+**42** registry entries through DI-EV-0035A.1 (methodology closeout added 2026-09-04).
 
 ---
 

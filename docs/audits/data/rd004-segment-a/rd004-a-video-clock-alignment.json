@@ -5,25 +5,35 @@
     {
       "landmarkId": "A",
       "label": "early reverse / low-speed",
-      "videoRelativeApprox": 8,
-      "telemetryVideoRelativeProvisional": -1.878,
-      "candidateProviderTimestamp": "2026-09-04T03:37:44.122Z",
-      "candidateAbsoluteUtc": "2026-09-04T03:37:44.122Z",
+      "status": "MATCHED",
+      "videoRelativeSecondsObserved": 8,
+      "videoTimestampSource": "HUMAN_REVIEWED_APPROXIMATE",
+      "videoTimingAuthority": "APPROXIMATE",
+      "telemetryVideoRelativeProvisional": 6.293,
+      "telemetryEpisodeId": "low_speed:2026-09-04T03:37:52.293Z",
+      "candidateProviderTimestamp": "2026-09-04T03:37:52.293Z",
+      "candidateAbsoluteUtc": "2026-09-04T03:37:52.293Z",
       "speedShape": {
         "startSpeedKmh": 0,
         "endSpeedKmh": 0,
         "durationSeconds": 0,
         "episodeType": "low_speed"
       },
-      "candidateOffsetSeconds": -9.878,
-      "speedShapeAgreement": "GOOD",
-      "confidence": "MEDIUM"
+      "telemetryMatchConfidence": "INSUFFICIENT",
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "candidateOffsetSeconds": null,
+      "speedShapeAgreement": "WEAK",
+      "note": "0 km/h unsigned speed is not evidence for observed ~2 km/h reverse"
     },
     {
       "landmarkId": "B",
       "label": "calm deceleration ~41→0 / ~30s",
-      "videoRelativeApprox": 337.051,
+      "status": "MATCHED",
+      "videoRelativeSecondsObserved": null,
+      "videoTimestampSource": null,
+      "videoTimingAuthority": "UNKNOWN",
       "telemetryVideoRelativeProvisional": 337.051,
+      "telemetryEpisodeId": "deceleration:2026-09-04T03:43:23.051Z",
       "candidateProviderTimestamp": "2026-09-04T03:43:23.051Z",
       "candidateAbsoluteUtc": "2026-09-04T03:43:23.051Z",
       "speedShape": {
@@ -32,15 +42,20 @@
         "durationSeconds": 27.154,
         "episodeType": "deceleration"
       },
-      "candidateOffsetSeconds": 0,
-      "speedShapeAgreement": "GOOD",
-      "confidence": "MEDIUM"
+      "telemetryMatchConfidence": "HIGH",
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "candidateOffsetSeconds": null,
+      "speedShapeAgreement": "GOOD"
     },
     {
       "landmarkId": "C",
       "label": "prolonged stop ~30s",
-      "videoRelativeApprox": -1.878,
+      "status": "MATCHED",
+      "videoRelativeSecondsObserved": null,
+      "videoTimestampSource": null,
+      "videoTimingAuthority": "UNKNOWN",
       "telemetryVideoRelativeProvisional": -1.878,
+      "telemetryEpisodeId": "stop:2026-09-04T03:37:44.122Z",
       "candidateProviderTimestamp": "2026-09-04T03:37:44.122Z",
       "candidateAbsoluteUtc": "2026-09-04T03:37:44.122Z",
       "speedShape": {
@@ -49,15 +64,20 @@
         "durationSeconds": 95.844,
         "episodeType": "stop"
       },
-      "candidateOffsetSeconds": 0,
-      "speedShapeAgreement": "GOOD",
-      "confidence": "MEDIUM"
+      "telemetryMatchConfidence": "HIGH",
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "candidateOffsetSeconds": null,
+      "speedShapeAgreement": "GOOD"
     },
     {
       "landmarkId": "D",
       "label": "launch 0→~56 km/h",
-      "videoRelativeApprox": 281.018,
+      "status": "MATCHED",
+      "videoRelativeSecondsObserved": null,
+      "videoTimestampSource": null,
+      "videoTimingAuthority": "UNKNOWN",
       "telemetryVideoRelativeProvisional": 281.018,
+      "telemetryEpisodeId": "launch:2026-09-04T03:42:27.018Z",
       "candidateProviderTimestamp": "2026-09-04T03:42:27.018Z",
       "candidateAbsoluteUtc": "2026-09-04T03:42:27.018Z",
       "speedShape": {
@@ -66,21 +86,32 @@
         "durationSeconds": 30.676,
         "episodeType": "launch"
       },
-      "candidateOffsetSeconds": 0,
-      "speedShapeAgreement": "GOOD",
-      "confidence": "MEDIUM"
+      "telemetryMatchConfidence": "MEDIUM",
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "candidateOffsetSeconds": null,
+      "speedShapeAgreement": "PARTIAL"
     },
     {
       "landmarkId": "E",
       "label": "stable ~52–56 km/h ~20s",
       "status": "NOT_FOUND_IN_TELEMETRY",
-      "confidence": "INSUFFICIENT_EVIDENCE"
+      "videoRelativeSecondsObserved": null,
+      "videoTimestampSource": null,
+      "videoTimingAuthority": "UNKNOWN",
+      "telemetryMatchConfidence": "INSUFFICIENT",
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "candidateOffsetSeconds": null,
+      "note": "No matching telemetry episode type found"
     },
     {
       "landmarkId": "F",
       "label": "deceleration ~55→0",
-      "videoRelativeApprox": 173.908,
+      "status": "MATCHED",
+      "videoRelativeSecondsObserved": null,
+      "videoTimestampSource": null,
+      "videoTimingAuthority": "UNKNOWN",
       "telemetryVideoRelativeProvisional": 173.908,
+      "telemetryEpisodeId": "deceleration:2026-09-04T03:40:39.908Z",
       "candidateProviderTimestamp": "2026-09-04T03:40:39.908Z",
       "candidateAbsoluteUtc": "2026-09-04T03:40:39.908Z",
       "speedShape": {
@@ -89,15 +120,20 @@
         "durationSeconds": 14.976,
         "episodeType": "deceleration"
       },
-      "candidateOffsetSeconds": 0,
-      "speedShapeAgreement": "GOOD",
-      "confidence": "MEDIUM"
+      "telemetryMatchConfidence": "MEDIUM",
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "candidateOffsetSeconds": null,
+      "speedShapeAgreement": "PARTIAL"
     },
     {
       "landmarkId": "G",
       "label": "launch 0→~47 km/h",
-      "videoRelativeApprox": 281.018,
+      "status": "MATCHED",
+      "videoRelativeSecondsObserved": null,
+      "videoTimestampSource": null,
+      "videoTimingAuthority": "UNKNOWN",
       "telemetryVideoRelativeProvisional": 281.018,
+      "telemetryEpisodeId": "launch:2026-09-04T03:42:27.018Z",
       "candidateProviderTimestamp": "2026-09-04T03:42:27.018Z",
       "candidateAbsoluteUtc": "2026-09-04T03:42:27.018Z",
       "speedShape": {
@@ -106,75 +142,127 @@
         "durationSeconds": 30.676,
         "episodeType": "launch"
       },
-      "candidateOffsetSeconds": 0,
-      "speedShapeAgreement": "GOOD",
-      "confidence": "MEDIUM"
+      "telemetryMatchConfidence": "HIGH",
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "candidateOffsetSeconds": null,
+      "speedShapeAgreement": "GOOD"
     },
     {
       "landmarkId": "H",
       "label": "final low-speed fuel-station approach",
-      "videoRelativeApprox": 340,
-      "telemetryVideoRelativeProvisional": -1.878,
-      "candidateProviderTimestamp": "2026-09-04T03:37:44.122Z",
-      "candidateAbsoluteUtc": "2026-09-04T03:37:44.122Z",
+      "status": "MATCHED",
+      "videoRelativeSecondsObserved": 340,
+      "videoTimestampSource": "HUMAN_REVIEWED_APPROXIMATE",
+      "videoTimingAuthority": "APPROXIMATE",
+      "telemetryVideoRelativeProvisional": 362.205,
+      "telemetryEpisodeId": "low_speed:2026-09-04T03:43:48.205Z",
+      "candidateProviderTimestamp": "2026-09-04T03:43:48.205Z",
+      "candidateAbsoluteUtc": "2026-09-04T03:43:48.205Z",
       "speedShape": {
-        "startSpeedKmh": 0,
-        "endSpeedKmh": 0,
+        "startSpeedKmh": 15,
+        "endSpeedKmh": 15,
         "durationSeconds": 0,
         "episodeType": "low_speed"
       },
-      "candidateOffsetSeconds": -341.878,
-      "speedShapeAgreement": "WEAK",
-      "confidence": "INSUFFICIENT_EVIDENCE"
+      "telemetryMatchConfidence": "HIGH",
+      "CLOCK_FIT_ELIGIBLE": "YES",
+      "candidateOffsetSeconds": 22.204999999999984,
+      "speedShapeAgreement": "GOOD"
     }
   ],
   "clock": {
-    "VIDEO_PROVIDER_ALIGNMENT_CLASS": "POSSIBLE_DRIFT",
-    "VIDEO_TO_PROVIDER_OFFSET_SECONDS": 0,
+    "VIDEO_ABSOLUTE_TIME_ANCHORED": "YES",
+    "PROVIDER_TIMESTAMP_OFFSET_VALIDATED": "NO",
+    "VIDEO_PROVIDER_ALIGNMENT_CLASS": "PROVISIONAL_SINGLE_ANCHOR",
+    "VIDEO_TO_PROVIDER_OFFSET_SECONDS": 22.204999999999984,
     "OFFSET_MAD_SECONDS": 0,
-    "candidateOffsetsPerEvent": [
+    "CLOCK_FIT_ELIGIBLE_LANDMARKS": [
+      "H"
+    ],
+    "CLOCK_FIT_REJECTED_LANDMARKS": [
       {
         "landmarkId": "A",
-        "offsetSeconds": -9.878
+        "reason": "INELIGIBLE_OR_INSUFFICIENT"
       },
       {
         "landmarkId": "B",
-        "offsetSeconds": 0
+        "reason": "INELIGIBLE_OR_INSUFFICIENT"
       },
       {
         "landmarkId": "C",
-        "offsetSeconds": 0
+        "reason": "INELIGIBLE_OR_INSUFFICIENT"
       },
       {
         "landmarkId": "D",
-        "offsetSeconds": 0
+        "reason": "INELIGIBLE_OR_INSUFFICIENT"
+      },
+      {
+        "landmarkId": "E",
+        "reason": "NOT_FOUND"
       },
       {
         "landmarkId": "F",
-        "offsetSeconds": 0
+        "reason": "INELIGIBLE_OR_INSUFFICIENT"
       },
       {
         "landmarkId": "G",
-        "offsetSeconds": 0
-      },
-      {
-        "landmarkId": "H",
-        "offsetSeconds": -341.878
+        "reason": "INELIGIBLE_OR_INSUFFICIENT"
       }
     ],
-    "medianOffsetSeconds": 0,
-    "meanOffsetSeconds": -50.250857142857136,
-    "minOffsetSeconds": -341.878,
-    "maxOffsetSeconds": 0,
-    "spreadSeconds": 341.878
+    "candidateOffsetsPerEvent": [
+      {
+        "landmarkId": "H",
+        "offsetSeconds": 22.204999999999984
+      }
+    ],
+    "medianOffsetSeconds": 22.204999999999984,
+    "meanOffsetSeconds": 22.204999999999984,
+    "minOffsetSeconds": 22.204999999999984,
+    "maxOffsetSeconds": 22.204999999999984,
+    "spreadSeconds": 0,
+    "CIRCULAR_LANDMARK_ALIGNMENT_REMOVED": "YES"
   },
   "drift": {
-    "DRIFT_VALIDATED": "PARTIAL",
-    "ESTIMATED_DRIFT_SECONDS_OVER_SEGMENT": -128.55736573262303,
-    "offsetAtBeginningSeconds": 20.06497534693215,
-    "offsetAtEndSeconds": -108.49239038569087,
-    "slopeSecondsPerVideoSecond": -0.3468430209972293,
-    "landmarkCount": 7,
-    "note": "Simple linear conceptual model — not overfit; whole-drive drift NOT finalized (Segment B pending)"
-  }
+    "DRIFT_VALIDATED": "NO",
+    "ESTIMATED_DRIFT_SECONDS_OVER_SEGMENT": null,
+    "DRIFT_FIT_ELIGIBLE_LANDMARKS": [
+      "H"
+    ],
+    "DRIFT_FIT_REJECTED_LANDMARKS": [
+      {
+        "landmarkId": "A",
+        "reason": "NOT_DRIFT_FIT_ELIGIBLE"
+      },
+      {
+        "landmarkId": "B",
+        "reason": "NOT_DRIFT_FIT_ELIGIBLE"
+      },
+      {
+        "landmarkId": "C",
+        "reason": "NOT_DRIFT_FIT_ELIGIBLE"
+      },
+      {
+        "landmarkId": "D",
+        "reason": "NOT_DRIFT_FIT_ELIGIBLE"
+      },
+      {
+        "landmarkId": "E",
+        "reason": "NOT_DRIFT_FIT_ELIGIBLE"
+      },
+      {
+        "landmarkId": "F",
+        "reason": "NOT_DRIFT_FIT_ELIGIBLE"
+      },
+      {
+        "landmarkId": "G",
+        "reason": "NOT_DRIFT_FIT_ELIGIBLE"
+      }
+    ],
+    "offsetAtBeginningSeconds": null,
+    "offsetAtEndSeconds": null,
+    "note": "Requires >=3 independent reliable landmarks distributed across segment; Segment B pending",
+    "DUPLICATE_CLOCK_EVIDENCE_PREVENTED": "YES",
+    "TEMPORAL_LOCALITY_ENFORCED": "YES"
+  },
+  "note": "Zero-offset projection is nominal only — offset/drift require independently observed video times"
 }
