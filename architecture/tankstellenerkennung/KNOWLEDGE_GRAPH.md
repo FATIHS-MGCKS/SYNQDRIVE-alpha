@@ -80,7 +80,11 @@ Scoped `PRODUCTION_VALIDATED` decisions cite explicit production-validation scop
 | ID | Gap |
 |----|-----|
 | FST-GAP-REAL-POST-CUTOVER-REFUEL-001 | Natural post-cutover REFUEL observed; positive match path not validated |
-| FST-GAP-PHYSICAL-STOP-COORD-001 | Physical-stop coordinate authority V2 designed (G1.1); implementation pending G2 |
+| FST-GAP-PHYSICAL-STOP-COORD-001 | Physical-stop coordinate authority V2 designed (G1.1); G1.2b lookback hardening; implementation pending G2 |
+
+## G1.2b boundary hardening (2026-09-04)
+
+`FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001` closes five G1.2 review defects: provider-independent lookback, settlement/finality before enrichment, vehicle-scoped reconciliation lock, dimensionally-safe canonical comparator, fail-closed clique multi-sibling grouping. **51 tests PASS.** G2 design-ready; **no production wiring**.
 | FST-GAP-GERMANY-SCOPE-001 | Germany-only scope / international expansion |
 | FST-GAP-MANUAL-FAILED-REPAIR-001 | Manual repair for terminal FAILED rows |
 | FST-GAP-SINGLE-COORD-POLICY-001 | Single start-coordinate policy |
