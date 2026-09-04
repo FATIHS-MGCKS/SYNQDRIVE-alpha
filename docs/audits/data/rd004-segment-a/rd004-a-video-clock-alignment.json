@@ -1,0 +1,180 @@
+{
+  "projection": "PROVISIONAL_ZERO_OFFSET_PROJECTION",
+  "nominalVideoStartUtc": "2026-09-04T03:37:46.000Z",
+  "landmarkMatches": [
+    {
+      "landmarkId": "A",
+      "label": "early reverse / low-speed",
+      "videoRelativeApprox": 8,
+      "telemetryVideoRelativeProvisional": -1.878,
+      "candidateProviderTimestamp": "2026-09-04T03:37:44.122Z",
+      "candidateAbsoluteUtc": "2026-09-04T03:37:44.122Z",
+      "speedShape": {
+        "startSpeedKmh": 0,
+        "endSpeedKmh": 0,
+        "durationSeconds": 0,
+        "episodeType": "low_speed"
+      },
+      "candidateOffsetSeconds": -9.878,
+      "speedShapeAgreement": "GOOD",
+      "confidence": "MEDIUM"
+    },
+    {
+      "landmarkId": "B",
+      "label": "calm deceleration ~41→0 / ~30s",
+      "videoRelativeApprox": 337.051,
+      "telemetryVideoRelativeProvisional": 337.051,
+      "candidateProviderTimestamp": "2026-09-04T03:43:23.051Z",
+      "candidateAbsoluteUtc": "2026-09-04T03:43:23.051Z",
+      "speedShape": {
+        "startSpeedKmh": 31,
+        "endSpeedKmh": 4,
+        "durationSeconds": 27.154,
+        "episodeType": "deceleration"
+      },
+      "candidateOffsetSeconds": 0,
+      "speedShapeAgreement": "GOOD",
+      "confidence": "MEDIUM"
+    },
+    {
+      "landmarkId": "C",
+      "label": "prolonged stop ~30s",
+      "videoRelativeApprox": -1.878,
+      "telemetryVideoRelativeProvisional": -1.878,
+      "candidateProviderTimestamp": "2026-09-04T03:37:44.122Z",
+      "candidateAbsoluteUtc": "2026-09-04T03:37:44.122Z",
+      "speedShape": {
+        "startSpeedKmh": 0,
+        "endSpeedKmh": 0,
+        "durationSeconds": 95.844,
+        "episodeType": "stop"
+      },
+      "candidateOffsetSeconds": 0,
+      "speedShapeAgreement": "GOOD",
+      "confidence": "MEDIUM"
+    },
+    {
+      "landmarkId": "D",
+      "label": "launch 0→~56 km/h",
+      "videoRelativeApprox": 281.018,
+      "telemetryVideoRelativeProvisional": 281.018,
+      "candidateProviderTimestamp": "2026-09-04T03:42:27.018Z",
+      "candidateAbsoluteUtc": "2026-09-04T03:42:27.018Z",
+      "speedShape": {
+        "startSpeedKmh": 0,
+        "endSpeedKmh": 44,
+        "durationSeconds": 30.676,
+        "episodeType": "launch"
+      },
+      "candidateOffsetSeconds": 0,
+      "speedShapeAgreement": "GOOD",
+      "confidence": "MEDIUM"
+    },
+    {
+      "landmarkId": "E",
+      "label": "stable ~52–56 km/h ~20s",
+      "status": "NOT_FOUND_IN_TELEMETRY",
+      "confidence": "INSUFFICIENT_EVIDENCE"
+    },
+    {
+      "landmarkId": "F",
+      "label": "deceleration ~55→0",
+      "videoRelativeApprox": 173.908,
+      "telemetryVideoRelativeProvisional": 173.908,
+      "candidateProviderTimestamp": "2026-09-04T03:40:39.908Z",
+      "candidateAbsoluteUtc": "2026-09-04T03:40:39.908Z",
+      "speedShape": {
+        "startSpeedKmh": 31,
+        "endSpeedKmh": 3,
+        "durationSeconds": 14.976,
+        "episodeType": "deceleration"
+      },
+      "candidateOffsetSeconds": 0,
+      "speedShapeAgreement": "GOOD",
+      "confidence": "MEDIUM"
+    },
+    {
+      "landmarkId": "G",
+      "label": "launch 0→~47 km/h",
+      "videoRelativeApprox": 281.018,
+      "telemetryVideoRelativeProvisional": 281.018,
+      "candidateProviderTimestamp": "2026-09-04T03:42:27.018Z",
+      "candidateAbsoluteUtc": "2026-09-04T03:42:27.018Z",
+      "speedShape": {
+        "startSpeedKmh": 0,
+        "endSpeedKmh": 44,
+        "durationSeconds": 30.676,
+        "episodeType": "launch"
+      },
+      "candidateOffsetSeconds": 0,
+      "speedShapeAgreement": "GOOD",
+      "confidence": "MEDIUM"
+    },
+    {
+      "landmarkId": "H",
+      "label": "final low-speed fuel-station approach",
+      "videoRelativeApprox": 340,
+      "telemetryVideoRelativeProvisional": -1.878,
+      "candidateProviderTimestamp": "2026-09-04T03:37:44.122Z",
+      "candidateAbsoluteUtc": "2026-09-04T03:37:44.122Z",
+      "speedShape": {
+        "startSpeedKmh": 0,
+        "endSpeedKmh": 0,
+        "durationSeconds": 0,
+        "episodeType": "low_speed"
+      },
+      "candidateOffsetSeconds": -341.878,
+      "speedShapeAgreement": "WEAK",
+      "confidence": "INSUFFICIENT_EVIDENCE"
+    }
+  ],
+  "clock": {
+    "VIDEO_PROVIDER_ALIGNMENT_CLASS": "POSSIBLE_DRIFT",
+    "VIDEO_TO_PROVIDER_OFFSET_SECONDS": 0,
+    "OFFSET_MAD_SECONDS": 0,
+    "candidateOffsetsPerEvent": [
+      {
+        "landmarkId": "A",
+        "offsetSeconds": -9.878
+      },
+      {
+        "landmarkId": "B",
+        "offsetSeconds": 0
+      },
+      {
+        "landmarkId": "C",
+        "offsetSeconds": 0
+      },
+      {
+        "landmarkId": "D",
+        "offsetSeconds": 0
+      },
+      {
+        "landmarkId": "F",
+        "offsetSeconds": 0
+      },
+      {
+        "landmarkId": "G",
+        "offsetSeconds": 0
+      },
+      {
+        "landmarkId": "H",
+        "offsetSeconds": -341.878
+      }
+    ],
+    "medianOffsetSeconds": 0,
+    "meanOffsetSeconds": -50.250857142857136,
+    "minOffsetSeconds": -341.878,
+    "maxOffsetSeconds": 0,
+    "spreadSeconds": 341.878
+  },
+  "drift": {
+    "DRIFT_VALIDATED": "PARTIAL",
+    "ESTIMATED_DRIFT_SECONDS_OVER_SEGMENT": -128.55736573262303,
+    "offsetAtBeginningSeconds": 20.06497534693215,
+    "offsetAtEndSeconds": -108.49239038569087,
+    "slopeSecondsPerVideoSecond": -0.3468430209972293,
+    "landmarkCount": 7,
+    "note": "Simple linear conceptual model — not overfit; whole-drive drift NOT finalized (Segment B pending)"
+  }
+}

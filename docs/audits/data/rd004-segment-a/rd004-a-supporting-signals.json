@@ -1,0 +1,14 @@
+{
+  "RPM_CONTEXT_USEFUL": "YES",
+  "THROTTLE_CONTEXT_USEFUL": "YES",
+  "TPS_CONTEXT_USEFUL": "YES",
+  "GEAR_STATE_USEFUL": "PARTIAL",
+  "perField": {
+    "powertrainCombustionEngineSpeed": "USEFUL_WITH_GATING",
+    "obdThrottlePosition": "USEFUL_WITH_GATING",
+    "powertrainCombustionEngineTPS": "USEFUL_WITH_GATING",
+    "obdEngineLoad": "USEFUL_WITH_GATING",
+    "powertrainTransmissionActualGear": "NOT_OBSERVED"
+  },
+  "thermalWarmupNote": "Engine/powertrain warming ~24/24°C → ~47/39°C during Segment A — do not compare early/late RPM/load as constant-thermal"
+}

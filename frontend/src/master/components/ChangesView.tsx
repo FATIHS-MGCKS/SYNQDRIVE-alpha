@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035a-rd004-segment-a-alignment-2026-09-04',
+    version: '4.9.1047',
+    title: 'DI-EV-0035A — RD004-A Segment A Video ↔ Telemetry Alignment',
+    summary: [
+      'First evidence-grade RD004 comparison: video Segment A (~6:11) vs sealed HF telemetry for KS MX 2024 C63.',
+      '38 HF_HISTORICAL speed samples (median cadence ~4.7 s); providerTimestamp authority; surfaces not merged.',
+      'Provisional zero-offset projection: mid-segment landmarks align ~0 s; absolute speed NOT validated (no frame OCR).',
+      'Offline legacy detector audit on calm baseline: 0 hard/extreme accel/brake/launch events.',
+      'Reverse video observed but NOT supported in HF gear/ratio for early window.',
+      'SEGMENT_B_PENDING=YES; RD004_WHOLE_DRIVE_COMPLETE=NO; production unchanged.',
+    ],
+    reason: 'RD004 controlled validation drive Segment A requires measured video ↔ telemetry alignment before Segment B and any calibration.',
+    previousBehavior: 'RD004 capture sealed (DI-EV-0034F) but no Segment-A alignment artifacts.',
+    details:
+      'Module `reference-capture-rd004-a-segment-a.ts`; CLI `reference-capture-drive-004-a-segment-a-analyze.ts`; artifacts under `docs/audits/data/rd004-segment-a/`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T08:30:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0034f2-integrity-closeout-2026-09-03',
     version: '4.9.1046',
     title: 'DI-EV-0034F.2 — Final Semantic + Artifact Integrity Closeout',

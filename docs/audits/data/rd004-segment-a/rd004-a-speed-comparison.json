@@ -1,0 +1,13 @@
+{
+  "exactOrHighConfidenceAnchors": [],
+  "approximateVideoLandmarks": [
+    {
+      "id": "A",
+      "videoRelativeSeconds": 8,
+      "videoSpeedKmhApprox": 2,
+      "note": "APPROXIMATE_VIDEO_LANDMARK — human reviewed, not frame-exact"
+    }
+  ],
+  "ABSOLUTE_SPEED_ACCURACY_VALIDATED": "NO",
+  "note": "No frame-exact digital speed OCR in this phase — approximate human landmarks only"
+}

@@ -1,0 +1,71 @@
+{
+  "comparedPairs": 38,
+  "PREPROCESSING_PEAK_ATTENUATION_KMH": 18.333333333333332,
+  "PREPROCESSING_START_SHIFT_SECONDS_MEDIAN": 127.578,
+  "PREPROCESSING_END_SHIFT_SECONDS_MEDIAN": null,
+  "PREPROCESSING_FALSE_EVENT_CREATION": "NOT_MEASURED_SPARSE_CADENCE",
+  "PREPROCESSING_FALSE_EVENT_SUPPRESSION": "NOT_MEASURED_SPARSE_CADENCE",
+  "note": "Sparse HF cadence limits event-level timing distortion metrics; pair-level attenuation reported",
+  "samplePairs": [
+    {
+      "providerTimestamp": "2026-09-04T03:37:44.122Z",
+      "rawKmh": 0,
+      "legacyKmh": 0,
+      "attenuationKmh": 0
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:37:48.647Z",
+      "rawKmh": 0,
+      "legacyKmh": 0,
+      "attenuationKmh": 0
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:37:49.647Z",
+      "rawKmh": 0,
+      "legacyKmh": 0,
+      "attenuationKmh": 0
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:37:51.293Z",
+      "rawKmh": 0,
+      "legacyKmh": 0,
+      "attenuationKmh": 0
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:37:52.293Z",
+      "rawKmh": 0,
+      "legacyKmh": 0,
+      "attenuationKmh": 0
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:37:58.416Z",
+      "rawKmh": 0,
+      "legacyKmh": 0,
+      "attenuationKmh": 0
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:38:05.110Z",
+      "rawKmh": 0,
+      "legacyKmh": 0,
+      "attenuationKmh": 0
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:38:09.904Z",
+      "rawKmh": 0,
+      "legacyKmh": 0,
+      "attenuationKmh": 0
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:38:11.904Z",
+      "rawKmh": 0,
+      "legacyKmh": 0,
+      "attenuationKmh": 0
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:38:15.723Z",
+      "rawKmh": 0,
+      "legacyKmh": 0,
+      "attenuationKmh": 0
+    }
+  ]
+}
