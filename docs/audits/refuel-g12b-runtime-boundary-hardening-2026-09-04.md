@@ -5,7 +5,7 @@
 **PR:** #1531 (DRAFT)  
 **Base SHA (origin/main):** `57ec14eabed06df0bf32e7a7a69e9ebe0c53fc88`  
 **G1.2 head (pre-G1.2b):** `55ed0d2a6b79d86dc5adc17728b40e294c444593`  
-**G1.2b head:** _(recorded at commit)_
+**G1.2b head:** `df83bfd3a` (includes `8a07921b4` implementation commit)
 
 ## Why G1.2b was required
 
