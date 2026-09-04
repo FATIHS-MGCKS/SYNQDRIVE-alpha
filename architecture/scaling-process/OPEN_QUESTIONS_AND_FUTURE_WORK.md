@@ -76,7 +76,7 @@ Do **not** treat items here as current production architecture.
 
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
-| OQ-30 | `INTRA_TRIP_GAP_SPLIT` reconciliation idempotency | **PARTIAL** | P1.8.3.6 retrospective: 2 post-fix warm cycles, 0 gap-split activity/replay; INC-07 remains open (WEAK evidence); closure requires STRONG or sufficient MODERATE replay proof |
+| OQ-30 | `INTRA_TRIP_GAP_SPLIT` reconciliation idempotency | **PARTIAL** | P1.8.3.6.1 extension: 3 post-fix warm cycles, 1 gap-split APPLIED (deterministic ID verified), 0 replay/IDEMPOTENT_SKIP; INC-07 remains open (MODERATE evidence); closure requires STRONG or sufficient MODERATE replay proof |
 
 ---
 

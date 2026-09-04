@@ -247,16 +247,19 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 
 | Claim | Phase | PR/Commit | Evidence | Result | Confidence |
 |-------|-------|-----------|----------|--------|------------|
-| Post-T0 audit window (~12h) | P1.8.3.6 | — | read-only SSH + SQL + logs | `43093s` | HIGH |
-| INC-07 fix present entire window | P1.8.3.6 | — | single deploy `5b788a223`, dist markers | YES | HIGH |
-| Natural warm-tier cycles after T0 | P1.8.3.6 | — | scheduler logs `01:18Z`, `05:18Z` | 2 cycles | HIGH |
-| Post-T0 INTRA_TRIP_GAP_SPLIT rows | P1.8.3.6 | — | `trip_repairs` SQL | 0 | HIGH |
-| Natural same-repair replay / IDEMPOTENT_SKIP | P1.8.3.6 | — | logs + DB | 0 | HIGH |
-| New INC-07-equivalent duplicate groups | P1.8.3.6 | — | duplicate SQL | 0 | HIGH |
+| Post-T0 audit window (~12.5h) | P1.8.3.6 / .6.1 | — | read-only SSH + SQL + logs | `44881s` | HIGH |
+| INC-07 fix present entire window | P1.8.3.6 | — | single pre-T0 deploy `5b788a223`, dist markers | YES | HIGH |
+| Deployment boundary in audit window | P1.8.3.6.1 | — | deploy `21:11:38Z` pre-T0 | 0 in-window / 1 pre-T0 | HIGH |
+| Natural warm-tier cycles after T0 | P1.8.3.6.1 | — | scheduler logs `01:18Z`, `05:18Z`, `09:18Z` | 3 cycles | HIGH |
+| Post-T0 INTRA_TRIP_GAP_SPLIT rows | P1.8.3.6.1 | — | `trip_repairs` SQL | 1 APPLIED | HIGH |
+| Post-T0 deterministic repair IDs | P1.8.3.6.1 | — | workspace detector | 1 verified | HIGH |
+| Natural same-repair replay / IDEMPOTENT_SKIP | P1.8.3.6.1 | — | logs + DB | 0 | HIGH |
+| New INC-07-equivalent duplicate groups | P1.8.3.6.1 | — | duplicate SQL | 0 | HIGH |
 | Historical duplicate baseline | P1.8.3.6 | — | duplicate SQL | 2 groups / 4 rows unchanged | HIGH |
-| APPLIED terminality regression | P1.8.3.6 | — | `trip_repairs` SQL | none | HIGH |
-| INC-07 production evidence strength | P1.8.3.6 | — | classification matrix | WEAK | HIGH |
-| INC-07 closure | P1.8.3.6 | — | Phase 17 rule | NOT CLOSED | HIGH |
-| OQ-30 | P1.8.3.6 | — | idempotency replay pending | PARTIAL | HIGH |
-| OQ-28 FULL_N=2 segment | P1.8.3.6 | — | deploy restart `21:18:36Z` | `43103s` (<86400) | HIGH |
+| APPLIED terminality regression | P1.8.3.6.1 | — | `trip_repairs` SQL | none | HIGH |
+| Max committed mutations per repair ID | P1.8.3.6.1 | — | trip mutation count | 1 (≤1 invariant) | HIGH |
+| INC-07 production evidence strength | P1.8.3.6.1 | — | classification matrix | MODERATE | HIGH |
+| INC-07 closure | P1.8.3.6.1 | — | Phase 17 rule | NOT CLOSED (replay pending) | HIGH |
+| OQ-30 | P1.8.3.6.1 | — | idempotency replay pending | PARTIAL | HIGH |
+| OQ-28 FULL_N=2 segment | P1.8.3.6.1 | — | SHA invariant `21:18:52Z` | `44896s` (<86400) | HIGH |
 
