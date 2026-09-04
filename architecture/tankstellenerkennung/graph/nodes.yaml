@@ -782,6 +782,19 @@ nodes:
       Proven on 2026-09-04 incident: 11m from Esso, resolver score 78 vs NOT_FOUND at segment starts.
     evidence:
       - FST-EVID-G11-HF-CLOSURE-2026-09-04-001
+      - FST-EVID-G12-ALGORITHMIC-CLOSURE-2026-09-04-001
+
+  - id: FST-EVID-G12-ALGORITHMIC-CLOSURE-2026-09-04-001
+    type: evidence
+    title: G1.2 coordinate selector + identity matcher algorithmic closure
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Pure derivePhysicalRefuelCoordinate selects forecourt dwell without station input;
+      tri-state symmetric identity matcher; 31 tests; ALGORITHMIC_CLOSURE=YES.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/physical-refuel-coordinate.selector.ts
+      - docs/audits/refuel-g12-algorithmic-closure-2026-09-04.md
 
   - id: FST-HYP-OSM-REFRESH-001
     type: hypothesis

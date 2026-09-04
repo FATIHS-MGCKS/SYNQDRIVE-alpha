@@ -270,4 +270,4 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 | **NON_EFFECTS** | Does not change REFUEL detection or duplicate identity semantics by itself |
 | **TRADEOFFS** | Requires HF/route speed+GPS; CH HF mirror may lack GPS for some vehicles |
 | **REMAINING_GAPS** | G2 implementation; fleet-wide offset calibration; CH GPS mirror completeness |
-| **EVIDENCE** | FST-EVID-G11-HF-CLOSURE-2026-09-04-001 |
+| **EVIDENCE** | FST-EVID-G12-ALGORITHMIC-CLOSURE-2026-09-04-001 |

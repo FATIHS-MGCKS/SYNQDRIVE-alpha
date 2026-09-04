@@ -1,0 +1,7 @@
+{
+  "REVERSE_VIDEO_OBSERVED": "YES",
+  "REVERSE_TELEMETRY_SUPPORTED": "NO",
+  "gearHfObservations": 0,
+  "gearRatioHfObservations": 0,
+  "note": "Unsigned speed cannot establish reverse; no HF gear/ratio in Segment A envelope"
+}

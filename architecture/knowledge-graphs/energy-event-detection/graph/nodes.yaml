@@ -1090,6 +1090,19 @@ nodes:
     summary: Two-stage semantic sibling matcher; incident A+B merge; separate refuels rejected.
     verified_at: "2026-09-04"
 
+  - id: EED-EV-0028
+    type: evidence
+    title: G1.2 algorithmic closure — selector + hardened identity matcher
+    epistemic_status: CONFIRMED
+    source_type: TEST
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/physical-refuel-coordinate.selector.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-identity.matcher.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation.design.ts
+      - docs/audits/refuel-g12-algorithmic-closure-2026-09-04.md
+    summary: Tri-state fail-closed matcher; symmetric canonical; arrival-order design tests; 31 tests PASS.
+    verified_at: "2026-09-04"
+
   - id: EED-DEC-PHYSICAL-REFUEL-IDENTITY-001
     type: decision
     title: Two-stage physical refuel identity (scope lock + semantic matcher)
@@ -1098,13 +1111,13 @@ nodes:
     summary: >
       Advisory xact lock on coarse scope; semantic matcher for suffix-compatible supersets.
       Canonical = most complete consistent transition superset, not duration-first.
-    evidence: [EED-EV-0027]
+    evidence: [EED-EV-0027, EED-EV-0028]
 
   - id: EED-OQ-013
     type: open_question
     title: Physical refuel identity implementation rollout
     epistemic_status: UNKNOWN
     summary: >
-      G1.1 design ready (EED-DEC-PHYSICAL-REFUEL-IDENTITY-001); implementation pending G2.
+      G1.2 algorithmic closure complete (EED-EV-0028); G2 runtime wiring pending.
     authority_class: EED_OWNS
-    evidence: [EED-EV-0026, EED-EV-0027]
+    evidence: [EED-EV-0026, EED-EV-0027, EED-EV-0028]

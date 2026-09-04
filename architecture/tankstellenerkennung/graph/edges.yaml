@@ -269,6 +269,9 @@ edges:
   - from: FST-EVID-G11-HF-CLOSURE-2026-09-04-001
     relation: supports
     to: FST-DEC-COORD-FORECOURT-DWELL-V2-001
+  - from: FST-EVID-G12-ALGORITHMIC-CLOSURE-2026-09-04-001
+    relation: supports
+    to: FST-DEC-COORD-FORECOURT-DWELL-V2-001
   - from: FST-EVID-INCIDENT-REFUEL-2026-09-04-001
     relation: validates
     to: FST-GAP-REAL-POST-CUTOVER-REFUEL-001

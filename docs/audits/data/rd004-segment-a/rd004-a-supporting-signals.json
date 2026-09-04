@@ -1,0 +1,61 @@
+{
+  "RPM_GLOBAL_AUTHORITY": "USEFUL_WITH_GATING",
+  "RPM_SEGMENT_A_VALIDATION": "PARTIAL",
+  "THROTTLE_GLOBAL_AUTHORITY": "USEFUL_WITH_GATING",
+  "THROTTLE_SEGMENT_A_VALIDATION": "NOT_DYNAMICALLY_INFORMATIVE",
+  "TPS_GLOBAL_AUTHORITY": "USEFUL_WITH_GATING",
+  "TPS_SEGMENT_A_VALIDATION": "PARTIAL",
+  "GEAR_STATE_OBSERVED": "NO",
+  "GEAR_STATE_USEFUL_FOR_SEGMENT_A": "NOT_OBSERVED",
+  "perField": {
+    "powertrainCombustionEngineSpeed": {
+      "observed": true,
+      "sampleCount": 27,
+      "uniquePhysical": 27,
+      "dynamicRange": 668.5,
+      "segmentValidation": "PARTIAL",
+      "globalAuthority": "USEFUL_WITH_GATING"
+    },
+    "obdThrottlePosition": {
+      "observed": true,
+      "sampleCount": 27,
+      "uniquePhysical": 27,
+      "dynamicRange": 3.921568627450979,
+      "segmentValidation": "NOT_DYNAMICALLY_INFORMATIVE",
+      "globalAuthority": "USEFUL_WITH_GATING"
+    },
+    "powertrainCombustionEngineTPS": {
+      "observed": true,
+      "sampleCount": 28,
+      "uniquePhysical": 28,
+      "dynamicRange": 20.3921568627451,
+      "segmentValidation": "PARTIAL",
+      "globalAuthority": "USEFUL_WITH_GATING"
+    },
+    "obdEngineLoad": {
+      "observed": true,
+      "sampleCount": 38,
+      "uniquePhysical": 38,
+      "dynamicRange": 39.6078431372549,
+      "segmentValidation": "PARTIAL",
+      "globalAuthority": "USEFUL_WITH_GATING"
+    },
+    "powertrainTransmissionActualGear": {
+      "observed": false,
+      "sampleCount": 0,
+      "uniquePhysical": 0,
+      "dynamicRange": null,
+      "segmentValidation": "NOT_OBSERVED",
+      "globalAuthority": "USEFUL_WITH_GATING"
+    },
+    "powertrainTransmissionActualGearRatio": {
+      "observed": false,
+      "sampleCount": 0,
+      "uniquePhysical": 0,
+      "dynamicRange": null,
+      "segmentValidation": "NOT_OBSERVED",
+      "globalAuthority": "USEFUL_WITH_GATING"
+    }
+  },
+  "thermalWarmupNote": "Engine/powertrain warming ~24/24°C → ~47/39°C during Segment A — do not compare early/late RPM/load as constant-thermal"
+}

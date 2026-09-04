@@ -1,0 +1,18 @@
+{
+  "exactOrHighConfidenceAnchors": [],
+  "approximateVideoLandmarks": [
+    {
+      "id": "A",
+      "videoRelativeSeconds": 8,
+      "videoTimingAuthority": "APPROXIMATE",
+      "note": "Human-reviewed approximate — not frame-exact"
+    },
+    {
+      "id": "H",
+      "videoRelativeSeconds": 340,
+      "videoTimingAuthority": "APPROXIMATE",
+      "note": "Human-reviewed approximate — not frame-exact"
+    }
+  ],
+  "ABSOLUTE_SPEED_ACCURACY_VALIDATED": "NO"
+}

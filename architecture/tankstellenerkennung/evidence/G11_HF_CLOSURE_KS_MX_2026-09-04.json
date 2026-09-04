@@ -38,16 +38,24 @@
     "rise_start_gps": { "lat": 51.3194166, "lon": 9.5152783, "top_score": 8, "status": "NOT_FOUND" }
   },
   "fuel_timing": {
-    "stationary_at_esso_until_local": "05:47:37",
-    "fuel_liters_flat_7L_until_local": "05:44:00",
-    "first_absolute_rise_local": "05:48:00",
-    "first_rise_sample_local": "05:48:30",
-    "plateau_28L_local": "05:51:30",
+    "epistemic_note": "Provider=DIMO 30s samples; detector=VehicleEnergyEvent fuelLevelRise*; owner=approximate recollection",
+    "last_observed_provider_fuel_7l_at_utc": "2026-09-04T03:44:00Z",
+    "last_observed_provider_fuel_7l_at_local_cest": "2026-09-04 05:44:00",
+    "provider_fuel_null_sample_at_utc": "2026-09-04T03:47:30Z",
+    "first_observed_provider_fuel_increase_at_utc": "2026-09-04T03:48:00Z",
+    "first_observed_provider_fuel_increase_at_local_cest": "2026-09-04 05:48:00",
+    "first_observed_provider_fuel_increase_liters": 14.33,
+    "detector_rise_start_a_utc": "2026-09-04T03:47:45Z",
+    "detector_rise_start_b_utc": "2026-09-04T03:49:13Z",
+    "detector_rise_end_utc": "2026-09-04T03:52:45Z",
+    "plateau_near_28l_provider_at_utc": "2026-09-04T03:51:30Z",
+    "owner_approx_arrival_local_cest": "2026-09-04 05:43",
+    "owner_approx_departure_local_cest": "2026-09-04 05:47",
     "offsets_vs_owner_departure_0547_sec": {
-      "A_rise_start": 45,
-      "B_rise_start": 133,
-      "rise_end": 345,
-      "first_dimo_fuel_rise": 90
+      "detector_a_rise_start": 45,
+      "detector_b_rise_start": 133,
+      "detector_rise_end": 345,
+      "first_provider_fuel_increase": 60
     }
   },
   "leader_election_flag": null
